@@ -1,0 +1,641 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{22724152-77A3-459E-9E8C-FAAC352571E7}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>bgeEng</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>irisEng</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\BinkSDK;$(DXSDK_DIR)Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\BinkSDK;$(SolutionDir)\irisEng\win\eax;$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\BinkSDK;$(DXSDK_DIR)Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\BinkSDK;$(SolutionDir)\irisEng\win\eax;$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;d3dx9.lib;binkw32.lib;eaxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;d3dx9.lib;binkw32.lib;eaxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="actions.c" />
+    <ClCompile Include="ai\ai_actionfunctions.c" />
+    <ClCompile Include="ai\ai_aifunctions.c" />
+    <ClCompile Include="ai\ai_animationfunctions.c" />
+    <ClCompile Include="ai\ai_arrfunctions.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_action_reaction.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_activateur.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_activateur_avec_sf.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_activator_simple.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_charlie.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_crochax.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_cv_aircraft.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_depanneuse.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_domz_sansue.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_enterprise.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_fun_baleine.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_gamemploi.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_garde_anti_vaiseeau.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_garde_barriere_entrepot.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_garde_barriere_mine.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_jeteparle.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_jumping_snake.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_luciole.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_pod_de_reparation.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_pompier.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_raskass.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_ratbleu.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_section_alpha_transport.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_spectre.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_ticpoil.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_torpille.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_twin_ion_engine.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_vaisseau_hyllis.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_vaisseau_hyllis_flic.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_vaisseau_transport_militaire.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_vendeur.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_wafwaf.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_afx_manager.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_aircraft.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_aircraft_ventouse.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_armoire.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_ascenseur_nazh.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_barrique.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_bison_fute.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_bouee_anti_aircraft.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_bv_active_desactive.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_caisse_man_missile.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_camera.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_combat.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_companion.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_dca.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_dead_if_invisible.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_des_tourelle_laser.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_detectors.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_distrib_crunsh.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_dogfight_manager.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_e3.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_ent_missile.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_ent_shoot_follower.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_ent_shoot_simple.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_es_au_sol.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_es_ciel.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_etoile_filante.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_flic_tir.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_frisbee.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_gao_shaker.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_generateur_lanceur.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_get_object_on_ground.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_board_panel.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_carte.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_hyllis_manager.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_managers.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_mapmanager.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_grillon_cigales.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_helper_text.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_hovercraft_shoot.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_hyllis_meteor.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_hyllis_meteor_manager.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_indice_avancement_jeu.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_indice_jeu_local.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_info_animaux.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_inv_cacheobject.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_inv_manager.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_inv_photo.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_inv_secundo_et_la_facture.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_jauge_ennemi.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_laser.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_lecteur_carte.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_lecteur_code.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_letters.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_lights.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_lipsync_auto.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_main_logo.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_main_menu.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_main_newgame.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_mirror.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_misc.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_mobile.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_monstroplante.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_monstroplante_death.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_nrj_pure.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_objects.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_object_floatingobj.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_object_scalator.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_objet_genere.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_onde_de_choc.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_perle.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_pilot_wing_ring.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_porte.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_porte_anti_domz.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_porte_armoire.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_projectile.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_random_track_player.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sally.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sally_tetechercheuses.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_arrose.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_changecolor.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_disapear.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_disapear2.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_dome_hyllis.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_eclaire.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_flash.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_flashtexture.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_fragments.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_goutte_o.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_pas_poussiere.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_phare.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_plouf.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_redflash.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_smoke.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_xmen.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snap_on_actor.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_capawatch_randomplay.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_mdf_bvfrontiere.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_mdf_periode.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_mdf_sf.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_musicfight.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_musique_jour_nuit_zone.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_sfndelay.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sound.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_switch.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_tir_blok_hyllis.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_videoplayer.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_zone_ordre_vala.c" />
+    <ClCompile Include="ai\ai_bge\ai_compliedscripts_actor_mouette.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_sally_shield.c" />
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_loop_vol_freq_capa.c" />
+    <ClCompile Include="ai\ai_categories.c" />
+    <ClCompile Include="ai\ai_colfunctions.c" />
+    <ClCompile Include="ai\ai_compiledscripts.c" />
+    <ClCompile Include="ai\ai_debugfunctions.c" />
+    <ClCompile Include="ai\ai_dynfunctions.c" />
+    <ClCompile Include="ai\ai_eventtrackfunctions.c" />
+    <ClCompile Include="ai\ai_fields.c" />
+    <ClCompile Include="ai\ai_functions.c" />
+    <ClCompile Include="ai\ai_gameobjectfunctions.c" />
+    <ClCompile Include="ai\ai_gameobjecttextfunctions.c" />
+    <ClCompile Include="ai\ai_gfxfunctions.c" />
+    <ClCompile Include="ai\ai_gridfunctions.c" />
+    <ClCompile Include="ai\ai_inofunctions.c" />
+    <ClCompile Include="ai\ai_keywords.c" />
+    <ClCompile Include="ai\ai_lightfunctions.c" />
+    <ClCompile Include="ai\ai_materialandcolorfunctions.c" />
+    <ClCompile Include="ai\ai_mathfunctions.c" />
+    <ClCompile Include="ai\ai_messagefunctions.c" />
+    <ClCompile Include="ai\ai_miscfunctions.c" />
+    <ClCompile Include="ai\ai_netfunctions.c" />
+    <ClCompile Include="ai\ai_pagfunctions.c" />
+    <ClCompile Include="ai\ai_sectorfunctions.c" />
+    <ClCompile Include="ai\ai_soundfunctions.c" />
+    <ClCompile Include="ai\ai_timefunctions.c" />
+    <ClCompile Include="ai\ai_types.c" />
+    <ClCompile Include="ai\ai_viewfunctions.c" />
+    <ClCompile Include="ai\ai_wayfunctions.c" />
+    <ClCompile Include="ai\ai_worldfunctions.c" />
+    <ClCompile Include="ai_common.c" />
+    <ClCompile Include="animation.c" />
+    <ClCompile Include="basic_array.c" />
+    <ClCompile Include="bigfiles.c" />
+    <ClCompile Include="cameraengine.c" />
+    <ClCompile Include="collision.c" />
+    <ClCompile Include="common.c" />
+    <ClCompile Include="dbg.c" />
+    <ClCompile Include="dynamics.c" />
+    <ClCompile Include="engine.c" />
+    <ClCompile Include="events.c" />
+    <ClCompile Include="gameobject.c" />
+    <ClCompile Include="gdi.c" />
+    <ClCompile Include="gfx.c" />
+    <ClCompile Include="gfx\gfxanotherflare.c" />
+    <ClCompile Include="gfx\gfxborderfade.c" />
+    <ClCompile Include="gfx\gfxcarte.c" />
+    <ClCompile Include="gfx\gfxdesintegrate.c" />
+    <ClCompile Include="gfx\gfxdiaphragm.c" />
+    <ClCompile Include="gfx\gfxexplode.c" />
+    <ClCompile Include="gfx\gfxfade.c" />
+    <ClCompile Include="gfx\gfxflare.c" />
+    <ClCompile Include="gfx\gfxgao.c" />
+    <ClCompile Include="gfx\gfxlightning.c" />
+    <ClCompile Include="gfx\gfxline.c" />
+    <ClCompile Include="gfx\gfxprofiler.c" />
+    <ClCompile Include="gfx\gfxripple.c" />
+    <ClCompile Include="gfx\gfxsmoke.c" />
+    <ClCompile Include="gfx\gfxspark.c" />
+    <ClCompile Include="gfx\gfxspeed.c" />
+    <ClCompile Include="gfx\gfxstr.c" />
+    <ClCompile Include="gfx\gfxsun.c" />
+    <ClCompile Include="gfx\gfxtable.c" />
+    <ClCompile Include="gfx\gfxwater2.c" />
+    <ClCompile Include="graphicsobjects\camera.c" />
+    <ClCompile Include="graphicsobjects\geo.c" />
+    <ClCompile Include="graphicsobjects\geomaterial.c" />
+    <ClCompile Include="graphicsobjects\geostr.c" />
+    <ClCompile Include="graphicsobjects\gro_common.c" />
+    <ClCompile Include="graphicsobjects\light.c" />
+    <ClCompile Include="graphicsobjects\particle.c" />
+    <ClCompile Include="graphicsobjects\shadow.c" />
+    <ClCompile Include="graphicsobjects\staticlod.c" />
+    <ClCompile Include="graphicsobjects\way.c" />
+    <ClCompile Include="grid.c" />
+    <ClCompile Include="groups.c" />
+    <ClCompile Include="inputoutput.c" />
+    <ClCompile Include="jpeg-6b\jcapimin.c" />
+    <ClCompile Include="jpeg-6b\jcapistd.c" />
+    <ClCompile Include="jpeg-6b\jccoefct.c" />
+    <ClCompile Include="jpeg-6b\jccolor.c" />
+    <ClCompile Include="jpeg-6b\jcdctmgr.c" />
+    <ClCompile Include="jpeg-6b\jchuff.c" />
+    <ClCompile Include="jpeg-6b\jcinit.c" />
+    <ClCompile Include="jpeg-6b\jcmainct.c" />
+    <ClCompile Include="jpeg-6b\jcmarker.c" />
+    <ClCompile Include="jpeg-6b\jcmaster.c" />
+    <ClCompile Include="jpeg-6b\jcomapi.c" />
+    <ClCompile Include="jpeg-6b\jcparam.c" />
+    <ClCompile Include="jpeg-6b\jcphuff.c" />
+    <ClCompile Include="jpeg-6b\jcprepct.c" />
+    <ClCompile Include="jpeg-6b\jcsample.c" />
+    <ClCompile Include="jpeg-6b\jctrans.c" />
+    <ClCompile Include="jpeg-6b\jdapimin.c" />
+    <ClCompile Include="jpeg-6b\jdapistd.c" />
+    <ClCompile Include="jpeg-6b\jdatadst.c" />
+    <ClCompile Include="jpeg-6b\jdatasrc.c" />
+    <ClCompile Include="jpeg-6b\jdcoefct.c" />
+    <ClCompile Include="jpeg-6b\jdcolor.c" />
+    <ClCompile Include="jpeg-6b\jddctmgr.c" />
+    <ClCompile Include="jpeg-6b\jdhuff.c" />
+    <ClCompile Include="jpeg-6b\jdinput.c" />
+    <ClCompile Include="jpeg-6b\jdmainct.c" />
+    <ClCompile Include="jpeg-6b\jdmarker.c" />
+    <ClCompile Include="jpeg-6b\jdmaster.c" />
+    <ClCompile Include="jpeg-6b\jdmerge.c" />
+    <ClCompile Include="jpeg-6b\jdphuff.c" />
+    <ClCompile Include="jpeg-6b\jdpostct.c" />
+    <ClCompile Include="jpeg-6b\jdsample.c" />
+    <ClCompile Include="jpeg-6b\jdtrans.c" />
+    <ClCompile Include="jpeg-6b\jerror.c" />
+    <ClCompile Include="jpeg-6b\jfdctflt.c" />
+    <ClCompile Include="jpeg-6b\jfdctfst.c" />
+    <ClCompile Include="jpeg-6b\jfdctint.c" />
+    <ClCompile Include="jpeg-6b\jidctflt.c" />
+    <ClCompile Include="jpeg-6b\jidctfst.c" />
+    <ClCompile Include="jpeg-6b\jidctint.c" />
+    <ClCompile Include="jpeg-6b\jidctred.c" />
+    <ClCompile Include="jpeg-6b\jmemjade.c" />
+    <ClCompile Include="jpeg-6b\jmemmgr.c" />
+    <ClCompile Include="jpeg-6b\jquant1.c" />
+    <ClCompile Include="jpeg-6b\jquant2.c" />
+    <ClCompile Include="jpeg-6b\jutils.c" />
+    <ClCompile Include="lights.c" />
+    <ClCompile Include="loading.c" />
+    <ClCompile Include="main.c" />
+    <ClCompile Include="materialanddraw.c" />
+    <ClCompile Include="math.c" />
+    <ClCompile Include="memory.c" />
+    <ClCompile Include="minilzo\minilzo.c" />
+    <ClCompile Include="modifiers.c" />
+    <ClCompile Include="modifiers\crushmodifier.c" />
+    <ClCompile Include="modifiers\explodemodifier.c" />
+    <ClCompile Include="modifiers\gensoundmodifier.c" />
+    <ClCompile Include="modifiers\lazymodifier.c" />
+    <ClCompile Include="modifiers\leglinkmodifier.c" />
+    <ClCompile Include="modifiers\loadingsoundmodifier.c" />
+    <ClCompile Include="modifiers\morphmodifier.c" />
+    <ClCompile Include="modifiers\otcmodifier.c" />
+    <ClCompile Include="modifiers\particlemodifier.c" />
+    <ClCompile Include="modifiers\photomodifier.c" />
+    <ClCompile Include="modifiers\protexmodifier.c" />
+    <ClCompile Include="modifiers\rlicartemodifier.c" />
+    <ClCompile Include="modifiers\rotrmodifier.c" />
+    <ClCompile Include="modifiers\semilookatmodifier.c" />
+    <ClCompile Include="modifiers\shadowmodifier.c" />
+    <ClCompile Include="modifiers\snakemodifier.c" />
+    <ClCompile Include="modifiers\snapmodifier.c" />
+    <ClCompile Include="modifiers\soundfxmodifier.c" />
+    <ClCompile Include="modifiers\speciallookatmodifier.c" />
+    <ClCompile Include="modifiers\spritegenmodifier.c" />
+    <ClCompile Include="modifiers\stpmodifier.c" />
+    <ClCompile Include="modifiers\symetriemodifier.c" />
+    <ClCompile Include="modifiers\xmecmodifier.c" />
+    <ClCompile Include="modifiers\xmenmodifier.c" />
+    <ClCompile Include="ok3.c" />
+    <ClCompile Include="particlegenerator.c" />
+    <ClCompile Include="photo.c" />
+    <ClCompile Include="proceduraltextures.c" />
+    <ClCompile Include="profiler.c" />
+    <ClCompile Include="sectors.c" />
+    <ClCompile Include="snp.c" />
+    <ClCompile Include="soft.c" />
+    <ClCompile Include="sound.c" />
+    <ClCompile Include="soundmodifier.c" />
+    <ClCompile Include="sprites.c" />
+    <ClCompile Include="strings.c" />
+    <ClCompile Include="tables.c" />
+    <ClCompile Include="textget.c" />
+    <ClCompile Include="textures.c" />
+    <ClCompile Include="time.c" />
+    <ClCompile Include="view.c" />
+    <ClCompile Include="water.c" />
+    <ClCompile Include="ways.c" />
+    <ClCompile Include="win\adpcm.c" />
+    <ClCompile Include="win\wingdi.c" />
+    <ClCompile Include="win\wingdi_aftereffects.c" />
+    <ClCompile Include="win\wininputoutput.c" />
+    <ClCompile Include="win\winsound.c" />
+    <ClCompile Include="world.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ai.h" />
+    <ClInclude Include="ai\ai_actionfunctions.h" />
+    <ClInclude Include="ai\ai_aifunctions.h" />
+    <ClInclude Include="ai\ai_animationfunctions.h" />
+    <ClInclude Include="ai\ai_arrfunctions.h" />
+    <ClInclude Include="ai\ai_bge\ai_compiledscripts_inc.h" />
+    <ClInclude Include="ai\ai_colfunctions.h" />
+    <ClInclude Include="ai\ai_compiledscripts.h" />
+    <ClInclude Include="ai\ai_debugfunctions.h" />
+    <ClInclude Include="ai\ai_dynfunctions.h" />
+    <ClInclude Include="ai\ai_gameobjectfunctions.h" />
+    <ClInclude Include="ai\ai_gfxfunctions.h" />
+    <ClInclude Include="ai\ai_inofunctions.h" />
+    <ClInclude Include="ai\ai_lightfunctions.h" />
+    <ClInclude Include="ai\ai_materialandcolorfunctions.h" />
+    <ClInclude Include="ai\ai_mathfunctions.h" />
+    <ClInclude Include="ai\ai_messagefunctions.h" />
+    <ClInclude Include="ai\ai_miscfunctions.h" />
+    <ClInclude Include="ai\ai_netfunctions.h" />
+    <ClInclude Include="ai\ai_pagfunctions.h" />
+    <ClInclude Include="ai\ai_sectorfunctions.h" />
+    <ClInclude Include="ai\ai_soundfunctions.h" />
+    <ClInclude Include="ai\ai_timefunctions.h" />
+    <ClInclude Include="ai\ai_eventtrackfunctions.h" />
+    <ClInclude Include="ai\ai_viewfunctions.h" />
+    <ClInclude Include="ai\ai_wayfunctions.h" />
+    <ClInclude Include="ai\ai_worldfunctions.h" />
+    <ClInclude Include="ai\ai_gridfunctions.h" />
+    <ClInclude Include="animation.h" />
+    <ClInclude Include="basic_array.h" />
+    <ClInclude Include="bigfiles.h" />
+    <ClInclude Include="cameraengine.h" />
+    <ClInclude Include="collision.h" />
+    <ClInclude Include="common.h" />
+    <ClInclude Include="dbg.h" />
+    <ClInclude Include="dynamics.h" />
+    <ClInclude Include="engine.h" />
+    <ClInclude Include="events.h" />
+    <ClInclude Include="gameobject.h" />
+    <ClInclude Include="gdi.h" />
+    <ClInclude Include="gfx.h" />
+    <ClInclude Include="gfx\gfxanotherflare.h" />
+    <ClInclude Include="gfx\gfxborderfade.h" />
+    <ClInclude Include="gfx\gfxcarte.h" />
+    <ClInclude Include="gfx\gfxdesintegrate.h" />
+    <ClInclude Include="gfx\gfxdiaphragm.h" />
+    <ClInclude Include="gfx\gfxexplode.h" />
+    <ClInclude Include="gfx\gfxfade.h" />
+    <ClInclude Include="gfx\gfxflare.h" />
+    <ClInclude Include="gfx\gfxgao.h" />
+    <ClInclude Include="gfx\gfxlightning.h" />
+    <ClInclude Include="gfx\gfxline.h" />
+    <ClInclude Include="gfx\gfxprofiler.h" />
+    <ClInclude Include="gfx\gfxripple.h" />
+    <ClInclude Include="gfx\gfxsmoke.h" />
+    <ClInclude Include="gfx\gfxspark.h" />
+    <ClInclude Include="gfx\gfxspeed.h" />
+    <ClInclude Include="gfx\gfxstr.h" />
+    <ClInclude Include="gfx\gfxsun.h" />
+    <ClInclude Include="gfx\gfxtable.h" />
+    <ClInclude Include="gfx\gfxwater2.h" />
+    <ClInclude Include="graphicsobjects\camera.h" />
+    <ClInclude Include="graphicsobjects\geo.h" />
+    <ClInclude Include="graphicsobjects\geomaterial.h" />
+    <ClInclude Include="graphicsobjects\geostr.h" />
+    <ClInclude Include="graphicsobjects\gro_common.h" />
+    <ClInclude Include="graphicsobjects\light.h" />
+    <ClInclude Include="graphicsobjects\particle.h" />
+    <ClInclude Include="graphicsobjects\shadow.h" />
+    <ClInclude Include="graphicsobjects\staticlod.h" />
+    <ClInclude Include="graphicsobjects\way.h" />
+    <ClInclude Include="grid.h" />
+    <ClInclude Include="groups.h" />
+    <ClInclude Include="inputoutput.h" />
+    <ClInclude Include="jpeg-6b\cderror.h" />
+    <ClInclude Include="jpeg-6b\cdjpeg.h" />
+    <ClInclude Include="jpeg-6b\jchuff.h" />
+    <ClInclude Include="jpeg-6b\jconfig.h" />
+    <ClInclude Include="jpeg-6b\jdct.h" />
+    <ClInclude Include="jpeg-6b\jdhuff.h" />
+    <ClInclude Include="jpeg-6b\jerror.h" />
+    <ClInclude Include="jpeg-6b\jinclude.h" />
+    <ClInclude Include="jpeg-6b\jmemsys.h" />
+    <ClInclude Include="jpeg-6b\jmorecfg.h" />
+    <ClInclude Include="jpeg-6b\jpegint.h" />
+    <ClInclude Include="jpeg-6b\jpeglib.h" />
+    <ClInclude Include="jpeg-6b\jversion.h" />
+    <ClInclude Include="jpeg-6b\transupp.h" />
+    <ClInclude Include="lights.h" />
+    <ClInclude Include="loading.h" />
+    <ClInclude Include="materialanddraw.h" />
+    <ClInclude Include="math.h" />
+    <ClInclude Include="memory.h" />
+    <ClInclude Include="minilzo\lzoconf.h" />
+    <ClInclude Include="minilzo\lzodefs.h" />
+    <ClInclude Include="minilzo\minilzo.h" />
+    <ClInclude Include="modifiers.h" />
+    <ClInclude Include="modifiers\crushmodifier.h" />
+    <ClInclude Include="modifiers\explodemodifier.h" />
+    <ClInclude Include="modifiers\gensoundmodifier.h" />
+    <ClInclude Include="modifiers\lazymodifier.h" />
+    <ClInclude Include="modifiers\leglinkmodifier.h" />
+    <ClInclude Include="modifiers\loadingsoundmodifier.h" />
+    <ClInclude Include="modifiers\morphmodifier.h" />
+    <ClInclude Include="modifiers\otcmodifier.h" />
+    <ClInclude Include="modifiers\particlemodifier.h" />
+    <ClInclude Include="modifiers\photomodifier.h" />
+    <ClInclude Include="modifiers\protexmodifier.h" />
+    <ClInclude Include="modifiers\rlicartemodifier.h" />
+    <ClInclude Include="modifiers\rotrmodifier.h" />
+    <ClInclude Include="modifiers\semilookatmodifier.h" />
+    <ClInclude Include="modifiers\shadowmodifier.h" />
+    <ClInclude Include="modifiers\snakemodifier.h" />
+    <ClInclude Include="modifiers\snapmodifier.h" />
+    <ClInclude Include="modifiers\soundfxmodifier.h" />
+    <ClInclude Include="modifiers\speciallookatmodifier.h" />
+    <ClInclude Include="modifiers\spritegenmodifier.h" />
+    <ClInclude Include="modifiers\stpmodifier.h" />
+    <ClInclude Include="modifiers\symetriemodifier.h" />
+    <ClInclude Include="modifiers\xmecmodifier.h" />
+    <ClInclude Include="modifiers\xmenmodifier.h" />
+    <ClInclude Include="particlegenerator.h" />
+    <ClInclude Include="photo.h" />
+    <ClInclude Include="profiler.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="sectors.h" />
+    <ClInclude Include="shadows.h" />
+    <ClInclude Include="snp.h" />
+    <ClInclude Include="soft.h" />
+    <ClInclude Include="sound.h" />
+    <ClInclude Include="sprites.h" />
+    <ClInclude Include="strings.h" />
+    <ClInclude Include="tables.h" />
+    <ClInclude Include="textget.h" />
+    <ClInclude Include="textures.h" />
+    <ClInclude Include="time.h" />
+    <ClInclude Include="view.h" />
+    <ClInclude Include="water.h" />
+    <ClInclude Include="ways.h" />
+    <ClInclude Include="win\adpcm.h" />
+    <ClInclude Include="win\eax\eax.h" />
+    <ClInclude Include="win\wingdi.h" />
+    <ClInclude Include="win\wininputoutput.h" />
+    <ClInclude Include="win\winsound.h" />
+    <ClInclude Include="world.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="irisEng.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="iriseng.ico" />
+    <Image Include="iriseng.png" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

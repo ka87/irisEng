@@ -1,0 +1,1495 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\jpeg-6b">
+      <UniqueIdentifier>{bb64f440-ba8f-4d96-9f59-e8f40a8acaf4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\jpeg-6b">
+      <UniqueIdentifier>{fd2f17ce-d662-478c-b516-b9b6eabb2b41}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\gfx">
+      <UniqueIdentifier>{831e7c22-6777-44ff-840d-cc6bd33d43a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\gfx">
+      <UniqueIdentifier>{35145562-07d4-437f-a96d-5903308b24d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\modifiers">
+      <UniqueIdentifier>{cf267412-decb-44d1-92da-a5b2bc0fb740}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ai">
+      <UniqueIdentifier>{28b3c7c3-69db-4f38-89b7-9dbcef19d11c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\modifiers">
+      <UniqueIdentifier>{b8430579-747b-4531-bd96-d2367fd29733}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ai">
+      <UniqueIdentifier>{05ce7efd-dd4a-40d1-a49c-27338efd2f52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\graphicsobjects">
+      <UniqueIdentifier>{f75d5e0a-0ffb-473d-978e-7457b890e5a9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\graphicsobjects">
+      <UniqueIdentifier>{7f4d0d1f-57cc-43fb-8c0a-6d06bd85c322}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ai\ai_bge">
+      <UniqueIdentifier>{6e35f6cd-d149-4c65-8922-336ca2174d46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ai\ai_bge">
+      <UniqueIdentifier>{e5a79314-a91b-479a-aa2b-87162a320ab4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\win">
+      <UniqueIdentifier>{1c31368a-05ce-42e3-a10b-48af148bccff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\win">
+      <UniqueIdentifier>{c0197d3c-c1ce-4b7d-89e7-40b8ad6edc01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\win\eax">
+      <UniqueIdentifier>{0a098c31-f1cb-43e9-baa1-77b318fac9e5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="math.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="memory.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="basic_array.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tables.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="loading.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dbg.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="bigfiles.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="textures.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="minilzo\minilzo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sound.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="time.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gameobject.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dynamics.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="collision.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="animation.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="world.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="view.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="snp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="profiler.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="grid.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sectors.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="events.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="groups.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ways.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="actions.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ok3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="engine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="soft.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gdi.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="photo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="inputoutput.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="textget.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="strings.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="water.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcapimin.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcapistd.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jccoefct.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jccolor.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcdctmgr.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jchuff.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcphuff.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcprepct.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jctrans.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcsample.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdapimin.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdapistd.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdatadst.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdatasrc.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdcoefct.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdcolor.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jddctmgr.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdhuff.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdinput.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdmainct.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdmarker.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdmaster.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdmerge.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdphuff.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdpostct.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdsample.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jdtrans.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jerror.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jfdctflt.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jfdctfst.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jidctint.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jidctred.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jmemmgr.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jquant1.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jquant2.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jutils.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcomapi.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jfdctint.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcmarker.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcparam.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcinit.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcmaster.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jidctflt.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jidctfst.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jcmainct.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="jpeg-6b\jmemjade.c">
+      <Filter>Source Files\jpeg-6b</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxline.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxlightning.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\gensoundmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\leglinkmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\morphmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\photomodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="soundmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_actionfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_categories.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai_common.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_debugfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_dynfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_eventtrackfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_fields.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_functions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_gameobjectfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_gridfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_inofunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_keywords.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_mathfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_viewfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_sectorfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_types.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_wayfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_worldfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\stpmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\snapmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\otcmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\explodemodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\semilookatmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\shadowmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\speciallookatmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\xmenmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="materialanddraw.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lights.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\light.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\lazymodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\protexmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\xmecmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\spritegenmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="sprites.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\symetriemodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\rotrmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\snakemodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\soundfxmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\geomaterial.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\gro_common.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\geo.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\staticlod.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\shadow.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="particlegenerator.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\particlemodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\particle.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\camera.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="cameraengine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\loadingsoundmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\crushmodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="modifiers\rlicartemodifier.c">
+      <Filter>Source Files\modifiers</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxdesintegrate.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxflare.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxsmoke.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxtable.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxspeed.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_compiledscripts.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="proceduraltextures.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxspark.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxwater2.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxfade.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxborderfade.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxgao.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxprofiler.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxexplode.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxdiaphragm.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxsun.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxcarte.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxstr.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxripple.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx\gfxanotherflare.c">
+      <Filter>Source Files\gfx</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_gfxfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\geostr.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsobjects\way.c">
+      <Filter>Source Files\graphicsobjects</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_gameobjecttextfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_soundfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_aifunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_timefunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_messagefunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_pagfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_lightfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_arrfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_colfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_animationfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_netfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_materialandcolorfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_miscfunctions.c">
+      <Filter>Source Files\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_charlie.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_crochax.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_depanneuse.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_gamemploi.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_jeteparle.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_luciole.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_ratbleu.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_spectre.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_vaisseau_hyllis.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_vendeur.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_wafwaf.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_aircraft.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_aircraft_ventouse.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_camera.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_combat.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_companion.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_detectors.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_distrib_crunsh.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_es_au_sol.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_board_panel.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_carte.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_hyllis_manager.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_managers.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_global_mapmanager.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_helper_text.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_hovercraft_shoot.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_indice_avancement_jeu.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_lights.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_lipsync_auto.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_mirror.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_misc.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_monstroplante.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_object_floatingobj.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_objects.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_perle.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_porte.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sally.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_arrose.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_pas_poussiere.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sound.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_switch.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compliedscripts_actor_mouette.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_e3.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_main_logo.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_inv_manager.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_disapear2.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_xmen.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_inv_secundo_et_la_facture.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_inv_photo.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_letters.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_flashtexture.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_changecolor.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_inv_cacheobject.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="win\wingdi.c">
+      <Filter>Source Files\win</Filter>
+    </ClCompile>
+    <ClCompile Include="win\wingdi_aftereffects.c">
+      <Filter>Source Files\win</Filter>
+    </ClCompile>
+    <ClCompile Include="win\wininputoutput.c">
+      <Filter>Source Files\win</Filter>
+    </ClCompile>
+    <ClCompile Include="win\winsound.c">
+      <Filter>Source Files\win</Filter>
+    </ClCompile>
+    <ClCompile Include="win\adpcm.c">
+      <Filter>Source Files\win</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_armoire.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_indice_jeu_local.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_lecteur_code.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_porte_armoire.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_sfndelay.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_phare.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_musique_jour_nuit_zone.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_mobile.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_random_track_player.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_grillon_cigales.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_mdf_periode.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_musicfight.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_mdf_bvfrontiere.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_domz_sansue.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_onde_de_choc.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_plouf.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_pod_de_reparation.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_bison_fute.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_cv_aircraft.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_laser.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_pompier.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_porte_anti_domz.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_hyllis_meteor.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_eclaire.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_monstroplante_death.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_jauge_ennemi.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sally_tetechercheuses.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_fragments.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_projectile.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_object_scalator.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_gao_shaker.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_ascenseur_nazh.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_section_alpha_transport.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_afx_manager.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_redflash.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_enterprise.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_nrj_pure.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_dead_if_invisible.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_ent_shoot_simple.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_ent_shoot_follower.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_ent_missile.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_caisse_man_missile.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_garde_barriere_entrepot.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_goutte_o.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_raskass.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_twin_ion_engine.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_dogfight_manager.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_fun_baleine.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_jumping_snake.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_hyllis_meteor_manager.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_pilot_wing_ring.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_vaisseau_transport_militaire.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_bouee_anti_aircraft.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_garde_barriere_mine.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_torpille.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_tir_blok_hyllis.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_dca.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_vaisseau_hyllis_flic.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_flic_tir.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_es_ciel.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_des_tourelle_laser.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_garde_anti_vaiseeau.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_actor_ticpoil.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_etoile_filante.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_videoplayer.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_bv_active_desactive.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_zone_ordre_vala.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snap_on_actor.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_activateur.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_activateur_avec_sf.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_mdf_sf.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_capawatch_randomplay.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_action_reaction.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_get_object_on_ground.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_lecteur_carte.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_barrique.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_generateur_lanceur.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_objet_genere.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_disapear.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_smoke.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_flash.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_activator_simple.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_info_animaux.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_main_newgame.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_main_menu.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_frisbee.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_dome_hyllis.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_sfx_sally_shield.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+    <ClCompile Include="ai\ai_bge\ai_compiledscripts_snd_loop_vol_freq_capa.c">
+      <Filter>Source Files\ai\ai_bge</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="math.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="memory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="basic_array.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tables.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="loading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ai.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dbg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="bigfiles.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="textures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="minilzo\lzoconf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="minilzo\lzodefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="minilzo\minilzo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sound.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="time.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gameobject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="textget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dynamics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="collision.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="groups.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ways.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="events.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="world.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="animation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="view.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="snp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="grid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="profiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sectors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="engine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="soft.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gdi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lights.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shadows.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="photo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inputoutput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="strings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="water.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\cderror.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\cdjpeg.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jchuff.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jdct.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jdhuff.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jerror.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jinclude.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jmemsys.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jmorecfg.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jpegint.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jpeglib.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jversion.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\transupp.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="jpeg-6b\jconfig.h">
+      <Filter>Header Files\jpeg-6b</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxcarte.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxline.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxlightning.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\stpmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\leglinkmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\morphmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\gensoundmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\rlicartemodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\photomodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\otcmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_debugfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_gridfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_viewfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_wayfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_worldfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\snapmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\explodemodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\semilookatmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\shadowmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\speciallookatmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="materialanddraw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\xmenmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\lazymodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\protexmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\xmecmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\spritegenmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="sprites.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\symetriemodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\rotrmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\snakemodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_mathfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\soundfxmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\geomaterial.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\gro_common.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\geo.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\shadow.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="particlegenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\particlemodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\particle.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\camera.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="cameraengine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\loadingsoundmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="modifiers\crushmodifier.h">
+      <Filter>Header Files\modifiers</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxdesintegrate.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxflare.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxsmoke.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxtable.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxspeed.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_messagefunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_compiledscripts.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxsun.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxspark.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxwater2.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxfade.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxborderfade.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxgao.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxprofiler.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxexplode.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxdiaphragm.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxstr.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\geostr.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxripple.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx\gfxanotherflare.h">
+      <Filter>Header Files\gfx</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\light.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\way.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsobjects\staticlod.h">
+      <Filter>Header Files\graphicsobjects</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_aifunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_inofunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_gameobjectfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_pagfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_lightfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_dynfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_arrfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_colfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_timefunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_soundfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_animationfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_actionfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_netfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_materialandcolorfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_eventtrackfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_miscfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_sectorfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_gfxfunctions.h">
+      <Filter>Header Files\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="ai\ai_bge\ai_compiledscripts_inc.h">
+      <Filter>Header Files\ai\ai_bge</Filter>
+    </ClInclude>
+    <ClInclude Include="win\eax\eax.h">
+      <Filter>Header Files\win\eax</Filter>
+    </ClInclude>
+    <ClInclude Include="win\adpcm.h">
+      <Filter>Header Files\win</Filter>
+    </ClInclude>
+    <ClInclude Include="win\winsound.h">
+      <Filter>Header Files\win</Filter>
+    </ClInclude>
+    <ClInclude Include="win\wininputoutput.h">
+      <Filter>Header Files\win</Filter>
+    </ClInclude>
+    <ClInclude Include="win\wingdi.h">
+      <Filter>Header Files\win</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="irisEng.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="iriseng.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="iriseng.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+</Project>

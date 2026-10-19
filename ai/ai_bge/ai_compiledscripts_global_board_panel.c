@@ -1,0 +1,16533 @@
+#include "ai_compiledscripts_inc.h"
+
+//board_panel_bp_init_trame2
+int board_panel_bp_init_trame2_INV_Manager_gao;
+int board_panel_bp_init_trame2_INV_Manager_gao_ao_GameText;
+int fct_board_panel_bp_init_trame2_board_panel_bp_boutonces_init;
+int fct_board_panel_bp_init_trame2_board_panel_bp_exec_joje_set;
+int fct_board_panel_bp_init_trame2_board_panel_bp_exec_reflex;
+int fct_board_panel_bp_init_trame2_board_panel_bp_dialogue_check;
+int fct_board_panel_bp_init_trame2_board_panel_bp_mode_normal;
+int fct_board_panel_bp_init_trame2_board_panel_bp_mode_aircraft;
+int fct_board_panel_bp_init_trame2_board_panel_bp_mode_enterprise;
+int fct_board_panel_bp_init_board_panel_bp_exec_select_button_mode_test;
+int fct_board_panel_bp_init_trame2_board_panel_bp_exec_clear;
+
+//board_panel_bp_init_trame1
+int board_panel_bp_init_trame1_univVars;
+int board_panel_bp_init_trame1_INV_manager;
+int board_panel_bp_init_trame1_INV_manager_gao;
+int board_panel_bp_init_trame1_INV_reference_WP_gao;
+int board_panel_bp_init_trame1_univVars_objet_liste_gao;
+int board_panel_bp_init_trame1_GST_Global_gao;
+int board_panel_bp_init_trame1_GST_Global_gao_o_board_panel;
+int board_panel_bp_init_trame1_univVars_Perso_ID_actor;
+int board_panel_bp_init_trame1_Perso_ID_equipement;
+int board_panel_bp_init_trame1_Perso_ID_Companion;
+int board_panel_bp_init_trame1_Flag_speciaux_sauve;
+int board_panel_bp_init_trame1_univVars_Perso_ID_world_ID;
+int board_panel_bp_init_trame1_univVars_world_ID;
+int board_panel_bp_init_trame1_univVars_Perso_ID_status;
+int fct_board_panel_bp_init_trame1_board_panel_bp_exec_button_valide_next_companion;
+int board_panel_bp_init_trame1_univVars_i_Nb_Perles;
+int board_panel_bp_init_trame1_univVars_f_sally_fric;
+int fct_board_panel_bp_init_trame1_board_panel_bp_init_trame2;
+int board_panel_bp_init_trame1_INTF_jade_gao;
+int board_panel_bp_init_trame1_INTF_jade_life_gao;
+int board_panel_bp_init_trame1_INTF_compagnon_gao;
+int board_panel_bp_init_trame1_INTF_compagnon_life_gao;
+int board_panel_bp_init_trame1_INTF_Pognes_gao;
+int board_panel_bp_init_trame1_INTF_Perles_gao;
+int board_panel_bp_init_trame1_INTF_PerleHalo_gao;
+int board_panel_bp_init_trame1_INTF_boussole_gao;
+int board_panel_bp_init_trame1_INTF_Boussole_TEXTE_gao;
+int board_panel_bp_init_trame1_INTF_curseur_photo_main_gao;
+int board_panel_bp_init_trame1_INTF_Cadre_Photo_gao;
+int board_panel_bp_init_trame1_INTF_lock_viseur_gao;
+int board_panel_bp_init_trame1_INTF_lock_viseur_ext_gao;
+int board_panel_bp_init_trame1_univVars_Perso_ID_Energie_courante;
+int board_panel_bp_init_trame1_univVars_Perso_ID_Energie_max;
+
+//board_panel_bp_exec_reflex
+int board_panel_bp_exec_reflex_PJ_Sally_gao;
+int board_panel_bp_exec_reflex_univVars;
+int board_panel_bp_exec_reflex_univVars_objet_inventaire;
+int board_panel_bp_exec_reflex_univVars_objet_liste_gao;
+int board_panel_bp_exec_reflex_univVars_objet_status;
+int board_panel_bp_exec_reflex_univVars_Perso_ID_status;
+int board_panel_bp_exec_reflex_PJ_Sally_gao_current_pm_mode;
+int board_panel_bp_exec_reflex_PJ_Sally_gao_i_fight_on;
+int board_panel_bp_exec_reflex_PJ_Sally_gao_i_fight_flags;
+int board_panel_bp_exec_reflex_GST_Board_panel_gao;
+int board_panel_bp_exec_reflex_GST_Board_panel_gao_i_force_interface;
+int board_panel_bp_exec_reflex_GST_Fight_Manager_gao;
+int board_panel_bp_exec_reflex_GST_Fight_Manager_gao_i_Evil_NbActor;
+int board_panel_bp_exec_reflex_univVars_Perso_ID_Companion;
+int board_panel_bp_exec_reflex_univVars_Perso_ID_actor;
+int board_panel_bp_exec_reflex_GST_Global_gao;
+int board_panel_bp_exec_reflex_GST_Global_gao_o_actor_texte;
+int board_panel_bp_exec_reflex_univVars_i_course_ON;
+int board_panel_bp_exec_reflex_GST_Board_panel_gao_i_current_nb_of_object;
+int board_panel_bp_exec_reflex_GST_Board_panel_gao_ao_listofobjects;
+int board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_listofpriority;
+int board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_action;
+int board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_listofbutton;
+int board_panel_bp_exec_reflex_GST_Board_panel_gao_ao_listoftargets;
+int fct_board_panel_bp_exec_reflex_board_panel_bp_exec_button_valide_nextfastitem;
+int fct_board_panel_bp_exec_reflex_board_panel_bp_exec_compte_a_rebour;
+int board_panel_bp_exec_reflex_GST_Global_gao_i_mort_en_cours;
+int board_panel_bp_exec_reflex_GST_Global_gao_f_game_speed;
+int board_panel_bp_exec_reflex_GST_Global_gao_o_mode_matrix_acteur;
+
+//board_panel_bp_mode_look
+int board_panel_bp_mode_look_PJ_Camera_Speciale_gao;
+int board_panel_bp_mode_look_univVars;
+int board_panel_bp_mode_look_univVars_Perso_ID_Companion;
+int board_panel_bp_mode_look_univVars_Perso_ID_actor;
+int board_panel_bp_mode_look__PJ_Sally_gao;
+int board_panel_bp_mode_look__PJ_Sally_gao_f_time_lance_un_frisbee;
+int board_panel_bp_mode_look__PJ_Sally_gao__o_object_en_main_AP;
+int board_panel_bp_mode_look_univVars_objet_inventaire;
+int fct_board_panel_bp_mode_look_board_panel_bp_exec_look_init;
+int board_panel_bp_mode_look_univVars_Flag_speciaux_sauve;
+int board_panel_bp_mode_TXT_Sally_gao;
+int fct_board_panel_bp_mode_look_board_panel_bp_exec_affiche_contextuel;
+int fct_board_panel_bp_mode_look_board_panel_bp_exec_look_photo;
+int fct_board_panel_bp_mode_look_board_panel_bp_exec_look_simple;
+int fct_board_panel_bp_mode_look_board_panel_bp_exec_look_jeter;
+int board_panel_bp_mode_look_INV_manager_gao;
+int board_panel_bp_mode_look_INV_manager_gao_o_Photo;
+int fct_board_panel_bp_mode_board_panel_look_bp_exec_sprite_boutons_on;
+int fct_board_panel_bp_mode_board_panel_look_Global_Library_photo_cheat;
+
+//board_panel_bp_inventaire_mode
+int board_panel_bp_inventaire_mode_univVars;
+int board_panel_bp_inventaire_mode_univVars_Carte3D_i_CurEtage;
+int board_panel_bp_inventaire_mode_univVars_Perso_ID_CarteEtage;
+int board_panel_bp_inventaire_mode_univVars_Perso_ID_actor;
+int board_panel_bp_inventaire_mode_univVars_Perso_ID_world_ID;
+int board_panel_bp_inventaire_mode_univVars_world_ID;
+int board_panel_bp_inventaire_mode_univVars_Perso_ID_status;
+int board_panel_bp_inventaire_mode_univVars_Perso_ID_passengers_list;
+int board_panel_bp_inventaire_mode_GST_Global_gao;
+int board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_priority;
+int board_panel_bp_inventaire_mode_GST_Global_gao_f_fade_start_time;
+int board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_delay;
+int board_panel_bp_inventaire_mode_univVars_i_fade_fx;
+int board_panel_bp_inventaire_mode_INV_MatFade_gao;
+int fct_board_panel_bp_inventaire_mode_board_panel_bp_exec_look_reset;
+int board_panel_bp_inventaire_mode__PJ_Camera_Speciale_gao;
+int board_panel_bp_inventaire_mode__PJ_Camera_Derriere_gao;
+int board_panel_bp_inventaire_mode__PJ_Camera_Derriere_gao_i_sim_click;
+int board_panel_bp_inventaire_mode_INV_reference_WP_gao;
+int board_panel_bp_inventaire_mode_INV_manager_gao;
+int board_panel_bp_inventaire_mode_INV_manager_gao_i_Reinit;
+int board_panel_bp_inventaire_mode_INTF_Group_gao;
+int board_panel_bp_inventaire_mode_INTF_jade_life_gao;
+int board_panel_bp_inventaire_mode_INTF_compagnon_life_gao;
+int board_panel_bp_inventaire_mode_INV_manager_gao_i_AskExit;
+int board_panel_bp_inventaire_mode_INV_manager_gao_i_Locked;
+int board_panel_bp_inventaire_mode_univVars_Flag_speciaux_sauve;
+int board_panel_bp_inventaire_mode_univVars_f_volume_infodesign;
+int board_panel_bp_inventaire_mode_INV_manager_gao_i_Exit;
+int board_panel_bp_inventaire_mode_INV_manager_gao_i_Mode;
+int board_panel_bp_inventaire_mode__PJ_Camera_Derriere_gao_i_sim_click;
+int fct_board_panel_bp_inventaire_mode_board_panel_bp_inventaire_out;
+
+//board_panel_bp_exec_select_button_enterprise
+int fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_choix_perso_pointe;
+int board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao;
+int board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao_i_sim_click;
+int board_panel_bp_exec_select_button_enterprise_univVars;
+int board_panel_bp_exec_select_button_enterprise_univVars_i_INV_OpenIt;
+int board_panel_bp_exec_select_button_enterprise_INV_manager_gao;
+int board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_OpeningMode;
+int board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_CineMode;
+int board_panel_bp_exec_select_button_enterprise_univVars_Flag_speciaux_sauve;
+int fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_inventaire_in;
+int fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_action_sally;
+int fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_phototraitement;
+int fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_use;
+int fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_action_jump;
+int board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao_i_special_exit;
+int fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_reset;
+
+//board_panel_bp_INTF_exec_target
+int board_panel_bp_INTF_exec_target_GST_Global_gao;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_i_reticule_on;
+int board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao;
+int board_panel_bp_INTF_exec_target_INTF_lock_viseur_ext_gao;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_v_reticule_visee;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_i_selected_target_nb;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_o_locking_target;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_o_targets;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_i_targets_nb;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_v_targets_offset;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_o_selected_target;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_v_selected_target_offset;
+int board_panel_bp_INTF_exec_target_GST_Global_gao_o_acteur_cine_actif;
+
+//board_panel_bp_INTF_update
+int board_panel_bp_INTF_update_INTF_jade_gao;
+int board_panel_bp_INTF_update_INTF_compagnon_gao;
+int board_panel_bp_INTF_update_INTF_jade_life_gao;
+int board_panel_bp_INTF_update_INTF_compagnon_life_gao;
+int board_panel_bp_INTF_update_INTF_PerleHalo_gao;
+int board_panel_bp_INTF_update_INTF_Perles_gao;
+int board_panel_bp_INTF_update_INTF_Pognes_gao;
+int board_panel_bp_INTF_update_univVars;
+int board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante;
+int board_panel_bp_INTF_update_univVars_Flag_speciaux_sauve;
+int board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max;
+int board_panel_bp_INTF_update__PJ_Sally_gao;
+int board_panel_bp_INTF_update__PJ_Sally_gao_i_fight_on;
+int board_panel_bp_INTF_update_univVars_Perso_ID_Companion;
+int board_panel_bp_INTF_update_univVars_Perso_ID_actor;
+int board_panel_bp_INTF_update_univVars_Perso_ID_status;
+int board_panel_bp_INTF_update_GST_Board_panel_gao;
+int board_panel_bp_INTF_update_univVars_i_course_ON;
+int board_panel_bp_INTF_update__PJ_Camera_Speciale_gao;
+int board_panel_bp_INTF_update_univVars_o_course_manager;
+
+//board_panel_bp_exec_button_valide_nextfastitem
+int board_panel_bp_exec_button_valide_nextfastitem_GST_Fight_Manager_gao;
+int board_panel_bp_exec_button_valide_nextfastitem_GST_Fight_Manager_gao_i_Evil_NbActor;
+int board_panel_bp_exec_button_valide_nextfastitem__PJ_Sally_gao;
+int board_panel_bp_exec_button_valide_nextfastitem_univVars;
+int board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_inventaire;
+int board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_status;
+int board_panel_bp_exec_button_valide_nextfastitem_univVars_Perso_ID_equipement;
+
+//board_panel_bp_exec_menu_swap
+int fct_board_panel_bp_exec_menu_swap_board_panel_bp_exec_button_valide_nextfastitem;
+int fct_board_panel_bp_exec_menu_swap_board_panel_bp_exec_button_valide_next_companion;
+
+//board_panel_bp_updatedisplay
+int fct_board_panel_bp_updatedisplay_board_panel_bp_INTF_boutonces_update_new;
+
+
+//board_panel_bp_INTF_boutonces_update_new
+int board_panel_bp_INTF_boutonces_update_new_univVars;
+int board_panel_bp_INTF_boutonces_update_new_univVars_Flag_speciaux_sauve;
+int board_panel_bp_INTF_boutonces_update_new_GST_Global_gao;
+int board_panel_bp_INTF_boutonces_update_new_GST_Global_gao_o_acteur_cine_actif;
+int board_panel_bp_INTF_boutonces_update_new__PJ_Camera_Speciale_gao;
+int board_panel_bp_INTF_boutonces_update_new_GST_AffichageTexte_gao;
+int board_panel_bp_INTF_boutonces_update_new_GST_AffichageTexte_gao_i_affiche;
+int board_panel_bp_INTF_boutonces_update_new_univVars_i_course_ON;
+int board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao;
+int board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao_i_Evil_NbActor;
+int board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_Companion;
+int board_panel_bp_INTF_boutonces_update_new__PJ_Sally_gao;
+int board_panel_bp_INTF_boutonces_update_new_univVars_deguisement_world_ID;
+int board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao_ao_Good_Actor;
+int board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_status;
+int board_panel_bp_INTF_boutonces_update_new__PJ_Sally_gao_i_fight_on;
+
+//board_panel_bp_exec_look_photoborder_off
+int board_panel_bp_exec_look_photoborder_off__PJ_Sally_gao;
+int board_panel_bp_exec_look_photoborder_off_INV_manager_gao;
+int board_panel_bp_exec_look_photoborder_off_INV_manager_gao_o_Photo;
+
+//board_panel_bp_exec_look_photo_select_info
+int board_panel_bp_exec_look_photo_select_info__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_look_photo_select_info__PJ_Sally_gao;
+
+//board_panel_bp_exec_button_valide_look
+int board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao_i_special_exit;
+int fct_board_panel_bp_exec_button_valide_look_board_panel_bp_exec_look_reset;
+int board_panel_bp_exec_button_valide_look_univVars;
+int board_panel_bp_exec_button_valide_look_univVars_objet_inventaire;
+int board_panel_bp_exec_button_valide_look__PJ_Sally_gao;
+int board_panel_bp_exec_button_valide_look_GST_Global_gao;
+int fct_board_panel_bp_exec_button_valide_look_board_panel_bp_mode_look;
+int fct_board_panel_bp_exec_button_valide_look_board_panel_bp_mode_normal;
+
+//board_panel_bp_mode_aircraft
+int board_panel_bp_mode_aircraft_INTF_boussole_gao;
+int board_panel_bp_mode_aircraft__PJ_Camera_Speciale_gao;
+int fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_look_init;
+int fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_look_photo;
+int fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_affiche_contextuel;
+int board_panel_bp_mode_aircraft_GST_Global_gao;
+int board_panel_bp_mode_aircraft_GST_Global_gao_o_acteur_cine_actif;
+int fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_button_valide_look;
+int fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_sprite_boutons_on;
+
+//board_panel_bp_INTF_exec_photo
+int board_panel_bp_INTF_exec_photo__PJ_Camera_Speciale_gao;
+int board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao;
+int board_panel_bp_INTF_exec_photo_INV_manager_gao;
+int board_panel_bp_INTF_exec_photo_INV_manager_gao_o_PhotoText;
+int board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao;
+
+//board_panel_bp_exec_select_button_mode_test
+int board_panel_bp_exec_select_button_mode_test_univVars;
+int board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_status;
+int board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao;
+int board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao_i_fight_on;
+int board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao_i_fight_on_old;
+int board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_actor;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_look;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_next_companion;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_enterprise;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_nextfastitem;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_normal;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_aircraft;
+int board_panel_bp_exec_select_button_mode_test__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_select_button_mode_test__PJ_Camera_Speciale_gao_i_special_exit;
+int board_panel_bp_exec_select_button_mode_test__PJ_Camera_Derriere_gao;
+int board_panel_bp_exec_select_button_mode_test__PJ_Camera_Derriere_gao_i_sim_click;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_look_reset;
+int board_panel_bp_exec_select_button_mode_test_univVars_objet_inventaire;
+int board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_equipement;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_menu_swap;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_normal_mode;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_enterprise;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_dialog_mode;
+int fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_look_mode_shift;
+
+//board_panel_bp_exec_sprite_boutons_on
+int fct_board_panel_bp_exec_sprite_boutons_on_board_panel_bp_exec_joje_set;
+int fct_board_panel_bp_exec_sprite_boutons_on_board_panel_bp_INTF_boutonces_update_new;
+
+//board_panel_bp_mode_dialogue
+int board_panel_bp_mode_dialogue__PJ_Sally_gao;
+int board_panel_bp_mode_dialogue__PJ_Sally_gao_current_pm_mode;
+int board_panel_bp_mode_dialogue_GST_Global_gao;
+int board_panel_bp_mode_dialogue_univVars;
+int board_panel_bp_mode_dialogue_univVars_Flag_speciaux_sauve;
+
+//board_panel_bp_exec_look_simple
+int board_panel_bp_exec_look_simple_PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_look_simple_GST_Global_gao;
+
+//board_panel_bp_INTF_exec_radar
+int board_panel_bp_INTF_exec_radar_univVars;
+int board_panel_bp_INTF_exec_radar_univVars_i_course_ON;
+int board_panel_bp_INTF_exec_radar_GST_AffichageTexte_gao;
+int board_panel_bp_INTF_exec_radar_GST_AffichageTexte_gao_i_affiche;
+int board_panel_bp_INTF_exec_radar_univVars_Perso_ID_equipement;
+int board_panel_bp_INTF_exec_radar_INTF_boussole_gao;
+int board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao;
+
+//board_panel_bp_mode_normal
+int board_panel_bp_mode_normal_GST_Global_gao;
+int board_panel_bp_mode_normal_GST_Global_gao_f_game_speed;
+int board_panel_bp_mode_normal_GST_Global_gao_i_mode_matrix_aborted;
+int board_panel_bp_mode_normal__PJ_Sally_gao;
+int board_panel_bp_mode_normal_GST_Global_gao_o_mode_uppercuted_acteur;
+int board_panel_bp_mode_normal_GST_Global_gao_o_mode_matrix_acteur;
+int board_panel_bp_mode_normal__PJ_Camera_gao;
+int board_panel_bp_mode_normal_GST_Global_gao_f_old_game_speed;
+int board_panel_bp_mode_normal_ENV_Effet_Matrix_gao;
+int fct_board_panel_bp_mode_normal_board_panel_bp_exec_affiche_contextuel;
+int board_panel_bp_mode_normal__PJ_Sally_gao_i_fight_on;
+int fct_board_panel_bp_mode_normal_board_panel_bp_exec_sprite_boutons_on;
+
+//board_panel_bp_exec_clear
+int board_panel_bp_exec_clear_GST_Global_gao;
+int board_panel_bp_exec_clear_GST_Global_gao_o_mode_uppercutted_acteur;
+int board_panel_bp_exec_clear__PJ_Camera_gao;
+int board_panel_bp_exec_clear_GST_Global_gao_o_acteur_cine_actif;
+int board_panel_bp_exec_clear_univVars;
+int board_panel_bp_exec_clear_univVars_Perso_ID_Companion;
+int board_panel_bp_exec_clear_univVars_Perso_ID_actor;
+int board_panel_bp_exec_clear_univVars_i_PALET_Mode;
+
+//board_panel_bp_exec_look_reset
+int board_panel_bp_exec_look_reset__PJ_Sally_gao;
+int board_panel_bp_exec_look_reset_TXT_Sally_gao;
+int board_panel_bp_exec_look_reset__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_look_reset__PJ_Camera_gao;
+int board_panel_bp_exec_look_reset__PJ_Camera_gao_i_from_look;
+int fct_board_panel_bp_exec_look_reset_board_panel_bp_exec_look_photoborder_off;
+int board_panel_bp_exec_look_reset_univVars;
+int board_panel_bp_exec_look_reset_univVars_Perso_ID_equipement;
+int board_panel_bp_exec_look_reset_univVars_Perso_ID_Companion;
+int board_panel_bp_exec_look_reset_univVars_Flag_speciaux_sauve;
+int board_panel_bp_exec_look_reset__PJ_Sally_gao_current_pm_mode;
+int board_panel_bp_exec_look_reset__PJ_Sally_gao_current_pm_priority;
+int board_panel_bp_exec_look_reset__PJ_Sally_gao_f_time_lance_un_frisbee;
+int board_panel_bp_exec_look_reset__PJ_Sally_gao_i_fight_on;
+int board_panel_bp_exec_look_reset__PJ_Sally_gao_o_objet_en_main_AP;
+int board_panel_bp_exec_look_reset_INV_OBJ00_ApPhoto_gao;
+int board_panel_bp_exec_look_reset__PJ_Sally_gao_f_time_exit_mode_look;
+
+//board_panel_bp_exec_button_valide_friend
+int board_panel_bp_exec_button_valide_friend_univVars;
+int board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion;
+int board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_actor;
+int board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao;
+int board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao_o_actor_texte;
+int board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao_o_acteur_cine_actif;
+int board_panel_bp_exec_button_valide_friend_univVars__PJ_Sally_gao;
+
+//board_panel_bp_mode_enterprise
+int board_panel_bp_mode_enterprise__PJ_Camera_Speciale_gao;
+int fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_look_init;
+int fct_board_panel_bp_mode_board_panel_bp_exec_look_photo;
+int fct_board_panel_bp_mode_board_panel_bp_exec_affiche_contextuel;
+int board_panel_bp_mode_enterprise_GST_Global_gao;
+int board_panel_bp_mode_enterprise_GST_Global_gao_o_acteur_cone_actif;
+int fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_button_valide_look;
+int fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_sprite_boutons_on;
+
+//board_panel_bp_exec_button_valide_action_sally
+int board_panel_bp_exec_button_valide_action_sally_GST_Global_gao;
+
+//board_panel_bp_beforedisplay
+int fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_photo;
+int fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_target;
+int fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_radar;
+
+//board_panel_bp_dialogue_check
+int board_panel_bp_dialogue_check__PJ_Sally_gao;
+int board_panel_bp_dialogue_check__PJ_Sally_gao_i_fight_on;
+int board_panel_bp_dialogue_check__PJ_Camera_Speciale_gao;
+int board_panel_bp_dialogue_check_board_panel_bp_exec_button_valide_exit_dialogue;
+int board_panel_bp_dialogue_check_GST_Global_gao;
+int board_panel_bp_dialogue_check_univVars;
+int board_panel_bp_dialogue_check_univVars_Flag_speciaux_sauve;
+int fct_board_panel_bp_dialogue_check_board_panel_bp_mode_dialogue;
+int board_panel_bp_dialogue_check_TXT_Sally_gao;
+int fct_board_panel_bp_dialogue_check_board_panel_bp_mode_normal;
+
+//board_panel_bp_exec_joje_set
+int board_panel_bp_exec_joje_set_board_panel_bp_INTF_update;
+int board_panel_bp_exec_joje_set_univVars;
+int board_panel_bp_exec_joje_set_univVars_f_sally_fric;
+int board_panel_bp_exec_joje_set_INTF_Pognes_gao;
+int board_panel_bp_exec_joje_set_univVars_i_Nb_Perles;
+int board_panel_bp_exec_joje_set_INTF_Perles_gao;
+int board_panel_bp_exec_joje_set_INTF_PerleHalo_gao;
+int board_panel_bp_exec_joje_set_board_panel_bp_INTF_update;
+
+//board_panel_bp_inventaire_in
+int board_panel_bp_inventaire_in__PJ_Camera_Speciale_gao;
+int board_panel_bp_inventaire_in_INV_manager_gao;
+int board_panel_bp_inventaire_in_univVars;
+int board_panel_bp_inventaire_in_univVars;
+int board_panel_bp_inventaire_in_univVars_Flag_speciaux_sauve;
+int board_panel_bp_inventaire_in_univVars_Perso_ID_Energie_max;
+int board_panel_bp_inventaire_in_univVars_Perso_ID_Companion;
+int fct_board_panel_bp_inventaire_in_board_panel_bp_inventaire_mode;
+
+//board_panel_bp_exec_look_phototraitement
+int board_panel_bp_exec_look_phototraitement_INV_manager_gao;
+int board_panel_bp_exec_look_phototraitement_INV_manager_gao_i_OpeningMode;
+int board_panel_bp_exec_look_phototraitement_univVars;
+int board_panel_bp_exec_look_phototraitement_univVars_Flag_speciaux_sauve;
+int fct_board_panel_bp_exec_look_phototraitement_Global_Library_photo_add;
+int board_panel_bp_exec_look_phototraitement__PJ_Sally_gao;
+int fct_board_panel_bp_exec_look_phototraitement_Global_Library_photo_take;
+int board_panel_bp_exec_look_phototraitement_GST_Global_gao;
+int board_panel_bp_exec_look_phototraitement_GST_Global_gao_i_flash_on;
+
+//board_panel_bp_exec_look_photoborder_on
+int board_panel_bp_exec_look_photoborder_on_INTF_Cadre_Photo_gao;
+
+//board_panel_bp_exec_button_valide_use
+int board_panel_bp_exec_button_valide_use__PJ_Sally_gao;
+int board_panel_bp_exec_button_valide_use__PJ_Sally_gao_current_pm_mode;
+int board_panel_bp_exec_button_valide_use_GST_Global_gao;
+int board_panel_bp_exec_button_valide_use_GST_Global_gao_o_acteur_cine_actif;
+int board_panel_bp_exec_button_valide_use__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_button_valide_use_univVars;
+int board_panel_bp_exec_button_valide_use_univVars_objet_status;
+int board_panel_bp_exec_button_valide_use_univVars_objet_inventaire;
+int board_panel_bp_exec_button_valide_use_univVars_objet_inventaire;
+int board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max;
+int board_panel_bp_exec_button_valide_use_univVars_objet_valeur1;
+int board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante;
+int board_panel_bp_exec_button_valide_use_GST_Fight_Manager_gao;
+int board_panel_bp_exec_button_valide_use_GST_Fight_Manager_gao_i_Evil_NbActor;
+int board_panel_bp_exec_button_valide_use_TXT_Sally_gao;
+int board_panel_bp_exec_button_valide_use_univVars_Perso_ID_equipement;
+int board_panel_bp_exec_button_valide_use_univVars_objet_liste_gao;
+
+//board_panel_bp_inventaire_out
+int board_panel_bp_inventaire_out_INV_reference_WP_gao;
+int board_panel_bp_inventaire_out_univVars;
+int board_panel_bp_inventaire_out_univVars_Perso_ID_equipement;
+int board_panel_bp_inventaire_out_INTF_jade_gao;
+int board_panel_bp_inventaire_out_INTF_compagnon_gao;
+int board_panel_bp_inventaire_out_INTF_jade_life_gao;
+int board_panel_bp_inventaire_out_INTF_compagnon_life_gao;
+int board_panel_bp_inventaire_INTF_Perles_gao;
+int board_panel_bp_inventaire_INTF_Pognes_gao;
+int board_panel_bp_inventaire_INTF_PerleHalo_gao;
+int board_panel_bp_inventaire_out_univVars_i_course_ON;
+int board_panel_bp_inventaire_out_univVars_Perso_ID_Energie_max;
+int board_panel_bp_inventaire_out_univVars_Perso_ID_Companion;
+int board_panel_bp_inventaire_out_univVars_Flag_speciaux_sauve;
+int board_panel_bp_inventaire_out_univVars_f_volume_infodesign;
+int board_panel_bp_inventaire_out__PJ_Camera_Derriere_gao;
+int board_panel_bp_inventaire_out__PJ_Camera_Derriere_gao_i_sim_click;
+int board_panel_bp_inventaire_out__PJ_Camera_Speciale_gao;
+int board_panel_bp_inventaire_out__PJ_Camera_Speciale_gao_i_special_exit;
+int fct_board_panel_bp_inventaire_out_board_panel_bp_exec_button_valide_look;
+int fct_board_panel_bp_inventaire_out_board_panel_bp_mode_normal;
+int board_panel_bp_inventaire_out_INTF_boussole_gao;
+int board_panel_bp_inventaire_out__PJ_Camera_gao;
+int board_panel_bp_inventaire_out__PJ_Sally_gao;
+
+//board_panel_bp_exec_look_jeter
+int board_panel_bp_exec_look_jeter_univVars;
+int board_panel_bp_exec_look_jeter_univVars_objet_status;
+int board_panel_bp_exec_look_jeter__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_look_jeter__PJ_Sally_gao;
+
+//board_panel_bp_exec_compte_a_rebour
+int board_panel_bp_exec_compte_a_rebour_univVars;
+int board_panel_bp_exec_compte_a_rebour_univVars_Flag_speciaux_sauve;
+int board_panel_bp_exec_compte_a_rebour_univVars_f_Delai_Avant_Mort_Mili;
+int board_panel_bp_exec_compte_a_rebour_GST_Board_panel_gao;
+int board_panel_bp_exec_compte_a_rebour_univVars_world_ID;
+int board_panel_bp_exec_compte_a_rebour_univVars_f_volume_infodesign;
+
+//board_panel_bp_exec_look_init
+int board_panel_bp_exec_look_init_INTF_Cadre_Photo_gao;
+int board_panel_bp_exec_look_init__PJ_Sally_gao;
+int board_panel_bp_exec_look_init_univVars;
+int board_panel_bp_exec_look_init_univVars_Flag_speciaux_sauve;
+int board_panel_bp_exec_look_init__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_look_init_INTF_lock_viseur_gao;
+int fct_board_panel_bp_exec_look_init_board_panel_bp_exec_button_valide_nextfastitem;
+int fct_board_panel_bp_exec_look_init_board_panel_bp_exec_look_photoborder_on;
+
+//board_panel_bp_exec_button_valide_suite_dialogue
+int board_panel_bp_exec_button_valide_suite_dialogue_univVars;
+int board_panel_bp_exec_button_valide_suite_dialogue_univVars_Flag_speciaux_sauve;
+
+//board_panel_bp_exec_select_button_dialog_mode
+int board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao;
+int board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao_o_acteur_cine_actif;
+int board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao_o_acteur_blabla_actif;
+int board_panel_bp_exec_select_button_dialog_mode_univVars;
+int board_panel_bp_exec_select_button_dialog_mode_univVars_Flag_speciaux_sauve;
+int fct_board_panel_bp_exec_select_button_dialog_mode_board_panel_bp_exec_button_valide_suite_dialogue;
+int fct_board_panel_bp_exec_select_button_dialog_mode_board_panel_bp_exec_button_valide_exit_dialogue;
+
+//board_panel_bp_exec_select_button_look_mode_shift
+int fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_choix_perso_pointe;
+int fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_use;
+int fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_friend;
+int board_panel_bp_exec_select_button_look_mode_shift_univVars;
+int board_panel_bp_exec_select_button_look_mode_shift_univVars_i_INV_OpenIt;
+int board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao;
+int board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao_i_OpeningMode;
+int fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_inventaire_in;
+int board_panel_bp_exec_select_button_look_mode_shift_univVars_Flag_speciaux_sauve;
+int board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao;
+int board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao_i_can_smooth;
+int fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_look_phototraitement;
+int board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao;
+int board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao_o_acteur_cine_actif;
+int board_panel_bp_exec_select_button_look_mode_shift__PJ_Sally_gao;
+int board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Derriere_gao;
+int board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Derriere_gao_i_sim_click;
+int board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao_i_special_exit;
+int fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_look;
+
+//board_panel_bp_afterrec
+int board_panel_bp_afterrec__PJ_Camera_Speciale_gao;
+int board_panel_bp_afterrec_INTF_Pognes_gao;
+int board_panel_bp_afterrec_INTF_Perles_gao;
+int board_panel_bp_afterrec_INTF_PerleHalo_gao;
+
+//board_panel_bp_exec_select_button_normal_mode
+int fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_choix_perso_pointe;
+int fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_friend;
+int fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_action_sally;
+int fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_action_jump;
+int fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_use;
+int board_panel_bp_exec_select_button_normal_mode_univVars;
+int board_panel_bp_exec_select_button_normal_mode_univVars_i_INV_OpenIt;
+int board_panel_bp_exec_select_button_normal_mode_INV_manager_gao;
+int board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_OpeningMode;
+int board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_CineMode;
+int board_panel_bp_exec_select_button_normal_mode_univVars_Flag_speciaux_sauve;
+int fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_inventaire_in;
+int board_panel_bp_exec_select_button_normal_mode_GST_Global_gao;
+int board_panel_bp_exec_select_button_normal_mode_GST_Global_gao_o_acteur_cine_actif;
+int board_panel_bp_exec_select_button_normal_mode__PJ_Sally_gao;
+int fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_look;
+
+//board_panel_bp_exec_button_valide_next_companion
+int board_panel_bp_exec_button_valide_next_companion_univVars;
+int board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_Companion;
+int board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_actor;
+int board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_world_ID;
+int board_panel_bp_exec_button_valide_next_companion_univVars_world_ID;
+int board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_status;
+int board_panel_bp_exec_button_valide_next_companion_univVars_Flag_speciaux_sauve;
+
+//board_panel_bp_exec_look_photo
+int fct_board_panel_bp_exec_look_photo_board_panel_bp_exec_look_photo_select_info;
+int board_panel_bp_exec_look_photo_univVars;
+int board_panel_bp_exec_look_photo_univVars_Flag_speciaux_sauve;
+int board_panel_bp_exec_look_photo__PJ_Sally_gao;
+int board_panel_bp_exec_look_photo_GST_AffichageTexte_gao;
+int board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche;
+int board_panel_bp_exec_look_photo_univVars_ai_Photos;
+
+//Global_Library_photo_add
+int Global_Library_photo_add_univVars;
+int Global_Library_photo_add_univVars_ai_Photos;
+int Global_Library_photo_add_univVars_Flag_speciaux_sauve;
+
+//Global_Library_photo_take
+int Global_Library_photo_take_INV_manager_gao;
+int Global_Library_photo_take_INV_manager_gao_o_Photo;
+int Global_Library_photo_take_INV_manager_gao_o_PhotoText;
+int Global_Library_photo_take_INV_manager_gao_i_OpeningMode;
+int Global_Library_photo_take_INV_manager_gao_i_LastAlbumPhoto;
+int Global_Library_photo_take_univVars;
+int Global_Library_photo_take_univVars_i_INV_OpenIt;
+int Global_Library_photo_take_univVars_ai_Photos;
+int Global_Library_photo_take_univVars_Flag_speciaux_sauve;
+int Global_Library_photo_take_INV_MatFade_gao;
+int Global_Library_photo_take_INV_manager_gao_i_LastMissionPhoto;
+
+int board_panel_bp_init_trame1()
+{
+    char* v0; // eax
+    unsigned int v1; // eax
+    char* v2; // eax
+    char* v4; // eax
+    int v5; // eax
+    char* v6; // eax
+    char* v7; // eax
+    char* v8; // eax
+    char* v9; // eax
+    float v10; // [esp+4h] [ebp-360h]
+    tScriptStruct_GSTBoardPanel* v11; // [esp+8h] [ebp-35Ch]
+    tGameObjectMain* v12; // [esp+10h] [ebp-354h]
+    tGameObjectMain* v13; // [esp+18h] [ebp-34Ch]
+    tGameObjectMain* v14; // [esp+20h] [ebp-344h]
+    tGameObjectMain* v15; // [esp+28h] [ebp-33Ch]
+    tGameObjectMain* v16; // [esp+30h] [ebp-334h]
+    tGameObjectMain* v17; // [esp+34h] [ebp-330h]
+    tGameObjectMain* v18; // [esp+38h] [ebp-32Ch]
+    tGameObjectMain* v19; // [esp+44h] [ebp-320h]
+    tGameObjectMain* v20; // [esp+48h] [ebp-31Ch]
+    tGameObjectMain* v21; // [esp+50h] [ebp-314h]
+    tGameObjectMain* v22; // [esp+54h] [ebp-310h]
+    tGameObjectMain* v23; // [esp+5Ch] [ebp-308h]
+    tGameObjectMain* v24; // [esp+60h] [ebp-304h]
+    Vec3 v25; // [esp+64h] [ebp-300h] BYREF
+    Vec3 v26; // [esp+70h] [ebp-2F4h] BYREF
+    Vec3 v27; // [esp+7Ch] [ebp-2E8h] BYREF
+    Vec3 v28; // [esp+88h] [ebp-2DCh] BYREF
+    Vec3 v29; // [esp+94h] [ebp-2D0h] BYREF
+    int v30; // [esp+ACh] [ebp-2B8h]
+    Vec3 v31; // [esp+B0h] [ebp-2B4h] BYREF
+    Vec3 v32; // [esp+BCh] [ebp-2A8h] BYREF
+    float v33; // [esp+C8h] [ebp-29Ch]
+    tTextGet v34; // [esp+D0h] [ebp-294h] BYREF
+    int v35; // [esp+D8h] [ebp-28Ch]
+    Vec3 v36; // [esp+E0h] [ebp-284h] BYREF
+    Vec3 v37; // [esp+100h] [ebp-264h] BYREF
+    int v38; // [esp+10Ch] [ebp-258h]
+    char v39[8]; // [esp+114h] [ebp-250h] BYREF
+    Vec3 v40; // [esp+11Ch] [ebp-248h] BYREF
+    Vec3 v41; // [esp+128h] [ebp-23Ch] BYREF
+    Vec3 v42; // [esp+134h] [ebp-230h] BYREF
+    Vec3 v43; // [esp+140h] [ebp-224h] BYREF
+    int v44; // [esp+14Ch] [ebp-218h]
+    tGameObjectMain* v45; // [esp+150h] [ebp-214h]
+    int v46; // [esp+154h] [ebp-210h]
+    int v47; // [esp+158h] [ebp-20Ch]
+    float v48; // [esp+15Ch] [ebp-208h]
+    tTextGet Src; // [esp+160h] [ebp-204h] BYREF
+    float v50; // [esp+168h] [ebp-1FCh]
+    Vec3 v51; // [esp+16Ch] [ebp-1F8h] BYREF
+    float v52; // [esp+178h] [ebp-1ECh]
+    int v53; // [esp+17Ch] [ebp-1E8h]
+    Vec3 v54; // [esp+180h] [ebp-1E4h] BYREF
+    Vec3 v55; // [esp+18Ch] [ebp-1D8h] BYREF
+    Vec3 v56; // [esp+198h] [ebp-1CCh] BYREF
+    Vec3 v57; // [esp+1A4h] [ebp-1C0h] BYREF
+    Vec3 v58; // [esp+1B0h] [ebp-1B4h] BYREF
+    float v59; // [esp+1BCh] [ebp-1A8h]
+    tTextGet v60; // [esp+1C0h] [ebp-1A4h] BYREF
+    Vec3 v61; // [esp+1C8h] [ebp-19Ch] BYREF
+    Vec3 v62; // [esp+1D4h] [ebp-190h] BYREF
+    Vec3 v63; // [esp+1E0h] [ebp-184h] BYREF
+    float v64; // [esp+1ECh] [ebp-178h]
+    tGameObjectMain* v65; // [esp+1F0h] [ebp-174h]
+    int v66; // [esp+1F4h] [ebp-170h]
+    Vec3 v67; // [esp+1F8h] [ebp-16Ch] BYREF
+    Vec3 v68; // [esp+204h] [ebp-160h] BYREF
+    Vec3 v69; // [esp+210h] [ebp-154h] BYREF
+    Vec3 v70; // [esp+21Ch] [ebp-148h] BYREF
+    int v71; // [esp+228h] [ebp-13Ch]
+    float v72; // [esp+230h] [ebp-134h]
+    Vec3 v73; // [esp+238h] [ebp-12Ch] BYREF
+    Vec3 a2; // [esp+244h] [ebp-120h] BYREF
+    tTextGet v75; // [esp+254h] [ebp-110h] BYREF
+    int v76; // [esp+25Ch] [ebp-108h]
+    Vec3 v77; // [esp+264h] [ebp-100h] BYREF
+    Vec3 v78; // [esp+270h] [ebp-F4h] BYREF
+    Vec3 v79; // [esp+27Ch] [ebp-E8h] BYREF
+    Vec3 v80; // [esp+288h] [ebp-DCh] BYREF
+    Vec3 v81; // [esp+294h] [ebp-D0h] BYREF
+    float v82; // [esp+2A0h] [ebp-C4h]
+    BOOL v83; // [esp+2A4h] [ebp-C0h]
+    int v84; // [esp+2A8h] [ebp-BCh]
+    Vec3 v85; // [esp+2ACh] [ebp-B8h] BYREF
+    Vec3 v86; // [esp+2B8h] [ebp-ACh] BYREF
+    Vec3 v87; // [esp+2C4h] [ebp-A0h] BYREF
+    Vec3 v88; // [esp+2D0h] [ebp-94h] BYREF
+    tTextGet a3; // [esp+2E0h] [ebp-84h] BYREF
+    int v90; // [esp+2E8h] [ebp-7Ch]
+    tScriptStruct_GSTBoardPanel* v91; // [esp+2ECh] [ebp-78h]
+    int v92; // [esp+2F0h] [ebp-74h]
+    unsigned int v93; // [esp+2F4h] [ebp-70h]
+    int num; // [esp+2F8h] [ebp-6Ch]
+    Vec3 v95; // [esp+2FCh] [ebp-68h] BYREF
+    Vec3 v96; // [esp+308h] [ebp-5Ch] BYREF
+    int v97; // [esp+314h] [ebp-50h]
+    tGameObjectMain* v98; // [esp+31Ch] [ebp-48h]
+    tTextGet v99; // [esp+320h] [ebp-44h] BYREF
+    int v100; // [esp+328h] [ebp-3Ch]
+    Vec3 v101; // [esp+32Ch] [ebp-38h] BYREF
+    Vec3 v102; // [esp+338h] [ebp-2Ch] BYREF
+    Vec3 v103; // [esp+344h] [ebp-20h] BYREF
+    Vec3 v104; // [esp+350h] [ebp-14h] BYREF
+
+    if (AI_gpst_CurrentInstance)
+        v11 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v11 = 0;
+    v91 = v11;
+    v83 = 0;
+    v93 = 0;
+    v44 = 0;
+    num = 0;
+    
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_init_trame1_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(&board_panel_bp_init_trame1_INV_manager, (void*)board_panel_bp_init_trame1_univVars, 16148);
+        board_panel_bp_init_trame1_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        board_panel_bp_init_trame1_INV_reference_WP_gao = AI_ul_RealResolveOneRefObject(0x620013B8u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_univVars_objet_liste_gao,
+            (void*)board_panel_bp_init_trame1_univVars,
+            1276);
+        board_panel_bp_init_trame1_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_GST_Global_gao_o_board_panel,
+            (void*)board_panel_bp_init_trame1_GST_Global_gao,
+            364);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_init_trame1_univVars,
+            988);
+        AI2C_ResolveBuffer(&board_panel_bp_init_trame1_Perso_ID_equipement, (void*)board_panel_bp_init_trame1_univVars, 40);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_Perso_ID_Companion,
+            (void*)board_panel_bp_init_trame1_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_Flag_speciaux_sauve,
+            (void*)board_panel_bp_init_trame1_univVars,
+            4488);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_univVars_Perso_ID_world_ID,
+            (void*)board_panel_bp_init_trame1_univVars,
+            536);
+        AI2C_ResolveBuffer(&board_panel_bp_init_trame1_univVars_world_ID, (void*)board_panel_bp_init_trame1_univVars, 4);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_univVars_Perso_ID_status,
+            (void*)board_panel_bp_init_trame1_univVars,
+            484);
+        fct_board_panel_bp_init_trame1_board_panel_bp_exec_button_valide_next_companion = (int)AI_ul_RealResolveOneRefFunction(0x9E0015DB);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_univVars_i_Nb_Perles,
+            (void*)board_panel_bp_init_trame1_univVars,
+            18220);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_univVars_f_sally_fric,
+            (void*)board_panel_bp_init_trame1_univVars,
+            1200);
+        fct_board_panel_bp_init_trame1_board_panel_bp_init_trame2 = (int)AI_ul_RealResolveOneRefFunction(0x9E00062C);
+        board_panel_bp_init_trame1_INTF_jade_gao = AI_ul_RealResolveOneRefObject(0xD9008A70);
+        board_panel_bp_init_trame1_INTF_jade_life_gao = AI_ul_RealResolveOneRefObject(0xD9008A6F);
+        board_panel_bp_init_trame1_INTF_compagnon_gao = AI_ul_RealResolveOneRefObject(0xD9008A68);
+        board_panel_bp_init_trame1_INTF_compagnon_life_gao = AI_ul_RealResolveOneRefObject(0xD9008A71);
+        board_panel_bp_init_trame1_INTF_Pognes_gao = AI_ul_RealResolveOneRefObject(0x9E0067BE);
+        board_panel_bp_init_trame1_INTF_Perles_gao = AI_ul_RealResolveOneRefObject(0x9E0067BF);
+        board_panel_bp_init_trame1_INTF_PerleHalo_gao = AI_ul_RealResolveOneRefObject(0x9E0067C0);
+        board_panel_bp_init_trame1_INTF_boussole_gao = AI_ul_RealResolveOneRefObject(0xD9008B46);
+        board_panel_bp_init_trame1_INTF_Boussole_TEXTE_gao = AI_ul_RealResolveOneRefObject(0x9E0067A3);
+        board_panel_bp_init_trame1_INTF_curseur_photo_main_gao = AI_ul_RealResolveOneRefObject(0xD9008C9C);
+        board_panel_bp_init_trame1_INTF_Cadre_Photo_gao = AI_ul_RealResolveOneRefObject(0xD9008C81);
+        board_panel_bp_init_trame1_INTF_lock_viseur_gao = AI_ul_RealResolveOneRefObject(0xD9008D60);
+        board_panel_bp_init_trame1_INTF_lock_viseur_ext_gao = AI_ul_RealResolveOneRefObject(0xD9008D77);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_univVars_Perso_ID_Energie_courante,
+            (void*)board_panel_bp_init_trame1_univVars,
+            1148);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame1_univVars_Perso_ID_Energie_max,
+            (void*)board_panel_bp_init_trame1_univVars,
+            1096);
+    }
+    AI_EvalFunc_TEXTGet_C(0x49018771, 0, &Src);
+    memcpy(v39, &Src, sizeof(v39));
+    AI_EvalFunc_TEXTGet_C(0x49018AB6, 0, &a3);
+    memcpy(&v91->txt_ReportAnimals, &a3, sizeof(v91->txt_ReportAnimals));
+    *(uint32_t*)board_panel_bp_init_trame1_INV_manager = board_panel_bp_init_trame1_INV_manager_gao;
+    AI_EvalFunc_GRPInactiveSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INV_reference_WP_gao, 1);
+    AI_EvalFunc_GRPInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INV_reference_WP_gao, 1);
+    for (num = 0; num < 50; ++num)
+    {
+        *(uint32_t*)(board_panel_bp_init_trame1_univVars_objet_liste_gao + 4 * num + 4) = v91->objet_liste_gao[num];
+        memcpy(&v75, v39, sizeof(v75));
+        v75.idx += num;
+        v0 = AI_EvalFunc_TEXTToString_C(&v75);
+        STR_SetString(AI_gpst_CurrentGameObject, 0, v0);
+        v1 = AI_EvalFunc_OBJ_TextCharGet_C(AI_gpst_CurrentGameObject, 0, 0);
+        v91->Boutonces_Inv2Char[num] = v1;
+    }
+    STR_SetString(AI_gpst_CurrentGameObject, 0, (char*)AI_gpst_CurrentFunction->localStringConstsData);
+    AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(0, -1);
+    AI_EvalFunc_COLCrossableSet_C(AI_gpst_CurrentGameObject, 0x1003, 0);
+    *(uint32_t*)board_panel_bp_init_trame1_GST_Global_gao_o_board_panel = (uint32_t)AI_gpst_CurrentGameObject;
+    v65 = *AI_MainActor;
+    v24 = v65;
+    if (v65)
+    {
+        if ((unsigned int)v65 <= 2)
+            v24 = AI_MainActor[(uint32_t)v65 - 1];
+        v23 = v24;
+    }
+    else
+    {
+        v23 = 0;
+    }
+    if (v23 == *(tGameObjectMain**)(board_panel_bp_init_trame1_univVars_Perso_ID_actor + 36))
+    {
+        v91->i_MainActor_ID = 8;
+    }
+    else
+    {
+        v98 = *AI_MainActor;
+        v22 = v98;
+        if (v98)
+        {
+            if ((unsigned int)v98 <= 2)
+                v22 = AI_MainActor[(uint32_t)v98 - 1];
+            v21 = v22;
+        }
+        else
+        {
+            v21 = 0;
+        }
+        if (v21 == *(tGameObjectMain**)(board_panel_bp_init_trame1_univVars_Perso_ID_actor + 44))
+        {
+            v91->i_MainActor_ID = 10;
+        }
+        else
+        {
+            v45 = *AI_MainActor;
+            v20 = v45;
+            if (v45)
+            {
+                if ((unsigned int)v45 <= 2)
+                    v20 = AI_MainActor[(uint32_t)v45 - 1];
+                v19 = v20;
+            }
+            else
+            {
+                v19 = 0;
+            }
+            if (v19 == *(tGameObjectMain**)(board_panel_bp_init_trame1_univVars_Perso_ID_actor + 40))
+                v91->i_MainActor_ID = 9;
+        }
+    }
+    v91->i_init_look = 0;
+    v91->i_init_inventaire = 0;
+    v91->i_init_enterprise = 0;
+    v2 = AI_EvalVarArray2_C(1, (char*)board_panel_bp_init_trame1_Perso_ID_equipement, 0, v91->i_MainActor_ID);
+    v91->i_objet_inventaire = *(uint32_t*)v2;
+    v91->Boutonces_CurInv = -1;
+    v91->i_objet_inventaire_suiv = v91->i_objet_inventaire;
+    v91->i_objet_inventaire_prec = v91->i_objet_inventaire;
+    v91->i_swap_button_sens = 1;
+    num = *(uint32_t*)board_panel_bp_init_trame1_Perso_ID_Companion;
+    if (num + 1500 <= 0)
+        v83 = 0;
+    else
+        v83 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_init_trame1_Flag_speciaux_sauve + 4), num + 1500);
+    if (num == -1 || !v83)
+        goto LABEL_84;
+    v18 = *(tGameObjectMain**)(board_panel_bp_init_trame1_univVars_Perso_ID_actor + 4 * num + 4);
+    if (v18)
+    {
+        if ((unsigned int)v18 <= 2)
+            v18 = AI_MainActor[(uint32_t)v18 - 1];
+        v17 = v18;
+    }
+    else
+    {
+        v17 = 0;
+    }
+    if (!v17
+        || *(uint32_t*)(board_panel_bp_init_trame1_univVars_Perso_ID_world_ID + 4 * num + 4) != *(uint32_t*)board_panel_bp_init_trame1_univVars_world_ID
+        || *(uint32_t*)(board_panel_bp_init_trame1_univVars_Perso_ID_status + 4 * num + 4) == 2)
+    {
+    LABEL_84:
+        v97 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_init_trame1_board_panel_bp_exec_button_valide_next_companion);
+        if (v97 != 1000)
+            return v97;
+    }
+    v91->i_swap_button_sens = -1;
+    v48 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_look_time_flash = v48 - 10.0f;
+    v72 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_fight_time_jauge_NMI = v72 - 10.0f;
+    v91->i_nb_perle = *(uint32_t*)board_panel_bp_init_trame1_univVars_i_Nb_Perles;
+    v91->i_commerce_tune_old = *(uint32_t*)board_panel_bp_init_trame1_univVars_f_sally_fric;
+    v91->i_indice_texte_synchro = 52;
+    v91->f_time_init = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_time_photo_prise = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_time_superaction = 5.0;
+    v91->I_delai_superaction = 10;
+    v91->f_swap_button_time = TIM_gf_MainClock - TIM_gf_LockTime;
+    v50 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v10 = v50 - 5.0f;
+    *(float*)AI_EvalVarArray_C2((char*)&v91->__f_joje_fade_time_Dimension1, 2) = v10;
+    v59 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->Interface_Time_fade_OFF_O = v59 - 5.0f;
+    v91->Interface_Time_fade_OFF_T = v91->Interface_Time_fade_OFF_O;
+    v91->Interface_Time_fade_OFF_X = v91->Interface_Time_fade_OFF_O;
+    AI_EvalFunc_AITrackCurChange_C((tAIFunction*)fct_board_panel_bp_init_trame1_board_panel_bp_init_trame2);
+    AI_EvalFunc_TEXTGet_C(0x4900FDC5, 330, &v34);
+    memcpy(&v99, &v34, sizeof(v99));
+    for (num = 0; num < 38; ++num)
+    {
+        memcpy(&v60, &v99, sizeof(v60));
+        v60.idx += num;
+        v4 = AI_EvalVarArray_C(10, (char*)&v91->__at_actions_Dimension1, num);
+        memcpy(v4, &v60, 8u);
+    }
+    STR_SetString(AI_gpst_CurrentGameObject, 0, (char*)AI_gpst_CurrentFunction->localStringConstsData + 1);
+    v84 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_gao, 17, 27);
+    AI_EvalFunc_GFXSetf_C_CURRENT(27, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(27, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(27, 2, 1);
+    v70.x = 0.0;
+    v70.y = 1.0;
+    v70.z = 0.0;
+    v101.x = 0.0;
+    v101.y = 0.0;
+    v101.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_gao, &v70, &v101);
+    a2.x = 0.125f;
+    a2.y = -0.25f;
+    a2.z = 0.045000002f;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_gao, &a2);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_gao, 0.055f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_gao, 0);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_gao, 0, 1.0);
+    AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_gao, 0, 5);
+    v53 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 17, 26);
+    AI_EvalFunc_GFXSetf_C_CURRENT(26, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(26, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(26, 2, 1);
+    v51.x = 0.0;
+    v51.y = 1.0;
+    v51.z = 0.0;
+    v79.x = 0.0;
+    v79.y = 0.0;
+    v79.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, &v51, &v79);
+    v36.x = 0.125f;
+    v36.y = -0.25f;
+    v36.z = 0.045000002f;
+    v95.x = -0.022600001f;
+    v95.y = 0.0;
+    v95.z = 0.033199999f;
+    MATH_VecAddVec(&v61, &v36, &v95);
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, &v61);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 0.055f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 0);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 0, 1.0);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 1, 1.0);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 2, 1.0);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 2, 0.0);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 3, 1.0);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 0, 0, 1);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 1u, 0, 1);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_jade_life_gao, 4, 0.0);
+    v92 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_gao, 17, 29);
+    AI_EvalFunc_GFXSetf_C_CURRENT(29, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(29, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(29, 2, 1);
+    v62.x = 0.0;
+    v62.y = 1.0;
+    v62.z = 0.0;
+    v68.x = 0.0;
+    v68.y = 0.0;
+    v68.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_gao, &v62, &v68);
+    v96.x = -0.125;
+    v96.y = -0.25;
+    v96.z = 0.075099997f;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_gao, &v96);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_gao, 0.055f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_gao, 1);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_gao, 0, 1.0);
+    v47 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, 17, 28);
+    AI_EvalFunc_GFXSetf_C_CURRENT(28, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(28, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(28, 2, 1);
+    v103.x = 0.0;
+    v103.y = 1.0;
+    v103.z = 0.0;
+    v77.x = 0.0;
+    v77.y = 0.0;
+    v77.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C(
+        (tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao,
+        &v103,
+        &v77);
+    v32.x = -0.125f;
+    v32.y = -0.25f;
+    v32.z = 0.075099997f;
+    v42.x = 0.0232f;
+    v42.y = 0.0;
+    v42.z = 0.0031000001f;
+    MATH_VecAddVec(&v88, &v32, &v42);
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, &v88);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, 0.055f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, 1);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, 0, 1.0);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, 1, 1.0);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, 2, 0.0);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, 2, 0.0);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_compagnon_life_gao, 3, 1.0);
+    v44 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Pognes_gao, 17, 33);
+    AI_EvalFunc_GFXSetf_C_CURRENT(33, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(33, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(33, 2, 0);
+    v67.x = 1.0;
+    v67.y = 0.0;
+    v67.z = 0.0;
+    v56.x = 0.0;
+    v56.y = 0.0;
+    v56.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Pognes_gao, &v67, &v56);
+    v80.x = 0.017000001f;
+    v80.y = -0.25f;
+    v80.z = 0.059999999f;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Pognes_gao, &v80);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Pognes_gao, 0.025f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Pognes_gao, 1);
+    v46 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Perles_gao, 17, 34);
+    AI_EvalFunc_GFXSetf_C_CURRENT(34, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(34, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(34, 2, 1);
+    v58.x = 0.0;
+    v58.y = 1.0;
+    v58.z = 0.0;
+    v102.x = 0.0;
+    v102.y = 0.0;
+    v102.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Perles_gao, &v58, &v102);
+    v87.x = 0.015f;
+    v87.y = -0.25f;
+    v87.z = 0.059999999f;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Perles_gao, &v87);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Perles_gao, 0.0049999999f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Perles_gao, 1);
+    v38 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_PerleHalo_gao, 17, 36);
+    AI_EvalFunc_GFXSetf_C_CURRENT(36, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(36, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(36, 2, 1);
+    v85.x = 0.0;
+    v85.y = 1.0;
+    v85.z = 0.0;
+    v104.x = 0.0;
+    v104.y = 0.0;
+    v104.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_PerleHalo_gao, &v85, &v104);
+    v41.x = 0.015f;
+    v41.y = -0.25f;
+    v41.z = 0.059999999f;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_PerleHalo_gao, &v41);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_PerleHalo_gao, 0.0049999999f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_PerleHalo_gao, 1);
+    v66 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_boussole_gao, 17, 32);
+    AI_EvalFunc_GFXSetf_C_CURRENT(32, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(32, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(32, 2, 1);
+    v40.x = 0.0;
+    v40.y = 1.0;
+    v40.z = 0.0;
+    v57.x = 0.0;
+    v57.y = 0.0;
+    v57.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_boussole_gao, &v40, &v57);
+    v25.x = 0.0;
+    v25.y = -0.25f;
+    v25.z = -0.07f;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_boussole_gao, &v25);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_boussole_gao, 0.055f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_boussole_gao, 1);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_boussole_gao, 11, 1.3f);
+    for (num = 0; num < 10; ++num)
+        AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_boussole_gao, num, 5.0f);
+    v90 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Boussole_TEXTE_gao, 17, 30);
+    AI_EvalFunc_GFXSetf_C_CURRENT(30, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(30, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(30, 2, 1);
+    v29.x = 0.0;
+    v29.y = 1.0;
+    v29.z = 0.0;
+    v69.x = 0.0;
+    v69.y = 0.0;
+    v69.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Boussole_TEXTE_gao, &v29, &v69);
+    v37.x = 0.0f;
+    v37.y = -0.25f;
+    v37.z = -0.082999997f;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Boussole_TEXTE_gao, &v37);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Boussole_TEXTE_gao, 0.055f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Boussole_TEXTE_gao, 1);
+    v71 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 17, 23);
+    AI_EvalFunc_GFXSetf_C_CURRENT(23, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(23, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(23, 2, 1);
+    v27.x = 0.0;
+    v27.y = 1.0;
+    v27.z = 0.0;
+    v43.x = 1.0;
+    v43.y = 0.0;
+    v43.z = 0.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C(
+        (tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao,
+        &v27,
+        &v43);
+    v26.x = 0.0;
+    v26.y = -0.25f;
+    v26.z = 0.0;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, &v26);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 0.079999998f);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 0, 2.0f);
+    AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 1, 1.5f);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 1, 0.0);
+    AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 13491107, 2);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 1u, 0, 0);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 1u, 1, 0);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 4u, 0, 1);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_curseur_photo_main_gao, 1);
+    v100 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 17, 60);
+    AI_EvalFunc_GFXSetf_C_CURRENT(60, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(60, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(60, 2, 1);
+    v31.x = 0.0;
+    v31.y = 1.0;
+    v31.z = 0.0;
+    v28.x = 0.0;
+    v28.y = 0.0;
+    v28.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, &v31, &v28);
+    v54.x = 0.0;
+    v54.y = -0.25;
+    v54.z = 0.0;
+    AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, &v54);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 0.055f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 1);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 0, 1.0);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 1, 1.0);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 2, 3.0);
+    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 3, 1.5);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 3u, 0, 1);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 3u, 1, 0);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 3u, 2, 0);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 4u, 0, 0);
+    AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_Cadre_Photo_gao, 4u, 1, 0);
+    v30 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_lock_viseur_gao, 17, 22);
+    AI_EvalFunc_GFXSetf_C_CURRENT(22, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(22, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(22, 2, 1);
+    v81.x = 0.0;
+    v81.y = 1.0;
+    v81.z = 0.0;
+    v55.x = 0.0;
+    v55.y = 0.0;
+    v55.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_lock_viseur_gao, &v81, &v55);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_lock_viseur_gao, 0.1f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_lock_viseur_gao, 1);
+    v76 = AI_EvalFunc_GFXAddSorted_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_lock_viseur_ext_gao, 17, 21);
+    AI_EvalFunc_GFXSetf_C_CURRENT(21, 17000, 1.2f);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(21, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(21, 2, 1);
+    v78.x = 0.0;
+    v78.y = 1.0;
+    v78.z = 0.0;
+    v86.x = 0.0;
+    v86.y = 0.0;
+    v86.z = 1.0;
+    AI_EvalFunc_OBJ_BankingGeneralSet_C(
+        (tGameObjectMain*)board_panel_bp_init_trame1_INTF_lock_viseur_ext_gao,
+        &v78,
+        &v86);
+    AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_lock_viseur_ext_gao, 0.1f);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_init_trame1_INTF_lock_viseur_ext_gao, 0);
+    for (v91->i_INTF_lock_target_nb = 0; v91->i_INTF_lock_target_nb < 5; ++v91->i_INTF_lock_target_nb)
+    {
+        v93 = v91->ao_INTF_lock_target[v91->i_INTF_lock_target_nb];
+        v16 = (tGameObjectMain*)v93;
+        if (v93)
+        {
+            if (v93 <= 2)
+                v16 = AI_MainActor[v93 - 1];
+            AI_EvalFunc_OBJ_SetChannelProg_C(v16, 0, 0.0);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_SetChannelProg_C(0, 0, 0.0);
+        }
+        v15 = (tGameObjectMain*)v93;
+        if (v93)
+        {
+            if (v93 <= 2)
+                v15 = AI_MainActor[v93 - 1];
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(v15, 1);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 1);
+        }
+        v14 = (tGameObjectMain*)v93;
+        if (v93)
+        {
+            if (v93 <= 2)
+                v14 = AI_MainActor[v93 - 1];
+            v5 = AI_EvalFunc_GFXAddSorted_C(v14, 17, v91->i_INTF_lock_target_nb + 11);
+        }
+        else
+        {
+            v5 = AI_EvalFunc_GFXAddSorted_C(0, 17, v91->i_INTF_lock_target_nb + 11);
+        }
+        v35 = v5;
+        AI_EvalFunc_GFXSetf_C_CURRENT(v91->i_INTF_lock_target_nb + 11, 17000, 1.2f);
+        AI_EvalFunc_GFXFlagSet_C_CURRENT(v91->i_INTF_lock_target_nb + 11, 0, 1);
+        AI_EvalFunc_GFXFlagSet_C_CURRENT(v91->i_INTF_lock_target_nb + 11, 2, 1);
+        v73.x = 0.0;
+        v73.y = 1.0;
+        v73.z = 0.0;
+        v63.x = 0.0;
+        v63.y = 0.0;
+        v63.z = 1.0;
+        v13 = (tGameObjectMain*)v93;
+        if (v93)
+        {
+            if (v93 <= 2)
+                v13 = AI_MainActor[v93 - 1];
+            AI_EvalFunc_OBJ_BankingGeneralSet_C(v13, &v73, &v63);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_BankingGeneralSet_C(0, &v73, &v63);
+        }
+        v12 = (tGameObjectMain*)v93;
+        if (v93)
+        {
+            if (v93 <= 2)
+                v12 = AI_MainActor[v93 - 1];
+            AI_EvalFunc_OBJ_ZoomSet_C(v12, 0.055f);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_ZoomSet_C(0, 0.055f);
+        }
+    }
+    if (*(uint32_t*)board_panel_bp_init_trame1_Perso_ID_Companion != -1)
+    {
+        v6 = AI_EvalVarArray_C2(
+            (char*)board_panel_bp_init_trame1_univVars_Perso_ID_Energie_courante,
+            *(uint32_t*)board_panel_bp_init_trame1_Perso_ID_Companion);
+        v91->f_life_comp = *(float*)v6 / 20.0f;
+        v7 = AI_EvalVarArray_C2(
+            (char*)board_panel_bp_init_trame1_univVars_Perso_ID_Energie_max,
+            *(uint32_t*)board_panel_bp_init_trame1_Perso_ID_Companion);
+        v91->f_life_comp_max = *(float*)v7 / 20.0f;
+    }
+    v91->f_life_comp_time_cran_change = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_life_comp_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_life_comp_life_blend_delai = 0.0;
+    v91->f_life_comp_time_cran_change = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->i_life_comp_effect_finish = 1;
+    v91->f_life_main_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+    v8 = AI_EvalVarArray_C2((char*)board_panel_bp_init_trame1_univVars_Perso_ID_Energie_courante, v91->i_MainActor_ID);
+    v91->f_life_main = *(float*)v8 / 20.0f;
+    v9 = AI_EvalVarArray_C2((char*)board_panel_bp_init_trame1_univVars_Perso_ID_Energie_max, v91->i_MainActor_ID);
+    v91->f_life_main_max = *(float*)v9 / 20.0f;
+    v91->f_life_main_time_cran_change = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_life_main_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_life_main_life_blend_delai = 0.0;
+    v91->f_life_main_time_cran_change = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->i_life_main_effect_finish = 1;
+    v91->f_life_comp_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+    v82 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_life_time_bip = v82 - 20.0f;
+    v91->i_life_min_nb_bip = 0;
+    v33 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_life_time_bip2 = v33 - 20.0f;
+    v91->i_life_min_nb_bip2 = 0;
+    v91->v_size_effet_matrix.x = 2.8800001f;
+    v91->v_size_effet_matrix.y = 0.95999998f;
+    v91->v_size_effet_matrix.z = 0.95999998f;
+    v52 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_time_on_sort_de_linventaire = v52 - 3.0f;
+    v64 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v91->f_time_INTF_on_sort_de_linven = v64 - 3.0f;
+    v91->f_life_main_delai_ondule_vie = 0.0;
+    v91->f_life_comp_delai_ondule_vie = 0.78539801f;
+    v91->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+    return 1000;
+}
+
+int board_panel_bp_init_trame2()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-34h]
+    tGameObjectMain* v2; // [esp+4h] [ebp-30h]
+    tGameObjectMain* v3; // [esp+8h] [ebp-2Ch]
+    tGameObjectMain* v4; // [esp+Ch] [ebp-28h]
+    tGameObjectMain* v5; // [esp+10h] [ebp-24h]
+    int v6; // [esp+14h] [ebp-20h]
+    int v7; // [esp+18h] [ebp-1Ch]
+    int v8; // [esp+24h] [ebp-10h]
+    int i; // [esp+30h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_init_trame2_INV_Manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_init_trame2_INV_Manager_gao_ao_GameText,
+            (void*)board_panel_bp_init_trame2_INV_Manager_gao,
+            23312);
+        fct_board_panel_bp_init_trame2_board_panel_bp_boutonces_init = (int)AI_ul_RealResolveOneRefFunction(0x4900F65Du);
+        fct_board_panel_bp_init_trame2_board_panel_bp_exec_joje_set = (int)AI_ul_RealResolveOneRefFunction(0x9E002FF7);
+        fct_board_panel_bp_init_trame2_board_panel_bp_exec_reflex = (int)AI_ul_RealResolveOneRefFunction(0x9E000037);
+        fct_board_panel_bp_init_trame2_board_panel_bp_dialogue_check = (int)AI_ul_RealResolveOneRefFunction(0x9E0006C5);
+        fct_board_panel_bp_init_trame2_board_panel_bp_mode_normal = (int)AI_ul_RealResolveOneRefFunction(0x6C00AD9Cu);
+        fct_board_panel_bp_init_trame2_board_panel_bp_mode_aircraft = (int)AI_ul_RealResolveOneRefFunction(0x9E003D74);
+        fct_board_panel_bp_init_trame2_board_panel_bp_mode_enterprise = (int)AI_ul_RealResolveOneRefFunction(0x9E0014FB);
+        fct_board_panel_bp_init_board_panel_bp_exec_select_button_mode_test = (int)AI_ul_RealResolveOneRefFunction(0x6C00AD90u);
+        fct_board_panel_bp_init_trame2_board_panel_bp_exec_clear = (int)AI_ul_RealResolveOneRefFunction(0x6C00ADA3u);
+    }
+    v1->Gen_Show = 1;
+    v1->Gen_OldShow = 1;
+    v1->i_CompActor_ID = -1;
+    v8 = -1;
+    for (i = 0; i < 8; ++i)
+    {
+        v5 = *(tGameObjectMain**)(board_panel_bp_init_trame2_INV_Manager_gao_ao_GameText + 4 * i + 4);
+        if (v5)
+        {
+            if ((unsigned int)v5 <= 2)
+                v5 = AI_MainActor[(uint32_t)v5 - 1];
+            v4 = v5;
+        }
+        else
+        {
+            v4 = 0;
+        }
+        if (!v4)
+        {
+            v8 = i;
+            break;
+        }
+        v3 = AI_gpst_CurrentGameObject;
+        if (AI_gpst_CurrentGameObject)
+        {
+            if ((unsigned int)AI_gpst_CurrentGameObject <= 2)
+                v3 = AI_MainActor[(uint32_t)AI_gpst_CurrentGameObject - 1];
+            v2 = v3;
+        }
+        else
+        {
+            v2 = 0;
+        }
+        if (*(tGameObjectMain**)(board_panel_bp_init_trame2_INV_Manager_gao_ao_GameText + 4 * i + 4) == v2)
+        {
+            v8 = i;
+            break;
+        }
+    }
+    if (v8 != -1)
+        *(uint32_t*)(board_panel_bp_init_trame2_INV_Manager_gao_ao_GameText + 4 * v8 + 4) = (uint32_t)AI_gpst_CurrentGameObject;
+    AI_EvalFunc_GFXAddSorted_C(AI_gpst_CurrentGameObject, 17, 25);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(25, 0, 1);
+    AI_EvalFunc_GFXFlagSet_C_CURRENT(25, 2, 1);
+    v7 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_init_trame2_board_panel_bp_boutonces_init);
+    if (v7 != 1000)
+        return v7;
+    v6 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_init_trame2_board_panel_bp_exec_joje_set);
+    if (v6 != 1000)
+        return v6;
+    AI_EvalFunc_AITrackChange_C(0, (tAIFunction*)fct_board_panel_bp_init_trame2_board_panel_bp_exec_reflex);
+    AI_EvalFunc_AITrackChange_C(1, (tAIFunction*)fct_board_panel_bp_init_trame2_board_panel_bp_dialogue_check);
+    switch (v1->i_MainActor_ID)
+    {
+    case 8:
+        AI_EvalFunc_AITrackCurChange_C((tAIFunction*)fct_board_panel_bp_init_trame2_board_panel_bp_mode_normal);
+        break;
+    case 10:
+        AI_EvalFunc_AITrackCurChange_C((tAIFunction*)fct_board_panel_bp_init_trame2_board_panel_bp_mode_aircraft);
+        break;
+    case 9:
+        AI_EvalFunc_AITrackCurChange_C((tAIFunction*)fct_board_panel_bp_init_trame2_board_panel_bp_mode_enterprise);
+        break;
+    }
+    AI_EvalFunc_AITrackChange_C(3, (tAIFunction*)fct_board_panel_bp_init_board_panel_bp_exec_select_button_mode_test);
+    AI_EvalFunc_AITrackChange_C(4, (tAIFunction*)fct_board_panel_bp_init_trame2_board_panel_bp_exec_clear);
+    return 1000;
+}
+
+int board_panel_bp_exec_reflex()
+{
+    int v0; // eax
+    tGameObjectMain* v1; // eax
+    char* v2; // eax
+    float v4; // [esp+Ch] [ebp-31Ch]
+    tScriptStruct_GSTBoardPanel* v5; // [esp+10h] [ebp-318h]
+    tGameObjectMain* v6; // [esp+18h] [ebp-310h]
+    tGameObjectMain* v7; // [esp+30h] [ebp-2F8h]
+    tGameObjectMain* v8; // [esp+34h] [ebp-2F4h]
+    tGameObjectMain* v9; // [esp+38h] [ebp-2F0h]
+    tGameObjectMain* v10; // [esp+3Ch] [ebp-2ECh]
+    tGameObjectMain* v11; // [esp+40h] [ebp-2E8h]
+    tGameObjectMain* v12; // [esp+44h] [ebp-2E4h]
+    tGameObjectMain* v13; // [esp+48h] [ebp-2E0h]
+    tAI* v14; // [esp+4Ch] [ebp-2DCh]
+    tGameObjectMain* v15; // [esp+50h] [ebp-2D8h]
+    tGameObjectMain* v16; // [esp+54h] [ebp-2D4h]
+    tAI* v17; // [esp+58h] [ebp-2D0h]
+    tGameObjectMain* v18; // [esp+5Ch] [ebp-2CCh]
+    tGameObjectMain* v19; // [esp+60h] [ebp-2C8h]
+    tAI* v20; // [esp+64h] [ebp-2C4h]
+    tGameObjectMain* v21; // [esp+68h] [ebp-2C0h]
+    tGameObjectMain* v22; // [esp+6Ch] [ebp-2BCh]
+    tAI* v23; // [esp+70h] [ebp-2B8h]
+    tGameObjectMain* v24; // [esp+74h] [ebp-2B4h]
+    tGameObjectMain* v25; // [esp+78h] [ebp-2B0h]
+    tAI* v26; // [esp+7Ch] [ebp-2ACh]
+    tGameObjectMain* v27; // [esp+80h] [ebp-2A8h]
+    tGameObjectMain* v28; // [esp+84h] [ebp-2A4h]
+    tAI* v29; // [esp+88h] [ebp-2A0h]
+    tGameObjectMain* v30; // [esp+8Ch] [ebp-29Ch]
+    tGameObjectMain* v31; // [esp+90h] [ebp-298h]
+    tAI* v32; // [esp+94h] [ebp-294h]
+    tGameObjectMain* v33; // [esp+98h] [ebp-290h]
+    tGameObjectMain* v34; // [esp+9Ch] [ebp-28Ch]
+    tAI* v35; // [esp+A0h] [ebp-288h]
+    tGameObjectMain* v36; // [esp+A4h] [ebp-284h]
+    tGameObjectMain* v37; // [esp+A8h] [ebp-280h]
+    tAI* v38; // [esp+ACh] [ebp-27Ch]
+    tGameObjectMain* v39; // [esp+B0h] [ebp-278h]
+    tGameObjectMain* v40; // [esp+B4h] [ebp-274h]
+    tAI* v41; // [esp+B8h] [ebp-270h]
+    tGameObjectMain* v42; // [esp+BCh] [ebp-26Ch]
+    tGameObjectMain* v43; // [esp+C0h] [ebp-268h]
+    tAI* v44; // [esp+C4h] [ebp-264h]
+    tGameObjectMain* v45; // [esp+C8h] [ebp-260h]
+    tGameObjectMain* v46; // [esp+CCh] [ebp-25Ch]
+    tAI* v47; // [esp+D0h] [ebp-258h]
+    tGameObjectMain* v48; // [esp+D4h] [ebp-254h]
+    tGameObjectMain* v49; // [esp+D8h] [ebp-250h]
+    tGameObjectMain* v50; // [esp+ECh] [ebp-23Ch]
+    tGameObjectMain* v51; // [esp+F0h] [ebp-238h]
+    tGameObjectMain* v52; // [esp+F4h] [ebp-234h]
+    tGameObjectMain* v53; // [esp+F8h] [ebp-230h]
+    tGameObjectMain* v54; // [esp+FCh] [ebp-22Ch]
+    tGameObjectMain* v55; // [esp+104h] [ebp-224h]
+    tGameObjectMain* v56; // [esp+10Ch] [ebp-21Ch]
+    tGameObjectMain* v57; // [esp+11Ch] [ebp-20Ch]
+    tGameObjectMain* v58; // [esp+120h] [ebp-208h]
+    tGameObjectMain* v59; // [esp+124h] [ebp-204h]
+    unsigned int v60; // [esp+12Ch] [ebp-1FCh]
+    int v61; // [esp+12Ch] [ebp-1FCh]
+    int v62; // [esp+130h] [ebp-1F8h]
+    int v63; // [esp+130h] [ebp-1F8h]
+    Vec3 v64; // [esp+140h] [ebp-1E8h] BYREF
+    Vec3 a1; // [esp+14Ch] [ebp-1DCh] BYREF
+    tAI* v66; // [esp+164h] [ebp-1C4h]
+    unsigned int v67; // [esp+168h] [ebp-1C0h]
+    int v68; // [esp+16Ch] [ebp-1BCh]
+    Vec3 v69; // [esp+170h] [ebp-1B8h] BYREF
+    Vec3 v70; // [esp+17Ch] [ebp-1ACh] BYREF
+    tGameObjectMain* v71[20]; // [esp+188h] [ebp-1A0h] BYREF
+    Vec3 v72; // [esp+1D8h] [ebp-150h] BYREF
+    int v74; // [esp+1F0h] [ebp-138h]
+    Vec3 v75; // [esp+1FCh] [ebp-12Ch]
+    int v76; // [esp+208h] [ebp-120h]
+    Vec3 v77; // [esp+218h] [ebp-110h] BYREF
+    BOOL v78; // [esp+224h] [ebp-104h]
+    unsigned int v79; // [esp+228h] [ebp-100h]
+    Vec3 v80; // [esp+22Ch] [ebp-FCh] BYREF
+    Vec3 a4; // [esp+238h] [ebp-F0h] BYREF
+    int v82; // [esp+244h] [ebp-E4h]
+    int v83; // [esp+248h] [ebp-E0h]
+    int v84; // [esp+264h] [ebp-C4h]
+    tMessage Src; // [esp+268h] [ebp-C0h] BYREF
+    int v86; // [esp+29Ch] [ebp-8Ch]
+    int i; // [esp+2A0h] [ebp-88h]
+    int v88; // [esp+2A4h] [ebp-84h]
+    Vec3 a3; // [esp+2A8h] [ebp-80h] BYREF
+    int v90; // [esp+2B4h] [ebp-74h]
+    tScriptStruct_GSTBoardPanel* v91; // [esp+2B8h] [ebp-70h]
+    tGameObjectMain* v92[22]; // [esp+2C0h] [ebp-68h] BYREF
+    Vec3 v93; // [esp+318h] [ebp-10h] BYREF
+
+    v75.x = 1.0;
+    v75.y = 0.0;
+    v75.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v5 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v5 = 0;
+    v91 = v5;
+    v84 = 0;
+    v66 = 0;
+    v86 = 0;
+    v67 = 0;
+    i = 0;
+    v90 = 0;
+    v79 = 0;
+    v88 = 0;
+    v83 = 0;
+    v68 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_reflex_PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        board_panel_bp_exec_reflex_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_univVars_objet_inventaire,
+            (void*)board_panel_bp_exec_reflex_univVars,
+            1480);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_univVars_objet_liste_gao,
+            (void*)board_panel_bp_exec_reflex_univVars,
+            1276);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_univVars_objet_status,
+            (void*)board_panel_bp_exec_reflex_univVars,
+            3896);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_univVars_Perso_ID_status,
+            (void*)board_panel_bp_exec_reflex_univVars,
+            484);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_PJ_Sally_gao_current_pm_mode,
+            (void*)board_panel_bp_exec_reflex_PJ_Sally_gao,
+            572);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_PJ_Sally_gao_i_fight_on,
+            (void*)board_panel_bp_exec_reflex_PJ_Sally_gao,
+            1216);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_PJ_Sally_gao_i_fight_flags,
+            (void*)board_panel_bp_exec_reflex_PJ_Sally_gao,
+            1228);
+        board_panel_bp_exec_reflex_GST_Board_panel_gao = AI_ul_RealResolveOneRefObject(0x6C00AD97u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Board_panel_gao_i_force_interface,
+            (void*)board_panel_bp_exec_reflex_GST_Board_panel_gao,
+            3292);
+        board_panel_bp_exec_reflex_GST_Fight_Manager_gao = AI_ul_RealResolveOneRefObject(0x9E002FFA);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Fight_Manager_gao_i_Evil_NbActor,
+            (void*)board_panel_bp_exec_reflex_GST_Fight_Manager_gao,
+            2624);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_exec_reflex_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_exec_reflex_univVars,
+            988);
+        board_panel_bp_exec_reflex_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Global_gao_o_actor_texte,
+            (void*)board_panel_bp_exec_reflex_GST_Global_gao,
+            3616);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_univVars_i_course_ON,
+            (void*)board_panel_bp_exec_reflex_univVars,
+            7664);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Board_panel_gao_i_current_nb_of_object,
+            (void*)board_panel_bp_exec_reflex_GST_Board_panel_gao,
+            420);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Board_panel_gao_ao_listofobjects,
+            (void*)board_panel_bp_exec_reflex_GST_Board_panel_gao,
+            0);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_listofpriority,
+            (void*)board_panel_bp_exec_reflex_GST_Board_panel_gao,
+            88);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_action,
+            (void*)board_panel_bp_exec_reflex_GST_Board_panel_gao,
+            132);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_listofbutton,
+            (void*)board_panel_bp_exec_reflex_GST_Board_panel_gao,
+            44);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Board_panel_gao_ao_listoftargets,
+            (void*)board_panel_bp_exec_reflex_GST_Board_panel_gao,
+            176);
+        fct_board_panel_bp_exec_reflex_board_panel_bp_exec_button_valide_nextfastitem = (int)AI_ul_RealResolveOneRefFunction(0x9E000844);
+        fct_board_panel_bp_exec_reflex_board_panel_bp_exec_compte_a_rebour = (int)AI_ul_RealResolveOneRefFunction(0x9E006DD3);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Global_gao_i_mort_en_cours,
+            (void*)board_panel_bp_exec_reflex_GST_Global_gao,
+            3272);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Global_gao_f_game_speed,
+            (void*)board_panel_bp_exec_reflex_GST_Global_gao,
+            3548);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_reflex_GST_Global_gao_o_mode_matrix_acteur,
+            (void*)board_panel_bp_exec_reflex_GST_Global_gao,
+            4600);
+    }
+    v66 = (tAI*)AI_gpst_CurrentGameObject;
+    v59 = (tGameObjectMain*)v91->ao_targets[0];
+    if (v59)
+    {
+        if ((unsigned int)v59 <= 2)
+            v59 = AI_MainActor[(uint32_t)v59 - 1];
+        v58 = v59;
+    }
+    else
+    {
+        v58 = 0;
+    }
+    if (v58)
+    {
+        v86 = 0;
+        for (i = 0; i < v91->i_current_nb_of_target; ++i)
+        {
+            v57 = (tGameObjectMain*)v91->ao_targets[i];
+            if (v57)
+            {
+                if ((unsigned int)v57 <= 2)
+                    v57 = AI_MainActor[(uint32_t)v57 - 1];
+                AI_EvalFunc_OBJGetPos_C(v57, &a3);
+            }
+            else
+            {
+                AI_EvalFunc_OBJGetPos_C(0, &a3);
+            }
+            v80.x = 0.0;
+            v80.y = 0.0;
+            v80.z = *(float*)AI_EvalVarArray_C2((char*)&v91->__af_targetsoffsets_Dimension1, i);
+            MATH_VecAddVec(&a1, &a3, &v80);
+            AI_EvalFunc_VIEW3dWorldTo2d_C(0, &a1, &v64);
+            v75 = v64;
+            if (v64.x <= 0.0 || v75.x >= 1.0 || v75.y <= 0.0 || v75.y >= 1.0)
+                v71[i] = 0;
+            else
+                v71[v86++] = (tGameObjectMain*)v91->ao_targets[i];
+        }
+        if (v86)
+        {
+            i = 0;
+            v90 = -1;
+            v62 = -1;
+            while (i < v91->i_current_nb_of_object)
+            {
+                if (v91->ai_listofpriority[i] >= v90)
+                {
+                    v56 = (tGameObjectMain*)v91->ao_listoftargets[i];
+                    if (v56)
+                    {
+                        if ((unsigned int)v56 <= 2)
+                            v56 = AI_MainActor[(uint32_t)v56 - 1];
+                        v0 = AI_EvalFunc_ARRObjSearch_C(v71, v86, v56);
+                    }
+                    else
+                    {
+                        v0 = AI_EvalFunc_ARRObjSearch_C(v71, v86, 0);
+                    }
+                    v76 = v0;
+                    if (v0 != -1)
+                    {
+                        v62 = i;
+                        v90 = v91->ai_listofpriority[i];
+                    }
+                }
+                ++i;
+            }
+            if (v62 == -1)
+            {
+                v63 = 0;
+            }
+            else
+            {
+                v68 = 0;
+                for (i = 0; i < v91->i_current_nb_of_object; ++i)
+                {
+                    if (v91->ai_listofpriority[i] == v91->ai_listofpriority[v62])
+                    {
+                        v55 = (tGameObjectMain*)v91->ao_listoftargets[i];
+                        if (v55)
+                        {
+                            if ((unsigned int)v55 <= 2)
+                                v55 = AI_MainActor[(uint32_t)v55 - 1];
+                            v1 = (tGameObjectMain*)AI_EvalFunc_ARRObjSearch_C(v71, v86, v55);
+                        }
+                        else
+                        {
+                            v1 = (tGameObjectMain*)AI_EvalFunc_ARRObjSearch_C(v71, v86, 0);
+                        }
+                        v92[21] = v1;
+                        if (v1 != (tGameObjectMain*)-1)
+                            v92[v68++] = (tGameObjectMain*)v91->ao_listoftargets[i];
+                    }
+                }
+                if (v68)
+                {
+                    AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_exec_reflex_PJ_Sally_gao, &v70);
+                    AI_EvalFunc_OBJ_SightGet_C((tGameObjectMain*)board_panel_bp_exec_reflex_PJ_Sally_gao, &a4);
+                    v63 = AI_EvalFunc_ARRObjBestSight_C(v92, v68, &v70, &a4, 0.0);
+                    for (i = 0; i < v91->i_current_nb_of_target; ++i)
+                    {
+                        v54 = v92[v63];
+                        if (v54)
+                        {
+                            if ((unsigned int)v54 <= 2)
+                                v54 = AI_MainActor[(uint32_t)v54 - 1];
+                            v53 = v54;
+                        }
+                        else
+                        {
+                            v53 = 0;
+                        }
+                        v52 = (tGameObjectMain*)v91->ao_targets[i];
+                        if (v52)
+                        {
+                            if ((unsigned int)v52 <= 2)
+                                v52 = AI_MainActor[(uint32_t)v52 - 1];
+                            v51 = v52;
+                        }
+                        else
+                        {
+                            v51 = 0;
+                        }
+                        if (v53 == v51)
+                        {
+                            v63 = i;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    v63 = 0;
+                }
+            }
+        }
+        else
+        {
+            v63 = 0;
+        }
+        v91->o_acteur_pointe_target = v91->ao_targets[v63];
+        v2 = AI_EvalVarArray_C2((char*)&v91->__af_targetsoffsets_Dimension1, v63);
+        v91->f_acteur_pointe_offset = *(float*)v2;
+        v91->o_acteur_pointe = v91->ao_listofobjects[v63];
+        v91->i_acteur_pointe_prio = v91->ai_listofpriority[v63];
+        v91->i_acteur_pointe_button = v91->ai_listofbutton[v63];
+        v91->i_acteur_pointe_text = v91->ai_action[v63];
+        v50 = (tGameObjectMain*)v91->o_acteur_pointe_target;
+        if (v50)
+        {
+            if ((unsigned int)v50 <= 2)
+                v50 = AI_MainActor[(uint32_t)v50 - 1];
+            AI_EvalFunc_OBJGetPos_C(v50, &v72);
+        }
+        else
+        {
+            AI_EvalFunc_OBJGetPos_C(0, &v72);
+        }
+        v77.x = 0.0;
+        v77.y = 0.0;
+        v77.z = v91->f_acteur_pointe_offset;
+        MATH_VecAddVec(&v69, &v72, &v77);
+        AI_EvalFunc_VIEW3dWorldTo2d_C(0, &v69, &v93);
+        v75 = v93;
+        v91->i_acteur_pointe_new = v93.x <= 0.0 || v75.x >= 1.0 || v75.y <= 0.0 || v75.y >= 1.0;
+    }
+    if (v91->i_objet_inventaire != -1
+        && *(uint32_t*)AI_EvalVarArray2_C(
+            1,
+            (char*)board_panel_bp_exec_reflex_univVars_objet_inventaire,
+            v91->i_objet_inventaire,
+            8)
+        && (v78 = AI_EvalFunc_TIMEElapsed_C(v91->f_time_mode_look_end, 1.5)))
+    {
+        v91->o_principal_object = *(uint32_t*)(board_panel_bp_exec_reflex_univVars_objet_liste_gao
+            + 4 * v91->i_objet_inventaire
+            + 4);
+        v88 = *(uint32_t*)(board_panel_bp_exec_reflex_univVars_objet_status + 4 * v91->i_objet_inventaire + 4);
+        if (*(uint32_t*)(board_panel_bp_exec_reflex_univVars_Perso_ID_status + 36) != 1
+            && *(uint32_t*)board_panel_bp_exec_reflex_PJ_Sally_gao_current_pm_mode != 18
+            && (v88 & 0x30000) != 0
+            && (v88 & 0x100) != 0)
+        {
+            v84 = 1;
+            if (v66 == WOR_gst_Universe.univAIInstance)
+            {
+                v47 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v49 = (tGameObjectMain*)v66;
+                if (v66)
+                {
+                    if ((unsigned int)v66 <= 2)
+                        v49 = AI_MainActor[(uint32_t)v66 - 1];
+                    v48 = v49;
+                }
+                else
+                {
+                    v48 = 0;
+                }
+                v47 = v48->extended->AIInstance;
+            }
+            if (((tScriptStruct_GSTBoardPanel*)(v47->instanceVarDataCurrent))->i_use_prio < 1)// board_panel
+            {
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v44 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v46 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v46 = AI_MainActor[(uint32_t)v66 - 1];
+                        v45 = v46;
+                    }
+                    else
+                    {
+                        v45 = 0;
+                    }
+                    v44 = v45->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v44->instanceVarDataCurrent))->o_use_object = (int)AI_gpst_CurrentGameObject;
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v41 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v43 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v43 = AI_MainActor[(uint32_t)v66 - 1];
+                        v42 = v43;
+                    }
+                    else
+                    {
+                        v42 = 0;
+                    }
+                    v41 = v42->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v41->instanceVarDataCurrent))->i_use_prio = 1;
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v38 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v40 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v40 = AI_MainActor[(uint32_t)v66 - 1];
+                        v39 = v40;
+                    }
+                    else
+                    {
+                        v39 = 0;
+                    }
+                    v38 = v39->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v38->instanceVarDataCurrent))->i_use_action = 21;
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v35 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v37 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v37 = AI_MainActor[(uint32_t)v66 - 1];
+                        v36 = v37;
+                    }
+                    else
+                    {
+                        v36 = 0;
+                    }
+                    v35 = v36->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v35->instanceVarDataCurrent))->f_use_offset = 0.0;
+            }
+        }
+    }
+    else
+    {
+        v91->o_principal_object = 0;
+    }
+    if (*(uint32_t*)board_panel_bp_exec_reflex_PJ_Sally_gao_i_fight_on)
+    {
+        if ((*(uint32_t*)board_panel_bp_exec_reflex_PJ_Sally_gao_i_fight_flags & 1) != 0)
+        {
+            v13 = (tGameObjectMain*)v91->o_sally_contextuel;
+            if (v13)
+            {
+                if ((unsigned int)v13 <= 2)
+                    v13 = AI_MainActor[(uint32_t)v13 - 1];
+                v12 = v13;
+            }
+            else
+            {
+                v12 = 0;
+            }
+            if (!v12)
+                v91->o_sally_contextuel = (int)v66;
+        }
+        else
+        {
+            if (v66 == WOR_gst_Universe.univAIInstance)
+            {
+                v32 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v34 = (tGameObjectMain*)v66;
+                if (v66)
+                {
+                    if ((unsigned int)v66 <= 2)
+                        v34 = AI_MainActor[(uint32_t)v66 - 1];
+                    v33 = v34;
+                }
+                else
+                {
+                    v33 = 0;
+                }
+                v32 = v33->extended->AIInstance;
+            }
+            if (((tScriptStruct_GSTBoardPanel*)(v32->instanceVarDataCurrent))->i_sally_priority < 3.0)
+            {
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v29 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v31 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v31 = AI_MainActor[(uint32_t)v66 - 1];
+                        v30 = v31;
+                    }
+                    else
+                    {
+                        v30 = 0;
+                    }
+                    v29 = v30->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v29->instanceVarDataCurrent))->o_sally_contextuel = (int)AI_gpst_CurrentGameObject;
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v26 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v28 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v28 = AI_MainActor[(uint32_t)v66 - 1];
+                        v27 = v28;
+                    }
+                    else
+                    {
+                        v27 = 0;
+                    }
+                    v26 = v27->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v26->instanceVarDataCurrent))->i_sally_priority = 3.0;
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v23 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v25 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v25 = AI_MainActor[(uint32_t)v66 - 1];
+                        v24 = v25;
+                    }
+                    else
+                    {
+                        v24 = 0;
+                    }
+                    v23 = v24->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v23->instanceVarDataCurrent))->i_sally_action = 8;
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v20 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v22 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v22 = AI_MainActor[(uint32_t)v66 - 1];
+                        v21 = v22;
+                    }
+                    else
+                    {
+                        v21 = 0;
+                    }
+                    v20 = v21->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v20->instanceVarDataCurrent))->v_sally_offset.x = 0.0;
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v17 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v19 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v19 = AI_MainActor[(uint32_t)v66 - 1];
+                        v18 = v19;
+                    }
+                    else
+                    {
+                        v18 = 0;
+                    }
+                    v17 = v18->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v17->instanceVarDataCurrent))->v_sally_offset.y = 0.0;
+                if (v66 == WOR_gst_Universe.univAIInstance)
+                {
+                    v14 = WOR_gst_Universe.univAIInstance;
+                }
+                else
+                {
+                    v16 = (tGameObjectMain*)v66;
+                    if (v66)
+                    {
+                        if ((unsigned int)v66 <= 2)
+                            v16 = AI_MainActor[(uint32_t)v66 - 1];
+                        v15 = v16;
+                    }
+                    else
+                    {
+                        v15 = 0;
+                    }
+                    v14 = v15->extended->AIInstance;
+                }
+                ((tScriptStruct_GSTBoardPanel*)(v14->instanceVarDataCurrent))->v_sally_offset.z = 0.0;
+                *(uint32_t*)board_panel_bp_exec_reflex_GST_Board_panel_gao_i_force_interface = 1;
+            }
+        }
+    }
+    if (*(uint32_t*)board_panel_bp_exec_reflex_GST_Fight_Manager_gao_i_Evil_NbActor)
+    {
+        if (v91->Boutonces_FriendActionNeeded == 10
+            && *(uint32_t*)board_panel_bp_exec_reflex_univVars_Perso_ID_Companion != -1)
+        {
+            v79 = *(uint32_t*)(board_panel_bp_exec_reflex_univVars_Perso_ID_actor
+                + 4 * *(uint32_t*)board_panel_bp_exec_reflex_univVars_Perso_ID_Companion
+                + 4);
+            v11 = (tGameObjectMain*)v79;
+            if (v79)
+            {
+                if (v79 <= 2)
+                    v11 = AI_MainActor[v79 - 1];
+                v10 = v11;
+            }
+            else
+            {
+                v10 = 0;
+            }
+            if ((v10->extended->fields->designFlags & 0x10000000) == 0)
+            {
+                v9 = (tGameObjectMain*)v91->o_contextuel_object;
+                if (v9)
+                {
+                    if ((unsigned int)v9 <= 2)
+                        v9 = AI_MainActor[(uint32_t)v9 - 1];
+                    v8 = v9;
+                }
+                else
+                {
+                    v8 = 0;
+                }
+                if (v8)
+                {
+                    v91->f_time_superaction = TIM_gf_dt + v91->f_time_superaction;
+                    v4 = (float)v91->I_delai_superaction;
+                    if (v91->f_time_superaction > (double)v4)
+                    {
+                        v91->f_time_superaction = 0.0;
+                        v60 = *(uint32_t*)(board_panel_bp_exec_reflex_GST_Global_gao_o_actor_texte
+                            + 4 * *(uint32_t*)board_panel_bp_exec_reflex_univVars_Perso_ID_Companion
+                            + 4);
+                        if (++v91->i_indice_texte_synchro > 54)
+                        {
+                            v91->i_indice_texte_synchro = 52;
+                            v91->I_delai_superaction = 20;
+                        }
+                        if (v91->i_done_superaction)
+                            v91->I_delai_superaction = 40;
+                        Src.msgID = 30;
+                        Src.Int1 = v91->i_indice_texte_synchro;
+                        Src.Int2 = 0;
+                        Src.f2 = 2.0;
+                        Src.v1.x = 0.0;
+                        Src.v1.y = 0.0;
+                        Src.v1.z = 0.0;
+                        Src.v2.x = 0.0;
+                        Src.v2.y = 0.0;
+                        Src.v2.z = 0.0;
+                        Src.gao = 0;
+                        Src.gao2 = (tGameObjectMain*)v79;
+                        v7 = (tGameObjectMain*)v60;
+                        if (v60)
+                        {
+                            if (v60 <= 2)
+                                v7 = AI_MainActor[v60 - 1];
+                            AI_EvalFunc_MSGSend_C(v7, &Src);
+                        }
+                        else
+                        {
+                            AI_EvalFunc_MSGSend_C(0, &Src);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        if (*(uint32_t*)board_panel_bp_exec_reflex_univVars_Perso_ID_Companion)
+        {
+            v91->f_time_superaction = 15.0;
+            v91->I_delai_superaction = 20;
+        }
+        else
+        {
+            v91->f_time_superaction = 5.0;
+            v91->I_delai_superaction = 10;
+        }
+        v91->i_done_superaction = 0;
+    }
+    if ((v91->i_MainActor_ID == 10 || v91->i_MainActor_ID == 9)
+        && !*(uint32_t*)board_panel_bp_exec_reflex_univVars_i_course_ON)
+    {
+        v61 = *(uint32_t*)(board_panel_bp_exec_reflex_univVars_Perso_ID_actor + 44);
+        *(uint32_t*)(board_panel_bp_exec_reflex_GST_Board_panel_gao_ao_listofobjects
+            + 4 * *(uint32_t*)board_panel_bp_exec_reflex_GST_Board_panel_gao_i_current_nb_of_object
+            + 4) = (uint32_t)AI_gpst_CurrentGameObject;
+        *(uint32_t*)(board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_listofpriority
+            + 4 * *(uint32_t*)board_panel_bp_exec_reflex_GST_Board_panel_gao_i_current_nb_of_object
+            + 4) = 26;
+        *(uint32_t*)(board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_action
+            + 4 * *(uint32_t*)board_panel_bp_exec_reflex_GST_Board_panel_gao_i_current_nb_of_object
+            + 4) = 26;
+        *(uint32_t*)(board_panel_bp_exec_reflex_GST_Board_panel_gao_ai_listofbutton
+            + 4 * *(uint32_t*)board_panel_bp_exec_reflex_GST_Board_panel_gao_i_current_nb_of_object
+            + 4) = 0;
+        *(uint32_t*)(board_panel_bp_exec_reflex_GST_Board_panel_gao_ao_listoftargets
+            + 4 * (*(uint32_t*)board_panel_bp_exec_reflex_GST_Board_panel_gao_i_current_nb_of_object)++
+            + 4) = v61;
+        *(uint32_t*)board_panel_bp_exec_reflex_GST_Board_panel_gao_i_force_interface = 1;
+        v91->o_acteur_pointe = v61;
+        v91->i_acteur_pointe_visible = 1;
+        v91->o_contextuel_object = v61;
+        v91->i_acteur_pointe_text = 26;
+    }
+    else if (v91->i_MainActor_ID_old == 10 || v91->i_MainActor_ID_old == 9)
+    {
+        v91->o_contextuel_object = 0;
+    }
+    if (v91->i_objet_inventaire != -1
+        && !*(uint32_t*)AI_EvalVarArray2_C(
+            1,
+            (char*)board_panel_bp_exec_reflex_univVars_objet_inventaire,
+            v91->i_objet_inventaire,
+            v91->i_MainActor_ID))
+    {
+        v91->i_swap_button_sens = 1;
+        v82 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_reflex_board_panel_bp_exec_button_valide_nextfastitem);
+        if (v82 != 1000)
+            return v82;
+    }
+    v74 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_reflex_board_panel_bp_exec_compte_a_rebour);
+    if (v74 != 1000)
+        return v74;
+    if (*(uint32_t*)board_panel_bp_exec_reflex_GST_Global_gao_i_mort_en_cours != -1 && v91->mode_matrix_on)
+        v91->mode_matrix_on = 2;
+    if (v91->mode_matrix_on == 2)
+    {
+        *(uint32_t*)board_panel_bp_exec_reflex_GST_Global_gao_f_game_speed = 0x3F800000;
+        *(uint32_t*)board_panel_bp_exec_reflex_GST_Global_gao_o_mode_matrix_acteur = 0;
+        v91->mode_matrix_on = 0;
+    }
+    AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x200);
+    if (!*(uint32_t*)(board_panel_bp_exec_reflex_univVars_Perso_ID_status + 4) && v91->f_time_life_max_main != 0.0)
+    {
+        if (AI_EvalFunc_TIMEElapsed_C(v91->f_time_life_max_main, 30.0))
+        {
+            v91->f_time_life_max_main = 0.0;
+            if (*(int*)AI_EvalVarArray2_C(1, (char*)board_panel_bp_exec_reflex_univVars_objet_inventaire, 28, 8) > 2
+                && *(int*)AI_EvalVarArray2_C(1, (char*)board_panel_bp_exec_reflex_univVars_objet_inventaire, 28, 0) < 1)
+            {
+                v67 = *(uint32_t*)(board_panel_bp_exec_reflex_GST_Global_gao_o_actor_texte + 4);
+                v83 = *(uint32_t*)(board_panel_bp_exec_reflex_univVars_Perso_ID_actor + 4);
+                Src.msgID = 30;
+                Src.Int1 = 18;
+                Src.Int2 = 10000;
+                Src.f2 = 1.5;
+                Src.v1.x = 0.0;
+                Src.v1.y = 0.0;
+                Src.v1.z = 0.0;
+                Src.v2.x = 0.0;
+                Src.v2.y = 0.0;
+                Src.v2.z = 0.0;
+                Src.gao = 0;
+                Src.gao2 = (tGameObjectMain*)v83;
+                v6 = (tGameObjectMain*)v67;
+                if (v67)
+                {
+                    if (v67 <= 2)
+                        v6 = AI_MainActor[v67 - 1];
+                    AI_EvalFunc_MSGSend_C(v6, &Src);
+                }
+                else
+                {
+                    AI_EvalFunc_MSGSend_C(0, &Src);
+                }
+            }
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_mode_look()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+4h] [ebp-ECh]
+    tGameObjectMain* v2; // [esp+8h] [ebp-E8h]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-E4h]
+    tGameObjectMain* v4; // [esp+24h] [ebp-CCh]
+    tGameObjectMain* v5; // [esp+28h] [ebp-C8h]
+    tGameObjectMain* v6; // [esp+2Ch] [ebp-C4h]
+    tGameObjectMain* v7; // [esp+34h] [ebp-BCh]
+    int v8; // [esp+3Ch] [ebp-B4h]
+    int v9; // [esp+48h] [ebp-A8h]
+    float v10; // [esp+5Ch] [ebp-94h]
+    int v11; // [esp+68h] [ebp-88h]
+    int v12; // [esp+78h] [ebp-78h]
+    int v13; // [esp+7Ch] [ebp-74h]
+    int v14; // [esp+88h] [ebp-68h]
+    int v15; // [esp+9Ch] [ebp-54h]
+    int v16; // [esp+B8h] [ebp-38h]
+    tMessage Src; // [esp+BCh] [ebp-34h] BYREF
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_mode_look_PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_mode_look_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_look_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_mode_look_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_look_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_mode_look_univVars,
+            988);
+        board_panel_bp_mode_look__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_look__PJ_Sally_gao_f_time_lance_un_frisbee,
+            (void*)board_panel_bp_mode_look__PJ_Sally_gao,
+            2560);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_look__PJ_Sally_gao__o_object_en_main_AP,
+            (void*)board_panel_bp_mode_look__PJ_Sally_gao,
+            2544);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_look_univVars_objet_inventaire,
+            (void*)board_panel_bp_mode_look_univVars,
+            1480);
+        fct_board_panel_bp_mode_look_board_panel_bp_exec_look_init = (int)AI_ul_RealResolveOneRefFunction(0x9E001C37);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_look_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_mode_look_univVars,
+            4488);
+        board_panel_bp_mode_TXT_Sally_gao = AI_ul_RealResolveOneRefObject(0x7200064Eu);
+        fct_board_panel_bp_mode_look_board_panel_bp_exec_affiche_contextuel = (int)AI_ul_RealResolveOneRefFunction(0x9E000AF8);
+        fct_board_panel_bp_mode_look_board_panel_bp_exec_look_photo = (int)AI_ul_RealResolveOneRefFunction(0x9E001C34);
+        fct_board_panel_bp_mode_look_board_panel_bp_exec_look_simple = (int)AI_ul_RealResolveOneRefFunction(0x9E001C3E);
+        fct_board_panel_bp_mode_look_board_panel_bp_exec_look_jeter = (int)AI_ul_RealResolveOneRefFunction(0x9E001C35);
+        board_panel_bp_mode_look_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_look_INV_manager_gao_o_Photo,
+            (void*)board_panel_bp_mode_look_INV_manager_gao,
+            44);
+        fct_board_panel_bp_mode_board_panel_look_bp_exec_sprite_boutons_on = (int)AI_ul_RealResolveOneRefFunction(0x9E000016);
+        fct_board_panel_bp_mode_board_panel_look_Global_Library_photo_cheat = (int)AI_ul_RealResolveOneRefFunction(0x4901E2EDu);
+    }
+    if (*AI_gppst_CurrentJumpNode == (tAINode*)4)
+    {
+        if (AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_mode_look_univVars_Flag_speciaux_sauve + 4), 3054)
+            || !v1->i_look_info_on)
+        {
+            v1->i_affiche_encart_photo = 0;
+        }
+        else
+        {
+            Src.msgID = 30;
+            Src.Int1 = 75;
+            Src.Int2 = 4900;
+            Src.f2 = 10000.0;
+            Src.v1.x = 0.0;
+            Src.v1.y = 0.0;
+            Src.v1.z = 0.0;
+            Src.v2.x = 0.0;
+            Src.v2.y = 0.0;
+            Src.v2.z = 0.0;
+            Src.gao = 0;
+            Src.gao2 = (tGameObjectMain*)board_panel_bp_mode_look__PJ_Sally_gao;
+            AI_EvalFunc_MSGSend_C((tGameObjectMain*)board_panel_bp_mode_TXT_Sally_gao, &Src);
+            v1->i_affiche_encart_photo = 1;
+        }
+        goto LABEL_36;
+    }
+    v1->i_current_mode = 2;
+    if (!v1->i_init_look)
+    {
+    LABEL_36:
+        if (AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_mode_look_univVars_Flag_speciaux_sauve + 4), 3054)
+            && v1->i_affiche_encart_photo)
+        {
+            Src.msgID = 30;
+            Src.Int1 = -1;
+            Src.Int2 = 4901;
+            Src.f2 = 0.0;
+            Src.v1.x = 0.0;
+            Src.v1.y = 0.0;
+            Src.v1.z = 0.0;
+            Src.v2.x = 0.0;
+            Src.v2.y = 0.0;
+            Src.v2.z = 0.0;
+            Src.gao = 0;
+            Src.gao2 = (tGameObjectMain*)board_panel_bp_mode_look__PJ_Sally_gao;
+            AI_EvalFunc_MSGSend_C((tGameObjectMain*)board_panel_bp_mode_TXT_Sally_gao, &Src);
+            v1->i_affiche_encart_photo = 0;
+        }
+        v3 = (tGameObjectMain*)v1->o_acteur_pointe_target;
+        if (v3)
+        {
+            if ((unsigned int)v3 <= 2)
+                v3 = AI_MainActor[(uint32_t)v3 - 1];
+            v2 = v3;
+        }
+        else
+        {
+            v2 = 0;
+        }
+        if (v2)
+        {
+            v1->i_ind_pointeur = 0;
+            if (v1->i_current_nb_of_object < 2)
+                v1->i_action_selected = 0;
+            v13 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_look_board_panel_bp_exec_affiche_contextuel);
+            if (v13 != 1000)
+                return v13;
+        }
+        else if (v1->i_ind_pointeur != -1)
+        {
+            v1->i_ind_pointeur = -1;
+            v1->o_contextuel_object = 0;
+            v1->i_contextuel_prio = -1;
+        }
+        v15 = *(uint32_t*)AI_EvalVarArray2_C(1, (char*)board_panel_bp_mode_look_univVars_objet_inventaire, 0, 8);
+        if (v15)
+        {
+            v9 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_look_board_panel_bp_exec_look_photo);
+            if (v9 != 1000)
+                return v9;
+        }
+        else
+        {
+            v16 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_look_board_panel_bp_exec_look_simple);
+            if (v16 != 1000)
+                return v16;
+        }
+        v12 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_look_board_panel_bp_exec_look_jeter);
+        if (v12 != 1000)
+            return v12;
+        if (v15)
+        {
+            v1->o_sally_contextuel = (int)AI_gpst_CurrentGameObject;
+            v1->i_sally_action = 1;
+        }
+        v11 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_board_panel_look_bp_exec_sprite_boutons_on);
+        if (v11 != 1000)
+            return v11;
+        v8 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_board_panel_look_Global_Library_photo_cheat);
+        if (v8 == 1000)
+            result = 1000;
+        else
+            result = v8;
+        return result;
+    }
+    AI_EvalFunc_OBJ_CapaSet_C((tGameObjectMain*)board_panel_bp_mode_look_PJ_Camera_Speciale_gao, 0x100, 0);
+    if (!*(uint32_t*)board_panel_bp_mode_look_univVars_Perso_ID_Companion)
+    {
+        v7 = *(tGameObjectMain**)(board_panel_bp_mode_look_univVars_Perso_ID_actor + 4);
+        if (v7)
+        {
+            if ((unsigned int)v7 <= 2)
+                v7 = AI_MainActor[(uint32_t)v7 - 1];
+            AI_EvalFunc_OBJ_CustomBitsSet_C(v7, 0x1000, 0);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_CustomBitsSet_C(0, 0x1000, 0);
+        }
+    }
+    v10 = TIM_gf_MainClock - TIM_gf_LockTime;
+    *(float*)board_panel_bp_mode_look__PJ_Sally_gao_f_time_lance_un_frisbee = v10 - 10.0f;
+    v6 = *(tGameObjectMain**)board_panel_bp_mode_look__PJ_Sally_gao__o_object_en_main_AP;
+    if (*(uint32_t*)board_panel_bp_mode_look__PJ_Sally_gao__o_object_en_main_AP)
+    {
+        if ((unsigned int)v6 <= 2)
+            v6 = AI_MainActor[(uint32_t)v6 - 1];
+        v5 = v6;
+    }
+    else
+    {
+        v5 = 0;
+    }
+    if (!v5)
+        goto LABEL_27;
+    v4 = *(tGameObjectMain**)board_panel_bp_mode_look__PJ_Sally_gao__o_object_en_main_AP;
+    if (*(uint32_t*)board_panel_bp_mode_look__PJ_Sally_gao__o_object_en_main_AP)
+    {
+        if ((unsigned int)v4 <= 2)
+            v4 = AI_MainActor[(uint32_t)v4 - 1];
+        result = AI_EvalFunc_OBJDestroy_C(v4);
+    }
+    else
+    {
+        result = AI_EvalFunc_OBJDestroy_C(0);
+    }
+    if (result == 1000)
+    {
+        *(uint32_t*)board_panel_bp_mode_look__PJ_Sally_gao__o_object_en_main_AP = 0;
+    LABEL_27:
+        if (*(uint32_t*)AI_EvalVarArray2_C(1, (char*)board_panel_bp_mode_look_univVars_objet_inventaire, 0, 8))
+            v1->i_look_info_on = 1;
+        v14 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_look_board_panel_bp_exec_look_init);
+        if (v14 == 1000)
+        {
+            *AI_gppst_CurrentJumpNode = (tAINode*)4;
+            TIME_Wait_C(0.001f);
+            result = 0;
+        }
+        else
+        {
+            result = v14;
+        }
+    }
+    return result;
+}
+
+int board_panel_bp_inventaire_mode()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+Ch] [ebp-D4h]
+    tGameObjectMain* v2; // [esp+1Ch] [ebp-C4h]
+    tGameObjectMain* v3; // [esp+34h] [ebp-ACh]
+    tGameObjectMain* v4; // [esp+38h] [ebp-A8h]
+    tGameObjectMain* v5; // [esp+3Ch] [ebp-A4h]
+    __int16 v6; // [esp+40h] [ebp-A0h]
+    int v7; // [esp+4Ch] [ebp-94h]
+    Vec3 v8; // [esp+58h] [ebp-88h] BYREF
+    int v10; // [esp+74h] [ebp-6Ch]
+    BOOL v11; // [esp+78h] [ebp-68h]
+    int v12; // [esp+84h] [ebp-5Ch]
+    Vec3 a5; // [esp+88h] [ebp-58h] BYREF
+    int j; // [esp+98h] [ebp-48h]
+    BOOL v15; // [esp+9Ch] [ebp-44h]
+    int v16; // [esp+A0h] [ebp-40h]
+    int v17; // [esp+A8h] [ebp-38h]
+    BOOL v18; // [esp+B0h] [ebp-30h]
+    int i; // [esp+B4h] [ebp-2Ch]
+    BOOL v20; // [esp+B8h] [ebp-28h]
+    int v21; // [esp+BCh] [ebp-24h]
+    tScriptStruct_GSTBoardPanel* v22; // [esp+C0h] [ebp-20h]
+    int a1; // [esp+C8h] [ebp-18h]
+    int v24; // [esp+D8h] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v22 = v1;
+    i = 0;
+    j = 0;
+    v15 = 0;
+    a1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_inventaire_mode_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_Carte3D_i_CurEtage,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            4484);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_Perso_ID_CarteEtage,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            1044);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            988);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_Perso_ID_world_ID,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            536);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_world_ID,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            4);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_Perso_ID_status,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            484);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_Perso_ID_passengers_list,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            936);
+        board_panel_bp_inventaire_mode_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_priority,
+            (void*)board_panel_bp_inventaire_mode_GST_Global_gao,
+            3268);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_GST_Global_gao_f_fade_start_time,
+            (void*)board_panel_bp_inventaire_mode_GST_Global_gao,
+            3260);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_delay,
+            (void*)board_panel_bp_inventaire_mode_GST_Global_gao,
+            3264);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_i_fade_fx,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            20400);
+        board_panel_bp_inventaire_mode_INV_MatFade_gao = AI_ul_RealResolveOneRefObject(0x5E006934u);
+        fct_board_panel_bp_inventaire_mode_board_panel_bp_exec_look_reset = (int)AI_ul_RealResolveOneRefFunction(0x9E00008A);
+        board_panel_bp_inventaire_mode__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_inventaire_mode__PJ_Camera_Derriere_gao = AI_ul_RealResolveOneRefObject(0x5E005FA2u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode__PJ_Camera_Derriere_gao_i_sim_click,
+            (void*)board_panel_bp_inventaire_mode__PJ_Camera_Derriere_gao,
+            40);
+        board_panel_bp_inventaire_mode_INV_reference_WP_gao = AI_ul_RealResolveOneRefObject(0x620013B8u);
+        board_panel_bp_inventaire_mode_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_INV_manager_gao_i_Reinit,
+            (void*)board_panel_bp_inventaire_mode_INV_manager_gao,
+            112);
+        board_panel_bp_inventaire_mode_INTF_Group_gao = AI_ul_RealResolveOneRefObject(0x9E0068EB);
+        board_panel_bp_inventaire_mode_INTF_jade_life_gao = AI_ul_RealResolveOneRefObject(0xD9008A6F);
+        board_panel_bp_inventaire_mode_INTF_compagnon_life_gao = AI_ul_RealResolveOneRefObject(0xD9008A71);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_INV_manager_gao_i_AskExit,
+            (void*)board_panel_bp_inventaire_mode_INV_manager_gao,
+            152);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_INV_manager_gao_i_Locked,
+            (void*)board_panel_bp_inventaire_mode_INV_manager_gao,
+            172);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            4488);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_univVars_f_volume_infodesign,
+            (void*)board_panel_bp_inventaire_mode_univVars,
+            20264);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_INV_manager_gao_i_Exit,
+            (void*)board_panel_bp_inventaire_mode_INV_manager_gao,
+            148);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_mode_INV_manager_gao_i_Mode,
+            (void*)board_panel_bp_inventaire_mode_INV_manager_gao,
+            180);
+        fct_board_panel_bp_inventaire_mode_board_panel_bp_inventaire_out = (int)AI_ul_RealResolveOneRefFunction(0x9E000853);
+    }
+    switch ((unsigned int)*AI_gppst_CurrentJumpNode)
+    {
+    case 10u:
+        v22->i_var_sorti_inv_de_merde_pour = 1;
+        AI_EvalFunc_Gsp_AE_MASTER_C(8, 0, 0, 0.60000002f);
+        AI_EvalFunc_Gsp_AE_MASTER_C(9, 0, 0, 0.64999998f);
+        AI_EvalFunc_Gsp_AE_MASTER_C(0, 0, 0, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(0, 0, 1, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(0, 0, 2, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(7, 0, 0, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(12, 0, 0, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(12, 0, 1, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(13, 1, 0, 1.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(13, 1, 1, 1.0);
+        v22->i_ambiant = AI_EvalFunc_WORColorAmbiantGet_C(0);
+        v22->i_ambiant2 = AI_EvalFunc_WORColorAmbiant2Get_C(0);
+        AI_EvalFunc_WORColorAmbiantSet_C(0, 0xFF503434);
+        AI_EvalFunc_WORColorAmbiant2Set_C(0, 0xFF5A5D57);
+        v22->sfx_MBlur = PC_AE_MASTER_GET_P1(1, 1);
+        v22->sfx_punch = PC_AE_MASTER_GET_P1(17, 1);
+        v22->sfx_ZSmooth = PC_AE_MASTER_GET_P1(5, 1);
+        v22->sfx_REM_Intensity = PC_AE_MASTER_GET_P1(7, 1);
+        AI_EvalFunc_Gsp_AE_MASTER_C(1, 0, 0, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(17, 0, 0, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(5, 0, 0, 0.0);
+        AI_EvalFunc_Gsp_AE_MASTER_C(7, 0, 0, 0.0);
+        if (v22->i_current_mode != 2 && !v22->i_look_enterprise_photo && !v22->i_look_aircraft_photo)
+            goto LABEL_42;
+        v24 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_inventaire_mode_board_panel_bp_exec_look_reset);
+        if (v24 == 1000)
+        {
+            AI_EvalFunc_OBJ_CapaSet_C((tGameObjectMain*)board_panel_bp_inventaire_mode__PJ_Camera_Speciale_gao, 256, 0);
+            *(uint32_t*)board_panel_bp_inventaire_mode__PJ_Camera_Derriere_gao_i_sim_click = 0;
+        LABEL_42:
+            if (v22->i_look_aircraft || v22->i_look_enterprise)
+            {
+                a5.x = -1.0;
+                a5.y = -1.0;
+                a5.z = 0.0;
+                STR_SetPos(AI_gpst_CurrentGameObject, 28, 0, -1, &a5);
+                for (i = 0; i < v22->i_Obj_On_Radar_Nb; ++i)
+                {
+                    v8.x = -1.0;
+                    v8.y = -1.0;
+                    v8.z = 0.0;
+                    STR_SetPos(AI_gpst_CurrentGameObject, i + 16, 0, -1, &v8);
+                }
+            }
+            v22->i_current_mode = 4;
+            v22->i_inv_in = 0;
+            AI_EvalFunc_GRPInactiveSet_C((tGameObjectMain*)board_panel_bp_inventaire_mode_INV_reference_WP_gao, 0);
+            *(uint32_t*)board_panel_bp_inventaire_mode_INV_manager_gao_i_Reinit = 1;
+            v22->i_commercer_tune_deja_affiche = 0;
+            v22->i_commercer_perle_deja_affich = 0;
+            STR_DelChar(AI_gpst_CurrentGameObject, 8, 0, -1);
+            STR_DelChar(AI_gpst_CurrentGameObject, 9, 0, -1);
+            AI_EvalFunc_GRPInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_mode_INTF_Group_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_mode_INTF_jade_life_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_mode_INTF_compagnon_life_gao, 1);
+            v22->f_look_prog_viseur = 1.55f;
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 27, 1050);
+            v10 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 0);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 0, v10 | 0x400);
+            v6 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 3);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 3, v6 | 0x400);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 25, 0, -1, 0);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 24, 0, -1, 0);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 26, 0, -1, 0);
+            v22->i_init_inventaire = 0;
+            goto LABEL_48;
+        }
+        result = v24;
+        break;
+    case 25u:
+        v15 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_inventaire_mode_univVars_Flag_speciaux_sauve + 4), 2083);
+        if (!v15)
+            v15 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_inventaire_mode_univVars_Flag_speciaux_sauve + 4), 3800);
+        if (v15)
+            *(uint32_t*)AI_EvalVarArray_C2((char*)board_panel_bp_inventaire_mode_univVars_f_volume_infodesign, 2) = 0;
+        if (*(int*)board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_priority <= 5000
+            || (v18 = AI_EvalFunc_TIMEElapsed_C(
+                *(float*)board_panel_bp_inventaire_mode_GST_Global_gao_f_fade_start_time,
+                *(float*)board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_delay)))
+        {
+            *(float*)board_panel_bp_inventaire_mode_GST_Global_gao_f_fade_start_time = TIM_gf_MainClock - TIM_gf_LockTime;
+            *(uint32_t*)board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_delay = 1060320051;
+            *(uint32_t*)board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_priority = 5000;
+            AI_EvalFunc_GFXDel_C_CURRENT(10);
+            a1 = AI_EvalFunc_GFXAddSorted_C(AI_gpst_CurrentGameObject, 11, 10);
+            *(uint32_t*)board_panel_bp_inventaire_mode_univVars_i_fade_fx = a1;
+            AI_EvalFunc_GFXFlagSet_C_CURRENT(a1, 0, 1);
+            AI_EvalFunc_GFXFlagSet_C_CURRENT(a1, 2, 1);
+            v2 = (tGameObjectMain*)board_panel_bp_inventaire_mode_INV_MatFade_gao;
+            if (board_panel_bp_inventaire_mode_INV_MatFade_gao)
+            {
+                if ((unsigned int)board_panel_bp_inventaire_mode_INV_MatFade_gao <= 2)
+                    v2 = AI_MainActor[board_panel_bp_inventaire_mode_INV_MatFade_gao - 1];
+                AI_EvalFunc_GFXMaterialSet_C_CURRENT(a1, v2, 9);
+            }
+            else
+            {
+                AI_EvalFunc_GFXMaterialSet_C_CURRENT(a1, 0, 9);
+            }
+            GFXSetCurGlobal(a1);
+            AI_EvalFunc_GFXSeti_C_CURGLOB(11100, 0);
+            AI_EvalFunc_GFXSeti_C_CURGLOB(11101, 0xFF000000);
+            AI_EvalFunc_GFXSetf_C_CURGLOB(11000, 0.0);
+            AI_EvalFunc_GFXSetf_C_CURGLOB(11001, 0.2f);
+            AI_EvalFunc_GFXSetf_C_CURGLOB(11002, 0.30000001f);
+            AI_EvalFunc_GFXSetf_C_CURGLOB(11003, 0.2f);
+            AI_EvalFunc_GFXSetf_C_CURGLOB(11004, 0.0);
+        }
+        else
+        {
+            a1 = -1;
+        }
+        *AI_gppst_CurrentJumpNode = (tAINode*)34;
+        TIME_Wait_C(0.30000001f);
+        return 0;
+    case 34u:
+        v15 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_inventaire_mode_univVars_Flag_speciaux_sauve + 4), 2083);
+        if (!v15)
+            v15 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_inventaire_mode_univVars_Flag_speciaux_sauve + 4), 3800);
+        if (v15)
+            *(uint32_t*)AI_EvalVarArray_C2((char*)board_panel_bp_inventaire_mode_univVars_f_volume_infodesign, 2) = 0;
+        *(uint32_t*)board_panel_bp_inventaire_mode_INV_manager_gao_i_Exit = 1;
+        *AI_gppst_CurrentJumpNode = (tAINode*)40;
+        TIME_Wait_C(0.0099999998f);
+        return 0;
+    case 40u:
+        *(uint32_t*)board_panel_bp_inventaire_mode_INV_manager_gao_i_AskExit = 0;
+        *(uint32_t*)board_panel_bp_inventaire_mode_INV_manager_gao_i_Mode = 0;
+        v12 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_inventaire_mode_board_panel_bp_inventaire_out);
+        if (v12 == 1000)
+            goto LABEL_78;
+        result = v12;
+        break;
+    default:
+        if (v22->i_init_inventaire)
+        {
+            if (SND_i_IsTrackPlaying(0x410u))
+            {
+                v21 = SND_i_TrackSetf(1040, 6, 0.5);
+                v17 = SND_i_TrackSeti(0x410u, 4, 1);
+            }
+            *(uint32_t*)board_panel_bp_inventaire_mode_univVars_Carte3D_i_CurEtage = *(uint32_t*)(board_panel_bp_inventaire_mode_univVars_Perso_ID_CarteEtage
+                + 4 * v22->i_MainActor_ID
+                + 4);
+            for (j = 0; j < 5; ++j)
+            {
+                v5 = *(tGameObjectMain**)(board_panel_bp_inventaire_mode_univVars_Perso_ID_actor + 4 * j + 4);
+                if (v5)
+                {
+                    if ((unsigned int)v5 <= 2)
+                        v5 = AI_MainActor[(uint32_t)v5 - 1];
+                    v4 = v5;
+                }
+                else
+                {
+                    v4 = 0;
+                }
+                if (v4)
+                {
+                    if (*(uint32_t*)(board_panel_bp_inventaire_mode_univVars_Perso_ID_world_ID + 4 * j + 4) != *(uint32_t*)board_panel_bp_inventaire_mode_univVars_world_ID
+                        || *(uint32_t*)(board_panel_bp_inventaire_mode_univVars_Perso_ID_status + 4 * j + 4))
+                    {
+                        if (v22->i_MainActor_ID > 8
+                            && ((1 << j) & *(uint32_t*)(board_panel_bp_inventaire_mode_univVars_Perso_ID_passengers_list
+                                + 4 * v22->i_MainActor_ID
+                                + 4)) != 0)
+                        {
+                            *(uint32_t*)(board_panel_bp_inventaire_mode_univVars_Perso_ID_CarteEtage + 4 * j + 4) = *(uint32_t*)board_panel_bp_inventaire_mode_univVars_Carte3D_i_CurEtage;
+                        }
+                    }
+                    else
+                    {
+                        *(uint32_t*)(board_panel_bp_inventaire_mode_univVars_Perso_ID_CarteEtage + 4 * j + 4) = *(uint32_t*)board_panel_bp_inventaire_mode_univVars_Carte3D_i_CurEtage;
+                    }
+                }
+            }
+            v7 = AI_EvalFunc_WORCurIndexGet_C();
+            AI_EvalFunc_WORPause_C(v7, -1);
+            AI_EvalFunc_TIMELock_C();
+            AI_EvalFunc_OBJ_CapaSet_C_CURRENT(256, 0);
+            v22->Gen_SaveShow = v22->Gen_Show;
+            v22->Gen_Show = 0;
+            if (*(int*)board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_priority <= 5000
+                || AI_EvalFunc_TIMEElapsed_C(
+                    *(float*)board_panel_bp_inventaire_mode_GST_Global_gao_f_fade_start_time,
+                    *(float*)board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_delay))
+            {
+                *(float*)board_panel_bp_inventaire_mode_GST_Global_gao_f_fade_start_time = TIM_gf_MainClock - TIM_gf_LockTime;
+                *(uint32_t*)board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_delay = 1056125748;
+                *(uint32_t*)board_panel_bp_inventaire_mode_GST_Global_gao_i_fade_priority = 5000;
+                AI_EvalFunc_GFXDel_C_CURRENT(10);
+                a1 = AI_EvalFunc_GFXAddSorted_C(AI_gpst_CurrentGameObject, 11, 10);
+                *(uint32_t*)board_panel_bp_inventaire_mode_univVars_i_fade_fx = a1;
+                AI_EvalFunc_GFXFlagSet_C_CURRENT(a1, 0, 1);
+                AI_EvalFunc_GFXFlagSet_C_CURRENT(a1, 2, 1);
+                v3 = (tGameObjectMain*)board_panel_bp_inventaire_mode_INV_MatFade_gao;
+                if (board_panel_bp_inventaire_mode_INV_MatFade_gao)
+                {
+                    if ((unsigned int)board_panel_bp_inventaire_mode_INV_MatFade_gao <= 2)
+                        v3 = AI_MainActor[board_panel_bp_inventaire_mode_INV_MatFade_gao - 1];
+                    AI_EvalFunc_GFXMaterialSet_C_CURRENT(a1, v3, 9);
+                }
+                else
+                {
+                    AI_EvalFunc_GFXMaterialSet_C_CURRENT(a1, 0, 9);
+                }
+                GFXSetCurGlobal(a1);
+                AI_EvalFunc_GFXSeti_C_CURGLOB(11100, 0xFF000000);
+                AI_EvalFunc_GFXSeti_C_CURGLOB(11101, 0xFF000000);
+                AI_EvalFunc_GFXSetf_C_CURGLOB(11000, 0.0);
+                AI_EvalFunc_GFXSetf_C_CURGLOB(11001, 0.125);
+                AI_EvalFunc_GFXSetf_C_CURGLOB(11002, 0.15000001f);
+                AI_EvalFunc_GFXSetf_C_CURGLOB(11003, 0.2f);
+                AI_EvalFunc_GFXSetf_C_CURGLOB(11004, 0.0);
+            }
+            else
+            {
+                a1 = -1;
+            }
+            *AI_gppst_CurrentJumpNode = (tAINode*)10;
+            TIME_Wait_C(0.15000001f);
+            result = 0;
+        }
+        else
+        {
+        LABEL_48:
+            v22->Gen_Show = 1;
+            v22->Gen_Show = 0;
+            v11 = 0; // ez nincs a kodban, en raktam ide, hogy ne reklamaljon a VS
+            if (*(uint32_t*)board_panel_bp_inventaire_mode_INV_manager_gao_i_AskExit
+                || (v11 = AI_EvalFunc_IoButtonJustPressed_C(9))
+                && !*(uint32_t*)board_panel_bp_inventaire_mode_INV_manager_gao_i_Locked
+                && (v20 = AI_EvalFunc_TIMEElapsed_C(v22->Gen_Time, 0.5)))
+            {
+                DBG_OutputDebugString("Inventory: i_AskExit: %d, IoButtonJustPressed(9): %d\n", *(uint32_t*)board_panel_bp_inventaire_mode_INV_manager_gao_i_AskExit, v11);
+                v16 = AI_EvalFunc_SNDRequest_C((tGameObjectMain*)board_panel_bp_inventaire_mode_INV_manager_gao, 13, 2176);
+                SND_Fade(0, 0.15000001f, 1.0, 0.40000001f);
+                v15 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_inventaire_mode_univVars_Flag_speciaux_sauve + 4), 2083);
+                if (!v15)
+                    v15 = AI_EvalFunc_ARRBitTest_C(
+                        (int*)(board_panel_bp_inventaire_mode_univVars_Flag_speciaux_sauve + 4),
+                        3800);
+                if (v15)
+                    *(uint32_t*)AI_EvalVarArray_C2((char*)board_panel_bp_inventaire_mode_univVars_f_volume_infodesign, 2) = 0;
+                *AI_gppst_CurrentJumpNode = (tAINode*)25;
+                TIME_Wait_C(0.1f);
+                result = 0;
+            }
+            else
+            {
+            LABEL_78:
+                result = 1000;
+            }
+        }
+        break;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_choix_perso_pointe()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+Ch] [ebp-5Ch]
+    tGameObjectMain* v2; // [esp+1Ch] [ebp-4Ch]
+    tGameObjectMain* v3; // [esp+20h] [ebp-48h]
+    tGameObjectMain* v4; // [esp+24h] [ebp-44h]
+    tGameObjectMain* v5; // [esp+28h] [ebp-40h]
+    tGameObjectMain* v6; // [esp+34h] [ebp-34h]
+    tGameObjectMain* v7; // [esp+38h] [ebp-30h]
+    tGameObjectMain* v8; // [esp+3Ch] [ebp-2Ch]
+    tGameObjectMain* v9; // [esp+40h] [ebp-28h]
+    tGameObjectMain* v10; // [esp+44h] [ebp-24h]
+    tGameObjectMain* v11; // [esp+48h] [ebp-20h]
+    int v12; // [esp+50h] [ebp-18h]
+    int v13; // [esp+58h] [ebp-10h]
+    int i; // [esp+64h] [ebp-4h]
+    int v15; // [esp+64h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (v1->i_current_nb_of_target)
+    {
+        v11 = (tGameObjectMain*)v1->o_acteur_pointe_target;
+        if (v11)
+        {
+            if ((unsigned int)v11 <= 2)
+                v11 = AI_MainActor[(uint32_t)v11 - 1];
+            v10 = v11;
+        }
+        else
+        {
+            v10 = 0;
+        }
+        if (!v10)
+            goto LABEL_27;
+        for (i = 0; i < v1->i_current_nb_of_target; ++i)
+        {
+            v9 = (tGameObjectMain*)v1->ao_targets[i];
+            if (v9)
+            {
+                if ((unsigned int)v9 <= 2)
+                    v9 = AI_MainActor[(uint32_t)v9 - 1];
+                v8 = v9;
+            }
+            else
+            {
+                v8 = 0;
+            }
+            v7 = (tGameObjectMain*)v1->o_acteur_pointe_target;
+            if (v7)
+            {
+                if ((unsigned int)v7 <= 2)
+                    v7 = AI_MainActor[(uint32_t)v7 - 1];
+                v6 = v7;
+            }
+            else
+            {
+                v6 = 0;
+            }
+            if (v8 == v6)
+                break;
+        }
+        if (i == v1->i_current_nb_of_target)
+        {
+        LABEL_27:
+            v1->o_acteur_pointe_target = v1->ao_targets[0];
+            v1->f_acteur_pointe_offset = *(float*)AI_EvalVarArray_C2((char*)&v1->__af_targetsoffsets_Dimension1, 0);
+            v1->i_acteur_pointe_new = 1;
+        }
+        v15 = 0;
+        v12 = -1;
+        v13 = -1;
+        while (v15 < v1->i_current_nb_of_object)
+        {
+            v5 = (tGameObjectMain*)v1->ao_listoftargets[v15];
+            if (v5)
+            {
+                if ((unsigned int)v5 <= 2)
+                    v5 = AI_MainActor[(uint32_t)v5 - 1];
+                v4 = v5;
+            }
+            else
+            {
+                v4 = 0;
+            }
+            v3 = (tGameObjectMain*)v1->o_acteur_pointe_target;
+            if (v3)
+            {
+                if ((unsigned int)v3 <= 2)
+                    v3 = AI_MainActor[(uint32_t)v3 - 1];
+                v2 = v3;
+            }
+            else
+            {
+                v2 = 0;
+            }
+            if (v4 == v2 && v1->ai_listofpriority[v15] > v13)
+            {
+                v12 = v15;
+                v13 = v1->ai_listofpriority[v15];
+            }
+            ++v15;
+        }
+        if (v12 == -1)
+        {
+            v1->o_acteur_pointe = 0;
+            v1->i_acteur_pointe_prio = -1;
+            v1->i_acteur_pointe_button = -1;
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        }
+        else
+        {
+            v1->o_acteur_pointe = v1->ao_listofobjects[v12];
+            v1->i_acteur_pointe_prio = v1->ai_listofpriority[v12];
+            v1->i_acteur_pointe_button = v1->ai_listofbutton[v12];
+            v1->i_acteur_pointe_text = v1->ai_action[v12];
+        }
+        result = 1000;
+    }
+    else
+    {
+        v1->i_acteur_pointe_new = 1;
+        v1->o_acteur_pointe_target = 0;
+        v1->o_acteur_pointe = 0;
+        v1->i_acteur_pointe_prio = -1;
+        v1->f_acteur_pointe_offset = 0.0;
+        v1->i_acteur_pointe_button = -1;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_select_button_enterprise()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+8h] [ebp-100h]
+    tGameObjectMain* v2; // [esp+18h] [ebp-F0h]
+    tGameObjectMain* v3; // [esp+20h] [ebp-E8h]
+    int v4; // [esp+2Ch] [ebp-DCh]
+    int v5; // [esp+3Ch] [ebp-CCh]
+    int v6; // [esp+50h] [ebp-B8h]
+    int v7; // [esp+5Ch] [ebp-ACh]
+    int v8; // [esp+64h] [ebp-A4h]
+    int v9; // [esp+A8h] [ebp-60h]
+    int v10; // [esp+B8h] [ebp-50h]
+    int v11; // [esp+BCh] [ebp-4Ch]
+    int v12; // [esp+CCh] [ebp-3Ch]
+    int v13; // [esp+F0h] [ebp-18h]
+    int v14; // [esp+F8h] [ebp-10h]
+    int v15; // [esp+100h] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_choix_perso_pointe = (int)AI_ul_RealResolveOneRefFunction(0x9E000AF5);
+        board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao = AI_ul_RealResolveOneRefObject(0x5E005FA2u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao_i_sim_click,
+            (void*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao,
+            40);
+        board_panel_bp_exec_select_button_enterprise_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_enterprise_univVars_i_INV_OpenIt,
+            (void*)board_panel_bp_exec_select_button_enterprise_univVars,
+            7648);
+        board_panel_bp_exec_select_button_enterprise_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_OpeningMode,
+            (void*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao,
+            100);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_CineMode,
+            (void*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao,
+            104);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_enterprise_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_select_button_enterprise_univVars,
+            4488);
+        fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_inventaire_in = (int)AI_ul_RealResolveOneRefFunction(0x9E000855);
+        fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_action_sally = (int)AI_ul_RealResolveOneRefFunction(0x9E0015BD);
+        fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_phototraitement = (int)AI_ul_RealResolveOneRefFunction(0x9E002D62);
+        fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_use = (int)AI_ul_RealResolveOneRefFunction(0x9E000851);
+        fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_action_jump = (int)AI_ul_RealResolveOneRefFunction(0x9E000AFB);
+        board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao_i_special_exit,
+            (void*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao,
+            80);
+        fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_reset = (int)AI_ul_RealResolveOneRefFunction(0x9E00008A);
+    }
+    v7 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_choix_perso_pointe);
+    if (v7 != 1000)
+        return v7;
+    v1->i_acteur_pointe_visible = 1;
+    if (AI_EvalFunc_IoButtonJustPressed_C(5))
+    {
+        v1->f_time_entre_look = TIM_gf_MainClock - TIM_gf_LockTime;
+    }
+    else if (AI_EvalFunc_IoButtonJustReleased_C(5) && !AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x200))
+    {
+        *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao_i_sim_click = 1;
+    }
+    if (!INO_b_IoButtonPressed(5) && !INO_b_IoButtonPressed(9))
+        v1->i_bip_off = 0;
+    if ((AI_EvalFunc_IoButtonJustPressed_C(9)
+        || AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x1000)
+        || *(uint32_t*)board_panel_bp_exec_select_button_enterprise_univVars_i_INV_OpenIt)
+        && !AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 256))
+    {
+        if (*(uint32_t*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_OpeningMode
+            && !AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x1000)
+            && !*(uint32_t*)board_panel_bp_exec_select_button_enterprise_univVars_i_INV_OpenIt)
+        {
+            goto LABEL_31;
+        }
+        if (AI_EvalFunc_IoButtonJustPressed_C(9)
+            || *(uint32_t*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_CineMode)
+        {
+            if (AI_EvalFunc_ARRBitTest_C(
+                (int*)(board_panel_bp_exec_select_button_enterprise_univVars_Flag_speciaux_sauve + 4),
+                0x2BB))
+            {
+                *(uint32_t*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_OpeningMode = 3;
+            }
+            else
+            {
+                *(uint32_t*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_OpeningMode = 0;
+            }
+        }
+        *(uint32_t*)board_panel_bp_exec_select_button_enterprise_univVars_i_INV_OpenIt = 0;
+        if (!v1->i_inv_in)
+        {
+            v14 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_inventaire_in);
+            if (v14 != 1000)
+                return v14;
+        }
+    LABEL_31:
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(8)
+        && !AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x100)
+        && !*(uint32_t*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_OpeningMode)
+    {
+        if (AI_EvalFunc_ARRBitTest_C(
+            (int*)(board_panel_bp_exec_select_button_enterprise_univVars_Flag_speciaux_sauve + 4),
+            0x2BB))
+        {
+            *(uint32_t*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_OpeningMode = 3;
+        }
+        else
+        {
+            *(uint32_t*)board_panel_bp_exec_select_button_enterprise_INV_manager_gao_i_OpeningMode = 6;
+        }
+        if (!v1->i_inv_in)
+        {
+            v4 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_inventaire_in);
+            if (v4 != 1000)
+                return v4;
+        }
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(0))
+    {
+        if (v1->i_look_enterprise_photo || v1->i_look_aircraft_photo)
+        {
+            if (AI_EvalFunc_TIMEElapsed_C(v1->f_look_time_flash, 0.60000002f))
+            {
+                v1->f_look_time_flash = TIM_gf_MainClock - TIM_gf_LockTime;
+                v9 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_phototraitement);
+                if (v9 != 1000)
+                    return v9;
+            }
+        }
+        else
+        {
+            v10 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_action_sally);
+            if (v10 != 1000)
+                return v10;
+        }
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(1))
+    {
+        v8 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_use);
+        if (v8 != 1000)
+            return v8;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(2))
+    {
+        v5 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_button_valide_action_jump);
+        if (v5 != 1000)
+            return v5;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(5)
+        && !v1->i_swap_button_used
+        && !AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x200)
+        || AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x400))
+    {
+        if (!v1->i_look_enterprise_photo && !v1->i_look_aircraft_photo)
+        {
+            v1->f_time_en_mode_look = TIM_gf_MainClock - TIM_gf_LockTime;
+            AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+            v1->i_init_look = 1;
+            if (v1->i_current_mode == 32)
+            {
+                v1->i_look_enterprise_photo = 1;
+                v1->i_look_aircraft = 0;
+            }
+            else if (v1->i_current_mode == 64)
+            {
+                v1->i_look_aircraft = 0;
+                v1->i_look_aircraft_photo = 1;
+            }
+            v1->i_look_info_on = 1;
+            v3 = *AI_MainActor;
+            if (*AI_MainActor)
+            {
+                if ((unsigned int)v3 <= 2)
+                    v3 = AI_MainActor[(uint32_t)v3 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v3, &v1->v_look_before_inv);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_SightGet_C(0, &v1->v_look_before_inv);
+            }
+            AI_EvalFunc_OBJ_CapaSet_C(
+                (tGameObjectMain*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao,
+                0x100,
+                0);
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            return 4;
+        }
+        return 1000;
+    }
+    if (!AI_EvalFunc_IoButtonJustReleased_C(5)
+        || v1->i_swap_button_used
+        || AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x200))
+    {
+        if (!AI_EvalFunc_IoButtonJustPressed_C(3) || AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x200))
+        {
+            if (AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x200))
+            {
+                if (v1->i_current_mode == 64)
+                {
+                    if (v1->i_look_aircraft || v1->i_look_aircraft_photo)
+                    {
+                        *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao_i_sim_click = 1;
+                        AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+                        *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao_i_special_exit = 1;
+                        v15 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_reset);
+                        if (v15 != 1000)
+                            return v15;
+                    }
+                    v1->i_look_aircraft = 0;
+                    v1->i_look_aircraft_photo = 0;
+                }
+                else if (v1->i_current_mode == 32)
+                {
+                    if (v1->i_look_enterprise || v1->i_look_enterprise_photo)
+                    {
+                        *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao_i_sim_click = 1;
+                        AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+                        *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao_i_special_exit = 1;
+                        v12 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_reset);
+                        if (v12 != 1000)
+                            return v12;
+                    }
+                    v1->i_look_enterprise = 0;
+                    v1->i_look_enterprise_photo = 0;
+                }
+            }
+        }
+        else if (v1->i_current_mode == 64)
+        {
+            if (v1->i_look_aircraft)
+                *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao_i_sim_click = 1;
+            if (v1->i_look_aircraft_photo)
+            {
+                AI_EvalFunc_OBJ_CapaSet_C(
+                    (tGameObjectMain*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao,
+                    0,
+                    0x100);
+                *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao_i_special_exit = 1;
+                v11 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_reset);
+                if (v11 != 1000)
+                    return v11;
+            }
+            v1->i_look_aircraft = 1 - v1->i_look_aircraft;
+            v1->i_look_aircraft_photo = 0;
+            AI_EvalFunc_ARRBitSet_C(
+                (int*)(board_panel_bp_exec_select_button_enterprise_univVars_Flag_speciaux_sauve + 4),
+                0x417);
+        }
+        else if (v1->i_current_mode == 32)
+        {
+            if (v1->i_look_enterprise)
+                *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao_i_sim_click = 1;
+            if (v1->i_look_enterprise_photo)
+            {
+                AI_EvalFunc_OBJ_CapaSet_C(
+                    (tGameObjectMain*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao,
+                    0,
+                    0x100);
+                *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao_i_special_exit = 1;
+                v6 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_reset);
+                if (v6 != 1000)
+                    return v6;
+            }
+            v1->i_look_enterprise = 1 - v1->i_look_enterprise;
+            v1->i_look_enterprise_photo = 0;
+            AI_EvalFunc_ARRBitSet_C(
+                (int*)(board_panel_bp_exec_select_button_enterprise_univVars_Flag_speciaux_sauve + 4),
+                0x417);
+        }
+        return 1000;
+    }
+    if (!AI_EvalFunc_TIMEElapsed_C(v1->f_time_en_mode_look, 0.40000001f))
+    {
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 1000;
+    }
+    v1->f_time_en_mode_look = TIM_gf_MainClock - TIM_gf_LockTime;
+    AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+    v1->i_init_look = 1;
+    if (v1->i_current_mode == 32)
+    {
+        v1->i_look_enterprise_photo = 1 - v1->i_look_enterprise_photo;
+        v1->i_look_enterprise = 0;
+    }
+    else if (v1->i_current_mode == 64)
+    {
+        v1->i_look_aircraft_photo = 1 - v1->i_look_aircraft_photo;
+        v1->i_look_aircraft = 0;
+    }
+    if (v1->i_look_enterprise_photo || v1->i_look_aircraft_photo)
+    {
+        v1->i_look_info_on = 1;
+        v2 = *AI_MainActor;
+        if (*AI_MainActor)
+        {
+            if ((unsigned int)v2 <= 2)
+                v2 = AI_MainActor[(uint32_t)v2 - 1];
+            AI_EvalFunc_OBJ_SightGet_C(v2, &v1->v_look_before_inv);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_SightGet_C(0, &v1->v_look_before_inv);
+        }
+        AI_EvalFunc_OBJ_CapaSet_C(
+            (tGameObjectMain*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao,
+            0x100,
+            0);
+    }
+    else
+    {
+        AI_EvalFunc_OBJ_CapaSet_C(
+            (tGameObjectMain*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao,
+            0,
+            0x100);
+        *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Speciale_gao_i_special_exit = 1;
+        *(uint32_t*)board_panel_bp_exec_select_button_enterprise__PJ_Camera_Derriere_gao_i_sim_click = 1;
+        v13 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_enterprise_board_panel_bp_exec_look_reset);
+        if (v13 != 1000)
+            return v13;
+    }
+    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+    return 4;
+}
+
+int board_panel_bp_INTF_exec_target()
+{
+    double v0; // st7
+    int v1; // eax
+    BOOL v2; // eax
+    double v3; // st7
+    char* v4; // eax
+    BOOL v5; // eax
+    float a4; // [esp+0h] [ebp-388h]
+    float a4a; // [esp+0h] [ebp-388h]
+    float angle; // [esp+4h] [ebp-384h]
+    float anglea; // [esp+4h] [ebp-384h]
+    float v11; // [esp+8h] [ebp-380h]
+    float v12; // [esp+Ch] [ebp-37Ch]
+    float v13; // [esp+10h] [ebp-378h]
+    float v14; // [esp+14h] [ebp-374h]
+    float v15; // [esp+18h] [ebp-370h]
+    tScriptStruct_GSTBoardPanel* v16; // [esp+1Ch] [ebp-36Ch]
+    tGameObjectMain* v17; // [esp+24h] [ebp-364h]
+    tGameObjectMain* v18; // [esp+28h] [ebp-360h]
+    tGameObjectMain* v19; // [esp+2Ch] [ebp-35Ch]
+    tGameObjectMain* v20; // [esp+38h] [ebp-350h]
+    tGameObjectMain* v21; // [esp+40h] [ebp-348h]
+    tGameObjectMain* v22; // [esp+48h] [ebp-340h]
+    tGameObjectMain* v23; // [esp+50h] [ebp-338h]
+    tGameObjectMain* v24; // [esp+58h] [ebp-330h]
+    tGameObjectMain* v25; // [esp+5Ch] [ebp-32Ch]
+    tGameObjectMain* v26; // [esp+60h] [ebp-328h]
+    tGameObjectMain* v27; // [esp+68h] [ebp-320h]
+    tGameObjectMain* v28; // [esp+70h] [ebp-318h]
+    tGameObjectMain* v29; // [esp+78h] [ebp-310h]
+    tGameObjectMain* v30; // [esp+80h] [ebp-308h]
+    tGameObjectMain* v31; // [esp+88h] [ebp-300h]
+    tGameObjectMain* v32; // [esp+94h] [ebp-2F4h]
+    tGameObjectMain* v33; // [esp+98h] [ebp-2F0h]
+    tGameObjectMain* v34; // [esp+A0h] [ebp-2E8h]
+    tGameObjectMain* v35; // [esp+A8h] [ebp-2E0h]
+    tGameObjectMain* v36; // [esp+B0h] [ebp-2D8h]
+    tGameObjectMain* v37; // [esp+B8h] [ebp-2D0h]
+    tGameObjectMain* v38; // [esp+C0h] [ebp-2C8h]
+    tGameObjectMain* v39; // [esp+C8h] [ebp-2C0h]
+    float v40; // [esp+CCh] [ebp-2BCh]
+    tGameObjectMain* v41; // [esp+D4h] [ebp-2B4h]
+    tGameObjectMain* v42; // [esp+DCh] [ebp-2ACh]
+    tGameObjectMain* v43; // [esp+E4h] [ebp-2A4h]
+    Vec3* v44; // [esp+E8h] [ebp-2A0h]
+    tGameObjectMain* v45; // [esp+FCh] [ebp-28Ch]
+    tGameObjectMain* v46; // [esp+104h] [ebp-284h]
+    tGameObjectMain* v47; // [esp+120h] [ebp-268h]
+    tGameObjectMain* v48; // [esp+124h] [ebp-264h]
+    tGameObjectMain* v49; // [esp+128h] [ebp-260h]
+    tGameObjectMain* v50; // [esp+12Ch] [ebp-25Ch]
+    tGameObjectMain* v51; // [esp+134h] [ebp-254h]
+    tGameObjectMain* v52; // [esp+140h] [ebp-248h]
+    double v53; // [esp+148h] [ebp-240h]
+    tGameObjectMain* v54; // [esp+154h] [ebp-234h]
+    float v55; // [esp+168h] [ebp-220h]
+    float v56; // [esp+16Ch] [ebp-21Ch]
+    float v57; // [esp+170h] [ebp-218h]
+    float v58; // [esp+174h] [ebp-214h]
+    float v59; // [esp+17Ch] [ebp-20Ch]
+    float v60; // [esp+180h] [ebp-208h]
+    float v61; // [esp+184h] [ebp-204h]
+    float v62; // [esp+188h] [ebp-200h]
+    Vec3* v63; // [esp+190h] [ebp-1F8h]
+    int v64; // [esp+194h] [ebp-1F4h]
+    Vec3 v65; // [esp+198h] [ebp-1F0h] BYREF
+    Vec3 v66; // [esp+1A4h] [ebp-1E4h] BYREF
+    int v67; // [esp+1B0h] [ebp-1D8h]
+    Vec3 v68; // [esp+1B4h] [ebp-1D4h] BYREF
+    int v69; // [esp+1C0h] [ebp-1C8h]
+    int v70; // [esp+1C4h] [ebp-1C4h]
+    Vec3 v71; // [esp+1C8h] [ebp-1C0h]
+    int v72; // [esp+1D4h] [ebp-1B4h]
+    float v73; // [esp+1D8h] [ebp-1B0h]
+    Vec3 v74; // [esp+1DCh] [ebp-1ACh] BYREF
+    BOOL v75; // [esp+1E8h] [ebp-1A0h]
+    float v76; // [esp+1ECh] [ebp-19Ch]
+    Vec3 v77; // [esp+1F0h] [ebp-198h] BYREF
+    Vec3 v78; // [esp+1FCh] [ebp-18Ch] BYREF
+    Vec3 v79; // [esp+208h] [ebp-180h] BYREF
+    Vec3 a3; // [esp+214h] [ebp-174h] BYREF
+    BOOL v81; // [esp+220h] [ebp-168h]
+    int v82; // [esp+224h] [ebp-164h]
+    float v83; // [esp+228h] [ebp-160h]
+    Vec3 v84; // [esp+22Ch] [ebp-15Ch] BYREF
+    float v85; // [esp+238h] [ebp-150h]
+    float v86; // [esp+240h] [ebp-148h]
+    Vec3 v87; // [esp+244h] [ebp-144h] BYREF
+    Vec3 v88; // [esp+250h] [ebp-138h] BYREF
+    BOOL v89; // [esp+25Ch] [ebp-12Ch]
+    Vec3 v90; // [esp+260h] [ebp-128h] BYREF
+    float v91; // [esp+26Ch] [ebp-11Ch]
+    float v92; // [esp+270h] [ebp-118h]
+    float v93; // [esp+274h] [ebp-114h]
+    float v94; // [esp+278h] [ebp-110h]
+    Vec3 v95; // [esp+27Ch] [ebp-10Ch] BYREF
+    int v96; // [esp+288h] [ebp-100h]
+    int v97; // [esp+28Ch] [ebp-FCh]
+    float v98; // [esp+290h] [ebp-F8h]
+    int v99; // [esp+294h] [ebp-F4h]
+    Vec3 v100; // [esp+2A4h] [ebp-E4h] BYREF
+    float v101; // [esp+2B0h] [ebp-D8h]
+    int v102; // [esp+2B4h] [ebp-D4h]
+    float v103; // [esp+2B8h] [ebp-D0h]
+    int v104; // [esp+2BCh] [ebp-CCh]
+    int v105; // [esp+2C0h] [ebp-C8h]
+    BOOL v106; // [esp+2C8h] [ebp-C0h]
+    float v107; // [esp+2D8h] [ebp-B0h]
+    float v108; // [esp+2DCh] [ebp-ACh]
+    Vec3 v109; // [esp+2E0h] [ebp-A8h] BYREF
+    Vec3 a2; // [esp+2ECh] [ebp-9Ch] BYREF
+    int v111; // [esp+2F8h] [ebp-90h]
+    int i; // [esp+2FCh] [ebp-8Ch]
+    float v113; // [esp+300h] [ebp-88h]
+    Vec3 v114; // [esp+304h] [ebp-84h] BYREF
+    Vec3 v115; // [esp+310h] [ebp-78h] BYREF
+    int v116; // [esp+320h] [ebp-68h]
+    BOOL v117; // [esp+324h] [ebp-64h]
+    tScriptStruct_GSTBoardPanel* v118; // [esp+328h] [ebp-60h]
+    unsigned int v119; // [esp+32Ch] [ebp-5Ch]
+    unsigned int v120; // [esp+330h] [ebp-58h]
+    float v121; // [esp+334h] [ebp-54h]
+    int v122; // [esp+338h] [ebp-50h]
+    int v123; // [esp+33Ch] [ebp-4Ch]
+    int v124; // [esp+340h] [ebp-48h]
+    float v125; // [esp+348h] [ebp-40h]
+    float v126; // [esp+34Ch] [ebp-3Ch]
+    float v127; // [esp+350h] [ebp-38h]
+    Vec3 a5; // [esp+354h] [ebp-34h] BYREF
+    Vec3 v129; // [esp+360h] [ebp-28h] BYREF
+    Vec3 v130; // [esp+36Ch] [ebp-1Ch] BYREF
+    float v131; // [esp+378h] [ebp-10h]
+    float v132; // [esp+37Ch] [ebp-Ch]
+    float v133; // [esp+380h] [ebp-8h]
+    float v134; // [esp+384h] [ebp-4h]
+
+    v84.x = 1.0;
+    v84.y = 0.0;
+    v84.z = 0.0;
+    v88.x = 1.0;
+    v88.y = 0.0;
+    v88.z = 0.0;
+    v71.x = 1.0;
+    v71.y = 0.0;
+    v71.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v16 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v16 = 0;
+    v118 = v16;
+    v96 = 0;
+    v104 = 0;
+    v119 = 0;
+    i = 0;
+    v133 = 0.0;
+    v105 = 0;
+    v120 = 0;
+    v134 = 0.0;
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_INTF_exec_target_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_i_reticule_on,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            2764);
+        board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao = AI_ul_RealResolveOneRefObject(0xD9008D60);
+        board_panel_bp_INTF_exec_target_INTF_lock_viseur_ext_gao = AI_ul_RealResolveOneRefObject(0xD9008D77);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_v_reticule_visee,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            2752);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_i_selected_target_nb,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            2748);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_o_locking_target,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            2576);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_o_targets,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            964);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_i_targets_nb,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            2572);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_v_targets_offset,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            1368);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_o_selected_target,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            2580);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_v_selected_target_offset,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            2624);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_target_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_INTF_exec_target_GST_Global_gao,
+            264);
+    }
+    if ((v118->i_current_mode != 32 || v118->i_look_enterprise_photo)
+        && (v118->i_current_mode != 64 || v118->i_look_aircraft_photo))
+    {
+        if (fabs(v118->v_pos_viseur.x) != 0.0)
+        {
+            v75 = 0;
+        }
+        else if (fabs(v118->v_pos_viseur.y) != 0.0)
+        {
+            v75 = 0;
+        }
+        else
+        {
+            v75 = fabs(v118->v_pos_viseur.z) == 0.0;
+        }
+        if (!v75)
+        {
+            v118->v_pos_viseur.x = 0.0;
+            v118->v_pos_viseur.y = 0.0;
+            v118->v_pos_viseur.z = 0.0;
+            v118->f_alfa_viseur = 0.0;
+            v118->i_INTF_lock_target_nb = 0;
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_ext_gao, 1);
+        }
+    }
+    else
+    {
+        v134 = TIM_gf_dt;
+        if (*(uint32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_i_reticule_on)
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, 0);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_ext_gao, 0);
+            v63 = &v118->v_pos_viseur;
+            v64 = board_panel_bp_INTF_exec_target_GST_Global_gao_v_reticule_visee;
+            v118->v_pos_viseur.x = *(float*)board_panel_bp_INTF_exec_target_GST_Global_gao_v_reticule_visee;
+            v63->y = *(float*)(v64 + 4);
+            v63->z = *(float*)(v64 + 8);
+            v116 = AI_EvalFunc_GetLocalAlpha_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, 0, 0);
+            v107 = TIM_gf_dt;
+            v62 = 4.0f * TIM_gf_dt;
+            if (v62 < 0.0)
+                v62 = 0.0;
+            if (v62 > 1.0)
+                v62 = 1.0;
+            v15 = (float)v116;
+            v73 = 128.0f * v62 + (1.0f - v62) * v15;
+            AI_EvalFunc_SetLocalAlpha_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao,
+                0,
+                0,
+                (unsigned int)v73);
+            v70 = AI_EvalFunc_GetLocalAlpha_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, 1u, 0);
+            v98 = TIM_gf_dt;
+            v61 = 4.0f * TIM_gf_dt;
+            if (v61 < 0.0)
+                v61 = 0.0;
+            if (v61 > 1.0)
+                v61 = 1.0;
+            v14 = (float)v70;
+            v126 = 128.0f * v61 + (1.0f - v61) * v14;
+            AI_EvalFunc_SetLocalAlpha_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao,
+                1u,
+                0,
+                (unsigned int)v126);
+            v83 = TIM_gf_dt;
+            v60 = 4.0f * TIM_gf_dt;
+            if (v60 < 0.0)
+                v60 = 0.0;
+            if (v60 > 1.0)
+                v60 = 1.0;
+            v108 = 1.0f * v60 + v118->f_color_blend_viseur * (1.0f - v60);
+            v118->f_color_blend_viseur = v108;
+            if (v118->f_alfa_viseur >= 0.050000001)
+            {
+                v127 = TIM_gf_dt;
+                v59 = 8.0f * TIM_gf_dt;
+                if (v59 < 0.0)
+                    v59 = 0.0;
+                if (v59 > 1.0)
+                    v59 = 1.0;
+                v85 = 0.0f * v59 + v118->f_alfa_viseur * (1.0f - v59);
+                v118->f_alfa_viseur = v85;
+            }
+            else
+            {
+                v118->f_alfa_viseur = 0.0;
+            }
+        }
+        else
+        {
+            if (fabs(v118->v_pos_viseur.x) != 0.0)
+            {
+                v106 = 0;
+            }
+            else if (fabs(v118->v_pos_viseur.y) != 0.0)
+            {
+                v106 = 0;
+            }
+            else
+            {
+                v106 = fabs(v118->v_pos_viseur.z) == 0.0;
+            }
+            if (!v106)
+            {
+                v76 = TIM_gf_dt;
+                v58 = 8.0f * TIM_gf_dt;
+                if (v58 < 0.0)
+                    v58 = 0.0;
+                if (v58 > 1.0)
+                    v58 = 1.0;
+                v132 = 1.0f * v58 + v118->f_alfa_viseur * (1.0f - v58);
+                v118->f_alfa_viseur = v132;
+                v102 = AI_EvalFunc_GetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao,
+                    0,
+                    0);
+                v86 = TIM_gf_dt;
+                v57 = 4.0f * TIM_gf_dt;
+                if (v57 < 0.0)
+                    v57 = 0.0;
+                if (v57 > 1.0)
+                    v57 = 1.0;
+                v13 = (float)v102;
+                v93 = 0.0f * v57 + (1.0f - v57) * v13;
+                AI_EvalFunc_SetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao,
+                    0,
+                    0,
+                    (unsigned int)v93);
+                v69 = AI_EvalFunc_GetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao,
+                    1u,
+                    0);
+                v94 = TIM_gf_dt;
+                v56 = 4.0f * TIM_gf_dt;
+                if (v56 < 0.0)
+                    v56 = 0.0;
+                if (v56 > 1.0)
+                    v56 = 1.0;
+                v12 = (float)v69;
+                v113 = 0.0f * v56 + (1.0f - v56) * v12;
+                AI_EvalFunc_SetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao,
+                    1u,
+                    0,
+                    (unsigned int)v113);
+                v103 = TIM_gf_dt;
+                v55 = 4.0f * TIM_gf_dt;
+                if (v55 < 0.0)
+                    v55 = 0.0;
+                if (v55 > 1.0)
+                    v55 = 1.0;
+                v131 = 0.0f * v55 + v118->f_color_blend_viseur * (1.0f - v55);
+                v118->f_color_blend_viseur = v131;
+                if (v118->f_alfa_viseur > 0.94999999)
+                {
+                    v118->v_pos_viseur.x = 0.0;
+                    v118->v_pos_viseur.y = 0.0;
+                    v118->v_pos_viseur.z = 0.0;
+                    v118->f_alfa_viseur = 1.0;
+                    v118->i_INTF_lock_target_nb = 0;
+                    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, 1);
+                    AI_EvalFunc_OBJ_FlagInvisibleSet_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_ext_gao,
+                        1);
+                }
+            }
+        }
+        if (fabs(v118->v_pos_viseur.x) != 0.0)
+        {
+            v89 = 0;
+        }
+        else if (fabs(v118->v_pos_viseur.y) != 0.0)
+        {
+            v89 = 0;
+        }
+        else
+        {
+            v89 = fabs(v118->v_pos_viseur.z) == 0.0;
+        }
+        if (!v89)
+        {
+            AI_EvalFunc_VIEW3dWorldTo2d_C(0, &v118->v_pos_viseur, &v87);
+            v71 = v87;
+            v88.y = -0.25f;
+            v88.x = -(v87.x - 0.5f) * 0.33950001f;
+            v88.z = -(v87.y - 0.5f) * 0.25549999f;
+            AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, &v88);
+            AI_EvalFunc_OBJ_SetChannelProg_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao,
+                0,
+                v118->f_alfa_viseur);
+            angle = 0.75f * v134;
+            AI_EvalFunc_OBJRotateLocalY_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, angle);
+            v111 = AI_EvalFunc_COLORBlend_C(0, 0x3C4A34, v118->f_color_blend_viseur);
+            AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, v111, 0);
+            v72 = AI_EvalFunc_COLORBlend_C(0, 0x3C4A34, v118->f_color_blend_viseur);
+            AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, v72, 1);
+        }
+        if (v118->i_selected_target_nb >= *(int32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_i_selected_target_nb)
+        {
+            v52 = (tGameObjectMain*)v118->ao_INTF_lock_target[0];
+            if (v52)
+            {
+                if ((unsigned int)v52 <= 2)
+                    v52 = AI_MainActor[(uint32_t)v52 - 1];
+                v1 = AI_EvalFunc_MATGetConstant_C(v52, 3u);
+            }
+            else
+            {
+                v1 = AI_EvalFunc_MATGetConstant_C(0, 3u);
+            }
+            v97 = v1;
+            v121 = TIM_gf_dt;
+            anglea = 8.0f * TIM_gf_dt;
+            v99 = AI_EvalFunc_COLORBlend_C(v1, 0x1E1E7E, anglea);
+            v51 = (tGameObjectMain*)v118->ao_INTF_lock_target[0];
+            if (v51)
+            {
+                if ((unsigned int)v51 <= 2)
+                    v51 = AI_MainActor[(uint32_t)v51 - 1];
+                AI_EvalFunc_MATSetConstant_C(v51, v99, 3);
+            }
+            else
+            {
+                AI_EvalFunc_MATSetConstant_C(0, v99, 3);
+            }
+        }
+        else
+        {
+            v54 = (tGameObjectMain*)v118->ao_INTF_lock_target[0];
+            if (v54)
+            {
+                if ((unsigned int)v54 <= 2)
+                    v54 = AI_MainActor[(uint32_t)v54 - 1];
+                AI_EvalFunc_MATSetConstant_C(v54, -1, 3);
+            }
+            else
+            {
+                AI_EvalFunc_MATSetConstant_C(0, -1, 3);
+            }
+            v104 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 1, 0x8000080);
+            v0 = (v118->v_pos_locking_target.x + v118->v_pos_locking_target.x - 1.0) * 10000.0 + MATH_gd_magicDoubleForRound;
+            v53 = v0;
+            v105 = (*(uint32_t *)&v53);
+            SND_SetPan(v104, (*(int32_t *)&v0), 0);
+            AI_EvalFunc_SNDUltraPlaySound_C(AI_gpst_CurrentGameObject, v104);
+        }
+        v50 = *(tGameObjectMain**)board_panel_bp_INTF_exec_target_GST_Global_gao_o_locking_target;
+        if (*(uint32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_o_locking_target)
+        {
+            if ((unsigned int)v50 <= 2)
+                v50 = AI_MainActor[(uint32_t)v50 - 1];
+            v49 = v50;
+        }
+        else
+        {
+            v49 = 0;
+        }
+        if (v49)
+        {
+            v119 = v118->ao_INTF_lock_target[*(uint32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_i_selected_target_nb];
+            v120 = *(uint32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_o_locking_target;
+            v48 = (tGameObjectMain*)v120;
+            if (v120)
+            {
+                if (v120 <= 2)
+                    v48 = AI_MainActor[v120 - 1];
+                v47 = v48;
+            }
+            else
+            {
+                v47 = 0;
+            }
+            v96 = AI_EvalFunc_ARRObjSearch_C(
+                (tGameObjectMain**)(board_panel_bp_INTF_exec_target_GST_Global_gao_o_targets + 4),
+                *(uint32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_i_targets_nb,
+                v47);
+            if (v96 < 0)
+            {
+                v122 = 0;
+                v123 = 0;
+                v124 = 0;
+                v84.x = 0.0;
+                v84.y = 0.0;
+                v84.z = 0.0;
+            }
+            else
+            {
+                v84 = *(Vec3*)AI_EvalVarArray_C3((char*)board_panel_bp_INTF_exec_target_GST_Global_gao_v_targets_offset, v96);
+            }
+            v46 = (tGameObjectMain*)v120;
+            if (v120)
+            {
+                if (v120 <= 2)
+                    v46 = AI_MainActor[v120 - 1];
+                AI_EvalFunc_OBJGetPos_C(v46, &v78);
+            }
+            else
+            {
+                AI_EvalFunc_OBJGetPos_C(0, &v78);
+            }
+            v45 = (tGameObjectMain*)v120;
+            if (v120)
+            {
+                if (v120 <= 2)
+                    v45 = AI_MainActor[v120 - 1];
+                AI_EvalFunc_MATHVecLocalToGlobal_C(v45, &v84, &v129);
+            }
+            else
+            {
+                AI_EvalFunc_MATHVecLocalToGlobal_C(0, &v84, &v129);
+            }
+            MATH_VecAddVec(&v109, &v78, &v129);
+            AI_EvalFunc_VIEW3dWorldTo2d_C(0, &v109, &v68);
+            v71 = v68;
+            v44 = &v118->v_pos_locking_target;
+            v118->v_pos_locking_target.x = v68.x;
+            v44->y = v71.y;
+            v44->z = v71.z;
+            v88.y = -0.25;
+            v88.x = -(v71.x - 0.5f) * 0.33950001f;
+            v88.z = -(v71.y - 0.5f) * 0.25549999f;
+            v43 = (tGameObjectMain*)v119;
+            if (v119)
+            {
+                if (v119 <= 2)
+                    v43 = AI_MainActor[v119 - 1];
+                AI_EvalFunc_OBJSetPos_C(v43, &v88);
+            }
+            else
+            {
+                AI_EvalFunc_OBJSetPos_C(0, &v88);
+            }
+            v42 = (tGameObjectMain*)v119;
+            if (v119)
+            {
+                if (v119 <= 2)
+                    v42 = AI_MainActor[v119 - 1];
+                v2 = AI_EvalFunc_OBJ_CapaTest_C(v42, 1);
+            }
+            else
+            {
+                v2 = AI_EvalFunc_OBJ_CapaTest_C(0, 1);
+            }
+            v81 = v2;
+            if (v2)
+            {
+                v41 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v41 = AI_MainActor[v119 - 1];
+                    v3 = AI_EvalFunc_OBJ_GetChannelProg_C(v41, 0);
+                }
+                else
+                {
+                    v3 = AI_EvalFunc_OBJ_GetChannelProg_C(0, 0);
+                }
+                v133 = (float)v3;
+                v125 = TIM_gf_dt;
+                v40 = TIM_gf_dt / 0.5f + v133;
+                if (v40 > 1.0)
+                    v11 = 1.0;
+                else
+                    v11 = TIM_gf_dt / 0.5f + v133;
+                v101 = v11;
+                v133 = v11;
+                v39 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v39 = AI_MainActor[v119 - 1];
+                    AI_EvalFunc_OBJ_SetChannelProg_C(v39, 0, v133);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_SetChannelProg_C(0, 0, v133);
+                }
+                v90.x = 0.0;
+                v90.y = 1.0;
+                v90.z = 0.0;
+                v38 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v38 = AI_MainActor[v119 - 1];
+                    AI_EvalFunc_OBJ_BankingGet_C(v38, &a2);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_BankingGet_C(0, &a2);
+                }
+                a3.x = 0.0;
+                a3.y = 0.0;
+                a3.z = -1.0;
+                v92 = TIM_gf_dt;
+                a4 = 4.0f * TIM_gf_dt;
+                AI_EvalFunc_MATHVecBlendRotate_C(&a2, &a3, a4, &a5);
+                v37 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v37 = AI_MainActor[v119 - 1];
+                    AI_EvalFunc_OBJ_BankingGeneralSet_C(v37, &v90, &a5);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_BankingGeneralSet_C(0, &v90, &a5);
+                }
+            }
+            v36 = (tGameObjectMain*)v119;
+            if (v119)
+            {
+                if (v119 <= 2)
+                    v36 = AI_MainActor[v119 - 1];
+                AI_EvalFunc_OBJ_CapaSet_C(v36, 1, 0);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_CapaSet_C(0, 1, 0);
+            }
+            v35 = (tGameObjectMain*)v119;
+            if (v119)
+            {
+                if (v119 <= 2)
+                    v35 = AI_MainActor[v119 - 1];
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(v35, 0);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 0);
+            }
+        }
+        v118->i_selected_target_nb = 0;
+        for (i = 0; i < 5; ++i)
+        {
+            v119 = v118->ao_INTF_lock_target[v118->i_selected_target_nb];
+            if (i >= *(int32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_i_selected_target_nb)
+            {
+                v26 = *(tGameObjectMain**)board_panel_bp_INTF_exec_target_GST_Global_gao_o_locking_target;
+                if (*(uint32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_o_locking_target)
+                {
+                    if ((unsigned int)v26 <= 2)
+                        v26 = AI_MainActor[(uint32_t)v26 - 1];
+                    v25 = v26;
+                }
+                else
+                {
+                    v25 = 0;
+                }
+                if (!v25 || i > * (int32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_i_selected_target_nb)
+                {
+                    v24 = (tGameObjectMain*)v119;
+                    if (v119)
+                    {
+                        if (v119 <= 2)
+                            v24 = AI_MainActor[v119 - 1];
+                        v5 = AI_EvalFunc_OBJ_CapaTest_C(v24, 1);
+                    }
+                    else
+                    {
+                        v5 = AI_EvalFunc_OBJ_CapaTest_C(0, 1);
+                    }
+                    v117 = v5;
+                    if (!v5)
+                    {
+                        v23 = (tGameObjectMain*)v119;
+                        if (v119)
+                        {
+                            if (v119 <= 2)
+                                v23 = AI_MainActor[v119 - 1];
+                            AI_EvalFunc_OBJ_SetChannelProg_C(v23, 0, 0.0);
+                        }
+                        else
+                        {
+                            AI_EvalFunc_OBJ_SetChannelProg_C(0, 0, 0.0);
+                        }
+                        v66.x = 0.0;
+                        v66.y = 1.0;
+                        v66.z = 0.0;
+                        v100.x = 0.0;
+                        v100.y = 0.0;
+                        v100.z = 1.0;
+                        v22 = (tGameObjectMain*)v119;
+                        if (v119)
+                        {
+                            if (v119 <= 2)
+                                v22 = AI_MainActor[v119 - 1];
+                            AI_EvalFunc_OBJ_BankingGeneralSet_C(v22, &v66, &v100);
+                        }
+                        else
+                        {
+                            AI_EvalFunc_OBJ_BankingGeneralSet_C(0, &v66, &v100);
+                        }
+                    }
+                    v21 = (tGameObjectMain*)v119;
+                    if (v119)
+                    {
+                        if (v119 <= 2)
+                            v21 = AI_MainActor[v119 - 1];
+                        AI_EvalFunc_OBJ_CapaSet_C(v21, 0, 1);
+                    }
+                    else
+                    {
+                        AI_EvalFunc_OBJ_CapaSet_C(0, 0, 1);
+                    }
+                    v20 = (tGameObjectMain*)v119;
+                    if (v119)
+                    {
+                        if (v119 <= 2)
+                            v20 = AI_MainActor[v119 - 1];
+                        AI_EvalFunc_OBJ_FlagInvisibleSet_C(v20, 1);
+                    }
+                    else
+                    {
+                        AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 1);
+                    }
+                }
+            }
+            else
+            {
+                v120 = *(uint32_t*)(board_panel_bp_INTF_exec_target_GST_Global_gao_o_selected_target + 4 * i + 4);
+                v34 = (tGameObjectMain*)v120;
+                if (v120)
+                {
+                    if (v120 <= 2)
+                        v34 = AI_MainActor[v120 - 1];
+                    AI_EvalFunc_OBJGetPos_C(v34, &v115);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJGetPos_C(0, &v115);
+                }
+                v33 = (tGameObjectMain*)v120;
+                if (v120)
+                {
+                    if (v120 <= 2)
+                        v33 = AI_MainActor[v120 - 1];
+                    v32 = v33;
+                }
+                else
+                {
+                    v32 = 0;
+                }
+                v4 = AI_EvalVarArray_C3((char*)board_panel_bp_INTF_exec_target_GST_Global_gao_v_selected_target_offset, i);
+                AI_EvalFunc_MATHVecLocalToGlobal_C(v32, (Vec3*)v4, &v74);
+                MATH_VecAddVec(&v114, &v115, &v74);
+                AI_EvalFunc_VIEW3dWorldTo2d_C(0, &v114, &v130);
+                v71 = v130;
+                v88.y = -0.25;
+                v88.x = -(v130.x - 0.5f) * 0.33950001f;
+                v88.z = -(v130.y - 0.5f) * 0.25549999f;
+                v31 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v31 = AI_MainActor[v119 - 1];
+                    AI_EvalFunc_OBJSetPos_C(v31, &v88);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJSetPos_C(0, &v88);
+                }
+                v30 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v30 = AI_MainActor[v119 - 1];
+                    AI_EvalFunc_OBJ_SetChannelProg_C(v30, 0, 1.0);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_SetChannelProg_C(0, 0, 1.0);
+                }
+                v79.x = 0.0;
+                v79.y = 1.0;
+                v79.z = 0.0;
+                v29 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v29 = AI_MainActor[v119 - 1];
+                    AI_EvalFunc_OBJ_BankingGet_C(v29, &v95);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_BankingGet_C(0, &v95);
+                }
+                v77.x = 0.0;
+                v77.y = 0.0;
+                v77.z = -1.0;
+                v91 = TIM_gf_dt;
+                a4a = 4.0f * TIM_gf_dt;
+                AI_EvalFunc_MATHVecBlendRotate_C(&v95, &v77, a4a, &v65);
+                v28 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v28 = AI_MainActor[v119 - 1];
+                    AI_EvalFunc_OBJ_BankingGeneralSet_C(v28, &v79, &v65);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_BankingGeneralSet_C(0, &v79, &v65);
+                }
+                v27 = (tGameObjectMain*)v119;
+                if (v119)
+                {
+                    if (v119 <= 2)
+                        v27 = AI_MainActor[v119 - 1];
+                    AI_EvalFunc_OBJ_FlagInvisibleSet_C(v27, 0);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 0);
+                }
+            }
+            ++v118->i_selected_target_nb;
+        }
+        v118->i_selected_target_nb = *(uint32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_i_selected_target_nb;
+    }
+    v19 = *(tGameObjectMain**)board_panel_bp_INTF_exec_target_GST_Global_gao_o_acteur_cine_actif;
+    if (*(uint32_t*)board_panel_bp_INTF_exec_target_GST_Global_gao_o_acteur_cine_actif)
+    {
+        if ((unsigned int)v19 <= 2)
+            v19 = AI_MainActor[(uint32_t)v19 - 1];
+        v18 = v19;
+    }
+    else
+    {
+        v18 = 0;
+    }
+    if (v18 || !v118->Gen_Show)
+    {
+        v118->f_alfa_viseur = 1.0;
+        AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, 0, 1.0);
+        v118->f_color_blend_viseur = 0.0;
+        v67 = AI_EvalFunc_COLORBlend_C(0, 0x3C4A34, 0.0);
+        AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, v67, 0);
+        v82 = AI_EvalFunc_COLORBlend_C(0, 0x3C4A34, 0.0);
+        AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_exec_target_INTF_lock_viseur_gao, v82, 1);
+        for (i = 0; i < 5; ++i)
+        {
+            v119 = v118->ao_INTF_lock_target[i];
+            v17 = (tGameObjectMain*)v119;
+            if (v119)
+            {
+                if (v119 <= 2)
+                    v17 = AI_MainActor[v119 - 1];
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(v17, 1);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 1);
+            }
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_INTF_update()
+{
+    int v1; // eax
+    float X; // [esp+4h] [ebp-310h]
+    float Xa; // [esp+4h] [ebp-310h]
+    float Xb; // [esp+4h] [ebp-310h]
+    float Xc; // [esp+4h] [ebp-310h]
+    float Xd; // [esp+4h] [ebp-310h]
+    float Xe; // [esp+4h] [ebp-310h]
+    float Xf; // [esp+4h] [ebp-310h]
+    float Xg; // [esp+4h] [ebp-310h]
+    float Xh; // [esp+4h] [ebp-310h]
+    float Xi; // [esp+4h] [ebp-310h]
+    float Xj; // [esp+4h] [ebp-310h]
+    float Xk; // [esp+4h] [ebp-310h]
+    float Xl; // [esp+4h] [ebp-310h]
+    float Xm; // [esp+4h] [ebp-310h]
+    float Xn; // [esp+4h] [ebp-310h]
+    float Xo; // [esp+4h] [ebp-310h]
+    float Xp; // [esp+4h] [ebp-310h]
+    float Xq; // [esp+4h] [ebp-310h]
+    float Xr; // [esp+4h] [ebp-310h]
+    float Xs; // [esp+4h] [ebp-310h]
+    float Xt; // [esp+4h] [ebp-310h]
+    float Xu; // [esp+4h] [ebp-310h]
+    float Xv; // [esp+4h] [ebp-310h]
+    float Xw; // [esp+4h] [ebp-310h]
+    float Xx; // [esp+4h] [ebp-310h]
+    float Xy; // [esp+4h] [ebp-310h]
+    float Xz; // [esp+4h] [ebp-310h]
+    float Xba; // [esp+4h] [ebp-310h]
+    float v30; // [esp+8h] [ebp-30Ch]
+    float v31; // [esp+10h] [ebp-304h]
+    float a3; // [esp+18h] [ebp-2FCh]
+    float v33; // [esp+20h] [ebp-2F4h]
+    float v34; // [esp+24h] [ebp-2F0h]
+    float v35; // [esp+28h] [ebp-2ECh]
+    float v36; // [esp+2Ch] [ebp-2E8h]
+    float v37; // [esp+30h] [ebp-2E4h]
+    float v38; // [esp+34h] [ebp-2E0h]
+    float v39; // [esp+38h] [ebp-2DCh]
+    float v40; // [esp+3Ch] [ebp-2D8h]
+    float v41; // [esp+40h] [ebp-2D4h]
+    float v42; // [esp+44h] [ebp-2D0h]
+    float v43; // [esp+48h] [ebp-2CCh]
+    float v44; // [esp+4Ch] [ebp-2C8h]
+    tScriptStruct_GSTBoardPanel* v45; // [esp+50h] [ebp-2C4h]
+    double v46; // [esp+54h] [ebp-2C0h]
+    float v47; // [esp+60h] [ebp-2B4h]
+    float v48; // [esp+70h] [ebp-2A4h]
+    tGameObjectMain* v49; // [esp+74h] [ebp-2A0h]
+    tGameObjectMain* v50; // [esp+78h] [ebp-29Ch]
+    float v51; // [esp+7Ch] [ebp-298h]
+    float v52; // [esp+80h] [ebp-294h]
+    float v53; // [esp+84h] [ebp-290h]
+    float v54; // [esp+88h] [ebp-28Ch]
+    float v55; // [esp+8Ch] [ebp-288h]
+    float v56; // [esp+90h] [ebp-284h]
+    float v57; // [esp+94h] [ebp-280h]
+    float v58; // [esp+98h] [ebp-27Ch]
+    float v59; // [esp+9Ch] [ebp-278h]
+    float v60; // [esp+A0h] [ebp-274h]
+    float v61; // [esp+C0h] [ebp-254h]
+    double v62; // [esp+C4h] [ebp-250h]
+    float v63; // [esp+D0h] [ebp-244h]
+    tGameObjectMain* v64; // [esp+D8h] [ebp-23Ch]
+    tGameObjectMain* v65; // [esp+DCh] [ebp-238h]
+    float v66; // [esp+E0h] [ebp-234h]
+    float v67; // [esp+E4h] [ebp-230h]
+    float v68; // [esp+E8h] [ebp-22Ch]
+    float v69; // [esp+ECh] [ebp-228h]
+    float v70; // [esp+F0h] [ebp-224h]
+    float v71; // [esp+108h] [ebp-20Ch]
+    double v72; // [esp+10Ch] [ebp-208h]
+    float v73; // [esp+114h] [ebp-200h]
+    float v74; // [esp+124h] [ebp-1F0h]
+    float v75; // [esp+128h] [ebp-1ECh]
+    float v76; // [esp+12Ch] [ebp-1E8h]
+    int v77; // [esp+144h] [ebp-1D0h]
+    float v78; // [esp+148h] [ebp-1CCh]
+    float v79; // [esp+154h] [ebp-1C0h]
+    float v80; // [esp+168h] [ebp-1ACh]
+    float v81; // [esp+168h] [ebp-1ACh]
+    int v82; // [esp+178h] [ebp-19Ch]
+    int v83; // [esp+180h] [ebp-194h]
+    float v84; // [esp+18Ch] [ebp-188h]
+    float v85; // [esp+1ACh] [ebp-168h]
+    float v86; // [esp+1B0h] [ebp-164h]
+    float v87; // [esp+1C4h] [ebp-150h]
+    float v88; // [esp+1D0h] [ebp-144h]
+    float v89; // [esp+1E0h] [ebp-134h]
+    unsigned int v90; // [esp+1F0h] [ebp-124h]
+    float v91; // [esp+1F4h] [ebp-120h]
+    float v92; // [esp+1FCh] [ebp-118h]
+    float v93; // [esp+204h] [ebp-110h]
+    int v94; // [esp+208h] [ebp-10Ch]
+    float v95; // [esp+210h] [ebp-104h]
+    float v96; // [esp+21Ch] [ebp-F8h]
+    float v97; // [esp+224h] [ebp-F0h]
+    int v98; // [esp+248h] [ebp-CCh]
+    int v99; // [esp+248h] [ebp-CCh]
+    int v100; // [esp+248h] [ebp-CCh]
+    float v101; // [esp+24Ch] [ebp-C8h]
+    int a2; // [esp+250h] [ebp-C4h]
+    BOOL v103; // [esp+254h] [ebp-C0h]
+    int v104; // [esp+258h] [ebp-BCh]
+    int a1; // [esp+284h] [ebp-90h]
+    int a1a; // [esp+284h] [ebp-90h]
+    float v107; // [esp+298h] [ebp-7Ch]
+    float v108; // [esp+2ACh] [ebp-68h]
+    float v109; // [esp+2B4h] [ebp-60h]
+    int v110; // [esp+2DCh] [ebp-38h]
+    float v111; // [esp+2E0h] [ebp-34h]
+    int v112; // [esp+2F0h] [ebp-24h]
+    float v113; // [esp+30Ch] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v45 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v45 = 0;
+    v90 = 0;
+    a2 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_INTF_update_INTF_jade_gao = AI_ul_RealResolveOneRefObject(0xD9008A70);
+        board_panel_bp_INTF_update_INTF_compagnon_gao = AI_ul_RealResolveOneRefObject(0xD9008A68);
+        board_panel_bp_INTF_update_INTF_jade_life_gao = AI_ul_RealResolveOneRefObject(0xD9008A6F);
+        board_panel_bp_INTF_update_INTF_compagnon_life_gao = AI_ul_RealResolveOneRefObject(0xD9008A71);
+        board_panel_bp_INTF_update_INTF_PerleHalo_gao = AI_ul_RealResolveOneRefObject(0x9E0067C0);
+        board_panel_bp_INTF_update_INTF_Perles_gao = AI_ul_RealResolveOneRefObject(0x9E0067BF);
+        board_panel_bp_INTF_update_INTF_Pognes_gao = AI_ul_RealResolveOneRefObject(0x9E0067BE);
+        board_panel_bp_INTF_update_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante,
+            (void*)board_panel_bp_INTF_update_univVars,
+            1148);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_INTF_update_univVars,
+            4488);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max,
+            (void*)board_panel_bp_INTF_update_univVars,
+            1096);
+        board_panel_bp_INTF_update__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update__PJ_Sally_gao_i_fight_on,
+            (void*)board_panel_bp_INTF_update__PJ_Sally_gao,
+            1216);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_INTF_update_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_INTF_update_univVars,
+            988);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update_univVars_Perso_ID_status,
+            (void*)board_panel_bp_INTF_update_univVars,
+            484);
+        board_panel_bp_INTF_update_GST_Board_panel_gao = AI_ul_RealResolveOneRefObject(0x6C00AD97u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update_univVars_i_course_ON,
+            (void*)board_panel_bp_INTF_update_univVars,
+            7664);
+        board_panel_bp_INTF_update__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_update_univVars_o_course_manager,
+            (void*)board_panel_bp_INTF_update_univVars,
+            7660);
+    }
+    if (v45->Gen_Show != v45->Gen_OldShow)
+    {
+        if (!v45->Gen_Show)
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_PerleHalo_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_Perles_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_Pognes_gao, 1);
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            return 1000;
+        }
+        v45->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_gao, 0);
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 0);
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 0);
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 0);
+        v45->Gen_OldShow = v45->Gen_Show;
+    }
+    v78 = TIM_gf_dt;
+    v80 = 0.0;
+    if (AI_EvalFunc_TIMEElapsed_C(v45->f_time_INTF_on_sort_de_linven, 0.5))
+    {
+        v73 = v78;
+        if (v78 < 0.0)
+            v73 = 0.0;
+        if (v73 > 1.0)
+            v73 = 1.0;
+        v45->f_life_main_color = 0.0f * v73 + v45->f_life_main_color * (1.0f - v73);
+        v71 = *(float*)AI_EvalVarArray_C2(
+            (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante,
+            v45->i_MainActor_ID)
+            / 20.0f;
+        v72 = v71 + MATH_gd_magicDoubleForRound;
+        if ((*(int32_t *)&v72) <= 2 && v45->Gen_Show)
+        {
+            v80 = 0.80000001f;
+            v45->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+            v45->f_life_main_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+            v45->f_life_main_delai_ondule_vie = 3.0f * TIM_gf_dt + v45->f_life_main_delai_ondule_vie;
+            if (v45->f_life_main_delai_ondule_vie > 6.283185f)
+            {
+                if (AI_EvalFunc_TIMEElapsed_C(v45->f_life_time_bip, 20.0f))
+                {
+                    if (++v45->i_life_min_nb_bip > 10)
+                    {
+                        v45->i_life_min_nb_bip = 0;
+                        v45->f_life_time_bip = TIM_gf_MainClock - TIM_gf_LockTime;
+                    }
+                }
+                v45->f_life_main_delai_ondule_vie = v45->f_life_main_delai_ondule_vie - 6.283185f;
+                AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 12, 2176);
+            }
+            v87 = cosf(v45->f_life_main_delai_ondule_vie);
+            v104 = AI_EvalFunc_COLORSetRGBA_C(
+                f2iMagic((v87 + 1.0f) * 105.0f),
+                0,
+                0,
+                255);
+            AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_gao, v104, 5);
+            if ((*(int32_t*)&v72) <= 1)
+            {
+                v84 = cosf(v45->f_life_main_delai_ondule_vie);
+                X = 0.75f * v84;
+                AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 2, X);
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 2, 1.0);
+            }
+        }
+        else
+        {
+            v112 = AI_EvalFunc_COLORSetRGBA_C((unsigned int)v45->f_life_main_color, 0, 0, 255);
+            AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_gao, v112, 5);
+        }
+        if (AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_INTF_update_univVars_Flag_speciaux_sauve + 4), 2789))
+            v45->f_life_main_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+        if (v45->i_MainActor_ID != v45->i_MainActor_ID_old)
+        {
+            v45->f_life_main_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+            v45->i_life_main_effect_finish = 1;
+            v45->f_life_main_life_blend_delai = -1.0;
+            v45->f_life_main = *(float*)AI_EvalVarArray_C2(
+                (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante,
+                v45->i_MainActor_ID)
+                / 20.0f;
+            v45->f_life_main_old = v45->f_life_main;
+            v45->f_life_main_life_blend = v45->f_life_main;
+            v45->f_life_main_max = *(float*)AI_EvalVarArray_C2(
+                (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max,
+                v45->i_MainActor_ID)
+                / 20.0f;
+            AI_EvalFunc_OBJ_SetChannelProg_C(
+                (tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao,
+                2,
+                v45->f_life_main);
+            AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 2, 0.0);
+        }
+        v44 = v45->f_life_main;
+        Xa = v44
+            - *(float*)AI_EvalVarArray_C2(
+                (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante,
+                v45->i_MainActor_ID)
+            / 20.0f;
+        if (!AI_EvalFunc_MATHFloatNullEps_C(Xa)
+            || (v43 = v45->f_life_main_max,
+                Xb = v43
+                - *(float*)AI_EvalVarArray_C2(
+                    (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max,
+                    v45->i_MainActor_ID)
+                / 20.0f,
+                !AI_EvalFunc_MATHFloatNullEps_C(Xb)))
+        {
+            v80 = 0.80000001f;
+            v45->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+            v70 = 4.0f * v78;
+            if (v70 < 0.0)
+                v70 = 0.0;
+            if (v70 > 1.0)
+                v70 = 1.0;
+            v45->f_life_main_alfa = 1.0f * v70 + v45->f_life_main_alfa * (1.0f - v70);
+            v45->f_life_main = *(float*)AI_EvalVarArray_C2(
+                (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante,
+                v45->i_MainActor_ID)
+                / 20.0f;
+            if (v45->f_life_main_old >= (double)v45->f_life_main)
+            {
+                if (v45->f_life_main_old > (double)v45->f_life_main)
+                {
+                    v45->f_life_main_time_cran_change = TIM_gf_MainClock - TIM_gf_LockTime;
+                    v45->f_life_main_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+                    v45->i_life_main_effect_finish = 0;
+                    v45->i_life_main = -1;
+                    v45->f_life_main_color = 210.0;
+                    v110 = AI_EvalFunc_COLORSetRGBA_C((unsigned int)v45->f_life_main_color, 0, 0, 255);
+                    AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_gao, v110, 5);
+                    Xd = v45->f_life_main_old + 1.0f;
+                    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 1, Xd);
+                    v45->f_life_main_life_blend = 0.0;
+                    v45->f_life_main_life_blend_delai = (v45->f_life_main_old - v45->f_life_main) * 0.25f;
+                }
+            }
+            else
+            {
+                v45->f_life_main_time_cran_change = TIM_gf_MainClock - TIM_gf_LockTime;
+                v45->f_life_main_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+                v45->i_life_main_effect_finish = 0;
+                v45->i_life_main = 1;
+                AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 11, 2176);
+                Xc = v45->f_life_main_old + 2.0f;
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 1, Xc);
+                v45->f_life_main_life_blend = -1.0;
+                v45->f_life_main_life_blend_delai = (v45->f_life_main - v45->f_life_main_old) * 0.25f;
+            }
+            v42 = v45->f_life_main_max;
+            if (*(float*)AI_EvalVarArray_C2(
+                (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max,
+                v45->i_MainActor_ID)
+                / 20.0 > v42)
+            {
+                a1 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 11, 2176);
+                v41 = (float)(int)SND_l_GetFreq(a1);
+                SND_SetFreq(a1, (unsigned int)(v41 * 0.69999999));
+                v95 = SND_f_GetVol(a1);
+                Xe = v95 + v95;
+                SND_SetVol(a1, Xe);
+                v45->f_time_life_max_main = TIM_gf_MainClock - TIM_gf_LockTime;
+            }
+            v45->f_life_main_max = *(float*)AI_EvalVarArray_C2(
+                (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max,
+                v45->i_MainActor_ID)
+                / 20.0f;
+            Xf = v45->f_life_main_max - 1.0f;
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 0, Xf);
+        }
+        if (AI_EvalFunc_TIMEElapsed_C(v45->f_life_main_time_cran_change, v45->f_life_main_life_blend_delai)
+            && v45->i_life_main_effect_finish)
+        {
+            if (*(uint32_t*)board_panel_bp_INTF_update__PJ_Sally_gao_i_fight_on)
+                v45->f_life_main_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+            v45->f_life_main_old = v45->f_life_main;
+            v66 = 4.0f * v78;
+            if (v66 < 0.0)
+                v66 = 0.0;
+            if (v66 > 1.0)
+                v66 = 1.0;
+            v45->f_life_main_alfa = 1.0f * v66 + v45->f_life_main_alfa * (1.0f - v66);
+            Xj = v45->f_life_main + 1.0f;
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 1, Xj);
+            Xk = v45->f_life_main_max - 1.0f;
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 0, Xk);
+        }
+        else
+        {
+            v69 = 4.0f * v78;
+            if (v69 < 0.0)
+                v69 = 0.0;
+            if (v69 > 1.0)
+                v69 = 1.0;
+            v45->f_life_main_alfa = 1.0f * v69 + v45->f_life_main_alfa * (1.0f - v69);
+            v45->f_life_main_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+            if (v45->i_life_main == 1)
+            {
+                if (v45->i_life_main_effect_finish)
+                {
+                    AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 11, 2176);
+                    v79 = TIM_gf_MainClock - TIM_gf_LockTime;
+                    v45->f_life_main_time_cran_on = v79;
+                    v45->f_life_main_old = v45->f_life_main_old + 1.0f;
+                    Xg = v45->f_life_main_old + 2.0f;
+                    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 1, Xg);
+                }
+                v86 = TIM_gf_MainClock - TIM_gf_LockTime;
+                v68 = (v86 - v45->f_life_main_time_cran_on) * 4.712389f / 0.25f;
+                if (v68 > 4.712389f)
+                    v40 = 4.712389f;
+                else
+                    v40 = (v86 - v45->f_life_main_time_cran_on) * 4.712389f / 0.25f;
+                v111 = cosf(v40);
+                v45->f_life_main_life_blend = -v111;
+                AI_EvalFunc_OBJ_SetChannelFactor_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao,
+                    2,
+                    v45->f_life_main_life_blend);
+                Xh = v45->f_life_main_old + 1.0f;
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 2, Xh);
+                v45->i_life_main_effect_finish = 0;
+                if (v40 == 4.712389f)
+                    v45->i_life_main_effect_finish = 1;
+            }
+            else
+            {
+                if (v45->i_life_main_effect_finish)
+                {
+                    v45->f_life_main_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+                    v45->f_life_main_old = v45->f_life_main_old - 1.0f;
+                    Xi = v45->f_life_main_old + 1.0f;
+                    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 1, Xi);
+                }
+                v89 = TIM_gf_MainClock - TIM_gf_LockTime;
+                v67 = (v89 - v45->f_life_main_time_cran_on) * 4.712389f / 0.25f;
+                if (v67 > 4.712389f)
+                    v39 = 4.712389f;
+                else
+                    v39 = (v89 - v45->f_life_main_time_cran_on) * 4.712389f / 0.25f;
+                v45->f_life_main_life_blend = sinf(v39);
+                AI_EvalFunc_OBJ_SetChannelFactor_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao,
+                    2,
+                    v45->f_life_main_life_blend);
+                AI_EvalFunc_OBJ_SetChannelProg_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao,
+                    2,
+                    v45->f_life_main_old);
+                v45->i_life_main_effect_finish = 0;
+                if (v39 == 4.712389f)
+                {
+                    v45->i_life_main_effect_finish = 1;
+                    AI_EvalFunc_OBJ_SetChannelProg_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao,
+                        1,
+                        v45->f_life_main_old);
+                }
+            }
+        }
+        a2 = *(uint32_t*)board_panel_bp_INTF_update_univVars_Perso_ID_Companion;
+        if (*(uint32_t*)board_panel_bp_INTF_update_univVars_Perso_ID_Companion != -1)
+            v90 = *(uint32_t*)(board_panel_bp_INTF_update_univVars_Perso_ID_actor + 4 * a2 + 4);
+        if (a2 == -1 || *(uint32_t*)(board_panel_bp_INTF_update_univVars_Perso_ID_status + 4 * a2 + 4) == 3)
+            goto LABEL_214;
+        v65 = (tGameObjectMain*)v90;
+        if (v90)
+        {
+            if (v90 <= 2)
+                v65 = AI_MainActor[v90 - 1];
+            v64 = v65;
+        }
+        else
+        {
+            v64 = 0;
+        }
+        if ((v64->flags2 & 1) == 0)
+        {
+        LABEL_214:
+            if (v45->Gen_Show)
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 1);
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 1);
+            }
+        }
+        else
+        {
+            if (a2 + 1500 <= 0)
+                v103 = 0;
+            else
+                v103 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_INTF_update_univVars_Flag_speciaux_sauve + 4), a2 + 1500);
+            if (v103)
+            {
+                if (v45->Gen_Show)
+                {
+                    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 0);
+                    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 0);
+                }
+            }
+            else
+            {
+                a2 = -1;
+            }
+        }
+        if (a2 == -1 || a2 >= 5)
+        {
+            v45->f_life_comp_old = v45->f_life_comp;
+            v55 = 2.0f * v78;
+            if (v55 < 0.0)
+                v55 = 0.0;
+            if (v55 > 1.0)
+                v55 = 1.0;
+            v45->f_life_comp_alfa = 0.0f * v55 + v45->f_life_comp_alfa * (1.0f - v55);
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 1, 1.0);
+            v31 = (float)(a2 + 1);
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 0, v31);
+            if (v45->f_life_comp_alfa < 50.0f)
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 1);
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 1);
+            }
+        }
+        else
+        {
+            v63 = v78;
+            if (v78 < 0.0)
+                v63 = 0.0;
+            if (v63 > 1.0)
+                v63 = 1.0;
+            v45->f_life_comp_color = 0.0f * v63 + v45->f_life_comp_color * (1.0f - v63);
+            v61 = *(float*)AI_EvalVarArray_C2((char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante, a2)
+                / 20.0f;
+            v62 = v61 + MATH_gd_magicDoubleForRound;
+            if ((*(int32_t*)&v62) <= 1 && v45->Gen_Show)
+            {
+                v80 = 0.80000001f;
+                v45->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+                v45->f_life_comp_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+                v45->f_life_comp_delai_ondule_vie = 3.0f * TIM_gf_dt + v45->f_life_comp_delai_ondule_vie;
+                if (v45->f_life_comp_delai_ondule_vie > 6.283185f)
+                {
+                    if (AI_EvalFunc_TIMEElapsed_C(v45->f_life_time_bip2, 20.0f))
+                    {
+                        if (++v45->i_life_min_nb_bip2 > 10)
+                        {
+                            v45->i_life_min_nb_bip2 = 0;
+                            v45->f_life_time_bip2 = TIM_gf_MainClock - TIM_gf_LockTime;
+                        }
+                    }
+                    AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 12, 2176);
+                    v45->f_life_comp_delai_ondule_vie = v45->f_life_comp_delai_ondule_vie - 6.283185f;
+                }
+                v108 = cosf(v45->f_life_comp_delai_ondule_vie);
+                v77 = AI_EvalFunc_COLORSetRGBA_C(
+                    f2iMagic((v108 + 1.0f) * 127.0f),
+                    0,
+                    0,
+                    255);
+                AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, v77, 6);
+                v101 = cosf(v45->f_life_comp_delai_ondule_vie);
+                Xl = 0.75f * v101;
+                AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 2, Xl);
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 2, 16.0);
+            }
+            else
+            {
+                v83 = AI_EvalFunc_COLORSetRGBA_C((unsigned int)v45->f_life_comp_color, 0, 0, 255);
+                AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, v83, 6);
+            }
+            if (AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_INTF_update_univVars_Flag_speciaux_sauve + 4), 2083)
+                && !AI_EvalFunc_OBJ_CapaTest_C((tGameObjectMain*)board_panel_bp_INTF_update_GST_Board_panel_gao, 0x100))
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 1);
+                v80 = 0.80000001f;
+                v45->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+                v45->f_life_comp_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+                v45->f_life_comp_delai_ondule_vie = 3.0f * TIM_gf_dt + v45->f_life_comp_delai_ondule_vie;
+                if (v45->f_life_comp_delai_ondule_vie > 6.283185f)
+                {
+                    AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 12, 2176);
+                    v45->f_life_comp_delai_ondule_vie = v45->f_life_comp_delai_ondule_vie - 6.283185f;
+                }
+                v74 = cosf(v45->f_life_comp_delai_ondule_vie);
+                v94 = AI_EvalFunc_COLORSetRGBA_C(
+                    f2iMagic((v74 + 1.0f) * 127.0f),
+                    0,
+                    0,
+                    255);
+                AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, v94, 6);
+                v76 = cosf(v45->f_life_comp_delai_ondule_vie);
+                Xm = 0.75f * v76;
+                AI_EvalFunc_OBJ_SetChannelFactor_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 2, Xm);
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 2, 16.0);
+            }
+            if (a2 != v45->i_CompActor_ID)
+            {
+                v45->f_life_comp_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+                v45->f_life_comp = *(float*)AI_EvalVarArray_C2(
+                    (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante,
+                    a2)
+                    / 20.0f;
+                v45->f_life_comp_old = v45->f_life_comp;
+                v45->f_life_comp_max = *(float*)AI_EvalVarArray_C2(
+                    (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max,
+                    a2)
+                    / 20.0f;
+                Xn = 33.0f - v45->f_life_comp;
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 2, Xn);
+                AI_EvalFunc_OBJ_SetChannelFactor_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao,
+                    2,
+                    0.0);
+            }
+            v38 = v45->f_life_comp;
+            Xo = v38
+                - *(float*)AI_EvalVarArray_C2((char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante, a2)
+                / 20.0f;
+            if (!AI_EvalFunc_MATHFloatNullEps_C(Xo)
+                || (v37 = v45->f_life_comp_max,
+                    Xp = v37
+                    - *(float*)AI_EvalVarArray_C2((char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max, a2)
+                    / 20.0f,
+                    !AI_EvalFunc_MATHFloatNullEps_C(Xp)))
+            {
+                v80 = 0.80000001f;
+                v45->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+                v60 = 4.0f * v78;
+                if (v60 < 0.0)
+                    v60 = 0.0;
+                if (v60 > 1.0)
+                    v60 = 1.0;
+                v45->f_life_comp_alfa = 1.0f * v60 + v45->f_life_comp_alfa * (1.0f - v60);
+                v45->f_life_comp = *(float*)AI_EvalVarArray_C2(
+                    (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_courante,
+                    a2)
+                    / 20.0f;
+                if (v45->f_life_comp_old >= (double)v45->f_life_comp)
+                {
+                    if (v45->f_life_comp_old > (double)v45->f_life_comp)
+                    {
+                        v45->f_life_comp_color = 210.0;
+                        v45->i_life_comp = -1;
+                        v45->f_life_comp_time_cran_change = TIM_gf_MainClock - TIM_gf_LockTime;
+                        v45->f_life_comp_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+                        v82 = AI_EvalFunc_COLORSetRGBA_C((unsigned int)v45->f_life_comp_color, 0, 0, 255);
+                        AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, v82, 6);
+                        Xr = v45->f_life_comp_old + 1.0f;
+                        AI_EvalFunc_OBJ_SetChannelProg_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao,
+                            1,
+                            Xr);
+                        v45->f_life_comp_life_blend = 0.0;
+                        v45->f_life_comp_life_blend_delai = (v45->f_life_comp_old - v45->f_life_comp) * 0.25f;
+                        v45->i_life_comp_effect_finish = 0;
+                    }
+                }
+                else
+                {
+                    v45->i_life_comp = 1;
+                    v45->f_life_comp_time_cran_change = TIM_gf_MainClock - TIM_gf_LockTime;
+                    v45->f_life_comp_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+                    AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 11, 2176);
+                    Xq = v45->f_life_comp_old + 2.0f;
+                    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 1, Xq);
+                    v45->f_life_comp_life_blend = -1.0;
+                    v45->f_life_comp_life_blend_delai = (v45->f_life_comp - v45->f_life_comp_old) * 0.25f;
+                    v45->i_life_comp_effect_finish = 0;
+                }
+                v36 = v45->f_life_comp_max;
+                if (*(float*)AI_EvalVarArray_C2((char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max, a2) / 20.0 > v36)
+                {
+                    a1a = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 11, 2176);
+                    v35 = (float)(int)SND_l_GetFreq(a1a);
+                    SND_SetFreq(a1a, (unsigned int)(v35 * 0.69999999));
+                    v113 = SND_f_GetVol(a1a);
+                    Xs = v113 + v113;
+                    SND_SetVol(a1a, Xs);
+                }
+                v45->f_life_comp_max = *(float*)AI_EvalVarArray_C2(
+                    (char*)board_panel_bp_INTF_update_univVars_Perso_ID_Energie_max,
+                    a2)
+                    / 20.0f;
+                Xt = v45->f_life_comp_max - 1.0f;
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 0, Xt);
+            }
+            if (AI_EvalFunc_TIMEElapsed_C(v45->f_life_comp_time_cran_change, v45->f_life_comp_life_blend_delai)
+                && v45->i_life_comp_effect_finish)
+            {
+                if (*(uint32_t*)board_panel_bp_INTF_update__PJ_Sally_gao_i_fight_on)
+                    v45->f_life_comp_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+                v45->f_life_comp_old = v45->f_life_comp;
+                v56 = 4.0f * v78;
+                if (v56 < 0.0)
+                    v56 = 0.0;
+                if (v56 > 1.0)
+                    v56 = 1.0;
+                v45->f_life_comp_alfa = 1.0f * v56 + v45->f_life_comp_alfa * (1.0f - v56);
+                Xy = v45->f_life_comp + 1.0f;
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 1, Xy);
+                Xz = v45->f_life_comp_max - 1.0f;
+                AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 0, Xz);
+            }
+            else
+            {
+                v59 = 4.0f * v78;
+                if (v59 < 0.0)
+                    v59 = 0.0;
+                if (v59 > 1.0)
+                    v59 = 1.0;
+                v45->f_life_comp_alfa = 1.0f * v59 + v45->f_life_comp_alfa * (1.0f - v59);
+                v45->f_life_comp_delai_vis = TIM_gf_MainClock - TIM_gf_LockTime;
+                if (v45->i_life_comp == 1)
+                {
+                    if (v45->i_life_comp_effect_finish)
+                    {
+                        v45->f_life_comp_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+                        AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 11, 2176);
+                        v45->f_life_comp_old = v45->f_life_comp_old + 1.0f;
+                        Xu = v45->f_life_comp_old + 2.0f;
+                        AI_EvalFunc_OBJ_SetChannelProg_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao,
+                            1,
+                            Xu);
+                    }
+                    v88 = TIM_gf_MainClock - TIM_gf_LockTime;
+                    v58 = (v88 - v45->f_life_comp_time_cran_on) * 4.712389f / 0.25f;
+                    if (v58 > 4.712389f)
+                        v34 = 4.712389f;
+                    else
+                        v34 = (v88 - v45->f_life_comp_time_cran_on) * 4.712389f / 0.25f;
+                    v75 = cosf(v34);
+                    v45->f_life_comp_life_blend = -v75;
+                    AI_EvalFunc_OBJ_SetChannelFactor_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao,
+                        2,
+                        v45->f_life_comp_life_blend);
+                    Xv = 32.0f - v45->f_life_comp_old;
+                    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 2, Xv);
+                    v45->i_life_comp_effect_finish = 0;
+                    if (v34 == 4.712389f)
+                        v45->i_life_comp_effect_finish = 1;
+                }
+                else
+                {
+                    if (v45->i_life_comp_effect_finish)
+                    {
+                        v45->f_life_comp_time_cran_on = TIM_gf_MainClock - TIM_gf_LockTime;
+                        v45->f_life_comp_old = v45->f_life_comp_old - 1.0f;
+                        Xw = v45->f_life_comp_old + 1.0f;
+                        AI_EvalFunc_OBJ_SetChannelProg_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao,
+                            1,
+                            Xw);
+                    }
+                    v97 = TIM_gf_MainClock - TIM_gf_LockTime;
+                    v57 = (v97 - v45->f_life_comp_time_cran_on) * 4.712389f / 0.25f;
+                    if (v57 > 4.712389f)
+                        v33 = 4.712389f;
+                    else
+                        v33 = (v97 - v45->f_life_comp_time_cran_on) * 4.712389f / 0.25f;
+                    v45->f_life_comp_life_blend = sinf(v33);
+                    AI_EvalFunc_OBJ_SetChannelFactor_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao,
+                        2,
+                        v45->f_life_comp_life_blend);
+                    Xx = 33.0f - v45->f_life_comp_old;
+                    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 2, Xx);
+                    v45->i_life_comp_effect_finish = 0;
+                    if (v33 == 4.712389f)
+                    {
+                        v45->i_life_comp_effect_finish = 1;
+                        AI_EvalFunc_OBJ_SetChannelProg_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao,
+                            1,
+                            v45->f_life_comp_old);
+                    }
+                }
+            }
+            a3 = (float)(a2 + 1);
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 0, a3);
+        }
+        Xba = 2.0f - v45->f_life_comp_alfa;
+        AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 3, Xba);
+        v30 = (float)(v45->i_MainActor_ID - 7);
+        AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_gao, 0, v30);
+    }
+    if (*(uint32_t*)board_panel_bp_INTF_update__PJ_Sally_gao_i_fight_on || v45->i_force_interface)
+    {
+        v45->i_force_interface = 0;
+        v80 = 0.80000001f;
+        v45->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+    }
+    if ((v45->i_MainActor_ID == 10 || v45->i_MainActor_ID == 9) && v45->Gen_Show)
+    {
+        if (AI_EvalFunc_MATHFloatNullEps_C(v80) && !AI_EvalFunc_TIMEElapsed_C(v45->f_INTF_time_08, 5.0))
+            v80 = 0.80000001f;
+        v54 = 2.0f * TIM_gf_dt;
+        if (v54 < 0.0)
+            v54 = 0.0;
+        if (v54 > 1.0)
+            v54 = 1.0;
+        v91 = v80 * v54 + v45->f_INTF_alfa * (1.0f - v54);
+        v45->f_INTF_alfa = v91;
+        if (!*(uint32_t*)board_panel_bp_INTF_update_univVars_i_course_ON)
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 0);
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 0, 6.0);
+            AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_gao, 0, 6);
+        }
+        v98 = AI_EvalFunc_COLORBlend_C(0, 0x90CE58, v45->f_INTF_alfa);
+        AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, v98, 4);
+        AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, v98, 12);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 3u, 0, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 4u, 0, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 11u, 0, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 12u, 0, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 3u, 1, 1);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 4u, 1, 1);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 11u, 1, 1);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 12u, 1, 1);
+    }
+    else if (v45->Gen_Show)
+    {
+        if (AI_EvalFunc_OBJ_CapaTest_C((tGameObjectMain*)board_panel_bp_INTF_update__PJ_Camera_Speciale_gao, 128))
+        {
+            v45->f_INTF_alfa = 0.80000001f;
+            v107 = AI_EvalFunc_OBJ_GetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 3);
+            v53 = 2.0f * v78;
+            if (v53 < 0.0)
+                v53 = 0.0;
+            if (v53 > 1.0)
+                v53 = 1.0;
+            v92 = 2.0f * v53 + (1.0f - v53) * v107;
+            v81 = v92;
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 3, v92);
+        }
+        else
+        {
+            if (AI_EvalFunc_MATHFloatNullEps_C(v80) && !AI_EvalFunc_TIMEElapsed_C(v45->f_INTF_time_08, 5.0))
+                v80 = 0.80000001f;
+            v52 = 2.0f * v78;
+            if (v52 < 0.0)
+                v52 = 0.0;
+            if (v52 > 1.0)
+                v52 = 1.0;
+            v45->f_INTF_alfa = v80 * v52 + v45->f_INTF_alfa * (1.0f - v52);
+            v93 = AI_EvalFunc_OBJ_GetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 3);
+            v51 = 7.0f * v78;
+            if (v51 < 0.0)
+                v51 = 0.0;
+            if (v51 > 1.0)
+                v51 = 1.0;
+            v85 = 1.0f * v51 + (1.0f - v51) * v93;
+            v81 = v85;
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 3, v85);
+        }
+        v50 = *(tGameObjectMain**)board_panel_bp_INTF_update_univVars_o_course_manager;
+        if (*(uint32_t*)board_panel_bp_INTF_update_univVars_o_course_manager)
+        {
+            if ((unsigned int)v50 <= 2)
+                v50 = AI_MainActor[(uint32_t)v50 - 1];
+            v49 = v50;
+        }
+        else
+        {
+            v49 = 0;
+        }
+        if (!v49)
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_compagnon_life_gao, 3, v81);
+        v99 = AI_EvalFunc_COLORBlend_C(0, 0x56EBFF, v45->f_INTF_alfa);
+        AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, v99, 4);
+        AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, v99, 12);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 3u, 1, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 4u, 1, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 11u, 1, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 12u, 1, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 3u, 0, 1);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 4u, 0, 1);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 11u, 0, 1);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 12u, 0, 1);
+    }
+    v48 = v45->f_INTF_alfa;
+    if (v48 < 0.0)
+        v48 = 0.0;
+    if (v48 > 1.0)
+        v48 = 1.0;
+    v109 = 140.0f * v48 + (1.0f - v48) * 0.0f;
+    AI_EvalFunc_SetLocalAlpha_C(
+        (tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao,
+        0,
+        0,
+        f2iMagic(v109));
+    v47 = v45->f_INTF_alfa;
+    if (v47 < 0.0)
+        v47 = 0.0;
+    if (v47 > 1.0)
+        v47 = 1.0;
+    v96 = 255.0f * v47 + (1.0f - v47) * 0.0f;
+    v46 = v96 + MATH_gd_magicDoubleForRound;
+    AI_EvalFunc_SetLocalAlpha_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 1u, 0, (*(int32_t*)&v46));
+    AI_EvalFunc_SetLocalAlpha_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, 7u, 0, (*(int32_t*)&v46));
+    v1 = AI_EvalFunc_COLORBlend_C(0, 0xFFFFFF, v45->f_INTF_alfa);
+    AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, v1, 2);
+    v100 = AI_EvalFunc_COLORBlend_C(0, 0x375D68, v45->f_INTF_alfa);
+    AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, v100, 3);
+    AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_update_INTF_jade_life_gao, v100, 11);
+    v45->i_MainActor_ID_old = v45->i_MainActor_ID;
+    v45->i_CompActor_ID = a2;
+    return 1000;
+}
+
+int board_panel_bp_exec_button_valide_nextfastitem()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-54h]
+    tGameObjectMain* v2; // [esp+4h] [ebp-50h]
+    tGameObjectMain* v3; // [esp+8h] [ebp-4Ch]
+    int v4; // [esp+20h] [ebp-34h]
+    int v5; // [esp+24h] [ebp-30h]
+    int v6; // [esp+28h] [ebp-2Ch]
+    float v7; // [esp+30h] [ebp-24h]
+    int a3; // [esp+34h] [ebp-20h]
+    int v9; // [esp+38h] [ebp-1Ch]
+    int v10; // [esp+38h] [ebp-1Ch]
+    int v11; // [esp+3Ch] [ebp-18h]
+    int v12; // [esp+3Ch] [ebp-18h]
+    int v13; // [esp+40h] [ebp-14h]
+    int v14; // [esp+40h] [ebp-14h]
+    int v15; // [esp+4Ch] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_button_valide_nextfastitem_GST_Fight_Manager_gao = AI_ul_RealResolveOneRefObject(0x9E002FFA);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_nextfastitem_GST_Fight_Manager_gao_i_Evil_NbActor,
+            (void*)board_panel_bp_exec_button_valide_nextfastitem_GST_Fight_Manager_gao,
+            2624);
+        board_panel_bp_exec_button_valide_nextfastitem__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        board_panel_bp_exec_button_valide_nextfastitem_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_inventaire,
+            (void*)board_panel_bp_exec_button_valide_nextfastitem_univVars,
+            1480);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_status,
+            (void*)board_panel_bp_exec_button_valide_nextfastitem_univVars,
+            3896);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_nextfastitem_univVars_Perso_ID_equipement,
+            (void*)board_panel_bp_exec_button_valide_nextfastitem_univVars,
+            40);
+    }
+    if (v1->i_swap_button_sens)
+    {
+        v4 = 1;
+        v1->i_objet_inventaire_prec = v1->i_objet_inventaire;
+        v1->i_objet_inventaire_suiv = -1;
+    }
+    else
+    {
+        v4 = -1;
+        v1->i_objet_inventaire_prec = -1;
+        v1->i_objet_inventaire_suiv = v1->i_objet_inventaire;
+    }
+    v15 = 0;
+    a3 = AI_EvalFunc_MTHModulo_C(v1->i_objet_inventaire + v4 + 50, 50);
+    if (!*(uint32_t*)board_panel_bp_exec_button_valide_nextfastitem_GST_Fight_Manager_gao_i_Evil_NbActor)
+        goto LABEL_16;
+    v3 = *AI_MainActor;
+    if (*AI_MainActor)
+    {
+        if ((unsigned int)v3 <= 2)
+            v3 = AI_MainActor[(uint32_t)v3 - 1];
+        v2 = v3;
+    }
+    else
+    {
+        v2 = 0;
+    }
+    if (v2 == (tGameObjectMain*)board_panel_bp_exec_button_valide_nextfastitem__PJ_Sally_gao)
+        v5 = 0x10000000;
+    else
+        LABEL_16:
+    v5 = 0x200000;
+    while (v15 < 50)
+    {
+        if (*(uint32_t*)AI_EvalVarArray2_C(
+            1,
+            (char*)board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_inventaire,
+            a3,
+            v1->i_MainActor_ID))
+        {
+            if ((v6 = *(uint32_t*)(board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_status + 4 * a3 + 4),
+                v1->i_current_mode != 2)
+                && (v5 & v6) != 0
+                && (v6 & 0x7000000) == 0
+                || v1->i_current_mode == 2 && a3 == 10)
+            {
+                v7 = TIM_gf_MainClock - TIM_gf_LockTime;
+                v1->f_time_init = v7 + 9.0f;
+                v1->i_objet_inventaire = a3;
+                if (v1->i_current_mode != 2)
+                    *(uint32_t*)AI_EvalVarArray2_C(
+                        1,
+                        (char*)board_panel_bp_exec_button_valide_nextfastitem_univVars_Perso_ID_equipement,
+                        0,
+                        v1->i_MainActor_ID) = a3;
+                v1->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+                break;
+            }
+        }
+        a3 = AI_EvalFunc_MTHModulo_C(a3 + v4 + 50, 50);
+        ++v15;
+    }
+    if (v15 == 50)
+    {
+        v1->i_objet_inventaire = -1;
+        v1->i_objet_inventaire_suiv = -1;
+        v1->i_objet_inventaire_prec = -1;
+        *(uint32_t*)AI_EvalVarArray2_C(
+            1,
+            (char*)board_panel_bp_exec_button_valide_nextfastitem_univVars_Perso_ID_equipement,
+            0,
+            v1->i_MainActor_ID) = -1;
+    }
+    else
+    {
+        v9 = 0;
+        v11 = AI_EvalFunc_MTHModulo_C(v1->i_objet_inventaire + 51, 50);
+        if (*(uint32_t*)board_panel_bp_exec_button_valide_nextfastitem_GST_Fight_Manager_gao_i_Evil_NbActor)
+            v13 = 0x10000000;
+        else
+            v13 = 0x200000;
+        while (v9 < 50)
+        {
+            if (*(uint32_t*)AI_EvalVarArray2_C(
+                1,
+                (char*)board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_inventaire,
+                v11,
+                v1->i_MainActor_ID)
+                && (v1->i_current_mode != 2
+                    && (v13 & *(uint32_t*)(board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_status + 4 * v11 + 4)) != 0
+                    && (*(uint32_t*)(board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_status + 4 * v11 + 4) & 0x7000000) == 0
+                    || v1->i_current_mode == 2 && v11 == 10))
+            {
+                v1->i_objet_inventaire_suiv = v11;
+                break;
+            }
+            v11 = AI_EvalFunc_MTHModulo_C(v11 + 51, 50);
+            ++v9;
+        }
+        if (v9 == 50)
+            v1->i_objet_inventaire_suiv = -1;
+        v10 = 0;
+        v12 = AI_EvalFunc_MTHModulo_C(v1->i_objet_inventaire + 49, 50);
+        if (*(uint32_t*)board_panel_bp_exec_button_valide_nextfastitem_GST_Fight_Manager_gao_i_Evil_NbActor)
+            v14 = 0x10000000;
+        else
+            v14 = 0x200000;
+        while (v10 < 50)
+        {
+            if (*(uint32_t*)AI_EvalVarArray2_C(
+                1,
+                (char*)board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_inventaire,
+                v12,
+                v1->i_MainActor_ID)
+                && (v1->i_current_mode != 2
+                    && (v14 & *(uint32_t*)(board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_status + 4 * v12 + 4)) != 0
+                    && (*(uint32_t*)(board_panel_bp_exec_button_valide_nextfastitem_univVars_objet_status + 4 * v12 + 4) & 0x7000000) == 0
+                    || v1->i_current_mode == 2 && v12 == 10))
+            {
+                v1->i_objet_inventaire_prec = v12;
+                break;
+            }
+            v12 = AI_EvalFunc_MTHModulo_C(v12 + 49, 50);
+            ++v10;
+        }
+        if (v10 == 50)
+            v1->i_objet_inventaire_prec = -1;
+    }
+    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+    return 1000;
+}
+
+int board_panel_bp_exec_menu_swap()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+8h] [ebp-38h]
+    int v2; // [esp+10h] [ebp-30h]
+    int v3; // [esp+14h] [ebp-2Ch]
+    int v4; // [esp+24h] [ebp-1Ch]
+    int v5; // [esp+38h] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        fct_board_panel_bp_exec_menu_swap_board_panel_bp_exec_button_valide_nextfastitem = (int)AI_ul_RealResolveOneRefFunction(0x9E000844);
+        fct_board_panel_bp_exec_menu_swap_board_panel_bp_exec_button_valide_next_companion = (int)AI_ul_RealResolveOneRefFunction(0x9E0015DB);
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(13))
+    {
+        v1->i_swap_button_sens = 0;
+        if (AI_EvalFunc_MTHFloatNullToler_C(v1->f_INTF_alfa, 0.2f))
+        {
+            v1->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+        }
+        else
+        {
+            v2 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_menu_swap_board_panel_bp_exec_button_valide_nextfastitem);
+            if (v2 != 1000)
+                return v2;
+        }
+    }
+    else if (AI_EvalFunc_IoButtonJustPressed_C(15))
+    {
+        v1->i_swap_button_sens = 1;
+        if (AI_EvalFunc_MTHFloatNullToler_C(v1->f_INTF_alfa, 0.2f))
+        {
+            v1->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+        }
+        else
+        {
+            v3 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_menu_swap_board_panel_bp_exec_button_valide_nextfastitem);
+            if (v3 != 1000)
+                return v3;
+        }
+    }
+    else if (AI_EvalFunc_IoButtonJustPressed_C(12))
+    {
+        v1->i_swap_button_sens = 1;
+        v5 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_menu_swap_board_panel_bp_exec_button_valide_next_companion);
+        if (v5 != 1000)
+            return v5;
+    }
+    else if (AI_EvalFunc_IoButtonJustPressed_C(14))
+    {
+        v1->i_swap_button_sens = -1;
+        v4 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_menu_swap_board_panel_bp_exec_button_valide_next_companion);
+        if (v4 != 1000)
+            return v4;
+    }
+    return 1000;
+}
+
+int board_panel_bp_updatedisplay()
+{
+    int result; // eax
+    int v1; // [esp+4h] [ebp-8h]
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        fct_board_panel_bp_updatedisplay_board_panel_bp_INTF_boutonces_update_new = (int)AI_ul_RealResolveOneRefFunction(0x9E006771);
+    }
+    v1 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_updatedisplay_board_panel_bp_INTF_boutonces_update_new);
+    if (v1 == 1000)
+        result = 1000;
+    else
+        result = v1;
+    return result;
+}
+
+int board_panel_bp_INTF_boutonces_update_new()
+{
+    int result; // eax
+    float* v1; // eax
+    tTextGet* v2; // eax
+    char* v3; // eax
+    tTextGet* v4; // eax
+    char* v5; // eax
+    tTextGet* v6; // eax
+    char* v7; // eax
+    float v8; // [esp+8h] [ebp-1D0h]
+    tScriptStruct_GSTBoardPanel* v9; // [esp+Ch] [ebp-1CCh]
+    double v10; // [esp+10h] [ebp-1C8h]
+    double v11; // [esp+18h] [ebp-1C0h]
+    float v12; // [esp+24h] [ebp-1B4h]
+    double v13; // [esp+28h] [ebp-1B0h]
+    double v14; // [esp+30h] [ebp-1A8h]
+    float v15; // [esp+3Ch] [ebp-19Ch]
+    double v16; // [esp+40h] [ebp-198h]
+    tGameObjectMain* v17; // [esp+4Ch] [ebp-18Ch]
+    tGameObjectMain* v18; // [esp+50h] [ebp-188h]
+    double v19; // [esp+58h] [ebp-180h]
+    double v20; // [esp+60h] [ebp-178h]
+    float v21; // [esp+6Ch] [ebp-16Ch]
+    double v22; // [esp+70h] [ebp-168h]
+    tGameObjectMain* v23; // [esp+78h] [ebp-160h]
+    tGameObjectMain* v24; // [esp+7Ch] [ebp-15Ch]
+    double v25; // [esp+80h] [ebp-158h]
+    double v26; // [esp+88h] [ebp-150h]
+    float v27; // [esp+94h] [ebp-144h]
+    double v28; // [esp+98h] [ebp-140h]
+    tGameObjectMain* v29; // [esp+A0h] [ebp-138h]
+    tGameObjectMain* v30; // [esp+A4h] [ebp-134h]
+    tGameObjectMain* v31; // [esp+A8h] [ebp-130h]
+    tGameObjectMain* v32; // [esp+ACh] [ebp-12Ch]
+    tGameObjectMain* v33; // [esp+B0h] [ebp-128h]
+    tGameObjectMain* v34; // [esp+B4h] [ebp-124h]
+    tGameObjectMain* v35; // [esp+B8h] [ebp-120h]
+    tGameObjectMain* v36; // [esp+BCh] [ebp-11Ch]
+    int v37; // [esp+C8h] [ebp-110h]
+    __int16 v38; // [esp+CCh] [ebp-10Ch]
+    Vec3 v39; // [esp+D0h] [ebp-108h] BYREF
+    int v40; // [esp+DCh] [ebp-FCh]
+    int v41; // [esp+E4h] [ebp-F4h]
+    int v42; // [esp+E8h] [ebp-F0h]
+    float v43; // [esp+F0h] [ebp-E8h]
+    int v44; // [esp+F4h] [ebp-E4h]
+    Vec3 a5; // [esp+F8h] [ebp-E0h] BYREF
+    float v48; // [esp+110h] [ebp-C8h]
+    Vec3 v49; // [esp+114h] [ebp-C4h] BYREF
+    float v50; // [esp+120h] [ebp-B8h]
+    int v51; // [esp+124h] [ebp-B4h]
+    Vec3 v52; // [esp+128h] [ebp-B0h] BYREF
+    Vec3 v53; // [esp+134h] [ebp-A4h] BYREF
+    int v54; // [esp+140h] [ebp-98h]
+    Vec3 v55; // [esp+144h] [ebp-94h] BYREF
+    int a2; // [esp+150h] [ebp-88h]
+    float v57; // [esp+154h] [ebp-84h]
+    int v58; // [esp+158h] [ebp-80h]
+    Vec3 a3; // [esp+164h] [ebp-74h] BYREF
+    float v61; // [esp+174h] [ebp-64h]
+    Vec3 v62; // [esp+178h] [ebp-60h] BYREF
+    Vec3 v63; // [esp+184h] [ebp-54h] BYREF
+    BOOL v64; // [esp+190h] [ebp-48h]
+    float v65; // [esp+194h] [ebp-44h]
+    float v66; // [esp+198h] [ebp-40h]
+    float v67; // [esp+19Ch] [ebp-3Ch]
+    BOOL v68; // [esp+1A0h] [ebp-38h]
+    tScriptStruct_GSTBoardPanel* v69; // [esp+1A4h] [ebp-34h]
+    float v70; // [esp+1A8h] [ebp-30h]
+    int a4; // [esp+1ACh] [ebp-2Ch]
+    Vec3 v72; // [esp+1B0h] [ebp-28h] BYREF
+    float v73; // [esp+1C0h] [ebp-18h]
+    int v74; // [esp+1C8h] [ebp-10h]
+    float v75; // [esp+1D0h] [ebp-8h]
+    float v76; // [esp+1D4h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v9 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v9 = 0;
+    v69 = v9;
+    v64 = 0;
+    v42 = 0;
+    a2 = 0;
+    a4 = 0;
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_INTF_boutonces_update_new_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_INTF_boutonces_update_new_univVars,
+            4488);
+        board_panel_bp_INTF_boutonces_update_new_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_INTF_boutonces_update_new_GST_Global_gao,
+            264);
+        board_panel_bp_INTF_boutonces_update_new__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_INTF_boutonces_update_new_GST_AffichageTexte_gao = AI_ul_RealResolveOneRefObject(0x7100E7ACu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_GST_AffichageTexte_gao_i_affiche,
+            (void*)board_panel_bp_INTF_boutonces_update_new_GST_AffichageTexte_gao,
+            204);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_univVars_i_course_ON,
+            (void*)board_panel_bp_INTF_boutonces_update_new_univVars,
+            7664);
+        board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao = AI_ul_RealResolveOneRefObject(0x9E002FFA);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao_i_Evil_NbActor,
+            (void*)board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao,
+            2624);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_INTF_boutonces_update_new_univVars,
+            1040);
+        board_panel_bp_INTF_boutonces_update_new__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_univVars_deguisement_world_ID,
+            (void*)board_panel_bp_INTF_boutonces_update_new__PJ_Sally_gao,
+            1216);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao_ao_Good_Actor,
+            (void*)board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao,
+            0);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_status,
+            (void*)board_panel_bp_INTF_boutonces_update_new_univVars,
+            484);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_boutonces_update_new__PJ_Sally_gao_i_fight_on,
+            (void*)board_panel_bp_INTF_boutonces_update_new_univVars,
+            1480);
+    }
+    v64 = AI_EvalFunc_ARRBitTest_C(
+        (int*)(board_panel_bp_INTF_boutonces_update_new_univVars_Flag_speciaux_sauve + 4),
+        699);
+    if (!v64)
+        goto LABEL_21;
+    v36 = *(tGameObjectMain**)board_panel_bp_INTF_boutonces_update_new_GST_Global_gao_o_acteur_cine_actif;
+    if (*(uint32_t*)board_panel_bp_INTF_boutonces_update_new_GST_Global_gao_o_acteur_cine_actif)
+    {
+        if ((unsigned int)v36 <= 2)
+            v36 = AI_MainActor[(uint32_t)v36 - 1];
+        v35 = v36;
+    }
+    else
+    {
+        v35 = 0;
+    }
+    if (v35
+        || (v68 = AI_EvalFunc_OBJ_CapaTest_C(
+            (tGameObjectMain*)board_panel_bp_INTF_boutonces_update_new__PJ_Camera_Speciale_gao,
+            128))
+        || *(uint32_t*)board_panel_bp_INTF_boutonces_update_new_GST_AffichageTexte_gao_i_affiche
+        || *(uint32_t*)board_panel_bp_INTF_boutonces_update_new_univVars_i_course_ON
+        || *(uint32_t*)board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao_i_Evil_NbActor)
+    {
+    LABEL_21:
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 27, 1050);
+    }
+    else
+    {
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 27, 26);
+        if (v69->i_look_aircraft || v69->i_look_enterprise)
+        {
+            a3.x = 0.94999999f;
+            a3.y = 0.75f;
+            a3.z = 0.0f;
+            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 27, &a3);
+        }
+        else
+        {
+            v39.x = 0.94999999f;
+            v39.y = 0.85000002f;
+            v39.z = 0.0f;
+            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 27, &v39);
+        }
+    }
+    if (v69->Gen_Show)
+    {
+        v38 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 0);
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 0, v38 & 0xFBFF);
+        v54 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 3);
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 3, v54 & 0xFBFF);
+        v69->Gen_OldShow = v69->Gen_Show;
+        v69->Interface_Afficher_T = 0;
+        if (*(uint32_t*)board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_Companion != -1)
+        {
+            v1 = (float*)AI_EvalVarArray_C2((char*)&v69->__f_joje_fade_time_Dimension1, 2);
+            if (!AI_EvalFunc_TIMEElapsed_C(*v1, 2.5))
+                goto LABEL_36;
+            if (*(uint32_t*)board_panel_bp_INTF_boutonces_update_new_univVars_deguisement_world_ID)
+            {
+                v34 = *(tGameObjectMain**)(board_panel_bp_INTF_boutonces_update_new_GST_Fight_Manager_gao_ao_Good_Actor
+                    + 4 * *(uint32_t*)board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_Companion
+                    + 4);
+                if (v34)
+                {
+                    if ((unsigned int)v34 <= 2)
+                        v34 = AI_MainActor[(uint32_t)v34 - 1];
+                    v33 = v34;
+                }
+                else
+                {
+                    v33 = 0;
+                }
+                if (v33)
+                {
+                LABEL_36:
+                    v69->Interface_Afficher_T = 2;
+                    v69->Boutonces_FriendCurAction = -1;
+                    STR_SetString(AI_gpst_CurrentGameObject, 24, (char*)AI_gpst_CurrentFunction->localStringConstsData);
+                }
+            }
+        }
+        --v69->Boutonces_FriendBeforeEffect;
+        v69->Boutonces_FriendActionNeeded = -1;
+        v32 = (tGameObjectMain*)v69->o_acteur_pointe;
+        if (v32)
+        {
+            if ((unsigned int)v32 <= 2)
+                v32 = AI_MainActor[(uint32_t)v32 - 1];
+            v31 = v32;
+        }
+        else
+        {
+            v31 = 0;
+        }
+        if (v31 && v69->i_acteur_pointe_visible)
+        {
+            v30 = (tGameObjectMain*)v69->o_contextuel_object;
+            if (v30)
+            {
+                if ((unsigned int)v30 <= 2)
+                    v30 = AI_MainActor[(uint32_t)v30 - 1];
+                v29 = v30;
+            }
+            else
+            {
+                v29 = 0;
+            }
+            if (v29
+                && (*(uint32_t*)board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_Companion != -1
+                    && *(uint32_t*)(board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_status
+                        + 4 * *(uint32_t*)board_panel_bp_INTF_boutonces_update_new_univVars_Perso_ID_Companion
+                        + 4) != 3
+                    || v69->i_acteur_pointe_text == 26))
+            {
+                v69->Interface_Afficher_T = 2;
+                v69->i_acteur_pointe_text = (unsigned __int8)v69->i_acteur_pointe_text;
+                v69->Boutonces_FriendActionNeeded = v69->i_acteur_pointe_text;
+                if (v69->Boutonces_FriendActionNeeded != v69->Boutonces_FriendCurAction)
+                {
+                    v69->Boutonces_FriendCurAction = v69->Boutonces_FriendActionNeeded;
+                    v2 = (tTextGet*)AI_EvalVarArray_C(
+                        10,
+                        (char*)&v69->__at_actions_Dimension1,
+                        v69->Boutonces_FriendActionNeeded);
+                    v3 = AI_EvalFunc_TEXTToString_C(v2);
+                    STR_SetString(AI_gpst_CurrentGameObject, 24, v3);
+                    STR_InsertString(AI_gpst_CurrentGameObject, 24, -1, (char*)AI_gpst_CurrentFunction->localStringConstsData + 1);
+                    v72.x = 0.93000001f;
+                    v72.y = 0.31f;
+                    v72.z = 5.0f;
+                    AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 24, &v72);
+                    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 24, 6);
+                    a5.x = -1.0;
+                    a5.y = 0.0;
+                    a5.z = 0.0;
+                    STR_SetSize(AI_gpst_CurrentGameObject, 24, 0, -1, &a5);
+                    if (v69->Boutonces_FriendBeforeEffect <= 0)
+                    {
+                        STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 24);
+                        a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 24, 0, -1);
+                        STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1150, 0.5);
+                        STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1151, 2.0);
+                    }
+                }
+                v69->Boutonces_FriendBeforeEffect = 10;
+            }
+        }
+        if (v69->Interface_Afficher_T == 2)
+        {
+            v69->Interface_Time_fade_OFF_T = TIM_gf_MainClock - TIM_gf_LockTime;
+            v76 = TIM_gf_dt;
+            v28 = TIM_gf_dt * 1000.0 + MATH_gd_magicDoubleForRound;
+            v69->i_button_swap_fadeT += (*(uint32_t *)&v28);
+            v27 = v69->f_INTF_alfa;
+            if (v27 < 0.0)
+                v27 = 0.0;
+            if (v27 > 1.0)
+                v27 = 1.0;
+            v57 = 255.0f * v27 + (1.0f - v27) * 0.0f;
+            v26 = v57 + MATH_gd_magicDoubleForRound;
+            v42 = (*(uint32_t *)&v26);
+            if (v69->i_button_swap_fadeT > (*(int32_t *)&v26))
+                v69->i_button_swap_fadeT = v42;
+        }
+        else if (AI_EvalFunc_TIMEElapsed_C(v69->Interface_Time_fade_OFF_T, 0.2f))
+        {
+            v50 = TIM_gf_dt;
+            v25 = TIM_gf_dt * 1000.0 + MATH_gd_magicDoubleForRound;
+            v69->i_button_swap_fadeT -= (*(uint32_t *)&v25);
+            if (v69->i_button_swap_fadeT >= 0)
+            {
+                v69->Interface_Afficher_T = 1;
+            }
+            else
+            {
+                v69->i_button_swap_fadeT = 0;
+                v69->Interface_Afficher_T = 0;
+            }
+        }
+        else
+        {
+            v69->Interface_Afficher_T = 1;
+            v69->Boutonces_FriendCurAction = -1;
+        }
+        if (v69->i_button_swap_fadeT)
+        {
+            v37 = AI_EvalFunc_COLORSetRGBA_C(
+                v69->i_button_swap_fadeT,
+                v69->i_button_swap_fadeT,
+                v69->i_button_swap_fadeT,
+                v69->i_button_swap_fadeT);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 24, 0, -1, v37);
+        }
+        else
+        {
+            STR_SetString(AI_gpst_CurrentGameObject, 24, (char*)AI_gpst_CurrentFunction->localStringConstsData + 9);
+        }
+        v69->i_new_action = 0;
+        v69->Interface_Afficher_X = 0;
+        --v69->Boutonces_ActionBeforeEffect;
+        v24 = (tGameObjectMain*)v69->o_sally_contextuel;
+        if (v24)
+        {
+            if ((unsigned int)v24 <= 2)
+                v24 = AI_MainActor[(uint32_t)v24 - 1];
+            v23 = v24;
+        }
+        else
+        {
+            v23 = 0;
+        }
+        if (v23 && v69->i_sally_action != -10)
+        {
+            v69->Interface_Afficher_X = 2;
+            v69->Boutonces_ActionNeeded = v69->i_sally_action;
+            if (v69->Boutonces_ActionNeeded != v69->Boutonces_CurAction)
+            {
+                v69->i_new_action = 1;
+                v69->Boutonces_CurAction = v69->Boutonces_ActionNeeded;
+                if (v69->Boutonces_ActionBeforeEffect <= 0 || v69->Boutonces_OldAction != v69->Boutonces_CurAction)
+                {
+                    v4 = (tTextGet*)AI_EvalVarArray_C(10, (char*)&v69->__at_actions_Dimension1, v69->Boutonces_ActionNeeded);
+                    v5 = AI_EvalFunc_TEXTToString_C(v4);
+                    STR_SetString(AI_gpst_CurrentGameObject, 25, v5);
+                    STR_InsertString(AI_gpst_CurrentGameObject, 25, 0, (char*)AI_gpst_CurrentFunction->localStringConstsData + 10);
+                    v49.x = 0.068000004f;
+                    v49.y = 0.35749999f;
+                    v49.z = 5.0f;
+                    AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 25, &v49);
+                    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 25, 4);
+                    v62.x = -1.0;
+                    v62.y = 0.0;
+                    v62.z = 0.0;
+                    STR_SetSize(AI_gpst_CurrentGameObject, 25, 0, -1, &v62);
+                    STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 25);
+                    a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 25, 0, -1);
+                    STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1150, 0.5);
+                    STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1151, 2.0);
+                    v69->Boutonces_OldAction = v69->Boutonces_CurAction;
+                }
+            }
+            v69->Boutonces_ActionBeforeEffect = 10;
+        }
+        if (v69->Interface_Afficher_X == 2)
+        {
+            v69->Interface_Time_fade_OFF_X = TIM_gf_MainClock - TIM_gf_LockTime;
+            v61 = TIM_gf_dt;
+            v22 = TIM_gf_dt * 1000.0 + MATH_gd_magicDoubleForRound;
+            v69->i_button_swap_fadeX += (*(uint32_t*)&v22);
+            v21 = v69->f_INTF_alfa;
+            if (v21 < 0.0)
+                v21 = 0.0;
+            if (v21 > 1.0)
+                v21 = 1.0;
+            v48 = 255.0f * v21 + (1.0f - v21) * 0.0f;
+            v20 = v48 + MATH_gd_magicDoubleForRound;
+            v42 = (*(uint32_t *)&v20);
+            if (v69->i_button_swap_fadeX > (*(int32_t *)&v20))
+                v69->i_button_swap_fadeX = v42;
+        }
+        else if (AI_EvalFunc_TIMEElapsed_C(v69->Interface_Time_fade_OFF_X, 0.5))
+        {
+            v66 = TIM_gf_dt;
+            v19 = TIM_gf_dt * 1000.0 + MATH_gd_magicDoubleForRound;
+            v69->i_button_swap_fadeX -= (*(uint32_t *)&v19);
+            if (v69->i_button_swap_fadeX >= 0)
+            {
+                v69->Interface_Afficher_X = 1;
+            }
+            else
+            {
+                v69->i_button_swap_fadeX = 0;
+                v69->Interface_Afficher_X = 0;
+            }
+        }
+        else
+        {
+            v69->Interface_Afficher_X = 1;
+            v69->Boutonces_CurAction = -1;
+        }
+        if (v69->i_button_swap_fadeX)
+        {
+            v40 = AI_EvalFunc_COLORSetRGBA_C(
+                v69->i_button_swap_fadeX,
+                v69->i_button_swap_fadeX,
+                v69->i_button_swap_fadeX,
+                v69->i_button_swap_fadeX);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 25, 0, -1, v40);
+        }
+        else
+        {
+            STR_SetString(AI_gpst_CurrentGameObject, 25, (char*)AI_gpst_CurrentFunction->localStringConstsData + 21);
+        }
+        a4 = v69->i_objet_inventaire;
+        v69->Boutonces_CurInv = a4;
+        if (a4 == -1)
+        {
+            v70 = TIM_gf_MainClock - TIM_gf_LockTime;
+            v69->Interface_Time_fade_OFF_O = v70 - 2.0f;
+        }
+        else
+        {
+            v69->Interface_Time_fade_OFF_O = TIM_gf_MainClock - TIM_gf_LockTime;
+            if (a4 < v69->Boutonces_NbInv)
+                a4 = v69->Boutonces_Inv2Char[a4];
+            else
+                a4 = v69->Boutonces_Inv2Char[0];
+            AI_EvalFunc_OBJ_TextCharSet_C(AI_gpst_CurrentGameObject, 0, 0, a4);
+            v52.x = -1.0;
+            v52.y = 0.0;
+            v52.z = 0.0;
+            STR_SetSize(AI_gpst_CurrentGameObject, 0, 0, 1, &v52);
+            STR_SetString(AI_gpst_CurrentGameObject, 26, (char*)AI_gpst_CurrentFunction->localStringConstsData + 22);
+            v69->Boutonces_UseCurAction = -1;
+        }
+        v69->i_new_action_use = 0;
+        v69->Interface_Afficher_O = 0;
+        --v69->Boutonces_UseBeforeEffect;
+        v18 = (tGameObjectMain*)v69->o_use_object;
+        if (v18)
+        {
+            if ((unsigned int)v18 <= 2)
+                v18 = AI_MainActor[(uint32_t)v18 - 1];
+            v17 = v18;
+        }
+        else
+        {
+            v17 = 0;
+        }
+        if (!v17 || v69->i_swap_button_used)
+        {
+            v69->Boutonces_UseCurAction = -1;
+            STR_SetString(AI_gpst_CurrentGameObject, 26, (char*)AI_gpst_CurrentFunction->localStringConstsData + 32);
+        }
+        else
+        {
+            v69->Interface_Afficher_O = 2;
+            v69->Boutonces_UseActionNeeded = v69->i_use_action;
+            if (v69->Boutonces_UseActionNeeded != v69->Boutonces_UseCurAction)
+            {
+                v69->i_new_action_use = 1;
+                v69->Boutonces_UseCurAction = v69->Boutonces_UseActionNeeded;
+                v6 = (tTextGet*)AI_EvalVarArray_C(10, (char*)&v69->__at_actions_Dimension1, v69->Boutonces_UseActionNeeded);
+                v7 = AI_EvalFunc_TEXTToString_C(v6);
+                STR_SetString(AI_gpst_CurrentGameObject, 26, v7);
+                STR_InsertString(AI_gpst_CurrentGameObject, 26, 0, (char*)AI_gpst_CurrentFunction->localStringConstsData + 23);
+                v53.x = 0.19499999f;
+                v53.y = 0.29499999f;
+                v53.z = 5.0f;
+                AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 26, &v53);
+                AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 26, 4);
+                v55.x = -1.0;
+                v55.y = 0.0;
+                v55.z = 0.0;
+                STR_SetSize(AI_gpst_CurrentGameObject, 26, 0, -1, &v55);
+                if (v69->Boutonces_UseBeforeEffect < 0)
+                {
+                    STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 26);
+                    a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 26, 0, -1);
+                    STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1150, 0.5);
+                    STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1151, 2.0);
+                }
+            }
+            v69->Boutonces_UseBeforeEffect = 30;
+        }
+        if (v69->Interface_Afficher_O == 2)
+        {
+            v69->Interface_Time_fade_OFF_O = TIM_gf_MainClock - TIM_gf_LockTime;
+            v75 = TIM_gf_dt;
+            v16 = TIM_gf_dt * 1000.0 + MATH_gd_magicDoubleForRound;
+            v69->i_button_swap_fadeO += (*(uint32_t *)&v16);
+            v15 = v69->f_INTF_alfa;
+            if (v15 < 0.0)
+                v15 = 0.0;
+            if (v15 > 1.0)
+                v15 = 1.0;
+            v65 = 255.0f * v15 + (1.0f - v15) * 0.0f;
+            v14 = v65 + MATH_gd_magicDoubleForRound;
+            v42 = (*(uint32_t *)&v14);
+            if (v69->i_button_swap_fadeO > (*(int32_t *)&v14))
+                v69->i_button_swap_fadeO = v42;
+        }
+        else if (AI_EvalFunc_TIMEElapsed_C(v69->Interface_Time_fade_OFF_O, 1.5f))
+        {
+            v73 = TIM_gf_dt;
+            v10 = TIM_gf_dt * 1000.0 + MATH_gd_magicDoubleForRound;
+            v69->i_button_swap_fadeO -= (*(uint32_t *)&v10);
+            if (v69->i_button_swap_fadeO > 0)
+            {
+                v69->Interface_Afficher_O = 1;
+            }
+            else
+            {
+                v69->i_button_swap_fadeO = 0;
+                v69->Interface_Afficher_O = 0;
+            }
+        }
+        else
+        {
+            v69->Interface_Afficher_O = 1;
+            v69->Boutonces_UseCurAction = -1;
+            v43 = TIM_gf_dt;
+            v13 = TIM_gf_dt * 1000.0 + MATH_gd_magicDoubleForRound;
+            v69->i_button_swap_fadeO += (*(uint32_t *)&v13);
+            v12 = v69->f_INTF_alfa;
+            if (v12 < 0.0)
+                v12 = 0.0;
+            if (v12 > 1.0)
+                v12 = 1.0;
+            v67 = 255.0f * v12 + (1.0f - v12) * 0.0f;
+            v11 = v67 + MATH_gd_magicDoubleForRound;
+            v42 = (*(uint32_t *)&v11);
+            if (v69->i_button_swap_fadeO > (*(int32_t *)&v11))
+                v69->i_button_swap_fadeO = v42;
+        }
+        AI_EvalFunc_OBJ_TextAlphaSet_C(AI_gpst_CurrentGameObject, 0, 0, 1, v69->i_button_swap_fadeO);
+        AI_EvalFunc_OBJ_TextAlphaSet_C(AI_gpst_CurrentGameObject, 3, 0, -1, v69->i_button_swap_fadeO);
+        if (v69->i_button_swap_fadeO)
+        {
+            v58 = AI_EvalFunc_COLORSetRGBA_C(
+                v69->i_button_swap_fadeO,
+                v69->i_button_swap_fadeO,
+                v69->i_button_swap_fadeO,
+                v69->i_button_swap_fadeO);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 26, 0, -1, v58);
+            v51 = AI_EvalFunc_COLORSetRGBA_C(
+                v69->i_button_swap_fadeO,
+                v69->i_button_swap_fadeO,
+                v69->i_button_swap_fadeO,
+                v69->i_button_swap_fadeO);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 3, 0, -1, v51);
+        }
+        else
+        {
+            STR_SetString(AI_gpst_CurrentGameObject, 26, (char*)AI_gpst_CurrentFunction->localStringConstsData + 33);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 0, 1, 2, 0);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 3, 0, 2, 0);
+        }
+        if (v69->i_objet_inventaire != -1)
+        {
+            a4 = *(uint32_t*)AI_EvalVarArray2_C(
+                1,
+                (char*)board_panel_bp_INTF_boutonces_update_new__PJ_Sally_gao_i_fight_on,
+                v69->i_objet_inventaire,
+                v69->i_MainActor_ID);
+            if (a4 <= 1 || v69->i_current_mode == 8)
+            {
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 0, 1, 2, 0);
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 3, 0, 2, 0);
+            }
+            else
+            {
+                v8 = (float)a4;
+                STR_SetFloat(AI_gpst_CurrentGameObject, 3, v8, 0);
+                v63.x = -1.0;
+                v63.y = 0.0;
+                v63.z = 0.0;
+                STR_SetSize(AI_gpst_CurrentGameObject, 3, 0, 2, &v63);
+                v44 = AI_EvalFunc_COLORSetRGBA_C(
+                    v69->i_button_swap_fadeO,
+                    v69->i_button_swap_fadeO,
+                    v69->i_button_swap_fadeO,
+                    v69->i_button_swap_fadeO);
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 3, 0, -1, v44);
+            }
+        }
+        result = 1000;
+    }
+    else
+    {
+        if (v69->Gen_OldShow)
+        {
+            v74 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 0);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 0, v74 | 0x400);
+            v41 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 3);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 3, v41 | 0x400);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 25, 0, -1, 0);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 24, 0, -1, 0);
+            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 26, 0, -1, 0);
+        }
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 27, 1050);
+        v69->Gen_OldShow = v69->Gen_Show;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_look_photoborder_off()
+{
+    tAI* v1; // [esp+4h] [ebp-24h]
+    tGameObjectMain* v2; // [esp+8h] [ebp-20h]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-1Ch]
+    tGameObjectMain* v4; // [esp+14h] [ebp-14h]
+    tAI* v5; // [esp+18h] [ebp-10h]
+    int v6; // [esp+20h] [ebp-8h]
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_look_photoborder_off__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        board_panel_bp_exec_look_photoborder_off_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_photoborder_off_INV_manager_gao_o_Photo,
+            (void*)board_panel_bp_exec_look_photoborder_off_INV_manager_gao,
+            44);
+    }
+    v6 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 0, 128);
+    AI_EvalFunc_SNDUltraPlaySound_C((tGameObjectMain*)board_panel_bp_exec_look_photoborder_off__PJ_Sally_gao, v6);
+    v5 = *(tAI**)board_panel_bp_exec_look_photoborder_off_INV_manager_gao_o_Photo;
+    v4 = *(tGameObjectMain**)board_panel_bp_exec_look_photoborder_off_INV_manager_gao_o_Photo;
+    if (*(uint32_t*)board_panel_bp_exec_look_photoborder_off_INV_manager_gao_o_Photo)
+    {
+        if ((unsigned int)v4 <= 2)
+            v4 = AI_MainActor[(uint32_t)v4 - 1];
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C(v4, 1);
+    }
+    else
+    {
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 1);
+    }
+    if (v5 == WOR_gst_Universe.univAIInstance)
+    {
+        v1 = WOR_gst_Universe.univAIInstance;
+    }
+    else
+    {
+        v3 = (tGameObjectMain*)v5;
+        if (v5)
+        {
+            if ((unsigned int)v5 <= 2)
+                v3 = AI_MainActor[(uint32_t)v5 - 1];
+            v2 = v3;
+        }
+        else
+        {
+            v2 = 0;
+        }
+        v1 = v2->extended->AIInstance;
+    }
+    *(uint32_t*)v1->instanceVarDataCurrent = 0; // TODO FIXME: struct
+    return 1000;
+}
+
+int board_panel_bp_exec_look_photo_select_info()
+{
+    unsigned __int8 v0; // al
+    BOOL v1; // eax
+    int v2; // eax
+    int v3; // eax
+    double v4; // st7
+    int v5; // eax
+    tScriptStruct_GSTBoardPanel* v7; // [esp+Ch] [ebp-9BCh]
+    tGameObjectMain* v8; // [esp+14h] [ebp-9B4h]
+    tGameObjectMain* v9; // [esp+34h] [ebp-994h]
+    tGameObjectMain* v10; // [esp+48h] [ebp-980h]
+    tGameObjectMain* v11; // [esp+4Ch] [ebp-97Ch]
+    tGameObjectMain* v12; // [esp+50h] [ebp-978h]
+    tGameObjectMain* v13; // [esp+54h] [ebp-974h]
+    tGameObjectMain* v14; // [esp+58h] [ebp-970h]
+    tGameObjectMain* v15; // [esp+5Ch] [ebp-96Ch]
+    tGameObjectMain* v16; // [esp+60h] [ebp-968h]
+    tGameObjectMain* v17; // [esp+64h] [ebp-964h]
+    tGameObjectMain* v18; // [esp+68h] [ebp-960h]
+    tGameObjectMain* v19; // [esp+6Ch] [ebp-95Ch]
+    tGameObjectMain* v20; // [esp+70h] [ebp-958h]
+    tGameObjectMain* v21; // [esp+90h] [ebp-938h]
+    tGameObjectMain* v22; // [esp+98h] [ebp-930h]
+    tGameObjectMain* v23; // [esp+A0h] [ebp-928h]
+    tGameObjectMain* v24; // [esp+A4h] [ebp-924h]
+    tGameObjectMain* v25; // [esp+A8h] [ebp-920h]
+    tGameObjectMain* v26; // [esp+B0h] [ebp-918h]
+    tGameObjectMain* v27; // [esp+B4h] [ebp-914h]
+    tGameObjectMain* v28; // [esp+B8h] [ebp-910h]
+    tGameObjectMain* v29; // [esp+BCh] [ebp-90Ch]
+    tGameObjectMain* v30; // [esp+C0h] [ebp-908h]
+    tGameObjectMain* v31; // [esp+C8h] [ebp-900h]
+    tGameObjectMain* v32; // [esp+D0h] [ebp-8F8h]
+    tGameObjectMain* v33; // [esp+D8h] [ebp-8F0h]
+    unsigned __int8 v34; // [esp+DCh] [ebp-8ECh]
+    Vec3 v35; // [esp+E0h] [ebp-8E8h] BYREF
+    int v36; // [esp+ECh] [ebp-8DCh]
+    int v37; // [esp+F0h] [ebp-8D8h]
+    int v38; // [esp+F4h] [ebp-8D4h]
+    float v39; // [esp+F8h] [ebp-8D0h]
+    BOOL v40; // [esp+FCh] [ebp-8CCh]
+    tGameObjectMain* arg0[101]; // [esp+108h] [ebp-8C0h] BYREF
+    Vec3 a3[35]; // [esp+29Ch] [ebp-72Ch] BYREF
+    Vec3 v44; // [esp+444h] [ebp-584h] BYREF
+    Vec3 v45; // [esp+450h] [ebp-578h] BYREF
+    Vec3 v46; // [esp+45Ch] [ebp-56Ch] BYREF
+    Vec3 v47; // [esp+468h] [ebp-560h] BYREF
+    BOOL v48; // [esp+474h] [ebp-554h]
+    tGameObjectMain* v49; // [esp+478h] [ebp-550h]
+    int v50; // [esp+47Ch] [ebp-54Ch]
+    Vec3 dest; // [esp+480h] [ebp-548h] BYREF
+    Vec3 v52; // [esp+48Ch] [ebp-53Ch] BYREF
+    int v53; // [esp+498h] [ebp-530h]
+    int a7; // [esp+49Ch] [ebp-52Ch] BYREF
+    int i; // [esp+4A0h] [ebp-528h]
+    tGameObjectMain* v56; // [esp+4A4h] [ebp-524h]
+    Vec3 a2; // [esp+4A8h] [ebp-520h] BYREF
+    int v58; // [esp+4BCh] [ebp-50Ch]
+    int v59[102]; // [esp+4C8h] [ebp-500h]
+    tScriptStruct_GSTBoardPanel* v60; // [esp+660h] [ebp-368h]
+    int v61; // [esp+664h] [ebp-364h]
+    Vec3 v62; // [esp+668h] [ebp-360h] BYREF
+    float v63; // [esp+674h] [ebp-354h]
+    int v64[102]; // [esp+678h] [ebp-350h]
+    Vec3 v65; // [esp+810h] [ebp-1B8h] BYREF
+    Vec3 v66; // [esp+81Ch] [ebp-1ACh] BYREF
+    Vec3 v67; // [esp+828h] [ebp-1A0h] BYREF
+    float v68; // [esp+834h] [ebp-194h]
+    tGameObjectMain* a5[100]; // [esp+838h] [ebp-190h] BYREF
+
+    v45.x = 1.0;
+    v45.y = 0.0;
+    v45.z = 0.0;
+    v67.x = 1.0;
+    v67.y = 0.0;
+    v67.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v7 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v7 = 0;
+    v60 = v7;
+    v68 = 0.0;
+    v49 = 0;
+    v58 = 0;
+    v53 = 0;
+    v63 = 0.0;
+    a7 = 0;
+    v36 = 0;
+    i = 0;
+    v39 = 0.0;
+    v61 = 0;
+    v38 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_look_photo_select_info__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_exec_look_photo_select_info__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+    }
+    v49 = *AI_MainActor;
+    v33 = v49;
+    if (v49)
+    {
+        if ((unsigned int)v49 <= 2)
+            v33 = AI_MainActor[(uint32_t)v49 - 1];
+        v0 = AI_EvalFunc_COLMapActivationGet_C(v33);
+    }
+    else
+    {
+        v0 = AI_EvalFunc_COLMapActivationGet_C(0);
+    }
+    v34 = v0;
+    v32 = v49;
+    if (v49)
+    {
+        if ((unsigned int)v49 <= 2)
+            v32 = AI_MainActor[(uint32_t)v49 - 1];
+        AI_EvalFunc_COLMapActivationSet_C(v32, 0, -1);
+    }
+    else
+    {
+        AI_EvalFunc_COLMapActivationSet_C(0, 0, -1);
+    }
+    i = 0;
+    v58 = 0;
+    v60->i_look_object_nb = 0;
+    v53 = 0;
+    v38 = 0;
+    v36 = 0;
+    v61 = AI_EvalFunc_COLGetAllVisibleObjects_C(AI_gpst_CurrentGameObject, a5, 64, 0, 2);
+    while (i < v61)
+    {
+        a5[v58] = a5[i];
+        v49 = a5[i];
+        a7 = 0;
+        v31 = v49;
+        if (v49)
+        {
+            if ((unsigned int)v49 <= 2)
+                v31 = AI_MainActor[(uint32_t)v49 - 1];
+            v1 = AI_EvalFunc_OBJHasPhotoValue_C(v31, -1, &a7);
+        }
+        else
+        {
+            v1 = AI_EvalFunc_OBJHasPhotoValue_C(0, -1, &a7);
+        }
+        v40 = v1;
+        if (v1)
+        {
+            v30 = v49;
+            if (v49)
+            {
+                if ((unsigned int)v49 <= 2)
+                    v30 = AI_MainActor[(uint32_t)v49 - 1];
+                v29 = v30;
+            }
+            else
+            {
+                v29 = 0;
+            }
+            a7 = v29->extended->fields->designInt3;
+            a7 &= 0xFF000000;
+            a7 >>= 24;
+            v28 = v49;
+            if (v49)
+            {
+                if ((unsigned int)v49 <= 2)
+                    v28 = AI_MainActor[(uint32_t)v49 - 1];
+                v27 = v28;
+            }
+            else
+            {
+                v27 = 0;
+            }
+            if ((int)(v27->extended->fields->designInt3 & 0xFF000000) >> 24)
+                goto LABEL_41;
+            v26 = v49;
+            if (v49)
+            {
+                if ((unsigned int)v49 <= 2)
+                    v26 = AI_MainActor[(uint32_t)v49 - 1];
+                v2 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(v26);
+            }
+            else
+            {
+                v2 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(0);
+            }
+            v37 = v2;
+            if (v2)
+            {
+            LABEL_41:
+                v60->ao_look_object_mission[v38] = (int)v49;
+                v60->ai_look_validite_mission[v38++] = 0;
+                v64[v36++] = (int)v49;
+            }
+            else if (!v38)
+            {
+                v60->ao_look_object_mission[v60->i_look_object_nb] = (int)v49;
+                v60->ai_look_validite_mission[v60->i_look_object_nb++] = 0;
+            }
+        }
+        else if ((a7 & 4) != 0)
+        {
+            ++v58;
+        }
+        else
+        {
+            v25 = v49;
+            if (v49)
+            {
+                if ((unsigned int)v49 <= 2)
+                    v25 = AI_MainActor[(uint32_t)v49 - 1];
+                v24 = v25;
+            }
+            else
+            {
+                v24 = 0;
+            }
+            if ((int)(v24->extended->fields->designInt3 & 0xFF000000) >> 24)
+                goto LABEL_57;
+            v23 = v49;
+            if (v49)
+            {
+                if ((unsigned int)v49 <= 2)
+                    v23 = AI_MainActor[(uint32_t)v49 - 1];
+                v3 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(v23);
+            }
+            else
+            {
+                v3 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(0);
+            }
+            v50 = v3;
+            if (v3)
+                LABEL_57:
+            v64[v36++] = (int)v49;
+            arg0[v53] = v49;
+            v59[v53++] = a7;
+        }
+        ++i;
+    }
+    if (v38)
+        v60->i_look_object_nb = v38;
+    v60->i_look_object_valide = 0;
+    if (!v60->i_look_object_nb && v53)
+    {
+        v60->i_look_object_valide = 0;
+        for (i = 0; i < v53; ++i)
+        {
+            v22 = arg0[i];
+            if (v22)
+            {
+                if ((unsigned int)v22 <= 2)
+                    v22 = AI_MainActor[(uint32_t)v22 - 1];
+                v4 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(v22, 0);
+            }
+            else
+            {
+                v4 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(0, 0);
+            }
+            v39 = (float)v4;
+            if (!AI_EvalFunc_MATHFloatNullEps_C(v39))
+            {
+                v21 = arg0[i];
+                if (v21)
+                {
+                    if ((unsigned int)v21 <= 2)
+                        v21 = AI_MainActor[(uint32_t)v21 - 1];
+                    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(v21, &a2);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(0, &a2);
+                }
+                v45 = a2;
+                AI_EvalFunc_VIEW3dWorldTo2d_C(0, &v45, &v62);
+                v67 = v62;
+                v68 = v62.x;
+                v63 = v62.y;
+                if (v62.x > 0.0 && v68 < 1.0 && v63 > 0.0 && v63 < 1.0)
+                {
+                    AI_EvalFunc_OBJGetPos_C(
+                        (tGameObjectMain*)board_panel_bp_exec_look_photo_select_info__PJ_Camera_Speciale_gao,
+                        a3);
+                    v67 = a3[0];
+                    MATH_SubstractVec(&dest, &v45, &v67);
+                    v49 = AI_EvalFunc_COLRayObjectVector_C(
+                        (tGameObjectMain*)board_panel_bp_exec_look_photo_select_info__PJ_Sally_gao,
+                        &v67,
+                        &dest,
+                        -1,
+                        0,
+                        0,
+                        0);
+                    MATH_SubstractVec(&v66, &v45, &v67);
+                    v56 = *AI_MainActor;
+                    v20 = v49;
+                    if (v49)
+                    {
+                        if ((unsigned int)v49 <= 2)
+                            v20 = AI_MainActor[(uint32_t)v49 - 1];
+                        v19 = v20;
+                    }
+                    else
+                    {
+                        v19 = 0;
+                    }
+                    v18 = v56;
+                    if (v56)
+                    {
+                        if ((unsigned int)v56 <= 2)
+                            v18 = AI_MainActor[(uint32_t)v56 - 1];
+                        v17 = v18;
+                    }
+                    else
+                    {
+                        v17 = 0;
+                    }
+                    if (v19 == v17)
+                        v49 = 0;
+                    v16 = v49;
+                    if (v49)
+                    {
+                        if ((unsigned int)v49 <= 2)
+                            v16 = AI_MainActor[(uint32_t)v49 - 1];
+                        v15 = v16;
+                    }
+                    else
+                    {
+                        v15 = 0;
+                    }
+                    if (!v15)
+                        goto LABEL_111;
+                    v14 = v49;
+                    if (v49)
+                    {
+                        if ((unsigned int)v49 <= 2)
+                            v14 = AI_MainActor[(uint32_t)v49 - 1];
+                        v13 = v14;
+                    }
+                    else
+                    {
+                        v13 = 0;
+                    }
+                    v12 = arg0[i];
+                    if (v12)
+                    {
+                        if ((unsigned int)v12 <= 2)
+                            v12 = AI_MainActor[(uint32_t)v12 - 1];
+                        v11 = v12;
+                    }
+                    else
+                    {
+                        v11 = 0;
+                    }
+                    if (v13 == v11)
+                    {
+                    LABEL_111:
+                        if (v60->i_look_object_nb < 20)
+                        {
+                            arg0[v60->i_look_object_nb] = arg0[i];
+                            v59[v60->i_look_object_nb++] = v59[i];
+                        }
+                    }
+                }
+            }
+        }
+        if (v60->i_look_object_nb)
+        {
+            v10 = (tGameObjectMain*)v60->o_look_object_old;
+            if (v10)
+            {
+                if ((unsigned int)v10 <= 2)
+                    v10 = AI_MainActor[(uint32_t)v10 - 1];
+                v5 = AI_EvalFunc_ARRObjSearch_C(arg0, v60->i_look_object_nb, v10);
+            }
+            else
+            {
+                v5 = AI_EvalFunc_ARRObjSearch_C(arg0, v60->i_look_object_nb, 0);
+            }
+            i = v5;
+            if (v5 == -1 || (v48 = AI_EvalFunc_TIMEElapsed_C(v60->f_look_time_change_target, 0.5)))
+            {
+                AI_EvalFunc_OBJGetPos_C(
+                    (tGameObjectMain*)board_panel_bp_exec_look_photo_select_info__PJ_Camera_Speciale_gao,
+                    &v35);
+                AI_EvalFunc_OBJ_SightGet_C(
+                    (tGameObjectMain*)board_panel_bp_exec_look_photo_select_info__PJ_Camera_Speciale_gao,
+                    &v47);
+                i = AI_EvalFunc_ARRObjBestSightInfoPhoto_C(arg0, v60->i_look_object_nb, &v35, &v47, 0.001f);
+                v60->ao_look_object_mission[0] = (int)arg0[i];
+                v60->ai_look_validite_mission[0] = v59[i];
+            }
+            v60->i_look_object_nb = 1;
+        }
+    }
+    if (v60->i_look_object_nb)
+    {
+        AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_exec_look_photo_select_info__PJ_Camera_Speciale_gao, &v52);
+        AI_EvalFunc_OBJ_SightGet_C(
+            (tGameObjectMain*)board_panel_bp_exec_look_photo_select_info__PJ_Camera_Speciale_gao,
+            &v65);
+        i = AI_EvalFunc_ARRObjBestSightInfoPhoto_C(
+            (tGameObjectMain**)v60->ao_look_object_mission,
+            v60->i_look_object_nb,
+            &v52,
+            &v65,
+            0.001f);
+        v60->o_look_object = v60->ao_look_object_mission[i];
+        v60->i_look_object_valide = v60->ai_look_validite_mission[i];
+        v9 = (tGameObjectMain*)v60->o_look_object;
+        if (v9)
+        {
+            if ((unsigned int)v9 <= 2)
+                v9 = AI_MainActor[(uint32_t)v9 - 1];
+            AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(v9, &v46);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(0, &v46);
+        }
+        v67 = v46;
+        AI_EvalFunc_VIEW3dWorldTo2d_C(0, &v67, &v44);
+        v67 = v44;
+        v60->i_look_objet_mission = 1;
+        if (v38)
+        {
+            v60->ao_look_object_mission[0] = v60->ao_look_object_mission[i];
+            v60->ai_look_validite_mission[0] = 0;
+        }
+    }
+    else
+    {
+        v60->o_look_object = 0;
+    }
+    v49 = *AI_MainActor;
+    v8 = v49;
+    if (v49)
+    {
+        if ((unsigned int)v49 <= 2)
+            v8 = AI_MainActor[(uint32_t)v49 - 1];
+        AI_EvalFunc_COLMapActivationSet_C(v8, v34, ~v34);
+    }
+    else
+    {
+        AI_EvalFunc_COLMapActivationSet_C(0, v34, ~v34);
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_button_valide_look()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-6Ch]
+    tGameObjectMain* v2; // [esp+4h] [ebp-68h]
+    tGameObjectMain* v3; // [esp+8h] [ebp-64h]
+    tGameObjectMain* v4; // [esp+10h] [ebp-5Ch]
+    tGameObjectMain* v5; // [esp+18h] [ebp-54h]
+    tGameObjectMain* v6; // [esp+20h] [ebp-4Ch]
+    tGameObjectMain* v7; // [esp+28h] [ebp-44h]
+    int v8; // [esp+2Ch] [ebp-40h]
+    int v9; // [esp+34h] [ebp-38h]
+    int v10; // [esp+64h] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao_i_special_exit,
+            (void*)board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao,
+            80);
+        fct_board_panel_bp_exec_button_valide_look_board_panel_bp_exec_look_reset = (int)AI_ul_RealResolveOneRefFunction(0x9E00008A);
+        board_panel_bp_exec_button_valide_look_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_look_univVars_objet_inventaire,
+            (void*)board_panel_bp_exec_button_valide_look_univVars,
+            1480);
+        board_panel_bp_exec_button_valide_look__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        board_panel_bp_exec_button_valide_look_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        fct_board_panel_bp_exec_button_valide_look_board_panel_bp_mode_look = (int)AI_ul_RealResolveOneRefFunction(0x6C00AD93u);
+        fct_board_panel_bp_exec_button_valide_look_board_panel_bp_mode_normal = (int)AI_ul_RealResolveOneRefFunction(0x6C00AD9Cu);
+    }
+    if (v1->i_current_mode != 2)
+    {
+        v1->i_init_look = 1;
+        if (v1->i_current_mode == 32)
+        {
+            if (v1->i_look_enterprise_photo)
+            {
+                v1->i_look_enterprise_photo = 0;
+                AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+                *(uint32_t*)board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao_i_special_exit = 1;
+                v9 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_button_valide_look_board_panel_bp_exec_look_reset);
+                if (v9 != 1000)
+                    return v9;
+                goto LABEL_45;
+            }
+            v1->i_look_enterprise_photo = 1;
+            if (*(uint32_t*)AI_EvalVarArray2_C(
+                1,
+                (char*)board_panel_bp_exec_button_valide_look_univVars_objet_inventaire,
+                0,
+                8))
+                v1->i_look_info_on = 1;
+            v6 = *AI_MainActor;
+            if (*AI_MainActor)
+            {
+                if ((unsigned int)v6 <= 2)
+                    v6 = AI_MainActor[(uint32_t)v6 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v6, &v1->v_look_before_inv);
+                goto LABEL_19;
+            }
+        }
+        else
+        {
+            if (v1->i_current_mode != 64)
+            {
+                if (AI_EvalFunc_ACTCustomBitTest_C((tGameObjectMain*)board_panel_bp_exec_button_valide_look__PJ_Sally_gao, 8u))
+                {
+                    v7 = *AI_MainActor;
+                    v4 = *AI_MainActor;
+                    if (*AI_MainActor)
+                    {
+                        if ((unsigned int)v4 <= 2)
+                            v4 = AI_MainActor[(uint32_t)v4 - 1];
+                        AI_EvalFunc_OBJ_SightGet_C(v4, &v1->v_look_before_inv);
+                    }
+                    else
+                    {
+                        AI_EvalFunc_OBJ_SightGet_C(0, &v1->v_look_before_inv);
+                    }
+                    AI_EvalFunc_OBJ_CapaSet_C(
+                        (tGameObjectMain*)board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao,
+                        0x100,
+                        0);
+                    v3 = v7;
+                    if (v7)
+                    {
+                        if ((unsigned int)v7 <= 2)
+                            v3 = AI_MainActor[(uint32_t)v7 - 1];
+                        v2 = v3;
+                    }
+                    else
+                    {
+                        v2 = 0;
+                    }
+                    if (v2 == (tGameObjectMain*)board_panel_bp_exec_button_valide_look__PJ_Sally_gao)
+                        AI_EvalFunc_OBJ_CustomBitsSet_C(
+                            (tGameObjectMain*)board_panel_bp_exec_button_valide_look_GST_Global_gao,
+                            0x8000,
+                            0);
+                    AI_EvalFunc_AITrackChange_C(
+                        2,
+                        (tAIFunction*)fct_board_panel_bp_exec_button_valide_look_board_panel_bp_mode_look);
+                }
+                goto LABEL_45;
+            }
+            if (v1->i_look_aircraft_photo)
+            {
+                v1->i_look_aircraft_photo = 0;
+                AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+                *(uint32_t*)board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao_i_special_exit = 1;
+                v8 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_button_valide_look_board_panel_bp_exec_look_reset);
+                if (v8 != 1000)
+                    return v8;
+                goto LABEL_45;
+            }
+            v1->i_look_aircraft_photo = 1;
+            if (*(uint32_t*)AI_EvalVarArray2_C(
+                1,
+                (char*)board_panel_bp_exec_button_valide_look_univVars_objet_inventaire,
+                0,
+                8))
+                v1->i_look_info_on = 1;
+            v5 = *AI_MainActor;
+            if (*AI_MainActor)
+            {
+                if ((unsigned int)v5 <= 2)
+                    v5 = AI_MainActor[(uint32_t)v5 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v5, &v1->v_look_before_inv);
+                goto LABEL_19;
+            }
+        }
+        AI_EvalFunc_OBJ_SightGet_C(0, &v1->v_look_before_inv);
+    LABEL_19:
+        AI_EvalFunc_OBJ_CapaSet_C(
+            (tGameObjectMain*)board_panel_bp_exec_button_valide_look__PJ_Camera_Speciale_gao,
+            0x100,
+            0);
+    LABEL_45:
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    v10 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_button_valide_look_board_panel_bp_exec_look_reset);
+    if (v10 != 1000)
+        return v10;
+    AI_EvalFunc_AITrackChange_C(2, (tAIFunction*)fct_board_panel_bp_exec_button_valide_look_board_panel_bp_mode_normal);
+    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+    return 4;
+}
+
+int board_panel_bp_exec_affiche_contextuel()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-24h]
+    tGameObjectMain* v2; // [esp+4h] [ebp-20h]
+    tGameObjectMain* v3; // [esp+8h] [ebp-1Ch]
+    tGameObjectMain* v4; // [esp+Ch] [ebp-18h]
+    tGameObjectMain* v5; // [esp+10h] [ebp-14h]
+    tGameObjectMain* v6; // [esp+14h] [ebp-10h]
+    tGameObjectMain* v7; // [esp+18h] [ebp-Ch]
+    int i; // [esp+20h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v7 = (tGameObjectMain*)v1->o_acteur_pointe;
+    if (v7)
+    {
+        if ((unsigned int)v7 <= 2)
+            v7 = AI_MainActor[(uint32_t)v7 - 1];
+        v6 = v7;
+    }
+    else
+    {
+        v6 = 0;
+    }
+    if (!v6 || !v1->i_acteur_pointe_visible)
+        goto LABEL_31;
+    if (!v1->i_acteur_pointe_button)
+    {
+        v1->o_contextuel_object = v1->o_acteur_pointe;
+        v1->i_contextuel_prio = v1->i_acteur_pointe_prio;
+        v1->o_contextuel_target = v1->o_acteur_pointe_target;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 1000;
+    }
+    if (v1->i_acteur_pointe_button != 1)
+        goto LABEL_31;
+    for (i = 0; i < v1->i_current_nb_of_object; ++i)
+    {
+        v5 = (tGameObjectMain*)v1->ao_listoftargets[i];
+        if (v5)
+        {
+            if ((unsigned int)v5 <= 2)
+                v5 = AI_MainActor[(uint32_t)v5 - 1];
+            v4 = v5;
+        }
+        else
+        {
+            v4 = 0;
+        }
+        v3 = (tGameObjectMain*)v1->o_acteur_pointe_target;
+        if (v3)
+        {
+            if ((unsigned int)v3 <= 2)
+                v3 = AI_MainActor[(uint32_t)v3 - 1];
+            v2 = v3;
+        }
+        else
+        {
+            v2 = 0;
+        }
+        if (v4 == v2 && !v1->ai_listofbutton[i])
+            break;
+    }
+    if (i < v1->i_current_nb_of_object)
+    {
+        v1->o_contextuel_object = v1->o_acteur_pointe;
+        v1->i_contextuel_prio = v1->ai_listofpriority[i];
+        v1->o_contextuel_target = v1->ao_listoftargets[i];
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    else
+    {
+    LABEL_31:
+        v1->o_contextuel_object = 0;
+        v1->i_contextuel_prio = -1;
+        result = 1000;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_button_valide_action_jump()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-4Ch]
+    tGameObjectMain* v2; // [esp+8h] [ebp-44h]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-40h]
+    tGameObjectMain* v4; // [esp+10h] [ebp-3Ch]
+    tMessage Src; // [esp+14h] [ebp-38h] BYREF
+    tScriptStruct_GSTBoardPanel* v6; // [esp+48h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v6 = v1;
+    v4 = (tGameObjectMain*)v1->o_saut_object;
+    if (v4)
+    {
+        if ((unsigned int)v4 <= 2)
+            v4 = AI_MainActor[(uint32_t)v4 - 1];
+        v3 = v4;
+    }
+    else
+    {
+        v3 = 0;
+    }
+    if (v3)
+    {
+        Src.msgID = 93;
+        Src.f2 = (float)v6->i_saut_prio;
+        v2 = (tGameObjectMain*)v6->o_saut_object;
+        if (v2)
+        {
+            if ((unsigned int)v2 <= 2)
+                v2 = AI_MainActor[(uint32_t)v2 - 1];
+            AI_EvalFunc_MSGSend_C(v2, &Src);
+        }
+        else
+        {
+            AI_EvalFunc_MSGSend_C(0, &Src);
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_mode_aircraft()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-B0h]
+    tGameObjectMain* v2; // [esp+8h] [ebp-A8h]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-A4h]
+    tGameObjectMain* v4; // [esp+10h] [ebp-A0h]
+    tGameObjectMain* v5; // [esp+18h] [ebp-98h]
+    tGameObjectMain* v6; // [esp+1Ch] [ebp-94h]
+    tGameObjectMain* v7; // [esp+20h] [ebp-90h]
+    tGameObjectMain* v8; // [esp+28h] [ebp-88h]
+    Vec3 v9; // [esp+2Ch] [ebp-84h] BYREF
+    Vec3 v10; // [esp+38h] [ebp-78h] BYREF
+    tGameObjectMain* v11; // [esp+44h] [ebp-6Ch]
+    int v12; // [esp+48h] [ebp-68h]
+    Vec3 v13; // [esp+4Ch] [ebp-64h] BYREF
+    int v14; // [esp+58h] [ebp-58h]
+    int v15; // [esp+5Ch] [ebp-54h]
+    int v16; // [esp+64h] [ebp-4Ch]
+    int i; // [esp+6Ch] [ebp-44h]
+    int j; // [esp+70h] [ebp-40h]
+    Vec3 v19; // [esp+74h] [ebp-3Ch] BYREF
+    int v20; // [esp+80h] [ebp-30h]
+    int idx; // [esp+84h] [ebp-2Ch]
+    tGameObjectMain* v22; // [esp+88h] [ebp-28h]
+    Vec3 a5; // [esp+8Ch] [ebp-24h] BYREF
+    tScriptStruct_GSTBoardPanel* v24; // [esp+98h] [ebp-18h]
+    tGameObjectMain* v25; // [esp+ACh] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v24 = v1;
+    idx = 0;
+    i = 0;
+    j = 0;
+    v22 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_mode_aircraft_INTF_boussole_gao = AI_ul_RealResolveOneRefObject(0xD9008B46);
+        board_panel_bp_mode_aircraft__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_look_init = (int)AI_ul_RealResolveOneRefFunction(0x9E001C37);
+        fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_look_photo = (int)AI_ul_RealResolveOneRefFunction(0x9E001C34);
+        fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_affiche_contextuel = (int)AI_ul_RealResolveOneRefFunction(0x9E000AF8);
+        board_panel_bp_mode_aircraft_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_aircraft_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_mode_aircraft_GST_Global_gao,
+            264);
+        fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_button_valide_look = (int)AI_ul_RealResolveOneRefFunction(0x9E000857);
+        fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_sprite_boutons_on = (int)AI_ul_RealResolveOneRefFunction(0x9E000016);
+    }
+    v24->i_current_mode = 64;
+    if (v24->i_init_aircraft)
+    {
+        v24->i_init_aircraft = 0;
+        for (i = 0; i < v24->i_Obj_On_Radar_Nb; ++i)
+        {
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_mode_aircraft_INTF_boussole_gao, i, 0.0);
+            idx = i + 16;
+            STR_SetString(AI_gpst_CurrentGameObject, i + 16, (char*)AI_gpst_CurrentFunction->localStringConstsData);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, idx, 144);
+            STR_InsertString(AI_gpst_CurrentGameObject, idx, 0, (char*)AI_gpst_CurrentFunction->localStringConstsData + 1);
+            v13.x = -1.0;
+            v13.y = 0.0;
+            v13.z = 0.0;
+            STR_SetSize(AI_gpst_CurrentGameObject, idx, 0, -1, &v13);
+            a5.x = -1.0;
+            a5.y = -1.0;
+            a5.z = 0.0;
+            STR_SetPos(AI_gpst_CurrentGameObject, 28, 0, -1, &a5);
+            for (j = 0; j < v24->i_Obj_On_Radar_Nb; ++j)
+            {
+                v19.x = -1.0;
+                v19.y = -1.0;
+                v19.z = 0.0;
+                STR_SetPos(AI_gpst_CurrentGameObject, j + 16, 0, -1, &v19);
+            }
+        }
+    }
+    if (v24->i_look_aircraft_photo)
+    {
+        if (v24->i_init_look)
+        {
+            v24->i_look_info_on = 1;
+            if (v24->i_Obj_On_Radar_Display)
+            {
+                v10.x = -1.0;
+                v10.y = -1.0;
+                v10.z = 0.0;
+                STR_SetPos(AI_gpst_CurrentGameObject, 28, 0, -1, &v10);
+                for (i = 0; i < v24->i_Obj_On_Radar_Nb; ++i)
+                {
+                    v9.x = -1.0;
+                    v9.y = -1.0;
+                    v9.z = 0.0;
+                    STR_SetPos(AI_gpst_CurrentGameObject, i + 16, 0, -1, &v9);
+                }
+                v24->i_Obj_On_Radar_Display = 0;
+            }
+            AI_EvalFunc_OBJ_CapaSet_C((tGameObjectMain*)board_panel_bp_mode_aircraft__PJ_Camera_Speciale_gao, 256, 0);
+            v22 = *AI_MainActor;
+            v8 = v22;
+            if (v22)
+            {
+                if ((unsigned int)v22 <= 2)
+                    v8 = AI_MainActor[(uint32_t)v22 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v8, &v24->v_look_before_inv);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_SightGet_C(0, &v24->v_look_before_inv);
+            }
+            if (v24->i_look_aircraft_photo)
+            {
+                v12 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_look_init);
+                if (v12 != 1000)
+                    return v12;
+            }
+        }
+        v20 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_look_photo);
+        if (v20 != 1000)
+            return v20;
+        v24->o_sally_contextuel = (int)AI_gpst_CurrentGameObject;
+        v24->i_sally_action = 1;
+    }
+    v7 = (tGameObjectMain*)v24->o_acteur_pointe_target;
+    if (v7)
+    {
+        if ((unsigned int)v7 <= 2)
+            v7 = AI_MainActor[(uint32_t)v7 - 1];
+        v6 = v7;
+    }
+    else
+    {
+        v6 = 0;
+    }
+    if (v6)
+    {
+        v24->i_ind_pointeur = 0;
+        if (v24->i_current_nb_of_object < 2)
+            v24->i_action_selected = 0;
+        v15 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_affiche_contextuel);
+        if (v15 != 1000)
+            return v15;
+    }
+    else if (v24->i_ind_pointeur != -1)
+    {
+        v24->i_ind_pointeur = -1;
+        v24->o_contextuel_object = 0;
+        v24->i_contextuel_prio = -1;
+    }
+    v22 = *AI_MainActor;
+    if (v24->i_look_aircraft_photo)
+    {
+        AI_EvalFunc_OBJ_CustomBitsSet_C((tGameObjectMain*)board_panel_bp_mode_aircraft_GST_Global_gao, 0x8000, 0);
+        v11 = AI_EvalFunc_VIEWAssignObject_C((tGameObjectMain*)board_panel_bp_mode_aircraft__PJ_Camera_Speciale_gao, 0);
+        v24->o_use_object = 0;
+    }
+    else if (v24->i_look_aircraft)
+    {
+        v25 = AI_EvalFunc_VIEWAssignObject_C((tGameObjectMain*)board_panel_bp_mode_aircraft__PJ_Camera_Speciale_gao, 0);
+        v5 = v22;
+        if (v22)
+        {
+            if ((unsigned int)v22 <= 2)
+                v5 = AI_MainActor[(uint32_t)v22 - 1];
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(v5, 1);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 1);
+        }
+    }
+    else
+    {
+        v4 = *(tGameObjectMain**)board_panel_bp_mode_aircraft_GST_Global_gao_o_acteur_cine_actif;
+        if (*(uint32_t*)board_panel_bp_mode_aircraft_GST_Global_gao_o_acteur_cine_actif)
+        {
+            if ((unsigned int)v4 <= 2)
+                v4 = AI_MainActor[(uint32_t)v4 - 1];
+            v3 = v4;
+        }
+        else
+        {
+            v3 = 0;
+        }
+        if (!v3)
+        {
+            v2 = v22;
+            if (v22)
+            {
+                if ((unsigned int)v22 <= 2)
+                    v2 = AI_MainActor[(uint32_t)v22 - 1];
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(v2, 0);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 0);
+            }
+            if (v24->i_look_aircraft_photo)
+            {
+                v16 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_button_valide_look);
+                if (v16 != 1000)
+                    return v16;
+            }
+        }
+    }
+    v14 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_aircraft_board_panel_bp_exec_sprite_boutons_on);
+    if (v14 == 1000)
+        result = 1000;
+    else
+        result = v14;
+    return result;
+}
+
+int board_panel_bp_INTF_exec_photo()
+{
+    unsigned int v0; // eax
+    BOOL v1; // eax
+    double v2; // st7
+    double v3; // st7
+    double v4; // st7
+    double v5; // st7
+    double v6; // st7
+    double v7; // st7
+    int v8; // eax
+    float a4; // [esp+0h] [ebp-4B8h]
+    float a4a; // [esp+0h] [ebp-4B8h]
+    float a4b; // [esp+0h] [ebp-4B8h]
+    float a4c; // [esp+0h] [ebp-4B8h]
+    float X; // [esp+4h] [ebp-4B4h]
+    float Xa; // [esp+4h] [ebp-4B4h]
+    float Xb; // [esp+4h] [ebp-4B4h]
+    float Xc; // [esp+4h] [ebp-4B4h]
+    float Xd; // [esp+4h] [ebp-4B4h]
+    float Xe; // [esp+4h] [ebp-4B4h]
+    float Xf; // [esp+4h] [ebp-4B4h]
+    float Xg; // [esp+4h] [ebp-4B4h]
+    float Xh; // [esp+4h] [ebp-4B4h]
+    float Xi; // [esp+4h] [ebp-4B4h]
+    float Xj; // [esp+4h] [ebp-4B4h]
+    float Xk; // [esp+4h] [ebp-4B4h]
+    float Xl; // [esp+4h] [ebp-4B4h]
+    float Xm; // [esp+4h] [ebp-4B4h]
+    float Xn; // [esp+4h] [ebp-4B4h]
+    float Xo; // [esp+4h] [ebp-4B4h]
+    float Xp; // [esp+4h] [ebp-4B4h]
+    float Xq; // [esp+4h] [ebp-4B4h]
+    float Xr; // [esp+4h] [ebp-4B4h]
+    float Xs; // [esp+4h] [ebp-4B4h]
+    float Xt; // [esp+4h] [ebp-4B4h]
+    float Xu; // [esp+4h] [ebp-4B4h]
+    float Xv; // [esp+4h] [ebp-4B4h]
+    float Xw; // [esp+4h] [ebp-4B4h]
+    float Xx; // [esp+4h] [ebp-4B4h]
+    float Xy; // [esp+4h] [ebp-4B4h]
+    float Xz; // [esp+4h] [ebp-4B4h]
+    float v41; // [esp+8h] [ebp-4B0h]
+    float v42; // [esp+Ch] [ebp-4ACh]
+    float v43; // [esp+10h] [ebp-4A8h]
+    float v44; // [esp+14h] [ebp-4A4h]
+    tScriptStruct_GSTBoardPanel* v45; // [esp+18h] [ebp-4A0h]
+    tGameObjectMain* v46; // [esp+48h] [ebp-470h]
+    tGameObjectMain* v47; // [esp+4Ch] [ebp-46Ch]
+    tGameObjectMain* v48; // [esp+50h] [ebp-468h]
+    tGameObjectMain* v49; // [esp+78h] [ebp-440h]
+    tGameObjectMain* v50; // [esp+80h] [ebp-438h]
+    tGameObjectMain* v51; // [esp+88h] [ebp-430h]
+    tGameObjectMain* v52; // [esp+90h] [ebp-428h]
+    float v53; // [esp+94h] [ebp-424h]
+    tGameObjectMain* v54; // [esp+9Ch] [ebp-41Ch]
+    tGameObjectMain* v55; // [esp+A4h] [ebp-414h]
+    tGameObjectMain* v56; // [esp+ACh] [ebp-40Ch]
+    float v57; // [esp+B0h] [ebp-408h]
+    float v58; // [esp+B4h] [ebp-404h]
+    tGameObjectMain* v59; // [esp+D4h] [ebp-3E4h]
+    tGameObjectMain* v60; // [esp+D8h] [ebp-3E0h]
+    tGameObjectMain* v61; // [esp+DCh] [ebp-3DCh]
+    tGameObjectMain* v62; // [esp+E0h] [ebp-3D8h]
+    tGameObjectMain* v63; // [esp+E4h] [ebp-3D4h]
+    float v64; // [esp+E8h] [ebp-3D0h]
+    tGameObjectMain* v65; // [esp+F0h] [ebp-3C8h]
+    tGameObjectMain* v66; // [esp+F4h] [ebp-3C4h]
+    tGameObjectMain* v67; // [esp+F8h] [ebp-3C0h]
+    tGameObjectMain* v68; // [esp+FCh] [ebp-3BCh]
+    tGameObjectMain* v69; // [esp+100h] [ebp-3B8h]
+    tGameObjectMain* v70; // [esp+104h] [ebp-3B4h]
+    tGameObjectMain* v71; // [esp+108h] [ebp-3B0h]
+    float v72; // [esp+10Ch] [ebp-3ACh]
+    float v73; // [esp+110h] [ebp-3A8h]
+    float v74; // [esp+114h] [ebp-3A4h]
+    float v75; // [esp+118h] [ebp-3A0h]
+    float v76; // [esp+11Ch] [ebp-39Ch]
+    float v77; // [esp+120h] [ebp-398h]
+    Vec3 v78; // [esp+124h] [ebp-394h] BYREF
+    Vec3 v79; // [esp+130h] [ebp-388h] BYREF
+    int v80; // [esp+140h] [ebp-378h]
+    float v82; // [esp+148h] [ebp-370h]
+    float v83; // [esp+14Ch] [ebp-36Ch]
+    float v84; // [esp+150h] [ebp-368h]
+    float v85; // [esp+154h] [ebp-364h]
+    int v86; // [esp+158h] [ebp-360h]
+    float v87; // [esp+15Ch] [ebp-35Ch]
+    float v88; // [esp+160h] [ebp-358h]
+    float v89; // [esp+164h] [ebp-354h]
+    int v90; // [esp+168h] [ebp-350h]
+    int v91; // [esp+16Ch] [ebp-34Ch]
+    Vec3 v92; // [esp+170h] [ebp-348h] BYREF
+    int v93; // [esp+17Ch] [ebp-33Ch]
+    float v94; // [esp+180h] [ebp-338h]
+    int v95; // [esp+184h] [ebp-334h]
+    float v96; // [esp+188h] [ebp-330h]
+    int v97; // [esp+18Ch] [ebp-32Ch]
+    float v98; // [esp+190h] [ebp-328h]
+    unsigned int v99; // [esp+194h] [ebp-324h]
+    float v100; // [esp+198h] [ebp-320h]
+    float v101; // [esp+19Ch] [ebp-31Ch]
+    int v102; // [esp+1A0h] [ebp-318h]
+    float v103; // [esp+1A4h] [ebp-314h]
+    int v104; // [esp+1A8h] [ebp-310h]
+    float v105; // [esp+1ACh] [ebp-30Ch]
+    Vec3 v106; // [esp+1B0h] [ebp-308h] BYREF
+    float v107; // [esp+1BCh] [ebp-2FCh]
+    BOOL v108; // [esp+1C0h] [ebp-2F8h]
+    int v109; // [esp+1C4h] [ebp-2F4h]
+    int v110; // [esp+1C8h] [ebp-2F0h]
+    Vec3 v111; // [esp+1CCh] [ebp-2ECh] BYREF
+    int v112; // [esp+1D8h] [ebp-2E0h]
+    float v113; // [esp+1DCh] [ebp-2DCh]
+    float v114; // [esp+1E0h] [ebp-2D8h]
+    float v115; // [esp+1E4h] [ebp-2D4h]
+    float v116; // [esp+1E8h] [ebp-2D0h]
+    int v117; // [esp+1ECh] [ebp-2CCh]
+    Vec3 a2; // [esp+1F0h] [ebp-2C8h] BYREF
+    Vec3 v119; // [esp+1FCh] [ebp-2BCh] BYREF
+    Vec3 v120; // [esp+208h] [ebp-2B0h] BYREF
+    Vec3 v121; // [esp+214h] [ebp-2A4h] BYREF
+    Vec3 v122; // [esp+220h] [ebp-298h] BYREF
+    Vec3 v123; // [esp+22Ch] [ebp-28Ch] BYREF
+    float v124; // [esp+238h] [ebp-280h]
+    float v125; // [esp+23Ch] [ebp-27Ch]
+    int v126; // [esp+240h] [ebp-278h]
+    float v127; // [esp+244h] [ebp-274h]
+    int v128; // [esp+248h] [ebp-270h]
+    float v129; // [esp+24Ch] [ebp-26Ch]
+    int v130; // [esp+250h] [ebp-268h]
+    int v131; // [esp+258h] [ebp-260h]
+    int v132; // [esp+25Ch] [ebp-25Ch]
+    int v133; // [esp+260h] [ebp-258h]
+    float v134; // [esp+264h] [ebp-254h]
+    int v135; // [esp+268h] [ebp-250h]
+    int v136; // [esp+26Ch] [ebp-24Ch]
+    float v137; // [esp+270h] [ebp-248h]
+    float v139; // [esp+278h] [ebp-240h]
+    int v140; // [esp+27Ch] [ebp-23Ch]
+    int v141; // [esp+280h] [ebp-238h]
+    Vec3 v142; // [esp+284h] [ebp-234h] BYREF
+    float v143; // [esp+290h] [ebp-228h]
+    float v144; // [esp+294h] [ebp-224h]
+    int v145; // [esp+298h] [ebp-220h]
+    int v146; // [esp+29Ch] [ebp-21Ch]
+    int v147; // [esp+2A0h] [ebp-218h]
+    Vec3 v148; // [esp+2A4h] [ebp-214h] BYREF
+    Vec3 a3; // [esp+2B0h] [ebp-208h] BYREF
+    int v150; // [esp+2BCh] [ebp-1FCh]
+    float v151; // [esp+2C0h] [ebp-1F8h]
+    unsigned int v152; // [esp+2C4h] [ebp-1F4h]
+    float v153; // [esp+2C8h] [ebp-1F0h]
+    int v154; // [esp+2CCh] [ebp-1ECh]
+    int v155; // [esp+2D4h] [ebp-1E4h]
+    tGameObjectMain* v156; // [esp+2D8h] [ebp-1E0h]
+    float v157; // [esp+2DCh] [ebp-1DCh]
+    int v158; // [esp+2E0h] [ebp-1D8h]
+    Vec3 v159; // [esp+2E4h] [ebp-1D4h] BYREF
+    Vec3 v160; // [esp+2F0h] [ebp-1C8h] BYREF
+    Vec3 v161; // [esp+2FCh] [ebp-1BCh] BYREF
+    float v162; // [esp+308h] [ebp-1B0h]
+    int v163; // [esp+30Ch] [ebp-1ACh]
+    float v164; // [esp+310h] [ebp-1A8h]
+    int v165; // [esp+314h] [ebp-1A4h]
+    int v166; // [esp+318h] [ebp-1A0h]
+    float v167; // [esp+31Ch] [ebp-19Ch]
+    float v168; // [esp+320h] [ebp-198h]
+    int v170; // [esp+328h] [ebp-190h]
+    Vec3 v171; // [esp+32Ch] [ebp-18Ch] BYREF
+    Vec3 v172; // [esp+338h] [ebp-180h] BYREF
+    Vec3 v173; // [esp+344h] [ebp-174h]
+    float v174; // [esp+350h] [ebp-168h]
+    int v175; // [esp+354h] [ebp-164h]
+    float v176; // [esp+358h] [ebp-160h]
+    float v177; // [esp+35Ch] [ebp-15Ch]
+    float v178; // [esp+360h] [ebp-158h]
+    float v179; // [esp+364h] [ebp-154h]
+    float v180; // [esp+368h] [ebp-150h]
+    float v181; // [esp+36Ch] [ebp-14Ch]
+    float v182; // [esp+370h] [ebp-148h]
+    int v183; // [esp+374h] [ebp-144h]
+    int i; // [esp+378h] [ebp-140h]
+    float v185; // [esp+37Ch] [ebp-13Ch]
+    int v186; // [esp+380h] [ebp-138h]
+    int v187; // [esp+384h] [ebp-134h]
+    float v188; // [esp+388h] [ebp-130h]
+    float v189; // [esp+38Ch] [ebp-12Ch]
+    int v190; // [esp+390h] [ebp-128h]
+    int v191; // [esp+394h] [ebp-124h]
+    float v192; // [esp+398h] [ebp-120h]
+    float v193; // [esp+39Ch] [ebp-11Ch]
+    Vec3 v194; // [esp+3A0h] [ebp-118h] BYREF
+    Vec3 dest; // [esp+3ACh] [ebp-10Ch] BYREF
+    Vec3 v196; // [esp+3B8h] [ebp-100h] BYREF
+    float v197; // [esp+3C4h] [ebp-F4h]
+    int v198; // [esp+3C8h] [ebp-F0h]
+    int v199; // [esp+3CCh] [ebp-ECh]
+    int v200; // [esp+3D0h] [ebp-E8h]
+    int v201; // [esp+3D4h] [ebp-E4h]
+    int v202; // [esp+3D8h] [ebp-E0h]
+    int v203; // [esp+3DCh] [ebp-DCh]
+    Vec3 a5; // [esp+3E0h] [ebp-D8h] BYREF
+    Vec3 v205; // [esp+3ECh] [ebp-CCh] BYREF
+    Vec3 v206; // [esp+3F8h] [ebp-C0h] BYREF
+    int v207; // [esp+404h] [ebp-B4h]
+    int v208; // [esp+408h] [ebp-B0h]
+    float v209; // [esp+40Ch] [ebp-ACh]
+    float v210; // [esp+410h] [ebp-A8h]
+    float v211; // [esp+414h] [ebp-A4h]
+    float v212; // [esp+418h] [ebp-A0h]
+    int v213; // [esp+41Ch] [ebp-9Ch]
+    float v214; // [esp+420h] [ebp-98h]
+    Vec3 v215; // [esp+424h] [ebp-94h] BYREF
+    tScriptStruct_GSTBoardPanel* v216; // [esp+430h] [ebp-88h]
+    int v217; // [esp+434h] [ebp-84h]
+    float v218; // [esp+438h] [ebp-80h]
+    float v220; // [esp+440h] [ebp-78h]
+    int v221; // [esp+444h] [ebp-74h]
+    float v222; // [esp+448h] [ebp-70h]
+    int v223; // [esp+44Ch] [ebp-6Ch]
+    int v224; // [esp+450h] [ebp-68h]
+    Vec3 v225; // [esp+454h] [ebp-64h] BYREF
+    float v226; // [esp+460h] [ebp-58h]
+    float v227; // [esp+468h] [ebp-50h]
+    int v228; // [esp+46Ch] [ebp-4Ch]
+    int v229; // [esp+470h] [ebp-48h]
+    float v230; // [esp+474h] [ebp-44h]
+    float v231; // [esp+478h] [ebp-40h]
+    Vec3 v232; // [esp+47Ch] [ebp-3Ch] BYREF
+    Vec3 v233; // [esp+488h] [ebp-30h] BYREF
+    float v234; // [esp+494h] [ebp-24h]
+    float v235; // [esp+498h] [ebp-20h]
+    int v236; // [esp+49Ch] [ebp-1Ch]
+    float v237; // [esp+4A0h] [ebp-18h]
+    float v238; // [esp+4A4h] [ebp-14h]
+    float v239; // [esp+4A8h] [ebp-10h]
+    float v240; // [esp+4ACh] [ebp-Ch]
+    float v241; // [esp+4B0h] [ebp-8h]
+    int v242; // [esp+4B4h] [ebp-4h]
+
+    v173.x = 1.0;
+    v173.y = 0.0;
+    v173.z = 0.0;
+    v142.x = 1.0;
+    v142.y = 0.0;
+    v142.z = 0.0;
+    v106.x = 1.0;
+    v106.y = 0.0;
+    v106.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v45 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v45 = 0;
+    v216 = v45;
+    v234 = 0.0;
+    v134 = 0.0;
+    v143 = 0.0;
+    v152 = 0;
+    v238 = 0.0;
+    i = 0;
+    v139 = 0.0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_INTF_exec_photo__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao = AI_ul_RealResolveOneRefObject(0xD9008C81);
+        board_panel_bp_INTF_exec_photo_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_photo_INV_manager_gao_o_PhotoText,
+            (void*)board_panel_bp_INTF_exec_photo_INV_manager_gao,
+            48);
+        board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao = AI_ul_RealResolveOneRefObject(0xD9008C9C);
+    }
+    if (AI_EvalFunc_OBJ_CapaTest_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo__PJ_Camera_Speciale_gao, 256))
+    {
+        v210 = TIM_gf_dt;
+        v77 = 10.0f * TIM_gf_dt;
+        if (v77 < 0.0)
+            v77 = 0.0;
+        if (v77 > 1.0)
+            v77 = 1.0;
+        v189 = 0.0f * v77 + v216->f_look_morph_apparition * (1.0f - v77);
+        v216->f_look_morph_apparition = v189;
+        v109 = AI_EvalFunc_GetLocalAlpha_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao, 4u, 0);
+        v100 = TIM_gf_dt;
+        v76 = 2.0f * TIM_gf_dt;
+        if (v76 < 0.0)
+            v76 = 0.0;
+        if (v76 > 1.0)
+            v76 = 1.0;
+        v44 = (float)v109;
+        v168 = 90.0f * v76 + (1.0f - v76) * v44;
+        AI_EvalFunc_SetLocalAlpha_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+            4u,
+            0,
+            (unsigned int)v168);
+        v230 = TIM_gf_dt;
+        v75 = 4.0f * TIM_gf_dt;
+        if (v75 < 0.0)
+            v75 = 0.0;
+        if (v75 > 1.0)
+            v75 = 1.0;
+        v129 = 1.0f * v75 + v216->f_color_blend_reticule * (1.0f - v75);
+        v216->f_color_blend_reticule = v129;
+    }
+    else
+    {
+        v192 = TIM_gf_dt;
+        v74 = 3.0f * TIM_gf_dt;
+        if (v74 < 0.0)
+            v74 = 0.0;
+        if (v74 > 1.0)
+            v74 = 1.0;
+        v231 = 1.0f * v74 + v216->f_look_morph_apparition * (1.0f - v74);
+        v216->f_look_morph_apparition = v231;
+        v140 = AI_EvalFunc_GetLocalAlpha_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao, 4u, 0);
+        v178 = TIM_gf_dt;
+        v73 = 4.0f * TIM_gf_dt;
+        if (v73 < 0.0)
+            v73 = 0.0;
+        if (v73 > 1.0)
+            v73 = 1.0;
+        v43 = (float)v140;
+        v114 = 0.0f * v73 + (1.0f - v73) * v43;
+        AI_EvalFunc_SetLocalAlpha_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+            4u,
+            0,
+            (unsigned int)v114);
+        v237 = TIM_gf_dt;
+        v72 = 8.0f * TIM_gf_dt;
+        if (v72 < 0.0)
+            v72 = 0.0;
+        if (v72 > 1.0)
+            v72 = 1.0;
+        v182 = 0.0f * v72 + v216->f_color_blend_reticule * (1.0f - v72);
+        v216->f_color_blend_reticule = v182;
+    }
+    v133 = AI_EvalFunc_COLORBlend_C(0, 0x565B4A, v216->f_color_blend_reticule);
+    AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao, v133, 4);
+    if (v216->f_look_morph_apparition == 1.0)
+    {
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao, 1);
+    }
+    else
+    {
+        AI_EvalFunc_OBJ_SetChannelProg_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+            0,
+            v216->f_look_morph_apparition);
+        AI_EvalFunc_OBJ_SetChannelProg_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+            1,
+            v216->f_look_morph_apparition);
+        if (v216->f_look_morph_apparition > 0.99000001f)
+        {
+            v216->f_look_morph_apparition = 1.0;
+            AI_EvalFunc_MATSetConstant_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao, 0, 4);
+        }
+    }
+    v71 = (tGameObjectMain*)v216->o_look_object;
+    if (v71)
+    {
+        if ((unsigned int)v71 <= 2)
+            v71 = AI_MainActor[(uint32_t)v71 - 1];
+        v70 = v71;
+    }
+    else
+    {
+        v70 = 0;
+    }
+    if (!v70 && !v216->i_look_object_nb)
+        goto LABEL_208;
+    v156 = *AI_MainActor;
+    v69 = (tGameObjectMain*)v216->o_look_object;
+    if (v69)
+    {
+        if ((unsigned int)v69 <= 2)
+            v69 = AI_MainActor[(uint32_t)v69 - 1];
+        v68 = v69;
+    }
+    else
+    {
+        v68 = 0;
+    }
+    v67 = v156;
+    if (v156)
+    {
+        if ((unsigned int)v156 <= 2)
+            v67 = AI_MainActor[(uint32_t)v156 - 1];
+        v66 = v67;
+    }
+    else
+    {
+        v66 = 0;
+    }
+    if (v68 != v66)
+    {
+        v152 = *(uint32_t*)board_panel_bp_INTF_exec_photo_INV_manager_gao_o_PhotoText;
+        v65 = (tGameObjectMain*)v152;
+        if (v152)
+        {
+            if (v152 <= 2)
+                v65 = AI_MainActor[v152 - 1];
+            v0 = AI_EvalFunc_OBJ_FlagsControlGet_C(v65);
+        }
+        else
+        {
+            v0 = AI_EvalFunc_OBJ_FlagsControlGet_C(0);
+        }
+        v99 = v0;
+        if ((v0 & 0x200000) == 0)
+        {
+            v216->f_look_time_info = TIM_gf_MainClock - TIM_gf_LockTime;
+            v201 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 13);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, v201 | 0x400);
+            v186 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v186 | 0x400);
+            v216->i_look_photo_text_affiche = -1;
+        }
+        v235 = TIM_gf_dt;
+        v64 = 8.0f * TIM_gf_dt;
+        if (v64 < 0.0)
+            v64 = 0.0;
+        if (v64 > 1.0)
+            v64 = 1.0;
+        v188 = 0.0f * v64 + v216->f_look_prog_viseur * (1.0f - v64);
+        v216->f_look_prog_viseur = v188;
+        v147 = AI_EvalFunc_MATGetConstant_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            1u);
+        v144 = TIM_gf_dt;
+        X = 4.0f * TIM_gf_dt;
+        v199 = AI_EvalFunc_COLORBlend_C(v147, 0x66FCFBE2, X);
+        AI_EvalFunc_MATSetConstant_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            v199,
+            1);
+        AI_EvalFunc_SetLocalAlpha_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            1u,
+            0,
+            200);
+        v63 = (tGameObjectMain*)v216->o_look_object;
+        if (v63)
+        {
+            if ((unsigned int)v63 <= 2)
+                v63 = AI_MainActor[(uint32_t)v63 - 1];
+            v62 = v63;
+        }
+        else
+        {
+            v62 = 0;
+        }
+        if (!v62)
+            goto LABEL_96;
+        v61 = (tGameObjectMain*)v216->o_look_object;
+        if (v61)
+        {
+            if ((unsigned int)v61 <= 2)
+                v61 = AI_MainActor[(uint32_t)v61 - 1];
+            v60 = v61;
+        }
+        else
+        {
+            v60 = 0;
+        }
+        if ((unsigned __int8)v60->extended->fields->designInt3)
+            goto LABEL_96;
+        v59 = (tGameObjectMain*)v216->o_look_object;
+        if (v59)
+        {
+            if ((unsigned int)v59 <= 2)
+                v59 = AI_MainActor[(uint32_t)v59 - 1];
+            v1 = OBJ_ModifierType_C(v59, 20);
+        }
+        else
+        {
+            v1 = OBJ_ModifierType_C(0, 20);
+        }
+        v108 = v1;
+        if (v1)
+        {
+        LABEL_96:
+            AI_EvalFunc_SetLocalAlpha_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                3u,
+                0,
+                200);
+            AI_EvalFunc_SetLocalAlpha_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                4u,
+                0,
+                200);
+            for (i = 0; ; ++i)
+            {
+                v57 = (float)v216->i_look_object_nb;
+                v42 = v57 > 1.0f ? 1.0f : (float)v216->i_look_object_nb;
+                v115 = v42;
+                v41 = (float)i;
+                if (v41 >= (double)v42)
+                    break;
+                if (v216->f_look_prog_viseur > 1.5)
+                {
+                    v171.x = 0.0;
+                    v171.y = 1.0;
+                    v171.z = 0.0;
+                    v78.x = 1.0;
+                    v78.y = 0.0;
+                    v78.z = 0.0;
+                    AI_EvalFunc_OBJ_BankingGeneralSet_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        &v171,
+                        &v78);
+                }
+                v152 = v216->ao_look_object_mission[i];
+                v56 = (tGameObjectMain*)v152;
+                if (v152)
+                {
+                    if (v152 <= 2)
+                        v56 = AI_MainActor[v152 - 1];
+                    v2 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(v56, 0);
+                }
+                else
+                {
+                    v2 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(0, 0);
+                }
+                v234 = (float)v2;
+                if (v234 != -1.0f)
+                {
+                    v55 = (tGameObjectMain*)v152;
+                    if (v152)
+                    {
+                        if (v152 <= 2)
+                            v55 = AI_MainActor[v152 - 1];
+                        v3 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(v55, 1);
+                    }
+                    else
+                    {
+                        v3 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(0, 1);
+                    }
+                    v238 = (float)v3;
+                    v54 = (tGameObjectMain*)v152;
+                    if (v152)
+                    {
+                        if (v152 <= 2)
+                            v54 = AI_MainActor[v152 - 1];
+                        v4 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(v54, 2);
+                    }
+                    else
+                    {
+                        v4 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(0, 2);
+                    }
+                    v134 = (float)v4;
+                    if (v234 >= (double)v238)
+                    {
+                        v216->f_look_u_jauge = 0.40000001f * v234 - (v238 + v134) * 0.2f;
+                        v216->f_look_u_jauge = v216->f_look_u_jauge / (v238 - v134);
+                    }
+                    else
+                    {
+                        v216->f_look_u_jauge = 0.5f - v234 / v238 * 0.30000001f;
+                    }
+                }
+                if (v216->ai_look_validite_mission[i])
+                {
+                    switch (v216->ai_look_validite_mission[i])
+                    {
+                    case 1:
+                        if (v234 == -1.0)
+                            v216->f_look_u_jauge = 0.30000001f;
+                        if (v216->f_look_prog_cadrage != 1.0)
+                        {
+                            v177 = TIM_gf_dt;
+                            v139 = v216->f_look_prog_cadrage + 1.0f / (1.0f - v216->f_look_prog_cadrage) * 4.0f * TIM_gf_dt;
+                            if ((1.0 - v216->f_look_prog_cadrage) * (1.0f - v139) > 0.0)
+                                v216->f_look_prog_cadrage = v139;
+                            else
+                                v216->f_look_prog_cadrage = 1.0;
+                        }
+                        AI_EvalFunc_SetLocalAlpha_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            0,
+                            0,
+                            20);
+                        v110 = AI_EvalFunc_MATGetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            0);
+                        v85 = TIM_gf_dt;
+                        Xh = 4.0f * TIM_gf_dt;
+                        v86 = AI_EvalFunc_COLORBlend_C(v110, 0xD0D58, Xh);
+                        AI_EvalFunc_MATSetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            v86,
+                            0);
+                        break;
+                    case 2:
+                        if (v234 == -1.0)
+                        {
+                            v216->f_look_u_jauge = -0.30000001f;
+                        }
+                        else
+                        {
+                            v52 = (tGameObjectMain*)v152;
+                            if (v152)
+                            {
+                                if (v152 <= 2)
+                                    v52 = AI_MainActor[v152 - 1];
+                                v5 = AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(v52, 0);
+                            }
+                            else
+                            {
+                                v5 = AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(0, 0);
+                            }
+                            v240 = (float)v5;
+                            v51 = (tGameObjectMain*)v152;
+                            if (v152)
+                            {
+                                if (v152 <= 2)
+                                    v51 = AI_MainActor[v152 - 1];
+                                v6 = AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(v51, 1);
+                            }
+                            else
+                            {
+                                v6 = AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(0, 1);
+                            }
+                            v105 = (float)v6;
+                            v143 = 0.30000001f * v240 - (0.5f * v105 - 1.0f);
+                            v50 = (tGameObjectMain*)v152;
+                            if (v152)
+                            {
+                                if (v152 <= 2)
+                                    v50 = AI_MainActor[v152 - 1];
+                                v7 = AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(v50, 1);
+                            }
+                            else
+                            {
+                                v7 = AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(0, 1);
+                            }
+                            v193 = (float)v7;
+                            v143 = v143 / (v193 - 0.5f);
+                        }
+                        if (v216->f_look_prog_cadrage == 2.0f)
+                            AI_EvalFunc_MATSetConstant_C(
+                                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                                592265,
+                                0);
+                        if (v216->f_look_prog_cadrage != 3.0f)
+                        {
+                            v197 = TIM_gf_dt;
+                            v139 = v216->f_look_prog_cadrage + 1.0f / (3.0f - v216->f_look_prog_cadrage) * 4.0f * TIM_gf_dt;
+                            if ((3.0 - v216->f_look_prog_cadrage) * (3.0f - v139) > 0.0)
+                                v216->f_look_prog_cadrage = v139;
+                            else
+                                v216->f_look_prog_cadrage = 3.0f;
+                        }
+                        AI_EvalFunc_SetLocalAlpha_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            0,
+                            0,
+                            0);
+                        v104 = AI_EvalFunc_MATGetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            0);
+                        v107 = TIM_gf_dt;
+                        Xi = 4.0f * TIM_gf_dt;
+                        v146 = AI_EvalFunc_COLORBlend_C(v104, 0, Xi);
+                        AI_EvalFunc_MATSetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            v146,
+                            0);
+                        break;
+                    case 8:
+                        if (v234 == -1.0)
+                            v216->f_look_u_jauge = -0.30000001f;
+                        if (v216->f_look_prog_cadrage == 2.0f)
+                            AI_EvalFunc_MATSetConstant_C(
+                                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                                592265,
+                                0);
+                        if (v216->f_look_prog_cadrage != 3.0f)
+                        {
+                            v164 = TIM_gf_dt;
+                            v139 = v216->f_look_prog_cadrage + 1.0f / (3.0f - v216->f_look_prog_cadrage) * 4.0f * TIM_gf_dt;
+                            if ((3.0 - v216->f_look_prog_cadrage) * (3.0f - v139) > 0.0)
+                                v216->f_look_prog_cadrage = v139;
+                            else
+                                v216->f_look_prog_cadrage = 3.0f;
+                        }
+                        AI_EvalFunc_SetLocalAlpha_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            0,
+                            0,
+                            0);
+                        v90 = AI_EvalFunc_MATGetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            0);
+                        v88 = TIM_gf_dt;
+                        Xj = 4.0f * TIM_gf_dt;
+                        v166 = AI_EvalFunc_COLORBlend_C(v90, 0, Xj);
+                        AI_EvalFunc_MATSetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            v166,
+                            0);
+                        break;
+                    }
+                    AI_EvalFunc_SetLocalAlpha_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        1u,
+                        0,
+                        20);
+                    AI_EvalFunc_SetLocalAlpha_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        1u,
+                        2,
+                        20);
+                    v154 = AI_EvalFunc_MATGetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        1u);
+                    v241 = TIM_gf_dt;
+                    Xk = 4.0f * TIM_gf_dt;
+                    v229 = AI_EvalFunc_COLORBlend_C(v154, 0x80818, Xk);
+                    AI_EvalFunc_MATSetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        v229,
+                        1);
+                    v117 = AI_EvalFunc_MATGetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        2u);
+                    v226 = TIM_gf_dt;
+                    Xl = 4.0f * TIM_gf_dt;
+                    v130 = AI_EvalFunc_COLORBlend_C(v117, 0xA0A9A, Xl);
+                    AI_EvalFunc_MATSetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        v130,
+                        2);
+                    v216->ai_look_validite_mission[i + 10] = 0;
+                }
+                else
+                {
+                    if (v234 == -1.0)
+                        v216->f_look_u_jauge = 0.0;
+                    if (v216->f_look_prog_cadrage != 2.0)
+                    {
+                        v96 = TIM_gf_dt;
+                        v139 = v216->f_look_prog_cadrage + 1.0f / (2.0f - v216->f_look_prog_cadrage) * 4.0f * TIM_gf_dt;
+                        if ((2.0 - v216->f_look_prog_cadrage) * (2.0f - v139) > 0.0)
+                            v216->f_look_prog_cadrage = v139;
+                        else
+                            v216->f_look_prog_cadrage = 2.0f;
+                    }
+                    v82 = TIM_gf_dt;
+                    v53 = 4.0f * TIM_gf_dt;
+                    if (v53 < 0.0)
+                        v53 = 0.0;
+                    if (v53 > 1.0)
+                        v53 = 1.0;
+                    v151 = 0.0f * v53 + v216->f_look_u_jauge * (1.0f - v53);
+                    v216->f_look_u_jauge = v151;
+                    if (!v216->ai_look_validite_mission[i + 10])
+                    {
+                        v91 = AI_EvalFunc_SNDRequestPlay_C_CURRENT(1, -1.0f);
+                        v216->ai_look_validite_mission[i + 10] = 1;
+                        AI_EvalFunc_MATSetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            -1,
+                            0);
+                        AI_EvalFunc_MATSetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            -1,
+                            1);
+                        AI_EvalFunc_MATSetConstant_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            -1,
+                            2);
+                        AI_EvalFunc_SetLocalAlpha_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            0,
+                            0,
+                            115);
+                    }
+                    v198 = AI_EvalFunc_MATGetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        0);
+                    v153 = TIM_gf_dt;
+                    Xe = 4.0f * TIM_gf_dt;
+                    v190 = AI_EvalFunc_COLORBlend_C(v198, 0x54437D07, Xe);
+                    AI_EvalFunc_MATSetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        v190,
+                        0);
+                    v202 = AI_EvalFunc_MATGetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        1u);
+                    v214 = TIM_gf_dt;
+                    Xf = 4.0f * TIM_gf_dt;
+                    v102 = AI_EvalFunc_COLORBlend_C(v202, 0x54437D07, Xf);
+                    AI_EvalFunc_MATSetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        v102,
+                        1);
+                    v191 = AI_EvalFunc_MATGetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        2u);
+                    v162 = TIM_gf_dt;
+                    Xg = 4.0f * TIM_gf_dt;
+                    v213 = AI_EvalFunc_COLORBlend_C(v191, 0x54437D07, Xg);
+                    AI_EvalFunc_MATSetConstant_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        v213,
+                        2);
+                }
+                AI_EvalFunc_SetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    2u,
+                    0,
+                    115);
+                v145 = AI_EvalFunc_MATGetConstant_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    3u);
+                v113 = TIM_gf_dt;
+                Xm = 4.0f * TIM_gf_dt;
+                v200 = AI_EvalFunc_COLORBlend_C(v145, 0x56644A, Xm);
+                AI_EvalFunc_MATSetConstant_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    v200,
+                    3);
+                v150 = AI_EvalFunc_MATGetConstant_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    4u);
+                v116 = TIM_gf_dt;
+                Xn = 4.0f * TIM_gf_dt;
+                v236 = AI_EvalFunc_COLORBlend_C(v150, 0x667C7C62, Xn);
+                AI_EvalFunc_MATSetConstant_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    v236,
+                    4);
+                v49 = (tGameObjectMain*)v152;
+                if (v152)
+                {
+                    if (v152 <= 2)
+                        v49 = AI_MainActor[v152 - 1];
+                    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(v49, &v194);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(0, &v194);
+                }
+                v106 = v194;
+                AI_EvalFunc_VIEW3dWorldTo2d_C(0, &v106, &v148);
+                v106 = v148;
+                v111.x = 0.0;
+                v111.y = 1.0;
+                v111.z = 0.0;
+                AI_EvalFunc_OBJ_BankingGet_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    &v232);
+                v196.x = 0.0;
+                v196.y = 0.0;
+                v196.z = 1.0;
+                v157 = TIM_gf_dt;
+                a4b = 4.0f * TIM_gf_dt;
+                AI_EvalFunc_MATHVecBlendRotate_C(&v232, &v196, a4b, &v123);
+                AI_EvalFunc_OBJ_BankingGeneralSet_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    &v111,
+                    &v123);
+                v142.y = -0.25f;
+                v142.x = -(v106.x - 0.5f) * 0.33950001f;
+                v142.z = -(v106.y - 0.5f) * 0.25549999f;
+                if (!AI_EvalFunc_TIMEElapsed_C(v216->f_look_time_change_target, 0.5))
+                {
+                    AI_EvalFunc_OBJGetPos_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        &v205);
+                    v167 = TIM_gf_dt;
+                    a4c = 8.0f * TIM_gf_dt;
+                    AI_EvalFunc_MATHVecBlend_C(&v205, &v142, a4c, &v121);
+                    v173 = v121;
+                    AI_EvalFunc_OBJGetPos_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        &v79);
+                    MATH_SubstractVec(&v206, &v142, &v79);
+                    AI_EvalFunc_OBJGetPos_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        &v160);
+                    MATH_SubstractVec(&v120, &v142, &v160);
+                    v89 = v120.z * v206.z + v120.y * v206.y + v206.x * v120.x;
+                    if (v89 > 0.0024999999f)
+                        v142 = v173;
+                }
+                if (v216->ai_look_validite_mission[i])
+                {
+                    v98 = TIM_gf_MainClock - TIM_gf_LockTime;
+                    Xo = 4.0f * v98;
+                    v220 = cosf(Xo);
+                    v142.x = v220 * 0.0049999999f + v142.x;
+                    v179 = TIM_gf_MainClock - TIM_gf_LockTime;
+                    Xp = 4.0f * v179;
+                    v137 = sinf(Xp);
+                    v142.z = v137 * 0.0049999999f + v142.z;
+                }
+                AI_EvalFunc_OBJSetPos_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    &v142);
+                if (v216->i_look_photo_target != 2)
+                {
+                    v216->i_look_photo_target = 2;
+                    AI_EvalFunc_OBJ_ZoomSet_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                        0.079999998f);
+                    v48 = (tGameObjectMain*)v152;
+                    if (v152)
+                    {
+                        if (v152 <= 2)
+                            v48 = AI_MainActor[v152 - 1];
+                        v47 = v48;
+                    }
+                    else
+                    {
+                        v47 = 0;
+                    }
+                    if ((int)(v47->extended->fields->designInt3 & 0xFF000000) >> 24 == 4)
+                        goto LABEL_206;
+                    v46 = (tGameObjectMain*)v152;
+                    if (v152)
+                    {
+                        if (v152 <= 2)
+                            v46 = AI_MainActor[v152 - 1];
+                        v8 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(v46);
+                    }
+                    else
+                    {
+                        v8 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(0);
+                    }
+                    v97 = v8;
+                    if (v8 == 4)
+                    {
+                    LABEL_206:
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            1u,
+                            0,
+                            1);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            1u,
+                            1,
+                            1);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            1u,
+                            2,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            1u,
+                            3,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            4u,
+                            0,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            4u,
+                            1,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                            3u,
+                            0,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                            3u,
+                            1,
+                            1);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                            3u,
+                            2,
+                            0);
+                    }
+                    else
+                    {
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            1u,
+                            0,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            1u,
+                            1,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            1u,
+                            2,
+                            1);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            1u,
+                            3,
+                            1);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            4u,
+                            0,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                            4u,
+                            1,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                            3u,
+                            0,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                            3u,
+                            1,
+                            0);
+                        AI_EvalFunc_MATEnableMltxtLvl_C(
+                            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                            3u,
+                            2,
+                            1);
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (v216->f_look_prog_viseur > 1.5f)
+            {
+                v225.x = 0.0;
+                v225.y = 1.0;
+                v225.z = 0.0;
+                v159.x = 0.0;
+                v159.y = 0.0;
+                v159.z = 1.0;
+                AI_EvalFunc_OBJ_BankingGeneralSet_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    &v225,
+                    &v159);
+            }
+            AI_EvalFunc_VIEW3dWorldTo2d_C(0, &v216->v_look_pos_center, &v215);
+            v106 = v215;
+            v142.y = -0.25f;
+            v142.x = -(v215.x - 0.5f) * 0.33950001f;
+            v142.z = -(v215.y - 0.5f) * 0.25549999f;
+            if (!AI_EvalFunc_TIMEElapsed_C(v216->f_look_time_change_target, 0.5f))
+            {
+                AI_EvalFunc_OBJGetPos_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    &v172);
+                v227 = TIM_gf_dt;
+                a4 = 8.0f * TIM_gf_dt;
+                AI_EvalFunc_MATHVecBlend_C(&v172, &v142, a4, &v119);
+                v173 = v119;
+                AI_EvalFunc_OBJGetPos_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    &v233);
+                MATH_SubstractVec(&dest, &v142, &v233);
+                AI_EvalFunc_OBJGetPos_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    &v92);
+                MATH_SubstractVec(&v122, &v142, &v92);
+                v212 = v122.z * dest.z + v122.y * dest.y + dest.x * v122.x;
+                if (v212 > 0.0024999999)
+                    v142 = v173;
+            }
+            AI_EvalFunc_OBJSetPos_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                &v142);
+            if (v216->i_look_photo_target != 1)
+            {
+                v216->i_look_photo_target = 1;
+                v216->f_look_u_jauge = 0.5f;
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    1u,
+                    0,
+                    0);
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    1u,
+                    1,
+                    0);
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    1u,
+                    2,
+                    0);
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    1u,
+                    3,
+                    0);
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    4u,
+                    0,
+                    1);
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    4u,
+                    1,
+                    1);
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                    3u,
+                    0,
+                    1);
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                    3u,
+                    1,
+                    0);
+                AI_EvalFunc_MATEnableMltxtLvl_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao,
+                    3u,
+                    2,
+                    0);
+                AI_EvalFunc_SetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    0,
+                    0,
+                    0);
+                AI_EvalFunc_SetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    2u,
+                    0,
+                    48);
+                AI_EvalFunc_SetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    3u,
+                    0,
+                    64);
+                AI_EvalFunc_SetLocalAlpha_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    4u,
+                    0,
+                    120);
+                AI_EvalFunc_OBJ_ZoomSet_C(
+                    (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                    0.039999999f);
+            }
+            v228 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                0);
+            v174 = TIM_gf_dt;
+            Xa = 4.0f * TIM_gf_dt;
+            v155 = AI_EvalFunc_COLORBlend_C(v228, 0, Xa);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v155,
+                0);
+            v203 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                2u);
+            v125 = TIM_gf_dt;
+            Xb = 4.0f * TIM_gf_dt;
+            v158 = AI_EvalFunc_COLORBlend_C(v203, 0x3C4524, Xb);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v158,
+                2);
+            v242 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                3u);
+            v211 = TIM_gf_dt;
+            Xc = 4.0f * TIM_gf_dt;
+            v112 = AI_EvalFunc_COLORBlend_C(v242, 0x3E3F29, Xc);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v112,
+                3);
+            v207 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                4u);
+            v239 = TIM_gf_dt;
+            Xd = 4.0f * TIM_gf_dt;
+            v128 = AI_EvalFunc_COLORBlend_C(v207, 0x58686855, Xd);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v128,
+                4);
+            v161.x = 0.0;
+            v161.y = 1.0;
+            v161.z = 0.0;
+            AI_EvalFunc_OBJ_BankingGet_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                &a2);
+            a3.x = 1.0;
+            a3.y = 0.0;
+            a3.z = 0.0;
+            v83 = TIM_gf_dt;
+            a4a = 4.0f * TIM_gf_dt;
+            AI_EvalFunc_MATHVecBlendRotate_C(&a2, &a3, a4a, &a5);
+            AI_EvalFunc_OBJ_BankingGeneralSet_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                &v161,
+                &a5);
+            v216->f_look_prog_cadrage = 1.0;
+            v84 = TIM_gf_dt;
+            v58 = 4.0f * TIM_gf_dt;
+            if (v58 < 0.0)
+                v58 = 0.0;
+            if (v58 > 1.0)
+                v58 = 1.0;
+            v180 = -0.5f * v58 + v216->f_look_u_jauge * (1.0f - v58);
+            v216->f_look_u_jauge = v180;
+        }
+    }
+    else
+    {
+    LABEL_208:
+        if (AI_EvalFunc_OBJ_CapaTest_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo__PJ_Camera_Speciale_gao, 128))
+        {
+            v185 = TIM_gf_dt;
+            v216->f_look_prog_viseur = 4.0f * TIM_gf_dt + v216->f_look_prog_viseur;
+            v136 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                0);
+            v103 = TIM_gf_dt;
+            Xq = 4.0f * TIM_gf_dt;
+            v223 = AI_EvalFunc_COLORBlend_C(v136, 0, Xq);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v223,
+                0);
+            v224 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                1u);
+            v176 = TIM_gf_dt;
+            Xr = 4.0f * TIM_gf_dt;
+            v131 = AI_EvalFunc_COLORBlend_C(v224, 0, Xr);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v131,
+                1);
+            v95 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                2u);
+            v222 = TIM_gf_dt;
+            Xs = 4.0f * TIM_gf_dt;
+            v175 = AI_EvalFunc_COLORBlend_C(v95, 0, Xs);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v175,
+                2);
+            v135 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                3u);
+            v101 = TIM_gf_dt;
+            Xt = 4.0f * TIM_gf_dt;
+            v221 = AI_EvalFunc_COLORBlend_C(v135, 0, Xt);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v221,
+                3);
+            v183 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                4u);
+            v124 = TIM_gf_dt;
+            Xu = 4.0f * TIM_gf_dt;
+            v170 = AI_EvalFunc_COLORBlend_C(v183, 0, Xu);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v170,
+                4);
+            if (v216->i_look_photo_target == 3)
+                goto LABEL_213;
+        }
+        else
+        {
+            v209 = TIM_gf_dt;
+            v216->f_look_prog_viseur = 4.0f * TIM_gf_dt + v216->f_look_prog_viseur;
+            v80 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                0);
+            v127 = TIM_gf_dt;
+            Xv = 4.0f * TIM_gf_dt;
+            v163 = AI_EvalFunc_COLORBlend_C(v80, 0, Xv);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v163,
+                0);
+            v208 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                1u);
+            v87 = TIM_gf_dt;
+            Xw = 4.0f * TIM_gf_dt;
+            v126 = AI_EvalFunc_COLORBlend_C(v208, 0, Xw);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v126,
+                1);
+            v165 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                2u);
+            v94 = TIM_gf_dt;
+            Xx = 4.0f * TIM_gf_dt;
+            v141 = AI_EvalFunc_COLORBlend_C(v165, 0, Xx);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v141,
+                2);
+            v187 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                3u);
+            v218 = TIM_gf_dt;
+            Xy = 4.0f * TIM_gf_dt;
+            v93 = AI_EvalFunc_COLORBlend_C(v187, 0, Xy);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v93,
+                3);
+            v132 = AI_EvalFunc_MATGetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                4u);
+            v181 = TIM_gf_dt;
+            Xz = 4.0f * TIM_gf_dt;
+            v217 = AI_EvalFunc_COLORBlend_C(v132, 0, Xz);
+            AI_EvalFunc_MATSetConstant_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                v217,
+                4);
+            if (v216->i_look_photo_target == 3)
+                goto LABEL_213;
+        }
+        v216->i_look_photo_target = 3;
+        AI_EvalFunc_SetLocalAlpha_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            0,
+            0,
+            0);
+        AI_EvalFunc_SetLocalAlpha_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            1u,
+            0,
+            0);
+        AI_EvalFunc_SetLocalAlpha_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            2u,
+            0,
+            0);
+        AI_EvalFunc_SetLocalAlpha_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            3u,
+            0,
+            0);
+        AI_EvalFunc_SetLocalAlpha_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            4u,
+            0,
+            0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao, 3u, 0, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao, 3u, 1, 0);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_INTF_exec_photo_INTF_Cadre_Photo_gao, 3u, 2, 0);
+        v216->ai_look_validite_mission[5] = 0;
+        v216->ai_look_validite_mission[6] = 0;
+        v216->ai_look_validite_mission[8] = 0;
+        v216->ai_look_validite_mission[8] = 0;
+        v216->ai_look_validite_mission[9] = 0;
+    }
+LABEL_213:
+    if (v216->f_look_morph_apparition != 1.0f)
+    {
+        if (v216->f_look_prog_viseur <= 1.5f)
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                0);
+        else
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(
+                (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+                1);
+        AI_EvalFunc_OBJ_SetChannelProg_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            1,
+            v216->f_look_prog_viseur);
+        AI_EvalFunc_OBJ_SetChannelProg_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            0,
+            v216->f_look_prog_cadrage);
+        AI_EvalFunc_SetUV_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            2,
+            0,
+            0,
+            v216->f_look_u_jauge);
+        AI_EvalFunc_SetUV_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            2,
+            1,
+            0,
+            v216->f_look_u_jauge);
+        AI_EvalFunc_SetUV_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            2,
+            0,
+            2,
+            1.0f);
+        AI_EvalFunc_SetUV_C(
+            (tGameObjectMain*)board_panel_bp_INTF_exec_photo_INV_manager_gao_INTF_curseur_photo_main_gao,
+            2,
+            1,
+            2,
+            1.0f);
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_select_button_mode_test()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-A4h]
+    tGameObjectMain* v2; // [esp+8h] [ebp-9Ch]
+    tGameObjectMain* v3; // [esp+14h] [ebp-90h]
+    tGameObjectMain* v4; // [esp+1Ch] [ebp-88h]
+    tGameObjectMain* v5; // [esp+20h] [ebp-84h]
+    tGameObjectMain* v6; // [esp+24h] [ebp-80h]
+    tGameObjectMain* v7; // [esp+28h] [ebp-7Ch]
+    int v8; // [esp+38h] [ebp-6Ch]
+    int v9; // [esp+44h] [ebp-60h]
+    int v10; // [esp+48h] [ebp-5Ch]
+    int v11; // [esp+4Ch] [ebp-58h]
+    int v12; // [esp+54h] [ebp-50h]
+    unsigned int v13; // [esp+58h] [ebp-4Ch]
+    int v14; // [esp+5Ch] [ebp-48h]
+    int v15; // [esp+60h] [ebp-44h]
+    int v16; // [esp+64h] [ebp-40h]
+    int v17; // [esp+68h] [ebp-3Ch]
+    int v18; // [esp+6Ch] [ebp-38h]
+    int v19; // [esp+70h] [ebp-34h]
+    int v20; // [esp+74h] [ebp-30h]
+    int v21; // [esp+78h] [ebp-2Ch]
+    int v22; // [esp+7Ch] [ebp-28h]
+    int v23; // [esp+84h] [ebp-20h]
+    unsigned int v24; // [esp+88h] [ebp-1Ch]
+    int i; // [esp+94h] [ebp-10h]
+    int v26; // [esp+9Ch] [ebp-8h]
+    int v27; // [esp+A0h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_select_button_mode_test_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_status,
+            (void*)board_panel_bp_exec_select_button_mode_test_univVars,
+            484);
+        board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao_i_fight_on,
+            (void*)board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao,
+            1216);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao_i_fight_on_old,
+            (void*)board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao,
+            1220);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_exec_select_button_mode_test_univVars,
+            988);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_look = (int)AI_ul_RealResolveOneRefFunction(0x9E000857);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_next_companion = (int)AI_ul_RealResolveOneRefFunction(0x9E0015DB);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_enterprise = (int)AI_ul_RealResolveOneRefFunction(0x9E0014FB);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_nextfastitem = (int)AI_ul_RealResolveOneRefFunction(0x9E000844);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_normal = (int)AI_ul_RealResolveOneRefFunction(0x6C00AD9Cu);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_aircraft = (int)AI_ul_RealResolveOneRefFunction(0x9E003D74);
+        board_panel_bp_exec_select_button_mode_test__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_mode_test__PJ_Camera_Speciale_gao_i_special_exit,
+            (void*)board_panel_bp_exec_select_button_mode_test__PJ_Camera_Speciale_gao,
+            80);
+        board_panel_bp_exec_select_button_mode_test__PJ_Camera_Derriere_gao = AI_ul_RealResolveOneRefObject(0x5E005FA2u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_mode_test__PJ_Camera_Derriere_gao_i_sim_click,
+            (void*)board_panel_bp_exec_select_button_mode_test__PJ_Camera_Derriere_gao,
+            40);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_look_reset = (int)AI_ul_RealResolveOneRefFunction(0x9E00008A);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_mode_test_univVars_objet_inventaire,
+            (void*)board_panel_bp_exec_select_button_mode_test_univVars,
+            1480);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_equipement,
+            (void*)board_panel_bp_exec_select_button_mode_test_univVars,
+            40);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_menu_swap = (int)AI_ul_RealResolveOneRefFunction(0x9E003C68);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_normal_mode = (int)AI_ul_RealResolveOneRefFunction(0x9E000A23);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_enterprise = (int)AI_ul_RealResolveOneRefFunction(0x9E0014FD);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_dialog_mode = (int)AI_ul_RealResolveOneRefFunction(0x9E000A25);
+        fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_look_mode_shift = (int)AI_ul_RealResolveOneRefFunction(0x9E000A26);
+    }
+    v18 = *(uint32_t*)(board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_status + 44);
+    v19 = *(uint32_t*)(board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_status + 40);
+    if (INO_b_IoButtonPressed(4) && INO_b_IoButtonPressed(6))
+    {
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 1000;
+    }
+    if (*(uint32_t*)board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao_i_fight_on)
+    {
+        if (v1->ai_dialog_consequences[0])
+        {
+            for (i = 0; i < 10; ++i)
+                v1->ai_dialog_consequences[i] = 0;
+        }
+    }
+    else
+    {
+        v7 = (tGameObjectMain*)v1->o_sally_contextuel;
+        if (v7)
+        {
+            if ((unsigned int)v7 <= 2)
+                v7 = AI_MainActor[(uint32_t)v7 - 1];
+            v6 = v7;
+        }
+        else
+        {
+            v6 = 0;
+        }
+        v5 = AI_gpst_CurrentGameObject;
+        if (AI_gpst_CurrentGameObject)
+        {
+            if ((unsigned int)AI_gpst_CurrentGameObject <= 2)
+                v5 = AI_MainActor[(uint32_t)AI_gpst_CurrentGameObject - 1];
+            v4 = v5;
+        }
+        else
+        {
+            v4 = 0;
+        }
+        if (v6 != v4 && *(uint32_t*)board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao_i_fight_on_old)
+            v1->Boutonces_CurAction = 0;
+    }
+    if (!AI_EvalFunc_OBJ_CapaTest_C_CURRENT(256))
+    {
+        if (v19 != 1 || v1->i_current_mode == 32 || v1->i_current_mode == 4 || v1->i_current_mode == 8)
+        {
+            if (!v19 && v1->i_current_mode == 32)
+            {
+                v1->i_MainActor_ID = 8;
+                v10 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_nextfastitem);
+                if (v10 != 1000)
+                    return v10;
+                v22 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_next_companion);
+                if (v22 != 1000)
+                    return v22;
+                AI_EvalFunc_AITrackChange_C(
+                    2,
+                    (tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_normal);
+            }
+        }
+        else
+        {
+            v1->i_init_enterprise = 1;
+            v24 = *(uint32_t*)(board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_actor + 44);
+            if (v1->i_look_aircraft)
+            {
+                v3 = *(tGameObjectMain**)(board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_actor + 44);
+                if (v24)
+                {
+                    if (v24 <= 2)
+                        v3 = AI_MainActor[v24 - 1];
+                    AI_EvalFunc_OBJ_FlagsControlSet_C(v3, 0, 0x200000);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_FlagsControlSet_C(0, 0, 0x200000);
+                }
+            }
+            if (v1->i_look_aircraft_photo)
+            {
+                v16 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_look);
+                if (v16 != 1000)
+                    return v16;
+            }
+            v1->i_look_aircraft = 0;
+            v1->i_MainActor_ID = 9;
+            v26 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_next_companion);
+            if (v26 != 1000)
+                return v26;
+            AI_EvalFunc_AITrackChange_C(
+                2,
+                (tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_enterprise);
+        }
+        if (v18 != 1 || v1->i_current_mode == 64 || v1->i_current_mode == 4 || v1->i_current_mode == 8)
+        {
+            if (!v18 && v1->i_current_mode == 64)
+            {
+                v1->i_MainActor_ID = 8;
+                v9 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_nextfastitem);
+                if (v9 != 1000)
+                    return v9;
+                v27 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_next_companion);
+                if (v27 != 1000)
+                    return v27;
+                if (!v1->i_look_aircraft_photo)
+                {
+                    AI_EvalFunc_OBJ_CapaSet_C(
+                        (tGameObjectMain*)board_panel_bp_exec_select_button_mode_test__PJ_Camera_Speciale_gao,
+                        0,
+                        256);
+                    *(uint32_t*)board_panel_bp_exec_select_button_mode_test__PJ_Camera_Speciale_gao_i_special_exit = 1;
+                    *(uint32_t*)board_panel_bp_exec_select_button_mode_test__PJ_Camera_Derriere_gao_i_sim_click = 1;
+                    v17 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_look_reset);
+                    if (v17 != 1000)
+                        return v17;
+                }
+                AI_EvalFunc_AITrackChange_C(
+                    2,
+                    (tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_normal);
+            }
+        }
+        else
+        {
+            v1->i_init_aircraft = 1;
+            v13 = *(uint32_t*)(board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_actor + 40);
+            if (v1->i_look_enterprise)
+            {
+                v2 = *(tGameObjectMain**)(board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_actor + 40);
+                if (v13)
+                {
+                    if (v13 <= 2)
+                        v2 = AI_MainActor[v13 - 1];
+                    AI_EvalFunc_OBJ_FlagsControlSet_C(v2, 0, 0x200000);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_FlagsControlSet_C(0, 0, 0x200000);
+                }
+            }
+            if (v1->i_look_enterprise_photo)
+            {
+                v12 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_look);
+                if (v12 != 1000)
+                    return v12;
+            }
+            v1->i_look_enterprise = 0;
+            v1->i_MainActor_ID = 10;
+            v21 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_button_valide_next_companion);
+            if (v21 != 1000)
+                return v21;
+            AI_EvalFunc_AITrackChange_C(
+                2,
+                (tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_mode_aircraft);
+        }
+    }
+    if (v1->i_current_mode != 8 && v1->i_current_mode != 2 && v1->i_current_mode != 4)
+    {
+        if (*(uint32_t*)board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao_i_fight_on <= *(uint32_t*)board_panel_bp_exec_select_button_mode_test__PJ_Sally_gao_i_fight_on_old)
+        {
+            v1->i_objet_inventaire = *(uint32_t*)AI_EvalVarArray2_C(
+                1,
+                (char*)board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_equipement,
+                0,
+                v1->i_MainActor_ID);
+            v11 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_menu_swap);
+            if (v11 != 1000)
+                return v11;
+        }
+        else if (*(uint32_t*)AI_EvalVarArray2_C(
+            1,
+            (char*)board_panel_bp_exec_select_button_mode_test_univVars_objet_inventaire,
+            30,
+            v1->i_MainActor_ID))
+        {
+            v1->i_objet_inventaire = 30;
+            *(uint32_t*)AI_EvalVarArray2_C(
+                1,
+                (char*)board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_equipement,
+                0,
+                v1->i_MainActor_ID) = 30;
+        }
+        else if (*(uint32_t*)AI_EvalVarArray2_C(
+            1,
+            (char*)board_panel_bp_exec_select_button_mode_test_univVars_objet_inventaire,
+            23,
+            v1->i_MainActor_ID))
+        {
+            v1->i_objet_inventaire = 23;
+            *(uint32_t*)AI_EvalVarArray2_C(
+                1,
+                (char*)board_panel_bp_exec_select_button_mode_test_univVars_Perso_ID_equipement,
+                0,
+                v1->i_MainActor_ID) = 23;
+        }
+    }
+    switch (v1->i_current_mode)
+    {
+    case 1:
+        v14 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_normal_mode);
+        if (v14 == 1000)
+        {
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            result = 1000;
+        }
+        else
+        {
+            result = v14;
+        }
+        break;
+    case 32:
+        v8 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_enterprise);
+        if (v8 == 1000)
+        {
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            result = 1000;
+        }
+        else
+        {
+            result = v8;
+        }
+        break;
+    case 64:
+        v15 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_enterprise);
+        if (v15 == 1000)
+        {
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            result = 1000;
+        }
+        else
+        {
+            result = v15;
+        }
+        break;
+    case 8:
+        v23 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_dialog_mode);
+        if (v23 == 1000)
+        {
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            result = 1000;
+        }
+        else
+        {
+            result = v23;
+        }
+        break;
+    case 2:
+        v20 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_mode_test_board_panel_bp_exec_select_button_look_mode_shift);
+        if (v20 == 1000)
+        {
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            result = 1000;
+        }
+        else
+        {
+            result = v20;
+        }
+        break;
+    default:
+        result = 1000;
+        break;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_sprite_boutons_on()
+{
+    int result; // eax
+    int v1; // [esp+4h] [ebp-Ch]
+    int v2; // [esp+8h] [ebp-8h]
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        fct_board_panel_bp_exec_sprite_boutons_on_board_panel_bp_exec_joje_set = (int)AI_ul_RealResolveOneRefFunction(0x9E002FF7);
+        fct_board_panel_bp_exec_sprite_boutons_on_board_panel_bp_INTF_boutonces_update_new = (int)AI_ul_RealResolveOneRefFunction(0x9E006771);
+    }
+    v1 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_sprite_boutons_on_board_panel_bp_exec_joje_set);
+    if (v1 != 1000)
+        return v1;
+    v2 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_sprite_boutons_on_board_panel_bp_INTF_boutonces_update_new);
+    if (v2 == 1000)
+        result = 1000;
+    else
+        result = v2;
+    return result;
+}
+
+int board_panel_bp_mode_dialogue()
+{
+    int result; // eax
+    tTextGet* v1; // eax
+    char* v2; // eax
+    tTextGet* v3; // eax
+    char* v4; // eax
+    tTextGet* v5; // eax
+    char* v6; // eax
+    float X_4; // [esp+4h] [ebp-280h]
+    float v8; // [esp+8h] [ebp-27Ch]
+    float v9; // [esp+Ch] [ebp-278h]
+    float v10; // [esp+10h] [ebp-274h]
+    tScriptStruct_GSTBoardPanel* v11; // [esp+14h] [ebp-270h]
+    tGameObjectMain* v12; // [esp+1Ch] [ebp-268h]
+    Vec3 a1; // [esp+D4h] [ebp-1B0h] BYREF
+    Vec3 v14; // [esp+E0h] [ebp-1A4h] BYREF
+    Vec3 v15; // [esp+ECh] [ebp-198h]
+    Vec3 a2; // [esp+FCh] [ebp-188h] BYREF
+    Vec3 v17; // [esp+108h] [ebp-17Ch] BYREF
+    BOOL v18; // [esp+114h] [ebp-170h]
+    int v19; // [esp+118h] [ebp-16Ch]
+    int v20; // [esp+11Ch] [ebp-168h]
+    Vec3 a4; // [esp+120h] [ebp-164h] BYREF
+    float v22; // [esp+12Ch] [ebp-158h]
+    Vec3 v24; // [esp+138h] [ebp-14Ch] BYREF
+    float v25; // [esp+144h] [ebp-140h]
+    Vec3 a5; // [esp+148h] [ebp-13Ch] BYREF
+    Vec3 v28; // [esp+15Ch] [ebp-128h] BYREF
+    Vec3 v29; // [esp+168h] [ebp-11Ch]
+    Vec3 v30; // [esp+174h] [ebp-110h] BYREF
+    int v31; // [esp+180h] [ebp-104h]
+    Vec3 v32; // [esp+184h] [ebp-100h] BYREF
+    Vec3 v33; // [esp+190h] [ebp-F4h] BYREF
+    Vec3 a3; // [esp+19Ch] [ebp-E8h] BYREF
+    Vec3 v35; // [esp+1A8h] [ebp-DCh] BYREF
+    Vec3 v36; // [esp+1B4h] [ebp-D0h] BYREF
+    Vec3 dest; // [esp+1C0h] [ebp-C4h] BYREF
+    Vec3 v38; // [esp+1CCh] [ebp-B8h] BYREF
+    Vec3 v39; // [esp+1DCh] [ebp-A8h] BYREF
+    Vec3 v40; // [esp+1E8h] [ebp-9Ch] BYREF
+    Vec3 v41; // [esp+1F4h] [ebp-90h] BYREF
+    int v42; // [esp+200h] [ebp-84h]
+    float v43; // [esp+204h] [ebp-80h]
+    Vec3 v44; // [esp+208h] [ebp-7Ch] BYREF
+    Vec3 v45; // [esp+214h] [ebp-70h] BYREF
+    Vec3 v46; // [esp+220h] [ebp-64h] BYREF
+    tScriptStruct_GSTBoardPanel* v47; // [esp+22Ch] [ebp-58h]
+    int num; // [esp+230h] [ebp-54h]
+    Vec3 v49; // [esp+234h] [ebp-50h] BYREF
+    Vec3 v50; // [esp+240h] [ebp-44h] BYREF
+    Vec3 v51; // [esp+24Ch] [ebp-38h]
+    Vec3 v54; // [esp+258h] [ebp-2Ch] BYREF
+    Vec3 v56; // [esp+268h] [ebp-1Ch] BYREF
+    Vec3 v57; // [esp+274h] [ebp-10h] BYREF
+    int v58; // [esp+280h] [ebp-4h]
+
+    v40.x = 1.0;
+    v40.y = 0.0;
+    v40.z = 0.0;
+    a4.x = 1.0;
+    a4.y = 0.0;
+    a4.z = 0.0;
+    v29.x = 1.0;
+    v29.y = 0.0;
+    v29.z = 0.0;
+    v15.x = 1.0;
+    v15.y = 0.0;
+    v15.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v11 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v11 = 0;
+    v47 = v11;
+    v18 = 0;
+    v19 = 0;
+    num = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_mode_dialogue__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_dialogue__PJ_Sally_gao_current_pm_mode,
+            (void*)board_panel_bp_mode_dialogue__PJ_Sally_gao,
+            572);
+        board_panel_bp_mode_dialogue_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        board_panel_bp_mode_dialogue_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_dialogue_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_mode_dialogue_univVars,
+            4488);
+    }
+    v47->i_current_mode = 8;
+    num = 0;
+    if (*(uint32_t*)board_panel_bp_mode_dialogue__PJ_Sally_gao_current_pm_mode == 4)
+        AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(1024, 0);
+    if (AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 1024))
+    {
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    else
+    {
+        AI_EvalFunc_OBJ_CustomBitsSet_C((tGameObjectMain*)board_panel_bp_mode_dialogue_GST_Global_gao, 0x8000, 0);
+        if (v47->i_dialog_phase == 1)
+        {
+            if (v47->i_dialog_init_choix)
+            {
+                v45.x = 0.19499999f;
+                v45.y = 0.29499999f;
+                v45.z = 5.0f;
+                v38.x = 0.0f;
+                v38.y = -0.02f;
+                v38.z = 0.050000001f;
+                MATH_VecAddVec(&a1, &v45, &v38);
+                v1 = (tTextGet*)AI_EvalVarArray_C(10, (char*)&v47->__at_actions_Dimension1, 18);
+                v2 = AI_EvalFunc_TEXTToString_C(v1);
+                STR_SetStringExt(AI_gpst_CurrentGameObject, 26, 1507349, v2, &a1);
+                v47->i_dialog_page_actu = 0;
+                v47->i_dialog_ind_questions_max = 4;
+                v47->i_dialog_act_pos = -1;
+                num = 0;
+                a4.x = -1.0;
+                a4.y = 0.0;
+                a4.z = 0.0;
+                while (num < 5)
+                {
+                    if (!v47->ai_dialog_consequences[num] || v47->i_dialog_1_question && num > 0)
+                    {
+                        --v47->i_dialog_ind_questions_max;
+                        STR_SetString(
+                            AI_gpst_CurrentGameObject,
+                            v47->ai_ind_dialog_phr[num],
+                            (char*)AI_gpst_CurrentFunction->localStringConstsData + 28);
+                    }
+                    else
+                    {
+                        STR_SetString(
+                            AI_gpst_CurrentGameObject,
+                            v47->ai_ind_dialog_phr[num],
+                            (char*)AI_gpst_CurrentFunction->localStringConstsData);
+                        v3 = (tTextGet*)AI_EvalVarArray_C(10, (char*)&v47->__at_dialog_questions_Dimension1, num);
+                        v4 = AI_EvalFunc_TEXTToString_C(v3);
+                        STR_InsertString(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[num], -1, v4);
+                        v28.x = 0.039999999f;
+                        v28.y = 0.40000001f;
+                        v28.z = 0.0f;
+                        v54.x = 0.039999999f;
+                        v54.y = a4.y;
+                        v54.z = 0.0;
+                        MATH_VecAddVec(&v17, &v28, &v54);
+                        STR_SetStringExt(
+                            AI_gpst_CurrentGameObject,
+                            v47->ai_ind_dialog_phr[num],
+                            1441808,
+                            (char*)AI_gpst_CurrentFunction->localStringConstsData + 1,
+                            &v17);
+                        v19 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 8, v47->ai_ind_dialog_phr[num], 0, -1);
+                        STR_EffectSetf(AI_gpst_CurrentGameObject, v19, 750, 0.30000001f);
+                        STR_EffectSetf(AI_gpst_CurrentGameObject, v19, 751, 0.30000001f);
+                        v10 = (float)num;
+                        X_4 = 0.2f * v10;
+                        STR_EffectSetf(AI_gpst_CurrentGameObject, v19, 752, X_4);
+                        AI_EvalFunc_OBJ_TextSizeGet_C(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[num], 0, -1, &v49);
+                        v15 = v49;
+                        if (v49.x > (double)a4.x)
+                            a4.x = v15.x;
+                        a4.y = v15.y + 0.0099999998f + a4.y;
+                        if (v47->ai_dialog_grisage[num] <= 0)
+                            v18 = 0;
+                        else
+                            v18 = AI_EvalFunc_ARRBitTest_C(
+                                (int*)(board_panel_bp_mode_dialogue_univVars_Flag_speciaux_sauve + 4),
+                                v47->ai_dialog_grisage[num]);
+                        if (v18)
+                        {
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[num], 0, 0xFFFFFFFF, 0xFF6F6F6F);
+                        }
+                        else if (v47->i_dialog_act_pos == -1)
+                        {
+                            v47->i_dialog_act_pos = num;
+                        }
+                    }
+                    ++num;
+                }
+                if (a4.x > 0.0)
+                {
+                    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 272);
+                    STR_SetFrame(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 9, 32);
+                    STR_SetFrameBorderSize(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 0.015f);
+                    STR_SetFrameColor(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], -1);
+                    v36.x = -0.050000001f;
+                    v36.y = 0.0f;
+                    v36.z = 0.0f;
+                    STR_SetFramePos(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], &v36, &a4);
+                }
+                v18 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_mode_dialogue_univVars_Flag_speciaux_sauve + 4), 929);
+                if (v18)
+                {
+                    STR_SetString(
+                        AI_gpst_CurrentGameObject,
+                        v47->ai_ind_dialog_phr[v47->i_dialog_ind_questions_max],
+                        (char*)AI_gpst_CurrentFunction->localStringConstsData + 29);
+                    --v47->i_dialog_ind_questions_max;
+                }
+                v47->i_dialog_init_choix = 0;
+                if (v47->i_dialog_act_pos == -1)
+                    v47->i_dialog_act_pos = 0;
+                v57.x = 0.0;
+                v57.y = 0.0;
+                v57.z = 0.0;
+                STR_SetStringExt(
+                    AI_gpst_CurrentGameObject,
+                    22,
+                    1245202,
+                    (char*)AI_gpst_CurrentFunction->localStringConstsData + 30,
+                    &v57);
+            }
+            AI_EvalFunc_IoJoyGetMove_C(&v32);
+            v29 = v32;
+            v9 = (float)fabs(v32.y);
+            v22 = v9;
+            if (v9 <= 0.34999999)
+            {
+                v43 = TIM_gf_MainClock - TIM_gf_LockTime;
+                v47->Gen_Time = v43 - 200.0f;
+            }
+            else if (AI_EvalFunc_TIMEElapsed_C(v47->Gen_Time, 0.34999999f))
+            {
+                if (v29.y >= -0.5)
+                {
+                    if (v29.y > 0.5)
+                    {
+                        v47->Gen_Time = TIM_gf_MainClock - TIM_gf_LockTime;
+                        if (--v47->i_dialog_act_pos < 0)
+                            v47->i_dialog_act_pos = 0;
+                    }
+                }
+                else
+                {
+                    v47->Gen_Time = TIM_gf_MainClock - TIM_gf_LockTime;
+                    if (++v47->i_dialog_act_pos > v47->i_dialog_ind_questions_max)
+                        v47->i_dialog_act_pos = v47->i_dialog_ind_questions_max;
+                }
+            }
+            AI_EvalFunc_OBJ_TextSizeGet_C(AI_gpst_CurrentGameObject, 22, 0, 1, &v33);
+            AI_EvalFunc_OBJ_TextSizeGet_C(
+                AI_gpst_CurrentGameObject,
+                v47->ai_ind_dialog_phr[v47->i_dialog_act_pos],
+                0,
+                -1,
+                &v56);
+            MATH_SubstractVec(&dest, &v33, &v56);
+            v15 = dest;
+            if (dest.y > 0.0)
+                v8 = v15.y;
+            else
+                v8 = 0.0;
+            v25 = v8;
+            v15.y = v8 / 2.0f;
+            AI_EvalFunc_OBJ_TextPivotGet_C(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[v47->i_dialog_act_pos], &v24);
+            a4.z = v24.z;
+            a4.x = v24.x + -0.0099999998f;
+            a4.y = v24.y - v15.y;
+            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 22, &a4);
+        }
+        else if (v47->i_dialog_phase == 2)
+        {
+            v47->i_dialog_init_choix = 1;
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v47->ai_ind_dialog_phr[1],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 37);
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v47->ai_ind_dialog_phr[2],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 38);
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v47->ai_ind_dialog_phr[3],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 39);
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v47->ai_ind_dialog_phr[4],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 40);
+            STR_SetString(AI_gpst_CurrentGameObject, 22, (char*)AI_gpst_CurrentFunction->localStringConstsData + 41);
+            v47->i_dialog_phase = 3;
+            v47->i_dialog_page_actu = 0;
+            v47->i_dialog_page_nb = 0;
+        }
+        else if (v47->i_dialog_phase == 3 && v47->i_dialog_init_choix)
+        {
+            v47->i_dialog_init_choix = 0;
+            AI_EvalFunc_OBJ_TextCharSet_C(AI_gpst_CurrentGameObject, 0, 0, 0);
+            v5 = (tTextGet*)AI_EvalVarArray_C(10, (char*)&v47->__at_dialog_reponses_Dimension1, v47->i_dialog_act_pos);
+            v6 = AI_EvalFunc_TEXTToString_C(v5);
+            STR_SetString(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], v6);
+            if (v47->i_dialog_page_actu)
+            {
+                for (num = v47->i_dialog_page_actu; num; --num)
+                {
+                    STR_DelChar(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 0, -25);
+                    v14.x = 0.0;
+                    v14.y = 0.0;
+                    v14.z = 0.0;
+                    STR_SetPos(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 0, -1, &v14);
+                }
+            }
+            else
+            {
+                v42 = STR_i_CountMark(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 0, -1, 15);
+                v47->i_dialog_page_nb = v42 - 1;
+            }
+            if (STR_i_CountMark(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 0, -1, 15))
+                STR_DelChar(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], -65, -1);
+            v31 = STR_i_CountMark(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], -2, -2, 14);
+            num = v31 - 1;
+            if (v31 == 1)
+            {
+                v51.x = 0.44999999f;
+                v51.y = 0.40000001f;
+                v51.z = 0.0f;
+                v40.x = 0.44999999f;
+                v40.y = 0.40000001f;
+                v40.z = 0.0f;
+            }
+            else
+            {
+                v46.x = 0.039999999f;
+                v46.y = 0.40000001f;
+                v46.z = 0.0f;
+                v30.x = 0.039999999f;
+                v30.y = 0.0f;
+                v30.z = 0.0f;
+                MATH_VecAddVec(&v35, &v46, &v30);
+                v40 = v35;
+            }
+            v20 = AI_EvalFunc_OBJ_TextCharGet_C(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 0);
+            v58 = AI_EvalFunc_MTHModulo_C(v20 >> 12, 16);
+            if (v58 > 8)
+            {
+                STR_SetLetterFlag(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 0, 1, 16);
+                v39.x = 0.0;
+                v39.y = 0.0;
+                v39.z = 0.0;
+                STR_SetPos(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 1, 1, &v39);
+                v40.x = v40.x + 0.050000001f;
+            }
+            STR_SetStringExt(
+                AI_gpst_CurrentGameObject,
+                v47->ai_ind_dialog_phr[0],
+                1442096,
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 42,
+                &v40);
+            STR_SetFrame(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 9, 32);
+            STR_SetFrameBorderSize(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], 0.015f);
+            STR_SetFrameColor(AI_gpst_CurrentGameObject, v47->ai_ind_dialog_phr[0], -1);
+            v19 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 8, v47->ai_ind_dialog_phr[0], -2, -2);
+            STR_EffectSetf(AI_gpst_CurrentGameObject, v19, 750, 1.0f);
+            STR_EffectSetf(AI_gpst_CurrentGameObject, v19, 751, 0.0099999998f);
+        }
+        if (*(uint32_t*)board_panel_bp_mode_dialogue__PJ_Sally_gao_current_pm_mode != 16)
+        {
+            AI_EvalFunc_OBJ_SightGet_C((tGameObjectMain*)board_panel_bp_mode_dialogue__PJ_Sally_gao, &a2);
+            v12 = (tGameObjectMain*)v47->o_dialogue_actor;
+            if (v12)
+            {
+                if ((unsigned int)v12 <= 2)
+                    v12 = AI_MainActor[(uint32_t)v12 - 1];
+                AI_EvalFunc_OBJGetPos_C(v12, &v44);
+            }
+            else
+            {
+                AI_EvalFunc_OBJGetPos_C(0, &v44);
+            }
+            AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_mode_dialogue__PJ_Sally_gao, &v50);
+            MATH_SubstractVec(&a3, &v44, &v50);
+            AI_EvalFunc_MATHVecBlendRotate_C(&a2, &a3, 0.30000001f, &a5);
+            v41.x = 0.0;
+            v41.y = 0.0;
+            v41.z = 1.0;
+            AI_EvalFunc_OBJ_BankingGeneralSet_C((tGameObjectMain*)board_panel_bp_mode_dialogue__PJ_Sally_gao, &a5, &v41);
+        }
+        result = 1000;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_look_simple()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_look_simple_PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_exec_look_simple_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+    }
+    v1->o_use_object = 0;
+    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, 0x410);
+    STR_SetString(AI_gpst_CurrentGameObject, 13, (char*)AI_gpst_CurrentFunction->localStringConstsData);
+    v1->o_look_object = 0;
+    AI_EvalFunc_OBJ_CapaSet_C((tGameObjectMain*)board_panel_bp_exec_look_simple_PJ_Camera_Speciale_gao, 0, 0x400);
+    AI_EvalFunc_SetLocalAlpha_C((tGameObjectMain*)board_panel_bp_exec_look_simple_GST_Global_gao, 29u, 0, 0x80);
+    AI_EvalFunc_SetLocalAlpha_C((tGameObjectMain*)board_panel_bp_exec_look_simple_GST_Global_gao, 30u, 0, 0x80);
+    AI_EvalFunc_SetLocalAlpha_C((tGameObjectMain*)board_panel_bp_exec_look_simple_GST_Global_gao, 31u, 0, 0x80);
+    return 1000;
+}
+
+int board_panel_bp_INTF_exec_radar()
+{
+    tTextGet* v0; // eax
+    char* v1; // eax
+    float X_4; // [esp+4h] [ebp-23Ch]
+    float X_4a; // [esp+4h] [ebp-23Ch]
+    float X_4b; // [esp+4h] [ebp-23Ch]
+    float X_4c; // [esp+4h] [ebp-23Ch]
+    float v7; // [esp+8h] [ebp-238h]
+    float v8; // [esp+Ch] [ebp-234h]
+    tScriptStruct_GSTBoardPanel* v9; // [esp+10h] [ebp-230h]
+    tGameObjectMain* v10; // [esp+14h] [ebp-22Ch]
+    tGameObjectMain* v11; // [esp+18h] [ebp-228h]
+    tGameObjectMain* v12; // [esp+B8h] [ebp-188h]
+    tGameObjectMain* v13; // [esp+C8h] [ebp-178h]
+    tGameObjectMain* v14; // [esp+D8h] [ebp-168h]
+    tGameObjectMain* v15; // [esp+E0h] [ebp-160h]
+    tGameObjectMain* v16; // [esp+144h] [ebp-FCh]
+    tGameObjectMain* v17; // [esp+148h] [ebp-F8h]
+    tGameObjectMain* v18; // [esp+14Ch] [ebp-F4h]
+    Vec3 v19; // [esp+150h] [ebp-F0h] BYREF
+    float v20; // [esp+160h] [ebp-E0h]
+    tGameObjectMain* v21; // [esp+164h] [ebp-DCh]
+    float v22; // [esp+168h] [ebp-D8h]
+    int v23; // [esp+16Ch] [ebp-D4h]
+    Vec3 v24; // [esp+170h] [ebp-D0h] BYREF
+    int v25; // [esp+17Ch] [ebp-C4h]
+    Vec3 v26; // [esp+180h] [ebp-C0h] BYREF
+    Vec3 v27; // [esp+18Ch] [ebp-B4h] BYREF
+    float v28; // [esp+198h] [ebp-A8h]
+    Vec3 v29; // [esp+1A4h] [ebp-9Ch] BYREF
+    Vec3 v31; // [esp+1B4h] [ebp-8Ch] BYREF
+    Vec3 a3; // [esp+1C0h] [ebp-80h] BYREF
+    Vec3 v33; // [esp+1CCh] [ebp-74h] BYREF
+    float v35; // [esp+1DCh] [ebp-64h]
+    float v36; // [esp+1E4h] [ebp-5Ch]
+    Vec3 v37; // [esp+1E8h] [ebp-58h] BYREF
+    Vec3 a1; // [esp+1F4h] [ebp-4Ch] BYREF
+    int v39; // [esp+200h] [ebp-40h]
+    BOOL v40; // [esp+204h] [ebp-3Ch]
+    tScriptStruct_GSTBoardPanel* v41; // [esp+208h] [ebp-38h]
+    Vec3 v42; // [esp+20Ch] [ebp-34h] BYREF
+    int v43; // [esp+218h] [ebp-28h]
+    Vec3 dest; // [esp+21Ch] [ebp-24h] BYREF
+    int num; // [esp+228h] [ebp-18h]
+    float v46; // [esp+22Ch] [ebp-14h]
+    int v47; // [esp+234h] [ebp-Ch]
+    float v48; // [esp+238h] [ebp-8h]
+    float v49; // [esp+23Ch] [ebp-4h]
+
+    a1.x = 1.0;
+    a1.y = 0.0;
+    a1.z = 0.0;
+    v33.x = 1.0;
+    v33.y = 0.0;
+    v33.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v9 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v9 = 0;
+    v41 = v9;
+    num = 0;
+    v20 = 0.0;
+    v21 = 0;
+    v46 = 0.0;
+    v28 = 0;
+    v47 = 0;
+    v25 = 0;
+    v39 = 0;
+    v48 = 0.0;
+    v22 = 0.0;
+    v49 = 0.0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_INTF_exec_radar_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_radar_univVars_i_course_ON,
+            (void*)board_panel_bp_INTF_exec_radar_univVars,
+            7664);
+        board_panel_bp_INTF_exec_radar_GST_AffichageTexte_gao = AI_ul_RealResolveOneRefObject(0x7100E7ACu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_radar_GST_AffichageTexte_gao_i_affiche,
+            (void*)board_panel_bp_INTF_exec_radar_GST_AffichageTexte_gao,
+            204);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_INTF_exec_radar_univVars_Perso_ID_equipement,
+            (void*)board_panel_bp_INTF_exec_radar_univVars,
+            40);
+        board_panel_bp_INTF_exec_radar_INTF_boussole_gao = AI_ul_RealResolveOneRefObject(0xD9008B46);
+        board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao = AI_ul_RealResolveOneRefObject(0x9E0067A3);
+    }
+    if (v41->i_current_mode != 4 && !*(uint32_t*)board_panel_bp_INTF_exec_radar_univVars_i_course_ON)
+    {
+        if (*(uint32_t*)board_panel_bp_INTF_exec_radar_GST_AffichageTexte_gao_i_affiche == 1)
+            v41->f_time_txt_on = TIM_gf_MainClock - TIM_gf_LockTime;
+        if ((!v41->i_look_enterprise_photo || !v41->i_look_aircraft_photo)
+            && *(uint32_t*)AI_EvalVarArray2_C(1, (char*)board_panel_bp_INTF_exec_radar_univVars_Perso_ID_equipement, 1, 10) == 42)
+        {
+            if ((v41->i_look_enterprise && !v41->i_look_enterprise_photo
+                || v41->i_look_aircraft && !v41->i_look_aircraft_photo)
+                && (v40 = AI_EvalFunc_TIMEElapsed_C(v41->f_time_txt_on, 1.5)))
+            {
+                v21 = *AI_MainActor;
+                v18 = v21;
+                if (v21)
+                {
+                    if ((unsigned int)v21 <= 2)
+                        v18 = AI_MainActor[(uint32_t)v21 - 1];
+                    v17 = v18;
+                }
+                else
+                {
+                    v17 = 0;
+                }
+                v23 = (unsigned __int16)v17->flags2;
+                if ((v23 & 2) == 0)
+                {
+                    if (!v41->i_Obj_On_Radar_Display)
+                        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao, 0);
+                    v41->i_Obj_On_Radar_Display = 1;
+                    v21 = *AI_MainActor;
+                    v16 = v21;
+                    if (v21)
+                    {
+                        if ((unsigned int)v21 <= 2)
+                            v16 = AI_MainActor[(uint32_t)v21 - 1];
+                        AI_EvalFunc_OBJ_SightGet_C(v16, &v31);
+                    }
+                    else
+                    {
+                        AI_EvalFunc_OBJ_SightGet_C(0, &v31);
+                    }
+                    a1 = v31;
+                    v42.x = 1.0;
+                    v42.y = 0.0;
+                    v42.z = 0.0;
+                    v26.x = 0.0;
+                    v26.y = 0.0;
+                    v26.z = 1.0;
+                    v36 = MATH_f_VecAngle(&a1, &v42, &v26);
+                    v22 = (v36 / 3.141593f + 1.0f) * 400.0f;
+                    v41->f_angle_Radar_Display = v22;
+                    v43 = AI_EvalFunc_MTHModulo_C((unsigned int)(v41->f_angle_Radar_Display + 25.0f), 50);
+                    v8 = (float)v43;
+                    X_4 = v8 / 100.0f;
+                    AI_EvalFunc_SetUV_C((tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao, 9, 0, 0, X_4);
+                    num = 0;
+                    v47 = 0;
+                    v28 = 10000.0;
+                    v20 = 2.0;
+                    v39 = 10;
+                    v48 = 0.0;
+                    while (num < v41->i_Obj_On_Radar_Nb && num < 10)
+                    {
+                        v21 = *AI_MainActor;
+                        v15 = (tGameObjectMain*)v41->ao_Obj_On_Radar[num];
+                        if (v15)
+                        {
+                            if ((unsigned int)v15 <= 2)
+                                v15 = AI_MainActor[(uint32_t)v15 - 1];
+                            AI_EvalFunc_OBJGetPos_C(v15, &a3);
+                        }
+                        else
+                        {
+                            AI_EvalFunc_OBJGetPos_C(0, &a3);
+                        }
+                        v14 = v21;
+                        if (v21)
+                        {
+                            if ((unsigned int)v21 <= 2)
+                                v14 = AI_MainActor[(uint32_t)v21 - 1];
+                            AI_EvalFunc_OBJGetPos_C(v14, &v24);
+                        }
+                        else
+                        {
+                            AI_EvalFunc_OBJGetPos_C(0, &v24);
+                        }
+                        MATH_SubstractVec(&dest, &a3, &v24);
+                        v33.x = dest.x;
+                        v33.y = dest.y;
+                        v33.z = 0.0;
+                        if (AI_EvalFunc_MTHVecNullEpsilon_C(&v33))
+                        {
+                            v46 = 2.0;
+                        }
+                        else
+                        {
+                            v13 = v21;
+                            if (v21)
+                            {
+                                if ((unsigned int)v21 <= 2)
+                                    v13 = AI_MainActor[(uint32_t)v21 - 1];
+                                AI_EvalFunc_OBJ_SightGet_C(v13, &v27);
+                            }
+                            else
+                            {
+                                AI_EvalFunc_OBJ_SightGet_C(0, &v27);
+                            }
+                            a1.x = v27.x;
+                            a1.y = v27.y;
+                            a1.z = 0.0;
+                            if (AI_EvalFunc_MTHVecNullEpsilon_C(&a1))
+                            {
+                                v12 = v21;
+                                if (v21)
+                                {
+                                    if ((unsigned int)v21 <= 2)
+                                        v12 = AI_MainActor[(uint32_t)v21 - 1];
+                                    AI_EvalFunc_OBJ_BankingGet_C(v12, &v29);
+                                }
+                                else
+                                {
+                                    AI_EvalFunc_OBJ_BankingGet_C(0, &v29);
+                                }
+                                a1 = v29;
+                            }
+                            else
+                            {
+                                AI_EvalFunc_MATHVecNormalize_C(&a1, &v19);
+                            }
+                            v37.x = 0.0;
+                            v37.y = 0.0;
+                            v37.z = 1.0;
+                            v35 = MATH_f_VecAngle(&v33, &a1, &v37);
+                            v49 = 2.0f * v35;
+                            v49 = v49 / 0.78539801f;
+                            v7 = (float)fabs(v49);
+                            v46 = v7;
+                        }
+                        if (v46 <= 1.0)
+                        {
+                            if (v46 >= 0.5 || v46 >= (double)v20)
+                            {
+                                X_4c = v49 + 3.0f;
+                                AI_EvalFunc_OBJ_SetChannelProg_C(
+                                    (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao,
+                                    num,
+                                    X_4c);
+                            }
+                            else
+                            {
+                                X_4a = v48 + 3.0f;
+                                AI_EvalFunc_OBJ_SetChannelProg_C(
+                                    (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao,
+                                    v39,
+                                    X_4a);
+                                v48 = v49;
+                                v39 = num;
+                                v20 = v46;
+                                X_4b = v49 + 3.0f;
+                                AI_EvalFunc_OBJ_SetChannelProg_C(
+                                    (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao,
+                                    10,
+                                    X_4b);
+                                AI_EvalFunc_OBJ_SetChannelProg_C(
+                                    (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao,
+                                    num,
+                                    5.0);
+                                AI_EvalFunc_OBJ_SetChannelProg_C(
+                                    (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao,
+                                    12,
+                                    0.0);
+                                v25 = board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao;
+                                v11 = (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao;
+                                if (board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao)
+                                {
+                                    if ((unsigned int)board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao <= 2)
+                                        v11 = AI_MainActor[board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao - 1];
+                                    v10 = v11;
+                                }
+                                else
+                                {
+                                    v10 = 0;
+                                }
+                                v0 = (tTextGet*)AI_EvalVarArray_C(10, (char*)&v41->__at_Obj_On_Radar_Desc_Dimension1, num);
+                                v1 = AI_EvalFunc_TEXTToString_C(v0);
+                                STR_Init3DString(v10, v1);
+                                AI_EvalFunc_OBJ_FlagInvisibleSet_C(
+                                    (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao,
+                                    0);
+                            }
+                        }
+                        else
+                        {
+                            AI_EvalFunc_OBJ_SetChannelProg_C(
+                                (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao,
+                                num,
+                                5.0);
+                        }
+                        ++num;
+                    }
+                }
+                if (v39 == 10)
+                {
+                    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao, 10, 5.0);
+                    AI_EvalFunc_OBJ_FlagInvisibleSet_C(
+                        (tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao,
+                        1);
+                    AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao, 12, 1.0);
+                }
+            }
+            else if (v41->i_Obj_On_Radar_Display)
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_Boussole_TEXTE_gao, 1);
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_INTF_exec_radar_INTF_boussole_gao, 1);
+                v41->i_Obj_On_Radar_Display = 0;
+            }
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_mode_normal()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-144h]
+    tGameObjectMain* v2; // [esp+4h] [ebp-140h]
+    tGameObjectMain* v3; // [esp+8h] [ebp-13Ch]
+    Vec3* v4; // [esp+Ch] [ebp-138h]
+    float v5; // [esp+10h] [ebp-134h]
+    Vec3* v6; // [esp+24h] [ebp-120h]
+    float v7; // [esp+28h] [ebp-11Ch]
+    float v8; // [esp+2Ch] [ebp-118h]
+    tGameObjectMain* v9; // [esp+4Ch] [ebp-F8h]
+    Vec3 v10; // [esp+50h] [ebp-F4h] BYREF
+    Vec3 a3[2]; // [esp+5Ch] [ebp-E8h] BYREF
+    unsigned int v12; // [esp+74h] [ebp-D0h]
+    float v13; // [esp+7Ch] [ebp-C8h]
+    Vec3 v14; // [esp+80h] [ebp-C4h] BYREF
+    Vec3 v15; // [esp+8Ch] [ebp-B8h] BYREF
+    BOOL v16; // [esp+98h] [ebp-ACh]
+    int v17; // [esp+9Ch] [ebp-A8h]
+    float v18; // [esp+ACh] [ebp-98h]
+    Vec3 v19; // [esp+B0h] [ebp-94h] BYREF
+    Vec3 v20; // [esp+BCh] [ebp-88h] BYREF
+    Vec3 v21; // [esp+C8h] [ebp-7Ch] BYREF
+    int v22; // [esp+D4h] [ebp-70h]
+    Vec3 v23; // [esp+D8h] [ebp-6Ch] BYREF
+    Vec3 v24; // [esp+E4h] [ebp-60h] BYREF
+    int v25; // [esp+F0h] [ebp-54h]
+    Vec3 v26; // [esp+F4h] [ebp-50h] BYREF
+    float v27; // [esp+100h] [ebp-44h]
+    Vec3 v28; // [esp+108h] [ebp-3Ch] BYREF
+    float v29; // [esp+114h] [ebp-30h]
+    int v30; // [esp+118h] [ebp-2Ch]
+    tScriptStruct_GSTBoardPanel* v31; // [esp+11Ch] [ebp-28h]
+    Vec3 dest; // [esp+120h] [ebp-24h] BYREF
+    Vec3 a1; // [esp+12Ch] [ebp-18h] BYREF
+    int v34; // [esp+138h] [ebp-Ch]
+    int v35; // [esp+13Ch] [ebp-8h]
+    float v36; // [esp+140h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v31 = v1;
+    v12 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_mode_normal_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_normal_GST_Global_gao_f_game_speed,
+            (void*)board_panel_bp_mode_normal_GST_Global_gao,
+            3548);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_normal_GST_Global_gao_i_mode_matrix_aborted,
+            (void*)board_panel_bp_mode_normal_GST_Global_gao,
+            4608);
+        board_panel_bp_mode_normal__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_normal_GST_Global_gao_o_mode_uppercuted_acteur,
+            (void*)board_panel_bp_mode_normal_GST_Global_gao,
+            4604);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_normal_GST_Global_gao_o_mode_matrix_acteur,
+            (void*)board_panel_bp_mode_normal_GST_Global_gao,
+            4600);
+        board_panel_bp_mode_normal__PJ_Camera_gao = AI_ul_RealResolveOneRefObject(0x71003F56u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_normal_GST_Global_gao_f_old_game_speed,
+            (void*)board_panel_bp_mode_normal_GST_Global_gao,
+            3556);
+        board_panel_bp_mode_normal_ENV_Effet_Matrix_gao = AI_ul_RealResolveOneRefObject(0x9E006256);
+        fct_board_panel_bp_mode_normal_board_panel_bp_exec_affiche_contextuel = (int)AI_ul_RealResolveOneRefFunction(0x9E000AF8);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_normal__PJ_Sally_gao_i_fight_on,
+            (void*)board_panel_bp_mode_normal__PJ_Sally_gao,
+            1216);
+        fct_board_panel_bp_mode_normal_board_panel_bp_exec_sprite_boutons_on = (int)AI_ul_RealResolveOneRefFunction(0x9E000016);
+    }
+    v31->i_current_mode = 1;
+    v16 = AI_EvalFunc_OBJ_CustomBitsTest_C((tGameObjectMain*)board_panel_bp_mode_normal_GST_Global_gao, 0x200);
+    if (!v16 || v31->mode_matrix_on)
+    {
+        if (v31->mode_matrix_on == 1 && v31->f_matrix_duree <= 2.5)
+        {
+            *(uint32_t*)board_panel_bp_mode_normal_GST_Global_gao_f_game_speed = 0x3DCCCCCD;
+            if (v31->f_matrix_duree <= 0.60000002)
+                v25 = AI_EvalFunc_IoJoyFreeze_C(1);
+            else
+                v17 = AI_EvalFunc_IoJoyFreeze_C(0);
+            if (v31->i_cpt > 0)
+            {
+                v13 = TIM_gf_dt;
+                v31->f_matrix_duree = TIM_gf_dt / *(float*)board_panel_bp_mode_normal_GST_Global_gao_f_old_game_speed
+                    + v31->f_matrix_duree;
+            }
+            ++v31->i_cpt;
+        }
+        else if (v31->mode_matrix_on == 1)
+        {
+            v31->mode_matrix_on = 2;
+            v35 = AI_EvalFunc_IoJoyFreeze_C(0);
+            SND_Release(v31->i_snd_matrix);
+            v31->i_snd_matrix = -1;
+        }
+        if (v31->mode_matrix_on)
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_mode_normal_ENV_Effet_Matrix_gao, 0);
+            AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_mode_normal__PJ_Camera_gao, &v23);
+            AI_EvalFunc_MATHVecLocalToGlobal_C(
+                (tGameObjectMain*)board_panel_bp_mode_normal__PJ_Camera_gao,
+                &v31->mode_matrix_v_sight_viseur,
+                &v15);
+            v19.x = v15.x * 0.1f;
+            v19.y = v15.y * 0.1f;
+            v19.z = v15.z * 0.1f;
+            MATH_VecAddVec(&v10, &v23, &v19);
+            AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_mode_normal_ENV_Effet_Matrix_gao, &v10);
+            AI_EvalFunc_OBJ_SightGet_C((tGameObjectMain*)board_panel_bp_mode_normal__PJ_Camera_gao, &v20);
+            v28.x = -v20.x;
+            v28.y = -v20.y;
+            v28.z = -v20.z;
+            AI_EvalFunc_OBJ_BankingGet_C((tGameObjectMain*)board_panel_bp_mode_normal__PJ_Camera_gao, &v24);
+            AI_EvalFunc_OBJ_BankingGeneralSet_C(
+                (tGameObjectMain*)board_panel_bp_mode_normal_ENV_Effet_Matrix_gao,
+                &v28,
+                &v24);
+            v36 = TIM_gf_dt;
+            v7 = 10.0f * TIM_gf_dt / *(float*)board_panel_bp_mode_normal_GST_Global_gao_f_old_game_speed + 1.0f;
+            v6 = &v31->v_size_effet_matrix;
+            v8 = 1.0f / v7;
+            v31->v_size_effet_matrix.x = v8 * v31->v_size_effet_matrix.x;
+            v6->y = v8 * v6->y;
+            v6->z = v8 * v6->z;
+            v27 = v31->v_size_effet_matrix.z * v31->v_size_effet_matrix.z
+                + v31->v_size_effet_matrix.y * v31->v_size_effet_matrix.y
+                + v31->v_size_effet_matrix.x * v31->v_size_effet_matrix.x;
+            if (v27 < 0.0098999999)
+            {
+                v31->v_size_effet_matrix.x = 0.090000004f;
+                v31->v_size_effet_matrix.y = 0.029999999f;
+                v31->v_size_effet_matrix.z = 0.029999999f;
+            }
+            OBJ_ScaleSet((tGameObjectMain*)board_panel_bp_mode_normal_ENV_Effet_Matrix_gao, &v31->v_size_effet_matrix);
+        }
+        else
+        {
+            v18 = v31->v_size_effet_matrix.z * v31->v_size_effet_matrix.z
+                + v31->v_size_effet_matrix.y * v31->v_size_effet_matrix.y
+                + v31->v_size_effet_matrix.x * v31->v_size_effet_matrix.x;
+            if (v18 >= 4.0)
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_mode_normal_ENV_Effet_Matrix_gao, 1);
+                v31->v_size_effet_matrix.x = 2.8800001f;
+                v31->v_size_effet_matrix.y = 0.95999998f;
+                v31->v_size_effet_matrix.z = 0.95999998f;
+            }
+            else
+            {
+                v29 = TIM_gf_dt;
+                v5 = 30.0f * TIM_gf_dt / *(float*)board_panel_bp_mode_normal_GST_Global_gao_f_old_game_speed + 1.0f;
+                v4 = &v31->v_size_effet_matrix;
+                v31->v_size_effet_matrix.x = v5 * v31->v_size_effet_matrix.x;
+                v4->y = v5 * v4->y;
+                v4->z = v5 * v4->z;
+                OBJ_ScaleSet((tGameObjectMain*)board_panel_bp_mode_normal_ENV_Effet_Matrix_gao, &v31->v_size_effet_matrix);
+            }
+        }
+        v3 = (tGameObjectMain*)v31->o_acteur_pointe_target;
+        if (v3)
+        {
+            if ((unsigned int)v3 <= 2)
+                v3 = AI_MainActor[(uint32_t)v3 - 1];
+            v2 = v3;
+        }
+        else
+        {
+            v2 = 0;
+        }
+        if (v2)
+        {
+            v31->i_ind_pointeur = 0;
+            if (v31->i_current_nb_of_object < 2)
+                v31->i_action_selected = 0;
+            v34 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_normal_board_panel_bp_exec_affiche_contextuel);
+            if (v34 != 1000)
+                return v34;
+        }
+        else if (v31->i_ind_pointeur != -1)
+        {
+            v31->i_ind_pointeur = -1;
+            v31->o_contextuel_object = 0;
+            v31->i_contextuel_prio = -1;
+        }
+        if (*(uint32_t*)board_panel_bp_mode_normal__PJ_Sally_gao_i_fight_on)
+            AI_EvalFunc_SetLocalAlpha_C((tGameObjectMain*)board_panel_bp_mode_normal_GST_Global_gao, 29u, 0, 0xFF);
+        v22 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_normal_board_panel_bp_exec_sprite_boutons_on);
+        if (v22 == 1000)
+        {
+            v31->i_old_mode = v31->i_current_mode;
+            result = 1000;
+        }
+        else
+        {
+            result = v22;
+        }
+    }
+    else
+    {
+        v31->mode_matrix_on = 1;
+        v30 = AI_EvalFunc_IoJoyFreeze_C(1);
+        *(uint32_t*)board_panel_bp_mode_normal_GST_Global_gao_f_game_speed = 0x3DCCCCCD;
+        *(uint32_t*)board_panel_bp_mode_normal_GST_Global_gao_i_mode_matrix_aborted = 0;
+        v31->i_snd_matrix = AI_EvalFunc_SNDRequest_C(
+            (tGameObjectMain*)board_panel_bp_mode_normal__PJ_Sally_gao,
+            70,
+            0x18000000);
+        AI_EvalFunc_SNDUltraPlaySoundLooped_C(
+            (tGameObjectMain*)board_panel_bp_mode_normal__PJ_Sally_gao,
+            v31->i_snd_matrix);
+        v31->mode_matrix_f_start = TIM_gf_MainClock - TIM_gf_LockTime;
+        *(uint32_t*)board_panel_bp_mode_normal_GST_Global_gao_o_mode_uppercuted_acteur = *(uint32_t*)board_panel_bp_mode_normal_GST_Global_gao_o_mode_matrix_acteur;
+        v12 = *(uint32_t*)board_panel_bp_mode_normal_GST_Global_gao_o_mode_uppercuted_acteur;
+        v9 = (tGameObjectMain*)v12;
+        if (v12)
+        {
+            if (v12 <= 2)
+                v9 = AI_MainActor[v12 - 1];
+            AI_EvalFunc_OBJGetPos_C(v9, a3);
+        }
+        else
+        {
+            AI_EvalFunc_OBJGetPos_C(0, a3);
+        }
+        AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_mode_normal__PJ_Sally_gao, &v21);
+        MATH_SubstractVec(&dest, a3, &v21);
+        v31->mode_matrix_v_sight_viseur = dest;
+        AI_EvalFunc_MATHVecSetHorzNormalize_C(&v31->mode_matrix_v_sight_viseur);
+        AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_mode_normal__PJ_Camera_gao, &v14);
+        AI_EvalFunc_OBJ_SightGet_C((tGameObjectMain*)board_panel_bp_mode_normal__PJ_Camera_gao, &v26);
+        MATH_VecAddVec(&a1, &v14, &v26);
+        v31->mode_matrix_v_pos_viseur = a1;
+        v31->f_matrix_duree = 0.0;
+        v31->f_matrix_joy = 0.0;
+        v31->i_cpt = 0;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_clear()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-ECh]
+    tGameObjectMain* v2; // [esp+8h] [ebp-E4h]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-E0h]
+    tGameObjectMain* v4; // [esp+10h] [ebp-DCh]
+    tGameObjectMain* v5; // [esp+14h] [ebp-D8h]
+    tGameObjectMain* v6; // [esp+18h] [ebp-D4h]
+    double v7; // [esp+1Ch] [ebp-D0h]
+    tGameObjectMain* v8; // [esp+3Ch] [ebp-B0h]
+    tGameObjectMain* v9; // [esp+48h] [ebp-A4h]
+    tGameObjectMain* v10; // [esp+4Ch] [ebp-A0h]
+    tGameObjectMain* v11; // [esp+60h] [ebp-8Ch]
+    Vec3 v12; // [esp+64h] [ebp-88h] BYREF
+    float v13; // [esp+70h] [ebp-7Ch]
+    Vec3 v14; // [esp+74h] [ebp-78h] BYREF
+    Vec3 a3; // [esp+80h] [ebp-6Ch] BYREF
+    Vec3 v16; // [esp+8Ch] [ebp-60h] BYREF
+    Vec3 v18; // [esp+9Ch] [ebp-50h] BYREF
+    Vec3 dest; // [esp+A8h] [ebp-44h] BYREF
+    Vec3 v20; // [esp+B4h] [ebp-38h] BYREF
+    Vec3 v21; // [esp+C0h] [ebp-2Ch] BYREF
+    tScriptStruct_GSTBoardPanel* v22; // [esp+CCh] [ebp-20h]
+    int i; // [esp+D0h] [ebp-1Ch]
+    Vec3 v24; // [esp+D4h] [ebp-18h] BYREF
+    unsigned int v25; // [esp+E0h] [ebp-Ch]
+    tGameObjectMain* v26; // [esp+E4h] [ebp-8h]
+
+    v16.x = 1.0;
+    v16.y = 0.0;
+    v16.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v22 = v1;
+    v25 = 0;
+    v26 = 0;
+    i = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_clear_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_clear_GST_Global_gao_o_mode_uppercutted_acteur,
+            (void*)board_panel_bp_exec_clear_GST_Global_gao,
+            4604);
+        board_panel_bp_exec_clear__PJ_Camera_gao = AI_ul_RealResolveOneRefObject(0x71003F56u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_clear_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_exec_clear_GST_Global_gao,
+            264);
+        board_panel_bp_exec_clear_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_clear_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_exec_clear_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_clear_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_exec_clear_univVars,
+            988);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_clear_univVars_i_PALET_Mode,
+            (void*)board_panel_bp_exec_clear_univVars,
+            8540);
+    }
+    if (v22->mode_matrix_on == 2)
+    {
+        v25 = *(uint32_t*)board_panel_bp_exec_clear_GST_Global_gao_o_mode_uppercutted_acteur;
+        v11 = (tGameObjectMain*)v25;
+        if (v25)
+        {
+            if (v25 <= 2)
+                v11 = AI_MainActor[v25 - 1];
+            AI_EvalFunc_OBJGetPos_C(v11, &a3);
+        }
+        else
+        {
+            AI_EvalFunc_OBJGetPos_C(0, &a3);
+        }
+        AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_exec_clear__PJ_Camera_gao, &v21);
+        MATH_SubstractVec(&dest, &a3, &v21);
+        v13 = MATH_VecLen(&dest);
+        AI_EvalFunc_COL_RayMinDistSet_C(v13);
+        AI_EvalFunc_MATHVecLocalToGlobal_C(
+            (tGameObjectMain*)board_panel_bp_exec_clear__PJ_Camera_gao,
+            &v22->mode_matrix_v_sight_viseur,
+            &v12);
+        v16 = v12;
+        AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_exec_clear__PJ_Camera_gao, &v18);
+        v26 = AI_EvalFunc_COLRayObjectDist_C(
+            (tGameObjectMain*)board_panel_bp_exec_clear__PJ_Camera_gao,
+            &v18,
+            &v16,
+            200.0f,
+            -1,
+            0,
+            0,
+            0);
+        v10 = v26;
+        if (v26)
+        {
+            if ((unsigned int)v26 <= 2)
+                v10 = AI_MainActor[(uint32_t)v26 - 1];
+            v9 = v10;
+        }
+        else
+        {
+            v9 = 0;
+        }
+        if (v9)
+        {
+            AI_EvalFunc_COLRayPosGet_C(AI_gpst_CurrentGameObject, &v14);
+            v8 = (tGameObjectMain*)v25;
+            if (v25)
+            {
+                if (v25 <= 2)
+                    v8 = AI_MainActor[v25 - 1];
+                AI_EvalFunc_OBJGetPos_C(v8, &v20);
+            }
+            else
+            {
+                AI_EvalFunc_OBJGetPos_C(0, &v20);
+            }
+            MATH_SubstractVec(&v24, &v14, &v20);
+            v22->mode_matrix_v_sight_viseur = v24;
+        }
+        else
+        {
+            v22->mode_matrix_v_sight_viseur = v16;
+        }
+        MATH_NormalizeEqualVector(&v22->mode_matrix_v_sight_viseur);
+    }
+    v22->Boutonces_JumpCurAction = -1;
+    for (i = 0; i < v22->i_current_nb_of_object; ++i)
+    {
+        v22->ao_listofobjects[i] = 0;
+        v22->ai_listofpriority[i] = 0;
+    }
+    for (i = 0; i < v22->i_current_nb_of_target; ++i)
+    {
+        v22->ao_targets[i] = 0;
+        *(uint32_t*)AI_EvalVarArray_C2((char*)&v22->__af_targetsoffsets_Dimension1, i) = 0;
+    }
+    v22->i_old_nb_of_object = v22->i_current_nb_of_object;
+    v22->i_current_nb_of_object = 0;
+    v22->i_current_nb_of_target = 0;
+    if (v22->i_current_mode != 8)
+    {
+        if (v22->v_sally_offset.z == 666.0)
+            v22->o_sally_contextuel_old = 0;
+        else
+            v22->o_sally_contextuel_old = v22->o_sally_contextuel;
+        v22->o_sally_contextuel = 0;
+        v7 = v22->i_sally_priority + MATH_gd_magicDoubleForRound;
+        v22->i_sally_priority_old = (*(uint32_t *)&v7);
+        v22->i_sally_priority = -1000.0;
+    }
+    v22->o_use_object_old = v22->o_use_object;
+    v22->o_use_object = 0;
+    v22->i_use_prio = 0;
+    v22->o_saut_object_old = v22->o_saut_object;
+    v22->o_saut_object = 0;
+    v22->i_saut_prio = 0;
+    v22->f_use_offset = 0.0;
+    if (v22->i_current_mode == 8 && v22->i_dialog_phase == 4)
+        AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(0, 768);
+    else
+        AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(0, 4864);
+    if (AI_EvalFunc_OBJ_CustomBitsTest_C((tGameObjectMain*)board_panel_bp_exec_clear_GST_Global_gao, 0x4000))
+        goto LABEL_48;
+    v6 = *(tGameObjectMain**)board_panel_bp_exec_clear_GST_Global_gao_o_acteur_cine_actif;
+    if (*(uint32_t*)board_panel_bp_exec_clear_GST_Global_gao_o_acteur_cine_actif)
+    {
+        if ((unsigned int)v6 <= 2)
+            v6 = AI_MainActor[(uint32_t)v6 - 1];
+        v5 = v6;
+    }
+    else
+    {
+        v5 = 0;
+    }
+    if (v5)
+        LABEL_48:
+    AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(4096, 0);
+    if (*(uint32_t*)board_panel_bp_exec_clear_univVars_Perso_ID_Companion == -1)
+    {
+        AI_EvalFunc_AIMainActorReset_C(1);
+    }
+    else
+    {
+        v25 = *(uint32_t*)(board_panel_bp_exec_clear_univVars_Perso_ID_actor
+            + 4 * *(uint32_t*)board_panel_bp_exec_clear_univVars_Perso_ID_Companion
+            + 4);
+        v4 = (tGameObjectMain*)v25;
+        if (v25)
+        {
+            if (v25 <= 2)
+                v4 = AI_MainActor[v25 - 1];
+            v3 = v4;
+        }
+        else
+        {
+            v3 = 0;
+        }
+        if (v3)
+        {
+            v2 = (tGameObjectMain*)v25;
+            if (v25)
+            {
+                if (v25 <= 2)
+                    v2 = AI_MainActor[v25 - 1];
+                AI_EvalFunc_AIMainActorSet_C(v2, 1);
+            }
+            else
+            {
+                AI_EvalFunc_AIMainActorSet_C(0, 1);
+            }
+        }
+    }
+    v22->i_commerce_tune = 0;
+    v22->i_commerce_perle = 0;
+    if (v22->i_current_mode == 4)
+    {
+        INO_SetControlMode(4);
+    }
+    else if (v22->i_look_aircraft_photo || v22->i_look_enterprise_photo)
+    {
+        INO_SetControlMode(2);
+    }
+    else if (*(uint32_t*)board_panel_bp_exec_clear_univVars_i_PALET_Mode)
+    {
+        INO_SetControlMode(128);
+    }
+    else
+    {
+        INO_SetControlMode(v22->i_current_mode);
+        INO_SetControlSubmode(v22->i_look_aircraft);
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_look_reset()
+{
+    char* v1; // eax
+    unsigned int v2; // eax
+    float v3; // [esp+0h] [ebp-E8h]
+    float v4; // [esp+4h] [ebp-E4h]
+    float v5; // [esp+8h] [ebp-E0h]
+    tScriptStruct_GSTBoardPanel* v6; // [esp+Ch] [ebp-DCh]
+    tGameObjectMain* v7; // [esp+14h] [ebp-D4h]
+    tGameObjectMain* v8; // [esp+18h] [ebp-D0h]
+    tGameObjectMain* v9; // [esp+1Ch] [ebp-CCh]
+    tGameObjectMain* v10; // [esp+20h] [ebp-C8h]
+    tGameObjectMain* v11; // [esp+24h] [ebp-C4h]
+    tGameObjectMain* v12; // [esp+30h] [ebp-B8h]
+    tGameObjectMain* v13; // [esp+34h] [ebp-B4h]
+    tGameObjectMain* v14; // [esp+38h] [ebp-B0h]
+    tMessage Src; // [esp+48h] [ebp-A0h] BYREF
+    tGameObjectMain* v16; // [esp+80h] [ebp-68h]
+    Vec3 pos; // [esp+88h] [ebp-60h] BYREF
+    int v18; // [esp+98h] [ebp-50h]
+    int v19; // [esp+A0h] [ebp-48h]
+    tGameObjectMain* v20; // [esp+A4h] [ebp-44h]
+    unsigned int v21; // [esp+B0h] [ebp-38h]
+    BOOL v23; // [esp+C8h] [ebp-20h]
+    tScriptStruct_GSTBoardPanel* v24; // [esp+D8h] [ebp-10h]
+    tGameObjectMain* v25; // [esp+DCh] [ebp-Ch]
+    int v26; // [esp+E0h] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v6 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v6 = 0;
+    v24 = v6;
+    v23 = 0;
+    v16 = 0;
+    v20 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_look_reset__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        board_panel_bp_exec_look_reset_TXT_Sally_gao = AI_ul_RealResolveOneRefObject(0x7200064Eu);
+        board_panel_bp_exec_look_reset__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_exec_look_reset__PJ_Camera_gao = AI_ul_RealResolveOneRefObject(0x71003F56u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset__PJ_Camera_gao_i_from_look,
+            (void*)board_panel_bp_exec_look_reset__PJ_Camera_gao,
+            412);
+        fct_board_panel_bp_exec_look_reset_board_panel_bp_exec_look_photoborder_off = (int)AI_ul_RealResolveOneRefFunction(0x9E00000C);
+        board_panel_bp_exec_look_reset_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset_univVars_Perso_ID_equipement,
+            (void*)board_panel_bp_exec_look_reset_univVars,
+            40);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_exec_look_reset_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_look_reset_univVars,
+            4488);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset__PJ_Sally_gao_current_pm_mode,
+            (void*)board_panel_bp_exec_look_reset__PJ_Sally_gao,
+            572);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset__PJ_Sally_gao_current_pm_priority,
+            (void*)board_panel_bp_exec_look_reset__PJ_Sally_gao,
+            576);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset__PJ_Sally_gao_f_time_lance_un_frisbee,
+            (void*)board_panel_bp_exec_look_reset__PJ_Sally_gao,
+            2560);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset__PJ_Sally_gao_i_fight_on,
+            (void*)board_panel_bp_exec_look_reset__PJ_Sally_gao,
+            1216);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset__PJ_Sally_gao_o_objet_en_main_AP,
+            (void*)board_panel_bp_exec_look_reset__PJ_Sally_gao,
+            2544);
+        board_panel_bp_exec_look_reset_INV_OBJ00_ApPhoto_gao = AI_ul_RealResolveOneRefObject(0x7100DA9Bu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_reset__PJ_Sally_gao_f_time_exit_mode_look,
+            (void*)board_panel_bp_exec_look_reset__PJ_Sally_gao,
+            2556);
+    }
+    v24->Boutonces_UseCurAction = -1;
+    v24->o_look_object = 0;
+    v24->i_look_loading = 0;
+    v24->f_time_mode_look_end = TIM_gf_MainClock - TIM_gf_LockTime;
+    Src.msgID = 30;
+    Src.Int1 = -2;
+    Src.Int2 = 5000;
+    Src.f2 = 1.0;
+    Src.v1.x = 0.0;
+    Src.v1.y = 0.0;
+    Src.v1.z = 0.0;
+    Src.v2.x = 0.0;
+    Src.v2.y = 0.0;
+    Src.v2.z = 0.0;
+    Src.gao = 0;
+    Src.gao2 = (tGameObjectMain*)board_panel_bp_exec_look_reset__PJ_Sally_gao;
+    AI_EvalFunc_MSGSend_C((tGameObjectMain*)board_panel_bp_exec_look_reset_TXT_Sally_gao, &Src);
+    v24->i_time_refresh_color[0] = 1;
+    v24->i_time_refresh_color[1] = 1;
+    v24->i_time_refresh_color[2] = 1;
+    v5 = TIM_gf_MainClock - TIM_gf_LockTime;
+    *(float*)AI_EvalVarArray_C2((char*)&v24->__f_time_refresh_color_Dimension1, 0) = v5;
+    v4 = TIM_gf_MainClock - TIM_gf_LockTime;
+    *(float*)AI_EvalVarArray_C2((char*)&v24->__f_time_refresh_color_Dimension1, 1) = v4;
+    v3 = TIM_gf_MainClock - TIM_gf_LockTime;
+    *(float*)AI_EvalVarArray_C2((char*)&v24->__f_time_refresh_color_Dimension1, 2) = v3;
+    AI_EvalFunc_OBJ_CapaSet_C((tGameObjectMain*)board_panel_bp_exec_look_reset__PJ_Camera_Speciale_gao, 0, 256);
+    *(uint32_t*)board_panel_bp_exec_look_reset__PJ_Camera_gao_i_from_look = 1;
+    if (v24->i_look_info_on)
+    {
+        v26 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_look_reset_board_panel_bp_exec_look_photoborder_off);
+        if (v26 != 1000)
+            return v26;
+        v24->i_look_info_on = 0;
+    }
+    v24->i_current_mode = -1;
+    v24->i_objet_inventaire = v24->i_objet_inventaire_old;
+    v24->i_objet_inventaire_prec = v24->i_objet_inventaire_prec_old;
+    v24->i_objet_inventaire_suiv = v24->i_objet_inventaire_suiv_old;
+    if (v24->i_objet_inventaire != -1)
+    {
+        v1 = AI_EvalVarArray2_C(
+            1,
+            (char*)board_panel_bp_exec_look_reset_univVars_Perso_ID_equipement,
+            0,
+            v24->i_MainActor_ID);
+        *(uint32_t*)v1 = v24->i_objet_inventaire;
+    }
+    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, 1040);
+    STR_SetString(AI_gpst_CurrentGameObject, 13, (char*)AI_gpst_CurrentFunction->localStringConstsData);
+    v24->f_look_prog_viseur = 1.55f;
+    AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 4096);
+    v24->o_look_object = 0;
+    v24->i_look_object_nb = 0;
+    v14 = (tGameObjectMain*)v24->o_acteur_pointe;
+    if (v14)
+    {
+        if ((unsigned int)v14 <= 2)
+            v14 = AI_MainActor[(uint32_t)v14 - 1];
+        v13 = v14;
+    }
+    else
+    {
+        v13 = 0;
+    }
+    if (!v13)
+        v24->i_acteur_pointe_text = 0;
+    if (!v24->i_init_inventaire)
+    {
+        v24->i_fast_look = 0;
+        if (!*(uint32_t*)board_panel_bp_exec_look_reset_univVars_Perso_ID_Companion)
+        {
+            v16 = AI_MainActor[1];
+            v12 = v16;
+            if (v16)
+            {
+                if ((unsigned int)v16 <= 2)
+                    v12 = AI_MainActor[(uint32_t)v16 - 1];
+                AI_EvalFunc_OBJ_CustomBitsSet_C(v12, 0, 4096);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_CustomBitsSet_C(0, 0, 4096);
+            }
+        }
+        v23 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_exec_look_reset_univVars_Flag_speciaux_sauve + 4), 120);
+        if (v23)
+        {
+            v25 = *AI_MainActor;
+            v11 = v25;
+            if (v25)
+            {
+                if ((unsigned int)v25 <= 2)
+                    v11 = AI_MainActor[(uint32_t)v25 - 1];
+                v10 = v11;
+            }
+            else
+            {
+                v10 = 0;
+            }
+            if (v10 == (tGameObjectMain*)board_panel_bp_exec_look_reset__PJ_Sally_gao)
+            {
+                v19 = (unsigned __int16)*(uint32_t*)(board_panel_bp_exec_look_reset__PJ_Sally_gao + 4);
+                if ((v19 & 1) != 0)
+                    v23 = !*(uint32_t*)board_panel_bp_exec_look_reset__PJ_Sally_gao_current_pm_mode
+                    || *(int*)board_panel_bp_exec_look_reset__PJ_Sally_gao_current_pm_priority < 20;
+                else
+                    v23 = 0;
+                if (v23)
+                {
+                    if (AI_EvalFunc_TIMEElapsed_C(
+                        *(float*)board_panel_bp_exec_look_reset__PJ_Sally_gao_f_time_lance_un_frisbee,
+                        5.0))
+                    {
+                        if (!*(uint32_t*)board_panel_bp_exec_look_reset__PJ_Sally_gao_i_fight_on)
+                        {
+                            v9 = *(tGameObjectMain**)board_panel_bp_exec_look_reset__PJ_Sally_gao_o_objet_en_main_AP;
+                            if (*(uint32_t*)board_panel_bp_exec_look_reset__PJ_Sally_gao_o_objet_en_main_AP)
+                            {
+                                if ((unsigned int)v9 <= 2)
+                                    v9 = AI_MainActor[(uint32_t)v9 - 1];
+                                v8 = v9;
+                            }
+                            else
+                            {
+                                v8 = 0;
+                            }
+                            if (!v8)
+                            {
+                                pos.x = 0.0;
+                                pos.y = 0.0;
+                                pos.z = 0.0;
+                                v20 = AI_EvalFunc_OBJDuplicate_C(
+                                    (tGameObjectMain*)board_panel_bp_exec_look_reset_INV_OBJ00_ApPhoto_gao,
+                                    &pos);
+                                v7 = v20;
+                                if (v20)
+                                {
+                                    if ((unsigned int)v20 <= 2)
+                                        v7 = AI_MainActor[(uint32_t)v20 - 1];
+                                    v2 = AI_EvalFunc_OBJ_FlagsControlSet_C(v7, 0x400000, 0);
+                                }
+                                else
+                                {
+                                    v2 = AI_EvalFunc_OBJ_FlagsControlSet_C(0, 0x400000, 0);
+                                }
+                                v21 = v2;
+                                *(uint32_t*)board_panel_bp_exec_look_reset__PJ_Sally_gao_o_objet_en_main_AP = (uint32_t)v20;
+                            }
+                            v18 = INO_b_IoButtonPressed(6);
+                            if (!v18 && *(uint32_t*)board_panel_bp_exec_look_reset__PJ_Sally_gao_current_pm_mode != 16)
+                            {
+                                AI_EvalFunc_ACTActionSet_C((tGameObjectMain*)board_panel_bp_exec_look_reset__PJ_Sally_gao, 23);
+                                *(float*)board_panel_bp_exec_look_reset__PJ_Sally_gao_f_time_exit_mode_look = TIM_gf_MainClock
+                                    - TIM_gf_LockTime;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_button_valide_friend()
+{
+    BOOL v0; // eax
+    int v1; // eax
+    BOOL v2; // eax
+    int v3; // eax
+    tScriptStruct_GSTBoardPanel* v5; // [esp+0h] [ebp-98h]
+    tGameObjectMain* v6; // [esp+4h] [ebp-94h]
+    tGameObjectMain* v7; // [esp+8h] [ebp-90h]
+    tGameObjectMain* v8; // [esp+10h] [ebp-88h]
+    tGameObjectMain* v9; // [esp+14h] [ebp-84h]
+    tGameObjectMain* v10; // [esp+18h] [ebp-80h]
+    tGameObjectMain* v11; // [esp+20h] [ebp-78h]
+    tGameObjectMain* v12; // [esp+24h] [ebp-74h]
+    tGameObjectMain* v13; // [esp+28h] [ebp-70h]
+    tGameObjectMain* v14; // [esp+30h] [ebp-68h]
+    tGameObjectMain* v15; // [esp+34h] [ebp-64h]
+    tGameObjectMain* v16; // [esp+38h] [ebp-60h]
+    tMessage Src; // [esp+50h] [ebp-48h] BYREF
+    tScriptStruct_GSTBoardPanel* v18; // [esp+88h] [ebp-10h]
+    unsigned int v19; // [esp+8Ch] [ebp-Ch]
+    int v20; // [esp+90h] [ebp-8h]
+    int a2; // [esp+94h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v5 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v5 = 0;
+    v18 = v5;
+    a2 = 0;
+    v19 = 0;
+    v20 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_button_valide_friend_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_exec_button_valide_friend_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_exec_button_valide_friend_univVars,
+            988);
+        board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao_o_actor_texte,
+            (void*)board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao,
+            3616);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao,
+            264);
+        board_panel_bp_exec_button_valide_friend_univVars__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+    }
+    v16 = (tGameObjectMain*)v18->o_contextuel_object;
+    if (v16)
+    {
+        if ((unsigned int)v16 <= 2)
+            v16 = AI_MainActor[(uint32_t)v16 - 1];
+        v15 = v16;
+    }
+    else
+    {
+        v15 = 0;
+    }
+    if (v15)
+    {
+        v18->f_time_superaction = 0.0;
+        v18->i_done_superaction = 1;
+        Src.msgID = 38;
+        Src.f2 = (float)v18->i_contextuel_prio;
+        Src.gao = (tGameObjectMain*)v18->o_contextuel_object;
+        Src.gao2 = (tGameObjectMain*)v18->o_contextuel_target;
+        v14 = (tGameObjectMain*)v18->o_contextuel_object;
+        if (v14)
+        {
+            if ((unsigned int)v14 <= 2)
+                v14 = AI_MainActor[(uint32_t)v14 - 1];
+            AI_EvalFunc_MSGSend_C(v14, &Src);
+        }
+        else
+        {
+            AI_EvalFunc_MSGSend_C(0, &Src);
+        }
+        if (v18->i_contextuel_prio == 2)
+        {
+            v19 = *(uint32_t*)(board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_actor
+                + 4 * *(uint32_t*)board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion
+                + 4);
+            if (!*(uint32_t*)board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion)
+            {
+                v10 = (tGameObjectMain*)v19;
+                if (v19)
+                {
+                    if (v19 <= 2)
+                        v10 = AI_MainActor[v19 - 1];
+                    v9 = v10;
+                }
+                else
+                {
+                    v9 = 0;
+                }
+                if (v9)
+                {
+                    v8 = (tGameObjectMain*)v19;
+                    if (v19)
+                    {
+                        if (v19 <= 2)
+                            v8 = AI_MainActor[v19 - 1];
+                        v2 = AI_EvalFunc_OBJ_CustomBitsTest_C(v8, 512);
+                    }
+                    else
+                    {
+                        v2 = AI_EvalFunc_OBJ_CustomBitsTest_C(0, 512);
+                    }
+                    if (!v2)
+                    {
+                        v19 = *(uint32_t*)(board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao_o_actor_texte
+                            + 4 * *(uint32_t*)board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion
+                            + 4);
+                        v3 = AI_EvalFunc_MTHModulo_C(v18->i_texte_synchro_SAFight + 1, 5);
+                        v18->i_texte_synchro_SAFight = v3;
+                    }
+                }
+            }
+        }
+        else
+        {
+            v19 = *(uint32_t*)(board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_actor
+                + 4 * *(uint32_t*)board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion
+                + 4);
+            if (*(int*)board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion < 5)
+            {
+                v13 = (tGameObjectMain*)v19;
+                if (v19)
+                {
+                    if (v19 <= 2)
+                        v13 = AI_MainActor[v19 - 1];
+                    v12 = v13;
+                }
+                else
+                {
+                    v12 = 0;
+                }
+                if (v12)
+                {
+                    v11 = (tGameObjectMain*)v19;
+                    if (v19)
+                    {
+                        if (v19 <= 2)
+                            v11 = AI_MainActor[v19 - 1];
+                        v0 = AI_EvalFunc_OBJ_CustomBitsTest_C(v11, 512);
+                    }
+                    else
+                    {
+                        v0 = AI_EvalFunc_OBJ_CustomBitsTest_C(0, 512);
+                    }
+                    if (!v0)
+                    {
+                        v19 = *(uint32_t*)(board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao_o_actor_texte
+                            + 4 * *(uint32_t*)board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion
+                            + 4);
+                        v20 = *(uint32_t*)(board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_actor
+                            + 4 * *(uint32_t*)board_panel_bp_exec_button_valide_friend_univVars_Perso_ID_Companion
+                            + 4);
+                        v1 = AI_EvalFunc_MTHModulo_C(v18->i_texte_vala + 1, 3);
+                        v18->i_texte_vala = v1;
+                    }
+                }
+            }
+        }
+    }
+    else if (!v18->i_bip_off)
+    {
+        v7 = *(tGameObjectMain**)board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao_o_acteur_cine_actif;
+        if (*(uint32_t*)board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao_o_acteur_cine_actif)
+        {
+            if ((unsigned int)v7 <= 2)
+                v7 = AI_MainActor[(uint32_t)v7 - 1];
+            v6 = v7;
+        }
+        else
+        {
+            v6 = 0;
+        }
+        if (!v6
+            && !AI_EvalFunc_OBJ_CustomBitsTest_C(
+                (tGameObjectMain*)board_panel_bp_exec_button_valide_friend_univVars_GST_Global_gao,
+                0x4000))
+        {
+            a2 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 3, 0x80);
+            AI_EvalFunc_SNDUltraPlaySound_C(
+                (tGameObjectMain*)board_panel_bp_exec_button_valide_friend_univVars__PJ_Sally_gao,
+                a2);
+            v18->i_bip_off = 1;
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_mode_enterprise()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-84h]
+    tGameObjectMain* v2; // [esp+8h] [ebp-7Ch]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-78h]
+    tGameObjectMain* v4; // [esp+10h] [ebp-74h]
+    tGameObjectMain* v5; // [esp+18h] [ebp-6Ch]
+    tGameObjectMain* v6; // [esp+1Ch] [ebp-68h]
+    tGameObjectMain* v7; // [esp+20h] [ebp-64h]
+    tGameObjectMain* v8; // [esp+28h] [ebp-5Ch]
+    int v9; // [esp+2Ch] [ebp-58h]
+    int v10; // [esp+3Ch] [ebp-48h]
+    int v11; // [esp+40h] [ebp-44h]
+    Vec3 a5; // [esp+44h] [ebp-40h] BYREF
+    tGameObjectMain* v13; // [esp+50h] [ebp-34h]
+    int v14; // [esp+54h] [ebp-30h]
+    int i; // [esp+58h] [ebp-2Ch]
+    int v16; // [esp+5Ch] [ebp-28h]
+    tGameObjectMain* v17; // [esp+68h] [ebp-1Ch]
+    Vec3 v18; // [esp+6Ch] [ebp-18h] BYREF
+    tScriptStruct_GSTBoardPanel* v19; // [esp+78h] [ebp-Ch]
+    tGameObjectMain* v20; // [esp+80h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v19 = v1;
+    i = 0;
+    v17 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_mode_enterprise__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_look_init = (int)AI_ul_RealResolveOneRefFunction(0x9E001C37);
+        fct_board_panel_bp_mode_board_panel_bp_exec_look_photo = (int)AI_ul_RealResolveOneRefFunction(0x9E001C34);
+        fct_board_panel_bp_mode_board_panel_bp_exec_affiche_contextuel = (int)AI_ul_RealResolveOneRefFunction(0x9E000AF8);
+        board_panel_bp_mode_enterprise_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_mode_enterprise_GST_Global_gao_o_acteur_cone_actif,
+            (void*)board_panel_bp_mode_enterprise_GST_Global_gao,
+            264);
+        fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_button_valide_look = (int)AI_ul_RealResolveOneRefFunction(0x9E000857);
+        fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_sprite_boutons_on = (int)AI_ul_RealResolveOneRefFunction(0x9E000016);
+    }
+    v19->i_current_mode = 32;
+    if (v19->i_look_enterprise_photo)
+    {
+        if (v19->i_init_look)
+        {
+            v19->i_look_info_on = 1;
+            if (v19->i_Obj_On_Radar_Display)
+            {
+                a5.x = -1.0;
+                a5.y = -1.0;
+                a5.z = 0.0;
+                STR_SetPos(AI_gpst_CurrentGameObject, 28, 0, -1, &a5);
+                for (i = 0; i < v19->i_Obj_On_Radar_Nb; ++i)
+                {
+                    v18.x = -1.0;
+                    v18.y = -1.0;
+                    v18.z = 0.0;
+                    STR_SetPos(AI_gpst_CurrentGameObject, i + 16, 0, -1, &v18);
+                }
+                v19->i_Obj_On_Radar_Display = 0;
+            }
+            AI_EvalFunc_OBJ_CapaSet_C((tGameObjectMain*)board_panel_bp_mode_enterprise__PJ_Camera_Speciale_gao, 256, 0);
+            v17 = *AI_MainActor;
+            v8 = v17;
+            if (v17)
+            {
+                if ((unsigned int)v17 <= 2)
+                    v8 = AI_MainActor[(uint32_t)v17 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v8, &v19->v_look_before_inv);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_SightGet_C(0, &v19->v_look_before_inv);
+            }
+            if (v19->i_look_enterprise_photo)
+            {
+                v9 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_look_init);
+                if (v9 != 1000)
+                    return v9;
+            }
+        }
+        v14 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_board_panel_bp_exec_look_photo);
+        if (v14 != 1000)
+            return v14;
+        v19->o_sally_contextuel = (int)AI_gpst_CurrentGameObject;
+        v19->i_sally_action = 1;
+    }
+    v7 = (tGameObjectMain*)v19->o_acteur_pointe_target;
+    if (v7)
+    {
+        if ((unsigned int)v7 <= 2)
+            v7 = AI_MainActor[(uint32_t)v7 - 1];
+        v6 = v7;
+    }
+    else
+    {
+        v6 = 0;
+    }
+    if (v6)
+    {
+        v19->i_ind_pointeur = 0;
+        if (v19->i_current_nb_of_object < 2)
+            v19->i_action_selected = 0;
+        v11 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_board_panel_bp_exec_affiche_contextuel);
+        if (v11 != 1000)
+            return v11;
+    }
+    else if (v19->i_ind_pointeur != -1)
+    {
+        v19->i_ind_pointeur = -1;
+        v19->o_contextuel_object = 0;
+        v19->i_contextuel_prio = -1;
+    }
+    v17 = *AI_MainActor;
+    if (v19->i_look_enterprise_photo)
+    {
+        AI_EvalFunc_OBJ_CustomBitsSet_C((tGameObjectMain*)board_panel_bp_mode_enterprise_GST_Global_gao, 0x8000, 0);
+        v20 = AI_EvalFunc_VIEWAssignObject_C((tGameObjectMain*)board_panel_bp_mode_enterprise__PJ_Camera_Speciale_gao, 0);
+        v19->o_use_object = 0;
+    }
+    else if (v19->i_look_enterprise)
+    {
+        v13 = AI_EvalFunc_VIEWAssignObject_C((tGameObjectMain*)board_panel_bp_mode_enterprise__PJ_Camera_Speciale_gao, 0);
+        v5 = v17;
+        if (v17)
+        {
+            if ((unsigned int)v17 <= 2)
+                v5 = AI_MainActor[(uint32_t)v17 - 1];
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(v5, 1);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 1);
+        }
+    }
+    else
+    {
+        v4 = *(tGameObjectMain**)board_panel_bp_mode_enterprise_GST_Global_gao_o_acteur_cone_actif;
+        if (*(uint32_t*)board_panel_bp_mode_enterprise_GST_Global_gao_o_acteur_cone_actif)
+        {
+            if ((unsigned int)v4 <= 2)
+                v4 = AI_MainActor[(uint32_t)v4 - 1];
+            v3 = v4;
+        }
+        else
+        {
+            v3 = 0;
+        }
+        if (!v3)
+        {
+            v2 = v17;
+            if (v17)
+            {
+                if ((unsigned int)v17 <= 2)
+                    v2 = AI_MainActor[(uint32_t)v17 - 1];
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(v2, 0);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 0);
+            }
+            if (v19->i_look_enterprise_photo)
+            {
+                v16 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_button_valide_look);
+                if (v16 != 1000)
+                    return v16;
+            }
+        }
+    }
+    v10 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_mode_enterprise_board_panel_bp_exec_sprite_boutons_on);
+    if (v10 == 1000)
+        result = 1000;
+    else
+        result = v10;
+    return result;
+}
+
+int board_panel_bp_exec_button_valide_action_sally()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-54h]
+    tGameObjectMain* v2; // [esp+8h] [ebp-4Ch]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-48h]
+    tGameObjectMain* v4; // [esp+10h] [ebp-44h]
+    tMessage Src; // [esp+18h] [ebp-3Ch] BYREF
+    int v6; // [esp+4Ch] [ebp-8h]
+    tScriptStruct_GSTBoardPanel* v7; // [esp+50h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v7 = v1;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_button_valide_action_sally_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+    }
+    if (AI_EvalFunc_OBJ_CustomBitsTest_C(
+        (tGameObjectMain*)board_panel_bp_exec_button_valide_action_sally_GST_Global_gao,
+        512)
+        || v7->mode_matrix_on != 1)
+    {
+        v4 = (tGameObjectMain*)v7->o_sally_contextuel;
+        if (v4)
+        {
+            if ((unsigned int)v4 <= 2)
+                v4 = AI_MainActor[(uint32_t)v4 - 1];
+            v3 = v4;
+        }
+        else
+        {
+            v3 = 0;
+        }
+        if (v3)
+        {
+            Src.msgID = 10;
+            Src.f2 = v7->i_sally_priority;
+            v2 = (tGameObjectMain*)v7->o_sally_contextuel;
+            if (v2)
+            {
+                if ((unsigned int)v2 <= 2)
+                    v2 = AI_MainActor[(uint32_t)v2 - 1];
+                AI_EvalFunc_MSGSend_C(v2, &Src);
+            }
+            else
+            {
+                AI_EvalFunc_MSGSend_C(0, &Src);
+            }
+        }
+    }
+    else
+    {
+        v7->mode_matrix_on = 2;
+        v7->f_matrix_duree = 0.0099999998f;
+        v6 = AI_EvalFunc_IoJoyFreeze_C(0);
+        SND_Release(v7->i_snd_matrix);
+        v7->i_snd_matrix = -1;
+    }
+    return 1000;
+}
+
+int board_panel_bp_beforedisplay()
+{
+    int result; // eax
+    int v1; // [esp+4h] [ebp-10h]
+    int v2; // [esp+8h] [ebp-Ch]
+    int v3; // [esp+Ch] [ebp-8h]
+
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_photo = (int)AI_ul_RealResolveOneRefFunction(0x9E0068B6);
+        fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_target = (int)AI_ul_RealResolveOneRefFunction(0x9E0068BA);
+        fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_radar = (int)AI_ul_RealResolveOneRefFunction(0x9E0068B8);
+    }
+    v1 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_photo);
+    if (v1 != 1000)
+        return v1;
+    v3 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_target);
+    if (v3 != 1000)
+        return v3;
+    v2 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_beforedisplay_board_panel_bp_INTF_exec_radar);
+    if (v2 == 1000)
+        result = 1000;
+    else
+        result = v2;
+    return result;
+}
+
+int board_panel_bp_dialogue_check()
+{
+    tTextGet* v1; // eax
+    char* v2; // eax
+    tTextGet* v3; // eax
+    char* v4; // eax
+    tScriptStruct_GSTBoardPanel* v5; // [esp+0h] [ebp-104h]
+    Vec3 a1; // [esp+38h] [ebp-CCh] BYREF
+    Vec3 a3; // [esp+44h] [ebp-C0h] BYREF
+    tMessage Src; // [esp+50h] [ebp-B4h] BYREF
+    Vec3 v9; // [esp+84h] [ebp-80h] BYREF
+    BOOL v10; // [esp+90h] [ebp-74h]
+    Vec3 v11; // [esp+94h] [ebp-70h] BYREF
+    BOOL v12; // [esp+A4h] [ebp-60h]
+    Vec3 a5; // [esp+A8h] [ebp-5Ch] BYREF
+    Vec3 v14; // [esp+B4h] [ebp-50h] BYREF
+    int v15; // [esp+C0h] [ebp-44h]
+    BOOL v16; // [esp+C4h] [ebp-40h]
+    Vec3 a2; // [esp+C8h] [ebp-3Ch] BYREF
+    int i; // [esp+E0h] [ebp-24h]
+    int v19; // [esp+E4h] [ebp-20h]
+    tScriptStruct_GSTBoardPanel* v20; // [esp+E8h] [ebp-1Ch]
+    int a4; // [esp+ECh] [ebp-18h]
+    int v22; // [esp+100h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v5 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v5 = 0;
+    v20 = v5;
+    i = 0;
+    v16 = 0;
+    a4 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_dialogue_check__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_dialogue_check__PJ_Sally_gao_i_fight_on,
+            (void*)board_panel_bp_dialogue_check__PJ_Sally_gao,
+            1216);
+        board_panel_bp_dialogue_check__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_dialogue_check_board_panel_bp_exec_button_valide_exit_dialogue = (int)AI_ul_RealResolveOneRefFunction(0x9E00084D);
+        board_panel_bp_dialogue_check_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        board_panel_bp_dialogue_check_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_dialogue_check_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_dialogue_check_univVars,
+            4488);
+        fct_board_panel_bp_dialogue_check_board_panel_bp_mode_dialogue = (int)AI_ul_RealResolveOneRefFunction(0x9E0006C3);
+        board_panel_bp_dialogue_check_TXT_Sally_gao = AI_ul_RealResolveOneRefObject(0x7200064Eu);
+        fct_board_panel_bp_dialogue_check_board_panel_bp_mode_normal = (int)AI_ul_RealResolveOneRefFunction(0x6C00AD9Cu);
+    }
+    if (!v20->ai_dialog_consequences[0])
+    {
+        if (v20->i_dialog_phase)
+        {
+            AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(0, 0xC00);
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v20->ai_ind_dialog_phr[0],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData);
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v20->ai_ind_dialog_phr[1],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 1);
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v20->ai_ind_dialog_phr[2],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 2);
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v20->ai_ind_dialog_phr[3],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 3);
+            STR_SetString(
+                AI_gpst_CurrentGameObject,
+                v20->ai_ind_dialog_phr[4],
+                (char*)AI_gpst_CurrentFunction->localStringConstsData + 4);
+            STR_SetString(AI_gpst_CurrentGameObject, 22, (char*)AI_gpst_CurrentFunction->localStringConstsData + 5);
+            v20->i_dialog_phase = 0;
+            v20->i_dialog_init_choix = 1;
+            v20->i_dialog_act_pos = 0;
+            a4 = v20->i_objet_inventaire;
+            v20->Boutonces_CurInv = a4;
+            if (a4 == -1)
+            {
+                a4 = 0;
+            }
+            else if (a4 < v20->Boutonces_NbInv)
+            {
+                a4 = v20->Boutonces_Inv2Char[a4];
+            }
+            else
+            {
+                a4 = v20->Boutonces_Inv2Char[0];
+            }
+            AI_EvalFunc_OBJ_TextCharSet_C(AI_gpst_CurrentGameObject, 0, 0, a4);
+            v11.x = -1.0;
+            v11.y = 0.0;
+            v11.z = 0.0;
+            STR_SetSize(AI_gpst_CurrentGameObject, 0, 0, 1, &v11);
+            AI_EvalFunc_OBJ_TextAlphaSet_C(AI_gpst_CurrentGameObject, 0, 0, 1, v20->i_button_swap_fadeO);
+            if (v20->Boutonces_UseCurAction == -1)
+            {
+                STR_SetString(AI_gpst_CurrentGameObject, 26, (char*)AI_gpst_CurrentFunction->localStringConstsData + 6);
+            }
+            else
+            {
+                v3 = (tTextGet*)AI_EvalVarArray_C(10, (char*)&v20->__at_actions_Dimension1, v20->Boutonces_UseCurAction);
+                v4 = AI_EvalFunc_TEXTToString_C(v3);
+                STR_SetString(AI_gpst_CurrentGameObject, 26, v4);
+                v14.x = 0.19499999f;
+                v14.y = 0.29499999f;
+                v14.z = 5.0f;
+                AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 26, &v14);
+                AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 26, 5);
+                v9.x = -1.0;
+                v9.y = 0.0;
+                v9.z = 0.0;
+                STR_SetSize(AI_gpst_CurrentGameObject, 26, 0, -1, &v9);
+                v22 = AI_EvalFunc_COLORSetRGBA_C(
+                    v20->i_button_swap_fadeT,
+                    v20->i_button_swap_fadeT,
+                    v20->i_button_swap_fadeT,
+                    v20->i_button_swap_fadeT);
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 24, 0, -1, v22);
+                v15 = AI_EvalFunc_COLORSetRGBA_C(
+                    v20->i_button_swap_fadeX,
+                    v20->i_button_swap_fadeX,
+                    v20->i_button_swap_fadeX,
+                    v20->i_button_swap_fadeX);
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 25, 0, -1, v15);
+            }
+            v20->Interface_Time_fade_OFF_O = TIM_gf_MainClock - TIM_gf_LockTime;
+            AI_EvalFunc_AITrackChange_C(2, (tAIFunction*)fct_board_panel_bp_dialogue_check_board_panel_bp_mode_normal);
+        }
+        return 1000;
+    }
+    if (!*(uint32_t*)board_panel_bp_dialogue_check__PJ_Sally_gao_i_fight_on)
+    {
+        v12 = AI_EvalFunc_OBJ_CapaTest_C((tGameObjectMain*)board_panel_bp_dialogue_check__PJ_Camera_Speciale_gao, 0x80);
+        if (!v12 && !v20->i_init_inventaire && v20->i_current_mode != 4)
+        {
+            if (!v20->i_dialog_phase)
+            {
+                AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(2048, 0);
+                v20->i_acteur_pointe_new = 1;
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 24, 0, -1, 0);
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 25, 0, -1, 0);
+                AI_EvalFunc_OBJ_TextAlphaSet_C(AI_gpst_CurrentGameObject, 0, 0, 1, 0);
+                AI_EvalFunc_OBJ_TextAlphaSet_C(AI_gpst_CurrentGameObject, 3, 0, -1, 0);
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 0, 1, 2, 0);
+                AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 3, 0, 2, 0);
+                v1 = (tTextGet*)AI_EvalVarArray_C(10, (char*)&v20->__at_actions_Dimension1, 18);
+                v2 = AI_EvalFunc_TEXTToString_C(v1);
+                STR_SetString(AI_gpst_CurrentGameObject, 26, v2);
+                a2.x = 0.19499999f;
+                a2.y = 0.29499999f;
+                a2.z = 5.0f;
+                a3.x = 0.0f;
+                a3.y = -0.02f;
+                a3.z = 0.050000001f;
+                MATH_VecAddVec(&a1, &a2, &a3);
+                AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 26, &a1);
+                AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 26, 5);
+                a5.x = -1.0;
+                a5.y = 0.0;
+                a5.z = 0.0;
+                STR_SetSize(AI_gpst_CurrentGameObject, 26, 0, -1, &a5);
+                v20->ai_ind_dialog_phr[0] = 16;
+                v20->ai_ind_dialog_phr[1] = 17;
+                v20->ai_ind_dialog_phr[2] = 18;
+                v20->ai_ind_dialog_phr[3] = 19;
+                v20->ai_ind_dialog_phr[4] = 20;
+                AI_EvalFunc_OBJ_CustomBitsSet_C((tGameObjectMain*)board_panel_bp_dialogue_check_GST_Global_gao, 0x8000, 0);
+                v20->i_dialog_phase = 1;
+                for (v20->i_dialog_act_pos = 0; v20->i_dialog_act_pos < 5; ++v20->i_dialog_act_pos)
+                {
+                    v16 = v20->ai_dialog_grisage[v20->i_dialog_act_pos] > 0
+                        && AI_EvalFunc_ARRBitTest_C(
+                            (int*)(board_panel_bp_dialogue_check_univVars_Flag_speciaux_sauve + 4),
+                            v20->ai_dialog_grisage[v20->i_dialog_act_pos]);
+                    if (!v16)
+                        break;
+                }
+                if (v20->i_dialog_act_pos == 5)
+                    v20->i_dialog_act_pos = 4;
+                v20->i_dialog_ind_questions_max = 0;
+                for (i = 0; i < 5; ++i)
+                {
+                    if (v20->ai_dialog_consequences[i])
+                        ++v20->i_dialog_ind_questions_max;
+                }
+                if (--v20->i_dialog_ind_questions_max == 1 && (v10 = AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x80)))
+                {
+                    v20->i_dialog_1_question = 1;
+                    if (v20->i_dialog_act_pos == 1)
+                        v20->i_dialog_act_pos = 0;
+                }
+                else
+                {
+                    v20->i_dialog_1_question = 0;
+                }
+                AI_EvalFunc_AITrackChange_C(2, (tAIFunction*)fct_board_panel_bp_dialogue_check_board_panel_bp_mode_dialogue);
+                Src.msgID = 30;
+                Src.Int1 = -2;
+                Src.Int2 = 4900;
+                Src.f2 = 1.0;
+                Src.v1.x = 0.0;
+                Src.v1.y = 0.0;
+                Src.v1.z = 0.0;
+                Src.v2.x = 0.0;
+                Src.v2.y = 0.0;
+                Src.v2.z = 0.0;
+                Src.gao = 0;
+                Src.gao2 = (tGameObjectMain*)board_panel_bp_dialogue_check__PJ_Sally_gao;
+                AI_EvalFunc_MSGSend_C((tGameObjectMain*)board_panel_bp_dialogue_check_TXT_Sally_gao, &Src);
+            }
+            return 1000;
+        }
+    }
+    v19 = AI_EvalFunc_AIExecute_C((tAIFunction*)board_panel_bp_dialogue_check_board_panel_bp_exec_button_valide_exit_dialogue);
+    if (v19 != 1000)
+        return v19;
+    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+    return 1000;
+}
+
+int board_panel_bp_exec_joje_set()
+{
+    float v1; // [esp+8h] [ebp-78h]
+    float a4; // [esp+Ch] [ebp-74h]
+    tScriptStruct_GSTBoardPanel* v3; // [esp+10h] [ebp-70h]
+    float v4; // [esp+14h] [ebp-6Ch]
+    Vec3 a5; // [esp+18h] [ebp-68h] BYREF
+    float v6; // [esp+24h] [ebp-5Ch]
+    Vec3 v7; // [esp+30h] [ebp-50h] BYREF
+    int v8; // [esp+3Ch] [ebp-44h]
+    Vec3 v9; // [esp+40h] [ebp-40h] BYREF
+    Vec3 v10; // [esp+4Ch] [ebp-34h] BYREF
+    BOOL v11; // [esp+58h] [ebp-28h]
+    int a2; // [esp+5Ch] [ebp-24h]
+    float v13; // [esp+60h] [ebp-20h]
+    int v14; // [esp+68h] [ebp-18h]
+    int v15; // [esp+6Ch] [ebp-14h]
+    tScriptStruct_GSTBoardPanel* v16; // [esp+70h] [ebp-10h]
+    float v17; // [esp+78h] [ebp-8h]
+    BOOL v18; // [esp+7Ch] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v3 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v3 = 0;
+    v16 = v3;
+    v14 = 0;
+    a2 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_joje_set_board_panel_bp_INTF_update = (int)AI_ul_RealResolveOneRefFunction(0x9E006773);
+        board_panel_bp_exec_joje_set_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_joje_set_univVars_f_sally_fric,
+            (void*)board_panel_bp_exec_joje_set_univVars,
+            1200);
+        board_panel_bp_exec_joje_set_INTF_Pognes_gao = AI_ul_RealResolveOneRefObject(0x9E0067BE);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_joje_set_univVars_i_Nb_Perles,
+            (void*)board_panel_bp_exec_joje_set_univVars,
+            18220);
+        board_panel_bp_exec_joje_set_INTF_Perles_gao = AI_ul_RealResolveOneRefObject(0x9E0067BF);
+        board_panel_bp_exec_joje_set_INTF_PerleHalo_gao = AI_ul_RealResolveOneRefObject(0x9E0067C0);
+    }
+    v8 = AI_EvalFunc_AIExecute_C((tAIFunction*)board_panel_bp_exec_joje_set_board_panel_bp_INTF_update);
+    if (v8 != 1000)
+        return v8;
+    v15 = AI_EvalFunc_AIExecute_C((tAIFunction*)board_panel_bp_exec_joje_set_board_panel_bp_INTF_update);
+    if (v15 != 1000)
+        return v15;
+    if ((v16->i_commerce_tune || *(uint32_t*)board_panel_bp_exec_joje_set_univVars_f_sally_fric != v16->i_commerce_tune_old)
+        && !v16->i_commercer_perle_deja_affich)
+    {
+        if (!v16->i_commercer_tune_deja_affiche)
+        {
+            STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 8);
+            a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 8, 0, -1);
+            STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1150, 0.5);
+            STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1151, 2.0);
+            v16->i_commercer_tune_deja_affiche = 1;
+            v6 = TIM_gf_MainClock - TIM_gf_LockTime;
+            v16->f_time_perle = v6 - 6.0f;
+        }
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_exec_joje_set_INTF_Pognes_gao, 0);
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 8, 0x90);
+        STR_SetString(AI_gpst_CurrentGameObject, 8, (char*)AI_gpst_CurrentFunction->localStringConstsData);
+        AI_EvalFunc_OBJ_TextCharSet_C(AI_gpst_CurrentGameObject, 8, 0, 3111);
+        a4 = (float)*(int*)board_panel_bp_exec_joje_set_univVars_f_sally_fric;
+        STR_InsertFloat(AI_gpst_CurrentGameObject, 8, 0, a4, 0);
+        a5.x = 0.5;
+        a5.y = 0.25;
+        a5.z = 0.0;
+        STR_SetPos(AI_gpst_CurrentGameObject, 8, 0, -1, &a5);
+        v9.x = -1.0;
+        v9.y = 0.0;
+        v9.z = 0.0;
+        STR_SetSize(AI_gpst_CurrentGameObject, 8, 0, -1, &v9);
+        v16->i_commerce_tune_old = *(uint32_t*)board_panel_bp_exec_joje_set_univVars_f_sally_fric;
+        v16->i_commerce_tune_change = 1;
+        v16->f_time_tune = TIM_gf_MainClock - TIM_gf_LockTime;
+    }
+    if (v16->i_commerce_perle || *(uint32_t*)board_panel_bp_exec_joje_set_univVars_i_Nb_Perles != v16->i_nb_perle)
+    {
+        if (!v16->i_commercer_perle_deja_affich)
+        {
+            STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 9);
+            a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 9, 0, -1);
+            STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1150, 0.5);
+            STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1151, 2.0);
+            v16->i_commercer_perle_deja_affich = 1;
+            v13 = TIM_gf_MainClock - TIM_gf_LockTime;
+            v16->f_time_tune = v13 - 6.0f;
+        }
+        v14 = 0;
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_exec_joje_set_INTF_Perles_gao, 0);
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_exec_joje_set_INTF_PerleHalo_gao, 0);
+        v16->i_commerce_perle_change = 0;
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 9, 0x90);
+        STR_SetString(AI_gpst_CurrentGameObject, 9, (char*)AI_gpst_CurrentFunction->localStringConstsData + 1);
+        AI_EvalFunc_OBJ_TextCharSet_C(AI_gpst_CurrentGameObject, 9, 0, 3111);
+        v4 = (float)*(int*)board_panel_bp_exec_joje_set_univVars_i_Nb_Perles;
+        if (v4 < 0.0)
+            v1 = 0.0;
+        else
+            v1 = (float)*(int*)board_panel_bp_exec_joje_set_univVars_i_Nb_Perles;
+        v17 = v1;
+        STR_InsertFloat(AI_gpst_CurrentGameObject, 9, 0, v1, 0);
+        v7.x = 0.5;
+        v7.y = 0.25;
+        v7.z = 0.0;
+        STR_SetPos(AI_gpst_CurrentGameObject, 9, 0, -1, &v7);
+        v10.x = -1.0;
+        v10.y = 0.0;
+        v10.z = 0.0;
+        STR_SetSize(AI_gpst_CurrentGameObject, 9, 0, -1, &v10);
+        v16->i_nb_perle = *(uint32_t*)board_panel_bp_exec_joje_set_univVars_i_Nb_Perles;
+        v16->i_commerce_perle_change = 1;
+        v16->f_time_perle = TIM_gf_MainClock - TIM_gf_LockTime;
+    }
+    if (v16->i_commercer_tune_deja_affiche
+        && (v18 = AI_EvalFunc_TIMEElapsed_C(v16->f_time_tune, 5.0))
+        && !v16->i_commerce_tune
+        || !v16->Gen_Show
+        || v16->i_commercer_perle_deja_affich)
+    {
+        STR_DelChar(AI_gpst_CurrentGameObject, 8, 0, -1);
+        v16->i_commercer_tune_deja_affiche = 0;
+    }
+    if (v16->i_commercer_perle_deja_affich
+        && (v11 = AI_EvalFunc_TIMEElapsed_C(v16->f_time_perle, 5.0))
+        && !v16->i_commerce_perle
+        || !v16->Gen_Show)
+    {
+        STR_DelChar(AI_gpst_CurrentGameObject, 9, 0, -1);
+        v16->i_commercer_perle_deja_affich = 0;
+    }
+    return 1000;
+}
+
+int board_panel_bp_inventaire_in()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-3Ch]
+    float v2; // [esp+30h] [ebp-Ch]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_inventaire_in__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_inventaire_in_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        board_panel_bp_inventaire_in_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_in_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_inventaire_in_univVars,
+            4488);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_in_univVars_Perso_ID_Energie_max,
+            (void*)board_panel_bp_inventaire_in_univVars,
+            1096);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_in_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_inventaire_in_univVars,
+            1040);
+        fct_board_panel_bp_inventaire_in_board_panel_bp_inventaire_mode = (int)AI_ul_RealResolveOneRefFunction(0x9E000063);
+    }
+    v1->i_old_mode = v1->i_current_mode;
+    v1->i_inv_in = 1;
+    v1->i_init_inventaire = 1;
+    v1->i_photo_blok_sorti_look = 1;
+    v1->Gen_Time = TIM_gf_MainClock - TIM_gf_LockTime;
+    v2 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v1->f_fight_time_jauge_NMI_old = v2 - v1->f_fight_time_jauge_NMI;
+    v1->f_old_mode = (int)AI_EvalFunc_AITrackGet_C(2);
+    AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 4096);
+    AI_EvalFunc_OBJ_SightGet_C(
+        (tGameObjectMain*)board_panel_bp_inventaire_in__PJ_Camera_Speciale_gao,
+        &v1->v_look_before_inv);
+    AI_EvalFunc_SNDRequest_C((tGameObjectMain*)board_panel_bp_inventaire_in_INV_manager_gao, 12, 2176);
+    SND_MuteSetUp(3, 6.6666665f, 1.0);
+    SND_MuteEnable(3, 1);
+    if (AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_inventaire_in_univVars_Flag_speciaux_sauve + 4), 2083))
+        SND_MuteEnable(2, 1);
+    SND_Fade(0, 1.0, 0.15000001f, 0.69999999f);
+    SND_i_Seti(7, 1);
+    SND_i_Seti(8, 1);
+    if (v1->i_snd_vendeur_loop != -1)
+    {
+        SND_Release(v1->i_snd_vendeur_loop);
+        v1->i_snd_vendeur_loop = -1;
+    }
+    v1->f_life_main_max = *(float*)AI_EvalVarArray_C2(
+        (char*)board_panel_bp_inventaire_in_univVars_Perso_ID_Energie_max,
+        v1->i_MainActor_ID)
+        / 20.0f;
+    if (*(uint32_t*)board_panel_bp_inventaire_in_univVars_Perso_ID_Companion != -1)
+        v1->f_life_comp_max = *(float*)AI_EvalVarArray_C2(
+            (char*)board_panel_bp_inventaire_in_univVars_Perso_ID_Energie_max,
+            *(uint32_t*)board_panel_bp_inventaire_in_univVars_Perso_ID_Companion)
+        / 20.0f;
+    AI_EvalFunc_AITrackChange_C(2, (tAIFunction*)fct_board_panel_bp_inventaire_in_board_panel_bp_inventaire_mode);
+    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+    return 4;
+}
+
+int board_panel_bp_exec_look_phototraitement()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-28h]
+    int v2; // [esp+10h] [ebp-18h]
+    int v3; // [esp+14h] [ebp-14h]
+    int a2; // [esp+18h] [ebp-10h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_look_phototraitement_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_phototraitement_INV_manager_gao_i_OpeningMode,
+            (void*)board_panel_bp_exec_look_phototraitement_INV_manager_gao,
+            100);
+        board_panel_bp_exec_look_phototraitement_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_phototraitement_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_look_phototraitement_univVars,
+            4488);
+        fct_board_panel_bp_exec_look_phototraitement_Global_Library_photo_add = (int)AI_ul_RealResolveOneRefFunction(0x49018899u);
+        board_panel_bp_exec_look_phototraitement__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        fct_board_panel_bp_exec_look_phototraitement_Global_Library_photo_take = (int)AI_ul_RealResolveOneRefFunction(0x49018A1Cu);
+        board_panel_bp_exec_look_phototraitement_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_phototraitement_GST_Global_gao_i_flash_on,
+            (void*)board_panel_bp_exec_look_phototraitement_GST_Global_gao,
+            268);
+    }
+    if (*(uint32_t*)board_panel_bp_exec_look_phototraitement_INV_manager_gao_i_OpeningMode)
+    {
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    else
+    {
+        AI_EvalFunc_ARRBitSet_C((int*)(board_panel_bp_exec_look_phototraitement_univVars_Flag_speciaux_sauve + 4), 3054);
+        v2 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_look_phototraitement_Global_Library_photo_add);
+        if (v2 == 1000)
+        {
+            v1->i_look_PhotoIndex = AI2C_PopInt();
+            if (v1->i_look_PhotoIndex >= 0x1000000)
+            {
+                *(uint32_t*)board_panel_bp_exec_look_phototraitement_INV_manager_gao_i_OpeningMode = 5;
+                AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0x1000, 0);
+            }
+            a2 = AI_EvalFunc_SNDRequest_C(
+                (tGameObjectMain*)board_panel_bp_exec_look_phototraitement_INV_manager_gao,
+                0,
+                402653312);
+            AI_EvalFunc_SNDUltraPlaySound_C((tGameObjectMain*)board_panel_bp_exec_look_phototraitement__PJ_Sally_gao, a2);
+            AI2C_PushInt(v1->i_look_PhotoIndex);
+            v3 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_look_phototraitement_Global_Library_photo_take);
+            if (v3 == 1000)
+            {
+                if (AI_EvalFunc_ARRBitTest_C(
+                    (int*)(board_panel_bp_exec_look_phototraitement_univVars_Flag_speciaux_sauve + 4),
+                    120))
+                {
+                    *(uint32_t*)board_panel_bp_exec_look_phototraitement_GST_Global_gao_i_flash_on = 1;
+                }
+                result = 1000;
+            }
+            else
+            {
+                result = v3;
+            }
+        }
+        else
+        {
+            result = v2;
+        }
+    }
+    return result;
+}
+
+int board_panel_bp_exec_look_photoborder_on()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_look_photoborder_on_INTF_Cadre_Photo_gao = AI_ul_RealResolveOneRefObject(0xD9008C81);
+    }
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_exec_look_photoborder_on_INTF_Cadre_Photo_gao, 0);
+    v1->f_look_morph_apparition = 1.0;
+    return 1000;
+}
+
+int board_panel_bp_exec_button_valide_use()
+{
+    int result; // eax
+    char* v1; // eax
+    float v2; // [esp+4h] [ebp-118h]
+    float v3; // [esp+8h] [ebp-114h]
+    int v4; // [esp+Ch] [ebp-110h]
+    float v5; // [esp+10h] [ebp-10Ch]
+    float v6; // [esp+14h] [ebp-108h]
+    int v7; // [esp+18h] [ebp-104h]
+    char* v8; // [esp+1Ch] [ebp-100h]
+    float v9; // [esp+20h] [ebp-FCh]
+    float v10; // [esp+24h] [ebp-F8h]
+    float v11; // [esp+28h] [ebp-F4h]
+    tScriptStruct_GSTBoardPanel* v12; // [esp+30h] [ebp-ECh]
+    tGameObjectMain* v13; // [esp+38h] [ebp-E4h]
+    tGameObjectMain* v14; // [esp+3Ch] [ebp-E0h]
+    tGameObjectMain* v15; // [esp+40h] [ebp-DCh]
+    uint32_t* v16; // [esp+44h] [ebp-D8h]
+    uint32_t* v17; // [esp+4Ch] [ebp-D0h]
+    tGameObjectMain* v18; // [esp+54h] [ebp-C8h]
+    tGameObjectMain* v19; // [esp+58h] [ebp-C4h]
+    tGameObjectMain* v20; // [esp+5Ch] [ebp-C0h]
+    tGameObjectMain* v21; // [esp+60h] [ebp-BCh]
+    tGameObjectMain* v22; // [esp+6Ch] [ebp-B0h]
+    tGameObjectMain* v23; // [esp+70h] [ebp-ACh]
+    float v24; // [esp+88h] [ebp-94h]
+    float v25; // [esp+88h] [ebp-94h]
+    float v26; // [esp+8Ch] [ebp-90h]
+    tMessage v27; // [esp+9Ch] [ebp-80h] BYREF
+    tMessage Src; // [esp+D4h] [ebp-48h] BYREF
+    int v30; // [esp+108h] [ebp-14h]
+    tScriptStruct_GSTBoardPanel* v31; // [esp+110h] [ebp-Ch]
+    int v32; // [esp+114h] [ebp-8h]
+    int a2; // [esp+118h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v12 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v12 = 0;
+    v31 = v12;
+    v30 = 0;
+    v32 = 0;
+    a2 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_button_valide_use__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use__PJ_Sally_gao_current_pm_mode,
+            (void*)board_panel_bp_exec_button_valide_use__PJ_Sally_gao,
+            572);
+        board_panel_bp_exec_button_valide_use_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_exec_button_valide_use_GST_Global_gao,
+            264);
+        board_panel_bp_exec_button_valide_use__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_exec_button_valide_use_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_univVars_objet_status,
+            (void*)board_panel_bp_exec_button_valide_use_univVars,
+            3896);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_univVars_objet_inventaire,
+            (void*)board_panel_bp_exec_button_valide_use_univVars,
+            1480);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+            (void*)board_panel_bp_exec_button_valide_use_univVars,
+            1096);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_univVars_objet_valeur1,
+            (void*)board_panel_bp_exec_button_valide_use_univVars,
+            4100);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante,
+            (void*)board_panel_bp_exec_button_valide_use_univVars,
+            1148);
+        board_panel_bp_exec_button_valide_use_GST_Fight_Manager_gao = AI_ul_RealResolveOneRefObject(0x9E002FFA);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_GST_Fight_Manager_gao_i_Evil_NbActor,
+            (void*)board_panel_bp_exec_button_valide_use_GST_Fight_Manager_gao,
+            2624);
+        board_panel_bp_exec_button_valide_use_TXT_Sally_gao = AI_ul_RealResolveOneRefObject(0x7200064Eu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_univVars_Perso_ID_equipement,
+            (void*)board_panel_bp_exec_button_valide_use_univVars,
+            40);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_use_univVars_objet_liste_gao,
+            (void*)board_panel_bp_exec_button_valide_use_univVars,
+            1276);
+    }
+    if (v31->i_objet_inventaire == -1
+        || *(uint32_t*)board_panel_bp_exec_button_valide_use__PJ_Sally_gao_current_pm_mode == 18)
+    {
+        if (!v31->i_bip_off)
+        {
+            v23 = *(tGameObjectMain**)board_panel_bp_exec_button_valide_use_GST_Global_gao_o_acteur_cine_actif;
+            if (*(uint32_t*)board_panel_bp_exec_button_valide_use_GST_Global_gao_o_acteur_cine_actif)
+            {
+                if ((unsigned int)v23 <= 2)
+                    v23 = AI_MainActor[(uint32_t)v23 - 1];
+                v22 = v23;
+            }
+            else
+            {
+                v22 = 0;
+            }
+            if (!v22
+                && !AI_EvalFunc_OBJ_CustomBitsTest_C(
+                    (tGameObjectMain*)board_panel_bp_exec_button_valide_use_GST_Global_gao,
+                    0x4000))
+            {
+                a2 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 3, 128);
+                AI_EvalFunc_SNDUltraPlaySound_C((tGameObjectMain*)board_panel_bp_exec_button_valide_use__PJ_Sally_gao, a2);
+                v31->i_bip_off = 1;
+            }
+        }
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    else
+    {
+        if (v31->i_current_mode == 2)
+        {
+            if (v31->i_objet_inventaire == 10)
+            {
+                if (AI_EvalFunc_OBJ_CapaTest_C(
+                    (tGameObjectMain*)board_panel_bp_exec_button_valide_use__PJ_Camera_Speciale_gao,
+                    0x4000))
+                {
+                    Src.gao = 0;
+                    Src.gao2 = 0;
+                    Src.msgID = 11;
+                    Src.Int1 = 10;
+                    Src.Int2 = 0;
+                    Src.f2 = 10.0;
+                    Src.v1 = v31->v_look_jeter_destination;
+                    AI_EvalFunc_MSGSend_C((tGameObjectMain*)board_panel_bp_exec_button_valide_use__PJ_Sally_gao, &Src);
+                }
+            }
+        }
+        else
+        {
+            v21 = (tGameObjectMain*)v31->o_use_object;
+            if (v21)
+            {
+                if ((unsigned int)v21 <= 2)
+                    v21 = AI_MainActor[(uint32_t)v21 - 1];
+                v20 = v21;
+            }
+            else
+            {
+                v20 = 0;
+            }
+            v19 = AI_gpst_CurrentGameObject;
+            if (AI_gpst_CurrentGameObject)
+            {
+                if ((unsigned int)AI_gpst_CurrentGameObject <= 2)
+                    v19 = AI_MainActor[(uint32_t)AI_gpst_CurrentGameObject - 1];
+                v18 = v19;
+            }
+            else
+            {
+                v18 = 0;
+            }
+            if (v20 == v18)
+            {
+                if (v31->i_current_mode != 1)
+                {
+                    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                    return 1000;
+                }
+                if (v31->i_objet_inventaire == -1)
+                    v30 = 0;
+                else
+                    v30 = *(uint32_t*)(board_panel_bp_exec_button_valide_use_univVars_objet_status + 4 * v31->i_objet_inventaire + 4) & 0x30000;
+                if (v30
+                    && *(uint32_t*)AI_EvalVarArray2_C(
+                        1,
+                        (char*)board_panel_bp_exec_button_valide_use_univVars_objet_inventaire,
+                        v31->i_objet_inventaire,
+                        8))
+                {
+                    if ((v30 & 0x20000) != 0)
+                    {
+                        v32 = 1;
+                        v24 = *(float*)AI_EvalVarArray_C2(
+                            (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                            8);
+                        if (*(int*)(board_panel_bp_exec_button_valide_use_univVars_objet_valeur1 + 4 * v31->i_objet_inventaire + 4) <= 1000)
+                        {
+                            v10 = *(float*)AI_EvalVarArray_C2(
+                                (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante,
+                                8);
+                            if (*(float*)AI_EvalVarArray_C2(
+                                (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                                8) == v10)
+                            {
+                                v32 = 0;
+                                if (!*(uint32_t*)board_panel_bp_exec_button_valide_use_GST_Fight_Manager_gao_i_Evil_NbActor)
+                                {
+                                    v27.msgID = 30;
+                                    v27.Int1 = 40;
+                                    v27.Int2 = 0;
+                                    v27.f2 = 2.5;
+                                    v27.v1.x = 0.0;
+                                    v27.v1.y = 0.0;
+                                    v27.v1.z = 0.0;
+                                    v27.v2.x = 0.0;
+                                    v27.v2.y = 0.0;
+                                    v27.v2.z = 0.0;
+                                    v27.gao = 0;
+                                    v27.gao2 = (tGameObjectMain*)board_panel_bp_exec_button_valide_use__PJ_Sally_gao;
+                                    AI_EvalFunc_MSGSend_C((tGameObjectMain*)board_panel_bp_exec_button_valide_use_TXT_Sally_gao, &v27);
+                                }
+                            }
+                            else
+                            {
+                                v1 = AI_EvalVarArray_C2(
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante,
+                                    8);
+                                v9 = (float)*(int*)(board_panel_bp_exec_button_valide_use_univVars_objet_valeur1
+                                    + 4 * v31->i_objet_inventaire
+                                    + 4);
+                                v26 = *(float*)v1 + v9;
+                                if (v26 > (double)v24)
+                                    v26 = v24;
+                                *(float*)AI_EvalVarArray_C2(
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante,
+                                    8) = v26;
+                            }
+                        }
+                        else
+                        {
+                            v11 = (float)(*(uint32_t*)(board_panel_bp_exec_button_valide_use_univVars_objet_valeur1
+                                + 4 * v31->i_objet_inventaire
+                                + 4)
+                                - 1000);
+                            v25 = v24 + v11;
+                            *(float*)AI_EvalVarArray_C2(
+                                (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                                8) = v25;
+                        }
+                    }
+                    if (v32)
+                    {
+                        if (*(int*)AI_EvalVarArray2_C(
+                            1,
+                            (char*)board_panel_bp_exec_button_valide_use_univVars_objet_inventaire,
+                            v31->i_objet_inventaire,
+                            v31->i_MainActor_ID) > 0
+                            && (*(uint32_t*)(board_panel_bp_exec_button_valide_use_univVars_objet_status
+                                + 4 * v31->i_objet_inventaire
+                                + 4) & 0x400000) == 0)
+                        {
+                            v8 = AI_EvalVarArray2_C(
+                                1,
+                                (char*)board_panel_bp_exec_button_valide_use_univVars_objet_inventaire,
+                                v31->i_objet_inventaire,
+                                v31->i_MainActor_ID);
+                            --* (uint32_t*)v8;
+                            if (!*(uint32_t*)AI_EvalVarArray2_C(
+                                1,
+                                (char*)board_panel_bp_exec_button_valide_use_univVars_objet_inventaire,
+                                v31->i_objet_inventaire,
+                                v31->i_MainActor_ID)
+                                && (*(uint32_t*)(board_panel_bp_exec_button_valide_use_univVars_objet_status
+                                    + 4 * v31->i_objet_inventaire
+                                    + 4) & 0x7000000) == 0)
+                            {
+                                *(uint32_t*)AI_EvalVarArray2_C(
+                                    1,
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_equipement,
+                                    0,
+                                    v31->i_MainActor_ID) = -1;
+                            }
+                        }
+                        if (v31->i_objet_inventaire == 28 && v31->i_MainActor_ID < 9
+                            || v31->i_objet_inventaire == 14 && v31->i_MainActor_ID >= 9)
+                        {
+                            if (v31->i_MainActor_ID >= 9)
+                            {
+                                v16 = (uint32_t*)(board_panel_bp_exec_button_valide_use_univVars_objet_valeur1 + 60);
+                                v4 = (*v16 - 1000)
+                                    * (*(uint32_t*)AI_EvalVarArray2_C(
+                                        1,
+                                        (char*)board_panel_bp_exec_button_valide_use_univVars_objet_inventaire,
+                                        14,
+                                        v31->i_MainActor_ID)
+                                        + 2);
+                                *(float*)AI_EvalVarArray_C2(
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                                    v31->i_MainActor_ID) = (float)v4;
+                                v3 = *(float*)AI_EvalVarArray_C2(
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante,
+                                    v31->i_MainActor_ID);
+                                if (*(float*)AI_EvalVarArray_C2(
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                                    v31->i_MainActor_ID) < (double)v3)
+                                {
+                                    v2 = *(float*)AI_EvalVarArray_C2(
+                                        (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                                        v31->i_MainActor_ID);
+                                    *(float*)AI_EvalVarArray_C2(
+                                        (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante,
+                                        v31->i_MainActor_ID) = v2;
+                                }
+                            }
+                            else
+                            {
+                                v17 = (uint32_t*)(board_panel_bp_exec_button_valide_use_univVars_objet_valeur1 + 116);
+                                v7 = (*v17 - 1000)
+                                    * (*(uint32_t*)AI_EvalVarArray2_C(
+                                        1,
+                                        (char*)board_panel_bp_exec_button_valide_use_univVars_objet_inventaire,
+                                        28,
+                                        v31->i_MainActor_ID)
+                                        + 2);
+                                *(float*)AI_EvalVarArray_C2(
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                                    v31->i_MainActor_ID) = (float)v7;
+                                v6 = *(float*)AI_EvalVarArray_C2(
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante,
+                                    v31->i_MainActor_ID);
+                                if (*(float*)AI_EvalVarArray_C2(
+                                    (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                                    v31->i_MainActor_ID) < (double)v6)
+                                {
+                                    v5 = *(float*)AI_EvalVarArray_C2(
+                                        (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_max,
+                                        v31->i_MainActor_ID);
+                                    *(float*)AI_EvalVarArray_C2(
+                                        (char*)board_panel_bp_exec_button_valide_use_univVars_Perso_ID_Energie_courante,
+                                        v31->i_MainActor_ID) = v5;
+                                }
+                            }
+                        }
+                        Src.msgID = 74;
+                        Src.Int1 = 0;
+                        Src.gao2 = *(tGameObjectMain**)(board_panel_bp_exec_button_valide_use_univVars_objet_liste_gao
+                            + 4 * v31->i_objet_inventaire
+                            + 4);
+                        AI_EvalFunc_MSGSend_C((tGameObjectMain*)board_panel_bp_exec_button_valide_use__PJ_Sally_gao, &Src);
+                    }
+                }
+            }
+            else
+            {
+                v15 = (tGameObjectMain*)v31->o_use_object;
+                if (v15)
+                {
+                    if ((unsigned int)v15 <= 2)
+                        v15 = AI_MainActor[(uint32_t)v15 - 1];
+                    v14 = v15;
+                }
+                else
+                {
+                    v14 = 0;
+                }
+                if (v14)
+                {
+                    Src.gao = (tGameObjectMain*)v31->o_use_object;
+                    Src.msgID = 9;
+                    Src.f2 = (float)v31->i_use_prio;
+                    Src.gao2 = (tGameObjectMain*)v31->o_use_object;
+                    v13 = (tGameObjectMain*)v31->o_use_object;
+                    if (v13)
+                    {
+                        if ((unsigned int)v13 <= 2)
+                            v13 = AI_MainActor[(uint32_t)v13 - 1];
+                        AI_EvalFunc_MSGSend_C(v13, &Src);
+                    }
+                    else
+                    {
+                        AI_EvalFunc_MSGSend_C(0, &Src);
+                    }
+                }
+            }
+        }
+        result = 1000;
+    }
+    return result;
+}
+
+int board_panel_bp_inventaire_out()
+{
+    float v1; // [esp+0h] [ebp-184h]
+    float v2; // [esp+0h] [ebp-184h]
+    float v3; // [esp+4h] [ebp-180h]
+    float v4; // [esp+8h] [ebp-17Ch]
+    float v5; // [esp+Ch] [ebp-178h]
+    float v6; // [esp+10h] [ebp-174h]
+    tScriptStruct_GSTBoardPanel* v7; // [esp+14h] [ebp-170h]
+    tAI* v8; // [esp+20h] [ebp-164h]
+    tGameObjectMain* v9; // [esp+24h] [ebp-160h]
+    tGameObjectMain* v10; // [esp+28h] [ebp-15Ch]
+    tAI* v11; // [esp+2Ch] [ebp-158h]
+    tGameObjectMain* v12; // [esp+30h] [ebp-154h]
+    tGameObjectMain* v13; // [esp+34h] [ebp-150h]
+    tAI* v14; // [esp+38h] [ebp-14Ch]
+    tGameObjectMain* v15; // [esp+3Ch] [ebp-148h]
+    tGameObjectMain* v16; // [esp+40h] [ebp-144h]
+    tAI* v17; // [esp+44h] [ebp-140h]
+    tGameObjectMain* v18; // [esp+48h] [ebp-13Ch]
+    tGameObjectMain* v19; // [esp+4Ch] [ebp-138h]
+    tAI* v20; // [esp+50h] [ebp-134h]
+    tGameObjectMain* v21; // [esp+54h] [ebp-130h]
+    tGameObjectMain* v22; // [esp+58h] [ebp-12Ch]
+    tAI* v23; // [esp+5Ch] [ebp-128h]
+    tGameObjectMain* v24; // [esp+60h] [ebp-124h]
+    tGameObjectMain* v25; // [esp+64h] [ebp-120h]
+    tAI* v26; // [esp+68h] [ebp-11Ch]
+    tGameObjectMain* v27; // [esp+6Ch] [ebp-118h]
+    tGameObjectMain* v28; // [esp+70h] [ebp-114h]
+    tAI* v29; // [esp+74h] [ebp-110h]
+    tGameObjectMain* v30; // [esp+78h] [ebp-10Ch]
+    tGameObjectMain* v31; // [esp+7Ch] [ebp-108h]
+    tAI* v32; // [esp+80h] [ebp-104h]
+    tGameObjectMain* v33; // [esp+84h] [ebp-100h]
+    tGameObjectMain* v34; // [esp+88h] [ebp-FCh]
+    tAI* v35; // [esp+8Ch] [ebp-F8h]
+    tGameObjectMain* v36; // [esp+90h] [ebp-F4h]
+    tGameObjectMain* v37; // [esp+94h] [ebp-F0h]
+    tAI* v38; // [esp+98h] [ebp-ECh]
+    tGameObjectMain* v39; // [esp+9Ch] [ebp-E8h]
+    tGameObjectMain* v40; // [esp+A0h] [ebp-E4h]
+    tAI* v41; // [esp+A4h] [ebp-E0h]
+    tGameObjectMain* v42; // [esp+A8h] [ebp-DCh]
+    tGameObjectMain* v43; // [esp+ACh] [ebp-D8h]
+    tAI* v44; // [esp+B0h] [ebp-D4h]
+    tGameObjectMain* v45; // [esp+B4h] [ebp-D0h]
+    tGameObjectMain* v46; // [esp+B8h] [ebp-CCh]
+    tAI* v47; // [esp+BCh] [ebp-C8h]
+    tGameObjectMain* v48; // [esp+C0h] [ebp-C4h]
+    tGameObjectMain* v49; // [esp+C4h] [ebp-C0h]
+    tAI* v50; // [esp+C8h] [ebp-BCh]
+    tGameObjectMain* v51; // [esp+CCh] [ebp-B8h]
+    tGameObjectMain* v52; // [esp+D0h] [ebp-B4h]
+    tAI* v53; // [esp+D4h] [ebp-B0h]
+    tGameObjectMain* v54; // [esp+D8h] [ebp-ACh]
+    tGameObjectMain* v55; // [esp+DCh] [ebp-A8h]
+    tAI* v56; // [esp+E0h] [ebp-A4h]
+    tGameObjectMain* v57; // [esp+E4h] [ebp-A0h]
+    tGameObjectMain* v58; // [esp+E8h] [ebp-9Ch]
+    tAI* v59; // [esp+ECh] [ebp-98h]
+    tGameObjectMain* v60; // [esp+F0h] [ebp-94h]
+    tGameObjectMain* v61; // [esp+F4h] [ebp-90h]
+    tAI* v62; // [esp+F8h] [ebp-8Ch]
+    tGameObjectMain* v63; // [esp+FCh] [ebp-88h]
+    tGameObjectMain* v64; // [esp+100h] [ebp-84h]
+    tAI* v65; // [esp+104h] [ebp-80h]
+    tGameObjectMain* v66; // [esp+108h] [ebp-7Ch]
+    tGameObjectMain* v67; // [esp+10Ch] [ebp-78h]
+    tGameObjectMain* v68; // [esp+110h] [ebp-74h]
+    tGameObjectMain* v69; // [esp+114h] [ebp-70h]
+    tGameObjectMain* v70; // [esp+11Ch] [ebp-68h]
+    tGameObjectMain* v71; // [esp+120h] [ebp-64h]
+    tGameObjectMain* v72; // [esp+124h] [ebp-60h]
+    int a1; // [esp+140h] [ebp-44h]
+    tAI* v74; // [esp+148h] [ebp-3Ch]
+    int v75; // [esp+150h] [ebp-34h]
+    BOOL v77; // [esp+16Ch] [ebp-18h]
+    float v78; // [esp+178h] [ebp-Ch]
+
+    if (AI_gpst_CurrentInstance)
+        v7 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v7 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_inventaire_out_INV_reference_WP_gao = AI_ul_RealResolveOneRefObject(0x620013B8u);
+        board_panel_bp_inventaire_out_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_out_univVars_Perso_ID_equipement,
+            (void*)board_panel_bp_inventaire_out_univVars,
+            40);
+        board_panel_bp_inventaire_out_INTF_jade_gao = AI_ul_RealResolveOneRefObject(0xD9008A70);
+        board_panel_bp_inventaire_out_INTF_compagnon_gao = AI_ul_RealResolveOneRefObject(0xD9008A68);
+        board_panel_bp_inventaire_out_INTF_jade_life_gao = AI_ul_RealResolveOneRefObject(0xD9008A6F);
+        board_panel_bp_inventaire_out_INTF_compagnon_life_gao = AI_ul_RealResolveOneRefObject(0xD9008A71);
+        board_panel_bp_inventaire_INTF_Perles_gao = AI_ul_RealResolveOneRefObject(0x9E0067BF);
+        board_panel_bp_inventaire_INTF_Pognes_gao = AI_ul_RealResolveOneRefObject(0x9E0067BE);
+        board_panel_bp_inventaire_INTF_PerleHalo_gao = AI_ul_RealResolveOneRefObject(0x9E0067C0);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_out_univVars_i_course_ON,
+            (void*)board_panel_bp_inventaire_out_univVars,
+            7664);
+        board_panel_bp_inventaire_out_INTF_boussole_gao = AI_ul_RealResolveOneRefObject(0xD9008B46);
+        board_panel_bp_inventaire_out__PJ_Camera_gao = AI_ul_RealResolveOneRefObject(0x71003F56u);
+        board_panel_bp_inventaire_out__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_out_univVars_Perso_ID_Energie_max,
+            (void*)board_panel_bp_inventaire_out_univVars,
+            1096);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_out_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_inventaire_out_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_out_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_inventaire_out_univVars,
+            4488);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_out_univVars_f_volume_infodesign,
+            (void*)board_panel_bp_inventaire_out_univVars,
+            20264);
+        board_panel_bp_inventaire_out__PJ_Camera_Derriere_gao = AI_ul_RealResolveOneRefObject(0x5E005FA2u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_out__PJ_Camera_Derriere_gao_i_sim_click,
+            (void*)board_panel_bp_inventaire_out__PJ_Camera_Derriere_gao,
+            40);
+        board_panel_bp_inventaire_out__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_inventaire_out__PJ_Camera_Speciale_gao_i_special_exit,
+            (void*)board_panel_bp_inventaire_out__PJ_Camera_Speciale_gao,
+            80);
+        fct_board_panel_bp_inventaire_out_board_panel_bp_exec_button_valide_look = (int)AI_ul_RealResolveOneRefFunction(0x9E000857);
+        fct_board_panel_bp_inventaire_out_board_panel_bp_mode_normal = (int)AI_ul_RealResolveOneRefFunction(0x6C00AD9Cu);
+    }
+    AI_EvalFunc_TIMEUnlock_C();
+    a1 = AI_EvalFunc_WORCurIndexGet_C();
+    AI_EvalFunc_WORUnPause_C(a1, -1);
+    AI_EvalFunc_GRPInactiveSet_C((tGameObjectMain*)board_panel_bp_inventaire_out_INV_reference_WP_gao, 1);
+    v7->i_objet_inventaire = *(uint32_t*)AI_EvalVarArray2_C(
+        1,
+        (char*)board_panel_bp_inventaire_out_univVars_Perso_ID_equipement,
+        0,
+        v7->i_MainActor_ID);
+    if (v7->Gen_Show)
+    {
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_out_INTF_jade_gao, 0);
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_out_INTF_compagnon_gao, 0);
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_out_INTF_jade_life_gao, 0);
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_out_INTF_compagnon_life_gao, 0);
+    }
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_INTF_Perles_gao, 1);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_INTF_Pognes_gao, 1);
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_INTF_PerleHalo_gao, 1);
+    if ((!v7->i_look_aircraft || v7->i_look_aircraft_photo) && (!v7->i_look_enterprise || v7->i_look_enterprise_photo))
+    {
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_out_INTF_boussole_gao, 1);
+    }
+    else if (!*(uint32_t*)board_panel_bp_inventaire_out_univVars_i_course_ON)
+    {
+        AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_inventaire_out_INTF_boussole_gao, 0);
+    }
+    AI_EvalFunc_VIEWAssignObject_C((tGameObjectMain*)board_panel_bp_inventaire_out__PJ_Camera_gao, 0);
+    AI_EvalFunc_VIEWFocaleSet_C(0, 1.2f);
+    AI_EvalFunc_OBJ_CustomBitsSet_C((tGameObjectMain*)board_panel_bp_inventaire_out__PJ_Sally_gao, 0, 0x8000);
+    AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x100);
+    AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0x200, 0);
+    AI_EvalFunc_WORRefreshVisible_C(0);
+    v7->i_init_look = 1;
+    v7->Gen_OldShow = v7->Gen_Show;
+    v7->Gen_Show = v7->Gen_SaveShow;
+    v72 = (tGameObjectMain*)v7->o_look_object;
+    if (v72)
+    {
+        if ((unsigned int)v72 <= 2)
+            v72 = AI_MainActor[(uint32_t)v72 - 1];
+        v71 = v72;
+    }
+    else
+    {
+        v71 = 0;
+    }
+    if (v71)
+    {
+        v70 = (tGameObjectMain*)v7->o_look_object;
+        if (v70)
+        {
+            if ((unsigned int)v70 <= 2)
+                v70 = AI_MainActor[(uint32_t)v70 - 1];
+            AI_EvalFunc_OBJ_FlagsControlSet_C(v70, 0x200000, 0);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_FlagsControlSet_C(0, 0x200000, 0);
+        }
+        v7->o_look_object = 0;
+    }
+    v7->i_photo_blok_sorti_look = 0;
+    SND_MuteEnable(3, 0);
+    SND_i_Seti(7, 0);
+    SND_i_Seti(8, 0);
+    v74 = (tAI*)v7->o_map_manager;
+    v69 = (tGameObjectMain*)v74;
+    if (v74)
+    {
+        if ((unsigned int)v74 <= 2)
+            v69 = AI_MainActor[(uint32_t)v74 - 1];
+        v68 = v69;
+    }
+    else
+    {
+        v68 = 0;
+    }
+    if (v68)
+    {
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v65 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v67 = (tGameObjectMain*)v7->o_map_manager;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v67 = AI_MainActor[(uint32_t)v74 - 1];
+                v66 = v67;
+            }
+            else
+            {
+                v66 = 0;
+            }
+            v65 = v66->extended->AIInstance;
+        }
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v62 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v64 = (tGameObjectMain*)v7->o_map_manager;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v64 = AI_MainActor[(uint32_t)v74 - 1];
+                v63 = v64;
+            }
+            else
+            {
+                v63 = 0;
+            }
+            v62 = v63->extended->AIInstance;
+        }
+        AI_EvalFunc_Gsp_AE_MASTER_C(
+            8,
+            1,
+            (unsigned int)((tScriptStruct_GSTMapManager*)(v62->instanceVarDataCurrent))->sfx_brightness,
+            ((tScriptStruct_GSTMapManager*)(v65->instanceVarDataCurrent))->sfx_brightness);
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v59 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v61 = (tGameObjectMain*)v74;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v61 = AI_MainActor[(uint32_t)v74 - 1];
+                v60 = v61;
+            }
+            else
+            {
+                v60 = 0;
+            }
+            v59 = v60->extended->AIInstance;
+        }
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v56 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v58 = (tGameObjectMain*)v74;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v58 = AI_MainActor[(uint32_t)v74 - 1];
+                v57 = v58;
+            }
+            else
+            {
+                v57 = 0;
+            }
+            v56 = v57->extended->AIInstance;
+        }
+        AI_EvalFunc_Gsp_AE_MASTER_C(9, 1, (unsigned int)((tScriptStruct_GSTMapManager*)(v56->instanceVarDataCurrent))->sfx_contrast, ((tScriptStruct_GSTMapManager*)(v59->instanceVarDataCurrent))->sfx_contrast);
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v53 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v55 = (tGameObjectMain*)v74;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v55 = AI_MainActor[(uint32_t)v74 - 1];
+                v54 = v55;
+            }
+            else
+            {
+                v54 = 0;
+            }
+            v53 = v54->extended->AIInstance;
+        }
+        if (((tScriptStruct_GSTMapManager*)(v53->instanceVarDataCurrent))->sfx_DB)
+        {
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v50 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v52 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v52 = AI_MainActor[(uint32_t)v74 - 1];
+                    v51 = v52;
+                }
+                else
+                {
+                    v51 = 0;
+                }
+                v50 = v51->extended->AIInstance;
+            }
+            v6 = (float)((tScriptStruct_GSTMapManager*)(v50->instanceVarDataCurrent))->sfx_DB_ZNear;
+            AI_EvalFunc_Gsp_AE_MASTER_C(0, 1, 0, v6);
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v47 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v49 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v49 = AI_MainActor[(uint32_t)v74 - 1];
+                    v48 = v49;
+                }
+                else
+                {
+                    v48 = 0;
+                }
+                v47 = v48->extended->AIInstance;
+            }
+            v5 = (float)((tScriptStruct_GSTMapManager*)(v47->instanceVarDataCurrent))->sfx_DB_ZFar;
+            AI_EvalFunc_Gsp_AE_MASTER_C(0, 1, 1, v5);
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v44 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v46 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v46 = AI_MainActor[(uint32_t)v74 - 1];
+                    v45 = v46;
+                }
+                else
+                {
+                    v45 = 0;
+                }
+                v44 = v45->extended->AIInstance;
+            }
+            AI_EvalFunc_Gsp_AE_MASTER_C(0, 1, 2, ((tScriptStruct_GSTMapManager*)(v44->instanceVarDataCurrent))->sfx_DB_Intensity);
+        }
+        else
+        {
+            AI_EvalFunc_Gsp_AE_MASTER_C(0, 0, 0, 0.0);
+            AI_EvalFunc_Gsp_AE_MASTER_C(0, 0, 1, 0.0);
+            AI_EvalFunc_Gsp_AE_MASTER_C(0, 0, 2, 0.0);
+        }
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v41 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v43 = (tGameObjectMain*)v74;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v43 = AI_MainActor[(uint32_t)v74 - 1];
+                v42 = v43;
+            }
+            else
+            {
+                v42 = 0;
+            }
+            v41 = v42->extended->AIInstance;
+        }
+        if (((tScriptStruct_GSTMapManager*)(v41->instanceVarDataCurrent))->sfx_R)
+        {
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v38 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v40 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v40 = AI_MainActor[(uint32_t)v74 - 1];
+                    v39 = v40;
+                }
+                else
+                {
+                    v39 = 0;
+                }
+                v38 = v39->extended->AIInstance;
+            }
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v35 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v37 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v37 = AI_MainActor[(uint32_t)v74 - 1];
+                    v36 = v37;
+                }
+                else
+                {
+                    v36 = 0;
+                }
+                v35 = v36->extended->AIInstance;
+            }
+            AI_EvalFunc_Gsp_AE_MASTER_C(
+                7,
+                1,
+                (unsigned int)((tScriptStruct_GSTMapManager*)(v35->instanceVarDataCurrent))->sfx_R_Intensity,
+                ((tScriptStruct_GSTMapManager*)(v38->instanceVarDataCurrent))->sfx_R_Intensity);
+        }
+        else
+        {
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v32 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v34 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v34 = AI_MainActor[(uint32_t)v74 - 1];
+                    v33 = v34;
+                }
+                else
+                {
+                    v33 = 0;
+                }
+                v32 = v33->extended->AIInstance;
+            }
+            AI_EvalFunc_Gsp_AE_MASTER_C(7, 0, (unsigned int)((tScriptStruct_GSTMapManager*)(v32->instanceVarDataCurrent))->sfx_R_Intensity, 0.0);
+        }
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v29 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v31 = (tGameObjectMain*)v74;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v31 = AI_MainActor[(uint32_t)v74 - 1];
+                v30 = v31;
+            }
+            else
+            {
+                v30 = 0;
+            }
+            v29 = v30->extended->AIInstance;
+        }
+        if (((tScriptStruct_GSTMapManager*)(v29->instanceVarDataCurrent))->sfx_SC)
+        {
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v26 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v28 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v28 = AI_MainActor[(uint32_t)v74 - 1];
+                    v27 = v28;
+                }
+                else
+                {
+                    v27 = 0;
+                }
+                v26 = v27->extended->AIInstance;
+            }
+            AI_EvalFunc_Gsp_AE_MASTER_C(12, 1, 0, ((tScriptStruct_GSTMapManager*)(v26->instanceVarDataCurrent))->sfx_SC_Intensity);
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v23 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v25 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v25 = AI_MainActor[(uint32_t)v74 - 1];
+                    v24 = v25;
+                }
+                else
+                {
+                    v24 = 0;
+                }
+                v23 = v24->extended->AIInstance;
+            }
+            AI_EvalFunc_Gsp_AE_MASTER_C(12, 1, 1, ((tScriptStruct_GSTMapManager*)(v23->instanceVarDataCurrent))->sfx_SC_spectre);
+        }
+        else
+        {
+            AI_EvalFunc_Gsp_AE_MASTER_C(12, 0, 0, 0.0);
+            AI_EvalFunc_Gsp_AE_MASTER_C(12, 0, 1, 0.0);
+        }
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v20 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v22 = (tGameObjectMain*)v74;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v22 = AI_MainActor[(uint32_t)v74 - 1];
+                v21 = v22;
+            }
+            else
+            {
+                v21 = 0;
+            }
+            v20 = v21->extended->AIInstance;
+        }
+        if (((tScriptStruct_GSTMapManager*)(v20->instanceVarDataCurrent))->sfx_WR)
+        {
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v17 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v19 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v19 = AI_MainActor[(uint32_t)v74 - 1];
+                    v18 = v19;
+                }
+                else
+                {
+                    v18 = 0;
+                }
+                v17 = v18->extended->AIInstance;
+            }
+            AI_EvalFunc_Gsp_AE_MASTER_C(16, 1, 0, ((tScriptStruct_GSTMapManager*)(v17->instanceVarDataCurrent))->sfx_WR_ZHeight);
+            if (v74 == WOR_gst_Universe.univAIInstance)
+            {
+                v14 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v16 = (tGameObjectMain*)v74;
+                if (v74)
+                {
+                    if ((unsigned int)v74 <= 2)
+                        v16 = AI_MainActor[(uint32_t)v74 - 1];
+                    v15 = v16;
+                }
+                else
+                {
+                    v15 = 0;
+                }
+                v14 = v15->extended->AIInstance;
+            }
+            AI_EvalFunc_Gsp_AE_MASTER_C(16, 1, 1, ((tScriptStruct_GSTMapManager*)(v14->instanceVarDataCurrent))->sfx_WR_ZPlane);
+        }
+        else
+        {
+            AI_EvalFunc_Gsp_AE_MASTER_C(16, 0, 0, 0.0);
+            AI_EvalFunc_Gsp_AE_MASTER_C(16, 0, 1, 0.0);
+        }
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v11 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v13 = (tGameObjectMain*)v74;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v13 = AI_MainActor[(uint32_t)v74 - 1];
+                v12 = v13;
+            }
+            else
+            {
+                v12 = 0;
+            }
+            v11 = v12->extended->AIInstance;
+        }
+        AI_EvalFunc_Gsp_AE_MASTER_C(13, 1, 0, ((tScriptStruct_GSTMapManager*)(v11->instanceVarDataCurrent))->sfx_Fog_near);
+        if (v74 == WOR_gst_Universe.univAIInstance)
+        {
+            v8 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v10 = (tGameObjectMain*)v74;
+            if (v74)
+            {
+                if ((unsigned int)v74 <= 2)
+                    v10 = AI_MainActor[(uint32_t)v74 - 1];
+                v9 = v10;
+            }
+            else
+            {
+                v9 = 0;
+            }
+            v8 = v9->extended->AIInstance;
+        }
+        AI_EvalFunc_Gsp_AE_MASTER_C(13, 1, 1, ((tScriptStruct_GSTMapManager*)(v8->instanceVarDataCurrent))->sfx_Fog_far);
+    }
+    AI_EvalFunc_WORColorAmbiantSet_C(0, v7->i_ambiant);
+    AI_EvalFunc_WORColorAmbiant2Set_C(0, v7->i_ambiant2);
+    AI_EvalFunc_Gsp_AE_MASTER_C(1, 1, (unsigned int)v7->sfx_MBlur, v7->sfx_MBlur);
+    AI_EvalFunc_Gsp_AE_MASTER_C(17, 1, (unsigned int)v7->sfx_punch, v7->sfx_punch);
+    AI_EvalFunc_Gsp_AE_MASTER_C(5, 1, (unsigned int)v7->sfx_ZSmooth, v7->sfx_ZSmooth);
+    AI_EvalFunc_Gsp_AE_MASTER_C(7, 1, (unsigned int)v7->sfx_REM_Intensity, v7->sfx_REM_Intensity);    
+    v78 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v7->f_life_comp_delai_vis = v78 + 1.0f;
+    v7->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+    v4 = v7->f_life_main_max;
+    v1 = v4
+        - *(float*)AI_EvalVarArray_C2(
+            (char*)board_panel_bp_inventaire_out_univVars_Perso_ID_Energie_max,
+            v7->i_MainActor_ID)
+        / 20.0f;
+    if (AI_EvalFunc_MATHFloatNullEps_C(v1))
+        v7->i_MainActor_ID_old = -1;
+    else
+        v7->f_time_INTF_on_sort_de_linven = TIM_gf_MainClock - TIM_gf_LockTime;
+    if (*(uint32_t*)board_panel_bp_inventaire_out_univVars_Perso_ID_Companion == -1
+        || (v3 = v7->f_life_comp_max,
+            v2 = v3
+            - *(float*)AI_EvalVarArray_C2(
+                (char*)board_panel_bp_inventaire_out_univVars_Perso_ID_Energie_max,
+                *(uint32_t*)board_panel_bp_inventaire_out_univVars_Perso_ID_Companion)
+            / 20.0f,
+            !AI_EvalFunc_MATHFloatNullEps_C(v2)))
+    {
+        v7->f_time_INTF_on_sort_de_linven = TIM_gf_MainClock - TIM_gf_LockTime;
+    }
+    else
+    {
+        v7->i_CompActor_ID = -1;
+    }
+    v7->f_time_on_sort_de_linventaire = TIM_gf_MainClock - TIM_gf_LockTime;
+    v77 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_inventaire_out_univVars_Flag_speciaux_sauve + 4), 2083);
+    if (!v77)
+        v77 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_inventaire_out_univVars_Flag_speciaux_sauve + 4), 3800);
+    if (v77)
+    {
+        SND_MuteEnable(2, 0);
+        *(uint32_t*)AI_EvalVarArray_C2((char*)board_panel_bp_inventaire_out_univVars_f_volume_infodesign, 2) = 0;
+    }
+    if (v7->i_old_mode == 2 && !INO_b_IoButtonPressed(5) || v7->i_look_aircraft_photo || v7->i_look_enterprise_photo)
+    {
+        v7->i_look_aircraft_photo = 0;
+        v7->i_look_enterprise_photo = 0;
+        v7->i_look_tir_freesby = 0;
+        v7->i_exit_look = 0;
+        AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+        if (AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x800))
+            AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x800);
+        else
+            *(uint32_t*)board_panel_bp_inventaire_out__PJ_Camera_Derriere_gao_i_sim_click = 1;
+        *(uint32_t*)board_panel_bp_inventaire_out__PJ_Camera_Speciale_gao_i_special_exit = 1;
+        v7->f_time_hors_mode_look = TIM_gf_MainClock - TIM_gf_LockTime;
+        v7->i_current_mode = 2;
+        v75 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_inventaire_out_board_panel_bp_exec_button_valide_look);
+        if (v75 != 1000)
+            return v75;
+        AI_EvalFunc_AITrackChange_C(2, (tAIFunction*)fct_board_panel_bp_inventaire_out_board_panel_bp_mode_normal);
+    }
+    else
+    {
+        AI_EvalFunc_AITrackChange_C(2, (tAIFunction*)v7->f_old_mode);
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_look_jeter()
+{
+    int result; // eax
+    tGameObjectMain* v1; // eax
+    tScriptStruct_GSTBoardPanel* v2; // [esp+0h] [ebp-8Ch]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-80h]
+    tGameObjectMain* v4; // [esp+10h] [ebp-7Ch]
+    Vec3 v5; // [esp+14h] [ebp-78h] BYREF
+    Vec3 a3; // [esp+20h] [ebp-6Ch] BYREF
+    tGameObjectMain* v7; // [esp+2Ch] [ebp-60h]
+    Vec3 v8; // [esp+34h] [ebp-58h] BYREF
+    Vec3 a1; // [esp+48h] [ebp-44h] BYREF
+    Vec3 a2; // [esp+60h] [ebp-2Ch] BYREF
+    tScriptStruct_GSTBoardPanel* v11; // [esp+70h] [ebp-1Ch]
+    Vec3 v12; // [esp+74h] [ebp-18h] BYREF
+
+    if (AI_gpst_CurrentInstance)
+        v2 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v2 = 0;
+    v11 = v2;
+    v7 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_look_jeter_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_jeter_univVars_objet_status,
+            (void*)board_panel_bp_exec_look_jeter_univVars,
+            3896);
+        board_panel_bp_exec_look_jeter__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_exec_look_jeter__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+    }
+    v11->i_sally_action = -1;
+    v11->o_sally_contextuel = 0;
+    if (v11->i_objet_inventaire == -1
+        || (*(uint32_t*)(board_panel_bp_exec_look_jeter_univVars_objet_status + 4 * v11->i_objet_inventaire + 4) & 0x400000) == 0)
+    {
+        v11->v_look_jeter_destination.x = 0.0;
+        v11->v_look_jeter_destination.y = 0.0;
+        v11->v_look_jeter_destination.z = 0.0;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    else
+    {
+        v11->i_use_action = 4;
+        v11->i_acteur_pointe_visible = 1;
+        v11->o_acteur_pointe = (int)AI_gpst_CurrentGameObject;
+        v11->o_use_object = (int)AI_gpst_CurrentGameObject;
+        AI_EvalFunc_COL_SpecificCrossableSet_C(0xFF7Fu);
+        AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_exec_look_jeter__PJ_Camera_Speciale_gao, &a3);
+        AI_EvalFunc_OBJ_SightGet_C((tGameObjectMain*)board_panel_bp_exec_look_jeter__PJ_Camera_Speciale_gao, &v5);
+        v1 = AI_EvalFunc_COLRayObjectDist_C(AI_gpst_CurrentGameObject, &a3, &v5, 20.0, -1, 0, 0, -2147483647);
+        v7 = v1;
+        v4 = v1;
+        if (v1)
+        {
+            if ((unsigned int)v1 <= 2)
+                v4 = AI_MainActor[(uint32_t)v1 - 1];
+            v3 = v4;
+        }
+        else
+        {
+            v3 = 0;
+        }
+        if (v3)
+        {
+            AI_EvalFunc_COLRayPosGet_C(AI_gpst_CurrentGameObject, &v11->v_look_jeter_destination);
+        }
+        else
+        {
+            v7 = AI_EvalFunc_ANICanalGaoGet_C((tGameObjectMain*)board_panel_bp_exec_look_jeter__PJ_Sally_gao, 2u);
+            AI_EvalFunc_OBJGetPos_C((tGameObjectMain*)board_panel_bp_exec_look_jeter__PJ_Camera_Speciale_gao, &a2);
+            AI_EvalFunc_OBJ_SightGet_C((tGameObjectMain*)board_panel_bp_exec_look_jeter__PJ_Camera_Speciale_gao, &v12);
+            v8.x = v12.x * 20.0f;
+            v8.y = v12.y * 20.0f;
+            v8.z = v12.z * 20.0f;
+            MATH_VecAddVec(&a1, &a2, &v8);
+            v11->v_look_jeter_destination = a1;
+        }
+        result = 1000;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_compte_a_rebour()
+{
+    int v0; // eax
+    double v1; // st7
+    int v2; // eax
+    float v4; // [esp+0h] [ebp-144h]
+    float X; // [esp+4h] [ebp-140h]
+    float Xa; // [esp+4h] [ebp-140h]
+    float Xb; // [esp+4h] [ebp-140h]
+    float Xc; // [esp+4h] [ebp-140h]
+    float Xd; // [esp+4h] [ebp-140h]
+    float v10; // [esp+8h] [ebp-13Ch]
+    float v11; // [esp+Ch] [ebp-138h]
+    float v12; // [esp+10h] [ebp-134h]
+    tScriptStruct_GSTBoardPanel* v13; // [esp+14h] [ebp-130h]
+    float v14; // [esp+48h] [ebp-FCh]
+    Vec3 a5; // [esp+54h] [ebp-F0h] BYREF
+    BOOL v16; // [esp+60h] [ebp-E4h]
+    float v17; // [esp+64h] [ebp-E0h]
+    Vec3 v18; // [esp+68h] [ebp-DCh] BYREF
+    float v19; // [esp+78h] [ebp-CCh]
+    Vec3 a3; // [esp+80h] [ebp-C4h] BYREF
+    Vec3 v21; // [esp+98h] [ebp-ACh]
+    int v22; // [esp+A4h] [ebp-A0h]
+    int v23; // [esp+ACh] [ebp-98h]
+    Vec3 v24; // [esp+B0h] [ebp-94h] BYREF
+    float v25; // [esp+C0h] [ebp-84h]
+    int a2; // [esp+C4h] [ebp-80h]
+    int v27; // [esp+C8h] [ebp-7Ch]
+    Vec3 v28; // [esp+DCh] [ebp-68h] BYREF
+    Vec3 v29; // [esp+ECh] [ebp-58h]
+    Vec3 a1; // [esp+F8h] [ebp-4Ch] BYREF
+    int v31; // [esp+104h] [ebp-40h]
+    tScriptStruct_GSTBoardPanel* v32; // [esp+10Ch] [ebp-38h]
+    float a4; // [esp+110h] [ebp-34h]
+    float v34; // [esp+118h] [ebp-2Ch]
+    BOOL v35; // [esp+11Ch] [ebp-28h]
+    Vec3 v36; // [esp+120h] [ebp-24h] BYREF
+    Vec3 v37; // [esp+134h] [ebp-10h] BYREF
+    float v38; // [esp+140h] [ebp-4h]
+    double tmp;
+
+    v24.x = 1.0;
+    v24.y = 0.0;
+    v24.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v13 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v13 = 0;
+    v32 = v13;
+    v31 = 0;
+    a4 = 0.0;
+    a2 = 0;
+    v27 = 0;
+    v34 = 0.0;
+    v35 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_compte_a_rebour_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_compte_a_rebour_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_compte_a_rebour_univVars,
+            4488);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_compte_a_rebour_univVars_f_Delai_Avant_Mort_Mili,
+            (void*)board_panel_bp_exec_compte_a_rebour_univVars,
+            18216);
+        board_panel_bp_exec_compte_a_rebour_GST_Board_panel_gao = AI_ul_RealResolveOneRefObject(0x6C00AD97u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_compte_a_rebour_univVars_world_ID,
+            (void*)board_panel_bp_exec_compte_a_rebour_univVars,
+            4);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_compte_a_rebour_univVars_f_volume_infodesign,
+            (void*)board_panel_bp_exec_compte_a_rebour_univVars,
+            20264);
+    }
+    v35 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_exec_compte_a_rebour_univVars_Flag_speciaux_sauve + 4), 2083);
+    if (!v35)
+    {
+        if (AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_exec_compte_a_rebour_univVars_Flag_speciaux_sauve + 4), 4140))
+            v35 = 0;
+        else
+            v35 = AI_EvalFunc_ARRBitTest_C(
+                (int*)(board_panel_bp_exec_compte_a_rebour_univVars_Flag_speciaux_sauve + 4),
+                3800);
+    }
+    if (!v35)
+        *(uint32_t*)board_panel_bp_exec_compte_a_rebour_univVars_f_Delai_Avant_Mort_Mili = 0;
+    if (!v35
+        || (v16 = AI_EvalFunc_OBJ_CapaTest_C(
+            (tGameObjectMain*)board_panel_bp_exec_compte_a_rebour_GST_Board_panel_gao,
+            0x100))
+        || AI_EvalFunc_MATHFloatNullEps_C(*(float*)board_panel_bp_exec_compte_a_rebour_univVars_f_Delai_Avant_Mort_Mili))
+    {
+        if (v32->i_snd_loopchrono1 != -1)
+        {
+            SND_Release(v32->i_snd_loopchrono1);
+            v32->i_snd_loopchrono1 = -1;
+        }
+        if (v32->i_snd_loopchrono2 != -1)
+        {
+            SND_Release(v32->i_snd_loopchrono2);
+            v32->i_snd_loopchrono2 = -1;
+        }
+        if (v32->i_compte_a_rebourd)
+        {
+            v32->i_compte_a_rebourd = 0;
+            STR_DelChar(AI_gpst_CurrentGameObject, 15, 0, -1);
+            STR_DelChar(AI_gpst_CurrentGameObject, 14, 0, -1);
+        }
+    }
+    else
+    {
+        if (*(uint32_t*)board_panel_bp_exec_compte_a_rebour_univVars_world_ID != 170
+            && *(uint32_t*)board_panel_bp_exec_compte_a_rebour_univVars_world_ID != 173)
+        {
+            *(uint32_t*)AI_EvalVarArray_C2((char*)board_panel_bp_exec_compte_a_rebour_univVars_f_volume_infodesign, 2) = 0;
+        }
+        v23 = STR_EffectGeti(AI_gpst_CurrentGameObject, -1, 14);
+        if (v23 == -1)
+        {
+            v14 = *(float*)board_panel_bp_exec_compte_a_rebour_univVars_f_Delai_Avant_Mort_Mili;
+            tmp =
+                *(float*)board_panel_bp_exec_compte_a_rebour_univVars_f_Delai_Avant_Mort_Mili
+                - 0.5
+                + MATH_gd_magicDoubleForRound;
+            v31 = AI_EvalFunc_MTHModulo_C(*(uint32_t *)&tmp, 60);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 14, 24);
+            v18.x = 0.0;
+            v18.y = 0.0;
+            v18.z = 0.0;
+            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 14, &v18);
+            v12 = (float)v31;
+            STR_SetFloat(AI_gpst_CurrentGameObject, 14, v12, 0);
+            if (v31 < 10)
+                STR_InsertString(AI_gpst_CurrentGameObject, 14, 0, (char*)AI_gpst_CurrentFunction->localStringConstsData);
+            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 15, 26);
+            v28.x = 0.0;
+            v28.y = 0.0;
+            v28.z = 0.0;
+            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 15, &v28);
+            STR_SetString(AI_gpst_CurrentGameObject, 15, (char*)AI_gpst_CurrentFunction->localStringConstsData + 2);
+            if (v14 < 60.0)
+            {
+                a4 = 0.0f;
+            }
+            else
+            {
+                a4 = v14 / 60.0f;
+                a4 = a4 - 0.5f;
+            }
+            STR_InsertFloat(AI_gpst_CurrentGameObject, 15, 0, a4, 0);
+            AI_EvalFunc_OBJ_TextPageSet_C(AI_gpst_CurrentGameObject, 15, 0, -1, 1, -1);
+            AI_EvalFunc_OBJ_TextPageSet_C(AI_gpst_CurrentGameObject, 14, 0, -1, 1, -1);
+            if (*(uint32_t*)board_panel_bp_exec_compte_a_rebour_univVars_world_ID != 170
+                && *(uint32_t*)board_panel_bp_exec_compte_a_rebour_univVars_world_ID != 173)
+            {
+                if (v32->i_snd_loopchrono1 == -1)
+                {
+                    v0 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 16, 0);
+                    v32->i_snd_loopchrono1 = v0;
+                    AI_EvalFunc_SNDUltraPlaySoundLooped_C(AI_gpst_CurrentGameObject, v32->i_snd_loopchrono1);
+                    SND_SetPan(v32->i_snd_loopchrono1, -10000, 0);
+                    v1 = SND_f_GetVol(v32->i_snd_loopchrono1);
+                    v32->f_snd_loopchrono_vol = (float)v1;
+                }
+                if (v32->i_snd_loopchrono2 == -1)
+                {
+                    v2 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 17, 0);
+                    v32->i_snd_loopchrono2 = v2;
+                    AI_EvalFunc_SNDUltraPlaySoundLooped_C(AI_gpst_CurrentGameObject, v32->i_snd_loopchrono2);
+                    SND_SetPan(v32->i_snd_loopchrono2, 10000, 0);
+                }
+                v11 = (float)v31;
+                X = v11 * 6.283185f / 30.0f;
+                v17 = cosf(X);
+                v34 = (v17 + 1.0f) / 2.0f;
+                Xa = v32->f_snd_loopchrono_vol * v34;
+                SND_SetVol(v32->i_snd_loopchrono1, Xa);
+                Xb = v32->f_snd_loopchrono_vol * v34;
+                SND_SetVol(v32->i_snd_loopchrono2, Xb);
+            }
+            if (v31 != v32->i_old_sec)
+            {
+                v10 = (float)v31;
+                Xc = v10 * 3.141593f / 60.0f;
+                v38 = (float)sinf(Xc);
+                v34 = 1.0f - v38 * 0.80000001f;
+                a2 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 15, 128);
+                AI_EvalFunc_SNDUltraPlaySound_C(AI_gpst_CurrentGameObject, a2);
+                v19 = SND_f_GetVol(a2);
+                Xd = v34 * v19;
+                SND_SetVol(a2, Xd);
+                if (v31 == 1)
+                {
+                    v22 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 18, 128);
+                    AI_EvalFunc_SNDUltraPlaySound_C(AI_gpst_CurrentGameObject, v22);
+                }
+            }
+            v32->i_old_sec = v31;
+            v35 = 0;
+            v35 = AI_EvalFunc_ARRBitTest_C(
+                (int*)(board_panel_bp_exec_compte_a_rebour_univVars_Flag_speciaux_sauve + 4),
+                3800);
+            if (v35)
+            {
+                v29.x = 0.5f;
+                v29.y = 0.23f;
+                v29.z = 0.0f;
+                v24.x = 0.5f;
+            }
+            else
+            {
+                v21.x = 0.77499998f;
+                v21.y = 0.23f;
+                v21.z = 0.0f;
+                v24.x = 0.77499998f;
+            }
+            v24.y = 0.23f;
+            v24.z = 0.0;
+            if (v32->i_compte_a_rebourd
+                && v32->f_time_chrono_before_effect
+                - *(float*)board_panel_bp_exec_compte_a_rebour_univVars_f_Delai_Avant_Mort_Mili > 3.0)
+            {
+                v25 = TIM_gf_dt;
+                v4 = 4.0f * TIM_gf_dt;
+                AI_EvalFunc_MATHVecBlend_C(&v32->v_pos_chrono, &v24, v4, &v37);
+                v32->v_pos_chrono = v37;
+            }
+            else if (v32->i_compte_a_rebourd)
+            {
+                v32->v_pos_chrono.x = 0.5;
+                v32->v_pos_chrono.y = 0.5;
+                v32->v_pos_chrono.z = 0.0;
+            }
+            else
+            {
+                v32->v_pos_chrono.x = 0.5;
+                v32->v_pos_chrono.y = 0.5;
+                v32->v_pos_chrono.z = 0.0;
+                v32->f_time_chrono_before_effect = v14;
+            }
+            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 15, &v32->v_pos_chrono);
+            a3.x = 0.003f;
+            a3.y = 0.0;
+            a3.z = 0.0;
+            MATH_VecAddVec(&a1, &v32->v_pos_chrono, &a3);
+            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 14, &a1);
+            a5.x = -1.0;
+            a5.y = 0.0;
+            a5.z = 0.0;
+            STR_SetSize(AI_gpst_CurrentGameObject, 15, 0, -1, &a5);
+            v36.x = -1.0;
+            v36.y = 0.0;
+            v36.z = 0.0;
+            STR_SetSize(AI_gpst_CurrentGameObject, 14, 0, -1, &v36);
+            if (!v32->i_compte_a_rebourd)
+            {
+                STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 14);
+                v27 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 14, 0, -1);
+                STR_EffectSetf(AI_gpst_CurrentGameObject, v27, 1150, 0.75);
+                STR_EffectSetf(AI_gpst_CurrentGameObject, v27, 1151, 8.0);
+                STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 15);
+                v27 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 15, 0, -1);
+                STR_EffectSetf(AI_gpst_CurrentGameObject, v27, 1150, 0.75);
+                STR_EffectSetf(AI_gpst_CurrentGameObject, v27, 1151, 8.0);
+            }
+            v32->i_compte_a_rebourd = 1;
+        }
+        else
+        {
+            *(float*)board_panel_bp_exec_compte_a_rebour_univVars_f_Delai_Avant_Mort_Mili = v32->f_time_chrono_before_effect
+                + 0.1f;
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_look_init()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-3Ch]
+    tGameObjectMain* v2; // [esp+8h] [ebp-34h]
+    int v3; // [esp+10h] [ebp-2Ch]
+    int v4; // [esp+20h] [ebp-1Ch]
+    BOOL v5; // [esp+24h] [ebp-18h]
+    int i; // [esp+28h] [ebp-14h]
+    int a2; // [esp+30h] [ebp-Ch]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_look_init_INTF_Cadre_Photo_gao = AI_ul_RealResolveOneRefObject(0xD9008C81);
+        board_panel_bp_exec_look_init__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        board_panel_bp_exec_look_init_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_init_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_look_init_univVars,
+            4488);
+        board_panel_bp_exec_look_init__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_exec_look_init_INTF_lock_viseur_gao = AI_ul_RealResolveOneRefObject(0xD9008D60);
+        fct_board_panel_bp_exec_look_init_board_panel_bp_exec_button_valide_nextfastitem = (int)AI_ul_RealResolveOneRefFunction(0x9E000844);
+        fct_board_panel_bp_exec_look_init_board_panel_bp_exec_look_photoborder_on = (int)AI_ul_RealResolveOneRefFunction(0x9E000008);
+    }
+    v1->i_acteur_pointe_new = 1;
+    v1->f_time_en_mode_look = TIM_gf_MainClock - TIM_gf_LockTime;
+    v1->i_look_photo_text_affiche = -1;
+    v1->i_init_look = 0;
+    v1->i_load_init = 1;
+    v1->i_look_tir_freesby = 0;
+    v1->o_look_object_old = 0;
+    if (v1->i_look_info_on)
+    {
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_exec_look_init_INTF_Cadre_Photo_gao, 4u, 0, 1);
+        AI_EvalFunc_MATEnableMltxtLvl_C((tGameObjectMain*)board_panel_bp_exec_look_init_INTF_Cadre_Photo_gao, 4u, 1, 1);
+        a2 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 0, 128);
+        AI_EvalFunc_SNDUltraPlaySound_C((tGameObjectMain*)board_panel_bp_exec_look_init__PJ_Sally_gao, a2);
+        v5 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_exec_look_init_univVars_Flag_speciaux_sauve + 4), 2333);
+        if (v5)
+            AI_EvalFunc_OBJ_CapaSet_C((tGameObjectMain*)board_panel_bp_exec_look_init__PJ_Camera_Speciale_gao, 1024, 0);
+        if (v5)
+            AI_EvalFunc_OBJ_SetChannelProg_C((tGameObjectMain*)board_panel_bp_exec_look_init_INTF_Cadre_Photo_gao, 2, 5.0);
+        else
+            AI_EvalFunc_OBJ_SetChannelProg_C(
+                (tGameObjectMain*)board_panel_bp_exec_look_init_INTF_Cadre_Photo_gao,
+                2,
+                2.6500001f);
+    }
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_exec_look_init_INTF_lock_viseur_gao, 1);
+    for (i = 0; i < 5; ++i)
+    {
+        v2 = (tGameObjectMain*)v1->ao_INTF_lock_target[i];
+        if (v2)
+        {
+            if ((unsigned int)v2 <= 2)
+                v2 = AI_MainActor[(uint32_t)v2 - 1];
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(v2, 1);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 1);
+        }
+    }
+    v1->i_objet_inventaire_old = v1->i_objet_inventaire;
+    v1->i_objet_inventaire_prec_old = v1->i_objet_inventaire_prec;
+    v1->i_objet_inventaire_suiv_old = v1->i_objet_inventaire_suiv_old;
+    v3 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_look_init_board_panel_bp_exec_button_valide_nextfastitem);
+    if (v3 != 1000)
+        return v3;
+    if (!v1->i_look_info_on)
+        return 1000;
+    v4 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_look_init_board_panel_bp_exec_look_photoborder_on);
+    if (v4 == 1000)
+        return 1000;
+    return v4;
+}
+
+int board_panel_bp_exec_button_valide_suite_dialogue()
+{
+    int* v0; // eax
+    int* v1; // eax
+    int* v2; // eax
+    int* v3; // eax
+    tScriptStruct_GSTBoardPanel* v5; // [esp+0h] [ebp-7Ch]
+    tGameObjectMain* v6; // [esp+10h] [ebp-6Ch]
+    tGameObjectMain* v7; // [esp+14h] [ebp-68h]
+    tGameObjectMain* v8; // [esp+18h] [ebp-64h]
+    tGameObjectMain* v9; // [esp+20h] [ebp-5Ch]
+    tGameObjectMain* v10; // [esp+28h] [ebp-54h]
+    tGameObjectMain* v11; // [esp+2Ch] [ebp-50h]
+    tGameObjectMain* v12; // [esp+30h] [ebp-4Ch]
+    tMessage Src; // [esp+3Ch] [ebp-40h] BYREF
+    BOOL v14; // [esp+70h] [ebp-Ch]
+    tScriptStruct_GSTBoardPanel* v16; // [esp+78h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v5 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v5 = 0;
+    v16 = v5;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_button_valide_suite_dialogue_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_suite_dialogue_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_button_valide_suite_dialogue_univVars,
+            4488);
+    }
+    if (v16->i_dialog_phase == 1)
+    {
+        v0 = (int*)AI_EvalVarArray_C(10, (char*)&v16->__at_dialog_reponses_Dimension1, v16->i_dialog_act_pos);
+        if (!AI_EvalFunc_TEXTIsEmpty_C(v0))
+        {
+            v16->i_dialog_phase = 2;
+            if (v16->ai_dialog_consequences[v16->i_dialog_act_pos] == 253)
+            {
+                v16->i_dialog_phase = 4;
+                v12 = (tGameObjectMain*)v16->o_dialogue_actor;
+                if (v12)
+                {
+                    if ((unsigned int)v12 <= 2)
+                        v12 = AI_MainActor[(uint32_t)v12 - 1];
+                    v11 = v12;
+                }
+                else
+                {
+                    v11 = 0;
+                }
+                if (v11)
+                {
+                    Src.msgID = 20;
+                    Src.f2 = (float)v16->i_dialog_act_pos;
+                    Src.f1 = (float)v16->ai_dialog_consequences[v16->i_dialog_act_pos];
+                    v10 = (tGameObjectMain*)v16->o_dialogue_actor;
+                    if (v10)
+                    {
+                        if ((unsigned int)v10 <= 2)
+                            v10 = AI_MainActor[(uint32_t)v10 - 1];
+                        AI_EvalFunc_MSGSend_C(v10, &Src);
+                    }
+                    else
+                    {
+                        AI_EvalFunc_MSGSend_C(0, &Src);
+                    }
+                }
+            }
+            return 1000;
+        }
+    }
+    if (v16->i_dialog_phase == 2)
+    {
+        v1 = (int*)AI_EvalVarArray_C(10, (char*)&v16->__at_dialog_reponses_Dimension1, v16->i_dialog_act_pos);
+        if (!AI_EvalFunc_TEXTIsEmpty_C(v1))
+        {
+            v16->i_dialog_phase = 3;
+            return 1000;
+        }
+    }
+    if (v16->i_dialog_phase == 3
+        || (v2 = (int*)AI_EvalVarArray_C(10, (char*)&v16->__at_dialog_reponses_Dimension1, v16->i_dialog_act_pos),
+            v14 = AI_EvalFunc_TEXTIsEmpty_C(v2)))
+    {
+        if (v16->i_dialog_page_actu != v16->i_dialog_page_nb)
+        {
+            v3 = (int*)AI_EvalVarArray_C(10, (char*)&v16->__at_dialog_reponses_Dimension1, v16->i_dialog_act_pos);
+            if (!AI_EvalFunc_TEXTIsEmpty_C(v3))
+            {
+                ++v16->i_dialog_page_actu;
+            LABEL_47:
+                v16->i_dialog_init_choix = 1;
+                return 1000;
+            }
+        }
+        if (v16->i_dialog_1_question)
+        {
+            AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(1024, 0);
+            Src.msgID = 20;
+            Src.f2 = (float)v16->i_dialog_act_pos;
+            Src.f1 = (float)v16->ai_dialog_consequences[v16->i_dialog_act_pos];
+            v9 = (tGameObjectMain*)v16->o_dialogue_actor;
+            if (v9)
+            {
+                if ((unsigned int)v9 <= 2)
+                    v9 = AI_MainActor[(uint32_t)v9 - 1];
+                AI_EvalFunc_MSGSend_C(v9, &Src);
+                goto LABEL_43;
+            }
+        }
+        else
+        {
+            v8 = (tGameObjectMain*)v16->o_dialogue_actor;
+            if (v8)
+            {
+                if ((unsigned int)v8 <= 2)
+                    v8 = AI_MainActor[(uint32_t)v8 - 1];
+                v7 = v8;
+            }
+            else
+            {
+                v7 = 0;
+            }
+            if (!v7)
+                goto LABEL_43;
+            Src.msgID = 20;
+            Src.f2 = (float)v16->i_dialog_act_pos;
+            Src.f1 = (float)v16->ai_dialog_consequences[v16->i_dialog_act_pos];
+            v6 = (tGameObjectMain*)v16->o_dialogue_actor;
+            if (v6)
+            {
+                if ((unsigned int)v6 <= 2)
+                    v6 = AI_MainActor[(uint32_t)v6 - 1];
+                AI_EvalFunc_MSGSend_C(v6, &Src);
+                goto LABEL_43;
+            }
+        }
+        AI_EvalFunc_MSGSend_C(0, &Src);
+    LABEL_43:
+        AI_EvalFunc_ARRBitClear_C(
+            (int*)(board_panel_bp_exec_button_valide_suite_dialogue_univVars_Flag_speciaux_sauve + 4),
+            929);
+        if (v16->ai_dialog_grisage[v16->i_dialog_act_pos] > 0)
+            AI_EvalFunc_ARRBitSet_C(
+                (int*)(board_panel_bp_exec_button_valide_suite_dialogue_univVars_Flag_speciaux_sauve + 4),
+                v16->ai_dialog_grisage[v16->i_dialog_act_pos]);
+        v16->i_dialog_phase = 1;
+        goto LABEL_47;
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_select_button_dialog_mode()
+{
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-4Ch]
+    tGameObjectMain* v2; // [esp+10h] [ebp-3Ch]
+    tGameObjectMain* v3; // [esp+14h] [ebp-38h]
+    tGameObjectMain* v4; // [esp+18h] [ebp-34h]
+    tGameObjectMain* v5; // [esp+1Ch] [ebp-30h]
+    int v6; // [esp+20h] [ebp-2Ch]
+    int v7; // [esp+34h] [ebp-18h]
+    BOOL v8; // [esp+44h] [ebp-8h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao,
+            264);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao_o_acteur_blabla_actif,
+            (void*)board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao,
+            252);
+        board_panel_bp_exec_select_button_dialog_mode_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_dialog_mode_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_select_button_dialog_mode_univVars,
+            4488);
+        fct_board_panel_bp_exec_select_button_dialog_mode_board_panel_bp_exec_button_valide_suite_dialogue = (int)AI_ul_RealResolveOneRefFunction(0x9E000847);
+        fct_board_panel_bp_exec_select_button_dialog_mode_board_panel_bp_exec_button_valide_exit_dialogue = (int)AI_ul_RealResolveOneRefFunction(0x9E00084D);
+    }
+    v5 = *(tGameObjectMain**)board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao_o_acteur_cine_actif;
+    if (*(uint32_t*)board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao_o_acteur_cine_actif)
+    {
+        if ((unsigned int)v5 <= 2)
+            v5 = AI_MainActor[(uint32_t)v5 - 1];
+        v4 = v5;
+    }
+    else
+    {
+        v4 = 0;
+    }
+    if (v4)
+        goto LABEL_18;
+    v3 = *(tGameObjectMain**)board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao_o_acteur_blabla_actif;
+    if (*(uint32_t*)board_panel_bp_exec_select_button_dialog_mode_GST_Global_gao_o_acteur_blabla_actif)
+    {
+        if ((unsigned int)v3 <= 2)
+            v3 = AI_MainActor[(uint32_t)v3 - 1];
+        v2 = v3;
+    }
+    else
+    {
+        v2 = 0;
+    }
+    if (v2)
+        LABEL_18:
+    AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 1024);
+    v8 = AI_EvalFunc_ARRBitTest_C(
+        (int*)(board_panel_bp_exec_select_button_dialog_mode_univVars_Flag_speciaux_sauve + 4),
+        929);
+    if (AI_EvalFunc_IoButtonJustPressed_C(0))
+    {
+        if (STR_EffectGeti(AI_gpst_CurrentGameObject, -1, v1->ai_ind_dialog_phr[0]) == -1)
+        {
+            v6 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_dialog_mode_board_panel_bp_exec_button_valide_suite_dialogue);
+            if (v6 != 1000)
+                return v6;
+        }
+        else
+        {
+            STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, v1->ai_ind_dialog_phr[0]);
+        }
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 4;
+    }
+    else if ((AI_EvalFunc_IoButtonJustPressed_C(1) || AI_EvalFunc_IoButtonJustPressed_C(2)) && !v8
+        || AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 1024))
+    {
+        AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(0, 1024);
+        v7 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_dialog_mode_board_panel_bp_exec_button_valide_exit_dialogue);
+        if (v7 == 1000)
+        {
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            result = 4;
+        }
+        else
+        {
+            result = v7;
+        }
+    }
+    else
+    {
+        result = 1000;
+    }
+    return result;
+}
+
+int board_panel_bp_exec_select_button_look_mode_shift()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+8h] [ebp-F4h]
+    tGameObjectMain* v2; // [esp+Ch] [ebp-F0h]
+    tGameObjectMain* v3; // [esp+10h] [ebp-ECh]
+    tGameObjectMain* v4; // [esp+14h] [ebp-E8h]
+    tGameObjectMain* v5; // [esp+18h] [ebp-E4h]
+    tGameObjectMain* v6; // [esp+20h] [ebp-DCh]
+    tGameObjectMain* v7; // [esp+24h] [ebp-D8h]
+    tGameObjectMain* v8; // [esp+34h] [ebp-C8h]
+    tGameObjectMain* v9; // [esp+38h] [ebp-C4h]
+    tGameObjectMain* v10; // [esp+3Ch] [ebp-C0h]
+    __int16 v11; // [esp+58h] [ebp-A4h]
+    int v12; // [esp+5Ch] [ebp-A0h]
+    int v13; // [esp+6Ch] [ebp-90h]
+    int v14; // [esp+70h] [ebp-8Ch]
+    int v15; // [esp+90h] [ebp-6Ch]
+    int v16; // [esp+9Ch] [ebp-60h]
+    Vec3 v17; // [esp+A4h] [ebp-58h] BYREF
+    BOOL v19; // [esp+B4h] [ebp-48h]
+    int v21; // [esp+BCh] [ebp-40h]
+    int v22; // [esp+C0h] [ebp-3Ch]
+    BOOL v23; // [esp+C8h] [ebp-34h]
+    Vec3 a3; // [esp+CCh] [ebp-30h] BYREF
+    tScriptStruct_GSTBoardPanel* v25; // [esp+D8h] [ebp-24h]
+    int v26; // [esp+DCh] [ebp-20h]
+    int v27; // [esp+E0h] [ebp-1Ch]
+    BOOL v28; // [esp+E8h] [ebp-14h]
+    BOOL v30; // [esp+F0h] [ebp-Ch]
+    BOOL v31; // [esp+F4h] [ebp-8h]
+    BOOL v32; // [esp+F8h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v25 = v1;
+    v22 = 0;
+    v23 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_choix_perso_pointe = (int)AI_ul_RealResolveOneRefFunction(0x9E000AF5);
+        fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_use = (int)AI_ul_RealResolveOneRefFunction(0x9E000851);
+        fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_friend = (int)AI_ul_RealResolveOneRefFunction(0x9E00084B);
+        board_panel_bp_exec_select_button_look_mode_shift_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_look_mode_shift_univVars_i_INV_OpenIt,
+            (void*)board_panel_bp_exec_select_button_look_mode_shift_univVars,
+            7648);
+        board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao_i_OpeningMode,
+            (void*)board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao,
+            100);
+        fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_inventaire_in = (int)AI_ul_RealResolveOneRefFunction(0x9E000855);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_look_mode_shift_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_select_button_look_mode_shift_univVars,
+            4488);
+        board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao_i_can_smooth,
+            (void*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao,
+            240);
+        fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_look_phototraitement = (int)AI_ul_RealResolveOneRefFunction(0x9E002D62);
+        board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao,
+            264);
+        board_panel_bp_exec_select_button_look_mode_shift__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Derriere_gao = AI_ul_RealResolveOneRefObject(0x5E005FA2u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Derriere_gao_i_sim_click,
+            (void*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Derriere_gao,
+            40);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao_i_special_exit,
+            (void*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao,
+            80);
+        fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_look = (int)AI_ul_RealResolveOneRefFunction(0x9E000857);
+    }
+    v14 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_choix_perso_pointe);
+    if (v14 != 1000)
+        return v14;
+    v25->i_acteur_pointe_visible = 0;
+    v10 = (tGameObjectMain*)v25->o_acteur_pointe_target;
+    if (v10)
+    {
+        if ((unsigned int)v10 <= 2)
+            v10 = AI_MainActor[(uint32_t)v10 - 1];
+        v9 = v10;
+    }
+    else
+    {
+        v9 = 0;
+    }
+    if (v9)
+    {
+        v8 = (tGameObjectMain*)v25->o_acteur_pointe_target;
+        if (v8)
+        {
+            if ((unsigned int)v8 <= 2)
+                v8 = AI_MainActor[(uint32_t)v8 - 1];
+            AI_EvalFunc_OBJGetPos_C(v8, &a3);
+        }
+        else
+        {
+            AI_EvalFunc_OBJGetPos_C(0, &a3);
+        }
+        AI_EvalFunc_VIEW3dWorldTo2d_C(0, &a3, &v17);
+        v7 = (tGameObjectMain*)v25->o_acteur_pointe_target;
+        if (v7)
+        {
+            if ((unsigned int)v7 <= 2)
+                v7 = AI_MainActor[(uint32_t)v7 - 1];
+            v6 = v7;
+        }
+        else
+        {
+            v6 = 0;
+        }
+        if ((v6->flags2 & 4) == 0)
+            v25->i_acteur_pointe_visible = 1;
+    }
+    v25->i_bip_off = 0;
+    if (AI_EvalFunc_IoButtonJustPressed_C(1))
+    {
+        v15 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_use);
+        if (v15 != 1000)
+            return v15;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(1))
+    {
+        v25->i_exit_look = 0;
+        v25->i_look_tir_freesby = 0;
+        v11 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 23);
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 23, v11 & 0xFBFF);
+    }
+    else
+    {
+        if (AI_EvalFunc_IoButtonJustReleased_C(3))
+        {
+            v27 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_friend);
+            if (v27 != 1000)
+                return v27;
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            return 4;
+        }
+        if ((AI_EvalFunc_IoButtonJustPressed_C(9)
+            || AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x1000)
+            || *(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_univVars_i_INV_OpenIt)
+            && !AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x100))
+        {
+            if (*(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao_i_OpeningMode)
+            {
+                v30 = AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x1000);
+                if (!v30 && !*(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_univVars_i_INV_OpenIt)
+                    goto LABEL_48;
+            }
+            if (AI_EvalFunc_IoButtonJustPressed_C(9))
+                *(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao_i_OpeningMode = 0;
+            *(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_univVars_i_INV_OpenIt = 0;
+            if (!v25->i_inv_in)
+            {
+                v13 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_inventaire_in);
+                if (v13 != 1000)
+                    return v13;
+            }
+        LABEL_48:
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            return 4;
+        }
+        if (AI_EvalFunc_IoButtonJustPressed_C(8)
+            && !INO_b_IoButtonPressed(6)
+            && !AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x100))
+        {
+            if (!*(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao_i_OpeningMode)
+            {
+                v23 = AI_EvalFunc_ARRBitTest_C(
+                    (int*)(board_panel_bp_exec_select_button_look_mode_shift_univVars_Flag_speciaux_sauve + 4),
+                    699);
+                *(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_INV_manager_gao_i_OpeningMode = v23 ? 3 : 6;
+                if (!v25->i_inv_in)
+                {
+                    v16 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_inventaire_in);
+                    if (v16 != 1000)
+                        return v16;
+                }
+            }
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            return 4;
+        }
+        v31 = AI_EvalFunc_IoButtonJustPressed_C(0);
+        if (v31 || (v19 = AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x800)))
+        {
+            AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x800);
+            if (v25->i_look_info_on)
+            {
+                if (!*(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao_i_can_smooth)
+                {
+                    if (AI_EvalFunc_TIMEElapsed_C(v25->f_time_photo_prise, 0.60000002f))
+                    {
+                        v25->f_time_photo_prise = TIM_gf_MainClock - TIM_gf_LockTime;
+                        v21 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_look_phototraitement);
+                        if (v21 != 1000)
+                            return v21;
+                    }
+                }
+            }
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            return 4;
+        }
+        if (AI_EvalFunc_IoButtonJustReleased_C(5))
+        {
+            v5 = *(tGameObjectMain**)board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao_o_acteur_cine_actif;
+            if (*(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao_o_acteur_cine_actif)
+            {
+                if ((unsigned int)v5 <= 2)
+                    v5 = AI_MainActor[(uint32_t)v5 - 1];
+                v4 = v5;
+            }
+            else
+            {
+                v4 = 0;
+            }
+            if (!v4)
+                goto LABEL_103;
+        }
+        v28 = AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x400);
+        if (v28
+            || !AI_EvalFunc_OBJ_CapaTest_C(
+                (tGameObjectMain*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao,
+                256)
+            || (v26 = AI_EvalFunc_ACTCustomBitTest_C(
+                (tGameObjectMain*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Sally_gao,
+                8u)) == 0)
+        {
+        LABEL_103:
+            v25->i_fuck_goyo_blindage = !AI_EvalFunc_OBJ_CapaTest_C(
+                (tGameObjectMain*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao,
+                0x100);
+            if (AI_EvalFunc_TIMEElapsed_C(v25->f_time_entre_look, 0.40000001f))
+                v25->i_exit_look = 1;
+        }
+    }
+    if (v25->i_exit_look)
+    {
+        if (v25->i_photo_blok_sorti_look)
+        {
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            return 1000;
+        }
+        v25->i_look_tir_freesby = 0;
+        v25->i_exit_look = 0;
+        AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+        *(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Derriere_gao_i_sim_click = 1;
+        *(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Camera_Speciale_gao_i_special_exit = 1;
+        v25->f_time_hors_mode_look = TIM_gf_MainClock - TIM_gf_LockTime;
+        if (!v25->i_inv_in)
+        {
+            v12 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_look_mode_shift_board_panel_bp_exec_button_valide_look);
+            if (v12 != 1000)
+                return v12;
+        }
+    }
+    else
+    {
+        v32 = AI_EvalFunc_IoButtonJustPressed_C(2);
+        if (v32 && !v25->i_bip_off)
+        {
+            v3 = *(tGameObjectMain**)board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao_o_acteur_cine_actif;
+            if (*(uint32_t*)board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao_o_acteur_cine_actif)
+            {
+                if ((unsigned int)v3 <= 2)
+                    v3 = AI_MainActor[(uint32_t)v3 - 1];
+                v2 = v3;
+            }
+            else
+            {
+                v2 = 0;
+            }
+            if (!v2
+                && !AI_EvalFunc_OBJ_CustomBitsTest_C(
+                    (tGameObjectMain*)board_panel_bp_exec_select_button_look_mode_shift_GST_Global_gao,
+                    0x4000))
+            {
+                v22 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 3, 0x80);
+                AI_EvalFunc_SNDUltraPlaySound_C(
+                    (tGameObjectMain*)board_panel_bp_exec_select_button_look_mode_shift__PJ_Sally_gao,
+                    v22);
+                v25->i_bip_off = 1;
+            }
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_afterrec()
+{
+    tGameObjectMain* v0; // eax
+    tGameObjectMain* v1; // eax
+    tGameObjectMain* v2; // eax
+    float v4; // [esp+0h] [ebp-288h]
+    float v5; // [esp+0h] [ebp-288h]
+    tScriptStruct_GSTBoardPanel* v6; // [esp+4h] [ebp-284h]
+    float v7; // [esp+8h] [ebp-280h]
+    float v8; // [esp+Ch] [ebp-27Ch]
+    float v9; // [esp+10h] [ebp-278h]
+    float v10; // [esp+14h] [ebp-274h]
+    float v11; // [esp+18h] [ebp-270h]
+    float v12; // [esp+1Ch] [ebp-26Ch]
+    tGameObjectMain* v13; // [esp+24h] [ebp-264h]
+    tGameObjectMain* v14; // [esp+2Ch] [ebp-25Ch]
+    tGameObjectMain* v15; // [esp+34h] [ebp-254h]
+    tGameObjectMain* v16; // [esp+3Ch] [ebp-24Ch]
+    tGameObjectMain* v17; // [esp+44h] [ebp-244h]
+    tGameObjectMain* v18; // [esp+4Ch] [ebp-23Ch]
+    tGameObjectMain* v19; // [esp+54h] [ebp-234h]
+    tGameObjectMain* v20; // [esp+5Ch] [ebp-22Ch]
+    tGameObjectMain* v21; // [esp+6Ch] [ebp-21Ch]
+    tGameObjectMain* v22; // [esp+74h] [ebp-214h]
+    tGameObjectMain* v23; // [esp+78h] [ebp-210h]
+    tGameObjectMain* v24; // [esp+7Ch] [ebp-20Ch]
+    tGameObjectMain* v25; // [esp+84h] [ebp-204h]
+    tGameObjectMain* v26; // [esp+8Ch] [ebp-1FCh]
+    tGameObjectMain* v27; // [esp+94h] [ebp-1F4h]
+    tGameObjectMain* v28; // [esp+9Ch] [ebp-1ECh]
+    tGameObjectMain* v29; // [esp+A4h] [ebp-1E4h]
+    tGameObjectMain* v30; // [esp+A8h] [ebp-1E0h]
+    tGameObjectMain* v31; // [esp+ACh] [ebp-1DCh]
+    tGameObjectMain* v32; // [esp+B4h] [ebp-1D4h]
+    Vec3 v33; // [esp+BCh] [ebp-1CCh] BYREF
+    Vec3 v34; // [esp+C8h] [ebp-1C0h] BYREF
+    float v35; // [esp+D4h] [ebp-1B4h]
+    Vec3 v36; // [esp+D8h] [ebp-1B0h] BYREF
+    Vec3 v37; // [esp+E4h] [ebp-1A4h] BYREF
+    tGameObjectMain* v38; // [esp+F0h] [ebp-198h]
+    Vec3 v39; // [esp+F4h] [ebp-194h] BYREF
+    float v40; // [esp+100h] [ebp-188h]
+    Vec3 v41; // [esp+104h] [ebp-184h] BYREF
+    Vec3 v42; // [esp+110h] [ebp-178h] BYREF
+    float v43; // [esp+11Ch] [ebp-16Ch]
+    float v44; // [esp+120h] [ebp-168h]
+    float zoom; // [esp+124h] [ebp-164h]
+    float v46; // [esp+128h] [ebp-160h]
+    Vec3 v47; // [esp+12Ch] [ebp-15Ch] BYREF
+    Vec3 v48; // [esp+140h] [ebp-148h] BYREF
+    Vec3 v49; // [esp+14Ch] [ebp-13Ch] BYREF
+    Vec3 v50; // [esp+15Ch] [ebp-12Ch] BYREF
+    Vec3 v51; // [esp+168h] [ebp-120h] BYREF
+    float v52; // [esp+174h] [ebp-114h]
+    float v53; // [esp+178h] [ebp-110h]
+    float v54; // [esp+17Ch] [ebp-10Ch]
+    Vec3 v55; // [esp+180h] [ebp-108h] BYREF
+    Vec3 v56; // [esp+18Ch] [ebp-FCh] BYREF
+    Vec3 v57; // [esp+198h] [ebp-F0h] BYREF
+    float v58; // [esp+1A4h] [ebp-E4h]
+    Vec3 v59; // [esp+1A8h] [ebp-E0h] BYREF
+    Vec3 v60; // [esp+1B4h] [ebp-D4h] BYREF
+    float v61; // [esp+1C0h] [ebp-C8h]
+    float v62; // [esp+1C4h] [ebp-C4h]
+    float v63; // [esp+1CCh] [ebp-BCh]
+    float v64; // [esp+1D0h] [ebp-B8h]
+    float v65; // [esp+1D4h] [ebp-B4h]
+    Vec3 a3; // [esp+1D8h] [ebp-B0h] BYREF
+    Vec3 v67; // [esp+1E4h] [ebp-A4h] BYREF
+    unsigned int v68; // [esp+1F0h] [ebp-98h]
+    Vec3 v69; // [esp+1F4h] [ebp-94h] BYREF
+    float v70; // [esp+200h] [ebp-88h]
+    float v71; // [esp+204h] [ebp-84h]
+    float v72; // [esp+20Ch] [ebp-7Ch]
+    float v73; // [esp+214h] [ebp-74h]
+    float v74; // [esp+218h] [ebp-70h]
+    float v75; // [esp+21Ch] [ebp-6Ch]
+    Vec3 v76; // [esp+220h] [ebp-68h] BYREF
+    tScriptStruct_GSTBoardPanel* v77; // [esp+22Ch] [ebp-5Ch]
+    Vec3 v78; // [esp+230h] [ebp-58h] BYREF
+    Vec3 a1; // [esp+23Ch] [ebp-4Ch] BYREF
+    Vec3 v80; // [esp+248h] [ebp-40h] BYREF
+    Vec3 v81; // [esp+254h] [ebp-34h] BYREF
+    float v82; // [esp+260h] [ebp-28h]
+    Vec3 v83; // [esp+264h] [ebp-24h] BYREF
+    Vec3 v84; // [esp+270h] [ebp-18h] BYREF
+    float v85; // [esp+27Ch] [ebp-Ch]
+    float v86; // [esp+280h] [ebp-8h]
+    float v87; // [esp+284h] [ebp-4h]
+
+    v48.x = 1.0;
+    v48.y = 0.0;
+    v48.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v6 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v6 = 0;
+    v77 = v6;
+    v38 = 0;
+    v68 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_afterrec__PJ_Camera_Speciale_gao = AI_ul_RealResolveOneRefObject(0x9E0007E2);
+        board_panel_bp_afterrec_INTF_Pognes_gao = AI_ul_RealResolveOneRefObject(0x9E0067BE);
+        board_panel_bp_afterrec_INTF_Perles_gao = AI_ul_RealResolveOneRefObject(0x9E0067BF);
+        board_panel_bp_afterrec_INTF_PerleHalo_gao = AI_ul_RealResolveOneRefObject(0x9E0067C0);
+    }
+    if (v77->i_look_aircraft || v77->i_look_aircraft_photo)
+    {
+        if (v77->i_look_aircraft_photo)
+        {
+            v38 = *AI_MainActor;
+            v25 = v38;
+            if (v38)
+            {
+                if ((unsigned int)v38 <= 2)
+                    v25 = AI_MainActor[(uint32_t)v38 - 1];
+                v1 = AI_EvalFunc_ANICanalGaoGet_C(v25, 0);
+            }
+            else
+            {
+                v1 = AI_EvalFunc_ANICanalGaoGet_C(0, 0);
+            }
+            v68 = (unsigned int)v1;
+            v24 = v1;
+            if (v1)
+            {
+                if ((unsigned int)v1 <= 2)
+                    v24 = AI_MainActor[(uint32_t)v1 - 1];
+                v23 = v24;
+            }
+            else
+            {
+                v23 = 0;
+            }
+            if (!v23)
+                v68 = (unsigned int)v38;
+            v22 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v22 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJGetPos_C(v22, &v39);
+            }
+            else
+            {
+                AI_EvalFunc_OBJGetPos_C(0, &v39);
+            }
+            v21 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v21 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v21, &v84);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_SightGet_C(0, &v84);
+            }
+            v59.x = v84.x * 1.5f;
+            v59.y = v84.y * 1.5f;
+            v59.z = v84.z * 1.5f;
+            v47.x = 0.0f;
+            v47.y = 0.0f;
+            v47.z = 3.0f;
+            MATH_VecAddVec(&v50, &v59, &v47);
+            MATH_VecAddVec(&v33, &v39, &v50);
+            AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_afterrec__PJ_Camera_Speciale_gao, &v33);
+            AI_EvalFunc_OBJ_BankingGet_C((tGameObjectMain*)board_panel_bp_afterrec__PJ_Camera_Speciale_gao, &v51);
+            v48 = v51;
+            v20 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v20 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJ_HorizonGet_C(v20, &v69);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_HorizonGet_C(0, &v69);
+            }
+            v62 = v48.z * v69.z + v48.y * v69.y + v69.x * v48.x;
+            v19 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v19 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJ_HorizonGet_C(v19, &v83);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_HorizonGet_C(0, &v83);
+            }
+            v63 = v83.x * v62;
+            v64 = v83.y * v62;
+            v65 = v83.z * v62;
+            v48.x = v48.x - v63;
+            v48.y = v48.y - v64;
+            v48.z = v48.z - v65;
+            v18 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v18 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v18, &v49);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_SightGet_C(0, &v49);
+            }
+            AI_EvalFunc_OBJ_BankingGeneralSet_C(
+                (tGameObjectMain*)board_panel_bp_afterrec__PJ_Camera_Speciale_gao,
+                &v49,
+                &v48);
+        }
+        else
+        {
+            v38 = *AI_MainActor;
+            v32 = v38;
+            if (v38)
+            {
+                if ((unsigned int)v38 <= 2)
+                    v32 = AI_MainActor[(uint32_t)v38 - 1];
+                v0 = AI_EvalFunc_ANICanalGaoGet_C(v32, 0);
+            }
+            else
+            {
+                v0 = AI_EvalFunc_ANICanalGaoGet_C(0, 0);
+            }
+            v68 = (unsigned int)v0;
+            v31 = v0;
+            if (v0)
+            {
+                if ((unsigned int)v0 <= 2)
+                    v31 = AI_MainActor[(uint32_t)v0 - 1];
+                v30 = v31;
+            }
+            else
+            {
+                v30 = 0;
+            }
+            if (!v30)
+                v68 = (unsigned int)v38;
+            v29 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v29 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJGetPos_C(v29, &a3);
+            }
+            else
+            {
+                AI_EvalFunc_OBJGetPos_C(0, &a3);
+            }
+            v28 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v28 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v28, &v37);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_SightGet_C(0, &v37);
+            }
+            v34.x = v37.x * 1.5f;
+            v34.y = v37.y * 1.5f;
+            v34.z = v37.z * 1.5f;
+            v56.x = 0.0f;
+            v56.y = 0.0f;
+            v56.z = 3.0f;
+            MATH_VecAddVec(&a1, &v34, &v56);
+            MATH_VecAddVec(&v42, &a3, &a1);
+            AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_afterrec__PJ_Camera_Speciale_gao, &v42);
+            v27 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v27 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJ_SightGet_C(v27, &v67);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_SightGet_C(0, &v67);
+            }
+            v26 = (tGameObjectMain*)v68;
+            if (v68)
+            {
+                if (v68 <= 2)
+                    v26 = AI_MainActor[v68 - 1];
+                AI_EvalFunc_OBJ_BankingGet_C(v26, &v78);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_BankingGet_C(0, &v78);
+            }
+            AI_EvalFunc_OBJ_SightGeneralSet_C((tGameObjectMain*)board_panel_bp_afterrec__PJ_Camera_Speciale_gao, &v67, &v78);
+        }
+    }
+    if (v77->i_look_enterprise || v77->i_look_enterprise_photo)
+    {
+        v38 = *AI_MainActor;
+        v17 = v38;
+        if (v38)
+        {
+            if ((unsigned int)v38 <= 2)
+                v17 = AI_MainActor[(uint32_t)v38 - 1];
+            v2 = AI_EvalFunc_ANICanalGaoGet_C(v17, 0);
+        }
+        else
+        {
+            v2 = AI_EvalFunc_ANICanalGaoGet_C(0, 0);
+        }
+        v68 = (unsigned int)v2;
+        v16 = v38;
+        if (v38)
+        {
+            if ((unsigned int)v38 <= 2)
+                v16 = AI_MainActor[(uint32_t)v38 - 1];
+            AI_EvalFunc_OBJGetPos_C(v16, &v36);
+        }
+        else
+        {
+            AI_EvalFunc_OBJGetPos_C(0, &v36);
+        }
+        v15 = v38;
+        if (v38)
+        {
+            if ((unsigned int)v38 <= 2)
+                v15 = AI_MainActor[(uint32_t)v38 - 1];
+            AI_EvalFunc_OBJ_SightGet_C(v15, &v80);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_SightGet_C(0, &v80);
+        }
+        v57.x = v80.x * 1.5f;
+        v57.y = v80.y * 1.5f;
+        v57.z = v80.z * 1.5f;
+        v76.x = 0.0f;
+        v76.y = 0.0f;
+        v76.z = 3.0f;
+        MATH_VecAddVec(&v55, &v57, &v76);
+        MATH_VecAddVec(&v60, &v36, &v55);
+        AI_EvalFunc_OBJSetPos_C((tGameObjectMain*)board_panel_bp_afterrec__PJ_Camera_Speciale_gao, &v60);
+        v14 = (tGameObjectMain*)v68;
+        if (v68)
+        {
+            if (v68 <= 2)
+                v14 = AI_MainActor[v68 - 1];
+            AI_EvalFunc_OBJ_SightGet_C(v14, &v81);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_SightGet_C(0, &v81);
+        }
+        v13 = (tGameObjectMain*)v68;
+        if (v68)
+        {
+            if (v68 <= 2)
+                v13 = AI_MainActor[v68 - 1];
+            AI_EvalFunc_OBJ_BankingGet_C(v13, &v41);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_BankingGet_C(0, &v41);
+        }
+        AI_EvalFunc_OBJ_SightGeneralSet_C((tGameObjectMain*)board_panel_bp_afterrec__PJ_Camera_Speciale_gao, &v81, &v41);
+    }
+    if (!v77->i_commercer_tune_deja_affiche || v77->i_commercer_perle_deja_affich)
+    {
+        v75 = AI_EvalFunc_OBJ_ZoomGet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Pognes_gao);
+        if (v75 <= 0.025 || v77->i_commercer_perle_deja_affich)
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Pognes_gao, 1);
+        }
+        else
+        {
+            v82 = AI_EvalFunc_OBJ_ZoomGet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Pognes_gao);
+            v61 = TIM_gf_dt;
+            v11 = 8.0f * TIM_gf_dt;
+            if (v11 < 0.0)
+                v11 = 0.0;
+            if (v11 > 1.0)
+                v11 = 1.0;
+            v52 = 0.0f * v11 + (1.0f - v11) * v82;
+            AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Pognes_gao, v52);
+        }
+    }
+    else
+    {
+        v86 = TIM_gf_dt;
+        v4 = 2.0f * TIM_gf_dt;
+        AI_EvalFunc_OBJRotateLocalZ_c((tGameObjectMain*)board_panel_bp_afterrec_INTF_Pognes_gao, v4);
+        v71 = AI_EvalFunc_OBJ_ZoomGet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Pognes_gao);
+        v35 = TIM_gf_dt;
+        v12 = 6.0f * TIM_gf_dt;
+        if (v12 < 0.0)
+            v12 = 0.0;
+        if (v12 > 1.0)
+            v12 = 1.0;
+        zoom = 0.25f * v12 + (1.0f - v12) * v71;
+        AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Pognes_gao, zoom);
+    }
+    if (v77->i_commercer_perle_deja_affich)
+    {
+        v70 = TIM_gf_dt;
+        v5 = 2.0f * TIM_gf_dt;
+        AI_EvalFunc_OBJRotateLocalZ_c((tGameObjectMain*)board_panel_bp_afterrec_INTF_Perles_gao, v5);
+        v44 = AI_EvalFunc_OBJ_ZoomGet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Perles_gao);
+        v54 = TIM_gf_dt;
+        v10 = 6.0f * TIM_gf_dt;
+        if (v10 < 0.0)
+            v10 = 0.0;
+        if (v10 > 1.0)
+            v10 = 1.0;
+        v85 = 0.055f * v10 + (1.0f - v10) * v44;
+        AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Perles_gao, v85);
+        v73 = AI_EvalFunc_OBJ_ZoomGet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_PerleHalo_gao);
+        v40 = TIM_gf_dt;
+        v9 = 6.0f * TIM_gf_dt;
+        if (v9 < 0.0)
+            v9 = 0.0;
+        if (v9 > 1.0)
+            v9 = 1.0;
+        v74 = 0.055f * v9 + (1.0f - v9) * v73;
+        AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_PerleHalo_gao, v74);
+    }
+    else
+    {
+        v87 = AI_EvalFunc_OBJ_ZoomGet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Perles_gao);
+        if (v87 <= 0.0049999999)
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Perles_gao, 1);
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_PerleHalo_gao, 1);
+        }
+        else
+        {
+            v46 = AI_EvalFunc_OBJ_ZoomGet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Perles_gao);
+            v58 = TIM_gf_dt;
+            v8 = 8.0f * TIM_gf_dt;
+            if (v8 < 0.0)
+                v8 = 0.0;
+            if (v8 > 1.0)
+                v8 = 1.0;
+            v43 = 0.0f * v8 + (1.0f - v8) * v46;
+            AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_Perles_gao, v43);
+            v53 = AI_EvalFunc_OBJ_ZoomGet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_PerleHalo_gao);
+            v7 = 8.0f * TIM_gf_dt;
+            if (v7 < 0.0)
+                v7 = 0.0;
+            if (v7 > 1.0)
+                v7 = 1.0;
+            v72 = 0.0f * v7 + (1.0f - v7) * v53;
+            AI_EvalFunc_OBJ_ZoomSet_C((tGameObjectMain*)board_panel_bp_afterrec_INTF_PerleHalo_gao, v72);
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_select_button_normal_mode()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+8h] [ebp-168h]
+    tGameObjectMain* v2; // [esp+Ch] [ebp-164h]
+    tGameObjectMain* v3; // [esp+10h] [ebp-160h]
+    tGameObjectMain* v4; // [esp+14h] [ebp-15Ch]
+    tGameObjectMain* v5; // [esp+18h] [ebp-158h]
+    tGameObjectMain* v6; // [esp+20h] [ebp-150h]
+    tGameObjectMain* v7; // [esp+24h] [ebp-14Ch]
+    tGameObjectMain* v8; // [esp+2Ch] [ebp-144h]
+    tGameObjectMain* v9; // [esp+30h] [ebp-140h]
+    tGameObjectMain* v10; // [esp+40h] [ebp-130h]
+    tGameObjectMain* v11; // [esp+44h] [ebp-12Ch]
+    tGameObjectMain* v12; // [esp+48h] [ebp-128h]
+    int v13; // [esp+50h] [ebp-120h]
+    int v14; // [esp+70h] [ebp-100h]
+    int v15; // [esp+74h] [ebp-FCh]
+    int v16; // [esp+7Ch] [ebp-F4h]
+    int v17; // [esp+98h] [ebp-D8h]
+    int v18; // [esp+9Ch] [ebp-D4h]
+    int v19; // [esp+B4h] [ebp-BCh]
+    Vec3 v20; // [esp+B8h] [ebp-B8h] BYREF
+    Vec3 v23; // [esp+CCh] [ebp-A4h]
+    BOOL v24; // [esp+D8h] [ebp-98h]
+    BOOL v26; // [esp+E0h] [ebp-90h]
+    Vec3 a3; // [esp+E4h] [ebp-8Ch] BYREF
+    tScriptStruct_GSTBoardPanel* v29; // [esp+F4h] [ebp-7Ch]
+    int v32; // [esp+104h] [ebp-6Ch]
+    int v33; // [esp+160h] [ebp-10h]
+    int v34; // [esp+164h] [ebp-Ch]
+    BOOL v35; // [esp+168h] [ebp-8h]
+    BOOL v36; // [esp+16Ch] [ebp-4h]
+
+    v23.x = 1.0;
+    v23.y = 0.0;
+    v23.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v29 = v1;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_choix_perso_pointe = (int)AI_ul_RealResolveOneRefFunction(0x9E000AF5);
+        fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_friend = (int)AI_ul_RealResolveOneRefFunction(0x9E00084B);
+        fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_action_sally = (int)AI_ul_RealResolveOneRefFunction(0x9E0015BD);
+        fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_action_jump = (int)AI_ul_RealResolveOneRefFunction(0x9E000AFB);
+        fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_use = (int)AI_ul_RealResolveOneRefFunction(0x9E000851);
+        board_panel_bp_exec_select_button_normal_mode_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_normal_mode_univVars_i_INV_OpenIt,
+            (void*)board_panel_bp_exec_select_button_normal_mode_univVars,
+            7648);
+        board_panel_bp_exec_select_button_normal_mode_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_OpeningMode,
+            (void*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao,
+            100);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_CineMode,
+            (void*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao,
+            104);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_normal_mode_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_select_button_normal_mode_univVars,
+            4488);
+        fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_inventaire_in = (int)AI_ul_RealResolveOneRefFunction(0x9E000855);
+        board_panel_bp_exec_select_button_normal_mode_GST_Global_gao = AI_ul_RealResolveOneRefObject(0x710047BCu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_select_button_normal_mode_GST_Global_gao_o_acteur_cine_actif,
+            (void*)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao,
+            264);
+        board_panel_bp_exec_select_button_normal_mode__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_look = (int)AI_ul_RealResolveOneRefFunction(0x9E000857);
+    }
+    v15 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_choix_perso_pointe);
+    if (v15 != 1000)
+        return v15;
+    v29->i_acteur_pointe_visible = 0;
+    v12 = (tGameObjectMain*)v29->o_acteur_pointe_target;
+    if (v12)
+    {
+        if ((unsigned int)v12 <= 2)
+            v12 = AI_MainActor[(uint32_t)v12 - 1];
+        v11 = v12;
+    }
+    else
+    {
+        v11 = 0;
+    }
+    if (v11)
+    {
+        v10 = (tGameObjectMain*)v29->o_acteur_pointe_target;
+        if (v10)
+        {
+            if ((unsigned int)v10 <= 2)
+                v10 = AI_MainActor[(uint32_t)v10 - 1];
+            AI_EvalFunc_OBJGetPos_C(v10, &a3);
+        }
+        else
+        {
+            AI_EvalFunc_OBJGetPos_C(0, &a3);
+        }
+        AI_EvalFunc_VIEW3dWorldTo2d_C(0, &a3, &v20);
+        v23 = v20;
+        v9 = (tGameObjectMain*)v29->o_acteur_pointe_target;
+        if (v9)
+        {
+            if ((unsigned int)v9 <= 2)
+                v9 = AI_MainActor[(uint32_t)v9 - 1];
+            v8 = v9;
+        }
+        else
+        {
+            v8 = 0;
+        }
+        if ((v8->flags2 & 4) == 0)
+            v29->i_acteur_pointe_visible = 1;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(5))
+    {
+        if (!INO_b_IoButtonPressed(16) || (v33 = INO_b_IoButtonPressed(64)) == 0)
+            v29->f_time_entre_look = TIM_gf_MainClock - TIM_gf_LockTime;
+    }
+    if (!INO_b_IoButtonPressed(5) && !INO_b_IoButtonPressed(9))
+        v29->i_bip_off = 0;
+    if (AI_EvalFunc_IoButtonJustReleased_C(3))
+    {
+        v19 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_friend);
+        if (v19 != 1000)
+            return v19;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(0))
+    {
+        v34 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_action_sally);
+        if (v34 != 1000)
+            return v34;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(2))
+    {
+        v14 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_action_jump);
+        if (v14 != 1000)
+            return v14;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(1))
+    {
+        v13 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_use);
+        if (v13 != 1000)
+            return v13;
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        return 4;
+    }
+    if (!AI_EvalFunc_IoButtonJustPressed_C(9))
+    {
+        v26 = AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x1000);
+        if (!v26 && !*(uint32_t*)board_panel_bp_exec_select_button_normal_mode_univVars_i_INV_OpenIt)
+        {
+            if (AI_EvalFunc_IoButtonJustPressed_C(8))
+            {
+                if (!*(uint32_t*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_OpeningMode)
+                {
+                    if (!AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x100))
+                    {
+                        if (AI_EvalFunc_ARRBitTest_C(
+                            (int*)(board_panel_bp_exec_select_button_normal_mode_univVars_Flag_speciaux_sauve + 4),
+                            699))
+                        {
+                            *(uint32_t*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_OpeningMode = 3;
+                        }
+                        else
+                        {
+                            *(uint32_t*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_OpeningMode = 6;
+                        }
+                        if (!v29->i_inv_in)
+                        {
+                            v18 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_inventaire_in);
+                            if (v18 != 1000)
+                                return v18;
+                        }
+                        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                        return 4;
+                    }
+                    if (!v29->i_bip_off)
+                    {
+                        v5 = *(tGameObjectMain**)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao_o_acteur_cine_actif;
+                        if (*(uint32_t*)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao_o_acteur_cine_actif)
+                        {
+                            if ((unsigned int)v5 <= 2)
+                                v5 = AI_MainActor[(uint32_t)v5 - 1];
+                            v4 = v5;
+                        }
+                        else
+                        {
+                            v4 = 0;
+                        }
+                        if (!v4
+                            && !AI_EvalFunc_OBJ_CustomBitsTest_C(
+                                (tGameObjectMain*)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao,
+                                0x4000))
+                        {
+                        LABEL_116:
+                            v17 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 3, 0x80);
+                            AI_EvalFunc_SNDUltraPlaySound_C(
+                                (tGameObjectMain*)board_panel_bp_exec_select_button_normal_mode__PJ_Sally_gao,
+                                v17);
+                            v29->i_bip_off = 1;
+                            return 1000;
+                        }
+                    }
+                }
+            }
+            else if ((!v29->i_fuck_goyo_blindage && INO_b_IoButtonPressed(5)
+                || v29->i_fuck_goyo_blindage && (v36 = AI_EvalFunc_IoButtonJustPressed_C(5)))
+                && !v29->i_swap_button_used
+                || (v24 = AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x400)))
+            {
+                if (!AI_EvalFunc_TIMEElapsed_C(v29->f_time_hors_mode_look, 0.2f))
+                {
+                    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                    return 4;
+                }
+                v29->i_fast_look = !AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x400);
+                v29->i_look_mode_toggle = 0;
+                if (!AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x200))
+                {
+                    AI_EvalFunc_OBJ_CapaSet_C_CURRENT(0, 0x400);
+                    if (!v29->i_inv_in)
+                    {
+                        v32 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_exec_button_valide_look);
+                        if (v32 != 1000)
+                            return v32;
+                    }
+                    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                    return 4;
+                }
+                if (!v29->i_bip_off)
+                {
+                    v3 = *(tGameObjectMain**)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao_o_acteur_cine_actif;
+                    if (*(uint32_t*)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao_o_acteur_cine_actif)
+                    {
+                        if ((unsigned int)v3 <= 2)
+                            v3 = AI_MainActor[(uint32_t)v3 - 1];
+                        v2 = v3;
+                    }
+                    else
+                    {
+                        v2 = 0;
+                    }
+                    if (!v2
+                        && !AI_EvalFunc_OBJ_CustomBitsTest_C(
+                            (tGameObjectMain*)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao,
+                            0x4000))
+                    {
+                        goto LABEL_116;
+                    }
+                }
+            }
+            return 1000;
+        }
+    }
+    if (*(uint32_t*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_OpeningMode
+        && !AI_EvalFunc_OBJ_CapaTest_C_CURRENT(0x1000))
+    {
+        return 1000;
+    }
+    v35 = AI_EvalFunc_OBJ_CustomBitsTest_C(AI_gpst_CurrentGameObject, 0x100);
+    if (v35 && !*(uint32_t*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_CineMode)
+    {
+        if (v29->i_bip_off)
+            return 1000;
+        v7 = *(tGameObjectMain**)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao_o_acteur_cine_actif;
+        if (*(uint32_t*)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao_o_acteur_cine_actif)
+        {
+            if ((unsigned int)v7 <= 2)
+                v7 = AI_MainActor[(uint32_t)v7 - 1];
+            v6 = v7;
+        }
+        else
+        {
+            v6 = 0;
+        }
+        if (v6)
+            return 1000;
+        if (AI_EvalFunc_OBJ_CustomBitsTest_C(
+            (tGameObjectMain*)board_panel_bp_exec_select_button_normal_mode_GST_Global_gao,
+            0x4000))
+        {
+            return 1000;
+        }
+        goto LABEL_116;
+    }
+    if (AI_EvalFunc_IoButtonJustPressed_C(9))
+    {
+        if (AI_EvalFunc_ARRBitTest_C(
+            (int*)(board_panel_bp_exec_select_button_normal_mode_univVars_Flag_speciaux_sauve + 4),
+            699))
+        {
+            *(uint32_t*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_OpeningMode = 3;
+        }
+        else
+        {
+            *(uint32_t*)board_panel_bp_exec_select_button_normal_mode_INV_manager_gao_i_OpeningMode = 0;
+        }
+    }
+    *(uint32_t*)board_panel_bp_exec_select_button_normal_mode_univVars_i_INV_OpenIt = 0;
+    if (!v29->i_inv_in)
+    {
+        v16 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_select_button_normal_mode_board_panel_bp_inventaire_in);
+        if (v16 != 1000)
+            return v16;
+    }
+    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+    return 4;
+}
+
+int board_panel_bp_exec_button_valide_next_companion()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-40h]
+    tGameObjectMain* v2; // [esp+8h] [ebp-38h]
+    tGameObjectMain* v3; // [esp+Ch] [ebp-34h]
+    tGameObjectMain* v4; // [esp+10h] [ebp-30h]
+    tGameObjectMain* v5; // [esp+18h] [ebp-28h]
+    tGameObjectMain* v6; // [esp+1Ch] [ebp-24h]
+    unsigned int v7; // [esp+28h] [ebp-18h]
+    int v9; // [esp+3Ch] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        board_panel_bp_exec_button_valide_next_companion_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_Companion,
+            (void*)board_panel_bp_exec_button_valide_next_companion_univVars,
+            1040);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_actor,
+            (void*)board_panel_bp_exec_button_valide_next_companion_univVars,
+            988);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_world_ID,
+            (void*)board_panel_bp_exec_button_valide_next_companion_univVars,
+            536);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_next_companion_univVars_world_ID,
+            (void*)board_panel_bp_exec_button_valide_next_companion_univVars,
+            4);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_status,
+            (void*)board_panel_bp_exec_button_valide_next_companion_univVars,
+            484);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_button_valide_next_companion_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_button_valide_next_companion_univVars,
+            4488);
+    }
+    v9 = *(uint32_t*)board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_Companion;
+    if (*(uint32_t*)board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_Companion != -1)
+    {
+        do
+        {
+            v9 = AI_EvalFunc_MTHModulo_C(v9 + v1->i_swap_button_sens + 5, 5);
+            if (v9 == *(uint32_t*)board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_Companion)
+                break;
+            v6 = *(tGameObjectMain**)(board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_actor + 4 * v9 + 4);
+            if (v6)
+            {
+                if ((unsigned int)v6 <= 2)
+                    v6 = AI_MainActor[(uint32_t)v6 - 1];
+                v5 = v6;
+            }
+            else
+            {
+                v5 = 0;
+            }
+        } while (!v5
+            || v9 == *(uint32_t*)board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_Companion
+            || (*(uint32_t*)(board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_world_ID + 4 * v9 + 4) != *(uint32_t*)board_panel_bp_exec_button_valide_next_companion_univVars_world_ID
+                || *(uint32_t*)(board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_status + 4 * v9 + 4) != 4
+                && *(uint32_t*)(board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_status + 4 * v9 + 4) != 3)
+            && *(uint32_t*)(board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_status + 4 * v9 + 4)
+            && *(uint32_t*)(board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_status + 4 * v9 + 4) != 5
+            || v9 + 1500 <= 0
+            || !AI_EvalFunc_ARRBitTest_C(
+                (int*)(board_panel_bp_exec_button_valide_next_companion_univVars_Flag_speciaux_sauve + 4),
+                v9 + 1500));
+    }
+    *(uint32_t*)board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_Companion = v9;
+    if (v9 != -1)
+    {
+        v7 = *(uint32_t*)(board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_actor + 4 * v9 + 4);
+        v1->f_INTF_time_08 = TIM_gf_MainClock - TIM_gf_LockTime;
+        v4 = (tGameObjectMain*)v7;
+        if (v7)
+        {
+            if (v7 <= 2)
+                v4 = AI_MainActor[v7 - 1];
+            v3 = v4;
+        }
+        else
+        {
+            v3 = 0;
+        }
+        if (v3)
+        {
+            v2 = (tGameObjectMain*)v7;
+            if (v7)
+            {
+                if (v7 <= 2)
+                    v2 = AI_MainActor[v7 - 1];
+                AI_EvalFunc_AIMainActorSet_C(v2, 1);
+            }
+            else
+            {
+                AI_EvalFunc_AIMainActorSet_C(0, 1);
+            }
+        }
+        else
+        {
+            *(uint32_t*)board_panel_bp_exec_button_valide_next_companion_univVars_Perso_ID_Companion = -1;
+        }
+    }
+    return 1000;
+}
+
+int board_panel_bp_boutonces_init()
+{
+    char* v0; // eax
+    tScriptStruct_GSTBoardPanel* v2; // [esp+0h] [ebp-6Ch]
+    Vec3 a5; // [esp+4h] [ebp-68h] BYREF
+    Vec3 v4; // [esp+10h] [ebp-5Ch] BYREF
+    Vec3 v5; // [esp+1Ch] [ebp-50h] BYREF
+    Vec3 v6; // [esp+28h] [ebp-44h] BYREF
+    Vec3 v7; // [esp+34h] [ebp-38h] BYREF
+    Vec3 v8; // [esp+40h] [ebp-2Ch] BYREF
+    int a2; // [esp+50h] [ebp-1Ch]
+    Vec3 v10; // [esp+54h] [ebp-18h] BYREF
+    tScriptStruct_GSTBoardPanel* v11; // [esp+60h] [ebp-Ch]
+    tTextGet a3; // [esp+64h] [ebp-8h] BYREF
+
+    if (AI_gpst_CurrentInstance)
+        v2 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v2 = 0;
+    v11 = v2;
+    a2 = 0;
+    STR_SetString(AI_gpst_CurrentGameObject, 0, (char*)AI_gpst_CurrentFunction->localStringConstsData);
+    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 0, 533);
+    v6.x = 0.16500001f;
+    v6.y = 0.28f;
+    v6.z = 5.0f;
+    AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 0, &v6);
+    v10.x = -1.0;
+    v10.y = 0.0;
+    v10.z = 0.0;
+    STR_SetSize(AI_gpst_CurrentGameObject, 0, 0, -1, &v10);
+    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 3, 20);
+    v8.x = 0.19499999f;
+    v8.y = 0.255f;
+    v8.z = 5.0f;
+    AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 3, &v8);
+    v4.x = -1.0f;
+    v4.y = 0.0f;
+    v4.z = 0.0f;
+    STR_SetSize(AI_gpst_CurrentGameObject, 3, 0, -1, &v4);
+    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 10, 528);
+    STR_SetString(AI_gpst_CurrentGameObject, 12, (char*)AI_gpst_CurrentFunction->localStringConstsData + 2);
+    AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 12, 0, -1, -9474193);
+    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, 1040);
+    a5.x = 0.059999999f;
+    a5.y = 0.74000001f;
+    a5.z = 0.0f;
+    STR_SetPos(AI_gpst_CurrentGameObject, 12, 0, -1, &a5);
+    v7.x = -1.0f;
+    v7.y = 0.0f;
+    v7.z = 0.0f;
+    STR_SetSize(AI_gpst_CurrentGameObject, 12, 0, -1, &v7);
+    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, 16);
+    STR_SetString(AI_gpst_CurrentGameObject, 27, (char*)AI_gpst_CurrentFunction->localStringConstsData + 21);
+    AI_EvalFunc_TEXTGet_C(1224838678, 8, &a3);
+    v0 = AI_EvalFunc_TEXTToString_C(&a3);
+    STR_InsertString(AI_gpst_CurrentGameObject, 27, -1, v0);
+    v5.x = 0.94999999f;
+    v5.y = 0.85000002f;
+    v5.z = 0.0f;
+    STR_SetStringExt(
+        AI_gpst_CurrentGameObject,
+        27,
+        1967130,
+        (char*)AI_gpst_CurrentFunction->localStringConstsData + 30,
+        &v5);
+    a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 2, 27, 1, -1);
+    STR_EffectSeti(AI_gpst_CurrentGameObject, a2, 0, 1);
+    STR_EffectSeti(AI_gpst_CurrentGameObject, a2, 200, -1);
+    STR_EffectSeti(AI_gpst_CurrentGameObject, a2, 201, 0xFF4F4F4F);
+    STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 250, 0.5);
+    v11->Boutonces_NbInv = 50;
+    AI_EvalFunc_OBJ_TextAlphaSet_C(AI_gpst_CurrentGameObject, 0, 0, -1, 0);
+    AI_EvalFunc_OBJ_TextAlphaSet_C(AI_gpst_CurrentGameObject, 3, 0, -1, 0);
+    return 1000;
+}
+
+int board_panel_bp_exec_look_photo()
+{
+    int result; // eax
+    BOOL v1; // eax
+    char* v2; // eax
+    char* v3; // eax
+    char* v4; // eax
+    int v5; // eax
+    int v6; // eax
+    int v7; // eax
+    char* v8; // eax
+    char* v9; // eax
+    char* v10; // eax
+    int v11; // eax
+    int v12; // eax
+    char* v13; // eax
+    char* v14; // eax
+    char* v15; // eax
+    char* v16; // eax
+    float v17; // [esp+8h] [ebp-374h]
+    float v18; // [esp+Ch] [ebp-370h]
+    float v19; // [esp+10h] [ebp-36Ch]
+    float v20; // [esp+14h] [ebp-368h]
+    float v21; // [esp+18h] [ebp-364h]
+    float v22; // [esp+1Ch] [ebp-360h]
+    tScriptStruct_GSTBoardPanel* v23; // [esp+20h] [ebp-35Ch]
+    float v24; // [esp+24h] [ebp-358h]
+    Vec3* v25; // [esp+28h] [ebp-354h]
+    tGameObjectMain* v26; // [esp+3Ch] [ebp-340h]
+    float v27; // [esp+40h] [ebp-33Ch]
+    float v28; // [esp+44h] [ebp-338h]
+    tGameObjectMain* v29; // [esp+48h] [ebp-334h]
+    tGameObjectMain* v30; // [esp+4Ch] [ebp-330h]
+    tGameObjectMain* v31; // [esp+50h] [ebp-32Ch]
+    tGameObjectMain* v32; // [esp+54h] [ebp-328h]
+    tGameObjectMain* v33; // [esp+58h] [ebp-324h]
+    tGameObjectMain* v34; // [esp+5Ch] [ebp-320h]
+    tGameObjectMain* v35; // [esp+60h] [ebp-31Ch]
+    tGameObjectMain* v36; // [esp+64h] [ebp-318h]
+    tGameObjectMain* v37; // [esp+68h] [ebp-314h]
+    tGameObjectMain* v38; // [esp+6Ch] [ebp-310h]
+    tGameObjectMain* v39; // [esp+74h] [ebp-308h]
+    tGameObjectMain* v40; // [esp+7Ch] [ebp-300h]
+    tGameObjectMain* v41; // [esp+80h] [ebp-2FCh]
+    tGameObjectMain* v42; // [esp+84h] [ebp-2F8h]
+    tGameObjectMain* v43; // [esp+88h] [ebp-2F4h]
+    tGameObjectMain* v44; // [esp+8Ch] [ebp-2F0h]
+    tGameObjectMain* v45; // [esp+90h] [ebp-2ECh]
+    tGameObjectMain* v46; // [esp+94h] [ebp-2E8h]
+    tGameObjectMain* v47; // [esp+9Ch] [ebp-2E0h]
+    tGameObjectMain* v48; // [esp+A4h] [ebp-2D8h]
+    tGameObjectMain* v49; // [esp+A8h] [ebp-2D4h]
+    tGameObjectMain* v50; // [esp+B0h] [ebp-2CCh]
+    tGameObjectMain* v51; // [esp+B8h] [ebp-2C4h]
+    tGameObjectMain* v52; // [esp+BCh] [ebp-2C0h]
+    tGameObjectMain* v53; // [esp+C0h] [ebp-2BCh]
+    tGameObjectMain* v54; // [esp+C8h] [ebp-2B4h]
+    tGameObjectMain* v55; // [esp+CCh] [ebp-2B0h]
+    tGameObjectMain* v56; // [esp+D0h] [ebp-2ACh]
+    tGameObjectMain* v57; // [esp+D4h] [ebp-2A8h]
+    tGameObjectMain* v58; // [esp+D8h] [ebp-2A4h]
+    tGameObjectMain* v59; // [esp+DCh] [ebp-2A0h]
+    float v60; // [esp+E0h] [ebp-29Ch]
+    float v61; // [esp+E4h] [ebp-298h]
+    float v62; // [esp+E8h] [ebp-294h]
+    tGameObjectMain* v63; // [esp+F0h] [ebp-28Ch]
+    Vec3* v64; // [esp+F4h] [ebp-288h]
+    tGameObjectMain* v65; // [esp+108h] [ebp-274h]
+    tGameObjectMain* v66; // [esp+110h] [ebp-26Ch]
+    tGameObjectMain* v67; // [esp+114h] [ebp-268h]
+    tGameObjectMain* v68; // [esp+118h] [ebp-264h]
+    tGameObjectMain* v69; // [esp+11Ch] [ebp-260h]
+    tGameObjectMain* v70; // [esp+120h] [ebp-25Ch]
+    tGameObjectMain* v71; // [esp+124h] [ebp-258h]
+    Vec3 v72; // [esp+128h] [ebp-254h] BYREF
+    Vec3 v73; // [esp+134h] [ebp-248h] BYREF
+    Vec3 v74; // [esp+140h] [ebp-23Ch] BYREF
+    float v75; // [esp+150h] [ebp-22Ch]
+    int v76; // [esp+154h] [ebp-228h]
+    int v77; // [esp+158h] [ebp-224h]
+    BOOL v78; // [esp+160h] [ebp-21Ch]
+    Vec3 v79; // [esp+168h] [ebp-214h] BYREF
+    tTextGet v80; // [esp+174h] [ebp-208h] BYREF
+    int v81; // [esp+17Ch] [ebp-200h]
+    int v82; // [esp+180h] [ebp-1FCh]
+    float v84; // [esp+190h] [ebp-1ECh]
+    Vec3 v85; // [esp+194h] [ebp-1E8h]
+    int v86; // [esp+1A0h] [ebp-1DCh]
+    int v87; // [esp+1A8h] [ebp-1D4h]
+    int v88; // [esp+1ACh] [ebp-1D0h]
+    Vec3 v89; // [esp+1B0h] [ebp-1CCh] BYREF
+    tTextGet v90; // [esp+1BCh] [ebp-1C0h] BYREF
+    tTextGet a3; // [esp+1C4h] [ebp-1B8h] BYREF
+    tTextGet v92; // [esp+1CCh] [ebp-1B0h] BYREF
+    BOOL v93; // [esp+1D4h] [ebp-1A8h]
+    int v94; // [esp+1D8h] [ebp-1A4h]
+    float v95; // [esp+1DCh] [ebp-1A0h]
+    BOOL v96; // [esp+1E0h] [ebp-19Ch]
+    int v97; // [esp+1E8h] [ebp-194h]
+    tTextGet Src; // [esp+1ECh] [ebp-190h] BYREF
+    tTextGet v99; // [esp+1F8h] [ebp-184h] BYREF
+    tTextGet v100; // [esp+200h] [ebp-17Ch] BYREF
+    float v101; // [esp+20Ch] [ebp-170h]
+    float v102; // [esp+210h] [ebp-16Ch]
+    int v104; // [esp+218h] [ebp-164h]
+    Vec3 v105; // [esp+21Ch] [ebp-160h] BYREF
+    int v106; // [esp+228h] [ebp-154h]
+    tTextGet v107; // [esp+22Ch] [ebp-150h] BYREF
+    int v108; // [esp+234h] [ebp-148h]
+    int v109; // [esp+238h] [ebp-144h]
+    float v110; // [esp+23Ch] [ebp-140h]
+    Vec3 v111; // [esp+248h] [ebp-134h] BYREF
+    Vec3 v112; // [esp+254h] [ebp-128h] BYREF
+    float v113; // [esp+260h] [ebp-11Ch]
+    float v114; // [esp+264h] [ebp-118h]
+    float v115; // [esp+268h] [ebp-114h]
+    int v116; // [esp+26Ch] [ebp-110h]
+    tTextGet v117; // [esp+270h] [ebp-10Ch] BYREF
+    Vec3 v118; // [esp+278h] [ebp-104h] BYREF
+    Vec3 a5; // [esp+284h] [ebp-F8h] BYREF
+    float v121; // [esp+294h] [ebp-E8h]
+    int v122; // [esp+298h] [ebp-E4h]
+    int v123; // [esp+29Ch] [ebp-E0h]
+    BOOL v124; // [esp+2A0h] [ebp-DCh]
+    int a7; // [esp+2A4h] [ebp-D8h] BYREF
+    int a2; // [esp+2A8h] [ebp-D4h]
+    int v127; // [esp+2ACh] [ebp-D0h]
+    int v128; // [esp+2B0h] [ebp-CCh]
+    float v129; // [esp+2B4h] [ebp-C8h]
+    int v130; // [esp+2BCh] [ebp-C0h]
+    int v131; // [esp+2C4h] [ebp-B8h]
+    float v132; // [esp+2C8h] [ebp-B4h]
+    int v133; // [esp+2CCh] [ebp-B0h]
+    int v134; // [esp+2D0h] [ebp-ACh]
+    int v135; // [esp+2D4h] [ebp-A8h]
+    float v136; // [esp+2D8h] [ebp-A4h]
+    int v138; // [esp+2E0h] [ebp-9Ch]
+    tTextGet v139; // [esp+2E4h] [ebp-98h] BYREF
+    int v140; // [esp+2ECh] [ebp-90h]
+    Vec3 v141; // [esp+2F0h] [ebp-8Ch] BYREF
+    Vec3 v142; // [esp+2FCh] [ebp-80h] BYREF
+    BOOL v143; // [esp+308h] [ebp-74h]
+    tTextGet v144; // [esp+30Ch] [ebp-70h] BYREF
+    int v145; // [esp+314h] [ebp-68h]
+    int v146; // [esp+318h] [ebp-64h]
+    int v147; // [esp+31Ch] [ebp-60h]
+    Vec3 v148; // [esp+320h] [ebp-5Ch] BYREF
+    tScriptStruct_GSTBoardPanel* v149; // [esp+32Ch] [ebp-50h]
+    Vec3 v150; // [esp+330h] [ebp-4Ch] BYREF
+    int v151; // [esp+340h] [ebp-3Ch]
+    int v152; // [esp+348h] [ebp-34h]
+    BOOL v153; // [esp+34Ch] [ebp-30h]
+    Vec3 v154; // [esp+350h] [ebp-2Ch] BYREF
+    Vec3 v155; // [esp+35Ch] [ebp-20h] BYREF
+    int v156; // [esp+368h] [ebp-14h]
+    float v157; // [esp+36Ch] [ebp-10h]
+    int v158; // [esp+370h] [ebp-Ch]
+
+    v85.x = 1.0;
+    v85.y = 0.0;
+    v85.z = 0.0;
+    if (AI_gpst_CurrentInstance)
+        v23 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v23 = 0;
+    v149 = v23;
+    v94 = 0;
+    v135 = 0;
+    v96 = 0;
+    v124 = 0;
+    a7 = 0;
+    v97 = 0;
+    a2 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        fct_board_panel_bp_exec_look_photo_board_panel_bp_exec_look_photo_select_info = (int)AI_ul_RealResolveOneRefFunction(0x9E000010);
+        board_panel_bp_exec_look_photo_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_photo_univVars_Flag_speciaux_sauve,
+            (void*)board_panel_bp_exec_look_photo_univVars,
+            4488);
+        board_panel_bp_exec_look_photo__PJ_Sally_gao = AI_ul_RealResolveOneRefObject(0x71003F5Au);
+        board_panel_bp_exec_look_photo_GST_AffichageTexte_gao = AI_ul_RealResolveOneRefObject(0x7100E7ACu);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche,
+            (void*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao,
+            204);
+        AI2C_ResolveBuffer(
+            &board_panel_bp_exec_look_photo_univVars_ai_Photos,
+            (void*)board_panel_bp_exec_look_photo_univVars,
+            6128);
+    }
+    v149->i_sally_action = -1;
+    v149->i_acteur_pointe_visible = 1;
+    if (v149->i_current_mode != 64 && v149->i_current_mode != 32)
+        v149->o_acteur_pointe = (int)AI_gpst_CurrentGameObject;
+    v149->o_sally_contextuel = 0;
+    if (v149->i_look_info_on)
+    {
+        v146 = AI_EvalFunc_AIExecute_C((tAIFunction*)fct_board_panel_bp_exec_look_photo_board_panel_bp_exec_look_photo_select_info);
+        if (v146 != 1000)
+            return v146;
+        v71 = (tGameObjectMain*)v149->o_look_object;
+        if (v71)
+        {
+            if ((unsigned int)v71 <= 2)
+                v71 = AI_MainActor[(uint32_t)v71 - 1];
+            v70 = v71;
+        }
+        else
+        {
+            v70 = 0;
+        }
+        v69 = (tGameObjectMain*)v149->o_look_object_old;
+        if (v69)
+        {
+            if ((unsigned int)v69 <= 2)
+                v69 = AI_MainActor[(uint32_t)v69 - 1];
+            v68 = v69;
+        }
+        else
+        {
+            v68 = 0;
+        }
+        if (v70 != v68)
+        {
+            v149->f_look_time_change_target = TIM_gf_MainClock - TIM_gf_LockTime;
+            v149->f_look_time_info = TIM_gf_MainClock - TIM_gf_LockTime;
+            v149->i_look_loading = 0;
+            v149->f_alpha_bad_photo = 0.0;
+            v149->i_look_photo_target = 0;
+            v149->i_TXT_info_ON = 0;
+        }
+        v149->o_look_object_old = v149->o_look_object;
+        v67 = (tGameObjectMain*)v149->o_look_object;
+        if (v67)
+        {
+            if ((unsigned int)v67 <= 2)
+                v67 = AI_MainActor[(uint32_t)v67 - 1];
+            v66 = v67;
+        }
+        else
+        {
+            v66 = 0;
+        }
+        if (v66)
+        {
+            v96 = AI_EvalFunc_ARRBitTest_C((int*)(board_panel_bp_exec_look_photo_univVars_Flag_speciaux_sauve + 4), 902);
+            if (v96)
+            {
+                v65 = (tGameObjectMain*)v149->o_look_object;
+                if (v65)
+                {
+                    if ((unsigned int)v65 <= 2)
+                        v65 = AI_MainActor[(uint32_t)v65 - 1];
+                    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(v65, &v111);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(0, &v111);
+                }
+                v85 = v111;
+                v64 = &v149->v_look_pos_center;
+                v149->v_look_pos_center.x = v111.x;
+                v64->y = v85.y;
+                v64->z = v85.z;
+                v63 = (tGameObjectMain*)v149->o_look_object;
+                if (v63)
+                {
+                    if ((unsigned int)v63 <= 2)
+                        v63 = AI_MainActor[(uint32_t)v63 - 1];
+                    v1 = AI_EvalFunc_OBJHasPhotoValue_C(v63, -1, &a7);
+                }
+                else
+                {
+                    v1 = AI_EvalFunc_OBJHasPhotoValue_C(0, -1, &a7);
+                }
+                v153 = v1;
+                AI_EvalFunc_TEXTGet_C(0x4901874E, 0, &Src);
+                memcpy(&v80, &Src, sizeof(v80));
+                v149->i_look_loading = 0;
+                if (a7)
+                {
+                    v149->f_look_time_info = TIM_gf_MainClock - TIM_gf_LockTime;
+                    if (v149->i_look_photo_text_affiche == 3)
+                    {
+                        v94 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 2, 128);
+                        AI_EvalFunc_SNDUltraPlaySound_C((tGameObjectMain*)board_panel_bp_exec_look_photo__PJ_Sally_gao, v94);
+                    }
+                }
+                if ((a7 & 1) != 0)
+                {
+                    if (v149->i_look_photo_text_affiche == 1)
+                    {
+                        if (*(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                        {
+                            v149->f_alpha_bad_photo = 0.0;
+                            v108 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v108);
+                        }
+                        else
+                        {
+                            v101 = TIM_gf_dt;
+                            v62 = TIM_gf_dt * 3.0f + v149->f_alpha_bad_photo;
+                            if (v62 < 1.0)
+                                v22 = TIM_gf_dt * 3.0f + v149->f_alpha_bad_photo;
+                            else
+                                v22 = 1.0;
+                            v110 = v22;
+                            v149->f_alpha_bad_photo = v22;
+                            v82 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v82);
+                        }
+                    }
+                    else
+                    {
+                        v149->i_look_photo_text_affiche = 1;
+                        if (!*(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                        {
+                            memcpy(&v100, &v80, sizeof(v100));
+                            v100.idx += 13;
+                            v2 = AI_EvalFunc_TEXTToString_C(&v100);
+                            STR_SetString(AI_gpst_CurrentGameObject, 13, v2);
+                            a5.x = -1.0;
+                            a5.y = 0.0;
+                            a5.z = 0.0;
+                            STR_SetSize(AI_gpst_CurrentGameObject, 13, 0, -1, &a5);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, 17);
+                            v89.x = 0.5f;
+                            v89.y = 0.74000001f;
+                            v89.z = 0.0f;
+                            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 13, &v89);
+                            v156 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v156);
+                            v122 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v122 | 0x400);
+                        }
+                    }
+                    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                    result = 1000;
+                }
+                else if ((a7 & 2) != 0)
+                {
+                    if (v149->i_look_photo_text_affiche == 2)
+                    {
+                        if (*(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                        {
+                            v149->f_alpha_bad_photo = 0.0;
+                            v151 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v151);
+                        }
+                        else
+                        {
+                            v102 = TIM_gf_dt;
+                            v61 = TIM_gf_dt * 3.0f + v149->f_alpha_bad_photo;
+                            if (v61 < 1.0)
+                                v21 = TIM_gf_dt * 3.0f + v149->f_alpha_bad_photo;
+                            else
+                                v21 = 1.0;
+                            v136 = v21;
+                            v149->f_alpha_bad_photo = v21;
+                            v86 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v86);
+                        }
+                    }
+                    else
+                    {
+                        v149->i_look_photo_text_affiche = 2;
+                        if (!*(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                        {
+                            memcpy(&v139, &v80, sizeof(v139));
+                            v139.idx += 12;
+                            v3 = AI_EvalFunc_TEXTToString_C(&v139);
+                            STR_SetString(AI_gpst_CurrentGameObject, 13, v3);
+                            v118.x = -1.0;
+                            v118.y = 0.0;
+                            v118.z = 0.0;
+                            STR_SetSize(AI_gpst_CurrentGameObject, 13, 0, -1, &v118);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, 17);
+                            v154.x = 0.5f;
+                            v154.y = 0.74000001f;
+                            v154.z = 0.0f;
+                            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 13, &v154);
+                            v131 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v131);
+                            v104 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v104 | 0x400);
+                        }
+                    }
+                    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                    result = 1000;
+                }
+                else if ((a7 & 8) != 0)
+                {
+                    if (v149->i_look_photo_text_affiche == 4)
+                    {
+                        if (*(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                        {
+                            v149->f_alpha_bad_photo = 0.0;
+                            v81 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v81);
+                        }
+                        else
+                        {
+                            v95 = TIM_gf_dt;
+                            v60 = TIM_gf_dt * 3.0f + v149->f_alpha_bad_photo;
+                            if (v60 < 1.0)
+                                v20 = TIM_gf_dt * 3.0f + v149->f_alpha_bad_photo;
+                            else
+                                v20 = 1.0;
+                            v157 = v20;
+                            v149->f_alpha_bad_photo = v20;
+                            v134 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v134);
+                        }
+                    }
+                    else
+                    {
+                        v149->i_look_photo_text_affiche = 4;
+                        if (!*(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                        {
+                            memcpy(&v117, &v80, sizeof(v117));
+                            v117.idx += 19;
+                            v4 = AI_EvalFunc_TEXTToString_C(&v117);
+                            STR_SetString(AI_gpst_CurrentGameObject, 13, v4);
+                            v148.x = -1.0;
+                            v148.y = 0.0;
+                            v148.z = 0.0;
+                            STR_SetSize(AI_gpst_CurrentGameObject, 13, 0, -1, &v148);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, 17);
+                            v112.x = 0.5f;
+                            v112.y = 0.74000001f;
+                            v112.z = 0.0f;
+                            AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 13, &v112);
+                            v127 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v127);
+                            v152 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v152 | 0x400);
+                        }
+                    }
+                    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                    result = 1000;
+                }
+                else
+                {
+                    v93 = AI_EvalFunc_TIMEElapsed_C(v149->f_look_time_info, 0.5);
+                    if (!v93 || (v143 = AI_EvalFunc_TIMEElapsed_C(v149->f_look_time_info, 5.5)))
+                    {
+                        if (AI_EvalFunc_TIMEElapsed_C(v149->f_look_time_info, 5.5))
+                        {
+                            if (!v149->i_load_init)
+                            {
+                                v149->i_load_init = 1;
+                                v94 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 2, 128);
+                                AI_EvalFunc_SNDUltraPlaySound_C((tGameObjectMain*)board_panel_bp_exec_look_photo__PJ_Sally_gao, v94);
+                                v149->f_alpha_bad_photo = 1.0;
+                            }
+                            v77 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                            if ((v77 & 0x400) != 0)
+                                v149->i_look_loading = 0;
+                            if (v149->i_TXT_info_ON)
+                                STR_EffectDel(AI_gpst_CurrentGameObject, 13);
+                            v158 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v158 | 0x400);
+                            v84 = TIM_gf_dt;
+                            v27 = v149->f_alpha_bad_photo - TIM_gf_dt * 3.0f;
+                            if (v27 > 0.0)
+                                v18 = v149->f_alpha_bad_photo - TIM_gf_dt * 3.0f;
+                            else
+                                v18 = 0.0;
+                            v132 = v18;
+                            v149->f_alpha_bad_photo = v18;
+                            v138 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                            AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v138);
+                            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                            result = 1000;
+                        }
+                        else
+                        {
+                            if (!v149->i_look_loading)
+                            {
+                                v149->f_alpha_bad_photo = 0.0;
+                                v149->i_look_loading = 1;
+                                v149->i_look_start_fade_on = 1;
+                                v149->i_load_init = 1;
+                                v145 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                                if ((v145 & 0x400) == 0)
+                                {
+                                    if (AI_EvalFunc_MATHFloatNullEps_C(v149->f_alpha_bad_photo))
+                                    {
+                                        v128 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                                        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v128 | 0x400);
+                                        v149->i_look_photo_affiche_info = 0;
+                                        STR_SetString(
+                                            AI_gpst_CurrentGameObject,
+                                            13,
+                                            (char*)AI_gpst_CurrentFunction->localStringConstsData + 6);
+                                        v149->i_look_photo_text_affiche = 0;
+                                    }
+                                    else
+                                    {
+                                        v129 = TIM_gf_dt;
+                                        v28 = v149->f_alpha_bad_photo - TIM_gf_dt * 3.0f;
+                                        if (v28 > 0.0)
+                                            v19 = v149->f_alpha_bad_photo - TIM_gf_dt * 3.0f;
+                                        else
+                                            v19 = 0.0;
+                                        v114 = v19;
+                                        v149->f_alpha_bad_photo = v19;
+                                        v147 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+                                        AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v147);
+                                    }
+                                }
+                                v149->i_TXT_info_ON = 0;
+                                v88 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                                AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v88 | 0x400);
+                            }
+                            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                            result = 1000;
+                        }
+                    }
+                    else
+                    {
+                        v124 = 0;
+                        v59 = (tGameObjectMain*)v149->o_look_object;
+                        if (v59)
+                        {
+                            if ((unsigned int)v59 <= 2)
+                                v59 = AI_MainActor[(uint32_t)v59 - 1];
+                            v58 = v59;
+                        }
+                        else
+                        {
+                            v58 = 0;
+                        }
+                        if (v58->extended->fields->designInt1)
+                        {
+                            v57 = (tGameObjectMain*)v149->o_look_object;
+                            if (v57)
+                            {
+                                if ((unsigned int)v57 <= 2)
+                                    v57 = AI_MainActor[(uint32_t)v57 - 1];
+                                v56 = v57;
+                            }
+                            else
+                            {
+                                v56 = 0;
+                            }
+                            if (v56->extended->fields->designInt1 <= 0)
+                            {
+                                v124 = 0;
+                            }
+                            else
+                            {
+                                v55 = (tGameObjectMain*)v149->o_look_object;
+                                if (v55)
+                                {
+                                    if ((unsigned int)v55 <= 2)
+                                        v55 = AI_MainActor[(uint32_t)v55 - 1];
+                                    v54 = v55;
+                                }
+                                else
+                                {
+                                    v54 = 0;
+                                }
+                                v124 = AI_EvalFunc_ARRBitTest_C(
+                                    (int*)(board_panel_bp_exec_look_photo_univVars_Flag_speciaux_sauve + 4),
+                                    v54->extended->fields->designInt1);
+                            }
+                        }
+                        if (v149->i_look_photo_text_affiche != 3)
+                        {
+                            v121 = TIM_gf_MainClock - TIM_gf_LockTime;
+                            v149->f_look_time_info = v121 - 0.60000002f;
+                            v149->i_TXT_info_ON = 0;
+                            v149->i_load_init = 1;
+                        }
+                        v149->i_look_photo_text_affiche = 3;
+                        if (v149->i_load_init)
+                        {
+                            v149->i_load_init = 0;
+                            v149->f_alpha_bad_photo = 0.0;
+                            v149->i_look_loading = 0;
+                            v149->i_look_start_fade_on = 0;
+                            v94 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 1, 128);
+                            AI_EvalFunc_SNDUltraPlaySound_C((tGameObjectMain*)board_panel_bp_exec_look_photo__PJ_Sally_gao, v94);
+                        }
+                        if (v124 || *(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                        {
+                            v32 = (tGameObjectMain*)v149->o_look_object;
+                            if (v32)
+                            {
+                                if ((unsigned int)v32 <= 2)
+                                    v32 = AI_MainActor[(uint32_t)v32 - 1];
+                                v31 = v32;
+                            }
+                            else
+                            {
+                                v31 = 0;
+                            }
+                            v78 = AI_EvalFunc_TEXTIsEmpty_C(&v31->extended->fields->designText2);
+                            if (v78 || *(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                            {
+                                STR_SetString(AI_gpst_CurrentGameObject, 13, (char*)AI_gpst_CurrentFunction->localStringConstsData + 5);
+                                v149->i_TXT_info_ON = 0;
+                            }
+                            else if (!v149->i_TXT_info_ON)
+                            {
+                                v149->i_TXT_info_ON = 1;
+                                v30 = (tGameObjectMain*)v149->o_look_object;
+                                if (v30)
+                                {
+                                    if ((unsigned int)v30 <= 2)
+                                        v30 = AI_MainActor[(uint32_t)v30 - 1];
+                                    v29 = v30;
+                                }
+                                else
+                                {
+                                    v29 = 0;
+                                }
+                                v16 = AI_EvalFunc_TEXTToString_C((tTextGet*)&v29->extended->fields->designText2);
+                                STR_SetString(AI_gpst_CurrentGameObject, 13, v16);
+                                AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, 16);
+                                v105.x = 0.20999999f;
+                                v105.y = 0.74000001f;
+                                v105.z = 0.0f;
+                                AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 13, &v105);
+                                v74.x = -1.0;
+                                v74.y = 0.0;
+                                v74.z = 0.0;
+                                STR_SetSize(AI_gpst_CurrentGameObject, 13, 0, -1, &v74);
+                            }
+                        }
+                        else
+                        {
+                            v53 = (tGameObjectMain*)v149->o_look_object;
+                            if (v53)
+                            {
+                                if ((unsigned int)v53 <= 2)
+                                    v53 = AI_MainActor[(uint32_t)v53 - 1];
+                                v52 = v53;
+                            }
+                            else
+                            {
+                                v52 = 0;
+                            }
+                            if ((int)(v52->extended->fields->designInt3 & 0xFF000000) >> 24 == 4)
+                                goto LABEL_116;
+                            v51 = (tGameObjectMain*)v149->o_look_object;
+                            if (v51)
+                            {
+                                if ((unsigned int)v51 <= 2)
+                                    v51 = AI_MainActor[(uint32_t)v51 - 1];
+                                v5 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(v51);
+                            }
+                            else
+                            {
+                                v5 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(0);
+                            }
+                            v140 = v5;
+                            if (v5 == 4)
+                            {
+                            LABEL_116:
+                                v50 = (tGameObjectMain*)v149->o_look_object;
+                                if (v50)
+                                {
+                                    if ((unsigned int)v50 <= 2)
+                                        v50 = AI_MainActor[(uint32_t)v50 - 1];
+                                    v6 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(v50);
+                                }
+                                else
+                                {
+                                    v6 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(0);
+                                }
+                                v135 = v6;
+                                if (v6 == -1)
+                                {
+                                    v49 = (tGameObjectMain*)v149->o_look_object;
+                                    if (v49)
+                                    {
+                                        if ((unsigned int)v49 <= 2)
+                                            v49 = AI_MainActor[(uint32_t)v49 - 1];
+                                        v48 = v49;
+                                    }
+                                    else
+                                    {
+                                        v48 = 0;
+                                    }
+                                    v135 = (unsigned __int8)v48->extended->fields->designInt3;
+                                }
+                                if (v135 + 800 <= 0)
+                                    v96 = 0;
+                                else
+                                    v96 = AI_EvalFunc_ARRBitTest_C(
+                                        (int*)(board_panel_bp_exec_look_photo_univVars_Flag_speciaux_sauve + 4),
+                                        v135 + 800);
+                                if (v96)
+                                {
+                                    if (!v149->i_TXT_info_ON)
+                                    {
+                                        v149->i_TXT_info_ON = 1;
+                                        v47 = (tGameObjectMain*)v149->o_look_object;
+                                        if (v47)
+                                        {
+                                            if ((unsigned int)v47 <= 2)
+                                                v47 = AI_MainActor[(uint32_t)v47 - 1];
+                                            v7 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(v47);
+                                        }
+                                        else
+                                        {
+                                            v7 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(0);
+                                        }
+                                        v97 = v7;
+                                        if (v7 == -1)
+                                        {
+                                            v46 = (tGameObjectMain*)v149->o_look_object;
+                                            if (v46)
+                                            {
+                                                if ((unsigned int)v46 <= 2)
+                                                    v46 = AI_MainActor[(uint32_t)v46 - 1];
+                                                v45 = v46;
+                                            }
+                                            else
+                                            {
+                                                v45 = 0;
+                                            }
+                                            v97 = (unsigned __int8)v45->extended->fields->designInt3;
+                                        }
+                                        memcpy(&v144, &v149->txt_ReportAnimals, sizeof(v144));
+                                        v144.idx += v97;
+                                        v8 = AI_EvalFunc_TEXTToString_C(&v144);
+                                        STR_SetString(AI_gpst_CurrentGameObject, 13, v8);
+                                        AI_EvalFunc_TEXTGet_C(-805295946, 5, &a3);
+                                        memcpy(&v80, &a3, sizeof(v80));
+                                        STR_InsertString(
+                                            AI_gpst_CurrentGameObject,
+                                            13,
+                                            -1,
+                                            (char*)AI_gpst_CurrentFunction->localStringConstsData);
+                                        v9 = AI_EvalFunc_TEXTToString_C(&v80);
+                                        STR_InsertString(AI_gpst_CurrentGameObject, 13, -1, v9);
+                                        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, 16);
+                                        v142.x = 0.20999999f;
+                                        v142.y = 0.74000001f;
+                                        v142.z = 0.0f;
+                                        AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 13, &v142);
+                                        v155.x = -1.0;
+                                        v155.y = 0.0;
+                                        v155.z = 0.0;
+                                        STR_SetSize(AI_gpst_CurrentGameObject, 13, 0, -1, &v155);
+                                        STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 13);
+                                        a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 13, 0, -1);
+                                        STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1150, 0.5);
+                                        STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1151, 2.0);
+                                    }
+                                }
+                                else
+                                {
+                                    v113 = TIM_gf_MainClock - TIM_gf_LockTime;
+                                    v149->f_look_time_info = v113 - 1.0f;
+                                    if (!v149->i_TXT_info_ON)
+                                    {
+                                        v149->i_TXT_info_ON = 1;
+                                        AI_EvalFunc_TEXTGet_C(-805295946, 0, &v92);
+                                        memcpy(&v80, &v92, sizeof(v80));
+                                        memcpy(&v107, &v80, sizeof(v107));
+                                        v107.idx += 232;
+                                        v10 = AI_EvalFunc_TEXTToString_C(&v107);
+                                        STR_SetString(AI_gpst_CurrentGameObject, 13, v10);
+                                        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, 16);
+                                        v72.x = 0.20999999f;
+                                        v72.y = 0.74000001f;
+                                        v72.z = 0.0f;
+                                        AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 13, &v72);
+                                        v141.x = -1.0;
+                                        v141.y = 0.0;
+                                        v141.z = 0.0;
+                                        STR_SetSize(AI_gpst_CurrentGameObject, 13, 0, -1, &v141);
+                                        STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 13);
+                                        a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 2, 13, 0, -1);
+                                        STR_EffectSeti(AI_gpst_CurrentGameObject, a2, 0, 1);
+                                        STR_EffectSeti(AI_gpst_CurrentGameObject, a2, 200, 0);
+                                        STR_EffectSeti(AI_gpst_CurrentGameObject, a2, 201, -1);
+                                        STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 250, 0.5);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                v44 = (tGameObjectMain*)v149->o_look_object;
+                                if (v44)
+                                {
+                                    if ((unsigned int)v44 <= 2)
+                                        v44 = AI_MainActor[(uint32_t)v44 - 1];
+                                    v43 = v44;
+                                }
+                                else
+                                {
+                                    v43 = 0;
+                                }
+                                if (AI_EvalFunc_TEXTIsEmpty_C(&v43->extended->fields->designText1))
+                                {
+                                    STR_SetString(AI_gpst_CurrentGameObject, 13, (char*)AI_gpst_CurrentFunction->localStringConstsData + 4);
+                                    v149->i_TXT_info_ON = 0;
+                                }
+                                else
+                                {
+                                    AI_EvalFunc_TEXTGet_C(0x4901874E, 0, &v90);
+                                    memcpy(&v80, &v90, sizeof(v80));
+                                    if (!v149->i_TXT_info_ON)
+                                    {
+                                        v149->i_TXT_info_ON = 1;
+                                        v42 = (tGameObjectMain*)v149->o_look_object;
+                                        if (v42)
+                                        {
+                                            if ((unsigned int)v42 <= 2)
+                                                v42 = AI_MainActor[(uint32_t)v42 - 1];
+                                            v41 = v42;
+                                        }
+                                        else
+                                        {
+                                            v41 = 0;
+                                        }
+                                        if ((int)(v41->extended->fields->designInt3 & 0xFF000000) >> 24 == 1)
+                                            goto LABEL_167;
+                                        v40 = (tGameObjectMain*)v149->o_look_object;
+                                        if (v40)
+                                        {
+                                            if ((unsigned int)v40 <= 2)
+                                                v40 = AI_MainActor[(uint32_t)v40 - 1];
+                                            v11 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(v40);
+                                        }
+                                        else
+                                        {
+                                            v11 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(0);
+                                        }
+                                        v123 = v11;
+                                        if (v11 == 1)
+                                        {
+                                        LABEL_167:
+                                            v39 = (tGameObjectMain*)v149->o_look_object;
+                                            if (v39)
+                                            {
+                                                if ((unsigned int)v39 <= 2)
+                                                    v39 = AI_MainActor[(uint32_t)v39 - 1];
+                                                v12 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(v39);
+                                            }
+                                            else
+                                            {
+                                                v12 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(0);
+                                            }
+                                            v97 = v12;
+                                            if (v12 == -1)
+                                            {
+                                                v38 = (tGameObjectMain*)v149->o_look_object;
+                                                if (v38)
+                                                {
+                                                    if ((unsigned int)v38 <= 2)
+                                                        v38 = AI_MainActor[(uint32_t)v38 - 1];
+                                                    v37 = v38;
+                                                }
+                                                else
+                                                {
+                                                    v37 = 0;
+                                                }
+                                                v97 = (unsigned __int8)v37->extended->fields->designInt3;
+                                            }
+                                            if (v97 < 30 && *(uint32_t*)(board_panel_bp_exec_look_photo_univVars_ai_Photos + 4 * v97 + 280))
+                                            {
+                                                v36 = (tGameObjectMain*)v149->o_look_object;
+                                                if (v36)
+                                                {
+                                                    if ((unsigned int)v36 <= 2)
+                                                        v36 = AI_MainActor[(uint32_t)v36 - 1];
+                                                    v35 = v36;
+                                                }
+                                                else
+                                                {
+                                                    v35 = 0;
+                                                }
+                                                v13 = AI_EvalFunc_TEXTToString_C((tTextGet*)&v35->extended->fields->designText1);
+                                                STR_SetString(AI_gpst_CurrentGameObject, 13, v13);
+                                            }
+                                            else
+                                            {
+                                                memcpy(&v99, &v80, sizeof(v99));
+                                                v99.idx += 39;
+                                                v14 = AI_EvalFunc_TEXTToString_C(&v99);
+                                                STR_SetString(AI_gpst_CurrentGameObject, 13, v14);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            v34 = (tGameObjectMain*)v149->o_look_object;
+                                            if (v34)
+                                            {
+                                                if ((unsigned int)v34 <= 2)
+                                                    v34 = AI_MainActor[(uint32_t)v34 - 1];
+                                                v33 = v34;
+                                            }
+                                            else
+                                            {
+                                                v33 = 0;
+                                            }
+                                            v15 = AI_EvalFunc_TEXTToString_C((tTextGet*)&v33->extended->fields->designText1);
+                                            STR_SetString(AI_gpst_CurrentGameObject, 13, v15);
+                                        }
+                                        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 13, 16);
+                                        v73.x = 0.20999999f;
+                                        v73.y = 0.74000001f;
+                                        v73.z = 0.0f;
+                                        AI_EvalFunc_OBJ_TextPivotSet_C(AI_gpst_CurrentGameObject, 13, &v73);
+                                        v150.x = -1.0;
+                                        v150.y = 0.0;
+                                        v150.z = 0.0;
+                                        STR_SetSize(AI_gpst_CurrentGameObject, 13, 0, -1, &v150);
+                                        STR_EffectSeti(AI_gpst_CurrentGameObject, 1, -1, 13);
+                                        a2 = STR_i_EffectAdd(AI_gpst_CurrentGameObject, 12, 13, 0, -1);
+                                        STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1150, 0.5);
+                                        STR_EffectSetf(AI_gpst_CurrentGameObject, a2, 1151, 2.0);
+                                    }
+                                }
+                            }
+                        }
+                        v133 = AI_EvalFunc_OBJ_TextLength_C(AI_gpst_CurrentGameObject, 13);
+                        if (!v133 || *(uint32_t*)board_panel_bp_exec_look_photo_GST_AffichageTexte_gao_i_affiche)
+                        {
+                            v130 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v130 | 0x400);
+                        }
+                        else
+                        {
+                            v106 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                            AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v106 & 0xFBFF);
+                        }
+                        v149->i_look_photo_affiche_info = 1;
+                        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                        result = 1000;
+                    }
+                }
+            }
+            else
+            {
+                v26 = (tGameObjectMain*)v149->o_look_object;
+                if (v26)
+                {
+                    if ((unsigned int)v26 <= 2)
+                        v26 = AI_MainActor[(uint32_t)v26 - 1];
+                    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(v26, &v79);
+                }
+                else
+                {
+                    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(0, &v79);
+                }
+                v85 = v79;
+                v25 = &v149->v_look_pos_center;
+                v149->v_look_pos_center.x = v79.x;
+                v25->y = v85.y;
+                v25->z = v85.z;
+                v149->i_look_loading = 0;
+                v149->i_look_start_fade_on = 1;
+                STR_SetString(AI_gpst_CurrentGameObject, 13, (char*)AI_gpst_CurrentFunction->localStringConstsData + 7);
+                v149->i_TXT_info_ON = 0;
+                v87 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+                AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v87 & 0xFBFF);
+                v149->i_look_photo_text_affiche = 0;
+                *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                result = 1000;
+            }
+            return result;
+        }
+        v149->i_look_loading = 0;
+    }
+    if (AI_EvalFunc_MATHFloatNullEps_C(v149->f_alpha_bad_photo))
+    {
+        v116 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+        AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v116 | 0x400);
+        v149->i_look_photo_affiche_info = 0;
+        STR_SetString(AI_gpst_CurrentGameObject, 13, (char*)AI_gpst_CurrentFunction->localStringConstsData + 8);
+        v149->i_look_photo_text_affiche = 0;
+    }
+    else
+    {
+        v115 = TIM_gf_dt;
+        v24 = v149->f_alpha_bad_photo - TIM_gf_dt * 3.0f;
+        if (v24 > 0.0)
+            v17 = v149->f_alpha_bad_photo - TIM_gf_dt * 3.0f;
+        else
+            v17 = 0.0;
+        v75 = v17;
+        v149->f_alpha_bad_photo = v17;
+        v76 = AI_EvalFunc_COLORBlend_C(0, -1, v149->f_alpha_bad_photo);
+        AI_EvalFunc_OBJ_TextColorSet_C(AI_gpst_CurrentGameObject, 13, 0, -1, v76);
+    }
+    v109 = AI_EvalFunc_OBJ_TextFlagGet_C(AI_gpst_CurrentGameObject, 12);
+    AI_EvalFunc_OBJ_TextFlagSet_C(AI_gpst_CurrentGameObject, 12, v109 | 0x400);
+    v149->o_look_object = 0;
+    if (v149->i_look_photo_text_affiche == 3)
+    {
+        v94 = AI_EvalFunc_SNDRequest_C(AI_gpst_CurrentGameObject, 2, 128);
+        AI_EvalFunc_SNDUltraPlaySound_C((tGameObjectMain*)board_panel_bp_exec_look_photo__PJ_Sally_gao, v94);
+    }
+    return 1000;
+}
+
+int board_panel_bp_exec_button_valide_exit_dialogue()
+{
+    tScriptStruct_GSTBoardPanel* v1; // [esp+0h] [ebp-48h]
+    tGameObjectMain* v2; // [esp+Ch] [ebp-3Ch]
+    tMessage Src; // [esp+10h] [ebp-38h] BYREF
+    tScriptStruct_GSTBoardPanel* v4; // [esp+44h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v1 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v1 = 0;
+    v4 = v1;
+    Src.msgID = 20;
+    Src.f2 = (float)v1->i_dialog_act_pos;
+    Src.f1 = 254.0;
+    v2 = (tGameObjectMain*)v1->o_dialogue_actor;
+    if (v2)
+    {
+        if ((unsigned int)v2 <= 2)
+            v2 = AI_MainActor[(uint32_t)v2 - 1];
+        AI_EvalFunc_MSGSend_C(v2, &Src);
+    }
+    else
+    {
+        AI_EvalFunc_MSGSend_C(0, &Src);
+    }
+    v4->ai_dialog_consequences[0] = 0;
+    return 1000;
+}
+
+// TODO FIXME átnézni
+int Global_Library_photo_add()
+{
+    BOOL v0; // eax
+    int v1; // eax
+    int v2; // eax
+    int result; // eax
+    tScriptStruct_GSTBoardPanel* v4; // [esp+0h] [ebp-70h]
+    tGameObjectMain* v5; // [esp+14h] [ebp-5Ch]
+    tGameObjectMain* v6; // [esp+18h] [ebp-58h]
+    tGameObjectMain* v7; // [esp+20h] [ebp-50h]
+    tGameObjectMain* v8; // [esp+28h] [ebp-48h]
+    tGameObjectMain* v9; // [esp+30h] [ebp-40h]
+    tGameObjectMain* v10; // [esp+34h] [ebp-3Ch]
+    tGameObjectMain* v11; // [esp+38h] [ebp-38h]
+    signed int v12; // [esp+4Ch] [ebp-24h]
+    int v13; // [esp+4Ch] [ebp-24h]
+    int v14; // [esp+50h] [ebp-20h]
+    BOOL v15; // [esp+54h] [ebp-1Ch]
+    BOOL v16; // [esp+54h] [ebp-1Ch]
+    int v17; // [esp+58h] [ebp-18h]
+    int i; // [esp+58h] [ebp-18h]
+    int v19; // [esp+58h] [ebp-18h]
+    int v20; // [esp+5Ch] [ebp-14h]
+    int k; // [esp+64h] [ebp-Ch]
+    int v22; // [esp+64h] [ebp-Ch]
+    int j; // [esp+64h] [ebp-Ch]
+
+    if (AI_gpst_CurrentInstance)
+        v4 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v4 = 0;
+    v12 = 0;
+    v15 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        Global_Library_photo_add_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(&Global_Library_photo_add_univVars_ai_Photos, (void*)Global_Library_photo_add_univVars, 6128);
+        AI2C_ResolveBuffer(
+            &Global_Library_photo_add_univVars_Flag_speciaux_sauve,
+            (void*)Global_Library_photo_add_univVars,
+            4488);
+    }
+    v14 = 0;
+    v11 = (tGameObjectMain*)v4->o_look_object;
+    if (v11)
+    {
+        if ((unsigned int)v11 <= 2)
+            v11 = AI_MainActor[(uint32_t)v11 - 1];
+        v10 = v11;
+    }
+    else
+    {
+        v10 = 0;
+    }
+    if (v10)
+    {
+        v9 = (tGameObjectMain*)v4->o_look_object;
+        if (v9)
+        {
+            if ((unsigned int)v9 <= 2)
+                v9 = AI_MainActor[(uint32_t)v9 - 1];
+            v0 = OBJ_ModifierType_C(v9, 20);
+        }
+        else
+        {
+            v0 = OBJ_ModifierType_C(0, 20);
+        }
+        if (v0)
+        {
+            v8 = (tGameObjectMain*)v4->o_look_object;
+            if (v8)
+            {
+                if ((unsigned int)v8 <= 2)
+                    v8 = AI_MainActor[(uint32_t)v8 - 1];
+                v1 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(v8);
+            }
+            else
+            {
+                v1 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(0);
+            }
+            v14 = v1;
+            v7 = (tGameObjectMain*)v4->o_look_object;
+            if (v7)
+            {
+                if ((unsigned int)v7 <= 2)
+                    v7 = AI_MainActor[(uint32_t)v7 - 1];
+                v2 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(v7);
+            }
+            else
+            {
+                v2 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(0);
+            }
+            v12 = (v14 << 24) + v2;
+        }
+        else
+        {
+            v6 = (tGameObjectMain*)v4->o_look_object;
+            if (v6)
+            {
+                if ((unsigned int)v6 <= 2)
+                    v6 = AI_MainActor[(uint32_t)v6 - 1];
+                v5 = v6;
+            }
+            else
+            {
+                v5 = 0;
+            }
+            v12 = v5->extended->fields->designInt3;
+            v14 = v12 >> 24;
+        }
+    }
+    if (v14 == 1 && ((unsigned __int8)v12 == 30 || (unsigned __int8)v12 == 31) || !v14)
+    {
+        v12 = AI_EvalFunc_VIEWAnalyser_C(AI_gpst_CurrentGameObject, 0);
+    }
+    else if (v4->i_look_object_valide)
+    {
+        v12 = v4->i_look_object_valide + 0x80000000;
+    }
+    v20 = v12 >> 24;
+    if (v12 >= 0)
+    {
+        if (v20 == 1)
+        {
+            v17 = v12 & 0xFFFFFF;
+            if (((v12 & 0xFFFFFF) == 0 || (v12 & 0xFFFFFFu) > 0xA) && v17 != 30 && v17 != 31 && v17 != 7711 && v17 != 7966)
+                v20 = 0;
+        }
+        if (v20)
+        {
+            switch (v20)
+            {
+            case 100:
+                if ((byte)v12)
+                {
+                    if ((unsigned __int8)v12 + 79 <= 0)
+                        v16 = 0;
+                    else
+                        v16 = AI_EvalFunc_ARRBitTest_C(
+                            (int*)(Global_Library_photo_add_univVars_Flag_speciaux_sauve + 4),
+                            (unsigned __int8)v12 + 79);
+                    v15 = v16;
+                    if ((unsigned __int8)v12 + 79 > 0)
+                        AI_EvalFunc_ARRBitSet_C(
+                            (int*)(Global_Library_photo_add_univVars_Flag_speciaux_sauve + 4),
+                            (unsigned __int8)v12 + 79);
+                    if ((unsigned __int8)v12 == 6)
+                    {
+                        AI_EvalFunc_ARRBitSet_C((int*)(Global_Library_photo_add_univVars_Flag_speciaux_sauve + 4), 86);
+                        AI_EvalFunc_ARRBitSet_C((int*)(Global_Library_photo_add_univVars_Flag_speciaux_sauve + 4), 87);
+                    }
+                }
+                AI2C_PushInt(v15 - 6000);
+                *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                result = 1000;
+                break;
+            case 101:
+                AI2C_PushInt((unsigned __int8)v12 - 7000);
+                *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                result = 1000;
+                break;
+            case 4:
+                for (i = 0;
+                    i < 70
+                    && (unsigned __int8)*(uint32_t*)(Global_Library_photo_add_univVars_ai_Photos + 4 * i + 4) != (unsigned __int8)v12;
+                    ++i)
+                {
+                    ;
+                }
+                if (i == 70)
+                    i = -1;
+                if (i == -1)
+                {
+                    for (j = 0; j < 70 && *(uint32_t*)(Global_Library_photo_add_univVars_ai_Photos + 4 * j + 4); ++j)
+                        ;
+                    if (j == 70)
+                    {
+                        AI2C_PushInt(-5000);
+                    }
+                    else
+                    {
+                        *(uint32_t*)(Global_Library_photo_add_univVars_ai_Photos + 4 * j + 4) = (unsigned __int8)v12;
+                        AI2C_PushInt(10000 * j + 0x1000000);
+                    }
+                    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                    result = 1000;
+                }
+                else
+                {
+                    AI2C_PushInt(i - 2000);
+                    *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                    result = 1000;
+                }
+                break;
+            default:
+                v13 = v12 & 0xFFFFFF;
+                v19 = v13 + 69;
+                if (v13 == 31 || v13 == 30 || v13 == 7711 || v13 == 7966)
+                {
+                    if (v13 == 7711 || v13 == 7966)
+                        v13 = 1;
+                    v19 = 70;
+                    *(uint32_t*)(Global_Library_photo_add_univVars_ai_Photos + 284) = 0;// TODO FIXME
+                }
+                if (*(uint32_t*)(Global_Library_photo_add_univVars_ai_Photos + 4 * v19 + 4))
+                {
+                    AI2C_PushInt(v19 - 2000);
+                }
+                else
+                {
+                    *(uint32_t*)(Global_Library_photo_add_univVars_ai_Photos + 4 * v19 + 4) = v13;
+                    AI2C_PushInt(10000 * v19 + 0x1000000);
+                }
+                *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+                result = 1000;
+                break;
+            }
+        }
+        else
+        {
+            for (k = 0; k < 5 && *(uint32_t*)(Global_Library_photo_add_univVars_ai_Photos + 4 * k + 344); ++k)
+                ;
+            if (k == 5)
+            {
+                AI2C_PushInt(-5000);
+            }
+            else
+            {
+                v22 = k + 85;
+                *(uint32_t*)(Global_Library_photo_add_univVars_ai_Photos + 4 * v22 + 4) = 0x40000000;
+                AI2C_PushInt(v22 - 1000);
+            }
+            *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+            result = 1000;
+        }
+    }
+    else
+    {
+        AI2C_PushInt((unsigned __int8)v12 - 3000);
+        *AI_gppst_CurrentJumpNode = (tAINode*)-1;
+        result = 1000;
+    }
+    return result;
+}
+
+int Global_Library_photo_take()
+{
+    int v0; // eax
+    char* v1; // eax
+    char* v2; // eax
+    char* v3; // eax
+    char* v4; // eax
+    char* v5; // eax
+    char* v6; // eax
+    char* v7; // eax
+    tTexProceduralStruct* v8; // eax
+    char* v9; // eax
+    char* v10; // eax
+    tTexProceduralStruct* v11; // eax
+    char* v12; // eax
+    tScriptStruct_GSTBoardPanel* v14; // [esp+0h] [ebp-248h]
+    tGameObjectMain* v15; // [esp+8h] [ebp-240h]
+    tGameObjectMain* v16; // [esp+10h] [ebp-238h]
+    tAI* v17; // [esp+14h] [ebp-234h]
+    tGameObjectMain* v18; // [esp+18h] [ebp-230h]
+    tGameObjectMain* v19; // [esp+1Ch] [ebp-22Ch]
+    tGameObjectMain* v20; // [esp+24h] [ebp-224h]
+    tGameObjectMain* v21; // [esp+2Ch] [ebp-21Ch]
+    tGameObjectMain* v22; // [esp+34h] [ebp-214h]
+    tGameObjectMain* v23; // [esp+38h] [ebp-210h]
+    tGameObjectMain* v24; // [esp+3Ch] [ebp-20Ch]
+    tAI* v25; // [esp+40h] [ebp-208h]
+    tGameObjectMain* v26; // [esp+44h] [ebp-204h]
+    tGameObjectMain* v27; // [esp+48h] [ebp-200h]
+    tAI* v28; // [esp+4Ch] [ebp-1FCh]
+    tGameObjectMain* v29; // [esp+50h] [ebp-1F8h]
+    tGameObjectMain* v30; // [esp+54h] [ebp-1F4h]
+    tAI* v31; // [esp+58h] [ebp-1F0h]
+    tGameObjectMain* v32; // [esp+5Ch] [ebp-1ECh]
+    tGameObjectMain* v33; // [esp+60h] [ebp-1E8h]
+    tAI* v34; // [esp+64h] [ebp-1E4h]
+    tGameObjectMain* v35; // [esp+68h] [ebp-1E0h]
+    tGameObjectMain* v36; // [esp+6Ch] [ebp-1DCh]
+    tAI* v37; // [esp+70h] [ebp-1D8h]
+    tGameObjectMain* v38; // [esp+74h] [ebp-1D4h]
+    tGameObjectMain* v39; // [esp+78h] [ebp-1D0h]
+    tGameObjectMain* v40; // [esp+80h] [ebp-1C8h]
+    tGameObjectMain* v41; // [esp+88h] [ebp-1C0h]
+    tGameObjectMain* v42; // [esp+90h] [ebp-1B8h]
+    tGameObjectMain* v43; // [esp+98h] [ebp-1B0h]
+    tGameObjectMain* v44; // [esp+A0h] [ebp-1A8h]
+    tGameObjectMain* v45; // [esp+A8h] [ebp-1A0h]
+    tGameObjectMain* v46; // [esp+ACh] [ebp-19Ch]
+    tGameObjectMain* v47; // [esp+B0h] [ebp-198h]
+    tGameObjectMain* v48; // [esp+B4h] [ebp-194h]
+    tGameObjectMain* v49; // [esp+B8h] [ebp-190h]
+    tGameObjectMain* v50; // [esp+C8h] [ebp-180h]
+    tGameObjectMain* v51; // [esp+CCh] [ebp-17Ch]
+    tGameObjectMain* v52; // [esp+D0h] [ebp-178h]
+    tGameObjectMain* v53; // [esp+D4h] [ebp-174h]
+    tGameObjectMain* v54; // [esp+D8h] [ebp-170h]
+    tGameObjectMain* v55; // [esp+DCh] [ebp-16Ch]
+    tGameObjectMain* v56; // [esp+E0h] [ebp-168h]
+    tGameObjectMain* v57; // [esp+E4h] [ebp-164h]
+    tGameObjectMain* v58; // [esp+E8h] [ebp-160h]
+    tGameObjectMain* v59; // [esp+ECh] [ebp-15Ch]
+    tGameObjectMain* v60; // [esp+F0h] [ebp-158h]
+    tGameObjectMain* v61; // [esp+F4h] [ebp-154h]
+    tGameObjectMain* v62; // [esp+F8h] [ebp-150h]
+    tGameObjectMain* v63; // [esp+FCh] [ebp-14Ch]
+    tGameObjectMain* v64; // [esp+100h] [ebp-148h]
+    tGameObjectMain* v65; // [esp+108h] [ebp-140h]
+    tGameObjectMain* v66; // [esp+110h] [ebp-138h]
+    tGameObjectMain* v67; // [esp+118h] [ebp-130h]
+    tGameObjectMain* v68; // [esp+120h] [ebp-128h]
+    tGameObjectMain* v69; // [esp+128h] [ebp-120h]
+    tGameObjectMain* v70; // [esp+130h] [ebp-118h]
+    tGameObjectMain* v71; // [esp+138h] [ebp-110h]
+    tTextGet v72; // [esp+140h] [ebp-108h] BYREF
+    tTextGet Src; // [esp+148h] [ebp-100h] BYREF
+    int a3; // [esp+150h] [ebp-F8h]
+    int v75; // [esp+154h] [ebp-F4h]
+    int v76; // [esp+158h] [ebp-F0h]
+    int v77; // [esp+15Ch] [ebp-ECh]
+    tTextGet v78; // [esp+160h] [ebp-E8h] BYREF
+    Vec3 v79; // [esp+168h] [ebp-E0h] BYREF
+    tTextGet v80; // [esp+174h] [ebp-D4h] BYREF
+    tTextGet v81; // [esp+17Ch] [ebp-CCh] BYREF
+    Vec3 v82; // [esp+184h] [ebp-C4h] BYREF
+    tAI* v83; // [esp+190h] [ebp-B8h]
+    int v84; // [esp+198h] [ebp-B0h]
+    tTextGet v85; // [esp+19Ch] [ebp-ACh] BYREF
+    Vec3 a5; // [esp+1A4h] [ebp-A4h] BYREF
+    int param1; // [esp+1B0h] [ebp-98h]
+    tTextGet v88; // [esp+1B4h] [ebp-94h] BYREF
+    int v89; // [esp+1BCh] [ebp-8Ch]
+    tTexProceduralStruct* v90; // [esp+1C0h] [ebp-88h]
+    Vec3 v91; // [esp+1C4h] [ebp-84h] BYREF
+    unsigned int v92; // [esp+1D0h] [ebp-78h]
+    tTextGet v93; // [esp+1D4h] [ebp-74h] BYREF
+    int v94; // [esp+1DCh] [ebp-6Ch]
+    int idx; // [esp+1E0h] [ebp-68h]
+    tTextGet v96; // [esp+1E4h] [ebp-64h] BYREF
+    tTextGet v97; // [esp+1ECh] [ebp-5Ch] BYREF
+    Vec3 v98; // [esp+1F4h] [ebp-54h] BYREF
+    tTexProceduralStruct* v99; // [esp+200h] [ebp-48h]
+    int v100; // [esp+204h] [ebp-44h]
+    tScriptStruct_GSTBoardPanel* v101; // [esp+208h] [ebp-40h]
+    int v102; // [esp+20Ch] [ebp-3Ch]
+    tTextGet v103; // [esp+210h] [ebp-38h] BYREF
+    tTextGet v104; // [esp+218h] [ebp-30h] BYREF
+    tTextGet v105; // [esp+220h] [ebp-28h] BYREF
+    Vec3 v106; // [esp+228h] [ebp-20h] BYREF
+    int v107; // [esp+234h] [ebp-14h]
+    int v108; // [esp+238h] [ebp-10h]
+    tTextGet v109; // [esp+23Ch] [ebp-Ch] BYREF
+    int v110; // [esp+244h] [ebp-4h]
+
+    if (AI_gpst_CurrentInstance)
+        v14 = (tScriptStruct_GSTBoardPanel*)AI_gpst_CurrentInstance->instanceVarDataCurrent;
+    else
+        v14 = 0;
+    v101 = v14;
+    v107 = 0;
+    idx = 0;
+    v75 = 0;
+    v99 = 0;
+    v108 = 0;
+    param1 = 0;
+    v76 = 0;
+    v100 = 0;
+    v110 = 0;
+    v89 = 0;
+    v92 = 0;
+    v77 = 0;
+    v83 = 0;
+    v102 = 0;
+    if (!AI_gpst_CurrentFunction->varsResolved)
+    {
+        AI_gpst_CurrentFunction->varsResolved = 1;
+        Global_Library_photo_take_INV_manager_gao = AI_ul_RealResolveOneRefObject(0x4900FDB4u);
+        AI2C_ResolveBuffer(
+            &Global_Library_photo_take_INV_manager_gao_o_Photo,
+            (void*)Global_Library_photo_take_INV_manager_gao,
+            44);
+        AI2C_ResolveBuffer(
+            &Global_Library_photo_take_INV_manager_gao_o_PhotoText,
+            (void*)Global_Library_photo_take_INV_manager_gao,
+            48);
+        AI2C_ResolveBuffer(
+            &Global_Library_photo_take_INV_manager_gao_i_OpeningMode,
+            (void*)Global_Library_photo_take_INV_manager_gao,
+            100);
+        AI2C_ResolveBuffer(
+            &Global_Library_photo_take_INV_manager_gao_i_LastAlbumPhoto,
+            (void*)Global_Library_photo_take_INV_manager_gao,
+            140);
+        Global_Library_photo_take_univVars = AI_ul_RealResolveOneRefObject(0x71003FF9u);
+        AI2C_ResolveBuffer(
+            &Global_Library_photo_take_univVars_i_INV_OpenIt,
+            (void*)Global_Library_photo_take_univVars,
+            7648);
+        AI2C_ResolveBuffer(&Global_Library_photo_take_univVars_ai_Photos, (void*)Global_Library_photo_take_univVars, 6128);
+        AI2C_ResolveBuffer(
+            &Global_Library_photo_take_univVars_Flag_speciaux_sauve,
+            (void*)Global_Library_photo_take_univVars,
+            4488);
+        Global_Library_photo_take_INV_MatFade_gao = AI_ul_RealResolveOneRefObject(0x5E006934u);
+        AI2C_ResolveBuffer(
+            &Global_Library_photo_take_INV_manager_gao_i_LastMissionPhoto,
+            (void*)Global_Library_photo_take_INV_manager_gao,
+            144);
+    }
+    param1 = AI2C_PopInt();
+    v83 = *(tAI**)Global_Library_photo_take_INV_manager_gao_o_Photo; // TODO FIXME: KITALÁLNI MI EZ
+    if (param1 < 0x1000000)
+    {
+        v110 = 1;
+        v102 = 19;
+        idx = 20;
+        v92 = *(uint32_t*)Global_Library_photo_take_INV_manager_gao_o_PhotoText;
+        v71 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v71 = AI_MainActor[v92 - 1];
+            AI_EvalFunc_OBJReinit_C(v71, 0);
+        }
+        else
+        {
+            AI_EvalFunc_OBJReinit_C(0, 0);
+        }
+        v70 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v70 = AI_MainActor[v92 - 1];
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(v70, 0);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 0);
+        }
+        v79.x = 0.050000001f;
+        v79.y = 0.0;
+        v79.z = 0.0;
+        v69 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v69 = AI_MainActor[v92 - 1];
+            AI_EvalFunc_OBJ_TextPivotSet_C(v69, v102, &v79);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_TextPivotSet_C(0, v102, &v79);
+        }
+        v68 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v68 = AI_MainActor[v92 - 1];
+            AI_EvalFunc_OBJ_TextFlagSet_C(v68, v102, 16);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_TextFlagSet_C(0, v102, 16);
+        }
+        v98.x = 0.050000001f;
+        v98.y = 0.0;
+        v98.z = 0.0;
+        v67 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v67 = AI_MainActor[v92 - 1];
+            AI_EvalFunc_OBJ_TextPivotSet_C(v67, idx, &v98);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_TextPivotSet_C(0, idx, &v98);
+        }
+        v66 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v66 = AI_MainActor[v92 - 1];
+            AI_EvalFunc_OBJ_TextFlagSet_C(v66, idx, 16);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_TextFlagSet_C(0, idx, 16);
+        }
+        v65 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v65 = AI_MainActor[v92 - 1];
+            v0 = AI_EvalFunc_GFXAddSorted_C(v65, 17, 50);
+        }
+        else
+        {
+            v0 = AI_EvalFunc_GFXAddSorted_C(0, 17, 50);
+        }
+        v94 = v0;
+        AI_EvalFunc_GFXFlagSet_C_CURRENT(50, 0, 1);
+        AI_EvalFunc_GFXFlagSet_C_CURRENT(50, 2, 1);
+        AI_EvalFunc_TEXTGet_C(0x4901874E, 0, &Src);
+        memcpy(&v104, &Src, sizeof(v104));
+    }
+    else
+    {
+        param1 -= 0x1000000;
+        v110 = 0;
+    }
+    v100 = 0;
+    v107 = 0;
+    v108 = 0;
+    v77 = 0;
+    if (param1 < 0)
+    {
+        if (param1 < -1000)
+        {
+            if (param1 < -2000)
+            {
+                if (param1 < -3000)
+                {
+                    if (param1 < -4000)
+                    {
+                        if (param1 < -5000)
+                        {
+                            if (param1 < -6000)
+                            {
+                                if (param1 >= -7000)
+                                {
+                                    v110 = 0;
+                                    *(uint32_t*)Global_Library_photo_take_INV_manager_gao_i_OpeningMode = 20;
+                                    *(uint32_t*)Global_Library_photo_take_INV_manager_gao_i_LastAlbumPhoto = param1 + 7000;
+                                    *(uint32_t*)Global_Library_photo_take_univVars_i_INV_OpenIt = 1;
+                                    v100 = 1;
+                                    param1 = 90;
+                                }
+                            }
+                            else
+                            {
+                                param1 += 6000;
+                                v110 = 0;
+                                *(uint32_t*)Global_Library_photo_take_INV_manager_gao_i_OpeningMode = 21;
+                                *(uint32_t*)Global_Library_photo_take_INV_manager_gao_i_LastAlbumPhoto = param1 + 7000;
+                                v100 = 1;
+                                param1 = 90;
+                                *(uint32_t*)Global_Library_photo_take_univVars_i_INV_OpenIt = 1;
+                                v50 = (tGameObjectMain*)v83;
+                                if (v83)
+                                {
+                                    if ((unsigned int)v83 <= 2)
+                                        v50 = AI_MainActor[(uint32_t)v83 - 1];
+                                    v8 = AI_EvalFunc_MATGetPro_C(v50, 0, 0);
+                                }
+                                else
+                                {
+                                    v8 = AI_EvalFunc_MATGetPro_C(0, 0, 0);
+                                }
+                                v90 = v8;
+                                a3 = AI_EvalFunc_VIEWAnalyser_C(AI_gpst_CurrentGameObject, -2);
+                                AI_EvalFunc_MATProSeti_C(v90, 2, a3);
+                            }
+                        }
+                        else
+                        {
+                            memcpy(&v80, &v104, sizeof(v80));
+                            v80.idx += 10;
+                            v52 = (tGameObjectMain*)v92;
+                            if (v92)
+                            {
+                                if (v92 <= 2)
+                                    v52 = AI_MainActor[v92 - 1];
+                                v51 = v52;
+                            }
+                            else
+                            {
+                                v51 = 0;
+                            }
+                            v7 = AI_EvalFunc_TEXTToString_C(&v80);
+                            STR_SetString(v51, v102, v7);
+                            param1 = 90;
+                        }
+                    }
+                    else
+                    {
+                        v107 = 2;
+                        v75 = param1 + 4000;
+                        if (v110)
+                        {
+                            memcpy(&v105, &v104, sizeof(v105));
+                            v105.idx += 11;
+                            v54 = (tGameObjectMain*)v92;
+                            if (v92)
+                            {
+                                if (v92 <= 2)
+                                    v54 = AI_MainActor[v92 - 1];
+                                v53 = v54;
+                            }
+                            else
+                            {
+                                v53 = 0;
+                            }
+                            v6 = AI_EvalFunc_TEXTToString_C(&v105);
+                            STR_SetString(v53, v102, v6);
+                        }
+                        v100 = 1;
+                        param1 = 90;
+                    }
+                }
+                else
+                {
+                    v100 = 1;
+                    v107 = 2;
+                    v76 = param1 + 3000;
+                    if (param1 == -2992)
+                    {
+                        memcpy(&v103, &v104, sizeof(v103));
+                        v103.idx += 19;
+                        v60 = (tGameObjectMain*)v92;
+                        if (v92)
+                        {
+                            if (v92 <= 2)
+                                v60 = AI_MainActor[v92 - 1];
+                            v59 = v60;
+                        }
+                        else
+                        {
+                            v59 = 0;
+                        }
+                        v3 = AI_EvalFunc_TEXTToString_C(&v103);
+                        STR_SetString(v59, v102, v3);
+                    }
+                    else if (v76 == 2)
+                    {
+                        memcpy(&v78, &v104, sizeof(v78));
+                        v78.idx += 12;
+                        v58 = (tGameObjectMain*)v92;
+                        if (v92)
+                        {
+                            if (v92 <= 2)
+                                v58 = AI_MainActor[v92 - 1];
+                            v57 = v58;
+                        }
+                        else
+                        {
+                            v57 = 0;
+                        }
+                        v4 = AI_EvalFunc_TEXTToString_C(&v78);
+                        STR_SetString(v57, v102, v4);
+                    }
+                    else
+                    {
+                        memcpy(&v93, &v104, sizeof(v93));
+                        v93.idx += 13;
+                        v56 = (tGameObjectMain*)v92;
+                        if (v92)
+                        {
+                            if (v92 <= 2)
+                                v56 = AI_MainActor[v92 - 1];
+                            v55 = v56;
+                        }
+                        else
+                        {
+                            v55 = 0;
+                        }
+                        v5 = AI_EvalFunc_TEXTToString_C(&v93);
+                        STR_SetString(v55, v102, v5);
+                    }
+                    v75 = param1 + 3000;
+                    v100 = 1;
+                    param1 = 90;
+                }
+            }
+            else
+            {
+                v100 = 1;
+                v107 = 1;
+                v108 = 1;
+                if (v110)
+                {
+                    memcpy(&v85, &v104, sizeof(v85));
+                    v85.idx += 14;
+                    v62 = (tGameObjectMain*)v92;
+                    if (v92)
+                    {
+                        if (v92 <= 2)
+                            v62 = AI_MainActor[v92 - 1];
+                        v61 = v62;
+                    }
+                    else
+                    {
+                        v61 = 0;
+                    }
+                    v2 = AI_EvalFunc_TEXTToString_C(&v85);
+                    STR_SetString(v61, v102, v2);
+                }
+                param1 += 2000;
+            }
+        }
+        else
+        {
+            v100 = 1;
+            v77 = 1;
+            if (v110)
+            {
+                memcpy(&v72, &v104, sizeof(v72));
+                v72.idx += 17;
+                v64 = (tGameObjectMain*)v92;
+                if (v92)
+                {
+                    if (v92 <= 2)
+                        v64 = AI_MainActor[v92 - 1];
+                    v63 = v64;
+                }
+                else
+                {
+                    v63 = 0;
+                }
+                v1 = AI_EvalFunc_TEXTToString_C(&v72);
+                STR_SetString(v63, v102, v1);
+            }
+            param1 += 1000;
+        }
+    }
+    else
+    {
+        v100 = 1;
+        v107 = 1;
+        v108 = 1;
+        param1 /= 10000;
+    }
+    if (param1 != 90)
+    {
+        v89 = param1;
+        if (param1 >= 70)
+            v75 = param1 < 85;
+        else
+            v75 = 4;
+        if (v75 == 4)
+        {
+            v76 = (unsigned __int8)*(uint32_t*)(Global_Library_photo_take_univVars_ai_Photos + 4 * param1 + 4);
+            if (v76 + 800 > 0)
+                AI_EvalFunc_ARRBitSet_C((int*)(Global_Library_photo_take_univVars_Flag_speciaux_sauve + 4), v76 + 800);
+        }
+        else if (v75 == 1)
+        {
+            v76 = *(uint32_t*)(Global_Library_photo_take_univVars_ai_Photos + 4 * v89 + 4);
+            if (v76 + 1550 > 0)
+                AI_EvalFunc_ARRBitSet_C((int*)(Global_Library_photo_take_univVars_Flag_speciaux_sauve + 4), v76 + 1550);
+        }
+    }
+    if (v110)
+    {
+        if (v107)
+        {
+            AI_EvalFunc_TEXTGet_C(0x49018757, 0, &v109);
+            memcpy(&v96, &v109, sizeof(v96));
+            if (v75 == 4)
+            {
+                if (param1 == 90)
+                {
+                    memcpy(&v88, &v104, sizeof(v88));
+                    v88.idx += 12;
+                    v49 = (tGameObjectMain*)v92;
+                    if (v92)
+                    {
+                        if (v92 <= 2)
+                            v49 = AI_MainActor[v92 - 1];
+                        v48 = v49;
+                    }
+                    else
+                    {
+                        v48 = 0;
+                    }
+                    v9 = AI_EvalFunc_TEXTToString_C(&v88);
+                    STR_SetString(v48, v102, v9);
+                }
+                else
+                {
+                    memcpy(&v81, &v104, sizeof(v81));
+                    v81.idx += 15;
+                    v47 = (tGameObjectMain*)v92;
+                    if (v92)
+                    {
+                        if (v92 <= 2)
+                            v47 = AI_MainActor[v92 - 1];
+                        v46 = v47;
+                    }
+                    else
+                    {
+                        v46 = 0;
+                    }
+                    v10 = AI_EvalFunc_TEXTToString_C(&v81);
+                    STR_SetString(v46, v102, v10);
+                }
+            }
+        }
+    }
+    if (v100)
+    {
+        AI_EvalFunc_VIEWSnapshot_C(param1);
+        v76 = AI_EvalFunc_GFXAddSorted_C(AI_gpst_CurrentGameObject, 15, 20);
+        AI_EvalFunc_GFXFlagSet_C_CURRENT(v76, 0, 1);
+        AI_EvalFunc_GFXFlagSet_C_CURRENT(v76, 2, 1);
+        v45 = (tGameObjectMain*)Global_Library_photo_take_INV_MatFade_gao;
+        if (Global_Library_photo_take_INV_MatFade_gao)
+        {
+            if ((unsigned int)Global_Library_photo_take_INV_MatFade_gao <= 2)
+                v45 = AI_MainActor[Global_Library_photo_take_INV_MatFade_gao - 1];
+            AI_EvalFunc_GFXMaterialSet_C_CURRENT(v76, v45, 9);
+        }
+        else
+        {
+            AI_EvalFunc_GFXMaterialSet_C_CURRENT(v76, 0, 9);
+        }
+        GFXSetCurGlobal(v76);
+        AI_EvalFunc_GFXSeti_C_CURGLOB(15100, -16777216);
+        AI_EvalFunc_GFXSetf_C_CURGLOB(15000, 0.050000001f);
+        AI_EvalFunc_GFXSetf_C_CURGLOB(15001, 0.15000001f);
+        if (v110)
+            AI_EvalFunc_GFXSetf_C_CURRENT(v76, 15002, 0.050000001f);
+        else
+            AI_EvalFunc_GFXSetf_C_CURRENT(v76, 15002, 0.5);
+        AI_EvalFunc_GFXSetf_C_CURRENT(v76, 15003, 0.15000001f);
+        v44 = (tGameObjectMain*)v83;
+        if (v83)
+        {
+            if ((unsigned int)v83 <= 2)
+                v44 = AI_MainActor[(uint32_t)v83 - 1];
+            v11 = AI_EvalFunc_MATGetPro_C(v44, 0, 0);
+        }
+        else
+        {
+            v11 = AI_EvalFunc_MATGetPro_C(0, 0, 0);
+        }
+        v99 = v11;
+        v84 = -1; //ret_negaitive_1();
+        v43 = (tGameObjectMain*)v83;
+        if (v83)
+        {
+            if ((unsigned int)v83 <= 2)
+                v43 = AI_MainActor[(uint32_t)v83 - 1];
+            AI_EvalFunc_MATSetConstant_C(v43, v84, 0);
+        }
+        else
+        {
+            AI_EvalFunc_MATSetConstant_C(0, v84, 0);
+        }
+        AI_EvalFunc_MATProSeti_C(v99, 0, param1);
+        AI_EvalFunc_MATProSeti_C(v99, 1, 0);
+        if (v77)
+            *(uint32_t*)Global_Library_photo_take_INV_manager_gao_i_LastAlbumPhoto = v89;
+        else
+            *(uint32_t*)Global_Library_photo_take_INV_manager_gao_i_LastMissionPhoto = v89;
+    }
+    if (v110)
+    {
+        v42 = (tGameObjectMain*)v83;
+        if (v83)
+        {
+            if ((unsigned int)v83 <= 2)
+                v42 = AI_MainActor[(uint32_t)v83 - 1];
+            AI_EvalFunc_OBJ_FlagInactiveSet_C(v42, 0);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_FlagInactiveSet_C(0, 0);
+        }
+        if (v100)
+        {
+            v41 = (tGameObjectMain*)v83;
+            if (v83)
+            {
+                if ((unsigned int)v83 <= 2)
+                    v41 = AI_MainActor[(uint32_t)v83 - 1];
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(v41, 0);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 0);
+            }
+        }
+        else
+        {
+            v40 = (tGameObjectMain*)v83;
+            if (v83)
+            {
+                if ((unsigned int)v83 <= 2)
+                    v40 = AI_MainActor[(uint32_t)v83 - 1];
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(v40, 1);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_FlagInvisibleSet_C(0, 1);
+            }
+        }
+        if (v83 == WOR_gst_Universe.univAIInstance)
+        {
+            v37 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v39 = (tGameObjectMain*)v83;
+            if (v83)
+            {
+                if ((unsigned int)v83 <= 2)
+                    v39 = AI_MainActor[(uint32_t)v83 - 1];
+                v38 = v39;
+            }
+            else
+            {
+                v38 = 0;
+            }
+            v37 = v38->extended->AIInstance;
+        }
+        *(uint32_t*)v37->instanceVarDataCurrent = 1;
+        if (v83 == WOR_gst_Universe.univAIInstance)
+        {
+            v34 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v36 = (tGameObjectMain*)v83;
+            if (v83)
+            {
+                if ((unsigned int)v83 <= 2)
+                    v36 = AI_MainActor[(uint32_t)v83 - 1];
+                v35 = v36;
+            }
+            else
+            {
+                v35 = 0;
+            }
+            v34 = v35->extended->AIInstance;
+        }
+        *((uint32_t*)v34->instanceVarDataCurrent + 3) = v92; // TODO FIXME
+        if (v83 == WOR_gst_Universe.univAIInstance)
+        {
+            v31 = WOR_gst_Universe.univAIInstance;
+        }
+        else
+        {
+            v33 = (tGameObjectMain*)v83;
+            if (v83)
+            {
+                if ((unsigned int)v83 <= 2)
+                    v33 = AI_MainActor[(uint32_t)v83 - 1];
+                v32 = v33;
+            }
+            else
+            {
+                v32 = 0;
+            }
+            v31 = v32->extended->AIInstance;
+        }
+        *((uint32_t*)v31->instanceVarDataCurrent + 4) = v102;
+        if (v77)
+        {
+            if (v83 == WOR_gst_Universe.univAIInstance)
+            {
+                v28 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v30 = (tGameObjectMain*)v83;
+                if (v83)
+                {
+                    if ((unsigned int)v83 <= 2)
+                        v30 = AI_MainActor[(uint32_t)v83 - 1];
+                    v29 = v30;
+                }
+                else
+                {
+                    v29 = 0;
+                }
+                v28 = v29->extended->AIInstance;
+            }
+            *((uint32_t*)v28->instanceVarDataCurrent + 6) = v89;
+            if (v83 == WOR_gst_Universe.univAIInstance)
+            {
+                v25 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v27 = (tGameObjectMain*)v83;
+                if (v83)
+                {
+                    if ((unsigned int)v83 <= 2)
+                        v27 = AI_MainActor[(uint32_t)v83 - 1];
+                    v26 = v27;
+                }
+                else
+                {
+                    v26 = 0;
+                }
+                v25 = v26->extended->AIInstance;
+            }
+            *((uint32_t*)v25->instanceVarDataCurrent + 5) = idx;
+            memcpy(&v97, &v104, sizeof(v97));
+            v97.idx += 18;
+            v24 = (tGameObjectMain*)v92;
+            if (v92)
+            {
+                if (v92 <= 2)
+                    v24 = AI_MainActor[v92 - 1];
+                v23 = v24;
+            }
+            else
+            {
+                v23 = 0;
+            }
+            v12 = AI_EvalFunc_TEXTToString_C(&v97);
+            STR_SetString(v23, idx, v12);
+            a5.x = -1.0;
+            a5.y = 0.0;
+            a5.z = 0.0;
+            v22 = (tGameObjectMain*)v92;
+            if (v92)
+            {
+                if (v92 <= 2)
+                    v22 = AI_MainActor[v92 - 1];
+                STR_SetSize(v22, idx, 0, -1, &a5);
+            }
+            else
+            {
+                STR_SetSize(0, idx, 0, -1, &a5);
+            }
+            v21 = (tGameObjectMain*)v92;
+            if (v92)
+            {
+                if (v92 <= 2)
+                    v21 = AI_MainActor[v92 - 1];
+                AI_EvalFunc_OBJ_TextFlagSet_C(v21, idx, 1040);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_TextFlagSet_C(0, idx, 1040);
+            }
+            v106.x = 0.0;
+            v106.y = -1.0;
+            v106.z = 0.0;
+            v20 = (tGameObjectMain*)v92;
+            if (v92)
+            {
+                if (v92 <= 2)
+                    v20 = AI_MainActor[v92 - 1];
+                AI_EvalFunc_OBJ_TextPivotSet_C(v20, idx, &v106);
+            }
+            else
+            {
+                AI_EvalFunc_OBJ_TextPivotSet_C(0, idx, &v106);
+            }
+        }
+        else
+        {
+            if (v83 == WOR_gst_Universe.univAIInstance)
+            {
+                v17 = WOR_gst_Universe.univAIInstance;
+            }
+            else
+            {
+                v19 = (tGameObjectMain*)v83;
+                if (v83)
+                {
+                    if ((unsigned int)v83 <= 2)
+                        v19 = AI_MainActor[(uint32_t)v83 - 1];
+                    v18 = v19;
+                }
+                else
+                {
+                    v18 = 0;
+                }
+                v17 = v18->extended->AIInstance;
+            }
+            *((uint32_t*)v17->instanceVarDataCurrent + 6) = -1;
+        }
+        v91.x = 0.0;
+        v91.y = -1.0;
+        v91.z = 0.0;
+        v16 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v16 = AI_MainActor[v92 - 1];
+            AI_EvalFunc_OBJ_TextPivotSet_C(v16, v102, &v91);
+        }
+        else
+        {
+            AI_EvalFunc_OBJ_TextPivotSet_C(0, v102, &v91);
+        }
+        v82.x = -1.0;
+        v82.y = 0.0;
+        v82.z = 0.0;
+        v15 = (tGameObjectMain*)v92;
+        if (v92)
+        {
+            if (v92 <= 2)
+                v15 = AI_MainActor[v92 - 1];
+            STR_SetSize(v15, v102, 0, -1, &v82);
+        }
+        else
+        {
+            STR_SetSize(0, v102, 0, -1, &v82);
+        }
+    }
+    return 1000;
+}

@@ -1,0 +1,56 @@
+#pragma once
+#include "../ai.h"
+
+void AI_EvalFunc_MATEnableMltxtLvl_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId, int a4);
+void AI_EvalFunc_MATSetConstant_C(struct sGameObjectMain* a1, int a2, int a3);
+void AI_EvalFunc_MATProSeti_C(struct sTexProceduralStruct* a1, int a2, int param1);
+struct sTexProceduralStruct* AI_EvalFunc_MATGetPro_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId);
+int AI_EvalFunc_COLORBlend_C(int a1, int a2, float a3);
+BOOL AI_EvalFunc_MATProGeti_C(struct sTexProceduralStruct* a1, int a2);
+void AI_EvalFunc_SetFlag_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId, int a4, __int16 a5);
+void AI_EvalFunc_SetUV_C(struct sGameObjectMain* a1, int a2, int a3, int a4, float a5);
+unsigned int AI_EvalFunc_COLORBlack_C();
+int AI_EvalFunc_MATGetConstant_C(struct sGameObjectMain* a1, unsigned int a2);
+int AI_EvalFunc_GetLocalAlpha_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId);
+void AI_EvalFunc_SetLocalAlpha_C(struct sGameObjectMain* a1, unsigned int a2, int a3, int a4);
+int AI_EvalFunc_COLORSetRGBA_C(unsigned __int8 a1, unsigned __int8 a2, unsigned __int8 a3, unsigned __int8 a4);
+void AI_EvalFunc_MATEnableMltxtLvlMT_C(struct sGameObjectMain* a1, unsigned int a2, int a3, int a4, int a5);
+int AI_EvalFunc_COLORGetRed_C(unsigned __int8 a1);
+int AI_EvalFunc_COLORGetGreen_C(__int16 a1);
+int AI_EvalFunc_COLORGetBlue_C(int a1);
+unsigned int AI_EvalFunc_COLORGetAlpha_C(int a1);
+void AI_EvalFunc_SetALPHATRESH_C(struct sGameObjectMain* a1, unsigned int a2, int a3, int a4);
+unsigned int AI_EvalFunc_GetALPHATRESH_C(struct sGameObjectMain* a1, unsigned int a2, int a3);
+int AI_EvalFunc_MATGetDiffuse_C(struct sGameObjectMain* a1, unsigned int a2);
+void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* a1, int* arg4, unsigned int a2);
+int AI_EvalFunc_GetFlag_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemID);
+
+tAINode* AI_EvalFunc_MATSetConstant(tAINode* a1);
+tAINode* AI_EvalFunc_MATGetConstant(tAINode* a1);
+tAINode* AI_EvalFunc_MATSetDiffuse(tAINode* a1);
+tAINode* AI_EvalFunc_MATGetDiffuse(tAINode* a1);
+tAINode* AI_EvalFunc_MATSetAmbient(tAINode* a1);
+tAINode* AI_EvalFunc_MATGetAmbient(tAINode* a1);
+tAINode* AI_EvalFunc_MATEnableMltxtLvl(tAINode* a1);
+tAINode* AI_EvalFunc_MATEnableMltxtLvlMT(tAINode* a1);
+tAINode* AI_EvalFunc_GetLocalAlpha(tAINode* a1);
+tAINode* AI_EvalFunc_SetLocalAlpha(tAINode* a1);
+tAINode* AI_EvalFunc_GetALPHATRESH(tAINode* a1);
+tAINode* AI_EvalFunc_SetALPHATRESH(tAINode* a1);
+tAINode* AI_EvalFunc_SetFlag(tAINode* a1);
+tAINode* AI_EvalFunc_GetFlag(tAINode* a1);
+tAINode* AI_EvalFunc_MATGetPro(tAINode* a1);
+tAINode* AI_EvalFunc_MATProSeti(tAINode* a1);
+tAINode* AI_EvalFunc_GetUV(tAINode* a1);
+tAINode* AI_EvalFunc_SetUV(tAINode* a1);
+tAINode* AI_EvalFunc_MATProGeti(tAINode* a1);
+tAINode* AI_EvalFunc_MATAntGet(tAINode* a1);
+tAINode* AI_EvalFunc_MATAntSeti(tAINode* a1);
+tAINode* AI_EvalFunc_COLORSetRGBA(tAINode* a1);
+tAINode* AI_EvalFunc_COLORGetRed(tAINode* a1);
+tAINode* AI_EvalFunc_COLORGetGreen(tAINode* a1);
+tAINode* AI_EvalFunc_COLORGetBlue(tAINode* a1);
+tAINode* AI_EvalFunc_COLORGetAlpha(tAINode* a1);
+tAINode* AI_EvalFunc_COLORBlend(tAINode* a1);
+tAINode* AI_EvalFunc_COLORWhite(tAINode* a1);
+tAINode* AI_EvalFunc_COLORBlack(tAINode* a1);

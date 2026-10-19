@@ -1,0 +1,64 @@
+#pragma once
+#include "../ai.h"
+
+int AI_EvalFunc_IoConsLangSet_C();
+int AI_EvalFunc_IoGetProtect_C(int a1);
+int AI_EvalFunc_IoGameLangGet_C();
+int AI_EvalFunc_IoConsLangGet_C();
+int AI_EvalFunc_IoGameLangSet_C(int a1);
+BOOL AI_EvalFunc_IoButtonJustPressed_C(int a1);
+BOOL AI_EvalFunc_IoButtonJustReleased_C(int a1);
+void AI_EvalFunc_IoJoyGetMove_C(Vec3* a1);
+int AI_EvalFunc_IoJoyFreeze_C(int a1);
+void AI_EvalFunc_IoJoyGetMove1_C(Vec3* a1);
+void AI_EvalFunc_SAVESaveSlotExt_C(int a1, int a2, int a3, int a4);
+void AI_EvalFunc_SAVEUnvalidate_C();
+void AI_EvalFunc_SAVELoadSlot_C(int a1);
+void AI_EvalFunc_SAVEValidate_C();
+int AI_EvalFunc_SAVEDataGet_C(int a1, int a2);
+void AI_EvalFunc_SAVEValidateAl_C();
+BOOL AI_EvalFunc_IoKeyPressed_C(char a1);
+BOOL AI_EvalFunc_IoKeyJustPressed_C(char a1);
+
+tAINode* AI_EvalFunc_SAVEValidate(tAINode* a1);
+tAINode* AI_EvalFunc_SAVESaveSlot(tAINode* a1);
+tAINode* AI_EvalFunc_SAVESaveSlotExt(tAINode* a1);
+tAINode* AI_EvalFunc_SAVELoadSlot(tAINode* a1);
+tAINode* AI_EvalFunc_SAVEUnvalidate(tAINode* a1);
+tAINode* AI_EvalFunc_SAVEDataGet(tAINode* a1);
+tAINode* AI_EvalFunc_SAVEPhotoDel(tAINode* a1);
+tAINode* AI_EvalFunc_SAVENewGame(tAINode* a1);
+tAINode* AI_EvalFunc_SAVEPhotoDecal(tAINode* a1);
+tAINode* AI_EvalFunc_OutputProgress(tAINode* a1);
+tAINode* AI_EvalFunc_SAVEValidateAl(tAINode* a1);
+tAINode* AI_EvalFunc_SAVEGetCardStatus(tAINode* a1);
+tAINode* AI_EvalFunc_SAVESetCardStatus(tAINode* a1);
+tAINode* AI_EvalFunc_IoKeyPressed(tAINode* a1);
+tAINode* AI_EvalFunc_IoKeyJustPressed(tAINode* a1);
+tAINode* AI_EvalFunc_IoKeyReleased(tAINode* a1);
+tAINode* AI_EvalFunc_IoKeyJustReleased(tAINode* a1);
+tAINode* AI_EvalFunc_IoButtonPressed(tAINode* a1);
+tAINode* AI_EvalFunc_IoJoyGetMove(tAINode* a1);
+tAINode* AI_EvalFunc_IoButtonJustPressed(tAINode* a1);
+tAINode* AI_EvalFunc_IoButtonJustReleased(tAINode* a1);
+tAINode* AI_EvalFunc_IoJoyGetMove1(tAINode* a1);
+tAINode* AI_EvalFunc_IoJoyFreeze(tAINode* a1);
+tAINode* AI_EvalFunc_IoPifSet(tAINode* a1);
+tAINode* AI_EvalFunc_IoPafSet(tAINode* a1);
+tAINode* AI_EvalFunc_IoPifPafEnable(tAINode* a1);
+tAINode* AI_EvalFunc_IoJoyDir(tAINode* a1);
+tAINode* AI_EvalFunc_IoJoySimulate(tAINode* a1);
+tAINode* AI_EvalFunc_IoDiscErrorGet(tAINode* a1);
+tAINode* AI_EvalFunc_IoPadSet(tAINode* a1);
+tAINode* AI_EvalFunc_IoPadGet(tAINode* a1);
+tAINode* AI_EvalFunc_IoDemoGeti(tAINode* a1);
+tAINode* AI_EvalFunc_IoDemoSeti(tAINode* a1);
+tAINode* AI_EvalFunc_IoGameLangGet(tAINode* a1);
+tAINode* AI_EvalFunc_IoGameLangSet(tAINode* a1);
+tAINode* AI_EvalFunc_IoConsLangGet(tAINode* a1);
+tAINode* AI_EvalFunc_IoConsLangSet(tAINode* a1);
+tAINode* AI_EvalFunc_IoSetControlMode(tAINode* a1);
+tAINode* AI_EvalFunc_IoIsMouseBeingUsed(tAINode* a1);
+tAINode* AI_EvalFunc_IoGetProtect(tAINode* a1);
+tAINode* AI_EvalFunc_IoSetControlSubmode(tAINode* a1);
+
