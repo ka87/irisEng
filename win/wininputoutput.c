@@ -181,6 +181,30 @@ int pcINO_case64StateMachineHandler(int pressed, int* state, float* deadline, fl
     return *state;
 }
 
+/* Retail 0x004231C0 -- ecx = accumulator, edx = decay deadline,
+   stack = limit. Returns the accumulator clamped to +-limit, and once
+   the clock passes the deadline bleeds the accumulator 30% toward that
+   clamped value and re-arms for another 0.05s. Called but never defined
+   before this. */
+float pcINO_case4MouseAmountCalc(float* accum, float* deadline, float limit)
+{
+    float result;
+
+    if (-limit > *accum)            /* 0x004231C6 */
+        result = -limit;
+    else if (*accum > limit)        /* 0x004231D3 */
+        result = limit;
+    else
+        result = *accum;
+
+    if (TIM_gf_MainClock > (double)*deadline)       /* 0x004231EC */
+    {
+        *accum = (float)((*accum - result) * 0.69999999);   /* 0x00B5014C */
+        *deadline = (float)(TIM_gf_MainClock + 0.050000001); /* 0x00B50014 */
+    }
+    return result;
+}
+
 void pcINO_SetMouseSensitivity(float t)
 {
     if (t > 0.5f)
@@ -433,9 +457,9 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, byte* keyboard)
         pcINO_case4_mouseMoveX = (float)((double)mouse[0] * 0.03 + pcINO_case4_mouseMoveX);
         pcINO_case4_mouseMoveY = (float)((double)mouse[1] * 0.03 + pcINO_case4_mouseMoveY);
         pcINO_joystickPosition[1].x = pcINO_case4MouseAmountCalc(
-            &pcINO_case4_probablyUnunsedUnk1, &pcINO_case4_mouseMoveX, 3.0f);
+            &pcINO_case4_mouseMoveX, &pcINO_case4_mouseMoveXDeadline, 3.0f);
         pcINO_joystickPosition[1].y = pcINO_case4MouseAmountCalc(
-            (float*)&MEM_gst_MemoryInfo.allocatedMemoryEnd, &pcINO_case4_mouseMoveY, 3.0f);
+            &pcINO_case4_mouseMoveY, &pcINO_case4_mouseMoveYDeadline, 3.0f);
         if (keyboard[256])
             pcINO_joystickPosition[0].y = 1.0f;
         else if (keyboard[257])

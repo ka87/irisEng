@@ -36,7 +36,13 @@ float pcINO_case2DividedTime;
 int pcINO_case2_mouseScroll;
 float pcINO_case4_mouseMoveX;
 float pcINO_case4_mouseMoveY;
-float pcINO_case4_probablyUnunsedUnk1;
+/* Retail 0x00BA18C0 and 0x00BA1690: the two decay deadlines belonging to
+   pcINO_case4MouseAmountCalc, one per axis. Each has exactly one
+   reference in the retail image. The Y one had been bound to
+   MEM_gst_MemoryInfo.allocatedMemoryEnd, so submode 7 was writing a
+   float timestamp over the allocator's bound pointer. */
+float pcINO_case4_mouseMoveXDeadline;
+float pcINO_case4_mouseMoveYDeadline;
 
 char pcINO_keyboardDataBackup[264];
 char pcINO_mouseTwoBytesDataBackup[2];
@@ -66,6 +72,7 @@ void pcINO_JoystickPifPafEnable(BOOL b);
 void pcINO_JoystickPafIntensity(int i1);
 void pcINO_Joystick_Update(struct sInoPad* padData);
 void pcINO_SetMouseSensitivity(float t);
+float pcINO_case4MouseAmountCalc(float* accum, float* deadline, float limit);
 int  pcINO_case64StateMachineHandler(int pressed, int* state, float* deadline, float delay);
 void pcINO_dinput_mouse_and_keyb_acquire();
 void pcINO_dinput_mouse_and_keyb_unacquire();
