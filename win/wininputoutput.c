@@ -107,83 +107,6 @@ uint8_t pcINO_InputHandlerSubModeCase10[24] = { 0, 0x0F, 0xFE, 0x10, 0xFE, 0xFE,
                                                 0xFE, 0xFE, 0xFE, 0xFE, 0x0F, 0x0E, 0x0C, 0x0A,
                                                 0x0D, 0x0B, 0xFE, 0xFE, 0xFE, 0xFE, 0, 0 };
 
-int pcINO_case1and2UnkFunc(int a1, int* a2, float* a3, int a4, float a5)
-{
-    int result;
-    BOOL v6;
-
-    switch (*a2)
-    {
-    case 0:
-        if (!a1)
-            goto LABEL_13;
-        goto LABEL_17;
-    case 16:
-        v6 = a1 == 0;
-        goto LABEL_20;
-    case 17:
-        if (!a1)
-        {
-            *a2 = 18;
-            return *a2;
-        }
-        if (TIM_gf_MainClock <= (double)*a3)
-            goto LABEL_22;
-    LABEL_7:
-        *a2 = 16;
-        result = *a2;
-        break;
-    case 18:
-        if (a1)
-            goto LABEL_7;
-    LABEL_13:
-        if (!a4)
-            goto LABEL_22;
-        *a2 = 33;
-        *a3 = TIM_gf_MainClock + a5;
-        return *a2;
-    case 32:
-        v6 = a4 == 0;
-    LABEL_20:
-        if (v6)
-            *a2 = 0;
-        goto LABEL_22;
-    case 33:
-        if (a4)
-        {
-            if (TIM_gf_MainClock <= (double)*a3)
-            {
-            LABEL_22:
-                result = *a2;
-            }
-            else
-            {
-            LABEL_11:
-                *a2 = 32;
-                result = *a2;
-            }
-        }
-        else
-        {
-            *a2 = 34;
-            result = *a2;
-        }
-        break;
-    case 34:
-        if (a4)
-            goto LABEL_11;
-        if (!a1)
-            goto LABEL_22;
-    LABEL_17:
-        *a2 = 17;
-        *a3 = TIM_gf_MainClock + a5;
-        return *a2;
-    default:
-        goto LABEL_22;
-    }
-    return result;
-}
-
 void pcINO_JoystickPositionAlignSetFromKeyboard(int zero, byte* keybData)
 {
     int v2;
@@ -205,11 +128,95 @@ void pcINO_JoystickPositionAlignSetFromKeyboard(int zero, byte* keybData)
         pcINO_joystickPosition[v3].y = (float)(pcINO_joystickPosition[v3].y - 1.0);
 }
 
-void pcINO_InputHandlerCase1(struct sInoPad* a1, int* mouseData, byte* keybData)
+/* Control mode 1 -- retail 0x00423220..0x00423563, keymaps 0x00B65768.
+   Transcribed from the retail binary. This one diverged a lot from the
+   demo: retail inlines the shared state-machine helper and reduces it to
+   one input, drives padData[4] from the keyboard rather than from a flag
+   bit, and splits the mouse tail on the control submode. */
+/* Retail 0x00422A20. Maps a 0..1 slider onto 0.2..2.2:
+   t <= 0.5 -> t + 0.2 ; t > 0.5 -> (2t - 1) * 1.5 + 0.7.
+   (0x00422A30 test ah,0x41 + jne, so the jump is taken when NOT >.) */
+/* The shared control state machine. Retail inlines this identically in
+   modes 1 (0x004233CC), 32 (0x00423D74) and 64 (0x00423980) -- same
+   7-entry jump table over states 0..0x22, same bodies -- so it is one
+   source function. It drives the single global at 0x00B8A08C.
+
+   The demo's pcINO_case1and2UnkFunc took a second input and handled only
+   0/16/17/18; retail has one input and three more states. */
+int pcINO_case64StateMachineHandler(int pressed, int* state, float* deadline, float delay)
+{
+    switch (*state)
+    {
+    case 0:
+    case 34:                                   /* index table sends 0x22 here */
+        if (pressed)
+        {
+            *deadline = (float)(TIM_gf_MainClock + delay);
+            *state = 17;
+        }
+        break;
+    case 16:
+        if (!pressed)
+            *state = 0;
+        break;
+    case 17:
+        if (!pressed)
+            *state = 18;
+        else if (TIM_gf_MainClock > (double)*deadline)
+            *state = 16;
+        break;
+    case 18:
+        if (pressed)
+            *state = 16;
+        break;
+    case 32:
+        *state = 0;
+        break;
+    case 33:
+        *state = 34;
+        break;
+    default:
+        break;
+    }
+    return *state;
+}
+
+/* Retail 0x004231C0 -- ecx = accumulator, edx = decay deadline,
+   stack = limit. Returns the accumulator clamped to +-limit, and once
+   the clock passes the deadline bleeds the accumulator 30% toward that
+   clamped value and re-arms for another 0.05s. Called but never defined
+   before this. */
+float pcINO_case4MouseAmountCalc(float* accum, float* deadline, float limit)
+{
+    float result;
+
+    if (-limit > *accum)            /* 0x004231C6 */
+        result = -limit;
+    else if (*accum > limit)        /* 0x004231D3 */
+        result = limit;
+    else
+        result = *accum;
+
+    if (TIM_gf_MainClock > (double)*deadline)       /* 0x004231EC */
+    {
+        *accum = (float)((*accum - result) * 0.69999999);   /* 0x00B5014C */
+        *deadline = (float)(TIM_gf_MainClock + 0.050000001); /* 0x00B50014 */
+    }
+    return result;
+}
+
+void pcINO_SetMouseSensitivity(float t)
+{
+    if (t > 0.5f)
+        pcINO_mouseSensitivity = (t + t - 1.0f) * 1.5f + 0.69999999f;
+    else
+        pcINO_mouseSensitivity = t * 1.0f + 0.2f;
+}
+
+void pcINO_InputHandlerCase1(tInoPad* a1, float* mouse, byte* keybData)
 {
     int v4;
-    int v5;
-    double v6;
+    double v5;
 
     if (keybData[pcINO_IntKeybDataLink[0]] || keybData[pcINO_IntKeybDataLink[1]])
         a1->padData[0] = -1;
@@ -220,11 +227,11 @@ void pcINO_InputHandlerCase1(struct sInoPad* a1, int* mouseData, byte* keybData)
     }
     if (keybData[pcINO_IntKeybDataLink[16]] || keybData[pcINO_IntKeybDataLink[17]])
         a1->padData[15] = -1;
-    if (keybData[257])
+    if (keybData[257])                                  /* wheel down */
         a1->padData[15] = -1;
     if (keybData[pcINO_IntKeybDataLink[18]] || keybData[pcINO_IntKeybDataLink[19]])
         a1->padData[13] = -1;
-    if (keybData[256])
+    if (keybData[256])                                  /* wheel up */
         a1->padData[13] = -1;
     if (keybData[pcINO_IntKeybDataLink[4]] || keybData[pcINO_IntKeybDataLink[5]])
         a1->padData[1] = -1;
@@ -234,118 +241,150 @@ void pcINO_InputHandlerCase1(struct sInoPad* a1, int* mouseData, byte* keybData)
         a1->padData[5] = -1;
     if (keybData[pcINO_IntKeybDataLink[10]] || keybData[pcINO_IntKeybDataLink[11]])
         a1->padData[10] = -1;
+
     pcINO_JoystickPositionAlignSetFromKeyboard(0, keybData);
-    if (pcINO_stateMachineFlags == 18)
+
+    if (pcINO_stateMachineFlags == 0x12)                /* 0x00423349 */
     {
-        if (pcINO_joystickPosition[0].x == 0.0 && pcINO_joystickPosition[0].y == 0.0)
+        if (pcINO_joystickPosition[0].x == 0.0f && pcINO_joystickPosition[0].y == 0.0f)
         {
-            if (TIM_gf_MainClock > (double)pcINO_case1DividedTime)
+            if (TIM_gf_MainClock > pcINO_case1DividedTime)
                 pcINO_stateMachineFlags = 0;
         }
         else
         {
-            pcINO_case1DividedTime = (float)(TIM_gf_MainClock + 0.30000001);
+            pcINO_case1DividedTime = (float)(TIM_gf_MainClock + 0.30000001f);
         }
     }
-    v4 = keybData[pcINO_IntKeybDataLink[14]] || keybData[pcINO_IntKeybDataLink[15]];
-    v5 = keybData[pcINO_IntKeybDataLink[12]] || keybData[pcINO_IntKeybDataLink[13]];
-    pcINO_case1and2UnkFunc(v5, &pcINO_stateMachineFlags, &pcINO_case1DividedTime2, v4, 0.2f);
+
+    v4 = keybData[pcINO_IntKeybDataLink[12]] || keybData[pcINO_IntKeybDataLink[13]];
+
+    pcINO_case64StateMachineHandler(v4, &pcINO_stateMachineFlags,
+                                    &pcINO_case1DividedTime2, 0.2f);
+
     if ((pcINO_stateMachineFlags & 0x10) != 0)
         a1->padData[7] = -1;
-    if ((pcINO_stateMachineFlags & 0x20) != 0)
+    /* 0x00423449: from the keyboard, not from flags & 0x20. */
+    if (keybData[pcINO_IntKeybDataLink[14]] || keybData[pcINO_IntKeybDataLink[15]])
         a1->padData[4] = -1;
-    pcINO_joystickPosition[1].x = (float)((double)*mouseData * -0.029999999);
-    v6 = (double)mouseData[1] * 0.001 + pcINO_joystickPosition[1].y;
-    if (v6 >= -0.2)
+
+    if (pcINO_SelectedControlSubmode)                   /* 0x00423466 */
     {
-        if (v6 <= 0.30000001)
-            pcINO_joystickPosition[1].y = (float)v6;
+        pcINO_joystickPosition[1].x = (float)(mouse[0] * -0.029999999f);
+        v5 = pcINO_joystickPosition[1].y - mouse[1] * 0.001f;
+        if (v5 < -1.0f)
+            pcINO_joystickPosition[1].y = -1.0f;
+        else if (v5 > 1.0f)
+            pcINO_joystickPosition[1].y = 1.0f;
         else
-            pcINO_joystickPosition[1].y = 0.30000001f;
+            pcINO_joystickPosition[1].y = (float)v5;
     }
     else
     {
-        pcINO_joystickPosition[1].y = -0.2f;
+        /* 0x004234CE: reset X when the mouse reverses, then smooth. */
+        if (pcINO_joystickPosition[1].x * mouse[0] < 0.0f)
+            pcINO_joystickPosition[1].x = 0.0f;
+        pcINO_joystickPosition[1].x =
+            (float)((mouse[0] * -0.019999998f - pcINO_joystickPosition[1].x) * 0.60000002f
+                    + pcINO_joystickPosition[1].x);
+        v5 = pcINO_joystickPosition[1].y + mouse[1] * 0.001f;
+        if (v5 < -0.2f)
+            pcINO_joystickPosition[1].y = -0.2f;
+        else if (v5 > 0.30000001f)
+            pcINO_joystickPosition[1].y = 0.30000001f;
+        else
+            pcINO_joystickPosition[1].y = (float)v5;
     }
 }
 
-void pcINO_InputHandlerCase2(tInoPad* a1, int* mouse, byte* keyboard)
+/* Control mode 2 -- retail 0x004235B0..0x00423842, keymaps 0x00B65780.
+   Retail has no state machine here at all: it force-clears the shared
+   flags and drives padData[7] and [4] straight from the keys. It also
+   branches three ways on the submode, which the demo did not. */
+void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, byte* keyboard)
 {
-    int v3;
-    int v4;
-    int v5;
-    int v6;
+    int wheel;
+    int scroll;
+    int submode;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
-        a1->padData[0] = -1;
+        pad->padData[0] = -1;
     if (keyboard[pcINO_IntKeybDataLink[2]] || keyboard[pcINO_IntKeybDataLink[3]])
-        a1->padData[1] = -1;
+        pad->padData[1] = -1;
     if (keyboard[pcINO_IntKeybDataLink[6]] || keyboard[pcINO_IntKeybDataLink[7]])
-        a1->padData[3] = -1;
+        pad->padData[3] = -1;
     if (keyboard[pcINO_IntKeybDataLink[8]] || keyboard[pcINO_IntKeybDataLink[9]])
-        a1->padData[5] = -1;
-    v3 = keyboard[pcINO_IntKeybDataLink[14]] || keyboard[pcINO_IntKeybDataLink[15]];
-    v4 = keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]];
-    pcINO_case1and2UnkFunc(v4, &pcINO_stateMachineFlags, &pcINO_case1DividedTime2, v3, 0.2f);
-    if ((pcINO_stateMachineFlags & 0x10) != 0)
-        a1->padData[7] = -1;
-    if ((pcINO_stateMachineFlags & 0x20) != 0)
-        a1->padData[4] = -1;
-    v5 = pcINO_case2_mouseScroll;
-    pcINO_joystickPosition[0].x = (float)((double)*mouse * 0.017999999);
-    pcINO_joystickPosition[0].y = (float)((double)mouse[1] * 0.017999999);
-    v6 = mouse[2];
-    if (v6)
+        pad->padData[5] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]])
+        pad->padData[7] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[14]] || keyboard[pcINO_IntKeybDataLink[15]])
+        pad->padData[4] = -1;
+
+    submode = pcINO_SelectedControlSubmode;
+    pcINO_stateMachineFlags = 0;                           /* 0x0042366C */
+
+    if (submode == 1 || submode == 2)
     {
-        v5 = v6 + pcINO_case2_mouseScroll;
-        pcINO_case2_mouseScroll += v6;
+        if (submode == 1)
+        {
+            pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.019999999);
+            pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.0049999999);
+        }
+        else
+        {
+            pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.039999999);
+            pcINO_joystickPosition[0].y = (float)(mouse[1] * -0.012);
+        }
+        if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
+            pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x + 1.0);
+        if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
+            pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x - 1.0);
+    }
+    else
+    {
+        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.014);
+        pcINO_joystickPosition[1].x = 0.0f;
+        pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.014);
+        if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
+            pcINO_joystickPosition[1].x = 0.40000001f;
+        if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
+            pcINO_joystickPosition[1].x = (float)(pcINO_joystickPosition[1].x - 0.40000001);
+    }
+
+    /* The wheel arrives already divided by the granularity, so this
+       accumulates whole notches and decays by exactly one per 0.04s.
+       The demo added/subtracted mouseGranularity here to compensate for
+       the raw delta it was being handed. */
+    wheel = (int)mouse[2];
+    if (wheel)
+    {
+        pcINO_case2_mouseScroll += wheel;
         pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.039999999);
     }
-    pcINO_joystickPosition[1].x = 0.0;
-    pcINO_joystickPosition[1].y = 0.0;
-    if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
-        pcINO_joystickPosition[1].x = 1.0;
-    if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
-        pcINO_joystickPosition[1].x = (float)(pcINO_joystickPosition[1].x - 1.0);
-    if (keyboard[pcINO_IntKeybDataLink[20]] || keyboard[pcINO_IntKeybDataLink[21]] || v5 > 0)
-        pcINO_joystickPosition[1].y = 3.4000001f;
-    if (keyboard[pcINO_IntKeybDataLink[22]] || keyboard[pcINO_IntKeybDataLink[23]] || v5 < 0)
-        pcINO_joystickPosition[1].y = pcINO_joystickPosition[1].y - 3.4000001f;
-    if (v5 && TIM_gf_MainClock > (double)pcINO_case2DividedTime)
+    scroll = pcINO_case2_mouseScroll;
+
+    pcINO_joystickPosition[1].y = 0.0f;
+    if (keyboard[pcINO_IntKeybDataLink[20]] || keyboard[pcINO_IntKeybDataLink[21]] || scroll > 0)
+        pcINO_joystickPosition[1].y = 2.0f;
+    if (keyboard[pcINO_IntKeybDataLink[22]] || keyboard[pcINO_IntKeybDataLink[23]] || scroll < 0)
+        pcINO_joystickPosition[1].y = (float)(pcINO_joystickPosition[1].y - 2.0);
+
+    if (scroll != 0 && TIM_gf_MainClock > (double)pcINO_case2DividedTime)
     {
-        if (v5 <= 0)
-            pcINO_case2_mouseScroll = mouseGranularity + v5;
+        if (scroll > 0)
+            pcINO_case2_mouseScroll = scroll - 1;
         else
-            pcINO_case2_mouseScroll = v5 - mouseGranularity;
+            pcINO_case2_mouseScroll = scroll + 1;
     }
 }
 
-float pcINO_case4MouseAmountCalc(float* a1, float* a2, float a3)
+void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, byte* keyboard)
 {
-    double result;
-
-    result = -a3;
-    if (result <= *a2)
-    {
-        if (*a2 <= (double)a3)
-            result = *a2;
-        else
-            result = a3;
-    }
-    if (TIM_gf_MainClock > (double)*a1)
-    {
-        *a2 = (float)((*a2 - result) * 0.69999999);
-        *a1 = (float)(TIM_gf_MainClock + 0.050000001);
-    }
-    return (float)result;
-}
-
-void pcINO_InputHandlerCase4(tInoPad* a1, int* mouse, byte* keyboard)
-{
-    int v3;
-    double Y;
-    double v5;
-    double v6;
+    int submode;
+    double gain;
+    double y;
+    double len;
+    double inv;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         a1->padData[0] = -1;
@@ -353,89 +392,34 @@ void pcINO_InputHandlerCase4(tInoPad* a1, int* mouse, byte* keyboard)
         a1->padData[0] = -1;
     if (keyboard[pcINO_IntKeybDataLink[32]] || keyboard[pcINO_IntKeybDataLink[33]])
         a1->padData[3] = -1;
-    v3 = pcINO_SelectedControlSubmode;
-    if (pcINO_SelectedControlSubmode)
+
+    submode = pcINO_SelectedControlSubmode;
+    if (!submode)
     {
-        pcINO_JoystickPositionAlignSetFromKeyboard(0, keyboard);
-        switch (v3)
+        gain = 1.0 / pcINO_mouseSensitivity;                 /* 0x00423F6B */
+        pcINO_joystickPosition[0].x =
+            (float)(gain * (double)mouse[0] * 0.015 + pcINO_joystickPosition[0].x);
+        y = pcINO_joystickPosition[0].y - gain * (double)mouse[1] * 0.015;
+        pcINO_joystickPosition[0].y = (float)y;
+
+        len = _hypot(pcINO_joystickPosition[0].x, y);
+        if (len > 0.1)                                        /* 0x00423FAE */
         {
-        case 2:
-            if (keyboard[pcINO_IntKeybDataLink[34]] || keyboard[pcINO_IntKeybDataLink[35]])
-            {
-                a1->padData[5] = -1;
-                a1->padData[3] = 0;
-            }
-            else if (keyboard[256])
-            {
-                pcINO_joystickPosition[1].y = 1.0;
-            }
-            else if (keyboard[257])
-            {
-                pcINO_joystickPosition[1].y = -1.0;
-            }
-            else
-            {
-                pcINO_joystickPosition[1].y = pcINO_joystickPosition[0].x;
-            }
-            break;
-        case 3:
-        case 4:
-        case 5:
-        case 6:
-        case 8:
-        case 9:
-            if (keyboard[pcINO_IntKeybDataLink[34]] || keyboard[pcINO_IntKeybDataLink[35]])
-                a1->padData[1] = -1;
-            if (!keyboard[256])
-                goto LABEL_35;
-            goto LABEL_41;
-        case 7:
-            pcINO_case4_mouseMoveX = (float)((double)*mouse * 0.029999999 + pcINO_case4_mouseMoveX);
-            pcINO_case4_mouseMoveY = (float)((double)mouse[1] * 0.029999999 + pcINO_case4_mouseMoveY);
-            pcINO_joystickPosition[1].x = pcINO_case4MouseAmountCalc(&pcINO_case4_probablyUnunsedUnk1, &pcINO_case4_mouseMoveX, 3.0f);
-            pcINO_joystickPosition[1].y = pcINO_case4MouseAmountCalc((float*)&MEM_gst_MemoryInfo.allocatedMemoryEnd, &pcINO_case4_mouseMoveY, 3.0f);
-            if (keyboard[256])
-            {
-            LABEL_41:
-                pcINO_joystickPosition[0].y = 1.0;
-            }
-            else
-            {
-            LABEL_35:
-                if (keyboard[257])
-                    pcINO_joystickPosition[0].y = -1.0;
-            }
-            break;
-        case 10:
-            if (keyboard[pcINO_IntKeybDataLink[30]] || keyboard[pcINO_IntKeybDataLink[31]])
-                a1->padData[1] = -1;
-            break;
-        default:
-            return;
-        }
-    }
-    else
-    {
-        pcINO_joystickPosition[0].x = (float)((double)*mouse * 0.02 + pcINO_joystickPosition[0].x);
-        Y = pcINO_joystickPosition[0].y - (double)mouse[1] * 0.02;
-        pcINO_joystickPosition[0].y = (float)Y;
-        v5 = _hypot(pcINO_joystickPosition[0].x, Y); // átfogó
-        if (v5 <= 0.1)
-        {
-            pcINO_joystickPosition[0].x = 1.0;
-            pcINO_joystickPosition[0].y = 0.0;
+            inv = 1.0 / len;
+            pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x * inv);
+            pcINO_joystickPosition[0].y = (float)(inv * pcINO_joystickPosition[0].y);
         }
         else
         {
-            v6 = 1.0 / v5;
-            pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x * v6);
-            pcINO_joystickPosition[0].y = (float)(v6 * pcINO_joystickPosition[0].y);
+            pcINO_joystickPosition[0].x = 1.0f;
+            pcINO_joystickPosition[0].y = 0.0f;
         }
+
         if (keyboard[pcINO_IntKeybDataLink[34]] || keyboard[pcINO_IntKeybDataLink[35]])
             a1->padData[1] = -1;
-        if (keyboard[260])
+        if (keyboard[260])                                    /* mouse button 3 */
             a1->padData[1] = -1;
-        if (keyboard[67] && keyboard[68])
+        if (keyboard[67] && keyboard[68])                     /* DIK_F9 + DIK_F10 */
         {
             a1->padData[5] = -1;
             a1->padData[7] = -1;
@@ -443,53 +427,108 @@ void pcINO_InputHandlerCase4(tInoPad* a1, int* mouse, byte* keyboard)
                 a1->padData[1] = -1;
             pcINO_JoystickPositionAlignSetFromKeyboard(0, keyboard);
         }
+        return;
+    }
+
+    /* 0x0042406E: zeroes [0].x/.y, then re-seeds them from the keyboard,
+       so nothing on these paths can carry a wheel tick over to the next
+       frame. Note it is only ever called with index 0 -- [1] is never
+       reset here. */
+    pcINO_JoystickPositionAlignSetFromKeyboard(0, keyboard);
+
+    switch (submode)
+    {
+    case 2:
+        if (keyboard[pcINO_IntKeybDataLink[34]] || keyboard[pcINO_IntKeybDataLink[35]])
+        {
+            a1->padData[5] = -1;
+            a1->padData[3] = 0;
+            /* retail writes no [1].y on this path */
+        }
+        else if (keyboard[256])
+            pcINO_joystickPosition[1].y = 1.0f;
+        else if (keyboard[257])
+            pcINO_joystickPosition[1].y = -1.0f;
+        else
+            pcINO_joystickPosition[1].y = pcINO_joystickPosition[0].x;
+        break;
+
+    case 7:
+        pcINO_case4_mouseMoveX = (float)((double)mouse[0] * 0.03 + pcINO_case4_mouseMoveX);
+        pcINO_case4_mouseMoveY = (float)((double)mouse[1] * 0.03 + pcINO_case4_mouseMoveY);
+        pcINO_joystickPosition[1].x = pcINO_case4MouseAmountCalc(
+            &pcINO_case4_mouseMoveX, &pcINO_case4_mouseMoveXDeadline, 3.0f);
+        pcINO_joystickPosition[1].y = pcINO_case4MouseAmountCalc(
+            &pcINO_case4_mouseMoveY, &pcINO_case4_mouseMoveYDeadline, 3.0f);
+        if (keyboard[256])
+            pcINO_joystickPosition[0].y = 1.0f;
+        else if (keyboard[257])
+            pcINO_joystickPosition[0].y = -1.0f;
+        break;
+
+    case 3: case 4: case 5: case 6: case 8: case 9:
+        if (keyboard[pcINO_IntKeybDataLink[34]] || keyboard[pcINO_IntKeybDataLink[35]])
+            a1->padData[1] = -1;
+        if (keyboard[256])
+            pcINO_joystickPosition[0].y = 1.0f;
+        else if (keyboard[257])
+            pcINO_joystickPosition[0].y = -1.0f;
+        break;
+
+    case 10:
+        if (keyboard[pcINO_IntKeybDataLink[30]] || keyboard[pcINO_IntKeybDataLink[31]])
+            a1->padData[1] = -1;
+        break;
+
+    default:
+        break;
     }
 }
 
-void pcINO_InputHandlerCase8(tInoPad* a1, int *mouse, byte* keyboard)
+void pcINO_InputHandlerCase8(tInoPad* a1, float* mouse, byte* keyboard)
 {
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         a1->padData[0] = -1;
+    /* 0x00424223: retail has this block, the demo did not. Same keys as
+       the padData[1] test below. */
+    if (keyboard[pcINO_IntKeybDataLink[32]] || keyboard[pcINO_IntKeybDataLink[33]])
+        a1->padData[3] = -1;
     if (keyboard[pcINO_IntKeybDataLink[32]] || keyboard[pcINO_IntKeybDataLink[33]])
         a1->padData[1] = -1;
-    pcINO_joystickPosition[0].x = 0.0;
-    pcINO_joystickPosition[0].y = 0.0;
-    if (TIM_gf_MainClock > (double)pcINO_case2DividedTime)
+
+    pcINO_joystickPosition[0].x = 0.0f;
+    pcINO_joystickPosition[0].y = 0.0f;
+
+    if (TIM_gf_MainClock > pcINO_case2DividedTime)
     {
-        if (keyboard[pcINO_IntKeybDataLink[20]] || keyboard[pcINO_IntKeybDataLink[21]] || keyboard[256])
+        if (keyboard[pcINO_IntKeybDataLink[20]] || keyboard[pcINO_IntKeybDataLink[21]]
+            || keyboard[256])
         {
-            pcINO_joystickPosition[0].y = 1.0;
+            pcINO_joystickPosition[0].y = 1.0f;
+            pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.1f);
         }
-        else
+        else if (keyboard[pcINO_IntKeybDataLink[22]] || keyboard[pcINO_IntKeybDataLink[23]]
+                 || keyboard[257])
         {
-            if (!keyboard[pcINO_IntKeybDataLink[22]] && !keyboard[pcINO_IntKeybDataLink[23]] && !keyboard[257])
-            {
-            LABEL_17:
-                if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
-                {
-                    pcINO_joystickPosition[0].x = 1.0;
-                    pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.1);
-                }
-                else if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
-                {
-                    pcINO_joystickPosition[0].x = -1.0;
-                    pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.1);
-                }
-                return;
-            }
-            pcINO_joystickPosition[0].y = -1.0;
+            pcINO_joystickPosition[0].y = -1.0f;
+            pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.1f);
         }
-        pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.1);
-        goto LABEL_17;
+        if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
+        {
+            pcINO_joystickPosition[0].x = 1.0f;
+            pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.1f);
+        }
+        else if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
+        {
+            pcINO_joystickPosition[0].x = -1.0f;
+            pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.1f);
+        }
     }
 }
 
-void pcINO_InputHandlerCase32(tInoPad* a1, int* mouse, byte* keyboard)
+void pcINO_InputHandlerCase32(tInoPad* a1, float* mouse, byte* keyboard)
 {
-    double v3;
-    double v4;
-    double v5;
-    double v6;
+    double v;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         a1->padData[0] = -1;
@@ -509,97 +548,40 @@ void pcINO_InputHandlerCase32(tInoPad* a1, int* mouse, byte* keyboard)
         a1->padData[3] = -1;
     if (keyboard[pcINO_IntKeybDataLink[8]] || keyboard[pcINO_IntKeybDataLink[9]])
         a1->padData[5] = -1;
-    if (keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]])
+
+    /* 0x00423D51: links 12/13 drive the shared state machine; padData[7]
+       comes from its flag, not straight from the keys. */
+    pcINO_case64StateMachineHandler(
+        keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]],
+        &pcINO_stateMachineFlags, &pcINO_case1DividedTime2, 0.2f);
+    if ((pcINO_stateMachineFlags & 0x10) != 0)
         a1->padData[7] = -1;
-    if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
-        v3 = -1.0;
-    else
-        v3 = 0.0;
-    if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
-        v4 = 1.0;
-    else
-        v4 = 0.0;
-    v5 = v3 + (double)*mouse * 0.050000001 + v4;
-    if (v5 >= -1.0)
-    {
-        if (v5 <= 1.0)
-            pcINO_joystickPosition[0].x = (float)v5;
-        else
-            pcINO_joystickPosition[0].x = 1.0;
-    }
-    else
-    {
-        pcINO_joystickPosition[0].x = -1.0;
-    }
-    v6 = (double)mouse[1] * 0.050000001;
-    if (v6 >= -1.0)
-    {
-        if (v6 <= 1.0)
-            pcINO_joystickPosition[0].y = (float)v6;
-        else
-            pcINO_joystickPosition[0].y = 1.0;
-    }
-    else
-    {
-        pcINO_joystickPosition[0].y = -1.0;
-    }
-    pcINO_joystickPosition[1].x = 0.0;
-    pcINO_joystickPosition[1].y = 0.0;
+
+    pcINO_JoystickPositionAlignSetFromKeyboard(0, keyboard);   /* 0x00423DF7 */
+
+    /* 0x00B50200 = 0.06f, accumulated onto the keyboard seed. */
+    v = (double)mouse[0] * 0.059999999f + pcINO_joystickPosition[0].x;
+    if (v < -1.0)      pcINO_joystickPosition[0].x = -1.0f;
+    else if (v > 1.0)  pcINO_joystickPosition[0].x = 1.0f;
+    else               pcINO_joystickPosition[0].x = (float)v;
+
+    v = pcINO_joystickPosition[0].y - (double)mouse[1] * 0.059999999f;
+    if (v < -1.0)      pcINO_joystickPosition[0].y = -1.0f;
+    else if (v > 1.0)  pcINO_joystickPosition[0].y = 1.0f;
+    else               pcINO_joystickPosition[0].y = (float)v;
+
+    pcINO_joystickPosition[1].x = 0.0f;
+    pcINO_joystickPosition[1].y = 0.0f;
 }
 
-int pcINO_case64StateMachineHandler(int a1, int* a2, float* a3, float a4)
+/* Control mode 64 -- retail 0x00423850..0x00423C14, keymaps 0x00B65798.
+   Retail splits the keyboard align in two: the .x half and the .y = -1
+   half run before the submode branch, the .y += 1 half afterwards, and
+   two paths return before reaching it. */
+void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, byte* keyboard)
 {
-    int result; // eax
-
-    switch (*a2)
-    {
-    case 0:
-        if (!a1)
-            goto LABEL_12;
-        *a2 = 17;
-        *a3 = TIM_gf_MainClock + a4;
-        return *a2;
-    case 16:
-        if (!a1)
-            *a2 = 0;
-        goto LABEL_12;
-    case 17:
-        if (a1)
-        {
-            if (TIM_gf_MainClock <= (double)*a3)
-            {
-            LABEL_12:
-                result = *a2;
-            }
-            else
-            {
-                *a2 = 16;
-                result = *a2;
-            }
-        }
-        else
-        {
-            *a2 = 18;
-            result = *a2;
-        }
-        break;
-    case 18:
-        if (!a1)
-            goto LABEL_12;
-        *a2 = 16;
-        result = *a2;
-        break;
-    default:
-        goto LABEL_12;
-    }
-    return result;
-}
-
-void pcINO_InputHandlerHoverCraft(tInoPad* pad, int* mouse, byte* keyboard)
-{
-    int tmp;
-    float tmpX;
-    float tmpY;
+    int   boost;
+    float v;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         pad->padData[0] = -1;
@@ -621,103 +603,112 @@ void pcINO_InputHandlerHoverCraft(tInoPad* pad, int* mouse, byte* keyboard)
         pad->padData[5] = -1;
     if (keyboard[pcINO_IntKeybDataLink[10]] || keyboard[pcINO_IntKeybDataLink[11]])
         pad->padData[10] = -1;
-    
-    tmp = keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]];    
-    pcINO_case64StateMachineHandler(tmp, &pcINO_case64StateMachineFlags, &pcINO_case64ElapsedTime, 0.2f);
-    
-    if ((pcINO_case64StateMachineFlags & 0x10) != 0)
+
+    boost = keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]];
+    pcINO_case64StateMachineHandler(boost, &pcINO_stateMachineFlags,
+                                    &pcINO_case1DividedTime2, 0.2f);
+    if ((pcINO_stateMachineFlags & 0x10) != 0)
         pad->padData[7] = -1;
-    
-    pcINO_JoystickPositionAlignSetFromKeyboard(0, keyboard);
-    
+
+    /* first half of the align, inlined (0x00423A0E..0x00423A85) */
+    pcINO_joystickPosition[0].x = 0.0f;
+    if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
+        pcINO_joystickPosition[0].x = -1.0f;
+    if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
+        pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x + 1.0);
+    pcINO_joystickPosition[0].y = 0.0f;
+    if (keyboard[pcINO_IntKeybDataLink[22]] || keyboard[pcINO_IntKeybDataLink[23]])
+        pcINO_joystickPosition[0].y = -1.0f;
+
     if (pcINO_SelectedControlSubmode == 1)
     {
-        pcINO_joystickPosition[0].x = (float)mouse[0] * 0.017999999f;
-        pcINO_joystickPosition[0].y = (float)mouse[1] * 0.017999999f;
+        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.014 + pcINO_joystickPosition[0].x);
+        pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.014 + pcINO_joystickPosition[0].y);
+        if (pcINO_joystickPosition[0].x != 0.0f)
+            return;
+    }
+    else if (pcINO_SelectedControlSubmode == 4)
+    {
+        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.019999999 + pcINO_joystickPosition[0].x);
+        v = (float)(mouse[1] * 0.00050000002 + pcINO_joystickPosition[1].y);
+        if (v < 0.0f)                 pcINO_joystickPosition[1].y = 0.0f;
+        else if (v > 0.80000001f)     pcINO_joystickPosition[1].y = 0.80000001f;
+        else                          pcINO_joystickPosition[1].y = v;
     }
     else
     {
-        if ((pcINO_case64StateMachineFlags & 0x10) == 0
-            && pcINO_joystickPosition[0].x == 0.0f
-            && pcINO_joystickPosition[0].y == 0.0f)
+        /* 0x00423AB2: tests the forward KEYS, not the stick position. */
+        if ((pcINO_stateMachineFlags & 0x10) == 0
+            && !keyboard[pcINO_IntKeybDataLink[20]]
+            && !keyboard[pcINO_IntKeybDataLink[21]])
         {
-            pcINO_joystickPosition[1].x = (float)mouse[0] * -0.029999999f;
+            pcINO_joystickPosition[1].x = (float)(mouse[0] * -0.029999999);
         }
         else
         {
-            tmpX = (float)mouse[0] * 0.039999999f + pcINO_joystickPosition[0].x;
-            if (tmpX >= -1.0f)
-            {
-                if (tmpX <= 1.0f)
-                    pcINO_joystickPosition[0].x = tmpX;
-                else
-                    pcINO_joystickPosition[0].x = 1.0f;
-            }
-            else
-            {
-                pcINO_joystickPosition[0].x = -1.0f;
-            }
+            /* no clamp in retail */
+            pcINO_joystickPosition[0].x =
+                (float)(mouse[0] * 0.039999999 + pcINO_joystickPosition[0].x);
         }
-        tmpY = (float)mouse[1] * 0.001f + pcINO_joystickPosition[1].y;
-        if (tmpY >= -0.40000001f)
-        {
-            if (tmpY <= 0.1f)
-                pcINO_joystickPosition[1].y = tmpY;
-            else
-                pcINO_joystickPosition[1].y = 0.1f;
-        }
-        else
-        {
-            pcINO_joystickPosition[1].y = -0.40000001f;
-        }
+
+        v = (float)(mouse[1] * 0.001 + pcINO_joystickPosition[1].y);
+        if (v < -0.40000001f)         pcINO_joystickPosition[1].y = -0.40000001f;
+        else if (v > 0.1f)            pcINO_joystickPosition[1].y = 0.1f;
+        else                          pcINO_joystickPosition[1].y = v;
+
+        if ((pcINO_stateMachineFlags & 0x10) != 0 && pcINO_joystickPosition[0].x != 0.0f)
+            return;
     }
+
+    /* deferred second half of the align (0x00423BEC) */
+    if (keyboard[pcINO_IntKeybDataLink[20]] || keyboard[pcINO_IntKeybDataLink[21]])
+        pcINO_joystickPosition[0].y = (float)(pcINO_joystickPosition[0].y + 1.0);
 }
 
-void pcINO_InputHandlerCase100(tInoPad* a1, int* mouse, byte* keyboard)
+void pcINO_InputHandlerCase100(tInoPad* a1, float* mouse, byte* keyboard)
 {
-    long double v3;
-    double Y;
-    double v5;
-    double v6;
+    double angle;
+    double len;
+    double inv;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         a1->padData[0] = -1;
-    if (TIM_gf_MainClock > (double)pcINO_case2DividedTime)
+    if (keyboard[pcINO_IntKeybDataLink[4]] || keyboard[pcINO_IntKeybDataLink[5]])
+        a1->padData[0] = -1;                                   /* 0x00424383 */
+    if (keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]])
+        a1->padData[0] = -1;                                   /* 0x004243A0 */
+    if (keyboard[pcINO_IntKeybDataLink[2]] || keyboard[pcINO_IntKeybDataLink[3]])
+        a1->padData[1] = -1;                                   /* 0x004243BD */
+
+    /* No clock gate in retail: the rotation runs every frame, and the
+       demo's pcINO_case2DividedTime throttle is not here at all. */
+    angle = atan2(pcINO_joystickPosition[0].y, pcINO_joystickPosition[0].x);
+    if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
+        angle = angle - 0.1;                                   /* 0x00424426 */
+    else if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
+        angle = angle + 0.1;                                   /* 0x0042441E */
+    pcINO_joystickPosition[0].x = (float)cos(angle);
+    pcINO_joystickPosition[0].y = (float)sin(angle);
+
+    /* 0x00B50078 = 0.01f, against the already-halved mouse deltas. */
+    pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.01 + pcINO_joystickPosition[0].x);
+    pcINO_joystickPosition[0].y = (float)(pcINO_joystickPosition[0].y - mouse[1] * 0.01);
+
+    len = _hypot(pcINO_joystickPosition[0].x, pcINO_joystickPosition[0].y);
+    if (len > 0.1)                                             /* 0x0042447C */
     {
-        v3 = atan2(pcINO_joystickPosition[0].y, pcINO_joystickPosition[0].x);
-        if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
-        {
-            v3 = v3 - 0.40000001;
-        }
-        else
-        {
-            if (!keyboard[pcINO_IntKeybDataLink[24]] && !keyboard[pcINO_IntKeybDataLink[25]])
-                goto LABEL_12;
-            v3 = v3 + 0.40000001;
-        }
-        pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.1);
-    LABEL_12:
-        pcINO_joystickPosition[0].x = (float)cos(v3);
-        pcINO_joystickPosition[0].y = (float)sin(v3);
-    }
-    pcINO_joystickPosition[0].x = (float)((double)*mouse * 0.02 + pcINO_joystickPosition[0].x);
-    Y = pcINO_joystickPosition[0].y - (double)mouse[1] * 0.02;
-    pcINO_joystickPosition[0].y = (float)Y;
-    v5 = _hypot(pcINO_joystickPosition[0].x, Y);
-    if (v5 <= 0.1)
-    {
-        pcINO_joystickPosition[0].x = 0.0;
-        pcINO_joystickPosition[0].y = 1.0;
+        inv = 1.0 / len;
+        pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x * inv);
+        pcINO_joystickPosition[0].y = (float)(inv * pcINO_joystickPosition[0].y);
     }
     else
     {
-        v6 = 1.0 / v5;
-        pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x * v6);
-        pcINO_joystickPosition[0].y = (float)(v6 * pcINO_joystickPosition[0].y);
+        pcINO_joystickPosition[0].x = 0.0f;
+        pcINO_joystickPosition[0].y = 1.0f;
     }
 }
 
-void pcINO_InputHandlerCase101(tInoPad* a1, int *mouse, byte* keyboard)
+void pcINO_InputHandlerCase101(tInoPad* a1, float* mouse, byte* keyboard)
 {
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         a1->padData[0] = -1;
@@ -768,7 +759,6 @@ void DINPUT_InitVariables(int a1)
     {
     case 0:
         memset(pcINO_joystickPosition, 0, sizeof(pcINO_joystickPosition));
-        pcINO_case64StateMachineFlags = 0;
         pcINO_stateMachineFlags = 0;
         break;
     case 1:
@@ -777,7 +767,6 @@ void DINPUT_InitVariables(int a1)
         v1 = pcINO_stateMachineFlags == 34;
         goto LABEL_7;
     case 2:
-        pcINO_case64StateMachineFlags = 0;
         pcINO_stateMachineFlags = 0;
         break;
     case 3:
@@ -785,6 +774,12 @@ void DINPUT_InitVariables(int a1)
     LABEL_7:
         if (v1)
             LABEL_8 :
+            pcINO_stateMachineFlags = 0;
+        break;
+    case 4:
+        /* Retail 0x00424827: the fifth entry of the dispatch table at
+           0x0042483C, which the demo did not have. */
+        if (pcINO_stateMachineFlags == 34)
             pcINO_stateMachineFlags = 0;
         break;
     default:
@@ -933,8 +928,21 @@ void INO_SetControlSubmode_inner_sub_48A650(int a1)
             }
             else
             {
+                /* Retail 0x00424931. Mode 64 picks between two values
+                   on the submode rather than always using one, and
+                   mode 1 centres the right stick. The demo had
+                   neither. */
                 if (pcINO_SelectedControlMode == 64)
-                    pcINO_joystickPosition[1].y = -0.30000001f;
+                {
+                    if (a1 == 4)
+                        pcINO_joystickPosition[1].y = 0.44999999f;  /* 0x3EE66666 */
+                    else
+                        pcINO_joystickPosition[1].y = -0.1f;        /* 0xBDCCCCCD */
+                }
+                else if (pcINO_SelectedControlMode == 1)
+                {
+                    pcINO_joystickPosition[1].y = 0.0f;
+                }
                 pcINO_SelectedControlSubmode = a1;
             }
         }
@@ -980,11 +988,20 @@ void INO_SetControlMode_inner_sub_48ACB0(int a1)
             sJoystickHandlerFunction = pcINO_InputHandlerHoverCraft;
             pcINO_keyMaps = pcINO_keyMapsCase64;
             break;
-        case 100:
+        /* Retail numbers these 128 and 129 (jump table at 0x00424764
+           over a1-1, entries only for 1/2/4/8/32/64/128/129). The demo
+           build these were decompiled from used 100 and 101, so
+           INO_SetControlMode(128) -- which the board panel really does
+           call -- was falling through to default and leaving whatever
+           handler was installed before. */
+        case 128:
             sJoystickHandlerFunction = pcINO_InputHandlerCase100;
             pcINO_keyMaps = pcINO_keyMapsCase100;
+            /* 0x004246F2: mode 128 starts with the stick fully over,
+               set after the common code above has zeroed x and y. */
+            pcINO_joystickPosition[0].y = 1.0f;
             break;
-        case 101:
+        case 129:
             sJoystickHandlerFunction = pcINO_InputHandlerCase101;
             pcINO_keyMaps = pcINO_keyMapsCase101;
             break;
@@ -1172,9 +1189,15 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
     int16_t v2;
     int v3;
     int mouseData[5];
-    byte keyboardData[264];
-    byte v6a;
-    byte v6b;
+    /* 266, not 264: retail writes mouse buttons 7 and 8 at
+       [esp+0x138]/[esp+0x139] (0x00423026, 0x00423035), i.e.
+       keyboardData[264] and [265], and the backup copy at the end
+       is 266 bytes. The demo decompile put those two in locals. */
+    byte keyboardData[266];
+    /* The handler takes { lX * 0.5, lY * 0.5, lZ / granularity }
+       as floats (built at 0x00422F41..0x0042303D), not the raw
+       DIMOUSESTATE2 ints. The third element is wheel TICKS. */
+    float mouseScaled[3];
 
     memset(padData->padData, 0, sizeof(padData->padData));
 
@@ -1241,9 +1264,17 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
     keyboardData[261] = ((mouseData[3] >> 24) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[262] = (byte)(v2 & 0xff) == 0 ? 0 : 0x80;
     keyboardData[263] = (((v2) >> 8) & 0xff) == 0 ? 0 : 0x80;
-    v6a = ((mouseData[4] >> 16) & 0xff) == 0 ? 0 : 0x80;
-    v6b = ((mouseData[4] >> 24) & 0xff) == 0 ? 0 : 0x80;
-    sJoystickHandlerFunction(padData, mouseData, keyboardData);
+    keyboardData[264] = ((mouseData[4] >> 16) & 0xff) == 0 ? 0 : 0x80;
+    keyboardData[265] = ((mouseData[4] >> 24) & 0xff) == 0 ? 0 : 0x80;
+
+    /* 0x00422F41 / 0x00422F5B: halve the pointer deltas.
+       0x0042303D: idiv by mouseGranularity turns the wheel delta into
+       whole notches before any handler sees it. */
+    mouseScaled[0] = (float)mouseData[0] * pcINO_mouseSensitivity;
+    mouseScaled[1] = (float)mouseData[1] * pcINO_mouseSensitivity;
+    mouseScaled[2] = (float)(mouseData[2] / (mouseGranularity ? mouseGranularity : 1));
+
+    sJoystickHandlerFunction(padData, mouseScaled, keyboardData);
     if (keyboardData[pcINO_IntKeybDataLink[30]] || keyboardData[pcINO_IntKeybDataLink[31]])
         padData->padData[9] = -1;
     if (keyboardData[pcINO_IntKeybDataLink[28]] || keyboardData[pcINO_IntKeybDataLink[29]])
