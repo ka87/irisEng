@@ -7,6 +7,7 @@
 #include "bigfiles.h"
 #include "win/wingdi.h"
 #include "world.h"
+#include "sideload.h"
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
@@ -23,6 +24,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		//strcat(cmdLine, " /SINGLESTREAM /NOSOUND /B sally_clean.bf");
 		ENG_ParseCommandLine(cmdLine);
 		BIG_Open(MAI_gst_BIGFileName);
+		SIDE_InitModule();
 		ENG_bgeModuleHandle = hInstance;
 		ENG_WinGameWindowInit(hInstance);
 		ENG_InitEngine();
@@ -31,6 +33,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		ENG_CloseEngine();
 		DestroyWindow(MAI_gh_MainWindow);
 		BIG_Close();
+		SIDE_CloseModule();
 		ENG_CloseApplication();
 	}
 	return 0;

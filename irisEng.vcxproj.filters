@@ -132,6 +132,9 @@
     <ClCompile Include="sectors.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="sideload.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="events.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -1134,6 +1137,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="sectors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sideload.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="engine.h">

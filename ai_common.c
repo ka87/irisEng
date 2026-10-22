@@ -9,6 +9,7 @@
 #include "textget.h"
 #include "dbg.h"
 #include "ai/ai_compiledscripts.h"
+#include "sideload.h"
 
 int AI_CompiledAIEnabled = 1;
 int ENG_AIProfilerEnabled = 0; // game doesn't set this explicitly
@@ -1020,6 +1021,18 @@ unsigned int AI_ul_RealResolveOneRefFunction(unsigned int key)
     return AI_ul_RealResolveOneRef(39, key);
 }
 
+/* Undo what a sideloaded parse borrowed, whichever way the loader
+   leaves. `speedMode` is what LOA_gb_SpeedMode held before; nothing
+   is touched unless a file was actually substituted. */
+static void AI_SideloadDone(char* sideData, int speedMode)
+{
+    if (sideData)
+    {
+        SIDE_Free(sideData);
+        LOA_gb_SpeedMode = speedMode;
+    }
+}
+
 tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
 {
     tAINode* currNode;
@@ -1031,6 +1044,8 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
     int binarizedLocalDataSize; 
     unsigned int localDataNodeNum;
     char* rawData, *currOffset;
+    char* sideData = NULL;
+    int sideSize = 0, sideSpeedMode = 0;
 
     aiFunc = (tAIFunction*)LOA_ul_SearchAddress(offset);
     if (aiFunc == (tAIFunction*)-1)
@@ -1042,20 +1057,45 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
         memset(newAiFunc, 0, sizeof(tAIFunction));
         newAiFunc->usageCount = 1;
         
+        /* Read from the .bf even when a sideloaded copy is going to
+           replace it. In a binarized world BIG_pc_ReadFileTmp is what
+           advances the stream, by the length the archive recorded, so
+           skipping it would desynchronise everything loaded after. */
         rawData = BIG_pc_ReadFileTmp(offset, &size);
+        currKey = LOA_ul_GetCurrentKey();
+
+        sideData = SIDE_pc_ReadByKey(currKey, &sideSize);
+        if (sideData)
+        {
+            rawData = sideData;
+            size = sideSize;
+            /* What was dropped in the folder is a standalone .ofc, not
+               a binarized member, so every field is present. Speed
+               mode skips the ones read with mode 2, which would be
+               read past the end here; turn it off for this parse. */
+            sideSpeedMode = LOA_gb_SpeedMode;
+            LOA_gb_SpeedMode = 0;
+        }
+
         currOffset = rawData;
         
         if (size)
         {
             newAiFunc->stackOffsetNum = LOA_ReadLong(&currOffset, 0, 1);
-            currKey = LOA_ul_GetCurrentKey();
             DBG_OutputDebugString("Trying to load function with key: 0x%x\n", currKey);
-            for (i = 0; i < AI2C_i_SizeofArray(); i++)
+            /* A key the sideload folder names runs from its nodes,
+               whatever the transcription has for it. That is how a
+               behaviour already written back to .ofc gets tested
+               without editing AI2C_gat_fctdefs. */
+            if (!SIDE_b_Overrides(currKey))
             {
-                if (currKey == AI2C_gat_fctdefs[i].key)
+                for (i = 0; i < AI2C_i_SizeofArray(); i++)
                 {
-                    newAiFunc->funcPtr = AI2C_gat_fctdefs[i].func;
-                    break;
+                    if (currKey == AI2C_gat_fctdefs[i].key)
+                    {
+                        newAiFunc->funcPtr = AI2C_gat_fctdefs[i].func;
+                        break;
+                    }
                 }
             }
             if (!newAiFunc->funcPtr) {
@@ -1107,10 +1147,12 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
                         LOA_ReadAILocal(&currOffset, 0, 2);
                 }
             }
+            AI_SideloadDone(sideData, sideSpeedMode);
             return newAiFunc;
         }
         else
         {
+            AI_SideloadDone(sideData, sideSpeedMode);
             return newAiFunc;
         }
     }
@@ -1132,6 +1174,8 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
     tAIVars* aiVars;
     tMessage* msg;
     tTextGet* tg;
+    char* sideData = NULL;
+    int sideSize = 0, sideSpeedMode = 0;
 
     aiVars = (tAIVars*)MEM_p_Alloc(sizeof(tAIVars));
 
@@ -1139,9 +1183,21 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
 
     memset(aiVars, 0, sizeof(tAIVars));
     varDataPtr = BIG_pc_ReadFileTmp(offset, &size);
-    
+
+    sideData = SIDE_pc_ReadByKey(LOA_ul_GetCurrentKey(), &sideSize);
+    if (sideData)
+    {
+        varDataPtr = sideData;
+        size = sideSize;
+        sideSpeedMode = LOA_gb_SpeedMode;
+        LOA_gb_SpeedMode = 0;
+    }
+
     if (!size)
+    {
+        AI_SideloadDone(sideData, sideSpeedMode);
         return aiVars;
+    }
 
     currReadPtr = varDataPtr;
 
@@ -1319,6 +1375,7 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
             }
         }
     }
+    AI_SideloadDone(sideData, sideSpeedMode);
     return aiVars;
 }
 

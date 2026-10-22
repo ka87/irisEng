@@ -235,11 +235,17 @@ tStruct_funclist AI2C_gat_fctdefs[2530] = {
     { 0x35009407, SFX_FlashTexture_Fla_BeDisplay },
     { 0x35009408, SFX_FlashTexture_Fla_AfDisplay },
     { 0x35009409, SFX_FlashTexture_Fla_Flash_constant },
-    { 0x5e006324, main_logo_ml_init }, //{ 0x5e006324, hack },
-    { 0x3d003882, main_logo_ml_load },
-    { 0x3d003a94, main_logo_ml_init1 },
-    { 0x49027635, main_logo_ml_init2 },
-    { 0x490289b1, sc_dummy }, // main_logo_ml_initnopad
+    // The five main_logo behaviours below have been lifted back out
+    // of the retail exe and written as .ofc. Drop one in the sideload
+    // folder next to the exe and it runs from its nodes instead of
+    // from the C here, with no change to this table; listing its key
+    // in sideload\\interpret.txt does the same using the archive's own
+    // nodes. See sideload.h.
+    { 0x5e006324, main_logo_ml_init }, //{ 0x5e006324, hack },   // recovered
+    { 0x3d003882, main_logo_ml_load },                           // recovered
+    { 0x3d003a94, main_logo_ml_init1 },                          // recovered
+    { 0x49027635, main_logo_ml_init2 },                          // recovered
+    { 0x490289b1, sc_dummy }, // main_logo_ml_initnopad          // recovered (empty)
     { 0x490294bf, main_logo_ml_trailer },
     { 0x3d003df7, main_E3_loadmap_me3_init },
     { 0x3d003e04, main_E3_loadmap_me3_finit },
