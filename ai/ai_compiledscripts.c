@@ -2656,6 +2656,8 @@ SC_MISSING(9e006773)
 SC_MISSING(3500845e)
 SC_MISSING(35008463)
 SC_MISSING(9e0077ca)
+SC_MISSING(3d009760)
+SC_MISSING(3d0097a2)
 
 //tStruct_funclist AI2C_gat_fctdefs[1518] = {
 tStruct_funclist AI2C_gat_fctdefs[2530] = {
@@ -5187,8 +5189,9 @@ tStruct_funclist AI2C_gat_fctdefs[2530] = {
     { 0x9E006773, sc_missing_9e006773 },  //board_panel_bp_INTF_update
     { 0x3500845E, sc_missing_3500845e },
     { 0x35008463, sc_missing_35008463 },
-    { 0x9E0077CA, sc_missing_9e0077ca }  //Unknown_DEMO_ES_select // NINCS A TELJESBEN
-
+    { 0x9E0077CA, sc_missing_9e0077ca },  //Unknown_DEMO_ES_select // NINCS A TELJESBEN
+    { 0x3D009760, sc_missing_3d009760 },  // creditsnel vmi
+    { 0x3D0097A2, sc_missing_3d0097a2 }   // creditsnel vmi
     };
 
 unsigned int AI2C_i_SizeofArray()
