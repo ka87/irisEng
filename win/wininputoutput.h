@@ -22,6 +22,9 @@ IDirectInput8A* dinput_if;
 IDirectInputDevice8A* mouse_if_dword_98F248;
 IDirectInputDevice8A* keyb_if_dword_98F238;
 int mouseGranularity;
+/* Retail 0x00B6569C, .data, default 0.5f. Not a constant: the
+   options screen drives it through pcINO_SetMouseSensitivity. */
+float pcINO_mouseSensitivity;
 Vec3 pcINO_joystickPosition[2];
 
 int pcINO_stateMachineFlags;
@@ -34,13 +37,14 @@ int pcINO_case2_mouseScroll;
 float pcINO_case4_mouseMoveX;
 float pcINO_case4_mouseMoveY;
 float pcINO_case4_probablyUnunsedUnk1;
-int pcINO_case64StateMachineFlags;
-float pcINO_case64ElapsedTime;
 
 char pcINO_keyboardDataBackup[264];
 char pcINO_mouseTwoBytesDataBackup[2];
 
-void (*sJoystickHandlerFunction)(struct sInoPad*, int*, byte*);
+/* The handler receives { lX*0.5, lY*0.5, wheelTicks } as floats,
+   built in pcINO_Joystick_Update from the retail code at
+   0x00422F41..0x0042303D -- not the raw DIMOUSESTATE2 ints. */
+void (*sJoystickHandlerFunction)(struct sInoPad*, float*, byte*);
 char* pcINO_keyMaps;
 short pcINO_unkKeyStateTest;
 
@@ -61,6 +65,8 @@ int pcINO_i_SetCurrentPad(int a1);
 void pcINO_JoystickPifPafEnable(BOOL b);
 void pcINO_JoystickPafIntensity(int i1);
 void pcINO_Joystick_Update(struct sInoPad* padData);
+void pcINO_SetMouseSensitivity(float t);
+int  pcINO_case64StateMachineHandler(int pressed, int* state, float* deadline, float delay);
 void pcINO_dinput_mouse_and_keyb_acquire();
 void pcINO_dinput_mouse_and_keyb_unacquire();
 char* pcINO_GetFourKeyNamesCattedTogether(int a1, int a2, int a3, int a4);
