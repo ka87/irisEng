@@ -44,8 +44,10 @@ float pcINO_case4_mouseMoveY;
 float pcINO_case4_mouseMoveXDeadline;
 float pcINO_case4_mouseMoveYDeadline;
 
-char pcINO_keyboardDataBackup[264];
-char pcINO_mouseTwoBytesDataBackup[2];
+/* Retail backs up all 266 bytes in one block at 0x00BA1720 (rep movs of
+   0x42 dwords plus a word at 0x004230F5). The demo decompile split the
+   last two bytes into a separate array. */
+char pcINO_keyboardDataBackup[266];
 
 /* The handler receives { lX*0.5, lY*0.5, wheelTicks } as floats,
    built in pcINO_Joystick_Update from the retail code at

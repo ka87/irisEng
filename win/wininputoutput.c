@@ -1128,8 +1128,6 @@ void pcINO_dinput_mouse_and_keyb_acquire()
         keyb_if_dword_98F238->lpVtbl->Acquire(keyb_if_dword_98F238);
     pcINO_unkKeyStateTest = GetKeyState(144) != 0;
     memset(pcINO_keyboardDataBackup, 0, sizeof(pcINO_keyboardDataBackup));
-    pcINO_mouseTwoBytesDataBackup[0] = 0;
-    pcINO_mouseTwoBytesDataBackup[1] = 0;
 }
 
 void pcINO_dinput_mouse_and_keyb_unacquire()
@@ -1252,8 +1250,6 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
     {
     LABEL_15:
         memset(keyboardData, 0, sizeof(keyboardData));
-        v6a = 0;
-        v6b = 0;
     }
     keyboardData[0] = 0;
     keyboardData[256] = mouseData[2] <= 0 ? 0 : 0x80;
@@ -1294,8 +1290,6 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
         keyb_if_dword_98F238->lpVtbl->Acquire(keyb_if_dword_98F238);
     }
     memcpy(pcINO_keyboardDataBackup, keyboardData, sizeof(pcINO_keyboardDataBackup));
-    pcINO_mouseTwoBytesDataBackup[0] = v6a;
-    pcINO_mouseTwoBytesDataBackup[1] = v6b;
 }
 
 int pcINO_SavModuleInit() {
