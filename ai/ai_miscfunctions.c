@@ -79,7 +79,7 @@ tAINode* AI_EvalFunc_GRPInactiveSet(tAINode* a1)
 
 void AI_EvalFunc_Gsp_AE_MASTER_C(int a1, int a2, int a3, float a4)
 {
-d    PC_AE_MASTER_CTRL(a1, a2, a3, a4);
+    PC_AE_MASTER_CTRL(a1, a2, a3, a4);
 }
 
 tAINode* AI_EvalFunc_Gsp_AE_MASTER(tAINode* a1)

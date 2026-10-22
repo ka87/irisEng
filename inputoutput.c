@@ -13,7 +13,8 @@ int INO_gi_LaunchDemo = 0xffffffff;
 int Photo_gi_FirstInit = 0; // TODO FIXME: nem állítja a játék
 int Photo_gi_Init = 0; // TODO FIXME: nem állítja a játék
 
-int INO_gai_PresentLanguage[12] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3 };
+//int INO_gai_PresentLanguage[12] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3 }; // demo
+int INO_gai_PresentLanguage[12] = { 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 3 };
 int INO_ge_MasterType = 0; // TODO FIXME: nem állítja a játék
 
 void INO_Joystick_Init(HWND a1)

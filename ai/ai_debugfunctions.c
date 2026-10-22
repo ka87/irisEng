@@ -2,6 +2,7 @@
 #include "../gameobject.h"
 #include "../time.h"
 #include "ai_debugfunctions.h"
+#include "../dbg.h"
 
 void AI_EvalFunc_DbgTraceInt_C() {
 }
@@ -13,15 +14,15 @@ void AI_EvalFunc_DbgLastRayGet_Dummy_C(struct sGameObjectMain* a1, Vec3* a2)
 
 tAINode* AI_EvalFunc_DbgTraceInt(tAINode* a1)
 {
-    AI_GetIntFromStack();
-    AI_EvalFunc_DbgTraceInt_C();
+    int v = AI_GetIntFromStack();
+    DBG_OutputDebugString("AI: %d (0x%x)\n", v, v);
     return a1 + 1;
 }
 
 tAINode* AI_EvalFunc_DbgTraceFloat(tAINode* a1)
 {
-    AI_GetFloatFromStack();
-    AI_EvalFunc_DbgTraceInt_C();
+    float v = AI_GetFloatFromStack();
+    DBG_OutputDebugString("AI: %f\n", v);
     return a1 + 1;
 }
 
@@ -30,14 +31,14 @@ tAINode* AI_EvalFunc_DbgTraceVector(tAINode* arg0)
     Vec3 a1;
 
     AI_GetVecFromStack(&a1);
-    AI_EvalFunc_DbgTraceInt_C();
+    DBG_OutputDebugString("AI: (%f, %f, %f)\n", a1.x, a1.y, a1.z);
     return arg0 + 1;
 }
 
 tAINode* AI_EvalFunc_DbgTraceString(tAINode* a1)
 {
-    get_a_string_from_globalstack_sub_4D2040();
-    AI_EvalFunc_DbgTraceInt_C();
+    char* s = get_a_string_from_globalstack_sub_4D2040();
+    DBG_OutputDebugString("AI: %s\n", s ? s : "(null)");
     return a1 + 1;
 }
 
@@ -57,9 +58,12 @@ tAINode* AI_EvalFunc_DbgTraceChar(tAINode* a1)
 
 tAINode* AI_EvalFunc_DbgTraceObject(tAINode* a1)
 {
+    tGameObjectMain* o;
+
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_DbgTraceInt_C();
+    o = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    DBG_OutputDebugString("AI: object %p\n", (void*)o);
     return a1 + 1;
 }
 

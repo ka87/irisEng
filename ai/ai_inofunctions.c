@@ -356,7 +356,7 @@ tAINode* AI_EvalFunc_IoGameLangSet(tAINode* a1)
 
 int AI_EvalFunc_IoConsLangGet_C()
 {
-    return AI_EvalFunc_WORLoaded_C(); // TODO FIXME ez igy gáz
+    return 1;
 }
 
 tAINode* AI_EvalFunc_IoConsLangGet(tAINode* a1)
