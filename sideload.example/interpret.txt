@@ -1,0 +1,11 @@
+# Behaviours to run from the archive's own nodes rather than from the
+# C in AI2C_gat_fctdefs, without supplying a replacement file.
+#
+# One key per line. Anything after the key on a line is ignored, so a
+# name can be written beside it. Blank lines and lines starting with
+# # or // are skipped.
+#
+# A key with a file in this folder does not need listing here: the
+# file already overrides it.
+
+# 490289B1   main_logo_ml_initnopad   (empty in retail)

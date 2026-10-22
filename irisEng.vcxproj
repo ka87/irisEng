@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -461,6 +461,7 @@
     <ClCompile Include="proceduraltextures.c" />
     <ClCompile Include="profiler.c" />
     <ClCompile Include="sectors.c" />
+    <ClCompile Include="sideload.c" />
     <ClCompile Include="snp.c" />
     <ClCompile Include="soft.c" />
     <ClCompile Include="sound.c" />
@@ -609,6 +610,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="sectors.h" />
     <ClInclude Include="shadows.h" />
+    <ClInclude Include="sideload.h" />
     <ClInclude Include="snp.h" />
     <ClInclude Include="soft.h" />
     <ClInclude Include="sound.h" />
