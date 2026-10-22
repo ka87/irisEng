@@ -13,7 +13,7 @@ interpreter even where the behaviour has been transcribed into C. The
 debug output says what it picked up:
 
     SIDE: 0x5e006324 <- 5E006324.ofc
-    SIDE: 53 key(s) overridden from ...\sideload\
+    SIDE: 54 key(s) overridden from ...\sideload\
 
 With no folder there, nothing changes: the engine behaves exactly as it
 did before.
@@ -31,6 +31,12 @@ all three. "exact" below means all three matched. The four marked
 short read cleanly and agree on everything else, but miss the node
 count by a little and are flagged rather than padded; the two marked
 "not exact" are works in progress and are the two largest.
+
+`main_fix_mf_init` is marked unverified rather than exact: it is the
+first behaviour the game runs, and it asks for world 1000, but its
+chunk is in a world not available here, so its figures have nothing
+to be checked against. The source was read out of the binary like
+the rest.
 
 Four behaviours are empty in retail and compile to a single node.
 They are worth having here anyway: dropping one in takes the
@@ -89,6 +95,7 @@ game does, which is nothing.
 | `490289B1.ofc` | `main_logo_ml_initnopad` | 1 | exact |
 | `490294BF.ofc` | `main_logo_ml_trailer` | 137 | exact |
 | `5E006324.ofc` | `main_logo_ml_init` | 244 | exact |
+| `5E0084E3.ofc` | `main_fix_mf_init` | 19 | unverified |
 | `7200555A.ofc` | `SFX_XMEN_SFX_XMEN_set_moving_function` | 55 | exact |
 | `7200555B.ofc` | `SFX_XMEN_SFX_XMEN_afterrec_move` | 17 | 1 node(s) short |
 | `72005563.ofc` | `SFX_XMEN_SFX_XMEN_reflex` | 52 | exact |
