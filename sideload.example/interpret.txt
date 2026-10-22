@@ -8,4 +8,6 @@
 # A key with a file in this folder does not need listing here: the
 # file already overrides it.
 
-# 490289B1   main_logo_ml_initnopad   (empty in retail)
+# Nothing is listed here at the moment: every behaviour recovered so
+# far has a file in this folder, the four that are empty in retail
+# included.
