@@ -546,6 +546,60 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1)
     return a1 + 1;
 }
 
+/* Fullscreen Bink playback. binkw32 is not linked here, so the Bink
+ * calls sit behind IRISENG_HAVE_BINK; without it nothing plays and
+ * VideoFinish says so at once, which is what the scripts cope with.
+ * How these were recovered: ai/notes/gfx-fs-video.md
+ */
+void* GFX_gpv_FS_Video = 0;
+int GFX_gl_FS_VideoPlaying = 0;
+
+void GFX_FS_VideoStart(int a1)
+{
+    /* Read off the AI stack and discarded: the file name is not a
+     * parameter. Kept so the signature matches. */
+    (void)a1;
+#ifdef IRISENG_HAVE_BINK
+    BinkSetSoundSystem(BinkOpenDirectSound, GFX_FS_VideoSoundDevice());
+    GFX_gpv_FS_Video = BinkOpen("BGEMakingOf.bik", 0);
+    if (!GFX_gpv_FS_Video)
+        return;
+    GFX_gl_FS_VideoPlaying = 1;
+#else
+    GFX_gpv_FS_Video = 0;
+    GFX_gl_FS_VideoPlaying = 0;
+#endif
+}
+
+tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* a1)
+{
+    int v1;
+
+    v1 = AI_GetIntFromStack();
+    GFX_FS_VideoStart(v1);
+    return a1 + 1;
+}
+
+void GFX_FS_VideoStop()
+{
+#ifdef IRISENG_HAVE_BINK
+    if (GFX_gpv_FS_Video)
+    {
+        BinkClose(GFX_gpv_FS_Video);
+        GFX_gpv_FS_Video = 0;
+    }
+#endif
+    GFX_gl_FS_VideoPlaying = 0;
+}
+
+tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1)
+{
+    GFX_FS_VideoStop();
+    return a1 + 1;
+}
+
+/* 1 when there is no handle, otherwise the last frame has been
+ * reached. With no Bink handle there never is one, so this stays 1. */
 int GFX_FS_VideoFinish() {
     return 1;
 }

@@ -34,4 +34,6 @@ tAINode* AI_EvalFunc_GFXDepthBlur(tAINode* a1);
 tAINode* AI_EvalFunc_GFXLifeTimeSet(tAINode* a1);
 tAINode* AI_EvalFunc_CreateExplosion(tAINode* arg0);
 tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1);
+tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* a1);
+tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1);
 tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* a1);
