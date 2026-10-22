@@ -1,0 +1,12 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/irisEng
+/Debug
+/Release
+/sideload
+/x64/Debug
+/jade.spe
+/sally.idx
+/sally_clean.bf
