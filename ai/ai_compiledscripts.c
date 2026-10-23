@@ -2661,7 +2661,7 @@ SC_MISSING(3d0097a2)
 
 //tStruct_funclist AI2C_gat_fctdefs[1518] = {
 //tStruct_funclist AI2C_gat_fctdefs[2530] = { // demo
-tStruct_funclist AI2C_gat_fctdefs[2532] = {
+tStruct_funclist AI2C_gat_fctdefs[] = {
     { 0x5e0084e3, sc_missing_5e0084e3 },  //main_fix_mf_init
     { 0x72005557, sc_missing_72005557 },  //SFX_XMEN_SFX_XMEN_init
     { 0x72005558, sc_missing_72005558 },  //SFX_XMEN_SFX_XMEN_afterrec_init
@@ -3354,8 +3354,6 @@ tStruct_funclist AI2C_gat_fctdefs[2532] = {
     { 0x72000AF4, sc_missing_72000af4 },  //SFX_Fragments_SFX_frag_init
     { 0x72000AFC, sc_missing_72000afc },  //SFX_Fragments_SFX_frag_comportement
     { 0x72000CB9, sc_missing_72000cb9 },  //SFX_Fragments_SFX_frag_disparition
-    { 0x4900FE08, sc_missing_4900fe08 },
-    { 0x4900FE09, sc_missing_4900fe09 },
     { 0x49001D80, sc_missing_49001d80 },  //SFX_Disapear_dis_init
     { 0x49001D82, sc_missing_49001d82 },  //SFX_Disapear_dis_phases
     { 0x7100BB9E, sc_missing_7100bb9e },  //SFX_Disapear_dis_before_display
@@ -5108,8 +5106,6 @@ tStruct_funclist AI2C_gat_fctdefs[2532] = {
     { 0x4901A150, sc_missing_4901a150 },
     { 0x720020A0, sc_missing_720020a0 },  //Dog_Fight_Manager_DFM_init
     { 0x720020A1, sc_missing_720020a1 },  //Dog_Fight_Manager_DFM_comportement
-    { 0x4901880D, sc_missing_4901880d },
-    { 0x49018B57, sc_missing_49018b57 },
     { 0x5E006922, sc_missing_5e006922 },  //MDisk_MD_init
     { 0x5E006923, sc_missing_5e006923 },  //MDisk_MD_avi
     { 0x5E006931, sc_missing_5e006931 },  //MDisk_MD_photos
@@ -5118,9 +5114,6 @@ tStruct_funclist AI2C_gat_fctdefs[2532] = {
     { 0x5E0069A6, sc_missing_5e0069a6 },  //MDisk_MD_exec_sfx
     { 0x49022819, sc_missing_49022819 },  //MDisk_MD_Photos_SetNewPage
     { 0x7100F33C, sc_missing_7100f33c },  //GST_Sound_Manager_gs_play_sound
-    { 0x49018734, sc_missing_49018734 },
-    { 0x49018735, sc_missing_49018735 },
-    { 0x49018A17, sc_missing_49018a17 },
     { 0x9E003001, sc_missing_9e003001 },  //Fight_Manager_fm_reflex
     { 0x9E003002, sc_missing_9e003002 },  //Fight_Manager_fm_init
     { 0x260014D1, sc_missing_260014d1 },  //Fight_Manager_fm_exec_get_msg
@@ -5191,8 +5184,8 @@ tStruct_funclist AI2C_gat_fctdefs[2532] = {
     { 0x3500845E, sc_missing_3500845e },
     { 0x35008463, sc_missing_35008463 },
     { 0x9E0077CA, sc_missing_9e0077ca },  //Unknown_DEMO_ES_select // NINCS A TELJESBEN
-    { 0x3D009760, sc_missing_3d009760 },  // creditsnel vmi
-    { 0x3D0097A2, sc_missing_3d0097a2 }   // creditsnel vmi
+    { 0x3D009760, sc_missing_3d009760 },  //main_credit_mc_end
+    { 0x3D0097A2, sc_missing_3d0097a2 }   //main_credit_mc_endend
     };
 
 unsigned int AI2C_i_SizeofArray()
