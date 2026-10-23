@@ -2660,7 +2660,8 @@ SC_MISSING(3d009760)
 SC_MISSING(3d0097a2)
 
 //tStruct_funclist AI2C_gat_fctdefs[1518] = {
-tStruct_funclist AI2C_gat_fctdefs[2530] = {
+//tStruct_funclist AI2C_gat_fctdefs[2530] = { // demo
+tStruct_funclist AI2C_gat_fctdefs[2532] = {
     { 0x5e0084e3, sc_missing_5e0084e3 },  //main_fix_mf_init
     { 0x72005557, sc_missing_72005557 },  //SFX_XMEN_SFX_XMEN_init
     { 0x72005558, sc_missing_72005558 },  //SFX_XMEN_SFX_XMEN_afterrec_init
