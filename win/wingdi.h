@@ -240,6 +240,8 @@ char* rastersDrawPrimitiveUPDataEnd;
 
 //AE
 int PC_AE_MASTER;
+extern int CIN_Bands;
+extern int CIN_NoBands;
 int depthblur_Type;
 float camUnkf1Save;
 float deptBlurNear1Save;
@@ -303,4 +305,5 @@ void s_HandleWinMessages();
 void ENG_WinGameWindowInit(HINSTANCE a1);
 
 void PC_AE_MASTER_CTRL(int a1, int a2, int a3, float a4);
+void PC_CIN_CutsceneMode(int on);
 float PC_AE_MASTER_GET_P1(int a1, int a2);

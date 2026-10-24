@@ -25,7 +25,7 @@
 #include "ai_miscfunctions.h"
 #include "ai_gfxfunctions.h"
 
-tOfc_scriptengine_functions AI_gast_Functions[847] = {
+tOfc_scriptengine_functions AI_gast_Functions[848] = {
                                     { 0x1000,      0,  AI_EvalFunc_DbgTraceInt },
                                     { 0x1001,      0,  AI_EvalFunc_DbgTraceFloat },
                                     { 0x1002,      0,  AI_EvalFunc_DbgTraceVector },
@@ -854,6 +854,7 @@ tOfc_scriptengine_functions AI_gast_Functions[847] = {
                                     { 0x3CF5,      0,  AI_EvalFunc_CIN_OnOff },
                                     { 0x3CF6,      0,  AI_EvalFunc_DBR_GetN },
                                     { 0x3CF7,      0,  AI_EvalFunc_ConsoleSpecificOption },
+                                    { 0x3CF8,      0,  AI_EvalFunc_CIN_CutsceneMode },
                                     { 0x3D22,      0,  AI_EvalFunc_GFX_FS_VideoStart },
                                     { 0x3D23,      0,  AI_EvalFunc_GFX_FS_VideoStop },
                                     { 0x3D24,      0,  AI_EvalFunc_GFX_FS_VideoFinish },
