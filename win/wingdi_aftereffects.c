@@ -11,6 +11,19 @@ float bandsVal2 = 0.89583331f;
 float bandsVal3 = 0.083333336f;
 float bandsVal4 = 0.91666669f;
 
+// Cinematic bands. CIN_Bands says whether they are drawn; the
+// cutscene behaviours raise and lower it through the AI function
+// CIN_CutsceneMode. CIN_NoBands gates that -- with it clear the
+// bands are latched on and the script cannot move them.
+int CIN_Bands = 0;
+int CIN_NoBands = 1;
+
+void PC_CIN_CutsceneMode(int on)
+{
+    if (CIN_NoBands)
+        CIN_Bands = on ? 1 : 0;
+}
+
 float gAEOpacity = 0.0f;
 float colorBalanceParam1 = 0.5f;
 float unkAEFunc2Param = 0.5f;
@@ -1675,7 +1688,7 @@ void D3D_AE_CopyToScreen(IDirect3DTexture9* d3dtex)
     surf->lpVtbl->Release(surf);
     D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, D3DRenderParams.pDepthStencilSurface);
 
-    if (tweak_ae_nobands)
+    if (tweak_ae_nobands || !CIN_Bands)
     {
         rects[1].left = 0;
         rects[1].top = 0;
@@ -5247,7 +5260,7 @@ void D3D_PC_AE(tWorld* param1)
     RECT a2;
 
     D3D_SetD3DStatesDefaultForAE();
-    if (tweak_ae_nobands)
+    if (tweak_ae_nobands || !CIN_Bands)
     {
         bandsVal1 = 0.0f;
         bandsVal2 = 1.0f; // 480.0f - these broken values were used in the original game. Broke AE

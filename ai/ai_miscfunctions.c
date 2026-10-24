@@ -145,6 +145,21 @@ tAINode* AI_EvalFunc_CIN_OnOff(tAINode* a1)
     return a1 + 1;
 }
 
+// Raises or lowers the cinematic bands.
+void AI_EvalFunc_CIN_CutsceneMode_C(int a1)
+{
+    PC_CIN_CutsceneMode(a1);
+}
+
+tAINode* AI_EvalFunc_CIN_CutsceneMode(tAINode* a1)
+{
+    int v2;
+
+    v2 = AI_GetIntFromStack();
+    AI_EvalFunc_CIN_CutsceneMode_C(v2);
+    return a1 + 1;
+}
+
 tAINode* AI_EvalFunc_DBR_GetN(tAINode* a1)
 {
     int v1;

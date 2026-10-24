@@ -12,6 +12,7 @@ void AI_EvalFunc_SPG_SetNoise_C(struct sGameObjectMain* a1, float a2);
 void AI_EvalFunc_SDW_Activate_C(struct sGameObjectMain* a1, int a2);
 void AI_EvalFunc_SNAKE_SetInertia_C(struct sGameObjectMain* a1, float a2);
 void AI_EvalFunc_Gsp_AE_MASTER_C(int a1, int a2, int a3, float a4);
+void AI_EvalFunc_CIN_CutsceneMode_C(int a1);
 
 tAINode* AI_EvalFunc_GRPInvisibleSet(tAINode* a1);
 tAINode* AI_EvalFunc_GRPInactiveSet(tAINode* a1);
@@ -21,6 +22,7 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETONOFF(tAINode* a1);
 tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETP1(tAINode* a1);
 tAINode* AI_EvalFunc_Gsp_AE_MASTEREVT(tAINode* a1);
 tAINode* AI_EvalFunc_CIN_OnOff(tAINode* a1);
+tAINode* AI_EvalFunc_CIN_CutsceneMode(tAINode* a1);
 tAINode* AI_EvalFunc_DBR_GetN(tAINode* a1);
 tAINode* AI_EvalFunc_ConsoleSpecificOption(tAINode* a1);
 tAINode* AI_EvalFunc_XMEN_OnOff(tAINode* a1);
