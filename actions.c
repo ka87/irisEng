@@ -202,7 +202,15 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
             if (v5)
             {
                 if ((~((v5->flags & 0xff) >> 7) & 1) != 0)
+                {   /* Temporary: same action, not finished -- correct. */
+                    static int n;
+                    if (++n % 240 == 1)
+                        DBG_OutputDebugString(
+                            "ACT: SetAction SAME gao %p action %d flags "
+                            "0x%04X\n", (void*)a1, aactionID,
+                            (unsigned)(uint16_t)v5->flags);
                     return;
+                }
             }
         }
     }
@@ -212,6 +220,14 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
     }
     if (ENG_gb_EVERunning)
     {
+        {   /* Temporary: deferred, not applied. */
+            static int n;
+            if (++n % 60 == 1)
+                DBG_OutputDebugString(
+                    "ACT: SetAction DEFERRED (EVERunning) gao %p want %d "
+                    "current %d\n", (void*)a1, aactionID,
+                    (int)gaoao->currentAction);
+        }
         gaoao->eventRunningFrequency = -1;
         gaoao->elapsedDT = EVE_gf_ElapsedDT;
         gaoao->currentActionTransition = aactionID;
@@ -244,7 +260,15 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
             v7 = gaoao->transitionElem;
             forceda = 1;
             if (gaoao->currentActionTransition == aactionID)
+            {   /* Temporary: already transitioning to it, nothing done. */
+                static int n;
+                if (++n % 60 == 1)
+                    DBG_OutputDebugString(
+                        "ACT: SetAction SKIPPED (already transitioning) "
+                        "gao %p want %d current %d\n",
+                        (void*)a1, aactionID, (int)gaoao->currentAction);
                 return;
+            }
             gaoao->transitionElem = 0;
         }
         gaoao->flagsEgBlendIw2 &= ~2u;
@@ -293,6 +317,13 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
         LABEL_49:
             actionStruct = actions[aactionID];
             gaoao->actionPtr = actionStruct;
+            {   /* Temporary: the action really changing. */
+                static int n;
+                if (++n % 30 == 1)
+                    DBG_OutputDebugString(
+                        "ACT: SetAction APPLIED gao %p %d -> %d\n",
+                        (void*)a1, (int)gaoao->currentAction, aactionID);
+            }
             gaoao->currentAction = aactionID;
             if (actionStruct && actionStruct->actionElemNum)
             {
