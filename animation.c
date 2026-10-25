@@ -1396,7 +1396,25 @@ void ANI_PlayLeadAnimation(tGameObjectMain* a1, tGameObjectActorObject* a2, tAni
 
         if ((~((v3->flags & 0xff) >> 7) & 1) != 0)
         {
-            if (v26(v3->ptr, &v24))
+            int stepped = v26(v3->ptr, &v24);
+            {   /* Temporary: whether the per-frame stepper reports the
+                   animation finished, and which stepper is running. */
+                static int n;
+                tGameObjectActorObject* pao = (a1 && a1->basic)
+                    ? (tGameObjectActorObject*)a1->basic->actorObjectOrVisualObject
+                    : (tGameObjectActorObject*)0;
+                if (stepped || ++n % 120 == 1)
+                    DBG_OutputDebugString(
+                        "ANI: step gao %p action %d  %s -> %d  "
+                        "flags 0x%04X freq %d dt %f skel %p\n",
+                        (void*)a1, pao ? (int)pao->currentAction : -1,
+                        v26 == EVE_b_RunAnimation ? "RunAnimation"
+                                                  : "RunAllTracks",
+                        stepped, (unsigned)(uint16_t)v3->flags,
+                        (int)v3->frequency, TIM_gf_dt,
+                        pao ? (void*)pao->skeletonGroup : (void*)0);
+            }
+            if (stepped)
             {
                 v27 = v3->frequency;
                 v12 = a1->basic;
