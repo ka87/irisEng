@@ -1400,10 +1400,16 @@ void ANI_PlayLeadAnimation(tGameObjectMain* a1, tGameObjectActorObject* a2, tAni
             {   /* Temporary: whether the per-frame stepper reports the
                    animation finished, and which stepper is running. */
                 static int n;
+                static int z;
+                int stalled;
                 tGameObjectActorObject* pao = (a1 && a1->basic)
                     ? (tGameObjectActorObject*)a1->basic->actorObjectOrVisualObject
                     : (tGameObjectActorObject*)0;
-                if (stepped || ++n % 120 == 1)
+                /* A stalled animation returns 0 every frame and would
+                   otherwise only show up in the 1-in-120 sample, so a
+                   zero frequency is reported in its own right. */
+                stalled = (v3->frequency == 0) && (++z <= 200 || z % 100 == 0);
+                if (stepped || stalled || ++n % 120 == 1)
                     DBG_OutputDebugString(
                         "ANI: step gao %p action %d  %s -> %d  "
                         "flags 0x%04X freq %d dt %f skel %p\n",
