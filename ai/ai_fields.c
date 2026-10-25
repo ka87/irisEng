@@ -10,7 +10,7 @@ tAINode* AI_EvalField_VecY(tAINode* a1)
 {
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 4;
-    *(uint32_t *)&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;    
+    *(uint32_t *)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;    
     return a1 + 1;
 }
 
@@ -18,7 +18,7 @@ tAINode* AI_EvalField_VecZ(tAINode* a1)
 {
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 8;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
+    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
     return a1 + 1;
 }
 
@@ -32,7 +32,7 @@ tAINode* AI_EvalField_MsgGAO(tAINode* a1)
 {
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 4;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = AI_gaw_EnumLink[40];
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
+    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
     return a1 + 1;
 }
 
@@ -40,7 +40,7 @@ tAINode* AI_EvalField_MsgId(tAINode* a1)
 {
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 48;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 1;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
+    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
     return a1 + 1;
 }
 
@@ -51,9 +51,9 @@ tAINode* AI_EvalField_MsgVec1(tAINode* a1)
 
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 8;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 3;
-    v2 = (Vec3*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]));
+    v2 = (Vec3*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]));
     v3 = (Vec3*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    *(float*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32])) = v3->x;
+    *(float*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32])) = v3->x;
     v2->y = v3->y;
     v2->z = v3->z;
     return a1 + 1;
@@ -66,9 +66,9 @@ tAINode* AI_EvalField_MsgVec2(tAINode* a1)
 
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 20;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 3;
-    v2 = (Vec3*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]));
+    v2 = (Vec3*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]));
     v3 = (Vec3*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    *(float*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32])) = v3->x;
+    *(float*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32])) = v3->x;
     v2->y = v3->y;
     v2->z = v3->z;
     return a1 + 1;
@@ -78,7 +78,7 @@ tAINode* AI_EvalField_MsgInt1(tAINode* a1)
 {
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 40;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 1;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
+    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
     return a1 + 1;
 }
 
@@ -86,7 +86,7 @@ tAINode* AI_EvalField_MsgInt2(tAINode* a1)
 {
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 44;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 1;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
+    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
     return a1 + 1;
 }
 
@@ -94,7 +94,7 @@ tAINode* AI_EvalField_MsgFloat1(tAINode* a1)
 {
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 32;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
+    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
     return a1 + 1;
 }
 
@@ -102,7 +102,7 @@ tAINode* AI_EvalField_MsgFloat2(tAINode* a1)
 {
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 36;
     AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalVarStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
+    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
     return a1 + 1;
 }
 

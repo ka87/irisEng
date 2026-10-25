@@ -138,7 +138,7 @@ char AI_gac_UserStack[1024];
 extern tOfc_scriptengine_functions_types AI_gast_Types[23];
 extern tOfc_scriptengine_functions AI_gast_Categs[16];
 extern tOfc_scriptengine_functions AI_gast_Keywords[74];
-extern tOfc_scriptengine_functions AI_gast_Functions[848];
+extern tOfc_scriptengine_functions AI_gast_Functions[849];
 extern tOfc_scriptengine_functions AI_gast_Fields[27];
 
 extern int AI_CompiledAIEnabled;
