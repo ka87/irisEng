@@ -699,21 +699,6 @@ tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackD
     if (AI_CompiledAIEnabled && funcPtr->funcPtr)
         return (tAINode*)funcPtr->funcPtr();
     AI_gul_SizeLocalStack += stackDecrease;
-    /* Temporary: the cutscene camera's inputs, as it starts a pass.
-       Offsets are the camera model's o_cine_objet_dest,
-       o_cine_objet_cible, v_cine_pos_dest and v_cine_offset_cible. */
-    if (funcPtr && funcPtr->key == 0x35009614 && AI_gpst_CurrentInstance
-        && AI_gpst_CurrentInstance->instanceVarDataCurrent)
-    {
-        byte* v = AI_gpst_CurrentInstance->instanceVarDataCurrent;
-        DBG_OutputDebugString(
-            "AI: cine dest=%p cible=%p pos_dest(%f %f %f) "
-            "offset_cible(%f %f %f) must_cut=%d delai_trans=%f mode=%d\n",
-            *(void**)(v + 180), *(void**)(v + 184),
-            *(float*)(v + 188), *(float*)(v + 192), *(float*)(v + 196),
-            *(float*)(v + 200), *(float*)(v + 204), *(float*)(v + 208),
-            *(int*)(v + 144), *(float*)(v + 232), *(int*)(v + 224));
-    }
     AI_gi_TraceAt = 0;
     for (i = *jumpNode; (unsigned int)i >= 7 && i->category != 31; i = AI_gast_Categs[i->category].funcptr(i))
     {
