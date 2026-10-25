@@ -1852,6 +1852,10 @@ tAINode* AI_EvalFunc_OBJ_SightGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = v2;
     AI_EvalFunc_OBJ_SightGet_C(v2, &a3);
+    /* Temporary: report what the sight getter hands back. */
+    DBG_OutputDebugString("AI: SightGet beh 0x%08x  gao %p  -> (%f %f %f)\n",
+        AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+        (void*)v2, a3.x, a3.y, a3.z);
     AI_PutVecToStack(&a3);
     return a1 + 1;
 }

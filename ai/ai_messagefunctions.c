@@ -1,4 +1,5 @@
 #include "ai_messagefunctions.h"
+#include "../dbg.h"
 
 void AI_EvalFunc_MSGSend_C(struct sGameObjectMain* a1, struct sMessage* Src)
 {
@@ -27,6 +28,18 @@ tAINode* AI_EvalFunc_MSGSend(tAINode* arg0)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a1 = v2;
     AI_GetVarFromStack(&dest, &a2);
+    /* Temporary: report what each script sends to whom. */
+    {
+        tMessage* m = (tMessage*)a2.ptr;
+        if (m)
+            DBG_OutputDebugString(
+                "AI: MSG_Send beh 0x%08x -> gao %p  id %d  sender %p gao2 %p "
+                "v1(%f %f %f) v2(%f %f %f) i1 %d i2 %d f1 %f f2 %f\n",
+                AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+                (void*)a1, m->msgID, (void*)m->gao, (void*)m->gao2,
+                m->v1.x, m->v1.y, m->v1.z, m->v2.x, m->v2.y, m->v2.z,
+                m->Int1, m->Int2, m->f1, m->f2);
+    }
     AI_EvalFunc_MSGSend_C(a1, (tMessage*)a2.ptr);
     return arg0 + 1;
 }
