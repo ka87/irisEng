@@ -1877,7 +1877,21 @@ int EVE_b_RunAnimation(tEventData* a1, float* a4)
     v12 = a1->eventListStruct;
     v18 = a1->tracks;
     if (!a1->eventListStruct || !v18)
+    {   /* Temporary: with no list or no tracks the animation can never
+           report finished, so the action it belongs to never ends. */
+        static int n;
+        if (++n % 120 == 1)
+            DBG_OutputDebugString(
+                "EVE: RunAnimation gives up  gao %p  eventList %p tracks %p "
+                "action %d\n",
+                (void*)EVE_gpst_OwnerGAO, (void*)a1->eventListStruct,
+                (void*)v18,
+                (EVE_gpst_OwnerGAO && EVE_gpst_OwnerGAO->basic
+                 && EVE_gpst_OwnerGAO->basic->actorObjectOrVisualObject)
+                ? (int)((tGameObjectActorObject*)(EVE_gpst_OwnerGAO->basic
+                        ->actorObjectOrVisualObject))->currentAction : -1);
         return 0;
+    }
     EVE_gpst_CurrentListTracks = a1->eventListStruct;
     v13 = EVE_gpst_CurrentRefMatrix;
     EVE_gpst_CurrentGAO = EVE_gpst_OwnerGAO;
