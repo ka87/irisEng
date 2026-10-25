@@ -1,4 +1,5 @@
 #include "basic_array.h"
+#include "dbg.h"
 #include "memory.h"
 #include "loading.h"
 #include "bigfiles.h"
@@ -219,6 +220,21 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
     actKit = gaoao->actionKit;
     actions = (tAction**)(((char*)actKit) + sizeof(tActionKit));
     v40 = actKit;
+    /* Temporary: an action the kit cannot supply is silently ignored
+       here, which leaves the object in its previous action for good. */
+    if (!(aactionID >= 0 && aactionID < actKit->elemNum
+          && (!aactionID || actions[aactionID])))
+    {
+        static int n;
+        if (++n % 60 == 1)
+            DBG_OutputDebugString(
+                "ACT: SetAction REJECTED gao %p want %d  kit elems %d  "
+                "slot %s  current %d\n",
+                (void*)a1, aactionID, (int)actKit->elemNum,
+                (aactionID >= 0 && aactionID < actKit->elemNum
+                 && !actions[aactionID]) ? "null" : "out of range",
+                (int)gaoao->currentAction);
+    }
     if (aactionID >= 0 && aactionID < actKit->elemNum && (!aactionID || actions[aactionID]))
     {
         v7 = 0;
