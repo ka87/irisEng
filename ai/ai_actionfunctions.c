@@ -75,6 +75,9 @@ void AI_EvalFunc_ACTActionSet_C(struct sGameObjectMain* a1, int actionId)
 
 void AI_EvalFunc_ACTActionSet_C_CURRENT(int a1)
 {
+    /* The compiled path reaches this copy, not the one above. */
+    DBG_OutputDebugString("ACT: Set gao %p action %d\n",
+        (void*)AI_gpst_CurrentGameObject, a1);
     ACT_SetAction(AI_gpst_CurrentGameObject, a1, 0);
     ((tGameObjectActorObject*)(AI_gpst_CurrentGameObject->basic->actorObjectOrVisualObject))->currTime = 0;
 }
