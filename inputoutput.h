@@ -143,6 +143,7 @@ void INO_PafSet(int a1, int a2);
 int INO_i_PifPafEnable(int a1);
 int INO_i_GetDiscError();
 void INO_SetControlMode(int a1);
+void INO_SetMouseSensitivity(float a1);
 void INO_SetControlSubmode(int a1);
 int INO_i_IsMouseBeingUsed();
 int INO_i_GetCurrentPad();
