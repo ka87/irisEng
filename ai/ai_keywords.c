@@ -835,6 +835,22 @@ tAINode* AI_EvalKeyword_Mul(tAINode* a1)
     if (isFloat)
     {
         a1b = *(float*)&v8 * *(float*)&a1a;
+
+        /* Temporary: a product that is NaN or far out of range turns
+           into 0x80000000 the moment anything reads it as an int, and
+           by then both operands are gone. Name them here. */
+        if (!(a1b > -1.0e9f && a1b < 1.0e9f))
+        {
+            static int n;
+            if (++n <= 40 || n % 200 == 0)
+                DBG_OutputDebugString(
+                    "AI: Mul non-finite in behaviour 0x%08x  "
+                    "lhs type %d bits 0x%08X (%f)  rhs type %d bits 0x%08X (%f)\n",
+                    AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+                    (int)v7, (unsigned)v8, *(float*)&v8,
+                    (int)v9, (unsigned)a1a, *(float*)&a1a);
+        }
+
         AI_PutFloatToStack(a1b);
     }
     else
