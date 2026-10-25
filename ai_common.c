@@ -686,6 +686,10 @@ tAINode* AI_dum(tAINode* aiNode)
     return aiNode + 1;
 }
 
+/* The last few nodes run, for reporting a stack fault in context. */
+tAINodeTrace AI_gast_Trace[AI_TRACE_LEN];
+int AI_gi_TraceAt;
+
 tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackDecrease)
 {
     tAINode* i;
@@ -695,20 +699,44 @@ tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackD
     if (AI_CompiledAIEnabled && funcPtr->funcPtr)
         return (tAINode*)funcPtr->funcPtr();
     AI_gul_SizeLocalStack += stackDecrease;
+    AI_gi_TraceAt = 0;
     for (i = *jumpNode; (unsigned int)i >= 7 && i->category != 31; i = AI_gast_Categs[i->category].funcptr(i))
     {
         AI_gppst_CurrentJumpNode = jumpNode;
+        /* Keep the last few nodes and the stack depth each one left
+           behind. Where the depth first drifts is the fault; where it
+           goes negative is only where the drift finally shows. */
+        AI_gast_Trace[AI_gi_TraceAt & (AI_TRACE_LEN - 1)].node =
+            funcPtr && funcPtr->nodes ? (int)(i - funcPtr->nodes) : -1;
+        AI_gast_Trace[AI_gi_TraceAt & (AI_TRACE_LEN - 1)].category = i->category;
+        AI_gast_Trace[AI_gi_TraceAt & (AI_TRACE_LEN - 1)].val = i->val;
+        AI_gast_Trace[AI_gi_TraceAt & (AI_TRACE_LEN - 1)].val2 = i->val2;
+        AI_gast_Trace[AI_gi_TraceAt & (AI_TRACE_LEN - 1)].depth = AI_gul_SizeGlobalVarStack;
+        ++AI_gi_TraceAt;
+
         /* The expression stack went negative while this node ran. Name
            the behaviour and the node rather than letting the next
            keyword read element -1. */
         if (AI_gul_SizeGlobalVarStack < 0)
         {
+            int t, first;
             DBG_OutputDebugString(
                 "AI: var stack underflow in behaviour 0x%08x at node %d "
                 "(category %d val %d val2 %d)\n",
                 funcPtr ? funcPtr->key : 0,
                 funcPtr && funcPtr->nodes ? (int)(i - funcPtr->nodes) : -1,
                 i->category, i->val, i->val2);
+            first = AI_gi_TraceAt > AI_TRACE_LEN ? AI_gi_TraceAt - AI_TRACE_LEN : 0;
+            for (t = first; t < AI_gi_TraceAt; ++t)
+            {
+                DBG_OutputDebugString(
+                    "AI:   node %5d  categ %2d  val %10d  val2 %5d  depth %d\n",
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].node,
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].category,
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].val,
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].val2,
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].depth);
+            }
             AI_gul_SizeGlobalVarStack = 0;
             break;
         }
