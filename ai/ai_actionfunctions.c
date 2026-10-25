@@ -1,4 +1,5 @@
 #include "../gameobject.h"
+#include "../dbg.h"
 #include "ai_actionfunctions.h"
 
 BOOL AI_EvalFunc_ACTHasKit_C(struct sGameObjectMain* a1)
@@ -284,6 +285,18 @@ tAINode* AI_EvalFunc_ACTActionFinished(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_ACTActionFinished_C(v3);
+    /* Temporary: a meta loop waiting on this never ends if it stays 0. */
+    {
+        static tGameObjectMain* last; static int lastv = -1; static int n;
+        if (v3 != last || v1 != lastv || ++n % 120 == 0)
+        {
+            DBG_OutputDebugString(
+                "AI: ActionFinished beh 0x%08x gao %p -> %d\n",
+                AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+                (void*)v3, v1);
+            last = v3; lastv = v1;
+        }
+    }
     AI_PutIntToStack(v1);
     return a1 + 1;
 }

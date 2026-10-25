@@ -1,4 +1,5 @@
 #include "ai_animationfunctions.h"
+#include "../dbg.h"
 
 int AI_EvalFunc_ANIFrequencyGet_C(struct sGameObjectMain* gao, int animIdx)
 {
@@ -313,6 +314,17 @@ tAINode* AI_EvalFunc_ANIIsInBlend(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_ANIIsInBlend_C(v3);
+    /* Temporary: a meta loop waiting on this never ends if it stays 1. */
+    {
+        static tGameObjectMain* last; static int lastv = -1; static int n;
+        if (v3 != last || v1 != lastv || ++n % 120 == 0)
+        {
+            DBG_OutputDebugString("AI: IsInBlend beh 0x%08x gao %p -> %d\n",
+                AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+                (void*)v3, v1);
+            last = v3; lastv = v1;
+        }
+    }
     AI_PutIntToStack(v1);
     return a1 + 1;
 }
