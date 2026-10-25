@@ -86,6 +86,10 @@ tAINode* AI_EvalFunc_ACTActionSet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_GetIntFromStack();
+    /* Temporary: which behaviour starts which action on which object. */
+    DBG_OutputDebugString("AI: ActionSet beh 0x%08x gao %p action %d\n",
+        AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+        (void*)v3, v1);
     AI_EvalFunc_ACTActionSet_C(v3, v1);
     return a1 + 1;
 }
@@ -288,12 +292,21 @@ tAINode* AI_EvalFunc_ACTActionFinished(tAINode* a1)
     /* Temporary: a meta loop waiting on this never ends if it stays 0. */
     {
         static tGameObjectMain* last; static int lastv = -1; static int n;
+        tGameObjectActorObject* ao = (v3 && v3->basic)
+            ? (tGameObjectActorObject*)v3->basic->actorObjectOrVisualObject
+            : (tGameObjectActorObject*)0;
+        struct sAnim* an = ao ? ao->animPtr[0] : (struct sAnim*)0;
         if (v3 != last || v1 != lastv || ++n % 120 == 0)
         {
             DBG_OutputDebugString(
-                "AI: ActionFinished beh 0x%08x gao %p -> %d\n",
+                "AI: ActionFinished beh 0x%08x gao %p -> %d  "
+                "action %d anim.flags 0x%04X currTime %d len %d start %d\n",
                 AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
-                (void*)v3, v1);
+                (void*)v3, v1, ao ? (int)ao->currentAction : -1,
+                an ? (unsigned)(uint16_t)an->flags : 0u,
+                ao ? (int)ao->currTime : -1,
+                an ? (int)an->actionLength : -1,
+                an ? (int)an->startTime : -1);
             last = v3; lastv = v1;
         }
     }
