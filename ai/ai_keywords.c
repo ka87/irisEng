@@ -1,5 +1,6 @@
 #include "../time.h"
 #include "../ai.h"
+#include "../dbg.h"
 
 tAINode* AI_EvalKeyword_Ultra(tAINode* aiNode)
 {
@@ -1175,6 +1176,20 @@ tAINode* AI_EvalKeyword_SRight(tAINode* a1)
     return a1 + 1;
 }
 
+/* An lvalue that evaluated to NULL. Reports which behaviour and which
+   keyword hit it and skips the write, so a bad tree names itself
+   instead of taking the process down. */
+static BOOL AI_b_NullLValue(const void* dst, const char* keyword)
+{
+    if (dst)
+        return FALSE;
+    DBG_OutputDebugString(
+        "AI: %s: destination is NULL in behaviour 0x%08x; write skipped\n",
+        keyword,
+        AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0);
+    return TRUE;
+}
+
 tAINode* AI_EvalKeyword_Affect(tAINode* a1)
 {
     int v2;
@@ -1203,6 +1218,8 @@ tAINode* AI_EvalKeyword_Affect(tAINode* a1)
             v4 = *((int32_t *)&v3);
         }
     }
+    if (AI_b_NullLValue(v6, "Affect"))
+        return a1 + 1;
     *v6 = v4;
     return a1 + 1;
 }

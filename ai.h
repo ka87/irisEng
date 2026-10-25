@@ -63,6 +63,7 @@ typedef struct sAIFunction
     byte pad[2];
     int(*funcPtr)();
     int varsResolved;
+    uint32_t key;   // the behaviour's key, for diagnostics
 } tAIFunction;
 
 typedef struct sAIVars

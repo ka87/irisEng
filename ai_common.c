@@ -696,7 +696,23 @@ tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackD
         return (tAINode*)funcPtr->funcPtr();
     AI_gul_SizeLocalStack += stackDecrease;
     for (i = *jumpNode; (unsigned int)i >= 7 && i->category != 31; i = AI_gast_Categs[i->category].funcptr(i))
+    {
         AI_gppst_CurrentJumpNode = jumpNode;
+        /* The expression stack went negative while this node ran. Name
+           the behaviour and the node rather than letting the next
+           keyword read element -1. */
+        if (AI_gul_SizeGlobalVarStack < 0)
+        {
+            DBG_OutputDebugString(
+                "AI: var stack underflow in behaviour 0x%08x at node %d "
+                "(category %d val %d val2 %d)\n",
+                funcPtr ? funcPtr->key : 0,
+                funcPtr && funcPtr->nodes ? (int)(i - funcPtr->nodes) : -1,
+                i->category, i->val, i->val2);
+            AI_gul_SizeGlobalVarStack = 0;
+            break;
+        }
+    }
     AI_gul_SizeLocalStack -= stackDecrease;
     return i;
 }
@@ -1056,6 +1072,7 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
 
         memset(newAiFunc, 0, sizeof(tAIFunction));
         newAiFunc->usageCount = 1;
+        newAiFunc->key = LOA_ul_GetCurrentKey();
         
         /* Read from the .bf even when a sideloaded copy is going to
            replace it. In a binarized world BIG_pc_ReadFileTmp is what
