@@ -26,6 +26,20 @@ int AI_EvalFunc_ANIFrequencySet_C(struct sGameObjectMain* gao, int animIdx, int 
     unsigned int freqCalcd;
 
     freqCalcd = (unsigned int)((float)freq * 60.0f / 64.0f + 0.5f);
+
+    {   /* Temporary: every frequency a script asks for, and the action
+           it lands on. Both the interpreted and the compiled path come
+           through here, so the two runs are directly comparable. */
+        static int n;
+        tGameObjectActorObject* ao =
+            (gao && gao->basic) ? gao->basic->actorObjectOrVisualObject : 0;
+        if (++n <= 400 || n % 100 == 0)
+            DBG_OutputDebugString(
+                "ANI: FrequencySet #%d gao %p idx %d  ask %d -> %u  action %d\n",
+                n, (void*)gao, animIdx, freq, freqCalcd,
+                ao ? (int)ao->currentAction : -1);
+    }
+
     ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->animPtr[animIdx]->frequency = freqCalcd;
 
     return freqCalcd;
@@ -42,16 +56,6 @@ tAINode* AI_EvalFunc_ANIFrequencySet(tAINode* aiNode)
     freq = AI_GetIntFromStack();
     animIdx = AI_GetIntFromStack();
 
-    /* Temporary: a zero here stops the animation advancing at all. */
-    if (!freq)
-    {
-        static int n;
-        if (++n % 30 == 1)
-            DBG_OutputDebugString(
-                "ANI: FrequencySet ZERO beh 0x%08x gao %p idx %d\n",
-                AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
-                (void*)currUltraBackup, animIdx);
-    }
     AI_EvalFunc_ANIFrequencySet_C(currUltraBackup, animIdx, freq);
 
     return aiNode + 1;
