@@ -743,7 +743,8 @@ tAINode* AI_EvalFunc_MATHFloatRound(tAINode* a1)  // TODO: ellenorizni ibztos jo
     v5 = AI_GetFloatFromStack();
     v6 = AI_GetFloatFromStack();
     v4 = 1.0 / v5 * v6 + MATH_gd_magicDoubleForRound;
-    v3 = (float)v4;
+    /* The rounded value is the low word of the double, as in the _C form. */
+    v3 = (float)*(int32_t*)&v4;
     v2 = v3 * v5;
     AI_PutFloatToStack(v2);
     return a1 + 1;

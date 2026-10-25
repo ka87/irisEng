@@ -22,8 +22,10 @@ int AI_GetIntFromStack()
     AI_gul_SizeGlobalStack -= 32;
     if (AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type != 2)
         return *(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    /* The add puts the rounded value in the low word of the double;
+       the result is that word, not the double's numeric value. */
     v1 = *(float*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] + MATH_gd_magicDoubleForRound;
-    return (int32_t)v1;
+    return *(int32_t*)&v1;
 }
 
 int AI_PutIntToStack(int a1)
