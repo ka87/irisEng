@@ -335,6 +335,12 @@ void INO_SetControlMode(int a1)
     INO_SetControlMode_inner_sub_48ACB0(a1);
 }
 
+/* Mouse sensitivity, 0..1 from the options slider. */
+void INO_SetMouseSensitivity(float a1)
+{
+    pcINO_SetMouseSensitivity(a1);
+}
+
 void INO_KeyboardClose()
 {
     MEM_Free(INO_Keys);

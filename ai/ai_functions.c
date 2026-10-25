@@ -25,7 +25,7 @@
 #include "ai_miscfunctions.h"
 #include "ai_gfxfunctions.h"
 
-tOfc_scriptengine_functions AI_gast_Functions[848] = {
+tOfc_scriptengine_functions AI_gast_Functions[849] = {
                                     { 0x1000,      0,  AI_EvalFunc_DbgTraceInt },
                                     { 0x1001,      0,  AI_EvalFunc_DbgTraceFloat },
                                     { 0x1002,      0,  AI_EvalFunc_DbgTraceVector },
@@ -159,6 +159,7 @@ tOfc_scriptengine_functions AI_gast_Functions[848] = {
                                     { 0x1B72,      0,  AI_EvalFunc_IoIsMouseBeingUsed },
                                     { 0x1B73,      0,  AI_EvalFunc_IoGetProtect },
                                     { 0x1B74,      0,  AI_EvalFunc_IoSetControlSubmode },
+                                    { 0x1B75,      0,  AI_EvalFunc_IoSetMouseSensitivity },
                                     { 0x1BBC,      0,  AI_EvalFunc_TIMEWait },
                                     { 0x1BBD,      0,  AI_EvalFunc_TIMEGet },
                                     { 0x1BBE,      0,  AI_EvalFunc_TIMEElapsed },

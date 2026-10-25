@@ -61,4 +61,5 @@ tAINode* AI_EvalFunc_IoSetControlMode(tAINode* a1);
 tAINode* AI_EvalFunc_IoIsMouseBeingUsed(tAINode* a1);
 tAINode* AI_EvalFunc_IoGetProtect(tAINode* a1);
 tAINode* AI_EvalFunc_IoSetControlSubmode(tAINode* a1);
+tAINode* AI_EvalFunc_IoSetMouseSensitivity(tAINode* a1);
 

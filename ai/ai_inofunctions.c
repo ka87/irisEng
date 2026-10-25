@@ -278,6 +278,15 @@ tAINode* AI_EvalFunc_IoSetControlSubmode(tAINode* a1)
     return a1 + 1;
 }
 
+tAINode* AI_EvalFunc_IoSetMouseSensitivity(tAINode* a1)
+{
+    float v1;
+
+    v1 = AI_GetFloatFromStack();
+    INO_SetMouseSensitivity(v1);
+    return a1 + 1;
+}
+
 tAINode* AI_EvalFunc_IoIsMouseBeingUsed(tAINode* a1)
 {
     int v1;
