@@ -317,12 +317,15 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
         LABEL_49:
             actionStruct = actions[aactionID];
             gaoao->actionPtr = actionStruct;
-            {   /* Temporary: the action really changing. */
-                static int n;
-                if (++n % 30 == 1)
-                    DBG_OutputDebugString(
-                        "ACT: SetAction APPLIED gao %p %d -> %d\n",
-                        (void*)a1, (int)gaoao->currentAction, aactionID);
+            {   /* Temporary: the action really changing, and what it
+                   was given to play with. */
+                DBG_OutputDebugString(
+                    "ACT: SetAction APPLIED gao %p %d -> %d  elems %d  "
+                    "anim0 %p anim1 %p  kitelems %d\n",
+                    (void*)a1, (int)gaoao->currentAction, aactionID,
+                    actionStruct ? (int)actionStruct->actionElemNum : -1,
+                    (void*)gaoao->animPtr[0], (void*)gaoao->animPtr[1],
+                    (int)actKit->elemNum);
             }
             gaoao->currentAction = aactionID;
             if (actionStruct && actionStruct->actionElemNum)
