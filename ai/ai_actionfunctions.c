@@ -1,4 +1,5 @@
 #include "../gameobject.h"
+#include "../dbg.h"
 #include "ai_actionfunctions.h"
 
 BOOL AI_EvalFunc_ACTHasKit_C(struct sGameObjectMain* a1)
@@ -66,6 +67,8 @@ tAINode* AI_EvalFunc_ACTActionItemGet(tAINode* a1)
 
 void AI_EvalFunc_ACTActionSet_C(struct sGameObjectMain* a1, int actionId)
 {
+    DBG_OutputDebugString("ACT: Set gao %p action %d\n",
+        (void*)a1, actionId);
     ACT_SetAction(a1, actionId, 0);
     ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->currTime = 0;
 }
@@ -267,7 +270,22 @@ tAINode* AI_EvalFunc_ACTDesignFlagsTest(tAINode* a1)
 
 BOOL AI_EvalFunc_ACTActionFinished_C(struct sGameObjectMain* a1)
 {
-    return (((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[0]->flags & 0x80) != 0;
+    tGameObjectActorObject* ao =
+        (tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject);
+    int done = (ao->animPtr[0]->flags & 0x80) != 0;
+    {   /* Temporary: both the compiled and the interpreted path reach
+           here, so the two builds can be compared line for line. */
+        static tGameObjectMain* last; static int lastv = -1; static int n;
+        if (a1 != last || done != lastv || ++n % 120 == 0)
+        {
+            DBG_OutputDebugString(
+                "ACT: Finished gao %p action %d -> %d  flags 0x%04X\n",
+                (void*)a1, (int)ao->currentAction, done,
+                (unsigned)(uint16_t)ao->animPtr[0]->flags);
+            last = a1; lastv = done;
+        }
+    }
+    return done;
 }
 
 BOOL AI_EvalFunc_ACTActionFinished_C_CURRENT()

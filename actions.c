@@ -1,4 +1,5 @@
 #include "basic_array.h"
+#include "dbg.h"
 #include "memory.h"
 #include "loading.h"
 #include "bigfiles.h"
@@ -277,6 +278,15 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
         LABEL_49:
             actionStruct = actions[aactionID];
             gaoao->actionPtr = actionStruct;
+            {   /* Temporary: the action really changing. */
+                DBG_OutputDebugString(
+                    "ACT: APPLIED gao %p %d -> %d  elems %d  anim0 %p "
+                    "anim1 %p  kitelems %d\n",
+                    (void*)a1, (int)gaoao->currentAction, aactionID,
+                    actionStruct ? (int)actionStruct->actionElemNum : -1,
+                    (void*)gaoao->animPtr[0], (void*)gaoao->animPtr[1],
+                    (int)actKit->elemNum);
+            }
             gaoao->currentAction = aactionID;
             if (actionStruct && actionStruct->actionElemNum)
             {
