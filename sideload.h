@@ -14,7 +14,15 @@
         <exe dir>\sideload\
             5E006324.ofc        a behaviour, by key
             5E006325.ova        a variable file, by key
+            5E006326.omd        a model, by key
+            5E006327.oin        an instance, by key
             interpret.txt       keys to interpret from the .bf anyway
+
+    All four AI file types work the same way. A .ova is whichever
+    variable file carries that key, so the standard block a model
+    points at and the override block an instance points at are both
+    replaceable; a .omd replaces the list of parts a model is built
+    from, and a .oin the pair of keys an instance names.
 
     The name before the extension is eight hex digits, optionally
     0x-prefixed; the extension is ignored, so whatever the file is
