@@ -1390,12 +1390,23 @@ tAIModel* AI_ul_CallbackLoadModel(uint32_t offset)
     unsigned int i;
     int key;
     char* currReadPtr;
+    char* sideData = NULL;
+    int sideSize = 0, sideSpeedMode = 0;
 
     aiModel = (tAIModel*)MEM_p_Alloc(sizeof(tAIModel));
     LOA_ul_FileTypeSize_36 += sizeof(tAIModel);
     
     memset(aiModel, 0, sizeof(tAIModel));
     readPtr = BIG_pc_ReadFileTmp(offset, &size);
+
+    sideData = SIDE_pc_ReadByKey(LOA_ul_GetCurrentKey(), &sideSize);
+    if (sideData)
+    {
+        readPtr = sideData;
+        size = sideSize;
+        sideSpeedMode = LOA_gb_SpeedMode;
+        LOA_gb_SpeedMode = 0;
+    }
     
     currReadPtr = readPtr;
     funcNum = 0;
@@ -1438,6 +1449,7 @@ tAIModel* AI_ul_CallbackLoadModel(uint32_t offset)
             }
         }
     }
+    AI_SideloadDone(sideData, sideSpeedMode);
     return aiModel;
 }
 
@@ -1447,6 +1459,8 @@ struct sAI* AI_ul_CallbackLoadInstance(uint32_t offset)
     tAI* aiPtr;
     int size; 
     int key; 
+    char* sideData = NULL;
+    int sideSize = 0, sideSpeedMode = 0;
 
     aiPtr = (tAI*)MEM_p_Alloc(sizeof(tAI));
     LOA_ul_FileTypeSize_36 += sizeof(tAI);
@@ -1455,13 +1469,23 @@ struct sAI* AI_ul_CallbackLoadInstance(uint32_t offset)
 
     readPtr = BIG_pc_ReadFileTmp(offset, &size);
 
+    sideData = SIDE_pc_ReadByKey(LOA_ul_GetCurrentKey(), &sideSize);
+    if (sideData)
+    {
+        readPtr = sideData;
+        size = sideSize;
+        sideSpeedMode = LOA_gb_SpeedMode;
+        LOA_gb_SpeedMode = 0;
+    }
+
     key = LOA_ReadLong(&readPtr, 0, 1);
     if (key && key != -1)
         LOA_MakeFileRef(key, &(aiPtr->model), AI_ul_CallbackLoadModel, 1);
     key = LOA_ReadLong(&readPtr, 0, 1);
     if (key && key != -1)
         LOA_MakeFileRef(key, &(aiPtr->varsInstance), AI_ul_CallbackLoadVars, 9);
-    
+
+    AI_SideloadDone(sideData, sideSpeedMode);
     return aiPtr;
 }
 
