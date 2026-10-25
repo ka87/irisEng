@@ -8,6 +8,7 @@
 #include "water.h"
 #include "strings.h"
 #include "engine.h"
+#include "ai/ai_gfxfunctions.h"
 
 float GDI_gaf_ScreenRatio[4] = { 1.0f, 1.0f,  (3.0f / 4.0f), (9.0f / 16.0f) };
 float MAT_C_f_10Bits = 12288.0f;
@@ -737,7 +738,14 @@ void GDI_BeforeDisplay(tGdi_DisplayData* dxdd)
         else
             clearColor = 0x00000000;
      
-        if ((dxdd->presentationFlags & 0x400000) != 0)
+        if (GFX_gl_FS_VideoPlaying)
+        {
+            /* The video covers the frame later on, so clear to black
+             * and let what is left over read as the border. */
+            dxdd->Clear(3, 0x00000000);
+            dxdd->presentationFlags &= ~0x400000;
+        }
+        else if ((dxdd->presentationFlags & 0x400000) != 0)
         {
             dxdd->Clear(2, clearColor);
             dxdd->presentationFlags &= ~0x400000;
@@ -875,6 +883,10 @@ void s_Display(HWND a1, tGdi_DisplayData* dxdd)
         dxdd->CurrentWorld->viewPtr->displayData = dxdd;
         WOR_Render(dxdd->CurrentWorld, dxdd);
     }
+
+    /* After the world and before the flip, so the frame goes out over
+     * whatever was drawn. */
+    GFX_FS_VideoUpdate();
 
     GDI_AfterDisplay(dxdd);
 }

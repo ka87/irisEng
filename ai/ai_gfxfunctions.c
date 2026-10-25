@@ -3,6 +3,9 @@
 #include "../math.h"
 #include "../gfx/gfxcarte.h"
 #include "../gfx.h"
+#include "../sound.h"
+#include "../win/wingdi.h"
+#include "../win/fsvideo_bink.h"
 #include "ai_worldfunctions.h"
 #include "ai_gfxfunctions.h"
 
@@ -546,13 +549,117 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1)
     return a1 + 1;
 }
 
-/* Fullscreen Bink playback. binkw32 is not linked here, so the Bink
- * calls sit behind IRISENG_HAVE_BINK; without it nothing plays and
- * VideoFinish says so at once, which is what the scripts cope with.
- * How these were recovered: ai/notes/gfx-fs-video.md
- */
+/* Fullscreen Bink playback. The binkw32 calls sit behind
+ * IRISENG_HAVE_BINK; without it nothing plays and VideoFinish says so
+ * at once, which is what the scripts cope with. */
 void* GFX_gpv_FS_Video = 0;
 int GFX_gl_FS_VideoPlaying = 0;
+
+/* Aspect handling for the blit: smooth fit scales the frame up to the
+ * screen width with a linear filter, sharp fit does the same with a
+ * point filter, and with neither bit set the frame is centred at its
+ * own size. */
+#define GFX_FS_VIDEO_FIT_SMOOTH   0x2000000
+#define GFX_FS_VIDEO_FIT_SHARP    0x1000000
+
+int GFX_gl_FS_VideoFlags = 0;
+
+#ifdef IRISENG_HAVE_BINK
+
+/* The frame is decoded into this system memory surface, then moved
+ * into video memory once per displayed frame. The video memory copy
+ * is a texture rather than the back buffer: the back buffer is
+ * cleared to black for the borders on the same pass, and a stretch
+ * cannot read and write one surface. */
+static IDirect3DSurface9* GFX_gpst_FS_VideoSurface = 0;
+static IDirect3DTexture9* GFX_gpst_FS_VideoTexture = 0;
+static IDirect3DSurface9* GFX_gpst_FS_VideoTexSurface = 0;
+static unsigned int GFX_gl_FS_VideoScreenWidth = 0;
+static unsigned int GFX_gl_FS_VideoScreenHeight = 0;
+
+/* Decode one frame and copy it into the system memory surface. */
+static void GFX_FS_VideoDecodeAndCopy(tBinkVideo* bink)
+{
+    D3DLOCKED_RECT lr;
+
+    BinkDoFrame(bink);
+    GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, 0, D3DLOCK_NOSYSLOCK);
+    BinkCopyToBuffer(bink, lr.pBits, lr.Pitch, GFX_gl_FS_VideoScreenHeight, 0, 0, GFX_FS_VIDEO_COPYFMT);
+    GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
+}
+
+/* Move the decoded frame into video memory and stretch it, centred,
+ * into the back buffer. */
+static void GFX_FS_VideoBlit(tBinkVideo* bink)
+{
+    IDirect3DSurface9* back;
+    D3DTEXTUREFILTERTYPE filter;
+    RECT src;
+    RECT dst;
+    float scale;
+    int inScene;
+    int w;
+    int h;
+
+    /* Surface copies are not allowed inside a scene. */
+    inScene = D3DRenderParams.d3dNeedToCallEndScene;
+    if (inScene)
+    {
+        D3DRenderParams.d3dDev->lpVtbl->EndScene(D3DRenderParams.d3dDev);
+        D3DRenderParams.d3dNeedToCallEndScene = 0;
+    }
+
+    back = 0;
+    D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0, D3DBACKBUFFER_TYPE_MONO, &back);
+
+    D3DRenderParams.d3dDev->lpVtbl->UpdateSurface(D3DRenderParams.d3dDev,
+        GFX_gpst_FS_VideoSurface, 0, GFX_gpst_FS_VideoTexSurface, 0);
+
+    if ((GFX_gl_FS_VideoFlags & GFX_FS_VIDEO_FIT_SMOOTH) != 0)
+    {
+        scale = (float)GFX_gl_FS_VideoScreenWidth / (float)bink->Width;
+        filter = D3DTEXF_LINEAR;
+    }
+    else if ((GFX_gl_FS_VideoFlags & GFX_FS_VIDEO_FIT_SHARP) != 0)
+    {
+        scale = (float)GFX_gl_FS_VideoScreenWidth / (float)bink->Width;
+        filter = D3DTEXF_POINT;
+    }
+    else
+    {
+        scale = 1.0f;
+        filter = D3DTEXF_NONE;
+    }
+
+    w = (int)((float)bink->Width * scale);
+    h = (int)((float)bink->Height * scale);
+
+    src.left = 0;
+    src.top = 0;
+    src.right = (LONG)bink->Width;
+    src.bottom = (LONG)bink->Height;
+
+    /* Half of what is left over in each axis becomes the border. */
+    dst.left = ((int)GFX_gl_FS_VideoScreenWidth - w) / 2;
+    dst.top = ((int)GFX_gl_FS_VideoScreenHeight - h) / 2;
+    dst.right = dst.left + w;
+    dst.bottom = dst.top + h;
+
+    /* Black first, so whatever the frame does not cover is a border. */
+    D3DRenderParams.d3dDev->lpVtbl->Clear(D3DRenderParams.d3dDev, 0, NULL, D3DCLEAR_TARGET, 0, 0.0f, 0);
+    D3DRenderParams.d3dDev->lpVtbl->StretchRect(D3DRenderParams.d3dDev,
+        GFX_gpst_FS_VideoTexSurface, &src, back, &dst, filter);
+
+    back->lpVtbl->Release(back);
+
+    if (inScene)
+    {
+        D3DRenderParams.d3dDev->lpVtbl->BeginScene(D3DRenderParams.d3dDev);
+        D3DRenderParams.d3dNeedToCallEndScene = 1;
+    }
+}
+
+#endif
 
 void GFX_FS_VideoStart(int a1)
 {
@@ -560,11 +667,55 @@ void GFX_FS_VideoStart(int a1)
      * parameter. Kept so the signature matches. */
     (void)a1;
 #ifdef IRISENG_HAVE_BINK
-    BinkSetSoundSystem(BinkOpenDirectSound, GFX_FS_VideoSoundDevice());
-    GFX_gpv_FS_Video = BinkOpen("BGEMakingOf.bik", 0);
-    if (!GFX_gpv_FS_Video)
-        return;
-    GFX_gl_FS_VideoPlaying = 1;
+    {
+        tBinkVideo* bink;
+        IDirect3DSurface9* back;
+        D3DSURFACE_DESC desc;
+        D3DLOCKED_RECT lr;
+
+        BinkSetSoundSystem(BinkOpenDirectSound, SND_gst_Params.handles->dsndif);
+        bink = BinkOpen("BGEMakingOf.bik", 0);
+        GFX_gpv_FS_Video = bink;
+        if (!bink)
+            return;
+
+        /* The frame ends up on the back buffer, so its size and format
+         * decide the surface to decode into. */
+        back = 0;
+        D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0, D3DBACKBUFFER_TYPE_MONO, &back);
+        back->lpVtbl->GetDesc(back, &desc);
+        back->lpVtbl->Release(back);
+        GFX_gl_FS_VideoScreenHeight = desc.Height;
+        GFX_gl_FS_VideoScreenWidth = desc.Width;
+
+        GFX_gpst_FS_VideoSurface = 0;
+        D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(D3DRenderParams.d3dDev,
+            bink->Width, bink->Height, desc.Format, D3DPOOL_SYSTEMMEM, &GFX_gpst_FS_VideoSurface, 0);
+        if (!GFX_gpst_FS_VideoSurface)
+            return;
+
+        /* Blank it so the first blit cannot show uninitialised memory. */
+        GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, 0, D3DLOCK_NOSYSLOCK);
+        memset(lr.pBits, 0, bink->Width * bink->Height * 4);
+        GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
+
+        /* The video memory copy the stretch reads from. */
+        GFX_gpst_FS_VideoTexture = 0;
+        GFX_gpst_FS_VideoTexSurface = 0;
+        D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+            bink->Width, bink->Height, 1, 0, desc.Format, D3DPOOL_DEFAULT,
+            &GFX_gpst_FS_VideoTexture, 0);
+        if (!GFX_gpst_FS_VideoTexture)
+        {
+            GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
+            GFX_gpst_FS_VideoSurface = 0;
+            return;
+        }
+        GFX_gpst_FS_VideoTexture->lpVtbl->GetSurfaceLevel(GFX_gpst_FS_VideoTexture,
+            0, &GFX_gpst_FS_VideoTexSurface);
+
+        GFX_gl_FS_VideoPlaying = 1;
+    }
 #else
     GFX_gpv_FS_Video = 0;
     GFX_gl_FS_VideoPlaying = 0;
@@ -585,7 +736,22 @@ void GFX_FS_VideoStop()
 #ifdef IRISENG_HAVE_BINK
     if (GFX_gpv_FS_Video)
     {
-        BinkClose(GFX_gpv_FS_Video);
+        if (GFX_gpst_FS_VideoTexSurface)
+        {
+            GFX_gpst_FS_VideoTexSurface->lpVtbl->Release(GFX_gpst_FS_VideoTexSurface);
+            GFX_gpst_FS_VideoTexSurface = 0;
+        }
+        if (GFX_gpst_FS_VideoTexture)
+        {
+            GFX_gpst_FS_VideoTexture->lpVtbl->Release(GFX_gpst_FS_VideoTexture);
+            GFX_gpst_FS_VideoTexture = 0;
+        }
+        if (GFX_gpst_FS_VideoSurface)
+        {
+            GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
+            GFX_gpst_FS_VideoSurface = 0;
+        }
+        BinkClose((tBinkVideo*)GFX_gpv_FS_Video);
         GFX_gpv_FS_Video = 0;
     }
 #endif
@@ -598,9 +764,42 @@ tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1)
     return a1 + 1;
 }
 
-/* 1 when there is no handle, otherwise the last frame has been
+/* One step of playback, for once per displayed frame. When Bink is not
+ * ready for the next frame the current one is put up again. */
+void GFX_FS_VideoUpdate()
+{
+#ifdef IRISENG_HAVE_BINK
+    tBinkVideo* bink;
+
+    bink = (tBinkVideo*)GFX_gpv_FS_Video;
+    if (!bink || !GFX_gpst_FS_VideoSurface || !GFX_gpst_FS_VideoTexSurface)
+        return;
+
+    if (BinkWait(bink))
+    {
+        GFX_FS_VideoBlit(bink);
+        return;
+    }
+
+    GFX_FS_VideoDecodeAndCopy(bink);
+    GFX_FS_VideoBlit(bink);
+
+    if (bink->FrameNum < bink->Frames)
+        BinkNextFrame(bink);
+#endif
+}
+
+/* 1 when there is no handle, otherwise whether the last frame has been
  * reached. With no Bink handle there never is one, so this stays 1. */
-int GFX_FS_VideoFinish() {
+int GFX_FS_VideoFinish()
+{
+#ifdef IRISENG_HAVE_BINK
+    tBinkVideo* bink;
+
+    bink = (tBinkVideo*)GFX_gpv_FS_Video;
+    if (bink)
+        return bink->FrameNum >= bink->Frames;
+#endif
     return 1;
 }
 

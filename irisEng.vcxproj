@@ -479,6 +479,7 @@
     <ClInclude Include="water.h" />
     <ClInclude Include="ways.h" />
     <ClInclude Include="win\adpcm.h" />
+    <ClInclude Include="win\fsvideo_bink.h" />
     <ClInclude Include="win\eax\eax.h" />
     <ClInclude Include="win\wingdi.h" />
     <ClInclude Include="win\wininputoutput.h" />

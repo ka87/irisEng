@@ -1034,6 +1034,9 @@
     <ClInclude Include="win\adpcm.h">
       <Filter>Header Files\win</Filter>
     </ClInclude>
+    <ClInclude Include="win\fsvideo_bink.h">
+      <Filter>Header Files\win</Filter>
+    </ClInclude>
     <ClInclude Include="win\winsound.h">
       <Filter>Header Files\win</Filter>
     </ClInclude>

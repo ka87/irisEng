@@ -37,3 +37,13 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1);
 tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* a1);
 tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1);
 tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* a1);
+
+/* Fullscreen video. Update runs one step of playback and puts the
+ * current frame on screen; it is called once per displayed frame. */
+void GFX_FS_VideoStart(int a1);
+void GFX_FS_VideoStop();
+void GFX_FS_VideoUpdate();
+int GFX_FS_VideoFinish();
+
+/* Non zero while a fullscreen video is up. */
+extern int GFX_gl_FS_VideoPlaying;
