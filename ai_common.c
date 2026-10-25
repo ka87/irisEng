@@ -693,6 +693,7 @@ int AI_gi_TraceAt;
 tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackDecrease)
 {
     tAINode* i;
+    unsigned long steps = 0;
 
     AI_gppst_CurrentJumpNode = jumpNode;
     AI_gpst_CurrentFunction = funcPtr;
@@ -703,6 +704,34 @@ tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackD
     for (i = *jumpNode; (unsigned int)i >= 7 && i->category != 31; i = AI_gast_Categs[i->category].funcptr(i))
     {
         AI_gppst_CurrentJumpNode = jumpNode;
+
+        /* A behaviour that never leaves this loop freezes the frame
+           while the sound thread keeps running. No behaviour is long
+           enough to need this many nodes in one call, so name it, show
+           the cycle it is stuck in, and give the frame back. */
+        if (++steps == 2000000ul)
+        {
+            int t, first;
+            DBG_OutputDebugString(
+                "AI: RUNAWAY behaviour 0x%08x -- %lu nodes in one call, "
+                "giving up at node %d (category %d val %d val2 %d)\n",
+                funcPtr ? funcPtr->key : 0, steps,
+                funcPtr && funcPtr->nodes ? (int)(i - funcPtr->nodes) : -1,
+                i->category, i->val, i->val2);
+            first = AI_gi_TraceAt > AI_TRACE_LEN ? AI_gi_TraceAt - AI_TRACE_LEN : 0;
+            for (t = first; t < AI_gi_TraceAt; ++t)
+            {
+                DBG_OutputDebugString(
+                    "AI:   node %5d  categ %2d  val %10d  val2 %5d  depth %d\n",
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].node,
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].category,
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].val,
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].val2,
+                    AI_gast_Trace[t & (AI_TRACE_LEN - 1)].depth);
+            }
+            break;
+        }
+
         /* Keep the last few nodes and the stack depth each one left
            behind. Where the depth first drifts is the fault; where it
            goes negative is only where the drift finally shows. */
