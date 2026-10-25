@@ -42,6 +42,16 @@ tAINode* AI_EvalFunc_ANIFrequencySet(tAINode* aiNode)
     freq = AI_GetIntFromStack();
     animIdx = AI_GetIntFromStack();
 
+    /* Temporary: a zero here stops the animation advancing at all. */
+    if (!freq)
+    {
+        static int n;
+        if (++n % 30 == 1)
+            DBG_OutputDebugString(
+                "ANI: FrequencySet ZERO beh 0x%08x gao %p idx %d\n",
+                AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+                (void*)currUltraBackup, animIdx);
+    }
     AI_EvalFunc_ANIFrequencySet_C(currUltraBackup, animIdx, freq);
 
     return aiNode + 1;
