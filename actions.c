@@ -280,12 +280,16 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
             gaoao->actionPtr = actionStruct;
             {   /* Temporary: the action really changing. */
                 DBG_OutputDebugString(
-                    "ACT: APPLIED gao %p %d -> %d  elems %d  anim0 %p "
-                    "anim1 %p  kitelems %d\n",
+                    "ACT: SetAction APPLIED gao %p %d -> %d  elems %d  "
+                    "anim0 %p anim1 %p  kitelems %d  elem0freq %d\n",
                     (void*)a1, (int)gaoao->currentAction, aactionID,
                     actionStruct ? (int)actionStruct->actionElemNum : -1,
                     (void*)gaoao->animPtr[0], (void*)gaoao->animPtr[1],
-                    (int)actKit->elemNum);
+                    (int)actKit->elemNum,
+                    (actionStruct && actionStruct->actionElemNum)
+                        ? (int)((tActionElem*)(((char*)actionStruct)
+                                + sizeof(tAction)))[0].actionFrequency
+                        : -1);
             }
             gaoao->currentAction = aactionID;
             if (actionStruct && actionStruct->actionElemNum)

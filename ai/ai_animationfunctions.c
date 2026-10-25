@@ -25,6 +25,20 @@ int AI_EvalFunc_ANIFrequencySet_C(struct sGameObjectMain* gao, int animIdx, int 
     unsigned int freqCalcd;
 
     freqCalcd = (unsigned int)((float)freq * 60.0f / 64.0f + 0.5f);
+
+    {   /* Temporary: every frequency a script asks for, and the action
+           it lands on. Both the interpreted and the compiled path come
+           through here, so the two runs are directly comparable. */
+        static int n;
+        tGameObjectActorObject* ao =
+            (gao && gao->basic) ? gao->basic->actorObjectOrVisualObject : 0;
+        if (++n <= 400 || n % 100 == 0)
+            DBG_OutputDebugString(
+                "ANI: FrequencySet #%d gao %p idx %d  ask %d -> %u  action %d\n",
+                n, (void*)gao, animIdx, freq, freqCalcd,
+                ao ? (int)ao->currentAction : -1);
+    }
+
     ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->animPtr[animIdx]->frequency = freqCalcd;
 
     return freqCalcd;
