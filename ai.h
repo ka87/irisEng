@@ -12,6 +12,21 @@ typedef struct sAINode
     char category;
 } tAINode;
 
+#define AI_TRACE_LEN 32
+
+/* One executed node, kept for reporting a stack fault in context. */
+typedef struct sAINodeTrace
+{
+    int node;
+    int category;
+    int val;
+    int val2;
+    int depth;
+} tAINodeTrace;
+
+extern tAINodeTrace AI_gast_Trace[AI_TRACE_LEN];
+extern int AI_gi_TraceAt;
+
 typedef struct sAILocal
 {
     int offset;
