@@ -2,6 +2,7 @@
 #include "../engine.h"
 #include "../memory.h"
 #include "../math.h"
+#include "../dbg.h"
 #include "../snp.h"
 #include "../profiler.h"
 #include "../animation.h"
@@ -960,6 +961,13 @@ tAINode* AI_EvalFunc_OBJSetPos(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
+    /* Temporary: report which behaviour moves which object where. */
+    {
+        Vec3* p = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+        DBG_OutputDebugString("AI: PosSet  beh 0x%08x  gao %p  (%f %f %f)\n",
+            AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+            (void*)v2, p->x, p->y, p->z);
+    }
     AI_EvalFunc_OBJSetPos_C(v2, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
     return a1 + 1;
 }
@@ -1661,6 +1669,11 @@ tAINode* AI_EvalFunc_OBJ_SightGeneralSet(tAINode* a1)
     v5 = v2;
     AI_GetVecFromStack(&a1a);
     AI_GetVecFromStack(&a2);
+    /* Temporary: report which behaviour aims which object where. */
+    DBG_OutputDebugString(
+        "AI: Sight   beh 0x%08x  gao %p  sight(%f %f %f) up(%f %f %f)\n",
+        AI_gpst_CurrentFunction ? AI_gpst_CurrentFunction->key : 0,
+        (void*)v5, a2.x, a2.y, a2.z, a1a.x, a1a.y, a1a.z);
     AI_EvalFunc_OBJ_SightGeneralSet_C(v5, &a2, &a1a);
     return a1 + 1;
 }
