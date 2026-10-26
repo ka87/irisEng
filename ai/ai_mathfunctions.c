@@ -732,21 +732,21 @@ float AI_EvalFunc_MATHFloatRound_C(float a1, float a2) // TODO: ellenorizni ibzt
     return v3 * a2;
 }
 
-tAINode* AI_EvalFunc_MATHFloatRound(tAINode* a1)  // TODO: ellenorizni ibztos jo-e + AI_EvalFunc_MATHFloatRound_C inline
+tAINode* AI_EvalFunc_MATHFloatRound(tAINode* aiNode)  // TODO: ellenorizni ibztos jo-e + AI_EvalFunc_MATHFloatRound_C inline
 {
-    float v2;
-    float v3;
-    double v4;
-    float v5;
-    float v6;
+    float result;
+    float steps;
+    double rounded;
+    float precision;
+    float value;
 
-    v5 = AI_GetFloatFromStack();
-    v6 = AI_GetFloatFromStack();
-    v4 = 1.0 / v5 * v6 + MATH_gd_magicDoubleForRound;
-    v3 = (float)v4;
-    v2 = v3 * v5;
-    AI_PutFloatToStack(v2);
-    return a1 + 1;
+    precision = AI_GetFloatFromStack();
+    value = AI_GetFloatFromStack();
+    rounded = 1.0 / precision * value + MATH_gd_magicDoubleForRound;
+    steps = (float)*(int32_t*)&rounded;
+    result = steps * precision;
+    AI_PutFloatToStack(result);
+    return aiNode + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecRound(tAINode* a1)
