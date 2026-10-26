@@ -981,6 +981,11 @@ void D3D_RelaseBlurRenderTargetsAndOthers()
         D3DRenderParams.unktex2_dword_B3198C->lpVtbl->Release(D3DRenderParams.unktex2_dword_B3198C);
         D3DRenderParams.unktex2_dword_B3198C = NULL;
     }
+    if (D3DRenderParams.tmpRenderTarget)
+    {
+        D3DRenderParams.tmpRenderTarget->lpVtbl->Release(D3DRenderParams.tmpRenderTarget);
+        D3DRenderParams.tmpRenderTarget = NULL;
+    }
 }
 
 void D3D_ReleaseBackBufferAndDSSurace1()

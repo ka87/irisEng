@@ -96,6 +96,7 @@ typedef struct sGdi_D3DRenderParams
     IDirect3DTexture9* blurRenderTarget;
     IDirect3DTexture9* unktex1_dword_B31988;
     IDirect3DTexture9* unktex2_dword_B3198C;
+    IDirect3DTexture9* tmpRenderTarget;
     int opacity;
 } tGdi_D3DRenderParams;
 
