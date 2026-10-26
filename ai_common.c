@@ -17,13 +17,13 @@ int AIUnivIsRunning = 1;
 
 int AI_GetIntFromStack()
 {
-    double v1;
+    double rounded;
 
     AI_gul_SizeGlobalStack -= 32;
     if (AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type != 2)
         return *(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    v1 = *(float*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] + MATH_gd_magicDoubleForRound;
-    return (int32_t)v1;
+    rounded = *(float*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] + MATH_gd_magicDoubleForRound;
+    return *(int32_t*)&rounded;
 }
 
 int AI_PutIntToStack(int a1)
