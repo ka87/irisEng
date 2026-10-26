@@ -9,8 +9,7 @@ namespace IrisEngSettings
     /// leave the game silent.
     internal static class Settings
     {
-        private const string BaseKey =
-            @"Software\Ubisoft\Beyond Good & Evil\SettingsApplication.INI";
+        private const string BaseKey = @"Software\IRISEng";
         private const string VideoKey = BaseKey + @"\Basic video";
         private const string SoundKey = BaseKey + @"\Sound";
 
@@ -58,17 +57,29 @@ namespace IrisEngSettings
             }
         }
 
+        /// Creates the key path if it is not there yet; CreateSubKey
+        /// makes every missing level, so a clean machine needs no
+        /// preparation.
+        private static RegistryKey Create(string path)
+        {
+            RegistryKey k = Registry.CurrentUser.CreateSubKey(path);
+            if (k == null)
+                throw new InvalidOperationException(
+                    @"Could not create HKEY_CURRENT_USER\" + path + ".");
+            return k;
+        }
+
         public static void Write(int adapter, int mode, uint zBufferDepth, bool mipMapping,
                                  bool soundEffects, Guid audioDevice)
         {
-            using (RegistryKey k = Registry.CurrentUser.CreateSubKey(VideoKey))
+            using (RegistryKey k = Create(VideoKey))
             {
                 k.SetValue(VideoAdapter, adapter, RegistryValueKind.DWord);
                 k.SetValue(Mode, mode, RegistryValueKind.DWord);
                 k.SetValue(ZBufferDepth, unchecked((int)zBufferDepth), RegistryValueKind.DWord);
                 k.SetValue(MipMapping, mipMapping ? 1 : 0, RegistryValueKind.DWord);
             }
-            using (RegistryKey k = Registry.CurrentUser.CreateSubKey(SoundKey))
+            using (RegistryKey k = Create(SoundKey))
             {
                 // The engine disables effects when this reads exactly 1.
                 k.SetValue(SoundFx, soundEffects ? 0 : 1, RegistryValueKind.DWord);

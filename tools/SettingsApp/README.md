@@ -15,7 +15,7 @@ engine will see.
 
 ## What it writes
 
-Under `HKEY_CURRENT_USER\Software\Ubisoft\Beyond Good & Evil\SettingsApplication.INI`:
+Under `HKEY_CURRENT_USER\Software\IRISEng`, which the tool creates if it is not there:
 
 | Key | Value | Type | Meaning |
 |---|---|---|---|

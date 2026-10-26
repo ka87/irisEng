@@ -47,7 +47,7 @@ int pcSND_GetFXSettingsFromRegistry_sub_49FD00(LPBYTE lpData)
 
     if (RegOpenKeyExA(
         HKEY_CURRENT_USER,
-        "Software\\Ubisoft\\Beyond Good & Evil\\SettingsApplication.INI\\Sound",
+        "Software\\IRISEng\\Sound",
         0,
         0x20019u,
         &phkResult))
@@ -71,7 +71,7 @@ int pcSND_checkAudioBoardGuid_sub_49FD80(LPBYTE lpData)
 
     if (!RegOpenKeyExA(
         HKEY_CURRENT_USER,
-        "Software\\Ubisoft\\Beyond Good & Evil\\SettingsApplication.INI\\Sound",
+        "Software\\IRISEng\\Sound",
         0,
         1u,
         &phkResult))

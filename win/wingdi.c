@@ -4486,7 +4486,7 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
     D3DRenderParams.d3d_AdapterFormat = D3DFMT_X8R8G8B8;
     D3DRenderParams.presentParams.BackBufferFormat = D3DFMT_A8R8G8B8;
 
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Ubisoft\\Beyond Good & Evil\\SettingsApplication.INI\\Basic video", 0, KEY_READ, &phkResult)
+    if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\IRISEng\\Basic video", 0, KEY_READ, &phkResult)
         || !RegQueryVal(phkResult, "Video Adapter", (LPBYTE)&D3DRenderParams.d3d_Adapter)
         || !RegQueryVal(phkResult, "Z Buffer depth", (LPBYTE)&D3DRenderParams.ZBufferDepth)
         || !RegQueryVal(phkResult, "Mode", (LPBYTE)&adapterMode)
