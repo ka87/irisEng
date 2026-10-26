@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- The engine is 32-bit; enumerate display modes in the same
+         bitness so the stored mode index matches what it will see. -->
+    <PlatformTarget>x86</PlatformTarget>
+    <AssemblyName>irisEngSettings</AssemblyName>
+    <RootNamespace>IrisEngSettings</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+</Project>
