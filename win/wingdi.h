@@ -323,12 +323,9 @@ extern float D3D_gf_RefYoverX;
 // How much of the height each cutscene band covers.
 extern float D3D_gf_CutsceneBand;
 
-// Draws the flat layer in the shape it was laid out in, centred,
-// rather than spread across a wider window.
-extern int D3D_gi_Pillarbox2D;
-
 // The width the flat layer is laid out across, given the size of
-// the window. This is what the scripts are told the view is.
+// the window. On a window wider than the scenes were laid out for
+// this is narrower than the window itself.
 int D3D_FlatLayerWidth(int w, int h);
 
 // Set to log the framing once a frame through the debug output.
