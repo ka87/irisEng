@@ -655,7 +655,13 @@ void AI_InstanceAfterLoading(tAI* ai)
         if (ai->model->vars)
         {
             if (ai->model->vars->varFullSizeToAlloc)
+            {
                 ai->instanceVarDataCurrent = (byte*)MEM_p_Alloc(ai->model->vars->varFullSizeToAlloc);
+                // Mark the live block, so that a read taken before
+                // AI_ReinitInstance fills it is visible rather than
+                // reading as a plausible zero.
+                memset(ai->instanceVarDataCurrent, 0xCD, ai->model->vars->varFullSizeToAlloc);
+            }
             if (ai->model->vars->varFullSizeToAlloc)
                 ai->instanceVarDataInitial = (byte*)MEM_p_Alloc(ai->model->vars->varFullSizeToAlloc);
             if (ai->varsInstance)
@@ -981,6 +987,7 @@ void AI_DuplicateInstance(struct sGameObjectMain* srcGao, struct sGameObjectMain
         if (newAI->model->vars->varFullSizeToAlloc)
         {
             newAI->instanceVarDataCurrent = (byte*)MEM_p_Alloc(newAI->model->vars->varFullSizeToAlloc);
+            memset(newAI->instanceVarDataCurrent, 0xCD, newAI->model->vars->varFullSizeToAlloc);
             newAI->instanceVarDataInitial = (byte*)MEM_p_Alloc(newAI->model->vars->varFullSizeToAlloc);
             if (srcAI->instanceVarDataInitial)
                 memcpy(newAI->instanceVarDataInitial, srcAI->instanceVarDataInitial, newAI->model->vars->varFullSizeToAlloc);

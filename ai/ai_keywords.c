@@ -1,11 +1,52 @@
 #include "../time.h"
 #include "../ai.h"
+#include "../dbg.h"
+
+// Report a receiver that cannot be used, naming the variable it was
+// read from so the source of the value is identifiable from the log.
+static void AI_TraceUltraReceiver(tAINode* aiNode, void* popped)
+{
+    tAINode* src = aiNode - 1;
+    tAI* inst = AI_gpst_CurrentInstance;
+    char* varName = "?";
+    unsigned int i;
+
+    if (inst && inst->model && inst->model->vars && inst->model->vars->varNames)
+    {
+        for (i = 0; i < inst->model->vars->varNum; ++i)
+        {
+            if (inst->model->vars->variables[i].varOffset == src->val)
+            {
+                varName = inst->model->vars->varNames[i].varName;
+                break;
+            }
+        }
+    }
+
+    DBG_OutputDebugString(
+        "ULTRA RECEIVER %08X  node %p  src categ %d val %d val2 %d  "
+        "gao %p  inst %p  model %p  var %s\n",
+        (unsigned int)popped, aiNode, (int)src->category, src->val,
+        (int)src->val2, AI_gpst_CurrentGameObject, inst,
+        inst ? inst->model : NULL, varName);
+}
 
 tAINode* AI_EvalKeyword_Ultra(tAINode* aiNode)
 {
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_gpst_CurrentUltra = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+
+    if (AI_gpst_CurrentUltra == NULL
+        || (unsigned int)AI_gpst_CurrentUltra == 0xCDCDCDCD)
+    {
+        // Carry on with no receiver rather than faulting, so one run
+        // reports every occurrence instead of only the first.
+        AI_TraceUltraReceiver(aiNode, AI_gpst_CurrentUltra);
+        AI_gpst_CurrentUltra = NULL;
+        AI_gpst_CurrentInstanceUltra = NULL;
+        return aiNode + 1;
+    }
 
     if (AI_gpst_CurrentUltra == (tGameObjectMain*)WOR_gst_Universe.univAIInstance)
     {
