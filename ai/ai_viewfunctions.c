@@ -485,12 +485,8 @@ int AI_EvalFunc_VIEWWidth_C(int viewIdx)
     
     if (!WOR_gpst_CurrentWorld) return 0;
 
-    // the width the flat layer is laid out across, which on a wide
-    // window is narrower than the window itself
     if (WOR_gpst_CurrentWorld->viewPtr[viewIdx].displayData)
-        return D3D_FlatLayerWidth(
-            WOR_gpst_CurrentWorld->viewPtr[viewIdx].displayData->winWidth,
-            WOR_gpst_CurrentWorld->viewPtr[viewIdx].displayData->winHeight);
+        return WOR_gpst_CurrentWorld->viewPtr[viewIdx].displayData->winWidth;
     else
         return 0;
 }
