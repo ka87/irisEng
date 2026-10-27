@@ -306,4 +306,30 @@ void ENG_WinGameWindowInit(HINSTANCE a1);
 
 void PC_AE_MASTER_CTRL(int a1, int a2, int a3, float a4);
 void PC_CIN_CutsceneMode(int on);
+
+// Aspect handling. With D3D_gi_Widescreen set, the projection is
+// built from the shape of the window instead of a fixed ratio: the
+// vertical field of view stays as authored and the horizontal one
+// grows with the window, so nothing is stretched and a wider screen
+// simply shows more at the sides.
+//
+// D3D_gf_RefYoverX is the height over width the scenes were laid
+// out for. D3D_gf_CutsceneAspect is the width over height the
+// cutscene bands frame the picture to.
+extern int   D3D_gi_Widescreen;
+extern float D3D_gf_RefYoverX;
+extern float D3D_gf_CutsceneAspect;
+
+// Height over width of the area being presented.
+float D3D_RealYoverX(void);
+
+// Where the cutscene bands fall, as fractions of the back buffer.
+// A window taller than the framed aspect gets bands at the top and
+// bottom, a wider one gets them at the sides, and an ultra wide one
+// gets both.
+void D3D_GetBandFractions(float* top, float* bottom, float* left, float* right);
+
+// Horizontal counterpart of bandsVal1 and bandsVal2.
+extern float bandsValU1;
+extern float bandsValU2;
 float PC_AE_MASTER_GET_P1(int a1, int a2);

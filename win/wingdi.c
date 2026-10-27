@@ -553,6 +553,58 @@ void D3D_SetViewPort(int a1, int a2, int a3, int a4)
     }
 }
 
+int   D3D_gi_Widescreen = 1;
+float D3D_gf_RefYoverX = 0.75f;
+float D3D_gf_CutsceneAspect = 2.2222222f;
+
+float D3D_RealYoverX(void)
+{
+    // the drawing area as the projection sees it, falling back to
+    // the back buffer before the window rectangle is known
+    float w = (float)(D3DRenderParams.Rect.right - D3DRenderParams.Rect.left);
+    float h = (float)(D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top);
+
+    if (w <= 0.0f || h <= 0.0f)
+    {
+        w = (float)D3DRenderParams.presentParams.BackBufferWidth;
+        h = (float)D3DRenderParams.presentParams.BackBufferHeight;
+    }
+    if (w <= 0.0f || h <= 0.0f)
+        return D3D_gf_RefYoverX;
+    return h / w;
+}
+
+void D3D_GetBandFractions(float* top, float* bottom, float* left, float* right)
+{
+    float r = D3D_RealYoverX();
+    float wOverH;
+    float f;
+
+    *top = 0.0f;
+    *bottom = 1.0f;
+    *left = 0.0f;
+    *right = 1.0f;
+    if (r <= 0.0f || D3D_gf_CutsceneAspect <= 0.0f)
+        return;
+
+    wOverH = 1.0f / r;
+    f = wOverH / D3D_gf_CutsceneAspect;
+    if (f < 1.0f)
+    {
+        // taller than the framed aspect: band the top and bottom
+        *top = (1.0f - f) * 0.5f;
+        *bottom = 1.0f - *top;
+    }
+    else if (f > 1.0f)
+    {
+        // wider than the framed aspect: band the sides
+        float g = 1.0f / f;
+
+        *left = (1.0f - g) * 0.5f;
+        *right = 1.0f - *left;
+    }
+}
+
 void D3D_SetProjectionMatrix(tDDCamStruct* a1)
 {
     int v1;
@@ -609,6 +661,8 @@ void D3D_SetProjectionMatrix(tDDCamStruct* a1)
         v46 = gpst_DX_stDD->ddcs2.manualScreenRatio;
     else
         v46 = GDI_gaf_ScreenRatio[v1];
+    if (D3D_gi_Widescreen)
+        v46 = D3D_RealYoverX();
     v2 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
     v3 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
     v40 = gpst_DX_stDD->ddcs2.pixelYoverX * a1->YoverX * v46;
@@ -678,7 +732,18 @@ LABEL_17:
     {
         v41 = (float)(1.0 / tan(a1->focale * 0.5));
         MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
-        if ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
+        if (D3D_gi_Widescreen)
+        {
+            // the authored vertical half angle, kept whatever the
+            // window shape is; the horizontal one follows v46
+            float cotY = ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
+                             ? v41
+                             : (float)(v41 / D3D_gf_RefYoverX);
+
+            D3DRenderParams.projectionMatrix->v1.x = (float)(cotY * v46);
+            v13 = -cotY;
+        }
+        else if ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
         {
             D3DRenderParams.projectionMatrix->v1.x = v41 * v46;
             v13 = -v41;
@@ -701,7 +766,8 @@ LABEL_17:
     v42 = a1->isoZoom * a1->isoFactor;
     if ((gpst_DX_stDD->ddcs2.flags2 & 4) == 0)
     {
-        v20 = gpst_DX_stDD->ddcs2.manualScreenRatio;
+        v20 = D3D_gi_Widescreen ? D3D_RealYoverX()
+                                : gpst_DX_stDD->ddcs2.manualScreenRatio;
         v22 = -a1->farPlane;
         if (a1->isoFactor == 0.0) 
         {
@@ -723,7 +789,8 @@ LABEL_17:
         D3D_CalcAndSetProjection(v26, v28, v29, v32, v35, v38);
         goto LABEL_34;
     }
-    v14 = 1.0 / gpst_DX_stDD->ddcs2.manualScreenRatio;
+    v14 = 1.0 / (D3D_gi_Widescreen ? D3D_RealYoverX()
+                                   : gpst_DX_stDD->ddcs2.manualScreenRatio);
     v16 = -a1->farPlane;
     if (a1->isoFactor != 0.0)     
     {

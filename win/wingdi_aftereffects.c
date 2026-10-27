@@ -11,6 +11,15 @@ float bandsVal2 = 0.89583331f;
 float bandsVal3 = 0.083333336f;
 float bandsVal4 = 0.91666669f;
 
+// Side bands, as fractions of the back buffer width. They stay at
+// 0 and 1 unless the window is wider than the framed aspect.
+float bandsValU1 = 0.0f;
+float bandsValU2 = 1.0f;
+
+// The effect passes work on a slightly taller slice than is shown,
+// so the blur has rows to sample at the band edge.
+static const float AE_BAND_MARGIN = 0.020833334f;
+
 // Cinematic bands. CIN_Bands says whether they are drawn; the
 // cutscene behaviours raise and lower it through the AI function
 // CIN_CutsceneMode. CIN_NoBands gates that -- with it clear the
@@ -1681,41 +1690,83 @@ void D3D_AE_CopyToScreen(IDirect3DTexture9* d3dtex)
 
 void D3D_AE_CopyToScreen(IDirect3DTexture9* d3dtex)
 {
-    RECT rects[2];
+    RECT rects[4];
     IDirect3DSurface9* surf;
+    int w;
+    int h;
 
     D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0, 0, &surf);
     D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, surf);
     surf->lpVtbl->Release(surf);
     D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, D3DRenderParams.pDepthStencilSurface);
 
+    w = (int)D3DRenderParams.presentParams.BackBufferWidth;
+    h = (int)D3DRenderParams.presentParams.BackBufferHeight;
+
     if (tweak_ae_nobands || !CIN_Bands)
     {
         rects[1].left = 0;
         rects[1].top = 0;
-        rects[1].right = (unsigned int)D3DRenderParams.presentParams.BackBufferWidth;
-        rects[1].bottom = (unsigned int)D3DRenderParams.presentParams.BackBufferHeight;
+        rects[1].right = w;
+        rects[1].bottom = h;
         D3D_StretchRect(d3dtex, &rects[1]);
     }
     else
     {
-        // rendered image
-        rects[1].left = 0;
-        rects[1].top = (unsigned int)(bandsVal1 * D3DRenderParams.presentParams.BackBufferHeight);
-        rects[1].right = (unsigned int)D3DRenderParams.presentParams.BackBufferWidth;
-        rects[1].bottom = (unsigned int)(bandsVal2 * D3DRenderParams.presentParams.BackBufferHeight);
-        D3D_StretchRect(d3dtex, &rects[1]);
+        int l = (int)(bandsValU1 * w);
+        int r = (int)(bandsValU2 * w);
+        int t = (int)(bandsVal1 * h);
+        int b = (int)(bandsVal2 * h);
+        int n = 0;
 
-        // top and bottom bands
-        rects[0].left = 0;
-        rects[0].top = 0;
-        rects[0].right = (unsigned int)D3DRenderParams.presentParams.BackBufferWidth;
-        rects[0].bottom = (unsigned int)(bandsVal1 * D3DRenderParams.presentParams.BackBufferHeight + 1.0f);
-        rects[1].left = 0;
-        rects[1].top = (unsigned int)(D3DRenderParams.presentParams.BackBufferHeight - (bandsVal1 * D3DRenderParams.presentParams.BackBufferHeight) - 1.0f);
-        rects[1].right = rects[0].right;
-        rects[1].bottom = (unsigned int)D3DRenderParams.presentParams.BackBufferHeight;
-        D3DRenderParams.d3dDev->lpVtbl->Clear(D3DRenderParams.d3dDev, 2, (D3DRECT*)rects, 1, 0xFF000000, 0, 0);
+        if (l < 0) l = 0;
+        if (r > w) r = w;
+        if (t < 0) t = 0;
+        if (b > h) b = h;
+
+        // the picture, copied across one to one into the framed area
+        rects[0].left = l;
+        rects[0].top = t;
+        rects[0].right = r;
+        rects[0].bottom = b;
+        D3D_StretchRect(d3dtex, &rects[0]);
+
+        // whatever the frame leaves over, in black; the bands overlap
+        // the picture by a pixel so no seam shows at the edge
+        if (t > 0)
+        {
+            rects[n].left = 0;
+            rects[n].top = 0;
+            rects[n].right = w;
+            rects[n].bottom = t + 1;
+            n++;
+        }
+        if (b < h)
+        {
+            rects[n].left = 0;
+            rects[n].top = b - 1;
+            rects[n].right = w;
+            rects[n].bottom = h;
+            n++;
+        }
+        if (l > 0)
+        {
+            rects[n].left = 0;
+            rects[n].top = 0;
+            rects[n].right = l + 1;
+            rects[n].bottom = h;
+            n++;
+        }
+        if (r < w)
+        {
+            rects[n].left = r - 1;
+            rects[n].top = 0;
+            rects[n].right = w;
+            rects[n].bottom = h;
+            n++;
+        }
+        if (n)
+            D3DRenderParams.d3dDev->lpVtbl->Clear(D3DRenderParams.d3dDev, n, (D3DRECT*)rects, 1, 0xFF000000, 0, 0);
     }
 }
 
@@ -5295,13 +5346,23 @@ void D3D_PC_AE(tWorld* param1)
         bandsVal2 = 1.0f; // 480.0f - these broken values were used in the original game. Broke AE
         bandsVal3 = 0.0f;
         bandsVal4 = 1.0f; // 480.0f - || -
+        bandsValU1 = 0.0f;
+        bandsValU2 = 1.0f;
     }
     else
     {
-        bandsVal1 = 0.10416666f;
-        bandsVal2 = 0.89583331f;
-        bandsVal3 = 0.083333336f;
-        bandsVal4 = 0.91666669f;
+        float top;
+        float bottom;
+        float left;
+        float right;
+
+        D3D_GetBandFractions(&top, &bottom, &left, &right);
+        bandsVal1 = top;
+        bandsVal2 = bottom;
+        bandsVal3 = top > AE_BAND_MARGIN ? top - AE_BAND_MARGIN : 0.0f;
+        bandsVal4 = bottom + AE_BAND_MARGIN < 1.0f ? bottom + AE_BAND_MARGIN : 1.0f;
+        bandsValU1 = left;
+        bandsValU2 = right;
     }
     v1 = D3DRenderParams.blurTex;
     v2 = D3DRenderParams.blurRenderTarget2;
