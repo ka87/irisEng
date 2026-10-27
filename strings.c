@@ -1309,7 +1309,9 @@ void STR_ParseString(struct sGEOSTRStruct* geostr, int idx, struct sGEOSTRLetter
                     v11 = (tStrGlobalStruct*)((char*)v11 + 1);
                 LABEL_37:
                     v10->flagsAndChar |= v20 << 12;
-                    v10->x = (int)((double)(uint16_t)v12->width * x);
+                    v10->x = (int)((double)(uint16_t)v12->width * x)
+                           + D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+                                                  (int)gpst_DX_stDD->ct.cam.height);
                     v10->y = (int)((double)(uint16_t)v12->height * y);
                     v10->width = (unsigned int)((double)(uint16_t)v12->width * width);
                     v10->height = (unsigned int)((double)(uint16_t)v12->height * height);
@@ -2222,7 +2224,9 @@ void STR_SetPos(struct sGameObjectMain* a1, int a2, int a3, int a4, Vec3* a5)
                 if (v11 < v6->unkNum)
                 {
                     v12 = &v6->letters[v11];
-                    v12->x = (int)((double)(int16_t)v6->width * a5->x);
+                    v12->x = (int)((double)(int16_t)v6->width * a5->x)
+                           + D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+                                                  (int)gpst_DX_stDD->ct.cam.height);
                     v12->y = (int)((double)(int16_t)v6->height * a5->y);
                 }
                 if ((v8->flags & 0x200) == 0)
