@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "win/wingdi.h"
 #include "loading.h"
 #include "bigfiles.h"
 #include "ai.h"
@@ -1716,9 +1717,13 @@ void STR_SetSize(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5)
                         else
                             v12 = v11 - 32;
                         v13 = v12;
+                        // across, scale by the width the text was laid
+                        // out across rather than the whole window, so
+                        // the glyphs keep their shape
                         v7->width = (unsigned int)(fabs(v10->fge[v13].y - v10->fge[v13].x)
                             * (double)(uint16_t)v10->width
-                            * gpst_DX_stDD->ct.cam.width
+                            * D3D_FlatLayerWidth((int)gpst_DX_stDD->ct.cam.width,
+                                                 (int)gpst_DX_stDD->ct.cam.height)
                             * 0.0015625);
                         v14 = (unsigned int)(fabs(v10->fge[v13].h - v10->fge[v13].w)
                             * (double)(uint16_t)v5->fontDesc->height

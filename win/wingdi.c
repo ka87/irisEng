@@ -555,7 +555,6 @@ void D3D_SetViewPort(int a1, int a2, int a3, int a4)
 
 int   D3D_gi_Widescreen = 1;
 int   D3D_gi_AspectTrace = 0;
-int   D3D_gi_Pillarbox2D = 0;
 float D3D_gf_RefYoverX = 0.75f;
 float D3D_gf_CutsceneBand = 0.10416666f;
 
@@ -580,7 +579,7 @@ int D3D_FlatLayerWidth(int w, int h)
 {
     int boxW;
 
-    if (!D3D_gi_Pillarbox2D || D3D_gf_RefYoverX <= 0.0f || h <= 0)
+    if (!D3D_gi_Widescreen || D3D_gf_RefYoverX <= 0.0f || h <= 0)
         return w;
     boxW = (int)((float)h / D3D_gf_RefYoverX);
     return boxW < w ? boxW : w;
@@ -750,20 +749,7 @@ LABEL_17:
         v47 = (float)(0.5 / v44);
         D3DXMatrixTranslation(&v52, v47, v47, 0.0);
         v31 = (float)v10;
-        if (D3D_gi_Pillarbox2D)
-        {
-            // The flat layer is laid out across the width reported by
-            // D3D_FlatLayerWidth, which on a wide window is narrower
-            // than the window. Shift it so that width sits in the
-            // middle, at the size it was drawn.
-            float pad = (v44 - (float)D3D_FlatLayerWidth(v49, v10)) * 0.5f;
-
-            D3DXMatrixOrthoOffCenterRH(&v53, -pad, v44 - pad, 0.0, v31, 0.0, 1.0);
-        }
-        else
-        {
-            D3DXMatrixOrthoOffCenterRH(&v53, 0.0, v44, 0.0, v31, 0.0, 1.0);
-        }
+        D3DXMatrixOrthoOffCenterRH(&v53, 0.0, v44, 0.0, v31, 0.0, 1.0);
         D3DXMatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &v53, &v52);
         memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
         D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
