@@ -1,11 +1,50 @@
 #include "../time.h"
 #include "../ai.h"
+#include "../dbg.h"
+
+/* An ultra receiver of NULL is always a crash one line later, so this
+   prints what is known about the caller at the moment it happens and
+   then lets the fault happen as before. Diagnostic only -- remove it
+   once the NULL is accounted for. */
+static void AI_TraceUltraNull(tAINode* aiNode)
+{
+    tAI* inst = AI_gpst_CurrentInstance;
+
+    DBG_OutputDebugString("ULTRA NULL: node %p\n", aiNode);
+    if (AI_gpst_CurrentFunction)
+        DBG_OutputDebugString("  function %p, node index %d\n",
+            AI_gpst_CurrentFunction,
+            (int)(aiNode - AI_gpst_CurrentFunction->nodes));
+    DBG_OutputDebugString("  caller gao %p, instance %p\n",
+        AI_gpst_CurrentGameObject, inst);
+    if (inst)
+    {
+        DBG_OutputDebugString("  model %p, varsInstance %p, varData %p\n",
+            inst->model, inst->varsInstance, inst->instanceVarDataCurrent);
+        if (inst->varsInstance)
+            DBG_OutputDebugString("  instance override vars: %u\n",
+                inst->varsInstance->varNum);
+        else
+            DBG_OutputDebugString("  instance has no override block\n");
+        if (inst->model && inst->model->vars)
+            DBG_OutputDebugString("  model vars: %u, size %u\n",
+                inst->model->vars->varNum,
+                inst->model->vars->varFullSizeToAlloc);
+        if (inst->instanceVarDataCurrent)
+            DBG_OutputDebugString("  var data [0..7]: %08X %08X\n",
+                *(unsigned int*)&inst->instanceVarDataCurrent[0],
+                *(unsigned int*)&inst->instanceVarDataCurrent[4]);
+    }
+}
 
 tAINode* AI_EvalKeyword_Ultra(tAINode* aiNode)
 {
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_gpst_CurrentUltra = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+
+    if (AI_gpst_CurrentUltra == NULL)
+        AI_TraceUltraNull(aiNode);
 
     if (AI_gpst_CurrentUltra == (tGameObjectMain*)WOR_gst_Universe.univAIInstance)
     {
