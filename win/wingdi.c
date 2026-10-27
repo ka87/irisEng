@@ -554,8 +554,10 @@ void D3D_SetViewPort(int a1, int a2, int a3, int a4)
 }
 
 int   D3D_gi_Widescreen = 1;
+int   D3D_gi_AspectTrace = 0;
+int   D3D_gi_Pillarbox2D = 0;
 float D3D_gf_RefYoverX = 0.75f;
-float D3D_gf_CutsceneAspect = 2.2222222f;
+float D3D_gf_CutsceneBand = 0.10416666f;
 
 float D3D_RealYoverX(void)
 {
@@ -576,33 +578,49 @@ float D3D_RealYoverX(void)
 
 void D3D_GetBandFractions(float* top, float* bottom, float* left, float* right)
 {
-    float r = D3D_RealYoverX();
-    float wOverH;
-    float f;
+    float g;
 
-    *top = 0.0f;
-    *bottom = 1.0f;
+    // The vertical field of view is the one the scenes were laid out
+    // for, so the full height of the screen is the authored frame and
+    // the top and bottom bands keep the size they always had.
+    *top = D3D_gf_CutsceneBand;
+    *bottom = 1.0f - D3D_gf_CutsceneBand;
     *left = 0.0f;
     *right = 1.0f;
-    if (r <= 0.0f || D3D_gf_CutsceneAspect <= 0.0f)
+    if (!D3D_gi_Widescreen || D3D_gf_RefYoverX <= 0.0f)
         return;
 
-    wOverH = 1.0f / r;
-    f = wOverH / D3D_gf_CutsceneAspect;
-    if (f < 1.0f)
+    // Across, the screen shows more than the authored frame did. The
+    // side bands take that back, so the cutscene is framed exactly as
+    // laid out however wide the screen is.
+    g = D3D_RealYoverX() / D3D_gf_RefYoverX;
+    if (g < 1.0f)
     {
-        // taller than the framed aspect: band the top and bottom
-        *top = (1.0f - f) * 0.5f;
-        *bottom = 1.0f - *top;
-    }
-    else if (f > 1.0f)
-    {
-        // wider than the framed aspect: band the sides
-        float g = 1.0f / f;
-
         *left = (1.0f - g) * 0.5f;
         *right = 1.0f - *left;
     }
+}
+
+void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int viewH)
+{
+    float t;
+    float b;
+    float l;
+    float r;
+
+    if (!D3D_gi_AspectTrace)
+        return;
+    D3D_GetBandFractions(&t, &b, &l, &r);
+    D3D_OutputDebugString(
+        "[aspect] %s back %dx%d rect %dx%d view %d,%d %dx%d "
+        "YoverX %.4f bands t%.4f b%.4f l%.4f r%.4f cin %d\n",
+        where,
+        (int)D3DRenderParams.presentParams.BackBufferWidth,
+        (int)D3DRenderParams.presentParams.BackBufferHeight,
+        (int)(D3DRenderParams.Rect.right - D3DRenderParams.Rect.left),
+        (int)(D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top),
+        viewX, viewY, viewW, viewH,
+        D3D_RealYoverX(), t, b, l, r, CIN_Bands);
 }
 
 void D3D_SetProjectionMatrix(tDDCamStruct* a1)
@@ -722,7 +740,24 @@ LABEL_17:
         v47 = (float)(0.5 / v44);
         D3DXMatrixTranslation(&v52, v47, v47, 0.0);
         v31 = (float)v10;
-        D3DXMatrixOrthoOffCenterRH(&v53, 0.0, v44, 0.0, v31, 0.0, 1.0);
+        if (D3D_gi_Pillarbox2D && D3D_gf_RefYoverX > 0.0f)
+        {
+            // keep the flat layer the shape it was laid out in and
+            // centre it, instead of letting it span a wider window
+            float boxW = v31 / D3D_gf_RefYoverX;
+            float lo;
+            float hi;
+
+            if (boxW > v44)
+                boxW = v44;
+            lo = -(v44 - boxW) * v44 / (2.0f * boxW);
+            hi = (v44 + boxW) * v44 / (2.0f * boxW);
+            D3DXMatrixOrthoOffCenterRH(&v53, lo, hi, 0.0, v31, 0.0, 1.0);
+        }
+        else
+        {
+            D3DXMatrixOrthoOffCenterRH(&v53, 0.0, v44, 0.0, v31, 0.0, 1.0);
+        }
         D3DXMatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &v53, &v52);
         memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
         D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
@@ -809,6 +844,7 @@ LABEL_17:
     D3D_CalcAndSetProjection(v25, v27, 0.0, 1.0, v34, v37);
 LABEL_34:
     D3D_SetViewPort(v8, v9, v49, v10);
+    D3D_AspectTrace("proj", v8, v9, v49, v10);
 }
 
 

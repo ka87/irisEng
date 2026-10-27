@@ -1217,8 +1217,10 @@ void D3D_Unknown_AE_Func1(IDirect3DTexture9* a1)
     do
     {
         --v3;
+        // down the screen this scaled by the width, which stretched
+        // the pass past the bottom of the picture
         v2->v1.x = (float)(v7 * v2->v1.x * 0.0015625);
-        v2->v1.y = (float)(v7 * v2->v1.y * 0.0020833334);
+        v2->v1.y = (float)(v6 * v2->v1.y * 0.0020833334);
         v2->uvSet1.u = (float)(v2->uvSet1.u * 0.0015625);
         v2->uvSet1.v = (float)(v2->uvSet1.v * 0.0020833334);
         v2->uvSet2.u = (float)(v2->uvSet2.u * 0.0015625);
@@ -5363,6 +5365,9 @@ void D3D_PC_AE(tWorld* param1)
         bandsVal4 = bottom + AE_BAND_MARGIN < 1.0f ? bottom + AE_BAND_MARGIN : 1.0f;
         bandsValU1 = left;
         bandsValU2 = right;
+        D3D_AspectTrace("ae", 0, 0,
+                        (int)D3DRenderParams.presentParams.BackBufferWidth,
+                        (int)D3DRenderParams.presentParams.BackBufferHeight);
     }
     v1 = D3DRenderParams.blurTex;
     v2 = D3DRenderParams.blurRenderTarget2;
