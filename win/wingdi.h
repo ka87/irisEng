@@ -314,11 +314,22 @@ void PC_CIN_CutsceneMode(int on);
 // simply shows more at the sides.
 //
 // D3D_gf_RefYoverX is the height over width the scenes were laid
-// out for. D3D_gf_CutsceneAspect is the width over height the
-// cutscene bands frame the picture to.
+// out for. The cutscene bands take the picture back to that frame:
+// the top and bottom keep the size they always had, and the sides
+// cover whatever the wider screen added.
 extern int   D3D_gi_Widescreen;
 extern float D3D_gf_RefYoverX;
-extern float D3D_gf_CutsceneAspect;
+
+// How much of the height each cutscene band covers.
+extern float D3D_gf_CutsceneBand;
+
+// Draws the flat layer in the shape it was laid out in, centred,
+// rather than spread across a wider window.
+extern int D3D_gi_Pillarbox2D;
+
+// Set to log the framing once a frame through the debug output.
+extern int D3D_gi_AspectTrace;
+void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int viewH);
 
 // Height over width of the area being presented.
 float D3D_RealYoverX(void);
