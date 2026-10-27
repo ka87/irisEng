@@ -630,6 +630,18 @@ void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int vie
         (int)(D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top),
         viewX, viewY, viewW, viewH,
         D3D_RealYoverX(), t, b, l, r, CIN_Bands);
+    if (gpst_DX_stDD)
+        D3D_OutputDebugString(
+            "[aspect] %s cam %.1fx%.1f centre %.1f,%.1f factor %.2f,%.2f "
+            "flat %d glyphscale x%.4f y%.4f\n",
+            where,
+            gpst_DX_stDD->ct.cam.width, gpst_DX_stDD->ct.cam.height,
+            gpst_DX_stDD->ct.cam.centerX, gpst_DX_stDD->ct.cam.centerY,
+            gpst_DX_stDD->ct.cam.factorX, gpst_DX_stDD->ct.cam.factorY,
+            D3D_FlatLayerWidth((int)gpst_DX_stDD->ct.cam.width,
+                               (int)gpst_DX_stDD->ct.cam.height),
+            gpst_DX_stDD->ct.cam.width / 640.0f,
+            gpst_DX_stDD->ct.cam.height / 480.0f);
 }
 
 void D3D_SetProjectionMatrix(tDDCamStruct* a1)
