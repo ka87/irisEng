@@ -555,7 +555,7 @@ void D3D_SetViewPort(int a1, int a2, int a3, int a4)
 
 int   D3D_gi_Widescreen = 1;
 int   D3D_gi_AspectTrace = 0;
-int   D3D_gi_Pillarbox2D = 0;
+int   D3D_gi_Pillarbox2D = 1;
 float D3D_gf_RefYoverX = 0.75f;
 float D3D_gf_CutsceneBand = 0.10416666f;
 
@@ -574,6 +574,16 @@ float D3D_RealYoverX(void)
     if (w <= 0.0f || h <= 0.0f)
         return D3D_gf_RefYoverX;
     return h / w;
+}
+
+int D3D_FlatLayerWidth(int w, int h)
+{
+    int boxW;
+
+    if (!D3D_gi_Pillarbox2D || D3D_gf_RefYoverX <= 0.0f || h <= 0)
+        return w;
+    boxW = (int)((float)h / D3D_gf_RefYoverX);
+    return boxW < w ? boxW : w;
 }
 
 void D3D_GetBandFractions(float* top, float* bottom, float* left, float* right)
@@ -740,19 +750,15 @@ LABEL_17:
         v47 = (float)(0.5 / v44);
         D3DXMatrixTranslation(&v52, v47, v47, 0.0);
         v31 = (float)v10;
-        if (D3D_gi_Pillarbox2D && D3D_gf_RefYoverX > 0.0f)
+        if (D3D_gi_Pillarbox2D)
         {
-            // keep the flat layer the shape it was laid out in and
-            // centre it, instead of letting it span a wider window
-            float boxW = v31 / D3D_gf_RefYoverX;
-            float lo;
-            float hi;
+            // The flat layer is laid out across the width reported by
+            // D3D_FlatLayerWidth, which on a wide window is narrower
+            // than the window. Shift it so that width sits in the
+            // middle, at the size it was drawn.
+            float pad = (v44 - (float)D3D_FlatLayerWidth(v49, v10)) * 0.5f;
 
-            if (boxW > v44)
-                boxW = v44;
-            lo = -(v44 - boxW) * v44 / (2.0f * boxW);
-            hi = (v44 + boxW) * v44 / (2.0f * boxW);
-            D3DXMatrixOrthoOffCenterRH(&v53, lo, hi, 0.0, v31, 0.0, 1.0);
+            D3DXMatrixOrthoOffCenterRH(&v53, -pad, v44 - pad, 0.0, v31, 0.0, 1.0);
         }
         else
         {
