@@ -1,6 +1,7 @@
 #include "math.h"
 #include "gdi.h"
 #include "cameraengine.h"
+#include "win/wingdi.h"
 
 int CAM_SetObjectMatrixFromCam(Mtx4x4* dest, Mtx4x4* src)
 {
@@ -121,6 +122,11 @@ void CAM_AssignCameraToDevice(tDDContainerStruct2ForIDA* srcdd, tDDContainerStru
         screenRatio = GDI_gaf_ScreenRatio[1];
     }
 
+    // take the shape of the window, so the view worked out here is
+    // the one that is actually drawn
+    if (D3D_gi_Widescreen && winWidth > 0 && winHeight > 0)
+        screenRatio = (float)winHeight / (float)winWidth;
+
     factor = srcdd->pixelYoverX * dstdd->cam.YoverX * screenRatio;
 
     if ((srcdd->flags2 & 4) != 0)
@@ -171,8 +177,19 @@ void CAM_AssignCameraToDevice(tDDContainerStruct2ForIDA* srcdd, tDDContainerStru
     {
         tmp = (float)tan(dstdd->cam.focale * 0.5f);
 
-        dstdd->cam.factorX = (float)(finalHalfWidth / tmp);
-        dstdd->cam.factorY = (float)(finalHalfHeight / (tmp * screenRatio));
+        if (D3D_gi_Widescreen && D3D_gf_RefYoverX > 0.0f)
+        {
+            // down the screen the angle is the one the scenes were
+            // laid out for, and across it the same scale, which is
+            // what gets drawn whatever the window shape
+            dstdd->cam.factorY = (float)(finalHalfHeight / (tmp * D3D_gf_RefYoverX));
+            dstdd->cam.factorX = dstdd->cam.factorY;
+        }
+        else
+        {
+            dstdd->cam.factorX = (float)(finalHalfWidth / tmp);
+            dstdd->cam.factorY = (float)(finalHalfHeight / (tmp * screenRatio));
+        }
         dstdd->cam.centerX = (float)(winWidth / 2);
         dstdd->cam.centerY = (float)(winHeight / 2);
         return;
