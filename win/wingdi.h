@@ -328,6 +328,10 @@ extern float D3D_gf_CutsceneBand;
 // this is narrower than the window itself.
 int D3D_FlatLayerWidth(int w, int h);
 
+// How far in from the left that width starts, so what is laid out
+// across it lands in the middle of the window.
+int D3D_FlatLayerOffsetX(int w, int h);
+
 // Set to log the framing once a frame through the debug output.
 extern int D3D_gi_AspectTrace;
 void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int viewH);

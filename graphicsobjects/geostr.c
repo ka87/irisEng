@@ -1,4 +1,5 @@
 #include "../memory.h"
+#include "../win/wingdi.h"
 #include "../loading.h"
 #include "../strings.h"
 #include "../time.h"
@@ -2879,7 +2880,11 @@ void STR_Render(tGameObjectMain* a1)
     if (((tGEOSTRStruct*)(v2->GROGEOOrSomethingElse))->renderCnt != gpst_DX_stDD->rasters[4].unk1)
     {
         str->renderCnt = gpst_DX_stDD->rasters[4].unk1;
-        str->width = (unsigned int)gpst_DX_stDD->ct.cam.width;
+        // the text is laid out across the width the scenes were laid
+        // out for; where that sits in the window is added to each
+        // letter as it is placed
+        str->width = (unsigned int)D3D_FlatLayerWidth(
+            (int)gpst_DX_stDD->ct.cam.width, (int)gpst_DX_stDD->ct.cam.height);
         str->height = (unsigned int)gpst_DX_stDD->ct.cam.height;
         v5 = gpst_DX_stDD->flags;
         if ((v5 & 0x800) == 0)

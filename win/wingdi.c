@@ -585,6 +585,11 @@ int D3D_FlatLayerWidth(int w, int h)
     return boxW < w ? boxW : w;
 }
 
+int D3D_FlatLayerOffsetX(int w, int h)
+{
+    return (w - D3D_FlatLayerWidth(w, h)) / 2;
+}
+
 void D3D_GetBandFractions(float* top, float* bottom, float* left, float* right)
 {
     float g;
