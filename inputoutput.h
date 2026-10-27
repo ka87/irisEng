@@ -111,6 +111,8 @@ int INO_gi_SavButton[8];
 extern int INO_ge_SavSetNextState;
 extern int INO_ge_SavCommand;
 int INO_gi_FreeSpace;
+extern int INO_gi_SavBusy;
+extern char INO_gc_SavPrevOrdering;
 char INO_gsz_SavFileName[128];
 byte* INO_Keys;
 byte* INO_Keys_Prev;

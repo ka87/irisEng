@@ -9,6 +9,10 @@ int INO_ge_SavSetNextState = 0xffffffff;
 int INO_ge_SavSetNextNextState = 0xffffffff;
 int INO_ge_SavCommand = 0xffffffff;
 int INO_ge_SavState;
+/* Set while a card operation is running, cleared once it has finished. */
+int INO_gi_SavBusy;
+/* Holds a slot's ordering byte across the erase that clears the slot. */
+char INO_gc_SavPrevOrdering;
 int INO_gi_LaunchDemo = 0xffffffff;
 int Photo_gi_FirstInit = 0; // TODO FIXME: nem állítja a játék
 int Photo_gi_Init = 0; // TODO FIXME: nem állítja a játék
@@ -401,21 +405,22 @@ BOOL INO_b_LanguageIsPresent(int a1)
 
 int INO_i_SavGetCardStatus(int a1, int* a2)
 {
-    int result;
-
     if (a2)
         memcpy(a2, INO_gi_SavButton, 32u);
     if (INO_ge_SavState != 27 && INO_ge_SavState)
-        goto LABEL_8;
-    result = pcINO_gi_LastError;
-    if (INO_ge_SavSetNextNextState != -1 && !pcINO_gi_LastError)
+        return -1;
+    /* The queued state is taken up only once the operation has
+       finished. An error code of 0 or 1 counts as finished; anything
+       else leaves the queued state where it is and ends the run. */
+    if (INO_ge_SavSetNextNextState == -1
+        || pcINO_gi_LastError < 0 || pcINO_gi_LastError > 1)
     {
-        INO_ge_SavState = INO_ge_SavSetNextNextState;
-        INO_ge_SavSetNextNextState = -1;
-    LABEL_8:
-        result = -1;
+        INO_gi_SavBusy = 0;
+        return pcINO_gi_LastError;
     }
-    return result;
+    INO_ge_SavState = INO_ge_SavSetNextNextState;
+    INO_ge_SavSetNextNextState = -1;
+    return -1;
 }
 
 int INO_b_IsKeyPressed(uint8_t a1)
@@ -751,10 +756,16 @@ void INO_Update()
 
 void INO_SavSetCardStatus(int a1, int a2)
 {    
-    if (a2 < 0 || a2 >= 40)
+    if (a2 < 0 || a2 >= 41)
         DBG_assert(0, __FILE__, __LINE__, "0", "SAVING : Bad Param State", 0, 1);
+    /* A call made from the wrong state is a warned no-op: the
+       transition below must not run, or the machine is left further
+       out of step than it already was. */
     if (INO_ge_SavState && INO_ge_SavState != 27)
+    {
         DBG_assert(0, __FILE__, __LINE__, "0", "SAVING : Bad Current State", 0, 1);
+        return;
+    }
 
     if (INO_ge_SavState != a2)
     {
@@ -772,6 +783,7 @@ void INO_SavSetCardStatus(int a1, int a2)
         case 10:
             pcINO_gi_LastError = 0;
             strcpy(INO_gsz_SavFileName, "sally.idx");
+            INO_gi_SavBusy = 1;
             INO_ge_SavState = 1;
             INO_ge_SavSetNextState = 10;
             INO_ge_SavCommand = 10;
@@ -784,8 +796,12 @@ void INO_SavSetCardStatus(int a1, int a2)
             INO_ge_SavCommand = 12;
             return;
         case 16:
+            INO_gi_SavBusy = 1;
+            INO_gc_SavPrevOrdering = 0;
             if (INO_gst_SavSlotDesc.id < 10)
             {
+                INO_gc_SavPrevOrdering =
+                    SAV_gst_Data[INO_gst_SavSlotDesc.id].superiorAtOrdering;
                 SAV_gst_Data[INO_gst_SavSlotDesc.id].superiorAtOrdering = 0;
                 SAV_gst_Data[INO_gst_SavSlotDesc.id].sec = 0;
                 SAV_gst_Data[INO_gst_SavSlotDesc.id].min = 0;
