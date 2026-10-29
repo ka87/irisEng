@@ -3036,9 +3036,28 @@ int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* a1, Vec3* cameraObjectPos, Vec3*
         v19 = &vertices[v11 * v15];
         v56 = v19;
         v49 = 0;
+        {   // debug trace: the pre-loop accumulators, one row in 120
+            static int dbg_n = 0;
+            if ((dbg_n++ % 120) == 0)
+            {
+                DBG_OutputDebugString("[WTR] pre: v39=%f v12=%f v40=%f v14=%f\n",
+                    v39, v12, v40, v14);
+                DBG_OutputDebugString("[WTR] pre: v53=%g v59=%g v64=%g v67=%g v43=%g n=%u/%u\n",
+                    v53, v59, v64, v67, v43, v15, v11);
+            }
+        }
         for (i = 1.0 / (double)(v15 - 1); vertices < v56; v41 += v15)
         {
             v20 = v59 / v53;
+            {   // debug trace: first few columns of the first traced row
+                static int dbg_c = 0;
+                if (dbg_c < 3)
+                {
+                    DBG_OutputDebugString("[WTR] col%d: v20=%g v59=%g v53=%g i=%g\n",
+                        dbg_c, v20, v59, v53, i);
+                    dbg_c++;
+                }
+            }
             if (v57 <= v20)
                 v20 = v57;
             v21 = v20;
