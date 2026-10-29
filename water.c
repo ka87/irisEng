@@ -1495,61 +1495,84 @@ void WTR_Color_2_Vector(Vec3* colourOut, uint32_t packed)
     colourOut->z = (float)((double)((packed >> 16) & 0xff) * 0.0039215689);
 }
 
+/* Mix the sky, water and bottom colours for one viewing angle and pack
+ * the result, with the Fresnel reflectance as the alpha.
+ *
+ * cosThetaI is the cosine of the angle between the view ray and the
+ * surface normal. Looking into the water from above it is negative,
+ * and the full Fresnel term is evaluated: Snell's law through a
+ * refractive index of 1.34 gives the refracted angle, and the
+ * perpendicular and parallel reflectances are averaged for unpolarised
+ * light. Looking the other way the approximation is cheaper, and past
+ * the critical angle the sky contributes nothing at all.
+ *
+ * The nested one-minus terms below are left exactly as they were. They
+ * do not cancel in floating point, and the alpha curve is a visible
+ * gradient across the surface.
+ *
+ * WTR_Color_2_Vector unpacks to blue, green, red in x, y, z, which is
+ * the order the packing at the end puts back. */
 uint32_t WTR_GetFresnelColor(tWaterParamsGlobalStruct* wtr, float cosThetaI)
 {
     unsigned int red, blue, green, alpha;
     Vec3 bottomColorVec, waterColorVec, skyColorVec;
     float bottomAndSkyColorFactor, bottomAndWaterColorFactor;
     float alphaNorm;
-    long double v2;
-    double v3;
-    long double v4;
-    long double v5;
-    long double v6;
-    long double v7;
-    long double v8;
-    long double v9;
-    double v10;
-    double v11;
-    float v19;
-    float v20;
-    float v21;
-    float a4a;
+    double reflectance;
+    double alphaOuter, alphaInner;
 
     if (cosThetaI <= 0.0)
     {
-        v4 = sqrt(-cosThetaI);
-        a4a = (float)v4;
-        v5 = acos(v4);
-        v19 = (float)v5;
-        v6 = asin(sin(v5) * 0.74626863);
-        v21 = (float)(v19 + v6);
-        v7 = v6 - v19;
-        v20 = (float)(sin(v7) / sin(v21));
-        v8 = tan(v7);
-        v9 = tan(v21);
-        v3 = (v8 / v9 * (v8 / v9) + v20 * v20) * 0.5;
-        bottomAndSkyColorFactor = (float)v3;
-        bottomAndWaterColorFactor = (float)((1.0 - a4a) * (1.0 - a4a) * (1.0 - a4a));
+        const long double cosineRoot = sqrt(-cosThetaI);
+        const float cosineRootAsFloat = (float)cosineRoot;
+        const long double incidentAngle = acos(cosineRoot);
+        const float incidentAngleAsFloat = (float)incidentAngle;
+        /* Snell's law: 0.74626863 is one over the refractive index */
+        const long double refractedAngle = asin(sin(incidentAngle) * 0.74626863);
+        const float angleSum = (float)(incidentAngleAsFloat + refractedAngle);
+        const long double angleDifference = refractedAngle - incidentAngleAsFloat;
+        const float perpendicular = (float)(sin(angleDifference) / sin(angleSum));
+        const long double tangentDifference = tan(angleDifference);
+        const long double tangentSum = tan(angleSum);
+        const long double parallel = tangentDifference / tangentSum;
+
+        /* unpolarised light: the mean of the two squared reflectances */
+        reflectance = (parallel * parallel + perpendicular * perpendicular) * 0.5;
+        bottomAndSkyColorFactor = (float)reflectance;
+        bottomAndWaterColorFactor = (float)((1.0 - cosineRootAsFloat)
+                                          * (1.0 - cosineRootAsFloat)
+                                          * (1.0 - cosineRootAsFloat));
     }
     else
     {
-        v2 = sin(acos(cosThetaI)) * 1.34;
-        if (v2 < 1.0)
-            bottomAndSkyColorFactor = (float)(1.0 - v2);
+        const long double refractedSine = sin(acos(cosThetaI)) * 1.34;
+
+        /* at or past the critical angle nothing of the sky gets through */
+        if (refractedSine < 1.0)
+            bottomAndSkyColorFactor = (float)(1.0 - refractedSine);
         else
             bottomAndSkyColorFactor = 0.0;
-        bottomAndWaterColorFactor = (float)((1.0 - (1.0 - cosThetaI)) * (1.0 - (1.0 - cosThetaI)));
-        v3 = 1.0 - bottomAndSkyColorFactor;
+
+        bottomAndWaterColorFactor = (float)((1.0 - (1.0 - cosThetaI))
+                                          * (1.0 - (1.0 - cosThetaI)));
+        reflectance = 1.0 - bottomAndSkyColorFactor;
     }
+
     WTR_Color_2_Vector(&skyColorVec, wtr->waterEngine.skyColor);
     WTR_Color_2_Vector(&bottomColorVec, wtr->waterEngine.bottomColor);
     WTR_Color_2_Vector(&waterColorVec, wtr->waterEngine.waterColor);
+
+    /* bottom towards water by the depth term, then towards sky by the
+       reflectance; the second blend leaves the result in waterColorVec */
     MATH_BlendVector(&bottomColorVec, &bottomColorVec, &waterColorVec, bottomAndWaterColorFactor);
     MATH_BlendVector(&waterColorVec, &bottomColorVec, &skyColorVec, bottomAndSkyColorFactor);
-    v10 = 1.0 - (1.0 - (1.0 - v3));
-    v11 = 1.0 - v10 * v10 * (v10 * v10);
-    alphaNorm = v11 * v11 * (v11 * v11);
+
+    /* the alpha curve: a fourth power of a fourth power, which keeps
+       the surface clear at grazing angles and opaque looking down */
+    alphaOuter = 1.0 - (1.0 - (1.0 - reflectance));
+    alphaInner = 1.0 - alphaOuter * alphaOuter * (alphaOuter * alphaOuter);
+    alphaNorm = alphaInner * alphaInner * (alphaInner * alphaInner);
+
     if (alphaNorm >= 0.0)
     {
         if (alphaNorm > 1.0)
@@ -1559,10 +1582,12 @@ uint32_t WTR_GetFresnelColor(tWaterParamsGlobalStruct* wtr, float cosThetaI)
     {
         alphaNorm = 0.0;
     }
+
     blue = (unsigned int)(waterColorVec.x * 255.0);
     green = (unsigned int)(waterColorVec.y * 255.0);
     red = (unsigned int)(waterColorVec.z * 255.0);
     alpha = (unsigned int)(alphaNorm * 255.0);
+
     if (blue > 255)
         blue = 255;
     if (green > 255)
@@ -1571,6 +1596,7 @@ uint32_t WTR_GetFresnelColor(tWaterParamsGlobalStruct* wtr, float cosThetaI)
         red = 255;
     if (alpha > 255)
         alpha = 255;
+
     return blue | ((green | ((red | (alpha << 8)) << 8)) << 8);
 }
 
