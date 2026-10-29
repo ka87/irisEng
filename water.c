@@ -340,6 +340,20 @@ float WATERFFT_philippe(Vec2* a1, Vec2* a2, float waveProp, float direction)
     vecLen = (float)sqrt(a1->x * a1->x + a1->y * a1->y);
     if (vecLen == 0.0f)
         return 0.0f;
+    {   // debug trace: the degenerate cells on the wind axis, a few times
+        static int dbg_n = 0;
+        if (a1->y == 0.0f && a1->x < 0.0f && dbg_n < 6)
+        {
+            double wl = sqrt(a2->x * a2->x + a2->y * a2->y);
+            double dot = a2->y * a1->y + a1->x * a2->x;
+            double base = dot * 0.5 / (wl * vecLen) + 0.5;
+            DBG_OutputDebugString("[WTR] phi: k=(%g,%g) len=%g dot=%g base=%g\n",
+                a1->x, a1->y, vecLen, dot, base);
+            DBG_OutputDebugString("[WTR] phi: pow(base,%g)=%g pow(len,%g)=%g\n",
+                direction, pow(base, direction), waveProp, pow(vecLen, waveProp));
+            dbg_n++;
+        }
+    }
     return (float)(pow((a2->y * a1->y + a1->x * a2->x) * 0.5 / (sqrt(a2->x * a2->x + a2->y * a2->y) * vecLen) + 0.5, direction) / pow(vecLen, waveProp));
 }
 
