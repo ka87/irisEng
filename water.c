@@ -438,156 +438,145 @@ void WATERFFT_SWAP(int* a1, int a2, int a3)
     a1[a3] = v3;
 }
 
+/* Work out where the displacement grid lands inside the height grid.
+ *
+ * When the two grids are the same size the displacement spectrum lines up with
+ * the height spectrum and nothing is needed, so the three shifts stay at their
+ * neutral 0, 1, 1. When the displacement grid is the smaller of the two its
+ * cells have to be scattered into the larger one, and because both grids are
+ * read in bit reversed order that scatter is not a simple stride.
+ *
+ * So build the two orderings explicitly - the centred position each height
+ * cell maps to, and the identity for the displacement cells - reverse each by
+ * its own size, then look up where the first three displacement cells ended up.
+ * The three results are stored as a start and two gaps.
+ *
+ * Note that both tables are filled one short of the grid side, and the search
+ * respects that, as the last position is never needed. */
 void WATERFFT_Compute_Supershift(tWaterEngineStruct* a1)
 {
-    int v1; // ecx
-    unsigned int v2; // edi
-    BOOL v3; // zf
-    BOOL v4; // cc
-    int v5; // ebp
-    int v6; // eax
-    int v7; // ebx
-    int v8; // esi
-    int v9; // edi
-    int v10; // ebp
-    int j; // eax
-    int v12; // esi
-    int k; // edi
-    int l; // eax
-    int v15; // eax
-    int v16; // ebx
-    int v17; // ebp
-    int v18; // edi
-    int v19; // ecx
-    int v20; // eax
-    int v21; // edx
-    int i; // [esp+4h] [ebp-808h]
-    char v23; // [esp+8h] [ebp-804h]
-    int v24[256]; // [esp+Ch] [ebp-800h] BYREF
-    int v25[256]; // [esp+40Ch] [ebp-400h] BYREF
+    const int heightSizeLog2 = a1->borderSizePowerOfTwo;
+    const int displacementSizeLog2 = a1->borderSizeDXDYPowerOfTwo;
+    const int heightSide = 1 << heightSizeLog2;
+    const int displacementSide = 1 << displacementSizeLog2;
+    int heightPosition[256];
+    int displacementPosition[256];
+    int reversed, index, bit;
+    int firstCell, secondCell, thirdCell;
 
-    v1 = a1->borderSizePowerOfTwo;
-    v2 = a1->borderSizeDXDYPowerOfTwo;
-    v3 = v2 == a1->borderSizePowerOfTwo;
-    v4 = v2 <= a1->borderSizePowerOfTwo;
     a1->superShift0 = 0;
     a1->superShift1 = 1;
     a1->superShift2 = 1;
-    v23 = v2;
-    if (!v3 && v4)
+
+    if (displacementSizeLog2 >= heightSizeLog2)
+        return;
+
+    for (index = 0; index < heightSide - 1; index++)
     {
-        v5 = 1 << v1;
-        v6 = 0;
-        for (i = 1 << v1; v6 < (1 << v1) - 1; ++v6)
-        {
-            v25[v6] = (1 << v2 >> 1) - (v5 >> 1) + v6;
-            v24[v6] = v6;
-        }
-        v7 = v5 >> 1;
-        v8 = 0;
-        v9 = 0;
-        v10 = v5 - 1;
-        if (v10 > 0)
-        {
-            do
-            {
-                if (v9 < v8)
-                    WATERFFT_SWAP(v25, v9, v8);
-                for (j = v7; j <= v8; j >>= 1)
-                    v8 -= j;
-                v8 += j;
-                ++v9;
-            } while (v9 < v10);
-        }
-        v12 = 0;
-        for (k = 0; k < (1 << v23) - 1; ++k)
-        {
-            if (k < v12)
-                WATERFFT_SWAP(v24, k, v12);
-            for (l = 1 << v23 >> 1; l <= v12; l >>= 1)
-                v12 -= l;
-            v12 += l;
-        }
-        v15 = 0;
-        if (i - 1 > 0)
-        {
-            v16 = v24[2];
-            v17 = v24[1];
-            v18 = v24[0];
-            do
-            {
-                v19 = v25[v15];
-                if (v19 == v18)
-                    a1->superShift0 = v15;
-                if (v19 == v17)
-                    a1->superShift1 = v15;
-                if (v19 == v16)
-                    a1->superShift2 = v15;
-                ++v15;
-            } while (v15 < i - 1);
-        }
-        v20 = a1->superShift1;
-        v21 = a1->superShift0;
-        a1->superShift2 -= v20;
-        a1->superShift1 = v20 - v21;
+        heightPosition[index] = (displacementSide >> 1) - (heightSide >> 1) + index;
+        displacementPosition[index] = index;
     }
+
+    reversed = 0;
+    for (index = 0; index < heightSide - 1; index++)
+    {
+        if (reversed > index)
+            WATERFFT_SWAP(heightPosition, index, reversed);
+
+        bit = heightSide >> 1;
+        while (bit <= reversed)
+        {
+            reversed -= bit;
+            bit >>= 1;
+        }
+        reversed += bit;
+    }
+
+    reversed = 0;
+    for (index = 0; index < displacementSide - 1; index++)
+    {
+        if (index < reversed)
+            WATERFFT_SWAP(displacementPosition, index, reversed);
+
+        bit = displacementSide >> 1;
+        while (bit <= reversed)
+        {
+            reversed -= bit;
+            bit >>= 1;
+        }
+        reversed += bit;
+    }
+
+    firstCell = displacementPosition[0];
+    secondCell = displacementPosition[1];
+    thirdCell = displacementPosition[2];
+
+    for (index = 0; index < heightSide - 1; index++)
+    {
+        if (heightPosition[index] == firstCell)
+            a1->superShift0 = index;
+        if (heightPosition[index] == secondCell)
+            a1->superShift1 = index;
+        if (heightPosition[index] == thirdCell)
+            a1->superShift2 = index;
+    }
+
+    /* Keep the first as a start and turn the other two into gaps. */
+    a1->superShift2 -= a1->superShift1;
+    a1->superShift1 -= a1->superShift0;
 }
 
+/* Fill the direction map with the unit wavevector of every cell.
+ *
+ * WATERFFT_Deduct_DXDY_Spectre_Line multiplies the height spectrum by these to
+ * get the two horizontal displacement spectra, so each entry holds the x part
+ * of the unit vector in `real` and the y part in `imaginary`. The grid is
+ * centred, so the coordinates run from -side/2 up to side/2 - 1 and the centre
+ * cell has no direction at all; it is stored as zero rather than divided by a
+ * zero length.
+ *
+ * The map is then put into bit reversed order to match the spectrum it will be
+ * multiplied against. */
 void WATERFFT_Precalc_DXDY_Repartition(tWaterEngineStruct* a1)
 {
-    int v2; // eax
-    int v3; // ebx
-    int v4; // edi
-    double v5; // st7
-    int v6; // edx
-    double v7; // st5
-    int v8; // ecx
-    long double v9; // st4
-    long double v10; // st4
-    int v11; // [esp+4h] [ebp-4h]
-    int a1a; // [esp+Ch] [ebp+4h]
+    const int sizeLog2 = a1->borderSizeDXDYPowerOfTwo;
+    const int side = 1 << sizeLog2;
+    const int half = side >> 1;
+    int row, column;
 
-    v2 = a1->borderSizeDXDYPowerOfTwo;
-    if (v2)
+    if (!sizeLog2)
+        return;
+
+    if (!a1->DXDYMap)
+        a1->DXDYMap = (tFFTComplex*)WATERFFT_Alloc(sizeof(tFFTComplex) << (2 * sizeLog2));
+
+    for (row = 0; row < side; row++)
     {
-        if (!a1->DXDYMap)
-            a1->DXDYMap = (tFFTComplex*)WATERFFT_Alloc(8 << (2 * v2));
-        v3 = 1 << a1->borderSizeDXDYPowerOfTwo;
-        v4 = 0;
-        if (v3 > 0)
+        const double y = (double)(row - half);
+
+        for (column = 0; column < side; column++)
         {
-            v11 = -(v3 >> 1);
-            do
+            const double x = (double)(column - half);
+            const double lengthSquared = x * x + y * y;
+            tFFTComplex* entry = &a1->DXDYMap[column + (row << sizeLog2)];
+
+            if (lengthSquared == 0.0)
             {
-                v5 = (double)v11;
-                v6 = 0;
-                a1a = -(v3 >> 1);
-                do
-                {
-                    v7 = (double)a1a;
-                    v8 = a1->borderSizeDXDYPowerOfTwo;
-                    v9 = v7 * v7 + v5 * v5;
-                    if (v9 == 0.0)
-                    {
-                        a1->DXDYMap[v6 + (v4 << v8)].real = 0.0;
-                        a1->DXDYMap[v6 + (v4 << a1->borderSizeDXDYPowerOfTwo)].imaginary = 0.0;
-                    }
-                    else
-                    {
-                        v10 = 1.0 / sqrt(v9);
-                        a1->DXDYMap[v6 + (v4 << v8)].real = v10 * v7;
-                        a1->DXDYMap[v6 + (v4 << a1->borderSizeDXDYPowerOfTwo)].imaginary = v10 * v5;
-                    }
-                    ++v6;
-                    ++a1a;
-                } while (v6 < v3);
-                ++v4;
-                ++v11;
-            } while (v4 < v3);
+                entry->real = 0.0f;
+                entry->imaginary = 0.0f;
+            }
+            else
+            {
+                const double inverseLength = 1.0 / sqrt(lengthSquared);
+
+                entry->real = (float)(inverseLength * x);
+                entry->imaginary = (float)(inverseLength * y);
+            }
         }
-        WATERFFT_Pretranspose_Table(a1->DXDYMap, a1->borderSizeDXDYPowerOfTwo);
-        WATERFFT_Compute_Supershift(a1);
     }
+
+    WATERFFT_Pretranspose_Table(a1->DXDYMap, sizeLog2);
+    WATERFFT_Compute_Supershift(a1);
 }
 
 /* Fill the butterfly twiddle table for an FFT of `stageCount` stages.
