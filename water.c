@@ -1796,7 +1796,31 @@ void WTR_BackExtendDXDY_0(tWtrStruct2* a1, tWtrStruct2* a2, int a3)
     memcpy(v4, a2, 4 * ((unsigned int)(16 * ((32 * v3 + 16) >> 4)) >> 2));
 }
 
-void WTR_Concate(tWaterParamsGlobalStruct* a1)
+/* Lay the transformed spectra out as the sampling grid the mesh reads.
+ *
+ * The grid is (side + 1) square: one row and one column more than the
+ * transform produces, holding a copy of the first row and column so a sample
+ * in the last cell has all four corners. Each entry carries the horizontal
+ * displacement in f1 and f2 and the height in f3.
+ *
+ * Which fields the base level gets depends on whether the two grids match:
+ *
+ *   same size   f1, f2 and f3 are filled together, straight from the two
+ *               choppy space maps and the height space map
+ *   different   only f3 is filled here, and f1 and f2 are filled further down
+ *               at whichever reduction happens to be the size of the choppy
+ *               grid, which is the level the mesh will sample them from
+ *
+ * So on a 6 against 5 setup the base level legitimately carries zero in f1 and
+ * f2; that is not a gap.
+ *
+ * The reductions follow, each half the side of the one before, and the two
+ * choppy cursors carry across from the base fill into the matching level.
+ *
+ * The body still carries its original cursor walk and wants rewriting; the
+ * cursors shared between the two halves are what make that worth doing
+ * carefully rather than quickly. */
+void WTR_Concate(tWaterParamsGlobalStruct* water)
 {
     tWtrStruct2* v1; // eax
     tFFTComplex* v2; // ebp
@@ -1833,22 +1857,22 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
     int a3; // [esp+18h] [ebp-8h]
     unsigned int j; // [esp+1Ch] [ebp-4h]
 
-    v1 = a1->concatenatedMap;
-    v2 = a1->spaceMapDY;
-    v3 = a1->waterEngine.waveMapShift;
-    v4 = a1->spaceMap;
+    v1 = water->concatenatedMap;
+    v2 = water->spaceMapDY;
+    v3 = water->waterEngine.waveMapShift;
+    v4 = water->spaceMap;
     v31 = v2;
-    v5 = a1->spaceMapDX;
+    v5 = water->spaceMapDX;
     v6 = &v1[(1 << v3) + (1 << (2 * v3))];
     a2 = v6;
     v32 = v5;
-    if (v3 == a1->waterEngine.waveMapShiftCHP)
+    if (v3 == water->waterEngine.waveMapShiftCHP)
     {
         if (v1 < v6)
         {
             while (1)
             {
-                v7 = &v1[1 << a1->waterEngine.waveMapShift];
+                v7 = &v1[1 << water->waterEngine.waveMapShift];
                 if (v1 < v7)
                 {
                     do
@@ -1863,7 +1887,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
                     } while (v1 < v7);
                     v31 = v2;
                 }
-                v8 = &v1[-(1 << a1->waterEngine.waveMapShift)].f1;
+                v8 = &v1[-(1 << water->waterEngine.waveMapShift)].f1;
                 v1->f1 = *v8;
                 v1->f2 = v8[1];
                 v1->f3 = v8[2];
@@ -1880,7 +1904,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
     {
         do
         {
-            for (i = &v1[1 << a1->waterEngine.waveMapShift]; v1 < i; v4 += 4)
+            for (i = &v1[1 << water->waterEngine.waveMapShift]; v1 < i; v4 += 4)
             {
                 v1->f3 = v4->real;
                 v1[1].f3 = v4[1].real;
@@ -1888,7 +1912,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
                 v1[3].f3 = v4[3].real;
                 v1 += 4;
             }
-            v10 = &v1[-(1 << a1->waterEngine.waveMapShift)].f1;
+            v10 = &v1[-(1 << water->waterEngine.waveMapShift)].f1;
             v1->f1 = *v10;
             v1->f2 = v10[1];
             v1->f3 = v10[2];
@@ -1897,8 +1921,8 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
             ++v1;
         } while (v1 < a2);
     }
-    v11 = a1->concatenatedMap;
-    for (a2a = &v6[(1 << a1->waterEngine.waveMapShift) + 1]; v1 < a2a; ++v11)
+    v11 = water->concatenatedMap;
+    for (a2a = &v6[(1 << water->waterEngine.waveMapShift) + 1]; v1 < a2a; ++v11)
     {
         v1->f1 = v11->f1;
         v1->f2 = v11->f2;
@@ -1906,8 +1930,8 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
         v1->f4 = v11->f4;
         ++v1;
     }
-    v12 = 1 << a1->waterEngine.waveMapShift;
-    v13 = a1->concatenatedMap;
+    v12 = 1 << water->waterEngine.waveMapShift;
+    v13 = water->concatenatedMap;
     a2b = v13;
     v14 = v12 * (v12 + 2) + 1;
     v15 = v12 >> 1;
@@ -1918,7 +1942,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
         while (1)
         {
             WTR_Compute_MipMap(v15, v13, v16);
-            v17 = a1->waterEngine.waveMapShiftCHP;
+            v17 = water->waterEngine.waveMapShiftCHP;
             if (v15 == 1 << v17 && v17)
             {
                 v18 = v16;
@@ -1927,7 +1951,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
                 {
                     while (1)
                     {
-                        v20 = &v18[1 << a1->waterEngine.waveMapShiftCHP];
+                        v20 = &v18[1 << water->waterEngine.waveMapShiftCHP];
                         if (v18 < v20)
                         {
                             do
@@ -1940,7 +1964,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
                             } while (v18 < v20);
                             v32 = v5;
                         }
-                        v21 = &v18[-(1 << a1->waterEngine.waveMapShiftCHP)].f1;
+                        v21 = &v18[-(1 << water->waterEngine.waveMapShiftCHP)].f1;
                         v22 = (uint32_t*)&v18->f1;
                         v18->f1 = *v21;
                         v18->f2 = v21[1];
@@ -1953,7 +1977,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
                     }
                 }
                 v23 = &v16->f1;
-                for (j = (unsigned int)&v19[(1 << a1->waterEngine.waveMapShiftCHP) + 1]; (unsigned int)v18 < j; v23 += 4)
+                for (j = (unsigned int)&v19[(1 << water->waterEngine.waveMapShiftCHP) + 1]; (unsigned int)v18 < j; v23 += 4)
                 {
                     v18->f1 = *v23;
                     v18->f2 = v23[1];
@@ -1963,7 +1987,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
                 }
                 v24 = a2b;
                 v25 = a3;
-                for (k = v16; v24 >= a1->concatenatedMap; v24 = (tWtrStruct2*)((char*)v24 - 16 - ((v25 * (v25 + 1)) << 6)))
+                for (k = v16; v24 >= water->concatenatedMap; v24 = (tWtrStruct2*)((char*)v24 - 16 - ((v25 * (v25 + 1)) << 6)))
                 {
                     WTR_BackExtendDXDY_0(k, v24, v25);
                     v25 *= 2;
