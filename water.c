@@ -2375,8 +2375,9 @@ int WTR_Compute4Points(Vec3* points, Vec3* a2, Vec3* a3, Vec3* a4, float a5, flo
     float v111; // [esp+8Ch] [ebp-CCh]
     float v112; // [esp+90h] [ebp-C8h]
     float v113; // [esp+94h] [ebp-C4h]
-    Vec3 a2a[8]; // [esp+98h] [ebp-C0h] BYREF
-    Vec3 a1[8]; // [esp+F8h] [ebp-60h] BYREF
+    // five clip planes starting from a quad can emit up to nine vertices
+    Vec3 a2a[12]; // [esp+98h] [ebp-C0h] BYREF
+    Vec3 a1[12]; // [esp+F8h] [ebp-60h] BYREF
 
     v10 = a4->z * 0.0;
     v11 = v10 - a4->y;
