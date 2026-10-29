@@ -371,6 +371,12 @@ void WATERFFT_Normalize(tFFTComplex* a1, int a2)
     for (; v3 < a2; ++v3)
         v2 = v2 + a1[v3].real;
     v7 = 1.0 / v2;
+    {   // debug trace: the sum and its reciprocal, first call only
+        static int dbg_n = 0;
+        if (dbg_n++ == 0)
+            DBG_OutputDebugString("[WTR] norm: n=%d sum=%g inv=%g in0=%g in1=%g inlast=%g\n",
+                a2, v2, v7, a1[0].real, a1[1].real, a1[a2 - 1].real);
+    }
     for (i = 0; i < a2; a1[i - 1].real = v7 * a1[i - 1].real)
         ++i;
 }
