@@ -829,91 +829,93 @@ void WATERFFT_Deduct_DXDY_Spectre_Line(tFFTComplex* outFromReal, tFFTComplex* ou
     }
 }
 
-void WATERFFT_CorrectHeight(tFFTComplex* a1, char a2)
+/* Flip the sign of every other cell, in a checkerboard: the transform
+ * leaves the grid with alternating cells negated, and this puts them
+ * back. Each row starts one cell further along than the last, which is
+ * what staggers the pattern. */
+void WATERFFT_CorrectHeight(tFFTComplex* grid, char sizeLog2)
 {
-    unsigned int v3; // edx
-    int v4; // edi
-    unsigned int v5; // ebx
-    tFFTComplex* v6; // eax
-    unsigned int v7; // ecx
+    const unsigned int side = 1u << sizeLog2;
+    const unsigned int perRow = side >> 1;
+    unsigned int rowsLeft = side;
+    int firstCell = 1;
 
-    v3 = 1 << a2;
-    v4 = 2;
-    if (1 << a2)
+    if (!side)
+        return;
+
+    do
     {
-        v5 = v3 >> 1;
-        do
+        tFFTComplex* cell = &grid[firstCell];
+        unsigned int remaining = perRow;
+
+        while (remaining)
         {
-            v6 = (tFFTComplex*)((char*)a1 + 4 * v4);
-            if (v5)
-            {
-                v7 = v5;
-                do
-                {
-                    v6->real = -v6->real;
-                    v6->imaginary = -v6->imaginary;
-                    v6 += 2;
-                    --v7;
-                } while (v7);
-            }
-            a1 = (tFFTComplex*)((char*)v6 - 4 * v4);
-            v4 ^= 2u;
-            --v3;
-        } while (v3);
-    }
+            cell->real = -cell->real;
+            cell->imaginary = -cell->imaginary;
+            cell += 2;
+            --remaining;
+        }
+
+        grid = cell - firstCell;
+        firstCell ^= 1;
+        --rowsLeft;
+    } while (rowsLeft);
 }
 
-void WATERFFT_Deduct_DXDY_Spectre(tWaterEngineStruct* a1, tFFTComplex* a5, tFFTComplex* a3, tFFTComplex* a4)
+/* Derive the two horizontal displacement spectra from the height one.
+ *
+ * The displacement maps may be coarser than the height map, so the
+ * source is read through the precalculated direction table and walked
+ * with the two super shifts, which alternate from row to row to spread
+ * the coarser sampling evenly. Each pass fills one row of both output
+ * spectra.
+ *
+ * When the two maps differ by an odd number of levels the transform
+ * lands on the opposite checkerboard phase, so both outputs are
+ * corrected at the end. */
+void WATERFFT_Deduct_DXDY_Spectre(tWaterEngineStruct* engine, tFFTComplex* heightSpectrum,
+                                  tFFTComplex* displacementX, tFFTComplex* displacementY)
 {
-    int v5; // eax
-    unsigned int v6; // ebx
-    tFFTComplex* v7; // ebp
-    tFFTComplex* v8; // edi
-    int v9; // eax
-    int v10; // edx
-    int v11; // ebp
-    int v12; // eax
-    int v13; // [esp+4h] [ebp-Ch]
-    unsigned int v14; // [esp+8h] [ebp-8h]
-    tFFTComplex* v15; // [esp+Ch] [ebp-4h]
-    tFFTComplex* a4a; // [esp+14h] [ebp+4h]
-    tFFTComplex* a5a; // [esp+18h] [ebp+8h]
+    const int sizeLog2 = engine->borderSizeDXDYPowerOfTwo;
 
-    v5 = a1->borderSizeDXDYPowerOfTwo;
-    if (v5)
+    if (sizeLog2)
     {
-        a4a = a1->DXDYMap;
-        v6 = 1 << (2 * v5);
-        v7 = a4;
-        v8 = a3;
-        v14 = 0;
-        a5a = &a5[a1->superShift0 + (a1->superShift0 << a1->borderSizePowerOfTwo)];
-        v13 = 0;
-        if (v6)
+        const unsigned int totalCells = 1u << (2 * sizeLog2);
+        tFFTComplex* direction = engine->DXDYMap;
+        tFFTComplex* outX = displacementX;
+        tFFTComplex* outY = displacementY;
+        tFFTComplex* source = &heightSpectrum[engine->superShift0
+                              + (engine->superShift0 << engine->borderSizePowerOfTwo)];
+        unsigned int filled = 0;
+        int useSecondShift = 0;
+        int side = 1 << sizeLog2;
+
+        while (filled < totalCells)
         {
-            v9 = 1 << a1->borderSizeDXDYPowerOfTwo;
-            while (1)
-            {
-                WATERFFT_Deduct_DXDY_Spectre_Line(v8, v7, &v8[v9], a4a, a5a, a1->superShift1, a1->superShift2);
-                v10 = 1 << a1->borderSizeDXDYPowerOfTwo;
-                v9 = v10;
-                v15 = &v7[v10];
-                v8 += v10;
-                a4a += v10;
-                v11 = v13 ? a1->superShift2 : a1->superShift1;
-                a5a += v11 << a1->borderSizePowerOfTwo;
-                v13 ^= 1u;
-                v14 += v10;
-                if (v14 >= v6)
-                    break;
-                v7 = v15;
-            }
+            tFFTComplex* const nextY = &outY[side];
+
+            WATERFFT_Deduct_DXDY_Spectre_Line(outX, outY, &outX[side], direction, source,
+                                              engine->superShift1, engine->superShift2);
+
+            side = 1 << engine->borderSizeDXDYPowerOfTwo;
+            outX += side;
+            direction += side;
+            source += (useSecondShift ? engine->superShift2 : engine->superShift1)
+                      << engine->borderSizePowerOfTwo;
+            useSecondShift ^= 1;
+            filled += side;
+
+            if (filled >= totalCells)
+                break;
+
+            outY = nextY;
         }
-        v12 = a1->borderSizeDXDYPowerOfTwo;
-        if (((LOBYTE(a1->borderSizePowerOfTwo) - (byte)v12) & 1) != 0)
+
+        /* an odd difference in level count inverts the checkerboard */
+        if (((engine->borderSizePowerOfTwo - (unsigned char)engine->borderSizeDXDYPowerOfTwo) & 1) != 0)
         {
-            WATERFFT_CorrectHeight(a3, v12);
-            WATERFFT_CorrectHeight(a4, a1->borderSizeDXDYPowerOfTwo);
+            WATERFFT_CorrectHeight(displacementX, (char)engine->borderSizeDXDYPowerOfTwo);
+            WATERFFT_CorrectHeight(displacementY, (char)engine->borderSizeDXDYPowerOfTwo);
         }
     }
 }
