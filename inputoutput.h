@@ -110,6 +110,13 @@ int SAV_idx_Field_i9;
 int INO_gi_SavButton[8];
 extern int INO_ge_SavSetNextState;
 extern int INO_ge_SavCommand;
+/* Size of the photo buffer, and the free disk space a slot write
+   needs. The two are the same figure on purpose: a slot carries the
+   photo block, so there is no point starting a write that cannot
+   hold one. Changing one without the other either rejects every
+   save or writes a block that will not read back. */
+#define SAV_PHOTO_BUFFER_SIZE 1638400
+
 int INO_gi_FreeSpace;
 char INO_gsz_SavFileName[128];
 byte* INO_Keys;
