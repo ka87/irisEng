@@ -1466,11 +1466,13 @@ void WATERFFT_Turn_Spectre(tWaterEngineStruct* engine, tFFTComplex* heightOut,
     WATERFFT_FFT2D(heightOut, engine->borderSizePowerOfTwo, engine->FFTCostTable);
 }
 
-void WTR_Color_2_Vector(Vec3* vec, uint32_t color)
+/* Unpack a packed colour into three components in zero to one, red from the
+ * low byte then green then blue. */
+void WTR_Color_2_Vector(Vec3* colourOut, uint32_t packed)
 {
-    vec->x = (float)((double)((color >> 0)  & 0xff) * 0.0039215689);
-    vec->y = (float)((double)((color >> 8)  & 0xff) * 0.0039215689);
-    vec->z = (float)((double)((color >> 16) & 0xff) * 0.0039215689);
+    colourOut->x = (float)((double)((packed >> 0)  & 0xff) * 0.0039215689);
+    colourOut->y = (float)((double)((packed >> 8)  & 0xff) * 0.0039215689);
+    colourOut->z = (float)((double)((packed >> 16) & 0xff) * 0.0039215689);
 }
 
 uint32_t WTR_GetFresnelColor(tWaterParamsGlobalStruct* wtr, float cosThetaI)
@@ -1654,31 +1656,39 @@ void WTR_ComputeFresnel(tWaterParamsGlobalStruct* water)
     water->waterEngine.waterColorMode = 0;
 }
 
-void WTR_Compute_MipMap_sub_noSSE(tWtrStruct2* result, tWtrStruct2* a2, tWtrStruct2* a3)
+/* Reduce two by two blocks of two source rows into two output entries.
+ *
+ * Averages the four corners of each block for the two displacement fields and
+ * the height. The fourth field is not touched; the caller carries it. */
+void WTR_Compute_MipMap_sub_noSSE(tWtrStruct2* topRow, tWtrStruct2* out, tWtrStruct2* bottomRow)
 {
-    tWtrStruct2* v4; // edx
-    tWtrStruct2* v5; // esi
-    int v6; // ebx
-    double v7; // st7
+    int i;
 
-    v4 = result + 1;
-    v5 = a3 + 1;
-    v6 = 2;
-    do
+    for (i = 0; i < 2; i++)
     {
-        ++a2;
-        v7 = v5->f1 + v4->f1;
-        result += 2;
-        a3 += 2;
-        v4 += 2;
-        v5 += 2;
-        --v6;
-        a2[-1].f1 = (v7 + result[-2].f1 + a3[-2].f1) * 0.25;
-        a2[-1].f2 = (v5[-2].f2 + v4[-2].f2 + result[-2].f2 + a3[-2].f2) * 0.25;
-        a2[-1].f3 = (v5[-2].f3 + v4[-2].f3 + result[-2].f3 + a3[-2].f3) * 0.25;
-    } while (v6);
+        const int left = 2 * i;
+        const int right = left + 1;
+
+        out[i].f1 = (float)((bottomRow[right].f1 + topRow[right].f1 + topRow[left].f1 + bottomRow[left].f1) * 0.25);
+        out[i].f2 = (float)((bottomRow[right].f2 + topRow[right].f2 + topRow[left].f2 + bottomRow[left].f2) * 0.25);
+        out[i].f3 = (float)((bottomRow[right].f3 + topRow[right].f3 + topRow[left].f3 + bottomRow[left].f3) * 0.25);
+    }
 }
 
+/* Reduce one level of the sampling grid into the next, halving each side.
+ *
+ * `result` is the side of the output level, `a2` the level being read and `a3`
+ * the level being written. Each output row averages two by two blocks across
+ * two source rows, whose stride is twice the output side plus one, and is then
+ * followed by a wrap entry repeating the row's first entry - the same shape
+ * the base level has.
+ *
+ * SUSPECT: that wrap entry indexes `ptrStart[offset / 0xFFFFFFF0]`. Both
+ * operands are unsigned, so the quotient is zero for any real offset and the
+ * entry copies itself, leaving the wrap column of every reduced level as
+ * whatever was there before. The intent was almost certainly a signed divide
+ * by -16, giving `ptrStart[-result]`, the start of the row. Left as it is,
+ * because changing it changes the surface; see the notes before touching. */
 void WTR_Compute_MipMap(int result, tWtrStruct2* a2, tWtrStruct2* a3)
 {
     tWtrStruct2* v3; // edx
