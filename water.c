@@ -1558,90 +1558,105 @@ uint32_t WTR_GetFresnelColor(tWaterParamsGlobalStruct* wtr, float cosThetaI)
 }
 
 
-void WTR_ComputeFresnel(tWaterParamsGlobalStruct* wtr)
+/* Rebuild the surface colour ramp.
+ *
+ * The ramp has 512 steps covering viewing angles from straight down through
+ * grazing, and each step mixes three colours: the sky reflected off the
+ * surface, the water itself, and the bottom seen through it. How much of each
+ * applies is pure geometry, so it is worked out once and cached.
+ *
+ * The trick for caching it is to ask WTR_GetFresnelColor for the mix while the
+ * three colours are temporarily set to pure red, green and blue. What comes
+ * back is not a colour but the three weights, one per byte, and that is what
+ * colorTableForFastRecompute holds. Every later rebuild just weights the real
+ * colours by those bytes.
+ *
+ * Note the three components are summed in three different orders, which is
+ * kept as it was so the packed bytes round the same way. */
+void WTR_ComputeFresnel(tWaterParamsGlobalStruct* water)
 {
-    int v2;
-    int v3;
-    int v5;
-    int v6;
-    int* v7;
-    int* v8;
-    int v9;
-    double v10;
-    unsigned int v11;
-    double v12;
-    double v13;
-    float v14;
-    int v15;
-    Vec3 v16;
-    Vec3 a1a;
-    Vec3 v18;
-    Vec3 v19;
-    Vec3 v20;
-    float v21;
-    float v22;
-    int v23;
+    Vec3 fixedSurface;
+    Vec3 sky, surface, bottom;
+    Vec3 blended;
+    int opaqueBottom;
+    int opaqueSurface;
+    int i;
 
-    wtr->waterEngine.bottomColor &= 0x00ffffff;
-    v2 = wtr->waterEngine.bottomColor | 0xff000000;
-    wtr->waterEngine.waterColor &= 0x00ffffff;
-    wtr->waterEngine.skyColor &= 0x00ffffff;
-    a1a.x = 0.30000001;
-    a1a.y = 0.40000001;
-    a1a.z = 0.5;
-    wtr->waterEngine.bottomColor = v2;
-    v15 = v2;
-    v3 = WTR_Vector_2_Color(&a1a);
-    v5 = v3 | 0xFF000000;
-    wtr->waterEngine.waterColor = v5;
-    wtr->waterEngine.skyColor = v5;
-    if (!wtr->waterEngine.colorTableFastRecomputeDone)
+    water->waterEngine.bottomColor &= 0x00ffffff;
+    water->waterEngine.waterColor &= 0x00ffffff;
+    water->waterEngine.skyColor &= 0x00ffffff;
+
+    opaqueBottom = water->waterEngine.bottomColor | 0xff000000;
+    water->waterEngine.bottomColor = opaqueBottom;
+
+    /* The surface and the sky reflection are forced to one fixed colour. */
+    fixedSurface.x = 0.30000001f;
+    fixedSurface.y = 0.40000001f;
+    fixedSurface.z = 0.5f;
+    opaqueSurface = WTR_Vector_2_Color(&fixedSurface) | 0xFF000000;
+    water->waterEngine.waterColor = opaqueSurface;
+    water->waterEngine.skyColor = opaqueSurface;
+
+    if (!water->waterEngine.colorTableFastRecomputeDone)
     {
-        v6 = 256;
-        wtr->waterEngine.bottomColor = v2 & 0xFFFF0000 | 0xFF0000;
-        wtr->waterEngine.waterColor = v5 & 0xFF000000 | 0xFF00;
-        wtr->waterEngine.skyColor = v5 & 0xFF000000 | 0xFF;
-        v23 = 256;
-        v7 = wtr->waterEngine.colorTableForFastRecompute;
-        do
+        /* One pure channel each, so the returned mix is three weights. */
+        water->waterEngine.bottomColor = (opaqueBottom & 0xFFFF0000) | 0xFF0000;
+        water->waterEngine.waterColor = (opaqueSurface & 0xFF000000) | 0xFF00;
+        water->waterEngine.skyColor = (opaqueSurface & 0xFF000000) | 0xFF;
+
+        for (i = 0; i < 512; i++)
         {
-            v14 = (double)v23 * (2.0 / 512.0);
-            *v7++ = WTR_GetFresnelColor(wtr, v14);
-            v23 = --v6;
-        } while (v6 > -256);
-        wtr->waterEngine.bottomColor = v15;
-        wtr->waterEngine.waterColor = v5;
-        wtr->waterEngine.skyColor = v5;
-        wtr->waterEngine.colorTableFastRecomputeDone = 1;
+            const float cosine = (float)((double)(256 - i) * (2.0 / 512.0));
+
+            water->waterEngine.colorTableForFastRecompute[i] = WTR_GetFresnelColor(water, cosine);
+        }
+
+        water->waterEngine.bottomColor = opaqueBottom;
+        water->waterEngine.waterColor = opaqueSurface;
+        water->waterEngine.skyColor = opaqueSurface;
+        water->waterEngine.colorTableFastRecomputeDone = 1;
     }
-    WTR_Color_2_Vector(&v18, wtr->waterEngine.skyColor);
-    WTR_Color_2_Vector(&v20, wtr->waterEngine.bottomColor);
-    WTR_Color_2_Vector(&v19, wtr->waterEngine.waterColor);
-    v8 = wtr->waterEngine.colorTable;
-    v9 = 512;
-    do
+
+    WTR_Color_2_Vector(&sky, water->waterEngine.skyColor);
+    WTR_Color_2_Vector(&bottom, water->waterEngine.bottomColor);
+    WTR_Color_2_Vector(&surface, water->waterEngine.waterColor);
+
+    for (i = 0; i < 512; i++)
     {
-        v10 = (double)(unsigned __int8)wtr->waterEngine.colorTableForFastRecompute[512 - v9] * 0.00390625;
-        v11 = (unsigned int)wtr->waterEngine.colorTableForFastRecompute[512 - v9] >> 8;
-        v16.y = v18.y * v10;
-        v16.z = v18.z * v10;
-        v12 = (double)(unsigned __int8)v11 * 0.00390625;
-        v11 >>= 8;
-        a1a.x = v19.x * v12;
-        a1a.y = v19.y * v12;
-        a1a.z = v19.z * v12;
-        v16.z = a1a.z + v16.z;
-        v13 = (double)(unsigned __int8)v11 * 0.00390625;
-        v21 = v20.y * v13;
-        v22 = v20.z * v13;
-        v16.x = v20.x * v13 + a1a.x + v18.x * v10;
-        v16.y = v21 + a1a.y + v16.y;
-        v16.z = v22 + v16.z;
-        *v8++ = ((v11 & 0xFFFFFF00) << 16) | WTR_Vector_2_Color(&v16);
-        --v9;
-    } while (v9);
-    memcpy(wtr->waterEngine.colorTableBackup, &wtr->waterEngine.colorTable[224], 256u);
-    wtr->waterEngine.waterColorMode = 0;
+        const int packed = water->waterEngine.colorTableForFastRecompute[i];
+        unsigned int remaining = (unsigned int)packed;
+        double skyWeight, surfaceWeight, bottomWeight;
+        Vec3 surfaceTerm;
+        float bottomY, bottomZ;
+
+        skyWeight = (double)(unsigned char)remaining * 0.00390625;
+        remaining >>= 8;
+        surfaceWeight = (double)(unsigned char)remaining * 0.00390625;
+        remaining >>= 8;
+        bottomWeight = (double)(unsigned char)remaining * 0.00390625;
+
+        blended.y = (float)(sky.y * skyWeight);
+        blended.z = (float)(sky.z * skyWeight);
+
+        surfaceTerm.x = (float)(surface.x * surfaceWeight);
+        surfaceTerm.y = (float)(surface.y * surfaceWeight);
+        surfaceTerm.z = (float)(surface.z * surfaceWeight);
+
+        blended.z = surfaceTerm.z + blended.z;
+
+        bottomY = (float)(bottom.y * bottomWeight);
+        bottomZ = (float)(bottom.z * bottomWeight);
+
+        blended.x = (float)(bottom.x * bottomWeight + surfaceTerm.x + sky.x * skyWeight);
+        blended.y = bottomY + surfaceTerm.y + blended.y;
+        blended.z = bottomZ + blended.z;
+
+        /* Carry the top byte of the weights through as the alpha. */
+        water->waterEngine.colorTable[i] = (int)((remaining & 0xFFFFFF00) << 16) | WTR_Vector_2_Color(&blended);
+    }
+
+    memcpy(water->waterEngine.colorTableBackup, &water->waterEngine.colorTable[224], 256u);
+    water->waterEngine.waterColorMode = 0;
 }
 
 void WTR_Compute_MipMap_sub_noSSE(tWtrStruct2* result, tWtrStruct2* a2, tWtrStruct2* a3)
