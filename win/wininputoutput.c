@@ -1366,34 +1366,34 @@ int pcINO_i_CheckCard()
         return 6;
     INO_gi_SavButton[2] = 0;
     INO_gi_SavButton[6] = 0;
-    INO_gi_SavButton[3] = 0;
-    INO_gi_SavButton[7] = 0;
+    INO_gi_SavButton[1] = 0;
+    INO_gi_SavButton[5] = 0;
     pcINO_gi_LastError = 602;
     INO_gi_SavButton[0] = 3;
     INO_gi_SavButton[4] = 24;
-    INO_gi_SavButton[1] = 6;
-    INO_gi_SavButton[5] = 26;
+    INO_gi_SavButton[3] = 6;
+    INO_gi_SavButton[7] = 26;
     return 27;
 }
 
 int pcINO_i_FormatCard()
 {
-    INO_gi_SavButton[7] = 0;
-    INO_gi_SavButton[3] = 0;
+    INO_gi_SavButton[5] = 0;
+    INO_gi_SavButton[1] = 0;
     if (dword_990170) // TODO FIXME nem kéne initelni?
     {
         pcINO_gi_LastError = 705;
         INO_gi_SavButton[0] = 3;
         INO_gi_SavButton[4] = 24;
-        INO_gi_SavButton[1] = 6;
-        INO_gi_SavButton[5] = 26;
+        INO_gi_SavButton[3] = 6;
+        INO_gi_SavButton[7] = 26;
         INO_gi_SavButton[2] = 5;
         INO_gi_SavButton[6] = 5;
     }
     else
     {
-        INO_gi_SavButton[1] = 0;
-        INO_gi_SavButton[5] = 0;
+        INO_gi_SavButton[3] = 0;
+        INO_gi_SavButton[7] = 0;
         INO_gi_SavButton[2] = 0;
         INO_gi_SavButton[6] = 0;
         pcINO_gi_LastError = 704;
@@ -1405,12 +1405,27 @@ int pcINO_i_FormatCard()
 
 int pcINO_i_TestFreeSpace()
 {
+    ULARGE_INTEGER freeBytes;
     int v0;
     BOOL v1;
 
+    /* Free space on the current drive, clamped to a positive int.
+       A failed query reports nothing free, which makes the caller
+       refuse the write rather than start one that cannot finish. */
+    if (GetDiskFreeSpaceExA(0, &freeBytes, 0, 0))
+    {
+        if (freeBytes.HighPart || freeBytes.LowPart > 0x7FFFFFFF)
+            INO_gi_FreeSpace = 0x7FFFFFFF;
+        else
+            INO_gi_FreeSpace = (int)freeBytes.LowPart;
+    }
+    else
+    {
+        INO_gi_FreeSpace = 0;
+    }
+
     v0 = INO_ge_SavSetNextState;
     v1 = INO_ge_SavSetNextState == -1;
-    INO_gi_FreeSpace = 0x100000;
     INO_ge_SavSetNextState = -1;
     return v1 ? 0 : v0;
 }
@@ -1439,17 +1454,17 @@ int pcINO_i_Open()
         goto LABEL_13;
     if (INO_ge_SavCommand == 16)
     {
-        if (INO_gi_FreeSpace < 409600)
+        if (INO_gi_FreeSpace < SAV_PHOTO_BUFFER_SIZE)
         {
             INO_gi_SavButton[2] = 0;
             INO_gi_SavButton[6] = 0;
-            INO_gi_SavButton[3] = 0;
-            INO_gi_SavButton[7] = 0;
+            INO_gi_SavButton[1] = 0;
+            INO_gi_SavButton[5] = 0;
             pcINO_gi_LastError = 302;
             INO_gi_SavButton[0] = 3;
             INO_gi_SavButton[4] = 24;
-            INO_gi_SavButton[1] = 6;
-            INO_gi_SavButton[5] = 26;
+            INO_gi_SavButton[3] = 6;
+            INO_gi_SavButton[7] = 26;
             INO_ge_SavSetNextState = 16;
             return 27;
         }
@@ -1458,13 +1473,13 @@ int pcINO_i_Open()
     {
         INO_gi_SavButton[2] = 0;
         INO_gi_SavButton[6] = 0;
-        INO_gi_SavButton[3] = 0;
-        INO_gi_SavButton[7] = 0;
+        INO_gi_SavButton[1] = 0;
+        INO_gi_SavButton[5] = 0;
         pcINO_gi_LastError = 302;
         INO_gi_SavButton[0] = 3;
         INO_gi_SavButton[4] = 24;
-        INO_gi_SavButton[1] = 6;
-        INO_gi_SavButton[5] = 26;
+        INO_gi_SavButton[3] = 6;
+        INO_gi_SavButton[7] = 26;
         INO_ge_SavSetNextState = 10;
         return 27;
     }
@@ -1483,13 +1498,13 @@ int pcINO_i_Open()
             pcINO_gi_LastError = 308;
         INO_gi_SavButton[2] = 0;
         INO_gi_SavButton[6] = 0;
-        INO_gi_SavButton[3] = 0;
-        INO_gi_SavButton[7] = 0;
+        INO_gi_SavButton[1] = 0;
+        INO_gi_SavButton[5] = 0;
         INO_ge_SavSetNextState = INO_ge_SavCommand;
         INO_gi_SavButton[0] = 3;
         INO_gi_SavButton[4] = 24;
-        INO_gi_SavButton[1] = 6;
-        INO_gi_SavButton[5] = 26;
+        INO_gi_SavButton[3] = 6;
+        INO_gi_SavButton[7] = 26;
         result = 27;
     }
     return result;
