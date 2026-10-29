@@ -728,6 +728,22 @@ void WATERFFT_Init_Spectre(tWaterEngineStruct* a1)
         }
         ++v2;
     }
+    {   // debug trace: the spectrum right after it is built, first call only
+        static int dbg_n = 0;
+        if (dbg_n++ == 0)
+        {
+            tFFTComplex* m = a1->spectroMap;
+            int c = (32 << a1->borderSizePowerOfTwo) + 32;
+            DBG_OutputDebugString("[WTR] spec: bsz=%d world=%g wind=(%g,%g) prop=%g dir=%g\n",
+                a1->borderSizePowerOfTwo, a1->worldSizeInMeters,
+                a1->wind.x, a1->wind.y, a1->waveProp, a1->direction);
+            DBG_OutputDebugString("[WTR] spec: s0=(%g,%g) s1=(%g,%g) cen=(%g,%g) last=(%g,%g)\n",
+                m[0].real, m[0].imaginary, m[1].real, m[1].imaginary,
+                m[c].real, m[c].imaginary,
+                m[(1 << (2 * a1->borderSizePowerOfTwo)) - 1].real,
+                m[(1 << (2 * a1->borderSizePowerOfTwo)) - 1].imaginary);
+        }
+    }
     v10 = a1->borderSizePowerOfTwo;
     if (a1->borderSizePowerOfTwo > 6u)
     {
@@ -3339,6 +3355,14 @@ int WTR_Mesh_Do(tWaterParamsGlobalStruct* a1)
         a5c = TIM_gf_dt * a1->speed + a1->waterEngine.timeElapsed;
         a1->waterEngine.timeElapsed = a5c;
         WATERFFT_Turn_Spectre(&a1->waterEngine, a1->spaceMap, v12, v11, a5c);
+        {   // debug trace: the space map the FFT produced, first call only
+            static int dbg_n = 0;
+            if (dbg_n++ == 0)
+                DBG_OutputDebugString("[WTR] turn: t=%g sm0=(%g,%g) sm1=(%g,%g) dx0=(%g,%g)\n",
+                    a5c, a1->spaceMap[0].real, a1->spaceMap[0].imaginary,
+                    a1->spaceMap[1].real, a1->spaceMap[1].imaginary,
+                    a1->spaceMapDX[0].real, a1->spaceMapDX[0].imaginary);
+        }
         WTR_Concate(a1);
         result = 1;
     }
