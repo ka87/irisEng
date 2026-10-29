@@ -2192,11 +2192,13 @@ LABEL_47:
     waterHeight = pst_GlobalsWaterParams->waterHeight;
     DBG_OutputDebugString(
         "[WTR] set: on=%d glob=%p mesh=%ux%d shift=%u/%u wave=%f wh=%f "
+        "chop=%f tile=%f spd=%f dir=%f prop=%f "
         "sky=%08X bot=%08X wat=%08X hard=%d soft=%d col=%d verts=%p disp=%p\n",
         a1->waterEnabled, pst_GlobalsWaterParams,
         a1->frustrumMeshSX, a1->frustrumMeshSY,
         a1->waveMapShift, a1->waveMapShiftCHP,
         a1->waveHeight, a1->waterHeight,
+        a1->choppy, a1->tiling, a1->speed, a1->direction, a1->waveProp,
         a1->skyColor, a1->bottomColor, a1->waterColor,
         v3, v2, colorChanged,
         pst_GlobalsWaterParams->vertices,
@@ -2991,6 +2993,18 @@ int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* a1, Vec3* cameraObjectPos, Vec3*
         MATH_BlendVector(&a1a, a2a, &a2a[1], 0.5);
         MATH_BlendVector(&dest, &a2a[3], &a2a[2], 0.5);
         v47 = v13;
+        {   // debug trace: the three divisors of v63, once per 120 rows
+            static int dbg_n = 0;
+            double dbg_d = sqrt(
+                (dest.z - a1a.z) * (dest.z - a1a.z)
+                + (dest.y - a1a.y) * (dest.y - a1a.y)
+                + (dest.x - a1a.x) * (dest.x - a1a.x));
+            if ((dbg_n++ % 120) == 0 || a1->tiling == 0.0f || v47 == 0.0 || dbg_d == 0.0)
+                DBG_OutputDebugString(
+                    "[WTR] v63: tile=%f v47=%f dist=%f mid1=(%f,%f,%f) mid2=(%f,%f,%f)\n",
+                    a1->tiling, v47, dbg_d,
+                    a1a.x, a1a.y, a1a.z, dest.x, dest.y, dest.z);
+        }
         v63 = 1.0
             / a1->tiling
             / v47
