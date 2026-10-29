@@ -2694,126 +2694,121 @@ void WTR_DirectComputeColors_CloudShading(Vec3* vertices, int* colorOut, int ver
     colorOut[shadedCount] = colorOut[shadedCount - 1];
 }
 
-void WTR_DirectComputeColors(Vec3* a1, Vec3* camerObjectPos, Vec3* vecsForUvs, Vec3* a4, int* colors, int num, int* a7, float a8)
+/* Shade one row of the surface, and produce its normals and reflection
+ * vectors.
+ *
+ * For each vertex the surface normal is the cross product of the edge to the
+ * next vertex along the row and the edge to the vertex on the next row, which
+ * is why `vertices` is indexed a whole row ahead as well as by one. From that:
+ *
+ *   colorOut       a step along the ramp, chosen by how square on the surface
+ *                  is to the eye, so it darkens towards grazing angles
+ *   reflectionOut  the view direction reflected about the normal
+ *   normalsOut     the normal itself, normalised, left alone where the cross
+ *                  product came out as nothing
+ *
+ * The last vertex of the row gets the previous one's colour, since it has no
+ * next vertex to form an edge with.
+ *
+ * Two oddities are kept as they were, because they are what the surface is
+ * built from today: the across edge has its x and y scaled by `acrossScale`
+ * while its z is not, and the normal's z term is formed from the single
+ * precision copy of the scaled y while the x term uses the double. */
+void WTR_DirectComputeColors(Vec3* vertices, Vec3* cameraPosition, Vec3* normalsOut, Vec3* reflectionOut,
+                             int* colorOut, int rowLength, int* colorRamp, float acrossScale)
 {
-    Vec3* v8;
-    Vec3* v9;
-    int* v10;
-    Vec3* v12;
-    double v13;
-    double v14;
-    double v15;
-    double v16;
-    double v17;
-    double v18;
-    double v19;
-    double v20;
-    double v21;
-    double v22;
-    double v23;
-    Vec3* v24;
-    long double v25;
-    float v26;
-    Vec3* v27;
-    float v28;
-    float v29;
-    Vec3* v30;
-    float v31;
-    float v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    Vec3 v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    float v43;
-    float v44;
-    float a4a;
-    float a5a;
-    float numa;
-    float numb;
-    int tmp;
+    const int shadedCount = rowLength - 1;
+    int i;
 
-    v8 = a1;
-    v9 = &a1[num];
-    v27 = camerObjectPos;
-    v30 = v9 - 1;
-    if (a1 >= &v9[-1])
+    if (shadedCount <= 0)
     {
-        *colors = *(colors - 1);
+        colorOut[0] = colorOut[-1];
+        return;
     }
-    else
+
+    for (i = 0; i < shadedCount; i++)
     {
-        v10 = colors;
-        v12 = v9;
-        while (1)
+        Vec3* const vertex = &vertices[i];
+        Vec3* const nextAlong = &vertices[i + 1];
+        Vec3* const nextAcross = &vertices[i + rowLength];
+
+        const float toCameraX = vertex->x - cameraPosition->x;
+        const float toCameraY = vertex->y - cameraPosition->y;
+        const float toCameraZ = vertex->z - cameraPosition->z;
+
+        const float alongX = nextAlong->x - vertex->x;
+        const float alongY = nextAlong->y - vertex->y;
+        const float alongZ = nextAlong->z - vertex->z;
+
+        const float acrossZ = nextAcross->z - vertex->z;
+        const float scaledAcrossX = (nextAcross->x - vertex->x) * acrossScale;
+        const double scaledAcrossY = (nextAcross->y - vertex->y) * acrossScale;
+        const float scaledAcrossYSingle = (float)scaledAcrossY;
+
+        const float normalX = (float)(scaledAcrossY * alongZ - acrossZ * alongY);
+        const float normalY = (float)(acrossZ * alongX - alongZ * scaledAcrossX);
+        const double normalZWide = alongY * scaledAcrossX - alongX * scaledAcrossYSingle;
+        const float normalZ = (float)normalZWide;
+
+        const double normalZSquared = normalZWide * normalZ;
+        const double normalYSquared = normalY * normalY;
+        const double normalXSquared = normalX * normalX;
+        const float normalXSquaredSingle = (float)normalXSquared;
+        const double normalLengthSquared = normalXSquared + normalYSquared + normalZSquared;
+
+        const double cameraDistanceSquared = toCameraZ * toCameraZ + toCameraY * toCameraY + toCameraX * toCameraX;
+
+        double facing = toCameraZ * normalZ + toCameraY * normalY + toCameraX * normalX;
+        float scaleInput;
+        float inverseScale;
+        double facingScaled, distanceScale;
+        float facingSingle, facingSign;
+        Vec3 reflection;
+        int tmp;
+
+        /* Only the side of the surface turned towards the eye is shaded. */
+        if (facing > 0.0)
+            facing = 0.0;
+
+        /* One over the square root of the product, from the table rather than
+         * a square root, which gives one over the camera distance times the
+         * normal length squared. */
+        scaleInput = (float)(cameraDistanceSquared * normalLengthSquared * normalLengthSquared);
+        tmp = MATH_gl_TableInverseRacine[((*((int32_t*)(&scaleInput))) >> 13) & 0x7FF]
+            + (((int)(0xBD800000 - ((*((uint32_t*)(&scaleInput))) & 0x7F800000)) >> 1) & 0x7F800000);
+        inverseScale = *(float*)&tmp;
+
+        facingScaled = inverseScale * facing;
+        facingSingle = (float)facingScaled;
+        distanceScale = inverseScale * normalLengthSquared;
+
+        reflection.x = (float)(normalX * (facingScaled * -2.0) + (float)(toCameraX * distanceScale));
+        reflection.y = (float)(facingScaled * -2.0 * normalY) + (float)(toCameraY * distanceScale);
+        reflection.z = (float)((float)(facingScaled * -2.0 * normalZ) + distanceScale * toCameraZ);
+
+        /* Plus or minus one, carrying only the sign of the facing term. */
         {
-            v34 = v8->x - camerObjectPos->x;
-            v35 = v8->y - camerObjectPos->y;
-            v36 = v8->z - camerObjectPos->z;
-            v13 = v8[1].x - v8->x;
-            v14 = v8[1].y - v8->y;
-            v15 = v8[1].z - v8->z;
-            v42 = v12->z - v8->z;
-            v40 = (v12->x - v8->x) * a8;
-            v16 = (v12->y - v8->y) * a8;
-            v41 = (float)v16;
-            v31 = (float)(v16 * v15 - v42 * v14);
-            v32 = (float)(v42 * v13 - v15 * v40);
-            v17 = v14 * v40 - v13 * v41;
-            v33 = (float)v17;
-            v18 = v17 * v33;
-            v26 = v32 * v32;
-            v19 = v31 * v31;
-            a4a = (float)v19;
-            v20 = v19 + v26 + v18;
-            v21 = v36 * v33 + v35 * v32 + v34 * v31;
-            if (v21 > 0.0)
-                v21 = 0.0;
-            numa = v36 * v36 + v35 * v35 + v34 * v34;
-            v28 = (float)(numa * v20 * v20);
-            tmp = MATH_gl_TableInverseRacine[((*((int32_t*)(&v28))) >> 13) & 0x7FF] + (((int)(0xBD800000 - ((*((uint32_t*)(&v28))) & 0x7F800000)) >> 1) & 0x7F800000);
-            a5a = *(float*)&tmp;
-            v22 = a5a * v21;
-            numb = (float)v22;
-            v23 = a5a * v20;
-            v37 = (float)(v34 * v23);
-            v39 = (float)(v35 * v23);
-            v43 = (float)(v22 * -2.0 * v32);
-            v44 = (float)(v22 * -2.0 * v33);
-            v38.x = (float)(v31 * (v22 * -2.0) + v37);
-            v38.y = v43 + v39;
-            v38.z = (float)(v44 + v23 * v36);
-            v29 = (float)v21;
-            tmp = (*((int32_t*)(&v29))) & 0xBF800000 | 0x3F800000;
-            *v10 = a7[((unsigned int)(256.0 - numb * numb * v20 * (*(float*)&tmp) * 255.0) & 0x1FF) + 1];
-            *a4++ = v38;
-            if (fabs(v31) != 0.0 || fabs(v32) != 0.0 || fabs(v33) != 0.0)
-            {
-                v24 = vecsForUvs;
-                v25 = 1.0 / sqrt(v18 + a4a + v26);
-                vecsForUvs->x = (float)(v31 * v25);
-                vecsForUvs->y = (float)(v32 * v25);
-                vecsForUvs->z = (float)(v25 * v33);
-            }
-            else
-            {
-                v24 = vecsForUvs;
-            }
-            vecsForUvs = v24 + 1;
-            ++v8;
-            ++v12;
-            ++v10;
-            if (v8 >= v30)
-                break;
-            camerObjectPos = v27;
+            const float facingAsFloat = (float)facing;
+
+            tmp = ((*((int32_t*)(&facingAsFloat))) & 0xBF800000) | 0x3F800000;
+            facingSign = *(float*)&tmp;
         }
-        *v10 = *(v10 - 1);
+
+        colorOut[i] = colorRamp[((unsigned int)(256.0 - facingSingle * facingSingle * normalLengthSquared
+                                                * facingSign * 255.0) & 0x1FF) + 1];
+        reflectionOut[i] = reflection;
+
+        if (fabs(normalX) != 0.0 || fabs(normalY) != 0.0 || fabs(normalZ) != 0.0)
+        {
+            const double inverseLength = 1.0 / sqrt(normalZSquared + normalXSquaredSingle + normalYSquared);
+
+            normalsOut[i].x = (float)(normalX * inverseLength);
+            normalsOut[i].y = (float)(normalY * inverseLength);
+            normalsOut[i].z = (float)(inverseLength * normalZ);
+        }
     }
+
+    colorOut[shadedCount] = colorOut[shadedCount - 1];
 }
 
 
