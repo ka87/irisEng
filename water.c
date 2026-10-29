@@ -1780,11 +1780,14 @@ void WTR_Compute_MipMap(int result, tWtrStruct2* a2, tWtrStruct2* a3)
 
 void WTR_BackExtendDXDY_sub_unknown(tWtrStruct2* a1, tWtrStruct2* a2, tWtrStruct2* a3, tWtrStruct2* a4)
 {
+    /* a2 and a1 are the coarse cell and the one below it; a3 and a4
+       the two finer rows being filled. The coarse cell goes to the top
+       left and the other three of the block are interpolated. */
     *a3 = *a2;
-    MATH_BlendVector((Vec3*)a2, (Vec3*)&a2[1], (Vec3*)&a3[1], 0.5);
-    MATH_BlendVector((Vec3*)a2, (Vec3*)a1, (Vec3*)a4, 0.5);
-    MATH_BlendVector((Vec3*)a1, (Vec3*)&a1[1], (Vec3*)&a4[1], 0.5);
-    MATH_BlendVector((Vec3*)&a4[1], (Vec3*)&a3[1], (Vec3*)&a4[1], 0.5);
+    MATH_BlendVector((Vec3*)&a3[1], (Vec3*)a2, (Vec3*)&a2[1], 0.5);
+    MATH_BlendVector((Vec3*)a4, (Vec3*)a2, (Vec3*)a1, 0.5);
+    MATH_BlendVector((Vec3*)&a4[1], (Vec3*)a1, (Vec3*)&a1[1], 0.5);
+    MATH_BlendVector((Vec3*)&a4[1], (Vec3*)&a4[1], (Vec3*)&a3[1], 0.5);
 }
 
 void WTR_BackExtendDXDY_0(tWtrStruct2* a1, tWtrStruct2* a2, int a3)
