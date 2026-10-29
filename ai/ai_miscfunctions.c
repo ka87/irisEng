@@ -459,3 +459,83 @@ tAINode* AI_EvalFunc_WTR_put_zero_no_pop_sub_4B42C0(tAINode* a1)
     AI_PutIntToStack(0);
     return a1 + 1;
 }
+
+/* PC-version adjustments. Each Compute entry is a hook with nothing in
+   it; each Check reports the value the PC build uses. The argument a
+   Check takes is popped and discarded except in Price_Check, which
+   compares both of its own. */
+
+tAINode* AI_EvalFunc_BGE_PC_Price_Compute(tAINode* a1)
+{
+    return a1 + 1;
+}
+
+int AI_EvalFunc_BGE_PC_Price_Check_C(int a1, int a2)
+{
+    if (a1 == 6 && a2 == 3)
+        return 10;
+
+    return 0;
+}
+
+tAINode* AI_EvalFunc_BGE_PC_Price_Check(tAINode* a1)
+{
+    int v1;
+    int v3;
+
+    v3 = AI_GetIntFromStack();
+    v1 = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_BGE_PC_Price_Check_C(v1, v3));
+    return a1 + 1;
+}
+
+tAINode* AI_EvalFunc_BGE_PC_Samsue_Compute(tAINode* a1)
+{
+    return a1 + 1;
+}
+
+int AI_EvalFunc_BGE_PC_Samsue_Check_C()
+{
+    return 0;
+}
+
+tAINode* AI_EvalFunc_BGE_PC_Samsue_Check(tAINode* a1)
+{
+    AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_BGE_PC_Samsue_Check_C());
+    return a1 + 1;
+}
+
+tAINode* AI_EvalFunc_BGE_PC_Radio_Compute(tAINode* a1)
+{
+    return a1 + 1;
+}
+
+int AI_EvalFunc_BGE_PC_Radio_Check_C()
+{
+    return 90;
+}
+
+tAINode* AI_EvalFunc_BGE_PC_Radio_Check(tAINode* a1)
+{
+    AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_BGE_PC_Radio_Check_C());
+    return a1 + 1;
+}
+
+tAINode* AI_EvalFunc_BGE_PC_Robot_Compute(tAINode* a1)
+{
+    return a1 + 1;
+}
+
+int AI_EvalFunc_BGE_PC_Robot_Check_C()
+{
+    return 1;
+}
+
+tAINode* AI_EvalFunc_BGE_PC_Robot_Check(tAINode* a1)
+{
+    AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_BGE_PC_Robot_Check_C());
+    return a1 + 1;
+}
