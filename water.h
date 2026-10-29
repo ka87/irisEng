@@ -130,5 +130,5 @@ void WTR_SetExportParams(tUserWaterParamsStruct* a1);
 void PC_AE_ZListHook(int zListId);
 void WTR_BeginLoadWorldHook();
 void WTR_SetDefaulExp(struct sUserWaterParamsStruct* exported);
-void WTR_WaterBlurNormal(Vec3* a1, int a2, int a3);
+void WTR_WaterBlurNormal(Vec3* normals, int rowLength, int rowCount);
 
