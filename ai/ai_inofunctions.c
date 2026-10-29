@@ -525,14 +525,18 @@ int AI_EvalFunc_SAVEDataGet_C(int a1, int a2)
     }
     else
     {
-        v7[0] = 7;
-        v7[1] = 11;
-        v7[2] = 17;
-        v7[3] = 19;
-        v7[4] = 23;
-        v7[5] = 29;
-        v7[6] = 31;
-        v7[7] = 37;
+        /* Descending, and the order is load-bearing: the table is
+           indexed by v7[v15 & 7], and by v7[i] against v7[7 - i] as
+           a mirrored pair, so reversing it changes every code the
+           generator produces. */
+        v7[0] = 37;
+        v7[1] = 31;
+        v7[2] = 29;
+        v7[3] = 23;
+        v7[4] = 19;
+        v7[5] = 17;
+        v7[6] = 11;
+        v7[7] = 7;
         if (a2 <= 115)
         {
             v10[0] = (SAV_gst_Data[a1].i2 & 0x7E0000) >> 17;
