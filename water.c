@@ -816,6 +816,25 @@ void WATERFFT_Init_Spectre(tWaterEngineStruct* a1)
     WATERFFT_Precalc_DXDY_Repartition(a1);
     WATERFFT_FFT_COMPUTE_COST(a1->borderSizePowerOfTwo, a1->FFTCostTable);
     WATERFFT_FFT_COMPUTE_COST(a1->borderSizeDXDYPowerOfTwo, a1->FFTCostTableDXDY);
+    {   // debug trace: the compressed spectrum, which is what Turn_Spectre reads
+        static int dbg_n = 0;
+        if (dbg_n++ == 0)
+        {
+            tFFTComplex* m = a1->spectroMap;
+            int n = a1->spectroMapCompressedSize, bad = -1, j;
+            for (j = 0; j < n; j++)
+                if (!(m[j].real == m[j].real) || !(m[j].imaginary == m[j].imaginary))
+                { bad = j; break; }
+            DBG_OutputDebugString("[WTR] comp: n=%d cap=%d firstNaN=%d\n",
+                n, 1 << (2 * a1->borderSizePowerOfTwo), bad);
+            DBG_OutputDebugString("[WTR] comp: c0=(%g,%g) c1=(%g,%g) clast=(%g,%g)\n",
+                m[0].real, m[0].imaginary, m[1].real, m[1].imaginary,
+                m[n - 1].real, m[n - 1].imaginary);
+            DBG_OutputDebugString("[WTR] comp: cost0=(%g,%g,%g,%g)\n",
+                a1->FFTCostTable[0].real1, a1->FFTCostTable[0].imaginary1,
+                a1->FFTCostTable[0].real2, a1->FFTCostTable[0].imaginary2);
+        }
+    }
 }
 
 void WTR_SetDefaulExp(struct sUserWaterParamsStruct* a1)
