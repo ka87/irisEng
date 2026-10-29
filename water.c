@@ -1824,215 +1824,184 @@ void WTR_BackExtendDXDY_0(tWtrStruct2* a1, tWtrStruct2* a2, int a3)
     memcpy(v4, a2, 4 * ((unsigned int)(16 * ((32 * v3 + 16) >> 4)) >> 2));
 }
 
-/* Lay the transformed spectra out as the sampling grid the mesh reads.
- *
- * The grid is (side + 1) square: one row and one column more than the
- * transform produces, holding a copy of the first row and column so a sample
- * in the last cell has all four corners. Each entry carries the horizontal
- * displacement in f1 and f2 and the height in f3.
- *
- * Which fields the base level gets depends on whether the two grids match:
- *
- *   same size   f1, f2 and f3 are filled together, straight from the two
- *               choppy space maps and the height space map
- *   different   only f3 is filled here, and f1 and f2 are filled further down
- *               at whichever reduction happens to be the size of the choppy
- *               grid, which is the level the mesh will sample them from
- *
- * So on a 6 against 5 setup the base level legitimately carries zero in f1 and
- * f2; that is not a gap.
- *
- * The reductions follow, each half the side of the one before, and the two
- * choppy cursors carry across from the base fill into the matching level.
- *
- * The body still carries its original cursor walk and wants rewriting; the
- * cursors shared between the two halves are what make that worth doing
- * carefully rather than quickly. */
+/* Build the concatenated wave map: the finest level filled from the
+   space maps, then a pyramid of successively halved copies above it,
+   all in one buffer laid end to end.
+
+   A level whose side is S occupies (S + 1) squared entries, not S
+   squared: every row carries one extra cell repeating the first of
+   that row, and the level carries one extra row repeating the first.
+   That wrap margin is what lets the sampler interpolate across the
+   seam without a modulo, and it is why the stride from one level to
+   the next is (S + 1) squared rather than S squared.
+
+   Horizontal displacement is only available at the resolution of the
+   choppy maps, which may be coarser than the height map. So the
+   finest level gets height alone unless the two resolutions match,
+   and the displacement is filled in later at whichever level does
+   match, then pushed back up the pyramid by WTR_BackExtendDXDY_0. */
 void WTR_Concate(tWaterParamsGlobalStruct* water)
 {
-    tWtrStruct2* v1; // eax
-    tFFTComplex* v2; // ebp
-    unsigned int v3; // ecx
-    tFFTComplex* v4; // edx
-    tFFTComplex* v5; // ebx
-    tWtrStruct2* v6; // edi
-    tWtrStruct2* v7; // edi
-    float* v8; // ecx
-    tWtrStruct2* i; // edi
-    float* v10; // ecx
-    tWtrStruct2* v11; // ecx
-    unsigned int v12; // edi
-    tWtrStruct2* v13; // ecx
-    int v14; // ebp
-    unsigned int v15; // edi
-    tWtrStruct2* v16; // ebp
-    unsigned int v17; // ecx
-    tWtrStruct2* v18; // eax
-    tWtrStruct2* v19; // edi
-    tWtrStruct2* v20; // edx
-    float* v21; // ecx
-    uint32_t* v22; // edx
-    float* v23; // ecx
-    tWtrStruct2* v24; // ebx
-    int v25; // edi
-    tWtrStruct2* k; // eax
-    int v27; // eax
-    tWtrStruct2* a2; // [esp+Ch] [ebp-14h]
-    tWtrStruct2* a2a; // [esp+Ch] [ebp-14h]
-    tWtrStruct2* a2b; // [esp+Ch] [ebp-14h]
-    tFFTComplex* v31; // [esp+10h] [ebp-10h]
-    tFFTComplex* v32; // [esp+14h] [ebp-Ch]
-    int a3; // [esp+18h] [ebp-8h]
-    unsigned int j; // [esp+1Ch] [ebp-4h]
+    const unsigned int heightShift = water->waterEngine.waveMapShift;
+    const unsigned int choppyShift = water->waterEngine.waveMapShiftCHP;
+    const int heightSide = 1 << heightShift;
 
-    v1 = water->concatenatedMap;
-    v2 = water->spaceMapDY;
-    v3 = water->waterEngine.waveMapShift;
-    v4 = water->spaceMap;
-    v31 = v2;
-    v5 = water->spaceMapDX;
-    v6 = &v1[(1 << v3) + (1 << (2 * v3))];
-    a2 = v6;
-    v32 = v5;
-    if (v3 == water->waterEngine.waveMapShiftCHP)
+    tWtrStruct2* cell = water->concatenatedMap;
+    tWtrStruct2* const finestEnd = &cell[heightSide + (heightSide * heightSide)];
+    const tFFTComplex* height = water->spaceMap;
+    const tFFTComplex* displacementX = water->spaceMapDX;
+    const tFFTComplex* displacementY = water->spaceMapDY;
+
+    tWtrStruct2* levelSource;
+    tWtrStruct2* levelDestination;
+    tWtrStruct2* previousLevel;
+    unsigned int levelSide;
+    int finestEntries;
+
+    /* ---- the finest level, one row at a time plus its wrap cell ---- */
+    while (cell < finestEnd)
     {
-        if (v1 < v6)
+        tWtrStruct2* const rowEnd = &cell[heightSide];
+
+        if (heightShift == choppyShift)
         {
-            while (1)
+            /* displacement is available at this resolution */
+            while (cell < rowEnd)
             {
-                v7 = &v1[1 << water->waterEngine.waveMapShift];
-                if (v1 < v7)
-                {
-                    do
-                    {
-                        v1->f1 = v5->real;
-                        v1->f2 = v2->real;
-                        v1->f3 = v4->real;
-                        ++v1;
-                        ++v5;
-                        ++v2;
-                        ++v4;
-                    } while (v1 < v7);
-                    v31 = v2;
-                }
-                v8 = &v1[-(1 << water->waterEngine.waveMapShift)].f1;
-                v1->f1 = *v8;
-                v1->f2 = v8[1];
-                v1->f3 = v8[2];
-                v1->f4 = v8[3];
-                v6 = a2;
-                if (++v1 >= a2)
-                    break;
-                v2 = v31;
+                cell->f1 = displacementX->real;
+                cell->f2 = displacementY->real;
+                cell->f3 = height->real;
+                ++cell;
+                ++displacementX;
+                ++displacementY;
+                ++height;
             }
-            v32 = v5;
+        }
+        else
+        {
+            /* height only; displacement arrives at a coarser level */
+            while (cell < rowEnd)
+            {
+                cell->f3 = height->real;
+                ++cell;
+                ++height;
+            }
+        }
+
+        /* wrap cell: repeat the first cell of the row just written */
+        {
+            const float* const rowStart = &cell[-heightSide].f1;
+            cell->f1 = rowStart[0];
+            cell->f2 = rowStart[1];
+            cell->f3 = rowStart[2];
+            cell->f4 = rowStart[3];
+            ++cell;
         }
     }
-    else if (v1 < v6)
+
+    /* wrap row: repeat the first row, its own wrap cell included */
     {
-        do
+        const tWtrStruct2* firstRow = water->concatenatedMap;
+        tWtrStruct2* const wrapRowEnd = &finestEnd[heightSide + 1];
+
+        while (cell < wrapRowEnd)
         {
-            for (i = &v1[1 << water->waterEngine.waveMapShift]; v1 < i; v4 += 4)
-            {
-                v1->f3 = v4->real;
-                v1[1].f3 = v4[1].real;
-                v1[2].f3 = v4[2].real;
-                v1[3].f3 = v4[3].real;
-                v1 += 4;
-            }
-            v10 = &v1[-(1 << water->waterEngine.waveMapShift)].f1;
-            v1->f1 = *v10;
-            v1->f2 = v10[1];
-            v1->f3 = v10[2];
-            v1->f4 = v10[3];
-            v6 = a2;
-            ++v1;
-        } while (v1 < a2);
-    }
-    v11 = water->concatenatedMap;
-    for (a2a = &v6[(1 << water->waterEngine.waveMapShift) + 1]; v1 < a2a; ++v11)
-    {
-        v1->f1 = v11->f1;
-        v1->f2 = v11->f2;
-        v1->f3 = v11->f3;
-        v1->f4 = v11->f4;
-        ++v1;
-    }
-    v12 = 1 << water->waterEngine.waveMapShift;
-    v13 = water->concatenatedMap;
-    a2b = v13;
-    v14 = v12 * (v12 + 2) + 1;
-    v15 = v12 >> 1;
-    v16 = &v13[v14];
-    a3 = v15;
-    if (v15)
-    {
-        while (1)
-        {
-            WTR_Compute_MipMap(v15, v13, v16);
-            v17 = water->waterEngine.waveMapShiftCHP;
-            if (v15 == 1 << v17 && v17)
-            {
-                v18 = v16;
-                v19 = &v16[(1 << v17) + (1 << (2 * v17))];
-                if (v16 < v19)
-                {
-                    while (1)
-                    {
-                        v20 = &v18[1 << water->waterEngine.waveMapShiftCHP];
-                        if (v18 < v20)
-                        {
-                            do
-                            {
-                                v18->f1 = v5->real;
-                                v18->f2 = v31->real;
-                                ++v18;
-                                ++v5;
-                                ++v31;
-                            } while (v18 < v20);
-                            v32 = v5;
-                        }
-                        v21 = &v18[-(1 << water->waterEngine.waveMapShiftCHP)].f1;
-                        v22 = (uint32_t*)&v18->f1;
-                        v18->f1 = *v21;
-                        v18->f2 = v21[1];
-                        v18->f3 = v21[2];
-                        ++v18;
-                        v22[3] = *((uint32_t*)v21 + 3);
-                        if (v18 >= v19)
-                            break;
-                        v5 = v32;
-                    }
-                }
-                v23 = &v16->f1;
-                for (j = (unsigned int)&v19[(1 << water->waterEngine.waveMapShiftCHP) + 1]; (unsigned int)v18 < j; v23 += 4)
-                {
-                    v18->f1 = *v23;
-                    v18->f2 = v23[1];
-                    v18->f3 = v23[2];
-                    v18->f4 = v23[3];
-                    ++v18;
-                }
-                v24 = a2b;
-                v25 = a3;
-                for (k = v16; v24 >= water->concatenatedMap; v24 = (tWtrStruct2*)((char*)v24 - 16 - ((v25 * (v25 + 1)) << 6)))
-                {
-                    WTR_BackExtendDXDY_0(k, v24, v25);
-                    v25 *= 2;
-                    k = v24;
-                }
-                v15 = a3;
-                v5 = v32;
-            }
-            v27 = v15 * (v15 + 2);
-            v15 >>= 1;
-            a2b = v16;
-            v16 += v27 + 1;
-            a3 = v15;
-            if (!v15)
-                break;
-            v13 = a2b;
+            cell->f1 = firstRow->f1;
+            cell->f2 = firstRow->f2;
+            cell->f3 = firstRow->f3;
+            cell->f4 = firstRow->f4;
+            ++cell;
+            ++firstRow;
         }
+    }
+
+    /* ---- the pyramid above it ---- */
+    finestEntries = heightSide * (heightSide + 2) + 1; /* (S + 1) squared */
+    levelSource = water->concatenatedMap;
+    previousLevel = levelSource;
+    levelDestination = &levelSource[finestEntries];
+    levelSide = (unsigned int)heightSide >> 1;
+
+    while (levelSide)
+    {
+        int levelEntries;
+
+        WTR_Compute_MipMap(levelSide, levelSource, levelDestination);
+
+        /* if this is the level the choppy maps are sized for, fill the
+           displacement here and push it back down to the finer levels */
+        if (levelSide == (1u << choppyShift) && choppyShift)
+        {
+            const int choppySide = 1 << choppyShift;
+            tWtrStruct2* choppyCell = levelDestination;
+            tWtrStruct2* const choppyEnd =
+                &levelDestination[choppySide + (choppySide * choppySide)];
+
+            while (choppyCell < choppyEnd)
+            {
+                tWtrStruct2* const rowEnd = &choppyCell[choppySide];
+
+                while (choppyCell < rowEnd)
+                {
+                    choppyCell->f1 = displacementX->real;
+                    choppyCell->f2 = displacementY->real;
+                    ++choppyCell;
+                    ++displacementX;
+                    ++displacementY;
+                }
+
+                {
+                    const float* const rowStart = &choppyCell[-choppySide].f1;
+                    choppyCell->f1 = rowStart[0];
+                    choppyCell->f2 = rowStart[1];
+                    choppyCell->f3 = rowStart[2];
+                    choppyCell->f4 = rowStart[3];
+                    ++choppyCell;
+                }
+            }
+
+            /* this level's wrap row */
+            {
+                const tWtrStruct2* firstRow = levelDestination;
+                tWtrStruct2* const wrapRowEnd = &choppyEnd[choppySide + 1];
+
+                while (choppyCell < wrapRowEnd)
+                {
+                    choppyCell->f1 = firstRow->f1;
+                    choppyCell->f2 = firstRow->f2;
+                    choppyCell->f3 = firstRow->f3;
+                    choppyCell->f4 = firstRow->f4;
+                    ++choppyCell;
+                    ++firstRow;
+                }
+            }
+
+            /* walk back down to the finest level, doubling the side at
+               each step, extending the displacement into each one */
+            {
+                tWtrStruct2* coarser = levelDestination;
+                tWtrStruct2* finer = previousLevel;
+                int coarserSide = (int)levelSide;
+
+                while (finer >= water->concatenatedMap)
+                {
+                    WTR_BackExtendDXDY_0(coarser, finer, coarserSide);
+
+                    /* step down one level: `finer` becomes the coarse
+                       side of the next pair, so the distance back is
+                       the size of the level below it, not of this one */
+                    coarser = finer;
+                    coarserSide *= 2;
+                    finer -= (2 * coarserSide + 1) * (2 * coarserSide + 1);
+                }
+            }
+        }
+
+        levelEntries = (int)(levelSide * (levelSide + 2)) + 1;
+        previousLevel = levelDestination;
+        levelSource = levelDestination;
+        levelDestination += levelEntries;
+        levelSide >>= 1;
     }
 }
 
