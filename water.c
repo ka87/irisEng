@@ -463,10 +463,10 @@ void WATERFFT_SWAP(int* a1, int a2, int a3)
  *
  * Note that both tables are filled one short of the grid side, and the search
  * respects that, as the last position is never needed. */
-void WATERFFT_Compute_Supershift(tWaterEngineStruct* a1)
+void WATERFFT_Compute_Supershift(tWaterEngineStruct* engine)
 {
-    const int heightSizeLog2 = a1->borderSizePowerOfTwo;
-    const int displacementSizeLog2 = a1->borderSizeDXDYPowerOfTwo;
+    const int heightSizeLog2 = engine->borderSizePowerOfTwo;
+    const int displacementSizeLog2 = engine->borderSizeDXDYPowerOfTwo;
     const int heightSide = 1 << heightSizeLog2;
     const int displacementSide = 1 << displacementSizeLog2;
     int heightPosition[256];
@@ -474,9 +474,9 @@ void WATERFFT_Compute_Supershift(tWaterEngineStruct* a1)
     int reversed, index, bit;
     int firstCell, secondCell, thirdCell;
 
-    a1->superShift0 = 0;
-    a1->superShift1 = 1;
-    a1->superShift2 = 1;
+    engine->superShift0 = 0;
+    engine->superShift1 = 1;
+    engine->superShift2 = 1;
 
     if (displacementSizeLog2 >= heightSizeLog2)
         return;
@@ -524,16 +524,16 @@ void WATERFFT_Compute_Supershift(tWaterEngineStruct* a1)
     for (index = 0; index < heightSide - 1; index++)
     {
         if (heightPosition[index] == firstCell)
-            a1->superShift0 = index;
+            engine->superShift0 = index;
         if (heightPosition[index] == secondCell)
-            a1->superShift1 = index;
+            engine->superShift1 = index;
         if (heightPosition[index] == thirdCell)
-            a1->superShift2 = index;
+            engine->superShift2 = index;
     }
 
     /* Keep the first as a start and turn the other two into gaps. */
-    a1->superShift2 -= a1->superShift1;
-    a1->superShift1 -= a1->superShift0;
+    engine->superShift2 -= engine->superShift1;
+    engine->superShift1 -= engine->superShift0;
 }
 
 /* Fill the direction map with the unit wavevector of every cell.
@@ -547,9 +547,9 @@ void WATERFFT_Compute_Supershift(tWaterEngineStruct* a1)
  *
  * The map is then put into bit reversed order to match the spectrum it will be
  * multiplied against. */
-void WATERFFT_Precalc_DXDY_Repartition(tWaterEngineStruct* a1)
+void WATERFFT_Precalc_DXDY_Repartition(tWaterEngineStruct* engine)
 {
-    const int sizeLog2 = a1->borderSizeDXDYPowerOfTwo;
+    const int sizeLog2 = engine->borderSizeDXDYPowerOfTwo;
     const int side = 1 << sizeLog2;
     const int half = side >> 1;
     int row, column;
@@ -557,8 +557,8 @@ void WATERFFT_Precalc_DXDY_Repartition(tWaterEngineStruct* a1)
     if (!sizeLog2)
         return;
 
-    if (!a1->DXDYMap)
-        a1->DXDYMap = (tFFTComplex*)WATERFFT_Alloc(sizeof(tFFTComplex) << (2 * sizeLog2));
+    if (!engine->DXDYMap)
+        engine->DXDYMap = (tFFTComplex*)WATERFFT_Alloc(sizeof(tFFTComplex) << (2 * sizeLog2));
 
     for (row = 0; row < side; row++)
     {
@@ -568,7 +568,7 @@ void WATERFFT_Precalc_DXDY_Repartition(tWaterEngineStruct* a1)
         {
             const double x = (double)(column - half);
             const double lengthSquared = x * x + y * y;
-            tFFTComplex* entry = &a1->DXDYMap[column + (row << sizeLog2)];
+            tFFTComplex* entry = &engine->DXDYMap[column + (row << sizeLog2)];
 
             if (lengthSquared == 0.0)
             {
@@ -585,8 +585,8 @@ void WATERFFT_Precalc_DXDY_Repartition(tWaterEngineStruct* a1)
         }
     }
 
-    WATERFFT_Pretranspose_Table(a1->DXDYMap, sizeLog2);
-    WATERFFT_Compute_Supershift(a1);
+    WATERFFT_Pretranspose_Table(engine->DXDYMap, sizeLog2);
+    WATERFFT_Compute_Supershift(engine);
 }
 
 /* Fill the butterfly twiddle table for an FFT of `stageCount` stages.
@@ -1494,28 +1494,29 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
  *
  * The height field and, when the choppy maps are present, the two horizontal
  * displacement fields are then brought into world space by the inverse FFT. */
-void WATERFFT_Turn_Spectre(tWaterEngineStruct* src, tFFTComplex* dst, tFFTComplex* DX, tFFTComplex* DY, float timeElapsed)
+void WATERFFT_Turn_Spectre(tWaterEngineStruct* engine, tFFTComplex* heightOut,
+                          tFFTComplex* displacementXOut, tFFTComplex* displacementYOut, float timeElapsed)
 {
     /* 1024 table entries over one turn, so this converts radians to an index. */
     const float angleToIndex = timeElapsed * 162.97466f;
     int i;
 
-    for (i = 0; i < src->spectroMapCompressedSize; i++)
+    for (i = 0; i < engine->spectroMapCompressedSize; i++)
     {
-        const int entry = 2 * (f2iMagic(2 * angleToIndex * src->spectroMap[i].imaginary) & 0x3ff);
+        const int entry = 2 * (f2iMagic(2 * angleToIndex * engine->spectroMap[i].imaginary) & 0x3ff);
 
-        dst[i].real = COS_TABLE[entry] * src->spectroMap[i].real;
-        dst[i].imaginary = COS_TABLE[entry + 1] * src->spectroMap[i].real;
+        heightOut[i].real = COS_TABLE[entry] * engine->spectroMap[i].real;
+        heightOut[i].imaginary = COS_TABLE[entry + 1] * engine->spectroMap[i].real;
     }
 
-    if (DX && DY && src->borderSizeDXDYPowerOfTwo)
+    if (displacementXOut && displacementYOut && engine->borderSizeDXDYPowerOfTwo)
     {
-        WATERFFT_Deduct_DXDY_Spectre(src, dst, DX, DY);
-        WATERFFT_FFT2D(DX, src->borderSizeDXDYPowerOfTwo, src->FFTCostTableDXDY);
-        WATERFFT_FFT2D(DY, src->borderSizeDXDYPowerOfTwo, src->FFTCostTableDXDY);
+        WATERFFT_Deduct_DXDY_Spectre(engine, heightOut, displacementXOut, displacementYOut);
+        WATERFFT_FFT2D(displacementXOut, engine->borderSizeDXDYPowerOfTwo, engine->FFTCostTableDXDY);
+        WATERFFT_FFT2D(displacementYOut, engine->borderSizeDXDYPowerOfTwo, engine->FFTCostTableDXDY);
     }
 
-    WATERFFT_FFT2D(dst, src->borderSizePowerOfTwo, src->FFTCostTable);
+    WATERFFT_FFT2D(heightOut, engine->borderSizePowerOfTwo, engine->FFTCostTable);
 }
 
 void WTR_Color_2_Vector(Vec3* vec, uint32_t color)
