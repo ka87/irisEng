@@ -3113,7 +3113,30 @@ int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* a1, Vec3* cameraObjectPos, Vec3*
             v69[v23] = v49;
             if (v49)
             {
+                {   // debug trace: what the rasterizer is handed, first two rows
+                    static int dbg_r = 0;
+                    if (dbg_r < 2)
+                    {
+                        DBG_OutputDebugString("[WTR] ras%d: map=%p base=%p shift=%d v61=%g v51=%g n=%u\n",
+                            dbg_r, v24, a1->concatenatedMap, v23, v61, v51, v15);
+                        DBG_OutputDebugString("[WTR] ras%d: a1a=(%g,%g,%g) a6=(%g,%g,%g) m0=(%g,%g,%g,%g)\n",
+                            dbg_r, a1a.x, a1a.y, a1a.z, a6.x, a6.y, a6.z,
+                            v24 ? v24[0].f1 : 0.0f, v24 ? v24[0].f2 : 0.0f,
+                            v24 ? v24[0].f3 : 0.0f, v24 ? v24[0].f4 : 0.0f);
+                        dbg_r++;
+                    }
+                }
                 WTR_Compute_Mesh0_Rasterize_Line(vertices, v24, v23, a1->tiling, &a1a, &a6, v15, v61, v51, 0.0);
+                {   // debug trace: the first vertex it produced
+                    static int dbg_o = 0;
+                    if (dbg_o < 2)
+                    {
+                        DBG_OutputDebugString("[WTR] ras%d: out v0=(%g,%g,%g) v1=(%g,%g,%g)\n",
+                            dbg_o, vertices[0].x, vertices[0].y, vertices[0].z,
+                            vertices[1].x, vertices[1].y, vertices[1].z);
+                        dbg_o++;
+                    }
+                }
                 if (a1->waterEngine.useCloudShadingforColors)
                 {
                     distanceMultiplier = 1.0 / v51;
