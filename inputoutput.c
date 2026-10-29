@@ -452,7 +452,7 @@ void SAV_PhotoFirstInit()
 {
     if (!Photo_gi_FirstInit)
     {
-        SAV_pc_PhotoValidateBuffer = (char*)MEM_p_Alloc(0x64000);
+        SAV_pc_PhotoValidateBuffer = (char*)MEM_p_Alloc(SAV_PHOTO_BUFFER_SIZE);
         Photo_gi_FirstInit = 1;
     }
 }
@@ -465,10 +465,10 @@ void SAV_PhotoInit()
     {
         photoBufPtrBackup = SAV_gst_Photos.photoBuf;
         memset(&SAV_gst_Photos, 0, sizeof(SAV_gst_Photos));
-        SAV_gst_Photos.photoBufSize = 409600;
+        SAV_gst_Photos.photoBufSize = SAV_PHOTO_BUFFER_SIZE;
         SAV_gst_Photos.photoBuf = photoBufPtrBackup;
-        SAV_gst_Photos.photoBuf = (char*)MEM_p_Alloc(409600);
-        SAV_gst_PhotosValidate.photoBufSize = 409600;
+        SAV_gst_Photos.photoBuf = (char*)MEM_p_Alloc(SAV_PHOTO_BUFFER_SIZE);
+        SAV_gst_PhotosValidate.photoBufSize = SAV_PHOTO_BUFFER_SIZE;
         SAV_gst_PhotosValidate.photoBuf = SAV_pc_PhotoValidateBuffer;
         Photo_gi_Init = 1;
     }
@@ -640,6 +640,18 @@ void INO_v_MemoryCardManager(int defaultSlot)
         case 15:
             SAV_gst_PhotosValidate.photoBuf = pc_Buffer_304;
             pc_Buffer_304 = 0;
+            /* usedSize arrives from the slot file, and the read below
+               is a bare fread into a fixed buffer. Clamp it so a
+               truncated or foreign file cannot run off the end. */
+            if (SAV_gst_PhotosValidate.usedSize < 0
+                || SAV_gst_PhotosValidate.usedSize > SAV_PHOTO_BUFFER_SIZE)
+            {
+                DBG_OutputDebugString(
+                    "SAV: photo block %d outside 0..%d, clamped\n",
+                    SAV_gst_PhotosValidate.usedSize, SAV_PHOTO_BUFFER_SIZE);
+                SAV_gst_PhotosValidate.usedSize =
+                    SAV_gst_PhotosValidate.usedSize < 0 ? 0 : SAV_PHOTO_BUFFER_SIZE;
+            }
             SAV_gst_PhotosValidate.photoBufSize = SAV_gst_PhotosValidate.usedSize;
             INO_gst_SavFileDesc.size = SAV_gst_PhotosValidate.usedSize;
             INO_gst_SavFileDesc.saveBuffer = SAV_gst_PhotosValidate.photoBuf;
@@ -751,10 +763,26 @@ void INO_Update()
 
 void INO_SavSetCardStatus(int a1, int a2)
 {    
-    if (a2 < 0 || a2 >= 40)
+    if (a2 < 0 || a2 >= 41)
+    {
+        DBG_OutputDebugString(
+            "SAV: bad param state, requested %d (slot %d)\n", a2, a1);
         DBG_assert(0, __FILE__, __LINE__, "0", "SAVING : Bad Param State", 0, 1);
+    }
     if (INO_ge_SavState && INO_ge_SavState != 27)
+    {
+        /* The machine is mid-operation. Everything needed to place
+           the failure: where it got stuck, what it was doing and
+           what the last operation reported. */
+        DBG_OutputDebugString(
+            "SAV: bad current state, requested %d while state=%d "
+            "command=%d nextState=%d nextNextState=%d lastError=%d\n",
+            a2, INO_ge_SavState, INO_ge_SavCommand,
+            INO_ge_SavSetNextState, INO_ge_SavSetNextNextState,
+            pcINO_gi_LastError);
         DBG_assert(0, __FILE__, __LINE__, "0", "SAVING : Bad Current State", 0, 1);
+        return;
+    }
 
     if (INO_ge_SavState != a2)
     {
@@ -830,14 +858,14 @@ void* SAV_PhotoReinit()
 
     v1 = SAV_gst_Photos.photoBuf;
     result = memset(&SAV_gst_Photos, 0, 812u);
-    SAV_gst_Photos.photoBufSize = 409600;
+    SAV_gst_Photos.photoBufSize = SAV_PHOTO_BUFFER_SIZE;
     SAV_gst_Photos.photoBuf = v1;
     return result;
 }
 
 void SAV_PhotoReinitValidate()
 {
-    pcINO_SAVPhotosSize = 409600;
+    pcINO_SAVPhotosSize = SAV_PHOTO_BUFFER_SIZE;
     SAV_gst_PhotosValidate.photoBuf = SAV_pc_PhotoValidateBuffer;
 }
 
