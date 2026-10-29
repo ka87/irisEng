@@ -7,7 +7,7 @@ void MATH_CreateTrigTables()
     int i;
 
     for (i = 0; i < 1024; i++) {
-        MATH_gf_TableSin[i] = (float)sin((i + 1) * (MATH_f_2Pi / 1024.0f));
+        MATH_gf_TableSin[i] = (float)sin(i * (MATH_f_2Pi / 1024.0f));
     }
 }
 
@@ -2066,11 +2066,11 @@ float MATH_GetCos(float f)
     v1 = (*((int32_t *)(&v3))) + 256;
     if ((*((int32_t*)(&v3))) + 256 < 0) {
         v1 |= ~0x3FF; // make sure it's not greather than -1023 (0x3ff) (negative numbers are like 0xffffffffe formats two's complement)
-        return MATH_gf_TableSin[1024 + v1 - 1]; // TODO nem biztos ohgy kell a -1
+        return MATH_gf_TableSin[1024 + v1];
     }
     if (v1 > 1023)
         v1 &= 0x3FFu;
-    return MATH_gf_TableSin[v1 + 1];
+    return MATH_gf_TableSin[v1];
 }
 
 float MATH_GetSin(float f)
@@ -2082,11 +2082,11 @@ float MATH_GetSin(float f)
     v1 = (*((uint32_t*)(&v3)));
     if ((*((int32_t*)(&v3))) < 0) {
         v1 |= ~0x3FF; // make sure it's not greather than -1023 (0x3ff) (negative numbers are like 0xffffffffe formats two's complement)
-        return MATH_gf_TableSin[1024 + v1 - 1]; // TODO nem biztos ohgy kell a -1
+        return MATH_gf_TableSin[1024 + v1];
     }
     if ((*((int32_t*)(&v3))) > 1023)
         v1 = (*((uint32_t*)(&v3))) & 0x3FF;
-    return MATH_gf_TableSin[v1 + 1];
+    return MATH_gf_TableSin[v1];
 }
 
 float MATH_GetSqrt(float f)
