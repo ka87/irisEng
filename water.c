@@ -997,520 +997,105 @@ void WATERFFT_Deduct_DXDY_Spectre(tWaterEngineStruct* a1, tFFTComplex* a5, tFFTC
     }
 }
 
-void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
-{
-    int v4; // ebx
-    unsigned int v5; // edi
-    unsigned int v6; // eax
-    tFFTComplex* v7; // ebp
-    unsigned int v8; // esi
-    int v9; // ebx
-    double v10; // st7
-    double v11; // st6
-    tFFTComplex* v12; // eax
-    double v13; // st7
-    double v14; // st6
-    double v15; // st5
-    double v16; // st6
-    double v17; // st5
-    double v18; // st7
-    double v19; // st5
-    double v20; // st7
-    tFFTComplex* v21; // eax
-    double v22; // st7
-    double v23; // st6
-    double v24; // st7
-    double v25; // st6
-    double v26; // st5
-    double v27; // st6
-    double v28; // st5
-    double v29; // st7
-    double v30; // st5
-    double v31; // st7
-    tFFTComplex* v32; // eax
-    double v33; // st7
-    double v34; // st6
-    double v35; // st7
-    double v36; // st6
-    double v37; // st5
-    double v38; // st6
-    double v39; // st5
-    double v40; // st7
-    double v41; // st5
-    double v42; // st7
-    tFFTComplex* v43; // eax
-    double v44; // st7
-    double v45; // st6
-    double v46; // st7
-    double v47; // st6
-    double v48; // st5
-    double v49; // st6
-    double v50; // st5
-    double v51; // st7
-    double v52; // st5
-    double v53; // st7
-    int v54; // ebx
-    double v55; // st7
-    double v56; // st6
-    tFFTComplex* v57; // eax
-    double v58; // st7
-    double v59; // st6
-    double v60; // st5
-    double v61; // st6
-    double v62; // st5
-    double v63; // st7
-    double v64; // st5
-    double v65; // st7
-    int v66; // esi
-    unsigned int v67; // ebp
-    int v68; // eax
-    int v69; // ebx
-    tFFTComplexCost* v70; // edi
-    int v71; // edx
-    int v72; // ebp
-    tFFTComplex* v73; // eax
-    tFFTComplex* v74; // edi
-    float* v75; // ecx
-    int v76; // ebp
-    double v77; // st7
-    float* v78; // ebp
-    double v79; // st6
-    tFFTComplex* v80; // edx
-    tFFTComplex* v81; // esi
-    double v82; // st7
-    double v83; // st6
-    double v84; // st5
-    double v85; // st6
-    double v86; // st5
-    double v87; // st7
-    double v88; // st5
-    double v89; // st7
-    double v90; // st7
-    double v91; // st6
-    double v92; // st7
-    double v93; // st6
-    double v94; // st5
-    double v95; // st6
-    double v96; // st5
-    double v97; // st7
-    double v98; // st5
-    double v99; // st7
-    tFFTComplex* v100; // esi
-    tFFTComplex* v101; // edx
-    double v102; // st7
-    double v103; // st6
-    double v104; // st7
-    double v105; // st6
-    double v106; // st5
-    double v107; // st6
-    double v108; // st5
-    double v109; // st7
-    double v110; // st5
-    double v111; // st7
-    tFFTComplex* v112; // edi
-    tFFTComplex* v113; // eax
-    double v114; // st7
-    double v115; // st6
-    double v116; // st7
-    double v117; // st6
-    double v118; // st5
-    double v119; // st6
-    double v120; // st5
-    double v121; // st7
-    double v122; // st5
-    double v123; // st4
-    BOOL v124; // cf
-    tFFTComplexCost* v125; // ebx
-    int v127; // [esp+10h] [ebp-60h]
-    float v128; // [esp+14h] [ebp-5Ch]
-    float v129; // [esp+14h] [ebp-5Ch]
-    float v130; // [esp+14h] [ebp-5Ch]
-    float v131; // [esp+14h] [ebp-5Ch]
-    float v132; // [esp+14h] [ebp-5Ch]
-    float v133; // [esp+18h] [ebp-58h]
-    float v134; // [esp+18h] [ebp-58h]
-    float v135; // [esp+18h] [ebp-58h]
-    float v136; // [esp+18h] [ebp-58h]
-    float v137; // [esp+18h] [ebp-58h]
-    float* v138; // [esp+18h] [ebp-58h]
-    float v139; // [esp+1Ch] [ebp-54h]
-    float v140; // [esp+1Ch] [ebp-54h]
-    float v141; // [esp+1Ch] [ebp-54h]
-    float v142; // [esp+1Ch] [ebp-54h]
-    float v143; // [esp+1Ch] [ebp-54h]
-    float v144; // [esp+1Ch] [ebp-54h]
-    float v145; // [esp+1Ch] [ebp-54h]
-    float v146; // [esp+1Ch] [ebp-54h]
-    float v147; // [esp+1Ch] [ebp-54h]
-    float v148; // [esp+20h] [ebp-50h]
-    float v149; // [esp+20h] [ebp-50h]
-    float v150; // [esp+20h] [ebp-50h]
-    float v151; // [esp+20h] [ebp-50h]
-    float v152; // [esp+20h] [ebp-50h]
-    float v153; // [esp+20h] [ebp-50h]
-    float v154; // [esp+20h] [ebp-50h]
-    float v155; // [esp+20h] [ebp-50h]
-    float v156; // [esp+20h] [ebp-50h]
-    float v157; // [esp+20h] [ebp-50h]
-    float v158; // [esp+20h] [ebp-50h]
-    float v159; // [esp+20h] [ebp-50h]
-    float v160; // [esp+20h] [ebp-50h]
-    float v161; // [esp+20h] [ebp-50h]
-    float v162; // [esp+24h] [ebp-4Ch]
-    float v163; // [esp+24h] [ebp-4Ch]
-    float v164; // [esp+24h] [ebp-4Ch]
-    float v165; // [esp+24h] [ebp-4Ch]
-    float v166; // [esp+24h] [ebp-4Ch]
-    float v167; // [esp+24h] [ebp-4Ch]
-    float* v168; // [esp+28h] [ebp-48h]
-    float* v169; // [esp+28h] [ebp-48h]
-    float* v170; // [esp+28h] [ebp-48h]
-    float* v171; // [esp+28h] [ebp-48h]
-    float v172; // [esp+2Ch] [ebp-44h]
-    float v173; // [esp+34h] [ebp-3Ch]
-    float v174; // [esp+3Ch] [ebp-34h]
-    int v175; // [esp+40h] [ebp-30h]
-    unsigned int v176; // [esp+44h] [ebp-2Ch]
-    float* v177; // [esp+44h] [ebp-2Ch]
-    int v178; // [esp+48h] [ebp-28h]
-    float v179; // [esp+4Ch] [ebp-24h]
-    float v180; // [esp+4Ch] [ebp-24h]
-    float v181; // [esp+4Ch] [ebp-24h]
-    float v182; // [esp+4Ch] [ebp-24h]
-    float v183; // [esp+4Ch] [ebp-24h]
-    float v184; // [esp+50h] [ebp-20h]
-    float v185; // [esp+50h] [ebp-20h]
-    float v186; // [esp+50h] [ebp-20h]
-    float v187; // [esp+50h] [ebp-20h]
-    float v188; // [esp+50h] [ebp-20h]
-    float v189; // [esp+50h] [ebp-20h]
-    float v190; // [esp+50h] [ebp-20h]
-    int v191; // [esp+54h] [ebp-1Ch]
-    unsigned int v192; // [esp+58h] [ebp-18h]
-    int numsubst1; // [esp+5Ch] [ebp-14h]
-    tFFTComplex* v194; // [esp+60h] [ebp-10h]
-    int v195; // [esp+64h] [ebp-Ch]
-    tFFTComplexCost* v196; // [esp+7Ch] [ebp+Ch]
+/* In-place two dimensional inverse transform of a square complex grid,
+   vector radix 2 by 2: one butterfly combines a quad of cells spanning
+   both axes at once rather than running all the rows and then all the
+   columns.
 
-    v4 = 1 << num;
-    v5 = 1 << num >> 1;                           // =32
-    v6 = 0;
-    v127 = 1 << num;
-    v176 = 0;
-    if (v5)
+   gridPowerOfTwo is log2 of the side, so the grid is
+   (1 << gridPowerOfTwo) cells square. twiddleTable holds the stages
+   laid end to end, each stage contributing half its span, so the
+   cursor walks forward by half a span per stage and never rewinds.
+
+   Two details are load bearing and neither is the textbook spelling:
+
+   the row rotation is applied to the sum and the difference of the
+   down and diagonal cells rather than to each of them, which is the
+   same value in exact arithmetic, two multiplies cheaper, and rounds
+   differently;
+
+   and the four results go to the diagonally opposite corners of the
+   quad they came from. The all-plus combination lands on the diagonal
+   cell and the all-minus one on the base. Storing each result where it
+   was read from yields a transform that is just as self consistent and
+   is not this one, and the water is built around this one. */
+void WATERFFT_FFT2D(tFFTComplex* grid, int gridPowerOfTwo, tFFTComplexCost* twiddleTable)
+{
+    const int side = 1 << gridPowerOfTwo;
+    tFFTComplexCost* stageTwiddle = twiddleTable;
+    int span;
+
+    for (span = 2; span <= side; span <<= 1)
     {
-        do
+        const int half = span >> 1;
+        int blockRow, blockColumn, rowInBlock, columnInBlock;
+
+        for (blockRow = 0; blockRow < side; blockRow += span)
+        for (blockColumn = 0; blockColumn < side; blockColumn += span)
+        for (rowInBlock = 0; rowInBlock < half; rowInBlock++)
+        for (columnInBlock = 0; columnInBlock < half; columnInBlock++)
         {
-            v7 = &a1[(2 * v6) << num];
-            v8 = 0;
-            if ((int)v5 >= 4)
-            {
-                v9 = 2;
-                do
-                {
-                    v10 = a3->real1;
-                    v11 = a3->imaginary1;
-                    v12 = &v7[2 * v8];
-                    v128 = a3->imaginary1;
-                    v133 = v10 * v12[1].real - v11 * v12[1].imaginary;
-                    v139 = v11 * v12[1].real + v10 * v12[1].imaginary;
-                    v148 = v10 * v12[v127 + 1].real - v11 * v12[v127 + 1].imaginary;
-                    v13 = v10 * v12[v127 + 1].imaginary + v11 * v12[v127 + 1].real;
-                    v14 = v12[v127].real - v148;
-                    v168 = &v12[v127].imaginary;
-                    v15 = *v168 - v13;
-                    v162 = v14 * a3->real1 - v15 * v128;
-                    v16 = v15 * a3->real1 + v14 * v128;
-                    v17 = v13;
-                    v18 = v148 + v12[v127].real;
-                    v19 = v17 + *v168;
-                    v149 = v18 * a3->real1 - v19 * v128;
-                    v20 = v19 * a3->real1 + v18 * v128;
-                    v12[v127 + 1].real = v149 + v12->real + v133;
-                    v12[v127 + 1].imaginary = v139 + v20 + v12->imaginary;
-                    v12[v127].real = v12->real - v133 + v162;
-                    *v168 = v12->imaginary - v139 + v16;
-                    v12[1].real = v133 + v12->real - v149;
-                    v12[1].imaginary = v139 + v12->imaginary - v20;
-                    v12->real = v12->real - v133 - v162;
-                    v12->imaginary = v12->imaginary - v139 - v16;
-                    v21 = &v7[v9 + v8];
-                    v22 = a3->real1;
-                    v23 = a3->imaginary1;
-                    v129 = a3->imaginary1;
-                    v134 = v22 * v7[v9 + 1 + v8].real - v23 * v7[v9 + 1 + v8].imaginary;
-                    v140 = v23 * v7[v9 + 1 + v8].real + v22 * v7[v9 + 1 + v8].imaginary;
-                    v150 = v22 * v21[v127 + 1].real - v23 * v21[v127 + 1].imaginary;
-                    v24 = v22 * v21[v127 + 1].imaginary + v23 * v21[v127 + 1].real;
-                    v25 = v21[v127].real - v150;
-                    v169 = &v21[v127].imaginary;
-                    v26 = *v169 - v24;
-                    v163 = v25 * a3->real1 - v26 * v129;
-                    v27 = v26 * a3->real1 + v25 * v129;
-                    v28 = v24;
-                    v29 = v150 + v21[v127].real;
-                    v30 = v28 + *v169;
-                    v151 = v29 * a3->real1 - v30 * v129;
-                    v31 = v30 * a3->real1 + v29 * v129;
-                    v21[v127 + 1].real = v151 + v21->real + v134;
-                    v21[v127 + 1].imaginary = v140 + v31 + v7[v9 + v8].imaginary;
-                    v21[v127].real = v21->real - v134 + v163;
-                    *v169 = v7[v9 + v8].imaginary - v140 + v27;
-                    v21[1].real = v134 + v21->real - v151;
-                    v21[1].imaginary = v140 + v7[v9 + v8].imaginary - v31;
-                    v21->real = v21->real - v134 - v163;
-                    v21->imaginary = v7[v9 + v8].imaginary - v140 - v27;
-                    v32 = &v7[v9 + 2 + v8];
-                    v33 = a3->real1;
-                    v34 = a3->imaginary1;
-                    v130 = a3->imaginary1;
-                    v135 = v33 * v7[v9 + 3 + v8].real - v34 * v7[v9 + 3 + v8].imaginary;
-                    v141 = v34 * v7[v9 + 3 + v8].real + v33 * v7[v9 + 3 + v8].imaginary;
-                    v152 = v33 * v32[v127 + 1].real - v34 * v32[v127 + 1].imaginary;
-                    v35 = v33 * v32[v127 + 1].imaginary + v34 * v32[v127 + 1].real;
-                    v36 = v32[v127].real - v152;
-                    v170 = &v32[v127].imaginary;
-                    v37 = *v170 - v35;
-                    v164 = v36 * a3->real1 - v37 * v130;
-                    v38 = v37 * a3->real1 + v36 * v130;
-                    v39 = v35;
-                    v40 = v152 + v32[v127].real;
-                    v41 = v39 + *v170;
-                    v153 = v40 * a3->real1 - v41 * v130;
-                    v42 = v41 * a3->real1 + v40 * v130;
-                    v32[v127 + 1].real = v153 + v32->real + v135;
-                    v32[v127 + 1].imaginary = v141 + v42 + v7[v9 + 2 + v8].imaginary;
-                    v32[v127].real = v32->real - v135 + v164;
-                    *v170 = v7[v9 + 2 + v8].imaginary - v141 + v38;
-                    v32[1].real = v135 + v32->real - v153;
-                    v32[1].imaginary = v141 + v7[v9 + 2 + v8].imaginary - v42;
-                    v32->real = v32->real - v135 - v164;
-                    v32->imaginary = v7[v9 + 2 + v8].imaginary - v141 - v38;
-                    v43 = &v7[v9 + 4 + v8];
-                    v44 = a3->real1;
-                    v45 = a3->imaginary1;
-                    v131 = a3->imaginary1;
-                    v136 = v44 * v7[v9 + 5 + v8].real - v45 * v7[v9 + 5 + v8].imaginary;
-                    v142 = v45 * v7[v9 + 5 + v8].real + v44 * v7[v9 + 5 + v8].imaginary;
-                    v154 = v44 * v43[v127 + 1].real - v45 * v43[v127 + 1].imaginary;
-                    v46 = v44 * v43[v127 + 1].imaginary + v45 * v43[v127 + 1].real;
-                    v47 = v43[v127].real - v154;
-                    v171 = &v43[v127].imaginary;
-                    v48 = *v171 - v46;
-                    v165 = v47 * a3->real1 - v48 * v131;
-                    v49 = v48 * a3->real1 + v47 * v131;
-                    v50 = v46;
-                    v51 = v154 + v43[v127].real;
-                    v9 += 4;
-                    v52 = v50 + *v171;
-                    v8 += 4;
-                    v155 = v51 * a3->real1 - v52 * v131;
-                    v53 = v52 * a3->real1 + v51 * v131;
-                    v43[v127 + 1].real = v155 + v43->real + v136;
-                    v43[v127 + 1].imaginary = v142 + v53 + v43->imaginary;
-                    v43[v127].real = v43->real - v136 + v165;
-                    *v171 = v43->imaginary - v142 + v49;
-                    v43[1].real = v136 + v43->real - v155;
-                    v43[1].imaginary = v142 + v43->imaginary - v53;
-                    v43->real = v43->real - v136 - v165;
-                    v43->imaginary = v43->imaginary - v142 - v49;
-                } while (v9 + 1 < v5);
-            }
-            if (v8 < v5)
-            {
-                v54 = v127;
-                do
-                {
-                    v55 = a3->real1;
-                    v56 = a3->imaginary1;
-                    v57 = &v7[2 * v8];
-                    v132 = a3->imaginary1;
-                    v137 = v55 * v57[1].real - v56 * v57[1].imaginary;
-                    v143 = v56 * v57[1].real + v55 * v57[1].imaginary;
-                    v156 = v55 * v57[v54 + 1].real - v56 * v57[v54 + 1].imaginary;
-                    v58 = v55 * v57[v54 + 1].imaginary + v56 * v57[v54 + 1].real;
-                    v59 = v57[v54].real - v156;
-                    v60 = v57[v54].imaginary - v58;
-                    v166 = v59 * a3->real1 - v60 * v132;
-                    v61 = v60 * a3->real1 + v59 * v132;
-                    v62 = v58;
-                    v63 = v156 + v57[v54].real;
-                    v64 = v62 + v57[v54].imaginary;
-                    v157 = v63 * a3->real1 - v64 * v132;
-                    v65 = v64 * a3->real1 + v63 * v132;
-                    v57[v54 + 1].real = v157 + v57->real + v137;
-                    v57[v54 + 1].imaginary = v143 + v65 + v57->imaginary;
-                    v57[v54].real = v57->real - v137 + v166;
-                    v57[v54].imaginary = v57->imaginary - v143 + v61;
-                    v57[1].real = v137 + v57->real - v157;
-                    ++v8;
-                    v57[1].imaginary = v143 + v57->imaginary - v65;
-                    v57->real = v57->real - v137 - v166;
-                    v57->imaginary = v57->imaginary - v143 - v61;
-                } while (v8 < v5);
-            }
-            v6 = ++v176;
-        } while (v176 < v5);
-    }
-    v66 = 2;
-    v196 = a3 + 1;
-    v175 = 2;
-    if (num > 1)
-    {
-        numsubst1 = num - 1;
-        while (1)
-        {
-            v67 = 0;
-            v68 = ~(v66 - 1);
-            v178 = v68;
-            v195 = v66 << num;
-            v192 = 0;
-            if (v5)
-            {
-                v69 = v4;
-                while (1)
-                {
-                    v138 = &v196[(v66 - 1) & v67].real1;
-                    v70 = &v196[(v66 - 1) & (v67 + 1)];
-                    v71 = (v67 + (v68 & v67)) << num;
-                    v72 = 0;
-                    v177 = &v70->real1;
-                    v194 = &a1[v71];
-                    v191 = 0;
-                    while (1)
-                    {
-                        v73 = &v194[v72 + (v68 & v72)];
-                        v74 = &v73[v195];
-                        v75 = &v196[(v66 - 1) & (v72 + 1)].real1;
-                        v76 = (v66 - 1) & v72;
-                        v77 = v196[v76].real1;
-                        v78 = &v196[v76].real1;
-                        v79 = v78[1];
-                        v80 = &v74[v66];
-                        v81 = &v73[v66];
-                        v167 = v138[1];
-                        v158 = v77 * v81->real - v79 * v81->imaginary;
-                        v144 = v77 * v81->imaginary + v79 * v81->real;
-                        v179 = v77 * v80->real - v79 * v80->imaginary;
-                        v82 = v77 * v80->imaginary + v79 * v80->real;
-                        v83 = v74->real - v179;
-                        v84 = v74->imaginary - v82;
-                        v184 = v83 * *v138 - v84 * v167;
-                        v85 = v84 * *v138 + v83 * v167;
-                        v86 = v82;
-                        v87 = v179 + v74->real;
-                        v88 = v86 + v74->imaginary;
-                        v180 = v87 * *v138 - v88 * v167;
-                        v89 = v88 * *v138 + v87 * v167;
-                        v80->real = v180 + v73->real + v158;
-                        v80->imaginary = v89 + v73->imaginary + v144;
-                        v74->real = v73->real - v158 + v184;
-                        v74->imaginary = v73->imaginary - v144 + v85;
-                        v81->real = v158 + v73->real - v180;
-                        v81->imaginary = v144 + v73->imaginary - v89;
-                        v73->real = v73->real - v158 - v184;
-                        v73->imaginary = v73->imaginary - v144 - v85;
-                        v90 = *v75;
-                        v91 = v75[1];
-                        v172 = v138[1];
-                        v159 = v90 * v81[1].real - v91 * v81[1].imaginary;
-                        v145 = v90 * v81[1].imaginary + v91 * v81[1].real;
-                        v185 = v90 * v80[1].real - v91 * v80[1].imaginary;
-                        v92 = v91 * v80[1].real + v90 * v80[1].imaginary;
-                        v93 = v74[1].real - v185;
-                        v94 = v74[1].imaginary - v92;
-                        v181 = *v138 * v93 - v172 * v94;
-                        v95 = *v138 * v94 + v172 * v93;
-                        v96 = v92;
-                        v97 = v185 + v74[1].real;
-                        v98 = v96 + v74[1].imaginary;
-                        v186 = *v138 * v97 - v172 * v98;
-                        v99 = *v138 * v98 + v172 * v97;
-                        v80[1].real = v186 + v73[1].real + v159;
-                        v80[1].imaginary = v99 + v73[1].imaginary + v145;
-                        v74[1].real = v73[1].real - v159 + v181;
-                        v74[1].imaginary = v73[1].imaginary - v145 + v95;
-                        v81[1].real = v159 + v73[1].real - v186;
-                        v81[1].imaginary = v145 + v73[1].imaginary - v99;
-                        v100 = &v81[v69];
-                        v101 = &v80[v69];
-                        v73[1].real = v73[1].real - v159 - v181;
-                        v73[1].imaginary = v73[1].imaginary - v145 - v95;
-                        v102 = *v78;
-                        v103 = v78[1];
-                        v173 = v177[1];
-                        v160 = v102 * v100->real - v103 * v100->imaginary;
-                        v146 = v102 * v100->imaginary + v103 * v100->real;
-                        v187 = v102 * v101->real - v103 * v101->imaginary;
-                        v104 = v102 * v101->imaginary + v103 * v101->real;
-                        v105 = v74[v69].real - v187;
-                        v106 = v74[v69].imaginary - v104;
-                        v182 = *v177 * v105 - v173 * v106;
-                        v107 = *v177 * v106 + v173 * v105;
-                        v108 = v104;
-                        v109 = v187 + v74[v69].real;
-                        v110 = v108 + v74[v69].imaginary;
-                        v188 = *v177 * v109 - v173 * v110;
-                        v111 = *v177 * v110 + v173 * v109;
-                        v101->real = v188 + v73[v69].real + v160;
-                        v101->imaginary = v111 + v73[v69].imaginary + v146;
-                        v74[v69].real = v73[v69].real - v160 + v182;
-                        v74[v69].imaginary = v73[v69].imaginary - v146 + v107;
-                        v112 = &v74[v69 + 1];
-                        v100->real = v160 + v73[v69].real - v188;
-                        v100->imaginary = v146 + v73[v69].imaginary - v111;
-                        v73[v69].real = v73[v69].real - v160 - v182;
-                        v73[v69].imaginary = v73[v69].imaginary - v146 - v107;
-                        v113 = &v73[v69 + 1];
-                        v114 = *v75;
-                        v115 = v75[1];
-                        v174 = v177[1];
-                        v161 = v114 * v100[1].real - v115 * v100[1].imaginary;
-                        v147 = v115 * v100[1].real + v114 * v100[1].imaginary;
-                        v189 = v114 * v101[1].real - v115 * v101[1].imaginary;
-                        v116 = v115 * v101[1].real + v114 * v101[1].imaginary;
-                        v117 = v112->real - v189;
-                        v118 = v112->imaginary - v116;
-                        v183 = *v177 * v117 - v174 * v118;
-                        v119 = *v177 * v118 + v174 * v117;
-                        v120 = v116;
-                        v121 = v189 + v112->real;
-                        v122 = v120 + v112->imaginary;
-                        v190 = *v177 * v121 - v174 * v122;
-                        v123 = *v177 * v122 + v174 * v121;
-                        v101[1].real = v190 + v161 + v113->real;
-                        v101[1].imaginary = v123 + v113->imaginary + v147;
-                        v112->real = v113->real - v161 + v183;
-                        v112->imaginary = v113->imaginary - v147 + v119;
-                        v100[1].real = v161 + v113->real - v190;
-                        v5 = 1 << num >> 1;
-                        v72 = v191 + 2;
-                        v124 = v191 + 2 < v5;
-                        v100[1].imaginary = v147 + v113->imaginary - v123;
-                        v66 = v175;
-                        v191 += 2;
-                        v113->real = v113->real - v161 - v183;
-                        v113->imaginary = v113->imaginary - v147 - v119;
-                        if (!v124)
-                            break;
-                        v68 = v178;
-                    }
-                    v67 = v192 + 2;
-                    v192 += 2;
-                    if (v192 >= v5)
-                        break;
-                    v68 = v178;
-                }
-            }
-            v125 = &v196[v66];
-            v66 *= 2;
-            v196 = v125;
-            v175 = v66;
-            if (!--numsubst1)
-                break;
+            /* the quad: the base cell, its neighbour half a span
+               across, the one half a span down, and the diagonal */
+            tFFTComplex* const base     = &grid[(blockRow + rowInBlock) * side
+                                                + blockColumn + columnInBlock];
+            tFFTComplex* const across   = base + half;
+            tFFTComplex* const down     = base + half * side;
+            tFFTComplex* const diagonal = down + half;
+
+            const float columnTwiddleReal = stageTwiddle[columnInBlock].real1;
+            const float columnTwiddleImaginary = stageTwiddle[columnInBlock].imaginary1;
+            const float rowTwiddleReal = stageTwiddle[rowInBlock].real1;
+            const float rowTwiddleImaginary = stageTwiddle[rowInBlock].imaginary1;
+
+            /* rotate the two right hand cells by the column twiddle */
+            const float acrossReal = columnTwiddleReal * across->real
+                                   - columnTwiddleImaginary * across->imaginary;
+            const float acrossImaginary = columnTwiddleImaginary * across->real
+                                        + columnTwiddleReal * across->imaginary;
+            const float diagonalReal = columnTwiddleReal * diagonal->real
+                                     - columnTwiddleImaginary * diagonal->imaginary;
+            const float diagonalImaginary = columnTwiddleImaginary * diagonal->real
+                                          + columnTwiddleReal * diagonal->imaginary;
+
+            /* combine each with the down cell, then rotate the two
+               combinations by the row twiddle */
+            const float sumReal = down->real + diagonalReal;
+            const float sumImaginary = down->imaginary + diagonalImaginary;
+            const float differenceReal = down->real - diagonalReal;
+            const float differenceImaginary = down->imaginary - diagonalImaginary;
+
+            const float rotatedSumReal = rowTwiddleReal * sumReal
+                                       - rowTwiddleImaginary * sumImaginary;
+            const float rotatedSumImaginary = rowTwiddleImaginary * sumReal
+                                            + rowTwiddleReal * sumImaginary;
+            const float rotatedDifferenceReal = rowTwiddleReal * differenceReal
+                                              - rowTwiddleImaginary * differenceImaginary;
+            const float rotatedDifferenceImaginary = rowTwiddleImaginary * differenceReal
+                                                   + rowTwiddleReal * differenceImaginary;
+
+            const float baseReal = base->real;
+            const float baseImaginary = base->imaginary;
+
+            /* every input is in a local by now, so the crossed over
+               stores below may overwrite in any order */
+            diagonal->real = baseReal + acrossReal + rotatedSumReal;
+            diagonal->imaginary = baseImaginary + acrossImaginary + rotatedSumImaginary;
+
+            down->real = baseReal - acrossReal + rotatedDifferenceReal;
+            down->imaginary = baseImaginary - acrossImaginary + rotatedDifferenceImaginary;
+
+            across->real = baseReal + acrossReal - rotatedSumReal;
+            across->imaginary = baseImaginary + acrossImaginary - rotatedSumImaginary;
+
+            base->real = baseReal - acrossReal - rotatedDifferenceReal;
+            base->imaginary = baseImaginary - acrossImaginary - rotatedDifferenceImaginary;
         }
+
+        stageTwiddle += half;
     }
-    WATERFFT_CorrectHeight(a1, num);
+
+    WATERFFT_CorrectHeight(grid, (char)gridPowerOfTwo);
 }
 
 void WATERFFT_Turn_Spectre(tWaterEngineStruct* src, tFFTComplex* dst, tFFTComplex* DX, tFFTComplex* DY, float timeElapsed)
