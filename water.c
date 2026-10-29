@@ -2227,328 +2227,325 @@ int WTR_Clip(Vec3* input, Vec3* output, Vec3* planeNormal, float planeOffset, in
     return written;
 }
 
-int WTR_Compute4Points(Vec3* points, Vec3* a2, Vec3* a3, Vec3* a4, float a5, float a6, float a7, float a8, float a9, float a10)
+/* Normalise a plane normal in place. */
+static void WTR_NormalisePlane(Vec3* plane)
 {
-    double v10; // st7
-    double v11; // st6
-    double v12; // st5
-    long double v13; // st5
-    long double v14; // st7
-    double v15; // st6
-    double v16; // st3
-    long double v17; // st2
-    long double v18; // st4
-    long double v19; // rt0
-    long double v20; // st4
-    double v22; // rt1
-    double v23; // st6
-    double v24; // st5
-    double v25; // st4
-    double v26; // st7
-    double v27; // st6
-    double v28; // st7
-    double v29; // st6
-    long double v30; // st5
-    long double v31; // st7
-    long double v32; // st7
-    long double v33; // st7
-    long double v34; // st7
-    double v35; // st7
-    double v36; // st6
-    long double v37; // st7
-    long double v38; // st7
-    long double v39; // st7
-    long double v40; // st7
-    double v41; // st6
-    double v42; // st3
-    double v43; // st5
-    double v44; // st4
-    double v45; // st3
-    int v46; // eax
-    int v47; // eax
-    int v48; // eax
-    int v49; // eax
-    char v50; // cl
-    double v51; // st7
-    double v52; // st6
-    Vec3* v53; // edx
-    float v54; // eax
-    float v55; // edx
-    Vec3* v56; // edx
-    float v57; // eax
-    float v58; // edx
-    Vec3* v59; // edx
-    float v60; // eax
-    float v61; // edx
-    Vec3* v62; // ecx
-    float v63; // edx
-    float v64; // eax
-    float v65; // ecx
-    Vec3 v67; // [esp+10h] [ebp-148h]
-    float v68; // [esp+1Ch] [ebp-13Ch]
-    float v69; // [esp+1Ch] [ebp-13Ch]
-    float v70; // [esp+1Ch] [ebp-13Ch]
-    float v71; // [esp+1Ch] [ebp-13Ch]
-    float v72; // [esp+1Ch] [ebp-13Ch]
-    char v73; // [esp+1Ch] [ebp-13Ch]
-    float v74; // [esp+20h] [ebp-138h]
-    float v75; // [esp+20h] [ebp-138h]
-    float v76; // [esp+20h] [ebp-138h]
-    float v77; // [esp+20h] [ebp-138h]
-    float v78; // [esp+24h] [ebp-134h]
-    float v79; // [esp+24h] [ebp-134h]
-    float v80; // [esp+24h] [ebp-134h]
-    float v81; // [esp+24h] [ebp-134h]
-    float v82; // [esp+28h] [ebp-130h]
-    float v83; // [esp+28h] [ebp-130h]
-    float v84; // [esp+28h] [ebp-130h]
-    float v85; // [esp+28h] [ebp-130h]
-    float v86; // [esp+28h] [ebp-130h]
-    float v87; // [esp+2Ch] [ebp-12Ch]
-    float v88; // [esp+2Ch] [ebp-12Ch]
-    float v89; // [esp+30h] [ebp-128h]
-    float v90; // [esp+34h] [ebp-124h]
-    float v91; // [esp+34h] [ebp-124h]
-    float v92; // [esp+34h] [ebp-124h]
-    float v93; // [esp+34h] [ebp-124h]
-    float v94; // [esp+34h] [ebp-124h]
-    float v95; // [esp+34h] [ebp-124h]
-    float v96; // [esp+38h] [ebp-120h]
-    float v97; // [esp+38h] [ebp-120h]
-    float v98; // [esp+38h] [ebp-120h]
-    float v99; // [esp+38h] [ebp-120h]
-    float v100; // [esp+38h] [ebp-120h]
-    Vec3 a3a; // [esp+3Ch] [ebp-11Ch] BYREF
-    Vec3 v102; // [esp+48h] [ebp-110h] BYREF
-    Vec3 v103; // [esp+54h] [ebp-104h] BYREF
-    Vec3 v104; // [esp+60h] [ebp-F8h] BYREF
-    Vec3 v105; // [esp+6Ch] [ebp-ECh] BYREF
-    float v106; // [esp+78h] [ebp-E0h]
-    float v107; // [esp+7Ch] [ebp-DCh]
-    float v108; // [esp+80h] [ebp-D8h]
-    float a4a; // [esp+84h] [ebp-D4h]
-    float v110; // [esp+88h] [ebp-D0h]
-    float v111; // [esp+8Ch] [ebp-CCh]
-    float v112; // [esp+90h] [ebp-C8h]
-    float v113; // [esp+94h] [ebp-C4h]
-    Vec3 a2a[8]; // [esp+98h] [ebp-C0h] BYREF
-    Vec3 a1[8]; // [esp+F8h] [ebp-60h] BYREF
+    const double reciprocal = 1.0 / sqrt(plane->z * plane->z
+                                       + plane->y * plane->y
+                                       + plane->x * plane->x);
+    plane->x = (float)(plane->x * reciprocal);
+    plane->y = (float)(plane->y * reciprocal);
+    plane->z = (float)(plane->z * reciprocal);
+}
 
-    v10 = a4->z * 0.0;
-    v11 = v10 - a4->y;
-    v78 = a4->x - v10;
-    v12 = a4->y * 0.0 - a4->x * 0.0;
-    v82 = v12;
-    v13 = 1.0 / sqrt(v12 * v82 + v78 * v78 + v11 * v11);
-    v68 = v13;
-    v14 = v13 * v11;
-    v15 = v78 * v68;
-    v83 = v82 * v68;
-    v16 = a4->x;
-    v17 = sqrt(v16 * v16 + a4->y * a4->y + a4->z * a4->z);
-    v18 = 1.0 / v17 * v16;
-    a4->x = v18;
-    v87 = 1.0 / v17 * a4->y;
-    v19 = v18;
-    v20 = 1.0 / v17 * a4->z;
-    a4->y = v87;
-    v69 = v20;
-    a4->z = v69;
-    v67.x = v83 * v87 - v15 * v69;
-    v67.y = v69 * v14 - v83 * v19;
-    v67.z = v15 * v19 - v87 * v14;
-    *a2 = v67;
-    v106 = v19 * a7;
-    v107 = v87 * a7;
-    v108 = v69 * a7;
-    v22 = v15;
-    v74 = v14 * 1.05;
-    v23 = v83 * 1.05;
-    v67.x = v67.x * a8;
-    v67.y = v67.y * a8;
-    v67.z = v67.z * a8;
-    v24 = v106 - v74;
-    points[1].x = v24;
-    v25 = v107 - v22 * 1.05;
-    points[1].y = v25;
-    v70 = v108 - v23;
-    points[1].z = v70;
-    points[2].x = v24;
-    points[2].y = v25;
-    points[2].z = v70;
-    v75 = v74 * 1.04;
-    v79 = v22 * 1.05 * 1.04;
-    v84 = v23 * 1.04;
-    v26 = v106 + v75;
-    points->x = v26;
-    v27 = v107 + v79;
-    points->y = v27;
-    v71 = v108 + v84;
-    points->z = v71;
-    points[3].z = v71;
-    points[3].x = v26;
-    points[3].y = v27;
-    points->x = v67.x + points->x;
-    points->y = v67.y + points->y;
-    points->z = v67.z + points->z;
-    points[1].x = v67.x + points[1].x;
-    points[1].y = points[1].y + v67.y;
-    points[1].z = points[1].z + v67.z;
-    points[2].x = points[2].x - v67.x;
-    points[2].y = points[2].y - v67.y;
-    points[2].z = points[2].z - v67.z;
-    points[3].x = points[3].x - v67.x;
-    points[3].y = points[3].y - v67.y;
-    points[3].z = points[3].z - v67.z;
-    v28 = points->z * points[1].y - points[1].z * points->y;
-    v29 = points[1].z * points->x - points[1].x * points->z;
-    a3a.z = points[1].x * points->y - points->x * points[1].y;
-    v102.x = points[1].z * points[2].y - points[1].y * points[2].z;
-    v102.y = points[1].x * points[2].z - points[1].z * points[2].x;
-    v102.z = points[1].y * points[2].x - points[1].x * points[2].y;
-    v103.x = points[3].y * points[2].z - points[3].z * points[2].y;
-    v103.y = points[3].z * points[2].x - points[2].z * points[3].x;
-    v103.z = points[2].y * points[3].x - points[3].y * points[2].x;
-    v104.x = points->y * points[3].z - points[3].y * points->z;
-    v104.y = points->z * points[3].x - points[3].z * points->x;
-    v104.z = points[3].y * points->x - points->y * points[3].x;
-    v105.x = a4->x * -1.0;
-    v105.y = a4->y * -1.0;
-    v105.z = a4->z * -1.0;
-    v30 = 1.0 / sqrt(v29 * v29 + v28 * v28 + a3a.z * a3a.z);
-    v72 = v30;
-    a3a.x = v30 * v28;
-    a3a.y = v72 * v29;
-    a3a.z = a3a.z * v72;
-    v31 = 1.0 / sqrt(v102.z * v102.z + v102.y * v102.y + v102.x * v102.x);
-    v102.x = v102.x * v31;
-    v102.y = v102.y * v31;
-    v102.z = v102.z * v31;
-    v32 = 1.0 / sqrt(v103.z * v103.z + v103.y * v103.y + v103.x * v103.x);
-    v103.x = v103.x * v32;
-    v103.y = v103.y * v32;
-    v103.z = v103.z * v32;
-    v33 = 1.0 / sqrt(v104.z * v104.z + v104.y * v104.y + v104.x * v104.x);
-    v104.x = v104.x * v33;
-    v104.y = v104.y * v33;
-    v104.z = v104.z * v33;
-    v34 = 1.0 / sqrt(v105.z * v105.z + v105.y * v105.y + v105.x * v105.x);
-    v105.x = v105.x * v34;
-    v105.y = v105.y * v34;
-    v105.z = v105.z * v34;
-    v35 = a9 * 0.25;
-    v36 = a10 * 0.25;
-    v110 = sqrt(v102.y * v102.y + v102.x * v102.x) * v36
-        + fabs(((v102.y + v102.x) * 0.0 + v102.z) * v35)
-        + v102.z * a3->z
-        + v102.y * a3->y
-        + v102.x * a3->x;
-    v112 = sqrt(v104.y * v104.y + v104.x * v104.x) * v36
-        + fabs(((v104.y + v104.x) * 0.0 + v104.z) * v35)
-        + v104.z * a3->z
-        + v104.y * a3->y
-        + v104.x * a3->x;
-    v67.x = a4->x;
-    v67.y = a4->y;
-    a4a = sqrt(a3a.y * a3a.y + a3a.x * a3a.x) * v36
-        + fabs(((a3a.y + a3a.x) * 0.0 + a3a.z) * v35)
-        + a3a.z * a3->z
-        + a3a.y * a3->y
-        + a3a.x * a3->x;
-    v111 = sqrt(v103.y * v103.y + v103.x * v103.x) * v36
-        + fabs(v35 * ((v103.y + v103.x) * 0.0 + v103.z))
-        + v103.z * a3->z
-        + v103.y * a3->y
-        + v103.x * a3->x;
-    v113 = v105.z * a3->z + v105.x * a3->x + v105.y * a3->y + 2.0;
-    v37 = 1.0 / sqrt(v67.x * v67.x + v67.y * v67.y);
-    v67.x = v67.x * v37;
-    v67.y = v67.y * v37;
-    v38 = v37 * 0.0;
-    v67.z = v38;
-    v39 = v38 * 0.0;
-    v106 = v67.y - v39;
-    v40 = v39 - v67.x;
-    v41 = v67.x * 0.0 - v67.y * 0.0;
-    v42 = -a6;
-    v90 = v67.y * v42;
-    v96 = v42 * v67.z;
-    v76 = v67.x * v42 + a3->x;
-    v80 = v90 + a3->y;
-    v85 = v96 + a5;
-    v43 = a6 * 8.0;
-    v91 = v40 * v43;
-    v97 = v41 * v43;
-    a1[2].x = v106 * v43 + v76;
-    a1[2].y = v91 + v80;
-    a1[2].z = v97 + v85;
-    v44 = a6 * -8.0;
-    v92 = v40 * v44;
-    v98 = v41 * v44;
-    a1[3].x = v106 * v44 + v76;
-    a1[3].y = v92 + v80;
-    a1[3].z = v98 + v85;
-    v45 = a6 + a6;
-    v93 = v67.y * v45;
-    v99 = v45 * v67.z;
-    v77 = v67.x * v45 + v76;
-    v81 = v93 + v80;
-    v86 = v99 + v85;
-    v94 = v40 * v44;
-    v100 = v41 * v44;
-    a1[0].x = v106 * v44 + v77;
-    a1[0].y = v94 + v81;
-    a1[0].z = v100 + v86;
-    v89 = v106 * v43;
-    v95 = v40 * v43;
-    a1[1].x = v89 + v77;
-    a1[1].y = v95 + v81;
-    a1[1].z = v41 * v43 + v86;
-    v46 = WTR_Clip(a1, a2a, &a3a, a4a, 4);
-    v47 = WTR_Clip(a2a, a1, &v102, v110, v46);
-    v48 = WTR_Clip(a1, a2a, &v103, v111, v47);
-    v49 = WTR_Clip(a2a, a1, &v104, v112, v48);
-    v73 = WTR_Clip(a1, a2a, &v105, v113, v49);
-    v50 = 0;
-    v51 = a2a[0].x * v67.x + a2a[0].y * v67.y + a2a[0].z * v67.z;
-    v52 = a2a[1].z * v67.z + a2a[1].x * v67.x + v67.y * a2a[1].y;
-    v111 = a2a[2].z * v67.z + a2a[2].x * v67.x + v67.y * a2a[2].y;
-    v112 = a2a[3].z * v67.z + a2a[3].x * v67.x + v67.y * a2a[3].y;
-    v88 = (v111 + v51 + v112 + v52) * 0.25;
-    if (v51 < v88 && v52 > v88)
-        v50 = 1;
-    if (v52 < v88 && v111 >(double)v88)
-        v50 = 2;
-    if (v111 < (double)v88 && v112 >(double)v88)
-        v50 = 3;
-    if (v112 < (double)v88 && v51 > v88)
-        v50 = 0;
-    v53 = &a2a[v50 & 3];
-    points->x = v53->x;
-    v54 = v53->y;
-    v55 = v53->z;
-    points->y = v54;
-    points->z = v55;
-    v56 = &a2a[(v50 + 1) & 3];
-    points[1].x = v56->x;
-    v57 = v56->y;
-    v58 = v56->z;
-    points[1].y = v57;
-    points[1].z = v58;
-    v59 = &a2a[(v50 - 2) & 3];
-    points[2].x = v59->x;
-    v60 = v59->y;
-    v61 = v59->z;
-    points[2].y = v60;
-    v62 = &a2a[(v50 - 1) & 3];
-    points[2].z = v61;
-    v63 = v62->x;
-    v64 = v62->y;
-    v65 = v62->z;
-    points[3].x = v63;
-    points[3].y = v64;
-    points[3].z = v65;
-    return v73 & 4;
+/* Distance of the camera from a plane through the origin, with the
+   plane pushed outwards by the choppy displacement in the horizontal
+   and the wave amplitude in the vertical, so that water lying flat
+   inside the view but displaced outwards still gets meshed. */
+static float WTR_PlaneOffsetForCamera(const Vec3* plane, const Vec3* cameraPosition,
+                                      double choppyQuarter, double waveQuarter)
+{
+    return (float)(sqrt(plane->y * plane->y + plane->x * plane->x) * choppyQuarter
+        + fabs(((plane->y + plane->x) * 0.0 + plane->z) * waveQuarter)
+        + plane->z * cameraPosition->z
+        + plane->y * cameraPosition->y
+        + plane->x * cameraPosition->x);
+}
+
+/* Find the quad of the water plane that the camera can see.
+ *
+ * A frame is built from the view direction: sideAxis is the horizontal
+ * vector perpendicular to it, upAxis completes the pair. Four corner
+ * directions are spread from those two, and each consecutive pair of
+ * them spans one side plane of the view volume; the reversed view
+ * direction gives the back plane. A deliberately oversized quad is
+ * laid on the water plane and clipped against all five, and the four
+ * corners that survive are written out, the pair nearest the camera
+ * first.
+ *
+ * viewDirection is normalised in place, which both callers rely on.
+ * axisOut receives upAxis before it is scaled; neither caller reads it.
+ *
+ * planeExtent sizes the quad laid on the water plane, forwardScale and
+ * acrossScale the view volume, and waveExpansion and choppyExpansion
+ * how far the side planes are pushed out. Returns 0 when the clip
+ * leaves nothing to mesh.
+ *
+ * Several terms below multiply by zero rather than being folded away.
+ * They are kept because they carry a non-finite view direction through
+ * to the result instead of quietly producing a finite one. */
+int WTR_Compute4Points(Vec3* corners, Vec3* axisOut, Vec3* cameraPosition,
+                       Vec3* viewDirection, float planeHeight, float planeExtent,
+                       float forwardScale, float acrossScale,
+                       float waveExpansion, float choppyExpansion)
+{
+    Vec3 upAxis, groundDirection;
+    Vec3 plane01, plane12, plane32, plane03, backPlane;
+    Vec3 clipA[8];
+    Vec3 clipB[8];
+
+    /* the horizontal vector perpendicular to the view direction */
+    const double zeroFromZ = viewDirection->z * 0.0;
+    const double sideRawY = zeroFromZ - viewDirection->y;
+    const float sideRawX = (float)(viewDirection->x - zeroFromZ);
+    const float sideRawZ = (float)(viewDirection->y * 0.0 - viewDirection->x * 0.0);
+    const double sideReciprocal = 1.0 / sqrt(sideRawZ * sideRawZ
+                                           + sideRawX * sideRawX
+                                           + sideRawY * sideRawY);
+    /* the first component keeps the double reciprocal, the other two
+       take it rounded to float, exactly as the original does */
+    const float sideReciprocalAsFloat = (float)sideReciprocal;
+    const double sideAxisX = sideReciprocal * sideRawY;
+    const double sideAxisY = sideRawX * sideReciprocalAsFloat;
+    const float sideAxisZ = sideRawZ * sideReciprocalAsFloat;
+
+    /* normalise the view direction in place */
+    /* the first term is widened before squaring and the other two are
+       not, which on a target that rounds every float product shows up
+       in the last bits of the normalised direction */
+    const double viewX = viewDirection->x;
+    const double viewLength = sqrt(viewX * viewX
+                                 + viewDirection->y * viewDirection->y
+                                 + viewDirection->z * viewDirection->z);
+    const double forwardX = 1.0 / viewLength * viewX;
+    const float forwardY = (float)(1.0 / viewLength * viewDirection->y);
+    const float forwardZ = (float)(1.0 / viewLength * viewDirection->z);
+
+    const double waveQuarter = waveExpansion * 0.25;
+    const double choppyQuarter = choppyExpansion * 0.25;
+
+    float offset01, offset12, offset32, offset03, backOffset;
+    char survivors;
+    int firstCorner;
+    const Vec3* pick;
+
+    viewDirection->x = (float)forwardX;
+    viewDirection->y = forwardY;
+    viewDirection->z = forwardZ;
+
+    /* upAxis = viewDirection crossed with sideAxis */
+    upAxis.x = (float)(sideAxisZ * forwardY - sideAxisY * forwardZ);
+    upAxis.y = (float)(forwardZ * sideAxisX - sideAxisZ * forwardX);
+    upAxis.z = (float)(sideAxisY * forwardX - forwardY * sideAxisX);
+    *axisOut = upAxis;
+
+    /* ---- the four corner directions of the view volume ---- */
+    {
+        const float forwardScaledX = (float)(forwardX * forwardScale);
+        const float forwardScaledY = (float)(forwardY * forwardScale);
+        const float forwardScaledZ = (float)(forwardZ * forwardScale);
+
+        /* the volume is not symmetric about the view direction: one
+           side is spread a further four per cent */
+        const float sideNarrowX = (float)(sideAxisX * 1.05);
+        const double sideNarrowZ = sideAxisZ * 1.05;
+
+        const double bottomX = forwardScaledX - sideNarrowX;
+        const double bottomY = forwardScaledY - sideAxisY * 1.05;
+        const float bottomZ = (float)(forwardScaledZ - sideNarrowZ);
+
+        const float sideWideX = (float)(sideNarrowX * 1.04);
+        const float sideWideY = (float)(sideAxisY * 1.05 * 1.04);
+        const float sideWideZ = (float)(sideNarrowZ * 1.04);
+
+        const double topX = forwardScaledX + sideWideX;
+        const double topY = forwardScaledY + sideWideY;
+        const float topZ = (float)(forwardScaledZ + sideWideZ);
+
+        corners[1].x = (float)bottomX;
+        corners[1].y = (float)bottomY;
+        corners[1].z = bottomZ;
+        corners[2].x = (float)bottomX;
+        corners[2].y = (float)bottomY;
+        corners[2].z = bottomZ;
+
+        corners->x = (float)topX;
+        corners->y = (float)topY;
+        corners->z = topZ;
+        corners[3].x = (float)topX;
+        corners[3].y = (float)topY;
+        corners[3].z = topZ;
+
+        upAxis.x = (float)(upAxis.x * acrossScale);
+        upAxis.y = (float)(upAxis.y * acrossScale);
+        upAxis.z = (float)(upAxis.z * acrossScale);
+
+        corners->x = upAxis.x + corners->x;
+        corners->y = upAxis.y + corners->y;
+        corners->z = upAxis.z + corners->z;
+        corners[1].x = upAxis.x + corners[1].x;
+        corners[1].y = corners[1].y + upAxis.y;
+        corners[1].z = corners[1].z + upAxis.z;
+        corners[2].x = corners[2].x - upAxis.x;
+        corners[2].y = corners[2].y - upAxis.y;
+        corners[2].z = corners[2].z - upAxis.z;
+        corners[3].x = corners[3].x - upAxis.x;
+        corners[3].y = corners[3].y - upAxis.y;
+        corners[3].z = corners[3].z - upAxis.z;
+    }
+
+    /* ---- each consecutive pair of corners spans a side plane ---- */
+    {
+        const double normalX = corners->z * corners[1].y - corners[1].z * corners->y;
+        const double normalY = corners[1].z * corners->x - corners[1].x * corners->z;
+        double reciprocal;
+
+        plane01.z = (float)(corners[1].x * corners->y - corners->x * corners[1].y);
+
+        plane12.x = (float)(corners[1].z * corners[2].y - corners[1].y * corners[2].z);
+        plane12.y = (float)(corners[1].x * corners[2].z - corners[1].z * corners[2].x);
+        plane12.z = (float)(corners[1].y * corners[2].x - corners[1].x * corners[2].y);
+
+        plane32.x = (float)(corners[3].y * corners[2].z - corners[3].z * corners[2].y);
+        plane32.y = (float)(corners[3].z * corners[2].x - corners[2].z * corners[3].x);
+        plane32.z = (float)(corners[2].y * corners[3].x - corners[3].y * corners[2].x);
+
+        plane03.x = (float)(corners->y * corners[3].z - corners[3].y * corners->z);
+        plane03.y = (float)(corners->z * corners[3].x - corners[3].z * corners->x);
+        plane03.z = (float)(corners[3].y * corners->x - corners->y * corners[3].x);
+
+        backPlane.x = (float)(viewDirection->x * -1.0);
+        backPlane.y = (float)(viewDirection->y * -1.0);
+        backPlane.z = (float)(viewDirection->z * -1.0);
+
+        reciprocal = 1.0 / sqrt(normalY * normalY + normalX * normalX
+                              + plane01.z * plane01.z);
+        plane01.x = (float)(reciprocal * normalX);
+        plane01.y = (float)((float)reciprocal * normalY);
+        plane01.z = (float)(plane01.z * (float)reciprocal);
+    }
+
+    WTR_NormalisePlane(&plane12);
+    WTR_NormalisePlane(&plane32);
+    WTR_NormalisePlane(&plane03);
+    WTR_NormalisePlane(&backPlane);
+
+    offset12 = WTR_PlaneOffsetForCamera(&plane12, cameraPosition, choppyQuarter, waveQuarter);
+    offset03 = WTR_PlaneOffsetForCamera(&plane03, cameraPosition, choppyQuarter, waveQuarter);
+
+    groundDirection.x = viewDirection->x;
+    groundDirection.y = viewDirection->y;
+
+    offset01 = WTR_PlaneOffsetForCamera(&plane01, cameraPosition, choppyQuarter, waveQuarter);
+    offset32 = WTR_PlaneOffsetForCamera(&plane32, cameraPosition, choppyQuarter, waveQuarter);
+
+    backOffset = (float)(backPlane.z * cameraPosition->z + backPlane.x * cameraPosition->x
+                       + backPlane.y * cameraPosition->y + 2.0);
+
+    /* ---- an oversized quad on the water plane ---- */
+    {
+        /* Whether an intermediate is rounded to float before being
+           added to the base differs between x, y and z below, and
+           between the corners. It is kept exactly as it was: these are
+           coordinates in the tens of thousands, so a rounding that
+           moves one corner moves which triangles survive the clip. */
+        const double groundReciprocal = 1.0 / sqrt(groundDirection.x * groundDirection.x
+                                                 + groundDirection.y * groundDirection.y);
+        double zeroFromReciprocal, zeroFromZero, perpX, perpZ;
+        float perpY;
+        float baseX, baseY, baseZ, shiftedX, shiftedY, shiftedZ;
+        float towardsY, towardsZ;
+        double behind, wide, narrow, twice;
+
+        groundDirection.x = (float)(groundDirection.x * groundReciprocal);
+        groundDirection.y = (float)(groundDirection.y * groundReciprocal);
+        zeroFromReciprocal = groundReciprocal * 0.0;
+        groundDirection.z = (float)zeroFromReciprocal;
+        zeroFromZero = zeroFromReciprocal * 0.0;
+
+        /* the ground direction turned a quarter turn */
+        perpY = (float)(groundDirection.y - zeroFromZero);
+        perpX = zeroFromZero - groundDirection.x;
+        perpZ = groundDirection.x * 0.0 - groundDirection.y * 0.0;
+
+        /* start well behind the camera so the quad straddles it */
+        behind = -planeExtent;
+        towardsY = (float)(groundDirection.y * behind);
+        towardsZ = (float)(behind * groundDirection.z);
+        baseX = (float)(groundDirection.x * behind + cameraPosition->x);
+        baseY = (float)(towardsY + cameraPosition->y);
+        baseZ = (float)(towardsZ + planeHeight);
+
+        wide = planeExtent * 8.0;
+        narrow = planeExtent * -8.0;
+        twice = planeExtent + planeExtent;
+
+        clipA[2].x = (float)(perpY * wide + baseX);
+        clipA[2].y = (float)((float)(perpX * wide) + baseY);
+        clipA[2].z = (float)((float)(perpZ * wide) + baseZ);
+
+        clipA[3].x = (float)(perpY * narrow + baseX);
+        clipA[3].y = (float)((float)(perpX * narrow) + baseY);
+        clipA[3].z = (float)((float)(perpZ * narrow) + baseZ);
+
+        /* the far pair, shifted two extents along the ground direction */
+        shiftedX = (float)(groundDirection.x * twice + baseX);
+        shiftedY = (float)((float)(groundDirection.y * twice) + baseY);
+        shiftedZ = (float)((float)(twice * groundDirection.z) + baseZ);
+
+        clipA[0].x = (float)(perpY * narrow + shiftedX);
+        clipA[0].y = (float)((float)(perpX * narrow) + shiftedY);
+        clipA[0].z = (float)((float)(perpZ * narrow) + shiftedZ);
+
+        clipA[1].x = (float)((float)(perpY * wide) + shiftedX);
+        clipA[1].y = (float)((float)(perpX * wide) + shiftedY);
+        clipA[1].z = (float)(perpZ * wide + shiftedZ);
+    }
+
+    /* ---- clip against the five planes, alternating buffers ---- */
+    {
+        int kept = WTR_Clip(clipA, clipB, &plane01, offset01, 4);
+        kept = WTR_Clip(clipB, clipA, &plane12, offset12, kept);
+        kept = WTR_Clip(clipA, clipB, &plane32, offset32, kept);
+        kept = WTR_Clip(clipB, clipA, &plane03, offset03, kept);
+        survivors = (char)WTR_Clip(clipA, clipB, &backPlane, backOffset, kept);
+    }
+
+    /* ---- order the survivors, nearest pair first ---- */
+    {
+        const float projection0 = (float)(clipB[0].x * groundDirection.x
+            + clipB[0].y * groundDirection.y + clipB[0].z * groundDirection.z);
+        const float projection1 = (float)(clipB[1].z * groundDirection.z
+            + clipB[1].x * groundDirection.x + groundDirection.y * clipB[1].y);
+        const float projection2 = (float)(clipB[2].z * groundDirection.z
+            + clipB[2].x * groundDirection.x + groundDirection.y * clipB[2].y);
+        const float projection3 = (float)(clipB[3].z * groundDirection.z
+            + clipB[3].x * groundDirection.x + groundDirection.y * clipB[3].y);
+        const float projectionMean =
+            (float)((projection2 + projection0 + projection3 + projection1) * 0.25);
+
+        firstCorner = 0;
+        if (projection0 < projectionMean && projection1 > projectionMean)
+            firstCorner = 1;
+        if (projection1 < projectionMean && projection2 > (double)projectionMean)
+            firstCorner = 2;
+        if (projection2 < (double)projectionMean && projection3 > (double)projectionMean)
+            firstCorner = 3;
+        if (projection3 < (double)projectionMean && projection0 > projectionMean)
+            firstCorner = 0;
+    }
+
+    pick = &clipB[firstCorner & 3];
+    corners->x = pick->x;
+    corners->y = pick->y;
+    corners->z = pick->z;
+
+    pick = &clipB[(firstCorner + 1) & 3];
+    corners[1].x = pick->x;
+    corners[1].y = pick->y;
+    corners[1].z = pick->z;
+
+    pick = &clipB[(firstCorner - 2) & 3];
+    corners[2].x = pick->x;
+    corners[2].y = pick->y;
+    corners[2].z = pick->z;
+
+    pick = &clipB[(firstCorner - 1) & 3];
+    corners[3].x = pick->x;
+    corners[3].y = pick->y;
+    corners[3].z = pick->z;
+
+    return survivors & 4;
 }
 
 /* Switch the surface colour ramp between looking down at the water and looking
