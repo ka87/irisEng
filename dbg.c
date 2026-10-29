@@ -78,7 +78,8 @@ void DBG_OutputDebugString(char* Format, ...)
     va_list va;
 
     va_start(va, Format);
-    vsprintf(OutputString, Format, va);
+    _vsnprintf(OutputString, sizeof(OutputString) - 1, Format, va);
+    OutputString[sizeof(OutputString) - 1] = 0;
     va_end(va);
     OutputDebugStringA(OutputString);
 }
