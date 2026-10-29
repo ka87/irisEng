@@ -339,12 +339,15 @@ void* WATERFFT_Alloc(uint32_t size)
     return MEM_p_AllocAligned(size, 32);
 }
 
-float WATERFFT_philippe(Vec2* a1, Vec2* a2, float waveProp, float direction)
+/* Phillips distribution: how much energy a wave of this wavevector carries.
+ * Long waves dominate, by the inverse power of the length, and waves running
+ * with the wind are favoured over waves running across it. */
+float WATERFFT_philippe(Vec2* waveVector, Vec2* wind, float waveProp, float direction)
 {
     float vecLen;
     double base;
 
-    vecLen = (float)sqrt(a1->x * a1->x + a1->y * a1->y);
+    vecLen = (float)sqrt(waveVector->x * waveVector->x + waveVector->y * waveVector->y);
     if (vecLen == 0.0f)
         return 0.0f;
 
@@ -352,7 +355,7 @@ float WATERFFT_philippe(Vec2* a1, Vec2* a2, float waveProp, float direction)
     // this base is exactly zero there in exact arithmetic. Rounding leaves a
     // residue either side of zero, and a fractional power of a negative base
     // is a NaN that the later normalisation spreads over the whole spectrum.
-    base = (a2->y * a1->y + a1->x * a2->x) * 0.5 / (sqrt(a2->x * a2->x + a2->y * a2->y) * vecLen) + 0.5;
+    base = (wind->y * waveVector->y + waveVector->x * wind->x) * 0.5 / (sqrt(wind->x * wind->x + wind->y * wind->y) * vecLen) + 0.5;
     if (base < 0.0)
         base = 0.0;
 
@@ -3231,53 +3234,46 @@ void WTR_BeginLoadWorldHook()
 }
 
 
-/* Smooth the surface normals along each row, averaging each with the entry
- * before it and the matching entry on the next row. The last row is left as
- * it is, as it has no next row to read.
+/* Smooth the surface normals.
  *
- * The body still carries its original pointer walk and wants rewriting. */
+ * Two passes, each averaging every entry with the next one along its row and
+ * the one directly below it on the next row. The last entry of each row and
+ * the last row are left alone, as they have no neighbour to average with.
+ *
+ * The averaging is in place, so an entry is blended with neighbours that have
+ * already been blended themselves on this pass; walking order is therefore
+ * part of the result and is kept as it was. So are the two summation orders,
+ * which differ between the passes for the x component only. */
 void WTR_WaterBlurNormal(Vec3* normals, int rowLength, int rowCount)
 {
-    Vec3* v3;
-    Vec3* i;
-    double v8;
-    Vec3* v9;
-    int v10;
-    Vec3* j;
-    double v12;
+    Vec3* const end = &normals[rowLength * (rowCount - 1)];
+    Vec3* cursor;
 
-    v3 = &normals[rowLength * (rowCount - 1)];
-    Vec3* _EAX = normals;
-    if (normals < v3)
+    for (cursor = normals; cursor < end; cursor++)
     {
-        //_ESI = 4 * (3 * rowLength + 6);
-        int _ECX = rowLength;
-        do
+        Vec3* const rowEnd = &cursor[rowLength - 1];
+
+        for (; cursor < rowEnd; cursor++)
         {
-            for (i = &_EAX[_ECX - 1]; _EAX < i; _EAX[-1].z = (float)((_EAX[_ECX - 1].z + _EAX->z + _EAX[-1].z) * 0.33333299))
-            {
-                v8 = _EAX[_ECX].x + _EAX->x;
-                ++_EAX;
-                _EAX[-1].x = (float)((v8 + _EAX->x) * 0.33333299);
-                _EAX[-1].y = (float)((_EAX[_ECX - 1].y + _EAX->y + _EAX[-1].y) * 0.33333299);
-            }
-            ++_EAX;
-        } while (_EAX < v3);
+            const double belowPlusCurrent = cursor[rowLength].x + cursor->x;
+
+            cursor->x = (float)((belowPlusCurrent + cursor[1].x) * 0.33333299);
+            cursor->y = (float)((cursor[rowLength].y + cursor[1].y + cursor->y) * 0.33333299);
+            cursor->z = (float)((cursor[rowLength].z + cursor[1].z + cursor->z) * 0.33333299);
+        }
     }
-    v9 = normals;
-    if (normals < v3)
+
+    for (cursor = normals; cursor < end; cursor++)
     {
-        v10 = rowLength;
-        do
+        Vec3* const rowEnd = &cursor[rowLength - 1];
+
+        for (; cursor < rowEnd; cursor++)
         {
-            for (j = &v9[v10 - 1]; v9 < j; v9[-1].z = (float)((v9[v10 - 1].z + v9->z + v9[-1].z) * 0.33333299))
-            {
-                v12 = v9[v10].x;
-                ++v9;
-                v9[-1].x = (float)((v12 + v9->x + v9[-1].x) * 0.33333299);
-                v9[-1].y = (float)((v9[v10 - 1].y + v9->y + v9[-1].y) * 0.33333299);
-            }
-            ++v9;
-        } while (v9 < v3);
+            const float below = cursor[rowLength].x;
+
+            cursor->x = (float)((below + cursor[1].x + cursor->x) * 0.33333299);
+            cursor->y = (float)((cursor[rowLength].y + cursor[1].y + cursor->y) * 0.33333299);
+            cursor->z = (float)((cursor[rowLength].z + cursor[1].z + cursor->z) * 0.33333299);
+        }
     }
 }
