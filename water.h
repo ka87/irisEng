@@ -58,12 +58,18 @@ typedef struct sWaterEngineStruct
     int isSymmetryEnabled;
 } tWaterEngineStruct;
 
+/* One cell of the concatenated wave map. The first three are filled
+   from the space maps -- the horizontal displacement from the choppy
+   pair and the wave height from the height map -- and the sampler
+   reads them back in that order. The fourth is never given a value of
+   its own; it pads the cell to sixteen bytes and is carried along by
+   the whole-cell copies that build the wrap margins. */
 typedef struct sWtrStruct2
 {
-    float f1; // az f1, f2, f3 egy vec3 elvileg a WTR_BackExtendDXDY_sub_unknown szerint
-    float f2;
-    float f3;
-    float f4;
+    float displacementX;
+    float displacementY;
+    float height;
+    float spare;
 } tWtrStruct2;
 
 typedef struct sWaterParamsGlobalStruct
@@ -124,11 +130,11 @@ float COS_TABLE[2048]; //[cos, sin] [cos, sin] [...]
 float waterHeight;
 int Workkkk_748;
 
-void WTR_Get_A_DifVector(Vec3* a1, Vec3* a2, int a3);
-void WTR_Get_A_MrmVector(Vec3* a1, Vec3* a2);
+void WTR_Get_A_DifVector(Vec3* position, Vec3* result, int wantAbsolute);
+void WTR_Get_A_MrmVector(Vec3* position, Vec3* normalOut);
 void WTR_SetExportParams(tUserWaterParamsStruct* a1);
-void PC_AE_ZListHook(int a1);
+void PC_AE_ZListHook(int zListId);
 void WTR_BeginLoadWorldHook();
-void WTR_SetDefaulExp(struct sUserWaterParamsStruct* a1);
-void WTR_WaterBlurNormal(Vec3* a1, int a2, int a3);
+void WTR_SetDefaulExp(struct sUserWaterParamsStruct* exported);
+void WTR_WaterBlurNormal(Vec3* normals, int rowLength, int rowCount);
 
