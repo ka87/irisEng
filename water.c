@@ -1693,135 +1693,127 @@ void WTR_Compute_MipMap_sub_noSSE(tWtrStruct2* topRow, tWtrStruct2* out, tWtrStr
     }
 }
 
-/* Reduce one level of the sampling grid into the next, halving each side.
+/* Reduce one level of the concatenated map into the next.
  *
- * `result` is the side of the output level, `a2` the level being read and `a3`
- * the level being written. Each output row averages two by two blocks across
- * two source rows, whose stride is twice the output side plus one, and is then
- * followed by a wrap entry repeating the row's first entry - the same shape
- * the base level has.
+ * outputSide is the side of the level being written; the level being
+ * read is twice that. Each output cell averages a two by two block
+ * across two source rows, and each output row is followed by a wrap
+ * cell repeating the row's first - the same shape the finest level
+ * has, so that a level of side S occupies (S + 1) squared entries.
+ * The wrap row at the end is a copy of the first row.
  *
- * SUSPECT: that wrap entry indexes `ptrStart[offset / 0xFFFFFFF0]`. Both
- * operands are unsigned, so the quotient is zero for any real offset and the
- * entry copies itself, leaving the wrap column of every reduced level as
- * whatever was there before. The intent was almost certainly a signed divide
- * by -16, giving `ptrStart[-result]`, the start of the row. Left as it is,
- * because changing it changes the surface; see the notes before touching. */
-void WTR_Compute_MipMap(int result, tWtrStruct2* a2, tWtrStruct2* a3)
+ * The averaging leaves the fourth component of a cell alone; only the
+ * displacement pair and the height are reduced. */
+void WTR_Compute_MipMap(int outputSide, tWtrStruct2* source, tWtrStruct2* destination)
 {
-    tWtrStruct2* v3; // edx
-    unsigned int offset; // ebp
-    tWtrStruct2* ptrEnd; // esi
-    tWtrStruct2* ptrStart; // edi
-    tWtrStruct2* v8; // edx
-    float v9; // ecx
-    int v10; // [esp+10h] [ebp-8h]
-    tWtrStruct2* i; // [esp+14h] [ebp-4h]
+    const int sourceStride = 2 * outputSide + 1;
+    const int sourceRowPair = 2 * outputSide + 2;
+    tWtrStruct2* const bodyEnd = &destination[outputSide * (outputSide + 1)];
+    tWtrStruct2* out = destination;
 
-    v3 = a3;
-    offset = 16 * result;
-    ptrEnd = (tWtrStruct2*)((char*)a3 + result * (16 * result + 16));
-    ptrStart = a3;
-    if (a3 < ptrEnd)
+    while (out < bodyEnd)
     {
-        v10 = 2 * result;
-        do
+        tWtrStruct2* const rowEnd = &out[outputSide];
+
+        while (out < rowEnd)
         {
-            for (i = &ptrStart[offset / 0x10]; ptrStart < i; a2 += 4)
-            {
-                WTR_Compute_MipMap_sub_noSSE(a2, ptrStart, &a2[v10 + 1]);
-                ptrStart += 2;
-            }
-            v8 = ptrStart;
-            /* Repeat the first entry of the row as its wrap entry. The index
-             * is a signed divide of the byte offset by -16, which is minus
-             * the row length in entries. */
-            ptrStart->displacementX = ptrStart[-result].displacementX;
-            ptrStart->displacementY = ptrStart[-result].displacementY;
-            ptrStart->height = ptrStart[-result].height;
-            v9 = ptrStart[-result].spare;
-            ++ptrStart;
-            a2 = (tWtrStruct2*)((char*)a2 + v10 * 16 + 32);
-            v8->spare = v9;
-        } while (ptrStart < ptrEnd);
-        v3 = a3;
-    }
-    memcpy(ptrStart, v3, 16 * ((int)((int)&ptrEnd[1] + offset - (uint32_t)ptrStart) >> 4));
-}
-
-void WTR_BackExtendDXDY_sub_unknown(tWtrStruct2* a1, tWtrStruct2* a2, tWtrStruct2* a3, tWtrStruct2* a4)
-{
-    *a3 = *a2;
-    MATH_BlendVector((Vec3*)a2, (Vec3*)&a2[1], (Vec3*)&a3[1], 0.5);
-    MATH_BlendVector((Vec3*)a2, (Vec3*)a1, (Vec3*)a4, 0.5);
-    MATH_BlendVector((Vec3*)a1, (Vec3*)&a1[1], (Vec3*)&a4[1], 0.5);
-    MATH_BlendVector((Vec3*)&a4[1], (Vec3*)&a3[1], (Vec3*)&a4[1], 0.5);
-}
-
-void WTR_BackExtendDXDY_0(tWtrStruct2* a1, tWtrStruct2* a2, int a3)
-{
-    int v3; // ecx
-    tWtrStruct2* v4; // ebp
-    int v5; // esi
-    tWtrStruct2* v6; // edi
-    tWtrStruct2* v7; // eax
-    int v8; // edx
-    int v9; // esi
-    int v10; // eax
-    tWtrStruct2* v11; // esi
-    float v12; // ecx
-    int i; // [esp+10h] [ebp-10h]
-    tWtrStruct2* v14; // [esp+14h] [ebp-Ch]
-    tWtrStruct2* v15; // [esp+18h] [ebp-8h]
-
-    v3 = a3;
-    v4 = a2;
-    v5 = a3;
-    v6 = a1;
-    v7 = (tWtrStruct2*)((char*)a1 + a3 * (16 * a3 + 16));
-    v15 = v7;
-    if (v6 < v7)
-    {
-        v8 = 32 * a3;
-        while (1)
-        {
-            v14 = &v6[v5];
-            if (v6 < &v6[v5])
-            {
-                v9 = v3 + 1;
-                v10 = 16 * (2 * v3 + 1);
-                for (i = v10; ; v10 = i)
-                {
-                    WTR_BackExtendDXDY_sub_unknown(&v6[v9], v6, v4, (tWtrStruct2*)((char*)v4 + v10));
-                    ++v6;
-                    v4 += 2;
-                    if (v6 >= v14)
-                        break;
-                }
-                v7 = v15;
-                v8 = 32 * a3;
-            }
-            /* Same wrap: minus the row length in entries, which is a signed
-             * divide of the byte offset by -16. */
-            v4->displacementX = v4[-(2 * a3)].displacementX;
-            v4->displacementY = v4[-(2 * a3)].displacementY;
-            v4->height = v4[-(2 * a3)].height;
-            v4->spare = v4[-(2 * a3)].spare;
-            v11 = &v4[v8 / 0x10u + 1];
-            v11->displacementX = v11[-(2 * a3)].displacementX;
-            v11->displacementY = v11[-(2 * a3)].displacementY;
-            v11->height = v4[1].height;
-            v12 = v4[1].spare;
-            ++v6;
-            v4 = v11 + 1;
-            v11->spare = v12;
-            v3 = a3;
-            if (v6 >= v7)
-                break;
-            v5 = a3;
+            WTR_Compute_MipMap_sub_noSSE(source, out, &source[sourceStride]);
+            out += 2;
+            source += 4;
         }
+
+        /* wrap cell: repeat the first cell of the row just written */
+        {
+            const float spare = out[-outputSide].spare;
+            out->displacementX = out[-outputSide].displacementX;
+            out->displacementY = out[-outputSide].displacementY;
+            out->height = out[-outputSide].height;
+            out->spare = spare;
+            ++out;
+        }
+
+        source += sourceRowPair;
     }
-    memcpy(v4, a2, 4 * ((unsigned int)(16 * ((32 * v3 + 16) >> 4)) >> 2));
+
+    /* wrap row: whatever of the level is still unwritten, taken from
+       its first row. The row loop steps two cells at a time, so for a
+       level only one cell wide it overshoots and less is left here. */
+    memcpy(out, destination,
+           16 * (int)((((char*)&bodyEnd[1] + 16 * outputSide) - (char*)out) >> 4));
+}
+
+/* Expand one two by two block of the finer level from the coarser one:
+ * the coarse cell is copied to the top left and the other three are
+ * interpolated from it and its neighbours across, below and diagonally.
+ *
+ * NOTE: the four blends below write their result to the argument the
+ * surrounding code treats as a source. As they stand, the top right
+ * and bottom left of the destination block are never written and two
+ * cells of the source level are overwritten instead. Reaching this at
+ * all needs a choppy map coarser than the height map, which the
+ * defaults do not set up, so nothing exercises it today. Left as it
+ * was rather than changed blind. */
+void WTR_BackExtendDXDY_sub_unknown(tWtrStruct2* sourceBelow, tWtrStruct2* source,
+                                    tWtrStruct2* destination, tWtrStruct2* destinationBelow)
+{
+    *destination = *source;
+    MATH_BlendVector((Vec3*)source, (Vec3*)&source[1], (Vec3*)&destination[1], 0.5);
+    MATH_BlendVector((Vec3*)source, (Vec3*)sourceBelow, (Vec3*)destinationBelow, 0.5);
+    MATH_BlendVector((Vec3*)sourceBelow, (Vec3*)&sourceBelow[1], (Vec3*)&destinationBelow[1], 0.5);
+    MATH_BlendVector((Vec3*)&destinationBelow[1], (Vec3*)&destination[1], (Vec3*)&destinationBelow[1], 0.5);
+}
+
+/* Carry the horizontal displacement from a coarse level of the
+ * concatenated map down into the next finer one, which has twice the
+ * side. Each coarse cell expands into a two by two block, so one pass
+ * of the inner loop fills a pair of finer rows; each of those rows is
+ * then closed with the wrap cell repeating its own first cell, and the
+ * finer level's wrap row is copied from its first row.
+ *
+ * sourceSide is the side of the coarse level. */
+void WTR_BackExtendDXDY_0(tWtrStruct2* source, tWtrStruct2* destination, int sourceSide)
+{
+    const int sourceStride = sourceSide + 1;
+    const int destinationStride = 2 * sourceSide + 1;
+    tWtrStruct2* const sourceEnd = &source[sourceSide * (sourceSide + 1)];
+    tWtrStruct2* in = source;
+    tWtrStruct2* out = destination;
+
+    while (in < sourceEnd)
+    {
+        tWtrStruct2* const rowEnd = &in[sourceSide];
+        tWtrStruct2* lower;
+
+        while (in < rowEnd)
+        {
+            WTR_BackExtendDXDY_sub_unknown(&in[sourceStride], in, out, &out[destinationStride]);
+            ++in;
+            out += 2;
+        }
+
+        /* `out` is now the wrap cell of the upper row of the pair, and
+           out[1] the first cell of the lower row, so each wrap cell is
+           its own row start reached by stepping back one row of cells */
+        out->displacementX = out[-(2 * sourceSide)].displacementX;
+        out->displacementY = out[-(2 * sourceSide)].displacementY;
+        out->height = out[-(2 * sourceSide)].height;
+        out->spare = out[-(2 * sourceSide)].spare;
+
+        lower = &out[destinationStride];
+        {
+            const float spare = lower[-(2 * sourceSide)].spare;
+            lower->displacementX = lower[-(2 * sourceSide)].displacementX;
+            lower->displacementY = lower[-(2 * sourceSide)].displacementY;
+            lower->height = lower[-(2 * sourceSide)].height;
+            lower->spare = spare;
+        }
+
+        out = lower + 1;
+        ++in;
+    }
+
+    /* the wrap row of the finer level: a copy of its first row */
+    memcpy(out, destination, 16 * destinationStride);
 }
 
 /* Build the concatenated wave map: the finest level filled from the
