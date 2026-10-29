@@ -35,6 +35,7 @@
 #include "ai/ai_debugfunctions.h"
 #include "dbg.h"
 #include "world.h"
+#include "renderbisect.h"
 
 int WOR_gb_RealAllocWorld = 1;
 int WOR_gb_FinalWorld = 1;
@@ -2365,7 +2366,8 @@ void WOR_Render_All_GO(struct sWorld* a1, struct sGdi_DisplayData* dxdd)
                 continue;
             v5 = v4->flags2 & ~0x20000u | 4;
             v4->flags2 = v5;
-            if (ENG_gb_ActiveSectorization && v4->if_this_not0_wont_render_gao)
+            if ((ENG_gb_ActiveSectorization && v4->if_this_not0_wont_render_gao)
+                || RBIS_IsHidden(v4))
             {
                 v6 = v5 | 0x20000;
                 v4->distance = 0;

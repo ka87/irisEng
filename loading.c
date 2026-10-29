@@ -6,6 +6,8 @@
 #include "dbg.h"
 #include "textget.h"
 #include "loading.h"
+#include "renderbisect.h"
+#include "gameobject.h"
 
 int LOA_gb_CompressBin = 1;
 
@@ -367,6 +369,8 @@ void LOA_Resolve()
                         LOA_AddPosAddress(position, (unsigned int)addr);
                 }
             }
+            if (currElem->funcPtr == (void* (*)(uint32_t))OBJ_ul_GameObjectCallback)
+                RBIS_NoteGao((unsigned int)currElem->key, (struct sGameObjectMain*)addr);
             retValPtr = currElem->retValPtr;
             if (retValPtr)
                 *retValPtr = addr;
