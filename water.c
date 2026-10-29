@@ -3216,6 +3216,22 @@ int WTR_Mesh_Do(tWaterParamsGlobalStruct* a1)
     v8 = &gpst_DX_stDD->ct.cam.objectMtx.v3;
     v9 = &gpst_DX_stDD->ct.cam.objectMtx.Pos;
     result = WTR_Compute_Mesh0(a1, &gpst_DX_stDD->ct.cam.objectMtx.Pos, &gpst_DX_stDD->ct.cam.objectMtx.v3, a5, 1.0);
+    {   // debug trace: report every change of result, and one frame in 120 otherwise
+        static int dbg_last = -1;
+        static int dbg_n = 0;
+        if (result != dbg_last || (dbg_n++ % 120) == 0)
+        {
+            Vec3* dv = a1->verticesForDisplay;
+            DBG_OutputDebugString(
+                "[WTR] mesh: res=%d cam=(%f,%f,%f) sight=(%f,%f,%f) scale=%f wh=%f n=%ux%d "
+                "disp=%p v0=(%f,%f,%f) v1=(%f,%f,%f)\n",
+                result, v9->x, v9->y, v9->z, v8->x, v8->y, v8->z, a5, a1->waterHeight,
+                a1->horizontalVertexNum, a1->verticallVertexNum, dv,
+                dv ? dv[0].x : 0.0f, dv ? dv[0].y : 0.0f, dv ? dv[0].z : 0.0f,
+                dv ? dv[1].x : 0.0f, dv ? dv[1].y : 0.0f, dv ? dv[1].z : 0.0f);
+            dbg_last = result;
+        }
+    }
     if (result)
     {
         v13 = a1->waterHeight - 100.0;
