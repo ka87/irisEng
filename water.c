@@ -12,129 +12,114 @@ float FFT_FACTORS_C[] = {
         0.012271538f, 0.99998116f, 0.0061358851f, 0.99999529f,
         0.003067957f, 0.99999881f, 0.00153398f, 0.9999997f, 0.00076699001f };
 
-void WTR_Get_A_DifVector(Vec3* a1, Vec3* a2, int a3)
+/* Find the water surface under a world position.
+ *
+ * The surface is not a height field: the choppy term moves each point
+ * sideways as well as up, so the point of the surface that ends up above a
+ * given x and y is not the one sampled at that x and y. The lookup therefore
+ * solves backwards, sampling, seeing how far the sample drifted, and stepping
+ * halfway back. Five passes when an absolute position is wanted, one when only
+ * the displacement is.
+ *
+ * Sampling is bilinear over the base level of the concatenated map, whose rows
+ * are one entry longer than the grid is wide so the fourth corner of the last
+ * cell exists. The 40000 added before scaling keeps the indices positive for
+ * any position in a world.
+ *
+ * With no water, or with cloud shading on, the surface is reported as
+ * unreachably far below. */
+void WTR_Get_A_DifVector(Vec3* position, Vec3* result, int wantAbsolute)
 {
-    int v3; // eax
-    int v4; // esi
-    tWtrStruct2* v5; // edi
-    float v6; // st7
-    float v7; // st7
-    float v8; // st6
-    float v9; // st5
-    int v10; // eax
-    float v11; // st6
-    tWtrStruct2* v12; // edx
-    float v13; // st4
-    float v14; // st3
-    float v15; // st2
-    tWtrStruct2* v16; // edx
-    tWtrStruct2* v17; // eax
-    float v18; // st5
-    BOOL v19; // zf
-    float v20; // [esp+10h] [ebp-70h]
-    float v21; // [esp+14h] [ebp-6Ch]
-    float v22; // [esp+18h] [ebp-68h]
-    int v23; // [esp+1Ch] [ebp-64h]
-    double v24; // [esp+20h] [ebp-60h]
-    float v25; // [esp+2Ch] [ebp-54h]
-    double v26; // [esp+30h] [ebp-50h]
-    float v27; // [esp+38h] [ebp-48h]
-    float v28; // [esp+3Ch] [ebp-44h]
-    float v29; // [esp+3Ch] [ebp-44h]
-    float v30; // [esp+3Ch] [ebp-44h]
-    float v31; // [esp+40h] [ebp-40h]
-    float v32; // [esp+40h] [ebp-40h]
-    float v33; // [esp+40h] [ebp-40h]
-    float v34; // [esp+40h] [ebp-40h]
-    Vec3 v35; // [esp+44h] [ebp-3Ch]
-    float v36; // [esp+48h] [ebp-38h]
-    float v37; // [esp+50h] [ebp-30h]
-    float v38; // [esp+54h] [ebp-2Ch]
-    float v39; // [esp+58h] [ebp-28h]
-    float v40; // [esp+5Ch] [ebp-24h]
-    float v41; // [esp+60h] [ebp-20h]
-    float v42; // [esp+64h] [ebp-1Ch]
-    float v43; // [esp+68h] [ebp-18h]
-    float v44; // [esp+6Ch] [ebp-14h]
-    float v45; // [esp+70h] [ebp-10h]
-    float v46; // [esp+78h] [ebp-8h]
-    float v47; // [esp+7Ch] [ebp-4h]
+    tWaterParamsGlobalStruct* water = pst_GlobalsWaterParams;
+    tWtrStruct2* map;
+    float cellsPerMetre, choppyScale, heightScale;
+    float inverseTiling;
+    int side, mask, rowStride;
+    int pass, passes;
+    float x, y;
+    float displacementX = 0.0f, displacementY = 0.0f, height = 0.0f;
 
-    if (!pst_GlobalsWaterParams || pst_GlobalsWaterParams->waterEngine.useCloudShadingforColors)
+    if (!water || water->waterEngine.useCloudShadingforColors)
     {
-        a2->x = 0.0;
-        a2->y = 0.0;
-        a2->z = -1000000000.0f;
+        result->x = 0.0f;
+        result->y = 0.0f;
+        result->z = -1000000000.0f;
+        return;
+    }
+
+    passes = wantAbsolute ? 5 : 1;
+    side = 1 << water->waterEngine.borderSizePowerOfTwo;
+    mask = side - 1;
+    rowStride = side + 1;
+    map = water->concatenatedMap;
+
+    cellsPerMetre = side * water->tiling;
+    inverseTiling = 1.0f / water->tiling;
+    choppyScale = inverseTiling * water->choppy;
+    heightScale = inverseTiling * water->waveHeight;
+
+    x = position->x;
+    y = position->y;
+
+    for (pass = 0; pass < passes; pass++)
+    {
+        const double u = (x + 40000.0) * cellsPerMetre;
+        const double v = (y + 40000.0) * cellsPerMetre;
+
+        /* Round down to a cell by the magic double trick: adding the magic
+         * constant leaves the integer in the low word of the double. The
+         * values here are far too large to survive a trip through float, so
+         * this is done in double rather than through f2iMagic. */
+        double roundedU = u - 0.5 + MATH_gd_magicDoubleForRound;
+        double roundedV = v - 0.5 + MATH_gd_magicDoubleForRound;
+        const int cellX = *(int32_t*)&roundedU;
+        const int cellY = *(int32_t*)&roundedV;
+
+        const double fractionX = u - (double)cellX;
+        const double fractionY = v - (double)cellY;
+
+        const int corner = (cellY & mask) * rowStride + (cellX & mask);
+        tWtrStruct2* const bottomLeft = &map[corner];
+        tWtrStruct2* const bottomRight = &map[corner + 1];
+        tWtrStruct2* const topLeft = &map[corner + rowStride];
+        tWtrStruct2* const topRight = &map[corner + rowStride + 1];
+
+        const double oneMinusX = 1.0 - fractionX;
+        const double weightBottomLeft = oneMinusX * (1.0 - fractionY);
+        const double weightBottomRight = (1.0 - fractionY) * fractionX;
+        const double weightTopLeft = oneMinusX * fractionY;
+        const double weightTopRight = fractionY * fractionX;
+
+        const float sumX = (float)(weightBottomRight * bottomRight->f1 + weightBottomLeft * bottomLeft->f1);
+        const float sumY = (float)(bottomRight->f2 * weightBottomRight + bottomLeft->f2 * weightBottomLeft);
+        const float sumZ = (float)(bottomRight->f3 * weightBottomRight + bottomLeft->f3 * weightBottomLeft);
+
+        const float withTopY = (float)(topLeft->f2 * weightTopLeft + sumY);
+        const float withTopZ = (float)(topLeft->f3 * weightTopLeft + sumZ);
+        const float allZ = (float)(weightTopRight * topRight->f3 + withTopZ);
+
+        displacementX = (float)(choppyScale * (weightTopRight * topRight->f1 + weightTopLeft * topLeft->f1 + sumX));
+        displacementY = (float)(choppyScale * (topRight->f2 * weightTopRight + withTopY));
+        height = (float)(heightScale * allZ + water->waterHeight);
+
+        /* Step halfway back towards the position asked for. The halving is in
+         * double, as it was, so the step rounds the same. */
+        x = (float)(x + (position->x - (displacementX + x)) * 0.5);
+        y = (float)(y + (position->y - (displacementY + y)) * 0.5);
+    }
+
+    if (wantAbsolute)
+    {
+        result->x = displacementX + x;
+        result->y = displacementY + y;
     }
     else
     {
-        v36 = a1->y;
-        v3 = 1;
-        if (a3)
-            v3 = 5;
-        v4 = 1 << pst_GlobalsWaterParams->waterEngine.borderSizePowerOfTwo;
-        v5 = pst_GlobalsWaterParams->concatenatedMap;
-        v23 = v3;
-        v21 = v4 * pst_GlobalsWaterParams->tiling;
-        v6 = 1.0f / pst_GlobalsWaterParams->tiling;
-        v22 = v6 * pst_GlobalsWaterParams->choppy;
-        v25 = v6 * pst_GlobalsWaterParams->waveHeight;
-        v7 = a1->x;
-        do
-        {
-            v8 = (v7 + 40000.0) * v21;
-            v9 = (v36 + 40000.0) * v21;
-            v26 = v8 - 0.5 + MATH_gd_magicDoubleForRound;
-            v24 = v9 - 0.5 + MATH_gd_magicDoubleForRound;
-            v20 = v8 - (*(int32_t*)&v26);
-            v10 = (((*(uint32_t *)&v24) & (v4 - 1)) << pst_GlobalsWaterParams->waterEngine.borderSizePowerOfTwo)
-                + ((*(uint32_t*)&v24) & (v4 - 1))
-                + ((*(uint32_t*)&v26) & (v4 - 1));
-            v11 = v9 - (double)(*(int32_t*)&v24);
-            v12 = &v5[v10];
-            v13 = 1.0 - v20;
-            v14 = v13 * (1.0 - v11);
-            v28 = v12->f2 * v14;
-            v31 = v12->f3 * v14;
-            v15 = (1.0 - v11) * v20;
-            v40 = v15 * v12[1].f1;
-            v41 = v12[1].f2 * v15;
-            v42 = v12[1].f3 * v15;
-            v27 = v40 + v14 * v12->f1;
-            v16 = &v5[v10 + 1 + v4];
-            v29 = v41 + v28;
-            v17 = &v5[v10 + 2 + v4];
-            v32 = v42 + v31;
-            v46 = v16->f2 * (v13 * v11);
-            v47 = v16->f3 * (v13 * v11);
-            v30 = v46 + v29;
-            v33 = v47 + v32;
-            v18 = v11 * v20;
-            v43 = v18 * v17->f1;
-            v44 = v17->f2 * v18;
-            v45 = v17->f3 * v18;
-            v34 = v45 + v33;
-            v37 = v22 * (v43 + v13 * v11 * v16->f1 + v27);
-            v38 = v22 * (v44 + v30);
-            v39 = v25 * v34 + pst_GlobalsWaterParams->waterHeight;
-            v7 = v7 + (a1->x - (v37 + v7)) * 0.5;
-            v19 = v23-- == 1;
-            v36 = (a1->y - (v38 + v36)) * 0.5 + v36;
-        } while (!v19);
-        v35.y = v38 + v36;
-        if (a3)
-        {
-            v35.x = v37 + v7;
-            v35.z = a1->z;
-            *a2 = v35;
-        }
-        else
-        {
-            a2->x = v37;
-            a2->y = v38;
-        }
-        a2->z = v39;
+        result->x = displacementX;
+        result->y = displacementY;
     }
+
+    result->z = height;
 }
 
 /* Surface normal of the water under a world position.

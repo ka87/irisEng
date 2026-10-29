@@ -124,7 +124,7 @@ float COS_TABLE[2048]; //[cos, sin] [cos, sin] [...]
 float waterHeight;
 int Workkkk_748;
 
-void WTR_Get_A_DifVector(Vec3* a1, Vec3* a2, int a3);
+void WTR_Get_A_DifVector(Vec3* position, Vec3* result, int wantAbsolute);
 void WTR_Get_A_MrmVector(Vec3* position, Vec3* normalOut);
 void WTR_SetExportParams(tUserWaterParamsStruct* a1);
 void PC_AE_ZListHook(int zListId);
