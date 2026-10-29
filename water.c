@@ -278,13 +278,14 @@ void WTR_SetDefault(tWaterParamsGlobalStruct* water)
     water->waterEngine.waterColor = WTR_Vector_2_Color(&surface);
 }
 
+/* Allocate aligned and clear it, since the water reads some of these buffers
+ * before anything has written them. */
 void* WTR_AllocAlign(int size, int alignment)
 {
-    void* ptr;
+    void* block = MEM_p_AllocAligned(size, alignment);
 
-    ptr = MEM_p_AllocAligned(size, alignment);
-    memset(ptr, 0, size);
-    return ptr;
+    memset(block, 0, size);
+    return block;
 }
 
 /* Allocate every buffer a water block needs for its current grid sizes.
@@ -2530,38 +2531,32 @@ int WTR_Compute4Points(Vec3* points, Vec3* a2, Vec3* a3, Vec3* a4, float a5, flo
     return v73 & 4;
 }
 
-void WTR_UpdateColorMode(tWaterParamsGlobalStruct* wtr, float wtrHeight)
+/* Switch the surface colour ramp between looking down at the water and looking
+ * up through it.
+ *
+ * The ramp always starts from the same stored copy; what changes is which end
+ * of it is flattened. Seen from above, the 32 entries from 224 become the sky
+ * colour; seen from below, the 32 from 256 become the bottom colour. The mode
+ * is remembered so the ramp is only rebuilt when the camera crosses. */
+void WTR_UpdateColorMode(tWaterParamsGlobalStruct* water, float cameraHeight)
 {
-    int* currColor;
-    int idx;
+    const int wanted = (cameraHeight <= water->waterHeight) ? 1 : 2;
+    int* entry;
+    int i;
 
-    if (wtrHeight <= wtr->waterHeight)
-    {
-        if (wtr->waterEngine.waterColorMode != 1)
-        {
-            memcpy(&wtr->waterEngine.colorTable[224], wtr->waterEngine.colorTableBackup, 256u);
-            currColor = &wtr->waterEngine.colorTable[256];
-            idx = 32;
-            do
-            {
-                *currColor++ = wtr->waterEngine.bottomColor;
-                --idx;
-            } while (idx);
-            wtr->waterEngine.waterColorMode = 1;
-        }
-    }
-    else if (wtr->waterEngine.waterColorMode != 2)
-    {
-        currColor = &wtr->waterEngine.colorTable[224];
-        memcpy(&wtr->waterEngine.colorTable[224], wtr->waterEngine.colorTableBackup, 256u);
-        idx = 32;
-        do
-        {
-            *currColor++ = wtr->waterEngine.skyColor;
-            --idx;
-        } while (idx);
-        wtr->waterEngine.waterColorMode = 2;
-    }
+    if (water->waterEngine.waterColorMode == wanted)
+        return;
+
+    /* 256 bytes, so 64 entries from 224: only the top half of the stored copy
+     * is restored, not all 128 of it. */
+    memcpy(&water->waterEngine.colorTable[224], water->waterEngine.colorTableBackup, 256u);
+
+    entry = &water->waterEngine.colorTable[wanted == 1 ? 256 : 224];
+
+    for (i = 0; i < 32; i++)
+        entry[i] = (wanted == 1) ? water->waterEngine.bottomColor : water->waterEngine.skyColor;
+
+    water->waterEngine.waterColorMode = wanted;
 }
 
 void WTR_Compute_Mesh0_Rasterize_Line(Vec3* a1, tWtrStruct2* a2, int a3, float a4, Vec3* a5, Vec3* a6, int a7, float a8, float a9, float a10)
@@ -2679,29 +2674,25 @@ void WTR_Compute_Mesh0_Rasterize_Line(Vec3* a1, tWtrStruct2* a2, int a3, float a
     }
 }
 
-void WTR_DirectComputeColors_CloudShading(Vec3* vertices, int* colorOut, int vertexnum, int color1, int color2, float distanceMuliplier, float zDistance)
+/* Shade one row of the surface by height alone, blending between two colours
+ * as the vertex rises above or falls below the reference height.
+ *
+ * The last entry of the row is not shaded but copied from the one before it,
+ * because the row carries one vertex more than it has spans. */
+void WTR_DirectComputeColors_CloudShading(Vec3* vertices, int* colorOut, int vertexnum,
+                                          int lowColor, int highColor, float distanceMuliplier, float zDistance)
 {
-    Vec3* currVertex;
-    int* currColor;
-    float factor;
+    const int shadedCount = vertexnum - 1;
+    int i;
 
-    currVertex = vertices;
-    if (vertices >= &vertices[vertexnum - 1])
+    for (i = 0; i < shadedCount; i++)
     {
-        *colorOut = *(colorOut - 1);
+        const float blend = (vertices[i].z - zDistance) * distanceMuliplier + 0.5f;
+
+        colorOut[i] = LIGHT_ul_Interpol2Colors(lowColor, highColor, blend);
     }
-    else
-    {
-        currColor = colorOut;
-        do
-        {
-            factor = (currVertex->z - zDistance) * distanceMuliplier + 0.5f;
-            *currColor = LIGHT_ul_Interpol2Colors(color1, color2, factor);
-            ++currVertex;
-            ++currColor;
-        } while (currVertex < &vertices[vertexnum - 1]);
-        *currColor = *(currColor - 1);
-    }
+
+    colorOut[shadedCount] = colorOut[shadedCount - 1];
 }
 
 void WTR_DirectComputeColors(Vec3* a1, Vec3* camerObjectPos, Vec3* vecsForUvs, Vec3* a4, int* colors, int num, int* a7, float a8)
