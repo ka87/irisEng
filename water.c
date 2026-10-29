@@ -336,6 +336,7 @@ void* WATERFFT_Alloc(uint32_t size)
 float WATERFFT_philippe(Vec2* a1, Vec2* a2, float waveProp, float direction)
 {
     float vecLen;
+    double base;
 
     vecLen = (float)sqrt(a1->x * a1->x + a1->y * a1->y);
     if (vecLen == 0.0f)
@@ -354,7 +355,15 @@ float WATERFFT_philippe(Vec2* a1, Vec2* a2, float waveProp, float direction)
             dbg_n++;
         }
     }
-    return (float)(pow((a2->y * a1->y + a1->x * a2->x) * 0.5 / (sqrt(a2->x * a2->x + a2->y * a2->y) * vecLen) + 0.5, direction) / pow(vecLen, waveProp));
+    // The cosine term is exactly -1 where the wavevector opposes the wind, so
+    // this base is exactly zero there in exact arithmetic. Rounding leaves a
+    // residue either side of zero, and a fractional power of a negative base
+    // is a NaN that the later normalisation spreads over the whole spectrum.
+    base = (a2->y * a1->y + a1->x * a2->x) * 0.5 / (sqrt(a2->x * a2->x + a2->y * a2->y) * vecLen) + 0.5;
+    if (base < 0.0)
+        base = 0.0;
+
+    return (float)(pow(base, direction) / pow(vecLen, waveProp));
 }
 
 void WATERFFT_Normalize(tFFTComplex* a1, int a2)
