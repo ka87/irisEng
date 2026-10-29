@@ -2595,118 +2595,85 @@ void WTR_UpdateColorMode(tWaterParamsGlobalStruct* water, float cameraHeight)
     water->waterEngine.waterColorMode = wanted;
 }
 
-void WTR_Compute_Mesh0_Rasterize_Line(Vec3* a1, tWtrStruct2* a2, int a3, float a4, Vec3* a5, Vec3* a6, int a7, float a8, float a9, float a10)
+/* Walk a line across the water and write the surface along it.
+ *
+ * Starting at `start` and stepping by `step`, each vertex samples the grid
+ * bilinearly at the position reached so far, the same four corner read the
+ * lookup uses, and the sampled displacement and height are added to that
+ * position. `keepPrevious` blends the result against whatever the vertex
+ * already held, so zero replaces it outright.
+ *
+ * The 40000 added before scaling keeps the grid indices positive for any
+ * position in a world. */
+void WTR_Compute_Mesh0_Rasterize_Line(Vec3* verticesOut, tWtrStruct2* map, int sizeLog2, float tiling,
+                                      Vec3* start, Vec3* step, int count,
+                                      float choppyScale, float heightScale, float keepPrevious)
 {
-    Vec3* v10; // eax
-    int v11; // ebx
-    double v12; // st7
-    double v13; // st6
-    double v14; // st5
-    int v15; // edi
-    double v16; // st6
-    tWtrStruct2* v17; // esi
-    double v18; // st4
-    double v19; // st3
-    double v20; // st2
-    tWtrStruct2* v21; // esi
-    double v22; // st5
-    double v23; // st4
-    double v24; // st3
-    tWtrStruct2* v25; // esi
-    double v26; // st5
-    double v27; // rt1
-    float v28; // [esp+10h] [ebp-78h]
-    float v29; // [esp+14h] [ebp-74h]
-    int v30; // [esp+18h] [ebp-70h]
-    Vec3* v31; // [esp+1Ch] [ebp-6Ch]
-    double v32; // [esp+20h] [ebp-68h]
-    double v33; // [esp+28h] [ebp-60h]
-    float v34; // [esp+34h] [ebp-54h]
-    float v35; // [esp+34h] [ebp-54h]
-    float v36; // [esp+34h] [ebp-54h]
-    float v37; // [esp+38h] [ebp-50h]
-    float v38; // [esp+38h] [ebp-50h]
-    float v39; // [esp+38h] [ebp-50h]
-    float v40; // [esp+38h] [ebp-50h]
-    float v41; // [esp+3Ch] [ebp-4Ch]
-    float v42; // [esp+3Ch] [ebp-4Ch]
-    float v43; // [esp+3Ch] [ebp-4Ch]
-    float v44; // [esp+3Ch] [ebp-4Ch]
-    float v45; // [esp+44h] [ebp-44h]
-    float v46; // [esp+48h] [ebp-40h]
-    float v47; // [esp+4Ch] [ebp-3Ch]
-    float v48; // [esp+50h] [ebp-38h]
-    float v49; // [esp+54h] [ebp-34h]
-    float v50; // [esp+58h] [ebp-30h]
-    float v51; // [esp+5Ch] [ebp-2Ch]
-    float v52; // [esp+60h] [ebp-28h]
-    float v53; // [esp+68h] [ebp-20h]
-    float v54; // [esp+6Ch] [ebp-1Ch]
-    float v55; // [esp+78h] [ebp-10h]
-    float v56; // [esp+84h] [ebp-4h]
-    float a4a; // [esp+94h] [ebp+Ch]
+    const int side = 1 << sizeLog2;
+    const int mask = side - 1;
+    const int rowStride = side + 1;
+    const double cellsPerMetre = (double)(unsigned int)side * tiling;
+    const double oneMinusKeep = 1.0 - keepPrevious;
 
-    v10 = a1;
-    v46 = a5->z;
-    v45 = a5->y;
-    v11 = 1 << a3;
-    v31 = &a1[a7];
-    v30 = 1 << a3;
-    a4a = (double)(unsigned int)(1 << a3) * a4;
-    if (a1 < v31)
+    float walkX = start->x;
+    float walkY = start->y;
+    float walkZ = start->z;
+    int i;
+
+    for (i = 0; i < count; i++)
     {
-        v29 = 1.0 - a10;
-        v12 = a5->x;
-        do
-        {
-            v13 = (v12 + 40000.0) * a4a;
-            v14 = (v45 + 40000.0) * a4a;
-            v33 = v13 - 0.5 + MATH_gd_magicDoubleForRound;
-            v32 = v14 - 0.5 + MATH_gd_magicDoubleForRound;
-            v28 = v13 - (double)(*(int32_t *)&v33);
-            v15 = ((*(uint32_t*)&v33) & (v11 - 1)) + ((*(uint32_t*)&v32) & (v11 - 1)) + (((*(uint32_t*)&v32) & (v11 - 1)) << a3);
-            v16 = v14 - (double)(*(int32_t*)&v32);
-            v17 = &a2[v15];
-            v18 = 1.0 - v28;
-            v19 = v18 * (1.0 - v16);
-            v37 = v17->f2 * v19;
-            v41 = v17->f3 * v19;
-            v20 = (1.0 - v16) * v28;
-            v47 = v20 * v17[1].f1;
-            v48 = v17[1].f2 * v20;
-            v49 = v17[1].f3 * v20;
-            v34 = v47 + v19 * v17->f1;
-            v11 = 1 << a3;
-            v38 = v48 + v37;
-            v21 = &a2[v15 + 1 + v30];
-            v42 = v49 + v41;
-            v22 = v18 * v16;
-            v23 = v18 * v16 * v21->f1;
-            v53 = v21->f2 * v22;
-            v24 = v21->f3;
-            v25 = &a2[v30 + 2 + v15];
-            v54 = v24 * v22;
-            v39 = v53 + v38;
-            v43 = v54 + v42;
-            v26 = v16 * v28;
-            v50 = v26 * v25->f1;
-            v51 = v25->f2 * v26;
-            v52 = v25->f3 * v26;
-            v44 = v52 + v43;
-            v35 = (v50 + v23 + v34) * a8;
-            ++v10;
-            v55 = v46 * v29;
-            v36 = v29 * v12 + v35;
-            v40 = v29 * v45 + (v51 + v39) * a8;
-            v56 = a10 * v10[-1].z;
-            v27 = v10[-1].y * a10;
-            v10[-1].x = a10 * v10[-1].x + v36;
-            v10[-1].y = v27 + v40;
-            v10[-1].z = v56 + v55 + v44 * a9;
-            v12 = v12 + a6->x;
-            v45 = v45 + a6->y;
-            v46 = v46 + a6->z;
-        } while (v10 < v31);
+        const double u = (walkX + 40000.0) * cellsPerMetre;
+        const double v = (walkY + 40000.0) * cellsPerMetre;
+
+        /* Cell index through the magic double, in double because the values
+         * are far too large to survive a trip through float. */
+        double roundedU = u - 0.5 + MATH_gd_magicDoubleForRound;
+        double roundedV = v - 0.5 + MATH_gd_magicDoubleForRound;
+        const int cellX = *(int32_t*)&roundedU;
+        const int cellY = *(int32_t*)&roundedV;
+
+        const double fractionX = u - (double)cellX;
+        const double fractionY = v - (double)cellY;
+
+        const int corner = (cellX & mask) + (cellY & mask) + ((cellY & mask) << sizeLog2);
+        tWtrStruct2* const bottomLeft = &map[corner];
+        tWtrStruct2* const bottomRight = &map[corner + 1];
+        tWtrStruct2* const topLeft = &map[corner + rowStride];
+        tWtrStruct2* const topRight = &map[corner + rowStride + 1];
+
+        const double oneMinusX = 1.0 - fractionX;
+        const double weightBottomLeft = oneMinusX * (1.0 - fractionY);
+        const double weightBottomRight = (1.0 - fractionY) * fractionX;
+        const double weightTopLeft = oneMinusX * fractionY;
+        const double weightTopRight = fractionY * fractionX;
+
+        const float sumX = (float)(weightBottomRight * bottomRight->f1 + weightBottomLeft * bottomLeft->f1);
+        const float sumY = (float)(bottomRight->f2 * weightBottomRight + bottomLeft->f2 * weightBottomLeft);
+        const float sumZ = (float)(bottomRight->f3 * weightBottomRight + bottomLeft->f3 * weightBottomLeft);
+
+        const float topLeftX = (float)(oneMinusX * fractionY * topLeft->f1);
+        const float withTopY = (float)(topLeft->f2 * weightTopLeft + sumY);
+        const float withTopZ = (float)(topLeft->f3 * weightTopLeft + sumZ);
+
+        const float topRightX = (float)(weightTopRight * topRight->f1);
+        const float topRightY = (float)(topRight->f2 * weightTopRight);
+        const float allZ = (float)(topRight->f3 * weightTopRight + withTopZ);
+
+        const float displacementX = (float)((topRightX + topLeftX + sumX) * choppyScale);
+        const float movedX = (float)(oneMinusKeep * walkX + displacementX);
+        const float movedY = (float)(oneMinusKeep * walkY + (topRightY + withTopY) * choppyScale);
+        const float keptZ = (float)(walkZ * oneMinusKeep);
+
+        const float previousZ = (float)(keepPrevious * verticesOut[i].z);
+        const float previousY = (float)(verticesOut[i].y * keepPrevious);
+
+        verticesOut[i].x = (float)(keepPrevious * verticesOut[i].x + movedX);
+        verticesOut[i].y = previousY + movedY;
+        verticesOut[i].z = (float)(previousZ + keptZ + allZ * heightScale);
+
+        walkX = walkX + step->x;
+        walkY = walkY + step->y;
+        walkZ = walkZ + step->z;
     }
 }
 
