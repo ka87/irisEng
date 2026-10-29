@@ -1762,10 +1762,13 @@ void WTR_Compute_MipMap(int result, tWtrStruct2* a2, tWtrStruct2* a3)
                 ptrStart += 2;
             }
             v8 = ptrStart;
-            ptrStart->f1 = ptrStart[offset / 0xFFFFFFF0].f1;
-            ptrStart->f2 = ptrStart[offset / 0xFFFFFFF0].f2;
-            ptrStart->f3 = ptrStart[offset / 0xFFFFFFF0].f3;
-            v9 = ptrStart[offset / 0xFFFFFFF0].f4;
+            /* Repeat the first entry of the row as its wrap entry. The index
+             * is a signed divide of the byte offset by -16, which is minus
+             * the row length in entries. */
+            ptrStart->f1 = ptrStart[-result].f1;
+            ptrStart->f2 = ptrStart[-result].f2;
+            ptrStart->f3 = ptrStart[-result].f3;
+            v9 = ptrStart[-result].f4;
             ++ptrStart;
             a2 = (tWtrStruct2*)((char*)a2 + v10 * 16 + 32);
             v8->f4 = v9;
@@ -1827,13 +1830,15 @@ void WTR_BackExtendDXDY_0(tWtrStruct2* a1, tWtrStruct2* a2, int a3)
                 v7 = v15;
                 v8 = 32 * a3;
             }
-            v4->f1 = v4[v8 / 0xFFFFFFF0].f1;
-            v4->f2 = v4[v8 / 0xFFFFFFF0].f2;
-            v4->f3 = v4[v8 / 0xFFFFFFF0].f3;
-            v4->f4 = v4[v8 / 0xFFFFFFF0].f4;
+            /* Same wrap: minus the row length in entries, which is a signed
+             * divide of the byte offset by -16. */
+            v4->f1 = v4[-(2 * a3)].f1;
+            v4->f2 = v4[-(2 * a3)].f2;
+            v4->f3 = v4[-(2 * a3)].f3;
+            v4->f4 = v4[-(2 * a3)].f4;
             v11 = &v4[v8 / 0x10u + 1];
-            v11->f1 = v11[v8 / 0xFFFFFFF0].f1;
-            v11->f2 = v11[v8 / 0xFFFFFFF0].f2;
+            v11->f1 = v11[-(2 * a3)].f1;
+            v11->f2 = v11[-(2 * a3)].f2;
             v11->f3 = v4[1].f3;
             v12 = v4[1].f4;
             ++v6;
