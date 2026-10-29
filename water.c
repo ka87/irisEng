@@ -2025,166 +2025,159 @@ void WTR_Concate(tWaterParamsGlobalStruct* water)
     }
 }
 
-void WTR_SetExportParams(tUserWaterParamsStruct* a1)
+/* Take the parameters a level exports and apply them to the live water.
+ *
+ * Disabling the water parks the globals in the save slot rather than
+ * freeing them, so re-enabling it later gets the same block back with
+ * its buffers intact; only the very first enable allocates.
+ *
+ * Any field left at zero means "keep what is already there", and the
+ * two map shifts are clamped to the four to nine the allocator can
+ * serve, with the choppy map never finer than the height map.
+ *
+ * Three things can follow, and they are independent:
+ *   - buffers are reallocated when any requested size grew, since the
+ *     existing ones would be too small;
+ *   - the spectrum is rebuilt when any size or wave parameter changed
+ *     at all, in either direction;
+ *   - the Fresnel table is recomputed when a colour changed. */
+void WTR_SetExportParams(tUserWaterParamsStruct* exported)
 {
-    tWaterParamsGlobalStruct* v1; // eax
-    int v2; // ebp
-    int v3; // ebx
-    unsigned int v4; // edi
-    unsigned int v5; // ecx
-    unsigned int v6; // edx
-    int v7; // [esp+10h] [ebp-8h]
-    int colorChanged; // [esp+14h] [ebp-4h]
+    tWaterParamsGlobalStruct* water = pst_GlobalsWaterParams;
+    int needsRealloc = 0;
+    int needsRebuild = 0;
+    int colorChanged = 0;
+    unsigned int requestedShift;
+    unsigned int requestedWidth, currentWidth;
 
-    v1 = pst_GlobalsWaterParams;
-    v2 = 0;
-    v3 = 0;
-    v7 = 0;
-    colorChanged = 0;
-    if (pst_GlobalsWaterParams)
+    if (water)
     {
-        if (!a1->waterEnabled)
+        if (!exported->waterEnabled)
         {
+            /* park it; the buffers are kept for the next enable */
             pst_GlobalsWaterParams = 0;
-            pst_GlobalsWaterParams_Save = v1;
+            pst_GlobalsWaterParams_Save = water;
             return;
         }
     }
     else
     {
-        if (!a1->waterEnabled)
+        if (!exported->waterEnabled)
             return;
-        v1 = pst_GlobalsWaterParams_Save;
+
         if (pst_GlobalsWaterParams_Save)
         {
             pst_GlobalsWaterParams = pst_GlobalsWaterParams_Save;
             pst_GlobalsWaterParams_Save = 0;
+            water = pst_GlobalsWaterParams;
         }
         else
         {
-            pst_GlobalsWaterParams = (tWaterParamsGlobalStruct*)MEM_p_AllocAligned(16168, 32);
+            pst_GlobalsWaterParams =
+                (tWaterParamsGlobalStruct*)MEM_p_AllocAligned(16168, 32);
             WTR_SetDefault(pst_GlobalsWaterParams);
-            v1 = pst_GlobalsWaterParams;
-            v2 = 1;
+            water = pst_GlobalsWaterParams;
+            needsRealloc = 1;
+            needsRebuild = 1;
             colorChanged = 1;
-            v3 = 1;
-            v7 = 1;
         }
     }
-    if (!a1->frustrumMeshSX)
-    {
-        a1->frustrumMeshSX = v1->horizontalVertexNum;
-        v1 = pst_GlobalsWaterParams;
-    }
-    if (!a1->frustrumMeshSY)
-    {
-        a1->frustrumMeshSY = v1->verticallVertexNum;
-        v1 = pst_GlobalsWaterParams;
-    }
-    if (!a1->waveMapShift)
-    {
-        a1->waveMapShift = v1->waterEngine.waveMapShift;
-        v1 = pst_GlobalsWaterParams;
-    }
-    if (a1->waveMapShift > 9u)
-    {
-        a1->waveMapShift = 9;
-        v1 = pst_GlobalsWaterParams;
-    }
-    if (a1->waveMapShift < 4u)
-    {
-        a1->waveMapShift = 4;
-        v1 = pst_GlobalsWaterParams;
-    }
-    if (a1->waveMapShiftCHP > 9u)
-    {
-        a1->waveMapShiftCHP = 9;
-        v1 = pst_GlobalsWaterParams;
-    }
-    if (a1->waveMapShiftCHP < 4u)
-    {
-        a1->waveMapShiftCHP = 4;
-        v1 = pst_GlobalsWaterParams;
-    }
-    v4 = a1->waveMapShift;
-    if (a1->waveMapShiftCHP > v4)
-    {
-        a1->waveMapShiftCHP = v4;
-        v1 = pst_GlobalsWaterParams;
-    }
-    if (a1->skyColor != v1->waterEngine.skyColor
-        || a1->bottomColor != v1->waterEngine.bottomColor
-        || a1->waterColor != v1->waterEngine.waterColor)
+
+    /* zero means keep the current value */
+    if (!exported->frustrumMeshSX)
+        exported->frustrumMeshSX = water->horizontalVertexNum;
+    if (!exported->frustrumMeshSY)
+        exported->frustrumMeshSY = water->verticallVertexNum;
+    if (!exported->waveMapShift)
+        exported->waveMapShift = water->waterEngine.waveMapShift;
+
+    if (exported->waveMapShift > 9u)
+        exported->waveMapShift = 9;
+    if (exported->waveMapShift < 4u)
+        exported->waveMapShift = 4;
+    if (exported->waveMapShiftCHP > 9u)
+        exported->waveMapShiftCHP = 9;
+    if (exported->waveMapShiftCHP < 4u)
+        exported->waveMapShiftCHP = 4;
+
+    requestedShift = exported->waveMapShift;
+    if ((unsigned int)exported->waveMapShiftCHP > requestedShift)
+        exported->waveMapShiftCHP = requestedShift;
+
+    if (exported->skyColor != water->waterEngine.skyColor
+        || exported->bottomColor != water->waterEngine.bottomColor
+        || exported->waterColor != water->waterEngine.waterColor)
     {
         colorChanged = 1;
     }
-    v5 = a1->frustrumMeshSX;
-    v6 = v1->horizontalVertexNum;
-    if (v5 <= v6)
+
+    requestedWidth = exported->frustrumMeshSX;
+    currentWidth = water->horizontalVertexNum;
+
+    /* anything that grew needs bigger buffers */
+    if (!(requestedWidth <= currentWidth
+          && (unsigned int)exported->frustrumMeshSY <= (unsigned int)water->verticallVertexNum
+          && requestedShift <= water->waterEngine.waveMapShift
+          && (unsigned int)exported->waveMapShiftCHP <= water->waterEngine.waveMapShiftCHP))
     {
-        if (a1->frustrumMeshSY <= (unsigned int)v1->verticallVertexNum
-            && v4 <= v1->waterEngine.waveMapShift
-            && a1->waveMapShiftCHP <= v1->waterEngine.waveMapShiftCHP)
-        {
-            v2 = v7;
-            goto LABEL_35;
-        }
-        v2 = v7;
+        needsRealloc = 1;
     }
-    v3 = 1;
-LABEL_35:
-    if (v5 != v6
-        || a1->frustrumMeshSY != v1->verticallVertexNum
-        || v4 != v1->waterEngine.waveMapShift
-        || a1->waveMapShiftCHP != v1->waterEngine.waveMapShiftCHP)
+
+    /* anything that changed at all needs the spectrum rebuilt */
+    if (requestedWidth != currentWidth
+        || exported->frustrumMeshSY != water->verticallVertexNum
+        || requestedShift != water->waterEngine.waveMapShift
+        || (unsigned int)exported->waveMapShiftCHP != water->waterEngine.waveMapShiftCHP)
     {
-        v2 = 1;
+        needsRebuild = 1;
     }
-    v1->horizontalVertexNum = v5;
-    pst_GlobalsWaterParams->verticallVertexNum = a1->frustrumMeshSY;
-    pst_GlobalsWaterParams->waterEngine.waveMapShift = a1->waveMapShift;
-    pst_GlobalsWaterParams->waterEngine.waveMapShiftCHP = a1->waveMapShiftCHP;
-    pst_GlobalsWaterParams->waterEngine.isSymmetryEnabled = a1->isSymmetryActive;
-    pst_GlobalsWaterParams->waterEngine.bottomColor = a1->bottomColor;
-    pst_GlobalsWaterParams->waterEngine.waterColor = a1->waterColor;
-    pst_GlobalsWaterParams->waterEngine.skyColor = a1->skyColor;
-    pst_GlobalsWaterParams->waveHeight = a1->waveHeight;
-    pst_GlobalsWaterParams->choppy = a1->choppy;
-    pst_GlobalsWaterParams->tiling = a1->tiling;
-    pst_GlobalsWaterParams->speed = a1->speed;
-    pst_GlobalsWaterParams->waterHeight = a1->waterHeight;
-    pst_GlobalsWaterParams->waterEngine.useCloudShadingforColors = a1->cludShadingIsEnabled;
-    pst_GlobalsWaterParams->waterEngine.borderSizePowerOfTwo = pst_GlobalsWaterParams->waterEngine.waveMapShift;
-    pst_GlobalsWaterParams->waterEngine.borderSizeDXDYPowerOfTwo = pst_GlobalsWaterParams->waterEngine.waveMapShiftCHP;
-    if (pst_GlobalsWaterParams->waterEngine.waveProp != a1->waveProp
-        || pst_GlobalsWaterParams->waterEngine.direction != a1->direction)
+
+    water->horizontalVertexNum = requestedWidth;
+    water->verticallVertexNum = exported->frustrumMeshSY;
+    water->waterEngine.waveMapShift = exported->waveMapShift;
+    water->waterEngine.waveMapShiftCHP = exported->waveMapShiftCHP;
+    water->waterEngine.isSymmetryEnabled = exported->isSymmetryActive;
+    water->waterEngine.bottomColor = exported->bottomColor;
+    water->waterEngine.waterColor = exported->waterColor;
+    water->waterEngine.skyColor = exported->skyColor;
+    water->waveHeight = exported->waveHeight;
+    water->choppy = exported->choppy;
+    water->tiling = exported->tiling;
+    water->speed = exported->speed;
+    water->waterHeight = exported->waterHeight;
+    water->waterEngine.useCloudShadingforColors = exported->cludShadingIsEnabled;
+    water->waterEngine.borderSizePowerOfTwo = water->waterEngine.waveMapShift;
+    water->waterEngine.borderSizeDXDYPowerOfTwo = water->waterEngine.waveMapShiftCHP;
+
+    if (water->waterEngine.waveProp != exported->waveProp
+        || water->waterEngine.direction != exported->direction)
     {
-        v2 = 1;
+        needsRebuild = 1;
     }
-    pst_GlobalsWaterParams->waterEngine.waveProp = a1->waveProp;
-    pst_GlobalsWaterParams->waterEngine.direction = a1->direction;
-    pst_GlobalsWaterParams->waterEngine.textureRefId = a1->textureRefID;
-    if (v3)
+
+    water->waterEngine.waveProp = exported->waveProp;
+    water->waterEngine.direction = exported->direction;
+    water->waterEngine.textureRefId = exported->textureRefID;
+
+    if (needsRealloc)
     {
-        WTR_FreeSubStruct(pst_GlobalsWaterParams);
-        WTR_AllocSubStruct(pst_GlobalsWaterParams);
-    LABEL_46:
-        WATERFFT_Init_Spectre(&pst_GlobalsWaterParams->waterEngine);
-        WATERFFT_Turn_Spectre(
-            &pst_GlobalsWaterParams->waterEngine,
-            pst_GlobalsWaterParams->spaceMap,
-            pst_GlobalsWaterParams->spaceMapDX,
-            pst_GlobalsWaterParams->spaceMapDY,
-            pst_GlobalsWaterParams->waterEngine.timeElapsed);
-        WTR_Concate(pst_GlobalsWaterParams);
-        goto LABEL_47;
+        WTR_FreeSubStruct(water);
+        WTR_AllocSubStruct(water);
     }
-    if (v2)
-        goto LABEL_46;
-LABEL_47:
+
+    if (needsRealloc || needsRebuild)
+    {
+        WATERFFT_Init_Spectre(&water->waterEngine);
+        WATERFFT_Turn_Spectre(&water->waterEngine, water->spaceMap,
+                              water->spaceMapDX, water->spaceMapDY,
+                              water->waterEngine.timeElapsed);
+        WTR_Concate(water);
+    }
+
     if (colorChanged)
-        WTR_ComputeFresnel(pst_GlobalsWaterParams);
-    waterHeight = pst_GlobalsWaterParams->waterHeight;
+        WTR_ComputeFresnel(water);
+
+    waterHeight = water->waterHeight;
 }
 
 /* Signed distance from a point to a plane, positive on the side the normal
