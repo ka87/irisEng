@@ -137,65 +137,64 @@ void WTR_Get_A_DifVector(Vec3* a1, Vec3* a2, int a3)
     }
 }
 
-void WTR_Get_A_MrmVector(Vec3* a1, Vec3* a2)
+/* Surface normal of the water under a world position.
+ *
+ * The surface is sampled three times: at the position itself and at two
+ * neighbours a cell and a half away along x and along y. The two differences
+ * from the centre span the surface there, so their cross product is the
+ * normal, and it is returned normalised.
+ *
+ * Straight up is returned when there is no water, and also when cloud shading
+ * is on, which lights the surface from the colour ramp instead of the normal. */
+void WTR_Get_A_MrmVector(Vec3* position, Vec3* normalOut)
 {
-    tWaterParamsGlobalStruct* v2;
-    float v3;
-    float v4;
-    float v5;
-    float v6;
-    int v7;
-    float v8;
-    float v9;
-    float v10;
-    float v11;
-    float v12;
-    float v13;
-    float v14;
-    Vec3 v15; 
-    Vec3 v16; 
-    Vec3 v17; 
+    tWaterParamsGlobalStruct* water = pst_GlobalsWaterParams;
+    float sampleOffset;
+    Vec3 centre;
+    Vec3 alongX;
+    Vec3 alongY;
+    Vec3 toX;
+    Vec3 toY;
+    float inverseLength;
 
-    a2->x = 0.0;
-    a2->y = 0.0;
-    a2->z = 1.0;
-    v2 = pst_GlobalsWaterParams;
-    if (pst_GlobalsWaterParams)
-    {
-        if (!pst_GlobalsWaterParams->waterEngine.useCloudShadingforColors)
-        {
-            WTR_Get_A_DifVector(a1, &v16, 1);
-            v3 = a1->y;
-            v4 = a1->z;
-            v15.x = a1->x;
-            v5 = a1->x;
-            v15.z = v4;
-            v6 = a1->z;
-            v17.x = v5;
-            v17.z = v6;
-            v7 = v2->waterEngine.borderSizePowerOfTwo;
-            v15.y = v3;
-            v17.y = a1->y;
-            v8 = 1.0f / (1 << v7) * (1.0f / v2->tiling) * 1.5f;
-            v17.y = v17.y + v8;
-            v15.x = v8 + v15.x;
-            WTR_Get_A_DifVector(&v17, &v17, 1);
-            WTR_Get_A_DifVector(&v15, &v15, 1);
-            v9 = v16.x - v17.x;
-            v10 = v16.y - v17.y;
-            v11 = v16.z - v17.z;
-            v15.x = v16.x - v15.x;
-            v15.y = v16.y - v15.y;
-            v12 = v16.z - v15.z;
-            v16.x = v15.y * v11 - v12 * v10;
-            v16.y = v12 * v9 - v11 * v15.x;
-            v13 = v15.x * v10 - v15.y * v9;
-            v14 = 1.0f / (float)sqrt(v13 * v13 + v16.y * v16.y + v16.x * v16.x);
-            a2->x = v16.x * v14;
-            a2->y = v16.y * v14;
-            a2->z = v13 * v14;
-        }
-    }
+    normalOut->x = 0.0f;
+    normalOut->y = 0.0f;
+    normalOut->z = 1.0f;
+
+    if (!water || water->waterEngine.useCloudShadingforColors)
+        return;
+
+    sampleOffset = 1.0f / (1 << water->waterEngine.borderSizePowerOfTwo) * (1.0f / water->tiling) * 1.5f;
+
+    WTR_Get_A_DifVector(position, &centre, 1);
+
+    alongX = *position;
+    alongX.x += sampleOffset;
+    WTR_Get_A_DifVector(&alongX, &alongX, 1);
+
+    alongY = *position;
+    alongY.y += sampleOffset;
+    WTR_Get_A_DifVector(&alongY, &alongY, 1);
+
+    toX.x = centre.x - alongX.x;
+    toX.y = centre.y - alongX.y;
+    toX.z = centre.z - alongX.z;
+
+    toY.x = centre.x - alongY.x;
+    toY.y = centre.y - alongY.y;
+    toY.z = centre.z - alongY.z;
+
+    normalOut->x = toX.y * toY.z - toX.z * toY.y;
+    normalOut->y = toX.z * toY.x - toX.x * toY.z;
+    normalOut->z = toX.x * toY.y - toX.y * toY.x;
+
+    inverseLength = 1.0f / (float)sqrt(normalOut->z * normalOut->z
+                                       + normalOut->y * normalOut->y
+                                       + normalOut->x * normalOut->x);
+
+    normalOut->x *= inverseLength;
+    normalOut->y *= inverseLength;
+    normalOut->z *= inverseLength;
 }
 
 /* Pack a colour held as three components in zero to one into one word, eight
