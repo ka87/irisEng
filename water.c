@@ -217,45 +217,63 @@ int WTR_Vector_2_Color(Vec3* a1)
 }
 
 
-void WTR_SetDefault(tWaterParamsGlobalStruct* a1)
+/* Reset the water to its built in settings.
+ *
+ * These are what a world gets before any of its own values arrive through
+ * WTR_SetExportParams, and they have to be sane on their own: the engine reads
+ * worldSizeInMeters and wind while building the spectrum and they are never
+ * written from outside. */
+void WTR_SetDefault(tWaterParamsGlobalStruct* water)
 {
-    Vec3 v1;
-    Vec3 v2;
-    Vec3 v3;
+    Vec3 sky;
+    Vec3 bottom;
+    Vec3 surface;
 
-    memset(a1, 0, sizeof(tWaterParamsGlobalStruct));
-    a1->waterEngine.waveMapShift = 6;
-    a1->waterEngine.waveMapShiftCHP = 6;
-    a1->waterEngine.borderSizePowerOfTwo = 6;
-    a1->waterEngine.borderSizeDXDYPowerOfTwo = 6;
-    a1->choppy = 0.30000001f;
-    a1->disturbance = 0.30000001f;
-    a1->speed = 0.30000001f;
-    v3.x = 0.30000001;
-    a1->waterEngine.wind.x = 60.0f;
-    a1->waterEngine.wind.y = 0.0f;
-    a1->waterEngine.direction = 1.0f;
-    a1->waterEngine.worldSizeInMeters = 10.0f;
-    a1->waterEngine.waveProp = 2.0f;
-    a1->waveHeight = 0.13f;
-    a1->tiling = 0.0099999998f;
-    a1->waterHeight = -1.0f;
-    a1->waterFog = 50.0f;
-    a1->horizontalVertexNum = 50;
-    a1->verticallVertexNum = 120;
-    a1->waterEngine.useCloudShadingforColors = 0;
-    a1->waterEngine.isSymmetryEnabled = 1;
-    v1.x = 0.60000002f;
-    v1.y = 0.60000002f;
-    v1.z = 0.60000002f;
-    v3.y = 0.40000001f;
-    v3.z = 0.5f;
-    v2.x = 0.030000001f;
-    v2.y = 0.040000003f;
-    v2.z = 0.050000001f;
-    a1->waterEngine.skyColor = WTR_Vector_2_Color(&v1);
-    a1->waterEngine.bottomColor = WTR_Vector_2_Color(&v2);
-    a1->waterEngine.waterColor = WTR_Vector_2_Color(&v3);
+    memset(water, 0, sizeof(tWaterParamsGlobalStruct));
+
+    /* 64 cells a side for both the height grid and the choppy grid. */
+    water->waterEngine.waveMapShift = 6;
+    water->waterEngine.waveMapShiftCHP = 6;
+    water->waterEngine.borderSizePowerOfTwo = 6;
+    water->waterEngine.borderSizeDXDYPowerOfTwo = 6;
+
+    water->waterEngine.wind.x = 60.0f;
+    water->waterEngine.wind.y = 0.0f;
+    water->waterEngine.direction = 1.0f;
+    water->waterEngine.worldSizeInMeters = 10.0f;
+    water->waterEngine.waveProp = 2.0f;
+
+    water->waveHeight = 0.13f;
+    water->choppy = 0.30000001f;
+    water->disturbance = 0.30000001f;
+    water->speed = 0.30000001f;
+    water->tiling = 0.0099999998f;
+    water->waterFog = 50.0f;
+
+    /* A negative height keeps the surface out of sight until a world sets one. */
+    water->waterHeight = -1.0f;
+
+    water->horizontalVertexNum = 50;
+    water->verticallVertexNum = 120;
+
+    water->waterEngine.useCloudShadingforColors = 0;
+    water->waterEngine.isSymmetryEnabled = 1;
+
+    sky.x = 0.60000002f;
+    sky.y = 0.60000002f;
+    sky.z = 0.60000002f;
+
+    bottom.x = 0.030000001f;
+    bottom.y = 0.040000003f;
+    bottom.z = 0.050000001f;
+
+    surface.x = 0.30000001f;
+    surface.y = 0.40000001f;
+    surface.z = 0.5f;
+
+    water->waterEngine.skyColor = WTR_Vector_2_Color(&sky);
+    water->waterEngine.bottomColor = WTR_Vector_2_Color(&bottom);
+    water->waterEngine.waterColor = WTR_Vector_2_Color(&surface);
 }
 
 void* WTR_AllocAlign(int size, int alignment)
@@ -744,62 +762,41 @@ void WATERFFT_Init_Spectre(tWaterEngineStruct* engine)
     WATERFFT_FFT_COMPUTE_COST(engine->borderSizeDXDYPowerOfTwo, engine->FFTCostTableDXDY);
 }
 
-void WTR_SetDefaulExp(struct sUserWaterParamsStruct* a1)
+/* Fill an export block with the built in settings, so a caller has somewhere
+ * sensible to start before overriding the values it cares about.
+ *
+ * The defaults live on a full water block, so one is built on the stack and the
+ * fields the export block carries are copied across. The water starts disabled,
+ * and the leading marker is what identifies a block of this shape. */
+void WTR_SetDefaulExp(struct sUserWaterParamsStruct* exported)
 {
-    int v1; // edx
-    int v2; // ecx
-    int v3; // edx
-    int v4; // ecx
-    int v5; // edx
-    int v6; // ecx
-    float v7; // edx
-    float v8; // ecx
-    float v9; // edx
-    float v10; // ecx
-    float v11; // edx
-    float v12; // ecx
-    float v13; // edx
-    int v14; // ecx
-    int v15; // edx
-    int v16; // ecx
-    tWaterParamsGlobalStruct a1a; // [esp+0h] [ebp-3F28h] BYREF
+    tWaterParamsGlobalStruct defaults;
 
-    WTR_SetDefault(&a1a);
-    v1 = a1a.verticallVertexNum;
-    a1->frustrumMeshSX = a1a.horizontalVertexNum;
-    v2 = a1a.waterEngine.waveMapShift;
-    a1->frustrumMeshSY = v1;
-    v3 = a1a.waterEngine.waveMapShiftCHP;
-    a1->waveMapShift = v2;
-    v4 = a1a.waterEngine.bottomColor;
-    a1->waveMapShiftCHP = v3;
-    v5 = a1a.waterEngine.waterColor;
-    a1->bottomColor = v4;
-    v6 = a1a.waterEngine.skyColor;
-    a1->waterColor = v5;
-    v7 = a1a.waveHeight;
-    a1->skyColor = v6;
-    v8 = a1a.choppy;
-    a1->waveHeight = v7;
-    v9 = a1a.tiling;
-    a1->choppy = v8;
-    v10 = a1a.speed;
-    a1->tiling = v9;
-    v11 = a1a.waterHeight;
-    a1->speed = v10;
-    v12 = a1a.waterEngine.direction;
-    a1->waterHeight = v11;
-    v13 = a1a.waterEngine.waveProp;
-    a1->direction = v12;
-    v14 = a1a.waterEngine.useCloudShadingforColors;
-    a1->waveProp = v13;
-    v15 = a1a.waterEngine.textureRefId;
-    a1->cludShadingIsEnabled = v14;
-    v16 = a1a.waterEngine.isSymmetryEnabled;
-    a1->abadcafe = 0xABADCAFE;
-    a1->waterEnabled = 0;
-    a1->textureRefID = v15;
-    a1->isSymmetryActive = v16;
+    WTR_SetDefault(&defaults);
+
+    exported->abadcafe = 0xABADCAFE;
+    exported->waterEnabled = 0;
+
+    exported->frustrumMeshSX = defaults.horizontalVertexNum;
+    exported->frustrumMeshSY = defaults.verticallVertexNum;
+    exported->waveMapShift = defaults.waterEngine.waveMapShift;
+    exported->waveMapShiftCHP = defaults.waterEngine.waveMapShiftCHP;
+
+    exported->skyColor = defaults.waterEngine.skyColor;
+    exported->bottomColor = defaults.waterEngine.bottomColor;
+    exported->waterColor = defaults.waterEngine.waterColor;
+
+    exported->waveHeight = defaults.waveHeight;
+    exported->choppy = defaults.choppy;
+    exported->tiling = defaults.tiling;
+    exported->speed = defaults.speed;
+    exported->waterHeight = defaults.waterHeight;
+    exported->direction = defaults.waterEngine.direction;
+    exported->waveProp = defaults.waterEngine.waveProp;
+
+    exported->cludShadingIsEnabled = defaults.waterEngine.useCloudShadingforColors;
+    exported->textureRefID = defaults.waterEngine.textureRefId;
+    exported->isSymmetryActive = defaults.waterEngine.isSymmetryEnabled;
 }
 
 /* Build one line of the two horizontal displacement spectra from one line of
