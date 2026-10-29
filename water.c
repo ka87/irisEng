@@ -2968,6 +2968,17 @@ int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* a1, Vec3* cameraObjectPos, Vec3*
     choppyneshsq = choppyness + choppyness;
     a9 = v51 + v51;
     result = WTR_Compute4Points(a2a, &dest, cameraObjectPos, a3, waterheight, 18000.0, a7, a8, a9, choppyneshsq);
+    {   // debug trace: the inputs and the four projected corners, one call in 120
+        static int dbg_n = 0;
+        if ((dbg_n++ % 120) == 0)
+            DBG_OutputDebugString(
+                "[WTR] 4pts: res=%d tile=%f inv=%f wave=%f chop=%f a9=%f csq=%f wh=%f\n"
+                "            p0=(%f,%f,%f) p1=(%f,%f,%f) p2=(%f,%f,%f) p3=(%f,%f,%f) d=(%f,%f,%f)\n",
+                result, a1->tiling, tiling, a1->waveHeight, a1->choppy, a9, choppyneshsq, waterheight,
+                a2a[0].x, a2a[0].y, a2a[0].z, a2a[1].x, a2a[1].y, a2a[1].z,
+                a2a[2].x, a2a[2].y, a2a[2].z, a2a[3].x, a2a[3].y, a2a[3].z,
+                dest.x, dest.y, dest.z);
+    }
     if (result)
     {
         v9 = a2a[0].x - cameraObjectPos->x;
