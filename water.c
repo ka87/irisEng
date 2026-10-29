@@ -2868,6 +2868,17 @@ void WTR_DirectComputeColors(Vec3* a1, Vec3* camerObjectPos, Vec3* vecsForUvs, V
             tmp = (*((int32_t*)(&v29))) & 0xBF800000 | 0x3F800000;
             *v10 = a7[((unsigned int)(256.0 - numb * numb * v20 * (*(float*)&tmp) * 255.0) & 0x1FF) + 1];
             *a4++ = v38;
+            {   // debug trace: the first few vertices of every 600th call
+                static int dbg_c = 0;
+                if (dbg_c < 2 || (dbg_c % 600) < 2)
+                {
+                    DBG_OutputDebugString("[WTR] dcc%d: v20=%g numa=%g v28=%g a5a=%g v21=%g\n",
+                        dbg_c, v20, numa, v28, a5a, v21);
+                    DBG_OutputDebugString("[WTR] dcc%d: n=(%g,%g,%g) d=(%g,%g,%g) out=(%g,%g,%g)\n",
+                        dbg_c, v34, v35, v36, v31, v32, v33, v38.x, v38.y, v38.z);
+                }
+                dbg_c++;
+            }
             if (fabs(v31) != 0.0 || fabs(v32) != 0.0 || fabs(v33) != 0.0)
             {
                 v24 = vecsForUvs;
