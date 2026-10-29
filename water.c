@@ -918,7 +918,22 @@ void WATERFFT_Deduct_DXDY_Spectre(tWaterEngineStruct* a1, tFFTComplex* a5, tFFTC
     }
 }
 
-void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
+/* Two dimensional inverse FFT of a square complex grid, in place.
+ *
+ * The grid is (1 << sizeLog2) on a side and already in bit reversed order,
+ * which WATERFFT_Pretranspose_Table put it in. Each pass combines pairs of
+ * entries a fixed distance apart, rotating one of the pair by a twiddle factor
+ * before adding and subtracting: sizeLog2 passes over the rows, then the same
+ * over the columns. The rotations are not computed here but read from the
+ * table WATERFFT_FFT_COMPUTE_COST built, which holds each one twice, plain and
+ * quarter turned, so a butterfly is four multiplies and four adds with no
+ * trigonometry.
+ *
+ * The body is hand unrolled several butterflies deep and carries its original
+ * temporaries. It wants rewriting, but the unrolling fixes the order the
+ * partial sums are formed in, and that order is part of the result, so it
+ * wants doing carefully rather than quickly. */
+void WATERFFT_FFT2D(tFFTComplex* grid, int sizeLog2, tFFTComplexCost* twiddle)
 {
     int v4; // ebx
     unsigned int v5; // edi
@@ -1113,26 +1128,26 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
     int v195; // [esp+64h] [ebp-Ch]
     tFFTComplexCost* v196; // [esp+7Ch] [ebp+Ch]
 
-    v4 = 1 << num;
-    v5 = 1 << num >> 1;                           // =32
+    v4 = 1 << sizeLog2;
+    v5 = 1 << sizeLog2 >> 1;                           // =32
     v6 = 0;
-    v127 = 1 << num;
+    v127 = 1 << sizeLog2;
     v176 = 0;
     if (v5)
     {
         do
         {
-            v7 = &a1[(2 * v6) << num];
+            v7 = &grid[(2 * v6) << sizeLog2];
             v8 = 0;
             if ((int)v5 >= 4)
             {
                 v9 = 2;
                 do
                 {
-                    v10 = a3->real1;
-                    v11 = a3->imaginary1;
+                    v10 = twiddle->real1;
+                    v11 = twiddle->imaginary1;
                     v12 = &v7[2 * v8];
-                    v128 = a3->imaginary1;
+                    v128 = twiddle->imaginary1;
                     v133 = v10 * v12[1].real - v11 * v12[1].imaginary;
                     v139 = v11 * v12[1].real + v10 * v12[1].imaginary;
                     v148 = v10 * v12[v127 + 1].real - v11 * v12[v127 + 1].imaginary;
@@ -1140,13 +1155,13 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                     v14 = v12[v127].real - v148;
                     v168 = &v12[v127].imaginary;
                     v15 = *v168 - v13;
-                    v162 = v14 * a3->real1 - v15 * v128;
-                    v16 = v15 * a3->real1 + v14 * v128;
+                    v162 = v14 * twiddle->real1 - v15 * v128;
+                    v16 = v15 * twiddle->real1 + v14 * v128;
                     v17 = v13;
                     v18 = v148 + v12[v127].real;
                     v19 = v17 + *v168;
-                    v149 = v18 * a3->real1 - v19 * v128;
-                    v20 = v19 * a3->real1 + v18 * v128;
+                    v149 = v18 * twiddle->real1 - v19 * v128;
+                    v20 = v19 * twiddle->real1 + v18 * v128;
                     v12[v127 + 1].real = v149 + v12->real + v133;
                     v12[v127 + 1].imaginary = v139 + v20 + v12->imaginary;
                     v12[v127].real = v12->real - v133 + v162;
@@ -1156,9 +1171,9 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                     v12->real = v12->real - v133 - v162;
                     v12->imaginary = v12->imaginary - v139 - v16;
                     v21 = &v7[v9 + v8];
-                    v22 = a3->real1;
-                    v23 = a3->imaginary1;
-                    v129 = a3->imaginary1;
+                    v22 = twiddle->real1;
+                    v23 = twiddle->imaginary1;
+                    v129 = twiddle->imaginary1;
                     v134 = v22 * v7[v9 + 1 + v8].real - v23 * v7[v9 + 1 + v8].imaginary;
                     v140 = v23 * v7[v9 + 1 + v8].real + v22 * v7[v9 + 1 + v8].imaginary;
                     v150 = v22 * v21[v127 + 1].real - v23 * v21[v127 + 1].imaginary;
@@ -1166,13 +1181,13 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                     v25 = v21[v127].real - v150;
                     v169 = &v21[v127].imaginary;
                     v26 = *v169 - v24;
-                    v163 = v25 * a3->real1 - v26 * v129;
-                    v27 = v26 * a3->real1 + v25 * v129;
+                    v163 = v25 * twiddle->real1 - v26 * v129;
+                    v27 = v26 * twiddle->real1 + v25 * v129;
                     v28 = v24;
                     v29 = v150 + v21[v127].real;
                     v30 = v28 + *v169;
-                    v151 = v29 * a3->real1 - v30 * v129;
-                    v31 = v30 * a3->real1 + v29 * v129;
+                    v151 = v29 * twiddle->real1 - v30 * v129;
+                    v31 = v30 * twiddle->real1 + v29 * v129;
                     v21[v127 + 1].real = v151 + v21->real + v134;
                     v21[v127 + 1].imaginary = v140 + v31 + v7[v9 + v8].imaginary;
                     v21[v127].real = v21->real - v134 + v163;
@@ -1182,9 +1197,9 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                     v21->real = v21->real - v134 - v163;
                     v21->imaginary = v7[v9 + v8].imaginary - v140 - v27;
                     v32 = &v7[v9 + 2 + v8];
-                    v33 = a3->real1;
-                    v34 = a3->imaginary1;
-                    v130 = a3->imaginary1;
+                    v33 = twiddle->real1;
+                    v34 = twiddle->imaginary1;
+                    v130 = twiddle->imaginary1;
                     v135 = v33 * v7[v9 + 3 + v8].real - v34 * v7[v9 + 3 + v8].imaginary;
                     v141 = v34 * v7[v9 + 3 + v8].real + v33 * v7[v9 + 3 + v8].imaginary;
                     v152 = v33 * v32[v127 + 1].real - v34 * v32[v127 + 1].imaginary;
@@ -1192,13 +1207,13 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                     v36 = v32[v127].real - v152;
                     v170 = &v32[v127].imaginary;
                     v37 = *v170 - v35;
-                    v164 = v36 * a3->real1 - v37 * v130;
-                    v38 = v37 * a3->real1 + v36 * v130;
+                    v164 = v36 * twiddle->real1 - v37 * v130;
+                    v38 = v37 * twiddle->real1 + v36 * v130;
                     v39 = v35;
                     v40 = v152 + v32[v127].real;
                     v41 = v39 + *v170;
-                    v153 = v40 * a3->real1 - v41 * v130;
-                    v42 = v41 * a3->real1 + v40 * v130;
+                    v153 = v40 * twiddle->real1 - v41 * v130;
+                    v42 = v41 * twiddle->real1 + v40 * v130;
                     v32[v127 + 1].real = v153 + v32->real + v135;
                     v32[v127 + 1].imaginary = v141 + v42 + v7[v9 + 2 + v8].imaginary;
                     v32[v127].real = v32->real - v135 + v164;
@@ -1208,9 +1223,9 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                     v32->real = v32->real - v135 - v164;
                     v32->imaginary = v7[v9 + 2 + v8].imaginary - v141 - v38;
                     v43 = &v7[v9 + 4 + v8];
-                    v44 = a3->real1;
-                    v45 = a3->imaginary1;
-                    v131 = a3->imaginary1;
+                    v44 = twiddle->real1;
+                    v45 = twiddle->imaginary1;
+                    v131 = twiddle->imaginary1;
                     v136 = v44 * v7[v9 + 5 + v8].real - v45 * v7[v9 + 5 + v8].imaginary;
                     v142 = v45 * v7[v9 + 5 + v8].real + v44 * v7[v9 + 5 + v8].imaginary;
                     v154 = v44 * v43[v127 + 1].real - v45 * v43[v127 + 1].imaginary;
@@ -1218,15 +1233,15 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                     v47 = v43[v127].real - v154;
                     v171 = &v43[v127].imaginary;
                     v48 = *v171 - v46;
-                    v165 = v47 * a3->real1 - v48 * v131;
-                    v49 = v48 * a3->real1 + v47 * v131;
+                    v165 = v47 * twiddle->real1 - v48 * v131;
+                    v49 = v48 * twiddle->real1 + v47 * v131;
                     v50 = v46;
                     v51 = v154 + v43[v127].real;
                     v9 += 4;
                     v52 = v50 + *v171;
                     v8 += 4;
-                    v155 = v51 * a3->real1 - v52 * v131;
-                    v53 = v52 * a3->real1 + v51 * v131;
+                    v155 = v51 * twiddle->real1 - v52 * v131;
+                    v53 = v52 * twiddle->real1 + v51 * v131;
                     v43[v127 + 1].real = v155 + v43->real + v136;
                     v43[v127 + 1].imaginary = v142 + v53 + v43->imaginary;
                     v43[v127].real = v43->real - v136 + v165;
@@ -1242,23 +1257,23 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                 v54 = v127;
                 do
                 {
-                    v55 = a3->real1;
-                    v56 = a3->imaginary1;
+                    v55 = twiddle->real1;
+                    v56 = twiddle->imaginary1;
                     v57 = &v7[2 * v8];
-                    v132 = a3->imaginary1;
+                    v132 = twiddle->imaginary1;
                     v137 = v55 * v57[1].real - v56 * v57[1].imaginary;
                     v143 = v56 * v57[1].real + v55 * v57[1].imaginary;
                     v156 = v55 * v57[v54 + 1].real - v56 * v57[v54 + 1].imaginary;
                     v58 = v55 * v57[v54 + 1].imaginary + v56 * v57[v54 + 1].real;
                     v59 = v57[v54].real - v156;
                     v60 = v57[v54].imaginary - v58;
-                    v166 = v59 * a3->real1 - v60 * v132;
-                    v61 = v60 * a3->real1 + v59 * v132;
+                    v166 = v59 * twiddle->real1 - v60 * v132;
+                    v61 = v60 * twiddle->real1 + v59 * v132;
                     v62 = v58;
                     v63 = v156 + v57[v54].real;
                     v64 = v62 + v57[v54].imaginary;
-                    v157 = v63 * a3->real1 - v64 * v132;
-                    v65 = v64 * a3->real1 + v63 * v132;
+                    v157 = v63 * twiddle->real1 - v64 * v132;
+                    v65 = v64 * twiddle->real1 + v63 * v132;
                     v57[v54 + 1].real = v157 + v57->real + v137;
                     v57[v54 + 1].imaginary = v143 + v65 + v57->imaginary;
                     v57[v54].real = v57->real - v137 + v166;
@@ -1274,17 +1289,17 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
         } while (v176 < v5);
     }
     v66 = 2;
-    v196 = a3 + 1;
+    v196 = twiddle + 1;
     v175 = 2;
-    if (num > 1)
+    if (sizeLog2 > 1)
     {
-        numsubst1 = num - 1;
+        numsubst1 = sizeLog2 - 1;
         while (1)
         {
             v67 = 0;
             v68 = ~(v66 - 1);
             v178 = v68;
-            v195 = v66 << num;
+            v195 = v66 << sizeLog2;
             v192 = 0;
             if (v5)
             {
@@ -1293,10 +1308,10 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                 {
                     v138 = &v196[(v66 - 1) & v67].real1;
                     v70 = &v196[(v66 - 1) & (v67 + 1)];
-                    v71 = (v67 + (v68 & v67)) << num;
+                    v71 = (v67 + (v68 & v67)) << sizeLog2;
                     v72 = 0;
                     v177 = &v70->real1;
-                    v194 = &a1[v71];
+                    v194 = &grid[v71];
                     v191 = 0;
                     while (1)
                     {
@@ -1404,7 +1419,7 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                         v112->real = v113->real - v161 + v183;
                         v112->imaginary = v113->imaginary - v147 + v119;
                         v100[1].real = v161 + v113->real - v190;
-                        v5 = 1 << num >> 1;
+                        v5 = 1 << sizeLog2 >> 1;
                         v72 = v191 + 2;
                         v124 = v191 + 2 < v5;
                         v100[1].imaginary = v147 + v113->imaginary - v123;
@@ -1431,7 +1446,7 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
                 break;
         }
     }
-    WATERFFT_CorrectHeight(a1, num);
+    WATERFFT_CorrectHeight(grid, sizeLog2);
 }
 
 /* Advance the spectrum to `timeElapsed` and transform it into the space maps.
