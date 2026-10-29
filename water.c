@@ -1341,24 +1341,17 @@ void WTR_Compute_MipMap(int outputSide, tWtrStruct2* source, tWtrStruct2* destin
 }
 
 /* Expand one two by two block of the finer level from the coarser one:
- * the coarse cell is copied to the top left and the other three are
- * interpolated from it and its neighbours across, below and diagonally.
- *
- * NOTE: the four blends below write their result to the argument the
- * surrounding code treats as a source. As they stand, the top right
- * and bottom left of the destination block are never written and two
- * cells of the source level are overwritten instead. Reaching this at
- * all needs a choppy map coarser than the height map, which the
- * defaults do not set up, so nothing exercises it today. Left as it
- * was rather than changed blind. */
+ * the coarse cell is copied to the top left, the top right and bottom
+ * left are interpolated from it and its neighbours across and below,
+ * and the bottom right is the mean of those two. */
 void WTR_BackExtendDXDY_sub_unknown(tWtrStruct2* sourceBelow, tWtrStruct2* source,
                                     tWtrStruct2* destination, tWtrStruct2* destinationBelow)
 {
     *destination = *source;
-    MATH_BlendVector((Vec3*)source, (Vec3*)&source[1], (Vec3*)&destination[1], 0.5);
-    MATH_BlendVector((Vec3*)source, (Vec3*)sourceBelow, (Vec3*)destinationBelow, 0.5);
-    MATH_BlendVector((Vec3*)sourceBelow, (Vec3*)&sourceBelow[1], (Vec3*)&destinationBelow[1], 0.5);
-    MATH_BlendVector((Vec3*)&destinationBelow[1], (Vec3*)&destination[1], (Vec3*)&destinationBelow[1], 0.5);
+    MATH_BlendVector((Vec3*)&destination[1], (Vec3*)source, (Vec3*)&source[1], 0.5);
+    MATH_BlendVector((Vec3*)destinationBelow, (Vec3*)source, (Vec3*)sourceBelow, 0.5);
+    MATH_BlendVector((Vec3*)&destinationBelow[1], (Vec3*)sourceBelow, (Vec3*)&sourceBelow[1], 0.5);
+    MATH_BlendVector((Vec3*)&destinationBelow[1], (Vec3*)&destinationBelow[1], (Vec3*)&destination[1], 0.5);
 }
 
 /* Carry the horizontal displacement from a coarse level of the
