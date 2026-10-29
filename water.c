@@ -2133,65 +2133,56 @@ float WTR_DistToPlane(Vec3* a1, Vec3* a2, float a3)
     return a3 - (a1->z * a2->z + a1->y * a2->y + a1->x * a2->x);
 }
 
-int WTR_Clip(Vec3* a1, Vec3* a2, Vec3* a3, float a4, int num)
+/* Clip a polygon against one plane, Sutherland and Hodgman.
+ *
+ * Walks the edges of `input` and writes the part on the near side of the plane
+ * into `output`: a vertex inside is kept, and an edge that crosses the plane
+ * contributes the point where it crosses. The result can hold one vertex more
+ * than the input, since a single crossing edge turns one vertex into two.
+ *
+ * Returns how many vertices were written. */
+int WTR_Clip(Vec3* input, Vec3* output, Vec3* planeNormal, float planeOffset, int vertexCount)
 {
-    Vec3* v5; // esi nézd meg a full verzió ugyanilyen függvényét, ott jól jeelnik meg -- megcsináltam __spoils
-    Vec3* v6; // edi
-    Vec3* v7; // edx
-    int v8; // ebx
-    double v9; // st7
-    int v10; // ebp
-    char v12; // bp
-    double v13; // st7
-    float a4a; // [esp+0h] [ebp-18h]
-    float a4b; // [esp+0h] [ebp-18h]
-    Vec3* v17; // [esp+14h] [ebp-4h]
-    float a1a; // [esp+1Ch] [ebp+4h]
-    float v19; // [esp+2Ch] [ebp+14h]
+    Vec3* const inputEnd = &input[vertexCount];
+    Vec3* current = input;
+    Vec3* previous = inputEnd - 1;
+    float previousDistance;
+    int written = 0;
 
-    v5 = a1;
-    v6 = &a1[num];
-    v7 = v6 - 1;
-    v17 = v6;
-    v8 = 0;
-    v9 = WTR_DistToPlane(v6 - 1, a3, a4);
-    v19 = v9;
-    v10 = v9 < 0.0;
-    if (a1 < v6)
+    if (vertexCount <= 0)
+        return 0;
+
+    previousDistance = (float)WTR_DistToPlane(previous, planeNormal, planeOffset);
+
+    while (current < inputEnd)
     {
-        while (1)
+        const float currentDistance = (float)WTR_DistToPlane(current, planeNormal, planeOffset);
+        const int previousOutside = previousDistance < 0.0f;
+        const int currentOutside = currentDistance < 0.0f;
+
+        if (previousOutside != currentOutside)
         {
-            v12 = 2 * v10;
-            v13 = WTR_DistToPlane(v5, a3, a4);
-            a1a = v13;
-            if (v13 < 0.0)
-                v12 |= 1u;
-            v10 = v12 & 3;
-            if (!v10)
-                goto LABEL_8;
-            if (v10 == 1)
-                break;
-            if (v10 == 2)
-            {
-                a4a = -(v19 / (a1a - v19));
-                MATH_BlendVector(a2++, v7, v5, a4a);    // ez, lást felsõ komment
-                ++v8;
-            LABEL_8:
-                *a2 = *v5;
-            LABEL_9:
-                ++a2;
-                ++v8;
-            }
-            v19 = v13;
-            v7 = v5++;
-            if (v5 >= v17)
-                return v8;
+            /* The edge crosses the plane, so emit the crossing point. */
+            const float t = -(previousDistance / (currentDistance - previousDistance));
+
+            MATH_BlendVector(output, previous, current, t);
+            output++;
+            written++;
         }
-        a4b = -(v19 / (a1a - v19));
-        MATH_BlendVector(a2, v7, v5, a4b);
-        goto LABEL_9;
+
+        if (!currentOutside)
+        {
+            *output = *current;
+            output++;
+            written++;
+        }
+
+        previousDistance = currentDistance;
+        previous = current;
+        current++;
     }
-    return v8;
+
+    return written;
 }
 
 int WTR_Compute4Points(Vec3* points, Vec3* a2, Vec3* a3, Vec3* a4, float a5, float a6, float a7, float a8, float a9, float a10)
