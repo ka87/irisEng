@@ -625,151 +625,113 @@ void WATERFFT_FFT_COMPUTE_COST(int stageCount, tFFTComplexCost* table)
     }
 }
 
-void WATERFFT_Init_Spectre(tWaterEngineStruct* a1)
+/* Build the wave spectrum for the current wind and sea settings.
+ *
+ * Every cell of the square grid stands for one wavevector k, measured in
+ * radians per metre and centred so that k runs from -side/2 to side/2 - 1
+ * steps of 2*pi over the world size. For each one:
+ *
+ *   real       the wave amplitude, from the Phillips distribution, which
+ *              favours long waves travelling with the wind
+ *   imaginary  the frequency at which that wave advances, from the deep water
+ *              dispersion relation sqrt(g * |k|), jittered by a little over one
+ *              percent so neighbouring waves drift apart instead of beating
+ *
+ * The amplitudes are normalised to sum to one, so the overall wave height is
+ * set by the caller rather than by the grid size. Finally the cosine table and
+ * the two butterfly tables are built, and the spectrum is put into the order
+ * the transform reads it. */
+void WATERFFT_Init_Spectre(tWaterEngineStruct* engine)
 {
-    int v2; // eax
-    int v3; // ebx
-    tFFTComplex* v4; // edi
-    float v5; // edx
-    double v6; // st7
-    double v7; // st6
-    double v8; // st7
-    double v9; // st5
-    int v10; // ecx
-    int v11; // edx
-    int v12; // eax
-    int v13; // edi
-    int v14; // ebx
-    unsigned int v15; // ebx
-    unsigned int v16; // edi
-    int v17; // ebp
-    double v18; // st7
-    long double v19; // st7
-    int v20; // eax
-    tFFTComplex* v21; // edx
-    BOOL v22; // cf
-    int v23; // eax
-    double v24; // st7
-    long double v25; // st7
-    float v26; // [esp-10h] [ebp-30h]
-    int i; // [esp+4h] [ebp-1Ch]
-    unsigned int v28; // [esp+4h] [ebp-1Ch]
-    int v29; // [esp+8h] [ebp-18h]
-    float v30; // [esp+Ch] [ebp-14h]
-    float v31; // [esp+Ch] [ebp-14h]
-    float v32; // [esp+10h] [ebp-10h]
-    float v33; // [esp+14h] [ebp-Ch]
-    Vec2 v34; // [esp+18h] [ebp-8h] BYREF
-    int a1a; // [esp+24h] [ebp+4h]
-    float a1d; // [esp+24h] [ebp+4h]
-    int a1b; // [esp+24h] [ebp+4h]
-    float a1e; // [esp+24h] [ebp+4h]
-    int a1c; // [esp+24h] [ebp+4h]
+    const int sizeLog2 = engine->borderSizePowerOfTwo;
+    const int side = 1 << sizeLog2;
+    const int cellCount = 1 << (2 * sizeLog2);
+    const double half = (double)side * 0.5;
+    const double radiansPerCell = 6.2831855 / engine->worldSizeInMeters;
+    int row, column;
 
-    if (!a1->spectroMap)
-        a1->spectroMap = (tFFTComplex*)WATERFFT_Alloc(8 << (2 * LOBYTE(a1->borderSizePowerOfTwo)));
-    v2 = 0;
-    for (i = 0; v2 < 1 << a1->borderSizePowerOfTwo; i = v2)
+    if (!engine->spectroMap)
+        engine->spectroMap = (tFFTComplex*)WATERFFT_Alloc(sizeof(tFFTComplex) << (2 * sizeLog2));
+
+    /* Amplitudes. The directional term is the same for both components, so the
+     * distribution is evaluated once and the stored amplitude is the length of
+     * the pair it forms with itself. */
+    for (row = 0; row < side; row++)
     {
-        v3 = 0;
-        a1a = 0;
-        v4 = &a1->spectroMap[v2 << a1->borderSizePowerOfTwo];
-        if (1 << a1->borderSizePowerOfTwo > 0)
+        tFFTComplex* cell = &engine->spectroMap[row << sizeLog2];
+
+        for (column = 0; column < side; column++, cell++)
         {
-            do
-            {
-                v5 = a1->waveProp;
-                v26 = a1->direction;
-                v6 = (double)(1 << a1->borderSizePowerOfTwo) * 0.5;
-                v7 = 6.2831855 / a1->worldSizeInMeters;
-                v30 = (float)i;
-                v34.x = (v30 - v6) * v7;
-                v34.y = ((double)a1a - v6) * v7;
-                a1d = WATERFFT_philippe(&v34, &a1->wind, v5, v26);
-                v4->real = a1d;
-                v8 = WATERFFT_philippe(&v34, &a1->wind, a1->waveProp, a1->direction);
-                v4->imaginary = v8;
-                ++v4;
-                v9 = a1d * a1d;
-                a1a = ++v3;
-                v4[-1].real = sqrt(v8 * v8 + v9);
-            } while (v3 < 1 << a1->borderSizePowerOfTwo);
-            v2 = i;
-        }
-        ++v2;
-    }
-    v10 = a1->borderSizePowerOfTwo;
-    if (a1->borderSizePowerOfTwo > 6u)
-    {
-        v11 = 0;
-        v12 = 1 << v10 >> 1;
-        if (v10 - 6 > 0)
-        {
-            do
-            {
-                a1b = 0;
-                if (a1->borderSizePowerOfTwo - 6 > 0)
-                {
-                    v13 = 1 << v10 >> 1;
-                    v14 = v13;
-                    do
-                    {
-                        a1->spectroMap[v12 + v11 + (v13 << a1->borderSizePowerOfTwo)].real = 0.0;
-                        a1->spectroMap[v12 + (v13 << a1->borderSizePowerOfTwo) - v11].real = 0.0;
-                        a1->spectroMap[v12 + v11 + (v14 << a1->borderSizePowerOfTwo)].real = 0.0;
-                        a1->spectroMap[v12 + (v14 << a1->borderSizePowerOfTwo) - v11].real = 0.0;
-                        ++v13;
-                        --v14;
-                        ++a1b;
-                    } while (a1b < a1->borderSizePowerOfTwo - 6);
-                }
-                ++v11;
-            } while (v11 < a1->borderSizePowerOfTwo - 6);
+            Vec2 waveVector;
+            float amplitude;
+
+            waveVector.x = (float)(((float)row - half) * radiansPerCell);
+            waveVector.y = (float)(((double)column - half) * radiansPerCell);
+
+            amplitude = WATERFFT_philippe(&waveVector, &engine->wind, engine->waveProp, engine->direction);
+
+            cell->imaginary = amplitude;
+            cell->real = (float)sqrt((double)amplitude * amplitude + (double)amplitude * amplitude);
         }
     }
-    WATERFFT_Normalize(a1->spectroMap, 1 << (2 * LOBYTE(a1->borderSizePowerOfTwo)));
-    v15 = 1 << a1->borderSizePowerOfTwo;
-    v28 = 0;
-    if (v15)
+
+    /* On grids finer than 64 cells a side, silence a wedge of the highest
+     * frequencies around the centre column: they carry almost no energy and
+     * would otherwise show up as shimmer. */
+    if (sizeLog2 > 6)
     {
-        v29 = 0;
-        v31 = (double)v15 * 0.5;
-        do
+        const int extra = sizeLog2 - 6;
+        const int centre = side >> 1;
+        int offset;
+
+        for (offset = 0; offset < extra; offset++)
         {
-            v16 = 0;
-            v17 = v29;
-            do
+            int above = centre;
+            int below = centre;
+            int step;
+
+            for (step = 0; step < extra; step++, above++, below--)
             {
-                v18 = 6.2831855 / a1->worldSizeInMeters;// 2PI
-                v33 = (double)v28 - v31;
-                v19 = sqrt(sqrt(v33 * v18 * (v33 * v18) + ((double)v16 - v31) * v18 * (((double)v16 - v31) * v18)) * 9.8100004);
-                a1e = v19;
-                v32 = -v19;
-                v20 = RND_JADErand();
-                v21 = a1->spectroMap;
-                //LODWORD(v34.x) = v20;
-                ++v16;
-                v17 += 8;
-                *(float*)((char*)v21 + v17 - 4) = ((double)v20 * 0.000030518509 * (a1e - v32) + v32) * 0.0125 + a1e;
-            } while (v16 < v15);
-            v22 = ++v28 < v15;
-            v29 += 8 * v15;
-        } while (v22);
+                engine->spectroMap[centre + offset + (above << sizeLog2)].real = 0.0f;
+                engine->spectroMap[centre - offset + (above << sizeLog2)].real = 0.0f;
+                engine->spectroMap[centre + offset + (below << sizeLog2)].real = 0.0f;
+                engine->spectroMap[centre - offset + (below << sizeLog2)].real = 0.0f;
+            }
+        }
     }
-    v23 = 0;
-    a1c = 0;
-    do
+
+    WATERFFT_Normalize(engine->spectroMap, cellCount);
+
+    /* Frequencies. Deep water dispersion, with a jitter of about one and a
+     * quarter percent either way so the waves do not stay in step. */
+    for (row = 0; row < side; row++)
     {
-        v24 = (double)a1c;
-        v25 = v24 * 0.0061359233;
-        COS_TABLE[2 * v23] = cos(v25);
-        COS_TABLE[2 * v23 + 1] = sin(v25);
-        a1c = ++v23;
-    } while (v23 < 1024);
-    a1->spectroMapCompressedSize = WATERFFT_Compress_Spectromap(a1->spectroMap, a1->borderSizePowerOfTwo);
-    WATERFFT_Precalc_DXDY_Repartition(a1);
-    WATERFFT_FFT_COMPUTE_COST(a1->borderSizePowerOfTwo, a1->FFTCostTable);
-    WATERFFT_FFT_COMPUTE_COST(a1->borderSizeDXDYPowerOfTwo, a1->FFTCostTableDXDY);
+        for (column = 0; column < side; column++)
+        {
+            const double x = ((double)row - half) * radiansPerCell;
+            const double y = ((double)column - half) * radiansPerCell;
+            const double frequency = sqrt(sqrt(x * x + y * y) * 9.8100004);
+            const int noise = RND_JADErand();
+
+            engine->spectroMap[column + (row << sizeLog2)].imaginary =
+                (float)(((double)noise * 0.000030518509 * (frequency + frequency) - frequency) * 0.0125 + frequency);
+        }
+    }
+
+    /* One full turn of cosine and sine pairs, which WATERFFT_Turn_Spectre
+     * indexes instead of calling a trigonometric function per cell. */
+    for (row = 0; row < 1024; row++)
+    {
+        const double angle = (double)row * 0.0061359233;
+
+        COS_TABLE[2 * row] = (float)cos(angle);
+        COS_TABLE[2 * row + 1] = (float)sin(angle);
+    }
+
+    engine->spectroMapCompressedSize = WATERFFT_Compress_Spectromap(engine->spectroMap, sizeLog2);
+    WATERFFT_Precalc_DXDY_Repartition(engine);
+    WATERFFT_FFT_COMPUTE_COST(engine->borderSizePowerOfTwo, engine->FFTCostTable);
+    WATERFFT_FFT_COMPUTE_COST(engine->borderSizeDXDYPowerOfTwo, engine->FFTCostTableDXDY);
 }
 
 void WTR_SetDefaulExp(struct sUserWaterParamsStruct* a1)
