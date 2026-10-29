@@ -25,7 +25,7 @@
 #include "ai_miscfunctions.h"
 #include "ai_gfxfunctions.h"
 
-tOfc_scriptengine_functions AI_gast_Functions[849] = {
+tOfc_scriptengine_functions AI_gast_Functions[857] = {
                                     { 0x1000,      0,  AI_EvalFunc_DbgTraceInt },
                                     { 0x1001,      0,  AI_EvalFunc_DbgTraceFloat },
                                     { 0x1002,      0,  AI_EvalFunc_DbgTraceVector },
@@ -874,5 +874,13 @@ tOfc_scriptengine_functions AI_gast_Functions[849] = {
                                     { 0x3DC3,      0,  AI_dum },
                                     { 0x3DC4,      0,  AI_EvalFunc_NETServerCreate },
                                     { 0x3DC5,      0,  AI_EvalFunc_pop_one_elem_put_zero_sub_4B4280 },
-                                    { 0x3DC6,      0,  AI_EvalFunc_WTR_put_zero_no_pop_sub_4B42C0 }
+                                    { 0x3DC6,      0,  AI_EvalFunc_WTR_put_zero_no_pop_sub_4B42C0 },
+                                    { 0x55F1,      0,  AI_EvalFunc_BGE_PC_Price_Compute },
+                                    { 0x55F2,      0,  AI_EvalFunc_BGE_PC_Price_Check },
+                                    { 0x55F3,      0,  AI_EvalFunc_BGE_PC_Samsue_Compute },
+                                    { 0x55F4,      0,  AI_EvalFunc_BGE_PC_Samsue_Check },
+                                    { 0x55F5,      0,  AI_EvalFunc_BGE_PC_Radio_Compute },
+                                    { 0x55F6,      0,  AI_EvalFunc_BGE_PC_Radio_Check },
+                                    { 0x55F7,      0,  AI_EvalFunc_BGE_PC_Robot_Compute },
+                                    { 0x55F8,      0,  AI_EvalFunc_BGE_PC_Robot_Check }
 };

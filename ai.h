@@ -138,14 +138,14 @@ char AI_gac_UserStack[1024];
 extern tOfc_scriptengine_functions_types AI_gast_Types[23];
 extern tOfc_scriptengine_functions AI_gast_Categs[16];
 extern tOfc_scriptengine_functions AI_gast_Keywords[74];
-extern tOfc_scriptengine_functions AI_gast_Functions[849];
+extern tOfc_scriptengine_functions AI_gast_Functions[857];
 extern tOfc_scriptengine_functions AI_gast_Fields[27];
 
 extern int AI_CompiledAIEnabled;
 extern int AIUnivIsRunning;
 extern float AI_gf_Epsilon;
 
-int16_t AI_gaw_EnumLink[15815]; // 0x3dc7 => legmagasabb Evalfunction ID!!!
+int16_t AI_gaw_EnumLink[22009]; // 0x55f9 => legmagasabb Evalfunction ID!!!
 
 struct sAI* AI_gpst_CurrentInstance;
 struct sAI* AI_gpst_CurrentInstanceUltra;
