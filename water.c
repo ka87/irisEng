@@ -743,11 +743,25 @@ void WATERFFT_Init_Spectre(tWaterEngineStruct* a1)
             DBG_OutputDebugString("[WTR] spec: bsz=%d world=%g wind=(%g,%g) prop=%g dir=%g\n",
                 a1->borderSizePowerOfTwo, a1->worldSizeInMeters,
                 a1->wind.x, a1->wind.y, a1->waveProp, a1->direction);
-            DBG_OutputDebugString("[WTR] spec: s0=(%g,%g) s1=(%g,%g) cen=(%g,%g) last=(%g,%g)\n",
-                m[0].real, m[0].imaginary, m[1].real, m[1].imaginary,
-                m[c].real, m[c].imaginary,
+            DBG_OutputDebugString("[WTR] spec: s0=(%g,%g) cen=(%g,%g) last=(%g,%g)\n",
+                m[0].real, m[0].imaginary, m[c].real, m[c].imaginary,
                 m[(1 << (2 * a1->borderSizePowerOfTwo)) - 1].real,
                 m[(1 << (2 * a1->borderSizePowerOfTwo)) - 1].imaginary);
+            {   // scan every cell for the first non-finite real, and report its grid position
+                int n = 1 << (2 * a1->borderSizePowerOfTwo), w = 1 << a1->borderSizePowerOfTwo, j, bad = -1;
+                for (j = 0; j < n; j++)
+                    if (!(m[j].real == m[j].real) || !(m[j].imaginary == m[j].imaginary)) { bad = j; break; }
+                if (bad < 0)
+                    DBG_OutputDebugString("[WTR] spec: scan clean, n=%d\n", n);
+                else
+                {
+                    double step = 6.2831855 / a1->worldSizeInMeters, h = w * 0.5;
+                    DBG_OutputDebugString("[WTR] spec: first bad at %d (row %d col %d) v=(%g,%g)\n",
+                        bad, bad / w, bad % w, m[bad].real, m[bad].imaginary);
+                    DBG_OutputDebugString("[WTR] spec: its k=(%g,%g)\n",
+                        ((bad / w) - h) * step, ((bad % w) - h) * step);
+                }
+            }
         }
     }
     v10 = a1->borderSizePowerOfTwo;
