@@ -1525,19 +1525,19 @@ uint32_t WTR_GetFresnelColor(tWaterParamsGlobalStruct* wtr, float cosThetaI)
     {
         const long double cosineRoot = sqrt(-cosThetaI);
         const float cosineRootAsFloat = (float)cosineRoot;
-        const long double incidentAngle = acos(cosineRoot);
+        const long double incidentAngle = acos((double)cosineRoot);
         const float incidentAngleAsFloat = (float)incidentAngle;
         /* Snell's law: 0.74626863 is one over the refractive index */
-        const long double refractedAngle = asin(sin(incidentAngle) * 0.74626863);
+        const long double refractedAngle = asin(sin((double)incidentAngle) * 0.74626863);
         const float angleSum = (float)(incidentAngleAsFloat + refractedAngle);
         const long double angleDifference = refractedAngle - incidentAngleAsFloat;
-        const float perpendicular = (float)(sin(angleDifference) / sin(angleSum));
-        const long double tangentDifference = tan(angleDifference);
+        const float perpendicular = (float)(sin((double)angleDifference) / sin(angleSum));
+        const long double tangentDifference = tan((double)angleDifference);
         const long double tangentSum = tan(angleSum);
         const long double parallel = tangentDifference / tangentSum;
 
         /* unpolarised light: the mean of the two squared reflectances */
-        reflectance = (parallel * parallel + perpendicular * perpendicular) * 0.5;
+        reflectance = (double)((parallel * parallel + perpendicular * perpendicular) * 0.5);
         bottomAndSkyColorFactor = (float)reflectance;
         bottomAndWaterColorFactor = (float)((1.0 - cosineRootAsFloat)
                                           * (1.0 - cosineRootAsFloat)
@@ -1571,7 +1571,7 @@ uint32_t WTR_GetFresnelColor(tWaterParamsGlobalStruct* wtr, float cosThetaI)
        the surface clear at grazing angles and opaque looking down */
     alphaOuter = 1.0 - (1.0 - (1.0 - reflectance));
     alphaInner = 1.0 - alphaOuter * alphaOuter * (alphaOuter * alphaOuter);
-    alphaNorm = alphaInner * alphaInner * (alphaInner * alphaInner);
+    alphaNorm = (float)(alphaInner * alphaInner * (alphaInner * alphaInner));
 
     if (alphaNorm >= 0.0)
     {
@@ -2945,12 +2945,12 @@ int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* water, Vec3* cameraPosition,
             if (farBlend > 1.0)
                 farBlend = 1.0;
 
-            nearMidpoint.x = corners[3].x * nearBlend + (1.0 - nearBlend) * corners[0].x;
-            nearMidpoint.y = corners[0].y * (1.0 - nearBlend) + corners[3].y * nearBlend;
-            nearMidpoint.z = corners[0].z * (1.0 - nearBlend) + corners[3].z * nearBlend;
+            nearMidpoint.x = (float)(corners[3].x * nearBlend + (1.0 - nearBlend) * corners[0].x);
+            nearMidpoint.y = (float)(corners[0].y * (1.0 - nearBlend) + corners[3].y * nearBlend);
+            nearMidpoint.z = (float)(corners[0].z * (1.0 - nearBlend) + corners[3].z * nearBlend);
 
-            farMidpoint.y = corners[1].y * (1.0 - farBlend) + corners[2].y * farBlend;
-            farMidpoint.z = corners[1].z * (1.0 - farBlend) + corners[2].z * farBlend;
+            farMidpoint.y = (float)(corners[1].y * (1.0 - farBlend) + corners[2].y * farBlend);
+            farMidpoint.z = (float)(corners[1].z * (1.0 - farBlend) + corners[2].z * farBlend);
 
             level = water->waterEngine.waveMapShift;
             levelMap = water->concatenatedMap;
@@ -2959,8 +2959,8 @@ int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* water, Vec3* cameraPosition,
             inverseDepth += inverseDepthStep;
             texelLimit += texelStep;
 
-            columnStep.x = (corners[1].x * (1.0 - farBlend) + corners[2].x * farBlend
-                            - nearMidpoint.x) * inverseColumnSpan;
+            columnStep.x = (float)((corners[1].x * (1.0 - farBlend) + corners[2].x * farBlend
+                            - nearMidpoint.x) * inverseColumnSpan);
             columnStep.y = (farMidpoint.y - nearMidpoint.y) * inverseColumnSpan;
             columnStep.z = (farMidpoint.z - nearMidpoint.z) * inverseColumnSpan;
 
