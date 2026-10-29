@@ -287,31 +287,32 @@ void* WTR_AllocAlign(int size, int alignment)
     return ptr;
 }
 
-void WTR_AllocSubStruct(tWaterParamsGlobalStruct* a1)
+/* Allocate every buffer a water block needs for its current grid sizes.
+ *
+ * The three vertex arrays and the colour array carry one row more than the
+ * grid, which is the spare row the mesh walk reads ahead into. The spectra are
+ * square grids of their own side, and the concatenated map holds the base
+ * level plus its reductions, so it is sized at one and a half times the base.
+ *
+ * Everything is 16 byte aligned apart from the concatenated map, which is
+ * aligned to 32. */
+void WTR_AllocSubStruct(tWaterParamsGlobalStruct* water)
 {
-    unsigned int* v2;
-    unsigned int v3;
-    tFFTComplex* v4;
-    unsigned int v5;
-    tFFTComplex* v6;
-    unsigned int v7;
-    unsigned int v8;
+    const unsigned int vertexCount = water->horizontalVertexNum * (water->verticallVertexNum + 1);
+    const unsigned int heightCells = 1u << (2 * water->waterEngine.waveMapShift);
+    const unsigned int choppyCells = 1u << (2 * water->waterEngine.waveMapShiftCHP);
+    const unsigned int baseLevel = heightCells + (2u << water->waterEngine.waveMapShift) + 1;
 
-    a1->vertices = (Vec3*)WTR_AllocAlign(sizeof(Vec3) * a1->horizontalVertexNum * (a1->verticallVertexNum + 1), 16);
-    a1->vecsForUVs = (Vec3*)WTR_AllocAlign(sizeof(Vec3) * a1->horizontalVertexNum * (a1->verticallVertexNum + 1), 16);
-    a1->verticesForDisplay = (Vec3*)WTR_AllocAlign(sizeof(Vec3) * a1->horizontalVertexNum * (a1->verticallVertexNum + 1), 16);
-    v2 = (unsigned int*)WTR_AllocAlign(4 * a1->horizontalVertexNum * (a1->verticallVertexNum + 1), 16);
-    v3 = 2 * a1->waterEngine.waveMapShift;
-    a1->colors = v2;
-    v4 = (tFFTComplex*)WTR_AllocAlign(sizeof(tFFTComplex) * (1 << v3), 16);
-    v5 = a1->waterEngine.waveMapShiftCHP;
-    a1->spaceMap = v4;
-    v6 = (tFFTComplex*)WTR_AllocAlign(sizeof(tFFTComplex) * (1 << (2 * v5)), 16);
-    v7 = 2 * a1->waterEngine.waveMapShiftCHP;
-    a1->spaceMapDX = v6;
-    a1->spaceMapDY = (tFFTComplex*)WTR_AllocAlign(sizeof(tFFTComplex) * (1 << v7), 16);
-    v8 = (1 << (2 * a1->waterEngine.waveMapShift)) + (2 << a1->waterEngine.waveMapShift) + 1;
-    a1->concatenatedMap = (tWtrStruct2*)WTR_AllocAlign(sizeof(tWtrStruct2) * (v8 + (v8 >> 1)), 32);
+    water->vertices = (Vec3*)WTR_AllocAlign(sizeof(Vec3) * vertexCount, 16);
+    water->vecsForUVs = (Vec3*)WTR_AllocAlign(sizeof(Vec3) * vertexCount, 16);
+    water->verticesForDisplay = (Vec3*)WTR_AllocAlign(sizeof(Vec3) * vertexCount, 16);
+    water->colors = (unsigned int*)WTR_AllocAlign(sizeof(unsigned int) * vertexCount, 16);
+
+    water->spaceMap = (tFFTComplex*)WTR_AllocAlign(sizeof(tFFTComplex) * heightCells, 16);
+    water->spaceMapDX = (tFFTComplex*)WTR_AllocAlign(sizeof(tFFTComplex) * choppyCells, 16);
+    water->spaceMapDY = (tFFTComplex*)WTR_AllocAlign(sizeof(tFFTComplex) * choppyCells, 16);
+
+    water->concatenatedMap = (tWtrStruct2*)WTR_AllocAlign(sizeof(tWtrStruct2) * (baseLevel + (baseLevel >> 1)), 32);
 }
 
 /* Release every buffer hanging off a water block and clear the pointers, so
@@ -3168,32 +3169,46 @@ int WTR_Mesh_Do(tWaterParamsGlobalStruct* a1)
     return result;
 }
 
+/* Draw the water surface, called once per pass over the sorted draw lists.
+ *
+ * Only the pass numbered zero draws it, so the surface lands between the
+ * opaque geometry and whatever sorts after it. */
 void PC_AE_ZListHook(int zListId)
 {
-    if (zListId == 0)
-    {
-        QueryPerformanceCounter(&PerfCounterStruct[43]);
-        if (pst_GlobalsWaterParams)
-            Workkkk_748 = WTR_Mesh_Do(pst_GlobalsWaterParams);
-        PRO_QPC_RecordTimeDecRef(43);
-    }
+    if (zListId != 0)
+        return;
+
+    QueryPerformanceCounter(&PerfCounterStruct[43]);
+
+    if (pst_GlobalsWaterParams)
+        Workkkk_748 = WTR_Mesh_Do(pst_GlobalsWaterParams);
+
+    PRO_QPC_RecordTimeDecRef(43);
 }
 
-void WTR_Mesh_Destroy(tWaterParamsGlobalStruct* wtr)
+/* Release a water block and everything hanging off it. */
+void WTR_Mesh_Destroy(tWaterParamsGlobalStruct* water)
 {
-    WTR_FreeSubStruct(wtr);
-    MEM_FreeAlign(wtr);
+    WTR_FreeSubStruct(water);
+    MEM_FreeAlign(water);
 }
 
+/* Drop the water before a world loads.
+ *
+ * Both the live block and the one parked while the water is switched off are
+ * released, and the export block goes back to its built in settings, so the
+ * next world starts from a clean state rather than inheriting this one\'s. */
 void WTR_BeginLoadWorldHook()
 {
     if (pst_GlobalsWaterParams)
         WTR_Mesh_Destroy(pst_GlobalsWaterParams);
-    pst_GlobalsWaterParams = 0;
+    pst_GlobalsWaterParams = NULL;
+
     WTR_SetDefaulExp(&stExportWaterParrams);
+
     if (pst_GlobalsWaterParams_Save)
         WTR_Mesh_Destroy(pst_GlobalsWaterParams_Save);
-    pst_GlobalsWaterParams_Save = 0;
+    pst_GlobalsWaterParams_Save = NULL;
 }
 
 
