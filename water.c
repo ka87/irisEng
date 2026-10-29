@@ -600,44 +600,49 @@ void WATERFFT_Precalc_DXDY_Repartition(tWaterEngineStruct* a1)
     }
 }
 
-void WATERFFT_FFT_COMPUTE_COST(int num, tFFTComplexCost* a2)
+/* Fill the butterfly twiddle table for an FFT of `stageCount` stages.
+ *
+ * Stage n needs 2^n rotations of the unit circle, so the table holds
+ * 1 + 2 + 4 + ... = 2^stageCount - 1 entries laid out stage by stage. Each
+ * entry keeps the rotation twice over, once as (cos, sin) and once turned a
+ * quarter turn as (-sin, cos), which is what the butterfly multiplies by.
+ *
+ * Rather than evaluate a trigonometric function per entry, each stage starts at
+ * one and steps round by repeatedly multiplying by that stage's fixed rotation,
+ * whose cosine and sine sit as a pair in FFT_FACTORS_C. */
+void WATERFFT_FFT_COMPUTE_COST(int stageCount, tFFTComplexCost* table)
 {
-    int v2; // esi
-    int currNum; // edi
-    float* v5; // edx
-    double v6; // st7
-    int v7; // ecx
-    double v8; // st6
-    float v9; // [esp+4h] [ebp-10h]
-    float i; // [esp+8h] [ebp-Ch]
-    float v11; // [esp+Ch] [ebp-8h]
+    const float* factor = FFT_FACTORS_C;
+    int entriesThisStage = 1;
+    int stage;
 
-    v2 = 1;
-    if (num > 0)
+    for (stage = 0; stage < stageCount; stage++)
     {
-        currNum = num;
-        v5 = FFT_FACTORS_C;
-        do
+        const float stepCos = factor[0];
+        const float stepSin = factor[1];
+        /* The running cosine is kept at single precision and the sine at double,
+         * as the rotation was originally carried, so the table rounds the same. */
+        float angleCos = 1.0f;
+        double angleSin = 0.0;
+        int i;
+
+        for (i = 0; i < entriesThisStage; i++)
         {
-            v6 = 0.0;
-            v7 = v2;
-            v9 = *v5;
-            v2 *= 2;
-            v11 = 1.0;
-            for (i = v5[1]; v7; v11 = v8)
-            {
-                a2->imaginary1 = v6;
-                a2->real1 = v11;
-                a2->imaginary2 = v11;
-                a2->real2 = -v6;
-                ++a2;
-                --v7;
-                v8 = v9 * v11 - i * v6;
-                v6 = v6 * v9 + i * v11;
-            }
-            v5 += 2;
-            --currNum;
-        } while (currNum);
+            double turnedCos;
+
+            table->real1 = angleCos;
+            table->imaginary1 = (float)angleSin;
+            table->real2 = (float)-angleSin;
+            table->imaginary2 = angleCos;
+            table++;
+
+            turnedCos = stepCos * angleCos - stepSin * angleSin;
+            angleSin = angleSin * stepCos + stepSin * angleCos;
+            angleCos = (float)turnedCos;
+        }
+
+        entriesThisStage *= 2;
+        factor += 2;
     }
 }
 
@@ -846,41 +851,42 @@ void WTR_SetDefaulExp(struct sUserWaterParamsStruct* a1)
     a1->isSymmetryActive = v16;
 }
 
-void WATERFFT_Deduct_DXDY_Spectre_Line(tFFTComplex* a1, tFFTComplex* a2, tFFTComplex* a3, tFFTComplex* a4, tFFTComplex* a5, int a6, int a7)
+/* Build one line of the two horizontal displacement spectra from one line of
+ * the height spectrum.
+ *
+ * The horizontal displacement of a wave is its height spectrum turned a quarter
+ * turn and scaled by the unit wavevector, so each output is the input component
+ * multiplied by i times the direction entry: (-dir.imaginary, dir.real). The
+ * real part of the height spectrum feeds the first output and the imaginary
+ * part feeds the second.
+ *
+ * Two entries are produced per step, taking their directions from two rows of
+ * the direction map that sit `rowLength` apart, and both direction cursors
+ * advance by `rowLength + rowStride` entries each step. */
+void WATERFFT_Deduct_DXDY_Spectre_Line(tFFTComplex* outFromReal, tFFTComplex* outFromImaginary, tFFTComplex* outEnd,
+                                       tFFTComplex* spectrum, tFFTComplex* direction, int rowLength, int rowStride)
 {
-    tFFTComplex* v7; // edx
-    tFFTComplex* v8; // esi
-    tFFTComplex* v9; // ecx
-    int v11; // ebx
-    double v13; // st7
-    double v14; // st7
-    double v15; // st7
+    const int directionStep = rowLength + rowStride;
+    tFFTComplex* lowDirection = direction;
+    tFFTComplex* highDirection = &direction[rowLength];
 
-    v7 = a5;
-    v8 = &a5[a6];
-    v9 = a1;
-    if (a1 < a3)
+    while (outFromReal < outEnd)
     {
-        v11 = 8 * (a7 + a6);
-        do
-        {
-            v9 += 2;
-            v13 = a4->real * v7->imaginary;
-            a2 += 2;
-            a4 += 2;
-            v9[-2].real = -v13;
-            v9[-2].imaginary = a4[-2].real * v7->real;
-            v9[-1].real = -(v8->imaginary * a4[-1].real);
-            v9[-1].imaginary = a4[-1].real * v8->real;
-            a2[-2].real = -(a4[-2].imaginary * v7->imaginary);
-            v14 = v7->real;
-            v7 = (tFFTComplex*)((char*)v7 + v11);
-            a2[-2].imaginary = v14 * a4[-2].imaginary;
-            a2[-1].real = -(v8->imaginary * a4[-1].imaginary);
-            v15 = a4[-1].imaginary * v8->real;
-            v8 = (tFFTComplex*)((char*)v8 + v11);
-            a2[-1].imaginary = v15;
-        } while (v9 < a3);
+        outFromReal[0].real = -(spectrum[0].real * lowDirection->imaginary);
+        outFromReal[0].imaginary = spectrum[0].real * lowDirection->real;
+        outFromReal[1].real = -(spectrum[1].real * highDirection->imaginary);
+        outFromReal[1].imaginary = spectrum[1].real * highDirection->real;
+
+        outFromImaginary[0].real = -(spectrum[0].imaginary * lowDirection->imaginary);
+        outFromImaginary[0].imaginary = spectrum[0].imaginary * lowDirection->real;
+        outFromImaginary[1].real = -(spectrum[1].imaginary * highDirection->imaginary);
+        outFromImaginary[1].imaginary = spectrum[1].imaginary * highDirection->real;
+
+        outFromReal += 2;
+        outFromImaginary += 2;
+        spectrum += 2;
+        lowDirection += directionStep;
+        highDirection += directionStep;
     }
 }
 
