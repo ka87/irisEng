@@ -2800,281 +2800,301 @@ void WTR_DirectComputeColors(Vec3* vertices, Vec3* cameraPosition, Vec3* normals
 }
 
 
-int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* a1, Vec3* cameraObjectPos, Vec3* a3, float a7, float a8)
+/* Build the water mesh for this frame and shade it.
+ *
+ * WTR_Compute4Points gives the quad of the water plane the camera can
+ * see: corners 0 and 3 are the near edge, 1 and 2 the far one. The
+ * mesh spans that quad with verticallVertexNum rows by
+ * horizontalVertexNum columns, the rows spaced by even steps in
+ * inverse depth rather than in distance, so they stay evenly spaced
+ * on screen as the quad recedes.
+ *
+ * Each row picks its own level of the concatenated map from how far
+ * apart its vertices land in map space: once a row's step spans more
+ * than two texels the next coarser level is used, which keeps the
+ * sampling near one texel per vertex all the way to the horizon. The
+ * row at which each level was last used is kept in lastRowUsingLevel
+ * so that the colour pass can repeat a row wherever the level changed.
+ *
+ * forwardScale and acrossScale size the visible quad along the view
+ * direction and across it. Returns 0 when there is no visible water. */
+int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* water, Vec3* cameraPosition,
+                      Vec3* viewDirection, float forwardScale, float acrossScale)
 {
-    double tiling; // st7
-    float waterheight; // edx
-    double choppyness; // st7
-    int result; // eax
-    double v9; // st7
-    double v10; // st6
-    unsigned int v11; // ebp
-    double v12; // st7
-    double v13; // st6
-    double v14; // st7
-    unsigned int v15; // edi
-    Vec3* vvecsforuvs; // ecx
-    Vec3* v17; // edx
-    Vec3* vertices; // esi
-    Vec3* v19; // eax
-    double v20; // st7
-    double v21; // st6
-    double v22; // st7
-    unsigned int v23; // edx
-    tWtrStruct2* v24; // ebp
-    double j; // st7
-    Vec3* k; // esi
-    double v27; // st7
-    unsigned int v28; // eax
-    Vec3* v29; // edx
-    unsigned int* v30; // ebp
-    Vec3* v31; // ecx
-    int v32; // esi
-    Vec3* v33; // ecx
-    unsigned int v34; // edx
-    float distanceMultiplier; // [esp+0h] [ebp-104h]
-    float a6a; // [esp+0h] [ebp-104h]
-    float a9; // [esp+4h] [ebp-100h]
-    float choppyneshsq; // [esp+8h] [ebp-FCh]
-    float v39; // [esp+18h] [ebp-ECh]
-    float v40; // [esp+18h] [ebp-ECh]
-    Vec3* v41; // [esp+18h] [ebp-ECh]
-    int* v42; // [esp+18h] [ebp-ECh]
-    float v43; // [esp+1Ch] [ebp-E8h]
-    float i; // [esp+1Ch] [ebp-E8h]
-    int v45; // [esp+20h] [ebp-E4h]
-    int v46; // [esp+20h] [ebp-E4h]
-    float v47; // [esp+24h] [ebp-E0h]
-    Vec3* vecsforuvs; // [esp+24h] [ebp-E0h]
-    int v49; // [esp+28h] [ebp-DCh]
-    int v50; // [esp+28h] [ebp-DCh]
-    float v51; // [esp+2Ch] [ebp-D8h]
-    Vec3 a1a; // [esp+30h] [ebp-D4h] BYREF
-    float v53; // [esp+3Ch] [ebp-C8h]
-    unsigned int* colors; // [esp+40h] [ebp-C4h]
-    int v55; // [esp+44h] [ebp-C0h]
-    Vec3* v56; // [esp+44h] [ebp-C0h] FORCED
-    float v57; // [esp+48h] [ebp-BCh]
-    tWtrStruct2* v58; // [esp+4Ch] [ebp-B8h]
-    float v59; // [esp+50h] [ebp-B4h]
-    Vec3 a6; // [esp+54h] [ebp-B0h] BYREF
-    float v61; // [esp+60h] [ebp-A4h]
-    Vec3 dest; // [esp+64h] [ebp-A0h] BYREF
-    float v63; // [esp+70h] [ebp-94h]
-    float v64; // [esp+74h] [ebp-90h]
-    int v65; // [esp+78h] [ebp-8Ch]
-    float v66; // [esp+7Ch] [ebp-88h]
-    float v67; // [esp+80h] [ebp-84h]
-    Vec3 a2a[4]; // [esp+84h] [ebp-80h] BYREF
-    int v69[20]; // [esp+B4h] [ebp-50h] BYREF
+    const double inverseTiling = 1.0 / water->tiling;
+    const float waterHeight = water->waterHeight;
+    const float scaledWaveHeight = (float)(inverseTiling * water->waveHeight);
+    const float scaledChoppy = (float)(inverseTiling * water->choppy);
 
-    tiling = 1.0 / a1->tiling;
-    waterheight = a1->waterHeight;
-    v51 = tiling * a1->waveHeight;
-    choppyness = tiling * a1->choppy;
-    v61 = choppyness;
-    choppyneshsq = choppyness + choppyness;
-    a9 = v51 + v51;
-    result = WTR_Compute4Points(a2a, &dest, cameraObjectPos, a3, waterheight, 18000.0, a7, a8, a9, choppyneshsq);
-    if (result)
+    Vec3 corners[4];
+    Vec3 acrossVector;
+    int lastRowUsingLevel[20];
+
+    if (!WTR_Compute4Points(corners, &acrossVector, cameraPosition, viewDirection,
+                            waterHeight, 18000.0, forwardScale, acrossScale,
+                            scaledWaveHeight + scaledWaveHeight,
+                            scaledChoppy + scaledChoppy))
+        return 0;
+
     {
-        v9 = a2a[0].x - cameraObjectPos->x;
-        v10 = a2a[0].y - cameraObjectPos->y;
-        memset(v69, 0, sizeof(v69));
-        v39 = v10 * a3->y + v9 * a3->x + (a2a[0].z - cameraObjectPos->z) * a3->z;
-        a1a.x = a2a[3].x - cameraObjectPos->x;
-        a1a.y = a2a[3].y - cameraObjectPos->y;
-        v11 = a1->verticallVertexNum;
-        a1a.z = a2a[3].z - cameraObjectPos->z;
-        v12 = a1a.y * a3->y + a1a.x * a3->x + a1a.z * a3->z;
-        v55 = 1 << a1->waterEngine.waveMapShift;
-        v43 = 1.0 / (double)(v11 - 1);
-        v53 = 1.0 / v39;
-        v13 = (double)v55;
-        v40 = 1.0 / (v13 * a1->tiling) * (v43 * v39);
-        if (v12 < v40)
-            v12 = v40;
-        v14 = 1.0 / v12;
-        v67 = (v14 - v53) * v43;
-        v59 = v53 * 0.0 * v43;
-        v64 = v14 * v43;
-        MATH_BlendVector(&a1a, a2a, &a2a[1], 0.5);
-        MATH_BlendVector(&dest, &a2a[3], &a2a[2], 0.5);
-        v47 = v13;
-        v63 = 1.0
-            / a1->tiling
-            / v47
-            / sqrt(
-                (dest.z - a1a.z) * (dest.z - a1a.z)
-                + (dest.y - a1a.y) * (dest.y - a1a.y)
-                + (dest.x - a1a.x) * (dest.x - a1a.x));
-        v15 = a1->horizontalVertexNum;
-        vvecsforuvs = a1->vecsForUVs;
-        v17 = a1->verticesForDisplay;
-        vertices = a1->vertices;
-        colors = a1->colors;
-        v57 = 1.0 - (double)v11 * v63;
-        vecsforuvs = vvecsforuvs;
-        v41 = v17;
-        v19 = &vertices[v11 * v15];
-        v56 = v19;
-        v49 = 0;
-        for (i = 1.0 / (double)(v15 - 1); vertices < v56; v41 += v15)
+        const unsigned int rowCount = water->verticallVertexNum;
+        const int mapSide = 1 << water->waterEngine.waveMapShift;
+        const double mapSideAsDouble = (double)mapSide;
+        /* the same value kept as a float, which is what the texel step
+           below is divided by; the tile clamp uses the double */
+        const float mapSideAsFloat = (float)mapSideAsDouble;
+        const float inverseRowSpan = (float)(1.0 / (double)(rowCount - 1));
+
+        /* depth along the view direction at the near and far edges */
+        const float nearDepth = (float)((corners[0].x - cameraPosition->x) * viewDirection->x
+                               + (corners[0].y - cameraPosition->y) * viewDirection->y
+                               + (corners[0].z - cameraPosition->z) * viewDirection->z);
+
+        double farDepth = (corners[3].x - cameraPosition->x) * viewDirection->x
+                        + (corners[3].y - cameraPosition->y) * viewDirection->y
+                        + (corners[3].z - cameraPosition->z) * viewDirection->z;
+
+        /* never let the far edge come closer than one map tile */
+        const float minimumFarDepth = (float)(
+            1.0 / (mapSideAsDouble * water->tiling) * (inverseRowSpan * nearDepth));
+
+        float inverseDepth;
+        float inverseDepthStep;
+        float rowNumerator;
+        float rowNumeratorStep;
+        float texelLimit;
+        float texelStep;
+
+        Vec3 nearMidpoint, farMidpoint;
+        Vec3* vertices;
+        Vec3* uvVectors;
+        Vec3* displayVertices;
+        unsigned int* colors;
+        Vec3* const verticesEnd =
+            &water->vertices[rowCount * water->horizontalVertexNum];
+        unsigned int columnCount;
+        float inverseColumnSpan;
+        int rowIndex;
+
+        memset(lastRowUsingLevel, 0, sizeof(lastRowUsingLevel));
+
+        if (farDepth < minimumFarDepth)
+            farDepth = minimumFarDepth;
+
+        inverseDepth = (float)(1.0 / nearDepth);
+        inverseDepthStep = (float)((1.0 / farDepth - inverseDepth) * inverseRowSpan);
+        rowNumeratorStep = (float)(1.0 / farDepth * inverseRowSpan);
+        /* zero, but reached through the running inverse depth, so a
+           degenerate near edge stays degenerate rather than becoming 0 */
+        rowNumerator = (float)(inverseDepth * 0.0 * inverseRowSpan);
+
+        /* one texel step measured across the middle of the quad */
+        MATH_BlendVector(&nearMidpoint, corners, &corners[1], 0.5);
+        MATH_BlendVector(&farMidpoint, &corners[3], &corners[2], 0.5);
+        texelStep = (float)(1.0
+            / water->tiling
+            / mapSideAsFloat
+            / sqrt((farMidpoint.x - nearMidpoint.x) * (farMidpoint.x - nearMidpoint.x)
+                 + (farMidpoint.y - nearMidpoint.y) * (farMidpoint.y - nearMidpoint.y)
+                 + (farMidpoint.z - nearMidpoint.z) * (farMidpoint.z - nearMidpoint.z)));
+        texelLimit = (float)(1.0 - (double)rowCount * texelStep);
+
+        columnCount = water->horizontalVertexNum;
+        inverseColumnSpan = (float)(1.0 / (double)(columnCount - 1));
+        vertices = water->vertices;
+        uvVectors = water->vecsForUVs;
+        displayVertices = water->verticesForDisplay;
+        colors = water->colors;
+        rowIndex = 0;
+
+        while (vertices < verticesEnd)
         {
-            v20 = v59 / v53;
-            if (v57 <= v20)
-                v20 = v57;
-            v21 = v20;
-            if (v20 < 0.0)
-                v21 = 0.0;
-            if (v21 > 1.0)
-                v21 = 1.0;
-            a1a.x = a2a[3].x * v21 + (1.0 - v21) * a2a[0].x;
-            a1a.y = a2a[0].y * (1.0 - v21) + a2a[3].y * v21;
-            a1a.z = a2a[0].z * (1.0 - v21) + a2a[3].z * v21;
-            *(float*)&v58 = v20;
-            if (v20 >= 0.0)
-                v22 = *(float*)&v58;
-            else
-                v22 = 0.0;
-            if (v22 > 1.0)
-                v22 = 1.0;
-            v23 = a1->waterEngine.waveMapShift;
-            v24 = a1->concatenatedMap;
-            v58 = v24;
-            dest.y = a2a[1].y * (1.0 - v22) + a2a[2].y * v22;
-            dest.z = a2a[1].z * (1.0 - v22) + a2a[2].z * v22;
-            v59 = v64 + v59;
-            v53 = v67 + v53;
-            v57 = v57 + v63;
-            a6.z = dest.z - a1a.z;
-            a6.x = (a2a[1].x * (1.0 - v22) + a2a[2].x * v22 - a1a.x) * i;
-            a6.y = (dest.y - a1a.y) * i;
-            a6.z = a6.z * i;
-            v66 = a6.y * a6.y + a6.x * a6.x;
-            v45 = MATH_gl_TableRacine[((*(int32_t *)&v66) >> 13) & 0x7FF]
-                + (((((*(uint32_t*)&v66) & 0x7F800000) + 0x3F800000) >> 1) & 0x7F800000);
-            v65 = 1 << v23;
-            for (j = (double)(1 << v23) * *(float*)&v45 * a1->tiling; j > 2.0; v58 = v24)
+            /* where this row sits along the quad, perspective correct */
+            double alongQuad = rowNumerator / inverseDepth;
+            double nearBlend, farBlend;
+            Vec3 columnStep;
+            double stepLengthSquared;
+            unsigned int level;
+            tWtrStruct2* levelMap;
+            double texelsPerStep;
+
+            if (texelLimit <= alongQuad)
+                alongQuad = texelLimit;
+
+            nearBlend = alongQuad;
+            if (alongQuad < 0.0)
+                nearBlend = 0.0;
+            if (nearBlend > 1.0)
+                nearBlend = 1.0;
+
+            /* the far edge uses the same value rounded to float first,
+               which is what the original stores and reloads */
+            farBlend = (float)alongQuad;
+            if (!(alongQuad >= 0.0))
+                farBlend = 0.0;
+            if (farBlend > 1.0)
+                farBlend = 1.0;
+
+            nearMidpoint.x = corners[3].x * nearBlend + (1.0 - nearBlend) * corners[0].x;
+            nearMidpoint.y = corners[0].y * (1.0 - nearBlend) + corners[3].y * nearBlend;
+            nearMidpoint.z = corners[0].z * (1.0 - nearBlend) + corners[3].z * nearBlend;
+
+            farMidpoint.y = corners[1].y * (1.0 - farBlend) + corners[2].y * farBlend;
+            farMidpoint.z = corners[1].z * (1.0 - farBlend) + corners[2].z * farBlend;
+
+            level = water->waterEngine.waveMapShift;
+            levelMap = water->concatenatedMap;
+
+            rowNumerator += rowNumeratorStep;
+            inverseDepth += inverseDepthStep;
+            texelLimit += texelStep;
+
+            columnStep.x = (corners[1].x * (1.0 - farBlend) + corners[2].x * farBlend
+                            - nearMidpoint.x) * inverseColumnSpan;
+            columnStep.y = (farMidpoint.y - nearMidpoint.y) * inverseColumnSpan;
+            columnStep.z = (farMidpoint.z - nearMidpoint.z) * inverseColumnSpan;
+
+            /* horizontal length of one column step, in map texels */
+            stepLengthSquared = columnStep.y * columnStep.y + columnStep.x * columnStep.x;
+            texelsPerStep = (double)(1 << level)
+                          * MATH_GetSqrt((float)stepLengthSquared)
+                          * water->tiling;
+
+            /* drop a level for every doubling past two texels a step */
+            while (texelsPerStep > 2.0)
             {
-                if (v23 < 2)
+                if (level < 2)
                     break;
-                j = j * 0.5;
-                v24 = &v58[(2 << v23) + 1 + (1 << (2 * v23))];
-                --v23;
+                texelsPerStep = texelsPerStep * 0.5;
+                levelMap = &levelMap[(2 << level) + 1 + (1 << (2 * level))];
+                --level;
             }
-            v69[v23] = v49;
-            if (v49)
+
+            lastRowUsingLevel[level] = rowIndex;
+
+            if (rowIndex)
             {
-                WTR_Compute_Mesh0_Rasterize_Line(vertices, v24, v23, a1->tiling, &a1a, &a6, v15, v61, v51, 0.0);
-                if (a1->waterEngine.useCloudShadingforColors)
+                WTR_Compute_Mesh0_Rasterize_Line(vertices, levelMap, level, water->tiling,
+                                                 &nearMidpoint, &columnStep, columnCount,
+                                                 scaledChoppy, scaledWaveHeight, 0.0);
+
+                /* shade the row completed on the previous pass */
+                if (water->waterEngine.useCloudShadingforColors)
                 {
-                    distanceMultiplier = 1.0 / v51;
                     WTR_DirectComputeColors_CloudShading(
-                        &vertices[-(int)a1->horizontalVertexNum],
-                        (int*)&colors[-(int)a1->horizontalVertexNum],
-                        a1->horizontalVertexNum,
-                        a1->waterEngine.skyColor,
-                        a1->waterEngine.bottomColor,
-                        distanceMultiplier,
-                        a1->waterHeight);
+                        &vertices[-(int)water->horizontalVertexNum],
+                        (int*)&colors[-(int)water->horizontalVertexNum],
+                        water->horizontalVertexNum,
+                        water->waterEngine.skyColor,
+                        water->waterEngine.bottomColor,
+                        (float)(1.0 / scaledWaveHeight),
+                        water->waterHeight);
                 }
                 else
                 {
                     WTR_DirectComputeColors(
-                        &vertices[-(int)a1->horizontalVertexNum],
-                        cameraObjectPos,
-                        &vecsforuvs[-(int)a1->horizontalVertexNum],
-                        &v41[-(int)a1->horizontalVertexNum],
-                        &colors[-(int)a1->horizontalVertexNum],
-                        a1->horizontalVertexNum,
-                        a1->waterEngine.colorTable,
+                        &vertices[-(int)water->horizontalVertexNum],
+                        cameraPosition,
+                        &uvVectors[-(int)water->horizontalVertexNum],
+                        &displayVertices[-(int)water->horizontalVertexNum],
+                        &colors[-(int)water->horizontalVertexNum],
+                        water->horizontalVertexNum,
+                        water->waterEngine.colorTable,
                         1.0f);
                 }
             }
             else
             {
-                WTR_Compute_Mesh0_Rasterize_Line(vertices, v24, v23, a1->tiling, &a1a, &a6, v15, 0.0, 0.0, 0.0);
+                /* the first row carries no displacement of its own */
+                WTR_Compute_Mesh0_Rasterize_Line(vertices, levelMap, level, water->tiling,
+                                                 &nearMidpoint, &columnStep, columnCount,
+                                                 0.0, 0.0, 0.0);
             }
-            v15 = a1->horizontalVertexNum;
-            ++v49;
-            colors += v15;
-            vertices += v15;
-            v19 = v56;
-            vecsforuvs += v15;
+
+            columnCount = water->horizontalVertexNum;
+            ++rowIndex;
+            vertices += columnCount;
+            colors += columnCount;
+            uvVectors += columnCount;
+            displayVertices += columnCount;
         }
-        for (k = &vertices[-(int)a1->horizontalVertexNum]; k < v19; k[-1].z = v27 - v51)
+
+        /* drop the last row by the wave amplitude, so the furthest
+           edge sits below the surface and meets the horizon flat */
         {
-            v27 = k->z;
-            ++k;
+            Vec3* vertex = &vertices[-(int)water->horizontalVertexNum];
+            while (vertex < verticesEnd)
+            {
+                const double height = vertex->z;
+                ++vertex;
+                vertex[-1].z = (float)(height - scaledWaveHeight);
+            }
         }
-        if (a1->waterEngine.useCloudShadingforColors)
+
+        /* shade the first row, left over by the one row lag above */
+        if (water->waterEngine.useCloudShadingforColors)
         {
-            a6a = 1.0 / v51;
             WTR_DirectComputeColors_CloudShading(
-                a1->vertices,
-                (int*)a1->colors,
-                a1->horizontalVertexNum,
-                a1->waterEngine.skyColor,
-                a1->waterEngine.bottomColor,
-                a6a,
-                a1->waterHeight);
+                water->vertices,
+                (int*)water->colors,
+                water->horizontalVertexNum,
+                water->waterEngine.skyColor,
+                water->waterEngine.bottomColor,
+                (float)(1.0 / scaledWaveHeight),
+                water->waterHeight);
         }
         else
         {
             WTR_DirectComputeColors(
-                a1->vertices,
-                cameraObjectPos,
-                a1->vecsForUVs,
-                a1->verticesForDisplay,
-                a1->colors,
-                a1->horizontalVertexNum,
-                a1->waterEngine.colorTable,
+                water->vertices,
+                cameraPosition,
+                water->vecsForUVs,
+                water->verticesForDisplay,
+                water->colors,
+                water->horizontalVertexNum,
+                water->waterEngine.colorTable,
                 1.0f);
         }
-        v28 = a1->horizontalVertexNum;
-        v29 = a1->vertices;
-        v30 = a1->colors;
-        v31 = &a1->vertices[v28 * (a1->verticallVertexNum - 1)];
-        v42 = &v69[1];
-        v32 = 0;
-        v46 = (int)v31;
-        v50 = 0;
-        if (a1->vertices < v31)
+
+        /* wherever the level changed the row below was never shaded, so
+           repeat the colours of the row before it */
         {
-            do
+            Vec3* rowVertices = water->vertices;
+            unsigned int* rowColors = water->colors;
+            Vec3* const lastRow = &water->vertices[water->horizontalVertexNum
+                                   * (water->verticallVertexNum - 1)];
+            const int* levelChange = &lastRowUsingLevel[1];
+            int row = 0;
+
+            while (rowVertices < lastRow)
             {
-                if (*v42 == v32)
+                if (*levelChange == row)
                 {
-                    if (v32)
-                    {
-                        memcpy(v30, &v30[-(int)v28], 4 * v28);
-                        v31 = (Vec3*)v46;
-                        v32 = v50;
-                    }
-                    ++v42;
+                    if (row)
+                        memcpy(rowColors,
+                               &rowColors[-(int)water->horizontalVertexNum],
+                               4 * water->horizontalVertexNum);
+                    ++levelChange;
                 }
-                v28 = a1->horizontalVertexNum;
-                ++v32;
-                v29 += v28;
-                v50 = v32;
-                v30 += v28;
-            } while (v29 < v31);
-        }
-        v33 = &v31[a1->horizontalVertexNum];
-        if (v29 < v33)
-        {
-            v34 = ((char*)v33 - (char*)v29 - 1) / 12u + 1;
-            do
+                ++row;
+                rowVertices += water->horizontalVertexNum;
+                rowColors += water->horizontalVertexNum;
+            }
+
+            /* and the final row, which has no successor to shade it */
             {
-                *v30 = v30[-(int)a1->horizontalVertexNum];
-                ++v30;
-                --v34;
-            } while (v34);
+                Vec3* const pastLastRow = &lastRow[water->horizontalVertexNum];
+                while (rowVertices < pastLastRow)
+                {
+                    *rowColors = rowColors[-(int)water->horizontalVertexNum];
+                    ++rowColors;
+                    ++rowVertices;
+                }
+            }
         }
-        result = 1;
     }
-    return result;
+
+    return 1;
 }
 
 /* Build and draw the water surface for this frame.
