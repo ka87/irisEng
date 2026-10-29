@@ -3074,69 +3074,74 @@ int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* a1, Vec3* cameraObjectPos, Vec3*
     return result;
 }
 
-int WTR_Mesh_Do(tWaterParamsGlobalStruct* a1)
+/* Build and draw the water surface for this frame.
+ *
+ * The projection scale handed to the mesh builder shrinks as the camera rolls
+ * away from level: take the horizontal vector across the line of sight, see
+ * how much of the camera's own right vector lies out of that direction, and
+ * widen the field of view by it. A level camera leaves the scale at one over
+ * the tangent of the half angle.
+ *
+ * Nothing is drawn when the builder reports no surface in view. When there is
+ * one, the surface is drawn and then advanced: the elapsed time moves on by
+ * the frame time scaled by the wave speed, the spectrum is transformed at the
+ * new time, and the result is concatenated ready for the next frame. */
+int WTR_Mesh_Do(tWaterParamsGlobalStruct* water)
 {
-    double v1; // st7
-    double v2; // st6
-    double v3; // st5
-    long double v4; // st5
-    long double v5; // st7
-    double v6; // st6
-    double v7; // st6
-    Vec3* v8; // edi
-    Vec3* v9; // ebx
-    int result; // eax
-    tFFTComplex* v11; // ecx
-    tFFTComplex* v12; // edx
-    float v13; // [esp+0h] [ebp-74h]
-    float a5a; // [esp+28h] [ebp-4Ch]
-    float a5b; // [esp+28h] [ebp-4Ch]
-    float a5; // [esp+28h] [ebp-4Ch]
-    float a5c; // [esp+28h] [ebp-4Ch]
-    float v18; // [esp+2Ch] [ebp-48h]
-    float v19; // [esp+30h] [ebp-44h]
-    float v20; // [esp+30h] [ebp-44h]
-    float v21; // [esp+34h] [ebp-40h]
-    float v22; // [esp+34h] [ebp-40h]
-    Vec3 a2; // [esp+38h] [ebp-3Ch] BYREF
-    Vec3 points[4]; // [esp+44h] [ebp-30h] BYREF
+    Vec3* const sight = &gpst_DX_stDD->ct.cam.objectMtx.v3;
+    Vec3* const cameraPosition = &gpst_DX_stDD->ct.cam.objectMtx.Pos;
+    Vec3* const cameraRight = &gpst_DX_stDD->ct.cam.objectMtx.v1;
 
-    v1 = gpst_DX_stDD->ct.cam.objectMtx.v3.z * 0.0;
-    v2 = v1 - gpst_DX_stDD->ct.cam.objectMtx.v3.y;
-    v19 = gpst_DX_stDD->ct.cam.objectMtx.v3.x - v1;
-    v3 = gpst_DX_stDD->ct.cam.objectMtx.v3.y * 0.0 - gpst_DX_stDD->ct.cam.objectMtx.v3.x * 0.0;
-    v21 = v3;
-    v4 = 1.0 / sqrt(v3 * v21 + v19 * v19 + v2 * v2);// crossproduct, normalizevector
-    a5a = v4;
-    v5 = v4 * v2;
-    v6 = v19 * a5a;
-    v22 = v21 * a5a;
-    a5b = gpst_DX_stDD->ct.cam.objectMtx.v1.z * v22
-        + gpst_DX_stDD->ct.cam.objectMtx.v1.y * v6
-        + v5 * gpst_DX_stDD->ct.cam.objectMtx.v1.x;
-    a2.x = v5 * a5b;
-    v18 = a2.x - gpst_DX_stDD->ct.cam.objectMtx.v1.x;
-    v20 = v6 * a5b - gpst_DX_stDD->ct.cam.objectMtx.v1.y;
-    v7 = v22 * a5b - gpst_DX_stDD->ct.cam.objectMtx.v1.z;
-    a5 = 1.0 / ((sqrt(v7 * v7 + v20 * v20 + v18 * v18) + 1.0) * tan(gpst_DX_stDD->ct.cam.focale * 0.5));
-    WTR_UpdateColorMode(a1, gpst_DX_stDD->ct.cam.objectMtx.Pos.z);
-    v8 = &gpst_DX_stDD->ct.cam.objectMtx.v3;
-    v9 = &gpst_DX_stDD->ct.cam.objectMtx.Pos;
-    result = WTR_Compute_Mesh0(a1, &gpst_DX_stDD->ct.cam.objectMtx.Pos, &gpst_DX_stDD->ct.cam.objectMtx.v3, a5, 1.0);
-    if (result)
-    {
-        v13 = a1->waterHeight - 100.0;
-        WTR_Compute4Points(points, &a2, v9, v8, v13, 18000.0, a5, 1.0, 0.0, 0.0);
-        D3D_DrawWater_DrawVertexTable(a1);
-        v11 = a1->spaceMapDY;
-        v12 = a1->spaceMapDX;
-        a5c = TIM_gf_dt * a1->speed + a1->waterEngine.timeElapsed;
-        a1->waterEngine.timeElapsed = a5c;
-        WATERFFT_Turn_Spectre(&a1->waterEngine, a1->spaceMap, v12, v11, a5c);
-        WTR_Concate(a1);
-        result = 1;
-    }
-    return result;
+    /* The horizontal direction across the line of sight, which is the line of
+     * sight crossed with straight up, with the zero terms folded out. */
+    const double acrossX = -sight->y;
+    const double acrossY = sight->x;
+    const double acrossZ = 0.0;
+    const double inverseLength = 1.0 / sqrt(acrossZ * acrossZ + acrossY * acrossY + acrossX * acrossX);
+
+    const double unitAcrossX = inverseLength * acrossX;
+    const double unitAcrossY = acrossY * inverseLength;
+    const double unitAcrossZ = acrossZ * inverseLength;
+
+    /* How much of the camera's right vector lies along that direction, and
+     * what is left over once it is taken away. */
+    const double alignment = cameraRight->z * unitAcrossZ + cameraRight->y * unitAcrossY + unitAcrossX * cameraRight->x;
+
+    /* The x term goes through single precision on its way out, as it did, so
+     * the scale rounds the same; the other two stay wide. */
+    const float alongAcrossX = (float)(unitAcrossX * alignment);
+    const double leftOverX = alongAcrossX - cameraRight->x;
+    const double leftOverY = unitAcrossY * alignment - cameraRight->y;
+    const double leftOverZ = unitAcrossZ * alignment - cameraRight->z;
+
+    const float projectionScale = (float)(1.0 /
+        ((sqrt(leftOverZ * leftOverZ + leftOverY * leftOverY + leftOverX * leftOverX) + 1.0)
+         * tan(gpst_DX_stDD->ct.cam.focale * 0.5)));
+
+    Vec3 corners[4];
+    Vec3 centre;
+    int built;
+
+    centre.x = alongAcrossX;
+
+    WTR_UpdateColorMode(water, gpst_DX_stDD->ct.cam.objectMtx.Pos.z);
+
+    built = WTR_Compute_Mesh0(water, cameraPosition, sight, projectionScale, 1.0);
+
+    if (!built)
+        return built;
+
+    WTR_Compute4Points(corners, &centre, cameraPosition, sight,
+                       (float)(water->waterHeight - 100.0), 18000.0, projectionScale, 1.0, 0.0, 0.0);
+
+    D3D_DrawWater_DrawVertexTable(water);
+
+    water->waterEngine.timeElapsed = TIM_gf_dt * water->speed + water->waterEngine.timeElapsed;
+    WATERFFT_Turn_Spectre(&water->waterEngine, water->spaceMap, water->spaceMapDX, water->spaceMapDY,
+                          water->waterEngine.timeElapsed);
+    WTR_Concate(water);
+
+    return 1;
 }
 
 /* Draw the water surface, called once per pass over the sorted draw lists.
