@@ -2192,17 +2192,17 @@ LABEL_47:
     waterHeight = pst_GlobalsWaterParams->waterHeight;
     DBG_OutputDebugString(
         "[WTR] set: on=%d glob=%p mesh=%ux%d shift=%u/%u wave=%f wh=%f "
-        "chop=%f tile=%f spd=%f dir=%f prop=%f "
-        "sky=%08X bot=%08X wat=%08X hard=%d soft=%d col=%d verts=%p disp=%p\n",
+        "hard=%d soft=%d col=%d verts=%p disp=%p\n",
         a1->waterEnabled, pst_GlobalsWaterParams,
         a1->frustrumMeshSX, a1->frustrumMeshSY,
         a1->waveMapShift, a1->waveMapShiftCHP,
         a1->waveHeight, a1->waterHeight,
-        a1->choppy, a1->tiling, a1->speed, a1->direction, a1->waveProp,
-        a1->skyColor, a1->bottomColor, a1->waterColor,
         v3, v2, colorChanged,
         pst_GlobalsWaterParams->vertices,
         pst_GlobalsWaterParams->verticesForDisplay);
+    DBG_OutputDebugString("[WTR] set2: chop=%f tile=%f spd=%f dir=%f prop=%f sky=%08X bot=%08X wat=%08X\n",
+        a1->choppy, a1->tiling, a1->speed, a1->direction, a1->waveProp,
+        a1->skyColor, a1->bottomColor, a1->waterColor);
 }
 
 float WTR_DistToPlane(Vec3* a1, Vec3* a2, float a3)
@@ -2972,13 +2972,14 @@ int WTR_Compute_Mesh0(tWaterParamsGlobalStruct* a1, Vec3* cameraObjectPos, Vec3*
     {   // debug trace: the inputs and the four projected corners, one call in 120
         static int dbg_n = 0;
         if ((dbg_n++ % 120) == 0)
-            DBG_OutputDebugString(
-                "[WTR] 4pts: res=%d tile=%f inv=%f wave=%f chop=%f a9=%f csq=%f wh=%f\n"
-                "            p0=(%f,%f,%f) p1=(%f,%f,%f) p2=(%f,%f,%f) p3=(%f,%f,%f) d=(%f,%f,%f)\n",
-                result, a1->tiling, tiling, a1->waveHeight, a1->choppy, a9, choppyneshsq, waterheight,
-                a2a[0].x, a2a[0].y, a2a[0].z, a2a[1].x, a2a[1].y, a2a[1].z,
-                a2a[2].x, a2a[2].y, a2a[2].z, a2a[3].x, a2a[3].y, a2a[3].z,
-                dest.x, dest.y, dest.z);
+        {
+            DBG_OutputDebugString("[WTR] 4pts res=%d tile=%f a9=%f csq=%f wh=%f\n",
+                result, a1->tiling, a9, choppyneshsq, waterheight);
+            DBG_OutputDebugString("[WTR] 4pts p0=(%.1f,%.1f,%.3f) p1=(%.1f,%.1f,%.3f)\n",
+                a2a[0].x, a2a[0].y, a2a[0].z, a2a[1].x, a2a[1].y, a2a[1].z);
+            DBG_OutputDebugString("[WTR] 4pts p2=(%.1f,%.1f,%.3f) p3=(%.1f,%.1f,%.3f)\n",
+                a2a[2].x, a2a[2].y, a2a[2].z, a2a[3].x, a2a[3].y, a2a[3].z);
+        }
     }
     if (result)
     {
@@ -3248,13 +3249,14 @@ int WTR_Mesh_Do(tWaterParamsGlobalStruct* a1)
         if (result != dbg_last || (dbg_n++ % 120) == 0)
         {
             Vec3* dv = a1->verticesForDisplay;
-            DBG_OutputDebugString(
-                "[WTR] mesh: res=%d cam=(%f,%f,%f) sight=(%f,%f,%f) scale=%f wh=%f n=%ux%d "
-                "disp=%p v0=(%f,%f,%f) v1=(%f,%f,%f)\n",
-                result, v9->x, v9->y, v9->z, v8->x, v8->y, v8->z, a5, a1->waterHeight,
-                a1->horizontalVertexNum, a1->verticallVertexNum, dv,
+        {
+            DBG_OutputDebugString("[WTR] mesh res=%d cam=(%.2f,%.2f,%.2f) sight=(%.4f,%.4f,%.4f)\n",
+                result, v9->x, v9->y, v9->z, v8->x, v8->y, v8->z);
+            DBG_OutputDebugString("[WTR] mesh scale=%f wh=%f v0=(%f,%f,%f) v1=(%f,%f,%f)\n",
+                a5, a1->waterHeight,
                 dv ? dv[0].x : 0.0f, dv ? dv[0].y : 0.0f, dv ? dv[0].z : 0.0f,
                 dv ? dv[1].x : 0.0f, dv ? dv[1].y : 0.0f, dv ? dv[1].z : 0.0f);
+        }
             dbg_last = result;
         }
     }
