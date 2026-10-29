@@ -343,114 +343,90 @@ float WATERFFT_philippe(Vec2* a1, Vec2* a2, float waveProp, float direction)
     return (float)(pow((a2->y * a1->y + a1->x * a2->x) * 0.5 / (sqrt(a2->x * a2->x + a2->y * a2->y) * vecLen) + 0.5, direction) / pow(vecLen, waveProp));
 }
 
-void WATERFFT_Normalize(tFFTComplex* a1, int a2)
+/* Scale every real component so they sum to one. The imaginary components are
+ * left alone; at this point they still hold the raw directional term and are
+ * overwritten with the dispersion frequency later.
+ *
+ * Note that this divides by the sum of the whole grid, so a single cell that is
+ * not finite makes every cell not finite. */
+void WATERFFT_Normalize(tFFTComplex* spectrum, int count)
 {
-    double v2; // st7
-    unsigned int v3; // ecx
-    unsigned int v4; // esi
-    tFFTComplex* v5; // eax
-    double v6; // st7
-    double v7; // st7
-    unsigned int i; // eax
+    double sum = 0.0;
+    double scale;
+    int i;
 
-    v2 = 0.0;
-    v3 = 0;
-    if (a2 >= 4)
-    {
-        v4 = 3;
-        v5 = a1 + 2;
-        do
-        {
-            v4 += 4;
-            v3 += 4;
-            v6 = v2 + v5[-2].real + v5[-1].real + v5->real;
-            v5 += 4;
-            v2 = v6 + v5[-3].real;
-        } while (v4 < a2);
-    }
-    for (; v3 < a2; ++v3)
-        v2 = v2 + a1[v3].real;
-    v7 = 1.0 / v2;
-    for (i = 0; i < a2; a1[i - 1].real = v7 * a1[i - 1].real)
-        ++i;
+    for (i = 0; i < count; i++)
+        sum += spectrum[i].real;
+
+    scale = 1.0 / sum;
+
+    for (i = 0; i < count; i++)
+        spectrum[i].real = (float)(scale * spectrum[i].real);
 }
 
-void WATERFFT_SwapXY(tFFTComplex* a1, char a2, int a3, int a4)
+/* Exchange rows `first` and `second` of the square complex grid, and then the
+ * columns with the same two indices. The grid is (1 << sizeLog2) on a side and
+ * stored row major, so this is one symmetric permutation step: applying it for
+ * every index paired with its bit reversal transposes the grid into the order
+ * the butterfly passes expect. */
+void WATERFFT_SwapXY(tFFTComplex* grid, char sizeLog2, int first, int second)
 {
-    tFFTComplex* v4; // ebx
-    int v5; // edx
-    tFFTComplex* v6; // eax
-    tFFTComplex* v7; // ecx
-    int v8; // ebx
-    float v9; // esi
-    float v10; // edi
-    tFFTComplex* v11; // eax
-    tFFTComplex* v12; // ecx
-    int v13; // ebx
-    int v14; // ecx
-    float v15; // esi
-    float v16; // edi
+    const int side = 1 << sizeLog2;
+    tFFTComplex* firstRow = &grid[first * side];
+    tFFTComplex* secondRow = &grid[second * side];
+    tFFTComplex swap;
+    int i;
 
-    v4 = a1;
-    v5 = 1 << a2;
-    v6 = &a1[a3 << a2];
-    if (1 << a2)
+    for (i = 0; i < side; i++)
     {
-        v7 = &v6[(a4 << a2) - (a3 << a2)];
-        v8 = 1 << a2;
-        do
-        {
-            v9 = v6->real;
-            v10 = v6->imaginary;
-            *v6 = *v7;
-            v7->real = v9;
-            v7->imaginary = v10;
-            ++v6;
-            ++v7;
-            --v8;
-        } while (v8);
-        v4 = a1;
+        swap = firstRow[i];
+        firstRow[i] = secondRow[i];
+        secondRow[i] = swap;
     }
-    v11 = &v4[a3];
-    v12 = &v4[a4];
-    if (v5)
+
+    for (i = 0; i < side; i++)
     {
-        v13 = 8 * v5;
-        v14 = (char*)v12 - (char*)v11;
-        do
-        {
-            v15 = v11->real;
-            v16 = v11->imaginary;
-            *v11 = *(tFFTComplex*)((char*)v11 + v14);
-            *(float*)((char*)&v11->real + v14) = v15;
-            *(float*)((char*)&v11->imaginary + v14) = v16;
-            v11 = (tFFTComplex*)((char*)v11 + v13);
-            --v5;
-        } while (v5);
+        swap = grid[i * side + first];
+        grid[i * side + first] = grid[i * side + second];
+        grid[i * side + second] = swap;
     }
 }
 
-void WATERFFT_Pretranspose_Table(tFFTComplex* a1, int a2)
+/* Reorder the square complex grid into bit reversed index order, which is what
+ * the in place FFT passes consume. Each index is paired with its reversal once,
+ * guarded by `index < reversed` so no pair is exchanged twice, and the pairing
+ * is applied to rows and columns together by WATERFFT_SwapXY. */
+void WATERFFT_Pretranspose_Table(tFFTComplex* grid, int sizeLog2)
 {
-    int v2; // esi
-    int i; // edi
-    int j; // eax
+    const int side = 1 << sizeLog2;
+    int reversed = 0;
+    int index;
 
-    v2 = 0;
-    for (i = 0; i < (1 << a2) - 1; ++i)
+    for (index = 0; index < side - 1; index++)
     {
-        if (i < v2)
-            WATERFFT_SwapXY(a1, a2, i, v2);
-        for (j = 1 << a2 >> 1; j <= v2; j >>= 1)
-            v2 -= j;
-        v2 += j;
+        if (index < reversed)
+            WATERFFT_SwapXY(grid, (char)sizeLog2, index, reversed);
+
+        /* Increment `reversed` as if its bits ran the other way: carry down from
+         * the high bit instead of up from the low one. */
+        {
+            int bit = side >> 1;
+            while (bit <= reversed)
+            {
+                reversed -= bit;
+                bit >>= 1;
+            }
+            reversed += bit;
+        }
     }
 }
 
-int WATERFFT_Compress_Spectromap(tFFTComplex* a1, int a2)
+/* Put the spectrum into the order the transform reads it and report how many
+ * entries that is, which is every cell of the square grid. */
+int WATERFFT_Compress_Spectromap(tFFTComplex* spectrum, int sizeLog2)
 {
-    WATERFFT_Pretranspose_Table(a1, a2);
-    return 1 << (2 * a2);
+    WATERFFT_Pretranspose_Table(spectrum, sizeLog2);
+    return 1 << (2 * sizeLog2);
 }
 
 void WATERFFT_SWAP(int* a1, int a2, int a3)
@@ -1503,16 +1479,28 @@ void WATERFFT_FFT2D(tFFTComplex* a1, int num, tFFTComplexCost* a3)
     WATERFFT_CorrectHeight(a1, num);
 }
 
+/* Advance the spectrum to `timeElapsed` and transform it into the space maps.
+ *
+ * Each spectral cell carries its amplitude in `real` and its dispersion
+ * frequency in `imaginary`. Rotating a cell by its own frequency times the
+ * elapsed time gives its phase at this instant, which is read out of COS_TABLE
+ * rather than computed: the table holds 1024 cosine and sine pairs over a full
+ * turn, and the magic rounding in f2iMagic converts the angle into an index.
+ *
+ * The height field and, when the choppy maps are present, the two horizontal
+ * displacement fields are then brought into world space by the inverse FFT. */
 void WATERFFT_Turn_Spectre(tWaterEngineStruct* src, tFFTComplex* dst, tFFTComplex* DX, tFFTComplex* DY, float timeElapsed)
 {
-    int i, idx;
-    float teFactor = timeElapsed * 162.97466f;
+    /* 1024 table entries over one turn, so this converts radians to an index. */
+    const float angleToIndex = timeElapsed * 162.97466f;
+    int i;
 
     for (i = 0; i < src->spectroMapCompressedSize; i++)
     {
-        idx = 2 * (f2iMagic(2 * teFactor * src->spectroMap[i].imaginary) & 0x3ff);
-        dst[i].real = COS_TABLE[idx] * src->spectroMap[i].real;
-        dst[i].imaginary = COS_TABLE[idx + 1] * src->spectroMap[i].real;
+        const int entry = 2 * (f2iMagic(2 * angleToIndex * src->spectroMap[i].imaginary) & 0x3ff);
+
+        dst[i].real = COS_TABLE[entry] * src->spectroMap[i].real;
+        dst[i].imaginary = COS_TABLE[entry + 1] * src->spectroMap[i].real;
     }
 
     if (DX && DY && src->borderSizeDXDYPowerOfTwo)
@@ -1520,12 +1508,9 @@ void WATERFFT_Turn_Spectre(tWaterEngineStruct* src, tFFTComplex* dst, tFFTComple
         WATERFFT_Deduct_DXDY_Spectre(src, dst, DX, DY);
         WATERFFT_FFT2D(DX, src->borderSizeDXDYPowerOfTwo, src->FFTCostTableDXDY);
         WATERFFT_FFT2D(DY, src->borderSizeDXDYPowerOfTwo, src->FFTCostTableDXDY);
-        WATERFFT_FFT2D(dst, src->borderSizePowerOfTwo, src->FFTCostTable);
     }
-    else
-    {
-        WATERFFT_FFT2D(dst, src->borderSizePowerOfTwo, src->FFTCostTable);
-    }
+
+    WATERFFT_FFT2D(dst, src->borderSizePowerOfTwo, src->FFTCostTable);
 }
 
 void WTR_Color_2_Vector(Vec3* vec, uint32_t color)
