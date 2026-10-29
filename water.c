@@ -2024,6 +2024,22 @@ void WTR_Concate(tWaterParamsGlobalStruct* a1)
             v13 = a2b;
         }
     }
+    {   // debug trace: base level and two mip levels, first call only
+        static int dbg_n = 0;
+        if (dbg_n++ == 0)
+        {
+            tWtrStruct2* m = a1->concatenatedMap;
+            DBG_OutputDebugString("[WTR] cat: shift=%d chp=%d base0=(%g,%g,%g,%g)\n",
+                a1->waterEngine.waveMapShift, a1->waterEngine.waveMapShiftCHP,
+                m[0].f1, m[0].f2, m[0].f3, m[0].f4);
+            DBG_OutputDebugString("[WTR] cat: base1=(%g,%g,%g,%g) base64=(%g,%g,%g,%g)\n",
+                m[1].f1, m[1].f2, m[1].f3, m[1].f4,
+                m[64].f1, m[64].f2, m[64].f3, m[64].f4);
+            DBG_OutputDebugString("[WTR] cat: L4225=(%g,%g,%g,%g) L5709=(%g,%g,%g,%g)\n",
+                m[4225].f1, m[4225].f2, m[4225].f3, m[4225].f4,
+                m[5709].f1, m[5709].f2, m[5709].f3, m[5709].f4);
+        }
+    }
 }
 
 void WTR_SetExportParams(tUserWaterParamsStruct* a1)
