@@ -10,6 +10,7 @@
 #include "../modifiers/shadowmodifier.h"
 #include "../water.h"
 #include "ai_miscfunctions.h"
+#include "../dbg.h"
 
 void AI_EvalFunc_GRPInvisibleSet_C(struct sGameObjectMain* a1, int a2)
 {
@@ -385,6 +386,14 @@ tAINode* AI_EvalFunc_WTR_GetNrm(tAINode* arg0)
 
 void AI_EvalFunc_WTR_Enable_C(int a1)
 {
+    // debug trace
+    DBG_OutputDebugString("[WTR] Enable(%d) was=%d glob=%p gao=%p capa=%04X ctrl=%08X\n",
+        a1, stExportWaterParrams.waterEnabled, pst_GlobalsWaterParams,
+        AI_gpst_CurrentGameObject,
+        (AI_gpst_CurrentGameObject && AI_gpst_CurrentGameObject->extended)
+            ? AI_gpst_CurrentGameObject->extended->capa : 0,
+        AI_EvalFunc_OBJ_FlagsControlGet_C(AI_gpst_CurrentGameObject));
+
     if ((!stExportWaterParrams.waterEnabled || !a1) && (stExportWaterParrams.waterEnabled || a1))
     {
         stExportWaterParrams.waterEnabled = a1;

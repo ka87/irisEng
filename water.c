@@ -2048,13 +2048,17 @@ void WTR_SetExportParams(tUserWaterParamsStruct* a1)
         {
             pst_GlobalsWaterParams = 0;
             pst_GlobalsWaterParams_Save = v1;
+            DBG_OutputDebugString("[WTR] set: parked (disabled), saved=%p\n", v1);
             return;
         }
     }
     else
     {
         if (!a1->waterEnabled)
+        {
+            DBG_OutputDebugString("[WTR] set: off, nothing live\n");
             return;
+        }
         v1 = pst_GlobalsWaterParams_Save;
         if (pst_GlobalsWaterParams_Save)
         {
@@ -2186,6 +2190,17 @@ LABEL_47:
     if (colorChanged)
         WTR_ComputeFresnel(pst_GlobalsWaterParams);
     waterHeight = pst_GlobalsWaterParams->waterHeight;
+    DBG_OutputDebugString(
+        "[WTR] set: on=%d glob=%p mesh=%ux%d shift=%u/%u wave=%f wh=%f "
+        "sky=%08X bot=%08X wat=%08X hard=%d soft=%d col=%d verts=%p disp=%p\n",
+        a1->waterEnabled, pst_GlobalsWaterParams,
+        a1->frustrumMeshSX, a1->frustrumMeshSY,
+        a1->waveMapShift, a1->waveMapShiftCHP,
+        a1->waveHeight, a1->waterHeight,
+        a1->skyColor, a1->bottomColor, a1->waterColor,
+        v3, v2, colorChanged,
+        pst_GlobalsWaterParams->vertices,
+        pst_GlobalsWaterParams->verticesForDisplay);
 }
 
 float WTR_DistToPlane(Vec3* a1, Vec3* a2, float a3)
