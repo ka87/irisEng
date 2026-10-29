@@ -198,22 +198,24 @@ void WTR_Get_A_MrmVector(Vec3* a1, Vec3* a2)
     }
 }
 
-int WTR_Vector_2_Color(Vec3* a1)
+/* Pack a colour held as three components in zero to one into one word, eight
+ * bits each, laid out as blue in the high byte then green then red. Components
+ * above one are clamped; the conversion to unsigned makes a negative component
+ * wrap to a very large value, which the same clamp catches. */
+int WTR_Vector_2_Color(Vec3* colour)
 {
-    unsigned int v1;
-    unsigned int v2;
-    unsigned int v3;
+    unsigned int red = (unsigned int)(colour->x * 255.0);
+    unsigned int green = (unsigned int)(colour->y * 255.0);
+    unsigned int blue = (unsigned int)(colour->z * 255.0);
 
-    v1 = (unsigned int)(a1->x * 255.0);
-    v2 = (unsigned int)(a1->y * 255.0);
-    v3 = (unsigned int)(a1->z * 255.0);
-    if (v1 > 0xFF)
-        v1 = 255;
-    if (v2 > 0xFF)
-        v2 = 255;
-    if (v3 > 0xFF)
-        v3 = 255;
-    return v1 | ((v2 | (v3 << 8)) << 8);
+    if (red > 0xFF)
+        red = 255;
+    if (green > 0xFF)
+        green = 255;
+    if (blue > 0xFF)
+        blue = 255;
+
+    return red | (green << 8) | (blue << 16);
 }
 
 
@@ -312,38 +314,38 @@ void WTR_AllocSubStruct(tWaterParamsGlobalStruct* a1)
     a1->concatenatedMap = (tWtrStruct2*)WTR_AllocAlign(sizeof(tWtrStruct2) * (v8 + (v8 >> 1)), 32);
 }
 
-void WTR_FreeSubStruct(tWaterParamsGlobalStruct* wtr)
+/* Release every buffer hanging off a water block and clear the pointers, so
+ * the block can be filled again or freed. */
+void WTR_FreeSubStruct(tWaterParamsGlobalStruct* water)
 {
-    if (wtr->vertices)
-        MEM_FreeAlign(wtr->vertices);
-    if (wtr->vecsForUVs)
-        MEM_FreeAlign(wtr->vecsForUVs);
-    if (wtr->verticesForDisplay)
-        MEM_FreeAlign(wtr->verticesForDisplay);
-    wtr->vecsForUVs = NULL;
-    wtr->verticesForDisplay = NULL;
-    if (wtr->colors)
-        MEM_FreeAlign(wtr->colors);
-    if (wtr->spaceMap)
-        MEM_FreeAlign(wtr->spaceMap);
-    if (wtr->spaceMapDX)
-        MEM_FreeAlign(wtr->spaceMapDX);
-    if (wtr->spaceMapDY)
-        MEM_FreeAlign(wtr->spaceMapDY);
-    if (wtr->concatenatedMap)
-        MEM_FreeAlign(wtr->concatenatedMap);
-    if (wtr->waterEngine.spectroMap)
-        MEM_FreeAlign(wtr->waterEngine.spectroMap);
-    if (wtr->waterEngine.DXDYMap)
-        MEM_FreeAlign(wtr->waterEngine.DXDYMap);
-    wtr->vertices = NULL;
-    wtr->colors = NULL;
-    wtr->spaceMap = NULL;
-    wtr->spaceMapDX = NULL;
-    wtr->spaceMapDY = NULL;
-    wtr->concatenatedMap = NULL;
-    wtr->waterEngine.spectroMap = NULL;
-    wtr->waterEngine.DXDYMap = NULL;
+    void* buffers[10];
+    int i;
+
+    buffers[0] = water->vertices;
+    buffers[1] = water->vecsForUVs;
+    buffers[2] = water->verticesForDisplay;
+    buffers[3] = water->colors;
+    buffers[4] = water->spaceMap;
+    buffers[5] = water->spaceMapDX;
+    buffers[6] = water->spaceMapDY;
+    buffers[7] = water->concatenatedMap;
+    buffers[8] = water->waterEngine.spectroMap;
+    buffers[9] = water->waterEngine.DXDYMap;
+
+    for (i = 0; i < 10; i++)
+        if (buffers[i])
+            MEM_FreeAlign(buffers[i]);
+
+    water->vertices = NULL;
+    water->vecsForUVs = NULL;
+    water->verticesForDisplay = NULL;
+    water->colors = NULL;
+    water->spaceMap = NULL;
+    water->spaceMapDX = NULL;
+    water->spaceMapDY = NULL;
+    water->concatenatedMap = NULL;
+    water->waterEngine.spectroMap = NULL;
+    water->waterEngine.DXDYMap = NULL;
 }
 
 void* WATERFFT_Alloc(uint32_t size)
@@ -457,13 +459,13 @@ int WATERFFT_Compress_Spectromap(tFFTComplex* spectrum, int sizeLog2)
     return 1 << (2 * sizeLog2);
 }
 
-void WATERFFT_SWAP(int* a1, int a2, int a3)
+/* Exchange two entries of an int array. */
+void WATERFFT_SWAP(int* values, int first, int second)
 {
-    int v3; // edx
+    const int swap = values[first];
 
-    v3 = a1[a2];
-    a1[a2] = a1[a3];
-    a1[a3] = v3;
+    values[first] = values[second];
+    values[second] = swap;
 }
 
 /* Work out where the displacement grid lands inside the height grid.
@@ -2143,9 +2145,12 @@ LABEL_47:
     waterHeight = pst_GlobalsWaterParams->waterHeight;
 }
 
-float WTR_DistToPlane(Vec3* a1, Vec3* a2, float a3)
+/* Signed distance from a point to a plane, positive on the side the normal
+ * points away from. The plane is the set of points whose projection onto
+ * `planeNormal` equals `planeOffset`. */
+float WTR_DistToPlane(Vec3* point, Vec3* planeNormal, float planeOffset)
 {
-    return a3 - (a1->z * a2->z + a1->y * a2->y + a1->x * a2->x);
+    return planeOffset - (point->x * planeNormal->x + point->y * planeNormal->y + point->z * planeNormal->z);
 }
 
 /* Clip a polygon against one plane, Sutherland and Hodgman.
@@ -3192,7 +3197,12 @@ void WTR_BeginLoadWorldHook()
 }
 
 
-void WTR_WaterBlurNormal(Vec3* a1, int a2, int a3)
+/* Smooth the surface normals along each row, averaging each with the entry
+ * before it and the matching entry on the next row. The last row is left as
+ * it is, as it has no next row to read.
+ *
+ * The body still carries its original pointer walk and wants rewriting. */
+void WTR_WaterBlurNormal(Vec3* normals, int rowLength, int rowCount)
 {
     Vec3* v3;
     Vec3* i;
@@ -3202,12 +3212,12 @@ void WTR_WaterBlurNormal(Vec3* a1, int a2, int a3)
     Vec3* j;
     double v12;
 
-    v3 = &a1[a2 * (a3 - 1)];
-    Vec3* _EAX = a1;
-    if (a1 < v3)
+    v3 = &normals[rowLength * (rowCount - 1)];
+    Vec3* _EAX = normals;
+    if (normals < v3)
     {
-        //_ESI = 4 * (3 * a2 + 6);
-        int _ECX = a2;
+        //_ESI = 4 * (3 * rowLength + 6);
+        int _ECX = rowLength;
         do
         {
             for (i = &_EAX[_ECX - 1]; _EAX < i; _EAX[-1].z = (float)((_EAX[_ECX - 1].z + _EAX->z + _EAX[-1].z) * 0.33333299))
@@ -3220,10 +3230,10 @@ void WTR_WaterBlurNormal(Vec3* a1, int a2, int a3)
             ++_EAX;
         } while (_EAX < v3);
     }
-    v9 = a1;
-    if (a1 < v3)
+    v9 = normals;
+    if (normals < v3)
     {
-        v10 = a2;
+        v10 = rowLength;
         do
         {
             for (j = &v9[v10 - 1]; v9 < j; v9[-1].z = (float)((v9[v10 - 1].z + v9->z + v9[-1].z) * 0.33333299))
