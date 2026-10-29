@@ -90,16 +90,16 @@ void WTR_Get_A_DifVector(Vec3* position, Vec3* result, int wantAbsolute)
         const double weightTopLeft = oneMinusX * fractionY;
         const double weightTopRight = fractionY * fractionX;
 
-        const float sumX = (float)(weightBottomRight * bottomRight->f1 + weightBottomLeft * bottomLeft->f1);
-        const float sumY = (float)(bottomRight->f2 * weightBottomRight + bottomLeft->f2 * weightBottomLeft);
-        const float sumZ = (float)(bottomRight->f3 * weightBottomRight + bottomLeft->f3 * weightBottomLeft);
+        const float sumX = (float)(weightBottomRight * bottomRight->displacementX + weightBottomLeft * bottomLeft->displacementX);
+        const float sumY = (float)(bottomRight->displacementY * weightBottomRight + bottomLeft->displacementY * weightBottomLeft);
+        const float sumZ = (float)(bottomRight->height * weightBottomRight + bottomLeft->height * weightBottomLeft);
 
-        const float withTopY = (float)(topLeft->f2 * weightTopLeft + sumY);
-        const float withTopZ = (float)(topLeft->f3 * weightTopLeft + sumZ);
-        const float allZ = (float)(weightTopRight * topRight->f3 + withTopZ);
+        const float withTopY = (float)(topLeft->displacementY * weightTopLeft + sumY);
+        const float withTopZ = (float)(topLeft->height * weightTopLeft + sumZ);
+        const float allZ = (float)(weightTopRight * topRight->height + withTopZ);
 
-        displacementX = (float)(choppyScale * (weightTopRight * topRight->f1 + weightTopLeft * topLeft->f1 + sumX));
-        displacementY = (float)(choppyScale * (topRight->f2 * weightTopRight + withTopY));
+        displacementX = (float)(choppyScale * (weightTopRight * topRight->displacementX + weightTopLeft * topLeft->displacementX + sumX));
+        displacementY = (float)(choppyScale * (topRight->displacementY * weightTopRight + withTopY));
         height = (float)(heightScale * allZ + water->waterHeight);
 
         /* Step halfway back towards the position asked for. The halving is in
@@ -1687,9 +1687,9 @@ void WTR_Compute_MipMap_sub_noSSE(tWtrStruct2* topRow, tWtrStruct2* out, tWtrStr
         const int left = 2 * i;
         const int right = left + 1;
 
-        out[i].f1 = (float)((bottomRow[right].f1 + topRow[right].f1 + topRow[left].f1 + bottomRow[left].f1) * 0.25);
-        out[i].f2 = (float)((bottomRow[right].f2 + topRow[right].f2 + topRow[left].f2 + bottomRow[left].f2) * 0.25);
-        out[i].f3 = (float)((bottomRow[right].f3 + topRow[right].f3 + topRow[left].f3 + bottomRow[left].f3) * 0.25);
+        out[i].displacementX = (float)((bottomRow[right].displacementX + topRow[right].displacementX + topRow[left].displacementX + bottomRow[left].displacementX) * 0.25);
+        out[i].displacementY = (float)((bottomRow[right].displacementY + topRow[right].displacementY + topRow[left].displacementY + bottomRow[left].displacementY) * 0.25);
+        out[i].height = (float)((bottomRow[right].height + topRow[right].height + topRow[left].height + bottomRow[left].height) * 0.25);
     }
 }
 
@@ -1736,13 +1736,13 @@ void WTR_Compute_MipMap(int result, tWtrStruct2* a2, tWtrStruct2* a3)
             /* Repeat the first entry of the row as its wrap entry. The index
              * is a signed divide of the byte offset by -16, which is minus
              * the row length in entries. */
-            ptrStart->f1 = ptrStart[-result].f1;
-            ptrStart->f2 = ptrStart[-result].f2;
-            ptrStart->f3 = ptrStart[-result].f3;
-            v9 = ptrStart[-result].f4;
+            ptrStart->displacementX = ptrStart[-result].displacementX;
+            ptrStart->displacementY = ptrStart[-result].displacementY;
+            ptrStart->height = ptrStart[-result].height;
+            v9 = ptrStart[-result].spare;
             ++ptrStart;
             a2 = (tWtrStruct2*)((char*)a2 + v10 * 16 + 32);
-            v8->f4 = v9;
+            v8->spare = v9;
         } while (ptrStart < ptrEnd);
         v3 = a3;
     }
@@ -1803,18 +1803,18 @@ void WTR_BackExtendDXDY_0(tWtrStruct2* a1, tWtrStruct2* a2, int a3)
             }
             /* Same wrap: minus the row length in entries, which is a signed
              * divide of the byte offset by -16. */
-            v4->f1 = v4[-(2 * a3)].f1;
-            v4->f2 = v4[-(2 * a3)].f2;
-            v4->f3 = v4[-(2 * a3)].f3;
-            v4->f4 = v4[-(2 * a3)].f4;
+            v4->displacementX = v4[-(2 * a3)].displacementX;
+            v4->displacementY = v4[-(2 * a3)].displacementY;
+            v4->height = v4[-(2 * a3)].height;
+            v4->spare = v4[-(2 * a3)].spare;
             v11 = &v4[v8 / 0x10u + 1];
-            v11->f1 = v11[-(2 * a3)].f1;
-            v11->f2 = v11[-(2 * a3)].f2;
-            v11->f3 = v4[1].f3;
-            v12 = v4[1].f4;
+            v11->displacementX = v11[-(2 * a3)].displacementX;
+            v11->displacementY = v11[-(2 * a3)].displacementY;
+            v11->height = v4[1].height;
+            v12 = v4[1].spare;
             ++v6;
             v4 = v11 + 1;
-            v11->f4 = v12;
+            v11->spare = v12;
             v3 = a3;
             if (v6 >= v7)
                 break;
@@ -1868,9 +1868,9 @@ void WTR_Concate(tWaterParamsGlobalStruct* water)
             /* displacement is available at this resolution */
             while (cell < rowEnd)
             {
-                cell->f1 = displacementX->real;
-                cell->f2 = displacementY->real;
-                cell->f3 = height->real;
+                cell->displacementX = displacementX->real;
+                cell->displacementY = displacementY->real;
+                cell->height = height->real;
                 ++cell;
                 ++displacementX;
                 ++displacementY;
@@ -1882,7 +1882,7 @@ void WTR_Concate(tWaterParamsGlobalStruct* water)
             /* height only; displacement arrives at a coarser level */
             while (cell < rowEnd)
             {
-                cell->f3 = height->real;
+                cell->height = height->real;
                 ++cell;
                 ++height;
             }
@@ -1890,11 +1890,11 @@ void WTR_Concate(tWaterParamsGlobalStruct* water)
 
         /* wrap cell: repeat the first cell of the row just written */
         {
-            const float* const rowStart = &cell[-heightSide].f1;
-            cell->f1 = rowStart[0];
-            cell->f2 = rowStart[1];
-            cell->f3 = rowStart[2];
-            cell->f4 = rowStart[3];
+            const float* const rowStart = &cell[-heightSide].displacementX;
+            cell->displacementX = rowStart[0];
+            cell->displacementY = rowStart[1];
+            cell->height = rowStart[2];
+            cell->spare = rowStart[3];
             ++cell;
         }
     }
@@ -1906,10 +1906,10 @@ void WTR_Concate(tWaterParamsGlobalStruct* water)
 
         while (cell < wrapRowEnd)
         {
-            cell->f1 = firstRow->f1;
-            cell->f2 = firstRow->f2;
-            cell->f3 = firstRow->f3;
-            cell->f4 = firstRow->f4;
+            cell->displacementX = firstRow->displacementX;
+            cell->displacementY = firstRow->displacementY;
+            cell->height = firstRow->height;
+            cell->spare = firstRow->spare;
             ++cell;
             ++firstRow;
         }
@@ -1943,19 +1943,19 @@ void WTR_Concate(tWaterParamsGlobalStruct* water)
 
                 while (choppyCell < rowEnd)
                 {
-                    choppyCell->f1 = displacementX->real;
-                    choppyCell->f2 = displacementY->real;
+                    choppyCell->displacementX = displacementX->real;
+                    choppyCell->displacementY = displacementY->real;
                     ++choppyCell;
                     ++displacementX;
                     ++displacementY;
                 }
 
                 {
-                    const float* const rowStart = &choppyCell[-choppySide].f1;
-                    choppyCell->f1 = rowStart[0];
-                    choppyCell->f2 = rowStart[1];
-                    choppyCell->f3 = rowStart[2];
-                    choppyCell->f4 = rowStart[3];
+                    const float* const rowStart = &choppyCell[-choppySide].displacementX;
+                    choppyCell->displacementX = rowStart[0];
+                    choppyCell->displacementY = rowStart[1];
+                    choppyCell->height = rowStart[2];
+                    choppyCell->spare = rowStart[3];
                     ++choppyCell;
                 }
             }
@@ -1967,10 +1967,10 @@ void WTR_Concate(tWaterParamsGlobalStruct* water)
 
                 while (choppyCell < wrapRowEnd)
                 {
-                    choppyCell->f1 = firstRow->f1;
-                    choppyCell->f2 = firstRow->f2;
-                    choppyCell->f3 = firstRow->f3;
-                    choppyCell->f4 = firstRow->f4;
+                    choppyCell->displacementX = firstRow->displacementX;
+                    choppyCell->displacementY = firstRow->displacementY;
+                    choppyCell->height = firstRow->height;
+                    choppyCell->spare = firstRow->spare;
                     ++choppyCell;
                     ++firstRow;
                 }
@@ -2628,17 +2628,17 @@ void WTR_Compute_Mesh0_Rasterize_Line(Vec3* verticesOut, tWtrStruct2* map, int s
         const double weightTopLeft = oneMinusX * fractionY;
         const double weightTopRight = fractionY * fractionX;
 
-        const float sumX = (float)(weightBottomRight * bottomRight->f1 + weightBottomLeft * bottomLeft->f1);
-        const float sumY = (float)(bottomRight->f2 * weightBottomRight + bottomLeft->f2 * weightBottomLeft);
-        const float sumZ = (float)(bottomRight->f3 * weightBottomRight + bottomLeft->f3 * weightBottomLeft);
+        const float sumX = (float)(weightBottomRight * bottomRight->displacementX + weightBottomLeft * bottomLeft->displacementX);
+        const float sumY = (float)(bottomRight->displacementY * weightBottomRight + bottomLeft->displacementY * weightBottomLeft);
+        const float sumZ = (float)(bottomRight->height * weightBottomRight + bottomLeft->height * weightBottomLeft);
 
-        const float topLeftX = (float)(oneMinusX * fractionY * topLeft->f1);
-        const float withTopY = (float)(topLeft->f2 * weightTopLeft + sumY);
-        const float withTopZ = (float)(topLeft->f3 * weightTopLeft + sumZ);
+        const float topLeftX = (float)(oneMinusX * fractionY * topLeft->displacementX);
+        const float withTopY = (float)(topLeft->displacementY * weightTopLeft + sumY);
+        const float withTopZ = (float)(topLeft->height * weightTopLeft + sumZ);
 
-        const float topRightX = (float)(weightTopRight * topRight->f1);
-        const float topRightY = (float)(topRight->f2 * weightTopRight);
-        const float allZ = (float)(topRight->f3 * weightTopRight + withTopZ);
+        const float topRightX = (float)(weightTopRight * topRight->displacementX);
+        const float topRightY = (float)(topRight->displacementY * weightTopRight);
+        const float allZ = (float)(topRight->height * weightTopRight + withTopZ);
 
         const float displacementX = (float)((topRightX + topLeftX + sumX) * choppyScale);
         const float movedX = (float)(oneMinusKeep * walkX + displacementX);
