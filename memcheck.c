@@ -5,6 +5,7 @@
 #include "common.h"
 #include "memory.h"
 #include "dbg.h"
+#include <windows.h>
 
 static unsigned int MEMCHK_Used(void);
 
@@ -134,6 +135,80 @@ int MEMCHK_HoleIsSound(unsigned int elemID, int* holeDesc)
     }
     return 1;
 }
+
+#if MEMCHK_PAGE_TRAP
+
+static void*  MEMCHK_gp_TrappedPage;
+static LONG CALLBACK MEMCHK_OnAccessViolation(EXCEPTION_POINTERS* info);
+static int    MEMCHK_gi_TrapInstalled;
+static unsigned int MEMCHK_gul_TrapHits;
+
+/* The handler runs on the faulting thread before anything else gets a
+   look at the exception, so the instruction address it reports is the
+   writer itself. It then lifts the protection and returns to the same
+   instruction, which now succeeds -- the write is allowed through, so
+   the game carries on and the engine behaves as it did without the
+   trap. The page stays writable afterwards; a later scan arms it
+   again. */
+static LONG CALLBACK MEMCHK_OnAccessViolation(EXCEPTION_POINTERS* info)
+{
+    EXCEPTION_RECORD* rec = info->ExceptionRecord;
+    void* page = MEMCHK_gp_TrappedPage;
+    unsigned int target;
+    DWORD wasProtected;
+
+    if (rec->ExceptionCode != (DWORD)EXCEPTION_ACCESS_VIOLATION
+        || rec->NumberParameters < 2 || !page)
+        return EXCEPTION_CONTINUE_SEARCH;
+
+    target = (unsigned int)rec->ExceptionInformation[1];
+    if ((target & ~0xFFFu) != (unsigned int)page)
+        return EXCEPTION_CONTINUE_SEARCH;       /* not our page */
+
+    ++MEMCHK_gul_TrapHits;
+    DBG_OutputDebugString("MEMCHK TRAP hit %u: the instruction at %p %s %08x"
+                          " -- this is the code to look at\n",
+                          MEMCHK_gul_TrapHits, rec->ExceptionAddress,
+                          rec->ExceptionInformation[0] == 1 ? "wrote to"
+                                                            : "read from",
+                          target);
+
+    MEMCHK_gp_TrappedPage = 0;
+    VirtualProtect(page, 0x1000, PAGE_READWRITE, &wasProtected);
+    return EXCEPTION_CONTINUE_EXECUTION;
+}
+
+void MEMCHK_ArmPageTrap(void* addr)
+{
+    void* page = (void*)((unsigned int)addr & ~0xFFFu);
+    DWORD wasProtected;
+
+    if (!addr || MEMCHK_gp_TrappedPage)
+        return;                         /* one at a time */
+
+    if (!MEMCHK_gi_TrapInstalled)
+    {
+        if (!AddVectoredExceptionHandler(1, MEMCHK_OnAccessViolation))
+        {
+            DBG_OutputDebugString("MEMCHK could not install the trap handler\n");
+            return;
+        }
+        MEMCHK_gi_TrapInstalled = 1;
+    }
+
+    if (!VirtualProtect(page, 0x1000, PAGE_READONLY, &wasProtected))
+    {
+        DBG_OutputDebugString("MEMCHK could not protect the page at %p\n", page);
+        return;
+    }
+
+    MEMCHK_gp_TrappedPage = page;
+    DBG_OutputDebugString("MEMCHK trap armed on the page at %p, covering %p"
+                          " -- the next access to it will be reported\n",
+                          page, addr);
+}
+
+#endif  /* MEMCHK_PAGE_TRAP */
 
 /* Print the words around a descriptor. The descriptor sits at ptr-4,
    between the marker at ptr-8 and the recorded size at ptr+0, so a
