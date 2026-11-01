@@ -6,8 +6,41 @@
 #include "memory.h"
 #include "dbg.h"
 
+static unsigned int MEMCHK_Used(void);
+
 static unsigned int MEMCHK_gul_Calls;
 static unsigned int MEMCHK_gul_Faults;
+
+/* The first thing to establish after a crash with an address in hand:
+   where the heap actually is. HeapAlloc's result is not checked here or
+   in the original, so a failed reservation leaves the base at zero and
+   every pointer derived from it is nonsense. */
+void MEMCHK_Init(unsigned int base, int size)
+{
+    if (!base)
+    {
+        DBG_OutputDebugString("MEMCHK the heap was not reserved at all:"
+                              " HeapAlloc(%d) returned null\n", size);
+        return;
+    }
+    DBG_OutputDebugString("MEMCHK heap %08x .. %08x (%d bytes, %d MB)\n",
+                          base, base + (unsigned int)size, size, size >> 20);
+}
+
+void MEMCHK_Where(const char* what, unsigned int addr)
+{
+    const unsigned int base = MEM_gst_MemoryInfo.memoryStartPointer;
+    const unsigned int end  = base + (unsigned int)MEM_gst_MemoryInfo.memorySize;
+
+    if (addr == base)
+        DBG_OutputDebugString("MEMCHK %s %08x is the heap base exactly\n", what, addr);
+    else if (addr >= base && addr < end)
+        DBG_OutputDebugString("MEMCHK %s %08x is inside the heap, %u bytes in"
+                              " (used %u)\n", what, addr, addr - base, MEMCHK_Used());
+    else
+        DBG_OutputDebugString("MEMCHK %s %08x is OUTSIDE the heap %08x .. %08x\n",
+                              what, addr, base, end);
+}
 
 static unsigned int MEMCHK_Used(void)
 {

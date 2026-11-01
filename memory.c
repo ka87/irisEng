@@ -39,6 +39,7 @@ void MEM_InitDynamic(SIZE_T dwBytes)
     MEM_gst_MemoryInfo.totalUsedMemory = 0;
     MEM_gst_MemoryInfo.nextFreeMemoryPointer = MEM_gst_MemoryInfo.memoryStartPointer;
     MEM_gst_MemoryInfo.memorySize = dwBytes;
+    MEMCHK_Init(MEM_gst_MemoryInfo.memoryStartPointer, (int)dwBytes);
 }
 
 void MEM_InitModule()
