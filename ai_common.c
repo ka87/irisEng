@@ -10,6 +10,7 @@
 #include "dbg.h"
 #include "ai/ai_compiledscripts.h"
 #include "sideload.h"
+#include "aicheck.h"
 
 int AI_CompiledAIEnabled = 1;
 int ENG_AIProfilerEnabled = 0; // game doesn't set this explicitly
@@ -692,6 +693,7 @@ tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackD
 
     AI_gppst_CurrentJumpNode = jumpNode;
     AI_gpst_CurrentFunction = funcPtr;
+    AICHK_Running((struct sAIFunction*)funcPtr);
     if (AI_CompiledAIEnabled && funcPtr->funcPtr)
         return (tAINode*)funcPtr->funcPtr();
     AI_gul_SizeLocalStack += stackDecrease;
@@ -1153,6 +1155,9 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
                             newAiFunc->nodes[0].category = 31;
                         }
                     }
+
+                    AICHK_NoteFunction((struct sAIFunction*)newAiFunc,
+                                       currKey);
                 }
             }
             extraAiNodeSizeSum = LOA_ReadLong(&currOffset, 0, 2);
