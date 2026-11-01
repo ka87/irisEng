@@ -104,6 +104,26 @@ int MEMCHK_HoleIsSound(unsigned int elemID, int* holeDesc)
         DBG_OutputDebugString("MEMCHK hole %p for elem %u: next link %08x is"
                               " outside the heap -- following it is the crash\n",
                               (void*)holeDesc, elemID, link);
+        MEMCHK_Dump("the corrupted descriptor", holeDesc);
+        /* The size is recorded twice: once just above the descriptor and
+           once in the last word of the block. If both copies survived,
+           nothing ran over either end of the block, and the one bad word
+           between them was written on purpose by something holding a
+           stale pointer four bytes ahead of the user data. */
+        if ((int)recorded == expected)
+        {
+            unsigned int footer = (unsigned int)holeDesc[(expected >> 2) - 2];
+
+            DBG_OutputDebugString("MEMCHK   footer at %+d is %08x, expected"
+                                  " %08x -- %s\n", expected - 8, footer,
+                                  (unsigned int)expected,
+                                  footer == (unsigned int)expected
+                                    ? "intact, so neither end of the block was"
+                                      " run over and the one bad word was"
+                                      " written deliberately"
+                                    : "also wrong, so something ran over the"
+                                      " block");
+        }
         ++MEMCHK_gul_Faults;
         return 0;
     }
@@ -113,6 +133,33 @@ int MEMCHK_HoleIsSound(unsigned int elemID, int* holeDesc)
         return 0;
     }
     return 1;
+}
+
+/* Print the words around a descriptor. The descriptor sits at ptr-4,
+   between the marker at ptr-8 and the recorded size at ptr+0, so a
+   value that is wrong there was written four bytes ahead of a block's
+   user data. Seeing its neighbours says whether something wrote a
+   single word or a run of them, and whether the run looks like a
+   structure. Marked up so the three words the allocator owns are
+   obvious. */
+void MEMCHK_Dump(const char* what, int* holeDesc)
+{
+    unsigned int* w = (unsigned int*)holeDesc;
+    int i;
+
+    DBG_OutputDebugString("MEMCHK %s: words around descriptor %p\n",
+                          what, (void*)holeDesc);
+    for (i = -4; i <= 8; i++)
+    {
+        const char* tag = "";
+
+        if (i == -1) tag = "   <- marker, should be B0110270";
+        if (i ==  0) tag = "   <- the link";
+        if (i ==  1) tag = "   <- recorded size";
+
+        DBG_OutputDebugString("MEMCHK   %p  %+4d  %08x%s\n",
+                              (void*)(w + i), i * 4, w[i], tag);
+    }
 }
 
 /* Walk all the chains and report the first descriptor that has gone

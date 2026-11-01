@@ -34,6 +34,9 @@ void MEMCHK_Init(unsigned int base, int size);
 void MEMCHK_Where(const char* what, unsigned int addr);
 /* returns the number of bad descriptors found */
 int  MEMCHK_ScanChains(const char* when);
+/* words either side of a descriptor, to show the shape of whatever
+   wrote it rather than just the one word that is wrong */
+void MEMCHK_Dump(const char* what, int* holeDesc);
 /* returns 1 when the hole is safe to follow, 0 when it is not */
 int  MEMCHK_HoleIsSound(unsigned int elemID, int* holeDesc);
 void MEMCHK_Note(const char* path, unsigned int size, unsigned int elemID, int blockSize);
@@ -42,6 +45,7 @@ void MEMCHK_Exhausted(unsigned int size, unsigned int elemID, int blockSize);
 #define MEMCHK_Init(b, s)             ((void)0)
 #define MEMCHK_Where(w, a)            ((void)0)
 #define MEMCHK_ScanChains(w)          (0)
+#define MEMCHK_Dump(w, h)             ((void)0)
 #define MEMCHK_HoleIsSound(e, h)      (1)
 #define MEMCHK_Note(p, s, e, b)       ((void)0)
 #define MEMCHK_Exhausted(s, e, b)     ((void)0)
