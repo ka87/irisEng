@@ -25,7 +25,7 @@
 
    Set MEMCHK_SCAN_ON_FREE to also scan after every free, which is slow
    but brackets the write to a single free. */
-#define MEMCHK_SCAN_EVERY    500
+#define MEMCHK_SCAN_EVERY    100
 #define MEMCHK_SCAN_ON_FREE  0
 
 /* Catch the writer instead of the reader. When a scan finds a bad
