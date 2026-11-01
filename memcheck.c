@@ -283,6 +283,9 @@ int MEMCHK_ScanChains(const char* when)
                                       " happened since the previous scan\n",
                                       when, MEMCHK_gul_Calls, elem, steps,
                                       (void*)hole, link);
+                MEMCHK_Dump("the corrupted descriptor", hole);
+                if (MEMCHK_PAGE_TRAP)
+                    MEMCHK_ArmPageTrap(hole);
                 ++bad;
                 break;
             }
@@ -301,6 +304,28 @@ int MEMCHK_ScanChains(const char* when)
             break;
     }
     return bad;
+}
+
+/* Arming after a scan has found the damage only catches a writer that
+   comes back. This arms a page while it is still intact: once the run
+   is near the point where the corruption appears, every hole created
+   in one of the two size classes that get hit has its page made
+   read-only, and the next write to that page is reported.
+
+   Most reports will be legitimate -- the page holds live blocks too,
+   and the allocator itself writes a marker into any block it hands
+   back out of it. That is fine: each report names the instruction, so
+   the one that is not in the allocator is the one to look at. */
+void MEMCHK_OnFree(unsigned int elemID, int* holeDesc)
+{
+    if (!MEMCHK_PAGE_TRAP || !MEMCHK_TRAP_FROM)
+        return;
+    if (MEMCHK_gul_Calls < MEMCHK_TRAP_FROM)
+        return;
+    if (elemID != MEMCHK_TRAP_ELEM_A && elemID != MEMCHK_TRAP_ELEM_B)
+        return;
+
+    MEMCHK_ArmPageTrap(holeDesc);
 }
 
 void MEMCHK_Note(const char* path, unsigned int size, unsigned int elemID, int blockSize)

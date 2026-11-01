@@ -36,6 +36,15 @@
    0 to leave pages alone. */
 #define MEMCHK_PAGE_TRAP     1
 
+/* Arm a page proactively once this many allocations have happened, so
+   the trap is in place before the write rather than after it. Only
+   holes in these two size classes are armed, which is where the damage
+   has shown up every run (elem 59 is 240 bytes, elem 71 is 288). Set
+   MEMCHK_TRAP_FROM to 0 to arm only on detection. */
+#define MEMCHK_TRAP_FROM     130000
+#define MEMCHK_TRAP_ELEM_A   59
+#define MEMCHK_TRAP_ELEM_B   71
+
 #if MEMCHK_ENABLED
 void MEMCHK_Init(unsigned int base, int size);
 /* describe an address relative to the heap; for reading a crash address */
@@ -47,6 +56,8 @@ int  MEMCHK_ScanChains(const char* when);
 void MEMCHK_Dump(const char* what, int* holeDesc);
 /* make this address's page read-only and report what writes to it */
 void MEMCHK_ArmPageTrap(void* addr);
+/* called from MEM_Free once the hole is built */
+void MEMCHK_OnFree(unsigned int elemID, int* holeDesc);
 /* returns 1 when the hole is safe to follow, 0 when it is not */
 int  MEMCHK_HoleIsSound(unsigned int elemID, int* holeDesc);
 void MEMCHK_Note(const char* path, unsigned int size, unsigned int elemID, int blockSize);
@@ -57,6 +68,7 @@ void MEMCHK_Exhausted(unsigned int size, unsigned int elemID, int blockSize);
 #define MEMCHK_ScanChains(w)          (0)
 #define MEMCHK_Dump(w, h)             ((void)0)
 #define MEMCHK_ArmPageTrap(a)         ((void)0)
+#define MEMCHK_OnFree(e, h)           ((void)0)
 #define MEMCHK_HoleIsSound(e, h)      (1)
 #define MEMCHK_Note(p, s, e, b)       ((void)0)
 #define MEMCHK_Exhausted(s, e, b)     ((void)0)
