@@ -2,6 +2,7 @@
 #include "sprites.h"
 #include "gdi.h"
 #include "materialanddraw.h"
+#include "spritecheck.h"
 
 void SPG_ComputeSpriteFog(Vec3* a1, int* a2, int a3)
 {
@@ -54,6 +55,8 @@ void SPG_Draw(int num)
         else
             SPG_ComputeSpriteFog(SPG_gvStack, &SPG_gvCOLORStack[-num], num);
     }
+    SPGCHK_CheckBatch("SPG_Draw", num);
+
     MAT_DrawIndexedSprites(pst_CurrentObj, pst_CurrentMat, &SPG_stIndxSp[0]);
     MAT_DrawIndexedSprites(pst_CurrentObj, pst_CurrentMat, &SPG_stIndxSp[1]);
     MAT_DrawIndexedSprites(pst_CurrentObj, pst_CurrentMat, &SPG_stIndxSp[2]);
