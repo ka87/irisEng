@@ -14,7 +14,13 @@
 
 /* Behaviour keys to report, terminated by 0. Keep the list short --
  * a behaviour on a reflex track runs every frame. */
-#define AICHK_WATCH  { 0xB300005F, 0x9E003C8D, 0 }
+#define AICHK_WATCH  { 0x9E0015FE,   /* vala_et_faisca_vef_wait */           \
+                       0x9E00164D,   /* vala_et_faisca_vef_activate */       \
+                       0x9E002DF8,   /* vala_et_faisca_vef_exec_set_action */\
+                       0x7100F56D,   /* BV_Active_Desactive_BV_In */         \
+                       0x7100F571,   /* BV_Active_Desactive_BV_Out */        \
+                       0x9E003C7B,   /* Interrrupteur_Sol_IS_reflex */       \
+                       0 }
 
 /* Report at most this many runs of each watched key, so a per-frame
  * track cannot flood the log. 0 means no limit. */
