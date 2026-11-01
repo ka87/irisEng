@@ -1101,10 +1101,11 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
                 }
             }
             if (!newAiFunc->funcPtr) {
-                DBG_OutputDebugString("...not compiled in\n", currKey);
+                DBG_OutputDebugString("AI %08x: not compiled in,"
+                                      " interpreted\n", currKey);
             }
             else {
-                DBG_OutputDebugString("...ok\n", currKey);
+                DBG_OutputDebugString("AI %08x: compiled in\n", currKey);
             }
             nodeSizeSum = LOA_ReadLong(&currOffset, 0, 1);
             newAiFunc->nodes = NULL;
