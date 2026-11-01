@@ -45,7 +45,7 @@ void MEM_InitModule()
     memMngEvent = 0;
     memMngEvent = CreateEventA(NULL, FALSE, FALSE, NULL);
     SetEvent(memMngEvent);
-    MEM_InitDynamic(31457280u);
+    MEM_InitDynamic(41943040u);
 }
 
 BOOL MEM_CloseModule()
@@ -189,7 +189,13 @@ void* MEM_p_Alloc(unsigned int size)
     ++MEM_gst_MemoryInfo.memInfoElems[elemID].id;
     if (!MEM_gst_MemoryInfo.memInfoElems[elemID].firstHole)
     {
-        if (&(MEM_gst_MemoryInfo.nextFreeMemoryPointer) - &(MEM_gst_MemoryInfo.memoryStartPointer) + blockSize + 8 < MEM_gst_MemoryInfo.memorySize)
+        /* bytes handed out so far, plus this block and its header, against
+           the size of the heap. Taking the addresses of the two fields
+           instead of their values made this the constant 1, so the test
+           always passed: the bump pointer ran past the end of the heap and
+           the hole reuse below it was never reached. */
+        if ((int)(MEM_gst_MemoryInfo.nextFreeMemoryPointer - MEM_gst_MemoryInfo.memoryStartPointer)
+                + blockSize + 8 < MEM_gst_MemoryInfo.memorySize)
         {
             destinationAddress = (char*)MEM_gst_MemoryInfo.nextFreeMemoryPointer + 8;
             MEM_gst_MemoryInfo.nextFreeMemoryPointer = MEM_gst_MemoryInfo.nextFreeMemoryPointer + blockSize + 8;
