@@ -4,6 +4,7 @@
 #include "time.h"
 #include "events.h"
 #include "ai.h"
+#include "aivarcheck.h"
 #include "sectors.h"
 #include "profiler.h"
 #include "textget.h"
@@ -585,6 +586,7 @@ void AI_ResolveCarDecHiHiEditor(tAI* ai)
         memcpy(ai->instanceVarDataInitial, ai->model->vars->varData, ai->model->vars->varFullSizeToAlloc);
         processedVarNum = 0;
         AI_ResolveVarRef(ai, ai->varsInstance->varData, ai->varsInstance->varNames, ai->varsInstance->variables, ai->varsInstance->varNum, 1);
+        AIVARCHK_Begin(ai);
 
         for (i = 0; i < ai->model->vars->varNum; ++i)
         {
@@ -610,6 +612,8 @@ void AI_ResolveCarDecHiHiEditor(tAI* ai)
                         memcpy(&ai->instanceVarDataInitial[modelVarOffset], &ai->model->vars->varData[modelVarOffset], 4 * arrayDimensionNum);
                     memcpy(&ai->instanceVarDataInitial[4 * arrayDimensionNum + modelVarOffset], &ai->varsInstance->varData[4 * arrayDimensionNum + instVarOffset], 
                         (ai->varsInstance->variables[j].variableArrayCount & 0x3fffffff) * AI_gast_Types[variableType].dataTypeSize);
+                    AIVARCHK_Pair(ai, i, j, modelVarOffset, instVarOffset, variableType, arrayDimensionNum,
+                        (ai->varsInstance->variables[j].variableArrayCount & 0x3fffffff) * AI_gast_Types[variableType].dataTypeSize);
                 }
                 else
                 {
@@ -619,12 +623,15 @@ void AI_ResolveCarDecHiHiEditor(tAI* ai)
                     arrayDimensionNum2 = ai->model->vars->variables[i].variableArrayCount >> 30;
                     memcpy(&ai->instanceVarDataInitial[4 * arrayDimensionNum2 + modelVarOffset], &ai->varsInstance->varData[4 * arrayDimensionNum2 + instVarOffset], 
                         (arrayElemNum & 0x3fffffff) * AI_gast_Types[variableType].dataTypeSize);
+                    AIVARCHK_Pair(ai, i, j, modelVarOffset, instVarOffset, variableType, arrayDimensionNum2,
+                        (arrayElemNum & 0x3fffffff) * AI_gast_Types[variableType].dataTypeSize);
                 }
                 ++processedVarNum;
             }
             if (processedVarNum == ai->varsInstance->varNum)
                 break;
         }
+        AIVARCHK_End(ai, processedVarNum);
     }
 }
 
