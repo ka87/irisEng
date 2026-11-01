@@ -1121,6 +1121,38 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
                         else
                             LOA_ReadAINode(&currOffset, currNode++, 1);
                     }
+
+                    /* The node walk that resolves references ends at a node
+                       whose category is 31 and has nothing else to stop it, so
+                       a block without one is walked until something further up
+                       memory happens to hold 31 -- rewriting a category and a
+                       val2 every eight bytes on the way. A block only reaches
+                       here when the behaviour has no compiled function, and
+                       then its node data may be absent, so check for the end
+                       node and make the function an empty one if it is missing.
+                       An empty function is what a behaviour with no code is. */
+                    if (newAiFunc->nodes)
+                    {
+                        unsigned int nodeNum = nodeSizeSum / sizeof(tAINode);
+                        unsigned int n;
+
+                        for (n = 0; n < nodeNum; n++)
+                            if (newAiFunc->nodes[n].category == 31)
+                                break;
+
+                        if (n == nodeNum)
+                        {
+                            DBG_OutputDebugString("AI: %08x has no compiled"
+                                " function and its %u nodes carry no end node;"
+                                " running it as an empty function\n",
+                                currKey, nodeNum);
+
+                            newAiFunc->nodes[0].val      = 0;
+                            newAiFunc->nodes[0].val2     = 0;
+                            newAiFunc->nodes[0].flags    = 0;
+                            newAiFunc->nodes[0].category = 31;
+                        }
+                    }
                 }
             }
             extraAiNodeSizeSum = LOA_ReadLong(&currOffset, 0, 2);
