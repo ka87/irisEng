@@ -4,10 +4,12 @@
 
 #include "common.h"
 #include "ai.h"
+#include "gameobject.h"
 #include "dbg.h"
 
 static unsigned int AIVARCHK_gul_Instances;
 static int AIVARCHK_gb_Active;
+static unsigned int AIVARCHK_gul_Currents;
 
 /* The declared size of a type, and whether the index is one the type
    table can answer for at all. The table is small and the ids stored
@@ -61,10 +63,83 @@ static int AIVARCHK_IsWatched(const char* name)
     return 0;
 }
 
-void AIVARCHK_Begin(struct sAI* ai)
+/* True when this instance's model declares one of the watched names,
+   which is what keeps the log to the objects being chased. */
+static int AIVARCHK_ModelIsWatched(const tAI* inst)
+{
+    unsigned int i;
+
+    for (i = 0; i < inst->model->vars->varNum; i++)
+        if (AIVARCHK_IsWatched(AIVARCHK_Name(inst->model->vars->varNames, i)))
+            return 1;
+    return 0;
+}
+
+void AIVARCHK_Object(struct sGameObjectMain* gao, struct sAI* ai)
+{
+    tAI* inst = (tAI*)ai;
+
+    if (!gao || !inst || !inst->model || !inst->model->vars)
+        return;
+    if (!AIVARCHK_ModelIsWatched(inst))
+        return;
+
+    if (gao->matrices)
+        DBG_OutputDebugString("AIVARCHK object %p at (%f, %f, %f), instance"
+                              " %p, values to apply %u\n", (void*)gao,
+                              gao->matrices->Pos.x, gao->matrices->Pos.y,
+                              gao->matrices->Pos.z, (void*)inst,
+                              inst->varsInstance ? inst->varsInstance->varNum
+                                                 : 0);
+    else
+        DBG_OutputDebugString("AIVARCHK object %p has no matrix, instance"
+                              " %p, values to apply %u\n", (void*)gao,
+                              (void*)inst,
+                              inst->varsInstance ? inst->varsInstance->varNum
+                                                 : 0);
+}
+
+/* The values are applied to one buffer and read by the behaviours from
+   another, so a value that is right in the first and wrong in the
+   second is lost in the step between them rather than in the applying.
+   This prints the watched variables as they stand in both. */
+void AIVARCHK_Current(struct sAI* ai)
 {
     tAI* inst = (tAI*)ai;
     unsigned int i;
+
+    if (!inst || !inst->model || !inst->model->vars)
+        return;
+    if (!AIVARCHK_ModelIsWatched(inst))
+        return;
+    if (AIVARCHK_gul_Currents >= AIVARCHK_MAX_INSTANCES)
+        return;
+    ++AIVARCHK_gul_Currents;
+
+    DBG_OutputDebugString("AIVARCHK instance %p after the copy forward:"
+                          " applied block %p, read block %p\n",
+                          (void*)inst, (void*)inst->instanceVarDataInitial,
+                          (void*)inst->instanceVarDataCurrent);
+
+    for (i = 0; i < inst->model->vars->varNum; i++)
+    {
+        const char* name = AIVARCHK_Name(inst->model->vars->varNames, i);
+        unsigned int off;
+
+        if (!AIVARCHK_IsWatched(name))
+            continue;
+        off = (unsigned int)inst->model->vars->variables[i].varOffset;
+        DBG_OutputDebugString("AIVARCHK   %s [offset %u]\n", name, off);
+        AIVARCHK_Word("applied", inst->instanceVarDataInitial, off,
+                      inst->model->vars->varFullSizeToAlloc);
+        AIVARCHK_Word("read by behaviours", inst->instanceVarDataCurrent, off,
+                      inst->model->vars->varFullSizeToAlloc);
+    }
+}
+
+void AIVARCHK_Begin(struct sAI* ai)
+{
+    tAI* inst = (tAI*)ai;
 
     AIVARCHK_gb_Active = 0;
     if (!inst || !inst->model || !inst->model->vars || !inst->varsInstance)
@@ -72,22 +147,15 @@ void AIVARCHK_Begin(struct sAI* ai)
     if (AIVARCHK_gul_Instances >= AIVARCHK_MAX_INSTANCES)
         return;
 
-    for (i = 0; i < inst->model->vars->varNum; i++)
-    {
-        if (AIVARCHK_IsWatched(AIVARCHK_Name(inst->model->vars->varNames, i)))
-        {
-            AIVARCHK_gb_Active = 1;
-            break;
-        }
-    }
+    AIVARCHK_gb_Active = AIVARCHK_ModelIsWatched(inst);
     if (!AIVARCHK_gb_Active)
         return;
 
     ++AIVARCHK_gul_Instances;
-    DBG_OutputDebugString("AIVARCHK instance %u: model declares %u"
+    DBG_OutputDebugString("AIVARCHK instance %u (%p): model declares %u"
                           " variables in %u bytes, instance block sets %u"
                           " in %u bytes, model resolved %d\n",
-                          AIVARCHK_gul_Instances,
+                          AIVARCHK_gul_Instances, (void*)inst,
                           inst->model->vars->varNum,
                           inst->model->vars->varFullSizeToAlloc,
                           inst->varsInstance->varNum,

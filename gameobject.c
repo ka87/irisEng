@@ -6,6 +6,7 @@
 #include "animation.h"
 #include "modifiers.h"
 #include "gameobject.h"
+#include "aivarcheck.h"
 #include "sectors.h"
 #include "groups.h"
 #include "world.h"
@@ -2451,6 +2452,7 @@ void OBJ_ResolveAIRef(struct sGameObjectMain* a1)
             v2 = v1->AIInstance;
             if (v2)
             {
+                AIVARCHK_Object(a1, v2);
                 AI_ResolveInstanceRef(v2);
                 AI_ReinitInstance(a1->extended->AIInstance);
             }

@@ -39,6 +39,17 @@
 #if AIVARCHK_ENABLED
 
 struct sAI;
+struct sGameObjectMain;
+
+/* Called with the object an instance belongs to, before its values are
+   applied, so every line below can be tied to a placed object rather
+   than to an index. */
+void AIVARCHK_Object(struct sGameObjectMain* gao, struct sAI* ai);
+
+/* Called once the values have been copied forward into the block the
+   behaviours actually read, which is a separate buffer from the one
+   the values are applied to. */
+void AIVARCHK_Current(struct sAI* ai);
 
 /* Called once per instance, after the model defaults have been copied
    and the instance block resolved, before any value is applied. */
@@ -59,6 +70,8 @@ void AIVARCHK_End(struct sAI* ai, int processedVarNum);
 
 #else
 
+#define AIVARCHK_Object(gao, ai)                                    ((void)0)
+#define AIVARCHK_Current(ai)                                        ((void)0)
 #define AIVARCHK_Begin(ai)                                          ((void)0)
 #define AIVARCHK_Pair(ai, mi, ii, mo, io, t, d, b)                  ((void)0)
 #define AIVARCHK_End(ai, n)                                         ((void)0)

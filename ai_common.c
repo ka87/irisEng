@@ -443,6 +443,7 @@ void AI_ReinitInstance(tAI* ai)
             }
         }
     }
+    AIVARCHK_Current(ai);
 }
 
 void AI_ReinitUniverse()
