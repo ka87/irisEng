@@ -92,10 +92,11 @@ void SPG_Modifier_Unapply(tModifier* mdf, tGEOGRO* geogro)
         } while (j);
     }
 
+    /* all four passes hold a quarter of the sprite table each */
+    SPG_stIndxSp[0].num = 64;
     SPG_stIndxSp[1].num = 64;
     SPG_stIndxSp[2].num = 64;
     SPG_stIndxSp[3].num = 64;
-    SPG_stIndxSp[4].num = 64;
     SPG_stIndxSp[0].matIdx = (uint8_t)spg->subElementData[0].matID;
     SPG_stIndxSp[1].matIdx = (uint8_t)spg->subElementData[1].matID;
     SPG_stIndxSp[2].matIdx = (uint8_t)spg->subElementData[2].matID;
@@ -116,7 +117,8 @@ void SPG_Modifier_Unapply(tModifier* mdf, tGEOGRO* geogro)
         SPG_SpritesIDX[i].size = 1.0f;
     }
 
-    for (i = 64; i >= 0; i--)
+    /* 64 entries per pass, so 0..63; the four passes cover 0..255 */
+    for (i = 63; i >= 0; i--)
     {
         SPG_SpritesIDX[i].size = SPG_SpritesIDX[i].size - f_RandomTable[(uint8_t)i] * spg->subElementData[0].noiseMultiplier;
         SPG_SpritesIDX[i + 64].size = SPG_SpritesIDX[i + 64].size - f_RandomTable[(uint8_t)i] * spg->subElementData[1].noiseMultiplier;
