@@ -346,6 +346,8 @@ void MEM_Free(void* ptr)
                 tmpPtr[-2] = 0xB0110270;
             }
             MEM_gst_MemoryInfo.usedMemoryByEngine -= blockElemSize;
+            if (MEMCHK_SCAN_ON_FREE)
+                MEMCHK_ScanChains("after a free");
             SetEvent(memMngEvent);
         }
         else

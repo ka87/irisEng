@@ -17,10 +17,23 @@
 #define MEMCHK_VERBOSE  0
 #define MEMCHK_SUMMARY_EVERY 2000
 
+/* Walk every hole chain this often (in allocations) and report the
+   first descriptor that has gone bad. The point is to bracket the
+   corruption in time: the scan that finds it ran after the write, the
+   scan before it ran before, so the window is however many operations
+   separate them. Lower it to narrow the window; 0 turns it off.
+
+   Set MEMCHK_SCAN_ON_FREE to also scan after every free, which is slow
+   but brackets the write to a single free. */
+#define MEMCHK_SCAN_EVERY    500
+#define MEMCHK_SCAN_ON_FREE  0
+
 #if MEMCHK_ENABLED
 void MEMCHK_Init(unsigned int base, int size);
 /* describe an address relative to the heap; for reading a crash address */
 void MEMCHK_Where(const char* what, unsigned int addr);
+/* returns the number of bad descriptors found */
+int  MEMCHK_ScanChains(const char* when);
 /* returns 1 when the hole is safe to follow, 0 when it is not */
 int  MEMCHK_HoleIsSound(unsigned int elemID, int* holeDesc);
 void MEMCHK_Note(const char* path, unsigned int size, unsigned int elemID, int blockSize);
@@ -28,6 +41,7 @@ void MEMCHK_Exhausted(unsigned int size, unsigned int elemID, int blockSize);
 #else
 #define MEMCHK_Init(b, s)             ((void)0)
 #define MEMCHK_Where(w, a)            ((void)0)
+#define MEMCHK_ScanChains(w)          (0)
 #define MEMCHK_HoleIsSound(e, h)      (1)
 #define MEMCHK_Note(p, s, e, b)       ((void)0)
 #define MEMCHK_Exhausted(s, e, b)     ((void)0)

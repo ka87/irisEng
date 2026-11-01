@@ -115,9 +115,78 @@ int MEMCHK_HoleIsSound(unsigned int elemID, int* holeDesc)
     return 1;
 }
 
+/* Walk all the chains and report the first descriptor that has gone
+   bad, with the allocation count, so two consecutive scans bracket
+   whatever wrote it. Chains are capped in case one has become a loop. */
+int MEMCHK_ScanChains(const char* when)
+{
+    int elem, bad = 0;
+
+    for (elem = 0; elem < 2304; elem++)
+    {
+        int* hole = MEM_gst_MemoryInfo.memInfoElems[elem].firstHole;
+        int steps = 0;
+
+        while (hole && steps < 100000)
+        {
+            unsigned int link, marker;
+
+            if (!MEMCHK_InHeap((unsigned int)hole) || ((unsigned int)hole & 3))
+            {
+                DBG_OutputDebugString("MEMCHK scan %s at %u allocations: elem %d"
+                                      " chain step %d has descriptor %p, not a heap"
+                                      " address\n", when, MEMCHK_gul_Calls, elem,
+                                      steps, (void*)hole);
+                ++bad;
+                break;
+            }
+
+            marker = ((unsigned int*)hole)[-1];
+            link   = (unsigned int)hole[0];
+
+            if (marker != 0xB0110270u)
+            {
+                DBG_OutputDebugString("MEMCHK scan %s at %u allocations: elem %d"
+                                      " step %d descriptor %p marker is %08x\n",
+                                      when, MEMCHK_gul_Calls, elem, steps,
+                                      (void*)hole, marker);
+                ++bad;
+                break;
+            }
+            if (link && !MEMCHK_InHeap(link))
+            {
+                DBG_OutputDebugString("MEMCHK scan %s at %u allocations: elem %d"
+                                      " step %d descriptor %p link %08x is outside"
+                                      " the heap -- this is the corruption, and it"
+                                      " happened since the previous scan\n",
+                                      when, MEMCHK_gul_Calls, elem, steps,
+                                      (void*)hole, link);
+                ++bad;
+                break;
+            }
+
+            hole = (int*)link;
+            ++steps;
+        }
+
+        if (steps >= 100000)
+        {
+            DBG_OutputDebugString("MEMCHK scan %s: elem %d chain does not end --"
+                                  " it has become a loop\n", when, elem);
+            ++bad;
+        }
+        if (bad)
+            break;
+    }
+    return bad;
+}
+
 void MEMCHK_Note(const char* path, unsigned int size, unsigned int elemID, int blockSize)
 {
     ++MEMCHK_gul_Calls;
+
+    if (MEMCHK_SCAN_EVERY && (MEMCHK_gul_Calls % MEMCHK_SCAN_EVERY) == 0)
+        MEMCHK_gul_Faults += MEMCHK_ScanChains("periodic");
 
     if (elemID >= 2304u)
     {
