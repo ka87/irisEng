@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "ai/ai_debugfunctions.h"
 #include "soft.h"
+#include "memcheck.h"
 
 uint32_t MEM_gpv_LastFree = 0; // engine doesn't explcitly set it zero, but it could have caused problems later (eg AllocFromEnd)
 
@@ -211,6 +212,7 @@ void* MEM_p_Alloc(unsigned int size)
             tmpDestinationAddress[-1] = size;
             MEM_gst_MemoryInfo.usedMemoryByEngine += memInfoElem->size + 8;
             tmpDestinationAddress[-2] = 0xA0110270;
+            MEMCHK_Note("bump", size, elemID, blockSize);
             SetEvent(memMngEvent);
             return destinationAddress;
         }
@@ -228,6 +230,9 @@ void* MEM_p_Alloc(unsigned int size)
     }
 
     holeDesc = memInfoElem->firstHole;
+    if (!MEMCHK_HoleIsSound((unsigned int)(memInfoElem - MEM_gst_MemoryInfo.memInfoElems), holeDesc))
+        goto err;
+    MEMCHK_Note("hole", size, elemID, blockSize);
     secondHole = (int*)holeDesc[0]; // ptr to the next hole (was the size field originally)
     destinationAddress = (char*)&holeDesc[1]; // ptr to the memory block
     memInfoElem->firstHole = secondHole;
@@ -241,6 +246,7 @@ void* MEM_p_Alloc(unsigned int size)
     return destinationAddress;
 
 err:
+    MEMCHK_Exhausted(size, elemID, blockSize);
     SetEvent(memMngEvent);
     MEM_GetHolesStat(&holesNum, &sizeOfHoles);
     sprintf(Buffer,
