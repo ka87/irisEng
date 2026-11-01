@@ -7,6 +7,16 @@
 #include "../textures.h"
 #include "protexmodifier.h"
 
+/* The packed colour ramp PROTEX_InitModifier builds and the water
+   surface reads back. It used to be written into f_RandomTable, which
+   is the sprite generator's noise table: the entries here are colours
+   reinterpreted as floats, so sharing the array left sprite noise
+   multipliers of up to 1e38 and put the vertices they displace far
+   off screen. The sprite table is also filled only once, behind a
+   guard, while this one is rebuilt on every protex init, so the
+   sprites never got their own values back. */
+static float PROTEX_gaf_ColorRamp[256];
+
 void PROTEX_Disturb(struct sGameObjectMain* gao, struct sGEOGRO* geogro)
 {
     tGameObjectMain* v2;
@@ -329,8 +339,7 @@ void PROTEX_InitModifier(tProtexMdfStruct* a1)
         else
             v3 = (uint32_t)(v2 * v2 * (v2 * v2) * 128.0);
         tmp = v3 | (((unsigned int)v3 | (((unsigned int)v3 | ((unsigned int)(uint32_t)(255.0 * v2) << 8)) << 8)) << 8);
-        //f_RandomTableLastElem_unk_9A0620[v1] = (*((float*)(&tmp)));
-        f_RandomTable[v1] = (*((float*)(&tmp)));
+        PROTEX_gaf_ColorRamp[v1] = (*((float*)(&tmp)));
     } while (v1);
     memset(a1, 0, sizeof(tProtexMdfStruct));
 }
@@ -502,8 +511,7 @@ void PROTEX_l_WaterUpdate(tProtexMdfStruct* a1)
     v19 = a1->ptr3;
     v20 = a1->unkNumProtexWater;
     for (i = &v19[a1->unkProbablyDim1 * a1->unkProbablyDim2]; v19 < i; ++v20) {
-     //   *v19++ = f_RandomTableLastElem_unk_9A0620[*v20];
-        *v19++ = f_RandomTable[*v20];
+        *v19++ = PROTEX_gaf_ColorRamp[*v20];
     }
     v22 = a1->texElemIdx;
     v26 = v22;
