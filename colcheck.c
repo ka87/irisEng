@@ -1,0 +1,118 @@
+#include "colcheck.h"
+
+#if COLCHK_ENABLED
+
+#include "common.h"
+#include "gameobject.h"
+#include "collision.h"
+#include "math.h"
+#include "dbg.h"
+
+static unsigned int COLCHK_gul_Reports;
+
+/* The function swaps its two arguments on `reverse`, and the test is
+   always "is firstGao's pivot inside secondGao's bounding volume". The
+   caller's own names for them are the other way round from the names
+   this prints, so both are given explicitly. */
+void COLCHK_PivotCollide(struct sGameObjectMain* gao1,
+                         struct sGameObjectMain* gao2,
+                         int reverse, int result)
+{
+    struct sGameObjectMain* pivotOf;
+    struct sGameObjectMain* volumeOf;
+    const char* why = 0;
+
+    if (result && !COLCHK_REPORT_HITS)
+        return;
+    if (COLCHK_MAX_REPORTS && COLCHK_gul_Reports >= COLCHK_MAX_REPORTS)
+        return;
+
+    if (!gao1 || !gao2)
+    {
+        ++COLCHK_gul_Reports;
+        DBG_OutputDebugString("COLCHK pivot/BV: a null object (%p, %p)\n",
+                              (void*)gao1, (void*)gao2);
+        return;
+    }
+
+    pivotOf  = reverse ? gao1 : gao2;
+    volumeOf = reverse ? gao2 : gao1;
+
+    /* The gate the function applies before looking at any geometry.
+       Both objects need bit 0 of flags2, which is what makes an
+       object collidable at all. */
+    if ((gao1->flags2 & 1) == 0 || (gao2->flags2 & 1) == 0)
+        why = "one of them has flags2 bit 0 clear, so the test never"
+              " looks at the geometry";
+
+    ++COLCHK_gul_Reports;
+    DBG_OutputDebugString("COLCHK pivot/BV %u: result %d, reverse %d."
+                          " pivot from %p (flags %08x, flags2 %08x),"
+                          " volume from %p (flags %08x, flags2 %08x)\n",
+                          COLCHK_gul_Reports, result, reverse,
+                          (void*)pivotOf, pivotOf->flags, pivotOf->flags2,
+                          (void*)volumeOf, volumeOf->flags, volumeOf->flags2);
+
+    if (why)
+    {
+        DBG_OutputDebugString("COLCHK   %s\n", why);
+        return;
+    }
+
+    if (!volumeOf->boundingVolume)
+    {
+        DBG_OutputDebugString("COLCHK   the volume object has no bounding"
+                              " volume at all\n");
+        return;
+    }
+
+    if (OBJ_BV_IsSphere(volumeOf->boundingVolume))
+    {
+        Vec3 d;
+        Mtx4x4* m = OBJ_pst_GetAbsoluteMatrix(pivotOf);
+
+        MATH_SubstractVec(&d, &m->Pos, &volumeOf->boundingVolume->BVMin);
+        DBG_OutputDebugString("COLCHK   sphere: radius field %f%s,"
+                              " centre (%f %f %f), pivot (%f %f %f),"
+                              " distance %f against radius %f\n",
+                              volumeOf->boundingVolume->BVMax.x,
+                              volumeOf->boundingVolume->BVMax.x == 0.0f
+                                ? " -- zero, so the test is skipped" : "",
+                              volumeOf->boundingVolume->BVMin.x,
+                              volumeOf->boundingVolume->BVMin.y,
+                              volumeOf->boundingVolume->BVMin.z,
+                              m->Pos.x, m->Pos.y, m->Pos.z,
+                              MATH_VecLenSquared(&d),
+                              volumeOf->boundingVolume->BVMax.x
+                                * volumeOf->boundingVolume->BVMax.x);
+        return;
+    }
+
+    {
+        Vec3 lo, hi;
+        Mtx4x4* m = OBJ_pst_GetAbsoluteMatrix(pivotOf);
+
+        MATH_VecAddVec(&lo, &volumeOf->boundingVolume->BVMin,
+                       &volumeOf->matrices->Pos);
+        MATH_VecAddVec(&hi, &volumeOf->boundingVolume->BVMax,
+                       &volumeOf->matrices->Pos);
+
+        DBG_OutputDebugString("COLCHK   box: lo (%f %f %f) hi (%f %f %f)"
+                              " pivot (%f %f %f)%s\n",
+                              lo.x, lo.y, lo.z, hi.x, hi.y, hi.z,
+                              m->Pos.x, m->Pos.y, m->Pos.z,
+                              (lo.x == hi.x || lo.y == hi.y || lo.z == hi.z)
+                                ? " -- degenerate on an axis, so the test"
+                                  " is skipped" : "");
+        if (lo.x != hi.x && lo.y != hi.y && lo.z != hi.z)
+            DBG_OutputDebugString("COLCHK   outside on:%s%s%s%s%s%s\n",
+                                  m->Pos.x <= lo.x ? " x-low"  : "",
+                                  m->Pos.x >= hi.x ? " x-high" : "",
+                                  m->Pos.y <= lo.y ? " y-low"  : "",
+                                  m->Pos.y >= hi.y ? " y-high" : "",
+                                  m->Pos.z <= lo.z ? " z-low"  : "",
+                                  m->Pos.z >= hi.z ? " z-high" : "");
+    }
+}
+
+#endif  /* COLCHK_ENABLED */

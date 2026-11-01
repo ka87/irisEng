@@ -10,6 +10,7 @@
 #include "time.h"
 #include "modifiers/otcmodifier.h"
 #include "collision.h"
+#include "colcheck.h"
 
 int COL_ul_SnP_RefreshType = 1;
 
@@ -57,7 +58,11 @@ BOOL COL_BV_PivotCollide(struct sGameObjectMain* gao1, struct sGameObjectMain* g
     Vec3 realMaxPos;
     Vec3 distance;
 
-    if (!gao1 || !gao2 || (gao1->flags2 & 1) == 0 || (gao2->flags2 & 1) == 0) return FALSE;
+    if (!gao1 || !gao2 || (gao1->flags2 & 1) == 0 || (gao2->flags2 & 1) == 0)
+    {
+        COLCHK_PivotCollide(gao1, gao2, reverse, 0);
+        return FALSE;
+    }
     
     if (reverse)
     {
@@ -77,7 +82,10 @@ BOOL COL_BV_PivotCollide(struct sGameObjectMain* gao1, struct sGameObjectMain* g
             MATH_SubstractVec(&distance, &absMtx->Pos, &secondGao->boundingVolume->BVMin);
 
             if ((secondGao->boundingVolume->BVMax.x * secondGao->boundingVolume->BVMax.x) > MATH_VecLenSquared(&distance))
+            {
+                COLCHK_PivotCollide(gao1, gao2, reverse, 1);
                 return TRUE;
+            }
         }
     }
     else
@@ -96,10 +104,12 @@ BOOL COL_BV_PivotCollide(struct sGameObjectMain* gao1, struct sGameObjectMain* g
                 absMtx->Pos.z > realMinPos.z &&
                 absMtx->Pos.z < realMaxPos.z)
             {
+                COLCHK_PivotCollide(gao1, gao2, reverse, 1);
                 return TRUE;
             }
         }
     }
+    COLCHK_PivotCollide(gao1, gao2, reverse, 0);
     return FALSE;
 }
 
