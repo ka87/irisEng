@@ -11,10 +11,10 @@
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
-	CreateMutexA(NULL, TRUE, "BeyondGoodAndEvilGame");
+	CreateMutexA(NULL, TRUE, "IrisEngGame");
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 	{
-		OutputDebugStringA("Another instance of the game is already running");
+		OutputDebugStringA("Another instance of the game is already running.");
 	}
 	else
 	{

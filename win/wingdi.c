@@ -4497,7 +4497,7 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
         || !RegQueryVal(phkResult, "Mode", (LPBYTE)&adapterMode)
         || !RegQueryVal(phkResult, "MipMapping", (LPBYTE)&D3DRenderParams.Mipmapping))
     {
-        MessageBoxA(hWnd, "Application settings not correctly set or invalid, please re-run settings application", "Beyond Good & Evil", MB_TASKMODAL | MB_ICONERROR);
+        MessageBoxA(hWnd, "Application settings is not correctly set or invalid, please re-run settings application.", "IRISEngine", MB_TASKMODAL | MB_ICONERROR);
         exit(1);
     }
 
@@ -4564,7 +4564,7 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
         {
             if (ret < 0)
             {
-                MessageBoxA(hWnd, "IDirect3D9_CreateDevice failed, please re-run settings application", "Beyond Good & Evil", MB_TASKMODAL | MB_ICONERROR);
+                MessageBoxA(hWnd, "IDirect3D9_CreateDevice failed, please re-run settings application.", "IRISEngine", MB_TASKMODAL | MB_ICONERROR);
                 exit(1);
             }
             break;
