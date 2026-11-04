@@ -645,6 +645,10 @@ void s_OneTrame()
     tWorld* currWorld;
     LARGE_INTEGER perfCounter;
 
+    // Report any change to the cinematic-bands flag that did not come
+    // through its setter, and any damage to the words around it.
+    CIN_BandsWatch();
+
     if (!PRO_FullLoop.insideCounter)
         PRO_FullLoop.startTick = TIM_GetTicksAsInt32();
     ++PRO_FullLoop.insideCounter;

@@ -222,7 +222,7 @@ int d3dRequestPrimitiveCount2; // sprite request
 int water_ClippingHasBeenSet;
 
 
-Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8]; // TODO IFXME? van egy hasonló sak kis t-vel, átnevezni
+Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8]; // TODO IFXME? van egy hasonlï¿½ sak kis t-vel, ï¿½tnevezni
 
 D3DMATRIX d3dTransformMatrixBackup;
 D3DMATRIX d3dTransformMatrix2Backup;
@@ -242,6 +242,7 @@ char* rastersDrawPrimitiveUPDataEnd;
 int PC_AE_MASTER;
 extern int CIN_Bands;
 extern int CIN_NoBands;
+void CIN_BandsWatch(void);
 int depthblur_Type;
 float camUnkf1Save;
 float deptBlurNear1Save;

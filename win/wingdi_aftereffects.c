@@ -15,13 +15,47 @@ float bandsVal4 = 0.91666669f;
 // cutscene behaviours raise and lower it through the AI function
 // CIN_CutsceneMode. CIN_NoBands gates that -- with it clear the
 // bands are latched on and the script cannot move them.
+// Guard words either side of CIN_Bands. A stray single write hits
+// only the flag; a run of writes walking off the end of an array
+// clobbers a guard too, and which guard says which direction.
+volatile int CIN_Bands_guard_lo = 0x5A5AA5A5;
 int CIN_Bands = 0;
+volatile int CIN_Bands_guard_hi = 0xA5A55A5A;
 int CIN_NoBands = 1;
+
+// What CIN_Bands was after the last write that went through the
+// setter, so a change made by anything else can be spotted.
+static int CIN_Bands_expected = 0;
 
 void PC_CIN_CutsceneMode(int on)
 {
     if (CIN_NoBands)
         CIN_Bands = on ? 1 : 0;
+    CIN_Bands_expected = CIN_Bands;
+}
+
+// Once per frame: report a change to CIN_Bands that the setter did
+// not make, and any damage to the guard words.
+void CIN_BandsWatch(void)
+{
+    if (CIN_Bands != CIN_Bands_expected)
+    {
+        DBG_OutputDebugString("CINWATCH: CIN_Bands %d -> %d, not via the setter\n",
+                              CIN_Bands_expected, CIN_Bands);
+        CIN_Bands_expected = CIN_Bands;
+    }
+    if (CIN_Bands_guard_lo != 0x5A5AA5A5)
+    {
+        DBG_OutputDebugString("CINWATCH: low guard clobbered: %08x\n",
+                              CIN_Bands_guard_lo);
+        CIN_Bands_guard_lo = 0x5A5AA5A5;
+    }
+    if (CIN_Bands_guard_hi != (int)0xA5A55A5A)
+    {
+        DBG_OutputDebugString("CINWATCH: high guard clobbered: %08x\n",
+                              CIN_Bands_guard_hi);
+        CIN_Bands_guard_hi = (int)0xA5A55A5A;
+    }
 }
 
 float gAEOpacity = 0.0f;
@@ -1267,7 +1301,7 @@ float D3D_CalcTextureFactor(float a1)
     return 0.0;
 }
 
-// TODO FIXME Ez lehet nem jó, mert az IDA-ban rossz a stack, ha nem mûködik megnézni!!!
+// TODO FIXME Ez lehet nem jï¿½, mert az IDA-ban rossz a stack, ha nem mï¿½kï¿½dik megnï¿½zni!!!
 void D3D_Unkown_AE_Func_Flag_4(IDirect3DTexture9* a2, IDirect3DTexture9* a1, float a4, float texFactorManual)
 {
     int v4;
