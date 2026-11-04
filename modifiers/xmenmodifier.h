@@ -45,7 +45,8 @@ tGeoTriangleChunks XMEN_ELEMENT[1];
 tGeoTriangleChunkElem XMEN_OBJECT_TRIS[64];
 tGeoUVElem XMEN_UVs[64];
 Vec3 XMEN_OBJECT_Points_Smoothed[64];
-tXmenMdfStruct* p_XMEN_STACK[96];
+#define XMEN_STACK_SLOTS 96
+tXmenMdfStruct* p_XMEN_STACK[XMEN_STACK_SLOTS];
 int g_ulFrameCounter;
 
 void GAO_ModifierXMEN_DRAW_ALL();
