@@ -3,6 +3,7 @@
 #include "../time.h"
 #include "../soft.h"
 #include "../materialanddraw.h"
+#include "../dbg.h"
 #include "xmenmodifier.h"
 
 int bFirst_286 = 0; // game doesn't set this explicitly
@@ -132,11 +133,19 @@ void GAO_ModifierXMEN_Destroy(struct sModifier* a1)
 
 void GAO_ModifierXMEN_Apply(struct sModifier* a1, void *unk1)
 {
-    int v1;
-
-    v1 = XMEN_STACK_PTR + 1;
-    p_XMEN_STACK[XMEN_STACK_PTR & 0x5F] = (tXmenMdfStruct*)(a1->mdfPrivateDataPtr);
-    XMEN_STACK_PTR = v1;
+    // The stack holds XMEN_STACK_SLOTS entries. Stop the counter at that,
+    // so the walks below can never index past the array; the surplus
+    // modifiers for this frame are dropped instead.
+    if (XMEN_STACK_PTR >= XMEN_STACK_SLOTS)
+    {
+        if (XMEN_STACK_PTR == XMEN_STACK_SLOTS)
+            DBG_OutputDebugString("XMENSTACK: more than %d applied in one frame, dropping the rest\n",
+                                  XMEN_STACK_SLOTS);
+        XMEN_STACK_PTR = XMEN_STACK_SLOTS;
+        return;
+    }
+    p_XMEN_STACK[XMEN_STACK_PTR] = (tXmenMdfStruct*)(a1->mdfPrivateDataPtr);
+    XMEN_STACK_PTR = XMEN_STACK_PTR + 1;
 }
 
 int GAO_ModifierXMEN_Load(struct sModifier* arg0, char* a1)
@@ -270,11 +279,31 @@ void GAO_ModifierXMEN_GetBonePosFromNum(tGameObjectMain* a1, int multiPartDataID
     Mtx4x4 a1a;
 
     v6 = a1->basic;
-    if (!v6 || (v7 = v6->multiPartData) == 0 || v7->elemNum <= multiPartDataID)
+    if (!v6 || (v7 = v6->multiPartData) == 0 || (unsigned)multiPartDataID >= (unsigned)v7->elemNum)
     {
+        // The upper bound alone let a negative index through.
+        if (v6 && v7 && multiPartDataID < 0)
+            DBG_OutputDebugString("XMENBONE: negative element %d (elemNum %d)\n",
+                                  multiPartDataID, v7->elemNum);
     LABEL_14:
         v11 = &MATH_gst_IdentityMatrix;
         goto LABEL_15;
+    }
+    // Report an element that cannot be a link before following it, so the
+    // state at the point it goes wrong is recorded rather than faulted on.
+    if ((a1->flags & 0x1000000) != 0)
+    {
+        tMultiPartGameObjectLinks* chk =
+            &((tMultiPartGameObjectLinks*)v7->multipartGaoObjectPartsOrMatrices)[multiPartDataID];
+        if (chk->mtxIdx != -1 && (unsigned)chk->gao != 0
+            && ((unsigned)chk->gao < 0x10000 || (unsigned)chk->gao >= 0x80000000))
+        {
+            DBG_OutputDebugString("XMENBONE: element %d of %d holds gao=%08x mtxIdx=%d mtxPtr=%08x, array=%08x\n",
+                                  multiPartDataID, v7->elemNum, (unsigned)chk->gao,
+                                  chk->mtxIdx, (unsigned)chk->mtxPtr,
+                                  (unsigned)v7->multipartGaoObjectPartsOrMatrices);
+            goto LABEL_14;
+        }
     }
     if ((a1->flags & 0x1000000) == 0)
     {
@@ -1048,9 +1077,11 @@ void GAO_ModifierXMEN_DRAW_ALL()
             {
                 GAO_ModifierXMEN_DRAW(v3);
                 v2 = g_ulFrameCounter;
-                v1 = XMEN_STACK_PTR;
             }
-            p_XMEN_STACK[v1]->frameCounter = v2;
+            // Mark the entry just drawn. Re-reading the slot instead would
+            // pick a different one when the draw itself applied modifiers,
+            // and at a full stack that index is off the end of the array.
+            v3->frameCounter = v2;
             v1 = XMEN_STACK_PTR;
         }
     }
