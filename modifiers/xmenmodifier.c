@@ -277,6 +277,7 @@ void GAO_ModifierXMEN_GetBonePosFromNum(tGameObjectMain* a1, int multiPartDataID
     Vec3 a2;
     Mtx4x4 v20;
     Mtx4x4 a1a;
+    tMultiPartGameObjectLinks* chk;
 
     v6 = a1->basic;
     if (!v6 || (v7 = v6->multiPartData) == 0 || (unsigned)multiPartDataID >= (unsigned)v7->elemNum)
@@ -293,8 +294,7 @@ void GAO_ModifierXMEN_GetBonePosFromNum(tGameObjectMain* a1, int multiPartDataID
     // state at the point it goes wrong is recorded rather than faulted on.
     if ((a1->flags & 0x1000000) != 0)
     {
-        tMultiPartGameObjectLinks* chk =
-            &((tMultiPartGameObjectLinks*)v7->multipartGaoObjectPartsOrMatrices)[multiPartDataID];
+        chk = &((tMultiPartGameObjectLinks*)v7->multipartGaoObjectPartsOrMatrices)[multiPartDataID];
         if (chk->mtxIdx != -1 && (unsigned)chk->gao != 0
             && ((unsigned)chk->gao < 0x10000 || (unsigned)chk->gao >= 0x80000000))
         {
