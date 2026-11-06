@@ -2782,7 +2782,9 @@ void STR_ComputeFrame(tGEOSTRStruct* str, int idx, tGEOSTRStringData* stringData
 
         if ((stringData->flags & 0x3) == 0x1)
         {
-            STR_w_XPivot += (int16_t)(unsigned int)(max.x + min.x) / -2;
+            STR_w_XPivot += D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+                                                 (int)gpst_DX_stDD->ct.cam.height)
+                          + (int16_t)(unsigned int)(max.x + min.x) / -2;
         }
         else if ((stringData->flags & 0x3) == 0x2)
         {
