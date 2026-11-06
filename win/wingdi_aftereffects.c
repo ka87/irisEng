@@ -11,11 +11,6 @@ float bandsVal2 = 0.89583331f;
 float bandsVal3 = 0.083333336f;
 float bandsVal4 = 0.91666669f;
 
-// Side bands, as fractions of the back buffer width. They stay at
-// 0 and 1 unless the window is wider than the framed aspect.
-float bandsValU1 = 0.0f;
-float bandsValU2 = 1.0f;
-
 // The effect passes work on a slightly taller slice than is shown,
 // so the blur has rows to sample at the band edge.
 static const float AE_BAND_MARGIN = 0.020833334f;
@@ -1711,21 +1706,17 @@ void D3D_AE_CopyToScreen(IDirect3DTexture9* d3dtex)
     }
     else
     {
-        int l = (int)(bandsValU1 * w);
-        int r = (int)(bandsValU2 * w);
         int t = (int)(bandsVal1 * h);
         int b = (int)(bandsVal2 * h);
         int n = 0;
 
-        if (l < 0) l = 0;
-        if (r > w) r = w;
         if (t < 0) t = 0;
         if (b > h) b = h;
 
         // the picture, copied across one to one into the framed area
-        rects[0].left = l;
+        rects[0].left = 0;
         rects[0].top = t;
-        rects[0].right = r;
+        rects[0].right = w;
         rects[0].bottom = b;
         D3D_StretchRect(d3dtex, &rects[0]);
 
@@ -1743,22 +1734,6 @@ void D3D_AE_CopyToScreen(IDirect3DTexture9* d3dtex)
         {
             rects[n].left = 0;
             rects[n].top = b - 1;
-            rects[n].right = w;
-            rects[n].bottom = h;
-            n++;
-        }
-        if (l > 0)
-        {
-            rects[n].left = 0;
-            rects[n].top = 0;
-            rects[n].right = l + 1;
-            rects[n].bottom = h;
-            n++;
-        }
-        if (r < w)
-        {
-            rects[n].left = r - 1;
-            rects[n].top = 0;
             rects[n].right = w;
             rects[n].bottom = h;
             n++;
@@ -5344,23 +5319,17 @@ void D3D_PC_AE(tWorld* param1)
         bandsVal2 = 1.0f;
         bandsVal3 = 0.0f;
         bandsVal4 = 1.0f;
-        bandsValU1 = 0.0f;
-        bandsValU2 = 1.0f;
     }
     else
     {
         float top;
         float bottom;
-        float left;
-        float right;
 
-        D3D_GetBandFractions(&top, &bottom, &left, &right);
+        D3D_GetBandFractions(&top, &bottom);
         bandsVal1 = top;
         bandsVal2 = bottom;
         bandsVal3 = top > AE_BAND_MARGIN ? top - AE_BAND_MARGIN : 0.0f;
         bandsVal4 = bottom + AE_BAND_MARGIN < 1.0f ? bottom + AE_BAND_MARGIN : 1.0f;
-        bandsValU1 = left;
-        bandsValU2 = right;
         D3D_AspectTrace("ae", 0, 0,
                         (int)D3DRenderParams.presentParams.BackBufferWidth,
                         (int)D3DRenderParams.presentParams.BackBufferHeight);

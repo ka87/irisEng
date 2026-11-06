@@ -314,9 +314,7 @@ void PC_CIN_CutsceneMode(int on);
 // simply shows more at the sides.
 //
 // D3D_gf_RefYoverX is the height over width the scenes were laid
-// out for. The cutscene bands take the picture back to that frame:
-// the top and bottom keep the size they always had, and the sides
-// cover whatever the wider screen added.
+// out for. The cutscene bands keep the size they always had.
 extern int   D3D_gi_Widescreen;
 extern float D3D_gf_RefYoverX;
 
@@ -340,12 +338,5 @@ void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int vie
 float D3D_RealYoverX(void);
 
 // Where the cutscene bands fall, as fractions of the back buffer.
-// A window taller than the framed aspect gets bands at the top and
-// bottom, a wider one gets them at the sides, and an ultra wide one
-// gets both.
-void D3D_GetBandFractions(float* top, float* bottom, float* left, float* right);
-
-// Horizontal counterpart of bandsVal1 and bandsVal2.
-extern float bandsValU1;
-extern float bandsValU2;
+void D3D_GetBandFractions(float* top, float* bottom);
 float PC_AE_MASTER_GET_P1(int a1, int a2);

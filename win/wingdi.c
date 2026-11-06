@@ -590,51 +590,30 @@ int D3D_FlatLayerOffsetX(int w, int h)
     return (w - D3D_FlatLayerWidth(w, h)) / 2;
 }
 
-void D3D_GetBandFractions(float* top, float* bottom, float* left, float* right)
+void D3D_GetBandFractions(float* top, float* bottom)
 {
-    float g;
-
-    // The vertical field of view is the one the scenes were laid out
-    // for, so the full height of the screen is the authored frame and
-    // the top and bottom bands keep the size they always had.
     *top = D3D_gf_CutsceneBand;
     *bottom = 1.0f - D3D_gf_CutsceneBand;
-    *left = 0.0f;
-    *right = 1.0f;
-    if (!D3D_gi_Widescreen || D3D_gf_RefYoverX <= 0.0f)
-        return;
-
-    // Across, the screen shows more than the authored frame did. The
-    // side bands take that back, so the cutscene is framed exactly as
-    // laid out however wide the screen is.
-    g = D3D_RealYoverX() / D3D_gf_RefYoverX;
-    if (g < 1.0f)
-    {
-        *left = (1.0f - g) * 0.5f;
-        *right = 1.0f - *left;
-    }
 }
 
 void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int viewH)
 {
     float t;
     float b;
-    float l;
-    float r;
 
     if (!D3D_gi_AspectTrace)
         return;
-    D3D_GetBandFractions(&t, &b, &l, &r);
+    D3D_GetBandFractions(&t, &b);
     D3D_OutputDebugString(
         "[aspect] %s back %dx%d rect %dx%d view %d,%d %dx%d "
-        "YoverX %.4f bands t%.4f b%.4f l%.4f r%.4f cin %d\n",
+        "YoverX %.4f bands t%.4f b%.4f cin %d\n",
         where,
         (int)D3DRenderParams.presentParams.BackBufferWidth,
         (int)D3DRenderParams.presentParams.BackBufferHeight,
         (int)(D3DRenderParams.Rect.right - D3DRenderParams.Rect.left),
         (int)(D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top),
         viewX, viewY, viewW, viewH,
-        D3D_RealYoverX(), t, b, l, r, CIN_Bands);
+        D3D_RealYoverX(), t, b, CIN_Bands);
     if (gpst_DX_stDD)
         D3D_OutputDebugString(
             "[aspect] %s cam %.1fx%.1f centre %.1f,%.1f factor %.2f,%.2f "
