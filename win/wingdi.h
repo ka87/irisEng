@@ -306,4 +306,38 @@ void ENG_WinGameWindowInit(HINSTANCE a1);
 
 void PC_AE_MASTER_CTRL(int a1, int a2, int a3, float a4);
 void PC_CIN_CutsceneMode(int on);
+
+// Aspect handling. With D3D_gi_Widescreen set, the projection is
+// built from the shape of the window instead of a fixed ratio: the
+// vertical field of view stays as authored and the horizontal one
+// grows with the window, so nothing is stretched and a wider screen
+// simply shows more at the sides.
+//
+// D3D_gf_RefYoverX is the height over width the scenes were laid
+// out for. The cutscene bands keep the size they always had.
+extern int   D3D_gi_Widescreen;
+extern int   D3D_gi_FlatLayerBox;
+extern float D3D_gf_RefYoverX;
+
+// How much of the height each cutscene band covers.
+extern float D3D_gf_CutsceneBand;
+
+// The width the flat layer is laid out across, given the size of
+// the window. On a window wider than the scenes were laid out for
+// this is narrower than the window itself.
+int D3D_FlatLayerWidth(int w, int h);
+
+// How far in from the left that width starts, so what is laid out
+// across it lands in the middle of the window.
+int D3D_FlatLayerOffsetX(int w, int h);
+
+// Set to log the framing once a frame through the debug output.
+extern int D3D_gi_AspectTrace;
+void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int viewH);
+
+// Height over width of the area being presented.
+float D3D_RealYoverX(void);
+
+// Where the cutscene bands fall, as fractions of the back buffer.
+void D3D_GetBandFractions(float* top, float* bottom);
 float PC_AE_MASTER_GET_P1(int a1, int a2);
