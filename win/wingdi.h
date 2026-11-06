@@ -301,6 +301,7 @@ void PC_FreeABackCache(struct sGEOGRO* a1);
 void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* a1);
 
 void PC_EngineCheatFinal();
+void D3D_SaveScreenshot(void);
 void s_HandleWinMessages();
 void ENG_WinGameWindowInit(HINSTANCE a1);
 

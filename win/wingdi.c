@@ -6721,11 +6721,238 @@ void s_HandleWinMessages()
     PRO_PerfCounterEndBlock(&PRO_WinMsg);
 }
 
+static unsigned int PNG_l_CrcTable[256];
+static int PNG_l_CrcReady;
+
+static void PNG_l_CrcInit(void)
+{
+    unsigned int c;
+    int i;
+    int k;
+
+    if (PNG_l_CrcReady)
+        return;
+    for (i = 0; i < 256; i++)
+    {
+        c = (unsigned int)i;
+        for (k = 0; k < 8; k++)
+            c = (c & 1) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
+        PNG_l_CrcTable[i] = c;
+    }
+    PNG_l_CrcReady = 1;
+}
+
+typedef struct sPngWriter
+{
+    FILE* file;
+    unsigned int crc;
+    unsigned int adlerA;
+    unsigned int adlerB;
+    int blockLeft;
+    int rawLeft;
+} tPngWriter;
+
+static void PNG_l_Raw(tPngWriter* w, int byte)
+{
+    fputc(byte & 0xFF, w->file);
+}
+
+static void PNG_l_Chk(tPngWriter* w, int byte)
+{
+    unsigned int b;
+
+    b = (unsigned int)(byte & 0xFF);
+    fputc((int)b, w->file);
+    w->crc = PNG_l_CrcTable[(w->crc ^ b) & 0xFF] ^ (w->crc >> 8);
+}
+
+static void PNG_l_Data(tPngWriter* w, int byte)
+{
+    int n;
+
+    if (w->blockLeft == 0)
+    {
+        n = w->rawLeft < 65535 ? w->rawLeft : 65535;
+        PNG_l_Chk(w, w->rawLeft <= 65535 ? 1 : 0);
+        PNG_l_Chk(w, n);
+        PNG_l_Chk(w, n >> 8);
+        PNG_l_Chk(w, ~n);
+        PNG_l_Chk(w, ~n >> 8);
+        w->blockLeft = n;
+    }
+    PNG_l_Chk(w, byte);
+    w->adlerA = (w->adlerA + (unsigned int)(byte & 0xFF)) % 65521u;
+    w->adlerB = (w->adlerB + w->adlerA) % 65521u;
+    w->blockLeft--;
+    w->rawLeft--;
+}
+
+static void PNG_l_BeginChunk(tPngWriter* w, int length, const char* type)
+{
+    PNG_l_Raw(w, length >> 24);
+    PNG_l_Raw(w, length >> 16);
+    PNG_l_Raw(w, length >> 8);
+    PNG_l_Raw(w, length);
+    w->crc = 0xFFFFFFFFu;
+    PNG_l_Chk(w, type[0]);
+    PNG_l_Chk(w, type[1]);
+    PNG_l_Chk(w, type[2]);
+    PNG_l_Chk(w, type[3]);
+}
+
+static void PNG_l_EndChunk(tPngWriter* w)
+{
+    unsigned int c;
+
+    c = ~w->crc;
+    PNG_l_Raw(w, (int)(c >> 24));
+    PNG_l_Raw(w, (int)(c >> 16));
+    PNG_l_Raw(w, (int)(c >> 8));
+    PNG_l_Raw(w, (int)c);
+}
+
+static int PNG_WriteBgra(const char* path, const unsigned char* pixels,
+                         int pitch, int width, int height)
+{
+    static const unsigned char signature[8] =
+        { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+    tPngWriter w;
+    const unsigned char* row;
+    unsigned int adler;
+    int blocks;
+    int raw;
+    int i;
+    int x;
+    int y;
+
+    PNG_l_CrcInit();
+    memset(&w, 0, sizeof(w));
+    w.file = fopen(path, "wb");
+    if (!w.file)
+        return 0;
+    w.adlerA = 1;
+    w.adlerB = 0;
+
+    for (i = 0; i < 8; i++)
+        PNG_l_Raw(&w, signature[i]);
+
+    PNG_l_BeginChunk(&w, 13, "IHDR");
+    PNG_l_Chk(&w, width >> 24);
+    PNG_l_Chk(&w, width >> 16);
+    PNG_l_Chk(&w, width >> 8);
+    PNG_l_Chk(&w, width);
+    PNG_l_Chk(&w, height >> 24);
+    PNG_l_Chk(&w, height >> 16);
+    PNG_l_Chk(&w, height >> 8);
+    PNG_l_Chk(&w, height);
+    PNG_l_Chk(&w, 8);
+    PNG_l_Chk(&w, 2);
+    PNG_l_Chk(&w, 0);
+    PNG_l_Chk(&w, 0);
+    PNG_l_Chk(&w, 0);
+    PNG_l_EndChunk(&w);
+
+    raw = height * (1 + width * 3);
+    blocks = (raw + 65534) / 65535;
+    if (blocks < 1)
+        blocks = 1;
+    w.rawLeft = raw;
+    w.blockLeft = 0;
+
+    PNG_l_BeginChunk(&w, 2 + blocks * 5 + raw + 4, "IDAT");
+    PNG_l_Chk(&w, 0x78);
+    PNG_l_Chk(&w, 0x01);
+    for (y = 0; y < height; y++)
+    {
+        row = pixels + (size_t)y * (size_t)pitch;
+        PNG_l_Data(&w, 0);
+        for (x = 0; x < width; x++)
+        {
+            PNG_l_Data(&w, row[x * 4 + 2]);
+            PNG_l_Data(&w, row[x * 4 + 1]);
+            PNG_l_Data(&w, row[x * 4 + 0]);
+        }
+    }
+    adler = (w.adlerB << 16) | w.adlerA;
+    PNG_l_Chk(&w, (int)(adler >> 24));
+    PNG_l_Chk(&w, (int)(adler >> 16));
+    PNG_l_Chk(&w, (int)(adler >> 8));
+    PNG_l_Chk(&w, (int)adler);
+    PNG_l_EndChunk(&w);
+
+    PNG_l_BeginChunk(&w, 0, "IEND");
+    PNG_l_EndChunk(&w);
+
+    fclose(w.file);
+    return 1;
+}
+
+void D3D_SaveScreenshot(void)
+{
+    IDirect3DSurface9* target;
+    IDirect3DSurface9* copy;
+    D3DSURFACE_DESC desc;
+    D3DLOCKED_RECT locked;
+    SYSTEMTIME now;
+    CHAR path[MAX_PATH];
+
+    if (!D3DRenderParams.d3dDev)
+        return;
+    if (D3DRenderParams.d3dNeedToCallEndScene)
+    {
+        D3DRenderParams.d3dDev->lpVtbl->EndScene(D3DRenderParams.d3dDev);
+        D3DRenderParams.d3dNeedToCallEndScene = 0;
+    }
+    target = NULL;
+    if (D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &target) < 0 || !target)
+        return;
+    target->lpVtbl->GetDesc(target, &desc);
+    if (desc.Format != D3DFMT_A8R8G8B8 && desc.Format != D3DFMT_X8R8G8B8)
+    {
+        D3D_OutputDebugString("screenshot: back buffer format %d is not 32 bit\n", (int)desc.Format);
+        target->lpVtbl->Release(target);
+        return;
+    }
+    copy = NULL;
+    if (D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(D3DRenderParams.d3dDev,
+            desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &copy, 0) < 0 || !copy)
+    {
+        target->lpVtbl->Release(target);
+        return;
+    }
+    if (D3DRenderParams.d3dDev->lpVtbl->GetRenderTargetData(D3DRenderParams.d3dDev, target, copy) < 0
+        || copy->lpVtbl->LockRect(copy, &locked, NULL, D3DLOCK_READONLY) < 0)
+    {
+        D3D_OutputDebugString("screenshot: could not read the back buffer\n");
+        copy->lpVtbl->Release(copy);
+        target->lpVtbl->Release(target);
+        return;
+    }
+    CreateDirectoryA("screenshots", NULL);
+    GetLocalTime(&now);
+    sprintf(path, "screenshots\\%04d%02d%02d_%02d%02d%02d_%03d.png",
+            now.wYear, now.wMonth, now.wDay,
+            now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+    if (PNG_WriteBgra(path, (const unsigned char*)locked.pBits, locked.Pitch,
+                      (int)desc.Width, (int)desc.Height))
+        D3D_OutputDebugString("screenshot: %s\n", path);
+    else
+        D3D_OutputDebugString("screenshot: could not write %s\n", path);
+    copy->lpVtbl->UnlockRect(copy);
+    copy->lpVtbl->Release(copy);
+    target->lpVtbl->Release(target);
+}
+
 void PC_EngineCheatFinal()
 {
     tableElemStructPF* currWorld;
     profilerRasterStructElem* currRaster;
 
+    if (GetAsyncKeyState(VK_F7) < 0)
+    {
+        D3D_SaveScreenshot();
+        while (GetAsyncKeyState(VK_F7) < 0);
+    }
     if (GetAsyncKeyState(VK_F6) < 0)
     {
         SOFT_ZList_Clear();
