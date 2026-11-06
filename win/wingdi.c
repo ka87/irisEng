@@ -6724,11 +6724,134 @@ void s_HandleWinMessages()
     PRO_PerfCounterEndBlock(&PRO_WinMsg);
 }
 
+extern size_t lJADE_JPEG_INPOUT_FILE_LENGTH;
+
+void D3D_SaveScreenshot(void)
+{
+    IDirect3DSurface9* target;
+    IDirect3DSurface9* copy;
+    D3DSURFACE_DESC desc;
+    D3DLOCKED_RECT locked;
+    tJpegLibIntf jpg;
+    SYSTEMTIME now;
+    CHAR path[MAX_PATH];
+    const unsigned char* row;
+    unsigned char* rgb;
+    unsigned char* out;
+    FILE* file;
+    int width;
+    int height;
+    int x;
+    int y;
+
+    if (!D3DRenderParams.d3dDev)
+        return;
+    if (D3DRenderParams.d3dNeedToCallEndScene)
+    {
+        D3DRenderParams.d3dDev->lpVtbl->EndScene(D3DRenderParams.d3dDev);
+        D3DRenderParams.d3dNeedToCallEndScene = 0;
+    }
+    target = NULL;
+    if (D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &target) < 0 || !target)
+        return;
+    target->lpVtbl->GetDesc(target, &desc);
+    width = (int)desc.Width;
+    height = (int)desc.Height;
+    if (desc.Format != D3DFMT_A8R8G8B8 && desc.Format != D3DFMT_X8R8G8B8)
+    {
+        D3D_OutputDebugString("screenshot: back buffer format %d is not 32 bit\n", (int)desc.Format);
+        target->lpVtbl->Release(target);
+        return;
+    }
+    copy = NULL;
+    if (D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(D3DRenderParams.d3dDev,
+            desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &copy, 0) < 0 || !copy)
+    {
+        target->lpVtbl->Release(target);
+        return;
+    }
+    if (D3DRenderParams.d3dDev->lpVtbl->GetRenderTargetData(D3DRenderParams.d3dDev, target, copy) < 0
+        || copy->lpVtbl->LockRect(copy, &locked, NULL, D3DLOCK_READONLY) < 0)
+    {
+        D3D_OutputDebugString("screenshot: could not read the back buffer\n");
+        copy->lpVtbl->Release(copy);
+        target->lpVtbl->Release(target);
+        return;
+    }
+
+    rgb = (unsigned char*)malloc((size_t)width * (size_t)height * 3);
+    out = (unsigned char*)malloc((size_t)width * (size_t)height * 3 + 65536);
+    if (!rgb || !out)
+    {
+        D3D_OutputDebugString("screenshot: out of memory for %dx%d\n", width, height);
+        if (rgb) free(rgb);
+        if (out) free(out);
+        copy->lpVtbl->UnlockRect(copy);
+        copy->lpVtbl->Release(copy);
+        target->lpVtbl->Release(target);
+        return;
+    }
+    for (y = 0; y < height; y++)
+    {
+        row = (const unsigned char*)locked.pBits + (size_t)y * (size_t)locked.Pitch;
+        for (x = 0; x < width; x++)
+        {
+            rgb[((size_t)y * (size_t)width + (size_t)x) * 3 + 0] = row[x * 4 + 2];
+            rgb[((size_t)y * (size_t)width + (size_t)x) * 3 + 1] = row[x * 4 + 1];
+            rgb[((size_t)y * (size_t)width + (size_t)x) * 3 + 2] = row[x * 4 + 0];
+        }
+    }
+    copy->lpVtbl->UnlockRect(copy);
+    copy->lpVtbl->Release(copy);
+    target->lpVtbl->Release(target);
+
+    memset(&jpg, 0, sizeof(jpg));
+    jpg.indata = rgb;
+    jpg.width = width;
+    jpg.height = height;
+    jpg.outdata = out;
+    jpg.quality = 95;
+    lJADE_JPEG_INPOUT_FILE_LENGTH = 0;
+    JpegWrite(&jpg);
+
+    if (jpg.error || lJADE_JPEG_INPOUT_FILE_LENGTH == 0)
+    {
+        D3D_OutputDebugString("screenshot: compression failed\n");
+        free(rgb);
+        free(out);
+        return;
+    }
+
+    CreateDirectoryA("screenshots", NULL);
+    GetLocalTime(&now);
+    sprintf(path, "screenshots\\%04d%02d%02d_%02d%02d%02d_%03d.jpg",
+            now.wYear, now.wMonth, now.wDay,
+            now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+    file = fopen(path, "wb");
+    if (file)
+    {
+        fwrite(out, 1, lJADE_JPEG_INPOUT_FILE_LENGTH, file);
+        fclose(file);
+        D3D_OutputDebugString("screenshot: %s, %d bytes\n", path, (int)lJADE_JPEG_INPOUT_FILE_LENGTH);
+    }
+    else
+    {
+        D3D_OutputDebugString("screenshot: could not write %s\n", path);
+    }
+    free(rgb);
+    free(out);
+}
+
 void PC_EngineCheatFinal()
 {
     tableElemStructPF* currWorld;
     profilerRasterStructElem* currRaster;
 
+    if (GetAsyncKeyState(VK_F7) < 0)
+    {
+        D3D_SaveScreenshot();
+        while (GetAsyncKeyState(VK_F7) < 0);
+    }
     if (GetAsyncKeyState(VK_F6) < 0)
     {
         SOFT_ZList_Clear();
