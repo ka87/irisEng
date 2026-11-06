@@ -316,6 +316,7 @@ void PC_CIN_CutsceneMode(int on);
 // D3D_gf_RefYoverX is the height over width the scenes were laid
 // out for. The cutscene bands keep the size they always had.
 extern int   D3D_gi_Widescreen;
+extern int   D3D_gi_FlatLayerBox;
 extern float D3D_gf_RefYoverX;
 
 // How much of the height each cutscene band covers.

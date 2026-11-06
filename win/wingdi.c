@@ -554,6 +554,7 @@ void D3D_SetViewPort(int a1, int a2, int a3, int a4)
 }
 
 int   D3D_gi_Widescreen = 1;
+int   D3D_gi_FlatLayerBox = 1;
 int   D3D_gi_AspectTrace = 0;
 float D3D_gf_RefYoverX = 0.75f;
 float D3D_gf_CutsceneBand = 0.10416666f;
@@ -579,7 +580,8 @@ int D3D_FlatLayerWidth(int w, int h)
 {
     int boxW;
 
-    if (!D3D_gi_Widescreen || D3D_gf_RefYoverX <= 0.0f || h <= 0)
+    if (!D3D_gi_FlatLayerBox || !D3D_gi_Widescreen
+        || D3D_gf_RefYoverX <= 0.0f || h <= 0)
         return w;
     boxW = (int)((float)h / D3D_gf_RefYoverX);
     return boxW < w ? boxW : w;
