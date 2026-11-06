@@ -4605,8 +4605,6 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
         D3DRenderParams.d3d_AdapterFormat = dispMode.Format;
         D3DRenderParams.presentParams.Windowed = 1;
         GetClientRect(hWnd, &D3DRenderParams.Rect);
-        if (!IsDebuggerPresent || !IsDebuggerPresent()) 
-            tweakFlagsDisabled = 1;
     }
     else
     {
@@ -4615,7 +4613,6 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
         D3DRenderParams.presentParams.FullScreen_RefreshRateInHz = dispMode.RefreshRate;
         D3DRenderParams.Rect.right = dispMode.Width;
         D3DRenderParams.Rect.bottom = dispMode.Height;
-        tweakFlagsDisabled = 1;        
     }
     D3DRenderParams.hwnd2_dword_B3162C = (int)hWnd;
     D3DRenderParams.dword_B317A0 = 0;
