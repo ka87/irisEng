@@ -6652,6 +6652,10 @@ void ENG_WinGameWindowInit(HINSTANCE a1)
 {
     struct tagRECT rect;
     WNDCLASSA wndClass;
+    HKEY videoKey;
+    int regVal;
+    int windowWidth;
+    int windowHeight;
 
     wndClass.style = 0;
     wndClass.lpfnWndProc = PC_WNDProcHandler;
@@ -6664,10 +6668,22 @@ void ENG_WinGameWindowInit(HINSTANCE a1)
     wndClass.lpszMenuName = NULL;
     wndClass.lpszClassName = "BGEMain";
     RegisterClassA(&wndClass);
+    windowWidth = 640;
+    windowHeight = 480;
+    if (!RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\IRISEng\\Basic video", 0, KEY_READ, &videoKey))
+    {
+        if (RegQueryVal(videoKey, "Windowed", (LPBYTE)&regVal) && regVal)
+            ENG_WindowedMode = 1;
+        if (RegQueryVal(videoKey, "Width", (LPBYTE)&regVal) && regVal > 0)
+            windowWidth = regVal;
+        if (RegQueryVal(videoKey, "Height", (LPBYTE)&regVal) && regVal > 0)
+            windowHeight = regVal;
+        RegCloseKey(videoKey);
+    }
     rect.left = 0;
     rect.top = 0;
-    rect.right = 640;
-    rect.bottom = 480;
+    rect.right = windowWidth;
+    rect.bottom = windowHeight;
     AdjustWindowRect(&rect, WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME | WS_SYSMENU | WS_DLGFRAME | WS_BORDER, 0);
     MAI_gst_MainHandles.hwndSetAfterCreateWindow = CreateWindowExA(
         0,

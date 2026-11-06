@@ -23,6 +23,9 @@ Under `HKEY_CURRENT_USER\Software\IRISEng`, which the tool creates if it is not 
 | `Basic video` | `Mode` | DWORD | **index** into the adapter's X8R8G8B8 display-mode list |
 | `Basic video` | `Z Buffer depth` | DWORD | a `D3DFORMAT`, used directly as the auto depth-stencil format |
 | `Basic video` | `MipMapping` | DWORD | 0 or 1 |
+| `Basic video` | `Windowed` | DWORD | 0 or 1; run in a window rather than fullscreen |
+| `Basic video` | `Width` | DWORD | the chosen mode's width, used to size the window |
+| `Basic video` | `Height` | DWORD | the chosen mode's height, used to size the window |
 | `Sound` | `Sound FX` | DWORD | effects are **off** when this reads exactly 1 |
 | `Sound` | `Audio board GUID` | BINARY, 16 bytes | DirectSound device; all zero is the default device |
 
@@ -30,12 +33,21 @@ Under `HKEY_CURRENT_USER\Software\IRISEng`, which the tool creates if it is not 
 next to the adapter it was enumerated from. Changing the adapter
 re-reads the list and re-picks the mode.
 
-The four `Basic video` values are all required: the engine checks each
-one is present and a DWORD, and exits if any is missing. The two
+The first four `Basic video` values are all required: the engine checks
+each one is present and a DWORD, and exits if any is missing. The two
 `Sound` values are not fatal, but sound initialisation gives up
 without them.
 
+`Windowed`, `Width` and `Height` are optional. Without them the engine
+runs fullscreen and creates its window at 640x480, which is what it did
+before they existed. `Windowed` only ever turns windowed mode on: a
+debugger being attached, and the `/WINDOWED` command line switch, each
+still force it on by themselves, and a zero here does not override
+them.
+
 Only the modes and depth formats the chosen adapter actually reports
 are offered, so a saved configuration should not fail device creation.
-`Mode` is only consulted for fullscreen; windowed mode takes its size
-from the window.
+`Mode` is only consulted for fullscreen. Windowed mode takes its size
+from the window, which is created at `Width` x `Height` -- the same
+resolution the mode names, written out separately so the engine can
+size the window before Direct3D exists.

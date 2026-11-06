@@ -19,6 +19,13 @@ namespace IrisEngSettings
         public const string Mode = "Mode";
         public const string MipMapping = "MipMapping";
 
+        // Windowed mode and the size the window is created at. The
+        // engine treats all three as optional and falls back to
+        // fullscreen at 640x480 without them.
+        public const string Windowed = "Windowed";
+        public const string Width = "Width";
+        public const string Height = "Height";
+
         // Sound: a REG_DWORD and a 16 byte REG_BINARY.
         public const string SoundFx = "Sound FX";
         public const string AudioBoardGuid = "Audio board GUID";
@@ -70,6 +77,7 @@ namespace IrisEngSettings
         }
 
         public static void Write(int adapter, int mode, uint zBufferDepth, bool mipMapping,
+                                 bool windowed, int width, int height,
                                  bool soundEffects, Guid audioDevice)
         {
             using (RegistryKey k = Create(VideoKey))
@@ -78,6 +86,9 @@ namespace IrisEngSettings
                 k.SetValue(Mode, mode, RegistryValueKind.DWord);
                 k.SetValue(ZBufferDepth, unchecked((int)zBufferDepth), RegistryValueKind.DWord);
                 k.SetValue(MipMapping, mipMapping ? 1 : 0, RegistryValueKind.DWord);
+                k.SetValue(Windowed, windowed ? 1 : 0, RegistryValueKind.DWord);
+                k.SetValue(Width, width, RegistryValueKind.DWord);
+                k.SetValue(Height, height, RegistryValueKind.DWord);
             }
             using (RegistryKey k = Create(SoundKey))
             {
