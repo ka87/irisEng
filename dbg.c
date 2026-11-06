@@ -72,6 +72,19 @@ void DBG_assert(int isError, char* sourceCodeInfo, int lineNo, char* sourceCodeL
     exit(-1);
 }
 
+static void DBG_l_Log(const char* text)
+{
+    static FILE* log;
+
+    if (!log)
+        log = fopen("debug.log", "w");
+    if (log)
+    {
+        fputs(text, log);
+        fflush(log);
+    }
+}
+
 void DBG_OutputDebugString(char* Format, ...)
 {
     CHAR OutputString[256];
@@ -82,6 +95,7 @@ void DBG_OutputDebugString(char* Format, ...)
     OutputString[sizeof(OutputString) - 1] = 0;
     va_end(va);
     OutputDebugStringA(OutputString);
+    DBG_l_Log(OutputString);
 }
 
 void D3D_OutputDebugString(char* Format, ...)
@@ -93,6 +107,7 @@ void D3D_OutputDebugString(char* Format, ...)
     _vsnprintf(OutputString, 256, Format, ArgList);
     va_end(ArgList);
     OutputDebugStringA(OutputString);
+    DBG_l_Log(OutputString);
 }
 
 void DBG_DumpMatrix(Mtx4x4 *mtx)
@@ -105,6 +120,7 @@ void DBG_DumpMatrix(Mtx4x4 *mtx)
         mtx->Pos.x, mtx->Pos.y, mtx->Pos.z, mtx->w,
         mtx->mtxflag);
     OutputDebugStringA(OutputString);
+    DBG_l_Log(OutputString);
 }
 
 void DBG_DumpVec(Vec3* vec)
@@ -112,6 +128,7 @@ void DBG_DumpVec(Vec3* vec)
     CHAR OutputString[256];
     sprintf(OutputString, "%0.10f, %0.10f, %0.10f\n", vec->x, vec->y, vec->z);
     OutputDebugStringA(OutputString);
+    DBG_l_Log(OutputString);
 }
 
 void DBG_DumpVecNoNL(Vec3* vec)
@@ -119,6 +136,7 @@ void DBG_DumpVecNoNL(Vec3* vec)
     CHAR OutputString[256];
     sprintf(OutputString, "%0.10f, %0.10f, %0.10f", vec->x, vec->y, vec->z);
     OutputDebugStringA(OutputString);
+    DBG_l_Log(OutputString);
 }
 
 /*
