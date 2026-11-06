@@ -11,12 +11,8 @@ float bandsVal2 = 0.89583331f;
 float bandsVal3 = 0.083333336f;
 float bandsVal4 = 0.91666669f;
 
-// Cinematic bands. CIN_Bands says whether they are drawn; the
-// cutscene behaviours raise and lower it through the AI function
-// CIN_CutsceneMode. CIN_NoBands gates that -- with it clear the
-// bands are latched on and the script cannot move them.
-int CIN_Bands = 0;
-int CIN_NoBands = 1;
+int CIN_Bands = 1;
+int CIN_NoBands = 0;
 
 void PC_CIN_CutsceneMode(int on)
 {
@@ -5292,9 +5288,9 @@ void D3D_PC_AE(tWorld* param1)
     if (tweak_ae_nobands || !CIN_Bands)
     {
         bandsVal1 = 0.0f;
-        bandsVal2 = 1.0f; // 480.0f - these broken values were used in the original game. Broke AE
+        bandsVal2 = 1.0f;
         bandsVal3 = 0.0f;
-        bandsVal4 = 1.0f; // 480.0f - || -
+        bandsVal4 = 1.0f;
     }
     else
     {
