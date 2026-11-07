@@ -341,4 +341,10 @@ float D3D_RealYoverX(void);
 
 // Where the cutscene bands fall, as fractions of the back buffer.
 void D3D_GetBandFractions(float* top, float* bottom);
+
+// Between a fraction of the window and a fraction of the layout box the
+// flat layer is drawn in. Both are the identity while the box spans the
+// window.
+float D3D_FlatLayerToLayoutX(float windowFraction, int w, int h);
+float D3D_FlatLayerFromLayoutX(float layoutFraction, int w, int h);
 float PC_AE_MASTER_GET_P1(int a1, int a2);
