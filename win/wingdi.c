@@ -587,6 +587,24 @@ int D3D_FlatLayerWidth(int w, int h)
     return boxW < w ? boxW : w;
 }
 
+float D3D_FlatLayerToLayoutX(float windowFraction, int w, int h)
+{
+    int flat;
+
+    flat = D3D_FlatLayerWidth(w, h);
+    if (flat <= 0)
+        return windowFraction;
+    return (windowFraction * (float)w - (float)D3D_FlatLayerOffsetX(w, h)) / (float)flat;
+}
+
+float D3D_FlatLayerFromLayoutX(float layoutFraction, int w, int h)
+{
+    if (w <= 0)
+        return layoutFraction;
+    return ((float)D3D_FlatLayerOffsetX(w, h)
+            + layoutFraction * (float)D3D_FlatLayerWidth(w, h)) / (float)w;
+}
+
 int D3D_FlatLayerOffsetX(int w, int h)
 {
     return (w - D3D_FlatLayerWidth(w, h)) / 2;
