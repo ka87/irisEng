@@ -385,14 +385,14 @@ void AI_ReinitInstance(tAI* ai)
 
     if (WOR_gst_Universe.univAIInstance != ai)
     {
-        ai->start = 0;
-        ai->end = 5;
+        ai->trackLast = 0;
+        ai->trackFirst = 5;
         for (i = 0; i < 5; i++)
         {
-            if (ai->model->vars->callBacks[i] && i < ai->end)
-                ai->end = i;
-            if (ai->model->vars->callBacks[i] && i > ai->start)
-                ai->start = i;
+            if (ai->model->vars->callBacks[i] && i < ai->trackFirst)
+                ai->trackFirst = i;
+            if (ai->model->vars->callBacks[i] && i > ai->trackLast)
+                ai->trackLast = i;
             if (ai->model->vars)
                 ai->instanceCallBacks[i] = ai->model->vars->callBacks[i];
             else
@@ -727,7 +727,7 @@ int AI_RunInstance(struct sAI* ai)
     AI_gpst_CurrentInstance = ai;
     AI_gi_RunFctLevel = 0;
     
-    for (i = ai->end; i < ai->start + 1; i++)
+    for (i = ai->trackFirst; i < ai->trackLast + 1; i++)
     {
         AI_gul_SizeGlobalStack = 0;
         AI_gul_SizeGlobalVarStack = 0;

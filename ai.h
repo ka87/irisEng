@@ -105,8 +105,8 @@ typedef struct sAI
     int instanceAICBListNum;
     struct sAiCBElemStruct* instanceAICBList;
     struct sAIVars* varsInstance;   
-    uint16_t end;
-    uint16_t start;
+    uint16_t trackFirst;
+    uint16_t trackLast;
 } tAI;
 
 typedef struct sAIVarUnk

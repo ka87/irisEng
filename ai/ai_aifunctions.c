@@ -131,11 +131,11 @@ int AI_EvalFunc_AITrackChange_C(int a1, struct sAIFunction* a2)
             }
         }
     }
-    if (a1 < v3->end)
-        v3->end = a1;
-    result = v3->start;
+    if (a1 < v3->trackFirst)
+        v3->trackFirst = a1;
+    result = v3->trackLast;
     if (a1 > result)
-        v3->start = a1;
+        v3->trackLast = a1;
     return result;
 }
 
@@ -167,17 +167,17 @@ void AI_EvalFunc_AITrackStop_C(int a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     v1->instanceCallBacks[a1] = 0;
     v1->instanceJumpNodes[a1] = 0;
-    if (a1 == v1->end)
+    if (a1 == v1->trackFirst)
     {
         while (a1 < 5 && !v1->instanceCallBacks[a1])
             ++a1;
-        v1->end = a1;
+        v1->trackFirst = a1;
     }
-    if (a1 == v1->start)
+    if (a1 == v1->trackLast)
     {
         while (a1 && !v1->instanceCallBacks[a1])
             --a1;
-        v1->start = a1;
+        v1->trackLast = a1;
     }
 }
 
@@ -229,17 +229,17 @@ void AI_EvalFunc_AITrackCurStop_C()
     AI_gpst_CurrentInstance->instanceCallBacks[AI_gul_CurrentTrack] = 0;
     AI_gpst_CurrentInstance->instanceJumpNodes[AI_gul_CurrentTrack] = 0;
     v0 = AI_gul_CurrentTrack;
-    if (AI_gul_CurrentTrack == AI_gpst_CurrentInstance->end)
+    if (AI_gul_CurrentTrack == AI_gpst_CurrentInstance->trackFirst)
     {
         while (v0 < 5 && !AI_gpst_CurrentInstance->instanceCallBacks[v0])
             ++v0;
-        AI_gpst_CurrentInstance->end = v0;
+        AI_gpst_CurrentInstance->trackFirst = v0;
     }
-    if (v0 == AI_gpst_CurrentInstance->start)
+    if (v0 == AI_gpst_CurrentInstance->trackLast)
     {
         while (v0 && !AI_gpst_CurrentInstance->instanceCallBacks[v0])
             --v0;
-        AI_gpst_CurrentInstance->start = v0;
+        AI_gpst_CurrentInstance->trackLast = v0;
     }
 }
 
