@@ -109,6 +109,7 @@ tWorld* WOR_gpst_WorldToLoadIn;
 tUniverse WOR_gst_Universe;
 BOOL WOR_gb_HasAddedMaterial;
 BOOL WOR_gb_FirstTrameAfterLoad;
+float WOR_gf_LoadStartTime;
 
 int BVMask_gi_Num;
 struct sBVMasks BVMask_ga_Masks[200];
