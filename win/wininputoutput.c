@@ -72,12 +72,12 @@ uint8_t pcINO_keyMapsCase32[24] = { 0, 2, 1, 3, 0xFE, 0xFE, 4, 6, 8, 0xFE,
                                     9, 0xFE, 0x0F, 0x0E, 0x0C, 0x0A, 0x0D, 
                                     0x0B, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0 };
 
-uint8_t pcINO_keyMapsCase8[24] = { 0, 0x10, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE,
+uint8_t pcINO_keyMapsCase8[24] = { 0, 0x10, 0xFE, 0x10, 0xFE, 0xFE, 0xFE, 0xFE,
                                    0xFE, 0xFE, 0xFE, 0xFE, 0x0F, 0x0E, 0x0C, 
                                    0x0A, 0x0D, 0x0B, 0xFE, 0xFE, 0xFE, 0xFE, 
                                    0, 0 };
 
-uint8_t pcINO_keyMapsCase100[24] = { 0, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 
+uint8_t pcINO_keyMapsCase100[24] = { 0, 0x01, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 
                                      0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0x0F, 0x0E, 
                                      0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFE, 0xFE, 
                                      0xFE, 0, 0 };
@@ -199,8 +199,8 @@ float pcINO_case4MouseAmountCalc(float* accum, float* deadline, float limit)
 
     if (TIM_gf_MainClock > (double)*deadline)       /* 0x004231EC */
     {
-        *accum = (float)((*accum - result) * 0.69999999);   /* 0x00B5014C */
-        *deadline = (float)(TIM_gf_MainClock + 0.050000001); /* 0x00B50014 */
+        *accum = (float)((*accum - result) * 0.69999999f);   /* 0x00B5014C */
+        *deadline = (float)(TIM_gf_MainClock + 0.050000001f); /* 0x00B50014 */
     }
     return result;
 }
@@ -297,7 +297,8 @@ void pcINO_InputHandlerCase1(tInoPad* a1, float* mouse, byte* keybData)
     }
 }
 
-/* Control mode 2 -- retail 0x004235B0..0x00423842, keymaps 0x00B65780.
+/* Control mode 2. It reads only the shared pcINO_IntKeybDataLink table,
+   not a per-mode keymap.
    Retail has no state machine here at all: it force-clears the shared
    flags and drives padData[7] and [4] straight from the keys. It also
    branches three ways on the submode, which the demo did not. */
@@ -327,13 +328,13 @@ void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, byte* keyboard)
     {
         if (submode == 1)
         {
-            pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.019999999);
-            pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.0049999999);
+            pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.019999999f);
+            pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.0049999999f);
         }
         else
         {
-            pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.039999999);
-            pcINO_joystickPosition[0].y = (float)(mouse[1] * -0.012);
+            pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.039999999f);
+            pcINO_joystickPosition[0].y = (float)(mouse[1] * -0.012f);
         }
         if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
             pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x + 1.0);
@@ -342,24 +343,24 @@ void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, byte* keyboard)
     }
     else
     {
-        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.014);
+        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.014f);
         pcINO_joystickPosition[1].x = 0.0f;
-        pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.014);
+        pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.014f);
         if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
             pcINO_joystickPosition[1].x = 0.40000001f;
         if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
-            pcINO_joystickPosition[1].x = (float)(pcINO_joystickPosition[1].x - 0.40000001);
+            pcINO_joystickPosition[1].x = (float)(pcINO_joystickPosition[1].x - 0.40000001f);
     }
 
     /* The wheel arrives already divided by the granularity, so this
        accumulates whole notches and decays by exactly one per 0.04s.
        The demo added/subtracted mouseGranularity here to compensate for
        the raw delta it was being handed. */
-    wheel = (int)mouse[2];
+    wheel = ((int*)mouse)[2];
     if (wheel)
     {
         pcINO_case2_mouseScroll += wheel;
-        pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.039999999);
+        pcINO_case2DividedTime = (float)(TIM_gf_MainClock + 0.039999999f);
     }
     scroll = pcINO_case2_mouseScroll;
 
@@ -398,12 +399,12 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, byte* keyboard)
     {
         gain = 1.0 / pcINO_mouseSensitivity;                 /* 0x00423F6B */
         pcINO_joystickPosition[0].x =
-            (float)(gain * (double)mouse[0] * 0.015 + pcINO_joystickPosition[0].x);
-        y = pcINO_joystickPosition[0].y - gain * (double)mouse[1] * 0.015;
+            (float)(gain * mouse[0] * 0.015f + pcINO_joystickPosition[0].x);
+        y = pcINO_joystickPosition[0].y - gain * mouse[1] * 0.015f;
         pcINO_joystickPosition[0].y = (float)y;
 
         len = _hypot(pcINO_joystickPosition[0].x, y);
-        if (len > 0.1)                                        /* 0x00423FAE */
+        if (len > 0.1f)                                       /* 0x00423FAE */
         {
             inv = 1.0 / len;
             pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x * inv);
@@ -454,8 +455,8 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, byte* keyboard)
         break;
 
     case 7:
-        pcINO_case4_mouseMoveX = (float)((double)mouse[0] * 0.03 + pcINO_case4_mouseMoveX);
-        pcINO_case4_mouseMoveY = (float)((double)mouse[1] * 0.03 + pcINO_case4_mouseMoveY);
+        pcINO_case4_mouseMoveX = (float)(mouse[0] * 0.03f + pcINO_case4_mouseMoveX);
+        pcINO_case4_mouseMoveY = (float)(mouse[1] * 0.03f + pcINO_case4_mouseMoveY);
         pcINO_joystickPosition[1].x = pcINO_case4MouseAmountCalc(
             &pcINO_case4_mouseMoveX, &pcINO_case4_mouseMoveXDeadline, 3.0f);
         pcINO_joystickPosition[1].y = pcINO_case4MouseAmountCalc(
@@ -622,15 +623,15 @@ void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, byte* keyboard)
 
     if (pcINO_SelectedControlSubmode == 1)
     {
-        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.014 + pcINO_joystickPosition[0].x);
-        pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.014 + pcINO_joystickPosition[0].y);
+        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.014f + pcINO_joystickPosition[0].x);
+        pcINO_joystickPosition[0].y = (float)(mouse[1] * 0.014f + pcINO_joystickPosition[0].y);
         if (pcINO_joystickPosition[0].x != 0.0f)
             return;
     }
     else if (pcINO_SelectedControlSubmode == 4)
     {
-        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.019999999 + pcINO_joystickPosition[0].x);
-        v = (float)(mouse[1] * 0.00050000002 + pcINO_joystickPosition[1].y);
+        pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.019999999f + pcINO_joystickPosition[0].x);
+        v = (float)(mouse[1] * 0.00050000002f + pcINO_joystickPosition[1].y);
         if (v < 0.0f)                 pcINO_joystickPosition[1].y = 0.0f;
         else if (v > 0.80000001f)     pcINO_joystickPosition[1].y = 0.80000001f;
         else                          pcINO_joystickPosition[1].y = v;
@@ -642,16 +643,16 @@ void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, byte* keyboard)
             && !keyboard[pcINO_IntKeybDataLink[20]]
             && !keyboard[pcINO_IntKeybDataLink[21]])
         {
-            pcINO_joystickPosition[1].x = (float)(mouse[0] * -0.029999999);
+            pcINO_joystickPosition[1].x = (float)(mouse[0] * -0.029999999f);
         }
         else
         {
             /* no clamp in retail */
             pcINO_joystickPosition[0].x =
-                (float)(mouse[0] * 0.039999999 + pcINO_joystickPosition[0].x);
+                (float)(mouse[0] * 0.039999999f + pcINO_joystickPosition[0].x);
         }
 
-        v = (float)(mouse[1] * 0.001 + pcINO_joystickPosition[1].y);
+        v = (float)(mouse[1] * 0.001f + pcINO_joystickPosition[1].y);
         if (v < -0.40000001f)         pcINO_joystickPosition[1].y = -0.40000001f;
         else if (v > 0.1f)            pcINO_joystickPosition[1].y = 0.1f;
         else                          pcINO_joystickPosition[1].y = v;
@@ -684,18 +685,18 @@ void pcINO_InputHandlerCase100(tInoPad* a1, float* mouse, byte* keyboard)
        demo's pcINO_case2DividedTime throttle is not here at all. */
     angle = atan2(pcINO_joystickPosition[0].y, pcINO_joystickPosition[0].x);
     if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
-        angle = angle - 0.1;                                   /* 0x00424426 */
+        angle = angle - 0.1f;                                   /* 0x00424426 */
     else if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
-        angle = angle + 0.1;                                   /* 0x0042441E */
+        angle = angle + 0.1f;                                   /* 0x0042441E */
     pcINO_joystickPosition[0].x = (float)cos(angle);
     pcINO_joystickPosition[0].y = (float)sin(angle);
 
     /* 0x00B50078 = 0.01f, against the already-halved mouse deltas. */
-    pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.01 + pcINO_joystickPosition[0].x);
-    pcINO_joystickPosition[0].y = (float)(pcINO_joystickPosition[0].y - mouse[1] * 0.01);
+    pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.01f + pcINO_joystickPosition[0].x);
+    pcINO_joystickPosition[0].y = (float)(pcINO_joystickPosition[0].y - mouse[1] * 0.01f);
 
     len = _hypot(pcINO_joystickPosition[0].x, pcINO_joystickPosition[0].y);
-    if (len > 0.1)                                             /* 0x0042447C */
+    if (len > 0.1f)                                            /* 0x0042447C */
     {
         inv = 1.0 / len;
         pcINO_joystickPosition[0].x = (float)(pcINO_joystickPosition[0].x * inv);
@@ -1016,6 +1017,8 @@ void INO_SetControlMode_inner_sub_48ACB0(int a1)
 
 void pcINO_Joystick_Init(HWND hwnd)
 {
+    uint16_t swappedSecondary;
+
     pcINO_Hwnd = hwnd;
 
     if (DirectInput8Create(GetModuleHandleA(0), DIRECTINPUT_VERSION, &IID_IDirectInput8A, (LPVOID*)&dinput_if, 0) >= 0)
@@ -1044,8 +1047,15 @@ void pcINO_Joystick_Init(HWND hwnd)
         {
             SwapMouseButton(1);
             pcINO_IntKeybDataLink[0] = 259;
-            pcINO_IntKeybDataLink[2] = 258;
+            swappedSecondary = 258;
         }
+        else
+        {
+            pcINO_IntKeybDataLink[0] = 258;
+            swappedSecondary = 259;
+        }
+        pcINO_IntKeybDataLink[2] = swappedSecondary;
+        pcINO_IntKeybDataLink[32] = swappedSecondary;
 
         INO_SetControlMode_inner_sub_48ACB0(4);
         INO_SetControlSubmode_inner_sub_48A650(8);
