@@ -595,6 +595,14 @@ void ENG_EngineCall()
     }
     
     WOR_ResetKillGO();
+    // the load ran inside this frame, so the next frame's measured
+    // time would include it. account it the same way the message
+    // pump is accounted, so it is not played as game time.
+    if (WOR_gb_FirstTrameAfterLoad)
+    {
+        TIM_SpentTimeWithHandlingWinMessages = TIM_f_Clock_TrueRead()
+            - WOR_gf_LoadStartTime + TIM_SpentTimeWithHandlingWinMessages;
+    }
     WOR_gb_FirstTrameAfterLoad = FALSE;
     ENG_gb_FirstFrame = 0;
 }

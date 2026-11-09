@@ -2728,6 +2728,10 @@ struct sWorld* WOR_pst_Universe_AddWorldList(int a1, int worldKey, int unused1)
     WOR_gul_WorldKey = worldKey;
     WTR_BeginLoadWorldHook();
     WOR_gb_FirstTrameAfterLoad = TRUE;
+    // a load takes far longer than a frame, and the frame after it
+    // would otherwise be charged the whole of it. mark the start so
+    // the time can be accounted rather than played.
+    WOR_gf_LoadStartTime = TIM_f_Clock_TrueRead();
     GRPSectClearAll();
     world = NULL;
 
