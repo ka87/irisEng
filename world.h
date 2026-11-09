@@ -119,7 +119,7 @@ int WOR_gi_IsLoading;
 extern int WOR_gb_RealAllocWorld;
 extern int WOR_gb_FinalWorld;
 extern int WOR_gul_WorldText;
-extern int WOR_gul_WorldKey; // unused?
+extern int WOR_gul_WorldKey;
 
 void WOR_ActivateObjectIfFlagsAllow(struct sGameObjectMain* a1, struct sWorld* a2);
 void WOR_World_DetachObject(struct sWorld* a1, struct sGameObjectMain* a2);

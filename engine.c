@@ -600,8 +600,13 @@ void ENG_EngineCall()
     // pump is accounted, so it is not played as game time.
     if (WOR_gb_FirstTrameAfterLoad)
     {
-        TIM_SpentTimeWithHandlingWinMessages = TIM_f_Clock_TrueRead()
-            - WOR_gf_LoadStartTime + TIM_SpentTimeWithHandlingWinMessages;
+        float loadSeconds = TIM_f_Clock_TrueRead() - WOR_gf_LoadStartTime;
+        // how long the load actually took, against the frame-time ceiling
+        // of 0.26666668 that would otherwise be charged for it
+        DBG_OutputDebugString("===== LOAD END    WOL 0x%08X  %f s (ceiling 0.266667) =====\n",
+            WOR_gul_WorldKey, loadSeconds);
+        TIM_SpentTimeWithHandlingWinMessages = loadSeconds
+            + TIM_SpentTimeWithHandlingWinMessages;
     }
     WOR_gb_FirstTrameAfterLoad = FALSE;
     ENG_gb_FirstFrame = 0;

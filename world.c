@@ -2732,6 +2732,7 @@ struct sWorld* WOR_pst_Universe_AddWorldList(int a1, int worldKey, int unused1)
     // would otherwise be charged the whole of it. mark the start so
     // the time can be accounted rather than played.
     WOR_gf_LoadStartTime = TIM_f_Clock_TrueRead();
+    DBG_OutputDebugString("===== LOAD BEGIN  WOL 0x%08X =====\n", worldKey);
     GRPSectClearAll();
     world = NULL;
 
