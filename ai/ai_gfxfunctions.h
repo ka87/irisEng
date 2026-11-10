@@ -37,3 +37,7 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1);
 tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* a1);
 tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1);
 tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* a1);
+
+extern int GFX_gl_FS_VideoPlaying;
+extern int GFX_gl_FS_VideoScaleMode;
+void GFX_FS_VideoUpdate();

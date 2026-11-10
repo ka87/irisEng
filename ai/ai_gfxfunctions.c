@@ -549,23 +549,92 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1)
     return a1 + 1;
 }
 
-/* Fullscreen Bink playback of the making-of reel.
- * How these were recovered: ai/notes/gfx-fs-video.md
- */
 HBINK GFX_gpv_FS_Video = 0;
 int GFX_gl_FS_VideoPlaying = 0;
 IDirect3DSurface9* GFX_gpst_FS_VideoSurface = 0;
 int GFX_gl_FS_VideoScreenH = 0;
 int GFX_gl_FS_VideoScreenW = 0;
 
+static IDirect3DTexture9* GFX_gpst_FS_VideoStageTex = 0;
+static IDirect3DSurface9* GFX_gpst_FS_VideoStage = 0;
+
+int GFX_gl_FS_VideoScaleMode = 0;
+
+static void GFX_FS_VideoDecode(HBINK bink)
+{
+    D3DLOCKED_RECT lr;
+
+    BinkDoFrame(bink);
+    GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, NULL,
+                                               D3DLOCK_NOSYSLOCK);
+    BinkCopyToBuffer(bink, lr.pBits, lr.Pitch, GFX_gl_FS_VideoScreenH, 0, 0,
+                     BINKSURFACE32A | BINKCOPYALL);
+    GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
+}
+
+static void GFX_FS_VideoBlit(HBINK bink)
+{
+    IDirect3DSurface9* back;
+    RECT src;
+    RECT dst;
+    unsigned int scaledW;
+    unsigned int scaledH;
+    unsigned int left;
+    unsigned int top;
+    float scale;
+    D3DTEXTUREFILTERTYPE filter;
+
+    D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0,
+                                                  D3DBACKBUFFER_TYPE_MONO, &back);
+    D3DRenderParams.d3dDev->lpVtbl->UpdateSurface(D3DRenderParams.d3dDev,
+                                                  GFX_gpst_FS_VideoSurface, NULL,
+                                                  GFX_gpst_FS_VideoStage, NULL);
+
+    if (GFX_gl_FS_VideoScaleMode & 0x2000000)
+    {
+        scale = (float)GFX_gl_FS_VideoScreenW / (float)bink->Width;
+        filter = D3DTEXF_LINEAR;
+    }
+    else if (GFX_gl_FS_VideoScaleMode & 0x1000000)
+    {
+        scale = (float)GFX_gl_FS_VideoScreenW / (float)bink->Width;
+        filter = D3DTEXF_POINT;
+    }
+    else
+    {
+        scale = 1.0f;
+        filter = D3DTEXF_NONE;
+    }
+
+    src.left = 0;
+    src.top = 0;
+    src.right = bink->Width;
+    src.bottom = bink->Height;
+
+    scaledW = (unsigned int)((float)bink->Width * scale);
+    left = (GFX_gl_FS_VideoScreenW - scaledW) / 2;
+    scaledH = (unsigned int)((float)bink->Height * scale);
+    top = (GFX_gl_FS_VideoScreenH - scaledH) / 2;
+    dst.left = left;
+    dst.top = top;
+    dst.right = left + scaledW;
+    dst.bottom = top + scaledH;
+
+    D3DRenderParams.d3dDev->lpVtbl->Clear(D3DRenderParams.d3dDev, 0, NULL,
+                                          D3DCLEAR_TARGET, 0, 0.0f, 0);
+    D3DRenderParams.d3dDev->lpVtbl->StretchRect(D3DRenderParams.d3dDev,
+                                                GFX_gpst_FS_VideoStage, &src,
+                                                back, &dst, filter);
+    back->lpVtbl->Release(back);
+}
+
 void GFX_FS_VideoStart(int a1)
 {
     IDirect3DSurface9* back;
     D3DSURFACE_DESC desc;
     D3DLOCKED_RECT lr;
+    HRESULT hr;
 
-    /* Read off the AI stack and discarded: the file name is not a
-     * parameter. Kept so the signature matches. */
     (void)a1;
 
     BinkSetSoundSystem(BinkOpenDirectSound, SND_gst_Params.handles->dsndif);
@@ -573,7 +642,6 @@ void GFX_FS_VideoStart(int a1)
     if (!GFX_gpv_FS_Video)
         return;
 
-    /* The back buffer is read only for its format and size, then let go. */
     D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0,
                                                   D3DBACKBUFFER_TYPE_MONO, &back);
     back->lpVtbl->GetDesc(back, &desc);
@@ -581,18 +649,31 @@ void GFX_FS_VideoStart(int a1)
     GFX_gl_FS_VideoScreenH = desc.Height;
     GFX_gl_FS_VideoScreenW = desc.Width;
 
-    /* The surface is the size of the movie, not of the screen. */
     D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(
         D3DRenderParams.d3dDev,
         GFX_gpv_FS_Video->Width, GFX_gpv_FS_Video->Height,
         desc.Format, D3DPOOL_SYSTEMMEM, &GFX_gpst_FS_VideoSurface, 0);
 
-    /* Clear it to black before the first frame lands in it. */
     GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, 0,
                                                D3DLOCK_NOSYSLOCK);
     memset(lr.pBits, 0,
            4 * GFX_gpv_FS_Video->Width * GFX_gpv_FS_Video->Height);
     GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
+
+    hr = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+        GFX_gpv_FS_Video->Width, GFX_gpv_FS_Video->Height, 1,
+        D3DUSAGE_RENDERTARGET, desc.Format, D3DPOOL_DEFAULT,
+        &GFX_gpst_FS_VideoStageTex, NULL);
+    if (FAILED(hr))
+    {
+        GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
+        GFX_gpst_FS_VideoSurface = 0;
+        BinkClose(GFX_gpv_FS_Video);
+        GFX_gpv_FS_Video = 0;
+        return;
+    }
+    GFX_gpst_FS_VideoStageTex->lpVtbl->GetSurfaceLevel(GFX_gpst_FS_VideoStageTex, 0,
+                                                       &GFX_gpst_FS_VideoStage);
 
     GFX_gl_FS_VideoPlaying = 1;
 }
@@ -610,7 +691,12 @@ void GFX_FS_VideoStop()
 {
     if (GFX_gpv_FS_Video)
     {
+        GFX_gpst_FS_VideoStage->lpVtbl->Release(GFX_gpst_FS_VideoStage);
+        GFX_gpst_FS_VideoStage = 0;
+        GFX_gpst_FS_VideoStageTex->lpVtbl->Release(GFX_gpst_FS_VideoStageTex);
+        GFX_gpst_FS_VideoStageTex = 0;
         GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
+        GFX_gpst_FS_VideoSurface = 0;
         BinkClose(GFX_gpv_FS_Video);
         GFX_gpv_FS_Video = 0;
     }
@@ -623,8 +709,6 @@ tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1)
     return a1 + 1;
 }
 
-/* 1 when there is no handle, otherwise whether the last frame has been
- * reached, so a script waiting on it proceeds at once if nothing opened. */
 int GFX_FS_VideoFinish() {
     if (!GFX_gpv_FS_Video)
         return 1;
@@ -638,6 +722,23 @@ tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* a1)
     v1 = GFX_FS_VideoFinish();
     AI_PutIntToStack(v1);
     return a1 + 1;
+}
+
+void GFX_FS_VideoUpdate()
+{
+    if (!GFX_gpv_FS_Video)
+        return;
+
+    if (BinkWait(GFX_gpv_FS_Video))
+    {
+        GFX_FS_VideoBlit(GFX_gpv_FS_Video);
+        return;
+    }
+
+    GFX_FS_VideoDecode(GFX_gpv_FS_Video);
+    GFX_FS_VideoBlit(GFX_gpv_FS_Video);
+    if (GFX_gpv_FS_Video->FrameNum < GFX_gpv_FS_Video->Frames)
+        BinkNextFrame(GFX_gpv_FS_Video);
 }
 
 tAINode* AI_EvalFunc_CreateExplosion(tAINode* arg0)
