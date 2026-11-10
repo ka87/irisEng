@@ -6,6 +6,8 @@
 #include "ai_worldfunctions.h"
 #include "ai_gfxfunctions.h"
 #include "../sound.h"
+#include "../win/wingdi.h"
+#include "bink.h"
 
 tAINode* AI_EvalFunc_GFXDepthBlur(tAINode* a1)
 {
@@ -547,29 +549,52 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1)
     return a1 + 1;
 }
 
-/* Fullscreen Bink playback. binkw32 is not linked here, so the Bink
- * calls sit behind IRISENG_HAVE_BINK; without it nothing plays and
- * VideoFinish says so at once, which is what the scripts cope with.
+/* Fullscreen Bink playback of the making-of reel.
  * How these were recovered: ai/notes/gfx-fs-video.md
  */
-void* GFX_gpv_FS_Video = 0;
+HBINK GFX_gpv_FS_Video = 0;
 int GFX_gl_FS_VideoPlaying = 0;
+IDirect3DSurface9* GFX_gpst_FS_VideoSurface = 0;
+int GFX_gl_FS_VideoScreenH = 0;
+int GFX_gl_FS_VideoScreenW = 0;
 
 void GFX_FS_VideoStart(int a1)
 {
+    IDirect3DSurface9* back;
+    D3DSURFACE_DESC desc;
+    D3DLOCKED_RECT lr;
+
     /* Read off the AI stack and discarded: the file name is not a
      * parameter. Kept so the signature matches. */
     (void)a1;
-#ifdef IRISENG_HAVE_BINK
+
     BinkSetSoundSystem(BinkOpenDirectSound, SND_gst_Params.handles->dsndif);
     GFX_gpv_FS_Video = BinkOpen("BGEMakingOf.bik", 0);
     if (!GFX_gpv_FS_Video)
         return;
+
+    /* The back buffer is read only for its format and size, then let go. */
+    D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0,
+                                                  D3DBACKBUFFER_TYPE_MONO, &back);
+    back->lpVtbl->GetDesc(back, &desc);
+    back->lpVtbl->Release(back);
+    GFX_gl_FS_VideoScreenH = desc.Height;
+    GFX_gl_FS_VideoScreenW = desc.Width;
+
+    /* The surface is the size of the movie, not of the screen. */
+    D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(
+        D3DRenderParams.d3dDev,
+        GFX_gpv_FS_Video->Width, GFX_gpv_FS_Video->Height,
+        desc.Format, D3DPOOL_SYSTEMMEM, &GFX_gpst_FS_VideoSurface, 0);
+
+    /* Clear it to black before the first frame lands in it. */
+    GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, 0,
+                                               D3DLOCK_NOSYSLOCK);
+    memset(lr.pBits, 0,
+           4 * GFX_gpv_FS_Video->Width * GFX_gpv_FS_Video->Height);
+    GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
+
     GFX_gl_FS_VideoPlaying = 1;
-#else
-    GFX_gpv_FS_Video = 0;
-    GFX_gl_FS_VideoPlaying = 0;
-#endif
 }
 
 tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* a1)
@@ -583,13 +608,12 @@ tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* a1)
 
 void GFX_FS_VideoStop()
 {
-#ifdef IRISENG_HAVE_BINK
     if (GFX_gpv_FS_Video)
     {
+        GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
         BinkClose(GFX_gpv_FS_Video);
         GFX_gpv_FS_Video = 0;
     }
-#endif
     GFX_gl_FS_VideoPlaying = 0;
 }
 
@@ -599,10 +623,12 @@ tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1)
     return a1 + 1;
 }
 
-/* 1 when there is no handle, otherwise the last frame has been
- * reached. With no Bink handle there never is one, so this stays 1. */
+/* 1 when there is no handle, otherwise whether the last frame has been
+ * reached, so a script waiting on it proceeds at once if nothing opened. */
 int GFX_FS_VideoFinish() {
-    return 1;
+    if (!GFX_gpv_FS_Video)
+        return 1;
+    return GFX_gpv_FS_Video->FrameNum >= GFX_gpv_FS_Video->Frames;
 }
 
 tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* a1)
