@@ -5,6 +5,7 @@
 #include "../gfx.h"
 #include "ai_worldfunctions.h"
 #include "ai_gfxfunctions.h"
+#include "../sound.h"
 
 tAINode* AI_EvalFunc_GFXDepthBlur(tAINode* a1)
 {
@@ -560,7 +561,7 @@ void GFX_FS_VideoStart(int a1)
      * parameter. Kept so the signature matches. */
     (void)a1;
 #ifdef IRISENG_HAVE_BINK
-    BinkSetSoundSystem(BinkOpenDirectSound, GFX_FS_VideoSoundDevice());
+    BinkSetSoundSystem(BinkOpenDirectSound, SND_gst_Params.handles->dsndif);
     GFX_gpv_FS_Video = BinkOpen("BGEMakingOf.bik", 0);
     if (!GFX_gpv_FS_Video)
         return;
