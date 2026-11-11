@@ -637,7 +637,7 @@ void GFX_FS_VideoStart(int a1)
 
     (void)a1;
 
-    BinkSetSoundSystem(BinkOpenDirectSound, SND_gst_Params.handles->dsndif);
+    BinkSetSoundSystem(BinkOpenDirectSound, (unsigned long)SND_gst_Params.handles->dsndif);
     GFX_gpv_FS_Video = BinkOpen("BGEMakingOf.bik", 0);
     if (!GFX_gpv_FS_Video)
         return;
