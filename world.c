@@ -15,6 +15,7 @@
 #include "water.h"
 #include "ai/ai_worldfunctions.h"
 #include "ai/ai_viewfunctions.h"
+#include "ai/ai_gfxfunctions.h"
 #include "grid.h"
 #include "ways.h"
 #include "strings.h"
@@ -2546,6 +2547,12 @@ void WOR_Render(struct sWorld* world, struct sGdi_DisplayData* dxdd)
     tableElemStructPF* v18;
     int v19;
     tViewElem* ves;
+
+    if (GFX_gl_FS_VideoPlaying)
+    {
+        GFX_FS_VideoUpdate();
+        return;
+    }
 
     MAI_gst_MainHandles.displayData = dxdd;
     if (dxdd)
