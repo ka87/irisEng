@@ -51,12 +51,19 @@ which are available where this work is done, so "it still compiles" is
 not free. Two things stand in for it.
 
 **A stub include set** (`tests/stub/`) is enough for a native `gcc
--fsyntax-only` to parse the real sources: `windows.h`, `d3d9.h` and
+-fsyntax-only -Werror=implicit-function-declaration` to parse the real
+sources: `windows.h`, `d3d9.h` and
 `dsound.h` with the types the engine actually names, and a few empty
 headers. It catches what a compiler catches — a mistyped name, a lost
 brace, a changed signature. It does not prove behaviour, and it is not
 the real toolchain: every batch should still be built under MSVC before
 it is merged.
+
+`-Werror=implicit-function-declaration` is part of the check and earns
+its place: a first draft of `gfx/gfxdesintegrate.c` called a
+`MATH_SetNullVector` that did not exist, and without that flag it
+parsed clean. The corpus has no other implicit declaration, so the flag
+costs nothing and catches every invented call.
 
 **Differential tests** (`tests/`) compile the old and the new copy of a
 file into one binary, run both over identical state, and compare the

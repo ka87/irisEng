@@ -1918,6 +1918,13 @@ float MATH_VecLenSquared(Vec3* vec)
     return vec->x * vec->x + vec->y * vec->y + vec->z * vec->z;
 }
 
+void MATH_SetNullVector(Vec3* vec)
+{
+    vec->x = 0.0;
+    vec->y = 0.0;
+    vec->z = 0.0;
+}
+
 void MATH_VecInvert(Vec3* dest, Vec3* src)
 {
    dest->x = -src->x;
