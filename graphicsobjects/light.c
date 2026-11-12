@@ -38,7 +38,7 @@ tGroGeneric* LIGHT_p_CreateFromBuffer(struct sGroGeneric* gro, char** readptr, s
     return (tGroGeneric*)lgt;
 }
 
-struct sGroGeneric* LIGHT_Duplicate(tGroGeneric* a1)
+struct sGroGeneric* LIGHT_Duplicate(tGroGeneric* gro)
 {
     return 0;
 }

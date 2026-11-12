@@ -1,7 +1,7 @@
 #include "way.h"
 
-void WAY_Free(struct sGroGeneric* a1)
-{  
+void WAY_Free(struct sGroGeneric* gro)
+{
 }
 
 void WAY_Init()

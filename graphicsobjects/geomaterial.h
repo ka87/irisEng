@@ -30,5 +30,5 @@ typedef struct sGEOMAT
 
 extern tGEOMAT MAT_gst_DefaultSingleMaterial;
 
-char* MAT_pc_GetAllUsedTextureIndex(struct sGdi_DisplayData* a1, unsigned int a2);
+char* MAT_pc_GetAllUsedTextureIndex(struct sGdi_DisplayData* dd, unsigned int texCount);
 void MAT_Init();
