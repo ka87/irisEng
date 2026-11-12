@@ -131,6 +131,27 @@ GFX_Flare_Render GFXF_f_depth f_9Factor_296"
 
 reveal_syms="STR_l_Effect_Reveal"
 
+textures_syms="TEX_Compress24_Xo2 TEX_Compress24_Yo2 TEX_Compress_Xo2 TEX_Compress_Yo2 \
+TEX_Compress8_Xo2 TEX_Compress8_Yo2 TEX_Compress4_Xo2 TEX_Compress4_Yo2 \
+TEX_Expand_XBy2 TEX_Expand_YBy2 TEX_Expand8_XBy2 TEX_Expand8_YBy2 \
+TEX_Expand4_XBy2 TEX_Expand4_YBy2 TEX_Expand24_XBy2 TEX_Expand24_YBy2 \
+TEX_Convert_32SwapRB TEX_Convert_24To32 TEX_Convert_24To32SwapRB \
+TEX_Convert_4To32 TEX_Convert_8To32 TEX_Convert_4To32SwapRB TEX_Convert_8To32SwapRB \
+TEX_ul_GetPower2Up TEX_uc_GetMaskShift TEX_GetMaskParams TEX_GetColorConvertParams \
+TEX_l_ConvertPF TEX_l_ConvertSize TEX_l_ConvertSize_24To32 TEX_File_VSwap \
+TEX_l_File_TgaUncompress TEX_File_DevelopParams TEX_l_MemoryNeeded TEX_l_DimensionIsGood \
+TEX_File_TransformParams TEX_b_File_CheckParams TEX_l_ConvertSizeFast TEX_File_LoadPalette \
+TEX_Manager_ComputeCompression TEX_Manager_Init TEX_Manager_Reinit \
+TEX_l_File_LoadTga TEX_l_File_LoadBmp TEX_l_File_LoadRaw TEX_l_File_LoadRawPalette \
+TEX_l_File_LoadAnimated TEX_pst_List_FindTexture TEX_pst_List_FindPalette \
+TEX_w_List_AddTexture TEX_w_List_AddPalette TEX_List_Init TEX_List_Free \
+TEX_pst_Anim_Get TEX_pst_Anim_Add TEX_Anim_Update TEX_Anim_Reinit \
+TEX_w_Manager_ChooseGoodInTex TEX_File_FreeDescription \
+al_QualityCompressionOrder al_QualityCompressionLimit \
+TEX_gst_GlobalList TEX_gdst_Animated TEX_gi_NbAnimated TEX_gi_NbAnimatedMax \
+sf_TimeLeft_218"
+
+
 math_syms="MATH_CreateTrigTables MATH_CreateSqrtTable MATH_CreateInvTable \
 MATH_CreateInvSqrtTable MATH_InitModule MATH_CopyMatrix \
 MATH_SetIdentityMatrix MATH_NormalizeVector MATH_CrossProduct \
@@ -202,6 +223,24 @@ run_math() {
 
 run_math
 
+run_textures() {
+    name=textures
+    [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' "$name"
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c textures.c -o "$OUT/textures.new.o" $(defs NEW_ $textures_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/baseline_textures.c -o "$OUT/textures.base.o" $(defs BASE_ $textures_syms)
+    $CC $CFLAGS -c tests/textures_mocks.c -o "$OUT/textures.mocks.o"
+    $CC $CFLAGS -c tests/test_textures.c -o "$OUT/textures.drv.o"
+    $CC "$OUT/textures.new.o" "$OUT/textures.base.o" "$OUT/textures.mocks.o" \
+        "$OUT/textures.drv.o" -o "$OUT/textures" -lm
+    "$OUT/textures" || fails=$((fails + 1))
+    echo
+}
+
+run_textures
+
 run_one snakemodifier modifiers/snakemodifier.c \
         tests/baseline_snakemodifier.c modifiers "$snake_syms"
 
@@ -255,6 +294,45 @@ run_reveal() {
 }
 
 run_reveal
+
+# animation.c: the file sits at the repo root, so the frozen copy needs
+# the root on the *quoted* include path only -- -I. would also put the
+# engine's own strings.h in front of the system <strings.h>.
+animation_syms="ANI_pst_CreateGameObjectAnim ANI_LimitFrequencyBetween0And255 \
+ANI_ClearBlendingFlag ANI_DestroyAnimation ANI_DestroySkeleton ANI_Free \
+ANI_AllocAnim ANI_ApplyHierarchyOnFlash ANI_GaoAnimationIsTransitioning \
+ANI_RecomputeFlash ANI_UpdateFlash ANI_uc_GetEngineCanalByAICanal \
+ANI_pst_GetObjectByAICanal ANI_ChangeBoneShape ANI_ApplyShape ANI_ChangeShape \
+ANI_SetTrackList ANI_ChangeAction ANI_UpdateFlashAfterMagicBoxTranslation \
+ANI_GetEndSpeedOfMB ANI_InterpolateMagicBoxPositionAfterEndOfAnim \
+ANI_b_ComputeMagicBoxPositionForBlendAnim ANI_b_BlendMagicBox \
+ANI_PlayLeadAnimation ANI_PlayGameObjectAnimation ANI_OneCall ANI_InitSkeleton \
+ANI_pst_DuplicateGameObjectAnim ANI_ul_ShapeCallback \
+ANI_AttachSkeletonModelToWorld ANI_pst_Load ANI_ResolveRefs ANI_ReinitAnimation \
+ANI_Reinit ANI_RemoveHierarchyOnFlash ANI_pst_GetReference \
+ANI_PlayBlendAnimationWithoutMagicBox ANI_BeforeRender ANI_BeforeRendering \
+ANI_MainCall ANI_pst_GetReferenceInit ANI_ComputeBoneMatrix ANI_Render \
+ANI_ChangeDefaultSkeleton ANI_RestoreDefaultSkeleton ANI_DestroyShape \
+ANI_CloneSet ANI_c_DefaultBitFieldLOD"
+
+run_animation() {
+    [ -n "$FILTER" ] && case "animation" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' animation
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c animation.c -o "$OUT/animation.new.o" $(defs NEW_ $animation_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -iquote . -c tests/baseline_animation.c -o "$OUT/animation.base.o" \
+        $(defs BASE_ $animation_syms)
+    $CC $CFLAGS -c math.c -o "$OUT/animation.math.o"
+    $CC $CFLAGS -c tests/animation_mocks.c -o "$OUT/animation.mocks.o"
+    $CC $CFLAGS -c tests/test_animation.c -o "$OUT/animation.drv.o"
+    $CC "$OUT/animation.new.o" "$OUT/animation.base.o" "$OUT/animation.math.o" \
+        "$OUT/animation.mocks.o" "$OUT/animation.drv.o" -o "$OUT/animation" -lm
+    "$OUT/animation" || fails=$((fails + 1))
+    echo
+}
+
+run_animation
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"
