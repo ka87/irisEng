@@ -86,128 +86,989 @@ void STR_Reinit(struct sGroGeneric* gro)
     str->effectsNum = 0;
 }
 
-int STR_l_Effect_Treat(tGEOSTRStruct* a1, tGEOSTREffectStruct* inner1)
+// The letters of one effect's run and the geometry they were laid out
+// on. The dispatcher works this out once and every handler reads it.
+typedef struct sStrEffectRun
 {
-    tGEOSTRStringData* v3;
+    tGEOSTRStruct* str;
+    tGEOSTREffectStruct* effect;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letters;
+    tGEOSTRLetter* lettersEnd;
+    int* spec;            // per-letter quad index, from the effect pre-pass
+    int firstVertex;      // first vertex of the run
+    int endVertex;        // one past its last
+    int frameVertices;    // 36 when the string has a frame to move too, else 0
+    int frameFirst;
+    int startIdx;
+    int count;
+} tStrEffectRun;
+
+static int STR_l_Effect_LetterSpan(tStrEffectRun* run)
+{
+    return (int)(run->lettersEnd - run->letters);
+}
+
+// all four corners of every letter in the run
+static void STR_l_Effect_SetLetterColors(tStrEffectRun* run, unsigned int color)
+{
+    unsigned int* colors;
+    int i;
+    int span;
+
+    span = STR_l_Effect_LetterSpan(run);
+    colors = (unsigned int*)&GFX_gpst_Geo->vertexColors[run->firstVertex + 1];
+    for (i = 0; i < span; i++)
+    {
+        colors[0] = color;
+        colors[1] = color;
+        colors[2] = color;
+        colors[3] = color;
+        colors += 4;
+    }
+}
+
+static void STR_l_Effect_SetFrameColors(tStrEffectRun* run, unsigned int color)
+{
+    int i;
+
+    for (i = 0; i < run->frameVertices; i++)
+        GFX_gpst_Geo->vertexColors[run->frameFirst + 1 + i] = color;
+}
+
+// the box around every vertex of the run; min and max start from the
+// first vertex, which is read even when the range is empty
+static void STR_l_Effect_Bounds(Vec3* from, Vec3* to, Vec3* min, Vec3* max)
+{
+    Vec3* v;
+
+    min->x = from->x;
+    max->x = from->x;
+    min->y = from->y;
+    max->y = from->y;
+    for (v = from; v < to; v++)
+    {
+        if (v->x < (double)min->x)
+            min->x = v->x;
+        if (v->y < (double)min->y)
+            min->y = v->y;
+        if (v->x > (double)max->x)
+            max->x = v->x;
+        if (max->y < v->y)
+            max->y = v->y;
+    }
+}
+
+static void STR_l_Effect_ScaleAbout(Vec3* from, Vec3* to, float cx, float cy, float scale)
+{
+    Vec3* v;
+
+    for (v = from; v < to; v++)
+    {
+        v->x = (float)((v->x - cx) * scale + cx);
+        v->y = (v->y - cy) * scale + cy;
+    }
+}
+
+static void STR_l_Effect_RotateAbout(Vec3* from, Vec3* to, float cx, float cy,
+                                     float sin, float cos)
+{
+    Vec3* v;
+    double dx;
+    double dy;
+    float rotated;
+
+    for (v = from; v < to; v++)
+    {
+        dx = v->x - cx;
+        dy = v->y - cy;
+        rotated = (float)(cos * dy + dx * sin);
+        v->x = (float)(dx * cos - dy * sin + cx);
+        v->y = rotated + cy;
+    }
+}
+
+// An effect returns 1 when it is finished and the dispatcher should
+// drop it, 0 to keep it for the next frame. Setting 0x400 on the
+// string hides the string for good.
+static int STR_l_Effect_Done(tGEOSTRStringData* sd, int hideString)
+{
+    if (hideString)
+        sd->flags |= 0x400u;
+    return 1;
+}
+
+// 1: fades the letters and the frame toward black over f1, after an f3
+// delay; 0x10000 runs it the other way round
+static int STR_l_Effect_FadeToBlack(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    unsigned int* colors;
+    unsigned int color;
+    float blend;
+    double elapsed;
+    int span;
+    int i;
+
+    if (effect->timeElapsed >= (double)effect->f3)
+        blend = (effect->timeElapsed - effect->f3) / effect->f1;
+    else
+        blend = 0.0f;
+    if ((effect->flags & 0x10000) != 0)
+        blend = (float)(1.0 - blend);
+
+    span = STR_l_Effect_LetterSpan(run);
+    colors = (unsigned int*)&GFX_gpst_Geo->vertexColors[run->firstVertex + 1];
+    for (i = 0; i < span; i++)
+    {
+        color = LIGHT_ul_Interpol2Colors(colors[0], 0, blend);
+        colors[0] = color;
+        colors[1] = color;
+        colors[2] = color;
+        colors[3] = color;
+        colors += 4;
+    }
+
+    colors = (unsigned int*)&GFX_gpst_Geo->vertexColors[run->frameFirst + 1];
+    for (i = 0; i < run->frameVertices; i++)
+    {
+        colors[i] = LIGHT_ul_Interpol2Colors(colors[i], 0, blend);
+    }
+
+    elapsed = TIM_gf_dt + effect->timeElapsed;
+    effect->timeElapsed = (float)elapsed;
+    if (elapsed < effect->f1 + effect->f3)
+        return 0;
+    return STR_l_Effect_Done(run->sd, (effect->flags & 0x10000) == 0);
+}
+
+// 2: holds one of the two colours, or blends between them over f1, and
+// then swaps which one it holds and starts again
+static int STR_l_Effect_Blink(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    unsigned int color;
+    float blend;
+    double elapsed;
+    int flags;
+
+    flags = effect->flags;
+    if ((flags & 0x10000) != 0)
+    {
+        blend = effect->timeElapsed / effect->f1;
+        if ((flags & 0x1000000) != 0)
+            blend = (float)(1.0 - blend);
+        color = LIGHT_ul_Interpol2Colors(*(uint32_t*)&(effect->color1),
+                                         *(uint32_t*)&(effect->color2), blend);
+    }
+    else if ((flags & 0x1000000) != 0)
+    {
+        color = *(uint32_t*)&(effect->color1);
+    }
+    else
+    {
+        color = *(uint32_t*)&(effect->color2);
+    }
+
+    STR_l_Effect_SetLetterColors(run, color);
+
+    elapsed = TIM_gf_dt + effect->timeElapsed;
+    effect->timeElapsed = (float)elapsed;
+    if (elapsed < effect->f1)
+    {
+        effect->flags &= ~0x2000000u;
+        return 0;
+    }
+
+    effect->timeElapsed = 0.0f;
+    if ((effect->flags & 0x1000000) == 0)
+        effect->flags |= 0x1000000;
+    else
+        effect->flags &= ~0x1000000u;
+    effect->flags |= 0x2000000;
+    return 0;
+}
+
+// 3: colours every vertex by where it sits in the run's own box,
+// blending between four colours packed into the effect's float fields
+static int STR_l_Effect_ColorByPosition(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    Vec3* verts;
+    Vec3* from;
+    Vec3* to;
+    unsigned int* colors;
+    unsigned int acrossColor;
+    unsigned int downColor;
+    float originX;
+    float originY;
+    float width;
+    float height;
+    float invWidth;
+    float invHeight;
+    float across;
+    float down;
+
+    verts = GFX_gpst_Geo->vertices;
+    to = &verts[run->endVertex];
+    from = &verts[run->firstVertex];
+    originX = from->x;
+    originY = from->y;
+    colors = (unsigned int*)&GFX_gpst_Geo->vertexColors[run->firstVertex + 1];
+
+    width = to[-2].x - from->x;
+    height = to[-2].y - originY;
+    if (width == 0.0 || height == 0.0)
+        return 0;
+
+    invWidth = (float)(1.0 / width);
+    invHeight = (float)(1.0 / height);
+
+    for (; from < to; ++from, ++colors)
+    {
+        across = (from->x - originX) * invWidth;
+        acrossColor = LIGHT_ul_Interpol2Colors(*(uint32_t*)&(effect->f1),
+                                               *(uint32_t*)&(effect->timeElapsed), across);
+        downColor = LIGHT_ul_Interpol2Colors(*(uint32_t*)&(effect->color2),
+                                             *(uint32_t*)&(effect->color1), across);
+        down = (from->y - originY) * invHeight;
+        *colors = LIGHT_ul_Interpol2Colors(acrossColor, downColor, down);
+    }
+    return 0;
+}
+
+// 4: fades the letters and the frame from color1 to color2 over f1,
+// after an f3 delay
+static int STR_l_Effect_FadeBetweenColors(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    unsigned int color;
+    float blend;
+    double elapsed;
+
+    if (effect->timeElapsed >= (double)effect->f3)
+        blend = (effect->timeElapsed - effect->f3) / effect->f1;
+    else
+        blend = 0.0f;
+
+    color = LIGHT_ul_Interpol2Colors(*(uint32_t*)&(effect->color1),
+                                     *(uint32_t*)&(effect->color2), blend);
+    STR_l_Effect_SetLetterColors(run, color);
+    STR_l_Effect_SetFrameColors(run, color);
+
+    elapsed = TIM_gf_dt + effect->timeElapsed;
+    effect->timeElapsed = (float)elapsed;
+    if (elapsed < effect->f1 + effect->f3)
+        return 0;
+    return STR_l_Effect_Done(run->sd, (*(uint32_t*)&(effect->color2) & 0xFFFFFF) == 0);
+}
+
+// 5: a sine wave down the run, each letter lifted by the sine of its
+// own centre; color2 is the clock and f3 the elapsed time
+static int STR_l_Effect_Wave(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    Vec3* verts;
+    Vec3* from;
+    Vec3* to;
+    double lift;
+    double remaining;
+    double elapsed;
+    float amplitude;
+    float phase;
+    float at;
+
+    verts = GFX_gpst_Geo->vertices;
+    remaining = effect->color2 - effect->f3;
+    to = &verts[run->endVertex];
+    from = &verts[run->firstVertex];
+    amplitude = (float)((double)(uint16_t)run->str->height * effect->f1
+                        * remaining * remaining);
+    phase = (float)(remaining * effect->timeElapsed);
+
+    for (; from < to; from += 4)
+    {
+        at = (float)((from[2].x + from->x) * 0.5 * effect->color1 + phase);
+        lift = fabs(MATH_GetSin(at)) * amplitude;
+        from[0].y = (float)(from[0].y - lift);
+        from[1].y = (float)(from[1].y - lift);
+        from[2].y = (float)(from[2].y - lift);
+        from[3].y = (float)(from[3].y - lift);
+    }
+
+    elapsed = TIM_gf_dt + effect->f3;
+    effect->f3 = (float)elapsed;
+    if (elapsed < effect->color2)
+        return 0;
+    return 1;
+}
+
+// 6: jitters every letter by a random offset that dies away as color2
+// approaches color1, with an optional white flash over the first half
+static int STR_l_Effect_Shake(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    tGEOSTRStruct* str = run->str;
+    Vec3* verts;
+    Vec3* from;
+    Vec3* to;
+    unsigned int color;
+    double dy;
+    double flashAt;
+    double elapsed;
+    float decay;
+    float dx;
+    float flash;
+
+    decay = (float)((1.0 - effect->color2 / effect->color1)
+                    * (1.0 - effect->color2 / effect->color1));
+    verts = GFX_gpst_Geo->vertices;
+    to = &verts[run->endVertex];
+    from = &verts[run->firstVertex];
+
+    for (; from < to; from += 4)
+    {
+        dx = (float)(RND_RandFloatRange(-effect->f1, effect->f1)
+                     * (double)(uint16_t)str->width * decay);
+        dy = RND_RandFloatRange(-effect->timeElapsed, effect->timeElapsed)
+             * (double)(uint16_t)str->height * decay;
+
+        from[0].x = dx + from[0].x;
+        from[0].y = (float)(from[0].y - dy);
+        from[1].x = dx + from[1].x;
+        from[1].y = (float)(from[1].y - dy);
+        from[2].x = dx + from[2].x;
+        from[2].y = (float)(from[2].y - dy);
+        from[3].x = dx + from[3].x;
+        from[3].y = (float)(from[3].y - dy);
+    }
+
+    if ((effect->flags & 0x30000) != 0)
+    {
+        flashAt = (effect->color2 / effect->color1) + (effect->color2 / effect->color1);
+        flash = (float)flashAt;
+        if ((effect->flags & 0x20000) != 0)
+        {
+            flashAt = 2.0 - flashAt;
+            flash = (float)flashAt;
+        }
+        if (flashAt > 1.0)
+            flash = 1.0f;
+        color = LIGHT_ul_Interpol2Colors(0, 0xFFFFFFFF, flash);
+        STR_l_Effect_SetLetterColors(run, color);
+    }
+
+    elapsed = TIM_gf_dt + effect->color2;
+    effect->color2 = (float)elapsed;
+    if (elapsed < effect->color1)
+        return 0;
+    return 1;
+}
+
+// 7: opens each letter vertically from its own middle, the letters
+// starting one after another; color1 is the clock and color2 the delay
+static int STR_l_Effect_OpenVertically(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    tGEOSTRLetter* letter;
+    Vec3* quad;
+    double head;
+    double open;
+    double middle;
+    double half;
+    float stagger;
+    double elapsed;
+    int index;
+
+    if (effect->color1 < (double)effect->color2)
+    {
+        effect->color1 = TIM_gf_dt + effect->color1;
+        return 0;
+    }
+
+    stagger = (float)((effect->f1 - 0.050000001 - effect->timeElapsed) / (double)run->count);
+    index = 0;
+    quad = &GFX_gpst_Geo->vertices[run->firstVertex];
+    for (letter = run->letters; letter < run->lettersEnd; ++letter)
+    {
+        head = effect->color1 - effect->color2 - (double)index * stagger;
+        if (head <= 0.0)
+            break;
+
+        open = head / effect->timeElapsed;
+        if (open >= 1.0)
+            open = 1.0;
+
+        middle = (quad[1].y + quad[0].y) * 0.5;
+        half = (1.0 - open) * ((quad[1].y - quad[0].y) * 0.5);
+        quad[0].y = (float)(middle - half);
+        quad[3].y = (float)(middle - half);
+        quad[1].y = (float)(middle + half);
+        quad[2].y = (float)(middle + half);
+
+        quad += 4;
+        index++;
+    }
+
+    elapsed = TIM_gf_dt + effect->color1;
+    effect->color1 = (float)elapsed;
+    if (elapsed >= effect->color2 + effect->f1)
+        return STR_l_Effect_Done(run->sd, 1);
+    return 0;
+}
+
+// 8: the same shape closing rather than opening, and without the early
+// exit, so every letter is visited
+static int STR_l_Effect_CloseVertically(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    Vec3* quad;
+    double closed;
+    double middle;
+    double half;
+    float amount;
+    float stagger;
+    double elapsed;
+    int span;
+    int i;
+
+    stagger = (float)((effect->f1 - 0.050000001 - effect->timeElapsed) / (double)run->count);
+    span = STR_l_Effect_LetterSpan(run);
+    quad = &GFX_gpst_Geo->vertices[run->firstVertex];
+
+    for (i = 0; i < span; i++)
+    {
+        closed = (effect->color1 - effect->color2 - (double)i * stagger) / effect->timeElapsed;
+        amount = (float)closed;
+        if (closed < 1.0)
+        {
+            if (amount < 0.0)
+                amount = 0.0f;
+            middle = (quad[1].y + quad[0].y) * 0.5;
+            half = (quad[1].y - quad[0].y) * 0.5 * amount;
+            quad[0].y = (float)(middle - half);
+            quad[3].y = (float)(middle - half);
+            quad[1].y = (float)(middle + half);
+            quad[2].y = (float)(middle + half);
+        }
+        quad += 4;
+    }
+
+    elapsed = TIM_gf_dt + effect->color1;
+    effect->color1 = (float)elapsed;
+    if (elapsed < effect->color2 + effect->f1)
+        return 0;
+    return 1;
+}
+
+// 9 and 10: scales the whole run about the centre of its own box; kind
+// 9 runs the scale the other way round. color1 is the clock, color2 the
+// delay.
+static int STR_l_Effect_ScaleRun(tStrEffectRun* run, int kind)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    Vec3* verts;
+    Vec3* from;
+    Vec3* to;
+    Vec3 min;
+    Vec3 max;
+    double progress;
+    double elapsed;
+    float scale;
+
+    verts = GFX_gpst_Geo->vertices;
+    from = &verts[run->firstVertex];
+    to = &verts[run->endVertex];
+    STR_l_Effect_Bounds(from, to, &min, &max);
+
+    progress = (effect->color1 - effect->color2) / effect->f1;
+    if (progress < 0.0)
+        progress = 0.0;
+    scale = (float)(progress * progress);
+    if (kind == 9)
+        scale = (float)(1.0 - scale);
+
+    STR_l_Effect_ScaleAbout(from, to, (float)((max.x + min.x) * 0.5),
+                            (float)((max.y + min.y) * 0.5), scale);
+
+    elapsed = TIM_gf_dt + effect->color1;
+    effect->color1 = (float)elapsed;
+    if (elapsed < effect->color2 + effect->f1)
+        return 0;
+    return STR_l_Effect_Done(run->sd, kind == 9);
+}
+
+// 11 and 12: waits out color1, then scales the run and the frame about
+// the run's centre while fading both to black. Kind 12 runs the scale
+// the other way round and parks everything off screen while it waits.
+static int STR_l_Effect_ScaleAndFade(tStrEffectRun* run, int kind)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    Vec3* verts;
+    Vec3* from;
+    Vec3* to;
+    Vec3* frameFrom;
+    Vec3* frameTo;
+    Vec3* v;
+    Vec3 min;
+    Vec3 max;
+    unsigned int* colors;
+    unsigned int color;
+    double progress;
+    double elapsed;
+    float fade;
+    float scale;
+    float centreX;
+    float centreY;
+
+    verts = GFX_gpst_Geo->vertices;
+    from = &verts[run->firstVertex];
+    to = &verts[run->endVertex];
+    STR_l_Effect_Bounds(from, to, &min, &max);
+
+    if (effect->timeElapsed < (double)effect->color1)
+    {
+        if (kind == 12)
+        {
+            for (v = from; v < to; ++v)
+            {
+                v->x = -1.0;
+                v->y = -1.0;
+            }
+            verts = GFX_gpst_Geo->vertices;
+            frameFrom = &verts[run->frameFirst];
+            frameTo = &verts[run->frameVertices + run->frameFirst];
+            for (v = frameFrom; v < frameTo; ++v)
+            {
+                v->x = -1.0;
+                v->y = -1.0;
+            }
+        }
+        effect->timeElapsed = TIM_gf_dt + effect->timeElapsed;
+        return 0;
+    }
+
+    progress = (effect->timeElapsed - effect->color1) / effect->f1;
+    fade = (float)(progress * progress);
+    if (kind == 12)
+        fade = (float)(1.0 - fade);
+    scale = (float)((effect->color2 - 1.0) * fade + 1.0);
+    centreX = (float)((max.x + min.x) * 0.5);
+    centreY = (float)((max.y + min.y) * 0.5);
+
+    color = LIGHT_ul_Interpol2Colors(GFX_gpst_Geo->vertexColors[run->firstVertex + 1],
+                                     0, fade);
+    colors = (unsigned int*)&GFX_gpst_Geo->vertexColors[run->firstVertex + 1];
+    for (v = from; v < to; ++v, ++colors)
+    {
+        v->x = (float)((v->x - centreX) * scale + centreX);
+        v->y = (v->y - centreY) * scale + centreY;
+        *colors = color;
+    }
+
+    if (run->frameVertices)
+    {
+        verts = GFX_gpst_Geo->vertices;
+        frameFrom = &verts[run->frameFirst];
+        frameTo = &verts[run->frameFirst + run->frameVertices];
+        color = LIGHT_ul_Interpol2Colors(
+            GFX_gpst_Geo->vertexColors[run->frameFirst + 1], 0, fade);
+        colors = (unsigned int*)&GFX_gpst_Geo->vertexColors[run->frameFirst + 1];
+        for (v = frameFrom; v < frameTo; ++v, ++colors)
+        {
+            v->x = (float)((v->x - centreX) * scale + centreX);
+            v->y = (v->y - centreY) * scale + centreY;
+            *colors = color;
+        }
+    }
+
+    elapsed = TIM_gf_dt + effect->timeElapsed;
+    effect->timeElapsed = (float)elapsed;
+    if (elapsed < effect->f1 + effect->color1)
+        return 0;
+    return STR_l_Effect_Done(run->sd, kind == 11);
+}
+
+// 13 and 14: folds the run about the horizontal line color1, pulling y
+// toward it by a sine and lifting z by a cosine; kind 14 runs it the
+// other way round
+static int STR_l_Effect_FoldY(tStrEffectRun* run, int kind)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    Vec3* verts;
+    Vec3* from;
+    Vec3* to;
+    double progress;
+    double elapsed;
+    double folded;
+    float angle;
+    float cos;
+    float sin;
+
+    verts = GFX_gpst_Geo->vertices;
+    progress = effect->timeElapsed / effect->f1;
+    to = &verts[run->endVertex];
+    from = &verts[run->firstVertex];
+    if (kind == 14)
+        progress = 1.0 - progress;
+
+    angle = (float)(progress * 1.5707964);
+    cos = MATH_GetCos(angle);
+    sin = MATH_GetSin(angle);
+
+    for (; from < to; from++)
+    {
+        folded = (from->y - effect->color1) * sin + effect->color1;
+        from->y = (float)folded;
+        from->z = (float)(fabs(folded - effect->color1) * cos + from->z);
+    }
+
+    elapsed = TIM_gf_dt + effect->timeElapsed;
+    effect->timeElapsed = (float)elapsed;
+    if (elapsed < effect->f1)
+        return 0;
+    return STR_l_Effect_Done(run->sd, kind == 14);
+}
+
+// 15: spins the run and the frame about the run's centre, f1 carrying
+// the angle and timeElapsed the rate
+static int STR_l_Effect_Rotate(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    Vec3* verts;
+    Vec3* from;
+    Vec3* to;
+    Vec3* frameFrom;
+    Vec3* frameTo;
+    Vec3 min;
+    Vec3 max;
+    float centreX;
+    float centreY;
+    float sin;
+    float cos;
+
+    verts = GFX_gpst_Geo->vertices;
+    from = &verts[run->firstVertex];
+    to = &verts[run->endVertex];
+    STR_l_Effect_Bounds(from, to, &min, &max);
+
+    centreX = (float)((max.x + min.x) * 0.5);
+    centreY = (float)((max.y + min.y) * 0.5);
+    sin = MATH_GetSin(effect->f1);
+    cos = MATH_GetCos(effect->f1);
+    effect->f1 = TIM_gf_dt * effect->timeElapsed + effect->f1;
+
+    STR_l_Effect_RotateAbout(&GFX_gpst_Geo->vertices[run->firstVertex], to,
+                             centreX, centreY, sin, cos);
+
+    verts = GFX_gpst_Geo->vertices;
+    frameFrom = &verts[run->frameFirst];
+    frameTo = &verts[run->frameVertices + run->frameFirst];
+    if (frameFrom >= frameTo)
+        return 0;
+
+    STR_l_Effect_RotateAbout(frameFrom, frameTo, centreX, centreY, sin, cos);
+    return 0;
+}
+
+// 17: clips the run to the horizontal band between f1 and timeElapsed,
+// moving the band's edges onto the letters and the UVs with them, and
+// parking a letter that falls outside it off screen
+static int STR_l_Effect_ClipBand(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    tGEOGRO* geo;
+    Vec3* quad;
+    Vec3* to;
+    tGeoUVElem* uvs;
+    double top;
+    double bottom;
+    double height;
+    double topV;
+    float bottomV;
+    float vSpan;
+    float bandTop;
+    float bandBottom;
+    double screenHeight;
+
+    geo = GFX_gpst_Geo;
+    to = &geo->vertices[run->endVertex];
+    quad = &geo->vertices[run->firstVertex];
+    screenHeight = (double)(uint16_t)run->str->height;
+    bandTop = (float)((1.0 - effect->timeElapsed) * screenHeight);
+    bandBottom = (float)((1.0 - effect->f1) * screenHeight);
+
+    if (quad >= to)
+        return 0;
+
+    while (1)
+    {
+        if (quad[1].y > (double)bandBottom || quad->y < (double)bandTop)
+        {
+            quad[0].x = -100.0f;
+            quad[1].x = -100.0f;
+            quad[2].x = -100.0f;
+            quad[3].x = -100.0f;
+            quad[0].y = -100.0f;
+            quad[1].y = -100.0f;
+            quad[2].y = -100.0f;
+            quad[3].y = -100.0f;
+        }
+        else if (quad->y > (double)bandBottom || quad[1].y < (double)bandTop)
+        {
+            if (quad->y <= (double)bandBottom)
+                top = quad->y;
+            else
+                top = bandBottom;
+            if (quad[1].y >= (double)bandTop)
+                bottom = quad[1].y;
+            else
+                bottom = bandTop;
+
+            height = quad[1].y - quad->y;
+            uvs = &geo->UVs[quad - geo->vertices];
+            vSpan = uvs[1].v - uvs->v;
+            topV = (top - quad->y) / height * vSpan + uvs->v;
+            bottomV = (float)((bottom - quad->y) / height * vSpan + uvs->v);
+
+            quad[0].y = (float)top;
+            quad[3].y = (float)top;
+            uvs[0].v = (float)topV;
+            uvs[3].v = (float)topV;
+            quad[1].y = (float)bottom;
+            quad[2].y = (float)bottom;
+            uvs[1].v = bottomV;
+            uvs[2].v = bottomV;
+        }
+
+        quad += 4;
+        if (quad >= to)
+            break;
+        geo = GFX_gpst_Geo;
+    }
+    return 0;
+}
+
+// 18: shifts one corner of each side of every letter in x by f1, which
+// shears the letters
+static int STR_l_Effect_ShearLetters(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    Vec3* verts;
+    Vec3* quad;
+    Vec3* to;
+
+    verts = GFX_gpst_Geo->vertices;
+    to = &verts[run->endVertex];
+    quad = &verts[run->firstVertex];
+    if (quad >= to)
+        return 0;
+
+    do
+    {
+        quad[0].x = (float)(quad[0].x + effect->f1);
+        quad[3].x = quad[3].x + effect->f1;
+        quad += 4;
+    } while (quad < to);
+    return 0;
+}
+
+// 19: steps the first letter of the run through a sequence of digits
+// packed four bits at a time into unki1, holding each for color1
+static int STR_l_Effect_Scramble(tStrEffectRun* run)
+{
+    tGEOSTREffectStructType20* effect = (tGEOSTREffectStructType20*)run->effect;
+    double remaining;
+    unsigned int step;
+    int digit;
+
+    remaining = effect->color2 - TIM_gf_dt;
+    effect->color2 = (float)remaining;
+    if (remaining >= 0.0)
+        return 0;
+
+    step = effect->unkb1;
+    effect->color2 = run->effect->color1;
+    digit = (effect->unki1 >> (4 * step)) & 0xF;
+    if (digit)
+    {
+        effect->unkb1 = step + 1;
+    }
+    else
+    {
+        effect->unkb1 = 1;
+        digit = effect->unki1 & 0xF;
+    }
+
+    if (!effect->flagsAndChar)
+        effect->flagsAndChar = run->letters->flagsAndChar;
+    if (digit == 1)
+        effect->color2 = (float)(effect->color2 * 0.5);
+
+    run->letters->flagsAndChar &= 0xffffff00;
+    run->letters->flagsAndChar |= (char)effect->flagsAndChar + digit - 1;
+    return 0;
+}
+
+// 20: cuts every letter into five vertical slices and pushes them
+// apart, the two outer edges travelling twice as far and the two
+// middle ones on the square of the clock, with each pair of slices
+// tinted by its own factor
+static int STR_l_Effect_Slice(tStrEffectRun* run)
+{
+    tGEOSTREffectStruct* effect = run->effect;
+    tGEOSTRStruct* str = run->str;
+    Vec3* quad;
+    unsigned int* colors;
+    tGeoUVElem* uvs;
+    double middle;
+    double uStep;
+    double elapsed;
+    float xStep;
+    float reach;
+    float t;
+    float tt;
+    float outerT;
+    float edge[6];
+    double slide;
+    float slideF;
+    unsigned int outerColor;
+    unsigned int midColor;
+    unsigned int innerColor;
+    int quadIdx;
+    int i;
+
+    t = effect->timeElapsed / effect->f1;
+    reach = (float)((double)(uint16_t)str->width * effect->color1);
+    outerT = t + t;
+
+    for (i = 0; i < run->count; i++)
+    {
+        quadIdx = 4 * str->specularColorsPtr[run->startIdx + i + run->sd->index];
+        quad = &GFX_gpst_Geo->vertices[quadIdx];
+
+        // the six slice edges, at a fifth of the letter's width apart
+        xStep = (float)((quad[2].x - quad->x) * 0.2);
+        middle = (quad->x + quad[2].x) * 0.5;
+
+        // the first slice's own edge, pushed twice as far
+        edge[0] = (float)((quad->x - middle) * reach * t * 2.0 + quad->x);
+
+        // the second edge is the only one whose base is narrowed to a
+        // float before it is used, which is where the chain restarts
+        slide = quad->x + xStep;
+        slideF = (float)slide;
+        edge[1] = (float)((slide - middle) * reach * t + slideF);
+
+        slide = slideF + xStep;
+        edge[2] = (float)((slide - middle) * reach * t * t + slide);
+        slide = slide + xStep;
+        edge[3] = (float)((slide - middle) * reach * t * t + slide);
+        slide = slide + xStep;
+        edge[4] = (float)((slide - middle) * reach * t + slide);
+        slide = slide + xStep;
+        edge[5] = (float)((slide - middle) * reach * t * 2.0 + slide);
+
+        quad[0].x = edge[0];
+        quad[1].x = edge[0];
+        quad[2].x = edge[1];
+        quad[3].x = edge[1];
+        quad[4].x = edge[1];
+        quad[5].x = edge[1];
+        quad[6].x = edge[2];
+        quad[7].x = edge[2];
+        quad[8].x = edge[2];
+        quad[9].x = edge[2];
+        quad[10].x = edge[3];
+        quad[11].x = edge[3];
+        quad[12].x = edge[3];
+        quad[13].x = edge[3];
+        quad[14].x = edge[4];
+        quad[15].x = edge[4];
+        quad[16].x = edge[4];
+        quad[17].x = edge[4];
+        quad[18].x = edge[5];
+        quad[19].x = edge[5];
+
+        colors = (unsigned int*)&GFX_gpst_Geo->vertexColors[quadIdx + 1];
+        tt = t * t;
+        innerColor = LIGHT_ul_Interpol2Colors(*colors, 0, tt);
+        midColor = LIGHT_ul_Interpol2Colors(*colors, 0, t);
+        if (outerT < 1.0)
+            outerColor = LIGHT_ul_Interpol2Colors(*colors, 0, outerT);
+        else
+            outerColor = 0;
+
+        colors[0] = outerColor;
+        colors[1] = outerColor;
+        colors[18] = outerColor;
+        colors[19] = outerColor;
+        colors[2] = midColor;
+        colors[3] = midColor;
+        colors[4] = midColor;
+        colors[5] = midColor;
+        colors[14] = midColor;
+        colors[15] = midColor;
+        colors[16] = midColor;
+        colors[17] = midColor;
+        colors[6] = innerColor;
+        colors[7] = innerColor;
+        colors[8] = innerColor;
+        colors[9] = innerColor;
+        colors[10] = innerColor;
+        colors[11] = innerColor;
+        colors[12] = innerColor;
+        colors[13] = innerColor;
+
+        uvs = &GFX_gpst_Geo->UVs[quadIdx];
+        uStep = (uvs[2].u - uvs->u) * 0.2;
+        uvs[2].u = (float)(uvs->u + uStep);
+        uvs[3].u = (float)(uvs->u + uStep);
+        uvs[4].u = (float)(uvs->u + uStep);
+        uvs[5].u = (float)(uvs->u + uStep);
+        uvs[6].u = (float)(uStep + uStep + uvs->u);
+        uvs[7].u = (float)(uStep + uStep + uvs->u);
+        uvs[8].u = (float)(uStep + uStep + uvs->u);
+        uvs[9].u = (float)(uStep + uStep + uvs->u);
+        uvs[10].u = (float)(3.0 * uStep + uvs->u);
+        uvs[11].u = (float)(3.0 * uStep + uvs->u);
+        uvs[12].u = (float)(3.0 * uStep + uvs->u);
+        uvs[13].u = (float)(3.0 * uStep + uvs->u);
+        uvs[14].u = (float)(uStep * 4.0 + uvs->u);
+        uvs[15].u = (float)(uStep * 4.0 + uvs->u);
+        uvs[16].u = (float)(uStep * 4.0 + uvs->u);
+        uvs[17].u = (float)(uStep * 4.0 + uvs->u);
+    }
+
+    elapsed = TIM_gf_dt + effect->timeElapsed;
+    effect->timeElapsed = (float)elapsed;
+    if (elapsed >= effect->f1)
+        return STR_l_Effect_Done(run->sd, 1);
+    return 0;
+}
+
+// 16: the letter-by-letter reveal. Still the decompiler's own output:
+// 1,090 lines, seventeen gotos and twelve labels. The names the
+// prologue used are re-established from the run so the body is
+// untouched while the rest of the file moves on; it is the next pass.
+static int STR_l_Effect_Reveal(tStrEffectRun* run)
+{
+    tGEOSTRStruct* a1 = run->str;
+    tGEOSTREffectStruct* inner1 = run->effect;
+    tGEOSTRStringData* v306 = run->sd;
+    tGEOSTRLetter* v6 = run->letters;
+    tGEOSTRLetter* v7 = run->lettersEnd;
+    tGEOSTRLetter* v307 = run->letters;
+    int* specularColorPtr = run->spec;
+    int v8 = run->endVertex;
+    int v9 = run->firstVertex;
+    int v350 = run->frameVertices;
+    int v345 = run->frameFirst;
+    int v344 = run->startIdx;
+    int v356 = run->sd->index;
+    int v330 = run->count;
+
     int result;
-    int v5;
-    tGEOSTRLetter* v6;
-    tGEOSTRLetter* v7;
-    int v8;
-    int v9;
-    unsigned int* v10;
-    unsigned int v11; 
-    unsigned int v12; 
-    unsigned int* v13;
-    unsigned int v14; 
-    int* i;
-    double v16;
-    BOOL v17; 
-    int v18; 
-    unsigned int v19;
-    int* v20;
-    unsigned int v21;
-    unsigned int* v22;
-    double v23;
-    int v24; 
-    int v25;
-    Vec3* v26;
-    Vec3* v27;
-    Vec3* v28;
-    int* v29; 
-    int v30; 
-    int v31; 
-    int* v32;
-    unsigned int v33;
-    int* v34;
-    double v35;
-    Vec3* v36; 
-    double v37;
-    Vec3* v38; 
-    Vec3* v39; 
-    long double v40;
-    double v41;
-    double v42;
-    double v43;
-    Vec3* v44; 
-    Vec3* v45; 
-    Vec3* v46; 
-    double v47;
-    double v48;
-    double v49;
-    unsigned int v50;
-    unsigned int* v51;
-    unsigned int v52;
-    unsigned int* v53;
-    double v54;
-    Vec3* v55; 
-    double v56;
-    double v57;
-    double v58;
-    double v59;
-    double v60;
-    double v61;
-    double v62;
-    Vec3* v63; 
-    unsigned int v64;
-    double v65;
-    double v66;
-    double v67;
-    double v68;
-    double v69;
-    Vec3* v70; 
-    Vec3* v71; 
-    Vec3* v72; 
-    Vec3* v73; 
-    double v74;
-    double v75;
-    Vec3* v76; 
-    double v77;
-    double v78;
-    tGEOGRO* v79;
-    Vec3* v80;
-    Vec3* v81;
-    Vec3* v82;
-    Vec3* v83;
-    double v84;
-    Vec3* v85; 
-    Vec3* v86; 
-    Vec3* v87; 
-    Vec3* m;
-    double v89;
-    unsigned int v90; 
-    tGEOGRO* v91;
-    int* v92;
-    double v93;
-    Vec3* v94; 
-    Vec3* v95; 
-    Vec3* v96; 
-    unsigned int v97;
-    int* n; 
-    double v99;
-    double v100;
-    Vec3* v101; 
-    double v102;
-    Vec3* v103; 
-    Vec3* v104; 
-    double v105;
-    double v106;
-    double v107;
-    Vec3* v108; 
-    unsigned int v109;
-    Vec3* v110; 
-    Vec3* v111; 
-    double v112; 
-    Vec3* jj; 
-    double v114;
-    double v115;
-    double v116;
-    Vec3* v117;
-    Vec3* v118;
-    Vec3* v119;
-    double v120;
-    double v121;
-    double v122;
     Vec3* v123; 
     int v124; 
     double v125;
@@ -325,702 +1186,29 @@ int STR_l_Effect_Treat(tGEOSTRStruct* a1, tGEOSTREffectStruct* inner1)
     double v237;
     double v238;
     double v239;
-    tGEOGRO* v240;
-    Vec3* v241;
-    Vec3* v242;
-    Vec3* v243;
-    double v244;
-    double v245;
-    double v246;
-    double v247;
-    tGeoUVElem* v248;
-    double v249;
-    Vec3* v250; 
-    Vec3* v251; 
-    Vec3* v252; 
-    double v253; 
-    double v254; 
-    char v255; 
-    int v256; 
-    int v257; 
-    Vec3* v258;
-    double v259;
-    double v260;
-    double v261;
-    double v262;
-    double v263;
-    double v264;
-    double v265;
-    double v266;
-    double v267;
-    double v268;
-    int* v269;
-    unsigned int v270;
-    unsigned int v271;
-    unsigned int v272;
-    tGeoUVElem* v273; 
-    double v274;
-    double v275;
-    double v276;
-    double v277;
-    double v278;
-    double v279;
-    float a1a; 
-    float a1b; 
-    float v282;
-    float v283;
-    float v284;
-    float v285;
-    float l; 
-    float v287; 
-    float v288; 
-    float v289; 
-    float v290; 
     float v291; 
     float v292; 
-    float v293; 
-    float v294; 
-    float v295; 
-    float j;  
-    float k; 
-    float v298; 
-    float v299; 
-    float v300; 
-    float v301; 
-    float v302;
-    float ii; 
-    float v304;
-    float v305;
-    tGEOSTRStringData* v306;
-    tGEOSTRLetter* v307;
-    float v308;
-    float v309;
-    float v310;
-    float v311;
-    float v312;
     int v313;
     int v314;
     int v315;
     int v316;
     int v317;
-    float v318;
-    int flagsLOByte; 
-    float v320;
-    float v321;
-    int v322;
-    int v323;
-    float v324;
-    float v325;
     float v326;
     float v327;
     int v328;
-    int v329;
-    int v330;
-    int* specularColorPtr;
-    float v332;
-    float v333;
-    float v334;
-    float v335;
-    float v336;
     float v337;
     int v338; 
     int v339; 
     int v340; 
     int v341; 
     int v342; 
-    float v343;
-    int v344;
-    int v345;
     int v346;
-    float v347;
-    float v348;
-    float v349;
-    unsigned int v350;
-    Vec3* v351;
     int kk;
     int v353;
-    float v354;
-    float v355;
-    int v356;
-    int v357;
-    float v358;
-    float v359;
-    float inner1a;
-    float inner1b;
-    float inner1c;
-    float inner1d;
-    float inner1o;
-    float inner1e;
-    float inner1f;
-    float inner1g;
-    float inner1h;
-    float inner1p;
-    float inner1i;
-    float inner1j;
     float inner1k;
     float inner1l;
     float inner1m;
-    float inner1n;
-    float inner1q;
-    float inner1r;
-    unsigned int o;
-    tGEOSTREffectStructType20 *inner1Type20;
 
-    v345 = 0;
-    v3 = STR_pst_GetString(a1, inner1->stringid);
-    v306 = v3;
-    if (!v3)
-        return 1;
-    if ((v3->flags & 0x400) != 0)
-        return 0;
-    v344 = STR_l_GetValidIndex(a1, v3, inner1->index);
-    v5 = STR_l_GetValidNumber(a1, v306, v344, inner1->number);
-    v356 = v306->index;
-    v330 = v5;
-    v6 = &a1->letters[v344 + v356];
-    specularColorPtr = a1->specularColorsPtr;
-    v7 = &v6[v5];
-    v8 = 4 * specularColorPtr[((16 * (v344 + v356) + 16 * v5) >> 4) - 1] + 4; // talan align?
-    v9 = 4 * specularColorPtr[(16 * (v344 + v356)) >> 4];
-    v307 = v6;
-    if (v8 == 4)
-        return 1;
-    if ((inner1->flags & 0x100) != 0 && (v306->flags & 0x100) != 0)
-    {
-        if ((inner1->flags & 0x200) != 0)
-        {
-            v7 = &a1->letters[v344 + v356];
-            v8 = 4 * specularColorPtr[(16 * (v344 + v356)) >> 4];
-        }
-        v350 = 36;
-        v345 = 4 * v306->i2;
-        goto LABEL_12;
-    }
-    v350 = 0;
-    if (!v330)
-        return 1;
-LABEL_12:
-    flagsLOByte = inner1->flags & 0xff;
-    switch (inner1->flags & 0xff)
-    {
-    case 1u:
-        if (inner1->timeElapsed >= (double)inner1->f3)
-            inner1a = (inner1->timeElapsed - inner1->f3) / inner1->f1;
-        else
-            inner1a = 0.0;
-        if ((inner1->flags & 0x10000) != 0)
-            inner1a = (float)(1.0 - inner1a);
-        v10 = &GFX_gpst_Geo->vertexColors[4 * specularColorPtr[(16 * (v344 + v356)) >> 4] + 1];
-        if (v6 < v7)
-        {
-            v11 = ((unsigned int)((char*)v7 - (char*)v6 - 1) >> 4) + 1;
-            do
-            {
-                v12 = LIGHT_ul_Interpol2Colors(*v10, 0, inner1a);
-                *v10 = v12;
-                v13 = (v10 + 1);
-                *v13++ = v12;
-                *v13++ = v12;
-                *v13 = v12;
-                v10 = (v13 + 1);
-                --v11;
-            } while (v11);
-        }
-        v14 = v350;
-        for (i = &GFX_gpst_Geo->vertexColors[v345 + 1]; v14; --v14)
-        {
-            *i = LIGHT_ul_Interpol2Colors(*i, 0, inner1a);
-            ++i;
-        }
-        v16 = TIM_gf_dt + inner1->timeElapsed;
-        inner1->timeElapsed = (float)v16;
-        if (v16 < inner1->f1 + inner1->f3)
-            goto LABEL_43;
-        v17 = (inner1->flags & 0x10000) == 0;
-        goto LABEL_25;
-    case 2u:
-        v18 = inner1->flags;
-        if ((inner1->flags & 0x10000) != 0)
-        {
-            inner1b = inner1->timeElapsed / inner1->f1;
-            if ((v18 & 0x1000000) != 0)
-                inner1b = (float)(1.0 - inner1b);
-            v19 = LIGHT_ul_Interpol2Colors(*(uint32_t*)&(inner1->color1), *(uint32_t*)&(inner1->color2), inner1b);
-        }
-        else if ((v18 & 0x1000000) != 0)
-        {
-            v19 = *(uint32_t *)&(inner1->color1);
-        }
-        else
-        {
-            v19 = *(uint32_t*)&(inner1->color2);
-        }
-        v20 = &GFX_gpst_Geo->vertexColors[v9 + 1];
-        if (v6 < v7)
-        {
-            v21 = ((unsigned int)((char*)v7 - (char*)v6 - 1) >> 4) + 1;
-            do
-            {
-                *v20 = v19;
-                v22 = (v20 + 1);
-                *v22++ = v19;
-                *v22++ = v19;
-                *v22 = v19;
-                v20 = (v22 + 1);
-                --v21;
-            } while (v21);
-        }
-        v23 = TIM_gf_dt + inner1->timeElapsed;
-        inner1->timeElapsed = (float)v23;
-        if (v23 < inner1->f1)
-        {
-            inner1->flags &= ~0x2000000u;
-            return 0;
-        }
-        v24 = inner1->flags;
-        v17 = (inner1->flags & 0x1000000) == 0;
-        inner1->timeElapsed = 0.0;
-        if (v17)
-            v25 = v24 | 0x1000000;
-        else
-            v25 = v24 & ~0x1000000u;
-        inner1->flags = v25;
-        inner1->flags = v25 | 0x2000000;
-        goto LABEL_43;
-    case 3u:
-        v26 = GFX_gpst_Geo->vertices;
-        v27 = &v26[v8];
-        v28 = &v26[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-        inner1c = v28->x;
-        v283 = v28->y;
-        v29 = &GFX_gpst_Geo->vertexColors[4 * specularColorPtr[(16 * (v344 + v356)) >> 4] + 1];
-        v332 = v27[-2].x - v28->x;
-        v320 = v27[-2].y - v283;
-        if (v332 == 0.0)
-            goto LABEL_43;
-        if (v320 == 0.0)
-            goto LABEL_43;
-        v333 = (float)(1.0 / v332);
-        v321 = (float)(1.0 / v320);
-        if (v28 >= v27)
-            goto LABEL_43;
-        do
-        {
-            v294 = (v28->x - inner1c) * v333;
-            v357 = LIGHT_ul_Interpol2Colors(*(uint32_t*)&(inner1->f1), *(uint32_t*)&(inner1->timeElapsed), v294);
-            v30 = LIGHT_ul_Interpol2Colors(*(uint32_t*)&(inner1->color2), *(uint32_t*)&(inner1->color1), v294);
-            v295 = (v28->y - v283) * v321;
-            *v29 = LIGHT_ul_Interpol2Colors(v357, v30, v295);
-            ++v28;
-            ++v29;
-        } while (v28 < v27);
-        return 0;
-    case 4u:
-        if (inner1->timeElapsed >= (double)inner1->f3)
-            inner1d = (inner1->timeElapsed - inner1->f3) / inner1->f1;
-        else
-            inner1d = 0.0;
-        v31 = LIGHT_ul_Interpol2Colors(*(uint32_t*)&(inner1->color1), *(uint32_t*)&(inner1->color2), inner1d);
-        v32 = &GFX_gpst_Geo->vertexColors[v9 + 1];
-        if (v6 < v7)
-        {
-            v33 = ((unsigned int)((char*)v7 - (char*)v6 - 1) >> 4) + 1;
-            do
-            {
-                *v32 = v31;
-                v34 = v32 + 1;
-                *v34++ = v31;
-                *v34++ = v31;
-                *v34 = v31;
-                v32 = v34 + 1;
-                --v33;
-            } while (v33);
-        }
-        if (v350) {
-            for (o = 0; o < v350; o++) {
-                GFX_gpst_Geo->vertexColors[v345 + 1 + o] = v31; // memset32(&GFX_gpst_Geo->vertexColors[v345 + 1], v31, v350);
-            }
-        }
-        v35 = TIM_gf_dt + inner1->timeElapsed;
-        inner1->timeElapsed = (float)v35;
-        if (v35 < inner1->f1 + inner1->f3)
-            goto LABEL_43;
-        v17 = (*(uint32_t*)&(inner1->color2) & 0xFFFFFF) == 0;
-        goto LABEL_25;
-    case 5u:
-        v36 = GFX_gpst_Geo->vertices;
-        v37 = inner1->color2 - inner1->f3;
-        v38 = &v36[v8];
-        v39 = &v36[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-        v308 = (float)((double)(uint16_t)a1->height * inner1->f1 * v37 * v37);
-        for (j = (float)(v37 * inner1->timeElapsed); v39 < v38; v39 += 4)
-        {
-            v282 = (float)((v39[2].x + v39->x) * 0.5 * inner1->color1 + j);
-            v40 = fabs(MATH_GetSin(v282)) * v308;
-            v41 = v39->y;
-
-            v39[0].y = (float)(v41 - v40);
-            v39[1].y = (float)(v39[1].y - v40);
-            v39[2].y = (float)(v39[2].y - v40);
-            v39[3].y = (float)(v39[3].y - v40);
-        }
-        v42 = TIM_gf_dt + inner1->f3;
-        inner1->f3 = (float)v42;
-        if (v42 < inner1->color2)
-            goto LABEL_43;
-        return 1;
-    case 6u:
-        v43 = inner1->color2 / inner1->color1;
-        v44 = GFX_gpst_Geo->vertices;
-        v45 = &v44[v8];
-        v46 = &v44[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-        v351 = v45;
-        for (k = (float)((1.0 - v43) * (1.0 - v43)); v46 < v351; v46 += 4)
-        {
-            a1a = -inner1->f1;
-            inner1o = (float)(RND_RandFloatRange(a1a, inner1->f1) * (double)(uint16_t)a1->width * k);
-            a1b = -inner1->timeElapsed;
-            v47 = RND_RandFloatRange(a1b, inner1->timeElapsed) * (double)(uint16_t)a1->height * k;
-            v46[0].x = inner1o + v46[0].x;
-            v46[0].y = (float)(v46[0].y - v47);
-            v46[1].x = inner1o + v46[1].x;
-            v46[1].y = (float)(v46[1].y - v47);
-            v46[2].x = inner1o + v46[2].x;
-            v46[2].y = (float)(v46[2].y - v47);
-            v46[3].x = inner1o + v46[3].x;
-            v46[3].y = (float)(v46[3].y - v47);
-        }
-        if ((inner1->flags & 0x30000) != 0)
-        {
-            v48 = inner1->color2 / inner1->color1;
-            v49 = v48 + v48;
-            v298 = (float)v49;
-            if ((inner1->flags & 0x20000) != 0)
-            {
-                v49 = 2.0 - v49;
-                v298 = (float)v49;
-            }
-            if (v49 > 1.0)
-                v298 = 1.0;
-            v50 = LIGHT_ul_Interpol2Colors(0, 0xFFFFFFFF, v298);
-            v51 = &GFX_gpst_Geo->vertexColors[v9 + 1];
-            if (v307 < v7)
-            {
-                v52 = ((unsigned int)((char*)v7 - (char*)v307 - 1) >> 4) + 1;
-                do
-                {
-                    *v51 = v50;
-                    v53 = (v51 + 1);
-                    *v53++ = v50;
-                    *v53++ = v50;
-                    *v53 = v50;
-                    v51 = (v53 + 1);
-                    --v52;
-                } while (v52);
-            }
-        }
-        v54 = TIM_gf_dt + inner1->color2;
-        inner1->color2 = (float)v54;
-        if (v54 < inner1->color1)
-            goto LABEL_43;
-        return 1;
-    case 7u:
-        v322 = 0;
-        if (inner1->color1 < (double)inner1->color2)
-        {
-            result = 0;
-            inner1->color1 = TIM_gf_dt + inner1->color1;
-            return result;
-        }
-        v299 = (float)((inner1->f1 - 0.050000001 - inner1->timeElapsed) / (double)v330);
-        if (v6 < v7)
-        {
-            v55 = &GFX_gpst_Geo->vertices[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-            do
-            {
-                v56 = inner1->color1 - inner1->color2 - (double)v322 * v299;
-                if (v56 <= 0.0)
-                    break;
-                v57 = v56 / inner1->timeElapsed;
-                if (v57 >= 1.0)
-                    v57 = 1.0;
-                v58 = v55[1].y;
-                ++v6;
-                ++v322;
-                v284 = (float)((v58 + v55[0].y) * 0.5);
-                v59 = (1.0 - v57) * ((v55[1].y - v55[0].y) * 0.5);
-                v60 = v284 - v59;
-                v55[3].y = (float)v60;
-                v55[0].y = (float)v60;
-                v61 = v59 + v284;
-                v55[2].y = (float)v61;
-                v55[1].y = (float)v61;
-                v55 += 4;
-            } while (v6 < v7);
-        }
-        v62 = TIM_gf_dt + inner1->color1;
-        inner1->color1 = (float)v62;
-        if (v62 >= inner1->color2 + inner1->f1)
-            goto LABEL_26;
-        goto LABEL_43;
-    case 8u:
-        v323 = 0;
-        v300 = (float)((inner1->f1 - 0.050000001 - inner1->timeElapsed) / (double)v330);
-        if (v6 < v7)
-        {
-            v63 = &GFX_gpst_Geo->vertices[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-            v64 = ((unsigned int)((char*)v7 - (char*)v6 - 1) >> 4) + 1;
-            do
-            {
-                v65 = (inner1->color1 - inner1->color2 - (double)v323 * v300) / inner1->timeElapsed;
-                v309 = (float)v65;
-                if (v65 < 1.0)
-                {
-                    if (v309 < 0.0)
-                        v309 = 0.0;
-                    v66 = (v63[1].y + v63[0].y) * 0.5;
-                    v67 = (v63[1].y - v63[0].y) * 0.5 * v309;
-                    v63[3].y = (float)(v66 - v67);
-                    v63[0].y = (float)(v66 - v67);
-                    v68 = v66 + v67;
-                    v63[2].y = (float)v68;
-                    v63[1].y = (float)v68;
-                }
-                v63 += 4;
-                --v64;
-                ++v323;
-            } while (v64);
-        }
-        v69 = TIM_gf_dt + inner1->color1;
-        inner1->color1 = (float)v69;
-        if (v69 < inner1->color2 + inner1->f1)
-            goto LABEL_43;
-        return 1;
-    case 9u:
-    case 10u:
-        v70 = GFX_gpst_Geo->vertices;
-        v71 = &v70[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-        v72 = v71;
-        v334 = v71->x;
-        v73 = &v70[v8];
-        inner1e = v334;
-        v74 = v71->y;
-        v285 = v71->y;
-        if (v71 < v73)
-        {
-            do
-            {
-                if (v72->x < (double)inner1e)
-                    inner1e = v72->x;
-                if (v72->y < (double)v285)
-                    v285 = v72->y;
-                if (v72->x > (double)v334)
-                    v334 = v72->x;
-                if (v74 < v72->y)
-                    v74 = v72->y;
-                ++v72;
-            } while (v72 < v73);
-        }
-        v75 = (inner1->color1 - inner1->color2) / inner1->f1;
-        if (v75 < 0.0)
-            v75 = 0.0;
-        v301 = (float)(v75 * v75);
-        if (flagsLOByte == 9)
-            v301 = (float)(1.0 - v301);
-        v76 = v71;
-        inner1f = (float)((v334 + inner1e) * 0.5);
-        for (l = (float)((v74 + v285) * 0.5); v76 < v73; v76++)
-        {
-            v77 = v76->x;
-            v76->x = (float)((v77 - inner1f) * v301 + inner1f);
-            v76->y = (v76->y - l) * v301 + l;
-        }
-        v78 = TIM_gf_dt + inner1->color1;
-        inner1->color1 = (float)v78;
-        if (v78 < inner1->color2 + inner1->f1)
-            goto LABEL_43;
-        v17 = LOBYTE(inner1->flags) == 9;
-        goto LABEL_25;
-    case 11u:
-    case 12u:
-        v79 = GFX_gpst_Geo;
-        v80 = GFX_gpst_Geo->vertices;
-        v81 = &v80[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-        v82 = v81;
-        v335 = v81->x;
-        v83 = &v80[v8];
-        inner1g = v335;
-        v84 = v81->y;
-        v287 = v81->y;
-        if (v81 < v83)
-        {
-            do
-            {
-                if (v82->x < (double)inner1g)
-                    inner1g = v82->x;
-                if (v82->y < (double)v287)
-                    v287 = v82->y;
-                if (v82->x > (double)v335)
-                    v335 = v82->x;
-                if (v84 < v82->y)
-                    v84 = v82->y;
-                ++v82;
-            } while (v82 < v83);
-        }
-        if (inner1->timeElapsed < (double)inner1->color1)
-        {
-            if (flagsLOByte == 12)
-            {
-                v85 = v81;
-                if (v81 < v83)
-                {
-                    do
-                    {
-                        v85->y = -1.0;
-                        v85->x = -1.0;
-                        ++v85;
-                    } while (v85 < v83);
-                    v79 = GFX_gpst_Geo;
-                }
-                v86 = v79->vertices;
-                v87 = &v86[v345];
-                for (m = &v86[v350 + v345]; v87 < m; ++v87)
-                {
-                    v87->y = -1.0;
-                    v87->x = -1.0;
-                }
-            }
-            result = 0;
-            inner1->timeElapsed = TIM_gf_dt + inner1->timeElapsed;
-            return result;
-        }
-        v89 = (inner1->timeElapsed - inner1->color1) / inner1->f1;
-        v302 = (float)(v89 * v89);
-        if (flagsLOByte == 12)
-            v302 = (float)(1.0 - v302);
-        v310 = (float)((inner1->color2 - 1.0) * v302 + 1.0);
-        inner1h = (float)((v335 + inner1g) * 0.5);
-        v288 = (float)((v84 + v287) * 0.5);
-        v90 = LIGHT_ul_Interpol2Colors(GFX_gpst_Geo->vertexColors[v9 + 1], 0, v302);
-        v91 = GFX_gpst_Geo;
-        v92 = &GFX_gpst_Geo->vertexColors[v9 + 1];
-        if (v81 < v83)
-        {
-            do
-            {
-                v93 = v81->x;
-                v81->x = (float)((v93 - inner1h) * v310 + inner1h);
-                v81->y = (v81->y - v288) * v310 + v288;
-                *v92 = v90;
-                ++v81;
-                ++v92;
-            } while (v81 < v83);
-            v91 = GFX_gpst_Geo;
-        }
-        if (v350)
-        {
-            v94 = v91->vertices;
-            v95 = &v94[v345 + v350];
-            v96 = &v94[v345];
-            v97 = LIGHT_ul_Interpol2Colors(v91->vertexColors[v345 + 1], 0, v302);
-            for (n = &GFX_gpst_Geo->vertexColors[v345 + 1]; v96 < v95; )
-            {
-                v99 = v96->x;
-                v96->x = (float)((v99 - inner1h) * v310 + inner1h);
-                v96->y = (v96->y - v288) * v310 + v288;
-                *n = v97;
-                ++v96;
-                ++n;
-            }
-        }
-        v100 = TIM_gf_dt + inner1->timeElapsed;
-        inner1->timeElapsed = (float)v100;
-        if (v100 < inner1->f1 + inner1->color1)
-            goto LABEL_43;
-        v17 = LOBYTE(inner1->flags) == 11;
-    LABEL_25:
-        if (v17)
-            LABEL_26 :
-            v306->flags |= 0x400u; // HIBYTE 0x4
-        return 1;
-    case 13u:
-    case 14u:
-        v101 = GFX_gpst_Geo->vertices;
-        v102 = inner1->timeElapsed / inner1->f1;
-        v103 = &v101[v8];
-        v104 = &v101[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-        if (flagsLOByte == 14)
-            v102 = 1.0 - v102;
-        inner1p = (float)(v102 * 1.5707964);
-        v311 = MATH_GetCos(inner1p);
-        for (ii = MATH_GetSin(inner1p); v104 < v103; v104++)
-        {
-            v105 = v104->y;
-            v106 = (v105 - inner1->color1) * ii + inner1->color1;
-            v104->y = (float)v106;
-            v104->z = (float)(fabs(v106 - inner1->color1) * v311 + v104->z);
-        }
-        v107 = TIM_gf_dt + inner1->timeElapsed;
-        inner1->timeElapsed = (float)v107;
-        if (v107 < inner1->f1)
-            goto LABEL_43;
-        v17 = LOBYTE(inner1->flags) == 14;
-        goto LABEL_25;
-    case 15u:
-        v108 = GFX_gpst_Geo->vertices;
-        v109 = 4 * specularColorPtr[(16 * (v344 + v356)) >> 4];
-        v110 = &v108[v109];
-        v336 = v108[v109].x;
-        inner1i = v336;
-        v111 = &v108[v8];
-        v112 = v108[v109].y;
-        v289 = v108[v109].y;
-        if (&v108[v109] < v111)
-        {
-            do
-            {
-                if (v110->x < (double)inner1i)
-                    inner1i = v110->x;
-                if (v110->y < (double)v289)
-                    v289 = v110->y;
-                if (v110->x > (double)v336)
-                    v336 = v110->x;
-                if (v112 < v110->y)
-                    v112 = v110->y;
-                ++v110;
-            } while (v110 < v111);
-        }
-        inner1j = (float)((v336 + inner1i) * 0.5);
-        v290 = (float)((v112 + v289) * 0.5);
-        v304 = MATH_GetSin(inner1->f1);
-        v312 = MATH_GetCos(inner1->f1);
-        inner1->f1 = TIM_gf_dt * inner1->timeElapsed + inner1->f1;
-        for (jj = &GFX_gpst_Geo->vertices[v109]; jj < v111; jj++)
-        {
-            v114 = jj->x;
-            v115 = v114 - inner1j;
-            v116 = jj->y - v290;
-            v324 = (float)(v312 * v116 + v115 * v304);
-            jj->x = (float)(v115 * v312 - v116 * v304 + inner1j);
-            jj->y = v324 + v290;
-        }
-        v117 = GFX_gpst_Geo->vertices;
-        v118 = &v117[v345];
-        v119 = &v117[v350 + v345];
-        if (v118 >= v119)
-            goto LABEL_43;
-        do
-        {
-            v120 = v118->x;
-            v121 = v120 - inner1j;
-            v122 = v118->y - v290;
-            v325 = (float)(v312 * v122 + v121 * v304);
-            v118->x = (float)(v121 * v312 - v122 * v304 + inner1j);
-            v118->y = v325 + v290;
-            ++v118;
-        } while (v118 < v119);
-        return 0;
-    case 16u:
         v123 = GFX_gpst_Geo->vertices;
         v326 = v123[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]].y;
         v124 = 0;
@@ -2106,210 +2294,101 @@ LABEL_12:
         v239 = TIM_gf_dt + inner1->timeElapsed;
         inner1->timeElapsed = (float)v239;
         if (v239 < inner1->f1)
-            LABEL_43:
-        result = 0;
-        else
-            result = 1;
-        return result;
-    case 17u:
-        v240 = GFX_gpst_Geo;
-        v241 = GFX_gpst_Geo->vertices;
-        v242 = &v241[v8];
-        v243 = &v241[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-        v244 = (double)(uint16_t)a1->height;
-        v354 = (float)((1.0 - inner1->timeElapsed) * v244);
-        inner1n = (float)((1.0 - inner1->f1) * v244);
-        if (v243 >= v242)
-            goto LABEL_43;
-        while (1)
-        {
-            if (v243[1].y > (double)inner1n || v243->y < (double)v354)
-            {
-                v243[3].x = -100.0f;
-                v243[2].x = -100.0f;
-                v243[1].x = -100.0f;
-                v243->x = -100.0f;
-                v243[3].y = -100.0f;
-                v243[2].y = -100.0f;
-                v243[1].y = -100.0f;
-                v243->y = -100.0f;
-            }
-            else if (v243->y > (double)inner1n || v243[1].y < (double)v354)
-            {
-                if (v243->y <= (double)inner1n)
-                    v245 = v243->y;
-                else
-                    v245 = inner1n;
-                if (v243[1].y >= (double)v354)
-                    v246 = v243[1].y;
-                else
-                    v246 = v354;
-                v247 = v243[1].y - v243->y;
-                v248 = &v240->UVs[v243 - v240->vertices];
-                v347 = v248[1].v - v248->v;
-                v249 = (v245 - v243->y) / v247 * v347 + v248->v;
-                v348 = (float)((v246 - v243->y) / v247 * v347 + v248->v);
-                v243[3].y = (float)v245;
-                v243->y = (float)v245;
-                v248[3].v = (float)v249;
-                v248->v = (float)v249;
-                v243[2].y = (float)v246;
-                v243[1].y = (float)v246;
-                v248[2].v = v348;
-                v248[1].v = v348;
-            }
-            v243 += 4;
-            if (v243 >= v242)
-                break;
-            v240 = GFX_gpst_Geo;
-        }
+            return 0;
+        return 1;
+}
+
+int STR_l_Effect_Treat(tGEOSTRStruct* str, tGEOSTREffectStruct* effect)
+{
+    tStrEffectRun run;
+    tGEOSTRStringData* sd;
+    int letterBase;
+    int kind;
+
+    sd = STR_pst_GetString(str, effect->stringid);
+    if (!sd)
+        return 1;
+    if ((sd->flags & 0x400) != 0)
         return 0;
-    case 18u:
-        v250 = GFX_gpst_Geo->vertices;
-        v251 = &v250[v8];
-        v252 = &v250[4 * specularColorPtr[(16 * (v344 + v356)) >> 4]];
-        if (v252 >= v251)
-            goto LABEL_43;
-        do
+
+    run.str = str;
+    run.effect = effect;
+    run.sd = sd;
+    run.spec = str->specularColorsPtr;
+    run.startIdx = STR_l_GetValidIndex(str, sd, effect->index);
+    run.count = STR_l_GetValidNumber(str, sd, run.startIdx, effect->number);
+
+    letterBase = run.startIdx + sd->index;
+    run.letters = &str->letters[letterBase];
+    run.lettersEnd = &run.letters[run.count];
+    run.firstVertex = 4 * run.spec[letterBase];
+    run.endVertex = 4 * run.spec[letterBase + run.count - 1] + 4;
+
+    // a run whose last letter sits on quad zero has no geometry
+    if (run.endVertex == 4)
+        return 1;
+
+    if ((effect->flags & 0x100) != 0 && (sd->flags & 0x100) != 0)
+    {
+        // the frame moves with the letters; 0x200 means the frame only
+        if ((effect->flags & 0x200) != 0)
         {
-            v253 = v252->x;
-            v252[0].x = (float)(v253 + inner1->f1);
-            v252[3].x = v252[3].x + inner1->f1;
-            v252 += 4;
-        } while (v252 < v251);
-        return 0;
-    case 19u:
-        inner1Type20 = (tGEOSTREffectStructType20*)inner1;
-        v254 = inner1Type20->color2 - TIM_gf_dt;
-        inner1Type20->color2 = (float)v254;
-        if (v254 >= 0.0)
-            goto LABEL_43;
-        v255 = inner1Type20->unkb1;
-        v256 = inner1Type20->unki1;
-        inner1Type20->color2 = inner1->color1;
-        v257 = (v256 >> (4 * v255)) & 0xF;
-        if (v257)
-        {
-            inner1Type20->unkb1 = v255 + 1;
+            run.lettersEnd = &str->letters[letterBase];
+            run.endVertex = run.firstVertex;
         }
-        else
-        {
-            inner1Type20->unkb1 = 1;
-            v257 = v256 & 0xF;
-        }
-        if (!inner1Type20->flagsAndChar)
-            inner1Type20->flagsAndChar = v6->flagsAndChar;
-        if (v257 == 1)
-            inner1Type20->color2 = (float)(inner1Type20->color2 * 0.5);
-        v6->flagsAndChar &= 0xffffff00;
-        v6->flagsAndChar |= (char)inner1Type20->flagsAndChar + v257 - 1;
-        return 0;
-        return 0;
-    case 20u:
-        v329 = 0;
-        v305 = inner1->timeElapsed / inner1->f1;
-        v318 = (float)((double)(uint16_t)a1->width * inner1->color1);
-        if (v330 > 0)
-        {
-            v358 = v305 + v305;
-            do
-            {
-                v258 = &GFX_gpst_Geo->vertices[4 * a1->specularColorsPtr[v344 + v329 + v306->index]];
-                inner1q = (float)((v258[2].x - v258->x) * 0.2);
-                v259 = (v258->x + v258[2].x) * 0.5;
-                v260 = (v258->x - v259) * v318 * v305;
-                v261 = v260 + v260 + v258->x;
-                v262 = v258->x + inner1q;
-                v293 = (float)v262;
-                v263 = v293 + inner1q;
-                v355 = (float)((v263 - v259) * v318 * v305 * v305 + v263);
-                v264 = v263 + inner1q;
-                v349 = (float)((v264 - v259) * v318 * v305 * v305 + v264);
-                v265 = v264 + inner1q;
-                v343 = (float)((v265 - v259) * v318 * v305 + v265);
-                v266 = v265 + inner1q;
-                v267 = (v266 - v259) * v318 * v305;
-                inner1r = (float)(v267 + v267 + v266);
-                v258[9].x = v355;
-                v258[8].x = v355;
-                v258[1].x = (float)v261;
-                v258[7].x = v355;
-                v268 = (v262 - v259) * v318 * v305 + v293;
-                v258[6].x = v355;
-                v258->x = (float)v261;
-                v258[13].x = v349;
-                v258[5].x = (float)v268;
-                v258[12].x = v349;
-                v258[4].x = (float)v268;
-                v258[11].x = v349;
-                v258[3].x = (float)v268;
-                v258[10].x = v349;
-                v258[2].x = (float)v268;
-                v258[17].x = v343;
-                v258[16].x = v343;
-                v258[15].x = v343;
-                v258[14].x = v343;
-                v258[19].x = inner1r;
-                v258[18].x = inner1r;
-                v269 = &GFX_gpst_Geo->vertexColors[4 * a1->specularColorsPtr[v344 + v329 + v306->index] + 1];
-                v359 = v305 * v305;
-                v270 = LIGHT_ul_Interpol2Colors(*v269, 0, v359);
-                v271 = LIGHT_ul_Interpol2Colors(*v269, 0, v305);
-                if (v358 < 1.0)
-                    v272 = LIGHT_ul_Interpol2Colors(*v269, 0, v358);
-                else
-                    v272 = 0;
-                v269[1] = v272;
-                *v269 = v272;
-                v269[19] = v272;
-                v269[18] = v272;
-                v269[5] = v271;
-                v269[4] = v271;
-                v269[3] = v271;
-                v269[2] = v271;
-                v269[17] = v271;
-                v269[16] = v271;
-                v269[15] = v271;
-                v269[14] = v271;
-                v269[9] = v270;
-                v269[8] = v270;
-                v269[7] = v270;
-                v269[6] = v270;
-                v269[13] = v270;
-                v269[12] = v270;
-                v269[11] = v270;
-                v269[10] = v270;
-                v273 = &GFX_gpst_Geo->UVs[4 * a1->specularColorsPtr[v344 + v329++ + v306->index]];
-                v274 = (v273[2].u - v273->u) * 0.2;
-                v275 = v274 + v273->u;
-                v273[5].u = (float)v275;
-                v273[4].u = (float)v275;
-                v273[3].u = (float)v275;
-                v273[2].u = (float)v275;
-                v276 = v274 + v274 + v273->u;
-                v273[9].u = (float)v276;
-                v273[8].u = (float)v276;
-                v273[7].u = (float)v276;
-                v273[6].u = (float)v276;
-                v277 = 3.0 * v274 + v273->u;
-                v273[13].u = (float)v277;
-                v273[12].u = (float)v277;
-                v273[11].u = (float)v277;
-                v273[10].u = (float)v277;
-                v278 = v274 * 4.0 + v273->u;
-                v273[17].u = (float)v278;
-                v273[16].u = (float)v278;
-                v273[15].u = (float)v278;
-                v273[14].u = (float)v278;
-            } while (v329 < v330);
-        }
-        v279 = TIM_gf_dt + inner1->timeElapsed;
-        inner1->timeElapsed = (float)v279;
-        if (v279 >= inner1->f1)
-            goto LABEL_26;
-        goto LABEL_43;
+        run.frameVertices = 36;
+        run.frameFirst = 4 * sd->i2;
+    }
+    else
+    {
+        run.frameVertices = 0;
+        run.frameFirst = 0;
+        if (!run.count)
+            return 1;
+    }
+
+    kind = effect->flags & 0xff;
+    switch (kind)
+    {
+    case 1:
+        return STR_l_Effect_FadeToBlack(&run);
+    case 2:
+        return STR_l_Effect_Blink(&run);
+    case 3:
+        return STR_l_Effect_ColorByPosition(&run);
+    case 4:
+        return STR_l_Effect_FadeBetweenColors(&run);
+    case 5:
+        return STR_l_Effect_Wave(&run);
+    case 6:
+        return STR_l_Effect_Shake(&run);
+    case 7:
+        return STR_l_Effect_OpenVertically(&run);
+    case 8:
+        return STR_l_Effect_CloseVertically(&run);
+    case 9:
+    case 10:
+        return STR_l_Effect_ScaleRun(&run, kind);
+    case 11:
+    case 12:
+        return STR_l_Effect_ScaleAndFade(&run, kind);
+    case 13:
+    case 14:
+        return STR_l_Effect_FoldY(&run, kind);
+    case 15:
+        return STR_l_Effect_Rotate(&run);
+    case 16:
+        return STR_l_Effect_Reveal(&run);
+    case 17:
+        return STR_l_Effect_ClipBand(&run);
+    case 18:
+        return STR_l_Effect_ShearLetters(&run);
+    case 19:
+        return STR_l_Effect_Scramble(&run);
+    case 20:
+        return STR_l_Effect_Slice(&run);
     default:
-        goto LABEL_43;
+        return 0;
     }
 }
 
