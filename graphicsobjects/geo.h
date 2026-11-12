@@ -113,9 +113,9 @@ typedef struct sGeoSkn
 /*
 typedef struct sGeoSub6
 {
-    __int16 triangleChunkID;
-    unsigned __int16 num;
-    __int16* triangleChunkElemIDs;
+    int16_t triangleChunkID;
+    uint16_t num;
+    int16_t* triangleChunkElemIDs;
 } tGeoSub6;
 
 typedef struct sGeoSub5

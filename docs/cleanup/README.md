@@ -241,6 +241,69 @@ zero after a cancellation.
 Each test reports its own figures on every run, so a regression that
 moves them shows up without anyone having to remember these numbers.
 
+### 5. graphicsobjects/
+
+**Nine of ten files done.** Full record in
+[graphicsobjects.md](graphicsobjects.md).
+
+Ten files, **7,011 lines to 6,645**. Nine are finished: no `goto`, no
+decompiler-named local or parameter. The tenth, `geostr.c`, is
+finished apart from `STR_l_Effect_Treat` — 2,227 lines with 43 of the
+directory's 64 `goto`s, and a pass of its own.
+
+`geo.c` and `camera.c` needed nothing: they were already source.
+
+No differential tests here, and that is a decision. Every file is an
+implementation of the graphics-object interface — a loader walking a
+byte stream, a free function, a render entry point handing work to the
+display device — so standing one up means standing up the loader, the
+texture manager, the display device and the geometry buffer, and the
+test would be measuring the mocks.
+
+What the risky changes got instead was mechanical verification of the
+one thing that could break:
+
+- **The particle loader's read order.** A switch over twelve file
+  versions. The reader and the target of every read, per version, were
+  extracted from both copies and compared with the old copy's jumps
+  resolved. All twelve agree.
+- **The nine-patch's 72 stores.** `STR_AddFrame` was 274 lines of
+  scrambled stores; every one was resolved through its temporaries
+  into a vertex-index-to-expression map, and the rewritten loop was
+  checked against that map. All 36 vertices and all 36 UVs agree.
+- **The one-quad sprite**, the same way.
+
+#### Three findings
+
+- **The nine-patch's middle column and row sample one line of texels
+  each**, at the midpoint between the glyph's two edges. That is what
+  lets them stretch, and it is why the u and v edge tables have a
+  repeated middle entry.
+- **`shadow.c` carried an unsigned-to-double conversion written out
+  longhand** — the signed conversion plus 2^32 behind a sign test —
+  which is now the conversion itself.
+- **`MAT_Validate_Multi`'s closing XOR**, which carried two
+  `TODO FIXME ??????? ez mi`, sets bit 0x40 of the result to bit 0x40
+  of the running AND of the children's masks where every other bit is
+  the union. Written as an if/else, the question answers itself.
+
+#### Preserved rather than fixed
+
+`geostr.c`'s per-material counter block is cleared for 24 of its 64
+entries, so a material with more than 24 sub-materials can have counts
+written above index 23 that are never read; `STR_Init` clears 23 of
+the 24 global string slots; and the two pivot spellings in
+`STR_Render` differ in a cast that the parameter truncates away, and
+are left as the original has them rather than unified on a guess.
+
+#### One stub gap
+
+`shadow.c` does not parse against the committed stub — it calls two
+`IDirect3DDevice9` vtable methods it does not declare. It was verified
+against a scratch copy with those two methods and their four
+render-state constants added; the addition belongs in whichever of the
+gfx pass and this one lands second, since both touch
+`tests/stub/d3d9.h`.
 ### 4. gfx/
 
 **Done.** Full record in [gfx.md](gfx.md).

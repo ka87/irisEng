@@ -13,5 +13,6 @@ typedef struct sGEOSTATICLOD
     struct sGEOGRO* geo[6];
 } tGEOSTATICLOD;
 
-struct sGEOGRO* GEO_pst_StaticLOD_GetLOD(struct sGEOSTATICLOD* a1, uint8_t a2);
+int GEO_l_StaticLOD_GetIndex(struct sGEOSTATICLOD* lod, uint8_t distance);
+struct sGEOGRO* GEO_pst_StaticLOD_GetLOD(struct sGEOSTATICLOD* lod, uint8_t distance);
 void GEO_StaticLOD_Init();

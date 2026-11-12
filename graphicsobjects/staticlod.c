@@ -17,7 +17,7 @@ tGEOSTATICLOD* GEO_pst_StaticLOD_Create(uint8_t lodNum)
     return lod;
 }
 
-struct sGEOGRO* GEO_pst_StaticLOD_GetLOD(struct sGEOSTATICLOD* lod, uint8_t distance)
+int GEO_l_StaticLOD_GetIndex(tGEOSTATICLOD* lod, uint8_t distance)
 {
     int i;
 
@@ -26,7 +26,12 @@ struct sGEOGRO* GEO_pst_StaticLOD_GetLOD(struct sGEOSTATICLOD* lod, uint8_t dist
         if (lod->distance[i] < distance)
             break;
     }
-    return lod->geo[i];
+    return i;
+}
+
+struct sGEOGRO* GEO_pst_StaticLOD_GetLOD(struct sGEOSTATICLOD* lod, uint8_t distance)
+{
+    return lod->geo[GEO_l_StaticLOD_GetIndex(lod, distance)];
 }
 
 void GEO_StaticLOD_FreeContent(tGEOSTATICLOD* lod)
@@ -90,34 +95,20 @@ tGroGeneric* GEO_p_StaticLOD_CreateFromBuffer(struct sGroGeneric* gro, char** re
     return (tGroGeneric*)lod;
 }
 
-int GEO_l_StaticLOD_GetIndex(tGEOSTATICLOD* a1, uint8_t distance)
-{
-    int i;
-
-    for (i = 0; i < a1->lodNum - 1; i++)
-    {
-        if (a1->distance[i] < distance)
-            break;
-    }
-    return i;
-}
-
 BOOL GEO_l_StaticLOD_HasSomethingToRender(struct sGameObjectVisualObject* gaovo, struct sGroGeneric** gro)
 {
     tGEOSTATICLOD* lod;
-    BOOL ret;
     tGEOGRO* geo;
 
     gpst_DX_stDD->drawMaskAllowedStuffCurrent = gaovo->objDrawMask & gpst_DX_stDD->drawMaskAllowedStuff;
     lod = (tGEOSTATICLOD*)gaovo->GROGEOOrSomethingElse;
     lod->currDistance = gpst_DX_stDD->currTargetGao->distance;
-    if ((geo = lod->geo[GEO_l_StaticLOD_GetIndex(lod, lod->currDistance)]) == NULL) ret = FALSE;
+    geo = lod->geo[GEO_l_StaticLOD_GetIndex(lod, lod->currDistance)];
 
     *gro = (tGroGeneric*)geo;
-
-    if (geo != NULL)
-        ret = (gpst_DX_stDD->drawMaskAllowedStuffCurrent & 8) ? TRUE : FALSE;
-    return ret;
+    if (!geo)
+        return FALSE;
+    return (gpst_DX_stDD->drawMaskAllowedStuffCurrent & 8) ? TRUE : FALSE;
 }
 
 void GEO_StaticLOD_Init()

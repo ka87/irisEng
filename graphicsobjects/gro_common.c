@@ -179,38 +179,31 @@ void GRO_PushLookAtMatrix(tGdi_DisplayData* dd, tGameObjectMain* gao)
 {
     Vec3 banking;
     Vec3 sight;
+    Vec3 swapped;
+    Vec3 scale;
     Mtx4x4 rotMtx;
 
     PRO_PerfCounterStartBlock(&dd->rasters[23]);
 
-    sight.x = gao->matrices->Pos.x - dd->ct.cam.objectMtx.Pos.x;
-    sight.y = gao->matrices->Pos.y - dd->ct.cam.objectMtx.Pos.y;
-    sight.z = gao->matrices->Pos.z - dd->ct.cam.objectMtx.Pos.z;
-    banking.x = dd->ct.cam.objectMtx.v2.x * -1.0f;
-    banking.y = dd->ct.cam.objectMtx.v2.y * -1.0f;
-    banking.z = dd->ct.cam.objectMtx.v2.z * -1.0f;
+    MATH_SubstractVec(&sight, &gao->matrices->Pos, &dd->ct.cam.objectMtx.Pos);
+    MATH_VecInvert(&banking, &dd->ct.cam.objectMtx.v2);
 
     MATH_MakeRotationMatrix_UsingSight(&rotMtx, &sight, &banking, 1);
-    
-    banking.x = rotMtx.v2.x * -1.0f;
-    banking.y = rotMtx.v2.y * -1.0f;
-    banking.z = rotMtx.v2.z * -1.0f;
-    
-    rotMtx.v2.x = rotMtx.v3.x;
-    rotMtx.v2.y = rotMtx.v3.y;
-    rotMtx.v2.z = rotMtx.v3.z;
 
-    rotMtx.v3.x = banking.x;
-    rotMtx.v3.y = banking.y;
-    rotMtx.v3.z = banking.z;
+    // the rotation comes back with its second and third axes the other
+    // way round from what the matrix stack wants, and the new third axis
+    // points the other way
+    MATH_VecInvert(&swapped, &rotMtx.v2);
+    rotMtx.v2 = rotMtx.v3;
+    rotMtx.v3 = swapped;
 
     rotMtx.Pos = gao->matrices->Pos;
     rotMtx.mtxflag |= 0x2;
 
     if ((OBJ_pst_GetAbsoluteMatrix(gao)->mtxflag & 0x8) != 0)
     {
-        MATH_GetScale(&banking, OBJ_pst_GetAbsoluteMatrix(gao));
-        MATH_SetScale(&rotMtx, &banking);
+        MATH_GetScale(&scale, OBJ_pst_GetAbsoluteMatrix(gao));
+        MATH_SetScale(&rotMtx, &scale);
     }
 
     PRO_PerfCounterEndBlock(&dd->rasters[23]);

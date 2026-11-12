@@ -123,18 +123,18 @@ BOOL SDW_GET_SF(tGameObjectMain* gao, tGameObjectMain* gaoToBeCheckedAsParent)
 
 void SDW_Destroy()
 {
-    tShadowStruct* v0;
+    tShadowStruct* shadow;
 
-    if (gpst_DX_stDD)
+    if (!gpst_DX_stDD)
+        return;
+
+    SDW_Clear();
+    shadow = gpst_DX_stDD->shadowStruct;
+    if (shadow)
     {
-        SDW_Clear();
-        v0 = gpst_DX_stDD->shadowStruct;
-        if (v0)
-        {
-            MEM_Free(v0->shadowElems);
-            MEM_Free(v0);
-            gpst_DX_stDD->shadowStruct = NULL;
-        }
+        MEM_Free(shadow->shadowElems);
+        MEM_Free(shadow);
+        gpst_DX_stDD->shadowStruct = NULL;
     }
 }
 
@@ -327,13 +327,13 @@ void SDW_Display1ShadowOn1Object(tGEOGRO* geogro, tShadowElemStruct* sdes)
 void SDW_RenderShadow(tGdi_DisplayData* gdd, tGEOGRO* geogro, tShadowElemStruct* ses)
 {
     unsigned int i, sdwNum;
-    double v5;
     double xs;
     double ys;
 
     unsigned int clearFlag;
     int zEnableBackup;
-    unsigned int v24;
+    unsigned int column;
+    unsigned int row;
     float unusedShiftParams[4];
     Mtx4x4 viewMtx;
     Mtx4x4 gaoMtxInv;
@@ -345,15 +345,11 @@ void SDW_RenderShadow(tGdi_DisplayData* gdd, tGEOGRO* geogro, tShadowElemStruct*
     clearFlag = ses->sdwTexElemNum & 0x80000000;
     ses->sdwTexElemNum = sdwNum;
     
-    v24 = SDW_RDR_AND & sdwNum;
-    v5 = (double)(int)v24;
-    
-    if ((SDW_RDR_AND & sdwNum & 0x80000000) != 0) 
-        v5 = v5 + 4294967300.0;
-    
-    xs = (v5 + v5 + 1.0) * SDW_RDR_XS;
-    v24 = sdwNum >> SDW_RDR_SHIFT;
-    ys = ((double)v24 + (double)v24 + 1.0) * SDW_RDR_YS;
+    column = (unsigned int)(SDW_RDR_AND & sdwNum);
+    row = sdwNum >> SDW_RDR_SHIFT;
+
+    xs = ((double)column + (double)column + 1.0) * SDW_RDR_XS;
+    ys = ((double)row + (double)row + 1.0) * SDW_RDR_YS;
 
     unusedShiftParams[0] = (float)(xs - SDW_RDR_XS);
     unusedShiftParams[1] = (float)(ys - SDW_RDR_YS);
