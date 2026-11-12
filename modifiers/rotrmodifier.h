@@ -12,9 +12,9 @@ typedef struct sRotrMdfStruct
     Vec3 v1;
 } tRotrMdfStruct;
 
-void GAO_ModifierROTR_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void GAO_ModifierROTR_Destroy(struct sModifier* a1);
-void GAO_ModifierROTR_Apply(struct sModifier* a1, void* unk1);
-int GAO_ModifierROTR_Load(struct sModifier* arg0, char* a1);
-void GAO_ModifierROTR_Reinit(struct sModifier* a1);
-void GAO_ModifierROTR_Unapply(struct sModifier* a1, void* unk1);
+void GAO_ModifierROTR_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GAO_ModifierROTR_Destroy(struct sModifier* mdf);
+void GAO_ModifierROTR_Apply(struct sModifier* mdf, void* unk1);
+int GAO_ModifierROTR_Load(struct sModifier* mdf, char* data);
+void GAO_ModifierROTR_Reinit(struct sModifier* mdf);
+void GAO_ModifierROTR_Unapply(struct sModifier* mdf, void* unk1);
