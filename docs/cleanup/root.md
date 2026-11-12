@@ -4,13 +4,16 @@ The 46 sources in `irisEng.vcxproj` with no directory of their own: the
 engine proper, 72,692 lines and 635 `goto`s, and the largest thing left.
 This file is the per-file record as the pass works through it.
 
-**One file done so far**, and out of order: `grid.c`, because
-`ai/ai_gridfunctions.c` was blocked on it. Twelve of the other 45 were
-already source and need nothing.
+Twelve of the 46 were already source and need nothing. Of the rest,
+`grid.c` was done out of order in the previous batch, because
+`ai/ai_gridfunctions.c` was blocked on it; `math.c` and `dynamics.c`
+followed, and four more are in progress.
 
 | file | lines | residue | gotos | state |
 | --- | --- | --- | --- | --- |
 | `grid.c` | 2,064 to 1,700 | 1,290 to 0 | 23 to 0 | done |
+| `math.c` | 2,132 to 2,130 | 779 to 0 | 0 | done |
+| `dynamics.c` | 1,282 to 1,268 | 782 to 0 | 5 to 0 | done |
 | `cameraengine.c` | 285 | | | already source |
 | `common.c` | 20 | | | already source |
 | `dbg.c` | 162 | | | already source |
@@ -34,8 +37,6 @@ already source and need nothing.
 | `proceduraltextures.c` | 1,752 | 1,108 | 11 | |
 | `ok3.c` | 1,317 | 974 | 23 | |
 | `particlegenerator.c` | 1,112 | 835 | 22 | |
-| `dynamics.c` | 1,282 | 782 | 5 | |
-| `math.c` | 2,132 | 779 | 0 | |
 | `soundmodifier.c` | 1,506 | 750 | 12 | |
 | `gfx.c` | 1,575 | 721 | 60 | |
 | `materialanddraw.c` | 1,012 | 492 | 12 | |
@@ -65,15 +66,169 @@ lines are the stack primitives themselves — `AI_PutIntToStack(int a1)`
 and its siblings — which every file in `ai/` calls and none of them
 defines.
 
-Three of the rest are worth doing early for reasons beyond their own
-size: **`math.c`**, because every other file's inlined arithmetic is
-checked against its bodies and its parameters are still `a1`/`a2`;
-**`strings.c`**, because `ai/ai_gameobjecttextfunctions.c` already had
-to read it to name its own arguments; and **`collision.c`**, for the
-same reason `grid.c` came first — `ai/ai_colfunctions.c` named four
-arguments from `collision.h` and had to leave a fifth as
-`edgeSearchArg`, because the edge search it reaches is still decompiler
-output.
+**`collision.c`** is the one left that is worth doing early for a
+reason beyond its own size, and it is the same reason `grid.c` and
+`math.c` came first: `ai/ai_colfunctions.c` named four arguments from
+`collision.h` and had to leave a fifth as `edgeSearchArg`, because the
+edge search it reaches is still decompiler output.
+
+---
+
+## math.c
+
+2,132 lines to 2,130, 113 functions, residue 0 in both the source and
+the header. The vector and matrix helpers were already named; the 779
+residue lines sat in 47 functions, almost all of them rotation,
+quaternion, parabola and cubic-solver code.
+
+This file came before the rest of the directory on purpose: every other
+file's inlined arithmetic is checked against its bodies, so a wrong
+guess about what one of its parameters means propagates.
+
+### The differential test
+
+`tests/test_math.c` compiles the pre-rewrite copy and the rewrite into
+one binary and compares them over **85,829 cases. Every value is
+bit-identical.** That is the strongest check in the tree, and it is
+cheap here for one reason: `math.c` needs three allocator mocks and
+nothing else, so there are no mocks to measure instead of the code.
+
+What it drives: the four lookup tables byte for byte after both copies
+initialise them; `GetSin`, `GetCos`, `GetSqrt`, `GetInverse` and
+`GetInverseSqrt` over a sweep through both signs and each end's wrap;
+every vector, matrix and quaternion helper over randomised inputs,
+with the in-place ones each given their own copy of the input; the
+cubic solver over 4,000 random coefficient triples plus its triple-root
+and double-root corners, which random inputs never hit; and both
+parabola projections including their degenerate paths.
+
+It earned its place immediately. The first run reported 441 differences,
+all in `MATH_VecRotate` -- because the driver handed the second copy an
+axis the first had already normalised in place. That is the same
+mutation now flagged in the file, and nothing else in the pass would
+have surfaced it.
+
+The other guard worth keeping is a type check, `every local's declared
+type before against after, per function`. Renaming cannot change a
+type, but a rewrite can: the first draft of the cubic solver promoted
+four `float` locals to `double`, which changes the arithmetic and which
+neither the parse nor a reading would catch.
+
+### What reading it settled
+
+- **The cubic solver** is Cardano's method on a monic cubic, and its
+  return value is how many real roots it found: 1 for one real root or
+  a triple root, 2 for a double root, 3 for three. Its common tail --
+  subtract a third of the quadratic coefficient from each root -- was
+  written out four times, once per early return, and is now one exit.
+- **The 3D parabola projection's second argument is an output**: the
+  tangent at the projected point. `dynamics.c` passes a constraint's
+  tangent vector there and normalises it after the call, and
+  `ai/ai_mathfunctions.c` passes a local it discards. Its two reference
+  points enter the frame build symmetrically, through their difference
+  and their sum, so they are `refA` and `refB` rather than anything
+  more specific.
+- **The five quaternion delta decoders are one scheme.** The 16-bit
+  field rotates through the three components while the other two take 8
+  bits each, and the `_800` variant assigns where the other four
+  accumulate -- so it is the keyframe and they are the deltas.
+- **`MATH_f_MaxOf3` and `MATH_f_MinOf3`** are this file's two
+  `_sub_<address>` names, now named, with their 78 call sites across
+  `collision.c` and two `ai/` files following. Two off that sweep.
+- **The blend cache** -- four globals that `MATH_MatrixBlend` fills and
+  `MATH_Slerp` reads when the caller says not to recompute -- loses its
+  address suffixes and takes the file's own prefix convention.
+
+### Preserved rather than fixed, each with a line in the file
+
+- **The 2D parabola projection takes its x from one root and its height
+  from another.** When the middle root is the closest, it writes
+  `dest->x` from `roots.y` and computes `dest->y` from `roots.x`, which
+  the local holding the chosen root still contains. The other two
+  branches are consistent. This is also why the three nearly identical
+  tails are not folded: folding them would silently fix it.
+- **The 3D form computes the second endpoint's local coordinates and
+  never reads them.** The parabola is built from the first endpoint
+  alone.
+- **The 3x3 inverse scales a float it has already stored** for its
+  first row, where the other two rows use the full-precision cofactor.
+- **`MATH_QuaternionBlend` inverts the caller's quaternion in place**,
+  and `MATH_VecRotate` normalises the caller's axis in place.
+
+Three locals were deleted and one folded, each checked use by use
+against the original first: two write-only pointers in `MATH_VecRotate`
+and an exact copy of its cosine.
+
+---
+
+## dynamics.c
+
+1,282 lines to 1,268, 45 functions, five gotos to none, residue 0 in
+both the source and the header.
+
+The three `_sub_<address>` functions here are called only from
+`DYN_OneCall` in the same file, so they are `static` now and named:
+`DYN_l_ApplyFrictionVector`, `DYN_l_ApplySpeed`, `DYN_l_AutoOrient`.
+
+### The gotos, which were three different shapes
+
+- The horizontal-speed setter's two jumped around a condition that is
+  just "gravity is non-zero on some axis". Written as that test, with
+  one flag, the duplication goes too.
+- The auto-orient's jumped from one arm of an `if`/`else` into the
+  other to share two statements. Both arms write them out.
+- The main loop's two were a hierarchy climb. Having walked up to an
+  unprocessed parent, the table slot is revisited so the child is
+  handled after it, which is one flag test rather than two labels. The
+  decrement of the loop variable reads as a mistake and carries a line
+  saying it is not.
+
+### Inlines restored, and one that must not be
+
+Three restored after reading the real body: the traction length is
+`MATH_VecLen` exactly, cast and summation order included; the guarded
+`memcpy` after the angular-velocity multiply is `MATH_CopyMatrix`; and
+the negation after a normalise is `MATH_VecInvert`.
+
+A fourth looks identical and is left alone, which is the point of the
+rule. The normalise in `DYN_b_SpeedReachInTime` keeps its reciprocal at
+`long double`, while `MATH_NormalizeVector` narrows it to `float`
+before multiplying. The call would not compute the same thing, and the
+user's own `// MATH_NormalizeVector` note at that site is a comment
+that it *looks* like the helper, not that it is.
+
+### What reading it settled
+
+- **The field called `mass` holds the reciprocal of the mass**, and
+  `forceVector` holds momentum, so a speed is `forceVector` times that
+  field. `DYN_Dyna_Init` is where it is set, and every user agrees.
+- **`(ptr & 3) != 1` is the free-table tag**, the same test the `ai/`
+  pass named, here cast through `uint8_t` rather than `uintptr_t`. It
+  looks at the low byte, so it still reads the right two bits.
+- Two of the inliner's dead null tests are dropped, both where the
+  pointer is dereferenced unconditionally anyway and one where it is
+  dereferenced *before* the test. Four reads of `dyn->forces` in one
+  function stay as four, because the first sits in one arm of a branch
+  and folding them would leave the pointer unset on the other path.
+
+### Preserved rather than fixed: the friction decay
+
+Each axis decays by 2 raised to `-friction * mass * dt`. The code
+rounds the integer part of that exponent into a local and **then never
+applies it**: the original x87 sequence scaled by it with `FSCALE`, and
+the decompilation kept only the `F2XM1` of the fractional part. So the
+decay factor is wrong as soon as `friction * dt` reaches a half.
+
+It happens at three sites -- the friction vector path, the no-friction-
+vector path, and the auto-orient's inertia blend -- and **the user's own
+`TODO FIXME, jó ez így?` sits on two of them**, which is what makes this
+a reading rather than a guess. The commented-out `__F2XM1__` lines the
+user kept at each site lack the scaling too, so the decompiler's output
+lacked it and the transcription is faithful.
+
+Left as written, with a line at each site, because restoring the scale
+changes how everything with friction moves.
+
 
 ---
 

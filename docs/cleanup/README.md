@@ -72,7 +72,10 @@ costs nothing and catches every invented call.
 **Differential tests** (`tests/`) compile the old and the new copy of a
 file into one binary, run both over identical state, and compare the
 results and the sequence of engine calls each made. That is the only
-check here that sees behaviour.
+check here that sees behaviour. `tests/test_math.c` is the one to read
+first: `math.c` is pure arithmetic over its arguments and four lookup
+tables, so it needs three allocator mocks and nothing else, and all
+85,829 of its comparisons come out bit-identical.
 
 ## Passes
 
@@ -513,14 +516,29 @@ Two things found in those files are worth the space:
 
 ### 7. The root directory
 
-**Started.** Per-file record in [root.md](root.md).
+**In progress.** Per-file record in [root.md](root.md).
 
 46 files, 72,963 lines, 658 `goto`s — the engine proper, and the largest
 thing left. Twelve of the 46 were already source.
 
-**One file so far, and out of order**: `grid.c`, **2,064 lines to 1,700**
-with all **23** `goto`s gone, because `ai/ai_gridfunctions.c` was waiting
-on it to learn what the grid functions' arguments mean.
+**Three files so far.** `grid.c`, **2,064 lines to 1,700** with all
+**23** `goto`s gone, came first because `ai/ai_gridfunctions.c` was
+waiting on it to learn what the grid functions' arguments mean. `math.c`
+and `dynamics.c` followed, and four more are in progress.
+
+**`math.c`** (2,132 to 2,130, 113 functions) was done by hand rather
+than forked, because every other file's inlined arithmetic is checked
+against its bodies. It also has the strongest verification in the tree:
+a differential test over **85,829 cases, every value bit-identical**,
+which caught a real in-place mutation on its first run. Its two
+`_sub_<address>` helpers are named, with all 78 call sites following.
+
+**`dynamics.c`** (1,282 to 1,268, five `goto`s to none) names three more
+`_sub_<address>` functions, all file-local. Its find is the friction
+decay: the integer part of the exponent is rounded off and then never
+applied, because the original scaled by it with `FSCALE` and the
+decompilation kept only the `F2XM1` of the fraction. It happens at three
+sites and the user's own `TODO FIXME` sits on two of them.
 
 What it holds: a per-world array of capability bytes with a small live
 window sliding over it, the window run-length encoded in the big file,
