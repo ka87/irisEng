@@ -4,702 +4,684 @@
 #include "ai_mathfunctions.h"
 #include "ai_soundfunctions.h"
 
+// Six builtins start a sound instance, and all six check the same four
+// things first. The order matters: a negative index passes the count
+// test and is caught by the next one, so SND_i_IsPlaying only ever sees
+// a valid index.
+static BOOL AI_l_CanStartInstance(int instanceIdx)
+{
+    return SND_gst_Params.soundEnabled
+           && SND_gst_Params.soundInstanceNum > instanceIdx
+           && instanceIdx >= 0
+           && !SND_i_IsPlaying(instanceIdx);
+}
+
+// Hands the instance to a game object, so the sound follows it.
+static void AI_l_AttachInstanceToGAO(struct sGameObjectMain* gao, int instanceIdx)
+{
+    SND_gst_Params.soundInstances[instanceIdx].gao = gao;
+    SND_SetPos(gao, instanceIdx, gao->matrices);
+}
+
+// The kind of a sound is a single bit of its flag word, and no bit at
+// all means a plain sample. Both the instance and the bank accessor
+// decode it this way.
+static int AI_l_SoundTypeFromFlags(unsigned int flags)
+{
+    switch (flags & 0x86008)
+    {
+    case 0:
+        return 1;
+    case 8:
+        return 5;
+    case 0x2000:
+        return 3;
+    case 0x4000:
+        return 2;
+    case 0x80000:
+        return 4;
+    default:
+        return -1;
+    }
+}
+
+// Five builtins walk an object's sound modifiers and do one thing to
+// each, where a modifier id of -1 means every one of them. The caller
+// has already checked that the object has a modifier chain.
+static void AI_l_ForEachSoundModifier(struct sGameObjectMain* gao, int modifierID,
+                                      void (*apply)(tSoundMdfStruct*))
+{
+    tSoundMdfStruct* sound;
+    tModifier* mdf;
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
+    {
+        if (mdf->modifierIntf->mdfId != 8)
+            continue;
+
+        sound = (tSoundMdfStruct*)mdf->mdfPrivateDataPtr;
+        if (modifierID == -1 || sound->modifierID == modifierID)
+            apply(sound);
+    }
+    PRO_QPC_RecordTimeDecRef(39);
+}
+
 tAINode* AI_EvalFunc_SNDSetGlobalPan(tAINode* node)
 {
-    int v1;
+    int pan;
 
-    v1 = AI_GetIntFromStack();
-    SND_SetGlobalPan(v1);
+    pan = AI_GetIntFromStack();
+    SND_SetGlobalPan(pan);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetGlobalPan(tAINode* node)
 {
-    int v1;
-
-    v1 = SND_l_GetGlobalPan();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(SND_l_GetGlobalPan());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDSetGlobalVol(tAINode* node)
 {
-    float v2;
+    float volume;
 
-    v2 = AI_GetFloatFromStack();
-    SND_SetGlobalVol(v2);
+    volume = AI_GetFloatFromStack();
+    SND_SetGlobalVol(volume);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetGlobalVol(tAINode* node)
 {
-    float v2;
-
-    v2 = SND_f_GetGlobalVol();
-    AI_PutFloatToStack(v2);
+    AI_PutFloatToStack(SND_f_GetGlobalVol());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetSound(tAINode* node)
 {
-    int v1;
-    int v2;
+    int soundID;
 
-    v1 = AI_GetIntFromStack();
-    v2 = SND_l_GetSoundIndex(v1);
-    AI_PutIntToStack(v2);
+    soundID = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_l_GetSoundIndex(soundID));
     return node + 1;
 }
 
-int AI_EvalFunc_SNDRequest_C(struct sGameObjectMain* gao, int a2, int a3)
+// Takes an instance for a sound and positions it on the object. Bit
+// 0x800 of the flags asks for it to start playing straight away.
+int AI_EvalFunc_SNDRequest_C(struct sGameObjectMain* gao, int soundID, int flags)
 {
-    int idx;
-    Mtx4x4* v5;
+    Mtx4x4* matrices;
+    int instanceIdx;
 
     if (!SND_gst_Params.soundEnabled)
         return -1;
+
     QueryPerformanceCounter(&PerfCounterStruct[39]);
-    v5 = gao->matrices;
-    idx = SND_l_Request(gao, a2);
-    if (idx != -1)
+    matrices = gao->matrices;
+    instanceIdx = SND_l_Request(gao, soundID);
+    if (instanceIdx != -1)
     {
-        SND_SetFlags(gao, idx, a3);
-        SND_SetPos(gao, idx, v5);
-        if ((a3 & 0x800) != 0)
-            SND_PlaySound(idx);
+        SND_SetFlags(gao, instanceIdx, flags);
+        SND_SetPos(gao, instanceIdx, matrices);
+        if ((flags & 0x800) != 0)
+            SND_PlaySound(instanceIdx);
     }
     PRO_QPC_RecordTimeDecRef(39);
-    return idx;
+    return instanceIdx;
 }
 
 tAINode* AI_EvalFunc_SNDRequest(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
-    int a3;
+    tGameObjectMain* gaoUltra;
+    int soundID;
+    int flags;
 
-    a3 = AI_GetIntFromStack();
-    v4 = AI_gpst_CurrentUltra;
+    flags = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_SNDRequest_C(v4, v1, a3);
-    AI_PutIntToStack(v2);
+    soundID = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_SNDRequest_C(gaoUltra, soundID, flags));
     return node + 1;
 }
 
-int AI_EvalFunc_SNDRequestPlay_C(struct sGameObjectMain* gao, int a2, float a3)
+// A volume of -1 leaves the instance's own volume alone.
+int AI_EvalFunc_SNDRequestPlay_C(struct sGameObjectMain* gao, int soundID, float volume)
 {
-    int a2a;
+    int instanceIdx;
 
     if (!SND_gst_Params.soundEnabled)
         return -1;
-    a2a = AI_EvalFunc_SNDRequest_C(gao, a2, 0x18000080);
+
+    instanceIdx = AI_EvalFunc_SNDRequest_C(gao, soundID, 0x18000080);
     QueryPerformanceCounter(&PerfCounterStruct[39]);
-    if (a3 != -1.0)
-        SND_SetVol(a2a, a3);
-    SND_PlaySound(a2a);
+    if (volume != -1.0)
+        SND_SetVol(instanceIdx, volume);
+    SND_PlaySound(instanceIdx);
     PRO_QPC_RecordTimeDecRef(39);
-    return a2a;
+    return instanceIdx;
 }
 
-int AI_EvalFunc_SNDRequestPlay_C_CURRENT(int a1, float a2)
+int AI_EvalFunc_SNDRequestPlay_C_CURRENT(int soundID, float volume)
 {
-    return AI_EvalFunc_SNDRequestPlay_C(AI_gpst_CurrentGameObject, a1, a2);
+    return AI_EvalFunc_SNDRequestPlay_C(AI_gpst_CurrentGameObject, soundID, volume);
 }
 
 tAINode* AI_EvalFunc_SNDRequestPlay(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a2;
-    float a3;
+    tGameObjectMain* gaoUltra;
+    int soundID;
+    float volume;
 
-    a3 = AI_GetFloatFromStack();
-    a2 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    volume = AI_GetFloatFromStack();
+    soundID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_SNDRequestPlay_C(v3, a2, a3);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_SNDRequestPlay_C(gaoUltra, soundID, volume));
     return node + 1;
 }
 
-int AI_EvalFunc_SNDRequestOnTrack_C(tGameObjectMain* gao, int a2, int a3)
+int AI_EvalFunc_SNDRequestOnTrack_C(tGameObjectMain* gao, int soundID, int flags)
 {
-    int idx;
-    Mtx4x4* v5;
+    Mtx4x4* matrices;
+    int instanceIdx;
 
     if (!SND_gst_Params.soundEnabled)
         return -1;
+
     QueryPerformanceCounter(&PerfCounterStruct[39]);
-    v5 = gao->matrices;
-    idx = SND_l_Request(gao, a2);
-    if (idx != -1)
+    matrices = gao->matrices;
+    instanceIdx = SND_l_Request(gao, soundID);
+    if (instanceIdx != -1)
     {
-        SND_SetFlags(gao, idx, a3);
-        SND_SetPos(gao, idx, v5);
-        if ((a3 & 0x800) != 0)
-            SND_PlaySoundOnTrack(idx);
+        SND_SetFlags(gao, instanceIdx, flags);
+        SND_SetPos(gao, instanceIdx, matrices);
+        if ((flags & 0x800) != 0)
+            SND_PlaySoundOnTrack(instanceIdx);
     }
     PRO_QPC_RecordTimeDecRef(39);
-    return idx;
+    return instanceIdx;
 }
 
 tAINode* AI_EvalFunc_SNDRequestOnTrack(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
-    int v5;
+    tGameObjectMain* gaoUltra;
+    int soundID;
+    int flags;
 
-    v5 = AI_GetIntFromStack();
-    v4 = AI_gpst_CurrentUltra;
+    flags = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_SNDRequestOnTrack_C(v4, v1, v5);
-    AI_PutIntToStack(v2);
+    soundID = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_SNDRequestOnTrack_C(gaoUltra, soundID, flags));
     return node + 1;
 }
 
-int AI_EvalFunc_SNDRequestPlayOnTrack_C(tGameObjectMain* gao, int a2, float a3)
+// Unlike SNDRequestPlay, this one sets the volume whatever it is.
+int AI_EvalFunc_SNDRequestPlayOnTrack_C(tGameObjectMain* gao, int soundID, float volume)
 {
-    int v4;
+    int instanceIdx;
 
     if (!SND_gst_Params.soundEnabled)
         return -1;
-    v4 = AI_EvalFunc_SNDRequestOnTrack_C(gao, a2, 0x18000080);
+
+    instanceIdx = AI_EvalFunc_SNDRequestOnTrack_C(gao, soundID, 0x18000080);
     QueryPerformanceCounter(&PerfCounterStruct[39]);
-    SND_SetVol(v4, a3);
-    SND_PlaySoundOnTrack(v4);
+    SND_SetVol(instanceIdx, volume);
+    SND_PlaySoundOnTrack(instanceIdx);
     PRO_QPC_RecordTimeDecRef(39);
-    return v4;
+    return instanceIdx;
 }
 
 tAINode* AI_EvalFunc_SNDRequestPlayOnTrack(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a2;
-    float a3;
+    tGameObjectMain* gaoUltra;
+    int soundID;
+    float volume;
 
-    a3 = AI_GetFloatFromStack();
-    a2 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    volume = AI_GetFloatFromStack();
+    soundID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_SNDRequestPlayOnTrack_C(v3, a2, a3);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_SNDRequestPlayOnTrack_C(gaoUltra, soundID, volume));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDDestroy(tAINode* node)
 {
-    int v1;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    SND_Release(v1);
+    instanceIdx = AI_GetIntFromStack();
+    SND_Release(instanceIdx);
     return node + 1;
 }
 
-void SND_SetNearFarS(int idx, float a2, float a3)
+void SND_SetNearFarS(int instanceIdx, float nearDist, float farDist)
 {
     QueryPerformanceCounter(&PerfCounterStruct[39]);
-    SND_SetNearFar(idx, 4096, a2, a3);
+    SND_SetNearFar(instanceIdx, 4096, nearDist, farDist);
     PRO_QPC_RecordTimeDecRef(39);
 }
 
 tAINode* AI_EvalFunc_SNDSetNearFar(tAINode* node)
 {
-    int v1;
-    float v3;
-    float v4;
+    int instanceIdx;
+    float nearDist;
+    float farDist;
 
-    v4 = AI_GetFloatFromStack();
-    v3 = AI_GetFloatFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_SetNearFarS(v1, v3, v4);
+    farDist = AI_GetFloatFromStack();
+    nearDist = AI_GetFloatFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    SND_SetNearFarS(instanceIdx, nearDist, farDist);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDSetPan(tAINode* node)
 {
-    int v1;
-    int v3;
-    int a3;
+    int instanceIdx;
+    int pan;
+    int front;
 
-    a3 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_SetPan(v1, v3, a3);
+    front = AI_GetIntFromStack();
+    pan = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    SND_SetPan(instanceIdx, pan, front);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetPan(tAINode* node)
 {
-    int v1;
-    int v2;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    v2 = SND_l_GetPan(v1);
-    AI_PutIntToStack(v2);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_l_GetPan(instanceIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetFront(tAINode* node)
 {
-    int v1;
-    int v2;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    v2 = SND_l_GetFront(v1);
-    AI_PutIntToStack(v2);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_l_GetFront(instanceIdx));
     return node + 1;
 }
 
-tAINode* AI_EvalFunc_SNDSetFreq(tAINode* arg0)
+tAINode* AI_EvalFunc_SNDSetFreq(tAINode* node)
 {
-    int a2;
-    int a1;
+    int instanceIdx;
+    int freq;
 
-    a2 = AI_GetIntFromStack();
-    a1 = AI_GetIntFromStack();
+    freq = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
     QueryPerformanceCounter(&PerfCounterStruct[39]);
-    SND_SetFreq(a1, a2);
+    SND_SetFreq(instanceIdx, freq);
     PRO_QPC_RecordTimeDecRef(39);
-    return arg0 + 1;
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetFreq(tAINode* node)
 {
-    int v1;
-    int v2;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    v2 = SND_l_GetFreq(v1);
-    AI_PutIntToStack(v2);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_l_GetFreq(instanceIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDSetVol(tAINode* node)
 {
-    int v1;
-    float v3;
+    int instanceIdx;
+    float volume;
 
-    v3 = AI_GetFloatFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_SetVol(v1, v3);
+    volume = AI_GetFloatFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    SND_SetVol(instanceIdx, volume);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetVol(tAINode* node)
 {
-    int v1;
-    float v3;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    v3 = SND_f_GetVol(v1);
-    AI_PutFloatToStack(v3);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutFloatToStack(SND_f_GetVol(instanceIdx));
     return node + 1;
 }
 
-void AI_EvalFunc_SNDUltraPlaySoundLooped_C(struct sGameObjectMain* gao, int a2)
+void AI_EvalFunc_SNDUltraPlaySoundLooped_C(struct sGameObjectMain* gao, int instanceIdx)
 {
-    if (SND_gst_Params.soundEnabled && SND_gst_Params.soundInstanceNum > a2 && a2 >= 0 && !SND_i_IsPlaying(a2))
-    {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_i_CheckOrInitGAO(gao);
-        SND_gst_Params.soundInstances[a2].gao = gao;
-        SND_SetPos(gao, a2, gao->matrices);
-        SND_PlaySoundLooping(a2);
-        PRO_QPC_RecordTimeDecRef(39);
-    }
+    if (!AI_l_CanStartInstance(instanceIdx))
+        return;
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    SND_i_CheckOrInitGAO(gao);
+    AI_l_AttachInstanceToGAO(gao, instanceIdx);
+    SND_PlaySoundLooping(instanceIdx);
+    PRO_QPC_RecordTimeDecRef(39);
 }
 
 tAINode* AI_EvalFunc_SNDUltraPlaySoundLooped(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int instanceIdx;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_SNDUltraPlaySoundLooped_C(v2, a2);
+    instanceIdx = AI_GetIntFromStack();
+    AI_EvalFunc_SNDUltraPlaySoundLooped_C(gaoUltra, instanceIdx);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDUltraPlaySound_C(struct sGameObjectMain* gao, int a2)
+void AI_EvalFunc_SNDUltraPlaySound_C(struct sGameObjectMain* gao, int instanceIdx)
 {
-    if (SND_gst_Params.soundEnabled && SND_gst_Params.soundInstanceNum > a2 && a2 >= 0 && !SND_i_IsPlaying(a2))
-    {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_i_CheckOrInitGAO(gao);
-        SND_gst_Params.soundInstances[a2].gao = gao;
-        SND_SetPos(gao, a2, gao->matrices);
-        SND_PlaySound(a2);
-        PRO_QPC_RecordTimeDecRef(39);
-    }
+    if (!AI_l_CanStartInstance(instanceIdx))
+        return;
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    SND_i_CheckOrInitGAO(gao);
+    AI_l_AttachInstanceToGAO(gao, instanceIdx);
+    SND_PlaySound(instanceIdx);
+    PRO_QPC_RecordTimeDecRef(39);
 }
 
 tAINode* AI_EvalFunc_SNDUltraPlaySound(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int instanceIdx;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_SNDUltraPlaySound_C(v2, a2);
+    instanceIdx = AI_GetIntFromStack();
+    AI_EvalFunc_SNDUltraPlaySound_C(gaoUltra, instanceIdx);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDPlaySoundOnTrack_C(struct sGameObjectMain* gao, int a2)
+// This one and SNDPlaySoundOnTrackFromTo guard the attach with a null
+// check that their four siblings do not have.
+void AI_EvalFunc_SNDPlaySoundOnTrack_C(struct sGameObjectMain* gao, int instanceIdx)
 {
-    if (SND_gst_Params.soundEnabled && SND_gst_Params.soundInstanceNum > a2 && a2 >= 0 && !SND_i_IsPlaying(a2))
-    {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_i_CheckOrInitGAO(gao);
-        if (gao)
-        {
-            SND_gst_Params.soundInstances[a2].gao = gao;
-            SND_SetPos(gao, a2, gao->matrices);
-        }
-        SND_PlaySoundOnTrack(a2);
-        PRO_QPC_RecordTimeDecRef(39);
-    }
+    if (!AI_l_CanStartInstance(instanceIdx))
+        return;
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    SND_i_CheckOrInitGAO(gao);
+    if (gao)
+        AI_l_AttachInstanceToGAO(gao, instanceIdx);
+    SND_PlaySoundOnTrack(instanceIdx);
+    PRO_QPC_RecordTimeDecRef(39);
 }
 
 tAINode* AI_EvalFunc_SNDPlaySoundOnTrack(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
+    tGameObjectMain* gaoUltra;
+    int instanceIdx;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    AI_EvalFunc_SNDPlaySoundOnTrack_C(v2, v3);
+    instanceIdx = AI_GetIntFromStack();
+    AI_EvalFunc_SNDPlaySoundOnTrack_C(gaoUltra, instanceIdx);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDPlaySoundLoopedOnTrack_C(tGameObjectMain* gao, int a2)
+void AI_EvalFunc_SNDPlaySoundLoopedOnTrack_C(tGameObjectMain* gao, int instanceIdx)
 {
-    if (SND_gst_Params.soundEnabled && SND_gst_Params.soundInstanceNum > a2 && a2 >= 0 && !SND_i_IsPlaying(a2))
-    {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_i_CheckOrInitGAO(gao);
-        SND_gst_Params.soundInstances[a2].gao = gao;
-        SND_SetPos(gao, a2, gao->matrices);
-        SND_PlaySoundLoopingOnTrack(a2);
-        PRO_QPC_RecordTimeDecRef(39);
-    }
+    if (!AI_l_CanStartInstance(instanceIdx))
+        return;
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    SND_i_CheckOrInitGAO(gao);
+    AI_l_AttachInstanceToGAO(gao, instanceIdx);
+    SND_PlaySoundLoopingOnTrack(instanceIdx);
+    PRO_QPC_RecordTimeDecRef(39);
 }
 
 tAINode* AI_EvalFunc_SNDPlaySoundLoopedOnTrack(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int instanceIdx;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_SNDPlaySoundLoopedOnTrack_C(v2, a2);
+    instanceIdx = AI_GetIntFromStack();
+    AI_EvalFunc_SNDPlaySoundLoopedOnTrack_C(gaoUltra, instanceIdx);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDSetDoppler(tAINode* node)
 {
-    int v1;
-    int v3;
+    int instanceIdx;
+    int enable;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_SetDoppler(v1, v3);
+    enable = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    SND_SetDoppler(instanceIdx, enable);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDEnableMute(tAINode* node)
 {
-    int v1;
-    int v3;
+    int group;
+    int enable;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_MuteEnable(v1, v3);
+    enable = AI_GetIntFromStack();
+    group = AI_GetIntFromStack();
+    SND_MuteEnable(group, enable);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDMuteIsEnable(tAINode* node)
 {
-    int v1;
-    int v2;
+    int group;
 
-    v1 = AI_GetIntFromStack();
-    v2 = SND_i_MuteIsEnable(v1);
-    AI_PutIntToStack(v2);
+    group = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_MuteIsEnable(group));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDSetUpMute(tAINode* node)
 {
-    int v1;
-    float a2;
-    float a3;
+    int group;
+    float target;
+    float duration;
 
-    a3 = AI_GetFloatFromStack();
-    a2 = AI_GetFloatFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_MuteSetUp(v1, a2, a3);
+    duration = AI_GetFloatFromStack();
+    target = AI_GetFloatFromStack();
+    group = AI_GetIntFromStack();
+    SND_MuteSetUp(group, target, duration);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetMute(tAINode* node)
 {
-    int v1;
-    int v3;
-    float v4;
+    int group;
+    int which;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v4 = SND_f_MuteGet(v1, v3);
-    AI_PutFloatToStack(v4);
+    which = AI_GetIntFromStack();
+    group = AI_GetIntFromStack();
+    AI_PutFloatToStack(SND_f_MuteGet(group, which));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDStopSound(tAINode* node)
 {
-    int v1;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    SND_StopRq(v1);
+    instanceIdx = AI_GetIntFromStack();
+    SND_StopRq(instanceIdx);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDPauseSound(tAINode* node)
 {
-    int v1;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    SND_Pause(v1);
+    instanceIdx = AI_GetIntFromStack();
+    SND_Pause(instanceIdx);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDIsPlaying(tAINode* node)
 {
-    int v1;
-    int v2;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    v2 = SND_i_IsPlaying(v1);
-    AI_PutIntToStack(v2);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_IsPlaying(instanceIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDCurPosRatio(tAINode* node)
 {
-    int v1;
-    float v3;
+    int instanceIdx;
 
-    v1 = AI_GetIntFromStack();
-    v3 = SND_f_CurrentPosRatio(v1);
-    AI_PutFloatToStack(v3);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutFloatToStack(SND_f_CurrentPosRatio(instanceIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDSetSndTrack(tAINode* node)
 {
-    int v1;
-    int v3;
+    int instanceIdx;
+    int trackID;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_SetTrack(v1, v3);
+    trackID = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    SND_SetTrack(instanceIdx, trackID);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetSndTrack(tAINode* node)
 {
-    int v1;
-    int v3;
+    int instanceIdx;
 
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_GetTrack(v3);
-    AI_PutIntToStack(v1);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_GetTrack(instanceIdx));
     return node + 1;
 }
 
-tAINode* AI_EvalFunc_SNDFxSeti(tAINode* arg0)
+tAINode* AI_EvalFunc_SNDFxSeti(tAINode* node)
 {
-    int v1;
-    int a1;
-    int a2;
+    int field;
+    int value;
 
-    a2 = AI_GetIntFromStack();
-    a1 = AI_GetIntFromStack();
-    v1 = SND_i_FxSeti(a1, a2);
-    AI_PutIntToStack(v1);
-    return arg0 + 1;
+    value = AI_GetIntFromStack();
+    field = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_FxSeti(field, value));
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDSeti(tAINode* node)
 {
-    int v1;
-    int v3;
-    int v4;
+    int field;
+    int value;
 
-    v4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_Seti(v3, v4);
-    AI_PutIntToStack(v1);
+    value = AI_GetIntFromStack();
+    field = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_Seti(field, value));
     return node + 1;
 }
 
-tAINode* AI_EvalFunc_SNDFxSetf(tAINode* arg0)
+tAINode* AI_EvalFunc_SNDFxSetf(tAINode* node)
 {
-    int v1;
-    int a1;
-    float a2;
+    int field;
+    float value;
 
-    a2 = AI_GetFloatFromStack();
-    a1 = AI_GetIntFromStack();
-    v1 = SND_i_FxSetf(a1, a2);
-    AI_PutIntToStack(v1);
-    return arg0 + 1;
+    value = AI_GetFloatFromStack();
+    field = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_FxSetf(field, value));
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFxGeti(tAINode* node)
 {
-    int v1;
-    int v3;
+    int field;
 
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_FxGeti(v3);
-    AI_PutIntToStack(v1);
+    field = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_FxGeti(field));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGeti(tAINode* node)
 {
-    int v1;
-    int v3;
+    int field;
 
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_Geti(v3);
-    AI_PutIntToStack(v1);
+    field = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_Geti(field));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFxGetf(tAINode* node)
 {
-    float v2;
-    int v3;
+    int field;
 
-    v3 = AI_GetIntFromStack();
-    v2 = SND_f_FxGetf(v3);
-    AI_PutFloatToStack(v2);
+    field = AI_GetIntFromStack();
+    AI_PutFloatToStack(SND_f_FxGetf(field));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetSoundFromInst(tAINode* node)
 {
-    int v1;
-    int v3;
+    int instanceIdx;
 
-    v3 = AI_GetIntFromStack();
-    v1 = SND_l_GetSoundFromInstance(v3);
-    AI_PutIntToStack(v1);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_l_GetSoundFromInstance(instanceIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDSetf(tAINode* node)
 {
-    int v1;
-    int v3;
-    float a2;
+    int field;
+    float value;
 
-    a2 = AI_GetFloatFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_Setf(v3, a2);
-    AI_PutIntToStack(v1);
+    value = AI_GetFloatFromStack();
+    field = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_Setf(field, value));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDGetf(tAINode* node)
 {
-    float v2;
-    int v3;
+    int field;
 
-    v3 = AI_GetIntFromStack();
-    v2 = SND_f_Getf(v3);
-    AI_PutFloatToStack(v2);
+    field = AI_GetIntFromStack();
+    AI_PutFloatToStack(SND_f_Getf(field));
     return node + 1;
 }
 
-int AI_EvalFunc_SNDGetInstType_C(int a1)
+int AI_EvalFunc_SNDGetInstType_C(int instanceIdx)
 {
-    unsigned int v2;
-    int v3;
-
     if (!SND_gst_Params.soundEnabled)
         return -1;
-    if (SND_gst_Params.soundInstanceNum <= a1)
+    if (SND_gst_Params.soundInstanceNum <= instanceIdx)
         return -1;
-    if (a1 < 0)
+    if (instanceIdx < 0)
         return -1;
-    if ((SND_gst_Params.soundInstances[a1].flags & 0x400) == 0)
+    if ((SND_gst_Params.soundInstances[instanceIdx].flags & 0x400) == 0)
         return -1;
-    v2 = SND_gst_Params.soundInstances[a1].flags & 0x86008;
-    if (v2 > 0x2000)
-    {
-        if (v2 == 0x4000)
-        {
-            v3 = 2;
-        }
-        else
-        {
-            if (v2 != 0x80000)
-                return -1;
-            v3 = 4;
-        }
-    }
-    else if (v2 == 0x2000)
-    {
-        v3 = 3;
-    }
-    else if (v2)
-    {
-        if (v2 != 8)
-            return -1;
-        v3 = 5;
-    }
-    else
-    {
-        v3 = 1;
-    }
-    return v3;
+
+    return AI_l_SoundTypeFromFlags(SND_gst_Params.soundInstances[instanceIdx].flags);
 }
 
 tAINode* AI_EvalFunc_SNDGetInstType(tAINode* node)
 {
-    int v1;
-    int v3;
+    int instanceIdx;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_SNDGetInstType_C(v3);
-    AI_PutIntToStack(v1);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_SNDGetInstType_C(instanceIdx));
     return node + 1;
 }
 
-int AI_EvalFunc_SNDGetSndType_C(tGameObjectMain* gao, int a2)
+// The same decode, for a sound of the object's own bank rather than a
+// live instance.
+int AI_EvalFunc_SNDGetSndType_C(tGameObjectMain* gao, int bankIdx)
 {
-    unsigned int v3;
-    int v4;
-
     if (!SND_gst_Params.soundEnabled)
         return -1;
     if ((gao->flags & 0x8000000) == 0)
@@ -710,92 +692,67 @@ int AI_EvalFunc_SNDGetSndType_C(tGameObjectMain* gao, int a2)
         return -1;
     if (!gao->extended->snd->soundIndices)
         return -1;
-    if (a2 < 0 || a2 >= gao->extended->snd->elemNum)
+    if (bankIdx < 0 || bankIdx >= gao->extended->snd->elemNum)
         return -1;
-    if (a2 >= SND_gst_Params.allocatedSoundsMaxNum)
+    if (bankIdx >= SND_gst_Params.allocatedSoundsMaxNum)
         return -1;
-    v3 = SND_gst_Params.allocatedSounds[gao->extended->snd->soundIndices[a2]].flags & 0x86008;
-    if (v3 > 0x2000)
-    {
-        if (v3 == 0x4000)
-        {
-            v4 = 2;
-        }
-        else
-        {
-            if (v3 != 0x80000)
-                return -1;
-            v4 = 4;
-        }
-    }
-    else if (v3 == 0x2000)
-    {
-        v4 = 3;
-    }
-    else if (v3)
-    {
-        if (v3 != 8)
-            return -1;
-        v4 = 5;
-    }
-    else
-    {
-        v4 = 1;
-    }
-    return v4;
+
+    return AI_l_SoundTypeFromFlags(
+        SND_gst_Params.allocatedSounds[gao->extended->snd->soundIndices[bankIdx]].flags);
 }
 
 tAINode* AI_EvalFunc_SNDGetSndType(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int bankIdx;
 
-    a2 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    bankIdx = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_SNDGetSndType_C(v3, a2);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_SNDGetSndType_C(gaoUltra, bankIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFlagSet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int idx;
+    tGameObjectMain* gaoUltra;
+    int instanceIdx;
+    int flags;
 
-    a3 = AI_GetIntFromStack();
-    idx = AI_GetIntFromStack();
-    v2 = AI_gpst_CurrentUltra;
+    flags = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    SND_SetFlags(v2, idx, a3);
+    SND_SetFlags(gaoUltra, instanceIdx, flags);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFlagReset(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int instanceIdx;
+    int flags;
 
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v2 = AI_gpst_CurrentUltra;
+    flags = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    SND_ResetFlags(v2, a2, a3);
+    SND_ResetFlags(gaoUltra, instanceIdx, flags);
     return node + 1;
 }
 
-int AI_EvalFunc_SNDGetInstanceModifier_C(struct sGameObjectMain* gao, int a2)
+// The instance a sound modifier is using. Note that the timer this
+// opens is only closed on the not-found path: a match returns from
+// inside the loop without it.
+int AI_EvalFunc_SNDGetInstanceModifier_C(struct sGameObjectMain* gao, int modifierID)
 {
-    tSoundMdfStruct* v3;
-    tModifier* i;
+    tSoundMdfStruct* sound;
+    tModifier* mdf;
 
-    if (a2 == -10)
+    if (modifierID == -10)
         return -1;
     if (!SND_gst_Params.soundEnabled)
         return -1;
@@ -805,16 +762,17 @@ int AI_EvalFunc_SNDGetInstanceModifier_C(struct sGameObjectMain* gao, int a2)
         return -1;
     if (!gao->extended->mdf)
         return -1;
-    if (a2 < 0)
+    if (modifierID < 0)
         return -1;
+
     QueryPerformanceCounter(&PerfCounterStruct[39]);
-    for (i = gao->extended->mdf; i; i = i->nextElem)
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
     {
-        if (i->modifierIntf->mdfId == 8)
+        if (mdf->modifierIntf->mdfId == 8)
         {
-            v3 = (tSoundMdfStruct*)i->mdfPrivateDataPtr;
-            if (v3->modifierID == a2)
-                return v3->sndInstanceID;
+            sound = (tSoundMdfStruct*)mdf->mdfPrivateDataPtr;
+            if (sound->modifierID == modifierID)
+                return sound->sndInstanceID;
         }
     }
     PRO_QPC_RecordTimeDecRef(39);
@@ -823,171 +781,96 @@ int AI_EvalFunc_SNDGetInstanceModifier_C(struct sGameObjectMain* gao, int a2)
 
 tAINode* AI_EvalFunc_SNDGetInstanceModifier(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
 
-    a2 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_SNDGetInstanceModifier_C(v3, a2);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_SNDGetInstanceModifier_C(gaoUltra, modifierID));
     return node + 1;
 }
 
-void AI_EvalFunc_SNDPlayModifier_C(struct sGameObjectMain* gao, int a2)
+void AI_EvalFunc_SNDPlayModifier_C(struct sGameObjectMain* gao, int modifierID)
 {
-    tSoundMdfStruct* a1a;
-    tModifier* v3;
-
-    if (SND_gst_Params.soundEnabled && gao && gao->extended && gao->extended->mdf && a2 != -10)
+    if (SND_gst_Params.soundEnabled && gao && gao->extended && gao->extended->mdf
+        && modifierID != -10)
     {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        v3 = gao->extended->mdf;
-        if (a2 == -1)
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                    SND_PlayMdF((tSoundMdfStruct*)v3->mdfPrivateDataPtr);
-                v3 = v3->nextElem;
-            }
-        }
-        else
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                {
-                    a1a = (tSoundMdfStruct*)v3->mdfPrivateDataPtr;
-                    if (a1a->modifierID == a2)
-                        SND_PlayMdF(a1a);
-                }
-                v3 = v3->nextElem;
-            }
-        }
-        PRO_QPC_RecordTimeDecRef(39);
+        AI_l_ForEachSoundModifier(gao, modifierID, SND_PlayMdF);
     }
 }
 
 tAINode* AI_EvalFunc_SNDPlayModifier(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
 
-    v1 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_SNDPlayModifier_C(v3, v1);
+    AI_EvalFunc_SNDPlayModifier_C(gaoUltra, modifierID);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDPauseModifier_C(tGameObjectMain* gao, int a2)
+void AI_EvalFunc_SNDPauseModifier_C(tGameObjectMain* gao, int modifierID)
 {
-    tSoundMdfStruct* v2;
-    tModifier* v3;
-
-    if (SND_gst_Params.soundEnabled && gao && gao->extended && gao->extended->mdf && a2 != -10)
+    if (SND_gst_Params.soundEnabled && gao && gao->extended && gao->extended->mdf
+        && modifierID != -10)
     {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        v3 = gao->extended->mdf;
-        if (a2 == -1)
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                    SND_PauseMdF((tSoundMdfStruct*)(v3->mdfPrivateDataPtr));
-                v3 = v3->nextElem;
-            }
-        }
-        else
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                {
-                    v2 = (tSoundMdfStruct*)v3->mdfPrivateDataPtr;
-                    if (v2->modifierID == a2)
-                        SND_PauseMdF(v2);
-                }
-                v3 = v3->nextElem;
-            }
-        }
-        PRO_QPC_RecordTimeDecRef(39);
+        AI_l_ForEachSoundModifier(gao, modifierID, SND_PauseMdF);
     }
 }
 
 tAINode* AI_EvalFunc_SNDPauseModifier(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
 
-    v1 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_SNDPauseModifier_C(v3, v1);
+    AI_EvalFunc_SNDPauseModifier_C(gaoUltra, modifierID);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDStopModifier_C(struct sGameObjectMain* gao, int a2)
+void AI_EvalFunc_SNDStopModifier_C(struct sGameObjectMain* gao, int modifierID)
 {
-    tSoundMdfStruct* v2;
-    tModifier* v3;
-
-    if (SND_gst_Params.soundEnabled && gao && gao->extended && gao->extended->mdf && a2 != -10)
+    if (SND_gst_Params.soundEnabled && gao && gao->extended && gao->extended->mdf
+        && modifierID != -10)
     {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        v3 = gao->extended->mdf;
-        if (a2 == -1)
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                    SND_StopMdF((tSoundMdfStruct*)v3->mdfPrivateDataPtr);
-                v3 = v3->nextElem;
-            }
-        }
-        else
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                {
-                    v2 = (tSoundMdfStruct*)v3->mdfPrivateDataPtr;
-                    if (v2->modifierID == a2)
-                        SND_StopMdF(v2);
-                }
-                v3 = v3->nextElem;
-            }
-        }
-        PRO_QPC_RecordTimeDecRef(39);
+        AI_l_ForEachSoundModifier(gao, modifierID, SND_StopMdF);
     }
 }
 
 tAINode* AI_EvalFunc_SNDStopModifier(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
 
-    v1 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_SNDStopModifier_C(v3, v1);
+    AI_EvalFunc_SNDStopModifier_C(gaoUltra, modifierID);
     return node + 1;
 }
 
-int AI_EvalFunc_SNDGetStatusModifier_C(struct sGameObjectMain* gao, int a2)
+/* Not written with AI_l_ForEachSoundModifier, because it is not that
+   shape: the all-modifiers arm ORs the flags together and reports them
+   only if it saw one, and the by-id arm closes the profiler timer once
+   per sound modifier it steps over rather than once for the call. Both
+   are preserved. */
+int AI_EvalFunc_SNDGetStatusModifier_C(struct sGameObjectMain* gao, int modifierID)
 {
-    tSoundMdfStruct* v3;
-    int v4;
-    int v5;
-    tModifier* v6;
+    tSoundMdfStruct* sound;
+    tModifier* mdf;
+    int flags;
+    int found;
 
-    if (a2 == -10)
+    if (modifierID == -10)
         return 0;
     if (!SND_gst_Params.soundEnabled)
         return 0;
@@ -997,338 +880,341 @@ int AI_EvalFunc_SNDGetStatusModifier_C(struct sGameObjectMain* gao, int a2)
         return 0;
     if (!gao->extended->mdf)
         return 0;
+
     QueryPerformanceCounter(&PerfCounterStruct[39]);
-    v6 = gao->extended->mdf;
-    v5 = 0;
-    v4 = 0;
-    if (a2 == -1)
+    flags = 0;
+    found = 0;
+
+    if (modifierID == -1)
     {
-        while (v6)
+        for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
         {
-            if (v6->modifierIntf->mdfId == 8)
+            if (mdf->modifierIntf->mdfId == 8)
             {
-                v5 |= ((tSoundMdfStruct*)(v6->mdfPrivateDataPtr))->flags;
-                v4 = 1;
+                flags |= ((tSoundMdfStruct*)(mdf->mdfPrivateDataPtr))->flags;
+                found = 1;
             }
-            v6 = v6->nextElem;
         }
-        if (v4)
+        if (found)
         {
             PRO_QPC_RecordTimeDecRef(39);
-            return v5;
+            return flags;
         }
     }
     else
     {
-        while (v6)
+        for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
         {
-            if (v6->modifierIntf->mdfId == 8)
+            if (mdf->modifierIntf->mdfId == 8)
             {
-                v3 = (tSoundMdfStruct*)(v6->mdfPrivateDataPtr);
+                sound = (tSoundMdfStruct*)(mdf->mdfPrivateDataPtr);
                 PRO_QPC_RecordTimeDecRef(39);
-                if (v3->modifierID == a2)
-                    return v3->flags;
+                if (sound->modifierID == modifierID)
+                    return sound->flags;
             }
-            v6 = v6->nextElem;
         }
     }
+
     PRO_QPC_RecordTimeDecRef(39);
     return 0;
 }
 
 tAINode* AI_EvalFunc_SNDGetStatusModifier(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
 
-    a2 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_SNDGetStatusModifier_C(v3, a2);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_SNDGetStatusModifier_C(gaoUltra, modifierID));
     return node + 1;
 }
 
-void AI_EvalFunc_SNDSetFlagModifier_C(tGameObjectMain* gao, int a2, int a3)
+// Unlike its siblings, the by-id arm goes through
+// SNDGetInstanceModifier rather than walking the chain itself, so it
+// sets the flags of one instance and not of every matching modifier.
+void AI_EvalFunc_SNDSetFlagModifier_C(tGameObjectMain* gao, int modifierID, int flags)
 {
-    tModifier* i;
-    int idx;
+    tModifier* mdf;
+    int instanceIdx;
 
-    if (a2 != -10 && SND_gst_Params.soundEnabled && gao && gao->extended && gao->extended->mdf)
+    if (modifierID == -10 || !SND_gst_Params.soundEnabled || !gao || !gao->extended
+        || !gao->extended->mdf)
     {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        if (a2 == -1)
+        return;
+    }
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    if (modifierID == -1)
+    {
+        for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
         {
-            for (i = gao->extended->mdf; i; i = i->nextElem)
+            if (mdf->modifierIntf->mdfId == 8)
             {
-                if (i->modifierIntf->mdfId == 8)
-                    SND_SetFlags(0, ((tSoundMdfStruct*)(i->mdfPrivateDataPtr))->sndInstanceID, a3);
+                SND_SetFlags(0,
+                             ((tSoundMdfStruct*)(mdf->mdfPrivateDataPtr))->sndInstanceID,
+                             flags);
             }
         }
-        else
-        {
-            idx = AI_EvalFunc_SNDGetInstanceModifier_C(gao, a2);
-            SND_SetFlags(0, idx, a3);
-        }
-        PRO_QPC_RecordTimeDecRef(39);
     }
+    else
+    {
+        instanceIdx = AI_EvalFunc_SNDGetInstanceModifier_C(gao, modifierID);
+        SND_SetFlags(0, instanceIdx, flags);
+    }
+    PRO_QPC_RecordTimeDecRef(39);
 }
 
 tAINode* AI_EvalFunc_SNDSetFlagModifier(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
-    int v4;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
+    int flags;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v2 = AI_gpst_CurrentUltra;
+    flags = AI_GetIntFromStack();
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_SNDSetFlagModifier_C(v2, v4, v3);
+    AI_EvalFunc_SNDSetFlagModifier_C(gaoUltra, modifierID, flags);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDResetFlagModifier_C(tGameObjectMain* gao, int arg4, int a3)
+void AI_EvalFunc_SNDResetFlagModifier_C(tGameObjectMain* gao, int modifierID, int flags)
 {
-    tModifier* i;
-    int a2; 
+    tModifier* mdf;
+    int instanceIdx;
 
-    if (arg4 != -10 && SND_gst_Params.soundEnabled && gao && gao->extended && gao->extended->mdf)
+    if (modifierID == -10 || !SND_gst_Params.soundEnabled || !gao || !gao->extended
+        || !gao->extended->mdf)
     {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        if (arg4 == -1)
+        return;
+    }
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    if (modifierID == -1)
+    {
+        for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
         {
-            for (i = gao->extended->mdf; i; i = i->nextElem)
+            if (mdf->modifierIntf->mdfId == 8)
             {
-                if (i->modifierIntf->mdfId == 8)
-                    SND_ResetFlags(0, ((tSoundMdfStruct*)(i->mdfPrivateDataPtr))->sndInstanceID, a3);
+                SND_ResetFlags(0,
+                               ((tSoundMdfStruct*)(mdf->mdfPrivateDataPtr))->sndInstanceID,
+                               flags);
             }
         }
-        else
-        {
-            a2 = AI_EvalFunc_SNDGetInstanceModifier_C(gao, arg4);
-            SND_ResetFlags(0, a2, a3);
-        }
-        PRO_QPC_RecordTimeDecRef(39);
     }
+    else
+    {
+        instanceIdx = AI_EvalFunc_SNDGetInstanceModifier_C(gao, modifierID);
+        SND_ResetFlags(0, instanceIdx, flags);
+    }
+    PRO_QPC_RecordTimeDecRef(39);
 }
 
 tAINode* AI_EvalFunc_SNDResetFlagModifier(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
-    int v4;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
+    int flags;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v2 = AI_gpst_CurrentUltra;
+    flags = AI_GetIntFromStack();
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_SNDResetFlagModifier_C(v2, v4, v3);
+    AI_EvalFunc_SNDResetFlagModifier_C(gaoUltra, modifierID, flags);
     return node + 1;
 }
-
+/* The family builtins select instances by two bitmasks: an instance
+   takes part when it has ALL of requiredMask and ANY of anyMask. The
+   link and unlink pair are not that shape -- they take one mask and one
+   instance index -- which is why their arguments are not reversed. */
 tAINode* AI_EvalFunc_SNDFamillyPlay(tAINode* node)
 {
-    int v1;
-    int v3;
+    int requiredMask;
+    int anyMask;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_PlayFamilly(v1, v3);
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    SND_PlayFamilly(requiredMask, anyMask);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillyStop(tAINode* node)
 {
-    int v1;
-    int v3;
+    int requiredMask;
+    int anyMask;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_StopFamilly(v1, v3);
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    SND_StopFamilly(requiredMask, anyMask);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillyMuteOn(tAINode* node)
 {
-    int v1;
-    int a2;
+    int requiredMask;
+    int anyMask;
 
-    a2 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_MuteOnFamilly(v1, a2);
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    SND_MuteOnFamilly(requiredMask, anyMask);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillyMuteOff(tAINode* node)
 {
-    int v1;
-    int a2;
+    int requiredMask;
+    int anyMask;
 
-    a2 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_MuteOffFamilly(v1, a2);
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    SND_MuteOffFamilly(requiredMask, anyMask);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillySetf(tAINode* node)
 {
-    int a2;
-    float a4;
-    int v4;
-    int a3;
+    int requiredMask;
+    int anyMask;
+    int field;
+    float value;
 
-    a4 = AI_GetFloatFromStack();
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    SND_SetfFamilly(v4, a2, a3, a4);
+    value = AI_GetFloatFromStack();
+    field = AI_GetIntFromStack();
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    SND_SetfFamilly(requiredMask, anyMask, field, value);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillyGetf(tAINode* node)
 {
-    float a1a;
-    int a2;
-    int v4;
-    int a3;
+    int requiredMask;
+    int anyMask;
+    int field;
 
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    a1a = SND_f_GetfFamilly(v4, a2, a3);
-    AI_PutFloatToStack(a1a);
+    field = AI_GetIntFromStack();
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    AI_PutFloatToStack(SND_f_GetfFamilly(requiredMask, anyMask, field));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillyGetStatus(tAINode* node)
 {
-    int v1;
-    int v3;
-    int v4;
+    int requiredMask;
+    int anyMask;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = SND_i_GetStatusFromFamilly(v4, v3);
-    AI_PutIntToStack(v1);
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_GetStatusFromFamilly(requiredMask, anyMask));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillyFadeIn(tAINode* node)
 {
-    int v1;
-    int a2;
+    int requiredMask;
+    int anyMask;
 
-    a2 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_FadeInFamilly(v1, a2);
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    SND_FadeInFamilly(requiredMask, anyMask);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillyFadeOut(tAINode* node)
 {
-    int v1;
-    int v3;
+    int requiredMask;
+    int anyMask;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SND_FadeOutFamilly(v1, v3);
+    anyMask = AI_GetIntFromStack();
+    requiredMask = AI_GetIntFromStack();
+    SND_FadeOutFamilly(requiredMask, anyMask);
     return node + 1;
 }
 
-tAINode* AI_EvalFunc_SNDFamillyAdd(tAINode* arg0)
+tAINode* AI_EvalFunc_SNDFamillyAdd(tAINode* node)
 {
-    int a2;
-    int a1;
+    int famillyMask;
+    int instanceIdx;
 
-    a1 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    SND_LinkToFamilly(a1, a2);
-    return arg0 + 1;
+    famillyMask = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    SND_LinkToFamilly(famillyMask, instanceIdx);
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDFamillySub(tAINode* node)
 {
-    int a2;
-    int v3;
+    int famillyMask;
+    int instanceIdx;
 
-    v3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    SND_UnlinkFromFamilly(v3, a2);
+    famillyMask = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    SND_UnlinkFromFamilly(famillyMask, instanceIdx);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDIsTrackPlaying(tAINode* node)
 {
-    int v1;
-    int v3;
+    int trackID;
 
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_IsTrackPlaying(v3);
-    AI_PutIntToStack(v1);
+    trackID = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_IsTrackPlaying(trackID));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDTrackSeti(tAINode* node)
 {
-    int v1;
-    int v3;
-    int v4;
-    int v5;
+    int trackID;
+    int field;
+    int value;
 
-    v4 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_TrackSeti(v3, v5, v4);
-    AI_PutIntToStack(v1);
+    value = AI_GetIntFromStack();
+    field = AI_GetIntFromStack();
+    trackID = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_TrackSeti(trackID, field, value));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDTrackGeti(tAINode* node)
 {
-    int v1;
-    int v3;
-    int v4;
+    int trackID;
+    int field;
 
-    v4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_TrackGeti(v3, v4);
-    AI_PutIntToStack(v1);
+    field = AI_GetIntFromStack();
+    trackID = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_TrackGeti(trackID, field));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDTrackSetf(tAINode* node)
 {
-    int v1;
-    int v3;
-    float v4;
-    int v5;
+    int trackID;
+    int field;
+    float value;
 
-    v4 = AI_GetFloatFromStack();
-    v5 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = SND_i_TrackSetf(v3, v5, v4);
-    AI_PutIntToStack(v1);
+    value = AI_GetFloatFromStack();
+    field = AI_GetIntFromStack();
+    trackID = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_TrackSetf(trackID, field, value));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDTrackGetf(tAINode* node)
 {
-    float v2;
-    int v3;
-    int v4;
+    int trackID;
+    int field;
 
-    v4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v2 = SND_f_TrackGetf(v3, v4);
-    AI_PutFloatToStack(v2);
+    field = AI_GetIntFromStack();
+    trackID = AI_GetIntFromStack();
+    AI_PutFloatToStack(SND_f_TrackGetf(trackID, field));
     return node + 1;
 }
-
 
 void AI_EvalFunc_SNDMicroPosSet_C(struct sGameObjectMain* gao)
 {
@@ -1338,219 +1224,164 @@ void AI_EvalFunc_SNDMicroPosSet_C(struct sGameObjectMain* gao)
 
 tAINode* AI_EvalFunc_SNDMicroPosSet(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_SNDMicroPosSet_C(v2);
+    AI_EvalFunc_SNDMicroPosSet_C(gaoUltra);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDFaderGroupSet_C(int a1, float a2)
+// A fader group is a mute group reached with a fixed duration of one.
+void AI_EvalFunc_SNDFaderGroupSet_C(int group, float target)
 {
-    SND_MuteSetUp(a1, a2, 1.0f);
+    SND_MuteSetUp(group, target, 1.0f);
 }
 
 tAINode* AI_EvalFunc_SNDFaderGroupSet(tAINode* node)
 {
-    int v1;
-    float a2;
+    int group;
+    float target;
 
-    a2 = AI_GetFloatFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_SNDFaderGroupSet_C(v1, a2);
+    target = AI_GetFloatFromStack();
+    group = AI_GetIntFromStack();
+    AI_EvalFunc_SNDFaderGroupSet_C(group, target);
     return node + 1;
 }
 
-float AI_EvalFunc_SNDFaderGroupGet_C(int a1)
+float AI_EvalFunc_SNDFaderGroupGet_C(int group)
 {
-    return SND_f_MuteGet(a1, 1);
+    return SND_f_MuteGet(group, 1);
 }
 
-tAINode* AI_EvalFunc_SNDFaderGroupGet(tAINode* a2)
+tAINode* AI_EvalFunc_SNDFaderGroupGet(tAINode* node)
 {
-    int v1;
-    float a1a;
+    int group;
 
-    v1 = AI_GetIntFromStack();
-    a1a = AI_EvalFunc_SNDFaderGroupGet_C(v1);
-    AI_PutFloatToStack(a1a);
-    return a2 + 1;
+    group = AI_GetIntFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_SNDFaderGroupGet_C(group));
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDBankMerge(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    SND_MergeBankNoOver(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    SND_MergeBankNoOver(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDBankMergeOver(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    SND_MergeBankOver(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    SND_MergeBankOver(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDBankRestore(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    SND_RestoreBank(v2);
+    SND_RestoreBank(gaoUltra);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDInstPosVSet_C(int a1, Vec3* a2)
+// Pins the instance to a fixed point instead of to an object, which
+// also clears the three position-source bits.
+void AI_EvalFunc_SNDInstPosVSet_C(int instanceIdx, Vec3* pos)
 {
-    tSoundInstanceElem* v2;
+    tSoundInstanceElem* instance;
 
-    if (a1 >= 0 && a1 < SND_gst_Params.soundInstanceNum)
-    {
-        v2 = &SND_gst_Params.soundInstances[a1];
-        if ((v2->flags & 0x400) != 0)
-        {
-            if (a2)
-            {
-                v2->sndInstPosVec = *a2;
-                v2->sndPositionSetInSetPosPtr = &v2->sndInstPosVec;
-                v2->sndPosMtxSetInSetPos = 0;
-                v2->flags &= ~0x7000000u;
-            }
-        }
-    }
+    if (instanceIdx < 0 || instanceIdx >= SND_gst_Params.soundInstanceNum)
+        return;
+
+    instance = &SND_gst_Params.soundInstances[instanceIdx];
+    if ((instance->flags & 0x400) == 0)
+        return;
+    if (!pos)
+        return;
+
+    instance->sndInstPosVec = *pos;
+    instance->sndPositionSetInSetPosPtr = &instance->sndInstPosVec;
+    instance->sndPosMtxSetInSetPos = 0;
+    instance->flags &= ~0x7000000u;
 }
 
 tAINode* AI_EvalFunc_SNDInstPosVSet(tAINode* node)
 {
-    int v1;
-    Vec3* v3;
+    Vec3* pos;
+    int instanceIdx;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_SNDInstPosVSet_C(v1, v3);
+    // the position is read where the stack keeps it rather than copied out
+    pos = (Vec3*)AI_PopStackSlot();
+    instanceIdx = AI_GetIntFromStack();
+    AI_EvalFunc_SNDInstPosVSet_C(instanceIdx, pos);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDPrefetchModifier_C(struct sGameObjectMain* gao, int a2)
+// These two do not null-check the object before reaching its extended
+// block, where their Play, Pause and Stop siblings do.
+void AI_EvalFunc_SNDPrefetchModifier_C(struct sGameObjectMain* gao, int modifierID)
 {
-    tSoundMdfStruct* a1a;
-    tModifier* v3;
-
-    if (a2 != -10 && SND_gst_Params.soundEnabled && gao->extended && gao->extended->mdf)
+    if (modifierID != -10 && SND_gst_Params.soundEnabled && gao->extended
+        && gao->extended->mdf)
     {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        v3 = gao->extended->mdf;
-        if (a2 == -1)
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                    SND_PrefetchMdF((tSoundMdfStruct*)v3->mdfPrivateDataPtr);
-                v3 = v3->nextElem;
-            }
-        }
-        else
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                {
-                    a1a = (tSoundMdfStruct*)v3->mdfPrivateDataPtr;
-                    if (a1a->modifierID == a2)
-                        SND_PrefetchMdF(a1a);
-                }
-                v3 = v3->nextElem;
-            }
-        }
-        PRO_QPC_RecordTimeDecRef(39);
+        AI_l_ForEachSoundModifier(gao, modifierID, SND_PrefetchMdF);
     }
 }
 
 tAINode* AI_EvalFunc_SNDPrefetchModifier(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
 
-    v1 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_SNDPrefetchModifier_C(v3, v1);
+    AI_EvalFunc_SNDPrefetchModifier_C(gaoUltra, modifierID);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDPrefetch(tAINode* node)
 {
-    int v2;
+    int instanceIdx;
 
-    v2 = AI_GetIntFromStack();
-    SND_StreamPrefetch(v2);
+    instanceIdx = AI_GetIntFromStack();
+    SND_StreamPrefetch(instanceIdx);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDFlushModifier_C(tGameObjectMain* gao, int a2)
+void AI_EvalFunc_SNDFlushModifier_C(tGameObjectMain* gao, int modifierID)
 {
-    tSoundMdfStruct* v2;
-    tModifier* v3;
-
-    if (a2 != -10 && SND_gst_Params.soundEnabled && gao->extended && gao->extended->mdf)
+    if (modifierID != -10 && SND_gst_Params.soundEnabled && gao->extended
+        && gao->extended->mdf)
     {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        v3 = gao->extended->mdf;
-        if (a2 == -1)
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                    SND_FlushMdF((tSoundMdfStruct*)v3->mdfPrivateDataPtr);
-                v3 = v3->nextElem;
-            }
-        }
-        else
-        {
-            while (v3)
-            {
-                if (v3->modifierIntf->mdfId == 8)
-                {
-                    v2 = (tSoundMdfStruct*)v3->mdfPrivateDataPtr;
-                    if (v2->modifierID == a2)
-                        SND_FlushMdF(v2);
-                }
-                v3 = v3->nextElem;
-            }
-        }
-        PRO_QPC_RecordTimeDecRef(39);
+        AI_l_ForEachSoundModifier(gao, modifierID, SND_FlushMdF);
     }
 }
 
 tAINode* AI_EvalFunc_SNDFlushModifier(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int modifierID;
 
-    v1 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    modifierID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_SNDFlushModifier_C(v3, v1);
+    AI_EvalFunc_SNDFlushModifier_C(gaoUltra, modifierID);
     return node + 1;
 }
 
@@ -1565,259 +1396,245 @@ tAINode* AI_EvalFunc_SNDFlush(tAINode* node)
 
 tAINode* AI_EvalFunc_SNDInstanceSeti(tAINode* node)
 {
-    int v1;
-    int i2;
-    int i3;
-    int i1;
+    int instanceIdx;
+    int field;
+    int value;
 
-    i3 = AI_GetIntFromStack();
-    i2 = AI_GetIntFromStack();
-    i1 = AI_GetIntFromStack();
-    v1 = SND_i_InstanceSeti_return_negative_1(i1, i2, i3);
-    AI_PutIntToStack(v1);
+    value = AI_GetIntFromStack();
+    field = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_InstanceSeti_return_negative_1(instanceIdx, field, value));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDInstanceGeti(tAINode* node)
 {
-    int v1;
-    int v3;
-    int v4;
+    int instanceIdx;
+    int field;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = SND_i_InstanceGeti(v4, v3);
-    AI_PutIntToStack(v1);
+    field = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_InstanceGeti(instanceIdx, field));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDInstanceSetf(tAINode* node)
 {
-    int v1;
-    int a2;
-    float a3;
-    int v5;
+    int instanceIdx;
+    int field;
+    float value;
 
-    a3 = AI_GetFloatFromStack();
-    a2 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    v1 = SND_i_InstanceSetf(v5, a2, a3);
-    AI_PutIntToStack(v1);
+    value = AI_GetFloatFromStack();
+    field = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(SND_i_InstanceSetf(instanceIdx, field, value));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SNDInstanceGetf(tAINode* node)
 {
-    float v2;
-    int v3;
-    int v4;
+    int instanceIdx;
+    int field;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v2 = SND_f_InstanceGetf(v4, v3);
-    AI_PutFloatToStack(v2);
+    field = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutFloatToStack(SND_f_InstanceGetf(instanceIdx, field));
     return node + 1;
 }
 
-int AI_EvalFunc_SNDRequestPlayRandomFreq_C(struct sGameObjectMain* gao, int a2, float a3, float a4, float a5)
+// Plays the sound with its frequency scaled by a random factor. The
+// scaled frequency is rounded through the magic double, which puts the
+// integer in the low word of the sum.
+int AI_EvalFunc_SNDRequestPlayRandomFreq_C(struct sGameObjectMain* gao, int soundID, float volume, float minScale, float maxScale)
 {
-    double v6;
-    float v7;
-    float v8;
-    tSoundInstanceElem* v9;
-    int a1;
-    double tmp;
+    tSoundInstanceElem* instance;
+    double scale;
+    double rounded;
+    float baseFreq;
+    float scaled;
+    int instanceIdx;
 
+    instanceIdx = AI_EvalFunc_SNDRequestPlay_C(gao, soundID, volume);
+    if (instanceIdx < 0 || instanceIdx >= SND_gst_Params.soundInstanceNum)
+        return -1;
 
-    a1 = AI_EvalFunc_SNDRequestPlay_C(gao, a2, a3);
-    if (a1 < 0 || a1 >= SND_gst_Params.soundInstanceNum)
+    instance = &SND_gst_Params.soundInstances[instanceIdx];
+    if ((instance->flags & 0x400) == 0)
         return -1;
-    v9 = &SND_gst_Params.soundInstances[a1];
-    if ((v9->flags & 0x400) == 0)
-        return -1;
-    v6 = AI_EvalFunc_MATHRandFloat_C(a4, a5);
-    v7 = (float)v9->freq;
-    v8 = (float)(v6 * v7);
-    tmp = v8 + MATH_gd_magicDoubleForRound;
-    SND_SetFreq(a1, *(uint32_t *)&tmp);
-    return a1;
+
+    scale = AI_EvalFunc_MATHRandFloat_C(minScale, maxScale);
+    baseFreq = (float)instance->freq;
+    scaled = (float)(scale * baseFreq);
+    rounded = scaled + MATH_gd_magicDoubleForRound;
+    SND_SetFreq(instanceIdx, *(uint32_t*)&rounded);
+    return instanceIdx;
 }
 
 tAINode* AI_EvalFunc_SNDRequestPlayRandomFreq(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    float a5;
-    int a2;
-    float a4;
-    float a3;
+    tGameObjectMain* gaoUltra;
+    int soundID;
+    float volume;
+    float minScale;
+    float maxScale;
 
-    a5 = AI_GetFloatFromStack();
-    a4 = AI_GetFloatFromStack();
-    a3 = AI_GetFloatFromStack();
-    a2 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    maxScale = AI_GetFloatFromStack();
+    minScale = AI_GetFloatFromStack();
+    volume = AI_GetFloatFromStack();
+    soundID = AI_GetIntFromStack();
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_SNDRequestPlayRandomFreq_C(v3, a2, a3, a4, a5);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_SNDRequestPlayRandomFreq_C(gaoUltra, soundID, volume,
+                                                            minScale, maxScale));
     return node + 1;
 }
 
-int AI_EvalFunc_SND_SetObject_C(struct sGameObjectMain* gao, int a2)
+int AI_EvalFunc_SND_SetObject_C(struct sGameObjectMain* gao, int instanceIdx)
 {
-    tSoundInstanceElem* v3;
+    tSoundInstanceElem* instance;
 
-    if (a2 < 0 || a2 >= SND_gst_Params.soundInstanceNum)
+    if (instanceIdx < 0 || instanceIdx >= SND_gst_Params.soundInstanceNum)
         return -1;
-    v3 = &SND_gst_Params.soundInstances[a2];
-    if ((v3->flags & 0x400) == 0)
+
+    instance = &SND_gst_Params.soundInstances[instanceIdx];
+    if ((instance->flags & 0x400) == 0)
         return -1;
     if (SND_i_CheckOrInitGAO(gao))
         return -1;
-    v3->gao = gao;
-    SND_SetPos(gao, a2, gao->matrices);
+
+    instance->gao = gao;
+    SND_SetPos(gao, instanceIdx, gao->matrices);
     return 0;
 }
 
 tAINode* AI_EvalFunc_SND_SetObject(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int instanceIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_SND_SetObject_C(v4, v1);
-    AI_PutIntToStack(v2);
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_SND_SetObject_C(gaoUltra, instanceIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SND_Fade(tAINode* node)
 {
-    float v2;
-    float v3;
-    float v4;
-    int v5;
+    int instanceIdx;
+    float from;
+    float to;
+    float duration;
 
-    v2 = AI_GetFloatFromStack();
-    v4 = AI_GetFloatFromStack();
-    v3 = AI_GetFloatFromStack();
-    v5 = AI_GetIntFromStack();
-    SND_Fade(v5, v3, v4, v2);
+    duration = AI_GetFloatFromStack();
+    to = AI_GetFloatFromStack();
+    from = AI_GetFloatFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    SND_Fade(instanceIdx, from, to, duration);
     return node + 1;
 }
 
-void AI_EvalFunc_SNDPlaySoundOnTrackFromTo_C(tGameObjectMain* gao, int a2, float a3, float a4)
+void AI_EvalFunc_SNDPlaySoundOnTrackFromTo_C(tGameObjectMain* gao, int instanceIdx, float from, float to)
 {
-    if (SND_gst_Params.soundEnabled && SND_gst_Params.soundInstanceNum > a2 && a2 >= 0 && !SND_i_IsPlaying(a2))
-    {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_i_CheckOrInitGAO(gao);
-        if (gao)
-        {
-            SND_gst_Params.soundInstances[a2].gao = gao;
-            SND_SetPos(gao, a2, gao->matrices);
-        }
-        SND_PlaySoundOnTrackFromTo(a2, a3, a4);
-        PRO_QPC_RecordTimeDecRef(39);
-    }
+    if (!AI_l_CanStartInstance(instanceIdx))
+        return;
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    SND_i_CheckOrInitGAO(gao);
+    if (gao)
+        AI_l_AttachInstanceToGAO(gao, instanceIdx);
+    SND_PlaySoundOnTrackFromTo(instanceIdx, from, to);
+    PRO_QPC_RecordTimeDecRef(39);
 }
 
-void AI_EvalFunc_SNDPlaySoundLoopedOnTrackFrom_C(tGameObjectMain* gao, int a2, float a3)
+void AI_EvalFunc_SNDPlaySoundLoopedOnTrackFrom_C(tGameObjectMain* gao, int instanceIdx, float from)
 {
-    if (SND_gst_Params.soundEnabled && SND_gst_Params.soundInstanceNum > a2 && a2 >= 0 && !SND_i_IsPlaying(a2))
-    {
-        QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_i_CheckOrInitGAO(gao);
-        SND_gst_Params.soundInstances[a2].gao = gao;
-        SND_SetPos(gao, a2, gao->matrices);
-        SND_PlaySoundLoopingOnTrackFrom(a2, a3);
-        PRO_QPC_RecordTimeDecRef(39);
-    }
+    if (!AI_l_CanStartInstance(instanceIdx))
+        return;
+
+    QueryPerformanceCounter(&PerfCounterStruct[39]);
+    SND_i_CheckOrInitGAO(gao);
+    AI_l_AttachInstanceToGAO(gao, instanceIdx);
+    SND_PlaySoundLoopingOnTrackFrom(instanceIdx, from);
+    PRO_QPC_RecordTimeDecRef(39);
 }
 
-int AI_EvalFunc_SND_ExtPlay_C(struct sGameObjectMain* gao, int a2, int a3, float a4, float a5)
+/* One builtin for all eight ways of starting a sound, chosen by the low
+   four bits of the mode: bit 0 loops, bit 1 puts it on a track, and
+   bits 2 and 3 say which of the from and to times are given. Every one
+   of the sixteen values is handled, so the default arm cannot be
+   reached; it is kept as the original has it. */
+int AI_EvalFunc_SND_ExtPlay_C(struct sGameObjectMain* gao, int instanceIdx, int mode, float from, float to)
 {
-    int result; 
-
-    switch (a3 & 0xF)
+    switch (mode & 0xF)
     {
     case 0:
     case 4:
     case 8:
     case 12:
-        AI_EvalFunc_SNDUltraPlaySound_C(gao, a2);
-        goto LABEL_11;
+        AI_EvalFunc_SNDUltraPlaySound_C(gao, instanceIdx);
+        return 0;
     case 1:
     case 5:
     case 9:
     case 13:
-        AI_EvalFunc_SNDUltraPlaySoundLooped_C(gao, a2);
-        goto LABEL_11;
+        AI_EvalFunc_SNDUltraPlaySoundLooped_C(gao, instanceIdx);
+        return 0;
     case 2:
-        AI_EvalFunc_SNDPlaySoundOnTrack_C(gao, a2);
-        goto LABEL_11;
+        AI_EvalFunc_SNDPlaySoundOnTrack_C(gao, instanceIdx);
+        return 0;
     case 3:
     case 11:
-        AI_EvalFunc_SNDPlaySoundLoopedOnTrack_C(gao, a2);
-        goto LABEL_11;
+        AI_EvalFunc_SNDPlaySoundLoopedOnTrack_C(gao, instanceIdx);
+        return 0;
     case 6:
-        AI_EvalFunc_SNDPlaySoundOnTrackFromTo_C(gao, a2, a4, -1.0);
-        goto LABEL_11;
+        AI_EvalFunc_SNDPlaySoundOnTrackFromTo_C(gao, instanceIdx, from, -1.0);
+        return 0;
     case 7:
     case 15:
-        AI_EvalFunc_SNDPlaySoundLoopedOnTrackFrom_C(gao, a2, a4);
-        goto LABEL_11;
+        AI_EvalFunc_SNDPlaySoundLoopedOnTrackFrom_C(gao, instanceIdx, from);
+        return 0;
     case 10:
-        AI_EvalFunc_SNDPlaySoundOnTrackFromTo_C(gao, a2, 0.0, a5);
-        goto LABEL_11;
+        AI_EvalFunc_SNDPlaySoundOnTrackFromTo_C(gao, instanceIdx, 0.0, to);
+        return 0;
     case 14:
-        AI_EvalFunc_SNDPlaySoundOnTrackFromTo_C(gao, a2, a4, a5);
-    LABEL_11:
-        result = 0;
-        break;
+        AI_EvalFunc_SNDPlaySoundOnTrackFromTo_C(gao, instanceIdx, from, to);
+        return 0;
     default:
-        result = -1;
-        break;
+        return -1;
     }
-    return result;
 }
 
 tAINode* AI_EvalFunc_SND_ExtPlay(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    float a4;
-    int a3;
-    int a2;
-    float a5;
+    tGameObjectMain* gaoUltra;
+    int instanceIdx;
+    int mode;
+    float from;
+    float to;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a5 = AI_GetFloatFromStack();
-    a4 = AI_GetFloatFromStack();
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_SND_ExtPlay_C(v3, a2, a3, a4, a5);
-    AI_PutIntToStack(v1);
+    to = AI_GetFloatFromStack();
+    from = AI_GetFloatFromStack();
+    mode = AI_GetIntFromStack();
+    instanceIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_SND_ExtPlay_C(gaoUltra, instanceIdx, mode, from, to));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SND_SoundDurationGet(tAINode* node)
 {
-    float v2;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
     int sndIdx;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     sndIdx = AI_GetIntFromStack();
-    v2 = SND_SoundDurationGet(v3, sndIdx);
-    AI_PutFloatToStack(v2);
+    AI_PutFloatToStack(SND_SoundDurationGet(gaoUltra, sndIdx));
     return node + 1;
 }
