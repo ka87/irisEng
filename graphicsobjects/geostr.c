@@ -9,84 +9,81 @@ unsigned int ul_SubMatOrder[] = { 8, 9, 0x0D, 0x10, 0x0A, 0x0B, 0x0C, 0x0E, 0x0F
 
 tGEOSTRStruct* STR_pst_Create()
 {
-    tGEOSTRStruct* v0;
-    tGEOSTRStringData* v1;
-    unsigned int v2;
+    tGEOSTRStruct* str;
 
-    v0 = (tGEOSTRStruct*)MEM_p_Alloc(sizeof(tGEOSTRStruct));
-    memset(v0, 0, sizeof(tGEOSTRStruct));
-    GRO_Struct_Init((tGroGeneric*)v0, 10);
-    v0->stringNum = 32;
-    v1 = (tGEOSTRStringData*)MEM_p_Alloc(32 * sizeof(tGEOSTRStringData));
-    v0->stringData = v1;
-    memset(v1, 0, 32 * sizeof(tGEOSTRStringData));
-    v0->effectsNum = 0;
-    v2 = 40 * v0->stringNum;
-    v0->maxEffectsNum = 32;
-    v0->width = 640;
-    v0->height = 480;
-    memset(v0->effect, 0, v2);
-    v0->fontMaterialID = -1;
-    return v0;
+    str = (tGEOSTRStruct*)MEM_p_Alloc(sizeof(tGEOSTRStruct));
+    memset(str, 0, sizeof(tGEOSTRStruct));
+    GRO_Struct_Init((tGroGeneric*)str, 10);
+
+    str->stringNum = 32;
+    str->stringData = (tGEOSTRStringData*)MEM_p_Alloc(32 * sizeof(tGEOSTRStringData));
+    memset(str->stringData, 0, 32 * sizeof(tGEOSTRStringData));
+
+    str->effectsNum = 0;
+    str->maxEffectsNum = 32;
+    memset(str->effect, 0, 40 * str->stringNum);
+
+    str->width = 640;
+    str->height = 480;
+    str->fontMaterialID = -1;
+    return str;
 }
 
-struct sGroGeneric* STR_p_CreateFromBuffer(struct sGroGeneric* _C, char** a1, struct sWorld* world)
+struct sGroGeneric* STR_p_CreateFromBuffer(struct sGroGeneric* gro, char** readptr,
+                                           struct sWorld* world)
 {
-    tGEOSTRStruct* v2;
-    int v3;
-    tGEOSTRLetter* v4;
-    tGEOSTRStruct* result;
+    tGEOSTRStruct* str;
+    int letterNum;
 
-    v2 = STR_pst_Create();
-    v3 = LOA_ReadLong(a1, 0, 1);
-    v2->unkNum = v3;
-    if (v3)
-        v2->letters = (tGEOSTRLetter*)MEM_p_Alloc(sizeof(tGEOSTRLetter) * v3);
+    str = STR_pst_Create();
+    letterNum = LOA_ReadLong(readptr, 0, 1);
+    str->unkNum = letterNum;
+
+    if (letterNum)
+        str->letters = (tGEOSTRLetter*)MEM_p_Alloc(sizeof(tGEOSTRLetter) * letterNum);
     else
-        v2->letters = 0;
-    v4 = v2->letters;
-    if (v4)
+        str->letters = 0;
+
+    if (!str->letters)
     {
-        if (v4 < &v4[v2->unkNum])
-            memset(v4, 0, ((sizeof(tGEOSTRLetter) * v2->unkNum - 1) & 0xFFFFFFF0) + sizeof(tGEOSTRLetter));
-        result = v2;
+        str->unkNum = 0;
+        return (tGroGeneric*)str;
     }
-    else
-    {
-        v2->unkNum = 0;
-        result = v2;
-    }
-    return (tGroGeneric*)result;
+
+    if (str->unkNum > 0)
+        memset(str->letters, 0, sizeof(tGEOSTRLetter) * str->unkNum);
+    return (tGroGeneric*)str;
 }
 
-void STR_Free(struct sGroGeneric* a1)
+void STR_Free(struct sGroGeneric* gro)
 {
-    tGEOSTRStruct* a1a;
-    if (a1 && a1->intf->id == 10 && a1->usageCount <= 0)
-    {
-        a1a = (tGEOSTRStruct*)a1;
-        //nullsub_32();
-        if (a1a->unkNum)
-            MEM_Free(a1a->letters);
-        if (a1a->stringNum)
-            MEM_Free(a1a->stringData);
-        LOA_DeleteAddress((int)a1a);
-        MEM_Free(a1a);
-    }
+    tGEOSTRStruct* str;
+
+    if (!gro || gro->intf->id != 10 || gro->usageCount > 0)
+        return;
+
+    str = (tGEOSTRStruct*)gro;
+    if (str->unkNum)
+        MEM_Free(str->letters);
+    if (str->stringNum)
+        MEM_Free(str->stringData);
+    LOA_DeleteAddress((int)str);
+    MEM_Free(str);
 }
 
-int STR_l_HasSomethingToRender(struct sGameObjectVisualObject* a1, struct sGroGeneric** a2)
+int STR_l_HasSomethingToRender(struct sGameObjectVisualObject* gaovo, struct sGroGeneric** gro)
 {
-    *a2 = NULL;
+    *gro = NULL;
     return 1;
 }
 
-void STR_Reinit(struct sGroGeneric* a1)
+void STR_Reinit(struct sGroGeneric* gro)
 {
-    tGEOSTRStruct* a1a = (tGEOSTRStruct*)a1;
+    tGEOSTRStruct* str;
 
-    memset(a1a->stringData, 0, sizeof(tGEOSTRStringData) * a1a->stringNum);
-    a1a->effectsNum = 0;
+    str = (tGEOSTRStruct*)gro;
+    memset(str->stringData, 0, sizeof(tGEOSTRStringData) * str->stringNum);
+    str->effectsNum = 0;
 }
 
 int STR_l_Effect_Treat(tGEOSTRStruct* a1, tGEOSTREffectStruct* inner1)
@@ -2375,300 +2372,122 @@ int STR_l_Effect_PreTreat(tGEOSTRStruct* str, tGEOSTREffectStruct* effect)
     }   
 }
 
-int STR_l_Effect_PreTreatAll(tGEOSTRStruct* a1)
+int STR_l_Effect_PreTreatAll(tGEOSTRStruct* str)
 {
-    int v1;
-    int v2;
-    tGEOSTREffectStruct* v3;
-
-    memset(a1->specularColorsPtr, 0, 4 * a1->unkNum);
-    v1 = 0;
-    v2 = 0;
-    if (a1->effectsNum)
-    {
-        v3 = a1->effect;
-        do
-        {
-            v1 += STR_l_Effect_PreTreat(a1, v3);
-            ++v2;
-            ++v3;
-        } while (v2 < a1->effectsNum);
-    }
-    return v1;
-}
-
-void STR_AddFrame(int a1, int16_t a2, int16_t a3, int16_t a4, int16_t a5, int16_t a6, int16_t a7, int16_t a8, int16_t a9, float a10, int a11, tFontGlypthElem* a12, int a13)
-{
-    int v13;
-    Vec3* v14;
-    double v15;
-    double v16;
-    double v17;
-    double v18;
-    double v19;
-    double v20;
-    double v21;
-    double v22;
-    double v23;
-    tGeoUVElem* v24;
-    double v25;
-    double v26;
-    double v27;
-    double v28;
-    double v29;
-    double v30;
-    double v31;
-    double v32;
-    float v33; 
-    double v34;
-    double v35;
-    double v36;
-    tGeoTriangleChunks* v37;
-    tGeoTriangleChunkElem* v38;
-    int v39;
-    float v40;
-    float v41;
-    float a2a;
-    float a3a;
-    float a4a;
-    float a5a;
+    int total;
     int i;
 
-    v13 = 4 * a1;
-    v14 = &GFX_gpst_Geo->vertices[4 * a1];
-    v15 = (double)a2;
-    v14[1].x = (float)v15;
-    v14[0].x = (float)v15;
-    v16 = (double)a3;
-    v14[3].y = (float)v16;
-    v14[0].y = (float)v16;
-    v17 = (double)a4;
-    v14[3].z = a10;
-    v14[3].x = (float)v17;
-    v14[2].z = a10;
-    v14[2].x = (float)v17;
-    v14[1].z = a10;
-    v18 = (double)a5;
-    v14[0].z = a10;
-    v14[2].y = (float)v18;
-    v14[1].y = (float)v18;
-    a4a = (float)v18;
-    v14[5].x = (float)v15;
-    v14[7].z = a10;
-    v14[6].z = a10;
-    v14[4].x = (float)v15;
-    v14[5].z = a10;
-    v14[4].z = a10;
-    v14[7].y = (float)v18;
-    v14[4].y = (float)v18;
-    v14[7].x = (float)v17;
-    v14[6].x = (float)v17;
-    v19 = (double)a7;
-    v14[6].y = (float)v19;
-    v14[5].y = (float)v19;
-    v14[11].z = a10;
-    a3a = (float)v19;
-    v14[10].z = a10;
-    v14[9].z = a10;
-    v14[9].x = (float)v15;
-    v14[8].z = a10;
-    v20 = v19;
-    v14[8].x = (float)v15;
-    v14[11].y = (float)v19;
-    v14[8].y = (float)v19;
-    v14[11].x = (float)v17;
-    v14[10].x = (float)v17;
-    v21 = (double)a9;
-    v14[10].y = (float)v21;
-    a5a = (float)v21;
-    v14[9].y = (float)v21;
-    v14[13].x = (float)v17;
-    v14[12].x = (float)v17;
-    v14[15].z = a10;
-    v14[15].y = (float)v16;
-    v14[14].z = a10;
-    v14[13].z = a10;
-    v14[12].y = (float)v16;
-    v14[12].z = a10;
-    v22 = (double)a6;
-    v14[15].x = (float)v22;
-    v14[14].x = (float)v22;
-    a2a = (float)v22;
-    v14[14].y = (float)v18;
-    v14[13].y = (float)v18;
-    v14[19].z = a10;
-    v14[18].z = a10;
-    v14[17].x = (float)v17;
-    v14[17].z = a10;
-    v14[16].z = a10;
-    v14[16].x = (float)v17;
-    v14[19].y = (float)v18;
-    v14[16].y = (float)v18;
-    v14[19].x = (float)v22;
-    v14[18].x = (float)v22;
-    v14[18].y = (float)v20;
-    v14[17].y = (float)v20;
-    v14[23].y = a3a;
-    v14[20].y = a3a;
-    v14[21].x = (float)v17;
-    v14[23].x = a2a;
-    v14[20].x = (float)v17;
-    v14[22].x = a2a;
-    v14[22].y = a5a;
-    v14[21].y = a5a;
-    v14[23].z = a10;
-    v14[22].z = a10;
-    v14[21].z = a10;
-    v14[20].z = a10;
-    v14[27].y = (float)v16;
-    v14[24].y = (float)v16;
-    v14[25].x = a2a;
-    v14[24].x = a2a;
-    v14[26].y = a4a;
-    v23 = (double)a8;
-    v14[25].y = a4a;
-    v14[27].z = a10;
-    v14[26].z = a10;
-    v14[27].x = (float)v23;
-    v14[25].z = a10;
-    v14[26].x = (float)v23;
-    v14[24].z = a10;
-    v14[29].x = a2a;
-    v14[31].x = (float)v23;
-    v14[28].x = a2a;
-    v14[30].x = (float)v23;
-    v14[31].y = a4a;
-    v14[28].y = a4a;
-    v14[30].y = a3a;
-    v14[29].y = a3a;
-    v14[31].z = a10;
-    v14[30].z = a10;
-    v14[29].z = a10;
-    v14[28].z = a10;
-    v14[35].x = (float)v23;
-    v14[34].x = (float)v23;
-    v14[33].x = a2a;
-    v14[32].x = a2a;
-    v14[35].y = a3a;
-    v14[32].y = a3a;
-    v14[34].y = a5a;
-    v14[33].y = a5a;
-    v14[35].z = a10;
-    v14[34].z = a10;
-    v14[33].z = a10;
-    v14[32].z = a10;
-    for (i = 0; i < 36; i++) {
-        GFX_gpst_Geo->vertexColors[4 * a1 + 1 + i] = a11; //    memset32(&GFX_gpst_Geo->vertexColors[4 * a1 + 1], a11, 36u);
-    }
-    v24 = &GFX_gpst_Geo->UVs[4 * a1];
-    v25 = a12->x;
-    v26 = (a12->y + v25) * 0.5;
-    v27 = (a12->h + a12->w) * 0.5;
-    v28 = a12->h;
-    v24[1].u = a12->x;
-    v24[0].u = (float)v25;
-    v24[3].u = (float)v26;
-    v24[2].u = (float)v26;
-    v24[2].v = (float)v27;
-    v24[1].v = (float)v27;
-    v24[3].v = (float)v28;
-    v24[0].v = (float)v28;
-    v24[5].u = (float)v25;
-    v24[4].u = (float)v25;
-    v24[7].u = (float)v26;
-    v24[6].u = (float)v26;
-    v24[6].v = (float)v27;
-    v24[5].v = (float)v27;
-    v24[7].v = (float)v27;
-    v24[4].v = (float)v27;
-    v29 = a12->w;
-    v24[9].u = (float)v25;
-    v24[8].u = (float)v25;
-    v24[11].u = (float)v26;
-    v24[10].u = (float)v26;
-    v24[10].v = (float)v29;
-    v24[9].v = (float)v29;
-    v30 = v26;
-    v31 = v27;
-    v24[11].v = (float)v27;
-    v24[8].v = (float)v27;
-    v40 = (float)v30;
-    v32 = a12->h;
-    v24[13].u = (float)v30;
-    v24[12].u = (float)v30;
-    v24[15].u = (float)v30;
-    v24[14].u = (float)v30;
-    v24[14].v = (float)v31;
-    v24[13].v = (float)v31;
-    v24[15].v = (float)v32;
-    v24[12].v = (float)v32;
-    v41 = (float)v31;
-    v24[17].u = (float)v30;
-    v24[16].u = (float)v30;
-    v24[19].u = (float)v30;
-    v24[18].u = (float)v30;
-    v24[18].v = (float)v31;
-    v24[17].v = (float)v31;
-    v24[19].v = (float)v31;
-    v24[16].v = (float)v31;
-    v33 = a12->w;
-    v24[22].v = v33;
-    v24[21].u = (float)v30;
-    v24[21].v = v33;
-    v24[20].u = (float)v30;
-    v24[23].u = (float)v30;
-    v24[22].u = (float)v30;
-    v24[23].v = v41;
-    v24[20].v = v41;
-    v34 = a12->y;
-    v35 = a12->h;
-    v24[25].u = v40;
-    v24[24].u = v40;
-    v24[27].u = (float)v34;
-    v24[26].u = (float)v34;
-    v24[26].v = v41;
-    v24[25].v = v41;
-    v24[27].v = (float)v35;
-    v24[24].v = (float)v35;
-    v24[29].u = v40;
-    v24[31].u = (float)v34;
-    v24[28].u = v40;
-    v24[30].u = (float)v34;
-    v24[30].v = v41;
-    v24[29].v = v41;
-    v24[31].v = v41;
-    v24[28].v = v41;
-    v36 = a12->w;
-    v24[33].u = v40;
-    v24[35].u = (float)v34;
-    v24[32].u = v40;
-    v24[34].u = (float)v34;
-    v24[35].v = v41;
-    v24[32].v = v41;
-    v24[34].v = (float)v36;
-    v24[33].v = (float)v36;
-    v37 = &GFX_gpst_Geo->triangleChunks[a13];
-    v38 = &v37->triangleChunkElems[v37->triangleNum];
-    v37->triangleNum += 18;
-    v39 = 9;
-    do
+    memset(str->specularColorsPtr, 0, 4 * str->unkNum);
+    total = 0;
+    for (i = 0; i < str->effectsNum; i++)
+        total += STR_l_Effect_PreTreat(str, &str->effect[i]);
+    return total;
+}
+
+// A nine-patch: three columns by three rows of quads over four x edges
+// and four y edges. The middle column and the middle row sample one line
+// of texels each, at the midpoint between the glyph's two edges, which is
+// what lets them stretch.
+void STR_AddFrame(int baseQuad, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                  int16_t x2, int16_t y2, int16_t x3, int16_t y3,
+                  float z, int color, tFontGlypthElem* glyph, int chunkIdx)
+{
+    tGeoTriangleChunks* chunk;
+    tGeoTriangleChunkElem* tris;
+    tGeoUVElem* uvs;
+    Vec3* verts;
+    float xEdge[4];
+    float yEdge[4];
+    float uEdge[4];
+    float vEdge[4];
+    float uMid;
+    float vMid;
+    int baseVertex;
+    int quadBase;
+    int quad;
+    int col;
+    int row;
+    int i;
+
+    baseVertex = 4 * baseQuad;
+    verts = &GFX_gpst_Geo->vertices[baseVertex];
+    uvs = &GFX_gpst_Geo->UVs[baseVertex];
+
+    xEdge[0] = x0;
+    xEdge[1] = x1;
+    xEdge[2] = x2;
+    xEdge[3] = x3;
+    yEdge[0] = y0;
+    yEdge[1] = y1;
+    yEdge[2] = y2;
+    yEdge[3] = y3;
+
+    uMid = (float)((glyph->y + glyph->x) * 0.5);
+    vMid = (float)((glyph->h + glyph->w) * 0.5);
+    uEdge[0] = glyph->x;
+    uEdge[1] = uMid;
+    uEdge[2] = uMid;
+    uEdge[3] = glyph->y;
+    vEdge[0] = glyph->h;
+    vEdge[1] = vMid;
+    vEdge[2] = vMid;
+    vEdge[3] = glyph->w;
+
+    for (col = 0; col < 3; col++)
     {
-        v38->v2 = v13 + 1;
-        v38->uv2 = v13 + 1;
-        v38->v1 = v13;
-        v38->uv1 = v13;
-        v38[1].v1 = v13;
-        v38[1].uv1 = v13;
-        v38->v3 = v13 + 2;
-        v38->uv3 = v13 + 2;
-        v38[1].v2 = v13 + 2;
-        v38[1].v3 = v13 + 3;
-        v38[1].uv2 = v13 + 2;
-        v38[1].uv3 = v13 + 3;
-        v13 += 4;
-        v38 += 2;
-        --v39;
-    } while (v39);
+        for (row = 0; row < 3; row++)
+        {
+            verts[0].x = xEdge[col];
+            verts[0].y = yEdge[row];
+            verts[0].z = z;
+            verts[1].x = xEdge[col];
+            verts[1].y = yEdge[row + 1];
+            verts[1].z = z;
+            verts[2].x = xEdge[col + 1];
+            verts[2].y = yEdge[row + 1];
+            verts[2].z = z;
+            verts[3].x = xEdge[col + 1];
+            verts[3].y = yEdge[row];
+            verts[3].z = z;
+
+            uvs[0].u = uEdge[col];
+            uvs[0].v = vEdge[row];
+            uvs[1].u = uEdge[col];
+            uvs[1].v = vEdge[row + 1];
+            uvs[2].u = uEdge[col + 1];
+            uvs[2].v = vEdge[row + 1];
+            uvs[3].u = uEdge[col + 1];
+            uvs[3].v = vEdge[row];
+
+            verts += 4;
+            uvs += 4;
+        }
+    }
+
+    for (i = 0; i < 36; i++)
+        GFX_gpst_Geo->vertexColors[baseVertex + 1 + i] = color;
+
+    chunk = &GFX_gpst_Geo->triangleChunks[chunkIdx];
+    tris = &chunk->triangleChunkElems[chunk->triangleNum];
+    chunk->triangleNum += 18;
+    for (quad = 0; quad < 9; quad++)
+    {
+        quadBase = baseVertex + 4 * quad;
+
+        tris[0].v1 = quadBase;
+        tris[0].uv1 = quadBase;
+        tris[0].v2 = quadBase + 1;
+        tris[0].uv2 = quadBase + 1;
+        tris[0].v3 = quadBase + 2;
+        tris[0].uv3 = quadBase + 2;
+        tris[1].v1 = quadBase;
+        tris[1].uv1 = quadBase;
+        tris[1].v2 = quadBase + 2;
+        tris[1].uv2 = quadBase + 2;
+        tris[1].v3 = quadBase + 3;
+        tris[1].uv3 = quadBase + 3;
+        tris += 2;
+    }
 }
 
 void STR_AddSprite(int a1, int16_t a2, int16_t a3, int16_t a4, int16_t a5, float a6, int a7, tFontGlypthElem* a8, int a9)
