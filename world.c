@@ -1197,7 +1197,7 @@ void * WOR_ul_GameObjectGroupCallback(uint32_t Offset)
                 ((tableElemStructPF*)(WOR_gpst_WorldToLoadIn->objectTablePF.nextElemPtr))->objectPtr = NULL;
                 ((tableElemStructPF*)(v3->nextElemPtr))->objectFlags = 0;
                 v4 = v3->actElemNum + 1;
-                ++((tableElemStructPF*)(v3->nextElemPtr));
+                v3->nextElemPtr = (tableElemStructPF*)v3->nextElemPtr + 1;
                 v3->actElemNum = v4;
                 LOA_MakeFileRef(v2, &(((tableElemStructPF*)(WOR_gpst_WorldToLoadIn->objectTablePF.nextElemPtr))[-1].objectPtr), OBJ_ul_GameObjectCallback, 1);
             }

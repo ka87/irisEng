@@ -23,7 +23,14 @@ typedef struct tagPOINT { LONG x, y; } POINT;
 typedef struct _FILETIME { DWORD dwLowDateTime, dwHighDateTime; } FILETIME;
 typedef struct _CRITICAL_SECTION { void* p; } CRITICAL_SECTION;
 typedef struct _LARGE_INTEGER_STUB { long long QuadPart; } LARGE_INTEGER;
+typedef union _ULARGE_INTEGER_STUB { struct { DWORD LowPart; DWORD HighPart; }; unsigned long long QuadPart; } ULARGE_INTEGER;
+typedef long INT_PTR;
+typedef unsigned long UINT_PTR;
+typedef struct DLGTEMPLATE { DWORD style, dwExtendedStyle; WORD cdit; short x, y, cx, cy; } DLGTEMPLATE;
+typedef const DLGTEMPLATE* LPCDLGTEMPLATEA;
 int QueryPerformanceCounter(LARGE_INTEGER* out);
+BOOL GetDiskFreeSpaceExA(LPCSTR, ULARGE_INTEGER*, ULARGE_INTEGER*, ULARGE_INTEGER*);
+INT_PTR DialogBoxIndirectParamA(HINSTANCE, LPCDLGTEMPLATEA, HWND, void*, long);
 #define TRUE  1
 #define FALSE 0
 #define WINAPI
@@ -44,15 +51,33 @@ typedef unsigned char       uchar;
 #define __fastcall
 #define __declspec(x)
 #define __forceinline inline
-typedef struct IDirectSoundNotify { void* p; } IDirectSoundNotify;
-typedef struct IDirectSound3DBuffer { void* p; } IDirectSound3DBuffer;
-typedef struct IKsPropertySet { void* p; } IKsPropertySet;
-typedef struct WAVEFORMATEX { void* p; } WAVEFORMATEX;
 typedef char                CHAR;
 typedef unsigned char       UCHAR;
 typedef short               SHORT;
 typedef unsigned short      USHORT;
 typedef unsigned long       ULONG;
+typedef unsigned long*      LPDWORD;
+typedef unsigned char*      LPBYTE;
+typedef void*               HKEY;
+typedef HKEY*               PHKEY;
+typedef void*               HBRUSH;
+typedef void*               HICON;
+typedef void*               HCURSOR;
+typedef void*               HMENU;
+#define ERROR_SUCCESS            0
+#define HKEY_CLASSES_ROOT        ((HKEY)0x80000000)
+#define HKEY_CURRENT_USER        ((HKEY)0x80000001)
+#define HKEY_LOCAL_MACHINE       ((HKEY)0x80000002)
+#define KEY_READ                 0x20019
+#define KEY_QUERY_VALUE          0x0001
+#define REG_SZ                   1
+#define REG_DWORD                4
+#define INVALID_HANDLE_VALUE     ((HANDLE)(long)-1)
+#define INVALID_FILE_ATTRIBUTES  ((DWORD)-1)
+#define FILE_ATTRIBUTE_DIRECTORY 0x00000010
+#define FILE_ATTRIBUTE_NORMAL    0x00000080
+#define MAX_FIND_PATH            260
+
 typedef void*               LPARAM_PTR;
 typedef long                LPARAM;
 typedef unsigned int        WPARAM;
@@ -119,3 +144,35 @@ unsigned long long __rdtsc(void);
 DWORD    timeGetTime(void);
 DWORD    timeBeginPeriod(UINT period);
 DWORD    timeEndPeriod(UINT period);
+
+typedef struct WIN32_FIND_DATAA {
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime, ftLastAccessTime, ftLastWriteTime;
+    DWORD nFileSizeHigh, nFileSizeLow, dwReserved0, dwReserved1;
+    CHAR cFileName[260];
+    CHAR cAlternateFileName[14];
+} WIN32_FIND_DATAA;
+
+typedef struct WNDCLASSA {
+    UINT style;
+    void* lpfnWndProc;
+    int cbClsExtra, cbWndExtra;
+    HINSTANCE hInstance;
+    HICON hIcon;
+    HCURSOR hCursor;
+    HBRUSH hbrBackground;
+    LPCSTR lpszMenuName, lpszClassName;
+} WNDCLASSA;
+
+DWORD  GetFileAttributesA(LPCSTR);
+HANDLE FindFirstFileA(LPCSTR, WIN32_FIND_DATAA*);
+BOOL   FindNextFileA(HANDLE, WIN32_FIND_DATAA*);
+BOOL   FindClose(HANDLE);
+LONG   RegOpenKeyExA(HKEY, LPCSTR, DWORD, DWORD, PHKEY);
+LONG   RegQueryValueExA(HKEY, LPCSTR, DWORD*, DWORD*, LPBYTE, DWORD*);
+LONG   RegCloseKey(HKEY);
+LONG   DefWindowProcA(HWND, UINT, WPARAM, LPARAM);
+WORD   RegisterClassA(const WNDCLASSA*);
+HWND   CreateWindowExA(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, void*);
+BOOL   ShowWindow(HWND, int);
+BOOL   UpdateWindow(HWND);
