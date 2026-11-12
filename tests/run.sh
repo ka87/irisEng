@@ -121,6 +121,14 @@ GFX_Profiler_Validate GFX_i_Profiler_Render GFX_SetNumberOfPPP \
 GFX_SetNumberOfLPP GFX_SetNumberOfP GFX_Profiler_Seti GFX_Profiler_Setf \
 GFX_Profiler_Setv"
 
+diaphragm_syms="GFX_Diaphragm_Create GFX_i_Diaphragm_Render depth_362"
+fade_syms="GFX_i_Fade_Render GFX_Fade_Create"
+line_syms="GFX_Line_Create GFX_Line_Render"
+table_syms="GFX_i_Table_Render GFX_Table_Setv GFX_Table_Create"
+speed_syms="GFX_i_Speed_Render GFX_Speed_Create"
+flare_syms="GFX_Flare_Create GFX_i_Flare_TestDepth GFX_Flare_Test \
+GFX_Flare_Render GFXF_f_depth f_9Factor_296"
+
 FILTER=$1
 
 run_one snakemodifier modifiers/snakemodifier.c \
@@ -148,6 +156,14 @@ run_group gfxspark gfx \
 
 run_group gfxprofiler gfx \
     "gfx/gfxprofiler.c:tests/baseline_gfxprofiler.c:$profiler_syms"
+
+run_group gfxdraw gfx \
+    "gfx/gfxdiaphragm.c:tests/baseline_gfxdiaphragm.c:$diaphragm_syms" \
+    "gfx/gfxfade.c:tests/baseline_gfxfade.c:$fade_syms" \
+    "gfx/gfxline.c:tests/baseline_gfxline.c:$line_syms" \
+    "gfx/gfxtable.c:tests/baseline_gfxtable.c:$table_syms" \
+    "gfx/gfxspeed.c:tests/baseline_gfxspeed.c:$speed_syms" \
+    "gfx/gfxflare.c:tests/baseline_gfxflare.c:$flare_syms"
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"

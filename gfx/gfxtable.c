@@ -41,6 +41,11 @@ int GFX_i_Table_Render(struct sGfxTableData* table)
     camHeight = gpst_DX_stDD->ct.cam.height;
     verts = GFX_gpst_Geo->vertices;
     tris = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+    // The colour cursor walked backwards here, so each cell wrote the
+    // four indices 4n+1, 4n, 4n-1 and 4n-2: the first cell stored two
+    // ints in front of the colour array and every later cell overwrote
+    // its neighbour's colour. Each cell now writes the four indices its
+    // own vertices read, 4n+1 to 4n+4.
     colors = GFX_gpst_Geo->vertexColors + 1;
     baseVertex = 0;
 

@@ -58,43 +58,69 @@ void srand(unsigned int seed)
 }
 
 /* ------------------------------------------------------------------ */
-/* The allocator. Nothing is handed back to the system between the two */
-/* sides of a case: the first side's state has to stay readable while  */
-/* the second side runs and the two are compared, so the test leaks on */
-/* purpose and the log records every allocation instead.               */
+/* The allocator. Two deliberate departures from the real one.         */
+/*                                                                     */
+/* Nothing is handed back to the system between the two sides of a     */
+/* case: the first side's state has to stay readable while the second  */
+/* side runs and the two are compared, so the test leaks on purpose    */
+/* and the log records every allocation instead.                       */
+/*                                                                     */
+/* And every block carries a guard band in front of it, because a      */
+/* frozen copy may write a little way before the block it was given.   */
+/* The real engine writes into whatever the heap put there and runs    */
+/* on; glibc notices and aborts the process, which would stop the test */
+/* at the first such case instead of reporting it.                     */
 /* ------------------------------------------------------------------ */
+
+#define GFXMOCK_GUARD 64
 
 void* MEM_p_Alloc(unsigned int size)
 {
+    char* block;
+
     GFXMOCK_Record("MEM_p_Alloc", 1, (double)size);
-    return calloc(1, size ? size : 1);
+    block = (char*)calloc(1, (size ? size : 1) + 2 * GFXMOCK_GUARD);
+    return block + GFXMOCK_GUARD;
 }
 
 void* MEM_p_Realloc(void* ptr, unsigned int size)
 {
+    char* block;
+
     GFXMOCK_Record("MEM_p_Realloc", 1, (double)size);
-    return realloc(ptr, size ? size : 1);
+    block = ptr ? (char*)ptr - GFXMOCK_GUARD : NULL;
+    block = (char*)realloc(block, (size ? size : 1) + 2 * GFXMOCK_GUARD);
+    return block + GFXMOCK_GUARD;
 }
 
 void MEM_Free(void* ptr)
 {
     GFXMOCK_Record("MEM_Free", 0);
-    free(ptr);
+    if (ptr)
+        free((char*)ptr - GFXMOCK_GUARD);
 }
 
 void* MEM_p_AllocAligned(int size, int alignment)
 {
-    return calloc(1, size > 0 ? (size_t)size : 1);
+    char* block;
+
+    block = (char*)calloc(1, (size > 0 ? (size_t)size : 1) + 2 * GFXMOCK_GUARD);
+    return block + GFXMOCK_GUARD;
 }
 
 void* MEM_p_ReallocAligned(void* ptr, int size, int alignment)
 {
-    return realloc(ptr, size > 0 ? (size_t)size : 1);
+    char* block;
+
+    block = ptr ? (char*)ptr - GFXMOCK_GUARD : NULL;
+    block = (char*)realloc(block, (size > 0 ? (size_t)size : 1) + 2 * GFXMOCK_GUARD);
+    return block + GFXMOCK_GUARD;
 }
 
 void MEM_FreeAlign(void* ptr)
 {
-    free(ptr);
+    if (ptr)
+        free((char*)ptr - GFXMOCK_GUARD);
 }
 
 /* ------------------------------------------------------------------ */
@@ -119,6 +145,18 @@ static void GFXMOCK_l_SetProjectionMatrix(tDDCamStruct* cam)
 {
     GFXMOCK_Record("SetProjectionMatrix", 1, (double)cam->focale);
 }
+
+static int GFXMOCK_l_Request(int type, void* param)
+{
+    GFXMOCK_Record("Request", 1, (double)type);
+    return 1;
+}
+
+static Mtx4x4 GFXMOCK_viewMatrix;
+static tZlistStruct GFXMOCK_zlists[4];
+
+/* soft.h declares this one extern, so the test provides it. */
+tZlistStruct* SOFT_gpc_BigBufferZlists;
 
 void GFXMOCK_SetDistance(int distance)
 {
@@ -161,6 +199,15 @@ void GFXMOCK_Init(void)
     GFXMOCK_dd.drawMaskAllowedStuffCurrent = 0x7FFFFFFF;
 
     GFXMOCK_dd.rasters = GFXMOCK_rasters;
+    GFXMOCK_dd.Request = GFXMOCK_l_Request;
+    GFXMOCK_dd.winWidth = 640;
+    GFXMOCK_dd.winHeight = 480;
+    GFXMOCK_dd.presentationFlags = 0;
+    MATH_SetIdentityMatrix(&GFXMOCK_viewMatrix);
+    GFXMOCK_dd.ct.cam.viewMtxPtr_setInGRORender = &GFXMOCK_viewMatrix;
+    GFXMOCK_dd.ct.cam.viewPortRealPosX = 0;
+    GFXMOCK_dd.ct.cam.viewPortRealPosY = 0;
+    SOFT_gpc_BigBufferZlists = GFXMOCK_zlists;
     gpst_DX_stDD = &GFXMOCK_dd;
     GFX_gpst_Geo = &GFXMOCK_geo;
     GFX_gpst_GO = &GFXMOCK_gao;
@@ -216,6 +263,15 @@ void GFXMOCK_Reset(void)
     MATH_SetIdentityMatrix(&GFXMOCK_dd.ct.cam.objectMtx);
     MATH_SetIdentityMatrix(&GFXMOCK_dd.ct.cam.projectionMtx);
     GFXMOCK_dd.ct.cam.focale = 1.5f;
+    GFXMOCK_dd.ct.cam.width = 640.0f;
+    GFXMOCK_dd.ct.cam.height = 480.0f;
+    GFXMOCK_dd.ct.cam.viewPortRealPosX = 0;
+    GFXMOCK_dd.ct.cam.viewPortRealPosY = 0;
+    GFXMOCK_dd.presentationFlags = 0;
+    MATH_SetIdentityMatrix(&GFXMOCK_viewMatrix);
+    GFXMOCK_dd.ct.cam.viewMtxPtr_setInGRORender = &GFXMOCK_viewMatrix;
+    GFX_ppst_CurrentList = &GFXMOCK_elem;
+    GFXMOCK_elemStorage.id = 7;
 
     srand(12345);
 }
@@ -561,6 +617,7 @@ void SOFT_TransformAndProject(Vec3* out, Vec3* in, int idx, tDDCamStruct* cam)
 
 int GFXMOCK_fails;
 int GFXMOCK_diffCount;
+int GFXMOCK_ignoreColors;
 
 static char GFXMOCK_caseName[160];
 static char GFXMOCK_worstAbsSite[160];
@@ -747,7 +804,7 @@ static int GFXMOCK_l_CompareCapture(int which, tGfxCapture* a, tGfxCapture* b)
                 ok = 0;
             }
         }
-    if (a->colors && b->colors)
+    if (a->colors && b->colors && !GFXMOCK_ignoreColors)
         for (i = 0; i <= a->vertexNum; i++)
         {
             snprintf(what, sizeof(what), "cap%d.color", which);

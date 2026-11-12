@@ -85,6 +85,12 @@ int GFXMOCK_Close(float base, float New, const char* what, int idx);
 int GFXMOCK_CloseVec(Vec3* base, Vec3* New, const char* what);
 int GFXMOCK_SameInt(int base, int New, const char* what, int idx);
 
+/* Set while comparing an effect whose frozen copy writes its vertex
+   colours at the wrong indices, so the arrays cannot be compared; the
+   driver checks the rewritten side against what the geometry wants
+   instead, and says so. */
+extern int GFXMOCK_ignoreColors;
+
 extern int GFXMOCK_fails;
 extern int GFXMOCK_diffCount;
 void GFXMOCK_Summary(const char* title);
