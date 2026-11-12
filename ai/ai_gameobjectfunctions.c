@@ -1052,7 +1052,7 @@ tAINode* AI_EvalFunc_OBJ_RejoinAndOrient(tAINode* a1)
 
 void AI_EvalFunc_OBJReinit_C(struct sGameObjectMain* a1, int a2)
 {
-    byte v2;
+    uint8_t v2;
 
     v2 = a1->if_this_not0_wont_render_gao;
     ENG_ReinitOneObject(a1, a2);
@@ -1074,7 +1074,7 @@ tAINode* AI_EvalFunc_OBJReinit(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_ExtraFlagsSet_C(struct sGameObjectMain* a1, __int16 a2, __int16 a3)
+void AI_EvalFunc_OBJ_ExtraFlagsSet_C(struct sGameObjectMain* a1, int16_t a2, int16_t a3)
 {
     if (a1->extended)
         a1->extended->extraFlag = a2 | ~a3 & a1->extended->extraFlag;
@@ -1083,8 +1083,8 @@ void AI_EvalFunc_OBJ_ExtraFlagsSet_C(struct sGameObjectMain* a1, __int16 a2, __i
 tAINode* AI_EvalFunc_OBJ_ExtraFlagsSet(tAINode* a1)
 {
     tGameObjectMain* v2;
-    __int16 a3;
-    __int16 a2;
+    int16_t a3;
+    int16_t a2;
 
     v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
@@ -1426,13 +1426,13 @@ tAINode* AI_EvalFunc_OBJ_FlagsStatusGet(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_CustomBitsSet_C(struct sGameObjectMain* a1, __int16 a2, __int16 a3)
+void AI_EvalFunc_OBJ_CustomBitsSet_C(struct sGameObjectMain* a1, int16_t a2, int16_t a3)
 {
     a1->flags2 &= ~(a3 & 0xFF00);
     a1->flags2 |= a2 & 0xFF00;
 }
 
-void AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(__int16 a1, __int16 a2)
+void AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(int16_t a1, int16_t a2)
 {
     AI_gpst_CurrentGameObject->flags2 &= ~(a2 & 0xFF00);
     AI_gpst_CurrentGameObject->flags2 |= a1 & 0xFF00;
@@ -1441,8 +1441,8 @@ void AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(__int16 a1, __int16 a2)
 tAINode* AI_EvalFunc_OBJ_CustomBitsSet(tAINode* a1)
 {
     tGameObjectMain* v2;
-    __int16 a2;
-    __int16 a3;
+    int16_t a2;
+    int16_t a3;
 
     v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
@@ -1471,14 +1471,14 @@ tAINode* AI_EvalFunc_OBJ_CustomBitsGet(tAINode* a1)
     return a1 + 1;
 }
 
-BOOL AI_EvalFunc_OBJ_CustomBitsTest_C(struct sGameObjectMain* a1, __int16 a2)
+BOOL AI_EvalFunc_OBJ_CustomBitsTest_C(struct sGameObjectMain* a1, int16_t a2)
 {
     return (a2 & 0xFF00 & a1->flags2 & 0xFF00) != 0;
 }
 
 tAINode* AI_EvalFunc_OBJ_CustomBitsTest(tAINode* a1)
 {
-    __int16 v1;
+    int16_t v1;
     tGameObjectMain* v3;
 
     v3 = AI_gpst_CurrentUltra;
@@ -1492,7 +1492,7 @@ tAINode* AI_EvalFunc_OBJ_CustomBitsTest(tAINode* a1)
     return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_CustomBitsNot_C(tGameObjectMain* a1, __int16 a2)
+int AI_EvalFunc_OBJ_CustomBitsNot_C(tGameObjectMain* a1, int16_t a2)
 {
     a1->flags2 ^= a2 & 0xFF00;
     return a1->flags2;
@@ -1500,7 +1500,7 @@ int AI_EvalFunc_OBJ_CustomBitsNot_C(tGameObjectMain* a1, __int16 a2)
 
 tAINode* AI_EvalFunc_OBJ_CustomBitsNot(tAINode* a1)
 {
-    __int16 v1;
+    int16_t v1;
     int v2;
     tGameObjectMain* v4;
 
@@ -1528,8 +1528,8 @@ void AI_EvalFunc_OBJ_CapaSet_C_CURRENT(int16_t set, int16_t remove)
 tAINode* AI_EvalFunc_OBJ_CapaSet(tAINode* a1)
 {
     tGameObjectMain* v2;
-    __int16 a2;
-    __int16 a3;
+    int16_t a2;
+    int16_t a3;
 
     v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
@@ -1558,7 +1558,7 @@ tAINode* AI_EvalFunc_OBJ_CapaGet(tAINode* a1)
     return a1 + 1;
 }
 
-BOOL AI_EvalFunc_OBJ_CapaTest_C(struct sGameObjectMain* a1, __int16 a2)
+BOOL AI_EvalFunc_OBJ_CapaTest_C(struct sGameObjectMain* a1, int16_t a2)
 {
     BOOL result;
 
@@ -1569,7 +1569,7 @@ BOOL AI_EvalFunc_OBJ_CapaTest_C(struct sGameObjectMain* a1, __int16 a2)
     return result;
 }
 
-BOOL AI_EvalFunc_OBJ_CapaTest_C_CURRENT(__int16 a1)
+BOOL AI_EvalFunc_OBJ_CapaTest_C_CURRENT(int16_t a1)
 {
     BOOL result;
 
@@ -1583,7 +1583,7 @@ BOOL AI_EvalFunc_OBJ_CapaTest_C_CURRENT(__int16 a1)
 tAINode* AI_EvalFunc_OBJ_CapaTest(tAINode* a1)
 {
     tAINode* result;
-    __int16 v2;
+    int16_t v2;
     tGameObjectMain* v3;
 
     v3 = AI_gpst_CurrentUltra;
@@ -1606,7 +1606,7 @@ tAINode* AI_EvalFunc_OBJ_CapaTest(tAINode* a1)
     return result;
 }
 
-int AI_EvalFunc_OBJ_CapaNot_C(struct sGameObjectMain* a1, __int16 a2)
+int AI_EvalFunc_OBJ_CapaNot_C(struct sGameObjectMain* a1, int16_t a2)
 {
     a1->extended->capa ^= a2;
     return a1->flags2;
@@ -1614,7 +1614,7 @@ int AI_EvalFunc_OBJ_CapaNot_C(struct sGameObjectMain* a1, __int16 a2)
 
 tAINode* AI_EvalFunc_OBJ_CapaNot(tAINode* a1)
 {
-    __int16 v1;
+    int16_t v1;
     int v2;
     tGameObjectMain* v4;
 
@@ -2172,7 +2172,7 @@ tAINode* AI_EvalFunc_OBJ_FlagsIdentityTest(tAINode* a1)
 
 int AI_EvalFunc_OBJ_FlagsDesignGet_C(struct sGameObjectMain* a1)
 {
-    byte v2;
+    uint8_t v2;
 
     v2 = 0;
     if (a1)
@@ -2195,7 +2195,7 @@ tAINode* AI_EvalFunc_OBJ_FlagsDesignGet(tAINode* a1)
 
 int AI_EvalFunc_OBJ_FlagsDesignSet_C(struct sGameObjectMain* a1, char a2, char a3)
 {
-    byte v4;
+    uint8_t v4;
 
     if (!a1)
         return -1;

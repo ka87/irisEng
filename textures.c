@@ -348,10 +348,10 @@ void TEX_Anim_Update()
     tTexAnimatedElem* v1;
     int v2;
     int v3;
-    byte v4;
-    byte v5;
-    byte v6;
-    __int16 v7;
+    uint8_t v4;
+    uint8_t v5;
+    uint8_t v6;
+    int16_t v7;
     tTexAnimatedInnerElem* v8;
     tTexAnimatedInnerElem* v9;
 
@@ -378,10 +378,10 @@ void TEX_Anim_Update()
             else
             {
                 v7 = (v6 % v4) & 0xff;
-                v1->b3 = (byte)v7;
+                v1->b3 = (uint8_t)v7;
             }
             v8 = v1->texPtr;
-            v1->currentTex = (byte)v7;
+            v1->currentTex = (uint8_t)v7;
             v9 = &v8[(uint8_t)v7];
             v1->remainingTime = v9->texTime;
             TEX_gst_GlobalList.texElems[v1->id].animatedData.textureID = v9->texIdx;
@@ -416,7 +416,7 @@ void TEX_Procedural_AfterLoad(struct sGdi_DisplayData* a1)
     }
 }
 
-struct sTexProceduralStruct* TEX_pst_Procedural_Get(__int16 a1)
+struct sTexProceduralStruct* TEX_pst_Procedural_Get(int16_t a1)
 {
     int v1;
     tTexProceduralStruct* i;
@@ -592,12 +592,12 @@ void TEX_Expand_YBy2(char* a1, char* a2, int a3, int a4)
 
 int __cdecl TEX_l_File_LoadAnimated(char* offset, tEngTexIntermediateStruct* a2, int a3)
 {
-    unsigned __int8 v3;
+    uint8_t v3;
     tEngTexIntermediateStruct* v4;
     int v5;
     tTexAnimatedInnerElem* v6;
     tTexAnimatedInnerElem* v7;
-    unsigned __int16 v9;
+    uint16_t v9;
     tTexAnimatedInnerElem* v10;
 
     if (a3)
@@ -700,14 +700,14 @@ void TEX_File_FreeDescription(struct sEngTexIntermediateStruct* a1)
 int TEX_l_File_LoadJpeg(char* a1, struct sEngTexIntermediateStruct* a2, size_t a3)
 {
     uint16_t v3;
-    byte v4;
+    uint8_t v4;
     char v5;
-    byte v6;
+    uint8_t v6;
     int v7;
     int v8;
     char* v10;
     char* v11;
-    byte v12;
+    uint8_t v12;
     char* v13;
     char* v14;
     char* i;
@@ -882,7 +882,7 @@ int TEX_l_File_LoadTga(char* a1, tEngTexIntermediateStruct* a2)
     uint16_t v3;
     char v4;
     tEngTexIntermediateStruct* v5;
-    __int16 v6;
+    int16_t v6;
     char* v7;
     BOOL v8;
     int v9;
@@ -891,7 +891,7 @@ int TEX_l_File_LoadTga(char* a1, tEngTexIntermediateStruct* a2)
     char* v13;
     uint8_t v14;
     uint8_t v15;
-    __int16 v16;
+    int16_t v16;
     char colorDepth;
 
     LOA_ReadChar(&a1, 0, 1);
@@ -973,11 +973,11 @@ int TEX_l_File_LoadTga(char* a1, tEngTexIntermediateStruct* a2)
 
 int TEX_l_File_LoadBmp(tTexWeirdBMPHeader* a1, tEngTexIntermediateStruct* a2)
 {
-    __int16 v2;
-    byte v3;
-    byte v4;
+    int16_t v2;
+    uint8_t v3;
+    uint8_t v4;
     int v6;
-    byte v7;
+    uint8_t v7;
     char* v8;
 
     v2 = a2->flags;
@@ -1062,9 +1062,9 @@ void TEX_File_DevelopParams(tEngTexIntermediateStruct* a1)
 {
     uint16_t v1;
     int v2;
-    byte v3;
-    byte v4;
-    byte v5;
+    uint8_t v3;
+    uint8_t v4;
+    uint8_t v5;
 
     v1 = a1->tp.imageDataHeight;
     a1->realWidth = a1->tp.imageDataWidth;
@@ -1155,9 +1155,9 @@ void TEX_GetColorConvertParams(int a1, unsigned int a2, int* a3, unsigned int* a
     int v5;
     unsigned int v6;
     unsigned int* v7;
-    unsigned __int8 v8;
-    unsigned __int8 v9;
-    unsigned __int8 v10;
+    uint8_t v8;
+    uint8_t v9;
+    uint8_t v10;
     uint8_t a1a;
 
     if (a1 && (v4 = a2) != 0)
@@ -1186,13 +1186,13 @@ void TEX_GetColorConvertParams(int a1, unsigned int a2, int* a3, unsigned int* a
 int TEX_l_ConvertPF(struct sEngTexIntermediateStruct* a1, struct sEngTexIntermediateStruct* a2)
 {
     tEngTexIntermediateStruct* v2;
-    byte v3;
+    uint8_t v3;
     char* v4;
     char* v5;
     char v6;
     int v7; 
     BOOL v8;
-    unsigned __int16 v9;
+    uint16_t v9;
     int v10;
     int v11;
     int v12;
@@ -1343,7 +1343,7 @@ void TEX_List_Free(tEngTexListStruct* a1)
     tEngTexListElemStruct* v1;
     int v3;
     int v4;
-    byte* v5;
+    uint8_t* v5;
     tEngPaletteElem* v7;
 
     if (a1->maxTexNum)
@@ -1399,7 +1399,7 @@ void ResetPreloadTexAll()
 int16_t TEX_w_List_AddTexture(tEngTexListStruct* a1, int key)
 {
     int correctedKey;
-    __int16 result;
+    int16_t result;
     int v4;
     tEngTexListElemStruct* v5;
     int v6;
@@ -1522,7 +1522,7 @@ BOOL TEX_b_File_CheckParams(tEngTexIntermediateStructTexParams* a1)
 
 void TEX_File_TransformParams(tEngTexIntermediateStructTexParams* a1)
 {
-    __int16 v1;
+    int16_t v1;
     int v2;
 
     v1 = a1->uuuu;
@@ -1726,16 +1726,16 @@ int TEX_l_File_LoadSpriteGen(int a1, char* a2, tEngTexIntermediateStruct* a3, in
 int TEX_l_File_Read(int a1, tEngTexIntermediateStruct* a2)
 {
     tEngTexIntermediateStruct* v2;
-    __int16 v3;
+    int16_t v3;
     int v4;
     int result;
     char* v6;
     int texModifyNeeded;
-    byte v8;
+    uint8_t v8;
     int v9;
     int v10;
-    unsigned __int16 v11;
-    unsigned __int16 v12;
+    uint16_t v11;
+    uint16_t v12;
     int size;
     char* v14;
 
@@ -1836,7 +1836,7 @@ int TEX_l_File_Read(int a1, tEngTexIntermediateStruct* a2)
 
 int TEX_l_File_GetInfo(int a1, tEngTexIntermediateStruct* a2, int a3)
 {
-    __int16 v3;
+    int16_t v3;
 
     v3 = a2->flags & ~2 | 1;
     a2->flags = v3;
@@ -2098,7 +2098,7 @@ int TEX_l_ConvertSizeFast(tEngTexIntermediateStruct* a1)
     int v7;
     char* v8;
     char* v9;
-    byte v10;
+    uint8_t v10;
 
     v1 = a1->realWidth;
     if (TEX_ul_GetPower2Up(v1) != v1)
@@ -2447,8 +2447,8 @@ int TEX_l_ConvertSize(tEngTexIntermediateStruct* a1, tEngTexIntermediateStruct* 
     int v14;
     unsigned int v15;
     unsigned int* v16;
-    unsigned __int8 v17;
-    unsigned __int8 v18;
+    uint8_t v17;
+    uint8_t v18;
     unsigned int v19;
     unsigned int v20;
     int* v21;
@@ -2703,7 +2703,7 @@ void TEX_Hardware_Load(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct
 {
     char* v4;
     tGdi_DisplayData* v5;
-    __int16 v6;
+    int16_t v6;
     int v7;
     char* v8;
     int v9;
@@ -2912,17 +2912,17 @@ void TEX_Manager_ComputeCompression(struct sTexManagerStruct* a1, struct sEngTex
     tEngTexIntermediateStruct* v8;
     unsigned int v9;
     int v10;
-    unsigned __int16 v11;
-    byte v12;
-    unsigned __int16 v13;
-    byte v14;
+    uint16_t v11;
+    uint8_t v12;
+    uint16_t v13;
+    uint8_t v14;
     int v15;
     int v16;
     tEngTexIntermediateStruct* v17;
     int v18;
-    unsigned __int16 v19;
-    unsigned __int16 v20;
-    unsigned __int16 v21;
+    uint16_t v19;
+    uint16_t v20;
+    uint16_t v21;
     int v22;
     int* v23;
     int v24;
@@ -3052,7 +3052,7 @@ void TEX_Manager_ComputeCompression(struct sTexManagerStruct* a1, struct sEngTex
 
 int16_t TEX_w_List_AddPalette(tEngTexListStruct* a1, int key)
 {
-    __int16 result;
+    int16_t result;
     int v3;
     tEngPaletteElem* v4;
     int v5;
@@ -3115,7 +3115,7 @@ int16_t TEX_w_Manager_ChooseGoodInTex(struct sTexManagerStruct* a1, struct sEngT
     int i; 
     int flagsHas0x7000;
     int v4;
-    __int16 result;
+    int16_t result;
     tEngTexIntermediateStruct* v6;
     BOOL v7;
     int* paletteID;
@@ -3171,17 +3171,17 @@ int16_t TEX_w_Manager_ChooseGoodInTex(struct sTexManagerStruct* a1, struct sEngT
 void TEX_File_LoadPalette(tEngPaletteElem* a1, int a2)
 {
     int v2;
-    byte v3;
+    uint8_t v3;
     unsigned int v4;
-    byte v5;
-    byte* v6;
-    byte* i;
+    uint8_t v5;
+    uint8_t* v6;
+    uint8_t* i;
     int v8; 
-    unsigned __int16 v9;
-    byte* v10;
+    uint16_t v9;
+    uint8_t* v10;
     int v11;
-    byte* v12;
-    byte* v13;
+    uint8_t* v12;
+    uint8_t* v13;
     char v14;
     int v15; 
     char v16;
@@ -3223,7 +3223,7 @@ void TEX_File_LoadPalette(tEngPaletteElem* a1, int a2)
     }
     a1->flags = v3;
 LABEL_12:
-    v6 = (byte*)MEM_p_AllocTmp(v4);
+    v6 = (uint8_t*)MEM_p_AllocTmp(v4);
     a1->paletteData = v6;
     MEM_gst_MemoryInfo.usedMemoryByTextures += *((uint32_t*)v6 - 1); // TODO FIXME
     LOA_ReadCharArray(&v19, (char*)a1->paletteData, v18, 1);

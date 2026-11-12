@@ -3,10 +3,10 @@
 
 typedef struct sGfxProfilerPtr1Data
 {
-    __int16 s1;
-    __int16 s2;
-    __int16 s3;
-    byte gap[2];
+    int16_t s1;
+    int16_t s2;
+    int16_t s3;
+    uint8_t gap[2];
     float f1;
     float f2;
 } tGfxProfilerPtr1Data;

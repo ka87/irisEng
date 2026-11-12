@@ -34,12 +34,12 @@ void GFX_Sun_ComputeRay(tGfxSunData* a1)
     tGfxSunDataInner* v4;
     tGfxSunDataInner* v5;
     double v6;
-    signed __int8 v7;
+    int8_t v7;
     tGfxSunDataInner* v10;
     tGfxSunDataInner* v11;
     tGfxSunDataInner* v12;
     double v13;
-    signed __int8 v14;
+    int8_t v14;
     tGfxSunDataInner* v17;
     tGfxSunDataInner* v18;
     tGfxSunDataInner* v19;
@@ -89,7 +89,7 @@ void GFX_Sun_ComputeRay(tGfxSunData* a1)
             v6 = (double)rand() * 0.000030518509 * (v36 - v26) + v26 + v25;
             if (v6 < 0.0)
                 v6 = v6 + 6.2831855;
-            v7 = (unsigned __int64)(1.2732395 * v6) & 7;
+            v7 = (uint64_t)(1.2732395 * v6) & 7;
             v5->colorID = v7;
             v4->colorID2 = (v7 + 1) & 7;
             v3->colorFactor = (float)(1.2732395 * v6 - (double)v7);

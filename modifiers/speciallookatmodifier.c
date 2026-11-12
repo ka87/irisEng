@@ -39,7 +39,7 @@ void GAO_ModifierSpecialLookAt_Apply(struct sModifier* a1, void* unk1)
     Mtx4x4* v3;
     Vec3* v4;
     tGroup* v5;
-    byte v6;
+    uint8_t v6;
     double v7;
     double v8;
     Vec3* v9; 

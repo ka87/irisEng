@@ -73,7 +73,7 @@ int LOA_ReadLong(char** offset, uint32_t* retVal, char readMode)
 uint16_t LOA_ReadShort(char** offset, uint16_t* retVal, char readMode)
 {
     int size;
-    __int16 result;
+    int16_t result;
 
     size = 2;
     result = 0;

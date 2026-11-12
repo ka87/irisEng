@@ -631,9 +631,9 @@ void s_InitBeforeTrame()
 {
     ENG_gp_Display = s_Display;
     ENG_gp_Input = INO_Update;
-    if (WOR_gst_Universe.unknownReloadFlag != (byte)-1)
+    if (WOR_gst_Universe.unknownReloadFlag != (uint8_t)-1)
     {
-        if (WOR_gst_Universe.unknownReloadFlag == (byte)-2)
+        if (WOR_gst_Universe.unknownReloadFlag == (uint8_t)-2)
         {
             AI_Reset();
             WOR_Universe_Open(BIG_gst.hdr.startKey);

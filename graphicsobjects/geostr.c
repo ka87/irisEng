@@ -2397,7 +2397,7 @@ int STR_l_Effect_PreTreatAll(tGEOSTRStruct* a1)
     return v1;
 }
 
-void STR_AddFrame(int a1, __int16 a2, __int16 a3, __int16 a4, __int16 a5, __int16 a6, __int16 a7, __int16 a8, __int16 a9, float a10, int a11, tFontGlypthElem* a12, int a13)
+void STR_AddFrame(int a1, int16_t a2, int16_t a3, int16_t a4, int16_t a5, int16_t a6, int16_t a7, int16_t a8, int16_t a9, float a10, int a11, tFontGlypthElem* a12, int a13)
 {
     int v13;
     Vec3* v14;
@@ -2671,7 +2671,7 @@ void STR_AddFrame(int a1, __int16 a2, __int16 a3, __int16 a4, __int16 a5, __int1
     } while (v39);
 }
 
-void STR_AddSprite(int a1, __int16 a2, __int16 a3, __int16 a4, __int16 a5, float a6, int a7, tFontGlypthElem* a8, int a9)
+void STR_AddSprite(int a1, int16_t a2, int16_t a3, int16_t a4, int16_t a5, float a6, int a7, tFontGlypthElem* a8, int a9)
 {
     Vec3* v9;
     double v10;
@@ -2824,7 +2824,7 @@ void STR_Render(tGameObjectMain* a1)
     int v17;
     signed int v18;
     unsigned int* v19;
-    __int16 v20;
+    int16_t v20;
     tFontData* v21;
     int v22;
     int v23;
@@ -2839,27 +2839,27 @@ void STR_Render(tGameObjectMain* a1)
     unsigned int v32;
     unsigned int v33;
     tFontGlypthElem* v34;
-    __int16 v35;
-    __int16 v36;
-    __int16 v37;
+    int16_t v35;
+    int16_t v36;
+    int16_t v37;
     int v38;
     tFontData* v39;
     unsigned int v40;
     unsigned int v41;
     unsigned int v42;
     tFontGlypthElem* v43;
-    __int16 v44;
+    int16_t v44;
     int v45;
-    __int16 v46;
-    __int16 v47;
+    int16_t v46;
+    int16_t v47;
     int v48;
     int* v49;
     int v50;
     tGameObjectExtended* v51;
-    __int16 v52;
+    int16_t v52;
     int a8;
     tFontGlypthElem* a8a;
-    __int16 a7;
+    int16_t a7;
     int a7a;
     int idx;
     int idxa;
@@ -2874,7 +2874,7 @@ void STR_Render(tGameObjectMain* a1)
     tGEOSTRStringData* i;
     tGEOSTRStringData* v68;
     tGEOSTRStruct* v69;
-    __int16 a3;
+    int16_t a3;
     tUnkGeoStrStruct v71;
 
     v1 = a1;
@@ -3065,23 +3065,23 @@ void STR_Render(tGameObjectMain* a1)
                                     a8a = v43;
                                     a7 = inner3->y;
                                     if ((v40 & 0x1000000) != 0)
-                                        v44 = (__int16)inner3->width >> 1;
+                                        v44 = (int16_t)inner3->width >> 1;
                                     else
-                                        v44 = (v40 & 0x4000000) != 0 ? (unsigned __int16)inner3->width : 0;
+                                        v44 = (v40 & 0x4000000) != 0 ? (uint16_t)inner3->width : 0;
                                     STR_w_LetterDX = v44;
                                     if ((inner3->flagsAndChar & 0x2000000) != 0)
-                                        v45 = (__int16)inner3->height >> 1;
+                                        v45 = (int16_t)inner3->height >> 1;
                                     else
                                         v45 = (inner3->flagsAndChar & 0x8000000) != 0 ? (unsigned int)inner3->height : 0;
                                     STR_w_LetterDY = v45;
                                     v46 = str->height + v45 - STR_w_YPivot - a7;
-                                    v47 = v46 - (unsigned __int16)inner3->height;
+                                    v47 = v46 - (uint16_t)inner3->height;
                                     a3 = v46;
-                                    v48 = inner3->x + (unsigned __int16)(STR_w_XPivot - v44);
+                                    v48 = inner3->x + (uint16_t)(STR_w_XPivot - v44);
                                     a7a = v71.triangleChunkID[v60];
                                     v52 = inner3->x + STR_w_XPivot - v44;
                                     a4 = inner3->width + v48;
-                                    STR_AddSprite(verticesNum, v52, v46, v48 + (unsigned __int16)inner3->width, v47, 0.0, inner3->textColor, a8a, a7a);
+                                    STR_AddSprite(verticesNum, v52, v46, v48 + (uint16_t)inner3->width, v47, 0.0, inner3->textColor, a8a, a7a);
                                     v49 = &v69->specularColorsPtr[inner3 - v69->letters];
                                     v50 = *v49;
                                     *v49 = verticesNum++;

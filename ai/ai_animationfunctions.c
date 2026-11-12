@@ -155,7 +155,7 @@ tAINode* AI_EvalFunc_ANIFlagGet(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_ANIFlagSet_C(tGameObjectMain* a1, int a2, __int16 a3, __int16 a4)
+void AI_EvalFunc_ANIFlagSet_C(tGameObjectMain* a1, int a2, int16_t a3, int16_t a4)
 {
     tAnim* v4;
 
@@ -167,9 +167,9 @@ void AI_EvalFunc_ANIFlagSet_C(tGameObjectMain* a1, int a2, __int16 a3, __int16 a
 tAINode* AI_EvalFunc_ANIFlagSet(tAINode* a1)
 {
     int v1;
-    __int16 v3;
+    int16_t v3;
     tGameObjectMain* v4;
-    __int16 a4;
+    int16_t a4;
 
     v4 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
@@ -181,7 +181,7 @@ tAINode* AI_EvalFunc_ANIFlagSet(tAINode* a1)
     return a1 + 1;
 }
 
-int AI_EvalFunc_ANIFlagTest_C(tGameObjectMain* a1, int a2, unsigned __int16 a3)
+int AI_EvalFunc_ANIFlagTest_C(tGameObjectMain* a1, int a2, uint16_t a3)
 {
     return a3 & ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[a2]->flags;
 }
@@ -223,7 +223,7 @@ tAINode* AI_EvalFunc_ANIModeGet(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_ANIModeSet_C(tGameObjectMain* a1, int a2, __int16 a3)
+void AI_EvalFunc_ANIModeSet_C(tGameObjectMain* a1, int a2, int16_t a3)
 {
     tAnim* v3;
 
@@ -235,7 +235,7 @@ void AI_EvalFunc_ANIModeSet_C(tGameObjectMain* a1, int a2, __int16 a3)
 tAINode* AI_EvalFunc_ANIModeSet(tAINode* a1)
 {
     int v1;
-    __int16 v3;
+    int16_t v3;
     tGameObjectMain* v4;
 
     v4 = AI_gpst_CurrentUltra;
@@ -247,7 +247,7 @@ tAINode* AI_EvalFunc_ANIModeSet(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_ANIShapeSelect_C(struct sGameObjectMain* a1, unsigned __int8 a2, unsigned __int8 a3)
+void AI_EvalFunc_ANIShapeSelect_C(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3)
 {
     ANI_ChangeBoneShape(a1, a2, a3, 1);
 }
@@ -255,8 +255,8 @@ void AI_EvalFunc_ANIShapeSelect_C(struct sGameObjectMain* a1, unsigned __int8 a2
 tAINode* AI_EvalFunc_ANIShapeSelect(tAINode* a1)
 {
     tGameObjectMain* v2;
-    unsigned __int8 v3;
-    unsigned __int8 v4;
+    uint8_t v3;
+    uint8_t v4;
 
     v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
@@ -267,12 +267,12 @@ tAINode* AI_EvalFunc_ANIShapeSelect(tAINode* a1)
     return a1 + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_ANICanalGaoGet_C(struct sGameObjectMain* a1, unsigned __int8 a2)
+struct sGameObjectMain* AI_EvalFunc_ANICanalGaoGet_C(struct sGameObjectMain* a1, uint8_t a2)
 {
     return ANI_pst_GetObjectByAICanal(a1, a2);
 }
 
-struct sGameObjectMain* AI_EvalFunc_ANICanalGaoGet_C_CURRENT(unsigned __int8 a1)
+struct sGameObjectMain* AI_EvalFunc_ANICanalGaoGet_C_CURRENT(uint8_t a1)
 {
     return ANI_pst_GetObjectByAICanal(AI_gpst_CurrentGameObject, a1);
 }
@@ -281,7 +281,7 @@ tAINode* AI_EvalFunc_ANICanalGaoGet(tAINode* a1)
 {
     int v2[6];
     tGameObjectMain* v3;
-    unsigned __int8 v4;
+    uint8_t v4;
     tGameObjectMain* a1a;
 
     v3 = AI_gpst_CurrentUltra;
@@ -407,7 +407,7 @@ tAINode* AI_EvalFunc_ANICloneSet(tAINode* a1)
 int AI_EvalFunc_ANIShapeGet_C(struct sGameObjectMain* a1, char a2)
 {
     int result;
-    unsigned __int8 v3; 
+    uint8_t v3; 
 
     if (!a1
         || (a1->flags & 2) == 0
@@ -440,9 +440,9 @@ tAINode* AI_EvalFunc_ANIShapeGet(tAINode* a1)
     return a1 + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_ANIShapeObjectGet_C(struct sGameObjectMain* a1, char a2, unsigned __int8 a3)
+struct sGameObjectMain* AI_EvalFunc_ANIShapeObjectGet_C(struct sGameObjectMain* a1, char a2, uint8_t a3)
 {
-    unsigned __int8 v4;
+    uint8_t v4;
     tGameObjectMain* v5;
 
     if (!a1
@@ -475,7 +475,7 @@ tAINode* AI_EvalFunc_ANIShapeObjectGet(tAINode* arg0)
     int v2[8];
     tGameObjectMain* v3;
     char v4;
-    unsigned __int8 v5;
+    uint8_t v5;
     tGameObjectMain* a1;
 
     v3 = AI_gpst_CurrentUltra;
@@ -533,7 +533,7 @@ tAINode* AI_EvalFunc_ANILODSet(tAINode* a1)
     return a1 + 1;
 }
 
-int AI_EvalFunc_ANIIsBoneAnimed_C(struct sGameObjectMain* a1, unsigned __int8 a2)
+int AI_EvalFunc_ANIIsBoneAnimed_C(struct sGameObjectMain* a1, uint8_t a2)
 {
     tGameObjectEventsList* v3;
     int i;
@@ -563,7 +563,7 @@ tAINode* AI_EvalFunc_ANIIsBoneAnimed(tAINode* a1)
 {
     int v1;
     tGameObjectMain* v3;
-    unsigned __int8 a2;
+    uint8_t a2;
 
     v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;

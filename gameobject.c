@@ -1190,7 +1190,7 @@ int OBJ_b_test_flag(struct sGameObjectMain* gao, int flagMustHave, int flagMustN
         return 0;
     case 1:
         v4 = gao->designFlags;
-        if (!(byte)v4 && flagMustHave == -1)
+        if (!(uint8_t)v4 && flagMustHave == -1)
             return 1;
         v4 = (uint8_t)v4;
         v5 = (uint8_t)(v4 & flagMustHave) == 0;
@@ -1217,7 +1217,7 @@ int OBJ_b_test_flag(struct sGameObjectMain* gao, int flagMustHave, int flagMustN
         v7 = flagMustHave;
         if (!(int16_t)v4 && flagMustHave == -1)
             return 1;
-        v4 = (unsigned __int16)v4;
+        v4 = (uint16_t)v4;
         v5 = (v4 & v7) == 0;
         if (!v5)
             if ((v4 & flagMustNothave) == 0)
@@ -1251,7 +1251,7 @@ int OBJ_b_test_flag(struct sGameObjectMain* gao, int flagMustHave, int flagMustN
         return 0;
     case 11:
         v4 = gao->designFlags;
-        if (!(byte)v4 && flagMustHave == -1)
+        if (!(uint8_t)v4 && flagMustHave == -1)
             return 1;
         v4 = (uint8_t)v4;
         if ((uint8_t)(flagMustHave & v4) == flagMustHave)
@@ -1278,7 +1278,7 @@ int OBJ_b_test_flag(struct sGameObjectMain* gao, int flagMustHave, int flagMustN
         v8 = flagMustHave;
         if (!(int16_t)v4 && flagMustHave == -1)
             return 1;
-        v4 = (unsigned __int16)v4;
+        v4 = (uint16_t)v4;
         if ((v8 & v4) == v8)
         {
             if ((v4 & flagMustNothave) == 0)
@@ -2944,7 +2944,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
             else
                 LOA_MakeFileRef(v17, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROMAT), GEO_ul_Load_ObjectCallback, 1);
             ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->objDrawMask = LOA_ReadLong(&currRdrPtr, 0, 1);
-            ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->boneDisplayOrder_zListBufferNum = (byte)LOA_ReadLong(&currRdrPtr, 0, 1);// csak az elsõ bájtot veszi figyelembe
+            ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->boneDisplayOrder_zListBufferNum = (uint8_t)LOA_ReadLong(&currRdrPtr, 0, 1);// csak az elsõ bájtot veszi figyelembe
             v18 = gameObject->basic;
             v19 = v18->actorObjectOrVisualObject;
             v20 = ((tGameObjectVisualObject*)(v18->actorObjectOrVisualObject))->boneDisplayOrder_zListBufferNum;
@@ -3318,13 +3318,13 @@ void OBJ_EyeFollow(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a
     tGameObjectActorObject* v16;
     int v17;
     tAction* v19;
-    byte v20; 
+    uint8_t v20; 
     tActionElem* v21;
-    __int16 v22;
-    byte v23;
+    int16_t v22;
+    uint8_t v23;
     double v24;
-    byte v25;
-    byte v26;
+    uint8_t v25;
+    uint8_t v26;
     Mtx4x4* v27;
     float v28;
     Mtx4x4* v29;
@@ -3490,7 +3490,7 @@ void OBJ_EyeFollow(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a
                                     if (v16->unkb >= 16u)
                                         v23 = 16;
                                     else
-                                        v23 = (byte)(v16->unkb + (uint64_t)(TIM_gf_dt * 60.000004 + 0.5));
+                                        v23 = (uint8_t)(v16->unkb + (uint64_t)(TIM_gf_dt * 60.000004 + 0.5));
                                     v16->unkb = v23;
                                     a3 = (float)((double)v23 * 0.0625);
                                     if (v23 >= 16u)
@@ -4299,7 +4299,7 @@ void OBJ_UpdateCullingVars(struct sDDCamStruct* a1)
         g_fDistance = -(a1->isoZoom * a1->isoFactor);
 }
 
-int OBJ_CullingAABBox(Vec3** a1, byte* a2)
+int OBJ_CullingAABBox(Vec3** a1, uint8_t* a2)
 
 {
     Vec3* uVar1;

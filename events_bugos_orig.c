@@ -76,13 +76,13 @@ tAnimInner* EVE_pst_DuplicateData(tAnimInner* a1)
                             {
                                 v6 = MEM_p_Alloc(*(int16_t*)v3->trackElems[j].elemPtr);
                                 memcpy(v6, v3->trackElems[j].elemPtr, *(int16_t*)v3->trackElems[j].elemPtr);
-                                v3->trackElems[j].elemPtr = (byte*)v6;
+                                v3->trackElems[j].elemPtr = (uint8_t*)v6;
                             }
                         }
                     }
                     if (v3->dataPtr)
                     {
-                        v3->dataPtr = (byte*)MEM_p_Alloc(v3->size);
+                        v3->dataPtr = (uint8_t*)MEM_p_Alloc(v3->size);
                         memcpy(v3->dataPtr, a1->eventListStruct->listElems[i].dataPtr, v3->size);
                     }
                     ++v3;
@@ -479,7 +479,7 @@ void EVE_SetTracksTime(struct sAnimInner* a1, float time)
             if (v8 < (int)v4->duration)
             {
                 v2 = (float)v8;
-                v3 = (float)(unsigned __int16)(time * 60.0);
+                v3 = (float)(uint16_t)(time * 60.0);
                 v6 = (float)(time - v3 / 60.0);
                 v10->currTime = (float)(v2 / 60.0 + v6);
                 v10->flag |= 4u;
@@ -566,9 +566,9 @@ elemPtr felépítése [keyframe]
 ....
 */
 
-byte* EVE_p_GetPdata(tGameObjectEventElem* a1)
+uint8_t* EVE_p_GetPdata(tGameObjectEventElem* a1)
 {
-    byte* result;
+    uint8_t* result;
 
     // (*((uint16_t *)(a1->elemPtr)))
 
@@ -595,7 +595,7 @@ uint16_t EVE_w_Event_InterpolationKey_GetType(struct sGameObjectEventElem* a1)
 Quat4* EVE_pst_Event_InterpolationKey_GetQuaternion(tGameObjectEventElem* a1)
 {
     int v2;
-    byte* v3;
+    uint8_t* v3;
 
     v2 = EVE_w_Event_InterpolationKey_GetType(a1);
     if (v2 == -1 || (v2 & 0x10) == 0)
@@ -626,10 +626,10 @@ int EVE_Anim_InterpolationKey_CopyMatrix(Mtx4x4* a1, tGameObjectEventElem* a2)
     return result;
 }
 
-byte* EVE_pst_Event_InterpolationKey_GetNextValue(tGameObjectEventElem* a1)
+uint8_t* EVE_pst_Event_InterpolationKey_GetNextValue(tGameObjectEventElem* a1)
 {
     int v2;
-    byte* v3;
+    uint8_t* v3;
 
     v2 = EVE_w_Event_InterpolationKey_GetType(a1);
     if (v2 == -1 || (v2 & 0x40) == 0)
@@ -660,7 +660,7 @@ byte* EVE_pst_Event_InterpolationKey_GetNextValue(tGameObjectEventElem* a1)
 Mtx4x4* EVE_pst_Event_InterpolationKey_GetRotation(tGameObjectEventElem* a1)
 {
     int v2;
-    byte* v3;
+    uint8_t* v3;
 
     v2 = EVE_w_Event_InterpolationKey_GetType(a1);
     if (v2 == -1 || (v2 & 4) == 0)
@@ -685,7 +685,7 @@ void EVE_Event_InterpolationKey_CopyMatrix(Mtx4x4* a1, tGameObjectEventElem* a2,
     Mtx4x4* v4;
     Quat4* v5;
     Quat4 a2a;
-    __int16 v7;
+    int16_t v7;
     int v8;
 
     v7 = EVE_w_Event_InterpolationKey_GetType(a2);
@@ -736,10 +736,10 @@ void EVE_Event_InterpolationKey_CopyMatrix(Mtx4x4* a1, tGameObjectEventElem* a2,
     }
 }
 
-byte* EVE_pf_Event_InterpolationKey_GetTime(tGameObjectEventElem* a1)
+uint8_t* EVE_pf_Event_InterpolationKey_GetTime(tGameObjectEventElem* a1)
 {
     int v2;
-    byte* v3;
+    uint8_t* v3;
 
     v2 = EVE_w_Event_InterpolationKey_GetType(a1);
     if (v2 == -1 || (v2 & 8) == 0)
@@ -794,7 +794,7 @@ void EVE_Event_AIFunction_Resolve(tGameObjectEventElem* a1)
     if (a1->elemPtr)
     {
         v1 = (tAINode*)(a1->elemPtr + 4); /// TODO FIXME ezt megnézni, jó????
-        if (a1->elemPtr != (byte*)-4)
+        if (a1->elemPtr != (uint8_t*)-4)
         {
             while (v1->category != 31)
             {
@@ -812,7 +812,7 @@ void EVE_Event_AIFunction_Resolve(tGameObjectEventElem* a1)
     }
 }
 
-int EVE_Event_AIFunction_Load(tGameObjectEventElem* a1, char* a2, byte* a3)
+int EVE_Event_AIFunction_Load(tGameObjectEventElem* a1, char* a2, uint8_t* a3)
 {
     tAINode* a2a;
     unsigned int i;
@@ -869,14 +869,14 @@ void EVE_Event_ComputeInterpoledMatrix(tGameObjectMain* a1, Mtx4x4* a2, tGameObj
     Mtx4x4* v7;
     float v8;
     float v9;
-    __int16 v10;
+    int16_t v10;
     Quat4 v11;
     float a4a;
     Quat4 v13;
     Quat4 v14;
     Quat4* a2a;
     Quat4* a3a;
-    __int16 v17;
+    int16_t v17;
     Quat4 v18;
 
     v10 = EVE_w_Event_InterpolationKey_GetType(a3);
@@ -1244,10 +1244,10 @@ int EVE_RunAnimTrack(tGameObjectEventsListElem* a1, tAnimTracks* a2, unsigned in
     return result;
 }
 
-byte EVE_c_UpdateLOD(tGameObjectMain* a1, int a2)
+uint8_t EVE_c_UpdateLOD(tGameObjectMain* a1, int a2)
 {
-    byte result; // al
-    unsigned __int8 v3; // [esp+3h] [ebp-5h]
+    uint8_t result; // al
+    uint8_t v3; // [esp+3h] [ebp-5h]
     tGameObjectActorObject* v4; // [esp+4h] [ebp-4h]
 
     v4 = (tGameObjectActorObject*)a1->basic->actorObjectOrVisualObject;
@@ -1344,7 +1344,7 @@ tGameObjectEventElem* EVE_Event_InterpolationKey_Play(tGameObjectEventElem* a3)
     Vec3* v63;
     tGameObjectMain* v64;
     float v65;
-    __int16 v66;
+    int16_t v66;
     tGameObjectEventElem* v67;
     int v68;
     BOOL v69;
@@ -1356,7 +1356,7 @@ tGameObjectEventElem* EVE_Event_InterpolationKey_Play(tGameObjectEventElem* a3)
     tableElemStructPF* v75;
     tGameObjectActorObject* v76;
     BOOL v77;
-    __int16 v78;
+    int16_t v78;
 
     if (!EVE_gpst_CurrentTrack)
         return a3;
@@ -1858,7 +1858,7 @@ int EVE_b_RunAnimation(tAnimInner* a1, float* a4)
     BOOL v11;
     tGameObjectEventsList* v12;
     Mtx4x4* v13;
-    unsigned __int16 v14;
+    uint16_t v14;
     char v15;
     unsigned int a3;
     unsigned int a3a;
@@ -1994,7 +1994,7 @@ int EVE_b_RunAllTracks(tAnimInner* a1, float* a2)
     tGameObjectEventsList* v5;
     Mtx4x4* v6;
     unsigned int i;
-    byte v8;
+    uint8_t v8;
     tAnimTracks* v9;
     float v10;
     int v11;
@@ -2122,7 +2122,7 @@ void EVE_ResolveTrackRef(tGameObjectEventsList* a1, tGameObjectEventsListElem* a
             a1a = &a2->trackElems[i];
             if ((a1a->flags2 & 0x20) != 0)
             {
-                a1a->elemPtr = a1->listElems[(__int16)a1a->elemPtr].trackElems[(int16_t) (((*((uint32_t *)a1a->elemPtr)) >> 16) & 0xffff)].elemPtr;
+                a1a->elemPtr = a1->listElems[(int16_t)a1a->elemPtr].trackElems[(int16_t) (((*((uint32_t *)a1a->elemPtr)) >> 16) & 0xffff)].elemPtr;
             }
             else if ((a1a->flags2 & 0x7C0) == 64)
             {
@@ -2199,7 +2199,7 @@ void EVE_ResolveRefs(struct sGameObjectMain* a1, int a2)
     }
 }
 
-int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* arg0, tGameObjectEventElem* a2, char* a3, byte* elemPtr, tGameObjectEventsListElem* a5, __int16 a6)
+int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* arg0, tGameObjectEventElem* a2, char* a3, uint8_t* elemPtr, tGameObjectEventsListElem* a5, int16_t a6)
 {
     int v7;
     int v8;
@@ -2215,10 +2215,10 @@ int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* arg0, tGameObjectEvent
     Quat4 Src;
     CompressedQuat v18;
     UltraCompressedQuat v19;
-    __int16 v20;
-    byte* retVal;
+    int16_t v20;
+    uint8_t* retVal;
     char* a1;
-    __int16 v23;
+    int16_t v23;
 
     a1 = a3;
     if ((a6 & 0x2000) != 0)
@@ -2413,32 +2413,32 @@ LABEL_64:
     return a1 - a3;
 }
 
-void EVE_LoadListEvents(tGameObjectEventsListElem* a5, char* a2, uint32_t* a3, __int16 a4)
+void EVE_LoadListEvents(tGameObjectEventsListElem* a5, char* a2, uint32_t* a3, int16_t a4)
 {
-    unsigned __int8 v4;
+    uint8_t v4;
     int v5;
-    __int16 v6;
-    __int16 v7;
+    int16_t v6;
+    int16_t v7;
     int v8;
-    __int16 v9;
+    int16_t v9;
     int v10;
-    __int16 v11;
+    int16_t v11;
     tGameObjectEventElem* v12;
     int v13;
     int v14;
-    byte* dataPtr;
+    uint8_t* dataPtr;
     int dataPtrOffset;
-    __int16 v17;
+    int16_t v17;
     char* v18;
     char* v19;
     int v20;
-    __int16 a6;
-    unsigned __int16 v22;
-    unsigned __int16 i;
+    int16_t a6;
+    uint16_t v22;
+    uint16_t i;
     tGameObjectEventElem* v24;
     int v25;
     tGameObjectEventElem* v26;
-    __int16 a2a;
+    int16_t a2a;
 
     v20 = 0;
     dataPtrOffset = 0;
@@ -2471,14 +2471,14 @@ void EVE_LoadListEvents(tGameObjectEventsListElem* a5, char* a2, uint32_t* a3, _
                     a2a = 12;
                 }
                 v22 = a2a * a5->elemNum;
-                a5->dataPtr = (byte*)MEM_p_Alloc(v22);
+                a5->dataPtr = (uint8_t*)MEM_p_Alloc(v22);
                 dataPtr = a5->dataPtr;
                 a5->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * a5->elemNum);
                 v26 = a5->trackElems;
             }
             else
             {
-                a5->dataPtr = (byte*)MEM_p_Alloc(a5->size);
+                a5->dataPtr = (uint8_t*)MEM_p_Alloc(a5->size);
                 dataPtr = a5->dataPtr;
                 a5->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * a5->elemNum);
                 v26 = a5->trackElems;
@@ -2552,7 +2552,7 @@ void EVE_LoadListEvents(tGameObjectEventsListElem* a5, char* a2, uint32_t* a3, _
                 if (v14)
                 {
                     v10 = LOA_ReadLong(&a2, 0, 1);
-                    v24[i].elemPtr = (byte*)v10; // link
+                    v24[i].elemPtr = (uint8_t*)v10; // link
                 }
                 else
                 {
@@ -2568,7 +2568,7 @@ void EVE_LoadListEvents(tGameObjectEventsListElem* a5, char* a2, uint32_t* a3, _
                     if ((a4 & 0x2000) != 0)
                         dataPtrOffset = dataPtrOffset + ((int)((*(uint16_t*)(v24[i].elemPtr)) & 0xffff) >> 1) - 4;
                     else
-                        dataPtrOffset += *(__int16*)v24[i].elemPtr;
+                        dataPtrOffset += *(int16_t*)v24[i].elemPtr;
                 }
             }
         }
@@ -2579,19 +2579,19 @@ void EVE_LoadListEvents(tGameObjectEventsListElem* a5, char* a2, uint32_t* a3, _
 struct sGameObjectEventsList* EVE_ul_CallbackLoadListTracks(uint32_t Offset)
 {
     int v1;
-    unsigned __int16 v2;
-    __int16 v3;
-    __int16 v4;
-    unsigned __int16 v5;
+    uint16_t v2;
+    int16_t v3;
+    int16_t v4;
+    uint16_t v5;
     int v6;
     tGameObjectMain* v7;
-    __int16 v8;
+    int16_t v8;
     int a3;
     char* a1;
     BOOL v12;
     tGameObjectEventsList* v13;
     int v14;
-    __int16 a4;
+    int16_t a4;
     int a2;
     unsigned int i;
     int v18;

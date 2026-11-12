@@ -468,8 +468,8 @@ int GFX_i_Spark_Render(struct sGfxSparkData* a1)
     double v30;
     double v31;
     double v32;
-    unsigned __int16 v33;
-    unsigned __int16 v34;
+    uint16_t v33;
+    uint16_t v34;
     int v35; 
     int v36; 
     Vec3 a1a;

@@ -28,11 +28,11 @@ typedef struct sProceduralIntf
 
 typedef struct sTexProceduralStruct
 {
-    __int16 elemIdx;
-    __int16 s2;
+    int16_t elemIdx;
+    int16_t s2;
     uint32_t* proceduralPicData;
-    __int16 width;
-    __int16 height;
+    int16_t width;
+    int16_t height;
     tProceduralIntf* proceduralIntf;
     void* proceduralTexPtr; // fIXME
 }  tTexProceduralStruct;
@@ -48,22 +48,22 @@ typedef struct sTexAnimatedElem
 {
     int16_t id;
     int16_t flags;
-    byte texNum;
-    byte currentTex;
+    uint8_t texNum;
+    uint8_t currentTex;
     int16_t remainingTime;
-    byte b3;
-    byte animationFlags;
-    byte gap[2];
+    uint8_t b3;
+    uint8_t animationFlags;
+    uint8_t gap[2];
     tTexAnimatedInnerElem* texPtr;
 } tTexAnimatedElem;
 
 typedef struct sEngPaletteElem
 {
     int key;
-    byte* paletteData;
-    byte flags;
-    byte b1;
-    __int16 paletteID;
+    uint8_t* paletteData;
+    uint8_t flags;
+    uint8_t b1;
+    int16_t paletteID;
 } tEngPaletteElem;
 
 typedef struct sEngTexListNormalElemData {
@@ -117,9 +117,9 @@ typedef struct sEngTexListStruct
 
 typedef struct sBumpMapElem
 {
-    __int16 s1;
-    byte b1;
-    byte b2;
+    int16_t s1;
+    uint8_t b1;
+    uint8_t b2;
     int i2;
     char* ptr;
     int i4;
@@ -137,8 +137,8 @@ typedef struct sMatSpriteElem
     int i1;
     int i2;
     int texKey;
-    __int16 s1;
-    __int16 texIdx;
+    int16_t s1;
+    int16_t texIdx;
     float f1;
     float f2;
     int flags;
@@ -216,8 +216,8 @@ typedef struct sEngTexIntermediateStructTexParams
 {
     int uuuu;
     int16_t flagsUnkAndProceduralUnkb1;
-    byte type;
-    byte imageDataColorDepth;
+    uint8_t type;
+    uint8_t imageDataColorDepth;
     uint16_t imageDataWidth;
     uint16_t imageDataHeight;
     int unk;
@@ -233,20 +233,20 @@ typedef struct sEngTexIntermediateStructTexParams
 // TODO ezen meg van mit dolgozni
 typedef struct sEngTexIntermediateStruct
 {
-    __int16 flags;
-    __int16 bmpUnkb1;
-    unsigned __int16 realWidth;
-    unsigned __int16 realHeight;
-    byte gapa[4];
-    unsigned __int16 realWidthResizeToThis;
-    unsigned __int16 realHeightResizeToThis;
-    byte colorDepth1;
-    byte colorDepth2;
-    byte tgaUnk1b;
-    byte __Pad;
-    __int16 tgaUnkS1;
-    byte gape[1];
-    byte unkFlagForTextureTargets;
+    int16_t flags;
+    int16_t bmpUnkb1;
+    uint16_t realWidth;
+    uint16_t realHeight;
+    uint8_t gapa[4];
+    uint16_t realWidthResizeToThis;
+    uint16_t realHeightResizeToThis;
+    uint8_t colorDepth1;
+    uint8_t colorDepth2;
+    uint8_t tgaUnk1b;
+    uint8_t __Pad;
+    int16_t tgaUnkS1;
+    uint8_t gape[1];
+    uint8_t unkFlagForTextureTargets;
     int redMask;
     int greenMask;
     int blueMask;
@@ -256,38 +256,38 @@ typedef struct sEngTexIntermediateStruct
     int tgaDataStartPtr;
     int tgaDataEndPtr;
     struct sEngTexIntermediateElemStruct elems[4];
-    __int16 textureID;
-    __int16 paletteID;
-    __int16 texIdx;
-    __int16 probablyType;
+    int16_t textureID;
+    int16_t paletteID;
+    int16_t texIdx;
+    int16_t probablyType;
     tEngTexIntermediateStructTexParams tp;
 } tEngTexIntermediateStruct;
 
 typedef struct sTexWeirdBMPHeader
 {
-    byte gap[18];
-    __int16 width;
-    byte gap2[2];
-    __int16 height;
-    byte gap3[4];
-    byte colorDepth;
-    byte gap1[25];
+    uint8_t gap[18];
+    int16_t width;
+    uint8_t gap2[2];
+    int16_t height;
+    uint8_t gap3[4];
+    uint8_t colorDepth;
+    uint8_t gap1[25];
 } tTexWeirdBMPHeader;
 
 typedef struct sTexProcWater
 {
-    __int16* ptr1;
-    __int16* ptr2;
+    int16_t* ptr1;
+    int16_t* ptr2;
     unsigned int values[256];
-    byte gap[3072];
+    uint8_t gap[3072];
 } tTexProcWater;
 
 typedef struct sTexProcPlasma
 {
-    unsigned __int8* ptr1;
-    unsigned __int8* ptr2;
+    uint8_t* ptr1;
+    uint8_t* ptr2;
     unsigned int values[256];
-    byte gap[3076];
+    uint8_t gap[3076];
     float f1;
     float f2;
 } tTexProcPlasma;
@@ -295,13 +295,13 @@ typedef struct sTexProcPlasma
 typedef struct sTexProcPhoto
 {
     char b1;
-    byte b2;
-    byte b3;
-    byte b4;
+    uint8_t b2;
+    uint8_t b3;
+    uint8_t b4;
     int x;
     float f1;
     float remainingTime;
-    __int16 sa[8];
+    int16_t sa[8];
 } tTexProcPhoto;
 
 
@@ -338,7 +338,7 @@ typedef struct stTexProcMpegSub
     int i5;
     int (*ReadNext)(void*);
     void (*Start)();
-    byte gap2[4];
+    uint8_t gap2[4];
     int ii1;
     int ii2;
     int ii3;
@@ -365,10 +365,10 @@ typedef struct sTexProcMpeg
 
 typedef struct sTexProFire
 {
-    unsigned __int8* ptr;
-    unsigned __int8* ptr2;
+    uint8_t* ptr;
+    uint8_t* ptr2;
     int arr[256];    
-    byte gap[3072];
+    uint8_t gap[3072];
     int unknum;
 } tTexProFire;
 
@@ -425,7 +425,7 @@ void TEX_List_Free(tEngTexListStruct* a1);
 void MAT_SpriteGen_Close();
 void TEX_Manager_Init(struct sTexManagerStruct* a1);
 int TEX_l_File_LoadProcedural(char* a1, tEngTexIntermediateStruct* a2, int readPtr);
-void TEX_Procedural_Add(__int16 elemIdx, int a2, __int16 a3, void* a4);
+void TEX_Procedural_Add(int16_t elemIdx, int a2, int16_t a3, void* a4);
 void TEX_Procedural_AfterLoad(struct sGdi_DisplayData* a1);
 int TEX_l_File_GetContent(int a1, tEngTexIntermediateStruct* a2);
 void TEX_Convert_4To32SwapRB(int* a1, unsigned char* a2, int* a3, int a4);
@@ -433,7 +433,7 @@ void TEX_Convert_8To32SwapRB(int* a1, unsigned char* a2, int* a3, int a4);
 void TEX_Convert_4To32(int* a1, unsigned char* a2, int* a3, int a4);
 void TEX_Convert_8To32(int* a1, unsigned char* a2, int* a3, int a4);
 int16_t TEX_w_Manager_ChooseGoodInTex(struct sTexManagerStruct* a1, struct sEngTexIntermediateStruct* tims);
-struct sTexAnimatedElem* TEX_pst_Anim_Add(__int16 id, char texNum, int16_t flags, struct sTexAnimatedInnerElem* data);
+struct sTexAnimatedElem* TEX_pst_Anim_Add(int16_t id, char texNum, int16_t flags, struct sTexAnimatedInnerElem* data);
 void TEX_Hardware_Load(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* a2, int idx);
 void TEX_Manager_ComputeCompression(struct sTexManagerStruct* a1, struct sEngTexIntermediateStruct* tims, int timsIdx, char a4);
 void TEX_Manager_Reinit(struct sTexManagerStruct* a1);
@@ -447,7 +447,7 @@ int TEX_l_ConvertPF(struct sEngTexIntermediateStruct* a1, struct sEngTexIntermed
 int TEX_l_File_LoadJpeg(char* a1, struct sEngTexIntermediateStruct* a2, size_t a3);
 void TEX_Procedural_Init();
 void TEX_List_Init(struct sEngTexListStruct* a1);
-struct sTexProceduralStruct* TEX_pst_Procedural_Get(__int16 a1);
+struct sTexProceduralStruct* TEX_pst_Procedural_Get(int16_t a1);
 void TEXPRO_Photo_SetMapGao(struct sTexProceduralStruct* a1, struct sGameObjectMain* a2);
 void TEX_Procedural_UpdateWithAnother(struct sTexProceduralStruct* a1, struct sTexProceduralStruct* a2);
-struct sTexAnimatedElem* TEX_pst_Anim_Get(__int16 a1);
+struct sTexAnimatedElem* TEX_pst_Anim_Get(int16_t a1);

@@ -56,7 +56,7 @@ void STR_SetFloat(struct sGameObjectMain* a1, int idx, float a3, char a4);
 void STR_InsertFloat(tGameObjectMain* a1, int idx, int a3, float a4, char precision);
 void STR_SetPivot(struct sGEOSTRStruct* a1, int idx, Vec3* a3);
 Vec3* STR_pst_GetPivot(struct sGEOSTRStruct* a1, int idx);
-void STR_SetFlag(struct sGEOSTRStruct* a1, int idx, __int16 a3);
+void STR_SetFlag(struct sGEOSTRStruct* a1, int idx, int16_t a3);
 int STR_ul_GetFlag(struct sGEOSTRStruct* a1, int idx);
 void STR_SetColor(struct sGEOSTRStruct* a1, int idx, int a3, int a4, int a5);
 void STR_SetAlpha(struct sGEOSTRStruct* a1, int idx, int a3, int a4, int a5);
@@ -73,7 +73,7 @@ Vec3* STR_pst_GetMin(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* 
 Vec3* STR_pst_GetMax(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5);
 void STR_Align(struct sGameObjectMain* a1, int a2, int a3, int a4, int a5);
 Vec3* STR_pst_GetSize(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5);
-void STR_SetFrame(struct sGameObjectMain* a1, int a2, char a3, __int16 a4);
+void STR_SetFrame(struct sGameObjectMain* a1, int a2, char a3, int16_t a4);
 void STR_EffectDel(struct sGameObjectMain* a1, int a2);
 void STR_SetFramePos(struct sGameObjectMain* a1, int idx, Vec3* a3, Vec3* a4);
 void STR_SetFrameBorderSize(struct sGameObjectMain* a1, int a2, float a3);

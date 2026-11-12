@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
 
-extern byte ANI_c_DefaultBitFieldLOD;
+extern uint8_t ANI_c_DefaultBitFieldLOD;
 
 Vec3 ANI_gst_PositionBeforeAnimPlayer;
 
@@ -31,7 +31,7 @@ void ANI_MainCall(struct sWorld* a1);
 void ANI_BeforeRendering(struct sWorld* a1);
 struct sGameObjectMain* ANI_pst_GetReferenceInit(struct sGameObjectMain* a1);
 void ANI_Render(struct sGameObjectMain* a1);
-void ANI_ChangeBoneShape(struct sGameObjectMain* a1, unsigned __int8 a2, unsigned __int8 a3, int a4);
+void ANI_ChangeBoneShape(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, int a4);
 void ANI_ChangeDefaultSkeleton(struct sGameObjectMain* a1, struct sGameObjectMain* a2);
 void ANI_RestoreDefaultSkeleton(struct sGameObjectMain* a1, struct sGameObjectMain* a2);
 void ANI_CloneSet(struct sGameObjectMain* a1, struct sGameObjectMain* a2, int a3);

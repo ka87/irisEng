@@ -36,14 +36,14 @@ typedef struct sDDCamStruct
     Mtx4x4 cameraMtx;
     Mtx4x4 projectionMtx;
     Mtx4x4* viewMtxPtr_setInGRORender;
-    byte gapC81b[12];
+    uint8_t gapC81b[12];
 } tDDCamStruct;
 
 typedef struct sDDContainerStructForIDA
 {
     tDDCamStruct cam;
     tDDCamStruct camBackup;
-    byte gapC81c[12];
+    uint8_t gapC81c[12];
 } tDDContainerStruct;
 
 typedef struct sDDContainerStruct2ForIDA
@@ -51,9 +51,9 @@ typedef struct sDDContainerStruct2ForIDA
     int32_t flags2;
     float pixelYoverX;
     float manualScreenRatio;
-    byte gapB4_unused[16];
+    uint8_t gapB4_unused[16];
     int32_t selectedScreenRatio;
-    byte gapC8_unused[8];
+    uint8_t gapC8_unused[8];
 } tDDContainerStruct2ForIDA;
 
 Vec3 g_stGlobalNormPlaneUp;

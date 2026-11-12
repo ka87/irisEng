@@ -4,14 +4,14 @@
 
 typedef struct sLazyMdfStruct
 {
-    byte gap[4];
+    uint8_t gap[4];
     int upperFlag;
     float f2;
-    byte gap1[4];
+    uint8_t gap1[4];
     Mtx4x4 mtx1;
     int upperFlagBak;
     float ffff2;
-    byte gap1qq[8];
+    uint8_t gap1qq[8];
     Mtx4x4 mtx2;
     struct sGameObjectMain* gao;
     float ff1;
@@ -32,7 +32,7 @@ typedef struct sLazyMdfStruct
     float fff2;
     float upperFriction;
     struct sLazyMdfStruct* firstToUnapply;
-    byte gap1b[12];
+    uint8_t gap1b[12];
 } tLazyMdfStruct;
 
 float UpperFriction;

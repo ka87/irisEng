@@ -126,7 +126,7 @@ void ACT_FreeActionKit(tActionKit** ak)
     }
 }
 
-struct sTransitionElem* ACT_pst_FindTransition(tActionKit* a1, unsigned __int16 action, unsigned __int8 actionelem, unsigned __int16 id)
+struct sTransitionElem* ACT_pst_FindTransition(tActionKit* a1, uint16_t action, uint8_t actionelem, uint16_t id)
 {
     tAction* v5;
     int v6;
@@ -150,27 +150,27 @@ void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
     tAnim* v5;
     tActionKit* actKit;
     tTransitionElem* v7;
-    unsigned __int16 v8;
+    uint16_t v8;
     tTransitionElem* v9;
     tTransitionElem* v10;
-    unsigned __int16 v11;
+    uint16_t v11;
     tTransitionElem* v12;
-    byte v13;
+    uint8_t v13;
     tAnim* animPtr;
     tEventData* ptrToChain;
     tEventData* v19;
     tAnimTracks* v20;
     tGameObjectEventsListElem* v21;
-    unsigned __int16 v22;
+    uint16_t v22;
     tAction* actionStruct;
     tAnim* v24;
     tGameObjectEventsList* v25;
     tAnim* v26;
     tEventData* v27;
     tGameObjectMain* v28;
-    byte v29;
+    uint8_t v29;
     double v30;
-    unsigned __int16 v31;
+    uint16_t v31;
     tGameObjectMain* v32;
     tEventData* v33;
     tGameObjectEventsList* v34;
@@ -412,7 +412,7 @@ void ACT_SetUsageCounts(struct sActionKit* a1)
     int v1;
     tAction** v2;
     tAction* v3;
-    byte v4;
+    uint8_t v4;
     int v5;
     tActionElem* v6;
     tActionElem* actionElems;
@@ -456,7 +456,7 @@ void ACT_SetUsageCounts(struct sActionKit* a1)
 
 struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
 {
-    byte v1;
+    uint8_t v1;
     int v1a;
     int v2;
     tAction* v3;

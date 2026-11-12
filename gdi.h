@@ -37,7 +37,7 @@ typedef struct sGdi_D3DRenderParams
     D3DVIEWPORT9 d3dViewPort;
     D3DMATRIX projectionMatrixBackup;
     IDirect3DSurface9* renderTargetBackup;
-    byte d3dUnkTextures[4]; // ez a joegtudja mi, a jatke nem csinal vele semmit, legalábbis futtatáskor
+    uint8_t d3dUnkTextures[4]; // ez a joegtudja mi, a jatke nem csinal vele semmit, legalábbis futtatáskor
     IDirect3DTexture9* d3dShadowTextures[8];
     D3DVIEWPORT9 pViewPort;
     IDirect3DTexture9* blurTex;
@@ -70,14 +70,14 @@ typedef struct sGdi_D3DRenderParams
     int prevVertexElemIdx2;
     int startVertexElemIdx2;
     struct sGameObjectMain* currTargetGao;
-    byte gap16[16];
+    uint8_t gap16[16];
     IDirect3DVertexBuffer9* d3dNormalsBuffer;
     int d3dStride;
     int normalsFVF;
     int sumVertexNumInDrawElementIndexedTriangle;
     int currVertexStartOffset;
     struct sGameObjectMain* currTargetGaoInDrawElementIndexedTriangle;
-    byte gap17[16];
+    uint8_t gap17[16];
     IDirect3DVertexBuffer9* d3dColorsVB;
     int stride;
     int colorsFVF;
@@ -157,13 +157,13 @@ typedef struct sGdi_DisplayData
     void(* D3D_ReleaseTextures)(struct sGdi_DisplayData* a1);
     void(* D3D_SetRenderTargetAndBackupPreviousSDW)(int, int);
     void(* SetViewMatrixSDW)(Mtx4x4* mtxptr, float* unused);
-    byte gap1_unused[4];
+    uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;
     int flags;
     Vec3* verticesCurrent;
     int32_t drawMaskAllowedStuffCurrent;
-    byte gap6C1_unused[4];
+    uint8_t gap6C1_unused[4];
     float NormalizedWidthOrHeightMultBy255;
     int* RLIPtr;
     int* mrmColors;
@@ -181,7 +181,7 @@ typedef struct sGdi_DisplayData
     struct sDDContainerStruct2ForIDA ddcs2;
     struct sDDContainerStructForIDA ct;
     struct sLightListStruct lightList;
-    byte gap400_unused[4];
+    uint8_t gap400_unused[4];
     struct sMatrixStackStruct matrixStack;
     struct sBigBufferStruct* bigBuffer;
     struct sFogParams fog;
@@ -195,8 +195,8 @@ typedef struct sGdi_DisplayData
 
 typedef struct sD3dRequestSnapshot
 {
-    __int16 flags;
-    byte gap[2];
+    int16_t flags;
+    uint8_t gap[2];
     int cutSizeFromTopAndBottom;
     int cutSizeFromSides;
     int width;

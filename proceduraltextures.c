@@ -17,18 +17,18 @@ struct sTexProcWater* TEXPRO_pv_WaterLoad(char* offset, int vmilyensize, int wid
 {
     unsigned int v4;
     tTexProcWater* v5;
-    __int16* v6;
-    __int16* v7;
+    int16_t* v6;
+    int16_t* v7;
     int v8;
     long double v10;
     unsigned int v11;
 
     v4 = 2 * height * width;
     v5 = (tTexProcWater*)MEM_p_Alloc(sizeof(tTexProcWater));
-    v6 = (__int16*)MEM_p_Alloc(v4);
+    v6 = (int16_t*)MEM_p_Alloc(v4);
     v5->ptr1 = v6;
     memset(v6, 0, v4);
-    v7 = (__int16*)MEM_p_Alloc(v4);
+    v7 = (int16_t*)MEM_p_Alloc(v4);
     v5->ptr2 = v7;
     memset(v7, 0, v4);
     v8 = 256;
@@ -48,25 +48,25 @@ struct sTexProcWater* TEXPRO_pv_WaterLoad(char* offset, int vmilyensize, int wid
 int TEXPRO_l_WaterUpdate(tTexProceduralStruct* a1)
 {
     unsigned int v1;
-    __int16* v2;
-    __int16* v3;
+    int16_t* v2;
+    int16_t* v3;
     int v4;
     int v5;
-    __int16* v6;
+    int16_t* v6;
     int v7;
-    __int16* v8;
-    __int16* v9;
-    __int16* v10;
-    __int16* v11;
+    int16_t* v8;
+    int16_t* v9;
+    int16_t* v10;
+    int16_t* v11;
     int v12;
-    __int16 v13;
-    unsigned __int16 v14;
-    __int16* v15;
-    __int16* v16;
+    int16_t v13;
+    uint16_t v14;
+    int16_t* v15;
+    int16_t* v16;
     int* i; 
     int j;
-    unsigned __int16 v19;
-    unsigned __int16 v20;
+    uint16_t v19;
+    uint16_t v20;
     tTexProcWater* v22;
     int v23;
     int v24;
@@ -162,9 +162,9 @@ void TEXPRO_WaterDisrupt(tTexProceduralStruct* a1)
     tTexProcWater* v1;
     unsigned int v2;
     unsigned int v3;
-    __int16* v4;
-    __int16* v5;
-    __int16* v6;
+    int16_t* v4;
+    int16_t* v5;
+    int16_t* v6;
     unsigned int v7;
     int v8;
     long double v9;
@@ -240,8 +240,8 @@ int TEX_l_File_LoadProcedural(char* a1, tEngTexIntermediateStruct* a2, int readP
     int v4;
     tEngTexIntermediateStruct* v5;
     int v6;
-    __int16 v7;
-    __int16 v8;
+    int16_t v7;
+    int16_t v8;
     int v9;
 
     v3 = readPtr;
@@ -280,7 +280,7 @@ int TEX_l_File_LoadProcedural(char* a1, tEngTexIntermediateStruct* a2, int readP
     return 1;
 }
 
-void TEX_Procedural_Add(__int16 elemIdx, int a2, __int16 a3, void* a4)
+void TEX_Procedural_Add(int16_t elemIdx, int a2, int16_t a3, void* a4)
 {
     int v4;
     tTexProceduralStruct* v5;
@@ -896,15 +896,15 @@ int TEXPRO_l_FireUpdate(tTexProceduralStruct* a1)
     tTexProFire* v2;
     int v3;
     int v4;
-    unsigned __int8* v5;
-    unsigned __int8* v6;
+    uint8_t* v5;
+    uint8_t* v6;
     int v7;
     int v8;
-    unsigned __int8* v9;
-    unsigned __int8* v10;
-    unsigned __int8* v11;
-    unsigned __int8* v12;
-    unsigned __int8* v13;
+    uint8_t* v9;
+    uint8_t* v10;
+    uint8_t* v11;
+    uint8_t* v12;
+    uint8_t* v13;
     int* i;
     int v15;
     int v17;
@@ -953,7 +953,7 @@ int TEXPRO_l_FireUpdate(tTexProceduralStruct* a1)
                     do
                     {
                         v8 = (*(v6 - 1) + v6[1] + v6[-v3] + v6[v3]) >> 2;
-                        *v5++ = v8 - ((unsigned __int8)v8 >> 4);
+                        *v5++ = v8 - ((uint8_t)v8 >> 4);
                         ++v6;
                         --v7;
                     } while (v7);
@@ -989,21 +989,21 @@ tTexProcPlasma* TEXPRO_pv_PlasmaLoad(char* readptr, int vmilyensize, int width, 
 {
     int v4;
     int v5;
-    unsigned __int8* v6;
-    unsigned __int8* v7;
+    uint8_t* v6;
+    uint8_t* v7;
     int v8;
-    unsigned __int8* v9;
+    uint8_t* v9;
     int v10;
-    unsigned __int8* v11;
+    uint8_t* v11;
     int v12;
     int v13;
     int v14;
     int v15;
     int v16;
     int v17;
-    unsigned __int8* v18;
-    unsigned __int8* v19;
-    unsigned __int8* v20;
+    uint8_t* v18;
+    uint8_t* v19;
+    uint8_t* v20;
     int v21;
     int v22;
     int v23;
@@ -1017,8 +1017,8 @@ tTexProcPlasma* TEXPRO_pv_PlasmaLoad(char* readptr, int vmilyensize, int width, 
     int v33;
     int v34;
     int v35;
-    unsigned __int8* v36;
-    unsigned __int8* v37;
+    uint8_t* v36;
+    uint8_t* v37;
     int v38;
     int v39;
     int v40;
@@ -1027,15 +1027,15 @@ tTexProcPlasma* TEXPRO_pv_PlasmaLoad(char* readptr, int vmilyensize, int width, 
     int v43;
     int v44;
     int v45;
-    unsigned __int8* v46;
+    uint8_t* v46;
 
     v4 = width;
     v5 = height;
     v32 = (tTexProcPlasma*)MEM_p_Alloc(sizeof(tTexProcPlasma));
-    v6 = (unsigned __int8*)MEM_p_Alloc(height * width);
+    v6 = (uint8_t*)MEM_p_Alloc(height * width);
     v32->ptr1 = v6;
     memset(v6, 0, height * width);
-    v7 = (unsigned __int8*)MEM_p_Alloc(height * width);
+    v7 = (uint8_t*)MEM_p_Alloc(height * width);
     v32->ptr2 = v7;
     memset(v7, 0, height * width);
     v32->f1 = (float)((double)rand() * 0.000030518509 * 360.0);
@@ -1273,7 +1273,7 @@ int TEXPRO_l_PhotoUpdate(tTexProceduralStruct* a1)
     int v11;
     int v12;
     int* v13;
-    __int16* v14;
+    int16_t* v14;
     int v15;
     int v16;
     int v17;
@@ -1290,9 +1290,9 @@ int TEXPRO_l_PhotoUpdate(tTexProceduralStruct* a1)
     int v28;
     char v30;
     char* v31;
-    unsigned __int16 v32;
+    uint16_t v32;
     uint32_t* v33;
-    unsigned __int16 v34;
+    uint16_t v34;
     int* v35;
     size_t v36;
     int* v37;
@@ -1526,7 +1526,7 @@ LABEL_65:
     {
         do
         {
-            *v35 = *v35 & 0xFF00FF00 | *((unsigned __int8*)v35 + 2) | ((unsigned __int8)*v35 << 16);
+            *v35 = *v35 & 0xFF00FF00 | *((uint8_t*)v35 + 2) | ((uint8_t)*v35 << 16);
             ++v35;
         } while (v35 < v37);
     }
@@ -1658,7 +1658,7 @@ void TEXPRO_Photo_SetMapGao(struct sTexProceduralStruct* a1, struct sGameObjectM
     Mtx4x4* v7;
     int v8; 
     Vec3* v9;
-    __int16* v10;
+    int16_t* v10;
     Mtx4x4* v11;
     float v12;
     int v13;

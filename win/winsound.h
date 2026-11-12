@@ -23,9 +23,9 @@ typedef struct sPcSndEventRelated
 typedef struct sFXGlobalStruct
 {
     int fxEnabled;
-    byte gap1[8];
+    uint8_t gap1[8];
     int mode;
-    byte gap[24];
+    uint8_t gap[24];
 } tFXGlobalStruct;
 
 

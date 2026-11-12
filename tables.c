@@ -467,7 +467,7 @@ void TAB_TablesManager_RemoveHolesFromTablesList(tabDlistStruct* a1)
 {
     tabDlistElemStruct* actElem;
     tableDescStruct* v2;
-    byte v3; // al
+    uint8_t v3; // al
 
     for (actElem = a1->firstElem; actElem; actElem = actElem->nextElem)
     {

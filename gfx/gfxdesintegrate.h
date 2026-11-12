@@ -14,7 +14,7 @@ typedef struct sGfxDesintegrateData
     float dword20;
     float f1;
     uint32_t flags;
-    byte gap2C[4];
+    uint8_t gap2C[4];
     Mtx4x4 mtx;
     tGameObjectMain* gao;
     tGEOGRO* geogro;
@@ -22,10 +22,10 @@ typedef struct sGfxDesintegrateData
     uint32_t triangleNum;
     uint32_t pointsNum;
     int triangleChunkCount;
-    byte gap98[4];
+    uint8_t gap98[4];
     float timeElapsed;
     tPAGStruct* pagPtr;
-    byte x[12];
+    uint8_t x[12];
 } tGfxDesintegrateData;
 
 struct sGfxDesintegrateData* GFX_Desintegrate_Create(struct sGameObjectMain* a1);

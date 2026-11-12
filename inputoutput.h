@@ -5,7 +5,7 @@
 
 typedef struct sInoPad
 {
-    byte padData[16];
+    uint8_t padData[16];
 } tInoPad;
 
 typedef struct sInoButtonNames
@@ -33,11 +33,11 @@ typedef struct sSavIdxElem
     char hour;
     char mday;
     char month;
-    __int16 year;
-    __int16 s1;
-    __int16 s2;
-    __int16 s3;
-    __int16 s4;
+    int16_t year;
+    int16_t s1;
+    int16_t s2;
+    int16_t s3;
+    int16_t s4;
     int i1;
     int i2;
     int i3;
@@ -47,7 +47,7 @@ typedef struct sSavIdxElem
     int i7;
     int i8;
     int i9;
-    byte gap[12];
+    uint8_t gap[12];
 } tSavIdxElem;
 
 typedef struct sSavSlotDesc
@@ -119,8 +119,8 @@ extern int INO_ge_SavCommand;
 
 int INO_gi_FreeSpace;
 char INO_gsz_SavFileName[128];
-byte* INO_Keys;
-byte* INO_Keys_Prev;
+uint8_t* INO_Keys;
+uint8_t* INO_Keys_Prev;
 char INO_keybUnkDataProbablyUnused[128];
 int Demo_gb_Exit; // TODO FIXME: initelni nem kéne?
 

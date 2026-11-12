@@ -141,7 +141,7 @@ void MAT_UV_Compute_OBJ1(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChun
     else
     {
         dd->flags &= ~0x2;
-        dd->bigBuffer->UVData = (byte*)geogro->UVs;
+        dd->bigBuffer->UVData = (uint8_t*)geogro->UVs;
     }
 }
 
@@ -168,7 +168,7 @@ void MAT_UV_Compute_OBJ2(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChun
             else
                 dd->flags |= 0x2;
 
-            dd->bigBuffer->UVData = (byte*)geogro->UVs;
+            dd->bigBuffer->UVData = (uint8_t*)geogro->UVs;
         }
     }
 }
@@ -197,7 +197,7 @@ void MAT_UV_Compute_FACE_MAP(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangle
 void MAT_UV_Compute_Default(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk)
 {
     dd->flags &= ~0x2;
-    dd->bigBuffer->UVData = (byte*)geogro->UVs;
+    dd->bigBuffer->UVData = (uint8_t*)geogro->UVs;
 }
 
 void MAT_UV_Compute_DF_GIZMO(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk)
@@ -213,7 +213,7 @@ void MAT_UV_Compute_DF_GIZMO(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangle
         .z = 0.0f
     };    
 
-    dd->bigBuffer->UVData = (byte*)geogro->UVs;
+    dd->bigBuffer->UVData = (uint8_t*)geogro->UVs;
 
     MATH_InvertMatrix(&invMtx, dd->matrixStack.actMatrixElem);
     MATH_TransformVertex(&mtxInLocal, &invMtx, &mtxInLocal);
@@ -299,7 +299,7 @@ void MAT_UV_Compute_PHONG_GIZMO(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTrian
     Vec3 uVec, vVec;
     Mtx4x4 currGaoLocalMtx;
 
-    dd->bigBuffer->UVData = (byte*)geogro->UVs;
+    dd->bigBuffer->UVData = (uint8_t*)geogro->UVs;
     
     uVec.z = 0.0f;
     uVec.y = 0.0f;
@@ -438,7 +438,7 @@ void GDI_l_AttachWorld(struct sGdi_DisplayData* dxdd, struct sWorld* world)
     int16_t texIdx;     
     tEngTexIntermediateStruct* texElemsIntermediateStore;
     int elemNum;
-    byte* usedTextureIndices;
+    uint8_t* usedTextureIndices;
     int16_t selectedTexIdx;
     int startIdx;
     BOOL restartNeeded = FALSE;

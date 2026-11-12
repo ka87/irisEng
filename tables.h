@@ -27,8 +27,8 @@ typedef struct tableDescStruct
     unsigned int holeNum;
     unsigned int actElemNum;
     void* firstElemPtr;
-    byte tableType;
-    byte _pad[3];
+    uint8_t tableType;
+    uint8_t _pad[3];
     float defragRatio;
 } tableDescStruct;
 

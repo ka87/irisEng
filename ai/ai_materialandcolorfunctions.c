@@ -486,7 +486,7 @@ tAINode* AI_EvalFunc_SetALPHATRESH(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_SetFlag_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId, int a4, __int16 a5)
+void AI_EvalFunc_SetFlag_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId, int a4, int16_t a5)
 {
     tMultiTextureElemStruct* v5;
     tGEOMAT* v6;
@@ -524,7 +524,7 @@ tAINode* AI_EvalFunc_SetFlag(tAINode* a1)
 {
     int v1;
     tGameObjectMain* v3;
-    __int16 a5;
+    int16_t a5;
     int a4; 
     int multiMatElemId;
 
@@ -900,7 +900,7 @@ tAINode* AI_EvalFunc_MATAntSeti(tAINode* a1)
     return a1 + 1;
 }
 
-int AI_EvalFunc_COLORSetRGBA_C(unsigned __int8 a1, unsigned __int8 a2, unsigned __int8 a3, unsigned __int8 a4)
+int AI_EvalFunc_COLORSetRGBA_C(uint8_t a1, uint8_t a2, uint8_t a3, uint8_t a4)
 {
     return a1 | (a2 << 8) | (a3 << 16) | (a4 << 24);
 }
@@ -908,10 +908,10 @@ int AI_EvalFunc_COLORSetRGBA_C(unsigned __int8 a1, unsigned __int8 a2, unsigned 
 tAINode* AI_EvalFunc_COLORSetRGBA(tAINode* a1)
 {
     int v1;
-    unsigned __int8 v3;
-    unsigned __int8 v4;
-    unsigned __int8 v5;
-    unsigned __int8 v6;
+    uint8_t v3;
+    uint8_t v4;
+    uint8_t v5;
+    uint8_t v6;
 
     v4 = AI_GetIntFromStack();
     v5 = AI_GetIntFromStack();
@@ -922,14 +922,14 @@ tAINode* AI_EvalFunc_COLORSetRGBA(tAINode* a1)
     return a1 + 1;
 }
 
-int AI_EvalFunc_COLORGetRed_C(unsigned __int8 a1)
+int AI_EvalFunc_COLORGetRed_C(uint8_t a1)
 {
     return a1;
 }
 
 tAINode* AI_EvalFunc_COLORGetRed(tAINode* a1)
 {
-    unsigned __int8 v1;
+    uint8_t v1;
     int v2;
 
     v1 = AI_GetIntFromStack();
@@ -938,14 +938,14 @@ tAINode* AI_EvalFunc_COLORGetRed(tAINode* a1)
     return a1 + 1;
 }
 
-int AI_EvalFunc_COLORGetGreen_C(__int16 a1)
+int AI_EvalFunc_COLORGetGreen_C(int16_t a1)
 {
     return (a1 & 0xFF00) >> 8;
 }
 
 tAINode* AI_EvalFunc_COLORGetGreen(tAINode* a1)
 {
-    __int16 v1;
+    int16_t v1;
     int v2;
 
     v1 = AI_GetIntFromStack();

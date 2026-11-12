@@ -14,9 +14,9 @@ typedef struct sGfxCarteData
     float blinkTime;
     float effectTime;
     float remainingEffectTime;
-    byte uncoverPiecePaletteID;
-    byte paletteCanBeUpdated;
-    byte _pad[1];
+    uint8_t uncoverPiecePaletteID;
+    uint8_t paletteCanBeUpdated;
+    uint8_t _pad[1];
     char PositionToRotationVertexIdx;
     int pieceStatus;
     int currentPieceStatus;
@@ -24,7 +24,7 @@ typedef struct sGfxCarteData
     int textElemIndexId[16];
     int texElemIndices[16];
     int objectCount;
-    byte paletteData[96];
+    uint8_t paletteData[96];
     float remainingTime;
     float remainingUncoverTime;
     int flags;
@@ -34,4 +34,4 @@ struct sGfxCarteData* GFX_Carte_Create();
 void GFX_Carte_Destroy(struct sGfxCarteData* a1, struct sGEOMAT* a2);
 int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat, struct sGameObjectMain* a3);
 void GFX_Carte_Seti(struct sGfxCarteData* a1, unsigned int a2, unsigned int a3);
-void GFX_Carte_Object(tGfxElem* a1, __int16 id, tGameObjectMain* a3, int a4, int textElemIndexId);
+void GFX_Carte_Object(tGfxElem* a1, int16_t id, tGameObjectMain* a3, int a4, int textElemIndexId);

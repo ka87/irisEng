@@ -379,7 +379,7 @@ void AI_ReinitInstance(tAI* ai)
     unsigned int arrayDimensionNum;
     unsigned int variableArrayCount;
     int varOffset;
-    byte* ivData;
+    uint8_t* ivData;
 
     if (!ai || !ai->model) return;
 
@@ -531,13 +531,13 @@ void AI_ResolveAllFctRef(tAIModel* aiModel)
     }
 }
 
-void AI_ResolveVarRef(void* a1, byte* allVarData, AIVarNameElem* a3, AIVarElem* varElems, unsigned int num, int a6)
+void AI_ResolveVarRef(void* a1, uint8_t* allVarData, AIVarNameElem* a3, AIVarElem* varElems, unsigned int num, int a6)
 {
     unsigned int i;
     signed int j;
     int16_t varType;
-    byte* varData;
-    byte* actVarData;
+    uint8_t* varData;
+    uint8_t* actVarData;
 
     if (allVarData)
     {
@@ -655,9 +655,9 @@ void AI_InstanceAfterLoading(tAI* ai)
         if (ai->model->vars)
         {
             if (ai->model->vars->varFullSizeToAlloc)
-                ai->instanceVarDataCurrent = (byte*)MEM_p_Alloc(ai->model->vars->varFullSizeToAlloc);
+                ai->instanceVarDataCurrent = (uint8_t*)MEM_p_Alloc(ai->model->vars->varFullSizeToAlloc);
             if (ai->model->vars->varFullSizeToAlloc)
-                ai->instanceVarDataInitial = (byte*)MEM_p_Alloc(ai->model->vars->varFullSizeToAlloc);
+                ai->instanceVarDataInitial = (uint8_t*)MEM_p_Alloc(ai->model->vars->varFullSizeToAlloc);
             if (ai->varsInstance)
             {
                 AI_ResolveCarDecHiHiEditor(ai);
@@ -980,8 +980,8 @@ void AI_DuplicateInstance(struct sGameObjectMain* srcGao, struct sGameObjectMain
         
         if (newAI->model->vars->varFullSizeToAlloc)
         {
-            newAI->instanceVarDataCurrent = (byte*)MEM_p_Alloc(newAI->model->vars->varFullSizeToAlloc);
-            newAI->instanceVarDataInitial = (byte*)MEM_p_Alloc(newAI->model->vars->varFullSizeToAlloc);
+            newAI->instanceVarDataCurrent = (uint8_t*)MEM_p_Alloc(newAI->model->vars->varFullSizeToAlloc);
+            newAI->instanceVarDataInitial = (uint8_t*)MEM_p_Alloc(newAI->model->vars->varFullSizeToAlloc);
             if (srcAI->instanceVarDataInitial)
                 memcpy(newAI->instanceVarDataInitial, srcAI->instanceVarDataInitial, newAI->model->vars->varFullSizeToAlloc);
         }
@@ -994,7 +994,7 @@ void AI_DuplicateInstance(struct sGameObjectMain* srcGao, struct sGameObjectMain
 
             if (newAIVars->varFullSizeToAlloc)
             {
-                newAIVars->varData = (byte*)MEM_p_Alloc(newAIVars->varFullSizeToAlloc);
+                newAIVars->varData = (uint8_t*)MEM_p_Alloc(newAIVars->varFullSizeToAlloc);
                 memcpy(newAIVars->varData, srcAI->varsInstance->varData, newAIVars->varFullSizeToAlloc);
             }
             if (newAIVars->varNum)
@@ -1310,7 +1310,7 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
     if (variableDefaultValueSizeSum)
     {
         currVarDataPtr = (char*)MEM_p_Alloc(variableDefaultValueSizeSum);
-        aiVars->varData = (byte*)currVarDataPtr;
+        aiVars->varData = (uint8_t*)currVarDataPtr;
         
         LOA_ul_FileTypeSize_35 += variableDefaultValueSizeSum;
 
@@ -1545,7 +1545,7 @@ void AI_AllocateSaveBuffer(tAI* aiPtr)
         }
         if (sizeToAlloc)
         {
-            AI_gpc_SaveBuffer = (byte*)MEM_p_Alloc(sizeToAlloc);
+            AI_gpc_SaveBuffer = (uint8_t*)MEM_p_Alloc(sizeToAlloc);
             AI_gi_SaveBufferSize = sizeToAlloc;
         }
     }

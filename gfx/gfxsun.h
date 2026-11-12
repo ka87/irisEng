@@ -30,9 +30,9 @@ typedef struct sGfxSunDataInner
     float i4;
     float i5;
     float colorFactor;
-    byte colorID;
-    byte colorID2;
-    byte _gap[2];
+    uint8_t colorID;
+    uint8_t colorID2;
+    uint8_t _gap[2];
 } tGfxSunDataInner;
 
 typedef struct sGfxSunData
@@ -52,14 +52,14 @@ typedef struct sGfxSunData
     float multiplier;
     float i16;
     float i17;
-    byte gap1[4];
+    uint8_t gap1[4];
     int num;
     int color;
     int flags;
-    byte b1;
-    byte b2;
+    uint8_t b1;
+    uint8_t b2;
     tGfxSunDataInner elems[32];
-    byte gap2[2688];
+    uint8_t gap2[2688];
     float rayLums[8];
     int alphaThresholdFlags;
     Vec3 v2;

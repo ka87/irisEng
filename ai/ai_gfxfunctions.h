@@ -1,7 +1,7 @@
 #pragma once
 #include "../ai.h"
 
-int AI_EvalFunc_GFXAddSorted_C(struct sGameObjectMain* a4, char a2, __int16 a3);
+int AI_EvalFunc_GFXAddSorted_C(struct sGameObjectMain* a4, char a2, int16_t a3);
 void AI_EvalFunc_GFXFlagSet_C_CURRENT(int a1, char a2, int a3);
 int AI_EvalFunc_GFXDel_C_CURRENT(int a1);
 void AI_EvalFunc_GFXMaterialSet_C_CURRENT(int a1, struct sGameObjectMain* a2, int a3);

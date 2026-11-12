@@ -4,14 +4,14 @@
 
 typedef struct sSpgSpriteMapperStruct
 {
-    byte b1;
-    byte b2;
-    byte b3;
-    byte b4;
-    byte b5;
-    byte b6;
-    byte b7;
-    byte b8;
+    uint8_t b1;
+    uint8_t b2;
+    uint8_t b3;
+    uint8_t b4;
+    uint8_t b5;
+    uint8_t b6;
+    uint8_t b7;
+    uint8_t b8;
 } tSpgSpriteMapperStruct;
 
 typedef struct sSpgUnkStruct

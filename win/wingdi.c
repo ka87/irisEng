@@ -110,8 +110,8 @@ void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* a2, tMultiTex
     unsigned int v5;
     int v6;
     profilerRasterStructElem* v7;
-    __int16 v8;
-    __int16 v9;
+    int16_t v8;
+    int16_t v9;
     tMatDecompressedStruct a2a;
     Vec3 v11;
     Vec3 v12;
@@ -2473,11 +2473,11 @@ void Rasters_Update()
                     if (v35 && width > 0.01)
                     {
                         v36 = 0xF0808020;
-                        if ((((byte)v34 - 1) & 1) != 0)
+                        if ((((uint8_t)v34 - 1) & 1) != 0)
                             v36 = 0xF0808060;
-                        if ((((byte)v34 + 1) & 2) != 0)
+                        if ((((uint8_t)v34 + 1) & 2) != 0)
                             v36 |= 0x4000u;
-                        if ((((byte)v34 + 1) & 4) != 0)
+                        if ((((uint8_t)v34 + 1) & 4) != 0)
                             v36 |= 0x400000u;
                         D3D_DrawARaster(v36, rasterNames[v34].name, width, a3, v32);
                         v37 = a3 + 15.0;
@@ -3427,14 +3427,14 @@ void D3D_l_Texture_Init(int a1, int a2, char a3)
         D3D_SetCullingParams();
         D3D_SetTexture(0, a1);
         D3D_SetTextureStageStates(0, a1);
-        if (samplerConfig[0].d3d_addressu != (~(2 * (byte)a2) & 2 | 1))
+        if (samplerConfig[0].d3d_addressu != (~(2 * (uint8_t)a2) & 2 | 1))
         {
-            samplerConfig[0].d3d_addressu = ~(2 * (byte)a2) & 2 | 1;
+            samplerConfig[0].d3d_addressu = ~(2 * (uint8_t)a2) & 2 | 1;
             D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_ADDRESSU, samplerConfig[0].d3d_addressu);
         }
-        if (samplerConfig[0].d3d_addressv != (~(byte)a2 & 2 | 1))
+        if (samplerConfig[0].d3d_addressv != (~(uint8_t)a2 & 2 | 1))
         {
-            samplerConfig[0].d3d_addressv = ~(byte)a2 & 2 | 1;
+            samplerConfig[0].d3d_addressv = ~(uint8_t)a2 & 2 | 1;
             D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_ADDRESSV, samplerConfig[0].d3d_addressv);
         }
         v3 = ((a2 & 4) != 0) + 1;
@@ -4061,7 +4061,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                                             if (v57 != v53)
                                             {
                                                 v53 += 2;
-                                                if ((((byte)v53 - (byte)v57) & 1) != 0) // ez nembiztos hogy jó így TODO IFXME
+                                                if ((((uint8_t)v53 - (uint8_t)v57) & 1) != 0) // ez nembiztos hogy jó így TODO IFXME
                                                     ++v53;
                                             }
                                             v53 += v58->triangleStripElemNum;
@@ -4143,7 +4143,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                                                         *++v75b = v68->triangleStripElems->triangleIdx;
                                                         v61 += 2;
                                                         ++v75b;
-                                                        if ((((byte)v61 - (byte)v63->d3dStreamInfoElems[v66].startIndex) & 1) != 0)
+                                                        if ((((uint8_t)v61 - (uint8_t)v63->d3dStreamInfoElems[v66].startIndex) & 1) != 0)
                                                         {
                                                             *v75b++ = v68->triangleStripElems->triangleIdx;
                                                             ++v61;
@@ -5403,7 +5403,7 @@ void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct*
     int v6;
     int v7;
     int v8;
-    __int16 v9;
+    int16_t v9;
     int v10;
     int v11;
     int v12;
@@ -6770,21 +6770,21 @@ typedef struct sPngWriter
     int rawLeft;
 } tPngWriter;
 
-static void PNG_l_Raw(tPngWriter* w, int byte)
+static void PNG_l_Raw(tPngWriter* w, int uint8_t)
 {
-    fputc(byte & 0xFF, w->file);
+    fputc(uint8_t & 0xFF, w->file);
 }
 
-static void PNG_l_Chk(tPngWriter* w, int byte)
+static void PNG_l_Chk(tPngWriter* w, int uint8_t)
 {
     unsigned int b;
 
-    b = (unsigned int)(byte & 0xFF);
+    b = (unsigned int)(uint8_t & 0xFF);
     fputc((int)b, w->file);
     w->crc = PNG_l_CrcTable[(w->crc ^ b) & 0xFF] ^ (w->crc >> 8);
 }
 
-static void PNG_l_Data(tPngWriter* w, int byte)
+static void PNG_l_Data(tPngWriter* w, int uint8_t)
 {
     int n;
 
@@ -6798,8 +6798,8 @@ static void PNG_l_Data(tPngWriter* w, int byte)
         PNG_l_Chk(w, ~n >> 8);
         w->blockLeft = n;
     }
-    PNG_l_Chk(w, byte);
-    w->adlerA = (w->adlerA + (unsigned int)(byte & 0xFF)) % 65521u;
+    PNG_l_Chk(w, uint8_t);
+    w->adlerA = (w->adlerA + (unsigned int)(uint8_t & 0xFF)) % 65521u;
     w->adlerB = (w->adlerB + w->adlerA) % 65521u;
     w->blockLeft--;
     w->rawLeft--;

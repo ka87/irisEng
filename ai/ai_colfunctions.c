@@ -647,7 +647,7 @@ tAINode* AI_EvalFunc_COLComputeJumpPoint(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLCrossableSet_C(struct sGameObjectMain* a1, __int16 a2, __int16 a3)
+void AI_EvalFunc_COLCrossableSet_C(struct sGameObjectMain* a1, int16_t a2, int16_t a3)
 {
     tColInstance* v3;
 
@@ -664,8 +664,8 @@ void AI_EvalFunc_COLCrossableSet_C(struct sGameObjectMain* a1, __int16 a2, __int
 tAINode* AI_EvalFunc_COLCrossableSet(tAINode* a1)
 {
     tGameObjectMain* v2;
-    __int16 a2;
-    __int16 a3;
+    int16_t a2;
+    int16_t a3;
 
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
@@ -2052,7 +2052,7 @@ int AI_EvalFunc_COLTypeGet_C(tGameObjectMain* a1, uint8_t a2)
 {
     int result;
     tColInstance* v3;
-    byte v4;
+    uint8_t v4;
 
     if ((a1->flags & 0x600) == 0 || a2 > 0xFu)
         return 0;
@@ -2083,7 +2083,7 @@ tAINode* AI_EvalFunc_COLTypeGet(tAINode* a1)
 void AI_EvalFunc_COLBoxMaxGet_C(tGameObjectMain* a1, unsigned int a2, Vec3* a3)
 {
     tColInstance* v4;
-    byte v5;
+    uint8_t v5;
     tColInstanceElem* v6;
 
     if ((a1->flags & 0x600) == 0 || a2 > 0xF)
@@ -2123,7 +2123,7 @@ tAINode* AI_EvalFunc_COLBoxMaxGet(tAINode* arg0)
 void AI_EvalFunc_COLBoxMinGet_C(tGameObjectMain* a1, unsigned int a2, Vec3* a3)
 {
     tColInstance* v3;
-    byte v4;
+    uint8_t v4;
     tColInstanceElem* v5;
 
     if ((a1->flags & 0x600) == 0 || a2 > 0xF)
@@ -2271,7 +2271,7 @@ void AI_EvalFunc_COLGeoColMapPosSet_C(struct sGameObjectMain* a1, uint8_t a2, Ve
 tAINode* AI_EvalFunc_COLGeoColMapPosSet(tAINode* arg0)
 {
     tGameObjectMain* v2;
-    unsigned __int8 v3;
+    uint8_t v3;
     Vec3 a1;
     tGameObjectMain* v5;
 
@@ -2628,7 +2628,7 @@ tAINode* AI_EvalFunc_BVRecompute(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_COLSetActivationSet_C(struct sGameObjectMain* a1, __int16 a2, __int16 a3)
+void AI_EvalFunc_COLSetActivationSet_C(struct sGameObjectMain* a1, int16_t a2, int16_t a3)
 {
     tColInstance* v3;
 
@@ -2645,8 +2645,8 @@ void AI_EvalFunc_COLSetActivationSet_C(struct sGameObjectMain* a1, __int16 a2, _
 tAINode* AI_EvalFunc_COLSetActivationSet(tAINode* a1)
 {
     tGameObjectMain* v2;
-    __int16 a3;
-    __int16 a2;
+    int16_t a3;
+    int16_t a2;
 
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
@@ -2681,7 +2681,7 @@ tAINode* AI_EvalFunc_COLSetActivationGet(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_COLMapActivationSet_C(struct sGameObjectMain* a1, unsigned __int8 a2, char a3)
+void AI_EvalFunc_COLMapActivationSet_C(struct sGameObjectMain* a1, uint8_t a2, char a3)
 {
     tColMap* v3;
 

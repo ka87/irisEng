@@ -824,7 +824,7 @@ void WOR_World_ResolveAIRef(struct sWorld* a1)
         v3 = (tGameObjectMain*)v1->objectPtr;
         if (v1->objectPtr)
         {
-            if (((unsigned __int8)v3 & 3) != 1)
+            if (((uint8_t)v3 & 3) != 1)
             {
                 OBJ_ResolveAIRef((tGameObjectMain*)v1->objectPtr);
                 if ((v3->flags & 0x40) != 0)
@@ -2539,8 +2539,8 @@ void WOR_Render(struct sWorld* world, struct sGdi_DisplayData* dxdd)
     tLIGHT* v10;
     int v11;
     profilerRasterStructElem* v12;
-    __int16 v13;
-    __int16 v14;
+    int16_t v13;
+    int16_t v14;
     tFogParams v15;
     tableElemStructPF* v16;
     tViewElem* i;

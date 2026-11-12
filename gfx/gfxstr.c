@@ -42,10 +42,10 @@ int GFX_i_Str_Render(struct sGfxStrData* a1)
     tGeoTriangleChunkElem* v7;
     int v8;
     int v9;
-    unsigned __int16 v10;
-    unsigned __int16 v11;
+    uint16_t v10;
+    uint16_t v11;
     tGeoTriangleChunkElem* v12;
-    unsigned __int16 v13;
+    uint16_t v13;
     int v14;
     Vec3 a3;
     float v16;
@@ -146,7 +146,7 @@ void GFX_Str_Seti(struct sGfxStrData* a1, int a2, unsigned int idx)
     tGeoUVElem* v7;
     tGEOSTRLetter* v8;
     double v9;
-    __int16 v10;
+    int16_t v10;
     double v11;
     unsigned int v12;
     unsigned int v13;
@@ -231,9 +231,9 @@ LABEL_16:
         if ((int16_t)v12 != v3->fontMaterialID)
         {
             v3->fontMaterialID = v12;
-            v3->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (__int16)v12);
+            v3->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (int16_t)v12);
         }
-        v13 = (unsigned __int8)v8->flagsAndChar;
+        v13 = (uint8_t)v8->flagsAndChar;
         if (v13 < 32)
             v14 = 0;
         else
@@ -243,7 +243,7 @@ LABEL_16:
         v16 = (double)v8->x;
         v17 = v8->width;
         v30 = v8->y;
-        v18 = (__int16)v8->height;
+        v18 = (int16_t)v8->height;
         v7 += 4;
         v6 += 4;
         ++v8;

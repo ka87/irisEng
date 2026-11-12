@@ -8,18 +8,18 @@ int i_LockMat_351 = 0; // TODO FIXME, game doesn't set it explicitly, check
 void GFX_Carte_UpdatePalette(tGfxCarteData* carte, int16_t texelemIdx)
 {
     tEngTexListElemStruct* v2;
-    byte* v3;
+    uint8_t* v3;
     tEngPaletteElem* v4;
-    byte v5;
+    uint8_t v5;
     unsigned int v6;
     char v7;
-    byte* v8;
+    uint8_t* v8;
     int v9;
-    byte* v10;
-    byte* v11;
-    byte* v12;
-    byte* v13;
-    signed __int8 v14;
+    uint8_t* v10;
+    uint8_t* v11;
+    uint8_t* v12;
+    uint8_t* v13;
+    int8_t v14;
     double v15;
     double v19;
     int* v20;
@@ -111,7 +111,7 @@ int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat, struct 
     tMultiTextureElemStruct* v4;
     tMultiTextureElemStruct* v5;
     tEngTexListElemStruct* v6; 
-    byte* v7;
+    uint8_t* v7;
     int v8; 
     int* v9;
     tMultiTextureElemStruct* v10;
@@ -168,7 +168,7 @@ int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat, struct 
     double v62;
     double v63;
     Vec3* v64;
-    __int16 v65;
+    int16_t v65;
     int v66;
     tGfxCarteData* v67;
     double v68;
@@ -284,7 +284,7 @@ int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat, struct 
             a3a.y = (float)((a2 + v20) * 0.5);
             v23 = carte->pos2D[0].z;
             if (v21)
-                v22 = (((byte)v22 - 1) | ~3u) + 1;
+                v22 = (((uint8_t)v22 - 1) | ~3u) + 1;
             v24 = &v17[v22];
             v24->x = (float)v18;
             v24->y = (float)v20;
@@ -659,7 +659,7 @@ void GFX_Carte_Seti(struct sGfxCarteData* a1, unsigned int a2, unsigned int a3)
     }
 }
 
-void GFX_Carte_Object(tGfxElem* a1, __int16 id, tGameObjectMain* a3, int a4, int textElemIndexId)
+void GFX_Carte_Object(tGfxElem* a1, int16_t id, tGameObjectMain* a3, int a4, int textElemIndexId)
 {
     tGfxCarteData* v5;
     int v6;
@@ -720,7 +720,7 @@ void GFX_Carte_Destroy(struct sGfxCarteData* a1, struct sGEOMAT* a2)
     tMultiTextureElemStruct* v2;
     tMultiTextureElemStruct* v3;
     tEngTexListElemStruct* v4;
-    byte* v5;
+    uint8_t* v5;
     int v6;
     int* v7;
     tMultiTextureElemStruct* v8;
@@ -730,7 +730,7 @@ void GFX_Carte_Destroy(struct sGfxCarteData* a1, struct sGEOMAT* a2)
     tMultiTextureElemStruct* v12;
     tMultiTextureElemStruct* v13;
     tMultiTextureElemStruct* v14;
-    __int16 v15;
+    int16_t v15;
 
     if (a2)
     {

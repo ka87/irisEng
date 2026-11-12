@@ -22,19 +22,19 @@ typedef struct sGameObjectEventsListElem
 {
     struct sGameObjectMain* gao;
     struct sGameObjectEventElem* trackElems;
-    byte* dataPtr;
+    uint8_t* dataPtr;
     int size;
-    unsigned __int16 elemNum;
-    __int16 flags;
-    unsigned __int16 boneID;
-    __int16 s3;
+    uint16_t elemNum;
+    int16_t flags;
+    uint16_t boneID;
+    int16_t s3;
 } tGameObjectEventsListElem;
 
 typedef struct sGameObjectEventsList
 {
     struct sGameObjectEventsListElem* listElems;
-    unsigned __int16 num;
-    __int16 flags;
+    uint16_t num;
+    int16_t flags;
     int usageCount;
 } tGameObjectEventsList;
 

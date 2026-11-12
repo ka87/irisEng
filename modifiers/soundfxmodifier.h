@@ -13,7 +13,7 @@ typedef struct sSoundFxMdfStruct
     int feedback;
     float vol;
     int wetPan;
-    byte gap[256];
+    uint8_t gap[256];
 } tSoundFxMdfStruct;
 
 void GEN_ModifierSoundFx_Apply(struct sModifier* a1, struct sGameObjectMain* a2);

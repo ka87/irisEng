@@ -4,17 +4,17 @@
 typedef struct sGridPtrElem
 {
     float fEval;
-    __int16 wayX;
-    __int16 wayY;
-    byte flags;
-    byte __pad[3];
+    int16_t wayX;
+    int16_t wayY;
+    uint8_t flags;
+    uint8_t __pad[3];
 } tGridPtrElem;
 
 typedef struct sWorldGridStruct
 {
     int* ptrInts;
     char** ptr;
-    byte* compressedGrid;
+    uint8_t* compressedGrid;
     char* capasPtr;
     tGridPtrElem* ptrs;
     char* notUsedSecondaryCapasPtr;
@@ -22,14 +22,14 @@ typedef struct sWorldGridStruct
     float startY;
     float centerX;
     float centerY;
-    __int16 gridCountX;
-    __int16 gridCountY;
-    __int16 s3Size7LimitMaxX;
-    __int16 s4Size7LimitMaxY;
-    __int16 s5Limit1MinX;
-    __int16 s5Limit1MinY;
+    int16_t gridCountX;
+    int16_t gridCountY;
+    int16_t s3Size7LimitMaxX;
+    int16_t s4Size7LimitMaxY;
+    int16_t s5Limit1MinX;
+    int16_t s5Limit1MinY;
     char gridElemSize;
-    byte _gap[3];
+    uint8_t _gap[3];
     int i2;
     int iInSetCenter1;
     int iInSetCenter2;
@@ -39,8 +39,8 @@ typedef struct sWorldGridStruct
 
 typedef struct sGridGast
 {
-    __int16 i1;
-    __int16 i2;
+    int16_t i1;
+    int16_t i2;
 } tGridGast;
 
 typedef struct sGridGast2

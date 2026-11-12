@@ -102,8 +102,8 @@ void ENG_ForceStartRasters()
 
 void PRO_RecordTimeDecRef(profilerRasterStructElem* a1)
 {
-    __int16 v1;
-    __int16 v2;
+    int16_t v1;
+    int16_t v2;
 
     v1 = a1->insideCounter;
     if (v1)

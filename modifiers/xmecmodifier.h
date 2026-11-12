@@ -16,7 +16,7 @@ typedef struct sXmecMdfStruct
     float elasticity;
     Vec3 speedVecs[50];
     Vec3 vvv[50];
-    byte gap[8];
+    uint8_t gap[8];
     Mtx4x4 mtx;
     int boneNum;
     int rank;

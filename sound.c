@@ -96,7 +96,7 @@ void SND_TrackForceFreeRessources_inner1_sub_499590(int a1)
 void snd_track_merge_inner_type_1_sub_499C20(int a1)
 {
     tTrackListElem* v1;
-    __int16 v2;
+    int16_t v2;
     int v3;
     int v4;
     tSndSoundBufferElem** v5;
@@ -962,7 +962,7 @@ void SND_StreamResolveSyncPrefetch()
     tSndPrefetchElem* v3;
     tSndSoundElem* v4;
     unsigned int v5;
-    __int16 v6;
+    int16_t v6;
     int v7;
     int v8;
     tSndPrefetchElem* v9;
@@ -2766,7 +2766,7 @@ void SND_Track_Merge(int iid, tSoundInstanceElem* a2a, tSoundInstanceElem* a3, i
     tTrackListElem* trackPlayingList;
     unsigned int id;
     tSoundInstanceElem* v8;
-    __int16 v9;
+    int16_t v9;
     tSndSoundElem* v10;
     int v11;
     float v12;

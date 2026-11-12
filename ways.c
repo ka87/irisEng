@@ -44,7 +44,7 @@ void WAY_ReinitLinks(struct sWay* a1)
     int v5;
     int v6;
     tWayElemInnerElem* v7;
-    __int16 v8;
+    int16_t v8;
     tWayElemInnerElem* v9;
 
     if (a1)

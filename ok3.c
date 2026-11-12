@@ -191,7 +191,7 @@ unsigned int COL_OK3_GetNumberOfFacesInBox(tCobOK3AABBoxElem* a1)
     return result;
 }
 
-void COL_pst_OK3_GetTriangle(void* aa, unsigned __int16 a2, unsigned __int16 a3, Vec3** a4, Vec3** a5, Vec3** a6, int type)
+void COL_pst_OK3_GetTriangle(void* aa, uint16_t a2, uint16_t a3, Vec3** a4, Vec3** a5, Vec3** a6, int type)
 {
     if (type)
     {
@@ -601,7 +601,7 @@ int COL_OK3_SubdivideBox(void* aa, unsigned int a2, int* a3, int type)
     tCobOK3AABBoxElemChunkElem* v46; // eax
     int v47; // edx
     unsigned int v48; // esi
-    __int16* v49; // eax
+    int16_t* v49; // eax
     int v50; // ecx
     tCobOK3* v51; // edi
     char* v52; // eax
@@ -631,7 +631,7 @@ int COL_OK3_SubdivideBox(void* aa, unsigned int a2, int* a3, int type)
     Vec3* a6; // [esp+44h] [ebp-4E2Ch] BYREF
     Vec3* a5; // [esp+48h] [ebp-4E28h] BYREF
     Vec3* a4; // [esp+4Ch] [ebp-4E24h] BYREF
-    __int16 v79[10000]; // [esp+50h] [ebp-4E20h] BYREF
+    int16_t v79[10000]; // [esp+50h] [ebp-4E20h] BYREF
 
     if (!aa)
         return 0;
@@ -1147,7 +1147,7 @@ void COL_OK3_Build(void* aa, int type, int a3)
                                                 v24->num = v23->elemNum;
                                                 if (v23->elemNum)
                                                 {
-                                                    v24->triangleChunkElemIDs = (__int16*)MEM_p_Alloc(2 * v23->elemNum);
+                                                    v24->triangleChunkElemIDs = (int16_t*)MEM_p_Alloc(2 * v23->elemNum);
                                                     v25 = 0;
                                                     if (v23->elemNum)
                                                     {
@@ -1281,7 +1281,7 @@ void COL_OK3_Build(void* aa, int type, int a3)
                     j->num = v42->triangleNum;
                     if (v42->triangleNum)
                     {
-                        j->triangleChunkElemIDs = (__int16*)MEM_p_Alloc(2 * v42->triangleNum);
+                        j->triangleChunkElemIDs = (int16_t*)MEM_p_Alloc(2 * v42->triangleNum);
                         for (k = 0; k < v42->triangleNum; ++k)
                             j->triangleChunkElemIDs[k] = k;
                     }

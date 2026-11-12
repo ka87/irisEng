@@ -24,40 +24,40 @@ typedef struct sColBox
 
 typedef struct sColInstanceElem
 {
-    byte colFlags;
-    byte elemType;
-    byte unk1;
-    byte design;
+    uint8_t colFlags;
+    uint8_t elemType;
+    uint8_t unk1;
+    uint8_t design;
     void *elemShapePtr;
 } tColInstanceElem;
 
 typedef struct sColInstSet
 {
-    byte instElemNum;
-    byte unk1;
+    uint8_t instElemNum;
+    uint8_t unk1;
     int16_t instanceNum;
     struct sColInstanceElem* colInstElems;
-    byte* zoneIDs;
+    uint8_t* zoneIDs;
     int unk2;
 } tColInstSet;
 
 typedef struct sColInstance
 {
     struct sColInstSet* colSet;
-    byte zoneNum;
-    byte sharedZoneNum;
-    byte instElemNum;
-    byte priority;
+    uint8_t zoneNum;
+    uint8_t sharedZoneNum;
+    uint8_t instElemNum;
+    uint8_t priority;
     struct sColInstanceElem** selectedInstElemPtrs;
     struct sColInstanceElem* colInstElems;
     uint16_t activationFlags;
     uint16_t instElemBitmask;
     int16_t crossable;
     int16_t flag;
-    byte minLod;
-    byte maxLod;
-    byte unk1;
-    byte backface;
+    uint8_t minLod;
+    uint8_t maxLod;
+    uint8_t unk1;
+    uint8_t backface;
     int wallPush;
     Mtx4x4* mtx;
     Vec3 backFaceVec;
@@ -68,8 +68,8 @@ typedef struct sCobGameMaterialElems
     int flags;
     float slide;
     float rebound;
-    byte sound;
-    byte b2; // read but unused
+    uint8_t sound;
+    uint8_t b2; // read but unused
     int16_t id;
 } tCobGameMaterialElems;
 
@@ -83,8 +83,8 @@ typedef struct sCobGameMaterial
 
 typedef struct sColCollisionObject
 {
-    byte objectType;
-    byte flags;
+    uint8_t objectType;
+    uint8_t flags;
     int16_t usageCount;
     struct sCobGameMaterial* gameMaterial;
     void *objectPtrByType;
@@ -92,10 +92,10 @@ typedef struct sColCollisionObject
 
 typedef struct sColMap
 {
-    byte colObjectID;
+    uint8_t colObjectID;
     uint8_t activation;
-    byte b3; // read but unused
-    byte b4; // read but unused
+    uint8_t b3; // read but unused
+    uint8_t b4; // read but unused
     struct sColCollisionObject** collisionObjectPtr;
 } tColMap;
 
@@ -112,9 +112,9 @@ typedef struct sCobMeshTriangleElem
 typedef struct sCobMeshChunkElem
 {
     uint16_t elemNum;
-    byte designVal;
+    uint8_t designVal;
     int16_t flags;
-    byte _pad[2];
+    uint8_t _pad[2];
     int gameMaterialElemID;
     struct sCobMeshTriangleElem* triangleElems;
 } tCobMeshChunkElem;
@@ -183,7 +183,7 @@ typedef struct sRecordElem
     int flags;
     int triangleChunkElemID;
     int16_t triangleChunkID;
-    byte designVal;
+    uint8_t designVal;
 } tRecordElem;
 
 typedef struct sColGlobal
@@ -205,15 +205,15 @@ typedef struct sColGlobal
     Vec3 moveVec;
     Vec3 moveVecUnit;
     struct sGameObjectMain* colMapGao;
-    byte gap1[12];
+    uint8_t gap1[12];
     struct sColMap* colMap;
     struct sColCollisionObject* collisionObjectPtr;
     struct sCobMeshChunkElem* cobMeshChunkElem;
     struct sCobMeshTriangleElem* cobMeshTriangleElem;
     Mtx4x4* colMapGaoMatrices;
-    byte gap2[12];
+    uint8_t gap2[12];
     Mtx4x4 colMapGaoInvMatrix;
-    byte gap3[8];
+    uint8_t gap3[8];
     Vec3 colMapEdgeNormalVec;
     float wallCosAngle;
     float maxStepSize;
@@ -221,15 +221,15 @@ typedef struct sColGlobal
     Vec3* ptrSetToVec6InZDMZDRGravityNeg;
     int recordCountBackup;
     struct sGameObjectMain* gaosNeededToBeRecomputed[50];
-    byte gaosNeededToBeRecomputedNum;
-    byte gap4[3];
+    uint8_t gaosNeededToBeRecomputedNum;
+    uint8_t gap4[3];
     int firstRecordToRecompute;
     int recomputeNeeded;
-    byte gap5[12];
+    uint8_t gap5[12];
     int COL_gb_SpecialCamera;
     int COL_gb_AfterEngine;
-    byte COL_uc_RecomputingLoop;
-    byte gap6[3];
+    uint8_t COL_uc_RecomputingLoop;
+    uint8_t gap6[3];
 } tColGlobal;
 
 typedef struct sColRayGlobal
@@ -239,7 +239,7 @@ typedef struct sColRayGlobal
     struct sGameObjectMain* colMapGao;
     Vec3* sourcePoint;
     Vec3* direction;
-    byte gap[4];
+    uint8_t gap[4];
     float distance;
     int skipRayCast;
     int skipCrossable;
@@ -289,7 +289,7 @@ struct sGameObjectMain* COL_Report_GetCOBGameObject(struct sGameObjectMain* a1, 
 int COL_GameMaterial_GetFlags(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
 float COL_GameMaterial_GetSlide(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
 float COL_GameMaterial_GetRebound(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
-byte COL_GameMaterial_GetSound(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
+uint8_t COL_GameMaterial_GetSound(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
 void COL_ComputeJumpPoint(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a5);
 int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* a1, struct sWorld* a2, struct sGameObjectMain** a3, Vec3* a4, int a5);
 void COL_RayCompute(Vec3* a1, struct sWorld* a2, struct sGameObjectMain* a3, Vec3* a4, Vec3* a5, int a6, int a7, int a8, int a9, unsigned int* a10);
@@ -307,7 +307,7 @@ int COL_Report_b_ObjectsAreColliding(struct sGameObjectMain* a1, struct sGameObj
 struct sGameObjectMain* COL_Visual_RayCast_OneObject(struct sGameObjectMain* a1, Vec3* rayV1, Vec3* rayV2, float rayF1, int flagMustHave, int flagMustNothave, int whatToTest, int* type7, int type1, int a10, int type6);
 int COL_Report_ul_BestReportGet(struct sGameObjectMain* a1, struct sWorld* a2, int a3, int a4);
 BOOL COL_Report_HasGMat(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
-byte COL_GetDesign(struct sGameObjectMain* a1, struct sWorld* a2, int32_t a3);
+uint8_t COL_GetDesign(struct sGameObjectMain* a1, struct sWorld* a2, int32_t a3);
 BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, struct sGameObjectMain* a4);
 BOOL COL_ZDE_BVCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGameObjectMain* a3, int a4);
 int COL_ZDE_PivotCollide(struct sGameObjectMain* a1, uint8_t id, struct sGameObjectMain* a3, int direction);
@@ -325,7 +325,7 @@ void COL_GeoColMap_PosSet(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3);
 int COL_Report_ul_GMatReportGet(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
 float col_sqrlen_sub_409560(Vec3* a1, Vec3* a2);
 
-int INT_PointInTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, byte* a6);
+int INT_PointInTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, uint8_t* a6);
 BOOL INT_SphereAABBox(Vec3* a1, float a2, Vec3* a3, Vec3* a4);
 
 void COL_OK3_Build(void* aa, int type, int a3);

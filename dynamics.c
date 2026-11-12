@@ -293,7 +293,7 @@ void DYN_ConstraintToParabol(tDyn* a1, tDynConstraint* a2, Vec3* a3, Vec3* a4, f
 void DYN_ApplyConstraint(tDyn* a1)
 {
     tDynConstraint* v2;
-    byte v3;
+    uint8_t v3;
     double v4;
     double v5;
     double v6;

@@ -196,10 +196,10 @@ void SPG_TransformTrisToSprites(Vec3* a1, Vec3* a2, Vec3* a3, unsigned int* colo
     float v10;
     float v11;
     float v12;
-    __int16 v13;
-    __int16 v14;
-    __int16 v15;
-    __int16 v16;
+    int16_t v13;
+    int16_t v14;
+    int16_t v15;
+    int16_t v16;
     unsigned int v17;
     int v18;
     int v20;

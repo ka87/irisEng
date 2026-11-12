@@ -210,7 +210,7 @@ BOOL GFX_i_Ripple_Render(struct sGfxRippleData* rd)
     double v15; // st4
     tGeoTriangleChunkElem* v16; // edi
     double v17; // st4
-    unsigned __int16 v18; // dx
+    uint16_t v18; // dx
     unsigned int v19; // eax
     unsigned int* v20; // ebx
     int v21; // esi
