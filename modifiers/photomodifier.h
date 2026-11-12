@@ -19,11 +19,11 @@ typedef struct sPhotoMdfStruct
     int flags;
 } tPhotoMdfStruct;
 
-struct sGameObjectMain* GAO_ModifierPhoto_SnapGOGet(struct sGameObjectMain* a1, struct sPhotoMdfStruct* a2, int a3);
-struct sModifier* GAO_ModifierPhoto_Get(struct sGameObjectMain* a1, int a2);
-void GAO_ModifierPhoto_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3a);
-void GAO_ModifierPhoto_Destroy(struct sModifier* a1);
-int GAO_ModifierPhoto_Load(struct sModifier* a1, char* a2);
-void GAO_ModifierPhoto_Apply(tModifier* a1, void* unk1);
-void GAO_ModifierPhoto_Unapply(tModifier* a1, void* unk1);
-void GAO_ModifierPhoto_Reinit(tModifier* a1);
+struct sGameObjectMain* GAO_ModifierPhoto_SnapGOGet(struct sGameObjectMain* gao, struct sPhotoMdfStruct* photo, int useSecond);
+struct sModifier* GAO_ModifierPhoto_Get(struct sGameObjectMain* gao, int wantSphere);
+void GAO_ModifierPhoto_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GAO_ModifierPhoto_Destroy(struct sModifier* mdf);
+int GAO_ModifierPhoto_Load(struct sModifier* mdf, char* data);
+void GAO_ModifierPhoto_Apply(tModifier* mdf, void* unk1);
+void GAO_ModifierPhoto_Unapply(tModifier* mdf, void* unk1);
+void GAO_ModifierPhoto_Reinit(tModifier* mdf);

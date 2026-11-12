@@ -26,9 +26,9 @@ typedef struct sXmecMdfStruct
 } tXmecMdfStruct;
 
 void GAO_ModifierXMEC_Apply(struct sModifier* a1, void* unk1);
-void GAO_ModifierXMEC_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void GAO_ModifierXMEC_Destroy(struct sModifier* a1);
+void GAO_ModifierXMEC_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GAO_ModifierXMEC_Destroy(struct sModifier* mdf);
 int GAO_ModifierXMEC_Load(struct sModifier* arg0, char* a1);
-void GAO_ModifierXMEC_Reinit(struct sModifier* a1);
-void GAO_ModifierXMEC_Unapply(struct sModifier* a1, void* unk1);
+void GAO_ModifierXMEC_Reinit(struct sModifier* mdf);
+void GAO_ModifierXMEC_Unapply(struct sModifier* mdf, void* unk1);
 void XMEC_OnOff(struct sGameObjectMain* a1, int a2, int a3);
