@@ -6,164 +6,145 @@ Mtx4x4 st_M2_460;
 
 float AI_gf_Epsilon = 0.000099999997f;
 
-int AI_EvalFunc_MATHBitSet_C(int a1, char a2)
+int AI_EvalFunc_MATHBitSet_C(int value, char bit)
 {
-    return (1 << a2) | a1;
+    return (1 << bit) | value;
 }
 
 tAINode* AI_EvalFunc_MATHBitSet(tAINode* node)
 {
-    int v1;
-    char v3;
-    int v4;
+    int value;
+    char bit;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_MATHBitSet_C(v4, v3);
-    AI_PutIntToStack(v1);
+    bit = AI_GetIntFromStack();
+    value = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MATHBitSet_C(value, bit));
     return node + 1;
 }
 
-int AI_EvalFunc_MATHBitChange_C(int a1, char a2)
+int AI_EvalFunc_MATHBitChange_C(int value, char bit)
 {
-    int v3;
-
-    if (((1 << a2) & a1) != 0)
-        v3 = ~(1 << a2) & a1;
-    else
-        v3 = (1 << a2) | a1;
-    return v3;
+    if (((1 << bit) & value) != 0)
+        return ~(1 << bit) & value;
+    return (1 << bit) | value;
 }
 
 tAINode* AI_EvalFunc_MATHBitChange(tAINode* node)
 {
-    int v1;
-    char v3;
-    int v4;
+    int value;
+    char bit;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_MATHBitChange_C(v4, v3);
-    AI_PutIntToStack(v1);
+    bit = AI_GetIntFromStack();
+    value = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MATHBitChange_C(value, bit));
     return node + 1;
 }
 
-int AI_EvalFunc_MATHBitReset_C(int a1, char a2)
+int AI_EvalFunc_MATHBitReset_C(int value, char bit)
 {
-    return ~(1 << a2) & a1;
+    return ~(1 << bit) & value;
 }
 
 tAINode* AI_EvalFunc_MATHBitReset(tAINode* node)
 {
-    int v1;
-    char v3;
-    int v4;
+    int value;
+    char bit;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_MATHBitReset_C(v4, v3);
-    AI_PutIntToStack(v1);
+    bit = AI_GetIntFromStack();
+    value = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MATHBitReset_C(value, bit));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_MATHBitTest_C(int a1, char a2)
+BOOL AI_EvalFunc_MATHBitTest_C(int value, char bit)
 {
-    return ((1 << a2) & a1) != 0;
+    return ((1 << bit) & value) != 0;
 }
 
 tAINode* AI_EvalFunc_MATHBitTest(tAINode* node)
 {
-    int v1;
-    char v3;
-    int v4;
+    int value;
+    char bit;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_MATHBitTest_C(v4, v3);
-    AI_PutIntToStack(v1);
+    bit = AI_GetIntFromStack();
+    value = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MATHBitTest_C(value, bit));
     return node + 1;
 }
 
-float AI_EvalFunc_MATHSinus_C(float f) {
-    return sinf(f);
+float AI_EvalFunc_MATHSinus_C(float angle) {
+    return sinf(angle);
 }
 
 tAINode* AI_EvalFunc_MATHSinus(tAINode* node)
 {
-    float v2;
-    float X;
+    float angle;
 
-    X = AI_GetFloatFromStack();
-    v2 = AI_EvalFunc_MATHSinus_C(X);
-    AI_PutFloatToStack(v2);
+    angle = AI_GetFloatFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_MATHSinus_C(angle));
     return node + 1;
 }
 
-float AI_EvalFunc_MATHCosinus_C(float f) {
-    return cosf(f);
+float AI_EvalFunc_MATHCosinus_C(float angle) {
+    return cosf(angle);
 }
 
 tAINode* AI_EvalFunc_MATHCosinus(tAINode* node)
 {
-    float v2;
-    float X;
+    float angle;
 
-    X = AI_GetFloatFromStack();
-    v2 = AI_EvalFunc_MATHCosinus_C(X);
-    AI_PutFloatToStack(v2);
+    angle = AI_GetFloatFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_MATHCosinus_C(angle));
     return node + 1;
 }
 
-float AI_EvalFunc_MATHRandFloat_C(float a1, float a2)
+// 32767 is the generator's range, so the quotient is the unit interval.
+float AI_EvalFunc_MATHRandFloat_C(float min, float max)
 {
-    float v3;
-    float v4;
+    float raw;
+    float unit;
 
-    if (a1 == a2)
-        return a1;
-    v3 = (float)rand();
-    v4 = (float)(v3 / 32767.0);
-    return (float)((a2 - a1) * v4 + a1);
+    if (min == max)
+        return min;
+
+    raw = (float)rand();
+    unit = (float)(raw / 32767.0);
+    return (float)((max - min) * unit + min);
 }
 
 tAINode* AI_EvalFunc_MATHRandFloat(tAINode* node)
 {
-    float v2;
-    float v3;
-    float v4;
+    float min;
+    float max;
 
-    v3 = AI_GetFloatFromStack();
-    v4 = AI_GetFloatFromStack();
-    v2 = AI_EvalFunc_MATHRandFloat_C(v4, v3);
-    AI_PutFloatToStack(v2);
+    max = AI_GetFloatFromStack();
+    min = AI_GetFloatFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_MATHRandFloat_C(min, max));
     return node + 1;
 }
 
-int AI_EvalFunc_MATHRandInt_C(int a1, int a2)
+// Half-open: a draw that lands exactly on max is pulled back one.
+int AI_EvalFunc_MATHRandInt_C(int min, int max)
 {
-    int v3;
-    int v4;
+    int drawn;
 
-    if (a1 == a2)
-        return a1;
-    v4 = a1 + (a2 - a1) * RND_JADErand() / 0x7FFF;
-    if (v4 == a2)
-        v3 = v4 - 1;
-    else
-        v3 = v4;
-    return v3;
+    if (min == max)
+        return min;
+
+    drawn = min + (max - min) * RND_JADErand() / 0x7FFF;
+    if (drawn == max)
+        return drawn - 1;
+    return drawn;
 }
 
 tAINode* AI_EvalFunc_MATHRandInt(tAINode* node)
 {
-    int v1;
-    int v3;
-    int v4;
+    int min;
+    int max;
 
-    v4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_MATHRandInt_C(v3, v4);
-    AI_PutIntToStack(v1);
+    max = AI_GetIntFromStack();
+    min = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MATHRandInt_C(min, max));
     return node + 1;
 }
 
@@ -173,54 +154,43 @@ float AI_EvalFunc_MATHAbsFloat_C(float f) {
 
 tAINode* AI_EvalFunc_MATHAbsFloat(tAINode* node)
 {
-    float v2;
-    float v3;
+    float f;
 
-    v3 = AI_GetFloatFromStack();
-    v2 = AI_EvalFunc_MATHAbsFloat_C(v3);
-    AI_PutFloatToStack(v2);
+    f = AI_GetFloatFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_MATHAbsFloat_C(f));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHAbsInt(tAINode* node)
 {
-    int v2;
+    int value;
 
-    v2 = AI_GetIntFromStack();
-    if (v2 < 0)
-        AI_PutIntToStack(-v2);
+    value = AI_GetIntFromStack();
+    if (value < 0)
+        AI_PutIntToStack(-value);
     else
-        AI_PutIntToStack(v2);
+        AI_PutIntToStack(value);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecDistance(tAINode* node)
 {
-    float v2;
-    Vec3 dest;
-    Vec3* a3;
-    Vec3* a2;
+    Vec3* pos2;
+    Vec3* pos1;
+    Vec3 diff;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    MATH_SubstractVec(&dest, a2, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    v2 = MATH_VecLen(&dest);
-    AI_PutFloatToStack(v2);
+    // the vectors are read where the stack keeps them rather than
+    // copied out
+    pos2 = (Vec3*)AI_PopStackSlot();
+    pos1 = (Vec3*)AI_PopStackSlot();
+    MATH_SubstractVec(&diff, pos2, pos1);
+    AI_PutFloatToStack(MATH_VecLen(&diff));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecNorm(tAINode* node)
 {
-    float v2;
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = MATH_VecLen((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    AI_PutFloatToStack(v2);
+    AI_PutFloatToStack(MATH_VecLen((Vec3*)AI_PopStackSlot()));
     return node + 1;
 }
 
@@ -240,42 +210,38 @@ void AI_EvalFunc_MATHVecNormalize_C(Vec3* src, Vec3* dest)
 
 tAINode* AI_EvalFunc_MATHVecNormalize(tAINode* node)
 {
-    Vec3 a1a;
+    Vec3 normalized;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_MATHVecNormalize_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], &a1a);
-    AI_PutVecToStack(&a1a);
+    AI_EvalFunc_MATHVecNormalize_C((Vec3*)AI_PopStackSlot(), &normalized);
+    AI_PutVecToStack(&normalized);
     return node + 1;
 }
 
-void AI_EvalFunc_MATHVecSetNormVector_C(Vec3* a1, float a2)
+void AI_EvalFunc_MATHVecSetNormVector_C(Vec3* vec, float length)
 {
-    MATH_NormalizeVector(a1, a1);
-    a1->x = a2 * a1->x;
-    a1->y = a2 * a1->y;
-    a1->z = a2 * a1->z;
+    MATH_NormalizeVector(vec, vec);
+    MATH_VecMultScalarWithoutBuffer(vec, length);
 }
 
 tAINode* AI_EvalFunc_MATHVecSetNormVector(tAINode* node)
 {
-    float v2;
-    char v3[52];
-    tVarStackElem a2;
+    char converted[52];
+    tVarStackElem var;
+    float length;
 
-    v2 = AI_GetFloatFromStack();
-    AI_GetVarFromStack(v3, &a2);
-    AI_EvalFunc_MATHVecSetNormVector_C((Vec3*)a2.ptr, v2);
+    length = AI_GetFloatFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_EvalFunc_MATHVecSetNormVector_C((Vec3*)var.ptr, length);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecSetNormalize(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
+    char converted[52];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    MATH_NormalizeEqualVector((Vec3*)a2.ptr);
+    AI_GetVarFromStack(converted, &var);
+    MATH_NormalizeEqualVector((Vec3*)var.ptr);
     return node + 1;
 }
 
@@ -297,217 +263,208 @@ void  AI_EvalFunc_MATHVecSetHorzNormalize_C(Vec3* v)
 
 tAINode* AI_EvalFunc_MATHVecSetHorzNormalize(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
+    char converted[52];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalFunc_MATHVecSetHorzNormalize_C((Vec3*)a2.ptr);
+    AI_GetVarFromStack(converted, &var);
+    AI_EvalFunc_MATHVecSetHorzNormalize_C((Vec3*)var.ptr);
     return node + 1;
 }
 
-float AI_EvalFunc_MATHVecDotProduct_C(Vec3* v1, Vec3* v2) {
-    return MATH_DotProduct(v1, v2);
+float AI_EvalFunc_MATHVecDotProduct_C(Vec3* vec1, Vec3* vec2) {
+    return MATH_DotProduct(vec1, vec2);
 }
 
 tAINode* AI_EvalFunc_MATHVecDotProduct(tAINode* node)
 {
-    Vec3* v1, *v2;
+    Vec3* vec1;
+    Vec3* vec2;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v1 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-
-    AI_PutFloatToStack(AI_EvalFunc_MATHVecDotProduct_C(v1, v2));
+    vec1 = (Vec3*)AI_PopStackSlot();
+    vec2 = (Vec3*)AI_PopStackSlot();
+    AI_PutFloatToStack(AI_EvalFunc_MATHVecDotProduct_C(vec1, vec2));
     return node + 1;
 }
 
-void AI_EvalFunc_MATHVecCrossProduct_C(Vec3* a1, Vec3* a2, Vec3* a3)
+void AI_EvalFunc_MATHVecCrossProduct_C(Vec3* vec1, Vec3* vec2, Vec3* dest)
 {
-    MATH_CrossProduct(a3, a1, a2);
+    MATH_CrossProduct(dest, vec1, vec2);
 }
 
 tAINode* AI_EvalFunc_MATHVecCrossProduct(tAINode* node)
 {
-    Vec3* a2;
-    Vec3 a1a;
+    Vec3* vec2;
+    Vec3 cross;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_MATHVecCrossProduct_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, &a1a);
-    AI_PutVecToStack(&a1a);
+    vec2 = (Vec3*)AI_PopStackSlot();
+    AI_EvalFunc_MATHVecCrossProduct_C((Vec3*)AI_PopStackSlot(), vec2, &cross);
+    AI_PutVecToStack(&cross);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHDistPointLine(tAINode* node)
 {
-    float v2;
-    Vec3 v1;
-    Vec3 v4;
-    Vec3 a1a;
+    Vec3 point;
+    Vec3 lineB;
+    Vec3 lineA;
 
-    AI_GetVecFromStack(&a1a);
-    AI_GetVecFromStack(&v4);
-    AI_GetVecFromStack(&v1);
-    v2 = MATH_f_PointLineDistance(&v1, &v4, &a1a);
-    AI_PutFloatToStack(v2);
+    AI_GetVecFromStack(&point);
+    AI_GetVecFromStack(&lineB);
+    AI_GetVecFromStack(&lineA);
+    AI_PutFloatToStack(MATH_f_PointLineDistance(&lineA, &lineB, &point));
     return node + 1;
 }
 
-void AI_EvalFunc_MATHProjPointLine_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4)
+void AI_EvalFunc_MATHProjPointLine_C(Vec3* lineA, Vec3* lineB, Vec3* point, Vec3* dest)
 {
-    MATH_PointLineProjection(a4, a1, a2, a3);
+    MATH_PointLineProjection(dest, lineA, lineB, point);
 }
 
 tAINode* AI_EvalFunc_MATHProjPointLine(tAINode* node)
 {
-    Vec3 v2;
-    Vec3 a2;
-    Vec3 a1a;
-    Vec3 a3;
+    Vec3 lineA;
+    Vec3 lineB;
+    Vec3 point;
+    Vec3 projected;
 
-    AI_GetVecFromStack(&a3);
-    AI_GetVecFromStack(&a2);
-    AI_GetVecFromStack(&v2);
-    AI_EvalFunc_MATHProjPointLine_C(&v2, &a2, &a3, &a1a);
-    AI_PutVecToStack(&a1a);
+    AI_GetVecFromStack(&point);
+    AI_GetVecFromStack(&lineB);
+    AI_GetVecFromStack(&lineA);
+    AI_EvalFunc_MATHProjPointLine_C(&lineA, &lineB, &point, &projected);
+    AI_PutVecToStack(&projected);
     return node + 1;
 }
 
-void AI_EvalFunc_MATHProjPointSegment_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4)
+void AI_EvalFunc_MATHProjPointSegment_C(Vec3* segA, Vec3* segB, Vec3* point, Vec3* dest)
 {
-    MATH_PointSegmentProjection(a4, a1, a2, a3);
+    MATH_PointSegmentProjection(dest, segA, segB, point);
 }
 
 tAINode* AI_EvalFunc_MATHProjPointSegment(tAINode* node)
 {
-    Vec3 v2;
-    Vec3 a2;
-    Vec3 a1a;
-    Vec3 a3;
+    Vec3 segA;
+    Vec3 segB;
+    Vec3 point;
+    Vec3 projected;
 
-    AI_GetVecFromStack(&a3);
-    AI_GetVecFromStack(&a2);
-    AI_GetVecFromStack(&v2);
-    AI_EvalFunc_MATHProjPointSegment_C(&v2, &a2, &a3, &a1a);
-    AI_PutVecToStack(&a1a);
+    AI_GetVecFromStack(&point);
+    AI_GetVecFromStack(&segB);
+    AI_GetVecFromStack(&segA);
+    AI_EvalFunc_MATHProjPointSegment_C(&segA, &segB, &point, &projected);
+    AI_PutVecToStack(&projected);
     return node + 1;
 }
 
-void AI_EvalFunc_MATHProjPointParabol_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, float a7, Vec3* a6)
+// The projection's second output is taken and discarded.
+void AI_EvalFunc_MATHProjPointParabol_C(Vec3* from, Vec3* speed, Vec3* gravity, Vec3* point, float time, Vec3* dest)
 {
-    Vec3 a2a;
+    Vec3 unused;
 
-    MATH_PointParabolProjection3D(a6, &a2a, a1, a2, a3, a4, a7);
+    MATH_PointParabolProjection3D(dest, &unused, from, speed, gravity, point, time);
 }
 
 tAINode* AI_EvalFunc_MATHProjPointParabol(tAINode* node)
 {
-    Vec3 a2;
-    float a7;
-    Vec3 a1a;
-    Vec3 a4;
-    Vec3 v6;
-    Vec3 a3;
+    Vec3 from;
+    Vec3 speed;
+    Vec3 gravity;
+    Vec3 point;
+    Vec3 projected;
+    float time;
 
-    a7 = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&a4);
-    AI_GetVecFromStack(&a3);
-    AI_GetVecFromStack(&a2);
-    AI_GetVecFromStack(&v6);
-    AI_EvalFunc_MATHProjPointParabol_C(&v6, &a2, &a3, &a4, a7, &a1a);
-    AI_PutVecToStack(&a1a);
+    time = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&point);
+    AI_GetVecFromStack(&gravity);
+    AI_GetVecFromStack(&speed);
+    AI_GetVecFromStack(&from);
+    AI_EvalFunc_MATHProjPointParabol_C(&from, &speed, &gravity, &point, time, &projected);
+    AI_PutVecToStack(&projected);
     return node + 1;
 }
 
-void AI_EvalFunc_MATHMatrixBlend_C(Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, Vec3* a7, float amount, char a9)
+// Blends between two orientations, each given as an up and a forward
+// vector, and hands back the blended pair. The two matrices are file
+// statics because MATH_MatrixBlend can be asked to carry state between
+// calls; rebuild says to fill them from the arguments first, which is
+// what the only caller here does.
+void AI_EvalFunc_MATHMatrixBlend_C(Vec3* upOut, Vec3* forwardOut, Vec3* up1, Vec3* forward1, Vec3* up2, Vec3* forward2, float amount, char rebuild)
 {
-
-    Mtx4x4 v9;
+    Mtx4x4 blended;
 
     if (amount < 0.0)
         amount = 0.0;
     if (amount > 1.0)
         amount = 1.0;
-    if (a9)
+
+    if (rebuild)
     {
-        MATH_CrossProduct(&st_M1_459.v1, a5, a4);
-        MATH_CrossProduct(&st_M2_460.v1, a7, a6);
-        st_M2_460.v3.x = a7->x; // TODO: atnezni megegyszer
-        st_M2_460.v3.y = a7->y;
-        st_M2_460.v3.z = a7->z;
+        MATH_CrossProduct(&st_M1_459.v1, forward1, up1);
+        MATH_CrossProduct(&st_M2_460.v1, forward2, up2);
+        st_M2_460.v3.x = forward2->x; // TODO: atnezni megegyszer
+        st_M2_460.v3.y = forward2->y;
+        st_M2_460.v3.z = forward2->z;
 
-        st_M1_459.v3.x = a5->x;
-        st_M1_459.v3.y = a5->y;
-        st_M1_459.v3.z = a5->z;
+        st_M1_459.v3.x = forward1->x;
+        st_M1_459.v3.y = forward1->y;
+        st_M1_459.v3.z = forward1->z;
 
-        st_M2_460.v2.x = -a6->x;
-        st_M2_460.v2.y = -a6->y;
-        st_M2_460.v2.z = -a6->z;
-
-        st_M1_459.v2.x = -a4->x;
-        st_M1_459.v2.y = -a4->y;
-        st_M1_459.v2.z = -a4->z;
+        MATH_VecInvert(&st_M2_460.v2, up2);
+        MATH_VecInvert(&st_M1_459.v2, up1);
     }
-    MATH_MatrixBlend(&v9, &st_M1_459, &st_M2_460, amount, a9);
-    a2->x = -v9.v2.x;
-    a2->y = -v9.v2.y;
-    a2->z = -v9.v2.z;
-    *a3 = v9.v3;
+
+    MATH_MatrixBlend(&blended, &st_M1_459, &st_M2_460, amount, rebuild);
+    MATH_VecInvert(upOut, &blended.v2);
+    *forwardOut = blended.v3;
 }
 
 tAINode* AI_EvalFunc_MATHMatrixBlend(tAINode* node)
 {
-    float a8;
-    char v3[52];
-    tVarStackElem a2;
-    Vec3 a4;
-    char dest[52];
-    Vec3 a1a;
-    Vec3 a6;
-    Vec3 a5;
-    tVarStackElem v10;
+    char upConverted[52];
+    char forwardConverted[52];
+    tVarStackElem upVar;
+    tVarStackElem forwardVar;
+    Vec3 up1;
+    Vec3 forward1;
+    Vec3 up2;
+    Vec3 forward2;
+    float amount;
 
-    a8 = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&a1a);
-    AI_GetVecFromStack(&a6);
-    AI_GetVecFromStack(&a5);
-    AI_GetVecFromStack(&a4);
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v3, &v10);
-    AI_EvalFunc_MATHMatrixBlend_C((Vec3*)v10.ptr, (Vec3*)a2.ptr, &a4, &a5, &a6, &a1a, a8, 1);
+    amount = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&forward2);
+    AI_GetVecFromStack(&up2);
+    AI_GetVecFromStack(&forward1);
+    AI_GetVecFromStack(&up1);
+    AI_GetVarFromStack(forwardConverted, &forwardVar);
+    AI_GetVarFromStack(upConverted, &upVar);
+    AI_EvalFunc_MATHMatrixBlend_C((Vec3*)upVar.ptr, (Vec3*)forwardVar.ptr,
+                                  &up1, &forward1, &up2, &forward2, amount, 1);
     return node + 1;
 }
 
-void AI_EvalFunc_MATHMatrixVecLocalToGlobal_C(Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5)
+// The same orientation convention as MATHMatrixBlend: right is forward
+// crossed with up, and the matrix's second axis is the negated up.
+void AI_EvalFunc_MATHMatrixVecLocalToGlobal_C(Vec3* dest, Vec3* src, Vec3* up, Vec3* forward)
 {
-    Mtx4x4 v5;
+    Mtx4x4 mtx;
 
-    MATH_CrossProduct(&v5.v1, a5, a4);
-    v5.v3 = *a5;
-    v5.v2.x = -a4->x;
-    v5.v2.y = -a4->y;
-    v5.v2.z = -a4->z;
-    MATH_TransformVectorNoScale(a2, &v5, a3);
+    MATH_CrossProduct(&mtx.v1, forward, up);
+    mtx.v3 = *forward;
+    MATH_VecInvert(&mtx.v2, up);
+    MATH_TransformVectorNoScale(dest, &mtx, src);
 }
 
 tAINode* AI_EvalFunc_MATHMatrixVecLocalToGlobal(tAINode* node)
 {
-    Vec3 a4;
-    Vec3 a5;
-    Vec3 a1a;
-    Vec3 a3;
+    Vec3 src;
+    Vec3 up;
+    Vec3 forward;
+    Vec3 global;
 
-    AI_GetVecFromStack(&a5);
-    AI_GetVecFromStack(&a4);
-    AI_GetVecFromStack(&a3);
-    AI_EvalFunc_MATHMatrixVecLocalToGlobal_C(&a1a, &a3, &a4, &a5);
-    AI_PutVecToStack(&a1a);
+    AI_GetVecFromStack(&forward);
+    AI_GetVecFromStack(&up);
+    AI_GetVecFromStack(&src);
+    AI_EvalFunc_MATHMatrixVecLocalToGlobal_C(&global, &src, &up, &forward);
+    AI_PutVecToStack(&global);
     return node + 1;
 }
 
@@ -526,7 +483,7 @@ float AI_EvalFunc_MATHFloatLimit_C(float num, float min, float max) {
     }
 }
 
-tAINode* AI_EvalFunc_MATHFloatLimit(tAINode* aiNode)
+tAINode* AI_EvalFunc_MATHFloatLimit(tAINode* node)
 {
     float num, min, max;
 
@@ -536,7 +493,7 @@ tAINode* AI_EvalFunc_MATHFloatLimit(tAINode* aiNode)
 
     AI_PutFloatToStack(AI_EvalFunc_MATHFloatLimit_C(num, min, max));
 
-    return aiNode + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHFloatMin_C(float num1, float num2) {
@@ -546,7 +503,7 @@ float AI_EvalFunc_MATHFloatMin_C(float num1, float num2) {
         return num1;
 }
 
-tAINode* AI_EvalFunc_MATHFloatMin(tAINode* aiNode)
+tAINode* AI_EvalFunc_MATHFloatMin(tAINode* node)
 {
     float num1, num2;
 
@@ -555,7 +512,7 @@ tAINode* AI_EvalFunc_MATHFloatMin(tAINode* aiNode)
     
     AI_PutFloatToStack(AI_EvalFunc_MATHFloatMin_C(num1, num2));
 
-    return aiNode + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHFloatMax_C(float num1, float num2) {
@@ -565,7 +522,7 @@ float AI_EvalFunc_MATHFloatMax_C(float num1, float num2) {
         return num2;
 }
 
-tAINode* AI_EvalFunc_MATHFloatMax(tAINode* aiNode)
+tAINode* AI_EvalFunc_MATHFloatMax(tAINode* node)
 {
     float num1, num2;
 
@@ -574,39 +531,41 @@ tAINode* AI_EvalFunc_MATHFloatMax(tAINode* aiNode)
 
     AI_PutFloatToStack(AI_EvalFunc_MATHFloatMax_C(num1, num2));
 
-    return aiNode + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_MATHFloatNullEps_C(float a1)
+// Note that this compares the magnitude as a double, where
+// MTHFloatNullToler below narrows it to a float first. The two
+// therefore disagree on a value right at the boundary; preserved as
+// written.
+BOOL AI_EvalFunc_MATHFloatNullEps_C(float f)
 {
-    double v2;
+    double magnitude;
 
-    v2 = fabs(a1);
-    return v2 < (double)AI_gf_Epsilon;
+    magnitude = fabs(f);
+    return magnitude < (double)AI_gf_Epsilon;
 }
 
 tAINode* AI_EvalFunc_MATHFloatNullEps(tAINode* node)
 {
-    int v1;
-    float v3;
+    float f;
 
-    v3 = AI_GetFloatFromStack();
-    v1 = AI_EvalFunc_MATHFloatNullEps_C(v3);
-    AI_PutIntToStack(v1);
+    f = AI_GetFloatFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MATHFloatNullEps_C(f));
     return node + 1;
 }
 
-void AI_EvalFunc_MATHEpsilonSet_C(float a1)
+void AI_EvalFunc_MATHEpsilonSet_C(float epsilon)
 {
-    AI_gf_Epsilon = a1;
+    AI_gf_Epsilon = epsilon;
 }
 
 tAINode* AI_EvalFunc_MATHEpsilonSet(tAINode* node)
 {
-    float a1a;
+    float epsilon;
 
-    a1a = AI_GetFloatFromStack();
-    AI_EvalFunc_MATHEpsilonSet_C(a1a);
+    epsilon = AI_GetFloatFromStack();
+    AI_EvalFunc_MATHEpsilonSet_C(epsilon);
     return node + 1;
 }
 
@@ -617,226 +576,182 @@ float AI_EvalFunc_MATHEpsilonGet_C()
 
 tAINode* AI_EvalFunc_MATHEpsilonGet(tAINode* node)
 {
-    float v2;
-
-    v2 = AI_EvalFunc_MATHEpsilonGet_C();
-    AI_PutFloatToStack(v2);
+    AI_PutFloatToStack(AI_EvalFunc_MATHEpsilonGet_C());
     return node + 1;
 }
 
-void AI_EvalFunc_MATHVecBlend_C(Vec3* a1, Vec3* a2, float a3, Vec3* a4)
+void AI_EvalFunc_MATHVecBlend_C(Vec3* vec1, Vec3* vec2, float amount, Vec3* dest)
 {
-    MATH_BlendVector(a4, a1, a2, a3);
+    MATH_BlendVector(dest, vec1, vec2, amount);
 }
 
 tAINode* AI_EvalFunc_MATHVecBlend(tAINode* node)
 {
-    Vec3* a2;
-    float a3;
-    Vec3 a1a;
+    Vec3* vec2;
+    Vec3 blended;
+    float amount;
 
-    a3 = AI_GetFloatFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_MATHVecBlend_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3, &a1a);
-    AI_PutVecToStack(&a1a);
+    amount = AI_GetFloatFromStack();
+    vec2 = (Vec3*)AI_PopStackSlot();
+    AI_EvalFunc_MATHVecBlend_C((Vec3*)AI_PopStackSlot(), vec2, amount, &blended);
+    AI_PutVecToStack(&blended);
     return node + 1;
 }
 
-void AI_EvalFunc_MATHVecRotate_C(Vec3* a1, Vec3* a2, float a3, Vec3* a4)
+// Rodrigues rotation about an arbitrary axis: the component along the
+// axis is split off, the rest is turned by the angle, and the two are
+// added back together.
+//
+// Note that this normalises the caller's axis in place.
+void AI_EvalFunc_MATHVecRotate_C(Vec3* src, Vec3* axis, float angle, Vec3* dest)
 {
-    float v4;
-    float v5;
-    Vec3 a3a;
-    float v7;
-    Vec3* v8;
-    Vec3* v9;
-    Vec3 src2;
-    Vec3 dest;
-    float v12;
-    Vec3 a2a; 
-    float v14;
-    float v15;
-    float v16;
-    float v17;
+    Vec3 perpendicular;
+    Vec3 parallel;
+    Vec3 turned;
+    Vec3 crossTerm;
+    Vec3 cross;
+    float projection;
+    float axisLenSquared;
+    float cosAngle;
+    float sinAngle;
 
-    v8 = &src2;
-    v9 = a1;
-    src2 = *a1;
-    v12 = src2.z * a2->z + src2.y * a2->y + src2.x * a2->x;
-    v14 = a2->z * a2->z + a2->y * a2->y + a2->x * a2->x;
-    v12 = v12 / v14;
-    v15 = v12 * a2->x;
-    v16 = a2->y * v12;
-    v17 = a2->z * v12;
-    src2.x = src2.x - v15;
-    src2.y = src2.y - v16;
-    src2.z = src2.z - v17;
-    v5 = (float)cos(a3);
-    v7 = v5;
-    a2a.x = src2.x * v5;
-    a2a.y = src2.y * v5;
-    a2a.z = src2.z * v5;
-    MATH_NormalizeEqualVector(a2);
-    MATH_CrossProduct(&dest, a2, &src2);
-    v4 = (float)sin(a3);
-    a3a.x = dest.x * v4;
-    a3a.y = dest.y * v4;
-    a3a.z = dest.z * v4;
-    MATH_VecAddVec(&a2a, &a2a, &a3a);
-    a2a.x = a2a.x + v15;
-    a2a.y = a2a.y + v16;
-    a2a.z = a2a.z + v17;
-    *a4 = a2a;
+    perpendicular = *src;
+    projection = MATH_DotProduct(&perpendicular, axis);
+    axisLenSquared = MATH_DotProduct(axis, axis);
+    projection = projection / axisLenSquared;
+
+    parallel.x = projection * axis->x;
+    parallel.y = axis->y * projection;
+    parallel.z = axis->z * projection;
+
+    perpendicular.x = perpendicular.x - parallel.x;
+    perpendicular.y = perpendicular.y - parallel.y;
+    perpendicular.z = perpendicular.z - parallel.z;
+
+    cosAngle = (float)cos(angle);
+    MATH_VecMultScalar(&turned, &perpendicular, cosAngle);
+
+    MATH_NormalizeEqualVector(axis);
+    MATH_CrossProduct(&cross, axis, &perpendicular);
+    sinAngle = (float)sin(angle);
+    MATH_VecMultScalar(&crossTerm, &cross, sinAngle);
+
+    MATH_VecAddVec(&turned, &turned, &crossTerm);
+    turned.x = turned.x + parallel.x;
+    turned.y = turned.y + parallel.y;
+    turned.z = turned.z + parallel.z;
+    *dest = turned;
 }
 
 tAINode* AI_EvalFunc_MATHVecRotate(tAINode* node)
 {
-    Vec3 v2;
-    Vec3 a2;
-    Vec3 a1a;
-    float a3;
+    Vec3 src;
+    Vec3 axis;
+    Vec3 rotated;
+    float angle;
 
-    a3 = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&a2);
-    AI_GetVecFromStack(&v2);
-    AI_EvalFunc_MATHVecRotate_C(&v2, &a2, a3, &a1a);
-    AI_PutVecToStack(&a1a);
+    angle = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&axis);
+    AI_GetVecFromStack(&src);
+    AI_EvalFunc_MATHVecRotate_C(&src, &axis, angle, &rotated);
+    AI_PutVecToStack(&rotated);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecSetNull(tAINode* node)
 {
-    Vec3* v2;
-    char dest[52];
-    tVarStackElem a2;
+    char converted[52];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    v2 = (Vec3*)a2.ptr;
-    v2->x = 0.0f;
-    v2->y = 0.0f;
-    v2->z = 0.0f;
+    AI_GetVarFromStack(converted, &var);
+    MATH_SetNullVector((Vec3*)var.ptr);
     return node + 1;
 }
 
-float AI_EvalFunc_MATHFloatRound_C(float a1, float a2) // TODO: ellenorizni ibztos jo-e
+// Rounds to a multiple of precision. Adding the magic double pins the
+// float's exponent so that the integer part lands in the low word of
+// its bit pattern, which is the x87 round-to-nearest trick.
+float AI_EvalFunc_MATHFloatRound_C(float value, float precision) // TODO: ellenorizni ibztos jo-e
 {
-    float v3;
-    double v4;
+    double rounded;
+    float steps;
 
-    v4 = 1.0 / a2 * a1 + MATH_gd_magicDoubleForRound;
-    v3 = (float)*(int32_t *)&v4;
-    return v3 * a2;
+    rounded = 1.0 / precision * value + MATH_gd_magicDoubleForRound;
+    steps = (float)*(int32_t *)&rounded;
+    return steps * precision;
 }
 
-tAINode* AI_EvalFunc_MATHFloatRound(tAINode* aiNode)  // TODO: ellenorizni ibztos jo-e + AI_EvalFunc_MATHFloatRound_C inline
+tAINode* AI_EvalFunc_MATHFloatRound(tAINode* node)  // TODO: ellenorizni ibztos jo-e + AI_EvalFunc_MATHFloatRound_C inline
 {
-    float result;
-    float steps;
-    double rounded;
     float precision;
     float value;
 
     precision = AI_GetFloatFromStack();
     value = AI_GetFloatFromStack();
-    rounded = 1.0 / precision * value + MATH_gd_magicDoubleForRound;
-    steps = (float)*(int32_t*)&rounded;
-    result = steps * precision;
-    AI_PutFloatToStack(result);
-    return aiNode + 1;
+    AI_PutFloatToStack(AI_EvalFunc_MATHFloatRound_C(value, precision));
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecRound(tAINode* node)
 {
-    char dest[52];
+    char converted[52];
+    tVarStackElem var;
     float precision;
-    tVarStackElem a2;
 
     precision = AI_GetFloatFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    MATH_RoundVectorWithPrecision((Vec3*)a2.ptr, precision);
+    AI_GetVarFromStack(converted, &var);
+    MATH_RoundVectorWithPrecision((Vec3*)var.ptr, precision);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecCos(tAINode* node)
 {
-    float v2;
     Vec3* vec2;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    vec2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = MATH_f_VecCos((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], vec2);
-    AI_PutFloatToStack(v2);
+    vec2 = (Vec3*)AI_PopStackSlot();
+    AI_PutFloatToStack(MATH_f_VecCos((Vec3*)AI_PopStackSlot(), vec2));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecSin(tAINode* node)
 {
-    float v2;
-    Vec3* v3;
-    Vec3* v4;
+    Vec3* axis;
+    Vec3* vec2;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v4 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = MATH_f_VecSin((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], v4, v3);
-    AI_PutFloatToStack(v2);
+    axis = (Vec3*)AI_PopStackSlot();
+    vec2 = (Vec3*)AI_PopStackSlot();
+    AI_PutFloatToStack(MATH_f_VecSin((Vec3*)AI_PopStackSlot(), vec2, axis));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MATHVecAngle(tAINode* node)
 {
-    float v2;
-    Vec3* a3;
-    Vec3* a2;
+    Vec3* axis;
+    Vec3* vec2;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = MATH_f_VecAngle((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3);
-    AI_PutFloatToStack(v2);
+    axis = (Vec3*)AI_PopStackSlot();
+    vec2 = (Vec3*)AI_PopStackSlot();
+    AI_PutFloatToStack(MATH_f_VecAngle((Vec3*)AI_PopStackSlot(), vec2, axis));
     return node + 1;
 }
 
+// The angle between two vectors, clamped at the ends where acos would
+// be out of range. MATH_f_VecAbsAngle, which the original note names,
+// does not exist in the tree, so it stays written out here.
 tAINode* AI_EvalFunc_MATHVecAbsAngle(tAINode* node)
 {
-    float v2;
-    float v3;
     Vec3* vec2;
+    float cosAngle;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    vec2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v3 = MATH_f_VecCos((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], vec2);// MATH_f_VecAbsAngle inline
-    if (v3 < 1.0)
+    vec2 = (Vec3*)AI_PopStackSlot();
+    cosAngle = MATH_f_VecCos((Vec3*)AI_PopStackSlot(), vec2);// MATH_f_VecAbsAngle inline
+
+    if (cosAngle < 1.0)
     {
-        if (v3 > -1.0)
-        {
-            v2 = (float)acos(v3);
-            AI_PutFloatToStack(v2);
-        }
+        if (cosAngle > -1.0)
+            AI_PutFloatToStack((float)acos(cosAngle));
         else
-        {
-            AI_PutFloatToStack(3.1415927f);
-        }
+            AI_PutFloatToStack(3.1415927f); // pi
     }
     else
     {
@@ -845,131 +760,97 @@ tAINode* AI_EvalFunc_MATHVecAbsAngle(tAINode* node)
     return node + 1;
 }
 
-void AI_EvalFunc_MATHVecBlendRotate_C(Vec3* a2, Vec3* a3, float a4, Vec3* a5)
+// Turns vec1 towards vec2 by amount, and scales the result between their
+// two lengths. Four cases do not rotate at all: either vector being
+// null, the two being parallel, and the two being anti-parallel, where
+// a base axis stands in for the cross product that vanished.
+void AI_EvalFunc_MATHVecBlendRotate_C(Vec3* vec1, Vec3* vec2, float amount, Vec3* dest)
 {
-    float v5;
-    BOOL v6; 
-    float v7;
-    float v9;
-    Mtx4x4 v11;
-    float v12;
-    Vec3* v13;
-    Vec3* v14;
-    BOOL v15; 
-    Vec3* v19;
-    Vec3* v20;
-    Vec3 v21; 
-    Vec3* v22;
-    Vec3* v23;
-    BOOL v24; 
-    Vec3 v28; 
-    Vec3* v29;
-    Vec3* v30;
-    BOOL v31; 
-    Vec3* v35;
-    Vec3* v36;
-    BOOL v37; 
-    char v41; 
+    Mtx4x4 rotation;
+    Vec3 axis;
+    Vec3 baseAxis;
+    float len1;
+    float len2;
+    float length;
+    float angle;
+    char done;
 
-    if (a4 < 0.0)
-        a4 = 0.0;
-    if (a4 > 1.0)
-        a4 = 1.0;
-    v41 = 0;
-   
-    v37 = MATH_b_NulVectorWithEpsilon(a2, 0.0000001f);
-    if (v37)
+    if (amount < 0.0)
+        amount = 0.0;
+    if (amount > 1.0)
+        amount = 1.0;
+    done = 0;
+
+    if (MATH_b_NulVectorWithEpsilon(vec1, 0.0000001f))
     {
-        v41 = 1;
-        v36 = a5;
-        v35 = a3;
-        a5->x = a3->x;
-        v36->y = v35->y;
-        v36->z = v35->z;
+        done = 1;
+        *dest = *vec2;
     }
-   
-    v31 = MATH_b_NulVectorWithEpsilon(a3, 0.0000001f);
-    if (v31)
+
+    if (MATH_b_NulVectorWithEpsilon(vec2, 0.0000001f))
     {
-        v41 = 1;
-        v30 = a5;
-        v29 = a2;
-        a5->x = a2->x;
-        v30->y = v29->y;
-        v30->z = v29->z;
+        done = 1;
+        *dest = *vec1;
     }
-    if (!v41)
+
+    if (!done)
     {
-        MATH_CrossProduct(&v28, a2, a3);        
-        v24 = MATH_b_NulVectorWithEpsilon(&v28, 0.00001f); // 0.0000099999997 (ps2)
-        if (v24)
+        MATH_CrossProduct(&axis, vec1, vec2);
+        if (MATH_b_NulVectorWithEpsilon(&axis, 0.00001f)) // 0.0000099999997 (ps2)
         {
-            if (a3->z * a2->z + a3->y * a2->y + a2->x * a3->x <= 0.0f)
+            if (MATH_DotProduct(vec2, vec1) <= 0.0f)
             {
-                v20 = &v21;
-                v19 = &MATH_gst_BaseVectorI;
-                v21 = MATH_gst_BaseVectorI;
-                MATH_CrossProduct(&v28, a2, &v21);                
-                v15 = MATH_b_NulVectorWithEpsilon(&v28, 0.001f);
-                if (v15)
+                // anti-parallel: any axis perpendicular to vec1 will do
+                baseAxis = MATH_gst_BaseVectorI;
+                MATH_CrossProduct(&axis, vec1, &baseAxis);
+                if (MATH_b_NulVectorWithEpsilon(&axis, 0.001f))
                 {
-                    v14 = &v21;
-                    v13 = &MATH_gst_BaseVectorJ;
-                    v21 = MATH_gst_BaseVectorJ;
-                    MATH_CrossProduct(&v28, a2, &v21);
+                    baseAxis = MATH_gst_BaseVectorJ;
+                    MATH_CrossProduct(&axis, vec1, &baseAxis);
                 }
             }
             else
             {
-                v23 = a5;
-                v22 = a2;
-                a5->x = a2->x;
-                v23->y = v22->y;
-                v23->z = v22->z;
-                v41 = 1;
+                // parallel already, so there is nothing to turn
+                *dest = *vec1;
+                done = 1;
             }
         }
-        if (!v41)
+
+        if (!done)
         {
-            MATH_NormalizeEqualVector(&v28);
-            v12 = MATH_f_VecAngle(a2, a3, &v28) * a4;
-            MATH_MakeRotationMatrix_AxisAngle(&v11, &v28, v12, 0, 1);
-            MATH_TransformVector(a5, &v11, a2);
+            MATH_NormalizeEqualVector(&axis);
+            angle = MATH_f_VecAngle(vec1, vec2, &axis) * amount;
+            MATH_MakeRotationMatrix_AxisAngle(&rotation, &axis, angle, 0, 1);
+            MATH_TransformVector(dest, &rotation, vec1);
         }
     }
-    v9 = (float)sqrt(MATH_VecLenSquared(a2));
-    v7 = (float)sqrt(MATH_VecLenSquared(a3));
-    v6 = MATH_b_NulVectorWithEpsilon(a5, 0.0000001f);
-    if (v6)
+
+    len1 = (float)sqrt(MATH_VecLenSquared(vec1));
+    len2 = (float)sqrt(MATH_VecLenSquared(vec2));
+
+    if (MATH_b_NulVectorWithEpsilon(dest, 0.0000001f))
     {
-        a5->x = 0.0;
-        a5->y = 0.0;
-        a5->z = 0.0;
+        MATH_SetNullVector(dest);
     }
     else
     {
-        v5 = MATH_LinearInterpolateFloats(v9, v7, a4);
-        MATH_NormalizeVector(a5, a5);
-        a5->x = v5 * a5->x;
-        a5->y = v5 * a5->y;
-        a5->z = v5 * a5->z;
+        length = MATH_LinearInterpolateFloats(len1, len2, amount);
+        MATH_NormalizeVector(dest, dest);
+        MATH_VecMultScalarWithoutBuffer(dest, length);
     }
 }
 
 tAINode* AI_EvalFunc_MATHVecBlendRotate(tAINode* node)
 {
-    float a4;
-    Vec3* a3;
-    Vec3 a5;
+    Vec3* vec2;
+    Vec3 blended;
+    float amount;
 
-    a4 = AI_GetFloatFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_MATHVecBlendRotate_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3, a4, &a5);
-    AI_PutVecToStack(&a5);
+    amount = AI_GetFloatFromStack();
+    vec2 = (Vec3*)AI_PopStackSlot();
+    AI_EvalFunc_MATHVecBlendRotate_C((Vec3*)AI_PopStackSlot(), vec2, amount, &blended);
+    AI_PutVecToStack(&blended);
     return node + 1;
 }
 
@@ -984,9 +865,9 @@ float AI_EvalFunc_MATHFloatBlend_C(float f1, float f2, float factor) {
 
 tAINode* AI_EvalFunc_MATHFloatBlend(tAINode* node)
 {
+    float f1;
     float f2;
     float factor;
-    float f1;
 
     factor = AI_GetFloatFromStack();
     f2 = AI_GetFloatFromStack();
@@ -996,377 +877,325 @@ tAINode* AI_EvalFunc_MATHFloatBlend(tAINode* node)
     return node + 1;
 }
 
-float AI_EvalFunc_MATHRandBino_C(float a1, float a2, float a3, float a4)
+// A binomial draw quantised to step: one trial per step between min
+// and max, each adding a step with probability (value - min) / step
+// out of the number of steps. The original spelled the trial's
+// threshold as an interpolation from zero.
+float AI_EvalFunc_MATHRandBino_C(float value, float step, float max, float min)
 {
-    float v5;
-    float v6;
-    float v7;
-    int v8;
-    float v9;
-    int v10;
-    float a1a;
+    float target;
+    float raw;
+    float unit;
+    float total;
+    int steps;
+    int i;
 
-    a1a = (a1 - a4) / a2;
-    v8 = (int)((a3 - a4) / a2);
-    v10 = 0;
-    v9 = 0.0;
-    while (v10 < v8)
+    target = (value - min) / step;
+    steps = (int)((max - min) / step);
+    total = 0.0;
+
+    for (i = 0; i < steps; ++i)
     {
-        v6 = (float)rand();
-        v7 = (float)(v6 / 32767.0);
-        v5 = (float)v8;
-        if ((v5 - 0.0) * v7 + 0.0 < a1a)
-            v9 = v9 + a2;
-        ++v10;
+        raw = (float)rand();
+        unit = (float)(raw / 32767.0);
+        if ((float)steps * unit < target)
+            total = total + step;
     }
-    return v9 + a4;
+    return total + min;
 }
 
 tAINode* AI_EvalFunc_MATHRandBino(tAINode* node)
 {
-    float v2;
-    float a2;
-    float a1a;
-    float a4;
-    float a3;
+    float value;
+    float step;
+    float max;
+    float min;
 
-    a4 = AI_GetFloatFromStack();
-    a3 = AI_GetFloatFromStack();
-    a2 = AI_GetFloatFromStack();
-    a1a = AI_GetFloatFromStack();
-    v2 = AI_EvalFunc_MATHRandBino_C(a1a, a2, a3, a4);
-    AI_PutFloatToStack(v2);
+    min = AI_GetFloatFromStack();
+    max = AI_GetFloatFromStack();
+    step = AI_GetFloatFromStack();
+    value = AI_GetFloatFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_MATHRandBino_C(value, step, max, min));
     return node + 1;
 }
 
-void AI_EvalFunc_MATHVecInCone_C(Vec3* a1, Vec3* a2, float a3, int a4, Vec3* a5)
+// Clamps a vector into a cone about an axis. The flag bits say what
+// the caller has already done and what it wants back: bit 0 that the
+// axis is normalised, bit 1 that the vector is, and bit 2 that the
+// result should be a unit vector rather than the vector's own length.
+void AI_EvalFunc_MATHVecInCone_C(Vec3* vec, Vec3* axis, float halfAngle, int flags, Vec3* dest)
 {
-    float v5;
-    float v6;
-    float v7;
-    Vec3 v8; 
-    float v12;
-    Vec3 src2;
-    float v14;
-    Vec3 a2a; 
-    float v16;
-    Vec3 dest;
+    Vec3 fallback;
+    Vec3 perpendicular;
+    Vec3 alongAxis;
+    Vec3 clamped;
+    float length;
+    float cosHalf;
+    float sinHalf;
+    float dot;
+    float invLength;
 
-    v16 = 1.0;
-    if ((a4 & 1) == 0)
-        MATH_NormalizeEqualVector(a2);
-    v14 = a1->z * a2->z + a1->y * a2->y + a2->x * a1->x;
-    if ((a4 & 2) == 0)
+    length = 1.0;
+    if ((flags & 1) == 0)
+        MATH_NormalizeEqualVector(axis);
+
+    dot = MATH_DotProduct(vec, axis);
+    if ((flags & 2) == 0)
     {
-        v16 = MATH_VecLen(a1);
-        v14 = v14 / v16;
+        length = MATH_VecLen(vec);
+        dot = dot / length;
     }
-    v7 = (float)cos(a3);
-    if (v14 <= (double)v7)
+
+    cosHalf = (float)cos(halfAngle);
+    if (dot <= (double)cosHalf)
     {
-        v6 = (float)fabs(v14 - -1.0);
-        if (v6 < 0.0000099999997)
+        // outside the cone, so rebuild it on the cone's edge in the
+        // plane the vector and the axis share
+        if ((float)fabs(dot - -1.0) < 0.0000099999997)
         {
-            if (a1->y == 0.0)
+            // anti-parallel, so that plane is undefined: pick one
+            if (vec->y == 0.0)
             {
-                src2.x = 0.0;
-                src2.y = 1.0;
+                fallback.x = 0.0;
+                fallback.y = 1.0;
             }
             else
             {
-                src2.x = 1.0;
-                src2.y = 0.0;
+                fallback.x = 1.0;
+                fallback.y = 0.0;
             }
-            src2.z = 0.0;
-            MATH_CrossProduct(&a2a, a2, &src2);
+            fallback.z = 0.0;
+            MATH_CrossProduct(&perpendicular, axis, &fallback);
         }
         else
         {
-            MATH_CrossProduct(&a2a, a2, a1);
+            MATH_CrossProduct(&perpendicular, axis, vec);
         }
-        MATH_CrossProduct(&dest, &a2a, a2);
-        MATH_NormalizeEqualVector(&dest);
-        v5 = (float)sin(a3);
-        dest.x = dest.x * v5;
-        dest.y = dest.y * v5;
-        dest.z = dest.z * v5;
-        v8.x = v7 * a2->x;
-        v8.y = a2->y * v7;
-        v8.z = a2->z * v7;
-        MATH_VecAddVec(&dest, &dest, &v8);
-        if ((a4 & 6) == 0)
-        {
-            dest.x = dest.x * v16;
-            dest.y = dest.y * v16;
-            dest.z = dest.z * v16;
-        }
-        *a5 = dest;
+
+        MATH_CrossProduct(&clamped, &perpendicular, axis);
+        MATH_NormalizeEqualVector(&clamped);
+        sinHalf = (float)sin(halfAngle);
+        MATH_VecMultScalarWithoutBuffer(&clamped, sinHalf);
+        MATH_VecMultScalar(&alongAxis, axis, cosHalf);
+        MATH_VecAddVec(&clamped, &clamped, &alongAxis);
+
+        if ((flags & 6) == 0)
+            MATH_VecMultScalarWithoutBuffer(&clamped, length);
+        *dest = clamped;
     }
     else
     {
-        if ((a4 & 6) == 4)
+        // inside the cone already
+        if ((flags & 6) == 4)
         {
-            v12 = (float)(1.0 / v16);
-            a1->x = v12 * a1->x;
-            a1->y = v12 * a1->y;
-            a1->z = v12 * a1->z;
+            invLength = (float)(1.0 / length);
+            MATH_VecMultScalarWithoutBuffer(vec, invLength);
         }
-        a5->x = a1->x;
-        a5->y = a1->y;
-        a5->z = a1->z;
+        *dest = *vec;
     }
 }
 
 tAINode* AI_EvalFunc_MATHVecInCone(tAINode* node)
 {
-    int a4;
-    Vec3* a2;
-    float a3;
-    Vec3 a5;
+    Vec3* axis;
+    Vec3 clamped;
+    float halfAngle;
+    int flags;
 
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetFloatFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_MATHVecInCone_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3, a4, &a5);
-    AI_PutVecToStack(&a5);
+    flags = AI_GetIntFromStack();
+    halfAngle = AI_GetFloatFromStack();
+    axis = (Vec3*)AI_PopStackSlot();
+    AI_EvalFunc_MATHVecInCone_C((Vec3*)AI_PopStackSlot(), axis, halfAngle, flags, &clamped);
+    AI_PutVecToStack(&clamped);
     return node + 1;
 }
 
-void AI_EvalFunc_MATHVecGlobalToLocal_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3)
+void AI_EvalFunc_MATHVecGlobalToLocal_C(struct sGameObjectMain* gao, Vec3* src, Vec3* dest)
 {
-    Mtx4x4* v3;
-
-    v3 = OBJ_pst_GetAbsoluteMatrix(gao);
-    MATH_VectorGlobalToLocal(a3, v3, a2);
+    MATH_VectorGlobalToLocal(dest, OBJ_pst_GetAbsoluteMatrix(gao), src);
 }
 
 tAINode* AI_EvalFunc_MATHVecGlobalToLocal(tAINode* node)
 {
-    tGameObjectMain* v2;
-    Vec3 a1a;
-    Vec3 a2;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    Vec3 src;
+    Vec3 local;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    AI_GetVecFromStack(&a2);
-    AI_EvalFunc_MATHVecGlobalToLocal_C(v5, &a2, &a1a);
-    AI_PutVecToStack(&a1a);
+    AI_GetVecFromStack(&src);
+    AI_EvalFunc_MATHVecGlobalToLocal_C(gaoUltra, &src, &local);
+    AI_PutVecToStack(&local);
     return node + 1;
 }
 
-void AI_EvalFunc_MATHVecLocalToGlobal_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3)
+void AI_EvalFunc_MATHVecLocalToGlobal_C(struct sGameObjectMain* gao, Vec3* src, Vec3* dest)
 {
-    Mtx4x4* v3;
-
-    v3 = OBJ_pst_GetAbsoluteMatrix(gao);
-    MATH_TransformVectorNoScale(a3, v3, a2);
+    MATH_TransformVectorNoScale(dest, OBJ_pst_GetAbsoluteMatrix(gao), src);
 }
 
 tAINode* AI_EvalFunc_MATHVecLocalToGlobal(tAINode* node)
 {
-    tGameObjectMain* v2;
-    Vec3 a1a;
-    Vec3 a2;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    Vec3 src;
+    Vec3 global;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    AI_GetVecFromStack(&a2);
-    AI_EvalFunc_MATHVecLocalToGlobal_C(v5, &a2, &a1a);
-    AI_PutVecToStack(&a1a);
+    AI_GetVecFromStack(&src);
+    AI_EvalFunc_MATHVecLocalToGlobal_C(gaoUltra, &src, &global);
+    AI_PutVecToStack(&global);
     return node + 1;
 }
 
-BOOL AI_EvalFunc_MTHVecNull_C(Vec3* a1)
+BOOL AI_EvalFunc_MTHVecNull_C(Vec3* v)
 {
-    if (fabs(a1->x) != 0.0)
-        return 0;
-    if (fabs(a1->y) != 0.0)
-        return 0;
-    return fabs(a1->z) == 0.0;
+    return MATH_b_NulVector(v);
 }
 
 tAINode* AI_EvalFunc_MTHVecNull(tAINode* node)
 {
-    BOOL v1;
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v1 = AI_EvalFunc_MTHVecNull_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_MTHVecNull_C((Vec3*)AI_PopStackSlot()));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_MTHVecNullEpsilon_C(Vec3* a1)
+BOOL AI_EvalFunc_MTHVecNullEpsilon_C(Vec3* v)
 {
-    if (fabs(a1->x) > AI_gf_Epsilon)
-        return 0;
-    if (fabs(a1->y) <= AI_gf_Epsilon)
-        return fabs(a1->z) <= AI_gf_Epsilon;
-    return 0;
+    if (fabs(v->x) > AI_gf_Epsilon)
+        return FALSE;
+    if (fabs(v->y) <= AI_gf_Epsilon)
+        return fabs(v->z) <= AI_gf_Epsilon;
+    return FALSE;
 }
 
 tAINode* AI_EvalFunc_MTHVecNullEpsilon(tAINode* node)
 {
-    BOOL v1;
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v1 = AI_EvalFunc_MTHVecNullEpsilon_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_MTHVecNullEpsilon_C((Vec3*)AI_PopStackSlot()));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_MTHVecNullToler_C(Vec3* a1, float a2)
+BOOL AI_EvalFunc_MTHVecNullToler_C(Vec3* v, float tolerance)
 {
-    if (fabs(a1->x) > a2)
-        return 0;
-    if (fabs(a1->y) <= a2)
-        return fabs(a1->z) <= a2;
-    return 0;
+    if (fabs(v->x) > tolerance)
+        return FALSE;
+    if (fabs(v->y) <= tolerance)
+        return fabs(v->z) <= tolerance;
+    return FALSE;
 }
 
 tAINode* AI_EvalFunc_MTHVecNullToler(tAINode* node)
 {
-    BOOL v1;
-    float a2;
+    float tolerance;
 
-    a2 = AI_GetFloatFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v1 = AI_EvalFunc_MTHVecNullToler_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2);
-    AI_PutIntToStack(v1);
+    tolerance = AI_GetFloatFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MTHVecNullToler_C((Vec3*)AI_PopStackSlot(), tolerance));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_MTHFloatNullToler_C(float a1, float a2)
+// The magnitude is narrowed to a float before the comparison here,
+// where MATHFloatNullEps above keeps it a double.
+BOOL AI_EvalFunc_MTHFloatNullToler_C(float f, float tolerance)
 {
-    float v3;
+    float magnitude;
 
-    v3 = (float)fabs(a1);
-    return v3 < (double)a2;
+    magnitude = (float)fabs(f);
+    return magnitude < (double)tolerance;
 }
 
 tAINode* AI_EvalFunc_MTHFloatNullToler(tAINode* node)
 {
-    int v1;
-    float v3;
-    float v4;
+    float f;
+    float tolerance;
 
-    v3 = AI_GetFloatFromStack();
-    v4 = AI_GetFloatFromStack();
-    v1 = AI_EvalFunc_MTHFloatNullToler_C(v4, v3);
-    AI_PutIntToStack(v1);
+    tolerance = AI_GetFloatFromStack();
+    f = AI_GetFloatFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MTHFloatNullToler_C(f, tolerance));
     return node + 1;
 }
 
-float AI_EvalFunc_MTHFloatSign_C(float a1)
+// Copies the sign bit onto 1.0 rather than branching. Note that zero
+// reports +1, negative zero included.
+float AI_EvalFunc_MTHFloatSign_C(float f)
 {
-    double result;
-    uint32_t tmp;
+    uint32_t signed_one;
 
-    if (a1 == 0.0)
-        result = 1.0;
-    else {
-        tmp = (*(uint32_t*)&a1) & 0x80000000 | 0x3F800000;
-        result = *(float*)&tmp;
-    }
-    return (float)result;
+    if (f == 0.0)
+        return 1.0f;
+
+    signed_one = ((*(uint32_t*)&f) & 0x80000000) | 0x3F800000;
+    return *(float*)&signed_one;
 }
 
 tAINode* AI_EvalFunc_MTHFloatSign(tAINode* node)
 {
-    float v2;
-    float a1a;
+    float f;
 
-    a1a = AI_GetFloatFromStack();
-    v2 = AI_EvalFunc_MTHFloatSign_C(a1a);
-    AI_PutFloatToStack(v2);
+    f = AI_GetFloatFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_MTHFloatSign_C(f));
     return node + 1;
 }
 
-int AI_EvalFunc_MTHIntSign_C(int a1)
+int AI_EvalFunc_MTHIntSign_C(int value)
 {
-    if (a1 > 0)
+    if (value > 0)
         return 1;
-    if (a1 < 0)
-        a1 = -1;
-    return a1;
+    if (value < 0)
+        return -1;
+    return value;
 }
 
 tAINode* AI_EvalFunc_MTHIntSign(tAINode* node)
 {
-    int v1;
-    int v2;
+    int value;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_MTHIntSign_C(v1);
-    AI_PutIntToStack(v2);
+    value = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MTHIntSign_C(value));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MTHFloatSqrt(tAINode* node)
 {
-    float X;
-    float Xa;
+    float f;
 
-    X = AI_GetFloatFromStack();
-    Xa = sqrtf(X);
-    AI_PutFloatToStack(Xa);
+    f = AI_GetFloatFromStack();
+    AI_PutFloatToStack(sqrtf(f));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MTHLn(tAINode* node)
 {
-    float v2;
-    float v3;
+    float f;
 
-    v3 = AI_GetFloatFromStack();
-    v2 = (float)log(v3);
-    AI_PutFloatToStack(v2);
+    f = AI_GetFloatFromStack();
+    AI_PutFloatToStack((float)log(f));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_MTHLog10(tAINode* node)
 {
-    float v2;
-    float v3;
+    float f;
 
-    v3 = AI_GetFloatFromStack();
-    v2 = (float)log10(v3);
-    AI_PutFloatToStack(v2);
+    f = AI_GetFloatFromStack();
+    AI_PutFloatToStack((float)log10(f));
     return node + 1;
 }
 
-int AI_EvalFunc_MTHModulo_C(int a1, int a2)
+int AI_EvalFunc_MTHModulo_C(int value, int divisor)
 {
-    int result;
-
-    if (a2)
-        result = a1 % a2;
-    else
-        result = 0;
-    return result;
+    if (!divisor)
+        return 0;
+    return value % divisor;
 }
 
 tAINode* AI_EvalFunc_MTHModulo(tAINode* node)
 {
-    int v1;
-    int v3;
-    int v4;
+    int value;
+    int divisor;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_MTHModulo_C(v4, v3);
-    AI_PutIntToStack(v1);
+    divisor = AI_GetIntFromStack();
+    value = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MTHModulo_C(value, divisor));
     return node + 1;
 }

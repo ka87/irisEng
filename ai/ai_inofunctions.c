@@ -5,364 +5,329 @@
 #include "ai_inofunctions.h"
 #include "../dbg.h"
 
-int AI_EvalFunc_IoGetProtect_C(int a1)
+// The copy protection check is gone; the builtin reports whatever the
+// script passed it.
+int AI_EvalFunc_IoGetProtect_C(int state)
 {
-    return a1;
+    return state;
 }
 
 tAINode* AI_EvalFunc_IoGetProtect(tAINode* node)
 {
-    int v1;
-    int v2;
+    int state;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoGetProtect_C(v1);
-    AI_PutIntToStack(v2);
+    state = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoGetProtect_C(state));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_IoKeyPressed_C(char a1)
+BOOL AI_EvalFunc_IoKeyPressed_C(char key)
 {
-    return INO_b_IsKeyPressed(a1) != 0;
+    return INO_b_IsKeyPressed(key) != 0;
 }
 
 tAINode* AI_EvalFunc_IoKeyPressed(tAINode* node)
 {
-    char v1;
-    int v2;
+    char key;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoKeyPressed_C(v1);
-    AI_PutIntToStack(v2);
+    key = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoKeyPressed_C(key));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_IoKeyJustPressed_C(char a1)
+BOOL AI_EvalFunc_IoKeyJustPressed_C(char key)
 {
-    return INO_b_IsKeyJustPressed(a1);
+    return INO_b_IsKeyJustPressed(key);
 }
 
 tAINode* AI_EvalFunc_IoKeyJustPressed(tAINode* node)
 {
-    char v1;
-    int v2;
+    char key;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoKeyJustPressed_C(v1);
-    AI_PutIntToStack(v2);
+    key = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoKeyJustPressed_C(key));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_IoKeyJustReleased_C(char a1)
+BOOL AI_EvalFunc_IoKeyJustReleased_C(char key)
 {
-    return INO_b_IsKeyJustReleased(a1);
+    return INO_b_IsKeyJustReleased(key);
 }
 
 tAINode* AI_EvalFunc_IoKeyJustReleased(tAINode* node)
 {
-    char v1;
-    int v2;
+    char key;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoKeyJustReleased_C(v1);
-    AI_PutIntToStack(v2);
+    key = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoKeyJustReleased_C(key));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoPadSet(tAINode* node)
 {
-    int v1;
-    int v2;
+    int pad;
 
-    v1 = AI_GetIntFromStack();
-    v2 = INO_i_SetCurrentPad(v1);
-    AI_PutIntToStack(v2);
+    pad = AI_GetIntFromStack();
+    AI_PutIntToStack(INO_i_SetCurrentPad(pad));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoPadGet(tAINode* node)
 {
-    int v1;
-
-    v1 = INO_i_GetCurrentPad();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(INO_i_GetCurrentPad());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoButtonPressed(tAINode* node)
 {
-    int v1;
-    int v2;
+    int button;
 
-    v1 = AI_GetIntFromStack();
-    v2 = INO_b_IoButtonPressed(v1);
-    AI_PutIntToStack(v2);
+    button = AI_GetIntFromStack();
+    AI_PutIntToStack(INO_b_IoButtonPressed(button));
     return node + 1;
 }
 
-void AI_EvalFunc_IoJoyGetMove_C(Vec3* a1)
+void AI_EvalFunc_IoJoyGetMove_C(Vec3* move)
 {
-    INO_Joystick_Move(a1, 0);
+    INO_Joystick_Move(move, 0);
 }
 
 tAINode* AI_EvalFunc_IoJoyGetMove(tAINode* node)
 {
-    Vec3 a1a;
+    Vec3 move;
 
-    AI_EvalFunc_IoJoyGetMove_C(&a1a);
-    AI_PutVecToStack(&a1a);
+    AI_EvalFunc_IoJoyGetMove_C(&move);
+    AI_PutVecToStack(&move);
     return node + 1;
 }
 
-void AI_EvalFunc_IoJoyGetMove1_C(Vec3* a1)
+void AI_EvalFunc_IoJoyGetMove1_C(Vec3* move)
 {
-    INO_Joystick_Move(a1, 1);
+    INO_Joystick_Move(move, 1);
 }
 
 tAINode* AI_EvalFunc_IoJoyGetMove1(tAINode* node)
 {
-    Vec3 a1a;
+    Vec3 move;
 
-    AI_EvalFunc_IoJoyGetMove1_C(&a1a);
-    AI_PutVecToStack(&a1a);
+    AI_EvalFunc_IoJoyGetMove1_C(&move);
+    AI_PutVecToStack(&move);
     return node + 1;
 }
 
-BOOL AI_EvalFunc_IoButtonJustPressed_C(int a1)
+BOOL AI_EvalFunc_IoButtonJustPressed_C(int button)
 {
-    return INO_b_Joystick_IsButtonJustDown(a1);
+    return INO_b_Joystick_IsButtonJustDown(button);
 }
 
 tAINode* AI_EvalFunc_IoButtonJustPressed(tAINode* node)
 {
-    int v1;
-    int v2;
+    int button;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoButtonJustPressed_C(v1);
-    AI_PutIntToStack(v2);
+    button = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoButtonJustPressed_C(button));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_IoButtonJustReleased_C(int a1)
+BOOL AI_EvalFunc_IoButtonJustReleased_C(int button)
 {
-    return INO_b_Joystick_IsButtonJustUp(a1);
+    return INO_b_Joystick_IsButtonJustUp(button);
 }
 
 tAINode* AI_EvalFunc_IoButtonJustReleased(tAINode* node)
 {
-    int v1;
-    int v2;
+    int button;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoButtonJustReleased_C(v1);
-    AI_PutIntToStack(v2);
+    button = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoButtonJustReleased_C(button));
     return node + 1;
 }
 
-int AI_EvalFunc_IoJoyFreeze_C(int a1)
+// The engine keeps the inverse of what the script asks for, so both the
+// argument and the result are inverted. Returns the mask that was in
+// force, so a script can put it back.
+int AI_EvalFunc_IoJoyFreeze_C(int allowed)
 {
-    int v2;
+    int previous;
 
-    v2 = ~INO_l_JoystickMask;
-    INO_l_JoystickMask = ~a1;
-    return v2;
+    previous = ~INO_l_JoystickMask;
+    INO_l_JoystickMask = ~allowed;
+    return previous;
 }
 
 tAINode* AI_EvalFunc_IoJoyFreeze(tAINode* node)
 {
-    int v1;
-    int v2;
+    int allowed;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoJoyFreeze_C(v1);
-    AI_PutIntToStack(v2);
+    allowed = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoJoyFreeze_C(allowed));
     return node + 1;
 }
 
-int AI_EvalFunc_IoJoyDir_C(int a1)
+// Returns the direction in force; -1 only reads it.
+int AI_EvalFunc_IoJoyDir_C(int dir)
 {
-    int v2;
+    int previous;
 
-    v2 = INO_l_JoystickDir;
-    if (a1 != -1)
-        INO_l_JoystickDir = a1;
-    return v2;
+    previous = INO_l_JoystickDir;
+    if (dir != -1)
+        INO_l_JoystickDir = dir;
+    return previous;
 }
 
 tAINode* AI_EvalFunc_IoJoyDir(tAINode* node)
 {
-    int v1;
-    int v2;
+    int dir;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoJoyDir_C(v1);
-    AI_PutIntToStack(v2);
+    dir = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoJoyDir_C(dir));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoJoySimulate(tAINode* node)
 {
-    int v1;
-    int v3;
-    Vec3* a4;
-    Vec3* a3;
+    Vec3* move1;
+    Vec3* move;
+    int buttons;
+    int pad;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a4 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    INO_JoySimulate(v1, v3, a3, a4);
+    // the two vectors are read where the stack keeps them rather than
+    // copied out
+    move1 = (Vec3*)AI_PopStackSlot();
+    move = (Vec3*)AI_PopStackSlot();
+    buttons = AI_GetIntFromStack();
+    pad = AI_GetIntFromStack();
+    INO_JoySimulate(pad, buttons, move, move1);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoPifSet(tAINode* node)
 {
-    int v1;
+    int pif;
 
-    v1 = AI_GetIntFromStack();
-    INO_PifSet(v1);
+    pif = AI_GetIntFromStack();
+    INO_PifSet(pif);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoPafSet(tAINode* node)
 {
-    int v1;
-    int v3;
+    int paf;
+    int value;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    INO_PafSet(v1, v3);
+    value = AI_GetIntFromStack();
+    paf = AI_GetIntFromStack();
+    INO_PafSet(paf, value);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoPifPafEnable(tAINode* node)
 {
-    int v1;
-    int v2;
+    int enable;
 
-    v1 = AI_GetIntFromStack();
-    v2 = INO_i_PifPafEnable(v1);
-    AI_PutIntToStack(v2);
+    enable = AI_GetIntFromStack();
+    AI_PutIntToStack(INO_i_PifPafEnable(enable));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoDiscErrorGet(tAINode* node)
 {
-    int v1;
-
-    v1 = INO_i_GetDiscError();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(INO_i_GetDiscError());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoSetControlMode(tAINode* node)
 {
-    int v1;
+    int mode;
 
-    v1 = AI_GetIntFromStack();
-    INO_SetControlMode(v1);
+    mode = AI_GetIntFromStack();
+    INO_SetControlMode(mode);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoSetControlSubmode(tAINode* node)
 {
-    int v1;
+    int submode;
 
-    v1 = AI_GetIntFromStack();
-    INO_SetControlSubmode(v1);
+    submode = AI_GetIntFromStack();
+    INO_SetControlSubmode(submode);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoSetMouseSensitivity(tAINode* node)
 {
-    float v1;
+    float sensitivity;
 
-    v1 = AI_GetFloatFromStack();
-    INO_SetMouseSensitivity(v1);
+    sensitivity = AI_GetFloatFromStack();
+    INO_SetMouseSensitivity(sensitivity);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoIsMouseBeingUsed(tAINode* node)
 {
-    int v1;
-
-    v1 = INO_i_IsMouseBeingUsed();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(INO_i_IsMouseBeingUsed());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoDemoGeti(tAINode* node)
 {
-    int v1;
-    int v2;
+    int field;
 
-    v1 = AI_GetIntFromStack();
-    v2 = Demo_Geti(v1);
-    AI_PutIntToStack(v2);
+    field = AI_GetIntFromStack();
+    AI_PutIntToStack(Demo_Geti(field));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_IoDemoSeti(tAINode* node)
 {
-    int v1;
-    int v2;
+    int field;
 
-    v1 = AI_GetIntFromStack();
-    v2 = Demo_Seti(v1);
-    AI_PutIntToStack(v2);
+    field = AI_GetIntFromStack();
+    AI_PutIntToStack(Demo_Seti(field));
     return node + 1;
 }
 
+// A bit per language that the installed game has text for.
 int AI_EvalFunc_IoGameLangGet_C()
 {
-    int v1;
-    int v2;
+    int present;
+    int lang;
 
-    v2 = 0;
-    v1 = 0;
-    while (v2 < 11)
+    present = 0;
+    for (lang = 0; lang < 11; ++lang)
     {
-        if (INO_b_LanguageIsPresent(v2))
-            v1 |= 1 << v2;
-        ++v2;
+        if (INO_b_LanguageIsPresent(lang))
+            present |= 1 << lang;
     }
-    return v1;
+    return present;
 }
 
 tAINode* AI_EvalFunc_IoGameLangGet(tAINode* node)
 {
-    int v1;
-
-    v1 = AI_EvalFunc_IoGameLangGet_C();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_IoGameLangGet_C());
     return node + 1;
 }
 
-int AI_EvalFunc_IoGameLangSet_C(int a1)
+int AI_EvalFunc_IoGameLangSet_C(int lang)
 {
-    if (!INO_b_LanguageIsPresent(a1))
+    if (!INO_b_LanguageIsPresent(lang))
         return -1;
 
-    TEXT_ChangeLang(a1);
+    TEXT_ChangeLang(lang);
     return 0;
 }
 
 tAINode* AI_EvalFunc_IoGameLangSet(tAINode* node)
 {
-    int v1;
-    int v2;
+    int lang;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoGameLangSet_C(v1);
-    AI_PutIntToStack(v2);
+    lang = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoGameLangSet_C(lang));
     return node + 1;
 }
 
+// The console language is a console notion; on PC these two report a
+// fixed answer and the setter ignores its argument.
 int AI_EvalFunc_IoConsLangGet_C()
 {
     return 1;
@@ -370,10 +335,7 @@ int AI_EvalFunc_IoConsLangGet_C()
 
 tAINode* AI_EvalFunc_IoConsLangGet(tAINode* node)
 {
-    int v1;
-
-    v1 = AI_EvalFunc_IoConsLangGet_C();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_IoConsLangGet_C());
     return node + 1;
 }
 
@@ -384,34 +346,46 @@ int AI_EvalFunc_IoConsLangSet_C()
 
 tAINode* AI_EvalFunc_IoConsLangSet(tAINode* node)
 {
-    int v1;
-
     AI_GetIntFromStack();
-    v1 = AI_EvalFunc_IoConsLangSet_C();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_IoConsLangSet_C());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SAVEPhotoDel(tAINode* node)
 {
-    int v1;
+    int photo;
 
-    v1 = AI_GetIntFromStack();
-    SAV_PhotoDel(v1);
+    photo = AI_GetIntFromStack();
+    SAV_PhotoDel(photo);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SAVEPhotoDecal(tAINode* node)
 {
-    int v1;
-    int v3;
+    int from;
+    int to;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    SAV_PhotoDecal(v1, v3);
+    to = AI_GetIntFromStack();
+    from = AI_GetIntFromStack();
+    SAV_PhotoDecal(from, to);
     return node + 1;
 }
 
+/* NOT REWRITTEN, DELIBERATELY. Renaming this function's locals would
+   change what it does.
+
+   Its second branch computes a save code and then returns v3[a2] with
+   a2 in 100..115 and v3 declared int[87], so the value handed back is
+   whatever sits past the end of that array in the frame. The third loop
+   likewise writes v10[15] where v10 is int[11]. Both reach outside
+   their arrays, so the result depends on the frame layout, and renaming
+   or reordering the locals moves what they land on.
+
+   The shape says the decompiler split one buffer into several locals:
+   in the original, the bits built in v10 and the code read out of v3
+   were almost certainly the same storage. Reconstructing that is a
+   guess, so the function is left exactly as it was, pending a decision.
+   Everything around it in this file is rewritten. */
 int AI_EvalFunc_SAVEDataGet_C(int a1, int a2)
 {
     int result;
@@ -631,34 +605,52 @@ tAINode* AI_EvalFunc_SAVEDataGet(tAINode* node)
     return node + 1;
 }
 
+// A saved variable's storage is its array-dimension words followed by
+// the elements: the top two bits of variableArrayCount are the number
+// of dimensions and the low thirty the element count.
+static unsigned int AI_l_SaveVarDims(AIVarElem* var)
+{
+    return var->variableArrayCount >> 30;
+}
+
+static int AI_l_SaveVarBytes(AIVarElem* var)
+{
+    return AI_gast_Types[var->variableType].dataTypeSize
+           * (int)(var->variableArrayCount & 0x3FFFFFFF);
+}
+
+// Copies the universe instance's saved variables -- the ones flagged
+// 0x10 -- into the save buffer, and validates the photos with them.
 void AI_EvalFunc_SAVEValidate_C()
 {
-    int v1;
-    unsigned int v2;
-    unsigned int v3;
-    tAIVars* v4;
-    int v5;
+    tAIVars* vars;
+    AIVarElem* var;
+    unsigned int dims;
     unsigned int i;
-    int v7;
+    int offset;
+    int at;
 
-    v4 = WOR_gst_Universe.univAIInstance->model->vars;
-    v7 = 0;
-    for (i = 0; i < v4->varNum; ++i)
+    vars = WOR_gst_Universe.univAIInstance->model->vars;
+    at = 0;
+    for (i = 0; i < vars->varNum; ++i)
     {
-        v1 = AI_gast_Types[v4->variables[i].variableType].dataTypeSize;
-        v5 = v4->variables[i].varOffset;
-        v3 = v4->variables[i].variableArrayCount;
-        v2 = v3 >> 30;
-        if ((v4->variables[i].flags & 0x10) != 0)
+        var = &vars->variables[i];
+        dims = AI_l_SaveVarDims(var);
+        offset = var->varOffset;
+        if ((var->flags & 0x10) == 0)
+            continue;
+
+        if (dims)
         {
-            if (v2)
-            {
-                memcpy(&AI_gpc_SaveBuffer[v7], &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[v5], 4 * v2);
-                v7 += 4 * v2;
-            }
-            memcpy(&AI_gpc_SaveBuffer[v7], &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[4 * v2 + v5], v1 * (v3 & 0x3FFFFFFF));
-            v7 += v1 * (v3 & 0x3FFFFFFF);
+            memcpy(&AI_gpc_SaveBuffer[at],
+                   &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[offset],
+                   4 * dims);
+            at += 4 * dims;
         }
+        memcpy(&AI_gpc_SaveBuffer[at],
+               &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[4 * dims + offset],
+               AI_l_SaveVarBytes(var));
+        at += AI_l_SaveVarBytes(var);
     }
     SAV_PhotoValidate();
 }
@@ -669,42 +661,45 @@ tAINode* AI_EvalFunc_SAVEValidate(tAINode* node)
     return node + 1;
 }
 
+// The same for the variables flagged 0x40, which share the buffer with
+// the 0x10 ones: a 0x10 variable is skipped over rather than written,
+// so both sets land where SAVEValidate would have put them.
 void AI_EvalFunc_SAVEValidateAl_C()
 {
-    int v0;
-    unsigned int v1;
-    unsigned int v2;
-    tAIVars* v3;
-    int v4;
+    tAIVars* vars;
+    AIVarElem* var;
+    unsigned int dims;
     unsigned int i;
-    int v6;
+    int offset;
+    int at;
 
-    v3 = WOR_gst_Universe.univAIInstance->model->vars;
-    v6 = 0;
-    for (i = 0; i < v3->varNum; ++i)
+    vars = WOR_gst_Universe.univAIInstance->model->vars;
+    at = 0;
+    for (i = 0; i < vars->varNum; ++i)
     {
-        v0 = AI_gast_Types[v3->variables[i].variableType].dataTypeSize;
-        v4 = v3->variables[i].varOffset;
-        v2 = v3->variables[i].variableArrayCount;
-        v1 = v2 >> 30;
-        if ((v3->variables[i].flags & 0x40) != 0)
+        var = &vars->variables[i];
+        dims = AI_l_SaveVarDims(var);
+        offset = var->varOffset;
+
+        if ((var->flags & 0x40) != 0)
         {
-            if (v1)
+            if (dims)
             {
-                memcpy(&AI_gpc_SaveBuffer[v6], &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[v4], 4 * v1);
-                v6 += 4 * v1;
+                memcpy(&AI_gpc_SaveBuffer[at],
+                       &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[offset],
+                       4 * dims);
+                at += 4 * dims;
             }
-            memcpy(
-                &AI_gpc_SaveBuffer[v6],
-                &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[4 * v1 + v4],
-                v0 * (v2 & 0x3FFFFFFF));
-            v6 += v0 * (v2 & 0x3FFFFFFF);
+            memcpy(&AI_gpc_SaveBuffer[at],
+                   &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[4 * dims + offset],
+                   AI_l_SaveVarBytes(var));
+            at += AI_l_SaveVarBytes(var);
         }
-        else if ((v3->variables[i].flags & 0x10) != 0)
+        else if ((var->flags & 0x10) != 0)
         {
-            if (v1)
-                v6 += 4 * v1;
-            v6 += v0 * (v2 & 0x3FFFFFFF);
+            if (dims)
+                at += 4 * dims;
+            at += AI_l_SaveVarBytes(var);
         }
     }
 }
@@ -715,37 +710,37 @@ tAINode* AI_EvalFunc_SAVEValidateAl(tAINode* node)
     return node + 1;
 }
 
+// SAVEValidate the other way round: the buffer back into the variables.
 void AI_EvalFunc_SAVEUnvalidate_C()
 {
-    int v0;
-    unsigned int v1;
-    unsigned int v2;
-    tAIVars* v3;
-    int v4;
+    tAIVars* vars;
+    AIVarElem* var;
+    unsigned int dims;
     unsigned int i;
-    int v6;
+    int offset;
+    int at;
 
-    v3 = WOR_gst_Universe.univAIInstance->model->vars;
-    v6 = 0;
-    for (i = 0; i < v3->varNum; ++i)
+    vars = WOR_gst_Universe.univAIInstance->model->vars;
+    at = 0;
+    for (i = 0; i < vars->varNum; ++i)
     {
-        v0 = AI_gast_Types[v3->variables[i].variableType].dataTypeSize;
-        v4 = v3->variables[i].varOffset;
-        v2 = v3->variables[i].variableArrayCount;
-        v1 = v2 >> 30;
-        if ((v3->variables[i].flags & 0x10) != 0)
+        var = &vars->variables[i];
+        dims = AI_l_SaveVarDims(var);
+        offset = var->varOffset;
+        if ((var->flags & 0x10) == 0)
+            continue;
+
+        if (dims)
         {
-            if (v1)
-            {
-                memcpy(&WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[v4], &AI_gpc_SaveBuffer[v6], 4 * v1);
-                v6 += 4 * v1;
-            }
-            memcpy(
-                &WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[4 * v1 + v4],
-                &AI_gpc_SaveBuffer[v6],
-                v0 * (v2 & 0x3FFFFFFF));
-            v6 += v0 * (v2 & 0x3FFFFFFF);
+            memcpy(&WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[offset],
+                   &AI_gpc_SaveBuffer[at],
+                   4 * dims);
+            at += 4 * dims;
         }
+        memcpy(&WOR_gst_Universe.univAIInstance->instanceVarDataCurrent[4 * dims + offset],
+               &AI_gpc_SaveBuffer[at],
+               AI_l_SaveVarBytes(var));
+        at += AI_l_SaveVarBytes(var);
     }
     SAV_PhotoUnvalidate();
 }
@@ -756,84 +751,85 @@ tAINode* AI_EvalFunc_SAVEUnvalidate(tAINode* node)
     return node + 1;
 }
 
-void AI_EvalFunc_SAVESaveSlotExt_C(int a1, int a2, int a3, int a4)
+// A slot id of zero or more writes the slot descriptor and asks the
+// card for a save; a negative one instead records which save-data
+// fields the next save takes its three values from.
+void AI_EvalFunc_SAVESaveSlotExt_C(int slotOrMode, int value1, int value2, int value3)
 {
-
-    if (a1 >= 0)
+    if (slotOrMode >= 0)
     {
-        INO_gst_SavSlotDesc.id = a1;
-        INO_gst_SavSlotDesc.i2 = a2;
-        INO_gst_SavSlotDesc.i3 = a3;
-        INO_gst_SavSlotDesc.i4 = a4;
+        INO_gst_SavSlotDesc.id = slotOrMode;
+        INO_gst_SavSlotDesc.i2 = value1;
+        INO_gst_SavSlotDesc.i3 = value2;
+        INO_gst_SavSlotDesc.i4 = value3;
         INO_SavSetCardStatus(SAVE_gi_DefaultSlot, 16);
+        return;
     }
-    else
+
+    switch (slotOrMode)
     {
-        switch (a1)
-        {
-        case -1:
-            SAV_idx_Field_i2 = a2;
-            SAV_idx_Field_i3 = a3;
-            SAV_idx_Field_i8 = a4;
-            break;
-        case -2:
-            SAV_idx_Field_i4 = a2;
-            SAV_idx_Field_i5 = a3;
-            SAV_idx_Field_i6 = a4;
-            break;
-        case -3:
-            SAV_idx_Field_i4 = a2;
-            SAV_idx_Field_i9 = a3;
-            break;
-        }
+    case -1:
+        SAV_idx_Field_i2 = value1;
+        SAV_idx_Field_i3 = value2;
+        SAV_idx_Field_i8 = value3;
+        break;
+    case -2:
+        SAV_idx_Field_i4 = value1;
+        SAV_idx_Field_i5 = value2;
+        SAV_idx_Field_i6 = value3;
+        break;
+    case -3:
+        SAV_idx_Field_i4 = value1;
+        SAV_idx_Field_i9 = value2;
+        break;
     }
 }
 
 tAINode* AI_EvalFunc_SAVESaveSlotExt(tAINode* node)
 {
-    int v2;
-    int v3;
-    int v4;
-    int v5;
+    int slotOrMode;
+    int value1;
+    int value2;
+    int value3;
 
-    v5 = AI_GetIntFromStack();
-    v2 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    AI_EvalFunc_SAVESaveSlotExt_C(v4, v3, v2, v5);
+    value3 = AI_GetIntFromStack();
+    value2 = AI_GetIntFromStack();
+    value1 = AI_GetIntFromStack();
+    slotOrMode = AI_GetIntFromStack();
+    AI_EvalFunc_SAVESaveSlotExt_C(slotOrMode, value1, value2, value3);
     return node + 1;
 }
 
-void AI_EvalFunc_SAVESaveSlot_C(int a1, int a2, int a3)
+void AI_EvalFunc_SAVESaveSlot_C(int slotOrMode, int value1, int value2)
 {
-    AI_EvalFunc_SAVESaveSlotExt_C(a1, a2, a3, 0);
+    AI_EvalFunc_SAVESaveSlotExt_C(slotOrMode, value1, value2, 0);
 }
 
 tAINode* AI_EvalFunc_SAVESaveSlot(tAINode* node)
 {
-    int v1;
-    int v3;
-    int v4;
+    int slotOrMode;
+    int value1;
+    int value2;
 
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_SAVESaveSlot_C(v1, v4, v3);
+    value2 = AI_GetIntFromStack();
+    value1 = AI_GetIntFromStack();
+    slotOrMode = AI_GetIntFromStack();
+    AI_EvalFunc_SAVESaveSlot_C(slotOrMode, value1, value2);
     return node + 1;
 }
 
-void AI_EvalFunc_SAVELoadSlot_C(int a1)
+void AI_EvalFunc_SAVELoadSlot_C(int slot)
 {
-    INO_gst_SavSlotDesc.id = a1;
+    INO_gst_SavSlotDesc.id = slot;
     INO_SavSetCardStatus(SAVE_gi_DefaultSlot, 12);
 }
 
 tAINode* AI_EvalFunc_SAVELoadSlot(tAINode* node)
 {
-    int v2;
+    int slot;
 
-    v2 = AI_GetIntFromStack();
-    AI_EvalFunc_SAVELoadSlot_C(v2);
+    slot = AI_GetIntFromStack();
+    AI_EvalFunc_SAVELoadSlot_C(slot);
     return node + 1;
 }
 
@@ -845,41 +841,37 @@ tAINode* AI_EvalFunc_SAVENewGame(tAINode* node)
 
 tAINode* AI_EvalFunc_SAVEGetCardStatus(tAINode* node)
 {
-    int v1;
-    char dest[52];
-    tVarStackElem a2;
-    int v5;
+    char converted[52];
+    tVarStackElem var;
+    int slot;
 
-    AI_GetVarFromStack(dest, &a2);
-    v5 = AI_GetIntFromStack();
-    v1 = INO_i_SavGetCardStatus(v5, (int*)a2.ptr);
-    AI_PutIntToStack(v1);
+    AI_GetVarFromStack(converted, &var);
+    slot = AI_GetIntFromStack();
+    AI_PutIntToStack(INO_i_SavGetCardStatus(slot, (int*)var.ptr));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_SAVESetCardStatus(tAINode* node)
 {
-    int v1;
-    int v3;
+    int slot;
+    int status;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    INO_SavSetCardStatus(v1, v3);
+    status = AI_GetIntFromStack();
+    slot = AI_GetIntFromStack();
+    INO_SavSetCardStatus(slot, status);
     return node + 1;
 }
 
-BOOL AI_EvalFunc_IoKeyReleased_C(char a1)
+BOOL AI_EvalFunc_IoKeyReleased_C(char key)
 {
-    return INO_b_IsKeyReleased(a1) != 0;
+    return INO_b_IsKeyReleased(key) != 0;
 }
 
 tAINode* AI_EvalFunc_IoKeyReleased(tAINode* node)
 {
-    char v1;
-    int v2;
+    char key;
 
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_IoKeyReleased_C(v1);
-    AI_PutIntToStack(v2);
+    key = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_IoKeyReleased_C(key));
     return node + 1;
 }

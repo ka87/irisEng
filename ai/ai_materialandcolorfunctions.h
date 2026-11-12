@@ -1,28 +1,28 @@
 #pragma once
 #include "../ai.h"
 
-void AI_EvalFunc_MATEnableMltxtLvl_C(struct sGameObjectMain* gao, unsigned int a2, int multiMatElemId, int a4);
-void AI_EvalFunc_MATSetConstant_C(struct sGameObjectMain* gao, int a2, int a3);
-void AI_EvalFunc_MATProSeti_C(struct sTexProceduralStruct* a1, int a2, int param1);
-struct sTexProceduralStruct* AI_EvalFunc_MATGetPro_C(struct sGameObjectMain* gao, unsigned int a2, int multiMatElemId);
-int AI_EvalFunc_COLORBlend_C(int a1, int a2, float a3);
-BOOL AI_EvalFunc_MATProGeti_C(struct sTexProceduralStruct* a1, int a2);
-void AI_EvalFunc_SetFlag_C(struct sGameObjectMain* gao, unsigned int a2, int multiMatElemId, int a4, int16_t a5);
-void AI_EvalFunc_SetUV_C(struct sGameObjectMain* gao, int a2, int a3, int a4, float a5);
+void AI_EvalFunc_MATEnableMltxtLvl_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId, int enable);
+void AI_EvalFunc_MATSetConstant_C(struct sGameObjectMain* gao, int color, int subMatID);
+void AI_EvalFunc_MATProSeti_C(struct sTexProceduralStruct* procedural, int field, int param1);
+struct sTexProceduralStruct* AI_EvalFunc_MATGetPro_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId);
+int AI_EvalFunc_COLORBlend_C(int color1, int color2, float factor);
+BOOL AI_EvalFunc_MATProGeti_C(struct sTexProceduralStruct* procedural, int field);
+void AI_EvalFunc_SetFlag_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId, int toSet, int16_t toClear);
+void AI_EvalFunc_SetUV_C(struct sGameObjectMain* gao, int subMatID, int multiMatElemId, int which, float value);
 unsigned int AI_EvalFunc_COLORBlack_C();
-int AI_EvalFunc_MATGetConstant_C(struct sGameObjectMain* gao, unsigned int a2);
-int AI_EvalFunc_GetLocalAlpha_C(struct sGameObjectMain* gao, unsigned int a2, int multiMatElemId);
-void AI_EvalFunc_SetLocalAlpha_C(struct sGameObjectMain* gao, unsigned int a2, int a3, int a4);
-int AI_EvalFunc_COLORSetRGBA_C(uint8_t a1, uint8_t a2, uint8_t a3, uint8_t a4);
-void AI_EvalFunc_MATEnableMltxtLvlMT_C(struct sGameObjectMain* gao, unsigned int a2, int a3, int a4, int a5);
-int AI_EvalFunc_COLORGetRed_C(uint8_t a1);
-int AI_EvalFunc_COLORGetGreen_C(int16_t a1);
-int AI_EvalFunc_COLORGetBlue_C(int a1);
-unsigned int AI_EvalFunc_COLORGetAlpha_C(int a1);
-void AI_EvalFunc_SetALPHATRESH_C(struct sGameObjectMain* gao, unsigned int a2, int a3, int a4);
-unsigned int AI_EvalFunc_GetALPHATRESH_C(struct sGameObjectMain* gao, unsigned int a2, int a3);
-int AI_EvalFunc_MATGetDiffuse_C(struct sGameObjectMain* gao, unsigned int a2);
-void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* gao, int* arg4, unsigned int a2);
+int AI_EvalFunc_MATGetConstant_C(struct sGameObjectMain* gao, unsigned int subMatID);
+int AI_EvalFunc_GetLocalAlpha_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId);
+void AI_EvalFunc_SetLocalAlpha_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId, int alpha);
+int AI_EvalFunc_COLORSetRGBA_C(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha);
+void AI_EvalFunc_MATEnableMltxtLvlMT_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId, int multimatId, int enable);
+int AI_EvalFunc_COLORGetRed_C(uint8_t color);
+int AI_EvalFunc_COLORGetGreen_C(int16_t color);
+int AI_EvalFunc_COLORGetBlue_C(int color);
+unsigned int AI_EvalFunc_COLORGetAlpha_C(int color);
+void AI_EvalFunc_SetALPHATRESH_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId, int threshold);
+unsigned int AI_EvalFunc_GetALPHATRESH_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId);
+int AI_EvalFunc_MATGetDiffuse_C(struct sGameObjectMain* gao, unsigned int subMatID);
+void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* gao, int* diffuse, unsigned int subMatID);
 int AI_EvalFunc_GetFlag_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemID);
 
 tAINode* AI_EvalFunc_MATSetConstant(tAINode* node);

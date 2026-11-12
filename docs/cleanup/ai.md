@@ -1,12 +1,13 @@
 # ai/
 
-The AI interpreter and the builtins the game's scripts call. 32 files;
-**20 are finished**, meaning no `goto`, no decompiler-named local or
+The AI interpreter and the builtins the game's scripts call. 32 files,
+**28 finished**, meaning no `goto`, no decompiler-named local or
 parameter, and they parse as standard C against the stub include set
 with `-Werror=implicit-function-declaration`.
 
-One of the twelve remaining is deliberately out of scope and one is
-blocked; the other ten are the next batch.
+Of the four left, one is deliberately out of scope, one is blocked on a
+file that has not had its pass, and two large builtin tables are the
+next batch.
 
 | file | lines | residue | gotos | state |
 | --- | --- | --- | --- | --- |
@@ -18,8 +19,8 @@ blocked; the other ten are the next batch.
 | `ai_pagfunctions.c` | 279 | | | done |
 | `ai_eventtrackfunctions.c` | 333 to 325 | | | done |
 | `ai_actionfunctions.c` | 358 | | | done |
-| `ai_messagefunctions.c` | 410 to 356 | | 1 to 0 | done |
 | `ai_fields.c` | 362 | | | done |
+| `ai_messagefunctions.c` | 410 to 356 | | 1 to 0 | done |
 | `ai_lightfunctions.c` | 540 to 440 | | | done |
 | `ai_worldfunctions.c` | 493 | | | done |
 | `ai_sectorfunctions.c` | 494 | | | done |
@@ -28,34 +29,38 @@ blocked; the other ten are the next batch.
 | `ai_viewfunctions.c` | 604 | | | done |
 | `ai_animationfunctions.c` | 639 | | | done |
 | `ai_gfxfunctions.c` | 648 | | | done |
+| `ai_arrfunctions.c` | 754 to 774 | | | done |
 | `ai_wayfunctions.c` | 777 | | 2 to 0 | done |
+| `ai_inofunctions.c` | 884 to 877 | 125 | | done but one function |
 | `ai_functions.c` | 885 | | | done, table only |
+| `ai_materialandcolorfunctions.c` | 1,077 to 1,057 | | 1 to 0 | done |
+| `ai_mathfunctions.c` | 1,371 to 1,201 | | | done |
+| `ai_gameobjecttextfunctions.c` | 1,249 to 1,207 | | | done |
+| `ai_dynfunctions.c` | 1,681 to 1,295 | | | done |
+| `ai_soundfunctions.c` | 1,822 to 1,640 | | 7 to 0 | done |
+| `ai_keywords.c` | 2,038 to 1,295 | | 10 to 0 | done |
 | `ai_compiledscripts.c` | 118 | 11 | | out of scope |
 | `ai_gridfunctions.c` | 606 | 305 | | blocked on `grid.c` |
-| `ai_inofunctions.c` | 884 | 410 | | next batch |
-| `ai_arrfunctions.c` | 754 | 415 | | next batch |
-| `ai_materialandcolorfunctions.c` | 1,077 | 568 | 1 | next batch |
-| `ai_gameobjecttextfunctions.c` | 1,249 | 588 | | next batch |
-| `ai_mathfunctions.c` | 1,371 | 623 | | next batch |
-| `ai_keywords.c` | 2,038 | 766 | 10 | next batch |
-| `ai_soundfunctions.c` | 1,822 | 778 | 7 | next batch |
-| `ai_dynfunctions.c` | 1,681 | 926 | | next batch |
 | `ai_colfunctions.c` | 2,774 | 1,279 | | next batch |
 | `ai_gameobjectfunctions.c` | 3,799 | 1,668 | | next batch |
 
-"Residue" is the count of lines carrying a decompiler name — `a1`…`a9`,
-`v1`…`vN` — which is the measure used throughout this pass.
+"Residue" is the count of lines carrying a decompiler name -- `a1`..`a9`,
+`v1`..`vN` -- which is the measure used throughout this pass. Where a
+file shows a figure it is accounted for below.
 
 `ai_compiledscripts.c` is **the user's own hand-written hook file**, not
 decompiler output: its locals and its Hungarian commentary are theirs.
 It is left alone.
 
-`ai_gridfunctions.c` is almost entirely pass-through into `grid.c` —
-`GRI_Tag(grid, pos, a3, a4)`, `GRID_ShortestPath` with eleven arguments —
-and `grid.c` is still decompiler output, so nothing there says what those
-arguments mean. Naming them from this side would be invention, so the
-file waits for `grid.c`. Everything else in it (the current/dest grid
-pick, the setters, the wrappers) is ready to go the moment it does.
+`ai_gridfunctions.c` is almost entirely pass-through into `grid.c` --
+`GRI_Tag(grid, pos, a3, a4)`, `GRID_ShortestPath` with eleven arguments
+-- and `grid.c` is still decompiler output, so nothing there says what
+those arguments mean. Naming them from this side would be invention, so
+the file waits for `grid.c`. Everything else in it (the current/dest
+grid pick, the setters, the wrappers) is ready to go the moment it does.
+
+`ai_inofunctions.c`'s 125 lines of residue are all inside one function
+that is deliberately untouched; see its section.
 
 ## Verification
 
@@ -63,24 +68,51 @@ There are no differential tests in this directory, and that is a
 decision rather than an omission. Every file here is a table of thin
 wrappers over the engine: a builtin pops its arguments off the AI stack,
 calls one engine function and pushes the result. Standing one up means
-standing up the interpreter, the game object tree, the world and the
-engine subsystem behind whichever builtin is under test — and the test
-would then be measuring the mocks, not the wrapper.
+standing up the interpreter, the game object tree, the world and
+whichever engine subsystem is behind the builtin under test -- and the
+test would then be measuring the mocks, not the wrapper.
 
-What the directory gets instead is the three checks that can see a
-mistake in a wrapper:
+What the directory gets instead is a check on the one thing a wrapper
+can get wrong.
 
-- **The argument order is read off the pops.** The AI stack is popped in
-  reverse, so a wrapper's pop sequence is the builtin's argument list
-  backwards. Every rewritten wrapper was checked pop by pop against the
-  original, and against the `_C` call it feeds.
+### The stack-traffic comparison
+
+`tests/popcheck.py` extracts, per function, the ordered sequence of AI
+stack pops and pushes from a file's pre-rewrite copy in git and from the
+working tree, and compares them:
+
+    ./tests/popcheck.py origin/claude/sideload ai/ai_dynfunctions.c
+
+A pop that moved into a helper is credited back to its caller. Two
+things make the comparison exact rather than approximate: a pop nested
+inside a push's argument still evaluates before the push, and
+`--pops-per-statement` confirms that **no statement anywhere in `ai/`
+holds more than one pop**, so there is no site where C's unspecified
+argument evaluation order could reorder two of them.
+
+Across the eight files of the second batch -- 614 functions -- **no pop
+sequence differs**. The dozen remaining differences are all one push
+replacing two in an if/else, or one becoming several early returns.
+
+### What else each file got
+
 - **Every file parses as standard C** with
-  `-Werror=implicit-function-declaration`, which catches a renamed
-  function that was not renamed at its other end. 120 of the project's
-  137 first-party sources now parse, against 117 before this batch —
-  `ai_gfxfunctions.c` and `graphicsobjects/shadow.c` came in with the
-  d3d9 stub additions below.
-- **The residue count is zero per file**, so nothing was renamed halfway.
+  `-Werror=implicit-function-declaration`, which catches a function
+  renamed at one end only. 120 of the project's 137 first-party sources
+  parse now, against 117 before this directory: `ai/ai_gfxfunctions.c`
+  and `graphicsobjects/shadow.c` came in with the d3d9 stub additions
+  the full-screen video path needed. `ai_soundfunctions.c` is the one
+  file here that still does not, on a pre-existing gap in the
+  `win/winsound.h` stub.
+- **`ai_keywords.c`'s two coercion rules** were checked against the
+  originals exhaustively rather than by reading: 7 type values by 13 bit
+  patterns, and the four shift float paths separately, for **9,594 cases
+  with no mismatch**.
+- **`ai_gameobjecttextfunctions.c`** was checked a third way, mapping
+  every engine call's arguments back to the pop ordinal they came from.
+- **The residue count is zero per file**, so nothing was renamed
+  halfway, and the function set is compared before and after so nothing
+  was dropped.
 
 Nothing here has been built under MSVC.
 
@@ -498,14 +530,376 @@ elements for the network they were given and then use `wayElems[i]`
 whether or not they found it, reading one slot past the end when they did
 not. Preserved, with a line saying so.
 
+## ai_arrfunctions.c
+
+The array builtins: object searches over a script's array, and a bit
+array addressed by bit number. 754 lines to 774 -- longer, because
+twelve bit sites stopped being one-liners and because four preserved
+oddities got a line each.
+
+**The bit index was masked before it was shifted.**
+`bits[(bit & 0xFFFFFFE0) >> 5] |= 1 << (bit & 0x1F)`: the mask clears
+exactly the bits the shift discards, including for a negative index,
+where the arithmetic shift rounds the same way. So it is `bit >> 5`,
+and the word and the mask are two macros the file's twelve bit sites
+share.
+
+The three sight-scoring searches -- pivot, bounding-volume centre and
+info-photo -- are one loop shape with a named falloff that trades angle
+against distance, and their inlined dot products are the call.
+
+### Pick -- the filtering builtins' destination *(binary)*
+
+`ARRObjCopyIdFlags` and `ARRObjCopyCB` pop a destination array and a
+source array, and then filter the **source** in place, compacting it and
+returning the count. The destination is never written. Preserved, with a
+line saying so, because every script that calls these has been getting
+that behaviour.
+
+### Pick -- ARRSortByFlags on a hole *(open)*
+
+The partition advances its cursor when an object passes and shrinks the
+range when it fails, but a **null** slot does neither, so an array with a
+hole in it does not terminate. Preserved; whether the arrays these are
+given can contain nulls is a question about the callers.
+
+`ARRBit4Test`'s above-10000 convention asks for a bit to be clear, the
+bit being the index less 10000 -- and an index of exactly 10000 passes
+either way, since neither arm's comparison is true for it.
+
+## ai_inofunctions.c
+
+Input, the save card and the save-data accessors.
+
+The three save-variable walks -- write the flagged variables to the
+buffer, write a second set that shares the buffer, read them back --
+share the storage computation that the top two bits of
+`variableArrayCount` encode: the number of array dimensions, whose words
+come first, and then the element count. The joystick freeze and
+direction builtins return the setting that was in force so a script can
+put it back, and `SAVESaveSlotExt`'s first argument is a slot id when it
+is zero or more and a choice of three field modes when it is negative.
+
+### AI_EvalFunc_SAVEDataGet_C is left byte-for-byte
+
+Its second branch (`a2 >= 100`) builds an obfuscated save code through
+three bit-permutation loops and then does two things that cannot both be
+right:
+
+- it returns **`v3[a2]`** with `a2` in 100..115 and `v3` declared
+  `int[87]`, so the value handed to the script is whatever sits past the
+  end of that array in the frame;
+- its third loop writes **`v10[15]`** where `v10` is `int[11]`.
+
+Because both reach outside their arrays, what the function does depends
+on the stack frame layout -- so renaming its locals, which is free
+anywhere else, would change its result. It is left exactly as it was
+with a comment saying that, and everything around it in the file is
+rewritten.
+
+The shape says the decompiler split one buffer into several locals: in
+the original, the bits built up in `v10` and the code read back out of
+`v3` were almost certainly the same storage, and the otherwise-dead
+`v3[86] = a2` in the other branch supports that. Reconstructing it is a
+guess, so it is the user's call.
+
+## ai_materialandcolorfunctions.c
+
+Materials, their multi-texture levels, procedural and animated textures,
+and the colour helpers. 1,077 lines to 1,057, one `goto` gone.
+
+Twenty of these builtins begin by resolving a sub-material and then a
+multi-texture level, and the two helpers that do it now say what their
+arguments mean: a sub-material id whose top byte makes it a big-file key
+rather than an index, and a colour selector of diffuse, constant or
+ambiant.
+
+Three decodings carry the file:
+
+- **The multi-texture enable was four maskings through a 0xFFF window**,
+  and it is setting or clearing bit 11, the level's disabled bit. Two
+  lines now, and the same for the multi-material variant.
+- **`GetFlag`'s `goto` was a shared tail**, and written out it shows
+  something the jump hid: an element id of 1000 or more whose level is
+  not found falls through and looks the **raw** id up again, walking
+  that many links into the chain. Preserved, with a line.
+- **The packed-colour blend adds 49152 to the factor** to pin the
+  float's exponent at 2^15, which makes the low byte of its bit pattern
+  the factor in 256ths. Each set bit then contributes one of the two
+  colours shifted right by that place, with the channel's low bits
+  masked off so a channel cannot borrow from the one below it; the seven
+  terms sum to the blend, and the 1/256 bit is unused. The file explains
+  that where it happens, because nothing in it is legible otherwise.
+
+### Pick -- the level lookup's clamp *(binary)*
+
+`MAT_GetMtxLvlPtr` clamps its multi-material index to the count where
+`MAT_GetColorPtr` clamps to the count less one, so an index equal to the
+count reads one past the end of the material array. Preserved, with a
+line noting the difference between the two.
+
+## ai_dynfunctions.c
+
+The dynamics builtins: speed, mass, forces, limits, constraints and the
+collision response. 1,681 lines to 1,295, and ninety-three functions.
+
+**Fifty-odd of them opened with the same four lines** to reach the
+object's dynamics through its basic block, which is one function now,
+and the two sites that inlined that dance inside an `if` condition --
+comma operators and an assignment in a ternary -- are written out.
+
+### DYNImpulsion
+
+The one function here with content: a ballistic launch solver, with
+twenty-eight decompiler locals, three of them duplicates of their
+neighbours. It reads as what it is now -- the apex sits a given height
+above the higher of the start and the target, the fall time to each end
+gives the flight time, and the vertical speed that reaches the apex
+gives the launch -- with the inlined negate, scale and two dot products
+replaced by the math calls, each checked against the helper's body
+first. Where the target is directly above, it skips the rotation frame
+and takes the horizontal part straight from x and y.
+
+It also lifts both speed limits to `3.402822e38`, which is very nearly
+but not quite `FLT_MAX`; `WAYShortWay` uses the same constant.
+
+### Pick -- the seven null dereferences *(binary)*
+
+Four of these builtins write through a null pointer, or hand one to
+`AI_PutVecToStack`, when the object has no solid or no collision:
+`DYNTorqueVectorSet`, `DYNTorqueVectorGet`, `DYNRotSpeedVectorSet` and
+`DYNApplyRectFactorSet`. Three more -- `DYNFlagsGet`, `DYNReboundGet`
+and `DYNRotSpeedVectorGet` -- take the **address** of a field before
+testing that address for null, so the test cannot fire. All seven are
+preserved with a line each; they are a property of the original, and the
+objects these are called on evidently have the blocks.
+
+`DYNSlideGet` answers 1.0 rather than 0.0 when there is no collision,
+which is the neutral value for a slide factor rather than a mistake.
+
+## ai_gameobjecttextfunctions.c
+
+The text builtins: a game object's string, its colours, its page and its
+substrings. 1,249 lines to 1,207.
+
+The payoff came from reading `strings.c`, which is still decompiler
+output but whose **bodies name their own arguments**:
+`STR_l_GetValidIndex` and `STR_l_GetValidNumber` appear in nearly every
+one of these, which settles the convention the whole file is addressed
+by -- a text builtin takes `(strIdx, firstChar, charNum, value)`.
+
+Four readings that convention does not cover:
+
+- `STR_ChangePage`'s last argument is a **filter on the character's
+  current page**, not a second page: negative moves every character,
+  0 to 255 only those already on that page, and 256 to 511 only those
+  *not* on page `matchPage - 256`.
+- The two `SetSubString` variants count **line breaks** and **marks**
+  rather than characters, so they are `(firstLine, lineNum)` and
+  `(firstMark, markNum)`.
+- `STR_l_GetSubLength`'s third argument is a **line index**, with
+  negative meaning the longest line.
+- `STR_SetColorExt`'s sixth argument is a **mask** on the colour.
+
+No helpers were added, deliberately: the repeating shape is "get the
+string, and if it exists call one thing on it", but the callee and its
+arity differ every time, and these `_C` functions already are the thin
+wrapper.
+
+### Pick -- the convert buffer *(binary)*
+
+`get_a_string_from_globalstack`'s convert buffer was `tTextGet[6]`,
+48 bytes. Eight is what a text value writes, so the original was ample;
+it is the directory's standard `char converted[52]` now, which only
+matters if a script ever passes a message where a string is expected.
+This is the one change in the file beyond renaming.
+
+Preserved with a line each: `OBJ_TextColorGet` alone among its dozen
+siblings does not null-check the string it has just looked up, four
+builtins pop arguments they discard, and the three position getters pass
+a scratch vector to a function that fills it and returns it, then copy
+the result onto itself.
+
+## ai_mathfunctions.c
+
+The maths builtins. 1,371 lines to 1,201, and eleven functions the file
+defined but never declared are now in the header.
+
+**No new helpers**, because every repeated shape here was an *inlined*
+math helper: the fix was calling the real one, each checked against its
+body in `math.c` first. One site that looks like `MATH_VecLenSquared` is
+not -- that helper sums its terms in the other order -- so it became
+`MATH_DotProduct(axis, axis)`.
+
+- **`MATHMatrixBlend`'s eighth argument** is the callee's
+  `dontUseStoredValues`, which explains the whole function: its two
+  matrices are file statics because the callee can carry state between
+  calls, and the flag says to refill them from the arguments. That also
+  pins the orientation convention its six vector parameters are named
+  from.
+- **`MATHVecRotate` is Rodrigues rotation** with the axis-parallel
+  component split off and added back -- and it normalises the caller's
+  axis in place, after using the un-normalised one for the projection.
+- **`MATHVecInCone`'s flag word** says which of its two inputs are
+  already normalised, and whether to return a unit vector or one of the
+  input's own length.
+- `MTHFloatSign` copies the sign bit onto `1.0f` rather than branching,
+  so zero reports +1, negative zero included.
+
+**Three restructurings were reverted for changing the answer on a NaN.**
+In `MTHVecNullEpsilon` and `MTHVecNullToler` the second arm is a `<=`,
+which answers FALSE for a NaN component where an inverted `>` would fall
+through to test z; and in `MATHVecAbsAngle` a NaN cosine has to report 0
+rather than reach `acos`. All three keep the original's branch nesting.
+
+### Pick -- the two float-is-null builtins *(binary)*
+
+`MATHFloatNullEps` compares the magnitude as a **double** while
+`MTHFloatNullToler` narrows it to a **float** first, so the two disagree
+on a value right at the boundary. Both kept as written, each noting the
+other.
+
+`MATH_f_VecAbsAngle`, which a comment says `MATHVecAbsAngle` inlines,
+does not exist anywhere in the tree, so that one stays written out with
+a line saying why.
+
+## ai_keywords.c
+
+The AI language itself: 67 keyword evaluators, one per node kind. 2,038
+lines to 1,295, and the ten `goto`s gone -- the most in the directory.
+
+**All ten were the same shared tail.** The five bitwise compound
+assignments each jumped to a common "is this a float" line and then past
+it. None was a loop, and once the coercion became a function they
+disappeared without any restructuring.
+
+The file collapses by a third because sixteen of its evaluators are two
+rules:
+
+- **the six comparisons and the ten compound assignments** coerce the
+  first-popped operand towards the second's type. The stack pops in
+  reverse, so the second operand popped is the left-hand one in the
+  script's source order, which is what makes the direction legible and
+  is written down at the helper;
+- **the nine binary operators** promote to float when either side is
+  one and convert the other side in place.
+
+Both were checked against the originals exhaustively rather than by
+reading: 7 type values by 13 bit patterns is **8,918 cases**, and the
+four shift float paths another **676**, compared on the result's bits.
+None differed.
+
+Three things the file now says that the original did not:
+
+- **The four conditional jumps are two kinds.** `JumpFalse` and
+  `JumpTrue` pop the condition and push it back, leaving the value of an
+  `&&` or `||` chain behind; the `SP` pair consume it. That is the
+  short-circuit machinery.
+- **Four evaluators return an interpreter control code** rather than a
+  node: 0 yields the frame, 1 stops the behaviour, 2 returns from it and
+  4 returns from the track. One comment at the top rather than four.
+- **The bitwise operators have no float form**: on float operands they
+  round both sides through the magic double, operate, and convert back.
+
+### Pick -- the plain shifts' float path *(open)*
+
+`SLeft` and `SRight` shift the **right** operand by the left one on
+their float path, where their own int path shifts left by right. The two
+compound-assignment shifts are consistent with the int path, so this
+reads as a transcription slip rather than intent -- but it is what the
+engine has been compiling, so it is flagged and not fixed.
+
+Also preserved: `Not` of an int yields 0 or 255 rather than 0 or 1,
+because it computes `(value != 0) - 1` truncated to a byte, while its
+float form yields 1.0f or 0.0f as expected; and the two shift
+assignments mask their shift count with `& 0xff` where the plain shifts
+do not.
+
+## ai_soundfunctions.c
+
+The sound builtins: banks, instances, families, tracks and the sound
+modifiers. 1,822 lines to 1,640, and the seven `goto`s gone.
+
+**All seven were the same jump.** One arm after another of
+`SND_ExtPlay`'s mode 14 jumped to a shared "report failure" tail; each
+arm returns now. All sixteen values of the mode nibble are handled, so
+the `default` is unreachable -- kept as written, with a line saying so.
+
+Four shared runs became functions:
+
+- **the four-part guard the six sound-starting builtins apply**, with
+  its short-circuit order preserved: the count test precedes the
+  non-negative test, so a negative index never reaches
+  `SND_i_IsPlaying`;
+- the two statements that hand an instance to a game object;
+- **the sound-kind decode**, which was twenty-four lines of nested
+  comparisons duplicated in two builtins and is one bit of a `0x86008`
+  mask: 0 is 1, 8 is 5, 0x2000 is 3, 0x4000 is 2, 0x80000 is 4, and
+  anything else is -1. A switch now;
+- **the modifier-chain walk**, which takes the per-modifier work as an
+  argument. That collapses two near-identical loops per site across
+  five builtins, because a modifier id of -1 just means every one.
+
+Names here are grounded in the callees' bodies rather than guessed,
+since `sound.c` is still decompiler output: `SND_SetPan` already names
+its arguments, the `Seti` family switch on the argument that is
+therefore the field index, and `SND_i_TrackSeti` passes its first to a
+search of the track id table. The Familly pair turn out to take **two
+masks** -- an instance takes part when it has all of the first and any
+of the second -- which is also why `SND_LinkToFamilly`'s arguments are
+not reversed like its siblings'. `nearDist` and `farDist` rather than
+`near` and `far`, since those are MSVC macros, which is presumably why
+the original said `near1`/`far1`.
+
+### Pick -- five asymmetries between siblings *(binary)*
+
+Each preserved with a line, because each is a difference between
+functions that otherwise match:
+
+- `SNDGetInstanceModifier` closes its profiler timer only on the
+  not-found path; a match returns from inside the loop without it.
+- `SNDGetStatusModifier` is deliberately **not** written with the new
+  modifier-walk helper: its all-modifiers arm ORs the flags together and
+  reports them only if it saw one, and its by-id arm records a profiler
+  tick once per modifier it steps over rather than once per call.
+- `SNDPrefetchModifier` and `SNDFlushModifier` reach through the game
+  object without the null check their three Play/Pause/Stop siblings
+  have.
+- The instance attach is guarded by `if (gao)` in two of the six
+  starters and unguarded in the other four.
+- `SNDSetFlagModifier` and `SNDResetFlagModifier` have a by-id arm that
+  goes through the instance getter rather than walking the chain, so it
+  touches one instance where their own all-modifiers arm touches every
+  match.
+
+### The one file here that still does not parse
+
+`ai_soundfunctions.c` fails against the stub, and that is pre-existing
+and not this file's doing: the eight errors all come from
+`win/eax/eax.h` and `win/winsound.h`, which name `IUnknown`, `DSCAPS`,
+`FAR`, `PASCAL`, `CDECL`, `LPDWORD` and `IDirectSound3DListener` that
+the stub does not supply. The error output is byte-identical before and
+after the rewrite, and with those names supplied by a throwaway prelude
+the rewritten file compiles with no diagnostics at all -- so it did get
+a real type-check. The stub gap belongs to the `win/` pass.
+
 ---
 
 ## What is still owed here
 
-- The ten files in the next batch, and `ai_gridfunctions.c` once
-  `grid.c` is named.
+- `ai_colfunctions.c` and `ai_gameobjectfunctions.c`, the two large
+  builtin tables, 6,573 lines between them. Both are tractable:
+  `collision.h` already names the `flagMustHave`/`flagMustNothave`/
+  `whatToTest` positions its ray casts take, which is what fixes the
+  convention for the rest.
+- `ai_gridfunctions.c` once `grid.c` is named.
+- `AI_EvalFunc_SAVEDataGet_C`, pending the user's decision.
 - The `_sub_<address>` function names across the project, as one sweep.
-- `docs/cleanup/README.md` has no entry for this file yet: the geostr
-  branch is still open against it and an entry here would conflict. It
-  comes with the next batch.
+  Two were done where this directory defines them; about thirty remain,
+  each in a file that has not had its pass. `ai.h`'s
+  `get_a_string_from_globalstack_sub_4D2040` is called from three files
+  here, so it belongs to that sweep rather than to any one of them.
+- The `win/winsound.h` and `win/eax/eax.h` stub gaps, which are the
+  only thing keeping `ai_soundfunctions.c` and `ai_functions.c` out of
+  the parsing set.
 - Nothing here has been built under MSVC.

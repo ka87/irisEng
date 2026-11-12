@@ -321,14 +321,12 @@ differ in a cast the parameter truncates away and are left as the
 original has them; the slice effect's six edges keep their non-uniform
 narrowing; and `geomaterial.c`'s off-by-one `Setv` bound stands.
 
-#### One stub gap
+#### One stub gap, since closed
 
-`shadow.c` does not parse against the committed stub — it calls two
-`IDirect3DDevice9` vtable methods the stub does not declare. It was
-verified against a scratch copy with those two methods and their four
-render-state constants added; the addition belongs in whichever of the
-gfx pass and this one lands second, since both touch
-`tests/stub/d3d9.h`.
+`shadow.c` did not parse against the committed stub: it calls two
+`IDirect3DDevice9` vtable methods the stub did not declare. The `ai/`
+pass added those along with the ones `ai/ai_gfxfunctions.c`'s
+full-screen video path needs, so `shadow.c` parses now.
 ### 4. gfx/
 
 **Done.** Full record in [gfx.md](gfx.md).
@@ -422,3 +420,67 @@ at index zero ten times over.
 Same class as `modifiers/` and accepted for the same reason. The
 lightning bolt is the one file in the directory where nothing moved at
 all.
+
+### 6. ai/
+
+**In progress.** Full record in [ai.md](ai.md).
+
+The AI interpreter and the builtins the game's scripts call: 32 files,
+of which **28 are finished** and four remain. 120 of the project's 137
+first-party sources parse now, against 117 before this directory --
+`ai/ai_gfxfunctions.c` and `graphicsobjects/shadow.c` came in with the
+d3d9 stub additions the full-screen video path needed.
+
+Four shapes run through the whole directory, and naming them once is
+most of the work: the wrapper that saves the current ultra object and
+pops its arguments in reverse; the object pop, written out at 218 sites
+and now `AI_GetObjectFromStack()` in `ai_common.c`, with
+`AI_PopStackSlot()` beside it for the handful of builtins that want the
+stack slot itself because a vector is stored inline there; the object
+returned to a script, which went through a frame buffer of 3, 5, 6, 7,
+9 or 13 ints for what the type copies as one pointer; and the free-table
+tag test on a pointer's low two bits.
+
+#### No differential tests here, and what stands in for them
+
+Every file is a table of thin wrappers over the engine: a builtin pops
+its arguments, calls one engine function and pushes the result. Standing
+one up means standing up the interpreter, the game object tree, the
+world and whichever subsystem is behind the builtin, and the test would
+measure the mocks.
+
+What the directory gets instead is **a mechanical comparison of the
+stack traffic**, which is the one thing a wrapper can get wrong. For
+every function in every rewritten file, the ordered sequence of pops and
+pushes is extracted from the pre-rewrite copy and from the rewrite and
+compared, with the pops that moved into a helper credited back to the
+caller. A pop nested inside a push's argument still evaluates first, and
+no statement anywhere in `ai/` holds more than one pop, so ordering by
+statement is exact rather than approximate. **Across the eight files
+of the second batch -- 614 functions -- no pop sequence differs.** The remaining
+differences are all one push replacing two in an if/else, or the
+reverse.
+
+Two files got more than that. `ai_keywords.c`'s two coercion rules were
+checked against the originals exhaustively, 7 types by 13 bit patterns
+and the four shift float paths separately: **9,594 cases, none
+differing**. And `ai_gameobjecttextfunctions.c` was checked a third way,
+mapping every engine call's arguments back to the pop ordinal they came
+from.
+
+#### Three files not done, and why
+
+- `ai_compiledscripts.c` is the user's own hand-written hook file, not
+  decompiler output. Left alone.
+- `ai_gridfunctions.c` is almost pure pass-through into `grid.c`, which
+  is still decompiler output, so nothing says what
+  `GRI_Tag(grid, pos, a3, a4)`'s last two arguments mean. Naming them
+  from the calling side would be invention, so the file waits for
+  `grid.c`.
+- `AI_EvalFunc_SAVEDataGet_C` in `ai_inofunctions.c` is left
+  byte-for-byte, and that one is worth reading about: it returns
+  `v3[a2]` with `a2` in 100..115 and `v3` declared `int[87]`, and its
+  third loop writes `v10[15]` where `v10` is `int[11]`. Both reach
+  outside their arrays, so what the function does depends on the frame
+  layout and renaming its locals would change it. Everything around it
+  in that file is rewritten.
