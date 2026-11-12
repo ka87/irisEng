@@ -6,6 +6,9 @@
 #include "../textures.h"
 #include "../profiler.h"
 #include "../cameraengine.h"
+#include "../modifiers/xmenmodifier.h"
+#include "../soft.h"
+#include "../graphicsobjects/gro_common.h"
 
 #define MOCK_LOG_MAX 8192
 #define MOCK_CALL_ARGS 10
@@ -33,3 +36,20 @@ void MOCK_SetLoadStream(const unsigned char* bytes, int len);
 
 extern int MOCK_vuisIdentity;
 extern tMatDecompressedStruct MOCK_uv;
+
+typedef struct sXmenCapture
+{
+    int vertexNum;
+    int uvNum;
+    int triangleNum;
+    int materialNum;
+    int transparent;
+    tGeoTriangleChunkElem tris[64];
+    tGeoUVElem uvs[64];
+    Vec3 verts[64];
+} tXmenCapture;
+
+#define MOCK_XMEN_CAPTURES 64
+
+extern tXmenCapture MOCK_xmenCaptures[MOCK_XMEN_CAPTURES];
+extern int MOCK_xmenCaptureCount;

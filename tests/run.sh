@@ -39,6 +39,13 @@ GAO_ModifierLazy_Inherit GAO_ModifierLazy_Apply Lazy_FirstInit GAO_ModifierLazy_
 GAO_ModifierLazy_Create GAO_ModifierLazy_Destroy GAO_ul_ModifierLazy_Load \
 GAO_ModifierLazy_Unapply GAO_ModifierLazy_UnApply_Local GAO_ModifierLazy_UnapplyAll"
 
+xmen_syms="XMEN_FirstInit GAO_ModifierXMEN_Create GAO_ModifierXMEN_Destroy \
+GAO_ModifierXMEN_Apply GAO_ModifierXMEN_Load GAO_ModifierXMEN_Reinit \
+GAO_ModifierXMEN_GetBonePosFromNum GAO_ModifierXMEN_SMOOTH_BUFFER_BendVectors_sub_4235A0 \
+GAO_ModifierXMEN_SMOOTH_BUFFER GAO_ModifierXMEN_DRAW GAO_ModifierXMEN_DRAW_ALL \
+GAO_ModifierXMEN_Unapply XMEN_OnOff XMEN_SetSize \
+bFirst_286 XMEN_STACK_PTR xmenSmoothBuffer_flt_9684BC"
+
 fails=0
 run_one() {
     name=$1; live=$2; base=$3; incdir=$4; syms=$5
@@ -67,6 +74,9 @@ run_one protexmodifier modifiers/protexmodifier.c \
 
 run_one lazymodifier modifiers/lazymodifier.c \
         tests/baseline_lazymodifier.c modifiers "$lazy_syms"
+
+run_one xmenmodifier modifiers/xmenmodifier.c \
+        tests/baseline_xmenmodifier.c modifiers "$xmen_syms"
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"

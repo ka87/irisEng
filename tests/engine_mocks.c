@@ -580,3 +580,134 @@ void CAM_Inverse(tDDContainerStruct* ct)
 {
     MOCK_Record("CAM_Inverse", ct, 0);
 }
+
+/* --- xmenmodifier ------------------------------------------------ */
+
+tXmenCapture MOCK_xmenCaptures[MOCK_XMEN_CAPTURES];
+int MOCK_xmenCaptureCount;
+
+void GRO_Struct_Init(tGroGeneric* gro, int kind)
+{
+    MOCK_Record("GRO_Struct_Init", gro, 1, (double)kind);
+}
+
+struct sGroGeneric* GEO_ul_Load_ObjectCallback(uint32_t offset)
+{
+    MOCK_Record("GEO_ul_Load_ObjectCallback", 0, 1, (double)offset);
+    return 0;
+}
+
+void DBG_OutputDebugString(char* format, ...)
+{
+    MOCK_Record("DBG_OutputDebugString", 0, 0);
+}
+
+void SOFT_MatrixStack_Reset(tMatrixStackStruct* stack, Mtx4x4* mtx)
+{
+    MOCK_Record("SOFT_MatrixStack_Reset", mtx, 0);
+    stack->actMatrixElem = mtx;
+}
+
+int SOFT_l_MatrixStack_Push(tMatrixStackStruct* stack, Mtx4x4* mtx)
+{
+    MOCK_Record("SOFT_l_MatrixStack_Push", mtx, 0);
+    stack->actMatrixElem = mtx;
+    return 0;
+}
+
+void MATH_SetIdentityMatrix(Mtx4x4* mtx)
+{
+    memset(mtx, 0, sizeof(Mtx4x4));
+    mtx->v1.x = 1.0f;
+    mtx->v2.y = 1.0f;
+    mtx->v3.z = 1.0f;
+    mtx->w = 1.0f;
+}
+
+void MATH_TransformVector(Vec3* dest, Mtx4x4* mtx, Vec3* src)
+{
+    Vec3 v;
+
+    v.x = mtx->v1.x * src->x + mtx->v2.x * src->y + mtx->v3.x * src->z;
+    v.y = mtx->v1.y * src->x + mtx->v2.y * src->y + mtx->v3.y * src->z;
+    v.z = mtx->v1.z * src->x + mtx->v2.z * src->y + mtx->v3.z * src->z;
+    *dest = v;
+}
+
+void MATH_BlendVector(Vec3* dest, Vec3* v1, Vec3* v2, float amount)
+{
+    if (amount < 0.0f)
+        amount = 0.0f;
+    if (amount > 1.0f)
+        amount = 1.0f;
+    dest->x = (1.0f - amount) * v1->x + amount * v2->x;
+    dest->y = (1.0f - amount) * v1->y + amount * v2->y;
+    dest->z = (1.0f - amount) * v1->z + amount * v2->z;
+}
+
+void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags)
+{
+    MOCK_Record("LOA_MakeFileRef", retVal, 2, (double)key, (double)flags);
+}
+
+static void MOCK_l_XmenCapture(struct sGEOGRO* geogro, struct sGeoTriangleChunks* chunks,
+                               int transparent)
+{
+    tXmenCapture* cap;
+    int n;
+    int i;
+
+    MOCK_Record(transparent ? "GAO_XMN_Render_TransparentTriangles"
+                            : "MAT_DrawIndexedTriangle",
+                0, 2, (double)geogro->vertexNum,
+                (double)(chunks ? chunks->triangleNum : 0));
+
+    if (MOCK_xmenCaptureCount >= MOCK_XMEN_CAPTURES)
+        return;
+    cap = &MOCK_xmenCaptures[MOCK_xmenCaptureCount++];
+    memset(cap, 0, sizeof(*cap));
+    cap->transparent = transparent;
+    cap->vertexNum = geogro->vertexNum;
+    cap->uvNum = geogro->uvNum;
+    cap->triangleNum = chunks ? chunks->triangleNum : XMEN_ELEMENT[0].triangleNum;
+    cap->materialNum = XMEN_ELEMENT[0].materialNum;
+
+    memcpy(cap->tris, XMEN_OBJECT_TRIS, sizeof(cap->tris));
+    memcpy(cap->uvs, XMEN_UVs, sizeof(cap->uvs));
+    n = geogro->vertexNum;
+    if (n > 64)
+        n = 64;
+    for (i = 0; i < n; i++)
+        cap->verts[i] = geogro->vertices[i];
+}
+
+void MAT_DrawIndexedTriangle(struct sGEOGRO* geogro, struct sGEOMAT* geomat,
+                             struct sGeoTriangleChunks* chunks)
+{
+    MOCK_l_XmenCapture(geogro, chunks, 0);
+}
+
+void GAO_XMN_Render_TransparentTriangles(struct sGEOGRO* geogro, struct sGEOMAT* geomat)
+{
+    MOCK_l_XmenCapture(geogro, 0, 1);
+}
+
+BOOL MATH_b_NulVector(Vec3* v)
+{
+    if (fabs(v->x) != 0.0f || fabs(v->y) != 0.0f || fabs(v->z) != 0.0f) return FALSE;
+    return TRUE;
+}
+
+void MATH_NormalizeVectorWithNullVectorCheck(Vec3* dest, Vec3* src)
+{    
+    if (!MATH_b_NulVector(src))
+    {
+        MATH_NormalizeVector(dest, src);
+    }
+    else
+    {
+        dest->x = 0.0f;
+        dest->y = 0.0f;
+        dest->z = 0.0f;
+    }
+}

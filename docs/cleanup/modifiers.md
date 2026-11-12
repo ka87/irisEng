@@ -341,3 +341,149 @@ component near zero after a cancellation. Both are the `double`-versus-
 `float` intermediates described under snakemodifier: the decompiler
 shows x87's 80-bit registers as `double` locals, and the restored
 `MATH_*` calls compute in `float`.
+
+## xmenmodifier.c
+
+1,190 lines to 819, six `goto`s gone, 104 locals in `DRAW` down to 32,
+and the two public entry points that walk a skeleton share one scan.
+
+### `GetBonePosFromNum`'s goto maze
+
+Five of the six `goto`s were in this one function, and between them they
+expressed one thing: pick the matrix for a multipart element, falling
+back to the identity. There were four ways in and two labels shared by
+all of them. It is now
+`GAO_l_ModifierXMEN_BoneMatrix(gao, id, relative)`, which returns the
+matrix and writes into `relative` only on the one path that computes a
+matrix of its own. `LABEL_15` onward is the caller's tail, and the
+`switch` on the vector type stops falling through two cases into a
+label.
+
+The cross product at the end was written out with its operands the
+other way round — `a2.x = dz * vec.y - dy * vec.z` is
+`cross(vec, offset)`, not `cross(offset, vec)` — so the call it becomes
+is `MATH_CrossProduct(&tangent, mtxVecRetByType, &offset)`. Getting
+that backwards would have flipped every ribbon in the game and cost
+nothing the chunk figures or the call check could see.
+
+### `SMOOTH_BUFFER`
+
+Four inlined `MATH_BlendVector` bodies and a `while (1)` with the test
+at the bottom. The second loop's four copies are exactly what
+`..._BendVectors_sub_4235A0` does — including the clamp of the blend
+weight, which `MATH_BlendVector` performs itself — so the whole loop is
+one call per step.
+
+### `DRAW`
+
+575 lines in one function, and it is five passes that happen to share a
+frame:
+
+1. advance each entry's trail by one slot;
+2. if the frame was skipped, reset every slot to the first;
+3. for the ribbon type, smooth the slot pairs, build a per-slot
+   bitangent from the camera axis, and offset the pair by the size;
+4. set up the matrix stack;
+5. per entry, build the triangle strip, measure the trail, lay out the
+   UVs and draw.
+
+The rewrite keeps the five passes as they are and lifts the repetition
+out of each: `GAO_l_ModifierXMEN_Quad` (the two triangles of one strip
+quad, written out twice at twelve assignments each),
+`GAO_l_ModifierXMEN_TrailUVs` (one loop, written four times — twice for
+the wrap and twice for the `u`/`v` swap) and
+`GAO_l_ModifierXMEN_TrailLength` (twice). The three ways of placing a
+new trail slot differ only in which point the bone lookup is given and
+the two scale factors, so the branch now sets `nearScale` and
+`farScale` and the placement is two `MATH_AddScaleVector` calls.
+
+Two pieces of pointer arithmetic were doing something simple the hard
+way:
+
+- `&xmen->ptr1[idx + (num2 ? 0 : 1)].data[2 * (num2 - 1)]` is the
+  previous slot, wrapping to slot 7 by walking off the front of the
+  next entry. It is `&xmen->ptr1[idx].data[2 * ((num2 + 7) & 7)]`.
+- `(Vec3*)((char*)&xmen->ptr1[v139] + 24 * v66)` and its two
+  neighbours, `v67 - 8` / `v138a - 2` with a `+ 56` / `+ 16` correction
+  when `num2` is zero, are the current and previous slots again. Both
+  are now indexed by `num2` and `prevNum2`.
+
+### The half-stride window, left as it stands
+
+In the unsmoothed path the vertex array is set to
+`(char*)xmen->ptr1->data + 96 * entry`, while the smoothed path uses
+`+ 192 * entry`. An entry is 16 `Vec3`, which is 192 bytes, so the
+unsmoothed path advances by half an entry and every entry past the
+first draws a window straddling two of them. It stays inside the
+allocation, so nothing faults.
+
+Preserved, with a comment at the site, for the same reason as
+protexmodifier's stencil: the file as written is what the engine has
+been compiling, and which of the two strides the author meant is not
+answerable from this tree. Changing the `96` to `192` is a one-token
+edit and the test will show exactly what moves.
+
+### The skeleton scan
+
+`XMEN_OnOff` and `XMEN_SetSize` each ended with the same twenty-line
+walk: handle the object itself, then, if it has an actor with a
+skeleton group, every object in that group. The walk is a `while` whose
+counter starts as a null pointer and repositions itself on the first
+pass, which is why it reads as it does. It is now
+`XMEN_l_ScanBegin` / `XMEN_l_ScanNext`, which keep that behaviour
+exactly — including the one iteration an object with no skeleton gets.
+`XMEN_l_ScanNext` returns a flag and writes the object through a
+pointer, because a null element is a legitimate mid-scan value that the
+callers skip.
+
+The tag test `((uint8_t)v8 & 3) == 1` becomes
+`((uintptr_t)obj & 3) == 1`, which is the same low two bits without
+casting a pointer to a byte.
+
+### What the test covers
+
+`tests/test_xmenmodifier.c`, 73 cases, all equivalent:
+
+- `GetBonePosFromNum` for all eight vector types across all four link
+  shapes (no matrix index, an index with a plain child, an index with a
+  hierarchy child, no child at all), plus plain part matrices, an id
+  out of range, an id of -1, no multipart data, no basic, and a null
+  matrix pointer — which is every path through the goto maze;
+- `SMOOTH_BUFFER` at four pass widths and four blend weights including
+  out-of-range ones;
+- `DRAW` over eighteen scenes: both trail types, each flag alone and
+  all of them together, one to three entries, ten consecutive frames so
+  the slot ring wraps, a frame gap mid-run, a `dt` that expires the
+  trail every frame, a zero `dt`, plain part matrices, and no entries;
+- `Load` at each of the four stream versions, `Reinit` four ways, and
+  `OnOff`/`SetSize` for a matching id, every id, no match and a null
+  object.
+
+Each `DRAW` case compares the trail buffer, the ring counter and the
+timer, and the mock captures the full draw state — vertex and triangle
+counts, all 64 triangle indices, all 64 UVs and all 64 vertices — at
+every draw call, so a difference in any entry shows up and not just in
+the last one.
+
+**2,802 of the compared floats differ, the worst by 2.4e-7 absolute and
+2.7e-7 relative.** They come from the restored
+`MATH_DistanceOfTwoPoints`, which sums the squares in `double` and in
+`x, y, z` order where the inlined copy used `float` products summed
+`x, z, y`.
+
+### Two changes to the frozen baseline, for the test only
+
+`tests/baseline_xmenmodifier.c` is a verbatim copy of the file at HEAD
+except for two 32-bit assumptions, which the header of that file also
+records:
+
+- `v10[-2 * passNum]` in `SMOOTH_BUFFER`, where `passNum` is `unsigned`
+  — so `-2 * passNum` is a huge positive index under 64-bit pointer
+  arithmetic and the function faults. Cast to `int`.
+- `(Vec3*)((int)v138a - 24)` in `DRAW`, which truncates a 64-bit
+  pointer. Widened to `(intptr_t)`.
+
+The engine builds 32-bit, where both wrap to the intended offsets. The
+rewrite computes neither through an unsigned index nor through an `int`
+cast, so it needs no such fix — which is itself part of converting the
+file to standard C.
