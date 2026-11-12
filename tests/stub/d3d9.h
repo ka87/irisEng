@@ -14,6 +14,10 @@ typedef DWORD D3DPOOL;
 typedef DWORD D3DTEXTUREFILTERTYPE;
 typedef DWORD D3DBACKBUFFER_TYPE;
 typedef DWORD D3DCOLOR;
+typedef DWORD D3DRENDERSTATETYPE;
+typedef DWORD D3DTEXTURESTAGESTATETYPE;
+
+typedef struct _D3DRECT { LONG x1, y1, x2, y2; } D3DRECT;
 typedef DWORD D3DRESOURCETYPE;
 typedef DWORD D3DMULTISAMPLE_TYPE;
 typedef struct _D3DMATRIX { float m[4][4]; } D3DMATRIX;
@@ -38,6 +42,10 @@ typedef struct _D3DCAPS9 { DWORD DeviceType; DWORD pad[256]; } D3DCAPS9;
 #define D3DCLEAR_TARGET        1
 #define D3DLOCK_NOSYSLOCK      0x800
 #define D3DBACKBUFFER_TYPE_MONO 0
+#define D3DTSS_TEXCOORDINDEX 0
+#define D3DTSS_TEXTURETRANSFORMFLAGS 0
+#define D3DRS_ZENABLE 0
+#define D3DRS_ZWRITEENABLE 0
 #define D3DTEXF_NONE   0
 #define D3DTEXF_POINT  1
 #define D3DTEXF_LINEAR 2
@@ -46,9 +54,11 @@ typedef struct _D3DCAPS9 { DWORD DeviceType; DWORD pad[256]; } D3DCAPS9;
    Grown per directory as a pass needs more; see docs/cleanup/README.md. */
 typedef struct IDirect3DDevice9Vtbl  IDirect3DDevice9Vtbl;
 typedef struct IDirect3DSurface9Vtbl IDirect3DSurface9Vtbl;
+typedef struct IDirect3DTexture9Vtbl IDirect3DTexture9Vtbl;
 
 struct IDirect3DDevice9  { IDirect3DDevice9Vtbl*  lpVtbl; };
 struct IDirect3DSurface9 { IDirect3DSurface9Vtbl* lpVtbl; };
+struct IDirect3DTexture9 { IDirect3DTexture9Vtbl* lpVtbl; };
 
 struct IDirect3DDevice9Vtbl
 {
@@ -59,6 +69,23 @@ struct IDirect3DDevice9Vtbl
     HRESULT (*GetRenderTargetData)(IDirect3DDevice9*, IDirect3DSurface9*,
                                    IDirect3DSurface9*);
     HRESULT (*GetRenderTarget)(IDirect3DDevice9*, DWORD, IDirect3DSurface9**);
+    HRESULT (*GetBackBuffer)(IDirect3DDevice9*, UINT, UINT, D3DBACKBUFFER_TYPE,
+                             IDirect3DSurface9**);
+    HRESULT (*UpdateSurface)(IDirect3DDevice9*, IDirect3DSurface9*, const RECT*,
+                             IDirect3DSurface9*, const POINT*);
+    HRESULT (*Clear)(IDirect3DDevice9*, DWORD, const D3DRECT*, DWORD, D3DCOLOR,
+                     float, DWORD);
+    HRESULT (*CreateTexture)(IDirect3DDevice9*, UINT, UINT, UINT, DWORD, D3DFORMAT,
+                             D3DPOOL, IDirect3DTexture9**, HANDLE*);
+    HRESULT (*SetRenderState)(IDirect3DDevice9*, D3DRENDERSTATETYPE, DWORD);
+    HRESULT (*SetTextureStageState)(IDirect3DDevice9*, DWORD, D3DTEXTURESTAGESTATETYPE,
+                                    DWORD);
+};
+
+struct IDirect3DTexture9Vtbl
+{
+    ULONG   (*Release)(IDirect3DTexture9*);
+    HRESULT (*GetSurfaceLevel)(IDirect3DTexture9*, UINT, IDirect3DSurface9**);
 };
 
 struct IDirect3DSurface9Vtbl
