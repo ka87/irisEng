@@ -6,8 +6,9 @@ This file is the per-file record as the pass works through it.
 
 Twelve of the 46 were already source and need nothing. Of the rest,
 `grid.c` was done out of order in the previous batch, because
-`ai/ai_gridfunctions.c` was blocked on it; `math.c` and `dynamics.c`
-followed, and four more are in progress.
+`ai/ai_gridfunctions.c` was blocked on it. This batch adds `math.c`,
+`dynamics.c`, `ai_common.c` and the six small files, with four of the
+large ones in progress.
 
 | file | lines | residue | gotos | state |
 | --- | --- | --- | --- | --- |
@@ -48,23 +49,29 @@ followed, and four more are in progress.
 | `ways.c` | 392 | 225 | 1 | |
 | `sprites.c` | 341 | 211 | 0 | |
 | `tables.c` | 500 | 186 | 2 | |
-| `ai_common.c` | 1,838 | 139 | 0 | partly |
+| `ai_common.c` | 1,838 | 139 to 0 | 0 | done (belongs to `ai/`) |
 | `bigfiles.c` | 916 | 124 | 9 | |
-| `engine.c` | 925 | 81 | 0 | |
-| `memory.c` | 664 | 78 | 2 | |
-| `loading.c` | 616 | 22 | 1 | |
-| `main.c` | 154 | 22 | 0 | |
-| `basic_array.c` | 242 | 17 | 0 | |
-| `gdi.c` | 896 | 16 | 3 | |
-| `soft.c` | 568 | 3 | 0 | |
+| `engine.c` | 925 | 81 to 0 | 0 | done |
+| `memory.c` | 664 | 78 to 0 | 2 | done |
+| `loading.c` | 615 | 22 to 0 | 1 to 0 | done |
+| `main.c` | 154 | 22 | 0 | out of scope |
+| `basic_array.c` | 242 | 17 to 0 | 0 | done |
+| `gdi.c` | 896 | 16 to 0 | 3 | done |
+| `soft.c` | 568 | 3 to 0 | 0 | done |
 
-**`ai_common.c` is the one marked partly**, and it belongs to the `ai/`
-pass rather than this one even though it sits in the root: the AI stack
-and the type table live there, and the `ai/` batches added
-`AI_PopStackSlot` and `AI_GetObjectFromStack` to it. Its own 139 residue
-lines are the stack primitives themselves — `AI_PutIntToStack(int a1)`
-and its siblings — which every file in `ai/` calls and none of them
-defines.
+**`ai_common.c` belongs to the `ai/` pass** rather than this one even
+though it sits in the root: the AI stack, the type table and the AI2C
+entry points live there, and the earlier `ai/` batches added
+`AI_PopStackSlot` and `AI_GetObjectFromStack` to it without touching the
+rest. Its own 139 residue lines were the stack primitives themselves —
+`AI_PutIntToStack(int a1)` and its siblings — which every file in `ai/`
+calls and none of them defines. Done now, and `ai.h` with it.
+
+**`main.c` is out of scope**, and it is the directory's one exception:
+everything below `WinMain` is the user's own hand-written allocator test
+harness, and its `v2`, `v5a` and `v6` are deliberately arbitrary names
+that the `printf` strings beside them name out loud. The same decision as
+`ai/ai_compiledscripts.c`.
 
 **`collision.c`** is the one left that is worth doing early for a
 reason beyond its own size, and it is the same reason `grid.c` and
@@ -228,6 +235,63 @@ lacked it and the transcription is faithful.
 
 Left as written, with a line at each site, because restoring the scale
 changes how everything with friction moves.
+
+
+---
+
+## The six small files
+
+`soft.c`, `gdi.c`, `basic_array.c`, `memory.c`, `engine.c` and
+`loading.c`: 239 residue lines between them, all at zero, with 41
+header prototypes synced from their definitions. Mostly mechanical, with
+three things worth keeping.
+
+### gdi.c's rotation matrix, which read as nonsense
+
+`MAT_ComputeRotationMatrix` has five float locals of which **two load the
+same field**, and both its trig locals are called `sin`:
+
+```c
+f1 = a2->f1;
+f2 = a2->f1;   /* again */
+f3 = a2->f3;
+f4 = a2->f2;
+f5 = a2->f4;
+```
+
+It is a 2x2 rotation applied to two pairs of the decompressed matrix,
+`(f1, f3)` and `(f2, f4)`. The second table lookup advances the index by
+four of sixteen, which is a quarter turn, so `sin2` is the **cosine**.
+Written that way it is four locals and the duplicate read folds away.
+
+### Two gotos go and three stay
+
+`loading.c`'s `LABEL_31` existed only to skip one store, so the store
+moves above the branch chain that reaches it. The flag it sets is read
+in exactly one place, in another function, so nothing observes the
+earlier write -- which is what makes the move safe rather than merely
+equivalent-looking.
+
+`gdi.c` keeps its three. They jump backwards to a label the author
+called `RESTART`, from three different nesting depths, and they are a
+real loop restart. `memory.c` keeps its two, a shared error tail. Both
+are the case the pass's step 5 allows, and neither is a `LABEL_n`.
+
+### loading.c cannot be parse-checked, so it is checked another way
+
+`loading.c` is one of the five files that still fail, on the `fpos_t`
+arithmetic README records as an open question rather than a stub gap. Its
+compiler error output is **byte-identical before and after**, which is
+the check that stands in for a parse -- the same technique the `ai/`
+pass used for `ai_soundfunctions.c` before that gap was closed.
+
+### What is left behind on purpose
+
+`gdi.h` keeps eleven residue lines, and they are not reachable from
+here: they are the display interface's function-pointer table, whose
+parameter names live in the implementations in `win/wingdi.c`. Naming
+them from the field names would be invention, so they wait for the
+`win/` pass.
 
 
 ---
