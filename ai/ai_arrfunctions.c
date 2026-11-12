@@ -1,207 +1,224 @@
 #include "ai_arrfunctions.h"
 #include "ai_gameobjectfunctions.h"
 
-int AI_EvalFunc_ARRObjNearestOfPoint_C(struct sGameObjectMain** a1, int arg4, Vec3* a2)
-{
-    float v4;
-    Vec3 dest;
-    float v6;
-    int v7;
-    Vec3* a3;
-    tGameObjectMain* v9;
-    int v10;
+// A bit array is a run of 32-bit words: the index picks the word and
+// its low five bits pick the bit. The original masked the index before
+// shifting it -- (bit & 0xFFFFFFE0) >> 5 -- which clears exactly the
+// bits the shift discards, so the mask does nothing.
+#define AI_BIT_WORD(bit) ((bit) >> 5)
+#define AI_BIT_MASK(bit) (1 << ((bit) & 0x1F))
 
-    v7 = 0;
-    v10 = arg4 - 1;
-    v6 = FLT_MAX;
-    while (v10 >= 0)
+// An array slot holds either nothing or -1 for an object that is gone.
+static BOOL AI_l_ArrayObjectAlive(tGameObjectMain* gao)
+{
+    return gao && gao != (tGameObjectMain*)-1;
+}
+
+// The index of the array's object nearest to a point, or 0 when the
+// array holds none.
+int AI_EvalFunc_ARRObjNearestOfPoint_C(struct sGameObjectMain** objs, int num, Vec3* pos)
+{
+    tGameObjectMain* gao;
+    Vec3 toObj;
+    float distance;
+    float nearest;
+    int nearestIdx;
+    int i;
+
+    nearestIdx = 0;
+    nearest = FLT_MAX;
+    for (i = num - 1; i >= 0; --i)
     {
-        v9 = a1[v10];
-        if (v9 && v9 != (tGameObjectMain*)-1)
+        gao = objs[i];
+        if (!AI_l_ArrayObjectAlive(gao))
+            continue;
+
+        MATH_SubstractVec(&toObj, pos, &gao->matrices->Pos);
+        distance = MATH_VecLen(&toObj);
+        if (distance < nearest)
         {
-            a3 = &v9->matrices->Pos;
-            MATH_SubstractVec(&dest, a2, a3);
-            v4 = MATH_VecLen(&dest);
-            if (v4 < (double)v6)
-            {
-                v6 = v4;
-                v7 = v10;
-            }
+            nearest = distance;
+            nearestIdx = i;
         }
-        --v10;
     }
-    return v7;
+    return nearestIdx;
 }
 
 tAINode* AI_EvalFunc_ARRObjNearestOfPoint(tAINode* node)
 {
-    int v1;
-    int arg4;
-    char dest[52];
-    tVarStackElem a2;
-    Vec3* v6;
+    char converted[52];
+    tVarStackElem var;
+    Vec3* pos;
+    int num;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v6 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    arg4 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_ARRObjNearestOfPoint_C((tGameObjectMain**)a2.ptr, arg4, v6);
-    AI_PutIntToStack(v1);
+    // the position is read where the stack keeps it rather than copied out
+    pos = (Vec3*)AI_PopStackSlot();
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_ARRObjNearestOfPoint_C((tGameObjectMain**)var.ptr, num, pos));
     return node + 1;
 }
 
-void* AI_EvalFunc_ARRObjCopy_C(void* a1, void* Src, int a3)
+void* AI_EvalFunc_ARRObjCopy_C(void* dst, void* src, int num)
 {
-    return memcpy(a1, Src, 4 * a3);
+    return memcpy(dst, src, 4 * num);
 }
 
 tAINode* AI_EvalFunc_ARRObjCopy(tAINode* node)
 {
-    tVarStackElem v2;
-    int v3;
-    char v4[52];
-    tVarStackElem a2;
-    char dest[52];
+    char srcConverted[52];
+    char dstConverted[52];
+    tVarStackElem srcVar;
+    tVarStackElem dstVar;
+    int num;
 
-    v3 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v4, &v2);
-    AI_EvalFunc_ARRObjCopy_C(v2.ptr, a2.ptr, v3);
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(srcConverted, &srcVar);
+    AI_GetVarFromStack(dstConverted, &dstVar);
+    AI_EvalFunc_ARRObjCopy_C(dstVar.ptr, srcVar.ptr, num);
     return node + 1;
 }
 
+// Keeps the objects whose flags match and closes the gaps. Note that
+// both of these filter the SOURCE array in place: the destination the
+// script passes is popped and never written.
 tAINode* AI_EvalFunc_ARRObjCopyIdFlags(tAINode* node)
 {
-    tVarStackElem v2;
-    int v3;
-    int v4;
-    int v5;
-    char v6[52];
+    char srcConverted[52];
+    char dstConverted[52];
+    tVarStackElem srcVar;
+    tVarStackElem dstVar;
+    tGameObjectMain* gao;
+    int flagMustHave;
+    int flagMustNothave;
+    int num;
+    int kept;
     int i;
-    tVarStackElem a2;
-    int v9;
-    char dest[52];
-    tGameObjectMain* v11;
 
-    v3 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v6, &v2);
-    v9 = 0;
-    for (i = 0; i < v4; ++i)
+    flagMustHave = AI_GetIntFromStack();
+    flagMustNothave = AI_GetIntFromStack();
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(srcConverted, &srcVar);
+    AI_GetVarFromStack(dstConverted, &dstVar);
+
+    kept = 0;
+    for (i = 0; i < num; ++i)
     {
-        v11 = *(tGameObjectMain**)&a2.ptr[4 * i];
-        if (v11 && (v3 & v11->flags) != 0 && (v5 & v11->flags) == 0)
-            *(tGameObjectMain**)&a2.ptr[4 * v9++] = v11;
+        gao = *(tGameObjectMain**)&srcVar.ptr[4 * i];
+        if (gao && (flagMustHave & gao->flags) != 0 && (flagMustNothave & gao->flags) == 0)
+            *(tGameObjectMain**)&srcVar.ptr[4 * kept++] = gao;
     }
-    AI_PutIntToStack(v9);
+    AI_PutIntToStack(kept);
     return node + 1;
 }
 
+// The same over the second flag word's upper byte, which is where the
+// callback bits live.
 tAINode* AI_EvalFunc_ARRObjCopyCB(tAINode* node)
 {
-    tVarStackElem v2;
-    int v3;
-    int v4;
-    int v5;
-    char v6[52];
+    char srcConverted[52];
+    char dstConverted[52];
+    tVarStackElem srcVar;
+    tVarStackElem dstVar;
+    tGameObjectMain* gao;
+    int flagMustHave;
+    int flagMustNothave;
+    int num;
+    int kept;
     int i;
-    tVarStackElem a2;
-    int v9;
-    char dest[52];
-    tGameObjectMain* v11;
 
-    v3 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v6, &v2);
-    v9 = 0;
-    for (i = 0; i < v4; ++i)
+    flagMustHave = AI_GetIntFromStack();
+    flagMustNothave = AI_GetIntFromStack();
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(srcConverted, &srcVar);
+    AI_GetVarFromStack(dstConverted, &dstVar);
+
+    kept = 0;
+    for (i = 0; i < num; ++i)
     {
-        v11 = *(tGameObjectMain**)&a2.ptr[4 * i];
-        if (v11 && (v3 & 0xFF00 & v11->flags2 & 0xFF00) != 0 && (v5 & 0xFF00 & v11->flags2 & 0xFF00) == 0)
-            *(tGameObjectMain**)&a2.ptr[4 * v9++] = v11;
+        gao = *(tGameObjectMain**)&srcVar.ptr[4 * i];
+        if (gao
+            && (flagMustHave & gao->flags2 & 0xFF00) != 0
+            && (flagMustNothave & gao->flags2 & 0xFF00) == 0)
+        {
+            *(tGameObjectMain**)&srcVar.ptr[4 * kept++] = gao;
+        }
     }
-    AI_PutIntToStack(v9);
+    AI_PutIntToStack(kept);
     return node + 1;
 }
 
-int AI_EvalFunc_ARRObjBestSight_C(struct sGameObjectMain** a1, int a2, Vec3* a3, Vec3* a4, float a5)
+// The index of the object most nearly in the given direction from the
+// given point. A non-zero falloff trades angle against distance.
+int AI_EvalFunc_ARRObjBestSight_C(struct sGameObjectMain** objs, int num, Vec3* from, Vec3* direction, float falloff)
 {
-    BOOL v6;
-    float v7;
-    float v8 = 0.0f;
-    float v9;
-    Vec3 dest;
-    int v11;
-    Vec3 a1a;
-    tGameObjectMain* v13;
-    int v14;
+    tGameObjectMain* gao;
+    Vec3 sight;
+    Vec3 toObj;
+    float distance;
+    float score;
+    float bestScore;
+    int bestIdx;
+    int i;
 
-    MATH_NormalizeVector(&a1a, a4);
-    v14 = a2 - 1;
-    v11 = v14;
-    v9 = -FLT_MAX;
-    while (v14 >= 0)
+    distance = 0.0f;
+    MATH_NormalizeVector(&sight, direction);
+    bestIdx = num - 1;
+    bestScore = -FLT_MAX;
+    for (i = num - 1; i >= 0; --i)
     {
-        v13 = a1[v14];
-        if (v13 && v13 != (tGameObjectMain*)-1)
+        gao = objs[i];
+        if (!AI_l_ArrayObjectAlive(gao))
+            continue;
+
+        MATH_SubstractVec(&toObj, &gao->matrices->Pos, from);
+
+        // an object at the point itself has no direction to score
+        if (fabs(toObj.x) == 0.0 && fabs(toObj.y) == 0.0 && fabs(toObj.z) == 0.0)
+            continue;
+
+        if (falloff != 0.0)
+            distance = MATH_VecLen(&toObj);
+        MATH_NormalizeVector(&toObj, &toObj);
+        score = MATH_DotProduct(&sight, &toObj);
+        if (falloff != 0.0)
+            score = score - distance / falloff;
+
+        if (score > bestScore)
         {
-            MATH_SubstractVec(&dest, &v13->matrices->Pos, a3);
-            if (fabs(dest.x) != 0.0)
-                v6 = 0;
-            else
-                v6 = fabs(dest.y) == 0.0 && fabs(dest.z) == 0.0;
-            if (!v6)
-            {
-                if (a5 != 0.0)
-                    v8 = MATH_VecLen(&dest);
-                MATH_NormalizeVector(&dest, &dest);
-                v7 = a1a.z * dest.z + a1a.y * dest.y + dest.x * a1a.x;
-                if (a5 != 0.0)
-                    v7 = v7 - v8 / a5;
-                if (v7 > (double)v9)
-                {
-                    v9 = v7;
-                    v11 = v14;
-                }
-            }
+            bestScore = score;
+            bestIdx = i;
         }
-        --v14;
     }
-    return v11;
+    return bestIdx;
 }
 
-tAINode* AI_EvalFunc_ARRObjBestSight(tAINode* arg0)
+tAINode* AI_EvalFunc_ARRObjBestSight(tAINode* node)
 {
-    int v1;
-    char dest[52];
-    Vec3 a3;
-    int v5;
-    float a5;
-    tVarStackElem a2;
-    Vec3 a1;
+    char converted[52];
+    tVarStackElem var;
+    Vec3 from;
+    Vec3 direction;
+    float falloff;
+    int num;
 
-    a5 = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&a1);
-    AI_GetVecFromStack(&a3);
-    v5 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_ARRObjBestSight_C((tGameObjectMain**)a2.ptr, v5, &a3, &a1, a5);
-    AI_PutIntToStack(v1);
-    return arg0 + 1;
+    falloff = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&direction);
+    AI_GetVecFromStack(&from);
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSight_C((tGameObjectMain**)var.ptr, num,
+                                                   &from, &direction, falloff));
+    return node + 1;
 }
 
-int AI_EvalFunc_ARRObjSearch_C(struct sGameObjectMain** a1, int a2, struct sGameObjectMain* a3)
+int AI_EvalFunc_ARRObjSearch_C(struct sGameObjectMain** objs, int num, struct sGameObjectMain* gao)
 {
     int i;
 
-    for (i = 0; i < a2; ++i)
+    for (i = 0; i < num; ++i)
     {
-        if (a1[i] == a3)
+        if (objs[i] == gao)
             return i;
     }
     return -1;
@@ -209,547 +226,549 @@ int AI_EvalFunc_ARRObjSearch_C(struct sGameObjectMain** a1, int a2, struct sGame
 
 tAINode* AI_EvalFunc_ARRObjSearch(tAINode* node)
 {
-    int v1;
-    int v3;
-    tVarStackElem a2;
-    char dest[52];
-    tGameObjectMain* v6;
+    char converted[52];
+    tVarStackElem var;
+    tGameObjectMain* gao;
+    int num;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v6 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    v3 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_ARRObjSearch_C((tGameObjectMain**)a2.ptr, v3, v6);
-    AI_PutIntToStack(v1);
+    gao = (tGameObjectMain*)AI_GetObjectFromStack();
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_ARRObjSearch_C((tGameObjectMain**)var.ptr, num, gao));
     return node + 1;
 }
 
-void AI_EvalFunc_ARRBitSet_C(int* a1, int a2)
+void AI_EvalFunc_ARRBitSet_C(int* bits, int bit)
 {
-    a1[(int)(a2 & 0xFFFFFFE0) >> 5] |= 1 << (a2 & 0x1F);
+    bits[AI_BIT_WORD(bit)] |= AI_BIT_MASK(bit);
 }
 
 tAINode* AI_EvalFunc_ARRBitSet(tAINode* node)
 {
-    int v2;
-    tVarStackElem a2;
-    char dest[52];
+    char converted[52];
+    tVarStackElem var;
+    int bit;
 
-    v2 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalFunc_ARRBitSet_C((int*)a2.ptr, v2);
+    bit = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_EvalFunc_ARRBitSet_C((int*)var.ptr, bit);
     return node + 1;
 }
 
-void AI_EvalFunc_ARRBitClear_C(int* a1, int a2)
+void AI_EvalFunc_ARRBitClear_C(int* bits, int bit)
 {
-    a1[(int)(a2 & 0xFFFFFFE0) >> 5] &= ~(1 << (a2 & 0x1F));
+    bits[AI_BIT_WORD(bit)] &= ~AI_BIT_MASK(bit);
 }
 
 tAINode* AI_EvalFunc_ARRBitClear(tAINode* node)
 {
-    int v2;
-    tVarStackElem a2;
-    char dest[52];
+    char converted[52];
+    tVarStackElem var;
+    int bit;
 
-    v2 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalFunc_ARRBitClear_C((int*)a2.ptr, v2);
+    bit = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_EvalFunc_ARRBitClear_C((int*)var.ptr, bit);
     return node + 1;
 }
 
+// Sets every bit from first to last inclusive. Within one word that is
+// one mask; across words the two end words are partial and the ones
+// between them are filled.
 tAINode* AI_EvalFunc_ARRBitSetRange(tAINode* node)
 {
-    int v2;
-    int v3;
-    tVarStackElem a2;
-    int* v5;
-    char dest[52];
-    int* v7;
+    char converted[52];
+    tVarStackElem var;
+    int* firstWord;
+    int* lastWord;
+    int first;
+    int last;
 
-    v3 = AI_GetIntFromStack();
-    v2 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v5 = (int*)&a2.ptr[4 * ((int)(v2 & 0xFFFFFFE0) >> 5)];
-    v7 = (int*)&a2.ptr[4 * ((int)(v3 & 0xFFFFFFE0) >> 5)];
-    if (v5 == v7)
+    last = AI_GetIntFromStack();
+    first = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+
+    firstWord = (int*)&var.ptr[4 * AI_BIT_WORD(first)];
+    lastWord = (int*)&var.ptr[4 * AI_BIT_WORD(last)];
+
+    if (firstWord == lastWord)
     {
-        *v5 |= (2 << (v3 & 0x1F)) - (1 << (v2 & 0x1F));
+        *firstWord |= (2 << (last & 0x1F)) - AI_BIT_MASK(first);
     }
     else
     {
-        *v5++ |= -(1 << (v2 & 0x1F));
-        *v7 |= (2 << (v3 & 0x1F)) - 1;
-        while (v5 != v7)
-            *v5++ = -1;
+        *firstWord++ |= -AI_BIT_MASK(first);
+        *lastWord |= (2 << (last & 0x1F)) - 1;
+        while (firstWord != lastWord)
+            *firstWord++ = -1;
     }
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_ARRBitClearRange(tAINode* node)
 {
-    int v2;
-    int v3;
-    tVarStackElem a2;
-    int* v5;
-    char dest[52];
-    int* v7;
+    char converted[52];
+    tVarStackElem var;
+    int* firstWord;
+    int* lastWord;
+    int first;
+    int last;
 
-    v3 = AI_GetIntFromStack();
-    v2 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v5 = (int*)&a2.ptr[4 * ((int)(v2 & 0xFFFFFFE0) >> 5)];
-    v7 = (int*)&a2.ptr[4 * ((int)(v3 & 0xFFFFFFE0) >> 5)];
-    if (v5 == v7)
+    last = AI_GetIntFromStack();
+    first = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+
+    firstWord = (int*)&var.ptr[4 * AI_BIT_WORD(first)];
+    lastWord = (int*)&var.ptr[4 * AI_BIT_WORD(last)];
+
+    if (firstWord == lastWord)
     {
-        *v5 &= ~((2 << (v3 & 0x1F)) - (1 << (v2 & 0x1F)));
+        *firstWord &= ~((2 << (last & 0x1F)) - AI_BIT_MASK(first));
     }
     else
     {
-        *v5++ &= (1 << (v2 & 0x1F)) - 1;
-        *v7 &= ~((2 << (v3 & 0x1F)) - 1);
-        while (v5 != v7)
-            *v5++ = 0;
+        *firstWord++ &= AI_BIT_MASK(first) - 1;
+        *lastWord &= ~((2 << (last & 0x1F)) - 1);
+        while (firstWord != lastWord)
+            *firstWord++ = 0;
     }
     return node + 1;
 }
 
-BOOL AI_EvalFunc_ARRBitTest_C(int* a1, int a2)
+BOOL AI_EvalFunc_ARRBitTest_C(int* bits, int bit)
 {
-    return ((1 << (a2 & 0x1F)) & a1[(int)(a2 & 0xFFFFFFE0) >> 5]) != 0;
+    return (AI_BIT_MASK(bit) & bits[AI_BIT_WORD(bit)]) != 0;
 }
 
 tAINode* AI_EvalFunc_ARRBitTest(tAINode* node)
 {
-    int v1;
-    tVarStackElem a2;
-    char dest[52];
-    int v5;
+    char converted[52];
+    tVarStackElem var;
+    int bit;
 
-    v5 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_ARRBitTest_C((int*)a2.ptr, v5);
-    AI_PutIntToStack(v1);
+    bit = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_ARRBitTest_C((int*)var.ptr, bit));
     return node + 1;
 }
 
-void AI_EvalFunc_ARRBitChange_C(int* a1, int a2)
+void AI_EvalFunc_ARRBitChange_C(int* bits, int bit)
 {
-    int* v2;
+    int* word;
 
-    v2 = &a1[(int)(a2 & 0xFFFFFFE0) >> 5];
-    if (((1 << (a2 & 0x1F)) & *v2) != 0)
-        *v2 &= ~(1 << (a2 & 0x1F));
+    word = &bits[AI_BIT_WORD(bit)];
+    if ((AI_BIT_MASK(bit) & *word) != 0)
+        *word &= ~AI_BIT_MASK(bit);
     else
-        *v2 |= 1 << (a2 & 0x1F);
+        *word |= AI_BIT_MASK(bit);
 }
 
 tAINode* AI_EvalFunc_ARRBitChange(tAINode* node)
 {
-    int v2; 
-    tVarStackElem a2;
-    char dest[52];
+    char converted[52];
+    tVarStackElem var;
+    int bit;
 
-    v2 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalFunc_ARRBitChange_C((int*)a2.ptr, v2);
+    bit = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_EvalFunc_ARRBitChange_C((int*)var.ptr, bit);
     return node + 1;
 }
 
-BOOL AI_EvalFunc_ARRBitAnd_C(int* a1, int* a2, int* a3, int a4, int a5)
+// Whether every bit the script lists is in the state it asks for, and
+// at least one was listed. A listed index equal to skip is ignored.
+BOOL AI_EvalFunc_ARRBitAnd_C(int* bits, int* bitIdx, int* expected, int num, int skip)
 {
+    int tested;
     int i;
-    int v7;
 
-    v7 = 0;
-    for (i = 0; i < a4; ++i)
+    tested = 0;
+    for (i = 0; i < num; ++i)
     {
-        if (a2[i] != a5)
+        if (bitIdx[i] == skip)
+            continue;
+
+        tested = 1;
+        if ((AI_BIT_MASK(bitIdx[i]) & bits[AI_BIT_WORD(bitIdx[i])]) != 0)
         {
-            v7 = 1;
-            if (((1 << (a2[i] & 0x1F)) & a1[(int)(a2[i] & 0xFFFFFFE0) >> 5]) != 0)
-            {
-                if (!a3[i])
-                    return 0;
-            }
-            else if (a3[i])
-            {
-                return 0;
-            }
+            if (!expected[i])
+                return FALSE;
+        }
+        else if (expected[i])
+        {
+            return FALSE;
         }
     }
-    return v7 != 0;
+    return tested != 0;
 }
 
 tAINode* AI_EvalFunc_ARRBitAnd(tAINode* node)
 {
-    int v1;
-    char dest[52];
-    int a4; 
-    tVarStackElem a2;
-    tVarStackElem v6;
-    char v7[52];
-    int a5;
-    tVarStackElem v9;
-    char v10[52]; 
+    char bitsConverted[52];
+    char idxConverted[52];
+    char expectedConverted[52];
+    tVarStackElem bitsVar;
+    tVarStackElem idxVar;
+    tVarStackElem expectedVar;
+    int num;
+    int skip;
 
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v10, &v9);
-    AI_GetVarFromStack(v7, &v6);
-    v1 = AI_EvalFunc_ARRBitAnd_C((int*)v6.ptr, (int*)v9.ptr, (int*)a2.ptr, a4, a5);
-    AI_PutIntToStack(v1);
+    skip = AI_GetIntFromStack();
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(expectedConverted, &expectedVar);
+    AI_GetVarFromStack(idxConverted, &idxVar);
+    AI_GetVarFromStack(bitsConverted, &bitsVar);
+    AI_PutIntToStack(AI_EvalFunc_ARRBitAnd_C((int*)bitsVar.ptr, (int*)idxVar.ptr,
+                                             (int*)expectedVar.ptr, num, skip));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_ARRBitOr_C(int* a1, int* a2, int* a3, int a4, int a5)
+// Whether any bit the script lists is in the state it asks for.
+BOOL AI_EvalFunc_ARRBitOr_C(int* bits, int* bitIdx, int* expected, int num, int skip)
 {
     int i;
 
-    for (i = 0; i < a4; ++i)
+    for (i = 0; i < num; ++i)
     {
-        if (a2[i] != a5)
+        if (bitIdx[i] == skip)
+            continue;
+
+        if ((AI_BIT_MASK(bitIdx[i]) & bits[AI_BIT_WORD(bitIdx[i])]) != 0)
         {
-            if (((1 << (a2[i] & 0x1F)) & a1[(int)(a2[i] & 0xFFFFFFE0) >> 5]) != 0)
-            {
-                if (a3[i])
-                    return 1;
-            }
-            else if (!a3[i])
-            {
-                return 1;
-            }
+            if (expected[i])
+                return TRUE;
+        }
+        else if (!expected[i])
+        {
+            return TRUE;
         }
     }
-    return 0;
+    return FALSE;
 }
 
 tAINode* AI_EvalFunc_ARRBitOr(tAINode* node)
 {
-    int v1;
-    char dest[52];
-    int a4;
-    tVarStackElem a2;
-    tVarStackElem v6;
-    char v7[52]; 
-    int a5; 
-    tVarStackElem v9;
-    char v10[52]; 
+    char bitsConverted[52];
+    char idxConverted[52];
+    char expectedConverted[52];
+    tVarStackElem bitsVar;
+    tVarStackElem idxVar;
+    tVarStackElem expectedVar;
+    int num;
+    int skip;
 
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v10, &v9);
-    AI_GetVarFromStack(v7, &v6);
-    v1 = AI_EvalFunc_ARRBitOr_C((int*)v6.ptr, (int*)v9.ptr, (int*)a2.ptr, a4, a5);
-    AI_PutIntToStack(v1);
+    skip = AI_GetIntFromStack();
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(expectedConverted, &expectedVar);
+    AI_GetVarFromStack(idxConverted, &idxVar);
+    AI_GetVarFromStack(bitsConverted, &bitsVar);
+    AI_PutIntToStack(AI_EvalFunc_ARRBitOr_C((int*)bitsVar.ptr, (int*)idxVar.ptr,
+                                            (int*)expectedVar.ptr, num, skip));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_ARRBit4Test_C(int* a1, int a2, int a3, int a4, int a5)
+// Tests up to four bits in one call. A zero slot is unused, and an
+// index above 10000 asks for the bit to be CLEAR, the bit being the
+// index less 10000. An index of exactly 10000 passes either way, since
+// neither arm's comparison is true for it.
+BOOL AI_EvalFunc_ARRBit4Test_C(int* bits, int bit1, int bit2, int bit3, int bit4)
 {
-    int v6;
-    int v7[4];
-    int v8;
-    int i; 
+    int asked[4];
+    int bit;
+    int isSet;
+    int i;
 
-    v7[0] = a2;
-    v7[1] = a3;
-    v7[2] = a4;
-    v7[3] = a5;
+    asked[0] = bit1;
+    asked[1] = bit2;
+    asked[2] = bit3;
+    asked[3] = bit4;
+
     for (i = 0; i < 4; ++i)
     {
-        if (v7[i])
-        {
-            v6 = v7[i];
-            if (v6 > 10000)
-                v6 -= 10000;
-            v8 = (1 << (v6 & 0x1F)) & a1[(int)(v6 & 0xFFFFFFE0) >> 5];
-            if (v8)
-            {
-                if (v7[i] > 10000)
-                    return 0;
-            }
-            if (!v8 && v7[i] < 10000)
-                return 0;
-        }
+        if (!asked[i])
+            continue;
+
+        bit = asked[i];
+        if (bit > 10000)
+            bit -= 10000;
+
+        isSet = AI_BIT_MASK(bit) & bits[AI_BIT_WORD(bit)];
+        if (isSet && asked[i] > 10000)
+            return FALSE;
+        if (!isSet && asked[i] < 10000)
+            return FALSE;
     }
-    return 1;
+    return TRUE;
 }
 
 tAINode* AI_EvalFunc_ARRBit4Test(tAINode* node)
 {
-    int v1;
-    tVarStackElem a2;
-    char dest[52];
-    int v5;
-    int a3;
-    int a4;
-    int a5;
+    char converted[52];
+    tVarStackElem var;
+    int bit1;
+    int bit2;
+    int bit3;
+    int bit4;
 
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_ARRBit4Test_C((int*)a2.ptr, v5, a3, a4, a5);
-    AI_PutIntToStack(v1);
+    bit4 = AI_GetIntFromStack();
+    bit3 = AI_GetIntFromStack();
+    bit2 = AI_GetIntFromStack();
+    bit1 = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_ARRBit4Test_C((int*)var.ptr, bit1, bit2, bit3, bit4));
     return node + 1;
 }
 
-int AI_EvalFunc_ARRObjBestSightBVCenter_C(tGameObjectMain** a1, int a2, Vec3* a3, Vec3* a4, float a5)
+// ARRObjBestSight again, scored from each object's bounding-volume
+// centre rather than its pivot, and normalising the caller's direction
+// in place rather than into a local.
+int AI_EvalFunc_ARRObjBestSightBVCenter_C(tGameObjectMain** objs, int num, Vec3* from, Vec3* direction, float falloff)
 {
-    float v6;
-    float v7 = 0.0f;
-    float v8;
-    Vec3 dest;
-    Vec3 a2a;
-    int v11; 
-    tGameObjectMain* v12;
-    int v13;
+    tGameObjectMain* gao;
+    Vec3 center;
+    Vec3 toObj;
+    float distance;
+    float score;
+    float bestScore;
+    int bestIdx;
+    int i;
 
-    MATH_NormalizeVector(a4, a4);
-    v13 = a2 - 1;
-    v11 = v13;
-    v8 = -FLT_MAX;
-    while (v13 >= 0)
+    distance = 0.0f;
+    MATH_NormalizeVector(direction, direction);
+    bestIdx = num - 1;
+    bestScore = -FLT_MAX;
+    for (i = num - 1; i >= 0; --i)
     {
-        v12 = a1[v13];
-        if (v12 && v12 != (tGameObjectMain*)-1)
+        gao = objs[i];
+        if (!AI_l_ArrayObjectAlive(gao))
+            continue;
+
+        OBJ_BV_ComputeCenter(gao, &center);
+        MATH_SubstractVec(&toObj, &center, from);
+        if (falloff != 0.0)
+            distance = MATH_VecLen(&toObj);
+        MATH_NormalizeVector(&toObj, &toObj);
+        score = MATH_DotProduct(direction, &toObj);
+        if (falloff != 0.0)
+            score = score - distance / falloff;
+
+        if (score > bestScore)
         {
-            OBJ_BV_ComputeCenter(v12, &a2a);
-            MATH_SubstractVec(&dest, &a2a, a3);
-            if (a5 != 0.0)
-                v7 = MATH_VecLen(&dest);
-            MATH_NormalizeVector(&dest, &dest);
-            v6 = a4->z * dest.z + a4->y * dest.y + dest.x * a4->x;
-            if (a5 != 0.0)
-                v6 = v6 - v7 / a5;
-            if (v6 > (double)v8)
-            {
-                v8 = v6;
-                v11 = v13;
-            }
+            bestScore = score;
+            bestIdx = i;
         }
-        --v13;
     }
-    return v11;
+    return bestIdx;
 }
 
-tAINode* AI_EvalFunc_ARRObjBestSightBVCenter(tAINode* arg0)
+tAINode* AI_EvalFunc_ARRObjBestSightBVCenter(tAINode* node)
 {
-    int v1;
-    char dest[52];
-    Vec3 a3;
-    int v5;
-    float a5;
-    tVarStackElem a2;
-    Vec3 a1;
+    char converted[52];
+    tVarStackElem var;
+    Vec3 from;
+    Vec3 direction;
+    float falloff;
+    int num;
 
-    a5 = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&a1);
-    AI_GetVecFromStack(&a3);
-    v5 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_ARRObjBestSightBVCenter_C((tGameObjectMain**)a2.ptr, v5, &a3, &a1, a5);
-    AI_PutIntToStack(v1);
-    return arg0 + 1;
+    falloff = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&direction);
+    AI_GetVecFromStack(&from);
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSightBVCenter_C((tGameObjectMain**)var.ptr, num,
+                                                           &from, &direction, falloff));
+    return node + 1;
 }
 
-void AI_EvalFunc_ARRGlobalIntSet_C(int* a1)
+void AI_EvalFunc_ARRGlobalIntSet_C(int* bits)
 {
-    ARR_gpi_Global = a1;
+    ARR_gpi_Global = bits;
 }
 
 tAINode* AI_EvalFunc_ARRGlobalIntSet(tAINode* node)
 {
-    tVarStackElem a2;
-    char dest[52];
+    char converted[52];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    ARR_gpi_Global = (int*)a2.ptr;
+    AI_GetVarFromStack(converted, &var);
+    AI_EvalFunc_ARRGlobalIntSet_C((int*)var.ptr);
     return node + 1;
 }
 
-void AI_EvalFunc_ARRGlobalIntFlagSet_C(int a2)
+void AI_EvalFunc_ARRGlobalIntFlagSet_C(int bit)
 {
-    AI_EvalFunc_ARRBitSet_C(ARR_gpi_Global, a2);
+    AI_EvalFunc_ARRBitSet_C(ARR_gpi_Global, bit);
 }
 
 tAINode* AI_EvalFunc_ARRGlobalIntFlagSet(tAINode* node)
 {
-    int v2;
+    int bit;
 
-    v2 = AI_GetIntFromStack();
-    AI_EvalFunc_ARRGlobalIntFlagSet_C(v2);
+    bit = AI_GetIntFromStack();
+    AI_EvalFunc_ARRGlobalIntFlagSet_C(bit);
     return node + 1;
 }
 
-void AI_EvalFunc_ARRGlobalIntFlagClear_C(int a2)
+void AI_EvalFunc_ARRGlobalIntFlagClear_C(int bit)
 {
-    AI_EvalFunc_ARRBitClear_C(ARR_gpi_Global, a2);
+    AI_EvalFunc_ARRBitClear_C(ARR_gpi_Global, bit);
 }
 
 tAINode* AI_EvalFunc_ARRGlobalIntFlagClear(tAINode* node)
 {
-    int v2;
+    int bit;
 
-    v2 = AI_GetIntFromStack();
-    AI_EvalFunc_ARRGlobalIntFlagClear_C(v2);
+    bit = AI_GetIntFromStack();
+    AI_EvalFunc_ARRGlobalIntFlagClear_C(bit);
     return node + 1;
 }
 
-BOOL AI_EvalFunc_ARRGlobalIntFlagTest_C(int a1)
+BOOL AI_EvalFunc_ARRGlobalIntFlagTest_C(int bit)
 {
-    return AI_EvalFunc_ARRBitTest_C(ARR_gpi_Global, a1);
+    return AI_EvalFunc_ARRBitTest_C(ARR_gpi_Global, bit);
 }
 
 tAINode* AI_EvalFunc_ARRGlobalIntFlagTest(tAINode* node)
 {
-    int v1;
-    int v3;
+    int bit;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_ARRGlobalIntFlagTest_C(v3);
-    AI_PutIntToStack(v1);
+    bit = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_ARRGlobalIntFlagTest_C(bit));
     return node + 1;
 }
 
-int AI_EvalFunc_ARRSortByFlags_C(struct sGameObjectMain** a1, int a2, int flagMustHave, int flagMustNothave, int whatToTest)
+// Partitions the array so the objects that pass the flag test come
+// first, and returns how many did. A failing object changes places with
+// the last one still in range, so nothing is copied twice.
+//
+// A null slot advances neither the cursor nor the range, so an array
+// with a hole in it does not terminate. Preserved as written.
+int AI_EvalFunc_ARRSortByFlags_C(struct sGameObjectMain** objs, int num, int flagMustHave, int flagMustNothave, int whatToTest)
 {
-    tGameObjectMain* v6;
-    int v8;
+    tGameObjectMain* swap;
     tGameObjectMain* gao;
+    int i;
 
-    v8 = 0;
-    while (v8 < a2)
+    i = 0;
+    while (i < num)
     {
-        gao = a1[v8];
-        if (gao)
+        gao = objs[i];
+        if (!gao)
+            continue;
+
+        if (OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
         {
-            if (OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
-            {
-                ++v8;
-            }
-            else
-            {
-                --a2;
-                v6 = a1[v8];
-                a1[v8] = a1[a2];
-                a1[a2] = v6;
-            }
+            ++i;
+        }
+        else
+        {
+            --num;
+            swap = objs[i];
+            objs[i] = objs[num];
+            objs[num] = swap;
         }
     }
-    return a2;
+    return num;
 }
 
 tAINode* AI_EvalFunc_ARRSortByFlags(tAINode* node)
 {
-    int v1;
-    int v3;
+    char converted[52];
+    tVarStackElem var;
+    int num;
     int flagMustHave;
     int flagMustNothave;
-    tVarStackElem a2;
-    char dest[52];
     int whatToTest;
 
     whatToTest = AI_GetIntFromStack();
     flagMustNothave = AI_GetIntFromStack();
     flagMustHave = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_ARRSortByFlags_C((tGameObjectMain**)a2.ptr, v3, flagMustHave, flagMustNothave, whatToTest);
-    AI_PutIntToStack(v1);
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_ARRSortByFlags_C((tGameObjectMain**)var.ptr, num,
+                                                  flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
 
-int AI_EvalFunc_ARRObjBestSightInfoPhoto_C(struct sGameObjectMain** arg0, int arg4, Vec3* a3, Vec3* a1, float a5)
+// Two passes over the array. The first finds the object closest to the
+// sight direction; the second widens that angle by the tolerance and
+// returns the NEAREST object inside the widened cone, so a photo
+// subject in front wins over one merely better aligned.
+int AI_EvalFunc_ARRObjBestSightInfoPhoto_C(struct sGameObjectMain** objs, int num, Vec3* from, Vec3* direction, float toleranceDeg)
 {
-    double v5;
-    float v7;
-    float v8;
-    float v9;
-    float v10;
-    Vec3 a2; 
-    float v12;
-    Vec3 v13; 
-    int v14; 
-    float v15;
-    int v16; 
-    float v17;
-    tGameObjectMain* v18;
-    int v19;
+    tGameObjectMain* gao;
+    Vec3 pivot;
+    Vec3 toObj;
+    double widened;
+    float bestDot;
+    float coneDot;
+    float distance;
+    float nearest;
+    float dot;
+    int nearestIdx;
     int i;
 
-    v14 = arg4;
-    MATH_NormalizeVector(a1, a1);
-    v19 = arg4 - 1;
-    v16 = v19;
-    v12 = -FLT_MAX;
-    while (v19 >= 0)
+    MATH_NormalizeVector(direction, direction);
+    nearestIdx = num - 1;
+
+    bestDot = -FLT_MAX;
+    for (i = num - 1; i >= 0; --i)
     {
-        v18 = arg0[v19];
-        if (v18 && v18 != (tGameObjectMain*)-1)
-        {
-            AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(v18, &v13);
-            MATH_SubstractVec(&a2, &v13, a3);
-            MATH_NormalizeVector(&a2, &a2);
-            v17 = a1->z * a2.z + a1->y * a2.y + a2.x * a1->x;
-            if (v17 > (double)v12)
-                v12 = v17;
-        }
-        --v19;
+        gao = objs[i];
+        if (!AI_l_ArrayObjectAlive(gao))
+            continue;
+
+        AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(gao, &pivot);
+        MATH_SubstractVec(&toObj, &pivot, from);
+        MATH_NormalizeVector(&toObj, &toObj);
+        dot = MATH_DotProduct(direction, &toObj);
+        if (dot > bestDot)
+            bestDot = dot;
     }
-    v8 = (float)acos(v12);
-    v15 = v8;
-    if (a5 == 0.0)
-        v5 = v15 + 0.087266468;
+
+    // no tolerance given means five degrees
+    if (toleranceDeg == 0.0)
+        widened = (float)acos(bestDot) + 0.087266468; // 5 degrees in radians
     else
-        v5 = a5 * 3.1415927 / 180.0 + v15;
-    v15 = (float)v5;
-    v7 = (float)cos(v15);
-    v9 = FLT_MAX;
-    for (i = v14 - 1; i >= 0; --i)
+        widened = toleranceDeg * 3.1415927 / 180.0 + (float)acos(bestDot);
+    coneDot = (float)cos((float)widened);
+
+    nearest = FLT_MAX;
+    for (i = num - 1; i >= 0; --i)
     {
-        v18 = arg0[i];
-        if (v18)
+        gao = objs[i];
+        if (!AI_l_ArrayObjectAlive(gao))
+            continue;
+
+        AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(gao, &pivot);
+        MATH_SubstractVec(&toObj, &pivot, from);
+        distance = MATH_VecLen(&toObj);
+        MATH_NormalizeVector(&toObj, &toObj);
+        dot = MATH_DotProduct(direction, &toObj);
+        if (dot > coneDot && distance < nearest)
         {
-            if (v18 != (tGameObjectMain*)-1)
-            {
-                AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(v18, &v13);
-                MATH_SubstractVec(&a2, &v13, a3);
-                v10 = MATH_VecLen(&a2);
-                MATH_NormalizeVector(&a2, &a2);
-                v17 = a1->z * a2.z + a1->y * a2.y + a2.x * a1->x;
-                if (v17 > (double)v7 && v10 < (double)v9)
-                {
-                    v9 = v10;
-                    v16 = i;
-                }
-            }
+            nearest = distance;
+            nearestIdx = i;
         }
     }
-    return v16;
+    return nearestIdx;
 }
 
-tAINode* AI_EvalFunc_ARRObjBestSightInfoPhoto(tAINode* arg0)
+tAINode* AI_EvalFunc_ARRObjBestSightInfoPhoto(tAINode* node)
 {
-    int v1;
-    char dest[52];
-    Vec3 a3;
-    int arg4;
-    float a5;
-    tVarStackElem a2;
-    Vec3 a1; 
+    char converted[52];
+    tVarStackElem var;
+    Vec3 from;
+    Vec3 direction;
+    float toleranceDeg;
+    int num;
 
-    a5 = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&a1);
-    AI_GetVecFromStack(&a3);
-    arg4 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_ARRObjBestSightInfoPhoto_C((tGameObjectMain**)a2.ptr, arg4, &a3, &a1, a5);
-    AI_PutIntToStack(v1);
-    return arg0 + 1;
+    toleranceDeg = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&direction);
+    AI_GetVecFromStack(&from);
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSightInfoPhoto_C((tGameObjectMain**)var.ptr, num,
+                                                            &from, &direction, toleranceDeg));
+    return node + 1;
 }
