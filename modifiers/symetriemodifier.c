@@ -2,141 +2,102 @@
 #include "../loading.h"
 #include "symetriemodifier.h"
 
-void GEO_ModifierSymetrie_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3a)
+void GEO_ModifierSymetrie_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData)
 {
-    tSymMdfStruct* v3;
-    struct sSymMdfStruct* a3 = (struct sSymMdfStruct*)a3a;
+    tSymMdfStruct* sym;
+    struct sSymMdfStruct* src = (struct sSymMdfStruct*)initData;
 
-    v3 = (tSymMdfStruct*)MEM_p_Alloc(sizeof(tSymMdfStruct));
-    a2->mdfPrivateDataPtr = v3;
-    if (a3)
+    sym = (tSymMdfStruct*)MEM_p_Alloc(sizeof(tSymMdfStruct));
+    mdf->mdfPrivateDataPtr = sym;
+    if (src)
     {
-        *v3 = *a3;
+        *sym = *src;
     }
     else
     {
-        v3->flags = 1;
-        v3->i2 = 0.0;
+        sym->flags = 1;
+        sym->i2 = 0.0;
     }
 }
 
-void GEO_ModifierSymetrie_Destroy(struct sModifier* a1)
+void GEO_ModifierSymetrie_Destroy(struct sModifier* mdf)
 {
-    MEM_Free(a1->mdfPrivateDataPtr);
+    MEM_Free(mdf->mdfPrivateDataPtr);
 }
 
-void GEO_ModifierSymetrie_Apply(tModifier* a1, tGEOGRO* a2)
+static int GEO_l_ModifierSymetrie_Axis(int flags)
 {
-    tGEOGRO* v2;
-    tSymMdfStruct* v3;
-    uint8_t* v4;
-    Vec3* v5;
-    Vec3* v6;
-    Vec3* v7;
-    unsigned int v8;
-    double v9;
-    unsigned int v10;
-    float a1a;
+    if ((flags & 2) != 0)
+        return 1;
+    if ((flags & 4) != 0)
+        return 2;
+    return 0;
+}
 
-    v2 = a2;
-    v3 = (tSymMdfStruct*)a1->mdfPrivateDataPtr;
-    v4 = gpst_DX_stDD->bigBuffer->data4;
-    GEO_UseNormals(a2);
-    v5 = a2->normals;
-    if ((gpst_DX_stDD->flags & 0x400) != 0)
+void GEO_ModifierSymetrie_Apply(tModifier* mdf, tGEOGRO* geo)
+{
+    tSymMdfStruct* sym;
+    Vec3* work;
+    float* vert;
+    float* norm;
+    float mirror;
+    int axis;
+    unsigned int i;
+
+    sym = (tSymMdfStruct*)mdf->mdfPrivateDataPtr;
+    GEO_UseNormals(geo);
+    work = (Vec3*)gpst_DX_stDD->bigBuffer->data4;
+    if ((gpst_DX_stDD->flags & 0x400) == 0)
+        memcpy(work, geo->vertices, sizeof(Vec3) * geo->vertexNum);
+
+    axis = GEO_l_ModifierSymetrie_Axis(sym->flags);
+    vert = (float*)work + axis;
+    norm = (float*)geo->normals + axis;
+
+    if (sym->i2 == 0.0)
     {
-        v6 = (Vec3*)gpst_DX_stDD->bigBuffer->data4;
-    }
-    else
-    {
-        v6 = a2->vertices;
-        memcpy(v4, v6, 12 * a2->vertexNum);
-        v2 = a2;
-    }
-    v7 = &v6[v2->vertexNum];
-    if ((v3->flags & 2) != 0)
-    {
-        v6 = (Vec3*)((char*)v6 + 4);
-        v4 += 4;
-        v5 = (Vec3*)((char*)v5 + 4);
-    }
-    else if ((v3->flags & 4) != 0)
-    {
-        v6 = (Vec3*)((char*)v6 + 8);
-        v4 += 8;
-        v5 = (Vec3*)((char*)v5 + 8);
-    }
-    if (v3->i2 == 0.0)
-    {
-        if (v6 < v7)
+        for (i = 0; i < geo->vertexNum; i++)
         {
-            v8 = ((char*)v7 - (char*)v6 - 1) / sizeof(Vec3) + 1;
-            do
-            {
-                v9 = *(float*)v4;
-                *((float*)v4) = (float)-v9;
-                v5->x = -v5->x;
-                v4 += sizeof(Vec3);
-                ++v5;
-                --v8;
-            } while (v8);
+            vert[i * 3] = -vert[i * 3];
+            norm[i * 3] = -norm[i * 3];
         }
     }
     else
     {
-        a1a = v3->i2 + v3->i2;
-        if (v6 < v7)
+        mirror = sym->i2 + sym->i2;
+        for (i = 0; i < geo->vertexNum; i++)
         {
-            v10 = ((char*)v7 - (char*)v6 - 1) / sizeof(Vec3) + 1;
-            do
-            {
-                *((float*)v4) = a1a - *((float*)v4);
-                v5->x = -v5->x;
-                v4 += sizeof(Vec3);
-                ++v5;
-                --v10;
-            } while (v10);
+            vert[i * 3] = mirror - vert[i * 3];
+            norm[i * 3] = -norm[i * 3];
         }
     }
+
     gpst_DX_stDD->flags |= 0x400u;
     gpst_DX_stDD->verticesCurrent = (Vec3*)gpst_DX_stDD->bigBuffer->data4;
 }
 
-void GEO_ModifierSymetrie_Unapply(struct sModifier* a1, struct sGEOGRO* a2)
+void GEO_ModifierSymetrie_Unapply(struct sModifier* mdf, struct sGEOGRO* geo)
 {
-    tSymMdfStruct* v2;
-    Vec3* v3;
-    Vec3* v4;
-    double v5;
+    tSymMdfStruct* sym;
+    float* norm;
+    unsigned int i;
 
-    v2 = (tSymMdfStruct*)a1->mdfPrivateDataPtr;
-    GEO_UseNormals(a2);
-    v3 = a2->normals;
-    v4 = &v3[a2->vertexNum];
-    if ((v2->flags & 2) != 0)
-    {
-        v3 = (Vec3*)((char*)v3 + 4);
-    }
-    else if ((v2->flags & 4) != 0)
-    {
-        v3 = (Vec3*)((char*)v3 + 8);
-    }
-    for (; v3 < v4; v3++)
-    {
-        v5 = v3->x;
-        v3->x = (float)-v5;
-    }
+    sym = (tSymMdfStruct*)mdf->mdfPrivateDataPtr;
+    GEO_UseNormals(geo);
+    norm = (float*)geo->normals + GEO_l_ModifierSymetrie_Axis(sym->flags);
+    for (i = 0; i < geo->vertexNum; i++)
+        norm[i * 3] = -norm[i * 3];
 }
 
-int GEO_ul_ModifierSymetrie_Load(struct sModifier* a1, char* a2a)
+int GEO_ul_ModifierSymetrie_Load(struct sModifier* mdf, char* data)
 {
-    tSymMdfStruct* v2;
-    char* v3;
+    tSymMdfStruct* sym;
+    char* start;
 
-    v2 = (tSymMdfStruct*)a1->mdfPrivateDataPtr;
-    v3 = a2a;
-    LOA_ReadLong(&a2a, 0, 2);
-    v2->flags = LOA_ReadLong(&a2a, 0, 1);
-    v2->i2 = LOA_ReadFloat(&a2a, 0, 1);
-    return a2a - v3;
+    sym = (tSymMdfStruct*)mdf->mdfPrivateDataPtr;
+    start = data;
+    LOA_ReadLong(&data, 0, 2);
+    sym->flags = LOA_ReadLong(&data, 0, 1);
+    sym->i2 = LOA_ReadFloat(&data, 0, 1);
+    return data - start;
 }
