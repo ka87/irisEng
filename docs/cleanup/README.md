@@ -37,6 +37,13 @@ The 137 first-party files in `irisEng.vcxproj`. Not in scope:
 
 No comments are added. What is worth saying goes in this directory.
 
+Two exceptions so far, both at a site where the code does something a
+reader would otherwise take for a mistake: the chunk-indexing fix in
+`modifiers/explodemodifier.c`, which the user asked to have commented,
+and the half-stride window in `modifiers/xmenmodifier.c`, which is
+preserved rather than fixed and would read as an oversight without a
+line saying so.
+
 ## Verifying without the real toolchain
 
 The engine builds under MSVC against the DirectX SDK and Bink, none of
@@ -153,3 +160,76 @@ turns into a position above 2GB via `(unsigned int)`.
 That is a change to how a file-archive reader seeks, in code that
 cannot be tested here, so it is being left for the user to decide
 rather than guessed at.
+
+### 3. The rewrite itself, directory by directory
+
+The seven things above, applied by hand, one file at a time, with the
+findings for each directory in its own file here.
+
+#### `modifiers/` — done
+
+25 files: the 24 modifier implementations and the dispatcher. See
+[modifiers.md](modifiers.md) for the per-file record.
+
+- **4,996 lines to 4,043.** No `goto` anywhere in the directory, no
+  decompiler-named local or parameter in any of the sources or their
+  headers.
+- **Four differential tests**, `snakemodifier`, `protexmodifier`,
+  `lazymodifier` and `xmenmodifier`, covering the files whose arithmetic
+  is intricate enough for a silent slip to be plausible: **192 cases,
+  all equivalent.**
+- **One bug fixed**, in `explodemodifier.c`: the triangle-chunk array
+  was indexed by a byte offset in half of one loop, so every model with
+  more than one chunk read and wrote 1KB past the array.
+- **Two suspected bugs preserved and recorded** rather than fixed, in
+  `protexmodifier.c` and `xmenmodifier.c`, because the file as written
+  is what the engine has been compiling and which reading the author
+  meant is not answerable from this tree. Both are one-token changes
+  with a test ready to measure them; see modifiers.md.
+- **Several oddities preserved and flagged**: `soundfxmodifier`'s guard
+  that tests one field and assigns another, `otcmodifier`'s twelfth wave
+  variant computing a different function from its weighted twin,
+  `rotrmodifier`'s `Create` resolving a pointer and then clearing it,
+  `loadingsoundmodifier`'s `Load` guarding reads and then dereferencing
+  unconditionally.
+
+#### What the tests found that nothing else would have
+
+Worth recording, because it is the argument for writing them:
+
+- `protexmodifier`'s water stencil is not the eight neighbours it looks
+  like. An unsigned division made the row-above offset zero, so two
+  samples are counted twice and the row above is never read. A first
+  draft "fixed" it silently; the test caught the change at the first
+  interior cell.
+- `lazymodifier`'s box clamp reuses a matrix the semi-mechanical model
+  computed at the top of the function. A first draft had the extracted
+  helper compute it itself, which added a second `MATH_MulMatrixMatrix`
+  call. No value differed — the call-sequence comparison caught it.
+- `xmenmodifier`'s bitangent cross product has its operands the other
+  way round from how it reads. Getting it backwards would have flipped
+  every ribbon in the game.
+
+#### The float differences, and why they are accepted
+
+Restoring an inlined helper to a call rarely reproduces the arithmetic
+bit for bit. The decompiler renders x87's 80-bit registers as `double`
+and `long double` locals, and the real helpers compute in `float`, so
+the last bits move. Across the four tests:
+
+| test | floats differing | worst |
+|---|---|---|
+| `snakemodifier` | 208 | 2.7e-6 relative, 6.1e-5 absolute |
+| `protexmodifier` | 12 | 2.4e-7 relative |
+| `lazymodifier` | 254 | 6.8e-8 relative at the largest absolute |
+| `xmenmodifier` | 2,802 | 2.7e-7 relative, 2.4e-7 absolute |
+
+They are accepted because the difference is between two decompilations
+of the same original, not between the original and a change: the author
+called the helper, and the extra precision on one operand is an artifact
+of instruction selection. `lazymodifier` has one site reading 1.3%
+relative, whose absolute difference is 1.2e-7 — a matrix component near
+zero after a cancellation.
+
+Each test reports its own figures on every run, so a regression that
+moves them shows up without anyone having to remember these numbers.

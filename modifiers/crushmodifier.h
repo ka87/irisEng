@@ -12,9 +12,9 @@ typedef struct sCrushMdfStruct
     float factor;
 } tCrushMdfStruct;
 
-void GEO_ModifierCrush_Apply(struct sModifier* a1, struct sGEOGRO* a2);
-void GEO_ModifierCrush_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void GEO_ModifierCrush_Destroy(struct sModifier* a1);
-int GEO_ul_ModifierCrush_Load(struct sModifier* a1, char* a2);
-void GEO_ModifierCrush_Reinit(struct sModifier* a1);
-void GEO_ModifierCrush_Unapply(struct sModifier* a1, struct sGEOGRO* a2);
+void GEO_ModifierCrush_Apply(struct sModifier* mdf, struct sGEOGRO* geogro);
+void GEO_ModifierCrush_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GEO_ModifierCrush_Destroy(struct sModifier* mdf);
+int GEO_ul_ModifierCrush_Load(struct sModifier* mdf, char* data);
+void GEO_ModifierCrush_Reinit(struct sModifier* mdf);
+void GEO_ModifierCrush_Unapply(struct sModifier* mdf, struct sGEOGRO* geogro);

@@ -297,7 +297,7 @@ static void XMEC_l_SetModifierFlags(struct sGameObjectMain* gao, int flagToAdd)
     }
 }
 
-void XMEC_OnOff(struct sGameObjectMain* gao, int a2, int onOff)
+void XMEC_OnOff(struct sGameObjectMain* gao, int id, int onOff)
 {
     tGameObjectActorObject* actor;
     tGroup* skeleton;
