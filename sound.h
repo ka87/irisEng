@@ -34,11 +34,11 @@ typedef struct sSndSoundBufferElem
     struct sSbeMiscData* miscData; // track-nál van ilyen elem
     int format;
     int unk2SetTo64InCreate; // panning, set: pcSND_SB_SetPan
-    byte gap[4];
+    uint8_t gap[4];
     int unknownFiledinsub49db40ToSetVolume; // set: pcSND_SB_SetPan
     IDirectSound3DBuffer* dsnd3dbufferIF;
     IKsPropertySet* dsndIKPropertySetIF;
-    byte gap1[4];
+    uint8_t gap1[4];
 }  tSndSoundBufferElem;
 
 typedef struct sSndHandles
@@ -287,17 +287,17 @@ typedef struct sSndSoundElem
     int usageCnt;
     struct sSndSoundBufferElem* sndSndBufElem; // // TODO FIXME ez jó típus itt?? (@SND_l_AddStreamLoad_inner_sub_496680, @SND_l_Request)
     int freq;
-    __int16 numChannels;
-    __int16 bitsPerSample;
+    int16_t numChannels;
+    int16_t bitsPerSample;
     struct sSndInterfaceStruct* sndInterface; // // TODO FIXME ez jó itt?
     struct sSndModifierElem* soundModifier;
     int startDataPos;
     unsigned int fullsoundLen;
     unsigned int byteRate;
-    __int16 blockAlign;
-    __int16 extraDataSize;
-    __int16 format;
-    byte gap2b[2];
+    int16_t blockAlign;
+    int16_t extraDataSize;
+    int16_t format;
+    uint8_t gap2b[2];
 } tSndSoundElem;
 
 typedef struct sSNDgstParams
@@ -322,7 +322,7 @@ typedef struct sSNDgstParams
     float fx_DopplerSpeed;
     int soundRenderModeMask;
     int soundRenderMode;
-    byte gap2[8];
+    uint8_t gap2[8];
 } tSNDgstParams;
 
 typedef struct sTrackListElem
@@ -332,12 +332,12 @@ typedef struct sTrackListElem
     tSndSoundBufferElem* sndBufferElem;
     tSndSoundBufferElem* trackResource;
     tSndInterfaceStruct* soundIntf;
-    __int16 trackResourceNum;
-    __int16 stereoToMono_sub499C20;
+    int16_t trackResourceNum;
+    int16_t stereoToMono_sub499C20;
     int unk1;
     float f1;
     float f2;
-    byte gap[20];
+    uint8_t gap[20];
 } tTrackListElem;
 
 typedef struct sTrackResourceElem
@@ -401,11 +401,11 @@ typedef struct sSoundHeaderDataCase0
     int i3;
     int i4;
     int i5;
-    __int16 is1;
-    __int16 is2;
+    int16_t is1;
+    int16_t is2;
     int ii1;
     int ii2;
-    __int16 is3;
+    int16_t is3;
     int ii3;
     int ii4;
 } tSoundHeaderDataCase0;
@@ -419,12 +419,12 @@ typedef struct sSoundHeaderDataCase1
     int i3;
     int i4;
     int i5;
-    __int16 is1;
-    __int16 is2;
+    int16_t is1;
+    int16_t is2;
     int ii1;
     int ii2;
-    __int16 is3;
-    __int16 is4;
+    int16_t is3;
+    int16_t is4;
     int ii3;
     int ii4;
 } tSoundHeaderDataCase1;
@@ -438,13 +438,13 @@ typedef struct sSoundHeaderDataCase2
     int i3;
     int i4;
     int i5;
-    __int16 is1;
-    __int16 is2;
+    int16_t is1;
+    int16_t is2;
     int ii1;
     int ii2;
-    __int16 is3;
-    __int16 is4;
-    __int16 is5;
+    int16_t is3;
+    int16_t is4;
+    int16_t is5;
     int ii3;
     int ii4;
 } tSoundHeaderDataCase2;

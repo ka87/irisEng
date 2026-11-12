@@ -315,7 +315,7 @@ int COL_AllocColMap(struct sGameObjectMain* gao)
     return 0;
 }
 
-int INT_PointInTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, byte* a6)
+int INT_PointInTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, uint8_t* a6)
 {
     float v6; // eax
     double v7; // st7
@@ -814,7 +814,7 @@ int INT_FullSegmentSphere(Vec3* segmentPoint1, Vec3* segmentPoint2, Vec3* a3, fl
     return result;
 }
 
-int INT_FullSegmentTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, Vec3* a7, byte* a8)
+int INT_FullSegmentTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, Vec3* a7, uint8_t* a8)
 {
     double v9; // st6
     double v11; // st7
@@ -858,7 +858,7 @@ int INT_FullSphereTriangle(Vec3* centerPos, float radius, Vec3* point1, Vec3* po
     float v16; // [esp+10h] [ebp-14h]
     float v17; // [esp+14h] [ebp-10h]
     Vec3 a2; // [esp+18h] [ebp-Ch] BYREF
-    byte ct;
+    uint8_t ct;
 
     v8 = radius * nomalVec->x;
     v9 = radius * nomalVec->y;
@@ -937,7 +937,7 @@ int INT_FullSphereTriangle(Vec3* centerPos, float radius, Vec3* point1, Vec3* po
     return 1;
 }
 
-void COL_ReportCollision(Vec3* a1, Vec3* a2, Vec3* a3, int a4, int a5, __int16 a6, tColGlobal* a7)
+void COL_ReportCollision(Vec3* a1, Vec3* a2, Vec3* a3, int a4, int a5, int16_t a6, tColGlobal* a7)
 {
     tWorld* v7;
     tColCollisionObject* v9;
@@ -984,7 +984,7 @@ BOOL COL_NeedRecomputation(tColGlobal* a1, tGameObjectMain* a2, int16_t a3)
     tGameObjectExtended* v4;
     tColInstance* v5;
     int v6;
-    byte v7;
+    uint8_t v7;
     int v8;
     tGameObjectMain** v9;
     tGameObjectExtended* v10;
@@ -1049,7 +1049,7 @@ BOOL COL_NeedRecomputation(tColGlobal* a1, tGameObjectMain* a2, int16_t a3)
     return 1;
 }
 
-__int16 COL_test_flag_sub_436970(struct sColInstance* a1, int16_t a2)
+int16_t COL_test_flag_sub_436970(struct sColInstance* a1, int16_t a2)
 {
     int16_t result;
 
@@ -1139,7 +1139,7 @@ LABEL_25:
     return v9 && v10 && cos(0.3141592741012573) > v7->z * a2->z + v7->y * a2->y + v7->x * a2->x;
 }
 
-int COL_ComputeReport(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, int* a6, int a7, __int16 a8, tColGlobal* colGlobal)
+int COL_ComputeReport(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, int* a6, int a7, int16_t a8, tColGlobal* colGlobal)
 {
     float a4a;
     double v10; // st7
@@ -1548,7 +1548,7 @@ void COL_DuplicateInstance(struct sGameObjectMain* a1, struct sGameObjectMain* a
     tColInstance* v2;
     tColInstance* v3;
     tColInstSet* v4; 
-    byte v5;
+    uint8_t v5;
     tColInstanceElem* v6;
     tColInstanceElem* v7;
     tColSphere* v8;
@@ -1898,7 +1898,7 @@ void COL_ColMap_AddGeometric(struct sColCollisionObject* a1, struct sGEOGRO* a3_
 void COL_ColMap_AddCob(tGameObjectMain* a1, uint8_t type, void* a3, Vec3* a4)
 {
     tColMap* v4;
-    byte v5;
+    uint8_t v5;
     tColCollisionObject* v6;
     tCobNormalObjectGeneric* v7;
 
@@ -1951,12 +1951,12 @@ void COL_ResolveRefs(struct sGameObjectMain* a1)
     tGaoMatrix* v8; // esi
     tGaoMatrix* v9; // edi
     Mtx4x4* v10; // eax
-    byte v11; // al
-    byte v12; // bl
+    uint8_t v11; // al
+    uint8_t v12; // bl
     tColInstanceElem** v13; // eax
     tColInstanceElem** v14; // eax
     unsigned int v15; // edx
-    byte i; // al
+    uint8_t i; // al
     uint8_t v17; // bl
     tColInstanceElem** v18; // eax
     uint8_t v19; // dl
@@ -2930,7 +2930,7 @@ void COL_ColMap_OK3_RayCast(tGameObjectMain* gao, tColMap* colMap)
                             || (!COL_gst_Ray.useUserCrossable ? (!COL_gst_Ray.colMapGao || (COL_gst_Ray.colMapGao->flags & 0x200) == 0 ? (v65 = 0x589A) : (v65 = COL_gst_Ray.colMapGao->extended->coll->colInstance->crossable)) : (v65 = COL_guw_UserCrossable),
                                 ((v17 = COL_pst_GMat_Get(v16, &v4->meshChunkElems[v13]), v73 = v17, !COL_gst_Ray.skipCrossable)
                                     || !v17
-                                    || ((unsigned __int16)v65 & v17->flags) == 0)
+                                    || ((uint16_t)v65 & v17->flags) == 0)
                                 && (!COL_gst_Ray.skipCamera || !v17 || (v17->flags & 0x1000) == 0)
                                 && (!COL_gst_Ray.skipFlagX || !v17 || (v17->flags & 0x200000) == 0)))
                         {
@@ -4020,7 +4020,7 @@ struct sGameObjectMain* COL_Visual_RayCast(struct sWorld* a1, struct sGameObject
     tGEOGRO* v17;
     tColMap* v18;
     tColCollisionObject* v19;
-    byte i;
+    uint8_t i;
     tColCollisionObject* v21;
     tCobNormalObjectGeneric* v22;
     int v23;
@@ -5187,7 +5187,7 @@ int INT_FullAABBoxTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec
     return v43;
 }
 
-int COL_Box_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, __int16 a3, __int16 a4, __int16 a5, Vec3* a6, int a7, __int16 a8)
+int COL_Box_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, int16_t a3, int16_t a4, int16_t a5, Vec3* a6, int a7, int16_t a8)
 {
     tColCollisionObject* v8;
     Vec3* v9;
@@ -5274,7 +5274,7 @@ int COL_Box_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, __int16 a3
     return 1;
 }
 
-int COL_Sphere_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, __int16 a3, __int16 a4, __int16 a5, Vec3* normalVec, int a7, __int16 a8, int a9)
+int COL_Sphere_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, int16_t a3, int16_t a4, int16_t a5, Vec3* normalVec, int a7, int16_t a8, int a9)
 {
     tColCollisionObject* v9;
     Vec3* v10;
@@ -5282,7 +5282,7 @@ int COL_Sphere_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, __int16
     Vec3* v12;
     Vec3* v13;
     Vec3* v14;
-    __int16 v15;
+    int16_t v15;
     int v16;
     int v17;
     int a6a;
@@ -5348,7 +5348,7 @@ int COL_Sphere_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, __int16
     return 1;
 }
 
-void COL_TestAndCollideTriangleIfNeeded(tColGlobal* colglobal, tCobMeshTriangleElem* a2, Vec3* a3, __int16 a4, unsigned __int16 a5, Vec3* a6, Vec3* a7, int a8)
+void COL_TestAndCollideTriangleIfNeeded(tColGlobal* colglobal, tCobMeshTriangleElem* a2, Vec3* a3, int16_t a4, uint16_t a5, Vec3* a6, Vec3* a7, int a8)
 {
     long double v8;
     long double v9;
@@ -5369,7 +5369,7 @@ void COL_TestAndCollideTriangleIfNeeded(tColGlobal* colglobal, tCobMeshTriangleE
     float a4a;
     int a4b; 
     float a5a;
-    __int16 a5b;
+    int16_t a5b;
     Vec3 a1;
 
     if (fabs(a3->x) >= 0.001)
@@ -5991,7 +5991,7 @@ void COL_ZDM_ZDR(tColGlobal* colGlobal)
     int j;
     int v38;
     int v39;
-    __int16 v40;
+    int16_t v40;
     int a4;
     tCobOK3* v42;
     int v43;
@@ -6254,7 +6254,7 @@ int COL_Actor_GameObject(tColGlobal* a1)
     tColCollisionObject** v17;
     tColMap* v18;
     tColInstanceElem** v19;
-    byte elemType;
+    uint8_t elemType;
     char i;
     char j;
 
@@ -6481,8 +6481,8 @@ int COL_b_SlowActorVsFastActor(tRecordElem* recElem, tColGlobal* colGlobal)
     tGameObjectCollMain* v15;
     tColInstance* v16;
     tColInstance* v17;
-    signed __int8 v18;
-    signed __int8 v19;
+    int8_t v18;
+    int8_t v19;
     tDyn* v20;
     long double v21;
     long double v22;
@@ -7064,7 +7064,7 @@ void COL_ComputeReports(tColGlobal* colglobal, int a2)
     int v22;
     tGameObjectMain* v23;
     tColInstance* v24;
-    __int16 v25;
+    int16_t v25;
     tGaoMatrix* v26;
     Vec3* v27;
     tRecordElem* v28;
@@ -7365,7 +7365,7 @@ void COL_OneCall(struct sGameObjectMain* a1, int a2)
     int v11;
     tGameObjectCollMain* v12;
     tColInstance* v13;
-    byte v14;
+    uint8_t v14;
     uint8_t v15;
     tGameObjectBasic* v16;
     tDyn* v17;
@@ -7382,7 +7382,7 @@ void COL_OneCall(struct sGameObjectMain* a1, int a2)
     tGameObjectMain** i;
     tGameObjectMain* v29;
     int v30;
-    byte v31;
+    uint8_t v31;
     int v32;
     BOOL v33;
     tGameObjectMain* v34;
@@ -7413,7 +7413,7 @@ void COL_OneCall(struct sGameObjectMain* a1, int a2)
     Vec3* v59;
     Vec3* v60;
     tColInstance* v61;
-    byte v62;
+    uint8_t v62;
     char a2a;
     int a2b;
     tColInstanceElem** v65;
@@ -8528,8 +8528,8 @@ void COL_Compute(tWorld* a1)
     int v22;
     tGameObjectCollMain* v23;
     tColInstance* v24;
-    __int16 v25;
-    __int16 v26;
+    int16_t v25;
+    int16_t v26;
     tGameObjectBasic* v27;
     tDyn* v28;
     tGameObjectCollDetectionList* v29;
@@ -8725,7 +8725,7 @@ LABEL_37:
 void COL_MainCall(struct sWorld* a1)
 {
     tWorld* v1;
-    byte v2;
+    uint8_t v2;
     int v3;
     BOOL v4;
     int v5;
@@ -10156,7 +10156,7 @@ void COL_InitModule()
 tColInstSet* COL_AllocColSet()
 {
     tColInstSet* v0;
-    byte* v1;
+    uint8_t* v1;
 
     v0 = (tColInstSet*)MEM_p_Alloc(sizeof(tColInstSet));
     LOA_ul_FileTypeSize_38 += sizeof(tColInstSet);
@@ -10166,7 +10166,7 @@ tColInstSet* COL_AllocColSet()
     v0->colInstElems = 0;
     v0->zoneIDs = 0;
     v0->unk2 = 0;
-    v0->zoneIDs = (byte*)MEM_p_Alloc(16u);
+    v0->zoneIDs = (uint8_t*)MEM_p_Alloc(16u);
     LOA_ul_FileTypeSize_38 += 4;
     v1 = v0->zoneIDs;
     memset(v1, 0xff, 16);
@@ -10244,14 +10244,14 @@ struct sColInstance* COL_ul_CallBackLoadInstance(uint32_t Offset)
 {
     tColInstance* v1;
     int v2;
-    byte v3;
+    uint8_t v3;
     int v4;
     int v5;
-    byte v7;
+    uint8_t v7;
     tColInstanceElem** v8;
     unsigned int v9;
-    byte i;
-    byte v11;
+    uint8_t i;
+    uint8_t v11;
     tColInstanceElem* v12;
     tColInstanceElem* v13;
     int v14;
@@ -10397,7 +10397,7 @@ tColCollisionObject* COL_ul_CallBackLoadCob(uint32_t Offset)
     tColCollisionObject* v1;
     int v2;
     int v3;
-    byte objType;
+    uint8_t objType;
     tCobNormalObjectGeneric* v6;
     tColSphere* v7;
     tColBox* v8;
@@ -10413,7 +10413,7 @@ tColCollisionObject* COL_ul_CallBackLoadCob(uint32_t Offset)
     int v18;
     tCobMeshChunkElem* v19;
     tCobMeshChunkElem* v20; 
-    unsigned __int16 v21;
+    uint16_t v21;
     int v22;
     tCobMeshTriangleElem* v23;
     int v24;
@@ -10843,18 +10843,18 @@ struct sGameObjectMain* COL_ColMap_RayCast(struct sWorld* a1, struct sGameObject
     tWorld* v19;
     tColMap* v20;
     tColCollisionObject** v21;
-    byte v22;
+    uint8_t v22;
     int v23;
     tColCollisionObject* v24;
     tCobNormalObjectGeneric* v25;
     tCobGameMaterialElems* v26;
-    unsigned __int16 v27;
+    uint16_t v27;
     tCobGameMaterialElems* v28;
     tColCollisionObject** v29;
     tColMap* v30;
     tCobNormalObjectGeneric* v31;
     tableElemStructPF* v32;
-    byte v33;
+    uint8_t v33;
     tableElemStructPF* v34;
     float a13a;
 
@@ -10889,7 +10889,7 @@ struct sGameObjectMain* COL_ColMap_RayCast(struct sWorld* a1, struct sGameObject
     {
         v18 = (tGameObjectMain*)v15->objectPtr;
         if (!v15->objectPtr
-            || ((unsigned __int8)v18 & 3) == 1
+            || ((uint8_t)v18 & 3) == 1
             || (v18->flags & 0x100) == 0
             || (v18->flags2 & 1) == 0
             || !OBJ_b_test_flag(v18, a6, a7, a8)
@@ -11210,9 +11210,9 @@ float COL_GameMaterial_GetRebound(struct sGameObjectMain* a1, struct sWorld* a2,
     return (float)result;
 }
 
-byte COL_GameMaterial_GetSound(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+uint8_t COL_GameMaterial_GetSound(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
 {
-    byte result;
+    uint8_t result;
     tCobGameMaterialElems* v4;
     tCobGameMaterialElems* v5;
     tRecordElem* v6;
@@ -11599,7 +11599,7 @@ void COL_ComputeJumpPoint(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4
     tWorld* v6;
     tWorld* v7;
     int idx;
-    unsigned __int16 rayCastTriangleChunkID;
+    uint16_t rayCastTriangleChunkID;
     tGameObjectMain* rayCastGao;
     tRecordElem* v11;
     tRecordElem* v12;
@@ -11630,7 +11630,7 @@ void COL_ComputeJumpPoint(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4
     double v40; 
     long double v41;
     double v42;
-    unsigned __int8 v43;
+    uint8_t v43;
     BOOL v44;
     BOOL v45;
     Mtx4x4* v46;
@@ -12260,7 +12260,7 @@ struct sGameObjectMain* COL_Report_GetBestWallGOInDirectionSpecial(struct sGameO
 
 int16_t COL_GameMaterial_GetID(struct sGameObjectMain* a1, struct sWorld* a2, uint16_t a3)
 {
-    __int16 result;
+    int16_t result;
     tCobGameMaterialElems* v4;
     tCobGameMaterialElems* v5;
     tRecordElem* v6;
@@ -12405,7 +12405,7 @@ struct sGameObjectMain* COL_Visual_RayCast_OneObject(struct sGameObjectMain* a1,
     tGameObjectMain* result;
     tColMap* v16;
     tColCollisionObject* v17;
-    byte i;
+    uint8_t i;
     tColCollisionObject* v19;
     tCobNormalObjectGeneric* v20;
     int v21;
@@ -12569,7 +12569,7 @@ BOOL COL_Report_HasGMat(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
     return v4->gameMaterial != 0;
 }
 
-byte COL_GetDesign(struct sGameObjectMain* a1, struct sWorld* a2, int32_t a3)
+uint8_t COL_GetDesign(struct sGameObjectMain* a1, struct sWorld* a2, int32_t a3)
 {
     tRecordElem* v4;
     tRecordElem* v5;
@@ -12607,7 +12607,7 @@ int COL_ZDE_PivotCollide(struct sGameObjectMain* a1, uint8_t id, struct sGameObj
     tGameObjectExtended* v5;
     tGameObjectCollMain* v6;
     tColInstance* v7;
-    byte v8;
+    uint8_t v8;
     BOOL v9;
     tColInstanceElem* v10;
     Mtx4x4* v11;
@@ -12817,7 +12817,7 @@ BOOL COL_ZDE_BVCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGameObjec
     tGameObjectExtended* v6;
     tGameObjectCollMain* v7;
     tColInstance* v8;
-    byte* v9;
+    uint8_t* v9;
     BOOL v10;
     tColInstanceElem* v11;
     BOOL v12;
@@ -12834,7 +12834,7 @@ BOOL COL_ZDE_BVCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGameObjec
     Mtx4x4* v24;
     Mtx4x4* v25;
     Mtx4x4* mtx;
-    byte v27a;
+    uint8_t v27a;
     Vec3 v27b;
     tGameObjectMain* v28;
     Vec3 a3a;
@@ -12965,7 +12965,7 @@ int COL_ZDE_BVCenterCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGame
     tGameObjectExtended* v5;
     tGameObjectCollMain* v6;
     tColInstance* v7;
-    byte v8; 
+    uint8_t v8; 
     BOOL v9; 
     tColInstanceElem* v10;
     Mtx4x4* v11;
@@ -13101,7 +13101,7 @@ BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, stru
     tGameObjectExtended* v7;
     tGameObjectCollMain* v8;
     tColInstance* v9;
-    byte* v10;
+    uint8_t* v10;
     BOOL v11;
     tColInstanceElem* v12;
     int v13;
@@ -13150,7 +13150,7 @@ BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, stru
     Vec3 a6; 
     Mtx4x4 a5;
     Mtx4x4 v58;
-    byte a4ab;
+    uint8_t a4ab;
     Vec3 a4aa;
     Vec3 v48a;
 
@@ -13872,10 +13872,10 @@ void COL_SwapToSpecific(struct sGameObjectMain* a1, uint8_t a2)
     tGameObjectExtended* v2;
     tGameObjectCollMain* v3;
     tColInstance* v4;
-    unsigned __int8 v5;
+    uint8_t v5;
     int v6;
     tColInstanceElem* v7;
-    byte v8;
+    uint8_t v8;
     tColInstanceElem* instElemOrigPtr;
     tColInstanceElem* instElemNewPtr;
     int v11;
@@ -13884,9 +13884,9 @@ void COL_SwapToSpecific(struct sGameObjectMain* a1, uint8_t a2)
     char i; 
     tColInstanceElem* v15;
     void* v16;
-    byte v18;
+    uint8_t v18;
     void* v19;
-    byte v20;
+    uint8_t v20;
     tColInstanceElem* v21;
     int v22;
     int origNewDistance;
@@ -13985,7 +13985,7 @@ int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest
 {
     tableElemStructPF* v8;
     tableElemStructPF* v9;
-    unsigned __int8 i;
+    uint8_t i;
     tGameObjectMain* v11;
     int v15;
     float f1, f2, f3;
@@ -14111,7 +14111,7 @@ float COL_ZDx_SizeGet(struct sGameObjectMain* a1, uint8_t a2)
 {
     double result;
     tColInstance* v3;
-    byte v4; 
+    uint8_t v4; 
     tColInstanceElem* v5;
     tColBox* v6;
     float a1a;
@@ -14144,7 +14144,7 @@ float COL_ZDx_SizeGet(struct sGameObjectMain* a1, uint8_t a2)
 void COL_ZDx_PosGet(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3)
 {
     tColInstance* v3;
-    byte v4;
+    uint8_t v4;
     tColInstanceElem* v5;
     tColBox* v6;
 

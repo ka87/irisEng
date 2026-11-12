@@ -15,12 +15,12 @@ typedef struct sProtexMdfStruct
     Vec3 v3;
     int unkProbablyDim1;
     int unkProbablyDim2;
-    byte gap[4];
+    uint8_t gap[4];
     int texElemsI22field;
     int texElemIdx;
     int16_t* unkPtrFreedInUnapply;
     int16_t* unkPtr2;
-    unsigned __int8* unkNumProtexWater;
+    uint8_t* unkNumProtexWater;
     tGameObjectMain* gao;
     struct sProtexMdfStruct* prevProtex;
     float* ptr3;

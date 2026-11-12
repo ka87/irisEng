@@ -3,10 +3,10 @@
 
 typedef struct sRliCarteMdfStruct
 {
-    byte b1;
-    byte b2Max3;
-    byte b3;
-    byte b4;
+    uint8_t b1;
+    uint8_t b2Max3;
+    uint8_t b3;
+    uint8_t b4;
     int data[64];
     int colors[64];
     int num;

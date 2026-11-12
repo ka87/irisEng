@@ -29,7 +29,7 @@ typedef struct sGfxSmokeData
     int color2;
     int innerDataNum;
     int num;
-    byte gap1[4];
+    uint8_t gap1[4];
     tGfxSmokeInnerData* ptr;
     float timeElapsed;
 } tGfxSmokeData;

@@ -4,7 +4,7 @@
 
 typedef struct sGfxTableData
 {
-    byte gap1[2];
+    uint8_t gap1[2];
     char num1;
     char num2;
     int colors[10];

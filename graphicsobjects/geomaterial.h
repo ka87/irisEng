@@ -4,7 +4,7 @@
 
 typedef struct sMultiTextureElemStruct
 {
-    __int16 texElemIdx;
+    int16_t texElemIdx;
     uint16_t phongOrPlanarParam;
     unsigned int subTextureFlags;
     int transform1;

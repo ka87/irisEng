@@ -403,13 +403,13 @@ void PROTEX_l_WaterUpdate(tProtexMdfStruct* a1)
     unsigned int v3;
     int v4;
     int v5;
-    __int16* v6;
-    __int16* v7;
-    __int16* v8;
+    int16_t* v6;
+    int16_t* v7;
+    int16_t* v8;
     int v9;                         
     int v10;
-    __int16* v11;
-    __int16* v12;
+    int16_t* v11;
+    int16_t* v12;
     uint16_t* v13;
     uint8_t* v14;
     uint16_t* v15;
@@ -419,11 +419,11 @@ void PROTEX_l_WaterUpdate(tProtexMdfStruct* a1)
     float* v19;
     uint8_t* v20;
     float* i; 
-    __int16 v22;
+    int16_t v22;
     int v23;
     int v24;
     int v25;
-    __int16 v26;
+    int16_t v26;
     int a1a;
     int a1b;
 
@@ -538,7 +538,7 @@ void PROTEX_UpdateWaterEffect(tProtexMdfStruct* a1)
             a1->unkProbablyDim2 = v2;
             v8 = 5 * TEX_gst_GlobalList.texElems[v1].normalData.width * v2;
             a1->unkProbablyDim1 = TEX_gst_GlobalList.texElems[v1].normalData.width;
-            v3 = (unsigned __int8*)MEM_p_AllocAligned(v8, 64);
+            v3 = (uint8_t*)MEM_p_AllocAligned(v8, 64);
             v4 = v3;
             a1->unkPtrFreedInUnapply = (uint16_t*)v3;
             if (!v3)

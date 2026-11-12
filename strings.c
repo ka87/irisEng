@@ -412,9 +412,9 @@ int STR_l_GetValidIndex(struct sGEOSTRStruct* a1, struct sGEOSTRStringData* a2, 
 
     result = a3;
     if (a3 <= -50)
-        result = STR_l_GetMarkIndex(a1, a2, (-2 - (byte)a3) & 0xF);
+        result = STR_l_GetMarkIndex(a1, a2, (-2 - (uint8_t)a3) & 0xF);
     if (result <= -10)
-        result = STR_l_GetMarkIndex(a1, a2, (6 - (byte)result) & 0xF) + 1;
+        result = STR_l_GetMarkIndex(a1, a2, (6 - (uint8_t)result) & 0xF) + 1;
     if (result == -2)
         result = a2->index2;
     if (result < 0 || result >= a2->number)
@@ -431,7 +431,7 @@ int STR_l_GetValidNumber(struct sGEOSTRStruct* a1, struct sGEOSTRStringData* a2,
     result = a4;
     if (a4 <= -10)
     {
-        v5 = STR_l_GetMarkIndex(a1, a2, (6 - (byte)a4) & 0xF);
+        v5 = STR_l_GetMarkIndex(a1, a2, (6 - (uint8_t)a4) & 0xF);
         v6 = a3;
         if (v5 >= a3)
             return v5 - a3;
@@ -447,18 +447,18 @@ int STR_l_GetValidNumber(struct sGEOSTRStruct* a1, struct sGEOSTRStringData* a2,
 
 void STR_GetRectShort(struct sGEOSTRStruct* a1, int idx, int a3, int a4, Vec3* min, Vec3* max)
 {
-    __int16 v6;
-    __int16 v7;
+    int16_t v6;
+    int16_t v7;
     tGEOSTRStringData* v8;
     tGEOSTRStringData* v9;
     int v10;
     tGEOSTRLetter* v11; 
     tGEOSTRLetter* i;
-    __int16 v13;
-    __int16 v14;
-    __int16 v15;
-    __int16 v16;
-    __int16 v17;
+    int16_t v13;
+    int16_t v14;
+    int16_t v15;
+    int16_t v16;
+    int16_t v17;
 
     v6 = 10000;
     v7 = -10000;
@@ -479,9 +479,9 @@ void STR_GetRectShort(struct sGEOSTRStruct* a1, int idx, int a3, int a4, Vec3* m
             v14 = v11->y;
             if (v14 < v16)
                 v16 = v11->y;
-            if ((__int16)(v13 + v11->width) > v7)
+            if ((int16_t)(v13 + v11->width) > v7)
                 v7 = v13 + v11->width;
-            if ((__int16)(v14 + v11->height) > v17)
+            if ((int16_t)(v14 + v11->height) > v17)
                 v17 = v14 + v11->height;
         }
         v6 = v15;
@@ -1182,7 +1182,7 @@ void STR_ParseString(struct sGEOSTRStruct* geostr, int idx, struct sGEOSTRLetter
     int v15;
     BOOL v16;
     unsigned int v17;
-    unsigned __int8 v18;
+    uint8_t v18;
     unsigned int v19;
     int v20;
     float x;
@@ -1360,9 +1360,9 @@ void STR_ChangeStringLength(tGEOSTRStruct* a1, int idx, int lenToSet)
     tGEOSTRLetter* v12;
     int v13;
     tGEOSTRStringData* v14;
-    unsigned __int16 v15;
+    uint16_t v15;
     int v16;
-    unsigned __int16 v17;
+    uint16_t v17;
     tGEOSTRStringData* v18;
     tGEOSTRStringData* v19;
     int v20;
@@ -1445,21 +1445,21 @@ void STR_RecomputePos(tGEOSTRStruct* a1, tGEOSTRStringData* a2, int a3, int a4)
     tGEOSTRLetter* v7;
     tGEOSTRLetter* v8;
     int v9;
-    __int16 v10;
+    int16_t v10;
     int v11;
     unsigned int v12;
     int v13;
-    __int16 v14;
+    int16_t v14;
     int v15;
     tGEOSTRLetter* v16;
     int v17;
-    __int16 v18;
+    int16_t v18;
     int v19;
     tGEOSTRLetter* v20;
     tGEOSTRLetter* v21;
     int v22;
-    __int16 v23;
-    __int16 a4a;
+    int16_t v23;
+    int16_t a4a;
 
     v4 = a1->letters;
     v5 = a2->index;
@@ -1485,10 +1485,10 @@ void STR_RecomputePos(tGEOSTRStruct* a1, tGEOSTRStringData* a2, int a3, int a4)
     }
     v22 = 0;
 LABEL_10:
-    v9 = (unsigned __int16)v6->y;
+    v9 = (uint16_t)v6->y;
     v10 = v6->x;
     v23 = v9;
-    v11 = (unsigned __int16)v9;
+    v11 = (uint16_t)v9;
     a4a = v10;
     if ((a2->flags & 0x10) != 0)
     {
@@ -1500,7 +1500,7 @@ LABEL_10:
                 if ((int16_t)v12 != a1->fontMaterialID)
                 {
                     a1->fontMaterialID = v12;
-                    a1->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (__int16)v12);
+                    a1->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (int16_t)v12);
                 }
                 if (a1->fontDesc)
                 {
@@ -1508,7 +1508,7 @@ LABEL_10:
                     a4a += v6->width;
                     v13 = v6->height;
                     v6->y = v11;
-                    if ((__int16)v11 + (__int16)v13 > (__int16)v9)
+                    if ((int16_t)v11 + (int16_t)v13 > (int16_t)v9)
                         v9 = v13 + v11;
                     if ((v6->flagsAndChar & 0x20000000) != 0)
                     {
@@ -1531,7 +1531,7 @@ LABEL_10:
             a4a += v6->width;
             v15 = v6->height;
             v6->y = v11;
-            if ((__int16)v11 + (__int16)v15 > (__int16)v9)
+            if ((int16_t)v11 + (int16_t)v15 > (int16_t)v9)
                 v9 = v15 + v11;
             if ((v6->flagsAndChar & 0x20000000) != 0)
             {
@@ -1546,12 +1546,12 @@ LABEL_10:
         v16 = a1->letters;
         v17 = a3 + a2->index;
         v18 = v10 - v16[v17].width;
-        v19 = (__int16)v16[v17].height;
+        v19 = (int16_t)v16[v17].height;
         v20 = &v16[v17];
         v20->y = v23;
         v20->x = v18 - 4;
-        if (v23 + v19 > (__int16)v9)
-            v20->y = v23 - ((v19 + v23 - (__int16)v9) >> 1);
+        if (v23 + v19 > (int16_t)v9)
+            v20->y = v23 - ((v19 + v23 - (int16_t)v9) >> 1);
     }
 }
 
@@ -1605,7 +1605,7 @@ void STR_EffectDelAllForAString(tGEOSTRStruct* a1, int a2)
 {
     int v2;
     tGEOSTREffectStruct* v3;
-    byte v4;
+    uint8_t v4;
 
     v2 = 0;
     if (a1->effectsNum)
@@ -1708,7 +1708,7 @@ void STR_SetSize(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5)
                     if ((int16_t)v9 != v5->fontMaterialID)
                     {
                         v5->fontMaterialID = v9;
-                        v5->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (__int16)v9);
+                        v5->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (int16_t)v9);
                     }
                     v10 = v5->fontDesc;
                     if (v10 && a5->x < 0.0)
@@ -1816,15 +1816,15 @@ void STR_Align(struct sGameObjectMain* a1, int a2, int a3, int a4, int a5)
     tGEOSTRLetter* v14;
     tGEOSTRLetter* v15;
     tGEOSTRLetter* v16;
-    __int16 v17;
-    __int16 v18;
-    __int16 v19;
-    __int16 v20;
-    __int16 v21;
-    __int16 i;
+    int16_t v17;
+    int16_t v18;
+    int16_t v19;
+    int16_t v20;
+    int16_t v21;
+    int16_t i;
     int j;
-    __int16 v24;
-    __int16 v25;
+    int16_t v24;
+    int16_t v25;
     tGEOSTRLetter* v26;
     Vec3 v27;
 
@@ -1870,9 +1870,9 @@ void STR_Align(struct sGameObjectMain* a1, int a2, int a3, int a4, int a5)
                             v20 = v14->y;
                             if (v20 < v24)
                                 v24 = v14->y;
-                            if ((__int16)(v19 + v14->width) > v18)
+                            if ((int16_t)(v19 + v14->width) > v18)
                                 v18 = v19 + v14->width;
-                            if ((__int16)(v20 + v14->height) > v17)
+                            if ((int16_t)(v20 + v14->height) > v17)
                                 v17 = v20 + v14->height;
                             if ((v14->flagsAndChar & 0x20000000) != 0)
                                 break;
@@ -1888,7 +1888,7 @@ void STR_Align(struct sGameObjectMain* a1, int a2, int a3, int a4, int a5)
                         if (a5 == 1)
                         {
                             for (i = v17 - v24; v16 < v14; ++v16)
-                                v16->y += (i - (__int16)v16->height) / 2;
+                                v16->y += (i - (int16_t)v16->height) / 2;
                         }
                         else if (a5 == 2 && v16 < v14)
                         {
@@ -1902,7 +1902,7 @@ void STR_Align(struct sGameObjectMain* a1, int a2, int a3, int a4, int a5)
                     }
                     else
                     {
-                        for (j = (v25 + (__int16)(unsigned int)v27.x - v18) / 2; v16 < v14; ++v16)
+                        for (j = (v25 + (int16_t)(unsigned int)v27.x - v18) / 2; v16 < v14; ++v16)
                             v16->x += j;
                     }
                     v15 = v26;
@@ -1917,7 +1917,7 @@ void STR_SetStringExt(struct sGameObjectMain* a1, int a2, int a3, char* EndPtr, 
     tGEOSTRStruct* v5;
     tGEOSTRStringData* v6;
     int v7;
-    unsigned __int16 v8;
+    uint16_t v8;
     Vec3 a5a;
 
     if (EndPtr)
@@ -2052,7 +2052,7 @@ Vec3* STR_pst_GetPivot(struct sGEOSTRStruct* a1, int idx)
     return result;
 }
 
-void STR_SetFlag(struct sGEOSTRStruct* a1, int idx, __int16 a3)
+void STR_SetFlag(struct sGEOSTRStruct* a1, int idx, int16_t a3)
 {
     tGEOSTRStringData* v3;
 
@@ -2457,7 +2457,7 @@ Vec3* STR_pst_GetMax(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* 
     return a5;
 }
 
-void STR_SetFrame(struct sGameObjectMain* a1, int a2, char a3, __int16 a4)
+void STR_SetFrame(struct sGameObjectMain* a1, int a2, char a3, int16_t a4)
 {
     tGEOSTRStruct* v4;
     tGEOSTRStringData* v5;
@@ -2481,7 +2481,7 @@ void STR_EffectDel(struct sGameObjectMain* a1, int a2)
 {
     tGEOSTRStruct* v2;
     int v3;
-    byte v4;
+    uint8_t v4;
 
     v2 = STR_pst_Get(a1);
     if (v2)
@@ -2628,7 +2628,7 @@ void STR_SetSubStringWithMark(struct sGameObjectMain* a1, int a2, int a3, int a4
     int v11;
     int v12;
     int v13;
-    unsigned __int16 v14;
+    uint16_t v14;
 
     v4 = STR_pst_Get(a1);
     v5 = v4;
@@ -2691,7 +2691,7 @@ void STR_SetSubString(struct sGameObjectMain* a1, int a2, int a3, int a4)
     tGEOSTRStringData* v6;
     tGEOSTRStringData* v7;
     int v8;
-    unsigned __int16 v9;
+    uint16_t v9;
 
     v4 = STR_pst_Get(a1);
     v5 = v4;
@@ -2795,9 +2795,9 @@ void STR_ToString(struct sGameObjectMain* a1, int idx, int a3, int a4, unsigned 
     tGEOSTRLetter* v12;
     tGEOSTRLetter* i;
     signed int v14;
-    byte* v15;
-    byte* v16;
-    byte* v17;
+    uint8_t* v15;
+    uint8_t* v16;
+    uint8_t* v17;
 
     v5 = STR_pst_Get(a1);
     v6 = v5;

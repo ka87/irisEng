@@ -10,8 +10,8 @@ typedef struct loaStackElem
     int key;
     void** retValPtr;
     void* (* funcPtr)(uint32_t address);
-    byte flags;
-    byte _pad[3];
+    uint8_t flags;
+    uint8_t _pad[3];
 } loaStackElem;
 
 unsigned int LOA_ul_BinKey;

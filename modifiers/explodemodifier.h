@@ -8,7 +8,7 @@ typedef struct sExplodeMdfStruct
     int trinagleNum;
     int vertexNum;
     int triangleChunkNum;
-    byte gasp[4];
+    uint8_t gasp[4];
     float f1;
     float f2;
     float f3;

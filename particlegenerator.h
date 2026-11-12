@@ -32,9 +32,9 @@ typedef struct sPAGStruct
     int renderCnt;
     float timeElapsed;
     int flags;
-    byte mode;
-    byte subMode;
-    __int16 num;
+    uint8_t mode;
+    uint8_t subMode;
+    int16_t num;
     struct sGameObjectMain* gao1;
     struct sGameObjectMain* gaoForMatrixRef;
     struct sPAGGeneratorElemStruct generators[16];
@@ -74,7 +74,7 @@ typedef struct sPAGStruct
     int triangleNum;
     int triangleNum2;
     struct sPAGElemStruct* pagElems;
-    byte gap[116];
+    uint8_t gap[116];
 } tPAGStruct;
 
 void PAG_RenderCommon(struct sGameObjectMain* a1, struct sPAGStruct* a2);

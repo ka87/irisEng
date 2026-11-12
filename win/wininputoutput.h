@@ -52,7 +52,7 @@ char pcINO_keyboardDataBackup[266];
 /* The handler receives { lX*0.5, lY*0.5, wheelTicks } as floats,
    built in pcINO_Joystick_Update from the retail code at
    0x00422F41..0x0042303D -- not the raw DIMOUSESTATE2 ints. */
-void (*sJoystickHandlerFunction)(struct sInoPad*, float*, byte*);
+void (*sJoystickHandlerFunction)(struct sInoPad*, float*, uint8_t*);
 char* pcINO_keyMaps;
 short pcINO_unkKeyStateTest;
 

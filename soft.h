@@ -24,7 +24,7 @@ typedef struct sZListMeshElem
 typedef struct sZListObjElem
 {
     struct sGameObjectMain* gao;
-    byte gap[12];
+    uint8_t gap[12];
     Mtx4x4 worldMtx;
     Mtx4x4 gaoMatrix;
 } tZListObjElem;
@@ -54,21 +54,21 @@ typedef struct sBigBufferStruct
     int solidVertexColor;
     int* vertexColorArray;
     int* vertexColorArraySecond;
-    byte data1LightColors[20000];
-    byte data2SpecularColors[20000];
-    byte data3FinalColorWithShadow[40000];
-    byte data4[60000];
-    byte data5[60000];
-    byte data6[180000];
-    byte data7[40000];
-    byte data8SpecularVectors[60000];
-    byte* UVData;
+    uint8_t data1LightColors[20000];
+    uint8_t data2SpecularColors[20000];
+    uint8_t data3FinalColorWithShadow[40000];
+    uint8_t data4[60000];
+    uint8_t data5[60000];
+    uint8_t data6[180000];
+    uint8_t data7[40000];
+    uint8_t data8SpecularVectors[60000];
+    uint8_t* UVData;
     int colorMask;
-    byte gap[104]; // ennek a kozepeig van memset a GDI_fnpst_CreateDisplayData-ban
+    uint8_t gap[104]; // ennek a kozepeig van memset a GDI_fnpst_CreateDisplayData-ban
     struct sZlistStruct zlists[8];
-    byte gap1[64];
+    uint8_t gap1[64];
     struct sZListElemDataStruct ZListElemData;
-    byte gapForTmpMem[44];
+    uint8_t gapForTmpMem[44];
     int lastElem;
 } tBigBufferStruct;
 

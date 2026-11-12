@@ -26,7 +26,7 @@ typedef struct sXmenMdfStruct
     int flags;
     int num;
     int num2;
-    byte gap1[4];
+    uint8_t gap1[4];
     int xmenType;
     int geoKey;
     struct sGEOMAT* geomat;

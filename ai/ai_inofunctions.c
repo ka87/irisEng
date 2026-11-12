@@ -567,9 +567,9 @@ int AI_EvalFunc_SAVEDataGet_C(int a1, int a2)
             v21 = (i & 3) + ((i & 0xFFC) >> 2) + ((i & 0x3FF000) >> 12) + ((i & 0xFFC00000) >> 22);
             v11 |= (int)(((i & 3) + ((i & 0xFFC) >> 2) + ((i & 0x3FF000) >> 12) + ((i & 0xFFC00000) >> 22)) & 0x3C0) >> 6;
             v12 = ((i & 3)
-                + (unsigned __int8)((i & 0xFFC) >> 2)
-                + (unsigned __int8)((i & 0x3FF000) >> 12)
-                + (unsigned __int8)((i & 0xFFC00000) >> 22)) & 0x3F;
+                + (uint8_t)((i & 0xFFC) >> 2)
+                + (uint8_t)((i & 0x3FF000) >> 12)
+                + (uint8_t)((i & 0xFFC00000) >> 22)) & 0x3F;
             v16 = v7[v15 & 7];
             for (i = 0; i < 40; ++i)
             {

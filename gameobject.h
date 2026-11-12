@@ -18,7 +18,7 @@ typedef struct sGaoMatrix
     Mtx4x4 mtx;
     struct sGameObjectMain* refGao;
     struct sGameObjectMain* refGao2;
-    byte gap1[8];
+    uint8_t gap1[8];
 } tGaoMatrix;
 
 
@@ -115,8 +115,8 @@ typedef struct sGameObjectExtended
     struct sSndBank* snd;
     uint16_t capa;
     uint16_t capaBackup;
-    byte AIPriority;
-    byte aa;
+    uint8_t AIPriority;
+    uint8_t aa;
     int16_t extraFlag;
     float aiLod;
     float renderMinReqDistSq;
@@ -135,16 +135,16 @@ typedef struct sGameObjectMain
 {
     int flags; // 0x4000000 = pause
     int flags2; // a BVMinSet állít rá 0x2000000-t, 1 = active
-    byte if_this_not0_wont_render_gao;
-    byte u3;
-    unsigned __int16 snpIndex;
+    uint8_t if_this_not0_wont_render_gao;
+    uint8_t u3;
+    uint16_t snpIndex;
     Mtx4x4* matrices;
     struct sGameObjectBV* boundingVolume;
     struct sGameObjectBasic* basic;
     struct sGameObjectExtended* extended;
-    byte distance;
-    byte LODDist;
-    byte designFlags;
+    uint8_t distance;
+    uint8_t LODDist;
+    uint8_t designFlags;
     char process;
 } tGameObjectMain;
 
@@ -154,9 +154,9 @@ typedef struct sGameObjectVisualObject
     struct sGroGeneric* GROMAT;
     int objDrawMask;
     int* RLIVertexColors;
-    byte renderOnlyWithGFXRender;
-    byte culledFlagFromCullingObject;
-    byte vmilyenDistanceLightAttenuationFactor;
+    uint8_t renderOnlyWithGFXRender;
+    uint8_t culledFlagFromCullingObject;
+    uint8_t vmilyenDistanceLightAttenuationFactor;
     signed char boneDisplayOrder_zListBufferNum;
 } tGameObjectVisualObject;
 
@@ -164,25 +164,25 @@ typedef struct sShape
 {
     int16_t usageCount;
     uint16_t num;
-    byte shapesOriginal[64];
-    byte shapes[64];
+    uint8_t shapesOriginal[64];
+    uint8_t shapes[64];
 } tShape;
 
 typedef struct sAnim
 {
     int16_t flags;
-    byte frequency;
-    byte _pad;
+    uint8_t frequency;
+    uint8_t _pad;
     struct sEventData* ptr;
-    byte gapb[8];
+    uint8_t gapb[8];
     Mtx4x4 flashMtx;
     uint16_t actionForTransition;
-    byte actionElemForTransition;
-    byte transitionFlags;
-    byte flags2;
-    byte actionLength;
+    uint8_t actionElemForTransition;
+    uint8_t transitionFlags;
+    uint8_t flags2;
+    uint8_t actionLength;
     uint16_t startTime;
-    byte gap1[8];
+    uint8_t gap1[8];
 } tAnim;
 
 typedef struct sActionElem
@@ -190,19 +190,19 @@ typedef struct sActionElem
     struct sGameObjectEventsList* eventLists;
     BASStruct* transition;
     struct sShape* shape;
-    byte changeActionCallAmountToChange;
-    byte b2;
-    byte actionFrequency;
-    byte customBits;
+    uint8_t changeActionCallAmountToChange;
+    uint8_t b2;
+    uint8_t actionFrequency;
+    uint8_t customBits;
     int16_t designFlags;
-    byte b5;
-    byte _pad;
+    uint8_t b5;
+    uint8_t _pad;
 } tActionElem;
 
 typedef struct sAction
 {
-    byte actionElemNum;
-    byte actionElemIDForTransition;
+    uint8_t actionElemNum;
+    uint8_t actionElemIDForTransition;
     int16_t usageCount;
 } tAction;
 
@@ -217,20 +217,20 @@ typedef struct sActionKit
 typedef struct sTransitionElem // volt sTransitionElemInner
 {
     uint16_t actionID;
-    byte flags;
-    byte transitionLength;
+    uint8_t flags;
+    uint8_t transitionLength;
 } tTransitionElem;
 
 typedef struct sGameObjectActorObject
 {
-    byte initedInANIMainCall;
-    byte flagsEgBlendIw2; // 1 = synchronizetracks? (EVE_SynchronizeTracks, ANI_MainCall) 
-    __int16 currTime;
+    uint8_t initedInANIMainCall;
+    uint8_t flagsEgBlendIw2; // 1 = synchronizetracks? (EVE_SynchronizeTracks, ANI_MainCall) 
+    int16_t currTime;
     struct sGroup* group;
     struct sGroup* skeletonGroup;
     struct sGroup* skeletonGroupToRestoreOnReinit;
     struct sShape* shape2;
-    byte shapes[64];
+    uint8_t shapes[64];
     struct sShape* shape;
     struct sAnim* animPtr[4];
     struct sAction* actionPtr;
@@ -238,14 +238,14 @@ typedef struct sGameObjectActorObject
     struct sTransitionElem* transitionElem;
     uint16_t currentAction;
     uint16_t currentActionTransition;
-    byte actionItem;
-    byte callCountForChangeAction;
-    byte eventRunningFrequency;
-    byte unkb;
-    byte culledFlagFromCullingObject;
-    byte ANILOD;
-    byte lod;
-    byte aniBitFieldLOD;
+    uint8_t actionItem;
+    uint8_t callCountForChangeAction;
+    uint8_t eventRunningFrequency;
+    uint8_t unkb;
+    uint8_t culledFlagFromCullingObject;
+    uint8_t ANILOD;
+    uint8_t lod;
+    uint8_t aniBitFieldLOD;
     float aniPelvisOffset;
     float elapsedDT;
 } tGameObjectActorObject;

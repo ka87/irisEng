@@ -107,7 +107,7 @@ uint8_t pcINO_InputHandlerSubModeCase10[24] = { 0, 0x0F, 0xFE, 0x10, 0xFE, 0xFE,
                                                 0xFE, 0xFE, 0xFE, 0xFE, 0x0F, 0x0E, 0x0C, 0x0A,
                                                 0x0D, 0x0B, 0xFE, 0xFE, 0xFE, 0xFE, 0, 0 };
 
-void pcINO_JoystickPositionAlignSetFromKeyboard(int zero, byte* keybData)
+void pcINO_JoystickPositionAlignSetFromKeyboard(int zero, uint8_t* keybData)
 {
     int v2;
     int v3;
@@ -213,7 +213,7 @@ void pcINO_SetMouseSensitivity(float t)
         pcINO_mouseSensitivity = t * 1.0f + 0.2f;
 }
 
-void pcINO_InputHandlerCase1(tInoPad* a1, float* mouse, byte* keybData)
+void pcINO_InputHandlerCase1(tInoPad* a1, float* mouse, uint8_t* keybData)
 {
     int v4;
     double v5;
@@ -302,7 +302,7 @@ void pcINO_InputHandlerCase1(tInoPad* a1, float* mouse, byte* keybData)
    Retail has no state machine here at all: it force-clears the shared
    flags and drives padData[7] and [4] straight from the keys. It also
    branches three ways on the submode, which the demo did not. */
-void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, byte* keyboard)
+void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
     int wheel;
     int scroll;
@@ -379,7 +379,7 @@ void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, byte* keyboard)
     }
 }
 
-void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, byte* keyboard)
+void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, uint8_t* keyboard)
 {
     int submode;
     double gain;
@@ -486,7 +486,7 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, byte* keyboard)
     }
 }
 
-void pcINO_InputHandlerCase8(tInoPad* a1, float* mouse, byte* keyboard)
+void pcINO_InputHandlerCase8(tInoPad* a1, float* mouse, uint8_t* keyboard)
 {
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         a1->padData[0] = -1;
@@ -527,7 +527,7 @@ void pcINO_InputHandlerCase8(tInoPad* a1, float* mouse, byte* keyboard)
     }
 }
 
-void pcINO_InputHandlerCase32(tInoPad* a1, float* mouse, byte* keyboard)
+void pcINO_InputHandlerCase32(tInoPad* a1, float* mouse, uint8_t* keyboard)
 {
     double v;
 
@@ -579,7 +579,7 @@ void pcINO_InputHandlerCase32(tInoPad* a1, float* mouse, byte* keyboard)
    Retail splits the keyboard align in two: the .x half and the .y = -1
    half run before the submode branch, the .y += 1 half afterwards, and
    two paths return before reaching it. */
-void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, byte* keyboard)
+void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
     int   boost;
     float v;
@@ -666,7 +666,7 @@ void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, byte* keyboard)
         pcINO_joystickPosition[0].y = (float)(pcINO_joystickPosition[0].y + 1.0);
 }
 
-void pcINO_InputHandlerCase100(tInoPad* a1, float* mouse, byte* keyboard)
+void pcINO_InputHandlerCase100(tInoPad* a1, float* mouse, uint8_t* keyboard)
 {
     double angle;
     double len;
@@ -709,7 +709,7 @@ void pcINO_InputHandlerCase100(tInoPad* a1, float* mouse, byte* keyboard)
     }
 }
 
-void pcINO_InputHandlerCase101(tInoPad* a1, float* mouse, byte* keyboard)
+void pcINO_InputHandlerCase101(tInoPad* a1, float* mouse, uint8_t* keyboard)
 {
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         a1->padData[0] = -1;
@@ -1201,7 +1201,7 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
        [esp+0x138]/[esp+0x139] (0x00423026, 0x00423035), i.e.
        keyboardData[264] and [265], and the backup copy at the end
        is 266 bytes. The demo decompile put those two in locals. */
-    byte keyboardData[266];
+    uint8_t keyboardData[266];
     /* The handler takes { lX * 0.5, lY * 0.5, lZ / granularity }
        as floats (built at 0x00422F41..0x0042303D), not the raw
        DIMOUSESTATE2 ints. The third element is wheel TICKS. */
@@ -1268,7 +1268,7 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
     keyboardData[259] = ((mouseData[3] >> 8) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[260] = ((mouseData[3] >> 16) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[261] = ((mouseData[3] >> 24) & 0xff) == 0 ? 0 : 0x80;
-    keyboardData[262] = (byte)(v2 & 0xff) == 0 ? 0 : 0x80;
+    keyboardData[262] = (uint8_t)(v2 & 0xff) == 0 ? 0 : 0x80;
     keyboardData[263] = (((v2) >> 8) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[264] = ((mouseData[4] >> 16) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[265] = ((mouseData[4] >> 24) & 0xff) == 0 ? 0 : 0x80;

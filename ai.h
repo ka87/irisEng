@@ -22,8 +22,8 @@ typedef struct sAILocal
 
 typedef struct sVarStackElem
 {
-    __int16 type;
-    byte _gap[2];
+    int16_t type;
+    uint8_t _gap[2];
     char* ptr;
 } tVarStackElem;
 
@@ -45,8 +45,8 @@ typedef struct AIVarElem
 {
     int varOffset;
     unsigned int variableArrayCount;
-    __int16 variableType;
-    __int16 flags;
+    int16_t variableType;
+    int16_t flags;
 } AIVarElem;
 
 typedef struct AIVarNameElem
@@ -59,15 +59,15 @@ typedef struct sAIFunction
     struct sAINode* nodes;
     int stackOffsetNum; // function local stack size
     char* localStringConstsData; // string consts used in the function or an offset if ainode.val2 = 38; basically it's used for string format specifiers
-    __int16 usageCount;
-    byte pad[2];
+    int16_t usageCount;
+    uint8_t pad[2];
     int(*funcPtr)();
     int varsResolved;
 } tAIFunction;
 
 typedef struct sAIVars
 {
-    byte* varData;
+    uint8_t* varData;
     unsigned int varFullSizeToAlloc;
     AIVarElem* variables;
     unsigned int varNum;
@@ -83,8 +83,8 @@ typedef struct sAIModel
     struct sAIFunction** funcs;
     unsigned int funcNum;
     int16_t instanceCnt;
-    byte isResolved;
-    byte isDisabled;
+    uint8_t isResolved;
+    uint8_t isDisabled;
 } tAIModel;
 
 typedef struct sAiCBElemStruct
@@ -100,8 +100,8 @@ typedef struct sAI
     struct sAINode* instanceJumpNodes[5];
     struct sAIFunction* instanceCallBacks[5];
     float instanceCallBackTimeRemaining[5];
-    byte* instanceVarDataInitial;
-    byte* instanceVarDataCurrent;
+    uint8_t* instanceVarDataInitial;
+    uint8_t* instanceVarDataCurrent;
     int instanceAICBListNum;
     struct sAiCBElemStruct* instanceAICBList;
     struct sAIVars* varsInstance;   
@@ -111,15 +111,15 @@ typedef struct sAI
 
 typedef struct sAIVarUnk
 {
-    byte _gap1[4];
+    uint8_t _gap1[4];
     int32_t i1;
     int32_t i2;
-    byte _gap2[8];
+    uint8_t _gap2[8];
 } tAIVarUnk;
 
 
 unsigned int AI_gi_SaveBufferSize;
-byte* AI_gpc_SaveBuffer;
+uint8_t* AI_gpc_SaveBuffer;
 
 int AI_C_Callback;
 
@@ -165,7 +165,7 @@ void AI_PutVecToStack(Vec3* a1);
 void AI_GetVarFromStack(void* dest, tVarStackElem* a2);
 char* AI_PushUserStack(void* a1, int16_t a2);
 void AI_PopUserStack(void* a1, tVarStackElem* a2);
-void AI_PutObjectToStack(void* a1, __int16 type);
+void AI_PutObjectToStack(void* a1, int16_t type);
 void AI_EvalVar(tVarStackElem* a1);
 void AI_EvalVarArray(tAINode* a1, char* a2);
 void AI_EvalVarArray2(tAINode* a1, char* a2);

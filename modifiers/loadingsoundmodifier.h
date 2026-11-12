@@ -33,7 +33,7 @@ typedef struct sLoadingSoundMdfStruct
     float ii26;
     float ii27;
     float ii28;
-    byte gap[256];
+    uint8_t gap[256];
 } tLoadingSoundMdfStruct;
 
 void MDF_LoadingSound_Apply(tModifier* a1, tGameObjectMain* a2);

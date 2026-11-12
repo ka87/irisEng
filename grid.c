@@ -322,7 +322,7 @@ int GRID_ShortestPath(struct sGameObjectMain* gao, struct sWorldGridStruct* a2, 
     int v60; 
     char v61;
     tGridPtrElem* v62;
-    byte v63;
+    uint8_t v63;
     float v64;
     float v65;
     int v66;
@@ -784,11 +784,11 @@ int GRI_Compress(tWorldGridStruct* a1, char* a2, int a3, int a4, char* a5, int a
     int v11;
     char* v12;
     int v13;
-    byte* v14;
+    uint8_t* v14;
     BOOL v15;
     int v16; 
-    byte* v17;
-    byte* v18;
+    uint8_t* v17;
+    uint8_t* v18;
     int result;
     int v20;
     int v21;
@@ -1197,15 +1197,15 @@ void GRI_Reinit(struct sWorldGridStruct* a1)
     int v2;
     int v3;
     int* v4;
-    __int16 v5;
-    __int16 v6;
-    __int16 v7;
+    int16_t v5;
+    int16_t v6;
+    int16_t v7;
     int v8;
     int v9;
     unsigned int v10;
     int i;
     char** v12;
-    __int16 v13;
+    int16_t v13;
 
     if (!a1->ptrs)
     {

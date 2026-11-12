@@ -16,14 +16,14 @@ typedef struct sFontData
     int texKeyAlternative;
     struct sGEOMAT* mat;
     tFontGlypthElem fge[224];
-    __int16 width;
-    __int16 height;
+    int16_t width;
+    int16_t height;
 } tFontData;
 
 typedef struct sGEOSTRStringData
 {
     int16_t flags;
-    byte gap1[2];
+    uint8_t gap1[2];
     uint16_t index;
     uint16_t number;
     uint16_t index2;
@@ -62,9 +62,9 @@ typedef struct sGEOSTREffectStructType20
     int index;
     int number;
     int unki1;
-    byte flagsAndChar; // -- 
-    byte unkb1; // -- 
-    byte _gap[2];
+    uint8_t flagsAndChar; // -- 
+    uint8_t unkb1; // -- 
+    uint8_t _gap[2];
     float color1; // --
     float color2; // --
     float f3; // --
@@ -89,12 +89,12 @@ typedef struct sGEOSTRStruct
     struct sGroIntf* intf;
     int usageCount;
     int unkNum;
-    byte stringNum;
-    byte maxEffectsNum;
-    byte effectsNum;
-    byte gapb;
+    uint8_t stringNum;
+    uint8_t maxEffectsNum;
+    uint8_t effectsNum;
+    uint8_t gapb;
     int16_t fontMaterialID;
-    byte gapc[2];
+    uint8_t gapc[2];
     int renderCnt;
     int16_t width;
     int16_t height;
@@ -103,8 +103,8 @@ typedef struct sGEOSTRStruct
     tGEOSTREffectStruct effect[32];
     struct sFontData* fontDesc;
     int* specularColorsPtr;
-    byte gap[8];
-    __int16 shorts[24];
+    uint8_t gap[8];
+    int16_t shorts[24];
 } tGEOSTRStruct;
 
 typedef struct sUnkGeoStrStruct

@@ -6,13 +6,13 @@ void GEO_ModifierRLICarte_Apply(struct sModifier* a1, struct sGEOGRO* a2)
 {
     tRliCarteMdfStruct* v2;
     int v3;
-    byte* v4;
+    uint8_t* v4;
     unsigned int* v5;
     tGameObjectMain* v6;
     tGameObjectBasic* v7;
     tGameObjectVisualObject* v8;
     int* v9;
-    byte v10; 
+    uint8_t v10; 
     int v11; 
     unsigned int* v12; 
     int v13;

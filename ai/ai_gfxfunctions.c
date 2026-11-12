@@ -75,7 +75,7 @@ tAINode* AI_EvalFunc_GFXAdd(tAINode* a1)
     return a1 + 1;
 }
 
-int AI_EvalFunc_GFXAddSorted_C(struct sGameObjectMain* a4, char a2, __int16 a3)
+int AI_EvalFunc_GFXAddSorted_C(struct sGameObjectMain* a4, char a2, int16_t a3)
 {
     return GFX_i_AddSorted(&WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE, a2, a3, a4);
 }
@@ -85,7 +85,7 @@ tAINode* AI_EvalFunc_GFXAddSorted(tAINode* a1)
     int v1;
     tGameObjectMain* v3;
     char v4;
-    __int16 a3;
+    int16_t a3;
 
     v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;

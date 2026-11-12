@@ -1415,11 +1415,11 @@ tAINode* AI_EvalKeyword_OrAffect(tAINode* a1)
     BOOL floats;
     double v6;
     int v7;
-    __int16 v8;
+    int16_t v8;
     char* v9;
     int v10;
     int v11;
-    __int16 v12;
+    int16_t v12;
 
     v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
     v7 = *(int*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
@@ -1471,11 +1471,11 @@ tAINode* AI_EvalKeyword_AndAffect(tAINode* a1)
     BOOL v5; 
     double v6;
     int v7; 
-    __int16 v8; 
+    int16_t v8; 
     char* v9; 
     int v10; 
     int v11; 
-    __int16 v12;
+    int16_t v12;
 
     v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
     v7 = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
@@ -1527,11 +1527,11 @@ tAINode* AI_EvalKeyword_XorAffect(tAINode* a1)
     BOOL v5; 
     double v6;
     int v7; 
-    __int16 v8; 
+    int16_t v8; 
     int v9;
     int v10;
     int v11;
-    __int16 v12;
+    int16_t v12;
 
     v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
     v7 = *(int*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
@@ -1583,11 +1583,11 @@ tAINode* AI_EvalKeyword_SLeftAffect(tAINode* a1)
     BOOL v5; 
     double v6;
     int v7; 
-    __int16 v8; 
+    int16_t v8; 
     int* v9;
     int v10;
     int v11;
-    __int16 v12;
+    int16_t v12;
 
     v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
     v7 = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
@@ -1639,11 +1639,11 @@ tAINode* AI_EvalKeyword_SRightAffect(tAINode* a1)
     BOOL v5;
     double v6;
     int v7; 
-    __int16 v8;
+    int16_t v8;
     int* v9; 
     int v10; 
     int v11; 
-    __int16 v12;
+    int16_t v12;
 
     v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
     v7 = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;

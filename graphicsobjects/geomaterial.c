@@ -464,7 +464,7 @@ char* MAT_pc_GetAllUsedTextureIndex(struct sGdi_DisplayData* a1, unsigned int a2
         v6 = v4->objectPtr;
         if (v4->objectPtr)
         {
-            if (((unsigned __int8)v6 & 3) != 1)
+            if (((uint8_t)v6 & 3) != 1)
             {
                 MAT_TestUsedForMat(v6, v2);
                 if (((tGEOMAT*)(v4->objectPtr))->intf->id == 4)
@@ -472,6 +472,6 @@ char* MAT_pc_GetAllUsedTextureIndex(struct sGdi_DisplayData* a1, unsigned int a2
             }
         }
     }
-    GAO_ModifierShadow_DetectUsedTextures((byte*)v2);
+    GAO_ModifierShadow_DetectUsedTextures((uint8_t*)v2);
     return v2;
 }

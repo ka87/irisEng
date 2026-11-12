@@ -3,12 +3,12 @@
 //https://github.com/videolan/vlc/blob/master/modules/codec/adpcm.c
 //https://wiki.multimedia.cx/index.php/Microsoft_ADPCM
 
-__int16 pcINO_ApplyADPCMAaptation(unsigned __int8 a1, __int16* a2, __int16* a3)
+int16_t pcINO_ApplyADPCMAaptation(uint8_t a1, int16_t* a2, int16_t* a3)
 {
     int v4;
     int v5;
     int v6;
-    __int16 v7;
+    int16_t v7;
     int v8;
     int v9;
     int v10;
@@ -38,9 +38,9 @@ __int16 pcINO_ApplyADPCMAaptation(unsigned __int8 a1, __int16* a2, __int16* a3)
     v4 = a2[1];
     v5 = *a2;
 
-    v6 = (__int16)a3[3] * v4;
+    v6 = (int16_t)a3[3] * v4;
     v7 = a3[2];
-    v8 = (unsigned __int16)a3[1];
+    v8 = (uint16_t)a3[1];
     v9 = v5 * v7 + v6;
     v10 = a1;
     v11 = (a1 & 8) == 0;
@@ -66,37 +66,37 @@ __int16 pcINO_ApplyADPCMAaptation(unsigned __int8 a1, __int16* a2, __int16* a3)
     return v13;
 }
 
-int pcSND_ADPCMToPCM_ConvertOneBlock(__int16* dest, tADPCMParamStruct* a2, unsigned __int8* src)
+int pcSND_ADPCMToPCM_ConvertOneBlock(int16_t* dest, tADPCMParamStruct* a2, uint8_t* src)
 {
     int channelNum;
     int isStereo;
-    __int16* v7;
+    int16_t* v7;
     int o;
-    __int16* v9;
+    int16_t* v9;
     char v10;
     int i;
-    __int16* v12;
-    __int16 v13;
+    int16_t* v12;
+    int16_t v13;
     int j;
-    __int16* v15;
-    __int16 v16;
+    int16_t* v15;
+    int16_t v16;
     int k;
-    __int16* v18;
-    __int16 v19;
+    int16_t* v18;
+    int16_t v19;
     int l;
     int m;
     int v22;
     unsigned int v23;
-    __int16 v24;
-    __int16* v25;
-    __int16* v26;
+    int16_t v24;
+    int16_t* v25;
+    int16_t* v26;
     int v28;
     tADPCMParamStruct* v29;
-    __int16* coeff1;
-    __int16* coeff2;
-    __int16* v32[2];
-    __int16 v33[4];
-    __int16 v34[4];
+    int16_t* coeff1;
+    int16_t* coeff2;
+    int16_t* v32[2];
+    int16_t v33[4];
+    int16_t v34[4];
 
     channelNum = a2->channelNum;
     isStereo = a2->channelNum == 2;
@@ -113,7 +113,7 @@ int pcSND_ADPCMToPCM_ConvertOneBlock(__int16* dest, tADPCMParamStruct* a2, unsig
         v10 = *src++;
         ++o;
         *v9 = 0;
-        *(unsigned __int8*)v9 = v10;
+        *(uint8_t*)v9 = v10;
     }
     for (i = 0; i < channelNum; i++)
     {
@@ -143,7 +143,7 @@ int pcSND_ADPCMToPCM_ConvertOneBlock(__int16* dest, tADPCMParamStruct* a2, unsig
         src += 2;
     }
     coeff1 = &a2->adaptationCoeffs[2 * (v33[0] & 0xff)];
-    coeff2 = &a2->adaptationCoeffs[2 * *(unsigned __int8*)v32[1]];
+    coeff2 = &a2->adaptationCoeffs[2 * *(uint8_t*)v32[1]];
     for (l = 0; l < channelNum; ++l)
         *dest++ = v32[l][3];
     for (m = 0; m < channelNum; ++m)
@@ -167,7 +167,7 @@ int pcSND_ADPCMToPCM_ConvertOneBlock(__int16* dest, tADPCMParamStruct* a2, unsig
     return v28;
 }
 
-int pcSND_ADPCMToPCM_Convert(unsigned __int8* sndData, __int16* destPtr, unsigned int fullSize, unsigned __int16 a4, unsigned __int16 a5, unsigned __int16 blockSize)
+int pcSND_ADPCMToPCM_Convert(uint8_t* sndData, int16_t* destPtr, unsigned int fullSize, uint16_t a4, uint16_t a5, uint16_t blockSize)
 {
     int v6;
     unsigned int v9;

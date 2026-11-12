@@ -5,8 +5,8 @@
 
 typedef struct sGeoTriangleStripElem
 {
-    unsigned __int16 triangleIdx;
-    unsigned __int16 uvIdx;
+    uint16_t triangleIdx;
+    uint16_t uvIdx;
 } tGeoTriangleStripElem;
 
 typedef struct sGeoTriangleStrip
@@ -65,7 +65,7 @@ typedef struct sGeoTriangleChunks
     uint16_t* MRMUVIndices;
     struct sGeoMRMUVIndexElem* MRMUVIndexElems;
     struct sGeoWholeTriangleStripBlock* triangleStripBlock;
-    byte gap1[4];
+    uint8_t gap1[4];
 } tGeoTriangleChunks;
 
 typedef struct sGeoUVElem
@@ -95,7 +95,7 @@ typedef struct sGeoSknElem
     uint16_t multiPartElemID;
     uint16_t num;
     int32_t* weightsAndIndicesPtr;
-    byte gap[8];
+    uint8_t gap[8];
 } tGeoSknElem;
 
 typedef struct sGeoSknSub1
@@ -155,7 +155,7 @@ typedef struct sGEOGRO
     struct sCobOK3* collisionPtr; /* struct sGeoCollisionMain */
     IDirect3DVertexBuffer9* d3dvb;
     IDirect3DVertexBuffer9* d3dvb2;
-    byte gap4b[4]; // ez mi??? a PC_FreeABackCache-nél ez a release ki van kommentezve mert nemtudom mi TODO FIXME
+    uint8_t gap4b[4]; // ez mi??? a PC_FreeABackCache-nél ez a release ki van kommentezve mert nemtudom mi TODO FIXME
     int d3dUVVBNum;
     IDirect3DVertexBuffer9** d3dUVVB;
     IDirect3DIndexBuffer9* d3dIndexBuf;

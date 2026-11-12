@@ -5,8 +5,8 @@ typedef struct profilerRasterStructElem
 {
     int unk1;
     float unk2;
-    __int16 insideCounter;
-    __int16 unk3s2;
+    int16_t insideCounter;
+    int16_t unk3s2;
     char* group;
     char* subgroup;
     char* module;

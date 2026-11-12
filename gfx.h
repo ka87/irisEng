@@ -6,9 +6,9 @@
 
 typedef struct sGfxElem
 {
-    __int8 type;
-    byte gfxFlags;
-    __int16 id;
+    int8_t type;
+    uint8_t gfxFlags;
+    int16_t id;
     void* privateData;
     struct sGEOMAT* material;
     struct sGameObjectMain* aiGameObject;
@@ -37,22 +37,22 @@ void GFX_NeedGeomEx(unsigned int pointsNum, unsigned int UVNum, unsigned int tri
 void GFX_NeedGeomExElem(unsigned int a1, unsigned int a2);
 void GFX_NeedGeomNbElemSprites(unsigned int a1);
 void GFX_NeedGeomElemNbSprites(unsigned int a1, unsigned int a2);
-void GFX_Del(tGfxElem** a1, __int16 id);
+void GFX_Del(tGfxElem** a1, int16_t id);
 void GFX_End();
 struct sGfxElem* GFX_Attached(struct sGfxElem* a1);
 void GFX_Test(tGfxElem* a1);
 void GFX_SetCurrent(struct sGfxElem* a1, int16_t id);
 int GFX_i_Add(tGfxElem** gfxList, char type, struct sGameObjectMain* aiGao);
-int GFX_i_AddSorted(tGfxElem** a1, char type, unsigned __int16 idx, struct sGameObjectMain* a4);
+int GFX_i_AddSorted(tGfxElem** a1, char type, uint16_t idx, struct sGameObjectMain* a4);
 struct sGfxElem* GFX_pst_FindById(struct sGfxElem** a1, int16_t gfxId);
 int GFX_i_SetDeath(struct sGfxElem** a1, struct sGfxElem* a2);
 int GFX_i_Request(int a1);
-int GFX_i_Geti(tGfxElem* a1, __int16 a2, int a3);
-void GFX_Seti(tGfxElem* a1, __int16 id, int a3, int a4);
+int GFX_i_Geti(tGfxElem* a1, int16_t a2, int a3);
+void GFX_Seti(tGfxElem* a1, int16_t id, int a3, int a4);
 void GFX_Setf(tGfxElem* a1, int id, int a2, float a3);
-float GFX_f_Getf(tGfxElem* a1, __int16 id, int a3);
-Vec3* GFX_pst_Getv(tGfxElem* a1, __int16 a2, int a3);
-void GFX_Setv(tGfxElem* a1, __int16 a2, int a3, Vec3* a4);
+float GFX_f_Getf(tGfxElem* a1, int16_t id, int a3);
+Vec3* GFX_pst_Getv(tGfxElem* a1, int16_t a2, int a3);
+void GFX_Setv(tGfxElem* a1, int16_t a2, int a3, Vec3* a4);
 void GFX_FlagSet(tGfxElem* a1, int16_t id, char a3, int set);
 void GFX_SetMaterial(tGfxElem* a1, int16_t id, struct sGEOMAT* a3);
 void GFX_Render(tGfxElem** a1, int zlistLock);

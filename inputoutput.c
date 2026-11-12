@@ -73,8 +73,8 @@ void INO_SavInitModule() {
 
 void INO_KeyboardInit()
 {
-    INO_Keys = (byte*)MEM_p_Alloc(256u);
-    INO_Keys_Prev = (byte*)MEM_p_Alloc(256u);
+    INO_Keys = (uint8_t*)MEM_p_Alloc(256u);
+    INO_Keys_Prev = (uint8_t*)MEM_p_Alloc(256u);
     memset(INO_keybUnkDataProbablyUnused, 0, 100u);
 }
 
@@ -114,8 +114,8 @@ void INO_Joystick_Update()
 {
     int i; 
     float pifDurRemaining, pafDurRemaining;
-    byte controlsMask[16];
-    byte buttons[16];
+    uint8_t controlsMask[16];
+    uint8_t buttons[16];
 
     if (INO_l_Joystick_Enable)
     {
@@ -360,7 +360,7 @@ void INO_CloseModule()
 
 void INO_Keyboard_Update()
 {
-    byte* v0;
+    uint8_t* v0;
     int i;
 
     v0 = INO_Keys_Prev;
@@ -557,7 +557,7 @@ void SAV_OrderData()
 void INO_v_MemoryCardManager(int defaultSlot)
 {
     struct tm* lt;
-    __int16 v3;
+    int16_t v3;
     int v4;
     int v5;
     int v6;
@@ -711,7 +711,7 @@ void INO_v_MemoryCardManager(int defaultSlot)
                 SAV_gst_Data[INO_gst_SavSlotDesc.id].year = lt->tm_year + 1900;
                 SAV_gst_Data[INO_gst_SavSlotDesc.id].s1 = v3;
                 v4 = INO_gst_SavSlotDesc.i4;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].s2 = (__int16)INO_gst_SavSlotDesc.i3;
+                SAV_gst_Data[INO_gst_SavSlotDesc.id].s2 = (int16_t)INO_gst_SavSlotDesc.i3;
                 v5 = SAV_idx_Field_i2;
                 SAV_gst_Data[INO_gst_SavSlotDesc.id].i1 = v4;
                 v6 = SAV_idx_Field_i3;

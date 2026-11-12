@@ -255,7 +255,7 @@ tAINode* AI_EvalFunc_OBJ_TextPivotGet(tAINode* a1)
     return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_TextFlagSet_C(struct sGameObjectMain* a1, int idx, __int16 a3)
+void AI_EvalFunc_OBJ_TextFlagSet_C(struct sGameObjectMain* a1, int idx, int16_t a3)
 {
     tGEOSTRStruct* v3;
 
@@ -267,7 +267,7 @@ void AI_EvalFunc_OBJ_TextFlagSet_C(struct sGameObjectMain* a1, int idx, __int16 
 tAINode* AI_EvalFunc_OBJ_TextFlagSet(tAINode* a1)
 {
     int v1;
-    __int16 v3;
+    int16_t v3;
     tGameObjectMain* v4;
 
     v4 = AI_gpst_CurrentUltra;
@@ -730,7 +730,7 @@ tAINode* AI_EvalFunc_OBJ_TextFrameSet(tAINode* a1)
     int v1;
     char v3;
     tGameObjectMain* v4;
-    __int16 a4;
+    int16_t a4;
 
     v4 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;

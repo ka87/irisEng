@@ -17,7 +17,7 @@ typedef struct sViewElem
     float viewPortSizeWidth;
     float viewPortSizeHeight;
     void (*viewFunctionPtr)(struct sViewElem* a1);
-    byte gap1[12];
+    uint8_t gap1[12];
 } tViewElem;
 
 unsigned int WOR_View_Create(struct sWorld* world);

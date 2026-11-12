@@ -144,9 +144,9 @@ int INT_SnP_FullSetFlag(int* flagPtr, int idx, int currIdx, int limit, int* a5, 
     return result;
 }
 
-void INT_SnP_ResetAllReferenceFlags(tSnp* a1, unsigned __int16 idx)
+void INT_SnP_ResetAllReferenceFlags(tSnp* a1, uint16_t idx)
 {
-    unsigned __int16 v2;
+    uint16_t v2;
     int i;
     int a3;
     int a2;
@@ -223,7 +223,7 @@ void INT_SnP_AddNode(tSnp* snp, tGameObjectMain* gao, Vec3* bv, char flags)
     Vec3* gaoPos;
     double v11;
     double v12;
-    byte isSphere;
+    uint8_t isSphere;
     float v13;
     int16_t v14;
     Vec3 a1;
@@ -549,9 +549,9 @@ void INT_SnP_UpdateAllDetectionLists(tSnp* a1)
     tGameObjectMain** v6;
     tGameObjectMain** v7;
     unsigned int v8;
-    unsigned __int16 v9;
+    uint16_t v9;
     int v10;
-    unsigned __int16 v11;
+    uint16_t v11;
     int a2;
     tGameObjectMain** v13;
     tGameObjectMain** v14;

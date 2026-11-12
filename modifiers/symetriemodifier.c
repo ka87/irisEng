@@ -29,7 +29,7 @@ void GEO_ModifierSymetrie_Apply(tModifier* a1, tGEOGRO* a2)
 {
     tGEOGRO* v2;
     tSymMdfStruct* v3;
-    byte* v4;
+    uint8_t* v4;
     Vec3* v5;
     Vec3* v6;
     Vec3* v7;

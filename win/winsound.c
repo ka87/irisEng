@@ -99,7 +99,7 @@ HRESULT pcSND_EAXDSoundCreate_sub_49FE30(GUID* guid, LPDIRECTSOUND8* dsoundptr, 
     return pEAXDirectSoundCreate8(guid, dsoundptr, ptr);
 }
 
-int pcSND_probablyDecompressADPCM_sub_4A0130(char* snddata, __int16* destPtr, int blockNum, int channelNum)
+int pcSND_probablyDecompressADPCM_sub_4A0130(char* snddata, int16_t* destPtr, int blockNum, int channelNum)
 {
     pcSND_ADPCMToPCM_Convert(
         (uint8_t*)snddata,
@@ -263,8 +263,8 @@ void pcSND_ReadAndDecompressSoundData(unsigned int a1, tSndSoundBufferElem* sbe,
     unsigned int v7;
     int blockNum;
     DWORD v9;
-    __int16* v10;
-    __int16* v11;
+    int16_t* v10;
+    int16_t* v11;
     DWORD i;
     int v13;
     int v14;
@@ -319,7 +319,7 @@ int WINAPI pcSND_SoundThread(LPVOID lpThreadParameter)
     unsigned int v8;
     char* v9;
     unsigned int v10;
-    __int16* v11;
+    int16_t* v11;
     unsigned int audioBytes1;
     char* audioPtr1;
     DWORD totalSizeAfterDecompress;
@@ -910,7 +910,7 @@ LABEL_14:
         v7 = pcSND_calcMemoryNeededForTheSound(sndHdr->fullSoundSize, sndHdr->wfex.nChannels);
         uncompressedSnd = (char*)MEM_p_Alloc(v7);
         memset(uncompressedSnd, 0, v7);
-        pcSND_probablyDecompressADPCM_sub_4A0130(sndData, (__int16*)uncompressedSnd, sndHdr->fullSoundSize / sndHdr->wfex.nBlockAlign, sndHdr->wfex.nChannels);
+        pcSND_probablyDecompressADPCM_sub_4A0130(sndData, (int16_t*)uncompressedSnd, sndHdr->fullSoundSize / sndHdr->wfex.nBlockAlign, sndHdr->wfex.nChannels);
         MEM_Free(sndData);
         sndData = uncompressedSnd;
     }
@@ -1463,7 +1463,7 @@ LABEL_14:
         v7 = pcSND_calcMemoryNeededForTheSound(a3->fullSoundSize, a3->wfex.nChannels);
         v8 = (char*)MEM_p_Alloc(v7);
         memset(v8, 0, v7);
-        pcSND_probablyDecompressADPCM_sub_4A0130(v4, (__int16*)v8, a3->fullSoundSize / (int)a3->wfex.nBlockAlign, a3->wfex.nChannels);
+        pcSND_probablyDecompressADPCM_sub_4A0130(v4, (int16_t*)v8, a3->fullSoundSize / (int)a3->wfex.nBlockAlign, a3->wfex.nChannels);
         MEM_Free(v4);
         v4 = v8;
     }
@@ -1599,7 +1599,7 @@ void pcSND_fillSoundBuffer(int a1, tSbeMiscData* a2, tSndSoundBufferElem* a3)
         v5 = pcSND_CalcSizeToReadByFormat(v4->unk6, sbe->format);
         SetFilePointer(v4->fileHandle, v4->distanceToMove + v5, &totalSizeAfterDecompress, 0);
         v4->sumSize = v4->unk6;
-        pcSND_ReadAndDecompressSoundData(a3a, sbe, 0, &v7, (__int16*)v8);
+        pcSND_ReadAndDecompressSoundData(a3a, sbe, 0, &v7, (int16_t*)v8);
         v6 = v7;
         if (v7 < a3a)
         {
@@ -1609,7 +1609,7 @@ void pcSND_fillSoundBuffer(int a1, tSbeMiscData* a2, tSndSoundBufferElem* a3)
                 {
                     SetFilePointer(v4->fileHandle, v4->distanceToMove, &totalSizeAfterDecompress, 0);
                     v4->sumSize = 0;
-                    pcSND_ReadAndDecompressSoundData(a3a - v6, sbe, 0, &v7, (__int16*)(&v8[v6]));
+                    pcSND_ReadAndDecompressSoundData(a3a - v6, sbe, 0, &v7, (int16_t*)(&v8[v6]));
                     v6 += v7;
                 } while (v6 < a3a);
             }

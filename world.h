@@ -32,7 +32,7 @@ typedef struct sWorld
     int visibilityCallNeeded;
     int tablesManagerAndEOTNeeded;
     int SnPRefreshNeeded;
-    byte gap0[4];
+    uint8_t gap0[4];
     tableDescStruct objectTablePF;
     tableDescStruct worldGROTable;
     tableDescStruct worldMaterialTable;
@@ -51,7 +51,7 @@ typedef struct sWorld
     struct sWorldGridStruct* grid1Ptr;
     struct sWorldGridStruct* grid2Ptr;
     int ambientColor2;
-    byte gap3[4];
+    uint8_t gap3[4];
     Mtx4x4 unkMatrix;
     int recordCount;
     struct sGameObjectMain* collCrossObjects[16];
@@ -60,9 +60,9 @@ typedef struct sWorld
     struct sGameObjectMain* rayCastGao;
     Vec3 colRayHitPos;
     Vec3 rayCastNormalVec;
-    byte _pad;
-    byte rayCastCobMeshChunkElemsDesignVal;
-    __int16 rayCastTriangleChunkID;
+    uint8_t _pad;
+    uint8_t rayCastCobMeshChunkElemsDesignVal;
+    int16_t rayCastTriangleChunkID;
     int rayCastTriangleChunkElemID;
     int rayCastTriangleChunkLastElemID;
     struct sCobGameMaterialElems* rayCastCobGmat;
@@ -75,15 +75,15 @@ typedef struct sWorld
     struct sDelObj deletedObjs[400];
     int distanceToHide;
     int worldKey;
-    byte gap[12];
+    uint8_t gap[12];
 } tWorld;
 
 typedef struct sUniverse
 {
     struct sAI* univAIInstance;
     tableDescStruct univWorldTablePF;
-    byte unknownReloadFlag;
-    byte _pad[3];
+    uint8_t unknownReloadFlag;
+    uint8_t _pad[3];
 } tUniverse;
 
 typedef struct sBVMasks

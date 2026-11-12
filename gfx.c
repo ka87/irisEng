@@ -308,7 +308,7 @@ void GFX_SetCurrent(struct sGfxElem* a1, int16_t id)
 void GFX_FlagSet(tGfxElem* a1, int16_t id, char a3, int set)
 {
     int v4;
-    byte v5;
+    uint8_t v5;
 
     GFX_SetCurrent(a1, id);
     if (GFX_gpst_Current)
@@ -438,7 +438,7 @@ struct sGfxElem* GFX_Attached(struct sGfxElem* a1)
 
 void GFX_FreeOne(tGfxElem* a1)
 {
-    __int8 v1;
+    int8_t v1;
 
     v1 = a1->type;
     if (a1->type == 3)
@@ -490,7 +490,7 @@ void GFX_FreeOne(tGfxElem* a1)
     MEM_Free(a1);
 }
 
-void GFX_Del(tGfxElem** a1, __int16 id)
+void GFX_Del(tGfxElem** a1, int16_t id)
 {
     tGfxElem* v2;
     tGfxElem* v3;
@@ -521,7 +521,7 @@ void GFX_Del(tGfxElem** a1, __int16 id)
 void GFX_Test(tGfxElem* a1)
 {
     tGfxElem* v1;
-    unsigned __int16 v2;
+    uint16_t v2;
     char v3;
 
     v1 = a1;
@@ -592,17 +592,17 @@ void GFX_Render(tGfxElem** a1, int zlistLock)
     tGfxElem* v10;
     double v11;
     char v12;
-    byte v13;
+    uint8_t v13;
     int v14; 
     int v15; 
     profilerRasterStructElem* v16;
-    __int16 v17;
-    __int16 v18;
+    int16_t v17;
+    int16_t v18;
     int v19;
     int v20;
     int v21;
     int v22;
-    unsigned __int16 v23;
+    uint16_t v23;
 
     v2 = *a1;
     if (!*a1)
@@ -624,7 +624,7 @@ void GFX_Render(tGfxElem** a1, int zlistLock)
     gpst_DX_stDD->SetViewMatrix(gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender);
     gpst_DX_stDD->currTargetGao = GFX_gpst_GO;
     gpst_DX_stDD->extraMaterialToGeo = 0;
-    if ((byte)zlistLock)
+    if ((uint8_t)zlistLock)
     {
         SOFT_ZList_Lock();
         v5 = gpst_DX_stDD->flags | 4;
@@ -767,7 +767,7 @@ void GFX_Render(tGfxElem** a1, int zlistLock)
     gpst_DX_stDD->matrixStack.actMatrixElem = &gpst_DX_stDD->matrixStack.elems[v23];
     gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
     gpst_DX_stDD->SetViewMatrix(gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender);
-    if ((byte)zlistLock)
+    if ((uint8_t)zlistLock)
         SOFT_ZList_Unlock();
     PRO_QPC_RecordTimeDecRef(7);
     v16 = &gpst_DX_stDD->rasters[45];
@@ -787,12 +787,12 @@ void* GFX_Tetris_Dummy_Create() {
 
 int GFX_i_Add(tGfxElem** gfxList, char type, struct sGameObjectMain* aiGao)
 {
-    byte v3;
+    uint8_t v3;
     void* v4;
     void* v5;
     int result;
     tGfxElem* newGfxElem;
-    __int16 v8;
+    int16_t v8;
 
     if (!GFX_gpst_GO)
         GFX_NeedGeom(4u, 4u, 2u, 1);
@@ -908,12 +908,12 @@ int GFX_i_Add(tGfxElem** gfxList, char type, struct sGameObjectMain* aiGao)
     return result;
 }
 
-int GFX_i_AddSorted(tGfxElem** a1, char type, unsigned __int16 idx, struct sGameObjectMain* a4)
+int GFX_i_AddSorted(tGfxElem** a1, char type, uint16_t idx, struct sGameObjectMain* a4)
 {
     int result;
     tGfxElem* v5;
-    unsigned __int16 v6;
-    byte v7;
+    uint16_t v6;
+    uint8_t v7;
     void* v8;
     void* v9;
     tGfxElem* v10;
@@ -1042,11 +1042,11 @@ int GFX_i_AddSorted(tGfxElem** a1, char type, unsigned __int16 idx, struct sGame
     return result;
 }
 
-Vec3* GFX_pst_Getv(tGfxElem* a1, __int16 a2, int a3)
+Vec3* GFX_pst_Getv(tGfxElem* a1, int16_t a2, int a3)
 {
     int v3;
     int v4;
-    __int16 v5;
+    int16_t v5;
     Vec3* result;
 
     GFX_SetCurrent(a1, a2);
@@ -1064,11 +1064,11 @@ Vec3* GFX_pst_Getv(tGfxElem* a1, __int16 a2, int a3)
     return result;
 }
 
-float GFX_f_Getf(tGfxElem* a1, __int16 id, int a3)
+float GFX_f_Getf(tGfxElem* a1, int16_t id, int a3)
 {
     int v3;
     int v4;
-    __int16 v5;
+    int16_t v5;
     float result;
 
     GFX_SetCurrent(a1, id);
@@ -1087,11 +1087,11 @@ float GFX_f_Getf(tGfxElem* a1, __int16 id, int a3)
 }
 
 // TOOD FIXME ezek biztos hogy signedek?
-int GFX_i_Geti(tGfxElem* a1, __int16 a2, int a3)
+int GFX_i_Geti(tGfxElem* a1, int16_t a2, int a3)
 {
     int v4;
     int v5;
-    __int16 v6;
+    int16_t v6;
 
     GFX_SetCurrent(a1, a2);
     if (!GFX_gpst_Current)
@@ -1114,12 +1114,12 @@ int GFX_i_Geti(tGfxElem* a1, __int16 a2, int a3)
     return *(int32_t*)((char*)GFX_gpst_Current->privateData + v6);
 }
 
-void GFX_Seti(tGfxElem* a1, __int16 id, int a3, int a4)
+void GFX_Seti(tGfxElem* a1, int16_t id, int a3, int a4)
 {
-    __int8 v4;
+    int8_t v4;
     int v5;
     int v6;
-    __int16 v7;
+    int16_t v7;
     char* v8;
 
     GFX_SetCurrent(a1, id);
@@ -1179,10 +1179,10 @@ void GFX_Seti(tGfxElem* a1, __int16 id, int a3, int a4)
 
 void GFX_Setf(tGfxElem* a1, int id, int a2, float a3)
 {
-    __int8 v4;
+    int8_t v4;
     int v5;
     int v6;
-    __int16 v7;
+    int16_t v7;
 
     GFX_SetCurrent(a1, id);
     if (GFX_gpst_Current)
@@ -1219,12 +1219,12 @@ void GFX_Setf(tGfxElem* a1, int id, int a2, float a3)
     }
 }
 
-void GFX_Setv(tGfxElem* a1, __int16 a2, int a3, Vec3* a4)
+void GFX_Setv(tGfxElem* a1, int16_t a2, int a3, Vec3* a4)
 {
-    __int8 v4;
+    int8_t v4;
     int v5;
     int v6;
-    __int16 v7;
+    int16_t v7;
 
     GFX_SetCurrent(a1, a2);
     if (GFX_gpst_Current)

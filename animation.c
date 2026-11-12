@@ -11,7 +11,7 @@
 #include "animation.h"
 
 
-byte ANI_c_DefaultBitFieldLOD = 0x80;
+uint8_t ANI_c_DefaultBitFieldLOD = 0x80;
 
 tGameObjectActorObject* ANI_pst_CreateGameObjectAnim()
 {
@@ -38,7 +38,7 @@ void ANI_LimitFrequencyBetween0And255(tAnim* anim, Vec3* v1, Vec3* v2)
     v1Sq = MATH_VecLenSquared(v1);
     if (v1Sq == 0.0f)
     {
-        anim->frequency = (byte)1.0f;
+        anim->frequency = (uint8_t)1.0f;
     }
     else
     {
@@ -48,11 +48,11 @@ void ANI_LimitFrequencyBetween0And255(tAnim* anim, Vec3* v1, Vec3* v2)
         {
             if (distRatio > 255.0f)
                 distRatio = 255.0f;
-            anim->frequency = (byte)distRatio;
+            anim->frequency = (uint8_t)distRatio;
         }
         else
         {
-            anim->frequency = (byte)0.0f;
+            anim->frequency = (uint8_t)0.0f;
         }
     }
 }
@@ -217,7 +217,7 @@ void ANI_RecomputeFlash(tGameObjectMain* a1, tAnim* a2)
     Mtx4x4* v3;
     tGaoMatrix* v4;
     int v5;
-    unsigned __int16 v6;
+    uint16_t v6;
     float v7;
     tGameObjectBasic* v8;
     Mtx4x4* v9;
@@ -380,7 +380,7 @@ uint8_t ANI_uc_GetEngineCanalByAICanal(struct sGameObjectMain* a1, char a2)
     tableElemStructPF* v5;
     tableElemStructPF* v6;
     tableElemStructPF* v7;
-    unsigned __int8 result;
+    uint8_t result;
     tShape* v9;
 
     if ((a1->flags & 2) == 0)
@@ -453,12 +453,12 @@ struct sGameObjectMain* ANI_pst_GetObjectByAICanal(struct sGameObjectMain* a1, u
     return (tGameObjectMain*)v7->objectPtr;
 }
 
-void ANI_ChangeBoneShape(struct sGameObjectMain* a1, unsigned __int8 a2, unsigned __int8 a3, int a4)
+void ANI_ChangeBoneShape(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, int a4)
 {
     tGameObjectBasic* v4;
     tGameObjectActorObject* v5;
     tGameObjectMain* v6;
-    unsigned __int8 v7;
+    uint8_t v7;
     tableDescStruct* v8;
     tGameObjectVisualObject* v9;
     tGameObjectExtended* v10;
@@ -466,7 +466,7 @@ void ANI_ChangeBoneShape(struct sGameObjectMain* a1, unsigned __int8 a2, unsigne
     tableDescStruct* v12;
     tableElemStructPF* v13;
     tableElemStructPF* v14;
-    unsigned __int8 v15;
+    uint8_t v15;
     tGameObjectMain* v16;
     tGameObjectBasic* v17;
     tGameObjectVisualObject* v18;
@@ -482,7 +482,7 @@ void ANI_ChangeBoneShape(struct sGameObjectMain* a1, unsigned __int8 a2, unsigne
     tGameObjectBasic* v28;
     tGameObjectMultiPartData* v29;
     unsigned int v30;
-    unsigned __int8 v31;
+    uint8_t v31;
     int v32;
     tMultiPartGameObjectLinks* v33;
     tGameObjectMultiPartData* v34;
@@ -794,8 +794,8 @@ void ANI_ChangeShape(struct sGameObjectMain* a1, struct sShape* a2)
     int v8;
     int v9;
     tShape* v10;
-    byte v11;
-    byte* v12;
+    uint8_t v11;
+    uint8_t* v12;
     char v13[64];
 
     v2 = a1;
@@ -885,14 +885,14 @@ void ANI_ChangeAction(struct sGameObjectMain* a1, struct sGameObjectActorObject*
 {
     tAction* v2;
     int actionItem;
-    byte v4;
+    uint8_t v4;
     int v5;
     int v6;
     BOOL v7;
     tActionElem* v8;
     tAnim* v9;
     BOOL v10;
-    byte v11;
+    uint8_t v11;
     int v12;
     tActionElem *actionElems;
 
@@ -991,7 +991,7 @@ void ANI_GetEndSpeedOfMB(struct sAnim* a1, Vec3* a2)
     int v4;
     int v5;
     tGameObjectEventElem* v6;
-    __int16 v7;
+    int16_t v7;
     Vec3* v8;
     Vec3* v9;
     double v10;
@@ -1130,15 +1130,15 @@ void ANI_b_ComputeMagicBoxPositionForBlendAnim(tGameObjectMain* a1, tGameObjectA
     tGameObjectActorObject* v5;
     uint16_t v6;
     tAction* v7;
-    byte v8;
-    byte v9;
-    byte v10;
+    uint8_t v8;
+    uint8_t v9;
+    uint8_t v10;
     int v11;
     tEventData* v12;
     Mtx4x4* v13;
     float v14;
-    byte v15;
-    byte v16;
+    uint8_t v15;
+    uint8_t v16;
     tGaoMatrix* v17;
     float v18;
     Vec3* v19;
@@ -1331,15 +1331,15 @@ void ANI_PlayLeadAnimation(tGameObjectMain* a1, tGameObjectActorObject* a2, tAni
     tGameObjectBasic* v12; // eax
     tGameObjectBasic* v13; // eax
     tGameObjectActorObject* v14; // eax
-    unsigned __int16 v15; // dx
+    uint16_t v15; // dx
     Mtx4x4* v16; // eax
-    unsigned __int16 v17; // ax
+    uint16_t v17; // ax
     Mtx4x4* v18; // eax
     double v19; // st7
     Mtx4x4* v20; // eax
     Mtx4x4* v21; // eax
     float a2a; // [esp+0h] [ebp-74h]
-    byte v23; // [esp+13h] [ebp-61h]
+    uint8_t v23; // [esp+13h] [ebp-61h]
     float v24; // [esp+14h] [ebp-60h] BYREF
     float v25; // [esp+18h] [ebp-5Ch]
     int(__cdecl * v26)(tEventData*, float*); // [esp+1Ch] [ebp-58h]
@@ -1538,7 +1538,7 @@ void ANI_PlayGameObjectAnimation(tGameObjectMain* a1, tGameObjectActorObject* a2
     v32 = v12;
     if (v12 && v12 != (tAnim*)-1)
     {
-        if ((~((unsigned __int16)v12->flags >> 7) & 1) != 0 && a4 && (v12->flags & 0xF) == 2)
+        if ((~((uint16_t)v12->flags >> 7) & 1) != 0 && a4 && (v12->flags & 0xF) == 2)
         {
             MATH_VecMultScalar(&a1a, a4, a3);
             ANI_LimitFrequencyBetween0And255(v32, &a1a, a4);
@@ -2036,7 +2036,7 @@ void ANI_ReinitAnimation(struct sAnim* a1)
 void ANI_Reinit(struct sGameObjectMain* a1)
 {
     tGameObjectActorObject* v1;
-    byte v2;
+    uint8_t v2;
     unsigned int v3;
     tAnim** v4;
     tActionKit* v5;
@@ -2174,19 +2174,19 @@ void ANI_PlayBlendAnimationWithoutMagicBox(tGameObjectMain* a1, tGameObjectActor
     tAnim* v3;
     tGameObjectMain* v4;
     tAnimTracks* v5;
-    __int16 v6;
-    __int16 v7;
-    __int16 v8;
+    int16_t v6;
+    int16_t v7;
+    int16_t v8;
     char v9;
     tGameObjectBasic* v10;
     tGameObjectActorObject* v11;
     tGroup* v12;
     int (*v13)(tEventData*, float*);
-    byte v14;
+    uint8_t v14;
     float v15;
     float v16;
-    __int16 v17;
-    __int16 v18;
+    int16_t v17;
+    int16_t v18;
     float v19;
     float a3a;
     int a3b;
@@ -2418,7 +2418,7 @@ void ANI_MainCall(struct sWorld* a1)
     tGameObjectMain* v3;
     tGameObjectBasic* v4;
     tGameObjectExtended* v5;
-    __int16 v6;
+    int16_t v6;
     int v7;
     tGameObjectBasic* v8;
     tGameObjectActorObject* v9;
@@ -2596,7 +2596,7 @@ void ANI_Render(struct sGameObjectMain* mainGao)
     tGameObjectMain* currentBone; 
     tGameObjectExtended* v9; 
     Mtx4x4* v10;
-    byte v11; 
+    uint8_t v11; 
     unsigned int v12;
     int v13;
     tGameObjectBasic* v14; 

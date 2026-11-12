@@ -112,23 +112,23 @@ void MAT_DrawIndexedTriangle_ST(tGdi_DisplayData* a1, tGEOGRO* a2, tGEOMAT* geom
     profilerRasterStructElem* v5;
     tGeoTriangleChunks* v6;
     profilerRasterStructElem* v7;
-    __int16 v8;
-    __int16 v9;
+    int16_t v8;
+    int16_t v9;
     tGEOGRO* v10;
     tBigBufferStruct* v11;
     tGeoUVElem* v12;
-    unsigned __int16* v13;
-    unsigned __int16* v14;
+    uint16_t* v13;
+    uint16_t* v14;
     int v15;
     tGeoUVElem* v16;
     float v17;
     profilerRasterStructElem* v18;
     profilerRasterStructElem* v19;
-    __int16 v20;
-    __int16 v21;
+    int16_t v20;
+    int16_t v21;
     profilerRasterStructElem* v22;
-    __int16 v23;
-    __int16 v24;
+    int16_t v23;
+    int16_t v24;
 
     v4 = &a1->rasters[29];
     if (!a1->rasters[29].insideCounter)
@@ -154,7 +154,7 @@ void MAT_DrawIndexedTriangle_ST(tGdi_DisplayData* a1, tGEOGRO* a2, tGEOMAT* geom
     v10 = a2;
     v11 = a1->bigBuffer;
     a1->flags &= ~0x12u;
-    v11->UVData = (byte*)a2->UVs;
+    v11->UVData = (uint8_t*)a2->UVs;
     if (a2->intf->id == 1)
     {
         if (a2->mrm)
@@ -377,8 +377,8 @@ void MAT_DrawIndexedTriangle(struct sGEOGRO* geogro, struct sGEOMAT* geomat, str
     int v5;
     int v6;
     profilerRasterStructElem* v7;
-    __int16 v8;
-    __int16 v9;
+    int16_t v8;
+    int16_t v9;
     int v10; 
     int v11; 
 

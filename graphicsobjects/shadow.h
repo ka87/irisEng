@@ -19,7 +19,7 @@ typedef struct sMdfPrivateDataShadow
     float unkf1;
     int shadowProjectionMode;
     char unk1;
-    byte _pad[3];
+    uint8_t _pad[3];
 } tMdfPrivateDataShadow;
 
 int SDW_TextNum;

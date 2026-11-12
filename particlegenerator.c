@@ -14,7 +14,7 @@ void PAG_Update(struct sGameObjectMain* a1, struct sPAGStruct* a2, float dt)
     int v7;
     double v8;
     unsigned int v9;
-    __int16 v10;
+    int16_t v10;
     int v11;
     int v12;
     int i;
@@ -722,7 +722,7 @@ void PAG_RenderCommon(struct sGameObjectMain* a1, struct sPAGStruct* a2)
     int v2;
     BOOL v3;
     tGdi_DisplayData* v4;
-    unsigned __int16 v5;
+    uint16_t v5;
     Mtx4x4* v6;
     int v7;
     Vec3* v8;

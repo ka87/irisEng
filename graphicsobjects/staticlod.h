@@ -7,9 +7,9 @@ typedef struct sGEOSTATICLOD
 {
     struct sGroIntf* intf;
     int usageCount;
-    unsigned __int8 lodNum;
-    unsigned __int8 currDistance;
-    byte distance[6];
+    uint8_t lodNum;
+    uint8_t currDistance;
+    uint8_t distance[6];
     struct sGEOGRO* geo[6];
 } tGEOSTATICLOD;
 

@@ -4,19 +4,19 @@
 
 typedef struct sSnpObjectsToRemoveQueue
 {
-    unsigned __int16 destPos;
-    unsigned __int16 num;
+    uint16_t destPos;
+    uint16_t num;
     struct sGameObjectMain* gaos[1024];
-    unsigned __int16 queueNum;
-    unsigned __int16 elemIdxes[1025];
+    uint16_t queueNum;
+    uint16_t elemIdxes[1025];
 } tSnpObjectsToRemoveQueue;
 
 typedef struct sSnpAxisElem
 {
     struct sGameObjectMain* gao;
-    __int16 gaoSnPIndex;
-    byte flags;
-    byte gap;
+    int16_t gaoSnPIndex;
+    uint8_t flags;
+    uint8_t gap;
     float* ptrToBVAxisFloat;
     float posPlusBVSetIn40DB10;
 } tSnpAxisElem;
@@ -30,7 +30,7 @@ typedef struct sSnpAxis
 typedef struct sSnp
 {
     uint16_t currElemIdx;
-    byte _pad[2];
+    uint8_t _pad[2];
     struct sSnpObjectsToRemoveQueue* snpObjectsRemoveQueue;
     struct sSnpAxis* axisPtr[3];
     struct sGameObjectMain* gaosPtr[1024];

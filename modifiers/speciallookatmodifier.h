@@ -3,10 +3,10 @@
 
 typedef struct sSpecialLookAtMdfStruct
 {
-    byte b1;
-    byte b2;
-    byte b3;
-    byte b4;
+    uint8_t b1;
+    uint8_t b2;
+    uint8_t b3;
+    uint8_t b4;
     int rank;
     struct sGameObjectMain* gao;
     float f1;

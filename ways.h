@@ -12,13 +12,13 @@ typedef struct sWayNetwork
 
 typedef struct sWayElemInnerElem
 {
-    __int16 capa;
-    __int16 capaBackup;
+    int16_t capa;
+    int16_t capaBackup;
     float weight;
     struct sGameObjectMain* gao;
-    byte design;
-    byte designBackup;
-    __int16 s3;
+    uint8_t design;
+    uint8_t designBackup;
+    int16_t s3;
 } tWayElemInnerElem;
 
 typedef struct sWayElem

@@ -507,10 +507,10 @@ void GAO_ModifierXMEN_DRAW(tXmenMdfStruct* xmen)
     Vec3* v69; 
     int v70;
     int v71;
-    __int16 v72;
+    int16_t v72;
     tGeoTriangleChunkElem* v73;
     unsigned int v77;
-    __int16 v78;
+    int16_t v78;
     int num2_1;
     float v84;
     int v85;
@@ -584,7 +584,7 @@ void GAO_ModifierXMEN_DRAW(tXmenMdfStruct* xmen)
         if (st7_6 >= xmen->deathTime)
             xmen->time = 0.0;
         else
-            xmen->num2 = ((unsigned __int8)xmen->num2 - 1) & 7;
+            xmen->num2 = ((uint8_t)xmen->num2 - 1) & 7;
         num2 = xmen->num2;
         currSize = xmen->sizes;
         v5 = &currSize[ebx1];
@@ -635,7 +635,7 @@ void GAO_ModifierXMEN_DRAW(tXmenMdfStruct* xmen)
             }
         }
         v20 = g_ulFrameCounter;
-        xmen->num2 = ((unsigned __int8)xmen->num2 + 1) & 7;
+        xmen->num2 = ((uint8_t)xmen->num2 + 1) & 7;
         if (xmen->frameCounter != v20 - 1)
         {
             v21 = xmen->ptr1->data;

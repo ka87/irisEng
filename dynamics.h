@@ -37,8 +37,8 @@ typedef struct sDynConstraint
     Vec3 parabolO;
     float parabolRadius;
     Vec3 tangentVec;
-    byte constraintType;
-    byte _pad[2];
+    uint8_t constraintType;
+    uint8_t _pad[2];
 } tDynConstraint;
 
 

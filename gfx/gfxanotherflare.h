@@ -12,9 +12,9 @@ typedef struct sGfxAnotherFlareData
     float f4;
     float totalTime;
     float angle;
-    byte flags;
-    byte b2;
-    byte inited;
+    uint8_t flags;
+    uint8_t b2;
+    uint8_t inited;
     char extraFlareElems;
     int color2;
     int color;
