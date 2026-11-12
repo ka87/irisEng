@@ -10,7 +10,7 @@ int AI_EvalFunc_IoGetProtect_C(int a1)
     return a1;
 }
 
-tAINode* AI_EvalFunc_IoGetProtect(tAINode* a1)
+tAINode* AI_EvalFunc_IoGetProtect(tAINode* node)
 {
     int v1;
     int v2;
@@ -18,7 +18,7 @@ tAINode* AI_EvalFunc_IoGetProtect(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoGetProtect_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_IoKeyPressed_C(char a1)
@@ -26,7 +26,7 @@ BOOL AI_EvalFunc_IoKeyPressed_C(char a1)
     return INO_b_IsKeyPressed(a1) != 0;
 }
 
-tAINode* AI_EvalFunc_IoKeyPressed(tAINode* a1)
+tAINode* AI_EvalFunc_IoKeyPressed(tAINode* node)
 {
     char v1;
     int v2;
@@ -34,7 +34,7 @@ tAINode* AI_EvalFunc_IoKeyPressed(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoKeyPressed_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_IoKeyJustPressed_C(char a1)
@@ -42,7 +42,7 @@ BOOL AI_EvalFunc_IoKeyJustPressed_C(char a1)
     return INO_b_IsKeyJustPressed(a1);
 }
 
-tAINode* AI_EvalFunc_IoKeyJustPressed(tAINode* a1)
+tAINode* AI_EvalFunc_IoKeyJustPressed(tAINode* node)
 {
     char v1;
     int v2;
@@ -50,7 +50,7 @@ tAINode* AI_EvalFunc_IoKeyJustPressed(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoKeyJustPressed_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_IoKeyJustReleased_C(char a1)
@@ -58,7 +58,7 @@ BOOL AI_EvalFunc_IoKeyJustReleased_C(char a1)
     return INO_b_IsKeyJustReleased(a1);
 }
 
-tAINode* AI_EvalFunc_IoKeyJustReleased(tAINode* a1)
+tAINode* AI_EvalFunc_IoKeyJustReleased(tAINode* node)
 {
     char v1;
     int v2;
@@ -66,10 +66,10 @@ tAINode* AI_EvalFunc_IoKeyJustReleased(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoKeyJustReleased_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoPadSet(tAINode* a1)
+tAINode* AI_EvalFunc_IoPadSet(tAINode* node)
 {
     int v1;
     int v2;
@@ -77,19 +77,19 @@ tAINode* AI_EvalFunc_IoPadSet(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = INO_i_SetCurrentPad(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoPadGet(tAINode* a1)
+tAINode* AI_EvalFunc_IoPadGet(tAINode* node)
 {
     int v1;
 
     v1 = INO_i_GetCurrentPad();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoButtonPressed(tAINode* a1)
+tAINode* AI_EvalFunc_IoButtonPressed(tAINode* node)
 {
     int v1;
     int v2;
@@ -97,7 +97,7 @@ tAINode* AI_EvalFunc_IoButtonPressed(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = INO_b_IoButtonPressed(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_IoJoyGetMove_C(Vec3* a1)
@@ -105,13 +105,13 @@ void AI_EvalFunc_IoJoyGetMove_C(Vec3* a1)
     INO_Joystick_Move(a1, 0);
 }
 
-tAINode* AI_EvalFunc_IoJoyGetMove(tAINode* a1)
+tAINode* AI_EvalFunc_IoJoyGetMove(tAINode* node)
 {
     Vec3 a1a;
 
     AI_EvalFunc_IoJoyGetMove_C(&a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_IoJoyGetMove1_C(Vec3* a1)
@@ -119,13 +119,13 @@ void AI_EvalFunc_IoJoyGetMove1_C(Vec3* a1)
     INO_Joystick_Move(a1, 1);
 }
 
-tAINode* AI_EvalFunc_IoJoyGetMove1(tAINode* a1)
+tAINode* AI_EvalFunc_IoJoyGetMove1(tAINode* node)
 {
     Vec3 a1a;
 
     AI_EvalFunc_IoJoyGetMove1_C(&a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_IoButtonJustPressed_C(int a1)
@@ -133,7 +133,7 @@ BOOL AI_EvalFunc_IoButtonJustPressed_C(int a1)
     return INO_b_Joystick_IsButtonJustDown(a1);
 }
 
-tAINode* AI_EvalFunc_IoButtonJustPressed(tAINode* a1)
+tAINode* AI_EvalFunc_IoButtonJustPressed(tAINode* node)
 {
     int v1;
     int v2;
@@ -141,7 +141,7 @@ tAINode* AI_EvalFunc_IoButtonJustPressed(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoButtonJustPressed_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_IoButtonJustReleased_C(int a1)
@@ -149,7 +149,7 @@ BOOL AI_EvalFunc_IoButtonJustReleased_C(int a1)
     return INO_b_Joystick_IsButtonJustUp(a1);
 }
 
-tAINode* AI_EvalFunc_IoButtonJustReleased(tAINode* a1)
+tAINode* AI_EvalFunc_IoButtonJustReleased(tAINode* node)
 {
     int v1;
     int v2;
@@ -157,7 +157,7 @@ tAINode* AI_EvalFunc_IoButtonJustReleased(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoButtonJustReleased_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_IoJoyFreeze_C(int a1)
@@ -169,7 +169,7 @@ int AI_EvalFunc_IoJoyFreeze_C(int a1)
     return v2;
 }
 
-tAINode* AI_EvalFunc_IoJoyFreeze(tAINode* a1)
+tAINode* AI_EvalFunc_IoJoyFreeze(tAINode* node)
 {
     int v1;
     int v2;
@@ -177,7 +177,7 @@ tAINode* AI_EvalFunc_IoJoyFreeze(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoJoyFreeze_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_IoJoyDir_C(int a1)
@@ -190,7 +190,7 @@ int AI_EvalFunc_IoJoyDir_C(int a1)
     return v2;
 }
 
-tAINode* AI_EvalFunc_IoJoyDir(tAINode* a1)
+tAINode* AI_EvalFunc_IoJoyDir(tAINode* node)
 {
     int v1;
     int v2;
@@ -198,10 +198,10 @@ tAINode* AI_EvalFunc_IoJoyDir(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoJoyDir_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoJoySimulate(tAINode* a1)
+tAINode* AI_EvalFunc_IoJoySimulate(tAINode* node)
 {
     int v1;
     int v3;
@@ -217,19 +217,19 @@ tAINode* AI_EvalFunc_IoJoySimulate(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     INO_JoySimulate(v1, v3, a3, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoPifSet(tAINode* a1)
+tAINode* AI_EvalFunc_IoPifSet(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     INO_PifSet(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoPafSet(tAINode* a1)
+tAINode* AI_EvalFunc_IoPafSet(tAINode* node)
 {
     int v1;
     int v3;
@@ -237,10 +237,10 @@ tAINode* AI_EvalFunc_IoPafSet(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     INO_PafSet(v1, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoPifPafEnable(tAINode* a1)
+tAINode* AI_EvalFunc_IoPifPafEnable(tAINode* node)
 {
     int v1;
     int v2;
@@ -248,55 +248,55 @@ tAINode* AI_EvalFunc_IoPifPafEnable(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = INO_i_PifPafEnable(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoDiscErrorGet(tAINode* a1)
+tAINode* AI_EvalFunc_IoDiscErrorGet(tAINode* node)
 {
     int v1;
 
     v1 = INO_i_GetDiscError();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoSetControlMode(tAINode* a1)
+tAINode* AI_EvalFunc_IoSetControlMode(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     INO_SetControlMode(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoSetControlSubmode(tAINode* a1)
+tAINode* AI_EvalFunc_IoSetControlSubmode(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     INO_SetControlSubmode(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoSetMouseSensitivity(tAINode* a1)
+tAINode* AI_EvalFunc_IoSetMouseSensitivity(tAINode* node)
 {
     float v1;
 
     v1 = AI_GetFloatFromStack();
     INO_SetMouseSensitivity(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoIsMouseBeingUsed(tAINode* a1)
+tAINode* AI_EvalFunc_IoIsMouseBeingUsed(tAINode* node)
 {
     int v1;
 
     v1 = INO_i_IsMouseBeingUsed();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoDemoGeti(tAINode* a1)
+tAINode* AI_EvalFunc_IoDemoGeti(tAINode* node)
 {
     int v1;
     int v2;
@@ -304,10 +304,10 @@ tAINode* AI_EvalFunc_IoDemoGeti(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = Demo_Geti(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_IoDemoSeti(tAINode* a1)
+tAINode* AI_EvalFunc_IoDemoSeti(tAINode* node)
 {
     int v1;
     int v2;
@@ -315,7 +315,7 @@ tAINode* AI_EvalFunc_IoDemoSeti(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = Demo_Seti(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_IoGameLangGet_C()
@@ -334,13 +334,13 @@ int AI_EvalFunc_IoGameLangGet_C()
     return v1;
 }
 
-tAINode* AI_EvalFunc_IoGameLangGet(tAINode* a1)
+tAINode* AI_EvalFunc_IoGameLangGet(tAINode* node)
 {
     int v1;
 
     v1 = AI_EvalFunc_IoGameLangGet_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_IoGameLangSet_C(int a1)
@@ -352,7 +352,7 @@ int AI_EvalFunc_IoGameLangSet_C(int a1)
     return 0;
 }
 
-tAINode* AI_EvalFunc_IoGameLangSet(tAINode* a1)
+tAINode* AI_EvalFunc_IoGameLangSet(tAINode* node)
 {
     int v1;
     int v2;
@@ -360,7 +360,7 @@ tAINode* AI_EvalFunc_IoGameLangSet(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoGameLangSet_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_IoConsLangGet_C()
@@ -368,13 +368,13 @@ int AI_EvalFunc_IoConsLangGet_C()
     return 1;
 }
 
-tAINode* AI_EvalFunc_IoConsLangGet(tAINode* a1)
+tAINode* AI_EvalFunc_IoConsLangGet(tAINode* node)
 {
     int v1;
 
     v1 = AI_EvalFunc_IoConsLangGet_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_IoConsLangSet_C()
@@ -382,26 +382,26 @@ int AI_EvalFunc_IoConsLangSet_C()
     return 0;
 }
 
-tAINode* AI_EvalFunc_IoConsLangSet(tAINode* a1)
+tAINode* AI_EvalFunc_IoConsLangSet(tAINode* node)
 {
     int v1;
 
     AI_GetIntFromStack();
     v1 = AI_EvalFunc_IoConsLangSet_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_SAVEPhotoDel(tAINode* a1)
+tAINode* AI_EvalFunc_SAVEPhotoDel(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     SAV_PhotoDel(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_SAVEPhotoDecal(tAINode* a1)
+tAINode* AI_EvalFunc_SAVEPhotoDecal(tAINode* node)
 {
     int v1;
     int v3;
@@ -409,7 +409,7 @@ tAINode* AI_EvalFunc_SAVEPhotoDecal(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     SAV_PhotoDecal(v1, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_SAVEDataGet_C(int a1, int a2)
@@ -618,7 +618,7 @@ int AI_EvalFunc_SAVEDataGet_C(int a1, int a2)
     return result;
 }
 
-tAINode* AI_EvalFunc_SAVEDataGet(tAINode* a1)
+tAINode* AI_EvalFunc_SAVEDataGet(tAINode* node)
 {
     int v1;
     int v2;
@@ -628,7 +628,7 @@ tAINode* AI_EvalFunc_SAVEDataGet(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_SAVEDataGet_C(v1, v4);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_SAVEValidate_C()
@@ -663,10 +663,10 @@ void AI_EvalFunc_SAVEValidate_C()
     SAV_PhotoValidate();
 }
 
-tAINode* AI_EvalFunc_SAVEValidate(tAINode* a1)
+tAINode* AI_EvalFunc_SAVEValidate(tAINode* node)
 {
     AI_EvalFunc_SAVEValidate_C();
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_SAVEValidateAl_C()
@@ -709,10 +709,10 @@ void AI_EvalFunc_SAVEValidateAl_C()
     }
 }
 
-tAINode* AI_EvalFunc_SAVEValidateAl(tAINode* a1)
+tAINode* AI_EvalFunc_SAVEValidateAl(tAINode* node)
 {
     AI_EvalFunc_SAVEValidateAl_C();
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_SAVEUnvalidate_C()
@@ -750,10 +750,10 @@ void AI_EvalFunc_SAVEUnvalidate_C()
     SAV_PhotoUnvalidate();
 }
 
-tAINode* AI_EvalFunc_SAVEUnvalidate(tAINode* a1)
+tAINode* AI_EvalFunc_SAVEUnvalidate(tAINode* node)
 {
     AI_EvalFunc_SAVEUnvalidate_C();
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_SAVESaveSlotExt_C(int a1, int a2, int a3, int a4)
@@ -789,7 +789,7 @@ void AI_EvalFunc_SAVESaveSlotExt_C(int a1, int a2, int a3, int a4)
     }
 }
 
-tAINode* AI_EvalFunc_SAVESaveSlotExt(tAINode* a1)
+tAINode* AI_EvalFunc_SAVESaveSlotExt(tAINode* node)
 {
     int v2;
     int v3;
@@ -801,7 +801,7 @@ tAINode* AI_EvalFunc_SAVESaveSlotExt(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v4 = AI_GetIntFromStack();
     AI_EvalFunc_SAVESaveSlotExt_C(v4, v3, v2, v5);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_SAVESaveSlot_C(int a1, int a2, int a3)
@@ -809,7 +809,7 @@ void AI_EvalFunc_SAVESaveSlot_C(int a1, int a2, int a3)
     AI_EvalFunc_SAVESaveSlotExt_C(a1, a2, a3, 0);
 }
 
-tAINode* AI_EvalFunc_SAVESaveSlot(tAINode* a1)
+tAINode* AI_EvalFunc_SAVESaveSlot(tAINode* node)
 {
     int v1;
     int v3;
@@ -819,7 +819,7 @@ tAINode* AI_EvalFunc_SAVESaveSlot(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_SAVESaveSlot_C(v1, v4, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_SAVELoadSlot_C(int a1)
@@ -828,22 +828,22 @@ void AI_EvalFunc_SAVELoadSlot_C(int a1)
     INO_SavSetCardStatus(SAVE_gi_DefaultSlot, 12);
 }
 
-tAINode* AI_EvalFunc_SAVELoadSlot(tAINode* a1)
+tAINode* AI_EvalFunc_SAVELoadSlot(tAINode* node)
 {
     int v2;
 
     v2 = AI_GetIntFromStack();
     AI_EvalFunc_SAVELoadSlot_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_SAVENewGame(tAINode* a1)
+tAINode* AI_EvalFunc_SAVENewGame(tAINode* node)
 {
     SAV_PhotoInit();
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_SAVEGetCardStatus(tAINode* a1)
+tAINode* AI_EvalFunc_SAVEGetCardStatus(tAINode* node)
 {
     int v1;
     char dest[52];
@@ -854,10 +854,10 @@ tAINode* AI_EvalFunc_SAVEGetCardStatus(tAINode* a1)
     v5 = AI_GetIntFromStack();
     v1 = INO_i_SavGetCardStatus(v5, (int*)a2.ptr);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_SAVESetCardStatus(tAINode* a1)
+tAINode* AI_EvalFunc_SAVESetCardStatus(tAINode* node)
 {
     int v1;
     int v3;
@@ -865,7 +865,7 @@ tAINode* AI_EvalFunc_SAVESetCardStatus(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     INO_SavSetCardStatus(v1, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_IoKeyReleased_C(char a1)
@@ -873,7 +873,7 @@ BOOL AI_EvalFunc_IoKeyReleased_C(char a1)
     return INO_b_IsKeyReleased(a1) != 0;
 }
 
-tAINode* AI_EvalFunc_IoKeyReleased(tAINode* a1)
+tAINode* AI_EvalFunc_IoKeyReleased(tAINode* node)
 {
     char v1;
     int v2;
@@ -881,5 +881,5 @@ tAINode* AI_EvalFunc_IoKeyReleased(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_IoKeyReleased_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }

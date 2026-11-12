@@ -1,12 +1,12 @@
 #include "ai_messagefunctions.h"
 
-void AI_EvalFunc_MSGSend_C(struct sGameObjectMain* a1, struct sMessage* Src)
+void AI_EvalFunc_MSGSend_C(struct sGameObjectMain* gao, struct sMessage* Src)
 {
     tGameObjectMessages* v2;
 
-    if (a1->extended && a1->extended->messages)
+    if (gao->extended && gao->extended->messages)
     {
-        v2 = a1->extended->messages;
+        v2 = gao->extended->messages;
         if (v2->count < 5u)
         {
             memcpy(&v2->msgs[v2->count], Src, sizeof(v2->msgs[v2->count]));
@@ -31,12 +31,12 @@ tAINode* AI_EvalFunc_MSGSend(tAINode* arg0)
     return arg0 + 1;
 }
 
-struct sMessage* AI_EvalFunc_MSGGet_C(struct sGameObjectMain* a1)
+struct sMessage* AI_EvalFunc_MSGGet_C(struct sGameObjectMain* gao)
 {
     tMessage* v2;
     tGameObjectMessages* v3;
 
-    v3 = a1->extended->messages;
+    v3 = gao->extended->messages;
     if (v3->count > 0)
         return &v3->msgs[--v3->count];
     v2 = &v3->msgs[v3->count];
@@ -67,12 +67,12 @@ tAINode* AI_EvalFunc_MSGGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_MSGClear_C(struct sGameObjectMain* a1)
+void AI_EvalFunc_MSGClear_C(struct sGameObjectMain* gao)
 {
-    a1->extended->messages->count = 0;
+    gao->extended->messages->count = 0;
 }
 
-tAINode* AI_EvalFunc_MSGClear(tAINode* a1)
+tAINode* AI_EvalFunc_MSGClear(tAINode* node)
 {
     tGameObjectMain* v2;
 
@@ -80,24 +80,24 @@ tAINode* AI_EvalFunc_MSGClear(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_MSGClear_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_MSGOn_C(tGameObjectMain* a1)
+void AI_EvalFunc_MSGOn_C(tGameObjectMain* gao)
 {
     int a2;
 
-    if ((a1->flags & 0x8000) == 0)
+    if ((gao->flags & 0x8000) == 0)
     {
-        if (a1)
-            a2 = a1->flags;
+        if (gao)
+            a2 = gao->flags;
         else
             a2 = 0;
-        OBJ_ChangeIdentityFlags(a1, a2 | 0x8000, -1);
+        OBJ_ChangeIdentityFlags(gao, a2 | 0x8000, -1);
     }
 }
 
-tAINode* AI_EvalFunc_MSGOn(tAINode* a1)
+tAINode* AI_EvalFunc_MSGOn(tAINode* node)
 {
     tGameObjectMain* v2;
 
@@ -105,10 +105,10 @@ tAINode* AI_EvalFunc_MSGOn(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_MSGOn_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MSGSendEx(tAINode* a1)
+tAINode* AI_EvalFunc_MSGSendEx(tAINode* node)
 {
     tGameObjectMain* v2;
     int v3;
@@ -122,9 +122,9 @@ tAINode* AI_EvalFunc_MSGSendEx(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v7 = v2;
     if (!v2->extended)
-        return a1 + 1;
+        return node + 1;
     if (!v7->extended->messages)
-        return a1 + 1;
+        return node + 1;
     v3 = AI_GetIntFromStack();
     v5 = AI_GetIntFromStack();
     v6 = v7->extended->messages;
@@ -137,17 +137,17 @@ tAINode* AI_EvalFunc_MSGSendEx(tAINode* a1)
         memcpy(&v6->msgs[v6->count], &Src, sizeof(v6->msgs[v6->count]));
         ++v6->count;
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sMessage* AI_EvalFunc_MSGGetByID_C(struct sGameObjectMain* a1, int a2)
+struct sMessage* AI_EvalFunc_MSGGetByID_C(struct sGameObjectMain* gao, int a2)
 {
     tMessage* v3;
     char Src[52];
     int i;
     tGameObjectMessages* v6;
 
-    v6 = a1->extended->messages;
+    v6 = gao->extended->messages;
     if (v6->count > 0)
     {
         for (i = 0; i < v6->count; ++i)
@@ -190,7 +190,7 @@ tAINode* AI_EvalFunc_MSGGetByID(tAINode* arg0)
     return arg0 + 1;
 }
 
-tAINode* AI_EvalFunc_MSGSendAll(tAINode* a1)
+tAINode* AI_EvalFunc_MSGSendAll(tAINode* node)
 {
     tGameObjectMain* v2;
     tMessage Src;
@@ -202,9 +202,9 @@ tAINode* AI_EvalFunc_MSGSendAll(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v5 = v2;
     if (!v2->extended)
-        return a1 + 1;
+        return node + 1;
     if (!v5->extended->messages)
-        return a1 + 1;
+        return node + 1;
     v4 = v5->extended->messages;
     Src.Int2 = AI_GetIntFromStack();
     Src.Int1 = AI_GetIntFromStack();
@@ -228,19 +228,19 @@ tAINode* AI_EvalFunc_MSGSendAll(tAINode* a1)
         memcpy(&v4->msgs[v4->count], &Src, sizeof(v4->msgs[v4->count]));
         ++v4->count;
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_MSGTestInt1_C(tGameObjectMain* a1, int a2, int a3)
+int AI_EvalFunc_MSGTestInt1_C(tGameObjectMain* gao, int a2, int a3)
 {
     int i;
     tGameObjectMessages* v5;
 
-    if (!a1->extended)
+    if (!gao->extended)
         return 0;
-    if (!a1->extended->messages)
+    if (!gao->extended->messages)
         return 0;
-    v5 = a1->extended->messages;
+    v5 = gao->extended->messages;
     for (i = 0; i < v5->count; ++i)
     {
         if (v5->msgs[i].msgID == a2 && (a3 & v5->msgs[i].Int1) != 0)
@@ -249,7 +249,7 @@ int AI_EvalFunc_MSGTestInt1_C(tGameObjectMain* a1, int a2, int a3)
     return 0;
 }
 
-tAINode* AI_EvalFunc_MSGTestInt1(tAINode* a1)
+tAINode* AI_EvalFunc_MSGTestInt1(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -263,15 +263,15 @@ tAINode* AI_EvalFunc_MSGTestInt1(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MSGTestInt1_C(v3, a2, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sMessage* AI_EvalFunc_MSGRead_C(struct sGameObjectMain* a1, int a2)
+struct sMessage* AI_EvalFunc_MSGRead_C(struct sGameObjectMain* gao, int a2)
 {
     tGameObjectMessages* v3;
     tMessage* v4;
 
-    v3 = a1->extended->messages;
+    v3 = gao->extended->messages;
     if (a2 < v3->count)
         return &v3->msgs[a2];
     v4 = &gst_Lifo;
@@ -331,16 +331,16 @@ LABEL_8:
     return arg0 + 1;
 }
 
-int AI_EvalFunc_MSGGetCount_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_MSGGetCount_C(struct sGameObjectMain* gao)
 {
-    if (!a1->extended)
+    if (!gao->extended)
         return 0;
-    if (a1->extended->messages)
-        return a1->extended->messages->count;
+    if (gao->extended->messages)
+        return gao->extended->messages->count;
     return 0;
 }
 
-tAINode* AI_EvalFunc_MSGGetCount(tAINode* a1)
+tAINode* AI_EvalFunc_MSGGetCount(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -350,10 +350,10 @@ tAINode* AI_EvalFunc_MSGGetCount(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_MSGGetCount_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MSGSendAllOwner(tAINode* a1)
+tAINode* AI_EvalFunc_MSGSendAllOwner(tAINode* node)
 {
     tGameObjectMain* v2;
     tMessage Src;
@@ -365,11 +365,11 @@ tAINode* AI_EvalFunc_MSGSendAllOwner(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v5 = v2;
     if (!MSG_gpo_Owner)
-        return a1 + 1;
+        return node + 1;
     if (!MSG_gpo_Owner->extended)
-        return a1 + 1;
+        return node + 1;
     if (!MSG_gpo_Owner->extended->messages)
-        return a1 + 1;
+        return node + 1;
     v4 = MSG_gpo_Owner->extended->messages;
     Src.Int2 = AI_GetIntFromStack();
     Src.Int1 = AI_GetIntFromStack();
@@ -391,15 +391,15 @@ tAINode* AI_EvalFunc_MSGSendAllOwner(tAINode* a1)
         memcpy(&v4->msgs[v4->count], &Src, sizeof(v4->msgs[v4->count]));
         ++v4->count;
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_MSGRegOwner_C(struct sGameObjectMain* a1)
+void AI_EvalFunc_MSGRegOwner_C(struct sGameObjectMain* gao)
 {
-    MSG_gpo_Owner = a1;
+    MSG_gpo_Owner = gao;
 }
 
-tAINode* AI_EvalFunc_MSGRegOwner(tAINode* a1)
+tAINode* AI_EvalFunc_MSGRegOwner(tAINode* node)
 {
     tGameObjectMain* v2;
 
@@ -407,5 +407,5 @@ tAINode* AI_EvalFunc_MSGRegOwner(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     MSG_gpo_Owner = v2;
-    return a1 + 1;
+    return node + 1;
 }

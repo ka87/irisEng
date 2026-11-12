@@ -48,7 +48,7 @@ int AI_EvalFunc_NetCommand_C(int a1)
     return result;
 }
 
-tAINode* AI_EvalFunc_NETCommand(tAINode* a1)
+tAINode* AI_EvalFunc_NETCommand(tAINode* node)
 {
     int v1; 
     int v3;
@@ -57,7 +57,7 @@ tAINode* AI_EvalFunc_NETCommand(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_NetCommand_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_NETCommandStr_C()
@@ -65,7 +65,7 @@ int AI_EvalFunc_NETCommandStr_C()
     return 1;
 }
 
-tAINode* AI_EvalFunc_NETCommandStr(tAINode* a1)
+tAINode* AI_EvalFunc_NETCommandStr(tAINode* node)
 {
     int v1;
 
@@ -73,16 +73,16 @@ tAINode* AI_EvalFunc_NETCommandStr(tAINode* a1)
     AI_GetIntFromStack();
     v1 = AI_EvalFunc_NETCommandStr_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_NETServerGetName(tAINode* a1)
+tAINode* AI_EvalFunc_NETServerGetName(tAINode* node)
 {
     int v2[3];
 
     v2[0] = 0;
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[38]);
-    return a1 + 1;
+    return node + 1;
 }
 
 tAINode* AI_EvalFunv_NETPushi(tAINode* a1)
@@ -112,8 +112,8 @@ tAINode* AI_EvalFunv_NETPopv(tAINode* arg0)
     return arg0 + 1;
 }
 
-tAINode* AI_EvalFunc_NETServerCreate(tAINode* a1)
+tAINode* AI_EvalFunc_NETServerCreate(tAINode* node)
 {
     AI_GetIntFromStack();
-    return a1 + 1;
+    return node + 1;
 }

@@ -11,7 +11,7 @@ int AI_EvalFunc_MATHBitSet_C(int a1, char a2)
     return (1 << a2) | a1;
 }
 
-tAINode* AI_EvalFunc_MATHBitSet(tAINode* a1)
+tAINode* AI_EvalFunc_MATHBitSet(tAINode* node)
 {
     int v1;
     char v3;
@@ -21,7 +21,7 @@ tAINode* AI_EvalFunc_MATHBitSet(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MATHBitSet_C(v4, v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_MATHBitChange_C(int a1, char a2)
@@ -35,7 +35,7 @@ int AI_EvalFunc_MATHBitChange_C(int a1, char a2)
     return v3;
 }
 
-tAINode* AI_EvalFunc_MATHBitChange(tAINode* a1)
+tAINode* AI_EvalFunc_MATHBitChange(tAINode* node)
 {
     int v1;
     char v3;
@@ -45,7 +45,7 @@ tAINode* AI_EvalFunc_MATHBitChange(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MATHBitChange_C(v4, v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_MATHBitReset_C(int a1, char a2)
@@ -53,7 +53,7 @@ int AI_EvalFunc_MATHBitReset_C(int a1, char a2)
     return ~(1 << a2) & a1;
 }
 
-tAINode* AI_EvalFunc_MATHBitReset(tAINode* a1)
+tAINode* AI_EvalFunc_MATHBitReset(tAINode* node)
 {
     int v1;
     char v3;
@@ -63,7 +63,7 @@ tAINode* AI_EvalFunc_MATHBitReset(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MATHBitReset_C(v4, v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_MATHBitTest_C(int a1, char a2)
@@ -71,7 +71,7 @@ BOOL AI_EvalFunc_MATHBitTest_C(int a1, char a2)
     return ((1 << a2) & a1) != 0;
 }
 
-tAINode* AI_EvalFunc_MATHBitTest(tAINode* a1)
+tAINode* AI_EvalFunc_MATHBitTest(tAINode* node)
 {
     int v1;
     char v3;
@@ -81,14 +81,14 @@ tAINode* AI_EvalFunc_MATHBitTest(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MATHBitTest_C(v4, v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHSinus_C(float f) {
     return sinf(f);
 }
 
-tAINode* AI_EvalFunc_MATHSinus(tAINode* a1)
+tAINode* AI_EvalFunc_MATHSinus(tAINode* node)
 {
     float v2;
     float X;
@@ -96,14 +96,14 @@ tAINode* AI_EvalFunc_MATHSinus(tAINode* a1)
     X = AI_GetFloatFromStack();
     v2 = AI_EvalFunc_MATHSinus_C(X);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHCosinus_C(float f) {
     return cosf(f);
 }
 
-tAINode* AI_EvalFunc_MATHCosinus(tAINode* a1)
+tAINode* AI_EvalFunc_MATHCosinus(tAINode* node)
 {
     float v2;
     float X;
@@ -111,7 +111,7 @@ tAINode* AI_EvalFunc_MATHCosinus(tAINode* a1)
     X = AI_GetFloatFromStack();
     v2 = AI_EvalFunc_MATHCosinus_C(X);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHRandFloat_C(float a1, float a2)
@@ -126,7 +126,7 @@ float AI_EvalFunc_MATHRandFloat_C(float a1, float a2)
     return (float)((a2 - a1) * v4 + a1);
 }
 
-tAINode* AI_EvalFunc_MATHRandFloat(tAINode* a1)
+tAINode* AI_EvalFunc_MATHRandFloat(tAINode* node)
 {
     float v2;
     float v3;
@@ -136,7 +136,7 @@ tAINode* AI_EvalFunc_MATHRandFloat(tAINode* a1)
     v4 = AI_GetFloatFromStack();
     v2 = AI_EvalFunc_MATHRandFloat_C(v4, v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_MATHRandInt_C(int a1, int a2)
@@ -154,7 +154,7 @@ int AI_EvalFunc_MATHRandInt_C(int a1, int a2)
     return v3;
 }
 
-tAINode* AI_EvalFunc_MATHRandInt(tAINode* a1)
+tAINode* AI_EvalFunc_MATHRandInt(tAINode* node)
 {
     int v1;
     int v3;
@@ -164,14 +164,14 @@ tAINode* AI_EvalFunc_MATHRandInt(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MATHRandInt_C(v3, v4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHAbsFloat_C(float f) {
     return (float)fabs(f);
 }
 
-tAINode* AI_EvalFunc_MATHAbsFloat(tAINode* a1)
+tAINode* AI_EvalFunc_MATHAbsFloat(tAINode* node)
 {
     float v2;
     float v3;
@@ -179,10 +179,10 @@ tAINode* AI_EvalFunc_MATHAbsFloat(tAINode* a1)
     v3 = AI_GetFloatFromStack();
     v2 = AI_EvalFunc_MATHAbsFloat_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHAbsInt(tAINode* a1)
+tAINode* AI_EvalFunc_MATHAbsInt(tAINode* node)
 {
     int v2;
 
@@ -191,10 +191,10 @@ tAINode* AI_EvalFunc_MATHAbsInt(tAINode* a1)
         AI_PutIntToStack(-v2);
     else
         AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecDistance(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecDistance(tAINode* node)
 {
     float v2;
     Vec3 dest;
@@ -210,10 +210,10 @@ tAINode* AI_EvalFunc_MATHVecDistance(tAINode* a1)
     MATH_SubstractVec(&dest, a2, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
     v2 = MATH_VecLen(&dest);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecNorm(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecNorm(tAINode* node)
 {
     float v2;
 
@@ -221,7 +221,7 @@ tAINode* AI_EvalFunc_MATHVecNorm(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v2 = MATH_VecLen((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHVecNormalize_C(Vec3* src, Vec3* dest)
@@ -238,7 +238,7 @@ void AI_EvalFunc_MATHVecNormalize_C(Vec3* src, Vec3* dest)
     }
 }
 
-tAINode* AI_EvalFunc_MATHVecNormalize(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecNormalize(tAINode* node)
 {
     Vec3 a1a;
 
@@ -246,7 +246,7 @@ tAINode* AI_EvalFunc_MATHVecNormalize(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_MATHVecNormalize_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHVecSetNormVector_C(Vec3* a1, float a2)
@@ -257,7 +257,7 @@ void AI_EvalFunc_MATHVecSetNormVector_C(Vec3* a1, float a2)
     a1->z = a2 * a1->z;
 }
 
-tAINode* AI_EvalFunc_MATHVecSetNormVector(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecSetNormVector(tAINode* node)
 {
     float v2;
     char v3[52];
@@ -266,17 +266,17 @@ tAINode* AI_EvalFunc_MATHVecSetNormVector(tAINode* a1)
     v2 = AI_GetFloatFromStack();
     AI_GetVarFromStack(v3, &a2);
     AI_EvalFunc_MATHVecSetNormVector_C((Vec3*)a2.ptr, v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecSetNormalize(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecSetNormalize(tAINode* node)
 {
     char dest[52];
     tVarStackElem a2;
 
     AI_GetVarFromStack(dest, &a2);
     MATH_NormalizeEqualVector((Vec3*)a2.ptr);
-    return a1 + 1;
+    return node + 1;
 }
 
 void  AI_EvalFunc_MATHVecSetHorzNormalize_C(Vec3* v)
@@ -295,21 +295,21 @@ void  AI_EvalFunc_MATHVecSetHorzNormalize_C(Vec3* v)
     }
 }
 
-tAINode* AI_EvalFunc_MATHVecSetHorzNormalize(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecSetHorzNormalize(tAINode* node)
 {
     char dest[52];
     tVarStackElem a2;
 
     AI_GetVarFromStack(dest, &a2);
     AI_EvalFunc_MATHVecSetHorzNormalize_C((Vec3*)a2.ptr);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHVecDotProduct_C(Vec3* v1, Vec3* v2) {
     return MATH_DotProduct(v1, v2);
 }
 
-tAINode* AI_EvalFunc_MATHVecDotProduct(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecDotProduct(tAINode* node)
 {
     Vec3* v1, *v2;
 
@@ -321,7 +321,7 @@ tAINode* AI_EvalFunc_MATHVecDotProduct(tAINode* a1)
     v2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
 
     AI_PutFloatToStack(AI_EvalFunc_MATHVecDotProduct_C(v1, v2));
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHVecCrossProduct_C(Vec3* a1, Vec3* a2, Vec3* a3)
@@ -329,7 +329,7 @@ void AI_EvalFunc_MATHVecCrossProduct_C(Vec3* a1, Vec3* a2, Vec3* a3)
     MATH_CrossProduct(a3, a1, a2);
 }
 
-tAINode* AI_EvalFunc_MATHVecCrossProduct(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecCrossProduct(tAINode* node)
 {
     Vec3* a2;
     Vec3 a1a;
@@ -341,10 +341,10 @@ tAINode* AI_EvalFunc_MATHVecCrossProduct(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_MATHVecCrossProduct_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHDistPointLine(tAINode* a1)
+tAINode* AI_EvalFunc_MATHDistPointLine(tAINode* node)
 {
     float v2;
     Vec3 v1;
@@ -356,7 +356,7 @@ tAINode* AI_EvalFunc_MATHDistPointLine(tAINode* a1)
     AI_GetVecFromStack(&v1);
     v2 = MATH_f_PointLineDistance(&v1, &v4, &a1a);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHProjPointLine_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4)
@@ -364,7 +364,7 @@ void AI_EvalFunc_MATHProjPointLine_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4)
     MATH_PointLineProjection(a4, a1, a2, a3);
 }
 
-tAINode* AI_EvalFunc_MATHProjPointLine(tAINode* a1)
+tAINode* AI_EvalFunc_MATHProjPointLine(tAINode* node)
 {
     Vec3 v2;
     Vec3 a2;
@@ -376,7 +376,7 @@ tAINode* AI_EvalFunc_MATHProjPointLine(tAINode* a1)
     AI_GetVecFromStack(&v2);
     AI_EvalFunc_MATHProjPointLine_C(&v2, &a2, &a3, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHProjPointSegment_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4)
@@ -384,7 +384,7 @@ void AI_EvalFunc_MATHProjPointSegment_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4)
     MATH_PointSegmentProjection(a4, a1, a2, a3);
 }
 
-tAINode* AI_EvalFunc_MATHProjPointSegment(tAINode* a1)
+tAINode* AI_EvalFunc_MATHProjPointSegment(tAINode* node)
 {
     Vec3 v2;
     Vec3 a2;
@@ -396,7 +396,7 @@ tAINode* AI_EvalFunc_MATHProjPointSegment(tAINode* a1)
     AI_GetVecFromStack(&v2);
     AI_EvalFunc_MATHProjPointSegment_C(&v2, &a2, &a3, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHProjPointParabol_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, float a7, Vec3* a6)
@@ -406,7 +406,7 @@ void AI_EvalFunc_MATHProjPointParabol_C(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, 
     MATH_PointParabolProjection3D(a6, &a2a, a1, a2, a3, a4, a7);
 }
 
-tAINode* AI_EvalFunc_MATHProjPointParabol(tAINode* a1)
+tAINode* AI_EvalFunc_MATHProjPointParabol(tAINode* node)
 {
     Vec3 a2;
     float a7;
@@ -422,7 +422,7 @@ tAINode* AI_EvalFunc_MATHProjPointParabol(tAINode* a1)
     AI_GetVecFromStack(&v6);
     AI_EvalFunc_MATHProjPointParabol_C(&v6, &a2, &a3, &a4, a7, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHMatrixBlend_C(Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, Vec3* a7, float amount, char a9)
@@ -461,7 +461,7 @@ void AI_EvalFunc_MATHMatrixBlend_C(Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3*
     *a3 = v9.v3;
 }
 
-tAINode* AI_EvalFunc_MATHMatrixBlend(tAINode* a1)
+tAINode* AI_EvalFunc_MATHMatrixBlend(tAINode* node)
 {
     float a8;
     char v3[52];
@@ -481,7 +481,7 @@ tAINode* AI_EvalFunc_MATHMatrixBlend(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     AI_GetVarFromStack(v3, &v10);
     AI_EvalFunc_MATHMatrixBlend_C((Vec3*)v10.ptr, (Vec3*)a2.ptr, &a4, &a5, &a6, &a1a, a8, 1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHMatrixVecLocalToGlobal_C(Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5)
@@ -496,7 +496,7 @@ void AI_EvalFunc_MATHMatrixVecLocalToGlobal_C(Vec3* a2, Vec3* a3, Vec3* a4, Vec3
     MATH_TransformVectorNoScale(a2, &v5, a3);
 }
 
-tAINode* AI_EvalFunc_MATHMatrixVecLocalToGlobal(tAINode* a1)
+tAINode* AI_EvalFunc_MATHMatrixVecLocalToGlobal(tAINode* node)
 {
     Vec3 a4;
     Vec3 a5;
@@ -508,7 +508,7 @@ tAINode* AI_EvalFunc_MATHMatrixVecLocalToGlobal(tAINode* a1)
     AI_GetVecFromStack(&a3);
     AI_EvalFunc_MATHMatrixVecLocalToGlobal_C(&a1a, &a3, &a4, &a5);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHFloatLimit_C(float num, float min, float max) {
@@ -585,7 +585,7 @@ BOOL AI_EvalFunc_MATHFloatNullEps_C(float a1)
     return v2 < (double)AI_gf_Epsilon;
 }
 
-tAINode* AI_EvalFunc_MATHFloatNullEps(tAINode* a1)
+tAINode* AI_EvalFunc_MATHFloatNullEps(tAINode* node)
 {
     int v1;
     float v3;
@@ -593,7 +593,7 @@ tAINode* AI_EvalFunc_MATHFloatNullEps(tAINode* a1)
     v3 = AI_GetFloatFromStack();
     v1 = AI_EvalFunc_MATHFloatNullEps_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHEpsilonSet_C(float a1)
@@ -601,13 +601,13 @@ void AI_EvalFunc_MATHEpsilonSet_C(float a1)
     AI_gf_Epsilon = a1;
 }
 
-tAINode* AI_EvalFunc_MATHEpsilonSet(tAINode* a1)
+tAINode* AI_EvalFunc_MATHEpsilonSet(tAINode* node)
 {
     float a1a;
 
     a1a = AI_GetFloatFromStack();
     AI_EvalFunc_MATHEpsilonSet_C(a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHEpsilonGet_C()
@@ -615,13 +615,13 @@ float AI_EvalFunc_MATHEpsilonGet_C()
     return AI_gf_Epsilon;
 }
 
-tAINode* AI_EvalFunc_MATHEpsilonGet(tAINode* a1)
+tAINode* AI_EvalFunc_MATHEpsilonGet(tAINode* node)
 {
     float v2;
 
     v2 = AI_EvalFunc_MATHEpsilonGet_C();
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHVecBlend_C(Vec3* a1, Vec3* a2, float a3, Vec3* a4)
@@ -629,7 +629,7 @@ void AI_EvalFunc_MATHVecBlend_C(Vec3* a1, Vec3* a2, float a3, Vec3* a4)
     MATH_BlendVector(a4, a1, a2, a3);
 }
 
-tAINode* AI_EvalFunc_MATHVecBlend(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecBlend(tAINode* node)
 {
     Vec3* a2;
     float a3;
@@ -643,7 +643,7 @@ tAINode* AI_EvalFunc_MATHVecBlend(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_MATHVecBlend_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHVecRotate_C(Vec3* a1, Vec3* a2, float a3, Vec3* a4)
@@ -693,7 +693,7 @@ void AI_EvalFunc_MATHVecRotate_C(Vec3* a1, Vec3* a2, float a3, Vec3* a4)
     *a4 = a2a;
 }
 
-tAINode* AI_EvalFunc_MATHVecRotate(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecRotate(tAINode* node)
 {
     Vec3 v2;
     Vec3 a2;
@@ -705,10 +705,10 @@ tAINode* AI_EvalFunc_MATHVecRotate(tAINode* a1)
     AI_GetVecFromStack(&v2);
     AI_EvalFunc_MATHVecRotate_C(&v2, &a2, a3, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecSetNull(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecSetNull(tAINode* node)
 {
     Vec3* v2;
     char dest[52];
@@ -719,7 +719,7 @@ tAINode* AI_EvalFunc_MATHVecSetNull(tAINode* a1)
     v2->x = 0.0f;
     v2->y = 0.0f;
     v2->z = 0.0f;
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHFloatRound_C(float a1, float a2) // TODO: ellenorizni ibztos jo-e
@@ -749,7 +749,7 @@ tAINode* AI_EvalFunc_MATHFloatRound(tAINode* aiNode)  // TODO: ellenorizni ibzto
     return aiNode + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecRound(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecRound(tAINode* node)
 {
     char dest[52];
     float precision;
@@ -758,10 +758,10 @@ tAINode* AI_EvalFunc_MATHVecRound(tAINode* a1)
     precision = AI_GetFloatFromStack();
     AI_GetVarFromStack(dest, &a2);
     MATH_RoundVectorWithPrecision((Vec3*)a2.ptr, precision);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecCos(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecCos(tAINode* node)
 {
     float v2;
     Vec3* vec2;
@@ -773,10 +773,10 @@ tAINode* AI_EvalFunc_MATHVecCos(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v2 = MATH_f_VecCos((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], vec2);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecSin(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecSin(tAINode* node)
 {
     float v2;
     Vec3* v3;
@@ -792,10 +792,10 @@ tAINode* AI_EvalFunc_MATHVecSin(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v2 = MATH_f_VecSin((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], v4, v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecAngle(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecAngle(tAINode* node)
 {
     float v2;
     Vec3* a3;
@@ -811,10 +811,10 @@ tAINode* AI_EvalFunc_MATHVecAngle(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v2 = MATH_f_VecAngle((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATHVecAbsAngle(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecAbsAngle(tAINode* node)
 {
     float v2;
     float v3;
@@ -842,7 +842,7 @@ tAINode* AI_EvalFunc_MATHVecAbsAngle(tAINode* a1)
     {
         AI_PutFloatToStack(0.0);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHVecBlendRotate_C(Vec3* a2, Vec3* a3, float a4, Vec3* a5)
@@ -956,7 +956,7 @@ void AI_EvalFunc_MATHVecBlendRotate_C(Vec3* a2, Vec3* a3, float a4, Vec3* a5)
     }
 }
 
-tAINode* AI_EvalFunc_MATHVecBlendRotate(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecBlendRotate(tAINode* node)
 {
     float a4;
     Vec3* a3;
@@ -970,7 +970,7 @@ tAINode* AI_EvalFunc_MATHVecBlendRotate(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_MATHVecBlendRotate_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3, a4, &a5);
     AI_PutVecToStack(&a5);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHFloatBlend_C(float f1, float f2, float factor) {
@@ -982,7 +982,7 @@ float AI_EvalFunc_MATHFloatBlend_C(float f1, float f2, float factor) {
     return f2 * factor + (1.0f - factor) * f1;
 }
 
-tAINode* AI_EvalFunc_MATHFloatBlend(tAINode* a1)
+tAINode* AI_EvalFunc_MATHFloatBlend(tAINode* node)
 {
     float f2;
     float factor;
@@ -993,7 +993,7 @@ tAINode* AI_EvalFunc_MATHFloatBlend(tAINode* a1)
     f1 = AI_GetFloatFromStack();
 
     AI_PutFloatToStack(AI_EvalFunc_MATHFloatBlend_C(f1, f2, factor));
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MATHRandBino_C(float a1, float a2, float a3, float a4)
@@ -1022,7 +1022,7 @@ float AI_EvalFunc_MATHRandBino_C(float a1, float a2, float a3, float a4)
     return v9 + a4;
 }
 
-tAINode* AI_EvalFunc_MATHRandBino(tAINode* a1)
+tAINode* AI_EvalFunc_MATHRandBino(tAINode* node)
 {
     float v2;
     float a2;
@@ -1036,7 +1036,7 @@ tAINode* AI_EvalFunc_MATHRandBino(tAINode* a1)
     a1a = AI_GetFloatFromStack();
     v2 = AI_EvalFunc_MATHRandBino_C(a1a, a2, a3, a4);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATHVecInCone_C(Vec3* a1, Vec3* a2, float a3, int a4, Vec3* a5)
@@ -1117,7 +1117,7 @@ void AI_EvalFunc_MATHVecInCone_C(Vec3* a1, Vec3* a2, float a3, int a4, Vec3* a5)
     }
 }
 
-tAINode* AI_EvalFunc_MATHVecInCone(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecInCone(tAINode* node)
 {
     int a4;
     Vec3* a2;
@@ -1133,18 +1133,18 @@ tAINode* AI_EvalFunc_MATHVecInCone(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_MATHVecInCone_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3, a4, &a5);
     AI_PutVecToStack(&a5);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_MATHVecGlobalToLocal_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3)
+void AI_EvalFunc_MATHVecGlobalToLocal_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3)
 {
     Mtx4x4* v3;
 
-    v3 = OBJ_pst_GetAbsoluteMatrix(a1);
+    v3 = OBJ_pst_GetAbsoluteMatrix(gao);
     MATH_VectorGlobalToLocal(a3, v3, a2);
 }
 
-tAINode* AI_EvalFunc_MATHVecGlobalToLocal(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecGlobalToLocal(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -1158,18 +1158,18 @@ tAINode* AI_EvalFunc_MATHVecGlobalToLocal(tAINode* a1)
     AI_GetVecFromStack(&a2);
     AI_EvalFunc_MATHVecGlobalToLocal_C(v5, &a2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_MATHVecLocalToGlobal_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3)
+void AI_EvalFunc_MATHVecLocalToGlobal_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3)
 {
     Mtx4x4* v3;
 
-    v3 = OBJ_pst_GetAbsoluteMatrix(a1);
+    v3 = OBJ_pst_GetAbsoluteMatrix(gao);
     MATH_TransformVectorNoScale(a3, v3, a2);
 }
 
-tAINode* AI_EvalFunc_MATHVecLocalToGlobal(tAINode* a1)
+tAINode* AI_EvalFunc_MATHVecLocalToGlobal(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -1183,7 +1183,7 @@ tAINode* AI_EvalFunc_MATHVecLocalToGlobal(tAINode* a1)
     AI_GetVecFromStack(&a2);
     AI_EvalFunc_MATHVecLocalToGlobal_C(v5, &a2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_MTHVecNull_C(Vec3* a1)
@@ -1195,7 +1195,7 @@ BOOL AI_EvalFunc_MTHVecNull_C(Vec3* a1)
     return fabs(a1->z) == 0.0;
 }
 
-tAINode* AI_EvalFunc_MTHVecNull(tAINode* a1)
+tAINode* AI_EvalFunc_MTHVecNull(tAINode* node)
 {
     BOOL v1;
 
@@ -1203,7 +1203,7 @@ tAINode* AI_EvalFunc_MTHVecNull(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v1 = AI_EvalFunc_MTHVecNull_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_MTHVecNullEpsilon_C(Vec3* a1)
@@ -1215,7 +1215,7 @@ BOOL AI_EvalFunc_MTHVecNullEpsilon_C(Vec3* a1)
     return 0;
 }
 
-tAINode* AI_EvalFunc_MTHVecNullEpsilon(tAINode* a1)
+tAINode* AI_EvalFunc_MTHVecNullEpsilon(tAINode* node)
 {
     BOOL v1;
 
@@ -1223,7 +1223,7 @@ tAINode* AI_EvalFunc_MTHVecNullEpsilon(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v1 = AI_EvalFunc_MTHVecNullEpsilon_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_MTHVecNullToler_C(Vec3* a1, float a2)
@@ -1235,7 +1235,7 @@ BOOL AI_EvalFunc_MTHVecNullToler_C(Vec3* a1, float a2)
     return 0;
 }
 
-tAINode* AI_EvalFunc_MTHVecNullToler(tAINode* a1)
+tAINode* AI_EvalFunc_MTHVecNullToler(tAINode* node)
 {
     BOOL v1;
     float a2;
@@ -1245,7 +1245,7 @@ tAINode* AI_EvalFunc_MTHVecNullToler(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v1 = AI_EvalFunc_MTHVecNullToler_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_MTHFloatNullToler_C(float a1, float a2)
@@ -1256,7 +1256,7 @@ BOOL AI_EvalFunc_MTHFloatNullToler_C(float a1, float a2)
     return v3 < (double)a2;
 }
 
-tAINode* AI_EvalFunc_MTHFloatNullToler(tAINode* a1)
+tAINode* AI_EvalFunc_MTHFloatNullToler(tAINode* node)
 {
     int v1;
     float v3;
@@ -1266,7 +1266,7 @@ tAINode* AI_EvalFunc_MTHFloatNullToler(tAINode* a1)
     v4 = AI_GetFloatFromStack();
     v1 = AI_EvalFunc_MTHFloatNullToler_C(v4, v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_MTHFloatSign_C(float a1)
@@ -1283,7 +1283,7 @@ float AI_EvalFunc_MTHFloatSign_C(float a1)
     return (float)result;
 }
 
-tAINode* AI_EvalFunc_MTHFloatSign(tAINode* a1)
+tAINode* AI_EvalFunc_MTHFloatSign(tAINode* node)
 {
     float v2;
     float a1a;
@@ -1291,7 +1291,7 @@ tAINode* AI_EvalFunc_MTHFloatSign(tAINode* a1)
     a1a = AI_GetFloatFromStack();
     v2 = AI_EvalFunc_MTHFloatSign_C(a1a);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_MTHIntSign_C(int a1)
@@ -1303,7 +1303,7 @@ int AI_EvalFunc_MTHIntSign_C(int a1)
     return a1;
 }
 
-tAINode* AI_EvalFunc_MTHIntSign(tAINode* a1)
+tAINode* AI_EvalFunc_MTHIntSign(tAINode* node)
 {
     int v1;
     int v2;
@@ -1311,10 +1311,10 @@ tAINode* AI_EvalFunc_MTHIntSign(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_MTHIntSign_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MTHFloatSqrt(tAINode* a1)
+tAINode* AI_EvalFunc_MTHFloatSqrt(tAINode* node)
 {
     float X;
     float Xa;
@@ -1322,10 +1322,10 @@ tAINode* AI_EvalFunc_MTHFloatSqrt(tAINode* a1)
     X = AI_GetFloatFromStack();
     Xa = sqrtf(X);
     AI_PutFloatToStack(Xa);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MTHLn(tAINode* a1)
+tAINode* AI_EvalFunc_MTHLn(tAINode* node)
 {
     float v2;
     float v3;
@@ -1333,10 +1333,10 @@ tAINode* AI_EvalFunc_MTHLn(tAINode* a1)
     v3 = AI_GetFloatFromStack();
     v2 = (float)log(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MTHLog10(tAINode* a1)
+tAINode* AI_EvalFunc_MTHLog10(tAINode* node)
 {
     float v2;
     float v3;
@@ -1344,7 +1344,7 @@ tAINode* AI_EvalFunc_MTHLog10(tAINode* a1)
     v3 = AI_GetFloatFromStack();
     v2 = (float)log10(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_MTHModulo_C(int a1, int a2)
@@ -1358,7 +1358,7 @@ int AI_EvalFunc_MTHModulo_C(int a1, int a2)
     return result;
 }
 
-tAINode* AI_EvalFunc_MTHModulo(tAINode* a1)
+tAINode* AI_EvalFunc_MTHModulo(tAINode* node)
 {
     int v1;
     int v3;
@@ -1368,5 +1368,5 @@ tAINode* AI_EvalFunc_MTHModulo(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MTHModulo_C(v4, v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }

@@ -5,7 +5,7 @@
 #include "../profiler.h"
 #include "ai_gridfunctions.h"
 
-int AI_EvalFunc_GRIDGetCapa_C(tGameObjectMain* a1, Vec3* a2)
+int AI_EvalFunc_GRIDGetCapa_C(tGameObjectMain* gao, Vec3* a2)
 {
     tWorldGridStruct* v3;
 
@@ -25,13 +25,13 @@ int AI_EvalFunc_GRIDSetWall_C(int a1)
     return result;
 };
 
-tAINode* AI_EvalFunc_GRIDSetWall(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDSetWall(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_GRIDSetWall_C(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_GRIDModeSet_C(int a1)
@@ -43,13 +43,13 @@ int AI_EvalFunc_GRIDModeSet_C(int a1)
     return result;
 }
 
-tAINode* AI_EvalFunc_GRIDModeSet(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDModeSet(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_GRIDModeSet_C(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_GRIDCurrentSet_C(int a1)
@@ -61,13 +61,13 @@ int AI_EvalFunc_GRIDCurrentSet_C(int a1)
     return result;
 }
 
-tAINode* AI_EvalFunc_GRIDCurrentSet(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDCurrentSet(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_GRIDCurrentSet_C(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_GRIDDestSet_C(int a1)
@@ -79,10 +79,10 @@ int AI_EvalFunc_GRIDDestSet_C(int a1)
     return result;
 }
 
-tAINode* AI_EvalFunc_GRIDDestSet(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDDestSet(tAINode* node)
 {
     GRID_gi_Dest = AI_GetIntFromStack();
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_GRIDSetCapa_C(int a1, Vec3* a2, char a3)
@@ -96,7 +96,7 @@ void AI_EvalFunc_GRIDSetCapa_C(int a1, Vec3* a2, char a3)
     GRI_SetCapa(v3, a2, a3);
 }
 
-tAINode* AI_EvalFunc_GRIDSetCapa(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDSetCapa(tAINode* node)
 {
     tGameObjectMain* v2;
     char a3;
@@ -110,7 +110,7 @@ tAINode* AI_EvalFunc_GRIDSetCapa(tAINode* a1)
     a3 = AI_GetIntFromStack();
     AI_GetVecFromStack(&a1a);
     AI_EvalFunc_GRIDSetCapa_C((int)v5, &a1a, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_GRIDSetPosAll_C(int a1, int a2, Vec3* a3)
@@ -129,7 +129,7 @@ void AI_EvalFunc_GRIDSetPosAll_C(int a1, int a2, Vec3* a3)
     GRID_gi_Current = v4;
 }
 
-tAINode* AI_EvalFunc_GRIDSetPosAll(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDSetPosAll(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a3;
@@ -143,7 +143,7 @@ tAINode* AI_EvalFunc_GRIDSetPosAll(tAINode* a1)
     AI_GetVecFromStack(&a3);
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_GRIDSetPosAll_C(a1a, a2, &a3);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_GRIDAddCapa_C(int a1, Vec3* a2, char a3)
@@ -157,7 +157,7 @@ int AI_EvalFunc_GRIDAddCapa_C(int a1, Vec3* a2, char a3)
     return GRI_AddCapa(v4, a2, a3);
 }
 
-tAINode* AI_EvalFunc_GRIDAddCapa(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDAddCapa(tAINode* node)
 {
     tGameObjectMain* v2; 
     Vec3 a1a;
@@ -171,10 +171,10 @@ tAINode* AI_EvalFunc_GRIDAddCapa(tAINode* a1)
     a3 = AI_GetIntFromStack();
     AI_GetVecFromStack(&a1a);
     AI_EvalFunc_GRIDAddCapa_C((int)v5, &a1a, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_GRIDGetCapa(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDGetCapa(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -188,10 +188,10 @@ tAINode* AI_EvalFunc_GRIDGetCapa(tAINode* a1)
     AI_GetVecFromStack(&a1a);
     v1 = AI_EvalFunc_GRIDGetCapa_C(v5, &a1a);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GRIDShortWay_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3, Vec3* a4, char a5, int a6, float a7, int a10, int a11)
+int AI_EvalFunc_GRIDShortWay_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3, Vec3* a4, char a5, int a6, float a7, int a10, int a11)
 {
     int v9;
     tWorldGridStruct* v11;
@@ -215,13 +215,13 @@ int AI_EvalFunc_GRIDShortWay_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3, V
         PRO_ShortWay.startTick = TIM_GetTicksAsInt32();
     ++PRO_ShortWay.insideCounter;
     v9 = (a10 & 0xffffff00) | (a5 & 0xff); // v9 = a10; LOBYTE(v9) = a5;
-    v13 = GRID_ShortestPath(a1, v12, v11, a3, a4, a2, v9, a6, a7, a10, a11);
+    v13 = GRID_ShortestPath(gao, v12, v11, a3, a4, a2, v9, a6, a7, a10, a11);
     PRO_RecordTimeDecRef(&PRO_ShortWay);
     GRID_gi_Dest = 0;
     return v13;
 }
 
-tAINode* AI_EvalFunc_GRIDShortWay(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDShortWay(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -250,10 +250,10 @@ tAINode* AI_EvalFunc_GRIDShortWay(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     v1 = AI_EvalFunc_GRIDShortWay_C(v13, (Vec3*)a2.ptr, &a3, &a1a, a5, a6, a7, a10, a11);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_GRIDPosGet_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3)
+Vec3* AI_EvalFunc_GRIDPosGet_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3)
 {
     Vec3* result;
     float v4;
@@ -277,7 +277,7 @@ Vec3* AI_EvalFunc_GRIDPosGet_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3)
     return result;
 }
 
-tAINode* AI_EvalFunc_GRIDPosGet(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDPosGet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -291,10 +291,10 @@ tAINode* AI_EvalFunc_GRIDPosGet(tAINode* a1)
     AI_GetVecFromStack(&a2);
     AI_EvalFunc_GRIDPosGet_C(v5, &a2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GRIDSetCenter_C(struct sGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_GRIDSetCenter_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tWorld* v2;
     int a3;
@@ -313,7 +313,7 @@ void AI_EvalFunc_GRIDSetCenter_C(struct sGameObjectMain* a1, Vec3* a2)
     }
 }
 
-tAINode* AI_EvalFunc_GRIDSetCenter(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDSetCenter(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -325,10 +325,10 @@ tAINode* AI_EvalFunc_GRIDSetCenter(tAINode* a1)
     v4 = v2;
     AI_GetVecFromStack(&a1a);
     AI_EvalFunc_GRIDSetCenter_C(v4, &a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_GRIDIsIn_C(struct sGameObjectMain* a1, Vec3* a2)
+BOOL AI_EvalFunc_GRIDIsIn_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     BOOL result;
     int v3;
@@ -341,7 +341,7 @@ BOOL AI_EvalFunc_GRIDIsIn_C(struct sGameObjectMain* a1, Vec3* a2)
     return result;
 }
 
-tAINode* AI_EvalFunc_GRIDIsIn(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDIsIn(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -355,10 +355,10 @@ tAINode* AI_EvalFunc_GRIDIsIn(tAINode* a1)
     AI_GetVecFromStack(&a1a);
     v1 = AI_EvalFunc_GRIDIsIn_C(v5, &a1a);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GRIDTag_C(struct sGameObjectMain* a1, Vec3* a2, int a3, int a4)
+int AI_EvalFunc_GRIDTag_C(struct sGameObjectMain* gao, Vec3* a2, int a3, int a4)
 {
     tWorldGridStruct* v5;
 
@@ -369,7 +369,7 @@ int AI_EvalFunc_GRIDTag_C(struct sGameObjectMain* a1, Vec3* a2, int a3, int a4)
     return GRI_Tag(v5, a2, a3, a4);
 }
 
-tAINode* AI_EvalFunc_GRIDTag(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDTag(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -387,10 +387,10 @@ tAINode* AI_EvalFunc_GRIDTag(tAINode* a1)
     AI_GetVecFromStack(&a1a);
     v1 = AI_EvalFunc_GRIDTag_C(v7, &a1a, v5, v4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GRIDTagBox_C(struct sGameObjectMain* a1, Vec3* pos, Vec3* a3, int a4)
+int AI_EvalFunc_GRIDTagBox_C(struct sGameObjectMain* gao, Vec3* pos, Vec3* a3, int a4)
 {
     tWorldGridStruct* v5;
 
@@ -401,7 +401,7 @@ int AI_EvalFunc_GRIDTagBox_C(struct sGameObjectMain* a1, Vec3* pos, Vec3* a3, in
     return GRI_TagBox(v5, pos, a3, a4);
 }
 
-tAINode* AI_EvalFunc_GRIDTagBox(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDTagBox(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -419,10 +419,10 @@ tAINode* AI_EvalFunc_GRIDTagBox(tAINode* a1)
     AI_GetVecFromStack(&pos);
     v1 = AI_EvalFunc_GRIDTagBox_C(v7, &pos, &a1a, a4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GRIDSmoothWay_C(struct sGameObjectMain* a1, Vec3* a2, int a4)
+int AI_EvalFunc_GRIDSmoothWay_C(struct sGameObjectMain* gao, Vec3* a2, int a4)
 {
     tWorldGridStruct* v4;
     tWorldGridStruct* v5;
@@ -438,7 +438,7 @@ int AI_EvalFunc_GRIDSmoothWay_C(struct sGameObjectMain* a1, Vec3* a2, int a4)
     return GRI_SmoothWay(v4, v5, a2, a4);
 }
 
-tAINode* AI_EvalFunc_GRIDSmoothWay(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDSmoothWay(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -455,10 +455,10 @@ tAINode* AI_EvalFunc_GRIDSmoothWay(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     v1 = AI_EvalFunc_GRIDSmoothWay_C(v7, (Vec3*)a2.ptr, a4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GRIDTagVec_C(struct sGameObjectMain* a1, Vec3* pos, int a3, int a4, Vec3* a5)
+int AI_EvalFunc_GRIDTagVec_C(struct sGameObjectMain* gao, Vec3* pos, int a3, int a4, Vec3* a5)
 {
     tWorldGridStruct* v6;
 
@@ -492,7 +492,7 @@ tAINode* AI_EvalFunc_GRIDTagVec(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_GRIDCptDest_C(struct sGameObjectMain* a1, Vec3* a2, float a3, Vec3* dest)
+void AI_EvalFunc_GRIDCptDest_C(struct sGameObjectMain* gao, Vec3* a2, float a3, Vec3* dest)
 {
     tWorldGridStruct* v4;
     float v5;
@@ -501,7 +501,7 @@ void AI_EvalFunc_GRIDCptDest_C(struct sGameObjectMain* a1, Vec3* a2, float a3, V
         v4 = WOR_gpst_CurrentWorld->grid2Ptr;
     else
         v4 = WOR_gpst_CurrentWorld->grid1Ptr;
-    MATH_SubstractVec(dest, a2, &a1->matrices->Pos);
+    MATH_SubstractVec(dest, a2, &gao->matrices->Pos);
     v5 = MATH_VecLen(dest);
     if (v5 != 0.0)
     {
@@ -513,7 +513,7 @@ void AI_EvalFunc_GRIDCptDest_C(struct sGameObjectMain* a1, Vec3* a2, float a3, V
         dest->x = a3 * dest->x;
         dest->y = a3 * dest->y;
         dest->z = a3 * dest->z;
-        MATH_VecAddVec(dest, dest, &a1->matrices->Pos);
+        MATH_VecAddVec(dest, dest, &gao->matrices->Pos);
         if (!GRI_i_ComputeDest(v4, dest))
         {
             dest->z = 0.0;
@@ -542,7 +542,7 @@ tAINode* AI_EvalFunc_GRIDCptDest(tAINode* arg0)
     return arg0 + 1;
 }
 
-int AI_EvalFunc_GRIDTagDyn_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3, float a4, int a5)
+int AI_EvalFunc_GRIDTagDyn_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3, float a4, int a5)
 {
     tWorldGridStruct* v6;
 
@@ -577,7 +577,7 @@ tAINode* AI_EvalFunc_GRIDTagDyn(tAINode* arg0)
     return arg0 + 1;
 }
 
-BOOL AI_EvalFunc_GRIDSurround_C(tGameObjectMain* a1)
+BOOL AI_EvalFunc_GRIDSurround_C(tGameObjectMain* gao)
 {
     tWorldGridStruct* v2;
     Vec3 a2;
@@ -588,11 +588,11 @@ BOOL AI_EvalFunc_GRIDSurround_C(tGameObjectMain* a1)
         v2 = v4->grid2Ptr;
     else
         v2 = v4->grid1Ptr;
-    OBJ_SightGet(a1, &a2);
-    return GRI_Surround(v2, &a1->matrices->Pos, &a2);
+    OBJ_SightGet(gao, &a2);
+    return GRI_Surround(v2, &gao->matrices->Pos, &a2);
 }
 
-tAINode* AI_EvalFunc_GRIDSurround(tAINode* a1)
+tAINode* AI_EvalFunc_GRIDSurround(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -602,5 +602,5 @@ tAINode* AI_EvalFunc_GRIDSurround(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_GRIDSurround_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }

@@ -1,31 +1,29 @@
 #include "../gameobject.h"
 #include "ai_actionfunctions.h"
 
-BOOL AI_EvalFunc_ACTHasKit_C(struct sGameObjectMain* a1)
+BOOL AI_EvalFunc_ACTHasKit_C(struct sGameObjectMain* gao)
 {
-    return a1
-        && (a1->flags & 2) != 0
-        && a1->basic
-        && a1->basic->actorObjectOrVisualObject
-        && ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionKit;
+    return gao
+        && (gao->flags & 2) != 0
+        && gao->basic
+        && gao->basic->actorObjectOrVisualObject
+        && ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->actionKit;
 }
 
-tAINode* AI_EvalFunc_ACTHasKit(tAINode* a1)
+tAINode* AI_EvalFunc_ACTHasKit(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTHasKit_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTHasKit_C(target));
+    return node + 1;
 }
 
-int AI_EvalFunc_ACTActionGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_ACTActionGet_C(struct sGameObjectMain* gao)
 {
-    return ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->currentAction;
+    return ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->currentAction;
 }
 
 int AI_EvalFunc_ACTActionGet_C_CURRENT()
@@ -33,241 +31,231 @@ int AI_EvalFunc_ACTActionGet_C_CURRENT()
     return ((tGameObjectActorObject*)(AI_gpst_CurrentGameObject->basic->actorObjectOrVisualObject))->currentAction;
 }
 
-tAINode* AI_EvalFunc_ACTActionGet(tAINode* a1)
+tAINode* AI_EvalFunc_ACTActionGet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTActionGet_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTActionGet_C(target));
+    return node + 1;
 }
 
-int AI_EvalFunc_ACTActionItemGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_ACTActionItemGet_C(struct sGameObjectMain* gao)
 {
-    return ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionItem;
+    return ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->actionItem;
 }
 
-tAINode* AI_EvalFunc_ACTActionItemGet(tAINode* a1)
+tAINode* AI_EvalFunc_ACTActionItemGet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTActionItemGet_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTActionItemGet_C(target));
+    return node + 1;
 }
 
-void AI_EvalFunc_ACTActionSet_C(struct sGameObjectMain* a1, int actionId)
+void AI_EvalFunc_ACTActionSet_C(struct sGameObjectMain* gao, int actionId)
 {
-    ACT_SetAction(a1, actionId, 0);
-    ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->currTime = 0;
+    ACT_SetAction(gao, actionId, 0);
+    ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->currTime = 0;
 }
 
-void AI_EvalFunc_ACTActionSet_C_CURRENT(int a1)
+void AI_EvalFunc_ACTActionSet_C_CURRENT(int actionId)
 {
-    ACT_SetAction(AI_gpst_CurrentGameObject, a1, 0);
+    ACT_SetAction(AI_gpst_CurrentGameObject, actionId, 0);
     ((tGameObjectActorObject*)(AI_gpst_CurrentGameObject->basic->actorObjectOrVisualObject))->currTime = 0;
 }
 
-tAINode* AI_EvalFunc_ACTActionSet(tAINode* a1)
+tAINode* AI_EvalFunc_ACTActionSet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
+    int actionId;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_ACTActionSet_C(v3, v1);
-    return a1 + 1;
+
+    actionId = AI_GetIntFromStack();
+
+    AI_EvalFunc_ACTActionSet_C(target, actionId);
+    return node + 1;
 }
 
-void AI_EvalFunc_ACTActionFrequencySet_C(tGameObjectMain* a1, int actionId, int a3)
+void AI_EvalFunc_ACTActionFrequencySet_C(tGameObjectMain* gao, int actionId, int framesPerSecond)
 {
-    float v3;
-    float v4;
+    tGameObjectActorObject* actor;
+    unsigned int frequency;
 
-    ACT_SetAction(a1, actionId, 1);
+    ACT_SetAction(gao, actionId, 1);
+    actor = (tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject);
+    frequency = (unsigned int)((float)framesPerSecond * 60.0 / 64.0 + 0.5);
     if (ENG_gb_EVERunning)
-    {
-        v4 = (float)a3;
-        ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->eventRunningFrequency = (unsigned int)(v4 * 60.0 / 64.0 + 0.5);
-    }
+        actor->eventRunningFrequency = frequency;
     else
-    {
-        v3 = (float)a3;
-        ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[0]->frequency = (unsigned int)(v3 * 60.0 / 64.0 + 0.5);
-    }
+        actor->animPtr[0]->frequency = frequency;
 }
 
-tAINode* AI_EvalFunc_ACTActionFrequencySet(tAINode* a1)
+tAINode* AI_EvalFunc_ACTActionFrequencySet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int v4;
+    tGameObjectMain* target;
+    int actionId;
+    int framesPerSecond;
 
-    a3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v2 = AI_gpst_CurrentUltra;
+    framesPerSecond = AI_GetIntFromStack();
+    actionId = AI_GetIntFromStack();
+
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_ACTActionFrequencySet_C(v2, v4, a3);
-    return a1 + 1;
+    AI_EvalFunc_ACTActionFrequencySet_C(target, actionId, framesPerSecond);
+    return node + 1;
 }
 
-int AI_EvalFunc_ACTFrequencyGet_C(struct sGameObjectMain* a1, int a2, int a3)
+int AI_EvalFunc_ACTFrequencyGet_C(struct sGameObjectMain* gao, int actionId, int itemId)
 {
-    int result;
-    tActionKit* kit = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionKit;
+    tActionKit* kit = ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->actionKit;
     tAction** actions = (tAction**)(((char*)kit) + sizeof(tActionKit));
     tActionElem* actionElems;
 
-    if (actions[a2]) {
-        actionElems = (tActionElem*)(((char*)actions[a2]) + sizeof(tAction));
-        result = actionElems[a3].actionFrequency;
-    }
-    else
-        result = 0;
-    return result;
+    if (!actions[actionId])
+        return 0;
+
+    actionElems = (tActionElem*)(((char*)actions[actionId]) + sizeof(tAction));
+    return actionElems[itemId].actionFrequency;
 }
 
-tAINode* AI_EvalFunc_ACTFrequencyGet(tAINode* a1)
+tAINode* AI_EvalFunc_ACTFrequencyGet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a2;
-    int a3;
+    tGameObjectMain* target;
+    int actionId;
+    int itemId;
 
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v3 = AI_gpst_CurrentUltra;
+    itemId = AI_GetIntFromStack();
+    actionId = AI_GetIntFromStack();
+
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTFrequencyGet_C(v3, a2, a3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTFrequencyGet_C(target, actionId, itemId));
+    return node + 1;
 }
 
-void AI_EvalFunc_ACTActionFrameSet_C(tGameObjectMain* a1, int actionId, int16_t a3)
+void AI_EvalFunc_ACTActionFrameSet_C(tGameObjectMain* gao, int actionId, int16_t frame)
 {
-    ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->currTime = a3;
-    ACT_SetAction(a1, actionId, 1);
-    ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->currTime = a3;
+    // the frame is set on both sides of the action change, because
+    // setting the action is what reads it
+    ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->currTime = frame;
+    ACT_SetAction(gao, actionId, 1);
+    ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->currTime = frame;
 }
 
-tAINode* AI_EvalFunc_ACTActionFrameSet(tAINode* a1)
+tAINode* AI_EvalFunc_ACTActionFrameSet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
-    int16_t a3;
+    tGameObjectMain* target;
+    int actionId;
+    int16_t frame;
 
-    a3 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v2 = AI_gpst_CurrentUltra;
+    frame = AI_GetIntFromStack();
+    actionId = AI_GetIntFromStack();
+
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_ACTActionFrameSet_C(v2, v3, a3);
-    return a1 + 1;
+    AI_EvalFunc_ACTActionFrameSet_C(target, actionId, frame);
+    return node + 1;
 }
 
-int AI_EvalFunc_ACTCustomBitGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_ACTCustomBitGet_C(struct sGameObjectMain* gao)
 {
-    tAction* action = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionPtr;
-    tActionElem* actionElems = (tActionElem*)(((char*)action) + sizeof(tAction));
+    tGameObjectActorObject* actor = (tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject);
+    tActionElem* actionElems = (tActionElem*)(((char*)actor->actionPtr) + sizeof(tAction));
 
-    return actionElems[((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionItem].customBits;
+    return actionElems[actor->actionItem].customBits;
 }
 
-tAINode* AI_EvalFunc_ACTCustomBitGet(tAINode* a1)
+tAINode* AI_EvalFunc_ACTCustomBitGet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTCustomBitGet_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTCustomBitGet_C(target));
+    return node + 1;
 }
 
-int AI_EvalFunc_ACTDesignFlagsGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_ACTDesignFlagsGet_C(struct sGameObjectMain* gao)
 {
-    tAction* action = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionPtr;
-    tActionElem* actionElems = (tActionElem*)(((char*)action) + sizeof(tAction));
+    tGameObjectActorObject* actor = (tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject);
+    tActionElem* actionElems = (tActionElem*)(((char*)actor->actionPtr) + sizeof(tAction));
 
-    return (uint16_t)actionElems[((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionItem].designFlags;
+    return (uint16_t)actionElems[actor->actionItem].designFlags;
 }
 
-tAINode* AI_EvalFunc_ACTDesignFlagsGet(tAINode* a1)
+tAINode* AI_EvalFunc_ACTDesignFlagsGet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTDesignFlagsGet_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTDesignFlagsGet_C(target));
+    return node + 1;
 }
 
-int AI_EvalFunc_ACTCustomBitTest_C(struct sGameObjectMain* a1, uint8_t a2)
+int AI_EvalFunc_ACTCustomBitTest_C(struct sGameObjectMain* gao, uint8_t mask)
 {
-    tAction* action = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionPtr;
-    tActionElem* actionElems = (tActionElem*)(((char*)action) + sizeof(tAction));
+    tGameObjectActorObject* actor = (tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject);
+    tActionElem* actionElems = (tActionElem*)(((char*)actor->actionPtr) + sizeof(tAction));
 
-    return a2 & actionElems[((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionItem].customBits;
+    return mask & actionElems[actor->actionItem].customBits;
 }
 
-tAINode* AI_EvalFunc_ACTCustomBitTest(tAINode* a1)
+tAINode* AI_EvalFunc_ACTCustomBitTest(tAINode* node)
 {
-    uint8_t v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* target;
+    uint8_t mask;
 
-    v4 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = (uint8_t)AI_GetIntFromStack();
-    v2 = AI_EvalFunc_ACTCustomBitTest_C(v4, v1);
-    AI_PutIntToStack(v2);
-    return a1 + 1;
+
+    mask = (uint8_t)AI_GetIntFromStack();
+
+    AI_PutIntToStack(AI_EvalFunc_ACTCustomBitTest_C(target, mask));
+    return node + 1;
 }
 
-int AI_EvalFunc_ACTDesignFlagsTest_C(struct sGameObjectMain* a1, uint16_t a2)
+int AI_EvalFunc_ACTDesignFlagsTest_C(struct sGameObjectMain* gao, uint16_t mask)
 {
-    tAction* action = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionPtr;
-    tActionElem* actionElems = (tActionElem*)(((char*)action) + sizeof(tAction));
+    tGameObjectActorObject* actor = (tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject);
+    tActionElem* actionElems = (tActionElem*)(((char*)actor->actionPtr) + sizeof(tAction));
 
-    return a2 & actionElems[((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionItem].designFlags;
+    return mask & actionElems[actor->actionItem].designFlags;
 }
 
-tAINode* AI_EvalFunc_ACTDesignFlagsTest(tAINode* a1)
+tAINode* AI_EvalFunc_ACTDesignFlagsTest(tAINode* node)
 {
-    uint16_t v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* target;
+    uint16_t mask;
 
-    v4 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_ACTDesignFlagsTest_C(v4, v1);
-    AI_PutIntToStack(v2);
-    return a1 + 1;
+
+    mask = AI_GetIntFromStack();
+
+    AI_PutIntToStack(AI_EvalFunc_ACTDesignFlagsTest_C(target, mask));
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_ACTActionFinished_C(struct sGameObjectMain* a1)
+BOOL AI_EvalFunc_ACTActionFinished_C(struct sGameObjectMain* gao)
 {
-    return (((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[0]->flags & 0x80) != 0;
+    return (((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->animPtr[0]->flags & 0x80) != 0;
 }
 
 BOOL AI_EvalFunc_ACTActionFinished_C_CURRENT()
@@ -275,101 +263,97 @@ BOOL AI_EvalFunc_ACTActionFinished_C_CURRENT()
     return AI_EvalFunc_ACTActionFinished_C(AI_gpst_CurrentGameObject);
 }
 
-tAINode* AI_EvalFunc_ACTActionFinished(tAINode* a1)
+tAINode* AI_EvalFunc_ACTActionFinished(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTActionFinished_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTActionFinished_C(target));
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_ACTActionIsTransition_C(struct sGameObjectMain* a1)
+BOOL AI_EvalFunc_ACTActionIsTransition_C(struct sGameObjectMain* gao)
 {
-    return ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->transitionElem != 0;
+    return ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->transitionElem != 0;
 }
 
-tAINode* AI_EvalFunc_ACTActionIsTransition(tAINode* a1)
+tAINode* AI_EvalFunc_ACTActionIsTransition(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTActionIsTransition_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTActionIsTransition_C(target));
+    return node + 1;
 }
 
-int AI_EvalFunc_ACTActionGetTransition_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_ACTActionGetTransition_C(struct sGameObjectMain* gao)
 {
-    return ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->currentActionTransition;
+    return ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->currentActionTransition;
 }
 
-tAINode* AI_EvalFunc_ACTActionGetTransition(tAINode* a1)
+tAINode* AI_EvalFunc_ACTActionGetTransition(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* target;
 
-    v3 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ACTActionGetTransition_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ACTActionGetTransition_C(target));
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_ACTKitMerge(tAINode* a1)
+tAINode* AI_EvalFunc_ACTKitMerge(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a4;
+    tGameObjectMain* target;
+    tGameObjectMain* source;
+    int from;
+    int to;
 
-    v2 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    ACTKitMergeNoOver(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3, a4);
-    return a1 + 1;
+    to = AI_GetIntFromStack();
+    from = AI_GetIntFromStack();
+    source = (tGameObjectMain*)AI_GetObjectFromStack();
+
+    ACTKitMergeNoOver(target, source, from, to);
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_ACTKitMergeOver(tAINode* a1)
+tAINode* AI_EvalFunc_ACTKitMergeOver(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a4;
+    tGameObjectMain* target;
+    tGameObjectMain* source;
+    int from;
+    int to;
 
-    v2 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    ACTKitMergeOver(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3, a4);
-    return a1 + 1;
+    to = AI_GetIntFromStack();
+    from = AI_GetIntFromStack();
+    source = (tGameObjectMain*)AI_GetObjectFromStack();
+
+    ACTKitMergeOver(target, source, from, to);
+    return node + 1;
 }
 
-void AI_EvalFunc_ACTKitRestore_C(tGameObjectMain* a1)
+void AI_EvalFunc_ACTKitRestore_C(tGameObjectMain* gao)
 {
-    ACT_ActionRestoreInit(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->actionKit);
+    ACT_ActionRestoreInit(((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->actionKit);
 }
 
-tAINode* AI_EvalFunc_ACTKitRestore(tAINode* a1)
+tAINode* AI_EvalFunc_ACTKitRestore(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* target;
 
-    v2 = AI_gpst_CurrentUltra;
+    target = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_ACTKitRestore_C(v2);
-    return a1 + 1;
+    AI_EvalFunc_ACTKitRestore_C(target);
+    return node + 1;
 }

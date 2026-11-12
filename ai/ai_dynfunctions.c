@@ -1,7 +1,7 @@
 #include "ai_dynfunctions.h"
 #include "../gameobject.h"
 
-tAINode* AI_EvalFunc_DYNSpeedReachInTime(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedReachInTime(tAINode* node)
 {
     int v1;
     tGameObjectBasic* v3;
@@ -33,14 +33,14 @@ tAINode* AI_EvalFunc_DYNSpeedReachInTime(tAINode* a1)
     {
         AI_PutIntToStack(0);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_DYNSpeedSetVector_C(struct sGameObjectMain* a1, Vec3* a2)
+int AI_EvalFunc_DYNSpeedSetVector_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tGameObjectBasic* v3;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         DYN_SetSpeedVector(v3->dyn, a2);
     else
@@ -48,7 +48,7 @@ int AI_EvalFunc_DYNSpeedSetVector_C(struct sGameObjectMain* a1, Vec3* a2)
     return 1;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedSetVector(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedSetVector(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -62,15 +62,15 @@ tAINode* AI_EvalFunc_DYNSpeedSetVector(tAINode* a1)
     AI_GetVecFromStack(&a1a);
     v1 = AI_EvalFunc_DYNSpeedSetVector_C(v5, &a1a);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNSpeedGetVector_C(struct sGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_DYNSpeedGetVector_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tGameObjectBasic* v2;
     tDyn* a1a;
 
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         a1a = v2->dyn;
     else
@@ -97,7 +97,7 @@ void AI_EvalFunc_DYNSpeedGetVector_C_CURRENT(Vec3* a2)
         *a2 = MATH_gst_NulVector;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedGetVector(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedGetVector(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a2;
@@ -109,15 +109,15 @@ tAINode* AI_EvalFunc_DYNSpeedGetVector(tAINode* a1)
     a1a = v2;
     AI_EvalFunc_DYNSpeedGetVector_C(v2, &a2);
     AI_PutVecToStack(&a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_DYNMassSet_C(tGameObjectMain* a1, float a2)
+int AI_EvalFunc_DYNMassSet_C(tGameObjectMain* gao, float a2)
 {
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -128,7 +128,7 @@ int AI_EvalFunc_DYNMassSet_C(tGameObjectMain* a1, float a2)
     return 1;
 }
 
-tAINode* AI_EvalFunc_DYNMassSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNMassSet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -140,10 +140,10 @@ tAINode* AI_EvalFunc_DYNMassSet(tAINode* a1)
     a2 = AI_GetFloatFromStack();
     v1 = AI_EvalFunc_DYNMassSet_C(v3, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNMaxStepSizeSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNMaxStepSizeSet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -161,16 +161,16 @@ tAINode* AI_EvalFunc_DYNMaxStepSizeSet(tAINode* a1)
         v5 = 0;
     if (v5)
         v5->maxStepSize = v4;
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_DYNMassGet_C(tGameObjectMain* a1)
+float AI_EvalFunc_DYNMassGet_C(tGameObjectMain* gao)
 {
     double result;
     tGameObjectBasic* v2;
     tDyn* v3;
 
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v3 = v2->dyn;
     else
@@ -182,7 +182,7 @@ float AI_EvalFunc_DYNMassGet_C(tGameObjectMain* a1)
     return (float)result;
 }
 
-tAINode* AI_EvalFunc_DYNMassGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNMassGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -192,10 +192,10 @@ tAINode* AI_EvalFunc_DYNMassGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_DYNMassGet_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_DYNOn_C(struct sGameObjectMain* a1)
+BOOL AI_EvalFunc_DYNOn_C(struct sGameObjectMain* gao)
 {
     tGameObjectBasic* v2;
     int v3;
@@ -203,16 +203,16 @@ BOOL AI_EvalFunc_DYNOn_C(struct sGameObjectMain* a1)
     tDyn* v5;
     tWorld* v6;
 
-    if (a1)
-        v4 = a1->flags;
+    if (gao)
+        v4 = gao->flags;
     else
         v4 = 0;
-    OBJ_ChangeIdentityFlags(a1, v4 | 4, -1);
+    OBJ_ChangeIdentityFlags(gao, v4 | 4, -1);
     v6 = WOR_gpst_CurrentWorld;
     if (AI_C_Callback == 1)
     {
-        v3 = a1->flags;
-        ((tableElemStructPF*)(WOR_gpst_CurrentWorld->eot.dynamicObjectsTablePF.nextElemPtr))->objectPtr = a1;
+        v3 = gao->flags;
+        ((tableElemStructPF*)(WOR_gpst_CurrentWorld->eot.dynamicObjectsTablePF.nextElemPtr))->objectPtr = gao;
         ((tableElemStructPF*)(v6->eot.dynamicObjectsTablePF.nextElemPtr))->objectFlags = v3;
         ++v6->eot.dynamicObjectsTablePF.actElemNum;
         v6->eot.dynamicObjectsTablePF.nextElemPtr =
@@ -222,7 +222,7 @@ BOOL AI_EvalFunc_DYNOn_C(struct sGameObjectMain* a1)
     {
         ENG_gb_MustRebuildDyn = 1;
     }
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v5 = v2->dyn;
     else
@@ -230,7 +230,7 @@ BOOL AI_EvalFunc_DYNOn_C(struct sGameObjectMain* a1)
     return v5 != 0;
 }
 
-tAINode* AI_EvalFunc_DYNOn(tAINode* a1)
+tAINode* AI_EvalFunc_DYNOn(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -240,25 +240,25 @@ tAINode* AI_EvalFunc_DYNOn(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_DYNOn_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_DYNOff_C(struct sGameObjectMain* a1)
+BOOL AI_EvalFunc_DYNOff_C(struct sGameObjectMain* gao)
 {
     tGameObjectBasic* v2;
     int v3;
     tDyn* v4;
 
-    if (a1)
-        v3 = a1->flags;
+    if (gao)
+        v3 = gao->flags;
     else
         v3 = 0;
-    OBJ_ChangeIdentityFlags(a1, v3 & ~4u, -1);
+    OBJ_ChangeIdentityFlags(gao, v3 & ~4u, -1);
     if (AI_C_Callback == 1)
-        TAB_PFtable_RemoveElemWithPointer(&WOR_gpst_CurrentWorld->eot.dynamicObjectsTablePF, a1);
+        TAB_PFtable_RemoveElemWithPointer(&WOR_gpst_CurrentWorld->eot.dynamicObjectsTablePF, gao);
     else
         ENG_gb_MustRebuildDyn = 1;
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v4 = v2->dyn;
     else
@@ -266,7 +266,7 @@ BOOL AI_EvalFunc_DYNOff_C(struct sGameObjectMain* a1)
     return v4 == 0;
 }
 
-tAINode* AI_EvalFunc_DYNOff(tAINode* a1)
+tAINode* AI_EvalFunc_DYNOff(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -276,27 +276,27 @@ tAINode* AI_EvalFunc_DYNOff(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_DYNOff_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_DYNFlagsSet_C(struct sGameObjectMain* a1, int a2, int a3)
+int AI_EvalFunc_DYNFlagsSet_C(struct sGameObjectMain* gao, int a2, int a3)
 {
     tGameObjectBasic* v4;
     tGameObjectBasic* v5;
     tDyn* v7;
     int v8;
 
-    if (!a1)
+    if (!gao)
         return -1;
-    v5 = a1->basic;
+    v5 = gao->basic;
     if (v5)
         v7 = v5->dyn;
     else
         v7 = 0;
     if (!v7)
     {
-        OBJ_ChangeIdentityFlags(a1, a1->flags | 4, -1);
-        v4 = a1->basic;
+        OBJ_ChangeIdentityFlags(gao, gao->flags | 4, -1);
+        v4 = gao->basic;
         if (v4)
             v7 = v4->dyn;
         else
@@ -307,7 +307,7 @@ int AI_EvalFunc_DYNFlagsSet_C(struct sGameObjectMain* a1, int a2, int a3)
     return v8;
 }
 
-tAINode* AI_EvalFunc_DYNFlagsSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNFlagsSet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -321,18 +321,18 @@ tAINode* AI_EvalFunc_DYNFlagsSet(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_DYNFlagsSet_C(v3, a2, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_DYNFlagsGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_DYNFlagsGet_C(struct sGameObjectMain* gao)
 {
     int result;
     tGameObjectBasic* v2;
     int* v3;
 
-    if (!a1)
+    if (!gao)
         return 0;
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v3 = &v2->dyn->flags;
     else
@@ -344,7 +344,7 @@ int AI_EvalFunc_DYNFlagsGet_C(struct sGameObjectMain* a1)
     return result;
 }
 
-tAINode* AI_EvalFunc_DYNFlagsGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNFlagsGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -354,15 +354,15 @@ tAINode* AI_EvalFunc_DYNFlagsGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_DYNFlagsGet_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_DYNGravitySet_C(struct sGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_DYNGravitySet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -372,7 +372,7 @@ Vec3* AI_EvalFunc_DYNGravitySet_C(struct sGameObjectMain* a1, Vec3* a2)
     return a2;
 }
 
-tAINode* AI_EvalFunc_DYNGravitySet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNGravitySet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -384,15 +384,15 @@ tAINode* AI_EvalFunc_DYNGravitySet(tAINode* a1)
     v4 = v2;
     AI_GetVecFromStack(&a1a);
     AI_EvalFunc_DYNGravitySet_C(v4, &a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNTractionSet_C(struct sGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_DYNTractionSet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tGameObjectBasic* v2;
     tDyn* v3;
 
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v3 = v2->dyn;
     else
@@ -421,7 +421,7 @@ void AI_EvalFunc_DYNTractionSet_C_CURRENT(Vec3* a1)
     }
 }
 
-tAINode* AI_EvalFunc_DYNTractionSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNTractionSet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a2;
@@ -433,15 +433,15 @@ tAINode* AI_EvalFunc_DYNTractionSet(tAINode* a1)
     a1a = v2;
     AI_GetVecFromStack(&a2);
     AI_EvalFunc_DYNTractionSet_C(a1a, &a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_DYNStreamSet_C(struct sGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_DYNStreamSet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -450,7 +450,7 @@ Vec3* AI_EvalFunc_DYNStreamSet_C(struct sGameObjectMain* a1, Vec3* a2)
     return a2;
 }
 
-tAINode* AI_EvalFunc_DYNStreamSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNStreamSet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -462,15 +462,15 @@ tAINode* AI_EvalFunc_DYNStreamSet(tAINode* a1)
     v4 = v2;
     AI_GetVecFromStack(&a1a);
     AI_EvalFunc_DYNStreamSet_C(v4, &a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_DYNFrictionSet_C(struct sGameObjectMain* a1, float a2)
+int AI_EvalFunc_DYNFrictionSet_C(struct sGameObjectMain* gao, float a2)
 {
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -479,7 +479,7 @@ int AI_EvalFunc_DYNFrictionSet_C(struct sGameObjectMain* a1, float a2)
     return 1;
 }
 
-tAINode* AI_EvalFunc_DYNFrictionSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNFrictionSet(tAINode* node)
 {
     int v1;
     float a2;
@@ -491,17 +491,17 @@ tAINode* AI_EvalFunc_DYNFrictionSet(tAINode* a1)
     a2 = AI_GetFloatFromStack();
     v1 = AI_EvalFunc_DYNFrictionSet_C(v4, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_DYNFrictionGet_C(struct sGameObjectMain* a1)
+float AI_EvalFunc_DYNFrictionGet_C(struct sGameObjectMain* gao)
 {
     tGameObjectBasic* v2;
     tDyn* v3;
 
-    if (!a1)
+    if (!gao)
         return 0.0;
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v3 = v2->dyn;
     else
@@ -513,7 +513,7 @@ float AI_EvalFunc_DYNFrictionGet_C(struct sGameObjectMain* a1)
     return 0.0;
 }
 
-tAINode* AI_EvalFunc_DYNFrictionGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNFrictionGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -523,15 +523,15 @@ tAINode* AI_EvalFunc_DYNFrictionGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_DYNFrictionGet_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_DYNFrictionVectorSet_C(struct sGameObjectMain* a1, Vec3* a2)
+int AI_EvalFunc_DYNFrictionVectorSet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -542,7 +542,7 @@ int AI_EvalFunc_DYNFrictionVectorSet_C(struct sGameObjectMain* a1, Vec3* a2)
     return 1;
 }
 
-tAINode* AI_EvalFunc_DYNFrictionVectorSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNFrictionVectorSet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -556,16 +556,16 @@ tAINode* AI_EvalFunc_DYNFrictionVectorSet(tAINode* a1)
     AI_GetVecFromStack(&a1a);
     v1 = AI_EvalFunc_DYNFrictionVectorSet_C(v5, &a1a);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_DYNFrictionVectorGet_C(struct sGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_DYNFrictionVectorGet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tDynForces* v2;
     tGameObjectBasic* v4;
     tDyn* v5;
 
-    v4 = a1->basic;
+    v4 = gao->basic;
     if (v4)
         v5 = v4->dyn;
     else
@@ -575,7 +575,7 @@ Vec3* AI_EvalFunc_DYNFrictionVectorGet_C(struct sGameObjectMain* a1, Vec3* a2)
     return &v2->frictionVector;
 }
 
-tAINode* AI_EvalFunc_DYNFrictionVectorGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNFrictionVectorGet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -587,16 +587,16 @@ tAINode* AI_EvalFunc_DYNFrictionVectorGet(tAINode* a1)
     v4 = v2;
     AI_EvalFunc_DYNFrictionVectorGet_C(v2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sDynForces* AI_EvalFunc_DYNGravityVectorGet_C(struct sGameObjectMain* a1, Vec3* a2)
+struct sDynForces* AI_EvalFunc_DYNGravityVectorGet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tDynForces* v3;
     tGameObjectBasic* v4;
     tDyn* v5;
 
-    v4 = a1->basic;
+    v4 = gao->basic;
     if (v4)
         v5 = v4->dyn;
     else
@@ -606,7 +606,7 @@ struct sDynForces* AI_EvalFunc_DYNGravityVectorGet_C(struct sGameObjectMain* a1,
     return v3;
 }
 
-tAINode* AI_EvalFunc_DYNGravityVectorGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNGravityVectorGet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -618,16 +618,16 @@ tAINode* AI_EvalFunc_DYNGravityVectorGet(tAINode* a1)
     v4 = v2;
     AI_EvalFunc_DYNGravityVectorGet_C(v2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_DYNStreamVectorGet_C(struct sGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_DYNStreamVectorGet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tDynForces* v2;
     tGameObjectBasic* v4;
     tDyn* v5;
 
-    v4 = a1->basic;
+    v4 = gao->basic;
     if (v4)
         v5 = v4->dyn;
     else
@@ -637,7 +637,7 @@ Vec3* AI_EvalFunc_DYNStreamVectorGet_C(struct sGameObjectMain* a1, Vec3* a2)
     return &v2->streamVec;
 }
 
-tAINode* AI_EvalFunc_DYNStreamVectorGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNStreamVectorGet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -649,16 +649,16 @@ tAINode* AI_EvalFunc_DYNStreamVectorGet(tAINode* a1)
     v4 = v2;
     AI_EvalFunc_DYNStreamVectorGet_C(v2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_DYNTractionVectorGet_C(struct sGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_DYNTractionVectorGet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tDynForces* v2;
     tGameObjectBasic* v4;
     tDyn* v5;
 
-    v4 = a1->basic;
+    v4 = gao->basic;
     if (v4)
         v5 = v4->dyn;
     else
@@ -668,7 +668,7 @@ Vec3* AI_EvalFunc_DYNTractionVectorGet_C(struct sGameObjectMain* a1, Vec3* a2)
     return &v2->tractionVector;
 }
 
-tAINode* AI_EvalFunc_DYNTractionVectorGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNTractionVectorGet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -680,10 +680,10 @@ tAINode* AI_EvalFunc_DYNTractionVectorGet(tAINode* a1)
     v4 = v2;
     AI_EvalFunc_DYNTractionVectorGet_C(v2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNFrictionSetForMaxSpeed_(tAINode* a1)
+tAINode* AI_EvalFunc_DYNFrictionSetForMaxSpeed_(tAINode* node)
 {
     float v2;
     tGameObjectBasic* v3;
@@ -705,16 +705,16 @@ tAINode* AI_EvalFunc_DYNFrictionSetForMaxSpeed_(tAINode* a1)
     {
         AI_PutIntToStack(0);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_DYNSpeedGet_C(struct sGameObjectMain* a1)
+float AI_EvalFunc_DYNSpeedGet_C(struct sGameObjectMain* gao)
 {
     Vec3 a2;
     tGameObjectBasic* v3;
     tDyn* a1a;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         a1a = v3->dyn;
     else
@@ -725,7 +725,7 @@ float AI_EvalFunc_DYNSpeedGet_C(struct sGameObjectMain* a1)
     return MATH_VecLen(&a2);
 }
 
-tAINode* AI_EvalFunc_DYNSpeedGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -735,21 +735,21 @@ tAINode* AI_EvalFunc_DYNSpeedGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_DYNSpeedGet_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNSpeedSet_C(struct sGameObjectMain* a1, float a2)
+void AI_EvalFunc_DYNSpeedSet_C(struct sGameObjectMain* gao, float a2)
 {
     tGameObjectBasic* v2;
 
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         DYN_ApplyHorizontalSpeed(v2->dyn, a2);
     else
         DYN_ApplyHorizontalSpeed(0, a2);
 }
 
-tAINode* AI_EvalFunc_DYNSpeedSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -759,15 +759,15 @@ tAINode* AI_EvalFunc_DYNSpeedSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNSpeedSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNElasticSet_C(tGameObjectMain* a1, float a2)
+void AI_EvalFunc_DYNElasticSet_C(tGameObjectMain* gao, float a2)
 {
     tGameObjectBasic* v2;
     tDyn* v3;
 
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v3 = v2->dyn;
     else
@@ -775,7 +775,7 @@ void AI_EvalFunc_DYNElasticSet_C(tGameObjectMain* a1, float a2)
     v3->solid->elastic = a2;
 }
 
-tAINode* AI_EvalFunc_DYNElasticSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNElasticSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -785,15 +785,15 @@ tAINode* AI_EvalFunc_DYNElasticSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNElasticSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_DYNSpeedLimitGet_C(struct sGameObjectMain* a1)
+float AI_EvalFunc_DYNSpeedLimitGet_C(struct sGameObjectMain* gao)
 {
     tGameObjectBasic* v2;
     tDyn* v3;
 
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v3 = v2->dyn;
     else
@@ -801,7 +801,7 @@ float AI_EvalFunc_DYNSpeedLimitGet_C(struct sGameObjectMain* a1)
     return v3->speedLimit;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedLimitGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedLimitGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -811,10 +811,10 @@ tAINode* AI_EvalFunc_DYNSpeedLimitGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_DYNSpeedLimitGet_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedLimitHorizGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedLimitHorizGet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -829,10 +829,10 @@ tAINode* AI_EvalFunc_DYNSpeedLimitHorizGet(tAINode* a1)
     else
         v4 = 0;
     AI_PutFloatToStack(v4->speedLimit);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedLimitVertGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedLimitVertGet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -847,16 +847,16 @@ tAINode* AI_EvalFunc_DYNSpeedLimitVertGet(tAINode* a1)
     else
         v4 = 0;
     AI_PutFloatToStack(v4->speedLimitVertical);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sDyn* AI_EvalFunc_DYNSpeedLimitSet_C(struct sGameObjectMain* a1, float a2)
+struct sDyn* AI_EvalFunc_DYNSpeedLimitSet_C(struct sGameObjectMain* gao, float a2)
 {
     tDyn* result;
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -867,7 +867,7 @@ struct sDyn* AI_EvalFunc_DYNSpeedLimitSet_C(struct sGameObjectMain* a1, float a2
     return result;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedLimitSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedLimitSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -877,15 +877,15 @@ tAINode* AI_EvalFunc_DYNSpeedLimitSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNSpeedLimitSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNSpeedLimitHorizSet_C(tGameObjectMain* a1, float a2)
+void AI_EvalFunc_DYNSpeedLimitHorizSet_C(tGameObjectMain* gao, float a2)
 {
     tGameObjectBasic* v2;
     tDyn* v3;
 
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v3 = v2->dyn;
     else
@@ -893,7 +893,7 @@ void AI_EvalFunc_DYNSpeedLimitHorizSet_C(tGameObjectMain* a1, float a2)
     v3->speedLimit = a2;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedLimitHorizSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedLimitHorizSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -903,15 +903,15 @@ tAINode* AI_EvalFunc_DYNSpeedLimitHorizSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNSpeedLimitHorizSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNSpeedLimitVertSet_C(tGameObjectMain* a1, float a2)
+void AI_EvalFunc_DYNSpeedLimitVertSet_C(tGameObjectMain* gao, float a2)
 {
     tGameObjectBasic* v2;
     tDyn* v3;
 
-    v2 = a1->basic;
+    v2 = gao->basic;
     if (v2)
         v3 = v2->dyn;
     else
@@ -919,7 +919,7 @@ void AI_EvalFunc_DYNSpeedLimitVertSet_C(tGameObjectMain* a1, float a2)
     v3->speedLimitVertical = a2;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedLimitVertSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedLimitVertSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -929,10 +929,10 @@ tAINode* AI_EvalFunc_DYNSpeedLimitVertSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNSpeedLimitVertSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNAutoOrientInertiaSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNAutoOrientInertiaSet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -956,10 +956,10 @@ tAINode* AI_EvalFunc_DYNAutoOrientInertiaSet(tAINode* a1)
             v4->flags += v5 & 0xC00;
         }
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNAutoOrientInertiaGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNAutoOrientInertiaGet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -972,15 +972,15 @@ tAINode* AI_EvalFunc_DYNAutoOrientInertiaGet(tAINode* a1)
         AI_PutIntToStack(v4->flags & 0xC00);
     else
         AI_PutIntToStack(0);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNConstraintObjectToSegment_C(tGameObjectMain* a1, Vec3* a2, Vec3* a4)
+void AI_EvalFunc_DYNConstraintObjectToSegment_C(tGameObjectMain* gao, Vec3* a2, Vec3* a4)
 {
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -988,7 +988,7 @@ void AI_EvalFunc_DYNConstraintObjectToSegment_C(tGameObjectMain* a1, Vec3* a2, V
     DYN_ConstraintInit(v4->constraint, 1, a2, a4, &MATH_gst_NulVector, 0.0);
 }
 
-tAINode* AI_EvalFunc_DYNConstraintObjectToSegment(tAINode* a1)
+tAINode* AI_EvalFunc_DYNConstraintObjectToSegment(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a2;
@@ -1002,15 +1002,15 @@ tAINode* AI_EvalFunc_DYNConstraintObjectToSegment(tAINode* a1)
     AI_GetVecFromStack(&a1a);
     AI_GetVecFromStack(&a2);
     AI_EvalFunc_DYNConstraintObjectToSegment_C(v5, &a2, &a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNConstraintObjectToParabol_C(tGameObjectMain* a1, Vec3* a2, Vec3* a3, Vec3* a4, float a5)
+void AI_EvalFunc_DYNConstraintObjectToParabol_C(tGameObjectMain* gao, Vec3* a2, Vec3* a3, Vec3* a4, float a5)
 {
     tGameObjectBasic* v5;
     tDyn* v6;
 
-    v5 = a1->basic;
+    v5 = gao->basic;
     if (v5)
         v6 = v5->dyn;
     else
@@ -1018,7 +1018,7 @@ void AI_EvalFunc_DYNConstraintObjectToParabol_C(tGameObjectMain* a1, Vec3* a2, V
     DYN_ConstraintInit(v6->constraint, 2, a2, a3, a4, a5);
 }
 
-tAINode* AI_EvalFunc_DYNConstraintObjectToParabol(tAINode* a1)
+tAINode* AI_EvalFunc_DYNConstraintObjectToParabol(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a2;
@@ -1036,7 +1036,7 @@ tAINode* AI_EvalFunc_DYNConstraintObjectToParabol(tAINode* a1)
     AI_GetVecFromStack(&a3);
     AI_GetVecFromStack(&a2);
     AI_EvalFunc_DYNConstraintObjectToParabol_C(v7, &a2, &a3, &a1a, a5);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_DYNImpulsion_C(struct sGameObjectMain* a2, Vec3* a3, float a4)
@@ -1141,7 +1141,7 @@ void AI_EvalFunc_DYNImpulsion_C(struct sGameObjectMain* a2, Vec3* a3, float a4)
     DYN_SetSpeedVector(v32, &v8);
 }
 
-tAINode* AI_EvalFunc_DYNImpulsion(tAINode* a1)
+tAINode* AI_EvalFunc_DYNImpulsion(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a3;
@@ -1155,10 +1155,10 @@ tAINode* AI_EvalFunc_DYNImpulsion(tAINode* a1)
     a4 = AI_GetFloatFromStack();
     AI_GetVecFromStack(&a3);
     AI_EvalFunc_DYNImpulsion_C(a2, &a3, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNTorqueVectorSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNTorqueVectorSet(tAINode* node)
 {
     Vec3* v2;
     tGameObjectBasic* v3;
@@ -1184,10 +1184,10 @@ tAINode* AI_EvalFunc_DYNTorqueVectorSet(tAINode* a1)
     else
         v2 = 0;
     *v2 = a1a;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNTorqueVectorGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNTorqueVectorGet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -1207,10 +1207,10 @@ tAINode* AI_EvalFunc_DYNTorqueVectorGet(tAINode* a1)
         AI_PutVecToStack(&v4->torqueVector);
     else
         AI_PutVecToStack(0);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNRotSpeedVectorSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNRotSpeedVectorSet(tAINode* node)
 {
     Vec3* v2;
     tGameObjectBasic* v3;
@@ -1234,10 +1234,10 @@ tAINode* AI_EvalFunc_DYNRotSpeedVectorSet(tAINode* a1)
     else
         v2 = 0;
     *v2 = a1a;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNRotSpeedVectorGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNRotSpeedVectorGet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -1257,10 +1257,10 @@ tAINode* AI_EvalFunc_DYNRotSpeedVectorGet(tAINode* a1)
         AI_PutVecToStack(v4);
     else
         AI_PutVecToStack(0);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNRotSpeedLimitGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNRotSpeedLimitGet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -1280,10 +1280,10 @@ tAINode* AI_EvalFunc_DYNRotSpeedLimitGet(tAINode* a1)
         AI_PutFloatToStack(v4->rotSpeedLimit);
     else
         AI_PutFloatToStack(0.0);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNRotSpeedLimitSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNRotSpeedLimitSet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -1303,17 +1303,17 @@ tAINode* AI_EvalFunc_DYNRotSpeedLimitSet(tAINode* a1)
     v4 = v5->solid;
     if (v4)
         v4->rotSpeedLimit = v6;
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_DYNSlideSet_C(tGameObjectMain* a1, float a2)
+BOOL AI_EvalFunc_DYNSlideSet_C(tGameObjectMain* gao, float a2)
 {
     BOOL result;
     tGameObjectBasic* v3;
     tDyn* v4;
     tDynCol* v5;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -1325,7 +1325,7 @@ BOOL AI_EvalFunc_DYNSlideSet_C(tGameObjectMain* a1, float a2)
     return result;
 }
 
-tAINode* AI_EvalFunc_DYNSlideSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSlideSet(tAINode* node)
 {
     float a2;
     tGameObjectMain* v3;
@@ -1335,10 +1335,10 @@ tAINode* AI_EvalFunc_DYNSlideSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNSlideSet_C(v3, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNSlideGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSlideGet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -1358,17 +1358,17 @@ tAINode* AI_EvalFunc_DYNSlideGet(tAINode* a1)
         AI_PutFloatToStack(v5->slide);
     else
         AI_PutFloatToStack(1.0);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_DYNReboundSet_C(struct sGameObjectMain* a1, float a2)
+BOOL AI_EvalFunc_DYNReboundSet_C(struct sGameObjectMain* gao, float a2)
 {
     BOOL result;
     tGameObjectBasic* v3;
     tDyn* v4;
     tDynCol* v5;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -1380,7 +1380,7 @@ BOOL AI_EvalFunc_DYNReboundSet_C(struct sGameObjectMain* a1, float a2)
     return result;
 }
 
-tAINode* AI_EvalFunc_DYNReboundSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNReboundSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -1390,16 +1390,16 @@ tAINode* AI_EvalFunc_DYNReboundSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNReboundSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sDynCol* AI_EvalFunc_DYNApplyRectFactorSet_C(struct sGameObjectMain* a1, float a2)
+struct sDynCol* AI_EvalFunc_DYNApplyRectFactorSet_C(struct sGameObjectMain* gao, float a2)
 {
     tDynCol* result;
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -1409,7 +1409,7 @@ struct sDynCol* AI_EvalFunc_DYNApplyRectFactorSet_C(struct sGameObjectMain* a1, 
     return result;
 }
 
-tAINode* AI_EvalFunc_DYNApplyRectFactorSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNApplyRectFactorSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -1419,17 +1419,17 @@ tAINode* AI_EvalFunc_DYNApplyRectFactorSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNApplyRectFactorSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_DYNReboundGet_C(tGameObjectMain* a1)
+float AI_EvalFunc_DYNReboundGet_C(tGameObjectMain* gao)
 {
     float v2;
     tGameObjectBasic* v3;
     tDyn* v4;
     float* v5;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -1442,7 +1442,7 @@ float AI_EvalFunc_DYNReboundGet_C(tGameObjectMain* a1)
     return v2;
 }
 
-tAINode* AI_EvalFunc_DYNReboundGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNReboundGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -1452,10 +1452,10 @@ tAINode* AI_EvalFunc_DYNReboundGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_DYNReboundGet_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNReboundHorizCosAngleSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNReboundHorizCosAngleSet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -1475,10 +1475,10 @@ tAINode* AI_EvalFunc_DYNReboundHorizCosAngleSet(tAINode* a1)
     v5 = v4->collision;
     if (v5)
         v5->reboundHorizCosAngle = v6;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNReboundHorizCosAngleGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNReboundHorizCosAngleGet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -1498,17 +1498,17 @@ tAINode* AI_EvalFunc_DYNReboundHorizCosAngleGet(tAINode* a1)
         AI_PutFloatToStack(v5->reboundHorizCosAngle);
     else
         AI_PutFloatToStack(0.0);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_DYNSlideHorizCosAngleSet_C(struct sGameObjectMain* a1, float a2)
+BOOL AI_EvalFunc_DYNSlideHorizCosAngleSet_C(struct sGameObjectMain* gao, float a2)
 {
     BOOL result;
     tGameObjectBasic* v3;
     tDyn* v4;
     tDynCol* v5;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -1520,7 +1520,7 @@ BOOL AI_EvalFunc_DYNSlideHorizCosAngleSet_C(struct sGameObjectMain* a1, float a2
     return result;
 }
 
-tAINode* AI_EvalFunc_DYNSlideHorizCosAngleSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSlideHorizCosAngleSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -1530,17 +1530,17 @@ tAINode* AI_EvalFunc_DYNSlideHorizCosAngleSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_DYNSlideHorizCosAngleSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_DYNSlideHorizCosAngleGet_C(struct sGameObjectMain* a1)
+float AI_EvalFunc_DYNSlideHorizCosAngleGet_C(struct sGameObjectMain* gao)
 {
     float v2;
     tGameObjectBasic* v3;
     tDyn* v4;
     tDynCol* v5;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -1553,7 +1553,7 @@ float AI_EvalFunc_DYNSlideHorizCosAngleGet_C(struct sGameObjectMain* a1)
     return v2;
 }
 
-tAINode* AI_EvalFunc_DYNSlideHorizCosAngleGet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSlideHorizCosAngleGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -1563,10 +1563,10 @@ tAINode* AI_EvalFunc_DYNSlideHorizCosAngleGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_DYNSlideHorizCosAngleGet_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DYNSpeedVectorHorizSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNSpeedVectorHorizSet(tAINode* node)
 {
     tGameObjectBasic* v2;
     tGameObjectMain* v3;
@@ -1585,15 +1585,15 @@ tAINode* AI_EvalFunc_DYNSpeedVectorHorizSet(tAINode* a1)
         v5 = 0;
     AI_GetVecFromStack(&a1a);
     DYN_SetSpeedVector_WithoutChangingGravity(v5, &a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_DYNMaxPosSet_C(struct sGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_DYNMaxPosSet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     tGameObjectBasic* v3;
     tDyn* v4;
 
-    v3 = a1->basic;
+    v3 = gao->basic;
     if (v3)
         v4 = v3->dyn;
     else
@@ -1602,7 +1602,7 @@ Vec3* AI_EvalFunc_DYNMaxPosSet_C(struct sGameObjectMain* a1, Vec3* a2)
     return &v4->maxPos;
 }
 
-tAINode* AI_EvalFunc_DYNMaxPosSet(tAINode* a1)
+tAINode* AI_EvalFunc_DYNMaxPosSet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -1614,16 +1614,16 @@ tAINode* AI_EvalFunc_DYNMaxPosSet(tAINode* a1)
     v4 = v2;
     AI_GetVecFromStack(&a1a);
     AI_EvalFunc_DYNMaxPosSet_C(v4, &a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_DYNConstraintGetTangent_C(tGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_DYNConstraintGetTangent_C(tGameObjectMain* gao, Vec3* a2)
 {
     tDynConstraint* v2;
     tGameObjectBasic* v4;
     tDyn* v5;
 
-    v4 = a1->basic;
+    v4 = gao->basic;
     if (v4)
         v5 = v4->dyn;
     else
@@ -1633,7 +1633,7 @@ Vec3* AI_EvalFunc_DYNConstraintGetTangent_C(tGameObjectMain* a1, Vec3* a2)
     return &v2->tangentVec;
 }
 
-tAINode* AI_EvalFunc_DYNConstraintGetTangent(tAINode* a1)
+tAINode* AI_EvalFunc_DYNConstraintGetTangent(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -1645,24 +1645,24 @@ tAINode* AI_EvalFunc_DYNConstraintGetTangent(tAINode* a1)
     v4 = v2;
     AI_EvalFunc_DYNConstraintGetTangent_C(v2, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_DYNAlignSight_C(tGameObjectMain* a1)
+void AI_EvalFunc_DYNAlignSight_C(tGameObjectMain* gao)
 {
     tGameObjectBasic* v1;
     Vec3 a2;
     tDyn* a1a;
     float v4;
 
-    v1 = a1->basic;
+    v1 = gao->basic;
     if (v1)
         a1a = v1->dyn;
     else
         a1a = 0;
     DYN_SpeedGetVector(a1a, &a2);
     v4 = MATH_VecLen(&a2);
-    OBJ_SightGet(a1, &a2);
+    OBJ_SightGet(gao, &a2);
     MATH_NormalizeVector(&a2, &a2);
     a2.x = a2.x * v4;
     a2.y = a2.y * v4;
@@ -1670,7 +1670,7 @@ void AI_EvalFunc_DYNAlignSight_C(tGameObjectMain* a1)
     DYN_SetSpeedVector(a1a, &a2);
 }
 
-tAINode* AI_EvalFunc_DYNAlignSight(tAINode* a1)
+tAINode* AI_EvalFunc_DYNAlignSight(tAINode* node)
 {
     tGameObjectMain* v2;
 
@@ -1678,5 +1678,5 @@ tAINode* AI_EvalFunc_DYNAlignSight(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_DYNAlignSight_C(v2);
-    return a1 + 1;
+    return node + 1;
 }

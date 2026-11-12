@@ -9,12 +9,12 @@
 #include "../win/wingdi.h"
 #include "bink.h"
 
-tAINode* AI_EvalFunc_GFXDepthBlur(tAINode* a1)
+tAINode* AI_EvalFunc_GFXDepthBlur(tAINode* node)
 {
     AI_GetFloatFromStack();
     AI_GetFloatFromStack();
     AI_GetIntFromStack();
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_GFXAddWorld_C(int a1, int a2)
@@ -37,7 +37,7 @@ int AI_EvalFunc_GFXAddWorld_C(int a1, int a2)
     return -1;
 }
 
-tAINode* AI_EvalFunc_GFXAddWorld(tAINode* a1)
+tAINode* AI_EvalFunc_GFXAddWorld(tAINode* node)
 {
     int v1;
     char v3;
@@ -47,7 +47,7 @@ tAINode* AI_EvalFunc_GFXAddWorld(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_GFXAddWorld_C(v3, v4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_GFXAdd_C(tGameObjectMain* aiGao, char a2)
@@ -60,7 +60,7 @@ int AI_EvalFunc_GFXAdd_C_CURRENT(char a1)
     return GFX_i_Add(&WOR_gpst_CurrentWorld->gfxCurrentList, a1, AI_gpst_CurrentGameObject);
 }
 
-tAINode* AI_EvalFunc_GFXAdd(tAINode* a1)
+tAINode* AI_EvalFunc_GFXAdd(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -72,7 +72,7 @@ tAINode* AI_EvalFunc_GFXAdd(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_GFXAdd_C(v3, v4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_GFXAddSorted_C(struct sGameObjectMain* a4, char a2, int16_t a3)
@@ -80,7 +80,7 @@ int AI_EvalFunc_GFXAddSorted_C(struct sGameObjectMain* a4, char a2, int16_t a3)
     return GFX_i_AddSorted(&WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE, a2, a3, a4);
 }
 
-tAINode* AI_EvalFunc_GFXAddSorted(tAINode* a1)
+tAINode* AI_EvalFunc_GFXAddSorted(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -94,10 +94,10 @@ tAINode* AI_EvalFunc_GFXAddSorted(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_GFXAddSorted_C(v3, v4, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GFXDel_C(tGameObjectMain* a1, int a2)
+int AI_EvalFunc_GFXDel_C(tGameObjectMain* gao, int a2)
 {
     tGfxElem* v2;
     tGfxElem** v4;
@@ -123,7 +123,7 @@ int AI_EvalFunc_GFXDel_C_CURRENT(int a1)
     return GFX_i_SetDeath(v3, v1);
 }
 
-tAINode* AI_EvalFunc_GFXDel(tAINode* a1)
+tAINode* AI_EvalFunc_GFXDel(tAINode* node)
 {
     tGameObjectMain* v2;
     int v3;
@@ -133,10 +133,10 @@ tAINode* AI_EvalFunc_GFXDel(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v3 = AI_GetIntFromStack();
     AI_EvalFunc_GFXDel_C(v2, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXLifeTimeSet_C(struct sGameObjectMain* a1, int gfxId, float a3)
+void AI_EvalFunc_GFXLifeTimeSet_C(struct sGameObjectMain* gao, int gfxId, float a3)
 {
     tGfxElem** v3;
 
@@ -147,7 +147,7 @@ void AI_EvalFunc_GFXLifeTimeSet_C(struct sGameObjectMain* a1, int gfxId, float a
     GFX_pst_FindById(v3, gfxId)->lifeTime = a3;
 }
 
-tAINode* AI_EvalFunc_GFXLifeTimeSet(tAINode* a1)
+tAINode* AI_EvalFunc_GFXLifeTimeSet(tAINode* node)
 {
     tGameObjectMain* v2;
     float a3;
@@ -159,10 +159,10 @@ tAINode* AI_EvalFunc_GFXLifeTimeSet(tAINode* a1)
     a3 = AI_GetFloatFromStack();
     gfxId = AI_GetIntFromStack();
     AI_EvalFunc_GFXLifeTimeSet_C(v2, gfxId, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_GFXRequest(tAINode* a1)
+tAINode* AI_EvalFunc_GFXRequest(tAINode* node)
 {
     int v1;
     int v2;
@@ -173,10 +173,10 @@ tAINode* AI_EvalFunc_GFXRequest(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = GFX_i_Request(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_GFXGetf_C(tGameObjectMain* a1, int a2, int a3)
+float AI_EvalFunc_GFXGetf_C(tGameObjectMain* gao, int a2, int a3)
 {
     tGfxElem* v4;
 
@@ -187,7 +187,7 @@ float AI_EvalFunc_GFXGetf_C(tGameObjectMain* a1, int a2, int a3)
     return GFX_f_Getf(v4, a2, a3);
 }
 
-tAINode* AI_EvalFunc_GFXGetf(tAINode* a1)
+tAINode* AI_EvalFunc_GFXGetf(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -201,10 +201,10 @@ tAINode* AI_EvalFunc_GFXGetf(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_GFXGetf_C(v3, a2, a3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXSetf_C(tGameObjectMain* a1, int id, int a2, float a3)
+void AI_EvalFunc_GFXSetf_C(tGameObjectMain* gao, int id, int a2, float a3)
 {
     int v4;
     tGfxElem* v5;
@@ -257,7 +257,7 @@ void AI_EvalFunc_GFXSetf_C_CURRENT(int id, int a2, float a3)
     GFX_Setf(v4, v3, a2, a3);
 }
 
-tAINode* AI_EvalFunc_GFXSetf(tAINode* a1)
+tAINode* AI_EvalFunc_GFXSetf(tAINode* node)
 {
     tGameObjectMain* v2;
     int v3;
@@ -271,10 +271,10 @@ tAINode* AI_EvalFunc_GFXSetf(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v4 = AI_GetIntFromStack();
     AI_EvalFunc_GFXSetf_C(v2, v4, v3, v5);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GFXGeti_C(struct sGameObjectMain* a1, int a2, int a3)
+int AI_EvalFunc_GFXGeti_C(struct sGameObjectMain* gao, int a2, int a3)
 {
     tGfxElem* v4;
 
@@ -285,7 +285,7 @@ int AI_EvalFunc_GFXGeti_C(struct sGameObjectMain* a1, int a2, int a3)
     return GFX_i_Geti(v4, a2, a3);
 }
 
-tAINode* AI_EvalFunc_GFXGeti(tAINode* a1)
+tAINode* AI_EvalFunc_GFXGeti(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -299,10 +299,10 @@ tAINode* AI_EvalFunc_GFXGeti(tAINode* a1)
     v5 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_GFXGeti_C(v3, v5, v4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXSeti_C(tGameObjectMain* a1, int a2, int a3, int a4)
+void AI_EvalFunc_GFXSeti_C(tGameObjectMain* gao, int a2, int a3, int a4)
 {
     tGfxElem* v4;
 
@@ -335,7 +335,7 @@ void AI_EvalFunc_GFXSeti_C_CURRENT(int a1, int a2, int a3)
     GFX_Seti(v3, a1, a2, a3);
 }
 
-tAINode* AI_EvalFunc_GFXSeti(tAINode* a1)
+tAINode* AI_EvalFunc_GFXSeti(tAINode* node)
 {
     tGameObjectMain* v2;
     int v3;
@@ -349,10 +349,10 @@ tAINode* AI_EvalFunc_GFXSeti(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v4 = AI_GetIntFromStack();
     AI_EvalFunc_GFXSeti_C(v2, v4, v3, v5);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXGetv_C(struct sGameObjectMain* a1, int a2, int a3, Vec3* a4)
+void AI_EvalFunc_GFXGetv_C(struct sGameObjectMain* gao, int a2, int a3, Vec3* a4)
 {
     tGfxElem* v4;
     Vec3 *ret;
@@ -365,7 +365,7 @@ void AI_EvalFunc_GFXGetv_C(struct sGameObjectMain* a1, int a2, int a3, Vec3* a4)
     *a4 = *ret;
 }
 
-tAINode* AI_EvalFunc_GFXGetv(tAINode* a1)
+tAINode* AI_EvalFunc_GFXGetv(tAINode* node)
 {
     tGameObjectMain* v2;
     int a3;
@@ -381,10 +381,10 @@ tAINode* AI_EvalFunc_GFXGetv(tAINode* a1)
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_GFXGetv_C(v2, a2, a3, &a1a);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXSetv_C(tGameObjectMain* a1, int a2, int a3, Vec3* a4)
+void AI_EvalFunc_GFXSetv_C(tGameObjectMain* gao, int a2, int a3, Vec3* a4)
 {
     tGfxElem* v4;
 
@@ -417,7 +417,7 @@ void AI_EvalFunc_GFXSetv_C_CURGLOB(int a1, Vec3* a2)
     GFX_Setv(v2, GFX_i_GlobalID, a1, a2);
 }
 
-tAINode* AI_EvalFunc_GFXSetv(tAINode* a1)
+tAINode* AI_EvalFunc_GFXSetv(tAINode* node)
 {
     tGameObjectMain* v2;
     int a3;
@@ -433,10 +433,10 @@ tAINode* AI_EvalFunc_GFXSetv(tAINode* a1)
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_GFXSetv_C(v2, a2, a3, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXFlagSet_C(tGameObjectMain* a1, int a2, int a3, int a4)
+void AI_EvalFunc_GFXFlagSet_C(tGameObjectMain* gao, int a2, int a3, int a4)
 {
     tGfxElem* v4;
 
@@ -458,7 +458,7 @@ void AI_EvalFunc_GFXFlagSet_C_CURRENT(int a1, char a2, int a3)
     GFX_FlagSet(v3, a1, a2, a3);
 }
 
-tAINode* AI_EvalFunc_GFXFlagSet(tAINode* a1)
+tAINode* AI_EvalFunc_GFXFlagSet(tAINode* node)
 {
     tGameObjectMain* v2; 
     int v3;
@@ -472,10 +472,10 @@ tAINode* AI_EvalFunc_GFXFlagSet(tAINode* a1)
     v5 = AI_GetIntFromStack();
     v4 = AI_GetIntFromStack();
     AI_EvalFunc_GFXFlagSet_C(v2, v4, v5, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXMaterialSet_C(tGameObjectMain* a1, int a2, tGameObjectMain* a3, int materialID)
+void AI_EvalFunc_GFXMaterialSet_C(tGameObjectMain* gao, int a2, tGameObjectMain* a3, int materialID)
 {
     tGfxElem* v4;
     tGEOMAT* v5;
@@ -498,7 +498,7 @@ void AI_EvalFunc_GFXMaterialSet_C_CURRENT(int a1, struct sGameObjectMain* a2, in
     AI_EvalFunc_GFXMaterialSet_C(AI_gpst_CurrentGameObject, a1, a2, a3);
 }
 
-tAINode* AI_EvalFunc_GFXMaterialSet(tAINode* a1)
+tAINode* AI_EvalFunc_GFXMaterialSet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -514,10 +514,10 @@ tAINode* AI_EvalFunc_GFXMaterialSet(tAINode* a1)
     a3 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_GFXMaterialSet_C(v3, v1, a3, materialID);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXCarteObject_C(tGameObjectMain* a1, int a2, tGameObjectMain* a3, int a4, int a5)
+void AI_EvalFunc_GFXCarteObject_C(tGameObjectMain* gao, int a2, tGameObjectMain* a3, int a4, int a5)
 {
     tGfxElem* v5;
 
@@ -528,7 +528,7 @@ void AI_EvalFunc_GFXCarteObject_C(tGameObjectMain* a1, int a2, tGameObjectMain* 
     GFX_Carte_Object(v5, a2, a3, a4, a5);
 }
 
-tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1)
+tAINode* AI_EvalFunc_GFXCarteObject(tAINode* node)
 {
     tGameObjectMain* v2;
     tGameObjectMain* a3;
@@ -546,7 +546,7 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1)
     a3 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_GFXCarteObject_C(v2, a2, a3, a4, a5);
-    return a1 + 1;
+    return node + 1;
 }
 
 HBINK GFX_gpv_FS_Video = 0;
@@ -678,13 +678,13 @@ void GFX_FS_VideoStart(int a1)
     GFX_gl_FS_VideoPlaying = 1;
 }
 
-tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* a1)
+tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     GFX_FS_VideoStart(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void GFX_FS_VideoStop()
@@ -703,10 +703,10 @@ void GFX_FS_VideoStop()
     GFX_gl_FS_VideoPlaying = 0;
 }
 
-tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1)
+tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* node)
 {
     GFX_FS_VideoStop();
-    return a1 + 1;
+    return node + 1;
 }
 
 int GFX_FS_VideoFinish() {
@@ -715,13 +715,13 @@ int GFX_FS_VideoFinish() {
     return GFX_gpv_FS_Video->FrameNum >= GFX_gpv_FS_Video->Frames;
 }
 
-tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* a1)
+tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* node)
 {
     int v1;
 
     v1 = GFX_FS_VideoFinish();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void GFX_FS_VideoUpdate()

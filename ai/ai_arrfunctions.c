@@ -33,7 +33,7 @@ int AI_EvalFunc_ARRObjNearestOfPoint_C(struct sGameObjectMain** a1, int arg4, Ve
     return v7;
 }
 
-tAINode* AI_EvalFunc_ARRObjNearestOfPoint(tAINode* a1)
+tAINode* AI_EvalFunc_ARRObjNearestOfPoint(tAINode* node)
 {
     int v1;
     int arg4;
@@ -48,7 +48,7 @@ tAINode* AI_EvalFunc_ARRObjNearestOfPoint(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     v1 = AI_EvalFunc_ARRObjNearestOfPoint_C((tGameObjectMain**)a2.ptr, arg4, v6);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void* AI_EvalFunc_ARRObjCopy_C(void* a1, void* Src, int a3)
@@ -56,7 +56,7 @@ void* AI_EvalFunc_ARRObjCopy_C(void* a1, void* Src, int a3)
     return memcpy(a1, Src, 4 * a3);
 }
 
-tAINode* AI_EvalFunc_ARRObjCopy(tAINode* a1)
+tAINode* AI_EvalFunc_ARRObjCopy(tAINode* node)
 {
     tVarStackElem v2;
     int v3;
@@ -68,10 +68,10 @@ tAINode* AI_EvalFunc_ARRObjCopy(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     AI_GetVarFromStack(v4, &v2);
     AI_EvalFunc_ARRObjCopy_C(v2.ptr, a2.ptr, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_ARRObjCopyIdFlags(tAINode* a1)
+tAINode* AI_EvalFunc_ARRObjCopyIdFlags(tAINode* node)
 {
     tVarStackElem v2;
     int v3;
@@ -97,10 +97,10 @@ tAINode* AI_EvalFunc_ARRObjCopyIdFlags(tAINode* a1)
             *(tGameObjectMain**)&a2.ptr[4 * v9++] = v11;
     }
     AI_PutIntToStack(v9);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_ARRObjCopyCB(tAINode* a1)
+tAINode* AI_EvalFunc_ARRObjCopyCB(tAINode* node)
 {
     tVarStackElem v2;
     int v3;
@@ -126,7 +126,7 @@ tAINode* AI_EvalFunc_ARRObjCopyCB(tAINode* a1)
             *(tGameObjectMain**)&a2.ptr[4 * v9++] = v11;
     }
     AI_PutIntToStack(v9);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_ARRObjBestSight_C(struct sGameObjectMain** a1, int a2, Vec3* a3, Vec3* a4, float a5)
@@ -207,7 +207,7 @@ int AI_EvalFunc_ARRObjSearch_C(struct sGameObjectMain** a1, int a2, struct sGame
     return -1;
 }
 
-tAINode* AI_EvalFunc_ARRObjSearch(tAINode* a1)
+tAINode* AI_EvalFunc_ARRObjSearch(tAINode* node)
 {
     int v1;
     int v3;
@@ -222,7 +222,7 @@ tAINode* AI_EvalFunc_ARRObjSearch(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     v1 = AI_EvalFunc_ARRObjSearch_C((tGameObjectMain**)a2.ptr, v3, v6);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_ARRBitSet_C(int* a1, int a2)
@@ -230,7 +230,7 @@ void AI_EvalFunc_ARRBitSet_C(int* a1, int a2)
     a1[(int)(a2 & 0xFFFFFFE0) >> 5] |= 1 << (a2 & 0x1F);
 }
 
-tAINode* AI_EvalFunc_ARRBitSet(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBitSet(tAINode* node)
 {
     int v2;
     tVarStackElem a2;
@@ -239,7 +239,7 @@ tAINode* AI_EvalFunc_ARRBitSet(tAINode* a1)
     v2 = AI_GetIntFromStack();
     AI_GetVarFromStack(dest, &a2);
     AI_EvalFunc_ARRBitSet_C((int*)a2.ptr, v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_ARRBitClear_C(int* a1, int a2)
@@ -247,7 +247,7 @@ void AI_EvalFunc_ARRBitClear_C(int* a1, int a2)
     a1[(int)(a2 & 0xFFFFFFE0) >> 5] &= ~(1 << (a2 & 0x1F));
 }
 
-tAINode* AI_EvalFunc_ARRBitClear(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBitClear(tAINode* node)
 {
     int v2;
     tVarStackElem a2;
@@ -256,10 +256,10 @@ tAINode* AI_EvalFunc_ARRBitClear(tAINode* a1)
     v2 = AI_GetIntFromStack();
     AI_GetVarFromStack(dest, &a2);
     AI_EvalFunc_ARRBitClear_C((int*)a2.ptr, v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_ARRBitSetRange(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBitSetRange(tAINode* node)
 {
     int v2;
     int v3;
@@ -284,10 +284,10 @@ tAINode* AI_EvalFunc_ARRBitSetRange(tAINode* a1)
         while (v5 != v7)
             *v5++ = -1;
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_ARRBitClearRange(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBitClearRange(tAINode* node)
 {
     int v2;
     int v3;
@@ -312,7 +312,7 @@ tAINode* AI_EvalFunc_ARRBitClearRange(tAINode* a1)
         while (v5 != v7)
             *v5++ = 0;
     }
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_ARRBitTest_C(int* a1, int a2)
@@ -320,7 +320,7 @@ BOOL AI_EvalFunc_ARRBitTest_C(int* a1, int a2)
     return ((1 << (a2 & 0x1F)) & a1[(int)(a2 & 0xFFFFFFE0) >> 5]) != 0;
 }
 
-tAINode* AI_EvalFunc_ARRBitTest(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBitTest(tAINode* node)
 {
     int v1;
     tVarStackElem a2;
@@ -331,7 +331,7 @@ tAINode* AI_EvalFunc_ARRBitTest(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     v1 = AI_EvalFunc_ARRBitTest_C((int*)a2.ptr, v5);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_ARRBitChange_C(int* a1, int a2)
@@ -345,7 +345,7 @@ void AI_EvalFunc_ARRBitChange_C(int* a1, int a2)
         *v2 |= 1 << (a2 & 0x1F);
 }
 
-tAINode* AI_EvalFunc_ARRBitChange(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBitChange(tAINode* node)
 {
     int v2; 
     tVarStackElem a2;
@@ -354,7 +354,7 @@ tAINode* AI_EvalFunc_ARRBitChange(tAINode* a1)
     v2 = AI_GetIntFromStack();
     AI_GetVarFromStack(dest, &a2);
     AI_EvalFunc_ARRBitChange_C((int*)a2.ptr, v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_ARRBitAnd_C(int* a1, int* a2, int* a3, int a4, int a5)
@@ -382,7 +382,7 @@ BOOL AI_EvalFunc_ARRBitAnd_C(int* a1, int* a2, int* a3, int a4, int a5)
     return v7 != 0;
 }
 
-tAINode* AI_EvalFunc_ARRBitAnd(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBitAnd(tAINode* node)
 {
     int v1;
     char dest[52];
@@ -401,7 +401,7 @@ tAINode* AI_EvalFunc_ARRBitAnd(tAINode* a1)
     AI_GetVarFromStack(v7, &v6);
     v1 = AI_EvalFunc_ARRBitAnd_C((int*)v6.ptr, (int*)v9.ptr, (int*)a2.ptr, a4, a5);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_ARRBitOr_C(int* a1, int* a2, int* a3, int a4, int a5)
@@ -426,7 +426,7 @@ BOOL AI_EvalFunc_ARRBitOr_C(int* a1, int* a2, int* a3, int a4, int a5)
     return 0;
 }
 
-tAINode* AI_EvalFunc_ARRBitOr(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBitOr(tAINode* node)
 {
     int v1;
     char dest[52];
@@ -445,7 +445,7 @@ tAINode* AI_EvalFunc_ARRBitOr(tAINode* a1)
     AI_GetVarFromStack(v7, &v6);
     v1 = AI_EvalFunc_ARRBitOr_C((int*)v6.ptr, (int*)v9.ptr, (int*)a2.ptr, a4, a5);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_ARRBit4Test_C(int* a1, int a2, int a3, int a4, int a5)
@@ -479,7 +479,7 @@ BOOL AI_EvalFunc_ARRBit4Test_C(int* a1, int a2, int a3, int a4, int a5)
     return 1;
 }
 
-tAINode* AI_EvalFunc_ARRBit4Test(tAINode* a1)
+tAINode* AI_EvalFunc_ARRBit4Test(tAINode* node)
 {
     int v1;
     tVarStackElem a2;
@@ -496,7 +496,7 @@ tAINode* AI_EvalFunc_ARRBit4Test(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     v1 = AI_EvalFunc_ARRBit4Test_C((int*)a2.ptr, v5, a3, a4, a5);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_ARRObjBestSightBVCenter_C(tGameObjectMain** a1, int a2, Vec3* a3, Vec3* a4, float a5)
@@ -563,14 +563,14 @@ void AI_EvalFunc_ARRGlobalIntSet_C(int* a1)
     ARR_gpi_Global = a1;
 }
 
-tAINode* AI_EvalFunc_ARRGlobalIntSet(tAINode* a1)
+tAINode* AI_EvalFunc_ARRGlobalIntSet(tAINode* node)
 {
     tVarStackElem a2;
     char dest[52];
 
     AI_GetVarFromStack(dest, &a2);
     ARR_gpi_Global = (int*)a2.ptr;
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_ARRGlobalIntFlagSet_C(int a2)
@@ -578,13 +578,13 @@ void AI_EvalFunc_ARRGlobalIntFlagSet_C(int a2)
     AI_EvalFunc_ARRBitSet_C(ARR_gpi_Global, a2);
 }
 
-tAINode* AI_EvalFunc_ARRGlobalIntFlagSet(tAINode* a1)
+tAINode* AI_EvalFunc_ARRGlobalIntFlagSet(tAINode* node)
 {
     int v2;
 
     v2 = AI_GetIntFromStack();
     AI_EvalFunc_ARRGlobalIntFlagSet_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_ARRGlobalIntFlagClear_C(int a2)
@@ -592,13 +592,13 @@ void AI_EvalFunc_ARRGlobalIntFlagClear_C(int a2)
     AI_EvalFunc_ARRBitClear_C(ARR_gpi_Global, a2);
 }
 
-tAINode* AI_EvalFunc_ARRGlobalIntFlagClear(tAINode* a1)
+tAINode* AI_EvalFunc_ARRGlobalIntFlagClear(tAINode* node)
 {
     int v2;
 
     v2 = AI_GetIntFromStack();
     AI_EvalFunc_ARRGlobalIntFlagClear_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_ARRGlobalIntFlagTest_C(int a1)
@@ -606,7 +606,7 @@ BOOL AI_EvalFunc_ARRGlobalIntFlagTest_C(int a1)
     return AI_EvalFunc_ARRBitTest_C(ARR_gpi_Global, a1);
 }
 
-tAINode* AI_EvalFunc_ARRGlobalIntFlagTest(tAINode* a1)
+tAINode* AI_EvalFunc_ARRGlobalIntFlagTest(tAINode* node)
 {
     int v1;
     int v3;
@@ -614,7 +614,7 @@ tAINode* AI_EvalFunc_ARRGlobalIntFlagTest(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_ARRGlobalIntFlagTest_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_ARRSortByFlags_C(struct sGameObjectMain** a1, int a2, int flagMustHave, int flagMustNothave, int whatToTest)
@@ -645,7 +645,7 @@ int AI_EvalFunc_ARRSortByFlags_C(struct sGameObjectMain** a1, int a2, int flagMu
     return a2;
 }
 
-tAINode* AI_EvalFunc_ARRSortByFlags(tAINode* a1)
+tAINode* AI_EvalFunc_ARRSortByFlags(tAINode* node)
 {
     int v1;
     int v3;
@@ -662,7 +662,7 @@ tAINode* AI_EvalFunc_ARRSortByFlags(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     v1 = AI_EvalFunc_ARRSortByFlags_C((tGameObjectMain**)a2.ptr, v3, flagMustHave, flagMustNothave, whatToTest);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_ARRObjBestSightInfoPhoto_C(struct sGameObjectMain** arg0, int arg4, Vec3* a3, Vec3* a1, float a5)

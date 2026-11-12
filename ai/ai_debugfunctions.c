@@ -7,23 +7,23 @@
 void AI_EvalFunc_DbgTraceInt_C() {
 }
 
-void AI_EvalFunc_DbgLastRayGet_Dummy_C(struct sGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_DbgLastRayGet_Dummy_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     *a2 = MATH_gst_NulVector;
 }
 
-tAINode* AI_EvalFunc_DbgTraceInt(tAINode* a1)
+tAINode* AI_EvalFunc_DbgTraceInt(tAINode* node)
 {
     int v = AI_GetIntFromStack();
     DBG_OutputDebugString("AI: %d (0x%x)\n", v, v);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DbgTraceFloat(tAINode* a1)
+tAINode* AI_EvalFunc_DbgTraceFloat(tAINode* node)
 {
     float v = AI_GetFloatFromStack();
     DBG_OutputDebugString("AI: %f\n", v);
-    return a1 + 1;
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_DbgTraceVector(tAINode* arg0)
@@ -35,28 +35,28 @@ tAINode* AI_EvalFunc_DbgTraceVector(tAINode* arg0)
     return arg0 + 1;
 }
 
-tAINode* AI_EvalFunc_DbgTraceString(tAINode* a1)
+tAINode* AI_EvalFunc_DbgTraceString(tAINode* node)
 {
     char* s = get_a_string_from_globalstack_sub_4D2040();
     DBG_OutputDebugString("AI: %s\n", s ? s : "(null)");
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DbgBreakPoint(tAINode* a1)
+tAINode* AI_EvalFunc_DbgBreakPoint(tAINode* node)
 {
-    a1[1].flags |= 2u;
-    return a1 + 1;
+    node[1].flags |= 2u;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DbgTraceChar(tAINode* a1)
+tAINode* AI_EvalFunc_DbgTraceChar(tAINode* node)
 {
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_DbgTraceInt_C();
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DbgTraceObject(tAINode* a1)
+tAINode* AI_EvalFunc_DbgTraceObject(tAINode* node)
 {
     tGameObjectMain* o;
 
@@ -64,7 +64,7 @@ tAINode* AI_EvalFunc_DbgTraceObject(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     o = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     DBG_OutputDebugString("AI: object %p\n", (void*)o);
-    return a1 + 1;
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_DbgRenderVector(tAINode* arg0)
@@ -86,12 +86,12 @@ tAINode* AI_EvalFunc_DbgRenderVector(tAINode* arg0)
     return arg0 + 1;
 }
 
-tAINode* AI_EvalFunc_DbgEraseAllVectors(tAINode* a1)
+tAINode* AI_EvalFunc_DbgEraseAllVectors(tAINode* node)
 {
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_DbgTraceInt_C();
-    return a1 + 1;
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_DbgLastRayGet(tAINode* arg0)
@@ -109,13 +109,13 @@ tAINode* AI_EvalFunc_DbgLastRayGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-tAINode* AI_EvalFunc_DbgClearLog(tAINode* a1)
+tAINode* AI_EvalFunc_DbgClearLog(tAINode* node)
 {
     AI_EvalFunc_DbgTraceInt_C();
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DbgStartRaster(tAINode* a1)
+tAINode* AI_EvalFunc_DbgStartRaster(tAINode* node)
 {
     profilerRasterStructElem* v2;
     unsigned int v3;
@@ -132,17 +132,17 @@ tAINode* AI_EvalFunc_DbgStartRaster(tAINode* a1)
             v2->startTick = TIM_GetTicksAsInt32();
         ++v2->insideCounter;
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DbgStopRaster(tAINode* a1)
+tAINode* AI_EvalFunc_DbgStopRaster(tAINode* node)
 {
     unsigned int v2;
 
     v2 = AI_GetIntFromStack();
     if (v2 < 10)
         PRO_RecordTimeDecRef(&PRO_RasterGroup.PRO_UserProfilerRasters[v2]);
-    return a1 + 1;
+    return node + 1;
 }
 
 tAINode* AI_EvalFunc_DbgRenderCircle(tAINode* arg0)

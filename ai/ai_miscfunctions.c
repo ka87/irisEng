@@ -11,15 +11,15 @@
 #include "../water.h"
 #include "ai_miscfunctions.h"
 
-void AI_EvalFunc_GRPInvisibleSet_C(struct sGameObjectMain* a1, int a2)
+void AI_EvalFunc_GRPInvisibleSet_C(struct sGameObjectMain* gao, int a2)
 {
     tGroup* v3; 
     tableElemStructPF* v4;
     tableElemStructPF* v5; 
 
-    if ((a1->flags & 0x800000) != 0 && a1->extended && a1->extended->grp)
+    if ((gao->flags & 0x800000) != 0 && gao->extended && gao->extended->grp)
     {
-        v3 = a1->extended->grp;
+        v3 = gao->extended->grp;
         v4 = v3->tablePF->firstElemPtr;
         v5 = ((tableElemStructPF*)(v3->tablePF->nextElemPtr)) - 1;
         while (v4 <= v5)
@@ -31,7 +31,7 @@ void AI_EvalFunc_GRPInvisibleSet_C(struct sGameObjectMain* a1, int a2)
     }
 }
 
-tAINode* AI_EvalFunc_GRPInvisibleSet(tAINode* a1)
+tAINode* AI_EvalFunc_GRPInvisibleSet(tAINode* node)
 {
     tGameObjectMain* v2;
     int a2;
@@ -41,18 +41,18 @@ tAINode* AI_EvalFunc_GRPInvisibleSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_GRPInvisibleSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GRPInactiveSet_C(struct sGameObjectMain* a1, int a2)
+void AI_EvalFunc_GRPInactiveSet_C(struct sGameObjectMain* gao, int a2)
 {
     tGroup* v3;
     tableElemStructPF* v4;
     tableElemStructPF* v5;
 
-    if ((a1->flags & 0x800000) != 0 && a1->extended && a1->extended->grp)
+    if ((gao->flags & 0x800000) != 0 && gao->extended && gao->extended->grp)
     {
-        v3 = a1->extended->grp;
+        v3 = gao->extended->grp;
         v4 = v3->tablePF->firstElemPtr;
         v5 = ((tableElemStructPF*)(v3->tablePF->nextElemPtr)) - 1;
         while (v4 <= v5)
@@ -64,7 +64,7 @@ void AI_EvalFunc_GRPInactiveSet_C(struct sGameObjectMain* a1, int a2)
     }
 }
 
-tAINode* AI_EvalFunc_GRPInactiveSet(tAINode* a1)
+tAINode* AI_EvalFunc_GRPInactiveSet(tAINode* node)
 {
     tGameObjectMain* v2;
     int a2;
@@ -74,7 +74,7 @@ tAINode* AI_EvalFunc_GRPInactiveSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_GRPInactiveSet_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_Gsp_AE_MASTER_C(int a1, int a2, int a3, float a4)
@@ -82,7 +82,7 @@ void AI_EvalFunc_Gsp_AE_MASTER_C(int a1, int a2, int a3, float a4)
     PC_AE_MASTER_CTRL(a1, a2, a3, a4);
 }
 
-tAINode* AI_EvalFunc_Gsp_AE_MASTER(tAINode* a1)
+tAINode* AI_EvalFunc_Gsp_AE_MASTER(tAINode* node)
 {
     int v2;
     float v3;
@@ -94,10 +94,10 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTER(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v2 = AI_GetIntFromStack();
     AI_EvalFunc_Gsp_AE_MASTER_C(v2, v4, v5, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETONOFF(tAINode* a1)
+tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETONOFF(tAINode* node)
 {
     int v1; 
     int v2; 
@@ -105,10 +105,10 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETONOFF(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = PC_AE_MASTER_GET_ONOFF_sub_4A37D0(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETP1(tAINode* a1)
+tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETP1(tAINode* node)
 {
     int v1;
     int v3;
@@ -118,10 +118,10 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETP1(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v4 = PC_AE_MASTER_GET_P1(v1, v3);
     AI_PutFloatToStack(v4);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_Gsp_AE_MASTEREVT(tAINode* a1)
+tAINode* AI_EvalFunc_Gsp_AE_MASTEREVT(tAINode* node)
 {
     int v2;
     int v3;
@@ -135,14 +135,14 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTEREVT(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v2 = AI_GetIntFromStack();
     PC_AE_MASTER_CTRL(v2, v3, v4, v5->matrices->Pos.x);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_CIN_OnOff(tAINode* a1)
+tAINode* AI_EvalFunc_CIN_OnOff(tAINode* node)
 {
     AI_GetIntFromStack();
     AI_EvalFunc_DbgTraceInt_C();
-    return a1 + 1;
+    return node + 1;
 }
 
 // Raises or lowers the cinematic bands.
@@ -151,25 +151,25 @@ void AI_EvalFunc_CIN_CutsceneMode_C(int a1)
     PC_CIN_CutsceneMode(a1);
 }
 
-tAINode* AI_EvalFunc_CIN_CutsceneMode(tAINode* a1)
+tAINode* AI_EvalFunc_CIN_CutsceneMode(tAINode* node)
 {
     int v2;
 
     v2 = AI_GetIntFromStack();
     AI_EvalFunc_CIN_CutsceneMode_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_DBR_GetN(tAINode* a1)
+tAINode* AI_EvalFunc_DBR_GetN(tAINode* node)
 {
     int v1;
 
     v1 = AI_EvalFunc_IoConsLangSet_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_ConsoleSpecificOption(tAINode* a1)
+tAINode* AI_EvalFunc_ConsoleSpecificOption(tAINode* node)
 {
     int v1;
     int v3;
@@ -177,10 +177,10 @@ tAINode* AI_EvalFunc_ConsoleSpecificOption(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = ConsoleSpecificOption(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_XMEN_OnOff(tAINode* a1)
+tAINode* AI_EvalFunc_XMEN_OnOff(tAINode* node)
 {
     tGameObjectMain* v2;
     int a2;
@@ -192,10 +192,10 @@ tAINode* AI_EvalFunc_XMEN_OnOff(tAINode* a1)
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
     XMEN_OnOff(v2, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_XMEN_SetSize(tAINode* a1)
+tAINode* AI_EvalFunc_XMEN_SetSize(tAINode* node)
 {
     tGameObjectMain* v2;
     int a3;
@@ -209,10 +209,10 @@ tAINode* AI_EvalFunc_XMEN_SetSize(tAINode* a1)
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
     XMEN_SetSize(v2, a2, a3, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_XMEC_OnOff(tAINode* a1)
+tAINode* AI_EvalFunc_XMEC_OnOff(tAINode* node)
 {
     tGameObjectMain* v2;
     int a2;
@@ -224,10 +224,10 @@ tAINode* AI_EvalFunc_XMEC_OnOff(tAINode* a1)
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
     XMEC_OnOff(v2, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_SNAKE_SetInertia_C(struct sGameObjectMain* a1, float a2)
+void AI_EvalFunc_SNAKE_SetInertia_C(struct sGameObjectMain* gao, float a2)
 {
     BOOL v2;
     tModifier* i;
@@ -239,14 +239,14 @@ void AI_EvalFunc_SNAKE_SetInertia_C(struct sGameObjectMain* a1, float a2)
     v6 = 0;
     v4 = 0;
     v5 = 0;
-    if (a1)
+    if (gao)
     {
-        if (a1->basic
-            && a1->basic->actorObjectOrVisualObject
-            && (a1->flags & 2) != 0
-            && ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->skeletonGroup)
+        if (gao->basic
+            && gao->basic->actorObjectOrVisualObject
+            && (gao->flags & 2) != 0
+            && ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->skeletonGroup)
         {
-            v6 = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->skeletonGroup;
+            v6 = ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->skeletonGroup;
             v5 = ((tableElemStructPF*)(v6->tablePF->nextElemPtr)) - 1;
         }
         while (v4 <= v5)
@@ -257,7 +257,7 @@ void AI_EvalFunc_SNAKE_SetInertia_C(struct sGameObjectMain* a1, float a2)
             }
             else
             {
-                v7 = a1;
+                v7 = gao;
                 if (v5)
                     v4 = ((tableElemStructPF*)(v6->tablePF->firstElemPtr)) - 1;
             }
@@ -275,7 +275,7 @@ void AI_EvalFunc_SNAKE_SetInertia_C(struct sGameObjectMain* a1, float a2)
     }
 }
 
-tAINode* AI_EvalFunc_SNAKE_SetInertia(tAINode* a1)
+tAINode* AI_EvalFunc_SNAKE_SetInertia(tAINode* node)
 {
     tGameObjectMain* v2; 
     float a2;
@@ -285,16 +285,16 @@ tAINode* AI_EvalFunc_SNAKE_SetInertia(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_SNAKE_SetInertia_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_SPG_SetNoise_C(struct sGameObjectMain* a1, float a2)
+void AI_EvalFunc_SPG_SetNoise_C(struct sGameObjectMain* gao, float a2)
 {
     tModifier* i;
 
-    if (a1->extended)
+    if (gao->extended)
     {
-        for (i = a1->extended->mdf; i; i = i->nextElem)
+        for (i = gao->extended->mdf; i; i = i->nextElem)
         {
             if (i->modifierIntf->mdfId == 11)
                 ((tSpgMdfStruct*)(i->mdfPrivateDataPtr))->noise = a2;
@@ -302,7 +302,7 @@ void AI_EvalFunc_SPG_SetNoise_C(struct sGameObjectMain* a1, float a2)
     }
 }
 
-tAINode* AI_EvalFunc_SPG_SetNoise(tAINode* a1)
+tAINode* AI_EvalFunc_SPG_SetNoise(tAINode* node)
 {
     tGameObjectMain* v2;
     float a2;
@@ -312,18 +312,18 @@ tAINode* AI_EvalFunc_SPG_SetNoise(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_SPG_SetNoise_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_SDW_Activate_C(struct sGameObjectMain* a1, int a2)
+void AI_EvalFunc_SDW_Activate_C(struct sGameObjectMain* gao, int a2)
 {
     unsigned int v2;
     tMdfPrivateDataShadow* v3;
     tModifier* i;
 
-    if (a1->extended)
+    if (gao->extended)
     {
-        for (i = a1->extended->mdf; i; i = i->nextElem)
+        for (i = gao->extended->mdf; i; i = i->nextElem)
         {
             if (i->modifierIntf->mdfId == 6)
             {
@@ -338,7 +338,7 @@ void AI_EvalFunc_SDW_Activate_C(struct sGameObjectMain* a1, int a2)
     }
 }
 
-tAINode* AI_EvalFunc_SDW_Activate(tAINode* a1)
+tAINode* AI_EvalFunc_SDW_Activate(tAINode* node)
 {
     tGameObjectMain* v2;
     int a2;
@@ -348,7 +348,7 @@ tAINode* AI_EvalFunc_SDW_Activate(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_SDW_Activate_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WTR_GetDif_C(Vec3* a1, Vec3* a2)
@@ -356,7 +356,7 @@ void AI_EvalFunc_WTR_GetDif_C(Vec3* a1, Vec3* a2)
     WTR_Get_A_DifVector(a1, a2, 1);
 }
 
-tAINode* AI_EvalFunc_WTR_GetDif(tAINode* a1)
+tAINode* AI_EvalFunc_WTR_GetDif(tAINode* node)
 {
     Vec3 a2;
 
@@ -364,7 +364,7 @@ tAINode* AI_EvalFunc_WTR_GetDif(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_WTR_GetDif_C((Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], &a2);
     AI_PutVecToStack(&a2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WTR_GetNrm_C(Vec3* a1, Vec3* a2)
@@ -392,13 +392,13 @@ void AI_EvalFunc_WTR_Enable_C(int a1)
     }
 }
 
-tAINode* AI_EvalFunc_WTR_Enable(tAINode* a1)
+tAINode* AI_EvalFunc_WTR_Enable(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WTR_Enable_C(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WTR_SetF_C(int a1, float a2)
@@ -413,7 +413,7 @@ void AI_EvalFunc_WTR_SetF_C(int a1, float a2)
     }
 }
 
-tAINode* AI_EvalFunc_WTR_SetF(tAINode* a1)
+tAINode* AI_EvalFunc_WTR_SetF(tAINode* node)
 {
     int v1;
     float a2; 
@@ -421,7 +421,7 @@ tAINode* AI_EvalFunc_WTR_SetF(tAINode* a1)
     a2 = AI_GetFloatFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WTR_SetF_C(v1, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WTR_SetL_C(int a1, int a2)
@@ -436,7 +436,7 @@ void AI_EvalFunc_WTR_SetL_C(int a1, int a2)
     }
 }
 
-tAINode* AI_EvalFunc_WTR_SetL(tAINode* a1)
+tAINode* AI_EvalFunc_WTR_SetL(tAINode* node)
 {
     int v1;
     int v3;
@@ -444,20 +444,20 @@ tAINode* AI_EvalFunc_WTR_SetL(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WTR_SetL_C(v1, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_pop_one_elem_put_zero_sub_4B4280(tAINode* a1)
+tAINode* AI_EvalFunc_pop_one_elem_put_zero_sub_4B4280(tAINode* node)
 {
     AI_GetIntFromStack();
     AI_PutIntToStack(0);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_WTR_put_zero_no_pop_sub_4B42C0(tAINode* a1)
+tAINode* AI_EvalFunc_WTR_put_zero_no_pop_sub_4B42C0(tAINode* node)
 {
     AI_PutIntToStack(0);
-    return a1 + 1;
+    return node + 1;
 }
 
 /* PC-version adjustments. Each Compute entry is a hook with nothing in
@@ -465,9 +465,9 @@ tAINode* AI_EvalFunc_WTR_put_zero_no_pop_sub_4B42C0(tAINode* a1)
    Check takes is popped and discarded except in Price_Check, which
    compares both of its own. */
 
-tAINode* AI_EvalFunc_BGE_PC_Price_Compute(tAINode* a1)
+tAINode* AI_EvalFunc_BGE_PC_Price_Compute(tAINode* node)
 {
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_BGE_PC_Price_Check_C(int a1, int a2)
@@ -478,7 +478,7 @@ int AI_EvalFunc_BGE_PC_Price_Check_C(int a1, int a2)
     return 0;
 }
 
-tAINode* AI_EvalFunc_BGE_PC_Price_Check(tAINode* a1)
+tAINode* AI_EvalFunc_BGE_PC_Price_Check(tAINode* node)
 {
     int v1;
     int v3;
@@ -486,12 +486,12 @@ tAINode* AI_EvalFunc_BGE_PC_Price_Check(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_PutIntToStack(AI_EvalFunc_BGE_PC_Price_Check_C(v1, v3));
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_BGE_PC_Samsue_Compute(tAINode* a1)
+tAINode* AI_EvalFunc_BGE_PC_Samsue_Compute(tAINode* node)
 {
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_BGE_PC_Samsue_Check_C()
@@ -499,16 +499,16 @@ int AI_EvalFunc_BGE_PC_Samsue_Check_C()
     return 0;
 }
 
-tAINode* AI_EvalFunc_BGE_PC_Samsue_Check(tAINode* a1)
+tAINode* AI_EvalFunc_BGE_PC_Samsue_Check(tAINode* node)
 {
     AI_GetIntFromStack();
     AI_PutIntToStack(AI_EvalFunc_BGE_PC_Samsue_Check_C());
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_BGE_PC_Radio_Compute(tAINode* a1)
+tAINode* AI_EvalFunc_BGE_PC_Radio_Compute(tAINode* node)
 {
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_BGE_PC_Radio_Check_C()
@@ -516,16 +516,16 @@ int AI_EvalFunc_BGE_PC_Radio_Check_C()
     return 90;
 }
 
-tAINode* AI_EvalFunc_BGE_PC_Radio_Check(tAINode* a1)
+tAINode* AI_EvalFunc_BGE_PC_Radio_Check(tAINode* node)
 {
     AI_GetIntFromStack();
     AI_PutIntToStack(AI_EvalFunc_BGE_PC_Radio_Check_C());
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_BGE_PC_Robot_Compute(tAINode* a1)
+tAINode* AI_EvalFunc_BGE_PC_Robot_Compute(tAINode* node)
 {
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_BGE_PC_Robot_Check_C()
@@ -533,9 +533,9 @@ int AI_EvalFunc_BGE_PC_Robot_Check_C()
     return 1;
 }
 
-tAINode* AI_EvalFunc_BGE_PC_Robot_Check(tAINode* a1)
+tAINode* AI_EvalFunc_BGE_PC_Robot_Check(tAINode* node)
 {
     AI_GetIntFromStack();
     AI_PutIntToStack(AI_EvalFunc_BGE_PC_Robot_Check_C());
-    return a1 + 1;
+    return node + 1;
 }

@@ -10,10 +10,10 @@ int AI_EvalFunc_WORLoaded_C()
     return 1;
 }
 
-tAINode* AI_EvalFunc_WORLoaded(tAINode* a1)
+tAINode* AI_EvalFunc_WORLoaded(tAINode* node)
 {
     AI_PutIntToStack(1);
-    return a1 + 1;
+    return node + 1;
 }
 
 // FIXME: decompile, de van a függvény elején egy jump ami a végére ugrik, szóval mégis jó a kimenet
@@ -29,7 +29,7 @@ int AI_EvalFunc_WORUniverseAdd_C(int worldKey)
     return WOR_l_Universe_GetWorldIndex(world);
 }
 
-tAINode* AI_EvalFunc_WORUniverseAdd(tAINode* a1)
+tAINode* AI_EvalFunc_WORUniverseAdd(tAINode* node)
 {
     int worldKey;
     int worldIndex;
@@ -37,7 +37,7 @@ tAINode* AI_EvalFunc_WORUniverseAdd(tAINode* a1)
     worldKey = AI_GetIntFromStack();
     worldIndex = AI_EvalFunc_WORUniverseAdd_C(worldKey);
     AI_PutIntToStack(worldIndex);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORActive_C(int a1)
@@ -46,22 +46,22 @@ void AI_EvalFunc_WORActive_C(int a1)
     MAI_gst_MainHandles.currentWorld = WOR_pst_Universe_GetActiveWorld(a1);
 }
 
-tAINode* AI_EvalFunc_WORActive(tAINode* a1)
+tAINode* AI_EvalFunc_WORActive(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WORActive_C(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_WORDesactive(tAINode* a1)
+tAINode* AI_EvalFunc_WORDesactive(tAINode* node)
 {
     int v2;
 
     v2 = AI_GetIntFromStack();
     ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[v2].objectFlags &= ~1u;
-    return a1 + 1;
+    return node + 1;
 }
 
 tGameObjectMain* AI_EvalFunc_WORGetObject_C(int a1, int a2)
@@ -69,7 +69,7 @@ tGameObjectMain* AI_EvalFunc_WORGetObject_C(int a1, int a2)
     return (tGameObjectMain*)((tableElemStructPF*)(((tWorld*)(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr))->objectTablePF.firstElemPtr))[a2].objectPtr;
 }
 
-tAINode* AI_EvalFunc_WORGetObject(tAINode* a1)
+tAINode* AI_EvalFunc_WORGetObject(tAINode* node)
 {
     int v1;
     tGameObjectMain* v2;
@@ -79,7 +79,7 @@ tAINode* AI_EvalFunc_WORGetObject(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_WORGetObject_C(v1, v4);
     AI_PutIntToStack((int)v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORUniverseDestroy_C(int a1)
@@ -87,14 +87,14 @@ void AI_EvalFunc_WORUniverseDestroy_C(int a1)
     WOR_Universe_DeleteWorld((tWorld*)((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr);
 }
 
-tAINode* AI_EvalFunc_WORUniverseDestroy(tAINode* a1)
+tAINode* AI_EvalFunc_WORUniverseDestroy(tAINode* node)
 {
     int v1;
 
     AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WORUniverseDestroy_C(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WORLoadList_C(int worldKey)
@@ -108,7 +108,7 @@ int AI_EvalFunc_WORLoadList_C(int worldKey)
     return WOR_l_Universe_GetWorldIndex(world);
 }
 
-tAINode* AI_EvalFunc_WORLoadList(tAINode* a1)
+tAINode* AI_EvalFunc_WORLoadList(tAINode* node)
 {
     int worldKey;
     int worldIndex;
@@ -116,7 +116,7 @@ tAINode* AI_EvalFunc_WORLoadList(tAINode* a1)
     worldKey = AI_GetIntFromStack();
     worldIndex = AI_EvalFunc_WORLoadList_C(worldKey);
     AI_PutIntToStack(worldIndex);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORRefreshVisible_C(int arg0)
@@ -130,13 +130,13 @@ void AI_EvalFunc_WORRefreshVisible_C(int arg0)
     WOR_World_MakeObjectsVisible(a1);
 }
 
-tAINode* AI_EvalFunc_WORRefreshVisible(tAINode* a1)
+tAINode* AI_EvalFunc_WORRefreshVisible(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WORRefreshVisible_C(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WORReinit_C()
@@ -172,7 +172,7 @@ void AI_EvalFunc_WORPause_C(int a1, int a2)
     v4->SnPRefreshNeeded = TRUE;
 }
 
-tAINode* AI_EvalFunc_WORPause(tAINode* a1)
+tAINode* AI_EvalFunc_WORPause(tAINode* node)
 {
     int v1;
     int a2;
@@ -180,7 +180,7 @@ tAINode* AI_EvalFunc_WORPause(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WORPause_C(v1, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORUnPause_C(int a1, int a2)
@@ -208,7 +208,7 @@ void AI_EvalFunc_WORUnPause_C(int a1, int a2)
     v4->SnPRefreshNeeded = TRUE;
 }
 
-tAINode* AI_EvalFunc_WORUnPause(tAINode* a1)
+tAINode* AI_EvalFunc_WORUnPause(tAINode* node)
 {
     int v1;
     int a2;
@@ -216,7 +216,7 @@ tAINode* AI_EvalFunc_WORUnPause(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WORUnPause_C(v1, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WORCurIndexGet_C()
@@ -234,13 +234,13 @@ int AI_EvalFunc_WORCurIndexGet_C()
     return v1;
 }
 
-tAINode* AI_EvalFunc_WORCurIndexGet(tAINode* a1)
+tAINode* AI_EvalFunc_WORCurIndexGet(tAINode* node)
 {
     int v1;
 
     v1 = AI_EvalFunc_WORCurIndexGet_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORColorAmbiantSet_C(int a1, int a2)
@@ -251,7 +251,7 @@ void AI_EvalFunc_WORColorAmbiantSet_C(int a1, int a2)
     result->ambientColor1 = a2;
 }
 
-tAINode* AI_EvalFunc_WORColorAmbiantSet(tAINode* a1)
+tAINode* AI_EvalFunc_WORColorAmbiantSet(tAINode* node)
 {
     int v1;
     int v3;
@@ -259,7 +259,7 @@ tAINode* AI_EvalFunc_WORColorAmbiantSet(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WORColorAmbiantSet_C(v1, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WORColorAmbiantGet_C(int a1)
@@ -267,7 +267,7 @@ int AI_EvalFunc_WORColorAmbiantGet_C(int a1)
     return ((tWorld*)(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr))->ambientColor1;
 }
 
-tAINode* AI_EvalFunc_WORColorAmbiantGet(tAINode* a1)
+tAINode* AI_EvalFunc_WORColorAmbiantGet(tAINode* node)
 {
     int v1;
     int v3;
@@ -275,7 +275,7 @@ tAINode* AI_EvalFunc_WORColorAmbiantGet(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_WORColorAmbiantGet_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORColorBackSet_C(int a1, int a2)
@@ -286,7 +286,7 @@ void AI_EvalFunc_WORColorBackSet_C(int a1, int a2)
     result->clearColor = a2;
 }
 
-tAINode* AI_EvalFunc_WORColorBackSet(tAINode* a1)
+tAINode* AI_EvalFunc_WORColorBackSet(tAINode* node)
 {
     int v1;
     int v3;
@@ -294,7 +294,7 @@ tAINode* AI_EvalFunc_WORColorBackSet(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WORColorBackSet_C(v1, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WORColorBackGet_C(int a1)
@@ -302,7 +302,7 @@ int AI_EvalFunc_WORColorBackGet_C(int a1)
     return ((tWorld*)(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr))->clearColor;
 }
 
-tAINode* AI_EvalFunc_WORColorBackGet(tAINode* a1)
+tAINode* AI_EvalFunc_WORColorBackGet(tAINode* node)
 {
     int v1;
     int v3;
@@ -310,7 +310,7 @@ tAINode* AI_EvalFunc_WORColorBackGet(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_WORColorBackGet_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORRefreshVisibleOfActor_C()
@@ -324,7 +324,7 @@ void AI_EvalFunc_WORRefreshVisibleOfActor_C()
     WOR_World_MakeObjectsVisible(a1);
 }
 
-tAINode* AI_EvalFunc_WORRefreshVisibleOfActor(tAINode* a1)
+tAINode* AI_EvalFunc_WORRefreshVisibleOfActor(tAINode* node)
 {
     tGameObjectMain* v2;
 
@@ -332,7 +332,7 @@ tAINode* AI_EvalFunc_WORRefreshVisibleOfActor(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_WORRefreshVisibleOfActor_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WORPlayAbsTime_C(float specTime, float specDT)
@@ -349,13 +349,13 @@ tAINode* AI_EvalFunc_WORPlayAbsTime(tAINode* param1)
     return (tAINode*)1;
 }
 
-tAINode* AI_EvalFunc_WORIsPlayAbs(tAINode* a1)
+tAINode* AI_EvalFunc_WORIsPlayAbs(tAINode* node)
 {
     if (ENG_gf_SpecialTime == 0.0f)
         AI_PutIntToStack(0);
     else
         AI_PutIntToStack(1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORColorAmbiant2Set_C(int a1, int a2)
@@ -366,7 +366,7 @@ void AI_EvalFunc_WORColorAmbiant2Set_C(int a1, int a2)
     result->ambientColor2 = a2;
 }
 
-tAINode* AI_EvalFunc_WORColorAmbiant2Set(tAINode* a1)
+tAINode* AI_EvalFunc_WORColorAmbiant2Set(tAINode* node)
 {
     int v1;
     int v3;
@@ -374,7 +374,7 @@ tAINode* AI_EvalFunc_WORColorAmbiant2Set(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_WORColorAmbiant2Set_C(v1, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WORColorAmbiant2Get_C(int a1)
@@ -382,7 +382,7 @@ int AI_EvalFunc_WORColorAmbiant2Get_C(int a1)
     return ((tWorld*)(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr))->ambientColor2;
 }
 
-tAINode* AI_EvalFunc_WORColorAmbiant2Get(tAINode* a1)
+tAINode* AI_EvalFunc_WORColorAmbiant2Get(tAINode* node)
 {
     int v1;
     int v3;
@@ -390,7 +390,7 @@ tAINode* AI_EvalFunc_WORColorAmbiant2Get(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_WORColorAmbiant2Get_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORRegisterES_C(int a1, struct sGameObjectMain* a2)
@@ -402,7 +402,7 @@ void AI_EvalFunc_WORRegisterES_C(int a1, struct sGameObjectMain* a2)
     }
 }
 
-tAINode* AI_EvalFunc_WORRegisterES(tAINode* a1)
+tAINode* AI_EvalFunc_WORRegisterES(tAINode* node)
 {
     int v2;
     tGameObjectMain* a2;
@@ -412,7 +412,7 @@ tAINode* AI_EvalFunc_WORRegisterES(tAINode* a1)
     a2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     v2 = AI_GetIntFromStack();
     AI_EvalFunc_WORRegisterES_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WORGetKey_C()
@@ -420,7 +420,7 @@ int AI_EvalFunc_WORGetKey_C()
     return WOR_gpst_CurrentWorld->worldKey;
 }
 
-tAINode* AI_EvalFunc_WORGetKey(tAINode* a1)
+tAINode* AI_EvalFunc_WORGetKey(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -430,7 +430,7 @@ tAINode* AI_EvalFunc_WORGetKey(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_WORGetKey_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WORCheckSetOrder_C(tWorld* a1, tWorld* a2)
@@ -478,7 +478,7 @@ void AI_EvalFunc_WORCheckSetOrder_C(tWorld* a1, tWorld* a2)
     }
 }
 
-tAINode* AI_EvalFunc_WORCheckSetOrder(tAINode* a1)
+tAINode* AI_EvalFunc_WORCheckSetOrder(tAINode* node)
 {
     tWorld* a2;
 
@@ -490,5 +490,5 @@ tAINode* AI_EvalFunc_WORCheckSetOrder(tAINode* a1)
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_WORCheckSetOrder_C(*(tWorld**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2);
-    return a1 + 1;
+    return node + 1;
 }

@@ -1,14 +1,14 @@
 #include "../graphicsobjects/light.h"
 #include "ai_lightfunctions.h"
 
-int AI_EvalFunc_LightGetColor_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_LightGetColor_C(struct sGameObjectMain* gao)
 {
     int result;
     tLIGHT* v2;
 
-    if (!a1 || (a1->flags & 0x10) == 0)
+    if (!gao || (gao->flags & 0x10) == 0)
         return 0;
-    v2 = (tLIGHT*)(a1->extended->light);
+    v2 = (tLIGHT*)(gao->extended->light);
     if (v2)
         result = v2->color;
     else
@@ -16,7 +16,7 @@ int AI_EvalFunc_LightGetColor_C(struct sGameObjectMain* a1)
     return result;
 }
 
-tAINode* AI_EvalFunc_LightGetColor(tAINode* a1)
+tAINode* AI_EvalFunc_LightGetColor(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -26,22 +26,22 @@ tAINode* AI_EvalFunc_LightGetColor(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_LightGetColor_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_LightSetColor_C(struct sGameObjectMain* a1, int a2)
+void AI_EvalFunc_LightSetColor_C(struct sGameObjectMain* gao, int a2)
 {
     tLIGHT* v2;
 
-    if (a1 && (a1->flags & 0x10) != 0)
+    if (gao && (gao->flags & 0x10) != 0)
     {
-        v2 = (tLIGHT*)(a1->extended->light);
+        v2 = (tLIGHT*)(gao->extended->light);
         if (v2)
             v2->color = a2;
     }
 }
 
-tAINode* AI_EvalFunc_LightSetColor(tAINode* a1)
+tAINode* AI_EvalFunc_LightSetColor(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -51,19 +51,19 @@ tAINode* AI_EvalFunc_LightSetColor(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_LightSetColor_C(v3, v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_LightSetNearFar_C(struct sGameObjectMain* a1, float a2, float a3)
+void AI_EvalFunc_LightSetNearFar_C(struct sGameObjectMain* gao, float a2, float a3)
 {
     int v3;
     tLIGHT* v4;
 
-    if (a1)
+    if (gao)
     {
-        if ((a1->flags & 0x10) != 0)
+        if ((gao->flags & 0x10) != 0)
         {
-            v4 = (tLIGHT*)(a1->extended->light);
+            v4 = (tLIGHT*)(gao->extended->light);
             if (v4)
             {
                 v3 = v4->flags & 7;
@@ -96,7 +96,7 @@ void AI_EvalFunc_LightSetNearFar_C(struct sGameObjectMain* a1, float a2, float a
     }
 }
 
-tAINode* AI_EvalFunc_LightSetNearFar(tAINode* a1)
+tAINode* AI_EvalFunc_LightSetNearFar(tAINode* node)
 {
     float a2;
     tGameObjectMain* v3;
@@ -108,17 +108,17 @@ tAINode* AI_EvalFunc_LightSetNearFar(tAINode* a1)
     a3 = AI_GetFloatFromStack();
     a2 = AI_GetFloatFromStack();
     AI_EvalFunc_LightSetNearFar_C(v3, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_LightGetNear_C(tGameObjectMain* a1)
+float AI_EvalFunc_LightGetNear_C(tGameObjectMain* gao)
 {
     int v2;
     tLIGHT* v3;
 
-    if (!a1 || (a1->flags & 0x10) == 0)
+    if (!gao || (gao->flags & 0x10) == 0)
         return 0.0;
-    v3 = (tLIGHT*)(a1->extended->light);
+    v3 = (tLIGHT*)(gao->extended->light);
     if (!v3)
         return 0.0;
     v2 = v3->flags & 7;
@@ -134,7 +134,7 @@ float AI_EvalFunc_LightGetNear_C(tGameObjectMain* a1)
     return 0.0;
 }
 
-tAINode* AI_EvalFunc_LightGetNear(tAINode* a1)
+tAINode* AI_EvalFunc_LightGetNear(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -144,17 +144,17 @@ tAINode* AI_EvalFunc_LightGetNear(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_LightGetNear_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_LightGetFar_C(tGameObjectMain* a1)
+float AI_EvalFunc_LightGetFar_C(tGameObjectMain* gao)
 {
     int v2;
     tLIGHT* v3;
 
-    if (!a1 || (a1->flags & 0x10) == 0)
+    if (!gao || (gao->flags & 0x10) == 0)
         return 0.0;
-    v3 = (tLIGHT*)(a1->extended->light);
+    v3 = (tLIGHT*)(gao->extended->light);
     if (!v3)
         return 0.0;
     v2 = v3->flags & 7;
@@ -170,7 +170,7 @@ float AI_EvalFunc_LightGetFar_C(tGameObjectMain* a1)
     return 0.0;
 }
 
-tAINode* AI_EvalFunc_LightGetFar(tAINode* a1)
+tAINode* AI_EvalFunc_LightGetFar(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -180,22 +180,22 @@ tAINode* AI_EvalFunc_LightGetFar(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_LightGetFar_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_LightSetGO_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+void AI_EvalFunc_LightSetGO_C(struct sGameObjectMain* gao, struct sGameObjectMain* a2)
 {
     tLIGHT* v2;
 
-    if (a1 && (a1->flags & 0x10) != 0)
+    if (gao && (gao->flags & 0x10) != 0)
     {
-        v2 = (tLIGHT*)(a1->extended->light);
+        v2 = (tLIGHT*)(gao->extended->light);
         if (v2)
             v2->lightGao = a2;
     }
 }
 
-tAINode* AI_EvalFunc_LightSetGO(tAINode* a1)
+tAINode* AI_EvalFunc_LightSetGO(tAINode* node)
 {
     tGameObjectMain* v2;
 
@@ -205,7 +205,7 @@ tAINode* AI_EvalFunc_LightSetGO(tAINode* a1)
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_LightSetGO_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_LightSetFlag_C(struct sGameObjectMain* a2, char a3, int a4)
@@ -228,7 +228,7 @@ void AI_EvalFunc_LightSetFlag_C(struct sGameObjectMain* a2, char a3, int a4)
     }
 }
 
-tAINode* AI_EvalFunc_LightSetFlag(tAINode* a1)
+tAINode* AI_EvalFunc_LightSetFlag(tAINode* node)
 {
     char v1;
     int v3;
@@ -240,17 +240,17 @@ tAINode* AI_EvalFunc_LightSetFlag(tAINode* a1)
     v3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_LightSetFlag_C(v4, v1, v3);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_LightGetFlag_C(struct sGameObjectMain* a1, char a2)
+BOOL AI_EvalFunc_LightGetFlag_C(struct sGameObjectMain* gao, char a2)
 {
     BOOL result;
     tLIGHT* v3;
 
-    if (!a1 || (a1->flags & 0x10) == 0)
+    if (!gao || (gao->flags & 0x10) == 0)
         return 0;
-    v3 = (tLIGHT*)(a1->extended->light);
+    v3 = (tLIGHT*)(gao->extended->light);
     if (v3)
         result = ((1 << a2) & v3->flags) != 0;
     else
@@ -258,7 +258,7 @@ BOOL AI_EvalFunc_LightGetFlag_C(struct sGameObjectMain* a1, char a2)
     return result;
 }
 
-tAINode* AI_EvalFunc_LightGetFlag(tAINode* a1)
+tAINode* AI_EvalFunc_LightGetFlag(tAINode* node)
 {
     char v1;
     int v2;
@@ -270,7 +270,7 @@ tAINode* AI_EvalFunc_LightGetFlag(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_LightGetFlag_C(v4, v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_LightGetRLIFactor_C()
@@ -284,13 +284,13 @@ float AI_EvalFunc_LightGetRLIFactor_C()
     return v1;
 }
 
-tAINode* AI_EvalFunc_LightGetRLIFactor(tAINode* a1)
+tAINode* AI_EvalFunc_LightGetRLIFactor(tAINode* node)
 {
     float a1a;
 
     a1a = AI_EvalFunc_LightGetRLIFactor_C();
     AI_PutFloatToStack(a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_LightSetRLIFactor_C(float a1)
@@ -299,13 +299,13 @@ void AI_EvalFunc_LightSetRLIFactor_C(float a1)
         gpst_DX_stDD->RLIFactor = a1;
 }
 
-tAINode* AI_EvalFunc_LightSetRLIFactor(tAINode* a1)
+tAINode* AI_EvalFunc_LightSetRLIFactor(tAINode* node)
 {
     float v2;
 
     v2 = AI_GetFloatFromStack();
     AI_EvalFunc_LightSetRLIFactor_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_LightGetRLIDestColor_C()
@@ -319,13 +319,13 @@ int AI_EvalFunc_LightGetRLIDestColor_C()
     return v1;
 }
 
-tAINode* AI_EvalFunc_LightGetRLIDestColor(tAINode* a1)
+tAINode* AI_EvalFunc_LightGetRLIDestColor(tAINode* node)
 {
     int v1;
 
     v1 = AI_EvalFunc_LightGetRLIDestColor_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_LightSetRLIDestColor_C(int a1)
@@ -334,13 +334,13 @@ void AI_EvalFunc_LightSetRLIDestColor_C(int a1)
         gpst_DX_stDD->RLIDestColor = a1;
 }
 
-tAINode* AI_EvalFunc_LightSetRLIDestColor(tAINode* a1)
+tAINode* AI_EvalFunc_LightSetRLIDestColor(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_LightSetRLIDestColor_C(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_LightRLIFactorUsed_C(int a1)
@@ -366,7 +366,7 @@ BOOL AI_EvalFunc_LightRLIFactorUsed_C(int a1)
     return v2;
 }
 
-tAINode* AI_EvalFunc_LightRLIFactorUsed(tAINode* a1)
+tAINode* AI_EvalFunc_LightRLIFactorUsed(tAINode* node)
 {
     int v1;
     int v2;
@@ -374,7 +374,7 @@ tAINode* AI_EvalFunc_LightRLIFactorUsed(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_LightRLIFactorUsed_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_LightFogState_C(int a1)
@@ -395,7 +395,7 @@ BOOL AI_EvalFunc_LightFogState_C(int a1)
     return v2;
 }
 
-tAINode* AI_EvalFunc_LightFogState(tAINode* a1)
+tAINode* AI_EvalFunc_LightFogState(tAINode* node)
 {
     int v1;
     int v2;
@@ -403,7 +403,7 @@ tAINode* AI_EvalFunc_LightFogState(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_LightFogState_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 tGameObjectMain* AI_EvalFunc_LightGetFog_C()
@@ -426,7 +426,7 @@ tGameObjectMain* AI_EvalFunc_LightGetFog_C()
     return NULL;
 }
 
-tAINode* AI_EvalFunc_LightGetFog(tAINode* a1)
+tAINode* AI_EvalFunc_LightGetFog(tAINode* node)
 {
     int v2[3];
     tGameObjectMain* v3;
@@ -438,27 +438,27 @@ tAINode* AI_EvalFunc_LightGetFog(tAINode* a1)
     v4 = v3;
     v2[0] = (int)AI_EvalFunc_LightGetFog_C();
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_LightGetAttenuationFactor_C(tGameObjectMain* a1)
+float AI_EvalFunc_LightGetAttenuationFactor_C(tGameObjectMain* gao)
 {
     double result;
     float v2;
 
-    if (a1)
+    if (gao)
     {
-        if (a1->basic)
+        if (gao->basic)
         {
-            if (a1->basic->actorObjectOrVisualObject && (a1->flags & 0x4000) != 0)
+            if (gao->basic->actorObjectOrVisualObject && (gao->flags & 0x4000) != 0)
             {
-                if ((((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->objDrawMask & 0x40000000) != 0)
+                if ((((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->objDrawMask & 0x40000000) != 0)
                 {
                     result = 0.0;
                 }
                 else
                 {
-                    v2 = (float)((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->vmilyenDistanceLightAttenuationFactor;
+                    v2 = (float)((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->vmilyenDistanceLightAttenuationFactor;
                     result = v2 / 127.0;
                 }
             }
@@ -483,7 +483,7 @@ float AI_EvalFunc_LightGetAttenuationFactor_C(tGameObjectMain* a1)
     return (float)result;
 }
 
-tAINode* AI_EvalFunc_LightGetAttenuationFactor(tAINode* a1)
+tAINode* AI_EvalFunc_LightGetAttenuationFactor(tAINode* node)
 {
     float v2;
 
@@ -491,24 +491,24 @@ tAINode* AI_EvalFunc_LightGetAttenuationFactor(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v2 = AI_EvalFunc_LightGetAttenuationFactor_C(*(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_LightSetAttenuationFactor_C(struct sGameObjectMain* a1, float a2)
+void AI_EvalFunc_LightSetAttenuationFactor_C(struct sGameObjectMain* gao, float a2)
 {
-    if (a1)
+    if (gao)
     {
-        if (a1->basic && a1->basic->actorObjectOrVisualObject && (a1->flags & 0x4000) != 0)
+        if (gao->basic && gao->basic->actorObjectOrVisualObject && (gao->flags & 0x4000) != 0)
         {
             if (a2 > 0.0f && a2 <= 1.0f)
             {
-                ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->objDrawMask &= ~0x40000000u;
-                ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->vmilyenDistanceLightAttenuationFactor = (unsigned int)(a2 * 127.0);
+                ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->objDrawMask &= ~0x40000000u;
+                ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->vmilyenDistanceLightAttenuationFactor = (unsigned int)(a2 * 127.0);
             }
             else
             {
-                ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->objDrawMask |= 0x40000000u;
-                ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->vmilyenDistanceLightAttenuationFactor = 0;
+                ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->objDrawMask |= 0x40000000u;
+                ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->vmilyenDistanceLightAttenuationFactor = 0;
             }
         }
     }
@@ -529,7 +529,7 @@ void AI_EvalFunc_LightSetAttenuationFactor_C(struct sGameObjectMain* a1, float a
     }
 }
 
-tAINode* AI_EvalFunc_LightSetAttenuationFactor(tAINode* a1)
+tAINode* AI_EvalFunc_LightSetAttenuationFactor(tAINode* node)
 {
     float a2;
 
@@ -537,5 +537,5 @@ tAINode* AI_EvalFunc_LightSetAttenuationFactor(tAINode* a1)
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_LightSetAttenuationFactor_C(*(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2);
-    return a1 + 1;
+    return node + 1;
 }

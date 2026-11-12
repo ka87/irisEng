@@ -111,12 +111,12 @@ tMultiTextureElemStruct** MAT_GetMtxLvlPtr(tGEOMAT* a1, tMultiTextureElemStruct*
     return result;
 }
 
-void AI_EvalFunc_MATSetConstant_C(struct sGameObjectMain* a1, int a2, int a3)
+void AI_EvalFunc_MATSetConstant_C(struct sGameObjectMain* gao, int a2, int a3)
 {
     int* v3;
     tGEOMAT* v4;
 
-    v4 = MAT_ValidateSUBMAT_C(a1, a3);
+    v4 = MAT_ValidateSUBMAT_C(gao, a3);
     v3 = 0;
     if (v4)
         MAT_GetColorPtr(v4, (void**)&v3, 0, 1);
@@ -124,7 +124,7 @@ void AI_EvalFunc_MATSetConstant_C(struct sGameObjectMain* a1, int a2, int a3)
         *v3 = a2;
 }
 
-tAINode* AI_EvalFunc_MATSetConstant(tAINode* a1)
+tAINode* AI_EvalFunc_MATSetConstant(tAINode* node)
 {
     tGameObjectMain* v2;
     int a2;
@@ -136,16 +136,16 @@ tAINode* AI_EvalFunc_MATSetConstant(tAINode* a1)
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_MATSetConstant_C(v2, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_MATGetConstant_C(struct sGameObjectMain* a1, unsigned int a2)
+int AI_EvalFunc_MATGetConstant_C(struct sGameObjectMain* gao, unsigned int a2)
 {
     int v3;
     int* v4;
     tGEOMAT* v5;
 
-    v5 = MAT_ValidateSUBMAT_C(a1, a2);
+    v5 = MAT_ValidateSUBMAT_C(gao, a2);
     v3 = 0;
     v4 = 0;
     if (v5)
@@ -155,7 +155,7 @@ int AI_EvalFunc_MATGetConstant_C(struct sGameObjectMain* a1, unsigned int a2)
     return v3;
 }
 
-tAINode* AI_EvalFunc_MATGetConstant(tAINode* a1)
+tAINode* AI_EvalFunc_MATGetConstant(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -167,15 +167,15 @@ tAINode* AI_EvalFunc_MATGetConstant(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MATGetConstant_C(v3, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* a1, int* arg4, unsigned int a2)
+void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* gao, int* arg4, unsigned int a2)
 {
     int** v3;
     tGEOMAT* v4;
 
-    v4 = MAT_ValidateSUBMAT_C(a1, a2);
+    v4 = MAT_ValidateSUBMAT_C(gao, a2);
     v3 = 0;
     if (v4)
         MAT_GetColorPtr(v4, (void**)&v3, 0, 0);
@@ -183,7 +183,7 @@ void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* a1, int* arg4, unsigned
         *v3 = arg4;
 }
 
-tAINode* AI_EvalFunc_MATSetDiffuse(tAINode* a1)
+tAINode* AI_EvalFunc_MATSetDiffuse(tAINode* node)
 {
     tGameObjectMain* v2;
     int* v3;
@@ -195,16 +195,16 @@ tAINode* AI_EvalFunc_MATSetDiffuse(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v3 = (int*)AI_GetIntFromStack();
     AI_EvalFunc_MATSetDiffuse_C(v2, v3, v4);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_MATGetDiffuse_C(struct sGameObjectMain* a1, unsigned int a2)
+int AI_EvalFunc_MATGetDiffuse_C(struct sGameObjectMain* gao, unsigned int a2)
 {
     int v3;
     int* v4;
     tGEOMAT* v5;
 
-    v5 = MAT_ValidateSUBMAT_C(a1, a2);
+    v5 = MAT_ValidateSUBMAT_C(gao, a2);
     v3 = 0;
     v4 = 0;
     if (v5)
@@ -214,7 +214,7 @@ int AI_EvalFunc_MATGetDiffuse_C(struct sGameObjectMain* a1, unsigned int a2)
     return v3;
 }
 
-tAINode* AI_EvalFunc_MATGetDiffuse(tAINode* a1)
+tAINode* AI_EvalFunc_MATGetDiffuse(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -226,10 +226,10 @@ tAINode* AI_EvalFunc_MATGetDiffuse(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_MATGetDiffuse_C(v3, v4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATSetAmbient(tAINode* a1)
+tAINode* AI_EvalFunc_MATSetAmbient(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -248,10 +248,10 @@ tAINode* AI_EvalFunc_MATSetAmbient(tAINode* a1)
         MAT_GetColorPtr(v6, (void**)&a2, 0, 2);
     if (a2)
         *a2 = v4;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MATGetAmbient(tAINode* a1)
+tAINode* AI_EvalFunc_MATGetAmbient(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -271,17 +271,17 @@ tAINode* AI_EvalFunc_MATGetAmbient(tAINode* a1)
     if (a2)
         v4 = *a2;
     AI_PutIntToStack(v4);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_MATEnableMltxtLvl_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId, int a4)
+void AI_EvalFunc_MATEnableMltxtLvl_C(struct sGameObjectMain* gao, unsigned int a2, int multiMatElemId, int a4)
 {
     unsigned int v4;
     tMultiTextureElemStruct* v5;
     tGEOMAT* v6;
 
     v5 = 0;
-    v6 = MAT_ValidateSUBMAT_C(a1, a2);
+    v6 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v6)
         MAT_GetMtxLvlPtr(v6, &v5, 0, multiMatElemId);
     if (v5)
@@ -298,7 +298,7 @@ void AI_EvalFunc_MATEnableMltxtLvl_C(struct sGameObjectMain* a1, unsigned int a2
     }
 }
 
-tAINode* AI_EvalFunc_MATEnableMltxtLvl(tAINode* a1)
+tAINode* AI_EvalFunc_MATEnableMltxtLvl(tAINode* node)
 {
     tGameObjectMain* v2;
     int a4;
@@ -312,17 +312,17 @@ tAINode* AI_EvalFunc_MATEnableMltxtLvl(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_MATEnableMltxtLvl_C(v2, a2, multiMatElemId, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_MATEnableMltxtLvlMT_C(struct sGameObjectMain* a1, unsigned int a2, int a3, int a4, int a5)
+void AI_EvalFunc_MATEnableMltxtLvlMT_C(struct sGameObjectMain* gao, unsigned int a2, int a3, int a4, int a5)
 {
     unsigned int v5;
     tMultiTextureElemStruct* v6;
     tGEOMAT* v7;
 
     v6 = 0;
-    v7 = MAT_ValidateSUBMAT_C(a1, a2);
+    v7 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v7)
         MAT_GetMtxLvlPtr(v7, &v6, a4, a3);
     if (v6)
@@ -339,7 +339,7 @@ void AI_EvalFunc_MATEnableMltxtLvlMT_C(struct sGameObjectMain* a1, unsigned int 
     }
 }
 
-tAINode* AI_EvalFunc_MATEnableMltxtLvlMT(tAINode* a1)
+tAINode* AI_EvalFunc_MATEnableMltxtLvlMT(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -355,17 +355,17 @@ tAINode* AI_EvalFunc_MATEnableMltxtLvlMT(tAINode* a1)
     a3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_MATEnableMltxtLvlMT_C(v3, v1, a3, a4, a5);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GetLocalAlpha_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId)
+int AI_EvalFunc_GetLocalAlpha_C(struct sGameObjectMain* gao, unsigned int a2, int multiMatElemId)
 {
     int v4;
     tMultiTextureElemStruct* v5;
     tGEOMAT* v6;
 
     v5 = 0;
-    v6 = MAT_ValidateSUBMAT_C(a1, a2);
+    v6 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v6)
         MAT_GetMtxLvlPtr(v6, &v5, 0, multiMatElemId);
     if (v5)
@@ -375,7 +375,7 @@ int AI_EvalFunc_GetLocalAlpha_C(struct sGameObjectMain* a1, unsigned int a2, int
     return 8 * v4;
 }
 
-tAINode* AI_EvalFunc_GetLocalAlpha(tAINode* a1)
+tAINode* AI_EvalFunc_GetLocalAlpha(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -389,23 +389,23 @@ tAINode* AI_EvalFunc_GetLocalAlpha(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_GetLocalAlpha_C(v3, a2, multiMatElemId);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_SetLocalAlpha_C(struct sGameObjectMain* a1, unsigned int a2, int a3, int a4)
+void AI_EvalFunc_SetLocalAlpha_C(struct sGameObjectMain* gao, unsigned int a2, int a3, int a4)
 {
     tMultiTextureElemStruct* v4;
     tGEOMAT* v5;
 
     v4 = 0;
-    v5 = MAT_ValidateSUBMAT_C(a1, a2);
+    v5 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v5)
         MAT_GetMtxLvlPtr(v5, &v4, 0, a3);
     if (v4)
         v4->phongOrPlanarParam = ((uint16_t)(a4 >> 3) << 11) | v4->phongOrPlanarParam & 0x7FF;
 }
 
-tAINode* AI_EvalFunc_SetLocalAlpha(tAINode* a1)
+tAINode* AI_EvalFunc_SetLocalAlpha(tAINode* node)
 {
     tGameObjectMain* v2;
     int a4;
@@ -419,17 +419,17 @@ tAINode* AI_EvalFunc_SetLocalAlpha(tAINode* a1)
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_SetLocalAlpha_C(v2, a2, a3, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
-unsigned int AI_EvalFunc_GetALPHATRESH_C(struct sGameObjectMain* a1, unsigned int a2, int a3)
+unsigned int AI_EvalFunc_GetALPHATRESH_C(struct sGameObjectMain* gao, unsigned int a2, int a3)
 {
     unsigned int v4;
     tMultiTextureElemStruct* v5;
     tGEOMAT* v6;
 
     v5 = 0;
-    v6 = MAT_ValidateSUBMAT_C(a1, a2);
+    v6 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v6)
         MAT_GetMtxLvlPtr(v6, &v5, 0, a3);
     if (v5)
@@ -439,7 +439,7 @@ unsigned int AI_EvalFunc_GetALPHATRESH_C(struct sGameObjectMain* a1, unsigned in
     return v4;
 }
 
-tAINode* AI_EvalFunc_GetALPHATRESH(tAINode* a1)
+tAINode* AI_EvalFunc_GetALPHATRESH(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -453,23 +453,23 @@ tAINode* AI_EvalFunc_GetALPHATRESH(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_GetALPHATRESH_C(v3, a2, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_SetALPHATRESH_C(struct sGameObjectMain* a1, unsigned int a2, int a3, int a4)
+void AI_EvalFunc_SetALPHATRESH_C(struct sGameObjectMain* gao, unsigned int a2, int a3, int a4)
 {
     tMultiTextureElemStruct* v4;
     tGEOMAT* v5;
 
     v4 = 0;
-    v5 = MAT_ValidateSUBMAT_C(a1, a2);
+    v5 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v5)
         MAT_GetMtxLvlPtr(v5, &v4, 0, a3);
     if (v4)
         v4->subTextureFlags = (a4 >> 2 << 24) & 0x3F000000 | v4->subTextureFlags & 0xC0FFFFFF;
 }
 
-tAINode* AI_EvalFunc_SetALPHATRESH(tAINode* a1)
+tAINode* AI_EvalFunc_SetALPHATRESH(tAINode* node)
 {
     tGameObjectMain* v2;
     int a4;
@@ -483,15 +483,15 @@ tAINode* AI_EvalFunc_SetALPHATRESH(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_SetALPHATRESH_C(v2, a2, a3, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_SetFlag_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId, int a4, int16_t a5)
+void AI_EvalFunc_SetFlag_C(struct sGameObjectMain* gao, unsigned int a2, int multiMatElemId, int a4, int16_t a5)
 {
     tMultiTextureElemStruct* v5;
     tGEOMAT* v6;
 
-    v6 = MAT_ValidateSUBMAT_C(a1, a2);
+    v6 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v6)
     {
         if (multiMatElemId == -1)
@@ -520,7 +520,7 @@ void AI_EvalFunc_SetFlag_C(struct sGameObjectMain* a1, unsigned int a2, int mult
     }
 }
 
-tAINode* AI_EvalFunc_SetFlag(tAINode* a1)
+tAINode* AI_EvalFunc_SetFlag(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -536,7 +536,7 @@ tAINode* AI_EvalFunc_SetFlag(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_SetFlag_C(v3, v1, multiMatElemId, a4, a5);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_GetFlag_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemID)
@@ -565,7 +565,7 @@ int AI_EvalFunc_GetFlag_C(struct sGameObjectMain* gao, unsigned int subMatID, in
     return result;
 }
 
-tAINode* AI_EvalFunc_GetFlag(tAINode* a1)
+tAINode* AI_EvalFunc_GetFlag(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -579,17 +579,17 @@ tAINode* AI_EvalFunc_GetFlag(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_GetFlag_C(v3, v4, v5);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sTexProceduralStruct* AI_EvalFunc_MATGetPro_C(struct sGameObjectMain* a1, unsigned int a2, int multiMatElemId)
+struct sTexProceduralStruct* AI_EvalFunc_MATGetPro_C(struct sGameObjectMain* gao, unsigned int a2, int multiMatElemId)
 {
     tMultiTextureElemStruct* v4;
     tTexProceduralStruct* v5;
     tGEOMAT* v6;
 
     v5 = 0;
-    v6 = MAT_ValidateSUBMAT_C(a1, a2);
+    v6 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v6)
     {
         MAT_GetMtxLvlPtr(v6, &v4, 0, multiMatElemId);
@@ -599,7 +599,7 @@ struct sTexProceduralStruct* AI_EvalFunc_MATGetPro_C(struct sGameObjectMain* a1,
     return v5;
 }
 
-tAINode* AI_EvalFunc_MATGetPro(tAINode* a1)
+tAINode* AI_EvalFunc_MATGetPro(tAINode* node)
 {
     tTexProceduralStruct* v1;
     tGameObjectMain* v3;
@@ -613,7 +613,7 @@ tAINode* AI_EvalFunc_MATGetPro(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_MATGetPro_C(v3, a2, multiMatElemId);
     AI_PutIntToStack((int)v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATProSeti_C(struct sTexProceduralStruct* a1, int a2, int param1)
@@ -679,7 +679,7 @@ void AI_EvalFunc_MATProSeti_C(struct sTexProceduralStruct* a1, int a2, int param
     }
 }
 
-tAINode* AI_EvalFunc_MATProSeti(tAINode* a1)
+tAINode* AI_EvalFunc_MATProSeti(tAINode* node)
 {
     tTexProceduralStruct* v1;
     int a2;
@@ -689,17 +689,17 @@ tAINode* AI_EvalFunc_MATProSeti(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v1 = (tTexProceduralStruct*)AI_GetIntFromStack();
     AI_EvalFunc_MATProSeti_C(v1, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_GetUV_C(tGameObjectMain* a1, unsigned int a2, int multiMatElemId, int a4)
+float AI_EvalFunc_GetUV_C(tGameObjectMain* gao, unsigned int a2, int multiMatElemId, int a4)
 {
     double result;
     tMultiTextureElemStruct* v5;
     tGEOMAT* v6;
 
     v5 = 0;
-    v6 = MAT_ValidateSUBMAT_C(a1, a2);
+    v6 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v6)
         MAT_GetMtxLvlPtr(v6, &v5, 0, multiMatElemId);
     if (!v5)
@@ -727,7 +727,7 @@ float AI_EvalFunc_GetUV_C(tGameObjectMain* a1, unsigned int a2, int multiMatElem
     return (float)result;
 }
 
-tAINode* AI_EvalFunc_GetUV(tAINode* a1)
+tAINode* AI_EvalFunc_GetUV(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -743,16 +743,16 @@ tAINode* AI_EvalFunc_GetUV(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_GetUV_C(v3, a2, multiMatElemId, a4);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_SetUV_C(struct sGameObjectMain* a1, int a2, int a3, int a4, float a5)
+void AI_EvalFunc_SetUV_C(struct sGameObjectMain* gao, int a2, int a3, int a4, float a5)
 {
     tMultiTextureElemStruct* v5;
     tGEOMAT* v6;
 
     v5 = 0;
-    v6 = MAT_ValidateSUBMAT_C(a1, a2);
+    v6 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v6)
         MAT_GetMtxLvlPtr(v6, &v5, 0, a3);
     if (v5)
@@ -780,7 +780,7 @@ void AI_EvalFunc_SetUV_C(struct sGameObjectMain* a1, int a2, int a3, int a4, flo
     }
 }
 
-tAINode* AI_EvalFunc_SetUV(tAINode* a1)
+tAINode* AI_EvalFunc_SetUV(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -796,7 +796,7 @@ tAINode* AI_EvalFunc_SetUV(tAINode* a1)
     a3 = AI_GetIntFromStack();
     v1 = AI_GetIntFromStack();
     AI_EvalFunc_SetUV_C(v3, v1, a3, a4, a5);
-    return a1 + 1;
+    return node + 1;
 }
 
 BOOL AI_EvalFunc_MATProGeti_C(struct sTexProceduralStruct* a1, int a2)
@@ -814,7 +814,7 @@ BOOL AI_EvalFunc_MATProGeti_C(struct sTexProceduralStruct* a1, int a2)
     return ((tTexProcPhoto*)(a1->proceduralTexPtr))->b1 == (char)((tTexProcPhoto*)(a1->proceduralTexPtr))->b2 && !((tTexProcPhoto*)(a1->proceduralTexPtr))->b3;
 }
 
-tAINode* AI_EvalFunc_MATProGeti(tAINode* a1)
+tAINode* AI_EvalFunc_MATProGeti(tAINode* node)
 {
     int v1;
     int a2;
@@ -824,17 +824,17 @@ tAINode* AI_EvalFunc_MATProGeti(tAINode* a1)
     v4 = (tTexProceduralStruct*)AI_GetIntFromStack();
     v1 = AI_EvalFunc_MATProGeti_C(v4, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tTexAnimatedElem* AI_EvalFunc_MATAntGet_C(tGameObjectMain* a1, unsigned int a2, int multiMatElemId)
+tTexAnimatedElem* AI_EvalFunc_MATAntGet_C(tGameObjectMain* gao, unsigned int a2, int multiMatElemId)
 {
     tMultiTextureElemStruct* v4;
     tTexAnimatedElem* v5;
     tGEOMAT* v6;
 
     v5 = 0;
-    v6 = MAT_ValidateSUBMAT_C(a1, a2);
+    v6 = MAT_ValidateSUBMAT_C(gao, a2);
     if (v6)
     {
         MAT_GetMtxLvlPtr(v6, &v4, 0, multiMatElemId);
@@ -844,7 +844,7 @@ tTexAnimatedElem* AI_EvalFunc_MATAntGet_C(tGameObjectMain* a1, unsigned int a2, 
     return v5;
 }
 
-tAINode* AI_EvalFunc_MATAntGet(tAINode* a1)
+tAINode* AI_EvalFunc_MATAntGet(tAINode* node)
 {
     tTexAnimatedElem* v1;
     tGameObjectMain* v3;
@@ -858,7 +858,7 @@ tAINode* AI_EvalFunc_MATAntGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_MATAntGet_C(v3, a2, multiMatElemId);
     AI_PutIntToStack((int)v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_MATAntSeti_C(tTexAnimatedElem* a1, int a2, int a3)
@@ -887,7 +887,7 @@ void AI_EvalFunc_MATAntSeti_C(tTexAnimatedElem* a1, int a2, int a3)
     }
 }
 
-tAINode* AI_EvalFunc_MATAntSeti(tAINode* a1)
+tAINode* AI_EvalFunc_MATAntSeti(tAINode* node)
 {
     tTexAnimatedElem* v1;
     int a2;
@@ -897,7 +897,7 @@ tAINode* AI_EvalFunc_MATAntSeti(tAINode* a1)
     a2 = AI_GetIntFromStack();
     v1 = (tTexAnimatedElem*)AI_GetIntFromStack();
     AI_EvalFunc_MATAntSeti_C(v1, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLORSetRGBA_C(uint8_t a1, uint8_t a2, uint8_t a3, uint8_t a4)
@@ -905,7 +905,7 @@ int AI_EvalFunc_COLORSetRGBA_C(uint8_t a1, uint8_t a2, uint8_t a3, uint8_t a4)
     return a1 | (a2 << 8) | (a3 << 16) | (a4 << 24);
 }
 
-tAINode* AI_EvalFunc_COLORSetRGBA(tAINode* a1)
+tAINode* AI_EvalFunc_COLORSetRGBA(tAINode* node)
 {
     int v1;
     uint8_t v3;
@@ -919,7 +919,7 @@ tAINode* AI_EvalFunc_COLORSetRGBA(tAINode* a1)
     v6 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_COLORSetRGBA_C(v6, v3, v5, v4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLORGetRed_C(uint8_t a1)
@@ -927,7 +927,7 @@ int AI_EvalFunc_COLORGetRed_C(uint8_t a1)
     return a1;
 }
 
-tAINode* AI_EvalFunc_COLORGetRed(tAINode* a1)
+tAINode* AI_EvalFunc_COLORGetRed(tAINode* node)
 {
     uint8_t v1;
     int v2;
@@ -935,7 +935,7 @@ tAINode* AI_EvalFunc_COLORGetRed(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_COLORGetRed_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLORGetGreen_C(int16_t a1)
@@ -943,7 +943,7 @@ int AI_EvalFunc_COLORGetGreen_C(int16_t a1)
     return (a1 & 0xFF00) >> 8;
 }
 
-tAINode* AI_EvalFunc_COLORGetGreen(tAINode* a1)
+tAINode* AI_EvalFunc_COLORGetGreen(tAINode* node)
 {
     int16_t v1;
     int v2;
@@ -951,7 +951,7 @@ tAINode* AI_EvalFunc_COLORGetGreen(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_COLORGetGreen_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLORGetBlue_C(int a1)
@@ -959,7 +959,7 @@ int AI_EvalFunc_COLORGetBlue_C(int a1)
     return (a1 & 0xFF0000) >> 16;
 }
 
-tAINode* AI_EvalFunc_COLORGetBlue(tAINode* a1)
+tAINode* AI_EvalFunc_COLORGetBlue(tAINode* node)
 {
     int v1;
     int v2;
@@ -967,7 +967,7 @@ tAINode* AI_EvalFunc_COLORGetBlue(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_COLORGetBlue_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 unsigned int AI_EvalFunc_COLORGetAlpha_C(int a1)
@@ -975,7 +975,7 @@ unsigned int AI_EvalFunc_COLORGetAlpha_C(int a1)
     return (a1 & 0xFF000000) >> 24;
 }
 
-tAINode* AI_EvalFunc_COLORGetAlpha(tAINode* a1)
+tAINode* AI_EvalFunc_COLORGetAlpha(tAINode* node)
 {
     int v1;
     int v2;
@@ -983,7 +983,7 @@ tAINode* AI_EvalFunc_COLORGetAlpha(tAINode* a1)
     v1 = AI_GetIntFromStack();
     v2 = AI_EvalFunc_COLORGetAlpha_C(v1);
     AI_PutIntToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 unsigned int ul_Interpol2PackedColor(int a1, int a2, float a3)
@@ -1045,7 +1045,7 @@ int AI_EvalFunc_COLORBlend_C(int a1, int a2, float a3)
     return ul_Interpol2PackedColor(a1, a2, a3);
 }
 
-tAINode* AI_EvalFunc_COLORBlend(tAINode* a1)
+tAINode* AI_EvalFunc_COLORBlend(tAINode* node)
 {
     int v1;
     float v3;
@@ -1057,7 +1057,7 @@ tAINode* AI_EvalFunc_COLORBlend(tAINode* a1)
     v4 = AI_GetIntFromStack();
     v1 = AI_EvalFunc_COLORBlend_C(v4, v5, v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 unsigned int AI_EvalFunc_COLORBlack_C()
@@ -1065,14 +1065,14 @@ unsigned int AI_EvalFunc_COLORBlack_C()
     return 0xFF000000;
 }
 
-tAINode* AI_EvalFunc_COLORWhite(tAINode* a1)
+tAINode* AI_EvalFunc_COLORWhite(tAINode* node)
 {
     AI_PutIntToStack(0xFFFFFFFF);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_COLORBlack(tAINode* a1)
+tAINode* AI_EvalFunc_COLORBlack(tAINode* node)
 {
     AI_PutIntToStack(0xFF000000);
-    return a1 + 1;
+    return node + 1;
 }

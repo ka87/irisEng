@@ -50,14 +50,14 @@ void AI_EvalFunc_GRPSectUpdateMe_C(tGameObjectMain* a2)
     }
 }
 
-int AI_EvalFunc_GRPSectRegister_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_GRPSectRegister_C(struct sGameObjectMain* gao)
 {
-    gapst_AllSectors[gi_NumSectors] = a1;
+    gapst_AllSectors[gi_NumSectors] = gao;
     gai_NumObjSectors[gi_NumSectors++] = 0;
     return gi_NumSectors - 1;
 }
 
-tAINode* AI_EvalFunc_GRPSectRegister(tAINode* a1)
+tAINode* AI_EvalFunc_GRPSectRegister(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -76,10 +76,10 @@ tAINode* AI_EvalFunc_GRPSectRegister(tAINode* a1)
     {
         AI_PutIntToStack(-1);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GRPSectInvisibleSet_C(struct sGameObjectMain* a1, int a2, int a3)
+void AI_EvalFunc_GRPSectInvisibleSet_C(struct sGameObjectMain* gao, int a2, int a3)
 {
     tGameObjectMain* v4;
     tGameObjectMain* v5;
@@ -90,19 +90,19 @@ void AI_EvalFunc_GRPSectInvisibleSet_C(struct sGameObjectMain* a1, int a2, int a
 
     if (a3 == -1)
     {
-        a1->if_this_not0_wont_render_gao = 0;
+        gao->if_this_not0_wont_render_gao = 0;
     }
     else if (a3)
     {
-        ++a1->if_this_not0_wont_render_gao;
+        ++gao->if_this_not0_wont_render_gao;
     }
-    else if (a1->if_this_not0_wont_render_gao)
+    else if (gao->if_this_not0_wont_render_gao)
     {
-        --a1->if_this_not0_wont_render_gao;
+        --gao->if_this_not0_wont_render_gao;
     }
-    if ((a1->flags & 0x800000) != 0 && a1->extended && a1->extended->grp)
+    if ((gao->flags & 0x800000) != 0 && gao->extended && gao->extended->grp)
     {
-        v6 = a1->extended->grp;
+        v6 = gao->extended->grp;
         v7 = v6->tablePF->firstElemPtr;
         v8 = ((tableElemStructPF*)(v6->tablePF->nextElemPtr)) - 1;
         while (v7 <= v8)
@@ -132,12 +132,12 @@ void AI_EvalFunc_GRPSectInvisibleSet_C(struct sGameObjectMain* a1, int a2, int a
         {
             v5 = gapst_AllObjSectors[(100 * a2) + i];
             if (v5)
-                v5->if_this_not0_wont_render_gao = a1->if_this_not0_wont_render_gao;
+                v5->if_this_not0_wont_render_gao = gao->if_this_not0_wont_render_gao;
         }
     }
 }
 
-tAINode* AI_EvalFunc_GRPSectInvisibleSet(tAINode* a1)
+tAINode* AI_EvalFunc_GRPSectInvisibleSet(tAINode* node)
 {
     tGameObjectMain* v2;
     int a3;
@@ -149,28 +149,28 @@ tAINode* AI_EvalFunc_GRPSectInvisibleSet(tAINode* a1)
     a3 = AI_GetIntFromStack();
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_GRPSectInvisibleSet_C(v2, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_GRPSectInactiveSet(tAINode* a1)
+tAINode* AI_EvalFunc_GRPSectInactiveSet(tAINode* node)
 {
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_GetIntFromStack();
     AI_GetIntFromStack();
     AI_EvalFunc_DbgTraceInt_C();
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GRPSectSetIsIn_C(struct sGameObjectMain* a1)
+void AI_EvalFunc_GRPSectSetIsIn_C(struct sGameObjectMain* gao)
 {
     tGroup* v2;
     tableElemStructPF* v3;
     tableElemStructPF* v4;
 
-    if ((a1->flags & 0x800000) != 0 && a1->extended && a1->extended->grp)
+    if ((gao->flags & 0x800000) != 0 && gao->extended && gao->extended->grp)
     {
-        v2 = a1->extended->grp;
+        v2 = gao->extended->grp;
         v3 = v2->tablePF->firstElemPtr;
         v4 = ((tableElemStructPF*)(v2->tablePF->nextElemPtr)) - 1;
         while (v3 <= v4)
@@ -182,7 +182,7 @@ void AI_EvalFunc_GRPSectSetIsIn_C(struct sGameObjectMain* a1)
     }
 }
 
-tAINode* AI_EvalFunc_GRPSectSetIsIn(tAINode* a1)
+tAINode* AI_EvalFunc_GRPSectSetIsIn(tAINode* node)
 {
     tGameObjectMain* v2;
 
@@ -190,7 +190,7 @@ tAINode* AI_EvalFunc_GRPSectSetIsIn(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_GRPSectSetIsIn_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 // TODO FIXME: itt a decompile során eléggé elszáll a nagy stack miatt, megnézni ohgy jó-e így, lehet nem
@@ -456,7 +456,7 @@ void AI_EvalFunc_GRPCullDoor_C(tGameObjectMain* a2, tGameObjectMain** a3, int a4
     }
 }
 
-tAINode* AI_EvalFunc_GRPCullDoor(tAINode* a1)
+tAINode* AI_EvalFunc_GRPCullDoor(tAINode* node)
 {
     tGameObjectMain* v2;
     char dest[52];
@@ -473,22 +473,22 @@ tAINode* AI_EvalFunc_GRPCullDoor(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = v2;
     AI_EvalFunc_GRPCullDoor_C(v2, (tGameObjectMain**)v6.ptr, a4, a5);
-    return a1 + 1;
+    return node + 1;
 }
 
 
-int AI_EvalFunc_GRPFillArray_C(tGameObjectMain* a1, tGameObjectMain** a2)
+int AI_EvalFunc_GRPFillArray_C(tGameObjectMain* gao, tGameObjectMain** a2)
 {
     tGroup* v4;
     tableElemStructPF* v5;
     tableElemStructPF* v6;
     int v7;
 
-    if ((a1->flags & 0x800000) == 0)
+    if ((gao->flags & 0x800000) == 0)
         return 0;
-    if (!a1->extended || !a1->extended->grp)
+    if (!gao->extended || !gao->extended->grp)
         return 0;
-    v4 = a1->extended->grp;
+    v4 = gao->extended->grp;
     v5 = v4->tablePF->firstElemPtr;
     v6 = ((tableElemStructPF*)(v4->tablePF->nextElemPtr)) - 1;
     v7 = 0;
@@ -501,7 +501,7 @@ int AI_EvalFunc_GRPFillArray_C(tGameObjectMain* a1, tGameObjectMain** a2)
     return v7;
 }
 
-tAINode* AI_EvalFunc_GRPFillArray(tAINode* a1)
+tAINode* AI_EvalFunc_GRPFillArray(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -518,5 +518,5 @@ tAINode* AI_EvalFunc_GRPFillArray(tAINode* a1)
     v5 = (tGameObjectMain**)a2.ptr;
     v1 = AI_EvalFunc_GRPFillArray_C(a1a, (tGameObjectMain**)a2.ptr);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }

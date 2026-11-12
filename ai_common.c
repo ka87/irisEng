@@ -87,6 +87,15 @@ Vec3* AI_GetVecFromStack(Vec3* v)
     return v2;
 }
 
+// the object counterpart of AI_PutObjectToStack, spelled out by hand at
+// 218 sites across ai/
+void* AI_GetObjectFromStack(void)
+{
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    return *(void**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+}
+
 void AI_GetVarFromStack(void* dest, tVarStackElem* vse)
 {
     vse->type = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;

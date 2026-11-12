@@ -116,15 +116,15 @@ void AI_EvalFunc_VIEWSnapshot_C(int slotID)
     VIEWSNAP_Slot = slotID;
 }
 
-tAINode* AI_EvalFunc_VIEWSnapshot(tAINode* a1)
+tAINode* AI_EvalFunc_VIEWSnapshot(tAINode* node)
 {
     int slotID = AI_GetIntFromStack();
 
     AI_EvalFunc_VIEWSnapshot_C(slotID);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_VIEWAnalyser_C(struct sGameObjectMain* a1, int mission)
+int AI_EvalFunc_VIEWAnalyser_C(struct sGameObjectMain* gao, int mission)
 {
     if (!WOR_gpst_CurrentWorld)
         return 0;
@@ -208,7 +208,7 @@ tAINode* AI_EvalFunc_VIEWCreate(tAINode* aiNode)
     return aiNode + 1;
 }
 
-tAINode* AI_EvalFunc_VIEWDestroy(tAINode* a1)
+tAINode* AI_EvalFunc_VIEWDestroy(tAINode* node)
 {
     int viewIdx;
 
@@ -222,7 +222,7 @@ tAINode* AI_EvalFunc_VIEWDestroy(tAINode* a1)
         WOR_gpst_CurrentWorld->viewPtr[viewIdx].flags &= (uint32_t)~1;
         WOR_gpst_CurrentWorld->viewPtr[viewIdx].viewFunctionPtr = NULL;
     }
-    return a1 + 1;
+    return node + 1;
 }
 
 struct sGameObjectMain* AI_EvalFunc_VIEWGetObject_C(int viewIdx)

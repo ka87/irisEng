@@ -5,7 +5,7 @@
 #include "ai_gridfunctions.h"
 #include "ai_wayfunctions.h"
 
-unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* a1, struct sWayNetwork* a2, struct sGameObjectMain** a3, struct sGameObjectMain* a4, struct sGameObjectMain* a5)
+unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* gao, struct sWayNetwork* a2, struct sGameObjectMain** a3, struct sGameObjectMain* a4, struct sGameObjectMain* a5)
 {
     int v6;
     int* v7;
@@ -68,7 +68,7 @@ unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* a1, struct sWayNe
             for (i = 0; i < v17->num; ++i)
             {
                 v14 = &v17->innerElems[i];
-                if (!v14->capa || (a1->extended->capa & v14->capa) != 0)
+                if (!v14->capa || (gao->extended->capa & v14->capa) != 0)
                 {
                     for (j = 0; j < v19; ++j)
                     {
@@ -150,7 +150,7 @@ unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* a1, struct sWayNe
     return v19;
 }
 
-struct sGameObjectMain* AI_EvalFunc_WAYNetNextWP_C(struct sGameObjectMain* a1, struct sWayNetwork* a2, struct sGameObjectMain* a3, int type, int elemID)
+struct sGameObjectMain* AI_EvalFunc_WAYNetNextWP_C(struct sGameObjectMain* gao, struct sWayNetwork* a2, struct sGameObjectMain* a3, int type, int elemID)
 {
     int rndNum;
     int j;
@@ -223,7 +223,7 @@ struct sGameObjectMain* AI_EvalFunc_WAYNetNextWP_C(struct sGameObjectMain* a1, s
     case 5:
         if (type == 3)
         {
-            v18 = &a1->matrices->v2;
+            v18 = &gao->matrices->v2;
             v16 = *v18;
             v18 = &v16;
             v16.x = -v16.x;
@@ -241,7 +241,7 @@ struct sGameObjectMain* AI_EvalFunc_WAYNetNextWP_C(struct sGameObjectMain* a1, s
         }
         else
         {
-            DYN_SpeedGetVector(a1->basic->dyn, &a2a);
+            DYN_SpeedGetVector(gao->basic->dyn, &a2a);
             MATH_NormalizeVector(&a2a, &a2a);
             v18 = &a2a;
         }
@@ -255,7 +255,7 @@ struct sGameObjectMain* AI_EvalFunc_WAYNetNextWP_C(struct sGameObjectMain* a1, s
             if (!elemID || ((uint16_t)elemID & a3->extended->way->wayElems[i].innerElems[j].capa) != 0)
             {
                 v24 = &v13->matrices->Pos;
-                MATH_SubstractVec(&dest, v24, &a1->matrices->Pos);
+                MATH_SubstractVec(&dest, v24, &gao->matrices->Pos);
                 MATH_NormalizeVector(&dest, &dest);
                 v19 = v18->z * dest.z + v18->y * dest.y + dest.x * v18->x;
                 if (v19 > v23)
@@ -292,7 +292,7 @@ int AI_EvalFunc_WAYGetNumLinks_C(tWayNetwork* a1, tGameObjectMain* a2)
     return v3->wayElems[i].num;
 }
 
-tAINode* AI_EvalFunc_WAYGetNumLinks(tAINode* a1)
+tAINode* AI_EvalFunc_WAYGetNumLinks(tAINode* node)
 {
     int v1;
     tGameObjectMain* a2;
@@ -304,10 +304,10 @@ tAINode* AI_EvalFunc_WAYGetNumLinks(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v1 = AI_EvalFunc_WAYGetNumLinks_C(*(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_WAYNetNextWP(tAINode* a1)
+tAINode* AI_EvalFunc_WAYNetNextWP(tAINode* node)
 {
     int v2[7];
     tGameObjectMain* v3;
@@ -331,7 +331,7 @@ tAINode* AI_EvalFunc_WAYNetNextWP(tAINode* a1)
     a2 = *(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     v2[0] = (int)AI_EvalFunc_WAYNetNextWP_C(v3, a2, a3, type, elemID);
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    return node + 1;
 }
 
 struct sGameObjectMain* AI_EvalFunc_WAYRootGet_C(struct sWayNetwork* a1)
@@ -339,7 +339,7 @@ struct sGameObjectMain* AI_EvalFunc_WAYRootGet_C(struct sWayNetwork* a1)
     return a1->gao;
 }
 
-tAINode* AI_EvalFunc_WAYRootGet(tAINode* a1)
+tAINode* AI_EvalFunc_WAYRootGet(tAINode* node)
 {
     int v2[3];
     tWayNetwork* a1a;
@@ -349,7 +349,7 @@ tAINode* AI_EvalFunc_WAYRootGet(tAINode* a1)
     a1a = *(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     v2[0] = (int)AI_EvalFunc_WAYRootGet_C(a1a);
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    return node + 1;
 }
 
 tGameObjectMain** AI_WAYNetFillRec(tWayNetwork* network, tGameObjectMain* gao, tGameObjectMain** gaoList, int flagMustHave, int flagMustNotHave, int whatToTest)
@@ -406,7 +406,7 @@ int AI_EvalFunc_WAYNetFill_C(struct sWayNetwork* network, struct sGameObjectMain
     return actElemNumBak;
 }
 
-tAINode* AI_EvalFunc_WAYNetFill(tAINode* a1)
+tAINode* AI_EvalFunc_WAYNetFill(tAINode* node)
 {
     int v1;
     char dest[52];
@@ -423,7 +423,7 @@ tAINode* AI_EvalFunc_WAYNetFill(tAINode* a1)
     v4 = *(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     v1 = AI_EvalFunc_WAYNetFill_C(v4, gao, (tGameObjectMain**)a2.ptr);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WAYGet_C(struct sWayNetwork* network, struct sGameObjectMain** gaoList, int flagMustHave, int flagMustNotHave, int whatToTest)
@@ -510,17 +510,17 @@ void AI_WAYNearestOfPosRec(tWayNetwork* network, tGameObjectMain* gao, Vec3* pos
     }
 }
 
-struct sGameObjectMain* AI_EvalFunc_WAYNearestWPOfObj_C(struct sGameObjectMain* a1, struct sWayNetwork* network, int flagMustHave, int flagMustNothave, int whatToTest)
+struct sGameObjectMain* AI_EvalFunc_WAYNearestWPOfObj_C(struct sGameObjectMain* gao, struct sWayNetwork* network, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     AI_WAYgpstBest = 0;
     WAY_gst_Seen.actElemNum = 0;
 
-    AI_WAYNearestOfPosRec(network, network->gao, &a1->matrices->Pos, flagMustHave, flagMustNothave, whatToTest, 0, 0);
+    AI_WAYNearestOfPosRec(network, network->gao, &gao->matrices->Pos, flagMustHave, flagMustNothave, whatToTest, 0, 0);
     
     return AI_WAYgpstBest;
 }
 
-tAINode* AI_EvalFunc_WAYNearestWPOfObj(tAINode* a1)
+tAINode* AI_EvalFunc_WAYNearestWPOfObj(tAINode* node)
 {
     int v2[9];
     tGameObjectMain* v3;
@@ -542,18 +542,18 @@ tAINode* AI_EvalFunc_WAYNearestWPOfObj(tAINode* a1)
     a2 = *(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     v2[0] = (int)AI_EvalFunc_WAYNearestWPOfObj_C(v3, a2, flagMustHave, flagMustNothave, whatToTest);
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    return node + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_WAYNearestWPOfObjExcl_C(tGameObjectMain* a1, tWayNetwork* a2, int flagMustHave, int flagMustNothave, int whatToTest, tGameObjectMain** a6, unsigned int a8)
+tGameObjectMain* AI_EvalFunc_WAYNearestWPOfObjExcl_C(tGameObjectMain* gao, tWayNetwork* a2, int flagMustHave, int flagMustNothave, int whatToTest, tGameObjectMain** a6, unsigned int a8)
 {
     AI_WAYgpstBest = 0;
     WAY_gst_Seen.actElemNum = 0;
-    AI_WAYNearestOfPosRec(a2, a2->gao, &a1->matrices->Pos, flagMustHave, flagMustNothave, whatToTest, a6, a8);
+    AI_WAYNearestOfPosRec(a2, a2->gao, &gao->matrices->Pos, flagMustHave, flagMustNothave, whatToTest, a6, a8);
     return AI_WAYgpstBest;
 }
 
-tAINode* AI_EvalFunc_WAYNearestWPOfObjExcl(tAINode* a1)
+tAINode* AI_EvalFunc_WAYNearestWPOfObjExcl(tAINode* node)
 {
     int v2[13];
     tGameObjectMain* v3;
@@ -587,21 +587,21 @@ tAINode* AI_EvalFunc_WAYNearestWPOfObjExcl(tAINode* a1)
         (tGameObjectMain**)a2.ptr,
         a8);
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sWayNetwork* AI_EvalFunc_WAYNetOfObj_C(struct sGameObjectMain* a1)
+struct sWayNetwork* AI_EvalFunc_WAYNetOfObj_C(struct sGameObjectMain* gao)
 {
     tWayNetwork* result;
 
-    if (a1->extended && a1->extended->way)
-        result = a1->extended->way->wayElems->network;
+    if (gao->extended && gao->extended->way)
+        result = gao->extended->way->wayElems->network;
     else
         result = 0;
     return result;
 }
 
-tAINode* AI_EvalFunc_WAYNetOfObj(tAINode* a1)
+tAINode* AI_EvalFunc_WAYNetOfObj(tAINode* node)
 {
     int v2[3];
     tGameObjectMain* v3;
@@ -613,16 +613,16 @@ tAINode* AI_EvalFunc_WAYNetOfObj(tAINode* a1)
     v4 = v3;
     v2[0] = (int)AI_EvalFunc_WAYNetOfObj_C(v3);
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[43]);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_WAYShortParams(tAINode* a1)
+tAINode* AI_EvalFunc_WAYShortParams(tAINode* node)
 {
     WAY_gi_ShortParams = AI_GetIntFromStack();
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_WAYShortWay(tAINode* a1)
+tAINode* AI_EvalFunc_WAYShortWay(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -649,7 +649,7 @@ tAINode* AI_EvalFunc_WAYShortWay(tAINode* a1)
     v5 = *(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     v1 = AI_EvalFunc_WAYShortWay_C(v9, v5, (tGameObjectMain**)a2.ptr, a4, a5);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 tWayElemInnerElem* AI_WayGetLink(tWayNetwork* network, tGameObjectMain* node1, tGameObjectMain* node2)
@@ -667,7 +667,7 @@ void AI_EvalFunc_WAYCapaSetLink_C(tWayNetwork* network, tGameObjectMain* node1, 
     link->capa |= capaSet;
 }
 
-tAINode* AI_EvalFunc_WAYCapaSetLink(tAINode* a1)
+tAINode* AI_EvalFunc_WAYCapaSetLink(tAINode* node)
 {
     tGameObjectMain* a2;
     tGameObjectMain* a3;
@@ -685,7 +685,7 @@ tAINode* AI_EvalFunc_WAYCapaSetLink(tAINode* a1)
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_WAYCapaSetLink_C(*(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3, a4, a5);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WAYCapaGetLink_C(tWayNetwork* network, tGameObjectMain* node1, tGameObjectMain* node2)
@@ -693,7 +693,7 @@ int AI_EvalFunc_WAYCapaGetLink_C(tWayNetwork* network, tGameObjectMain* node1, t
     return (uint16_t)AI_WayGetLink(network, node1, node2)->capa;
 }
 
-tAINode* AI_EvalFunc_WAYCapaGetLink(tAINode* a1)
+tAINode* AI_EvalFunc_WAYCapaGetLink(tAINode* node)
 {
     int v1;
     tGameObjectMain* a2;
@@ -709,7 +709,7 @@ tAINode* AI_EvalFunc_WAYCapaGetLink(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v1 = AI_EvalFunc_WAYCapaGetLink_C(*(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_WAYDesignSetLink_C(tWayNetwork* network, tGameObjectMain* node1, tGameObjectMain* node2, char designFlagSet, char designFlagRemove)
@@ -720,7 +720,7 @@ void AI_EvalFunc_WAYDesignSetLink_C(tWayNetwork* network, tGameObjectMain* node1
     link->design |= designFlagSet;
 }
 
-tAINode* AI_EvalFunc_WAYDesignSetLink(tAINode* a1)
+tAINode* AI_EvalFunc_WAYDesignSetLink(tAINode* node)
 {
     tGameObjectMain* a2;
     tGameObjectMain* a3;
@@ -738,7 +738,7 @@ tAINode* AI_EvalFunc_WAYDesignSetLink(tAINode* a1)
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_WAYDesignSetLink_C(*(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3, a4, a5);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_WAYDesignGetLink_C(tWayNetwork* a1, tGameObjectMain* a2, tGameObjectMain* a3)
@@ -746,7 +746,7 @@ int AI_EvalFunc_WAYDesignGetLink_C(tWayNetwork* a1, tGameObjectMain* a2, tGameOb
     return (char)AI_WayGetLink(a1, a2, a3)->design;
 }
 
-tAINode* AI_EvalFunc_WAYDesignGetLink(tAINode* a1)
+tAINode* AI_EvalFunc_WAYDesignGetLink(tAINode* node)
 {
     int v1;
     tGameObjectMain* a2;
@@ -762,7 +762,7 @@ tAINode* AI_EvalFunc_WAYDesignGetLink(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v1 = AI_EvalFunc_WAYDesignGetLink_C(*(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 tWayElemInnerElem* AI_WayGetUnorientedLink(tWayNetwork* network, tGameObjectMain* node1, tGameObjectMain* node2)
@@ -796,7 +796,7 @@ tWayElemInnerElem* AI_EvalFunc_WAYLinkSetWeight_C(tWayNetwork* network, tGameObj
     return link;
 }
 
-tAINode* AI_EvalFunc_WAYLinkSetWeight(tAINode* a1)
+tAINode* AI_EvalFunc_WAYLinkSetWeight(tAINode* node)
 {
     tGameObjectMain* a2;
     tGameObjectMain* a3;
@@ -812,7 +812,7 @@ tAINode* AI_EvalFunc_WAYLinkSetWeight(tAINode* a1)
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     AI_EvalFunc_WAYLinkSetWeight_C(*(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_WAYLinkGetWeight_C(tWayNetwork* a1, tGameObjectMain* a2, tGameObjectMain* a3)
@@ -820,7 +820,7 @@ float AI_EvalFunc_WAYLinkGetWeight_C(tWayNetwork* a1, tGameObjectMain* a2, tGame
     return AI_WayGetUnorientedLink(a1, a2, a3)->weight;
 }
 
-tAINode* AI_EvalFunc_WAYLinkGetWeight(tAINode* a1)
+tAINode* AI_EvalFunc_WAYLinkGetWeight(tAINode* node)
 {
     float v2;
     tGameObjectMain* a2;
@@ -836,5 +836,5 @@ tAINode* AI_EvalFunc_WAYLinkGetWeight(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v2 = AI_EvalFunc_WAYLinkGetWeight_C(*(tWayNetwork**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, a3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }

@@ -5,24 +5,24 @@ int i_Raster_741;
 int i_Raster_774;
 int i_Raster_758;
 
-int AI_EvalFunc_COLBVGetNbOverlaps_C(tGameObjectMain* a1)
+int AI_EvalFunc_COLBVGetNbOverlaps_C(tGameObjectMain* gao)
 {
     tWorld* v2;
 
-    if ((a1->flags2 & 0x80) == 0)
+    if ((gao->flags2 & 0x80) == 0)
     {
         v2 = WOR_gpst_CurrentWorld;
         if (WOR_gpst_CurrentWorld)
         {
-            a1->flags2 |= 0x80u;
-            INT_SnP_AddObject(a1, v2->snp);
+            gao->flags2 |= 0x80u;
+            INT_SnP_AddObject(gao, v2->snp);
             INT_SnP_InsertionSort(v2->snp, 0);
         }
     }
-    return a1->extended->coll->detectionList->overlapNum;
+    return gao->extended->coll->detectionList->overlapNum;
 }
 
-tAINode* AI_EvalFunc_COLBVGetNbOverlaps(tAINode* a1)
+tAINode* AI_EvalFunc_COLBVGetNbOverlaps(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -32,27 +32,27 @@ tAINode* AI_EvalFunc_COLBVGetNbOverlaps(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLBVGetNbOverlaps_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_COLBVGetFirstOverlap_C(struct sGameObjectMain* a1, int flagMustHave, int flagMustNothave, int whatToTest)
+struct sGameObjectMain* AI_EvalFunc_COLBVGetFirstOverlap_C(struct sGameObjectMain* gao, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     tWorld* v5;
     tGameObjectMain** v6;
     tGameObjectCollDetectionList* v7;
     unsigned int v8;
 
-    if ((a1->flags2 & 0x80) == 0)
+    if ((gao->flags2 & 0x80) == 0)
     {
         v5 = WOR_gpst_CurrentWorld;
         if (WOR_gpst_CurrentWorld)
         {
-            a1->flags2 |= 0x80u;
-            INT_SnP_AddObject(a1, v5->snp);
+            gao->flags2 |= 0x80u;
+            INT_SnP_AddObject(gao, v5->snp);
             INT_SnP_InsertionSort(v5->snp, 0);
         }
     }
-    v7 = a1->extended->coll->detectionList;
+    v7 = gao->extended->coll->detectionList;
     v6 = v7->detectionListGaos;
     v8 = (unsigned int)&v7->detectionListGaos[v7->overlapNum];
     while ((unsigned int)v6 < v8)
@@ -64,7 +64,7 @@ struct sGameObjectMain* AI_EvalFunc_COLBVGetFirstOverlap_C(struct sGameObjectMai
     return NULL;
 }
 
-tAINode* AI_EvalFunc_COLBVGetFirstOverlap(tAINode* a1)
+tAINode* AI_EvalFunc_COLBVGetFirstOverlap(tAINode* node)
 {
     int v2[3];
     tGameObjectMain* v3; 
@@ -82,10 +82,10 @@ tAINode* AI_EvalFunc_COLBVGetFirstOverlap(tAINode* a1)
     v6 = v3;
     v2[0] = (int)AI_EvalFunc_COLBVGetFirstOverlap_C(v3, flagMustHave, flagMustNothave, whatToTest);
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLBVGetAllOverlaps_C(struct sGameObjectMain* a1, struct sGameObjectMain** a2, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLBVGetAllOverlaps_C(struct sGameObjectMain* gao, struct sGameObjectMain** a2, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     tWorld* v6;
     tGameObjectMain** Src;
@@ -93,17 +93,17 @@ int AI_EvalFunc_COLBVGetAllOverlaps_C(struct sGameObjectMain* a1, struct sGameOb
     tGameObjectMain** v9;
     int v10;
 
-    if ((a1->flags2 & 0x80) == 0)
+    if ((gao->flags2 & 0x80) == 0)
     {
         v6 = WOR_gpst_CurrentWorld;
         if (WOR_gpst_CurrentWorld)
         {
-            a1->flags2 |= 0x80u;
-            INT_SnP_AddObject(a1, v6->snp);
+            gao->flags2 |= 0x80u;
+            INT_SnP_AddObject(gao, v6->snp);
             INT_SnP_InsertionSort(v6->snp, 0);
         }
     }
-    v8 = a1->extended->coll->detectionList;
+    v8 = gao->extended->coll->detectionList;
     Src = v8->detectionListGaos;
     v9 = &v8->detectionListGaos[v8->overlapNum];
     v10 = 0;
@@ -117,7 +117,7 @@ int AI_EvalFunc_COLBVGetAllOverlaps_C(struct sGameObjectMain* a1, struct sGameOb
     return v10;
 }
 
-tAINode* AI_EvalFunc_COLBVGetAllOverlaps(tAINode* a1)
+tAINode* AI_EvalFunc_COLBVGetAllOverlaps(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -138,21 +138,21 @@ tAINode* AI_EvalFunc_COLBVGetAllOverlaps(tAINode* a1)
     v8 = v3;
     v1 = AI_EvalFunc_COLBVGetAllOverlaps_C(v3, (tGameObjectMain**)a2.ptr, flagMustHave, flagMustNothave, whatToTest);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_COLBVObjectObject_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+BOOL AI_EvalFunc_COLBVObjectObject_C(struct sGameObjectMain* gao, struct sGameObjectMain* a2)
 {
     BOOL result;
 
     if (a2)
-        result = COL_b_BVOverlap(a1, a2, FALSE, FALSE, TRUE);
+        result = COL_b_BVOverlap(gao, a2, FALSE, FALSE, TRUE);
     else
         result = 0;
     return result;
 }
 
-tAINode* AI_EvalFunc_COLBVObjectObject(tAINode* a1)
+tAINode* AI_EvalFunc_COLBVObjectObject(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -166,10 +166,10 @@ tAINode* AI_EvalFunc_COLBVObjectObject(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLBVObjectObject_C(v3, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_COLRayBVDist_C(tGameObjectMain* a1, Vec3* a2, Vec3* a3, float a4, int a5, int a6, int whatToTest)
+tGameObjectMain* AI_EvalFunc_COLRayBVDist_C(tGameObjectMain* gao, Vec3* a2, Vec3* a3, float a4, int a5, int a6, int whatToTest)
 {
     return COL_RayBV(&WOR_gpst_CurrentWorld->activatedObjectsTable4PF, a2, a3, a4, a5, a6, whatToTest, 1);
 }
@@ -201,7 +201,7 @@ tAINode* AI_EvalFunc_COLRayBVDist(tAINode* arg0)
     return arg0 + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_COLRayBVVector_C(tGameObjectMain* a1, Vec3* a2, Vec3* a3, int a4, int a5, int a6)
+tGameObjectMain* AI_EvalFunc_COLRayBVVector_C(tGameObjectMain* gao, Vec3* a2, Vec3* a3, int a4, int a5, int a6)
 {
     float a4a;
     Vec3 a3a;
@@ -242,12 +242,12 @@ tAINode* AI_EvalFunc_COLRayBVVector(tAINode* arg0)
     return arg0 + 1;
 }
 
-int AI_EvalFunc_COLCollideType_C(struct sGameObjectMain* a1, int a3)
+int AI_EvalFunc_COLCollideType_C(struct sGameObjectMain* gao, int a3)
 {
-    return COL_Report_CollideType(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_Report_CollideType(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLCollideType(tAINode* a1)
+tAINode* AI_EvalFunc_COLCollideType(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -259,10 +259,10 @@ tAINode* AI_EvalFunc_COLCollideType(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLCollideType_C(v3, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-Vec3* AI_EvalFunc_COLNormalGet_C(struct sGameObjectMain* a1, int a2, Vec3* a3)
+Vec3* AI_EvalFunc_COLNormalGet_C(struct sGameObjectMain* gao, int a2, Vec3* a3)
 {
     Vec3* result;
     BOOL v4;
@@ -270,7 +270,7 @@ Vec3* AI_EvalFunc_COLNormalGet_C(struct sGameObjectMain* a1, int a2, Vec3* a3)
     tWorld* a2a;
 
     a2a = WOR_gpst_CurrentWorld;
-    COL_Report_GetNormal(a1, WOR_gpst_CurrentWorld, &a3a, a2);
+    COL_Report_GetNormal(gao, WOR_gpst_CurrentWorld, &a3a, a2);
     if (fabs(a3a.x) != 0.0) // todo inline!!!
     {
         v4 = 0;
@@ -313,7 +313,7 @@ tAINode* AI_EvalFunc_COLNormalGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_COLRayObjectDist_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3, float a4, int a5, int a6, int a7, int a8)
+struct sGameObjectMain* AI_EvalFunc_COLRayObjectDist_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3, float a4, int a5, int a6, int a7, int a8)
 {
     tGameObjectMain* result;
     unsigned int a14;
@@ -322,22 +322,22 @@ struct sGameObjectMain* AI_EvalFunc_COLRayObjectDist_C(struct sGameObjectMain* a
     switch (a8 & 0x7FFFFFFF)
     {
     case 0:
-        result = COL_Visual_RayCast(WOR_gpst_CurrentWorld, a1, a2, a3, a4, a5, a6, a7, 0, 1);
+        result = COL_Visual_RayCast(WOR_gpst_CurrentWorld, gao, a2, a3, a4, a5, a6, a7, 0, 1);
         break;
     case 1:
-        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, a1, a2, a3, a4, a5, a6, a7, 0, 1, 1, 1, 0, a14);
+        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, gao, a2, a3, a4, a5, a6, a7, 0, 1, 1, 1, 0, a14);
         break;
     case 2:
-        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, a1, a2, a3, a4, a5, a6, a7, 0, 1, 0, 1, 0, a14);
+        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, gao, a2, a3, a4, a5, a6, a7, 0, 1, 0, 1, 0, a14);
         break;
     case 3:
-        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, a1, a2, a3, a4, a5, a6, a7, 0, 1, 1, 0, 0, a14);
+        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, gao, a2, a3, a4, a5, a6, a7, 0, 1, 1, 0, 0, a14);
         break;
     case 4:
-        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, a1, a2, a3, a4, a5, a6, a7, 0, 1, 1, 1, 1, a14);
+        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, gao, a2, a3, a4, a5, a6, a7, 0, 1, 1, 1, 1, a14);
         break;
     case 5:
-        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, a1, a2, a3, a4, a5, a6, a7, 0, 1, 0, 1, 1, a14);
+        result = COL_ColMap_RayCast(WOR_gpst_CurrentWorld, gao, a2, a3, a4, a5, a6, a7, 0, 1, 0, 1, 1, a14);
         break;
     default:
         result = 0;
@@ -384,7 +384,7 @@ tAINode* AI_EvalFunc_COLRayObjectDist(tAINode* arg0)
     return arg0 + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_COLRayObjectVector_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3, int a4, int a5, int a6, int a7)
+struct sGameObjectMain* AI_EvalFunc_COLRayObjectVector_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3, int a4, int a5, int a6, int a7)
 {
     tGameObjectMain* result;
     Vec3 a4a;
@@ -403,22 +403,22 @@ struct sGameObjectMain* AI_EvalFunc_COLRayObjectVector_C(struct sGameObjectMain*
     switch (a7 & 0x7FFFFFFF)
     {
     case 0:
-        result = COL_Visual_RayCast(v11, a1, a2, &a4a, a5a, a4, a5, a6, 0, 1);
+        result = COL_Visual_RayCast(v11, gao, a2, &a4a, a5a, a4, a5, a6, 0, 1);
         break;
     case 1:
-        result = COL_ColMap_RayCast(v11, a1, a2, &a4a, a5a, a4, a5, a6, 0, 1, 1, 1, 0, a14);
+        result = COL_ColMap_RayCast(v11, gao, a2, &a4a, a5a, a4, a5, a6, 0, 1, 1, 1, 0, a14);
         break;
     case 2:
-        result = COL_ColMap_RayCast(v11, a1, a2, &a4a, a5a, a4, a5, a6, 0, 1, 0, 1, 0, a14);
+        result = COL_ColMap_RayCast(v11, gao, a2, &a4a, a5a, a4, a5, a6, 0, 1, 0, 1, 0, a14);
         break;
     case 3:
-        result = COL_ColMap_RayCast(v11, a1, a2, &a4a, a5a, a4, a5, a6, 0, 1, 1, 0, 0, a14);
+        result = COL_ColMap_RayCast(v11, gao, a2, &a4a, a5a, a4, a5, a6, 0, 1, 1, 0, 0, a14);
         break;
     case 4:
-        result = COL_ColMap_RayCast(v11, a1, a2, &a4a, a5a, a4, a5, a6, 0, 1, 1, 1, 1, a14);
+        result = COL_ColMap_RayCast(v11, gao, a2, &a4a, a5a, a4, a5, a6, 0, 1, 1, 1, 1, a14);
         break;
     case 5:
-        result = COL_ColMap_RayCast(v11, a1, a2, &a4a, a5a, a4, a5, a6, 0, 1, 0, 1, 1, a14);
+        result = COL_ColMap_RayCast(v11, gao, a2, &a4a, a5a, a4, a5, a6, 0, 1, 0, 1, 1, a14);
         break;
     default:
         result = 0;
@@ -463,7 +463,7 @@ tAINode* AI_EvalFunc_COLRayObjectVector(tAINode* arg0)
     return arg0 + 1;
 }
 
-Vec3* AI_EvalFunc_COLRayPosGet_C(struct sGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_COLRayPosGet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     *a2 = WOR_gpst_CurrentWorld->colRayHitPos;
     return a2;
@@ -484,7 +484,7 @@ tAINode* AI_EvalFunc_COLRayPosGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-Vec3* AI_EvalFunc_COLRayNormalGet_C(struct sGameObjectMain* a1, Vec3* a2)
+Vec3* AI_EvalFunc_COLRayNormalGet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
     *a2 = WOR_gpst_CurrentWorld->rayCastNormalVec;
     return a2;
@@ -505,12 +505,12 @@ tAINode* AI_EvalFunc_COLRayNormalGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_COLGaoGet_C(struct sGameObjectMain* a1, int a2)
+struct sGameObjectMain* AI_EvalFunc_COLGaoGet_C(struct sGameObjectMain* gao, int a2)
 {
-    return COL_Report_GetCOBGameObject(a1, WOR_gpst_CurrentWorld, a2);
+    return COL_Report_GetCOBGameObject(gao, WOR_gpst_CurrentWorld, a2);
 }
 
-tAINode* AI_EvalFunc_COLGaoGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLGaoGet(tAINode* node)
 {
     int v2[3];
     tGameObjectMain* v3;
@@ -524,15 +524,15 @@ tAINode* AI_EvalFunc_COLGaoGet(tAINode* a1)
     v5 = v3;
     v2[0] = (int)AI_EvalFunc_COLGaoGet_C(v3, a3);
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLGMFlagsGet_C(struct sGameObjectMain* a1, int a3)
+int AI_EvalFunc_COLGMFlagsGet_C(struct sGameObjectMain* gao, int a3)
 {
-    return COL_GameMaterial_GetFlags(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_GameMaterial_GetFlags(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLGMFlagsGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLGMFlagsGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -544,15 +544,15 @@ tAINode* AI_EvalFunc_COLGMFlagsGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLGMFlagsGet_C(v3, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_COLGMSlideGet_C(struct sGameObjectMain* a1, int a3)
+float AI_EvalFunc_COLGMSlideGet_C(struct sGameObjectMain* gao, int a3)
 {
-    return COL_GameMaterial_GetSlide(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_GameMaterial_GetSlide(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLGMSlideGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLGMSlideGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -564,15 +564,15 @@ tAINode* AI_EvalFunc_COLGMSlideGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_COLGMSlideGet_C(v3, a3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_COLGMReboundGet_C(tGameObjectMain* a1, int a3)
+float AI_EvalFunc_COLGMReboundGet_C(tGameObjectMain* gao, int a3)
 {
-    return COL_GameMaterial_GetRebound(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_GameMaterial_GetRebound(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLGMReboundGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLGMReboundGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -584,15 +584,15 @@ tAINode* AI_EvalFunc_COLGMReboundGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_COLGMReboundGet_C(v3, a3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLGMSoundGet_C(struct sGameObjectMain* a1, int a3)
+int AI_EvalFunc_COLGMSoundGet_C(struct sGameObjectMain* gao, int a3)
 {
-    return COL_GameMaterial_GetSound(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_GameMaterial_GetSound(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLGMSoundGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLGMSoundGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -604,7 +604,7 @@ tAINode* AI_EvalFunc_COLGMSoundGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLGMSoundGet_C(v3, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_COLGlobalWallCosAngleSet_C(float a1)
@@ -621,9 +621,9 @@ tAINode* AI_EvalFunc_COLGlobalWallCosAngleSet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLComputeJumpPoint_C(struct sGameObjectMain* a1, float a2, int a3, int a4, Vec3* a5)
+void AI_EvalFunc_COLComputeJumpPoint_C(struct sGameObjectMain* gao, float a2, int a3, int a4, Vec3* a5)
 {
-    COL_ComputeJumpPoint(a1, a5, a2, a3, a4);
+    COL_ComputeJumpPoint(gao, a5, a2, a3, a4);
 }
 
 tAINode* AI_EvalFunc_COLComputeJumpPoint(tAINode* arg0)
@@ -647,21 +647,21 @@ tAINode* AI_EvalFunc_COLComputeJumpPoint(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLCrossableSet_C(struct sGameObjectMain* a1, int16_t a2, int16_t a3)
+void AI_EvalFunc_COLCrossableSet_C(struct sGameObjectMain* gao, int16_t a2, int16_t a3)
 {
     tColInstance* v3;
 
-    if (a1 && a1->extended && a1->extended->coll)
+    if (gao && gao->extended && gao->extended->coll)
     {
-        if (a1->extended->coll->colInstance)
+        if (gao->extended->coll->colInstance)
         {
-            v3 = a1->extended->coll->colInstance;
+            v3 = gao->extended->coll->colInstance;
             v3->crossable = a2 | ~a3 & v3->crossable;
         }
     }
 }
 
-tAINode* AI_EvalFunc_COLCrossableSet(tAINode* a1)
+tAINode* AI_EvalFunc_COLCrossableSet(tAINode* node)
 {
     tGameObjectMain* v2;
     int16_t a2;
@@ -673,12 +673,12 @@ tAINode* AI_EvalFunc_COLCrossableSet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLCrossableSet_C(v2, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLZDMObjectListGet_C(tGameObjectMain* a1, tGameObjectMain** a2, Vec3* a3, int a5)
+int AI_EvalFunc_COLZDMObjectListGet_C(tGameObjectMain* gao, tGameObjectMain** a2, Vec3* a3, int a5)
 {
-    return COL_Report_GetZDMGameObjectList(a1, WOR_gpst_CurrentWorld, a2, a3, a5);
+    return COL_Report_GetZDMGameObjectList(gao, WOR_gpst_CurrentWorld, a2, a3, a5);
 }
 
 tAINode* AI_EvalFunc_COLZDMObjectListGet(tAINode* arg0)
@@ -703,7 +703,7 @@ tAINode* AI_EvalFunc_COLZDMObjectListGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-tAINode* AI_EvalFunc_COLRayCompute(tAINode* a1)
+tAINode* AI_EvalFunc_COLRayCompute(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a1a;
@@ -735,12 +735,12 @@ tAINode* AI_EvalFunc_COLRayCompute(tAINode* a1)
     AI_GetVecFromStack(&a4);
     COL_RayCompute(&a1a, v11, a3, &a4, &a5, a6, a7, a8, a9, a10);
     AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_COLBestWallGaoGet_C(struct sGameObjectMain* a1, Vec3* a2, int* a5)
+struct sGameObjectMain* AI_EvalFunc_COLBestWallGaoGet_C(struct sGameObjectMain* gao, Vec3* a2, int* a5)
 {
-    return COL_Report_GetBestWallGOInDirection(a1, WOR_gpst_CurrentWorld, a2, 0.0, a5);
+    return COL_Report_GetBestWallGOInDirection(gao, WOR_gpst_CurrentWorld, a2, 0.0, a5);
 }
 
 tAINode* AI_EvalFunc_COLBestWallGaoGet(tAINode* arg0)
@@ -763,18 +763,18 @@ tAINode* AI_EvalFunc_COLBestWallGaoGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-int AI_EvalFunc_COLPriorityGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_COLPriorityGet_C(struct sGameObjectMain* gao)
 {
     int result;
 
-    if (a1 && a1->extended && a1->extended->coll && a1->extended->coll->colInstance)
-        result = (char)a1->extended->coll->colInstance->priority;
+    if (gao && gao->extended && gao->extended->coll && gao->extended->coll->colInstance)
+        result = (char)gao->extended->coll->colInstance->priority;
     else
         result = 0;
     return result;
 }
 
-tAINode* AI_EvalFunc_COLPriorityGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLPriorityGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -784,19 +784,19 @@ tAINode* AI_EvalFunc_COLPriorityGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLPriorityGet_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLPrioritySet_C(struct sGameObjectMain* a1, char a2)
+void AI_EvalFunc_COLPrioritySet_C(struct sGameObjectMain* gao, char a2)
 {
-    if (a1 && a1->extended && a1->extended->coll)
+    if (gao && gao->extended && gao->extended->coll)
     {
-        if (a1->extended->coll->colInstance)
-            a1->extended->coll->colInstance->priority = a2;
+        if (gao->extended->coll->colInstance)
+            gao->extended->coll->colInstance->priority = a2;
     }
 }
 
-tAINode* AI_EvalFunc_COLPrioritySet(tAINode* a1)
+tAINode* AI_EvalFunc_COLPrioritySet(tAINode* node)
 {
     char v1; 
     tGameObjectMain* v3;
@@ -806,15 +806,15 @@ tAINode* AI_EvalFunc_COLPrioritySet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLPrioritySet_C(v3, v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_COLCrossObjectGet_C(struct sGameObjectMain* a1, int a2)
+struct sGameObjectMain* AI_EvalFunc_COLCrossObjectGet_C(struct sGameObjectMain* gao, int a2)
 {
     return WOR_gpst_CurrentWorld->collCrossObjects[a2];
 }
 
-tAINode* AI_EvalFunc_COLCrossObjectGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLCrossObjectGet(tAINode* node)
 {
     int a1a[3];
     tGameObjectMain* v3;
@@ -828,7 +828,7 @@ tAINode* AI_EvalFunc_COLCrossObjectGet(tAINode* a1)
     v5 = v3;
     a1a[0] = (int)AI_EvalFunc_COLCrossObjectGet_C(v3, v4);
     AI_PutObjectToStack(a1a, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLCrossObjectNumber_C()
@@ -836,7 +836,7 @@ int AI_EvalFunc_COLCrossObjectNumber_C()
     return WOR_gpst_CurrentWorld->colCrossObjectNumber;
 }
 
-tAINode* AI_EvalFunc_COLCrossObjectNumber(tAINode* a1)
+tAINode* AI_EvalFunc_COLCrossObjectNumber(tAINode* node)
 {
     int v1;
 
@@ -844,14 +844,14 @@ tAINode* AI_EvalFunc_COLCrossObjectNumber(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLCrossObjectNumber_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLPointGet_C(struct sGameObjectMain* a1, int a2, Vec3* a3)
+void AI_EvalFunc_COLPointGet_C(struct sGameObjectMain* gao, int a2, Vec3* a3)
 {
     Vec3* v3;
 
-    v3 = COL_Report_GetCollidedPoint(a1, WOR_gpst_CurrentWorld, a2);
+    v3 = COL_Report_GetCollidedPoint(gao, WOR_gpst_CurrentWorld, a2);
     if (v3)
         *a3 = *v3;
     else
@@ -875,11 +875,11 @@ tAINode* AI_EvalFunc_COLPointGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLGMatPointGet_C(tGameObjectMain* a1, int a2, int* a3, Vec3* a4)
+void AI_EvalFunc_COLGMatPointGet_C(tGameObjectMain* gao, int a2, int* a3, Vec3* a4)
 {
     Vec3* v4;
 
-    v4 = COL_Report_GMat_GetCollidedPoint(a1, WOR_gpst_CurrentWorld, a2, a3);
+    v4 = COL_Report_GMat_GetCollidedPoint(gao, WOR_gpst_CurrentWorld, a2, a3);
     if (v4)
         *a4 = *v4;
     else
@@ -906,12 +906,12 @@ tAINode* AI_EvalFunc_COLGMatPointGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-int AI_EvalFunc_COLGetAllReportsNormal_C(tGameObjectMain* a1, Vec3* a2, int a4)
+int AI_EvalFunc_COLGetAllReportsNormal_C(tGameObjectMain* gao, Vec3* a2, int a4)
 {
-    return COL_Report_GetAllReportsNormal(a1, WOR_gpst_CurrentWorld, a2, a4);
+    return COL_Report_GetAllReportsNormal(gao, WOR_gpst_CurrentWorld, a2, a4);
 }
 
-tAINode* AI_EvalFunc_COLGetAllReportsNormal(tAINode* a1)
+tAINode* AI_EvalFunc_COLGetAllReportsNormal(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -928,7 +928,7 @@ tAINode* AI_EvalFunc_COLGetAllReportsNormal(tAINode* a1)
     a1a = v3;
     v1 = AI_EvalFunc_COLGetAllReportsNormal_C(v3, (Vec3*)a2.ptr, a4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLGetAllVisibleObjects_C(struct sGameObjectMain *a1, struct sGameObjectMain** a5, int flagMustHave, int flagMustNothave, int whatToTest)
@@ -936,7 +936,7 @@ int AI_EvalFunc_COLGetAllVisibleObjects_C(struct sGameObjectMain *a1, struct sGa
     return COL_VisibleObjectListCreate(WOR_gpst_CurrentWorld, flagMustHave, flagMustNothave, whatToTest, a5);
 }
 
-tAINode* AI_EvalFunc_COLGetAllVisibleObjects(tAINode* a1)
+tAINode* AI_EvalFunc_COLGetAllVisibleObjects(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -957,12 +957,12 @@ tAINode* AI_EvalFunc_COLGetAllVisibleObjects(tAINode* a1)
     a1a = v3;
     v1 = AI_EvalFunc_COLGetAllVisibleObjects_C(v3, (tGameObjectMain**)a2.ptr, flagMustHave, flagMustNothave, whatToTest);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_COLBestWallAngleGaoGet_C(struct sGameObjectMain* a1, Vec3* a2, float a3, int* a5)
+struct sGameObjectMain* AI_EvalFunc_COLBestWallAngleGaoGet_C(struct sGameObjectMain* gao, Vec3* a2, float a3, int* a5)
 {
-    return COL_Report_GetBestWallGOInDirection(a1, WOR_gpst_CurrentWorld, a2, a3, a5);
+    return COL_Report_GetBestWallGOInDirection(gao, WOR_gpst_CurrentWorld, a2, a3, a5);
 }
 
 tAINode* AI_EvalFunc_COLBestWallAngleGaoGet(tAINode* arg0)
@@ -987,12 +987,12 @@ tAINode* AI_EvalFunc_COLBestWallAngleGaoGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-int AI_EvalFunc_COLGetReportsNumber_C(struct sGameObjectMain* a1, int a3)
+int AI_EvalFunc_COLGetReportsNumber_C(struct sGameObjectMain* gao, int a3)
 {
-    return COL_Report_GetNumberOfReports(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_Report_GetNumberOfReports(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLGetReportsNumber(tAINode* a1)
+tAINode* AI_EvalFunc_COLGetReportsNumber(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1004,12 +1004,12 @@ tAINode* AI_EvalFunc_COLGetReportsNumber(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLGetReportsNumber_C(v3, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLGetResultingNormal_C(tGameObjectMain* a1, int a2, Vec3* a4)
+void AI_EvalFunc_COLGetResultingNormal_C(tGameObjectMain* gao, int a2, Vec3* a4)
 {
-    COL_Report_ComputeResultingNormal(a1, WOR_gpst_CurrentWorld, a2, a4);
+    COL_Report_ComputeResultingNormal(gao, WOR_gpst_CurrentWorld, a2, a4);
 }
 
 tAINode* AI_EvalFunc_COLGetResultingNormal(tAINode* arg0)
@@ -1034,15 +1034,15 @@ void AI_EvalFunc_COLForceSnPRefresh_C()
     COL_ul_SnP_RefreshType = 0;
 }
 
-tAINode* AI_EvalFunc_COLForceSnPRefresh(tAINode* a1)
+tAINode* AI_EvalFunc_COLForceSnPRefresh(tAINode* node)
 {
     AI_EvalFunc_COLForceSnPRefresh_C();
-    return a1 + 1;
+    return node + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_COLSpecialBestWallGaoGet_C(struct sGameObjectMain* a1, Vec3* a2, int* a5)
+tGameObjectMain* AI_EvalFunc_COLSpecialBestWallGaoGet_C(struct sGameObjectMain* gao, Vec3* a2, int* a5)
 {
-    return COL_Report_GetBestWallGOInDirectionSpecial(a1, WOR_gpst_CurrentWorld, a2, 0.0, a5);
+    return COL_Report_GetBestWallGOInDirectionSpecial(gao, WOR_gpst_CurrentWorld, a2, 0.0, a5);
 }
 
 tAINode* AI_EvalFunc_COLSpecialBestWallGaoGet(tAINode* arg0)
@@ -1065,20 +1065,20 @@ tAINode* AI_EvalFunc_COLSpecialBestWallGaoGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-int AI_EvalFunc_COLGMIDGet_C(struct sGameObjectMain* a1, int a3)
+int AI_EvalFunc_COLGMIDGet_C(struct sGameObjectMain* gao, int a3)
 {
     int result; 
     tWorld* a2;
 
     a2 = WOR_gpst_CurrentWorld;
-    if ((uint16_t)COL_GameMaterial_GetID(a1, WOR_gpst_CurrentWorld, a3) == 0xFFFF)
+    if ((uint16_t)COL_GameMaterial_GetID(gao, WOR_gpst_CurrentWorld, a3) == 0xFFFF)
         result = -1;
     else
-        result = (uint16_t)COL_GameMaterial_GetID(a1, a2, a3);
+        result = (uint16_t)COL_GameMaterial_GetID(gao, a2, a3);
     return result;
 }
 
-tAINode* AI_EvalFunc_COLGMIDGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLGMIDGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1090,7 +1090,7 @@ tAINode* AI_EvalFunc_COLGMIDGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLGMIDGet_C(v3, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_COL_SpecificCrossableSet_C(uint16_t a1)
@@ -1098,21 +1098,21 @@ void AI_EvalFunc_COL_SpecificCrossableSet_C(uint16_t a1)
     COL_guw_UserCrossable = a1;
 }
 
-tAINode* AI_EvalFunc_COL_SpecificCrossableSet(tAINode* a1)
+tAINode* AI_EvalFunc_COL_SpecificCrossableSet(tAINode* node)
 {
     uint16_t a1a;
 
     a1a = AI_GetIntFromStack();
     AI_EvalFunc_COL_SpecificCrossableSet_C(a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLGetReportsNumberAndRanks_C(struct sGameObjectMain* a1, int* a5, int a3, int a4)
+int AI_EvalFunc_COLGetReportsNumberAndRanks_C(struct sGameObjectMain* gao, int* a5, int a3, int a4)
 {
-    return COL_Report_GetNumberOfReportsAndRanks(a1, WOR_gpst_CurrentWorld, a4, a3, a5);
+    return COL_Report_GetNumberOfReportsAndRanks(gao, WOR_gpst_CurrentWorld, a4, a3, a5);
 }
 
-tAINode* AI_EvalFunc_COLGetReportsNumberAndRanks(tAINode* a1)
+tAINode* AI_EvalFunc_COLGetReportsNumberAndRanks(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1131,15 +1131,15 @@ tAINode* AI_EvalFunc_COLGetReportsNumberAndRanks(tAINode* a1)
     a1a = v3;
     v1 = AI_EvalFunc_COLGetReportsNumberAndRanks_C(v3, (int*)a2.ptr, a3, a4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLObjectCollide_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+int AI_EvalFunc_COLObjectCollide_C(struct sGameObjectMain* gao, struct sGameObjectMain* a2)
 {
-    return COL_Report_b_ObjectsAreColliding(a1, a2, WOR_gpst_CurrentWorld);
+    return COL_Report_b_ObjectsAreColliding(gao, a2, WOR_gpst_CurrentWorld);
 }
 
-tAINode* AI_EvalFunc_COLObjectCollide(tAINode* a1)
+tAINode* AI_EvalFunc_COLObjectCollide(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1151,12 +1151,12 @@ tAINode* AI_EvalFunc_COLObjectCollide(tAINode* a1)
     --AI_gul_SizeGlobalVarStack;
     v1 = AI_EvalFunc_COLObjectCollide_C(v3, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 
 
-struct sGameObjectMain* AI_EvalFunc_COLRaySingleObjectDist_C(struct sGameObjectMain* a1, Vec3* rayV1, Vec3* rayV2, float rayF1, int flagMustHave, int flagMustNothave, int whatToTest, int a8)
+struct sGameObjectMain* AI_EvalFunc_COLRaySingleObjectDist_C(struct sGameObjectMain* gao, Vec3* rayV1, Vec3* rayV2, float rayF1, int flagMustHave, int flagMustNothave, int whatToTest, int a8)
 {
     tGameObjectMain* result;
 
@@ -1164,7 +1164,7 @@ struct sGameObjectMain* AI_EvalFunc_COLRaySingleObjectDist_C(struct sGameObjectM
     {
     case 0:
         result = COL_Visual_RayCast_OneObject(
-            a1,
+            gao,
             rayV1,
             rayV2,
             rayF1,
@@ -1185,7 +1185,7 @@ struct sGameObjectMain* AI_EvalFunc_COLRaySingleObjectDist_C(struct sGameObjectM
         break;
     case 0xA:
         result = COL_Visual_RayCast_OneObject(
-            a1,
+            gao,
             rayV1,
             rayV2,
             rayF1,
@@ -1248,12 +1248,12 @@ tAINode* AI_EvalFunc_COLRaySingleObjectDist(tAINode* arg0)
     return arg0 + 1;
 }
 
-int AI_EvalFunc_COL_IndexReportGet_C(tGameObjectMain* a1, int a2, int a4)
+int AI_EvalFunc_COL_IndexReportGet_C(tGameObjectMain* gao, int a2, int a4)
 {
-    return COL_Report_ul_BestReportGet(a1, WOR_gpst_CurrentWorld, a2, a4);
+    return COL_Report_ul_BestReportGet(gao, WOR_gpst_CurrentWorld, a2, a4);
 }
 
-tAINode* AI_EvalFunc_COL_IndexReportGet(tAINode* a1)
+tAINode* AI_EvalFunc_COL_IndexReportGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3; 
@@ -1267,7 +1267,7 @@ tAINode* AI_EvalFunc_COL_IndexReportGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COL_IndexReportGet_C(v3, a2, a4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_COL_RayMinDistSet_C(float a1)
@@ -1276,21 +1276,21 @@ void AI_EvalFunc_COL_RayMinDistSet_C(float a1)
     COL_gf_MinDistance = a1;
 }
 
-tAINode* AI_EvalFunc_COL_RayMinDistSet(tAINode* a1)
+tAINode* AI_EvalFunc_COL_RayMinDistSet(tAINode* node)
 {
     float a1a;
 
     a1a = AI_GetFloatFromStack();
     AI_EvalFunc_COL_RayMinDistSet_C(a1a);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_COLHasGMat_C(struct sGameObjectMain* a1, int a3)
+BOOL AI_EvalFunc_COLHasGMat_C(struct sGameObjectMain* gao, int a3)
 {
-    return COL_Report_HasGMat(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_Report_HasGMat(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLHasGMat(tAINode* a1)
+tAINode* AI_EvalFunc_COLHasGMat(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1302,21 +1302,21 @@ tAINode* AI_EvalFunc_COLHasGMat(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLHasGMat_C(v3, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLCrossableGet_C(tGameObjectMain* a1)
+int AI_EvalFunc_COLCrossableGet_C(tGameObjectMain* gao)
 {
     int result;
 
-    if (a1 && a1->extended && a1->extended->coll && a1->extended->coll->colInstance)
-        result = (uint16_t)a1->extended->coll->colInstance->crossable;
+    if (gao && gao->extended && gao->extended->coll && gao->extended->coll->colInstance)
+        result = (uint16_t)gao->extended->coll->colInstance->crossable;
     else
         result = -1;
     return result;
 }
 
-tAINode* AI_EvalFunc_COLCrossableGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLCrossableGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1326,15 +1326,15 @@ tAINode* AI_EvalFunc_COLCrossableGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLCrossableGet_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLDesignGet_C(tGameObjectMain* a1, int a3)
+int AI_EvalFunc_COLDesignGet_C(tGameObjectMain* gao, int a3)
 {
-    return COL_GetDesign(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_GetDesign(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLDesignGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLDesignGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1346,15 +1346,15 @@ tAINode* AI_EvalFunc_COLDesignGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLDesignGet_C(v3, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLZDEZDEListGet_C(struct sGameObjectMain* a1, struct sGameObjectMain** a7, char a3, char a4, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLZDEZDEListGet_C(struct sGameObjectMain* gao, struct sGameObjectMain** a7, char a3, char a4, int flagMustHave, int flagMustNothave, int whatToTest)
 {
-    return COL_ListCreate(a1, flagMustHave, flagMustNothave, whatToTest, a3, WOR_gpst_CurrentWorld, a7, a4);
+    return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, a3, WOR_gpst_CurrentWorld, a7, a4);
 }
 
-tAINode* AI_EvalFunc_COLZDEZDEListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLZDEZDEListGet(tAINode* node)
 {
     int v1; 
     tGameObjectMain* v3; 
@@ -1379,15 +1379,15 @@ tAINode* AI_EvalFunc_COLZDEZDEListGet(tAINode* a1)
     a1a = v3;
     v1 = AI_EvalFunc_COLZDEZDEListGet_C(v3, (tGameObjectMain**)a2.ptr, a3, a4, flagMustHave, flagMustNothave, whatToTest);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLZDEBVListGet_C(tGameObjectMain* a1, tGameObjectMain** a2, char a3, int a4, int a5, int a6)
+int AI_EvalFunc_COLZDEBVListGet_C(tGameObjectMain* gao, tGameObjectMain** a2, char a3, int a4, int a5, int a6)
 {
-    return COL_ListCreate(a1, a4, a5, a6, a3, WOR_gpst_CurrentWorld, a2, 255);
+    return COL_ListCreate(gao, a4, a5, a6, a3, WOR_gpst_CurrentWorld, a2, 255);
 }
 
-tAINode* AI_EvalFunc_COLZDEBVListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLZDEBVListGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1412,15 +1412,15 @@ tAINode* AI_EvalFunc_COLZDEBVListGet(tAINode* a1)
     v9 = WOR_gpst_CurrentWorld;
     v1 = AI_EvalFunc_COLZDEBVListGet_C(v3, (tGameObjectMain**)a2.ptr, v7, v5, v6, v11);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_COLZDEZDECollide_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2, uint8_t a3, uint8_t a4)
+BOOL AI_EvalFunc_COLZDEZDECollide_C(struct sGameObjectMain* gao, struct sGameObjectMain* a2, uint8_t a3, uint8_t a4)
 {
-    return COL_ZDE_ZDECollide(a1, a3, a4, a2);
+    return COL_ZDE_ZDECollide(gao, a3, a4, a2);
 }
 
-tAINode* AI_EvalFunc_COLZDEZDECollide(tAINode* a1)
+tAINode* AI_EvalFunc_COLZDEZDECollide(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1438,15 +1438,15 @@ tAINode* AI_EvalFunc_COLZDEZDECollide(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLZDEZDECollide_C(v3, a2, a3, a4);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_COLZDEBVCollide_C(tGameObjectMain* a1, tGameObjectMain* a2, uint8_t a3)
+BOOL AI_EvalFunc_COLZDEBVCollide_C(tGameObjectMain* gao, tGameObjectMain* a2, uint8_t a3)
 {
-    return COL_ZDE_BVCollide(a1, a3, a2, 0);
+    return COL_ZDE_BVCollide(gao, a3, a2, 0);
 }
 
-tAINode* AI_EvalFunc_COLZDEBVCollide(tAINode* a1)
+tAINode* AI_EvalFunc_COLZDEBVCollide(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1462,15 +1462,15 @@ tAINode* AI_EvalFunc_COLZDEBVCollide(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLZDEBVCollide_C(v3, a2, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLZDEPivotCollide_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2, uint8_t a3)
+int AI_EvalFunc_COLZDEPivotCollide_C(struct sGameObjectMain* gao, struct sGameObjectMain* a2, uint8_t a3)
 {
-    return COL_ZDE_PivotCollide(a1, a3, a2, 0);
+    return COL_ZDE_PivotCollide(gao, a3, a2, 0);
 }
 
-tAINode* AI_EvalFunc_COLZDEPivotCollide(tAINode* a1)
+tAINode* AI_EvalFunc_COLZDEPivotCollide(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1486,15 +1486,15 @@ tAINode* AI_EvalFunc_COLZDEPivotCollide(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLZDEPivotCollide_C(v3, a2, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLZDEPivotListGet_C(struct sGameObjectMain* a1, struct sGameObjectMain** a7, char a3, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLZDEPivotListGet_C(struct sGameObjectMain* gao, struct sGameObjectMain** a7, char a3, int flagMustHave, int flagMustNothave, int whatToTest)
 {
-    return COL_ListCreate(a1, flagMustHave, flagMustNothave, whatToTest, a3, WOR_gpst_CurrentWorld, a7, 0xFB);
+    return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, a3, WOR_gpst_CurrentWorld, a7, 0xFB);
 }
 
-tAINode* AI_EvalFunc_COLZDEPivotListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLZDEPivotListGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1519,15 +1519,15 @@ tAINode* AI_EvalFunc_COLZDEPivotListGet(tAINode* a1)
     v9 = WOR_gpst_CurrentWorld;
     v1 = AI_EvalFunc_COLZDEPivotListGet_C(v3, (tGameObjectMain**)a2.ptr, a3, flagMustHave, flagMustNothave, whatToTest);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLBVPivotListGet_C(struct sGameObjectMain* a1, struct sGameObjectMain** a2, int a3, int a4, int a5)
+int AI_EvalFunc_COLBVPivotListGet_C(struct sGameObjectMain* gao, struct sGameObjectMain** a2, int a3, int a4, int a5)
 {
-    return COL_ListCreate(a1, a3, a4, a5, 0, WOR_gpst_CurrentWorld, a2, 253);
+    return COL_ListCreate(gao, a3, a4, a5, 0, WOR_gpst_CurrentWorld, a2, 253);
 }
 
-tAINode* AI_EvalFunc_COLBVPivotListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLBVPivotListGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1550,15 +1550,15 @@ tAINode* AI_EvalFunc_COLBVPivotListGet(tAINode* a1)
     v8 = WOR_gpst_CurrentWorld;
     v1 = AI_EvalFunc_COLBVPivotListGet_C(v3, (tGameObjectMain**)a2.ptr, v5, v6, v10);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLBVZDEListGet_C(tGameObjectMain* a1, tGameObjectMain** a2, char a3, int a4, int a5, int a6)
+int AI_EvalFunc_COLBVZDEListGet_C(tGameObjectMain* gao, tGameObjectMain** a2, char a3, int a4, int a5, int a6)
 {
-    return COL_ListCreate(a1, a4, a5, a6, a3, WOR_gpst_CurrentWorld, a2, 254);
+    return COL_ListCreate(gao, a4, a5, a6, a3, WOR_gpst_CurrentWorld, a2, 254);
 }
 
-tAINode* AI_EvalFunc_COLBVZDEListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLBVZDEListGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1583,15 +1583,15 @@ tAINode* AI_EvalFunc_COLBVZDEListGet(tAINode* a1)
     v9 = WOR_gpst_CurrentWorld;
     v1 = AI_EvalFunc_COLBVZDEListGet_C(v3, (tGameObjectMain**)a2.ptr, v7, v5, v6, v11);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLPivotZDEListGet_C(tGameObjectMain* a1, tGameObjectMain** a7, char a3, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLPivotZDEListGet_C(tGameObjectMain* gao, tGameObjectMain** a7, char a3, int flagMustHave, int flagMustNothave, int whatToTest)
 {
-    return COL_ListCreate(a1, flagMustHave, flagMustNothave, whatToTest, a3, WOR_gpst_CurrentWorld, a7, 0xFA);
+    return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, a3, WOR_gpst_CurrentWorld, a7, 0xFA);
 }
 
-tAINode* AI_EvalFunc_COLPivotZDEListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLPivotZDEListGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1616,15 +1616,15 @@ tAINode* AI_EvalFunc_COLPivotZDEListGet(tAINode* a1)
     v9 = WOR_gpst_CurrentWorld;
     v1 = AI_EvalFunc_COLPivotZDEListGet_C(v3, (tGameObjectMain**)a2.ptr, a3, flagMustHave, flagMustNothave, whatToTest);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLPivotBVListGet_C(struct sGameObjectMain* a1, struct sGameObjectMain** a2, int a3, int a4, int a5)
+int AI_EvalFunc_COLPivotBVListGet_C(struct sGameObjectMain* gao, struct sGameObjectMain** a2, int a3, int a4, int a5)
 {
-    return COL_ListCreate(a1, a3, a4, a5, 0, WOR_gpst_CurrentWorld, a2, 252);
+    return COL_ListCreate(gao, a3, a4, a5, 0, WOR_gpst_CurrentWorld, a2, 252);
 }
 
-tAINode* AI_EvalFunc_COLPivotBVListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLPivotBVListGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1647,7 +1647,7 @@ tAINode* AI_EvalFunc_COLPivotBVListGet(tAINode* a1)
     v8 = WOR_gpst_CurrentWorld;
     v1 = AI_EvalFunc_COLPivotBVListGet_C(v3, (tGameObjectMain**)a2.ptr, v5, v6, v10);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLBVPivotCollide_C(struct sGameObjectMain* gao1, struct sGameObjectMain* gao2)
@@ -1655,7 +1655,7 @@ int AI_EvalFunc_COLBVPivotCollide_C(struct sGameObjectMain* gao1, struct sGameOb
     return COL_BV_PivotCollide(gao1, gao2, FALSE);
 }
 
-tAINode* AI_EvalFunc_COLBVPivotCollide(tAINode* a1)
+tAINode* AI_EvalFunc_COLBVPivotCollide(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1669,7 +1669,7 @@ tAINode* AI_EvalFunc_COLBVPivotCollide(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLBVPivotCollide_C(v3, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLPivotBVCollide_C(struct sGameObjectMain* gao1, struct sGameObjectMain* gao2)
@@ -1677,7 +1677,7 @@ int AI_EvalFunc_COLPivotBVCollide_C(struct sGameObjectMain* gao1, struct sGameOb
     return COL_BV_PivotCollide(gao1, gao2, TRUE);
 }
 
-tAINode* AI_EvalFunc_COLPivotBVCollide(tAINode* a1)
+tAINode* AI_EvalFunc_COLPivotBVCollide(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1691,15 +1691,15 @@ tAINode* AI_EvalFunc_COLPivotBVCollide(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLPivotBVCollide_C(v3, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLZDEBVCenterCollide_C(tGameObjectMain* a1, tGameObjectMain* a2, uint8_t a3)
+int AI_EvalFunc_COLZDEBVCenterCollide_C(tGameObjectMain* gao, tGameObjectMain* a2, uint8_t a3)
 {
-    return COL_ZDE_BVCenterCollide(a1, a3, a2, 0);
+    return COL_ZDE_BVCenterCollide(gao, a3, a2, 0);
 }
 
-tAINode* AI_EvalFunc_COLZDEBVCenterCollide(tAINode* a1)
+tAINode* AI_EvalFunc_COLZDEBVCenterCollide(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1715,15 +1715,15 @@ tAINode* AI_EvalFunc_COLZDEBVCenterCollide(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLZDEBVCenterCollide_C(v3, a2, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLZDEBVCenterListGet_C(tGameObjectMain* a1, tGameObjectMain** a7, char a3, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLZDEBVCenterListGet_C(tGameObjectMain* gao, tGameObjectMain** a7, char a3, int flagMustHave, int flagMustNothave, int whatToTest)
 {
-    return COL_ListCreate(a1, flagMustHave, flagMustNothave, whatToTest, a3, WOR_gpst_CurrentWorld, a7, 0xEF);
+    return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, a3, WOR_gpst_CurrentWorld, a7, 0xEF);
 }
 
-tAINode* AI_EvalFunc_COLZDEBVCenterListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLZDEBVCenterListGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1754,7 +1754,7 @@ tAINode* AI_EvalFunc_COLZDEBVCenterListGet(tAINode* a1)
         flagMustNothave,
         whatToTest);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 int AI_EvalFunc_COLBVCenterZDEListGet_C(tGameObjectMain* gao, tGameObjectMain** a7, char id, int flagMustHave, int flagMustNothave, int whatToTest)
@@ -1762,7 +1762,7 @@ int AI_EvalFunc_COLBVCenterZDEListGet_C(tGameObjectMain* gao, tGameObjectMain** 
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, id, WOR_gpst_CurrentWorld, a7, 0xEE);
 }
 
-tAINode* AI_EvalFunc_COLBVCenterZDEListGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLBVCenterZDEListGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -1793,7 +1793,7 @@ tAINode* AI_EvalFunc_COLBVCenterZDEListGet(tAINode* a1)
         flagMustNothave,
         whatToTest);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_COLStartMatrixSet_C(struct sGameObjectMain* a2, Vec3* a3)
@@ -1817,7 +1817,7 @@ void AI_EvalFunc_COLStartMatrixSet_C(struct sGameObjectMain* a2, Vec3* a3)
     }
 }
 
-tAINode* AI_EvalFunc_COLStartMatrixSet(tAINode* a1)
+tAINode* AI_EvalFunc_COLStartMatrixSet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a3;
@@ -1829,10 +1829,10 @@ tAINode* AI_EvalFunc_COLStartMatrixSet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = v2;
     AI_EvalFunc_COLStartMatrixSet_C(v2, &a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_COLFirstObjectInRangeGet_C(tGameObjectMain* a1, Vec3* a2, float a3, int a4, int a5, int a6)
+tGameObjectMain* AI_EvalFunc_COLFirstObjectInRangeGet_C(tGameObjectMain* gao, Vec3* a2, float a3, int a4, int a5, int a6)
 {
     return COL_GetFirstObjectInRange(WOR_gpst_CurrentWorld, a2, a3, a4, a5, a6);
 }
@@ -1896,12 +1896,12 @@ tAINode* AI_EvalFunc_COLTriangleCollision(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLSwapToSpecific_C(struct sGameObjectMain* a1, char a2)
+void AI_EvalFunc_COLSwapToSpecific_C(struct sGameObjectMain* gao, char a2)
 {
-    COL_SwapToSpecific(a1, a2);
+    COL_SwapToSpecific(gao, a2);
 }
 
-tAINode* AI_EvalFunc_COLSwapToSpecific(tAINode* a1)
+tAINode* AI_EvalFunc_COLSwapToSpecific(tAINode* node)
 {
     tGameObjectMain* v2;
     char a2;
@@ -1911,10 +1911,10 @@ tAINode* AI_EvalFunc_COLSwapToSpecific(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     a2 = AI_GetIntFromStack();
     AI_EvalFunc_COLSwapToSpecific_C(v2, a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLDistanceListGet_C(tGameObjectMain* a1, tGameObjectMain** a5, Vec3* a6, float a7, int flagMustHave, int flagMustNothave, int whatToTest, char a8)
+int AI_EvalFunc_COLDistanceListGet_C(tGameObjectMain* gao, tGameObjectMain** a5, Vec3* a6, float a7, int flagMustHave, int flagMustNothave, int whatToTest, char a8)
 {
     return COL_ListCreateDistance(flagMustHave, flagMustNothave, whatToTest, WOR_gpst_CurrentWorld, a5, a6, a7, a8);
 }
@@ -1959,9 +1959,9 @@ tAINode* AI_EvalFunc_COLDistanceListGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLSpecificPosSet_C(struct sGameObjectMain* a1, char a2, Vec3* a3)
+void AI_EvalFunc_COLSpecificPosSet_C(struct sGameObjectMain* gao, char a2, Vec3* a3)
 {
-    COL_ZDx_SpecificPosSet(a1, a2, a3);
+    COL_ZDx_SpecificPosSet(gao, a2, a3);
 }
 
 tAINode* AI_EvalFunc_COLSpecificPosSet(tAINode* arg0)
@@ -1981,9 +1981,9 @@ tAINode* AI_EvalFunc_COLSpecificPosSet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLSpecificSizeSet_C(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3)
+void AI_EvalFunc_COLSpecificSizeSet_C(struct sGameObjectMain* gao, uint8_t a2, Vec3* a3)
 {
-    COL_ZDx_SpecificSizeSet(a1, a2, a3);
+    COL_ZDx_SpecificSizeSet(gao, a2, a3);
 }
 
 tAINode* AI_EvalFunc_COLSpecificSizeSet(tAINode* arg0)
@@ -2003,17 +2003,17 @@ tAINode* AI_EvalFunc_COLSpecificSizeSet(tAINode* arg0)
     return arg0 + 1;
 }
 
-int AI_EvalFunc_COLSetDesignGet_C(tGameObjectMain* a1, unsigned int a2)
+int AI_EvalFunc_COLSetDesignGet_C(tGameObjectMain* gao, unsigned int a2)
 {
     tColInstance* v3;
 
-    if ((a1->flags & 0x600) == 0 || a2 > 15)
+    if ((gao->flags & 0x600) == 0 || a2 > 15)
         return 0;
-    v3 = a1->extended->coll->colInstance;
+    v3 = gao->extended->coll->colInstance;
     return v3->selectedInstElemPtrs[v3->colSet->zoneIDs[(uint8_t)a2]]->design;
 }
 
-tAINode* AI_EvalFunc_COLSetDesignGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLSetDesignGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -2025,15 +2025,15 @@ tAINode* AI_EvalFunc_COLSetDesignGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLSetDesignGet_C(v3, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-float AI_EvalFunc_COLSizeGet_C(struct sGameObjectMain* a1, uint8_t a2)
+float AI_EvalFunc_COLSizeGet_C(struct sGameObjectMain* gao, uint8_t a2)
 {
-    return COL_ZDx_SizeGet(a1, a2);
+    return COL_ZDx_SizeGet(gao, a2);
 }
 
-tAINode* AI_EvalFunc_COLSizeGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLSizeGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -2045,18 +2045,18 @@ tAINode* AI_EvalFunc_COLSizeGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_COLSizeGet_C(v3, a2);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLTypeGet_C(tGameObjectMain* a1, uint8_t a2)
+int AI_EvalFunc_COLTypeGet_C(tGameObjectMain* gao, uint8_t a2)
 {
     int result;
     tColInstance* v3;
     uint8_t v4;
 
-    if ((a1->flags & 0x600) == 0 || a2 > 0xFu)
+    if ((gao->flags & 0x600) == 0 || a2 > 0xFu)
         return 0;
-    v3 = a1->extended->coll->colInstance;
+    v3 = gao->extended->coll->colInstance;
     v4 = v3->colSet->zoneIDs[a2];
     if (v4 <= 0xFu)
         result = v3->selectedInstElemPtrs[v4]->elemType;
@@ -2065,7 +2065,7 @@ int AI_EvalFunc_COLTypeGet_C(tGameObjectMain* a1, uint8_t a2)
     return result;
 }
 
-tAINode* AI_EvalFunc_COLTypeGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLTypeGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -2077,18 +2077,18 @@ tAINode* AI_EvalFunc_COLTypeGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLTypeGet_C(v3, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLBoxMaxGet_C(tGameObjectMain* a1, unsigned int a2, Vec3* a3)
+void AI_EvalFunc_COLBoxMaxGet_C(tGameObjectMain* gao, unsigned int a2, Vec3* a3)
 {
     tColInstance* v4;
     uint8_t v5;
     tColInstanceElem* v6;
 
-    if ((a1->flags & 0x600) == 0 || a2 > 0xF)
+    if ((gao->flags & 0x600) == 0 || a2 > 0xF)
         *a3 = MATH_gst_NulVector;
-    v4 = a1->extended->coll->colInstance;
+    v4 = gao->extended->coll->colInstance;
     v5 = v4->colSet->zoneIDs[(uint8_t)a2];
     if (v5 > 0xFu)
         *a3 = MATH_gst_NulVector;
@@ -2120,15 +2120,15 @@ tAINode* AI_EvalFunc_COLBoxMaxGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLBoxMinGet_C(tGameObjectMain* a1, unsigned int a2, Vec3* a3)
+void AI_EvalFunc_COLBoxMinGet_C(tGameObjectMain* gao, unsigned int a2, Vec3* a3)
 {
     tColInstance* v3;
     uint8_t v4;
     tColInstanceElem* v5;
 
-    if ((a1->flags & 0x600) == 0 || a2 > 0xF)
+    if ((gao->flags & 0x600) == 0 || a2 > 0xF)
         *a3 = MATH_gst_NulVector;
-    v3 = a1->extended->coll->colInstance;
+    v3 = gao->extended->coll->colInstance;
     v4 = v3->colSet->zoneIDs[(uint8_t)a2];
     if (v4 > 0xFu)
         *a3 = MATH_gst_NulVector;
@@ -2156,12 +2156,12 @@ tAINode* AI_EvalFunc_COLBoxMinGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLPosGet_C(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3)
+void AI_EvalFunc_COLPosGet_C(struct sGameObjectMain* gao, uint8_t a2, Vec3* a3)
 {
     a3->x = 0.0;
     a3->y = 0.0;
     a3->z = 0.0;
-    COL_ZDx_PosGet(a1, a2, a3);
+    COL_ZDx_PosGet(gao, a2, a3);
 }
 
 tAINode* AI_EvalFunc_COLPosGet(tAINode* arg0)
@@ -2181,20 +2181,20 @@ tAINode* AI_EvalFunc_COLPosGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLFlagXSet_C(tGameObjectMain* a1, uint8_t a2)
+void AI_EvalFunc_COLFlagXSet_C(tGameObjectMain* gao, uint8_t a2)
 {
     tColInstanceElem* v2;
     tColInstance* v3;
 
-    if ((a1->flags & 0x600) != 0)
+    if ((gao->flags & 0x600) != 0)
     {
-        v3 = a1->extended->coll->colInstance;
+        v3 = gao->extended->coll->colInstance;
         v2 = v3->selectedInstElemPtrs[v3->colSet->zoneIDs[a2]];
         v2->colFlags |= 0x10u;
     }
 }
 
-tAINode* AI_EvalFunc_COLFlagXSet(tAINode* a1)
+tAINode* AI_EvalFunc_COLFlagXSet(tAINode* node)
 {
     uint8_t v1;
     tGameObjectMain* v3;
@@ -2204,23 +2204,23 @@ tAINode* AI_EvalFunc_COLFlagXSet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLFlagXSet_C(v3, v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLFlagXReset_C(tGameObjectMain* a1, uint8_t a2)
+void AI_EvalFunc_COLFlagXReset_C(tGameObjectMain* gao, uint8_t a2)
 {
     tColInstanceElem* v2;
     tColInstance* v3;
 
-    if ((a1->flags & 0x600) != 0)
+    if ((gao->flags & 0x600) != 0)
     {
-        v3 = a1->extended->coll->colInstance;
+        v3 = gao->extended->coll->colInstance;
         v2 = v3->selectedInstElemPtrs[v3->colSet->zoneIDs[a2]];
         v2->colFlags &= ~0x10u;
     }
 }
 
-tAINode* AI_EvalFunc_COLFlagXReset(tAINode* a1)
+tAINode* AI_EvalFunc_COLFlagXReset(tAINode* node)
 {
     uint8_t v1;
     tGameObjectMain* v3;
@@ -2230,17 +2230,17 @@ tAINode* AI_EvalFunc_COLFlagXReset(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLFlagXReset_C(v3, v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_COLHasZone_C(struct sGameObjectMain* a1, int a2)
+BOOL AI_EvalFunc_COLHasZone_C(struct sGameObjectMain* gao, int a2)
 {
     BOOL result;
     tColInstance* v3;
 
-    if (!a1 || !a1->extended || !a1->extended->coll)
+    if (!gao || !gao->extended || !gao->extended->coll)
         return 0;
-    v3 = a1->extended->coll->colInstance;
+    v3 = gao->extended->coll->colInstance;
     if (v3 && v3->colSet)
         result = v3->colSet->zoneIDs[a2] < (int)v3->zoneNum;
     else
@@ -2248,7 +2248,7 @@ BOOL AI_EvalFunc_COLHasZone_C(struct sGameObjectMain* a1, int a2)
     return result;
 }
 
-tAINode* AI_EvalFunc_COLHasZone(tAINode* a1)
+tAINode* AI_EvalFunc_COLHasZone(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -2260,12 +2260,12 @@ tAINode* AI_EvalFunc_COLHasZone(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLHasZone_C(v3, a2);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLGeoColMapPosSet_C(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3)
+void AI_EvalFunc_COLGeoColMapPosSet_C(struct sGameObjectMain* gao, uint8_t a2, Vec3* a3)
 {
-    COL_GeoColMap_PosSet(a1, a2, a3);
+    COL_GeoColMap_PosSet(gao, a2, a3);
 }
 
 tAINode* AI_EvalFunc_COLGeoColMapPosSet(tAINode* arg0)
@@ -2285,21 +2285,21 @@ tAINode* AI_EvalFunc_COLGeoColMapPosSet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_COLFlagSet_C(struct sGameObjectMain* a1, uint8_t a2, char a3, char a4)
+void AI_EvalFunc_COLFlagSet_C(struct sGameObjectMain* gao, uint8_t a2, char a3, char a4)
 {
     tColInstance* v4;
     tColInstanceElem* v5; 
 
-    if ((a1->flags & 0x600) != 0)
+    if ((gao->flags & 0x600) != 0)
     {
-        v4 = a1->extended->coll->colInstance;
+        v4 = gao->extended->coll->colInstance;
         v5 = v4->selectedInstElemPtrs[v4->colSet->zoneIDs[a2]];
         v5->colFlags |= a3;
         v5->colFlags &= ~a4;
     }
 }
 
-tAINode* AI_EvalFunc_COLFlagSet(tAINode* a1)
+tAINode* AI_EvalFunc_COLFlagSet(tAINode* node)
 {
     tGameObjectMain* v2;
     char a4;
@@ -2313,22 +2313,22 @@ tAINode* AI_EvalFunc_COLFlagSet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLFlagSet_C(v2, a2, a3, a4);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLBackFaceSet_C(tGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_COLBackFaceSet_C(tGameObjectMain* gao, Vec3* a2)
 {
-    if (a1 && a1->extended && a1->extended->coll)
+    if (gao && gao->extended && gao->extended->coll)
     {
-        if (a1->extended->coll->colInstance)
+        if (gao->extended->coll->colInstance)
         {
-            a1->extended->coll->colInstance->backface = 1;
-            a1->extended->coll->colInstance->backFaceVec = *a2;
+            gao->extended->coll->colInstance->backface = 1;
+            gao->extended->coll->colInstance->backFaceVec = *a2;
         }
     }
 }
 
-tAINode* AI_EvalFunc_COLBackFaceSet(tAINode* a1)
+tAINode* AI_EvalFunc_COLBackFaceSet(tAINode* node)
 {
     tGameObjectMain* v2;
     Vec3 a2;
@@ -2338,15 +2338,15 @@ tAINode* AI_EvalFunc_COLBackFaceSet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLBackFaceSet_C(v2, &a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLGMatReportGet_C(struct sGameObjectMain* a1, int a3)
+int AI_EvalFunc_COLGMatReportGet_C(struct sGameObjectMain* gao, int a3)
 {
-    return COL_Report_ul_GMatReportGet(a1, WOR_gpst_CurrentWorld, a3);
+    return COL_Report_ul_GMatReportGet(gao, WOR_gpst_CurrentWorld, a3);
 }
 
-tAINode* AI_EvalFunc_COLGMatReportGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLGMatReportGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -2358,7 +2358,7 @@ tAINode* AI_EvalFunc_COLGMatReportGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLGMatReportGet_C(v3, a3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 float AI_EvalFunc_BVSizeGet_C(struct sGameObjectMain* arg0)
@@ -2379,7 +2379,7 @@ float AI_EvalFunc_BVSizeGet_C(struct sGameObjectMain* arg0)
     return v6 * 0.5f;
 }
 
-tAINode* AI_EvalFunc_BVSizeGet(tAINode* a1)
+tAINode* AI_EvalFunc_BVSizeGet(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -2389,10 +2389,10 @@ tAINode* AI_EvalFunc_BVSizeGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_BVSizeGet_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_BVRandomPosGet_C(struct sGameObjectMain* a1, int a2, Vec3* a3)
+void AI_EvalFunc_BVRandomPosGet_C(struct sGameObjectMain* gao, int a2, Vec3* a3)
 {
     Mtx4x4* v3;
     tGameObjectBV* v4;
@@ -2418,10 +2418,10 @@ void AI_EvalFunc_BVRandomPosGet_C(struct sGameObjectMain* a1, int a2, Vec3* a3)
     Vec3 v24;
     Vec3 v25;
 
-    if (OBJ_BV_IsAABBox(a1->boundingVolume))
+    if (OBJ_BV_IsAABBox(gao->boundingVolume))
     {
-        MATH_VecAddVec(&a1a, &a1->boundingVolume->BVMax, &a1->matrices->Pos);
-        MATH_VecAddVec(&v24, &a1->boundingVolume->BVMin, &a1->matrices->Pos);
+        MATH_VecAddVec(&a1a, &gao->boundingVolume->BVMax, &gao->matrices->Pos);
+        MATH_VecAddVec(&v24, &gao->boundingVolume->BVMin, &gao->matrices->Pos);
         v20 = a1a.x;
         v19 = v24.x;
         v10 = (float)rand();
@@ -2448,10 +2448,10 @@ void AI_EvalFunc_BVRandomPosGet_C(struct sGameObjectMain* a1, int a2, Vec3* a3)
     }
     else
     {
-        v4 = a1->boundingVolume;
-        v3 = OBJ_pst_GetAbsoluteMatrix(a1);
+        v4 = gao->boundingVolume;
+        v3 = OBJ_pst_GetAbsoluteMatrix(gao);
         MATH_TransformVertexNoScale(&v25, v3, &v4->BVMin);
-        v22 = a1->boundingVolume->BVMax.x;
+        v22 = gao->boundingVolume->BVMax.x;
         a1a.x = v25.x + v22;
         a1a.y = v25.y + v22;
         a1a.z = v25.z + v22;
@@ -2469,7 +2469,7 @@ void AI_EvalFunc_BVRandomPosGet_C(struct sGameObjectMain* a1, int a2, Vec3* a3)
     }
 }
 
-tAINode* AI_EvalFunc_BVRandomPosGet(tAINode* a1)
+tAINode* AI_EvalFunc_BVRandomPosGet(tAINode* node)
 {
     tGameObjectMain* v2;
     int a2;
@@ -2481,14 +2481,14 @@ tAINode* AI_EvalFunc_BVRandomPosGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_BVRandomPosGet_C(v2, a2, &a3);
     AI_PutVecToStack(&a3);
-    return a1 + 1;
+    return node + 1;
 }
 
 
-void AI_EvalFunc_BVMinGet_C(struct sGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_BVMinGet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
-    if (OBJ_BV_IsAABBox(a1->boundingVolume))
-        *a2 = a1->boundingVolume->BVMinOriginal;
+    if (OBJ_BV_IsAABBox(gao->boundingVolume))
+        *a2 = gao->boundingVolume->BVMinOriginal;
     else
         *a2 = MATH_gst_NulVector;
 }
@@ -2508,12 +2508,12 @@ tAINode* AI_EvalFunc_BVMinGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_BVMinSet_C(struct sGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_BVMinSet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
-    if (OBJ_BV_IsAABBox(a1->boundingVolume))
+    if (OBJ_BV_IsAABBox(gao->boundingVolume))
     {
-        a1->boundingVolume->BVMinOriginal = *a2;
-        a1->boundingVolume->BVMin = *a2;
+        gao->boundingVolume->BVMinOriginal = *a2;
+        gao->boundingVolume->BVMin = *a2;
     }
 }
 
@@ -2533,10 +2533,10 @@ tAINode* AI_EvalFunc_BVMinSet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_BVMaxGet_C(struct sGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_BVMaxGet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
-    if (OBJ_BV_IsAABBox(a1->boundingVolume))
-        *a2 = a1->boundingVolume->BVMaxOriginal;
+    if (OBJ_BV_IsAABBox(gao->boundingVolume))
+        *a2 = gao->boundingVolume->BVMaxOriginal;
     else
         *a2 = MATH_gst_NulVector;
 }
@@ -2556,12 +2556,12 @@ tAINode* AI_EvalFunc_BVMaxGet(tAINode* arg0)
     return arg0 + 1;
 }
 
-void AI_EvalFunc_BVMaxSet_C(struct sGameObjectMain* a1, Vec3* a2)
+void AI_EvalFunc_BVMaxSet_C(struct sGameObjectMain* gao, Vec3* a2)
 {
-    if (OBJ_BV_IsAABBox(a1->boundingVolume))
+    if (OBJ_BV_IsAABBox(gao->boundingVolume))
     {
-        a1->boundingVolume->BVMaxOriginal = *a2;
-        a1->boundingVolume->BVMax = *a2;
+        gao->boundingVolume->BVMaxOriginal = *a2;
+        gao->boundingVolume->BVMax = *a2;
     }
 }
 
@@ -2581,7 +2581,7 @@ tAINode* AI_EvalFunc_BVMaxSet(tAINode* arg0)
     return arg0 + 1;
 }
 
-float AI_EvalFunc_BVSizeGetMin_C(tGameObjectMain* a1)
+float AI_EvalFunc_BVSizeGetMin_C(tGameObjectMain* gao)
 {
     tGameObjectBV* v1;
     float a1a;
@@ -2589,9 +2589,9 @@ float AI_EvalFunc_BVSizeGetMin_C(tGameObjectMain* a1)
     float a3;
     float v6;
 
-    if (!OBJ_BV_IsAABBox(a1->boundingVolume))
-        return a1->boundingVolume->BVMax.x;
-    v1 = a1->boundingVolume;
+    if (!OBJ_BV_IsAABBox(gao->boundingVolume))
+        return gao->boundingVolume->BVMax.x;
+    v1 = gao->boundingVolume;
     a3 = v1->BVMax.z - v1->BVMin.z;
     a2 = v1->BVMax.y - v1->BVMin.y;
     a1a = v1->BVMax.x - v1->BVMin.x;
@@ -2599,7 +2599,7 @@ float AI_EvalFunc_BVSizeGetMin_C(tGameObjectMain* a1)
     return v6 * 0.5f;
 }
 
-tAINode* AI_EvalFunc_BVSizeGetMin(tAINode* a1)
+tAINode* AI_EvalFunc_BVSizeGetMin(tAINode* node)
 {
     float v2;
     tGameObjectMain* v3;
@@ -2609,7 +2609,7 @@ tAINode* AI_EvalFunc_BVSizeGetMin(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v2 = AI_EvalFunc_BVSizeGetMin_C(v3);
     AI_PutFloatToStack(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_BVRecompute_C(tGameObjectMain* C)
@@ -2617,7 +2617,7 @@ void AI_EvalFunc_BVRecompute_C(tGameObjectMain* C)
     OBJ_ComputeBV(C, 0);
 }
 
-tAINode* AI_EvalFunc_BVRecompute(tAINode* a1)
+tAINode* AI_EvalFunc_BVRecompute(tAINode* node)
 {
     tGameObjectMain* v2;
 
@@ -2625,24 +2625,24 @@ tAINode* AI_EvalFunc_BVRecompute(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_BVRecompute_C(v2);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLSetActivationSet_C(struct sGameObjectMain* a1, int16_t a2, int16_t a3)
+void AI_EvalFunc_COLSetActivationSet_C(struct sGameObjectMain* gao, int16_t a2, int16_t a3)
 {
     tColInstance* v3;
 
-    if (a1 && a1->extended && a1->extended->coll)
+    if (gao && gao->extended && gao->extended->coll)
     {
-        if (a1->extended->coll->colInstance)
+        if (gao->extended->coll->colInstance)
         {
-            v3 = a1->extended->coll->colInstance;
+            v3 = gao->extended->coll->colInstance;
             v3->activationFlags = a2 | ~a3 & v3->activationFlags;
         }
     }
 }
 
-tAINode* AI_EvalFunc_COLSetActivationSet(tAINode* a1)
+tAINode* AI_EvalFunc_COLSetActivationSet(tAINode* node)
 {
     tGameObjectMain* v2;
     int16_t a3;
@@ -2654,21 +2654,21 @@ tAINode* AI_EvalFunc_COLSetActivationSet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLSetActivationSet_C(v2, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLSetActivationGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_COLSetActivationGet_C(struct sGameObjectMain* gao)
 {
     int result;
 
-    if ((a1->flags & 0x600) != 0)
-        result = a1->extended->coll->colInstance->activationFlags;
+    if ((gao->flags & 0x600) != 0)
+        result = gao->extended->coll->colInstance->activationFlags;
     else
         result = 0;
     return result;
 }
 
-tAINode* AI_EvalFunc_COLSetActivationGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLSetActivationGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -2678,21 +2678,21 @@ tAINode* AI_EvalFunc_COLSetActivationGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLSetActivationGet_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLMapActivationSet_C(struct sGameObjectMain* a1, uint8_t a2, char a3)
+void AI_EvalFunc_COLMapActivationSet_C(struct sGameObjectMain* gao, uint8_t a2, char a3)
 {
     tColMap* v3;
 
-    if (a1 && a1->extended && a1->extended->coll && a1->extended->coll->colMap && (a1->flags & 0x100) != 0)
+    if (gao && gao->extended && gao->extended->coll && gao->extended->coll->colMap && (gao->flags & 0x100) != 0)
     {
-        v3 = a1->extended->coll->colMap;
+        v3 = gao->extended->coll->colMap;
         v3->activation = a2 | ~a3 & v3->activation;
     }
 }
 
-tAINode* AI_EvalFunc_COLMapActivationSet(tAINode* a1)
+tAINode* AI_EvalFunc_COLMapActivationSet(tAINode* node)
 {
     tGameObjectMain* v2;
     char a3;
@@ -2704,21 +2704,21 @@ tAINode* AI_EvalFunc_COLMapActivationSet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLMapActivationSet_C(v2, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_COLMapActivationGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_COLMapActivationGet_C(struct sGameObjectMain* gao)
 {
     int result;
 
-    if ((a1->flags & 0x100) != 0)
-        result = a1->extended->coll->colMap->activation;
+    if ((gao->flags & 0x100) != 0)
+        result = gao->extended->coll->colMap->activation;
     else
         result = 0;
     return result;
 }
 
-tAINode* AI_EvalFunc_COLMapActivationGet(tAINode* a1)
+tAINode* AI_EvalFunc_COLMapActivationGet(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -2728,19 +2728,19 @@ tAINode* AI_EvalFunc_COLMapActivationGet(tAINode* a1)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     v1 = AI_EvalFunc_COLMapActivationGet_C(v3);
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLLODSet_C(struct sGameObjectMain* a1, char a2, char a3)
+void AI_EvalFunc_COLLODSet_C(struct sGameObjectMain* gao, char a2, char a3)
 {
-    if ((a1->flags & 0x600) != 0)
+    if ((gao->flags & 0x600) != 0)
     {
-        a1->extended->coll->colInstance->minLod = a3;
-        a1->extended->coll->colInstance->maxLod = a2;
+        gao->extended->coll->colInstance->minLod = a3;
+        gao->extended->coll->colInstance->maxLod = a2;
     }
 }
 
-tAINode* AI_EvalFunc_COLLODSet(tAINode* a1)
+tAINode* AI_EvalFunc_COLLODSet(tAINode* node)
 {
     tGameObjectMain* v2;
     char a2;
@@ -2752,16 +2752,16 @@ tAINode* AI_EvalFunc_COLLODSet(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLLODSet_C(v2, a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_COLWallPush_C(tGameObjectMain* a1, int a2)
+void AI_EvalFunc_COLWallPush_C(tGameObjectMain* gao, int a2)
 {
-    if ((a1->flags & 0x600) != 0)
-        a1->extended->coll->colInstance->wallPush = a2 != 0;
+    if ((gao->flags & 0x600) != 0)
+        gao->extended->coll->colInstance->wallPush = a2 != 0;
 }
 
-tAINode* AI_EvalFunc_COLWallPush(tAINode* a1)
+tAINode* AI_EvalFunc_COLWallPush(tAINode* node)
 {
     int v1;
     tGameObjectMain* v3;
@@ -2771,5 +2771,5 @@ tAINode* AI_EvalFunc_COLWallPush(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_EvalFunc_COLWallPush_C(v3, v1);
-    return a1 + 1;
+    return node + 1;
 }
