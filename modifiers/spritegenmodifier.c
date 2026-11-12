@@ -11,13 +11,9 @@ void SPG_Modifier_Unapply(tModifier* mdf, tGEOGRO* geogro)
     int i, j;
     unsigned int k, l;
     float specialFogFarCorrected;
-    unsigned int v34;
-    tGeoSprites* v35;
-    unsigned int v36;
-    int v37;
+    unsigned int remainder;
     Vec3* verticesCurrentBackup;
-    int v39;
-    int v40;
+    int spriteTotal;
     unsigned int colors[3];
     tSpgTrisToSpritesStruct ttspr;
     Vec3 point1;
@@ -205,37 +201,25 @@ void SPG_Modifier_Unapply(tModifier* mdf, tGEOGRO* geogro)
         }
         if (gvBase)
         {
-            v34 = gvBase & 3;
-            SPG_stIndxSp[0].num = gvBase >> 2;
-            SPG_stIndxSp[1].num = gvBase >> 2;
-            SPG_stIndxSp[2].num = gvBase >> 2;
-            SPG_stIndxSp[3].num = gvBase >> 2;
-            if ((gvBase & 3) != 0)
-            {
-                v35 = &SPG_stIndxSp[v34];
-                v36 = gvBase & 3;
-                do
-                {
-                    v37 = v35[-1].num;
-                    --v35;
-                    --v34;
-                    --v36;
-                    v35->num = v37 + 1;
-                } while (v36);
-            }
+            remainder = gvBase & 3;
+            for (i = 0; i < 4; i++)
+                SPG_stIndxSp[i].num = gvBase >> 2;
+            for (i = 0; i < (int)remainder; i++)
+                SPG_stIndxSp[i].num++;
+
             verticesCurrentBackup = gpst_DX_stDD->verticesCurrent;
 
-            gvBase = v34 - 1;
+            gvBase = (unsigned int)-1;
             gpst_DX_stDD->verticesCurrent = SPG_gvCurrentStack;
 
-            v39 = SPG_stIndxSp[0].num + SPG_stIndxSp[3].num + SPG_stIndxSp[1].num + SPG_stIndxSp[2].num;
+            spriteTotal = SPG_stIndxSp[0].num + SPG_stIndxSp[3].num
+                        + SPG_stIndxSp[1].num + SPG_stIndxSp[2].num;
             if (SPG_gs_SpecialFogCOLOR)
             {
-                v40 = SPG_stIndxSp[0].num + SPG_stIndxSp[3].num + SPG_stIndxSp[1].num + SPG_stIndxSp[2].num;
                 if ((SPG_gs_SpecialFogCOLOR & 0x100) != 0)
-                    SPG_ComputeSpriteFog_Cull(SPG_gvStack, &SPG_gvCOLORStack[-v39], v40);
+                    SPG_ComputeSpriteFog_Cull(SPG_gvStack, &SPG_gvCOLORStack[-spriteTotal], spriteTotal);
                 else
-                    SPG_ComputeSpriteFog(SPG_gvStack, &SPG_gvCOLORStack[-v39], v40);
+                    SPG_ComputeSpriteFog(SPG_gvStack, &SPG_gvCOLORStack[-spriteTotal], spriteTotal);
             }
             if (SPG_stIndxSp[0].num)
                 MAT_DrawIndexedSprites(pst_CurrentObj, pst_CurrentMat, &SPG_stIndxSp[0]);
@@ -286,7 +270,7 @@ void SPG_InitModifier(tSpgMdfStruct* mdf)
     mdf->flags = 1;
 }
 
-void SPG_Modifier_Create(struct sGameObjectMain* a1, struct sModifier* mdf, void* modifierDataToBeSet)
+void SPG_Modifier_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* modifierDataToBeSet)
 {
     int i;
 
@@ -382,5 +366,6 @@ int SPG_ul_Modifier_Load(struct sModifier* mdf, char* readptr)
     return currReadPtr - readptr;
 }
 
-void SPG_Modifier_Apply(tModifier* a1, tGEOGRO* a2) {
+void SPG_Modifier_Apply(tModifier* mdf, tGEOGRO* geogro)
+{
 }
