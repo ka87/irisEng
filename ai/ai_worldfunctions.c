@@ -5,6 +5,36 @@
 #include "../textures.h"
 #include "ai_worldfunctions.h"
 
+// Scripts name a world by its index in the universe table.
+static tWorld* AI_l_UniverseWorld(int worldIndex)
+{
+    tableElemStructPF* table;
+
+    table = (tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr);
+    return (tWorld*)table[worldIndex].objectPtr;
+}
+
+static tableElemStructPF* AI_l_UniverseEntry(int worldIndex)
+{
+    return &((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[worldIndex];
+}
+
+// A table entry is in use when it has a pointer and its low two bits
+// do not carry the free tag 01.
+static BOOL AI_l_EntryInUse(tableElemStructPF* entry)
+{
+    return entry->objectPtr && ((uintptr_t)entry->objectPtr & 3) != 1;
+}
+
+static void AI_l_MakeWorldObjectsVisible(tWorld* world)
+{
+    int i;
+
+    for (i = 0; i < world->viewNum; ++i)
+        world->viewPtr[i].flags |= 2u;
+    WOR_World_MakeObjectsVisible(world);
+}
+
 int AI_EvalFunc_WORLoaded_C()
 {
     return 1;
@@ -32,68 +62,68 @@ int AI_EvalFunc_WORUniverseAdd_C(int worldKey)
 tAINode* AI_EvalFunc_WORUniverseAdd(tAINode* node)
 {
     int worldKey;
-    int worldIndex;
 
     worldKey = AI_GetIntFromStack();
-    worldIndex = AI_EvalFunc_WORUniverseAdd_C(worldKey);
-    AI_PutIntToStack(worldIndex);
+    AI_PutIntToStack(AI_EvalFunc_WORUniverseAdd_C(worldKey));
     return node + 1;
 }
 
-void AI_EvalFunc_WORActive_C(int a1)
+void AI_EvalFunc_WORActive_C(int worldIndex)
 {
-    ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectFlags |= 1u;
-    MAI_gst_MainHandles.currentWorld = WOR_pst_Universe_GetActiveWorld(a1);
+    AI_l_UniverseEntry(worldIndex)->objectFlags |= 1u;
+    MAI_gst_MainHandles.currentWorld = WOR_pst_Universe_GetActiveWorld(worldIndex);
 }
 
 tAINode* AI_EvalFunc_WORActive(tAINode* node)
 {
-    int v1;
+    int worldIndex;
 
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_WORActive_C(v1);
+    worldIndex = AI_GetIntFromStack();
+    AI_EvalFunc_WORActive_C(worldIndex);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_WORDesactive(tAINode* node)
 {
-    int v2;
+    int worldIndex;
 
-    v2 = AI_GetIntFromStack();
-    ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[v2].objectFlags &= ~1u;
+    worldIndex = AI_GetIntFromStack();
+    AI_l_UniverseEntry(worldIndex)->objectFlags &= ~1u;
     return node + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_WORGetObject_C(int a1, int a2)
+tGameObjectMain* AI_EvalFunc_WORGetObject_C(int worldIndex, int objectIndex)
 {
-    return (tGameObjectMain*)((tableElemStructPF*)(((tWorld*)(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr))->objectTablePF.firstElemPtr))[a2].objectPtr;
+    tableElemStructPF* objects;
+
+    objects = (tableElemStructPF*)(AI_l_UniverseWorld(worldIndex)->objectTablePF.firstElemPtr);
+    return (tGameObjectMain*)objects[objectIndex].objectPtr;
 }
 
 tAINode* AI_EvalFunc_WORGetObject(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v2;
-    int v4;
+    int worldIndex;
+    int objectIndex;
 
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_WORGetObject_C(v1, v4);
-    AI_PutIntToStack((int)v2);
+    objectIndex = AI_GetIntFromStack();
+    worldIndex = AI_GetIntFromStack();
+    AI_PutIntToStack((int)AI_EvalFunc_WORGetObject_C(worldIndex, objectIndex));
     return node + 1;
 }
 
-void AI_EvalFunc_WORUniverseDestroy_C(int a1)
+void AI_EvalFunc_WORUniverseDestroy_C(int worldIndex)
 {
-    WOR_Universe_DeleteWorld((tWorld*)((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr);
+    WOR_Universe_DeleteWorld(AI_l_UniverseWorld(worldIndex));
 }
 
 tAINode* AI_EvalFunc_WORUniverseDestroy(tAINode* node)
 {
-    int v1;
+    int worldIndex;
 
+    // the builtin takes two arguments and uses only the second
     AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_WORUniverseDestroy_C(v1);
+    worldIndex = AI_GetIntFromStack();
+    AI_EvalFunc_WORUniverseDestroy_C(worldIndex);
     return node + 1;
 }
 
@@ -111,31 +141,23 @@ int AI_EvalFunc_WORLoadList_C(int worldKey)
 tAINode* AI_EvalFunc_WORLoadList(tAINode* node)
 {
     int worldKey;
-    int worldIndex;
 
     worldKey = AI_GetIntFromStack();
-    worldIndex = AI_EvalFunc_WORLoadList_C(worldKey);
-    AI_PutIntToStack(worldIndex);
+    AI_PutIntToStack(AI_EvalFunc_WORLoadList_C(worldKey));
     return node + 1;
 }
 
-void AI_EvalFunc_WORRefreshVisible_C(int arg0)
+void AI_EvalFunc_WORRefreshVisible_C(int worldIndex)
 {
-    tWorld* a1;
-    int i;
-
-    a1 = (tWorld*)((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[arg0].objectPtr;
-    for (i = 0; i < a1->viewNum; ++i)
-        a1->viewPtr[i].flags |= 2u;
-    WOR_World_MakeObjectsVisible(a1);
+    AI_l_MakeWorldObjectsVisible(AI_l_UniverseWorld(worldIndex));
 }
 
 tAINode* AI_EvalFunc_WORRefreshVisible(tAINode* node)
 {
-    int v1;
+    int worldIndex;
 
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_WORRefreshVisible_C(v1);
+    worldIndex = AI_GetIntFromStack();
+    AI_EvalFunc_WORRefreshVisible_C(worldIndex);
     return node + 1;
 }
 
@@ -145,193 +167,177 @@ int AI_EvalFunc_WORReinit_C()
     return 3;
 }
 
-tAINode* AI_EvalFunc_WORReinit(tAINode* param1)
+// Three and one are interpreter control codes, not nodes: these two
+// builtins end the current evaluation rather than carrying on.
+tAINode* AI_EvalFunc_WORReinit(tAINode* node)
 {
     return (tAINode*)AI_EvalFunc_WORReinit_C();
 }
 
-void AI_EvalFunc_WORPause_C(int a1, int a2)
+void AI_EvalFunc_WORPause_C(int worldIndex, int flagMask)
 {
-    BOOL v2;
-    tableElemStructPF* v3;
-    tWorld* v4;
-    tableElemStructPF* v5;
+    tWorld* world;
+    tableElemStructPF* entry;
+    tableElemStructPF* end;
+    tGameObjectMain* gao;
 
-    v4 = (tWorld*)((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr;
-    v5 = v4->activatedObjectsTable4PF.firstElemPtr;
-    v3 = v4->activatedObjectsTable4PF.nextElemPtr;
-    while (v5 < v3)
+    world = AI_l_UniverseWorld(worldIndex);
+    end = world->activatedObjectsTable4PF.nextElemPtr;
+    for (entry = world->activatedObjectsTable4PF.firstElemPtr; entry < end; ++entry)
     {
-        v2 = !v5->objectPtr || ((int)v5->objectPtr & 3) == 1;
-        if (!v2 && (a2 & ((tGameObjectMain*)(v5->objectPtr))->flags) != 0 && (((tGameObjectMain*)(v5->objectPtr))->flags2 & 0x8000000) == 0)
-            ((tGameObjectMain*)(v5->objectPtr))->flags2 |= 0x4000000u;
-        ++v5;
+        if (!AI_l_EntryInUse(entry))
+            continue;
+
+        gao = (tGameObjectMain*)(entry->objectPtr);
+        if ((flagMask & gao->flags) != 0 && (gao->flags2 & 0x8000000) == 0)
+            gao->flags2 |= 0x4000000u;
     }
-    v4->tablesManagerAndEOTNeeded = 1;
-    v4->visibilityCallNeeded = 1;
-    v4->SnPRefreshNeeded = TRUE;
+    world->tablesManagerAndEOTNeeded = 1;
+    world->visibilityCallNeeded = 1;
+    world->SnPRefreshNeeded = TRUE;
 }
 
 tAINode* AI_EvalFunc_WORPause(tAINode* node)
 {
-    int v1;
-    int a2;
+    int worldIndex;
+    int flagMask;
 
-    a2 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_WORPause_C(v1, a2);
+    flagMask = AI_GetIntFromStack();
+    worldIndex = AI_GetIntFromStack();
+    AI_EvalFunc_WORPause_C(worldIndex, flagMask);
     return node + 1;
 }
 
-void AI_EvalFunc_WORUnPause_C(int a1, int a2)
+void AI_EvalFunc_WORUnPause_C(int worldIndex, int flagMask)
 {
-    tableElemStructPF* v3;
-    tWorld* v4;
-    tableElemStructPF* v5;
-        
-    v4 = (tWorld*)((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr;
-    v5 = v4->objectTablePF.firstElemPtr;
-    v3 = v4->objectTablePF.nextElemPtr;
-    while (v5 < v3)
+    tWorld* world;
+    tableElemStructPF* entry;
+    tableElemStructPF* end;
+    tGameObjectMain* gao;
+
+    world = AI_l_UniverseWorld(worldIndex);
+    end = world->objectTablePF.nextElemPtr;
+    for (entry = world->objectTablePF.firstElemPtr; entry < end; ++entry)
     {
-        if (v5->objectPtr && ((int)v5->objectPtr & 3) != 1)
-        {
-            if ((a2 & ((tGameObjectMain*)(v5->objectPtr))->flags) != 0)
-                ((tGameObjectMain*)(v5->objectPtr))->flags2 &= ~0x4000000u;
-            if ((((tGameObjectMain*)(v5->objectPtr))->flags2 & 0x400000) == 0)
-                ((tGameObjectMain*)(v5->objectPtr))->flags2 |= 1u;
-        }
-        ++v5;
+        if (!AI_l_EntryInUse(entry))
+            continue;
+
+        gao = (tGameObjectMain*)(entry->objectPtr);
+        if ((flagMask & gao->flags) != 0)
+            gao->flags2 &= ~0x4000000u;
+        if ((gao->flags2 & 0x400000) == 0)
+            gao->flags2 |= 1u;
     }
-    v4->tablesManagerAndEOTNeeded = 1;
-    v4->visibilityCallNeeded = 1;
-    v4->SnPRefreshNeeded = TRUE;
+    world->tablesManagerAndEOTNeeded = 1;
+    world->visibilityCallNeeded = 1;
+    world->SnPRefreshNeeded = TRUE;
 }
 
 tAINode* AI_EvalFunc_WORUnPause(tAINode* node)
 {
-    int v1;
-    int a2;
+    int worldIndex;
+    int flagMask;
 
-    a2 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_WORUnPause_C(v1, a2);
+    flagMask = AI_GetIntFromStack();
+    worldIndex = AI_GetIntFromStack();
+    AI_EvalFunc_WORUnPause_C(worldIndex, flagMask);
     return node + 1;
 }
 
+// The index of the current world, or the table's length when it is not
+// in the table at all.
 int AI_EvalFunc_WORCurIndexGet_C()
 {
-    int v1;
-    tableElemStructPF* v2;
+    tableElemStructPF* entry;
+    int worldIndex;
 
-    v2 = WOR_gst_Universe.univWorldTablePF.firstElemPtr;
-    v1 = 0;
-    while ((void*)v2 < WOR_gst_Universe.univWorldTablePF.nextElemPtr && (tWorld*)(v2->objectPtr) != WOR_gpst_CurrentWorld)
+    entry = WOR_gst_Universe.univWorldTablePF.firstElemPtr;
+    worldIndex = 0;
+    while ((void*)entry < WOR_gst_Universe.univWorldTablePF.nextElemPtr
+           && (tWorld*)(entry->objectPtr) != WOR_gpst_CurrentWorld)
     {
-        ++v1;
-        ++v2;
+        ++worldIndex;
+        ++entry;
     }
-    return v1;
+    return worldIndex;
 }
 
 tAINode* AI_EvalFunc_WORCurIndexGet(tAINode* node)
 {
-    int v1;
-
-    v1 = AI_EvalFunc_WORCurIndexGet_C();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_WORCurIndexGet_C());
     return node + 1;
 }
 
-void AI_EvalFunc_WORColorAmbiantSet_C(int a1, int a2)
+void AI_EvalFunc_WORColorAmbiantSet_C(int worldIndex, int color)
 {
-    tWorld* result;
-
-    result = (tWorld*)((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr;
-    result->ambientColor1 = a2;
+    AI_l_UniverseWorld(worldIndex)->ambientColor1 = color;
 }
 
 tAINode* AI_EvalFunc_WORColorAmbiantSet(tAINode* node)
 {
-    int v1;
-    int v3;
+    int worldIndex;
+    int color;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_WORColorAmbiantSet_C(v1, v3);
+    color = AI_GetIntFromStack();
+    worldIndex = AI_GetIntFromStack();
+    AI_EvalFunc_WORColorAmbiantSet_C(worldIndex, color);
     return node + 1;
 }
 
-int AI_EvalFunc_WORColorAmbiantGet_C(int a1)
+int AI_EvalFunc_WORColorAmbiantGet_C(int worldIndex)
 {
-    return ((tWorld*)(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr))->ambientColor1;
+    return AI_l_UniverseWorld(worldIndex)->ambientColor1;
 }
 
 tAINode* AI_EvalFunc_WORColorAmbiantGet(tAINode* node)
 {
-    int v1;
-    int v3;
+    int worldIndex;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_WORColorAmbiantGet_C(v3);
-    AI_PutIntToStack(v1);
+    worldIndex = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_WORColorAmbiantGet_C(worldIndex));
     return node + 1;
 }
 
-void AI_EvalFunc_WORColorBackSet_C(int a1, int a2)
+void AI_EvalFunc_WORColorBackSet_C(int worldIndex, int color)
 {
-    tWorld* result;
-
-    result = (tWorld*)((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr;
-    result->clearColor = a2;
+    AI_l_UniverseWorld(worldIndex)->clearColor = color;
 }
 
 tAINode* AI_EvalFunc_WORColorBackSet(tAINode* node)
 {
-    int v1;
-    int v3;
+    int worldIndex;
+    int color;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_WORColorBackSet_C(v1, v3);
+    color = AI_GetIntFromStack();
+    worldIndex = AI_GetIntFromStack();
+    AI_EvalFunc_WORColorBackSet_C(worldIndex, color);
     return node + 1;
 }
 
-int AI_EvalFunc_WORColorBackGet_C(int a1)
+int AI_EvalFunc_WORColorBackGet_C(int worldIndex)
 {
-    return ((tWorld*)(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr))->clearColor;
+    return AI_l_UniverseWorld(worldIndex)->clearColor;
 }
 
 tAINode* AI_EvalFunc_WORColorBackGet(tAINode* node)
 {
-    int v1;
-    int v3;
+    int worldIndex;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_WORColorBackGet_C(v3);
-    AI_PutIntToStack(v1);
+    worldIndex = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_WORColorBackGet_C(worldIndex));
     return node + 1;
 }
 
 void AI_EvalFunc_WORRefreshVisibleOfActor_C()
 {
-    tWorld* a1;
-    int i;
-
-    a1 = WOR_gpst_CurrentWorld;
-    for (i = 0; i < a1->viewNum; ++i)
-        a1->viewPtr[i].flags |= 2u;
-    WOR_World_MakeObjectsVisible(a1);
+    AI_l_MakeWorldObjectsVisible(WOR_gpst_CurrentWorld);
 }
 
 tAINode* AI_EvalFunc_WORRefreshVisibleOfActor(tAINode* node)
 {
-    tGameObjectMain* v2;
-
-    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_WORRefreshVisibleOfActor_C(v2);
+    AI_EvalFunc_WORRefreshVisibleOfActor_C();
     return node + 1;
 }
 
@@ -342,76 +348,69 @@ int AI_EvalFunc_WORPlayAbsTime_C(float specTime, float specDT)
     return 1;
 }
 
-tAINode* AI_EvalFunc_WORPlayAbsTime(tAINode* param1)
+tAINode* AI_EvalFunc_WORPlayAbsTime(tAINode* node)
 {
-    ENG_gf_SpecialDT = AI_GetFloatFromStack();
-    ENG_gf_SpecialTime = AI_GetFloatFromStack();
-    return (tAINode*)1;
+    float specTime;
+    float specDT;
+
+    specDT = AI_GetFloatFromStack();
+    specTime = AI_GetFloatFromStack();
+    return (tAINode*)AI_EvalFunc_WORPlayAbsTime_C(specTime, specDT);
 }
 
 tAINode* AI_EvalFunc_WORIsPlayAbs(tAINode* node)
 {
-    if (ENG_gf_SpecialTime == 0.0f)
-        AI_PutIntToStack(0);
-    else
-        AI_PutIntToStack(1);
+    AI_PutIntToStack(ENG_gf_SpecialTime != 0.0f);
     return node + 1;
 }
 
-void AI_EvalFunc_WORColorAmbiant2Set_C(int a1, int a2)
+void AI_EvalFunc_WORColorAmbiant2Set_C(int worldIndex, int color)
 {
-    tWorld* result;
-
-    result = (tWorld*)((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr;
-    result->ambientColor2 = a2;
+    AI_l_UniverseWorld(worldIndex)->ambientColor2 = color;
 }
 
 tAINode* AI_EvalFunc_WORColorAmbiant2Set(tAINode* node)
 {
-    int v1;
-    int v3;
+    int worldIndex;
+    int color;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_WORColorAmbiant2Set_C(v1, v3);
+    color = AI_GetIntFromStack();
+    worldIndex = AI_GetIntFromStack();
+    AI_EvalFunc_WORColorAmbiant2Set_C(worldIndex, color);
     return node + 1;
 }
 
-int AI_EvalFunc_WORColorAmbiant2Get_C(int a1)
+int AI_EvalFunc_WORColorAmbiant2Get_C(int worldIndex)
 {
-    return ((tWorld*)(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr))[a1].objectPtr))->ambientColor2;
+    return AI_l_UniverseWorld(worldIndex)->ambientColor2;
 }
 
 tAINode* AI_EvalFunc_WORColorAmbiant2Get(tAINode* node)
 {
-    int v1;
-    int v3;
+    int worldIndex;
 
-    v3 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_WORColorAmbiant2Get_C(v3);
-    AI_PutIntToStack(v1);
+    worldIndex = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_WORColorAmbiant2Get_C(worldIndex));
     return node + 1;
 }
 
-void AI_EvalFunc_WORRegisterES_C(int a1, struct sGameObjectMain* a2)
+void AI_EvalFunc_WORRegisterES_C(int id, struct sGameObjectMain* gao)
 {
     if (gi_NumES < 100)
     {
-        gap_ES[gi_NumES] = a2;
-        gau_ES[gi_NumES++] = a1;
+        gap_ES[gi_NumES] = gao;
+        gau_ES[gi_NumES++] = id;
     }
 }
 
 tAINode* AI_EvalFunc_WORRegisterES(tAINode* node)
 {
-    int v2;
-    tGameObjectMain* a2;
+    tGameObjectMain* gao;
+    int id;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    v2 = AI_GetIntFromStack();
-    AI_EvalFunc_WORRegisterES_C(v2, a2);
+    gao = (tGameObjectMain*)AI_GetObjectFromStack();
+    id = AI_GetIntFromStack();
+    AI_EvalFunc_WORRegisterES_C(id, gao);
     return node + 1;
 }
 
@@ -422,73 +421,73 @@ int AI_EvalFunc_WORGetKey_C()
 
 tAINode* AI_EvalFunc_WORGetKey(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-
-    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_WORGetKey_C(v3);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_WORGetKey_C());
     return node + 1;
 }
 
-void AI_EvalFunc_WORCheckSetOrder_C(tWorld* a1, tWorld* a2)
+// Moves first in front of second in the current world's object table,
+// which is the order they are drawn in. Nothing happens when first is
+// already the earlier of the two.
+void AI_EvalFunc_WORCheckSetOrder_C(tWorld* first, tWorld* second)
 {
-    int v3;
-    int v4;
-    int v5;
-    int v6;
-    tableElemStructPF* i;
-    tWorld* v8;
-    tWorld* v9;
+    tWorld* world;
+    tableElemStructPF* table;
+    tableElemStructPF* entry;
+    tableElemStructPF* end;
+    tableElemStructPF* moved;
+    int firstIndex;
+    int secondIndex;
+    int flags;
+    int index;
 
-    if (a1 && a2 && a1 != a2)
+    if (!first || !second || first == second)
+        return;
+
+    world = WOR_gpst_CurrentWorld;
+    table = (tableElemStructPF*)(world->objectTablePF.firstElemPtr);
+    end = (tableElemStructPF*)(world->objectTablePF.nextElemPtr);
+
+    firstIndex = -1;
+    secondIndex = -1;
+    index = 0;
+    for (entry = world->objectTablePF.firstElemPtr; entry < end; ++entry)
     {
-        v8 = WOR_gpst_CurrentWorld;
-        v3 = -1;
-        v6 = -1;
-        v5 = 0;
-        for (i = WOR_gpst_CurrentWorld->objectTablePF.firstElemPtr;
-            i <= &(((tableElemStructPF*)(WOR_gpst_CurrentWorld->objectTablePF.nextElemPtr))[-1]);
-            ++i)
+        if (!AI_l_EntryInUse(entry))
+            continue;
+
+        if ((tWorld*)(entry->objectPtr) == first)
         {
-            v9 = (tWorld*)(i->objectPtr);
-            if (i->objectPtr && ((int)i->objectPtr & 3) != 1)
-            {
-                if (v9 == a1)
-                {
-                    if (v6 == -1)
-                        return;
-                    v3 = v5;
-                }
-                if (v9 == a2)
-                    v6 = v5;
-                ++v5;
-            }
+            if (secondIndex == -1)
+                return;
+            firstIndex = index;
         }
-        if (v3 != -1 && v6 != -1)
-        {
-            v4 = ((tableElemStructPF*)(WOR_gpst_CurrentWorld->objectTablePF.firstElemPtr))[v3].objectFlags;
-            ((tableElemStructPF*)(WOR_gpst_CurrentWorld->objectTablePF.firstElemPtr))[v3] = ((tableElemStructPF*)(WOR_gpst_CurrentWorld->objectTablePF.firstElemPtr))[v6];
-            ((tableElemStructPF*)(v8->objectTablePF.firstElemPtr))[v6].objectPtr = (void*)a1;
-            ((tableElemStructPF*)(v8->objectTablePF.firstElemPtr))[v6].objectFlags = v4;
-        }
-        v8->visibilityCallNeeded = 1;
+        if ((tWorld*)(entry->objectPtr) == second)
+            secondIndex = index;
+        ++index;
     }
+
+    if (firstIndex != -1 && secondIndex != -1)
+    {
+        moved = &table[secondIndex];
+        flags = table[firstIndex].objectFlags;
+        table[firstIndex] = *moved;
+        moved->objectPtr = (void*)first;
+        moved->objectFlags = flags;
+    }
+    world->visibilityCallNeeded = 1;
 }
 
 tAINode* AI_EvalFunc_WORCheckSetOrder(tAINode* node)
 {
-    tWorld* a2;
+    tWorld* first;
+    tWorld* second;
 
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a2 = *(tWorld**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_WORCheckSetOrder_C(*(tWorld**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2);
+    second = (tWorld*)AI_GetObjectFromStack();
+    first = (tWorld*)AI_GetObjectFromStack();
+    AI_EvalFunc_WORCheckSetOrder_C(first, second);
     return node + 1;
 }
