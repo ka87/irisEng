@@ -2,264 +2,187 @@
 #include "../time.h"
 #include "gfxtable.h"
 
-int GFX_i_Table_Render(struct sGfxTableData* a1)
+int GFX_i_Table_Render(struct sGfxTableData* table)
 {
-    int v2;
-    int v3;
-    tGdi_DisplayData* v4;
-    tGEOGRO* v5;
-    Vec3* v6;
-    tGeoTriangleChunkElem* v7;
-    int* vertexcolorPtr;
-    double v9;
-    int v10;
-    double v11;
-    double v12;
-    double v13;
-    int v14;
-    int v15;
-    tGeoTriangleChunkElem* v16;
-    Vec3* v17;
-    double v18;
-    double v19;
-    double v20;
-    double v21;
-    double v22;
-    Vec3* v23; 
-    Vec3* v24; 
-    int v25; 
-    float* v27;
-    float* v28;
-    char* v29;
-    int v30; 
-    float v31;
-    float v32;
-    int v33;
-    Vec3 a2;
-    float v35;
-    int v36;
+    tGeoTriangleChunkElem* tris;
+    tGeoUVElem* uvs;
+    Vec3* verts;
+    Vec3 screenPos;
+    int* colors;
+    double x;
+    double y;
+    double xLeft;
+    float camWidth;
+    float camHeight;
+    float yTop;
+    int color;
+    int baseVertex;
+    int cells;
+    int row;
+    int col;
+    int i;
 
-    v2 = a1->num2 * a1->num1;
-    if (v2)
+    cells = table->num2 * table->num1;
+    if (!cells)
+        return 1;
+
+    GFX_NeedGeom(4 * cells, 4u, 2 * cells, 1);
+    uvs = GFX_gpst_Geo->UVs;
+    uvs[0].u = 0.0;
+    uvs[0].v = 0.0;
+    uvs[1].u = 1.0;
+    uvs[1].v = 0.0;
+    uvs[2].u = 1.0;
+    uvs[2].v = 1.0;
+    uvs[3].u = 0.0;
+    uvs[3].v = 1.0;
+
+    camWidth = gpst_DX_stDD->ct.cam.width;
+    camHeight = gpst_DX_stDD->ct.cam.height;
+    verts = GFX_gpst_Geo->vertices;
+    tris = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+    colors = GFX_gpst_Geo->vertexColors + 1;
+    baseVertex = 0;
+
+    y = table->ff2 * -camHeight + camHeight;
+    for (row = 0; row < table->num1; row++)
     {
-        v3 = 4 * v2;
-        v33 = 4 * v2;
-        GFX_NeedGeom(4 * v2, 4u, 2 * v2, 1);
-        GFX_gpst_Geo->UVs->u = 0.0;
-        GFX_gpst_Geo->UVs->v = 0.0;
-        GFX_gpst_Geo->UVs[1].u = 1.0;
-        GFX_gpst_Geo->UVs[1].v = 0.0;
-        GFX_gpst_Geo->UVs[2].u = 1.0;
-        GFX_gpst_Geo->UVs[2].v = 1.0;
-        GFX_gpst_Geo->UVs[3].u = 0.0;
-        GFX_gpst_Geo->UVs[3].v = 1.0;
-        v4 = gpst_DX_stDD;
-        v35 = gpst_DX_stDD->ct.cam.height;
-        v31 = gpst_DX_stDD->ct.cam.width;
-        v5 = GFX_gpst_Geo;
-        v6 = GFX_gpst_Geo->vertices;
-        v7 = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
-        vertexcolorPtr = GFX_gpst_Geo->vertexColors + 1;
-        v9 = a1->ff2 * -v35 + v35;
-        v30 = 0;
-        if (a1->num1 > 0)
+        yTop = (float)y;
+        y = y + -camHeight * table->f[row];
+        x = camWidth * table->ff1;
+        for (col = 0; col < table->num2; col++)
         {
-            v10 = a1->num2;
-            v11 = -v35;
-            v29 = a1->vertexColorIndexes;
-            v28 = a1->f;
-            do
-            {
-                v32 = (float)v9;
-                v36 = 0;
-                v9 = v9 + v11 * *v28;
-                v12 = v31 * a1->ff1;
-                if (v10 > 0)
-                {
-                    v27 = a1->f2;
-                    do
-                    {
-                        v13 = v12;
-                        v14 = a1->colors[v29[v36]];
-                        v12 = v12 + v31 * *v27;
-                        v15 = (char*)v6 - (char*)v5->vertices;
-                        v7->uv1 = 0;
-                        v7->uv2 = 1;
-                        v7->uv3 = 2;
-                        v15 = (int16_t)v15 / sizeof(Vec3);
-                        v7->v1 = v15;
-                        v7->v2 = v15 + 1;
-                        v7->v3 = v15 + 2;
-                        v7[1].v1 = v15 + 2;
-                        v7[1].v3 = v15;
-                        v7[1].uv1 = 2;
-                        v7[1].uv2 = 3;
-                        v7[1].uv3 = 0;
-                        v16 = v7 + 1;
-                        v16->v2 = v15 + 3;
-                        v17 = v6 + 1;
-                        v18 = a1->ff3;
-                        v17[-1].y = v32;
-                        v17[-1].x = (float)v13;
-                        ++v17;
-                        v17[-2].z = (float)v18;
-                        ++v17;
-                        v19 = a1->ff3;
-                        v17[-2].y = v32;
-                        v17[-2].x = (float)v12;
-                        v17[-2].z = (float)v19;
-                        v20 = a1->ff3;
-                        ++v27;
-                        v17[-1].x = (float)v12;
-                        v7 = v16 + 1;
-                        v6 = v17 + 1;
-                        v6[-2].y = (float)v9;
-                        v6[-2].z = (float)v20;
-                        ++v36;
-                        v21 = v13;
-                        v22 = a1->ff3;
-                        v6[-1].x = (float)v21;
-                        v6[-1].y = (float)v9;
-                        v6[-1].z = (float)v22;
-                        *(vertexcolorPtr - 0) = v14;
-                        *(vertexcolorPtr - 1) = v14;
-                        *(vertexcolorPtr - 2) = v14;
-                        *(vertexcolorPtr - 3) = v14;
-                        vertexcolorPtr += 4;
-                        v10 = a1->num2;
-                        v5 = GFX_gpst_Geo;
-                    } while (v36 < v10);
-                }
-                ++v30;
-                ++v28;
-                v29 += 10;
-            } while (v30 < a1->num1);
-            v4 = gpst_DX_stDD;
-            v3 = v33;
+            xLeft = x;
+            color = table->colors[table->vertexColorIndexes[10 * row + col]];
+            x = x + camWidth * table->f2[col];
+
+            tris[0].v1 = baseVertex;
+            tris[0].v2 = baseVertex + 1;
+            tris[0].v3 = baseVertex + 2;
+            tris[0].uv1 = 0;
+            tris[0].uv2 = 1;
+            tris[0].uv3 = 2;
+            tris[1].v1 = baseVertex + 2;
+            tris[1].v2 = baseVertex + 3;
+            tris[1].v3 = baseVertex;
+            tris[1].uv1 = 2;
+            tris[1].uv2 = 3;
+            tris[1].uv3 = 0;
+
+            verts[0].x = (float)xLeft;
+            verts[0].y = yTop;
+            verts[0].z = table->ff3;
+            verts[1].x = (float)x;
+            verts[1].y = yTop;
+            verts[1].z = table->ff3;
+            verts[2].x = (float)x;
+            verts[2].y = (float)y;
+            verts[2].z = table->ff3;
+            verts[3].x = (float)xLeft;
+            verts[3].y = (float)y;
+            verts[3].z = table->ff3;
+
+            colors[0] = color;
+            colors[1] = color;
+            colors[2] = color;
+            colors[3] = color;
+
+            tris += 2;
+            verts += 4;
+            colors += 4;
+            baseVertex += 4;
         }
-        v23 = v5->vertices;
-        if (v3 > 0)
-        {
-            v24 = v23;
-            do
-            {
-                CAM_2Dto3DCamera2(&v4->ct.cam, &a2, v24);
-                MATH_TransformVertex(v24, &gpst_DX_stDD->ct.cam.objectMtx, &a2);
-                v4 = gpst_DX_stDD;
-                ++v24;
-                --v3;
-            } while (v3);
-        }
-        v25 = v4->drawMaskAllowedStuffCurrent;
-        v4->drawMaskAllowedStuffCurrent = v25 & ~0x8000900u;
-        GFX_gpst_Geo->triangleChunks->materialNum = 0;
-        GFX_gpst_Geo->intf->Render(GFX_gpst_GO);
-        gpst_DX_stDD->drawMaskAllowedStuffCurrent = v25;
     }
+
+    verts = GFX_gpst_Geo->vertices;
+    for (i = 0; i < 4 * cells; i++)
+    {
+        CAM_2Dto3DCamera2(&gpst_DX_stDD->ct.cam, &screenPos, &verts[i]);
+        MATH_TransformVertex(&verts[i], &gpst_DX_stDD->ct.cam.objectMtx, &screenPos);
+    }
+
+    GFX_gpst_Geo->triangleChunks->materialNum = 0;
+    GFX_RenderGeom(0x8000900u);
     return 1;
 }
 
-void GFX_Table_Setv(struct sGfxTableData* a1, int a2, Vec3* a3)
+void GFX_Table_Setv(struct sGfxTableData* table, int id, Vec3* value)
 {
-    unsigned int v3;
-    int v4;
-    unsigned int v5;
-    int v6;
-    unsigned int v7;
-    char* v8;
-    unsigned int v9;
-    unsigned int v10;
+    unsigned int index;
+    unsigned int rowIdx;
+    unsigned int colIdx;
+    unsigned int colorIdx;
+    char* slot;
+    int i;
 
-    switch (a2)
+    switch (id)
     {
     case 7201:
-        v10 = (unsigned int)a3->x;
-        if ((int)v10 == -1)
+        index = (unsigned int)value->x;
+        if ((int)index == -1)
         {
-            a1->f[0] = a3->y;
-            a1->f[1] = a3->y;
-            a1->f[2] = a3->y;
-            a1->f[3] = a3->y;
-            a1->f[4] = a3->y;
-            a1->f[5] = a3->y;
-            a1->f[6] = a3->y;
-            a1->f[7] = a3->y;
-            a1->f[8] = a3->y;
-            a1->f[9] = a3->y;
+            for (i = 0; i < 10; i++)
+                table->f[i] = value->y;
         }
-        else if ((v10 & 0x80000000) == 0LL && (int)v10 <= 10)
+        // the bound is the array length, not its last index, so an index of
+        // ten writes f2[0]; it stays inside the struct
+        else if ((index & 0x80000000) == 0 && (int)index <= 10)
         {
-            a1->f[v10] = a3->y;
+            table->f[index] = value->y;
         }
         break;
+
     case 7202:
-        v9 = (unsigned int)a3->x;
-        if ((int)v9 == -1)
+        index = (unsigned int)value->x;
+        if ((int)index == -1)
         {
-            a1->f2[0] = a3->y;
-            a1->f2[1] = a3->y;
-            a1->f2[2] = a3->y;
-            a1->f2[3] = a3->y;
-            a1->f2[4] = a3->y;
-            a1->f2[5] = a3->y;
-            a1->f2[6] = a3->y;
-            a1->f2[7] = a3->y;
-            a1->f2[8] = a3->y;
-            a1->f2[9] = a3->y;
-            *(float*)a1->vertexColorIndexes = a3->y; // TODO FIXME: ez jó így??
+            for (i = 0; i < 10; i++)
+                table->f2[i] = value->y;
+            *(float*)table->vertexColorIndexes = value->y; // TODO FIXME: ez jó így??
         }
-        else if ((v9 & 0x80000000) == 0LL && (int)v9 <= 10)
+        else if ((index & 0x80000000) == 0 && (int)index <= 10)
         {
-            a1->f2[v9] = a3->y;
+            table->f2[index] = value->y;
         }
         break;
+
     case 7203:
-        v3 = (unsigned int)a3->x;
-        v4 = v3;
-        if ((v3 & 0x80000000) == 0 && (int)v3 <= 10)
-        {
-            v5 = (unsigned int)a3->y;
-            v6 = v5;
-            if ((v5 & 0x80000000) == 0 && (int)v5 <= 10)
-            {
-                v7 = (unsigned int)a3->z;
-                v8 = &a1->vertexColorIndexes[10 * v4 + v6];
-                *v8 = v7;
-                if ((v7 & 0x80u) != 0)
-                    *v8 = 0;
-                if (*v8 >= 10)
-                    *v8 = 9;
-            }
-        }
+        rowIdx = (unsigned int)value->x;
+        if ((rowIdx & 0x80000000) != 0 || (int)rowIdx > 10)
+            break;
+        colIdx = (unsigned int)value->y;
+        if ((colIdx & 0x80000000) != 0 || (int)colIdx > 10)
+            break;
+        colorIdx = (unsigned int)value->z;
+        slot = &table->vertexColorIndexes[10 * rowIdx + colIdx];
+        *slot = colorIdx;
+        if ((colorIdx & 0x80u) != 0)
+            *slot = 0;
+        if (*slot >= 10)
+            *slot = 9;
+        break;
+
+    default:
         break;
     }
 }
 
-struct sGfxTableData* GFX_Table_Create()
+struct sGfxTableData* GFX_Table_Create(void)
 {
-    tGfxTableData* v0;
-    int v1;
-    float* v2;
-    float* v2a;
-    int* v2b;
+    tGfxTableData* table;
+    int i;
 
-    v0 = (tGfxTableData*)MEM_p_Alloc(sizeof(tGfxTableData));
-    memset(v0, 0, sizeof(tGfxTableData));
-    v1 = 10;
-    v0->num2 = 10;
-    v0->num1 = 10;
+    table = (tGfxTableData*)MEM_p_Alloc(sizeof(tGfxTableData));
+    memset(table, 0, sizeof(tGfxTableData));
+    table->num1 = 10;
+    table->num2 = 10;
 
-    v2b = v0->colors;
-    v2 = v0->f;
-    v2a = v0->f2;
-
-    do
-    {
-        *v2b = 0xffffffff;
-        *v2 = 0.1f;
-        *v2a = 0.1f;
-        ++v2;
-        --v1;
-    } while (v1);
-    return v0;
+    // only the f cursor advances in the original, so colors and f2 are
+    // written at index zero ten times over and their other nine entries
+    // keep the zero the memset left
+    table->colors[0] = 0xffffffff;
+    table->f2[0] = 0.1f;
+    for (i = 0; i < 10; i++)
+        table->f[i] = 0.1f;
+    return table;
 }
