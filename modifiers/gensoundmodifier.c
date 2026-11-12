@@ -97,12 +97,12 @@ void GEN_ModifierSound_Destroy(struct sModifier* mdf)
     mdf->modifierFlags = 0x2000000;
 }
 
-void GEN_ModifierSound_Apply(struct sModifier* a1, struct sGameObjectMain* a2)
+void GEN_ModifierSound_Apply(struct sModifier* mdf, struct sGameObjectMain* gao)
 {
-    tSoundMdfStruct* gsm = (tSoundMdfStruct*)a1->mdfPrivateDataPtr;
+    tSoundMdfStruct* gsm = (tSoundMdfStruct*)mdf->mdfPrivateDataPtr;
 
     if (gsm->idx == -1)
-        MDF_SndGetSoundIndexFromBank((tSoundMdfStruct*)a1->mdfPrivateDataPtr);
+        MDF_SndGetSoundIndexFromBank(gsm);
 
     if (gsm->idx < 0) return;
 
@@ -113,7 +113,7 @@ void GEN_ModifierSound_Apply(struct sModifier* a1, struct sGameObjectMain* a2)
     }
     if (gsm->sndInstanceID == -1)
     {
-        MDF_SndCreateInstance(gsm, a2);
+        MDF_SndCreateInstance(gsm, gao);
     }
     else
     {
@@ -142,328 +142,262 @@ void GEN_ModifierSound_Apply(struct sModifier* a1, struct sGameObjectMain* a2)
     }
 }
 
-int GEN_ModifierSound_Load(tModifier* arg0, char* a2)
+int GEN_ModifierSound_Load(tModifier* mdf, char* data)
 {
-    tSoundMdfStruct* v2;
-    int v3;
-    int v4;
-    int v5;
-    int v6;
-    double v7;
-    double v8;
-    double v12;
-    int v16;
-    double v17;
-    int v18;
-    int v19;
-    int v20;
-    int v21;
-    int v22;
-    int v23;
-    int v24;
-    int v25;
-    int v26;
-    double v27;
-    double v28;
-    int v29;
-    int v30;
-    char* a1;
-    int v33;
-    int v34;
-    int v35;
-    int v36;
+    tSoundMdfStruct* gsm;
+    char* start;
+    int version;
+    int verIs266;
+    int verUpTo267;
+    int verUpTo268;
+    int verUpTo269;
+    int verUpTo270;
+    int verUpTo272;
+    int zoneChecked;
+    int flags;
+    int flags2;
+    int channelBits;
+    int soundKey;
+    double volume;
+    double volume2;
 
-    v2 = (tSoundMdfStruct*)arg0->mdfPrivateDataPtr;
-    v3 = 0;
-    a1 = a2;
-    v33 = 0;
-    LOA_ul_GetCurrentKey();
-    v4 = LOA_ReadLong(&a1, 0, 1);
-    v5 = 0;
-    v6 = 0;
-    v34 = 0;
-    v35 = 0;
-    v36 = 0;
-    if (v2)
+    gsm = (tSoundMdfStruct*)mdf->mdfPrivateDataPtr;
+    start = data;
+    version = LOA_ReadLong(&data, 0, 1);
+    if (!gsm || version < 266 || version > 273)
+        return data - start;
+
+    verIs266 = (version == 266);
+    verUpTo267 = (version <= 267);
+    verUpTo268 = (version <= 268);
+    verUpTo269 = (version <= 269);
+    verUpTo270 = (version <= 270);
+    verUpTo272 = (version <= 272);
+    zoneChecked = 0;
+
+    gsm->flags = LOA_ReadLong(&data, 0, 1);
+    gsm->modifierID = LOA_ReadLong(&data, 0, 1);
+    gsm->i4 = LOA_ReadLong(&data, 0, 1);
+    gsm->volume = LOA_ReadFloat(&data, 0, 1);
+    volume2 = LOA_ReadFloat(&data, 0, 1);
+    gsm->volume2 = (float)volume2;
+    if (verIs266)
     {
-        switch (v4)
+        volume = gsm->volume + gsm->volume;
+        gsm->volume = (float)volume;
+        if (volume < 0.0000001)
+            gsm->volume = 0.0;
+        else if (volume > 1.0)
+            gsm->volume = 1.0;
+
+        volume2 = volume2 + volume2;
+        gsm->volume2 = (float)volume2;
+        if (volume2 < 0.0000001)
+            gsm->volume2 = 0.0;
+        else if (volume2 > 1.0)
+            gsm->volume2 = 1.0;
+    }
+
+    gsm->ii2 = LOA_ReadFloat(&data, 0, 1);
+    gsm->distPrefetchVolume = LOA_ReadFloat(&data, 0, 1);
+    gsm->ii4 = LOA_ReadFloat(&data, 0, 1);
+    gsm->ii5 = LOA_ReadLong(&data, 0, 1);
+    if (gsm->ii2 <= 0.0000099999997)
+        gsm->ii2 = 0.0;
+    if (gsm->ii4 <= 0.0000099999997)
+        gsm->ii4 = 0.0;
+    gsm->freq2 = LOA_ReadLong(&data, 0, 1);
+    gsm->pan = LOA_ReadLong(&data, 0, 1);
+    gsm->ii8 = LOA_ReadLong(&data, 0, 1);
+    gsm->ii9 = LOA_ReadLong(&data, 0, 1);
+    if (verUpTo272)
+    {
+        gsm->ii8 = 1;
+        gsm->ii9 = 128;
+    }
+    gsm->flags2 = LOA_ReadLong(&data, 0, 1);
+    gsm->ii11 = LOA_ReadLong(&data, 0, 1);
+    LOA_ReadLong(&data, 0, 2);
+
+    if (verUpTo268 || (gsm->flags & 0x800) == 0)
+    {
+        flags2 = gsm->flags2;
+        if ((flags2 & 0x4000) != 0)
+            gsm->idx = SND_l_AddDialogNoLoad(gsm->i4);
+        else if ((flags2 & 0x2000) != 0)
+            gsm->idx = SND_l_AddMusicNoLoad(gsm->i4);
+        else if ((flags2 & 0x80000) != 0)
+            gsm->idx = SND_l_AddAmbienceNoLoad(gsm->i4);
+        else if ((flags2 & 0x10000) != 0)
+            gsm->idx = SND_l_AddSModifierNoLoad(gsm->i4, &data);
+        else if ((flags2 & 8) != 0)
+            gsm->idx = SND_l_AddLoadingSound(gsm->i4);
+        else
+            gsm->idx = SND_l_AddSound(gsm->i4);
+    }
+    else
+    {
+        gsm->idx = -1;
+    }
+
+    if (verUpTo267)
+    {
+        flags2 = gsm->flags2;
+        channelBits = gsm->ii11 & ~0x7C0u;
+        if ((flags2 & 0x4000) != 0)
+            channelBits |= 0x80;
+        else if ((flags2 & 0x2000) != 0)
+            channelBits |= 0x100;
+        else if ((flags2 & 0x80000) != 0)
+            channelBits |= 0x80;
+        else
+            channelBits |= 0x40;
+        gsm->ii11 = channelBits;
+    }
+
+    if (verUpTo269)
+    {
+        gsm->flags &= ~0x7000u;
+        gsm->distPrefetchVolume = 0.0;
+    }
+
+    flags = gsm->flags;
+    if ((flags & 0x1000) != 0 && (flags & 0x800) == 0)
+        SND_StreamPrefetchOneSound(gsm->idx, 0);
+
+    LOA_ReadLong(&data, 0, 2);
+    gsm->sndInstanceID = -1;
+    gsm->near1 = LOA_ReadFloat(&data, 0, 1);
+    gsm->near2 = LOA_ReadFloat(&data, 0, 1);
+    gsm->near3 = LOA_ReadFloat(&data, 0, 1);
+    gsm->far1 = LOA_ReadFloat(&data, 0, 1);
+    gsm->far2 = LOA_ReadFloat(&data, 0, 1);
+    gsm->far3 = LOA_ReadFloat(&data, 0, 1);
+    gsm->unkIsInActiveVolume = LOA_ReadFloat(&data, 0, 1);
+    gsm->trackID = LOA_ReadLong(&data, 0, 1);
+
+    flags2 = gsm->flags2;
+    if ((flags2 & 0x20000) == 0)
+        gsm->trackID = -1;
+    if ((verUpTo268 || (gsm->flags & 0x800) == 0)
+        && (gsm->trackID != -1 || (flags2 & 0x20000) != 0)
+        && (flags2 & 0x86000) == 0)
+    {
+        gsm->trackID = -1;
+        gsm->flags2 = flags2 & ~0x20000u;
+    }
+
+    gsm->nearFarFactor = LOA_ReadFloat(&data, 0, 1);
+    gsm->nearFar2factor = LOA_ReadFloat(&data, 0, 1);
+    gsm->nearFar3factor = LOA_ReadFloat(&data, 0, 1);
+    gsm->xx = LOA_ReadFloat(&data, 0, 1);
+    gsm->f4 = LOA_ReadFloat(&data, 0, 1);
+    gsm->b0 = LOA_ReadFloat(&data, 0, 1);
+    gsm->soundIndex = LOA_ReadLong(&data, 0, 1);
+    LOA_ReadLong(&data, 0, 1);
+    gsm->soundBank = 0;
+    gsm->timeRemainTillStart = LOA_ReadFloat(&data, 0, 1);
+    if (verUpTo270)
+        gsm->timeRemainTillStart = 0.0;
+    LOA_ReadCharArray(&data, 0, 4u, 2);
+    LOA_ReadCharArray(&data, 0, 4u, 2);
+    LOA_ReadCharArray(&data, 0, 4u, 2);
+    LOA_ReadCharArray(&data, 0, 0x28u, 2);
+
+    flags2 = gsm->flags2;
+    if ((flags2 & 0x11000000) != 0)
+    {
+        zoneChecked = 1;
+        if (gsm->far1 < gsm->near1)
         {
-        case 266:
-            v3 = 1;
-            goto LABEL_4;
-        case 267:
-        LABEL_4:
-            v5 = 1;
-            goto LABEL_5;
-        case 268:
-        LABEL_5:
-            v34 = 1;
-            goto LABEL_6;
-        case 269:
-        LABEL_6:
-            v35 = 1;
-            goto LABEL_7;
-        case 270:
-        LABEL_7:
-            v36 = 1;
-            goto LABEL_8;
-        case 271:
-        case 272:
-        LABEL_8:
-            v6 = 1;
-            goto LABEL_9;
-        case 273:
-        LABEL_9:
-            v2->flags = LOA_ReadLong(&a1, 0, 1);
-            v2->modifierID = LOA_ReadLong(&a1, 0, 1);
-            v2->i4 = LOA_ReadLong(&a1, 0, 1);
-            v2->volume = LOA_ReadFloat(&a1, 0, 1);
-            v7 = LOA_ReadFloat(&a1, 0, 1);
-            v2->volume2 = (float)v7;
-            if (v3)
-            {
-                v8 = v2->volume + v2->volume;
-                v2->volume = (float)v8;
-                if (v8 < 0.0000001)
-                {
-                    v2->volume = 0.0;
-                }
-                else if (v8 > 1.0)
-                {
-                    v2->volume = 1.0;
-                }
-                v12 = v7 + v7;
-                v2->volume2 = (float)v12;
-                if (v12 < 0.0000001)
-                {
-                    v2->volume2 = 0.0;
-                }
-                else if (v12 > 1.0)
-                {
-                    v2->volume2 = 1.0;
-                }
-            }
-            v2->ii2 = LOA_ReadFloat(&a1, 0, 1);
-            v2->distPrefetchVolume = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii4 = LOA_ReadFloat(&a1, 0, 1);
-            v16 = LOA_ReadLong(&a1, 0, 1);
-            v17 = v2->ii2;
-            v2->ii5 = v16;
-            if (v17 <= 0.0000099999997)
-                v2->ii2 = 0.0;
-            if (v2->ii4 <= 0.0000099999997)
-                v2->ii4 = 0.0;
-            v2->freq2 = LOA_ReadLong(&a1, 0, 1);
-            v2->pan = LOA_ReadLong(&a1, 0, 1);
-            v2->ii8 = LOA_ReadLong(&a1, 0, 1);
-            v2->ii9 = LOA_ReadLong(&a1, 0, 1);
-            if (v6)
-            {
-                v2->ii8 = 1;
-                v2->ii9 = 128;
-            }
-            v2->flags2 = LOA_ReadLong(&a1, 0, 1);
-            v2->ii11 = LOA_ReadLong(&a1, 0, 1);
-            LOA_ReadLong(&a1, 0, 2);
-            v18 = v34;
-            if (v34 || (v2->flags & 0x800) == 0)
-            {
-                v19 = v2->flags2;
-                if ((v19 & 0x4000) != 0)
-                {
-                    v20 = SND_l_AddDialogNoLoad(v2->i4);
-                }
-                else if ((v19 & 0x2000) != 0)
-                {
-                    v20 = SND_l_AddMusicNoLoad(v2->i4);
-                }
-                else if ((v19 & 0x80000) != 0)
-                {
-                    v20 = SND_l_AddAmbienceNoLoad(v2->i4);
-                }
-                else if ((v19 & 0x10000) != 0)
-                {
-                    v20 = SND_l_AddSModifierNoLoad(v2->i4, &a1);
-                }
-                else if ((v19 & 8) != 0)
-                {
-                    v20 = SND_l_AddLoadingSound(v2->i4);
-                }
-                else
-                {
-                    v20 = SND_l_AddSound(v2->i4);
-                }
-                v2->idx = v20;
-            }
-            else
-            {
-                v2->idx = -1;
-            }
-            if (v5)
-            {
-                v21 = v2->flags2;
-                v22 = v2->ii11 & ~0x7C0u;
-                v2->ii11 = v22;
-                if ((v21 & 0x4000) != 0)
-                {
-                    v23 = v22 | 0x80;
-                }
-                else if ((v21 & 0x2000) != 0)
-                {
-                    v23 = v22 | 0x100;
-                }
-                else if ((v21 & 0x80000) != 0)
-                {
-                    v23 = v22 | 0x80;
-                }
-                else
-                {
-                    v23 = v22 | 0x40;
-                }
-                v2->ii11 = v23;
-            }
-            if (v35)
-            {
-                v2->flags &= ~0x7000u;
-                v2->distPrefetchVolume = 0.0;
-            }
-            v24 = v2->flags;
-            if ((v24 & 0x1000) != 0 && (v24 & 0x800) == 0)
-                SND_StreamPrefetchOneSound(v2->idx, 0);
-            LOA_ReadLong(&a1, 0, 2);
-            v2->sndInstanceID = -1;
-            v2->near1 = LOA_ReadFloat(&a1, 0, 1);
-            v2->near2 = LOA_ReadFloat(&a1, 0, 1);
-            v2->near3 = LOA_ReadFloat(&a1, 0, 1);
-            v2->far1 = LOA_ReadFloat(&a1, 0, 1);
-            v2->far2 = LOA_ReadFloat(&a1, 0, 1);
-            v2->far3 = LOA_ReadFloat(&a1, 0, 1);
-            v2->unkIsInActiveVolume = LOA_ReadFloat(&a1, 0, 1);
-            v2->trackID = LOA_ReadLong(&a1, 0, 1);
-            v25 = v2->flags2;
-            if ((v25 & 0x20000) == 0)
-                v2->trackID = -1;
-            if ((v18 || (v2->flags & 0x800) == 0) && (v2->trackID != -1 || (v25 & 0x20000) != 0) && (v25 & 0x86000) == 0)
-            {
-                v2->trackID = -1;
-                v2->flags2 = v25 & ~0x20000u;
-            }
-            v2->nearFarFactor = LOA_ReadFloat(&a1, 0, 1);
-            v2->nearFar2factor = LOA_ReadFloat(&a1, 0, 1);
-            v2->nearFar3factor = LOA_ReadFloat(&a1, 0, 1);
-            v2->xx = LOA_ReadFloat(&a1, 0, 1);
-            v2->f4 = LOA_ReadFloat(&a1, 0, 1);
-            v2->b0 = LOA_ReadFloat(&a1, 0, 1);
-            v2->soundIndex = LOA_ReadLong(&a1, 0, 1);
-            LOA_ReadLong(&a1, 0, 1);
-            v2->soundBank = 0;
-            v2->timeRemainTillStart = LOA_ReadFloat(&a1, 0, 1);
-            if (v36)
-                v2->timeRemainTillStart = 0.0;
-            LOA_ReadCharArray(&a1, 0, 4u, 2);
-            LOA_ReadCharArray(&a1, 0, 4u, 2);
-            LOA_ReadCharArray(&a1, 0, 4u, 2);
-            LOA_ReadCharArray(&a1, 0, 0x28u, 2);
-            v26 = v2->flags2;
-            if ((v26 & 0x11000000) != 0)
-            {
-                v27 = v2->far1;
-                v33 = 1;
-                if (v27 < v2->near1)
-                {
-                    v2->near1 = 10.0;
-                    v2->far1 = 80.0;
-                }
-                if (v2->nearFarFactor > 1.0 || v2->nearFarFactor < 0.0)
-                    v2->nearFarFactor = 0.5;
-            }
-            if ((v26 & 0x2000000) != 0)
-            {
-                v28 = v2->far2;
-                v33 = 1;
-                if (v28 < v2->near2)
-                {
-                    v2->near2 = 10.0;
-                    v2->far2 = 80.0;
-                }
-                if (v2->nearFar2factor > 1.0 || v2->nearFar2factor < 0.0)
-                    v2->nearFar2factor = 0.5;
-            }
-            if ((v26 & 0x4000000) != 0)
-            {
-                if (v2->far3 < (double)v2->near3)
-                {
-                    v2->near3 = 10.0;
-                    v2->far3 = 80.0;
-                }
-                if (v2->nearFar3factor > 1.0 || v2->nearFar3factor < 0.0)
-                    v2->nearFar3factor = 0.5;
-            }
-            else if (!v33)
-            {
-                goto LABEL_94;
-            }
-            if (v2->unkIsInActiveVolume <= 0.0)
-                v2->unkIsInActiveVolume = 2.0;
-            if (v2->unkIsInActiveVolume >= 10000.0)
-                v2->unkIsInActiveVolume = 2.0;
-            if (v2->xx < 0.0)
-                v2->xx = 0.0;
-            if (v2->xx > 1.0)
-                v2->xx = 0.0;
-            if (v2->f4 < 0.0)
-                v2->xx = 0.0;
-            if (v2->f4 > 1.0)
-                v2->xx = 0.0;
-        LABEL_94:
-            v29 = v2->flags;
-            if (v34)
-            {
-                v2->soundIndex = -1;
-                v2->flags = v29 & ~0x800u;
-                v2->soundBank = 0;
-            }
-            else if ((v29 & 0x800) != 0)
-            {
-                v30 = v2->i4;
-                v2->flags2 = v26 & ~0x96008u;
-                if (v30 && v30 != -1)
-                    LOA_MakeFileRef(v30, &v2->soundBank, SND_ul_CallbackLoad, 1);
-                SND_AddMdFBankUser(v2);
-            }
-            arg0->modifierFlags = 0x4000000;
-            break;
-        default:
-            return a1 - a2;
+            gsm->near1 = 10.0;
+            gsm->far1 = 80.0;
         }
+        if (gsm->nearFarFactor > 1.0 || gsm->nearFarFactor < 0.0)
+            gsm->nearFarFactor = 0.5;
     }
-    return a1 - a2;
-}
-
-void GEN_ModifierSound_Reinit(tModifier* a1)
-{
-    tSoundMdfStruct* v1;
-    int v2;
-    int v3;
-    int v4;
-
-    v1 = (tSoundMdfStruct*)a1->mdfPrivateDataPtr;
-    a1->modifierFlags = 0x4000000;
-    v2 = v1->sndInstanceID;
-    if (v2 != -1)
+    if ((flags2 & 0x2000000) != 0)
     {
-        if (SND_gst_Params.soundInstances[v2].allocatedSoundsIdx == v1->idx)
-            SND_Release(v1->sndInstanceID);
-        v1->sndInstanceID = -1;
+        zoneChecked = 1;
+        if (gsm->far2 < gsm->near2)
+        {
+            gsm->near2 = 10.0;
+            gsm->far2 = 80.0;
+        }
+        if (gsm->nearFar2factor > 1.0 || gsm->nearFar2factor < 0.0)
+            gsm->nearFar2factor = 0.5;
     }
-    v3 = v1->flags;
-    if ((v3 & 0x800) != 0)
-        v1->idx = -1;
-    v4 = v3 & ~0x8084u;
-    v1->flags = v4;
-    if ((v4 & 0x1000) != 0)
-        SND_StreamPrefetchOneSound(v1->idx, 0);
+    if ((flags2 & 0x4000000) != 0)
+    {
+        zoneChecked = 1;
+        if (gsm->far3 < (double)gsm->near3)
+        {
+            gsm->near3 = 10.0;
+            gsm->far3 = 80.0;
+        }
+        if (gsm->nearFar3factor > 1.0 || gsm->nearFar3factor < 0.0)
+            gsm->nearFar3factor = 0.5;
+    }
+
+    if (zoneChecked)
+    {
+        if (gsm->unkIsInActiveVolume <= 0.0)
+            gsm->unkIsInActiveVolume = 2.0;
+        if (gsm->unkIsInActiveVolume >= 10000.0)
+            gsm->unkIsInActiveVolume = 2.0;
+        if (gsm->xx < 0.0)
+            gsm->xx = 0.0;
+        if (gsm->xx > 1.0)
+            gsm->xx = 0.0;
+        if (gsm->f4 < 0.0)
+            gsm->xx = 0.0;
+        if (gsm->f4 > 1.0)
+            gsm->xx = 0.0;
+    }
+
+    if (verUpTo268)
+    {
+        gsm->soundIndex = -1;
+        gsm->flags &= ~0x800u;
+        gsm->soundBank = 0;
+    }
+    else if ((gsm->flags & 0x800) != 0)
+    {
+        soundKey = gsm->i4;
+        gsm->flags2 = flags2 & ~0x96008u;
+        if (soundKey && soundKey != -1)
+            LOA_MakeFileRef(soundKey, &gsm->soundBank, SND_ul_CallbackLoad, 1);
+        SND_AddMdFBankUser(gsm);
+    }
+
+    mdf->modifierFlags = 0x4000000;
+    return data - start;
 }
 
-void GEN_ModifierSound_Unapply(struct sModifier* a1, struct sGameObjectMain* a2) {
+void GEN_ModifierSound_Reinit(tModifier* mdf)
+{
+    tSoundMdfStruct* gsm;
+    int instance;
+    int flags;
+
+    gsm = (tSoundMdfStruct*)mdf->mdfPrivateDataPtr;
+    mdf->modifierFlags = 0x4000000;
+    instance = gsm->sndInstanceID;
+    if (instance != -1)
+    {
+        if (SND_gst_Params.soundInstances[instance].allocatedSoundsIdx == gsm->idx)
+            SND_Release(gsm->sndInstanceID);
+        gsm->sndInstanceID = -1;
+    }
+
+    flags = gsm->flags;
+    if ((flags & 0x800) != 0)
+        gsm->idx = -1;
+    gsm->flags = flags & ~0x8084u;
+    if ((gsm->flags & 0x1000) != 0)
+        SND_StreamPrefetchOneSound(gsm->idx, 0);
+}
+
+void GEN_ModifierSound_Unapply(struct sModifier* mdf, struct sGameObjectMain* gao)
+{
 }
