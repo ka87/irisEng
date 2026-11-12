@@ -36,9 +36,9 @@ typedef struct sLoadingSoundMdfStruct
     uint8_t gap[256];
 } tLoadingSoundMdfStruct;
 
-void MDF_LoadingSound_Apply(tModifier* a1, tGameObjectMain* a2);
-void MDF_LoadingSound_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
+void MDF_LoadingSound_Apply(tModifier* mdf, tGameObjectMain* gao);
+void MDF_LoadingSound_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
 void MDF_LoadingSound_Destroy(struct sModifier* mdf);
-int MDF_LoadingSound_Load(tModifier* arg0, char* a1);
+int MDF_LoadingSound_Load(tModifier* mdf, char* data);
 void MDF_LoadingSound_Reinit(struct sModifier* mdf);
-void MDF_LoadingSound_Unapply(tModifier* a1, tGameObjectMain* a2);
+void MDF_LoadingSound_Unapply(tModifier* mdf, tGameObjectMain* gao);
