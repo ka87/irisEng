@@ -129,6 +129,8 @@ speed_syms="GFX_i_Speed_Render GFX_Speed_Create"
 flare_syms="GFX_Flare_Create GFX_i_Flare_TestDepth GFX_Flare_Test \
 GFX_Flare_Render GFXF_f_depth f_9Factor_296"
 
+reveal_syms="STR_l_Effect_Reveal"
+
 FILTER=$1
 
 run_one snakemodifier modifiers/snakemodifier.c \
@@ -164,6 +166,26 @@ run_group gfxdraw gfx \
     "gfx/gfxtable.c:tests/baseline_gfxtable.c:$table_syms" \
     "gfx/gfxspeed.c:tests/baseline_gfxspeed.c:$speed_syms" \
     "gfx/gfxflare.c:tests/baseline_gfxflare.c:$flare_syms"
+
+# The string reveal effect: the live copy comes out of geostr.c, which
+# is compiled on its own because only the reveal and the geometry it
+# touches are needed.
+run_reveal() {
+    [ -n "$FILTER" ] && case "streveal" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' streveal
+    $CC $CFLAGS -c tests/baseline_streveal.c -o "$OUT/streveal.base.o" \
+        -DSTR_l_Effect_Reveal=BASE_STR_l_Effect_Reveal
+    $CC $CFLAGS -c graphicsobjects/geostr.c -o "$OUT/streveal.new.o" \
+        -DSTR_l_Effect_Reveal=NEW_STR_l_Effect_Reveal
+    $CC $CFLAGS -c tests/test_streveal.c -o "$OUT/streveal.drv.o"
+    $CC $CFLAGS -c tests/streveal_mocks.c -o "$OUT/streveal.mocks.o"
+    $CC "$OUT/streveal.base.o" "$OUT/streveal.new.o" "$OUT/streveal.drv.o" \
+        "$OUT/streveal.mocks.o" -o "$OUT/streveal" -lm
+    "$OUT/streveal" || fails=$((fails + 1))
+    echo
+}
+
+run_reveal
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"
