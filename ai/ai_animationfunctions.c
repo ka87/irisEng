@@ -1,639 +1,639 @@
 #include "ai_animationfunctions.h"
 
+// An animation builtin works on the actor behind the game object.
+static tGameObjectActorObject* AI_l_Actor(struct sGameObjectMain* gao)
+{
+    return (tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject);
+}
+
+static tGameObjectActorObject* AI_l_ActorOrNull(struct sGameObjectMain* gao)
+{
+    if (!gao || !gao->basic || !gao->basic->actorObjectOrVisualObject)
+        return NULL;
+    return AI_l_Actor(gao);
+}
+
+// The same, for the builtins that also want the object to carry the
+// actor flag.
+static tGameObjectActorObject* AI_l_AnimatedActor(struct sGameObjectMain* gao)
+{
+    if (!gao || (gao->flags & 2) == 0)
+        return NULL;
+    return AI_l_ActorOrNull(gao);
+}
+
 int AI_EvalFunc_ANIFrequencyGet_C(struct sGameObjectMain* gao, int animIdx)
 {
-    return ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->animPtr[animIdx]->frequency;
+    return AI_l_Actor(gao)->animPtr[animIdx]->frequency;
 }
 
-tAINode* AI_EvalFunc_ANIFrequencyGet(tAINode* aiNode)
+tAINode* AI_EvalFunc_ANIFrequencyGet(tAINode* node)
 {
+    tGameObjectMain* gaoUltra;
     int animIdx;
-    int freq;
-    tGameObjectMain* currUltraBackup = AI_gpst_CurrentUltra;
 
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-
     animIdx = AI_GetIntFromStack();
-    freq = AI_EvalFunc_ANIFrequencyGet_C(currUltraBackup, animIdx);
-    AI_PutIntToStack(freq);
-    return aiNode + 1;
+    AI_PutIntToStack(AI_EvalFunc_ANIFrequencyGet_C(gaoUltra, animIdx));
+    return node + 1;
 }
 
+// The script gives a frequency in frames; the actor keeps it in the
+// animation's own 64ths.
 int AI_EvalFunc_ANIFrequencySet_C(struct sGameObjectMain* gao, int animIdx, int freq)
 {
-    unsigned int freqCalcd;
+    unsigned int scaled;
 
-    freqCalcd = (unsigned int)((float)freq * 60.0f / 64.0f + 0.5f);
-    ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->animPtr[animIdx]->frequency = freqCalcd;
-
-    return freqCalcd;
+    scaled = (unsigned int)((float)freq * 60.0f / 64.0f + 0.5f);
+    AI_l_Actor(gao)->animPtr[animIdx]->frequency = scaled;
+    return scaled;
 }
 
-tAINode* AI_EvalFunc_ANIFrequencySet(tAINode* aiNode)
+tAINode* AI_EvalFunc_ANIFrequencySet(tAINode* node)
 {
-    int animIdx, freq;
-    tGameObjectMain* currUltraBackup;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
+    int freq;
 
-    currUltraBackup = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     freq = AI_GetIntFromStack();
     animIdx = AI_GetIntFromStack();
-
-    AI_EvalFunc_ANIFrequencySet_C(currUltraBackup, animIdx, freq);
-
-    return aiNode + 1;
+    AI_EvalFunc_ANIFrequencySet_C(gaoUltra, animIdx, freq);
+    return node + 1;
 }
 
-unsigned int AI_EvalFunc_ANICurrentFrameGet_C(struct sGameObjectMain* a1, int animIdx)
+unsigned int AI_EvalFunc_ANICurrentFrameGet_C(struct sGameObjectMain* gao, int animIdx)
 {
-    float currTime, fullTime;
+    float currTime;
+    float fullTime;
 
-    EVE_GetTracksTime(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[animIdx]->ptr, 0, &currTime, &fullTime);
-
+    EVE_GetTracksTime(AI_l_Actor(gao)->animPtr[animIdx]->ptr, 0, &currTime, &fullTime);
     return (unsigned int)(currTime * 60.0f);
 }
 
-tAINode* AI_EvalFunc_ANICurrentFrameGet(tAINode* a1)
+tAINode* AI_EvalFunc_ANICurrentFrameGet(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_ANICurrentFrameGet_C(v4, v1);
-    AI_PutIntToStack(v2);
-    return a1 + 1;
+    animIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_ANICurrentFrameGet_C(gaoUltra, animIdx));
+    return node + 1;
 }
 
-void AI_EvalFunc_ANICurrentFrameSet_C(struct sGameObjectMain* a1, int a2, int a3)
+void AI_EvalFunc_ANICurrentFrameSet_C(struct sGameObjectMain* gao, int animIdx, int frame)
 {
-    float a2a;
-    float v4; 
+    float frames;
+    float time;
 
-    v4 = (float)a3;
-    a2a = (float)(v4 * 0.016666668);
-    EVE_SetTracksTime(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[a2]->ptr, a2a);
+    frames = (float)frame;
+    time = (float)(frames * 0.016666668);
+    EVE_SetTracksTime(AI_l_Actor(gao)->animPtr[animIdx]->ptr, time);
 }
 
-tAINode* AI_EvalFunc_ANICurrentFrameSet(tAINode* a1)
+tAINode* AI_EvalFunc_ANICurrentFrameSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
+    int frame;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_ANICurrentFrameSet_C(v4, v1, v3);
-    return a1 + 1;
+    frame = AI_GetIntFromStack();
+    animIdx = AI_GetIntFromStack();
+    AI_EvalFunc_ANICurrentFrameSet_C(gaoUltra, animIdx, frame);
+    return node + 1;
 }
 
-unsigned int AI_EvalFunc_ANINbFrameGet_C(struct sGameObjectMain* a1, int a2)
+unsigned int AI_EvalFunc_ANINbFrameGet_C(struct sGameObjectMain* gao, int animIdx)
 {
-    float a4;
-    float a3;
+    float currTime;
+    float fullTime;
 
-    EVE_GetTracksTime(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[a2]->ptr, 0, &a3, &a4);
-    return (unsigned int)(a4 * 60.0);
+    EVE_GetTracksTime(AI_l_Actor(gao)->animPtr[animIdx]->ptr, 0, &currTime, &fullTime);
+    return (unsigned int)(fullTime * 60.0);
 }
 
-tAINode* AI_EvalFunc_ANINbFrameGet(tAINode* a1)
+tAINode* AI_EvalFunc_ANINbFrameGet(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_ANINbFrameGet_C(v4, v1);
-    AI_PutIntToStack(v2);
-    return a1 + 1;
+    animIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_ANINbFrameGet_C(gaoUltra, animIdx));
+    return node + 1;
 }
 
-int ret_negative_1a() {
-    return -1;
-}
-
-tAINode* AI_EvalFunc_ANIAnimGet(tAINode* a1)
+// A stub: the builtin takes its argument and always reports that there
+// is no animation.
+tAINode* AI_EvalFunc_ANIAnimGet(tAINode* node)
 {
-    int v1;
-
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_GetIntFromStack();
-    v1 = ret_negative_1a();
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(-1);
+    return node + 1;
 }
 
-int AI_EvalFunc_ANIFlagGet_C(tGameObjectMain* a1, int a2)
+int AI_EvalFunc_ANIFlagGet_C(tGameObjectMain* gao, int animIdx)
 {
-    return ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[a2]->flags;
+    return AI_l_Actor(gao)->animPtr[animIdx]->flags;
 }
 
-tAINode* AI_EvalFunc_ANIFlagGet(tAINode* a1)
+tAINode* AI_EvalFunc_ANIFlagGet(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_ANIFlagGet_C(v4, v1);
-    AI_PutIntToStack(v2);
-    return a1 + 1;
+    animIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_ANIFlagGet_C(gaoUltra, animIdx));
+    return node + 1;
 }
 
-void AI_EvalFunc_ANIFlagSet_C(tGameObjectMain* a1, int a2, int16_t a3, int16_t a4)
+void AI_EvalFunc_ANIFlagSet_C(tGameObjectMain* gao, int animIdx, int16_t toSet, int16_t toClear)
 {
-    tAnim* v4;
+    tAnim* anim;
 
-    v4 = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[a2];
-    v4->flags |= a3;
-    v4->flags &= ~a4;
+    anim = AI_l_Actor(gao)->animPtr[animIdx];
+    anim->flags |= toSet;
+    anim->flags &= ~toClear;
 }
 
-tAINode* AI_EvalFunc_ANIFlagSet(tAINode* a1)
+tAINode* AI_EvalFunc_ANIFlagSet(tAINode* node)
 {
-    int v1;
-    int16_t v3;
-    tGameObjectMain* v4;
-    int16_t a4;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
+    int16_t toSet;
+    int16_t toClear;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_ANIFlagSet_C(v4, v1, v3, a4);
-    return a1 + 1;
+    toClear = AI_GetIntFromStack();
+    toSet = AI_GetIntFromStack();
+    animIdx = AI_GetIntFromStack();
+    AI_EvalFunc_ANIFlagSet_C(gaoUltra, animIdx, toSet, toClear);
+    return node + 1;
 }
 
-int AI_EvalFunc_ANIFlagTest_C(tGameObjectMain* a1, int a2, uint16_t a3)
+int AI_EvalFunc_ANIFlagTest_C(tGameObjectMain* gao, int animIdx, uint16_t mask)
 {
-    return a3 & ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[a2]->flags;
+    return mask & AI_l_Actor(gao)->animPtr[animIdx]->flags;
 }
 
-tAINode* AI_EvalFunc_ANIFlagTest(tAINode* a1)
+tAINode* AI_EvalFunc_ANIFlagTest(tAINode* node)
 {
-    int v1;
-    int v2;
-    uint16_t v4;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
+    uint16_t mask;
 
-    v5 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_ANIFlagTest_C(v5, v1, v4);
-    AI_PutIntToStack(v2);
-    return a1 + 1;
+    mask = AI_GetIntFromStack();
+    animIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_ANIFlagTest_C(gaoUltra, animIdx, mask));
+    return node + 1;
 }
 
-int AI_EvalFunc_ANIModeGet_C(tGameObjectMain* a1, int a2)
+// The play mode is the three bits above the flag word's lowest.
+int AI_EvalFunc_ANIModeGet_C(tGameObjectMain* gao, int animIdx)
 {
-    return (((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[a2]->flags & 0xF) >> 1;
+    return (AI_l_Actor(gao)->animPtr[animIdx]->flags & 0xF) >> 1;
 }
 
-tAINode* AI_EvalFunc_ANIModeGet(tAINode* a1)
+tAINode* AI_EvalFunc_ANIModeGet(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_ANIModeGet_C(v4, v1);
-    AI_PutIntToStack(v2);
-    return a1 + 1;
+    animIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_ANIModeGet_C(gaoUltra, animIdx));
+    return node + 1;
 }
 
-void AI_EvalFunc_ANIModeSet_C(tGameObjectMain* a1, int a2, int16_t a3)
+void AI_EvalFunc_ANIModeSet_C(tGameObjectMain* gao, int animIdx, int16_t mode)
 {
-    tAnim* v3;
+    tAnim* anim;
 
-    v3 = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[a2];
-    v3->flags &= 0xFFF0u;
-    v3->flags |= 2 * a3;
+    anim = AI_l_Actor(gao)->animPtr[animIdx];
+    anim->flags &= 0xFFF0u;
+    anim->flags |= 2 * mode;
 }
 
-tAINode* AI_EvalFunc_ANIModeSet(tAINode* a1)
+tAINode* AI_EvalFunc_ANIModeSet(tAINode* node)
 {
-    int v1;
-    int16_t v3;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int animIdx;
+    int16_t mode;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_ANIModeSet_C(v4, v1, v3);
-    return a1 + 1;
+    mode = AI_GetIntFromStack();
+    animIdx = AI_GetIntFromStack();
+    AI_EvalFunc_ANIModeSet_C(gaoUltra, animIdx, mode);
+    return node + 1;
 }
 
-void AI_EvalFunc_ANIShapeSelect_C(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3)
+void AI_EvalFunc_ANIShapeSelect_C(struct sGameObjectMain* gao, uint8_t aiCanal, uint8_t shapeIdx)
 {
-    ANI_ChangeBoneShape(a1, a2, a3, 1);
+    ANI_ChangeBoneShape(gao, aiCanal, shapeIdx, 1);
 }
 
-tAINode* AI_EvalFunc_ANIShapeSelect(tAINode* a1)
+tAINode* AI_EvalFunc_ANIShapeSelect(tAINode* node)
 {
-    tGameObjectMain* v2;
-    uint8_t v3;
-    uint8_t v4;
+    tGameObjectMain* gaoUltra;
+    uint8_t aiCanal;
+    uint8_t shapeIdx;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    AI_EvalFunc_ANIShapeSelect_C(v2, v3, v4);
-    return a1 + 1;
+    shapeIdx = AI_GetIntFromStack();
+    aiCanal = AI_GetIntFromStack();
+    AI_EvalFunc_ANIShapeSelect_C(gaoUltra, aiCanal, shapeIdx);
+    return node + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_ANICanalGaoGet_C(struct sGameObjectMain* a1, uint8_t a2)
+struct sGameObjectMain* AI_EvalFunc_ANICanalGaoGet_C(struct sGameObjectMain* gao, uint8_t aiCanal)
 {
-    return ANI_pst_GetObjectByAICanal(a1, a2);
+    return ANI_pst_GetObjectByAICanal(gao, aiCanal);
 }
 
-struct sGameObjectMain* AI_EvalFunc_ANICanalGaoGet_C_CURRENT(uint8_t a1)
+struct sGameObjectMain* AI_EvalFunc_ANICanalGaoGet_C_CURRENT(uint8_t aiCanal)
 {
-    return ANI_pst_GetObjectByAICanal(AI_gpst_CurrentGameObject, a1);
+    return ANI_pst_GetObjectByAICanal(AI_gpst_CurrentGameObject, aiCanal);
 }
 
-tAINode* AI_EvalFunc_ANICanalGaoGet(tAINode* a1)
+tAINode* AI_EvalFunc_ANICanalGaoGet(tAINode* node)
 {
-    int v2[6];
-    tGameObjectMain* v3;
-    uint8_t v4;
-    tGameObjectMain* a1a;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMain* bone;
+    uint8_t aiCanal;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a1a = v3;
-    v4 = AI_GetIntFromStack();
-    v2[0] = (int)AI_EvalFunc_ANICanalGaoGet_C(v3, v4);
-    AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    aiCanal = AI_GetIntFromStack();
+    bone = AI_EvalFunc_ANICanalGaoGet_C(gaoUltra, aiCanal);
+    AI_PutObjectToStack(&bone, AI_gaw_EnumLink[40]);
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_ANIIsInBlend_C(tGameObjectMain* a1)
+BOOL AI_EvalFunc_ANIIsInBlend_C(tGameObjectMain* gao)
 {
-    return (((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->flagsEgBlendIw2 & 2) != 0;
+    return (AI_l_Actor(gao)->flagsEgBlendIw2 & 2) != 0;
 }
 
 BOOL AI_EvalFunc_ANIIsInBlend_C_CURRENT()
 {
-    return (((tGameObjectActorObject*)(AI_gpst_CurrentGameObject->basic->actorObjectOrVisualObject))->flagsEgBlendIw2 & 2) != 0;
+    return AI_EvalFunc_ANIIsInBlend_C(AI_gpst_CurrentGameObject);
 }
 
-tAINode* AI_EvalFunc_ANIIsInBlend(tAINode* a1)
+tAINode* AI_EvalFunc_ANIIsInBlend(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_ANIIsInBlend_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_ANIIsInBlend_C(gaoUltra));
+    return node + 1;
 }
 
-void AI_EvalFunc_ANISetEnd_C(tGameObjectMain* a1)
+// Puts every track of the actor's first animation on its last key
+// frame, the same way TRASetEnd does for one track of an event list.
+void AI_EvalFunc_ANISetEnd_C(tGameObjectMain* gao)
 {
-    float v1;
-    tEventData* v2;
+    tEventData* eve;
+    int lastKeyFrame;
+    float frames;
     int i;
-    int v4;
 
-    v2 = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[0]->ptr;
-    for (i = 0; i < v2->eventListStruct->num; ++i)
+    eve = AI_l_Actor(gao)->animPtr[0]->ptr;
+    for (i = 0; i < eve->eventListStruct->num; ++i)
     {
-        if (v2->eventListStruct->listElems[i].elemNum)
-        {
-            v4 = v2->eventListStruct->listElems[i].elemNum - 1;
-            v2->tracks[i].currElemKeyFrame = v4;
-            v1 = (float)v2->eventListStruct->listElems[i].trackElems[v4].duration;
-            v2->tracks[i].currTime = (float)(v1 * 1.0 / 60.0);
-        }
+        if (!eve->eventListStruct->listElems[i].elemNum)
+            continue;
+
+        lastKeyFrame = eve->eventListStruct->listElems[i].elemNum - 1;
+        eve->tracks[i].currElemKeyFrame = lastKeyFrame;
+        frames = (float)eve->eventListStruct->listElems[i].trackElems[lastKeyFrame].duration;
+        eve->tracks[i].currTime = (float)(frames / 60.0);
     }
 }
 
-tAINode* AI_EvalFunc_ANISetEnd(tAINode* a1)
+tAINode* AI_EvalFunc_ANISetEnd(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_ANISetEnd_C(v2);
-    return a1 + 1;
+    AI_EvalFunc_ANISetEnd_C(gaoUltra);
+    return node + 1;
 }
 
-void AI_EvalFunc_ANISkeletonChange_C(tGameObjectMain* a1, tGameObjectMain* a2)
+void AI_EvalFunc_ANISkeletonChange_C(tGameObjectMain* gao, tGameObjectMain* skeleton)
 {
-    ANI_ChangeDefaultSkeleton(a1, a2);
+    ANI_ChangeDefaultSkeleton(gao, skeleton);
 }
 
-tAINode* AI_EvalFunc_ANISkeletonChange(tAINode* a1)
+tAINode* AI_EvalFunc_ANISkeletonChange(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_ANISkeletonChange_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    return a1 + 1;
+    AI_EvalFunc_ANISkeletonChange_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
+    return node + 1;
 }
 
-void AI_EvalFunc_ANISkeletonRestore_C(tGameObjectMain* a1, tGameObjectMain* a2)
+void AI_EvalFunc_ANISkeletonRestore_C(tGameObjectMain* gao, tGameObjectMain* skeleton)
 {
-    ANI_RestoreDefaultSkeleton(a1, a2);
+    ANI_RestoreDefaultSkeleton(gao, skeleton);
 }
 
-tAINode* AI_EvalFunc_ANISkeletonRestore(tAINode* a1)
+tAINode* AI_EvalFunc_ANISkeletonRestore(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_ANISkeletonRestore_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    return a1 + 1;
+    AI_EvalFunc_ANISkeletonRestore_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
+    return node + 1;
 }
 
-void AI_EvalFunc_ANICloneSet_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2, int a3)
+void AI_EvalFunc_ANICloneSet_C(struct sGameObjectMain* gao, struct sGameObjectMain* source, int clone)
 {
-    ANI_CloneSet(a1, a2, a3);
+    ANI_CloneSet(gao, source, clone);
 }
 
-tAINode* AI_EvalFunc_ANICloneSet(tAINode* a1)
+tAINode* AI_EvalFunc_ANICloneSet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMain* source;
+    int clone;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetIntFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_ANICloneSet_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3);
-    return a1 + 1;
+    clone = AI_GetIntFromStack();
+    source = (tGameObjectMain*)AI_GetObjectFromStack();
+    AI_EvalFunc_ANICloneSet_C(gaoUltra, source, clone);
+    return node + 1;
 }
 
-int AI_EvalFunc_ANIShapeGet_C(struct sGameObjectMain* a1, char a2)
+int AI_EvalFunc_ANIShapeGet_C(struct sGameObjectMain* gao, char aiCanal)
 {
-    int result;
-    uint8_t v3; 
+    tGameObjectActorObject* actor;
+    uint8_t engineCanal;
 
-    if (!a1
-        || (a1->flags & 2) == 0
-        || !a1->basic
-        || !a1->basic->actorObjectOrVisualObject
-        || !((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->shape)
-    {
+    actor = AI_l_AnimatedActor(gao);
+    if (!actor || !actor->shape)
         return -1;
-    }
-    v3 = ANI_uc_GetEngineCanalByAICanal(a1, a2);
-    if (v3 == 255)
-        result = -1;
-    else
-        result = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->shapes[v3];
-    return result;
+
+    engineCanal = ANI_uc_GetEngineCanalByAICanal(gao, aiCanal);
+    if (engineCanal == 255)
+        return -1;
+    return actor->shapes[engineCanal];
 }
 
-tAINode* AI_EvalFunc_ANIShapeGet(tAINode* a1)
+tAINode* AI_EvalFunc_ANIShapeGet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    char v4;
+    tGameObjectMain* gaoUltra;
+    char aiCanal;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_ANIShapeGet_C(v3, v4);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    aiCanal = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_ANIShapeGet_C(gaoUltra, aiCanal));
+    return node + 1;
 }
 
-struct sGameObjectMain* AI_EvalFunc_ANIShapeObjectGet_C(struct sGameObjectMain* a1, char a2, uint8_t a3)
+// The object standing in for one shape of a bone. A shape index of 255
+// means the one the bone is wearing.
+struct sGameObjectMain* AI_EvalFunc_ANIShapeObjectGet_C(struct sGameObjectMain* gao, char aiCanal, uint8_t shapeIdx)
 {
-    uint8_t v4;
-    tGameObjectMain* v5;
+    tGameObjectActorObject* actor;
+    tGameObjectMain* bone;
+    uint8_t engineCanal;
 
-    if (!a1
-        || (a1->flags & 2) == 0
-        || !a1->basic
-        || !a1->basic->actorObjectOrVisualObject
-        || !((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->shape)
+    actor = AI_l_AnimatedActor(gao);
+    if (!actor || !actor->shape)
+        return NULL;
+
+    bone = ANI_pst_GetObjectByAICanal(gao, aiCanal);
+    if (!bone)
+        return NULL;
+
+    engineCanal = ANI_uc_GetEngineCanalByAICanal(gao, aiCanal);
+    if (engineCanal == 255)
+        return NULL;
+
+    if (shapeIdx == 255)
     {
-        return 0;
+        shapeIdx = actor->shapes[engineCanal];
+        if (shapeIdx == 255)
+            return NULL;
     }
-    v5 = ANI_pst_GetObjectByAICanal(a1, a2);
-    if (!v5)
-        return 0;
-    v4 = ANI_uc_GetEngineCanalByAICanal(a1, a2);
-    if (v4 == 255)
-        return 0;
-    if (a3 == 255)
-    {
-        a3 = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->shapes[v4];
-        if (a3 == 255)
-            return 0;
-    }
-    if (v5->extended && v5->extended->grp && v5->extended->grp->tablePF->actElemNum > a3)
-        return (tGameObjectMain*)((tableElemStructPF*)(v5->extended->grp->tablePF->firstElemPtr))[a3].objectPtr;
-    return 0;
+
+    if (bone->extended && bone->extended->grp && bone->extended->grp->tablePF->actElemNum > shapeIdx)
+        return (tGameObjectMain*)((tableElemStructPF*)(bone->extended->grp->tablePF->firstElemPtr))[shapeIdx].objectPtr;
+    return NULL;
 }
 
-tAINode* AI_EvalFunc_ANIShapeObjectGet(tAINode* arg0)
+tAINode* AI_EvalFunc_ANIShapeObjectGet(tAINode* node)
 {
-    int v2[8];
-    tGameObjectMain* v3;
-    char v4;
-    uint8_t v5;
-    tGameObjectMain* a1;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMain* shape;
+    char aiCanal;
+    uint8_t shapeIdx;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a1 = v3;
-    v5 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v2[0] = (int)AI_EvalFunc_ANIShapeObjectGet_C(v3, v4, v5);
-    AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return arg0 + 1;
+    shapeIdx = AI_GetIntFromStack();
+    aiCanal = AI_GetIntFromStack();
+    shape = AI_EvalFunc_ANIShapeObjectGet_C(gaoUltra, aiCanal, shapeIdx);
+    AI_PutObjectToStack(&shape, AI_gaw_EnumLink[40]);
+    return node + 1;
 }
 
-void AI_EvalFunc_ANIBitFieldLODSet_C(tGameObjectMain* a1, char a2)
+void AI_EvalFunc_ANIBitFieldLODSet_C(tGameObjectMain* gao, char lod)
 {
-    if (a1 && (a1->flags & 2) != 0 && a1->basic)
-    {
-        if (a1->basic->actorObjectOrVisualObject)
-            ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->aniBitFieldLOD = a2;
-    }
+    tGameObjectActorObject* actor;
+
+    actor = AI_l_AnimatedActor(gao);
+    if (actor)
+        actor->aniBitFieldLOD = lod;
 }
 
-tAINode* AI_EvalFunc_ANIBitFieldLODSet(tAINode* a1)
+tAINode* AI_EvalFunc_ANIBitFieldLODSet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    char v3;
+    tGameObjectMain* gaoUltra;
+    char lod;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    AI_EvalFunc_ANIBitFieldLODSet_C(v2, v3);
-    return a1 + 1;
+    lod = AI_GetIntFromStack();
+    AI_EvalFunc_ANIBitFieldLODSet_C(gaoUltra, lod);
+    return node + 1;
 }
 
-void AI_EvalFunc_ANILODSet_C(tGameObjectMain* a1, char a2)
+void AI_EvalFunc_ANILODSet_C(tGameObjectMain* gao, char lod)
 {
-    if (a1 && (a1->flags & 2) != 0 && a1->basic)
-    {
-        if (a1->basic->actorObjectOrVisualObject)
-            ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->ANILOD = a2;
-    }
+    tGameObjectActorObject* actor;
+
+    actor = AI_l_AnimatedActor(gao);
+    if (actor)
+        actor->ANILOD = lod;
 }
 
-tAINode* AI_EvalFunc_ANILODSet(tAINode* a1)
+tAINode* AI_EvalFunc_ANILODSet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    char v3;
+    tGameObjectMain* gaoUltra;
+    char lod;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    AI_EvalFunc_ANILODSet_C(v2, v3);
-    return a1 + 1;
+    lod = AI_GetIntFromStack();
+    AI_EvalFunc_ANILODSet_C(gaoUltra, lod);
+    return node + 1;
 }
 
-int AI_EvalFunc_ANIIsBoneAnimed_C(struct sGameObjectMain* a1, uint8_t a2)
+// Whether the bone on an AI canal is one the actor's first animation
+// moves.
+int AI_EvalFunc_ANIIsBoneAnimed_C(struct sGameObjectMain* gao, uint8_t aiCanal)
 {
-    tGameObjectEventsList* v3;
+    tGameObjectActorObject* actor;
+    tGameObjectEventsList* tracks;
+    tGameObjectMain* bone;
+    tableElemStructPF* bones;
     int i;
-    tGameObjectMain* v5;
 
-    v5 = ANI_pst_GetObjectByAICanal(a1, a2);
-    if (!v5)
+    bone = ANI_pst_GetObjectByAICanal(gao, aiCanal);
+    if (!bone)
         return 0;
-    if (!a1
-        || !a1->basic
-        || !a1->basic->actorObjectOrVisualObject
-        || !((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->skeletonGroup
-        || !((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[0])
-    {
+
+    actor = AI_l_ActorOrNull(gao);
+    if (!actor || !actor->skeletonGroup || !actor->animPtr[0])
         return 0;
-    }
-    v3 = ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[0]->ptr->eventListStruct;
-    for (i = 0; i < v3->num; ++i)
+
+    tracks = actor->animPtr[0]->ptr->eventListStruct;
+    bones = (tableElemStructPF*)(actor->skeletonGroup->tablePF->firstElemPtr);
+    for (i = 0; i < tracks->num; ++i)
     {
-        if (v5 == ((tableElemStructPF*)(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->skeletonGroup->tablePF->firstElemPtr))[v3->listElems[i].boneID].objectPtr)
+        if (bone == bones[tracks->listElems[i].boneID].objectPtr)
             return 1;
     }
     return 0;
 }
 
-tAINode* AI_EvalFunc_ANIIsBoneAnimed(tAINode* a1)
+tAINode* AI_EvalFunc_ANIIsBoneAnimed(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    uint8_t a2;
+    tGameObjectMain* gaoUltra;
+    uint8_t aiCanal;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a2 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_ANIIsBoneAnimed_C(v3, a2);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    aiCanal = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_ANIIsBoneAnimed_C(gaoUltra, aiCanal));
+    return node + 1;
 }
 
-void AI_EvalFunc_ANIBlendFrameMaxSet_C(struct sGameObjectMain* a1, int a2)
+// Shortens the blend animation to at most frameMax frames, keeping the
+// ratio between its lead-in and its length. The actor holds the length
+// in frames and the lead-in in 256ths of a frame.
+void AI_EvalFunc_ANIBlendFrameMaxSet_C(struct sGameObjectMain* gao, int frameMax)
 {
-    float v2;
-    float v3;
-    float v4;
-    float v5;
-    float v6;
-    float v7;
-    float v8;
-    float v9;
+    tGameObjectActorObject* actor;
+    tAnim* blend;
+    float length;
+    float totalTime;
+    float lead;
+    float leadTime;
+    float playTime;
+    float frames;
+    float newLeadTime;
+    float newTotalTime;
 
-    if (a1 && a1->basic && a1->basic->actorObjectOrVisualObject && ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[1])
-    {
-        v4 = (float)(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[1]->actionLength + 1);
-        v7 = (float)(v4 / 60.0);
-        v3 = (float)((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[1]->startTime;
-        v9 = (float)(v3 / 15360.0);
-        v6 = v7 - v9;
-        if ((uint8_t)(v6 * 60.0 + 0.5) > (uint8_t)a2)
-        {
-            v2 = (float)a2;
-            v5 = (float)(v9 / v7 / (1.0 - v9 / v7) * (v2 * 1.0 / 60.0));
-            v8 = (float)(v2 * 1.0 / 60.0 + v5);
-            ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[1]->actionLength = (unsigned int)(v8 * 60.0 + 0.5);
-            ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[1]->startTime = (uint16_t)(uint32_t)(v5 * 60.0 + 0.5) << 8;
-        }
-    }
+    actor = AI_l_ActorOrNull(gao);
+    if (!actor || !actor->animPtr[1])
+        return;
+
+    blend = actor->animPtr[1];
+    length = (float)(blend->actionLength + 1);
+    totalTime = (float)(length / 60.0);
+    lead = (float)blend->startTime;
+    leadTime = (float)(lead / 15360.0);
+    playTime = totalTime - leadTime;
+
+    if ((uint8_t)(playTime * 60.0 + 0.5) <= (uint8_t)frameMax)
+        return;
+
+    frames = (float)frameMax;
+    newLeadTime = (float)(leadTime / totalTime / (1.0 - leadTime / totalTime) * (frames * 1.0 / 60.0));
+    newTotalTime = (float)(frames * 1.0 / 60.0 + newLeadTime);
+    blend->actionLength = (unsigned int)(newTotalTime * 60.0 + 0.5);
+    blend->startTime = (uint16_t)(uint32_t)(newLeadTime * 60.0 + 0.5) << 8;
 }
 
-tAINode* AI_EvalFunc_ANIBlendFrameMaxSet(tAINode* a1)
+tAINode* AI_EvalFunc_ANIBlendFrameMaxSet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int frameMax;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_ANIBlendFrameMaxSet_C(v3, v1);
-    return a1 + 1;
+    frameMax = AI_GetIntFromStack();
+    AI_EvalFunc_ANIBlendFrameMaxSet_C(gaoUltra, frameMax);
+    return node + 1;
 }
 
-void AI_EvalFunc_ANIPelvisOffsetSet_C(struct sGameObjectMain* a1, float a2)
+void AI_EvalFunc_ANIPelvisOffsetSet_C(struct sGameObjectMain* gao, float offset)
 {
-    if (a1 && (a1->flags & 2) != 0 && a1->basic)
-    {
-        if (a1->basic->actorObjectOrVisualObject)
-            ((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->aniPelvisOffset = a2;
-    }
+    tGameObjectActorObject* actor;
+
+    actor = AI_l_AnimatedActor(gao);
+    if (actor)
+        actor->aniPelvisOffset = offset;
 }
 
-tAINode* AI_EvalFunc_ANIPelvisOffsetSet(tAINode* a1)
+tAINode* AI_EvalFunc_ANIPelvisOffsetSet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    float a2;
+    tGameObjectMain* gaoUltra;
+    float offset;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a2 = AI_GetFloatFromStack();
-    AI_EvalFunc_ANIPelvisOffsetSet_C(v2, a2);
-    return a1 + 1;
+    offset = AI_GetFloatFromStack();
+    AI_EvalFunc_ANIPelvisOffsetSet_C(gaoUltra, offset);
+    return node + 1;
 }

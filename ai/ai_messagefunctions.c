@@ -1,47 +1,81 @@
 #include "ai_messagefunctions.h"
 
-void AI_EvalFunc_MSGSend_C(struct sGameObjectMain* a1, struct sMessage* Src)
+// A game object holds at most five pending messages. Every sender in
+// this file ends the same way, so the queue push is one function.
+static void MSG_l_Push(tGameObjectMessages* messages, const tMessage* msg)
 {
-    tGameObjectMessages* v2;
-
-    if (a1->extended && a1->extended->messages)
+    if (messages->count < 5u)
     {
-        v2 = a1->extended->messages;
-        if (v2->count < 5u)
-        {
-            memcpy(&v2->msgs[v2->count], Src, sizeof(v2->msgs[v2->count]));
-            ++v2->count;
-        }
+        memcpy(&messages->msgs[messages->count], msg, sizeof(messages->msgs[0]));
+        ++messages->count;
     }
 }
 
-tAINode* AI_EvalFunc_MSGSend(tAINode* arg0)
+// The reader functions all hand back the same cleared global when they
+// find nothing, which is how a script sees "no message".
+static tMessage* MSG_l_NoMessage(void)
 {
-    tGameObjectMain* v2;
-    tMessage dest;
-    tVarStackElem a2;
-    tGameObjectMain* a1;
-
-    v2 = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a1 = v2;
-    AI_GetVarFromStack(&dest, &a2);
-    AI_EvalFunc_MSGSend_C(a1, (tMessage*)a2.ptr);
-    return arg0 + 1;
+    gst_Lifo.msgID = 0;
+    return &gst_Lifo;
 }
 
-struct sMessage* AI_EvalFunc_MSGGet_C(struct sGameObjectMain* a1)
+static int MSG_l_FindByID(tGameObjectMessages* messages, int msgID)
 {
-    tMessage* v2;
-    tGameObjectMessages* v3;
+    int i;
 
-    v3 = a1->extended->messages;
-    if (v3->count > 0)
-        return &v3->msgs[--v3->count];
-    v2 = &v3->msgs[v3->count];
-    v2->msgID = 0;
-    return v2;
+    for (i = 0; i < messages->count; ++i)
+    {
+        if (messages->msgs[i].msgID == msgID)
+            return i;
+    }
+    return -1;
+}
+
+// The seven arguments MSGSendAll and MSGSendAllOwner share, popped in
+// the order the two have them.
+static void MSG_l_PopCommonFields(tMessage* msg)
+{
+    msg->Int2 = AI_GetIntFromStack();
+    msg->Int1 = AI_GetIntFromStack();
+    msg->f1 = AI_GetFloatFromStack();
+    msg->f2 = AI_GetFloatFromStack();
+    msg->v2 = *(Vec3*)AI_PopStackSlot();
+    msg->v1 = *(Vec3*)AI_PopStackSlot();
+    msg->gao2 = (tGameObjectMain*)AI_GetObjectFromStack();
+}
+
+void AI_EvalFunc_MSGSend_C(struct sGameObjectMain* gao, struct sMessage* msg)
+{
+    if (gao->extended && gao->extended->messages)
+        MSG_l_Push(gao->extended->messages, msg);
+}
+
+tAINode* AI_EvalFunc_MSGSend(tAINode* node)
+{
+    tGameObjectMain* gaoUltra;
+    tMessage converted;
+    tVarStackElem var;
+
+    gaoUltra = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+
+    AI_GetVarFromStack(&converted, &var);
+    AI_EvalFunc_MSGSend_C(gaoUltra, (tMessage*)var.ptr);
+    return node + 1;
+}
+
+struct sMessage* AI_EvalFunc_MSGGet_C(struct sGameObjectMain* gao)
+{
+    tGameObjectMessages* messages;
+
+    messages = gao->extended->messages;
+    if (messages->count > 0)
+        return &messages->msgs[--messages->count];
+
+    // an empty queue reads as the slot one past its end, cleared
+    messages->msgs[messages->count].msgID = 0;
+    return &messages->msgs[messages->count];
 }
 
 struct sMessage* AI_EvalFunc_MSGGet_C_CURRENT()
@@ -49,363 +83,274 @@ struct sMessage* AI_EvalFunc_MSGGet_C_CURRENT()
     return AI_EvalFunc_MSGGet_C(AI_gpst_CurrentGameObject);
 }
 
-tAINode* AI_EvalFunc_MSGGet(tAINode* arg0)
+tAINode* AI_EvalFunc_MSGGet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    tVarStackElem a1;
-    tMessage* v4;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    tVarStackElem var;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    v4 = AI_EvalFunc_MSGGet_C(v2);
-    a1.type = AI_gaw_EnumLink[41];
-    a1.ptr = (char*)v4;
-    AI_EvalVar(&a1);
-    return arg0 + 1;
+
+    var.type = AI_gaw_EnumLink[41];
+    var.ptr = (char*)AI_EvalFunc_MSGGet_C(gaoUltra);
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-void AI_EvalFunc_MSGClear_C(struct sGameObjectMain* a1)
+void AI_EvalFunc_MSGClear_C(struct sGameObjectMain* gao)
 {
-    a1->extended->messages->count = 0;
+    gao->extended->messages->count = 0;
 }
 
-tAINode* AI_EvalFunc_MSGClear(tAINode* a1)
+tAINode* AI_EvalFunc_MSGClear(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_MSGClear_C(v2);
-    return a1 + 1;
+    AI_EvalFunc_MSGClear_C(gaoUltra);
+    return node + 1;
 }
 
-void AI_EvalFunc_MSGOn_C(tGameObjectMain* a1)
+void AI_EvalFunc_MSGOn_C(tGameObjectMain* gao)
 {
-    int a2;
+    if ((gao->flags & 0x8000) == 0)
+        OBJ_ChangeIdentityFlags(gao, gao->flags | 0x8000, -1);
+}
 
-    if ((a1->flags & 0x8000) == 0)
+tAINode* AI_EvalFunc_MSGOn(tAINode* node)
+{
+    tGameObjectMain* gaoUltra;
+
+    gaoUltra = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_EvalFunc_MSGOn_C(gaoUltra);
+    return node + 1;
+}
+
+tAINode* AI_EvalFunc_MSGSendEx(tAINode* node)
+{
+    tGameObjectMain* gaoUltra;
+    tMessage msg;
+    int msgID;
+    int value;
+
+    gaoUltra = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+
+    if (!gaoUltra->extended || !gaoUltra->extended->messages)
+        return node + 1;
+
+    value = AI_GetIntFromStack();
+    msgID = AI_GetIntFromStack();
+
+    memset(&msg, 0, sizeof(msg));
+    msg.gao = AI_gpst_CurrentGameObject;
+    msg.msgID = msgID;
+    msg.f2 = (float)value;
+    MSG_l_Push(gaoUltra->extended->messages, &msg);
+    return node + 1;
+}
+
+struct sMessage* AI_EvalFunc_MSGGetByID_C(struct sGameObjectMain* gao, int msgID)
+{
+    tGameObjectMessages* messages;
+    tMessage swap;
+    int found;
+
+    messages = gao->extended->messages;
+    found = MSG_l_FindByID(messages, msgID);
+    if (found == -1)
+        return MSG_l_NoMessage();
+
+    // the match is popped, so it changes places with the last one first
+    if (found != messages->count - 1)
     {
-        if (a1)
-            a2 = a1->flags;
-        else
-            a2 = 0;
-        OBJ_ChangeIdentityFlags(a1, a2 | 0x8000, -1);
+        memcpy(&swap, &messages->msgs[found], sizeof(swap));
+        memcpy(&messages->msgs[found], &messages->msgs[messages->count - 1], sizeof(swap));
+        memcpy(&messages->msgs[messages->count - 1], &swap, sizeof(swap));
+        found = messages->count - 1;
     }
+    --messages->count;
+    return &messages->msgs[found];
 }
 
-tAINode* AI_EvalFunc_MSGOn(tAINode* a1)
+tAINode* AI_EvalFunc_MSGGetByID(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
+    tVarStackElem var;
+    int msgID;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_MSGOn_C(v2);
-    return a1 + 1;
+
+    msgID = AI_GetIntFromStack();
+    var.ptr = (char*)AI_EvalFunc_MSGGetByID_C(gaoUltra, msgID);
+    var.type = AI_gaw_EnumLink[41];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MSGSendEx(tAINode* a1)
+tAINode* AI_EvalFunc_MSGSendAll(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
-    tMessage Src;
-    int v5;
-    tGameObjectMessages* v6;
-    tGameObjectMain* v7;
+    tGameObjectMain* gaoUltra;
+    tMessage msg;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v7 = v2;
-    if (!v2->extended)
-        return a1 + 1;
-    if (!v7->extended->messages)
-        return a1 + 1;
-    v3 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    v6 = v7->extended->messages;
-    memset(&Src, 0, sizeof(Src));
-    Src.gao = AI_gpst_CurrentGameObject;
-    Src.msgID = v5;
-    Src.f2 = (float)v3;
-    if (v6->count < 5u)
-    {
-        memcpy(&v6->msgs[v6->count], &Src, sizeof(v6->msgs[v6->count]));
-        ++v6->count;
-    }
-    return a1 + 1;
+
+    if (!gaoUltra->extended || !gaoUltra->extended->messages)
+        return node + 1;
+
+    MSG_l_PopCommonFields(&msg);
+    msg.gao = (tGameObjectMain*)AI_GetObjectFromStack();
+    msg.msgID = AI_GetIntFromStack();
+    MSG_l_Push(gaoUltra->extended->messages, &msg);
+    return node + 1;
 }
 
-struct sMessage* AI_EvalFunc_MSGGetByID_C(struct sGameObjectMain* a1, int a2)
+int AI_EvalFunc_MSGTestInt1_C(tGameObjectMain* gao, int msgID, int mask)
 {
-    tMessage* v3;
-    char Src[52];
+    tGameObjectMessages* messages;
     int i;
-    tGameObjectMessages* v6;
 
-    v6 = a1->extended->messages;
-    if (v6->count > 0)
-    {
-        for (i = 0; i < v6->count; ++i)
-        {
-            if (v6->msgs[i].msgID == a2)
-            {
-                if (i != v6->count - 1)
-                {
-                    memcpy(Src, &v6->msgs[i], sizeof(Src));
-                    memcpy(&v6->msgs[i], &v6->msgs[v6->count - 1], sizeof(v6->msgs[i]));
-                    memcpy(&v6->msgs[v6->count - 1], Src, sizeof(v6->msgs[v6->count - 1]));
-                    i = v6->count - 1;
-                }
-                v3 = &v6->msgs[i];
-                --v6->count;
-                return v3;
-            }
-        }
-    }
-    v3 = &gst_Lifo;
-    gst_Lifo.msgID = 0;
-    return v3;
-}
-
-tAINode* AI_EvalFunc_MSGGetByID(tAINode* arg0)
-{
-    tGameObjectMain* v2;
-    int a2;
-    tVarStackElem a1;
-    tGameObjectMain* v5;
-
-    v2 = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    a2 = AI_GetIntFromStack();
-    a1.ptr = (char*)AI_EvalFunc_MSGGetByID_C(v2, a2);
-    a1.type = AI_gaw_EnumLink[41];
-    AI_EvalVar(&a1);
-    return arg0 + 1;
-}
-
-tAINode* AI_EvalFunc_MSGSendAll(tAINode* a1)
-{
-    tGameObjectMain* v2;
-    tMessage Src;
-    tGameObjectMessages* v4;
-    tGameObjectMain* v5;
-
-    v2 = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    if (!v2->extended)
-        return a1 + 1;
-    if (!v5->extended->messages)
-        return a1 + 1;
-    v4 = v5->extended->messages;
-    Src.Int2 = AI_GetIntFromStack();
-    Src.Int1 = AI_GetIntFromStack();
-    Src.f1 = AI_GetFloatFromStack();
-    Src.f2 = AI_GetFloatFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    Src.v2 = *(Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    Src.v1 = *(Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    Src.gao2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    Src.gao = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    Src.msgID = AI_GetIntFromStack();
-    if (v4->count < 5u)
-    {
-        memcpy(&v4->msgs[v4->count], &Src, sizeof(v4->msgs[v4->count]));
-        ++v4->count;
-    }
-    return a1 + 1;
-}
-
-int AI_EvalFunc_MSGTestInt1_C(tGameObjectMain* a1, int a2, int a3)
-{
-    int i;
-    tGameObjectMessages* v5;
-
-    if (!a1->extended)
+    if (!gao->extended || !gao->extended->messages)
         return 0;
-    if (!a1->extended->messages)
-        return 0;
-    v5 = a1->extended->messages;
-    for (i = 0; i < v5->count; ++i)
+
+    messages = gao->extended->messages;
+    for (i = 0; i < messages->count; ++i)
     {
-        if (v5->msgs[i].msgID == a2 && (a3 & v5->msgs[i].Int1) != 0)
+        if (messages->msgs[i].msgID == msgID && (mask & messages->msgs[i].Int1) != 0)
             return 1;
     }
     return 0;
 }
 
-tAINode* AI_EvalFunc_MSGTestInt1(tAINode* a1)
+tAINode* AI_EvalFunc_MSGTestInt1(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int msgID;
+    int mask;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_MSGTestInt1_C(v3, a2, a3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+
+    mask = AI_GetIntFromStack();
+    msgID = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_MSGTestInt1_C(gaoUltra, msgID, mask));
+    return node + 1;
 }
 
-struct sMessage* AI_EvalFunc_MSGRead_C(struct sGameObjectMain* a1, int a2)
+struct sMessage* AI_EvalFunc_MSGRead_C(struct sGameObjectMain* gao, int index)
 {
-    tGameObjectMessages* v3;
-    tMessage* v4;
+    tGameObjectMessages* messages;
 
-    v3 = a1->extended->messages;
-    if (a2 < v3->count)
-        return &v3->msgs[a2];
-    v4 = &gst_Lifo;
-    gst_Lifo.msgID = 0;
-    return v4;
+    messages = gao->extended->messages;
+    if (index < messages->count)
+        return &messages->msgs[index];
+    return MSG_l_NoMessage();
 }
 
-tAINode* AI_EvalFunc_MSGRead(tAINode* arg0)
+tAINode* AI_EvalFunc_MSGRead(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a2;
-    tVarStackElem v4; 
-    tGameObjectMain* a1;
+    tGameObjectMain* gaoUltra;
+    tVarStackElem var;
+    int index;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a1 = v2;
-    a2 = AI_GetIntFromStack();
-    v4.type = AI_gaw_EnumLink[41];
-    v4.ptr = (char*)AI_EvalFunc_MSGRead_C(v2, a2);
-    AI_EvalVar(&v4);
-    return arg0 + 1;
+
+    index = AI_GetIntFromStack();
+    var.type = AI_gaw_EnumLink[41];
+    var.ptr = (char*)AI_EvalFunc_MSGRead_C(gaoUltra, index);
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MSGReadByID(tAINode* arg0)
+tAINode* AI_EvalFunc_MSGReadByID(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
-    tVarStackElem a1;
-    int i;
-    tGameObjectMessages* v6;
-    tGameObjectMain* v7;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMessages* messages;
+    tVarStackElem var;
+    int msgID;
+    int found;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v7 = v2;
-    v3 = AI_GetIntFromStack();
-    v6 = v2->extended->messages;
-    if (v6->count > 0)
-    {
-        for (i = 0; i < v6->count; ++i)
-        {
-            if (v6->msgs[i].msgID == v3)
-            {
-                a1.ptr = (char*)&v6->msgs[i];
-                goto LABEL_8;
-            }
-        }
-    }
-    a1.ptr = (char*)&gst_Lifo;
-    gst_Lifo.msgID = 0;
-LABEL_8:
-    a1.type = AI_gaw_EnumLink[41];
-    AI_EvalVar(&a1);
-    return arg0 + 1;
+
+    msgID = AI_GetIntFromStack();
+    messages = gaoUltra->extended->messages;
+
+    // the read leaves the message where it is, unlike MSGGetByID
+    found = MSG_l_FindByID(messages, msgID);
+    if (found != -1)
+        var.ptr = (char*)&messages->msgs[found];
+    else
+        var.ptr = (char*)MSG_l_NoMessage();
+
+    var.type = AI_gaw_EnumLink[41];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-int AI_EvalFunc_MSGGetCount_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_MSGGetCount_C(struct sGameObjectMain* gao)
 {
-    if (!a1->extended)
+    if (!gao->extended || !gao->extended->messages)
         return 0;
-    if (a1->extended->messages)
-        return a1->extended->messages->count;
-    return 0;
+    return gao->extended->messages->count;
 }
 
-tAINode* AI_EvalFunc_MSGGetCount(tAINode* a1)
+tAINode* AI_EvalFunc_MSGGetCount(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_MSGGetCount_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_MSGGetCount_C(gaoUltra));
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_MSGSendAllOwner(tAINode* a1)
+tAINode* AI_EvalFunc_MSGSendAllOwner(tAINode* node)
 {
-    tGameObjectMain* v2;
-    tMessage Src;
-    tGameObjectMessages* v4;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    tMessage msg;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    if (!MSG_gpo_Owner)
-        return a1 + 1;
-    if (!MSG_gpo_Owner->extended)
-        return a1 + 1;
-    if (!MSG_gpo_Owner->extended->messages)
-        return a1 + 1;
-    v4 = MSG_gpo_Owner->extended->messages;
-    Src.Int2 = AI_GetIntFromStack();
-    Src.Int1 = AI_GetIntFromStack();
-    Src.f1 = AI_GetFloatFromStack();
-    Src.f2 = AI_GetFloatFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    Src.v2 = *(Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    Src.v1 = *(Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    Src.gao2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    Src.gao = AI_gpst_CurrentGameObject;
-    Src.msgID = AI_GetIntFromStack();
-    if (v4->count < 5u)
-    {
-        memcpy(&v4->msgs[v4->count], &Src, sizeof(v4->msgs[v4->count]));
-        ++v4->count;
-    }
-    return a1 + 1;
+
+    if (!MSG_gpo_Owner || !MSG_gpo_Owner->extended || !MSG_gpo_Owner->extended->messages)
+        return node + 1;
+
+    MSG_l_PopCommonFields(&msg);
+    msg.gao = AI_gpst_CurrentGameObject;
+    msg.msgID = AI_GetIntFromStack();
+    MSG_l_Push(MSG_gpo_Owner->extended->messages, &msg);
+    return node + 1;
 }
 
-void AI_EvalFunc_MSGRegOwner_C(struct sGameObjectMain* a1)
+void AI_EvalFunc_MSGRegOwner_C(struct sGameObjectMain* gao)
 {
-    MSG_gpo_Owner = a1;
+    MSG_gpo_Owner = gao;
 }
 
-tAINode* AI_EvalFunc_MSGRegOwner(tAINode* a1)
+tAINode* AI_EvalFunc_MSGRegOwner(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    MSG_gpo_Owner = v2;
-    return a1 + 1;
+    AI_EvalFunc_MSGRegOwner_C(gaoUltra);
+    return node + 1;
 }

@@ -168,6 +168,8 @@ void AI_GetVarFromStack(void* dest, tVarStackElem* a2);
 char* AI_PushUserStack(void* a1, int16_t a2);
 void AI_PopUserStack(void* a1, tVarStackElem* a2);
 void AI_PutObjectToStack(void* a1, int16_t type);
+char* AI_PopStackSlot(void);
+void* AI_GetObjectFromStack(void);
 void AI_EvalVar(tVarStackElem* a1);
 void AI_EvalVarArray(tAINode* a1, char* a2);
 void AI_EvalVarArray2(tAINode* a1, char* a2);

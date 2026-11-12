@@ -3,47 +3,112 @@
 #include "../engine.h"
 #include "ai_aifunctions.h"
 
-void AI_EvalFunc_CastVector_C(float a1, float a2, float a3, Vec3* a4)
+// A numeric argument that may arrive as either type. The value is
+// converted through its own type function first, then read as a float,
+// which means converting from int for every type but float itself.
+// This is not AI_GetFloatFromStack, which skips the type function and
+// converts only for the int type.
+static float AI_l_PopNumberAsFloat(void)
 {
-    a4->x = a1;
-    a4->y = a2;
-    a4->z = a3;
+    char converted[52];
+    tVarStackElem var;
+
+    AI_GetVarFromStack(converted, &var);
+    if (var.type != 2)
+        return (float)*(int32_t*)converted;
+    return *(float*)converted;
 }
 
-tAINode* AI_EvalFunc_CastVector(tAINode* a1)
+// The same the other way round: read as an int, rounded through the
+// magic double when it arrived as a float.
+static int AI_l_PopNumberAsInt(void)
 {
-    float v2;
-    float v3;
-    float v4;
-    Vec3 a4; 
-    tVarStackElem v6;
-    float dest[13];
-    tVarStackElem v8;
-    float v9[13];
-    float v10[13];
-    tVarStackElem a2;
+    char converted[52];
+    tVarStackElem var;
+    double rounded;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v9, &v8);
-    AI_GetVarFromStack(v10, &v6);
-    if (a2.type != 2)
+    AI_GetVarFromStack(converted, &var);
+    if (var.type != 2)
+        return *(int32_t*)converted;
+
+    rounded = *(float*)converted + MATH_gd_magicDoubleForRound;
+    return *(int32_t*)&rounded;
+}
+
+// A behaviour reference arrives as a variable whose converted value is
+// the function pointer.
+static tAIFunction* AI_l_PopFunction(void)
+{
+    char converted[52];
+    tVarStackElem var;
+
+    AI_GetVarFromStack(converted, &var);
+    return *(tAIFunction**)converted;
+}
+
+// Where a behaviour runs, a function with no nodes but a C
+// implementation gets the -1 sentinel in place of an entry node.
+static tAINode* AI_l_EntryNode(tAIFunction* func)
+{
+    if (func->nodes)
+        return func->nodes;
+    if (func->funcPtr)
+        return (tAINode*)-1;
+    return NULL;
+}
+
+// A builtin that can end the evaluation returns one of the
+// interpreter's control codes in place of a node; anything else means
+// carry on with the next node.
+static tAINode* AI_l_ControlCode(int code, tAINode* node)
+{
+    if (code == 1 || code == 3 || code == 4 || code == 5)
+        return (tAINode*)code;
+    return node + 1;
+}
+
+// Clearing a track also narrows the first/last range the interpreter
+// walks. The second test deliberately sees the value the first loop
+// left behind.
+static void AI_l_StopTrack(tAI* instance, unsigned int track)
+{
+    instance->instanceCallBacks[track] = 0;
+    instance->instanceJumpNodes[track] = 0;
+
+    if (track == instance->trackFirst)
     {
-        v4 = (float)(*(int32_t*)&dest[0]);
-        dest[0] = v4;
+        while (track < 5 && !instance->instanceCallBacks[track])
+            ++track;
+        instance->trackFirst = track;
     }
-    if (v8.type != 2)
+    if (track == instance->trackLast)
     {
-        v3 = (float)(*(int32_t*)&v9[0]);
-        v9[0] = v3;
+        while (track && !instance->instanceCallBacks[track])
+            --track;
+        instance->trackLast = track;
     }
-    if (v6.type != 2)
-    {
-        v2 = (float)(*(int32_t*)&v10[0]);
-        v10[0] = v2;
-    }
-    AI_EvalFunc_CastVector_C(v10[0], v9[0], dest[0], &a4);
-    AI_PutVecToStack(&a4);
-    return a1 + 1;
+}
+
+void AI_EvalFunc_CastVector_C(float x, float y, float z, Vec3* result)
+{
+    result->x = x;
+    result->y = y;
+    result->z = z;
+}
+
+tAINode* AI_EvalFunc_CastVector(tAINode* node)
+{
+    Vec3 result;
+    float x;
+    float y;
+    float z;
+
+    z = AI_l_PopNumberAsFloat();
+    y = AI_l_PopNumberAsFloat();
+    x = AI_l_PopNumberAsFloat();
+    AI_EvalFunc_CastVector_C(x, y, z, &result);
+    AI_PutVecToStack(&result);
+    return node + 1;
 }
 
 int AI_EvalFunc_AIExecute_C(struct sAIFunction* funcPtr)
@@ -57,243 +122,154 @@ int AI_EvalFunc_AIExecute_C(struct sAIFunction* funcPtr)
 
     if (funcPtr && funcPtr != (tAIFunction*)-1)
     {
-        jumpNode = funcPtr->nodes;
-        if (!jumpNode)
-        {
-            if (funcPtr->funcPtr)
-                jumpNode = (tAINode*)-1;
-        }
+        jumpNode = AI_l_EntryNode(funcPtr);
         ++AI_gi_RunFctLevel;
         jumpNode = AI_pst_RunFunction(funcPtr, &jumpNode, AI_gpst_CurrentFunction->stackOffsetNum);
         --AI_gi_RunFctLevel;
     }
     AI_gpst_CurrentFunction = currentFunctionBackup;
     AI_gppst_CurrentJumpNode = currentJumpNodeBackup;
-    if ((unsigned int)jumpNode >= 7)
-        return 1000;
-    if (jumpNode == (tAINode*)1)
-        return 1;
-    if (jumpNode == (tAINode*)3)
-        return 3;
-    if (jumpNode == (tAINode*)4)
-        return 4;
-    if (jumpNode == (tAINode*)5)
-        return 5;
-    else
-        return 1000;
-}
 
-tAINode* AI_EvalFunc_AIExecute(tAINode* a1)
-{
-    int dest[13];
-    unsigned int ret;
-    tVarStackElem a2;
-
-    AI_GetVarFromStack(dest, &a2);
-
-    ret = AI_EvalFunc_AIExecute_C((tAIFunction*)dest[0]);
-    if (ret >= 7)
-        return a1 + 1;
-
-    switch (ret)
+    switch ((uintptr_t)jumpNode)
     {
     case 1:
-        return (tAINode*)1;
-    case 3: // reinit
-        return (tAINode*)3;
+        return 1;
+    case 3:
+        return 3;
     case 4:
-        return (tAINode*)4;
+        return 4;
     case 5:
-        return (tAINode*)5;
+        return 5;
     default:
-        return a1 + 1;
+        return 1000;
     }
 }
 
-int AI_EvalFunc_AITrackChange_C(int a1, struct sAIFunction* a2)
+tAINode* AI_EvalFunc_AIExecute(tAINode* node)
 {
-    int result;
-    tAI* v3;
+    return AI_l_ControlCode(AI_EvalFunc_AIExecute_C(AI_l_PopFunction()), node);
+}
 
-    v3 = AI_gpst_CurrentInstanceUltra;
+// Returns the track range's old upper bound, which no caller reads.
+int AI_EvalFunc_AITrackChange_C(int track, struct sAIFunction* func)
+{
+    tAI* instance;
+    int previousLast;
+
+    instance = AI_gpst_CurrentInstanceUltra;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    if (v3->instanceCallBacks[a1] != a2)
+
+    if (instance->instanceCallBacks[track] != func)
     {
-        v3->instanceCallBacks[a1] = a2;
-        v3->instanceJumpNodes[a1] = a2->nodes;
-        if (!v3->instanceJumpNodes[a1])
-        {
-            if (v3->instanceCallBacks[a1]->funcPtr)
-            {
-                v3->instanceCallBackTimeRemaining[a1] = 0.0;
-                v3->instanceJumpNodes[a1] = (tAINode*)-1;
-            }
-        }
+        instance->instanceCallBacks[track] = func;
+        if (!func->nodes && func->funcPtr)
+            instance->instanceCallBackTimeRemaining[track] = 0.0;
+        instance->instanceJumpNodes[track] = AI_l_EntryNode(func);
     }
-    if (a1 < v3->trackFirst)
-        v3->trackFirst = a1;
-    result = v3->trackLast;
-    if (a1 > result)
-        v3->trackLast = a1;
-    return result;
+
+    if (track < instance->trackFirst)
+        instance->trackFirst = track;
+    previousLast = instance->trackLast;
+    if (track > previousLast)
+        instance->trackLast = track;
+    return previousLast;
 }
 
-tAINode* AI_EvalFunc_AITrackChange(tAINode* a1)
+tAINode* AI_EvalFunc_AITrackChange(tAINode* node)
 {
-    double v2;
-    int dest[13];
-    tVarStackElem v4;
-    float v5[13];
-    tVarStackElem a2;
+    tAIFunction* func;
+    int track;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v5, &v4);
-    if (v4.type == 2)
-    {
-        v2 = v5[0] + MATH_gd_magicDoubleForRound;
-        v5[0] = *(float*)&v2;
-    }
-    AI_EvalFunc_AITrackChange_C((*(int32_t *)&v5[0]), (tAIFunction*)dest[0]);
-    return a1 + 1;
+    func = AI_l_PopFunction();
+    track = AI_l_PopNumberAsInt();
+    AI_EvalFunc_AITrackChange_C(track, func);
+    return node + 1;
 }
 
-void AI_EvalFunc_AITrackStop_C(int a1)
+void AI_EvalFunc_AITrackStop_C(int track)
 {
-    tAI* v1;
+    tAI* instance;
 
-    v1 = AI_gpst_CurrentInstanceUltra;
+    instance = AI_gpst_CurrentInstanceUltra;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    v1->instanceCallBacks[a1] = 0;
-    v1->instanceJumpNodes[a1] = 0;
-    if (a1 == v1->trackFirst)
-    {
-        while (a1 < 5 && !v1->instanceCallBacks[a1])
-            ++a1;
-        v1->trackFirst = a1;
-    }
-    if (a1 == v1->trackLast)
-    {
-        while (a1 && !v1->instanceCallBacks[a1])
-            --a1;
-        v1->trackLast = a1;
-    }
+    AI_l_StopTrack(instance, track);
 }
 
-tAINode* AI_EvalFunc_AITrackStop(tAINode* a1)
+tAINode* AI_EvalFunc_AITrackStop(tAINode* node)
 {
-    double v2;
-    float dest[13];
-    tVarStackElem a2;
+    int track;
 
-    AI_GetVarFromStack(dest, &a2);
-    if (a2.type == 2)
-    {
-        v2 = dest[0] + MATH_gd_magicDoubleForRound;
-        dest[0] = *(float*)&v2;
-    }
-    AI_EvalFunc_AITrackStop_C(*(int32_t *)(&dest[0]));
-    return a1 + 1;
+    track = AI_l_PopNumberAsInt();
+    AI_EvalFunc_AITrackStop_C(track);
+    return node + 1;
 }
 
-void AI_EvalFunc_AITrackCurChange_C(struct sAIFunction* a1)
+void AI_EvalFunc_AITrackCurChange_C(struct sAIFunction* func)
 {
-    if (AI_gpst_CurrentInstance->instanceCallBacks[AI_gul_CurrentTrack] != a1)
-    {
-        AI_gpst_CurrentInstance->instanceCallBacks[AI_gul_CurrentTrack] = a1;
-        AI_gpst_CurrentInstance->instanceJumpNodes[AI_gul_CurrentTrack] = a1->nodes;
-        if (!AI_gpst_CurrentInstance->instanceJumpNodes[AI_gul_CurrentTrack])
-        {
-            if (AI_gpst_CurrentInstance->instanceCallBacks[AI_gul_CurrentTrack]->funcPtr)
-                AI_gpst_CurrentInstance->instanceJumpNodes[AI_gul_CurrentTrack] = (tAINode*)-1;
-        }
-    }
+    tAI* instance;
+
+    instance = AI_gpst_CurrentInstance;
+    if (instance->instanceCallBacks[AI_gul_CurrentTrack] == func)
+        return;
+
+    instance->instanceCallBacks[AI_gul_CurrentTrack] = func;
+    instance->instanceJumpNodes[AI_gul_CurrentTrack] = AI_l_EntryNode(func);
 }
 
-tAINode* AI_EvalFunc_AITrackCurChange(tAINode* a1)
+tAINode* AI_EvalFunc_AITrackCurChange(tAINode* node)
 {
-    int dest[14];
-    tVarStackElem a2;
-
-    AI_GetVarFromStack(dest, &a2);
-    dest[13] = dest[0];
-    AI_EvalFunc_AITrackCurChange_C((tAIFunction*)dest[0]);
-    return a1 + 1;
+    AI_EvalFunc_AITrackCurChange_C(AI_l_PopFunction());
+    return node + 1;
 }
 
 void AI_EvalFunc_AITrackCurStop_C()
 {
-    unsigned int v0;
-
-    AI_gpst_CurrentInstance->instanceCallBacks[AI_gul_CurrentTrack] = 0;
-    AI_gpst_CurrentInstance->instanceJumpNodes[AI_gul_CurrentTrack] = 0;
-    v0 = AI_gul_CurrentTrack;
-    if (AI_gul_CurrentTrack == AI_gpst_CurrentInstance->trackFirst)
-    {
-        while (v0 < 5 && !AI_gpst_CurrentInstance->instanceCallBacks[v0])
-            ++v0;
-        AI_gpst_CurrentInstance->trackFirst = v0;
-    }
-    if (v0 == AI_gpst_CurrentInstance->trackLast)
-    {
-        while (v0 && !AI_gpst_CurrentInstance->instanceCallBacks[v0])
-            --v0;
-        AI_gpst_CurrentInstance->trackLast = v0;
-    }
+    AI_l_StopTrack(AI_gpst_CurrentInstance, AI_gul_CurrentTrack);
 }
 
-tAINode* AI_EvalFunc_AITrackCurStop(tAINode* a1)
+tAINode* AI_EvalFunc_AITrackCurStop(tAINode* node)
 {
     AI_EvalFunc_AITrackCurStop_C();
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_AITrackCurChangeNow_C(struct sAIFunction* a1)
+// Switches the current track and ends the evaluation so the new
+// behaviour runs in this frame rather than the next.
+int AI_EvalFunc_AITrackCurChangeNow_C(struct sAIFunction* func)
 {
-    if (AI_gpst_CurrentFunction == a1)
+    tAI* instance;
+
+    if (AI_gpst_CurrentFunction == func)
         return 1000;
-    AI_gpst_CurrentFunction = a1;
-    AI_gpst_CurrentInstance->instanceCallBacks[AI_gul_CurrentTrack] = a1;
-    AI_gpst_CurrentInstance->instanceJumpNodes[AI_gul_CurrentTrack] = AI_gpst_CurrentFunction->nodes;
-    if (!AI_gpst_CurrentInstance->instanceJumpNodes[AI_gul_CurrentTrack])
-    {
-        if (AI_gpst_CurrentInstance->instanceCallBacks[AI_gul_CurrentTrack]->funcPtr)
-            AI_gpst_CurrentInstance->instanceJumpNodes[AI_gul_CurrentTrack] = (tAINode*)-1;
-    }
+
+    AI_gpst_CurrentFunction = func;
+    instance = AI_gpst_CurrentInstance;
+    instance->instanceCallBacks[AI_gul_CurrentTrack] = func;
+    instance->instanceJumpNodes[AI_gul_CurrentTrack] = AI_l_EntryNode(func);
     return 5;
 }
 
-tAINode* AI_EvalFunc_AITrackCurChangeNow(tAINode* a1)
+tAINode* AI_EvalFunc_AITrackCurChangeNow(tAINode* node)
 {
-    tAINode* result;
-    int dest[13];
-    tAINode* v3;
-    tVarStackElem a2;
-
-    AI_GetVarFromStack(dest, &a2);
-    v3 = (tAINode*)AI_EvalFunc_AITrackCurChangeNow_C((tAIFunction*)dest[0]);
-    if (v3 == (tAINode*)1000)
-        result = a1 + 1;
-    else
-        result = v3;
-    return result;
+    return AI_l_ControlCode(AI_EvalFunc_AITrackCurChangeNow_C(AI_l_PopFunction()), node);
 }
 
-struct sAIFunction* AI_EvalFunc_AITrackGet_C(int a1)
+struct sAIFunction* AI_EvalFunc_AITrackGet_C(int track)
 {
-    return AI_gpst_CurrentInstance->instanceCallBacks[a1];
+    return AI_gpst_CurrentInstance->instanceCallBacks[track];
 }
 
-tAINode* AI_EvalFunc_AITrackGet(tAINode* a1)
+tAINode* AI_EvalFunc_AITrackGet(tAINode* node)
 {
-    int v1;
-    int a1a[5];
+    tAIFunction* func;
+    int track;
 
-    v1 = AI_GetIntFromStack();
-    a1a[0] = (int)AI_EvalFunc_AITrackGet_C(v1);
-    AI_PutObjectToStack(a1a, AI_gaw_EnumLink[39]);
-    return a1 + 1;
+    track = AI_GetIntFromStack();
+    func = AI_EvalFunc_AITrackGet_C(track);
+    AI_PutObjectToStack(&func, AI_gaw_EnumLink[39]);
+    return node + 1;
 }
 
 struct sAIFunction* AI_EvalFunc_AITrackCurGet_C()
@@ -301,199 +277,192 @@ struct sAIFunction* AI_EvalFunc_AITrackCurGet_C()
     return AI_gpst_CurrentInstance->instanceCallBacks[AI_gul_CurrentTrack];
 }
 
-tAINode* AI_EvalFunc_AITrackCurGet(tAINode* a1)
+tAINode* AI_EvalFunc_AITrackCurGet(tAINode* node)
 {
-    int a1a[3];
+    tAIFunction* func;
 
-    a1a[0] = (int)AI_EvalFunc_AITrackCurGet_C();
-    AI_PutObjectToStack(a1a, AI_gaw_EnumLink[39]);
-    return a1 + 1;
+    func = AI_EvalFunc_AITrackCurGet_C();
+    AI_PutObjectToStack(&func, AI_gaw_EnumLink[39]);
+    return node + 1;
 }
 
-BOOL AI_EvalFunc_AIIsModel_C(struct sGameObjectMain* a1, struct sAIModel* a2)
+BOOL AI_EvalFunc_AIIsModel_C(struct sGameObjectMain* gao, struct sAIModel* model)
 {
-    BOOL v3;
-
-    if (a1->extended && a1->extended->AIInstance)
-        v3 = a1->extended->AIInstance->model == a2;
-    else
-        v3 = 0;
-    return v3;
+    if (!gao->extended || !gao->extended->AIInstance)
+        return FALSE;
+    return gao->extended->AIInstance->model == model;
 }
 
-tAINode* AI_EvalFunc_AIIsModel(tAINode* a1)
+tAINode* AI_EvalFunc_AIIsModel(tAINode* node)
 {
-    BOOL v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    tAIModel* model;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v1 = AI_EvalFunc_AIIsModel_C(v3, *(tAIModel**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    model = (tAIModel*)AI_GetObjectFromStack();
+    AI_PutIntToStack(AI_EvalFunc_AIIsModel_C(gaoUltra, model));
+    return node + 1;
 }
 
-int AI_EvalFunc_AIPriorityGet_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_AIPriorityGet_C(struct sGameObjectMain* gao)
 {
-    return a1->extended->AIPriority;
+    return gao->extended->AIPriority;
 }
 
-tAINode* AI_EvalFunc_AIPriorityGet(tAINode* a1)
+tAINode* AI_EvalFunc_AIPriorityGet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_AIPriorityGet_C(v3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_AIPriorityGet_C(gaoUltra));
+    return node + 1;
 }
 
-void AI_EvalFunc_AIPrioritySet_C(struct sGameObjectMain* a1, char a2)
+void AI_EvalFunc_AIPrioritySet_C(struct sGameObjectMain* gao, char priority)
 {
-    a1->extended->AIPriority = a2;
+    gao->extended->AIPriority = priority;
 }
 
-tAINode* AI_EvalFunc_AIPrioritySet(tAINode* a1)
+tAINode* AI_EvalFunc_AIPrioritySet(tAINode* node)
 {
-    char v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    char priority;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_AIPrioritySet_C(v3, v1);
-    return a1 + 1;
+    priority = AI_GetIntFromStack();
+    AI_EvalFunc_AIPrioritySet_C(gaoUltra, priority);
+    return node + 1;
 }
 
-void AI_EvalFunc_AIMainActorSet_C(struct sGameObjectMain* a1, int a2)
+void AI_EvalFunc_AIMainActorSet_C(struct sGameObjectMain* gao, int actorIdx)
 {
-    AI_MainActor[a2] = a1;
+    AI_MainActor[actorIdx] = gao;
 }
 
-tAINode* AI_EvalFunc_AIMainActorSet(tAINode* a1)
+tAINode* AI_EvalFunc_AIMainActorSet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int actorIdx;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_AIMainActorSet_C(v2, a2);
-    return a1 + 1;
+    actorIdx = AI_GetIntFromStack();
+    AI_EvalFunc_AIMainActorSet_C(gaoUltra, actorIdx);
+    return node + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_AIMainActorGet_C(int a1)
+tGameObjectMain* AI_EvalFunc_AIMainActorGet_C(int actorIdx)
 {
-    return AI_MainActor[a1];
+    return AI_MainActor[actorIdx];
 }
 
-tAINode* AI_EvalFunc_AIMainActorGet(tAINode* a1)
+tAINode* AI_EvalFunc_AIMainActorGet(tAINode* node)
 {
-    int v2[6];
-    int v3; 
+    tGameObjectMain* actor;
+    int actorIdx;
 
-    v3 = AI_GetIntFromStack();
-    v2[0] = (int)AI_EvalFunc_AIMainActorGet_C(v3);
-    AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
-    return a1 + 1;
+    actorIdx = AI_GetIntFromStack();
+    actor = AI_EvalFunc_AIMainActorGet_C(actorIdx);
+    AI_PutObjectToStack(&actor, AI_gaw_EnumLink[40]);
+    return node + 1;
 }
 
-void AI_EvalFunc_AICBAdd_C(struct sGameObjectMain* gao, struct sGameObjectMain* a2, int id, struct sAIFunction* ptr)
+// Registers gao to be called back through func when target raises id.
+// The free slot is reused where there is one, and the list grows by a
+// single entry otherwise.
+void AI_EvalFunc_AICBAdd_C(struct sGameObjectMain* gao, struct sGameObjectMain* target, int id, struct sAIFunction* func)
 {
-    tAI* v4;
-    int i;
+    tAI* instance;
+    int slot;
 
-    v4 = a2->extended->AIInstance;
-    if (v4->instanceAICBList)
+    instance = target->extended->AIInstance;
+    if (!instance->instanceAICBList)
     {
-        for (i = 0; i < v4->instanceAICBListNum && v4->instanceAICBList[i].functionData; ++i)
+        instance->instanceAICBList = (tAiCBElemStruct*)MEM_p_Alloc(sizeof(tAiCBElemStruct));
+        instance->instanceAICBListNum = 1;
+        slot = 0;
+    }
+    else
+    {
+        for (slot = 0;
+             slot < instance->instanceAICBListNum && instance->instanceAICBList[slot].functionData;
+             ++slot)
             ;
-        if (i == v4->instanceAICBListNum)
+
+        if (slot == instance->instanceAICBListNum)
         {
-            v4->instanceAICBList = (tAiCBElemStruct*)MEM_p_Realloc(v4->instanceAICBList, sizeof(tAiCBElemStruct) * (v4->instanceAICBListNum + 1));
-            i = v4->instanceAICBListNum;
-            v4->instanceAICBListNum = i + 1;
+            instance->instanceAICBList = (tAiCBElemStruct*)MEM_p_Realloc(
+                instance->instanceAICBList,
+                sizeof(tAiCBElemStruct) * (instance->instanceAICBListNum + 1));
+            slot = instance->instanceAICBListNum;
+            instance->instanceAICBListNum = slot + 1;
         }
     }
-    else
-    {
-        v4->instanceAICBList = (tAiCBElemStruct*)MEM_p_Alloc(sizeof(tAiCBElemStruct));
-        v4->instanceAICBListNum = 1;
-        i = 0;
-    }
-    v4->instanceAICBList[i].id = id;
-    v4->instanceAICBList[i].functionData = ptr;
-    v4->instanceAICBList[i].gao = gao;
+
+    instance->instanceAICBList[slot].id = id;
+    instance->instanceAICBList[slot].functionData = func;
+    instance->instanceAICBList[slot].gao = gao;
 }
 
-tAINode* AI_EvalFunc_AICBAdd(tAINode* a1)
+tAINode* AI_EvalFunc_AICBAdd(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int dest[13];
-    tGameObjectMain* gao;
-    int ptr;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMain* target;
+    tAIFunction* func;
     int id;
-    tVarStackElem a2;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    gao = v2;
-    AI_GetVarFromStack(dest, &a2);
-    ptr = dest[0];
+    func = AI_l_PopFunction();
     id = AI_GetIntFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_AICBAdd_C(gao, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], id, (tAIFunction*)ptr);
-    return a1 + 1;
+    target = (tGameObjectMain*)AI_GetObjectFromStack();
+    AI_EvalFunc_AICBAdd_C(gaoUltra, target, id, func);
+    return node + 1;
 }
 
-void AI_EvalFunc_AICBDel_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2, int a3, struct sAIFunction* a4)
+// Frees the matching slot by clearing its function; the list itself
+// keeps its length.
+void AI_EvalFunc_AICBDel_C(struct sGameObjectMain* gao, struct sGameObjectMain* target, int id, struct sAIFunction* func)
 {
-    tAI* v4;
-    int i;
+    tAI* instance;
+    int slot;
 
-    v4 = a2->extended->AIInstance;
-    for (i = 0; i < v4->instanceAICBListNum; ++i)
+    instance = target->extended->AIInstance;
+    for (slot = 0; slot < instance->instanceAICBListNum; ++slot)
     {
-        if (v4->instanceAICBList[i].id == a3
-            && v4->instanceAICBList[i].functionData == a4
-            && v4->instanceAICBList[i].gao == a1)
+        if (instance->instanceAICBList[slot].id == id
+            && instance->instanceAICBList[slot].functionData == func
+            && instance->instanceAICBList[slot].gao == gao)
         {
-            v4->instanceAICBList[i].functionData = 0;
+            instance->instanceAICBList[slot].functionData = 0;
             return;
         }
     }
 }
 
-tAINode* AI_EvalFunc_AICBDel(tAINode* a1)
+tAINode* AI_EvalFunc_AICBDel(tAINode* node)
 {
-    tGameObjectMain* v2; 
-    int dest[13];
-    tGameObjectMain* a1a;
-    tAIFunction* a4;
-    int a3;
-    tVarStackElem a2;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMain* target;
+    tAIFunction* func;
+    int id;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a1a = v2;
-    AI_GetVarFromStack(dest, &a2);
-    a4 = (tAIFunction*)dest[0];
-    a3 = AI_GetIntFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_AICBDel_C(a1a, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3, a4);
-    return a1 + 1;
+    func = AI_l_PopFunction();
+    id = AI_GetIntFromStack();
+    target = (tGameObjectMain*)AI_GetObjectFromStack();
+    AI_EvalFunc_AICBDel_C(gaoUltra, target, id, func);
+    return node + 1;
 }
 
 int AI_EvalFunc_AITrackCurGetNum_C()
@@ -501,33 +470,30 @@ int AI_EvalFunc_AITrackCurGetNum_C()
     return AI_gul_CurrentTrack;
 }
 
-tAINode* AI_EvalFunc_AITrackCurGetNum(tAINode* a1)
+tAINode* AI_EvalFunc_AITrackCurGetNum(tAINode* node)
 {
-    int v1;
-
-    v1 = AI_EvalFunc_AITrackCurGetNum_C();
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_AITrackCurGetNum_C());
+    return node + 1;
 }
 
-void AI_EvalFunc_AIMainActorReset_C(int a1)
+void AI_EvalFunc_AIMainActorReset_C(int actorIdx)
 {
-    AI_MainActor[a1] = NULL;
+    AI_MainActor[actorIdx] = NULL;
 }
 
-tAINode* AI_EvalFunc_AIMainActorReset(tAINode* a1)
+tAINode* AI_EvalFunc_AIMainActorReset(tAINode* node)
 {
-    int v1;
+    int actorIdx;
 
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_AIMainActorReset_C(v1);
-    return a1 + 1;
+    actorIdx = AI_GetIntFromStack();
+    AI_EvalFunc_AIMainActorReset_C(actorIdx);
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_AIReinitUniv(tAINode* a1)
+tAINode* AI_EvalFunc_AIReinitUniv(tAINode* node)
 {
     AI_ReinitUniverse();
-    return a1 + 1;
+    return node + 1;
 }
 
 void AI_EvalFunc_AIReinitVars_C(struct sGameObjectMain* gao)
@@ -535,15 +501,15 @@ void AI_EvalFunc_AIReinitVars_C(struct sGameObjectMain* gao)
     AI_ReinitInstance(gao->extended->AIInstance);
 }
 
-tAINode* AI_EvalFunc_AIReinitVars(tAINode* a1)
+tAINode* AI_EvalFunc_AIReinitVars(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_AIReinitVars_C(v2);
-    return a1 + 1;
+    AI_EvalFunc_AIReinitVars_C(gaoUltra);
+    return node + 1;
 }
 
 int AI_EvalFunc_AIGetCurSystem_C()
@@ -551,11 +517,8 @@ int AI_EvalFunc_AIGetCurSystem_C()
     return ENG_PlatformID;
 }
 
-tAINode* AI_EvalFunc_AIGetCurSystem(tAINode* a1)
+tAINode* AI_EvalFunc_AIGetCurSystem(tAINode* node)
 {
-    int v1;
-
-    v1 = AI_EvalFunc_AIGetCurSystem_C();
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(AI_EvalFunc_AIGetCurSystem_C());
+    return node + 1;
 }

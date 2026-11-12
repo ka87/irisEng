@@ -1,319 +1,335 @@
 #include "../ai.h"
 
-tAINode* AI_EvalField_VecX(tAINode* a1)
+// A field reads a part of the value already on top of the stack: the
+// descriptor there is re-pointed at the field's offset, retyped, and
+// the value copied down into the value stack beside it. The first field
+// of a value sits at offset zero and needs no copy, which is why three
+// of these do not make one.
+
+#define AI_FIELD_TOP()  (&AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack])
+#define AI_FIELD_SLOT() (&AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32])
+
+
+tAINode* AI_EvalField_VecX(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->type = 2;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_VecY(tAINode* a1)
+tAINode* AI_EvalField_VecY(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 4;
-    *(uint32_t *)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;    
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->ptr += 4;
+    top->type = 2;
+    *(uint32_t*)AI_FIELD_SLOT() = *(uint32_t*)top->ptr;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_VecZ(tAINode* a1)
+tAINode* AI_EvalField_VecZ(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 8;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->ptr += 8;
+    top->type = 2;
+    *(uint32_t*)AI_FIELD_SLOT() = *(uint32_t*)top->ptr;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgSender(tAINode* a1)
+tAINode* AI_EvalField_MsgSender(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = AI_gaw_EnumLink[40];
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->type = AI_gaw_EnumLink[40];
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgGAO(tAINode* a1)
+tAINode* AI_EvalField_MsgGAO(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 4;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = AI_gaw_EnumLink[40];
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->ptr += 4;
+    top->type = AI_gaw_EnumLink[40];
+    *(uint32_t*)AI_FIELD_SLOT() = *(uint32_t*)top->ptr;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgId(tAINode* a1)
+tAINode* AI_EvalField_MsgId(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 48;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 1;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->ptr += 48;
+    top->type = 1;
+    *(uint32_t*)AI_FIELD_SLOT() = *(uint32_t*)top->ptr;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgVec1(tAINode* a1)
+tAINode* AI_EvalField_MsgVec1(tAINode* node)
 {
-    Vec3* v2;
-    Vec3* v3;
+    tVarStackElem* top = AI_FIELD_TOP();
+    Vec3* slot;
+    Vec3* field;
 
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 8;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 3;
-    v2 = (Vec3*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]));
-    v3 = (Vec3*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    *(float*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32])) = v3->x;
-    v2->y = v3->y;
-    v2->z = v3->z;
-    return a1 + 1;
+    top->ptr += 8;
+    top->type = 3;
+    slot = (Vec3*)AI_FIELD_SLOT();
+    field = (Vec3*)top->ptr;
+    slot->x = field->x;
+    slot->y = field->y;
+    slot->z = field->z;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgVec2(tAINode* a1)
+tAINode* AI_EvalField_MsgVec2(tAINode* node)
 {
-    Vec3* v2;
-    Vec3* v3;
+    tVarStackElem* top = AI_FIELD_TOP();
+    Vec3* slot;
+    Vec3* field;
 
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 20;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 3;
-    v2 = (Vec3*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]));
-    v3 = (Vec3*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    *(float*)(&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32])) = v3->x;
-    v2->y = v3->y;
-    v2->z = v3->z;
-    return a1 + 1;
+    top->ptr += 20;
+    top->type = 3;
+    slot = (Vec3*)AI_FIELD_SLOT();
+    field = (Vec3*)top->ptr;
+    slot->x = field->x;
+    slot->y = field->y;
+    slot->z = field->z;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgInt1(tAINode* a1)
+tAINode* AI_EvalField_MsgInt1(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 40;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 1;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->ptr += 40;
+    top->type = 1;
+    *(uint32_t*)AI_FIELD_SLOT() = *(uint32_t*)top->ptr;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgInt2(tAINode* a1)
+tAINode* AI_EvalField_MsgInt2(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 44;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 1;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->ptr += 44;
+    top->type = 1;
+    *(uint32_t*)AI_FIELD_SLOT() = *(uint32_t*)top->ptr;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgFloat1(tAINode* a1)
+tAINode* AI_EvalField_MsgFloat1(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 32;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->ptr += 32;
+    top->type = 2;
+    *(uint32_t*)AI_FIELD_SLOT() = *(uint32_t*)top->ptr;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_MsgFloat2(tAINode* a1)
+tAINode* AI_EvalField_MsgFloat2(tAINode* node)
 {
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr += 36;
-    AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].type = 2;
-    *(uint32_t*)&(AI_gac_GlobalStack[AI_gul_SizeGlobalStack - 32]) = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack].ptr;
-    return a1 + 1;
+    tVarStackElem* top = AI_FIELD_TOP();
+
+    top->ptr += 36;
+    top->type = 2;
+    *(uint32_t*)AI_FIELD_SLOT() = *(uint32_t*)top->ptr;
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignFlags(tAINode* a1)
+// Every design field is read the same way: the object the expression
+// names is popped off the stack and resolved to a game object, whose
+// field block the accessor then hands back as a variable of the
+// field's own type.
+static tGameObjectMain* AI_l_PopFieldObject(tVarStackElem* var)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    char converted[52];
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)v4->extended->fields;
-    a2.type = 1;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    AI_GetVarFromStack(converted, var);
+    AI_EvalType_GetGAO((tGameObjectMain**)var->ptr, &gao);
+    return gao;
 }
 
-tAINode* AI_EvalField_DesignInt1(tAINode* a1)
+tAINode* AI_EvalField_DesignFlags(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designInt1;
-    a2.type = 1;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)gao->extended->fields;
+    var.type = 1;
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignInt2(tAINode* a1)
+tAINode* AI_EvalField_DesignInt1(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designInt2;
-    a2.type = 1;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designInt1;
+    var.type = 1;
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignText1(tAINode* a1)
+tAINode* AI_EvalField_DesignInt2(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designText1;
-    a2.type = AI_gaw_EnumLink[44];
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designInt2;
+    var.type = 1;
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignText2(tAINode* a1)
+tAINode* AI_EvalField_DesignText1(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designText2;
-    a2.type = AI_gaw_EnumLink[44];
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designText1;
+    var.type = AI_gaw_EnumLink[44];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignFloat1(tAINode* a1)
+tAINode* AI_EvalField_DesignText2(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2; 
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designFloat1;
-    a2.type = 2;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designText2;
+    var.type = AI_gaw_EnumLink[44];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignFloat2(tAINode* a1)
+tAINode* AI_EvalField_DesignFloat1(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designFloat2;
-    a2.type = 2;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designFloat1;
+    var.type = 2;
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignVec1(tAINode* a1)
+tAINode* AI_EvalField_DesignFloat2(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designVec1;
-    a2.type = 3;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designFloat2;
+    var.type = 2;
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignVec2(tAINode* a1)
+tAINode* AI_EvalField_DesignVec1(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designVec2;
-    a2.type = 3;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designVec1;
+    var.type = 3;
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignGO1(tAINode* a1)
+tAINode* AI_EvalField_DesignVec2(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designGO1;
-    a2.type = AI_gaw_EnumLink[40];
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designVec2;
+    var.type = 3;
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignGO2(tAINode* a1)
+tAINode* AI_EvalField_DesignGO1(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designGO2;
-    a2.type = AI_gaw_EnumLink[40];
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designGO1;
+    var.type = AI_gaw_EnumLink[40];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignNet1(tAINode* a1)
+tAINode* AI_EvalField_DesignGO2(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designNet1;
-    a2.type = AI_gaw_EnumLink[43];
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designGO2;
+    var.type = AI_gaw_EnumLink[40];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignNet2(tAINode* a1)
+tAINode* AI_EvalField_DesignNet1(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designNet2;
-    a2.type = AI_gaw_EnumLink[43];
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designNet1;
+    var.type = AI_gaw_EnumLink[43];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignInt3(tAINode* a1)
+tAINode* AI_EvalField_DesignNet2(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designInt3;
-    a2.type = 1;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designNet2;
+    var.type = AI_gaw_EnumLink[43];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalField_DesignDesFlags(tAINode* a1)
+tAINode* AI_EvalField_DesignInt3(tAINode* node)
 {
-    char dest[52];
-    tVarStackElem a2;
-    tGameObjectMain* v4;
+    tVarStackElem var;
+    tGameObjectMain* gao;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_EvalType_GetGAO((tGameObjectMain**)a2.ptr, &v4);
-    a2.ptr = (char*)&v4->extended->fields->designDesFlags;
-    a2.type = 1;
-    AI_EvalVar(&a2);
-    return a1 + 1;
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designInt3;
+    var.type = 1;
+    AI_EvalVar(&var);
+    return node + 1;
+}
+
+tAINode* AI_EvalField_DesignDesFlags(tAINode* node)
+{
+    tVarStackElem var;
+    tGameObjectMain* gao;
+
+    gao = AI_l_PopFieldObject(&var);
+    var.ptr = (char*)&gao->extended->fields->designDesFlags;
+    var.type = 1;
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
 tOfc_scriptengine_functions AI_gast_Fields[27] = {

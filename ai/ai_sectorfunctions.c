@@ -4,519 +4,491 @@
 #include "ai_debugfunctions.h"
 #include "ai_sectorfunctions.h"
 
-void AI_EvalFunc_GRPSectUpdateMe_C(tGameObjectMain* a2)
-{
-    int i;
-    uint16_t sectorid;
-    uint16_t sectorida;
+// A sector's objects live in a fixed hundred-wide slice of one flat
+// array.
+#define AI_SECTOR_CAPACITY 100
 
-    if ((a2->flags2 & 0x10000000) == 0)
+// A table entry is in use when it has a pointer and its low two bits
+// do not carry the free tag 01.
+static BOOL AI_l_ObjectInUse(void* objectPtr)
+{
+    return objectPtr && ((uintptr_t)objectPtr & 3) != 1;
+}
+
+// Takes the object out of the sector it is in: the list's last entry
+// moves into the slot it leaves behind.
+static void AI_l_RemoveFromSector(tGameObjectMain* gao, uint16_t sectorID)
+{
+    int base;
+
+    base = AI_SECTOR_CAPACITY * sectorID;
+    gapst_AllObjSectors[base + gai_NumObjSectors[sectorID] - 1]->extended->sectorElemIdx =
+        gao->extended->sectorElemIdx;
+    gapst_AllObjSectors[base + gao->extended->sectorElemIdx] =
+        gapst_AllObjSectors[base + (gai_NumObjSectors[sectorID]--) - 1];
+}
+
+static void AI_l_AddToSector(tGameObjectMain* gao, int sectorID)
+{
+    gapst_AllObjSectors[AI_SECTOR_CAPACITY * sectorID + gai_NumObjSectors[sectorID]] = gao;
+    gao->extended->sectorID = sectorID;
+    gao->extended->sectorElemIdx = gai_NumObjSectors[sectorID];
+    ++gai_NumObjSectors[sectorID];
+}
+
+// Moves the object into whichever registered sector its pivot is in,
+// and out of every sector when it is in none. The object inherits its
+// sector's invisibility count either way.
+void AI_EvalFunc_GRPSectUpdateMe_C(tGameObjectMain* gao)
+{
+    uint16_t sectorID;
+    int i;
+
+    if ((gao->flags2 & 0x10000000) == 0)
     {
         for (i = 0; i < gi_NumSectors; ++i)
         {
-            if (COL_BV_PivotCollide(gapst_AllSectors[i], a2, FALSE))
+            if (!COL_BV_PivotCollide(gapst_AllSectors[i], gao, FALSE))
+                continue;
+
+            sectorID = gao->extended->sectorID;
+            if (i != sectorID)
             {
-                sectorid = a2->extended->sectorID;
-                if (i == sectorid)
-                {
-                    a2->if_this_not0_wont_render_gao = gapst_AllSectors[i]->if_this_not0_wont_render_gao;
-                }
-                else
-                {
-                    if (sectorid != 0xFFFF && sectorid != -1)
-                    {
-                        gapst_AllObjSectors[(100 * sectorid) + gai_NumObjSectors[sectorid] - 1]->extended->sectorElemIdx = a2->extended->sectorElemIdx;
-                        gapst_AllObjSectors[(100 * sectorid) + a2->extended->sectorElemIdx] = gapst_AllObjSectors[(100 * sectorid) + (+gai_NumObjSectors[sectorid]--) - 1];
-                    }
-                    gapst_AllObjSectors[(100 * i) + gai_NumObjSectors[i]] = a2;
-                    a2->extended->sectorID = i;
-                    a2->extended->sectorElemIdx = gai_NumObjSectors[i];
-                    ++gai_NumObjSectors[i];
-                    a2->if_this_not0_wont_render_gao = gapst_AllSectors[i]->if_this_not0_wont_render_gao;
-                }
-                return;
+                // the unset sector id is 0xFFFF, and the field is a
+                // uint16_t, so the original's second test for -1 could
+                // never fire
+                if (sectorID != 0xFFFF)
+                    AI_l_RemoveFromSector(gao, sectorID);
+                AI_l_AddToSector(gao, i);
             }
+            gao->if_this_not0_wont_render_gao = gapst_AllSectors[i]->if_this_not0_wont_render_gao;
+            return;
         }
     }
-    sectorida = a2->extended->sectorID;
-    if (sectorida != 0xFFFF && sectorida != -1)
-    {
-        gapst_AllObjSectors[(100 * sectorida) + gai_NumObjSectors[sectorida] - 1]->extended->sectorElemIdx = a2->extended->sectorElemIdx;
-        gapst_AllObjSectors[(100 * sectorida) + a2->extended->sectorElemIdx] = gapst_AllObjSectors[(100 * sectorida) + (gai_NumObjSectors[sectorida]--) - 1];
 
-        a2->extended->sectorID = 0xffff; // -1
-        a2->extended->sectorElemIdx = 0xffff; // -1
-        a2->if_this_not0_wont_render_gao = 0;
+    sectorID = gao->extended->sectorID;
+    if (sectorID != 0xFFFF)
+    {
+        AI_l_RemoveFromSector(gao, sectorID);
+        gao->extended->sectorID = 0xffff; // -1
+        gao->extended->sectorElemIdx = 0xffff; // -1
+        gao->if_this_not0_wont_render_gao = 0;
     }
 }
 
-int AI_EvalFunc_GRPSectRegister_C(struct sGameObjectMain* a1)
+int AI_EvalFunc_GRPSectRegister_C(struct sGameObjectMain* gao)
 {
-    gapst_AllSectors[gi_NumSectors] = a1;
+    gapst_AllSectors[gi_NumSectors] = gao;
     gai_NumObjSectors[gi_NumSectors++] = 0;
     return gi_NumSectors - 1;
 }
 
-tAINode* AI_EvalFunc_GRPSectRegister(tAINode* a1)
+tAINode* AI_EvalFunc_GRPSectRegister(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int enable;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    if (*(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack])
-    {
-        v1 = AI_EvalFunc_GRPSectRegister_C(v3);
-        AI_PutIntToStack(v1);
-    }
+
+    enable = *(int32_t*)AI_PopStackSlot();
+    if (enable)
+        AI_PutIntToStack(AI_EvalFunc_GRPSectRegister_C(gaoUltra));
     else
-    {
         AI_PutIntToStack(-1);
-    }
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GRPSectInvisibleSet_C(struct sGameObjectMain* a1, int a2, int a3)
+// An object is invisible while its count is above zero, so the script
+// raises and lowers a count rather than setting a flag; -1 clears it
+// outright.
+static void AI_l_ApplyInvisible(tGameObjectMain* gao, int invisible)
 {
-    tGameObjectMain* v4;
-    tGameObjectMain* v5;
-    tGroup* v6;
-    tableElemStructPF* v7;
-    tableElemStructPF* v8;
+    if (invisible == -1)
+        gao->if_this_not0_wont_render_gao = 0;
+    else if (invisible)
+        ++gao->if_this_not0_wont_render_gao;
+    else if (gao->if_this_not0_wont_render_gao)
+        --gao->if_this_not0_wont_render_gao;
+}
+
+static tGroup* AI_l_GroupOf(struct sGameObjectMain* gao)
+{
+    if ((gao->flags & 0x800000) == 0 || !gao->extended || !gao->extended->grp)
+        return NULL;
+    return gao->extended->grp;
+}
+
+void AI_EvalFunc_GRPSectInvisibleSet_C(struct sGameObjectMain* gao, int sectorID, int invisible)
+{
+    tGroup* group;
+    tableElemStructPF* entry;
+    tableElemStructPF* end;
+    tGameObjectMain* sectorObj;
     int i;
 
-    if (a3 == -1)
+    AI_l_ApplyInvisible(gao, invisible);
+
+    group = AI_l_GroupOf(gao);
+    if (group)
     {
-        a1->if_this_not0_wont_render_gao = 0;
-    }
-    else if (a3)
-    {
-        ++a1->if_this_not0_wont_render_gao;
-    }
-    else if (a1->if_this_not0_wont_render_gao)
-    {
-        --a1->if_this_not0_wont_render_gao;
-    }
-    if ((a1->flags & 0x800000) != 0 && a1->extended && a1->extended->grp)
-    {
-        v6 = a1->extended->grp;
-        v7 = v6->tablePF->firstElemPtr;
-        v8 = ((tableElemStructPF*)(v6->tablePF->nextElemPtr)) - 1;
-        while (v7 <= v8)
+        end = (tableElemStructPF*)(group->tablePF->nextElemPtr);
+        for (entry = group->tablePF->firstElemPtr; entry < end; ++entry)
         {
-            v4 = (tGameObjectMain*)v7->objectPtr;
-            if (v7->objectPtr && ((int)v7->objectPtr & 3) != 1)
-            {
-                if (a3 == -1)
-                {
-                    v4->if_this_not0_wont_render_gao = 0;
-                }
-                else if (a3)
-                {
-                    ++v4->if_this_not0_wont_render_gao;
-                }
-                else if (v4->if_this_not0_wont_render_gao)
-                {
-                    --v4->if_this_not0_wont_render_gao;
-                }
-            }
-            ++v7;
+            if (AI_l_ObjectInUse(entry->objectPtr))
+                AI_l_ApplyInvisible((tGameObjectMain*)entry->objectPtr, invisible);
         }
     }
-    if (a2 != 0xFFFF && a2 != -1)
+
+    if (sectorID == 0xFFFF || sectorID == -1)
+        return;
+
+    for (i = 0; sectorID < gi_NumSectors && i < gai_NumObjSectors[sectorID]; ++i)
     {
-        for (i = 0; a2 < gi_NumSectors && i < gai_NumObjSectors[a2]; ++i)
-        {
-            v5 = gapst_AllObjSectors[(100 * a2) + i];
-            if (v5)
-                v5->if_this_not0_wont_render_gao = a1->if_this_not0_wont_render_gao;
-        }
+        sectorObj = gapst_AllObjSectors[AI_SECTOR_CAPACITY * sectorID + i];
+        if (sectorObj)
+            sectorObj->if_this_not0_wont_render_gao = gao->if_this_not0_wont_render_gao;
     }
 }
 
-tAINode* AI_EvalFunc_GRPSectInvisibleSet(tAINode* a1)
+tAINode* AI_EvalFunc_GRPSectInvisibleSet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int sectorID;
+    int invisible;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_GRPSectInvisibleSet_C(v2, a2, a3);
-    return a1 + 1;
+    invisible = AI_GetIntFromStack();
+    sectorID = AI_GetIntFromStack();
+    AI_EvalFunc_GRPSectInvisibleSet_C(gaoUltra, sectorID, invisible);
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_GRPSectInactiveSet(tAINode* a1)
+// A stub: the two arguments are taken and traced.
+tAINode* AI_EvalFunc_GRPSectInactiveSet(tAINode* node)
 {
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_GetIntFromStack();
     AI_GetIntFromStack();
     AI_EvalFunc_DbgTraceInt_C();
-    return a1 + 1;
+    return node + 1;
 }
 
-void AI_EvalFunc_GRPSectSetIsIn_C(struct sGameObjectMain* a1)
+void AI_EvalFunc_GRPSectSetIsIn_C(struct sGameObjectMain* gao)
 {
-    tGroup* v2;
-    tableElemStructPF* v3;
-    tableElemStructPF* v4;
+    tGroup* group;
+    tableElemStructPF* entry;
+    tableElemStructPF* end;
 
-    if ((a1->flags & 0x800000) != 0 && a1->extended && a1->extended->grp)
+    group = AI_l_GroupOf(gao);
+    if (!group)
+        return;
+
+    end = (tableElemStructPF*)(group->tablePF->nextElemPtr);
+    for (entry = group->tablePF->firstElemPtr; entry < end; ++entry)
     {
-        v2 = a1->extended->grp;
-        v3 = v2->tablePF->firstElemPtr;
-        v4 = ((tableElemStructPF*)(v2->tablePF->nextElemPtr)) - 1;
-        while (v3 <= v4)
-        {
-            if (v3->objectPtr && ((int)v3->objectPtr & 3) != 1)
-                ((tGameObjectMain*)v3->objectPtr)->flags2 |= 0x10000u;
-            ++v3;
-        }
+        if (AI_l_ObjectInUse(entry->objectPtr))
+            ((tGameObjectMain*)entry->objectPtr)->flags2 |= 0x10000u;
     }
 }
 
-tAINode* AI_EvalFunc_GRPSectSetIsIn(tAINode* a1)
+tAINode* AI_EvalFunc_GRPSectSetIsIn(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_GRPSectSetIsIn_C(v2);
-    return a1 + 1;
+    AI_EvalFunc_GRPSectSetIsIn_C(gaoUltra);
+    return node + 1;
+}
+
+// The eight corners of an object's bounding box in world space.
+static void AI_l_BoundingBoxCorners(tGameObjectMain* gao, Vec3 corners[8])
+{
+    int i;
+
+    corners[0] = gao->boundingVolume->BVMax;
+    corners[1] = gao->boundingVolume->BVMin;
+
+    corners[2].x = corners[0].x;
+    corners[2].y = corners[1].y;
+    corners[2].z = corners[0].z;
+    corners[3].x = corners[1].x;
+    corners[3].y = corners[1].y;
+    corners[3].z = corners[0].z;
+    corners[4].x = corners[1].x;
+    corners[4].y = corners[0].y;
+    corners[4].z = corners[0].z;
+    corners[5].x = corners[0].x;
+    corners[5].y = corners[0].y;
+    corners[5].z = corners[1].z;
+    corners[6].x = corners[0].x;
+    corners[6].y = corners[1].y;
+    corners[6].z = corners[1].z;
+    corners[7].x = corners[1].x;
+    corners[7].y = corners[0].y;
+    corners[7].z = corners[1].z;
+
+    for (i = 0; i < 8; ++i)
+        MATH_VecAddVecWithoutBuffer(&corners[i], &gao->matrices->Pos);
 }
 
 // TODO FIXME: itt a decompile során eléggé elszáll a nagy stack miatt, megnézni ohgy jó-e így, lehet nem
-void AI_EvalFunc_GRPCullDoor_C(tGameObjectMain* a2, tGameObjectMain** a3, int a4, int a5)
+// Narrows the view frustum down to what each door the script supplies
+// leaves visible, and raises the invisibility count of every object of
+// the group and the sector that the narrowed frustum culls.
+void AI_EvalFunc_GRPCullDoor_C(tGameObjectMain* gao, tGameObjectMain** doors, int viewIdx, int sectorID)
 {
-    double v6;
-    Vec3 v7;
-    Vec3 v8;
-    int m;
-    Vec3* v10;
-    Vec3* v11;
-    Vec3* v12;
-    int v13;
-    float v14;
-    Vec3* v15 = NULL;
-    Vec3* v16 = NULL;
-    int v17;
-    int l;
-    float v19;
-    Vec3* v20;
-    Vec3 v21;
-    int k;
-    Vec3* v23;
-    Vec3* v24;
-    Vec3* v25;
-    Vec3* v26;
-    Vec3* v27;
-    Vec3* v28;
-    Vec3* v29;
-    Vec3 v30[8];
-    Vec3* v31;
-    int j;
-    Vec3* v33;
-    Vec3* v34;
-    Vec3* v35;
-    Vec3* v36;
-    Vec3* v37;
-    Vec3* v38;
-    Vec3* v39;
-    Vec3* v40;
-    Vec3 v41;
-    Vec3 v42;
-    Vec3 v43;
-    Vec3 v44[17]; // TODO FIXME ennek nem kéne hogy array legyen
-    int v45;
-    int i;
-    tGameObjectMain* v48;
-    int v49;
-    tableElemStructPF* v50;
-    tableElemStructPF* v51;
-    tGroup* v52;
-    tDDCamStruct viewCtCopy;
-    tDDContainerStruct* v54;
-    tGdi_DisplayData* displayDataPtr;
-    tWorld* v56;
     tGameObjectMain* sectorObjs[1000];
-    tGameObjectMain* suppliedObjs[50];
+    tGameObjectMain* openDoors[50];
+    Vec3 corners[8];
+    Vec3 planeLeft;
+    Vec3 planeUp;
+    Vec3 planeRight;
+    Vec3 planeDown;
+    Vec3 toCorner;
+    Vec3 toDoor;
+    Vec3 toCam;
+    tDDCamStruct narrowed;
+    tDDContainerStruct* ct;
+    tGdi_DisplayData* displayData;
+    tGroup* group;
+    tableElemStructPF* entry;
+    tableElemStructPF* end;
+    tGameObjectMain* member;
+    tWorld* world;
+    Vec3* norm;
+    Vec3* plane;
+    double len;
+    float dot;
+    float bestDot;
+    int bestCorner;
+    int sectorObjNum;
+    int doorNum;
+    int i;
+    int j;
+    int k;
+    int l;
+    int m;
 
-    if ((a2->flags & 0x800000) != 0)
+    if (!AI_l_GroupOf(gao))
+        return;
+
+    world = WOR_gpst_CurrentWorld;
+    displayData = world->viewPtr[viewIdx].displayData;
+    if (!displayData)
+        return;
+
+    world->viewPtr[viewIdx].viewFunctionPtr(&world->viewPtr[viewIdx]);
+
+    ct = &displayData->ct;
+    CAM_SetCameraMatrix(ct, &world->viewPtr[viewIdx].cameraMtx);
+    CAM_Inverse(ct);
+    CAM_Engine_ComputePlans(ct);
+    OBJ_UpdateCullingVars(&ct->cam);
+    memcpy(&narrowed, ct, sizeof(narrowed));
+
+    // everything the cull may hide: the group's own members, and the
+    // objects registered to the sector
+    sectorObjNum = 0;
+    group = gao->extended->grp;
+    end = (tableElemStructPF*)(group->tablePF->nextElemPtr);
+    for (entry = group->tablePF->firstElemPtr; entry < end; ++entry)
     {
-        if (a2->extended)
+        member = (tGameObjectMain*)entry->objectPtr;
+        if (AI_l_ObjectInUse(member))
+            sectorObjs[sectorObjNum++] = member;
+    }
+    if (sectorID != 0xFFFF && sectorID != -1)
+    {
+        for (i = 0; i < gai_NumObjSectors[sectorID]; ++i)
+            sectorObjs[sectorObjNum++] = gapst_AllObjSectors[AI_SECTOR_CAPACITY * sectorID + i];
+    }
+
+    // the doors worth narrowing through: on screen, and not marked out
+    doorNum = 0;
+    while (*doors)
+    {
+        if (ENG_gb_ActiveSectorization && !OBJ_CullingObject(*doors) && ((*doors)->flags2 & 0x200000) == 0)
+            openDoors[doorNum++] = *doors;
+        ++doors;
+    }
+
+    if (doorNum)
+    {
+        planeLeft = g_stGlobalNormPlaneLeft;
+        planeUp = g_stGlobalNormPlaneUp;
+        planeRight = g_stGlobalNormPlaneRight;
+        planeDown = g_stGlobalNormPlaneDown;
+
+        for (j = 0; j < doorNum; ++j)
         {
-            if (a2->extended->grp)
+            AI_l_BoundingBoxCorners(openDoors[j], corners);
+
+            // a door seen too far off its own axis narrows nothing,
+            // and gives up on the rest of the doors too
+            for (k = 0; k < 8; ++k)
             {
-                v56 = WOR_gpst_CurrentWorld;
-                displayDataPtr = WOR_gpst_CurrentWorld->viewPtr[a4].displayData;
-                if (displayDataPtr)
+                MATH_SubstractVec(&toCorner, &corners[k], &ct->cam.objectMtx.Pos);
+                MATH_NormalizeVector(&toCorner, &toCorner);
+                if (MATH_DotProduct(&ct->cam.objectMtx.v3, &toCorner) < 0.30000001)
+                    return;
+            }
+
+            // each of the four frustum planes is swung onto the corner
+            // of the door that is nearest to it
+            for (l = 0; l < 4; ++l)
+            {
+                switch (l)
                 {
+                case 0:
+                    norm = &planeLeft;
+                    plane = &narrowed.planeLeft;
+                    break;
+                case 1:
+                    norm = &planeUp;
+                    plane = &narrowed.planeUp;
+                    break;
+                case 2:
+                    norm = &planeRight;
+                    plane = &narrowed.planeRight;
+                    break;
+                default:
+                    norm = &planeDown;
+                    plane = &narrowed.planeDown;
+                    break;
+                }
 
-                    v56->viewPtr[a4].viewFunctionPtr(&v56->viewPtr[a4]);
+                bestDot = 10.0;
+                bestCorner = -1;
+                for (k = 0; k < 8; ++k)
+                {
+                    MATH_SubstractVec(&toCorner, &corners[k], &ct->cam.objectMtx.Pos);
+                    dot = MATH_DotProduct(norm, &toCorner);
+                    len = MATH_VecLen(&toCorner);
+                    dot = (float)(dot / len);
+                    if (dot < 0.0)
+                    {
+                        // a corner behind the plane leaves it where it is
+                        bestCorner = -1;
+                        break;
+                    }
+                    if (dot < bestDot)
+                    {
+                        bestDot = dot;
+                        bestCorner = k;
+                    }
+                }
 
-                    v54 = &displayDataPtr->ct;
+                if (bestCorner == -1)
+                {
+                    *plane = *norm;
+                }
+                else
+                {
+                    MATH_SubstractVec(&toCorner, &corners[bestCorner], &ct->cam.objectMtx.Pos);
+                    MATH_NormalizeEqualVector(&toCorner);
+                    if (l && l != 2)
+                        MATH_CrossProduct(plane, &toCorner, &ct->cam.objectMtx.v1);
+                    else
+                        MATH_CrossProduct(plane, &toCorner, &ct->cam.objectMtx.v2);
+                    if (!l || l == 3)
+                        MATH_VecInvert(plane, plane);
+                }
+                MATH_TransformVector(plane, &ct->cam.cameraMtx, plane);
+            }
 
-                    CAM_SetCameraMatrix(&displayDataPtr->ct, &v56->viewPtr[a4].cameraMtx);
-                    CAM_Inverse(&displayDataPtr->ct);
-                    CAM_Engine_ComputePlans(&displayDataPtr->ct);
-                    OBJ_UpdateCullingVars(&displayDataPtr->ct.cam);
-                    memcpy(&viewCtCopy, &displayDataPtr->ct, sizeof(viewCtCopy));
-                    v52 = a2->extended->grp;
-                    v51 = v52->tablePF->firstElemPtr;
-                    v50 = ((tableElemStructPF*)(v52->tablePF->nextElemPtr)) - 1;
-                    v49 = 0;
-                    while (v51 <= v50)
-                    {
-                        v48 = (tGameObjectMain*)v51->objectPtr;
-                        if (v48 && ((uint8_t)v48 & 3) != 1)
-                            sectorObjs[v49++] = v48;
-                        ++v51;
-                    }
-                    if (a5 != 0xFFFF && a5 != -1)
-                    {
-                        for (i = 0; i < gai_NumObjSectors[a5]; ++i)
-                            sectorObjs[v49++] = gapst_AllObjSectors[100 * a5 + i];
-                    }
-                    v45 = 0;
-                    while (*a3)
-                    {
-                        if (ENG_gb_ActiveSectorization && !OBJ_CullingObject(*a3) && ((*a3)->flags2 & 0x200000) == 0)
-                            suppliedObjs[v45++] = *a3;
-                        ++a3;
-                    }
-                    if (v45)
-                    {
-                        v40 = &v41;
-                        v39 = &g_stGlobalNormPlaneLeft;
-                        v41 = g_stGlobalNormPlaneLeft;
-                        v38 = &v42;
-                        v37 = &g_stGlobalNormPlaneUp;
-                        v42 = g_stGlobalNormPlaneUp;
-                        v36 = &v43;
-                        v35 = &g_stGlobalNormPlaneRight;
-                        v43 = g_stGlobalNormPlaneRight;
-                        v34 = v44;
-                        v33 = &g_stGlobalNormPlaneDown;
-                        v44[0] = g_stGlobalNormPlaneDown;
-                        for (j = 0; j < v45; ++j)
-                        {
-                            v31 = &suppliedObjs[j]->boundingVolume->BVMax;
-                            v29 = v30;
-                            v28 = v31;
-                            v30[0] = *v31;
-                            v27 = &suppliedObjs[j]->boundingVolume->BVMin;
-                            v26 = &v30[1];
-                            v25 = v27;
-                            v30[1] = *v27;
-                            v30[2].x = v30[0].x;
-                            v30[2].y = v30[1].y;
-                            v30[2].z = v30[0].z;
-                            v30[3].x = v30[1].x;
-                            v30[3].y = v30[1].y;
-                            v30[3].z = v30[0].z;
-                            v30[4].x = v30[1].x;
-                            v30[4].y = v30[0].y;
-                            v30[4].z = v30[0].z;
-                            v30[5].x = v30[0].x;
-                            v30[5].y = v30[0].y;
-                            v30[5].z = v30[1].z;
-                            v30[6].x = v30[0].x;
-                            v30[6].y = v30[1].y;
-                            v30[6].z = v30[1].z;
-                            v30[7].x = v30[1].x;
-                            v30[7].y = v30[0].y;
-                            v30[7].z = v30[1].z;
-                            for (i = 0; i < 8; ++i)
-                            {
-                                v24 = &suppliedObjs[j]->matrices->Pos;
-                                v23 = &v30[i];
-                                v23->x = v23->x + v24->x;
-                                v23->y = v23->y + v24->y;
-                                v23->z = v23->z + v24->z;
-                            }
-                            for (k = 0; k < 8; ++k)
-                            {
-                                MATH_SubstractVec(&v21, &v30[k], &v54->cam.objectMtx.Pos);
-                                MATH_NormalizeVector(&v21, &v21);
-                                v20 = &v54->cam.objectMtx.v3;
-                                v19 = v54->cam.objectMtx.v3.z * v21.z
-                                    + v54->cam.objectMtx.v3.y * v21.y
-                                    + v21.x * v54->cam.objectMtx.v3.x;
-                                if (v19 < 0.30000001)
-                                    return;
-                            }
-                            for (l = 0; l < 4; ++l)
-                            {
-                                v17 = l;
-                                switch (l)
-                                {
-                                case 0:
-                                    v16 = &v41;
-                                    v15 = &viewCtCopy.planeLeft;
-                                    break;
-                                case 1:
-                                    v16 = &v42;
-                                    v15 = &viewCtCopy.planeUp;
-                                    break;
-                                case 2:
-                                    v16 = &v43;
-                                    v15 = &viewCtCopy.planeRight;
-                                    break;
-                                case 3:
-                                    v16 = v44;
-                                    v15 = &viewCtCopy.planeDown;
-                                    break;
-                                default:
-                                    break;
-                                }
-                                v14 = 10.0;
-                                v13 = -1;
-                                for (k = 0; k < 8; ++k)
-                                {
-                                    MATH_SubstractVec(&v21, &v30[k], &v54->cam.objectMtx.Pos);
-                                    v19 = v16->z * v21.z + v16->y * v21.y + v21.x * v16->x;
-                                    v6 = MATH_VecLen(&v21);
-                                    v19 = (float)(v19 / v6);
-                                    if (v19 < 0.0)
-                                    {
-                                        v13 = -1;
-                                        break;
-                                    }
-                                    if (v19 < (double)v14)
-                                    {
-                                        v14 = v19;
-                                        v13 = k;
-                                    }
-                                }
-                                if (v13 == -1)
-                                {
-                                    v11 = v15;
-                                    v10 = v16;
-                                    v15->x = v16->x;
-                                    v11->y = v10->y;
-                                    v11->z = v10->z;
-                                }
-                                else
-                                {
-                                    MATH_SubstractVec(&v21, &v30[v13], &v54->cam.objectMtx.Pos);
-                                    MATH_NormalizeEqualVector(&v21);
-                                    if (l && l != 2)
-                                        MATH_CrossProduct(v15, &v21, &v54->cam.objectMtx.v1);
-                                    else
-                                        MATH_CrossProduct(v15, &v21, &v54->cam.objectMtx.v2);
-                                    if (!l || l == 3)
-                                    {
-                                        v12 = v15;
-                                        v15->x = -v15->x;
-                                        v12->y = -v15->y;
-                                        v12->z = -v15->z;
-                                    }
-                                }
-                                MATH_TransformVector(v15, &v54->cam.cameraMtx, v15);
-                            }
-                            viewCtCopy.planeDown.x = v54->cam.planeDown.x;
-                            viewCtCopy.planeUp.x = v54->cam.planeUp.x;
-                            viewCtCopy.planeLeft.y = v54->cam.planeLeft.y;
-                            viewCtCopy.planeRight.y = v54->cam.planeRight.y;
-                            OBJ_UpdateCullingVars(&viewCtCopy);
-                            for (m = 0; m < v49; ++m)
-                            {
-                                if (sectorObjs[m])
-                                {
-                                    MATH_SubstractVec(&v8, &sectorObjs[m]->matrices->Pos, &suppliedObjs[j]->matrices->Pos);
-                                    MATH_NormalizeEqualVector(&v8);
-                                    MATH_SubstractVec(&v7, &sectorObjs[m]->matrices->Pos, &v54->cam.objectMtx.Pos);
-                                    MATH_NormalizeEqualVector(&v7);
-                                    if (!OBJ_CullingObject(sectorObjs[m]))
-                                    {
-                                        if (sectorObjs[m]->if_this_not0_wont_render_gao)
-                                            --sectorObjs[m]->if_this_not0_wont_render_gao;
-                                        sectorObjs[m] = 0;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    for (i = 0; i < v49; ++i)
-                    {
-                        if (sectorObjs[i])
-                            ++sectorObjs[i]->if_this_not0_wont_render_gao;
-                    }
+            narrowed.planeDown.x = ct->cam.planeDown.x;
+            narrowed.planeUp.x = ct->cam.planeUp.x;
+            narrowed.planeLeft.y = ct->cam.planeLeft.y;
+            narrowed.planeRight.y = ct->cam.planeRight.y;
+            OBJ_UpdateCullingVars(&narrowed);
+
+            for (m = 0; m < sectorObjNum; ++m)
+            {
+                if (!sectorObjs[m])
+                    continue;
+
+                // both directions are computed and neither is read
+                MATH_SubstractVec(&toDoor, &sectorObjs[m]->matrices->Pos, &openDoors[j]->matrices->Pos);
+                MATH_NormalizeEqualVector(&toDoor);
+                MATH_SubstractVec(&toCam, &sectorObjs[m]->matrices->Pos, &ct->cam.objectMtx.Pos);
+                MATH_NormalizeEqualVector(&toCam);
+
+                // visible through this door, so it is not this cull's
+                // to hide
+                if (!OBJ_CullingObject(sectorObjs[m]))
+                {
+                    if (sectorObjs[m]->if_this_not0_wont_render_gao)
+                        --sectorObjs[m]->if_this_not0_wont_render_gao;
+                    sectorObjs[m] = 0;
                 }
             }
         }
     }
-}
 
-tAINode* AI_EvalFunc_GRPCullDoor(tAINode* a1)
-{
-    tGameObjectMain* v2;
-    char dest[52];
-    int a4;
-    int a5;
-    tVarStackElem v6;
-    tGameObjectMain* a2;
-
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &v6);
-    v2 = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a2 = v2;
-    AI_EvalFunc_GRPCullDoor_C(v2, (tGameObjectMain**)v6.ptr, a4, a5);
-    return a1 + 1;
-}
-
-
-int AI_EvalFunc_GRPFillArray_C(tGameObjectMain* a1, tGameObjectMain** a2)
-{
-    tGroup* v4;
-    tableElemStructPF* v5;
-    tableElemStructPF* v6;
-    int v7;
-
-    if ((a1->flags & 0x800000) == 0)
-        return 0;
-    if (!a1->extended || !a1->extended->grp)
-        return 0;
-    v4 = a1->extended->grp;
-    v5 = v4->tablePF->firstElemPtr;
-    v6 = ((tableElemStructPF*)(v4->tablePF->nextElemPtr)) - 1;
-    v7 = 0;
-    while (v5 <= v6)
+    for (i = 0; i < sectorObjNum; ++i)
     {
-        if (v5->objectPtr && ((int)v5->objectPtr & 3) != 1)
-            a2[v7++] = (tGameObjectMain*)v5->objectPtr;
-        ++v5;
+        if (sectorObjs[i])
+            ++sectorObjs[i]->if_this_not0_wont_render_gao;
     }
-    return v7;
 }
 
-tAINode* AI_EvalFunc_GRPFillArray(tAINode* a1)
+tAINode* AI_EvalFunc_GRPCullDoor(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    char dest[52];
-    tGameObjectMain** v5;
-    tVarStackElem a2;
-    tGameObjectMain* a1a;
+    tGameObjectMain* gaoUltra;
+    char converted[52];
+    tVarStackElem var;
+    int viewIdx;
+    int sectorID;
 
-    v3 = AI_gpst_CurrentUltra;
+    sectorID = AI_GetIntFromStack();
+    viewIdx = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a1a = v3;
-    AI_GetVarFromStack(dest, &a2);
-    v5 = (tGameObjectMain**)a2.ptr;
-    v1 = AI_EvalFunc_GRPFillArray_C(a1a, (tGameObjectMain**)a2.ptr);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_EvalFunc_GRPCullDoor_C(gaoUltra, (tGameObjectMain**)var.ptr, viewIdx, sectorID);
+    return node + 1;
+}
+
+int AI_EvalFunc_GRPFillArray_C(tGameObjectMain* gao, tGameObjectMain** members)
+{
+    tGroup* group;
+    tableElemStructPF* entry;
+    tableElemStructPF* end;
+    int num;
+
+    group = AI_l_GroupOf(gao);
+    if (!group)
+        return 0;
+
+    num = 0;
+    end = (tableElemStructPF*)(group->tablePF->nextElemPtr);
+    for (entry = group->tablePF->firstElemPtr; entry < end; ++entry)
+    {
+        if (AI_l_ObjectInUse(entry->objectPtr))
+            members[num++] = (tGameObjectMain*)entry->objectPtr;
+    }
+    return num;
+}
+
+tAINode* AI_EvalFunc_GRPFillArray(tAINode* node)
+{
+    tGameObjectMain* gaoUltra;
+    char converted[52];
+    tVarStackElem var;
+
+    gaoUltra = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_GRPFillArray_C(gaoUltra, (tGameObjectMain**)var.ptr));
+    return node + 1;
 }

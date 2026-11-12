@@ -9,544 +9,425 @@
 #include "../win/wingdi.h"
 #include "bink.h"
 
-tAINode* AI_EvalFunc_GFXDepthBlur(tAINode* a1)
+// An effect's id says which of the world's two lists holds it: the ids
+// below 1024 live in the list the engine draws after the animation
+// engine's own effects.
+static tGfxElem* AI_l_GfxList(int gfxId)
+{
+    if (gfxId >= 1024)
+        return WOR_gpst_CurrentWorld->gfxCurrentList;
+    return WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
+}
+
+static tGfxElem** AI_l_GfxListRef(int gfxId)
+{
+    if (gfxId >= 1024)
+        return &WOR_gpst_CurrentWorld->gfxCurrentList;
+    return &WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
+}
+
+// A stub: the three arguments are taken and nothing is done with them.
+tAINode* AI_EvalFunc_GFXDepthBlur(tAINode* node)
 {
     AI_GetFloatFromStack();
     AI_GetFloatFromStack();
     AI_GetIntFromStack();
-    return a1 + 1;
+    return node + 1;
 }
 
-int AI_EvalFunc_GFXAddWorld_C(int a1, int a2)
+// Puts the main display device into the orthographic no-clip setup and
+// asks for a present. Both arguments are unused and the builtin always
+// reports failure.
+int AI_EvalFunc_GFXAddWorld_C(int unused1, int unused2)
 {
-    tGdi_DisplayData* v5;
+    tGdi_DisplayData* mainDisplay;
+    tGdi_DisplayData* previous;
 
     if (MAI_gst_MainHandles.displayData)
     {
-        v5 = gpst_DX_stDD;
+        previous = gpst_DX_stDD;
         gpst_DX_stDD = MAI_gst_MainHandles.displayData;
-        v5->SetProjectionMatrix(&CAM_gst_IsoNoClip);
-        v5->SetViewMatrix(&MATH_gst_IdentityMatrix);
-        gpst_DX_stDD = v5;
-       
-        // TODO FIXME: a 23-as requestet hívja, de az nem csinál semmit. Az eredeti kódban itt még van egy kuac float állítgatás amit a requestnek átad. 
-        // Én ezeket nem implementáltam itt meg, mert úgy se csinál semmit
+        previous->SetProjectionMatrix(&CAM_gst_IsoNoClip);
+        previous->SetViewMatrix(&MATH_gst_IdentityMatrix);
+        gpst_DX_stDD = previous;
+        mainDisplay = previous;
 
-        v5->presentationFlags |= 0x400000u;
+        // TODO FIXME: a 23-as requestet hívja, de az nem csinál semmit. Az eredeti kódban itt még van egy kuac float állítgatás amit a requestnek átad. 
+        // Én ezeket nem implementáltam itt meg, mert így se csinál semmit
+
+        mainDisplay->presentationFlags |= 0x400000u;
     }
     return -1;
 }
 
-tAINode* AI_EvalFunc_GFXAddWorld(tAINode* a1)
+tAINode* AI_EvalFunc_GFXAddWorld(tAINode* node)
 {
-    int v1;
-    char v3;
-    int v4;
+    char arg1;
+    int arg2;
 
-    v4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_GFXAddWorld_C(v3, v4);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    arg2 = AI_GetIntFromStack();
+    arg1 = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_GFXAddWorld_C(arg1, arg2));
+    return node + 1;
 }
 
-int AI_EvalFunc_GFXAdd_C(tGameObjectMain* aiGao, char a2)
+int AI_EvalFunc_GFXAdd_C(tGameObjectMain* aiGao, char type)
 {
-    return GFX_i_Add(&WOR_gpst_CurrentWorld->gfxCurrentList, a2, aiGao);
+    return GFX_i_Add(&WOR_gpst_CurrentWorld->gfxCurrentList, type, aiGao);
 }
 
-int AI_EvalFunc_GFXAdd_C_CURRENT(char a1)
+int AI_EvalFunc_GFXAdd_C_CURRENT(char type)
 {
-    return GFX_i_Add(&WOR_gpst_CurrentWorld->gfxCurrentList, a1, AI_gpst_CurrentGameObject);
+    return AI_EvalFunc_GFXAdd_C(AI_gpst_CurrentGameObject, type);
 }
 
-tAINode* AI_EvalFunc_GFXAdd(tAINode* a1)
+tAINode* AI_EvalFunc_GFXAdd(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    char v4;
+    tGameObjectMain* gaoUltra;
+    char type;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_GFXAdd_C(v3, v4);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    type = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_GFXAdd_C(gaoUltra, type));
+    return node + 1;
 }
 
-int AI_EvalFunc_GFXAddSorted_C(struct sGameObjectMain* a4, char a2, int16_t a3)
+int AI_EvalFunc_GFXAddSorted_C(struct sGameObjectMain* aiGao, char type, int16_t idx)
 {
-    return GFX_i_AddSorted(&WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE, a2, a3, a4);
+    return GFX_i_AddSorted(&WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE, type, idx, aiGao);
 }
 
-tAINode* AI_EvalFunc_GFXAddSorted(tAINode* a1)
+tAINode* AI_EvalFunc_GFXAddSorted(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    char v4;
-    int16_t a3;
+    tGameObjectMain* gaoUltra;
+    char type;
+    int16_t idx;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_GFXAddSorted_C(v3, v4, a3);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    idx = AI_GetIntFromStack();
+    type = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_GFXAddSorted_C(gaoUltra, type, idx));
+    return node + 1;
 }
 
-int AI_EvalFunc_GFXDel_C(tGameObjectMain* a1, int a2)
+int AI_EvalFunc_GFXDel_C(tGameObjectMain* gao, int gfxId)
 {
-    tGfxElem* v2;
-    tGfxElem** v4;
+    tGfxElem** list;
 
-    if (a2 >= 1024)
-        v4 = &WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v4 = &WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    v2 = GFX_pst_FindById(v4, a2);
-    return GFX_i_SetDeath(v4, v2);
+    list = AI_l_GfxListRef(gfxId);
+    return GFX_i_SetDeath(list, GFX_pst_FindById(list, gfxId));
 }
 
-int AI_EvalFunc_GFXDel_C_CURRENT(int a1)
+int AI_EvalFunc_GFXDel_C_CURRENT(int gfxId)
 {
-    tGfxElem* v1;
-    tGfxElem** v3;
-
-    if (a1 >= 1024)
-        v3 = &WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v3 = &WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    v1 = GFX_pst_FindById(v3, a1);
-    return GFX_i_SetDeath(v3, v1);
+    return AI_EvalFunc_GFXDel_C(AI_gpst_CurrentGameObject, gfxId);
 }
 
-tAINode* AI_EvalFunc_GFXDel(tAINode* a1)
+tAINode* AI_EvalFunc_GFXDel(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
-
-    v2 = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    AI_EvalFunc_GFXDel_C(v2, v3);
-    return a1 + 1;
-}
-
-void AI_EvalFunc_GFXLifeTimeSet_C(struct sGameObjectMain* a1, int gfxId, float a3)
-{
-    tGfxElem** v3;
-
-    if (gfxId >= 1024)
-        v3 = &WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v3 = &WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_pst_FindById(v3, gfxId)->lifeTime = a3;
-}
-
-tAINode* AI_EvalFunc_GFXLifeTimeSet(tAINode* a1)
-{
-    tGameObjectMain* v2;
-    float a3;
+    tGameObjectMain* gaoUltra;
     int gfxId;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetFloatFromStack();
     gfxId = AI_GetIntFromStack();
-    AI_EvalFunc_GFXLifeTimeSet_C(v2, gfxId, a3);
-    return a1 + 1;
+    AI_EvalFunc_GFXDel_C(gaoUltra, gfxId);
+    return node + 1;
 }
 
-tAINode* AI_EvalFunc_GFXRequest(tAINode* a1)
+void AI_EvalFunc_GFXLifeTimeSet_C(struct sGameObjectMain* gao, int gfxId, float lifeTime)
 {
-    int v1;
-    int v2;
+    GFX_pst_FindById(AI_l_GfxListRef(gfxId), gfxId)->lifeTime = lifeTime;
+}
+
+tAINode* AI_EvalFunc_GFXLifeTimeSet(tAINode* node)
+{
+    tGameObjectMain* gaoUltra;
+    int gfxId;
+    float lifeTime;
+
+    gaoUltra = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    lifeTime = AI_GetFloatFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_EvalFunc_GFXLifeTimeSet_C(gaoUltra, gfxId, lifeTime);
+    return node + 1;
+}
+
+// Three of the four arguments are taken and discarded.
+tAINode* AI_EvalFunc_GFXRequest(tAINode* node)
+{
+    int request;
 
     AI_GetIntFromStack();
     AI_GetIntFromStack();
     AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = GFX_i_Request(v1);
-    AI_PutIntToStack(v2);
-    return a1 + 1;
+    request = AI_GetIntFromStack();
+    AI_PutIntToStack(GFX_i_Request(request));
+    return node + 1;
 }
 
-float AI_EvalFunc_GFXGetf_C(tGameObjectMain* a1, int a2, int a3)
+float AI_EvalFunc_GFXGetf_C(tGameObjectMain* gao, int gfxId, int paramIdx)
 {
-    tGfxElem* v4;
-
-    if (a2 >= 1024)
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    return GFX_f_Getf(v4, a2, a3);
+    return GFX_f_Getf(AI_l_GfxList(gfxId), gfxId, paramIdx);
 }
 
-tAINode* AI_EvalFunc_GFXGetf(tAINode* a1)
+tAINode* AI_EvalFunc_GFXGetf(tAINode* node)
 {
-    float v2;
-    tGameObjectMain* v3;
-    int a3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int gfxId;
+    int paramIdx;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_GFXGetf_C(v3, a2, a3);
-    AI_PutFloatToStack(v2);
-    return a1 + 1;
+    paramIdx = AI_GetIntFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_GFXGetf_C(gaoUltra, gfxId, paramIdx));
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXSetf_C(tGameObjectMain* a1, int id, int a2, float a3)
+void AI_EvalFunc_GFXSetf_C(tGameObjectMain* gao, int gfxId, int paramIdx, float value)
 {
-    int v4;
-    tGfxElem* v5;
-
-    if (id >= 1024)
-        v5 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v5 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
     // FIXME: ez a baromság ide nem kell, valószínû azért van mert a getcurrent már __int16-ot vár
-    //HIWORD(v4) = HIWORD(v5);
-    //LOWORD(v4) = id;
-    v4 = id;
-    GFX_Setf(v5, v4, a2, a3);
+    GFX_Setf(AI_l_GfxList(gfxId), gfxId, paramIdx, value);
 }
 
-void GFXSetCurGlobal(int a1)
+void GFXSetCurGlobal(int gfxId)
 {
-    GFX_i_GlobalID = a1;
+    GFX_i_GlobalID = gfxId;
 }
 
-void AI_EvalFunc_GFXSetf_C_CURGLOB(int a2, float a3)
+void AI_EvalFunc_GFXSetf_C_CURGLOB(int paramIdx, float value)
 {
-    int v2;
-    tGfxElem* v3;
-
-    if (GFX_i_GlobalID >= 1024)
-        v3 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v3 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    // FIXME: ez a baromság ide nem kell, valószínû azért van mert a getcurrent már __int16-ot vár
-    //HIWORD(v2) = HIWORD(v3);
-    //LOWORD(v2) = GFX_i_GlobalID;
-    v2 = GFX_i_GlobalID;
-    GFX_Setf(v3, v2, a2, a3);
+    AI_EvalFunc_GFXSetf_C(AI_gpst_CurrentGameObject, GFX_i_GlobalID, paramIdx, value);
 }
 
-void AI_EvalFunc_GFXSetf_C_CURRENT(int id, int a2, float a3)
+void AI_EvalFunc_GFXSetf_C_CURRENT(int gfxId, int paramIdx, float value)
 {
-    int v3;
-    tGfxElem* v4;
-
-    if (id >= 1024)
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    // FIXME: ez a baromság ide nem kell, valószínû azért van mert a getcurrent már __int16-ot vár
-    //HIWORD(v3) = HIWORD(v4);
-    //LOWORD(v3) = id;
-    v3 = id;
-    GFX_Setf(v4, v3, a2, a3);
+    AI_EvalFunc_GFXSetf_C(AI_gpst_CurrentGameObject, gfxId, paramIdx, value);
 }
 
-tAINode* AI_EvalFunc_GFXSetf(tAINode* a1)
+tAINode* AI_EvalFunc_GFXSetf(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
-    int v4;
-    float v5;
+    tGameObjectMain* gaoUltra;
+    int gfxId;
+    int paramIdx;
+    float value;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = AI_GetFloatFromStack();
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    AI_EvalFunc_GFXSetf_C(v2, v4, v3, v5);
-    return a1 + 1;
+    value = AI_GetFloatFromStack();
+    paramIdx = AI_GetIntFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_EvalFunc_GFXSetf_C(gaoUltra, gfxId, paramIdx, value);
+    return node + 1;
 }
 
-int AI_EvalFunc_GFXGeti_C(struct sGameObjectMain* a1, int a2, int a3)
+int AI_EvalFunc_GFXGeti_C(struct sGameObjectMain* gao, int gfxId, int paramIdx)
 {
-    tGfxElem* v4;
-
-    if (a2 >= 1024)
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    return GFX_i_Geti(v4, a2, a3);
+    return GFX_i_Geti(AI_l_GfxList(gfxId), gfxId, paramIdx);
 }
 
-tAINode* AI_EvalFunc_GFXGeti(tAINode* a1)
+tAINode* AI_EvalFunc_GFXGeti(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int v4;
-    int v5;
+    tGameObjectMain* gaoUltra;
+    int gfxId;
+    int paramIdx;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    v1 = AI_EvalFunc_GFXGeti_C(v3, v5, v4);
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    paramIdx = AI_GetIntFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_GFXGeti_C(gaoUltra, gfxId, paramIdx));
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXSeti_C(tGameObjectMain* a1, int a2, int a3, int a4)
+void AI_EvalFunc_GFXSeti_C(tGameObjectMain* gao, int gfxId, int paramIdx, int value)
 {
-    tGfxElem* v4;
-
-    if (a2 >= 1024)
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_Seti(v4, a2, a3, a4);
+    GFX_Seti(AI_l_GfxList(gfxId), gfxId, paramIdx, value);
 }
 
-void AI_EvalFunc_GFXSeti_C_CURGLOB(int a1, int a2)
+void AI_EvalFunc_GFXSeti_C_CURGLOB(int paramIdx, int value)
 {
-    tGfxElem* v2;
-
-    if (GFX_i_GlobalID >= 1024)
-        v2 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v2 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_Seti(v2, GFX_i_GlobalID, a1, a2);
+    AI_EvalFunc_GFXSeti_C(AI_gpst_CurrentGameObject, GFX_i_GlobalID, paramIdx, value);
 }
 
-void AI_EvalFunc_GFXSeti_C_CURRENT(int a1, int a2, int a3)
+void AI_EvalFunc_GFXSeti_C_CURRENT(int gfxId, int paramIdx, int value)
 {
-    tGfxElem* v3;
-
-    if (a1 >= 1024)
-        v3 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v3 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_Seti(v3, a1, a2, a3);
+    AI_EvalFunc_GFXSeti_C(AI_gpst_CurrentGameObject, gfxId, paramIdx, value);
 }
 
-tAINode* AI_EvalFunc_GFXSeti(tAINode* a1)
+tAINode* AI_EvalFunc_GFXSeti(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int v3;
-    int v4;
-    int v5;
+    tGameObjectMain* gaoUltra;
+    int gfxId;
+    int paramIdx;
+    int value;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    AI_EvalFunc_GFXSeti_C(v2, v4, v3, v5);
-    return a1 + 1;
+    value = AI_GetIntFromStack();
+    paramIdx = AI_GetIntFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_EvalFunc_GFXSeti_C(gaoUltra, gfxId, paramIdx, value);
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXGetv_C(struct sGameObjectMain* a1, int a2, int a3, Vec3* a4)
+void AI_EvalFunc_GFXGetv_C(struct sGameObjectMain* gao, int gfxId, int paramIdx, Vec3* value)
 {
-    tGfxElem* v4;
-    Vec3 *ret;
-
-    if (a2 >= 1024)
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    ret = GFX_pst_Getv(v4, a2, a3);
-    *a4 = *ret;
+    *value = *GFX_pst_Getv(AI_l_GfxList(gfxId), gfxId, paramIdx);
 }
 
-tAINode* AI_EvalFunc_GFXGetv(tAINode* a1)
+tAINode* AI_EvalFunc_GFXGetv(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a2;
-    Vec3 a1a;
-    tGameObjectMain* v6;
+    tGameObjectMain* gaoUltra;
+    int gfxId;
+    int paramIdx;
+    Vec3 value;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v6 = v2;
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_GFXGetv_C(v2, a2, a3, &a1a);
-    AI_PutVecToStack(&a1a);
-    return a1 + 1;
+    paramIdx = AI_GetIntFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_EvalFunc_GFXGetv_C(gaoUltra, gfxId, paramIdx, &value);
+    AI_PutVecToStack(&value);
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXSetv_C(tGameObjectMain* a1, int a2, int a3, Vec3* a4)
+void AI_EvalFunc_GFXSetv_C(tGameObjectMain* gao, int gfxId, int paramIdx, Vec3* value)
 {
-    tGfxElem* v4;
-
-    if (a2 >= 1024)
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_Setv(v4, a2, a3, a4);
+    GFX_Setv(AI_l_GfxList(gfxId), gfxId, paramIdx, value);
 }
 
-void AI_EvalFunc_GFXSetv_C_CURRENT(int a1, int a2, Vec3* a3)
+void AI_EvalFunc_GFXSetv_C_CURRENT(int gfxId, int paramIdx, Vec3* value)
 {
-    tGfxElem* v3;
-
-    if (a1 >= 1024)
-        v3 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v3 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_Setv(v3, a1, a2, a3);
+    AI_EvalFunc_GFXSetv_C(AI_gpst_CurrentGameObject, gfxId, paramIdx, value);
 }
 
-void AI_EvalFunc_GFXSetv_C_CURGLOB(int a1, Vec3* a2)
+void AI_EvalFunc_GFXSetv_C_CURGLOB(int paramIdx, Vec3* value)
 {
-    tGfxElem* v2;
-
-    if (GFX_i_GlobalID >= 1024)
-        v2 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v2 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_Setv(v2, GFX_i_GlobalID, a1, a2);
+    AI_EvalFunc_GFXSetv_C(AI_gpst_CurrentGameObject, GFX_i_GlobalID, paramIdx, value);
 }
 
-tAINode* AI_EvalFunc_GFXSetv(tAINode* a1)
+tAINode* AI_EvalFunc_GFXSetv(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a2;
-    Vec3* a4;
+    tGameObjectMain* gaoUltra;
+    int gfxId;
+    int paramIdx;
+    Vec3* value;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a4 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_GFXSetv_C(v2, a2, a3, a4);
-    return a1 + 1;
+
+    // the vector is read where the stack keeps it rather than copied out
+    value = (Vec3*)AI_PopStackSlot();
+    paramIdx = AI_GetIntFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_EvalFunc_GFXSetv_C(gaoUltra, gfxId, paramIdx, value);
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXFlagSet_C(tGameObjectMain* a1, int a2, int a3, int a4)
+void AI_EvalFunc_GFXFlagSet_C(tGameObjectMain* gao, int gfxId, int flag, int set)
 {
-    tGfxElem* v4;
-
-    if (a2 >= 1024)
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v4 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_FlagSet(v4, a2, a3, a4);
+    GFX_FlagSet(AI_l_GfxList(gfxId), gfxId, flag, set);
 }
 
-void AI_EvalFunc_GFXFlagSet_C_CURRENT(int a1, char a2, int a3)
+void AI_EvalFunc_GFXFlagSet_C_CURRENT(int gfxId, char flag, int set)
 {
-    tGfxElem* v3;
-
-    if (a1 >= 1024)
-        v3 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v3 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_FlagSet(v3, a1, a2, a3);
+    AI_EvalFunc_GFXFlagSet_C(AI_gpst_CurrentGameObject, gfxId, flag, set);
 }
 
-tAINode* AI_EvalFunc_GFXFlagSet(tAINode* a1)
+tAINode* AI_EvalFunc_GFXFlagSet(tAINode* node)
 {
-    tGameObjectMain* v2; 
-    int v3;
-    int v4;
-    int v5;
+    tGameObjectMain* gaoUltra;
+    int gfxId;
+    int flag;
+    int set;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    AI_EvalFunc_GFXFlagSet_C(v2, v4, v5, v3);
-    return a1 + 1;
+    set = AI_GetIntFromStack();
+    flag = AI_GetIntFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_EvalFunc_GFXFlagSet_C(gaoUltra, gfxId, flag, set);
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXMaterialSet_C(tGameObjectMain* a1, int a2, tGameObjectMain* a3, int materialID)
+// Gives the effect the material of another object's visual. A
+// multi-material is indexed by materialID, wrapped to its length.
+void AI_EvalFunc_GFXMaterialSet_C(tGameObjectMain* gao, int gfxId, tGameObjectMain* source, int materialID)
 {
-    tGfxElem* v4;
-    tGEOMAT* v5;
+    tGEOMAT* material;
 
-    if (a3 && (a3->flags & 0x4000) != 0)
+    if (!source || (source->flags & 0x4000) == 0)
+        return;
+
+    material = (tGEOMAT*)(((tGameObjectVisualObject*)(source->basic->actorObjectOrVisualObject))->GROMAT);
+    if (material && materialID >= 0 && material->intf->id == 4)
     {
-        if (a2 >= 1024)
-            v4 = WOR_gpst_CurrentWorld->gfxCurrentList;
-        else
-            v4 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-        v5 = (tGEOMAT*)(((tGameObjectVisualObject*)(a3->basic->actorObjectOrVisualObject))->GROMAT);
-        if (v5 && materialID >= 0 && v5->intf->id == 4)
-            v5 = v5->multiMaterialPtrIfType4ThenDiffuseColor[materialID % v5->multiMaterialNumIfType4ThenAmbiantColor];
-        GFX_SetMaterial(v4, a2, v5);
+        material = material->multiMaterialPtrIfType4ThenDiffuseColor[
+            materialID % material->multiMaterialNumIfType4ThenAmbiantColor];
     }
+    GFX_SetMaterial(AI_l_GfxList(gfxId), gfxId, material);
 }
 
-void AI_EvalFunc_GFXMaterialSet_C_CURRENT(int a1, struct sGameObjectMain* a2, int a3)
+void AI_EvalFunc_GFXMaterialSet_C_CURRENT(int gfxId, struct sGameObjectMain* source, int materialID)
 {
-    AI_EvalFunc_GFXMaterialSet_C(AI_gpst_CurrentGameObject, a1, a2, a3);
+    AI_EvalFunc_GFXMaterialSet_C(AI_gpst_CurrentGameObject, gfxId, source, materialID);
 }
 
-tAINode* AI_EvalFunc_GFXMaterialSet(tAINode* a1)
+tAINode* AI_EvalFunc_GFXMaterialSet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    tGameObjectMain* a3;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMain* source;
+    int gfxId;
     int materialID;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     materialID = AI_GetIntFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_GFXMaterialSet_C(v3, v1, a3, materialID);
-    return a1 + 1;
+    source = (tGameObjectMain*)AI_GetObjectFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_EvalFunc_GFXMaterialSet_C(gaoUltra, gfxId, source, materialID);
+    return node + 1;
 }
 
-void AI_EvalFunc_GFXCarteObject_C(tGameObjectMain* a1, int a2, tGameObjectMain* a3, int a4, int a5)
+void AI_EvalFunc_GFXCarteObject_C(tGameObjectMain* gao, int gfxId, tGameObjectMain* target, int mode, int textElemIndexId)
 {
-    tGfxElem* v5;
-
-    if (a2 >= 1024)
-        v5 = WOR_gpst_CurrentWorld->gfxCurrentList;
-    else
-        v5 = WOR_gpst_CurrentWorld->gfxCurrentListSortedAfterAE;
-    GFX_Carte_Object(v5, a2, a3, a4, a5);
+    GFX_Carte_Object(AI_l_GfxList(gfxId), gfxId, target, mode, textElemIndexId);
 }
 
-tAINode* AI_EvalFunc_GFXCarteObject(tAINode* a1)
+tAINode* AI_EvalFunc_GFXCarteObject(tAINode* node)
 {
-    tGameObjectMain* v2;
-    tGameObjectMain* a3;
-    int a5;
-    int a2;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMain* target;
+    int gfxId;
+    int mode;
+    int textElemIndexId;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_GFXCarteObject_C(v2, a2, a3, a4, a5);
-    return a1 + 1;
+    textElemIndexId = AI_GetIntFromStack();
+    mode = AI_GetIntFromStack();
+    target = (tGameObjectMain*)AI_GetObjectFromStack();
+    gfxId = AI_GetIntFromStack();
+    AI_EvalFunc_GFXCarteObject_C(gaoUltra, gfxId, target, mode, textElemIndexId);
+    return node + 1;
 }
 
 HBINK GFX_gpv_FS_Video = 0;
@@ -628,14 +509,14 @@ static void GFX_FS_VideoBlit(HBINK bink)
     back->lpVtbl->Release(back);
 }
 
-void GFX_FS_VideoStart(int a1)
+void GFX_FS_VideoStart(int unused)
 {
     IDirect3DSurface9* back;
     D3DSURFACE_DESC desc;
     D3DLOCKED_RECT lr;
     HRESULT hr;
 
-    (void)a1;
+    (void)unused;
 
     BinkSetSoundSystem(BinkOpenDirectSound, (unsigned long)SND_gst_Params.handles->dsndif);
     GFX_gpv_FS_Video = BinkOpen("BGEMakingOf.bik", 0);
@@ -678,13 +559,10 @@ void GFX_FS_VideoStart(int a1)
     GFX_gl_FS_VideoPlaying = 1;
 }
 
-tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* a1)
+tAINode* AI_EvalFunc_GFX_FS_VideoStart(tAINode* node)
 {
-    int v1;
-
-    v1 = AI_GetIntFromStack();
-    GFX_FS_VideoStart(v1);
-    return a1 + 1;
+    GFX_FS_VideoStart(AI_GetIntFromStack());
+    return node + 1;
 }
 
 void GFX_FS_VideoStop()
@@ -703,10 +581,10 @@ void GFX_FS_VideoStop()
     GFX_gl_FS_VideoPlaying = 0;
 }
 
-tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* a1)
+tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* node)
 {
     GFX_FS_VideoStop();
-    return a1 + 1;
+    return node + 1;
 }
 
 int GFX_FS_VideoFinish() {
@@ -715,13 +593,10 @@ int GFX_FS_VideoFinish() {
     return GFX_gpv_FS_Video->FrameNum >= GFX_gpv_FS_Video->Frames;
 }
 
-tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* a1)
+tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* node)
 {
-    int v1;
-
-    v1 = GFX_FS_VideoFinish();
-    AI_PutIntToStack(v1);
-    return a1 + 1;
+    AI_PutIntToStack(GFX_FS_VideoFinish());
+    return node + 1;
 }
 
 void GFX_FS_VideoUpdate()
@@ -741,26 +616,34 @@ void GFX_FS_VideoUpdate()
         BinkNextFrame(GFX_gpv_FS_Video);
 }
 
-tAINode* AI_EvalFunc_CreateExplosion(tAINode* arg0)
+// The explosion takes its material from the visual of the object the
+// script names. arg1 and arg2 are passed straight through to gfx.c,
+// whose own parameters are not named yet.
+tAINode* AI_EvalFunc_CreateExplosion(tAINode* node)
 {
-    tGameObjectMain* v2;
-    tGameObjectMain* v3;
-    Vec3* a3;
-    float a2;
-    float a1;
+    tGameObjectMain* gaoUltra;
+    tGameObjectVisualObject* visual;
+    tGameObjectMain* source;
+    Vec3* pos;
+    float arg1;
+    float arg2;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v3 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    a2 = AI_GetFloatFromStack();
-    a1 = AI_GetFloatFromStack();
-    if (v3->basic && v3->basic->actorObjectOrVisualObject && ((tGameObjectVisualObject*)(v3->basic->actorObjectOrVisualObject))->GROMAT)
-        GFX_CreateExplosion(a1, a2, a3, v2, (tGEOMAT*)((tGameObjectVisualObject*)(v3->basic->actorObjectOrVisualObject))->GROMAT);
-    return arg0 + 1;
+
+    source = (tGameObjectMain*)AI_GetObjectFromStack();
+
+    // the position is read where the stack keeps it rather than copied out
+    pos = (Vec3*)AI_PopStackSlot();
+    arg2 = AI_GetFloatFromStack();
+    arg1 = AI_GetFloatFromStack();
+
+    if (!source->basic || !source->basic->actorObjectOrVisualObject)
+        return node + 1;
+
+    visual = (tGameObjectVisualObject*)(source->basic->actorObjectOrVisualObject);
+    if (visual->GROMAT)
+        GFX_CreateExplosion(arg1, arg2, pos, gaoUltra, (tGEOMAT*)visual->GROMAT);
+    return node + 1;
 }

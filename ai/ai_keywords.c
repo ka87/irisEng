@@ -116,17 +116,17 @@ tAINode* AI_EvalKeyword_Push(tAINode* aiNode)
     return aiNode + 1;
 }
 
-tAINode* AI_EvalKeyword_Pop(tAINode* a1)
+tAINode* AI_EvalKeyword_Pop(tAINode* node)
 {
     int a1a[13];
     tVarStackElem a2;
 
     AI_PopUserStack(a1a, &a2);
     AI_PutObjectToStack(a1a, a2.type);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_PopSP(tAINode* a1)
+tAINode* AI_EvalKeyword_PopSP(tAINode* node)
 {
     tVarStackElem* v2;
     int dest[13];
@@ -138,10 +138,10 @@ tAINode* AI_EvalKeyword_PopSP(tAINode* a1)
     a2.ptr = v2->ptr;
     AI_gast_Types[a2.type].funcptr(a2.ptr, dest);
     AI_PutObjectToStack(dest, a2.type);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_PopNow(tAINode* a1)
+tAINode* AI_EvalKeyword_PopNow(tAINode* node)
 {
     int dest[13];
     int i;
@@ -150,12 +150,12 @@ tAINode* AI_EvalKeyword_PopNow(tAINode* a1)
     AI_GetVarFromStack(dest, &a2);
     for (i = dest[0]; i > 0; --i)
         AI_PopUserStack(dest, &a2);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Meta(tAINode* a1)
+tAINode* AI_EvalKeyword_Meta(tAINode* node)
 {
-    *AI_gppst_CurrentJumpNode = &a1[a1->val];
+    *AI_gppst_CurrentJumpNode = &node[node->val];
     return (tAINode*)0;
 }
 
@@ -173,16 +173,16 @@ int AI_EvalKeyword_During_C()
     return 0;
 }
 
-tAINode* AI_EvalKeyword_During(tAINode* a1)
+tAINode* AI_EvalKeyword_During(tAINode* node)
 {
     int v1;
 
     v1 = AI_EvalKeyword_During_C();
     AI_PutIntToStack(v1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_DuringInit(tAINode* a1)
+tAINode* AI_EvalKeyword_DuringInit(tAINode* node)
 {
     tAI* v2;
     float v3;
@@ -192,10 +192,10 @@ tAINode* AI_EvalKeyword_DuringInit(tAINode* a1)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     v3 = AI_GetFloatFromStack();
     v2->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] = -v3;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_JumpFalse(tAINode* a1)
+tAINode* AI_EvalKeyword_JumpFalse(tAINode* node)
 {
     tAINode* result;
     int v2;
@@ -205,22 +205,22 @@ tAINode* AI_EvalKeyword_JumpFalse(tAINode* a1)
     v2 = *(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     AI_PutIntToStack(v2);
     if (v2)
-        result = a1 + 1;
+        result = node + 1;
     else
-        result = &a1[a1->val];
+        result = &node[node->val];
     return result;
 }
 
-tAINode* AI_EvalKeyword_JumpFF(tAINode* a1)
+tAINode* AI_EvalKeyword_JumpFF(tAINode* node)
 {
     int v2[3];
 
     v2[0] = 0;
     AI_PutObjectToStack(v2, AI_gaw_EnumLink[32]);
-    return &a1[a1->val];
+    return &node[node->val];
 }
 
-tAINode* AI_EvalKeyword_JumpTrue(tAINode* a1)
+tAINode* AI_EvalKeyword_JumpTrue(tAINode* node)
 {
     tAINode* result;
     int v2;
@@ -230,41 +230,41 @@ tAINode* AI_EvalKeyword_JumpTrue(tAINode* a1)
     v2 = *(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     AI_PutIntToStack(v2);
     if (v2)
-        result = &a1[a1->val];
+        result = &node[node->val];
     else
-        result = a1 + 1;
+        result = node + 1;
     return result;
 }
 
-tAINode* AI_EvalKeyword_JumpFalseSP(tAINode* a1)
+tAINode* AI_EvalKeyword_JumpFalseSP(tAINode* node)
 {
     tAINode* result;
 
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     if (*(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack])
-        result = a1 + 1;
+        result = node + 1;
     else
-        result = &a1[a1->val];
+        result = &node[node->val];
     return result;
 }
 
-tAINode* AI_EvalKeyword_JumpTrueSP(tAINode* a1)
+tAINode* AI_EvalKeyword_JumpTrueSP(tAINode* node)
 {
     tAINode* result;
 
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
     if (*(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack])
-        result = &a1[a1->val];
+        result = &node[node->val];
     else
-        result = a1 + 1;
+        result = node + 1;
     return result;
 }
 
-tAINode* AI_EvalKeyword_Jump(tAINode* a1)
+tAINode* AI_EvalKeyword_Jump(tAINode* node)
 {
-    return &a1[a1->val];
+    return &node[node->val];
 }
 
 tAINode* AI_EvalKeyword_Different(tAINode* arg0)
@@ -573,7 +573,7 @@ tAINode* AI_EvalKeyword_Less(tAINode* arg0)
     return arg0 + 1;
 }
 
-tAINode* AI_EvalKeyword_Not(tAINode* a1)
+tAINode* AI_EvalKeyword_Not(tAINode* node)
 {
     int v2;
     int dest[13];
@@ -593,10 +593,10 @@ tAINode* AI_EvalKeyword_Not(tAINode* a1)
         dest[0] = (uint8_t)((dest[0] != 0) - 1);
     }
     AI_PutObjectToStack(dest, a2.type);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Neg(tAINode* a1)
+tAINode* AI_EvalKeyword_Neg(tAINode* node)
 {
     int dest[13];
     tVarStackElem a2;
@@ -607,10 +607,10 @@ tAINode* AI_EvalKeyword_Neg(tAINode* a1)
     else
         dest[0] = -dest[0];
     AI_PutObjectToStack(dest, a2.type);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecNeg(tAINode* a1)
+tAINode* AI_EvalKeyword_VecNeg(tAINode* node)
 {
     Vec3 dest;
     tVarStackElem a2;
@@ -620,10 +620,10 @@ tAINode* AI_EvalKeyword_VecNeg(tAINode* a1)
     dest.y = -dest.y;
     dest.z = -dest.z;
     AI_PutVecToStack(&dest);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecEqual(tAINode* a1)
+tAINode* AI_EvalKeyword_VecEqual(tAINode* node)
 {
     Vec3* v2;
     Vec3* v3;
@@ -638,10 +638,10 @@ tAINode* AI_EvalKeyword_VecEqual(tAINode* a1)
         AI_PutIntToStack(1);
     else
         AI_PutIntToStack(0);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecDifferent(tAINode* a1)
+tAINode* AI_EvalKeyword_VecDifferent(tAINode* node)
 {
     Vec3* v2;
     Vec3* v3;
@@ -656,10 +656,10 @@ tAINode* AI_EvalKeyword_VecDifferent(tAINode* a1)
         AI_PutIntToStack(0);
     else
         AI_PutIntToStack(1);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_IncAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_IncAffect(tAINode* node)
 {
     int dest[13];
     tVarStackElem a2;
@@ -670,10 +670,10 @@ tAINode* AI_EvalKeyword_IncAffect(tAINode* a1)
     else
         ++dest[0];
     AI_gast_Types[a2.type].funcptr(dest, a2.ptr);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_DecAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_DecAffect(tAINode* node)
 {
     int dest[13];
     tVarStackElem a2;
@@ -684,10 +684,10 @@ tAINode* AI_EvalKeyword_DecAffect(tAINode* a1)
     else
         --dest[0];
     AI_gast_Types[a2.type].funcptr(dest, a2.ptr);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Minus(tAINode* a1)
+tAINode* AI_EvalKeyword_Minus(tAINode* node)
 {
     int v2;
     int v3;
@@ -736,10 +736,10 @@ tAINode* AI_EvalKeyword_Minus(tAINode* a1)
     {
         AI_PutIntToStack(v8 - a1a);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Plus(tAINode* a1)
+tAINode* AI_EvalKeyword_Plus(tAINode* node)
 {
     int v2;
     int v3;
@@ -788,10 +788,10 @@ tAINode* AI_EvalKeyword_Plus(tAINode* a1)
     {
         AI_PutIntToStack(v8 + a1a);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Mul(tAINode* a1)
+tAINode* AI_EvalKeyword_Mul(tAINode* node)
 {
     int v2;
     int v3;
@@ -840,10 +840,10 @@ tAINode* AI_EvalKeyword_Mul(tAINode* a1)
     {
         AI_PutIntToStack(v8 * a1a);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Div(tAINode* a1)
+tAINode* AI_EvalKeyword_Div(tAINode* node)
 {
     int v2;
     int v3;
@@ -892,10 +892,10 @@ tAINode* AI_EvalKeyword_Div(tAINode* a1)
     {
         AI_PutIntToStack(v8 / a1a);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_OrOp(tAINode* a1)
+tAINode* AI_EvalKeyword_OrOp(tAINode* node)
 {
     int v2;
     int v3;
@@ -948,10 +948,10 @@ tAINode* AI_EvalKeyword_OrOp(tAINode* a1)
     {
         AI_PutIntToStack(a1a | v8);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_AndOp(tAINode* a1)
+tAINode* AI_EvalKeyword_AndOp(tAINode* node)
 {
     int v2;
     int v3;
@@ -1004,10 +1004,10 @@ tAINode* AI_EvalKeyword_AndOp(tAINode* a1)
     {
         AI_PutIntToStack(a1a & v8);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_XorOp(tAINode* a1)
+tAINode* AI_EvalKeyword_XorOp(tAINode* node)
 {
     int v2;
     int v3;
@@ -1060,10 +1060,10 @@ tAINode* AI_EvalKeyword_XorOp(tAINode* a1)
     {
         AI_PutIntToStack(a1a ^ v8);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_SLeft(tAINode* a1)
+tAINode* AI_EvalKeyword_SLeft(tAINode* node)
 {
     int v2;
     int v3;
@@ -1116,10 +1116,10 @@ tAINode* AI_EvalKeyword_SLeft(tAINode* a1)
     {
         AI_PutIntToStack(v8 << a1a);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_SRight(tAINode* a1)
+tAINode* AI_EvalKeyword_SRight(tAINode* node)
 {
     int v2;
     int v3;
@@ -1172,10 +1172,10 @@ tAINode* AI_EvalKeyword_SRight(tAINode* a1)
     {
         AI_PutIntToStack(v8 >> a1a);
     }
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Affect(tAINode* a1)
+tAINode* AI_EvalKeyword_Affect(tAINode* node)
 {
     int v2;
     double v3;
@@ -1204,10 +1204,10 @@ tAINode* AI_EvalKeyword_Affect(tAINode* a1)
         }
     }
     *v6 = v4;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_MinusAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_MinusAffect(tAINode* node)
 {
     int v2;
     BOOL isFloat;
@@ -1254,10 +1254,10 @@ tAINode* AI_EvalKeyword_MinusAffect(tAINode* a1)
     else
         v9 = v8 - v5;
     *(float*)v7 = *(float*)&v9;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_PlusAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_PlusAffect(tAINode* node)
 {
     int v2;
     BOOL isFloat;
@@ -1304,10 +1304,10 @@ tAINode* AI_EvalKeyword_PlusAffect(tAINode* a1)
     else
         v9 = v8 + v5;
     *(float*)v7 = *(float*)&v9;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_MulAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_MulAffect(tAINode* node)
 {
     int v2;
     BOOL isFloat;
@@ -1354,10 +1354,10 @@ tAINode* AI_EvalKeyword_MulAffect(tAINode* a1)
     else
         v9 = v8 * v5;
     *(float*)v7 = *(float*)&v9;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_DivAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_DivAffect(tAINode* node)
 {
     int v2;
     BOOL isFloat;
@@ -1404,10 +1404,10 @@ tAINode* AI_EvalKeyword_DivAffect(tAINode* a1)
     else
         v9 = v8 / v5;
     *(float*)v7 = *(float*)&v9;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_OrAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_OrAffect(tAINode* node)
 {
     int v2;
     double v3;
@@ -1460,10 +1460,10 @@ LABEL_7:
         v11 = v7 | v10;
     }
     *(uint32_t*)v9 = v11;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_AndAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_AndAffect(tAINode* node)
 {
     int v2;
     double v3;
@@ -1516,10 +1516,10 @@ LABEL_7:
         v11 = v7 & v10;
     }
     *(uint32_t*)v9 = v11;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_XorAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_XorAffect(tAINode* node)
 {
     int v2;
     double v3;
@@ -1572,10 +1572,10 @@ LABEL_7:
         v11 = v7 ^ v10;
     }
     *(uint32_t*)v9 = v11;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_SLeftAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_SLeftAffect(tAINode* node)
 {
     int v2;
     double v3;
@@ -1628,10 +1628,10 @@ LABEL_7:
         v11 = v10 << (v7 & 0xff);
     }
     *v9 = v11;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_SRightAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_SRightAffect(tAINode* node)
 {
     int v2;
     double v3;
@@ -1684,16 +1684,16 @@ LABEL_7:
         v11 = v10 >> (v7 & 0xff);
     }
     *v9 = v11;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Invert(tAINode* a1)
+tAINode* AI_EvalKeyword_Invert(tAINode* node)
 {
     int v1;
 
     v1 = AI_GetIntFromStack();
     AI_PutIntToStack(~v1);
-    return a1 + 1;
+    return node + 1;
 }
 
 tAINode* AI_EvalKeyword_VecAffect(tAINode* aiNode)
@@ -1715,7 +1715,7 @@ tAINode* AI_EvalKeyword_VecAffect(tAINode* aiNode)
     return aiNode + 1;
 }
 
-tAINode* AI_EvalKeyword_VecPlusAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_VecPlusAffect(tAINode* node)
 {
     tVarStackElem v2;
     Vec3* a3;
@@ -1726,10 +1726,10 @@ tAINode* AI_EvalKeyword_VecPlusAffect(tAINode* a1)
     a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     AI_GetVarFromStack(&a2, &v2);
     MATH_VecAddVec((Vec3*)v2.ptr, &a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecMinusAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_VecMinusAffect(tAINode* node)
 {
     tVarStackElem v2;
     Vec3* a3;
@@ -1740,10 +1740,10 @@ tAINode* AI_EvalKeyword_VecMinusAffect(tAINode* a1)
     a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     AI_GetVarFromStack(&a2, &v2);
     MATH_SubstractVec((Vec3*)v2.ptr, &a2, a3);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecMulAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_VecMulAffect(tAINode* node)
 {
     Vec3* v2;
     float v3; 
@@ -1756,10 +1756,10 @@ tAINode* AI_EvalKeyword_VecMulAffect(tAINode* a1)
     *(float*)a2.ptr = dest[0].x * v3;
     v2->y = dest[0].y * v3;
     v2->z = dest[0].z * v3;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecDivAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_VecDivAffect(tAINode* node)
 {
     Vec3* v2;
     float v3;
@@ -1774,10 +1774,10 @@ tAINode* AI_EvalKeyword_VecDivAffect(tAINode* a1)
     *(float*)a2.ptr = dest[0].x * v3;
     v2->y = dest[0].y * v3;
     v2->z = dest[0].z * v3;
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecMinus(tAINode* a1)
+tAINode* AI_EvalKeyword_VecMinus(tAINode* node)
 {
     Vec3* a3;
     Vec3* dest;
@@ -1793,7 +1793,7 @@ tAINode* AI_EvalKeyword_VecMinus(tAINode* a1)
         (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack],
         a3);
     AI_PutVecToStack(dest);
-    return a1 + 1;
+    return node + 1;
 }
 
 tAINode* AI_EvalKeyword_VecPlus(tAINode* arg0)
@@ -1895,7 +1895,7 @@ tAINode* AI_EvalKeyword_VecDiv(tAINode* arg0)
     return arg0 + 1;
 }
 
-tAINode* AI_EvalKeyword_VecMul2(tAINode* a1)
+tAINode* AI_EvalKeyword_VecMul2(tAINode* node)
 {
     float v2;
     Vec3 dest[4];
@@ -1914,10 +1914,10 @@ tAINode* AI_EvalKeyword_VecMul2(tAINode* a1)
     dest[0].y = dest[0].y * v5[0];
     dest[0].z = dest[0].z * v5[0];
     AI_PutVecToStack(dest);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_MsgAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_MsgAffect(tAINode* node)
 {
     tMessage Src;
     tVarStackElem v3;
@@ -1928,10 +1928,10 @@ tAINode* AI_EvalKeyword_MsgAffect(tAINode* a1)
     AI_GetVarFromStack(&dest, &v3);
     memcpy(&dest, &Src, sizeof(dest));
     AI_gast_Types[v3.type].funcptr((void *)&dest, (void*)v3.ptr);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_TextAffect(tAINode* a1)
+tAINode* AI_EvalKeyword_TextAffect(tAINode* node)
 {
     char Src[52];
     tVarStackElem v3;
@@ -1942,10 +1942,10 @@ tAINode* AI_EvalKeyword_TextAffect(tAINode* a1)
     AI_GetVarFromStack(dest, &v3);
     memcpy(dest, Src, 8u);
     AI_gast_Types[v3.type].funcptr((void *)dest, (void*)v3.ptr);
-    return a1 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_TextPlus(tAINode* a1)
+tAINode* AI_EvalKeyword_TextPlus(tAINode* node)
 {
     int a1a[13];
     tVarStackElem a2;
@@ -1956,7 +1956,7 @@ tAINode* AI_EvalKeyword_TextPlus(tAINode* a1)
     AI_GetVarFromStack(a1a, &v5);
     a1a[1] += dest[0];                            // tTextGet.idx += ..
     AI_PutObjectToStack(a1a, v5.type);
-    return a1 + 1;
+    return node + 1;
 }
 
 tOfc_scriptengine_functions AI_gast_Keywords[74] = {

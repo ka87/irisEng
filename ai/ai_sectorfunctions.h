@@ -1,13 +1,13 @@
 #pragma once
 #include "../ai.h"
 
-void AI_EvalFunc_GRPSectInvisibleSet_C(struct sGameObjectMain* a1, int a2, int a3);
-void AI_EvalFunc_GRPSectSetIsIn_C(struct sGameObjectMain* a1);
-int AI_EvalFunc_GRPSectRegister_C(struct sGameObjectMain* a1);
+void AI_EvalFunc_GRPSectInvisibleSet_C(struct sGameObjectMain* gao, int sectorID, int invisible);
+void AI_EvalFunc_GRPSectSetIsIn_C(struct sGameObjectMain* gao);
+int AI_EvalFunc_GRPSectRegister_C(struct sGameObjectMain* gao);
 
-tAINode* AI_EvalFunc_GRPSectInvisibleSet(tAINode* a1);
-tAINode* AI_EvalFunc_GRPSectInactiveSet(tAINode* a1);
-tAINode* AI_EvalFunc_GRPSectRegister(tAINode* a1);
-tAINode* AI_EvalFunc_GRPCullDoor(tAINode* a1);
-tAINode* AI_EvalFunc_GRPSectSetIsIn(tAINode* a1);
-tAINode* AI_EvalFunc_GRPFillArray(tAINode* a1);
+tAINode* AI_EvalFunc_GRPSectInvisibleSet(tAINode* node);
+tAINode* AI_EvalFunc_GRPSectInactiveSet(tAINode* node);
+tAINode* AI_EvalFunc_GRPSectRegister(tAINode* node);
+tAINode* AI_EvalFunc_GRPCullDoor(tAINode* node);
+tAINode* AI_EvalFunc_GRPSectSetIsIn(tAINode* node);
+tAINode* AI_EvalFunc_GRPFillArray(tAINode* node);
