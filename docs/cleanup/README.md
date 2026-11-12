@@ -426,7 +426,7 @@ all.
 **In progress.** Full record in [ai.md](ai.md).
 
 The AI interpreter and the builtins the game's scripts call: 32 files,
-of which **29 are finished** and three remain. 120 of the project's 137
+of which **28 are finished** and four remain. 120 of the project's 137
 first-party sources parse now, against 117 before this directory --
 `ai/ai_gfxfunctions.c` and `graphicsobjects/shadow.c` came in with the
 d3d9 stub additions the full-screen video path needed.
@@ -456,8 +456,8 @@ pushes is extracted from the pre-rewrite copy and from the rewrite and
 compared, with the pops that moved into a helper credited back to the
 caller. A pop nested inside a push's argument still evaluates first, and
 no statement anywhere in `ai/` holds more than one pop, so ordering by
-statement is exact rather than approximate. **Across the seven largest
-files -- 495 functions -- no pop sequence differs.** The remaining
+statement is exact rather than approximate. **Across the eight files
+of the second batch -- 614 functions -- no pop sequence differs.** The remaining
 differences are all one push replacing two in an if/else, or the
 reverse.
 
