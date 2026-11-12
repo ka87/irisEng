@@ -6,28 +6,30 @@
 
 void GAO_ModifierShadow_Create(struct sGameObjectMain* gao, tModifier* mdf, void* privateData)
 {
+    tMdfPrivateDataShadow* sdw;
 
-    mdf->mdfPrivateDataPtr = (tMdfPrivateDataShadow*)MEM_p_Alloc(sizeof(tMdfPrivateDataShadow));
+    sdw = (tMdfPrivateDataShadow*)MEM_p_Alloc(sizeof(tMdfPrivateDataShadow));
+    mdf->mdfPrivateDataPtr = sdw;
     if (privateData)
     {
-        memcpy(mdf->mdfPrivateDataPtr, privateData, sizeof(tMdfPrivateDataShadow));
+        memcpy(sdw, privateData, sizeof(tMdfPrivateDataShadow));
     }
     else
     {
-        memset(mdf->mdfPrivateDataPtr, 0, sizeof(tMdfPrivateDataShadow));
-        ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->texKey = -1;
-        ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->shadowTextureIdx = -1;
-        ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->flags = 0x45184;
-        ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->xSizeFactor = 1.0;
-        ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->ySizeFactor = 1.0;
-        ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->unkf1 = 1.0;
-        ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->zAttenuationFactor = 2.0;
-        ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->shadowColor = 0;
+        memset(sdw, 0, sizeof(tMdfPrivateDataShadow));
+        sdw->texKey = -1;
+        sdw->shadowTextureIdx = -1;
+        sdw->flags = 0x45184;
+        sdw->xSizeFactor = 1.0;
+        sdw->ySizeFactor = 1.0;
+        sdw->unkf1 = 1.0;
+        sdw->zAttenuationFactor = 2.0;
+        sdw->shadowColor = 0;
     }
-    
-    ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->gao = gao;
-    ((tMdfPrivateDataShadow*)(mdf->mdfPrivateDataPtr))->nextShadowMdfPrivateData = pst_FirstShadowMdf;
-    pst_FirstShadowMdf = mdf->mdfPrivateDataPtr;
+
+    sdw->gao = gao;
+    sdw->nextShadowMdfPrivateData = pst_FirstShadowMdf;
+    pst_FirstShadowMdf = sdw;
 }
 
 void GAO_ModifierShadow_Destroy(struct sModifier* mdf)
@@ -115,6 +117,34 @@ void GAO_ModifierShadow_DetectUsedTextures(char* texArray)
     }
 }
 
+static void GAO_l_ModifierShadow_ApplyInvertFlag(tShadowElemStruct* elem,
+                                                 tMdfPrivateDataShadow* sdw)
+{
+    if ((sdw->flags & 0x800000) != 0)
+        MATH_VecInvert(&elem->shadowVectorInWorldSpace, &elem->shadowVectorInWorldSpace);
+}
+
+static void GAO_l_ModifierShadow_AddAxis(tShadowElemStruct* elem,
+                                         tMdfPrivateDataShadow* sdw,
+                                         Vec3* axis)
+{
+    elem->shadowMdfPtr = sdw;
+    elem->ZDepth = sdw->zAttenuationFactor;
+    elem->shadowVectorInWorldSpace = *axis;
+    elem->color = sdw->shadowColor;
+    GAO_l_ModifierShadow_ApplyInvertFlag(elem, sdw);
+    SDW_AddAShadow(elem);
+}
+
+static void GAO_l_ModifierShadow_AddDirectional(tShadowElemStruct* elem,
+                                                tMdfPrivateDataShadow* sdw)
+{
+    MATH_VecInvert(&elem->shadowVectorInWorldSpace, &elem->shadowVectorInWorldSpace);
+    MATH_NormalizeVector(&elem->shadowVectorInWorldSpace, &elem->shadowVectorInWorldSpace);
+    GAO_l_ModifierShadow_ApplyInvertFlag(elem, sdw);
+    SDW_AddAShadow(elem);
+}
+
 void GAO_ModifierShadow_Apply_All()
 {
     int i;
@@ -145,44 +175,18 @@ void GAO_ModifierShadow_Apply_All()
             }
             if ((privDataShadow->flags & 0x100000) != 0)
             {
-                sdwelem.shadowMdfPtr = privDataShadow;
-                sdwelem.ZDepth = privDataShadow->zAttenuationFactor;
-                sdwelem.shadowVectorInWorldSpace = privDataShadow->gao->matrices->v1;
-                sdwelem.color = privDataShadow->shadowColor;
-
-                if ((privDataShadow->flags & 0x800000) != 0)
-                {
-                    MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                }
-                SDW_AddAShadow(&sdwelem);
+                GAO_l_ModifierShadow_AddAxis(&sdwelem, privDataShadow,
+                                             &privDataShadow->gao->matrices->v1);
             }
             if ((privDataShadow->flags & 0x200000) != 0)
             {
-                sdwelem.shadowMdfPtr = privDataShadow;
-                sdwelem.ZDepth = privDataShadow->zAttenuationFactor;
-                sdwelem.shadowVectorInWorldSpace.x = privDataShadow->gao->matrices->v2.x;
-                sdwelem.shadowVectorInWorldSpace.y = privDataShadow->gao->matrices->v2.y;
-                sdwelem.shadowVectorInWorldSpace.z = privDataShadow->gao->matrices->v2.z;
-                sdwelem.color = privDataShadow->shadowColor;
-                if ((privDataShadow->flags & 0x800000) != 0)
-                {
-                    MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                }
-                SDW_AddAShadow(&sdwelem);
+                GAO_l_ModifierShadow_AddAxis(&sdwelem, privDataShadow,
+                                             &privDataShadow->gao->matrices->v2);
             }
             if ((privDataShadow->flags & 0x400000) != 0)
             {
-                sdwelem.shadowMdfPtr = privDataShadow;
-                sdwelem.ZDepth = privDataShadow->zAttenuationFactor;
-                sdwelem.shadowVectorInWorldSpace.x = privDataShadow->gao->matrices->v3.x;
-                sdwelem.shadowVectorInWorldSpace.y = privDataShadow->gao->matrices->v3.y;
-                sdwelem.shadowVectorInWorldSpace.z = privDataShadow->gao->matrices->v3.z;
-                sdwelem.color = privDataShadow->shadowColor;
-                if ((privDataShadow->flags & 0x800000) != 0)
-                {
-                    MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                }
-                SDW_AddAShadow(&sdwelem);
+                GAO_l_ModifierShadow_AddAxis(&sdwelem, privDataShadow,
+                                             &privDataShadow->gao->matrices->v3);
             }
             if ((privDataShadow->flags & 3) != 0)
             {
@@ -221,14 +225,7 @@ void GAO_ModifierShadow_Apply_All()
 
                                 sdwelem.color = sdwelem.color ^ 0xffffff;
 
-                                MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                                MATH_NormalizeVector(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-
-                                if ((privDataShadow->flags & 0x800000) != 0)
-                                {
-                                    MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                                }
-                                SDW_AddAShadow(&sdwelem);
+                                GAO_l_ModifierShadow_AddDirectional(&sdwelem, privDataShadow);
                                 sdwelem.startFactor = 1.0;
                             }
                         }
@@ -237,13 +234,8 @@ void GAO_ModifierShadow_Apply_All()
                         if ((privDataShadow->flags & 2) == 0)
                             continue;
                         sdwelem.color = sdwelem.color ^ 0xffffff;
-                        MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &currLightGao->matrices->v2);
-                        MATH_NormalizeVector(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                        if ((privDataShadow->flags & 0x800000) != 0)
-                        {
-                            MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                        }
-                        SDW_AddAShadow(&sdwelem);
+                        sdwelem.shadowVectorInWorldSpace = currLightGao->matrices->v2;
+                        GAO_l_ModifierShadow_AddDirectional(&sdwelem, privDataShadow);
                         break;
                     case 2:
                         if ((privDataShadow->flags & 1) == 0)
@@ -263,13 +255,7 @@ void GAO_ModifierShadow_Apply_All()
 
                         sdwelem.color = sdwelem.color ^ 0xffffff;
                         MATH_SubstractVec(&sdwelem.shadowVectorInWorldSpace, &currLightGao->matrices->Pos, &privDataShadow->gao->matrices->Pos);
-                        MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                        MATH_NormalizeVector(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                        if ((privDataShadow->flags & 0x800000) != 0)
-                        {
-                            MATH_VecInvert(&sdwelem.shadowVectorInWorldSpace, &sdwelem.shadowVectorInWorldSpace);
-                        }
-                        SDW_AddAShadow(&sdwelem);
+                        GAO_l_ModifierShadow_AddDirectional(&sdwelem, privDataShadow);
                         break;
                     default:
                         break;
