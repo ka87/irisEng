@@ -3,41 +3,41 @@
 #include "gdi.h"
 #include "materialanddraw.h"
 
-void SPG_ComputeSpriteFog(Vec3* a1, int* a2, int a3)
+void SPG_ComputeSpriteFog(Vec3* verts, int* colors, int num)
 {
     int i;
-    float v6;
+    float dist;
 
-    for (i = a3; i; --i)
+    for (i = num; i; --i)
     {
-        v6 = a1->z * SPG_gs_SpecialFogAxis.z + a1->y * SPG_gs_SpecialFogAxis.y + SPG_gs_SpecialFogAxis.x * a1->x - SPG_gs_SpecialFogDistance;
-        *a2 = LIGHT_ul_Interpol2Colors(*a2, SPG_gs_SpecialFogCOLOR, v6);
-        ++a2;
-        ++a1;
+        dist = verts->z * SPG_gs_SpecialFogAxis.z + verts->y * SPG_gs_SpecialFogAxis.y + SPG_gs_SpecialFogAxis.x * verts->x - SPG_gs_SpecialFogDistance;
+        *colors = LIGHT_ul_Interpol2Colors(*colors, SPG_gs_SpecialFogCOLOR, dist);
+        ++colors;
+        ++verts;
     }
 }
 
-void SPG_ComputeSpriteFog_Cull(Vec3* a1, int* a2, int a3)
+void SPG_ComputeSpriteFog_Cull(Vec3* verts, int* colors, int num)
 {
     int i;
-    double v6;
-    float v7;
+    double dist;
+    float distF;
 
-    for (i = a3; i; --i)
+    for (i = num; i; --i)
     {
-        v6 = a1->z * SPG_gs_SpecialFogAxis.z + a1->y * SPG_gs_SpecialFogAxis.y + SPG_gs_SpecialFogAxis.x * a1->x - SPG_gs_SpecialFogDistance;
-        v7 = (float)v6;
-        if (v6 < 1.0)
+        dist = verts->z * SPG_gs_SpecialFogAxis.z + verts->y * SPG_gs_SpecialFogAxis.y + SPG_gs_SpecialFogAxis.x * verts->x - SPG_gs_SpecialFogDistance;
+        distF = (float)dist;
+        if (dist < 1.0)
         {
-            if (v7 > 0.0)
-                *a2 = LIGHT_ul_Interpol2Colors(*a2, SPG_gs_SpecialFogCOLOR, v7);
+            if (distF > 0.0)
+                *colors = LIGHT_ul_Interpol2Colors(*colors, SPG_gs_SpecialFogCOLOR, distF);
         }
         else
         {
-            *a1 = SPG_gs_SpecialFogCulledPoint;
+            *verts = SPG_gs_SpecialFogCulledPoint;
         }
-        ++a2;
-        ++a1;
+        ++colors;
+        ++verts;
     }
 }
 
@@ -88,254 +88,249 @@ void SPG_PackAndAddData(Vec3* dest, tSpgVertexElem* pos, tSpgVertexElem* addToPo
                         ((pos->colorComponentB & 0xFFFFFF80) << 8)) & 0xFFFFFF80));
 }
 
-void SPG_SerialSpriter(tSpgVertexElem* a1, tSpgVertexElem* a2, int a3)
+void SPG_SerialSpriter(tSpgVertexElem* pos, tSpgVertexElem* step, int num)
 {
-    Vec3* v3;
-    Vec3* v4;
-    float* v5;
-    unsigned int num;
-    Vec3* a3a;
+    Vec3* cur;
+    Vec3* limit;
+    float* rnd;
+    unsigned int batches;
+    Vec3* end;
 
-    v3 = &SPG_gvStack[gvBase];
-    a3a = &v3[a3];
-    v4 = a3a;
-    v5 = &f_RandomTable[gvBase];
-    if (a3a > &SPG_gvStack[256])
+    cur = &SPG_gvStack[gvBase];
+    end = &cur[num];
+    limit = end;
+    rnd = &f_RandomTable[gvBase];
+    if (end > &SPG_gvStack[256])
     {
-        num = ((char*)a3a - (char*)&SPG_gvStack[256] - 1) / (256 * sizeof(Vec3)) + 1;
-        a3a -= 256 * num;
+        batches = ((char*)end - (char*)&SPG_gvStack[256] - 1) / (256 * sizeof(Vec3)) + 1;
+        end -= 256 * batches;
         do
         {
-            for (; v3 < &SPG_gvStack[256]; ++v5)
-                SPG_PackAndAddData(v3++, a1, a2, v5);
+            for (; cur < &SPG_gvStack[256]; ++rnd)
+                SPG_PackAndAddData(cur++, pos, step, rnd);
             SPG_Draw(256);
-            v3 -= 256;
-            v5 -= 256;
-            --num;
-        } while (num);
-        v4 = a3a;
+            cur -= 256;
+            rnd -= 256;
+            --batches;
+        } while (batches);
+        limit = end;
     }
-    if (v3 < v4)
+    if (cur < limit)
     {
         do
-            SPG_PackAndAddData(v3++, a1, a2, v5++);
-        while (v3 < a3a);
+            SPG_PackAndAddData(cur++, pos, step, rnd++);
+        while (cur < end);
     }
-    gvBase = v3 - SPG_gvStack;
+    gvBase = cur - SPG_gvStack;
 }
 
-void divide_spg_vertices_andcolorelem_sub_420790(tSpgVertexElem* a1, int a2)
+static void SPG_l_DivideVertexAndColor(tSpgVertexElem* elem, int shift)
 {
-    float a1a;
+    float scale;
     int tmp;
 
-    a1->colorComponentA >>= a2;
-    a1->colorComponentB >>= a2;
-    a1->colorComponentG >>= a2;
-    a1->colorComponentR >>= a2;
-    tmp = 0x3F800000 - (a2 << 23);
-    a1a = *(float*)&tmp;
-    a1->v.x = a1a * a1->v.x;
-    a1->v.y = a1a * a1->v.y;
-    a1->v.z = a1a * a1->v.z;
+    elem->colorComponentA >>= shift;
+    elem->colorComponentB >>= shift;
+    elem->colorComponentG >>= shift;
+    elem->colorComponentR >>= shift;
+    tmp = 0x3F800000 - (shift << 23);
+    scale = *(float*)&tmp;
+    elem->v.x = scale * elem->v.x;
+    elem->v.y = scale * elem->v.y;
+    elem->v.z = scale * elem->v.z;
 }
 
-void substract_spg_verticesandcolorelem_sub_420730(tSpgVertexElem* a1, tSpgVertexElem* a2, tSpgVertexElem* a3)
+static void SPG_l_SubtractVertexAndColor(tSpgVertexElem* dest, tSpgVertexElem* src1, tSpgVertexElem* src2)
 {
-    a1->colorComponentA = a2->colorComponentA - a3->colorComponentA;
-    a1->colorComponentB = a2->colorComponentB - a3->colorComponentB;
-    a1->colorComponentG = a2->colorComponentG - a3->colorComponentG;
-    a1->colorComponentR = a2->colorComponentR - a3->colorComponentR;
-    a1->v.x = a2->v.x - a3->v.x;
-    a1->v.y = a2->v.y - a3->v.y;
-    a1->v.z = a2->v.z - a3->v.z;
+    dest->colorComponentA = src1->colorComponentA - src2->colorComponentA;
+    dest->colorComponentB = src1->colorComponentB - src2->colorComponentB;
+    dest->colorComponentG = src1->colorComponentG - src2->colorComponentG;
+    dest->colorComponentR = src1->colorComponentR - src2->colorComponentR;
+    dest->v.x = src1->v.x - src2->v.x;
+    dest->v.y = src1->v.y - src2->v.y;
+    dest->v.z = src1->v.z - src2->v.z;
 }
 
-float GET_SqrLenght(Vec3* a1)
+static int SPG_l_CalcDivider(int maxDivide, float threshold, Vec3* edge1, Vec3* edge2)
 {
-    return a1->x * a1->x + a1->y * a1->y + a1->z * a1->z;
-}
+    int divides;
+    double len;
+    float len2;
 
-int spg_calc_divider_sub_4208F0(int maxDivide, float a2, Vec3* a3, Vec3* a4)
-{
-    int v4;
-    double v5;
-    float v7;
-
-    v4 = 0;
-    v7 = GET_SqrLenght(a4);
-    v5 = GET_SqrLenght(a3);
-    if (v5 > v7)
-        v5 = v7;
-    for (; v5 > a2; ++v4)
+    divides = 0;
+    len2 = MATH_VecLenSquared(edge2);
+    len = MATH_VecLenSquared(edge1);
+    if (len > len2)
+        len = len2;
+    for (; len > threshold; ++divides)
     {
-        if (v4 >= maxDivide)
+        if (divides >= maxDivide)
             break;
-        v5 = v5 * 0.25;
+        len = len * 0.25;
     }
-    return v4;
+    return divides;
 }
 
-void SPG_SetNoise(tSpgVertexElem* a1, Vec3* a2, float a3)
+void SPG_SetNoise(tSpgVertexElem* elem, Vec3* vec, float scale)
 {
-    SPGNoise1.x = a1->v.x * a3;
-    SPGNoise1.y = a1->v.y * a3;
-    SPGNoise1.z = a1->v.z * a3;
-    SPGNoise2.x = a2->x * a3;
-    SPGNoise2.y = a2->y * a3;
-    SPGNoise2.z = a2->z * a3;
+    SPGNoise1.x = elem->v.x * scale;
+    SPGNoise1.y = elem->v.y * scale;
+    SPGNoise1.z = elem->v.z * scale;
+    SPGNoise2.x = vec->x * scale;
+    SPGNoise2.y = vec->y * scale;
+    SPGNoise2.z = vec->z * scale;
 }
 
-void SPG_TransformTrisToSprites(Vec3* a1, Vec3* a2, Vec3* a3, unsigned int* colors, struct sSpgTrisToSpritesStruct* a5)
+void SPG_TransformTrisToSprites(Vec3* p0, Vec3* p1, Vec3* p2, unsigned int* colors, struct sSpgTrisToSpritesStruct* params)
 {
-    unsigned int v5;
-    float v6;
-    unsigned int v7;
-    float v8;
-    unsigned int v9;
-    float v10;
-    float v11;
-    float v12;
-    int16_t v13;
-    int16_t v14;
-    int16_t v15;
-    int16_t v16;
-    unsigned int v17;
-    int v18;
-    int v20;
-    double v21;
-    float v22;
-    float v23;
-    int v24;
-    tSpgVertexElem a3a;
-    tSpgVertexElem v26;
-    tSpgVertexElem a4a;
-    tSpgVertexElem v28;
-    int v29;
-    tSpgVertexElem a2a;
-    tSpgVertexElem v31;
-    tSpgVertexElem a1a;
+    unsigned int col0;
+    float z0;
+    unsigned int col1;
+    float y1;
+    unsigned int col2;
+    float x2;
+    float y2;
+    float z2;
+    int16_t dA1;
+    int16_t dB1;
+    int16_t dB2;
+    int16_t dA2;
+    unsigned int dividesCalc;
+    int divides;
+    int count;
+    double edge2z;
+    float noise;
+    float scale;
+    int countSaved;
+    tSpgVertexElem edge1;
+    tSpgVertexElem cur;
+    tSpgVertexElem edge2;
+    tSpgVertexElem c0;
+    int next;
+    tSpgVertexElem c2;
+    tSpgVertexElem c1;
+    tSpgVertexElem rowStart;
     int tmp;
 
-    v5 = *colors;
-    v28.colorComponentA = (*colors >> 17) & 0x7F80;
-    v28.colorComponentB = (v5 >> 9) & 0x7F80;
-    v28.colorComponentG = (v5 >> 1) & 0x7F80;
-    v28.colorComponentR = (uint8_t)v5 << 7;
-    v28.v.x = a1->x;
-    v6 = a1->z;
-    v28.v.y = a1->y;
-    v28.v.z = v6;
-    v7 = colors[1];
-    v31.colorComponentA = (v7 >> 17) & 0x7F80;
-    v31.colorComponentB = (v7 >> 9) & 0x7F80;
-    v31.colorComponentG = (v7 >> 1) & 0x7F80;
-    v31.colorComponentR = (uint8_t)v7 << 7;
-    v31.v.x = a2->x;
-    v8 = a2->y;
-    v31.v.z = a2->z;
-    v9 = colors[2];
-    v31.v.y = v8;
-    a2a.colorComponentA = (v9 >> 17) & 0x7F80;
-    a2a.colorComponentB = (v9 >> 9) & 0x7F80;
-    a2a.colorComponentR = (uint8_t)v9 << 7;
-    v10 = a3->x;
-    a2a.colorComponentG = (v9 >> 1) & 0x7F80;
-    v11 = a3->y;
-    a2a.v.x = v10;
-    v12 = a3->z;
-    a2a.v.y = v11;
-    a2a.v.z = v12;
-    v13 = v31.colorComponentA - v28.colorComponentA;
-    a3a.colorComponentA = v31.colorComponentA - v28.colorComponentA;
-    v14 = v31.colorComponentB - v28.colorComponentB;
-    a3a.v.x = v31.v.x - v28.v.x;
-    a3a.colorComponentG = v31.colorComponentG - v28.colorComponentG;
-    a3a.v.y = v31.v.y - v28.v.y;
-    a3a.colorComponentR = v31.colorComponentR - v28.colorComponentR;
-    v15 = a2a.colorComponentB - v28.colorComponentB;
-    a3a.v.z = v31.v.z - v28.v.z;
-    v16 = a2a.colorComponentA - v28.colorComponentA;
-    a4a.colorComponentG = a2a.colorComponentG - v28.colorComponentG;
-    a4a.v.x = a2a.v.x - v28.v.x;
-    a4a.colorComponentR = a2a.colorComponentR - v28.colorComponentR;
-    a3a.colorComponentB = v31.colorComponentB - v28.colorComponentB;
-    a4a.colorComponentA = a2a.colorComponentA - v28.colorComponentA;
-    a4a.colorComponentB = a2a.colorComponentB - v28.colorComponentB;
-    a4a.v.y = v11 - v28.v.y;
-    a4a.v.z = a2a.v.z - v28.v.z;
-    if (a5->f1 == 0.0)
+    col0 = *colors;
+    c0.colorComponentA = (*colors >> 17) & 0x7F80;
+    c0.colorComponentB = (col0 >> 9) & 0x7F80;
+    c0.colorComponentG = (col0 >> 1) & 0x7F80;
+    c0.colorComponentR = (uint8_t)col0 << 7;
+    c0.v.x = p0->x;
+    z0 = p0->z;
+    c0.v.y = p0->y;
+    c0.v.z = z0;
+    col1 = colors[1];
+    c1.colorComponentA = (col1 >> 17) & 0x7F80;
+    c1.colorComponentB = (col1 >> 9) & 0x7F80;
+    c1.colorComponentG = (col1 >> 1) & 0x7F80;
+    c1.colorComponentR = (uint8_t)col1 << 7;
+    c1.v.x = p1->x;
+    y1 = p1->y;
+    c1.v.z = p1->z;
+    col2 = colors[2];
+    c1.v.y = y1;
+    c2.colorComponentA = (col2 >> 17) & 0x7F80;
+    c2.colorComponentB = (col2 >> 9) & 0x7F80;
+    c2.colorComponentR = (uint8_t)col2 << 7;
+    x2 = p2->x;
+    c2.colorComponentG = (col2 >> 1) & 0x7F80;
+    y2 = p2->y;
+    c2.v.x = x2;
+    z2 = p2->z;
+    c2.v.y = y2;
+    c2.v.z = z2;
+    dA1 = c1.colorComponentA - c0.colorComponentA;
+    edge1.colorComponentA = c1.colorComponentA - c0.colorComponentA;
+    dB1 = c1.colorComponentB - c0.colorComponentB;
+    edge1.v.x = c1.v.x - c0.v.x;
+    edge1.colorComponentG = c1.colorComponentG - c0.colorComponentG;
+    edge1.v.y = c1.v.y - c0.v.y;
+    edge1.colorComponentR = c1.colorComponentR - c0.colorComponentR;
+    dB2 = c2.colorComponentB - c0.colorComponentB;
+    edge1.v.z = c1.v.z - c0.v.z;
+    dA2 = c2.colorComponentA - c0.colorComponentA;
+    edge2.colorComponentG = c2.colorComponentG - c0.colorComponentG;
+    edge2.v.x = c2.v.x - c0.v.x;
+    edge2.colorComponentR = c2.colorComponentR - c0.colorComponentR;
+    edge1.colorComponentB = c1.colorComponentB - c0.colorComponentB;
+    edge2.colorComponentA = c2.colorComponentA - c0.colorComponentA;
+    edge2.colorComponentB = c2.colorComponentB - c0.colorComponentB;
+    edge2.v.y = y2 - c0.v.y;
+    edge2.v.z = c2.v.z - c0.v.z;
+    if (params->f1 == 0.0)
     {
-        v18 = a5->maxDivide;
+        divides = params->maxDivide;
     }
     else
     {
-        v17 = spg_calc_divider_sub_4208F0(a5->maxDivide, a5->f1, &a3a.v, &a4a.v);
-        v14 = a3a.colorComponentB;
-        v18 = v17;
+        dividesCalc = SPG_l_CalcDivider(params->maxDivide, params->f1, &edge1.v, &edge2.v);
+        dB1 = edge1.colorComponentB;
+        divides = dividesCalc;
     }
-    if (v18)
+    if (divides)
     {
-        a3a.colorComponentG >>= v18;
-        a3a.colorComponentR >>= v18;
-        tmp = 0x3F800000 - (v18 << 23);
-        v23 = *(float*)&tmp;
-        a4a.colorComponentG >>= v18;
-        a4a.colorComponentR >>= v18;
-        a3a.v.x = v23 * a3a.v.x;
-        a3a.colorComponentB = v14 >> v18;
-        a3a.colorComponentA = v13 >> v18;
-        a4a.colorComponentA = v16 >> v18;
-        a3a.v.y = a3a.v.y * v23;
-        a4a.colorComponentB = v15 >> v18;
-        a3a.v.z = a3a.v.z * v23;
-        a4a.v.x = v23 * a4a.v.x;
-        v22 = a5->noise;
-        a4a.v.y = a4a.v.y * v23;
-        v20 = (1 << v18) - 1;
-        v21 = a4a.v.z * v23;
-        v24 = v20;
-        a4a.v.z = (float)v21;
-        SPG_SetNoise(&a3a, &a4a.v, v22);
-        memcpy(&v26, &v28, sizeof(v26));
-        if (1 << v18 != 1)
+        edge1.colorComponentG >>= divides;
+        edge1.colorComponentR >>= divides;
+        tmp = 0x3F800000 - (divides << 23);
+        scale = *(float*)&tmp;
+        edge2.colorComponentG >>= divides;
+        edge2.colorComponentR >>= divides;
+        edge1.v.x = scale * edge1.v.x;
+        edge1.colorComponentB = dB1 >> divides;
+        edge1.colorComponentA = dA1 >> divides;
+        edge2.colorComponentA = dA2 >> divides;
+        edge1.v.y = edge1.v.y * scale;
+        edge2.colorComponentB = dB2 >> divides;
+        edge1.v.z = edge1.v.z * scale;
+        edge2.v.x = scale * edge2.v.x;
+        noise = params->noise;
+        edge2.v.y = edge2.v.y * scale;
+        count = (1 << divides) - 1;
+        edge2z = edge2.v.z * scale;
+        countSaved = count;
+        edge2.v.z = (float)edge2z;
+        SPG_SetNoise(&edge1, &edge2.v, noise);
+        memcpy(&cur, &c0, sizeof(cur));
+        if (1 << divides != 1)
         {
             while (1)
             {
-                v26.colorComponentB += a3a.colorComponentB;
-                v26.colorComponentG += a3a.colorComponentG;
-                v26.colorComponentR += a3a.colorComponentR;
-                v26.colorComponentA += a3a.colorComponentA;
-                v26.v.x = a3a.v.x + v26.v.x;
-                v26.v.y = v26.v.y + a3a.v.y;
-                v26.v.z = v26.v.z + a3a.v.z;
-                memcpy(&a1a, &v26, sizeof(a1a));
-                SPG_SerialSpriter(&a1a, &a4a, v20 - 1);
-                v29 = v20 - 1;
-                if (!v29)
+                cur.colorComponentB += edge1.colorComponentB;
+                cur.colorComponentG += edge1.colorComponentG;
+                cur.colorComponentR += edge1.colorComponentR;
+                cur.colorComponentA += edge1.colorComponentA;
+                cur.v.x = edge1.v.x + cur.v.x;
+                cur.v.y = cur.v.y + edge1.v.y;
+                cur.v.z = cur.v.z + edge1.v.z;
+                memcpy(&rowStart, &cur, sizeof(rowStart));
+                SPG_SerialSpriter(&rowStart, &edge2, count - 1);
+                next = count - 1;
+                if (!next)
                     break;
-                v20 = v29;
+                count = next;
             }
-            v20 = (1 << v18) - 1;
+            count = (1 << divides) - 1;
         }
-        if ((a5->flags & 1) != 0)
+        if ((params->flags & 1) != 0)
         {
-            memcpy(&v26, &v28, sizeof(v26));
-            SPG_SerialSpriter(&v26, &a3a, v20);
+            memcpy(&cur, &c0, sizeof(cur));
+            SPG_SerialSpriter(&cur, &edge1, count);
         }
-        if ((a5->flags & 2) != 0)
+        if ((params->flags & 2) != 0)
         {
-            memcpy(&v26, &v31, sizeof(v26));
-            substract_spg_verticesandcolorelem_sub_420730(&a3a, &a2a, &v31);
-            divide_spg_vertices_andcolorelem_sub_420790(&a3a, v18);
-            SPG_SerialSpriter(&v26, &a3a, v24);
+            memcpy(&cur, &c1, sizeof(cur));
+            SPG_l_SubtractVertexAndColor(&edge1, &c2, &c1);
+            SPG_l_DivideVertexAndColor(&edge1, divides);
+            SPG_SerialSpriter(&cur, &edge1, countSaved);
         }
-        if ((a5->flags & 4) != 0)
+        if ((params->flags & 4) != 0)
         {
-            memcpy(&v26, &v28, sizeof(v26));
-            substract_spg_verticesandcolorelem_sub_420730(&a3a, &a2a, &v28);
-            divide_spg_vertices_andcolorelem_sub_420790(&a3a, v18);
-            SPG_SerialSpriter(&v26, &a3a, v24);
+            memcpy(&cur, &c0, sizeof(cur));
+            SPG_l_SubtractVertexAndColor(&edge1, &c2, &c0);
+            SPG_l_DivideVertexAndColor(&edge1, divides);
+            SPG_SerialSpriter(&cur, &edge1, countSaved);
         }
     }
 }

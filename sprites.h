@@ -61,6 +61,6 @@ unsigned int gvBase;
 Vec3 SPGNoise1;
 Vec3 SPGNoise2;
 
-void SPG_TransformTrisToSprites(Vec3* a1, Vec3* a2, Vec3* a3, unsigned int* colors, struct sSpgTrisToSpritesStruct* a5);
-void SPG_ComputeSpriteFog(Vec3* a1, int* a2, int a3);
-void SPG_ComputeSpriteFog_Cull(Vec3* a1, int* a2, int a3);
+void SPG_TransformTrisToSprites(Vec3* p0, Vec3* p1, Vec3* p2, unsigned int* colors, struct sSpgTrisToSpritesStruct* params);
+void SPG_ComputeSpriteFog(Vec3* verts, int* colors, int num);
+void SPG_ComputeSpriteFog_Cull(Vec3* verts, int* colors, int num);
