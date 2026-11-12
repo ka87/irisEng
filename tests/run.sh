@@ -111,6 +111,9 @@ lightning_syms="GFX_Lightning_SampleZero GFX_Lightning_Create \
 GFX_Lightning_Destroy GFX_AllocPattern GFX_Lightning_SampleFractal \
 GFX_i_Lightning_Render"
 
+spark_syms="GFX_Spark_Create GFX_Spark_Destroy GFX_Spark_Generate \
+GFX_Spark_Update GFX_AllocSpark GFX_i_Spark_Render"
+
 FILTER=$1
 
 run_one snakemodifier modifiers/snakemodifier.c \
@@ -132,6 +135,9 @@ run_group gfxgrid gfx \
 
 run_group gfxlightning gfx \
     "gfx/gfxlightning.c:tests/baseline_gfxlightning.c:$lightning_syms"
+
+run_group gfxspark gfx \
+    "gfx/gfxspark.c:tests/baseline_gfxspark.c:$spark_syms"
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"

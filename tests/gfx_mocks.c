@@ -37,6 +37,27 @@ void GFXMOCK_Record(const char* fn, int nargs, ...)
 }
 
 /* ------------------------------------------------------------------ */
+/* The pseudo-random sequence. The engine scales rand() by 1/SHRT_MAX  */
+/* and expects a 15-bit result; a 31-bit one puts every effect that    */
+/* draws a random number into a range it never sees in the real build, */
+/* which drowns the comparison in meaningless magnitudes. So the test  */
+/* supplies the 15-bit generator the real build is compiled against.   */
+/* ------------------------------------------------------------------ */
+
+static unsigned long GFXMOCK_randState = 1;
+
+int rand(void)
+{
+    GFXMOCK_randState = GFXMOCK_randState * 214013ul + 2531011ul;
+    return (int)((GFXMOCK_randState >> 16) & 0x7FFF);
+}
+
+void srand(unsigned int seed)
+{
+    GFXMOCK_randState = seed;
+}
+
+/* ------------------------------------------------------------------ */
 /* The allocator. Every block is remembered so a reset can hand the    */
 /* second side of a case the same addresses the first side saw, which  */
 /* matters because some effects store pointers into their own state.   */
