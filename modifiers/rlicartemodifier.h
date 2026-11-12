@@ -14,10 +14,10 @@ typedef struct sRliCarteMdfStruct
     unsigned int* vertexColorDestPtr;
 } tRliCarteMdfStruct;
 
-void GEO_ModifierRLICarte_Apply(struct sModifier* a1, struct sGEOGRO* a2);
-void GEO_ModifierRLICarte_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void GEO_ModifierRLICarte_Destroy(tModifier* a1);
-void GEO_ModifierRLICarte_Unapply(struct sModifier* a1, void* unk1);
-int GEO_ul_ModifierRLICarte_Load(struct sModifier* a1, char* a2);
-void GEO_ModifierRLICarte_Reinit(struct sModifier* a1);
+void GEO_ModifierRLICarte_Apply(struct sModifier* mdf, struct sGEOGRO* geo);
+void GEO_ModifierRLICarte_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GEO_ModifierRLICarte_Destroy(tModifier* mdf);
+void GEO_ModifierRLICarte_Unapply(struct sModifier* mdf, void* unk1);
+int GEO_ul_ModifierRLICarte_Load(struct sModifier* mdf, char* data);
+void GEO_ModifierRLICarte_Reinit(struct sModifier* mdf);
 

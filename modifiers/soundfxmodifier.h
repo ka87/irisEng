@@ -16,10 +16,10 @@ typedef struct sSoundFxMdfStruct
     uint8_t gap[256];
 } tSoundFxMdfStruct;
 
-void GEN_ModifierSoundFx_Apply(struct sModifier* a1, struct sGameObjectMain* a2);
-void GEN_ModifierSoundFx_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void GEN_ModifierSoundFx_Destroy(struct sModifier* a1);
-int GEN_ModifierSoundFx_Load(tModifier* arg0, char* a2);
-void GEN_ModifierSoundFx_Reinit(struct sModifier* a1);
-void GEN_ModifierSoundFx_Unapply(struct sModifier* a1, struct sGameObjectMain* a2);
+void GEN_ModifierSoundFx_Apply(struct sModifier* mdf, struct sGameObjectMain* gao);
+void GEN_ModifierSoundFx_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GEN_ModifierSoundFx_Destroy(struct sModifier* mdf);
+int GEN_ModifierSoundFx_Load(tModifier* mdf, char* data);
+void GEN_ModifierSoundFx_Reinit(struct sModifier* mdf);
+void GEN_ModifierSoundFx_Unapply(struct sModifier* mdf, struct sGameObjectMain* gao);
 

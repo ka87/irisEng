@@ -48,8 +48,8 @@ float SPG_gs_SpecialFogNear;
 float SPG_gs_SpecialFogFar;
 short SPG_FIndx;
 
-void SPG_Modifier_Unapply(tModifier* a1, tGEOGRO* a2);
-void SPG_Modifier_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void SPG_Modifier_Destroy(tModifier* a1);
-int SPG_ul_Modifier_Load(struct sModifier* arg0, char* a2);
-void SPG_Modifier_Apply(tModifier* a1, tGEOGRO* a2);
+void SPG_Modifier_Unapply(tModifier* mdf, tGEOGRO* geogro);
+void SPG_Modifier_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* modifierDataToBeSet);
+void SPG_Modifier_Destroy(tModifier* mdf);
+int SPG_ul_Modifier_Load(struct sModifier* mdf, char* readptr);
+void SPG_Modifier_Apply(tModifier* mdf, tGEOGRO* geogro);

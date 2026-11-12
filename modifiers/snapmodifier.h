@@ -17,8 +17,8 @@ typedef struct sSnapMdfStruct
     tSnapMdfInnerStruct* ptr;
 } tSnapMdfStruct;
 
-void GEO_ModifierSnap_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void GEO_ModifierSnap_Destroy(struct sModifier* a1);
-void GEO_ModifierSnap_Apply(struct sModifier* a1, struct sGEOGRO* a2);
-void GEO_ModifierSnap_Unapply(struct sModifier* a1, struct sGEOGRO* a2);
-int GEO_ul_ModifierSnap_Load(struct sModifier* a1, char* a2);
+void GEO_ModifierSnap_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GEO_ModifierSnap_Destroy(struct sModifier* mdf);
+void GEO_ModifierSnap_Apply(struct sModifier* mdf, struct sGEOGRO* geo);
+void GEO_ModifierSnap_Unapply(struct sModifier* mdf, struct sGEOGRO* geo);
+int GEO_ul_ModifierSnap_Load(struct sModifier* mdf, char* data);

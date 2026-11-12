@@ -7,9 +7,9 @@ typedef struct sMPAGStruct
     struct sPAGStruct* pag;
 } tMPAGStruct;
 
-void MPAG_Modifier_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void MPAG_Modifier_Destroy(struct sModifier* a1);
-void MPAG_Modifier_Apply(tModifier* a1, void* unk1);
-void MPAG_ul_Modifier_Reinit(struct sModifier* a1);
-int MPAG_ul_Modifier_Load(tModifier* a1, char* a2);
-void MPAG_Modifier_Unapply(tModifier* a1, void* unk1);
+void MPAG_Modifier_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void MPAG_Modifier_Destroy(struct sModifier* mdf);
+void MPAG_Modifier_Apply(tModifier* mdf, void* unk1);
+void MPAG_ul_Modifier_Reinit(struct sModifier* mdf);
+int MPAG_ul_Modifier_Load(tModifier* mdf, char* data);
+void MPAG_Modifier_Unapply(tModifier* mdf, void* unk1);

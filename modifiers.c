@@ -29,433 +29,342 @@
 
 tModifierInterface MDF_gast_ModifierInterface[25];
 
-void MDF_Reinit(struct sGameObjectMain* a1)
+void MDF_Reinit(struct sGameObjectMain* gao)
 {
-    tModifier* i;
-    void(*v2)(struct sModifier*);
-
-    if ((a1->flags & 0x2000) != 0)
-    {
-        for (i = a1->extended->mdf; i; i = i->nextElem)
-        {
-            v2 = i->modifierIntf->ReInit;
-            if (v2)
-                v2(i);
-        }
-    }
-}
-
-void MDF_ApplyGen(tGameObjectMain* a1)
-{
-    tGameObjectExtended* v1;
-    tModifier* i;
-    int v3;
-
-    if ((a1->flags & 0x2000) != 0)
-    {
-        v1 = a1->extended;
-        if (v1)
-        {
-            for (i = v1->mdf; i; i = i->nextElem)
-            {
-                v3 = i->modifierFlags;
-                if ((v3 & 0x2000000) == 0 && (v3 & 0x4000000) != 0)
-                    i->modifierIntf->Apply(i, a1);
-            }
-        }
-    }
-}
-
-void MDF_MainApplyGen(tableDescStruct* a1)
-{
-    tableElemStructPF* v1;
-    tableElemStructPF* i;
-
-    v1 = a1->firstElemPtr;
-    for (i = ((tableElemStructPF *)(a1->nextElemPtr)) - 1; v1 <= i; ++v1)
-    {
-        if (v1->objectPtr)
-        {
-            if (((int)v1->objectPtr & 3) != 1)
-                MDF_ApplyGen((tGameObjectMain*)(v1->objectPtr));
-        }
-    }
-}
-
-void MDF_UnApplyGen(tGameObjectMain* a1)
-{
-    tGameObjectExtended* v1;
-    tModifier* i;
-    int v3;
-
-    if ((a1->flags & 0x2000) != 0)
-    {
-        v1 = a1->extended;
-        if (v1)
-        {
-            for (i = v1->mdf; i; i = i->nextElem)
-            {
-                v3 = i->modifierFlags;
-                if ((v3 & 0x2000000) == 0 && (v3 & 0x4000000) != 0)
-                    i->modifierIntf->UnApply(i, a1);
-            }
-        }
-    }
-}
-
-void MDF_MainUnApplyGen(tableDescStruct* a1)
-{
-    tableElemStructPF* v1;
-    tableElemStructPF* i;
-
-    v1 = a1->firstElemPtr;
-    for (i = ((tableElemStructPF*)(a1->nextElemPtr)) - 1; v1 <= i; ++v1)
-    {
-        if (v1->objectPtr)
-        {
-            if (((int)v1->objectPtr & 3) != 1)
-                MDF_UnApplyGen((tGameObjectMain*)v1->objectPtr);
-        }
-    }
-}
-
-void MDF_Modifier_Destroy(tModifier* a1)
-{
-    a1->modifierIntf->Destroy(a1);
-    MEM_Free(a1);
-}
-
-struct sModifier* MDF_pst_Modifier_Create(struct sGameObjectMain* a1, int idx, void* privateDataPtr)
-{
-    tModifier* v3;
-    tModifierInterface* v4;
-
-    v3 = (tModifier*)MEM_p_Alloc(sizeof(tModifier));
-    v3->nextElem = 0;
-    v3->prevElem = 0;
-    v3->modifierFlags = 0;
-    v3->group = 0;
-    v4 = &MDF_gast_ModifierInterface[idx];
-    v3->modifierIntf = v4;
-    v3->gao = a1;
-    v4->Create(a1, v3, privateDataPtr);
-    return v3;
-}
-
-int MDF_ul_Modifier_Load(struct sModifier** a1, char *currReaderPtr, int chainLoad, struct sGameObjectMain* gao)
-{
-    char *v4;
-    int v5;
-    tGameObjectMain* v6;
     tModifier* mdf;
-    int v8;
-    int v9;
-    tModifier* v10;
-    tModifier* v11;
-    char* v13;
-    int a2;
+    void (*reinit)(struct sModifier*);
 
-    v4 = currReaderPtr;
+    if ((gao->flags & 0x2000) == 0)
+        return;
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
+    {
+        reinit = mdf->modifierIntf->ReInit;
+        if (reinit)
+            reinit(mdf);
+    }
+}
+
+void MDF_ApplyGen(tGameObjectMain* gao)
+{
+    tModifier* mdf;
+    int flags;
+
+    if ((gao->flags & 0x2000) == 0 || !gao->extended)
+        return;
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
+    {
+        flags = mdf->modifierFlags;
+        if ((flags & 0x2000000) == 0 && (flags & 0x4000000) != 0)
+            mdf->modifierIntf->Apply(mdf, gao);
+    }
+}
+
+void MDF_MainApplyGen(tableDescStruct* table)
+{
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+
+    last = ((tableElemStructPF*)(table->nextElemPtr)) - 1;
+    for (elem = table->firstElemPtr; elem <= last; ++elem)
+    {
+        if (elem->objectPtr && ((uintptr_t)elem->objectPtr & 3) != 1)
+            MDF_ApplyGen((tGameObjectMain*)(elem->objectPtr));
+    }
+}
+
+void MDF_UnApplyGen(tGameObjectMain* gao)
+{
+    tModifier* mdf;
+    int flags;
+
+    if ((gao->flags & 0x2000) == 0 || !gao->extended)
+        return;
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
+    {
+        flags = mdf->modifierFlags;
+        if ((flags & 0x2000000) == 0 && (flags & 0x4000000) != 0)
+            mdf->modifierIntf->UnApply(mdf, gao);
+    }
+}
+
+void MDF_MainUnApplyGen(tableDescStruct* table)
+{
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+
+    last = ((tableElemStructPF*)(table->nextElemPtr)) - 1;
+    for (elem = table->firstElemPtr; elem <= last; ++elem)
+    {
+        if (elem->objectPtr && ((uintptr_t)elem->objectPtr & 3) != 1)
+            MDF_UnApplyGen((tGameObjectMain*)elem->objectPtr);
+    }
+}
+
+void MDF_Modifier_Destroy(tModifier* mdf)
+{
+    mdf->modifierIntf->Destroy(mdf);
+    MEM_Free(mdf);
+}
+
+struct sModifier* MDF_pst_Modifier_Create(struct sGameObjectMain* gao, int idx, void* privateDataPtr)
+{
+    tModifier* mdf;
+
+    mdf = (tModifier*)MEM_p_Alloc(sizeof(tModifier));
+    mdf->nextElem = 0;
+    mdf->prevElem = 0;
+    mdf->modifierFlags = 0;
+    mdf->group = 0;
+    mdf->modifierIntf = &MDF_gast_ModifierInterface[idx];
+    mdf->gao = gao;
+    mdf->modifierIntf->Create(gao, mdf, privateDataPtr);
+    return mdf;
+}
+
+int MDF_ul_Modifier_Load(struct sModifier** slot, char* currReaderPtr, int chainLoad,
+                         struct sGameObjectMain* gao)
+{
+    char* start;
+    char* peek;
+    tModifier* mdf;
+    int nextId;
+    int idx;
+
+    start = currReaderPtr;
     MDF_gpst_GlobalCreate = 0;
-    v5 = LOA_ReadLong(&currReaderPtr, 0, 1);
-    v6 = gao;
-    mdf = MDF_pst_Modifier_Create(gao, v5, 0);
-    *a1 = mdf;
-    mdf->gao = v6;
-    (*a1)->modifierFlags = LOA_ReadLong(&currReaderPtr, 0, 1);
-    v8 = (*a1)->modifierIntf->Load(*a1, currReaderPtr);
-    currReaderPtr += v8;
-    v13 =currReaderPtr;
-    LOA_ReadLong(&v13, &a2, 4);
-    if (chainLoad)
+    idx = LOA_ReadLong(&currReaderPtr, 0, 1);
+    mdf = MDF_pst_Modifier_Create(gao, idx, 0);
+    *slot = mdf;
+    mdf->gao = gao;
+    mdf->modifierFlags = LOA_ReadLong(&currReaderPtr, 0, 1);
+    currReaderPtr += mdf->modifierIntf->Load(mdf, currReaderPtr);
+
+    peek = currReaderPtr;
+    LOA_ReadLong(&peek, &nextId, 4);
+    if (chainLoad && nextId != -1)
     {
-        if (a2 != -1)
-        {
-            v9 = MDF_ul_Modifier_Load(&(*a1)->nextElem, currReaderPtr, 1, v6);
-            v10 = *a1;
-            currReaderPtr += v9;
-            v11 = v10->nextElem;
-            if (v11)
-                v11->prevElem = v10;
-        }
+        currReaderPtr += MDF_ul_Modifier_Load(&mdf->nextElem, currReaderPtr, 1, gao);
+        if (mdf->nextElem)
+            mdf->nextElem->prevElem = mdf;
     }
-    return currReaderPtr - v4;
+    return currReaderPtr - start;
 }
 
-struct sModifier* MDF_pst_GetByType(struct sGameObjectMain* a1, int mdfId)
+struct sModifier* MDF_pst_GetByType(struct sGameObjectMain* gao, int mdfId)
 {
-    tGameObjectExtended* v2;
-    tModifier* result;
+    tModifier* mdf;
 
-    if (!a1)
+    if (!gao || !gao->extended)
         return NULL;
-    v2 = a1->extended;
-    if (!v2)
-        return NULL;
-    result = v2->mdf;
-    if (!result)
-        return 0;
-    while (result->modifierIntf->mdfId != mdfId)
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
     {
-        result = result->nextElem;
-        if (!result)
-            return NULL;
+        if (mdf->modifierIntf->mdfId == mdfId)
+            return mdf;
     }
-    return result;
+    return NULL;
 }
 
-void MDF_Modifier_AddToGameObject(tGameObjectMain* a1, tModifier* a2)
+void MDF_Modifier_AddToGameObject(tGameObjectMain* gao, tModifier* mdf)
 {
-    tGameObjectExtended* v2;
-    tModifier* v3;
+    tModifier* last;
 
-    a2->gao = a1;
-    v2 = a1->extended;
-    v3 = v2->mdf;
-    if (v3)
+    mdf->gao = gao;
+    last = gao->extended->mdf;
+    if (!last)
     {
-        for (; v3->nextElem; v3 = v3->nextElem);
-        a2->prevElem = v3;
-        v3->nextElem = a2;
+        gao->extended->mdf = mdf;
+        return;
     }
-    else
-    {
-        v2->mdf = a2;
-    }
+
+    while (last->nextElem)
+        last = last->nextElem;
+    mdf->prevElem = last;
+    last->nextElem = mdf;
 }
 
-void MDF_Modifier_DuplicateList(struct sGameObjectMain* a1, struct sModifier* a2)
+void MDF_Modifier_DuplicateList(struct sGameObjectMain* gao, struct sModifier* src)
 {
-    tGameObjectExtended* v2;
-    tModifier* v3;
-    tModifier* v4; 
+    tModifier* mdf;
+    tModifier* copy;
 
     MDF_gpst_GlobalCreate = 0;
-    if (a1)
+    if (!gao || !gao->extended)
+        return;
+
+    if (!src)
     {
-        v2 = a1->extended;
-        if (v2)
-        {
-            v3 = a2;
-            if (a2)
-            {
-                do
-                {
-                    MDF_gpst_GlobalCreate = v3;
-                    v4 = MDF_pst_Modifier_Create(a1, v3->modifierIntf->mdfId, v3->mdfPrivateDataPtr);
-                    MDF_Modifier_AddToGameObject(a1, v4);
-                    v3 = v3->nextElem;
-                } while (v3);
-            }
-            else
-            {
-                v2->mdf = 0;
-            }
-        }
+        gao->extended->mdf = 0;
+        return;
+    }
+
+    for (mdf = src; mdf; mdf = mdf->nextElem)
+    {
+        MDF_gpst_GlobalCreate = mdf;
+        copy = MDF_pst_Modifier_Create(gao, mdf->modifierIntf->mdfId, mdf->mdfPrivateDataPtr);
+        MDF_Modifier_AddToGameObject(gao, copy);
     }
 }
 
-void UpdateModifiersGroup(struct sGameObjectMain* a1, struct sGroup* grp)
+static void MDF_l_SetGroupAndReinit(tGameObjectMain* gao, struct sGroup* grp)
 {
-    tGameObjectExtended* v2;
-    tModifier* i;
-    tModifierInterface* v4;
-    void(*v5)(tModifier*);
-    tableElemStructPF* v6;
-    tableElemStructPF* j; 
-    tGameObjectMain* v8; 
-    tGameObjectExtended* v9;
-    tModifier* v10;
-    tModifier* v11;
-    tModifierInterface* v12; 
-    void(*v13)(tModifier*);
+    tModifier* mdf;
+    void (*reinit)(tModifier*);
 
-    v2 = a1->extended;
-    if (v2)
+    if (!gao->extended)
+        return;
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
     {
-        for (i = v2->mdf; i; i = i->nextElem)
-        {
-            v4 = i->modifierIntf;
-            i->group = grp;
-            v5 = v4->ReInit;
-            if (v5)
-                v5(i);
-        }
-    }
-    v6 = grp->tablePF->firstElemPtr;
-    for (j = ((tableElemStructPF*)(grp->tablePF->nextElemPtr)) - 1; v6 <= j; ++v6)
-    {
-        v8 = (tGameObjectMain*)v6->objectPtr;
-        if (v6->objectPtr)
-        {
-            if (((uint8_t)v8 & 3) != 1)
-            {
-                v9 = v8->extended;
-                if (v9)
-                {
-                    v10 = v9->mdf;
-                    if (v10)
-                    {
-                        v11 = v10;
-                        do
-                        {
-                            v12 = v11->modifierIntf;
-                            v11->group = grp;
-                            v13 = v12->ReInit;
-                            if (v13)
-                                v13(v11);
-                            v11 = v11->nextElem;
-                        } while (v11);
-                    }
-                }
-            }
-        }
+        mdf->group = grp;
+        reinit = mdf->modifierIntf->ReInit;
+        if (reinit)
+            reinit(mdf);
     }
 }
 
-struct sGroup* MDF_Modifier_GetCurGroup(struct sModifier* a1)
+void UpdateModifiersGroup(struct sGameObjectMain* gao, struct sGroup* grp)
 {
-    tGroup* result;
-    tGameObjectExtended* result1;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* member;
 
-    result = a1->group;
-    if (!result)
-    {
-        result1 = a1->gao->extended;
-        if (result1)
-            result = result1->grp;
-    }
-    return result;
-}
+    MDF_l_SetGroupAndReinit(gao, grp);
 
-void MDF_ApplyAll(struct sGameObjectMain* a1)
-{
-    tGameObjectBasic* v1;
-    tGroGeneric* v2;
-    tGameObjectVisualObject* v3;
-    tGameObjectExtended* v4;
-    tModifier* i;
-
-    v1 = a1->basic;
-    v2 = 0;
-    if (v1)
+    last = ((tableElemStructPF*)(grp->tablePF->nextElemPtr)) - 1;
+    for (elem = grp->tablePF->firstElemPtr; elem <= last; ++elem)
     {
-        v3 = v1->actorObjectOrVisualObject;
-        if (v3)
-            v2 = v3->GROGEOOrSomethingElse;
-    }
-    if ((a1->flags & 0x2000) != 0)
-    {
-        v4 = a1->extended;
-        if (v4)
-        {
-            for (i = v4->mdf; i; i = i->nextElem)
-            {
-                if ((i->modifierFlags & 0xF000000) == 0)
-                    i->modifierIntf->Apply(i, (void*)v2);
-            }
-        }
+        member = (tGameObjectMain*)elem->objectPtr;
+        if (member && ((uintptr_t)member & 3) != 1)
+            MDF_l_SetGroupAndReinit(member, grp);
     }
 }
 
-void MDF_UnApplyAll(struct sGameObjectMain* a1)
+struct sGroup* MDF_Modifier_GetCurGroup(struct sModifier* mdf)
 {
-    tGameObjectBasic* v1;
-    tGroGeneric* v2;
-    tGameObjectVisualObject* v3;
-    tGameObjectExtended* v4;
-    tModifier* i;
+    tGroup* grp;
+    tGameObjectExtended* extended;
 
-    v1 = a1->basic;
-    v2 = NULL;
-    if (v1)
+    grp = mdf->group;
+    if (!grp)
     {
-        v3 = v1->actorObjectOrVisualObject;
-        if (v3)
-            v2 = v3->GROGEOOrSomethingElse;
+        extended = mdf->gao->extended;
+        if (extended)
+            grp = extended->grp;
     }
-    if ((a1->flags & 0x2000) != 0)
+    return grp;
+}
+
+void MDF_ApplyAll(struct sGameObjectMain* gao)
+{
+    tGroGeneric* gro;
+    tGameObjectVisualObject* visual;
+    tModifier* mdf;
+
+    gro = 0;
+    if (gao->basic)
     {
-        v4 = a1->extended;
-        if (v4)
-        {
-            for (i = v4->mdf; i; i = i->nextElem)
-            {
-                if ((i->modifierFlags & 0xF000000) == 0)
-                    i->modifierIntf->UnApply(i, (void*)v2);
-            }
-        }
+        visual = gao->basic->actorObjectOrVisualObject;
+        if (visual)
+            gro = visual->GROGEOOrSomethingElse;
+    }
+
+    if ((gao->flags & 0x2000) == 0 || !gao->extended)
+        return;
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
+    {
+        if ((mdf->modifierFlags & 0xF000000) == 0)
+            mdf->modifierIntf->Apply(mdf, (void*)gro);
     }
 }
 
-void MDF_ApplyAllGao(struct sGameObjectMain* a1)
+void MDF_UnApplyAll(struct sGameObjectMain* gao)
 {
-    tGEOGRO* v1;
-    tGameObjectVisualObject* v2;
-    tGameObjectExtended* v3;
-    tModifier* i;
-    int v5;
+    tGroGeneric* gro;
+    tGameObjectVisualObject* visual;
+    tModifier* mdf;
 
-    v1 = 0;
-    if ((a1->flags & 0x4000) != 0)
+    gro = NULL;
+    if (gao->basic)
     {
-        v2 = a1->basic->actorObjectOrVisualObject;
-        v1 = (tGEOGRO *)(v2->GROGEOOrSomethingElse);
-        gpst_DX_stDD->drawMaskAllowedStuffCurrent = gpst_DX_stDD->drawMaskAllowedStuff & v2->objDrawMask;
+        visual = gao->basic->actorObjectOrVisualObject;
+        if (visual)
+            gro = visual->GROGEOOrSomethingElse;
+    }
+
+    if ((gao->flags & 0x2000) == 0 || !gao->extended)
+        return;
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
+    {
+        if ((mdf->modifierFlags & 0xF000000) == 0)
+            mdf->modifierIntf->UnApply(mdf, (void*)gro);
+    }
+}
+
+void MDF_ApplyAllGao(struct sGameObjectMain* gao)
+{
+    tGEOGRO* geo;
+    tGameObjectVisualObject* visual;
+    tModifier* mdf;
+    int flags;
+
+    geo = 0;
+    if ((gao->flags & 0x4000) != 0)
+    {
+        visual = gao->basic->actorObjectOrVisualObject;
+        geo = (tGEOGRO*)(visual->GROGEOOrSomethingElse);
+        gpst_DX_stDD->drawMaskAllowedStuffCurrent =
+            gpst_DX_stDD->drawMaskAllowedStuff & visual->objDrawMask;
     }
     else
     {
         gpst_DX_stDD->drawMaskAllowedStuffCurrent = gpst_DX_stDD->drawMaskAllowedStuff;
     }
-    if ((a1->flags & 0x2000) != 0)
+
+    if ((gao->flags & 0x2000) == 0 || !gao->extended)
+        return;
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
     {
-        v3 = a1->extended;
-        if (v3)
+        flags = mdf->modifierFlags;
+        if ((flags & 0xA000000) == 0 && (flags & 0x1000000) != 0)
         {
-            for (i = v3->mdf; i; i = i->nextElem)
-            {
-                v5 = i->modifierFlags;
-                if ((v5 & 0xA000000) == 0 && (v5 & 0x1000000) != 0)
-                {
-                    gpst_DX_stDD->currTargetGao = a1;
-                    i->modifierIntf->Apply(i, v1);
-                }
-            }
+            gpst_DX_stDD->currTargetGao = gao;
+            mdf->modifierIntf->Apply(mdf, geo);
         }
     }
 }
 
-void MDF_UnApplyAllGao(struct sGameObjectMain* a1)
+void MDF_UnApplyAllGao(struct sGameObjectMain* gao)
 {
-    tGameObjectBasic* v1;
-    tGEOGRO* v2;
-    tGameObjectVisualObject* v3;
-    tGameObjectExtended* v4;
-    tModifier* i;
-    int v6;
+    tGEOGRO* geo;
+    tGameObjectVisualObject* visual;
+    tModifier* mdf;
+    int flags;
 
-    v1 = a1->basic;
-    v2 = 0;
-    if (v1)
+    geo = 0;
+    if (gao->basic)
     {
-        v3 = v1->actorObjectOrVisualObject;
-        if (v3)
-            v2 = (tGEOGRO*)(v3->GROGEOOrSomethingElse);
+        visual = gao->basic->actorObjectOrVisualObject;
+        if (visual)
+            geo = (tGEOGRO*)(visual->GROGEOOrSomethingElse);
     }
-    if ((a1->flags & 0x2000) != 0)
+
+    if ((gao->flags & 0x2000) == 0 || !gao->extended)
+        return;
+
+    for (mdf = gao->extended->mdf; mdf; mdf = mdf->nextElem)
     {
-        v4 = a1->extended;
-        if (v4)
+        flags = mdf->modifierFlags;
+        if ((flags & 0xA000000) == 0 && (flags & 0x1000000) != 0)
         {
-            for (i = v4->mdf; i; i = i->nextElem)
-            {
-                v6 = i->modifierFlags;
-                if ((v6 & 0xA000000) == 0 && (v6 & 0x1000000) != 0)
-                {
-                    gpst_DX_stDD->currTargetGao = a1;
-                    i->modifierIntf->UnApply(i, v2);
-                }
-            }
+            gpst_DX_stDD->currTargetGao = gao;
+            mdf->modifierIntf->UnApply(mdf, geo);
         }
     }
 }

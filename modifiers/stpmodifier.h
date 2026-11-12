@@ -8,8 +8,8 @@ typedef struct sStpMdfStruct
     Vec3* verticesStored;
 } tStpMdfStruct;
 
-void GEO_ModifierSTP_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3a);
-void GEO_ModifierSTP_Destroy(struct sModifier* a1);
-void GEO_ModifierSTP_Apply(struct sModifier* a1, struct sGEOGRO* a2);
-void GEO_ModifierSTP_Unapply(struct sModifier* a1, void* unk1);
-int GEO_ul_ModifierSTP_Load(struct sModifier* a1, char* a2);
+void GEO_ModifierSTP_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GEO_ModifierSTP_Destroy(struct sModifier* mdf);
+void GEO_ModifierSTP_Apply(struct sModifier* mdf, struct sGEOGRO* geo);
+void GEO_ModifierSTP_Unapply(struct sModifier* mdf, void* unk1);
+int GEO_ul_ModifierSTP_Load(struct sModifier* mdf, char* data);

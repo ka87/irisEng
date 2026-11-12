@@ -125,7 +125,10 @@ int GEO_ul_ModifierCrush_Load(struct sModifier* mdf, char *readPtr)
 
 void GEO_ModifierCrush_Reinit(struct sModifier* mdf)
 {
-    ((tCrushMdfStruct*)(mdf->mdfPrivateDataPtr))->factor = ((tCrushMdfStruct*)(mdf->mdfPrivateDataPtr))->factorDefault;
+    tCrushMdfStruct* crushMdf;
+
+    crushMdf = (tCrushMdfStruct*)mdf->mdfPrivateDataPtr;
+    crushMdf->factor = crushMdf->factorDefault;
 }
 
 void GEO_ModifierCrush_Unapply(struct sModifier* mdf, struct sGEOGRO* geogro) {

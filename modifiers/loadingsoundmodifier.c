@@ -2,149 +2,130 @@
 #include "../loading.h"
 #include "loadingsoundmodifier.h"
 
-void MDF_LoadingSoundReleaseCallback(void* a1)
+void MDF_LoadingSoundReleaseCallback(void* privateData)
 {
-    ((tLoadingSoundMdfStruct*)(a1))->soundInstanceIndex = -1;
+    ((tLoadingSoundMdfStruct*)(privateData))->soundInstanceIndex = -1;
 }
 
-void MDF_LoadingSoundGetInstance(tGameObjectMain* a1, tLoadingSoundMdfStruct* a2)
+void MDF_LoadingSoundGetInstance(tGameObjectMain* gao, tLoadingSoundMdfStruct* lsmdf)
 {
-    int v2;
-    tSoundInstanceElem* v3;
+    int idx;
+    tSoundInstanceElem* instance;
 
-    v2 = SND_l_GetLoadingInstance();
-    if (v2 >= 0 && v2 < SND_gst_Params.soundInstanceNum)
+    idx = SND_l_GetLoadingInstance();
+    if (idx >= 0 && idx < SND_gst_Params.soundInstanceNum)
     {
-        v3 = &SND_gst_Params.soundInstances[v2];
-        if ((v3->flags & 0x400) != 0)
+        instance = &SND_gst_Params.soundInstances[idx];
+        if ((instance->flags & 0x400) != 0)
         {
-            a2->soundInstanceIndex = v2;
-            SND_SetPos(a1, v2, a1->matrices);
-            v3->gao = a1;
+            lsmdf->soundInstanceIndex = idx;
+            SND_SetPos(gao, idx, gao->matrices);
+            instance->gao = gao;
         }
     }
 }
 
-void MDF_LoadingSoundCreateInstance(tGameObjectMain* a1, tLoadingSoundMdfStruct* a2)
+void MDF_LoadingSoundCreateInstance(tGameObjectMain* gao, tLoadingSoundMdfStruct* lsmdf)
 {
-    int v2; // eax
+    int idx;
 
-    if (a2->sndIndex != -1)
+    if (lsmdf->sndIndex == -1)
+        return;
+
+    idx = SND_l_Request(0, lsmdf->sndIndex);
+    lsmdf->soundInstanceIndex = idx;
+    if (idx == -1)
+        return;
+
+    SND_SetVol(idx, lsmdf->vol);
+    SND_SetFlags(gao, idx, lsmdf->flags & ~0x1F000000u);
+    SND_i_CheckOrInitGAO(gao);
+    SND_gst_Params.soundInstances[idx].gao = gao;
+    SND_SetPos(gao, idx, gao->matrices);
+    if (lsmdf->freq)
+        SND_SetFreq(idx, lsmdf->freq);
+}
+
+void MDF_LoadingSound_Apply(tModifier* mdf, tGameObjectMain* gao)
+{
+    tLoadingSoundMdfStruct* lsmdf;
+    int idx;
+
+    if (!SND_gst_Params.soundEnabled || !SND_gst_Params.sndMatrixRef)
+        return;
+
+    lsmdf = (tLoadingSoundMdfStruct*)mdf->mdfPrivateDataPtr;
+    if (lsmdf->sndIndex < 0)
+        return;
+
+    if (MATH_DistanceOfTwoPoints(&SND_gst_Params.sndMatrixRef->Pos,
+                                 &gao->matrices->Pos) >= lsmdf->maxDist)
     {
-        v2 = SND_l_Request(0, a2->sndIndex);
-        a2->soundInstanceIndex = v2;
-        if (v2 != -1)
-        {
-            SND_SetVol(v2, a2->vol);
-            SND_SetFlags(a1, a2->soundInstanceIndex, a2->flags & ~0x1F000000u);
-            SND_i_CheckOrInitGAO(a1);
-            SND_gst_Params.soundInstances[a2->soundInstanceIndex].gao = a1;
-            SND_SetPos(a1, a2->soundInstanceIndex, a1->matrices);
-            if (a2->freq)
-                SND_SetFreq(a2->soundInstanceIndex, a2->freq);
-        }
+        lsmdf->soundInstanceIndex = -1;
+    }
+    else if (lsmdf->soundInstanceIndex < 0)
+    {
+        if (!SND_b_IsLoadingSound(lsmdf->sndIndex) || SND_l_GetLoadingInstance() == -1)
+            MDF_LoadingSoundCreateInstance(gao, lsmdf);
+        else
+            MDF_LoadingSoundGetInstance(gao, lsmdf);
+        idx = lsmdf->soundInstanceIndex;
+        if (idx >= 0)
+            SND_LoadingSoundRegisterInstanceUserCallback(idx, MDF_LoadingSoundReleaseCallback, lsmdf);
     }
 }
 
-void MDF_LoadingSound_Apply(tModifier* a1, tGameObjectMain* a2)
+void MDF_LoadingSound_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData)
 {
-    tLoadingSoundMdfStruct* v2;
-    int v3;
-    Mtx4x4* v4;
-    double v5;
-    double v6;
-    double v7;
-    int v8;
+    tLoadingSoundMdfStruct* lsmdf;
 
-    if (SND_gst_Params.soundEnabled)
+    lsmdf = (tLoadingSoundMdfStruct*)MEM_p_Alloc(sizeof(tLoadingSoundMdfStruct));
+    if (lsmdf)
     {
-        if (SND_gst_Params.sndMatrixRef)
+        memset(lsmdf, 0, sizeof(tLoadingSoundMdfStruct));
+        lsmdf->ii23 = 0.5;
+        lsmdf->ii24 = 0.5;
+        lsmdf->ii25 = 0.5;
+        lsmdf->ii27 = 0.5;
+        lsmdf->i1 = 256;
+        lsmdf->i2 = 0;
+        lsmdf->ii7 = 0;
+        lsmdf->ii17 = 20.0;
+        lsmdf->ii14 = 0.0;
+        lsmdf->ii18 = 20.0;
+        lsmdf->ii15 = 0.0;
+        lsmdf->ii19 = 20.0;
+        lsmdf->ii16 = 0.0;
+        lsmdf->ii26 = 0.0;
+        lsmdf->ii20 = 2.0;
+        lsmdf->ii5 = 0.0;
+        lsmdf->ii6 = 0.0;
+        lsmdf->vol = 1.0;
+        lsmdf->i5 = 0.0;
+        lsmdf->ii9 = 0;
+        lsmdf->ii28 = 0.0;
+        lsmdf->freq = 0;
+        lsmdf->flags = 4;
+        lsmdf->ii11 = 0;
+        lsmdf->sndIndex = -1;
+        lsmdf->soundInstanceIndex = -1;
+        lsmdf->i3 = -1;
+        lsmdf->ii22 = -1;
+        lsmdf->maxDist = 32.0;
+        mdf->mdfPrivateDataPtr = lsmdf;
+        if (initData)
         {
-            v2 = (tLoadingSoundMdfStruct*)a1->mdfPrivateDataPtr;
-            v3 = v2->sndIndex;
-            if (v3 >= 0)
-            {
-                v4 = a2->matrices;
-                v5 = SND_gst_Params.sndMatrixRef->Pos.x - v4->Pos.x;
-                v6 = SND_gst_Params.sndMatrixRef->Pos.y - v4->Pos.y;
-                v7 = SND_gst_Params.sndMatrixRef->Pos.z - v4->Pos.z;
-                if (sqrt(v7 * v7 + v5 * v5 + v6 * v6) >= v2->maxDist)
-                {
-                    v2->soundInstanceIndex = -1;
-                }
-                else if (v2->soundInstanceIndex < 0)
-                {
-                    if (!SND_b_IsLoadingSound(v3) || SND_l_GetLoadingInstance() == -1)
-                        MDF_LoadingSoundCreateInstance(a2, v2); 
-                    else
-                        MDF_LoadingSoundGetInstance(a2, v2);
-                    v8 = v2->soundInstanceIndex;
-                    if (v8 >= 0)
-                        SND_LoadingSoundRegisterInstanceUserCallback(v8, MDF_LoadingSoundReleaseCallback, v2);
-                }
-            }
+            mdf->modifierIntf->Load(mdf, (char*)initData);
+            lsmdf->soundInstanceIndex = -1;
+            lsmdf->flags &= 0x5F1B700C;
+            lsmdf->ii11 &= 0xFCB;
         }
-    }
-}
-
-void MDF_LoadingSound_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3)
-{
-    tLoadingSoundMdfStruct* v3;
-    int v4;
-    int v5;
-    int v6;
-
-    v3 = (tLoadingSoundMdfStruct*)MEM_p_Alloc(sizeof(tLoadingSoundMdfStruct));
-    if (v3)
-    {
-        memset(v3, 0, sizeof(tLoadingSoundMdfStruct));
-        v3->ii23 = 0.5;
-        v3->ii24 = 0.5;
-        v3->ii25 = 0.5;
-        v3->ii27 = 0.5;
-        v3->i1 = 256;
-        v3->i2 = 0;
-        v3->ii7 = 0;
-        v3->ii17 = 20.0;
-        v3->ii14 = 0.0;
-        v3->ii18 = 20.0;
-        v3->ii15 = 0.0;
-        v3->ii19 = 20.0;
-        v3->ii16 = 0.0;
-        v3->ii26 = 0.0;
-        v3->ii20 = 2.0;
-        v3->ii5 = 0.0;
-        v3->ii6 = 0.0;
-        v3->vol = 1.0;
-        v3->i5 = 0.0;
-        v3->ii9 = 0;
-        v3->ii28 = 0.0;
-        v3->freq = 0;
-        v3->flags = 4;
-        v3->ii11 = 0;
-        v3->sndIndex = -1;
-        v3->soundInstanceIndex = -1;
-        v3->i3 = -1;
-        v3->ii22 = -1;
-        v3->maxDist = 32.0;
-        a2->mdfPrivateDataPtr = v3;
-        if (a3)
-        {
-            a2->modifierIntf->Load(a2, (char *)a3);
-            v4 = v3->flags & 0x5F1B700C;
-            v5 = v3->ii11 & 0xFCB;
-            v3->soundInstanceIndex = -1;
-            v3->flags = v4;
-            v3->ii11 = v5;
-        }
-        a2->modifierFlags |= 0x4000000u;
     }
     else
     {
-        v6 = a2->modifierFlags | 0x4000000;
-        a2->mdfPrivateDataPtr = 0;
-        a2->modifierFlags = v6;
+        mdf->mdfPrivateDataPtr = 0;
     }
+    mdf->modifierFlags |= 0x4000000u;
 }
 
 void MDF_LoadingSound_Destroy(struct sModifier* mdf)
@@ -161,58 +142,54 @@ void MDF_LoadingSound_Destroy(struct sModifier* mdf)
     mdf->modifierFlags = 0x2000000;
 }
 
-int MDF_LoadingSound_Load(tModifier* arg0, char* a1)
+int MDF_LoadingSound_Load(tModifier* mdf, char* data)
 {
-    tLoadingSoundMdfStruct* v2;
-    char* v3;
-    int v4;
-    int result;
+    tLoadingSoundMdfStruct* lsmdf;
+    char* start;
 
-    v2 = (tLoadingSoundMdfStruct*)arg0->mdfPrivateDataPtr;
-    v3 = a1;
-    if (v2)
+    lsmdf = (tLoadingSoundMdfStruct*)mdf->mdfPrivateDataPtr;
+    start = data;
+    if (lsmdf)
     {
-        v4 = LOA_ReadLong(&a1, 0, 1);
-        v2->i1 = v4;
-        if (v4 == 256)
+        lsmdf->i1 = LOA_ReadLong(&data, 0, 1);
+        if (lsmdf->i1 == 256)
         {
-            v2->i2 = LOA_ReadLong(&a1, 0, 1);
-            v2->ll = LOA_ReadLong(&a1, 0, 1);
-            v2->i3 = LOA_ReadLong(&a1, 0, 1);
-            v2->vol = LOA_ReadFloat(&a1, 0, 1);
-            v2->i5 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii5 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii6 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii7 = LOA_ReadLong(&a1, 0, 1);
-            v2->freq = LOA_ReadLong(&a1, 0, 1);
-            v2->ii9 = LOA_ReadLong(&a1, 0, 1);
-            v2->flags = LOA_ReadLong(&a1, 0, 1);
-            v2->ii11 = LOA_ReadLong(&a1, 0, 1);
-            v2->sndIndex = LOA_ReadLong(&a1, 0, 1);
-            v2->soundInstanceIndex = LOA_ReadLong(&a1, 0, 1);
-            v2->ii14 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii15 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii16 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii17 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii18 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii19 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii20 = LOA_ReadFloat(&a1, 0, 1);
-            v2->maxDist = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii22 = LOA_ReadLong(&a1, 0, 1);
-            v2->ii23 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii24 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii25 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii26 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii27 = LOA_ReadFloat(&a1, 0, 1);
-            v2->ii28 = LOA_ReadFloat(&a1, 0, 1);
-            LOA_ReadCharArray(&a1, 0, 256u, 2);
+            lsmdf->i2 = LOA_ReadLong(&data, 0, 1);
+            lsmdf->ll = LOA_ReadLong(&data, 0, 1);
+            lsmdf->i3 = LOA_ReadLong(&data, 0, 1);
+            lsmdf->vol = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->i5 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii5 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii6 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii7 = LOA_ReadLong(&data, 0, 1);
+            lsmdf->freq = LOA_ReadLong(&data, 0, 1);
+            lsmdf->ii9 = LOA_ReadLong(&data, 0, 1);
+            lsmdf->flags = LOA_ReadLong(&data, 0, 1);
+            lsmdf->ii11 = LOA_ReadLong(&data, 0, 1);
+            lsmdf->sndIndex = LOA_ReadLong(&data, 0, 1);
+            lsmdf->soundInstanceIndex = LOA_ReadLong(&data, 0, 1);
+            lsmdf->ii14 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii15 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii16 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii17 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii18 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii19 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii20 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->maxDist = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii22 = LOA_ReadLong(&data, 0, 1);
+            lsmdf->ii23 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii24 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii25 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii26 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii27 = LOA_ReadFloat(&data, 0, 1);
+            lsmdf->ii28 = LOA_ReadFloat(&data, 0, 1);
+            LOA_ReadCharArray(&data, 0, 256u, 2);
         }
     }
-    v2->sndIndex = SND_l_AddLoadingSound(v2->i3);
-    v2->soundInstanceIndex = -1;
-    result = a1 - v3;
-    arg0->modifierFlags = 0x4000000;
-    return result;
+    lsmdf->sndIndex = SND_l_AddLoadingSound(lsmdf->i3);
+    lsmdf->soundInstanceIndex = -1;
+    mdf->modifierFlags = 0x4000000;
+    return data - start;
 }
 
 void MDF_LoadingSound_Reinit(struct sModifier* mdf)
@@ -230,5 +207,6 @@ void MDF_LoadingSound_Reinit(struct sModifier* mdf)
     lsmdf->soundInstanceIndex = -1;
 }
 
-void MDF_LoadingSound_Unapply(tModifier* a1, tGameObjectMain* a2) {
+void MDF_LoadingSound_Unapply(tModifier* mdf, tGameObjectMain* gao)
+{
 }

@@ -29,10 +29,10 @@ typedef struct sProtexMdfStruct
 tProtexMdfStruct* p_FirstActiveProtex;
 
 void PROTEX_Disturb(struct sGameObjectMain* gao, struct sGEOGRO* geogro);
-void PROTEX_Modifier_Reinit(struct sModifier* a1);
-void PROTEX_Modifier_Destroy(struct sModifier* a1);
-int PROTEX_ul_Modifier_Load(tModifier* arg0, char* a1);
-void PROTEX_Modifier_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void PROTEX_Modifier_Unapply(tModifier* a1, void* unk1);
-void PROTEX_Modifier_Apply(tModifier* a1, void* unk1);
-void PROTEX_BeforeDraw();
+void PROTEX_Modifier_Reinit(struct sModifier* mdf);
+void PROTEX_Modifier_Destroy(struct sModifier* mdf);
+int PROTEX_ul_Modifier_Load(tModifier* mdf, char* data);
+void PROTEX_Modifier_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void PROTEX_Modifier_Unapply(tModifier* mdf, void* unk1);
+void PROTEX_Modifier_Apply(tModifier* mdf, void* unk1);
+void PROTEX_BeforeDraw(void);
