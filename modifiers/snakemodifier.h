@@ -13,9 +13,9 @@ typedef struct sSnakeMdfStruct
     float f3;
 } tSnakeMdfStruct;
 
-void GAO_ModifierSNAKE_Apply(struct sModifier* a1, void* unk1);
-void GAO_ModifierSNAKE_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3);
-void GAO_ModifierSNAKE_Destroy(struct sModifier* a1);
-int GAO_ModifierSNAKE_Load(struct sModifier* arg0, char* a1);
-void GAO_ModifierSNAKE_Reinit(struct sModifier* a1);
-void GAO_ModifierSNAKE_Unapply(struct sModifier* a1, void* unk1);
+void GAO_ModifierSNAKE_Apply(struct sModifier* mdf, void* unk1);
+void GAO_ModifierSNAKE_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GAO_ModifierSNAKE_Destroy(struct sModifier* mdf);
+int GAO_ModifierSNAKE_Load(struct sModifier* mdf, char* data);
+void GAO_ModifierSNAKE_Reinit(struct sModifier* mdf);
+void GAO_ModifierSNAKE_Unapply(struct sModifier* mdf, void* unk1);
