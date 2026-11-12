@@ -1,11 +1,11 @@
 #pragma once
 #include "../ai.h"
 
-BOOL AI_EvalFunc_TRAIsStop_C(struct sGameObjectMain* gao, int a2);
-void AI_EvalFunc_TRAPlay_C(struct sGameObjectMain* gao, int a2);
+BOOL AI_EvalFunc_TRAIsStop_C(struct sGameObjectMain* gao, int trackIdx);
+void AI_EvalFunc_TRAPlay_C(struct sGameObjectMain* gao, int trackIdx);
 int AI_EvalFunc_TRAIsStopAll_C(struct sGameObjectMain* gao);
 void AI_EvalFunc_TRAPlayAll_C(struct sGameObjectMain* gao);
-void AI_EvalFunc_TRASetEnd_C(struct sGameObjectMain* gao, int a2);
+void AI_EvalFunc_TRASetEnd_C(struct sGameObjectMain* gao, int trackIdx);
 void AI_EvalFunc_TRAStopAll_C(struct sGameObjectMain* gao);
 void AI_EvalFunc_TRAReinitAll_C(struct sGameObjectMain* gao);
 

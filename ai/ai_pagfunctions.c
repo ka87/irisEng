@@ -2,286 +2,278 @@
 #include "../graphicsobjects/particle.h"
 #include "ai_pagfunctions.h"
 
-int AI_EvalFunc_PAG_AddGenerator_C(tGameObjectMain* gao, tGameObjectMain* a2, float a3)
+int AI_EvalFunc_PAG_AddGenerator_C(tGameObjectMain* gao, tGameObjectMain* emitter, float frequency)
 {
-    int result;
-    tPAGStruct* v4;
+    tPAGStruct* pag;
 
-    v4 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v4)
-        result = PAG_i_AddGenerator(v4, a2, a3);
-    else
-        result = 0;
-    return result;
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (!pag)
+        return 0;
+    return PAG_i_AddGenerator(pag, emitter, frequency);
 }
 
 tAINode* AI_EvalFunc_PAG_AddGenerator(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    float a3;
+    tGameObjectMain* gaoUltra;
+    tGameObjectMain* emitter;
+    float frequency;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetFloatFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v1 = AI_EvalFunc_PAG_AddGenerator_C(v3, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3);
-    AI_PutIntToStack(v1);
+
+    frequency = AI_GetFloatFromStack();
+    emitter = (tGameObjectMain*)AI_GetObjectFromStack();
+    AI_PutIntToStack(AI_EvalFunc_PAG_AddGenerator_C(gaoUltra, emitter, frequency));
     return node + 1;
 }
 
-void AI_EvalFunc_PAG_DelGenerator_C(tGameObjectMain* gao, int a2)
+void AI_EvalFunc_PAG_DelGenerator_C(tGameObjectMain* gao, int generatorID)
 {
-    tPAGStruct* v2;
+    tPAGStruct* pag;
 
-    v2 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v2)
-        PAG_DelGenerator(v2, a2);
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (pag)
+        PAG_DelGenerator(pag, generatorID);
 }
 
 tAINode* AI_EvalFunc_PAG_DelGenerator(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int generatorID;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_PAG_DelGenerator_C(v3, v1);
+
+    generatorID = AI_GetIntFromStack();
+    AI_EvalFunc_PAG_DelGenerator_C(gaoUltra, generatorID);
     return node + 1;
 }
 
-void AI_EvalFunc_PAG_SetGeneratorFreq_C(struct sGameObjectMain* gao, int a2, float a3)
+void AI_EvalFunc_PAG_SetGeneratorFreq_C(struct sGameObjectMain* gao, int generatorID, float frequency)
 {
-    tPAGStruct* v3;
+    tPAGStruct* pag;
 
-    v3 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v3)
-        PAG_SetGeneratorFrequency(v3, a2, a3);
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (pag)
+        PAG_SetGeneratorFrequency(pag, generatorID, frequency);
 }
 
 tAINode* AI_EvalFunc_PAG_SetGeneratorFreq(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    float a3;
+    tGameObjectMain* gaoUltra;
+    int generatorID;
+    float frequency;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetFloatFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_PAG_SetGeneratorFreq_C(v3, v1, a3);
+
+    frequency = AI_GetFloatFromStack();
+    generatorID = AI_GetIntFromStack();
+    AI_EvalFunc_PAG_SetGeneratorFreq_C(gaoUltra, generatorID, frequency);
     return node + 1;
 }
 
-void AI_EvalFunc_PAG_SetFlag_C(struct sGameObjectMain* gao, int a2, int a3)
+void AI_EvalFunc_PAG_SetFlag_C(struct sGameObjectMain* gao, int toSet, int toClear)
 {
-    tPAGStruct* v3;
+    tPAGStruct* pag;
 
-    v3 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v3)
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (pag)
     {
-        v3->flags |= a2;
-        v3->flags &= ~a3;
+        pag->flags |= toSet;
+        pag->flags &= ~toClear;
     }
 }
 
 tAINode* AI_EvalFunc_PAG_SetFlag(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int toSet;
+    int toClear;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_PAG_SetFlag_C(v4, v1, v3);
+
+    toClear = AI_GetIntFromStack();
+    toSet = AI_GetIntFromStack();
+    AI_EvalFunc_PAG_SetFlag_C(gaoUltra, toSet, toClear);
     return node + 1;
 }
 
 uint32_t AI_EvalFunc_PAG_GetFlag_C(tGameObjectMain* gao)
 {
-    int result;
-    tPAGStruct* v2;
+    tPAGStruct* pag;
 
-    v2 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v2)
-        result = v2->flags;
-    else
-        result = 0;
-    return result;
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (!pag)
+        return 0;
+    return pag->flags;
 }
 
 tAINode* AI_EvalFunc_PAG_GetFlag(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_PAG_GetFlag_C(v3);
-    AI_PutIntToStack(v1);
+
+    AI_PutIntToStack(AI_EvalFunc_PAG_GetFlag_C(gaoUltra));
     return node + 1;
 }
 
-void AI_EvalFunc_PAG_Setf_C(struct sGameObjectMain* gao, int a2, float a3)
+void AI_EvalFunc_PAG_Setf_C(struct sGameObjectMain* gao, int floatIdx, float value)
 {
-    tPAGStruct* v3;
+    tPAGStruct* pag;
 
-    if (a2 >= 0 && a2 < 35)
-    {
-        v3 = PAG_pst_GetGameObjectParticleGenerator(gao);
-        if (v3)
-            *((float*)&v3->ffb1 + a2) = a3;
-    }
+    if (floatIdx < 0 || floatIdx >= 35)
+        return;
+
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (pag)
+        *((float*)&pag->ffb1 + floatIdx) = value;
 }
 
 tAINode* AI_EvalFunc_PAG_Setf(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    float a3;
+    tGameObjectMain* gaoUltra;
+    int floatIdx;
+    float value;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetFloatFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_PAG_Setf_C(v3, v1, a3);
+
+    value = AI_GetFloatFromStack();
+    floatIdx = AI_GetIntFromStack();
+    AI_EvalFunc_PAG_Setf_C(gaoUltra, floatIdx, value);
     return node + 1;
 }
 
 float AI_EvalFunc_PAG_Getf_C(struct sGameObjectMain* gao, int floatIdx)
 {
-    float result;
-    tPAGStruct* v3;
+    tPAGStruct* pag;
 
     if (floatIdx < 0 || floatIdx >= 35)
         return 0.0f;
-    v3 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v3)
-        result = *((float*)&v3->ffb1 + floatIdx);
-    else
-        result = 0.0f;
-    return result;
+
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (!pag)
+        return 0.0f;
+    return *((float*)&pag->ffb1 + floatIdx);
 }
 
 tAINode* AI_EvalFunc_PAG_Getf(tAINode* node)
 {
-    int v1;
-    float v3;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int floatIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v3 = AI_EvalFunc_PAG_Getf_C(v4, v1);
-    AI_PutFloatToStack(v3);
+
+    floatIdx = AI_GetIntFromStack();
+    AI_PutFloatToStack(AI_EvalFunc_PAG_Getf_C(gaoUltra, floatIdx));
     return node + 1;
 }
 
 void AI_EvalFunc_PAG_SetColor_C(struct sGameObjectMain* gao, int color)
 {
-    tPAGStruct* v2;
+    tPAGStruct* pag;
 
-    v2 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v2)
-        v2->color = color;
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (pag)
+        pag->color = color;
 }
 
 tAINode* AI_EvalFunc_PAG_SetColor(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
+    int color;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_PAG_SetColor_C(v3, v1);
+
+    color = AI_GetIntFromStack();
+    AI_EvalFunc_PAG_SetColor_C(gaoUltra, color);
     return node + 1;
 }
 
-void AI_EvalFunc_PAG_SetObject_C(struct sGameObjectMain* gao, struct sGameObjectMain* a2)
+void AI_EvalFunc_PAG_SetObject_C(struct sGameObjectMain* gao, struct sGameObjectMain* emitter)
 {
-    tPAGStruct* v2;
+    tPAGStruct* pag;
 
-    v2 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v2)
-        v2->gao1 = a2;
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (pag)
+        pag->gao1 = emitter;
 }
 
 tAINode* AI_EvalFunc_PAG_SetObject(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_PAG_SetObject_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+
+    AI_EvalFunc_PAG_SetObject_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
     return node + 1;
 }
 
-void AI_EvalFunc_PAG_SetMatrixRef_C(struct sGameObjectMain* gao, struct sGameObjectMain* a2)
+void AI_EvalFunc_PAG_SetMatrixRef_C(struct sGameObjectMain* gao, struct sGameObjectMain* reference)
 {
-    tPAGStruct* v2;
+    tPAGStruct* pag;
 
-    v2 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v2)
-        v2->gaoForMatrixRef = a2;
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (pag)
+        pag->gaoForMatrixRef = reference;
 }
 
 tAINode* AI_EvalFunc_PAG_SetMatrixRef(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_PAG_SetMatrixRef_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+
+    AI_EvalFunc_PAG_SetMatrixRef_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
     return node + 1;
 }
 
-void AI_EvalFunc_PAG_ShiftParticles_C(struct sGameObjectMain* gao, Vec3* a2)
+void AI_EvalFunc_PAG_ShiftParticles_C(struct sGameObjectMain* gao, Vec3* shift)
 {
-    Vec3* v2;
-    tPAGStruct* v3;
+    tPAGStruct* pag;
+    Vec3* pos;
     int i;
 
-    v3 = PAG_pst_GetGameObjectParticleGenerator(gao);
-    if (v3)
+    pag = PAG_pst_GetGameObjectParticleGenerator(gao);
+    if (!pag)
+        return;
+
+    for (i = 0; i < pag->triangleNum2; ++i)
     {
-        for (i = 0; i < v3->triangleNum2; ++i)
-        {
-            v2 = &v3->pagElems[i].particlePos;
-            v2->x = v2->x + a2->x;
-            v2->y = v2->y + a2->y;
-            v2->z = v2->z + a2->z;
-        }
+        pos = &pag->pagElems[i].particlePos;
+        pos->x = pos->x + shift->x;
+        pos->y = pos->y + shift->y;
+        pos->z = pos->z + shift->z;
     }
 }
 
 tAINode* AI_EvalFunc_PAG_ShiftParticles(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_EvalFunc_PAG_ShiftParticles_C(v2, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+
+    // the vector is read where the stack keeps it rather than copied out
+    AI_EvalFunc_PAG_ShiftParticles_C(gaoUltra, (Vec3*)AI_PopStackSlot());
     return node + 1;
 }

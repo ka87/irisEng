@@ -87,13 +87,20 @@ Vec3* AI_GetVecFromStack(Vec3* v)
     return v2;
 }
 
-// the object counterpart of AI_PutObjectToStack, spelled out by hand at
-// 218 sites across ai/
-void* AI_GetObjectFromStack(void)
+// Unwinds one element and hands back the slot it occupied, for a value
+// the stack keeps inline rather than behind a pointer -- a vector, say.
+// Spelled out by hand at 218 sites across ai/.
+char* AI_PopStackSlot(void)
 {
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
-    return *(void**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    return &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+}
+
+// the object counterpart of AI_PutObjectToStack
+void* AI_GetObjectFromStack(void)
+{
+    return *(void**)AI_PopStackSlot();
 }
 
 void AI_GetVarFromStack(void* dest, tVarStackElem* vse)
