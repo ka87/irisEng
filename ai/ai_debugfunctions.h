@@ -3,7 +3,7 @@
 #include "../common.h"
 
 void AI_EvalFunc_DbgTraceInt_C();
-void AI_EvalFunc_DbgLastRayGet_Dummy_C(struct sGameObjectMain* gao, Vec3* a2);
+void AI_EvalFunc_DbgLastRayGet_Dummy_C(struct sGameObjectMain* gao, Vec3* ray);
 
 tAINode* AI_EvalFunc_DbgTraceInt(tAINode* node);
 tAINode* AI_EvalFunc_DbgTraceFloat(tAINode* node);

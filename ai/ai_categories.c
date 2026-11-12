@@ -1,127 +1,125 @@
 #include "../ai.h"
 
-tAINode* AI_EvalCateg_Type(tAINode* a1)
+tAINode* AI_EvalCateg_Type(tAINode* node)
 {
-    AI_PutObjectToStack(a1, a1->val2);
-    return a1 + 1;
+    AI_PutObjectToStack(node, node->val2);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_Keyword(tAINode* a1)
+tAINode* AI_EvalCateg_Keyword(tAINode* node)
 {
-    return AI_gast_Keywords[a1->val2].funcptr(a1);
+    return AI_gast_Keywords[node->val2].funcptr(node);
 }
 
-tAINode* AI_EvalCateg_Function(tAINode* a1)
+tAINode* AI_EvalCateg_Function(tAINode* node)
 {
-    return AI_gast_Functions[a1->val2].funcptr(a1);
+    return AI_gast_Functions[node->val2].funcptr(node);
 }
 
-tAINode* AI_EvalCateg_Field(tAINode* a1)
+tAINode* AI_EvalCateg_Field(tAINode* node)
 {
-    return AI_gast_Fields[a1->val2].funcptr(a1);
+    return AI_gast_Fields[node->val2].funcptr(node);
 }
 
-tAINode* AI_EvalCateg_LocalVar(tAINode* a1)
+tAINode* AI_EvalCateg_LocalVar(tAINode* node)
 {
-    char* v2;
-    tVarStackElem a1a;
+    tVarStackElem var;
 
-    v2 = &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + a1->val];
-    a1a.type = a1->val2;
-    a1a.ptr = v2;
-    AI_EvalVar(&a1a);
-    return a1 + 1;
+    var.type = node->val2;
+    var.ptr = &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + node->val];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_LocalVarArray(tAINode* a1)
+tAINode* AI_EvalCateg_LocalVarArray(tAINode* node)
 {
-    AI_EvalVarArray(a1, &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + a1->val]);
-    return a1 + 1;
+    AI_EvalVarArray(node, &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + node->val]);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_LocalVarArray2(tAINode* a1)
+tAINode* AI_EvalCateg_LocalVarArray2(tAINode* node)
 {
-    AI_EvalVarArray2(a1, &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + a1->val]);
-    return a1 + 1;
+    AI_EvalVarArray2(node, &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + node->val]);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_LocalVarArray3(tAINode* a1)
+tAINode* AI_EvalCateg_LocalVarArray3(tAINode* node)
 {
-    AI_EvalVarArray3(a1, &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + a1->val]);
-    return a1 + 1;
+    AI_EvalVarArray3(node, &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + node->val]);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_GlobalVar(tAINode* a1)
+tAINode* AI_EvalCateg_GlobalVar(tAINode* node)
 {
-    char* v2;
-    tVarStackElem a1a;
-    tAI* v4;
-    tAI* v5;
+    tVarStackElem var;
+    tAI* instanceUltra;
 
-    v4 = AI_gpst_CurrentInstanceUltra;
+    instanceUltra = AI_gpst_CurrentInstanceUltra;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    v5 = v4;
-    v2 = &v4->instanceVarDataCurrent[a1->val];
-    a1a.type = a1->val2;
-    a1a.ptr = v2;
-    AI_EvalVar(&a1a);
-    return a1 + 1;
+
+    var.type = node->val2;
+    var.ptr = &instanceUltra->instanceVarDataCurrent[node->val];
+    AI_EvalVar(&var);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_GlobalVarArray(tAINode* a1)
+tAINode* AI_EvalCateg_GlobalVarArray(tAINode* node)
 {
-    tAI* v2;
+    tAI* instanceUltra;
 
-    v2 = AI_gpst_CurrentInstanceUltra;
+    instanceUltra = AI_gpst_CurrentInstanceUltra;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_EvalVarArray(a1, &v2->instanceVarDataCurrent[a1->val]);
-    return a1 + 1;
+
+    AI_EvalVarArray(node, &instanceUltra->instanceVarDataCurrent[node->val]);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_GlobalVarArray2(tAINode* a1)
+tAINode* AI_EvalCateg_GlobalVarArray2(tAINode* node)
 {
-    tAI* v2;
+    tAI* instanceUltra;
 
-    v2 = AI_gpst_CurrentInstanceUltra;
+    instanceUltra = AI_gpst_CurrentInstanceUltra;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_EvalVarArray2(a1, &v2->instanceVarDataCurrent[a1->val]);
-    return a1 + 1;
+
+    AI_EvalVarArray2(node, &instanceUltra->instanceVarDataCurrent[node->val]);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_GlobalVarArray3(tAINode* a1)
+tAINode* AI_EvalCateg_GlobalVarArray3(tAINode* node)
 {
-    tAI* v2;
+    tAI* instanceUltra;
 
-    v2 = AI_gpst_CurrentInstanceUltra;
+    instanceUltra = AI_gpst_CurrentInstanceUltra;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_EvalVarArray3(a1, &v2->instanceVarDataCurrent[a1->val]);
-    return a1 + 1;
+
+    AI_EvalVarArray3(node, &instanceUltra->instanceVarDataCurrent[node->val]);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_Text(tAINode* a1)
+tAINode* AI_EvalCateg_Text(tAINode* node)
 {
-    int a1a[2];
+    int reference[2];
 
-    a1a[0] = a1->val;
-    a1a[1] = a1->val2;
-    AI_PutObjectToStack(a1a, AI_gaw_EnumLink[44]);
-    return a1 + 1;
+    reference[0] = node->val;
+    reference[1] = node->val2;
+    AI_PutObjectToStack(reference, AI_gaw_EnumLink[44]);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_InitLocalVarArray(tAINode* a1)
+tAINode* AI_EvalCateg_InitLocalVarArray(tAINode* node)
 {
-    AI_InitVarArray(a1, &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + a1->val]);
-    return a1 + 1;
+    AI_InitVarArray(node, &AI_gast_LocalVarStack[AI_gul_SizeLocalStack + node->val]);
+    return node + 1;
 }
 
-tAINode* AI_EvalCateg_EventParam(tAINode* a1)
+tAINode* AI_EvalCateg_EventParam(tAINode* node)
 {
-    AI_PutObjectToStack(&EVE_gpst_CurrentParam->privateData, a1->val2);
-    return a1 + 1;
+    AI_PutObjectToStack(&EVE_gpst_CurrentParam->privateData, node->val2);
+    return node + 1;
 }
 
 tOfc_scriptengine_functions AI_gast_Categs[16] = {

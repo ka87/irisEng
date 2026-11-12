@@ -12,12 +12,12 @@ BOOL AI_EvalFunc_ACTHasKit_C(struct sGameObjectMain* gao)
 
 tAINode* AI_EvalFunc_ACTHasKit(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTHasKit_C(target));
+    AI_PutIntToStack(AI_EvalFunc_ACTHasKit_C(gaoUltra));
     return node + 1;
 }
 
@@ -33,12 +33,12 @@ int AI_EvalFunc_ACTActionGet_C_CURRENT()
 
 tAINode* AI_EvalFunc_ACTActionGet(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTActionGet_C(target));
+    AI_PutIntToStack(AI_EvalFunc_ACTActionGet_C(gaoUltra));
     return node + 1;
 }
 
@@ -49,12 +49,12 @@ int AI_EvalFunc_ACTActionItemGet_C(struct sGameObjectMain* gao)
 
 tAINode* AI_EvalFunc_ACTActionItemGet(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTActionItemGet_C(target));
+    AI_PutIntToStack(AI_EvalFunc_ACTActionItemGet_C(gaoUltra));
     return node + 1;
 }
 
@@ -72,16 +72,16 @@ void AI_EvalFunc_ACTActionSet_C_CURRENT(int actionId)
 
 tAINode* AI_EvalFunc_ACTActionSet(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
     int actionId;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
 
     actionId = AI_GetIntFromStack();
 
-    AI_EvalFunc_ACTActionSet_C(target, actionId);
+    AI_EvalFunc_ACTActionSet_C(gaoUltra, actionId);
     return node + 1;
 }
 
@@ -101,17 +101,17 @@ void AI_EvalFunc_ACTActionFrequencySet_C(tGameObjectMain* gao, int actionId, int
 
 tAINode* AI_EvalFunc_ACTActionFrequencySet(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
     int actionId;
     int framesPerSecond;
 
     framesPerSecond = AI_GetIntFromStack();
     actionId = AI_GetIntFromStack();
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_ACTActionFrequencySet_C(target, actionId, framesPerSecond);
+    AI_EvalFunc_ACTActionFrequencySet_C(gaoUltra, actionId, framesPerSecond);
     return node + 1;
 }
 
@@ -130,17 +130,17 @@ int AI_EvalFunc_ACTFrequencyGet_C(struct sGameObjectMain* gao, int actionId, int
 
 tAINode* AI_EvalFunc_ACTFrequencyGet(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
     int actionId;
     int itemId;
 
     itemId = AI_GetIntFromStack();
     actionId = AI_GetIntFromStack();
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTFrequencyGet_C(target, actionId, itemId));
+    AI_PutIntToStack(AI_EvalFunc_ACTFrequencyGet_C(gaoUltra, actionId, itemId));
     return node + 1;
 }
 
@@ -155,17 +155,17 @@ void AI_EvalFunc_ACTActionFrameSet_C(tGameObjectMain* gao, int actionId, int16_t
 
 tAINode* AI_EvalFunc_ACTActionFrameSet(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
     int actionId;
     int16_t frame;
 
     frame = AI_GetIntFromStack();
     actionId = AI_GetIntFromStack();
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_ACTActionFrameSet_C(target, actionId, frame);
+    AI_EvalFunc_ACTActionFrameSet_C(gaoUltra, actionId, frame);
     return node + 1;
 }
 
@@ -179,12 +179,12 @@ int AI_EvalFunc_ACTCustomBitGet_C(struct sGameObjectMain* gao)
 
 tAINode* AI_EvalFunc_ACTCustomBitGet(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTCustomBitGet_C(target));
+    AI_PutIntToStack(AI_EvalFunc_ACTCustomBitGet_C(gaoUltra));
     return node + 1;
 }
 
@@ -198,12 +198,12 @@ int AI_EvalFunc_ACTDesignFlagsGet_C(struct sGameObjectMain* gao)
 
 tAINode* AI_EvalFunc_ACTDesignFlagsGet(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTDesignFlagsGet_C(target));
+    AI_PutIntToStack(AI_EvalFunc_ACTDesignFlagsGet_C(gaoUltra));
     return node + 1;
 }
 
@@ -217,16 +217,16 @@ int AI_EvalFunc_ACTCustomBitTest_C(struct sGameObjectMain* gao, uint8_t mask)
 
 tAINode* AI_EvalFunc_ACTCustomBitTest(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
     uint8_t mask;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
 
     mask = (uint8_t)AI_GetIntFromStack();
 
-    AI_PutIntToStack(AI_EvalFunc_ACTCustomBitTest_C(target, mask));
+    AI_PutIntToStack(AI_EvalFunc_ACTCustomBitTest_C(gaoUltra, mask));
     return node + 1;
 }
 
@@ -240,16 +240,16 @@ int AI_EvalFunc_ACTDesignFlagsTest_C(struct sGameObjectMain* gao, uint16_t mask)
 
 tAINode* AI_EvalFunc_ACTDesignFlagsTest(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
     uint16_t mask;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
 
     mask = AI_GetIntFromStack();
 
-    AI_PutIntToStack(AI_EvalFunc_ACTDesignFlagsTest_C(target, mask));
+    AI_PutIntToStack(AI_EvalFunc_ACTDesignFlagsTest_C(gaoUltra, mask));
     return node + 1;
 }
 
@@ -265,12 +265,12 @@ BOOL AI_EvalFunc_ACTActionFinished_C_CURRENT()
 
 tAINode* AI_EvalFunc_ACTActionFinished(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTActionFinished_C(target));
+    AI_PutIntToStack(AI_EvalFunc_ACTActionFinished_C(gaoUltra));
     return node + 1;
 }
 
@@ -281,12 +281,12 @@ BOOL AI_EvalFunc_ACTActionIsTransition_C(struct sGameObjectMain* gao)
 
 tAINode* AI_EvalFunc_ACTActionIsTransition(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTActionIsTransition_C(target));
+    AI_PutIntToStack(AI_EvalFunc_ACTActionIsTransition_C(gaoUltra));
     return node + 1;
 }
 
@@ -297,48 +297,48 @@ int AI_EvalFunc_ACTActionGetTransition_C(struct sGameObjectMain* gao)
 
 tAINode* AI_EvalFunc_ACTActionGetTransition(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_ACTActionGetTransition_C(target));
+    AI_PutIntToStack(AI_EvalFunc_ACTActionGetTransition_C(gaoUltra));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_ACTKitMerge(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
     tGameObjectMain* source;
     int from;
     int to;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     to = AI_GetIntFromStack();
     from = AI_GetIntFromStack();
     source = (tGameObjectMain*)AI_GetObjectFromStack();
 
-    ACTKitMergeNoOver(target, source, from, to);
+    ACTKitMergeNoOver(gaoUltra, source, from, to);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_ACTKitMergeOver(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
     tGameObjectMain* source;
     int from;
     int to;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     to = AI_GetIntFromStack();
     from = AI_GetIntFromStack();
     source = (tGameObjectMain*)AI_GetObjectFromStack();
 
-    ACTKitMergeOver(target, source, from, to);
+    ACTKitMergeOver(gaoUltra, source, from, to);
     return node + 1;
 }
 
@@ -349,11 +349,11 @@ void AI_EvalFunc_ACTKitRestore_C(tGameObjectMain* gao)
 
 tAINode* AI_EvalFunc_ACTKitRestore(tAINode* node)
 {
-    tGameObjectMain* target;
+    tGameObjectMain* gaoUltra;
 
-    target = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_ACTKitRestore_C(target);
+    AI_EvalFunc_ACTKitRestore_C(gaoUltra);
     return node + 1;
 }
