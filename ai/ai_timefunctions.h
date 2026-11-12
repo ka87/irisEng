@@ -3,9 +3,9 @@
 #include "../common.h"
 #include "../ai.h"
 
-void TIME_Wait_C(float a1);
-BOOL AI_EvalFunc_TIMEElapsed_C(float a1, float a2);
-void AI_EvalFunc_TIMEFactorSet_C(float a1);
+void TIME_Wait_C(float amount);
+BOOL AI_EvalFunc_TIMEElapsed_C(float time, float amountInSec);
+void AI_EvalFunc_TIMEFactorSet_C(float factor);
 void AI_EvalFunc_TIMELock_C();
 void AI_EvalFunc_TIMEUnlock_C();
 float AI_EvalFunc_TIMEGet_C();

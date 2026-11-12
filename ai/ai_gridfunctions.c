@@ -5,207 +5,186 @@
 #include "../profiler.h"
 #include "ai_gridfunctions.h"
 
-int AI_EvalFunc_GRIDGetCapa_C(tGameObjectMain* gao, Vec3* a2)
+// The world has two grids and GRID_gi_Current picks between them.
+static tWorldGridStruct* AI_l_CurrentGrid(void)
 {
-    tWorldGridStruct* v3;
-
     if (GRID_gi_Current)
-        v3 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v3 = WOR_gpst_CurrentWorld->grid1Ptr;
-    return GRI_i_GetCapa(v3, a2);
+        return WOR_gpst_CurrentWorld->grid2Ptr;
+    return WOR_gpst_CurrentWorld->grid1Ptr;
 }
 
-int AI_EvalFunc_GRIDSetWall_C(int a1)
+// The same for the far end of a path, which a script may put in the
+// other grid.
+static tWorldGridStruct* AI_l_DestGrid(void)
 {
-    int result;
+    if (GRID_gi_Dest)
+        return WOR_gpst_CurrentWorld->grid2Ptr;
+    return WOR_gpst_CurrentWorld->grid1Ptr;
+}
 
-    result = a1;
-    GRID_gi_TestWall = a1;
-    return result;
+int AI_EvalFunc_GRIDGetCapa_C(tGameObjectMain* gao, Vec3* pos)
+{
+    return GRI_i_GetCapa(AI_l_CurrentGrid(), pos);
+}
+
+int AI_EvalFunc_GRIDSetWall_C(int wallMask)
+{
+    GRID_gi_TestWall = wallMask;
+    return wallMask;
 };
 
 tAINode* AI_EvalFunc_GRIDSetWall(tAINode* node)
 {
-    int v1;
+    int wallMask;
 
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_GRIDSetWall_C(v1);
+    wallMask = AI_GetIntFromStack();
+    AI_EvalFunc_GRIDSetWall_C(wallMask);
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDModeSet_C(int a1)
+int AI_EvalFunc_GRIDModeSet_C(int mode)
 {
-    int result;
-
-    result = a1;
-    GRID_gi_Mode = a1;
-    return result;
+    GRID_gi_Mode = mode;
+    return mode;
 }
 
 tAINode* AI_EvalFunc_GRIDModeSet(tAINode* node)
 {
-    int v1;
+    int mode;
 
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_GRIDModeSet_C(v1);
+    mode = AI_GetIntFromStack();
+    AI_EvalFunc_GRIDModeSet_C(mode);
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDCurrentSet_C(int a1)
+int AI_EvalFunc_GRIDCurrentSet_C(int which)
 {
-    int result;
-
-    result = a1;
-    GRID_gi_Current = a1;
-    return result;
+    GRID_gi_Current = which;
+    return which;
 }
 
 tAINode* AI_EvalFunc_GRIDCurrentSet(tAINode* node)
 {
-    int v1;
+    int which;
 
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_GRIDCurrentSet_C(v1);
+    which = AI_GetIntFromStack();
+    AI_EvalFunc_GRIDCurrentSet_C(which);
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDDestSet_C(int a1)
+int AI_EvalFunc_GRIDDestSet_C(int which)
 {
-    int result;
-
-    result = a1;
-    GRID_gi_Dest = a1;
-    return result;
+    GRID_gi_Dest = which;
+    return which;
 }
 
 tAINode* AI_EvalFunc_GRIDDestSet(tAINode* node)
 {
-    GRID_gi_Dest = AI_GetIntFromStack();
+    int which;
+
+    which = AI_GetIntFromStack();
+    AI_EvalFunc_GRIDDestSet_C(which);
     return node + 1;
 }
 
-void AI_EvalFunc_GRIDSetCapa_C(int a1, Vec3* a2, char a3)
+void AI_EvalFunc_GRIDSetCapa_C(struct sGameObjectMain* gao, Vec3* pos, char capability)
 {
-    tWorldGridStruct* v3;
-
-    if (GRID_gi_Current)
-        v3 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v3 = WOR_gpst_CurrentWorld->grid1Ptr;
-    GRI_SetCapa(v3, a2, a3);
+    GRI_SetCapa(AI_l_CurrentGrid(), pos, capability);
 }
 
 tAINode* AI_EvalFunc_GRIDSetCapa(tAINode* node)
 {
-    tGameObjectMain* v2;
-    char a3;
-    Vec3 a1a;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    Vec3 pos;
+    char capability;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    a3 = AI_GetIntFromStack();
-    AI_GetVecFromStack(&a1a);
-    AI_EvalFunc_GRIDSetCapa_C((int)v5, &a1a, a3);
+    capability = AI_GetIntFromStack();
+    AI_GetVecFromStack(&pos);
+    AI_EvalFunc_GRIDSetCapa_C(gaoUltra, &pos, capability);
     return node + 1;
 }
 
-void AI_EvalFunc_GRIDSetPosAll_C(int a1, int a2, Vec3* a3)
+// Moves a grid's origin, naming the grid directly rather than through
+// GRID_gi_Current, which it saves and puts back.
+void AI_EvalFunc_GRIDSetPosAll_C(struct sGameObjectMain* gao, int which, Vec3* origin)
 {
-    tWorldGridStruct* v3;
-    int v4;
+    tWorldGridStruct* grid;
+    int previous;
 
-    v4 = GRID_gi_Current;
-    GRID_gi_Current = a2;
-    if (a2)
-        v3 = WOR_gpst_CurrentWorld->grid2Ptr;
+    previous = GRID_gi_Current;
+    GRID_gi_Current = which;
+    if (which)
+        grid = WOR_gpst_CurrentWorld->grid2Ptr;
     else
-        v3 = WOR_gpst_CurrentWorld->grid1Ptr;
-    v3->startX = a3->x;
-    v3->startY = a3->y;
-    GRID_gi_Current = v4;
+        grid = WOR_gpst_CurrentWorld->grid1Ptr;
+    grid->startX = origin->x;
+    grid->startY = origin->y;
+    GRID_gi_Current = previous;
 }
 
 tAINode* AI_EvalFunc_GRIDSetPosAll(tAINode* node)
 {
-    tGameObjectMain* v2;
-    Vec3 a3;
-    int a2;
-    int a1a;
+    tGameObjectMain* gaoUltra;
+    Vec3 origin;
+    int which;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a1a = (int)v2;
-    AI_GetVecFromStack(&a3);
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_GRIDSetPosAll_C(a1a, a2, &a3);
+    AI_GetVecFromStack(&origin);
+    which = AI_GetIntFromStack();
+    AI_EvalFunc_GRIDSetPosAll_C(gaoUltra, which, &origin);
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDAddCapa_C(int a1, Vec3* a2, char a3)
+int AI_EvalFunc_GRIDAddCapa_C(struct sGameObjectMain* gao, Vec3* pos, char capability)
 {
-    tWorldGridStruct* v4;
-
-    if (GRID_gi_Current)
-        v4 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v4 = WOR_gpst_CurrentWorld->grid1Ptr;
-    return GRI_AddCapa(v4, a2, a3);
+    return GRI_AddCapa(AI_l_CurrentGrid(), pos, capability);
 }
 
 tAINode* AI_EvalFunc_GRIDAddCapa(tAINode* node)
 {
-    tGameObjectMain* v2; 
-    Vec3 a1a;
-    int a3;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    Vec3 pos;
+    char capability;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    a3 = AI_GetIntFromStack();
-    AI_GetVecFromStack(&a1a);
-    AI_EvalFunc_GRIDAddCapa_C((int)v5, &a1a, a3);
+    capability = AI_GetIntFromStack();
+    AI_GetVecFromStack(&pos);
+    AI_EvalFunc_GRIDAddCapa_C(gaoUltra, &pos, capability);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_GRIDGetCapa(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    Vec3 a1a;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    Vec3 pos;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v3;
-    AI_GetVecFromStack(&a1a);
-    v1 = AI_EvalFunc_GRIDGetCapa_C(v5, &a1a);
-    AI_PutIntToStack(v1);
+    AI_GetVecFromStack(&pos);
+    AI_PutIntToStack(AI_EvalFunc_GRIDGetCapa_C(gaoUltra, &pos));
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDShortWay_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3, Vec3* a4, char a5, int a6, float a7, int a10, int a11)
-{
-    int v9;
-    tWorldGridStruct* v11;
-    tWorldGridStruct* v12;
-    int v13;
+/* A* from the object's position to a target, timed on its own profiler
+   raster. The grid the path is built in is the current one and the one
+   its walkability is read from is the dest one, which the call resets
+   afterwards so a script has to set it each time.
 
-    if (GRID_gi_Current)
-        v12 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v12 = WOR_gpst_CurrentWorld->grid1Ptr;
-    if (GRID_gi_Dest)
-        v11 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v11 = WOR_gpst_CurrentWorld->grid1Ptr;
+   GRID_ShortestPath ignores its seventh argument, which the original
+   builds here as maxCells with its low byte replaced. */
+int AI_EvalFunc_GRIDShortWay_C(struct sGameObjectMain* gao, Vec3* pathOut, Vec3* start, Vec3* target, char lowByte, int nearLimit, float maxDist, int maxCells, int maxPoints)
+{
+    int unused;
+    int written;
+
     if (!i_Raster_339)
     {
         PRO_RasterAdd(&PRO_ShortWay, "Trame Loop", "Game Engine", "GRID Short Way", 0, 0.0);
@@ -214,393 +193,313 @@ int AI_EvalFunc_GRIDShortWay_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3, 
     if (!PRO_ShortWay.insideCounter)
         PRO_ShortWay.startTick = TIM_GetTicksAsInt32();
     ++PRO_ShortWay.insideCounter;
-    v9 = (a10 & 0xffffff00) | (a5 & 0xff); // v9 = a10; LOBYTE(v9) = a5;
-    v13 = GRID_ShortestPath(gao, v12, v11, a3, a4, a2, v9, a6, a7, a10, a11);
+
+    unused = (maxCells & 0xffffff00) | (lowByte & 0xff); // unused = maxCells; LOBYTE(unused) = lowByte;
+    written = GRID_ShortestPath(gao, AI_l_CurrentGrid(), AI_l_DestGrid(),
+                                start, target, pathOut,
+                                unused, nearLimit, maxDist, maxCells, maxPoints);
+
     PRO_RecordTimeDecRef(&PRO_ShortWay);
     GRID_gi_Dest = 0;
-    return v13;
+    return written;
 }
 
 tAINode* AI_EvalFunc_GRIDShortWay(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    char a5;
-    char dest[52];
-    int a11;
-    int a6;
-    Vec3 a1a;
-    Vec3 a3;
-    int a10;
-    tVarStackElem a2;
-    float a7;
-    tGameObjectMain* v13;
+    tGameObjectMain* gaoUltra;
+    char converted[52];
+    tVarStackElem var;
+    Vec3 start;
+    Vec3 target;
+    char lowByte;
+    int nearLimit;
+    float maxDist;
+    int maxCells;
+    int maxPoints;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v13 = v3;
-    a11 = AI_GetIntFromStack();
-    a10 = AI_GetIntFromStack();
-    a7 = AI_GetFloatFromStack();
-    a6 = AI_GetIntFromStack();
-    a5 = AI_GetIntFromStack();
-    AI_GetVecFromStack(&a1a);
-    AI_GetVecFromStack(&a3);
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_GRIDShortWay_C(v13, (Vec3*)a2.ptr, &a3, &a1a, a5, a6, a7, a10, a11);
-    AI_PutIntToStack(v1);
+    maxPoints = AI_GetIntFromStack();
+    maxCells = AI_GetIntFromStack();
+    maxDist = AI_GetFloatFromStack();
+    nearLimit = AI_GetIntFromStack();
+    lowByte = AI_GetIntFromStack();
+    AI_GetVecFromStack(&target);
+    AI_GetVecFromStack(&start);
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_GRIDShortWay_C(gaoUltra, (Vec3*)var.ptr, &start, &target,
+                                                lowByte, nearLimit, maxDist,
+                                                maxCells, maxPoints));
     return node + 1;
 }
 
-Vec3* AI_EvalFunc_GRIDPosGet_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3)
+// The centre of the cell a position is in.
+Vec3* AI_EvalFunc_GRIDPosGet_C(struct sGameObjectMain* gao, Vec3* pos, Vec3* cellCentre)
 {
-    Vec3* result;
-    float v4;
-    float v5;
-    tWorldGridStruct* v6;
-    int a3a;
-    int a4;
+    tWorldGridStruct* grid;
+    int cellX;
+    int cellY;
 
-    if (GRID_gi_Current)
-        v6 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v6 = WOR_gpst_CurrentWorld->grid1Ptr;
-    *a3 = *a2;
-    GRI_3Dto2D(v6, a3, &a3a, &a4);
-    v5 = (float)a3a;
-    a3->x = (float)(v5 + 0.5 + v6->startX);
-    v4 = (float)a4;
-    result = a3;
-    a3->y = (float)(v4 + 0.5 + v6->startY);
-    a3->z = 0.0;
-    return result;
+    grid = AI_l_CurrentGrid();
+    *cellCentre = *pos;
+    GRI_3Dto2D(grid, cellCentre, &cellX, &cellY);
+    cellCentre->x = (float)((float)cellX + 0.5 + grid->startX);
+    cellCentre->y = (float)((float)cellY + 0.5 + grid->startY);
+    cellCentre->z = 0.0;
+    return cellCentre;
 }
 
 tAINode* AI_EvalFunc_GRIDPosGet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    Vec3 a1a;
-    Vec3 a2;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    Vec3 pos;
+    Vec3 cellCentre;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v2;
-    AI_GetVecFromStack(&a2);
-    AI_EvalFunc_GRIDPosGet_C(v5, &a2, &a1a);
-    AI_PutVecToStack(&a1a);
+    AI_GetVecFromStack(&pos);
+    AI_EvalFunc_GRIDPosGet_C(gaoUltra, &pos, &cellCentre);
+    AI_PutVecToStack(&cellCentre);
     return node + 1;
 }
 
-void AI_EvalFunc_GRIDSetCenter_C(struct sGameObjectMain* gao, Vec3* a2)
+// Centres both of the world's grids on a position, not just the
+// current one.
+void AI_EvalFunc_GRIDSetCenter_C(struct sGameObjectMain* gao, Vec3* pos)
 {
-    tWorld* v2;
-    int a3;
-    int a4;
+    tWorld* world;
+    int cellX;
+    int cellY;
 
-    v2 = WOR_gpst_CurrentWorld;
-    if (WOR_gpst_CurrentWorld->grid1Ptr)
+    world = WOR_gpst_CurrentWorld;
+    if (world->grid1Ptr)
     {
-        GRI_3Dto2D(WOR_gpst_CurrentWorld->grid1Ptr, a2, &a3, &a4);
-        GRID_SetRealCenter(v2->grid1Ptr, a3, a4);
+        GRI_3Dto2D(world->grid1Ptr, pos, &cellX, &cellY);
+        GRID_SetRealCenter(world->grid1Ptr, cellX, cellY);
     }
-    if (v2->grid2Ptr)
+    if (world->grid2Ptr)
     {
-        GRI_3Dto2D(v2->grid2Ptr, a2, &a3, &a4);
-        GRID_SetRealCenter(v2->grid2Ptr, a3, a4);
+        GRI_3Dto2D(world->grid2Ptr, pos, &cellX, &cellY);
+        GRID_SetRealCenter(world->grid2Ptr, cellX, cellY);
     }
 }
 
 tAINode* AI_EvalFunc_GRIDSetCenter(tAINode* node)
 {
-    tGameObjectMain* v2;
-    Vec3 a1a;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    Vec3 pos;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = v2;
-    AI_GetVecFromStack(&a1a);
-    AI_EvalFunc_GRIDSetCenter_C(v4, &a1a);
+    AI_GetVecFromStack(&pos);
+    AI_EvalFunc_GRIDSetCenter_C(gaoUltra, &pos);
     return node + 1;
 }
 
-BOOL AI_EvalFunc_GRIDIsIn_C(struct sGameObjectMain* gao, Vec3* a2)
+BOOL AI_EvalFunc_GRIDIsIn_C(struct sGameObjectMain* gao, Vec3* pos)
 {
-    BOOL result;
-    int v3;
-    int v4;
+    int cellX;
+    int cellY;
 
-    if (GRID_gi_Current)
-        result = GRID_3Dto2D(WOR_gpst_CurrentWorld->grid2Ptr, a2, &v3, &v4) != 0;
-    else
-        result = GRID_3Dto2D(WOR_gpst_CurrentWorld->grid1Ptr, a2, &v3, &v4) != 0;
-    return result;
+    return GRID_3Dto2D(AI_l_CurrentGrid(), pos, &cellX, &cellY) != 0;
 }
 
 tAINode* AI_EvalFunc_GRIDIsIn(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    Vec3 a1a;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    Vec3 pos;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v3;
-    AI_GetVecFromStack(&a1a);
-    v1 = AI_EvalFunc_GRIDIsIn_C(v5, &a1a);
-    AI_PutIntToStack(v1);
+    AI_GetVecFromStack(&pos);
+    AI_PutIntToStack(AI_EvalFunc_GRIDIsIn_C(gaoUltra, &pos));
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDTag_C(struct sGameObjectMain* gao, Vec3* a2, int a3, int a4)
+int AI_EvalFunc_GRIDTag_C(struct sGameObjectMain* gao, Vec3* pos, int shape, int capability)
 {
-    tWorldGridStruct* v5;
-
-    if (GRID_gi_Current)
-        v5 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v5 = WOR_gpst_CurrentWorld->grid1Ptr;
-    return GRI_Tag(v5, a2, a3, a4);
+    return GRI_Tag(AI_l_CurrentGrid(), pos, shape, capability);
 }
 
 tAINode* AI_EvalFunc_GRIDTag(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int v4;
-    int v5;
-    Vec3 a1a;
-    tGameObjectMain* v7;
+    tGameObjectMain* gaoUltra;
+    Vec3 pos;
+    int shape;
+    int capability;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v7 = v3;
-    v4 = AI_GetIntFromStack();
-    v5 = AI_GetIntFromStack();
-    AI_GetVecFromStack(&a1a);
-    v1 = AI_EvalFunc_GRIDTag_C(v7, &a1a, v5, v4);
-    AI_PutIntToStack(v1);
+    capability = AI_GetIntFromStack();
+    shape = AI_GetIntFromStack();
+    AI_GetVecFromStack(&pos);
+    AI_PutIntToStack(AI_EvalFunc_GRIDTag_C(gaoUltra, &pos, shape, capability));
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDTagBox_C(struct sGameObjectMain* gao, Vec3* pos, Vec3* a3, int a4)
+int AI_EvalFunc_GRIDTagBox_C(struct sGameObjectMain* gao, Vec3* pos, Vec3* to, int capability)
 {
-    tWorldGridStruct* v5;
-
-    if (GRID_gi_Current)
-        v5 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v5 = WOR_gpst_CurrentWorld->grid1Ptr;
-    return GRI_TagBox(v5, pos, a3, a4);
+    return GRI_TagBox(AI_l_CurrentGrid(), pos, to, capability);
 }
 
 tAINode* AI_EvalFunc_GRIDTagBox(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
     Vec3 pos;
-    int a4;
-    Vec3 a1a;
-    tGameObjectMain* v7;
+    Vec3 to;
+    int capability;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v7 = v3;
-    a4 = AI_GetIntFromStack();
-    AI_GetVecFromStack(&a1a);
+    capability = AI_GetIntFromStack();
+    AI_GetVecFromStack(&to);
     AI_GetVecFromStack(&pos);
-    v1 = AI_EvalFunc_GRIDTagBox_C(v7, &pos, &a1a, a4);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_GRIDTagBox_C(gaoUltra, &pos, &to, capability));
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDSmoothWay_C(struct sGameObjectMain* gao, Vec3* a2, int a4)
+// How much of a path is still walkable, counted back from its far end.
+int AI_EvalFunc_GRIDSmoothWay_C(struct sGameObjectMain* gao, Vec3* path, int num)
 {
-    tWorldGridStruct* v4;
-    tWorldGridStruct* v5;
-
-    if (GRID_gi_Current)
-        v5 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v5 = WOR_gpst_CurrentWorld->grid1Ptr;
-    if (GRID_gi_Dest)
-        v4 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v4 = WOR_gpst_CurrentWorld->grid1Ptr;
-    return GRI_SmoothWay(v4, v5, a2, a4);
+    return GRI_SmoothWay(AI_l_DestGrid(), AI_l_CurrentGrid(), path, num);
 }
 
 tAINode* AI_EvalFunc_GRIDSmoothWay(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    char dest[52];
-    int a4;
-    tVarStackElem a2;
-    tGameObjectMain* v7;
+    tGameObjectMain* gaoUltra;
+    char converted[52];
+    tVarStackElem var;
+    int num;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v7 = v3;
-    a4 = AI_GetIntFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v1 = AI_EvalFunc_GRIDSmoothWay_C(v7, (Vec3*)a2.ptr, a4);
-    AI_PutIntToStack(v1);
+    num = AI_GetIntFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_PutIntToStack(AI_EvalFunc_GRIDSmoothWay_C(gaoUltra, (Vec3*)var.ptr, num));
     return node + 1;
 }
 
-int AI_EvalFunc_GRIDTagVec_C(struct sGameObjectMain* gao, Vec3* pos, int a3, int a4, Vec3* a5)
+int AI_EvalFunc_GRIDTagVec_C(struct sGameObjectMain* gao, Vec3* pos, int shape, int capability, Vec3* dir)
 {
-    tWorldGridStruct* v6;
-
-    if (GRID_gi_Current)
-        v6 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v6 = WOR_gpst_CurrentWorld->grid1Ptr;
-    return GRI_TagVec(v6, pos, a3, a4, a5);
+    return GRI_TagVec(AI_l_CurrentGrid(), pos, shape, capability, dir);
 }
 
-tAINode* AI_EvalFunc_GRIDTagVec(tAINode* arg0)
+tAINode* AI_EvalFunc_GRIDTagVec(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    Vec3 a1;
-    int a4;
-    int a3;
+    tGameObjectMain* gaoUltra;
     Vec3 pos;
-    tGameObjectMain* v8;
+    Vec3 dir;
+    int shape;
+    int capability;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v8 = v3;
-    AI_GetVecFromStack(&a1);
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
+    AI_GetVecFromStack(&dir);
+    capability = AI_GetIntFromStack();
+    shape = AI_GetIntFromStack();
     AI_GetVecFromStack(&pos);
-    v1 = AI_EvalFunc_GRIDTagVec_C(v8, &pos, a3, a4, &a1);
-    AI_PutIntToStack(v1);
-    return arg0 + 1;
+    AI_PutIntToStack(AI_EvalFunc_GRIDTagVec_C(gaoUltra, &pos, shape, capability, &dir));
+    return node + 1;
 }
 
-void AI_EvalFunc_GRIDCptDest_C(struct sGameObjectMain* gao, Vec3* a2, float a3, Vec3* dest)
+/* Steps the object's position towards a target by at most one step, and
+   reports the cell centre it lands on. A step that leaves the grid
+   reports the zero vector. A zero-length move reports nothing, since
+   the output is only written inside the guard. */
+void AI_EvalFunc_GRIDCptDest_C(struct sGameObjectMain* gao, Vec3* target, float step, Vec3* dest)
 {
-    tWorldGridStruct* v4;
-    float v5;
+    tWorldGridStruct* grid;
+    float distance;
 
-    if (GRID_gi_Current)
-        v4 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v4 = WOR_gpst_CurrentWorld->grid1Ptr;
-    MATH_SubstractVec(dest, a2, &gao->matrices->Pos);
-    v5 = MATH_VecLen(dest);
-    if (v5 != 0.0)
+    grid = AI_l_CurrentGrid();
+    MATH_SubstractVec(dest, target, &gao->matrices->Pos);
+    distance = MATH_VecLen(dest);
+    if (distance == 0.0)
+        return;
+
+    if (distance < (double)step)
+        step = distance;
+    if (step == 0.0)
+        step = 1.0;
+
+    MATH_NormalizeVector(dest, dest);
+    MATH_VecMultScalarWithoutBuffer(dest, step);
+    MATH_VecAddVec(dest, dest, &gao->matrices->Pos);
+    if (!GRI_i_ComputeDest(grid, dest))
     {
-        if (v5 < (double)a3)
-            a3 = v5;
-        if (a3 == 0.0)
-            a3 = 1.0;
-        MATH_NormalizeVector(dest, dest);
-        dest->x = a3 * dest->x;
-        dest->y = a3 * dest->y;
-        dest->z = a3 * dest->z;
-        MATH_VecAddVec(dest, dest, &gao->matrices->Pos);
-        if (!GRI_i_ComputeDest(v4, dest))
-        {
-            dest->z = 0.0;
-            dest->y = 0.0;
-            dest->x = 0.0;
-        }
+        dest->x = 0.0;
+        dest->y = 0.0;
+        dest->z = 0.0;
     }
 }
 
-tAINode* AI_EvalFunc_GRIDCptDest(tAINode* arg0)
+tAINode* AI_EvalFunc_GRIDCptDest(tAINode* node)
 {
-    tGameObjectMain* v2;
-    Vec3 a1;
-    float a3;
-    Vec3 a2;
-    tGameObjectMain* v6;
+    tGameObjectMain* gaoUltra;
+    Vec3 target;
+    Vec3 dest;
+    float step;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v6 = v2;
-    a3 = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&a2);
-    AI_EvalFunc_GRIDCptDest_C(v6, &a2, a3, &a1);
-    AI_PutVecToStack(&a1);
-    return arg0 + 1;
+    step = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&target);
+    AI_EvalFunc_GRIDCptDest_C(gaoUltra, &target, step, &dest);
+    AI_PutVecToStack(&dest);
+    return node + 1;
 }
 
-int AI_EvalFunc_GRIDTagDyn_C(struct sGameObjectMain* gao, Vec3* a2, Vec3* a3, float a4, int a5)
+int AI_EvalFunc_GRIDTagDyn_C(struct sGameObjectMain* gao, Vec3* pos, Vec3* cells, float distLimit, char capability)
 {
-    tWorldGridStruct* v6;
-
-    if (GRID_gi_Current)
-        v6 = WOR_gpst_CurrentWorld->grid2Ptr;
-    else
-        v6 = WOR_gpst_CurrentWorld->grid1Ptr;
-    return GRI_TagDyn(v6, a2, a4, a3, a5);
+    return GRI_TagDyn(AI_l_CurrentGrid(), pos, distLimit, cells, capability);
 }
 
-tAINode* AI_EvalFunc_GRIDTagDyn(tAINode* arg0)
+tAINode* AI_EvalFunc_GRIDTagDyn(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    char dest[52]; 
-    int a5;
-    float a4;
-    Vec3 a1;
-    tVarStackElem a2;
-    tGameObjectMain* v9;
+    tGameObjectMain* gaoUltra;
+    char converted[52];
+    tVarStackElem var;
+    Vec3 pos;
+    float distLimit;
+    char capability;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v9 = v3;
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetFloatFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVecFromStack(&a1);
-    v1 = AI_EvalFunc_GRIDTagDyn_C(v9, &a1, (Vec3*)a2.ptr, a4, a5);
-    AI_PutIntToStack(v1);
-    return arg0 + 1;
+    capability = AI_GetIntFromStack();
+    distLimit = AI_GetFloatFromStack();
+    AI_GetVarFromStack(converted, &var);
+    AI_GetVecFromStack(&pos);
+    AI_PutIntToStack(AI_EvalFunc_GRIDTagDyn_C(gaoUltra, &pos, (Vec3*)var.ptr,
+                                              distLimit, capability));
+    return node + 1;
 }
 
+// Whether the object is hemmed in along its own line of sight.
 BOOL AI_EvalFunc_GRIDSurround_C(tGameObjectMain* gao)
 {
-    tWorldGridStruct* v2;
-    Vec3 a2;
-    tWorld* v4;
+    Vec3 sight;
 
-    v4 = WOR_gpst_CurrentWorld;
-    if (GRID_gi_Current)
-        v2 = v4->grid2Ptr;
-    else
-        v2 = v4->grid1Ptr;
-    OBJ_SightGet(gao, &a2);
-    return GRI_Surround(v2, &gao->matrices->Pos, &a2);
+    OBJ_SightGet(gao, &sight);
+    return GRI_Surround(AI_l_CurrentGrid(), &gao->matrices->Pos, &sight);
 }
 
 tAINode* AI_EvalFunc_GRIDSurround(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
+    tGameObjectMain* gaoUltra;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_EvalFunc_GRIDSurround_C(v3);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_GRIDSurround_C(gaoUltra));
     return node + 1;
 }

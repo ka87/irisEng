@@ -7,1939 +7,1590 @@
 
 int GRID_gi_TestWall = 0x20;
 
+/* The neighbour scan table. The first sixteen entries are the eight
+   neighbours as (dx, dy) pairs, in the order a search walks them:
+   the four orthogonals first, then the four diagonals. The entries
+   from 16 on repeat the first fourteen, which is what lets the
+   pathfinder read ai_Scan[i + 8 .. i + 11] past the end of a diagonal
+   pair to find the two orthogonals that diagonal cuts between. */
 int ai_Scan[43] = { 0, -1, 1, 0, 0, 1, -1, 0, -1, -1, 1, -1, 1, 1, -1, 1, -1, 0, 0, -1, 1, 0, 0, 1, -1, 0, -1, -1, 0, -1, 1, -1, 1, 0, 1, 1, 0, 1, -1, 1, -1, 0, 1 };
 //int ai_Scan_511[17] = { -1, -1, 0, -1, 1, -1, 1, 0, 1, 1, 0, 1, -1, 1, -1, 0, 1 };
 
-int GRI_3Dto2D(tWorldGridStruct* a1, Vec3* pos, int* retPosX, int* retPosY)
+// A row of the live window is this many cells wide.
+static int GRI_l_Stride(tWorldGridStruct* grid)
 {
-    int v4;
-    int result;
+    return grid->s3Size7LimitMaxX * grid->gridElemSize;
+}
 
-    v4 = 1;
-    if (pos->x >= (double)a1->startX)
+// The capability byte of one cell of the live window.
+static char* GRI_l_Cell(tWorldGridStruct* grid, int x, int y)
+{
+    return &grid->capasPtr[y * GRI_l_Stride(grid) + x];
+}
+
+// The centre of one cell in world coordinates. The window's origin is
+// its lower limit in cells times the cell size, and the half is the
+// step from a cell's corner to its centre.
+static void GRI_l_CellToWorld(tWorldGridStruct* grid, int x, int y, Vec3* pos)
+{
+    pos->x = (float)((double)(grid->gridElemSize * grid->s5Limit1MinX)
+                     + ((double)x + grid->startX + 0.5));
+    pos->y = (float)((double)(grid->gridElemSize * grid->s5Limit1MinY)
+                     + ((double)y + grid->startY + 0.5));
+    pos->z = 0.0f;
+}
+
+// Adds the capability to every cell of the list, and takes it back off
+// the ones that took it if any cell refuses, so a tag is all or
+// nothing. Returns whether the whole list was tagged.
+static int GRI_l_TagCells(tWorldGridStruct* grid, Vec3* cells, int num, char capability)
+{
+    int taken;
+    int i;
+
+    for (taken = 0; taken < num; ++taken)
     {
-        if ((double)(a1->gridCountX * a1->gridElemSize) + a1->startX >= pos->x)
-        {
-            *retPosX = (int)(pos->x - a1->startX);
-        }
-        else
-        {
-            *retPosX = a1->gridCountX * a1->gridElemSize - 1;
-            v4 = 0;
-        }
+        if (!GRI_AddCapa(grid, &cells[taken], capability))
+            break;
     }
-    else
+    if (taken == num)
+        return 1;
+
+    for (i = 0; i < taken; ++i)
+        GRI_AddCapa(grid, &cells[i], -capability);
+    return 0;
+}
+
+// A world position to a cell of the whole grid, clamped to it. Returns
+// whether the position was inside without clamping.
+int GRI_3Dto2D(tWorldGridStruct* grid, Vec3* pos, int* retPosX, int* retPosY)
+{
+    int inside;
+
+    inside = 1;
+    if (pos->x < (double)grid->startX)
     {
         *retPosX = 0;
-        v4 = 0;
+        inside = 0;
     }
-    if (pos->y >= (double)a1->startY)
+    else if ((double)(grid->gridCountX * grid->gridElemSize) + grid->startX < pos->x)
     {
-        if ((double)(a1->gridCountY * a1->gridElemSize) + a1->startY >= pos->y)
-        {
-            *retPosY = (int)(pos->y - a1->startY);
-            result = v4;
-        }
-        else
-        {
-            *retPosY = a1->gridCountY * a1->gridElemSize - 1;
-            result = 0;
-        }
+        *retPosX = grid->gridCountX * grid->gridElemSize - 1;
+        inside = 0;
     }
     else
     {
+        *retPosX = (int)(pos->x - grid->startX);
+    }
+
+    if (pos->y < (double)grid->startY)
+    {
         *retPosY = 0;
-        result = 0;
+        inside = 0;
     }
-    return result;
+    else if ((double)(grid->gridCountY * grid->gridElemSize) + grid->startY < pos->y)
+    {
+        *retPosY = grid->gridCountY * grid->gridElemSize - 1;
+        inside = 0;
+    }
+    else
+    {
+        *retPosY = (int)(pos->y - grid->startY);
+    }
+    return inside;
 }
 
-int GRI_ConvertTo2DReal(tWorldGridStruct* a1, int32_t* posX, int32_t* posY)
+// A cell of the whole grid to a cell of the live window, clamped to it.
+// Returns whether it was inside the window without clamping.
+int GRI_ConvertTo2DReal(tWorldGridStruct* grid, int32_t* posX, int32_t* posY)
 {
-    int v3;
-    BOOL v4;
-    int result;
-    int v6;
-    int v7;
-    int v8;
+    int inside;
+    int limit;
 
-    v3 = a1->gridElemSize * a1->s5Limit1MinX;
-    v4 = *posX - v3 < 0;
-    result = 1;
-    *posX -= v3;
-    if (v4)
+    inside = 1;
+
+    *posX -= grid->gridElemSize * grid->s5Limit1MinX;
+    if (*posX < 0)
     {
-        result = 0;
         *posX = 0;
+        inside = 0;
     }
-    v6 = a1->gridElemSize * a1->s5Limit1MinY;
-    v4 = *posY - v6 < 0;
-    *posY -= v6;
-    if (v4)
+    *posY -= grid->gridElemSize * grid->s5Limit1MinY;
+    if (*posY < 0)
     {
-        result = 0;
         *posY = 0;
+        inside = 0;
     }
-    v7 = a1->gridElemSize * a1->s3Size7LimitMaxX;
-    if (*posX >= v7)
+
+    limit = grid->gridElemSize * grid->s3Size7LimitMaxX;
+    if (*posX >= limit)
     {
-        *posX = v7 - 1;
-        result = 0;
+        *posX = limit - 1;
+        inside = 0;
     }
-    v8 = a1->gridElemSize * a1->s4Size7LimitMaxY;
-    if (*posY >= v8)
+    limit = grid->gridElemSize * grid->s4Size7LimitMaxY;
+    if (*posY >= limit)
     {
-        *posY = v8 - 1;
-        result = 0;
+        *posY = limit - 1;
+        inside = 0;
     }
-    return result;
+    return inside;
 }
 
-void GRI_SetCapa(tWorldGridStruct* a1, Vec3* a2, char a3)
+// Replaces a cell's capability, unless the cell is a wall.
+void GRI_SetCapa(tWorldGridStruct* grid, Vec3* pos, char capability)
 {
-    char* v3;
-    int retPosY;
-    int retPosX;
+    char* cell;
+    int cellX;
+    int cellY;
 
-    if (GRI_3Dto2D(a1, a2, &retPosX, &retPosY) && GRI_ConvertTo2DReal(a1, &retPosX, &retPosY))
-    {
-        v3 = &a1->capasPtr[retPosY * a1->s3Size7LimitMaxX * a1->gridElemSize + retPosX];
-        if ((GRID_gi_TestWall & *v3) == 0)
-            *v3 = a3;
-    }
+    if (!GRI_3Dto2D(grid, pos, &cellX, &cellY) || !GRI_ConvertTo2DReal(grid, &cellX, &cellY))
+        return;
+
+    cell = GRI_l_Cell(grid, cellX, cellY);
+    if ((GRID_gi_TestWall & *cell) == 0)
+        *cell = capability;
 }
 
-int GRI_AddCapa(tWorldGridStruct* a1, Vec3* a2, char a3)
+// Adds to a cell's capability. Reports failure only where the cell
+// already carries both of the 0xC0 bits and the caller is setting one
+// of them, which is how a tag finds out that a cell is taken.
+int GRI_AddCapa(tWorldGridStruct* grid, Vec3* pos, char capability)
 {
-    char* v4;
-    int posX;
-    int a3a;
-    int a4;
+    char* cell;
+    int cellX;
+    int cellY;
 
-    if (!GRI_3Dto2D(a1, a2, &a3a, &a4))
+    if (!GRI_3Dto2D(grid, pos, &cellX, &cellY))
         return 1;
-    posX = a3a;
-    a3a = a4;
-    if (!GRI_ConvertTo2DReal(a1, &posX, &a3a))
+    if (!GRI_ConvertTo2DReal(grid, &cellX, &cellY))
         return 1;
-    if ((GRID_gi_Mode & 1) != 0
-        || (a1->capasPtr[a3a * a1->s3Size7LimitMaxX * a1->gridElemSize + posX] & GRID_gi_TestWall) == 0)
-    {
-        v4 = &a1->capasPtr[a3a * a1->s3Size7LimitMaxX * a1->gridElemSize + posX];
-        if (a3 > 0 && (a3 & 0xC0) != 0 && (*v4 & 0xC0) == 0xC0)
-            return 0;
-        *v4 += a3;
-    }
+
+    if ((GRID_gi_Mode & 1) == 0 && (*GRI_l_Cell(grid, cellX, cellY) & GRID_gi_TestWall) != 0)
+        return 1;
+
+    cell = GRI_l_Cell(grid, cellX, cellY);
+    if (capability > 0 && (capability & 0xC0) != 0 && (*cell & 0xC0) == 0xC0)
+        return 0;
+
+    *cell += capability;
     return 1;
 }
 
-int GRI_i_GetCapa(tWorldGridStruct* a1, Vec3* a2)
+int GRI_i_GetCapa(tWorldGridStruct* grid, Vec3* pos)
 {
-    int result;
-    int a4;
-    int a3;
+    int cellX;
+    int cellY;
 
-    if (GRI_3Dto2D(a1, a2, &a3, &a4) && GRI_ConvertTo2DReal(a1, &a3, &a4))
-        result = a1->capasPtr[a4 * a1->s3Size7LimitMaxX * a1->gridElemSize + a3];
-    else
-        result = 0;
-    return result;
-}
-
-int GRI_i_ComputeDest(struct sWorldGridStruct* a1, Vec3* pos)
-{
-    int result;
-    char* v3;
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    int retPosX;
-    int retPosY;
-    int v10;
-    int v11;
-    int v12;
-    int ai_scanOrder[] = { -1, 0, -1, -1, 0, -1, 1, -1, 1, 0, 1, 1, 0, 1, -1, 1 };
-
-    if (!GRI_3Dto2D(a1, pos, &retPosX, &retPosY) || !GRI_ConvertTo2DReal(a1, &retPosX, &retPosY))
+    if (!GRI_3Dto2D(grid, pos, &cellX, &cellY) || !GRI_ConvertTo2DReal(grid, &cellX, &cellY))
         return 0;
-    v3 = a1->capasPtr;
-    v4 = a1->gridElemSize * a1->s3Size7LimitMaxX;
-    v10 = GRID_gi_TestWall + 0xC0;
-    if ((v3[retPosY * v4 + retPosX] & (GRID_gi_TestWall + 0xC0)) != 0)
+    return *GRI_l_Cell(grid, cellX, cellY);
+}
+
+// Moves a position to the centre of its cell, stepping to a free
+// neighbour first when the cell itself is a wall or is taken. Reports
+// failure only when every neighbour is blocked too.
+int GRI_i_ComputeDest(struct sWorldGridStruct* grid, Vec3* pos)
+{
+    int neighbours[16] = { -1, 0, -1, -1, 0, -1, 1, -1, 1, 0, 1, 1, 0, 1, -1, 1 };
+    int blocked;
+    int cellX;
+    int cellY;
+    int i;
+
+    if (!GRI_3Dto2D(grid, pos, &cellX, &cellY) || !GRI_ConvertTo2DReal(grid, &cellX, &cellY))
+        return 0;
+
+    // the original adds rather than ors, which differs only if the
+    // wall bit the script set overlaps 0xC0
+    blocked = GRID_gi_TestWall + 0xC0;
+
+    if ((*GRI_l_Cell(grid, cellX, cellY) & blocked) != 0)
     {
-        v11 = retPosX;
-        v12 = retPosY;
-        v5 = 0;
-        while (1)
+        for (i = 0; ; i += 2)
         {
-            v6 = v12 + ai_scanOrder[v5 + 1];
-            retPosX = v11 + ai_scanOrder[v5];
-            v7 = v3[v6 * v4 + retPosX];
-            retPosY = v6;
-            if ((v7 & v10) == 0)
-                break;
-            v5 += 2;
-            if (v5 >= 16)
+            if (i >= 16)
                 return 0;
-        }
-        pos->x = (float)((double)retPosX + a1->startX + 0.5);
-        pos->y = (float)((double)retPosY + a1->startY + 0.5);
-        v12 = a1->gridElemSize * a1->s5Limit1MinX;
-        pos->x = (float)((double)v12 + pos->x);
-        v12 = a1->gridElemSize * a1->s5Limit1MinY;
-        pos->y = (float)((double)v12 + pos->y);
-        result = 1;
-    }
-    else
-    {
-        pos->x = (float)((double)retPosX + a1->startX + 0.5);
-        pos->y = (float)((double)retPosY + a1->startY + 0.5);
-        v12 = a1->gridElemSize * a1->s5Limit1MinX;
-        result = 1;
-        pos->x = (float)((double)v12 + pos->x);
-        v12 = a1->gridElemSize * a1->s5Limit1MinY;
-        pos->y = (float)((double)v12 + pos->y);
-    }
-    return result;
-}
 
-int GRI_SmoothWay(struct sWorldGridStruct* a1, struct sWorldGridStruct* a2, Vec3* a3, int a4)
-{
-    int v4;
-    int v5;
-    int v6;
-    int* v7;
-    int v8; 
-    char v9;
-    BOOL v10;
-    Vec3* pos;
-    int posY;
-    int posX;
-    int retPosY;
-    int retPosX;
-    int v17;
-
-    v4 = a4 - 1;
-    v17 = a4 - 1;
-    if (v17 >= 0)
-    {
-        pos = &a3[v4];
-        while (2)
-        {
-            if (GRI_3Dto2D(a2, pos, &retPosX, &retPosY))
+            if ((*GRI_l_Cell(grid, cellX + neighbours[i], cellY + neighbours[i + 1]) & blocked) == 0)
             {
-                v5 = retPosY;
-                v6 = retPosX;
-                v7 = &ai_Scan[27];
-                do
-                {
-                    v8 = *v7;
-                    posX = v6 + *(v7 - 1);
-                    posY = v5 + v8;
-                    if (!GRI_ConvertTo2DReal(a2, &posX, &posY))
-                        return v17 + 1;
-                    v9 = a2->capasPtr[posY * a2->s3Size7LimitMaxX * a2->gridElemSize + posX];
-                    if ((v9 & GRID_gi_TestWall) != 0 && (a2 == a1 || (v9 & 0xC) == 0))
-                        return v17 + 1;
-                    if ((v9 & 0xC0) != 0 && (a2 == a1 || (v9 & 0xC) == 0))
-                        return v17 + 1;
-                    v7 += 2;
-                } while ((int)v7 <= (int)&ai_Scan[42]);
-                v10 = --v17 < 0;
-                --pos;
-                v4 = v17;
-                if (!v10)
-                    continue;
+                cellX += neighbours[i];
+                cellY += neighbours[i + 1];
+                break;
             }
-            break;
         }
     }
-    return v4 + 1;
+
+    GRI_l_CellToWorld(grid, cellX, cellY, pos);
+    return 1;
 }
 
-int GRID_3Dto2D(tWorldGridStruct* a1, Vec3* a2, int32_t* a3, int32_t* a4)
+// Walks a path back from its far end and reports how many of its points
+// are reachable: the first point, counting from the end, whose cell or
+// any of the seven cells around it is a wall or is taken, stops the
+// walk. A path through its own grid ignores the 0xC bits, which is how
+// a cell blocked by the caller itself does not block the caller.
+int GRI_SmoothWay(struct sWorldGridStruct* ownGrid, struct sWorldGridStruct* grid, Vec3* path, int num)
 {
-    int result;
+    Vec3* point;
+    char capability;
+    int cellX;
+    int cellY;
+    int neighbourX;
+    int neighbourY;
+    int at;
+    int i;
 
-    result = GRI_3Dto2D(a1, a2, a3, a4);
-    if (result)
-        result = GRI_ConvertTo2DReal(a1, a3, a4) != 0;
-    return result;
-}
+    at = num - 1;
+    point = &path[at];
 
-int GRID_ShortestPath(struct sGameObjectMain* gao, struct sWorldGridStruct* a2, struct sWorldGridStruct* a3, Vec3* a4, Vec3* a5, Vec3* a6, int a7, int a8, float a9, int a10, int a11)
-{
-    int result;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    float v16;
-    float v17;
-    float v18;
-    float v19;
-    float v20;
-    float v21;
-    int v22;
-    int v23;
-    int v24;
-    float v25;
-    float v26;
-    float v27;
-    char* v28;
-    int v29;
-    int* v30;
-    char v31;
-    int v32;
-    int v33;
-    tGridPtrElem* v34;
-    int v35;
-    float v36;
-    int v37;
-    int v38;
-    int v39;
-    int v40;
-    int v41;
-    BOOL v42;
-    int v43; 
-    tGridPtrElem* v44;
-    Mtx4x4* v45;
-    float v46;
-    int v47;
-    int v48;
-    BOOL v49;
-    int v50; 
-    int v51; 
-    int v52; 
-    int v53; 
-    int v54; 
-    float v55; 
-    float v56;
-    float v57;
-    float v58;
-    char v59;
-    int v60; 
-    char v61;
-    tGridPtrElem* v62;
-    uint8_t v63;
-    float v64;
-    float v65;
-    int v66;
-    int v67;
-    int i; 
-    int v69;
-    int j;
-    int v71;
-    int v72;
-    int v73;
-    int v74;
-    tGridPtrElem* v75;
-    int v76;
-    int v77;
-    int v78;
-    int v79;
-    Vec3* v80;
-    float v81;
-    float v82;
-    float v83;
-    int v84;
-    tGridPtrElem* v85;
-    char v86;
-    char v87;
-    int v88;
-    int v89;
-    int v90;
-    int v91;
-    int v92;
-    int a4a;
-    int a3a;
-    float v95; 
-    int v96;
-    int v97;
-    int v98;
-    int v99;
-    int v100; 
-    int v101; 
-    float v102;
-    float v103;
-    int v104; 
-    int v105; 
-    Vec3 v106; 
-    Vec3 a1a; 
-    Vec3 a2a;
-    Vec3 v109;
-    int v95a;
-    float v98a; 
-    float v99a;
-
-    v89 = 0;
-    v88 = 0;
-    v100 = 0;
-    result = GRID_3Dto2D(a2, a4, &a3a, &a4a);
-    if (!result)
-        return result;
-    OBJ_SightGet(gao, &v106);
-    v106.x = v106.x + a4->x;
-    v106.y = v106.y + a4->y;
-    v106.z = v106.z + a4->z;
-    GRID_3Dto2D(a2, &v106, &v92, &v90);
-    GRID_3Dto2D(a2, a5, &v92, &v90);
-    v12 = (float)a10;
-    if (v12 >= a9)
-        v12 = a9;
-    v13 = a5->x - a4->x;
-    v14 = a5->y;
-    v15 = a5->z;
-    v109.x = a5->x;
-    v106.x = v13;
-    v16 = a5->y;
-    v109.y = v14;
-    v17 = v16 - a4->y;
-    v109.z = v15;
-    v106.y = v17;
-    v106.z = a5->z - a4->z;
-    v18 = v106.z * v106.z;
-    v19 = v106.y * v106.y;
-    v20 = v106.x * v106.x;
-    if (sqrt(v20 + v19 + v18) > v12)
+    while (at >= 0)
     {
-        v21 = (float)sqrt(v18 + v20 + v19);
-        v106.y = 1.0f / v21 * v106.y;
-        v106.z = v106.z * (1.0f / v21);
-        v106.x = v106.x * (1.0f / v21) * v12;
-        v106.y = v106.y * v12;
-        v106.z = v106.z * v12;
-        v109.x = v106.x + a4->x;
-        v109.y = v106.y + a4->y;
-        v109.z = v106.z + a4->z;
-        GRID_3Dto2D(a2, &v109, &v92, &v90);
+        if (!GRI_3Dto2D(grid, point, &cellX, &cellY))
+            break;
+
+        // ai_Scan[26..41] is the eight-neighbour run this walk uses
+        for (i = 26; i <= 40; i += 2)
+        {
+            neighbourX = cellX + ai_Scan[i];
+            neighbourY = cellY + ai_Scan[i + 1];
+            if (!GRI_ConvertTo2DReal(grid, &neighbourX, &neighbourY))
+                return at + 1;
+
+            capability = *GRI_l_Cell(grid, neighbourX, neighbourY);
+            if ((capability & GRID_gi_TestWall) != 0 && (grid == ownGrid || (capability & 0xC) == 0))
+                return at + 1;
+            if ((capability & 0xC0) != 0 && (grid == ownGrid || (capability & 0xC) == 0))
+                return at + 1;
+        }
+
+        --at;
+        --point;
     }
-    v22 = v92;
-    v23 = v90;
-    v24 = abs(v90 - a4a) + abs(v92 - a3a);
-    if (v92 == a3a && v90 == a4a)
+    return at + 1;
+}
+
+int GRID_3Dto2D(tWorldGridStruct* grid, Vec3* pos, int32_t* cellX, int32_t* cellY)
+{
+    if (!GRI_3Dto2D(grid, pos, cellX, cellY))
+        return 0;
+    return GRI_ConvertTo2DReal(grid, cellX, cellY) != 0;
+}
+
+/* Whether the pathfinder may step onto a cell.
+
+   ownGrid is the grid the path is built in and colGrid the one the
+   walkability is read from. They are usually the same; where they are
+   not, the 0xC bits mark a cell blocked by the caller itself and are
+   ignored, so an object does not block its own path.
+
+   The first test allows the step when the collision grid's cell is
+   BOTH a wall and taken, which reads oddly but is what the original
+   has, and the same pair of conditions guards the target nudge above. */
+static BOOL GRI_l_StepAllowed(tWorldGridStruct* ownGrid, tWorldGridStruct* colGrid, int x, int y, int fromStartCells, int nearLimit)
+{
+    char colCapability;
+    char ownCapability;
+
+    colCapability = *GRI_l_Cell(colGrid, x, y);
+    if ((colCapability & GRID_gi_TestWall) != 0 && (colCapability & 0xC0) != 0)
+        return TRUE;
+
+    ownCapability = *GRI_l_Cell(ownGrid, x, y);
+    if ((ownCapability & GRID_gi_TestWall) != 0
+        && (ownGrid == colGrid || (ownCapability & 0xC) == 0))
     {
-        v101 = a2->gridElemSize * a2->s5Limit1MinX;
-        v25 = (float)v101 + (float)a3a + 0.5f;
-        a6->x = v25;
-        a6->x = v25 + a2->startX;
-        v101 = a2->gridElemSize * a2->s5Limit1MinY;
-        v26 = (float)v101 + (float)a4a + 0.5f;
-        a6->y = v26;
-        v27 = v26 + a2->startY;
-        a6->z = 0.0f;
-        a6->y = v27;
+        return FALSE;
+    }
+
+    // a cell another object has taken still gives way to one that is
+    // close enough to its goal
+    if ((ownCapability & 0xC0) != 0
+        && (ownGrid == colGrid || (ownCapability & 0xC) == 0)
+        && fromStartCells <= nearLimit)
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+/* A* over the grid, from start to target, writing the path into
+   pathOut as a walk back from the target. Returns how many points it
+   wrote, or zero when there is no path.
+
+   maxDist caps how far along the start-to-target direction the target
+   is allowed to be, in world units, and maxCells caps how far from the
+   start the search may wander, in cells. nearLimit is the cell distance
+   below which a cell another object has taken is still walkable, so an
+   object close to its goal may push through. maxPoints is pathOut's
+   capacity: a longer path has its leading points dropped, which keeps
+   the end nearest the target.
+
+   The seventh parameter is unused. */
+int GRID_ShortestPath(struct sGameObjectMain* gao, struct sWorldGridStruct* ownGrid, struct sWorldGridStruct* colGrid, Vec3* start, Vec3* target, Vec3* pathOut, int unused, int nearLimit, float maxDist, int maxCells, int maxPoints)
+{
+    Vec3 sight;
+    Vec3 capped;
+    Vec3 toTarget;
+    Vec3 fromStart;
+    tGridPtrElem* cell;
+    char capability;
+    float best;
+    float cost;
+    float reach;
+    float length;
+    int startX;
+    int startY;
+    int targetX;
+    int targetY;
+    int atX;
+    int atY;
+    int tryX;
+    int tryY;
+    int baseX;
+    int baseY;
+    int bestIdx;
+    int openNum;
+    int closedNum;
+    int found;
+    int abandoned;
+    int scan;
+    int scanned;
+    int stride;
+    int hops;
+    int written;
+    int at;
+    int i;
+
+    atX = 0;
+    atY = 0;
+    found = 0;
+    abandoned = 0;
+
+    if (!GRID_3Dto2D(ownGrid, start, &startX, &startY))
+        return 0;
+
+    /* The sight conversion's result is overwritten by the target's on
+       the next line and never read. Preserved as written. */
+    OBJ_SightGet(gao, &sight);
+    sight.x = sight.x + start->x;
+    sight.y = sight.y + start->y;
+    sight.z = sight.z + start->z;
+    GRID_3Dto2D(ownGrid, &sight, &targetX, &targetY);
+    GRID_3Dto2D(ownGrid, target, &targetX, &targetY);
+
+    // the target is pulled back to the nearer of maxCells and maxDist
+    reach = (float)maxCells;
+    if (reach >= maxDist)
+        reach = maxDist;
+
+    toTarget.x = target->x - start->x;
+    toTarget.y = target->y - start->y;
+    toTarget.z = target->z - start->z;
+    if (sqrt(toTarget.x * toTarget.x + toTarget.y * toTarget.y + toTarget.z * toTarget.z) > reach)
+    {
+        length = (float)sqrt(toTarget.z * toTarget.z
+                             + toTarget.x * toTarget.x
+                             + toTarget.y * toTarget.y);
+        toTarget.y = 1.0f / length * toTarget.y;
+        toTarget.z = toTarget.z * (1.0f / length);
+        toTarget.x = toTarget.x * (1.0f / length) * reach;
+        toTarget.y = toTarget.y * reach;
+        toTarget.z = toTarget.z * reach;
+        capped.x = toTarget.x + start->x;
+        capped.y = toTarget.y + start->y;
+        capped.z = toTarget.z + start->z;
+        GRID_3Dto2D(ownGrid, &capped, &targetX, &targetY);
+    }
+
+    tryX = targetX;
+    tryY = targetY;
+
+    if (targetX == startX && targetY == startY)
+    {
+        GRI_l_CellToWorld(ownGrid, startX, startY, pathOut);
         return 1;
     }
-    if (a2 == a3
-        && (v24 < a8 || (a3->capasPtr[v90 * a3->s3Size7LimitMaxX * a3->gridElemSize + v92] & GRID_gi_TestWall) != 0))
+
+    // a target cell that is a wall, or taken and not close enough to
+    // push through, is nudged to a free neighbour
+    if (ownGrid == colGrid
+        && (abs(targetY - startY) + abs(targetX - startX) < nearLimit
+            || (*GRI_l_Cell(colGrid, targetX, targetY) & GRID_gi_TestWall) != 0))
     {
-        v28 = a3->capasPtr;
-        v29 = a3->s3Size7LimitMaxX * a3->gridElemSize;
-        v86 = v28[v90 * v29 + v92];
-        v97 = (int)v28;
-        if (((v86 & 0xC0) != 0 && v24 < a8 || (v86 & GRID_gi_TestWall) != 0)
-            && ((v86 & GRID_gi_TestWall) == 0 || (v86 & 0xC0) == 0))
+        capability = *GRI_l_Cell(colGrid, targetX, targetY);
+        if (((capability & 0xC0) != 0
+                 && abs(targetY - startY) + abs(targetX - startX) < nearLimit
+             || (capability & GRID_gi_TestWall) != 0)
+            && ((capability & GRID_gi_TestWall) == 0 || (capability & 0xC0) == 0))
         {
-            v98 = v92;
-            v99 = v90;
-            v30 = &ai_Scan[1];
-            while (1)
+            // every candidate is an offset from the cell the target
+            // landed in, not from the one tried last
+            baseX = targetX;
+            baseY = targetY;
+            for (scan = 0; scan < 16; scan += 2)
             {
-                v22 = v98 + *(v30 - 1);
-                v23 = v99 + *v30;
-                v87 = v28[v23 * v29 + v22];
-                v92 = v22;
-                v90 = v23;
-                if ((GRID_gi_TestWall & v87) == 0 && (v87 & 0xC0) == 0)
+                tryX = baseX + ai_Scan[scan];
+                tryY = baseY + ai_Scan[scan + 1];
+                capability = *GRI_l_Cell(colGrid, tryX, tryY);
+                targetX = tryX;
+                targetY = tryY;
+                if ((GRID_gi_TestWall & capability) == 0 && (capability & 0xC0) == 0)
                     break;
-                v30 += 2;
-                if ((int)v30 >= (int)&ai_Scan[17])
-                    break;
-                v28 = (char*)v97;
             }
-            v28 = (char*)v97;
         }
-        v31 = v28[v23 * v29 + v22];
-        if (v31
-            && ((GRID_gi_TestWall & v31) == 0 || (v31 & 0xC0) == 0)
-            && ((GRID_gi_TestWall & v31) != 0 || (v31 & 0xC0) != 0))
+
+        capability = *GRI_l_Cell(colGrid, tryX, tryY);
+        if (capability
+            && ((GRID_gi_TestWall & capability) == 0 || (capability & 0xC0) == 0)
+            && ((GRID_gi_TestWall & capability) != 0 || (capability & 0xC0) != 0))
         {
             return 0;
         }
     }
-    v32 = a4a;
-    v33 = a3a;
-    a2->ptrs[a3a + a4a * a2->s3Size7LimitMaxX * a2->gridElemSize].flags = 2;
-    a2->ptrs[v33 + v32 * a2->s3Size7LimitMaxX * a2->gridElemSize].fEval = 0.0;
-    a2->ptrs[v33 + v32 * a2->s3Size7LimitMaxX * a2->gridElemSize].wayX = -1;
-    a2->ptrs[v33 + v32 * a2->s3Size7LimitMaxX * a2->gridElemSize].wayY = -1;
-    v34 = &a2->ptrs[v33 + v32 * a2->s3Size7LimitMaxX * a2->gridElemSize];
-    v97 = 0;
-    v35 = 1;
-    GRID_gast_Best[0].ptrElems = v34;
-    GRID_gast_Best[0].gridShorts.i1 = v33;
-    GRID_gast_Best[0].gridShorts.i2 = v32;
-    do
+
+    stride = GRI_l_Stride(ownGrid);
+    cell = &ownGrid->ptrs[startX + startY * stride];
+    cell->flags = 2;
+    cell->fEval = 0.0;
+    cell->wayX = -1;
+    cell->wayY = -1;
+
+    closedNum = 0;
+    openNum = 1;
+    GRID_gast_Best[0].ptrElems = cell;
+    GRID_gast_Best[0].gridShorts.i1 = startX;
+    GRID_gast_Best[0].gridShorts.i2 = startY;
+
+    while (openNum && !found && !abandoned)
     {
-        if (v100)
-            break;
-        v36 = FLT_MAX;
-        v37 = v89;
-        v38 = v88;
-        v39 = -1;
-        v40 = 0;
-        if (v35 >= 4)
+        // the cheapest open cell. The original unrolls this four at a
+        // time with a remainder loop; it is one loop here.
+        best = FLT_MAX;
+        bestIdx = -1;
+        for (i = 0; i < openNum; ++i)
         {
-            v95a = 3;
-            do
+            if (best > GRID_gast_Best[i].ptrElems->fEval)
             {
-                if (v36 > GRID_gast_Best[v40].ptrElems->fEval)
-                {
-                    v36 = GRID_gast_Best[v40].ptrElems->fEval;
-                    v37 = GRID_gast_Best[v40].gridShorts.i1;
-                    v38 = GRID_gast_Best[v40].gridShorts.i2;
-                    v39 = v40;
-                }
-                if (v36 > GRID_gast_Best[v40 + 1].ptrElems->fEval)
-                {
-                    v36 = GRID_gast_Best[v40 + 1].ptrElems->fEval;
-                    v37 = GRID_gast_Best[v40 + 1].gridShorts.i1;
-                    v38 = GRID_gast_Best[v40 + 1].gridShorts.i2;
-                    v39 = v95a - 2;
-                }
-                if (v36 > GRID_gast_Best[v40 + 2].ptrElems->fEval)
-                {
-                    v36 = GRID_gast_Best[v40 + 2].ptrElems->fEval;
-                    v37 = GRID_gast_Best[v40 + 2].gridShorts.i1;
-                    v38 = GRID_gast_Best[v40 + 2].gridShorts.i2;
-                    v39 = v95a - 1;
-                }
-                if (v36 > GRID_gast_Best[v40 + 3].ptrElems->fEval)
-                {
-                    v36 = GRID_gast_Best[v40 + 3].ptrElems->fEval;
-                    v37 = GRID_gast_Best[v40 + 3].gridShorts.i1;
-                    v38 = GRID_gast_Best[v40 + 3].gridShorts.i2;
-                    v39 = v95a;
-                }
-                v40 += 4;
-                v95a += 4;
-            } while (v95a < v35);
-            v88 = v38;
-            v89 = v37;
-        }
-        if (v40 < v35)
-        {
-            do
-            {
-                if (v36 > GRID_gast_Best[v40].ptrElems->fEval)
-                {
-                    v36 = GRID_gast_Best[v40].ptrElems->fEval;
-                    v37 = GRID_gast_Best[v40].gridShorts.i1;
-                    v38 = GRID_gast_Best[v40].gridShorts.i2;
-                    v39 = v40;
-                }
-                ++v40;
-            } while (v40 < v35);
-            v88 = v38;
-            v89 = v37;
-        }
-        a2->ptrs[v37 + v38 * a2->s3Size7LimitMaxX * a2->gridElemSize].flags = 1;
-        v41 = v97;
-        v42 = v97 < 2000;
-        GRID_gast_Explored[v97].i1 = v37;
-        GRID_gast_Explored[v41].i2 = v38;
-        if (!v42)
-            break;
-        v43 = v41;
-        v44 = GRID_gast_Best[--v35].ptrElems;
-        GRID_gast_Best[v39].ptrElems = v44;
-        GRID_gast_Best[v39].gridShorts = GRID_gast_Best[v35].gridShorts;
-        v97 = v43 + 1;
-        v96 = v35;
-        if (v89 == v92 && v88 == v90)
-            v100 = 1;
-        v45 = gao->matrices;
-        v46 = v45->v2.x;
-        v106.x = v46;
-        v106.y = v45->v2.y;
-        v106.z = v45->v2.z;
-        if (v46 >= -0.5)
-        {
-            if (v106.x <= 0.5)
-            {
-                if (v106.y >= -0.5)
-                    v47 = 8;
-                else
-                    v47 = 0;
-            }
-            else
-            {
-                v47 = 4;
+                best = GRID_gast_Best[i].ptrElems->fEval;
+                atX = GRID_gast_Best[i].gridShorts.i1;
+                atY = GRID_gast_Best[i].gridShorts.i2;
+                bestIdx = i;
             }
         }
+
+        ownGrid->ptrs[atX + atY * stride].flags = 1;
+
+        /* The closed list is written before its bound is checked, and
+           the bound is 2000 where GRID_gast_Explored holds 1000. Both
+           are preserved as written. */
+        GRID_gast_Explored[closedNum].i1 = atX;
+        GRID_gast_Explored[closedNum].i2 = atY;
+        if (closedNum >= 2000)
+            break;
+
+        // the open list's last entry fills the hole
+        --openNum;
+        GRID_gast_Best[bestIdx].ptrElems = GRID_gast_Best[openNum].ptrElems;
+        GRID_gast_Best[bestIdx].gridShorts = GRID_gast_Best[openNum].gridShorts;
+        ++closedNum;
+
+        if (atX == targetX && atY == targetY)
+            found = 1;
+
+        /* The neighbour walk starts from the quadrant the object faces,
+           so the first cells tried are the ones ahead of it. */
+        if (gao->matrices->v2.x < -0.5)
+            scan = 12;
+        else if (gao->matrices->v2.x > 0.5)
+            scan = 4;
+        else if (gao->matrices->v2.y >= -0.5)
+            scan = 8;
         else
-        {
-            v47 = 12;
-        }
-        v101 = 0;
-        v91 = v47;
-        do
-        {
-            v48 = ai_Scan[v91];
-            v49 = v89 + v48 < 0;
-            v50 = v89 + v48;
-            v98 = v50;
-            if (!v49)
-            {
-                v51 = a2->gridElemSize;
-                if (v50 >= v51 * a2->s3Size7LimitMaxX)
-                    goto LABEL_92;
-                v105 = abs(v50 - a3a);
-                if (v105 <= a10)
-                {
-                    v52 = ai_Scan[v91 + 1];
-                    v49 = v88 + v52 < 0;
-                    v53 = v88 + v52;
-                    v99 = v53;
-                    if (!v49)
-                    {
-                        if (v53 >= v51 * a2->s4Size7LimitMaxY)
-                            goto LABEL_92;
-                        v104 = abs(v53 - a4a);
-                        if (v104 <= a10)
-                        {
-                            if (v91 >= 8)
-                            {
-                                v54 = a3->gridElemSize;
-                                if ((a3->capasPtr[ai_Scan[v91 + 8] + v54 * a3->s3Size7LimitMaxX * (v88 + ai_Scan[v91 + 9]) + v89] & (GRID_gi_TestWall | 0xC0)) != 0)
-                                {
-                                    v35 = v96;
-                                    goto LABEL_90;
-                                }
-                                v35 = v96;
-                                if ((a3->capasPtr[ai_Scan[v91 + 10] + v54 * a3->s3Size7LimitMaxX * (v88 + ai_Scan[v91 + 11]) + v89] & (GRID_gi_TestWall | 0xC0)) != 0)
-                                    goto LABEL_90;
-                            }
-                            v95 = (float)(int)(abs(v92 - v50) + abs(v90 - v53));
-                            if ((v50 != a3a || v53 != a4a) && (v92 != a3a || v90 != a4a))
-                            {
-                                OBJ_SightGet(gao, &a2a);
-                                v55 = (float)v98;
-                                v98a = v55;
-                                v56 = (float)v99;
-                                a1a.z = 0.0;
-                                v99a = v56;
-                                v57 = (float)a3a;
-                                v102 = v57;
-                                v103 = (float)a4a;
-                                v109.y = v103;
-                                a1a.x = v55 - v57;
-                                a1a.y = v56 - v103;
-                                MATH_NormalizeVector(&a1a, &a1a);
-                                v109.x = v102;
-                                v109.y = v103;
-                                v58 = a2a.z * a1a.z + a2a.y * a1a.y;
-                                a2a.z = 0.0;
-                                v95 = (float)fabs(1.0f - (v58 + a2a.x * a1a.x)) * 20.0f + v95;
-                                a1a.x = (float)v92;
-                                a1a.y = (float)v90;
-                                a2a.x = v98a - v102;
-                                a2a.y = v99a - v103;
-                                MATH_NormalizeVector(&a2a, &a2a);
-                                a1a.x = a1a.x - v109.x;
-                                a1a.z = 0.0;
-                                a1a.y = a1a.y - v109.y;
-                                MATH_NormalizeVector(&a1a, &a1a);
-                                v95 = (float)fabs(1.0 - (a2a.z * a1a.z + a2a.y * a1a.y + a2a.x * a1a.x)) * 30.0f + v95;
-                            }
-                            v59 = a3->capasPtr[v53 * a3->s3Size7LimitMaxX * a3->gridElemSize + v50];
-                            if ((v59 & GRID_gi_TestWall) != 0 && (v59 & 0xC0) != 0
-                                || ((v60 = a2->s3Size7LimitMaxX,
-                                    v105 += v104,
-                                    v61 = a2->capasPtr[v53 * v60 * a2->gridElemSize + v50],
-                                    (v61 & GRID_gi_TestWall) == 0)
-                                    || a2 != a3 && (v61 & 0xC) != 0)
-                                && ((v61 & 0xC0) == 0 || a2 != a3 && (v61 & 0xC) != 0 || v105 > a8))
-                            {
-                                v62 = &a2->ptrs[v50 + v53 * a2->s3Size7LimitMaxX * a2->gridElemSize];
-                                v63 = v62->flags;
-                                if (v63 != 1)
-                                {
-                                    v64 = v95;
-                                    if (v63 == 2)
-                                    {
-                                        v65 = v64 + a2->ptrs[v89 + v88 * a2->s3Size7LimitMaxX * a2->gridElemSize].fEval;
-                                        if (v65 < v62->fEval)
-                                        {
-                                            v62->fEval = v65;
-                                            a2->ptrs[v50 + v53 * a2->s3Size7LimitMaxX * a2->gridElemSize].wayX = v89;
-                                            a2->ptrs[v50 + v53 * a2->s3Size7LimitMaxX * a2->gridElemSize].wayY = v88;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        v62->flags = 2;
-                                        v66 = a2->s3Size7LimitMaxX * a2->gridElemSize;
-                                        a2->ptrs[v50 + v53 * v66].fEval = v64 + a2->ptrs[v89 + v88 * v66].fEval;
-                                        a2->ptrs[v50 + v53 * a2->s3Size7LimitMaxX * a2->gridElemSize].wayX = v89;
-                                        a2->ptrs[v50 + v53 * a2->s3Size7LimitMaxX * a2->gridElemSize].wayY = v88;
-                                        v35 = v96;
-                                        v42 = v96 < 1000;
-                                        GRID_gast_Best[v96].ptrElems = &a2->ptrs[v50 + v53 * a2->s3Size7LimitMaxX * a2->gridElemSize];
-                                        GRID_gast_Best[v35].gridShorts.i1 = v50;
-                                        GRID_gast_Best[v35].gridShorts.i2 = v53;
-                                        if (!v42)
-                                            goto LABEL_92;
-                                        v96 = ++v35;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        LABEL_90:
-            ++v101;
-            v91 = (v91 + 2) % 16;
-        } while (v101 < 8);
-    } while (v35);
-LABEL_92:
-    v67 = v97;
-    for (i = 0; i < v67; a2->ptrs[v69].flags = 0)
-    {
-        v69 = GRID_gast_Explored[i].i1 + a2->s3Size7LimitMaxX * a2->gridElemSize * GRID_gast_Explored[i].i2;
-        ++i;
-    }
-    for (j = 0; j < v35; a2->ptrs[v71].flags = 0)
-    {
-        v71 = GRID_gast_Best[j].gridShorts.i1 + a2->s3Size7LimitMaxX * a2->gridElemSize * GRID_gast_Best[j].gridShorts.i2;
-        ++j;
-    }
-    if (!v100)
-        return 0;
-    v72 = v90;
-    v96 = 0;
-    v73 = v92;
-    if (v92 != -1)
-    {
-        v74 = a2->gridElemSize * a2->s3Size7LimitMaxX;
-        v75 = a2->ptrs;
-        do
-        {
-            v76 = v73 + v74 * v72;
-            v73 = v75[v76].wayX;
-            v72 = v75[v76].wayY;
-            ++v96;
-        } while (v73 != -1);
-    }
-    v77 = v90;
-    v78 = 0;
-    v79 = v92;
-    v101 = v92;
-    v100 = v90;
-    if (v92 != -1)
-    {
-        v80 = a6;
-        do
-        {
-            if (v96 > a11)
-            {
-                --v96;
-            }
-            else
-            {
-                v105 = a2->gridElemSize * a2->s5Limit1MinX;
-                v81 = (float)v105 + (float)v101 + 0.5f;
-                v80->x = v81;
-                v80->x = v81 + a2->startX;
-                v105 = a2->gridElemSize * a2->s5Limit1MinY;
-                ++v78;
-                v82 = (float)v105 + (float)v100 + 0.5f;
-                v80->y = v82;
-                v83 = v82 + a2->startY;
-                v80->y = v83;
-                v80->z = 0.0f;
-                v80++;
-            }
-            v84 = v79 + v77 * a2->s3Size7LimitMaxX * a2->gridElemSize;
-            v85 = a2->ptrs;
-            v77 = v85[v84].wayY;
-            v79 = v85[v84].wayX;
-            v101 = v79;
-            v100 = v77;
-        } while (v79 != -1);
-    }
-    return v78;
-}
+            scan = 0;
 
-int GRI_Compress(tWorldGridStruct* a1, char* a2, int a3, int a4, char* a5, int a6)
-{
-    int v6;
-    int v7;
-    char* v8;
-    int v9;
-    char* v10;
-    int v11;
-    char* v12;
-    int v13;
-    uint8_t* v14;
-    BOOL v15;
-    int v16; 
-    uint8_t* v17;
-    uint8_t* v18;
-    int result;
-    int v20;
-    int v21;
-    int v22;
-    int v23;
-    char v24;
-    int v25;
-
-    v6 = a1->gridElemSize;
-    v7 = a4;
-    v23 = v6 + a3;
-    v22 = v6 + a4;
-    v8 = a1->capasPtr;
-    if (a2 == v8)
-    {
-        v9 = a1->s3Size7LimitMaxX;
-        v10 = &v8[a4 * v6 * v9 + a3];
-        v21 = v6 * (v9 - 1);
-    }
-    else
-    {
-        v10 = &a1->notUsedSecondaryCapasPtr[a4 * v6 * a1->gridCountX + a3];
-        v21 = v6 * (a1->gridCountX - 1);
-    }
-    v11 = a6 & *v10;
-    v12 = v10 + 1;
-    v13 = 1;
-    v20 = 0;
-    v25 = a3 + 1;
-    v14 = a5 + 4;
-    v24 = 0;
-    while (1)
-    {
-        v15 = v7 == v22;
-        v16 = v25;
-        if (v15)
-            break;
-        while (v16 != v23)
+        for (scanned = 0; scanned < 8 && !abandoned; ++scanned, scan = (scan + 2) % 16)
         {
-            if ((a6 & *v12) != v11)
+            /* Note the asymmetry: a neighbour below the window is
+               skipped, but one past its far edge abandons the whole
+               search. Preserved as written. */
+            tryX = atX + ai_Scan[scan];
+            if (tryX < 0)
+                continue;
+            if (tryX >= ownGrid->gridElemSize * ownGrid->s3Size7LimitMaxX)
             {
-                ++v20;
-                goto LABEL_7;
-            }
-            ++v13;
-        LABEL_20:
-            ++v12;
-            ++v16;
-        }
-        v25 = a3;
-        v7 = ++a4;
-        v12 += v21;
-    }
-    v24 = 1;
-LABEL_7:
-    if (v13 == 1)
-    {
-        if ((v11 & 0xC0) != 0)
-        {
-            *v14 = 0x80;
-            v17 = v14 + 1;
-            *v17 = 1;
-            v14 = v17 + 1;
-        }
-    }
-    else if (v13 > 63 || (v11 & 0xFFFFFFC0) != 0)
-    {
-        if (v13 > 255)
-        {
-            if (v13 > 0xFFFF)
-                goto LABEL_18;
-            *v14 = 64;
-            *(int16_t*)(v14 + 1) = v13;
-            v14 += 3;
-        }
-        else
-        {
-            *v14 = 0x80;
-            v18 = v14 + 1;
-            *v18 = v13;
-            v14 = v18 + 1;
-        }
-    }
-    else
-    {
-        *v14++ = v13 | 0xC0;
-    }
-    *v14++ = v11;
-LABEL_18:
-    if (!v24)
-    {
-        v11 = a6 & *v12;
-        v13 = 1;
-        goto LABEL_20;
-    }
-    result = (char*)v14 - a5;
-    *(int32_t*)a5 = result;
-    if (!v11 && !v20)
-        result = 0;
-    return result;
-}
-
-void GRI_CompressReal(tWorldGridStruct* a1, int a2, int a3)
-{
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    int v8;
-    unsigned int v9;
-    int id;
-    char** v11;
-    int* v12;
-    char* v13;
-    int v14;
-
-    v13 = (char*)MEM_p_Alloc(a1->gridElemSize * a1->gridElemSize + 4);
-    v4 = 0;
-    v14 = 0;
-    if (a1->s3Size7LimitMaxX > 0)
-    {
-        while (1)
-        {
-            if (v4 + a1->s5Limit1MinX < a1->gridCountX)
-            {
-                v5 = a1->s4Size7LimitMaxY;
-                v6 = 0;
-                if (v5 > 0)
-                    break;
-            }
-        LABEL_20:
-            v14 = ++v4;
-            if (v4 >= a1->s3Size7LimitMaxX)
-                goto LABEL_21;
-        }
-        while (1)
-        {
-            v7 = v6 + a1->s5Limit1MinY;
-            if (v7 >= a1->gridCountY)
-                goto LABEL_20;
-            v8 = a1->s5Limit1MinX + v4;
-            if (v8 < a2 || v7 < a3 || v8 >= a2 + a1->s3Size7LimitMaxX || v7 >= a3 + v5)
-                v9 = 0;
-            else
-                v9 = GRI_Compress(a1, a1->capasPtr, v14 * a1->gridElemSize, v6 * a1->gridElemSize, v13, 255);
-            id = a1->gridCountX * (v6 + a1->s5Limit1MinY) + v14 + a1->s5Limit1MinX;
-            if (!v9)
-            {
-                if (a1->ptr[id])
-                {
-                    MEM_Free(a1->ptr[id]);
-                    a1->ptr[id] = 0;
-                }
-                goto LABEL_19;
-            }
-            v11 = a1->ptr;
-            v12 = (int *)v11[id];
-            if (!v12)
-                goto LABEL_15;
-            if (v9 != *v12)
+                abandoned = 1;
                 break;
-        LABEL_16:
-            memcpy(a1->ptr[id], v13, v9);
-        LABEL_19:
-            v5 = a1->s4Size7LimitMaxY;
-            v4 = v14;
-            if (++v6 >= v5)
-                goto LABEL_20;
-        }
-        MEM_Free(v11[id]);
-    LABEL_15:
-        a1->ptr[id] = (char*)MEM_p_Alloc(v9);
-        goto LABEL_16;
-    }
-LABEL_21:
-    MEM_Free(v13);
-}
+            }
+            if (abs(tryX - startX) > maxCells)
+                continue;
 
-void GRI_UnCompress(tWorldGridStruct* a1, char* a2, int a3, int a4)
-{
-    char* v4;
-    int v5;
-    int v6;
-    int v7;
-    int v8;
-    int v9;
-    int v10;
-    int v11;
-    int v12;
-    int v13;
-    char* v14;
-    int v15;
-    char* v16;
-    char* v17;
-    int v18;
-    int v19;
-    int v20;
-    int v21;
-    int v22;
-    int v23; // for routing fix, it was char
-    char* v24;
-    char* v25;
-    char v26;
-    int v27;
-    int a2a;
-    int a3a;
-    int a4a;
+            tryY = atY + ai_Scan[scan + 1];
+            if (tryY < 0)
+                continue;
+            if (tryY >= ownGrid->gridElemSize * ownGrid->s4Size7LimitMaxY)
+            {
+                abandoned = 1;
+                break;
+            }
+            if (abs(tryY - startY) > maxCells)
+                continue;
 
-    v4 = a1->capasPtr;
-    v26 = 0;
-    if (a2 != v4)
-    {
-        v10 = a1->gridCountX;
-        v9 = a1->gridElemSize;
-        v11 = a3 + a4 * v10;
-        v12 = a3 * v9;
-        v13 = a4 * v9;
-        v14 = &a1->notUsedSecondaryCapasPtr[a4 * v9 * v10 * v9];
-        goto LABEL_6;
-    }
-    v5 = a1->s5Limit1MinX;
-    v6 = a1->gridCountX;
-    if (v5 + a3 < v6)
-    {
-        v7 = a4 + a1->s5Limit1MinY;
-        if (v7 < a1->gridCountY)
-        {
-            v8 = v5 + v6 * v7;
-            v9 = a1->gridElemSize;
-            v10 = a1->s3Size7LimitMaxX;
-            v11 = a3 + v8;
-            v12 = a3 * v9;
-            v13 = a4 * v9;
-            v14 = &v4[a4 * v9 * v9 * v10];
-        LABEL_6:
-            v15 = v9 * (v10 - 1);
-            v16 = &v14[v12];
-            if (a1->ptr[v11])
+            /* A diagonal may not cut between two blocked orthogonals.
+               ai_Scan[scan + 8 .. scan + 11] are those two neighbours,
+               which is what the table's repeated tail is for. */
+            if (scan >= 8)
             {
-                v17 = a1->ptr[v11];
-            }
-            else
-            {
-                v18 = a1->ptrInts[v11];
-                if (v18 == -1)
-                    v17 = 0;
-                else
-                    v17 = &a1->compressedGrid[v18];
-            }
-            v19 = v12 * v9;
-            a3a = v12 * v9;
-            a4a = v13 * v9;
-            v27 = v9 + v12 * v9;
-            a2a = v13 * v9 + v9;
-            if (v17)
-                v17 += 4;
-            v20 = 0;
-            v21 = v19;
-            while (1)
-            {
-                if (a4a == a2a)
-                    return;
-                if (!v20)
+                if ((*GRI_l_Cell(colGrid, atX + ai_Scan[scan + 8], atY + ai_Scan[scan + 9])
+                     & (GRID_gi_TestWall | 0xC0)) != 0)
                 {
-                LABEL_18:
-                    if (v17)
-                    {
-                        v22 = (uint8_t)*v17;
-                        v23 = *v17 & 0xC0;
-                        if (v23)
-                        {
-                            switch (v23)
-                            {
-                            case 0xC0:
-                                v24 = v17 + 1;
-                                v20 = v22 & 0x3F;
-                                v26 = *v24;
-                                v17 = v24 + 1;
-                                break;
-                            case 0x80:
-                                v20 = (v20 & ~0xff) | v17[1];
-                                v25 = v17 + 1;
-                                v20 = (uint8_t)v20;
-                                v26 = v25[1];
-                                v17 = v25 + 2;
-                                break;
-                            case 0x40:
-                                v20 = *(uint16_t*)(v17 + 1);
-                                v26 = v17[3];
-                                v17 += 4;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            v20 = 1;
-                            v26 = *v17++;
-                        }
-                    }
-                    else
-                    {
-                        v20 = a1->gridElemSize * a1->gridElemSize;
-                        v26 = 0;
-                    }
+                    continue;
                 }
-                while (v21 != v27)
+                if ((*GRI_l_Cell(colGrid, atX + ai_Scan[scan + 10], atY + ai_Scan[scan + 11])
+                     & (GRID_gi_TestWall | 0xC0)) != 0)
                 {
-                    --v20;
-                    ++v21;
-                    *v16++ = v26;
-                    if (!v20)
-                        goto LABEL_18;
+                    continue;
                 }
-                v21 = a3a;
-                v16 += v15;
-                ++a4a;
             }
+
+            // the step's cost: how far the neighbour still is from the
+            // target, plus a penalty for turning away from the sight
+            // and another for leaving the straight line to the target
+            cost = (float)(int)(abs(targetX - tryX) + abs(targetY - tryY));
+            if ((tryX != startX || tryY != startY) && (targetX != startX || targetY != startY))
+            {
+                OBJ_SightGet(gao, &sight);
+                sight.z = 0.0;
+
+                fromStart.x = (float)tryX - (float)startX;
+                fromStart.y = (float)tryY - (float)startY;
+                fromStart.z = 0.0;
+                MATH_NormalizeVector(&fromStart, &fromStart);
+                cost = (float)fabs(1.0f - MATH_DotProduct(&sight, &fromStart)) * 20.0f + cost;
+
+                toTarget.x = (float)tryX - (float)startX;
+                toTarget.y = (float)tryY - (float)startY;
+                toTarget.z = 0.0;
+                MATH_NormalizeVector(&toTarget, &toTarget);
+                fromStart.x = (float)targetX - (float)startX;
+                fromStart.y = (float)targetY - (float)startY;
+                fromStart.z = 0.0;
+                MATH_NormalizeVector(&fromStart, &fromStart);
+                cost = (float)fabs(1.0 - MATH_DotProduct(&toTarget, &fromStart)) * 30.0f + cost;
+            }
+
+            if (!GRI_l_StepAllowed(ownGrid, colGrid, tryX, tryY,
+                                   abs(tryX - startX) + abs(tryY - startY), nearLimit))
+            {
+                continue;
+            }
+
+            cell = &ownGrid->ptrs[tryX + tryY * stride];
+            if (cell->flags == 1)
+                continue;
+
+            if (cell->flags == 2)
+            {
+                // already open, so keep the cheaper way in
+                if (cost + ownGrid->ptrs[atX + atY * stride].fEval < cell->fEval)
+                {
+                    cell->fEval = cost + ownGrid->ptrs[atX + atY * stride].fEval;
+                    cell->wayX = atX;
+                    cell->wayY = atY;
+                }
+                continue;
+            }
+
+            cell->flags = 2;
+            cell->fEval = cost + ownGrid->ptrs[atX + atY * stride].fEval;
+            cell->wayX = atX;
+            cell->wayY = atY;
+
+            /* The open list is written before its bound is checked too,
+               so entry 1000 of a 1000-entry array is written on the
+               step that stops the search. Preserved as written. */
+            GRID_gast_Best[openNum].ptrElems = cell;
+            GRID_gast_Best[openNum].gridShorts.i1 = tryX;
+            GRID_gast_Best[openNum].gridShorts.i2 = tryY;
+            if (openNum >= 1000)
+            {
+                abandoned = 1;
+                break;
+            }
+            ++openNum;
         }
     }
-}
 
-void GRI_UnCompressReal(tWorldGridStruct* a1)
-{
-    int v1;
-    int v2;
-    int i;
-
-    v1 = 0;
-    if (a1->s3Size7LimitMaxX > 0)
+    for (i = 0; i < closedNum; ++i)
     {
-        v2 = a1->s4Size7LimitMaxY;
-        do
-        {
-            for (i = 0; i < v2; ++i)
-            {
-                GRI_UnCompress(a1, a1->capasPtr, v1, i);
-                v2 = a1->s4Size7LimitMaxY;
-            }
-            ++v1;
-        } while (v1 < a1->s3Size7LimitMaxX);
+        ownGrid->ptrs[GRID_gast_Explored[i].i1
+                      + stride * GRID_gast_Explored[i].i2].flags = 0;
     }
-}
-
-void GRID_SetRealCenter(tWorldGridStruct* a1, int a2, int a3)
-{
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    int v8;
-    int v9;
-    int v10;
-    int a1a;
-
-    v4 = a1->iInSetCenter1;
-    v5 = a1->iInSetCenter2;
-    if (v5 - v4 + 1 > 7)
+    for (i = 0; i < openNum; ++i)
     {
-        v7 = (uint32_t)((double)a1->s3Size7LimitMaxX * 0.5 + 0.5);
-        v6 = a2 / a1->gridElemSize - v7;
-        if (v6 >= v4)
+        ownGrid->ptrs[GRID_gast_Best[i].gridShorts.i1
+                      + stride * GRID_gast_Best[i].gridShorts.i2].flags = 0;
+    }
+
+    if (!found)
+        return 0;
+
+    // how long the way back from the target is
+    hops = 0;
+    atX = targetX;
+    atY = targetY;
+    while (atX != -1)
+    {
+        at = atX + stride * atY;
+        atX = ownGrid->ptrs[at].wayX;
+        atY = ownGrid->ptrs[at].wayY;
+        ++hops;
+    }
+
+    // then it again, writing the cells out and dropping the leading
+    // ones where the path is longer than pathOut can hold
+    written = 0;
+    atX = targetX;
+    atY = targetY;
+    while (atX != -1)
+    {
+        if (hops > maxPoints)
         {
-            if (a2 / a1->gridElemSize >= v5)
-                v6 = v5 - v7;
+            --hops;
         }
         else
         {
-            v6 = a1->iInSetCenter1;
+            GRI_l_CellToWorld(ownGrid, atX, atY, &pathOut[written]);
+            ++written;
+        }
+        at = atX + atY * stride;
+        atX = ownGrid->ptrs[at].wayX;
+        atY = ownGrid->ptrs[at].wayY;
+    }
+    return written;
+}
+
+/* Run-length encodes one tile of the capability grid into dest, as a
+   length-prefixed stream of (count, value) runs. Returns the byte
+   length written, or zero when the tile is a single run of value zero
+   -- which is how an empty tile is dropped rather than stored.
+
+   mask is applied to every cell before comparing, so a caller can
+   encode a subset of the capability bits. */
+static uint8_t* GRI_l_EmitRun(uint8_t* at, int count, int value)
+{
+    if (count == 1)
+    {
+        /* A single cell carrying one of the 0xC0 bits gets a count-of-
+           one tag. One without gets NO tag, just its value byte, which
+           is the decoder's plain-byte form. */
+        if ((value & 0xC0) != 0)
+        {
+            *at++ = 0x80;
+            *at++ = 1;
+        }
+    }
+    else if (count > 63 || (value & 0xFFFFFFC0) != 0)
+    {
+        if (count > 0xFFFF)
+        {
+            // unreachable, and it would drop the run: a tile is at most
+            // gridElemSize squared and gridElemSize is a char
+            return at;
+        }
+        if (count > 255)
+        {
+            *at++ = 64;
+            *(int16_t*)at = count;
+            at += 2;
+        }
+        else
+        {
+            *at++ = 0x80;
+            *at++ = count;
         }
     }
     else
     {
-        v6 = a1->iInSetCenter1;
+        // a short run of a value that fits in six bits packs its count
+        // into the tag
+        *at++ = count | 0xC0;
     }
-    v8 = a1->iInSetCenter4;
-    v9 = a1->iInSetCenter3;
-    if (v8 - v9 + 1 > 7)
-    {
-        v10 = (uint32_t)((double)a1->s4Size7LimitMaxY * 0.5 + 0.5);
-        v9 = a3 / a1->gridElemSize - v10;
-        if (v9 >= a1->iInSetCenter3)
-        {
-            if (a3 / a1->gridElemSize >= v8)
-                v9 = v8 - v10;
-        }
-        else
-        {
-            v9 = a1->iInSetCenter3;
-        }
-    }
-    if (v6 != a1->s5Limit1MinX || v9 != a1->s5Limit1MinY)
-    {
-        GRI_CompressReal(a1, v6, v9);
-        a1->s5Limit1MinX = v6;
-        a1->s5Limit1MinY = v9;
-        GRI_UnCompressReal(a1);
-        a1a = a1->gridElemSize * a1->s5Limit1MinY;
-        a1->centerX = (float)((double)(a1->gridElemSize * a1->s5Limit1MinX) + a1->startX);
-        a1->centerY = (float)((double)a1a + a1->startY);
-    }
+    *at++ = value;
+    return at;
 }
 
-void GRI_Reinit(struct sWorldGridStruct* a1)
+int GRI_Compress(tWorldGridStruct* grid, char* capas, int tileX, int tileY, char* dest, int mask)
 {
-    int v1;
-    int v2;
-    int v3;
-    int* v4;
-    int16_t v5;
-    int16_t v6;
-    int16_t v7;
-    int v8;
-    int v9;
-    unsigned int v10;
-    int i;
-    char** v12;
-    int16_t v13;
+    uint8_t* at;
+    char* cell;
+    int runValue;
+    int endX;
+    int endY;
+    int rowGap;
+    int runLength;
+    int runs;
+    int length;
+    int x;
+    int y;
 
-    if (!a1->ptrs)
+    endX = grid->gridElemSize + tileX;
+    endY = grid->gridElemSize + tileY;
+
+    if (capas == grid->capasPtr)
     {
-        v1 = a1->gridCountX;
-        v2 = 0;
-        a1->iInSetCenter3 = 1000;
-        a1->iInSetCenter1 = 1000;
-        a1->iInSetCenter4 = -1;
-        a1->iInSetCenter2 = -1;
-        if (v1 > 0)
+        cell = &capas[tileY * grid->gridElemSize * grid->s3Size7LimitMaxX + tileX];
+        rowGap = grid->gridElemSize * (grid->s3Size7LimitMaxX - 1);
+    }
+    else
+    {
+        cell = &grid->notUsedSecondaryCapasPtr[tileY * grid->gridElemSize * grid->gridCountX + tileX];
+        rowGap = grid->gridElemSize * (grid->gridCountX - 1);
+    }
+
+    // the first cell opens the first run; the length word goes in front
+    runValue = mask & *cell;
+    ++cell;
+    runLength = 1;
+    runs = 0;
+    at = (uint8_t*)dest + 4;
+
+    y = tileY;
+    x = tileX + 1;
+    while (y != endY)
+    {
+        if (x == endX)
         {
-            do
-            {
-                v3 = 0;
-                if (a1->gridCountY > 0)
-                {
-                    v4 = &a1->ptrInts[v2];
-                    do
-                    {
-                        if (*v4 != -1)
-                        {
-                            if (v2 < a1->iInSetCenter1)
-                                a1->iInSetCenter1 = v2;
-                            if (v3 < a1->iInSetCenter3)
-                                a1->iInSetCenter3 = v3;
-                            if (v2 > a1->iInSetCenter2)
-                                a1->iInSetCenter2 = v2;
-                            if (v3 > a1->iInSetCenter4)
-                                a1->iInSetCenter4 = v3;
-                        }
-                        ++v3;
-                        v4 += v1;
-                    } while (v3 < a1->gridCountY);
-                }
-                ++v2;
-            } while (v2 < a1->gridCountX);
+            x = tileX;
+            ++y;
+            cell += rowGap;
+            continue;
         }
-        if (a1->iInSetCenter2 == -1 || a1->iInSetCenter4 == -1)
+
+        if ((mask & *cell) == runValue)
         {
-            a1->s3Size7LimitMaxX = 0;
-            a1->s4Size7LimitMaxY = 0;
+            ++runLength;
         }
         else
         {
-            v5 = (int16_t)(a1->iInSetCenter4 & 0xffff) - (int16_t)(a1->iInSetCenter3 & 0xffff);
-            v6 = (int16_t)(a1->iInSetCenter2 & 0xffff) - ((int16_t)(a1->iInSetCenter1 & 0xffff)) + 1;
-            a1->s3Size7LimitMaxX = v6;
-            v7 = v5 + 1;
-            a1->s4Size7LimitMaxY = v7;
-            if (v6 > 7)
-            {
-                a1->s3Size7LimitMaxX = 7;
-                a1->iInSetCenter1 = 0;
-                a1->iInSetCenter2 = v1;
-            }
-            if (v7 > 7)
-            {
-                v8 = a1->gridCountY;
-                a1->s4Size7LimitMaxY = 7;
-                a1->iInSetCenter3 = 0;
-                a1->iInSetCenter4 = v8;
-            }
+            at = GRI_l_EmitRun(at, runLength, runValue);
+            ++runs;
+            runValue = mask & *cell;
+            runLength = 1;
         }
-        v9 = a1->gridElemSize * a1->gridElemSize * a1->s3Size7LimitMaxX * a1->s4Size7LimitMaxY;
-        v10 = 12 * v9;
-        if (12 * v9)
-            a1->ptrs = (tGridPtrElem*)MEM_p_Alloc(12 * v9);
-        LOA_ul_FileTypeSize_39 += v10;
-        memset(a1->ptrs, 0, v10);
+        ++cell;
+        ++x;
     }
-    for (i = 0; i < a1->gridCountX * a1->gridCountY; ++i)
-    {
-        v12 = a1->ptr;
-        if (v12[i])
-        {
-            MEM_Free(v12[i]);
-            a1->ptr[i] = 0;
-        }
-    }
-    v13 = a1->iInSetCenter3;
-    a1->s5Limit1MinX = a1->iInSetCenter1;
-    a1->s5Limit1MinY = v13;
-    GRI_UnCompressReal(a1);
+    at = GRI_l_EmitRun(at, runLength, runValue);
+
+    length = (char*)at - dest;
+    *(int32_t*)dest = length;
+
+    // a tile that is one run of nothing is not worth storing
+    if (!runValue && !runs)
+        return 0;
+    return length;
 }
 
+// Encodes every tile of the live window that the new window at
+// (windowX, windowY) will not cover, so the cells about to be dropped
+// are kept.
+void GRI_CompressReal(tWorldGridStruct* grid, int windowX, int windowY)
+{
+    char* tile;
+    int* stored;
+    unsigned int length;
+    int id;
+    int tileX;
+    int tileY;
+    int gridX;
+    int gridY;
+
+    tile = (char*)MEM_p_Alloc(grid->gridElemSize * grid->gridElemSize + 4);
+
+    for (tileX = 0; tileX < grid->s3Size7LimitMaxX; ++tileX)
+    {
+        if (tileX + grid->s5Limit1MinX >= grid->gridCountX)
+            continue;
+
+        for (tileY = 0; tileY < grid->s4Size7LimitMaxY; ++tileY)
+        {
+            gridY = tileY + grid->s5Limit1MinY;
+            if (gridY >= grid->gridCountY)
+                break;
+
+            gridX = grid->s5Limit1MinX + tileX;
+            if (gridX < windowX || gridY < windowY
+                || gridX >= windowX + grid->s3Size7LimitMaxX
+                || gridY >= windowY + grid->s4Size7LimitMaxY)
+            {
+                length = 0;
+            }
+            else
+            {
+                length = GRI_Compress(grid, grid->capasPtr,
+                                      tileX * grid->gridElemSize,
+                                      tileY * grid->gridElemSize,
+                                      tile, 255);
+            }
+
+            id = grid->gridCountX * gridY + gridX;
+            if (!length)
+            {
+                if (grid->ptr[id])
+                {
+                    MEM_Free(grid->ptr[id]);
+                    grid->ptr[id] = 0;
+                }
+                continue;
+            }
+
+            // the stored tile is reused when it is already the right
+            // size, since its first word is its length
+            stored = (int*)grid->ptr[id];
+            if (stored && length == *stored)
+            {
+                memcpy(grid->ptr[id], tile, length);
+                continue;
+            }
+            if (stored)
+                MEM_Free(grid->ptr[id]);
+            grid->ptr[id] = (char*)MEM_p_Alloc(length);
+            memcpy(grid->ptr[id], tile, length);
+        }
+    }
+    MEM_Free(tile);
+}
+
+// Decodes one tile back into the capability grid. A tile with neither a
+// live copy nor a stored one fills with zero.
+void GRI_UnCompress(tWorldGridStruct* grid, char* capas, int tileX, int tileY)
+{
+    uint8_t* at;
+    char* cell;
+    char runValue;
+    int rowGap;
+    int rowWidth;
+    int id;
+    int offset;
+    int runLength;
+    int firstX;
+    int endX;
+    int y;
+    int endY;
+    int x;
+    int tag;
+
+    if (capas == grid->capasPtr)
+    {
+        if (grid->s5Limit1MinX + tileX >= grid->gridCountX)
+            return;
+        if (tileY + grid->s5Limit1MinY >= grid->gridCountY)
+            return;
+
+        rowWidth = grid->s3Size7LimitMaxX;
+        id = tileX + grid->gridCountX * (tileY + grid->s5Limit1MinY) + grid->s5Limit1MinX;
+        cell = &capas[tileY * grid->gridElemSize * grid->gridElemSize * rowWidth];
+    }
+    else
+    {
+        rowWidth = grid->gridCountX;
+        id = tileX + tileY * rowWidth;
+        cell = &grid->notUsedSecondaryCapasPtr[tileY * grid->gridElemSize * rowWidth * grid->gridElemSize];
+    }
+
+    rowGap = grid->gridElemSize * (rowWidth - 1);
+    cell += tileX * grid->gridElemSize;
+
+    // the live copy if there is one, otherwise the stored one
+    at = (uint8_t*)grid->ptr[id];
+    if (!at)
+    {
+        offset = grid->ptrInts[id];
+        if (offset == -1)
+            at = 0;
+        else
+            at = &grid->compressedGrid[offset];
+    }
+    if (at)
+        at += 4;                                // past the length word
+
+    firstX = tileX * grid->gridElemSize * grid->gridElemSize;
+    endX = grid->gridElemSize + firstX;
+    y = tileY * grid->gridElemSize * grid->gridElemSize;
+    endY = y + grid->gridElemSize;
+
+    runLength = 0;
+    runValue = 0;
+    x = firstX;
+    while (y != endY)
+    {
+        if (!runLength)
+        {
+            if (!at)
+            {
+                // nothing stored, so the whole tile is zero
+                runLength = grid->gridElemSize * grid->gridElemSize;
+                runValue = 0;
+            }
+            else
+            {
+                tag = *at & 0xC0;
+                if (tag == 0xC0)
+                {
+                    runLength = *at & 0x3F;
+                    runValue = at[1];
+                    at += 2;
+                }
+                else if (tag == 0x80)
+                {
+                    runLength = at[1];
+                    runValue = at[2];
+                    at += 3;
+                }
+                else if (tag == 0x40)
+                {
+                    runLength = *(uint16_t*)(at + 1);
+                    runValue = at[3];
+                    at += 4;
+                }
+                else
+                {
+                    runLength = 1;
+                    runValue = *at++;
+                }
+            }
+        }
+
+        while (runLength && x != endX)
+        {
+            --runLength;
+            ++x;
+            *cell++ = runValue;
+        }
+        if (x == endX)
+        {
+            x = firstX;
+            cell += rowGap;
+            ++y;
+        }
+    }
+}
+
+void GRI_UnCompressReal(tWorldGridStruct* grid)
+{
+    int tileX;
+    int tileY;
+
+    for (tileX = 0; tileX < grid->s3Size7LimitMaxX; ++tileX)
+    {
+        for (tileY = 0; tileY < grid->s4Size7LimitMaxY; ++tileY)
+            GRI_UnCompress(grid, grid->capasPtr, tileX, tileY);
+    }
+}
+
+// Slides the live window so that it is centred on a world cell, storing
+// the tiles it leaves and decoding the ones it arrives at. A window
+// that already covers the whole grid in an axis does not move in it.
+void GRID_SetRealCenter(tWorldGridStruct* grid, int worldX, int worldY)
+{
+    int windowX;
+    int windowY;
+    int half;
+
+    windowX = grid->iInSetCenter1;
+    if (grid->iInSetCenter2 - grid->iInSetCenter1 + 1 > 7)
+    {
+        half = (uint32_t)((double)grid->s3Size7LimitMaxX * 0.5 + 0.5);
+        windowX = worldX / grid->gridElemSize - half;
+        if (windowX < grid->iInSetCenter1)
+            windowX = grid->iInSetCenter1;
+        else if (worldX / grid->gridElemSize >= grid->iInSetCenter2)
+            windowX = grid->iInSetCenter2 - half;
+    }
+
+    windowY = grid->iInSetCenter3;
+    if (grid->iInSetCenter4 - grid->iInSetCenter3 + 1 > 7)
+    {
+        half = (uint32_t)((double)grid->s4Size7LimitMaxY * 0.5 + 0.5);
+        windowY = worldY / grid->gridElemSize - half;
+        if (windowY < grid->iInSetCenter3)
+            windowY = grid->iInSetCenter3;
+        else if (worldY / grid->gridElemSize >= grid->iInSetCenter4)
+            windowY = grid->iInSetCenter4 - half;
+    }
+
+    if (windowX == grid->s5Limit1MinX && windowY == grid->s5Limit1MinY)
+        return;
+
+    GRI_CompressReal(grid, windowX, windowY);
+    grid->s5Limit1MinX = windowX;
+    grid->s5Limit1MinY = windowY;
+    GRI_UnCompressReal(grid);
+    grid->centerX = (float)((double)(grid->gridElemSize * grid->s5Limit1MinX) + grid->startX);
+    grid->centerY = (float)((double)(grid->gridElemSize * grid->s5Limit1MinY) + grid->startY);
+}
+
+/* Allocates the per-cell search state and decodes the window into the
+   capability grid, on the first call and whenever the world reloads.
+
+   The first pass finds the bounding box of the tiles the file actually
+   stores, which is what the window is limited to. A box wider than
+   seven tiles in an axis is capped at seven and its limits are opened
+   to the whole grid, so the window can slide across it. */
+void GRI_Reinit(struct sWorldGridStruct* grid)
+{
+    int* stored;
+    unsigned int size;
+    int cells;
+    int tileX;
+    int tileY;
+    int i;
+
+    if (!grid->ptrs)
+    {
+        grid->iInSetCenter1 = 1000;
+        grid->iInSetCenter3 = 1000;
+        grid->iInSetCenter2 = -1;
+        grid->iInSetCenter4 = -1;
+
+        for (tileX = 0; tileX < grid->gridCountX; ++tileX)
+        {
+            stored = &grid->ptrInts[tileX];
+            for (tileY = 0; tileY < grid->gridCountY; ++tileY)
+            {
+                if (*stored != -1)
+                {
+                    if (tileX < grid->iInSetCenter1)
+                        grid->iInSetCenter1 = tileX;
+                    if (tileY < grid->iInSetCenter3)
+                        grid->iInSetCenter3 = tileY;
+                    if (tileX > grid->iInSetCenter2)
+                        grid->iInSetCenter2 = tileX;
+                    if (tileY > grid->iInSetCenter4)
+                        grid->iInSetCenter4 = tileY;
+                }
+                stored += grid->gridCountX;
+            }
+        }
+
+        if (grid->iInSetCenter2 == -1 || grid->iInSetCenter4 == -1)
+        {
+            grid->s3Size7LimitMaxX = 0;
+            grid->s4Size7LimitMaxY = 0;
+        }
+        else
+        {
+            grid->s3Size7LimitMaxX = (int16_t)(grid->iInSetCenter2 - grid->iInSetCenter1 + 1);
+            grid->s4Size7LimitMaxY = (int16_t)(grid->iInSetCenter4 - grid->iInSetCenter3 + 1);
+
+            if (grid->s3Size7LimitMaxX > 7)
+            {
+                grid->s3Size7LimitMaxX = 7;
+                grid->iInSetCenter1 = 0;
+                grid->iInSetCenter2 = grid->gridCountX;
+            }
+            if (grid->s4Size7LimitMaxY > 7)
+            {
+                grid->s4Size7LimitMaxY = 7;
+                grid->iInSetCenter3 = 0;
+                grid->iInSetCenter4 = grid->gridCountY;
+            }
+        }
+
+        cells = grid->gridElemSize * grid->gridElemSize
+                * grid->s3Size7LimitMaxX * grid->s4Size7LimitMaxY;
+        size = sizeof(tGridPtrElem) * cells;
+        if (size)
+            grid->ptrs = (tGridPtrElem*)MEM_p_Alloc(size);
+        LOA_ul_FileTypeSize_39 += size;
+        memset(grid->ptrs, 0, size);
+    }
+
+    for (i = 0; i < grid->gridCountX * grid->gridCountY; ++i)
+    {
+        if (grid->ptr[i])
+        {
+            MEM_Free(grid->ptr[i]);
+            grid->ptr[i] = 0;
+        }
+    }
+
+    grid->s5Limit1MinX = grid->iInSetCenter1;
+    grid->s5Limit1MinY = grid->iInSetCenter3;
+    GRI_UnCompressReal(grid);
+}
+
+/* Reads the compressed grid out of the big file, record by record.
+   Each record is a length word followed by a run of tagged runs, and
+   the reader copies them through rather than decoding them, so the
+   result is what GRI_UnCompress expects.
+
+   NOTE: the 0xC0 branch below can never be taken. The tag is held in a
+   char, so `tag & 0xC0` is a positive int, and it is compared against
+   0xFFFFFFC0, which is unsigned -- the decompiler's rendering of a
+   comparison the compiled code made at byte width. The effect is that a
+   short-run tag's value byte is not read and the stream desynchronises
+   from there. GRI_UnCompress had the same artefact and carries a fix
+   with the note "for routing fix, it was char"; the one-line equivalent
+   here is `((uint8_t)tag & 0xC0) == 0xC0`. Left as written pending a
+   decision, since it changes what the loader reads. */
 char* GRID_ul_CallbackCompressedGrid(uint32_t Offset)
 {
+    char* src;
+    char* end;
+    char* recordEnd;
+    char* dest;
+    char* at;
     char* result;
-    char* v2;
-    char* v3;
-    char* v4;
-    int v5;
-    char* v6;
-    char* v7;
-    char v8;
-    char v9;
-    char* a1;
+    char tag;
+    int length;
     int size;
 
-    a1 = BIG_pc_ReadFileTmp(Offset, &size);
+    src = BIG_pc_ReadFileTmp(Offset, &size);
     if (!size)
     {
         result = (char*)MEM_p_Alloc(4u);
         *(int32_t*)result = 0;
         return result;
     }
-    v2 = (char*)MEM_p_Alloc(size);
+
+    dest = (char*)MEM_p_Alloc(size);
     LOA_ul_FileTypeSize_39 += size;
-    v3 = &a1[size];
-    v4 = v2;
-    if (a1 < &a1[size])
+    end = &src[size];
+    at = dest;
+
+    while (src < end)
     {
-        while (1)
+        length = LOA_ReadLong(&src, (uint32_t*)at, 1);
+        recordEnd = &src[length - 4];
+        at += 4;
+
+        while (src < recordEnd)
         {
-            v5 = LOA_ReadLong(&a1, (uint32_t*)v4, 1);
-            v6 = a1;
-            v7 = &a1[v5 - 4];
-            v4 += 4;
-            if (a1 < v7)
-                break;
-        LABEL_13:
-            if (v6 >= v3)
-                return v2;
-        }
-        while (1)
-        {
-            v8 = LOA_ReadChar(&a1, 0, 1);
-            *v4++ = v8;
-            if ((v8 & 0xC0) == 0xFFFFFFC0)
-                break;
-            if (v8 == (char)0x80)
+            tag = LOA_ReadChar(&src, 0, 1);
+            *at++ = tag;
+
+            if ((tag & 0xC0) == 0xFFFFFFC0)
             {
-                *v4++ = LOA_ReadChar(&a1, 0, 1);
-                v9 = LOA_ReadChar(&a1, 0, 1);
-                goto LABEL_11;
+                // see the note above: never taken
+                *at++ = LOA_ReadChar(&src, 0, 1);
             }
-            if (v8 == 64)
+            else if (tag == (char)0x80)
             {
-                LOA_ReadShort(&a1, (uint16_t*)v4, 1);
-                v4 += 2;
-                v9 = LOA_ReadChar(&a1, 0, 1);
-                goto LABEL_11;
+                *at++ = LOA_ReadChar(&src, 0, 1);
+                *at++ = LOA_ReadChar(&src, 0, 1);
             }
-        LABEL_12:
-            v6 = a1;
-            if (a1 >= v7)
-                goto LABEL_13;
+            else if (tag == 64)
+            {
+                LOA_ReadShort(&src, (uint16_t*)at, 1);
+                at += 2;
+                *at++ = LOA_ReadChar(&src, 0, 1);
+            }
         }
-        v9 = LOA_ReadChar(&a1, 0, 1);
-    LABEL_11:
-        *v4++ = v9;
-        goto LABEL_12;
     }
-    return v2;
+    return dest;
 }
 
 tWorldGridStruct* GRID_ul_CallbackWorldGrid(uint32_t Offset)
 {
-    tWorldGridStruct* v1;
-    int v2;
-    int* v3;
-    int v4;
-    char** v5;
-    int v6;
-    int* v7;
+    tWorldGridStruct* grid;
+    int* stored;
+    unsigned int size;
+    int tiles;
+    int capasSize;
+    char* src;
+    int fileSize;
     int i;
-    unsigned int v10;
-    char* a1;
-    int size;
 
     GRID_gi_Current = 0;
-    v1 = (tWorldGridStruct*)MEM_p_Alloc(sizeof(tWorldGridStruct));
+    grid = (tWorldGridStruct*)MEM_p_Alloc(sizeof(tWorldGridStruct));
     LOA_ul_FileTypeSize_39 += sizeof(tWorldGridStruct);
-    memset(v1, 0, sizeof(tWorldGridStruct));
-    a1 = BIG_pc_ReadFileTmp(Offset, &size);
-    LOA_ReadLong(&a1, 0, 2);
-    LOA_ReadLong(&a1, 0, 2);
-    v1->compressedGrid = (char*)LOA_ReadLong(&a1, 0, 1);
-    LOA_ReadLong(&a1, 0, 2);
-    LOA_ReadLong(&a1, 0, 2);
-    LOA_ReadLong(&a1, 0, 2);
-    v1->startX = LOA_ReadFloat(&a1, 0, 1);
-    v1->startY = LOA_ReadFloat(&a1, 0, 1);
-    v1->centerX = LOA_ReadFloat(&a1, 0, 1);
-    v1->centerY = LOA_ReadFloat(&a1, 0, 1);
-    v1->gridCountX = LOA_ReadShort(&a1, 0, 1);
-    v1->gridCountY = LOA_ReadShort(&a1, 0, 1);
-    LOA_ReadShort(&a1, 0, 2);
-    LOA_ReadShort(&a1, 0, 2);
-    v1->s5Limit1MinX = LOA_ReadShort(&a1, 0, 1);
-    v1->s5Limit1MinY = LOA_ReadShort(&a1, 0, 1);
-    v1->gridElemSize = LOA_ReadChar(&a1, 0, 1);
-    LOA_ReadLong(&a1, 0, 2);
-    LOA_ReadChar(&a1, 0, 2);
-    LOA_ReadChar(&a1, 0, 2);
-    LOA_ReadChar(&a1, 0, 2);
-    v2 = v1->gridCountX;
-    v1->s3Size7LimitMaxX = 7;
-    v1->s4Size7LimitMaxY = 7;
-    v10 = 4 * v1->gridCountY * v2;
-    v1->i2 = 0;
-    v3 = (int*)MEM_p_Alloc(v10);
-    v4 = v1->gridCountY * v1->gridCountX;
-    v1->ptrInts = v3;
-    LOA_ul_FileTypeSize_39 += 4 * v4;
-    v5 = (char**)MEM_p_Alloc(4 * v1->gridCountY * v1->gridCountX);
-    v6 = v1->gridCountY * v1->gridCountX;
-    v1->ptr = v5;
-    LOA_ul_FileTypeSize_39 += 4 * v6;
-    memset(v1->ptr, 0, 4 * v1->gridCountY * v1->gridCountX);
-    v7 = v1->ptrInts;
-    for (i = 0; i < v1->gridCountY * v1->gridCountX; ++v7)
-    {
-        *v7 = LOA_ReadLong(&a1, 0, 1);
-        ++i;
-    }
-    
-    LOA_MakeFileRef((int)v1->compressedGrid, &v1->compressedGrid, GRID_ul_CallbackCompressedGrid, 1);
+    memset(grid, 0, sizeof(tWorldGridStruct));
 
-    size = v1->s3Size7LimitMaxX * v1->gridElemSize;
-    size *= v1->s4Size7LimitMaxY * v1->gridElemSize;
-    v1->capasPtr = (char*)MEM_p_Alloc(size);
+    src = BIG_pc_ReadFileTmp(Offset, &fileSize);
+    LOA_ReadLong(&src, 0, 2);
+    LOA_ReadLong(&src, 0, 2);
+    grid->compressedGrid = (char*)LOA_ReadLong(&src, 0, 1);
+    LOA_ReadLong(&src, 0, 2);
+    LOA_ReadLong(&src, 0, 2);
+    LOA_ReadLong(&src, 0, 2);
+    grid->startX = LOA_ReadFloat(&src, 0, 1);
+    grid->startY = LOA_ReadFloat(&src, 0, 1);
+    grid->centerX = LOA_ReadFloat(&src, 0, 1);
+    grid->centerY = LOA_ReadFloat(&src, 0, 1);
+    grid->gridCountX = LOA_ReadShort(&src, 0, 1);
+    grid->gridCountY = LOA_ReadShort(&src, 0, 1);
+    LOA_ReadShort(&src, 0, 2);
+    LOA_ReadShort(&src, 0, 2);
+    grid->s5Limit1MinX = LOA_ReadShort(&src, 0, 1);
+    grid->s5Limit1MinY = LOA_ReadShort(&src, 0, 1);
+    grid->gridElemSize = LOA_ReadChar(&src, 0, 1);
+    LOA_ReadLong(&src, 0, 2);
+    LOA_ReadChar(&src, 0, 2);
+    LOA_ReadChar(&src, 0, 2);
+    LOA_ReadChar(&src, 0, 2);
+
+    // the window starts at the largest it can be; GRI_Reinit shrinks it
+    // to the tiles the file actually stores
+    grid->s3Size7LimitMaxX = 7;
+    grid->s4Size7LimitMaxY = 7;
+    grid->i2 = 0;
+
+    tiles = grid->gridCountY * grid->gridCountX;
+    size = 4 * tiles;
+    grid->ptrInts = (int*)MEM_p_Alloc(size);
     LOA_ul_FileTypeSize_39 += size;
-    v1->ptrs = 0;
-    return v1;
+    grid->ptr = (char**)MEM_p_Alloc(size);
+    LOA_ul_FileTypeSize_39 += size;
+    memset(grid->ptr, 0, size);
+
+    stored = grid->ptrInts;
+    for (i = 0; i < grid->gridCountY * grid->gridCountX; ++i)
+        *stored++ = LOA_ReadLong(&src, 0, 1);
+
+    LOA_MakeFileRef((int)grid->compressedGrid, &grid->compressedGrid,
+                    GRID_ul_CallbackCompressedGrid, 1);
+
+    capasSize = grid->s3Size7LimitMaxX * grid->gridElemSize;
+    capasSize *= grid->s4Size7LimitMaxY * grid->gridElemSize;
+    grid->capasPtr = (char*)MEM_p_Alloc(capasSize);
+    LOA_ul_FileTypeSize_39 += capasSize;
+    grid->ptrs = 0;
+    return grid;
 }
 
-void GRI_Destroy(tWorldGridStruct* a1)
+void GRI_Destroy(tWorldGridStruct* grid)
 {
     int i;
-    char** v2;
 
-    if (a1)
+    if (!grid)
+        return;
+
+    for (i = 0; i < grid->gridCountX * grid->gridCountY; ++i)
     {
-        for (i = 0; i < a1->gridCountX * a1->gridCountY; ++i)
-        {
-            v2 = a1->ptr;
-            if (v2[i])
-                MEM_Free(v2[i]);
-        }
-        if (a1->compressedGrid)
-        {
-            LOA_DeleteAddress((int)a1->compressedGrid);
-            MEM_Free(a1->compressedGrid);
-        }
-        if (a1->ptrInts)
-            MEM_Free(a1->ptrInts);
-        if (a1->ptr)
-            MEM_Free(a1->ptr);
-        if (a1->capasPtr)
-            MEM_Free(a1->capasPtr);
-        if (a1->ptrs)
-            MEM_Free(a1->ptrs);
-        LOA_DeleteAddress((int)a1);
-        MEM_Free(a1);
+        if (grid->ptr[i])
+            MEM_Free(grid->ptr[i]);
     }
+    if (grid->compressedGrid)
+    {
+        LOA_DeleteAddress((int)grid->compressedGrid);
+        MEM_Free(grid->compressedGrid);
+    }
+    if (grid->ptrInts)
+        MEM_Free(grid->ptrInts);
+    if (grid->ptr)
+        MEM_Free(grid->ptr);
+    if (grid->capasPtr)
+        MEM_Free(grid->capasPtr);
+    if (grid->ptrs)
+        MEM_Free(grid->ptrs);
+    LOA_DeleteAddress((int)grid);
+    MEM_Free(grid);
 }
 
-BOOL GRI_Surround(tWorldGridStruct* a1, Vec3* a2, Vec3* a3)
+// Whether the cell one step from pos, in the given direction, is a wall
+// or is taken.
+static BOOL GRI_l_Blocked(tWorldGridStruct* grid, Vec3* pos, float dx, float dy, int blocked)
 {
-    int v3;
-    int v4;
-    int v6;
-    int v7;
-    int v8;
-    float v9;
-    float v10;
-    float v11;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    float v16;
-    Vec3 v17;
+    Vec3 at;
 
-    v3 = 0;
-    v4 = GRID_gi_TestWall | 0xC0;
-    v8 = 0;
-    if (fabs(a3->x) >= fabs(a3->y))
+    at.x = (float)(pos->x + dx);
+    at.y = (float)(pos->y + dy);
+    at.z = pos->z;
+    return (GRI_i_GetCapa(grid, &at) & blocked) != 0;
+}
+
+/* Whether the object is hemmed in: blocked on both sides of its line of
+   sight. The two cells beside it are tested first, and then, where the
+   sight points along the dominant axis, the two cells diagonally that
+   way as well.
+
+   The two halves are the same test with the axes exchanged -- note that
+   side A is the cell above when the sight runs along x and the cell to
+   the left when it runs along y. The original reached the second half's
+   tail through a goto into the first's. */
+BOOL GRI_Surround(tWorldGridStruct* grid, Vec3* pos, Vec3* sight)
+{
+    int blocked;
+    int sideA;
+    int sideB;
+
+    blocked = GRID_gi_TestWall | 0xC0;
+    sideA = 0;
+    sideB = 0;
+
+    if (fabs(sight->x) >= fabs(sight->y))
     {
-        v12 = (float)(a2->y + 1.0);
-        v17.x = a2->x;
-        v17.y = v12;
-        if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-            v3 = 1;
-        v16 = (float)(a2->y - 1.0);
-        v17.x = a2->x;
-        v17.y = v16;
-        if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-            v8 = 1;
-        if (v3 && v8)
+        if (GRI_l_Blocked(grid, pos, 0.0f, 1.0f, blocked))
+            sideA = 1;
+        if (GRI_l_Blocked(grid, pos, 0.0f, -1.0f, blocked))
+            sideB = 1;
+        if (sideA && sideB)
             return 1;
-        if (a3->x > 0.0)
+
+        if (sight->x > 0.0)
         {
-            v10 = (float)(a2->x + 1.0);
-            v17.y = v12;
-            v17.x = v10;
-            if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-                ++v3;
-            if (v3 && v8)
+            if (GRI_l_Blocked(grid, pos, 1.0f, 1.0f, blocked))
+                ++sideA;
+            if (sideA && sideB)
                 return 1;
-            v17.x = v10;
-            v17.y = v16;
-            if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-                ++v8;
-            if (v3 && v8)
-                return 1;
+            if (GRI_l_Blocked(grid, pos, 1.0f, -1.0f, blocked))
+                ++sideB;
+            return sideA && sideB;
         }
-        if (a3->x < 0.0)
+        if (sight->x < 0.0)
         {
-            v14 = (float)(a2->x - 1.0);
-            v17.y = v12;
-            v17.x = v14;
-            if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-                ++v3;
-            v6 = v8;
-            if (v3 && v8)
+            if (GRI_l_Blocked(grid, pos, -1.0f, 1.0f, blocked))
+                ++sideA;
+            if (sideA && sideB)
                 return 1;
-            v17.x = v14;
-            v17.y = v16;
-            v7 = GRI_i_GetCapa(a1, &v17);
-            goto LABEL_45;
+            if (GRI_l_Blocked(grid, pos, -1.0f, -1.0f, blocked))
+                ++sideB;
+            return sideA && sideB;
         }
+        return 0;
     }
-    else
+
+    if (GRI_l_Blocked(grid, pos, -1.0f, 0.0f, blocked))
+        sideA = 1;
+    if (GRI_l_Blocked(grid, pos, 1.0f, 0.0f, blocked))
+        sideB = 1;
+    if (sideA && sideB)
+        return 1;
+
+    if (sight->y > 0.0)
     {
-        v13 = (float)(a2->x - 1.0);
-        v17.y = a2->y;
-        v17.x = v13;
-        if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-            v3 = 1;
-        v9 = (float)(a2->x + 1.0);
-        v17.y = a2->y;
-        v17.x = v9;
-        if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-            v8 = 1;
-        if (v3 && v8)
+        if (GRI_l_Blocked(grid, pos, -1.0f, 1.0f, blocked))
+            ++sideA;
+        if (sideA && sideB)
             return 1;
-        if (a3->y > 0.0)
-        {
-            v11 = (float)(a2->y + 1.0);
-            v17.x = v13;
-            v17.y = v11;
-            if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-                ++v3;
-            if (v3 && v8)
-                return 1;
-            v17.x = v9;
-            v17.y = v11;
-            if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-                ++v8;
-            if (v3 && v8)
-                return 1;
-        }
-        if (a3->y < 0.0)
-        {
-            v15 = (float)(a2->y - 1.0);
-            v17.x = v13;
-            v17.y = v15;
-            if ((GRI_i_GetCapa(a1, &v17) & v4) != 0)
-                ++v3;
-            v6 = v8;
-            if (v3 && v8)
-                return 1;
-            v17.x = v9;
-            v17.y = v15;
-            v7 = GRI_i_GetCapa(a1, &v17);
-        LABEL_45:
-            if ((v7 & v4) != 0)
-                ++v6;
-            return v3 && v6;
-        }
+        if (GRI_l_Blocked(grid, pos, 1.0f, 1.0f, blocked))
+            ++sideB;
+        return sideA && sideB;
+    }
+    if (sight->y < 0.0)
+    {
+        if (GRI_l_Blocked(grid, pos, -1.0f, -1.0f, blocked))
+            ++sideA;
+        if (sideA && sideB)
+            return 1;
+        if (GRI_l_Blocked(grid, pos, 1.0f, -1.0f, blocked))
+            ++sideB;
+        return sideA && sideB;
     }
     return 0;
 }
 
-int GRI_GetTag(tWorldGridStruct* a1, Vec3* a2, int a3, int a4, Vec3* a5)
-{
-    Vec3* v5;
-    Vec3* v6;
-    float v7;
-    int result;
-    float v9;
-    double v11;
-    float v14; 
-    double v16;
-    double v19;
-    double v20;
-    double v22;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    float v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    int a1a, a2a;
-    float fvar1;
+/* Fills cells with the positions a tag covers, and returns how many.
 
-    v5 = a2;
-    GRI_3Dto2D(a1, a2, &a2a, &a1a);
-    v6 = a5;
-    v7 = v5->z;
-    v25 = v5->x;
-    result = 1;
-    v9 = v5->y;
-    *a5 = *v5;
-    if (a3)
+   shape 0 is a four-cell block: the cell itself, the horizontal
+   neighbour the position leans towards, the vertical one it leans
+   towards, and the diagonal between them. shape 2 is the cell and all
+   eight around it, built as a spiral outwards. Any other shape is the
+   cell alone. */
+int GRI_GetTag(tWorldGridStruct* grid, Vec3* pos, int shape, int capability, Vec3* cells)
+{
+    float x;
+    float y;
+    float z;
+    float leanX;
+    float leanY;
+    float backX;
+    int cellX;
+    int cellY;
+
+    GRI_3Dto2D(grid, pos, &cellX, &cellY);
+    x = pos->x;
+    y = pos->y;
+    z = pos->z;
+    cells[0] = *pos;
+
+    if (shape == 2)
     {
-        if (a3 != 1 && a3 == 2)
-        {
-            v6[1].y = v9;
-            v6[1].z = v7;
-            v29 = (float)(v25 - 1.0);
-            v6[1].x = v29;
-            v6[2].y = v9;
-            v6[2].z = v7;
-            v30 = (float)(v29 + 2.0);
-            v6[2].x = v30;
-            v6[3].x = v30;
-            v6[3].z = v7;
-            v36 = (float)(v9 - 1.0);
-            v6[3].y = v36;
-            v6[4].y = v36;
-            v6[4].z = v7;
-            v31 = (float)(v30 - 1.0);
-            v6[4].x = v31;
-            v6[5].y = v36;
-            v6[5].z = v7;
-            v32 = (float)(v31 - 1.0);
-            v6[5].x = v32;
-            v6[6].x = v32;
-            v6[6].z = v7;
-            v37 = (float)(v36 + 2.0);
-            v6[6].y = v37;
-            v6[7].y = v37;
-            v6[7].z = v7;
-            v33 = (float)(v32 + 1.0);
-            v6[7].x = v33;
-            v6[8].y = v37;
-            v6[8].z = v7;
-            result = 9;
-            v34 = (float)(v33 + 1.0);
-            v6[8].x = v34;
-        }
+        cells[1].x = (float)(x - 1.0);
+        cells[1].y = y;
+        cells[1].z = z;
+        cells[2].x = (float)(cells[1].x + 2.0);
+        cells[2].y = y;
+        cells[2].z = z;
+        cells[3].x = cells[2].x;
+        cells[3].y = (float)(y - 1.0);
+        cells[3].z = z;
+        cells[4].x = (float)(cells[3].x - 1.0);
+        cells[4].y = cells[3].y;
+        cells[4].z = z;
+        cells[5].x = (float)(cells[4].x - 1.0);
+        cells[5].y = cells[3].y;
+        cells[5].z = z;
+        cells[6].x = cells[5].x;
+        cells[6].y = (float)(cells[3].y + 2.0);
+        cells[6].z = z;
+        cells[7].x = (float)(cells[6].x + 1.0);
+        cells[7].y = cells[6].y;
+        cells[7].z = z;
+        cells[8].x = (float)(cells[7].x + 1.0);
+        cells[8].y = cells[6].y;
+        cells[8].z = z;
+        return 9;
+    }
+
+    if (shape != 0)
+        return 1;
+
+    /* The position's offset within its cell decides which way the block
+       leans: more than half a cell past the cell's own coordinate and
+       it takes the next cell rather than the previous one. */
+    cells[1].y = y;
+    cells[1].z = z;
+    if ((float)fabs(((float)cellX + grid->startX) - pos->x) > 0.5)
+    {
+        leanX = (float)(x - 1.0);
+        backX = (float)(leanX + 1.0);
     }
     else
     {
-        v6[1].z = v7;
-        v6[1].y = v9;
-        v11 = v25;
-        fvar1 = (float)fabs(((float)a2a + a1->startX) - a2->x);
-        if (fvar1 > 0.5)
-        {
-            v28 = (float)(v11 - 1.0);
-            v14 = v28;
-            v6[1].x = v28;
-            v22 = v9;
-            fvar1 = (float)fabs(((float)a1a + a1->startY) - a2->y);
-            if (fvar1 <= 0.5)
-                v35 = (float)(v22 - 1.0);
-            else
-                v35 = (float)(v22 + 1.0);
-            v20 = (float)(v28 + 1.0);
-        }
-        else
-        {
-            v26 = (float)(v11 + 1.0);
-            v14 = v26;
-            v6[1].x = v26;
-            v16 = v9;
-            fvar1 = (float)fabs(((float)a1a + a1->startY) - a2->y);
-            if (fvar1 <= 0.5)
-                v19 = (float)(v16 - 1.0);
-            else
-                v19 = (float)(v16 + 1.0);
-            v35 = (float)v19;
-            v20 = (float)(v26 - 1.0);
-        }
-        v27 = (float)v20;
-        v6[2].x = v14;
-        v6[2].y = v35;
-        v6[2].z = v7;
-        v6[3].x = v27;
-        v6[3].y = v35;
-        v6[3].z = v7;
-        result = 4;
+        leanX = (float)(x + 1.0);
+        backX = (float)(leanX - 1.0);
     }
-    return result;
-}
+    cells[1].x = leanX;
 
-int GRI_Tag(tWorldGridStruct* a1, Vec3* a2, int a3, int a4)
-{
-    int v4;
-    int v5;
-    Vec3* v6;
-    Vec3* v7;
-    Vec3 v9[20];
-
-    v4 = GRI_GetTag(a1, a2, a3, a4, v9);
-    v5 = 0;
-    if (v4 > 0)
-    {
-        v6 = v9;
-        do
-        {
-            if (!GRI_AddCapa(a1, v6, a4))
-                break;
-            ++v5;
-            ++v6;
-        } while (v5 < v4);
-    }
-    if (v5 == v4)
-        return 1;
-    if (v5 > 0)
-    {
-        v7 = v9;
-        do
-        {
-            GRI_AddCapa(a1, v7++, -(char)a4);
-            --v5;
-        } while (v5);
-    }
-    return 0;
-}
-
-int GRI_TagBox(struct sWorldGridStruct* a1, Vec3* pos, Vec3* a3, char a4)
-{
-    float v4;
-    float v5;
-    double v6;
-    int v7;
-    double v8;
-    Vec3* v9;
-    int v10;
-    Vec3* v11;
-    Vec3* v12;
-    int result;
-    float v14;
-    float v15;
-    int retPosX;
-    float v17;
-    float v18;
-    int retPosY;
-    Vec3 a2[200];
-
-    GRI_3Dto2D(a1, pos, &retPosX, &retPosY);
-    v14 = (float)((double)retPosX + a1->startX);
-    v15 = (float)((double)retPosY + a1->startY);
-    GRI_3Dto2D(a1, a3, &retPosY, &retPosX);
-    v17 = (float)((double)retPosY + a1->startX);
-    v18 = (float)((double)retPosX + a1->startY);
-    if (v14 > (double)v17)
-    {
-        v4 = v14;
-        v14 = v17;
-        v17 = v4;
-    }
-    if (v15 > (double)v18)
-    {
-        v5 = v15;
-        v15 = v18;
-        v18 = v5;
-    }
-    v6 = v14;
-    v7 = 0;
-    if (v14 > (double)v17)
-    {
-    LABEL_11:
-        v10 = 0;
-        if (v7 > 0)
-        {
-            v11 = a2;
-            do
-            {
-                if (!GRI_AddCapa(a1, v11, a4))
-                    break;
-                ++v10;
-                ++v11;
-            } while (v10 < v7);
-        }
-        if (v10 == v7)
-        {
-            result = 1;
-        }
-        else
-        {
-            if (v10 > 0)
-            {
-                v12 = a2;
-                do
-                {
-                    GRI_AddCapa(a1, v12++, -a4);
-                    --v10;
-                } while (v10);
-            }
-            result = 0;
-        }
-    }
+    if ((float)fabs(((float)cellY + grid->startY) - pos->y) <= 0.5)
+        leanY = (float)(y - 1.0);
     else
-    {
-        while (1)
-        {
-            v8 = v15;
-            if (v15 <= (double)v18)
-                break;
-        LABEL_10:
-            v6 = v6 + 1.0;
-            if (v6 > v17)
-                goto LABEL_11;
-        }
+        leanY = (float)(y + 1.0);
 
-        v9 = &a2[v7];
-        while (1)
-        {
-            ++v7;
-            v9->x = (float)v6;
-            v9->y = (float)v8;
-            ++v9;
-            if (v7 == 200)
-                break;
-            v8 = v8 + 1.0;
-            if (v8 > v18)
-                goto LABEL_10;
-        }
-        result = 0;
-    }
-    return result;
+    cells[2].x = leanX;
+    cells[2].y = leanY;
+    cells[2].z = z;
+    cells[3].x = backX;
+    cells[3].y = leanY;
+    cells[3].z = z;
+    return 4;
 }
 
-int GRI_GetTagVec(tWorldGridStruct* a1, Vec3* pos, int a3, int a4, Vec3* a5, Vec3* a6)
+int GRI_Tag(tWorldGridStruct* grid, Vec3* pos, int shape, int capability)
 {
-    Vec3* v6;
-    float v7;
-    Vec3* v8;
-    float v9;
-    float v10;
-    double v12;
-    double v15;
-    int result;
-    double v18;
-    double v21;
-    float v22;
-    float v23;
-    float v24;
-    int retPosX, retPosY;
-    float fVar1, fVar2;
+    Vec3 cells[20];
+    int num;
 
-    v6 = pos;  
-    GRI_3Dto2D(a1, pos, &retPosX, &retPosY);
-    fVar1 = a1->startX;
-    fVar2 = a1->startY;
-    v7 = v6->y;
-    v8 = a6;
-    v9 = v6->z;
-    v10 = v6->x;
-    *a6 = *v6;
-    v24 = a5->x;
-    if (fabs(a5->y) > fabs(a5->x))
-        v24 = 0.0;
-    if (a3)
-        return 1;
-    if (v24 == 0.0)
+    num = GRI_GetTag(grid, pos, shape, capability, cells);
+    return GRI_l_TagCells(grid, cells, num, capability);
+}
+
+/* Tags every cell of the rectangle between two world positions. Returns
+   failure when a cell refuses, and also when the rectangle is larger
+   than the two hundred cells the list holds, in which case nothing is
+   tagged at all. */
+int GRI_TagBox(struct sWorldGridStruct* grid, Vec3* pos, Vec3* to, char capability)
+{
+    Vec3 cells[200];
+    float minX;
+    float minY;
+    float maxX;
+    float maxY;
+    float swap;
+    double x;
+    double y;
+    int num;
+    int cellX;
+    int cellY;
+
+    GRI_3Dto2D(grid, pos, &cellX, &cellY);
+    minX = (float)((double)cellX + grid->startX);
+    minY = (float)((double)cellY + grid->startY);
+
+    // note that the second conversion's two outputs are taken the other
+    // way round, so cellY carries the x and cellX the y
+    GRI_3Dto2D(grid, to, &cellY, &cellX);
+    maxX = (float)((double)cellY + grid->startX);
+    maxY = (float)((double)cellX + grid->startY);
+
+    if (minX > (double)maxX)
     {
-        v12 = v7;
-        fVar1 = (float)fabs(((float)retPosY + fVar2) - pos->y);
-        if (fVar1 <= 0.5f)        
-            v15 = v12 - 1.0;
-        else
-            v15 = v12 + 1.0;
-        v23 = (float)v15;
-        v8[1].x = v10;
-        v8[1].y = v23;
-        result = 2;
-        v8[1].z = v9;
+        swap = minX;
+        minX = maxX;
+        maxX = swap;
     }
+    if (minY > (double)maxY)
+    {
+        swap = minY;
+        minY = maxY;
+        maxY = swap;
+    }
+
+    num = 0;
+    for (x = minX; x <= (double)maxX; x = x + 1.0)
+    {
+        for (y = minY; y <= (double)maxY; y = y + 1.0)
+        {
+            cells[num].x = (float)x;
+            cells[num].y = (float)y;
+            ++num;
+            if (num == 200)
+                return 0;
+        }
+    }
+    return GRI_l_TagCells(grid, cells, num, capability);
+}
+
+/* Fills cells with the two positions a vector tag covers: the cell
+   itself and its neighbour along whichever axis the vector is weaker
+   in, which is the cell the object would be pushed into. A non-zero
+   shape covers the cell alone. */
+int GRI_GetTagVec(tWorldGridStruct* grid, Vec3* pos, int shape, int capability, Vec3* dir, Vec3* cells)
+{
+    float x;
+    float y;
+    float z;
+    float dirX;
+    float lean;
+    int cellX;
+    int cellY;
+
+    GRI_3Dto2D(grid, pos, &cellX, &cellY);
+    x = pos->x;
+    y = pos->y;
+    z = pos->z;
+    cells[0] = *pos;
+
+    dirX = dir->x;
+    if (fabs(dir->y) > fabs(dir->x))
+        dirX = 0.0f;
+
+    if (shape)
+        return 1;
+
+    if (dirX == 0.0f)
+    {
+        if ((float)fabs(((float)cellY + grid->startY) - pos->y) <= 0.5f)
+            lean = (float)(y - 1.0);
+        else
+            lean = (float)(y + 1.0);
+        cells[1].x = x;
+        cells[1].y = lean;
+        cells[1].z = z;
+        return 2;
+    }
+
+    if ((float)fabs(((float)cellX + grid->startX) - pos->x) <= 0.5f)
+        lean = (float)(x - 1.0);
     else
-    {
-        v18 = v10;
-        fVar1 = (float)fabs(((float)retPosX + fVar1) - pos->x);
-        if (fVar1 <= 0.5f)
-            v21 = v18 - 1.0;
-        else
-            v21 = v18 + 1.0;
-        v22 = (float)v21;
-        v8[1].x = v22;
-        v8[1].y = v7;
-        result = 2;
-        v8[1].z = v9;
-    }
-    return result;
+        lean = (float)(x + 1.0);
+    cells[1].x = lean;
+    cells[1].y = y;
+    cells[1].z = z;
+    return 2;
 }
 
-int GRI_TagVec(struct sWorldGridStruct* a1, Vec3* pos, int a3, int a4, Vec3* a5)
+int GRI_TagVec(struct sWorldGridStruct* grid, Vec3* pos, int shape, int capability, Vec3* dir)
 {
-    int v5;
-    int v6;
-    Vec3* v7;
-    Vec3* v8;
-    Vec3 a6[20];
+    Vec3 cells[20];
+    int num;
 
-    v5 = GRI_GetTagVec(a1, pos, a3, a4, a5, a6);
-    v6 = 0;
-    if (v5 > 0)
-    {
-        v7 = a6;
-        do
-        {
-            if (!GRI_AddCapa(a1, v7, a4))
-                break;
-            ++v6;
-            ++v7;
-        } while (v6 < v5);
-    }
-    if (v6 == v5)
-        return 1;
-    if (v6 > 0)
-    {
-        v8 = a6;
-        do
-        {
-            GRI_AddCapa(a1, v8++, -(char)a4);
-            --v6;
-        } while (v6);
-    }
-    return 0;
+    num = GRI_GetTagVec(grid, pos, shape, capability, dir, cells);
+    return GRI_l_TagCells(grid, cells, num, capability);
 }
-
 
 int GRI_GetTagDyn(struct sWorldGridStruct* grid, Vec3* pos, float distLimit, Vec3* gridPosRet)
 
@@ -2040,25 +1691,10 @@ int GRI_GetTagDyn(struct sWorldGridStruct* grid, Vec3* pos, float distLimit, Vec
     return 2;
 }
 
-int GRI_TagDyn(struct sWorldGridStruct* grid, Vec3* a2, float a3, Vec3* pos, char capability)
+int GRI_TagDyn(struct sWorldGridStruct* grid, Vec3* pos, float distLimit, Vec3* cells, char capability)
 {
     int num;
-    int i, j;
 
-    num = GRI_GetTagDyn(grid, a2, a3, pos);
-    
-    for (i = 0; i < num; i++)
-    {
-        if (!GRI_AddCapa(grid, &pos[i], capability))
-            break;
-    }
-
-    if (i == num)
-        return 1;
-
-    for (j = 0; j < i; j++) {
-        GRI_AddCapa(grid, &pos[j], -capability);
-    }
-    
-    return 0;
+    num = GRI_GetTagDyn(grid, pos, distLimit, cells);
+    return GRI_l_TagCells(grid, cells, num, capability);
 }
