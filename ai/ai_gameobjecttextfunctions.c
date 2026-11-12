@@ -5,1090 +5,1062 @@
 #include "../graphicsobjects/geostr.h"
 #include "../textget.h"
 
-char* AI_EvalFunc_TEXTToString_C(struct sTextGet* a1)
+// A text reference is a big-file key plus an index into that group's
+// string table.
+char* AI_EvalFunc_TEXTToString_C(struct sTextGet* textRef)
 {
-    unsigned int a1a;
-    tTextGroupStruct* v3;
+    tTextGroupStruct* group;
+    unsigned int pos;
 
-    if (!a1)
+    if (!textRef)
         return "";
-    if (a1->key == -1)
+    if (textRef->key == -1)
         return "";
-    a1a = BIG_ul_SearchKeyToPos(a1->key);
-    v3 = (tTextGroupStruct*)LOA_ul_SearchAddress(a1a);
-    if (v3 == (tTextGroupStruct*)-1)
+
+    pos = BIG_ul_SearchKeyToPos(textRef->key);
+    group = (tTextGroupStruct*)LOA_ul_SearchAddress(pos);
+    if (group == (tTextGroupStruct*)-1)
         return "";
-    if (a1->idx < v3->num)
-        return &v3->texts[v3->ids[a1->idx]];
+    if (textRef->idx < group->num)
+        return &group->texts[group->ids[textRef->idx]];
     return "";
 }
 
+// A string argument reaches a builtin either as a pointer already or as
+// a text reference to resolve. The original's convert buffer was six
+// tTextGet, which is 48 bytes and ample for the 8 a text value writes;
+// it is the directory's standard 52 now, which is what the widest type
+// the pop can write would need if a script ever passed one.
 char* get_a_string_from_globalstack_sub_4D2040()
 {
-    char* result;
-    tTextGet dest[6];
-    tVarStackElem a2;
+    char converted[52];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    if (a2.type == AI_gaw_EnumLink[38])
-        result = (char*)dest[0].key;
-    else
-        result = AI_EvalFunc_TEXTToString_C(dest);
-    return result;
+    AI_GetVarFromStack(converted, &var);
+    if (var.type == AI_gaw_EnumLink[38])
+        return (char*)((tTextGet*)converted)->key;
+    return AI_EvalFunc_TEXTToString_C((tTextGet*)converted);
 }
 
-int AI_EvalFunc_OBJ_TextRequest_C(int a1)
+// Reports how many fonts are loaded, and nothing at all for a non-zero
+// argument.
+int AI_EvalFunc_OBJ_TextRequest_C(int which)
 {
-    int result;
-
-    if (a1)
-        result = 0;
-    else
-        result = STR_sgl_NumberOfFont;
-    return result;
+    if (which)
+        return 0;
+    return STR_sgl_NumberOfFont;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextRequest(tAINode* node)
 {
-    int v1;
-    int v2;
+    int which;
 
+    // the builtin takes two arguments and uses only the second
     AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_OBJ_TextRequest_C(v1);
-    AI_PutIntToStack(v2);
+    which = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_OBJ_TextRequest_C(which));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextGlobalSet(tAINode* node)
 {
-    int v1;
-    char* v3;
+    char* str;
+    int globalIdx;
 
-    v3 = (char*)get_a_string_from_globalstack_sub_4D2040();
-    v1 = AI_GetIntFromStack();
-    STR_GlobalSet(v1, v3);
+    str = get_a_string_from_globalstack_sub_4D2040();
+    globalIdx = AI_GetIntFromStack();
+    STR_GlobalSet(globalIdx, str);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextGlobalCharSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    char a3;
+    int globalIdx;
+    int charIdx;
+    char character;
 
-    a3 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_GlobalSetChar(v1, v3, a3);
+    character = AI_GetIntFromStack();
+    charIdx = AI_GetIntFromStack();
+    globalIdx = AI_GetIntFromStack();
+    STR_GlobalSetChar(globalIdx, charIdx, character);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextGlobalGet(tAINode* node)
 {
-    int v1;
-    tStrGlobalStruct* v3[5];
+    tStrGlobalStruct* reference[5];
+    int globalIdx;
 
-    v1 = AI_GetIntFromStack();
-    v3[0] = STR_sz_GlobalGet(v1);
-    AI_PutObjectToStack(v3, AI_gaw_EnumLink[38]);
+    globalIdx = AI_GetIntFromStack();
+    reference[0] = STR_sz_GlobalGet(globalIdx);
+    AI_PutObjectToStack(reference, AI_gaw_EnumLink[38]);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextReset(tAINode* node)
 {
-    tGameObjectMain* v2;
+    tGameObjectMain* gaoUltra;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    STR_Reset(v2);
+    STR_Reset(gaoUltra);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextSet(tAINode* node)
 {
-    int v1;
-    char* v3;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    char* str;
+    int strIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = get_a_string_from_globalstack_sub_4D2040();
-    v1 = AI_GetIntFromStack();
-    STR_SetString(v4, v1, v3);
+    str = get_a_string_from_globalstack_sub_4D2040();
+    strIdx = AI_GetIntFromStack();
+    STR_SetString(gaoUltra, strIdx, str);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextSetExt(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    char* EndPtr;
-    Vec3* a5;
+    tGameObjectMain* gaoUltra;
+    char* str;
+    Vec3* pos;
+    int strIdx;
+    int firstChar;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a5 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    EndPtr = get_a_string_from_globalstack_sub_4D2040();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetStringExt(v4, v1, v3, EndPtr, a5);
+
+    // the position is read where the stack keeps it rather than copied out
+    pos = (Vec3*)AI_PopStackSlot();
+    str = get_a_string_from_globalstack_sub_4D2040();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetStringExt(gaoUltra, strIdx, firstChar, str, pos);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextInsert(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    char* EndPtr;
+    tGameObjectMain* gaoUltra;
+    char* str;
+    int strIdx;
+    int firstChar;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    EndPtr = get_a_string_from_globalstack_sub_4D2040();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_InsertString(v4, v1, v3, EndPtr);
+    str = get_a_string_from_globalstack_sub_4D2040();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_InsertString(gaoUltra, strIdx, firstChar, str);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextFloatSet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    float a3;
-    char a4;
+    tGameObjectMain* gaoUltra;
+    float value;
+    char precision;
+    int strIdx;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetFloatFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetFloat(v3, v1, a3, a4);
+    precision = AI_GetIntFromStack();
+    value = AI_GetFloatFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetFloat(gaoUltra, strIdx, value, precision);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextFloatInsert(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    float a4;
+    tGameObjectMain* gaoUltra;
+    float value;
     char precision;
+    int strIdx;
+    int firstChar;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     precision = AI_GetIntFromStack();
-    a4 = AI_GetFloatFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_InsertFloat(v4, v1, v3, a4, precision);
+    value = AI_GetFloatFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_InsertFloat(gaoUltra, strIdx, firstChar, value, precision);
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextPivotSet_C(struct sGameObjectMain* gao, int idx, Vec3* a3)
+void AI_EvalFunc_OBJ_TextPivotSet_C(struct sGameObjectMain* gao, int strIdx, Vec3* pivot)
 {
-    tGEOSTRStruct* v3;
+    tGEOSTRStruct* str;
 
-    v3 = STR_pst_Get(gao);
-    if (v3)
-        STR_SetPivot(v3, idx, a3);
+    str = STR_pst_Get(gao);
+    if (str)
+        STR_SetPivot(str, strIdx, pivot);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextPivotSet(tAINode* node)
 {
-    int v1;
-    Vec3* v3;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    Vec3* pivot;
+    int strIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextPivotSet_C(v4, v1, v3);
+
+    // the pivot is read where the stack keeps it rather than copied out
+    pivot = (Vec3*)AI_PopStackSlot();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextPivotSet_C(gaoUltra, strIdx, pivot);
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextPivotGet_C(struct sGameObjectMain* gao, int idx, Vec3* a3)
+void AI_EvalFunc_OBJ_TextPivotGet_C(struct sGameObjectMain* gao, int strIdx, Vec3* pivot)
 {
-    tGEOSTRStruct* v3;
+    tGEOSTRStruct* str;
 
-    v3 = STR_pst_Get(gao);
-    if (v3)
+    str = STR_pst_Get(gao);
+    if (str)
     {
-        *a3 = *STR_pst_GetPivot(v3, idx);
+        *pivot = *STR_pst_GetPivot(str, strIdx);
     }
     else
     {
-        a3->x = 0.0;
-        a3->y = 0.0;
-        a3->z = 0.0;
+        pivot->x = 0.0;
+        pivot->y = 0.0;
+        pivot->z = 0.0;
     }
 }
 
 tAINode* AI_EvalFunc_OBJ_TextPivotGet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    Vec3 a1a;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    Vec3 pivot;
+    int strIdx;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v5 = v3;
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextPivotGet_C(v5, v1, &a1a);
-    AI_PutVecToStack(&a1a);
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextPivotGet_C(gaoUltra, strIdx, &pivot);
+    AI_PutVecToStack(&pivot);
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextFlagSet_C(struct sGameObjectMain* gao, int idx, int16_t a3)
+void AI_EvalFunc_OBJ_TextFlagSet_C(struct sGameObjectMain* gao, int strIdx, int16_t flags)
 {
-    tGEOSTRStruct* v3;
+    tGEOSTRStruct* str;
 
-    v3 = STR_pst_Get(gao);
-    if (v3)
-        STR_SetFlag(v3, idx, a3);
+    str = STR_pst_Get(gao);
+    if (str)
+        STR_SetFlag(str, strIdx, flags);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextFlagSet(tAINode* node)
 {
-    int v1;
-    int16_t v3;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int16_t flags;
+    int strIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextFlagSet_C(v4, v1, v3);
+    flags = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextFlagSet_C(gaoUltra, strIdx, flags);
     return node + 1;
 }
 
-int AI_EvalFunc_OBJ_TextFlagGet_C(struct sGameObjectMain* gao, int idx)
+int AI_EvalFunc_OBJ_TextFlagGet_C(struct sGameObjectMain* gao, int strIdx)
 {
-    int result;
-    tGEOSTRStruct* v3;
+    tGEOSTRStruct* str;
 
-    v3 = STR_pst_Get(gao);
-    if (v3)
-        result = STR_ul_GetFlag(v3, idx);
-    else
-        result = 0;
-    return result;
+    str = STR_pst_Get(gao);
+    if (!str)
+        return 0;
+    return STR_ul_GetFlag(str, strIdx);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextFlagGet(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_OBJ_TextFlagGet_C(v4, v1);
-    AI_PutIntToStack(v2);
+    strIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_OBJ_TextFlagGet_C(gaoUltra, strIdx));
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextColorSet_C(struct sGameObjectMain* gao, int a2, int a3, int a4, int a5)
+// The colour and page builtins all address a run of characters: a
+// string index, the first character of the run, and how many
+// characters it covers.
+void AI_EvalFunc_OBJ_TextColorSet_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, int color)
 {
-    tGEOSTRStruct* v5;
+    tGEOSTRStruct* str;
 
-    v5 = STR_pst_Get(gao);
-    if (v5)
-        STR_SetColor(v5, a2, a3, a4, a5);
+    str = STR_pst_Get(gao);
+    if (str)
+        STR_SetColor(str, strIdx, firstChar, charNum, color);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextColorSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a5;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
+    int color;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextColorSet_C(v4, v1, v3, a4, a5);
+    color = AI_GetIntFromStack();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextColorSet_C(gaoUltra, strIdx, firstChar, charNum, color);
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextAlphaSet_C(struct sGameObjectMain* gao, int a2, int a3, int a4, int a5)
+void AI_EvalFunc_OBJ_TextAlphaSet_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, int alpha)
 {
-    tGEOSTRStruct* v5;
+    tGEOSTRStruct* str;
 
-    v5 = STR_pst_Get(gao);
-    if (v5)
-        STR_SetAlpha(v5, a2, a3, a4, a5);
+    str = STR_pst_Get(gao);
+    if (str)
+        STR_SetAlpha(str, strIdx, firstChar, charNum, alpha);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextAlphaSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a5;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
+    int alpha;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextAlphaSet_C(v4, v1, v3, a4, a5);
+    alpha = AI_GetIntFromStack();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextAlphaSet_C(gaoUltra, strIdx, firstChar, charNum, alpha);
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextColorSetExt_C(tGameObjectMain* gao, int a2, int a3, int a4, int a5, int a6)
+// The same, with a mask saying which bits of the colour to take.
+void AI_EvalFunc_OBJ_TextColorSetExt_C(tGameObjectMain* gao, int strIdx, int firstChar, int charNum, int color, int mask)
 {
-    tGEOSTRStruct* v6;
+    tGEOSTRStruct* str;
 
-    v6 = STR_pst_Get(gao);
-    if (v6)
-        STR_SetColorExt(v6, a2, a3, a4, a5, a6);
+    str = STR_pst_Get(gao);
+    if (str)
+        STR_SetColorExt(str, strIdx, firstChar, charNum, color, mask);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextColorSetExt(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a5;
-    int a6;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
+    int color;
+    int mask;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a6 = AI_GetIntFromStack();
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextColorSetExt_C(v4, v1, v3, a4, a5, a6);
+    mask = AI_GetIntFromStack();
+    color = AI_GetIntFromStack();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextColorSetExt_C(gaoUltra, strIdx, firstChar, charNum, color, mask);
     return node + 1;
 }
 
-unsigned int AI_EvalFunc_OBJ_TextColorGet_C(tGameObjectMain* gao, int idx, int a3)
+// Alone among these, this one passes the string on without checking
+// that the object has one; preserved as written.
+unsigned int AI_EvalFunc_OBJ_TextColorGet_C(tGameObjectMain* gao, int strIdx, int charIdx)
 {
-    tGEOSTRStruct* v4;
+    tGEOSTRStruct* str;
 
-    v4 = STR_pst_Get(gao);
-    return STR_GetColor(v4, idx, a3);
+    str = STR_pst_Get(gao);
+    return STR_GetColor(str, strIdx, charIdx);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextColorGet(tAINode* node)
 {
-    int v1;
-    int v2;
-    int v4;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int charIdx;
 
-    v5 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+
+    // the builtin takes three arguments and uses the last two
     AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_OBJ_TextColorGet_C(v5, v1, v4);
-    AI_PutIntToStack(v2);
+    charIdx = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_OBJ_TextColorGet_C(gaoUltra, strIdx, charIdx));
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextPageSet_C(struct sGameObjectMain* gao, int a2, int a3, int a4, int a5, int a6)
+// Moves a run of characters onto another page. matchPage picks which
+// characters move: negative means all of them, 0 to 255 only those on
+// that page, and 256 to 511 only those NOT on page matchPage - 256.
+void AI_EvalFunc_OBJ_TextPageSet_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, int page, int matchPage)
 {
-    tGEOSTRStruct* v6;
+    tGEOSTRStruct* str;
 
-    v6 = STR_pst_Get(gao);
-    if (v6)
-        STR_ChangePage(v6, a2, a3, a4, a5, a6);
+    str = STR_pst_Get(gao);
+    if (str)
+        STR_ChangePage(str, strIdx, firstChar, charNum, page, matchPage);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextPageSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a6;
-    int a5;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
+    int page;
+    int matchPage;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a6 = AI_GetIntFromStack();
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextPageSet_C(v4, v1, v3, a4, a5, a6);
+    matchPage = AI_GetIntFromStack();
+    page = AI_GetIntFromStack();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextPageSet_C(gaoUltra, strIdx, firstChar, charNum, page, matchPage);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextPosSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a4;
-    Vec3* a5;
+    tGameObjectMain* gaoUltra;
+    Vec3* pos;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a5 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetPos(v4, v1, v3, a4, a5);
+
+    // the position is read where the stack keeps it rather than copied out
+    pos = (Vec3*)AI_PopStackSlot();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetPos(gaoUltra, strIdx, firstChar, charNum, pos);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextSizeSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a4;
-    Vec3* a5;
+    tGameObjectMain* gaoUltra;
+    Vec3* size;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a5 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetSize(v4, v1, v3, a4, a5);
+
+    // the size is read where the stack keeps it rather than copied out
+    size = (Vec3*)AI_PopStackSlot();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetSize(gaoUltra, strIdx, firstChar, charNum, size);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextDelete(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_DelChar(v4, v1, v3, a4);
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_DelChar(gaoUltra, strIdx, firstChar, charNum);
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextCharSet_C(struct sGameObjectMain* gao, int a2, int a3, int a4)
+// The character value carries its own flags in the bits above it, so
+// the engine keeps only the low eighteen.
+void AI_EvalFunc_OBJ_TextCharSet_C(struct sGameObjectMain* gao, int strIdx, int charIdx, int character)
 {
-    tGEOSTRStruct* v4;
+    tGEOSTRStruct* str;
 
-    v4 = STR_pst_Get(gao);
-    if (v4)
-        STR_SetChar(v4, a2, a3, a4);
+    str = STR_pst_Get(gao);
+    if (str)
+        STR_SetChar(str, strIdx, charIdx, character);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextCharSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int charIdx;
+    int character;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextCharSet_C(v4, v1, v3, a4);
+    character = AI_GetIntFromStack();
+    charIdx = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextCharSet_C(gaoUltra, strIdx, charIdx, character);
     return node + 1;
 }
 
-unsigned int AI_EvalFunc_OBJ_TextCharGet_C(struct sGameObjectMain* gao, int idx, int a3)
+unsigned int AI_EvalFunc_OBJ_TextCharGet_C(struct sGameObjectMain* gao, int strIdx, int charIdx)
 {
-    unsigned int result;
-    tGEOSTRStruct* v4;
+    tGEOSTRStruct* str;
 
-    v4 = STR_pst_Get(gao);
-    if (v4)
-        result = STR_i_GetChar(v4, idx, a3);
-    else
-        result = 0;
-    return result;
+    str = STR_pst_Get(gao);
+    if (!str)
+        return 0;
+    return STR_i_GetChar(str, strIdx, charIdx);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextCharGet(tAINode* node)
 {
-    int v1;
-    int v2;
-    int v4;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int charIdx;
 
-    v5 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_OBJ_TextCharGet_C(v5, v1, v4);
-    AI_PutIntToStack(v2);
+    charIdx = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_OBJ_TextCharGet_C(gaoUltra, strIdx, charIdx));
     return node + 1;
 }
 
-int AI_EvalFunc_OBJ_TextLength_C(struct sGameObjectMain* gao, int a2)
+int AI_EvalFunc_OBJ_TextLength_C(struct sGameObjectMain* gao, int strIdx)
 {
-    int result;
-    tGEOSTRStruct* v3;
+    tGEOSTRStruct* str;
 
-    v3 = STR_pst_Get(gao);
-    if (v3)
-        result = STR_l_GetLength(v3, a2);
-    else
-        result = -1;
-    return result;
+    str = STR_pst_Get(gao);
+    if (!str)
+        return -1;
+    return STR_l_GetLength(str, strIdx);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextLength(tAINode* node)
 {
-    int v1;
-    int v2;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_OBJ_TextLength_C(v4, v1);
-    AI_PutIntToStack(v2);
+    strIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_OBJ_TextLength_C(gaoUltra, strIdx));
     return node + 1;
 }
 
-int AI_EvalFunc_OBJ_TextSubLength_C(tGameObjectMain* gao, int idx, int a3)
+// The length of one line, or of the longest line for a negative index.
+int AI_EvalFunc_OBJ_TextSubLength_C(tGameObjectMain* gao, int strIdx, int lineIdx)
 {
-    int result;
-    tGEOSTRStruct* v4;
+    tGEOSTRStruct* str;
 
-    v4 = STR_pst_Get(gao);
-    if (v4)
-        result = STR_l_GetSubLength(v4, idx, a3);
-    else
-        result = -1;
-    return result;
+    str = STR_pst_Get(gao);
+    if (!str)
+        return -1;
+    return STR_l_GetSubLength(str, strIdx, lineIdx);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextSubLength(tAINode* node)
 {
-    int v1;
-    int v2;
-    int v4;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int lineIdx;
 
-    v5 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = AI_EvalFunc_OBJ_TextSubLength_C(v5, v1, v4);
-    AI_PutIntToStack(v2);
+    lineIdx = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(AI_EvalFunc_OBJ_TextSubLength_C(gaoUltra, strIdx, lineIdx));
     return node + 1;
 }
 
-void __cdecl AI_EvalFunc_OBJ_TextPosGetMin_C(struct sGameObjectMain* gao, int idx, int a3, int a4, Vec3* a5)
+// STR_pst_GetMin fills the caller's vector and hands it back, so the
+// local it is given here is written and then copied over itself.
+void __cdecl AI_EvalFunc_OBJ_TextPosGetMin_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* min)
 {
-    Vec3 a5a;
+    Vec3 scratch;
 
-    *a5 = *STR_pst_GetMin(gao, idx, a3, a4, &a5a);
+    *min = *STR_pst_GetMin(gao, strIdx, firstChar, charNum, &scratch);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextPosGetMin(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a4;
-    int idx;
-    Vec3 a1a;
-    //int v7;
+    tGameObjectMain* gaoUltra;
+    Vec3 min;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    //v7 = (int)v2;
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
-    idx = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextPosGetMin_C(v2, idx, a3, a4, &a1a);
-    AI_PutVecToStack(&a1a);
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextPosGetMin_C(gaoUltra, strIdx, firstChar, charNum, &min);
+    AI_PutVecToStack(&min);
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextPosGetMax_c(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5)
+void AI_EvalFunc_OBJ_TextPosGetMax_c(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* max)
 {
-    Vec3 a5a;
+    Vec3 scratch;
 
-    *a5 = *STR_pst_GetMax(a1, idx, a3, a4, &a5a);
+    *max = *STR_pst_GetMax(gao, strIdx, firstChar, charNum, &scratch);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextPosGetMax(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int idx;
-    int a4; 
-    Vec3 a1a;
-    //int v7;
+    tGameObjectMain* gaoUltra;
+    Vec3 max;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    //v7 = (int)v2;
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
-    idx = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextPosGetMax_c(v2, idx, a3, a4, &a1a);
-    AI_PutVecToStack(&a1a);
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextPosGetMax_c(gaoUltra, strIdx, firstChar, charNum, &max);
+    AI_PutVecToStack(&max);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextAlign(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a5;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
+    int align;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_Align(v4, v1, v3, a4, a5);
+    align = AI_GetIntFromStack();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_Align(gaoUltra, strIdx, firstChar, charNum, align);
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_TextSizeGet_C(struct sGameObjectMain* gao, int a2, int a3, int a4, Vec3* a5)
+void AI_EvalFunc_OBJ_TextSizeGet_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* size)
 {
-    Vec3 a5a;
+    Vec3 scratch;
 
-    *a5 = *STR_pst_GetSize(gao, a2, a3, a4, &a5a);
+    *size = *STR_pst_GetSize(gao, strIdx, firstChar, charNum, &scratch);
 }
 
 tAINode* AI_EvalFunc_OBJ_TextSizeGet(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a2;
-    int a4;
-    Vec3 a1a;
-    int v7;
+    tGameObjectMain* gaoUltra;
+    Vec3 size;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v7 = (int)v2;
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_TextSizeGet_C(v2, a2, a3, a4, &a1a);
-    AI_PutVecToStack(&a1a);
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_TextSizeGet_C(gaoUltra, strIdx, firstChar, charNum, &size);
+    AI_PutVecToStack(&size);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextFrameSet(tAINode* node)
 {
-    int v1;
-    char v3;
-    tGameObjectMain* v4;
-    int16_t a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    char frame;
+    int16_t flags;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetFrame(v4, v1, v3, a4);
+    flags = AI_GetIntFromStack();
+    frame = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetFrame(gaoUltra, strIdx, frame, flags);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextFramePosSet(tAINode* node)
 {
-    int v1;
-    Vec3* v3;
-    tGameObjectMain* v4;
-    Vec3* a4;
+    tGameObjectMain* gaoUltra;
+    Vec3* size;
+    Vec3* pos;
+    int strIdx;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a4 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    v1 = AI_GetIntFromStack();
-    STR_SetFramePos(v4, v1, v3, a4);
+
+    // both vectors are read where the stack keeps them rather than
+    // copied out
+    size = (Vec3*)AI_PopStackSlot();
+    pos = (Vec3*)AI_PopStackSlot();
+    strIdx = AI_GetIntFromStack();
+    STR_SetFramePos(gaoUltra, strIdx, pos, size);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextFrameBorderSet(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    float a3;
+    tGameObjectMain* gaoUltra;
+    float border;
+    int strIdx;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetFloatFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetFrameBorderSize(v3, v1, a3);
+    border = AI_GetFloatFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetFrameBorderSize(gaoUltra, strIdx, border);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextFrameColorSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int color;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetFrameColor(v4, v1, v3);
+    color = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetFrameColor(gaoUltra, strIdx, color);
     return node + 1;
 }
 
+// The three "part" builtins narrow the string to a run, counted in
+// lines, in marks, or in characters.
 tAINode* AI_EvalFunc_OBJ_TextPartWithLine(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstLine;
+    int lineNum;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetSubStringWithLine(v4, v1, v3, a4);
+    lineNum = AI_GetIntFromStack();
+    firstLine = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetSubStringWithLine(gaoUltra, strIdx, firstLine, lineNum);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextPartWithMark(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstMark;
+    int markNum;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetSubStringWithMark(v4, v1, v3, a4);
+    markNum = AI_GetIntFromStack();
+    firstMark = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetSubStringWithMark(gaoUltra, strIdx, firstMark, markNum);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextPart(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetSubString(v4, v1, v3, a4);
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetSubString(gaoUltra, strIdx, firstChar, charNum);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextCountLine(tAINode* node)
 {
-    int v1;
-    int v2;
-    int v4;
-    tGameObjectMain* v5;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v5 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = STR_i_CountLine(v5, v1, v4, a4);
-    AI_PutIntToStack(v2);
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(STR_i_CountLine(gaoUltra, strIdx, firstChar, charNum));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextCountMark(tAINode* node)
 {
-    int v1;
-    int v2;
-    int v4;
-    tGameObjectMain* v5;
-    int a5;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
+    int mark;
 
-    v5 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = STR_i_CountMark(v5, v1, v4, a4, a5);
-    AI_PutIntToStack(v2);
+    mark = AI_GetIntFromStack();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(STR_i_CountMark(gaoUltra, strIdx, firstChar, charNum, mark));
     return node + 1;
 }
 
-void AI_EvalFunc_OBJ_Text2Text_C(struct sGameObjectMain* gao, int idx, int a3, int a4, tTextGet* a5)
+// Writes a text reference's string into a run of the object's own.
+void AI_EvalFunc_OBJ_Text2Text_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, tTextGet* textRef)
 {
-    unsigned int a1a;
-    tTextGroupStruct* v6;
+    tTextGroupStruct* group;
+    unsigned int pos;
 
-    if (a5->key != -1)
-    {
-        a1a = BIG_ul_SearchKeyToPos(a5->key);
-        v6 = (tTextGroupStruct*)LOA_ul_SearchAddress(a1a);
-        STR_ToString(gao, idx, a3, a4, &v6->texts[v6->ids[a5->idx]]);
-    }
+    if (textRef->key == -1)
+        return;
+
+    pos = BIG_ul_SearchKeyToPos(textRef->key);
+    group = (tTextGroupStruct*)LOA_ul_SearchAddress(pos);
+    STR_ToString(gao, strIdx, firstChar, charNum, &group->texts[group->ids[textRef->idx]]);
 }
 
 tAINode* AI_EvalFunc_OBJ_Text2Text(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    tTextGet* a5;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    tTextGet* textRef;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a5 = (tTextGet*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_Text2Text_C(v4, v1, v3, a4, a5);
+
+    // the text reference is read where the stack keeps it rather than
+    // copied out
+    textRef = (tTextGet*)AI_PopStackSlot();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_Text2Text_C(gaoUltra, strIdx, firstChar, charNum, textRef);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextCharFlagSet(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a5;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
+    int flags;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_SetLetterFlag(v4, v1, v3, a4, a5);
+    flags = AI_GetIntFromStack();
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_SetLetterFlag(gaoUltra, strIdx, firstChar, charNum, flags);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextCharFlagGet(tAINode* node)
 {
-    int v1;
-    int v2;
-    int v4;
-    tGameObjectMain* v5;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int charIdx;
 
-    v5 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    v4 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    v2 = STR_GetLetterFlag(v5, v1, v4);
-    AI_PutIntToStack(v2);
+    charIdx = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    AI_PutIntToStack(STR_GetLetterFlag(gaoUltra, strIdx, charIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextToUpper(tAINode* node)
 {
-    int v1;
-    int v3;
-    tGameObjectMain* v4;
-    int a4;
+    tGameObjectMain* gaoUltra;
+    int strIdx;
+    int firstChar;
+    int charNum;
 
-    v4 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    v3 = AI_GetIntFromStack();
-    v1 = AI_GetIntFromStack();
-    STR_ToUpper(v4, v1, v3, a4);
+    charNum = AI_GetIntFromStack();
+    firstChar = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    STR_ToUpper(gaoUltra, strIdx, firstChar, charNum);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextEffectAdd(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a4;
-    int a3;
-    int a2;
-    int a5;
+    tGameObjectMain* gaoUltra;
+    uint32_t effectType;
+    int strIdx;
+    int startIndex;
+    int len;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a5 = AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v1 = STR_i_EffectAdd(v3, a2, a3, a4, a5);
-    AI_PutIntToStack(v1);
+    len = AI_GetIntFromStack();
+    startIndex = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    effectType = AI_GetIntFromStack();
+    AI_PutIntToStack(STR_i_EffectAdd(gaoUltra, effectType, strIdx, startIndex, len));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextEffectDel(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int effectId;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a2 = AI_GetIntFromStack();
-    STR_EffectDel(v2, a2);
+    effectId = AI_GetIntFromStack();
+    STR_EffectDel(gaoUltra, effectId);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextEffectSeti(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a4;
-    int a3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int effectId;
+    int field;
+    int value;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetIntFromStack();
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    STR_EffectSeti(v2, a2, a3, a4);
+    value = AI_GetIntFromStack();
+    field = AI_GetIntFromStack();
+    effectId = AI_GetIntFromStack();
+    STR_EffectSeti(gaoUltra, effectId, field, value);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextEffectSetf(tAINode* node)
 {
-    tGameObjectMain* v2;
-    int a3;
-    int a2;
-    float a4;
+    tGameObjectMain* gaoUltra;
+    int effectId;
+    int field;
+    float value;
 
-    v2 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a4 = AI_GetFloatFromStack();
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    STR_EffectSetf(v2, a2, a3, a4);
+    value = AI_GetFloatFromStack();
+    field = AI_GetIntFromStack();
+    effectId = AI_GetIntFromStack();
+    STR_EffectSetf(gaoUltra, effectId, field, value);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_TEXTToString(tAINode* node)
 {
-    int a1a[4];
+    int reference[4];
+    char* slot;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
+    slot = AI_PopStackSlot();
     //TODO FIXME: ezt is kideríteni és megcsinálni normálisan hogy mi az az enumlink[38] és milyen módon kell neki átadni, lehet ez egy stringptr?
-    a1a[3] = (int)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    a1a[0] = (int)AI_EvalFunc_TEXTToString_C((tTextGet*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    AI_PutObjectToStack(a1a, AI_gaw_EnumLink[38]);
+    reference[3] = (int)slot;
+    reference[0] = (int)AI_EvalFunc_TEXTToString_C((tTextGet*)slot);
+    AI_PutObjectToStack(reference, AI_gaw_EnumLink[38]);
     return node + 1;
 }
 
-BOOL AI_EvalFunc_TEXTIsEmpty_C(int* a1)
+BOOL AI_EvalFunc_TEXTIsEmpty_C(int* textRef)
 {
-    BOOL result;
-
-    if (*a1)
-        result = *a1 == -1; // TODO FIXME: ez milyen típus??
-    else
-        result = 1;
-    return result;
+    if (!*textRef)
+        return TRUE;
+    return *textRef == -1; // TODO FIXME: ez milyen típus??
 }
 
 tAINode* AI_EvalFunc_TEXTIsEmpty(tAINode* node)
 {
-    int v1;
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v1 = AI_EvalFunc_TEXTIsEmpty_C((int*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalFunc_TEXTIsEmpty_C((int*)AI_PopStackSlot()));
     return node + 1;
 }
 
-BOOL AI_EvalFunc_TEXTCompare_C(void* a1, void* a2)
+BOOL AI_EvalFunc_TEXTCompare_C(void* left, void* right)
 {
-    return strcmp(a1, a2) == 0;
+    return strcmp(left, right) == 0;
 }
 
 tAINode* AI_EvalFunc_TEXTCompare(tAINode* node)
 {
-    int v1;
-    char* v3;
-    char* v4;
+    char* right;
+    char* left;
 
-    v4 = get_a_string_from_globalstack_sub_4D2040();
-    v3 = get_a_string_from_globalstack_sub_4D2040();
-    v1 = AI_EvalFunc_TEXTCompare_C(v3, v4);
-    AI_PutIntToStack(v1);
+    right = get_a_string_from_globalstack_sub_4D2040();
+    left = get_a_string_from_globalstack_sub_4D2040();
+    AI_PutIntToStack(AI_EvalFunc_TEXTCompare_C(left, right));
     return node + 1;
 }
 
@@ -1099,30 +1071,31 @@ size_t AI_EvalFunc_TEXTLength_C(char* Str)
 
 tAINode* AI_EvalFunc_TEXTLength(tAINode* node)
 {
-    char* v1;
-    int v2;
+    char* str;
 
-    v1 = get_a_string_from_globalstack_sub_4D2040();
-    v2 = AI_EvalFunc_TEXTLength_C(v1);
-    AI_PutIntToStack(v2);
+    str = get_a_string_from_globalstack_sub_4D2040();
+    AI_PutIntToStack(AI_EvalFunc_TEXTLength_C(str));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_TEXTSetLang(tAINode* node)
 {
-    int v1;
+    int lang;
 
-    v1 = AI_GetIntFromStack();
-    TEXT_ChangeLang(v1);
+    lang = AI_GetIntFromStack();
+    TEXT_ChangeLang(lang);
     return node + 1;
 }
 
-void AI_EvalFunc_TEXTGet_C(int key, int a2, struct sTextGet* a3)
+// Makes a text reference, leaving it empty when the key is not in the
+// big files or its group is not loaded.
+void AI_EvalFunc_TEXTGet_C(int key, int idx, struct sTextGet* textRef)
 {
     unsigned int pos;
 
-    a3->key = -1;
-    a3->idx = 0;
+    textRef->key = -1;
+    textRef->idx = 0;
+
     pos = BIG_ul_SearchKeyToPos(key);
     if (pos == -1)
     {
@@ -1130,120 +1103,105 @@ void AI_EvalFunc_TEXTGet_C(int key, int a2, struct sTextGet* a3)
     }
     else if (LOA_ul_SearchAddress(pos) != -1)
     {
-        a3->key = key;
-        a3->idx = a2;
+        textRef->key = key;
+        textRef->idx = idx;
     }
 }
 
 tAINode* AI_EvalFunc_TEXTGet(tAINode* node)
 {
-    tTextGet a1a;
+    tTextGet textRef;
     int key;
-    tTextGet a3;
-    int a2;
+    int idx;
 
-    a2 = AI_GetIntFromStack();
+    idx = AI_GetIntFromStack();
     key = AI_GetIntFromStack();
-    AI_EvalFunc_TEXTGet_C(key, a2, &a3);
-    a1a = a3;
-    AI_PutObjectToStack(&a1a, AI_gaw_EnumLink[44]);
+    AI_EvalFunc_TEXTGet_C(key, idx, &textRef);
+    AI_PutObjectToStack(&textRef, AI_gaw_EnumLink[44]);
     return node + 1;
 }
 
-int AI_EvalFunc_TEXTCharGet_C(char* a1, int a2)
+int AI_EvalFunc_TEXTCharGet_C(char* str, int charIdx)
 {
-    return a1[a2];
+    return str[charIdx];
 }
 
 tAINode* AI_EvalFunc_TEXTCharGet(tAINode* node)
 {
-    char* v1;
-    int v2;
-    int v4;
+    char* str;
+    int charIdx;
 
-    v4 = AI_GetIntFromStack();
-    v1 = get_a_string_from_globalstack_sub_4D2040();
-    v2 = AI_EvalFunc_TEXTCharGet_C(v1, v4);
-    AI_PutIntToStack(v2);
+    charIdx = AI_GetIntFromStack();
+    str = get_a_string_from_globalstack_sub_4D2040();
+    AI_PutIntToStack(AI_EvalFunc_TEXTCharGet_C(str, charIdx));
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_TextEffectGeti(tAINode* node)
 {
-    int v1;
-    tGameObjectMain* v3;
-    int a3;
-    int a2;
+    tGameObjectMain* gaoUltra;
+    int effectId;
+    int field;
 
-    v3 = AI_gpst_CurrentUltra;
+    gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    a3 = AI_GetIntFromStack();
-    a2 = AI_GetIntFromStack();
-    v1 = STR_EffectGeti(v3, a2, a3);
-    AI_PutIntToStack(v1);
+    field = AI_GetIntFromStack();
+    effectId = AI_GetIntFromStack();
+    AI_PutIntToStack(STR_EffectGeti(gaoUltra, effectId, field));
     return node + 1;
 }
 
+// The 3D text builtins take their object off the stack rather than
+// working on the current one.
 tAINode* AI_EvalFunc_OBJ_3DText(tAINode* node)
 {
     char* str;
 
     str = get_a_string_from_globalstack_sub_4D2040();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    STR_Init3DString(*(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], str);
+    STR_Init3DString((tGameObjectMain*)AI_GetObjectFromStack(), str);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_3DTextExt(tAINode* node)
 {
-    int a3;
     char* str;
+    int flags;
 
-    a3 = AI_GetIntFromStack();
+    flags = AI_GetIntFromStack();
     str = get_a_string_from_globalstack_sub_4D2040();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    STR_Init3DStringExt(*(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], str, a3);
+    STR_Init3DStringExt((tGameObjectMain*)AI_GetObjectFromStack(), str, flags);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_3DTextLangDependent(tAINode* node)
 {
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    STR_3DStringList_Add(*(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    STR_3DStringList_Add((tGameObjectMain*)AI_GetObjectFromStack());
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_3DTextCenter(tAINode* node)
 {
-    int a3;
     char* str;
+    int flags;
 
-    a3 = AI_GetIntFromStack();
+    flags = AI_GetIntFromStack();
     str = get_a_string_from_globalstack_sub_4D2040();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    STR_Init3DStringCenter(*(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], str, a3);
+    STR_Init3DStringCenter((tGameObjectMain*)AI_GetObjectFromStack(), str, flags);
     return node + 1;
 }
 
 tAINode* AI_EvalFunc_OBJ_3DTextFromStrObj(tAINode* node)
 {
-    int idx;
-    int a4;
-    tGameObjectMain* a2;
+    tGameObjectMain* source;
+    int strIdx;
+    int flags;
 
+    // the builtin takes five arguments and drops the last one pushed
     AI_GetIntFromStack();
-    a4 = AI_GetIntFromStack();
-    idx = AI_GetIntFromStack();
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    STR_Init3DStringFromSTR(*(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a2, idx, a4);
+    flags = AI_GetIntFromStack();
+    strIdx = AI_GetIntFromStack();
+    source = (tGameObjectMain*)AI_GetObjectFromStack();
+    STR_Init3DStringFromSTR((tGameObjectMain*)AI_GetObjectFromStack(), source, strIdx, flags);
     return node + 1;
 }
