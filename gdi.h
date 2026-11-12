@@ -231,25 +231,25 @@ extern float MAT_C_f_8Bits;
 
 int gMaxSimultaneousTextures;
 
-void MAT_UVDecompress(struct sMultiTextureElemStruct* a1, struct sMatDecompressedStruct* a2);
+void MAT_UVDecompress(struct sMultiTextureElemStruct* mte, struct sMatDecompressedStruct* matds);
 
-void MAT_UV_Compute_OBJ1(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* gtc, unsigned int unk);
-void MAT_UV_Compute_OBJ2(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int unk);
-void MAT_UV_Compute_DF_GIZMO(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3a, unsigned int unk);
-void MAT_UV_Compute_PHONG_GIZMO(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int a4);
-void MAT_UV_Compute_Previous(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int unk);
-void MAT_UV_Compute_FACE_MAP(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int unk);
-void MAT_UV_Compute_FOGZZ(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int unk);
-void MAT_UV_Compute_Default(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int unk);
+void MAT_UV_Compute_OBJ1(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
+void MAT_UV_Compute_OBJ2(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
+void MAT_UV_Compute_DF_GIZMO(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
+void MAT_UV_Compute_PHONG_GIZMO(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int type);
+void MAT_UV_Compute_Previous(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
+void MAT_UV_Compute_FACE_MAP(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
+void MAT_UV_Compute_FOGZZ(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
+void MAT_UV_Compute_Default(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
 
-void GDI_fnl_InitInterface(struct sGdi_DisplayData* a1);
+void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd);
 struct sGdi_DisplayData* GDI_fnpst_CreateDisplayData();
 BOOL GDI_AttachDisplayAndReadaptDisplay(struct sGdi_DisplayData* gdd, HWND hwnd);
-void GDI_DetachDisplay(struct sGdi_DisplayData* a1);
-void GDI_DestroyDisplayData(struct sGdi_DisplayData* a1);
-void s_Display(HWND a1, tGdi_DisplayData* dxdd);
+void GDI_DetachDisplay(struct sGdi_DisplayData* dd);
+void GDI_DestroyDisplayData(struct sGdi_DisplayData* dd);
+void s_Display(HWND hwnd, tGdi_DisplayData* dxdd);
 void GDI_InitModule();
 void GDI_CloseModule();
-void DisplayAttach(struct sGdi_DisplayData* a1);
+void DisplayAttach(struct sGdi_DisplayData* dd);
 void GDI_l_AttachWorld(struct sGdi_DisplayData* dxdd, struct sWorld* world);
-BOOL GDI_l_DetachWorld(struct sGdi_DisplayData* a1);
+BOOL GDI_l_DetachWorld(struct sGdi_DisplayData* dd);

@@ -4,7 +4,6 @@
 #include "graphicsobjects/geo.h"
 #include "common.h"
 
-//               // (*((int32_t *)(&(v6->z))))
 
 typedef struct sZListElem
 {
@@ -93,20 +92,20 @@ int* ZList_RLIs;
 tGEOMAT* ZList_Mat;
 BOOL i_Identity;
 
-void SOFT_Project(Vec3* a1, Vec3* a2, int a3, tDDContainerStruct* a4);
-void SOFT_TransformAndProject(Vec3* a1, Vec3* a2, int idx, tDDCamStruct* a4);
+void SOFT_Project(Vec3* dstVecs, Vec3* srcVecs, int verticesNum, tDDContainerStruct* cam);
+void SOFT_TransformAndProject(Vec3* dstVecs, Vec3* srcVecs, int verticesNum, tDDCamStruct* cam);
 void SOFT_ZList_Init();
 void SOFT_ZList_Clear();
 void SOFT_l_MatrixStack_Create(tMatrixStackStruct* mts, int num);
-void SOFT_MatrixStack_Reset(tMatrixStackStruct* a1, Mtx4x4* a2);
-int SOFT_l_MatrixStack_Push(tMatrixStackStruct* a1, Mtx4x4* a2);
-int SOFT_l_MatrixStack_Pop(tMatrixStackStruct* a1);
-struct sZListElem* SOFT_pst_ZList_AddNode(float a1, int num, int isObject);
-void SOFT_AddCurrentObjectInZList(struct sGdi_DisplayData* a1, struct sGameObjectMain* gao);
-void SOFT_TransformInComputingBuffer(tBigBufferStruct* a1, Vec3* vertices, int vertexNum, tDDContainerStruct* a4);
+void SOFT_MatrixStack_Reset(tMatrixStackStruct* mts, Mtx4x4* mtx);
+int SOFT_l_MatrixStack_Push(tMatrixStackStruct* mts, Mtx4x4* mtx);
+int SOFT_l_MatrixStack_Pop(tMatrixStackStruct* mts);
+struct sZListElem* SOFT_pst_ZList_AddNode(float z, int num, int isObject);
+void SOFT_AddCurrentObjectInZList(struct sGdi_DisplayData* dd, struct sGameObjectMain* gao);
+void SOFT_TransformInComputingBuffer(tBigBufferStruct* bigBuf, Vec3* vertices, int vertexNum, tDDContainerStruct* container);
 Vec3* SOFT_pst_GetSpecularVectors();
-void SOFT_pst_InitSpecularColors(int a1);
-void SOFT_l_MatrixStack_Destroy(struct sMatrixStackStruct* a1);
+void SOFT_pst_InitSpecularColors(int num);
+void SOFT_l_MatrixStack_Destroy(struct sMatrixStackStruct* mts);
 void SOFT_ZList_Lock();
 void SOFT_ZList_Unlock();
 void SOFT_ZList_Send();

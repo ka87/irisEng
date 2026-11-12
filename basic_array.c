@@ -208,35 +208,35 @@ void BAS_bdeletegetval(int key, BASStruct* bas, int* val)
     }
 }
 
-void BAS_binit(BASStruct* a1, int elemNum)
+void BAS_binit(BASStruct* bas, int elemNum)
 {
-    a1->keyValPtr = 0;
-    a1->actElemNum = 0;
-    a1->maxElemNum = elemNum;
-    a1->elemNumToAddWhenFull = elemNum;
+    bas->keyValPtr = 0;
+    bas->actElemNum = 0;
+    bas->maxElemNum = elemNum;
+    bas->elemNumToAddWhenFull = elemNum;
     if (elemNum)
-        a1->keyValPtr = (BASKeyValStruct*)MEM_p_Alloc(sizeof(BASKeyValStruct) * elemNum);
+        bas->keyValPtr = (BASKeyValStruct*)MEM_p_Alloc(sizeof(BASKeyValStruct) * elemNum);
 }
 
-void BAS_bfree(BASStruct* a1)
+void BAS_bfree(BASStruct* bas)
 {
-    if (a1->keyValPtr)
-        MEM_Free(a1->keyValPtr);
-    a1->keyValPtr = NULL;
-    a1->maxElemNum = 0;
-    a1->actElemNum = 0;
+    if (bas->keyValPtr)
+        MEM_Free(bas->keyValPtr);
+    bas->keyValPtr = NULL;
+    bas->maxElemNum = 0;
+    bas->actElemNum = 0;
 }
 
-int BAS_barray_callback(const void* a1, const void* a2)
+int BAS_barray_callback(const void* left, const void* right)
 {
-    if (*(int *)a2 <= *(int *)a1)
-        return *(int*)a2 < *(int*)a1;
+    if (*(int *)right <= *(int *)left)
+        return *(int*)right < *(int*)left;
     else
         return -1;
 }
 
-void BAS_bsort(BASStruct* a1)
+void BAS_bsort(BASStruct* bas)
 {
-    qsort((void *)a1->keyValPtr, a1->actElemNum, sizeof(BASKeyValStruct), BAS_barray_callback);
+    qsort((void *)bas->keyValPtr, bas->actElemNum, sizeof(BASKeyValStruct), BAS_barray_callback);
 }
 

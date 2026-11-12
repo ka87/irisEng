@@ -30,8 +30,8 @@ void (*ENG_gp_Display)(HWND, tGdi_DisplayData*);
 void (*ENG_gp_Input)();
 void (*ENG_gp_Engine)();
 
-void ENG_ReinitOneObject(struct sGameObjectMain* a1, int a2);
-void ENG_ReinitOneWorld(struct sWorld* a1, int a2);
+void ENG_ReinitOneObject(struct sGameObjectMain* gao, int reinitType);
+void ENG_ReinitOneWorld(struct sWorld* world, int reinitType);
 void ENG_GetStatsText(char* Buffer);
 void ENG_CloseApplication();
 void ENG_InitApplication();

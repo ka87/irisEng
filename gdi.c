@@ -80,27 +80,26 @@ unsigned int MAT_GetRotation_INT(int transform1, unsigned int transform2)
     return transform2 & 1 | (4 * (transform1 & 1)) | ((transform1 & 0x10000 | (transform2 >> 2) & 0x4000) >> 13);
 }
 
-void MAT_ComputeRotationMatrix(tMultiTextureElemStruct* a1, tMatDecompressedStruct* a2)
+void MAT_ComputeRotationMatrix(tMultiTextureElemStruct* texElem, tMatDecompressedStruct* mat)
 {
-    char iret;
-    float sin1;
-    float sin2;
-    float f1, f2, f3, f4, f5;
+    char rot;
+    float sinA;
+    float cosA;
+    float x0, y0, x1, y1;
 
-    iret = MAT_GetRotation_INT(a1->transform1, a1->transform2);
-    sin1 = MAT_SinTable[iret & 0xF];
-    sin2 = MAT_SinTable[(iret + 4) & 0xF];
+    rot = MAT_GetRotation_INT(texElem->transform1, texElem->transform2);
+    sinA = MAT_SinTable[rot & 0xF];
+    cosA = MAT_SinTable[(rot + 4) & 0xF];
 
-    f1 = a2->f1;
-    f2 = a2->f1;
-    f3 = a2->f3;
-    f4 = a2->f2;
-    f5 = a2->f4;
+    x0 = mat->f1;
+    y0 = mat->f3;
+    x1 = mat->f2;
+    y1 = mat->f4;
 
-    a2->f1 = (float)(f1 * sin2 - f3 * sin1);
-    a2->f2 = (float)(f4 * sin2 - f5 * sin1);
-    a2->f3 = (float)(f3 * sin2 + f2 * sin1);
-    a2->f4 = (float)(f5 * sin2 + f4 * sin1);
+    mat->f1 = (float)(x0 * cosA - y0 * sinA);
+    mat->f2 = (float)(x1 * cosA - y1 * sinA);
+    mat->f3 = (float)(y0 * cosA + x0 * sinA);
+    mat->f4 = (float)(y1 * cosA + x1 * sinA);
 }
 
 void MAT_UVDecompress(struct sMultiTextureElemStruct* mte, struct sMatDecompressedStruct* matds)
@@ -433,7 +432,7 @@ void GDI_TransformUnsupportedRawPal(tGdi_DisplayData* dd, tEngTexListElemStruct*
 
 void GDI_l_AttachWorld(struct sGdi_DisplayData* dxdd, struct sWorld* world)
 {
-    tMatSpriteElem* v9;
+    tMatSpriteElem* matSprite;
     tTexAnimatedElem* animTex;
     int16_t texIdx;     
     tEngTexIntermediateStruct* texElemsIntermediateStore;
@@ -497,9 +496,9 @@ RESTART:
                 if (texElemsIntermediateStore[i].tp.type == 4)
                 {
                     TEX_gst_GlobalList.texElems[i].texElemFlag |= 0x20;
-                    v9 = texElemsIntermediateStore[i].tp.matSpriteParams.matSprite;
-                    TEX_gst_GlobalList.texElems[i].imgLink.ptr = v9;
-                    selectedTexIdx = v9->texIdx;
+                    matSprite = texElemsIntermediateStore[i].tp.matSpriteParams.matSprite;
+                    TEX_gst_GlobalList.texElems[i].imgLink.ptr = matSprite;
+                    selectedTexIdx = matSprite->texIdx;
                 }
                 else {
                     texElemsIntermediateStore[i].flags &= ~0x10;
@@ -863,7 +862,7 @@ void GDI_DestroyDisplayData(struct sGdi_DisplayData* dd)
 
 }
 
-void s_Display(HWND a1, tGdi_DisplayData* dxdd)
+void s_Display(HWND hwnd, tGdi_DisplayData* dxdd)
 {
     DisplayAttach(dxdd);
     GDI_BeforeDisplay(dxdd);

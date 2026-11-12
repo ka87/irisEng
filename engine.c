@@ -32,32 +32,32 @@ int ENG_WindowedMode = 0; // game doesn't have it
 
 void ENG_ReinitOneObject(struct sGameObjectMain* gao, int reinitType)
 {
-    tGameObjectBasic* v2;
-    tGaoMatrix* v3;
-    tGameObjectMain* v4;
-    char v5;
-    tGameObjectExtended* v6;
-    int v7;
-    BOOL v8;
-    int v9;
-    int v10;
-    tGameObjectExtended* v11;
+    tGameObjectBasic* basic;
+    tGaoMatrix* gaoMtx;
+    tGameObjectMain* refGao;
+    char process;
+    tGameObjectExtended* ext;
+    int flags2Cleared;
+    BOOL wasNotFlagged;
+    int flags2Invis;
+    int flags2Hie;
+    tGameObjectExtended* ext2;
 
-    v2 = gao->basic;
-    if (v2)
+    basic = gao->basic;
+    if (basic)
     {
-        v3 = v2->mtx;
-        if (v3)
+        gaoMtx = basic->mtx;
+        if (gaoMtx)
         {
-            v4 = v3->refGao;
-            if (v4)
+            refGao = gaoMtx->refGao;
+            if (refGao)
             {
-                v3->refGao2 = v4;
+                gaoMtx->refGao2 = refGao;
             }
             else
             {
                 gao->flags &= ~0x400000u;
-                MEM_Free(v2->mtx);
+                MEM_Free(basic->mtx);
                 gao->basic->mtx = 0;
             }
         }
@@ -86,33 +86,33 @@ void ENG_ReinitOneObject(struct sGameObjectMain* gao, int reinitType)
             ACT_SetAction(gao, 0, 0);
     }
     OBJ_ChangeIdentityFlags(gao, gao->flags & ~4u, -1);
-    v5 = gao->process;
+    process = gao->process;
     gao->flags2 &= ~0x4000000u;
-    v6 = gao->extended;
-    gao->process = v5 & 0xFC | ((char)(v5 & 0xFC) >> 2) & 1 | ((char)(v5 & 0xFC | ((char)(v5 & 0xFC) >> 2) & 1) >> 2) & 2;
-    if (v6)
+    ext = gao->extended;
+    gao->process = process & 0xFC | ((char)(process & 0xFC) >> 2) & 1 | ((char)(process & 0xFC | ((char)(process & 0xFC) >> 2) & 1) >> 2) & 2;
+    if (ext)
     {
-        v6->extraFlag &= 0xFFFFFFF7u; // LOBYTE, v. ~0x8
+        ext->extraFlag &= 0xFFFFFFF7u; // LOBYTE, v. ~0x8
         gao->extended->sectorID = -1;
         gao->extended->sectorElemIdx = -1;
     }
-    v7 = gao->flags2 & 0x7FFFFFFF;
-    v8 = (gao->flags2 & 0x20000000) == 0;
+    flags2Cleared = gao->flags2 & 0x7FFFFFFF;
+    wasNotFlagged = (gao->flags2 & 0x20000000) == 0;
     gao->if_this_not0_wont_render_gao = 0;
-    gao->flags2 = v7;
-    if (v8)
-        v9 = v7 & ~0x200000;
+    gao->flags2 = flags2Cleared;
+    if (wasNotFlagged)
+        flags2Invis = flags2Cleared & ~0x200000;
     else
-        v9 = v7 | 0x200000;
-    gao->flags2 = v9;
-    if ((v9 & 0x40000000) != 0)
-        v10 = v9 | 0x400000;
+        flags2Invis = flags2Cleared | 0x200000;
+    gao->flags2 = flags2Invis;
+    if ((flags2Invis & 0x40000000) != 0)
+        flags2Hie = flags2Invis | 0x400000;
     else
-        v10 = v9 & ~0x400000u;
-    gao->flags2 = v10;
-    v11 = gao->extended;
-    if (v11)
-        v11->capa = v11->capaBackup;
+        flags2Hie = flags2Invis & ~0x400000u;
+    gao->flags2 = flags2Hie;
+    ext2 = gao->extended;
+    if (ext2)
+        ext2->capa = ext2->capaBackup;
     SND_DetachObject(gao);
 }
 
@@ -386,7 +386,7 @@ void ENG_ReinitOneWorld(struct sWorld* world, int reinitType)
             for (vn = 1; vn < world->viewNum; vn++)
             {
                 WOR_View_Close(&world->viewPtr[vn]);
-                world->viewPtr[vn].flags &= ~1; //LOBYTE(a1->viewPtr[v5].flags) &= ~1u;
+                world->viewPtr[vn].flags &= ~1;
                 world->viewPtr[vn].viewFunctionPtr = NULL;
             }
         }
@@ -450,7 +450,7 @@ void ENG_ReinitOneWorld(struct sWorld* world, int reinitType)
 
         for (vn = 0; vn < world->viewNum; vn++)
         {
-            world->viewPtr[vn].flags |= 0x2; //LOBYTE(a1->viewPtr[v15].flags) |= 2u;
+            world->viewPtr[vn].flags |= 0x2;
             ++vn;
         }
 
@@ -463,16 +463,16 @@ void ENG_ReinitOneWorld(struct sWorld* world, int reinitType)
 
 void ENG_EngineCall()
 {
-    tableElemStructPF* v0;
-    tableElemStructPF* v1;
+    tableElemStructPF* elem;
+    tableElemStructPF* lastElem;
     tWorld* world;
-    int v3;
-    tableElemStructPF* v4;
-    tableElemStructPF* v5;
-    tableElemStructPF* v6;
-    char v7;
-    float v8;
-    float v9;
+    int anyRan;
+    tableElemStructPF* elem2;
+    tableElemStructPF* elemSaved;
+    tableElemStructPF* lastElem2;
+    char firstPass;
+    float special;
+    float specialSaved;
     LARGE_INTEGER PerformanceCount;
 
     if (!PRO_TablesManager.insideCounter)
@@ -492,11 +492,11 @@ void ENG_EngineCall()
     }
     QueryPerformanceCounter(&PerfCounterStruct[27]);
     
-    v9 = ENG_gf_SpecialTime;
-    v8 = ENG_gf_SpecialTime;
+    specialSaved = ENG_gf_SpecialTime;
+    special = ENG_gf_SpecialTime;
     if (ENG_gf_SpecialTime == 0.0f
-        || (v0 = WOR_gst_Universe.univWorldTablePF.firstElemPtr,
-            v1 = ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.nextElemPtr)) - 1,
+        || (elem = WOR_gst_Universe.univWorldTablePF.firstElemPtr,
+            lastElem = ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.nextElemPtr)) - 1,
             ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.firstElemPtr)) > ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.nextElemPtr)) - 1))
     {
         world = NULL;
@@ -505,18 +505,18 @@ void ENG_EngineCall()
     {
         do
         {
-            world = (tWorld*)v0->objectPtr;
+            world = (tWorld*)elem->objectPtr;
             if (!TAB_TableElemIsInvalid(world))
                 ENG_ReinitOneWorld(world, 20);
-            ++v0;
-        } while (v0 <= v1);
+            ++elem;
+        } while (elem <= lastElem);
     }
     
     QueryPerformanceCounter(&PerformanceCount);
     if (PerfCounterStruct[27].QuadPart)
         PerfCountertimeSumArray[27] += PerformanceCount.QuadPart - PerfCounterStruct[27].QuadPart;
     
-    v3 = 0;
+    anyRan = 0;
     
     PerfCounterStruct[27].QuadPart = 0;
     QueryPerformanceCounter(&PerformanceCount);
@@ -537,15 +537,15 @@ void ENG_EngineCall()
     QueryPerformanceCounter(&PerformanceCount);
     if (PerfCounterStruct[14].QuadPart)
         PerfCountertimeSumArray[14] += PerformanceCount.QuadPart - PerfCounterStruct[14].QuadPart;
-    v4 = WOR_gst_Universe.univWorldTablePF.firstElemPtr;
+    elem2 = WOR_gst_Universe.univWorldTablePF.firstElemPtr;
     PerfCounterStruct[14].QuadPart = 0;
     
-    v7 = 1;
+    firstPass = 1;
     do
     {
-        if (v8 > 0.0f)
+        if (special > 0.0f)
         {
-            if (v8 >= ENG_gf_SpecialDT)
+            if (special >= ENG_gf_SpecialDT)
             {
                 TIM_gf_dt = ENG_gf_SpecialDT;
                 ENG_gb_LastSpecialTime = 0.0f;
@@ -553,40 +553,40 @@ void ENG_EngineCall()
             else
             {
                 ENG_gb_LastSpecialTime = 1.0f;
-                TIM_gf_dt = v8;
+                TIM_gf_dt = special;
             }
         }
 
-        v5 = v4;
-        v6 = ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.nextElemPtr)) - 1;
-        if (v4 <= &(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.nextElemPtr))[-1]))
+        elemSaved = elem2;
+        lastElem2 = ((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.nextElemPtr)) - 1;
+        if (elem2 <= &(((tableElemStructPF*)(WOR_gst_Universe.univWorldTablePF.nextElemPtr))[-1]))
         {
             do
             {
-                world = (tWorld*)v5->objectPtr;
-                if (v5->objectPtr && ((uint8_t)world & 3) != 1 && (v4[v3].objectFlags & 1) != 0)
+                world = (tWorld*)elemSaved->objectPtr;
+                if (elemSaved->objectPtr && ((uint8_t)world & 3) != 1 && (elem2[anyRan].objectFlags & 1) != 0)
                 {
-                    if (v8 != 0.0f)
+                    if (special != 0.0f)
                     {
-                        ENG_gb_FirstFrame = v7;
+                        ENG_gb_FirstFrame = firstPass;
                         world->tablesManagerAndEOTNeeded = 0;
                         world->visibilityCallNeeded = 0;
-                        if (!v7)
+                        if (!firstPass)
                             world->SnPRefreshNeeded = FALSE;
                     }
                     ENG_OneWorldEngineCall(world);
-                    v4 = WOR_gst_Universe.univWorldTablePF.firstElemPtr;
+                    elem2 = WOR_gst_Universe.univWorldTablePF.firstElemPtr;
                 }
-                ++v5;
-                ++v3;
-            } while (v5 <= v6);
-            v3 = 0;
+                ++elemSaved;
+                ++anyRan;
+            } while (elemSaved <= lastElem2);
+            anyRan = 0;
         }
-        v7 = 0;
-        v8 = v8 - ENG_gf_SpecialDT;
-    } while (v8 > 0.0f);
+        firstPass = 0;
+        special = special - ENG_gf_SpecialDT;
+    } while (special > 0.0f);
     
-    if (v9 != 0.0f)
+    if (specialSaved != 0.0f)
     {
         world->tablesManagerAndEOTNeeded = 1;
         world->visibilityCallNeeded = 1;
@@ -849,7 +849,7 @@ void ENG_InitApplication()
 
 void ENG_ParseCommandLine(const char* cmd)
 {
-    char v2;
+    char next;
     char i;
 
     while (1)
@@ -857,8 +857,8 @@ void ENG_ParseCommandLine(const char* cmd)
         if (*cmd == ' ')
         {
             do
-                v2 = *++cmd;
-            while (v2 == ' ');
+                next = *++cmd;
+            while (next == ' ');
         }
         if (*cmd != '/')
             break;

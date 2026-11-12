@@ -53,13 +53,13 @@ BOOL MEM_CloseModule()
     return HeapFree(GetProcessHeap(), 0, (void *)MEM_gst_MemoryInfo.memoryStartPointer);
 }
 
-BOOL MEM_b_CheckBlockHasBeenFreed(void* a1)
+BOOL MEM_b_CheckBlockHasBeenFreed(void* ptr)
 {
     int marker;
     int markerType;
     unsigned int size;
     BOOL ret;
-    uint32_t* tmp = (uint32_t *)a1;
+    uint32_t* tmp = (uint32_t *)ptr;
 
     marker = tmp[-2];
     ret = 1;
@@ -120,9 +120,9 @@ unsigned int MEM_GetElemIDBySize(unsigned int size)
     return ((size - 67108353) >> 19) + 2176;
 }
 
-int MEM_GetBlockSizeBySize(void* a1)
+int MEM_GetBlockSizeBySize(void* ptr)
 {
-    uint32_t* tmp = (uint32_t*)a1;
+    uint32_t* tmp = (uint32_t*)ptr;
     return MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(tmp[-1])].size;
 }
 
@@ -255,12 +255,12 @@ err:
     return 0;
 }
 
-void* MEM_p_AllocAligned(int a1, int alignment)
+void* MEM_p_AllocAligned(int size, int alignment)
 {
     void* ptr;
     void* ret;
 
-    ptr = MEM_p_Alloc(2 * alignment + a1);
+    ptr = MEM_p_Alloc(2 * alignment + size);
     ret = (void*)(2 * alignment + ((unsigned int)ptr & ~(alignment - 1)));
     uint32_t* tmp = (uint32_t*)ptr;
     uint32_t* tmpRet = (uint32_t*)ret;
@@ -279,16 +279,16 @@ void MEM_ResetTmpMemory()
     SOFT_ZList_Clear();
 }
 
-void MEM_FreeTmp(void* a1)
+void MEM_FreeTmp(void* ptr)
 {
     int size;
 
-    uint32_t* tmp = (uint32_t*)a1;
+    uint32_t* tmp = (uint32_t*)ptr;
 
     size = tmp[-1];
     WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
-    if ((char*)a1 + size - 4 == (char*)MEM_gp_AllocTmpNext) // if this is the last elem, we have to adjust MEM_gp_AllocTmpNext
-        MEM_gp_AllocTmpNext = (char*)a1 - 4;
+    if ((char*)ptr + size - 4 == (char*)MEM_gp_AllocTmpNext) // if this is the last elem, we have to adjust MEM_gp_AllocTmpNext
+        MEM_gp_AllocTmpNext = (char*)ptr - 4;
     --MEM_gi_AllocTmpNb;
     SetEvent(memMngEvent);
     if (!MEM_gi_AllocTmpNb)
@@ -376,21 +376,21 @@ void* MEM_p_AllocTmp(int size)
 
 BOOL MEM_Defrag(int onlyOneHole)
 {
-    int v1;
+    int lastReclaimed;
     int i;
     memoryInfoElem* currMie;
     uint32_t nextFreeMemoryPointer;
-    uint32_t v5;
+    uint32_t blockEnd;
     uint32_t memStartPtr;
     int currBlockSize;
-    uint32_t v8;
-    uint32_t v9;
-    unsigned int v10;
+    uint32_t holeStart;
+    uint32_t nextHole;
+    unsigned int sizeClass;
     memoryInfoElem* currMemoryInfoElem;
     uint32_t currHole;
-    int* v13;
+    int* prevLink;
 
-    v1 = 0;
+    lastReclaimed = 0;
     WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
     i = i_Last_245;
     if (i_Last_245 < 2304)
@@ -405,42 +405,42 @@ BOOL MEM_Defrag(int onlyOneHole)
         } while (currMie < &MEM_gst_MemoryInfo.memInfoElems[2304]);
     }
     nextFreeMemoryPointer = MEM_gst_MemoryInfo.nextFreeMemoryPointer;// ez az egész nem csinál mást, mint a memória végérõl az üres láncokat leszedni, mivel a sok felszabadítás következtében a memória végén hole-ok marad(hat)nak beláncolva és köztük adat nélkül. Ez eltakarítja ezt.
-    v5 = MEM_gst_MemoryInfo.nextFreeMemoryPointer;
+    blockEnd = MEM_gst_MemoryInfo.nextFreeMemoryPointer;
 
     i_Last_245 = i >= 2304 ? 0 : i;
-    for (memStartPtr = MEM_gst_MemoryInfo.memoryStartPointer; nextFreeMemoryPointer != MEM_gst_MemoryInfo.memoryStartPointer; v5 = nextFreeMemoryPointer)
+    for (memStartPtr = MEM_gst_MemoryInfo.memoryStartPointer; nextFreeMemoryPointer != MEM_gst_MemoryInfo.memoryStartPointer; blockEnd = nextFreeMemoryPointer)
     {
-        uint32_t* v5Tmp = (uint32_t*)v5;
-        currBlockSize = v5Tmp[-1];
+        uint32_t* blockEndTmp = (uint32_t*)blockEnd;
+        currBlockSize = blockEndTmp[-1];
         if (currBlockSize <= 0)
             break;
         if ((currBlockSize & 3) != 0)
             break;
         if (currBlockSize < 8)
             break;
-        v8 = (uint32_t)&v5Tmp[-(currBlockSize >> 2)];
-        if (v8 <= memStartPtr)
+        holeStart = (uint32_t)&blockEndTmp[-(currBlockSize >> 2)];
+        if (holeStart <= memStartPtr)
             break;
-        if (v8 > nextFreeMemoryPointer)
+        if (holeStart > nextFreeMemoryPointer)
             break;
-        uint32_t* v8Tmp = (uint32_t*)v8;
-        if (v8Tmp[0] != 0xB0110270)          // ez nem egy hole (0xB0110270 = hole)
+        uint32_t* holeTmp = (uint32_t*)holeStart;
+        if (holeTmp[0] != 0xB0110270)          // ez nem egy hole (0xB0110270 = hole)
             break;
-        v9 = v8Tmp[1];
-        if (v9)
+        nextHole = holeTmp[1];
+        if (nextHole)
         {
-            if (v9 < memStartPtr)
+            if (nextHole < memStartPtr)
                 break;
         }
-        if (v9 > (nextFreeMemoryPointer + MEM_gst_MemoryInfo.memorySize))
+        if (nextHole > (nextFreeMemoryPointer + MEM_gst_MemoryInfo.memorySize))
             break;
-        if (v8Tmp[2] != currBlockSize)
+        if (holeTmp[2] != currBlockSize)
             break;
-        v10 = MEM_GetElemIDBySize(currBlockSize - 8);
-        ++MEM_gst_MemoryInfo.memInfoElems[v10].holeChainElemCount;
+        sizeClass = MEM_GetElemIDBySize(currBlockSize - 8);
+        ++MEM_gst_MemoryInfo.memInfoElems[sizeClass].holeChainElemCount;
         nextFreeMemoryPointer = MEM_gst_MemoryInfo.nextFreeMemoryPointer - currBlockSize;
         MEM_gst_MemoryInfo.nextFreeMemoryPointer = MEM_gst_MemoryInfo.nextFreeMemoryPointer - currBlockSize;
-        v1 = currBlockSize;
+        lastReclaimed = currBlockSize;
         if (onlyOneHole)
             break;
         memStartPtr = MEM_gst_MemoryInfo.memoryStartPointer;
@@ -453,16 +453,16 @@ BOOL MEM_Defrag(int onlyOneHole)
             currHole = (uint32_t)currMemoryInfoElem->firstHole;
             if (currHole)
             {
-                v13 = 0;
+                prevLink = 0;
                 while (1)
                 {
                     for (; currHole - 4 < nextFreeMemoryPointer; currHole = *(uint32_t*)currHole)
-                        v13 = (int*)currHole;
+                        prevLink = (int*)currHole;
                     *(uint32_t*)(currHole - 4) = 0;
                     --currMemoryInfoElem->holeChainElemCount;
                     currHole = *(uint32_t*)currHole;
-                    if (v13)
-                        *v13 = currHole;
+                    if (prevLink)
+                        *prevLink = currHole;
                     else
                         currMemoryInfoElem->firstHole = (uint32_t*)currHole;
                     if (!currMemoryInfoElem->holeChainElemCount)
@@ -473,7 +473,7 @@ BOOL MEM_Defrag(int onlyOneHole)
             else
             {
                 if (onlyOneHole)
-                    MEM_gst_MemoryInfo.nextFreeMemoryPointer = nextFreeMemoryPointer + v1;
+                    MEM_gst_MemoryInfo.nextFreeMemoryPointer = nextFreeMemoryPointer + lastReclaimed;
                 currMemoryInfoElem->holeChainElemCount = 0;
             }
             nextFreeMemoryPointer = MEM_gst_MemoryInfo.nextFreeMemoryPointer;
@@ -515,7 +515,7 @@ void* MEM_p_ReallocAligned(void* ptr, unsigned int size, int alignment)
 void* MEM_p_Realloc(void* Src, size_t Size)
 {
     unsigned int tmpPtr;
-    unsigned int v4;
+    unsigned int newSize;
     void* newBlock; 
     int origBlockSize;
     int newBlockSize;
@@ -531,8 +531,8 @@ void* MEM_p_Realloc(void* Src, size_t Size)
     {
         return MEM_p_ReallocAligned(Src, Size, 64);
     }
-    v4 = MEM_GetElemIDBySize(tmpPtr);
-    if (MEM_gst_MemoryInfo.memInfoElems[v4].size == MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(Size)].size)
+    newSize = MEM_GetElemIDBySize(tmpPtr);
+    if (MEM_gst_MemoryInfo.memInfoElems[newSize].size == MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(Size)].size)
         return Src;
     newBlock = MEM_p_Alloc(Size);
     uint32_t* newBlockTmp = (uint32_t*)newBlock;
@@ -545,7 +545,7 @@ void* MEM_p_Realloc(void* Src, size_t Size)
     return newBlock;
 }
 
-void* MEM_p_AllocFromEnd(int a1)
+void* MEM_p_AllocFromEnd(int size)
 {
     int lastFree;
     unsigned int alignedSize;
@@ -560,10 +560,10 @@ void* MEM_p_AllocFromEnd(int a1)
         MEM_gul_RealSize = MEM_gst_MemoryInfo.memorySize;
         MEM_gul_FromEndMaxAllocSize = 0;
     }
-    alignedSize = (a1 & 0xFFFFFFFC) + 4;
+    alignedSize = (size & 0xFFFFFFFC) + 4;
     if (lastFree - MEM_gst_MemoryInfo.nextFreeMemoryPointer - 8 <= alignedSize)
     {
-        newPtr = MEM_p_Alloc((a1 & 0xFFFFFFFC) + 4);
+        newPtr = MEM_p_Alloc((size & 0xFFFFFFFC) + 4);
     }
     else
     {
@@ -585,51 +585,51 @@ void* MEM_p_AllocFromEnd(int a1)
 
 void MEM_FreeFromEnd(void* ptr)
 {
-    int v1;
-    int v2;
-    uint32_t v3;
-    int v4;
-    unsigned int v5;
-    BOOL v6;
-    int v7;
+    int blockSize;
+    int newLastFree;
+    uint32_t nextHeader;
+    int usedSize;
+    unsigned int realSize;
+    BOOL allFreed;
+    int nextSize;
     uint32_t* ptrTmp = (uint32_t*)ptr;
-    uint32_t* v3Tmp;
+    uint32_t* nextTmp;
 
     if (ptrTmp[-2] == 0xCAFEDECA)
     {
         WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
         if (((uint32_t)ptr - 8) == MEM_gpv_LastFree)
         {
-            v1 = ptrTmp[-1];
+            blockSize = ptrTmp[-1];
             ptrTmp[-2] = 0;
-            v2 = MEM_gpv_LastFree + v1 + 8;
-            v3 = (uint32_t)ptr + v1 + 8;
-            v3Tmp = (uint32_t*)v3;
-            v4 = v2 - MEM_gst_MemoryInfo.memoryStartPointer;
-            v5 = MEM_gul_RealSize;
-            v6 = v2 - MEM_gst_MemoryInfo.memoryStartPointer == MEM_gul_RealSize;
-            MEM_gpv_LastFree = v2;
-            MEM_gst_MemoryInfo.memorySize = v2 - MEM_gst_MemoryInfo.memoryStartPointer;
-            if (v2 - MEM_gst_MemoryInfo.memoryStartPointer < MEM_gul_RealSize)
+            newLastFree = MEM_gpv_LastFree + blockSize + 8;
+            nextHeader = (uint32_t)ptr + blockSize + 8;
+            nextTmp = (uint32_t*)nextHeader;
+            usedSize = newLastFree - MEM_gst_MemoryInfo.memoryStartPointer;
+            realSize = MEM_gul_RealSize;
+            allFreed = newLastFree - MEM_gst_MemoryInfo.memoryStartPointer == MEM_gul_RealSize;
+            MEM_gpv_LastFree = newLastFree;
+            MEM_gst_MemoryInfo.memorySize = newLastFree - MEM_gst_MemoryInfo.memoryStartPointer;
+            if (newLastFree - MEM_gst_MemoryInfo.memoryStartPointer < MEM_gul_RealSize)
             {
                 do
                 {
-                    if (v3 - 8 != v2)
+                    if (nextHeader - 8 != newLastFree)
                         break;
-                    if (v3Tmp[-2] != 0x5A5A5AA5)
+                    if (nextTmp[-2] != 0x5A5A5AA5)
                         break;
-                    v7 = v3Tmp[-1];
-                    v3Tmp[-2] = 0;
-                    v2 = MEM_gpv_LastFree + v7 + 8;
-                    v3 += v7 + 8;
-                    v4 = v2 - MEM_gst_MemoryInfo.memoryStartPointer;
-                    v5 = MEM_gul_RealSize;
-                    MEM_gpv_LastFree = v2;
-                    MEM_gst_MemoryInfo.memorySize = v2 - MEM_gst_MemoryInfo.memoryStartPointer;
-                } while (v2 - MEM_gst_MemoryInfo.memoryStartPointer < MEM_gul_RealSize);
-                v6 = v4 == v5;
+                    nextSize = nextTmp[-1];
+                    nextTmp[-2] = 0;
+                    newLastFree = MEM_gpv_LastFree + nextSize + 8;
+                    nextHeader += nextSize + 8;
+                    usedSize = newLastFree - MEM_gst_MemoryInfo.memoryStartPointer;
+                    realSize = MEM_gul_RealSize;
+                    MEM_gpv_LastFree = newLastFree;
+                    MEM_gst_MemoryInfo.memorySize = newLastFree - MEM_gst_MemoryInfo.memoryStartPointer;
+                } while (newLastFree - MEM_gst_MemoryInfo.memoryStartPointer < MEM_gul_RealSize);
+                allFreed = usedSize == realSize;
             }
-            if (v6)
+            if (allFreed)
             {
                 MEM_gpv_LastFree = 0;
                 SetEvent(memMngEvent);
@@ -648,17 +648,17 @@ void MEM_FreeFromEnd(void* ptr)
     }
 }
 
-int MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(void *v1) {
-    if (v1 < MEM_gp_AllocTmpFirst || v1 >= MEM_gp_AllocTmpLast)
-        return MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(*(uint32_t*)(*((uint32_t*)v1 - 1) - 4))].size;
+int MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(void *ptr) {
+    if (ptr < MEM_gp_AllocTmpFirst || ptr >= MEM_gp_AllocTmpLast)
+        return MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(*(uint32_t*)(*((uint32_t*)ptr - 1) - 4))].size;
     else
-        return *((uint32_t*)v1 - 1);
+        return *((uint32_t*)ptr - 1);
 }
 
-int MEM_MemBlockSizeGetAligned(void* v1) {
-    return MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(*(uint32_t*)(*((uint32_t*)v1 - 1) - 4))].size;
+int MEM_MemBlockSizeGetAligned(void* ptr) {
+    return MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(*(uint32_t*)(*((uint32_t*)ptr - 1) - 4))].size;
 }
 
-int MEM_MemBlockSizeGetTmpAddressSpace(void* v1) {
-    return *((uint32_t*)v1 - 1);
+int MEM_MemBlockSizeGetTmpAddressSpace(void* ptr) {
+    return *((uint32_t*)ptr - 1);
 }
