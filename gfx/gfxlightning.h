@@ -19,7 +19,7 @@ typedef struct sGfxLightningData
     Vec3* points;
 } tGfxLightningData;
 
-struct sGfxLightningData* GFX_Lightning_Create();
-void GFX_Lightning_Destroy(struct sGfxLightningData* a1);
-void GFX_Lightning_SampleFractal(struct sGfxLightningData* a1);
-int GFX_i_Lightning_Render(struct sGfxLightningData* data);
+struct sGfxLightningData* GFX_Lightning_Create(void);
+void GFX_Lightning_Destroy(struct sGfxLightningData* bolt);
+void GFX_Lightning_SampleFractal(struct sGfxLightningData* bolt);
+int GFX_i_Lightning_Render(struct sGfxLightningData* bolt);

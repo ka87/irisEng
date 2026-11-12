@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+#include <stdarg.h>
 typedef int                 BOOL;
 typedef unsigned char       BYTE;
 typedef unsigned short      WORD;
@@ -80,3 +81,41 @@ typedef struct _GUID { DWORD Data1; WORD Data2, Data3; uint8_t Data4[8]; } GUID;
 #define VK_UP 0x26
 #define VK_RIGHT 0x27
 #define VK_DOWN 0x28
+
+/* The Windows API, the MSVC built-ins and the CRT spellings the engine
+   names. Declarations only: the differential tests mock what they need.
+   Enough of these that -Werror=implicit-function-declaration holds over
+   the whole corpus; see docs/cleanup/README.md. */
+#ifndef LOBYTE
+#define LOBYTE(w)  ((BYTE)(((DWORD)(w)) & 0xff))
+#define HIBYTE(w)  ((BYTE)((((DWORD)(w)) >> 8) & 0xff))
+#define LOWORD(l)  ((WORD)(((DWORD)(l)) & 0xffff))
+#define HIWORD(l)  ((WORD)((((DWORD)(l)) >> 16) & 0xffff))
+#endif
+#ifndef min
+#define min(a, b)  (((a) < (b)) ? (a) : (b))
+#define max(a, b)  (((a) > (b)) ? (a) : (b))
+#endif
+
+int      MessageBoxA(HWND hwnd, LPCSTR text, LPCSTR caption, UINT type);
+void     OutputDebugStringA(LPCSTR text);
+BOOL     GetClientRect(HWND hwnd, RECT* rect);
+BOOL     DestroyWindow(HWND hwnd);
+DWORD    GetLastError(void);
+HANDLE   CreateMutexA(void* attributes, BOOL initialOwner, LPCSTR name);
+HANDLE   CreateEventA(void* attributes, BOOL manualReset, BOOL initialState, LPCSTR name);
+BOOL     SetEvent(HANDLE event);
+DWORD    WaitForSingleObject(HANDLE handle, DWORD milliseconds);
+HANDLE   GetProcessHeap(void);
+LPVOID   HeapAlloc(HANDLE heap, DWORD flags, size_t bytes);
+BOOL     HeapFree(HANDLE heap, DWORD flags, LPVOID mem);
+short    GetAsyncKeyState(int key);
+
+int      _strcmpi(const char* a, const char* b);
+int      _stricmp(const char* a, const char* b);
+int      _vsnprintf(char* buf, size_t count, const char* format, va_list args);
+
+unsigned long long __rdtsc(void);
+DWORD    timeGetTime(void);
+DWORD    timeBeginPeriod(UINT period);
+DWORD    timeEndPeriod(UINT period);

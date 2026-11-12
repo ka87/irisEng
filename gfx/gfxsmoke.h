@@ -34,7 +34,7 @@ typedef struct sGfxSmokeData
     float timeElapsed;
 } tGfxSmokeData;
 
-int GFX_i_Smoke_Render(struct sGfxSmokeData* a1);
-struct sGfxSmokeData* GFX_Smoke_Create();
-void GFX_Smoke_Destroy(struct sGfxSmokeData* a1);
-void GFX_Smoke_Seti(struct sGfxSmokeData* a1, int a2, int num);
+int GFX_i_Smoke_Render(struct sGfxSmokeData* smoke);
+struct sGfxSmokeData* GFX_Smoke_Create(void);
+void GFX_Smoke_Destroy(struct sGfxSmokeData* smoke);
+void GFX_Smoke_Seti(struct sGfxSmokeData* smoke, int id, int num);

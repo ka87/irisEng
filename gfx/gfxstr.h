@@ -14,7 +14,7 @@ typedef struct sGfxStrData
     struct sGeoUVElem* UVs;
 } tGfxStrData;
 
-struct sGfxStrData* GFX_Str_Create(struct sGameObjectMain* a1);
-int GFX_i_Str_Render(struct sGfxStrData* a1);
-void GFX_Str_Destroy(struct sGfxStrData* a1);
-void GFX_Str_Seti(struct sGfxStrData* a1, int a2, unsigned int idx);
+struct sGfxStrData* GFX_Str_Create(struct sGameObjectMain* gao);
+int GFX_i_Str_Render(struct sGfxStrData* gfx);
+void GFX_Str_Destroy(struct sGfxStrData* gfx);
+void GFX_Str_Seti(struct sGfxStrData* gfx, int id, unsigned int idx);

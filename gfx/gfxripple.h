@@ -30,8 +30,8 @@ typedef struct sGfxRippleData
     float fff;
 } tGfxRippleData;
 
-struct sGfxRippleData* GFX_Ripple_Create(struct sGameObjectMain* a1);
-void GFX_Ripple_Destroy(struct sGfxRippleData* a1);
-BOOL GFX_i_Ripple_Render(struct sGfxRippleData* rd);
-void GFX_Ripple_Seti(struct sGfxRippleData* a1, int a2, int a3);
-void GFX_Ripple_Setf(struct sGfxRippleData* a1, int a2, float a3);
+struct sGfxRippleData* GFX_Ripple_Create(struct sGameObjectMain* gao);
+void GFX_Ripple_Destroy(struct sGfxRippleData* ripple);
+BOOL GFX_i_Ripple_Render(struct sGfxRippleData* ripple);
+void GFX_Ripple_Seti(struct sGfxRippleData* ripple, int id, int value);
+void GFX_Ripple_Setf(struct sGfxRippleData* ripple, int id, float value);

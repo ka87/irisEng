@@ -136,6 +136,7 @@ void MATH_CopyMatrix(Mtx4x4* dest, Mtx4x4* src);
 BOOL MATH_b_EqVectorWithEpsilon(Vec3* vec1, Vec3* vec2, float epsilon);
 void MATH_Orthonormalize(Mtx4x4* mtx);
 void MATH_SetNormVector(Vec3* dest, Vec3* src, float norm);
+void MATH_SetNullVector(Vec3* vec);
 Mtx4x4* MATH_Matrix_AllocArray(int num);
 Mtx4x4* MATH_Matrix_ReallocArray(Mtx4x4* a1, int a2);
 void MATH_Matrix_Free(Mtx4x4* a1);

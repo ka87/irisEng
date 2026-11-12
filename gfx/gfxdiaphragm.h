@@ -9,5 +9,5 @@ typedef struct sGfxDiaphragmData
     Vec3 v1;
 } tGfxDiaphragmData;
 
-struct sGfxDiaphragmData* GFX_Diaphragm_Create();
-int GFX_i_Diaphragm_Render(struct sGfxDiaphragmData* a1);
+struct sGfxDiaphragmData* GFX_Diaphragm_Create(void);
+int GFX_i_Diaphragm_Render(struct sGfxDiaphragmData* iris);

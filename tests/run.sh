@@ -13,7 +13,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Werror=implicit-function-declaration -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
@@ -64,6 +64,71 @@ run_one() {
     echo
 }
 
+# Several files in one binary. Each remaining argument is
+# "live.c:baseline.c:sym sym sym", so a driver can drive a group of
+# effects that share one set of mocks.
+run_group() {
+    name=$1; incdir=$2
+    shift 2
+    [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) return 0 ;; esac
+
+    printf '=== %s\n' "$name"
+    objs=""
+    n=0
+    for spec in "$@"; do
+        live=${spec%%:*}
+        rest=${spec#*:}
+        base=${rest%%:*}
+        syms=${rest#*:}
+        n=$((n + 1))
+        # shellcheck disable=SC2086
+        $CC $CFLAGS -c "$live" -o "$OUT/$name.$n.new.o" $(defs NEW_ $syms)
+        # shellcheck disable=SC2086
+        $CC $CFLAGS -I"$incdir" -c "$base" -o "$OUT/$name.$n.base.o" $(defs BASE_ $syms)
+        objs="$objs $OUT/$name.$n.new.o $OUT/$name.$n.base.o"
+    done
+    $CC $CFLAGS -c math.c -o "$OUT/$name.math.o"
+    $CC $CFLAGS -c tests/gfx_mocks.c -o "$OUT/$name.mocks.o"
+    $CC $CFLAGS -c "tests/test_$name.c" -o "$OUT/$name.drv.o"
+    # shellcheck disable=SC2086
+    $CC $objs "$OUT/$name.math.o" "$OUT/$name.mocks.o" "$OUT/$name.drv.o" \
+        -o "$OUT/$name" -lm
+    "$OUT/$name" || fails=$((fails + 1))
+    echo
+}
+
+water2_syms="GFX_Water2_Create GFX_Water2_Destroy GFX_i_Water2_Render \
+GFX_Water2_Seti GFX_Water2_Setf GFX_Water2_Setv"
+
+ripple_syms="GFX_Ripple_Create GFX_Ripple_Generate GFX_Ripple_Update \
+GFX_Ripple_Alloc GFX_Ripple_Seti GFX_Ripple_Setf GFX_Ripple_Destroy \
+GFX_i_Ripple_Render"
+
+smoke_syms="GFX_Smoke_Update GFX_i_Smoke_Render GFX_Smoke_Create \
+GFX_Smoke_Destroy GFX_Smoke_Alloc GFX_Smoke_AddOne GFX_Smoke_Seti"
+
+lightning_syms="GFX_Lightning_SampleZero GFX_Lightning_Create \
+GFX_Lightning_Destroy GFX_AllocPattern GFX_Lightning_SampleFractal \
+GFX_i_Lightning_Render"
+
+spark_syms="GFX_Spark_Create GFX_Spark_Destroy GFX_Spark_Generate \
+GFX_Spark_Update GFX_AllocSpark GFX_i_Spark_Render"
+
+profiler_syms="GFX_Profiler_Create GFX_Profiler_Destroy \
+GFX_i_Profiler_StartStop GFX_i_Profiler_UpdateMecanic \
+GFX_i_Profiler_ComputeMeshState GFX_i_Profiler_Update_With_XYT \
+GFX_Profiler_Validate GFX_i_Profiler_Render GFX_SetNumberOfPPP \
+GFX_SetNumberOfLPP GFX_SetNumberOfP GFX_Profiler_Seti GFX_Profiler_Setf \
+GFX_Profiler_Setv"
+
+diaphragm_syms="GFX_Diaphragm_Create GFX_i_Diaphragm_Render depth_362"
+fade_syms="GFX_i_Fade_Render GFX_Fade_Create"
+line_syms="GFX_Line_Create GFX_Line_Render"
+table_syms="GFX_i_Table_Render GFX_Table_Setv GFX_Table_Create"
+speed_syms="GFX_i_Speed_Render GFX_Speed_Create"
+flare_syms="GFX_Flare_Create GFX_i_Flare_TestDepth GFX_Flare_Test \
+GFX_Flare_Render GFXF_f_depth f_9Factor_296"
+
 FILTER=$1
 
 run_one snakemodifier modifiers/snakemodifier.c \
@@ -77,6 +142,28 @@ run_one lazymodifier modifiers/lazymodifier.c \
 
 run_one xmenmodifier modifiers/xmenmodifier.c \
         tests/baseline_xmenmodifier.c modifiers "$xmen_syms"
+
+run_group gfxgrid gfx \
+    "gfx/gfxwater2.c:tests/baseline_gfxwater2.c:$water2_syms" \
+    "gfx/gfxripple.c:tests/baseline_gfxripple.c:$ripple_syms" \
+    "gfx/gfxsmoke.c:tests/baseline_gfxsmoke.c:$smoke_syms"
+
+run_group gfxlightning gfx \
+    "gfx/gfxlightning.c:tests/baseline_gfxlightning.c:$lightning_syms"
+
+run_group gfxspark gfx \
+    "gfx/gfxspark.c:tests/baseline_gfxspark.c:$spark_syms"
+
+run_group gfxprofiler gfx \
+    "gfx/gfxprofiler.c:tests/baseline_gfxprofiler.c:$profiler_syms"
+
+run_group gfxdraw gfx \
+    "gfx/gfxdiaphragm.c:tests/baseline_gfxdiaphragm.c:$diaphragm_syms" \
+    "gfx/gfxfade.c:tests/baseline_gfxfade.c:$fade_syms" \
+    "gfx/gfxline.c:tests/baseline_gfxline.c:$line_syms" \
+    "gfx/gfxtable.c:tests/baseline_gfxtable.c:$table_syms" \
+    "gfx/gfxspeed.c:tests/baseline_gfxspeed.c:$speed_syms" \
+    "gfx/gfxflare.c:tests/baseline_gfxflare.c:$flare_syms"
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"

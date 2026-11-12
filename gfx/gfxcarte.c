@@ -7,790 +7,590 @@ int i_LockMat_351 = 0; // TODO FIXME, game doesn't set it explicitly, check
 
 void GFX_Carte_UpdatePalette(tGfxCarteData* carte, int16_t texelemIdx)
 {
-    tEngTexListElemStruct* v2;
-    uint8_t* v3;
-    tEngPaletteElem* v4;
-    uint8_t v5;
-    unsigned int v6;
-    char v7;
-    uint8_t* v8;
-    int v9;
-    uint8_t* v10;
-    uint8_t* v11;
-    uint8_t* v12;
-    uint8_t* v13;
-    int8_t v14;
-    double v15;
-    double v19;
-    int* v20;
-    int* v21;
-    int v22;
-    float v23;
-    float v24;
-    tEngTexListElemStruct* v25;
-    tEngPaletteElem* engPaletteElem;
+    tEngTexListElemStruct* tex;
+    tEngPaletteElem* palette;
+    uint8_t* dst;
+    uint8_t* src;
+    int* dstEntry;
+    int* srcEntry;
+    unsigned int status;
+    float blend;
+    int uncoverId;
+    int i;
 
-    v2 = &TEX_gst_GlobalList.texElems[texelemIdx];
-    v25 = v2;
-    if ((v2->texElemFlag & 0x40) != 0)
+    tex = &TEX_gst_GlobalList.texElems[texelemIdx];
+    if ((tex->texElemFlag & 0x40) == 0)
+        return;
+
+    palette = &TEX_gst_GlobalList.palettes[tex->palettedData.paletteID];
+    if (!palette->paletteData)
+        return;
+    if ((palette->flags & 8) == 0 || (palette->flags & 1) != 0)
+        return;
+
+    // one 32-byte palette bank per piece, picked by that piece's status bit
+    status = carte->pieceStatus;
+    carte->currentPieceStatus = status;
+    dst = palette->paletteData + 32;
+    for (i = 0; i < 31; i++)
     {
-        v3 = TEX_gst_GlobalList.palettes[v2->palettedData.paletteID].paletteData;
-        v4 = &TEX_gst_GlobalList.palettes[v2->palettedData.paletteID];
-        engPaletteElem = v4;
-        if (v3)
+        if ((carte->flags & 0x20) != 0)
+            src = &carte->paletteData[64 * (status & 1)];
+        else
+            src = &carte->paletteData[32 * (status & 1) + 32];
+        memcpy(dst, src, 32u);
+        status >>= 1;
+        dst += 32;
+    }
+
+    uncoverId = (int8_t)carte->uncoverPiecePaletteID;
+    if (uncoverId != -1)
+    {
+        if (uncoverId >= 0 && uncoverId < 32)
         {
-            v5 = v4->flags;
-            if ((v5 & 8) != 0 && (v5 & 1) == 0)
+            carte->remainingUncoverTime = (float)(carte->remainingUncoverTime - TIM_gf_dt);
+            if (0.0 <= carte->remainingUncoverTime)
             {
-                v6 = carte->pieceStatus;
-                v7 = carte->flags;
-                carte->currentPieceStatus = v6;
-                v8 = v4->paletteData + 32;
-                v9 = 31;
-                if ((v7 & 0x20) != 0)
-                {
-                    do
-                    {
-                        v10 = &carte->paletteData[64 * (v6 & 1)];
-                        v11 = v8;
-                        v6 >>= 1;
-                        v8 += 32;
-                        --v9;
-                        memcpy(v11, v10, 32u);
-                    } while (v9);
-                }
-                else
-                {
-                    do
-                    {
-                        v12 = &carte->paletteData[32 * (v6 & 1) + 32];
-                        v13 = v8;
-                        v6 >>= 1;
-                        v8 += 32;
-                        --v9;
-                        memcpy(v13, v12, 32u);
-                    } while (v9);
-                }
-                v14 = carte->uncoverPiecePaletteID;
-                if (v14 == -1)
-                    goto LABEL_15;
-                if (v14 >= 0 && v14 < 32)
-                {
-                    v15 = carte->remainingUncoverTime - TIM_gf_dt;
-                    carte->remainingUncoverTime = (float)v15;
-                    if (0.0 <= v15)
-                    {
-                        v23 = (float)(v15 * 6.2831855);
-                        v19 = MATH_GetSin(v23);
-                        v20 = (int*)&engPaletteElem->paletteData[32 * v14 + 32];
-                        v24 = (float)fabs(v19);
-                        v21 = (int*)&carte->paletteData[32 * ((carte->flags & 0x20) == 0)];
-                        v22 = 8;
-                        do
-                        {
-                            *v20 = LIGHT_ul_Interpol2Colors(*v20, *v21, v24);
-                            ++v20;
-                            ++v21;
-                            --v22;
-                        } while (v22);
-                        goto LABEL_15;
-                    }
-                    carte->remainingUncoverTime = 1.5;
-                }
-                carte->uncoverPiecePaletteID = -1;
-            LABEL_15:
-                gpst_DX_stDD->Request(22, (void *)(v25->palettedData.paletteID));
+                blend = (float)fabs(MATH_GetSin((float)(carte->remainingUncoverTime * 6.2831855)));
+                dstEntry = (int*)&palette->paletteData[32 * uncoverId + 32];
+                srcEntry = (int*)&carte->paletteData[32 * ((carte->flags & 0x20) == 0)];
+                for (i = 0; i < 8; i++)
+                    dstEntry[i] = LIGHT_ul_Interpol2Colors(dstEntry[i], srcEntry[i], blend);
+                gpst_DX_stDD->Request(22, (void*)(tex->palettedData.paletteID));
                 return;
             }
+            carte->remainingUncoverTime = 1.5;
         }
+        carte->uncoverPiecePaletteID = -1;
+    }
+
+    gpst_DX_stDD->Request(22, (void*)(tex->palettedData.paletteID));
+}
+
+// the map's sixteen piece textures live on the texture key chain behind the
+// material; the render takes them out and Destroy puts them back
+static void GFX_l_CarteCaptureTextures(tGfxCarteData* carte, tMultiTextureElemStruct* elem)
+{
+    int i;
+
+    for (i = 0; i < 16; i++)
+    {
+        elem = elem->nextTextureKey;
+        if (!elem)
+            return;
+        carte->texElemIndices[i] = elem->texElemIdx;
     }
 }
 
-int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat, struct sGameObjectMain* a3)
+static void GFX_l_CarteRestoreTextures(tGfxCarteData* carte, tMultiTextureElemStruct* elem)
 {
-    tMultiTextureElemStruct* v4;
-    tMultiTextureElemStruct* v5;
-    tEngTexListElemStruct* v6; 
-    uint8_t* v7;
-    int v8; 
-    int* v9;
-    tMultiTextureElemStruct* v10;
-    tMultiTextureElemStruct* v11;
-    tMultiTextureElemStruct* v12;
-    tMultiTextureElemStruct* v13;
-    tMultiTextureElemStruct* v14;
-    tMultiTextureElemStruct* v15;
-    tMultiTextureElemStruct* v16;
-    Vec3* v17;
-    double v18;
-    double v19;
-    double v20;
-    BOOL v21;
-    unsigned int v22;
-    double v23;
-    Vec3* v24;
-    double v25; 
-    int v26; 
-    Vec3* v27;
-    double v28;
-    Vec3* v29; 
-    double v30;
-    double v31;
-    Vec3* v32; 
-    tViewElem* v33;
-    tGdi_DisplayData* v34;
-    float v35;
-    double v36;
-    double v37;
-    double v38;
-    double v39;
-    double v40;
-    double v41;
-    double v42;
-    double v43;
-    double v44;
-    double v45;
-    double v46;
-    double v47;
-    double v48;
-    int v49;
-    double v50;
-    Vec3* v51;
-    int v52; 
-    int v53; 
-    double v54;
-    int v55;
-    int v56;
-    tMultiTextureElemStruct* v57;
-    tMultiTextureElemStruct* v58;
-    tMultiTextureElemStruct* v60;
-    Mtx4x4* v61;
-    double v62;
-    double v63;
-    Vec3* v64;
-    int16_t v65;
-    int v66;
-    tGfxCarteData* v67;
-    double v68;
-    double v69;
-    tMultiTextureElemStruct* i;
-    int v71;
-    float v72;
-    float v73;
-    float v74;
-    float v75;
-    float v76;
-    float v77;
-    float v78;
-    float v79;
-    float v80;
-    float v81;
-    Vec3 a1a; 
-    Vec3 a3a; 
-    Vec3 dest;
-    float v85;
-    float v86;
-    float cartea;
-    float a2b;
-    float a2c;
-    float a2; 
-    float a2e;
-    float a2a;
+    int i;
 
-    if (!mat || mat->intf->id != 5 || !a3 || !carte->objectCount || !carte->gao[0])
+    for (i = 0; i < 16; i++)
+    {
+        elem = elem->nextTextureKey;
+        if (!elem)
+            return;
+        elem->texElemIdx = carte->texElemIndices[i] & 0xffff;
+    }
+}
+
+static void GFX_l_CarteCorner(Vec3* out, float x, float y, Vec3* centre, Vec3* dir, float z)
+{
+    float dx;
+    float dy;
+
+    dx = x - centre->x;
+    dy = y - centre->y;
+    out->x = (float)(dir->x * dy + dx * dir->y + centre->x);
+    out->y = (float)(dy * dir->y - dx * dir->x + centre->y);
+    out->z = z;
+}
+
+static float GFX_l_CarteCursorPos(float worldPos, float offset, float size, double invScale)
+{
+    return (float)((1.0 - (worldPos - offset) / size) * invScale);
+}
+
+int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat,
+                       struct sGameObjectMain* gao)
+{
+    tMultiTextureElemStruct* elem;
+    tMultiTextureElemStruct* mapElem;
+    tMultiTextureElemStruct* cursor;
+    tMultiTextureElemStruct* chain;
+    tEngTexListElemStruct* tex;
+    tViewElem* view;
+    Vec3* verts;
+    Vec3 dir;
+    Vec3 centre;
+    Vec3 offset;
+    uint8_t* paletteData;
+    double invScale;
+    float left;
+    float right;
+    float top;
+    float bottom;
+    float scale;
+    float grow;
+    float cursorX;
+    float cursorY;
+    int hideRest;
+    int blinking;
+    int k;
+
+    if (!mat || mat->intf->id != 5 || !gao || !carte->objectCount || !carte->gao[0])
         return 1;
+
     if ((carte->flags & 1) == 0)
     {
-        v4 = (tMultiTextureElemStruct*)mat->idxOrPtr;
-        if (!v4)
+        elem = (tMultiTextureElemStruct*)mat->idxOrPtr;
+        if (!elem)
             return 1;
-        v5 = v4->nextTextureKey;
-        if (!v5)
+        mapElem = elem->nextTextureKey;
+        if (!mapElem)
             return 1;
-        v5->subTextureFlags = v5->subTextureFlags & ~0xB000u | 0x4000;
-        v6 = &TEX_gst_GlobalList.texElems[v5->texElemIdx];
-        if ((v6->texElemFlag & 0x40) != 0)
+
+        mapElem->subTextureFlags = mapElem->subTextureFlags & ~0xB000u | 0x4000;
+        tex = &TEX_gst_GlobalList.texElems[mapElem->texElemIdx];
+        if ((tex->texElemFlag & 0x40) != 0)
         {
-            v7 = TEX_gst_GlobalList.palettes[v6->palettedData.paletteID].paletteData;
-            if (v7)
-                memcpy(carte->paletteData, v7, sizeof(carte->paletteData));
+            paletteData = TEX_gst_GlobalList.palettes[tex->palettedData.paletteID].paletteData;
+            if (paletteData)
+                memcpy(carte->paletteData, paletteData, sizeof(carte->paletteData));
             else
                 carte->paletteCanBeUpdated = 0;
         }
-        v8 = 0;
-        v9 = &carte->texElemIndices[1];
-        do
-        {
-            v10 = v5->nextTextureKey;
-            if (!v10)
-                break;
-            *(v9 - 1) = v10->texElemIdx;
-            v11 = v10->nextTextureKey;
-            if (!v11)
-                break;
-            *v9 = v11->texElemIdx;
-            v12 = v11->nextTextureKey;
-            if (!v12)
-                break;
-            v9[1] = v12->texElemIdx;
-            v13 = v12->nextTextureKey;
-            if (!v13)
-                break;
-            v9[2] = v13->texElemIdx;
-            v14 = v13->nextTextureKey;
-            if (!v14)
-                break;
-            v9[3] = v14->texElemIdx;
-            v15 = v14->nextTextureKey;
-            if (!v15)
-                break;
-            v9[4] = v15->texElemIdx;
-            v16 = v15->nextTextureKey;
-            if (!v16)
-                break;
-            v9[5] = v16->texElemIdx;
-            v5 = v16->nextTextureKey;
-            if (!v5)
-                break;
-            v9[6] = v5->texElemIdx;
-            v8 += 8;
-            v9 += 8;
-        } while (v8 < 16);
+        GFX_l_CarteCaptureTextures(carte, mapElem);
         carte->flags |= 1u;
     }
-    if ((carte->flags & 4) == 0)
+
+    if ((carte->flags & 4) != 0)
+        return 1;
+
+    GFX_NeedGeom(4u, 4u, 2u, 0);
+    GFX_gpst_Geo->UVs[0].u = 1.0;
+    GFX_gpst_Geo->UVs[0].v = 0.0;
+    GFX_gpst_Geo->UVs[1].u = 0.0;
+    GFX_gpst_Geo->UVs[1].v = 0.0;
+    GFX_gpst_Geo->UVs[2].u = 0.0;
+    GFX_gpst_Geo->UVs[2].v = 1.0;
+    GFX_gpst_Geo->UVs[3].u = 1.0;
+    GFX_gpst_Geo->UVs[3].v = 1.0;
+    verts = GFX_gpst_Geo->vertices;
+
+    if ((carte->flags & 0x40) != 0)
     {
-        GFX_NeedGeom(4u, 4u, 2u, 0);
-        GFX_gpst_Geo->UVs->u = 1.0;
-        GFX_gpst_Geo->UVs->v = 0.0;
-        GFX_gpst_Geo->UVs[1].u = 0.0;
-        GFX_gpst_Geo->UVs[1].v = 0.0;
-        GFX_gpst_Geo->UVs[2].u = 0.0;
-        GFX_gpst_Geo->UVs[2].v = 1.0;
-        GFX_gpst_Geo->UVs[3].u = 1.0;
-        GFX_gpst_Geo->UVs[3].v = 1.0;
-        v17 = GFX_gpst_Geo->vertices;
-        if ((carte->flags & 0x40) != 0)
+        left = (float)(carte->anotherPos[0].x * gpst_DX_stDD->ct.cam.width
+                       + (float)gpst_DX_stDD->ct.cam.viewPortRealPosX);
+        right = (float)(carte->anotherPos[1].x * gpst_DX_stDD->ct.cam.width
+                        + (float)gpst_DX_stDD->ct.cam.viewPortRealPosX);
+        top = (float)(carte->anotherPos[0].y * gpst_DX_stDD->ct.cam.height
+                      + (float)gpst_DX_stDD->ct.cam.viewPortRealPosY);
+        bottom = (float)(carte->anotherPos[1].y * gpst_DX_stDD->ct.cam.height
+                         + (float)gpst_DX_stDD->ct.cam.viewPortRealPosY);
+        centre.x = (float)((right + left) * 0.5);
+        centre.y = (float)((bottom + top) * 0.5);
+
+        k = carte->PositionToRotationVertexIdx;
+        verts[k % 4].x = left;
+        verts[k % 4].y = top;
+        verts[k % 4].z = carte->pos2D[0].z;
+        verts[(k + 1) % 4].x = right;
+        verts[(k + 1) % 4].y = top;
+        verts[(k + 1) % 4].z = carte->pos2D[0].z;
+        verts[(k + 2) % 4].x = right;
+        verts[(k + 2) % 4].y = bottom;
+        verts[(k + 2) % 4].z = carte->pos2D[0].z;
+        verts[(k + 3) % 4].x = left;
+        verts[(k + 3) % 4].y = bottom;
+        verts[(k + 3) % 4].z = carte->pos2D[0].z;
+    }
+    else
+    {
+        view = WOR_gpst_CurrentWorld ? WOR_gpst_CurrentWorld->viewPtr : 0;
+        if (view)
         {
-            a2b = (float)gpst_DX_stDD->ct.cam.viewPortRealPosX;
-            v18 = carte->anotherPos[0].x * gpst_DX_stDD->ct.cam.width + a2b;
-            v19 = carte->anotherPos[1].x * gpst_DX_stDD->ct.cam.width + a2b;
-            a2c = (float)gpst_DX_stDD->ct.cam.viewPortRealPosY;
-            v20 = carte->anotherPos[0].y * gpst_DX_stDD->ct.cam.height + a2c;
-            v22 = carte->PositionToRotationVertexIdx & 0x80000003;
-            v21 = carte->PositionToRotationVertexIdx < 0;
-            a2 = carte->anotherPos[1].y * gpst_DX_stDD->ct.cam.height + a2c;
-            a3a.x = (float)((v19 + v18) * 0.5);
-            a3a.y = (float)((a2 + v20) * 0.5);
-            v23 = carte->pos2D[0].z;
-            if (v21)
-                v22 = (((uint8_t)v22 - 1) | ~3u) + 1;
-            v24 = &v17[v22];
-            v24->x = (float)v18;
-            v24->y = (float)v20;
-            v24->z = (float)v23;
-            v25 = carte->pos2D[0].z;
-            v26 = (carte->PositionToRotationVertexIdx + 1) % 4;
-            v17[v26].x = (float)v19;
-            v27 = &v17[v26];
-            v27->y = (float)v20;
-            v27->z = (float)v25;
-            v28 = carte->pos2D[0].z;
-            v29 = &v17[(carte->PositionToRotationVertexIdx + 2) % 4];
-            v29->x = (float)v19;
-            v29->y = a2;
-            v29->z = (float)v28;
-            v30 = v18;
-            v31 = carte->pos2D[0].z;
-            v32 = &v17[(carte->PositionToRotationVertexIdx + 3) % 4];
-            v32->x = (float)v30;
-            v32->y = a2;
-            v32->z = (float)v31;
+            MATH_VecInvert(&dir, &view->cameraMtx.v2);
         }
         else
         {
-            if (WOR_gpst_CurrentWorld && (v33 = WOR_gpst_CurrentWorld->viewPtr) != 0)
-            {
-                MATH_VecInvert(&a1a, &v33->cameraMtx.v2);
-                v34 = gpst_DX_stDD;
-            }
-            else
-            {
-                v34 = gpst_DX_stDD;
-                v35 = gpst_DX_stDD->ct.cam.objectMtx.v3.y;
-                a1a.x = gpst_DX_stDD->ct.cam.objectMtx.v3.x;
-                a1a.y = v35;
-            }
-            a1a.z = 0.0;
-            if (a1a.x == 0.0 && a1a.y == 0.0)
-                return 1;
-            MATH_NormalizeEqualVector(&a1a);
-            v36 = (double)v34->ct.cam.viewPortRealPosX;
-            cartea = (float)(v34->ct.cam.width * carte->pos2D[0].x + v36);
-            v81 = (float)(carte->pos2D[1].x * v34->ct.cam.width + v36);
-            v37 = (double)v34->ct.cam.viewPortRealPosY;
-            v80 = (float)(carte->pos2D[0].y * v34->ct.cam.height + v37);
-            a2e = (float)(carte->pos2D[1].y * v34->ct.cam.height + v37);
-            a3a.x = (float)((v81 + cartea) * 0.5);
-            a3a.y = (float)((a2e + v80) * 0.5);
-            v38 = cartea - a3a.x;
-            dest.x = (float)v38;
-            v39 = v80 - a3a.y;
-            v85 = (float)(a1a.x * v39 + (float)(dest.x * a1a.y));
-            v40 = v39 * a1a.y - dest.x * a1a.x;
-            v41 = carte->pos2D[0].z;
-            v17->x = v85 + a3a.x;
-            v17->y = (float)(v40 + a3a.y);
-            v17->z = (float)v41;
-            v42 = v81 - a3a.x;
-            v85 = (float)(a1a.x * v39 + v42 * a1a.y);
-            v43 = v39 * a1a.y - v42 * a1a.x;
-            v44 = carte->pos2D[0].z;
-            v17[1].x = v85 + a3a.x;
-            v17[1].y = (float)(v43 + a3a.y);
-            dest.z = 0.0;
-            v17[1].z = (float)v44;
-            dest.x = (float)v42;
-            v45 = a2e - a3a.y;
-            v85 = (float)(a1a.x * v45 + dest.x * a1a.y);
-            v46 = v45 * a1a.y - dest.x * a1a.x;
-            v47 = carte->pos2D[0].z;
-            v17[2].x = v85 + a3a.x;
-            v17[2].y = (float)(v46 + a3a.y);
-            v17[2].z = (float)v47;
-            dest.x = (float)v38;
-            dest.y = (float)v45;
-            v86 = dest.y * a1a.y - dest.x * a1a.x;
-            v48 = carte->pos2D[0].z;
-            v17[3].x = dest.y * a1a.x + dest.x * a1a.y + a3a.x;
-            v17[3].y = v86 + a3a.y;
-            v17[3].z = (float)v48;
+            dir.x = gpst_DX_stDD->ct.cam.objectMtx.v3.x;
+            dir.y = gpst_DX_stDD->ct.cam.objectMtx.v3.y;
         }
-        v49 = carte->flags;
-        if ((v49 & 0x18) != 0)
+        dir.z = 0.0;
+        if (dir.x == 0.0 && dir.y == 0.0)
+            return 1;
+        MATH_NormalizeEqualVector(&dir);
+
+        left = (float)(gpst_DX_stDD->ct.cam.width * carte->pos2D[0].x
+                       + (double)gpst_DX_stDD->ct.cam.viewPortRealPosX);
+        right = (float)(carte->pos2D[1].x * gpst_DX_stDD->ct.cam.width
+                        + (double)gpst_DX_stDD->ct.cam.viewPortRealPosX);
+        top = (float)(carte->pos2D[0].y * gpst_DX_stDD->ct.cam.height
+                      + (double)gpst_DX_stDD->ct.cam.viewPortRealPosY);
+        bottom = (float)(carte->pos2D[1].y * gpst_DX_stDD->ct.cam.height
+                         + (double)gpst_DX_stDD->ct.cam.viewPortRealPosY);
+        centre.x = (float)((right + left) * 0.5);
+        centre.y = (float)((bottom + top) * 0.5);
+
+        GFX_l_CarteCorner(&verts[0], left, top, &centre, &dir, carte->pos2D[0].z);
+        GFX_l_CarteCorner(&verts[1], right, top, &centre, &dir, carte->pos2D[0].z);
+        GFX_l_CarteCorner(&verts[2], right, bottom, &centre, &dir, carte->pos2D[0].z);
+        GFX_l_CarteCorner(&verts[3], left, bottom, &centre, &dir, carte->pos2D[0].z);
+    }
+
+    if ((carte->flags & 0x18) != 0)
+    {
+        carte->remainingEffectTime = (float)(carte->remainingEffectTime - TIM_gf_dt);
+        grow = (float)(carte->remainingEffectTime / carte->effectTime);
+        if ((carte->flags & 0x10) != 0)
         {
-            v50 = carte->remainingEffectTime - TIM_gf_dt;
-            carte->remainingEffectTime = (float)v50;
-            a2a = (float)(v50 / carte->effectTime);
-            if ((v49 & 0x10) != 0)
+            if (grow < 0.0)
             {
-                if (a2a < 0.0)
-                {
-                    carte->flags = v49 & ~0x10u | 4;
-                    a2a = 0.0;
-                }
+                carte->flags = carte->flags & ~0x10u | 4;
+                grow = 0.0;
             }
-            else if (carte->remainingEffectTime >= 0.0)
-            {
-                a2a = (float)(1.0 - a2a);
-            }
-            else
-            {
-                carte->flags = v49 & ~8u;
-                a2a = 1.0;
-            }
-            a3a.z = carte->pos2D[0].z;
-            v51 = v17;
-            v52 = 4;
-            do
-            {
-                MATH_SubstractVec(&dest, v51, &a3a);
-                MATH_VecMultScalarWithoutBuffer(&dest, a2a);
-                MATH_VecAddVec(v51++, &a3a, &dest);
-                --v52;
-            } while (v52);
         }
-        v53 = 4;
-        do
+        else if (carte->remainingEffectTime >= 0.0)
         {
-            CAM_2Dto3D(&gpst_DX_stDD->ct.cam, v17, v17);
-            ++v17;
-            --v53;
-        } while (v53);
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems->v1 = 0;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems->v2 = 1;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems->v3 = 2;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems->uv1 = 0;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems->uv2 = 1;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems->uv3 = 2;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems[1].v1 = 2;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems[1].v2 = 3;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems[1].v3 = 0;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems[1].uv1 = 2;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems[1].uv2 = 3;
-        GFX_gpst_Geo->triangleChunks->triangleChunkElems[1].uv3 = 0;
-        if (i_LockMat_351)
-            goto LABEL_81;
-        v54 = carte->remainingTime - TIM_gf_dt;
-        carte->remainingTime = (float)v54;
-        if (v54 < 0.0)
+            grow = (float)(1.0 - grow);
+        }
+        else
+        {
+            carte->flags = carte->flags & ~8u;
+            grow = 1.0;
+        }
+
+        centre.z = carte->pos2D[0].z;
+        for (k = 0; k < 4; k++)
+        {
+            MATH_SubstractVec(&offset, &verts[k], &centre);
+            MATH_VecMultScalarWithoutBuffer(&offset, grow);
+            MATH_VecAddVec(&verts[k], &centre, &offset);
+        }
+    }
+
+    for (k = 0; k < 4; k++)
+        CAM_2Dto3D(&gpst_DX_stDD->ct.cam, &verts[k], &verts[k]);
+
+    GFX_SetQuadIndices();
+
+    hideRest = 0;
+    cursor = 0;
+    if (!i_LockMat_351)
+    {
+        carte->remainingTime = (float)(carte->remainingTime - TIM_gf_dt);
+        if (carte->remainingTime < 0.0)
         {
             carte->remainingTime = carte->blinkTime;
-            v55 = carte->flags;
-            if ((v55 & 2) != 0)
-                v56 = v55 & ~2u;
+            if ((carte->flags & 2) != 0)
+                carte->flags &= ~2u;
             else
-                v56 = v55 | 2;
-            carte->flags = v56;
+                carte->flags |= 2;
         }
-        v57 = (tMultiTextureElemStruct*)mat->idxOrPtr;
-        if (!v57)
+
+        elem = (tMultiTextureElemStruct*)mat->idxOrPtr;
+        if (!elem)
             return 1;
-        v58 = v57->nextTextureKey;
-        if (!v58)
+        mapElem = elem->nextTextureKey;
+        if (!mapElem)
             return 1;
-        if (carte->pieceStatus == carte->currentPieceStatus && carte->uncoverPiecePaletteID == 0xFF)
+
+        if (carte->pieceStatus == carte->currentPieceStatus
+            && carte->uncoverPiecePaletteID == 0xFF)
         {
             carte->remainingUncoverTime = 1.5;
         }
         else
         {
             if (carte->paletteCanBeUpdated)
-                GFX_Carte_UpdatePalette(carte, v58->texElemIdx);
+                GFX_Carte_UpdatePalette(carte, mapElem->texElemIdx);
             carte->currentPieceStatus = carte->pieceStatus;
         }
+
         if ((carte->flags & 0x40) != 0)
         {
-            v58->subTextureFlags = v58->subTextureFlags & ~0xA0000u | 0x50000;
-            MAT_SetScale(&v58->transform1, 1.0);
-            v72 = 1.0;
+            mapElem->subTextureFlags = mapElem->subTextureFlags & ~0xA0000u | 0x50000;
+            MAT_SetScale(&mapElem->transform1, 1.0);
+            scale = 1.0;
         }
         else
         {
-            v58->subTextureFlags = v58->subTextureFlags & ~0xC0000u | 0x30000;
-            MAT_SetScale(&v58->transform1, carte->scale);
-            v72 = carte->scale;
+            mapElem->subTextureFlags = mapElem->subTextureFlags & ~0xC0000u | 0x30000;
+            MAT_SetScale(&mapElem->transform1, carte->scale);
+            scale = carte->scale;
         }
-        MAT_SetScale(&v58->transform2, v72);
-        if (!carte->objectCount)
-            goto LABEL_81;
-        if ((carte->flags & 0x40) != 0)
+        MAT_SetScale(&mapElem->transform2, scale);
+
+        if (carte->objectCount && (carte->flags & 0x40) != 0)
         {
-            MAT_SetPos(&v58->transform1, 0.0);
-            MAT_SetPos(&v58->transform2, 0.0);
-            v60 = v58->nextTextureKey;
-            if (v60)
+            MAT_SetPos(&mapElem->transform1, 0.0);
+            MAT_SetPos(&mapElem->transform2, 0.0);
+            cursor = mapElem->nextTextureKey;
+            if (cursor)
             {
-                v60->texElemIdx = carte->texElemIndices[carte->textElemIndexId[0] & 0xF];
-                v61 = carte->gao[0]->matrices;
-                v62 = -(1.0 - (v61->Pos.x - carte->offset.x) / carte->size.x);
-                v86 = (float)(-(1.0 - (v61->Pos.y - carte->offset.y) / carte->size.y));
-                v73 = (float)(v62 + carte->cursorSize.x);
-                MAT_SetPos(&v60->transform1, v73);
-                v74 = v86 + carte->cursorSize.y;
-                MAT_SetPos(&v60->transform2, v74);
-                v75 = (float)(fabs(sin(TIM_gf_MainClock * 4.0)));
-                mat->solidVertexColor = LIGHT_ul_Interpol2Colors(0xFF00007F, 0xFF00FFFF, v75);
-                v60->subTextureFlags = v60->subTextureFlags & 0xFFF627FF | 0x62000;
-            LABEL_79:
-                for (i = v60->nextTextureKey; i; i = i->nextTextureKey)
-                    i->subTextureFlags |= 0x800u;
-                goto LABEL_81;
+                cursor->texElemIdx = carte->texElemIndices[carte->textElemIndexId[0] & 0xF];
+                cursorX = (float)(-(1.0 - (carte->gao[0]->matrices->Pos.x - carte->offset.x)
+                                    / carte->size.x) + carte->cursorSize.x);
+                cursorY = (float)(-(1.0 - (carte->gao[0]->matrices->Pos.y - carte->offset.y)
+                                    / carte->size.y) + carte->cursorSize.y);
+                MAT_SetPos(&cursor->transform1, cursorX);
+                MAT_SetPos(&cursor->transform2, cursorY);
+                mat->solidVertexColor = LIGHT_ul_Interpol2Colors(
+                    0xFF00007F, 0xFF00FFFF,
+                    (float)fabs(sin(TIM_gf_MainClock * 4.0)));
+                cursor->subTextureFlags = cursor->subTextureFlags & 0xFFF627FF | 0x62000;
+                hideRest = 1;
             }
         }
-        else
+        else if (carte->objectCount)
         {
-            v63 = 1.0 / carte->scale;
-            v64 = &carte->gao[0]->matrices->Pos;
-            v85 = (float)((1.0 - (v64->x - carte->offset.x) / carte->size.x) * v63 - 0.5);
-            v86 = (float)((1.0 - (v64->y - carte->offset.y) / carte->size.y) * v63 - 0.5);
-            MAT_SetPos(&v58->transform1, v85);
-            MAT_SetPos(&v58->transform2, v86);
-            v60 = v58->nextTextureKey;
-            if (v60)
+            invScale = 1.0 / carte->scale;
+            cursorX = GFX_l_CarteCursorPos(carte->gao[0]->matrices->Pos.x, carte->offset.x,
+                                           carte->size.x, invScale) - 0.5f;
+            cursorY = GFX_l_CarteCursorPos(carte->gao[0]->matrices->Pos.y, carte->offset.y,
+                                           carte->size.y, invScale) - 0.5f;
+            MAT_SetPos(&mapElem->transform1, cursorX);
+            MAT_SetPos(&mapElem->transform2, cursorY);
+
+            cursor = mapElem->nextTextureKey;
+            if (cursor)
             {
-                v76 = (float)(carte->cursorSize.x - 0.5);
-                MAT_SetPos(&v60->transform1, v76);
-                v77 = (float)(carte->cursorSize.y - 0.5);
-                MAT_SetPos(&v60->transform2, v77);
-                v65 = carte->texElemIndices[carte->textElemIndexId[0] & 0xF];
-                v60->subTextureFlags = v60->subTextureFlags & ~0xBB000u | 0x44000;
-                v60->texElemIdx = v65;
+                MAT_SetPos(&cursor->transform1, (float)(carte->cursorSize.x - 0.5));
+                MAT_SetPos(&cursor->transform2, (float)(carte->cursorSize.y - 0.5));
+                cursor->subTextureFlags = cursor->subTextureFlags & ~0xBB000u | 0x44000;
+                cursor->texElemIdx = carte->texElemIndices[carte->textElemIndexId[0] & 0xF];
                 mat->solidVertexColor = 0x66000000;
-                v60->subTextureFlags &= ~0x800u;
-                v66 = 1;
+                cursor->subTextureFlags &= ~0x800u;
+
                 if (carte->objectCount > 1)
                 {
-                    v67 = carte;
-                    while (v67->gao[v66])
+                    k = 1;
+                    while (carte->gao[k])
                     {
-                        v60 = v60->nextTextureKey;
-                        if (!v60)
+                        cursor = cursor->nextTextureKey;
+                        if (!cursor)
                             break;
-                        if ((carte->flags & 2) != 0 || (v67->textElemIndexId[v66] & 0x10) == 0)
+
+                        if ((carte->flags & 2) != 0
+                            || (carte->textElemIndexId[k] & 0x10) == 0)
                         {
-                            v60->subTextureFlags &= ~0x800u;
-                            v68 = 1.0 / carte->scale;
-                            v69 = (1.0 - (v67->gao[v66]->matrices->Pos.x - carte->offset.x) / carte->size.x) * v68;
-                            dest.y = (float)((1.0 - (v67->gao[v66]->matrices->Pos.y - carte->offset.y) / carte->size.y) * v68);
-                            v78 = (float)(v85 - v69 + carte->cursorSize.x);
-                            MAT_SetPos(&v60->transform1, v78);
-                            v79 = v86 - dest.y + carte->cursorSize.y;
-                            MAT_SetPos(&v60->transform2, v79);
-                            v60->texElemIdx = carte->texElemIndices[v67->textElemIndexId[v66] & 0xF];
+                            cursor->subTextureFlags &= ~0x800u;
+                            invScale = 1.0 / carte->scale;
+                            MAT_SetPos(&cursor->transform1,
+                                       (float)(cursorX
+                                               - GFX_l_CarteCursorPos(
+                                                     carte->gao[k]->matrices->Pos.x,
+                                                     carte->offset.x, carte->size.x, invScale)
+                                               + carte->cursorSize.x));
+                            MAT_SetPos(&cursor->transform2,
+                                       cursorY
+                                       - GFX_l_CarteCursorPos(
+                                             carte->gao[k]->matrices->Pos.y,
+                                             carte->offset.y, carte->size.y, invScale)
+                                       + carte->cursorSize.y);
+                            cursor->texElemIdx =
+                                carte->texElemIndices[carte->textElemIndexId[k] & 0xF];
                         }
                         else
                         {
-                            v60->subTextureFlags |= 0x800u;
+                            cursor->subTextureFlags |= 0x800u;
                         }
-                        ++v66;
-                        if (v66 >= carte->objectCount)
-                            goto LABEL_79;
+
+                        k++;
+                        if (k >= carte->objectCount)
+                        {
+                            hideRest = 1;
+                            break;
+                        }
                     }
-                    goto LABEL_81;
                 }
-                goto LABEL_79;
+                else
+                {
+                    hideRest = 1;
+                }
             }
         }
-    LABEL_81:
-        v71 = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
-        gpst_DX_stDD->drawMaskAllowedStuffCurrent = v71 & ~0x8000900u;
-        GFX_gpst_Geo->triangleChunks->materialNum = 0;
-        GFX_gpst_Geo->intf->Render(GFX_gpst_GO);
-        gpst_DX_stDD->drawMaskAllowedStuffCurrent = v71;
     }
+
+    if (hideRest)
+    {
+        for (chain = cursor->nextTextureKey; chain; chain = chain->nextTextureKey)
+            chain->subTextureFlags |= 0x800u;
+    }
+
+    GFX_gpst_Geo->triangleChunks->materialNum = 0;
+    GFX_RenderGeom(0x8000900u);
     return 1;
 }
 
-struct sGfxCarteData* GFX_Carte_Create()
+struct sGfxCarteData* GFX_Carte_Create(void)
 {
-    tGfxCarteData* v0;
+    tGfxCarteData* carte;
 
-    v0 = (tGfxCarteData*)MEM_p_Alloc(sizeof(tGfxCarteData));
-    memset(v0, 0, sizeof(tGfxCarteData));
-    v0->uncoverPiecePaletteID = -1;
-    v0->pieceStatus = -1;
-    v0->currentPieceStatus = -1;
-    v0->effectTime = 0.2f;
-    v0->remainingUncoverTime = 1.5f;
-    v0->paletteCanBeUpdated = 1;
-    v0->flags = 0x24;
-    return v0;
+    carte = (tGfxCarteData*)MEM_p_Alloc(sizeof(tGfxCarteData));
+    memset(carte, 0, sizeof(tGfxCarteData));
+    carte->uncoverPiecePaletteID = -1;
+    carte->pieceStatus = -1;
+    carte->currentPieceStatus = -1;
+    carte->effectTime = 0.2f;
+    carte->remainingUncoverTime = 1.5f;
+    carte->paletteCanBeUpdated = 1;
+    carte->flags = 0x24;
+    return carte;
 }
 
-void GFX_Carte_Seti(struct sGfxCarteData* a1, unsigned int a2, unsigned int a3)
+static void GFX_l_CarteFadeIn(tGfxCarteData* carte)
 {
-    int v3;
-    int v4;
-    int v5;
-    double v6;
-    int v7;
-    double v8;
-    int v9;
-    int v10;
+    if ((carte->flags & 4) != 0)
+    {
+        carte->remainingEffectTime = carte->effectTime;
+        carte->flags = carte->flags & ~4u | 8;
+    }
+    else if ((carte->flags & 0x10) != 0)
+    {
+        carte->remainingEffectTime = (float)(carte->effectTime - carte->remainingEffectTime);
+        carte->flags = carte->flags & ~0x10u | 8;
+    }
+}
 
-    switch (a2)
+void GFX_Carte_Seti(struct sGfxCarteData* carte, unsigned int id, unsigned int value)
+{
+    switch (id)
     {
     case 16102u:
-        if (a3 == 1)
+        if (value == 1)
         {
-            v3 = a1->flags;
-            if ((v3 & 0x40) != 0)
-                a1->flags = v3 & ~0x40u | 4;
-            return;
+            if ((carte->flags & 0x40) != 0)
+                carte->flags = carte->flags & ~0x40u | 4;
         }
-        if (!a3)
+        else if (!value)
         {
-            v4 = a1->flags;
-            if ((v4 & 0x40) == 0)
+            if ((carte->flags & 0x40) == 0)
             {
-                a1->flags = v4 | 0x40;
-                goto LABEL_10;
+                carte->flags |= 0x40;
+                GFX_l_CarteFadeIn(carte);
             }
         }
         break;
+
     case 16100u:
-        if (a3 == 1)
+        if (value == 1)
         {
-        LABEL_10:
-            v5 = a1->flags;
-            if ((v5 & 4) != 0)
-            {
-                a1->remainingEffectTime = a1->effectTime;
-                a1->flags = v5 & ~4u | 8;
-            }
-            else if ((v5 & 0x10) != 0)
-            {
-                v6 = a1->effectTime - a1->remainingEffectTime;
-                a1->flags = v5 & ~0x10u | 8;
-                a1->remainingEffectTime = (float)v6;
-            }
-            return;
+            GFX_l_CarteFadeIn(carte);
         }
-        if (!a3)
+        else if (!value && (carte->flags & 4) == 0)
         {
-            v7 = a1->flags;
-            if ((v7 & 4) == 0)
+            if ((carte->flags & 8) != 0)
             {
-                if ((v7 & 8) != 0)
-                {
-                    v8 = a1->effectTime - a1->remainingEffectTime;
-                    a1->flags = v7 & ~8u | 0x10;
-                    a1->remainingEffectTime = (float)v8;
-                }
-                else if ((v7 & 0x10) == 0)
-                {
-                    a1->remainingEffectTime = a1->effectTime;
-                    a1->flags = v7 | 0x10;
-                }
+                carte->remainingEffectTime =
+                    (float)(carte->effectTime - carte->remainingEffectTime);
+                carte->flags = carte->flags & ~8u | 0x10;
+            }
+            else if ((carte->flags & 0x10) == 0)
+            {
+                carte->remainingEffectTime = carte->effectTime;
+                carte->flags |= 0x10;
             }
         }
         break;
+
     case 16101u:
-        if (a3 == 1)
+        if (value == 1)
         {
-            v9 = a1->flags;
-            if ((v9 & 0x20) != 0)
+            if ((carte->flags & 0x20) != 0)
             {
-                a1->currentPieceStatus = -1;
-                a1->flags = v9 & ~0x20u;
+                carte->currentPieceStatus = -1;
+                carte->flags &= ~0x20u;
             }
         }
-        else if (!a3)
+        else if (!value)
         {
-            v10 = a1->flags;
-            if ((v10 & 0x20) == 0)
+            if ((carte->flags & 0x20) == 0)
             {
-                a1->currentPieceStatus = -1;
-                a1->flags = v10 | 0x20;
+                carte->currentPieceStatus = -1;
+                carte->flags |= 0x20;
             }
         }
+        break;
+
+    default:
         break;
     }
 }
 
-void GFX_Carte_Object(tGfxElem* a1, int16_t id, tGameObjectMain* a3, int a4, int textElemIndexId)
+void GFX_Carte_Object(tGfxElem* gfxList, int16_t id, tGameObjectMain* gao, int mode,
+                      int textElemIndexId)
 {
-    tGfxCarteData* v5;
-    int v6;
-    int v7;
-    int v8;
-    tGameObjectMain** v9;
+    tGfxCarteData* carte;
+    int i;
 
-    GFX_SetCurrent(a1, id);
-    if (GFX_gpst_Current)
+    GFX_SetCurrent(gfxList, id);
+    if (!GFX_gpst_Current)
+        return;
+
+    carte = (tGfxCarteData*)GFX_gpst_Current->privateData;
+    if (!mode)
     {
-        v5 = (tGfxCarteData*)GFX_gpst_Current->privateData;
-        if (a4)
+        if (!carte->objectCount)
+            carte->objectCount = 1;
+        carte->gao[0] = gao;
+        carte->textElemIndexId[0] = textElemIndexId;
+        return;
+    }
+
+    if (mode == 1)
+    {
+        if (carte->objectCount < 16)
         {
-            if (a4 == 1)
-            {
-                v6 = v5->objectCount;
-                if (v6 < 16)
-                {
-                    v5->gao[v6] = a3;
-                    v5->textElemIndexId[v5->objectCount++] = textElemIndexId;
-                }
-            }
-            else if (a4 == -1)
-            {
-                v7 = v5->objectCount;
-                v8 = 0;
-                if (v7 > 0)
-                {
-                    v9 = v5->gao;
-                    do
-                    {
-                        if (*v9 == a3)
-                            break;
-                        ++v8;
-                        ++v9;
-                    } while (v8 < v5->objectCount);
-                }
-                if (v8 != v7)
-                {
-                    v5->objectCount = v7 - 1;
-                    v5->gao[v8] = v5->gao[v7 - 1];
-                    v5->textElemIndexId[v8] = v5->textElemIndexId[v5->objectCount];
-                }
-            }
+            carte->gao[carte->objectCount] = gao;
+            carte->textElemIndexId[carte->objectCount++] = textElemIndexId;
         }
-        else
+        return;
+    }
+
+    if (mode == -1)
+    {
+        for (i = 0; i < carte->objectCount; i++)
         {
-            if (!v5->objectCount)
-                v5->objectCount = 1;
-            v5->gao[0] = a3;
-            v5->textElemIndexId[0] = textElemIndexId;
+            if (carte->gao[i] == gao)
+                break;
+        }
+        if (i != carte->objectCount)
+        {
+            carte->objectCount--;
+            carte->gao[i] = carte->gao[carte->objectCount];
+            carte->textElemIndexId[i] = carte->textElemIndexId[carte->objectCount];
         }
     }
 }
 
-void GFX_Carte_Destroy(struct sGfxCarteData* a1, struct sGEOMAT* a2)
+void GFX_Carte_Destroy(struct sGfxCarteData* carte, struct sGEOMAT* mat)
 {
-    tMultiTextureElemStruct* v2;
-    tMultiTextureElemStruct* v3;
-    tEngTexListElemStruct* v4;
-    uint8_t* v5;
-    int v6;
-    int* v7;
-    tMultiTextureElemStruct* v8;
-    tMultiTextureElemStruct* v9;
-    tMultiTextureElemStruct* v10;
-    tMultiTextureElemStruct* v11;
-    tMultiTextureElemStruct* v12;
-    tMultiTextureElemStruct* v13;
-    tMultiTextureElemStruct* v14;
-    int16_t v15;
+    tMultiTextureElemStruct* elem;
+    tMultiTextureElemStruct* mapElem;
+    tEngTexListElemStruct* tex;
+    uint8_t* paletteData;
 
-    if (a2)
+    if (!mat || mat->intf->id != 5 || mat->usageCount <= 0 || (carte->flags & 1) == 0)
+        return;
+
+    elem = (tMultiTextureElemStruct*)mat->idxOrPtr;
+    if (!elem)
+        return;
+    mapElem = elem->nextTextureKey;
+    if (!mapElem)
+        return;
+
+    tex = &TEX_gst_GlobalList.texElems[mapElem->texElemIdx];
+    if ((tex->texElemFlag & 0x40) != 0)
     {
-        if (a2->intf->id == 5 && a2->usageCount > 0 && (a1->flags & 1) != 0)
-        {
-            v2 = (tMultiTextureElemStruct*)a2->idxOrPtr;
-            if (v2)
-            {
-                v3 = v2->nextTextureKey;
-                if (v3)
-                {
-                    v4 = &TEX_gst_GlobalList.texElems[v3->texElemIdx];
-                    if ((v4->texElemFlag & 0x40) != 0)
-                    {
-                        v5 = TEX_gst_GlobalList.palettes[v4->palettedData.paletteID].paletteData;
-                        if (v5)
-                            memcpy(v5, a1->paletteData, sizeof(a1->paletteData));
-                    }
-                    v6 = 0;
-                    v7 = a1->texElemIndices;
-                    do
-                    {
-                        v8 = v3->nextTextureKey;
-                        if (!v8)
-                            break;
-                        v8->texElemIdx = v7[v6] & 0xffff;
-                        v9 = v8->nextTextureKey;
-                        if (!v9)
-                            break;
-                        v9->texElemIdx = v7[v6 + 1] & 0xffff;
-                        v10 = v9->nextTextureKey;
-                        if (!v10)
-                            break;
-                        v10->texElemIdx = v7[v6 + 2] & 0xffff;
-                        v11 = v10->nextTextureKey;
-                        if (!v11)
-                            break;
-                        v11->texElemIdx = v7[v6 + 3] & 0xffff;
-                        v12 = v11->nextTextureKey;
-                        if (!v12)
-                            break;
-                        v12->texElemIdx = v7[v6 + 4] & 0xffff;
-                        v13 = v12->nextTextureKey;
-                        if (!v13)
-                            break;
-                        v13->texElemIdx = v7[v6 + 5] & 0xffff;
-                        v14 = v13->nextTextureKey;
-                        if (!v14)
-                            break;
-                        v14->texElemIdx = v7[v6 + 6] & 0xffff;
-                        v3 = v14->nextTextureKey;
-                        if (!v3)
-                            break;
-                        v15 = v7[v6 + 7] & 0xffff;
-                        v6 += 8;
-                        v3->texElemIdx = v15;
-                    } while (v6 < 16);
-                    a1->flags = 0;
-                }
-            }
-        }
+        paletteData = TEX_gst_GlobalList.palettes[tex->palettedData.paletteID].paletteData;
+        if (paletteData)
+            memcpy(paletteData, carte->paletteData, sizeof(carte->paletteData));
     }
+
+    GFX_l_CarteRestoreTextures(carte, mapElem);
+    carte->flags = 0;
 }

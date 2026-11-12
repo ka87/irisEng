@@ -4,275 +4,230 @@
 #include "../strings.h"
 #include "gfxstr.h"
 
-struct sGfxStrData* GFX_Str_Create(struct sGameObjectMain* a1)
+struct sGfxStrData* GFX_Str_Create(struct sGameObjectMain* gao)
 {
-    tGameObjectBasic* v1;
-    tGameObjectVisualObject* v2;
-    tGEOSTRStruct* v3;
-    tGfxStrData* result;
+    tGameObjectVisualObject* visual;
+    tGEOSTRStruct* str;
+    tGfxStrData* gfx;
 
-    if (!a1)
+    if (!gao || !gao->basic)
         return 0;
-    v1 = a1->basic;
-    if (!v1)
+    visual = (tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject);
+    if (!visual)
         return 0;
-    v2 = (tGameObjectVisualObject*)(v1->actorObjectOrVisualObject);
-    if (!v2)
+    str = (tGEOSTRStruct*)(visual->GROGEOOrSomethingElse);
+    if (!str || str->intf->id != 10)
         return 0;
-    v3 = (tGEOSTRStruct*)(v2->GROGEOOrSomethingElse);
-    if (!v3 || v3->intf->id != 10)
-        return 0;
-    result = (tGfxStrData*)MEM_p_Alloc(sizeof(tGfxStrData));
-    result->gao = a1;
-    result->num = 0;
-    result->color1 = 0xFFFFFFFF;
-    result->color2 = 0xFFFFFF00;
-    result->ptr = 0;
-    result->UVs = 0;
-    result->timeElapsed = 5.0f;
-    return result;
+
+    gfx = (tGfxStrData*)MEM_p_Alloc(sizeof(tGfxStrData));
+    gfx->gao = gao;
+    gfx->num = 0;
+    gfx->color1 = 0xFFFFFFFF;
+    gfx->color2 = 0xFFFFFF00;
+    gfx->ptr = 0;
+    gfx->UVs = 0;
+    gfx->timeElapsed = 5.0f;
+    return gfx;
 }
 
-int GFX_i_Str_Render(struct sGfxStrData* a1)
+int GFX_i_Str_Render(struct sGfxStrData* gfx)
 {
-    unsigned int v3;
-    int v4;
-    int v5;
-    Vec3* v6;
-    tGeoTriangleChunkElem* v7;
-    int v8;
-    int v9;
-    uint16_t v10;
-    uint16_t v11;
-    tGeoTriangleChunkElem* v12;
-    uint16_t v13;
-    int v14;
-    Vec3 a3;
-    float v16;
-    float v17;
-    int v18;
+    tGeoTriangleChunkElem* tris;
+    Vec3 screenPos;
+    float remaining;
+    float fade;
+    unsigned int topColor;
+    unsigned int bottomColor;
+    int baseVertex;
+    int letter;
+    int i;
 
-    if (a1->num)
+    if (!gfx->num)
+        return 1;
+
+    remaining = gfx->timeElapsed - TIM_gf_dt;
+    gfx->timeElapsed = remaining;
+    if (remaining < 0.0)
+        return 0;
+
+    if (remaining <= 4.8000002)
+        fade = 1.0;
+    else
+        fade = (float)((5.0 - remaining) * 5.0);
+    topColor = LIGHT_ul_Interpol2Colors(0, gfx->color1, fade);
+    bottomColor = LIGHT_ul_Interpol2Colors(0, gfx->color2, fade);
+
+    GFX_NeedGeom(4 * gfx->num, 4 * gfx->num, 2 * gfx->num, 1);
+    memcpy(GFX_gpst_Geo->UVs, gfx->UVs, 4 * sizeof(tGeoUVElem) * gfx->num);
+
+    for (i = 0; i < 4 * gfx->num; i++)
     {
-        v16 = a1->timeElapsed - TIM_gf_dt;
-        a1->timeElapsed = v16;
-        if (v16 < 0.0)
-            return 0;
-        if (v16 <= 4.8000002)
-            v17 = 1.0;
-        else
-            v17 = (float)((5.0 - v16) * 5.0);
-        v3 = LIGHT_ul_Interpol2Colors(0, a1->color1, v17);
-        v18 = LIGHT_ul_Interpol2Colors(0, a1->color2, v17);
-        GFX_NeedGeom(4 * a1->num, 4 * a1->num, 2 * a1->num, 1);
-        memcpy(GFX_gpst_Geo->UVs, a1->UVs, 4 * (sizeof(tGeoUVElem)) * a1->num);
-        v4 = 0;
-        if (4 * a1->num > 0)
-        {
-            v5 = 0;
-            do
-            {
-                v6 = a1->ptr;
-                a3.x = (float)(gpst_DX_stDD->ct.cam.width * v6[v5].x + (double)gpst_DX_stDD->ct.cam.viewPortRealPosX);
-                a3.y = (float)(v6[v5].y * gpst_DX_stDD->ct.cam.height + (double)gpst_DX_stDD->ct.cam.viewPortRealPosY);
-                a3.z = v6[v5].z;
-                CAM_2Dto3D(&gpst_DX_stDD->ct.cam, &GFX_gpst_Geo->vertices[v5], &a3);
-                ++v4;
-                ++v5;
-            } while (v4 < 4 * a1->num);
-        }
-        v7 = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
-        v8 = 0;
-        if (a1->num > 0)
-        {
-            v9 = 0;
-            do
-            {
-                v7->v1 = 4 * v8;
-                v7->uv1 = 4 * v8;
-                v10 = 4 * v8 + 1;
-                v7->v2 = v10;
-                v7->uv2 = v10;
-                v11 = 4 * v8 + 2;
-                v7->v3 = v11;
-                v7->uv3 = v11;
-                v7[1].v1 = v11;
-                v7[1].uv1 = v11;
-                v7[1].v3 = 4 * v8;
-                v7[1].uv3 = 4 * v8;
-                v12 = v7 + 1;
-                v13 = 4 * v8 + 3;
-                v12->v2 = v13;
-                v12->uv2 = v13;
-                GFX_gpst_Geo->vertexColors[v9 + 1] = v3;
-                GFX_gpst_Geo->vertexColors[v9 + 2] = v18;
-                GFX_gpst_Geo->vertexColors[v9 + 3] = v18;
-                v7 = v12 + 1;
-                GFX_gpst_Geo->vertexColors[v9 + 4] = v3;
-                ++v8;
-                v9 += 4;
-            } while (v8 < a1->num);
-        }
-        v14 = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
-        gpst_DX_stDD->drawMaskAllowedStuffCurrent = v14 & ~0x8000900u;
-        GFX_gpst_Geo->triangleChunks->materialNum = 0;
-        GFX_gpst_Geo->intf->Render(GFX_gpst_GO);
-        gpst_DX_stDD->drawMaskAllowedStuffCurrent = v14;
+        screenPos.x = (float)(gpst_DX_stDD->ct.cam.width * gfx->ptr[i].x
+                              + (double)gpst_DX_stDD->ct.cam.viewPortRealPosX);
+        screenPos.y = (float)(gfx->ptr[i].y * gpst_DX_stDD->ct.cam.height
+                              + (double)gpst_DX_stDD->ct.cam.viewPortRealPosY);
+        screenPos.z = gfx->ptr[i].z;
+        CAM_2Dto3D(&gpst_DX_stDD->ct.cam, &GFX_gpst_Geo->vertices[i], &screenPos);
     }
+
+    tris = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+    for (letter = 0; letter < gfx->num; letter++)
+    {
+        baseVertex = 4 * letter;
+
+        tris[0].v1 = baseVertex;
+        tris[0].uv1 = baseVertex;
+        tris[0].v2 = baseVertex + 1;
+        tris[0].uv2 = baseVertex + 1;
+        tris[0].v3 = baseVertex + 2;
+        tris[0].uv3 = baseVertex + 2;
+        tris[1].v1 = baseVertex + 2;
+        tris[1].uv1 = baseVertex + 2;
+        tris[1].v2 = baseVertex + 3;
+        tris[1].uv2 = baseVertex + 3;
+        tris[1].v3 = baseVertex;
+        tris[1].uv3 = baseVertex;
+
+        GFX_gpst_Geo->vertexColors[baseVertex + 1] = topColor;
+        GFX_gpst_Geo->vertexColors[baseVertex + 2] = bottomColor;
+        GFX_gpst_Geo->vertexColors[baseVertex + 3] = bottomColor;
+        GFX_gpst_Geo->vertexColors[baseVertex + 4] = topColor;
+
+        tris += 2;
+    }
+
+    GFX_gpst_Geo->triangleChunks->materialNum = 0;
+    GFX_RenderGeom(0x8000900u);
     return 1;
 }
 
-void GFX_Str_Destroy(struct sGfxStrData* a1)
+void GFX_Str_Destroy(struct sGfxStrData* gfx)
 {
-    tGeoUVElem* v1;
+    if (!gfx->num)
+        return;
 
-    if (a1->num)
-    {
-        MEM_Free(a1->ptr);
-        v1 = a1->UVs;
-        a1->ptr = NULL;
-        MEM_Free(v1);
-        a1->UVs = NULL;
-        a1->num = 0;
-    }
+    MEM_Free(gfx->ptr);
+    gfx->ptr = NULL;
+    MEM_Free(gfx->UVs);
+    gfx->UVs = NULL;
+    gfx->num = 0;
 }
 
-void GFX_Str_Seti(struct sGfxStrData* a1, int a2, unsigned int idx)
+void GFX_Str_Seti(struct sGfxStrData* gfx, int id, unsigned int idx)
 {
-    tGEOSTRStruct* v3;
-    int v4;
-    tGEOSTRStringData* v5; 
-    Vec3* v6;
-    tGeoUVElem* v7;
-    tGEOSTRLetter* v8;
-    double v9;
-    int16_t v10;
-    double v11;
-    unsigned int v12;
-    unsigned int v13;
-    unsigned int v14;
-    tFontGlypthElem* v15;
-    double v16;
-    int v17;
-    int v18;
-    double v19;
-    double v20;
-    double v21;
-    float v22;
-    float v23;
-    int v24;
-    float v25;
-    float v26;
-    tGEOSTRStringData* v27;
-    float v28;
-    int v29;
-    int v30;
-    Vec3 max; 
-    Vec3 min; 
-    float a2a;
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* string;
+    tGEOSTRLetter* letter;
+    tFontGlypthElem* glyph;
+    tGeoUVElem* uvs;
+    Vec3* verts;
+    Vec3 min;
+    Vec3 max;
+    double top;
+    double bottom;
+    double right;
+    float pivotX;
+    float pivotY;
+    float texWidth;
+    float texHeight;
+    float left;
+    float advance;
+    unsigned int materialId;
+    unsigned int ch;
+    unsigned int glyphIdx;
+    int count;
+    int i;
 
-    if (a2 != 19100)
+    if (id != 19100)
         return;
-    v3 = STR_pst_Get(a1->gao);
-    if (!v3)
+
+    str = STR_pst_Get(gfx->gao);
+    if (!str)
         return;
-    GFX_Str_Destroy(a1);
-    v4 = STR_l_GetLength(v3, idx);
-    v24 = v4;
-    if (!v4 || !STR_pst_GetString(v3, idx))
+
+    GFX_Str_Destroy(gfx);
+    count = STR_l_GetLength(str, idx);
+    if (!count || !STR_pst_GetString(str, idx))
         return;
-    a1->ptr = (Vec3*)MEM_p_Alloc(4 * sizeof(Vec3) * v4);       // betunkent 4 pont (Vec3 12 *4 = 48)
-    a1->UVs = (tGeoUVElem*)MEM_p_Alloc(4 * sizeof(tGeoUVElem) * v4);
-    a1->num = v4;
-    v5 = STR_pst_GetString(v3, idx);
-    v6 = a1->ptr;
-    v7 = a1->UVs;
-    v8 = &v3->letters[v5->index];
-    a2a = v5->pivotPoint.x;
-    v27 = v5;
-    v22 = v5->pivotPoint.y;
-    if ((v5->flags & 0xF) == 0)
-        goto LABEL_16;
-    STR_GetRectShort(v3, idx, 0, -1, &min, &max);
-    min.x = (float)(min.x / (double)(uint16_t)v3->width);
-    min.y = (float)(min.y / (double)(uint16_t)v3->height);
-    max.x = (float)(max.x / (double)(uint16_t)v3->width);
-    max.y = (float)(max.y / (double)(uint16_t)v3->height);
-    if ((v27->flags & 3) == 1)
+
+    gfx->ptr = (Vec3*)MEM_p_Alloc(4 * sizeof(Vec3) * count);
+    gfx->UVs = (tGeoUVElem*)MEM_p_Alloc(4 * sizeof(tGeoUVElem) * count);
+    gfx->num = count;
+
+    string = STR_pst_GetString(str, idx);
+    verts = gfx->ptr;
+    uvs = gfx->UVs;
+    letter = &str->letters[string->index];
+    pivotX = string->pivotPoint.x;
+    pivotY = string->pivotPoint.y;
+
+    if ((string->flags & 0xF) != 0)
     {
-        v9 = (max.x + min.x) * 0.5;
-    LABEL_10:
-        a2a = (float)(a2a - v9);
-        goto LABEL_11;
+        STR_GetRectShort(str, idx, 0, -1, &min, &max);
+        min.x = (float)(min.x / (double)(uint16_t)str->width);
+        min.y = (float)(min.y / (double)(uint16_t)str->height);
+        max.x = (float)(max.x / (double)(uint16_t)str->width);
+        max.y = (float)(max.y / (double)(uint16_t)str->height);
+
+        if ((string->flags & 3) == 1)
+            pivotX = (float)(pivotX - (max.x + min.x) * 0.5);
+        else if ((string->flags & 3) == 2)
+            pivotX = (float)(pivotX - (max.x - min.x));
+
+        if ((string->flags & 0xC) == 4)
+            pivotY = (float)(pivotY - (max.y + min.y) * 0.5);
+        else if ((string->flags & 0xC) == 8)
+            pivotY = (float)(pivotY - (max.y - min.y));
     }
-    if ((v27->flags & 3) == 2)
+
+    for (i = 0; i < count; i++)
     {
-        v9 = max.x - min.x;
-        goto LABEL_10;
-    }
-LABEL_11:
-    v10 = v27->flags & 0xC;
-    if (v10 == 4)
-    {
-        v11 = (max.y + min.y) * 0.5;
-    }
-    else
-    {
-        if (v10 != 8)
-            goto LABEL_16;
-        v11 = max.y - min.y;
-    }
-    v22 = (float)(v22 - v11);
-LABEL_16:
-    v29 = v24;
-    do
-    {
-        v12 = (v8->flagsAndChar >> 12) & 0x3F;
-        if ((int16_t)v12 != v3->fontMaterialID)
+        materialId = (letter->flagsAndChar >> 12) & 0x3F;
+        if ((int16_t)materialId != str->fontMaterialID)
         {
-            v3->fontMaterialID = v12;
-            v3->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (int16_t)v12);
+            str->fontMaterialID = materialId;
+            str->fontDesc = STR_pst_GetFontDesc(
+                (tGEOMAT*)(((tGameObjectVisualObject*)
+                            (STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT),
+                (int16_t)materialId);
         }
-        v13 = (uint8_t)v8->flagsAndChar;
-        if (v13 < 32)
-            v14 = 0;
-        else
-            v14 = v13 - 32;
-        v15 = &v3->fontDesc->fge[v14];
-        v25 = (float)(uint16_t)v3->width;
-        v16 = (double)v8->x;
-        v17 = v8->width;
-        v30 = v8->y;
-        v18 = (int16_t)v8->height;
-        v7 += 4;
-        v6 += 4;
-        ++v8;
-        v23 = (float)(v16 / v25 + a2a);
-        v28 = (float)(uint16_t)v3->height;
-        v6[-4].x = v23;
-        v6[-4].z = 0.059999999f;
-        v19 = (double)v30 / v28 + v22;
-        v26 = (float)((double)v17 / v25);
-        v6[-4].y = (float)v19;
-        v7[-4].u = v15->x;
-        v20 = (double)v18 / v28 + v19;
-        v7[-4].v = v15->h;
-        v6[-3].y = (float)v20;
-        v6[-3].x = v23;
-        v6[-3].z = 0.059999999f;
-        v21 = v26 + v23;
-        v7[-3].u = v15->x;
-        v7[-3].v = v15->w;
-        v6[-2].x = (float)v21;
-        v6[-2].z = 0.059999999f;
-        v6[-2].y = (float)v20;
-        v7[-2].u = v15->y;
-        v7[-2].v = v15->w;
-        v6[-1].x = (float)v21;
-        v6[-1].z = 0.059999999f;
-        v6[-1].y = (float)v19;
-        v7[-1].u = v15->y;
-        v7[-1].v = v15->h;
-        --v29;
-    } while (v29);
+
+        ch = (uint8_t)letter->flagsAndChar;
+        glyphIdx = (ch < 32) ? 0 : ch - 32;
+        glyph = &str->fontDesc->fge[glyphIdx];
+
+        texWidth = (float)(uint16_t)str->width;
+        texHeight = (float)(uint16_t)str->height;
+        left = (float)((double)letter->x / texWidth + pivotX);
+        top = (double)letter->y / texHeight + pivotY;
+        advance = (float)((double)letter->width / texWidth);
+        bottom = (double)(int16_t)letter->height / texHeight + top;
+        right = advance + left;
+
+        verts[0].x = left;
+        verts[0].y = (float)top;
+        verts[0].z = 0.059999999f;
+        verts[1].x = left;
+        verts[1].y = (float)bottom;
+        verts[1].z = 0.059999999f;
+        verts[2].x = (float)right;
+        verts[2].y = (float)bottom;
+        verts[2].z = 0.059999999f;
+        verts[3].x = (float)right;
+        verts[3].y = (float)top;
+        verts[3].z = 0.059999999f;
+
+        uvs[0].u = glyph->x;
+        uvs[0].v = glyph->h;
+        uvs[1].u = glyph->x;
+        uvs[1].v = glyph->w;
+        uvs[2].u = glyph->y;
+        uvs[2].v = glyph->w;
+        uvs[3].u = glyph->y;
+        uvs[3].v = glyph->h;
+
+        verts += 4;
+        uvs += 4;
+        letter++;
+    }
 }

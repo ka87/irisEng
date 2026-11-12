@@ -24,9 +24,9 @@ typedef struct sGfxWater2Data
     tGfxWater2InnerData* ptr;
 } tGfxWater2Data;
 
-struct sGfxWater2Data* GFX_Water2_Create();
-void GFX_Water2_Destroy(struct sGfxWater2Data* a1);
-int GFX_i_Water2_Render(struct sGfxWater2Data* a1);
-void GFX_Water2_Seti(struct sGfxWater2Data* a1, int a2, int offset, int a4);
-void GFX_Water2_Setf(struct sGfxWater2Data* a1, int a2, int a3, float a4);
-void GFX_Water2_Setv(struct sGfxWater2Data* a1, int a2, int a3, Vec3* a4);
+struct sGfxWater2Data* GFX_Water2_Create(void);
+void GFX_Water2_Destroy(struct sGfxWater2Data* water);
+int GFX_i_Water2_Render(struct sGfxWater2Data* water);
+void GFX_Water2_Seti(struct sGfxWater2Data* water, int id, int offset, int value);
+void GFX_Water2_Setf(struct sGfxWater2Data* water, int id, int offset, float value);
+void GFX_Water2_Setv(struct sGfxWater2Data* water, int id, int offset, Vec3* value);

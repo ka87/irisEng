@@ -16,6 +16,6 @@ typedef struct sGfxTableData
     char vertexColorIndexes[100];
 } tGfxTableData;
 
-struct sGfxTableData* GFX_Table_Create();
-int GFX_i_Table_Render(struct sGfxTableData* a1);
-void GFX_Table_Setv(struct sGfxTableData* a1, int a2, Vec3* a3);
+struct sGfxTableData* GFX_Table_Create(void);
+int GFX_i_Table_Render(struct sGfxTableData* table);
+void GFX_Table_Setv(struct sGfxTableData* table, int id, Vec3* value);

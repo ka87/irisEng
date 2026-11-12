@@ -397,6 +397,50 @@ void GFX_NeedGeom(unsigned int pointsNum, unsigned int UVNum, unsigned int trian
     GFX_NeedGeomEx(pointsNum, UVNum, 1, triangleNum, useVertexColors);
 }
 
+void GFX_SetQuadIndices(void)
+{
+    tGeoTriangleChunkElem* tris;
+
+    tris = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+    tris[0].v1 = 0;
+    tris[0].v2 = 1;
+    tris[0].v3 = 2;
+    tris[0].uv1 = 0;
+    tris[0].uv2 = 1;
+    tris[0].uv3 = 2;
+    tris[1].v1 = 2;
+    tris[1].v2 = 3;
+    tris[1].v3 = 0;
+    tris[1].uv1 = 2;
+    tris[1].uv2 = 3;
+    tris[1].uv3 = 0;
+}
+
+void GFX_SetQuadUVs(void)
+{
+    tGeoUVElem* uvs;
+
+    uvs = GFX_gpst_Geo->UVs;
+    uvs[0].u = 0.0;
+    uvs[0].v = 0.0;
+    uvs[1].u = 1.0;
+    uvs[1].v = 0.0;
+    uvs[2].u = 1.0;
+    uvs[2].v = 1.0;
+    uvs[3].u = 0.0;
+    uvs[3].v = 1.0;
+}
+
+void GFX_RenderGeom(unsigned int maskBitsToClear)
+{
+    int savedMask;
+
+    savedMask = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
+    gpst_DX_stDD->drawMaskAllowedStuffCurrent = savedMask & ~maskBitsToClear;
+    GFX_gpst_Geo->intf->Render(GFX_gpst_GO);
+    gpst_DX_stDD->drawMaskAllowedStuffCurrent = savedMask;
+}
+
 struct sGfxElem* GFX_pst_FindById(struct sGfxElem** a1, int16_t gfxId)
 {
     tGfxElem* result;

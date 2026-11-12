@@ -39,6 +39,6 @@ typedef struct sGfxSparkData
     tGfxSparkElemData* ptr;
 } tGfxSparkData;
 
-struct sGfxSparkData* GFX_Spark_Create();
-void GFX_Spark_Destroy(struct sGfxSparkData* a1);
-int GFX_i_Spark_Render(struct sGfxSparkData* a1);
+struct sGfxSparkData* GFX_Spark_Create(void);
+void GFX_Spark_Destroy(struct sGfxSparkData* spark);
+int GFX_i_Spark_Render(struct sGfxSparkData* spark);

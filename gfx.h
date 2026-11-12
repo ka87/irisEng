@@ -34,6 +34,9 @@ int GFX_i_GlobalID;
 
 void GFX_NeedGeom(unsigned int pointsNum, unsigned int UVNum, unsigned int a3, int a4);
 void GFX_NeedGeomEx(unsigned int pointsNum, unsigned int UVNum, unsigned int triangleChunkNum, unsigned int triangleNum, int useVertexColors);
+void GFX_SetQuadIndices(void);
+void GFX_SetQuadUVs(void);
+void GFX_RenderGeom(unsigned int maskBitsToClear);
 void GFX_NeedGeomExElem(unsigned int a1, unsigned int a2);
 void GFX_NeedGeomNbElemSprites(unsigned int a1);
 void GFX_NeedGeomElemNbSprites(unsigned int a1, unsigned int a2);
