@@ -51,10 +51,14 @@ which are available where this work is done, so "it still compiles" is
 not free. Two things stand in for it.
 
 **A stub include set** (`tests/stub/`) is enough for a native `gcc
--fsyntax-only -Werror=implicit-function-declaration` to parse the real
-sources: `windows.h`, `d3d9.h` and
-`dsound.h` with the types the engine actually names, and a few empty
-headers. It catches what a compiler catches — a mistyped name, a lost
+-fsyntax-only -Werror=implicit-function-declaration` to parse **132 of
+the 137** first-party sources: `windows.h`, `d3d9.h`, `dsound.h` and
+`dinput.h` with the types, interfaces and vtable methods the engine
+actually names, and a few empty headers. The five left are the Direct3D enum and
+device-vtable set the two `win/wingdi` files want, the Bink constants
+`proceduraltextures.c` wants, and `bigfiles.c` and `loading.c`, which
+fail on the `fpos_t` arithmetic described below -- an open question
+rather than a stub gap. It catches what a compiler catches — a mistyped name, a lost
 brace, a changed signature. It does not prove behaviour, and it is not
 the real toolchain: every batch should still be built under MSVC before
 it is merged.
@@ -423,13 +427,14 @@ all.
 
 ### 6. ai/
 
-**In progress.** Full record in [ai.md](ai.md).
+**Done.** Full record in [ai.md](ai.md).
 
 The AI interpreter and the builtins the game's scripts call: 32 files,
-of which **28 are finished** and four remain. 120 of the project's 137
-first-party sources parse now, against 117 before this directory --
-`ai/ai_gfxfunctions.c` and `graphicsobjects/shadow.c` came in with the
-d3d9 stub additions the full-screen video path needed.
+of which **31 are finished**. The one left, `ai_compiledscripts.c`, is
+the user's own hand-written hook file rather than decompiler output and
+is deliberately out of scope; one function elsewhere,
+`AI_EvalFunc_SAVEDataGet_C`, is left byte-for-byte for a reason given
+below.
 
 Four shapes run through the whole directory, and naming them once is
 most of the work: the wrapper that saves the current ultra object and
@@ -456,10 +461,10 @@ pushes is extracted from the pre-rewrite copy and from the rewrite and
 compared, with the pops that moved into a helper credited back to the
 caller. A pop nested inside a push's argument still evaluates first, and
 no statement anywhere in `ai/` holds more than one pop, so ordering by
-statement is exact rather than approximate. **Across the eight files
-of the second batch -- 614 functions -- no pop sequence differs.** The remaining
-differences are all one push replacing two in an if/else, or the
-reverse.
+statement is exact rather than approximate. **Across every rewritten file in the
+directory -- 1,660 functions over the three batches -- no pop sequence
+differs.** The remaining differences are all one push replacing two in
+an if/else, or the reverse.
 
 Two files got more than that. `ai_keywords.c`'s two coercion rules were
 checked against the originals exhaustively, 7 types by 13 bit patterns
@@ -468,15 +473,36 @@ differing**. And `ai_gameobjecttextfunctions.c` was checked a third way,
 mapping every engine call's arguments back to the pop ordinal they came
 from.
 
-#### Three files not done, and why
+#### The three largest files, and the order they had to be done in
+
+`ai_colfunctions.c` (2,775 to 2,498, 188 builtins) and
+`ai_gameobjectfunctions.c` (3,799 to 3,545, 225 functions) are the two
+big builtin tables, and both are now residue-free in their sources and
+their headers. `ai_gridfunctions.c` was held back a whole batch because
+it is almost pure pass-through into `grid.c` and nothing said what
+`GRI_Tag(grid, pos, a3, a4)`'s last two arguments meant; naming them
+from the calling side would have been invention, so `grid.c` was done
+first and the file followed in an afternoon.
+
+Two things found in those files are worth the space:
+
+- **`COL_ListCreate`'s last argument does double duty.** Negative values
+  are sentinels selecting which pair of shapes to test; anything else is
+  the second object's zone number for a zone-against-zone test. That is
+  why `COLZDEZDEListGet` is the only one of the eight pairing builtins
+  whose mode comes from the script.
+- **A one-bit `flags2` change was written as three statements** at six
+  sites — build the high half, truncate the field, OR the half back —
+  which is a plain `|=` or `&= ~`. It is only equivalent because the flag
+  has no bits in the low half the truncation keeps, and that was checked
+  exhaustively rather than argued from the shape. The counterexample is
+  in the same file: the two builtins that do use a low-half mask were
+  already written plainly.
+
+#### Two things not done, and why
 
 - `ai_compiledscripts.c` is the user's own hand-written hook file, not
   decompiler output. Left alone.
-- `ai_gridfunctions.c` is almost pure pass-through into `grid.c`, which
-  is still decompiler output, so nothing says what
-  `GRI_Tag(grid, pos, a3, a4)`'s last two arguments mean. Naming them
-  from the calling side would be invention, so the file waits for
-  `grid.c`.
 - `AI_EvalFunc_SAVEDataGet_C` in `ai_inofunctions.c` is left
   byte-for-byte, and that one is worth reading about: it returns
   `v3[a2]` with `a2` in 100..115 and `v3` declared `int[87]`, and its
@@ -484,3 +510,43 @@ from.
   outside their arrays, so what the function does depends on the frame
   layout and renaming its locals would change it. Everything around it
   in that file is rewritten.
+
+### 7. The root directory
+
+**Started.** Per-file record in [root.md](root.md).
+
+46 files, 72,963 lines, 658 `goto`s — the engine proper, and the largest
+thing left. Twelve of the 46 were already source.
+
+**One file so far, and out of order**: `grid.c`, **2,064 lines to 1,700**
+with all **23** `goto`s gone, because `ai/ai_gridfunctions.c` was waiting
+on it to learn what the grid functions' arguments mean.
+
+What it holds: a per-world array of capability bytes with a small live
+window sliding over it, the window run-length encoded in the big file,
+and A* over the window. `GRID_ShortestPath` was 500 lines and 85 locals;
+it searches the neighbours of a cell starting from the quadrant the
+object faces, and `ai_Scan`'s repeated tail is what makes its
+no-corner-cutting rule work — the table is 43 entries where eight
+neighbours need 16, so a diagonal's two orthogonals are readable at a
+fixed offset from it.
+
+Six things repeated at nearly every site became functions: the row
+stride, the cell address, the cell-to-world conversion, the
+all-or-nothing capability tag (four copies, one of them already written
+out by hand), the blocked-neighbour test and the pathfinder's step rule.
+
+#### One finding the user should see
+
+`GRID_ul_CallbackCompressedGrid` dispatches on a run tag with
+`(tag & 0xC0) == 0xFFFFFFC0`, which can never be true: `tag` is a
+`char`, so the left side is a small positive `int`. A short-run tag's
+value byte is therefore not read and the stream desynchronises from
+that record on. **`GRI_UnCompress` two functions away had the identical
+artefact and already carries the user's own fix**, noted
+`// for routing fix, it was char`. Left as written and flagged, because
+it changes what the loader reads.
+
+Eight other oddities are preserved with a line each, the sharpest being
+that the closed list is bounded at 2000 where `GRID_gast_Explored` holds
+1000, and that both lists are written before their bound is checked.

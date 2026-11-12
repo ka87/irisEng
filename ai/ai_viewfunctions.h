@@ -3,15 +3,15 @@
 
 void AI_EvalFunc_VIEWSnapshot_DoIt();
 struct sGameObjectMain* AI_EvalFunc_VIEWAssignObject_C(struct sGameObjectMain* gao, int viewIdx);
-void AI_EvalFunc_VIEWFocaleSet_C(int a1, float a2);
-void AI_EvalFunc_VIEWForceNoFog_C(int a1);
-void AI_EvalFunc_VIEW3dWorldTo2d_C(int a1, Vec3* a2, Vec3* a3);
-void AI_EvalFunc_VIEW2dTo3d_C(int a1, Vec3* a2, Vec3* a3);
-struct sGameObjectMain* AI_EvalFunc_VIEWGetObject_C(int a1);
-int AI_EvalFunc_VIEWAnalyser_C(struct sGameObjectMain* gao, int a2);
+void AI_EvalFunc_VIEWFocaleSet_C(int viewIdx, float fov);
+void AI_EvalFunc_VIEWForceNoFog_C(int onOff);
+void AI_EvalFunc_VIEW3dWorldTo2d_C(int viewIdx, Vec3 *vec3d, Vec3 *vec2d);
+void AI_EvalFunc_VIEW2dTo3d_C(int viewIdx, Vec3* vec2d, Vec3* vec3d);
+struct sGameObjectMain* AI_EvalFunc_VIEWGetObject_C(int viewIdx);
+int AI_EvalFunc_VIEWAnalyser_C(struct sGameObjectMain* gao, int mission);
 void AI_EvalFunc_VIEWSnapshot_C(int slotID);
-float AI_EvalFunc_VIEWFocaleGet_C(int a1);
-BOOL AI_EvalFunc_VIEWCulled_C(struct sGameObjectMain* gao, int a2);
+float AI_EvalFunc_VIEWFocaleGet_C(int viewIdx);
+BOOL AI_EvalFunc_VIEWCulled_C(struct sGameObjectMain* gao, int viewIdx);
 
 tAINode* AI_EvalFunc_VIEWAssignObject(tAINode* node);
 tAINode* AI_EvalFunc_VIEWCreate(tAINode* node);

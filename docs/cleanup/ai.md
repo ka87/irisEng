@@ -1,13 +1,14 @@
 # ai/
 
 The AI interpreter and the builtins the game's scripts call. 32 files,
-**28 finished**, meaning no `goto`, no decompiler-named local or
+**31 finished**, meaning no `goto`, no decompiler-named local or
 parameter, and they parse as standard C against the stub include set
 with `-Werror=implicit-function-declaration`.
 
-Of the four left, one is deliberately out of scope, one is blocked on a
-file that has not had its pass, and two large builtin tables are the
-next batch.
+The one left, `ai_compiledscripts.c`, is the user's own hand-written
+hook file rather than decompiler output and is deliberately out of
+scope. One function elsewhere, `AI_EvalFunc_SAVEDataGet_C`, is left
+byte-for-byte and is described below.
 
 | file | lines | residue | gotos | state |
 | --- | --- | --- | --- | --- |
@@ -39,10 +40,10 @@ next batch.
 | `ai_dynfunctions.c` | 1,681 to 1,295 | | | done |
 | `ai_soundfunctions.c` | 1,822 to 1,640 | | 7 to 0 | done |
 | `ai_keywords.c` | 2,038 to 1,295 | | 10 to 0 | done |
+| `ai_colfunctions.c` | 2,774 to 2,498 | 1,374 to 0 | | done |
+| `ai_gameobjectfunctions.c` | 3,799 to 3,545 | 1,668 to 0 | | done |
+| `ai_gridfunctions.c` | 606 to 505 | 305 to 0 | | done |
 | `ai_compiledscripts.c` | 118 | 11 | | out of scope |
-| `ai_gridfunctions.c` | 606 | 305 | | blocked on `grid.c` |
-| `ai_colfunctions.c` | 2,774 | 1,279 | | next batch |
-| `ai_gameobjectfunctions.c` | 3,799 | 1,668 | | next batch |
 
 "Residue" is the count of lines carrying a decompiler name -- `a1`..`a9`,
 `v1`..`vN` -- which is the measure used throughout this pass. Where a
@@ -52,15 +53,26 @@ file shows a figure it is accounted for below.
 decompiler output: its locals and its Hungarian commentary are theirs.
 It is left alone.
 
-`ai_gridfunctions.c` is almost entirely pass-through into `grid.c` --
+`ai_gridfunctions.c` was held back for a batch for a reason worth
+recording: it is almost entirely pass-through into `grid.c` --
 `GRI_Tag(grid, pos, a3, a4)`, `GRID_ShortestPath` with eleven arguments
--- and `grid.c` is still decompiler output, so nothing there says what
-those arguments mean. Naming them from this side would be invention, so
-the file waits for `grid.c`. Everything else in it (the current/dest
-grid pick, the setters, the wrappers) is ready to go the moment it does.
+-- and `grid.c` was still decompiler output, so nothing said what those
+arguments meant. Naming them from this side would have been invention.
+`grid.c` was done first instead; see [root.md](root.md).
 
 `ai_inofunctions.c`'s 125 lines of residue are all inside one function
-that is deliberately untouched; see its section.
+that is deliberately untouched; see its section. Its header keeps that
+function's `a1`/`a2`, which is the directory's only remaining residue
+line, because the definition it would be synced from is the one that is
+left alone.
+
+Three headers from earlier batches were found still carrying `a1`/`a2`
+in prototypes whose definitions had been named properly --
+`ai_actionfunctions.h`, `ai_timefunctions.h` and `ai_viewfunctions.h`,
+fifteen prototypes between them. Step 4 of the pass had been applied to
+the sources and not propagated. They are synced from the definitions
+now, which is also how the three files of the third batch generate their
+headers, so the two can no longer drift.
 
 ## Verification
 
@@ -872,34 +884,192 @@ functions that otherwise match:
   touches one instance where their own all-modifiers arm touches every
   match.
 
-### The one file here that still does not parse
+### The stub gap that kept this file out of the parsing set, now closed
 
-`ai_soundfunctions.c` fails against the stub, and that is pre-existing
-and not this file's doing: the eight errors all come from
-`win/eax/eax.h` and `win/winsound.h`, which name `IUnknown`, `DSCAPS`,
-`FAR`, `PASCAL`, `CDECL`, `LPDWORD` and `IDirectSound3DListener` that
-the stub does not supply. The error output is byte-identical before and
+`ai_soundfunctions.c` did not parse against the stub when it was
+rewritten, and that was never this file's doing: the eight errors all
+came from `win/eax/eax.h` and `win/winsound.h`, which name `IUnknown`,
+`DSCAPS`, `FAR`, `PASCAL`, `CDECL`, `LPDWORD` and
+`IDirectSound3DListener`, and the stub's DirectSound header was four
+opaque one-field structs. The error output was byte-identical before and
 after the rewrite, and with those names supplied by a throwaway prelude
-the rewritten file compiles with no diagnostics at all -- so it did get
-a real type-check. The stub gap belongs to the `win/` pass.
+the rewritten file compiled with no diagnostics at all, so it did get a
+real type-check.
+
+That gap is closed: the stub now has the DirectSound interfaces written
+out with the vtable methods and struct members the engine names, which
+also brought in `ai_functions.c`, `ai_compiledscripts.c`, `sound.c` and
+`win/winsound.c`. See [root.md](root.md) for the whole count.
+
+## ai_gridfunctions.c
+
+606 lines to 505, residue 0. Unblocked by `grid.c`, and the point of
+waiting was that the arguments now have names read from the callees
+rather than guessed from this side.
+
+Two helpers, `AI_l_CurrentGrid` and `AI_l_DestGrid`, replace sixteen
+written-out picks of which grid a builtin works on. Three builtins whose
+unused game-object parameter was typed `int` by the decompiler now take
+the object, which is what the wrapper passes them.
+
+The cell-centre getter deliberately does **not** use `grid.c`'s new
+`GRI_l_CellToWorld`: that helper converts a cell of the live window and
+adds the window's origin, and this builtin converts a whole-grid cell,
+which has no origin to add. The two look identical and are not.
+
+`GRID_ShortestPath`'s seventh argument is unused by the callee, and this
+file is where it is built: the cell cap with its low byte replaced by
+another script argument. Both sides now say so.
+
+---
+
+## ai_colfunctions.c
+
+2,775 lines to 2,498, residue 0 in both the source and the header. 188
+builtins, 93 `_C` implementations, and the header is generated from the
+definitions, which is why it grew: it declared 68 of the 93 before.
+
+Nine file-local helpers: the sweep-and-prune insert the three overlap
+queries each open with, the register-once-then-enter raster pair, the
+two routes to an object's collision instance (the plain null chain and
+the `flags & 0x600` test), the zone-number lookup, the ray normalise
+that also returns the length, the six-arm cast switch that was
+byte-identical in the two general ray builtins, and two random helpers.
+The three file-level raster flags are named and `static`; nothing
+outside the file referenced them.
+
+### What the arguments mean
+
+- **`COL_ListCreate`'s last argument does double duty**, which is the
+  find of the file. Reading its dispatch: `-1`/`-2` is ZDE against BV,
+  `-3`/`-4` BV against pivot, `-5`/`-6` ZDE against pivot, `-17`/`-18`
+  ZDE against BV-centre, and **anything else is the second object's
+  zone number for a zone-against-zone test**. That is why
+  `COLZDEZDEListGet` is the only one of the eight pairing builtins
+  whose mode comes from the script: its two chars are `zone` and
+  `otherZone`, and the other seven supply the sentinel themselves.
+- **The ray `kind`** splits in two: the low 31 bits select the cast (0
+  is the visual cast, 1 to 5 are collision-map variants differing in
+  three flags) and the top bit is a separate flag passed through to the
+  collision-map cast untouched. `COLRaySingleObjectDist` keeps a switch
+  of its own because only kinds 0 and 0xA do anything there, and it
+  never consults the top bit.
+- **`COL_RayCompute`'s four ints** were named from the callee: three go
+  straight into `COL_Visual_RayCast`'s already-named `flagMustHave`,
+  `flagMustNothave` and `whatToTest`, and the fourth lands in
+  `COL_gst_Ray.skipRayCast`.
+- **`COLComputeJumpPoint`'s `useLastRayHit`** seeds the search from the
+  world's last ray-cast hit. Its other int passes into the edge search
+  in `collision.c`, which does not name it, so it is `edgeSearchArg`
+  with a line saying so.
+- **The set-and-clear pair** `flags | (~mask & current)` recurs in
+  `COLCrossableSet`, `COLSetActivationSet` and `COLMapActivationSet`:
+  every bit of `flags` is set, and the bits of `mask` that `flags`
+  lacks are cleared.
+- **`COLLODSet` takes its maximum first**, minimum second, named from
+  the fields assigned.
+- **A volume that is not an axis-aligned box carries one radius in
+  `BVMax.x`.** Both size getters and `BVRandomPosGet` read it that way.
+
+### Preserved rather than fixed, each with a line in the file
+
+- **The two box getters never return from their guards.**
+  `COLBoxMaxGet_C` and `COLBoxMinGet_C` write the null vector on a
+  failing flag test and again on an out-of-range zone, then fall
+  through and dereference the collision instance anyway.
+- `COLNormalGet_C`'s second arm **returns the address of a local**. No
+  caller reads the return.
+- `COLGMIDGet_C` runs the game-material lookup twice, once for the test
+  and once for the answer.
+- `BVRandomPosGet_C`'s non-box branch **never assigns `pos->z`** and
+  calls `rand()` only to discard it. The user's own Hungarian `TODO
+  FIXME` at that line says exactly this and is kept byte-for-byte.
+- `COLBVGetFirstOverlap_C` compared two pointers through
+  `unsigned int`; it is a plain pointer loop now, with a line noting
+  that the two are the same on a 32-bit target.
+
+---
+
+## ai_gameobjectfunctions.c
+
+The largest table in the directory: 3,799 lines to 3,545, 225
+functions, residue 0 in the source and the header. The 96 header
+declarations are regenerated from the definitions, which also fixed the
+stale names `ai_gameobjecttextfunctions.c`'s prototypes carried and
+three that said `arg0`.
+
+Five helpers: the visual and actor block lookups, the flash matrix, the
+event scale and the largest-component pick. `AI_l_Actor` is
+deliberately the same shape and name as the `static` in
+`ai_animationfunctions.c`. The flash matrix's `else` arms passing `0`
+are unreachable -- the flag is tested immediately above -- and are
+gone.
+
+### The flags2 half-word write, and why the rewrite is valid
+
+Six sites render a one-bit flag change as three statements: build the
+new high half into a local, truncate the field to its low half, then OR
+the high half back.
+
+```c
+v2 = gao->flags2 & 0xFFFF0000 | 0x200000;
+gao->flags2 = (uint16_t)gao->flags2;
+gao->flags2 |= v2 & 0xFFFF0000;
+```
+
+That is `gao->flags2 |= 0x200000`, and the clearing form is
+`&= ~0x200000`. **It is only equivalent because the flag has no bits in
+the low half**, which the truncation would otherwise destroy -- and
+that holds at every one of the six sites. It was checked exhaustively
+against the original rather than argued from the shape: every one of
+the 65,536 high halves crossed with eight low halves, and 14.6M cases
+for the `FlagsControlSet` form with arbitrary script masks. No
+mismatch.
+
+The counterexample is in the same file and confirms the rule:
+`CustomBitsSet` and `CustomBitsNot` use the mask `0xFF00`, which is in
+the low half, and the original already writes those two plainly. They
+are untouched.
+
+### Preserved rather than fixed, each with a line in the file
+
+- **`OBJ_CapaTest` pops its argument only when the object has an
+  extended block.** A capability test on an object without one leaves
+  the argument on the AI stack.
+- **`OBJModifierType` pushes `0` and then falls through and pushes a
+  second result.**
+- `OBJ_CapaNot_C` toggles `capa` and returns `flags2`.
+- `OBJ_HierarchySet` resets the hierarchy, then calls the `_C`, which
+  resets it again.
+- A dead store, `fatherPos.x = 0.0`, in `OBJ_HierarchyMoveFather_C`.
+- `OBJ_RegisterKill_C` ignores the object the builtin was called on.
+- **`OBJMove_C`, `OBJRotateLocal_C` and `OBJRotateGlobal_C` scale the
+  caller's vector in place**, so a script variable passed to one of
+  them is modified while the event runs.
+
+### Pick -- the distance-squared sum *(binary)*
+
+`OBJ_SqrDist_C` sums its components `z + y + x`, which is the order
+`MATH_DotProduct` uses, so folding it into that call is tempting. It is
+left written out: the call would compute the same sum in the same order
+but through a different sequence of x87 loads, and the rounding is not
+guaranteed to match. The same decision as the three float-helper
+substitutions elsewhere in the directory, in the other direction,
+because here the helper is not a bit-for-bit match.
 
 ---
 
 ## What is still owed here
 
-- `ai_colfunctions.c` and `ai_gameobjectfunctions.c`, the two large
-  builtin tables, 6,573 lines between them. Both are tractable:
-  `collision.h` already names the `flagMustHave`/`flagMustNothave`/
-  `whatToTest` positions its ray casts take, which is what fixes the
-  convention for the rest.
-- `ai_gridfunctions.c` once `grid.c` is named.
 - `AI_EvalFunc_SAVEDataGet_C`, pending the user's decision.
 - The `_sub_<address>` function names across the project, as one sweep.
   Two were done where this directory defines them; about thirty remain,
   each in a file that has not had its pass. `ai.h`'s
   `get_a_string_from_globalstack_sub_4D2040` is called from three files
   here, so it belongs to that sweep rather than to any one of them.
-- The `win/winsound.h` and `win/eax/eax.h` stub gaps, which are the
-  only thing keeping `ai_soundfunctions.c` and `ai_functions.c` out of
-  the parsing set.
+- Two arguments named from the call side only once the engine file they
+  reach has had its pass: `ai_colfunctions.c`'s `edgeSearchArg`, which
+  `collision.c` does not name, and `ai_gameobjectfunctions.c`'s seven
+  eye-follow flags, which `gameobject.c` does not. Both are left as the
+  original has them with a line saying why.
 - Nothing here has been built under MSVC.
