@@ -94,7 +94,7 @@ typedef struct sEngTexListImgLinkElemData {
 typedef struct sEngTexListElemStruct
 {
     int texKey;
-    union dataByType {
+    union {
         tEngTexListPalettedElemData palettedData;
         tEngTexListProceduralElemData proceduralData;
         tEngTexListAnimatedElemData animatedData;
@@ -221,7 +221,7 @@ typedef struct sEngTexIntermediateStructTexParams
     uint16_t imageDataWidth;
     uint16_t imageDataHeight;
     int unk;
-    union paramsByType {
+    union {
         tEngTexIntermediateStructTexAnimatedParams animatedParams;
         tEngTexIntermediateStructTexMagicParams magicParams;
         tEngTexIntermediateStructTexProceduralParams proceduralParams;

@@ -212,7 +212,7 @@ void TAB_Ptable_RemoveHoles(tableDescStruct* a1)
             }
         }
         if (!a1->holeNum)
-            --((tableElemStructP*)(a1->nextElemPtr));
+            a1->nextElemPtr = (tableElemStructP*)a1->nextElemPtr - 1;
         a1->holeNum = 0;
     }
     a1->holeNum = 0;
@@ -356,7 +356,7 @@ void TAB_PFtable_RemoveHoles(tableDescStruct* a1)
             }
         }
         if (!a1->holeNum)
-            --((tableElemStructPF*)(a1->nextElemPtr));
+            a1->nextElemPtr = (tableElemStructPF*)a1->nextElemPtr - 1;
         a1->holeNum = 0;
     }
 }

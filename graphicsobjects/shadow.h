@@ -3,6 +3,8 @@
 #include "../common.h"
 #include "../gameobject.h"
 
+struct sShadowElemStruct;
+
 typedef struct sMdfPrivateDataShadow
 {
     int flags;

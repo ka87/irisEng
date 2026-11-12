@@ -187,7 +187,7 @@ void GFX_Table_Setv(struct sGfxTableData* a1, int a2, Vec3* a3)
             a1->f[8] = a3->y;
             a1->f[9] = a3->y;
         }
-        else if ((v10 & 0x80000000) == 0i64 && (int)v10 <= 10)
+        else if ((v10 & 0x80000000) == 0LL && (int)v10 <= 10)
         {
             a1->f[v10] = a3->y;
         }
@@ -208,7 +208,7 @@ void GFX_Table_Setv(struct sGfxTableData* a1, int a2, Vec3* a3)
             a1->f2[9] = a3->y;
             *(float*)a1->vertexColorIndexes = a3->y; // TODO FIXME: ez jó így??
         }
-        else if ((v9 & 0x80000000) == 0i64 && (int)v9 <= 10)
+        else if ((v9 & 0x80000000) == 0LL && (int)v9 <= 10)
         {
             a1->f2[v9] = a3->y;
         }

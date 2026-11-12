@@ -2695,7 +2695,7 @@ void ANI_Render(struct sGameObjectMain* mainGao)
         if (PerfCounterStruct[5].QuadPart)
             PerfCountertimeSumArray[5] += PerformanceCount.QuadPart - PerfCounterStruct[5].QuadPart;
         v17 = PushedStack;
-        for (PerfCounterStruct[5].QuadPart = 0i64; PushedStack; v17 = PushedStack)
+        for (PerfCounterStruct[5].QuadPart = 0LL; PushedStack; v17 = PushedStack)
         {
             v18 = pst_RenderingStack[v17];
             PushedStack = v17 - 1;

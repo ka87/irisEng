@@ -2416,7 +2416,7 @@ void WOR_Render_All_GO(struct sWorld* a1, struct sGdi_DisplayData* dxdd)
     QueryPerformanceCounter(&PerformanceCount);
     if (PerfCounterStruct[41].QuadPart)
         PerfCountertimeSumArray[41] += PerformanceCount.QuadPart - PerfCounterStruct[41].QuadPart;
-    PerfCounterStruct[41].QuadPart = 0i64;
+    PerfCounterStruct[41].QuadPart = 0LL;
     v17 = v2->visibleGameObjectsPF.firstElemPtr;
     if (v17 <= &((tableElemStructPF*)(v2->visibleGameObjectsPF.nextElemPtr))[-1])
     {

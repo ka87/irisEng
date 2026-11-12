@@ -215,7 +215,8 @@ BOOL AI_EvalFunc_DYNOn_C(struct sGameObjectMain* a1)
         ((tableElemStructPF*)(WOR_gpst_CurrentWorld->eot.dynamicObjectsTablePF.nextElemPtr))->objectPtr = a1;
         ((tableElemStructPF*)(v6->eot.dynamicObjectsTablePF.nextElemPtr))->objectFlags = v3;
         ++v6->eot.dynamicObjectsTablePF.actElemNum;
-        ++((tableElemStructPF*)(v6->eot.dynamicObjectsTablePF.nextElemPtr));
+        v6->eot.dynamicObjectsTablePF.nextElemPtr =
+            (tableElemStructPF*)v6->eot.dynamicObjectsTablePF.nextElemPtr + 1;
     }
     else
     {

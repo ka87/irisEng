@@ -884,7 +884,7 @@ LABEL_18:
         v13 = 1;
         goto LABEL_20;
     }
-    result = v14 - a5;
+    result = (char*)v14 - a5;
     *(int32_t*)a5 = result;
     if (!v11 && !v20)
         result = 0;

@@ -4,6 +4,8 @@
 #include "textget.h"
 #include "math.h"
 
+struct sWorld;
+
 typedef struct sAINode
 {
     int32_t val;

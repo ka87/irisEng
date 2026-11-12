@@ -189,7 +189,8 @@ void GAO_ModifierExplode_Apply(struct sModifier* a1, void *unk1)
     {
         v2 = gpst_DX_stDD->currTargetGao;
         v1->gaogeogro = (tGEOGRO*)(((tGameObjectVisualObject*)(v2->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse);
-        ((tGEOGRO*)((tGameObjectVisualObject*)(v2->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse) = v1->geogroNew;
+        ((tGameObjectVisualObject*)(v2->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse =
+            (struct sGroGeneric*)v1->geogroNew;
         v3 = v1->geogroNew->vertices;
         v4 = &v3[v1->geogroNew->vertexNum];
         GEO_UseNormals(v1->geogroNew);
@@ -226,7 +227,8 @@ void GAO_ModifierExplode_Unapply(struct sModifier* a1, void *unk1)
 
     v1 = (tExplodeMdfStruct*)a1->mdfPrivateDataPtr;
     if (v1)
-        ((tGEOGRO*)((tGameObjectVisualObject*)(gpst_DX_stDD->currTargetGao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse) = v1->gaogeogro;
+        ((tGameObjectVisualObject*)(gpst_DX_stDD->currTargetGao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse =
+            (struct sGroGeneric*)v1->gaogeogro;
 }
 
 int GAO_ModifierExplode_Load(struct sModifier* mdf, char* bufferPtr)
