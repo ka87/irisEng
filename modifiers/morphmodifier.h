@@ -27,9 +27,9 @@ typedef struct sMorphMdfStruct
     int i2;
 } tMorphMdfStruct;
 
-struct sMorphMdfStruct* GEO_pst_ModifierMorphing_Get(struct sGameObjectMain* a1);
-void GEO_ModifierMorphing_Create(struct sGameObjectMain* a1, struct sModifier* a2, void* a3a);
-void GEO_ModifierMorphing_Destroy(struct sModifier* a1);
-void GEO_ModifierMorphing_Apply(struct sModifier* a1, struct sGEOGRO* geogro);
-void GEO_ModifierMorphing_UnApply(struct sModifier* a1, struct sGEOGRO* geogro);
-int GEO_ul_ModifierMorphing_Load(struct sModifier* a1, char* a2);
+struct sMorphMdfStruct* GEO_pst_ModifierMorphing_Get(struct sGameObjectMain* gao);
+void GEO_ModifierMorphing_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData);
+void GEO_ModifierMorphing_Destroy(struct sModifier* mdf);
+void GEO_ModifierMorphing_Apply(struct sModifier* mdf, struct sGEOGRO* geogro);
+void GEO_ModifierMorphing_UnApply(struct sModifier* mdf, struct sGEOGRO* geogro);
+int GEO_ul_ModifierMorphing_Load(struct sModifier* mdf, char* data);
