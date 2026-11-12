@@ -616,6 +616,7 @@ void SOFT_TransformAndProject(Vec3* out, Vec3* in, int idx, tDDCamStruct* cam)
 /* ------------------------------------------------------------------ */
 
 int GFXMOCK_fails;
+int GFXMOCK_cases;
 int GFXMOCK_diffCount;
 int GFXMOCK_ignoreColors;
 
@@ -818,6 +819,8 @@ int GFXMOCK_CompareSides(void)
     int ok = 1;
     int i, j, n;
 
+    GFXMOCK_cases++;
+
     if (GFXMOCK_logOverflow)
         printf("    NOTE %s: call log overflowed\n", GFXMOCK_caseName);
 
@@ -872,6 +875,7 @@ int GFXMOCK_CompareSides(void)
 void GFXMOCK_Summary(const char* title)
 {
     printf("%s\n", title);
+    printf("  %d cases\n", GFXMOCK_cases);
     if (GFXMOCK_diffCount)
     {
         printf("  %d float(s) differ within tolerance\n", GFXMOCK_diffCount);

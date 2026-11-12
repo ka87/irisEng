@@ -92,5 +92,6 @@ int GFXMOCK_SameInt(int base, int New, const char* what, int idx);
 extern int GFXMOCK_ignoreColors;
 
 extern int GFXMOCK_fails;
+extern int GFXMOCK_cases;
 extern int GFXMOCK_diffCount;
 void GFXMOCK_Summary(const char* title);
