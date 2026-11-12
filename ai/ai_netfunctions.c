@@ -44,7 +44,7 @@ int AI_EvalFunc_NETCommandStr_C()
 tAINode* AI_EvalFunc_NETCommandStr(tAINode* node)
 {
     // both arguments are read off the stack and dropped
-    get_a_string_from_globalstack_sub_4D2040();
+    AI_GetStringFromStack();
     AI_GetIntFromStack();
     AI_PutIntToStack(AI_EvalFunc_NETCommandStr_C());
     return node + 1;

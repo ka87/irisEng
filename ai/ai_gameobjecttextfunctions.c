@@ -31,7 +31,7 @@ char* AI_EvalFunc_TEXTToString_C(struct sTextGet* textRef)
 // tTextGet, which is 48 bytes and ample for the 8 a text value writes;
 // it is the directory's standard 52 now, which is what the widest type
 // the pop can write would need if a script ever passed one.
-char* get_a_string_from_globalstack_sub_4D2040()
+char* AI_GetStringFromStack()
 {
     char converted[52];
     tVarStackElem var;
@@ -67,7 +67,7 @@ tAINode* AI_EvalFunc_OBJ_TextGlobalSet(tAINode* node)
     char* str;
     int globalIdx;
 
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     globalIdx = AI_GetIntFromStack();
     STR_GlobalSet(globalIdx, str);
     return node + 1;
@@ -117,7 +117,7 @@ tAINode* AI_EvalFunc_OBJ_TextSet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     strIdx = AI_GetIntFromStack();
     STR_SetString(gaoUltra, strIdx, str);
     return node + 1;
@@ -137,7 +137,7 @@ tAINode* AI_EvalFunc_OBJ_TextSetExt(tAINode* node)
 
     // the position is read where the stack keeps it rather than copied out
     pos = (Vec3*)AI_PopStackSlot();
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     firstChar = AI_GetIntFromStack();
     strIdx = AI_GetIntFromStack();
     STR_SetStringExt(gaoUltra, strIdx, firstChar, str, pos);
@@ -154,7 +154,7 @@ tAINode* AI_EvalFunc_OBJ_TextInsert(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     firstChar = AI_GetIntFromStack();
     strIdx = AI_GetIntFromStack();
     STR_InsertString(gaoUltra, strIdx, firstChar, str);
@@ -1058,8 +1058,8 @@ tAINode* AI_EvalFunc_TEXTCompare(tAINode* node)
     char* right;
     char* left;
 
-    right = get_a_string_from_globalstack_sub_4D2040();
-    left = get_a_string_from_globalstack_sub_4D2040();
+    right = AI_GetStringFromStack();
+    left = AI_GetStringFromStack();
     AI_PutIntToStack(AI_EvalFunc_TEXTCompare_C(left, right));
     return node + 1;
 }
@@ -1073,7 +1073,7 @@ tAINode* AI_EvalFunc_TEXTLength(tAINode* node)
 {
     char* str;
 
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     AI_PutIntToStack(AI_EvalFunc_TEXTLength_C(str));
     return node + 1;
 }
@@ -1132,7 +1132,7 @@ tAINode* AI_EvalFunc_TEXTCharGet(tAINode* node)
     int charIdx;
 
     charIdx = AI_GetIntFromStack();
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     AI_PutIntToStack(AI_EvalFunc_TEXTCharGet_C(str, charIdx));
     return node + 1;
 }
@@ -1158,7 +1158,7 @@ tAINode* AI_EvalFunc_OBJ_3DText(tAINode* node)
 {
     char* str;
 
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     STR_Init3DString((tGameObjectMain*)AI_GetObjectFromStack(), str);
     return node + 1;
 }
@@ -1169,7 +1169,7 @@ tAINode* AI_EvalFunc_OBJ_3DTextExt(tAINode* node)
     int flags;
 
     flags = AI_GetIntFromStack();
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     STR_Init3DStringExt((tGameObjectMain*)AI_GetObjectFromStack(), str, flags);
     return node + 1;
 }
@@ -1186,7 +1186,7 @@ tAINode* AI_EvalFunc_OBJ_3DTextCenter(tAINode* node)
     int flags;
 
     flags = AI_GetIntFromStack();
-    str = get_a_string_from_globalstack_sub_4D2040();
+    str = AI_GetStringFromStack();
     STR_Init3DStringCenter((tGameObjectMain*)AI_GetObjectFromStack(), str, flags);
     return node + 1;
 }

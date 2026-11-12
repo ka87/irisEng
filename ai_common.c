@@ -26,31 +26,31 @@ int AI_GetIntFromStack()
     return *(int32_t*)&rounded;
 }
 
-int AI_PutIntToStack(int a1)
+int AI_PutIntToStack(int value)
 {
-    tVarStackElem* v2;
-    char* v3;
+    tVarStackElem* elem;
+    char* slot;
 
-    v3 = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    *(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] = a1;
+    slot = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    *(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] = value;
     AI_gul_SizeGlobalStack += 32;
-    v2 = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
-    v2->type = 1;
-    v2->ptr = v3;
+    elem = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
+    elem->type = 1;
+    elem->ptr = slot;
     return ++AI_gul_SizeGlobalVarStack;
 }
 
-int AI_PutFloatToStack(float a1)
+int AI_PutFloatToStack(float value)
 {
-    tVarStackElem* v2;
-    char* v3;
+    tVarStackElem* elem;
+    char* slot;
 
-    v3 = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    *(float*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] = a1;
+    slot = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    *(float*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] = value;
     AI_gul_SizeGlobalStack += 32;
-    v2 = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
-    v2->type = 2;
-    v2->ptr = v3;
+    elem = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
+    elem->type = 2;
+    elem->ptr = slot;
     return ++AI_gul_SizeGlobalVarStack;
 }
 
@@ -64,27 +64,27 @@ float AI_GetFloatFromStack()
 
 void AI_PutVecToStack(Vec3* v)
 {
-    tVarStackElem* v1;
-    char* v2;
+    tVarStackElem* elem;
+    char* slot;
 
-    v2 = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    slot = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     *(Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] = *v;
     AI_gul_SizeGlobalStack += 32;
-    v1 = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
-    v1->type = 3;
-    v1->ptr = v2;
+    elem = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
+    elem->type = 3;
+    elem->ptr = slot;
     ++AI_gul_SizeGlobalVarStack;
 }
 
 Vec3* AI_GetVecFromStack(Vec3* v)
 {
-    Vec3* v2;
+    Vec3* slot;
 
     AI_gul_SizeGlobalStack -= 32;
     --AI_gul_SizeGlobalVarStack;
-    v2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    slot = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     *v = *(Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    return v2;
+    return slot;
 }
 
 // Unwinds one element and hands back the slot it occupied, for a value
@@ -111,90 +111,90 @@ void AI_GetVarFromStack(void* dest, tVarStackElem* vse)
     AI_gul_SizeGlobalStack -= 32;
 }
 
-void AI_PutObjectToStack(void* a1, int16_t type)
+void AI_PutObjectToStack(void* obj, int16_t type)
 {
-    tVarStackElem* v2;
-    char* a2;
+    tVarStackElem* elem;
+    char* slot;
 
-    a2 = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gast_Types[type].funcptr(a1, &AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    slot = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    AI_gast_Types[type].funcptr(obj, &AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
     AI_gul_SizeGlobalStack += 32;
-    v2 = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
-    v2->type = type;
-    v2->ptr = a2;
+    elem = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
+    elem->type = type;
+    elem->ptr = slot;
     ++AI_gul_SizeGlobalVarStack;
 }
 
-void AI_PopUserStack(void* a1, tVarStackElem* a2)
+void AI_PopUserStack(void* dest, tVarStackElem* elemOut)
 {
-    memset(a1, 0, sizeof(uint32_t) * 3);
+    memset(dest, 0, sizeof(uint32_t) * 3);
 
-    a2->type = AI_gast_UserVarStack[--AI_gul_SizeUserVarStack].type;
-    a2->ptr = AI_gast_UserVarStack[AI_gul_SizeUserVarStack].ptr;
-    AI_gast_Types[a2->type].funcptr(a2->ptr, a1);
-    AI_gul_SizeUserStack -= AI_gast_Types[a2->type].dataTypeSize;
+    elemOut->type = AI_gast_UserVarStack[--AI_gul_SizeUserVarStack].type;
+    elemOut->ptr = AI_gast_UserVarStack[AI_gul_SizeUserVarStack].ptr;
+    AI_gast_Types[elemOut->type].funcptr(elemOut->ptr, dest);
+    AI_gul_SizeUserStack -= AI_gast_Types[elemOut->type].dataTypeSize;
 }
 
-char* AI_PushUserStack(void *a1, int16_t a2)
+char* AI_PushUserStack(void *src, int16_t type)
 {
     char* result;
-    tVarStackElem* v3;
-    char* v4;
+    tVarStackElem* elem;
+    char* slot;
 
-    v4 = &AI_gac_UserStack[AI_gul_SizeUserStack];
-    AI_gast_Types[a2].funcptr(a1, &AI_gac_UserStack[AI_gul_SizeUserStack]);
-    AI_gul_SizeUserStack += AI_gast_Types[a2].dataTypeSize;
-    v3 = &AI_gast_UserVarStack[AI_gul_SizeUserVarStack];
-    v3->type = a2;
-    result = v4;
-    v3->ptr = v4;
+    slot = &AI_gac_UserStack[AI_gul_SizeUserStack];
+    AI_gast_Types[type].funcptr(src, &AI_gac_UserStack[AI_gul_SizeUserStack]);
+    AI_gul_SizeUserStack += AI_gast_Types[type].dataTypeSize;
+    elem = &AI_gast_UserVarStack[AI_gul_SizeUserVarStack];
+    elem->type = type;
+    result = slot;
+    elem->ptr = slot;
     ++AI_gul_SizeUserVarStack;
     return result;
 }
 
 int AI2C_PopInt()
 {
-    int v0;
-    int a1[13];
-    tVarStackElem a2;
+    int asInt;
+    int buf[13];
+    tVarStackElem elem;
 
-    AI_PopUserStack(a1, &a2);
-    if (a2.type != 2)
-        return a1[0];
-    v0 = (int32_t)*(float*)a1;
-    return v0;
+    AI_PopUserStack(buf, &elem);
+    if (elem.type != 2)
+        return buf[0];
+    asInt = (int32_t)*(float*)buf;
+    return asInt;
 }
 
 float AI2C_PopFloat()
 {
-    float v2[13];
-    tVarStackElem a2;
+    float buf[13];
+    tVarStackElem elem;
 
-    AI_PopUserStack(v2, &a2);
-    if (a2.type != 1)
-        return v2[0];
-    return (float)*((int32_t*)(&v2[0]));
+    AI_PopUserStack(buf, &elem);
+    if (elem.type != 1)
+        return buf[0];
+    return (float)*((int32_t*)(&buf[0]));
 }
 
 struct sGameObjectMain* AI2C_PopGameObject()
 {
-    tGameObjectMain* a1[13];
-    tVarStackElem a2;
+    tGameObjectMain* buf[13];
+    tVarStackElem elem;
 
-    AI_PopUserStack(a1, &a2);
-    return a1[0];
+    AI_PopUserStack(buf, &elem);
+    return buf[0];
 }
 
 Vec3* AI2C_PopVector(Vec3* v)
 {
-    char* v2;
-    int v3[13];
+    char* slot;
+    int buf[13];
     tVarStackElem vse;
 
-    AI_PopUserStack(v3, &vse);
-    v2 = vse.ptr;
+    AI_PopUserStack(buf, &vse);
+    slot = vse.ptr;
     *v = *(Vec3*)vse.ptr;
-    return (Vec3*)v2;
+    return (Vec3*)slot;
 }
 
 void AI2C_PushInt(int i)
@@ -212,19 +212,19 @@ char* AI2C_PushVector(Vec3* v)
     return AI_PushUserStack(v, 3);
 }
 
-char* AI2C_PushGameObject(struct sGameObjectMain* a1)
+char* AI2C_PushGameObject(struct sGameObjectMain* gao)
 {
-    return AI_PushUserStack(&a1, AI_gaw_EnumLink[40]);// ai_evalType_GetGao
+    return AI_PushUserStack(&gao, AI_gaw_EnumLink[40]);// ai_evalType_GetGao
 }
 
-void AI2C_AddVector(Vec3* dest, Vec3* v1, Vec3* v2)
+void AI2C_AddVector(Vec3* dest, Vec3* src1, Vec3* src2)
 {
-    MATH_VecAddVec(dest, v1, v2);
+    MATH_VecAddVec(dest, src1, src2);
 }
 
-void AI2C_SubstractVector(Vec3* dest, Vec3* v1, Vec3* v2)
+void AI2C_SubstractVector(Vec3* dest, Vec3* src1, Vec3* src2)
 {
-    MATH_SubstractVec(dest, v1, v2);
+    MATH_SubstractVec(dest, src1, src2);
 }
 
 void AI2C_AssignVector(Vec3* dest, Vec3* src)
@@ -246,9 +246,9 @@ void AI2C_MultiplyVectorWithScalar(Vec3* dest, Vec3* src, float scalar)
     dest->z = src->z * scalar;
 }
 
-float AI2C_DotProductVector(Vec3* v1, Vec3* v2)
+float AI2C_DotProductVector(Vec3* vec1, Vec3* vec2)
 {
-    return v2->z * v1->z + v2->y * v1->y + v1->x * v2->x;
+    return vec2->z * vec1->z + vec2->y * vec1->y + vec1->x * vec2->x;
 }
 
 float AI2C_VectorLen(Vec3* v)
@@ -270,25 +270,25 @@ struct sGameObjectMain* AI2C_GetMainActor(void* actorIDOrGao)
     return actorIDOrGao;
 }
 
-char* AI_EvalVarArray_C(int a1, char* a2, int num)
+char* AI_EvalVarArray_C(int type, char* data, int num)
 {
-    return &a2[AI_gast_Types[a1].dataTypeSize * num + 4];
+    return &data[AI_gast_Types[type].dataTypeSize * num + 4];
 }
 
-char* AI_EvalVarArray2_C(int a1, char* a2, int a3, int a4)
+char* AI_EvalVarArray2_C(int type, char* data, int i, int j)
 {
-    return &a2[(a3 + *((int32_t*)a2 + 1) * a4) * AI_gast_Types[a1].dataTypeSize + 8];
+    return &data[(i + *((int32_t*)data + 1) * j) * AI_gast_Types[type].dataTypeSize + 8];
 }
 
-char* AI_EvalVarArray_C2(char* a1, int a2)
+char* AI_EvalVarArray_C2(char* data, int idx)
 {
-    return &a1[AI_gast_Types[2].dataTypeSize * a2 + 4];
+    return &data[AI_gast_Types[2].dataTypeSize * idx + 4];
 }
 
-char* AI_EvalVarArray3_C(int a1, char* a2, int a3, int a4, int a5)
+char* AI_EvalVarArray3_C(int type, char* data, int i, int j, int k)
 {
-    return &a2[(*((int32_t*)a2 + 2) * *((int32_t*)a2 + 1) * a5 + a3 + *((int32_t*)a2 + 2) * a4)
-        * AI_gast_Types[a1].dataTypeSize + 12];
+    return &data[(*((int32_t*)data + 2) * *((int32_t*)data + 1) * k + i + *((int32_t*)data + 2) * j)
+        * AI_gast_Types[type].dataTypeSize + 12];
 }
 
 void AI_EvalVar(tVarStackElem* vse)
@@ -303,74 +303,74 @@ void AI_EvalVar(tVarStackElem* vse)
     ++AI_gul_SizeGlobalVarStack;
 }
 
-void AI_EvalVarArray(tAINode* aiNode, char* a2)
+void AI_EvalVarArray(tAINode* aiNode, char* data)
 {
     int dest[13];
-    tVarStackElem a2a;
+    tVarStackElem elem;
 
-    AI_GetVarFromStack(dest, &a2a);
-    a2a.type = aiNode->val2;
-    a2a.ptr = AI_EvalVarArray_C(a2a.type, a2, dest[0]);
-    AI_EvalVar(&a2a);
+    AI_GetVarFromStack(dest, &elem);
+    elem.type = aiNode->val2;
+    elem.ptr = AI_EvalVarArray_C(elem.type, data, dest[0]);
+    AI_EvalVar(&elem);
 }
 
-void AI_EvalVarArray2(tAINode* aiNode, char* a2)
+void AI_EvalVarArray2(tAINode* aiNode, char* data)
 {
     int dest[13];
-    tVarStackElem v3;
-    int v4[13];
-    tVarStackElem a2a;
+    tVarStackElem elemJ;
+    int idxJ[13];
+    tVarStackElem elem;
 
-    AI_GetVarFromStack(dest, &a2a);
-    AI_GetVarFromStack(v4, &v3);
-    a2a.type = aiNode->val2;
-    a2a.ptr = AI_EvalVarArray2_C(a2a.type, a2, dest[0], v4[0]);
-    AI_EvalVar(&a2a);
+    AI_GetVarFromStack(dest, &elem);
+    AI_GetVarFromStack(idxJ, &elemJ);
+    elem.type = aiNode->val2;
+    elem.ptr = AI_EvalVarArray2_C(elem.type, data, dest[0], idxJ[0]);
+    AI_EvalVar(&elem);
 }
 
-void AI_EvalVarArray3(tAINode* aiNode, char* a2)
+void AI_EvalVarArray3(tAINode* aiNode, char* data)
 {
-    tVarStackElem v2;
+    tVarStackElem elemK;
     int dest[13];
-    tVarStackElem v4;
-    int v5[13];
-    int v6[13];
-    tVarStackElem a2a;
+    tVarStackElem elemJ;
+    int idxJ[13];
+    int idxK[13];
+    tVarStackElem elem;
 
-    AI_GetVarFromStack(dest, &a2a);
-    AI_GetVarFromStack(v5, &v4);
-    AI_GetVarFromStack(v6, &v2);
-    a2a.type = aiNode->val2;
-    a2a.ptr = AI_EvalVarArray3_C(a2a.type, a2, dest[0], v5[0], v6[0]);
-    AI_EvalVar(&a2a);
+    AI_GetVarFromStack(dest, &elem);
+    AI_GetVarFromStack(idxJ, &elemJ);
+    AI_GetVarFromStack(idxK, &elemK);
+    elem.type = aiNode->val2;
+    elem.ptr = AI_EvalVarArray3_C(elem.type, data, dest[0], idxJ[0], idxK[0]);
+    AI_EvalVar(&elem);
 }
 
-void AI_InitVarArray(tAINode* aiNode, char* a2)
+void AI_InitVarArray(tAINode* aiNode, char* data)
 {
     int dest[13];
-    tVarStackElem a2a;
+    tVarStackElem elem;
     int i;
-    int v5;
-    char* v6;
+    int count;
+    char* out;
 
-    AI_GetVarFromStack(dest, &a2a);
-    v5 = dest[0];
-    v6 = a2;
-    for (i = 0; i < v5; ++i)
+    AI_GetVarFromStack(dest, &elem);
+    count = dest[0];
+    out = data;
+    for (i = 0; i < count; ++i)
     {
-        AI_GetVarFromStack(dest, &a2a);
-        *(int32_t*)&v6[4 * i] = dest[0];
+        AI_GetVarFromStack(dest, &elem);
+        *(int32_t*)&out[4 * i] = dest[0];
     }
 }
 
-char* AI_EvalVarArray_C3(char* a1, int a2)
+char* AI_EvalVarArray_C3(char* data, int idx)
 {
-    return &a1[AI_gast_Types[3].dataTypeSize * a2 + 4];
+    return &data[AI_gast_Types[3].dataTypeSize * idx + 4];
 }
 
-char* AI_EvalVarArray_C7(char* a1, int a2)
+char* AI_EvalVarArray_C7(char* data, int idx)
 {
-    return &a1[AI_gast_Types[7].dataTypeSize * a2 + 4];
+    return &data[AI_gast_Types[7].dataTypeSize * idx + 4];
 }
 
 void AI_Reset()
@@ -465,9 +465,9 @@ void AI_ReinitUniverse()
     AI_ReinitInstance(WOR_gst_Universe.univAIInstance);
 }
 
-BOOL AI_SpecialWParam(char a1)
+BOOL AI_SpecialWParam(char w)
 {
-    return a1 == 24;
+    return w == 24;
 }
 
 unsigned int AI_ul_RealResolveOneRef(int type, unsigned int key)
@@ -547,7 +547,7 @@ void AI_ResolveAllFctRef(tAIModel* aiModel)
     }
 }
 
-void AI_ResolveVarRef(void* a1, uint8_t* allVarData, AIVarNameElem* a3, AIVarElem* varElems, unsigned int num, int a6)
+void AI_ResolveVarRef(void* unused, uint8_t* allVarData, AIVarNameElem* varNames, AIVarElem* varElems, unsigned int num, int remapTypes)
 {
     unsigned int i;
     signed int j;
@@ -561,7 +561,7 @@ void AI_ResolveVarRef(void* a1, uint8_t* allVarData, AIVarNameElem* a3, AIVarEle
         {
             varData = &allVarData[varElems[i].varOffset];
             varType = varElems[i].variableType;
-            if (!a6)
+            if (!remapTypes)
                 varType = AI_gast_Types[varType].funcid;
             if (AI_b_IsARef(varType))
             {
@@ -569,7 +569,7 @@ void AI_ResolveVarRef(void* a1, uint8_t* allVarData, AIVarNameElem* a3, AIVarEle
                 for (j = 0; j < (signed int)(varElems[i].variableArrayCount & 0x3fffffff); j++)
                     *(int32_t*)&actVarData[4 * j] = AI_ul_ResolveOneRef(varType, *(int32_t*)&actVarData[4 * j]);
             }
-            if (a6)
+            if (remapTypes)
                 varElems[i].variableType = AI_gaw_EnumLink[varElems[i].variableType];
         }
     }
@@ -1027,9 +1027,9 @@ void AI_DuplicateInstance(struct sGameObjectMain* srcGao, struct sGameObjectMain
     }
 }
 
-unsigned int AI_ul_RealResolveOneRefObject(unsigned int a1)
+unsigned int AI_ul_RealResolveOneRefObject(unsigned int key)
 {
-    return AI_ul_RealResolveOneRef(40, a1);
+    return AI_ul_RealResolveOneRef(40, key);
 }
 
 unsigned int AI_ul_RealResolveOneRefFunction(unsigned int key)
@@ -1824,11 +1824,11 @@ BOOL AI2C_VecEqNull(Vec3* v)
     return fabs(v->z) == 0.0f;
 }
 
-BOOL AI2C_DistOfTwoPointsIsZero(Vec3* v1, Vec3* v2)
+BOOL AI2C_DistOfTwoPointsIsZero(Vec3* p1, Vec3* p2)
 {
     Vec3 dest;
 
-    MATH_SubstractVec(&dest, v1, v2);
+    MATH_SubstractVec(&dest, p1, p2);
 
     if (fabs(dest.x) != 0.0f)
         return FALSE;
