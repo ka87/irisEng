@@ -7,6 +7,6 @@ typedef struct sGfxGaoData
     float focale;
 } tGfxGaoData;
 
-struct sGfxGaoData* GFX_Gao_Create(struct sGameObjectMain* a1);
-void draw_game_object_in_GFX_sub_45DBB0(struct sGfxGaoData* a1);
-void GFX_Gao_Destroy(struct sGfxGaoData* a1);
+struct sGfxGaoData* GFX_Gao_Create(struct sGameObjectMain* gao);
+void draw_game_object_in_GFX_sub_45DBB0(struct sGfxGaoData* gfx);
+void GFX_Gao_Destroy(struct sGfxGaoData* gfx);

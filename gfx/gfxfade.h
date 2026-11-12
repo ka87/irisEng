@@ -10,5 +10,5 @@ typedef struct sGfxFadeData
     float f;
 } tGfxFadeData;
 
-int GFX_i_Fade_Render(struct sGfxFadeData* a1);
-struct sGfxFadeData* GFX_Fade_Create();
+int GFX_i_Fade_Render(struct sGfxFadeData* fade);
+struct sGfxFadeData* GFX_Fade_Create(void);

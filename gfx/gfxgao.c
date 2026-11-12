@@ -1,48 +1,45 @@
 #include "../memory.h"
 #include "gfxgao.h"
 
-struct sGfxGaoData* GFX_Gao_Create(struct sGameObjectMain* a1)
+struct sGfxGaoData* GFX_Gao_Create(struct sGameObjectMain* gao)
 {
-    tGameObjectBasic* v1;
-    tGfxGaoData* result;
+    tGfxGaoData* gfx;
 
-    if (!a1)
+    if (!gao || !gao->basic || !gao->basic->actorObjectOrVisualObject)
         return 0;
-    v1 = a1->basic;
-    if (!v1 || !v1->actorObjectOrVisualObject)
-        return 0;
-    result = (tGfxGaoData*)MEM_p_Alloc(sizeof(tGfxGaoData));
-    result->gao = a1;
-    ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->renderOnlyWithGFXRender = 1;
-    result->focale = 0.0f;
-    return result;
+
+    gfx = (tGfxGaoData*)MEM_p_Alloc(sizeof(tGfxGaoData));
+    gfx->gao = gao;
+    ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->renderOnlyWithGFXRender = 1;
+    gfx->focale = 0.0f;
+    return gfx;
 }
 
-void draw_game_object_in_GFX_sub_45DBB0(struct sGfxGaoData* a1)
+void draw_game_object_in_GFX_sub_45DBB0(struct sGfxGaoData* gfx)
 {
-    float v2;
-    tGameObjectMain* v3;
-    float v4;
+    float savedFocale;
+    int overrideFocale;
 
-    if (*(uint32_t *)&(a1->focale) != 0)
+    savedFocale = 0.0f;
+    overrideFocale = (*(uint32_t*)&gfx->focale != 0);
+    if (overrideFocale)
     {
-        v2 = gpst_DX_stDD->ct.cam.focale;
-        gpst_DX_stDD->ct.cam.focale = a1->focale;
-        v4 = v2;
-        gpst_DX_stDD->SetProjectionMatrix(&gpst_DX_stDD->ct.cam);
-        v3 = a1->gao;
-        if ((v3->flags2 & 2) != 0)
-            GRO_Render(v3);
-        gpst_DX_stDD->ct.cam.focale = v4;
+        savedFocale = gpst_DX_stDD->ct.cam.focale;
+        gpst_DX_stDD->ct.cam.focale = gfx->focale;
         gpst_DX_stDD->SetProjectionMatrix(&gpst_DX_stDD->ct.cam);
     }
-    else if ((a1->gao->flags2 & 2) != 0)
+
+    if ((gfx->gao->flags2 & 2) != 0)
+        GRO_Render(gfx->gao);
+
+    if (overrideFocale)
     {
-        GRO_Render(a1->gao);
+        gpst_DX_stDD->ct.cam.focale = savedFocale;
+        gpst_DX_stDD->SetProjectionMatrix(&gpst_DX_stDD->ct.cam);
     }
 }
 
-void GFX_Gao_Destroy(struct sGfxGaoData* a1)
+void GFX_Gao_Destroy(struct sGfxGaoData* gfx)
 {
-    ((tGameObjectVisualObject*)(a1->gao->basic->actorObjectOrVisualObject))->renderOnlyWithGFXRender = 0;
+    ((tGameObjectVisualObject*)(gfx->gao->basic->actorObjectOrVisualObject))->renderOnlyWithGFXRender = 0;
 }

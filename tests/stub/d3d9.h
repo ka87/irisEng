@@ -41,6 +41,34 @@ typedef struct _D3DCAPS9 { DWORD DeviceType; DWORD pad[256]; } D3DCAPS9;
 #define D3DTEXF_NONE   0
 #define D3DTEXF_POINT  1
 #define D3DTEXF_LINEAR 2
+#define D3DERR_WASSTILLDRAWING ((HRESULT)0x8876021CL)
+/* Just enough of the COM vtables for the calls the engine actually makes.
+   Grown per directory as a pass needs more; see docs/cleanup/README.md. */
+typedef struct IDirect3DDevice9Vtbl  IDirect3DDevice9Vtbl;
+typedef struct IDirect3DSurface9Vtbl IDirect3DSurface9Vtbl;
+
+struct IDirect3DDevice9  { IDirect3DDevice9Vtbl*  lpVtbl; };
+struct IDirect3DSurface9 { IDirect3DSurface9Vtbl* lpVtbl; };
+
+struct IDirect3DDevice9Vtbl
+{
+    HRESULT (*CreateOffscreenPlainSurface)(IDirect3DDevice9*, UINT, UINT, D3DFORMAT,
+                                           D3DPOOL, IDirect3DSurface9**, HANDLE*);
+    HRESULT (*StretchRect)(IDirect3DDevice9*, IDirect3DSurface9*, const RECT*,
+                           IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
+    HRESULT (*GetRenderTargetData)(IDirect3DDevice9*, IDirect3DSurface9*,
+                                   IDirect3DSurface9*);
+    HRESULT (*GetRenderTarget)(IDirect3DDevice9*, DWORD, IDirect3DSurface9**);
+};
+
+struct IDirect3DSurface9Vtbl
+{
+    ULONG   (*Release)(IDirect3DSurface9*);
+    HRESULT (*GetDesc)(IDirect3DSurface9*, D3DSURFACE_DESC*);
+    HRESULT (*LockRect)(IDirect3DSurface9*, D3DLOCKED_RECT*, const RECT*, DWORD);
+    HRESULT (*UnlockRect)(IDirect3DSurface9*);
+};
+
 typedef IDirect3D9*              LPDIRECT3D9;
 typedef IDirect3DDevice9*        LPDIRECT3DDEVICE9;
 typedef IDirect3DTexture9*       LPDIRECT3DTEXTURE9;
