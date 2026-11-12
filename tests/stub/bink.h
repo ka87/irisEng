@@ -44,3 +44,10 @@ int   BinkSetSoundSystem(void* open, uint32_t param);
 int   BinkOpenDirectSound(uint32_t param);
 void  BinkSetIO(void* io);
 int   BinkSetSoundTrack(uint32_t track);
+#define RADLINK
+#define RADEXPLINK
+#define PTR4
+typedef uint32_t U32;
+typedef int32_t  S32;
+typedef uint8_t  U8;
+typedef void*    VOIDPTR;

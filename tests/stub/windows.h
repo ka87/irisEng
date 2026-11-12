@@ -61,3 +61,21 @@ typedef void*               HMENU;
 typedef void*               HICON;
 typedef void*               HCURSOR;
 typedef void*               HBRUSH;
+#include <limits.h>
+#include <float.h>
+#define MAX_PATH 260
+typedef DWORD COLORREF;
+typedef unsigned int SIZE_T;
+typedef struct _GUID { DWORD Data1; WORD Data2, Data3; uint8_t Data4[8]; } GUID;
+#define DEFINE_GUID(n,a,b,c,d,e,f,g,h,i,j,k) extern const GUID n
+#define ERROR_ALREADY_EXISTS 183
+#define VK_SHIFT 0x10
+#define VK_CONTROL 0x11
+#define VK_MENU 0x12
+#define VK_ESCAPE 0x1B
+#define VK_RETURN 0x0D
+#define VK_SPACE 0x20
+#define VK_LEFT 0x25
+#define VK_UP 0x26
+#define VK_RIGHT 0x27
+#define VK_DOWN 0x28
