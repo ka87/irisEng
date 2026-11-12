@@ -253,3 +253,91 @@ They are in `Apply2DMatrix`, where the original inlined
 `MATH_VecMultScalar` and `MATH_AddScaleVector` with x87 intermediates
 and the restored calls round each product to `float`. Same reasoning as
 snakemodifier's.
+
+## lazymodifier.c
+
+793 lines to 490. The one `goto` is gone, the two big functions lose 47
+and 44 locals between them, and four blocks that were the same
+computation written out four times become three helpers.
+
+### The three helpers
+
+- **`GAO_l_ModifierLazy_BlendVec(dest, target, blend)`** — `dest +=
+  (target - dest) * blend`, which appeared five times: the position, the
+  three matrix axes and the scale triple. Each copy was six lines of
+  component arithmetic through `double` temporaries.
+- **`GAO_l_ModifierLazy_ClampToBox(lazy, target)`** — decompose the
+  offset from the target position onto the target's three axes, clamp
+  each against its `ff*`/`upperMax` pair, and rebuild the position.
+  Written twice, once inlined and once already using
+  `MATH_AddScaleVector`.
+- **`GAO_l_ModifierLazy_KeepBoneLength(lazy, mtx, anchor)`** — rescale
+  the lazy position to the bone's length and rotate the bone onto it
+  through the half-vector quaternion. Also written twice, and the second
+  copy is what identified the first: the inlined version is the same
+  sequence with `sqrt` and `memcpy` in place of `MATH_VecLen` and
+  `MATH_CopyMatrix`.
+
+The clamp helper takes the **target matrix**, not the parent matrix,
+and that is not cosmetic. The semi-mechanical model computes
+`MATH_MulMatrixMatrix(&target, &lazy->mtx1, parentMtx)` once at the top
+and reuses it for the clamp; `Compute` computes it inside the clamp
+branch. A first draft had the helper compute it itself, which gave the
+semi-mechanical path a second `MATH_MulMatrixMatrix` — caught by the
+call-sequence comparison, not by any value.
+
+### The flag shadow
+
+`Compute` carried two copies of the flag word, `v3` and `v44`, and three
+statements of the form `LOBYTE(v3) = v44`. `v44` is assigned only where
+`v3` is, and to the same value, so all three restores are no-ops — they
+are the register allocator reloading a spilled byte. Both the shadow and
+the restores are gone.
+
+### The decay loop
+
+    decay = 1.0; elapsed = 0.0;
+    if (dt > 0) do { decay *= perStep; elapsed += 0.0033333334; } while (elapsed < dt);
+    blend = 1 - decay;
+
+Kept exactly, including the `double` accumulators and the
+`do`/`while`, which runs one step even for a `dt` below 1/300. Making
+`elapsed` a `float` would change the step count at large `dt`.
+
+### `goto LABEL_14` in `Inherit`
+
+The label was the `else` of a test duplicated in both arms of an
+outer branch: each arm ends with "if the source has a scale, copy it
+and set the flag; otherwise clear the flag". Hoisting the source matrix
+into a variable lets the axis copy and the scale copy be written once,
+and the `goto` becomes the `else` it always was. The position copy
+stays inside the hierarchy arm, because only that arm had it.
+
+### What the test covers
+
+`tests/test_lazymodifier.c`, 56 cases, all equivalent:
+
+- `Compute` over fourteen flag combinations times three settings
+  (one frame, eight frames with a scaled matrix, and no parent), plus
+  `dt` of zero and one;
+- the semi-mechanical model with and without the box clamp, over eight
+  frames, and with no parent;
+- `Inherit` across both source kinds, each of the three inherit bits
+  alone, and with and without a source scale;
+- `Apply` over eight scenes: plain object, hierarchy with and without a
+  reference, a reference carrying a four-modifier chain (so the
+  recursion runs), the flag-restore bits, and an already-applied
+  modifier;
+- `Reinit` four ways and `Load` at each of the four stream versions.
+
+Each case compares both matrices, the whole `lazy` struct and the
+recorded engine-call sequence.
+
+**254 of the compared floats differ.** The two extremes are
+`0.000244` absolute, which is `6.8e-8` relative — `vv` is a velocity,
+divided by `dt`, so a 4e-6 position difference arrives scaled by 62 —
+and `1.3%` relative, whose absolute difference is `1.2e-7`, on a matrix
+component near zero after a cancellation. Both are the `double`-versus-
+`float` intermediates described under snakemodifier: the decompiler
+shows x87's 80-bit registers as `double` locals, and the restored
+`MATH_*` calls compute in `float`.

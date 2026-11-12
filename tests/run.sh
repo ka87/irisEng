@@ -34,6 +34,11 @@ PROTEX_SetStUstVstP PROTEX_Apply2DMatrix PROTEX_InitModifier PROTEX_ul_Modifier_
 PROTEX_Modifier_Create PROTEX_UpdateWaterEffect PROTEX_BeforeDraw \
 PROTEX_ComputeStUstVstP PROTEX_Modifier_Unapply PROTEX_Modifier_Apply"
 
+lazy_syms="GAO_ModifierLazy_Compute_SemiMecanical_Model GAO_ModifierLazy_Compute \
+GAO_ModifierLazy_Inherit GAO_ModifierLazy_Apply Lazy_FirstInit GAO_ModifierLazy_Reinit \
+GAO_ModifierLazy_Create GAO_ModifierLazy_Destroy GAO_ul_ModifierLazy_Load \
+GAO_ModifierLazy_Unapply GAO_ModifierLazy_UnApply_Local GAO_ModifierLazy_UnapplyAll"
+
 fails=0
 run_one() {
     name=$1; live=$2; base=$3; incdir=$4; syms=$5
@@ -59,6 +64,9 @@ run_one snakemodifier modifiers/snakemodifier.c \
 
 run_one protexmodifier modifiers/protexmodifier.c \
         tests/baseline_protexmodifier.c modifiers "$protex_syms"
+
+run_one lazymodifier modifiers/lazymodifier.c \
+        tests/baseline_lazymodifier.c modifiers "$lazy_syms"
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"

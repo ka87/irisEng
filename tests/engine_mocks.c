@@ -415,3 +415,168 @@ void LOA_ReadCharArray(char** offset, char* dest, int len, char readMode)
     }
     MOCK_Record("LOA_ReadCharArray", 0, 2, (double)len, (double)readMode);
 }
+
+/* --- lazymodifier: verbatim copies of the engine helpers ---------- */
+
+void MATH_SubstractVec(Vec3* dest, Vec3* v1, Vec3* v2)
+{
+    dest->x = v1->x - v2->x;
+    dest->y = v1->y - v2->y;
+    dest->z = v1->z - v2->z;
+}
+
+void MATH_VecAddVec(Vec3* dest, Vec3* src1, Vec3* src2)
+{
+    dest->x = src1->x + src2->x;
+    dest->y = src1->y + src2->y;
+    dest->z = src1->z + src2->z;
+}
+
+void MATH_VecAddVecWithoutBuffer(Vec3* a1, Vec3* a2)
+{
+    a1->x = a1->x + a2->x;
+    a1->y = a2->y + a1->y;
+    a1->z = a2->z + a1->z;
+}
+
+float MATH_DotProduct(Vec3* v1, Vec3* v2)
+{
+    return v1->z * v2->z + v1->y * v2->y + v1->x * v2->x;
+}
+
+void MATH_CopyMatrix(Mtx4x4* dest, Mtx4x4* src)
+{
+    if (dest != src)
+        memcpy(dest, src, sizeof(Mtx4x4));
+}
+
+void MATH_Copy33Matrix(Mtx4x4* dest, Mtx4x4* src)
+{
+    dest->v1 = src->v1;
+    dest->v2 = src->v2;
+    dest->v3 = src->v3;
+    if ((src->mtxflag & 0x4) != 0)
+        dest->mtxflag |= 0x4;
+}
+
+void MATH_Orthonormalize(Mtx4x4* mtx)
+{    
+    double v3;
+    double v8; 
+    double v13;
+
+    v3 = sqrt(mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z);
+    mtx->v1.x = (float)(1.0 / v3 * mtx->v1.x);
+    mtx->v1.y = (float)(1.0 / v3 * mtx->v1.y);
+    mtx->v1.z = (float)(1.0 / v3 * mtx->v1.z);
+    mtx->v2.x = mtx->v1.z * mtx->v3.y - mtx->v1.y * mtx->v3.z;
+    mtx->v2.y = mtx->v1.x * mtx->v3.z - mtx->v1.z * mtx->v3.x;
+    mtx->v2.z = mtx->v3.x * mtx->v1.y - mtx->v3.y * mtx->v1.x;
+    v8 = sqrt(mtx->v2.z * mtx->v2.z + mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y);
+    mtx->v2.x = (float)(1.0 / v8 * mtx->v2.x);
+    mtx->v2.y = (float)(1.0 / v8 * mtx->v2.y);
+    mtx->v2.z = (float)(1.0 / v8 * mtx->v2.z);
+    mtx->v3.x = mtx->v2.z * mtx->v1.y - mtx->v2.y * mtx->v1.z;
+    mtx->v3.y = mtx->v1.z * mtx->v2.x - mtx->v2.z * mtx->v1.x;
+    mtx->v3.z = mtx->v1.x * mtx->v2.y - mtx->v2.x * mtx->v1.y;
+    v13 = sqrt(mtx->v3.z * mtx->v3.z + mtx->v3.x * mtx->v3.x + mtx->v3.y * mtx->v3.y);
+    mtx->v3.x = (float)(1.0 / v13 * mtx->v3.x);
+    mtx->v3.y = (float)(1.0 / v13 * mtx->v3.y);
+    mtx->v3.z = (float)(1.0 / v13 * mtx->v3.z);
+}
+
+void MATH_ConvertQuaternionToMatrix(Mtx4x4* mtx, Quat4* q)
+{
+    double v3;
+    double v4;
+    double v5;
+    double v6;
+    double v7;
+    double v8;
+    double v9;
+    double v10;
+    double v11;
+    double v12;
+    double v13;
+    double v14;
+    double v15;
+    double v16;
+    double v17;
+    float v18; 
+    float v19; 
+    float a2a; 
+
+    v3 = q->q1 * q->q1;
+    v4 = 0.5 - (v3 + v3);
+    v5 = q->q2 * q->q1;
+    v6 = v5 + v5;
+    v7 = q->q3 * q->q1;
+    v8 = v7 + v7;
+    v9 = q->q4 * q->q1;
+    v18 = (float)(v9 + v9);
+    v10 = q->q2 * q->q2;
+    v19 = (float)(0.5 - (v10 + v10));
+    v11 = q->q3 * q->q2;
+    a2a = (float)(v11 + v11);
+    v12 = q->q4 * q->q2;
+    v13 = v12 + v12;
+    v14 = q->q3 * q->q3;
+    v15 = 0.5 - (v14 + v14);
+    v16 = q->q4 * q->q3;
+    mtx->_m14 = 0.0;
+    mtx->_m24 = 0.0;
+    v17 = v16 + v16;
+    mtx->_m34 = 0.0;
+    mtx->mtxflag = mtx->mtxflag & ~8u | 4;
+    mtx->v1.x = (float)(v15 + v19);
+    mtx->v2.x = (float)(v6 - v17);
+    mtx->v3.x = (float)(v13 + v8);
+    mtx->v1.y = (float)(v17 + v6);
+    mtx->v2.y = (float)(v15 + v4);
+    mtx->v3.y = a2a - v18;
+    mtx->v1.z = (float)(v8 - v13);
+    mtx->v2.z = a2a + v18;
+    mtx->v3.z = (float)(v19 + v4);
+}
+
+void MATH_Mul33MatrixMatrix(Mtx4x4* dest, Mtx4x4* src1, Mtx4x4* src2, char flagSet)
+{
+    if ((src1->mtxflag & 0x3c) != 0)
+    {
+        if ((src2->mtxflag & 0x3c) != 0)
+        {
+            dest->v1.x = src1->v1.x * src2->v1.x + src1->v1.y * src2->v2.x + src2->v3.x * src1->v1.z;
+            dest->v1.y = src2->v3.y * src1->v1.z + src2->v1.y * src1->v1.x + src2->v2.y * src1->v1.y;
+            dest->v1.z = src1->v1.x * src2->v1.z + src1->v1.y * src2->v2.z + src1->v1.z * src2->v3.z;
+            dest->v2.x = src1->v2.z * src2->v3.x + src1->v2.y * src2->v2.x + src1->v2.x * src2->v1.x;
+            dest->v2.y = src1->v2.y * src2->v2.y + src1->v2.x * src2->v1.y + src1->v2.z * src2->v3.y;
+            dest->v2.z = src1->v2.y * src2->v2.z + src1->v2.x * src2->v1.z + src1->v2.z * src2->v3.z;
+            dest->v3.x = src2->v2.x * src1->v3.y + src2->v1.x * src1->v3.x + src2->v3.x * src1->v3.z;
+            dest->v3.y = src2->v2.y * src1->v3.y + src2->v1.y * src1->v3.x + src2->v3.y * src1->v3.z;
+            dest->v3.z = src1->v3.z * src2->v3.z + src1->v3.y * src2->v2.z + src1->v3.x * src2->v1.z;
+            if (flagSet)
+            {
+                if ((src1->mtxflag & 0x4) != 0 || (src2->mtxflag & 0x4) != 0)
+                    dest->mtxflag |= 0x4;
+            }
+        }
+        else
+        {
+            MATH_Copy33Matrix(dest, src1);
+        }
+    }
+    else
+    {
+        MATH_Copy33Matrix(dest, src2);
+    }
+}
+
+void OBJ_ComputeGlobalWhenHie(struct sGameObjectMain* gao)
+{
+    MOCK_Record("OBJ_ComputeGlobalWhenHie", gao, 0);
+}
+
+void CAM_Inverse(tDDContainerStruct* ct)
+{
+    MOCK_Record("CAM_Inverse", ct, 0);
+}

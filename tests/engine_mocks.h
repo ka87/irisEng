@@ -5,6 +5,7 @@
 #include "../materialanddraw.h"
 #include "../textures.h"
 #include "../profiler.h"
+#include "../cameraengine.h"
 
 #define MOCK_LOG_MAX 8192
 #define MOCK_CALL_ARGS 10

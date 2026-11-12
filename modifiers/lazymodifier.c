@@ -3,792 +3,490 @@
 #include "../loading.h"
 #include "lazymodifier.h"
 
-void GAO_ModifierLazy_Compute_SemiMecanical_Model(tLazyMdfStruct* a1, Mtx4x4* a2, Mtx4x4* a3)
+static void GAO_l_ModifierLazy_BlendVec(Vec3* dest, Vec3* target, float blend)
 {
-    Vec3* v3;
-    float v4;
-    float v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    double v16;
-    Vec3* v17; 
-    double v18;
-    long double v19;
-    long double v20;
-    long double v21;
-    double v22;
-    Mtx4x4* v23;
-    double v24;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    float v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    Vec3 v40;
-    float v41;
-    Vec3* v42;
-    Quat4 v43;
-    float v44;
-    float v45;
-    float v46;
-    Mtx4x4 v47;
-    Mtx4x4 a2a;
-    Mtx4x4 a3a;
+    Vec3 delta;
 
-    if (a3)
-    {
-        v3 = &a1->mtx2.Pos;
-        v4 = a1->mtx2.Pos.y;
-        v5 = a1->mtx2.Pos.z;
-        v44 = a1->mtx2.Pos.x;
-        v45 = v4;
-        v46 = v5;
-        MATH_MulMatrixMatrix(&v47, &a1->mtx1, a3);
-        v6 = v47.Pos.x - a1->mtx2.Pos.x;
-        v7 = a1->mtx2.Pos.y;
-        v25 = a1->f2;
-        v40.z = v47.Pos.z - a1->mtx2.Pos.z;
-        v43.q1 = (float)(v6 * v25);
-        v8 = (v47.Pos.y - v7) * v25;
-        v9 = v40.z * v25;
-        a1->vv.x = v43.q1 + a1->vv.x;
-        a1->vv.y = (float)(a1->vv.y + v8);
-        a1->vv.z = (float)(a1->vv.z + v9);
-        a1->vv.z = a1->fff1 + a1->vv.z;
-        v10 = a1->fff2;
-        a1->vv.x = (float)(v10 * a1->vv.x);
-        a1->vv.y = (float)(v10 * a1->vv.y);
-        a1->vv.z = (float)(v10 * a1->vv.z);
-        v11 = TIM_gf_dt * a1->vv.x;
-        v12 = a1->vv.y * TIM_gf_dt;
-        v43.q3 = a1->vv.z * TIM_gf_dt;
-        a1->mtx2.Pos.x = (float)(v11 + a1->mtx2.Pos.x);
-        a1->mtx2.Pos.y = (float)(a1->mtx2.Pos.y + v12);
-        a1->mtx2.Pos.z = a1->mtx2.Pos.z + v43.q3;
-        if ((a1->upperFlag & 0x400) != 0)
-        {
-            v13 = v3->x - v47.Pos.x;
-            v14 = a1->mtx2.Pos.y - v47.Pos.y;
-            v15 = a1->mtx2.Pos.z - v47.Pos.z;
-            v41 = (float)(v47.v1.z * v15 + v47.v1.y * v14 + v47.v1.x * v13);
-            v26 = (float)(v47.v2.z * v15 + v47.v2.y * v14 + v47.v2.x * v13);
-            v16 = v13 * v47.v3.x + v47.v3.z * v15 + v47.v3.y * v14;
-            if (v41 < (double)a1->ff1)
-                v41 = a1->ff1;
-            if (v26 < (double)a1->ff2)
-                v26 = a1->ff2;
-            if (v16 < a1->ff3)
-                v16 = a1->ff3;
-            if (v41 > (double)a1->upperMax)
-                v41 = a1->upperMax;
-            if (v26 > (double)a1->ff5)
-                v26 = a1->ff5;
-            if (v16 > a1->ff6)
-                v16 = a1->ff6;
-            v35 = v47.v1.z * v41;
-            v43.q2 = v47.v2.y * v26;
-            v43.q3 = v47.v2.z * v26;
-            v28 = v47.v2.x * v26 + v47.v1.x * v41;
-            v31 = v43.q2 + v47.v1.y * v41;
-            v36 = v43.q3 + v35;
-            v43.q1 = (float)(v47.v3.x * v16);
-            v43.q2 = (float)(v47.v3.y * v16);
-            v32 = v43.q2 + v31;
-            v37 = (float)(v16 * v47.v3.z + v36);
-            v3->x = v43.q1 + v28 + v47.Pos.x;
-            a1->mtx2.Pos.y = v32 + v47.Pos.y;
-            a1->mtx2.Pos.z = v37 + v47.Pos.z;
-        }
-        v17 = &a2->Pos;
-        v18 = a2->Pos.x - a3->Pos.x;
-        v42 = &a2->Pos;
-        v29 = (float)v18;
-        v33 = a2->Pos.y - a3->Pos.y;
-        v38 = a2->Pos.z - a3->Pos.z;
-        v40.x = v3->x - a3->Pos.x;
-        v40.y = a1->mtx2.Pos.y - a3->Pos.y;
-        v40.z = a1->mtx2.Pos.z - a3->Pos.z;
-        v27 = (float)sqrt(v33 * v33 + v29 * v29 + v38 * v38);
-        v19 = sqrt(v40.z * v40.z + v40.y * v40.y + v40.x * v40.x);
-        if (v19 != 0.0)
-        {
-            v20 = 1.0 / v19;
-            v21 = v27 * v20;
-            v43.q2 = (float)(v40.y * v21);
-            v43.q3 = (float)(v40.z * v21);
-            v3->x = (float)(v40.x * v21 + a3->Pos.x);
-            a1->mtx2.Pos.y = a3->Pos.y + v43.q2;
-            a1->mtx2.Pos.z = a3->Pos.z + v43.q3;
-            if (v27 != 0.0)
-            {
-                v22 = 1.0 / v27;
-                v30 = (float)(v29 * v22);
-                v34 = (float)(v33 * v22);
-                v39 = (float)(v38 * v22);
-                v40.y = (float)(v40.y * v20);
-                v40.z = (float)(v40.z * v20);
-                v40.x = (float)(v30 + v40.x * v20);
-                v40.y = v34 + v40.y;
-                v40.z = v39 + v40.z;
-                MATH_NormalizeVector(&v40, &v40);
-                v43.q1 = v34 * v40.z - v39 * v40.y;
-                v43.q2 = v39 * v40.x - v40.z * v30;
-                v43.q3 = v40.y * v30 - v34 * v40.x;
-                v43.q4 = v39 * v40.z + v34 * v40.y + v30 * v40.x;
-                MATH_ConvertQuaternionToMatrix(&a3a, &v43);
-                v23 = a2;
-                if (&a2a != a2)
-                {
-                    memcpy(&a2a, a2, sizeof(a2a));
-                    v23 = a2;
-                }
-                MATH_Mul33MatrixMatrix(v23, &a2a, &a3a, 1);
-                v17 = v42;
-            }
-        }
-        a1->vv.x = a1->mtx2.Pos.x - v44;
-        a1->vv.y = a1->mtx2.Pos.y - v45;
-        a1->vv.z = a1->mtx2.Pos.z - v46;
-        v24 = 1.0 / TIM_gf_dt;
-        a1->vv.x = (float)(v24 * a1->vv.x);
-        a1->vv.y = (float)(v24 * a1->vv.y);
-        a1->vv.z = (float)(v24 * a1->vv.z);
-        *v17 = a1->mtx2.Pos;
-    }
+    MATH_SubstractVec(&delta, target, dest);
+    MATH_AddScaleVector(dest, dest, &delta, blend);
 }
 
-void GAO_ModifierLazy_Compute(tLazyMdfStruct* a1, Mtx4x4* a2, Mtx4x4* a3)
+static void GAO_l_ModifierLazy_ClampToBox(tLazyMdfStruct* lazy, Mtx4x4* target)
 {
-    int v3;
-    double v4;
-    double v5;
-    Mtx4x4* v6;
-    double v7;
-    double v8;
-    Vec3* v9; 
-    double v10;
-    double v11;
-    double v12;
-    double v13;
-    Vec3* v14;
-    long double v15;
-    double v16;
-    double v17;
-    double v18;
-    double v19;
-    double v20;
-    double v21;
-    double v22;
-    double v23;
-    double v24;
-    double v25;
-    double v26;
-    double v27;
-    BOOL v28;
-    char v29;
-    double v30;
-    double v31;
-    float v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    Vec3 src1;
-    float v40;
-    float scale;
-    Vec3 src2;
-    float a4;
-    int v44;
-    Quat4 dest;
-    Mtx4x4 a3a;
-    Mtx4x4 a2a;
+    Vec3 offset;
+    Vec3 inBox;
+    float alongU;
+    float alongV;
+    float alongW;
 
-    v3 = a1->upperFlag;
-    if ((v3 & 0x1000) != 0)
-    {
-        GAO_ModifierLazy_Compute_SemiMecanical_Model(a1, a2, a3);
-    }
-    else
-    {
-        v4 = 1.0;
-        v5 = 1.0 - a1->f2;
-        if (v5 < 0.0)
-            v5 = 0.0;
-        v6 = a3;
-        v44 = a1->upperFlag;
-        scale = (float)(1.0 - v5 * v5);
-        v7 = 0.0;
-        if (!a3)
-        {
-            v3 &= ~8u;
-            v44 = v3;
-        }
-        if ((v3 & 8) != 0)
-        {
-            v3 &= ~2u;
-            v44 = v3;
-        }
-        if (TIM_gf_dt > 0.0)
-        {
-            do
-            {
-                v4 = v4 * scale;
-                v7 = v7 + 0.0033333334;
-            } while (v7 < TIM_gf_dt);
-        }
-        v40 = (float)(1.0 - v4);
-        if ((v3 & 9) != 0)
-        {
-            v8 = a2->Pos.x - a1->mtx2.Pos.x;
-            v9 = &a1->mtx2.Pos;
-            v10 = a2->Pos.y - a1->mtx2.Pos.y;
-            src2.z = a2->Pos.z - a1->mtx2.Pos.z;
-            src1.x = (float)(v8 * v40);
-            v11 = v10 * v40;
-            v12 = src2.z * v40;
-            a1->mtx2.Pos.x = src1.x + a1->mtx2.Pos.x;
-            a1->mtx2.Pos.y = (float)(a1->mtx2.Pos.y + v11);
-            a1->mtx2.Pos.z = (float)(a1->mtx2.Pos.z + v12);
-            if ((v3 & 8) != 0)
-            {
-                a1->mtx2.Pos.z = v40 * a1->fff1 + a1->mtx2.Pos.z;
-                if ((v3 & 0x400) != 0)
-                {
-                    MATH_MulMatrixMatrix(&a3a, &a1->mtx1, a3);
-                    src1.x = v9->x - a3a.Pos.x;
-                    src1.y = a1->mtx2.Pos.y - a3a.Pos.y;
-                    src1.z = a1->mtx2.Pos.z - a3a.Pos.z;
-                    v13 = a3a.v1.z * src1.z + a3a.v1.y * src1.y + a3a.v1.x * src1.x;
-                    a4 = a3a.v2.x * src1.x + a3a.v2.z * src1.z + a3a.v2.y * src1.y;
-                    scale = a3a.v3.z * src1.z + a3a.v3.y * src1.y + a3a.v3.x * src1.x;
-                    if (v13 < a1->ff1)
-                        v13 = a1->ff1;
-                    if (a4 < (double)a1->ff2)
-                        a4 = a1->ff2;
-                    if (scale < (double)a1->ff3)
-                        scale = a1->ff3;
-                    if (v13 > a1->upperMax)
-                        v13 = a1->upperMax;
-                    if (a4 > (double)a1->ff5)
-                        a4 = a1->ff5;
-                    if (scale > (double)a1->ff6)
-                        scale = a1->ff6;
-                    src1.x = (float)(a3a.v1.x * v13);
-                    src1.y = (float)(a3a.v1.y * v13);
-                    src1.z = (float)(a3a.v1.z * v13);
-                    MATH_AddScaleVector(&src1, &src1, &a3a.v2, a4);
-                    MATH_AddScaleVector(&src1, &src1, &a3a.v3, scale);
-                    v6 = a3;
-                    v3 = (v3 & ~0xff) | (v44 & 0xff); //LOBYTE(v3) = v44;
-                    v9->x = src1.x + a3a.Pos.x;
-                    a1->mtx2.Pos.y = src1.y + a3a.Pos.y;
-                    a1->mtx2.Pos.z = src1.z + a3a.Pos.z;
-                }
-                v14 = &v6->Pos;
-                src1.x = a2->Pos.x - v14->x;
-                src1.y = a2->Pos.y - v14->y;
-                src1.z = a2->Pos.z - v14->z;
-                src2.x = v9->x - v14->x;
-                src2.y = a1->mtx2.Pos.y - v14->y;
-                src2.z = a1->mtx2.Pos.z - v14->z;
-                scale = (float)sqrt(src1.x * src1.x + src1.z * src1.z + src1.y * src1.y);
-                v15 = sqrt(src2.z * src2.z + src2.y * src2.y + src2.x * src2.x);
-                if (v15 != 0.0)
-                {
-                    a4 = (float)(1.0 / v15);
-                    v37 = a4 * scale;
-                    MATH_AddScaleVector(&a1->mtx2.Pos, v14, &src2, v37);
-                    if (scale != 0.0)
-                    {
-                        v38 = (float)(1.0 / scale);
-                        MATH_VecMultScalarWithoutBuffer(&src1, v38);
-                        MATH_VecMultScalarWithoutBuffer(&src2, a4);
-                        src2.x = src1.x + src2.x;
-                        src2.y = src1.y + src2.y;
-                        src2.z = src1.z + src2.z;
-                        MATH_NormalizeVector(&src2, &src2);
-                        MATH_CrossProduct((Vec3*)&dest, &src1, &src2);
-                        dest.q4 = src1.z * src2.z + src1.y * src2.y + src1.x * src2.x;
-                        MATH_ConvertQuaternionToMatrix(&a3a, &dest);
-                        MATH_CopyMatrix(&a2a, a2);
-                        MATH_Mul33MatrixMatrix(a2, &a2a, &a3a, 1);
-                    }
-                    v3 = (v3 & ~0xff) | (v44 & 0xff); //LOBYTE(v3) = v44;
-                }
-            }
-            a2->Pos.x = v9->x;
-            a2->Pos.y = a1->mtx2.Pos.y;
-            a2->Pos.z = a1->mtx2.Pos.z;
-        }
-        if ((v3 & 2) != 0)
-        {
-            v16 = a2->v1.x - a1->mtx2.v1.x;
-            v17 = a2->v1.y - a1->mtx2.v1.y;
-            src1.z = a2->v1.z - a1->mtx2.v1.z;
-            src2.x = (float)(v16 * v40);
-            v18 = v17 * v40;
-            v19 = src1.z * v40;
-            a1->mtx2.v1.x = src2.x + a1->mtx2.v1.x;
-            a1->mtx2.v1.y = (float)(a1->mtx2.v1.y + v18);
-            a1->mtx2.v1.z = (float)(a1->mtx2.v1.z + v19);
-            v20 = a2->v2.x - a1->mtx2.v2.x;
-            v21 = a2->v2.y - a1->mtx2.v2.y;
-            src1.z = a2->v2.z - a1->mtx2.v2.z;
-            src2.x = (float)(v20 * v40);
-            v22 = v21 * v40;
-            v23 = src1.z * v40;
-            a1->mtx2.v2.x = src2.x + a1->mtx2.v2.x;
-            a1->mtx2.v2.y = (float)(a1->mtx2.v2.y + v22);
-            a1->mtx2.v2.z = (float)(a1->mtx2.v2.z + v23);
-            v24 = a2->v3.x - a1->mtx2.v3.x;
-            v25 = a2->v3.y - a1->mtx2.v3.y;
-            src1.z = a2->v3.z - a1->mtx2.v3.z;
-            src2.x = (float)(v24 * v40);
-            v26 = v25 * v40;
-            v27 = src1.z * v40;
-            a1->mtx2.v3.x = src2.x + a1->mtx2.v3.x;
-            a1->mtx2.v3.y = (float)(a1->mtx2.v3.y + v26);
-            a1->mtx2.v3.z = (float)(a1->mtx2.v3.z + v27);
-            MATH_Orthonormalize(&a1->mtx2);
-            a2->v1.x = a1->mtx2.v1.x;
-            a2->v1.y = a1->mtx2.v1.y;
-            a2->v1.z = a1->mtx2.v1.z;
-            a2->v2 = a1->mtx2.v2;
-            a2->v3.x = a1->mtx2.v3.x;
-            a2->v3.y = a1->mtx2.v3.y;
-            v3 = (v3 & ~0xff) | (v44 & 0xff); //LOBYTE(v3) = v44;
-            a2->v3.z = a1->mtx2.v3.z;
-        }
-        if ((v3 & 4) != 0)
-        {
-            v28 = (a2->mtxflag & 8) == 0;
-            src1.z = 1.0;
-            src1.y = 1.0;
-            src1.x = 1.0;
-            if (!v28)
-            {
-                v29 = a1->mtx2.mtxflag;
-                v30 = a2->_m14;
-                v31 = a2->_m24;
-                dest.q3 = a2->_m34;
-                if ((v29 & 8) != 0)
-                {
-                    v32 = a1->mtx2._m24;
-                    v33 = a1->mtx2._m34;
-                    src1.x = a1->mtx2._m14;
-                    src1.y = v32;
-                    src1.z = v33;
-                }
-                else
-                {
-                    a1->mtx2.mtxflag |= 8u;
-                }
-                src2.x = (float)(v30 - src1.x);
-                src2.y = (float)(v31 - src1.y);
-                src2.z = dest.q3 - src1.z;
-                MATH_AddScaleVector(&src1, &src1, &src2, v40);
-                v34 = src1.x;
-                v35 = src1.y;
-                a2->_m14 = src1.x;
-                a1->mtx2._m14 = v34;
-                v36 = src1.z;
-                a2->_m24 = v35;
-                a1->mtx2._m24 = v35;
-                a2->_m34 = v36;
-                a1->mtx2._m34 = v36;
-            }
-        }
-    }
+    MATH_SubstractVec(&offset, &lazy->mtx2.Pos, &target->Pos);
+
+    alongU = MATH_DotProduct(&target->v1, &offset);
+    alongV = MATH_DotProduct(&target->v2, &offset);
+    alongW = MATH_DotProduct(&target->v3, &offset);
+    if (alongU < lazy->ff1)
+        alongU = lazy->ff1;
+    if (alongV < lazy->ff2)
+        alongV = lazy->ff2;
+    if (alongW < lazy->ff3)
+        alongW = lazy->ff3;
+    if (alongU > lazy->upperMax)
+        alongU = lazy->upperMax;
+    if (alongV > lazy->ff5)
+        alongV = lazy->ff5;
+    if (alongW > lazy->ff6)
+        alongW = lazy->ff6;
+
+    MATH_VecMultScalar(&inBox, &target->v1, alongU);
+    MATH_AddScaleVector(&inBox, &inBox, &target->v2, alongV);
+    MATH_AddScaleVector(&inBox, &inBox, &target->v3, alongW);
+    MATH_VecAddVec(&lazy->mtx2.Pos, &inBox, &target->Pos);
 }
 
-void GAO_ModifierLazy_Inherit(tLazyMdfStruct* a1, tGameObjectMain* a2, tGameObjectMain* a3)
+static void GAO_l_ModifierLazy_KeepBoneLength(tLazyMdfStruct* lazy, Mtx4x4* mtx, Vec3* anchor)
 {
-    tGaoMatrix* v3;
-    tGaoMatrix* v4;
-    Mtx4x4* v5;
+    Vec3 boneVec;
+    Vec3 lazyVec;
+    Vec3 axis;
+    Quat4 rotation;
+    Mtx4x4 rotMtx;
+    Mtx4x4 boneMtx;
+    float boneLen;
+    float lazyLen;
+    float invLazyLen;
 
-    if ((a2->flags & 0x400000) != 0)
-    {
-        v3 = a2->basic->mtx;
-        v4 = a3->basic->mtx;
-        if ((a1->upperFlag & 0x10) != 0)
-        {
-            v4->mtx.Pos.x = v3->mtx.Pos.x;
-            v4->mtx.Pos.y = v3->mtx.Pos.y;
-            v4->mtx.Pos.z = v3->mtx.Pos.z;
-        }
-        if ((a1->upperFlag & 0x20) != 0)
-        {
-            v4->mtx.v1.x = v3->mtx.v1.x;
-            v4->mtx.v1.y = v3->mtx.v1.y;
-            v4->mtx.v1.z = v3->mtx.v1.z;
-            v4->mtx.v2.x = v3->mtx.v2.x;
-            v4->mtx.v2.y = v3->mtx.v2.y;
-            v4->mtx.v2.z = v3->mtx.v2.z;
-            v4->mtx.v3.x = v3->mtx.v3.x;
-            v4->mtx.v3.y = v3->mtx.v3.y;
-            v4->mtx.v3.z = v3->mtx.v3.z;
-        }
-        if ((a1->upperFlag & 0x40) != 0)
-        {
-            if ((v3->mtx.mtxflag & 8) != 0)
-            {
-                v4->mtx.mtxflag |= 8u;
-                v4->mtx._m14 = v3->mtx._m14;
-                v4->mtx._m24 = v3->mtx._m24;
-                v4->mtx._m34 = v3->mtx._m34;
-                return;
-            }
-        LABEL_14:
-            v4->mtx.mtxflag &= ~8u;
-            return;
-        }
-    }
-    else
-    {
-        v4 = a3->basic->mtx;
-        if ((a1->upperFlag & 0x20) != 0)
-        {
-            v5 = a2->matrices;
-            v4->mtx.v1.x = v5->v1.x;
-            v4->mtx.v1.y = v5->v1.y;
-            v4->mtx.v1.z = v5->v1.z;
-            v4->mtx.v2 = a2->matrices->v2;
-            v4->mtx.v3 = a2->matrices->v3;
-        }
-        if ((a1->upperFlag & 0x40) != 0)
-        {
-            if ((a2->matrices->mtxflag & 8) != 0)
-            {
-                v4->mtx.mtxflag |= 8u;
-                v4->mtx._m14 = a2->matrices->_m14;
-                v4->mtx._m24 = a2->matrices->_m24;
-                v4->mtx._m34 = a2->matrices->_m34;
-                return;
-            }
-            goto LABEL_14;
-        }
-    }
+    MATH_SubstractVec(&boneVec, &mtx->Pos, anchor);
+    MATH_SubstractVec(&lazyVec, &lazy->mtx2.Pos, anchor);
+    boneLen = MATH_VecLen(&boneVec);
+    lazyLen = MATH_VecLen(&lazyVec);
+    if (lazyLen == 0.0)
+        return;
+
+    invLazyLen = (float)(1.0 / lazyLen);
+    MATH_AddScaleVector(&lazy->mtx2.Pos, anchor, &lazyVec, invLazyLen * boneLen);
+    if (boneLen == 0.0)
+        return;
+
+    MATH_VecMultScalarWithoutBuffer(&boneVec, (float)(1.0 / boneLen));
+    MATH_VecMultScalarWithoutBuffer(&lazyVec, invLazyLen);
+    MATH_VecAddVecWithoutBuffer(&lazyVec, &boneVec);
+    MATH_NormalizeVector(&lazyVec, &lazyVec);
+
+    MATH_CrossProduct(&axis, &boneVec, &lazyVec);
+    rotation.q1 = axis.x;
+    rotation.q2 = axis.y;
+    rotation.q3 = axis.z;
+    rotation.q4 = MATH_DotProduct(&boneVec, &lazyVec);
+    MATH_ConvertQuaternionToMatrix(&rotMtx, &rotation);
+    MATH_CopyMatrix(&boneMtx, mtx);
+    MATH_Mul33MatrixMatrix(mtx, &boneMtx, &rotMtx, 1);
 }
 
-void GAO_ModifierLazy_Apply(tModifier* a1, void *unk1)
+void GAO_ModifierLazy_Compute_SemiMecanical_Model(tLazyMdfStruct* lazy, Mtx4x4* mtx,
+                                                  Mtx4x4* parentMtx)
 {
-    tLazyMdfStruct* v1;
-    float v2;
-    float v3;
-    int v4;
-    float v5;
-    float v6;
-    float v7;
-    float v8;
-    tModifier* v9;
-    tGameObjectMain* v10;
-    tGaoMatrix* v11;
-    tGameObjectMain* v12;
-    tGameObjectExtended* v13;
-    tModifier* v14;
-    int v15;
-    int v16;
-    Mtx4x4* v17;
-    Mtx4x4* v18;
-    tLazyMdfStruct* v19;
-    tGameObjectMain* a1a;
-    tGaoMatrix* v21;
-    Mtx4x4 a3;
+    Mtx4x4 target;
+    Vec3 prevPos;
+    Vec3 pull;
 
-    v1 = (tLazyMdfStruct*)a1->mdfPrivateDataPtr;
-    v2 = v1->fff1;
-    UpperFriction = v1->fff2;
-    v1->upperFriction = UpperFriction;
-    v3 = v1->f2;
-    v1->ffffdf = v2;
-    UpperGravity = v2;
-    UpperFactor = v3;
-    v1->ffff2 = v3;
-    UpperFlag = v1->upperFlag;
-    v4 = UpperFlag;
-    v1->upperFlagBak = UpperFlag;
-    UpperMax = v1->upperMax;
-    v5 = v1->ff6;
-    LazyFF5_dword_98C72C = v1->ff5;
-    LazyFF6_dword_98C730 = v5;
-    v1->aaf1 = v1->upperMax;
-    v6 = v1->ff6;
-    v1->aaf2 = v1->ff5;
-    v1->aaf3 = v6;
-    UpperMin = v1->ff1;
-    v7 = v1->ff2;
-    LazyFF3_dword_98C73C = v1->ff3;
-    LazyFF2_dword_98C738 = v7;
-    v1->af1 = v1->ff1;
-    v8 = v1->ff3;
-    v1->af2 = v1->ff2;
-    v1->af3 = v8;
-    if ((v4 & 0x10000000) == 0)
+    if (!parentMtx)
+        return;
+
+    prevPos = lazy->mtx2.Pos;
+    MATH_MulMatrixMatrix(&target, &lazy->mtx1, parentMtx);
+
+    MATH_SubstractVec(&pull, &target.Pos, &lazy->mtx2.Pos);
+    MATH_AddScaleVector(&lazy->vv, &lazy->vv, &pull, lazy->f2);
+    lazy->vv.z = lazy->fff1 + lazy->vv.z;
+    MATH_VecMultScalarWithoutBuffer(&lazy->vv, lazy->fff2);
+    MATH_AddScaleVector(&lazy->mtx2.Pos, &lazy->mtx2.Pos, &lazy->vv, TIM_gf_dt);
+
+    if ((lazy->upperFlag & 0x400) != 0)
+        GAO_l_ModifierLazy_ClampToBox(lazy, &target);
+
+    GAO_l_ModifierLazy_KeepBoneLength(lazy, mtx, &parentMtx->Pos);
+
+    MATH_SubstractVec(&lazy->vv, &lazy->mtx2.Pos, &prevPos);
+    MATH_VecMultScalarWithoutBuffer(&lazy->vv, (float)(1.0 / TIM_gf_dt));
+    mtx->Pos = lazy->mtx2.Pos;
+}
+
+void GAO_ModifierLazy_Compute(tLazyMdfStruct* lazy, Mtx4x4* mtx, Mtx4x4* parentMtx)
+{
+    Mtx4x4 target;
+    Vec3 scale;
+    Vec3 targetScale;
+    double decay;
+    double elapsed;
+    float perStep;
+    float remaining;
+    float blend;
+    int flags;
+
+    flags = lazy->upperFlag;
+    if ((flags & 0x1000) != 0)
     {
-        v9 = a1;
-        v10 = a1->gao;
-        if ((v10->flags & 0x400000) != 0)
+        GAO_ModifierLazy_Compute_SemiMecanical_Model(lazy, mtx, parentMtx);
+        return;
+    }
+
+    remaining = 1.0f - lazy->f2;
+    if (remaining < 0.0)
+        remaining = 0.0;
+    perStep = (float)(1.0 - remaining * remaining);
+
+    if (!parentMtx)
+        flags &= ~8u;
+    if ((flags & 8) != 0)
+        flags &= ~2u;
+
+    decay = 1.0;
+    elapsed = 0.0;
+    if (TIM_gf_dt > 0.0)
+    {
+        do
         {
-            v11 = v10->basic->mtx;
-            v12 = v11->refGao2;
-            v21 = v11;
-            a1a = v12;
-            if (v12)
+            decay = decay * perStep;
+            elapsed = elapsed + 0.0033333334;
+        } while (elapsed < TIM_gf_dt);
+    }
+    blend = (float)(1.0 - decay);
+
+    if ((flags & 9) != 0)
+    {
+        GAO_l_ModifierLazy_BlendVec(&lazy->mtx2.Pos, &mtx->Pos, blend);
+        if ((flags & 8) != 0)
+        {
+            lazy->mtx2.Pos.z = blend * lazy->fff1 + lazy->mtx2.Pos.z;
+            if ((flags & 0x400) != 0)
             {
-                if ((v12->flags & 0x2000) != 0)
-                {
-                    v13 = v12->extended;
-                    if (v13)
-                    {
-                        v14 = v13->mdf;
-                        if (v14)
-                        {
-                            do
-                            {
-                                if (v14->modifierIntf->mdfId == 24)// lazy
-                                {
-                                    v15 = v14->modifierFlags;
-                                    if ((v15 & 0xA000000) == 0 && (v15 & 0x1000000) != 0)
-                                    {
-                                        GAO_ModifierLazy_Apply(v14, NULL);
-                                        v12 = a1a;
-                                    }
-                                }
-                                v14 = v14->nextElem;
-                            } while (v14);
-                            v9 = a1;
-                        }
-                    }
-                }
-                if ((v1->upperFlag & 0x80) != 0)
-                    v1->upperFlag = UpperFlag;
-                v16 = v1->upperFlag;
-                if ((v16 & 0x100) != 0)
-                {
-                    v1->f2 = UpperFactor;
-                    v1->fff1 = UpperGravity;
-                    v1->fff2 = UpperFriction;
-                }
-                if ((v16 & 0x800) != 0)
-                {
-                    v1->upperMax = UpperMax;
-                    v1->ff5 = LazyFF5_dword_98C72C;
-                    v1->ff6 = LazyFF6_dword_98C730;
-                    v1->ff1 = UpperMin;
-                    v1->ff2 = LazyFF2_dword_98C738;
-                    v1->ff3 = LazyFF3_dword_98C73C;
-                }
-                if ((v16 & 0x70) != 0)
-                    GAO_ModifierLazy_Inherit(v1, v12, v9->gao);
-                OBJ_ComputeGlobalWhenHie(a1->gao);
-                if (&v1->mtx1 != (Mtx4x4*)v21)
-                    memcpy(&v1->mtx1, v21, sizeof(v1->mtx1));
-                GAO_ModifierLazy_Compute(v1, a1->gao->matrices, a1a->matrices);
-                v17 = OBJ_pst_GetAbsoluteMatrix(a1a);
-                MATH_InvertMatrix(&a3, v17);
-                MATH_MulMatrixMatrix(&v21->mtx, a1->gao->matrices, &a3);
+                MATH_MulMatrixMatrix(&target, &lazy->mtx1, parentMtx);
+                GAO_l_ModifierLazy_ClampToBox(lazy, &target);
             }
+            GAO_l_ModifierLazy_KeepBoneLength(lazy, mtx, &parentMtx->Pos);
+        }
+        mtx->Pos = lazy->mtx2.Pos;
+    }
+
+    if ((flags & 2) != 0)
+    {
+        GAO_l_ModifierLazy_BlendVec(&lazy->mtx2.v1, &mtx->v1, blend);
+        GAO_l_ModifierLazy_BlendVec(&lazy->mtx2.v2, &mtx->v2, blend);
+        GAO_l_ModifierLazy_BlendVec(&lazy->mtx2.v3, &mtx->v3, blend);
+        MATH_Orthonormalize(&lazy->mtx2);
+        mtx->v1 = lazy->mtx2.v1;
+        mtx->v2 = lazy->mtx2.v2;
+        mtx->v3 = lazy->mtx2.v3;
+    }
+
+    if ((flags & 4) != 0 && (mtx->mtxflag & 8) != 0)
+    {
+        scale.x = 1.0;
+        scale.y = 1.0;
+        scale.z = 1.0;
+        if ((lazy->mtx2.mtxflag & 8) != 0)
+        {
+            scale.x = lazy->mtx2._m14;
+            scale.y = lazy->mtx2._m24;
+            scale.z = lazy->mtx2._m34;
         }
         else
         {
-            v18 = v10->matrices;
-            if (&v1->mtx1 != v18)
-                memcpy(&v1->mtx1, v18, sizeof(v1->mtx1));
-            GAO_ModifierLazy_Compute(v1, a1->gao->matrices, 0);
+            lazy->mtx2.mtxflag |= 8u;
         }
-        v19 = p_FirsToUnapply;
-        v1->upperFlag |= 0x10000000u;
-        v1->gao = a1->gao;
-        v1->firstToUnapply = v19;
-        p_FirsToUnapply = v1;
+
+        targetScale.x = mtx->_m14;
+        targetScale.y = mtx->_m24;
+        targetScale.z = mtx->_m34;
+        GAO_l_ModifierLazy_BlendVec(&scale, &targetScale, blend);
+
+        mtx->_m14 = scale.x;
+        mtx->_m24 = scale.y;
+        mtx->_m34 = scale.z;
+        lazy->mtx2._m14 = scale.x;
+        lazy->mtx2._m24 = scale.y;
+        lazy->mtx2._m34 = scale.z;
     }
 }
 
-int Lazy_FirstInit()
+void GAO_ModifierLazy_Inherit(tLazyMdfStruct* lazy, tGameObjectMain* srcGao,
+                              tGameObjectMain* dstGao)
 {
-    int result;
+    Mtx4x4* src;
+    Mtx4x4* dst;
 
-    result = bFirst_286_1;
+    dst = &dstGao->basic->mtx->mtx;
+    if ((srcGao->flags & 0x400000) != 0)
+    {
+        src = &srcGao->basic->mtx->mtx;
+        if ((lazy->upperFlag & 0x10) != 0)
+            dst->Pos = src->Pos;
+    }
+    else
+    {
+        src = srcGao->matrices;
+    }
+
+    if ((lazy->upperFlag & 0x20) != 0)
+    {
+        dst->v1 = src->v1;
+        dst->v2 = src->v2;
+        dst->v3 = src->v3;
+    }
+
+    if ((lazy->upperFlag & 0x40) != 0)
+    {
+        if ((src->mtxflag & 8) != 0)
+        {
+            dst->mtxflag |= 8u;
+            dst->_m14 = src->_m14;
+            dst->_m24 = src->_m24;
+            dst->_m34 = src->_m34;
+        }
+        else
+        {
+            dst->mtxflag &= ~8u;
+        }
+    }
+}
+
+void GAO_ModifierLazy_Apply(tModifier* mdf, void* unk1)
+{
+    tLazyMdfStruct* lazy;
+    tGameObjectMain* gao;
+    tGaoMatrix* gaoMtx;
+    tGameObjectMain* refGao;
+    tModifier* other;
+    Mtx4x4 refInverse;
+    int flags;
+
+    lazy = (tLazyMdfStruct*)mdf->mdfPrivateDataPtr;
+
+    UpperFriction = lazy->fff2;
+    UpperGravity = lazy->fff1;
+    UpperFactor = lazy->f2;
+    UpperFlag = lazy->upperFlag;
+    UpperMax = lazy->upperMax;
+    LazyFF5_dword_98C72C = lazy->ff5;
+    LazyFF6_dword_98C730 = lazy->ff6;
+    UpperMin = lazy->ff1;
+    LazyFF2_dword_98C738 = lazy->ff2;
+    LazyFF3_dword_98C73C = lazy->ff3;
+
+    lazy->upperFriction = lazy->fff2;
+    lazy->ffffdf = lazy->fff1;
+    lazy->ffff2 = lazy->f2;
+    lazy->upperFlagBak = lazy->upperFlag;
+    lazy->aaf1 = lazy->upperMax;
+    lazy->aaf2 = lazy->ff5;
+    lazy->aaf3 = lazy->ff6;
+    lazy->af1 = lazy->ff1;
+    lazy->af2 = lazy->ff2;
+    lazy->af3 = lazy->ff3;
+
+    if ((lazy->upperFlag & 0x10000000) != 0)
+        return;
+
+    gao = mdf->gao;
+    if ((gao->flags & 0x400000) == 0)
+    {
+        MATH_CopyMatrix(&lazy->mtx1, gao->matrices);
+        GAO_ModifierLazy_Compute(lazy, mdf->gao->matrices, NULL);
+    }
+    else
+    {
+        gaoMtx = gao->basic->mtx;
+        refGao = gaoMtx->refGao2;
+        if (refGao)
+        {
+            if ((refGao->flags & 0x2000) != 0 && refGao->extended)
+            {
+                for (other = refGao->extended->mdf; other; other = other->nextElem)
+                {
+                    if (other->modifierIntf->mdfId != 24)        // lazy
+                        continue;
+                    flags = other->modifierFlags;
+                    if ((flags & 0xA000000) == 0 && (flags & 0x1000000) != 0)
+                        GAO_ModifierLazy_Apply(other, NULL);
+                }
+            }
+
+            if ((lazy->upperFlag & 0x80) != 0)
+                lazy->upperFlag = UpperFlag;
+
+            flags = lazy->upperFlag;
+            if ((flags & 0x100) != 0)
+            {
+                lazy->f2 = UpperFactor;
+                lazy->fff1 = UpperGravity;
+                lazy->fff2 = UpperFriction;
+            }
+            if ((flags & 0x800) != 0)
+            {
+                lazy->upperMax = UpperMax;
+                lazy->ff5 = LazyFF5_dword_98C72C;
+                lazy->ff6 = LazyFF6_dword_98C730;
+                lazy->ff1 = UpperMin;
+                lazy->ff2 = LazyFF2_dword_98C738;
+                lazy->ff3 = LazyFF3_dword_98C73C;
+            }
+            if ((flags & 0x70) != 0)
+                GAO_ModifierLazy_Inherit(lazy, refGao, mdf->gao);
+
+            OBJ_ComputeGlobalWhenHie(mdf->gao);
+            MATH_CopyMatrix(&lazy->mtx1, &gaoMtx->mtx);
+            GAO_ModifierLazy_Compute(lazy, mdf->gao->matrices, refGao->matrices);
+            MATH_InvertMatrix(&refInverse, OBJ_pst_GetAbsoluteMatrix(refGao));
+            MATH_MulMatrixMatrix(&gaoMtx->mtx, mdf->gao->matrices, &refInverse);
+        }
+    }
+
+    lazy->upperFlag |= 0x10000000u;
+    lazy->gao = mdf->gao;
+    lazy->firstToUnapply = p_FirsToUnapply;
+    p_FirsToUnapply = lazy;
+}
+
+int Lazy_FirstInit(void)
+{
+    int wasInitialised;
+
+    wasInitialised = bFirst_286_1;
     if (!bFirst_286_1)
         bFirst_286_1 = 1;
-    return result;
+    return wasInitialised;
 }
 
-void GAO_ModifierLazy_Reinit(tModifier* a1)
+void GAO_ModifierLazy_Reinit(tModifier* mdf)
 {
-    tGameObjectMain* v1;
-    tLazyMdfStruct* v2;
-    Mtx4x4* v3;
-    Mtx4x4* v4;
-    Mtx4x4* v5;
-    Mtx4x4* v6;
+    tGameObjectMain* gao;
+    tLazyMdfStruct* lazy;
 
-    v1 = a1->gao;
-    v2 = (tLazyMdfStruct*)a1->mdfPrivateDataPtr;
-    if (v1)
+    gao = mdf->gao;
+    lazy = (tLazyMdfStruct*)mdf->mdfPrivateDataPtr;
+    if (!gao)
+        return;
+
+    if ((gao->flags & 0x400000) == 0)
     {
-        if ((v1->flags & 0x400000) != 0)
-        {
-            if (v1->basic->mtx->refGao2)
-            {
-                OBJ_ComputeGlobalWhenHie(a1->gao);
-                v3 = a1->gao->matrices;
-                v4 = &v2->mtx2;
-                if (v4 != v3)
-                    memcpy(v4, v3, sizeof(Mtx4x4));
-            }
-        }
-        else
-        {
-            v5 = v1->matrices;
-            v6 = &v2->mtx2;
-            if (v6 != v5)
-                memcpy(v6, v5, sizeof(Mtx4x4));
-        }
+        MATH_CopyMatrix(&lazy->mtx2, gao->matrices);
+        return;
+    }
+
+    if (gao->basic->mtx->refGao2)
+    {
+        OBJ_ComputeGlobalWhenHie(mdf->gao);
+        MATH_CopyMatrix(&lazy->mtx2, mdf->gao->matrices);
     }
 }
 
-void GAO_ModifierLazy_Create(struct sGameObjectMain* a1, tModifier* a2, void* a3)
+void GAO_ModifierLazy_Create(struct sGameObjectMain* gao, tModifier* mdf, void* initData)
 {
-    tLazyMdfStruct* v3;
+    tLazyMdfStruct* lazy;
 
     Lazy_FirstInit();
-    v3 = (tLazyMdfStruct*)MEM_p_AllocAligned(sizeof(tLazyMdfStruct), 16);
-    a2->mdfPrivateDataPtr = (void *)v3;
-    a2->modifierFlags = 0x1000000;
-    if (a3)
+    lazy = (tLazyMdfStruct*)MEM_p_AllocAligned(sizeof(tLazyMdfStruct), 16);
+    mdf->mdfPrivateDataPtr = lazy;
+    mdf->modifierFlags = 0x1000000;
+    if (initData)
     {
-        memcpy(v3, a3, sizeof(tLazyMdfStruct));
+        memcpy(lazy, initData, sizeof(tLazyMdfStruct));
     }
     else
     {
-        memset(v3, 0, sizeof(tLazyMdfStruct));
-        v3->upperFlag = 0;
-        v3->f2 = 0.89999998f;
-        v3->ff1 = -0.1f;
-        v3->ff2 = -0.1f;
-        v3->ff3 = -0.1f;
-        v3->upperMax = 0.1f;
-        v3->ff5 = 0.1f;
-        v3->ff6 = 0.1f;
+        memset(lazy, 0, sizeof(tLazyMdfStruct));
+        lazy->f2 = 0.89999998f;
+        lazy->ff1 = -0.1f;
+        lazy->ff2 = -0.1f;
+        lazy->ff3 = -0.1f;
+        lazy->upperMax = 0.1f;
+        lazy->ff5 = 0.1f;
+        lazy->ff6 = 0.1f;
     }
-    GAO_ModifierLazy_Reinit(a2);
+    GAO_ModifierLazy_Reinit(mdf);
 }
 
-void GAO_ModifierLazy_Destroy(tModifier* a1)
+void GAO_ModifierLazy_Destroy(tModifier* mdf)
 {
-    if (a1->mdfPrivateDataPtr)
-        MEM_FreeAlign(a1->mdfPrivateDataPtr);
+    if (mdf->mdfPrivateDataPtr)
+        MEM_FreeAlign(mdf->mdfPrivateDataPtr);
 }
 
-int GAO_ul_ModifierLazy_Load(tModifier* arg0, char* a1)
+int GAO_ul_ModifierLazy_Load(tModifier* mdf, char* data)
 {
-    char* v2;
-    tLazyMdfStruct* v3;
-    unsigned int v4;
+    char* start;
+    tLazyMdfStruct* lazy;
+    unsigned int version;
 
-    v2 = a1;
-    v3 = (tLazyMdfStruct*)arg0->mdfPrivateDataPtr;
-    LOA_ReadLong(&a1, 0, 2);
-    v4 = LOA_ReadLong(&a1, 0, 1);
-    v3->f2 = LOA_ReadFloat(&a1, 0, 1);
-    v3->upperFlag = LOA_ReadLong(&a1, 0, 1);
-    if (v4)
+    start = data;
+    lazy = (tLazyMdfStruct*)mdf->mdfPrivateDataPtr;
+    LOA_ReadLong(&data, 0, 2);
+    version = LOA_ReadLong(&data, 0, 1);
+    lazy->f2 = LOA_ReadFloat(&data, 0, 1);
+    lazy->upperFlag = LOA_ReadLong(&data, 0, 1);
+
+    if (!version)
     {
-        v3->ff1 = LOA_ReadFloat(&a1, 0, 1);
-        v3->ff2 = LOA_ReadFloat(&a1, 0, 1);
-        v3->ff3 = LOA_ReadFloat(&a1, 0, 1);
-        v3->upperMax = LOA_ReadFloat(&a1, 0, 1);
-        v3->ff5 = LOA_ReadFloat(&a1, 0, 1);
-        v3->ff6 = LOA_ReadFloat(&a1, 0, 1);
-        if (v4 > 1)
-        {
-            v3->fff1 = LOA_ReadFloat(&a1, 0, 1);
-            if (v4 > 2)
-            {
-                v3->fff2 = LOA_ReadFloat(&a1, 0, 1);
-                return a1 - v2;
-            }
-        }
+        lazy->ff1 = -1.0;
+        lazy->ff2 = -1.0;
+        lazy->ff3 = -1.0;
+        lazy->upperMax = 1.0;
+        lazy->ff5 = 1.0;
+        lazy->ff6 = 1.0;
+        return data - start;
     }
-    else
+
+    lazy->ff1 = LOA_ReadFloat(&data, 0, 1);
+    lazy->ff2 = LOA_ReadFloat(&data, 0, 1);
+    lazy->ff3 = LOA_ReadFloat(&data, 0, 1);
+    lazy->upperMax = LOA_ReadFloat(&data, 0, 1);
+    lazy->ff5 = LOA_ReadFloat(&data, 0, 1);
+    lazy->ff6 = LOA_ReadFloat(&data, 0, 1);
+    if (version > 1)
     {
-        v3->ff1 = -1.0;
-        v3->ff2 = -1.0;
-        v3->ff3 = -1.0;
-        v3->upperMax = 1.0;
-        v3->ff5 = 1.0;
-        v3->ff6 = 1.0;
+        lazy->fff1 = LOA_ReadFloat(&data, 0, 1);
+        if (version > 2)
+            lazy->fff2 = LOA_ReadFloat(&data, 0, 1);
     }
-    return a1 - v2;
+    return data - start;
 }
 
-void GAO_ModifierLazy_Unapply(struct sModifier* a1, void* unk1) {
-}
-
-void GAO_ModifierLazy_UnApply_Local(tLazyMdfStruct* a1)
+void GAO_ModifierLazy_Unapply(struct sModifier* mdf, void* unk1)
 {
-    float v1;
-    float v2;
-    float v3;
-    float v4;
-    tGameObjectMain* v5;
-    Mtx4x4* v6;
-    tGaoMatrix* v7;
+}
 
-    v1 = a1->upperFriction;
-    a1->fff1 = a1->ffffdf;
-    v2 = a1->ffff2;
-    a1->fff2 = v1;
-    a1->f2 = v2;
-    a1->upperMax = a1->aaf1;
-    v3 = a1->aaf3;
-    a1->ff5 = a1->aaf2;
-    a1->ff6 = v3;
-    a1->ff1 = a1->af1;
-    v4 = a1->af3;
-    a1->ff2 = a1->af2;
-    a1->ff3 = v4;
-    v5 = a1->gao;
-    a1->upperFlag = a1->upperFlagBak & ~0x10000000u;
-    v6 = &a1->mtx1;
-    if ((v5->flags & 0x400000) != 0)
-        v7 = v5->basic->mtx;
+void GAO_ModifierLazy_UnApply_Local(tLazyMdfStruct* lazy)
+{
+    tGameObjectMain* gao;
+    Mtx4x4* dst;
+
+    lazy->fff1 = lazy->ffffdf;
+    lazy->fff2 = lazy->upperFriction;
+    lazy->f2 = lazy->ffff2;
+    lazy->upperMax = lazy->aaf1;
+    lazy->ff5 = lazy->aaf2;
+    lazy->ff6 = lazy->aaf3;
+    lazy->ff1 = lazy->af1;
+    lazy->ff2 = lazy->af2;
+    lazy->ff3 = lazy->af3;
+    lazy->upperFlag = lazy->upperFlagBak & ~0x10000000u;
+
+    gao = lazy->gao;
+    if ((gao->flags & 0x400000) != 0)
+        dst = &gao->basic->mtx->mtx;
     else
-        v7 = (tGaoMatrix*)v5->matrices;
-    if (v7 != (tGaoMatrix*)v6)
-        memcpy(v7, v6, sizeof(Mtx4x4));
+        dst = gao->matrices;
+    MATH_CopyMatrix(dst, &lazy->mtx1);
 }
 
-void GAO_ModifierLazy_UnapplyAll()
+void GAO_ModifierLazy_UnapplyAll(void)
 {
-    tLazyMdfStruct* i;
+    tLazyMdfStruct* lazy;
 
     gpst_DX_stDD->SetProjectionMatrix(&gpst_DX_stDD->ct.cam);
     CAM_Inverse(&gpst_DX_stDD->ct);
     gpst_DX_stDD->SetViewMatrix(&gpst_DX_stDD->ct.cam.cameraMtx);
-    for (i = p_FirsToUnapply; i; i = i->firstToUnapply)
-        GAO_ModifierLazy_UnApply_Local(i);
+    for (lazy = p_FirsToUnapply; lazy; lazy = lazy->firstToUnapply)
+        GAO_ModifierLazy_UnApply_Local(lazy);
     p_FirsToUnapply = NULL;
 }
