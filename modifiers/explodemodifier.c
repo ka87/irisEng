@@ -50,6 +50,12 @@ void GAO_ModifierExplode_Create(struct sGameObjectMain* gao, struct sModifier* m
     nextVertex = 0;
     for (chunk = 0; chunk < expl->triangleChunkNum; chunk++)
     {
+        /* Subscript the chunk array by element, not by byte. This used to
+         * index [chunk * 32], sizeof(tGeoTriangleChunks) being 32, which on
+         * a typed pointer reaches 32 elements further rather than one and
+         * so ran 1KB past the array from the second chunk onwards. The
+         * memcpy below always used the element index, so the two disagreed
+         * about which chunk they were working on. */
         src = &geo->triangleChunks[chunk];
         dst = &newGeo->triangleChunks[chunk];
         dst->triangleNum = src->triangleNum;
