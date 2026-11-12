@@ -8,480 +8,391 @@ int PAG_sgi_GenId = 2;
 
 struct sPAGStruct* PAG_pst_Create()
 {
-    tPAGStruct* v0;
+    tPAGStruct* pag;
 
-    v0 = (tPAGStruct*)MEM_p_Alloc(sizeof(tPAGStruct));
-    memset(v0, 0, sizeof(tPAGStruct));
-    GRO_Struct_Init((tGroGeneric*)v0, 11);
-    v0->num = 1;
-    v0->generators[0].generatorID = 1;
-    v0->generators[0].gao = 0;
-    return v0;
+    pag = (tPAGStruct*)MEM_p_Alloc(sizeof(tPAGStruct));
+    memset(pag, 0, sizeof(tPAGStruct));
+    GRO_Struct_Init((tGroGeneric*)pag, 11);
+    pag->num = 1;
+    pag->generators[0].generatorID = 1;
+    pag->generators[0].gao = 0;
+    return pag;
 }
 
-struct sGroGeneric* PAG_p_Duplicate(struct sGroGeneric* a1)
+struct sGroGeneric* PAG_p_Duplicate(struct sGroGeneric* gro)
 {
-    tPAGStruct* v1;
-    int v2;
-    tPAGElemStruct* v3;
-    unsigned int v4;
+    tPAGStruct* copy;
+    tPAGElemStruct* particles;
+    int num;
 
-    v1 = PAG_pst_Create();
-    memcpy(v1, a1, sizeof(tPAGStruct));
-    v2 = v1->triangleNum;
-    if (v2)
+    copy = PAG_pst_Create();
+    memcpy(copy, gro, sizeof(tPAGStruct));
+
+    num = copy->triangleNum;
+    if (num)
     {
-        v3 = (tPAGElemStruct*)MEM_p_Alloc(sizeof(tPAGElemStruct) * v2);
-        v4 = sizeof(tPAGElemStruct) * v1->triangleNum;
-        v1->pagElems = v3;
-        memcpy(v3, ((tPAGStruct*)(a1))->pagElems, v4);
+        particles = (tPAGElemStruct*)MEM_p_Alloc(sizeof(tPAGElemStruct) * num);
+        copy->pagElems = particles;
+        memcpy(particles, ((tPAGStruct*)gro)->pagElems,
+               sizeof(tPAGElemStruct) * num);
     }
-    return (tGroGeneric*)v1;
+    return (tGroGeneric*)copy;
 }
 
-void PAG_Free(struct sGroGeneric* a1)
+void PAG_Free(struct sGroGeneric* gro)
 {
-    if (a1 && a1->intf->id == 11 && ((tPAGStruct*)(a1))->usageCnt <= 0)
-    {
-        //nullsub_32();
-        if (((tPAGStruct*)(a1))->triangleNum)
-            MEM_Free(((tPAGStruct*)(a1))->pagElems);
-        LOA_DeleteAddress((int)a1);
-        MEM_Free(a1);
-    }
+    tPAGStruct* pag;
+
+    pag = (tPAGStruct*)gro;
+    if (!gro || gro->intf->id != 11 || pag->usageCnt > 0)
+        return;
+
+    if (pag->triangleNum)
+        MEM_Free(pag->pagElems);
+    LOA_DeleteAddress((int)gro);
+    MEM_Free(gro);
 }
 
-struct sGroGeneric* PAG_p_CreateFromBuffer(struct sGroGeneric* a1, char** a2, struct sWorld* world)
+static void PAG_l_ReadMotionFloats(tPAGStruct* pag, char** readptr)
 {
-    tPAGStruct* v2;
-    int v3;
-    double v4; 
-    double v5; 
-    double v6; 
-    double v7; 
-    double v8; 
-    double v9; 
-    double v10;
-    int v11; 
-    Vec3* v13; 
-    Vec3* v14; 
+    pag->ffb5 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb6 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb7 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb8 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb9 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb10 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb11 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb12 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb13 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffb14 = LOA_ReadFloat(readptr, 0, 1);
+}
 
-    v2 = PAG_pst_Create();
-    v2->triangleNum = LOA_ReadLong(a2, 0, 1);
-    v3 = LOA_ReadLong(a2, 0, 1);
-    switch (v3)
+static void PAG_l_SkipSixLongs(char** readptr)
+{
+    int i;
+
+    for (i = 0; i < 6; i++)
+        LOA_ReadLong(readptr, 0, 2);
+}
+
+static void PAG_l_ReadLateTail(tPAGStruct* pag, char** readptr)
+{
+    LOA_ReadVector(readptr, &pag->v1, 1);
+    pag->f1 = LOA_ReadFloat(readptr, 0, 1);
+    pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+    pag->color = LOA_ReadLong(readptr, 0, 1);
+    pag->i3 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ff = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa1 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa2 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa3 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa4 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa5 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa6 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa7 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa8 = LOA_ReadFloat(readptr, 0, 1);
+    pag->ffa9 = LOA_ReadFloat(readptr, 0, 1);
+}
+
+struct sGroGeneric* PAG_p_CreateFromBuffer(struct sGroGeneric* gro, char** readptr,
+                                           struct sWorld* world)
+{
+    tPAGStruct* pag;
+    float paired;
+    int version;
+    int triangleNum;
+
+    pag = PAG_pst_Create();
+    pag->triangleNum = LOA_ReadLong(readptr, 0, 1);
+    version = LOA_ReadLong(readptr, 0, 1);
+    switch (version)
     {
     case 0:
-        v2->flags = (uint8_t)LOA_ReadChar(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        LOA_ReadChar(a2, 0, 2);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].fff21 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].fff22 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v4 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = (float)v4;
-        v2->ffb9 = (float)v4;
-        v5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = (float)v5;
-        v2->ffb11 = (float)v5;
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadVector(a2, &v2->v1, 1);
-        goto LABEL_27;
+        pag->flags = (uint8_t)LOA_ReadChar(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        LOA_ReadChar(readptr, 0, 2);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].fff21 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].fff22 = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_SkipSixLongs(readptr);
+        pag->ffb5 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb6 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb7 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb8 = LOA_ReadFloat(readptr, 0, 1);
+        paired = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb9 = paired;
+        pag->ffb10 = paired;
+        paired = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb11 = paired;
+        pag->ffb12 = paired;
+        pag->ffb13 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb14 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        break;
     case 1:
-        v2->flags = (uint8_t)LOA_ReadChar(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        LOA_ReadChar(a2, 0, 2);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].generatorFreq = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].fff22 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadVector(a2, &v2->v1, 1);
-        v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-        goto LABEL_27;
+        pag->flags = (uint8_t)LOA_ReadChar(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        LOA_ReadChar(readptr, 0, 2);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].generatorFreq = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].fff22 = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_SkipSixLongs(readptr);
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        break;
     case 2:
-        v2->flags = LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].generatorFreq = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].fff22 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        LOA_ReadLong(a2, 0, 2);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v6 = LOA_ReadFloat(a2, 0, 1);
-        v14 = &v2->v1;
-    LABEL_7:
-        v2->ffb15 = (float)v6;
-        LOA_ReadVector(a2, v14, 1);
-        v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-        goto LABEL_27;
+        pag->flags = LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].generatorFreq = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].fff22 = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_SkipSixLongs(readptr);
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        break;
     case 3:
-        v2->flags = LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].generatorFreq = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].fff22 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v6 = LOA_ReadFloat(a2, 0, 1);
-        v14 = &v2->v1;
-        goto LABEL_7;
+        pag->flags = LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].generatorFreq = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].fff22 = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        break;
     case 4:
-        v2->flags = LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].generatorFreq = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadLong(a2, 0, 2);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadVector(a2, &v2->v1, 1);
-        v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-        v2->color = LOA_ReadLong(a2, 0, 1);
-        goto LABEL_27;
+        pag->flags = LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].generatorFreq = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadLong(readptr, 0, 2);
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        pag->color = LOA_ReadLong(readptr, 0, 1);
+        break;
     case 5:
-        v2->flags = LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].generatorFreq = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb16 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb17 = LOA_ReadFloat(a2, 0, 1);
-        v2->fd21 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadVector(a2, &v2->v1, 1);
-        v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-        v2->color = LOA_ReadLong(a2, 0, 1);
-        goto LABEL_27;
+        pag->flags = LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].generatorFreq = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb16 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb17 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd21 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        pag->color = LOA_ReadLong(readptr, 0, 1);
+        break;
     case 6:
-        v2->flags = LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].generatorFreq = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb16 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb17 = LOA_ReadFloat(a2, 0, 1);
-        v2->fd21 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadVector(a2, &v2->v1, 1);
-        v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-        v2->color = LOA_ReadLong(a2, 0, 1);
-        v2->i3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ff = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa1 = LOA_ReadFloat(a2, 0, 1);
-        goto LABEL_27;
+        pag->flags = LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].generatorFreq = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb16 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb17 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd21 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        pag->color = LOA_ReadLong(readptr, 0, 1);
+        pag->i3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ff = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa1 = LOA_ReadFloat(readptr, 0, 1);
+        break;
     case 7:
-        v2->flags = LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].generatorFreq = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb16 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb17 = LOA_ReadFloat(a2, 0, 1);
-        v2->fd21 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadVector(a2, &v2->v1, 1);
-        v2->f1 = LOA_ReadFloat(a2, 0, 1);
-        v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-        v2->color = LOA_ReadLong(a2, 0, 1);
-        v2->i3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ff = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa1 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa4 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa6 = LOA_ReadFloat(a2, 0, 1);
-        goto LABEL_27;
+        pag->flags = LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].generatorFreq = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb16 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb17 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd21 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->f1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        pag->color = LOA_ReadLong(readptr, 0, 1);
+        pag->i3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ff = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa5 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa6 = LOA_ReadFloat(readptr, 0, 1);
+        break;
     case 8:
-        v2->flags = LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb1 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].generatorFreq = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb16 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb17 = LOA_ReadFloat(a2, 0, 1);
-        v2->fd21 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadVector(a2, &v2->v1, 1);
-        v2->f1 = LOA_ReadFloat(a2, 0, 1);
-        v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-        v2->color = LOA_ReadLong(a2, 0, 1);
-        v2->i3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ff = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa1 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa4 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa6 = LOA_ReadFloat(a2, 0, 1);
-        goto LABEL_27;
+        pag->flags = LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].generatorFreq = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb16 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb17 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd21 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->f1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        pag->color = LOA_ReadLong(readptr, 0, 1);
+        pag->i3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ff = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa5 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa6 = LOA_ReadFloat(readptr, 0, 1);
+        break;
     case 9:
-        v2->flags = LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb1 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v7 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].fff21 = (float)v7;
-        v2->generators[0].generatorFreq = (float)v7;
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb16 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb17 = LOA_ReadFloat(a2, 0, 1);
-        v2->fd21 = LOA_ReadFloat(a2, 0, 1);
-        LOA_ReadVector(a2, &v2->v1, 1);
-        v2->f1 = LOA_ReadFloat(a2, 0, 1);
-        v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-        v2->color = LOA_ReadLong(a2, 0, 1);
-        v2->i3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ff = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa1 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa4 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffa8 = LOA_ReadFloat(a2, 0, 1);
-        goto LABEL_27;
+        pag->flags = LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        paired = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].fff21 = paired;
+        pag->generators[0].generatorFreq = paired;
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb16 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb17 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd21 = LOA_ReadFloat(readptr, 0, 1);
+        LOA_ReadVector(readptr, &pag->v1, 1);
+        pag->f1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd22 = LOA_ReadFloat(readptr, 0, 1);
+        pag->color = LOA_ReadLong(readptr, 0, 1);
+        pag->i3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ff = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa4 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa5 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa6 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa7 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffa8 = LOA_ReadFloat(readptr, 0, 1);
+        break;
     case 10:
-        v2->flags = (uint16_t)LOA_ReadShort(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb1 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v8 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].fff21 = (float)v8;
-        v2->generators[0].generatorFreq = (float)v8;
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb16 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb17 = LOA_ReadFloat(a2, 0, 1);
-        v9 = LOA_ReadFloat(a2, 0, 1);
-        v13 = &v2->v1;
+        pag->flags = (uint16_t)LOA_ReadShort(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        paired = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].fff21 = paired;
+        pag->generators[0].generatorFreq = paired;
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb16 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb17 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd21 = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_ReadLateTail(pag, readptr);
         break;
     case 11:
-        v2->flags = LOA_ReadLong(a2, 0, 1);
-        v2->mode = LOA_ReadChar(a2, 0, 1);
-        v2->subMode = LOA_ReadChar(a2, 0, 1);
-        v2->ffb1 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb2 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb3 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb4 = LOA_ReadFloat(a2, 0, 1);
-        v10 = LOA_ReadFloat(a2, 0, 1);
-        v2->generators[0].fff21 = (float)v10;
-        v2->generators[0].generatorFreq = (float)v10;
-        v2->ffb5 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb6 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb7 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb8 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb9 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb10 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb11 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb12 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb13 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb14 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb15 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb16 = LOA_ReadFloat(a2, 0, 1);
-        v2->ffb17 = LOA_ReadFloat(a2, 0, 1);
-        v9 = LOA_ReadFloat(a2, 0, 1);
-        v13 = &v2->v1;
+        pag->flags = LOA_ReadLong(readptr, 0, 1);
+        pag->mode = LOA_ReadChar(readptr, 0, 1);
+        pag->subMode = LOA_ReadChar(readptr, 0, 1);
+        pag->ffb1 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb2 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb3 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb4 = LOA_ReadFloat(readptr, 0, 1);
+        paired = LOA_ReadFloat(readptr, 0, 1);
+        pag->generators[0].fff21 = paired;
+        pag->generators[0].generatorFreq = paired;
+        PAG_l_ReadMotionFloats(pag, readptr);
+        pag->ffb15 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb16 = LOA_ReadFloat(readptr, 0, 1);
+        pag->ffb17 = LOA_ReadFloat(readptr, 0, 1);
+        pag->fd21 = LOA_ReadFloat(readptr, 0, 1);
+        PAG_l_ReadLateTail(pag, readptr);
         break;
     default:
-        goto LABEL_27;
+        break;
     }
-    v2->fd21 = (float)v9;
-    LOA_ReadVector(a2, v13, 1);
-    v2->f1 = LOA_ReadFloat(a2, 0, 1);
-    v2->fd22 = LOA_ReadFloat(a2, 0, 1);
-    v2->color = LOA_ReadLong(a2, 0, 1);
-    v2->i3 = LOA_ReadFloat(a2, 0, 1);
-    v2->ff = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa1 = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa2 = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa3 = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa4 = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa5 = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa6 = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa7 = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa8 = LOA_ReadFloat(a2, 0, 1);
-    v2->ffa9 = LOA_ReadFloat(a2, 0, 1);
-LABEL_27:
-    v11 = v2->triangleNum;
-    if (v11)
-        v2->pagElems = (tPAGElemStruct*)MEM_p_Alloc(sizeof(tPAGElemStruct) * v11);
+
+    triangleNum = pag->triangleNum;
+    if (triangleNum)
+        pag->pagElems = (tPAGElemStruct*)MEM_p_Alloc(sizeof(tPAGElemStruct) * triangleNum);
     else
-        v2->pagElems = 0;
-    v2->num = 1;
-    v2->generators[0].generatorID = 1;
-    v2->generators[0].gao = 0;
-    return (tGroGeneric*)v2;
+        pag->pagElems = 0;
+    pag->num = 1;
+    pag->generators[0].generatorID = 1;
+    pag->generators[0].gao = 0;
+    return (tGroGeneric*)pag;
 }
 
-void PAG_Reinit(struct sGroGeneric *a1) {
-    float v2;
-    tPAGStruct* a1a = (tPAGStruct*)a1;
-    a1a->num = 1;
-    a1a->generators[0].generatorID = 1;
-    v2 = a1a->generators[0].fff21;
-    a1a->triangleNum2 = 0;
-    a1a->generators[0].gao = 0;
-    a1a->generators[0].generatorFreq = v2;
-    a1a->gao1 = 0;
-    a1a->gaoForMatrixRef = 0;
-}
-
-int PAG_l_HasSomethingToRender(struct sGameObjectVisualObject* a1, struct sGroGeneric** a2)
+void PAG_Reinit(struct sGroGeneric* gro)
 {
-    *a2 = NULL;
+    tPAGStruct* pag;
+    float loadedFreq;
+
+    pag = (tPAGStruct*)gro;
+    loadedFreq = pag->generators[0].fff21;
+
+    pag->num = 1;
+    pag->generators[0].generatorID = 1;
+    pag->generators[0].gao = 0;
+    pag->generators[0].generatorFreq = loadedFreq;
+    pag->triangleNum2 = 0;
+    pag->gao1 = 0;
+    pag->gaoForMatrixRef = 0;
+}
+
+int PAG_l_HasSomethingToRender(struct sGameObjectVisualObject* gaovo, struct sGroGeneric** gro)
+{
+    *gro = NULL;
     return 1;
 }
 
-void PAG_Render(struct sGameObjectMain* a1)
+void PAG_Render(struct sGameObjectMain* gao)
 {
-    PAG_RenderCommon(a1, (tPAGStruct*)(((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse));
+    tGameObjectVisualObject* gaovo;
+
+    gaovo = (tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject);
+    PAG_RenderCommon(gao, (tPAGStruct*)gaovo->GROGEOOrSomethingElse);
 }
 
 void PAG_Init()
@@ -494,102 +405,93 @@ void PAG_Init()
     GRO_gast_Interface[11].Duplicate = PAG_p_Duplicate;
 }
 
-struct sPAGStruct* PAG_pst_GetGameObjectParticleGenerator(struct sGameObjectMain* a1)
+struct sPAGStruct* PAG_pst_GetGameObjectParticleGenerator(struct sGameObjectMain* gao)
 {
-    tPAGStruct* result;
-    tGameObjectExtended* v2;
-    tModifier* v3;
+    tGameObjectVisualObject* gaovo;
+    tGameObjectExtended* extended;
+    tPAGStruct* pag;
+    tModifier* mdf;
 
-    if ((a1->flags & 0x4000) == 0
-        || (result = (tPAGStruct*)((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse) == NULL
-        || result->intf->id != 11)
+    if ((gao->flags & 0x4000) != 0)
     {
-        v2 = a1->extended;
-        if (v2 && (v3 = v2->mdf) != 0)
-        {
-            while (v3->modifierIntf->mdfId != 18)   //  mpag
-            {
-                v3 = v3->nextElem;
-                if (!v3)
-                    goto LABEL_8;
-            }
-            result = ((tMPAGStruct*)v3->mdfPrivateDataPtr)->pag;
-        }
-        else
-        {
-        LABEL_8:
-            result = NULL;
-        }
+        gaovo = (tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject);
+        pag = (tPAGStruct*)gaovo->GROGEOOrSomethingElse;
+        if (pag && pag->intf->id == 11)
+            return pag;
     }
-    return result;
+
+    extended = gao->extended;
+    if (!extended)
+        return NULL;
+
+    for (mdf = extended->mdf; mdf; mdf = mdf->nextElem)
+    {
+        if (mdf->modifierIntf->mdfId == 18) // mpag
+            return ((tMPAGStruct*)mdf->mdfPrivateDataPtr)->pag;
+    }
+    return NULL;
 }
 
-int PAG_i_AddGenerator(struct sPAGStruct* a1, struct sGameObjectMain* a2, float a3)
+int PAG_i_AddGenerator(struct sPAGStruct* pag, struct sGameObjectMain* gao, float frequency)
 {
-    int16_t v3;
-    int result;
-    tPAGGeneratorElemStruct* v5;
-    int v6;
+    tPAGGeneratorElemStruct* slot;
+    int16_t index;
+    int id;
 
-    v3 = a1->num;
-    if (v3 == 16)
+    index = pag->num;
+    if (index == 16)
         return -1;
-    v5 = &a1->generators[v3];
-    v6 = PAG_sgi_GenId;
-    a1->num = v3 + 1;
-    v5->generatorID = v6;
-    PAG_sgi_GenId = v6 + 1;
-    if (((v6 + 1) & 0x8000000) != 0)
+
+    slot = &pag->generators[index];
+    id = PAG_sgi_GenId;
+    pag->num = index + 1;
+    slot->generatorID = id;
+
+    PAG_sgi_GenId = id + 1;
+    if (((id + 1) & 0x8000000) != 0)
         PAG_sgi_GenId = 2;
-    a1->generators[v3].generatorFreq = a3;
-    result = v5->generatorID;
-    a1->generators[v3].gao = a2;
-    a1->generators[v3].fff22 = 0.0;
-    return result;
+
+    slot->generatorFreq = frequency;
+    slot->gao = gao;
+    slot->fff22 = 0.0f;
+    return slot->generatorID;
 }
 
-void PAG_DelGenerator(struct sPAGStruct* a1, int a2)
+static int PAG_l_FindGenerator(tPAGStruct* pag, int generatorID)
 {
-    int v2;
-    int v3;
-    tPAGGeneratorElemStruct* v4;
+    int i;
 
-    v2 = a1->num;
-    v3 = 0;
-    v4 = a1->generators;
-    if (v2 > 0)
+    for (i = 0; i < pag->num; i++)
     {
-        while (v4->generatorID != a2)
-        {
-            ++v3;
-            ++v4;
-            if (v3 >= a1->num)
-                return;
-        }
-        if (v3 < v2 - 1)
-            memcpy(v4, &a1->generators[v2 - 1], sizeof(tPAGGeneratorElemStruct));
-        --a1->num;
+        if (pag->generators[i].generatorID == generatorID)
+            return i;
     }
+    return -1;
 }
 
-void PAG_SetGeneratorFrequency(struct sPAGStruct* a1, int generatorID, float a3)
+void PAG_DelGenerator(struct sPAGStruct* pag, int generatorID)
 {
-    tPAGGeneratorElemStruct* v3;
-    int v4;
-    int v5;
+    int index;
+    int last;
 
-    v3 = a1->generators;
-    v4 = a1->num;
-    v5 = 0;
-    if (v4 > 0)
-    {
-        while (v3->generatorID != generatorID)
-        {
-            ++v5;
-            ++v3;
-            if (v5 >= v4)
-                return;
-        }
-        v3->generatorFreq = a3;
-    }
+    index = PAG_l_FindGenerator(pag, generatorID);
+    if (index < 0)
+        return;
+
+    last = pag->num - 1;
+    if (index < last)
+        memcpy(&pag->generators[index], &pag->generators[last],
+               sizeof(tPAGGeneratorElemStruct));
+    pag->num = last;
+}
+
+void PAG_SetGeneratorFrequency(struct sPAGStruct* pag, int generatorID, float frequency)
+{
+    int index;
+
+    index = PAG_l_FindGenerator(pag, generatorID);
+    if (index < 0)
+        return;
+
+    pag->generators[index].generatorFreq = frequency;
 }
