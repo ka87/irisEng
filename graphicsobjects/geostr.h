@@ -116,6 +116,26 @@ typedef struct sUnkGeoStrStruct
 } tUnkGeoStrStruct;
 
 
+// The letters of one effect's run and the geometry they were laid out
+// on. The dispatcher works this out once and every handler reads it.
+typedef struct sStrEffectRun
+{
+    tGEOSTRStruct* str;
+    tGEOSTREffectStruct* effect;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letters;
+    tGEOSTRLetter* lettersEnd;
+    int* spec;            // per-letter quad index, from the effect pre-pass
+    int firstVertex;      // first vertex of the run
+    int endVertex;        // one past its last
+    int frameVertices;    // 36 when the string has a frame to move too, else 0
+    int frameFirst;
+    int startIdx;
+    int count;
+} tStrEffectRun;
+
+int STR_l_Effect_Reveal(struct sStrEffectRun* run);
+
 struct sGameObjectMain* STR_sgpst_GO;
 
 int16_t STR_w_XFramePivot;

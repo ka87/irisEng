@@ -1,14 +1,9 @@
 # graphicsobjects/
 
-Ten files, **7,011 lines to 6,645**. Nine of the ten are finished: no
-`goto`, no decompiler-named local or parameter, and they parse as
-standard C under the stub include set with
-`-Werror=implicit-function-declaration`.
-
-The tenth, `geostr.c`, is finished apart from one function —
-`STR_l_Effect_Treat`, 2,227 lines with 43 of the directory's 64
-`goto`s. Everything else in that file is done. That function is a
-pass of its own and is the only work left in the directory.
+Ten files, **7,011 lines to 5,725**. **All ten are finished**: no
+`goto` anywhere (there were 64), no decompiler-named local or
+parameter, and they parse as standard C under the stub include set
+with `-Werror=implicit-function-declaration`.
 
 | file | lines | gotos | state |
 | --- | --- | --- | --- |
@@ -21,7 +16,7 @@ pass of its own and is the only work left in the directory.
 | `particle.c` | 594 to 497 | 12 to 0 | done |
 | `shadow.c` | 882 to 878 | | done |
 | `geo.c` | 1,289 | | done, was already source |
-| `geostr.c` | 3,209 to 2,953 | 47 to 43 | all but one function |
+| `geostr.c` | 3,209 to 2,034 | 47 to 0 | done |
 
 `geomaterial.c` is seven lines longer than it was. Five `goto`s became
 explicit switch bodies and a few one-line statements became two; the
@@ -29,16 +24,25 @@ point of the pass is what the file says, not how short it is.
 
 ## Verification
 
-There are no differential tests in this directory, and that is a
-decision rather than an omission. Every file here is an implementation
-of the graphics-object interface: a loader that walks a byte stream, a
-free function, a render entry point that hands work to the display
-device. Standing one up means standing up the loader, the texture
-manager, the display device and the geometry buffer, and a test would
-then be measuring the mocks.
+One differential test, `tests/test_streveal.c`, over the string reveal
+effect: **434 cases, every value bit-identical**. It was the one
+function here big enough to be worth one, and isolating it before
+rewriting it made it cheap — the frozen copy is a drop-in, so both
+sides take the same run struct and write the same geometry buffer.
+Everything `geostr.c` refers to that the reveal does not need is
+stubbed to abort if it is reached, so a new dependency fails the test
+rather than passing on a stand-in.
 
-What the risky changes got instead was **mechanical verification of
-the thing that could break**:
+The rest of the directory has none, and that is a decision rather than
+an omission. Every other file here is an implementation of the
+graphics-object interface: a loader that walks a byte stream, a free
+function, a render entry point that hands work to the display device.
+Standing one up means standing up the loader, the texture manager, the
+display device and the geometry buffer, and a test would then be
+measuring the mocks.
+
+What the other risky changes got instead was **mechanical verification
+of the thing that could break**:
 
 - **The particle loader's read order.** A switch over twelve file
   versions, each reading a different field set from the stream. The
@@ -53,6 +57,10 @@ the thing that could break**:
   agree, including the z and the colour run.
 - **The one-quad sprite**, the same way: four vertices, four UVs, all
   agreeing.
+- **The nineteen text effects**, three ways each: the count of every
+  engine call the arm makes, the writes to each of the effect's own
+  fields, and the multiset of geometry indices it stores to. All
+  nineteen agree.
 
 `shadow.c` is the one file here that does not parse against the
 committed stub, and that is also pre-existing: it calls two
@@ -270,20 +278,122 @@ The 23-of-24 clear of the global string table is preserved, with the
 user's `ezt átnézni` kept and a line saying the count is deliberate as
 written.
 
-### What is left: STR_l_Effect_Treat
+### STR_l_Effect_Treat, the effect dispatcher
 
-2,227 lines, 43 `goto`s, and a `LOBYTE` or two. It is the text-effect
-dispatcher — a switch over effect kinds, each with its own walk over a
-string's letters. It wants a pass of its own, with the same treatment
-the particle loader got: extract the per-kind behaviour mechanically
-first, then rewrite against that table rather than against a reading
-of the control flow.
+2,227 lines with 43 of the directory's 64 `goto`s, and a switch over
+twenty effect kinds. It is a dispatcher calling twenty handlers now.
+
+**The frame came first**, because every arm needs the same four
+things: which letters the effect covers, which quads the renderer laid
+them out on, whether the string's frame moves with them, and where
+that frame's quads are. That is a `tStrEffectRun` the dispatcher fills
+once and every handler reads.
+
+**Three of the gotos were the shared tails, and they turn out to be
+the return value.** The function returns 1 when the effect is finished
+and `STR_Effect_TreatAll` should drop it, 0 to keep it for the next
+frame; one tail also sets `0x400` on the string, which hides it for
+good. Written that way the arms end in a `return` and the tails are
+gone.
+
+**Five idioms repeated across the arms** and are helpers: setting all
+four corners of every letter, filling the frame's colours, the
+bounding box of a run, scaling about a point, and rotating about one.
+
+The twenty kinds, named from what they do to the geometry rather than
+from any authority:
+
+| kind | handler | what it does |
+| --- | --- | --- |
+| 1 | `FadeToBlack` | fades letters and frame to black over `f1` after an `f3` delay |
+| 2 | `Blink` | holds or blends between two colours, then swaps and repeats |
+| 3 | `ColorByPosition` | colours each vertex by where it sits in the run's box |
+| 4 | `FadeBetweenColors` | fades letters and frame from one colour to the other |
+| 5 | `Wave` | lifts each letter by the sine of its own centre |
+| 6 | `Shake` | jitters each letter by a decaying random offset, with an optional flash |
+| 7 | `OpenVertically` | opens each letter from its middle, staggered along the run |
+| 8 | `CloseVertically` | the same closing, and without the early exit |
+| 9, 10 | `ScaleRun` | scales the run about the centre of its box |
+| 11, 12 | `ScaleAndFade` | waits, then scales and fades the run and the frame |
+| 13, 14 | `FoldY` | folds the run onto a horizontal line, lifting z |
+| 15 | `Rotate` | spins the run and the frame about the run's centre |
+| 16 | `Reveal` | a sweep line with a trailing copy of every letter |
+| 17 | `ClipBand` | clips the run to a horizontal band, moving the UVs with it |
+| 18 | `ShearLetters` | shifts one corner of each side of every letter in x |
+| 19 | `Scramble` | steps a letter through a digit sequence packed four bits at a time |
+| 20 | `Slice` | cuts each letter into five vertical slices and pushes them apart |
+
+#### Four narrowing bugs avoided
+
+All the same shape, and all invisible to a reader going by the names:
+the decompiler holds a clock or a factor in a `double` and the
+comparison that ends the effect is **on that double**, not on the
+`float` it was just narrowed into. Writing
+
+```c
+effect->f3 = (float)(TIM_gf_dt + effect->f3);
+if (effect->f3 < effect->color2)
+```
+
+instead of keeping the sum in a double changes the frame the effect
+ends on whenever the narrowing rounds up to exactly the limit. The
+wave and the shake effects each had one; two more were in arms whose
+factor is squared, where narrowing first changes the value outright.
+
+#### Pick — the slice effect's six edges *(binary)*
+
+`Slice`'s five slices are bounded by six x positions, and the chain
+that walks them is not uniform: the second edge takes its base from a
+**float-narrowed** copy of the first step while the rest stay in
+double, so the chain restarts there. That is written out with a line
+saying so rather than folded into a loop, because a loop would have to
+narrow every step or none.
+
+Its vertex step is narrowed to a float and its UV step is not, so the
+two are separate variables.
+
+### The reveal effect
+
+1,247 lines to 266, and the file's last seventeen `goto`s.
+
+It reveals a string behind a sweep line, with a trailing copy of every
+letter following the line — two quads per letter, which is what the
+effect's own pre-pass asks the renderer for. `color2`'s bits, read as
+an int, pick the direction: 0 and 1 sweep vertically and 2 and 3
+horizontally.
+
+**Four of its five blocks were the same thing**: a loop over the
+letters, unrolled four times with a remainder loop after it. Each
+collapses to one loop, and the four copies were checked against each
+other mechanically before they were collapsed — identical apart from
+the index offset.
+
+**The fifth was the goto maze**, and it is the same shape once two
+decompiler habits are undone:
+
+- its first unrolled copy reads as `break`ing out of the loop, because
+  the jump target happens to sit just past the body's closing brace.
+  It is the shared handler for a letter that falls outside the line,
+  and it re-enters at the next copy;
+- the last copy and the remainder loop have the condition inverted
+  with the arms swapped, which is the emitter normalising rather than
+  a difference.
+
+With both undone, all five copies do the same work.
+
+The vertical sweep picks four corner indices from the direction. They
+are the two corners of the edge that travels with the line and the two
+of the edge that stays put, so they have those names.
+
+Checked by `tests/test_streveal.c`: 434 cases over all four
+directions, nine points in the sweep, three trail offsets, four run
+lengths and two directions the effect does not know. **Every value
+bit-identical.**
 
 ---
 
 ## What is still owed here
 
-- `STR_l_Effect_Treat`, above.
 - The two `d3d9.h` stub methods `shadow.c` needs, once the gfx pass
   and this one are both in.
 - Nothing here has been built under MSVC.
