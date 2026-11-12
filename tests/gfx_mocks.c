@@ -58,84 +58,42 @@ void srand(unsigned int seed)
 }
 
 /* ------------------------------------------------------------------ */
-/* The allocator. Every block is remembered so a reset can hand the    */
-/* second side of a case the same addresses the first side saw, which  */
-/* matters because some effects store pointers into their own state.   */
+/* The allocator. Nothing is handed back to the system between the two */
+/* sides of a case: the first side's state has to stay readable while  */
+/* the second side runs and the two are compared, so the test leaks on */
+/* purpose and the log records every allocation instead.               */
 /* ------------------------------------------------------------------ */
-
-#define GFXMOCK_ALLOC_MAX 1024
-
-static void* GFXMOCK_blocks[GFXMOCK_ALLOC_MAX];
-static int GFXMOCK_blockCount;
-
-static void GFXMOCK_l_Remember(void* ptr)
-{
-    if (GFXMOCK_blockCount < GFXMOCK_ALLOC_MAX)
-        GFXMOCK_blocks[GFXMOCK_blockCount++] = ptr;
-}
-
-static void GFXMOCK_l_Forget(void* ptr)
-{
-    int i;
-
-    for (i = 0; i < GFXMOCK_blockCount; i++)
-        if (GFXMOCK_blocks[i] == ptr)
-        {
-            GFXMOCK_blocks[i] = NULL;
-            return;
-        }
-}
 
 void* MEM_p_Alloc(unsigned int size)
 {
-    void* ptr;
-
-    ptr = calloc(1, size ? size : 1);
-    GFXMOCK_l_Remember(ptr);
     GFXMOCK_Record("MEM_p_Alloc", 1, (double)size);
-    return ptr;
+    return calloc(1, size ? size : 1);
 }
 
 void* MEM_p_Realloc(void* ptr, unsigned int size)
 {
-    void* out;
-
-    GFXMOCK_l_Forget(ptr);
-    out = realloc(ptr, size ? size : 1);
-    GFXMOCK_l_Remember(out);
     GFXMOCK_Record("MEM_p_Realloc", 1, (double)size);
-    return out;
+    return realloc(ptr, size ? size : 1);
 }
 
 void MEM_Free(void* ptr)
 {
-    GFXMOCK_l_Forget(ptr);
-    free(ptr);
     GFXMOCK_Record("MEM_Free", 0);
+    free(ptr);
 }
 
 void* MEM_p_AllocAligned(int size, int alignment)
 {
-    void* ptr;
-
-    ptr = calloc(1, size > 0 ? (size_t)size : 1);
-    GFXMOCK_l_Remember(ptr);
-    return ptr;
+    return calloc(1, size > 0 ? (size_t)size : 1);
 }
 
 void* MEM_p_ReallocAligned(void* ptr, int size, int alignment)
 {
-    void* out;
-
-    GFXMOCK_l_Forget(ptr);
-    out = realloc(ptr, size > 0 ? (size_t)size : 1);
-    GFXMOCK_l_Remember(out);
-    return out;
+    return realloc(ptr, size > 0 ? (size_t)size : 1);
 }
 
 void MEM_FreeAlign(void* ptr)
 {
-    GFXMOCK_l_Forget(ptr);
     free(ptr);
 }
 
@@ -233,11 +191,6 @@ void GFXMOCK_Reset(void)
 
     GFXMOCK_logLen = 0;
     GFXMOCK_logOverflow = 0;
-
-    for (i = 0; i < GFXMOCK_blockCount; i++)
-        free(GFXMOCK_blocks[i]);
-    memset(GFXMOCK_blocks, 0, sizeof(GFXMOCK_blocks));
-    GFXMOCK_blockCount = 0;
 
     memset(&GFXMOCK_geo, 0, sizeof(GFXMOCK_geo));
     memset(&GFXMOCK_firstChunk, 0, sizeof(GFXMOCK_firstChunk));

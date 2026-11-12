@@ -114,6 +114,13 @@ GFX_i_Lightning_Render"
 spark_syms="GFX_Spark_Create GFX_Spark_Destroy GFX_Spark_Generate \
 GFX_Spark_Update GFX_AllocSpark GFX_i_Spark_Render"
 
+profiler_syms="GFX_Profiler_Create GFX_Profiler_Destroy \
+GFX_i_Profiler_StartStop GFX_i_Profiler_UpdateMecanic \
+GFX_i_Profiler_ComputeMeshState GFX_i_Profiler_Update_With_XYT \
+GFX_Profiler_Validate GFX_i_Profiler_Render GFX_SetNumberOfPPP \
+GFX_SetNumberOfLPP GFX_SetNumberOfP GFX_Profiler_Seti GFX_Profiler_Setf \
+GFX_Profiler_Setv"
+
 FILTER=$1
 
 run_one snakemodifier modifiers/snakemodifier.c \
@@ -138,6 +145,9 @@ run_group gfxlightning gfx \
 
 run_group gfxspark gfx \
     "gfx/gfxspark.c:tests/baseline_gfxspark.c:$spark_syms"
+
+run_group gfxprofiler gfx \
+    "gfx/gfxprofiler.c:tests/baseline_gfxprofiler.c:$profiler_syms"
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"

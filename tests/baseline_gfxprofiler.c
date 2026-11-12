@@ -1,3 +1,9 @@
+/* Frozen pre-refactor copy, for the differential test only.
+   One change, so that it builds against the current header: the
+   effect's own field a1 was given the name currentSlice, and the 18
+   references to it here were renamed with it. Nothing else differs
+   from the copy this file was taken from. */
+
 #include "../memory.h"
 #include "../time.h"
 #include "gfxprofiler.h"
@@ -30,9 +36,9 @@ void GFX_i_Profiler_StartStop(tGfxProfilerData* a1, unsigned int a2)
 {
     if (a1->uu)
     {
-        a1->ptr3[a1->a1] = a2;
-        if (!a2 && ++a1->a1 == a1->num)
-            a1->a1 = 0;
+        a1->ptr3[a1->currentSlice] = a2;
+        if (!a2 && ++a1->currentSlice == a1->num)
+            a1->currentSlice = 0;
     }
 }
 
@@ -173,22 +179,22 @@ void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* pd)
     tGfxProfilerPtr4Data* a1;
     int v39;
 
-    if (pd->uu && pd->ptr3[pd->a1])
+    if (pd->uu && pd->ptr3[pd->currentSlice])
     {
-        v39 = pd->a1 + 1;
+        v39 = pd->currentSlice + 1;
         if (v39 == pd->num)
             v39 = 0;
-        pd->ptr3[v39] = pd->ptr3[pd->a1];
-        pd->a1 = v39;
+        pd->ptr3[v39] = pd->ptr3[pd->currentSlice];
+        pd->currentSlice = v39;
         if (pd->xxxxx)
         {
-            if (pd->a1)
-                v1 = pd->a1;
+            if (pd->currentSlice)
+                v1 = pd->currentSlice;
             else
                 v1 = pd->num;
-            pd->a1 = v1 - 1;
+            pd->currentSlice = v1 - 1;
         }
-        a1 = &pd->ptr4[pd->PPPNum * pd->a1];
+        a1 = &pd->ptr4[pd->PPPNum * pd->currentSlice];
         v36 = &a1[pd->PPPNum];
         v37 = pd->ptr2;
         while (a1 < v36)
@@ -256,12 +262,12 @@ void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* pd)
             ++v37;
         }
         pd->xxxxx = 0;
-        if (pd->a1 && pd->ptr3[pd->a1 - 1])
+        if (pd->currentSlice && pd->ptr3[pd->currentSlice - 1])
         {
-            a2 = &pd->ptr4[pd->PPPNum * pd->a1];
+            a2 = &pd->ptr4[pd->PPPNum * pd->currentSlice];
             MATH_VecAddVec(&v29, &a2->v1, &a2[pd->PPPNum - 1].v1);
-            if (pd->a1)
-                v30 = &pd->ptr4[pd->PPPNum * (pd->a1 - 1)];
+            if (pd->currentSlice)
+                v30 = &pd->ptr4[pd->PPPNum * (pd->currentSlice - 1)];
             else
                 v30 = &pd->ptr4[pd->PPPNum * (pd->num - 1)];
             MATH_VecAddVec(&v32, &v30->v1, &v30[pd->PPPNum - 1].v1);
@@ -269,7 +275,7 @@ void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* pd)
             v28 = MATH_VecLen(&dest) * 0.5f;
             if (v28 >= (double)pd->f1)
             {
-                v26 = pd->a1;
+                v26 = pd->currentSlice;
                 v27 = 9;
                 while (v27--)
                 {
@@ -292,7 +298,7 @@ void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* pd)
                 pd->xxxxx = 1;
             }
         }
-        v39 = pd->a1 + 1;
+        v39 = pd->currentSlice + 1;
         if (v39 == pd->num)
             v39 = 0;
         pd->ptr3[v39] = 0;
