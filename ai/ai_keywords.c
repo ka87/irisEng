@@ -1,11 +1,93 @@
 #include "../time.h"
 #include "../ai.h"
 
-tAINode* AI_EvalKeyword_Ultra(tAINode* aiNode)
+/* The keyword evaluators are the AI language itself: the interpreter
+   calls one per node and it returns the node to run next. A few return
+   a small integer cast to tAINode* instead, which is a control code the
+   interpreter reads rather than a node: 0 yields the frame, 1 stops the
+   behaviour, 2 returns from it and 4 returns from the track. */
+
+// Pops one element and hands back its raw value word and type, without
+// running the type's own conversion function. The arithmetic and
+// comparison keywords work on the raw word, so this is their pop; it
+// also hands back the slot the value came from, which the compound
+// assignments write their result into.
+static int AI_l_PopRawTarget(int16_t* type, char** slot)
 {
+    int value;
+
+    *type = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
+    *slot = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
+    value = *(int32_t*)*slot;
     AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    AI_gpst_CurrentUltra = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    return value;
+}
+
+static int AI_l_PopRawValue(int16_t* type)
+{
+    char* slot;
+
+    return AI_l_PopRawTarget(type, &slot);
+}
+
+// Rounds a raw float word to an int through the x87 magic double, which
+// is the same trick AI_GetIntFromStack uses.
+static int AI_l_RoundRawToInt(int raw)
+{
+    double rounded;
+
+    rounded = *(float*)&raw + MATH_gd_magicDoubleForRound;
+    return *(int32_t*)&rounded;
+}
+
+/* Coerces the FIRST popped operand to the type of the second, and says
+   whether the operation is then done in float. The global stack pops in
+   reverse, so the second operand popped is the left-hand one in the
+   script's source order -- which is why a comparison coerces what it
+   popped first, and a compound assignment coerces its right-hand side
+   towards its target.
+
+   A type that is neither float (2) nor int (1) is left alone and
+   treated as int, which is what the original's fall-through arm came
+   to. */
+static BOOL AI_l_CoerceToSecondType(int16_t firstType, int16_t secondType, int* firstValue)
+{
+    if (secondType == firstType)
+        return secondType == 2;
+
+    if (secondType == 2)
+    {
+        *(float*)firstValue = (float)*firstValue;
+        return TRUE;
+    }
+    if (secondType == 1)
+        *firstValue = AI_l_RoundRawToInt(*firstValue);
+    return FALSE;
+}
+
+// A binary operator promotes to float when either side is one, and
+// converts the other side in place.
+static BOOL AI_l_PromoteToFloat(int16_t leftType, int16_t rightType, int* left, int* right)
+{
+    if (leftType == rightType)
+        return leftType == 2;
+
+    if (leftType == 2)
+    {
+        *(float*)right = (float)*right;
+        return TRUE;
+    }
+    if (rightType == 2)
+    {
+        *(float*)left = (float)*left;
+        return TRUE;
+    }
+    return FALSE;
+}
+
+tAINode* AI_EvalKeyword_Ultra(tAINode* node)
+{
+    AI_gpst_CurrentUltra = (tGameObjectMain*)AI_GetObjectFromStack();
 
     if (AI_gpst_CurrentUltra == (tGameObjectMain*)WOR_gst_Universe.univAIInstance)
     {
@@ -20,246 +102,212 @@ tAINode* AI_EvalKeyword_Ultra(tAINode* aiNode)
     {
         AI_gpst_CurrentInstanceUltra = NULL;
     }
-    
-    return aiNode + 1;
+
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_ObjEqual(tAINode* aiNode)
+tAINode* AI_EvalKeyword_ObjEqual(tAINode* node)
 {
-    tGameObjectMain* gao1, *gao2;
+    tGameObjectMain* gao1;
+    tGameObjectMain* gao2;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    gao2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    gao1 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    
-    AI_EvalType_GetGAO(&gao2, &gao2);
-    AI_EvalType_GetGAO(&gao1, &gao1);
-    
-    if (gao2 == gao1)
-        AI_PutIntToStack(1);
-    else
-        AI_PutIntToStack(0);
-    
-    return aiNode + 1;
-}
-
-tAINode* AI_EvalKeyword_ObjDifferent(tAINode* aiNode)
-{
-    tGameObjectMain* gao1, *gao2;
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    gao2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    gao1 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    gao2 = (tGameObjectMain*)AI_GetObjectFromStack();
+    gao1 = (tGameObjectMain*)AI_GetObjectFromStack();
 
     AI_EvalType_GetGAO(&gao2, &gao2);
     AI_EvalType_GetGAO(&gao1, &gao1);
-    
-    if (gao2 == gao1)
-        AI_PutIntToStack(0);
-    else
-        AI_PutIntToStack(1);
-    
-    return aiNode + 1;
+
+    AI_PutIntToStack(gao2 == gao1);
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_ObjNot(tAINode* aiNode)
+tAINode* AI_EvalKeyword_ObjDifferent(tAINode* node)
+{
+    tGameObjectMain* gao1;
+    tGameObjectMain* gao2;
+
+    gao2 = (tGameObjectMain*)AI_GetObjectFromStack();
+    gao1 = (tGameObjectMain*)AI_GetObjectFromStack();
+
+    AI_EvalType_GetGAO(&gao2, &gao2);
+    AI_EvalType_GetGAO(&gao1, &gao1);
+
+    AI_PutIntToStack(gao2 != gao1);
+    return node + 1;
+}
+
+tAINode* AI_EvalKeyword_ObjNot(tAINode* node)
 {
     tGameObjectMain* gao;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    gao = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-
+    gao = (tGameObjectMain*)AI_GetObjectFromStack();
     AI_EvalType_GetGAO(&gao, &gao);
-    
-    if (gao)
-        AI_PutIntToStack(0);
-    else
-        AI_PutIntToStack(1);
-    
-    return aiNode + 1;
+    AI_PutIntToStack(gao == NULL);
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Return(tAINode* aiNode)
+tAINode* AI_EvalKeyword_Return(tAINode* node)
 {
     *AI_gppst_CurrentJumpNode = NULL;
     return (tAINode*)2;
 }
 
-tAINode* AI_EvalKeyword_ReturnTrack(tAINode* aiNode)
+tAINode* AI_EvalKeyword_ReturnTrack(tAINode* node)
 {
     *AI_gppst_CurrentJumpNode = NULL;
     return (tAINode*)4;
 }
 
-tAINode* AI_EvalKeyword_Stop(tAINode* aiNode)
+tAINode* AI_EvalKeyword_Stop(tAINode* node)
 {
     *AI_gppst_CurrentJumpNode = NULL;
     return (tAINode*)1;
 }
 
-tAINode* AI_EvalKeyword_Push(tAINode* aiNode)
+tAINode* AI_EvalKeyword_Push(tAINode* node)
 {
-    int dest[13];
-    tVarStackElem a2;
+    int converted[13];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_PushUserStack(dest, a2.type);
-    return aiNode + 1;
+    AI_GetVarFromStack(converted, &var);
+    AI_PushUserStack(converted, var.type);
+    return node + 1;
 }
 
 tAINode* AI_EvalKeyword_Pop(tAINode* node)
 {
-    int a1a[13];
-    tVarStackElem a2;
+    int converted[13];
+    tVarStackElem var;
 
-    AI_PopUserStack(a1a, &a2);
-    AI_PutObjectToStack(a1a, a2.type);
+    AI_PopUserStack(converted, &var);
+    AI_PutObjectToStack(converted, var.type);
     return node + 1;
 }
 
+// Reads the user stack without unwinding it, at the depth the script
+// gives.
 tAINode* AI_EvalKeyword_PopSP(tAINode* node)
 {
-    tVarStackElem* v2;
-    int dest[13];
-    tVarStackElem a2;
+    tVarStackElem* elem;
+    int converted[13];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    v2 = &AI_gast_UserVarStack[AI_gul_SizeUserVarStack - dest[0] - 1];
-    a2.type = v2->type;
-    a2.ptr = v2->ptr;
-    AI_gast_Types[a2.type].funcptr(a2.ptr, dest);
-    AI_PutObjectToStack(dest, a2.type);
+    AI_GetVarFromStack(converted, &var);
+    elem = &AI_gast_UserVarStack[AI_gul_SizeUserVarStack - converted[0] - 1];
+    var.type = elem->type;
+    var.ptr = elem->ptr;
+    AI_gast_Types[var.type].funcptr(var.ptr, converted);
+    AI_PutObjectToStack(converted, var.type);
     return node + 1;
 }
 
+// Drops that many elements off the user stack.
 tAINode* AI_EvalKeyword_PopNow(tAINode* node)
 {
-    int dest[13];
+    int converted[13];
+    tVarStackElem var;
     int i;
-    tVarStackElem a2;
 
-    AI_GetVarFromStack(dest, &a2);
-    for (i = dest[0]; i > 0; --i)
-        AI_PopUserStack(dest, &a2);
+    AI_GetVarFromStack(converted, &var);
+    for (i = converted[0]; i > 0; --i)
+        AI_PopUserStack(converted, &var);
     return node + 1;
 }
 
+// Yields the frame, with the node to come back to recorded.
 tAINode* AI_EvalKeyword_Meta(tAINode* node)
 {
     *AI_gppst_CurrentJumpNode = &node[node->val];
     return (tAINode*)0;
 }
 
+// A during block counts down the time left on the current track and
+// reports whether it is still running.
 int AI_EvalKeyword_During_C()
 {
-    tAI* v1;
+    tAI* instanceUltra;
 
-    v1 = AI_gpst_CurrentInstanceUltra;
+    instanceUltra = AI_gpst_CurrentInstanceUltra;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    v1->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] = TIM_gf_dt + v1->instanceCallBackTimeRemaining[AI_gul_CurrentTrack];
-    if (v1->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] < 0.0)
+
+    instanceUltra->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] =
+        TIM_gf_dt + instanceUltra->instanceCallBackTimeRemaining[AI_gul_CurrentTrack];
+    if (instanceUltra->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] < 0.0)
         return 1;
-    v1->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] = 0.0;
+
+    instanceUltra->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] = 0.0;
     return 0;
 }
 
 tAINode* AI_EvalKeyword_During(tAINode* node)
 {
-    int v1;
-
-    v1 = AI_EvalKeyword_During_C();
-    AI_PutIntToStack(v1);
+    AI_PutIntToStack(AI_EvalKeyword_During_C());
     return node + 1;
 }
 
+// The time is stored negative and counts up towards zero.
 tAINode* AI_EvalKeyword_DuringInit(tAINode* node)
 {
-    tAI* v2;
-    float v3;
+    tAI* instanceUltra;
+    float seconds;
 
-    v2 = AI_gpst_CurrentInstanceUltra;
+    instanceUltra = AI_gpst_CurrentInstanceUltra;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    v3 = AI_GetFloatFromStack();
-    v2->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] = -v3;
+    seconds = AI_GetFloatFromStack();
+    instanceUltra->instanceCallBackTimeRemaining[AI_gul_CurrentTrack] = -seconds;
     return node + 1;
 }
 
+/* The four conditional jumps come in two kinds. JumpFalse and JumpTrue
+   put the condition back on the stack, so the value of a && or ||
+   chain is left behind for whatever reads it; the SP pair consume it. */
 tAINode* AI_EvalKeyword_JumpFalse(tAINode* node)
 {
-    tAINode* result;
-    int v2;
+    int condition;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = *(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_PutIntToStack(v2);
-    if (v2)
-        result = node + 1;
-    else
-        result = &node[node->val];
-    return result;
-}
-
-tAINode* AI_EvalKeyword_JumpFF(tAINode* node)
-{
-    int v2[3];
-
-    v2[0] = 0;
-    AI_PutObjectToStack(v2, AI_gaw_EnumLink[32]);
+    condition = *(int32_t*)AI_PopStackSlot();
+    AI_PutIntToStack(condition);
+    if (condition)
+        return node + 1;
     return &node[node->val];
 }
 
 tAINode* AI_EvalKeyword_JumpTrue(tAINode* node)
 {
-    tAINode* result;
-    int v2;
+    int condition;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = *(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_PutIntToStack(v2);
-    if (v2)
-        result = &node[node->val];
-    else
-        result = node + 1;
-    return result;
+    condition = *(int32_t*)AI_PopStackSlot();
+    AI_PutIntToStack(condition);
+    if (condition)
+        return &node[node->val];
+    return node + 1;
 }
 
 tAINode* AI_EvalKeyword_JumpFalseSP(tAINode* node)
 {
-    tAINode* result;
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    if (*(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack])
-        result = node + 1;
-    else
-        result = &node[node->val];
-    return result;
+    if (*(int32_t*)AI_PopStackSlot())
+        return node + 1;
+    return &node[node->val];
 }
 
 tAINode* AI_EvalKeyword_JumpTrueSP(tAINode* node)
 {
-    tAINode* result;
+    if (*(int32_t*)AI_PopStackSlot())
+        return &node[node->val];
+    return node + 1;
+}
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    if (*(int32_t*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack])
-        result = &node[node->val];
-    else
-        result = node + 1;
-    return result;
+// Jumps and leaves a false behind, which is the value of a && chain
+// that short-circuited.
+tAINode* AI_EvalKeyword_JumpFF(tAINode* node)
+{
+    int result;
+
+    result = 0;
+    AI_PutObjectToStack(&result, AI_gaw_EnumLink[32]);
+    return &node[node->val];
 }
 
 tAINode* AI_EvalKeyword_Jump(tAINode* node)
@@ -267,1695 +315,904 @@ tAINode* AI_EvalKeyword_Jump(tAINode* node)
     return &node[node->val];
 }
 
-tAINode* AI_EvalKeyword_Different(tAINode* arg0)
+/* The six comparisons all coerce the operand they popped first towards
+   the type of the one they popped second, then compare in that type.
+   The second popped is the left-hand operand in source order. */
+tAINode* AI_EvalKeyword_Equal(tAINode* node)
 {
-    float v2;
-    int v3[3];
-    int a1[3];
-    BOOL isFloat;
-    double v6;
-    int lvalData[13];
-    tVarStackElem rval;
-    int rvalData[13];
-    tVarStackElem lval;
+    int rightData[13];
+    int leftData[13];
+    tVarStackElem right;
+    tVarStackElem left;
+    int result;
 
-    AI_GetVarFromStack(lvalData, &lval);
-    AI_GetVarFromStack(rvalData, &rval);
+    AI_GetVarFromStack(rightData, &right);
+    AI_GetVarFromStack(leftData, &left);
 
-    if (rval.type == lval.type) {
-        isFloat = rval.type == 2;
-    }
-    else {
-        if (rval.type == 2)
-        {
-            v2 = (float)lvalData[0];
-            *(float*)lvalData = v2;
-            isFloat = 1;
-        } 
-        else {
-            if (rval.type != 1)
-            {
-                isFloat = rval.type == 2;
-            }
-            else
-            {
-                v6 = *(float*)lvalData + MATH_gd_magicDoubleForRound;
-                lvalData[0] = *((uint32_t *)&v6);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1[0] = *(float*)rvalData != *(float*)lvalData;
-        AI_PutObjectToStack(a1, AI_gaw_EnumLink[32]);
-    }
+    if (AI_l_CoerceToSecondType(right.type, left.type, rightData))
+        result = *(float*)leftData == *(float*)rightData;
     else
-    {
-        v3[0] = rvalData[0] != lvalData[0];
-        AI_PutObjectToStack(v3, AI_gaw_EnumLink[32]);
-    }
-    return arg0 + 1;
+        result = leftData[0] == rightData[0];
+
+    AI_PutObjectToStack(&result, AI_gaw_EnumLink[32]);
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Equal(tAINode* arg0)
+tAINode* AI_EvalKeyword_Different(tAINode* node)
 {
-    float v2;
-    int v3[3];
-    int a1[3];
-    BOOL isFloat;
-    double v6;
-    int lvalData[13];
-    tVarStackElem rval;
-    int rvalData[13];
-    tVarStackElem lval;
+    int rightData[13];
+    int leftData[13];
+    tVarStackElem right;
+    tVarStackElem left;
+    int result;
 
-    AI_GetVarFromStack(lvalData, &lval);
-    AI_GetVarFromStack(rvalData, &rval);
+    AI_GetVarFromStack(rightData, &right);
+    AI_GetVarFromStack(leftData, &left);
 
-    if (rval.type == lval.type) {
-        isFloat = rval.type == 2;
-    }
-    else {
-        if (rval.type == 2)
-        {
-            v2 = (float)lvalData[0];
-            *(float*)lvalData = v2;
-            isFloat = 1;
-        }
-        else {
-            if (rval.type != 1)
-            {
-                isFloat = rval.type == 2;
-            }
-            else
-            {
-                v6 = *(float*)lvalData + MATH_gd_magicDoubleForRound;
-                lvalData[0] = *((uint32_t*)&v6);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1[0] = *(float*)rvalData == *(float*)lvalData;
-        AI_PutObjectToStack(a1, AI_gaw_EnumLink[32]);
-    }
+    if (AI_l_CoerceToSecondType(right.type, left.type, rightData))
+        result = *(float*)leftData != *(float*)rightData;
     else
-    {
-        v3[0] = rvalData[0] == lvalData[0];
-        AI_PutObjectToStack(v3, AI_gaw_EnumLink[32]);
-    }
-    return arg0 + 1;
+        result = leftData[0] != rightData[0];
+
+    AI_PutObjectToStack(&result, AI_gaw_EnumLink[32]);
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_GreatEq(tAINode* arg0)
+tAINode* AI_EvalKeyword_GreatEq(tAINode* node)
 {
-    float v2;
-    int v3[3];
-    int a1[3];
-    BOOL isFloat;
-    double v6;
-    int lvalData[13];
-    tVarStackElem rval;
-    int rvalData[13];
-    tVarStackElem lval;
+    int rightData[13];
+    int leftData[13];
+    tVarStackElem right;
+    tVarStackElem left;
+    int result;
 
-    AI_GetVarFromStack(lvalData, &lval);
-    AI_GetVarFromStack(rvalData, &rval);
+    AI_GetVarFromStack(rightData, &right);
+    AI_GetVarFromStack(leftData, &left);
 
-    if (rval.type == lval.type) {
-        isFloat = rval.type == 2;
-    }
-    else {
-        if (rval.type == 2)
-        {
-            v2 = (float)lvalData[0];
-            *(float*)lvalData = v2;
-            isFloat = 1;
-        }
-        else {
-            if (rval.type != 1)
-            {
-                isFloat = rval.type == 2;
-            }
-            else
-            {
-                v6 = *(float*)lvalData + MATH_gd_magicDoubleForRound;
-                lvalData[0] = *((uint32_t*)&v6);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1[0] = *(float*)rvalData >= *(float*)lvalData;
-        AI_PutObjectToStack(a1, AI_gaw_EnumLink[32]);
-    }
+    if (AI_l_CoerceToSecondType(right.type, left.type, rightData))
+        result = *(float*)leftData >= *(float*)rightData;
     else
-    {
-        v3[0] = rvalData[0] >= lvalData[0];
-        AI_PutObjectToStack(v3, AI_gaw_EnumLink[32]);
-    }
-    return arg0 + 1;
+        result = leftData[0] >= rightData[0];
+
+    AI_PutObjectToStack(&result, AI_gaw_EnumLink[32]);
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Great(tAINode* arg0)
+tAINode* AI_EvalKeyword_Great(tAINode* node)
 {
-    float v2;
-    int v3[3];
-    int a1[3];
-    BOOL isFloat;
-    double v6;
-    int lvalData[13];
-    tVarStackElem rval;
-    int rvalData[13];
-    tVarStackElem lval;
+    int rightData[13];
+    int leftData[13];
+    tVarStackElem right;
+    tVarStackElem left;
+    int result;
 
-    AI_GetVarFromStack(lvalData, &lval);
-    AI_GetVarFromStack(rvalData, &rval);
+    AI_GetVarFromStack(rightData, &right);
+    AI_GetVarFromStack(leftData, &left);
 
-    if (rval.type == lval.type) {
-        isFloat = rval.type == 2;
-    }
-    else {
-        if (rval.type == 2)
-        {
-            v2 = (float)lvalData[0];
-            *(float*)lvalData = v2;
-            isFloat = 1;
-        }
-        else {
-            if (rval.type != 1)
-            {
-                isFloat = rval.type == 2;
-            }
-            else
-            {
-                v6 = *(float*)lvalData + MATH_gd_magicDoubleForRound;
-                lvalData[0] = *((uint32_t*)&v6);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1[0] = *(float*)rvalData > *(float*)lvalData;
-        AI_PutObjectToStack(a1, AI_gaw_EnumLink[32]);
-    }
+    if (AI_l_CoerceToSecondType(right.type, left.type, rightData))
+        result = *(float*)leftData > *(float*)rightData;
     else
-    {
-        v3[0] = rvalData[0] > lvalData[0];
-        AI_PutObjectToStack(v3, AI_gaw_EnumLink[32]);
-    }
-    return arg0 + 1;
+        result = leftData[0] > rightData[0];
+
+    AI_PutObjectToStack(&result, AI_gaw_EnumLink[32]);
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_LessEq(tAINode* arg0)
+tAINode* AI_EvalKeyword_LessEq(tAINode* node)
 {
-    float v2;
-    int v3[3];
-    int a1[3];
-    BOOL isFloat;
-    double v6;
-    int lvalData[13];
-    tVarStackElem rval;
-    int rvalData[13];
-    tVarStackElem lval;
+    int rightData[13];
+    int leftData[13];
+    tVarStackElem right;
+    tVarStackElem left;
+    int result;
 
-    AI_GetVarFromStack(lvalData, &lval);
-    AI_GetVarFromStack(rvalData, &rval);
+    AI_GetVarFromStack(rightData, &right);
+    AI_GetVarFromStack(leftData, &left);
 
-    if (rval.type == lval.type) {
-        isFloat = rval.type == 2;
-    }
-    else {
-        if (rval.type == 2)
-        {
-            v2 = (float)lvalData[0];
-            *(float*)lvalData = v2;
-            isFloat = 1;
-        }
-        else {
-            if (rval.type != 1)
-            {
-                isFloat = rval.type == 2;
-            }
-            else
-            {
-                v6 = *(float*)lvalData + MATH_gd_magicDoubleForRound;
-                lvalData[0] = *((uint32_t*)&v6);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1[0] = *(float*)rvalData <= *(float*)lvalData;
-        AI_PutObjectToStack(a1, AI_gaw_EnumLink[32]);
-    }
+    if (AI_l_CoerceToSecondType(right.type, left.type, rightData))
+        result = *(float*)leftData <= *(float*)rightData;
     else
-    {
-        v3[0] = rvalData[0] <= lvalData[0];
-        AI_PutObjectToStack(v3, AI_gaw_EnumLink[32]);
-    }
-    return arg0 + 1;
+        result = leftData[0] <= rightData[0];
+
+    AI_PutObjectToStack(&result, AI_gaw_EnumLink[32]);
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Less(tAINode* arg0)
+tAINode* AI_EvalKeyword_Less(tAINode* node)
 {
-    float v2;
-    int v3[3];
-    int a1[3];
-    BOOL isFloat;
-    double v6;
-    int lvalData[13];
-    tVarStackElem rval;
-    int rvalData[13];
-    tVarStackElem lval;
+    int rightData[13];
+    int leftData[13];
+    tVarStackElem right;
+    tVarStackElem left;
+    int result;
 
-    AI_GetVarFromStack(lvalData, &lval);
-    AI_GetVarFromStack(rvalData, &rval);
+    AI_GetVarFromStack(rightData, &right);
+    AI_GetVarFromStack(leftData, &left);
 
-    if (rval.type == lval.type) {
-        isFloat = rval.type == 2;
-    }
-    else {
-        if (rval.type == 2)
-        {
-            v2 = (float)lvalData[0];
-            *(float*)lvalData = v2;
-            isFloat = 1;
-        }
-        else {
-            if (rval.type != 1)
-            {
-                isFloat = rval.type == 2;
-            }
-            else
-            {
-                v6 = *(float*)lvalData + MATH_gd_magicDoubleForRound;
-                lvalData[0] = *((uint32_t*)&v6);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1[0] = *(float*)rvalData < *(float*)lvalData;
-        AI_PutObjectToStack(a1, AI_gaw_EnumLink[32]);
-    }
+    if (AI_l_CoerceToSecondType(right.type, left.type, rightData))
+        result = *(float*)leftData < *(float*)rightData;
     else
-    {
-        v3[0] = rvalData[0] < lvalData[0];
-        AI_PutObjectToStack(v3, AI_gaw_EnumLink[32]);
-    }
-    return arg0 + 1;
+        result = leftData[0] < rightData[0];
+
+    AI_PutObjectToStack(&result, AI_gaw_EnumLink[32]);
+    return node + 1;
 }
 
+/* Not of an int yields 0 or 255, not 0 or 1: the original computes
+   (value != 0) - 1 truncated to a byte. The float form yields 1.0f or
+   0.0f. Preserved as written. */
 tAINode* AI_EvalKeyword_Not(tAINode* node)
 {
-    int v2;
-    int dest[13];
-    tVarStackElem a2;
+    int converted[13];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    if (a2.type == 2)
+    AI_GetVarFromStack(converted, &var);
+    if (var.type == 2)
     {
-        if (*(float*)dest == 0.0f)
-            v2 = 0x3F800000;
+        if (*(float*)converted == 0.0f)
+            converted[0] = 0x3F800000;              // 1.0f
         else
-            v2 = 0;
-        dest[0] = v2;
+            converted[0] = 0;
     }
     else
     {
-        dest[0] = (uint8_t)((dest[0] != 0) - 1);
+        converted[0] = (uint8_t)((converted[0] != 0) - 1);
     }
-    AI_PutObjectToStack(dest, a2.type);
+    AI_PutObjectToStack(converted, var.type);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_Neg(tAINode* node)
 {
-    int dest[13];
-    tVarStackElem a2;
+    int converted[13];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    if (a2.type == 2)
-        *(float*)dest = -*(float*)dest;
+    AI_GetVarFromStack(converted, &var);
+    if (var.type == 2)
+        *(float*)converted = -*(float*)converted;
     else
-        dest[0] = -dest[0];
-    AI_PutObjectToStack(dest, a2.type);
+        converted[0] = -converted[0];
+    AI_PutObjectToStack(converted, var.type);
+    return node + 1;
+}
+
+tAINode* AI_EvalKeyword_Invert(tAINode* node)
+{
+    AI_PutIntToStack(~AI_GetIntFromStack());
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_VecNeg(tAINode* node)
 {
-    Vec3 dest;
-    tVarStackElem a2;
+    Vec3 vec;
+    tVarStackElem var;
 
-    AI_GetVarFromStack(&dest, &a2);
-    dest.x = -dest.x;
-    dest.y = -dest.y;
-    dest.z = -dest.z;
-    AI_PutVecToStack(&dest);
+    AI_GetVarFromStack(&vec, &var);
+    MATH_VecInvert(&vec, &vec);
+    AI_PutVecToStack(&vec);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_VecEqual(tAINode* node)
 {
-    Vec3* v2;
-    Vec3* v3;
+    Vec3* right;
+    Vec3* left;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    if (v3->x == *(float*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] && v3->y == v2->y && v3->z == v2->z)
-        AI_PutIntToStack(1);
-    else
-        AI_PutIntToStack(0);
+    right = (Vec3*)AI_PopStackSlot();
+    left = (Vec3*)AI_PopStackSlot();
+    AI_PutIntToStack(right->x == left->x && right->y == left->y && right->z == left->z);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_VecDifferent(tAINode* node)
 {
-    Vec3* v2;
-    Vec3* v3;
+    Vec3* right;
+    Vec3* left;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    v2 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    if (v3->x == *(float*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack] && v3->y == v2->y && v3->z == v2->z)
-        AI_PutIntToStack(0);
-    else
-        AI_PutIntToStack(1);
+    right = (Vec3*)AI_PopStackSlot();
+    left = (Vec3*)AI_PopStackSlot();
+    AI_PutIntToStack(!(right->x == left->x && right->y == left->y && right->z == left->z));
     return node + 1;
 }
 
+// These two write the result back through the descriptor's own type
+// function rather than pushing it.
 tAINode* AI_EvalKeyword_IncAffect(tAINode* node)
 {
-    int dest[13];
-    tVarStackElem a2;
+    int converted[13];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    if (a2.type == 2)
-        *(float*)dest = *(float*)dest + 1.0f;
+    AI_GetVarFromStack(converted, &var);
+    if (var.type == 2)
+        *(float*)converted = *(float*)converted + 1.0f;
     else
-        ++dest[0];
-    AI_gast_Types[a2.type].funcptr(dest, a2.ptr);
+        ++converted[0];
+    AI_gast_Types[var.type].funcptr(converted, var.ptr);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_DecAffect(tAINode* node)
 {
-    int dest[13];
-    tVarStackElem a2;
+    int converted[13];
+    tVarStackElem var;
 
-    AI_GetVarFromStack(dest, &a2);
-    if (a2.type == 2)
-        *(float*)dest = *(float*)dest - 1.0f;
+    AI_GetVarFromStack(converted, &var);
+    if (var.type == 2)
+        *(float*)converted = *(float*)converted - 1.0f;
     else
-        --dest[0];
-    AI_gast_Types[a2.type].funcptr(dest, a2.ptr);
+        --converted[0];
+    AI_gast_Types[var.type].funcptr(converted, var.ptr);
+    return node + 1;
+}
+
+
+/* The four arithmetic operators promote to float when either operand
+   is one. The right-hand operand is the one popped first. */
+tAINode* AI_EvalKeyword_Plus(tAINode* node)
+{
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
+
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
+        AI_PutFloatToStack(*(float*)&left + *(float*)&right);
+    else
+        AI_PutIntToStack(left + right);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_Minus(tAINode* node)
 {
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    float a1b;
-    int16_t v7;
-    int v8;
-    int16_t v9;
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
 
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1b = *(float*)&v8 - *(float*)&a1a;
-        AI_PutFloatToStack(a1b);
-    }
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
+        AI_PutFloatToStack(*(float*)&left - *(float*)&right);
     else
-    {
-        AI_PutIntToStack(v8 - a1a);
-    }
-    return node + 1;
-}
-
-tAINode* AI_EvalKeyword_Plus(tAINode* node)
-{
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    float a1b;
-    int16_t v7;
-    int v8;
-    int16_t v9;
-
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1b = *(float*)&v8 + *(float*)&a1a;
-        AI_PutFloatToStack(a1b);
-    }
-    else
-    {
-        AI_PutIntToStack(v8 + a1a);
-    }
+        AI_PutIntToStack(left - right);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_Mul(tAINode* node)
 {
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    float a1b;
-    int16_t v7;
-    int v8;
-    int16_t v9;
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
 
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1b = *(float*)&v8 * *(float*)&a1a;
-        AI_PutFloatToStack(a1b);
-    }
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
+        AI_PutFloatToStack(*(float*)&left * *(float*)&right);
     else
-    {
-        AI_PutIntToStack(v8 * a1a);
-    }
+        AI_PutIntToStack(left * right);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_Div(tAINode* node)
 {
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    float a1b;
-    int16_t v7;
-    int v8;
-    int16_t v9;
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
 
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
-    {
-        a1b = *(float*)&v8 / *(float*)&a1a;
-        AI_PutFloatToStack(a1b);
-    }
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
+        AI_PutFloatToStack(*(float*)&left / *(float*)&right);
     else
-    {
-        AI_PutIntToStack(v8 / a1a);
-    }
+        AI_PutIntToStack(left / right);
     return node + 1;
 }
 
+
+/* The bitwise operators have no float form, so on float operands they
+   round both to ints, operate, and convert the result back. */
 tAINode* AI_EvalKeyword_OrOp(tAINode* node)
 {
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    int16_t v7;
-    int v8;
-    int16_t v9;
-    double v4;
-    double v5;
-    float v8a;
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
 
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
     {
-        v5 = *(float*)&v8 + MATH_gd_magicDoubleForRound;
-        v4 = *(float*)&a1a + MATH_gd_magicDoubleForRound;
-        v8a = (float)(*((int32_t*)&v4) | *((int32_t*)&v5));
-        AI_PutFloatToStack(v8a);
+        AI_PutFloatToStack(
+            (float)(AI_l_RoundRawToInt(right) | AI_l_RoundRawToInt(left)));
     }
     else
     {
-        AI_PutIntToStack(a1a | v8);
+        AI_PutIntToStack(right | left);
     }
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_AndOp(tAINode* node)
 {
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    int16_t v7;
-    int v8;
-    int16_t v9;
-    double v4;
-    double v5;
-    float v8a;
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
 
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
     {
-        v5 = *(float*)&v8 + MATH_gd_magicDoubleForRound;
-        v4 = *(float*)&a1a + MATH_gd_magicDoubleForRound;
-        v8a = (float)(*((int32_t*)&v4) & *((int32_t*)&v5));
-        AI_PutFloatToStack(v8a);
+        AI_PutFloatToStack(
+            (float)(AI_l_RoundRawToInt(right) & AI_l_RoundRawToInt(left)));
     }
     else
     {
-        AI_PutIntToStack(a1a & v8);
+        AI_PutIntToStack(right & left);
     }
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_XorOp(tAINode* node)
 {
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    int16_t v7;
-    int v8;
-    int16_t v9;
-    double v4;
-    double v5;
-    float v8a;
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
 
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
     {
-        v5 = *(float*)&v8 + MATH_gd_magicDoubleForRound;
-        v4 = *(float*)&a1a + MATH_gd_magicDoubleForRound;
-        v8a = (float)(*((int32_t*)&v4) ^ *((int32_t*)&v5));
-        AI_PutFloatToStack(v8a);
+        AI_PutFloatToStack(
+            (float)(AI_l_RoundRawToInt(right) ^ AI_l_RoundRawToInt(left)));
     }
     else
     {
-        AI_PutIntToStack(a1a ^ v8);
+        AI_PutIntToStack(right ^ left);
     }
     return node + 1;
 }
 
+/* The float path shifts the RIGHT operand by the LEFT one, the other
+   way round from the int path below it. Preserved as written; it looks
+   like a transcription slip in the original rather than intent. */
 tAINode* AI_EvalKeyword_SLeft(tAINode* node)
 {
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    int16_t v7;
-    int v8;
-    int16_t v9;
-    double v4;
-    double v5;
-    float v8a;
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
+    int rounded;
 
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
     {
-        v5 = *(float*)&v8 + MATH_gd_magicDoubleForRound;
-        v4 = *(float*)&a1a + MATH_gd_magicDoubleForRound;
-        v8a = (float)(*((int32_t*)&v4) << *((int8_t*)&v5));
-        AI_PutFloatToStack(v8a);
+        rounded = AI_l_RoundRawToInt(left);
+        AI_PutFloatToStack((float)(AI_l_RoundRawToInt(right) << *(int8_t*)&rounded));
     }
     else
     {
-        AI_PutIntToStack(v8 << a1a);
+        AI_PutIntToStack(left << right);
     }
     return node + 1;
 }
 
+/* The float path shifts the RIGHT operand by the LEFT one, the other
+   way round from the int path below it. Preserved as written; it looks
+   like a transcription slip in the original rather than intent. */
 tAINode* AI_EvalKeyword_SRight(tAINode* node)
 {
-    int v2;
-    int v3;
-    BOOL isFloat;
-    int a1a;
-    int16_t v7;
-    int v8;
-    int16_t v9;
-    double v4;
-    double v5;
-    float v8a;
+    int16_t leftType;
+    int16_t rightType;
+    int left;
+    int right;
+    int rounded;
 
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    a1a = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v8 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v7 == v9) {
-        isFloat = v7 == 2;
-    }
-    else {
-        if (v7 == 2)
-        {
-            *(float*)&v3 = (float)a1a;
-            a1a = v3;
-            isFloat = 1;
-        }
-        else {
-            if (v9 != 2)
-            {
-                isFloat = v7 == 2;
-            }
-            else
-            {
-                *(float*)&v2 = (float)v8;
-                v8 = v2;
-                isFloat = 1;
-            }
-        }
-    }
-    if (isFloat)
+    right = AI_l_PopRawValue(&rightType);
+    left = AI_l_PopRawValue(&leftType);
+
+    if (AI_l_PromoteToFloat(leftType, rightType, &left, &right))
     {
-        v5 = *(float*)&v8 + MATH_gd_magicDoubleForRound;
-        v4 = *(float*)&a1a + MATH_gd_magicDoubleForRound;
-        v8a = (float)(*((int32_t*)&v4) >> *((int8_t*)&v5));
-        AI_PutFloatToStack(v8a);
+        rounded = AI_l_RoundRawToInt(left);
+        AI_PutFloatToStack((float)(AI_l_RoundRawToInt(right) >> *(int8_t*)&rounded));
     }
     else
     {
-        AI_PutIntToStack(v8 >> a1a);
+        AI_PutIntToStack(left >> right);
     }
     return node + 1;
 }
 
+
+/* The compound assignments pop their right-hand side first and their
+   target second, coerce the right-hand side towards the target's type,
+   and store the result back through the target's own slot. */
+// Plain assignment: coerce and store, with no operation.
 tAINode* AI_EvalKeyword_Affect(tAINode* node)
 {
-    int v2;
-    double v3;
-    int v4;
-    int16_t v5;
-    int* v6;
-    int16_t v7;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
 
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v4 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v5 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v6 = (int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v5 != v7)
-    {
-        if (v5 == 2)
-        {
-            *(float*)&v2 = (float)v4;
-            v4 = v2;
-        }
-        else if (v5 == 1)
-        {
-            v3 = *(float*)&v4 + MATH_gd_magicDoubleForRound;
-            v4 = *((int32_t *)&v3);
-        }
-    }
-    *v6 = v4;
-    return node + 1;
-}
+    right = AI_l_PopRawValue(&rightType);
+    AI_l_PopRawTarget(&targetType, &targetSlot);
 
-tAINode* AI_EvalKeyword_MinusAffect(tAINode* node)
-{
-    int v2;
-    BOOL isFloat;
-    double v4;
-    int v5;
-    int16_t v6;
-    char* v7;
-    int v8;
-    int v9;
-    int16_t v10;
-
-    v10 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v5 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v6 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v8 = *(int32_t*)v7;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v6 == v10) {
-        isFloat = v6 == 2;
-    } 
-    else {
-        if (v6 == 2)
-        {
-            *(float*)&v2 = (float)v5;
-            v5 = v2;
-            isFloat = 1;
-        } 
-        else {
-            if (v6 != 1)
-            {
-                isFloat = v6 == 2;
-            }
-            else
-            {
-                v4 = *(float*)&v5 + MATH_gd_magicDoubleForRound;
-                v5 = *((int32_t*)&v4);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-        *(float*)&v9 = *(float*)&v8 - *(float*)&v5;
-    else
-        v9 = v8 - v5;
-    *(float*)v7 = *(float*)&v9;
+    AI_l_CoerceToSecondType(rightType, targetType, &right);
+    *(int32_t*)targetSlot = right;
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_PlusAffect(tAINode* node)
 {
-    int v2;
-    BOOL isFloat;
-    double v4;
-    int v5;
-    int16_t v6;
-    char* v7;
-    int v8;
-    int v9;
-    int16_t v10;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
 
-    v10 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v5 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v6 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v8 = *(int32_t*)v7;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v6 == v10) {
-        isFloat = v6 == 2;
-    }
-    else {
-        if (v6 == 2)
-        {
-            *(float*)&v2 = (float)v5;
-            v5 = v2;
-            isFloat = 1;
-        }
-        else {
-            if (v6 != 1)
-            {
-                isFloat = v6 == 2;
-            }
-            else
-            {
-                v4 = *(float*)&v5 + MATH_gd_magicDoubleForRound;
-                v5 = *((int32_t*)&v4);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-        *(float*)&v9 = *(float*)&v8 + *(float*)&v5;
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
+        *(float*)&result = *(float*)&target + *(float*)&right;
     else
-        v9 = v8 + v5;
-    *(float*)v7 = *(float*)&v9;
+        result = target + right;
+
+    *(float*)targetSlot = *(float*)&result;
+    return node + 1;
+}
+
+tAINode* AI_EvalKeyword_MinusAffect(tAINode* node)
+{
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
+
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
+        *(float*)&result = *(float*)&target - *(float*)&right;
+    else
+        result = target - right;
+
+    *(float*)targetSlot = *(float*)&result;
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_MulAffect(tAINode* node)
 {
-    int v2;
-    BOOL isFloat;
-    double v4;
-    int v5;
-    int16_t v6;
-    char *v7;
-    int v8;
-    int v9;
-    int16_t v10;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
 
-    v10 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v5 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v6 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v8 = *(int32_t*)v7;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v6 == v10) {
-        isFloat = v6 == 2;
-    }
-    else {
-        if (v6 == 2)
-        {
-            *(float*)&v2 = (float)v5;
-            v5 = v2;
-            isFloat = 1;
-        }
-        else {
-            if (v6 != 1)
-            {
-                isFloat = v6 == 2;
-            }
-            else
-            {
-                v4 = *(float*)&v5 + MATH_gd_magicDoubleForRound;
-                v5 = *((int32_t*)&v4);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-        *(float*)&v9 = *(float*)&v8 * *(float*)&v5;
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
+        *(float*)&result = *(float*)&target * *(float*)&right;
     else
-        v9 = v8 * v5;
-    *(float*)v7 = *(float*)&v9;
+        result = target * right;
+
+    *(float*)targetSlot = *(float*)&result;
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_DivAffect(tAINode* node)
 {
-    int v2;
-    BOOL isFloat;
-    double v4;
-    int v5;
-    int16_t v6;
-    char *v7;
-    int v8;
-    int v9;
-    int16_t v10;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
 
-    v10 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v5 = *(int32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v6 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v8 = *(int32_t*)v7;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v6 == v10) {
-        isFloat = v6 == 2;
-    }
-    else {
-        if (v6 == 2)
-        {
-            *(float*)&v2 = (float)v5;
-            v5 = v2;
-            isFloat = 1;
-        }
-        else {
-            if (v6 != 1)
-            {
-                isFloat = v6 == 2;
-            }
-            else
-            {
-                v4 = *(float*)&v5 + MATH_gd_magicDoubleForRound;
-                v5 = *((int32_t*)&v4);
-                isFloat = 0;
-            }
-        }
-    }
-    if (isFloat)
-        *(float*)&v9 = *(float*)&v8 / *(float*)&v5;
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
+        *(float*)&result = *(float*)&target / *(float*)&right;
     else
-        v9 = v8 / v5;
-    *(float*)v7 = *(float*)&v9;
+        result = target / right;
+
+    *(float*)targetSlot = *(float*)&result;
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_OrAffect(tAINode* node)
 {
-    int v2;
-    double v3;
-    double v4;
-    BOOL floats;
-    double v6;
-    int v7;
-    int16_t v8;
-    char* v9;
-    int v10;
-    int v11;
-    int16_t v12;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
 
-    v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = *(int*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v8 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v10 = *(int*)v9;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v8 == v12)
-        goto LABEL_6;
-    if (v8 == 2)
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
     {
-        *(float*)&v2 = (float)v7;
-        v7 = v2;
-        floats = 1;
-        goto LABEL_7;
-    }
-    if (v8 != 1)
-    {
-    LABEL_6:
-        floats = v8 == 2;
+        *(float*)&result =
+            (float)(AI_l_RoundRawToInt(right) | AI_l_RoundRawToInt(target));
     }
     else
     {
-        v6 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        v7 = (*(int32_t *)&v6);
-        floats = 0;
+        result = right | target;
     }
-LABEL_7:
-    if (floats)
-    {
-        v4 = *(float*)&v10 + MATH_gd_magicDoubleForRound;
-        v3 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        *(float*)&v11 = (float)((*(uint32_t *)&v3) | (*(uint32_t *)&v4));
-    }
-    else
-    {
-        v11 = v7 | v10;
-    }
-    *(uint32_t*)v9 = v11;
+
+    *(int32_t*)targetSlot = result;
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_AndAffect(tAINode* node)
 {
-    int v2;
-    double v3;
-    double v4;
-    BOOL v5; 
-    double v6;
-    int v7; 
-    int16_t v8; 
-    char* v9; 
-    int v10; 
-    int v11; 
-    int16_t v12;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
 
-    v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v8 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v9 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v10 = *(uint32_t*)v9;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v8 == v12)
-        goto LABEL_6;
-    if (v8 == 2)
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
     {
-        *(float*)&v2 = (float)v7;
-        v7 = v2;
-        v5 = 1;
-        goto LABEL_7;
-    }
-    if (v8 != 1)
-    {
-    LABEL_6:
-        v5 = v8 == 2;
+        *(float*)&result =
+            (float)(AI_l_RoundRawToInt(right) & AI_l_RoundRawToInt(target));
     }
     else
     {
-        v6 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        v7 = (*(uint32_t *)&v6);
-        v5 = 0;
+        result = right & target;
     }
-LABEL_7:
-    if (v5)
-    {
-        v4 = *(float*)&v10 + MATH_gd_magicDoubleForRound;
-        v3 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        *(float*)&v11 = (float)((*(uint32_t *)&v3) & (*(uint32_t*)&v4));
-    }
-    else
-    {
-        v11 = v7 & v10;
-    }
-    *(uint32_t*)v9 = v11;
+
+    *(int32_t*)targetSlot = result;
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_XorAffect(tAINode* node)
 {
-    int v2;
-    double v3;
-    double v4;
-    BOOL v5; 
-    double v6;
-    int v7; 
-    int16_t v8; 
-    int v9;
-    int v10;
-    int v11;
-    int16_t v12;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
 
-    v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = *(int*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v8 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v9 = (int)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v10 = *(int*)v9;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v8 == v12)
-        goto LABEL_6;
-    if (v8 == 2)
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
     {
-        *(float*)&v2 = (float)v7;
-        v7 = v2;
-        v5 = 1;
-        goto LABEL_7;
-    }
-    if (v8 != 1)
-    {
-    LABEL_6:
-        v5 = v8 == 2;
+        *(float*)&result =
+            (float)(AI_l_RoundRawToInt(right) ^ AI_l_RoundRawToInt(target));
     }
     else
     {
-        v6 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        v7 = (*(int32_t *)&v6);
-        v5 = 0;
+        result = right ^ target;
     }
-LABEL_7:
-    if (v5)
-    {
-        v4 = *(float*)&v10 + MATH_gd_magicDoubleForRound;
-        v3 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        *(float*)&v11 = (float)((*(uint32_t *)&v3) ^ (*(uint32_t *)&v4));
-    }
-    else
-    {
-        v11 = v7 ^ v10;
-    }
-    *(uint32_t*)v9 = v11;
+
+    *(int32_t*)targetSlot = result;
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_SLeftAffect(tAINode* node)
 {
-    int v2;
-    double v3;
-    double v4;
-    BOOL v5; 
-    double v6;
-    int v7; 
-    int16_t v8; 
-    int* v9;
-    int v10;
-    int v11;
-    int16_t v12;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
+    int rounded;
 
-    v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v8 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v9 = (int*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v10 = *v9;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v8 == v12)
-        goto LABEL_6;
-    if (v8 == 2)
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
     {
-        *(float*)&v2 = (float)v7;
-        v7 = v2;
-        v5 = 1;
-        goto LABEL_7;
-    }
-    if (v8 != 1)
-    {
-    LABEL_6:
-        v5 = v8 == 2;
+        rounded = AI_l_RoundRawToInt(right);
+        *(float*)&result =
+            (float)(int)(AI_l_RoundRawToInt(target) << *(int8_t*)&rounded);
     }
     else
     {
-        v6 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        v7 = (*(uint32_t *)&v6);
-        v5 = 0;
+        // the count is masked here and not in the plain shift keywords
+        result = target << (right & 0xff);
     }
-LABEL_7:
-    if (v5)
-    {
-        v4 = *(float*)&v10 + MATH_gd_magicDoubleForRound;
-        v3 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        *(float*)&v11 = (float)(int)((*(uint32_t *)&v4) << (*(int8_t *)&v3));
-    }
-    else
-    {
-        v11 = v10 << (v7 & 0xff);
-    }
-    *v9 = v11;
+
+    *(int32_t*)targetSlot = result;
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_SRightAffect(tAINode* node)
 {
-    int v2;
-    double v3;
-    double v4;
-    BOOL v5;
-    double v6;
-    int v7; 
-    int16_t v8;
-    int* v9; 
-    int v10; 
-    int v11; 
-    int16_t v12;
+    int16_t rightType;
+    int16_t targetType;
+    char* targetSlot;
+    int right;
+    int target;
+    int result;
+    int rounded;
 
-    v12 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v7 = *(uint32_t*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    AI_gul_SizeGlobalStack -= 32;
-    v8 = AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack--].type;
-    v9 = (int*)AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1].ptr;
-    v10 = *v9;
-    AI_gul_SizeGlobalStack -= 32;
-    if (v8 == v12)
-        goto LABEL_6;
-    if (v8 == 2)
+    right = AI_l_PopRawValue(&rightType);
+    target = AI_l_PopRawTarget(&targetType, &targetSlot);
+
+    if (AI_l_CoerceToSecondType(rightType, targetType, &right))
     {
-        *(float*)&v2 = (float)v7;
-        v7 = v2;
-        v5 = 1;
-        goto LABEL_7;
-    }
-    if (v8 != 1)
-    {
-    LABEL_6:
-        v5 = v8 == 2;
+        rounded = AI_l_RoundRawToInt(right);
+        *(float*)&result =
+            (float)(AI_l_RoundRawToInt(target) >> *(int8_t*)&rounded);
     }
     else
     {
-        v6 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        v7 = (*(uint32_t *)&v6);
-        v5 = 0;
+        // the count is masked here and not in the plain shift keywords
+        result = target >> (right & 0xff);
     }
-LABEL_7:
-    if (v5)
-    {
-        v4 = *(float*)&v10 + MATH_gd_magicDoubleForRound;
-        v3 = *(float*)&v7 + MATH_gd_magicDoubleForRound;
-        *(float*)&v11 = (float)((*(int32_t *)&v4) >> (*(int8_t *)&v3));
-    }
-    else
-    {
-        v11 = v10 >> (v7 & 0xff);
-    }
-    *v9 = v11;
+
+    *(int32_t*)targetSlot = result;
     return node + 1;
 }
 
-tAINode* AI_EvalKeyword_Invert(tAINode* node)
+tAINode* AI_EvalKeyword_VecAffect(tAINode* node)
 {
-    int v1;
+    Vec3* source;
+    Vec3* target;
+    tVarStackElem var;
+    int converted[13];
 
-    v1 = AI_GetIntFromStack();
-    AI_PutIntToStack(~v1);
+    source = (Vec3*)AI_PopStackSlot();
+    AI_GetVarFromStack(converted, &var);
+
+    target = (Vec3*)var.ptr;
+    target->x = source->x;
+    target->y = source->y;
+    target->z = source->z;
     return node + 1;
-}
-
-tAINode* AI_EvalKeyword_VecAffect(tAINode* aiNode)
-{
-    Vec3* sv, *dv;
-    tVarStackElem vse;
-    int dest[13];
-
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    sv = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_GetVarFromStack(dest, &vse);
-
-    dv = (Vec3*)vse.ptr;
-    dv->x = sv->x;
-    dv->y = sv->y;
-    dv->z = sv->z;
-
-    return aiNode + 1;
 }
 
 tAINode* AI_EvalKeyword_VecPlusAffect(tAINode* node)
 {
-    tVarStackElem v2;
-    Vec3* a3;
-    Vec3 a2;
+    tVarStackElem var;
+    Vec3* right;
+    Vec3 target;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_GetVarFromStack(&a2, &v2);
-    MATH_VecAddVec((Vec3*)v2.ptr, &a2, a3);
+    right = (Vec3*)AI_PopStackSlot();
+    AI_GetVarFromStack(&target, &var);
+    MATH_VecAddVec((Vec3*)var.ptr, &target, right);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_VecMinusAffect(tAINode* node)
 {
-    tVarStackElem v2;
-    Vec3* a3;
-    Vec3 a2;
+    tVarStackElem var;
+    Vec3* right;
+    Vec3 target;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_GetVarFromStack(&a2, &v2);
-    MATH_SubstractVec((Vec3*)v2.ptr, &a2, a3);
+    right = (Vec3*)AI_PopStackSlot();
+    AI_GetVarFromStack(&target, &var);
+    MATH_SubstractVec((Vec3*)var.ptr, &target, right);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_VecMulAffect(tAINode* node)
 {
-    Vec3* v2;
-    float v3; 
-    tVarStackElem a2;
-    Vec3 dest[2]; // TODO 1 is elég cska a biztonság kedvéért 2 (idában votl rossz)
+    Vec3* target;
+    tVarStackElem var;
+    float scalar;
+    Vec3 value[2]; // TODO 1 is elég cska a biztonság kedvéért 2 (idában votl rossz)
 
-    v3 = AI_GetFloatFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v2 = (Vec3*)a2.ptr;
-    *(float*)a2.ptr = dest[0].x * v3;
-    v2->y = dest[0].y * v3;
-    v2->z = dest[0].z * v3;
+    scalar = AI_GetFloatFromStack();
+    AI_GetVarFromStack(value, &var);
+    target = (Vec3*)var.ptr;
+    target->x = value[0].x * scalar;
+    target->y = value[0].y * scalar;
+    target->z = value[0].z * scalar;
     return node + 1;
 }
 
+// A vector divided by a scalar is a reciprocal multiply, as the
+// original has it.
 tAINode* AI_EvalKeyword_VecDivAffect(tAINode* node)
 {
-    Vec3* v2;
-    float v3;
-    float v4;
-    tVarStackElem a2;
-    Vec3 dest[2];
+    Vec3* target;
+    tVarStackElem var;
+    float divisor;
+    float reciprocal;
+    Vec3 value[2];
 
-    v4 = AI_GetFloatFromStack();
-    AI_GetVarFromStack(dest, &a2);
-    v3 = (float)(1.0 / v4);
-    v2 = (Vec3*)a2.ptr;
-    *(float*)a2.ptr = dest[0].x * v3;
-    v2->y = dest[0].y * v3;
-    v2->z = dest[0].z * v3;
+    divisor = AI_GetFloatFromStack();
+    AI_GetVarFromStack(value, &var);
+    reciprocal = (float)(1.0 / divisor);
+    target = (Vec3*)var.ptr;
+    target->x = value[0].x * reciprocal;
+    target->y = value[0].y * reciprocal;
+    target->z = value[0].z * reciprocal;
     return node + 1;
 }
 
+// Both of these work in the left operand's own stack slot and push it
+// back, so the subtraction and addition are in place.
 tAINode* AI_EvalKeyword_VecMinus(tAINode* node)
 {
-    Vec3* a3;
-    Vec3* dest;
+    Vec3* right;
+    Vec3* left;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    dest = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    MATH_SubstractVec(
-        (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack],
-        (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack],
-        a3);
-    AI_PutVecToStack(dest);
+    right = (Vec3*)AI_PopStackSlot();
+    left = (Vec3*)AI_PopStackSlot();
+    MATH_SubstractVec(left, left, right);
+    AI_PutVecToStack(left);
     return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecPlus(tAINode* arg0)
+tAINode* AI_EvalKeyword_VecPlus(tAINode* node)
 {
-    Vec3* a3;
-    Vec3* a1;
+    Vec3* right;
+    Vec3* left;
 
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a3 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    AI_gul_SizeGlobalStack -= 32;
-    --AI_gul_SizeGlobalVarStack;
-    a1 = (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
-    MATH_VecAddVec(
-        (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack],
-        (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack],
-        a3);
-    AI_PutVecToStack(a1);
-    return arg0 + 1;
+    right = (Vec3*)AI_PopStackSlot();
+    left = (Vec3*)AI_PopStackSlot();
+    MATH_VecAddVec(left, left, right);
+    AI_PutVecToStack(left);
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecMul(tAINode* arg0)
+/* Either operand may be the vector and the other the scalar, so these
+   two look at the second operand's type to find out which way round
+   they were given. The scalar is converted from int where it needs to
+   be. */
+tAINode* AI_EvalKeyword_VecMul(tAINode* node)
 {
-    float v2;
-    float v3;
-    Vec3 dest[4];
-    tVarStackElem v5;
-    Vec3 a1;
-    tVarStackElem a2;
+    Vec3 first[4];
+    Vec3 second;
+    tVarStackElem firstVar;
+    tVarStackElem secondVar;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(&a1, &v5);
-    if (v5.type == 3)
+    AI_GetVarFromStack(first, &firstVar);
+    AI_GetVarFromStack(&second, &secondVar);
+
+    if (secondVar.type == 3)
     {
-        if (a2.type != 2)
-        {
-            v3 = (float)(*(int32_t *)&(dest[0].x));
-            dest[0].x = v3;
-        }
-        a1.x = a1.x * dest[0].x;
-        a1.y = a1.y * dest[0].x;
-        a1.z = a1.z * dest[0].x;
-        AI_PutVecToStack(&a1);
+        // second is the vector, so first holds the scalar
+        if (firstVar.type != 2)
+            first[0].x = (float)(*(int32_t*)&(first[0].x));
+        second.x = second.x * first[0].x;
+        second.y = second.y * first[0].x;
+        second.z = second.z * first[0].x;
+        AI_PutVecToStack(&second);
     }
     else
     {
-        if (v5.type != 2)
-        {
-            v2 = (float)(*(int32_t *)&(a1.x));
-            a1.x = v2;
-        }
-        dest[0].x = dest[0].x * a1.x;
-        dest[0].y = dest[0].y * a1.x;
-        dest[0].z = dest[0].z * a1.x;
-        AI_PutVecToStack(dest);
+        if (secondVar.type != 2)
+            second.x = (float)(*(int32_t*)&(second.x));
+        first[0].x = first[0].x * second.x;
+        first[0].y = first[0].y * second.x;
+        first[0].z = first[0].z * second.x;
+        AI_PutVecToStack(first);
     }
-    return arg0 + 1;
+    return node + 1;
 }
 
-tAINode* AI_EvalKeyword_VecDiv(tAINode* arg0)
+tAINode* AI_EvalKeyword_VecDiv(tAINode* node)
 {
-    float v2;
-    float v3;
-    float v4;
-    float v5;
-    Vec3 dest[4];
-    tVarStackElem v7; 
-    Vec3 a1;
-    tVarStackElem a2;
+    Vec3 first[4];
+    Vec3 second;
+    tVarStackElem firstVar;
+    tVarStackElem secondVar;
+    float reciprocal;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(&a1, &v7);
-    if (v7.type == 3)
+    AI_GetVarFromStack(first, &firstVar);
+    AI_GetVarFromStack(&second, &secondVar);
+
+    if (secondVar.type == 3)
     {
-        if (a2.type != 2)
-        {
-            v3 = (float)(*(int32_t *)&(dest[0].x));
-            dest[0].x = v3;
-        }
-        v5 = (float)(1.0 / dest[0].x);
-        a1.x = a1.x * v5;
-        a1.y = a1.y * v5;
-        a1.z = a1.z * v5;
-        AI_PutVecToStack(&a1);
+        if (firstVar.type != 2)
+            first[0].x = (float)(*(int32_t*)&(first[0].x));
+        reciprocal = (float)(1.0 / first[0].x);
+        second.x = second.x * reciprocal;
+        second.y = second.y * reciprocal;
+        second.z = second.z * reciprocal;
+        AI_PutVecToStack(&second);
     }
     else
     {
-        if (v7.type != 2)
-        {
-            v2 = (float)(*(int32_t *)&(a1.x));
-            a1.x = v2;
-        }
-        v4 = (float)(1.0 / a1.x);
-        dest[0].x = dest[0].x * v4;
-        dest[0].y = dest[0].y * v4;
-        dest[0].z = dest[0].z * v4;
-        AI_PutVecToStack(dest);
+        if (secondVar.type != 2)
+            second.x = (float)(*(int32_t*)&(second.x));
+        reciprocal = (float)(1.0 / second.x);
+        first[0].x = first[0].x * reciprocal;
+        first[0].y = first[0].y * reciprocal;
+        first[0].z = first[0].z * reciprocal;
+        AI_PutVecToStack(first);
     }
-    return arg0 + 1;
+    return node + 1;
 }
 
+// The one-way form: the vector is always the first operand.
 tAINode* AI_EvalKeyword_VecMul2(tAINode* node)
 {
-    float v2;
-    Vec3 dest[4];
-    tVarStackElem v4;
-    float v5[13]; 
-    tVarStackElem a2;
+    Vec3 vec[4];
+    float scalar[13];
+    tVarStackElem vecVar;
+    tVarStackElem scalarVar;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(v5, &v4);
-    if (v4.type != 2)
-    {
-        v2 = (float)(*(int32_t *)&(v5[0]));
-        v5[0] = v2;
-    }
-    dest[0].x = dest[0].x * v5[0];
-    dest[0].y = dest[0].y * v5[0];
-    dest[0].z = dest[0].z * v5[0];
-    AI_PutVecToStack(dest);
+    AI_GetVarFromStack(vec, &vecVar);
+    AI_GetVarFromStack(scalar, &scalarVar);
+
+    if (scalarVar.type != 2)
+        scalar[0] = (float)(*(int32_t*)&(scalar[0]));
+
+    vec[0].x = vec[0].x * scalar[0];
+    vec[0].y = vec[0].y * scalar[0];
+    vec[0].z = vec[0].z * scalar[0];
+    AI_PutVecToStack(vec);
     return node + 1;
 }
 
+// The target's buffer is overwritten whole, so the value it was given
+// is only popped, never read.
 tAINode* AI_EvalKeyword_MsgAffect(tAINode* node)
 {
-    tMessage Src;
-    tVarStackElem v3;
-    tMessage dest;
-    tVarStackElem a2;
+    tMessage source;
+    tMessage target;
+    tVarStackElem sourceVar;
+    tVarStackElem targetVar;
 
-    AI_GetVarFromStack(&Src, &a2);
-    AI_GetVarFromStack(&dest, &v3);
-    memcpy(&dest, &Src, sizeof(dest));
-    AI_gast_Types[v3.type].funcptr((void *)&dest, (void*)v3.ptr);
+    AI_GetVarFromStack(&source, &sourceVar);
+    AI_GetVarFromStack(&target, &targetVar);
+    memcpy(&target, &source, sizeof(target));
+    AI_gast_Types[targetVar.type].funcptr((void*)&target, (void*)targetVar.ptr);
     return node + 1;
 }
 
+// A text reference is eight bytes of the fifty-two the pop can write.
 tAINode* AI_EvalKeyword_TextAffect(tAINode* node)
 {
-    char Src[52];
-    tVarStackElem v3;
-    char dest[52];
-    tVarStackElem a2;
+    char source[52];
+    char target[52];
+    tVarStackElem sourceVar;
+    tVarStackElem targetVar;
 
-    AI_GetVarFromStack(Src, &a2);
-    AI_GetVarFromStack(dest, &v3);
-    memcpy(dest, Src, 8u);
-    AI_gast_Types[v3.type].funcptr((void *)dest, (void*)v3.ptr);
+    AI_GetVarFromStack(source, &sourceVar);
+    AI_GetVarFromStack(target, &targetVar);
+    memcpy(target, source, 8u);
+    AI_gast_Types[targetVar.type].funcptr((void*)target, (void*)targetVar.ptr);
     return node + 1;
 }
 
 tAINode* AI_EvalKeyword_TextPlus(tAINode* node)
 {
-    int a1a[13];
-    tVarStackElem a2;
-    int dest[13];
-    tVarStackElem v5;
+    int text[13];
+    int offset[13];
+    tVarStackElem textVar;
+    tVarStackElem offsetVar;
 
-    AI_GetVarFromStack(dest, &a2);
-    AI_GetVarFromStack(a1a, &v5);
-    a1a[1] += dest[0];                            // tTextGet.idx += ..
-    AI_PutObjectToStack(a1a, v5.type);
+    AI_GetVarFromStack(offset, &offsetVar);
+    AI_GetVarFromStack(text, &textVar);
+    text[1] += offset[0];                            // tTextGet.idx += ..
+    AI_PutObjectToStack(text, textVar.type);
     return node + 1;
 }
 
