@@ -131,7 +131,76 @@ GFX_Flare_Render GFXF_f_depth f_9Factor_296"
 
 reveal_syms="STR_l_Effect_Reveal"
 
+math_syms="MATH_CreateTrigTables MATH_CreateSqrtTable MATH_CreateInvTable \
+MATH_CreateInvSqrtTable MATH_InitModule MATH_CopyMatrix \
+MATH_SetIdentityMatrix MATH_NormalizeVector MATH_CrossProduct \
+MATH_NormalizeEqualVector MATH_b_NulVector MATH_b_EqVectorWithEpsilon \
+MATH_f_VecSin MATH_f_VecCos MATH_f_VecAngle MATH_f_ZAngle MATH_f_XAngle \
+MATH_DistanceOfTwoPoints MATH_AddScaleVector MATH_TransformVector \
+MATH_TransformVertex MATH_TransformVectorNoScale \
+MATH_TransformVertexNoScale MATH_Copy33Matrix MATH_Mul33MatrixMatrix \
+MATH_Transp33MatrixWithoutBuffer MATH_InvertMatrix \
+MATH_VectorGlobalToLocal MATH_VertexGlobalToLocal MATH_GetScale \
+MATH_SetScale MATH_SetZoom MATH_NormalizeVectorWithNullVectorCheck \
+MATH_SetNormVector MATH_BlendVector MATH_b_VecColinear \
+MATH_InterpolateBetweenTwoPosWithFactor MATH_GetRotationMatrix \
+MATH_PointLineProjection MATH_PointSegmentProjection MATH_PowLimitedCE \
+MATH_i_SolveCubicEquation MATH_PointParabolProjection2D \
+MATH_PointParabolProjection3D MATH_VecRound MATH_GetZoom \
+MATH_SetZoomBuffered MATH_MakeOGLMatrix MATH_Mul44MatrixMatrix \
+MATH_MulMatrixMatrix MATH_MakeRotationMatrix_AxisAngle \
+MATH_RotateMatrix_AroundGlobalXAxis MATH_RotateMatrix_AroundGlobalYAxis \
+MATH_RotateMatrix_AroundGlobalZAxis MATH_RotateMatrix_AroundLocalXAxis \
+MATH_RotateMatrix_AroundLocalYAxis MATH_RotateMatrix_AroundLocalZAxis \
+MATH_MakeRotationMatrix_UsingSight MATH_MakeRotationMatrix_UsingBanking \
+MATH_OrientMatrix_UsingSight MATH_OrientMatrix_UsingBanking \
+MATH_InvertQuaternion MATH_NormQuat MATH_Invert33Matrix \
+MATH_TranspEq33Matrix MATH_Orthonormalize MATH_Slerp \
+MATH_ConvertQuaternionToMatrix MATH_InvNormalQuaternion \
+MATH_ConvertMatrixToQuaternion MATH_MatrixBlend MATH_QuaternionBlend \
+MATH_l_CalculateCorrectType MATH_b_TypeIsCorrect MATH_SetCorrectType \
+MATH_RoundVectorWithPrecision MATH_SubstractVec MATH_VecLen \
+MATH_f_PointLineDistance MATH_f_VecCosPlusArcCos \
+MATH_calc_curr_quat_from_dt_800 MATH_calc_curr_quat_from_dt_1000 \
+MATH_calc_curr_quat_from_dt_2000 MATH_calc_curr_quat_from_dt_4000 \
+MATH_calc_curr_quat_from_dt_8000 MATH_CompressQuaternion \
+MATH_DecompressQuaternion MATH_VecSet MATH_VecAddVec \
+MATH_VecAddVecWithoutBuffer MATH_VecMultScalar \
+MATH_VecMultScalarWithoutBuffer MATH_VecLenSquared MATH_SetNullVector \
+MATH_VecInvert MATH_VecMultNormScalar MATH_b_NulVectorWithEpsilon \
+MATH_LinearInterpolateFloats MATH_Matrix_AllocArray \
+MATH_Matrix_ReallocArray MATH_Matrix_Free MATH_Matrix_Alloc MATH_f_MaxOf3 \
+MATH_f_MinOf3 MATH_VecRotate MATH_GetCos MATH_GetSin MATH_GetSqrt \
+MATH_GetInverseSqrt MATH_GetInverse MATH_RandFloat MATH_RandFloatRange \
+MATH_DotProduct MATH_gf_1024by2Pi MATH_gd_magicDoubleForRound \
+MATH_gst_IdentityMatrix MATH_gstUnknownMatrix MATH_gst_IdentityVector \
+MATH_gst_BaseVectorI MATH_gst_BaseVectorJ MATH_gst_BaseVectorK \
+MATH_gst_NulVector MATH_gf_TableSin MATH_gl_TableRacine \
+MATH_gl_TableInverse MATH_gl_TableInverseRacine MATH_gst_BlendQuatFrom \
+MATH_gst_BlendQuatTo MATH_gf_BlendTheta MATH_gf_BlendInvSinTheta \
+float_get_max_of_3vals_sub_48BBB0 float_get_min_of_3vals_sub_48BB80 Q0_137 \
+Q1_138 fTheta_139 fInvSinTheta_140"
+
+
 FILTER=$1
+
+run_math() {
+    name=math
+    [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' "$name"
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c math.c -o "$OUT/math.new.o" $(defs NEW_ $math_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/baseline_math.c -o "$OUT/math.base.o" $(defs BASE_ $math_syms)
+    $CC $CFLAGS -c tests/math_mocks.c -o "$OUT/math.mocks.o"
+    $CC $CFLAGS -c tests/test_math.c -o "$OUT/math.drv.o"
+    $CC "$OUT/math.new.o" "$OUT/math.base.o" "$OUT/math.mocks.o" \
+        "$OUT/math.drv.o" -o "$OUT/math" -lm
+    "$OUT/math" || fails=$((fails + 1))
+    echo
+}
+
+run_math
 
 run_one snakemodifier modifiers/snakemodifier.c \
         tests/baseline_snakemodifier.c modifiers "$snake_syms"

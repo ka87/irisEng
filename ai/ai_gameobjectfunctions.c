@@ -1902,7 +1902,7 @@ float AI_EvalFunc_OBJ_ZoomGet_C(struct sGameObjectMain* gao)
     Vec3 scale;
 
     MATH_GetScale(&scale, gao->matrices);
-    return float_get_max_of_3vals_sub_48BBB0(scale.x, scale.y, scale.z);
+    return MATH_f_MaxOf3(scale.x, scale.y, scale.z);
 }
 
 tAINode* AI_EvalFunc_OBJ_ZoomGet(tAINode* node)

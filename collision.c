@@ -2661,19 +2661,19 @@ void COL_ColMap_Triangles_RayCast(tGameObjectMain* gao, tColMap* colMap)
                 v37 = v19->x;
                 if (v47->x <= 0.0)
                 {
-                    v25 = float_get_min_of_3vals_sub_48BB80(v37, v40, v43);
+                    v25 = MATH_f_MinOf3(v37, v40, v43);
                     if (v25 > dest.x)
                         goto LABEL_59;
-                    v26 = float_get_max_of_3vals_sub_48BBB0(v19->x, v18->x, v20->x);
+                    v26 = MATH_f_MaxOf3(v19->x, v18->x, v20->x);
                     if (v26 < v55)
                         goto LABEL_59;
                 }
                 else
                 {
-                    v23 = float_get_max_of_3vals_sub_48BBB0(v37, v40, v43);
+                    v23 = MATH_f_MaxOf3(v37, v40, v43);
                     if (v23 < dest.x)
                         goto LABEL_59;
-                    v24 = float_get_min_of_3vals_sub_48BB80(v19->x, v18->x, v20->x);
+                    v24 = MATH_f_MinOf3(v19->x, v18->x, v20->x);
                     if (v24 > v55)
                         goto LABEL_59;
                 }
@@ -2682,19 +2682,19 @@ void COL_ColMap_Triangles_RayCast(tGameObjectMain* gao, tColMap* colMap)
                 v38 = v19->y;
                 if (v47->y <= 0.0)
                 {
-                    v29 = float_get_min_of_3vals_sub_48BB80(v38, v41, v44);
+                    v29 = MATH_f_MinOf3(v38, v41, v44);
                     if (v29 > dest.y)
                         goto LABEL_59;
-                    v30 = float_get_max_of_3vals_sub_48BBB0(v19->y, v18->y, v20->y);
+                    v30 = MATH_f_MaxOf3(v19->y, v18->y, v20->y);
                     if (v30 < v56)
                         goto LABEL_59;
                 }
                 else
                 {
-                    v27 = float_get_max_of_3vals_sub_48BBB0(v38, v41, v44);
+                    v27 = MATH_f_MaxOf3(v38, v41, v44);
                     if (v27 < dest.y)
                         goto LABEL_59;
-                    v28 = float_get_min_of_3vals_sub_48BB80(v19->y, v18->y, v20->y);
+                    v28 = MATH_f_MinOf3(v19->y, v18->y, v20->y);
                     if (v28 > v56)
                         goto LABEL_59;
                 }
@@ -2703,19 +2703,19 @@ void COL_ColMap_Triangles_RayCast(tGameObjectMain* gao, tColMap* colMap)
                 v39 = v19->z;
                 if (v47->z <= 0.0)
                 {
-                    v33 = float_get_min_of_3vals_sub_48BB80(v39, v42, v45);
+                    v33 = MATH_f_MinOf3(v39, v42, v45);
                     if (v33 > dest.z)
                         goto LABEL_59;
-                    v34 = float_get_max_of_3vals_sub_48BBB0(v19->z, v18->z, v20->z);
+                    v34 = MATH_f_MaxOf3(v19->z, v18->z, v20->z);
                     if (v34 < v57)
                         goto LABEL_59;
                 }
                 else
                 {
-                    v31 = float_get_max_of_3vals_sub_48BBB0(v39, v42, v45);
+                    v31 = MATH_f_MaxOf3(v39, v42, v45);
                     if (v31 < dest.z)
                         goto LABEL_59;
-                    v32 = float_get_min_of_3vals_sub_48BB80(v19->z, v18->z, v20->z);
+                    v32 = MATH_f_MinOf3(v19->z, v18->z, v20->z);
                     if (v32 > v57)
                         goto LABEL_59;
                 }
@@ -2968,19 +2968,19 @@ void COL_ColMap_OK3_RayCast(tGameObjectMain* gao, tColMap* colMap)
                                     v49 = v24->x;
                                     if (v57->x <= 0.0)
                                     {
-                                        v35 = float_get_min_of_3vals_sub_48BB80(v49, v30, v54);
+                                        v35 = MATH_f_MinOf3(v49, v30, v54);
                                         if (v35 > dest.x)
                                             goto LABEL_64;
-                                        v36 = float_get_max_of_3vals_sub_48BBB0(v24->x, v25->x, v23->x);
+                                        v36 = MATH_f_MaxOf3(v24->x, v25->x, v23->x);
                                         if (v36 < v68)
                                             goto LABEL_64;
                                     }
                                     else
                                     {
-                                        v33 = float_get_max_of_3vals_sub_48BBB0(v49, v30, v54);
+                                        v33 = MATH_f_MaxOf3(v49, v30, v54);
                                         if (v33 < dest.x)
                                             goto LABEL_64;
-                                        v34 = float_get_min_of_3vals_sub_48BB80(v24->x, v25->x, v23->x);
+                                        v34 = MATH_f_MinOf3(v24->x, v25->x, v23->x);
                                         if (v34 > v68)
                                             goto LABEL_64;
                                     }
@@ -2989,19 +2989,19 @@ void COL_ColMap_OK3_RayCast(tGameObjectMain* gao, tColMap* colMap)
                                     v50 = v24->y;
                                     if (v57->y <= 0.0)
                                     {
-                                        v39 = float_get_min_of_3vals_sub_48BB80(v50, v52, v55);
+                                        v39 = MATH_f_MinOf3(v50, v52, v55);
                                         if (v39 > dest.y)
                                             goto LABEL_64;
-                                        v40 = float_get_max_of_3vals_sub_48BBB0(v24->y, v25->y, v23->y);
+                                        v40 = MATH_f_MaxOf3(v24->y, v25->y, v23->y);
                                         if (v40 < v69)
                                             goto LABEL_64;
                                     }
                                     else
                                     {
-                                        v37 = float_get_max_of_3vals_sub_48BBB0(v50, v52, v55);
+                                        v37 = MATH_f_MaxOf3(v50, v52, v55);
                                         if (v37 < dest.y)
                                             goto LABEL_64;
-                                        v38 = float_get_min_of_3vals_sub_48BB80(v24->y, v25->y, v23->y);
+                                        v38 = MATH_f_MinOf3(v24->y, v25->y, v23->y);
                                         if (v38 > v69)
                                             goto LABEL_64;
                                     }
@@ -3010,19 +3010,19 @@ void COL_ColMap_OK3_RayCast(tGameObjectMain* gao, tColMap* colMap)
                                     v51 = v24->z;
                                     if (v57->z <= 0.0)
                                     {
-                                        v43 = float_get_min_of_3vals_sub_48BB80(v51, v53, v56);
+                                        v43 = MATH_f_MinOf3(v51, v53, v56);
                                         if (v43 > dest.z)
                                             goto LABEL_64;
-                                        v44 = float_get_max_of_3vals_sub_48BBB0(v24->z, v25->z, v23->z);
+                                        v44 = MATH_f_MaxOf3(v24->z, v25->z, v23->z);
                                         if (v44 < v70)
                                             goto LABEL_64;
                                     }
                                     else
                                     {
-                                        v41 = float_get_max_of_3vals_sub_48BBB0(v51, v53, v56);
+                                        v41 = MATH_f_MaxOf3(v51, v53, v56);
                                         if (v41 < dest.z)
                                             goto LABEL_64;
-                                        v42 = float_get_min_of_3vals_sub_48BB80(v24->z, v25->z, v23->z);
+                                        v42 = MATH_f_MinOf3(v24->z, v25->z, v23->z);
                                         if (v42 > v70)
                                             goto LABEL_64;
                                     }
@@ -3299,19 +3299,19 @@ void COL_Visual_OK3_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
                                     v52 = v23->x;
                                     if (v61->x <= 0.0)
                                     {
-                                        v34 = float_get_min_of_3vals_sub_48BB80(v29, v52, v56);
+                                        v34 = MATH_f_MinOf3(v29, v52, v56);
                                         if (v34 > dest.x)
                                             goto LABEL_56;
-                                        v35 = float_get_max_of_3vals_sub_48BBB0(v22->x, v23->x, v24->x);
+                                        v35 = MATH_f_MaxOf3(v22->x, v23->x, v24->x);
                                         if (v35 < v69)
                                             goto LABEL_56;
                                     }
                                     else
                                     {
-                                        v32 = float_get_max_of_3vals_sub_48BBB0(v29, v52, v56);
+                                        v32 = MATH_f_MaxOf3(v29, v52, v56);
                                         if (v32 < dest.x)
                                             goto LABEL_56;
-                                        v33 = float_get_min_of_3vals_sub_48BB80(v22->x, v23->x, v24->x);
+                                        v33 = MATH_f_MinOf3(v22->x, v23->x, v24->x);
                                         if (v33 > v69)
                                             goto LABEL_56;
                                     }
@@ -3320,19 +3320,19 @@ void COL_Visual_OK3_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
                                     v50 = v22->y;
                                     if (v61->y <= 0.0)
                                     {
-                                        v38 = float_get_min_of_3vals_sub_48BB80(v50, v53, v57);
+                                        v38 = MATH_f_MinOf3(v50, v53, v57);
                                         if (v38 > dest.y)
                                             goto LABEL_56;
-                                        v39 = float_get_max_of_3vals_sub_48BBB0(v22->y, v23->y, v24->y);
+                                        v39 = MATH_f_MaxOf3(v22->y, v23->y, v24->y);
                                         if (v39 < v70)
                                             goto LABEL_56;
                                     }
                                     else
                                     {
-                                        v36 = float_get_max_of_3vals_sub_48BBB0(v50, v53, v57);
+                                        v36 = MATH_f_MaxOf3(v50, v53, v57);
                                         if (v36 < dest.y)
                                             goto LABEL_56;
-                                        v37 = float_get_min_of_3vals_sub_48BB80(v22->y, v23->y, v24->y);
+                                        v37 = MATH_f_MinOf3(v22->y, v23->y, v24->y);
                                         if (v37 > v70)
                                             goto LABEL_56;
                                     }
@@ -3341,19 +3341,19 @@ void COL_Visual_OK3_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
                                     v51 = v22->z;
                                     if (v61->z <= 0.0)
                                     {
-                                        v42 = float_get_min_of_3vals_sub_48BB80(v51, v54, v58);
+                                        v42 = MATH_f_MinOf3(v51, v54, v58);
                                         if (v42 > dest.z)
                                             goto LABEL_56;
-                                        v43 = float_get_max_of_3vals_sub_48BBB0(v22->z, v23->z, v24->z);
+                                        v43 = MATH_f_MaxOf3(v22->z, v23->z, v24->z);
                                         if (v43 < v71)
                                             goto LABEL_56;
                                     }
                                     else
                                     {
-                                        v40 = float_get_max_of_3vals_sub_48BBB0(v51, v54, v58);
+                                        v40 = MATH_f_MaxOf3(v51, v54, v58);
                                         if (v40 < dest.z)
                                             goto LABEL_56;
-                                        v41 = float_get_min_of_3vals_sub_48BB80(v22->z, v23->z, v24->z);
+                                        v41 = MATH_f_MinOf3(v22->z, v23->z, v24->z);
                                         if (v41 > v71)
                                             goto LABEL_56;
                                     }
@@ -3592,19 +3592,19 @@ void COL_Visual_Triangles_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
             v40 = v16->x;
             if (v45->x <= 0.0)
             {
-                v21 = float_get_min_of_3vals_sub_48BB80(v18, v15, v40);
+                v21 = MATH_f_MinOf3(v18, v15, v40);
                 if (v21 > v46.x)
                     goto LABEL_47;
-                v22 = float_get_max_of_3vals_sub_48BBB0(v12->x, v13->x, v16->x);
+                v22 = MATH_f_MaxOf3(v12->x, v13->x, v16->x);
                 if (v22 < v52)
                     goto LABEL_47;
             }
             else
             {
-                v19 = float_get_max_of_3vals_sub_48BBB0(v18, v15, v40);
+                v19 = MATH_f_MaxOf3(v18, v15, v40);
                 if (v19 < v46.x)
                     goto LABEL_47;
-                v20 = float_get_min_of_3vals_sub_48BB80(v12->x, v13->x, v16->x);
+                v20 = MATH_f_MinOf3(v12->x, v13->x, v16->x);
                 if (v20 > v52)
                     goto LABEL_47;
             }
@@ -3613,19 +3613,19 @@ void COL_Visual_Triangles_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
             v36 = v12->y;
             if (v45->y <= 0.0)
             {
-                v25 = float_get_min_of_3vals_sub_48BB80(v36, v38, v41);
+                v25 = MATH_f_MinOf3(v36, v38, v41);
                 if (v25 > v46.y)
                     goto LABEL_47;
-                v26 = float_get_max_of_3vals_sub_48BBB0(v12->y, v13->y, v16->y);
+                v26 = MATH_f_MaxOf3(v12->y, v13->y, v16->y);
                 if (v26 < v53)
                     goto LABEL_47;
             }
             else
             {
-                v23 = float_get_max_of_3vals_sub_48BBB0(v36, v38, v41);
+                v23 = MATH_f_MaxOf3(v36, v38, v41);
                 if (v23 < v46.y)
                     goto LABEL_47;
-                v24 = float_get_min_of_3vals_sub_48BB80(v12->y, v13->y, v16->y);
+                v24 = MATH_f_MinOf3(v12->y, v13->y, v16->y);
                 if (v24 > v53)
                     goto LABEL_47;
             }
@@ -3634,19 +3634,19 @@ void COL_Visual_Triangles_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
             v37 = v12->z;
             if (v45->z <= 0.0)
             {
-                v29 = float_get_min_of_3vals_sub_48BB80(v37, v39, v42);
+                v29 = MATH_f_MinOf3(v37, v39, v42);
                 if (v29 > v46.z)
                     goto LABEL_47;
-                v30 = float_get_max_of_3vals_sub_48BBB0(v12->z, v13->z, v16->z);
+                v30 = MATH_f_MaxOf3(v12->z, v13->z, v16->z);
                 if (v30 < v54)
                     goto LABEL_47;
             }
             else
             {
-                v27 = float_get_max_of_3vals_sub_48BBB0(v37, v39, v42);
+                v27 = MATH_f_MaxOf3(v37, v39, v42);
                 if (v27 < v46.z)
                     goto LABEL_47;
-                v28 = float_get_min_of_3vals_sub_48BB80(v12->z, v13->z, v16->z);
+                v28 = MATH_f_MinOf3(v12->z, v13->z, v16->z);
                 if (v28 > v54)
                     goto LABEL_47;
             }
@@ -3827,7 +3827,7 @@ void COL_ColMap_Sphere_RayCast(tGameObjectMain* a1, tCobNormalObjectGeneric* a2)
         v5 = OBJ_pst_GetAbsoluteMatrix(v2);
         MATH_GetScale(&v13, v5);
         v16 = ((tColSphere*)(v3->enclosurePtr))->radius;
-        v6 = float_get_max_of_3vals_sub_48BBB0(v13.x, v13.y, v13.z);
+        v6 = MATH_f_MaxOf3(v13.x, v13.y, v13.z);
         v7 = v6 * v16;
     }
     else
@@ -4388,7 +4388,7 @@ void COL_A_BCS_ComputeZDxInfo(tColGlobal* a1)
             if ((a1->colInstGaoMatrices->mtxflag & 8) != 0)
             {
                 MATH_GetScale(&scale, a1->colInstGaoMatrices);
-                a1->radius = float_get_max_of_3vals_sub_48BBB0(scale.x, scale.y, scale.z) * v2->radius;
+                a1->radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * v2->radius;
             LABEL_7:
                 v3 = &a1->centerPos;
                 MATH_TransformVertexNoScale(&a1->centerPos, &a1->colMapGaoInvMatrix, &dest);
@@ -4456,7 +4456,7 @@ void COL_A_BCS_ComputeZDxInfo(tColGlobal* a1)
                 {
                     MATH_GetScale(&scale, v7);
                     v27 = v26->radius;
-                    a1->dynRadius = float_get_max_of_3vals_sub_48BBB0(scale.x, scale.y, scale.z) * v27 + a1->dynRadius;
+                    a1->dynRadius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * v27 + a1->dynRadius;
                 }
                 return;
             }
@@ -4487,7 +4487,7 @@ void COL_A_BCS_ComputeZDxInfo(tColGlobal* a1)
         if ((a1->colInstGaoMatrices->mtxflag & 8) != 0)
         {
             MATH_GetScale(&scale, a1->colInstGaoMatrices);
-            a1->radius = float_get_max_of_3vals_sub_48BBB0(scale.x, scale.y, scale.z) * v28;
+            a1->radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * v28;
         }
         else
         {
@@ -4557,7 +4557,7 @@ void COL_A_BCS_ComputeZDxInfo(tColGlobal* a1)
     else
     {
         MATH_GetScale(&scale, v21);
-        a1->dynRadius = float_get_max_of_3vals_sub_48BBB0(scale.x, scale.y, scale.z) * v28 + a1->dynRadius;
+        a1->dynRadius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * v28 + a1->dynRadius;
     }
 }
 
@@ -4673,7 +4673,7 @@ void INT_PointTriangleClosestPointGet(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Ve
         v11 = v14.z * v14.z + v14.x * v14.x + v14.y * v14.y;
         v12 = a4a.z * a4a.z + a4a.y * a4a.y + a4a.x * a4a.x;
         v13 = (float)(v9 * v9 + v8 * v8 + v7 * v7);
-        v10 = float_get_max_of_3vals_sub_48BBB0(v11, v12, v13);
+        v10 = MATH_f_MaxOf3(v11, v12, v13);
         if (v10 == v11)
         {
             INT_PointLineClosestPoint(a5, a2, a3, &a4a, a6);
@@ -5445,12 +5445,12 @@ LABEL_31:
     v20 = v17[v16].x;
     a5b = v16;
     v21 = &v17[v16];
-    if (float_get_max_of_3vals_sub_48BBB0(v18->x, v19->x, v20) >= (double)a6->x
-        && float_get_min_of_3vals_sub_48BB80(v18->x, v19->x, v21->x) <= (double)a7->x
-        && float_get_max_of_3vals_sub_48BBB0(v18->y, v19->y, v21->y) >= (double)a6->y
-        && float_get_min_of_3vals_sub_48BB80(v18->y, v19->y, v21->y) <= (double)a7->y
-        && float_get_max_of_3vals_sub_48BBB0(v18->z, v19->z, v21->z) >= (double)a6->z
-        && float_get_min_of_3vals_sub_48BB80(v18->z, v19->z, v21->z) <= (double)a7->z)
+    if (MATH_f_MaxOf3(v18->x, v19->x, v20) >= (double)a6->x
+        && MATH_f_MinOf3(v18->x, v19->x, v21->x) <= (double)a7->x
+        && MATH_f_MaxOf3(v18->y, v19->y, v21->y) >= (double)a6->y
+        && MATH_f_MinOf3(v18->y, v19->y, v21->y) <= (double)a7->y
+        && MATH_f_MaxOf3(v18->z, v19->z, v21->z) >= (double)a6->z
+        && MATH_f_MinOf3(v18->z, v19->z, v21->z) <= (double)a7->z)
     {
         if (colglobal->collInstanceElem->elemType == 2)
             COL_Sphere_Triangle(colglobal, a2, a3b, a4b, a5b, a3, a5, a4, a8);
@@ -5839,7 +5839,7 @@ int COL_ZDM_Sphere(tColGlobal* a2)
     if ((v6->mtxflag & 8) != 0)
     {
         MATH_GetScale(&a1, v6);
-        v9 = float_get_max_of_3vals_sub_48BBB0(a1.x, a1.y, a1.z) * ((tColSphere*)(((tCobNormalObjectGeneric*)(v3->objectPtrByType))->enclosurePtr))->radius;
+        v9 = MATH_f_MaxOf3(a1.x, a1.y, a1.z) * ((tColSphere*)(((tCobNormalObjectGeneric*)(v3->objectPtrByType))->enclosurePtr))->radius;
         v10.x = v10.x * a1.x;
         v10.y = v10.y * a1.y;
         v10.z = v10.z * a1.z;
@@ -12725,7 +12725,7 @@ int COL_ZDE_PivotCollide(struct sGameObjectMain* a1, uint8_t id, struct sGameObj
                                                 v23 = &(((tColSphere*)(v10->elemShapePtr))->center);
                                                 v14 = OBJ_pst_GetAbsoluteMatrix(v4);
                                                 MATH_TransformVertex(&v30, v14, v23);
-                                                v15 = float_get_max_of_3vals_sub_48BBB0(v27.x, v27.y, v27.z) * ((tColSphere*)(v10->elemShapePtr))->radius;
+                                                v15 = MATH_f_MaxOf3(v27.x, v27.y, v27.z) * ((tColSphere*)(v10->elemShapePtr))->radius;
                                             }
                                             a1b = (float)v15;
                                             v27.x = a3a.x - v30.x;
@@ -12805,7 +12805,7 @@ void COL_Zone_Transform(tColInstanceElem* a1, tGameObjectMain* a2, Vec3* dest, V
         {
             MATH_GetScale(&scale, v4);
             MATH_TransformVertex(dest, v4, &(((tColSphere*)(a1->elemShapePtr))->center));
-            a4->x = float_get_max_of_3vals_sub_48BBB0(scale.x, scale.y, scale.z) * ((tColSphere*)(a1->elemShapePtr))->radius;
+            a4->x = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * ((tColSphere*)(a1->elemShapePtr))->radius;
         }
     }
 }
@@ -13071,7 +13071,7 @@ int COL_ZDE_BVCenterCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGame
                                                 v19 = &(((tColSphere*)(v10->elemShapePtr))->center);
                                                 v12 = OBJ_pst_GetAbsoluteMatrix(v4);
                                                 MATH_TransformVertex(&v26, v12, v19);
-                                                v13 = float_get_max_of_3vals_sub_48BBB0(v23.x, v23.y, v23.z)
+                                                v13 = MATH_f_MaxOf3(v23.x, v23.y, v23.z)
                                                     * ((tColSphere*)(v10->elemShapePtr))->radius;
                                             }
                                             a1b = (float)v13;
@@ -13297,7 +13297,7 @@ BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, stru
             {
                 v31 = OBJ_pst_GetAbsoluteMatrix(a4);
                 MATH_GetScale(&dest, v31);
-                v47 = float_get_max_of_3vals_sub_48BBB0(dest.x, dest.y, dest.z) * v47;
+                v47 = MATH_f_MaxOf3(dest.x, dest.y, dest.z) * v47;
             }
             result = INT_SphereOBBox(&a3a, v47, &v49, &v50, 0);
         }
@@ -13365,7 +13365,7 @@ BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, stru
             {
                 v22 = OBJ_pst_GetAbsoluteMatrix(a1);
                 MATH_GetScale(&a3a, v22);
-                a4a = float_get_max_of_3vals_sub_48BBB0(a3a.x, a3a.y, a3a.z) * a4a;
+                a4a = MATH_f_MaxOf3(a3a.x, a3a.y, a3a.z) * a4a;
             }
             result = INT_SphereOBBox(&dest, a4a, &v51, &v49, 0);
         }
@@ -13745,12 +13745,12 @@ int COL_TriangleCollision(Vec3* a1, Vec3* src, Vec3* a3, Vec3* a4, struct sWorld
     v9 = src;
     v28 = 0;
     v32 = -100000.0f;
-    v37 = float_get_min_of_3vals_sub_48BB80(a1->x, src->x, a3->x);
-    v38 = float_get_min_of_3vals_sub_48BB80(a1->y, src->y, a3->y);
-    v39 = float_get_min_of_3vals_sub_48BB80(a1->z, src->z, a3->z);
-    v48 = float_get_max_of_3vals_sub_48BBB0(a1->x, src->x, a3->x);
-    v49 = float_get_max_of_3vals_sub_48BBB0(a1->y, src->y, a3->y);
-    v50 = float_get_max_of_3vals_sub_48BBB0(a1->z, src->z, a3->z);
+    v37 = MATH_f_MinOf3(a1->x, src->x, a3->x);
+    v38 = MATH_f_MinOf3(a1->y, src->y, a3->y);
+    v39 = MATH_f_MinOf3(a1->z, src->z, a3->z);
+    v48 = MATH_f_MaxOf3(a1->x, src->x, a3->x);
+    v49 = MATH_f_MaxOf3(a1->y, src->y, a3->y);
+    v50 = MATH_f_MaxOf3(a1->z, src->z, a3->z);
     v10 = a5->eot.collMapObjectsTablePF.firstElemPtr;
     v29 = v10;
     v36 = ((tableElemStructPF*)(a5->eot.collMapObjectsTablePF.nextElemPtr)) - 1;
@@ -14132,7 +14132,7 @@ float COL_ZDx_SizeGet(struct sGameObjectMain* a1, uint8_t a2)
         a3 = v6->pos1.z - v6->pos2.z;
         a2a = v6->pos1.y - v6->pos2.y;
         a1a = v6->pos1.x - v6->pos2.x;
-        result = float_get_max_of_3vals_sub_48BBB0(a1a, a2a, a3);
+        result = MATH_f_MaxOf3(a1a, a2a, a3);
     }
     else if (v5->elemType == 2)
     {
