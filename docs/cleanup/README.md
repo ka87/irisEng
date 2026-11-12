@@ -51,12 +51,19 @@ which are available where this work is done, so "it still compiles" is
 not free. Two things stand in for it.
 
 **A stub include set** (`tests/stub/`) is enough for a native `gcc
--fsyntax-only` to parse the real sources: `windows.h`, `d3d9.h` and
+-fsyntax-only -Werror=implicit-function-declaration` to parse the real
+sources: `windows.h`, `d3d9.h` and
 `dsound.h` with the types the engine actually names, and a few empty
 headers. It catches what a compiler catches — a mistyped name, a lost
 brace, a changed signature. It does not prove behaviour, and it is not
 the real toolchain: every batch should still be built under MSVC before
 it is merged.
+
+`-Werror=implicit-function-declaration` is part of the check and earns
+its place: a first draft of `gfx/gfxdesintegrate.c` called a
+`MATH_SetNullVector` that did not exist, and without that flag it
+parsed clean. The corpus has no other implicit declaration, so the flag
+costs nothing and catches every invented call.
 
 **Differential tests** (`tests/`) compile the old and the new copy of a
 file into one binary, run both over identical state, and compare the
@@ -297,3 +304,96 @@ against a scratch copy with those two methods and their four
 render-state constants added; the addition belongs in whichever of the
 gfx pass and this one lands second, since both touch
 `tests/stub/d3d9.h`.
+### 4. gfx/
+
+**Done.** Full record in [gfx.md](gfx.md).
+
+Twenty files in the build, seventeen of them rewritten: **7,131 lines
+to 4,834**, and the directory as a whole **8,395 to 6,098**. All
+twenty parse, the **36** `goto`s are gone, and no source or header in
+the directory carries a decompiler-named local or parameter.
+
+`gfx/gfxexplode__.c` is left alone on purpose: it is not in the
+project file, it is a second copy of `gfxexplode.c`, and it names a
+`vecPtr` member its own header does not declare, so it would not build
+if it were added.
+
+Five test binaries cover twelve of the seventeen, **887 cases**, with
+every comparable path equivalent. Three new things in the test
+infrastructure, each of which earned its place:
+
+- **The real `math.c` is linked rather than mocked.** It compiles
+  standalone under the stub set, so the trig and reciprocal tables,
+  the vector helpers and the random sequence are the engine's own.
+- **The 15-bit generator is supplied.** `MATH_RandFloat` scales
+  `rand()` by `1/SHRT_MAX`, which assumes MSVC's 15-bit `rand`; under
+  glibc's 31-bit one the spark's emission speeds came out in the tens
+  of thousands and the comparison measured rounding in a domain the
+  effect never enters.
+- **The allocator leaks on purpose and carries a guard band.** The
+  first side's state has to stay readable while the second side runs,
+  so nothing is handed back between them and the call log carries the
+  allocation sequence instead; and every block sits 64 bytes into a
+  larger one, because a frozen copy that writes a little way before
+  its block makes glibc abort the process where the real engine runs
+  on. Without the guard, one binary died at its first table case and
+  five groups of later cases never ran.
+
+#### What the tests found that nothing else would have
+
+- **`gfxtable.c` wrote its vertex colours outside the array.** The
+  colour cursor ran backwards, so each cell wrote the indices `4n+1`,
+  `4n`, `4n-1` and `4n-2`: the first cell stored two ints in front of
+  the colour array and every later cell overwrote its neighbour's.
+  Fixed, commented at the site as the user asked for the
+  `explodemodifier` fix, and checked by the test against what the
+  geometry wants rather than against the frozen copy.
+- **`gfxflare.c`'s sub-flare chain read nine structs, not nine
+  fields.** The frozen copy steps a cursor of the whole effect's type,
+  so eight of the nine sub-flares come out of memory the effect does
+  not own — the test saw materials of `0xBF800000` and `0x56EE3E3B`
+  where the rewrite reads 4, 5, 6. The rewrite's reading is four
+  parallel runs of nine consecutive fields, which is the batch's find.
+- **`gfxprofiler.c`'s slice-count setter divides 255 by it**, in both
+  copies, so a count of zero faults. Not this pass's defect, left
+  alone, and named where the test leaves the case out.
+
+#### Two more mis-typed cursors, decoded
+
+Neither is visible to a test, because both read memory the effect does
+not own in the frozen copy:
+
+- `gfxsun.c`'s `D3D_SetSunEffectOnOff` stepped a struct pointer
+  through an array of pointers. `gD3dSunSurfaces` and
+  `gSunEffectOnOffArray` are parallel sixteen-entry tables and are now
+  walked by index.
+- `gfxdiaphragm.c`'s eight blades were unrolled eight times with the
+  blade angle as a literal in each copy. They are a `for` over a
+  `static const double[8]` of the frozen copy's own rounded `pi/4`
+  steps, so the geometry is bit-identical — which the test confirms.
+
+#### Preserved rather than fixed
+
+Each with a line in the file saying so: `gfxdesintegrate.c`'s chunk
+element source (every chunk copies from the first chunk's array
+indexed by the chunk number), `gfxflare.c`'s nine-sample depth window
+(the cursor reads one float in front of its table and never reads the
+last entry), `gfxspark.c`'s unreachable four-vertex paths, the
+lightning pattern spread that reads back the buffer it has just
+cleared, the lightning render's double time step, `gfxtable.c`'s
+off-by-one `Setv` bound and its `Create` writing two of three arrays
+at index zero ten times over.
+
+#### The float differences
+
+| test | floats differing | worst absolute | worst relative |
+|---|---|---|---|
+| `gfxgrid` | 1,196 | 1.4e-06 | 2.6e-05 (abs 2.4e-07) |
+| `gfxlightning` | 0 | — | — |
+| `gfxspark` | 359 | 2.4e-07 | 1.4e-05 (abs 4.0e-08) |
+| `gfxprofiler` | 353 | 2.4e-07 | 1.5e-05 (abs 1.2e-07) |
+| `gfxdraw` | 240 | 1.5e-05 | 6.0e-07 (abs 1.5e-08) |
+
+Same class as `modifiers/` and accepted for the same reason. The
+lightning bolt is the one file in the directory where nothing moved at
+all.

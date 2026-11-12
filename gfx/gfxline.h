@@ -10,5 +10,5 @@ typedef struct sGfxLineData
     int vertexColor;
 } tGfxLineData;
 
-void GFX_Line_Render(struct sGfxLineData* a1);
-struct sGfxLineData* GFX_Line_Create();
+void GFX_Line_Render(struct sGfxLineData* line);
+struct sGfxLineData* GFX_Line_Create(void);

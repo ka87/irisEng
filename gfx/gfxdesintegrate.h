@@ -28,6 +28,6 @@ typedef struct sGfxDesintegrateData
     uint8_t x[12];
 } tGfxDesintegrateData;
 
-struct sGfxDesintegrateData* GFX_Desintegrate_Create(struct sGameObjectMain* a1);
-void GFX_Desintegrate_Destroy(struct sGfxDesintegrateData* a1);
-int GFX_i_Desintegrate_Render(struct sGfxDesintegrateData* a1);
+struct sGfxDesintegrateData* GFX_Desintegrate_Create(struct sGameObjectMain* gao);
+void GFX_Desintegrate_Destroy(struct sGfxDesintegrateData* desint);
+int GFX_i_Desintegrate_Render(struct sGfxDesintegrateData* desint);

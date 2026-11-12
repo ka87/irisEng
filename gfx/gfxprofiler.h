@@ -46,7 +46,7 @@ typedef struct sGfxProfilerData
     int LPPNum;
     tGfxProfilerPtr1Data* ptr1;
     int num;
-    int a1;
+    int currentSlice;
     unsigned int* ptr3;
     tGfxProfilerPtr4Data* ptr4;
     int triangleNum;
@@ -62,9 +62,9 @@ typedef struct sGfxProfilerData
     int xxxxx;
 } tGfxProfilerData;
 
-struct sGfxProfilerData* GFX_Profiler_Create();
-void GFX_Profiler_Destroy(struct sGfxProfilerData* a1);
-int GFX_i_Profiler_Render(struct sGfxProfilerData* a1);
-void GFX_Profiler_Seti(struct sGfxProfilerData* a1, int a2, int a3);
-void GFX_Profiler_Setf(struct sGfxProfilerData* a1, int a2, float a3);
-void GFX_Profiler_Setv(struct sGfxProfilerData* a1, int a2, Vec3* a3);
+struct sGfxProfilerData* GFX_Profiler_Create(void);
+void GFX_Profiler_Destroy(struct sGfxProfilerData* prof);
+int GFX_i_Profiler_Render(struct sGfxProfilerData* prof);
+void GFX_Profiler_Seti(struct sGfxProfilerData* prof, int id, int value);
+void GFX_Profiler_Setf(struct sGfxProfilerData* prof, int id, float value);
+void GFX_Profiler_Setv(struct sGfxProfilerData* prof, int id, Vec3* value);

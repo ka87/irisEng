@@ -4,11 +4,11 @@
 
 BOOL explodeRandomFactorsEnabled = TRUE;
 
-void GFX_SetNumberOfSprites(tGfxExplodeData* expl, int a2)
+void GFX_SetNumberOfSprites(tGfxExplodeData* expl, int numberOfSprites)
 {
     int i, j;
 
-    expl->num = (a2 + 8) & ~7;
+    expl->num = (numberOfSprites + 8) & ~7;
 
     if (expl->particlesTimeElapsed)
         MEM_FreeAlign(expl->particlesTimeElapsed);
@@ -313,7 +313,7 @@ void GFX_Explode_FastMeca(tGfxExplodeData* expl, tSpriteC0DEData* frictionPow, t
     GFX_Explode_FastMeca_CalculateSpeedAndPosition(expl->positionVecs, expl->speedVecs, frictionPow, expl2, expl->num, deltaTime, ground, gravVal, invDeltaTime);
 }
 
-struct sGfxExplodeData* GFX_Explode_Create()
+struct sGfxExplodeData* GFX_Explode_Create(void)
 {
     tGfxExplodeData* expl = (tGfxExplodeData*)MEM_p_AllocAligned(sizeof(tGfxExplodeData), 16); // GFX_SetNumberOfSprites allocates ptrs on this struct
     int i;
@@ -362,7 +362,7 @@ void GFX_Explode_Destroy(struct sGfxExplodeData* expl)
     expl->gao = NULL;
 }
 
-void GFX_SetRenderStateForExplode()
+void GFX_SetRenderStateForExplode(void)
 {
     gpst_DX_stDD->drawMaskAllowedStuffCurrent = gpst_DX_stDD->drawMaskAllowedStuff & ~0x10000;
     gpst_DX_stDD->matrixStack.currElemNum = 0;

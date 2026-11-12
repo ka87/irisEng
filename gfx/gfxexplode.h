@@ -53,11 +53,11 @@ typedef struct sGfxExplodeData
 
 float fTimeRandomFactors[256];
 
-struct sGfxExplodeData* GFX_Explode_Create();
-void GFX_Explode_Destroy(struct sGfxExplodeData* a1);
-BOOL GFX_i_Explode_Render(struct sGfxExplodeData* a1, struct sGEOMAT* a2);
-void GFX_SetRenderStateForExplode();
-int GFX_i_Explode_Geti(struct sGfxExplodeData* a1, int a2);
-void GFX_Explode_Seti(struct sGfxExplodeData* a1, int a2, int a3);
-void GFX_Explode_Setf(struct sGfxExplodeData* a1, int a2, float a3);
-void GFX_Explode_Setv(struct sGfxExplodeData* a1, int a2, Vec3* a3);
+struct sGfxExplodeData* GFX_Explode_Create(void);
+void GFX_Explode_Destroy(struct sGfxExplodeData* expl);
+BOOL GFX_i_Explode_Render(struct sGfxExplodeData* expl, struct sGEOMAT* material);
+void GFX_SetRenderStateForExplode(void);
+int GFX_i_Explode_Geti(struct sGfxExplodeData* expl, int type);
+void GFX_Explode_Seti(struct sGfxExplodeData* expl, int type, int val);
+void GFX_Explode_Setf(struct sGfxExplodeData* expl, int type, float val);
+void GFX_Explode_Setv(struct sGfxExplodeData* expl, int type, Vec3* val);

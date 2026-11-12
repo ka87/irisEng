@@ -21,5 +21,5 @@ typedef struct sGfxBorderFadeData
     float vertUnk5;
 } tGfxBorderFadeData;
 
-int GFX_i_BorderFade_Render(struct sGfxBorderFadeData* a1);
+int GFX_i_BorderFade_Render(struct sGfxBorderFadeData* bf);
 struct sGfxBorderFadeData* GFX_BorderFade_Create();

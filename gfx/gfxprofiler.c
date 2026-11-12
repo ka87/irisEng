@@ -2,591 +2,512 @@
 #include "../time.h"
 #include "gfxprofiler.h"
 
-struct sGfxProfilerData* GFX_Profiler_Create()
+struct sGfxProfilerData* GFX_Profiler_Create(void)
 {
-    tGfxProfilerData* v1;
+    tGfxProfilerData* prof;
 
-    v1 = (tGfxProfilerData*)MEM_p_Alloc(sizeof(tGfxProfilerData));
-    memset(v1, 0, sizeof(tGfxProfilerData));
-    return v1;
+    prof = (tGfxProfilerData*)MEM_p_Alloc(sizeof(tGfxProfilerData));
+    memset(prof, 0, sizeof(tGfxProfilerData));
+    return prof;
 }
 
-void GFX_Profiler_Destroy(struct sGfxProfilerData* a1)
+void GFX_Profiler_Destroy(struct sGfxProfilerData* prof)
 {
-    if (a1)
-    {
-        if (a1->ptr1)
-            MEM_Free(a1->ptr1);
-        if (a1->ptr4)
-            MEM_Free(a1->ptr4);
-        if (a1->ptr3)
-            MEM_Free(a1->ptr3);
-        if (a1->ptr2)
-            MEM_Free(a1->ptr2);
-    }
+    if (!prof)
+        return;
+
+    if (prof->ptr1)
+        MEM_Free(prof->ptr1);
+    if (prof->ptr4)
+        MEM_Free(prof->ptr4);
+    if (prof->ptr3)
+        MEM_Free(prof->ptr3);
+    if (prof->ptr2)
+        MEM_Free(prof->ptr2);
 }
 
-void GFX_i_Profiler_StartStop(tGfxProfilerData* a1, unsigned int a2)
+void GFX_i_Profiler_StartStop(tGfxProfilerData* prof, unsigned int running)
 {
-    if (a1->uu)
-    {
-        a1->ptr3[a1->a1] = a2;
-        if (!a2 && ++a1->a1 == a1->num)
-            a1->a1 = 0;
-    }
+    if (!prof->uu)
+        return;
+
+    prof->ptr3[prof->currentSlice] = running;
+    if (!running && ++prof->currentSlice == prof->num)
+        prof->currentSlice = 0;
 }
 
-void GFX_i_Profiler_UpdateMecanic(tGfxProfilerData* a1, float a2)
+static int GFX_l_ProfilerNextSlice(tGfxProfilerData* prof, int slice)
 {
-    double Y;
-    Vec3 v3;
-    Vec3* v4;
-    Vec3 a3;
-    tGfxProfilerPtr2Data* v6;
-    float v7;
-    unsigned int* v8;
-    tGfxProfilerPtr4Data* v9; 
-    float v10;
-    float v11;
-    float v12;
-    unsigned int* v13;
-    tGfxProfilerPtr4Data* a1a;
+    slice++;
+    if (slice == prof->num)
+        slice = 0;
+    return slice;
+}
 
-    if (a1->uu)
+void GFX_i_Profiler_UpdateMecanic(tGfxProfilerData* prof, float dt)
+{
+    tGfxProfilerPtr4Data* point;
+    tGfxProfilerPtr4Data* sliceEnd;
+    tGfxProfilerPtr2Data* params;
+    unsigned int* slice;
+    unsigned int* slicesEnd;
+    double steps;
+    float dampX;
+    float dampY;
+    float dampZ;
+
+    if (!prof->uu)
+        return;
+
+    slice = prof->ptr3;
+    slicesEnd = &slice[prof->num];
+    steps = dt / 0.016666668;
+    dampX = (float)pow(1.0 - prof->v1.x, steps);
+    dampY = (float)pow(1.0 - prof->v1.y, (float)steps);
+    dampZ = (float)pow(1.0 - prof->v1.z, (float)steps);
+
+    point = prof->ptr4;
+    while (slice < slicesEnd)
     {
-        v13 = a1->ptr3;
-        v8 = &v13[a1->num];
-        Y = a2 / 0.016666668;
-        v7 = (float)Y;
-        v10 = (float)pow(1.0 - a1->v1.x, Y);
-        v11 = (float)pow(1.0 - a1->v1.y, v7);
-        v12 = (float)pow(1.0 - a1->v1.z, v7);
-        a1a = a1->ptr4;
-        while (v13 < v8)
+        if (!*slice)
         {
-            if (*v13)
-            {
-                v9 = &a1a[a1->PPPNum];
-                v6 = a1->ptr2;
-                while (a1a < v9)
-                {
-                    a1a->v2.z = a2 * a1->f0 + a1a->v2.z;
-                    v4 = &v6->v4;
-                    a3.x = a2 * v6->v4.x;
-                    a3.y = v6->v4.y * a2;
-                    a3.z = v6->v4.z * a2;
-                    MATH_VecAddVec(&a1a->v2, &a1a->v2, &a3);
-                    v3.x = a2 * a1a->v2.x;
-                    v3.y = a1a->v2.y * a2;
-                    v3.z = a1a->v2.z * a2;
-                    MATH_VecAddVec(&a1a->v1, &a1a->v1, &v3);
-                    if (a1a->v1.z < (double)a1a->fff1)
-                        a1a->v1.z = a1a->fff1;
-                    a1a->v2.x = v10 * a1a->v2.x;
-                    a1a->v2.y = v11 * a1a->v2.y;
-                    a1a->v2.z = v12 * a1a->v2.z;
-                    if ((a1a->xx & 0xFC000000) != 0)
-                        a1a->xx -= 0x2000000;
-                    ++a1a;
-                    ++v6;
-                }
-            }
-            else
-            {
-                a1a += a1->PPPNum;
-            }
-            ++v13;
+            point += prof->PPPNum;
+            slice++;
+            continue;
         }
+
+        sliceEnd = &point[prof->PPPNum];
+        params = prof->ptr2;
+        while (point < sliceEnd)
+        {
+            point->v2.z = dt * prof->f0 + point->v2.z;
+            MATH_AddScaleVector(&point->v2, &point->v2, &params->v4, dt);
+            MATH_AddScaleVector(&point->v1, &point->v1, &point->v2, dt);
+            if (point->v1.z < (double)point->fff1)
+                point->v1.z = point->fff1;
+            point->v2.x = dampX * point->v2.x;
+            point->v2.y = dampY * point->v2.y;
+            point->v2.z = dampZ * point->v2.z;
+            if ((point->xx & 0xFC000000) != 0)
+                point->xx -= 0x2000000;
+            point++;
+            params++;
+        }
+        slice++;
     }
 }
 
-void GFX_i_Profiler_ComputeMeshState(tGfxProfilerData* a1)
+void GFX_i_Profiler_ComputeMeshState(tGfxProfilerData* prof)
 {
-    unsigned int* v1;
-    int v2;
+    unsigned int* slice;
+    unsigned int* slicesEnd;
+    unsigned int prev;
     int pointsNum;
-    unsigned int* v4;
-    int v5;
+    int stitched;
 
-    if (a1->uu)
+    if (!prof->uu)
+        return;
+
+    slice = prof->ptr3;
+    slicesEnd = &slice[prof->num];
+    prev = slicesEnd[-1];
+    pointsNum = 0;
+    stitched = 0;
+    while (slice < slicesEnd)
     {
-        v4 = a1->ptr3;
-        v1 = &v4[a1->num];
-        v2 = *(v1 - 1);
-        v5 = 0;
-        pointsNum = 0;
-        while (v4 < v1)
+        if (*slice)
         {
-            if (*v4)
-            {
-                *v4 = (2 * pointsNum) | 1;
-                pointsNum += a1->PPPNum;
-                if (v2)
-                    ++v5;
-            }
-            v2 = *v4++;
+            *slice = (2 * pointsNum) | 1;
+            pointsNum += prof->PPPNum;
+            if (prev)
+                stitched++;
         }
-        a1->triangleNum = 2 * a1->LPPNum * v5;
-        a1->pointsNum = pointsNum;
-        a1->UVNum = (a1->xx + 1) * 2 * a1->LPPNum;
+        prev = *slice++;
     }
+
+    prof->triangleNum = 2 * prof->LPPNum * stitched;
+    prof->pointsNum = pointsNum;
+    prof->UVNum = (prof->xx + 1) * 2 * prof->LPPNum;
 }
 
-void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* pd)
+static void GFX_l_ProfilerRandomInBox(Vec3* out, Vec3* base, Vec3* extent)
 {
-    int v1;
-    Vec3 dest;
-    Vec3* v4; 
-    Vec3* v5; 
-    Vec3 v6; 
-    Vec3* v7; 
-    Vec3 v8; 
-    Vec3* v9; 
-    Vec3 v10; 
-    float v11; 
-    float v12; 
-    float v13; 
-    Vec3* v14; 
-    Vec3* v15; 
-    Vec3 v16; 
-    Vec3* v17; 
-    Vec3 v18; 
-    Vec3* v19;
-    Vec3 a3; 
-    float v21;
-    float v22;
-    float v23;
-    tGfxProfilerPtr4Data* v24;
-    tGfxProfilerPtr4Data* v25;
-    int v26;
-    int v27;
-    float v28;
-    Vec3 v29;
-    tGfxProfilerPtr4Data* v30;
-    tGfxProfilerPtr4Data* a2; 
-    Vec3 v32;
-    float v33;
-    float v34;
-    float v35;
-    tGfxProfilerPtr4Data* v36;
-    tGfxProfilerPtr2Data* v37;
-    tGfxProfilerPtr4Data* a1;
-    int v39;
+    out->x = (float)(MATH_RandFloat() * extent->x + base->x);
+    out->y = (float)(MATH_RandFloat() * extent->y + base->y);
+    out->z = (float)(MATH_RandFloat() * extent->z + base->z);
+}
 
-    if (pd->uu && pd->ptr3[pd->a1])
+static void GFX_l_ProfilerAddInBasis(Vec3* out, tGfxProfilerData* prof, Vec3* local)
+{
+    MATH_AddScaleVector(out, out, &prof->v2, local->x);
+    MATH_AddScaleVector(out, out, &prof->v3, local->y);
+    MATH_AddScaleVector(out, out, &prof->v4, local->z);
+}
+
+void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* prof)
+{
+    tGfxProfilerPtr4Data* point;
+    tGfxProfilerPtr4Data* sliceEnd;
+    tGfxProfilerPtr4Data* slice;
+    tGfxProfilerPtr4Data* prevSlice;
+    tGfxProfilerPtr2Data* params;
+    Vec3 local;
+    Vec3 head;
+    Vec3 prevHead;
+    Vec3 travel;
+    float moved;
+    int next;
+    int fade;
+    int i;
+
+    if (!prof->uu || !prof->ptr3[prof->currentSlice])
+        return;
+
+    next = GFX_l_ProfilerNextSlice(prof, prof->currentSlice);
+    prof->ptr3[next] = prof->ptr3[prof->currentSlice];
+    prof->currentSlice = next;
+    if (prof->xxxxx)
+        prof->currentSlice = (prof->currentSlice ? prof->currentSlice : prof->num) - 1;
+
+    point = &prof->ptr4[prof->PPPNum * prof->currentSlice];
+    sliceEnd = &point[prof->PPPNum];
+    params = prof->ptr2;
+    while (point < sliceEnd)
     {
-        v39 = pd->a1 + 1;
-        if (v39 == pd->num)
-            v39 = 0;
-        pd->ptr3[v39] = pd->ptr3[pd->a1];
-        pd->a1 = v39;
-        if (pd->xxxxx)
+        point->v1 = prof->v5;
+        GFX_l_ProfilerRandomInBox(&local, &params->v0, &params->v2);
+        GFX_l_ProfilerAddInBasis(&point->v1, prof, &local);
+
+        MATH_SetNullVector(&point->v2);
+        GFX_l_ProfilerRandomInBox(&local, &params->v1, &params->v3);
+        GFX_l_ProfilerAddInBasis(&point->v2, prof, &local);
+
+        point->v3.x = 0.0;
+        point->v3.y = 0.0;
+        point->v3.z = 1.0;
+        point->xx = params->i2 & ~0x1F000000u;
+        point->fff1 = params->f3;
+        point++;
+        params++;
+    }
+    prof->xxxxx = 0;
+
+    if (prof->currentSlice && prof->ptr3[prof->currentSlice - 1])
+    {
+        slice = &prof->ptr4[prof->PPPNum * prof->currentSlice];
+        MATH_VecAddVec(&head, &slice->v1, &slice[prof->PPPNum - 1].v1);
+        if (prof->currentSlice)
+            prevSlice = &prof->ptr4[prof->PPPNum * (prof->currentSlice - 1)];
+        else
+            prevSlice = &prof->ptr4[prof->PPPNum * (prof->num - 1)];
+        MATH_VecAddVec(&prevHead, &prevSlice->v1, &prevSlice[prof->PPPNum - 1].v1);
+        MATH_SubstractVec(&travel, &head, &prevHead);
+        moved = MATH_VecLen(&travel) * 0.5f;
+
+        if (moved >= (double)prof->f1)
         {
-            if (pd->a1)
-                v1 = pd->a1;
-            else
-                v1 = pd->num;
-            pd->a1 = v1 - 1;
-        }
-        a1 = &pd->ptr4[pd->PPPNum * pd->a1];
-        v36 = &a1[pd->PPPNum];
-        v37 = pd->ptr2;
-        while (a1 < v36)
-        {
-            a1->v1 = pd->v5;
-            v33 = v37->v0.x;
-            v34 = v37->v0.y;
-            v35 = v37->v0.z;
-            v23 = (float)((double)rand() / 32767.0);
-            v33 = (float)(((1.0 - 0.0) * v23 + 0.0) * v37->v2.x + v33);
-            v22 = (float)((double)rand() / 32767.0);
-            v34 = (float)(((1.0 - 0.0) * v22 + 0.0) * v37->v2.y + v34);
-            v21 = (float)((double)rand() / 32767.0);
-            v35 = (float)(((1.0 - 0.0) * v21 + 0.0) * v37->v2.z + v35);
-            v19 = &pd->v2;
-            a3.x = v33 * pd->v2.x;
-            a3.y = pd->v2.y * v33;
-            a3.z = pd->v2.z * v33;
-            MATH_VecAddVec(&a1->v1, &a1->v1, &a3);
-            v17 = &pd->v3;
-            v18.x = v34 * pd->v3.x;
-            v18.y = pd->v3.y * v34;
-            v18.z = pd->v3.z * v34;
-            MATH_VecAddVec(&a1->v1, &a1->v1, &v18);
-            v15 = &pd->v4;
-            v16.x = v35 * pd->v4.x;
-            v16.y = pd->v4.y * v35;
-            v16.z = pd->v4.z * v35;
-            MATH_VecAddVec(&a1->v1, &a1->v1, &v16);
-            v14 = &a1->v2;
-            a1->v2.x = 0.0;
-            v14->y = 0.0;
-            v14->z = 0.0;
-            v33 = v37->v1.x;
-            v34 = v37->v1.y;
-            v35 = v37->v1.z;
-            v13 = (float)((double)rand() / 32767.0);
-            v33 = (float)(((1.0 - 0.0) * v13 + 0.0) * v37->v3.x + v33);
-            v12 = (float)((double)rand() / 32767.0);
-            v34 = (float)(((1.0 - 0.0) * v12 + 0.0) * v37->v3.y + v34);
-            v11 = (float)((double)rand() / 32767.0);
-            v35 = (float)(((1.0 - 0.0) * v11 + 0.0) * v37->v3.z + v35);
-            v9 = &pd->v2;
-            v10.x = v33 * pd->v2.x;
-            v10.y = pd->v2.y * v33;
-            v10.z = pd->v2.z * v33;
-            MATH_VecAddVec(&a1->v2, &a1->v2, &v10);
-            v7 = &pd->v3;
-            v8.x = v34 * pd->v3.x;
-            v8.y = pd->v3.y * v34;
-            v8.z = pd->v3.z * v34;
-            MATH_VecAddVec(&a1->v2, &a1->v2, &v8);
-            v5 = &pd->v4;
-            v6.x = v35 * pd->v4.x;
-            v6.y = pd->v4.y * v35;
-            v6.z = pd->v4.z * v35;
-            MATH_VecAddVec(&a1->v2, &a1->v2, &v6);
-            v4 = &a1->v3;
-            a1->v3.x = 0.0;
-            v4->y = 0.0;
-            v4->z = 1.0;
-            a1->xx = v37->i2 & ~0x1F000000u;
-            a1->fff1 = v37->f3;
-            ++a1;
-            ++v37;
-        }
-        pd->xxxxx = 0;
-        if (pd->a1 && pd->ptr3[pd->a1 - 1])
-        {
-            a2 = &pd->ptr4[pd->PPPNum * pd->a1];
-            MATH_VecAddVec(&v29, &a2->v1, &a2[pd->PPPNum - 1].v1);
-            if (pd->a1)
-                v30 = &pd->ptr4[pd->PPPNum * (pd->a1 - 1)];
-            else
-                v30 = &pd->ptr4[pd->PPPNum * (pd->num - 1)];
-            MATH_VecAddVec(&v32, &v30->v1, &v30[pd->PPPNum - 1].v1);
-            MATH_SubstractVec(&dest, &v29, &v32);
-            v28 = MATH_VecLen(&dest) * 0.5f;
-            if (v28 >= (double)pd->f1)
+            // the slice moved far enough to keep, so the nine slices ahead
+            // of it step one notch further down their fade
+            fade = prof->currentSlice;
+            for (i = 0; i < 9; i++)
             {
-                v26 = pd->a1;
-                v27 = 9;
-                while (v27--)
+                if (fade < prof->num - 1)
+                    fade++;
+                else
+                    fade = 0;
+                point = &prof->ptr4[prof->PPPNum * fade];
+                sliceEnd = &point[prof->PPPNum];
+                while (point < sliceEnd)
                 {
-                    if (v26 < pd->num - 1)
-                        ++v26;
-                    else
-                        v26 = 0;
-                    v25 = &pd->ptr4[pd->PPPNum * v26];
-                    v24 = &v25[pd->PPPNum];
-                    while (v25 < v24)
-                    {
-                        if ((v25->xx & 0xE0000000) != 0)
-                            v25->xx -= 0x20000000;
-                        ++v25;
-                    }
+                    if ((point->xx & 0xE0000000) != 0)
+                        point->xx -= 0x20000000;
+                    point++;
                 }
             }
-            else
-            {
-                pd->xxxxx = 1;
-            }
         }
-        v39 = pd->a1 + 1;
-        if (v39 == pd->num)
-            v39 = 0;
-        pd->ptr3[v39] = 0;
-    }
-}
-
-void GFX_Profiler_Validate(tGfxProfilerData* a1)
-{
-    if (!a1->uu && a1->PPPNum && a1->LPPNum)
-    {
-        if (a1->num)
+        else
         {
-            a1->ptr1 = (tGfxProfilerPtr1Data*)MEM_p_Alloc(sizeof(tGfxProfilerPtr1Data) * a1->LPPNum);
-            memset(a1->ptr1, 0, sizeof(tGfxProfilerPtr1Data) * a1->LPPNum);
-            a1->ptr2 = (tGfxProfilerPtr2Data*)MEM_p_Alloc(sizeof(tGfxProfilerPtr2Data) * a1->PPPNum);
-            memset(a1->ptr2, 0, sizeof(tGfxProfilerPtr2Data) * a1->PPPNum);
-            a1->ptr3 = (unsigned int*)MEM_p_Alloc(4 * a1->num);
-            memset(a1->ptr3, 0, 4 * a1->num);
-            a1->ptr4 = (tGfxProfilerPtr4Data*)MEM_p_Alloc(a1->num * sizeof(tGfxProfilerPtr4Data) * a1->PPPNum);
-            memset(a1->ptr4, 0, a1->num * sizeof(tGfxProfilerPtr4Data) * a1->PPPNum);
-            a1->uu = 1;
-            a1->xx = 4;
+            prof->xxxxx = 1;
         }
     }
+
+    prof->ptr3[GFX_l_ProfilerNextSlice(prof, prof->currentSlice)] = 0;
 }
 
-int GFX_i_Profiler_Render(struct sGfxProfilerData* a1)
+void GFX_Profiler_Validate(tGfxProfilerData* prof)
 {
-    unsigned int v3;
-    tGeoTriangleChunkElem* v4;
-    tGeoTriangleChunkElem* v5;
-    unsigned int* v6;
-    tGfxProfilerPtr1Data* i;
-    int v8;
-    unsigned int* v9;
-    unsigned int v10;
-    tGfxProfilerPtr1Data* v11;
-    float v12;
-    tGfxProfilerPtr1Data* v13;
-    unsigned int v14;
-    float v15;
-    tGfxProfilerPtr1Data* v16;
-    tGeoUVElem* v17;
-    unsigned int* v18;
-    int* v19;
-    tGfxProfilerPtr4Data* v20;
-    Vec3* v21;
-    unsigned int* v22;
-    Vec3* v23;
-    tGfxProfilerPtr4Data* v24;
-    int v25;
+    if (prof->uu || !prof->PPPNum || !prof->LPPNum || !prof->num)
+        return;
 
-    if (!a1->uu)
+    prof->ptr1 = (tGfxProfilerPtr1Data*)
+                 MEM_p_Alloc(sizeof(tGfxProfilerPtr1Data) * prof->LPPNum);
+    memset(prof->ptr1, 0, sizeof(tGfxProfilerPtr1Data) * prof->LPPNum);
+    prof->ptr2 = (tGfxProfilerPtr2Data*)
+                 MEM_p_Alloc(sizeof(tGfxProfilerPtr2Data) * prof->PPPNum);
+    memset(prof->ptr2, 0, sizeof(tGfxProfilerPtr2Data) * prof->PPPNum);
+    prof->ptr3 = (unsigned int*)MEM_p_Alloc(4 * prof->num);
+    memset(prof->ptr3, 0, 4 * prof->num);
+    prof->ptr4 = (tGfxProfilerPtr4Data*)
+                 MEM_p_Alloc(prof->num * sizeof(tGfxProfilerPtr4Data) * prof->PPPNum);
+    memset(prof->ptr4, 0, prof->num * sizeof(tGfxProfilerPtr4Data) * prof->PPPNum);
+    prof->uu = 1;
+    prof->xx = 4;
+}
+
+int GFX_i_Profiler_Render(struct sGfxProfilerData* prof)
+{
+    tGfxProfilerPtr4Data* point;
+    tGfxProfilerPtr4Data* sliceEnd;
+    tGfxProfilerPtr1Data* line;
+    tGfxProfilerPtr1Data* linesEnd;
+    tGeoTriangleChunkElem* tris;
+    tGeoUVElem* uvs;
+    unsigned int* slice;
+    unsigned int* slicesEnd;
+    unsigned int prev;
+    unsigned int curBase;
+    unsigned int prevBase;
+    Vec3* verts;
+    Vec3* normals;
+    int* colors;
+    float u;
+    float uStep;
+    int uvBase;
+    int savedMask;
+    int row;
+
+    if (!prof->uu)
         return 1;
-    GFX_i_Profiler_UpdateMecanic(a1, TIM_gf_dt);
-    GFX_i_Profiler_Update_With_XYT(a1);
-    GFX_i_Profiler_ComputeMeshState(a1);
-    if (!a1->pointsNum)
+
+    GFX_i_Profiler_UpdateMecanic(prof, TIM_gf_dt);
+    GFX_i_Profiler_Update_With_XYT(prof);
+    GFX_i_Profiler_ComputeMeshState(prof);
+    if (!prof->pointsNum || !prof->triangleNum)
         return 1;
-    if (!a1->triangleNum)
-        return 1;
-    GFX_NeedGeom(a1->pointsNum, a1->UVNum, a1->triangleNum, 1);
-    v24 = a1->ptr4;
-    v19 = GFX_gpst_Geo->vertexColors + 1;
-    v21 = GFX_gpst_Geo->vertices;
-    v23 = GFX_gpst_Geo->normals;
-    v22 = a1->ptr3;
-    v18 = &v22[a1->num];
-    while (v22 < v18)
+
+    GFX_NeedGeom(prof->pointsNum, prof->UVNum, prof->triangleNum, 1);
+
+    point = prof->ptr4;
+    colors = GFX_gpst_Geo->vertexColors + 1;
+    verts = GFX_gpst_Geo->vertices;
+    normals = GFX_gpst_Geo->normals;
+    slice = prof->ptr3;
+    slicesEnd = &slice[prof->num];
+    while (slice < slicesEnd)
     {
-        if (*v22)
+        if (!*slice)
         {
-            v20 = &v24[a1->PPPNum];
-            while (v24 < v20)
+            point += prof->PPPNum;
+            slice++;
+            continue;
+        }
+
+        sliceEnd = &point[prof->PPPNum];
+        while (point < sliceEnd)
+        {
+            *verts++ = point->v1;
+            *normals++ = point->v3;
+            *colors++ = point->xx;
+            point++;
+        }
+        slice++;
+    }
+
+    linesEnd = &prof->ptr1[prof->LPPNum];
+    uStep = (float)(1.0 / (double)prof->xx);
+    u = 1.0;
+    uvs = GFX_gpst_Geo->UVs;
+    for (row = prof->xx + 1; row; row--)
+    {
+        for (line = prof->ptr1; line < linesEnd; line++)
+        {
+            uvs[0].u = u;
+            uvs[1].u = u;
+            uvs[0].v = line->f1;
+            uvs[1].v = line->f2;
+            uvs += 2;
+        }
+        u = u - uStep;
+    }
+
+    tris = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+    slice = prof->ptr3;
+    slicesEnd = &slice[prof->num];
+    prev = slicesEnd[-1];
+    uvBase = 0;
+    while (slice < slicesEnd)
+    {
+        if ((prev & *slice) != 0)
+        {
+            for (line = prof->ptr1; line < linesEnd; line++)
             {
-                v21->x = v24->v1.x;
-                v21->y = v24->v1.y;
-                v21->z = v24->v1.z;
-                ++v21;
-                v23->x = v24->v3.x;
-                v23->y = v24->v3.y;
-                v23->z = v24->v3.z;
-                ++v23;
-                *v19++ = v24->xx;
-                ++v24;
+                curBase = *slice >> 1;
+                prevBase = prev >> 1;
+
+                tris[0].v1 = line->s1 + curBase;
+                tris[0].v2 = line->s2 + curBase;
+                tris[0].v3 = line->s2 + prevBase;
+                tris[0].uv1 = uvBase + 2 * prof->LPPNum;
+                tris[0].uv2 = uvBase + 2 * prof->LPPNum + 1;
+                tris[0].uv3 = uvBase + 1;
+
+                tris[1].v1 = line->s2 + prevBase;
+                tris[1].v2 = line->s1 + prevBase;
+                tris[1].v3 = line->s1 + curBase;
+                tris[1].uv1 = uvBase + 1;
+                tris[1].uv2 = uvBase;
+                tris[1].uv3 = uvBase + 2 * prof->LPPNum;
+
+                tris += 2;
+                uvBase += 2;
             }
         }
         else
         {
-            v24 += a1->PPPNum;
+            uvBase += 2 * prof->LPPNum;
         }
-        ++v22;
+        if (uvBase == 2 * prof->LPPNum * (int)prof->xx)
+            uvBase = 0;
+        prev = *slice++;
     }
-    v14 = a1->xx + 1;
-    v13 = a1->ptr1;
-    v16 = &v13[a1->LPPNum];
-    v12 = (float)(1.0 / (double)a1->xx);
-    v15 = 1.0;
-    v17 = GFX_gpst_Geo->UVs;
-    while (v14--)
-    {
-        while (v13 < v16)
-        {
-            v17->u = v15;
-            v17[1].u = v15;
-            v17->v = v13->f1;
-            v17[1].v = v13->f2;
-            v17 += 2;
-            ++v13;
-        }
-        v13 = a1->ptr1;
-        v15 = v15 - v12;
-    }
-    v4 = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
-    v9 = a1->ptr3;
-    v6 = &v9[a1->num];
-    v10 = *(v6 - 1);
-    v11 = &a1->ptr1[a1->LPPNum];
-    v8 = 0;
-    while (v9 < v6)
-    {
-        if ((v10 & *v9) != 0)
-        {
-            for (i = a1->ptr1; i < v11; ++i)
-            {
-                v3 = *v9 >> 1;
-                v4->uv3 = 0;
-                v4->uv2 = 0;
-                v4->uv1 = 0;
-                v4->v1 = i->s1 + v3;
-                v4->v2 = i->s2 + v3;
-                v4->v3 = i->s2 + (v10 >> 1);
-                v4->uv1 = v8 + 2 * a1->LPPNum;
-                v4->uv2 = v8 + 2 * a1->LPPNum + 1;
-                v4->uv3 = v8 + 1;
-                v5 = v4 + 1;
-                v5->uv3 = 0;
-                v5->uv2 = 0;
-                v5->uv1 = 0;
-                v5->v1 = i->s2 + (v10 >> 1);
-                v5->v2 = i->s1 + (v10 >> 1);
-                v5->v3 = i->s1 + v3;
-                v5->uv1 = v8 + 1;
-                v5->uv2 = v8;
-                v5->uv3 = v8 + 2 * a1->LPPNum;
-                v4 = v5 + 1;
-                v8 += 2;
-            }
-        }
-        else
-        {
-            v8 += 2 * a1->LPPNum;
-        }
-        if (v8 == 2 * a1->LPPNum * a1->xx)
-            v8 = 0;
-        v10 = *v9++;
-    }
-    v25 = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
-    gpst_DX_stDD->drawMaskAllowedStuffCurrent = v25 & ~0x900u;
+
+    savedMask = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
+    gpst_DX_stDD->drawMaskAllowedStuffCurrent = savedMask & ~0x900u;
     GFX_gpst_Geo->triangleChunks->materialNum = 0;
     if (GFX_gpst_Current->aiGameObject->distance)
         GFX_gpst_Geo->intf->Render(GFX_gpst_GO);
-    gpst_DX_stDD->drawMaskAllowedStuffCurrent = v25;
+    gpst_DX_stDD->drawMaskAllowedStuffCurrent = savedMask;
     return 1;
 }
 
-void GFX_SetNumberOfPPP(tGfxProfilerData* a1, int a2)
+void GFX_SetNumberOfPPP(tGfxProfilerData* prof, int num)
 {
-    a1->PPPNum = a2;
-    GFX_Profiler_Validate(a1);
+    prof->PPPNum = num;
+    GFX_Profiler_Validate(prof);
 }
 
-void GFX_SetNumberOfLPP(tGfxProfilerData* a1, int a2)
+void GFX_SetNumberOfLPP(tGfxProfilerData* prof, int num)
 {
-    a1->LPPNum = a2;
-    GFX_Profiler_Validate(a1);
+    prof->LPPNum = num;
+    GFX_Profiler_Validate(prof);
 }
 
-void GFX_SetNumberOfP(tGfxProfilerData* a1, unsigned int a2)
+void GFX_SetNumberOfP(tGfxProfilerData* prof, unsigned int num)
 {
-    a1->num = a2;
-    a1->num2 = 255 / a2;
-    if (!a1->num2)
-        a1->num2 = 1;
-    if (a1->num2 >= 127u)
-        a1->num2 = 127;
-    a1->num2 <<= 24;
-    GFX_Profiler_Validate(a1);
+    prof->num = num;
+    prof->num2 = 255 / num;
+    if (!prof->num2)
+        prof->num2 = 1;
+    if (prof->num2 >= 127u)
+        prof->num2 = 127;
+    prof->num2 <<= 24;
+    GFX_Profiler_Validate(prof);
 }
 
-void GFX_Profiler_Seti(struct sGfxProfilerData* a1, int a2, int a3)
+void GFX_Profiler_Seti(struct sGfxProfilerData* prof, int id, int value)
 {
-    switch (a2)
+    switch (id)
     {
     case 12100:
-        GFX_SetNumberOfPPP(a1, a3);
-        GFX_Profiler_Validate(a1);
+        GFX_SetNumberOfPPP(prof, value);
+        GFX_Profiler_Validate(prof);
         break;
     case 12101:
-        GFX_SetNumberOfLPP(a1, a3);
-        GFX_Profiler_Validate(a1);
+        GFX_SetNumberOfLPP(prof, value);
+        GFX_Profiler_Validate(prof);
         break;
     case 12102:
-        GFX_SetNumberOfP(a1, a3);
-        GFX_Profiler_Validate(a1);
+        GFX_SetNumberOfP(prof, value);
+        GFX_Profiler_Validate(prof);
         break;
     case 12103:
-        GFX_i_Profiler_StartStop(a1, a3);
+        GFX_i_Profiler_StartStop(prof, value);
         break;
     case 12104:
-        a1->ptr2CurrID = a3;
+        prof->ptr2CurrID = value;
         break;
     case 12105:
-        a1->ptr1CurrID = a3;
+        prof->ptr1CurrID = value;
         break;
     case 12106:
-        a1->ptr1[a1->ptr1CurrID].s1 = a3;
+        prof->ptr1[prof->ptr1CurrID].s1 = value;
         break;
     case 12107:
-        a1->ptr1[a1->ptr1CurrID].s2 = a3;
+        prof->ptr1[prof->ptr1CurrID].s2 = value;
         break;
     case 12108:
-        a1->ptr1[a1->ptr1CurrID].s3 = a3;
+        prof->ptr1[prof->ptr1CurrID].s3 = value;
         break;
     case 12109:
-        a1->ptr2[a1->ptr2CurrID].i2 = a3;
+        prof->ptr2[prof->ptr2CurrID].i2 = value;
         break;
     case 12110:
-        a1->ptr2[a1->ptr2CurrID].i3 = a3;
+        prof->ptr2[prof->ptr2CurrID].i3 = value;
         break;
     case 12111:
-        a1->xx = a3;
+        prof->xx = value;
         break;
     default:
-        return;
+        break;
     }
 }
 
-void GFX_Profiler_Setf(struct sGfxProfilerData* a1, int a2, float a3)
+void GFX_Profiler_Setf(struct sGfxProfilerData* prof, int id, float value)
 {
-    switch (a2)
+    switch (id)
     {
     case 12000:
-        a1->f0 = a3;
+        prof->f0 = value;
         break;
     case 12001:
-        a1->ptr1[a1->ptr1CurrID].f1 = a3;
+        prof->ptr1[prof->ptr1CurrID].f1 = value;
         break;
     case 12002:
-        a1->ptr1[a1->ptr1CurrID].f2 = a3;
+        prof->ptr1[prof->ptr1CurrID].f2 = value;
         break;
     case 12003:
-        a1->ptr2[a1->ptr2CurrID].f3 = a3;
+        prof->ptr2[prof->ptr2CurrID].f3 = value;
         break;
     case 12004:
-        a1->f1 = a3;
+        prof->f1 = value;
         break;
     default:
-        return;
+        break;
     }
 }
 
-void GFX_Profiler_Setv(struct sGfxProfilerData* a1, int a2, Vec3* a3)
+void GFX_Profiler_Setv(struct sGfxProfilerData* prof, int id, Vec3* value)
 {
-    switch (a2)
+    switch (id)
     {
     case 12200:
-        a1->ptr2[a1->ptr2CurrID].v0 = *a3;
+        prof->ptr2[prof->ptr2CurrID].v0 = *value;
         break;
     case 12201:
-        a1->ptr2[a1->ptr2CurrID].v1 = *a3;
+        prof->ptr2[prof->ptr2CurrID].v1 = *value;
         break;
     case 12202:
-        a1->v1 = *a3;
+        prof->v1 = *value;
         break;
     case 12203:
-        a1->v2 = *a3;
+        prof->v2 = *value;
         break;
     case 12204:
-        a1->v3 = *a3;
+        prof->v3 = *value;
         break;
     case 12205:
-        a1->v4 = *a3;
+        prof->v4 = *value;
         break;
     case 12206:
-        a1->v5 = *a3;
+        prof->v5 = *value;
         break;
     case 12207:
-        a1->ptr2[a1->ptr2CurrID].v2 = *a3;
+        prof->ptr2[prof->ptr2CurrID].v2 = *value;
         break;
     case 12208:
-        a1->ptr2[a1->ptr2CurrID].v3 = *a3;
+        prof->ptr2[prof->ptr2CurrID].v3 = *value;
         break;
     default:
-        return;
+        break;
     }
 }

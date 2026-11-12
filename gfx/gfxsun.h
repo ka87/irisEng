@@ -81,7 +81,7 @@ typedef struct sD3dStrectRectUnkStructFloats
 int gSunEffectOnOffArray[16];
 int sunUnkCnt;
 
-struct sGfxSunData* GFX_Sun_Create();
-void GFX_Sun_Destroy(struct sGfxSunD3DSpecificData* a1);
-void GFX_Sun_Render(struct sGfxSunData* a1);
-void GFX_Sun_Seti(struct sGfxSunData* a1, int a2);
+struct sGfxSunData* GFX_Sun_Create(void);
+void GFX_Sun_Destroy(struct sGfxSunD3DSpecificData* sun3d);
+void GFX_Sun_Render(struct sGfxSunData* sun);
+void GFX_Sun_Seti(struct sGfxSunData* sun, int id);

@@ -30,8 +30,8 @@ typedef struct sGfxCarteData
     int flags;
 } tGfxCarteData;
 
-struct sGfxCarteData* GFX_Carte_Create();
-void GFX_Carte_Destroy(struct sGfxCarteData* a1, struct sGEOMAT* a2);
-int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat, struct sGameObjectMain* a3);
-void GFX_Carte_Seti(struct sGfxCarteData* a1, unsigned int a2, unsigned int a3);
-void GFX_Carte_Object(tGfxElem* a1, int16_t id, tGameObjectMain* a3, int a4, int textElemIndexId);
+struct sGfxCarteData* GFX_Carte_Create(void);
+void GFX_Carte_Destroy(struct sGfxCarteData* carte, struct sGEOMAT* mat);
+int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat, struct sGameObjectMain* gao);
+void GFX_Carte_Seti(struct sGfxCarteData* carte, unsigned int id, unsigned int value);
+void GFX_Carte_Object(tGfxElem* gfxList, int16_t id, tGameObjectMain* gao, int mode, int textElemIndexId);

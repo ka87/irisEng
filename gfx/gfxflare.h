@@ -60,6 +60,6 @@ typedef struct sGfxFlareData
     int i55;
 } tGfxFlareData;
 
-void GFX_Flare_Test(tGfxFlareData* a1);
-struct sGfxFlareData* GFX_Flare_Create(int a1);
-void GFX_Flare_Render(struct sGfxFlareData* a1);
+void GFX_Flare_Test(tGfxFlareData* flare);
+struct sGfxFlareData* GFX_Flare_Create(int withSubFlares);
+void GFX_Flare_Render(struct sGfxFlareData* flare);

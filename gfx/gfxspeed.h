@@ -11,5 +11,5 @@ typedef struct sGfxSpeedData
     Vec3 v2;
 } tGfxSpeedData;
 
-int GFX_i_Speed_Render(struct sGfxSpeedData* a1);
-struct sGfxSpeedData* GFX_Speed_Create();
+int GFX_i_Speed_Render(struct sGfxSpeedData* speed);
+struct sGfxSpeedData* GFX_Speed_Create(void);
