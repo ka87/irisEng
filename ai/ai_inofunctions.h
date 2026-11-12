@@ -2,23 +2,23 @@
 #include "../ai.h"
 
 int AI_EvalFunc_IoConsLangSet_C();
-int AI_EvalFunc_IoGetProtect_C(int a1);
+int AI_EvalFunc_IoGetProtect_C(int state);
 int AI_EvalFunc_IoGameLangGet_C();
 int AI_EvalFunc_IoConsLangGet_C();
-int AI_EvalFunc_IoGameLangSet_C(int a1);
-BOOL AI_EvalFunc_IoButtonJustPressed_C(int a1);
-BOOL AI_EvalFunc_IoButtonJustReleased_C(int a1);
-void AI_EvalFunc_IoJoyGetMove_C(Vec3* a1);
-int AI_EvalFunc_IoJoyFreeze_C(int a1);
-void AI_EvalFunc_IoJoyGetMove1_C(Vec3* a1);
-void AI_EvalFunc_SAVESaveSlotExt_C(int a1, int a2, int a3, int a4);
+int AI_EvalFunc_IoGameLangSet_C(int lang);
+BOOL AI_EvalFunc_IoButtonJustPressed_C(int button);
+BOOL AI_EvalFunc_IoButtonJustReleased_C(int button);
+void AI_EvalFunc_IoJoyGetMove_C(Vec3* move);
+int AI_EvalFunc_IoJoyFreeze_C(int allowed);
+void AI_EvalFunc_IoJoyGetMove1_C(Vec3* move);
+void AI_EvalFunc_SAVESaveSlotExt_C(int slotOrMode, int value1, int value2, int value3);
 void AI_EvalFunc_SAVEUnvalidate_C();
-void AI_EvalFunc_SAVELoadSlot_C(int a1);
+void AI_EvalFunc_SAVELoadSlot_C(int slot);
 void AI_EvalFunc_SAVEValidate_C();
 int AI_EvalFunc_SAVEDataGet_C(int a1, int a2);
 void AI_EvalFunc_SAVEValidateAl_C();
-BOOL AI_EvalFunc_IoKeyPressed_C(char a1);
-BOOL AI_EvalFunc_IoKeyJustPressed_C(char a1);
+BOOL AI_EvalFunc_IoKeyPressed_C(char key);
+BOOL AI_EvalFunc_IoKeyJustPressed_C(char key);
 
 tAINode* AI_EvalFunc_SAVEValidate(tAINode* node);
 tAINode* AI_EvalFunc_SAVESaveSlot(tAINode* node);
