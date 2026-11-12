@@ -27,1145 +27,655 @@ tD3dStrectRectUnkStruct gSunDestPos[] = {
      {.x = 8, .y = 0 }
 };
 
-void GFX_Sun_ComputeRay(tGfxSunData* a1)
+// one ray: a direction, a length and a half-width, plus the two colour
+// octants its angle falls between
+static void GFX_l_SunMakeRay(tGfxSunDataInner* ray, double angle, float lengthMin,
+                             float lengthMax, float widthMin, float widthMax)
 {
-    int v2;
-    tGfxSunDataInner* v3;
-    tGfxSunDataInner* v4;
-    tGfxSunDataInner* v5;
-    double v6;
-    int8_t v7;
-    tGfxSunDataInner* v10;
-    tGfxSunDataInner* v11;
-    tGfxSunDataInner* v12;
-    double v13;
-    int8_t v14;
-    tGfxSunDataInner* v17;
-    tGfxSunDataInner* v18;
-    tGfxSunDataInner* v19;
-    tGfxSunDataInner* v20;
-    int v21;
-    int v22;
-    tGfxSunDataInner* v23;
-    tGfxSunDataInner* v24;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    tGfxSunDataInner* a1a;
-    tGfxSunDataInner* a1b;
+    unsigned int octant;
 
-    v2 = a1->num;
-    if ((v2 & 1) != 0)
-        a1->num = v2 & ~1u;
-    if (a1->num > 128)
-        a1->num = 128;
-    v21 = 0;
-    v25 = 0.0;
-    v42 = (float)(6.2831855 / (double)(a1->num >> 1));
-    if (a1->num > 0)
-    {
-        v23 = a1->elems;
-        v19 = a1->elems;
-        v17 = a1->elems;
-        a1a = a1->elems;
-        v3 = a1->elems;
-        v4 = a1->elems;
-        v5 = a1->elems;
-        do
-        {
-            v36 = a1->i4;
-            v26 = -v36;
-            v6 = (double)rand() * 0.000030518509 * (v36 - v26) + v26 + v25;
-            if (v6 < 0.0)
-                v6 = v6 + 6.2831855;
-            v7 = (uint64_t)(1.2732395 * v6) & 7;
-            v5->colorID = v7;
-            v4->colorID2 = (v7 + 1) & 7;
-            v3->colorFactor = (float)(1.2732395 * v6 - (double)v7);
-            a1a->i1 = MATH_GetCos((float)v6);
-            v17->i2 = MATH_GetSin((float)v6);
-            v37 = a1->i6;
-            v28 = a1->i5;
-            v19->i4 = (float)((double)rand() * 0.000030518509 * (v37 - v28) + v28);
-            v38 = a1->i8;
-            v29 = a1->i7;
-            v22 = v21 + 1;
-            a1b = a1a + 1;
-            v18 = v17 + 1;
-            v10 = v5 + 1;
-            v23->i5 = (float)((double)rand() * 0.000030518509 * (v38 - v29) + v29);
-            v11 = v4 + 1;
-            v12 = v3 + 1;
-            v27 = -a1->i9;
-            v20 = v19 + 1;
-            v24 = v23 + 1;
-            v39 = a1->i9;
-            v13 = (double)rand() * 0.000030518509 * (v39 - v27) + v27 + v25;
-            if (v13 < 0.0)
-                v13 = v13 + 6.2831855;
-            v14 = (unsigned int)(1.2732395 * v13) & 7;
-            v10->colorID = v14;
-            v11->colorID2 = (v14 + 1) & 7;
-            v12->colorFactor = (float)(1.2732395 * v13 - (double)v14);
-            a1b->i1 = MATH_GetCos((float)v13);
-            v18->i2 = MATH_GetSin((float)v13);
-            v40 = a1->i11;
-            v30 = a1->i10;
-            v20->i4 = (float)((double)rand() * 0.000030518509 * (v40 - v30) + v30);
-            v41 = a1->i13;
-            v31 = a1->i12;
-            a1a = a1b + 1;
-            v17 = v18 + 1;
-            v23 = v24 + 1;
-            v5 = v10 + 1;
-            v4 = v11 + 1;
-            v23[-1].i5 = (float)((double)rand() * 0.000030518509 * (v41 - v31) + v31);
-            v3 = v12 + 1;
-            v21 = v22 + 1;
-            v25 = v25 + v42;
-            v19 = v20 + 1;
-        } while (v21 < a1->num);
-    }
+    if (angle < 0.0)
+        angle = angle + 6.2831855;
+
+    octant = (unsigned int)(1.2732395 * angle) & 7;
+    ray->colorID = octant;
+    ray->colorID2 = (octant + 1) & 7;
+    ray->colorFactor = (float)(1.2732395 * angle - (double)octant);
+    ray->i1 = MATH_GetCos((float)angle);
+    ray->i2 = MATH_GetSin((float)angle);
+    ray->i4 = MATH_RandFloatRange(lengthMin, lengthMax);
+    ray->i5 = MATH_RandFloatRange(widthMin, widthMax);
 }
 
-void GFX_Sun_InitRayLum(tGfxSunData* a1)
+void GFX_Sun_ComputeRay(tGfxSunData* sun)
 {
-    char v2;
-    float a1a;
+    float angleStep;
+    float angle;
     int i;
 
-    v2 = a1->flags;
-    a1a = 0.0;
-    if ((v2 & 8) == 0)
-        a1a = 1.0;
-    for (i = 0; i < 8; i++) {
-        a1->rayLums[i] = a1a;
+    if ((sun->num & 1) != 0)
+        sun->num &= ~1u;
+    if (sun->num > 128)
+        sun->num = 128;
+
+    angleStep = (float)(6.2831855 / (double)(sun->num >> 1));
+    angle = 0.0;
+    for (i = 0; i < sun->num; i += 2)
+    {
+        GFX_l_SunMakeRay(&sun->elems[i],
+                         MATH_RandFloatRange(-sun->i4, sun->i4) + angle,
+                         sun->i5, sun->i6, sun->i7, sun->i8);
+        GFX_l_SunMakeRay(&sun->elems[i + 1],
+                         MATH_RandFloatRange(-sun->i9, sun->i9) + angle,
+                         sun->i10, sun->i11, sun->i12, sun->i13);
+        angle = angle + angleStep;
     }
 }
 
-void D3D_InitSunD3DStruct(tGfxSunD3DSpecificData* a1, tGfxSunD3DSpecificDataInner* a2, unsigned int a3, unsigned int a4)
+void GFX_Sun_InitRayLum(tGfxSunData* sun)
 {
-    a1->ptr = a2;
-    a1->maxElemNum = a4;
-    a1->ptrElemSize = a3 / a4;
-    a1->currPtrInner = NULL;
-    a1->firstPtrInner = NULL;
+    float lum;
+    int i;
+
+    lum = 0.0;
+    if ((sun->flags & 8) == 0)
+        lum = 1.0;
+    for (i = 0; i < 8; i++)
+        sun->rayLums[i] = lum;
 }
 
-void D3D_RegisterSunSurface(tGfxSunD3DSpecificData* a1)
+void D3D_InitSunD3DStruct(tGfxSunD3DSpecificData* sun3d, tGfxSunD3DSpecificDataInner* elems,
+                          unsigned int bytes, unsigned int count)
 {
-    int v1;
+    sun3d->ptr = elems;
+    sun3d->maxElemNum = count;
+    sun3d->ptrElemSize = bytes / count;
+    sun3d->currPtrInner = NULL;
+    sun3d->firstPtrInner = NULL;
+}
 
-    v1 = 0;
-    while (gD3dSunSurfaces[v1])
+void D3D_RegisterSunSurface(tGfxSunD3DSpecificData* sun3d)
+{
+    int i;
+
+    for (i = 0; i < 16; i++)
     {
-        if (++v1 >= 16)
+        if (!gD3dSunSurfaces[i])
+        {
+            gD3dSunSurfaces[i] = sun3d;
             return;
+        }
     }
-    gD3dSunSurfaces[v1] = a1;
 }
 
-void D3D_SetSunEffectOnOff(tGfxSunD3DSpecificData* a1, int a2)
+void D3D_SetSunEffectOnOff(tGfxSunD3DSpecificData* sun3d, int on)
 {
-    int v2;
-    int* v3;
-    tGfxSunD3DSpecificData* v4;
+    int anyOn;
+    int i;
 
-    v2 = 0;
-    v3 = gSunEffectOnOffArray;
-    v4 = gD3dSunSurfaces[0];
-    do
+    // gD3dSunSurfaces and gSunEffectOnOffArray are parallel sixteen-entry
+    // tables, so both are walked by index
+    anyOn = 0;
+    for (i = 0; i < 16; i++)
     {
-        if (v4 == a1)
-            *v3 = a2;
-        if (v4)
-            v2 |= *v3;
-        ++v3;
-        ++v4;
-    } while ((int)v3 <= (int)&gSunEffectOnOffArray[15]);
-    if (v2)
-    {
-        if (D3DRenderParams.sunEffectIsOn)
-            return;
-    LABEL_11:
-        D3DRenderParams.sunEffectIsOn = v2;
-        D3D_UpdateBlurTexture();
+        if (gD3dSunSurfaces[i] == sun3d)
+            gSunEffectOnOffArray[i] = on;
+        if (gD3dSunSurfaces[i])
+            anyOn |= gSunEffectOnOffArray[i];
+    }
+
+    if ((anyOn != 0) == (D3DRenderParams.sunEffectIsOn != 0))
         return;
-    }
-    if (D3DRenderParams.sunEffectIsOn)
-        goto LABEL_11;
+
+    D3DRenderParams.sunEffectIsOn = anyOn;
+    D3D_UpdateBlurTexture();
 }
 
-void D3D_CreateSunD3DStuff(tGfxSunD3DSpecificData* a1)
+void D3D_CreateSunD3DStuff(tGfxSunD3DSpecificData* sun3d)
 {
-    tGfxSunD3DSpecificDataInner* v1;
-    int v2;
-
-    v1 = a1->elems;
-    D3D_InitSunD3DStruct(a1, a1->elems, sizeof(a1->elems), 3u);
-    v2 = 3;
-    do
-    {
-        v1->bitMask = 0;
-        D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(D3DRenderParams.d3dDev, 16, 1, 21, 2, &(v1->d3dppSurface), 0);
-        v1++;
-        --v2;
-    } while (v2);
-    D3D_RegisterSunSurface(a1);
-    D3D_CreateSunTextures(a1);
-    D3D_SetSunEffectOnOff(a1, 0);
-}
-
-struct sGfxSunData* GFX_Sun_Create()
-{
-    tGfxSunData* v0;
-
-    v0 = (tGfxSunData*)MEM_p_Alloc(sizeof(tGfxSunData));
-    memset(v0, 0, sizeof(tGfxSunData));
-    v0->v1.x = 0.0f;
-    v0->v1.y = 0.0f;
-    v0->v1.z = 0.0f;
-    v0->v2.x = 0.0f;
-    v0->v2.y = 0.0f;
-    v0->v2.z = 0.0f;
-    v0->i4 = 0.2f;
-    v0->i9 = 0.2f;
-    v0->i6 = 15.0f;
-    v0->i5 = 10.0;
-    v0->i8 = 2.0f;
-    v0->i7 = 1.0f;
-    v0->i11 = 4.0f;
-    v0->i10 = 2.0f;
-    v0->i13 = 3.0f;
-    v0->i12 = 2.0f;
-    v0->i14 = 3.0f;
-    v0->i16 = 0.1f;
-    v0->multiplier = 1.0f;
-    v0->i17 = 10.0f;
-    v0->num = 32;
-    v0->flags = 12;
-    v0->alphaThresholdFlags = 0;
-    v0->b1 = 0;
-    v0->b2 = 1;
-    GFX_Sun_ComputeRay(v0);
-    GFX_Sun_InitRayLum(v0);
-    D3D_CreateSunD3DStuff(&v0->d3dStuff);
-    v0->alphaThresholdFlags = -1;
-    return v0;
-}
-
-tGfxSunD3DSpecificDataInner* D3D_GetGFXSunI3Param(tGfxSunD3DSpecificData* a1)
-{
-    return a1->currPtrInner;
-}
-
-tGfxSunD3DSpecificDataInner* D3D_GetGFXSunI4Param(tGfxSunD3DSpecificData* a1)
-{
-    return a1->firstPtrInner;
-}
-
-tGfxSunD3DSpecificDataInner* D3D_SelectNextPtrInnerFromPtr(tGfxSunD3DSpecificData* a1, tGfxSunD3DSpecificDataInner* a2)
-{
-    return (tGfxSunD3DSpecificDataInner*)((char*)a1->ptr + a1->ptrElemSize * (((unsigned int)((char*)a2 - (char*)a1->ptr) / a1->ptrElemSize + 1) % a1->maxElemNum));
-}
-
-tGfxSunD3DSpecificDataInner* D3D_SelectPrevPtrInnerFromPtr(tGfxSunD3DSpecificData* a1, tGfxSunD3DSpecificDataInner* a2)
-{
-    return (tGfxSunD3DSpecificDataInner*)((char*)a1->ptr + a1->ptrElemSize * (((unsigned int)((char*)a2 - (char*)a1->ptr) / a1->ptrElemSize - 1)  % a1->maxElemNum));
-}
-
-tGfxSunD3DSpecificDataInner* D3D_SelectAndSetNextPtrInnerFromPtr(tGfxSunD3DSpecificData* a1)
-{
-    tGfxSunD3DSpecificDataInner* result;
-
-    if (!a1->currPtrInner)
-    {
-        result = a1->ptr;
-        a1->firstPtrInner = result;
-    LABEL_3:
-        a1->currPtrInner = result;
-        return result;
-    }
-    result = D3D_SelectNextPtrInnerFromPtr(a1, a1->currPtrInner);
-    if (result != a1->firstPtrInner)
-        goto LABEL_3;
-    return 0;
-}
-
-int D3D_StretchRectNoFilter(IDirect3DSurface9* src, int srcX, int srcY, IDirect3DSurface9* dest, int destX, int destY)
-{
-    RECT v7;
-    RECT v8;
-
-    v8.left = srcX;
-    v8.top = srcY;
-    v8.right = srcX + 1;
-    v8.bottom = srcY + 1;
-    v7.left = destX;
-    v7.top = destY;
-    v7.right = destX + 1;
-    v7.bottom = destY + 1;
-    return D3DRenderParams.d3dDev->lpVtbl->StretchRect(D3DRenderParams.d3dDev, src, &v8, dest, &v7, 0);
-}
-
-void D3D_MultipleStretchWithArray(IDirect3DSurface9* a1, tD3dStrectRectUnkStruct* srcPos, IDirect3DSurface9* a3, tD3dStrectRectUnkStruct* destPos, int num)
-{
-    int v5;
-    tD3dStrectRectUnkStruct* v6;
     int i;
 
-    v5 = num;
-    if (num > 0)
+    D3D_InitSunD3DStruct(sun3d, sun3d->elems, sizeof(sun3d->elems), 3u);
+    for (i = 0; i < 3; i++)
     {
-        i = 0;
-        v6 = srcPos;
-        do
-        {
-            // itt eredetileg distance alapján ment: v6 - srcPos + destPos
-            D3D_StretchRectNoFilter(a1, v6->x, v6->y, a3, destPos[i].x, destPos[i].y);
-            ++i;
-            ++v6;
-            --v5;
-        } while (v5);
+        sun3d->elems[i].bitMask = 0;
+        D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(
+            D3DRenderParams.d3dDev, 16, 1, 21, 2, &sun3d->elems[i].d3dppSurface, 0);
+    }
+    D3D_RegisterSunSurface(sun3d);
+    D3D_CreateSunTextures(sun3d);
+    D3D_SetSunEffectOnOff(sun3d, 0);
+}
+
+struct sGfxSunData* GFX_Sun_Create(void)
+{
+    tGfxSunData* sun;
+
+    sun = (tGfxSunData*)MEM_p_Alloc(sizeof(tGfxSunData));
+    memset(sun, 0, sizeof(tGfxSunData));
+    MATH_SetNullVector(&sun->v1);
+    MATH_SetNullVector(&sun->v2);
+    sun->i4 = 0.2f;
+    sun->i5 = 10.0;
+    sun->i6 = 15.0f;
+    sun->i7 = 1.0f;
+    sun->i8 = 2.0f;
+    sun->i9 = 0.2f;
+    sun->i10 = 2.0f;
+    sun->i11 = 4.0f;
+    sun->i12 = 2.0f;
+    sun->i13 = 3.0f;
+    sun->i14 = 3.0f;
+    sun->i16 = 0.1f;
+    sun->i17 = 10.0f;
+    sun->multiplier = 1.0f;
+    sun->num = 32;
+    sun->flags = 12;
+    sun->alphaThresholdFlags = 0;
+    sun->b1 = 0;
+    sun->b2 = 1;
+    GFX_Sun_ComputeRay(sun);
+    GFX_Sun_InitRayLum(sun);
+    D3D_CreateSunD3DStuff(&sun->d3dStuff);
+    sun->alphaThresholdFlags = -1;
+    return sun;
+}
+
+tGfxSunD3DSpecificDataInner* D3D_GetGFXSunI3Param(tGfxSunD3DSpecificData* sun3d)
+{
+    return sun3d->currPtrInner;
+}
+
+tGfxSunD3DSpecificDataInner* D3D_GetGFXSunI4Param(tGfxSunD3DSpecificData* sun3d)
+{
+    return sun3d->firstPtrInner;
+}
+
+tGfxSunD3DSpecificDataInner* D3D_SelectNextPtrInnerFromPtr(tGfxSunD3DSpecificData* sun3d,
+                                                           tGfxSunD3DSpecificDataInner* elem)
+{
+    unsigned int index;
+
+    index = (unsigned int)((char*)elem - (char*)sun3d->ptr) / sun3d->ptrElemSize;
+    return (tGfxSunD3DSpecificDataInner*)
+           ((char*)sun3d->ptr + sun3d->ptrElemSize * ((index + 1) % sun3d->maxElemNum));
+}
+
+tGfxSunD3DSpecificDataInner* D3D_SelectPrevPtrInnerFromPtr(tGfxSunD3DSpecificData* sun3d,
+                                                           tGfxSunD3DSpecificDataInner* elem)
+{
+    unsigned int index;
+
+    index = (unsigned int)((char*)elem - (char*)sun3d->ptr) / sun3d->ptrElemSize;
+    return (tGfxSunD3DSpecificDataInner*)
+           ((char*)sun3d->ptr + sun3d->ptrElemSize * ((index - 1) % sun3d->maxElemNum));
+}
+
+tGfxSunD3DSpecificDataInner* D3D_SelectAndSetNextPtrInnerFromPtr(tGfxSunD3DSpecificData* sun3d)
+{
+    tGfxSunD3DSpecificDataInner* next;
+
+    if (!sun3d->currPtrInner)
+    {
+        sun3d->firstPtrInner = sun3d->ptr;
+        sun3d->currPtrInner = sun3d->ptr;
+        return sun3d->ptr;
+    }
+
+    next = D3D_SelectNextPtrInnerFromPtr(sun3d, sun3d->currPtrInner);
+    if (next == sun3d->firstPtrInner)
+        return 0;
+
+    sun3d->currPtrInner = next;
+    return next;
+}
+
+int D3D_StretchRectNoFilter(IDirect3DSurface9* src, int srcX, int srcY,
+                            IDirect3DSurface9* dest, int destX, int destY)
+{
+    RECT srcRect;
+    RECT destRect;
+
+    srcRect.left = srcX;
+    srcRect.top = srcY;
+    srcRect.right = srcX + 1;
+    srcRect.bottom = srcY + 1;
+    destRect.left = destX;
+    destRect.top = destY;
+    destRect.right = destX + 1;
+    destRect.bottom = destY + 1;
+    return D3DRenderParams.d3dDev->lpVtbl->StretchRect(D3DRenderParams.d3dDev, src, &srcRect,
+                                                       dest, &destRect, 0);
+}
+
+void D3D_MultipleStretchWithArray(IDirect3DSurface9* src, tD3dStrectRectUnkStruct* srcPos,
+                                  IDirect3DSurface9* dest, tD3dStrectRectUnkStruct* destPos,
+                                  int num)
+{
+    int i;
+
+    for (i = 0; i < num; i++)
+    {
+        // itt eredetileg distance alapján ment: v6 - srcPos + destPos
+        D3D_StretchRectNoFilter(src, srcPos[i].x, srcPos[i].y,
+                                dest, destPos[i].x, destPos[i].y);
     }
 }
 
 void D3d_GetRenderTargetData(IDirect3DSurface9* rendertarget, IDirect3DSurface9* surface)
 {
-    D3DRenderParams.d3dDev->lpVtbl->GetRenderTargetData(D3DRenderParams.d3dDev, rendertarget, surface);
+    D3DRenderParams.d3dDev->lpVtbl->GetRenderTargetData(D3DRenderParams.d3dDev,
+                                                        rendertarget, surface);
 }
 
-void GFX_SunUnknownFunc(tGfxSunD3DSpecificData* a1, tGfxSunD3DSpecificDataInner* a2, tGdi_DisplayData* a3, tGfxSunData* sunData)
+void GFX_SunUnknownFunc(tGfxSunD3DSpecificData* sun3d, tGfxSunD3DSpecificDataInner* slot,
+                        tGdi_DisplayData* dd, tGfxSunData* sunData)
 {
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    int v8;
-    int v9;
-    double v10;
-    unsigned int v11;
-    double v12;
-    float v13;
-    int v14;
-    tDDContainerStruct* a4a; 
-    float v16;
-    float v17;
-    float v18;
-    float v19;
-    Vec3 a1a;
-    Vec3 a2a;
     tD3dStrectRectUnkStruct srcPos[9];
-    IDirect3DSurface9* v14a;
+    IDirect3DSurface9* renderTarget;
+    Vec3 screen;
+    Vec3 walk;
+    float left;
+    float right;
+    float top;
+    float bottom;
+    int clip;
+    int sampled;
+    int i;
 
-    v4 = a3->winWidth;
-    v5 = a3->ct.cam.viewPortRealPosX;
-    v14 = v5 < 0 ? 0 : v5;
-    v16 = (float)v14;
-    v14 = v5 + (unsigned int)a3->ct.cam.width;
-    if (v14 > v4)
-        v14 = v4;
-    v6 = a3->ct.cam.viewPortRealPosY;
-    v17 = (float)v14;
-    v14 = v6 <= 0 ? 0 : v6;
-    v18 = (float)v14;
-    v7 = v6 + (unsigned int)a3->ct.cam.height;
-    v14 = a3->winHeight;
-    if (v14 > v7)
-        v14 = v7;
-    v19 = (float)v14;
-    a4a = &a3->ct;
-    SOFT_TransformAndProject(&a1a, &sunData->v1, 1, &a3->ct.cam);
-    MATH_TransformVertex(&a2a, a3->ct.cam.viewMtxPtr_setInGRORender, &sunData->v1);
-    v8 = 0;
-    v13 = a2a.z;
-    v9 = 0;
-    a2->bitMask = 0;
-    v14 = (uint8_t)D3D_DepthBlurBlurFuncCalc2(v13);
-    a2->alphaThreshold = (float)v14;
-    do
+    clip = dd->ct.cam.viewPortRealPosX;
+    left = (float)(clip < 0 ? 0 : clip);
+    clip = dd->ct.cam.viewPortRealPosX + (unsigned int)dd->ct.cam.width;
+    if (clip > dd->winWidth)
+        clip = dd->winWidth;
+    right = (float)clip;
+
+    clip = dd->ct.cam.viewPortRealPosY;
+    top = (float)(clip <= 0 ? 0 : clip);
+    clip = dd->winHeight;
+    if (clip > (int)(dd->ct.cam.viewPortRealPosY + (unsigned int)dd->ct.cam.height))
+        clip = dd->ct.cam.viewPortRealPosY + (unsigned int)dd->ct.cam.height;
+    bottom = (float)clip;
+
+    SOFT_TransformAndProject(&screen, &sunData->v1, 1, &dd->ct.cam);
+    MATH_TransformVertex(&walk, dd->ct.cam.viewMtxPtr_setInGRORender, &sunData->v1);
+
+    slot->bitMask = 0;
+    slot->alphaThreshold = (float)(uint8_t)D3D_DepthBlurBlurFuncCalc2(walk.z);
+
+    sampled = 0;
+    for (i = 0; i < 9; i++)
     {
-        a2a.x = gSunStru_951A40[v8].x * sunData->multiplier + a2a.x;
-        a2a.y = gSunStru_951A40[v8].y * sunData->multiplier + a2a.y;
-        SOFT_Project(&a1a, &a2a, 1, a4a);
-        if (a1a.x < (double)v16 || a1a.x >(double)v17 || a1a.y < (double)v18 || a1a.y >(double)v19)
+        walk.x = gSunStru_951A40[i].x * sunData->multiplier + walk.x;
+        walk.y = gSunStru_951A40[i].y * sunData->multiplier + walk.y;
+        SOFT_Project(&screen, &walk, 1, &dd->ct);
+        if (screen.x < (double)left || screen.x > (double)right
+            || screen.y < (double)top || screen.y > (double)bottom)
         {
-            a2->bitMask &= ~(1 << v8);
+            slot->bitMask &= ~(1 << i);
         }
         else
         {
-            v10 = a1a.x;
-            a2->bitMask |= 1 << v8;
-            v11 = (unsigned int)v10;
-            v12 = a1a.y;
-            srcPos[v9].x = v11;
-            srcPos[v9++].y = (unsigned int)v12;
+            slot->bitMask |= 1 << i;
+            srcPos[sampled].x = (unsigned int)screen.x;
+            srcPos[sampled].y = (unsigned int)screen.y;
+            sampled++;
         }
-        ++v8;
-    } while (v8 < 9);
-    D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &v14a);
-    D3D_MultipleStretchWithArray(v14a, srcPos, a1->d3dRenderTarget, gSunDestPos, v9);
-    v14a->lpVtbl->Release(v14a);
-    D3d_GetRenderTargetData(a1->d3dRenderTarget, a2->d3dppSurface);
+    }
+
+    D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &renderTarget);
+    D3D_MultipleStretchWithArray(renderTarget, srcPos, sun3d->d3dRenderTarget,
+                                 gSunDestPos, sampled);
+    renderTarget->lpVtbl->Release(renderTarget);
+    D3d_GetRenderTargetData(sun3d->d3dRenderTarget, slot->d3dppSurface);
 }
 
-int D3D_SunGetPixelsFromSurface(IDirect3DSurface9* a1, tD3dStrectRectUnkStruct* a2, int a3, int* a4)
+int D3D_SunGetPixelsFromSurface(IDirect3DSurface9* surface, tD3dStrectRectUnkStruct* pos,
+                                int num, int* out)
 {
-    IDirect3DSurface9* v4;
-    int v6;
-    uint32_t* v7;
-    UINT v8;
-    int v9;
-    D3DLOCKED_RECT v10;
-    D3DSURFACE_DESC v11;
+    D3DLOCKED_RECT locked;
+    D3DSURFACE_DESC desc;
+    uint32_t* pixels;
+    int i;
 
-    v4 = a1;
-    a1->lpVtbl->GetDesc(a1, &v11);
-    if (v4->lpVtbl->LockRect(v4, &v10, 0, 0xC010) == D3DERR_WASSTILLDRAWING)
+    surface->lpVtbl->GetDesc(surface, &desc);
+    if (surface->lpVtbl->LockRect(surface, &locked, 0, 0xC010) == D3DERR_WASSTILLDRAWING)
         return 0;
-    v6 = 0;
-    if (a3 > 0)
-    {
-        v7 = v10.pBits;
-        v8 = v11.Width;
-        do
-        {
-            v9 = a2[v6].x + v8 * a2[v6].y;
-            a4[v6++] = v7[v9];
-        } while (v6 < a3);
-        v4 = a1;
-    }
-    v4->lpVtbl->UnlockRect(v4);
+
+    pixels = locked.pBits;
+    for (i = 0; i < num; i++)
+        out[i] = pixels[pos[i].x + desc.Width * pos[i].y];
+
+    surface->lpVtbl->UnlockRect(surface);
     return 1;
 }
 
-void D3D_SunSetAlphaThresholdFlagBySurface(tGfxSunData* a1, tGfxSunD3DSpecificDataInner* a2)
+void D3D_SunSetAlphaThresholdFlagBySurface(tGfxSunData* sun, tGfxSunD3DSpecificDataInner* slot)
 {
-    int v2;
-    int v3;
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    int v8;
-    int v9; 
-    int v10;
-    int v11;
-    int v12;
-    int v13;
-    int v14;
-    int v15;
-    int v16;
-    int v17;
-    int v18;
-    int v19;
-    int v20[9];
+    int pixels[9];
+    int sampled;
+    int i;
 
-    D3D_SunGetPixelsFromSurface(a2->d3dppSurface, gSunDestPos, 9, v20);
-    v2 = 0;
-    if ((a2->bitMask & 1) != 0)
+    D3D_SunGetPixelsFromSurface(slot->d3dppSurface, gSunDestPos, 9, pixels);
+
+    sampled = 0;
+    for (i = 0; i < 9; i++)
     {
-        v3 = a1->alphaThresholdFlags;
-        if ((double)((v20[0] >> 24) & 0xff) <= a2->alphaThreshold)
-            v4 = v3 & ~1u;
-        else
-            v4 = v3 | 1;
-        v2 = 1;
-    }
-    else
-    {
-        v4 = a1->alphaThresholdFlags | 1;
-    }
-    a1->alphaThresholdFlags = v4;
-    if ((a2->bitMask & 2) != 0)
-    {
-        v5 = a1->alphaThresholdFlags;
-        if ((double)((v20[v2] >> 24) & 0xff) <= a2->alphaThreshold)
-            v6 = v5 & ~2u;
-        else
-            v6 = v5 | 2;
-        ++v2;
-    }
-    else
-    {
-        v6 = a1->alphaThresholdFlags | 2;
-    }
-    a1->alphaThresholdFlags = v6;
-    if ((a2->bitMask & 4) != 0)
-    {
-        v7 = a1->alphaThresholdFlags;
-        if ((double)((v20[v2] >> 24) & 0xff) <= a2->alphaThreshold)
-            v8 = v7 & ~4u;
-        else
-            v8 = v7 | 4;
-        ++v2;
-    }
-    else
-    {
-        v8 = a1->alphaThresholdFlags | 4;
-    }
-    a1->alphaThresholdFlags = v8;
-    if ((a2->bitMask & 8) != 0)
-    {
-        v9 = a1->alphaThresholdFlags;
-        if ((double)((v20[v2] >> 24) & 0xff) <= a2->alphaThreshold)
-            v10 = v9 & ~8u;
-        else
-            v10 = v9 | 8;
-        ++v2;
-    }
-    else
-    {
-        v10 = a1->alphaThresholdFlags | 8;
-    }
-    a1->alphaThresholdFlags = v10;
-    if ((a2->bitMask & 0x10) != 0)
-    {
-        v11 = a1->alphaThresholdFlags;
-        if ((double)((v20[v2] >> 24) & 0xff) <= a2->alphaThreshold)
-            v12 = v11 & ~0x10u;
-        else
-            v12 = v11 | 0x10;
-        ++v2;
-    }
-    else
-    {
-        v12 = a1->alphaThresholdFlags | 0x10;
-    }
-    a1->alphaThresholdFlags = v12;
-    if ((a2->bitMask & 0x20) != 0)
-    {
-        v13 = a1->alphaThresholdFlags;
-        if ((double)((v20[v2] >> 24) & 0xff) <= a2->alphaThreshold)
-            v14 = v13 & ~0x20u;
-        else
-            v14 = v13 | 0x20;
-        ++v2;
-    }
-    else
-    {
-        v14 = a1->alphaThresholdFlags | 0x20;
-    }
-    a1->alphaThresholdFlags = v14;
-    if ((a2->bitMask & 0x40) != 0)
-    {
-        v15 = a1->alphaThresholdFlags;
-        if ((double)((v20[v2] >> 24) & 0xff) <= a2->alphaThreshold)
-            v16 = v15 & ~0x40u;
-        else
-            v16 = v15 | 0x40;
-        ++v2;
-    }
-    else
-    {
-        v16 = a1->alphaThresholdFlags | 0x40;
-    }
-    a1->alphaThresholdFlags = v16;
-    if ((a2->bitMask & 0x80) == 0)
-    {
-        v18 = a1->alphaThresholdFlags | 0x80;
-    }
-    else
-    {
-        v17 = a1->alphaThresholdFlags;
-        if ((double)((v20[v2] >> 24) & 0xff) <= a2->alphaThreshold)
-            v18 = v17 & ~0x80u;
-        else
-            v18 = v17 | 0x80;
-        ++v2;
-    }
-    a1->alphaThresholdFlags = v18;
-    if ((a2->bitMask & 0x100) != 0)
-    {
-        v19 = a1->alphaThresholdFlags;
-        if ((double)((v20[v2] >> 24) & 0xff) <= a2->alphaThreshold)
+        if ((slot->bitMask & (1 << i)) == 0)
         {
-            a1->alphaThresholdFlags = v19 & ~0x100u;
-            return;
+            sun->alphaThresholdFlags |= 1 << i;
+            continue;
         }
+
+        if ((double)((pixels[sampled] >> 24) & 0xff) <= slot->alphaThreshold)
+            sun->alphaThresholdFlags &= ~(1 << i);
+        else
+            sun->alphaThresholdFlags |= 1 << i;
+        sampled++;
+    }
+}
+
+void  D3D_SelectAndSetFirstPtrInnerFromPtr(tGfxSunD3DSpecificData* sun3d,
+                                           tGfxSunD3DSpecificDataInner* elem)
+{
+    if (elem == sun3d->currPtrInner)
+    {
+        sun3d->currPtrInner = NULL;
+        sun3d->firstPtrInner = NULL;
     }
     else
     {
-        v19 = a1->alphaThresholdFlags;
+        sun3d->firstPtrInner = D3D_SelectNextPtrInnerFromPtr(sun3d, elem);
     }
-    a1->alphaThresholdFlags = v19 | 0x100;
 }
 
-void  D3D_SelectAndSetFirstPtrInnerFromPtr(tGfxSunD3DSpecificData* a1, tGfxSunD3DSpecificDataInner* a2)
+void D3D_GfxSunDataI21ShortSwap(tGfxSunData* sun)
 {
-    if (a2 == a1->currPtrInner)
-    {
-        a1->currPtrInner = NULL;
-        a1->firstPtrInner = NULL;
-    }
-    else
-    {
-        a1->firstPtrInner = D3D_SelectNextPtrInnerFromPtr(a1, a2);
-    }
+    sun->alphaThresholdFlags = sun->alphaThresholdFlags & 0xFFFF0000
+                             | ((int)(sun->alphaThresholdFlags & 0xFFFF0000) >> 16);
 }
 
-void D3D_GfxSunDataI21ShortSwap(tGfxSunData* a1)
-{
-    a1->alphaThresholdFlags = a1->alphaThresholdFlags & 0xFFFF0000 | ((int)(a1->alphaThresholdFlags & 0xFFFF0000) >> 16);
-}
-
-int D3D_GetDepthBlurType()
+int D3D_GetDepthBlurType(void)
 {
     return depthblur_Type;
 }
 
-int D3D_SurfaceTestLockRect(IDirect3DSurface9* a1)
+int D3D_SurfaceTestLockRect(IDirect3DSurface9* surface)
 {
-    D3DLOCKED_RECT v2;
+    D3DLOCKED_RECT locked;
 
-    if (a1->lpVtbl->LockRect(a1, &v2, 0, 0xC010) == D3DERR_WASSTILLDRAWING)
+    if (surface->lpVtbl->LockRect(surface, &locked, 0, 0xC010) == D3DERR_WASSTILLDRAWING)
         return 0;
-    a1->lpVtbl->UnlockRect(a1);
+    surface->lpVtbl->UnlockRect(surface);
     return 1;
 }
 
-int calls_D3D_SurfaceTestLockRect(tGfxSunD3DSpecificDataInner* a1)
+int calls_D3D_SurfaceTestLockRect(tGfxSunD3DSpecificDataInner* slot)
 {
-    return D3D_SurfaceTestLockRect(a1->d3dppSurface);
+    return D3D_SurfaceTestLockRect(slot->d3dppSurface);
 }
 
-int GFX_Sun_UpdateRayLum_inner_sub_4A8A40(tGfxSunD3DSpecificData* a1, tGdi_DisplayData* a2, tGfxSunData* a3)
+static int GFX_l_SunHidden(tGfxSunD3DSpecificData* sun3d, tGfxSunData* sun)
 {
-    int v3;
-    tGfxSunD3DSpecificDataInner* v5;
-    tGfxSunD3DSpecificDataInner* v6;
-    int v7;
-    Vec3 a1a;
-
-    if (D3DRenderParams.tweak_ae_noflare)
-    {
-        v3 = a3->alphaThresholdFlags | 0x1FF;
-        a3->flags |= 0x1000000u;
-        a3->alphaThresholdFlags = v3;
-        D3D_SetSunEffectOnOff(a1, 0);
-        return ++sunUnkCnt;
-    }
-    if (a1->d3dRenderTarget)
-    {
-        a3->alphaThresholdFlags <<= 16;
-        SOFT_TransformAndProject(&a1a, &a3->v1, 1, &a2->ct.cam);
-        if (a1a.z < 0.0 || a3->b1)
-        {
-            v7 = a3->alphaThresholdFlags | 0x1FF;
-            a3->flags |= 0x1000000u;
-            a3->alphaThresholdFlags = v7;
-            D3D_SetSunEffectOnOff(a1, 0);
-            return ++sunUnkCnt;
-        }
-        D3D_SetSunEffectOnOff(a1, 1);
-        a3->flags &= ~0x1000000u;
-        if (D3D_GetDepthBlurType() == 4)
-        {
-            v5 = D3D_GetGFXSunI3Param(a1);
-            if (D3D_SelectAndSetNextPtrInnerFromPtr(a1))
-            {
-                v6 = D3D_GetGFXSunI3Param(a1);
-                GFX_SunUnknownFunc(a1, v6, a2, a3);
-            }
-            if (v5)
-            {
-                if (calls_D3D_SurfaceTestLockRect(v5))
-                {
-                LABEL_13:
-                    D3D_SunSetAlphaThresholdFlagBySurface(a3, v5);
-                    D3D_SelectAndSetFirstPtrInnerFromPtr(a1, v5);
-                    return ++sunUnkCnt;
-                }
-                while (v5 != D3D_GetGFXSunI4Param(a1))
-                {
-                    v5 = D3D_SelectPrevPtrInnerFromPtr(a1, v5);
-                    if (calls_D3D_SurfaceTestLockRect(v5))
-                        goto LABEL_13;
-                }
-            }
-        }
-        D3D_GfxSunDataI21ShortSwap(a3);
-    }
-    else
-    {
-        D3D_GfxSunDataI21ShortSwap(a3);
-    }
+    sun->flags |= 0x1000000u;
+    sun->alphaThresholdFlags |= 0x1FF;
+    D3D_SetSunEffectOnOff(sun3d, 0);
     return ++sunUnkCnt;
 }
 
-int GFX_Sun_UpdateRayLum(tGfxSunData* a1)
+int GFX_Sun_UpdateRayLum_inner_sub_4A8A40(tGfxSunD3DSpecificData* sun3d, tGdi_DisplayData* dd,
+                                          tGfxSunData* sun)
 {
-    return GFX_Sun_UpdateRayLum_inner_sub_4A8A40(&a1->d3dStuff, gpst_DX_stDD, a1);
-}
+    tGfxSunD3DSpecificDataInner* pending;
+    tGfxSunD3DSpecificDataInner* ready;
+    Vec3 screen;
 
-void GFX_Sun_Render(struct sGfxSunData* a1)
-{
-    int v1;
-    int v2;
-    double v3;
-    double v4;
-    long double v5;
-    double v6;
-    int v7;
-    tGeoTriangleChunkElem* v8;
-    int* vertexColors;
-    double v10;
-    double v11;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    double v16;
-    double v17;
-    double v18;
-    double v19;
-    double v20;
-    double v21;
-    double v22;
-    double v23;
-    double v24;
-    double v25;
-    double v26;
-    double v27;
-    double v28;
-    double v29;
-    int v30; 
-    double v31;
-    double v32;
-    double v33;
-    int v34; 
-    double v35;
-    double v36;
-    double v37;
-    double v38;
-    double v39;
-    double v40;
-    double v41;
-    double v42;
-    double v43;
-    double v44;
-    float v45; 
-    double v46;
-    double v47;
-    double v48;
-    double v49;
-    float* v50;
-    unsigned int v51;
-    int v52;
-    Vec3* v53;
-    tGfxSunDataInner *v54;
-    unsigned int v55;
-    int* v56;
-    uint16_t v57;
-    double v58;
-    double v59;
-    double v60;
-    double v61;
-    double v62;
-    double v63;
-    double v64;
-    double v65;
-    int v66; 
-    int v67; 
-    float v68;
-    float v69;
-    float v70;
-    float v71;
-    int v72;
-    float v73;
-    float v74;
-    float v75;
-    float v76;
-    float v77;
-    float v78;
-    float v79;
-    float v80;
-    int v81; 
-    float v82;
-    int v83; 
-    float v84;
-    float v85;
-    float v86;
-    float v87;
-    float v88;
-    float v89;
-    float v90;
-    float v91;
-    float v92;
-    float v93;
-    float v94;
-    float v95;
-    float v96;
-    Vec3* v97;
-    float v98;
-    float v99;
-    float v100;
-    float v101;
-    float v102;
-    float v103;
-    float v104;
-    float v105;
-    float v106;
-    float v107;
-    float v108;
-    float v109;
-    float v110;
-    float v111;
-    float v112;
-    float v113;
-    float v114[8];
-    int v115[8];
+    if (D3DRenderParams.tweak_ae_noflare)
+        return GFX_l_SunHidden(sun3d, sun);
 
-    v1 = 0;
-    if (a1->b1)
+    if (!sun3d->d3dRenderTarget)
     {
-        a1->alphaThresholdFlags = (a1->alphaThresholdFlags << 16) | 0x1FF;
+        D3D_GfxSunDataI21ShortSwap(sun);
+        return ++sunUnkCnt;
     }
-    else if ((a1->flags & 8) != 0)
+
+    sun->alphaThresholdFlags <<= 16;
+    SOFT_TransformAndProject(&screen, &sun->v1, 1, &dd->ct.cam);
+    if (screen.z < 0.0 || sun->b1)
+        return GFX_l_SunHidden(sun3d, sun);
+
+    D3D_SetSunEffectOnOff(sun3d, 1);
+    sun->flags &= ~0x1000000u;
+
+    if (D3D_GetDepthBlurType() == 4)
     {
-        GFX_Sun_UpdateRayLum(a1);
-    }
-    else
-    {
-        a1->alphaThresholdFlags = 0;
-    }
-    v2 = a1->flags;
-    if ((v2 & 0x1000000) == 0)
-    {
-        if ((v2 & 4) != 0)
+        pending = D3D_GetGFXSunI3Param(sun3d);
+        if (D3D_SelectAndSetNextPtrInnerFromPtr(sun3d))
+            GFX_SunUnknownFunc(sun3d, D3D_GetGFXSunI3Param(sun3d), dd, sun);
+
+        // the newest surface the hardware has finished with, walking back
+        // from the one just queued
+        ready = 0;
+        if (pending)
         {
-            v76 = a1->v1.x;
-            v78 = a1->v1.y;
-            v80 = a1->v1.z;
-        }
-        else
-        {
-            v3 = a1->v1.x - gpst_DX_stDD->ct.cam.objectMtx.Pos.x;
-            v4 = a1->v1.y - gpst_DX_stDD->ct.cam.objectMtx.Pos.y;
-            v79 = a1->v1.z - gpst_DX_stDD->ct.cam.objectMtx.Pos.z;
-            v5 = 1.0 / sqrt(v4 * v4 + v3 * v3 + v79 * v79);
-            v71 = (float)v5;
-            v74 = (float)(v5 * v3);
-            v6 = a1->i17;
-            v75 = (float)(v74 * v6);
-            v77 = (float)(v4 * v71 * v6);
-            v76 = v75 + gpst_DX_stDD->ct.cam.objectMtx.Pos.x;
-            v78 = v77 + gpst_DX_stDD->ct.cam.objectMtx.Pos.y;
-            v80 = (float)(v6 * (v79 * v71) + gpst_DX_stDD->ct.cam.objectMtx.Pos.z);
-        }
-        GFX_NeedGeom(3 * a1->num, 3u, a1->num, 1);
-        GFX_gpst_Geo->UVs->u = 0.5;
-        GFX_gpst_Geo->UVs->v = 0.0;
-        GFX_gpst_Geo->UVs[1].u = 0.0;
-        GFX_gpst_Geo->UVs[1].v = 1.0;
-        GFX_gpst_Geo->UVs[2].u = 1.0;
-        GFX_gpst_Geo->UVs[2].v = 1.0;
-        v7 = a1->alphaThresholdFlags;
-        v8 = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
-        vertexColors = GFX_gpst_Geo->vertexColors + 1;
-        v97 = GFX_gpst_Geo->vertices;
-        if ((v7 & 0x100) != 0)
-            v10 = 0.5;
-        else
-            v10 = 1.0;
-        v67 = a1->alphaThresholdFlags & 1;
-        if ((v7 & 1) != 0)
-            v11 = 0.0;
-        else
-            v11 = 2.0;
-        v81 = a1->alphaThresholdFlags & 0x80;
-        if ((v7 & 0x80) != 0)
-            v12 = 0.0;
-        else
-            v12 = 1.0;
-        v13 = v11 + v12;
-        if ((v7 & 2) != 0)
-            v14 = 0.0;
-        else
-            v14 = 1.0;
-        v114[0] = (float)((v13 + v14) * 0.25 * v10);
-        if ((v7 & 2) != 0)
-            v15 = 0.0;
-        else
-            v15 = 2.0;
-        if ((v7 & 1) != 0)
-            v16 = 0.0;
-        else
-            v16 = 1.0;
-        v17 = v15 + v16;
-        if ((v7 & 4) != 0)
-            v18 = 0.0;
-        else
-            v18 = 1.0;
-        v114[1] = (float)((v17 + v18) * 0.25 * v10);
-        if ((v7 & 4) != 0)
-            v19 = 0.0;
-        else
-            v19 = 2.0;
-        if ((v7 & 2) != 0)
-            v20 = 0.0;
-        else
-            v20 = 1.0;
-        v21 = v19 + v20;
-        if ((v7 & 8) != 0)
-            v22 = 0.0;
-        else
-            v22 = 1.0;
-        v114[2] = (float)((v21 + v22) * 0.25 * v10);
-        if ((v7 & 8) != 0)
-            v23 = 0.0;
-        else
-            v23 = 2.0;
-        if ((v7 & 4) != 0)
-            v24 = 0.0;
-        else
-            v24 = 1.0;
-        v25 = v23 + v24;
-        if ((v7 & 0x10) != 0)
-            v26 = 0.0;
-        else
-            v26 = 1.0;
-        v114[3] = (float)((v25 + v26) * 0.25 * v10);
-        if ((v7 & 0x10) != 0)
-            v27 = 0.0;
-        else
-            v27 = 2.0;
-        if ((v7 & 8) != 0)
-            v28 = 0.0;
-        else
-            v28 = 1.0;
-        v29 = v27 + v28;
-        v30 = v7 & 0x20;
-        if ((v7 & 0x20) != 0)
-            v31 = 0.0;
-        else
-            v31 = 1.0;
-        v114[4] = (float)((v29 + v31) * 0.25 * v10);
-        if ((v7 & 0x20) != 0)
-            v32 = 0.0;
-        else
-            v32 = 2.0;
-        if ((v7 & 0x10) != 0)
-            v33 = 0.0;
-        else
-            v33 = 1.0;
-        v34 = v7 & 0x40;
-        v35 = v32 + v33;
-        if (v34)
-            v36 = 0.0;
-        else
-            v36 = 1.0;
-        v114[5] = (float)((v35 + v36) * 0.25 * v10);
-        if (v34)
-            v37 = 0.0;
-        else
-            v37 = 2.0;
-        if (v30)
-            v38 = 0.0;
-        else
-            v38 = 1.0;
-        v39 = v37 + v38;
-        if (v81)
-            v40 = 0.0;
-        else
-            v40 = 1.0;
-        v114[6] = (float)((v39 + v40) * 0.25 * v10);
-        if (v81)
-            v41 = 0.0;
-        else
-            v41 = 2.0;
-        if (v34)
-            v42 = 0.0;
-        else
-            v42 = 1.0;
-        v43 = v41 + v42;
-        if (v67)
-            v44 = 0.0;
-        else
-            v44 = 1.0;
-        v45 = a1->v1.x;
-        v114[7] = (float)((v43 + v44) * 0.25 * v10);
-        v46 = a1->v2.y - a1->v1.y;
-        v47 = a1->v2.z - a1->v1.z;
-        v48 = a1->v2.x - a1->v1.x;
-        a1->v2.x = v45;
-        a1->v2.y = a1->v1.y;
-        a1->v2.z = a1->v1.z;
-        v68 = (float)(sqrt(v48 * v48 + v47 * v47 + v46 * v46));
-        if (a1->b2)
-        {
-            v49 = 1.0;
-            a1->b2 = 0;
-        }
-        else if (v68 == 0.0 || !(uint8_t)a1->alphaThresholdFlags || (uint8_t)a1->alphaThresholdFlags == 255)
-        {
-            v49 = a1->i16 / TIM_gf_dt;
-        }
-        else
-        {
-            v49 = a1->multiplier / v68;
-        }
-        v72 = 0;
-        v50 = a1->rayLums;
-        do
-        {
-            v82 = (float)(1.0 / v49);
-            v69 = (v114[v1] - *v50) * v82 + *v50;
-            *v50 = v69;
-            if (v69 <= 1.0)
+            if (calls_D3D_SurfaceTestLockRect(pending))
             {
-                if (v69 < 0.0)
-                    *v50 = 0.0;
+                ready = pending;
             }
             else
             {
-                *v50 = 1.0;
-            }
-            v51 = LIGHT_ul_Interpol2Colors(0, a1->color, *v50);
-            v115[v1] = v51;
-            v52 = v51 | v72;
-            ++v1;
-            ++v50;
-            v72 |= v51;
-        } while (v1 < 8);
-        if (v52)
-        {
-            v83 = 0;
-            if (a1->num > 0)
-            {
-                v53 = v97;
-                v54 = a1->elems;
-                do
+                while (pending != D3D_GetGFXSunI4Param(sun3d))
                 {
-                    v55 = LIGHT_ul_Interpol2Colors(v115[v54->colorID], v115[v54->colorID2], v54->colorFactor);
-                    if (v55)
+                    pending = D3D_SelectPrevPtrInnerFromPtr(sun3d, pending);
+                    if (calls_D3D_SurfaceTestLockRect(pending))
                     {
-                        *vertexColors = v55;
-                        vertexColors[1] = v55;
-                        v56 = vertexColors + 1;
-                        v56[1] = v55;
-                        
-                        v57 = ((char*)v97 - ((char*)(GFX_gpst_Geo->vertices))) / sizeof(Vec3);
-                        v8->v1 = v57;
-                        v8->uv1 = 0;
-                        v8->uv2 = 1;
-                        v8->uv3 = 2;
-                        vertexColors = v56 + 2;
-                        v8->v2 = v57 + 1;
-                        v8->v3 = v8->v1 + 2;
-                        v58 = v54->i1;
-                        v73 = v54->i4;
-                        ++v8;
-                        v102 = (float)(gpst_DX_stDD->ct.cam.objectMtx.v1.y * v58);
-                        v104 = (float)(gpst_DX_stDD->ct.cam.objectMtx.v1.z * v58);
-                        v59 = v54->i2;
-                        v91 = (float)(v59 * gpst_DX_stDD->ct.cam.objectMtx.v2.x);
-                        v93 = (float)(gpst_DX_stDD->ct.cam.objectMtx.v2.y * v59);
-                        v95 = (float)(gpst_DX_stDD->ct.cam.objectMtx.v2.z * v59);
-                        v100 = v95 + v104;
-                        v98 = (float)((v91 + v58 * gpst_DX_stDD->ct.cam.objectMtx.v1.x) * v73);
-                        v60 = (v93 + v102) * v73;
-                        v61 = v100 * v73;
-                        v106 = v76 - v98;
-                        v107 = (float)(v78 - v60);
-                        v108 = (float)(v80 - v61);
-                        v62 = a1->i14;
-                        v112 = (float)(v98 * v62);
-                        v113 = (float)(v60 * v62);
-                        v99 = v113 + v78;
-                        v63 = v112 + v76;
-                        v101 = (float)(v61 * v62 + v80);
-                        v64 = v54->i2;
-                        v103 = (float)(gpst_DX_stDD->ct.cam.objectMtx.v1.y * v64);
-                        v105 = (float)(gpst_DX_stDD->ct.cam.objectMtx.v1.z * v64);
-                        v65 = -v54->i1;
-                        v92 = (float)(v65 * gpst_DX_stDD->ct.cam.objectMtx.v2.x);
-                        v94 = (float)(gpst_DX_stDD->ct.cam.objectMtx.v2.y * v65);
-                        v70 = v54->i5;
-                        v96 = (float)(gpst_DX_stDD->ct.cam.objectMtx.v2.z * v65);
-                        v88 = v96 + v105;
-                        v84 = (float)((v92 + v64 * gpst_DX_stDD->ct.cam.objectMtx.v1.x) * v70);
-                        v97->x = v106;
-                        v86 = (v94 + v103) * v70;
-                        v53->y = v107;
-                        v53->z = v108;
-                        v89 = v88 * v70;
-                        v109 = (float)(v63 - v84);
-                        v53[1].x = v109;
-                        v110 = v99 - v86;
-                        v53[1].y = v110;
-                        v111 = v101 - v89;
-                        v53[1].z = v111;
-                        v85 = (float)(v84 + v63);
-                        v53[2].x = v85;
-                        v87 = v86 + v99;
-                        v53[2].y = v87;
-                        v90 = v89 + v101;
-                        v53[2].z = v90;
-                        v97 += 3;
-                        v53 += 3;
+                        ready = pending;
+                        break;
                     }
-                    else
-                    {
-                        --GFX_gpst_Geo->triangleChunks->triangleNum;
-                    }
-                    ++v54;
-                    ++v83;
-                } while (v83 < a1->num);
+                }
             }
-            v66 = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
-            gpst_DX_stDD->drawMaskAllowedStuffCurrent = v66 & ~0x9000900u;
-            p_Current_SOFT_gst_ZList = SOFT_gpc_BigBufferZlists;
-            GFX_gpst_Geo->intf->Render(GFX_gpst_GO);
-            gpst_DX_stDD->drawMaskAllowedStuffCurrent = v66;
+        }
+
+        if (ready)
+        {
+            D3D_SunSetAlphaThresholdFlagBySurface(sun, ready);
+            D3D_SelectAndSetFirstPtrInnerFromPtr(sun3d, ready);
+            return ++sunUnkCnt;
+        }
+    }
+
+    D3D_GfxSunDataI21ShortSwap(sun);
+    return ++sunUnkCnt;
+}
+
+int GFX_Sun_UpdateRayLum(tGfxSunData* sun)
+{
+    return GFX_Sun_UpdateRayLum_inner_sub_4A8A40(&sun->d3dStuff, gpst_DX_stDD, sun);
+}
+
+void GFX_Sun_Render(struct sGfxSunData* sun)
+{
+    tGfxSunDataInner* ray;
+    tGeoTriangleChunkElem* tris;
+    tGeoUVElem* uvs;
+    Vec3* verts;
+    Vec3 toSun;
+    Vec3 sunPos;
+    Vec3 wide;
+    Vec3 across;
+    Vec3 farCentre;
+    Vec3 moved;
+    int* colors;
+    double invDist;
+    double centreScale;
+    double self;
+    double prev;
+    double next;
+    double rate;
+    float targetLum[8];
+    int rayColors[8];
+    float movedLen;
+    unsigned int color;
+    int anyColor;
+    int baseVertex;
+    int flags;
+    int k;
+
+    if (sun->b1)
+        sun->alphaThresholdFlags = (sun->alphaThresholdFlags << 16) | 0x1FF;
+    else if ((sun->flags & 8) != 0)
+        GFX_Sun_UpdateRayLum(sun);
+    else
+        sun->alphaThresholdFlags = 0;
+
+    if ((sun->flags & 0x1000000) != 0)
+        return;
+
+    if ((sun->flags & 4) != 0)
+    {
+        sunPos = sun->v1;
+    }
+    else
+    {
+        MATH_SubstractVec(&toSun, &sun->v1, &gpst_DX_stDD->ct.cam.objectMtx.Pos);
+        invDist = 1.0 / MATH_VecLen(&toSun);
+        MATH_AddScaleVector(&sunPos, &gpst_DX_stDD->ct.cam.objectMtx.Pos, &toSun,
+                            (float)(invDist * sun->i17));
+    }
+
+    GFX_NeedGeom(3 * sun->num, 3u, sun->num, 1);
+    uvs = GFX_gpst_Geo->UVs;
+    uvs[0].u = 0.5;
+    uvs[0].v = 0.0;
+    uvs[1].u = 0.0;
+    uvs[1].v = 1.0;
+    uvs[2].u = 1.0;
+    uvs[2].v = 1.0;
+
+    tris = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+    colors = GFX_gpst_Geo->vertexColors + 1;
+    verts = GFX_gpst_Geo->vertices;
+    baseVertex = 0;
+
+    // each octant is lit by its own sample at double weight and by its two
+    // neighbours at single, and the centre sample halves the lot
+    flags = sun->alphaThresholdFlags;
+    centreScale = ((flags & 0x100) != 0) ? 0.5 : 1.0;
+    for (k = 0; k < 8; k++)
+    {
+        self = ((flags & (1 << k)) != 0) ? 0.0 : 2.0;
+        prev = ((flags & (1 << ((k + 7) & 7))) != 0) ? 0.0 : 1.0;
+        next = ((flags & (1 << ((k + 1) & 7))) != 0) ? 0.0 : 1.0;
+        targetLum[k] = (float)((self + prev + next) * 0.25 * centreScale);
+    }
+
+    MATH_SubstractVec(&moved, &sun->v2, &sun->v1);
+    sun->v2 = sun->v1;
+    movedLen = (float)sqrt(moved.x * moved.x + moved.z * moved.z + moved.y * moved.y);
+
+    if (sun->b2)
+    {
+        rate = 1.0;
+        sun->b2 = 0;
+    }
+    else if (movedLen == 0.0 || !(uint8_t)sun->alphaThresholdFlags
+             || (uint8_t)sun->alphaThresholdFlags == 255)
+    {
+        rate = sun->i16 / TIM_gf_dt;
+    }
+    else
+    {
+        rate = sun->multiplier / movedLen;
+    }
+
+    anyColor = 0;
+    for (k = 0; k < 8; k++)
+    {
+        sun->rayLums[k] = (targetLum[k] - sun->rayLums[k]) * (float)(1.0 / rate)
+                        + sun->rayLums[k];
+        if (sun->rayLums[k] > 1.0)
+            sun->rayLums[k] = 1.0;
+        else if (sun->rayLums[k] < 0.0)
+            sun->rayLums[k] = 0.0;
+        rayColors[k] = LIGHT_ul_Interpol2Colors(0, sun->color, sun->rayLums[k]);
+        anyColor |= rayColors[k];
+    }
+
+    if (!anyColor)
+        return;
+
+    for (k = 0; k < sun->num; k++)
+    {
+        ray = &sun->elems[k];
+        color = LIGHT_ul_Interpol2Colors(rayColors[ray->colorID], rayColors[ray->colorID2],
+                                         ray->colorFactor);
+        if (!color)
+        {
+            --GFX_gpst_Geo->triangleChunks->triangleNum;
+            continue;
+        }
+
+        colors[0] = color;
+        colors[1] = color;
+        colors[2] = color;
+
+        tris->v1 = baseVertex;
+        tris->v2 = baseVertex + 1;
+        tris->v3 = baseVertex + 2;
+        tris->uv1 = 0;
+        tris->uv2 = 1;
+        tris->uv3 = 2;
+
+        MATH_VecMultScalar(&wide, &gpst_DX_stDD->ct.cam.objectMtx.v1, ray->i1);
+        MATH_AddScaleVector(&wide, &wide, &gpst_DX_stDD->ct.cam.objectMtx.v2, ray->i2);
+        MATH_VecMultScalarWithoutBuffer(&wide, ray->i4);
+
+        MATH_VecMultScalar(&across, &gpst_DX_stDD->ct.cam.objectMtx.v1, ray->i2);
+        MATH_AddScaleVector(&across, &across, &gpst_DX_stDD->ct.cam.objectMtx.v2, -ray->i1);
+        MATH_VecMultScalarWithoutBuffer(&across, ray->i5);
+
+        MATH_SubstractVec(&verts[0], &sunPos, &wide);
+        MATH_AddScaleVector(&farCentre, &sunPos, &wide, sun->i14);
+        MATH_SubstractVec(&verts[1], &farCentre, &across);
+        MATH_VecAddVec(&verts[2], &farCentre, &across);
+
+        colors += 3;
+        verts += 3;
+        baseVertex += 3;
+        tris++;
+    }
+
+    p_Current_SOFT_gst_ZList = SOFT_gpc_BigBufferZlists;
+    GFX_RenderGeom(0x9000900u);
+}
+
+void GFX_Sun_Seti(struct sGfxSunData* sun, int id)
+{
+    if (id == 18100)
+        GFX_Sun_ComputeRay(sun);
+}
+
+void D3D_UnsetSunSurface(tGfxSunD3DSpecificData* sun3d)
+{
+    int i;
+
+    for (i = 0; i < 16; i++)
+    {
+        if (gD3dSunSurfaces[i] == sun3d)
+        {
+            gD3dSunSurfaces[i] = NULL;
+            return;
         }
     }
 }
 
-void GFX_Sun_Seti(struct sGfxSunData* a1, int a2)
+void GFX_Sun_Destroy(struct sGfxSunD3DSpecificData* sun3d)
 {
-    if (a2 == 18100)
-        GFX_Sun_ComputeRay(a1);
-}
+    int i;
 
-void D3D_UnsetSunSurface(tGfxSunD3DSpecificData* a1)
-{
-    int v1;
-
-    v1 = 0;
-    while (gD3dSunSurfaces[v1] != a1)
-    {
-        if (++v1 >= 16)
-            return;
-    }
-    gD3dSunSurfaces[v1] = NULL;
-}
-
-void GFX_Sun_Destroy(struct sGfxSunD3DSpecificData* a1)
-{
-    tGfxSunD3DSpecificDataInner* v1;
-    int v2;
-
-    D3D_SetSunEffectOnOff(a1, 0);
-    D3D_ReleaseSunRenderTargetAndTexture(a1);
-    D3D_UnsetSunSurface(a1);
-    v1 = a1->elems;
-    v2 = 3;
-    do
-    {
-        v1->d3dppSurface->lpVtbl->Release(v1->d3dppSurface);
-        ++v1;
-        --v2;
-    } while (v2);
+    D3D_SetSunEffectOnOff(sun3d, 0);
+    D3D_ReleaseSunRenderTargetAndTexture(sun3d);
+    D3D_UnsetSunSurface(sun3d);
+    for (i = 0; i < 3; i++)
+        sun3d->elems[i].d3dppSurface->lpVtbl->Release(sun3d->elems[i].d3dppSurface);
 }

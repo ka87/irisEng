@@ -21,5 +21,5 @@ typedef struct sGfxAnotherFlareData
     float remainingTime;
 } tGfxAnotherFlareData;
 
-struct sGfxAnotherFlareData* GFX_AnotherFlare_Create(struct sGameObjectMain* a1);
-int GFX_i_AnotherFlare_Render(struct sGfxAnotherFlareData* a1);
+struct sGfxAnotherFlareData* GFX_AnotherFlare_Create(struct sGameObjectMain* gao);
+int GFX_i_AnotherFlare_Render(struct sGfxAnotherFlareData* afd);

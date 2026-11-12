@@ -22,11 +22,11 @@ struct sGfxDiaphragmData* GFX_Diaphragm_Create(void)
 }
 
 static tGeoTriangleChunkElem* GFX_l_DiaphragmTriangle(tGeoTriangleChunkElem* tris,
-                                                      int v1, int v2, int v3)
+                                                      int corner1, int corner2, int corner3)
 {
-    tris->v1 = v1;
-    tris->v2 = v2;
-    tris->v3 = v3;
+    tris->v1 = corner1;
+    tris->v2 = corner2;
+    tris->v3 = corner3;
     tris->uv1 = 0;
     tris->uv2 = 1;
     tris->uv3 = 2;

@@ -46,7 +46,7 @@ typedef struct sGfxProfilerData
     int LPPNum;
     tGfxProfilerPtr1Data* ptr1;
     int num;
-    int a1;
+    int currentSlice;
     unsigned int* ptr3;
     tGfxProfilerPtr4Data* ptr4;
     int triangleNum;

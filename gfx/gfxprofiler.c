@@ -31,9 +31,9 @@ void GFX_i_Profiler_StartStop(tGfxProfilerData* prof, unsigned int running)
     if (!prof->uu)
         return;
 
-    prof->ptr3[prof->a1] = running;
-    if (!running && ++prof->a1 == prof->num)
-        prof->a1 = 0;
+    prof->ptr3[prof->currentSlice] = running;
+    if (!running && ++prof->currentSlice == prof->num)
+        prof->currentSlice = 0;
 }
 
 static int GFX_l_ProfilerNextSlice(tGfxProfilerData* prof, int slice)
@@ -160,16 +160,16 @@ void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* prof)
     int fade;
     int i;
 
-    if (!prof->uu || !prof->ptr3[prof->a1])
+    if (!prof->uu || !prof->ptr3[prof->currentSlice])
         return;
 
-    next = GFX_l_ProfilerNextSlice(prof, prof->a1);
-    prof->ptr3[next] = prof->ptr3[prof->a1];
-    prof->a1 = next;
+    next = GFX_l_ProfilerNextSlice(prof, prof->currentSlice);
+    prof->ptr3[next] = prof->ptr3[prof->currentSlice];
+    prof->currentSlice = next;
     if (prof->xxxxx)
-        prof->a1 = (prof->a1 ? prof->a1 : prof->num) - 1;
+        prof->currentSlice = (prof->currentSlice ? prof->currentSlice : prof->num) - 1;
 
-    point = &prof->ptr4[prof->PPPNum * prof->a1];
+    point = &prof->ptr4[prof->PPPNum * prof->currentSlice];
     sliceEnd = &point[prof->PPPNum];
     params = prof->ptr2;
     while (point < sliceEnd)
@@ -192,12 +192,12 @@ void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* prof)
     }
     prof->xxxxx = 0;
 
-    if (prof->a1 && prof->ptr3[prof->a1 - 1])
+    if (prof->currentSlice && prof->ptr3[prof->currentSlice - 1])
     {
-        slice = &prof->ptr4[prof->PPPNum * prof->a1];
+        slice = &prof->ptr4[prof->PPPNum * prof->currentSlice];
         MATH_VecAddVec(&head, &slice->v1, &slice[prof->PPPNum - 1].v1);
-        if (prof->a1)
-            prevSlice = &prof->ptr4[prof->PPPNum * (prof->a1 - 1)];
+        if (prof->currentSlice)
+            prevSlice = &prof->ptr4[prof->PPPNum * (prof->currentSlice - 1)];
         else
             prevSlice = &prof->ptr4[prof->PPPNum * (prof->num - 1)];
         MATH_VecAddVec(&prevHead, &prevSlice->v1, &prevSlice[prof->PPPNum - 1].v1);
@@ -208,7 +208,7 @@ void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* prof)
         {
             // the slice moved far enough to keep, so the nine slices ahead
             // of it step one notch further down their fade
-            fade = prof->a1;
+            fade = prof->currentSlice;
             for (i = 0; i < 9; i++)
             {
                 if (fade < prof->num - 1)
@@ -231,7 +231,7 @@ void GFX_i_Profiler_Update_With_XYT(tGfxProfilerData* prof)
         }
     }
 
-    prof->ptr3[GFX_l_ProfilerNextSlice(prof, prof->a1)] = 0;
+    prof->ptr3[GFX_l_ProfilerNextSlice(prof, prof->currentSlice)] = 0;
 }
 
 void GFX_Profiler_Validate(tGfxProfilerData* prof)
