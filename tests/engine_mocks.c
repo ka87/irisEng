@@ -272,3 +272,146 @@ float LOA_ReadFloat(char** offset, float* a2, char readMode)
     MOCK_Record("LOA_ReadFloat", 0, 1, (double)readMode);
     return v;
 }
+
+/* --- protexmodifier ---------------------------------------------- */
+
+int MOCK_vuisIdentity;
+tMatDecompressedStruct MOCK_uv;
+
+void* MEM_p_AllocAligned(int size, int alignment)
+{
+    MOCK_Record("MEM_p_AllocAligned", 0, 2, (double)size, (double)alignment);
+    return malloc(size);
+}
+
+void MEM_FreeAlign(void* ptr)
+{
+    MOCK_Record("MEM_FreeAlign", ptr, 0);
+    free(ptr);
+}
+
+void MATH_CrossProduct(Vec3* dest, Vec3* src1, Vec3* src2)
+{
+    dest->x = src1->y * src2->z - src1->z * src2->y;
+    dest->y = src1->z * src2->x - src1->x * src2->z;
+    dest->z = src1->x * src2->y - src1->y * src2->x;
+}
+
+void MATH_VecMultScalar(Vec3* dest, Vec3* src, float scalar)
+{
+    dest->x = src->x * scalar;
+    dest->y = src->y * scalar;
+    dest->z = src->z * scalar;
+}
+
+void MATH_AddScaleVector(Vec3* dest, Vec3* src1, Vec3* src2, float scale)
+{
+    dest->x = src2->x * scale + src1->x;
+    dest->y = src2->y * scale + src1->y;
+    dest->z = src2->z * scale + src1->z;
+}
+
+void MATH_TransformVertex(Vec3* dest, Mtx4x4* mtx, Vec3* src)
+{
+    Vec3 v;
+
+    v.x = mtx->v1.x * src->x + mtx->v2.x * src->y + mtx->v3.x * src->z + mtx->Pos.x;
+    v.y = mtx->v1.y * src->x + mtx->v2.y * src->y + mtx->v3.y * src->z + mtx->Pos.y;
+    v.z = mtx->v1.z * src->x + mtx->v2.z * src->y + mtx->v3.z * src->z + mtx->Pos.z;
+    *dest = v;
+}
+
+void MATH_InvertMatrix(Mtx4x4* dest, Mtx4x4* src)
+{
+    Mtx4x4 m;
+
+    m = *src;
+    dest->v1.x = m.v1.x;  dest->v1.y = m.v2.x;  dest->v1.z = m.v3.x;
+    dest->v2.x = m.v1.y;  dest->v2.y = m.v2.y;  dest->v2.z = m.v3.y;
+    dest->v3.x = m.v1.z;  dest->v3.y = m.v2.z;  dest->v3.z = m.v3.z;
+    dest->Pos.x = -m.Pos.x;
+    dest->Pos.y = -m.Pos.y;
+    dest->Pos.z = -m.Pos.z;
+    dest->mtxflag = m.mtxflag;
+    dest->w = 1.0f;
+}
+
+void MATH_MakeOGLMatrix(Mtx4x4* dest, Mtx4x4* src)
+{
+    if (dest != src)
+        *dest = *src;
+    dest->w = 1.0f;
+    MOCK_Record("MATH_MakeOGLMatrix", src, 0);
+}
+
+void MATH_MulMatrixMatrix(Mtx4x4* dest, Mtx4x4* src1, Mtx4x4* src2)
+{
+    dest->v1.x = src1->v1.x + src2->v1.x;
+    dest->v1.y = src1->v1.y - src2->v2.y;
+    dest->v1.z = src1->v1.z * 0.5f;
+    dest->v2.x = src1->v2.x - src2->v1.x;
+    dest->v2.y = src1->v2.y + src2->v2.y;
+    dest->v2.z = src1->v2.z * 0.25f;
+    dest->v3.x = src1->v3.x + src2->v3.x;
+    dest->v3.y = src1->v3.y - src2->v3.y;
+    dest->v3.z = src1->v3.z + 1.0f;
+    dest->Pos = src1->Pos;
+    dest->mtxflag = src1->mtxflag | src2->mtxflag;
+    dest->w = 1.0f;
+    MOCK_Record("MATH_MulMatrixMatrix", src1, 0);
+}
+
+BOOL MAT_VUISIdentity(struct sMultiTextureElemStruct* elem)
+{
+    MOCK_Record("MAT_VUISIdentity", elem, 0);
+    return MOCK_vuisIdentity;
+}
+
+void MAT_UVDecompress(struct sMultiTextureElemStruct* elem, struct sMatDecompressedStruct* out)
+{
+    MOCK_Record("MAT_UVDecompress", elem, 0);
+    *out = MOCK_uv;
+}
+
+void MAT_UV_COMPUTE_GetMAtrix(struct sGdi_DisplayData* dd, struct sGameObjectMain* gao,
+                              unsigned int param, Mtx4x4* out)
+{
+    float k = (float)(param & 0xff) * 0.0625f;
+
+    MOCK_Record("MAT_UV_COMPUTE_GetMAtrix", gao, 1, (double)param);
+    out->v1.x = 1.0f + k;  out->v1.y = 0.25f * k;  out->v1.z = -0.5f;
+    out->v2.x = -0.125f;   out->v2.y = 2.0f - k;   out->v2.z = 0.75f * k;
+    out->v3.x = 0.5f * k;  out->v3.y = -1.5f;      out->v3.z = 1.0f + 0.5f * k;
+    out->Pos.x = k;        out->Pos.y = -k;        out->Pos.z = 2.0f * k;
+    out->mtxflag = 2;
+    out->w = 1.0f;
+}
+
+Mtx4x4* OBJ_pst_GetAbsoluteMatrix(tGameObjectMain* gao)
+{
+    MOCK_Record("OBJ_pst_GetAbsoluteMatrix", gao, 0);
+    return gao->matrices;
+}
+
+int QueryPerformanceCounter(LARGE_INTEGER* out)
+{
+    out->QuadPart = 0;
+    return 1;
+}
+
+void PRO_QPC_RecordTimeDecRef(int id)
+{
+    MOCK_Record("PRO_QPC_RecordTimeDecRef", 0, 1, (double)id);
+}
+
+void LOA_ReadCharArray(char** offset, char* dest, int len, char readMode)
+{
+    int i;
+
+    for (i = 0; i < readMode; i++)
+    {
+        memcpy(dest, *offset, (size_t)len);
+        *offset += len;
+    }
+    MOCK_Record("LOA_ReadCharArray", 0, 2, (double)len, (double)readMode);
+}

@@ -29,6 +29,11 @@ defs() {
     for s in "$@"; do printf ' -D%s=%s%s' "$s" "$prefix" "$s"; done
 }
 
+protex_syms="PROTEX_Disturb PROTEX_Modifier_Reinit PROTEX_Modifier_Destroy \
+PROTEX_SetStUstVstP PROTEX_Apply2DMatrix PROTEX_InitModifier PROTEX_ul_Modifier_Load \
+PROTEX_Modifier_Create PROTEX_UpdateWaterEffect PROTEX_BeforeDraw \
+PROTEX_ComputeStUstVstP PROTEX_Modifier_Unapply PROTEX_Modifier_Apply"
+
 fails=0
 run_one() {
     name=$1; live=$2; base=$3; incdir=$4; syms=$5
@@ -51,6 +56,9 @@ FILTER=$1
 
 run_one snakemodifier modifiers/snakemodifier.c \
         tests/baseline_snakemodifier.c modifiers "$snake_syms"
+
+run_one protexmodifier modifiers/protexmodifier.c \
+        tests/baseline_protexmodifier.c modifiers "$protex_syms"
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"

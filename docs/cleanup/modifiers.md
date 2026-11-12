@@ -139,3 +139,117 @@ the same original, not between the original and a change: the author
 called `MATH_VecLen`, and the extra precision on one operand is an
 artifact of the instruction selection, not of the source. Nothing at
 2.73e-6 on a chain of followers is observable.
+
+## protexmodifier.c
+
+777 lines to 568, thirteen functions, three `goto`s gone, and every
+local named. The file is latin-1 and carries undecodable bytes, so it is
+edited with a script that reads and writes it as latin-1 rather than
+with a text editor.
+
+### The nested guards
+
+`PROTEX_Disturb`, `PROTEX_Modifier_Unapply` and `PROTEX_BeforeDraw` were
+each one body inside four or five nested `if`s. They are early returns
+now. `Unapply` went from eight levels of indentation to two.
+
+The one place that changed meaning is `Disturb`'s outermost test. The
+decompiler had
+
+    if (gao && (gao->flags & 5) != 0) { ... } else { v4 = v4 & ~0xff; }
+
+and `v4` is uninitialised on that arm — it is a spill slot the register
+allocator reused, not a variable the author wrote. The `else` is
+dropped and the guard is `if (!gao || (gao->flags & 5) == 0) return;`.
+A NULL `gao` would have faulted on `gao->matrices` two lines later
+anyway.
+
+### The twelve-way dispatch in `ComputeStUstVstP`
+
+All three `goto`s were in one function: two arms of a `switch` on
+`(param >> 4) & 3` sharing their tails, and both halves of the
+with/without-a-UV-matrix split doing the same work. The shared part is
+now `PROTEX_l_Basis(out, gao, uvMtx, haveUvMatrix)`, which is the one
+difference between the halves — `MATH_MakeOGLMatrix` of the absolute
+matrix against `MATH_MulMatrixMatrix` of it with the UV matrix.
+
+The `default:` arm is unreachable: the value is masked with `& 3` and
+all four cases are present. It is gone.
+
+The original calls `OBJ_pst_GetAbsoluteMatrix` twice per basis, once for
+the matrix and once for `Pos`, and in mode 0 computes the basis twice.
+Both are kept — the function is not pure as far as this file can tell,
+and the differential test compares the call sequence, so removing either
+would show up as a difference rather than as a cleanup.
+
+### The water surface
+
+`PROTEX_l_WaterUpdate` had twenty-nine locals, two of them (`v22`,
+`v26`) written and never read, and four pointers walking the same two
+buffers at different offsets. It is two counted loops now, and the
+buffers are indexed rather than walked.
+
+Three things in it are worth recording:
+
+- The relaxation reads `*cur` and writes it, while the eight samples
+  come from `prev`; after the pass the two are swapped. That is a
+  standard two-buffer wave step and is unchanged.
+- The gradient pass runs over the buffer that was `prev` *before* the
+  swap, so the bump map it produces is one frame behind the heights.
+  Preserved.
+- The samples are read through a `uint16_t*` while the buffer is
+  `int16_t*`, so a negative height reads as a large positive one and
+  `(a - b) >> 6` is computed on unsigned values. That is what the
+  original does; it is now an explicit cast instead of a silent pointer
+  mismatch.
+
+### A suspected decompilation artefact, left as it stands
+
+The stencil is not the eight neighbours it looks like. The decompiler
+wrote the row-above pointer as
+
+    unsigned int v3 = 2 * width;
+    v8 = &v7[(v3 / -2) + 1];
+
+and `v3` is **unsigned**, so `v3 / -2` is unsigned division by
+`0xFFFFFFFE`, which is `0` for every width. `v8` is therefore `v7 + 1`,
+not `v7 - width + 1`, and the eight samples are
+
+    2 * prev[-1] + 2 * prev[+1] + prev[0]
+      + prev[width - 1] + prev[width] + prev[width + 1]
+
+— the row above is never read, the centre sample is counted as one of
+its own neighbours, and two samples are counted twice. A comment in the
+original file says the offset "pushes it back to the start", so the
+author read it as negative too.
+
+The rewrite keeps the behaviour and spells the duplication out, because
+the question of what the original binary did is not answerable from
+this tree: under both MSVC and gcc the file as written computes the
+above, so that is what the engine has been doing. Restoring the
+intended stencil is a one-line change and the test will show exactly
+what moves; it is left for the user to decide.
+
+### What the test covers
+
+`tests/test_protexmodifier.c`, 33 cases, all equivalent:
+
+- the water surface over six grid sizes including the degenerate 4x2 and
+  2x4, and over eight consecutive frames so an error in the swap
+  compounds rather than cancelling;
+- `Apply2DMatrix` with a real UV matrix and with an identity one;
+- `ComputeStUstVstP` across all four modes times all three UV-bit
+  settings, plus a wrong subtexture kind;
+- `Disturb` over a five-element protex chain, with and without the
+  stamp buffers, and with a target that is not drawable;
+- `BeforeDraw`'s list surgery, which removes elements through a
+  pointer-to-pointer, for five patterns of which elements survive.
+
+Each case compares the two stamp buffers, the bump bytes, the colour
+output and the recorded engine-call sequence.
+
+**12 of the compared floats differ, the worst by 2.43e-7 relative.**
+They are in `Apply2DMatrix`, where the original inlined
+`MATH_VecMultScalar` and `MATH_AddScaleVector` with x87 intermediates
+and the restored calls round each product to `float`. Same reasoning as
+snakemodifier's.

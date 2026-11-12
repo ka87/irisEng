@@ -1,6 +1,10 @@
 #pragma once
 #include "../time.h"
 #include "../modifiers/snakemodifier.h"
+#include "../modifiers/protexmodifier.h"
+#include "../materialanddraw.h"
+#include "../textures.h"
+#include "../profiler.h"
 
 #define MOCK_LOG_MAX 8192
 #define MOCK_CALL_ARGS 10
@@ -25,3 +29,6 @@ int MOCK_GaoIndex(const void* gao);
 void MOCK_SetGroupRanks(tGameObjectMain** byRank, int num);
 void MOCK_SetCurGroup(void* grp);
 void MOCK_SetLoadStream(const unsigned char* bytes, int len);
+
+extern int MOCK_vuisIdentity;
+extern tMatDecompressedStruct MOCK_uv;

@@ -22,6 +22,7 @@ typedef struct tagPOINT { LONG x, y; } POINT;
 typedef struct _FILETIME { DWORD dwLowDateTime, dwHighDateTime; } FILETIME;
 typedef struct _CRITICAL_SECTION { void* p; } CRITICAL_SECTION;
 typedef struct _LARGE_INTEGER_STUB { long long QuadPart; } LARGE_INTEGER;
+int QueryPerformanceCounter(LARGE_INTEGER* out);
 #define TRUE  1
 #define FALSE 0
 #define WINAPI
