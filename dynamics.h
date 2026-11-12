@@ -2,6 +2,8 @@
 #include "math.h"
 #include "common.h"
 
+struct sWorld;
+
 typedef struct sDynForces
 {
     Vec3 gravityVector;

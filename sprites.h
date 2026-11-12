@@ -24,7 +24,7 @@ typedef struct sSpgTrisToSpritesStruct
 } tSpgTrisToSpritesStruct;
 
 typedef union uGeoSpriteElem { // index encoded in a float, there is a special case when idx == 0xC0DE (explode)
-    struct st1 {
+    struct {
         uint16_t idx;
         uint16_t dummy; // for alignment
     };

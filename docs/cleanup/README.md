@@ -93,3 +93,63 @@ This pass went in on its own and ahead of the rest, because the types
 sit mostly in shared headers — `ai.h`, `geo.h`, `gfx.h`, `snp.h`,
 `textures.h` — which the per-directory passes would otherwise have had
 to touch again and again.
+
+### 2. MSVC-specific constructs to standard C
+
+The engine leaned on MSVC extensions in a handful of places. Compiling
+the whole tree with `gcc -std=gnu11` and no `-fms-extensions` turns the
+list of them into a list of errors, and 24 of the 137 files parsed.
+After this pass, **116 do, and `-fms-extensions` makes no difference to
+that number** — nothing in the tree depends on an MSVC extension any
+more. The other 21 fail only on gaps in `tests/stub`, which is not the
+real SDK.
+
+**Tagged anonymous aggregates**, 4 sites. `union dataByType { ... };`
+declares a union *type* in standard C and nothing else, so
+`texElem.normalData` does not name anything; MSVC treats it as an
+anonymous member. Dropping the tag makes it a real anonymous member,
+which C11 and MSVC both accept. The tags were unreferenced, so nothing
+else had to change. This one was the root of most of the noise: it
+alone accounted for the 777 "invalid use of incomplete typedef" and 296
+"undeclared" errors cascading out of `textures.h` and `sprites.h`.
+
+**Casts as lvalues**, 5 sites in 3 files. `++((tableElemStructPF*)p)`
+and `((tGEOGRO*)x->field) = y` are an old MSVC extension. The pointer
+walks are written as the arithmetic they are,
+`p = (tableElemStructPF*)p + 1`, and the assignment casts the value
+being stored rather than the place it goes.
+
+**`0i64`**, 5 sites, now `0LL`.
+
+**Pointer subtraction across types**, 1 site. `grid.c` subtracted a
+`char*` from a `uint8_t*`; standard C wants compatible types, so the
+left side is cast.
+
+**Prototype-scope struct declarations**, 11 sites in 7 headers. A
+prototype whose parameter names a struct the file has not yet seen
+declares a *new* type scoped to that prototype, so the definition's
+type does not match and the two conflict. MSVC is content; standard C
+is not. Each header now forward-declares what its prototypes mention:
+`sWorld`, `sGameObjectCollMain`, `tableDescStruct`,
+`sWaterParamsGlobalStruct`, `sGdi_DisplayData`, `sShadowElemStruct`,
+`sModifier`, `sLoadingSoundMdfStruct`.
+
+**A missing include.** `win/adpcm.h` used `int16_t` without
+`<stdint.h>` and happened to work because of include order.
+
+#### Left alone on purpose: arithmetic on `fpos_t`
+
+`bigfiles.c:61` and `loading.c:399` do arithmetic on an `fpos_t` and
+cast one to an integer. `fpos_t` is an integer under MSVC and an opaque
+type in standard C, so neither is portable — but `BIG_fseek` is using
+`fgetpos`/`fsetpos` **because** they are 64-bit where `fseek` takes a
+32-bit `long` on Win32, and that looks deliberate.
+
+Collapsing the function to `fseek(fp, offset, origin)` would be
+standard and, for the `int` offsets it is given, equivalent — except
+for an absolute seek with a negative offset, which the current code
+turns into a position above 2GB via `(unsigned int)`.
+
+That is a change to how a file-archive reader seeks, in code that
+cannot be tested here, so it is being left for the user to decide
+rather than guessed at.

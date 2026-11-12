@@ -5,6 +5,9 @@
 #include "math.h"
 #include "gameobject.h"
 
+struct sModifier;
+struct sLoadingSoundMdfStruct;
+
 typedef struct sSbeMiscData
 {
     IDirectSoundNotify* vmilenEventHandlptr_Sub49e950;

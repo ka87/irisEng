@@ -2,6 +2,8 @@
 #include "gro_common.h"
 #include "../common.h"
 
+struct sGdi_DisplayData;
+
 typedef struct sMultiTextureElemStruct
 {
     int16_t texElemIdx;

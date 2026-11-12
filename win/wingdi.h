@@ -3,6 +3,8 @@
 #include "../gdi.h"
 #include "../gfx/gfxsun.h"
 #include <d3dx9math.h>
+
+struct sWaterParamsGlobalStruct;
 tGdi_D3DRenderParams D3DRenderParams;
 
 #define MY_QS_ALLINPUT_COMPATIBLE \

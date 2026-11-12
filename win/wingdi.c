@@ -2496,7 +2496,7 @@ void Rasters_Update()
         QueryPerformanceCounter(&b);
         if (PerfCounterStruct[47].QuadPart)
             PerfCountertimeSumArray[47] += b.QuadPart - PerfCounterStruct[47].QuadPart;
-        PerfCounterStruct[47].QuadPart = 0i64;
+        PerfCounterStruct[47].QuadPart = 0LL;
         QueryPerformanceCounter(&PerfCounterStruct[19]);
         QueryPerformanceCounter(&PerfCounterStruct[53]);
     }

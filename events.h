@@ -3,7 +3,7 @@
 #include "common.h"
 
 typedef union uEventElemElemPtrData {
-    struct s {
+    struct {
         uint16_t size;
         uint16_t type;
     };

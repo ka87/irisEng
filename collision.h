@@ -1,6 +1,9 @@
 #pragma once
 #include "common.h"
 
+struct sGameObjectCollMain;
+struct tableDescStruct;
+
 typedef struct sColCylinder
 {
     Vec3 center;
