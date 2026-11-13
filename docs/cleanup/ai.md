@@ -977,8 +977,10 @@ outside the file referenced them.
   `COLBoxMaxGet_C` and `COLBoxMinGet_C` write the null vector on a
   failing flag test and again on an out-of-range zone, then fall
   through and dereference the collision instance anyway.
-- `COLNormalGet_C`'s second arm **returns the address of a local**. No
-  caller reads the return.
+- ~~`COLNormalGet_C`'s second arm **returns the address of a local**~~
+  — **withdrawn**: the function returns `void` in the retail binary and
+  the two returns were a decompiler artefact. See Part 3 of
+  [defects.md](defects.md).
 - `COLGMIDGet_C` runs the game-material lookup twice, once for the test
   and once for the answer.
 - `BVRandomPosGet_C`'s non-box branch **never assigns `pos->z`** and

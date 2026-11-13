@@ -24,9 +24,9 @@ the wrong type, a struct pointer stepped through an array of pointers.
 Those are artefacts of the transcription, not behaviour, and leaving
 them in would have shipped a wild write.
 
-The split is **5 corrected, 1 withdrawn, and 141 preserved** — 117
-carrying a `// preserved:` line and 24 a prose note at the site.
-Part 3 records the two that moved and why.
+The split is **6 corrected, 2 withdrawn, and 139 preserved** — 117
+carrying a `// preserved:` line and 23 a prose note at the site.
+Part 3 records the three that moved and why.
 
 Nothing here covers defects the rewrites themselves introduced; those
 were caught by the differential tests (or, in one case, by reading)
@@ -301,10 +301,9 @@ the running game, rather than dead code:
 - `:1534` — BVMask_ga_Masks holds 200 entries and neither this function nor WOR_BVMaskPreComputeAll bounds BVMask_gi_Num against that
 
 The directories done earlier use a prose note at the site rather than
-the `// preserved:` prefix. Twenty-four more:
+the `// preserved:` prefix. Twenty-three more:
 
 - **`ai/ai_arrfunctions.c:645`** — `ARRSortByFlags`: a null slot advances neither the cursor nor the range, so an array with a hole in it does not terminate
-- **`ai/ai_colfunctions.c:347`** — `COLNormalGet`'s second arm returns the address of a local
 - **`ai/ai_colfunctions.c:1887`** — the two box getters write the null vector on each failing guard and then carry on, so an object with no collision set is dereferenced anyway
 - **`ai/ai_dynfunctions.c:254`** — `DYNFlagsGet` takes the address of the flags field and then tests *that* for null, so a null `dyn` computes `&((tDyn*)0)->flags` rather than stopping
 - **`ai/ai_dynfunctions.c:898`** — four setters write through a null pointer, or hand one to `AI_PutVecToStack`, when the object has no solid
@@ -333,9 +332,9 @@ the `// preserved:` prefix. Twenty-four more:
 
 ## Part 3 — Checked against the gold binary
 
-Two of the preserved sites were put to `BGE.exe` directly. One was a
-real defect and is now corrected; the other was never a defect at all
-and the claim is withdrawn.
+Three of the preserved sites were put to `BGE.exe` directly. One was a
+real defect and is now corrected; the other two were never defects at
+all and those claims are withdrawn.
 
 ### `proceduraltextures.c:82` — corrected
 
@@ -455,6 +454,62 @@ The lesson is the one the rest of this work keeps relearning: **a
 fixture that declares both sides the same way cannot see a difference
 between them**, and a figure quoted as measured has to come from a run
 that could have come out otherwise.
+
+### `ai/ai_colfunctions.c:347` — withdrawn, the function returns `void`
+
+The claim was that `AI_EvalFunc_COLNormalGet_C`'s second arm returns
+the address of a local, `&reported`, which no caller reads. MSVC's
+C4172 on the first real build appeared to confirm it.
+
+**It is a decompiler artefact.** The function returns nothing.
+
+The address came from retail's own tables rather than a search:
+`ai/ai_functions.c` registers the handler under AI function id
+`0x2B00`, `retail/ai-functions.tsv` gives that id's handler as
+`0x00AB3340`, and `retail/c-map-all.tsv` gives the matching `_C` as
+`0x00AB32E0`. It is compiled without optimisation — every local
+spilled, `push ebp` / `mov ebp,esp` — so a returned value would be an
+explicit load into `eax` before the epilogue. There is none:
+
+```
+ab3305:  call 0x480eb0            ; COL_Report_GetNormal
+ab330a:  lea  eax,[ebp-0x10]      ; &reported
+ab330d:  call 0x425060            ; MATH_b_NulVector
+ab3312:  test eax,eax
+ab3314:  jne  0xab3323
+ab3316:  lea  eax,[ebp-0x10]      ; src = &reported
+ab3319:  mov  ecx,[ebp+0x8]       ; dst = normal
+ab331c:  call 0x4145a0            ; the vector copy
+ab3321:  jmp  0xab3330
+ab3323:  mov  eax,0xbab960        ; src = MATH_gst_NulVector
+ab3328:  mov  ecx,[ebp+0x8]
+ab332b:  call 0x4145a0
+ab3330:  mov  esp,ebp
+ab3332:  pop  ebp
+ab3333:  ret  0x4
+```
+
+Both arms end in the copy call and fall straight into the epilogue.
+Whatever that helper leaves in `eax` is incidental, and it is exactly
+what Hex-Rays saw: a value live in `eax` at the return, which it typed
+as a pointer and spelled as two `return` statements. The wrapper at
+`0xAB3340` never touches `eax` after the call either — it passes its
+own local to `AI_PutVecToStack`.
+
+The body is an `if`/`else` over the one out-parameter now, and the
+signature is `void` in both the source and `ai_colfunctions.h`.
+
+Two incidental confirmations. Every call in the demo-built
+`ai/ai_bge/` reference copies discards the result — **54 sites across
+15 files**, 53 of them bare statement calls and one inside a comma
+expression, which discards it too — and the one caller in the engine
+does the same. And the helper
+at `0x452370` that gold passes as `COL_Report_GetNormal`'s second
+argument is `mov eax,ds:0xd1322c; ret 4`, a getter for the
+current-world global, so the source's direct use of
+`WOR_gpst_CurrentWorld` is equivalent and nothing else in the function
+moved.
+
 
 ---
 
