@@ -12,10 +12,14 @@
 # on its own, without -w, and reads only the one diagnostic out of the
 # noise.
 #
-# The baseline below is what the tree carried when the check was first
-# run. Every entry is in a file that has not had its cleanup pass yet,
-# except strings.c's isdigit, which wants <ctype.h>. The check fails on
-# any count that rises and on any file that appears and is not listed.
+# The baseline below is what the tree carries now. Every entry is in a
+# file that has not had its cleanup pass yet, except strings.c's
+# isdigit, which wants <ctype.h>. The check fails on any count that
+# rises and on any file that appears and is not listed.
+#
+# proceduraltextures.c was here with 2, for BinkSetMemory and
+# BinkSetIOSize. Its pass added them to tests/stub/bink.h, so it is
+# off the list and the parse sweep is 133 of 137 rather than 132.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -25,7 +29,6 @@ CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
 
 BASELINE="bigfiles.c 2
 engine.c 2
-proceduraltextures.c 2
 profiler.c 9
 sideload.c 1
 sound.c 1

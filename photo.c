@@ -17,732 +17,633 @@ void IMG_Log4Debugging(char* msg)
     }
 }
 
-void IMG_LogOutput(char type, tGameObjectMain* a2, float a3, float a4, float a5, float a6)
+void IMG_LogOutput(char type, tGameObjectMain* gao, float pct1, float pct2, float pct3, float pct4)
 {
-    char buff[504];
+    char msg[504];
 
-    if (IMG_Log)
+    if (!IMG_Log)
+        return;
+    switch (type)
     {
-        switch (type)
-        {
-        case 0:
-            sprintf(buff, "[MISSED] %%BV[%0.1f%% < 50%%]\n", a3 * 100.0f);
-            break;
-        case 1:
-            sprintf(buff, "[MISSED] %%Screen[%0.1f%% < 2.5%%]", a4 * 100.0f);
-            break;
-        case 2:
-            sprintf(buff, "[PHOTO] %%BV[%0.1f%%], %%Screen[%0.1f%%]\n", a3 * 100.0f, a4 * 100.0f);
-            break;
-        case 3:
-            sprintf(
-                buff,
-                "[MDF][MISSED] %%BV[%0.1f%% < %0.1f%%] or [%0.1f%% > %0.1f%%]",
-                a3 * 100.0f,
-                a4 * 100.0f,
-                a5 * 100.0f,
-                a6 * 100.0f);
-            break;
-        case 4:
-            sprintf(
-                buff,
-                "[MDF][MISSED] %%Screen[%0.1f%% < %0.1f%%] or [%0.1f%% > %0.1f%%]",
-                a3 * 100.0f,
-                a4 * 100.0f,
-                a5 * 100.0f,
-                a6 * 100.0f);
-            break;
-        case 5:
-            sprintf(buff, "[MDF][Photo] %%BV[%0.1f%%], %%Screen[%0.1f%%]", a3 * 100.0f, a4 * 100.0f);
-            break;
-        default:
-            break;
-        }
-        if (IMG_Log)
-            IMG_Log4Debugging(buff);
+    case 0:
+        sprintf(msg, "[MISSED] %%BV[%0.1f%% < 50%%]\n", pct1 * 100.0f);
+        break;
+    case 1:
+        sprintf(msg, "[MISSED] %%Screen[%0.1f%% < 2.5%%]", pct2 * 100.0f);
+        break;
+    case 2:
+        sprintf(msg, "[PHOTO] %%BV[%0.1f%%], %%Screen[%0.1f%%]\n", pct1 * 100.0f, pct2 * 100.0f);
+        break;
+    case 3:
+        sprintf(
+            msg,
+            "[MDF][MISSED] %%BV[%0.1f%% < %0.1f%%] or [%0.1f%% > %0.1f%%]",
+            pct1 * 100.0f,
+            pct2 * 100.0f,
+            pct3 * 100.0f,
+            pct4 * 100.0f);
+        break;
+    case 4:
+        sprintf(
+            msg,
+            "[MDF][MISSED] %%Screen[%0.1f%% < %0.1f%%] or [%0.1f%% > %0.1f%%]",
+            pct1 * 100.0f,
+            pct2 * 100.0f,
+            pct3 * 100.0f,
+            pct4 * 100.0f);
+        break;
+    case 5:
+        sprintf(msg, "[MDF][Photo] %%BV[%0.1f%%], %%Screen[%0.1f%%]", pct1 * 100.0f, pct2 * 100.0f);
+        break;
+    default:
+        // preserved: an unknown type leaves msg unwritten and logs it anyway
+        break;
     }
+    IMG_Log4Debugging(msg);
 }
 
-int IMG_ModifierObjectAnalyser(tGameObjectMain* a1, tModifier* a2, tWorld* a3, tGdi_DisplayData* a4, int a5, int a6, int a7, int a8, int* a9)
+int IMG_ModifierObjectAnalyser(tGameObjectMain* gao, tModifier* mdf, tWorld* world,
+                               tGdi_DisplayData* dd, int missionMask, int checkVisibility,
+                               int rawInfo, int ignoreMission, int* code)
 {
-    tPhotoMdfStruct* v9;
-    int v10;
-    int v11;
-    tGameObjectMain* v12;
-    float v13;
-    tPhotoMdfStruct* v14;
-    tGameObjectMain* v15;
-    int result;
-    float a5a;
-    int v18 = 0;
-    float v19;
-    Vec3 a3a;
-    Vec3 a4a;
-    Vec3 a1a;
-    char Buffer[504];
+    tPhotoMdfStruct* photo;
+    tGameObjectMain* snapGao;
+    tGameObjectMain* hit;
+    int value;
+    int flags;
+    float dist;
+    Vec3 camPos;
+    Vec3 dir;
+    Vec3 target;
+    char msg[504];
 
-    v9 = (tPhotoMdfStruct*)a2->mdfPrivateDataPtr;
-    if (a8)
+    photo = (tPhotoMdfStruct*)mdf->mdfPrivateDataPtr;
+    if (ignoreMission)
     {
-        v10 = v18;
+        value = 0;
     }
     else
     {
-        v10 = v9->info;
-        if (!v9->mission)
+        value = photo->info;
+        if (!photo->mission)
             return 0;
-        if (a5 != -1 && a5)
+        if (missionMask != -1 && missionMask)
         {
-            if (v9->mission << 24 != a5)
+            if (photo->mission << 24 != missionMask)
                 return 0;
-            if (!a7)
-                v10 = 1 << v10;
+            if (!rawInfo)
+                value = 1 << value;
         }
     }
-    if (v9->frame0_frameCullingSphereRet1 < (double)v9->frame1
-        || v9->frame0_frameCullingSphereRet1 >(double)v9->frame2
-        || (v11 = v9->flags, (v11 & 1) != 0))
+    flags = photo->flags;
+    if (photo->frame0_frameCullingSphereRet1 < (double)photo->frame1
+        || photo->frame0_frameCullingSphereRet1 >(double)photo->frame2
+        || (flags & 1) != 0)
     {
         if (IMG_Log)
         {
+            // preserved: the two thresholds print without the x100 the values carry
             sprintf(
-                Buffer,
+                msg,
                 "[MDF][MISSED] %%BV[%0.1f%% < %0.1f%%] or [%0.1f%% > %0.1f%%]",
-                v9->frame0_frameCullingSphereRet1 * 100.0,
-                v9->frame1,
-                v9->frame0_frameCullingSphereRet1 * 100.0,
-                v9->frame2);
-            IMG_Log4Debugging(Buffer);
+                photo->frame0_frameCullingSphereRet1 * 100.0,
+                photo->frame1,
+                photo->frame0_frameCullingSphereRet1 * 100.0,
+                photo->frame2);
+            IMG_Log4Debugging(msg);
         }
-        if (a9)
-            *a9 = 2;
+        if (code)
+            *code = 2;
         return 0;
     }
-    if (v9->lod0_frameCullingSphereRet2 < (double)v9->lod1
-        || v9->lod0_frameCullingSphereRet2 >(double)v9->lod2
-        || (v11 & 2) != 0)
+    if (photo->lod0_frameCullingSphereRet2 < (double)photo->lod1
+        || photo->lod0_frameCullingSphereRet2 >(double)photo->lod2
+        || (flags & 2) != 0)
     {
         if (IMG_Log)
         {
+            // preserved: the screen test prints the frame thresholds rather than its own
             sprintf(
-                Buffer,
+                msg,
                 "[MDF][MISSED] %%Screen[%0.1f%% < %0.1f%%] or [%0.1f%% > %0.1f%%]",
-                v9->lod0_frameCullingSphereRet2 * 100.0,
-                v9->frame1 * 100.0,
-                v9->lod0_frameCullingSphereRet2 * 100.0,
-                v9->frame2 * 100.0);
-            IMG_Log4Debugging(Buffer);
+                photo->lod0_frameCullingSphereRet2 * 100.0,
+                photo->frame1 * 100.0,
+                photo->lod0_frameCullingSphereRet2 * 100.0,
+                photo->frame2 * 100.0);
+            IMG_Log4Debugging(msg);
         }
-        if (a9)
+        if (code)
         {
-            if (v9->lod0_frameCullingSphereRet2 < (double)v9->lod1 || (v9->flags & 2) != 0)
-            {
-                *a9 = 1;
-                result = 0;
-            }
+            if (photo->lod0_frameCullingSphereRet2 < (double)photo->lod1 || (photo->flags & 2) != 0)
+                *code = 1;
             else
-            {
-                *a9 = 8;
-                result = 0;
-            }
-            return result;
+                *code = 8;
         }
         return 0;
     }
-    v12 = GAO_ModifierPhoto_SnapGOGet(a2->gao, v9, 0);
-    a3a.x = a4->ct.cam.objectMtx.Pos.x;
-    v13 = a4->ct.cam.objectMtx.Pos.z;
-    a3a.y = a4->ct.cam.objectMtx.Pos.y;
-    v14 = (tPhotoMdfStruct*)a2->mdfPrivateDataPtr;
-    a3a.z = v13;
-    MATH_TransformVertex(&a1a, v12->matrices, &v14->sphereOffset);
-    a4a.x = a1a.x - a3a.x;
-    a4a.y = a1a.y - a3a.y;
-    a4a.z = (float)(a1a.z - a3a.z + 0.02);
-    v19 = MATH_VecLen(&a4a);
-    MATH_NormalizeEqualVector(&a4a);
-    if (a6)
+    snapGao = GAO_ModifierPhoto_SnapGOGet(mdf->gao, photo, 0);
+    camPos = dd->ct.cam.objectMtx.Pos;
+    MATH_TransformVertex(&target, snapGao->matrices, &photo->sphereOffset);
+    dir.x = target.x - camPos.x;
+    dir.y = target.y - camPos.y;
+    dir.z = (float)(target.z - camPos.z + 0.02);
+    dist = MATH_VecLen(&dir);
+    MATH_NormalizeEqualVector(&dir);
+    if (checkVisibility)
     {
-        a5a = (float)(v19 + 0.0099999998);
-        v15 = COL_Visual_RayCast(a3, *AI_MainActor, &a3a, &a4a, a5a, -1, 0, 0, 0, 1);
-        if (v15 && v15 != a1)
+        hit = COL_Visual_RayCast(world, *AI_MainActor, &camPos, &dir,
+                                 (float)(dist + 0.0099999998), -1, 0, 0, 0, 1);
+        if (hit && hit != gao)
         {
-            if (a9)
-            {
-                *a9 = 4;
-                return 0;
-            }
+            if (code)
+                *code = 4;
             return 0;
         }
         if (IMG_Log)
         {
             sprintf(
-                Buffer,
+                msg,
                 "[MDF][Photo] %%BV[%0.1f%%], %%Screen[%0.1f%%]\n",
-                v9->frame0_frameCullingSphereRet1 * 100.0,
-                v9->lod0_frameCullingSphereRet2 * 100.0);
-            IMG_Log4Debugging(Buffer);
+                photo->frame0_frameCullingSphereRet1 * 100.0,
+                photo->lod0_frameCullingSphereRet2 * 100.0);
+            IMG_Log4Debugging(msg);
         }
     }
-    result = 1;
-    if (!a8)
-        result = v10;
-    return result;
+    if (ignoreMission)
+        return 1;
+    return value;
 }
 
-int IMG_ObjectAnalyser(struct sGameObjectMain* a1, struct sWorld* a2, struct sGdi_DisplayData* a3, int a4, int a51, int a52, int a6, int* a7)
+int IMG_ObjectAnalyser(struct sGameObjectMain* gao, struct sWorld* world,
+                       struct sGdi_DisplayData* dd, int missionMask, int checkVisibility,
+                       int rawInfo, int ignoreMission, int* code)
 {
-    tModifier* v8;
-    int result;
-    tGameObjectExtended* v10;
-    tGameObjectDesignFields* v11;
-    int v12;
-    Mtx4x4* v13;
-    tGameObjectMain* v14;
-    tGameObjectBV* v15;
-    Vec3* v16;
-    float v17;
-    float v18;
-    tGameObjectMain* v19;
-    float a5a;
-    tGameObjectMain* v21;
-    float v22;
-    int v23;
-    float v24;
-    float v25;
-    Vec3 a3a;
-    Vec3 a4a;
-    Vec3 a2a;
-    Vec3 v29;
-    Vec3 v30;
-    char Buffer[500];
+    tModifier* mdf;
+    tGameObjectExtended* ext;
+    tGameObjectDesignFields* fields;
+    tGameObjectMain* animObj;
+    tGameObjectMain* hit;
+    Mtx4x4* viewMtx;
+    int value;
+    int designInfo;
+    float bvRatio;
+    float screenRatio;
+    float dist;
+    Vec3 camPos;
+    Vec3 dir;
+    Vec3 centre;
+    Vec3 bvMax;
+    Vec3 bvMin;
+    char msg[500];
 
-    v21 = 0;
-    if (a7)
-        *a7 = 0;
-    if ((a1->flags2 & 2) == 0)
+    animObj = NULL;
+    value = 0;
+    if (code)
+        *code = 0;
+    if ((gao->flags2 & 2) == 0)
         return 0;
-    v8 = GAO_ModifierPhoto_Get(a1, 1);
-    if (v8)
-        return IMG_ModifierObjectAnalyser(a1, v8, a2, a3, a4, a51, a52, a6, a7);
-    v10 = a1->extended;
-    if (!v10)
+    mdf = GAO_ModifierPhoto_Get(gao, 1);
+    if (mdf)
+        return IMG_ModifierObjectAnalyser(gao, mdf, world, dd, missionMask, checkVisibility,
+                                          rawInfo, ignoreMission, code);
+    ext = gao->extended;
+    if (!ext)
         return 0;
-    if (!a6)
+    if (!ignoreMission)
     {
-        v11 = v10->fields;
-        if (!v11)
+        fields = ext->fields;
+        if (!fields)
             return 0;
-        if ((a1->flags & 0x40) == 0)
+        if ((gao->flags & 0x40) == 0)
             return 0;
-        v12 = v11->designInt3;
-        v23 = v12;
-        if ((v12 & 0xFF000000) == 0)
+        designInfo = fields->designInt3;
+        value = designInfo;
+        if ((designInfo & 0xFF000000) == 0)
             return 0;
-        if (a4 != -1 && a4)
+        if (missionMask != -1 && missionMask)
         {
-            if ((v12 & 0xFF000000) != a4)
+            if ((designInfo & 0xFF000000) != missionMask)
                 return 0;
-            if (a52)
-                v23 = (uint8_t)v12;
+            if (rawInfo)
+                value = (uint8_t)designInfo;
             else
-                v23 = 1 << v12;
+                value = 1 << designInfo;
         }
     }
-    v13 = a3->ct.cam.viewMtxPtr_setInGRORender;
-    if (v13 != &a3->ct.cam.cameraMtx)
-        memcpy(v13, &a3->ct.cam.cameraMtx, sizeof(Mtx4x4));
-    if ((a1->flags & 2) == 0)
+    viewMtx = dd->ct.cam.viewMtxPtr_setInGRORender;
+    if (viewMtx != &dd->ct.cam.cameraMtx)
+        memcpy(viewMtx, &dd->ct.cam.cameraMtx, sizeof(Mtx4x4));
+    if ((gao->flags & 2) != 0)
+        animObj = ANI_pst_GetObjectByAICanal(gao, 0);
+    if (animObj && OBJ_BV_IsAABBox(animObj->boundingVolume))
     {
-        if (OBJ_BV_IsAABBox(a1->boundingVolume))
-            goto LABEL_26;
-        return 0;
+        MATH_VecAddVec(&bvMax, &animObj->boundingVolume->BVMax, &animObj->matrices->Pos);
+        MATH_VecAddVec(&bvMin, &animObj->boundingVolume->BVMin, &animObj->matrices->Pos);
     }
-    v14 = ANI_pst_GetObjectByAICanal(a1, 0);
-    v21 = v14;
-    if (v14 && OBJ_BV_IsAABBox(v14->boundingVolume))
-    {
-        MATH_VecAddVec(&v29, &v14->boundingVolume->BVMax, &v14->matrices->Pos);
-        MATH_VecAddVec(&v30, &v14->boundingVolume->BVMin, &v14->matrices->Pos);
-        goto LABEL_27;
-    }
-    if (!OBJ_BV_IsAABBox(a1->boundingVolume))
-        return 0;
-LABEL_26:
-    v15 = a1->boundingVolume;
-    v16 = &a1->matrices->Pos;
-    MATH_VecAddVec(&v29, &v15->BVMax, v16);
-    MATH_VecAddVec(&v30, &v15->BVMin, v16);
-    v14 = v21;
-LABEL_27:
-    OBJ_Frame_CullingAABBox(&v30, &v29, &a3->ct.cam, 512, 256, &v24, &v25);
-    if (v24 == 0.0)
-        goto LABEL_38;
-    if (v25 < 0.025)
-    {
-        if (IMG_Log)
-        {
-            sprintf(Buffer, "[MISSED] %%Screen[%0.1f%% < 2.5%%]\n", v25 * 100.0);
-            IMG_Log4Debugging(Buffer);
-        }
-        if (a7)
-            *a7 = 1;
-        return 0;
-    }
-    if (v24 < 0.5)
-    {
-        if (IMG_Log)
-        {
-            sprintf(Buffer, "[MISSED] %%BV[%0.1f%% < 50%%]\n", v24 * 100.0);
-            IMG_Log4Debugging(Buffer);
-        }
-    LABEL_38:
-        if (a7)
-        {
-            *a7 = 2;
-            return 0;
-        }
-        return 0;
-    }
-    v17 = a3->ct.cam.objectMtx.Pos.y;
-    v18 = a3->ct.cam.objectMtx.Pos.z;
-    a3a.x = a3->ct.cam.objectMtx.Pos.x;
-    a3a.y = v17;
-    a3a.z = v18;
-    if (v14 && (a1->flags & 2) != 0)
-        OBJ_BV_ComputeCenter(v14, &a2a);
     else
-        OBJ_BV_ComputeCenter(a1, &a2a);
-    a4a.x = a2a.x - a3a.x;
-    a4a.y = a2a.y - a3a.y;
-    a4a.z = (float)(a2a.z - a3a.z + 0.02);
-    v22 = MATH_VecLen(&a4a);
-    MATH_NormalizeEqualVector(&a4a);
-    if (a51)
     {
-        a5a = (float)(v22 + 0.0099999998);
-        v19 = COL_Visual_RayCast(a2, *AI_MainActor, &a3a, &a4a, a5a, -1, 0, 0, 0, 1);
-        if (v19 && v19 != a1)
+        if (!OBJ_BV_IsAABBox(gao->boundingVolume))
+            return 0;
+        MATH_VecAddVec(&bvMax, &gao->boundingVolume->BVMax, &gao->matrices->Pos);
+        MATH_VecAddVec(&bvMin, &gao->boundingVolume->BVMin, &gao->matrices->Pos);
+    }
+    OBJ_Frame_CullingAABBox(&bvMin, &bvMax, &dd->ct.cam, 512, 256, &bvRatio, &screenRatio);
+    if (bvRatio == 0.0)
+    {
+        if (code)
+            *code = 2;
+        return 0;
+    }
+    if (screenRatio < 0.025)
+    {
+        if (IMG_Log)
         {
-            if (a7)
-            {
-                *a7 = 4;
-                return 0;
-            }
+            sprintf(msg, "[MISSED] %%Screen[%0.1f%% < 2.5%%]\n", screenRatio * 100.0);
+            IMG_Log4Debugging(msg);
+        }
+        if (code)
+            *code = 1;
+        return 0;
+    }
+    if (bvRatio < 0.5)
+    {
+        if (IMG_Log)
+        {
+            sprintf(msg, "[MISSED] %%BV[%0.1f%% < 50%%]\n", bvRatio * 100.0);
+            IMG_Log4Debugging(msg);
+        }
+        if (code)
+            *code = 2;
+        return 0;
+    }
+    camPos = dd->ct.cam.objectMtx.Pos;
+    if (animObj && (gao->flags & 2) != 0)
+        OBJ_BV_ComputeCenter(animObj, &centre);
+    else
+        OBJ_BV_ComputeCenter(gao, &centre);
+    dir.x = centre.x - camPos.x;
+    dir.y = centre.y - camPos.y;
+    dir.z = (float)(centre.z - camPos.z + 0.02);
+    dist = MATH_VecLen(&dir);
+    MATH_NormalizeEqualVector(&dir);
+    if (checkVisibility)
+    {
+        hit = COL_Visual_RayCast(world, *AI_MainActor, &camPos, &dir,
+                                 (float)(dist + 0.0099999998), -1, 0, 0, 0, 1);
+        if (hit && hit != gao)
+        {
+            if (code)
+                *code = 4;
             return 0;
         }
         if (IMG_Log)
         {
-            sprintf(Buffer, "[Photo] %%BV[%0.1f%%], %%Screen[%0.1f%%]\n", v24 * 100.0, v25 * 100.0);
-            IMG_Log4Debugging(Buffer);
+            sprintf(msg, "[Photo] %%BV[%0.1f%%], %%Screen[%0.1f%%]\n", bvRatio * 100.0,
+                    screenRatio * 100.0);
+            IMG_Log4Debugging(msg);
         }
     }
-    result = 1;
-    if (!a6)
-        result = v23;
-    return result;
+    if (ignoreMission)
+        return 1;
+    return value;
 }
 
-int IMG_Analyser(tWorld* a1, unsigned int a2)
+int IMG_Analyser(tWorld* world, unsigned int mission)
 {
+    tableElemStructPF* cursor;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    tGdi_DisplayData* dd;
+    int rawInfo;
     int result;
-    int v3;
-    tableElemStructPF* v4;
-    tableElemStructPF* v5;
-    tGameObjectMain* v6;
-    int v7;
-    int v8;
-    int a7;
-    tableElemStructPF* v10;
-    tGdi_DisplayData* a3;
-    char Buffer[500];
+    int accumulated;
+    int code;
+    char msg[500];
 
-    if (a2 == -1)
+    if (mission == -1)
         return IMG_PhotoSummary;
     result = 0;
-    v3 = ((uint64_t)a2 >> 8) & 1;
-    v8 = 0;
-    if (a1)
+    rawInfo = (mission >> 8) & 1;
+    accumulated = 0;
+    if (!world)
+        return result;
+    IMG_PhotoSummary = 0;
+    if (GetAsyncKeyState(VK_SHIFT) >= 0)
     {
-        IMG_PhotoSummary = 0;
-        if (GetAsyncKeyState(VK_SHIFT) >= 0)
-        {
-            IMG_Log = 0;
-        }
-        else
-        {
-            sprintf(Buffer, "****** Analyse for mission %d *********\n", a2);
-            IMG_Log4Debugging(Buffer);
-            IMG_Log = 1;
-        }
-        v4 = a1->visibleGameObjectsPF.firstElemPtr;
-        v5 = ((tableElemStructPF*)(a1->visibleGameObjectsPF.nextElemPtr)) - 1;
-        a3 = a1->viewPtr->displayData;
-        v10 = v5;
-        while (v4 <= v5)
-        {
-            v6 = (tGameObjectMain*)v4->objectPtr;
-            if (!v4->objectPtr || ((uint8_t)v6 & 3) == 1 || (v6->flags2 & 4) != 0)
-                goto LABEL_20;
-            result = IMG_ObjectAnalyser(v6, a1, a3, a2 << 24, 1, v3, 0, &a7);
-            if (a7 != 1)
-            {
-                if (a7 == 2)
-                {
-                    v7 = IMG_PhotoSummary + 1;
-                    goto LABEL_15;
-                }
-                if (a7 != 8)
-                    goto LABEL_16;
-            }
-            v7 = IMG_PhotoSummary + 256;
-        LABEL_15:
-            IMG_PhotoSummary = v7;
-        LABEL_16:
-            if ((result & 0xFF000000) != 0 || v3 && result)
-                return result;
-            v8 |= result;
-            v5 = v10;
-        LABEL_20:
-            ++v4;
-        }
-        if (IMG_Log)
-        {
-            sprintf(Buffer, "==> Result = %08X (%08X)\n", v8, IMG_PhotoSummary);
-            IMG_Log4Debugging(Buffer);
-        }
-        result = v8;
-    }
-    return result;
-}
-
-int IMG_ModifierObjectAnalyser_Bis(tGameObjectMain* a1, tModifier* a2, tWorld* a3, tGdi_DisplayData* a4, int a5, int a6, int* a7)
-{
-    tPhotoMdfStruct* v8;
-    int v9;
-    int result;
-    tGameObjectMain* v11;
-    float v12;
-    Mtx4x4* v13;
-    double v14;
-    double v15;
-    long double v16;
-    long double v17;
-    tGameObjectMain* v18;
-    float a5a;
-    Vec3 a4a;
-    Vec3 a3a;
-    float v22;
-
-    v8 = (tPhotoMdfStruct*)a2->mdfPrivateDataPtr;
-    if (a6)
-    {
-        v9 = 1;
+        IMG_Log = 0;
     }
     else
     {
-        result = v8->mission;
-        if (!v8->mission)
-            return result;
-        v9 = v8->info | (result << 24);
+        sprintf(msg, "****** Analyse for mission %d *********\n", mission);
+        IMG_Log4Debugging(msg);
+        IMG_Log = 1;
     }
-    if (v8->frame0_frameCullingSphereRet1 < (double)v8->frame1
-        || v8->frame0_frameCullingSphereRet1 >(double)v8->frame2
-        || (v8->flags & 1) != 0)
+    cursor = world->visibleGameObjectsPF.firstElemPtr;
+    last = ((tableElemStructPF*)(world->visibleGameObjectsPF.nextElemPtr)) - 1;
+    dd = world->viewPtr->displayData;
+    for (; cursor <= last; cursor++)
+    {
+        gao = (tGameObjectMain*)cursor->objectPtr;
+        if (!cursor->objectPtr || ((uint8_t)gao & 3) == 1 || (gao->flags2 & 4) != 0)
+            continue;
+        result = IMG_ObjectAnalyser(gao, world, dd, mission << 24, 1, rawInfo, 0, &code);
+        if (code == 2)
+            IMG_PhotoSummary = IMG_PhotoSummary + 1;
+        else if (code == 1 || code == 8)
+            IMG_PhotoSummary = IMG_PhotoSummary + 256;
+        if ((result & 0xFF000000) != 0 || rawInfo && result)
+            return result;
+        accumulated |= result;
+    }
+    if (IMG_Log)
+    {
+        sprintf(msg, "==> Result = %08X (%08X)\n", accumulated, IMG_PhotoSummary);
+        IMG_Log4Debugging(msg);
+    }
+    return accumulated;
+}
+
+int IMG_ModifierObjectAnalyser_Bis(tGameObjectMain* gao, tModifier* mdf, tWorld* world,
+                                   tGdi_DisplayData* dd, int checkVisibility, int ignoreMission,
+                                   int* code)
+{
+    tPhotoMdfStruct* photo;
+    tGameObjectMain* snapGao;
+    tGameObjectMain* hit;
+    Mtx4x4* snapMtx;
+    int value;
+    double dx;
+    double dz;
+    long double lenSq;
+    long double invLen;
+    float lenSqF;
+    Vec3 dir;
+    Vec3 camPos;
+
+    photo = (tPhotoMdfStruct*)mdf->mdfPrivateDataPtr;
+    if (ignoreMission)
+    {
+        value = 1;
+    }
+    else
+    {
+        if (!photo->mission)
+            return 0;
+        value = photo->info | (photo->mission << 24);
+    }
+    if (photo->frame0_frameCullingSphereRet1 < (double)photo->frame1
+        || photo->frame0_frameCullingSphereRet1 >(double)photo->frame2
+        || (photo->flags & 1) != 0)
     {
         IMG_LogOutput(
             3,
-            a2->gao,
-            v8->frame0_frameCullingSphereRet1,
-            v8->frame1,
-            v8->frame0_frameCullingSphereRet1,
-            v8->frame2);
-        if (a7)
-            *a7 = 2;
-        v9 = 0;
+            mdf->gao,
+            photo->frame0_frameCullingSphereRet1,
+            photo->frame1,
+            photo->frame0_frameCullingSphereRet1,
+            photo->frame2);
+        if (code)
+            *code = 2;
+        value = 0;
     }
-    if (v8->lod0_frameCullingSphereRet2 < (double)v8->lod1
-        || v8->lod0_frameCullingSphereRet2 >(double)v8->lod2
-        || (v8->flags & 2) != 0)
+    if (photo->lod0_frameCullingSphereRet2 < (double)photo->lod1
+        || photo->lod0_frameCullingSphereRet2 >(double)photo->lod2
+        || (photo->flags & 2) != 0)
     {
-        IMG_LogOutput(4, a2->gao, v8->lod0_frameCullingSphereRet2, v8->frame1, v8->lod0_frameCullingSphereRet2, v8->frame2);
-        if (a7)
+        // preserved: the screen test reports the frame thresholds rather than its own
+        IMG_LogOutput(4, mdf->gao, photo->lod0_frameCullingSphereRet2, photo->frame1,
+                      photo->lod0_frameCullingSphereRet2, photo->frame2);
+        if (code)
         {
-            if (v8->lod0_frameCullingSphereRet2 < (double)v8->lod1 || (v8->flags & 2) != 0)
-                *a7 = 1;
+            if (photo->lod0_frameCullingSphereRet2 < (double)photo->lod1
+                || (photo->flags & 2) != 0)
+                *code = 1;
             else
-                *a7 = 8;
+                *code = 8;
         }
-        v9 = 0;
+        value = 0;
     }
-    if (!a5)
-        return v9;
-    v11 = GAO_ModifierPhoto_SnapGOGet(a2->gao, v8, 0);
-    a3a.x = a4->ct.cam.objectMtx.Pos.x;
-    v12 = a4->ct.cam.objectMtx.Pos.z;
-    a3a.y = a4->ct.cam.objectMtx.Pos.y;
-    a3a.z = v12;
-    v13 = v11->matrices;
-    v14 = v13->Pos.x;
-    a4a.x = (float)(v14 - a3a.x);
-    a4a.y = v13->Pos.y - a3a.y;
-    v15 = v13->Pos.z - v12 + 0.02;
-    v16 = a4a.y * a4a.y + a4a.x * a4a.x + v15 * v15;
-    v22 = (float)v16;
-    v17 = 1.0 / sqrt(v16);
-    a4a.x = (float)(a4a.x * v17);
-    a4a.y = (float)(a4a.y * v17);
-    a4a.z = (float)(v17 * v15);
-    a5a = (float)(sqrt(v22) + 0.0099999998);
-    v18 = COL_Visual_RayCast(a3, *AI_MainActor, &a3a, &a4a, a5a, -1, 0, 0, 0, 1);
-    if (!v18 || v18 == a1)
+    if (!checkVisibility)
+        return value;
+    snapGao = GAO_ModifierPhoto_SnapGOGet(mdf->gao, photo, 0);
+    camPos = dd->ct.cam.objectMtx.Pos;
+    snapMtx = snapGao->matrices;
+    dx = snapMtx->Pos.x;
+    dir.x = (float)(dx - camPos.x);
+    dir.y = snapMtx->Pos.y - camPos.y;
+    dz = snapMtx->Pos.z - camPos.z + 0.02;
+    lenSq = dir.y * dir.y + dir.x * dir.x + dz * dz;
+    lenSqF = (float)lenSq;
+    invLen = 1.0 / sqrt(lenSq);
+    dir.x = (float)(dir.x * invLen);
+    dir.y = (float)(dir.y * invLen);
+    dir.z = (float)(invLen * dz);
+    hit = COL_Visual_RayCast(world, *AI_MainActor, &camPos, &dir,
+                             (float)(sqrt(lenSqF) + 0.0099999998), -1, 0, 0, 0, 1);
+    if (!hit || hit == gao)
     {
-        IMG_LogOutput(5, a2->gao, v8->frame0_frameCullingSphereRet1, v8->lod0_frameCullingSphereRet2, 0.0, 0.0);
-        return v9;
+        IMG_LogOutput(5, mdf->gao, photo->frame0_frameCullingSphereRet1,
+                      photo->lod0_frameCullingSphereRet2, 0.0, 0.0);
+        return value;
     }
-    if (a7)
-        *a7 = 4;
+    if (code)
+        *code = 4;
     return 0;
 }
 
-int IMG_ObjectAnalyser_Bis(tGameObjectMain* a1, tWorld* a2, tGdi_DisplayData* a3, int a4, int a5, int* a7)
+int IMG_ObjectAnalyser_Bis(tGameObjectMain* gao, tWorld* world, tGdi_DisplayData* dd,
+                           int checkVisibility, int ignoreMission, int* code)
 {
-    int* v6;
-    tModifier* v7;
-    tGameObjectExtended* v9;
-    tGameObjectDesignFields* v10;
-    Mtx4x4* v11;
-    tGameObjectMain* v12;
-    tGameObjectMain* v13;
-    Mtx4x4* v14;
-    tGameObjectBV* v15;
-    double v16;
-    Mtx4x4* v17;
-    tGameObjectBV* v18;
-    double v19;
-    float v20;
-    float v21;
-    tGameObjectMain* v22;
-    float a5a;
-    float v24;
-    float v25;
-    int v26;
-    Vec3 a3a;
-    Vec3 a4a;
-    Vec3 v29;
-    Vec3 v30;
-    Vec3 a2a;
-    float a7a;
+    tModifier* mdf;
+    tGameObjectExtended* ext;
+    tGameObjectDesignFields* fields;
+    tGameObjectMain* target;
+    tGameObjectMain* animObj;
+    tGameObjectMain* hit;
+    Mtx4x4* viewMtx;
+    int value;
+    float bvRatio;
+    float screenRatio;
+    float dist;
+    Vec3 camPos;
+    Vec3 dir;
+    Vec3 bvMax;
+    Vec3 bvMin;
+    Vec3 centre;
 
-    v6 = a7;
-    if (a7)
-        *a7 = 0;
-    v7 = GAO_ModifierPhoto_Get(a1, 1);
-    if (v7)
-        return IMG_ModifierObjectAnalyser_Bis(a1, v7, a2, a3, a4, a5, a7);
-    v9 = a1->extended;
-    if (!v9)
+    if (code)
+        *code = 0;
+    mdf = GAO_ModifierPhoto_Get(gao, 1);
+    if (mdf)
+        return IMG_ModifierObjectAnalyser_Bis(gao, mdf, world, dd, checkVisibility,
+                                              ignoreMission, code);
+    ext = gao->extended;
+    if (!ext)
         return 0;
-    if (a5)
+    if (ignoreMission)
     {
-        v26 = 1;
-        goto LABEL_12;
+        value = 1;
     }
-    v10 = v9->fields;
-    if (!v10)
-        return 0;
-    if ((a1->flags & 0x40) == 0)
-        return 0;
-    v26 = v10->designInt3;
-    if ((v26 & 0xFF000000) == 0)
-        return 0;
-LABEL_12:
-    v11 = a3->ct.cam.viewMtxPtr_setInGRORender;
-    if (v11 != &a3->ct.cam.cameraMtx)
+    else
     {
-        memcpy(v11, &a3->ct.cam.cameraMtx, sizeof(Mtx4x4));
-        v6 = a7;
+        fields = ext->fields;
+        if (!fields)
+            return 0;
+        if ((gao->flags & 0x40) == 0)
+            return 0;
+        value = fields->designInt3;
+        if ((value & 0xFF000000) == 0)
+            return 0;
     }
-    v12 = a1;
-    if ((a1->flags & 2) != 0)
+    viewMtx = dd->ct.cam.viewMtxPtr_setInGRORender;
+    if (viewMtx != &dd->ct.cam.cameraMtx)
+        memcpy(viewMtx, &dd->ct.cam.cameraMtx, sizeof(Mtx4x4));
+    target = gao;
+    if ((gao->flags & 2) != 0)
     {
-        v13 = ANI_pst_GetObjectByAICanal(a1, 0);
-        if (v13 && OBJ_BV_IsAABBox(v13->boundingVolume))
-            v12 = v13;
-        v6 = a7;
+        animObj = ANI_pst_GetObjectByAICanal(gao, 0);
+        if (animObj && OBJ_BV_IsAABBox(animObj->boundingVolume))
+            target = animObj;
     }
-    if (!OBJ_BV_IsAABBox(v12->boundingVolume))
+    if (!OBJ_BV_IsAABBox(target->boundingVolume))
         return 0;
-    v14 = v12->matrices;
-    v15 = v12->boundingVolume;
-    v16 = v14->Pos.x + v15->BVMax.x;
-    v29.x = (float)v16;
-    v29.y = v14->Pos.y + v15->BVMax.y;
-    v29.z = v14->Pos.z + v15->BVMax.z;
-    v17 = v12->matrices;
-    v18 = v12->boundingVolume;
-    v19 = v17->Pos.x + v18->BVMin.x;
-    v30.x = (float)v19;
-    v30.y = v17->Pos.y + v18->BVMin.y;
-    v30.z = v17->Pos.z + v18->BVMin.z;
-    OBJ_Frame_CullingAABBox(&v30, &v29, &a3->ct.cam, 512, 256, &v24, &v25);
-    if (v24 == 0.0)
+    MATH_VecAddVec(&bvMax, &target->matrices->Pos, &target->boundingVolume->BVMax);
+    MATH_VecAddVec(&bvMin, &target->matrices->Pos, &target->boundingVolume->BVMin);
+    OBJ_Frame_CullingAABBox(&bvMin, &bvMax, &dd->ct.cam, 512, 256, &bvRatio, &screenRatio);
+    if (bvRatio == 0.0)
     {
-        if (v6)
-            *v6 = 2;
+        if (code)
+            *code = 2;
         return 0;
     }
-    if (v25 < 0.025)
+    if (screenRatio < 0.025)
     {
-        IMG_LogOutput(1, a1, v24, v25, 0.0, 0.0);
-        if (v6 && (*v6 != 2 || v25 / v24 < 0.025))
-            *v6 = 1;
-        v26 = 0;
+        IMG_LogOutput(1, gao, bvRatio, screenRatio, 0.0, 0.0);
+        // preserved: *code is still 0 here on every path, so the ratio test can never be reached
+        if (code && (*code != 2 || screenRatio / bvRatio < 0.025))
+            *code = 1;
+        value = 0;
     }
-    if (v24 < 0.5)
+    if (bvRatio < 0.5)
     {
-        IMG_LogOutput(0, a1, v24, v25, 0.0, 0.0);
-        if (v6)
-            *v6 = 2;
-        v26 = 0;
+        IMG_LogOutput(0, gao, bvRatio, screenRatio, 0.0, 0.0);
+        if (code)
+            *code = 2;
+        value = 0;
     }
-    if (!a4)
-        return v26;
-    v20 = a3->ct.cam.objectMtx.Pos.y;
-    v21 = a3->ct.cam.objectMtx.Pos.z;
-    a3a.x = a3->ct.cam.objectMtx.Pos.x;
-    a3a.y = v20;
-    a3a.z = v21;
-    OBJ_BV_ComputeCenter(v12, &a2a);
-    a4a.x = a2a.x - a3a.x;
-    a4a.y = a2a.y - a3a.y;
-    a4a.z = (float)(a2a.z - a3a.z + 0.02);
-    a7a = MATH_VecLen(&a4a);
-    MATH_NormalizeEqualVector(&a4a);
-    a5a = (float)(a7a + 0.0099999998);
-    v22 = COL_Visual_RayCast(a2, *AI_MainActor, &a3a, &a4a, a5a, -1, 0, 0, 0, 1);
-    if (!v22 || v22 == a1)
+    if (!checkVisibility)
+        return value;
+    camPos = dd->ct.cam.objectMtx.Pos;
+    OBJ_BV_ComputeCenter(target, &centre);
+    dir.x = centre.x - camPos.x;
+    dir.y = centre.y - camPos.y;
+    dir.z = (float)(centre.z - camPos.z + 0.02);
+    dist = MATH_VecLen(&dir);
+    MATH_NormalizeEqualVector(&dir);
+    hit = COL_Visual_RayCast(world, *AI_MainActor, &camPos, &dir,
+                             (float)(dist + 0.0099999998), -1, 0, 0, 0, 1);
+    if (!hit || hit == gao)
     {
-        IMG_LogOutput(2, a1, v24, v25, 0.0, 0.0);
-        return v26;
+        IMG_LogOutput(2, gao, bvRatio, screenRatio, 0.0, 0.0);
+        return value;
     }
-    if (v6)
-        *v6 = 4;
+    if (code)
+        *code = 4;
     return 0;
 }
 
-unsigned int IMG_Analyser_Bis(tWorld* a1, int a2)
+unsigned int IMG_Analyser_Bis(tWorld* world, int mission)
 {
+    tableElemStructPF* cursor;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    tGdi_DisplayData* dd;
     unsigned int result;
-    tableElemStructPF* v3;
-    tableElemStructPF* v4;
-    tGameObjectMain* v5;
-    int v6;
-    int v7;
-    int v8;
-    char v9;
+    int flags2;
+    int slot;
     int i;
-    int v11;
-    int v12;
-    int v13;
-    int v14;
-    char v15[4];
-    tGdi_DisplayData* v16;
-    int v17;
-    char Buffer[500];
+    int packed;
+    int summary;
+    int answer;
+    int code;
+    char seen[4];
+    char msg[500];
 
-    if (!a1)
+    if (!world)
         return 0;
-    if (a2 == -1)
+    if (mission == -1)
         return IMG_PhotoSummary;
-    if (a2 == -2)
+    if (mission == -2)
         return (unsigned int)IMG_Gao;
     IMG_Gao = 0;
     IMG_PhotoSummary = 0;
-    v13 = 0;
-    v16 = a1->viewPtr->displayData;
-    v15[2] = 0;
-    v15[1] = 0;
-    v15[0] = 0;
+    packed = 0;
+    dd = world->viewPtr->displayData;
+    seen[2] = 0;
+    seen[1] = 0;
+    seen[0] = 0;
     IMG_Log = 0;
     if (GetAsyncKeyState(VK_SHIFT) < 0)
     {
         IMG_Log4Debugging("****** photo analyser *********\n");
         IMG_Log = 1;
     }
-    v3 = a1->visibleGameObjectsPF.firstElemPtr;
-    v4 = ((tableElemStructPF*)(a1->visibleGameObjectsPF.nextElemPtr)) - 1;
-    while (v3 <= v4)
+    cursor = world->visibleGameObjectsPF.firstElemPtr;
+    last = ((tableElemStructPF*)(world->visibleGameObjectsPF.nextElemPtr)) - 1;
+    for (; cursor <= last; cursor++)
     {
-        v5 = (tGameObjectMain*)v3->objectPtr;
-        if (!v3->objectPtr)
-            goto LABEL_29;
-        if (((uint8_t)v5 & 3) == 1)
-            goto LABEL_29;
-        v6 = v5->flags2;
-        if ((v6 & 4) != 0 || (v6 & 2) == 0)
-            goto LABEL_29;
-        result = IMG_ObjectAnalyser_Bis(v5, a1, v16, 1, 0, &v17);
-        if (v17 != 1)
+        gao = (tGameObjectMain*)cursor->objectPtr;
+        if (!cursor->objectPtr)
+            continue;
+        if (((uint8_t)gao & 3) == 1)
+            continue;
+        flags2 = gao->flags2;
+        if ((flags2 & 4) != 0 || (flags2 & 2) == 0)
+            continue;
+        result = IMG_ObjectAnalyser_Bis(gao, world, dd, 1, 0, &code);
+        if (code == 2)
+            IMG_PhotoSummary = IMG_PhotoSummary + 1;
+        else if (code == 1 || code == 8)
+            IMG_PhotoSummary = IMG_PhotoSummary + 256;
+        if (!result)
+            continue;
+        if (((result >> 24) & 0xff) >= 100u) // HIBYTE
         {
-            if (v17 == 2)
-            {
-                v7 = IMG_PhotoSummary + 1;
-                goto LABEL_18;
-            }
-            if (v17 != 8)
-                goto LABEL_19;
+            IMG_Gao = gao;
+            return result;
         }
-        v7 = IMG_PhotoSummary + 256;
-    LABEL_18:
-        IMG_PhotoSummary = v7;
-    LABEL_19:
-        if (result)
+        if (((result >> 24) & 0xff) == 4) // HIBYTE
+            return result;
+        for (slot = 0; slot < 3; slot++)
         {
-            if (((result >> 24) & 0xff) >= 100u) // HIBYTE
+            if (!seen[slot])
             {
-                IMG_Gao = v5;
-                return result;
+                seen[slot] = result;
+                break;
             }
-            if (((result >> 24) & 0xff) == 4) // HIBYTE
-                return result;
-            v8 = 0;
-            while (1)
-            {
-                v9 = v15[v8];
-                if (!v9)
-                    break;
-                if ((result & 0xff) != v9 && ++v8 < 3)
-                    continue;
-                goto LABEL_29;
-            }
-            v15[v8] = result;
+            if ((result & 0xff) == seen[slot])
+                break;
         }
-    LABEL_29:
-        ++v3;
     }
     for (i = 2; i >= 0; --i)
+        packed = (packed << 8) | seen[i];
+    if (packed)
     {
-        v11 = (v13 << 8) | v15[i];
-        v13 = v11;
-    }
-    if (v11)
-    {
-        v14 = v11 | 0x1000000;
-        v12 = IMG_PhotoSummary;
+        answer = packed | 0x1000000;
+        summary = IMG_PhotoSummary;
     }
     else
     {
-        v12 = IMG_PhotoSummary;
+        summary = IMG_PhotoSummary;
         if (IMG_PhotoSummary)
-            v14 = IMG_PhotoSummary - 0x1000000;
+            answer = IMG_PhotoSummary - 0x1000000;
         else
-            v14 = 0;
+            answer = 0;
     }
     if (IMG_Log)
     {
-        sprintf(Buffer, "==> Result = %08X (%08X)\n", v14, v12);
-        IMG_Log4Debugging(Buffer);
+        sprintf(msg, "==> Result = %08X (%08X)\n", answer, summary);
+        IMG_Log4Debugging(msg);
     }
-    return v14;
+    return answer;
 }

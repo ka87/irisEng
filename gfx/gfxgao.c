@@ -15,7 +15,7 @@ struct sGfxGaoData* GFX_Gao_Create(struct sGameObjectMain* gao)
     return gfx;
 }
 
-void draw_game_object_in_GFX_sub_45DBB0(struct sGfxGaoData* gfx)
+void GFX_Gao_Render(struct sGfxGaoData* gfx)
 {
     float savedFocale;
     int overrideFocale;
