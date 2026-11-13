@@ -345,12 +345,9 @@ void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, uint8_t* keyboard)
             pcINO_joystickPosition[1].x = (float)(pcINO_joystickPosition[1].x - 0.40000001f);
     }
 
-    /* The wheel arrives already divided by the granularity, so this
-       accumulates whole notches and decays by exactly one per 0.04s.
-       The demo added/subtracted mouseGranularity here to compensate for
-       the raw delta it was being handed. */
-    /* preserved: the caller passes a float here, so this reads its bits;
-       one notch adds 1065353216 to a scroll that decays by 1 per 0.04s */
+    /* The wheel arrives already divided by the granularity and is an
+       int in that slot, not a float, so this accumulates whole notches
+       and decays by exactly one per 0.04s. */
     wheel = ((int*)mouse)[2];
     if (wheel)
     {
@@ -1144,9 +1141,12 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
        keyboardData[264] and [265], and the backup copy at the end
        is 266 bytes. The demo decompile put those two in locals. */
     uint8_t keyboardData[266];
-    /* The handler takes { lX * 0.5, lY * 0.5, lZ / granularity }
-       as floats (built at 0x00422F41..0x0042303D), not the raw
-       DIMOUSESTATE2 ints. The third element is wheel TICKS. */
+    /* The handler takes { lX * sensitivity, lY * sensitivity } as
+       floats and the wheel as an INT in the third slot. Slots 0 and 1
+       go through fild/fmul/fstp at 0x00422F41 and 0x00422F5B; the
+       wheel's idiv quotient is stored with a plain mov at 0x00423047
+       and is never converted. The handlers read it with
+       ((int*)mouse)[2]. */
     float mouseScaled[3];
 
     memset(padData->padData, 0, sizeof(padData->padData));
@@ -1212,7 +1212,7 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
        whole notches before any handler sees it. */
     mouseScaled[0] = (float)mouseData[0] * pcINO_mouseSensitivity;
     mouseScaled[1] = (float)mouseData[1] * pcINO_mouseSensitivity;
-    mouseScaled[2] = (float)(mouseData[2] / (mouseGranularity ? mouseGranularity : 1));
+    ((int*)mouseScaled)[2] = mouseData[2] / (mouseGranularity ? mouseGranularity : 1);
 
     sJoystickHandlerFunction(padData, mouseScaled, keyboardData);
     if (keyboardData[pcINO_IntKeybDataLink[30]] || keyboardData[pcINO_IntKeybDataLink[31]])
