@@ -444,7 +444,7 @@ void OBJ_BV_CalcBVForTwoOBJs(tGameObjectMain* dest, tGameObjectMain* src)
     destBv->BVMin.z = minZ - destMtx->Pos.z;
 }
 
-void __cdecl OBJ_MergeBVs(tGameObjectMain* dest, tGameObjectMain* src)
+void OBJ_MergeBVs(tGameObjectMain* dest, tGameObjectMain* src)
 {
     tGameObjectBV* destBv;
     tGameObjectBV* srcBv;

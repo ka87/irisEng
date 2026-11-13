@@ -625,7 +625,7 @@ void TEX_Expand_YBy2(char* src, char* dest, int w, int h)
     }
 }
 
-int __cdecl TEX_l_File_LoadAnimated(char* offset, tEngTexIntermediateStruct* tex, int size)
+int TEX_l_File_LoadAnimated(char* offset, tEngTexIntermediateStruct* tex, int size)
 {
     uint8_t num;
     uint16_t flags;

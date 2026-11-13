@@ -50,7 +50,7 @@ void AI_EvalFunc_OBJ_TextCharSet_C(struct sGameObjectMain* gao, int strIdx, int 
 void AI_EvalFunc_OBJ_Text2Text_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, tTextGet* textRef);
 int AI_EvalFunc_OBJ_TextLength_C(struct sGameObjectMain* gao, int strIdx);
 unsigned int AI_EvalFunc_OBJ_TextCharGet_C(struct sGameObjectMain* gao, int strIdx, int charIdx);
-void __cdecl AI_EvalFunc_OBJ_TextPosGetMin_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* min);
+void AI_EvalFunc_OBJ_TextPosGetMin_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* min);
 void AI_EvalFunc_OBJ_TextPosGetMax_c(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* max);
 int AI_EvalFunc_OBJ_TextRequest_C(int which);
 void AI_EvalFunc_OBJ_SetChannelProg_C(struct sGameObjectMain* gao, int channel, float prog);

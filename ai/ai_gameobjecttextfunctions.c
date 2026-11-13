@@ -616,7 +616,7 @@ tAINode* AI_EvalFunc_OBJ_TextSubLength(tAINode* node)
 
 // STR_pst_GetMin fills the caller's vector and hands it back, so the
 // local it is given here is written and then copied over itself.
-void __cdecl AI_EvalFunc_OBJ_TextPosGetMin_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* min)
+void AI_EvalFunc_OBJ_TextPosGetMin_C(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* min)
 {
     Vec3 scratch;
 
