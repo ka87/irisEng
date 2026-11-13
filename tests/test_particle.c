@@ -149,8 +149,10 @@ static void poolHoleBoundary(tScene* sc)
         tPAGElemStruct* e = &sc->elems[i];
 
         e->particleState = 0;
-        e->particlePos.x = (i & 1) ? 3.0f : 3.0001221f;
-        e->particlePos.y = 4.0f;
+        /* dx is exactly 3 and dy exactly 4 against the object's own
+           origin, so dx*dx + dy*dy is exactly the hole radius. */
+        e->particlePos.x = PMOCK_gaoMtx.Pos.x + ((i & 1) ? 3.0f : 3.0001221f);
+        e->particlePos.y = PMOCK_gaoMtx.Pos.y + 4.0f;
         e->particlePos.z = -5.0f;
         e->v1.x = 0.0f;
         e->v1.y = 0.0f;
@@ -402,7 +404,11 @@ static void sweepGenerate(void)
                             s_template.pag.flags = rot ? 0x1000 : 4;
                             s_template.pag.generators[0].generatorFreq = 20.0f;
                             s_template.pag.generators[1].generatorFreq = 0.0f;
-                            s_template.pag.generators[2].generatorFreq = 7.0f;
+                            /* high enough to spawn at dt = 0.1: the
+                               only generator with an object of its
+                               own, so the matrix it picks is only
+                               visible while it is emitting */
+                            s_template.pag.generators[2].generatorFreq = 40.0f;
                             s_template.pag.generators[2].gao = &PMOCK_genGao;
                             s_template.pag.generators[3].generatorFreq = 1000.0f;
                             PMOCK_groForGao1 = withGro ? &PMOCK_gro : NULL;

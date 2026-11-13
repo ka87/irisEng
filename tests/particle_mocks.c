@@ -354,6 +354,36 @@ void PMOCK_Init(void)
     MATH_SetIdentityMatrix(&PMOCK_shapeMtx);
     MATH_SetIdentityMatrix(&PMOCK_viewMtx);
 
+    /* The three matrices have to differ in every axis and in the
+       origin: a generator builds its positions in the emitter shape's
+       frame and its velocities in its own, and with all three the
+       identity the two are indistinguishable. */
+    PMOCK_gaoMtx.Pos.x = 0.5f;
+    PMOCK_gaoMtx.Pos.y = -1.25f;
+    PMOCK_gaoMtx.Pos.z = 2.0f;
+    PMOCK_gaoMtx.v1.x = 0.80000001f;
+    PMOCK_gaoMtx.v1.y = 0.60000002f;
+    PMOCK_gaoMtx.v2.x = -0.60000002f;
+    PMOCK_gaoMtx.v2.y = 0.80000001f;
+
+    PMOCK_genMtx.Pos.x = -3.0f;
+    PMOCK_genMtx.Pos.y = 4.5f;
+    PMOCK_genMtx.Pos.z = -0.75f;
+    PMOCK_genMtx.v1.y = 1.0f;
+    PMOCK_genMtx.v1.x = 0.0f;
+    PMOCK_genMtx.v2.z = 1.0f;
+    PMOCK_genMtx.v2.y = 0.0f;
+    PMOCK_genMtx.v3.x = 1.0f;
+    PMOCK_genMtx.v3.z = 0.0f;
+
+    PMOCK_shapeMtx.Pos.x = 7.25f;
+    PMOCK_shapeMtx.Pos.y = -2.5f;
+    PMOCK_shapeMtx.Pos.z = 6.0f;
+    PMOCK_shapeMtx.v1.x = 0.0f;
+    PMOCK_shapeMtx.v1.z = -1.0f;
+    PMOCK_shapeMtx.v3.x = 1.0f;
+    PMOCK_shapeMtx.v3.z = 0.0f;
+
     PMOCK_visual.GROMAT = &PMOCK_gromat;
     PMOCK_gaoBasic.actorObjectOrVisualObject = &PMOCK_visual;
     PMOCK_gao.basic = &PMOCK_gaoBasic;
