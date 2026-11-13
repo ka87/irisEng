@@ -3,156 +3,121 @@
 #include "bigfiles.h"
 #include "ways.h"
 
-void WAY_FreeStruct(struct sWay* a1)
+void WAY_FreeStruct(struct sWay* way)
 {
-    unsigned int v1;
-    int v2;
+    unsigned int i;
 
-    if (a1)
+    if (!way)
+        return;
+
+    if (way->wayElems)
     {
-        if (a1->wayElems)
+        for (i = 0; i < way->wayElemNum; ++i)
         {
-            v1 = 0;
-            if (a1->wayElemNum)
+            if (way->wayElems[i].innerElems)
             {
-                v2 = 0;
-                do
-                {
-                    if (a1->wayElems[v2].innerElems)
-                    {
-                        MEM_Free(a1->wayElems[v2].innerElems);
-                        a1->wayElems[v2].innerElems = 0;
-                    }
-                    ++v1;
-                    ++v2;
-                } while (v1 < a1->wayElemNum);
+                MEM_Free(way->wayElems[i].innerElems);
+                way->wayElems[i].innerElems = 0;
             }
-            MEM_Free(a1->wayElems);
-            a1->wayElems = 0;
         }
-        LOA_DeleteAddress((int)a1);
-        MEM_Free(a1);
+        MEM_Free(way->wayElems);
+        way->wayElems = 0;
     }
+    LOA_DeleteAddress((int)way);
+    MEM_Free(way);
 }
 
-void WAY_ReinitLinks(struct sWay* a1)
+void WAY_ReinitLinks(struct sWay* way)
 {
-    unsigned int v1;
-    tWayElem* v2;
-    int v3;
-    tWayElem* v4;
-    int v5;
-    int v6;
-    tWayElemInnerElem* v7;
-    int16_t v8;
-    tWayElemInnerElem* v9;
+    tWayElem* elem;
+    tWayElemInnerElem* link;
+    unsigned int i;
+    int j;
 
-    if (a1)
+    if (!way)
+        return;
+
+    for (i = 0; i < way->wayElemNum; ++i)
     {
-        v1 = 0;
-        if (a1->wayElemNum)
+        elem = &way->wayElems[i];
+        for (j = 0; j < elem->num; ++j)
         {
-            v2 = a1->wayElems;
-            v3 = 0;
-            do
-            {
-                v4 = &v2[v3];
-                v5 = 0;
-                if (v2[v3].num)
-                {
-                    v6 = 0;
-                    do
-                    {
-                        v7 = v4->innerElems;
-                        v8 = v7[v6].capaBackup;
-                        v9 = &v7[v6];
-                        v9->capa = v8;
-                        v9->design = v9->designBackup;
-                        v2 = a1->wayElems;
-                        ++v5;
-                        v4 = &a1->wayElems[v3];
-                        ++v6;
-                    } while (v5 < v4->num);
-                }
-                ++v1;
-                ++v3;
-            } while (v1 < a1->wayElemNum);
+            link = &elem->innerElems[j];
+            link->capa = link->capaBackup;
+            link->design = link->designBackup;
         }
     }
 }
 
-void WAY_RemoveAllNetworks(tWayAllNetworks* a1)
+void WAY_RemoveAllNetworks(tWayAllNetworks* allNetworks)
 {
     int i;
 
-    if (a1)
+    if (allNetworks)
     {
-        for (i = 0; i < a1->networkNum; ++i)
+        for (i = 0; i < allNetworks->networkNum; ++i)
         {
-            if (a1->networks[i])
+            if (allNetworks->networks[i])
             {
-                LOA_DeleteAddress((int)a1->networks[i]);
-                MEM_Free(a1->networks[i]);
+                LOA_DeleteAddress((int)allNetworks->networks[i]);
+                MEM_Free(allNetworks->networks[i]);
             }
         }
-        if (a1->networks)
-            MEM_Free(a1->networks);
-        LOA_DeleteAddress((int)a1);
-        MEM_Free(a1);
+        if (allNetworks->networks)
+            MEM_Free(allNetworks->networks);
+        LOA_DeleteAddress((int)allNetworks);
+        MEM_Free(allNetworks);
     }
 }
 
-tWayNetwork* WAY_ul_NetWorkCallback(uint32_t Offset)
+tWayNetwork* WAY_ul_NetWorkCallback(uint32_t offset)
 {
-    tWayNetwork* v1;
-    int v2;
-    char* a1;
-    int v5;
+    tWayNetwork* network;
+    char* data;
+    int rootKey;
+    int size;
 
-    v1 = (tWayNetwork*)MEM_p_Alloc(8u);
-    v1->gao = 0;
-    v1->flags = 0;
-    a1 = (char*)BIG_pc_ReadFileTmp(Offset, &v5);
-    v2 = LOA_ReadLong(&a1, 0, 1);
-    if (!v2 || v2 == -1)
-        v1->gao = 0;
+    network = (tWayNetwork*)MEM_p_Alloc(8u);
+    network->gao = 0;
+    network->flags = 0;
+    data = (char*)BIG_pc_ReadFileTmp(offset, &size);
+    rootKey = LOA_ReadLong(&data, 0, 1);
+    if (!rootKey || rootKey == -1)
+        network->gao = 0;
     else
-        LOA_MakeFileRef(v2, &v1->gao, OBJ_ul_GameObjectCallback, 1);
-    v1->flags = LOA_ReadLong(&a1, 0, 1);
-    return v1;
+        LOA_MakeFileRef(rootKey, &network->gao, OBJ_ul_GameObjectCallback, 1);
+    network->flags = LOA_ReadLong(&data, 0, 1);
+    return network;
 }
 
-tWayAllNetworks* WAY_ul_AllNetWorksCallback(uint32_t Offset)
+tWayAllNetworks* WAY_ul_AllNetWorksCallback(uint32_t offset)
 {
-    tWayAllNetworks* v1;
-    tWayAllNetworks* result;
-    int v3;
+    tWayAllNetworks* allNetworks;
+    char* data;
+    int networkKey;
+    int num;
+    int size;
     int i;
-    int v5;
-    char* a1;
-    int v7;
 
-    v1 = (tWayAllNetworks*)MEM_p_Alloc(8u);
-    v1->networks = 0;
-    v1->networkNum = 0;
-    a1 = (char *)BIG_pc_ReadFileTmp(Offset, &v7);
-    result = NULL;
-    if (a1)
+    allNetworks = (tWayAllNetworks*)MEM_p_Alloc(8u);
+    allNetworks->networks = 0;
+    allNetworks->networkNum = 0;
+    data = (char*)BIG_pc_ReadFileTmp(offset, &size);
+    if (!data)
+        return NULL;
+
+    num = LOA_ReadLong(&data, 0, 1);
+    allNetworks->networkNum = num;
+    if (num)
     {
-        v3 = LOA_ReadLong(&a1, 0, 1);
-        v1->networkNum = v3;
-        if (v3)
+        allNetworks->networks = (tWayNetwork**)MEM_p_Alloc(4 * num);
+        for (i = 0; i < allNetworks->networkNum; ++i)
         {
-            v1->networks = (tWayNetwork**)MEM_p_Alloc(4 * v3);
-            for (i = 0; i < v1->networkNum; ++i)
-            {
-                v5 = LOA_ReadLong(&a1, 0, 1);
-                LOA_MakeFileRef(v5, &v1->networks[i], WAY_ul_NetWorkCallback, 1);
-            }
+            networkKey = LOA_ReadLong(&data, 0, 1);
+            LOA_MakeFileRef(networkKey, &allNetworks->networks[i], WAY_ul_NetWorkCallback, 1);
         }
-        result = v1;
     }
-    return result;
+    return allNetworks;
 }
 
 void WAY_InitModule()
@@ -165,140 +130,97 @@ void WAY_CloseModule()
     BAS_bfree(&WAY_gst_Seen);
 }
 
-struct sWayElem* WAY_pst_SearchLinkList(struct sGameObjectMain* a1, struct sWayNetwork* a2)
+struct sWayElem* WAY_pst_SearchLinkList(struct sGameObjectMain* wp, struct sWayNetwork* network)
 {
-    tGameObjectExtended* v2;
-    tWay* v3;
-    tWayElem *result = NULL;
-    unsigned int idx;
-    tWayElem* v5;
-    unsigned int v6;
-    tWayElem* v7;
+    tGameObjectExtended* extended;
+    tWay* way;
+    unsigned int i;
 
-    v2 = a1->extended;
-    if (!v2)
+    extended = wp->extended;
+    if (!extended)
         return 0;
-    v3 = v2->way;
-    if (!v3)
+
+    way = extended->way;
+    if (!way)
         return 0;
-    v5 = v3->wayElems;
-    idx = 0;
-    if (v3->wayElems)
+
+    if (!way->wayElems)
+        return 0;
+
+    for (i = 0; i < way->wayElemNum; ++i)
     {
-        v6 = v3->wayElemNum;
-        if (v6)
-        {
-            v7 = v3->wayElems;
-            while (v7->network != a2)
-            {
-                ++idx;
-                ++v7;
-                if (idx >= v6)
-                    goto LABEL_9;
-            }
-            result = &v5[idx];
-        }
-        else
-        {
-        LABEL_9:
-            result = 0;
-        }
+        if (way->wayElems[i].network == network)
+            return &way->wayElems[i];
     }
-    return result;
+    return 0;
 }
 
-struct sWayElemInnerElem* WAY_pst_SearchOneLinkInList(struct sWayElem* a1, struct sGameObjectMain* a2)
+struct sWayElemInnerElem* WAY_pst_SearchOneLinkInList(struct sWayElem* linkList, struct sGameObjectMain* wp)
 {
-    unsigned int v2;
-    unsigned int v3;
-    tWayElemInnerElem* v4;
+    tWayElemInnerElem* links;
+    unsigned int num;
+    unsigned int i;
 
-    v2 = a1->num;
-    v3 = 0;
-    if (!v2)
+    num = linkList->num;
+    if (!num)
         return 0;
-    v4 = a1->innerElems;
-    
-    while (v4[v3].gao != a2) {
-        if (++v3 >= v2)
-            return 0;
-    }
-    return &v4[v3];    
-}
 
-void WAY_ComputePoundNetworksRec(tWayNetwork* a1, tGameObjectMain* gao, tGameObjectMain* a3)
-{
-    int v3;
-    tGameObjectExtended* v4;
-    tWayElem* v5;
-    tWayElem* v6;
-    Mtx4x4* v7;
-    float v8;
-    tWayElemInnerElem* v9;
-    tGameObjectMain* v10;
-    Mtx4x4* v11;
-    double v12;
-    double v13;
-    double v14;
-    tGameObjectMain* v15;
-    int v16;
-    float v17;
-    float v18;
-
-    if (BAS_bsearch((unsigned int)gao, &WAY_gst_Seen) == -1)
+    links = linkList->innerElems;
+    for (i = 0; i < num; ++i)
     {
-        BAS_binsert((unsigned int)gao, (int)gao, &WAY_gst_Seen);
-        v3 = 0;
-        if (gao)
-        {
-            v4 = gao->extended;
-            if (v4)
-            {
-                if (v4->way)
-                {
-                    v5 = WAY_pst_SearchLinkList(gao, a1);
-                    v6 = v5;
-                    if (v5)
-                    {
-                        v16 = 0;
-                        if (v5->num)
-                        {
-                            do
-                            {
-                                v7 = gao->matrices;
-                                v8 = v7->Pos.y;
-                                v17 = v7->Pos.x;
-                                v9 = &v6->innerElems[v3];
-                                v18 = v7->Pos.z;
-                                v10 = v9->gao;
-                                if (v10)
-                                {
-                                    v11 = v10->matrices;
-                                    v12 = v17 - v11->Pos.x;
-                                    v13 = v8 - v11->Pos.y;
-                                    v14 = v18 - v11->Pos.z;
-                                    v9->weight = (float)sqrt(v14 * v14 + v13 * v13 + v12 * v12);
-                                    v15 = v6->innerElems[v3].gao;
-                                    if (v15 == a3)
-                                        return;
-                                    WAY_ComputePoundNetworksRec(a1, v15, a3);
-                                }
-                                ++v3;
-                                ++v16;
-                            } while (v16 < v6->num);
-                        }
-                    }
-                }
-            }
-        }
+        if (links[i].gao == wp)
+            return &links[i];
+    }
+    return 0;
+}
+
+void WAY_ComputePoundNetworksRec(tWayNetwork* network, tGameObjectMain* gao, tGameObjectMain* stopAt)
+{
+    tWayElem* linkList;
+    tWayElemInnerElem* link;
+    tGameObjectMain* linked;
+    Vec3 pos;
+    double dx;
+    double dy;
+    double dz;
+    int i;
+
+    if (BAS_bsearch((unsigned int)gao, &WAY_gst_Seen) != -1)
+        return;
+
+    BAS_binsert((unsigned int)gao, (int)gao, &WAY_gst_Seen);
+
+    if (!gao || !gao->extended || !gao->extended->way)
+        return;
+
+    linkList = WAY_pst_SearchLinkList(gao, network);
+    if (!linkList)
+        return;
+
+    for (i = 0; i < linkList->num; ++i)
+    {
+        pos = gao->matrices->Pos;
+        link = &linkList->innerElems[i];
+        linked = link->gao;
+        if (!linked)
+            continue;
+
+        dx = pos.x - linked->matrices->Pos.x;
+        dy = pos.y - linked->matrices->Pos.y;
+        dz = pos.z - linked->matrices->Pos.z;
+        link->weight = (float)sqrt(dz * dz + dy * dy + dx * dx);
+
+        if (link->gao == stopAt)
+            return;
+        WAY_ComputePoundNetworksRec(network, link->gao, stopAt);
     }
 }
 
-void WAY_ComputePoundOneNetworkForObj(tWayNetwork* a1, tGameObjectMain* a2)
+void WAY_ComputePoundOneNetworkForObj(tWayNetwork* network, tGameObjectMain* stopAt)
 {
     WAY_gst_Seen.actElemNum = 0;
-    if (a1->gao)
-        WAY_ComputePoundNetworksRec(a1, a1->gao, a2);
+    if (network->gao)
+        WAY_ComputePoundNetworksRec(network, network->gao, stopAt);
 }
 
 void WAY_ComputePoundOneNetwork(tWayNetwork* net)
@@ -306,87 +228,69 @@ void WAY_ComputePoundOneNetwork(tWayNetwork* net)
     WAY_ComputePoundOneNetworkForObj(net, 0);
 }
 
-void WAY_ComputePoundNetworks(struct sWorld* a1)
+void WAY_ComputePoundNetworks(struct sWorld* world)
 {
-    tWayAllNetworks* v1;
-    int v2;
-    tWayNetwork** v3;
+    tWayNetwork** networks;
+    int i;
 
-    v1 = a1->wayPtr;
-    if (v1)
+    if (!world->wayPtr)
+        return;
+
+    for (i = 0; i < world->wayPtr->networkNum; ++i)
     {
-        v2 = 0;
-        if (v1->networkNum)
-        {
-            do
-            {
-                gpst_CurrentWorld = a1;
-                v3 = a1->wayPtr->networks;
-                if (v3[v2])
-                    WAY_ComputePoundOneNetwork(v3[v2]);
-                gpst_CurrentWorld = 0;
-                ++v2;
-            } while (v2 < a1->wayPtr->networkNum);
-        }
+        gpst_CurrentWorld = world;
+        networks = world->wayPtr->networks;
+        if (networks[i])
+            WAY_ComputePoundOneNetwork(networks[i]);
+        gpst_CurrentWorld = 0;
     }
 }
 
-struct sWay* WAY_ul_AllLinkListsCallback(uint32_t Offset)
+struct sWay* WAY_ul_AllLinkListsCallback(uint32_t offset)
 {
-    tWay* v1;
+    tWay* way;
+    tWayElem* elem;
+    tWayElemInnerElem* link;
+    char* data;
+    int networkKey;
+    int gaoKey;
+    int num;
+    unsigned int i;
     int j;
-    int v3;
-    BOOL v4;
-    int v5;
-    int v6;
-    int v7;
-    int i;
-    int v9;
-    unsigned int v10;
-    char* a1;
-    unsigned int v13;
-    int a2;
+    int size;
 
-    v1 = (tWay*)MEM_p_Alloc(sizeof(tWay));
-    v1->wayElems = 0;
-    v1->wayElemNum = 0;
-    j = 0;
-    a1 = BIG_pc_ReadFileTmp(Offset, &a2);
-    v3 = LOA_ReadLong(&a1, 0, 1);
-    v1->wayElemNum = v3;
-    if (v3)
-        v1->wayElems = (tWayElem*)MEM_p_Alloc(sizeof(tWayElem) * v3);
-    v4 = v1->wayElemNum == 0;
-    v13 = 0;
-    if (!v4)
+    way = (tWay*)MEM_p_Alloc(sizeof(tWay));
+    way->wayElems = 0;
+    way->wayElemNum = 0;
+    data = BIG_pc_ReadFileTmp(offset, &size);
+
+    num = LOA_ReadLong(&data, 0, 1);
+    way->wayElemNum = num;
+    if (num)
+        way->wayElems = (tWayElem*)MEM_p_Alloc(sizeof(tWayElem) * num);
+
+    for (i = 0; i < way->wayElemNum; ++i)
     {
-        do
+        elem = &way->wayElems[i];
+        networkKey = LOA_ReadLong(&data, 0, 1);
+        LOA_MakeFileRef(networkKey, (void**)&elem->network, WAY_ul_NetWorkCallback, 1);
+        elem->innerElems = 0;
+        elem->num = LOA_ReadLong(&data, 0, 1);
+        if (elem->num)
         {
-            v5 = 0;
-            v6 = LOA_ReadLong(&a1, 0, 1);
-            LOA_MakeFileRef(v6, (void**)&(v1->wayElems[j].network), WAY_ul_NetWorkCallback, 1);
-            v1->wayElems[j].innerElems = 0;
-            v1->wayElems[j].num = LOA_ReadLong(&a1, 0, 1);
-            v7 = v1->wayElems[j].num;
-            if (v7)
+            elem->innerElems = (tWayElemInnerElem*)MEM_p_Alloc(sizeof(tWayElemInnerElem) * elem->num);
+            for (j = 0; j < elem->num; ++j)
             {
-                v1->wayElems[j].innerElems = (tWayElemInnerElem*)MEM_p_Alloc(sizeof(tWayElemInnerElem) * v7);
-                for (i = 0; i < v1->wayElems[j].num; ++v5)
-                {
-                    v1->wayElems[j].innerElems[v5].capa = LOA_ReadShort(&a1, 0, 1);
-                    v1->wayElems[j].innerElems[v5].capaBackup = v1->wayElems[j].innerElems[v5].capa;
-                    v9 = LOA_ReadLong(&a1, 0, 1);
-                    LOA_MakeFileRef(v9, (void**)&(v1->wayElems[j].innerElems[v5].gao), OBJ_ul_GameObjectCallback, 1);
-                    v1->wayElems[j].innerElems[v5].design = LOA_ReadChar(&a1, 0, 1);
-                    v1->wayElems[j].innerElems[v5].designBackup = v1->wayElems[j].innerElems[v5].design;
-                    v1->wayElems[j].innerElems[v5].s3 = LOA_ReadShort(&a1, 0, 1);
-                    ++i;
-                }
+                link = &elem->innerElems[j];
+                link->capa = LOA_ReadShort(&data, 0, 1);
+                link->capaBackup = link->capa;
+                gaoKey = LOA_ReadLong(&data, 0, 1);
+                LOA_MakeFileRef(gaoKey, (void**)&link->gao, OBJ_ul_GameObjectCallback, 1);
+                link->design = LOA_ReadChar(&data, 0, 1);
+                link->designBackup = link->design;
+                link->s3 = LOA_ReadShort(&data, 0, 1);
             }
-            v10 = v1->wayElemNum;
-            ++j;
-            ++v13;
-        } while (v13 < v10);
+        }
     }
-    return v1;
+    return way;
 }
