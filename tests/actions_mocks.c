@@ -443,8 +443,13 @@ static void ACTMOCK_BuildKit(tActKitBuf* kit, tActBuf* acts, int pattern)
     int k;
 
     kit->kit.elemNum = ACTMOCK_ACTIONS;
-    /* what ACT_pst_FindTransition would read if its 0xFFFF guard went */
+    /* what ACT_pst_FindTransition would read if its 0xFFFF guard went,
+       and what ACT_SetAction would reach if its bound test let the
+       element count itself through: both have to be real actions, or
+       the two copies read the same zeroed slot and agree */
     kit->actions[0xFFFF] = &acts[1].action;
+    kit->actions[ACTMOCK_ACTIONS] = &acts[2].action;
+    kit->actions[ACTMOCK_ACTIONS + 1] = &acts[4].action;
     kit->kit.usageCount = 1;
     kit->kit.flags = 0;
     kit->kit.savedActions = NULL;
@@ -453,8 +458,12 @@ static void ACTMOCK_BuildKit(tActKitBuf* kit, tActBuf* acts, int pattern)
     {
         tActionElem* elems = ACTMOCK_Elems(&acts[i].action);
 
-        /* action 3 is absent, which is what the elemNum guard is for */
-        kit->actions[i] = (i == 3 && ((pattern >> 4) & 1)) ? NULL : &acts[i].action;
+        /* action 3 is absent, which is what the elemNum guard is for;
+           action 0 is absent under its own bit, because ACT_SetAction
+           lets index 0 through whether or not it resolves */
+        kit->actions[i] = ((i == 3 && ((pattern >> 4) & 1))
+                           || (i == 0 && ((pattern >> 10) & 1)))
+                              ? NULL : &acts[i].action;
 
         acts[i].action.actionElemNum = (i == 7 && ((pattern >> 5) & 1))
                                            ? 0 : (uint8_t)(1 + (i % ACTMOCK_ELEMS));

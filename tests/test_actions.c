@@ -462,6 +462,8 @@ int main(void)
         RunCase(name, Case_FindTransition, arg);
         sprintf(name, "setaction/%d", arg);
         RunCase(name, Case_SetAction, arg);
+        sprintf(name, "setactionNo0/%d", arg);
+        RunCase(name, Case_SetAction, arg | (1 << 10));
         sprintf(name, "setaction2/%d", arg);
         RunCase(name, Case_SetAction, arg | (1 << 13));
         sprintf(name, "setactionEVE/%d", arg);
