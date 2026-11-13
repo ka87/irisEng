@@ -723,7 +723,7 @@ void GFX_Render(tGfxElem** list, int zlistLock)
             rendered = GFX_i_Carte_Render((tGfxCarteData*)elem->privateData, elem->material, elem->aiGameObject);
             break;
         case 17:
-            draw_game_object_in_GFX_sub_45DBB0((tGfxGaoData*)elem->privateData);
+            GFX_Gao_Render((tGfxGaoData*)elem->privateData);
             gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
             gpst_DX_stDD->SetViewMatrix(gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender);
             break;

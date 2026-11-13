@@ -363,10 +363,18 @@ void GFX_Line_Render(void* p) { GFXC_Call("GFX_Line_Render", 1, GFXC_P(p)); }
 void GFX_Flare_Render(void* p) { GFXC_Call("GFX_Flare_Render", 1, GFXC_P(p)); }
 void GFX_Flare_Test(void* p) { GFXC_Call("GFX_Flare_Test", 1, GFXC_P(p)); }
 void GFX_Sun_Render(void* p) { GFXC_Call("GFX_Sun_Render", 1, GFXC_P(p)); }
-void draw_game_object_in_GFX_sub_45DBB0(void* p)
+/* Two names for one mock, logging one label. The frozen copy in
+   tests/baseline_gfx.c calls this under its old _sub_<address> name
+   and the rewrite calls it as GFX_Gao_Render; the baseline is not
+   edited to follow a rename made in the live tree, so the harness
+   carries both entry points instead. They must log the same string,
+   or the two call sequences would differ for that reason alone. */
+static void gfxc_GaoRender(void* p)
 {
-    GFXC_Call("draw_game_object_in_GFX_sub_45DBB0", 1, GFXC_P(p));
+    GFXC_Call("GFX_Gao_Render", 1, GFXC_P(p));
 }
+void draw_game_object_in_GFX_sub_45DBB0(void* p) { gfxc_GaoRender(p); }
+void GFX_Gao_Render(void* p) { gfxc_GaoRender(p); }
 void GFX_SetRenderStateForExplode(void)
 {
     GFXC_Call0("GFX_SetRenderStateForExplode");

@@ -331,7 +331,7 @@ float col_sqrlen_sub_409560(Vec3* a1, Vec3* a2);
 int INT_PointInTriangle(Vec3* point, Vec3* p1, Vec3* p2, Vec3* p3, Vec3* normal, uint8_t* edgeOut);
 BOOL INT_SphereAABBox(Vec3* center, float radius, Vec3* boxMin, Vec3* boxMax);
 
-void COL_OK3_Build(void* aa, int type, int a3);
+void COL_OK3_Build(void* object, int type, int rebuild);
 
 void REC_MainCall(struct sWorld* world, int firstRecord);
 
