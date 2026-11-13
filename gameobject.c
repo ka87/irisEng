@@ -3340,495 +3340,418 @@ struct sGEOGRO* OBJ_p_GetCurrentGeo(struct sGameObjectMain* gao)
     return (tGEOGRO*)result;
 }
 
-int OBJ_Frame_CullingSphere(Vec3* a1, float a2, struct sDDCamStruct* a3, int a4, int a5, float* a6, float* a7)
+int OBJ_Frame_CullingSphere(Vec3* center, float radius, struct sDDCamStruct* cam, int width, int height, float* outClipped, float* outScreen)
 {
-    double v7;
-    double v8;
-    double v9;
-    long double v10;
-    double v11;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    float v16;
-    float* v17;
-    int v18;
-    float v19;
-    float v20;
-    float v21;
-    float v23;
-    float v24;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    float v32;
-    float v33;
-    Vec3 v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    float v43;
-    Vec3 v44;
-    float v45;
-    Vec3 a2a;
-    Vec3 a1a;
-    Vec3 v48;
-    float v49[12];
+    double dx;
+    double dz;
+    double dy;
+    long double dist;
+    double fwdX;
+    double fwdY;
+    double rightX;
+    double rightY;
+    double maxYTmp;
+    float centerY;
+    float* cursor;
+    int remaining;
+    float clampTmp;
+    float halfWidth;
+    float halfHeight;
+    float negHalfWidth;
+    float maxX;
+    float negHalfHeight;
+    float minX;
+    float minY;
+    Vec3 fwdPoint;
+    float unclampedMinX;
+    float unclampedMaxX;
+    float unclampedMinY;
+    float unclampedMaxY;
+    float pointX;
+    float pointY;
+    float projRadius;
+    Vec3 projCenter;
+    float centerX;
+    Vec3 edgePoint;
+    Vec3 projEdge;
+    Vec3 projFwd;
+    float corners[4][3];
 
-    v27 = (float)((double)a4 * 0.5);
-    v28 = (float)((double)a5 * 0.5);
-    if (a6)
-        *a6 = 0.0;
-    if (a7)
-        *a7 = 0.0;
-    a3->viewMtxPtr_setInGRORender = &a3->cameraMtx;
-    v7 = a3->objectMtx.Pos.x - a1->x;
-    v8 = a3->objectMtx.Pos.z - a1->z;
-    v9 = a3->objectMtx.Pos.y - a1->y;
-    v10 = sqrt(v8 * v8 + v9 * v9 + v7 * v7);
-    v11 = a3->objectMtx.v3.x;
-    v12 = a3->objectMtx.v3.y;
-    v34.z = a3->objectMtx.v3.z;
-    v34.x = (float)(v11 * v10);
-    v34.z = (float)(v34.z * v10);
-    v34.x = v34.x + a3->objectMtx.Pos.x;
-    v34.y = (float)(v12 * v10 + a3->objectMtx.Pos.y);
-    v34.z = v34.z + a3->objectMtx.Pos.z;
-    v13 = a2 * a3->objectMtx.v1.x;
-    v14 = a3->objectMtx.v1.y * a2;
-    a2a.z = a3->objectMtx.v1.z * a2;
-    a2a.x = (float)(v13 + v34.x);
-    a2a.y = (float)(v14 + v34.y);
-    a2a.z = a2a.z + v34.z;
-    SOFT_TransformAndProject(&a1a, &a2a, 1, a3);
-    SOFT_TransformAndProject(&v48, &v34, 1, a3);
-    SOFT_TransformAndProject(&v44, a1, 1, a3);
-    if (v44.x != 2147483600.0f && v44.y != 2147483600.0f) // TODO FIXME ez jó így?
+    halfWidth = (float)((double)width * 0.5);
+    halfHeight = (float)((double)height * 0.5);
+    if (outClipped)
+        *outClipped = 0.0;
+    if (outScreen)
+        *outScreen = 0.0;
+    cam->viewMtxPtr_setInGRORender = &cam->cameraMtx;
+    dx = cam->objectMtx.Pos.x - center->x;
+    dz = cam->objectMtx.Pos.z - center->z;
+    dy = cam->objectMtx.Pos.y - center->y;
+    dist = sqrt(dz * dz + dy * dy + dx * dx);
+    fwdX = cam->objectMtx.v3.x;
+    fwdY = cam->objectMtx.v3.y;
+    fwdPoint.z = cam->objectMtx.v3.z;
+    fwdPoint.x = (float)(fwdX * dist);
+    fwdPoint.z = (float)(fwdPoint.z * dist);
+    fwdPoint.x = fwdPoint.x + cam->objectMtx.Pos.x;
+    fwdPoint.y = (float)(fwdY * dist + cam->objectMtx.Pos.y);
+    fwdPoint.z = fwdPoint.z + cam->objectMtx.Pos.z;
+    rightX = radius * cam->objectMtx.v1.x;
+    rightY = cam->objectMtx.v1.y * radius;
+    edgePoint.z = cam->objectMtx.v1.z * radius;
+    edgePoint.x = (float)(rightX + fwdPoint.x);
+    edgePoint.y = (float)(rightY + fwdPoint.y);
+    edgePoint.z = edgePoint.z + fwdPoint.z;
+    SOFT_TransformAndProject(&projEdge, &edgePoint, 1, cam);
+    SOFT_TransformAndProject(&projFwd, &fwdPoint, 1, cam);
+    SOFT_TransformAndProject(&projCenter, center, 1, cam);
+    if (projCenter.x == 2147483600.0f || projCenter.y == 2147483600.0f) // TODO FIXME ez jó így?
+        return 1;
+    centerX = cam->centerX;
+    projRadius = (float)sqrt((projEdge.y - projFwd.y) * (projEdge.y - projFwd.y) + (projEdge.x - projFwd.x) * (projEdge.x - projFwd.x));
+    if (!(projRadius + halfWidth >= fabs(projCenter.x - centerX)) && !(projRadius + halfHeight >= fabs(projCenter.y - cam->centerY)))
+        return 1;
+    corners[0][0] = projRadius + projCenter.x;
+    corners[0][1] = projRadius + projCenter.y;
+    corners[1][0] = corners[0][0];
+    corners[1][1] = projCenter.y - projRadius;
+    corners[2][0] = projCenter.x - projRadius;
+    corners[2][1] = corners[1][1];
+    corners[3][0] = corners[2][0];
+    corners[3][1] = corners[0][1];
+    if (!outClipped && !outScreen)
+        return 1;
+    negHalfWidth = -halfWidth;
+    maxX = negHalfWidth;
+    minX = (float)((double)width * 0.5);
+    maxYTmp = -halfHeight;
+    unclampedMinX = minX;
+    negHalfHeight = (float)maxYTmp;
+    minY = (float)((double)height * 0.5);
+    unclampedMaxX = negHalfWidth;
+    unclampedMaxY = negHalfHeight;
+    unclampedMinY = minY;
+    centerY = cam->centerY;
+    cursor = &corners[0][1];
+    remaining = 4;
+    do
     {
-        v25 = a3->centerX;
-        v23 = (float)sqrt((a1a.y - v48.y) * (a1a.y - v48.y) + (a1a.x - v48.x) * (a1a.x - v48.x));
-        if (v23 + v27 >= fabs(v44.x - v25) || v23 + v28 >= fabs(v44.y - a3->centerY))
+        pointX = *(cursor - 1) - centerX;
+        pointY = *cursor - centerY;
+        if (pointX < (double)minX)
         {
-            v49[0] = v23 + v44.x;
-            v49[1] = v23 + v44.y;
-            v49[3] = v49[0];
-            v49[4] = v44.y - v23;
-            v49[6] = v44.x - v23;
-            v49[7] = v49[4];
-            v49[9] = v49[6];
-            v49[10] = v49[1];
-            if (a6 || a7)
-            {
-                v29 = -v27;
-                v30 = v29;
-                v32 = (float)((double)a4 * 0.5);
-                v15 = -v28;
-                v39 = v32;
-                v31 = (float)v15;
-                v33 = (float)((double)a5 * 0.5);
-                v36 = v29;
-                v40 = v33;
-                v42 = v31;
-                v35 = v32;
-                v41 = v29;
-                v38 = v33;
-                v16 = a3->centerY;
-                v37 = v31;
-                v45 = v25;
-                v43 = v16;
-                v17 = &v49[1];
-                v18 = 4;
-                do
-                {
-                    v26 = *(v17 - 1) - v45;
-                    v24 = *v17 - v43;
-                    if (v26 < (double)v32)
-                    {
-                        v19 = *(v17 - 1) - v45;
-                        if (v26 <= (double)v29)
-                            v19 = -v27;
-                        v32 = v19;
-                    }
-                    if (v26 > (double)v30)
-                    {
-                        v20 = *(v17 - 1) - v45;
-                        if (v26 >= (double)v27)
-                            v20 = (float)((double)a4 * 0.5);
-                        v30 = v20;
-                    }
-                    if (v24 < (double)v33)
-                    {
-                        v21 = *v17 - v43;
-                        if (v24 <= (double)v31)
-                            v21 = v31;
-                        v33 = v21;
-                    }
-                    if (v24 > v15)
-                    {
-                        if (v24 >= (double)v28)
-                            v15 = v28;
-                        else
-                            v15 = v24;
-                    }
-                    if (v26 < (double)v39)
-                        v39 = *(v17 - 1) - v45;
-                    if (v26 > (double)v36)
-                        v36 = v26;
-                    if (v24 < (double)v40)
-                        v40 = v24;
-                    if (v24 > (double)v42)
-                        v42 = v24;
-                    if (v26 < (double)v35)
-                        v35 = v26;
-                    if (v26 > (double)v41)
-                        v41 = v26;
-                    if (v24 < (double)v38)
-                        v38 = v24;
-                    if (v24 > (double)v37)
-                        v37 = v24;
-                    v17 += 3;
-                    --v18;
-                } while (v18);
-                if (a6)
-                    *a6 = (float)((v15 - v33) * (v30 - v32) / ((v37 - v38) * (v41 - v35)));
-                if (a7)
-                {
-                    //LODWORD(v43) = a5 * a4;
-                    *a7 = (float)((v42 - v40) * (v36 - v39) / (double)(a5 * a4));
-                }
-            }
+            clampTmp = *(cursor - 1) - centerX;
+            if (pointX <= (double)negHalfWidth)
+                clampTmp = -halfWidth;
+            minX = clampTmp;
         }
+        if (pointX > (double)maxX)
+        {
+            clampTmp = *(cursor - 1) - centerX;
+            if (pointX >= (double)halfWidth)
+                clampTmp = (float)((double)width * 0.5);
+            maxX = clampTmp;
+        }
+        if (pointY < (double)minY)
+        {
+            clampTmp = *cursor - centerY;
+            if (pointY <= (double)negHalfHeight)
+                clampTmp = negHalfHeight;
+            minY = clampTmp;
+        }
+        if (pointY > maxYTmp)
+        {
+            if (pointY >= (double)halfHeight)
+                maxYTmp = halfHeight;
+            else
+                maxYTmp = pointY;
+        }
+        if (pointX < (double)unclampedMinX)
+            unclampedMinX = *(cursor - 1) - centerX;
+        if (pointX > (double)unclampedMaxX)
+            unclampedMaxX = pointX;
+        if (pointY < (double)unclampedMinY)
+            unclampedMinY = pointY;
+        if (pointY > (double)unclampedMaxY)
+            unclampedMaxY = pointY;
+        cursor += 3;
+        --remaining;
+    } while (remaining);
+    if (outClipped)
+        *outClipped = (float)((maxYTmp - minY) * (maxX - minX) / ((unclampedMaxY - unclampedMinY) * (unclampedMaxX - unclampedMinX)));
+    if (outScreen)
+    {
+        //LODWORD(v43) = a5 * a4;
+        *outScreen = (float)((unclampedMaxY - unclampedMinY) * (unclampedMaxX - unclampedMinX) / (double)(height * width));
     }
     return 1;
 }
 
-int OBJ_Frame_CullingAABBox(Vec3* a1, Vec3* a2, struct sDDCamStruct* a3, int a4, int a5, float* a6, float* a7)
+int OBJ_Frame_CullingAABBox(Vec3* min, Vec3* max, struct sDDCamStruct* cam, int width, int height, float* outClipped, float* outScreen)
 {
-    float v7;
-    float v8;
-    float v9;
-    float v10;
-    float v11;
-    char v12;
-    uint8_t v13;
-    int v14;
-    float* v15;
-    long double v16;
-    long double v17;
-    double v18;
-    BOOL v19;
-    BOOL v20;
-    int result;
-    double v22;
-    Vec3* v23;
-    int v24;
-    float v25;
-    float v26;
-    float v27;
-    char v28;
-    uint8_t v29;
-    float v30;
-    float v31;
-    float v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    float v43;
-    Vec3 a2a[8];
-    Vec3 a1a[8];
+    char sideY;
+    uint8_t cornerIdx;
+    long double dxWide;
+    long double absDx;
+    double edgeTmp;
+    double maxYTmp;
+    Vec3* corner;
+    int remaining;
+    float clampTmp;
+    char sideX;
+    float halfWidth;
+    float halfHeight;
+    float dx;
+    float pointY;
+    float pointX;
+    float minX;
+    float minY;
+    float unclampedMinX;
+    float negHalfHeight;
+    float unclampedMaxX;
+    float negHalfWidth;
+    float unclampedMinY;
+    float unclampedMaxY;
+    float maxX;
+    double dy;
+    int measure;
+    Vec3 corners[8];
+    Vec3 projected[8];
 
-    v7 = a2->x;
-    a2a[0].y = a2->y;
-    a2a[1].x = a2->x;
-    a2a[0].x = v7;
-    a2a[0].z = a2->z;
-    a2a[1].y = a2->y;
-    a2a[1].z = a1->z;
-    a2a[2].x = a2->x;
-    a2a[2].y = a1->y;
-    a2a[2].z = a2->z;
-    a2a[3].x = a2->x;
-    a2a[3].y = a1->y;
-    a2a[3].z = a1->z;
-    a2a[4].x = a1->x;
-    a2a[4].y = a2->y;
-    a2a[4].z = a2->z;
-    a2a[5].x = a1->x;
-    v8 = a2->z;
-    a2a[5].y = a2->y;
-    a2a[5].z = a1->z;
-    a2a[6].x = a1->x;
-    v30 = (float)((double)a4 * 0.5);
-    a2a[6].y = a1->y;
-    v9 = a1->x;
-    a2a[6].z = v8;
-    v10 = a1->y;
-    v11 = a1->z;
-    a2a[7].x = v9;
-    a2a[7].y = v10;
-    v31 = (float)((double)a5 * 0.5);
-    a2a[7].z = v11;
-    v28 = 0;
-    v12 = 0;
-    SOFT_TransformAndProject(a1a, a2a, 8, a3);
-    v13 = 0;
-    v29 = 0;
-    while (1)
+    corners[0].x = max->x;
+    corners[0].y = max->y;
+    corners[0].z = max->z;
+    corners[1].x = max->x;
+    corners[1].y = max->y;
+    corners[1].z = min->z;
+    corners[2].x = max->x;
+    corners[2].y = min->y;
+    corners[2].z = max->z;
+    corners[3].x = max->x;
+    corners[3].y = min->y;
+    corners[3].z = min->z;
+    corners[4].x = min->x;
+    corners[4].y = max->y;
+    corners[4].z = max->z;
+    corners[5].x = min->x;
+    corners[5].y = max->y;
+    corners[5].z = min->z;
+    corners[6].x = min->x;
+    corners[6].y = min->y;
+    corners[6].z = max->z;
+    corners[7].x = min->x;
+    corners[7].y = min->y;
+    corners[7].z = min->z;
+    halfWidth = (float)((double)width * 0.5);
+    halfHeight = (float)((double)height * 0.5);
+    sideX = 0;
+    sideY = 0;
+    SOFT_TransformAndProject(projected, corners, 8, cam);
+    measure = 0;
+    for (cornerIdx = 0; cornerIdx < 8u; ++cornerIdx)
     {
-        v14 = v13;
-        if ((*((uint32_t*)(&(a1a[v14].x)))) == 0x4F000000)
-            goto LABEL_25;
-        v15 = &a1a[v14].y;
-        if ((*((uint32_t*)(&(a1a[v14].y)))) == 0x4F000000)
-            goto LABEL_25;
-        v16 = a1a[v14].x - a3->centerX;
-        v32 = (float)v16;
-        v17 = fabs(v16);
-        if (v17 < v30 && fabs(*v15 - a3->centerY) < v31)
-            break;
-        if (v28 == 1)
+        if ((*((uint32_t*)(&(projected[cornerIdx].x)))) == 0x4F000000)
+            continue;
+        if ((*((uint32_t*)(&(projected[cornerIdx].y)))) == 0x4F000000)
+            continue;
+        dxWide = projected[cornerIdx].x - cam->centerX;
+        dx = (float)dxWide;
+        absDx = fabs(dxWide);
+        dy = projected[cornerIdx].y - cam->centerY;
+        if (absDx < halfWidth && fabs(dy) < halfHeight)
         {
-            if (fabs(*v15 - a3->centerY) < v31)
+            if (!outClipped && !outScreen)
+                return 1;
+            measure = 1;
+            break;
+        }
+        if (sideX == 1)
+        {
+            if (fabs(dy) < halfHeight && !((double)-halfWidth <= dx))
             {
-                v18 = -v30;
-                v19 = v18 < v32;
-                v20 = v18 == v32;
-                goto LABEL_12;
+                measure = 1;
+                break;
             }
         }
-        else if (v28 == 2 && fabs(*v15 - a3->centerY) < v31)
+        else if (sideX == 2 && fabs(dy) < halfHeight)
         {
-            v19 = v32 < (double)v30;
-            v20 = v32 == v30;
-        LABEL_12:
-            if (!v19 && !v20)
-                goto LABEL_31;
-            goto LABEL_13;
+            if (!(dx <= (double)halfWidth))
+            {
+                measure = 1;
+                break;
+            }
         }
-    LABEL_13:
-        if (v12 == 1)
+        if (sideY == 1)
         {
-            if (v17 < v30 && -v31 > * v15 - a3->centerY)
-                goto LABEL_31;
+            if (absDx < halfWidth && -halfHeight > dy)
+            {
+                measure = 1;
+                break;
+            }
         }
-        else if (v12 == 2 && v17 < v30 && *v15 - a3->centerY > v31)
+        else if (sideY == 2 && absDx < halfWidth && dy > halfHeight)
         {
-            goto LABEL_31;
+            measure = 1;
+            break;
         }
-        if (!v28)
+        if (!sideX)
         {
-            v28 = 1;
-            if (v32 <= (double)v30)
-                v28 = 2;
-            v12 = 1;
-            if (*v15 - a3->centerY <= v31)
-                v12 = 2;
-        }
-    LABEL_25:
-        v13 = ++v29;
-        if (v29 >= 8u)
-        {
-            if (a6)
-                *a6 = 0.0;
-            if (a7)
-                *a7 = 0.0;
-            return 1;
+            sideX = 1;
+            if (dx <= (double)halfWidth)
+                sideX = 2;
+            sideY = 1;
+            if (dy <= halfHeight)
+                sideY = 2;
         }
     }
-    if (!a6 && !a7)
+    if (!measure)
+    {
+        if (outClipped)
+            *outClipped = 0.0;
+        if (outScreen)
+            *outScreen = 0.0;
         return 1;
-LABEL_31:
-    v41 = -v30;
-    v36 = v41;
-    v33 = (float)((double)a4 * 0.5);
-    v22 = -v31;
-    v38 = v33;
-    v39 = (float)v22;
-    v37 = (float)((double)a5 * 0.5);
-    v40 = v41;
-    v42 = v37;
-    v43 = v39;
-    v23 = a1a;
-    v24 = 8;
+    }
+    negHalfWidth = -halfWidth;
+    maxX = negHalfWidth;
+    minX = (float)((double)width * 0.5);
+    maxYTmp = -halfHeight;
+    unclampedMinX = minX;
+    negHalfHeight = (float)maxYTmp;
+    minY = (float)((double)height * 0.5);
+    unclampedMaxX = negHalfWidth;
+    unclampedMinY = minY;
+    unclampedMaxY = negHalfHeight;
+    corner = projected;
+    remaining = 8;
     do
     {
-        if ( (*((uint32_t *)(&(v23->x)))) != 0x4F000000 && (*((uint32_t*)(&(v23->y)))) != 0x4F000000) // TODO: jó ez így, eredetileg inként volt ellenõizve  0x4F000000 -re
+        if ( (*((uint32_t *)(&(corner->x)))) != 0x4F000000 && (*((uint32_t*)(&(corner->y)))) != 0x4F000000) // TODO: jó ez így, eredetileg inként volt ellenõizve  0x4F000000 -re
         {
-            v35 = v23->x - a3->centerX;
-            v34 = v23->y - a3->centerY;
-            if (v35 < (double)v33)
+            pointX = corner->x - cam->centerX;
+            pointY = corner->y - cam->centerY;
+            if (pointX < (double)minX)
             {
-                v25 = v23->x - a3->centerX;
-                if (v35 <= (double)v41)
-                    v25 = -v30;
-                v33 = v25;
+                clampTmp = corner->x - cam->centerX;
+                if (pointX <= (double)negHalfWidth)
+                    clampTmp = -halfWidth;
+                minX = clampTmp;
             }
-            if (v35 > (double)v36)
+            if (pointX > (double)maxX)
             {
-                v26 = v23->x - a3->centerX;
-                if (v35 >= (double)v30)
-                    v26 = (float)((double)a4 * 0.5);
-                v36 = v26;
+                clampTmp = corner->x - cam->centerX;
+                if (pointX >= (double)halfWidth)
+                    clampTmp = (float)((double)width * 0.5);
+                maxX = clampTmp;
             }
-            if (v34 < (double)v37)
+            if (pointY < (double)minY)
             {
-                v27 = v23->y - a3->centerY;
-                if (v34 <= (double)v39)
-                    v27 = v39;
-                v37 = v27;
+                clampTmp = corner->y - cam->centerY;
+                if (pointY <= (double)negHalfHeight)
+                    clampTmp = negHalfHeight;
+                minY = clampTmp;
             }
-            if (v34 > v22)
+            if (pointY > maxYTmp)
             {
-                if (v34 >= (double)v31)
-                    v22 = v31;
+                if (pointY >= (double)halfHeight)
+                    maxYTmp = halfHeight;
                 else
-                    v22 = v34;
+                    maxYTmp = pointY;
             }
-            if (v35 < (double)v38)
-                v38 = v23->x - a3->centerX;
-            if (v35 > (double)v40)
-                v40 = v23->x - a3->centerX;
-            if (v34 < (double)v42)
-                v42 = v23->y - a3->centerY;
-            if (v34 > (double)v43)
-                v43 = v23->y - a3->centerY;
+            if (pointX < (double)unclampedMinX)
+                unclampedMinX = corner->x - cam->centerX;
+            if (pointX > (double)unclampedMaxX)
+                unclampedMaxX = corner->x - cam->centerX;
+            if (pointY < (double)unclampedMinY)
+                unclampedMinY = corner->y - cam->centerY;
+            if (pointY > (double)unclampedMaxY)
+                unclampedMaxY = corner->y - cam->centerY;
         }
-        ++v23;
-        --v24;
-    } while (v24);
-    if (a6)
-        *a6 = (float)((v22 - v37) * (v36 - v33) / ((v43 - v42) * (v40 - v38)));
-    if (!a7)
+        ++corner;
+        --remaining;
+    } while (remaining);
+    if (outClipped)
+        *outClipped = (float)((maxYTmp - minY) * (maxX - minX) / ((unclampedMaxY - unclampedMinY) * (unclampedMaxX - unclampedMinX)));
+    if (!outScreen)
         return 1;
-    result = 1;
-    *a7 = (float)((v22 - v37) * (v36 - v33) / (double)(a5 * a4));
-    return result;
+    *outScreen = (float)((maxYTmp - minY) * (maxX - minX) / (double)(height * width));
+    return 1;
 }
 
-void OBJ_UpdateCullingVars(struct sDDCamStruct* a1)
+void OBJ_UpdateCullingVars(struct sDDCamStruct* cam)
 {
-    long double v1;
-    long double v2;
-    long double v3;
-    long double v4;
-
-    MATH_TransformVector(&g_stGlobalNormPlaneUp, &a1->objectMtx, &a1->planeUp);
-    MATH_TransformVector(&g_stGlobalNormPlaneDown, &a1->objectMtx, &a1->planeDown);
-    MATH_TransformVector(&g_stGlobalNormPlaneLeft, &a1->objectMtx, &a1->planeLeft);
-    MATH_TransformVector(&g_stGlobalNormPlaneRight, &a1->objectMtx, &a1->planeRight);
+    MATH_TransformVector(&g_stGlobalNormPlaneUp, &cam->objectMtx, &cam->planeUp);
+    MATH_TransformVector(&g_stGlobalNormPlaneDown, &cam->objectMtx, &cam->planeDown);
+    MATH_TransformVector(&g_stGlobalNormPlaneLeft, &cam->objectMtx, &cam->planeLeft);
+    MATH_TransformVector(&g_stGlobalNormPlaneRight, &cam->objectMtx, &cam->planeRight);
     MATH_BlendVector(&g_stOverlayed_GlobalNormPlaneUp, &g_stGlobalNormPlaneUp, &g_stGlobalNormPlaneDown, 0.25);
     MATH_BlendVector(&g_stOverlayed_GlobalNormPlaneDown, &g_stGlobalNormPlaneUp, &g_stGlobalNormPlaneDown, 0.75);
     MATH_BlendVector(&g_stOverlayed_GlobalNormPlaneLeft, &g_stGlobalNormPlaneLeft, &g_stGlobalNormPlaneRight, 0.25);
     MATH_BlendVector(&g_stOverlayed_GlobalNormPlaneRight, &g_stGlobalNormPlaneLeft, &g_stGlobalNormPlaneRight, 0.75);
-    v1 = 1.0                                      // MATH_NormalizeEqualVector x4
-        / sqrt(
-            g_stOverlayed_GlobalNormPlaneUp.z * g_stOverlayed_GlobalNormPlaneUp.z
-            + g_stOverlayed_GlobalNormPlaneUp.y * g_stOverlayed_GlobalNormPlaneUp.y
-            + g_stOverlayed_GlobalNormPlaneUp.x * g_stOverlayed_GlobalNormPlaneUp.x);
-    g_stOverlayed_GlobalNormPlaneUp.x = (float)(g_stOverlayed_GlobalNormPlaneUp.x * v1);
-    g_stOverlayed_GlobalNormPlaneUp.y = (float)(g_stOverlayed_GlobalNormPlaneUp.y * v1);
-    g_stOverlayed_GlobalNormPlaneUp.z = (float)(g_stOverlayed_GlobalNormPlaneUp.z * v1);
-    v2 = 1.0
-        / sqrt(
-            g_stOverlayed_GlobalNormPlaneDown.z * g_stOverlayed_GlobalNormPlaneDown.z
-            + g_stOverlayed_GlobalNormPlaneDown.y * g_stOverlayed_GlobalNormPlaneDown.y
-            + g_stOverlayed_GlobalNormPlaneDown.x * g_stOverlayed_GlobalNormPlaneDown.x);
-    g_stOverlayed_GlobalNormPlaneDown.x = (float)(g_stOverlayed_GlobalNormPlaneDown.x * v2);
-    g_stOverlayed_GlobalNormPlaneDown.y = (float)(g_stOverlayed_GlobalNormPlaneDown.y * v2);
-    g_stOverlayed_GlobalNormPlaneDown.z = (float)(g_stOverlayed_GlobalNormPlaneDown.z * v2);
-    v3 = 1.0
-        / sqrt(
-            g_stOverlayed_GlobalNormPlaneLeft.z * g_stOverlayed_GlobalNormPlaneLeft.z
-            + g_stOverlayed_GlobalNormPlaneLeft.y * g_stOverlayed_GlobalNormPlaneLeft.y
-            + g_stOverlayed_GlobalNormPlaneLeft.x * g_stOverlayed_GlobalNormPlaneLeft.x);
-    g_stOverlayed_GlobalNormPlaneLeft.x = (float)(g_stOverlayed_GlobalNormPlaneLeft.x * v3);
-    g_stOverlayed_GlobalNormPlaneLeft.y = (float)(g_stOverlayed_GlobalNormPlaneLeft.y * v3);
-    g_stOverlayed_GlobalNormPlaneLeft.z = (float)(g_stOverlayed_GlobalNormPlaneLeft.z * v3);
-    v4 = 1.0
-        / sqrt(
-            g_stOverlayed_GlobalNormPlaneRight.z * g_stOverlayed_GlobalNormPlaneRight.z
-            + g_stOverlayed_GlobalNormPlaneRight.y * g_stOverlayed_GlobalNormPlaneRight.y
-            + g_stOverlayed_GlobalNormPlaneRight.x * g_stOverlayed_GlobalNormPlaneRight.x);
-    g_stOverlayed_GlobalNormPlaneRight.x = (float)(g_stOverlayed_GlobalNormPlaneRight.x * v4);
-    g_stOverlayed_GlobalNormPlaneRight.y = (float)(g_stOverlayed_GlobalNormPlaneRight.y * v4);
-    g_stOverlayed_GlobalNormPlaneRight.z = (float)(g_stOverlayed_GlobalNormPlaneRight.z * v4);
-    g_stGlobalCameraPos = a1->objectMtx.Pos;
-    g_stGlobalCameraSight.x = a1->objectMtx.v3.x;
-    g_stGlobalCameraSight.y = a1->objectMtx.v3.y;
-    g_stGlobalCameraSight.z = a1->objectMtx.v3.z;
-    if ((a1->flags & 1) != 0)
+    MATH_NormalizeEqualVector(&g_stOverlayed_GlobalNormPlaneUp);   // MATH_NormalizeEqualVector x4
+    MATH_NormalizeEqualVector(&g_stOverlayed_GlobalNormPlaneDown);
+    MATH_NormalizeEqualVector(&g_stOverlayed_GlobalNormPlaneLeft);
+    MATH_NormalizeEqualVector(&g_stOverlayed_GlobalNormPlaneRight);
+    g_stGlobalCameraPos = cam->objectMtx.Pos;
+    g_stGlobalCameraSight.x = cam->objectMtx.v3.x;
+    g_stGlobalCameraSight.y = cam->objectMtx.v3.y;
+    g_stGlobalCameraSight.z = cam->objectMtx.v3.z;
+    if ((cam->flags & 1) != 0)
         g_fDistance = 0.0;
     else
-        g_fDistance = -(a1->isoZoom * a1->isoFactor);
+        g_fDistance = -(cam->isoZoom * cam->isoFactor);
 }
 
-int OBJ_CullingAABBox(Vec3** a1, uint8_t* a2)
+int OBJ_CullingAABBox(Vec3** box, uint8_t* outFlags)
 
 {
-    Vec3* uVar1;
+    Vec3* swapped;
 
     if ((((g_fDistance <=
-        g_stGlobalCameraSight.x * a1[((*((uint32_t*)&(g_stGlobalCameraSight.x))) >> 0x1f)]->x +
-        g_stGlobalCameraSight.y * (a1[((*((uint32_t*)&(g_stGlobalCameraSight.y))) >> 0x1f)]->y) +
-        g_stGlobalCameraSight.z * (a1[((*((uint32_t*)&(g_stGlobalCameraSight.z))) >> 0x1f)]->z)) && //((*((uint32_t*)&(g_stGlobalNormPlaneDown.x))) >> 0x1f)
+        g_stGlobalCameraSight.x * box[((*((uint32_t*)&(g_stGlobalCameraSight.x))) >> 0x1f)]->x +
+        g_stGlobalCameraSight.y * (box[((*((uint32_t*)&(g_stGlobalCameraSight.y))) >> 0x1f)]->y) +
+        g_stGlobalCameraSight.z * (box[((*((uint32_t*)&(g_stGlobalCameraSight.z))) >> 0x1f)]->z)) && //((*((uint32_t*)&(g_stGlobalNormPlaneDown.x))) >> 0x1f)
         (g_fDistance <=
-            g_stGlobalNormPlaneLeft.x * a1[((*((uint32_t*)&(g_stGlobalNormPlaneLeft.x))) >> 0x1f)]->x +
-            g_stGlobalNormPlaneLeft.y * (a1[((*((uint32_t*)&(g_stGlobalNormPlaneLeft.y))) >> 0x1f)]->y) +
-            g_stGlobalNormPlaneLeft.z * (a1[((*((uint32_t*)&(g_stGlobalNormPlaneLeft.z))) >> 0x1f)]->z)))
+            g_stGlobalNormPlaneLeft.x * box[((*((uint32_t*)&(g_stGlobalNormPlaneLeft.x))) >> 0x1f)]->x +
+            g_stGlobalNormPlaneLeft.y * (box[((*((uint32_t*)&(g_stGlobalNormPlaneLeft.y))) >> 0x1f)]->y) +
+            g_stGlobalNormPlaneLeft.z * (box[((*((uint32_t*)&(g_stGlobalNormPlaneLeft.z))) >> 0x1f)]->z)))
         && (g_fDistance <=
-            g_stGlobalNormPlaneRight.x * a1[((*((uint32_t*)&(g_stGlobalNormPlaneRight.x))) >> 0x1f)]->x +
-            g_stGlobalNormPlaneRight.y * (a1[((*((uint32_t*)&(g_stGlobalNormPlaneRight.y))) >> 0x1f)]->y) +
-            g_stGlobalNormPlaneRight.z * (a1[((*((uint32_t*)&(g_stGlobalNormPlaneRight.z))) >> 0x1f)]->z))) &&
+            g_stGlobalNormPlaneRight.x * box[((*((uint32_t*)&(g_stGlobalNormPlaneRight.x))) >> 0x1f)]->x +
+            g_stGlobalNormPlaneRight.y * (box[((*((uint32_t*)&(g_stGlobalNormPlaneRight.y))) >> 0x1f)]->y) +
+            g_stGlobalNormPlaneRight.z * (box[((*((uint32_t*)&(g_stGlobalNormPlaneRight.z))) >> 0x1f)]->z))) &&
         ((g_fDistance <=
-            g_stGlobalNormPlaneUp.x * a1[((*((uint32_t*)&(g_stGlobalNormPlaneUp.x))) >> 0x1f)]->x +
-            g_stGlobalNormPlaneUp.y * (a1[((*((uint32_t*)&(g_stGlobalNormPlaneUp.y))) >> 0x1f)]->y) +
-            g_stGlobalNormPlaneUp.z * (a1[((*((uint32_t*)&(g_stGlobalNormPlaneUp.z))) >> 0x1f)]->z) &&
+            g_stGlobalNormPlaneUp.x * box[((*((uint32_t*)&(g_stGlobalNormPlaneUp.x))) >> 0x1f)]->x +
+            g_stGlobalNormPlaneUp.y * (box[((*((uint32_t*)&(g_stGlobalNormPlaneUp.y))) >> 0x1f)]->y) +
+            g_stGlobalNormPlaneUp.z * (box[((*((uint32_t*)&(g_stGlobalNormPlaneUp.z))) >> 0x1f)]->z) &&
             (g_fDistance <=
-                g_stGlobalNormPlaneDown.x * a1[((*((uint32_t*)&(g_stGlobalNormPlaneDown.x))) >> 0x1f)]->x +
-                g_stGlobalNormPlaneDown.y * (a1[((*((uint32_t*)&(g_stGlobalNormPlaneDown.y))) >> 0x1f)]->y) +
-                g_stGlobalNormPlaneDown.z * (a1[((*((uint32_t*)&(g_stGlobalNormPlaneDown.z))) >> 0x1f)]->z)))))
+                g_stGlobalNormPlaneDown.x * box[((*((uint32_t*)&(g_stGlobalNormPlaneDown.x))) >> 0x1f)]->x +
+                g_stGlobalNormPlaneDown.y * (box[((*((uint32_t*)&(g_stGlobalNormPlaneDown.y))) >> 0x1f)]->y) +
+                g_stGlobalNormPlaneDown.z * (box[((*((uint32_t*)&(g_stGlobalNormPlaneDown.z))) >> 0x1f)]->z)))))
     {
-        if (a2 != NULL) {
-            uVar1 = a1[1];
-            a1[1] = a1[0];
-            a1[0] = uVar1;
-            *a2 = 0;
-            if (g_stGlobalCameraSight.x * a1[((*((uint32_t*)&(g_stGlobalCameraSight.x))) >> 0x1f)]->x +    //((*((uint32_t*)&(g_stGlobalCameraSight.x))) >> 0x1f)
-                g_stGlobalCameraSight.y * (a1[((*((uint32_t*)&(g_stGlobalCameraSight.y))) >> 0x1f)]->y) +
-                g_stGlobalCameraSight.z * (a1[((*((uint32_t*)&(g_stGlobalCameraSight.z))) >> 0x1f)]->z) < g_fDistance) {
-                *a2 = 1;
+        if (outFlags != NULL) {
+            swapped = box[1];
+            box[1] = box[0];
+            box[0] = swapped;
+            *outFlags = 0;
+            if (g_stGlobalCameraSight.x * box[((*((uint32_t*)&(g_stGlobalCameraSight.x))) >> 0x1f)]->x +    //((*((uint32_t*)&(g_stGlobalCameraSight.x))) >> 0x1f)
+                g_stGlobalCameraSight.y * (box[((*((uint32_t*)&(g_stGlobalCameraSight.y))) >> 0x1f)]->y) +
+                g_stGlobalCameraSight.z * (box[((*((uint32_t*)&(g_stGlobalCameraSight.z))) >> 0x1f)]->z) < g_fDistance) {
+                *outFlags = 1;
             }
-            if (((g_stOverlayed_GlobalNormPlaneLeft.x * a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneLeft.x))) >> 0x1f)]->x + ////((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneDown.x))) >> 0x1f)
-                g_stOverlayed_GlobalNormPlaneLeft.y * (a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneLeft.y))) >> 0x1f)]->y) +
-                g_stOverlayed_GlobalNormPlaneLeft.z * (a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneLeft.z))) >> 0x1f)]->z) < g_fDistance)
-                || (g_stOverlayed_GlobalNormPlaneRight.x * a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneRight.x))) >> 0x1f)]->x +
-                    g_stOverlayed_GlobalNormPlaneRight.y * (a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneRight.y))) >> 0x1f)]->y) +
-                    g_stOverlayed_GlobalNormPlaneRight.z * (a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneRight.z))) >> 0x1f)]->z) < g_fDistance)) ||
-                ((g_stOverlayed_GlobalNormPlaneUp.x * a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneUp.x))) >> 0x1f)]->x +
-                    g_stOverlayed_GlobalNormPlaneUp.y * (a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneUp.y))) >> 0x1f)]->y) +
-                    g_stOverlayed_GlobalNormPlaneUp.z *  (a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneUp.z))) >> 0x1f)]->z) < g_fDistance ||
-                    (g_stOverlayed_GlobalNormPlaneDown.x * a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneDown.x))) >> 0x1f)]->x +
-                        g_stOverlayed_GlobalNormPlaneDown.y * (a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneDown.y))) >> 0x1f)]->y) +
-                        g_stOverlayed_GlobalNormPlaneDown.z * (a1[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneDown.z))) >> 0x1f)]->z) < g_fDistance)))
+            if (((g_stOverlayed_GlobalNormPlaneLeft.x * box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneLeft.x))) >> 0x1f)]->x + ////((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneDown.x))) >> 0x1f)
+                g_stOverlayed_GlobalNormPlaneLeft.y * (box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneLeft.y))) >> 0x1f)]->y) +
+                g_stOverlayed_GlobalNormPlaneLeft.z * (box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneLeft.z))) >> 0x1f)]->z) < g_fDistance)
+                || (g_stOverlayed_GlobalNormPlaneRight.x * box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneRight.x))) >> 0x1f)]->x +
+                    g_stOverlayed_GlobalNormPlaneRight.y * (box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneRight.y))) >> 0x1f)]->y) +
+                    g_stOverlayed_GlobalNormPlaneRight.z * (box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneRight.z))) >> 0x1f)]->z) < g_fDistance)) ||
+                ((g_stOverlayed_GlobalNormPlaneUp.x * box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneUp.x))) >> 0x1f)]->x +
+                    g_stOverlayed_GlobalNormPlaneUp.y * (box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneUp.y))) >> 0x1f)]->y) +
+                    g_stOverlayed_GlobalNormPlaneUp.z *  (box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneUp.z))) >> 0x1f)]->z) < g_fDistance ||
+                    (g_stOverlayed_GlobalNormPlaneDown.x * box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneDown.x))) >> 0x1f)]->x +
+                        g_stOverlayed_GlobalNormPlaneDown.y * (box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneDown.y))) >> 0x1f)]->y) +
+                        g_stOverlayed_GlobalNormPlaneDown.z * (box[((*((uint32_t*)&(g_stOverlayed_GlobalNormPlaneDown.z))) >> 0x1f)]->z) < g_fDistance)))
                 ) {
-                *a2 = *a2 | 2;
+                *outFlags = *outFlags | 2;
             }
         }
         return 0;
@@ -3836,72 +3759,72 @@ int OBJ_CullingAABBox(Vec3** a1, uint8_t* a2)
     return 1;
 }
 
-BOOL OBJ_CullingSphere(Vec3* param_1, float param_2)
+BOOL OBJ_CullingSphere(Vec3* center, float radius)
 
 {
-    float fVar1;
-    float fVar2;
-    float fVar3;
+    float offX;
+    float offY;
+    float offZ;
 
-    fVar1 = param_2;
+    offX = radius;
     if (g_stGlobalNormPlaneLeft.x <= 0.0) {
-        fVar1 = -param_2;
+        offX = -radius;
     }
-    fVar2 = param_2;
+    offY = radius;
     if (g_stGlobalNormPlaneLeft.y <= 0.0) {
-        fVar2 = -param_2;
+        offY = -radius;
     }
-    fVar3 = param_2;
+    offZ = radius;
     if (g_stGlobalNormPlaneLeft.z <= 0.0) {
-        fVar3 = -param_2;
+        offZ = -radius;
     }
-    if ((g_stGlobalNormPlaneLeft.x * ((fVar1 + param_1->x) - g_stGlobalCameraPos.x) +
-        g_stGlobalNormPlaneLeft.y * ((fVar2 + param_1->y) - g_stGlobalCameraPos.y) +
-        g_stGlobalNormPlaneLeft.z * ((fVar3 + param_1->z) - g_stGlobalCameraPos.z) >= 0.0)) {
-        fVar1 = param_2;
+    if ((g_stGlobalNormPlaneLeft.x * ((offX + center->x) - g_stGlobalCameraPos.x) +
+        g_stGlobalNormPlaneLeft.y * ((offY + center->y) - g_stGlobalCameraPos.y) +
+        g_stGlobalNormPlaneLeft.z * ((offZ + center->z) - g_stGlobalCameraPos.z) >= 0.0)) {
+        offX = radius;
         if (g_stGlobalNormPlaneRight.x <= 0.0) {
-            fVar1 = -param_2;
+            offX = -radius;
         }
-        fVar2 = param_2;
+        offY = radius;
         if (g_stGlobalNormPlaneRight.y <= 0.0) {
-            fVar2 = -param_2;
+            offY = -radius;
         }
-        fVar3 = param_2;
+        offZ = radius;
         if (g_stGlobalNormPlaneRight.z <= 0.0) {
-            fVar3 = -param_2;
+            offZ = -radius;
         }
-        if ((g_stGlobalNormPlaneRight.x * ((fVar1 + param_1->x) - g_stGlobalCameraPos.x) +
-            g_stGlobalNormPlaneRight.y * ((fVar2 + param_1->y) - g_stGlobalCameraPos.y) +
-            g_stGlobalNormPlaneRight.z * ((fVar3 + param_1->z) - g_stGlobalCameraPos.z) >= 0.0)) {
-            fVar1 = param_2;
+        if ((g_stGlobalNormPlaneRight.x * ((offX + center->x) - g_stGlobalCameraPos.x) +
+            g_stGlobalNormPlaneRight.y * ((offY + center->y) - g_stGlobalCameraPos.y) +
+            g_stGlobalNormPlaneRight.z * ((offZ + center->z) - g_stGlobalCameraPos.z) >= 0.0)) {
+            offX = radius;
             if (g_stGlobalNormPlaneUp.x <= 0.0) {
-                fVar1 = -param_2;
+                offX = -radius;
             }
-            fVar2 = param_2;
+            offY = radius;
             if (g_stGlobalNormPlaneUp.y <= 0.0) {
-                fVar2 = -param_2;
+                offY = -radius;
             }
-            fVar3 = param_2;
+            offZ = radius;
             if (g_stGlobalNormPlaneUp.z <= 0.0) {
-                fVar3 = -param_2;
+                offZ = -radius;
             }
-            if ((g_stGlobalNormPlaneUp.x * ((fVar1 + param_1->x) - g_stGlobalCameraPos.x) +
-                g_stGlobalNormPlaneUp.y * ((fVar2 + param_1->y) - g_stGlobalCameraPos.y) +
-                g_stGlobalNormPlaneUp.z * ((fVar3 + param_1->z) - g_stGlobalCameraPos.z) >= 0.0)) {
-                fVar1 = param_2;
+            if ((g_stGlobalNormPlaneUp.x * ((offX + center->x) - g_stGlobalCameraPos.x) +
+                g_stGlobalNormPlaneUp.y * ((offY + center->y) - g_stGlobalCameraPos.y) +
+                g_stGlobalNormPlaneUp.z * ((offZ + center->z) - g_stGlobalCameraPos.z) >= 0.0)) {
+                offX = radius;
                 if (g_stGlobalNormPlaneDown.x <= 0.0) {
-                    fVar1 = -param_2;
+                    offX = -radius;
                 }
-                fVar2 = param_2;
+                offY = radius;
                 if (g_stGlobalNormPlaneDown.y <= 0.0) {
-                    fVar2 = -param_2;
+                    offY = -radius;
                 }
                 if (g_stGlobalNormPlaneDown.z <= 0.0) {
-                    param_2 = -param_2;
+                    radius = -radius;
                 }
-                if (0.0 <= g_stGlobalNormPlaneDown.x * ((fVar1 + param_1->x) - g_stGlobalCameraPos.x) +
-                    g_stGlobalNormPlaneDown.y * ((fVar2 + param_1->y) - g_stGlobalCameraPos.y) +
-                    g_stGlobalNormPlaneDown.z * ((param_2 + param_1->z) - g_stGlobalCameraPos.z)) {
+                if (0.0 <= g_stGlobalNormPlaneDown.x * ((offX + center->x) - g_stGlobalCameraPos.x) +
+                    g_stGlobalNormPlaneDown.y * ((offY + center->y) - g_stGlobalCameraPos.y) +
+                    g_stGlobalNormPlaneDown.z * ((radius + center->z) - g_stGlobalCameraPos.z)) {
                     return FALSE;
                 }
             }
@@ -3910,172 +3833,156 @@ BOOL OBJ_CullingSphere(Vec3* param_1, float param_2)
     return TRUE;
 }
 
-BOOL OBJ_CullingObject(struct sGameObjectMain* a1)
+BOOL OBJ_CullingObject(struct sGameObjectMain* gao)
 {
-    tGameObjectMain* v1;
-    tGameObjectBV* v2;
-    Mtx4x4* v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
-    int v10;
-    tGameObjectBasic* v11;
-    tGameObjectActorObject* v12;
-    tGameObjectBasic* v13;
-    tGameObjectVisualObject* v14;
-    Mtx4x4* v15;
-    Vec3 *v16[2];
-    float v17;
-    Vec3 v18;
-    Vec3 dest;
-    uint8_t a1a;
+    tGameObjectBV* bv;
+    Mtx4x4* mtx;
+    double posX;
+    double relX;
+    double relY;
+    double posZ;
+    double maxY;
+    int visible;
+    tGameObjectBasic* basic;
+    tGameObjectActorObject* actor;
+    tGameObjectVisualObject* visual;
+    Mtx4x4* absMtx;
+    Vec3 *box[2];
+    float relZ;
+    Vec3 boxMax;
+    Vec3 boxMin;
+    uint8_t cullFlags;
 
-    v1 = a1;
-    v2 = a1->boundingVolume;
-    if (OBJ_HasNoBV(a1))
+    bv = gao->boundingVolume;
+    if (OBJ_HasNoBV(gao))
         return 0;
-    if (OBJ_BV_IsAABBox(v2))
+    if (OBJ_BV_IsAABBox(bv))
     {
-        v4 = v1->matrices;
-        v5 = v4->Pos.x;
-        v4 = (Mtx4x4*)((char*)v4 + 48);
-        v6 = v5 - g_stGlobalCameraPos.x;
-        v7 = v4->v1.y - g_stGlobalCameraPos.y;
-        v8 = v4->v1.z;
-        v16[0] = &v18;
-        v17 = (float)(v8 - g_stGlobalCameraPos.z);
-        v18.x = (float)(v6 + v2->BVMax.x);
-        v9 = v2->BVMax.y;
-        v16[1] = &dest;
-        v18.y = (float)(v9 + v7);
-        v18.z = v2->BVMax.z + v17;
-        dest.x = (float)(v6 + v2->BVMin.x);
-        dest.y = (float)(v2->BVMin.y + v7);
-        dest.z = v2->BVMin.z + v17;
-        v10 = OBJ_CullingAABBox(v16, &a1a);
-        if ((v1->flags & 2) != 0)
+        mtx = gao->matrices;
+        posX = mtx->Pos.x;
+        mtx = (Mtx4x4*)((char*)mtx + 48);
+        relX = posX - g_stGlobalCameraPos.x;
+        relY = mtx->v1.y - g_stGlobalCameraPos.y;
+        posZ = mtx->v1.z;
+        box[0] = &boxMax;
+        relZ = (float)(posZ - g_stGlobalCameraPos.z);
+        boxMax.x = (float)(relX + bv->BVMax.x);
+        maxY = bv->BVMax.y;
+        box[1] = &boxMin;
+        boxMax.y = (float)(maxY + relY);
+        boxMax.z = bv->BVMax.z + relZ;
+        boxMin.x = (float)(relX + bv->BVMin.x);
+        boxMin.y = (float)(bv->BVMin.y + relY);
+        boxMin.z = bv->BVMin.z + relZ;
+        visible = OBJ_CullingAABBox(box, &cullFlags);
+        if ((gao->flags & 2) != 0)
         {
-            v11 = v1->basic;
-            if (v11)
+            basic = gao->basic;
+            if (basic)
             {
-                v12 = (tGameObjectActorObject*)v11->actorObjectOrVisualObject;
-                if (v12)
+                actor = (tGameObjectActorObject*)basic->actorObjectOrVisualObject;
+                if (actor)
                 {
-                    v12->culledFlagFromCullingObject = a1a;
-                    return v10 != 0;
+                    actor->culledFlagFromCullingObject = cullFlags;
+                    return visible != 0;
                 }
             }
         }
-        if ((v1->flags & 0x4000) != 0)
+        if ((gao->flags & 0x4000) != 0)
         {
-            v13 = v1->basic;
-            if (v13)
+            basic = gao->basic;
+            if (basic)
             {
-                v14 = (tGameObjectVisualObject*)v13->actorObjectOrVisualObject;
-                if (v14)
+                visual = (tGameObjectVisualObject*)basic->actorObjectOrVisualObject;
+                if (visual)
                 {
-                    v14->culledFlagFromCullingObject = a1a;
-                    return v10 != 0;
+                    visual->culledFlagFromCullingObject = cullFlags;
+                    return visible != 0;
                 }
             }
         }
     }
     else
     {
-        v15 = OBJ_pst_GetAbsoluteMatrix(v1);
-        MATH_TransformVertexNoScale(&dest, v15, &v2->BVMin);
-        v10 = OBJ_CullingSphere(&dest, v2->BVMax.x);
+        absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+        MATH_TransformVertexNoScale(&boxMin, absMtx, &bv->BVMin);
+        visible = OBJ_CullingSphere(&boxMin, bv->BVMax.x);
     }
-    return v10 != 0;
+    return visible != 0;
 }
 
-BOOL OBJ_CullingPointInside(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, char flags)
+BOOL OBJ_CullingPointInside(Vec3* point, Vec3* planeLeft, Vec3* planeUp, Vec3* planeRight, Vec3* planeDown, char flags)
 {
     return ((flags & 1) == 0
-        || a2->z * (a1->z - g_stGlobalCameraPos.z)
-        + a2->y * (a1->y - g_stGlobalCameraPos.y)
-        + (a1->x - g_stGlobalCameraPos.x) * a2->x < g_fDistance)
+        || planeLeft->z * (point->z - g_stGlobalCameraPos.z)
+        + planeLeft->y * (point->y - g_stGlobalCameraPos.y)
+        + (point->x - g_stGlobalCameraPos.x) * planeLeft->x < g_fDistance)
         && ((flags & 4) == 0
-            || a4->z * (a1->z - g_stGlobalCameraPos.z)
-            + a4->y * (a1->y - g_stGlobalCameraPos.y)
-            + (a1->x - g_stGlobalCameraPos.x) * a4->x < g_fDistance)
+            || planeRight->z * (point->z - g_stGlobalCameraPos.z)
+            + planeRight->y * (point->y - g_stGlobalCameraPos.y)
+            + (point->x - g_stGlobalCameraPos.x) * planeRight->x < g_fDistance)
         && ((flags & 2) == 0
-            || a3->z * (a1->z - g_stGlobalCameraPos.z)
-            + a3->y * (a1->y - g_stGlobalCameraPos.y)
-            + (a1->x - g_stGlobalCameraPos.x) * a3->x < g_fDistance)
+            || planeUp->z * (point->z - g_stGlobalCameraPos.z)
+            + planeUp->y * (point->y - g_stGlobalCameraPos.y)
+            + (point->x - g_stGlobalCameraPos.x) * planeUp->x < g_fDistance)
         && ((flags & 8) == 0
-            || a5->z * (a1->z - g_stGlobalCameraPos.z)
-            + a5->y * (a1->y - g_stGlobalCameraPos.y)
-            + (a1->x - g_stGlobalCameraPos.x) * a5->x < g_fDistance);
+            || planeDown->z * (point->z - g_stGlobalCameraPos.z)
+            + planeDown->y * (point->y - g_stGlobalCameraPos.y)
+            + (point->x - g_stGlobalCameraPos.x) * planeDown->x < g_fDistance);
 }
 
 void OBJ_HierarchyMainCall(struct sWorld* world)
 {
-    tWorld* v1;
-    tableElemStructPF* v2;
-    tableElemStructPF* v3;
-    tGameObjectMain* v4;
-    tGameObjectBasic* v6;
-    int v7;
-    tableElemStructPF* i;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    tGameObjectBasic* basic;
+    int climbed;
 
-    v1 = world;
-    v2 = world->eot.objectsWithHiearchyTablePF.firstElemPtr;
-    v3 = ((tableElemStructPF*)(world->eot.objectsWithHiearchyTablePF.nextElemPtr)) - 1;
-    for (i = v3; v2 <= v3; ++v2)
+    elem = world->eot.objectsWithHiearchyTablePF.firstElemPtr;
+    last = ((tableElemStructPF*)(world->eot.objectsWithHiearchyTablePF.nextElemPtr)) - 1;
+    for (; elem <= last; ++elem)
     {
-        v4 = (tGameObjectMain*)(v2->objectPtr);
-        if (!TAB_TableElemIsInvalid(v4))
+        gao = (tGameObjectMain*)(elem->objectPtr);
+        if (TAB_TableElemIsInvalid(gao))
+            continue;
+        if (OBJ_b_HasBeenProcess(gao, world->hierarchyCallCount, 0x80))
+            continue;
+        basic = gao->basic;
+        climbed = 0;
+        if (basic)
         {
-            if (!OBJ_b_HasBeenProcess(v4, v1->hierarchyCallCount, 0x80))
+            while (basic->mtx
+                && basic->mtx->refGao2
+                && !OBJ_b_HasBeenProcess(basic->mtx->refGao2, world->hierarchyCallCount, 0x80))
             {
-                v6 = v4->basic;
-                v7 = 0;
-                if (v6)
-                {
-                    while (1)
-                    {
-                        if (!v6->mtx)
-                            break;
-                        if (!v6->mtx->refGao2 || OBJ_b_HasBeenProcess(v6->mtx->refGao2, v1->hierarchyCallCount, 0x80))
-                            break;
-                        v4 = v6->mtx->refGao2;
-                        v6 = v6->mtx->refGao2->basic;
-                        v7 = 1;
-                        if (!v6)
-                            goto LABEL_12;
-                    }
-                    if (!v7)
-                        goto LABEL_13;
-                LABEL_12:
-                    --v2;
-                }
-            LABEL_13:
-                OBJ_SetProcess(v4, v1->hierarchyCallCount, 0x80);
-                OBJ_ComputeGlobalWhenHie(v4);
-                v3 = i;
-                v1 = world;
+                gao = basic->mtx->refGao2;
+                basic = basic->mtx->refGao2->basic;
+                climbed = 1;
+                if (!basic)
+                    break;
             }
-
+            if (climbed)
+                --elem;
         }
+        OBJ_SetProcess(gao, world->hierarchyCallCount, 0x80);
+        OBJ_ComputeGlobalWhenHie(gao);
     }
-    ++v1->hierarchyCallCount;
+    ++world->hierarchyCallCount;
 }
 
-struct sGroGeneric* OBJ_p_GetGro(struct sGameObjectMain* a1)
+struct sGroGeneric* OBJ_p_GetGro(struct sGameObjectMain* gao)
 {
-    tGameObjectBasic* v1;
-    tGameObjectVisualObject* v2;
+    tGameObjectBasic* basic;
+    tGameObjectVisualObject* visual;
     tGroGeneric* result;
 
-    if (a1
-        && (a1->flags & 0x4000) != 0
-        && (v1 = a1->basic) != 0
-        && (v2 = (tGameObjectVisualObject*)v1->actorObjectOrVisualObject) != 0)
+    if (gao
+        && (gao->flags & 0x4000) != 0
+        && (basic = gao->basic) != 0
+        && (visual = (tGameObjectVisualObject*)basic->actorObjectOrVisualObject) != 0)
     {
-        result = v2->GROGEOOrSomethingElse;
+        result = visual->GROGEOOrSomethingElse;
     }
     else
     {
@@ -4084,89 +3991,87 @@ struct sGroGeneric* OBJ_p_GetGro(struct sGameObjectMain* a1)
     return result;
 }
 
-void OBJMY_ComputeLocalWhenHie(struct sGameObjectMain* a1)
+void OBJMY_ComputeLocalWhenHie(struct sGameObjectMain* gao)
 {
-    tGaoMatrix* v1;
-    Mtx4x4* v2;
-    Mtx4x4* v3;
-    Mtx4x4 a3;
+    tGaoMatrix* local;
+    Mtx4x4* parentMtx;
+    Mtx4x4* absMtx;
+    Mtx4x4 invParent;
 
-    if ((a1->flags & 0x400000) != 0)
+    if ((gao->flags & 0x400000) != 0)
     {
-        v1 = a1->basic->mtx;
-        if (v1->refGao2)
+        local = gao->basic->mtx;
+        if (local->refGao2)
         {
-            v2 = OBJ_pst_GetAbsoluteMatrix(v1->refGao2);
-            MATH_InvertMatrix(&a3, v2);
-            v3 = OBJ_pst_GetAbsoluteMatrix(a1);
-            MATH_MulMatrixMatrix(&v1->mtx, v3, &a3);
-            MATH_Orthonormalize(&v1->mtx);
+            parentMtx = OBJ_pst_GetAbsoluteMatrix(local->refGao2);
+            MATH_InvertMatrix(&invParent, parentMtx);
+            absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+            MATH_MulMatrixMatrix(&local->mtx, absMtx, &invParent);
+            MATH_Orthonormalize(&local->mtx);
         }
     }
 }
 
-struct sGEOMAT* OBJ_p_GetGrm(struct sGameObjectMain* a1)
+struct sGEOMAT* OBJ_p_GetGrm(struct sGameObjectMain* gao)
 {
     tGEOMAT* result;
 
-    if ((a1->flags & 0x4000) != 0)
-        result = (tGEOMAT*)(((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT);
+    if ((gao->flags & 0x4000) != 0)
+        result = (tGEOMAT*)(((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROMAT);
     else
         result = 0;
     return result;
 }
 
-char OBJ_uc_CalcLODVis(struct sGameObjectMain* a1, struct sViewElem* a2)
+char OBJ_uc_CalcLODVis(struct sGameObjectMain* gao, struct sViewElem* view)
 {
-    tGdi_DisplayData* v2;
-    double v3;
-    double v4;
-    tGameObjectBV* v5;
-    BOOL v6;
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    double v11;
+    tGdi_DisplayData* display;
+    double dx;
+    double dy;
+    tGameObjectBV* bv;
+    BOOL isSphere;
+    double extentX;
+    double extentY;
+    double extentZ;
+    double ratio;
+    double lod;
     char result;
-    Vec3 v13;
-    float v14;
-    float v15;
-    float v16;
-    int tmp;
+    Vec3 bvCenter;
+    float distSq;
+    float ratioF;
+    float rounded;
 
-    v2 = a2->displayData;
-    if (!v2)
+    display = view->displayData;
+    if (!display)
         return -1;
-    OBJ_BV_ComputeCenter(a1, &v13);
-    v3 = v13.x - a2->cameraMtx.Pos.x;
-    v4 = v13.y - a2->cameraMtx.Pos.y;
-    v5 = a1->boundingVolume;
-    v14 = (float)((v13.z - a2->cameraMtx.Pos.z) * (v13.z - a2->cameraMtx.Pos.z) + v4 * v4 + v3 * v3);
-    v6 = OBJ_BV_IsSphere(v5);
-    v7 = v5->BVMax.x;
-    if (v6)
+    OBJ_BV_ComputeCenter(gao, &bvCenter);
+    dx = bvCenter.x - view->cameraMtx.Pos.x;
+    dy = bvCenter.y - view->cameraMtx.Pos.y;
+    bv = gao->boundingVolume;
+    distSq = (float)((bvCenter.z - view->cameraMtx.Pos.z) * (bvCenter.z - view->cameraMtx.Pos.z) + dy * dy + dx * dx);
+    isSphere = OBJ_BV_IsSphere(bv);
+    extentX = bv->BVMax.x;
+    if (isSphere)
     {
-        v8 = v7 * v7 * (v2->ct.cam.factorX * v2->ct.cam.factorX) / v14;
+        ratio = extentX * extentX * (display->ct.cam.factorX * display->ct.cam.factorX) / distSq;
     }
     else
     {
-        v9 = v5->BVMax.y - v5->BVMin.y;
-        v10 = v5->BVMax.z - v5->BVMin.z;
-        v8 = (v10 * v10 + v9 * v9 + (v7 - v5->BVMin.x) * (v7 - v5->BVMin.x))
-            * (v2->ct.cam.factorX
-                * v2->ct.cam.factorX
-                / v14);
+        extentY = bv->BVMax.y - bv->BVMin.y;
+        extentZ = bv->BVMax.z - bv->BVMin.z;
+        ratio = (extentZ * extentZ + extentY * extentY + (extentX - bv->BVMin.x) * (extentX - bv->BVMin.x))
+            * (display->ct.cam.factorX
+                * display->ct.cam.factorX
+                / distSq);
     }
-    v15 = (float)v8;
+    ratioF = (float)ratio;
 
-    tmp = (MATH_gl_TableRacine[((*((int32_t*)(&v15))) >> 13) & 0x7FF] + (((((*((uint32_t*)(&v15))) & 0x7F800000) + 0x3F800000) >> 1) & 0x7F800000));
-    v11 = (*(float *)&tmp) * v2->NormalizedWidthOrHeightMultBy255;
+    lod = MATH_GetSqrt(ratioF) * display->NormalizedWidthOrHeightMultBy255;
 
-    if (v11 >= 255.0)
-        v11 = 255.0;
-    v16 = (float)(v11 + 12533760.0);
-    result = (*(int *)&v16) & 0xff; //result = LOBYTE(v16);
+    if (lod >= 255.0)
+        lod = 255.0;
+    rounded = (float)(lod + 12533760.0);
+    result = (*(int *)&rounded) & 0xff; //result = LOBYTE(v16);
     if (!result) //if (!LOBYTE(v16))
         result = 1;
     return result;
