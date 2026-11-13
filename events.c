@@ -1476,315 +1476,404 @@ tGameObjectEventElem* EVE_Event_InterpolationKey_Play(tGameObjectEventElem* key)
     return key;
 }
 
-int EVE_RunOneTrack(tGameObjectEventsListElem* track, tAnimTracks* state, int handleEnd, float* dtLeft)
+/* BISECT: body restored from 675b6f2 */
+int EVE_RunOneTrack(tGameObjectEventsListElem* a1, tAnimTracks* a2, int a3, float* a4)
 {
-    float remaining;
-    float labelTime;
-    unsigned int kind;
-    int labelIdx;
-    tGameObjectEventElem* key;
+    float v5;
+    float v6;
+    unsigned int v7;
+    float v8;
+    float v9;
+    float v10;
+    float v11;
+    float a3a;
+    float v13;
+    tGameObjectEventElem* v14;
+    int v15;
+    tGameObjectEventElem* v16;
 
-    if (!track->trackElems)
+    if (!a1->trackElems)
         return 0;
     EVE_gpst_SavedMatrix = EVE_gpst_OwnerGAO->matrices;
-    if ((track->flags & 8) != 0)
-        state->privateData = -1;
-    if (handleEnd
-        && TIM_gf_dt != 0.0
-        && state->currElemKeyFrame == track->elemNum - 1
-        && EVE_l_FrameTime(track->trackElems[state->currElemKeyFrame].duration) == state->currTime
-        && (track->flags & 2) != 0)
+    if ((a1->flags & 8) != 0)
+        a2->privateData = -1;
+    if (a3)
     {
-        if (track->boneID == 255)
+        if (TIM_gf_dt != 0.0 && a2->currElemKeyFrame == a1->elemNum - 1)
         {
-            EVE_RunningTracksAtStart(EVE_gpst_CurrentData);
-        }
-        else
-        {
-            state->currElemKeyFrame = 0;
-            state->flag &= ~4u;
+            v11 = (float)a1->trackElems[a2->currElemKeyFrame].duration;
+            if (v11 * 1.0 / 60.0 == a2->currTime && (a1->flags & 2) != 0)
+            {
+                if (a1->boneID == 255)
+                {
+                    EVE_RunningTracksAtStart(EVE_gpst_CurrentData);
+                }
+                else
+                {
+                    a2->currElemKeyFrame = 0;
+                    a2->flag &= ~4u;
+                }
+            }
         }
     }
 
-    remaining = TIM_gf_dt;
-    for (;;)
+    v13 = TIM_gf_dt;
+    while (1)
     {
-        for (;;)
+        while (1)
         {
-            key = &track->trackElems[state->currElemKeyFrame];
-            EVE_gpst_CurrentEvent = key;
-            EVE_gf_ElapsedDT = TIM_gf_dt - remaining;
-            if (EVE_l_FrameTime(key->duration) >= remaining + state->currTime)
+            while (1)
             {
-                EVE_gf_DT = remaining;
-                state->currTime = remaining + state->currTime;
-                remaining = 0.0;
-            }
-            else
-            {
-                EVE_gf_DT = (float)(EVE_l_FrameTime(key->duration) - state->currTime);
-                remaining = remaining - EVE_gf_DT;
-                state->currTime = (float)EVE_l_FrameTime(key->duration);
-            }
-            if ((key->flags2 & 4) != 0
-                && (state->flag & 4) == 0
-                && (EVE_gpst_CurrentListTracks->flags & 1) == 0
-                && TIM_gf_dt >= 0.0)
-            {
-                EVE_FlashMatrix();
-            }
-            if ((key->flags2 & 1) != 0 && (state->flag & 4) != 0)
-                break;
-            kind = key->flags2 & 0x7C0;
-            if (kind == 512 && !EVE_gb_PlayOnlyAnimTracks)
-            {
-                labelIdx = EVE_i_SearchLabel(track, key->flags2 & 0xF000, &labelTime);
-                if (labelIdx != -1)
+                v14 = &a1->trackElems[a2->currElemKeyFrame];
+                EVE_gpst_CurrentEvent = v14;
+                EVE_gf_ElapsedDT = TIM_gf_dt - v13;
+                v10 = (float)v14->duration;
+                if (v10 * 1.0 / 60.0 >= v13 + a2->currTime)
                 {
-                    state->currElemKeyFrame = labelIdx;
-                    state->currTime = 0.0;
-                    continue;
+                    EVE_gf_DT = v13;
+                    a2->currTime = v13 + a2->currTime;
+                    v13 = 0.0;
                 }
-            }
-            else if (kind == 1024 && !EVE_gb_PlayOnlyAnimTracks)
-            {
-                labelIdx = EVE_i_SearchLabel(track, key->flags2 & 0xF000, &labelTime);
-                if (labelIdx != -1)
+                else
                 {
-                    EVE_SetAllTimesTo(labelTime);
+                    v9 = (float)v14->duration;
+                    EVE_gf_DT = (float)(v9 * 1.0 / 60.0 - a2->currTime);
+                    v13 = v13 - EVE_gf_DT;
+                    v8 = (float)v14->duration;
+                    a2->currTime = (float)(v8 * 1.0 / 60.0);
+                }
+                if ((v14->flags2 & 4) != 0
+                    && (a2->flag & 4) == 0
+                    && (EVE_gpst_CurrentListTracks->flags & 1) == 0
+                    && TIM_gf_dt >= 0.0)
+                {
+                    EVE_FlashMatrix();
+                }
+                if ((v14->flags2 & 1) != 0 && (a2->flag & 4) != 0)
+                    goto LABEL_51;
+                v7 = v14->flags2 & 0x7C0;
+                if (v7 > 0x200)
+                    break;
+                if (v7 != 512)
+                {
+                    if (v7 == 64)
+                    {
+                        if (!EVE_gb_PlayOnlyAnimTracks)
+                        {
+                            v16 = EVE_Event_AIFunction_Play(v14);
+                            if ((v14->flags2 & 8) != 0)
+                            {
+                                if (AI_GetIntFromStack())
+                                {
+                                    a2->currTime = 0.0;
+                                    return 0;
+                                }
+                            }
+                            else if ((v14->flags2 & 0x10) != 0 && !AI_GetIntFromStack())
+                            {
+                                a2->currTime = 0.0;
+                                return 0;
+                            }
+                        }
+                    }
+                    else if (v7 == 128 && (v13 == 0.0 || a2->currElemKeyFrame == a1->elemNum - 1))
+                    {
+                        v16 = EVE_Event_InterpolationKey_Play(v14);
+                    }
+                    goto LABEL_51;
+                }
+                if (EVE_gb_PlayOnlyAnimTracks)
+                    goto LABEL_51;
+                v15 = EVE_i_SearchLabel(a1, v14->flags2 & 0xF000, &a3a);
+                if (v15 == -1)
+                    goto LABEL_51;
+                a2->currElemKeyFrame = v15;
+                a2->currTime = 0.0;
+            }
+            if (v7 == 1024 && !EVE_gb_PlayOnlyAnimTracks)
+            {
+                v15 = EVE_i_SearchLabel(a1, v14->flags2 & 0xF000, &a3a);
+                if (v15 != -1)
+                {
+                    EVE_SetAllTimesTo(a3a);
                     EVE_gb_NeedToReparse = 1;
                     return 0;
                 }
             }
-            else if (kind == 64)
-            {
-                if (!EVE_gb_PlayOnlyAnimTracks)
-                {
-                    EVE_Event_AIFunction_Play(key);
-                    if ((key->flags2 & 8) != 0)
-                    {
-                        if (AI_GetIntFromStack())
-                        {
-                            state->currTime = 0.0;
-                            return 0;
-                        }
-                    }
-                    else if ((key->flags2 & 0x10) != 0 && !AI_GetIntFromStack())
-                    {
-                        state->currTime = 0.0;
-                        return 0;
-                    }
-                }
-            }
-            else if (kind == 128 && (remaining == 0.0 || state->currElemKeyFrame == track->elemNum - 1))
-            {
-                EVE_Event_InterpolationKey_Play(key);
-            }
+        LABEL_51:
+            a2->flag |= 4u;
+            if (v13 == 0.0)
+                goto LABEL_66;
+            a2->currTime = 0.0;
+            if (a2->currElemKeyFrame == a1->elemNum - 1)
+                break;
+            ++a2->currElemKeyFrame;
+            a2->flag &= ~4u;
+        }
+        if ((a1->flags & 2) != 0)
+        {
+            a2->currElemKeyFrame = 0;
+            a2->flag &= ~4u;
+            goto LABEL_57;
+        }
+        if ((a1->flags & 4) != 0)
             break;
-        }
-        state->flag |= 4u;
-        if (remaining == 0.0)
-        {
-            if (dtLeft)
-                *dtLeft = remaining;
-            return 0;
-        }
-        state->currTime = 0.0;
-        if (state->currElemKeyFrame != track->elemNum - 1)
-        {
-            ++state->currElemKeyFrame;
-            state->flag &= ~4u;
-            continue;
-        }
-        if ((track->flags & 2) != 0)
-        {
-            state->currElemKeyFrame = 0;
-            state->flag &= ~4u;
-        }
-        else if ((track->flags & 4) != 0)
-        {
-            break;
-        }
+    LABEL_57:
         if (EVE_gpst_CurrentGAO == EVE_gpst_OwnerGAO
             && (EVE_gpst_CurrentGAO->flags & 2) != 0
-            && handleEnd
-            && (key->flags2 & 0x7C0) == 128)
+            && a3
+            && (v14->flags2 & 0x7C0) == 128)
         {
-            if (dtLeft)
-                *dtLeft = remaining;
-            state->currTime = (float)EVE_l_FrameTime(key->duration);
-            state->currElemKeyFrame = track->elemNum - 1;
+            if (a4)
+                *a4 = v13;
+            v5 = (float)v14->duration;
+            a2->currTime = (float)(v5 * 1.0 / 60.0);
+            a2->currElemKeyFrame = a1->elemNum - 1;
             return 1;
         }
     }
-    state->currTime = (float)EVE_l_FrameTime(key->duration);
-    state->flag &= ~1u;
-    if (dtLeft)
-        *dtLeft = remaining;
+    v6 = (float)v14->duration;
+    a2->currTime = (float)(v6 * 1.0 / 60.0);
+    a2->flag &= ~1u;
+LABEL_66:
+    if (a4)
+        *a4 = v13;
     return 0;
 }
 
-int EVE_b_RunAnimation(tEventData* eve, float* dtLeft)
+/* BISECT: body restored from 675b6f2 */
+int EVE_b_RunAnimation(tEventData* a1, float* a4)
 {
-    tGameObjectEventsList* list;
-    tAnimTracks* states;
-    Mtx4x4* savedRefMatrix;
-    tGroup* skeleton;
-    tGameObjectMain* gao;
-    tGameObjectMain* bone;
-    uint16_t boneID;
-    BOOL wholeObject;
-    int boneTrack;
-    int skip;
-    char lod;
-    float firstDt;
-    int result;
-    int ran;
-    unsigned int trackIdx;
-    unsigned int i;
+    tGameObjectMain* v3;
+    BOOL v4;
+    Mtx4x4* v5;
+    Mtx4x4* v6;
+    int v7;
+    int v8;
+    float v9;
+    int v10;
+    BOOL v11;
+    tGameObjectEventsList* v12;
+    Mtx4x4* v13;
+    uint16_t v14;
+    char v15;
+    unsigned int a3;
+    unsigned int a3a;
+    tAnimTracks* v18;
+    tGroup* v19;
+    tGameObjectMain* v20;
+    int v21;
 
-    if (!eve)
+    if (!a1)
         return 0;
-    list = eve->eventListStruct;
-    states = eve->tracks;
-    if (!eve->eventListStruct || !states)
+    v12 = a1->eventListStruct;
+    v18 = a1->tracks;
+    if (!a1->eventListStruct || !v18)
         return 0;
-    EVE_gpst_CurrentListTracks = eve->eventListStruct;
-    savedRefMatrix = EVE_gpst_CurrentRefMatrix;
+    EVE_gpst_CurrentListTracks = a1->eventListStruct;
+    v13 = EVE_gpst_CurrentRefMatrix;
     EVE_gpst_CurrentGAO = EVE_gpst_OwnerGAO;
-    skeleton = EVE_l_Actor(EVE_gpst_OwnerGAO)->skeletonGroup;
-    skip = !EVE_gb_ForcePlayerOnAllTracks
+    v19 = ((tGameObjectActorObject*)(EVE_gpst_OwnerGAO->basic->actorObjectOrVisualObject))->skeletonGroup;
+    v4 = !EVE_gb_ForcePlayerOnAllTracks
         && ((EVE_gpst_CurrentGAO->flags2 & 4) != 0 || (EVE_gpst_CurrentGAO->flags2 & 2) == 0);
+    v8 = v4;
     if (EVE_gpst_CurrentGAO->if_this_not0_wont_render_gao)
-        skip = 1;
-    lod = EVE_c_UpdateLOD(EVE_gpst_OwnerGAO, 1);
-    firstDt = 0.0;
-    result = 0;
+        v8 = 1;
+    v15 = EVE_c_UpdateLOD(EVE_gpst_OwnerGAO, 1);
+    v9 = 0.0;
+    v7 = 0;
 
-    for (trackIdx = 0; trackIdx < list->num; ++trackIdx)
+    for (a3 = 0; ; ++a3)
     {
-        EVE_gpst_CurrentRefMatrix = savedRefMatrix;
-        EVE_l_SelectTrack(list, states, trackIdx);
-        wholeObject = EVE_gpst_CurrentTrack->boneID == 0xFFFF;
+        if (a3 >= v12->num)
+        {
+            *a4 = v9;
+            return v7;
+        }
+        EVE_gpst_CurrentRefMatrix = v13;
+        EVE_gpst_CurrentTrack = &v12->listElems[a3];
+        EVE_gpst_CurrentParam = &v18[a3];
+        if (EVE_gpst_CurrentTrack->gao)
+        {
+            EVE_gpst_CurrentGAO = EVE_gpst_CurrentTrack->gao;
+            if ((EVE_gpst_CurrentGAO->flags & 0x4000000) != 0)
+            {
+                if ((EVE_gpst_CurrentGAO->flags & 0x10000) != 0)
+                    v6 = EVE_gpst_CurrentGAO->matrices + 2;
+                else
+                    v6 = EVE_gpst_CurrentGAO->matrices + 1;
+            }
+            else
+            {
+                v6 = 0;
+            }
+            EVE_gpst_CurrentRefMatrix = v6;
+        }
+        else
+        {
+            EVE_gpst_CurrentGAO = EVE_gpst_OwnerGAO;
+        }
+        v11 = EVE_gpst_CurrentTrack->boneID == 0xFFFF;
         if ((EVE_gpst_CurrentParam->flag & 1) == 0)
             continue;
         if ((EVE_gpst_CurrentParam->flag & 2) != 0)
             continue;
-        boneTrack = EVE_gpst_CurrentTrack->flags & 0x8000;
-        if (boneTrack
-            && (lod & 4) != 0
+        v21 = EVE_gpst_CurrentTrack->flags & 0x8000;
+        if ((EVE_gpst_CurrentTrack->flags & 0x8000) != 0
+            && (v15 & 4) != 0
             && EVE_gpst_CurrentTrack->boneID != 0xFFFF
             && EVE_gpst_CurrentTrack->boneID
             && (EVE_w_Event_InterpolationKey_GetType(EVE_gpst_CurrentTrack->trackElems) & 3) != 0)
         {
             continue;
         }
-        if (skip && (lod & 0x80) != 0 && !wholeObject)
-        {
-            EVE_l_Actor(EVE_gpst_OwnerGAO)->initedInANIMainCall = 0;
+        if (v8 && (v15 & 0x80) != 0 && !v11)
             break;
-        }
-        if ((lod & 1) != 0 && !wholeObject)
-            break;
-        if (boneTrack && (lod & 8) != 0)
+        if ((v15 & 1) != 0 && !v11)
+            goto LABEL_56;
+        if (v21)
         {
-            boneID = EVE_gpst_CurrentTrack->boneID;
-            if (!wholeObject && skeleton->tablePF->actElemNum > boneID)
+            if ((v15 & 8) != 0)
             {
-                bone = (tGameObjectMain*)((tableElemStructPF*)(skeleton->tablePF->firstElemPtr))[boneID].objectPtr;
-                if (bone && bone->extended && (bone->extended->extraFlag & 0x20) != 0)
-                    continue;
+                v14 = EVE_gpst_CurrentTrack->boneID;
+                if (!v11 && v19->tablePF->actElemNum > v14)
+                {
+                    v20 = (tGameObjectMain*)((tableElemStructPF*)(v19->tablePF->firstElemPtr))[v14].objectPtr;
+                    if (v20)
+                    {
+                        if (v20->extended && (v20->extended->extraFlag & 0x20) != 0)
+                            continue;
+                    }
+                }
             }
         }
-        if (!boneTrack || EVE_gpst_CurrentTrack->gao)
-            ran = EVE_RunOneTrack(&list->listElems[trackIdx], &states[trackIdx], 1, dtLeft);
+        if (!v21 || EVE_gpst_CurrentTrack->gao)
+            v10 = EVE_RunOneTrack(&v12->listElems[a3], &v18[a3], 1, a4);
         else
-            ran = EVE_RunAnimTrack(EVE_gpst_CurrentTrack, EVE_gpst_CurrentParam, trackIdx, lod, dtLeft);
-        if (!trackIdx)
-            result = ran;
-        if (!trackIdx && ran)
-            firstDt = *dtLeft;
+            v10 = EVE_RunAnimTrack(EVE_gpst_CurrentTrack, EVE_gpst_CurrentParam, a3, v15, a4);
+        if (!a3)
+            v7 = v10;
+        if (!a3 && v10)
+            v9 = *a4;
     }
-
-    if (trackIdx < list->num)
+    ((tGameObjectActorObject*)(EVE_gpst_OwnerGAO->basic->actorObjectOrVisualObject))->initedInANIMainCall = 0;
+LABEL_56:
+    for (a3a = v12->num - 1; a3a && (v12->listElems[a3a].flags & 0x8000) == 0; --a3a)
     {
-        for (i = list->num - 1; i && (list->listElems[i].flags & 0x8000) == 0; --i)
+        EVE_gpst_CurrentTrack = &v12->listElems[a3a];
+        EVE_gpst_CurrentParam = &v18[a3a];
+        if (EVE_gpst_CurrentTrack->gao)
+            v3 = EVE_gpst_CurrentTrack->gao;
+        else
+            v3 = EVE_gpst_OwnerGAO;
+        EVE_gpst_CurrentGAO = v3;
+        if ((v3->flags & 0x4000000) != 0)
         {
-            EVE_gpst_CurrentTrack = &list->listElems[i];
-            EVE_gpst_CurrentParam = &states[i];
-            if (EVE_gpst_CurrentTrack->gao)
-                gao = EVE_gpst_CurrentTrack->gao;
+            if ((EVE_gpst_CurrentGAO->flags & 0x10000) != 0)
+                v5 = EVE_gpst_CurrentGAO->matrices + 2;
             else
-                gao = EVE_gpst_OwnerGAO;
-            EVE_gpst_CurrentGAO = gao;
-            EVE_gpst_CurrentRefMatrix = EVE_l_RefMatrix(gao);
-            EVE_RunOneTrack(&list->listElems[i], &states[i], 1, dtLeft);
+                v5 = EVE_gpst_CurrentGAO->matrices + 1;
         }
+        else
+        {
+            v5 = 0;
+        }
+        EVE_gpst_CurrentRefMatrix = v5;
+        EVE_RunOneTrack(&v12->listElems[a3a], &v18[a3a], 1, a4);
     }
-    *dtLeft = firstDt;
-    return result;
+    *a4 = v9;
+    return v7;
 }
 
-int EVE_b_RunAllTracks(tEventData* eve, float* dtLeft)
+/* BISECT: body restored from 675b6f2 */
+int EVE_b_RunAllTracks(tEventData* a1, float* a2)
 {
-    BOOL hasSkeleton;
-    tGameObjectEventsList* list;
-    tAnimTracks* states;
-    Mtx4x4* savedRefMatrix;
+    BOOL v3;
+    Mtx4x4* v4;
+    tGameObjectEventsList* v5;
+    Mtx4x4* v6;
     unsigned int i;
-    uint8_t lod;
-    float firstDt;
-    int result;
+    uint8_t v8;
+    tAnimTracks* v9;
+    float v10;
+    int v11;
 
-    lod = 0;
-    if (!eve)
+    v8 = 0;
+    if (!a1)
         return 0;
-    list = eve->eventListStruct;
-    if (!eve->eventListStruct)
+    v5 = a1->eventListStruct;
+    if (!a1->eventListStruct)
         return 0;
-    states = eve->tracks;
-    if (!states)
+    v9 = a1->tracks;
+    if (!v9)
         return 0;
-    result = 0;
-    firstDt = 0.0;
+    v11 = 0;
+    v10 = 0.0;
     EVE_gpst_CurrentGAO = EVE_gpst_OwnerGAO;
-    hasSkeleton = !ENG_gb_EVERunning
+    v3 = !ENG_gb_EVERunning
         && EVE_gpst_CurrentGAO->basic
         && EVE_gpst_CurrentGAO->basic->actorObjectOrVisualObject
-        && EVE_l_Actor(EVE_gpst_CurrentGAO)->skeletonGroup;
-    if (hasSkeleton)
-        lod = EVE_c_UpdateLOD(EVE_gpst_CurrentGAO, 0);
-    for (i = 0; i < list->num; ++i)
+        && ((tGameObjectActorObject*)(EVE_gpst_CurrentGAO->basic->actorObjectOrVisualObject))->skeletonGroup;
+    if (v3)
+        v8 = EVE_c_UpdateLOD(EVE_gpst_CurrentGAO, 0);
+    for (i = 0; i < v5->num; ++i)
     {
-        if (hasSkeleton
+        if (v3
             && i > 1
             && !EVE_gb_ForcePlayerOnAllTracks
             && ((EVE_gpst_CurrentGAO->flags2 & 4) != 0 || (EVE_gpst_CurrentGAO->flags2 & 2) == 0)
-            && list->listElems[i].trackElems
-            && (list->listElems[i].trackElems->flags2 & 0x7C0) == 128)
+            && v5->listElems[i].trackElems
+            && (v5->listElems[i].trackElems->flags2 & 0x7C0) == 128)
         {
-            if (EVE_gpst_CurrentGAO->basic && EVE_gpst_CurrentGAO->basic->actorObjectOrVisualObject)
-                EVE_l_Actor(EVE_gpst_CurrentGAO)->initedInANIMainCall = 0;
-        }
-        else if ((list->listElems[i].flags & 0x8000) == 0
-            || (lod & 4) == 0
-            || list->listElems[i].boneID == 0xFFFF
-            || !list->listElems[i].boneID
-            || (EVE_w_Event_InterpolationKey_GetType(list->listElems[i].trackElems) & 3) == 0)
-        {
-            savedRefMatrix = EVE_gpst_CurrentRefMatrix;
-            if ((states[i].flag & 1) != 0 && (states[i].flag & 2) == 0)
+            if (EVE_gpst_CurrentGAO->basic)
             {
-                EVE_l_SelectTrack(list, states, i);
-                EVE_gb_NeedToReparse = 0;
-                if (EVE_RunOneTrack(&list->listElems[i], &states[i], 1, dtLeft)) // !!!!!!
+                if (EVE_gpst_CurrentGAO->basic->actorObjectOrVisualObject)
+                    ((tGameObjectActorObject*)(EVE_gpst_CurrentGAO->basic->actorObjectOrVisualObject))->initedInANIMainCall = 0;
+            }
+        }
+        else if ((v5->listElems[i].flags & 0x8000) == 0
+            || (v8 & 4) == 0
+            || v5->listElems[i].boneID == 0xFFFF
+            || !v5->listElems[i].boneID
+            || (EVE_w_Event_InterpolationKey_GetType(v5->listElems[i].trackElems) & 3) == 0)
+        {
+            v6 = EVE_gpst_CurrentRefMatrix;
+            if ((v9[i].flag & 1) != 0 && (v9[i].flag & 2) == 0)
+            {
+                EVE_gpst_CurrentTrack = &v5->listElems[i];
+                EVE_gpst_CurrentParam = &v9[i];
+                if (EVE_gpst_CurrentTrack->gao)
                 {
-                    result = 1;
-                    if (!i && dtLeft)
-                        firstDt = *dtLeft;
+                    EVE_gpst_CurrentGAO = EVE_gpst_CurrentTrack->gao;
+                    if ((EVE_gpst_CurrentGAO->flags & 0x4000000) != 0)
+                    {
+                        if ((EVE_gpst_CurrentGAO->flags & 0x10000) != 0)
+                            v4 = EVE_gpst_CurrentGAO->matrices + 2;
+                        else
+                            v4 = EVE_gpst_CurrentGAO->matrices + 1;
+                    }
+                    else
+                    {
+                        v4 = 0;
+                    }
+                    EVE_gpst_CurrentRefMatrix = v4;
+                }
+                else
+                {
+                    EVE_gpst_CurrentGAO = EVE_gpst_OwnerGAO;
+                }
+                EVE_gb_NeedToReparse = 0;
+                if (EVE_RunOneTrack(&v5->listElems[i], &v9[i], 1, a2)) // !!!!!!
+                {
+                    v11 = 1;
+                    if (!i)
+                    {
+                        if (a2)
+                            v10 = *a2;
+                    }
                 }
                 if (EVE_gb_NeedToReparse)
-                    i = -1;   // does not terminate if the label resolves to a key at or before the one that set it
+                    i = -1;
                 if (ENG_gb_EVERunning)
                 {
                     if ((EVE_gpst_CurrentGAO->flags & 0x4000000) != 0)
@@ -1797,77 +1886,93 @@ int EVE_b_RunAllTracks(tEventData* eve, float* dtLeft)
                         EVE_gpst_CurrentGAO->basic->dyn->flags |= 0x800000u;
                 }
             }
-            EVE_gpst_CurrentRefMatrix = savedRefMatrix;
+            EVE_gpst_CurrentRefMatrix = v6;
         }
     }
-    if (dtLeft)
-        *dtLeft = firstDt;
+    if (a2)
+        *a2 = v10;
+    return v11;
+}
+
+/* BISECT: body restored from 675b6f2 */
+struct sEventData* EVE_AllocateMainStruct(struct sGameObjectMain* a1)
+{
+    tEventData* result;
+
+    a1->extended->eve = (tEventData*)MEM_p_Alloc(sizeof(tEventData));
+    memset(a1->extended->eve, 0, sizeof(tEventData));
+    a1->extended->eve->eventListStruct = (tGameObjectEventsList*)MEM_p_Alloc(sizeof(tGameObjectEventsList));
+    memset(a1->extended->eve->eventListStruct, 0, sizeof(tGameObjectEventsList));
+    a1->extended->eve->eventListStruct->usageCount = 1;
+    result = a1->extended->eve;
+    result->tracks = 0;
     return result;
 }
 
-struct sEventData* EVE_AllocateMainStruct(struct sGameObjectMain* gao)
+/* BISECT: body restored from 675b6f2 */
+void EVE_ResolveTrackRef(tGameObjectEventsList* a1, tGameObjectEventsListElem* a2)
 {
-    gao->extended->eve = (tEventData*)MEM_p_Alloc(sizeof(tEventData));
-    memset(gao->extended->eve, 0, sizeof(tEventData));
-    gao->extended->eve->eventListStruct = (tGameObjectEventsList*)MEM_p_Alloc(sizeof(tGameObjectEventsList));
-    memset(gao->extended->eve->eventListStruct, 0, sizeof(tGameObjectEventsList));
-    gao->extended->eve->eventListStruct->usageCount = 1;
-    gao->extended->eve->tracks = 0;
-    return gao->extended->eve;
-}
-
-void EVE_ResolveTrackRef(tGameObjectEventsList* list, tGameObjectEventsListElem* track)
-{
-    tGameObjectEventElem* key;
+    tGameObjectEventElem* a1a;
     uint16_t i;
 
-    if (track->trackElems && (track->flags & 0x10) != 0)
+    if (a2->trackElems && (a2->flags & 0x10) != 0)
     {
-        EVE_gpst_CurrentReolve = list;
-        for (i = 0; i < (int)track->elemNum; ++i)
+        EVE_gpst_CurrentReolve = a1;
+        for (i = 0; i < (int)a2->elemNum; ++i)
         {
-            key = &track->trackElems[i];
-            if ((key->flags2 & 0x20) != 0)
+            a1a = &a2->trackElems[i];
+            if ((a1a->flags2 & 0x20) != 0)
             {
-                // The track index is the elemPtr value itself, but the key index is read through it.
-                key->eptrdu.data = list->listElems[(int16_t)key->eptrdu.data].trackElems[(int16_t)(((*((uint32_t*)key->eptrdu.data)) >> 16) & 0xffff)].eptrdu.data;
+                a1a->eptrdu.data = a1->listElems[(int16_t)a1a->eptrdu.data].trackElems[(int16_t)(((*((uint32_t*)a1a->eptrdu.data)) >> 16) & 0xffff)].eptrdu.data;
             }
-            else if ((key->flags2 & 0x7C0) == 64)
+            else if ((a1a->flags2 & 0x7C0) == 64)
             {
-                EVE_Event_AIFunction_Resolve(key);
+                EVE_Event_AIFunction_Resolve(a1a);
             }
         }
     }
 }
 
-void EVE_ResolveListTrackRef(tGameObjectEventsList* list)
+/* BISECT: body restored from 675b6f2 */
+void EVE_ResolveListTrackRef(tGameObjectEventsList* a1)
 {
     int i;
 
-    if (list && (list->flags & 2) == 0)
+    if (a1 && (a1->flags & 2) == 0)
     {
-        list->flags |= 2u;
-        for (i = 0; i < list->num; ++i)
-            EVE_ResolveTrackRef(list, &list->listElems[i]);
+        a1->flags |= 2u;
+        for (i = 0; i < a1->num; ++i)
+            EVE_ResolveTrackRef(a1, &a1->listElems[i]);
     }
 }
 
-void EVE_ReinitTrack(struct sEventData* eve, int trackID)
+/* BISECT: body restored from 675b6f2 */
+void EVE_ReinitTrack(struct sEventData* a1, int trackID)
 {
-    tGameObjectEventsListElem* track;
-    tAnimTracks* state;
+    tGameObjectEventsListElem* v2;
+    tAnimTracks* v3;
 
-    if (!eve || !eve->eventListStruct || !eve->tracks)
-        return;
-    track = &eve->eventListStruct->listElems[trackID];
-    state = &eve->tracks[trackID];
-    state->currTime = 0.0;
-    state->currElemKeyFrame = 0;
-    state->flag &= ~1u;
-    if ((track->flags & 1) != 0)
-        state->flag |= 1u;
-    state->flag &= ~2u;
-    state->flag &= ~4u;
+    if (a1)
+    {
+        if (a1->eventListStruct)
+        {
+            if (a1->tracks)
+            {
+                v2 = &a1->eventListStruct->listElems[trackID];
+                v3 = &a1->tracks[trackID];
+                if (v3)
+                {
+                    v3->currTime = 0.0;
+                    v3->currElemKeyFrame = 0;
+                    v3->flag &= ~1u;
+                    if ((v2->flags & 1) != 0)
+                        v3->flag |= 1u;
+                    v3->flag &= ~2u;
+                    v3->flag &= ~4u;
+                }
+            }
+        }
+    }
 }
 
 void EVE_ReinitData(struct sEventData* eve)
