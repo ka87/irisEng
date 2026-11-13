@@ -2,6 +2,18 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
+
+/* The real windef.h still defines the 16-bit memory-model keywords as
+   empty macros, so an identifier of any of these names disappears and
+   the line around it becomes a syntax error. Declaring them here is
+   what lets gcc catch that -- without them the parse sweep passed
+   win/wingdi.c with two parameters called near and far, and MSVC was
+   the first thing to see it. They are no-ops, exactly as in windef.h,
+   so nothing else changes. */
+#define near
+#define far
+#define pascal
+#define PASCAL
 typedef int                 BOOL;
 typedef unsigned char       BYTE;
 typedef unsigned short      WORD;
