@@ -1870,17 +1870,19 @@ void EVE_ReinitTrack(struct sEventData* eve, int trackID)
     state->flag &= ~4u;
 }
 
-void EVE_ReinitData(struct sEventData* eve)
+/* BISECT: body restored from 675b6f2 */
+void EVE_ReinitData(struct sEventData* a1)
 {
     uint16_t i;
 
-    if (eve && eve->eventListStruct)
+    if (a1 && a1->eventListStruct)
     {
-        for (i = 0; i < (int)eve->eventListStruct->num; ++i)
-            EVE_ReinitTrack(eve, i);
+        for (i = 0; i < (int)a1->eventListStruct->num; ++i)
+            EVE_ReinitTrack(a1, i);
     }
 }
 
+/* BISECT: body restored from 675b6f2 */
 void EVE_ResolveRefs(struct sGameObjectMain* gao, int incrementUsageCount)
 {
     if (gao->extended->eve && gao->extended->eve->eventListStruct)
@@ -1897,206 +1899,219 @@ void EVE_ResolveRefs(struct sGameObjectMain* gao, int incrementUsageCount)
     }
 }
 
-int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* key, tGameObjectEventElem* prevKey, char* src, void* elemPtr, tGameObjectEventsListElem* track, int16_t flags)
+/* BISECT: body restored from 675b6f2 */
+int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* arg0, tGameObjectEventElem* a2, char* a3, void* elemPtr, tGameObjectEventsListElem* a5, int16_t a6)
 {
-    int kind;
-    unsigned int deltaKind;
-    int timeNum;
+    int v7;
+    int v8;
+    unsigned int v9;
+    int v10;
+    int v11;
     int i;
-    UltraCompressedQuat ultra;
-    Quat4 delta;
-    CompressedQuat compressed;
-    Quat4* prevQuat;
-    CompressedQuat prevCompressed;
-    Quat4 decompressed;
-    CompressedQuat quat;
-    int16_t type;
-    uint8_t* dest;
-    char* cursor;
-    int16_t size;
+    UltraCompressedQuat v13;
+    Quat4 v14;
+    CompressedQuat v14b;
+    Quat4* v15;
+    CompressedQuat v16;
+    Quat4 Src;
+    CompressedQuat v18;
+    UltraCompressedQuat v19;
+    int16_t v20;
+    char* retVal;
+    char* a1;
+    int16_t v23;
 
-    cursor = src;
-    if ((flags & 0x2000) != 0)
-        size = track->trackElems->eptrdu.size >> 1;
+    a1 = a3;
+    if ((a6 & 0x2000) != 0)
+        v23 = a5->trackElems->eptrdu.size >> 1;
     else
-        size = LOA_ReadShort(&cursor, 0, 1);
-    if ((flags & 0x1000) != 0)
+        v23 = LOA_ReadShort(&a1, 0, 1);
+    if ((a6 & 0x1000) != 0)
     {
-        if ((flags & 0x2000) != 0)
-            type = track->trackElems->eptrdu.type;
+        if ((a6 & 0x2000) != 0)
+            v20 = a5->trackElems->eptrdu.type;
         else
-            type = EVE_w_Event_InterpolationKey_GetType(track->trackElems);
+            v20 = EVE_w_Event_InterpolationKey_GetType(a5->trackElems);
     }
     else
     {
-        type = LOA_ReadShort(&cursor, 0, 1);
+        v20 = LOA_ReadShort(&a1, 0, 1);
     }
-    key->eptrdu.data = elemPtr;
-    if ((type & 0x780) != 0)
+    arg0->eptrdu.data = elemPtr;
+    if ((v20 & 0x780) != 0)
     {
-        decompressed.q1 = 0.0;
-        decompressed.q2 = 0.0;
-        decompressed.q3 = 0.0;
-        decompressed.q4 = 0.0;
-        if ((type & 0x80) != 0)
+        Src.q1 = 0.0;
+        Src.q2 = 0.0;
+        Src.q3 = 0.0;
+        Src.q4 = 0.0;
+        if ((v20 & 0x80) != 0)
         {
-            LOA_ReadCompressedQuaternion(&cursor, &quat, 1);
+            LOA_ReadCompressedQuaternion(&a1, &v18, 1);
         }
         else
         {
-            prevQuat = EVE_pst_Event_InterpolationKey_GetQuaternion(prevKey);
-            MATH_CompressQuaternion(&prevCompressed, prevQuat);
-            LOA_ReadUltraCompressedQuaternion(&cursor, &ultra, 1);
+            v15 = EVE_pst_Event_InterpolationKey_GetQuaternion(a2);
+            MATH_CompressQuaternion(&v16, v15);
+            LOA_ReadUltraCompressedQuaternion(&a1, &v19, 1);
         }
-        kind = type & 0x780;
-        switch (kind)
+        v10 = v20 & 0x780;
+        switch (v10)
         {
         case 0x100:
-            quat.s1 = ultra.s1 + prevCompressed.s1;
-            quat.s2 = ultra.b2 + prevCompressed.s2;
-            quat.s3 = ultra.b3 + prevCompressed.s3;
+            v18.s1 = v19.s1 + v16.s1;
+            v18.s2 = v19.b2 + v16.s2;
+            v18.s3 = v19.b3 + v16.s3;
             break;
         case 0x200:
-            quat.s1 = ultra.b2 + prevCompressed.s1;
-            quat.s2 = ultra.s1 + prevCompressed.s2;
-            quat.s3 = ultra.b3 + prevCompressed.s3;
+            v18.s1 = v19.b2 + v16.s1;
+            v18.s2 = v19.s1 + v16.s2;
+            v18.s3 = v19.b3 + v16.s3;
             break;
         case 0x400:
-            quat.s1 = ultra.b2 + prevCompressed.s1;
-            quat.s2 = ultra.b3 + prevCompressed.s2;
-            quat.s3 = ultra.s1 + prevCompressed.s3;
+            v18.s1 = v19.b2 + v16.s1;
+            v18.s2 = v19.b3 + v16.s2;
+            v18.s3 = v19.s1 + v16.s3;
             break;
         }
-        MATH_DecompressQuaternion(&decompressed, &quat);
-        size = 20;
-        if ((flags & 0x2100) != 0)
+        MATH_DecompressQuaternion(&Src, &v18);
+        v23 = 20;
+        if ((a6 & 0x2100) != 0)
         {
-            key->eptrdu.size = (size << 1) | 0x1;
-            key->eptrdu.type = type;
-            memcpy(elemPtr, &decompressed, sizeof(Quat4));
+            arg0->eptrdu.size = (v23 << 1) | 0x1;
+            arg0->eptrdu.type = v20;
+            memcpy(elemPtr, &Src, sizeof(Quat4));
         }
         else
         {
-            dest = (uint8_t*)(key->eptrdu.data);
-            *(uint16_t*)dest = size;
-            dest += 2;
-            *(uint16_t*)dest = type;
-            dest += 2;
-            memcpy(dest, &decompressed, sizeof(Quat4));
+            retVal = (char*)(arg0->eptrdu.data);
+            *(uint16_t*)retVal = v23;
+            retVal += 2;
+            *(uint16_t*)retVal = v20;
+            retVal += 2;
+            memcpy(retVal, &Src, sizeof(Quat4));
         }
-        return cursor - src;
+        return a1 - a3;
     }
-    if ((type & 0xF800) != 0)
+    if ((v20 & 0xF800) != 0)
     {
-        delta.q1 = 0.0f;
-        delta.q2 = 0.0f;
-        delta.q3 = 0.0f;
-        deltaKind = type & 0xF800;
-        if (deltaKind > 0x2000)
+        v14.q1 = 0.0f;
+        v14.q2 = 0.0f;
+        v14.q3 = 0.0f;
+        v9 = v20 & 0xF800;
+        if (v9 > 0x2000)
         {
-            if (deltaKind == 0x4000)
+            if (v9 == 0x4000)
             {
-                LOA_ReadUltraCompressedQuaternion(&cursor, &ultra, 1);
-                MATH_calc_curr_quat_from_dt_4000(&delta, &ultra);
+                LOA_ReadUltraCompressedQuaternion(&a1, &v13, 1);
+                MATH_calc_curr_quat_from_dt_4000(&v14, &v13);
             }
-            else if (deltaKind == 0x8000)
+            else if (v9 == 0x8000)
             {
-                LOA_ReadUltraCompressedQuaternion(&cursor, &ultra, 1);
-                MATH_calc_curr_quat_from_dt_8000(&delta, &ultra);
+                LOA_ReadUltraCompressedQuaternion(&a1, &v13, 1);
+                MATH_calc_curr_quat_from_dt_8000(&v14, &v13);
             }
         }
         else
         {
-            switch (deltaKind)
+            switch (v9)
             {
             case 0x2000u:
-                LOA_ReadUltraCompressedQuaternion(&cursor, &ultra, 1);
-                MATH_calc_curr_quat_from_dt_2000(&delta, &ultra);
+                LOA_ReadUltraCompressedQuaternion(&a1, &v13, 1);
+                MATH_calc_curr_quat_from_dt_2000(&v14, &v13);
                 break;
             case 0x800u:
-                LOA_ReadCompressedQuaternion(&cursor, &compressed, 1);
-                MATH_calc_curr_quat_from_dt_800(&delta, &compressed);
+                LOA_ReadCompressedQuaternion(&a1, &v14b, 1);
+                MATH_calc_curr_quat_from_dt_800(&v14, &v14b);
                 break;
             case 0x1000u:
-                LOA_ReadCompressedQuaternion(&cursor, &compressed, 1);
-                MATH_calc_curr_quat_from_dt_1000(&delta, &compressed);
+                LOA_ReadCompressedQuaternion(&a1, &v14b, 1);
+                MATH_calc_curr_quat_from_dt_1000(&v14, &v14b);
                 break;
             }
         }
-        size = 16;
-        if ((flags & 0x2100) != 0)
+        v23 = 16;
+        if ((a6 & 0x2100) != 0)
         {
-            key->eptrdu.size = (size << 1) | 0x1;
-            key->eptrdu.type = type;
-            memcpy(elemPtr, &delta, 12u);
+            arg0->eptrdu.size = (v23 << 1) | 0x1;
+            arg0->eptrdu.type = v20;
+            memcpy(elemPtr, &v14, 12u);
         }
         else
         {
-            dest = (uint8_t*)(key->eptrdu.data);
-            *(uint16_t*)dest = size;
-            dest += 2;
-            *(uint16_t*)dest = type;
-            dest += 2;
-            memcpy(dest, &delta, 12u);
+            retVal = (uint8_t*)(arg0->eptrdu.data);
+            *(uint16_t*)retVal = v23;
+            retVal += 2;
+            *(uint16_t*)retVal = v20;
+            retVal += 2;
+            memcpy(retVal, &v14, 12u);
         }
-        return cursor - src;
+        return a1 - a3;
     }
-    if ((type & 0x17) == 0)
-        return cursor - src;
-    if ((flags & 0x2100) != 0)
+    if ((v20 & 0x17) == 0)
+        return a1 - a3;
+    if ((a6 & 0x2100) != 0)
     {
-        key->eptrdu.size = (size << 1) | 0x1;
-        key->eptrdu.type = type;
-        dest = elemPtr;
+        arg0->eptrdu.size = (v23 << 1) | 0x1;
+        arg0->eptrdu.type = v20;
+        retVal = elemPtr;
     }
     else
     {
-        dest = (uint8_t*)(key->eptrdu.data);
-        *(uint16_t*)dest = size;
-        dest += 2;
-        *(uint16_t*)dest = type;
-        dest += 2;
+        retVal = (uint8_t*)(arg0->eptrdu.data);
+        *(uint16_t*)retVal = v23;
+        retVal += 2;
+        *(uint16_t*)retVal = v20;
+        retVal += 2;
     }
-    if ((flags & 0x2000) != 0)
-        size -= 2;
-    if ((flags & 0x1000) != 0)
-        size -= 2;
-    if ((type & 3) == 0)
+    if ((a6 & 0x2000) != 0)
+        v23 -= 2;
+    if ((a6 & 0x1000) != 0)
+        v23 -= 2;
+    if ((v20 & 3) == 0)
     {
-        if ((type & 0x14) != 0)
+        if ((v20 & 0x14) != 0)
         {
-            kind = type & 0x14;
-            if (kind == 4)
+            v7 = v20 & 0x14;
+            if (v7 == 4)
             {
-                LOA_ReadMatrix(&cursor, (Mtx4x4*)dest, 1);
-                dest += 68;
+                LOA_ReadMatrix(&a1, (Mtx4x4*)retVal, 1);
+                retVal += 68;
             }
-            else if (kind == 16)
+            else if (v7 == 16)
             {
-                LOA_ReadQuaternion(&cursor, (Quat4*)dest, 1);
-                dest += 16;
+                LOA_ReadQuaternion(&a1, (Quat4*)retVal, 1);
+                retVal += 16;
             }
         }
+        goto LABEL_64;
     }
-    else
+    v8 = v20 & 3;
+    if (v8 != 1)
     {
-        for (i = 0; i < (type & 3); ++i)
+        if (v8 != 2)
         {
-            LOA_ReadVector(&cursor, (Vec3*)dest, 1);
-            dest += sizeof(Vec3);
+            if (v8 != 3)
+                goto LABEL_64;
+            LOA_ReadVector(&a1, (Vec3*)retVal, 1);
+            retVal += 12;
+        }
+        LOA_ReadVector(&a1, (Vec3*)retVal, 1);
+        retVal += 12;
+    }
+    LOA_ReadVector(&a1, (Vec3*)retVal, 1);
+    retVal += 12;
+LABEL_64:
+    if ((v20 & 8) != 0 && a1 - a3 < v23)
+    {
+        v11 = LOA_ReadLong(&a1, (uint32_t*)retVal, 1);
+        retVal += 4;
+        for (i = 0; i < 2 * v11 - 1; ++i)
+        {
+            LOA_ReadFloat(&a1, (float*)retVal, 1);
+            retVal += 4;
         }
     }
-    if ((type & 8) != 0 && cursor - src < size)
-    {
-        timeNum = LOA_ReadLong(&cursor, (uint32_t*)dest, 1);
-        dest += 4;
-        for (i = 0; i < 2 * timeNum - 1; ++i)
-        {
-            LOA_ReadFloat(&cursor, (float*)dest, 1);
-            dest += 4;
-        }
-    }
-    return cursor - src;
+    return a1 - a3;
 }
 
 void EVE_LoadListEvents(tGameObjectEventsListElem* track, char* src, uint32_t* readSize, int16_t flags)
