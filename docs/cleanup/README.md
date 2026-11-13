@@ -568,8 +568,9 @@ Two things found in those files are worth the space:
 46 files, 72,692 lines, 635 `goto`s — the engine proper, and the largest
 thing left. Twelve of the 46 were already source.
 
-**Seventeen of the 46 are rewritten now**, and twelve were already
-source, which leaves sixteen. `grid.c`, **2,064 lines to 1,700**
+**Twenty-four of the 46 are rewritten now**, and twelve were already
+source, which leaves nine (`main.c` is the harness and is out of
+scope). `grid.c`, **2,064 lines to 1,700**
 with all **23** `goto`s gone, came first because `ai/ai_gridfunctions.c`
 was waiting on it to learn what the grid functions' arguments mean.
 `math.c` and `dynamics.c` followed, then `ai_common.c` and six small
@@ -668,6 +669,52 @@ it reads is truncated away for three-quarters of face indices and
 those faces are re-collided every frame; and **`COL_b_SingleBVIn` has
 two dead branches**, each testing the outer volume where it meant the
 inner.
+
+#### Batch 3: the last seven large files
+
+`sound.c` (**7,109 to 6,585**, 72 `goto`s gone), `gameobject.c`
+(**4,693 to 4,081**, 42), `proceduraltextures.c` (1,751 to 1,400, 11),
+`ok3.c` (1,316 to 885, 23), `particlegenerator.c` (1,112 to 668, 22),
+`gfx.c` (1,574 to 1,444, **60** -- the densest of the batch) and
+`photo.c` (747 to 649, 13). Residue across the seven goes from 10,038
+lines to 13, every one of the thirteen inside a comment of the user's
+own. `tests/run.sh` takes in all seven standalone runners, so it is the
+single entry point again.
+
+Two headers keep two `Vec3 v1;` fields each, `gameobject.h` and
+`particlegenerator.h`, for the same reason `collision.h`'s
+`tColCylinder` rename is parked: a **field** rename in a shared header
+stops every frozen `tests/baseline_*.c` that includes it from
+compiling. All three wait for the next baseline rebuild.
+
+The batch's own lesson is about the tests rather than the rewrites, and
+both halves of it are now in the shared brief:
+
+- **Link `math.c` and you must call `MATH_InitModule`.** The `sound.c`
+  fixture did not, so `MATH_gd_magicDoubleForRound` was zero and
+  `SND_FadeUpdate`'s step index -- the low word of a double after that
+  constant is added -- was zero for the entire 1,728-case sweep. The
+  whole fade dispatch had been running one arm, and two injected
+  boundary flips scored clean because of it. The `world.c` fixture the
+  batch before had the same omission, found independently.
+
+- **Coverage that comes from a particular seed is coverage the next
+  inserted case can remove.** Removing `OBJ_uc_CalcLODVis`'s 255 clamp
+  was caught before two fixtures were added to `t_culling` and not
+  afterwards -- not because anything about the clamp changed, but
+  because four more `CASE`s shifted every later `seed++` and the one
+  random scene that drove `lod` past 255 stopped doing so. Added loops
+  now take a seed base above everything else in their function, and the
+  clamp is driven on purpose.
+
+Review's independently chosen mutations found two real holes in
+`gameobject.c`, neither of them no-ops: a `Duplicate` branch reached
+exactly once in the whole sweep, in a case where the source's matrices
+happened to be byte-identical to each other; and a corner-scan bound
+whose stop index does not reach the output at all, so only a box whose
+sole on-screen corner is the last one could ever see it change. Both
+are closed, with a hand-built box and camera for the second.
+
 
 What it holds: a per-world array of capability bytes with a small live
 window sliding over it, the window run-length encoded in the big file,

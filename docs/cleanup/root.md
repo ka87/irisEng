@@ -9,9 +9,16 @@ Twelve of the 46 were already source and need nothing. Of the rest,
 `ai/ai_gridfunctions.c` was blocked on it. This batch adds `math.c`,
 `dynamics.c`, `ai_common.c`, the six small files, and five of the large
 ones: `sprites.c`, `textures.c`, `animation.c`, `events.c` and
-`strings.c`. The batch after it adds `collision.c` and `world.c`.
-Seventeen of the 46 are rewritten now and twelve were already source,
-which leaves sixteen.
+`strings.c`. The batch after it adds `collision.c` and `world.c`, and
+the one after that the seven remaining large files: `sound.c`,
+`gameobject.c`, `proceduraltextures.c`, `ok3.c`,
+`particlegenerator.c`, `gfx.c` and `photo.c`. Twenty-four of the 46
+are rewritten now and twelve were already source, which leaves nine --
+`soundmodifier.c`, `materialanddraw.c`, `snp.c`, `actions.c`,
+`profiler.c`, `inputoutput.c`, `ways.c`, `tables.c` and `bigfiles.c`,
+the largest of them `soundmodifier.c` at 750 residue lines and
+`materialanddraw.c` at 492. (`main.c` is the harness and is out of
+scope.)
 
 Four of those five were done in parallel, and each came back with a
 differential test of its own. Those tests are as much the batch's
@@ -41,20 +48,20 @@ run them.
 | `view.c` | 97 | | | already source |
 | `water.c` | 2,828 | | | already source |
 | `collision.c` | 14,241 to 11,303 | 9,202 to 29 | 204 to 0 | done |
-| `sound.c` | 7,110 | 3,134 | 72 | |
-| `gameobject.c` | 4,693 | 2,841 | 42 | |
+| `sound.c` | 7,109 to 6,585 | 3,134 to 2 | 72 to 0 | done |
+| `gameobject.c` | 4,693 to 4,081 | 2,841 to 5 | 42 to 0 | done |
 | `animation.c` | 3,068 to 2,097 | 1,846 to 1 | 16 to 0 | done |
 | `textures.c` | 3,326 to 2,598 | 1,783 to 1 | 23 to 0 | done |
 | `strings.c` | 3,360 to 2,823 | 1,701 to 0 | 44 to 0 | done |
 | `world.c` | 2,881 to 2,318 | 1,499 to 11 | 9 to 0 | done |
 | `events.c` | 2,723 to 2,347 | 1,463 to 0 | 9 to 0 | done |
-| `proceduraltextures.c` | 1,752 | 1,108 | 11 | |
-| `ok3.c` | 1,317 | 974 | 23 | |
-| `particlegenerator.c` | 1,112 | 835 | 22 | |
+| `proceduraltextures.c` | 1,751 to 1,400 | 1,108 to 5 | 11 to 0 | done |
+| `ok3.c` | 1,316 to 885 | 974 to 0 | 23 to 0 | done |
+| `particlegenerator.c` | 1,112 to 668 | 835 to 1 | 22 to 0 | done |
 | `soundmodifier.c` | 1,506 | 750 | 12 | |
-| `gfx.c` | 1,575 | 721 | 60 | |
+| `gfx.c` | 1,574 to 1,444 | 721 to 0 | 60 to 0 | done |
 | `materialanddraw.c` | 1,012 | 492 | 12 | |
-| `photo.c` | 748 | 425 | 13 | |
+| `photo.c` | 747 to 649 | 425 to 0 | 13 to 0 | done |
 | `snp.c` | 922 | 378 | 12 | |
 | `actions.c` | 725 | 310 | 6 | |
 | `profiler.c` | 505 | 246 | 8 | |
@@ -1264,3 +1271,405 @@ Those cases are kept, because grid-aligned geometry and a `dir == 0`
 slab arm had no coverage at all, but the comment on them says they do
 not close this. It is a real blind spot, not a no-op, and it is
 narrow.
+
+---
+
+# Batch 3: the last seven large files
+
+`sound.c`, `gameobject.c`, `proceduraltextures.c`, `ok3.c`,
+`particlegenerator.c`, `gfx.c` and `photo.c` -- 18,302 lines to 15,712,
+**243 `goto`s to none**, and 10,038 residue lines to 13, every one of
+the thirteen inside a comment of the user's own.
+
+Six passes ran, never more than five at once. Each came back with a
+differential test of its own, and `tests/run.sh` takes all seven
+standalone runners in, so it is the single entry point again.
+
+A note on what the residue figures do not say: `gameobject.h` and
+`particlegenerator.h` each keep two `Vec3 v1;` struct fields. Renaming
+a *field* in a shared header stops every frozen `tests/baseline_*.c`
+that includes it from compiling, so both are deferred to the next time
+the baselines are rebuilt, alongside `collision.h`'s `tColCylinder`
+rename that the previous batch parked for the same reason.
+
+---
+
+## sound.c
+
+7,109 lines to 6,585, **72 `goto`s to none**, residue 3,134 to 2 and
+the header 154 to 0, with 110 prototypes renamed and no type moved.
+203 functions before and after. The ten `_sub_<address>` helpers are
+named for what they do and made static; nothing outside `sound.c`
+called any of them, and all 27 occurrences of the old names are gone.
+
+The differential test compiles `tests/sound_side.c` twice, once against
+each copy, with every `sound.c` symbol renamed by `-D` so the two sides
+drive their own globals over one mock device. A case passes only when
+the ordered log of every device, allocator, big-file and loader call
+*and* the structured state dump are byte-identical: 1,728 cases, about
+27 MB of state and call log, none differing.
+
+### The fade path was untested, and the test said it was fine
+
+Three defects injected into `SND_FadeUpdate` -- one caught, two
+boundary flips not. The first diagnosis was that the terminal fade step
+was simply unreachable: `SND_Fade` sets `i6 = 256 / duration`, so
+reaching step 255 needs `elapsed / duration` to land on exactly
+255/256, which no sum of the sweep's dt values produces. A terminal
+case was added by hand. It still did not catch them.
+
+The real cause was one line below the test: **`MATH_InitModule()` was
+never called**, so `MATH_gd_magicDoubleForRound` was zero, and the step
+index -- which is taken as the low word of a double after adding that
+magic constant -- was zero in every case of the whole sweep. The entire
+fade dispatch had been running one arm. With the call in, all three
+mutations move 96 cases each.
+
+The same omission was found independently in the `world.c` fixture the
+batch before, which is why it is now in the shared brief: **link
+`math.c` and you must call `MATH_InitModule`**, or every table-driven
+result collapses to the same arm on both sides and compares equal.
+
+### Pick -- SND_i_AllocSound keeps its hardcoded stride *(compiler artefact)*
+
+The scan strides 56 bytes rather than `sizeof(tSndSoundElem)`. The two
+agree only in a 32-bit build and the harness is 64-bit, so the literal
+is kept: substituting the `sizeof` would be correct on the target and
+wrong under the test, and the point of the frozen copy is that both
+sides see the same thing.
+
+---
+
+## gameobject.c
+
+4,693 lines to 4,081, **42 `goto`s to none**, residue 2,841 to 5 and
+the header 61 to 2. 89 functions before and after, an identical set.
+59 of the header's 70 prototypes renamed, no type moved.
+
+### The 24 gotos in OBJ_ChangeIdentityFlags were one dead assignment
+
+Every one of them skipped a `v3 = a3;`. The function opens
+
+    v3 = a3;
+    if (a3 == -1) { a3 = a1->flags; v3 = a1->flags; }
+
+and `a3` is never assigned again, so `v3 == a3` holds unconditionally
+from there and all 25 later `v3 = a3;` statements are dead. What is
+left is a linear run of independent `if (new & BIT) / else if (old &
+BIT)` blocks. This was re-derived from the frozen copy during review
+rather than taken on the pass's word, because it is the file's largest
+structural claim: 26 assignments to `v3`, two distinct right-hand
+sides, one assignment to `a3`, its address never taken.
+
+The other eighteen are ordinary joins: a scan with three exits in
+`OBJ_Frame_CullingAABBox`, a blend-ramp entry and its join in
+`OBJ_EyeFollow`, and four shared tails.
+
+### Inlined helpers restored
+
+`MATH_CopyMatrix` 21 times, `MATH_SetIdentityMatrix` twice,
+`MATH_GetSqrt` once, one MSVC dword-count-plus-remainder `memcpy`, and
+`MATH_NormalizeEqualVector` four times in `OBJ_UpdateCullingVars`, 32
+lines to 4.
+
+That last one is **not bit-exact**: the inlined copies sum `z2+y2+x2`
+and the real body sums `x2+y2+z2`. Measured cost is 14 floats differing,
+worst 1e-7 relative and 5.96e-8 absolute, and **the count is pinned in
+the test**, not merely reported, so a later narrowing cannot hide inside
+the tolerance.
+
+`OBJ_BankingGet` and `OBJ_HorizonGet` are deliberately **not** restored.
+The user's own comment calls them `MATH_NormalizeVector inline`, but the
+real `MATH_NormalizeVector` computes `1.0f / (float)sqrt(...)` and
+multiplies in float while these compute `1.0 / len * x` in double.
+Restoring the call would change the arithmetic; restoring
+`MATH_NormalizeEqualVector` instead would need a copy first, which is
+inventing source. Left inline, comment intact.
+
+### Six things preserved rather than fixed, one line each
+
+`OBJ_CullingObject` stores an uninitialised byte -- `OBJ_CullingAABBox`
+writes `*outFlags` only on the path that returns 0, and the byte is
+stored whatever happened, which is why the test cannot compare it.
+`OBJ_ComputeRecursivScale` can dereference a pointer its own loop has
+just set to null. `OBJ_EyeFollow` dereferences a null-safe getter's
+result unchecked at three sites. Two cursors in
+`OBJ_ChangeIdentityFlags` index a freshly allocated array of structs as
+an array of *pointers* and dereference what they read -- every other
+site in the tree indexes the array itself. Two statements in the same
+function are bare member accesses with the `= 0` missing. And
+`OBJ_GameObject_Duplicate` copies the local matrix twice, 96 bytes then
+the first 80 again from the same source, which is inert.
+
+### Two things the test found that reading did not
+
+`OBJ_SetInitialAbsolutePosition` and `OBJ_SetInitialAbsoluteMatrix`
+copy three words of stack garbage: `MATH_MulMatrixMatrix` fills a
+matrix's 4x4 and `mtxflag` and leaves `unk1..unk3` alone, and four
+sites copy all 80 bytes of the stack local it has just filled. Both
+copies do it identically -- only *which* garbage differs -- so the
+harness zeroes those three words with the reason written at the site.
+
+`OBJ_ChangeIdentityFlags` faults on one flag transition: dropping
+`0x200000` while `0x1000000` is still set runs the multi-part teardown,
+which frees and nulls `multiPartData`, and then the `0x1000000` block
+dereferences it. Present in both copies; the test steers around it
+rather than papering over it.
+
+### The collision.c bounding-volume reading, confirmed from this side
+
+`OBJ_BV_IsAABBox(bv)` is `*(uint32_t*)&bv->BVMax.z != 0xFFFFFFFF` and
+`OBJ_BV_IsSphere(bv)` is `== 0xFFFFFFFF`: same field, same object, no
+side effects, both yielding 0 or 1 so `BOOL` being `int8_t` truncates
+nothing. They are exact complements, which is what the previous batch's
+`collision.c` pass claimed from the other end. So both of its dead-arm
+findings hold.
+
+One caveat this side adds: `OBJ_BV_SetSphereFlag` writes the bit
+pattern `0xFFFFFFFF`, which as a float is a negative quiet NaN, so a box
+whose max z were ever exactly that would be misread as a sphere. Every
+writer of `BVMax.z` in this file stores a finite coordinate, so it
+cannot occur.
+
+### Review found two coverage holes the pass's own twelve mutations did not
+
+The pass injected twelve defects and caught eleven, closing two fixture
+holes in the process. Three further defects chosen independently during
+review found two more, and both were **real holes, not no-ops**:
+
+**`OBJ_GameObject_Duplicate`'s third-matrix copy.** Taking it from
+`srcGao->matrices + 1` instead of `srcGao->matrices` scored clean. The
+branch sits under two destination flags and is reached exactly once in
+the whole sweep -- and in that one case `OBJ_GameObject_Create` had left
+the source's matrices byte-identical to each other, so copying either
+was the same. The source's slots now carry a mark each, written into
+`v1` rather than `Pos`, which `Duplicate` overwrites when it is handed a
+position. The defect moves one case.
+
+**`OBJ_Frame_CullingAABBox`'s corner-scan bound.** Changing `< 8u` to
+`< 7u` scored clean. The reason is worth recording because it is not
+the one the `world.c` corner loop had: **the scan's stop index does not
+reach the output at all.** Once a corner has been found, the measuring
+loop below reads all eight regardless; what the scan decides is only
+whether a match exists. So the bound is visible only for a box whose
+*sole* on-screen corner is the last one, and the random boxes never
+produced one -- every match they found was at corner 0, 2, 4 or 6,
+because the odd corners were either behind the camera or dominated by
+their even partner, which shares their x and y and has the larger
+depth.
+
+Two changes close it. The mock projection gained a depth shear, so
+corners that share x and y no longer project to the same point; and a
+box and camera are built by hand so that corner 7 projects to the exact
+centre while every other corner fails both the inside test and the two
+straddle arms. That needs each of the seven either outside the viewport
+on both axes, or outside on one and on the latch's non-triggering side
+of the other -- the first attempt got it wrong and stopped at corner 5.
+The defect now moves 3 cases.
+
+### A third mutation was caught, but only by luck of a seed
+
+Removing the `lod >= 255.0` clamp in `OBJ_uc_CalcLODVis` was caught
+before the two fixtures above were added and **not** afterwards. Nothing
+about the clamp had changed: inserting four cases shifted every later
+`seed++`, and the one random scene that happened to drive `lod` past
+255 stopped doing so.
+
+That is a fragility in its own right, so both added loops now run from a
+seed base above everything else in their function, leaving the existing
+stream untouched, and the clamp is driven on purpose by a large volume
+seen from close up. It moves 5 cases and no longer depends on where it
+sits.
+
+The general lesson is in the brief now: **coverage that comes from a
+particular seed is coverage that the next inserted case can remove**,
+silently, with every test still passing.
+
+### What could not be stood up
+
+`OBJ_ul_GameObjectCallback` and `OBJ_ul_World_LoadGolCallback`, the two
+functions gcov reports as never entered (87 of 89 are, 79.5% of lines).
+A test would have had to build a `.gao` byte stream matching the
+loader's field order, a working `BIG_pc_ReadFileTmp` over it, and a
+`LOA_MakeFileRef` resolver with its address table -- and would then be
+measuring that fixture. Their mocks **abort** rather than return, so a
+rewrite that reached one fails the test instead of passing on a
+stand-in.
+
+### One blind spot left open
+
+`OBJ_EyeFollow`'s `headZMax + 0.17453294 >= headZTarget` needs exact
+equality between a double sum carrying that constant's low mantissa bits
+and a float angle widened to double. It could not be constructed. The
+structure of the arithmetic suggests it may be unreachable, since
+`headZTarget` is a bounded `MATH_f_ZAngle` result, but that is not
+proved, so it is recorded as a narrow blind spot rather than a no-op --
+the same class as `collision.c`'s slab bound.
+
+### Needs a change in another file -- not made
+
+`get_reference_point_gao_2_from_gao_sub_40BEA0` is the file's one
+`_sub_<address>` name, with four occurrences here and one in the header.
+It is **not** renamed, because its call sites are in `collision.c` and
+in three collision mock files. The rename to make is
+**`OBJ_pst_GetHierarchyParent`**: it returns `gao->basic->mtx->refGao2`
+null-safely, which is what both `collision.c` and `OBJ_EyeFollow` use it
+for. Its parameter is renamed to `gao` in both definition and prototype;
+the function name is untouched.
+
+`tMessage`'s `v1` and `v2` are the header's remaining residue. Live cost
+outside this file is 4 lines in 2 files, plus 40-odd files under
+`ai/ai_bge/` which is not in the build -- but it is a field rename in the
+tree's most-included header, so it waits for the baselines.
+
+---
+
+## proceduraltextures.c
+
+1,751 lines to 1,400, **11 `goto`s to none**, residue 1,108 to 5, all
+five inside comments of the user's own and kept byte for byte.
+
+The two Bink memory callbacks are named from what they do and made
+static. The five `textures.h` prototypes that were named from this file
+are confirmed against their definitions and **one is corrected**: the
+loader's third argument is a byte count, not a pointer.
+
+`tests/stub/bink.h` gains the custom-I/O half of the SDK this file
+names -- the `BINKIO` callback table, the open and memory callback
+types, and the four `BinkOpen` flags. **That is what took the parse
+sweep from 132 of 137 to 133**, and it is why a pass branched before
+this one will still measure 132.
+
+### One thing reverted after review
+
+`TEXPRO_Photo_SetMapGao` projects four corners through what the pass had
+read as a split `Vec3 projected[4]` and given an array of its own. It is
+not a split array. The walk starts in `edge0` and advances one `Vec3`
+per corner, so the third and fourth projections land past `edge1`, on
+the view matrix that `container->cam` is pointing at while they are
+taken -- and the two scratch vectors are used individually, with
+meanings of their own, by the edge search above. Giving them an array
+changes what the loop writes under every layout, so it is an invention,
+not a reassembly.
+
+The walk is back as written, with one `// preserved:` line saying what
+it does, and the test's exclusion of the fourth point is gone with it.
+
+---
+
+## ok3.c
+
+1,316 lines to 885, **23 `goto`s to none**, residue 974 to none.
+
+`COL_OK3_Optimize`'s two interleaved compaction loops become a chunk
+loop inside a box loop. `COL_OK3_SubdivideBox`'s maze -- one switch
+whose seven arms jump through each other's bodies to a shared store --
+becomes seven arms that each write the sub-box corner outright; the arms
+turn out to split the same way, one axis per set bit of the mask, with
+the box's bits assigned to the sub-box index in an order that differs
+between arms, and writing them out is what shows that.
+`COL_OK3_TriangleTouchBox`'s four plane probes are the four body
+diagonals of the box and are now a loop over a two-row corner table.
+
+Two sites keep a line: the box bound admits an index one past the end of
+the array, and the compaction tail copies one box too many, which the
+clearing of the last slot is what makes harmless.
+
+588 cases, 20,037 values, compared on results, every byte the allocator
+handed out and the ordered call sequence, none differing. Thirty-two
+defects injected, thirty-one caught; the one that is not needs 65,536
+kept triangles in one chunk, which overruns the scratch array first.
+
+### What the test cannot reach, stated in its own header
+
+`ok3.c` writes the sizes of two of its structs as the literals **8 and
+32**, which are their 32-bit sizes. On a 64-bit host every copy length
+computed from them is short. Both copies compute the same short length,
+so the comparison holds -- but what those copies move here is not what
+they move on the target. Worth taking when the tree is next built under
+MSVC.
+
+---
+
+## gfx.c
+
+1,574 lines to 1,444, **60 `goto`s to none** -- the densest goto count
+of the batch -- and residue 721 to none, header 21 to none.
+
+All sixty are in three functions. The twenty-one-arm create switches in
+`GFX_i_Add` and `GFX_i_AddSorted` keep their shared tail as
+straight-line code after the switch, and `GFX_Render`'s dispatch loses
+its shared "store the result, set the dead flag" tail to one variable
+set before the switch.
+
+### GFX_SetRenderState restored to a call
+
+`GFX_Render` opened by writing out the seven statements that
+`GFX_SetRenderState` is, interleaved with the three saves it makes
+before them -- and the function had no caller anywhere in the tree,
+which is what an out-of-line copy looks like when every call site has
+been inlined. The saves move above the call, which nothing between them
+affects, and the test compares the display data byte for byte on every
+case: nothing moved.
+
+Two sites keep a line, because both read as oversights:
+`GFX_NeedGeomElemNbSprites` tests the triangle table's capacity and
+updates the sprite table's, and `GFX_Attached`'s walk never stops early
+so it always returns NULL.
+
+The gfx test was strengthened by the `ok3.c` work rather than by its
+own: freed blocks are now scrubbed, and each live element's own fields
+are recorded rather than read back out of dead memory. 2,482 cases, none
+differing.
+
+---
+
+## particlegenerator.c
+
+1,112 lines to 668, **22 `goto`s to none**, residue 835 to one inside a
+comment of the user's.
+
+The three functions are the three halves of one particle system: the
+integrator, the emitter and the geometry builder. The emitter's four
+generator cursors are one index, its `while(2)`/`switch` maze is two
+switches and a spawn loop, and the integrator's recycle jump is a flag.
+`MATH_AddScaleVector`, `MATH_VecMultScalar`, `MATH_VecAddVec`,
+`MATH_RandFloat` and `GFX_SetQuadUVs` are restored to calls, and the
+radial-speed tail that subModes 3 and 5 share is a static helper. The
+zero-length speed scale in the radial subModes is written as the zero it
+is -- they reach the multiply with the length still in hand when it is
+zero, which read as if the length mattered.
+
+1,853 cases over 1,217,208 comparisons, nothing differing beyond the
+float rounding the restored helpers move, worst 1.91e-06 absolute and
+2.05e-05 relative. **That count is pinned**, 19,637, for the same reason
+`gameobject.c`'s is.
+
+### Three coverage holes its own mutations found
+
+All three matrices the generator reads were the identity, so the
+positions a generator builds in the emitter shape's frame and the
+velocities it builds in its own were indistinguishable; the one
+generator with an object of its own never reached the spawn loop, so
+which object its matrix comes from was never measured; and the hole in
+the floor was placed at the world origin rather than at the object's
+own. Three mutations that scored clean now move 62, 248 and 4 cases.
+
+---
+
+## photo.c
+
+747 lines to 649, **13 `goto`s to none**, residue 425 to none and the
+header 3 to none.
+
+The second generation of each analyser accumulates where the first
+returns early; the shared bounding-box tail and the three-byte result
+set are written as the loop and the if/else they are.
+
+34,806 cases over 969,762 comparisons, none differing. Across this file
+and `particlegenerator.c` the pass injected 42 one-token defects and
+caught 39; the three not caught are measured no-ops.
+
+`photo.h` defines three globals in a header rather than declaring them,
+which is left alone and noted here because it is the kind of thing that
+only bites when a second translation unit includes it.
