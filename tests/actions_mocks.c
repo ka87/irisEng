@@ -56,7 +56,12 @@ void ACTMOCK_SetCase(const char* name)
 
 void ACTMOCK_Push(int value)
 {
-    if (ACTMOCK_scratch.retLen < 64)
+    /* the hash takes every value: a case that pushes more than the
+       array holds would otherwise stop comparing its tail, which is
+       where the interesting arguments tend to be */
+    ACTMOCK_scratch.hash = (ACTMOCK_scratch.hash ^ (unsigned long long)(unsigned)value)
+                           * 1099511628211ULL;
+    if (ACTMOCK_scratch.retLen < 256)
         ACTMOCK_scratch.ret[ACTMOCK_scratch.retLen++] = value;
 }
 
@@ -438,6 +443,8 @@ static void ACTMOCK_BuildKit(tActKitBuf* kit, tActBuf* acts, int pattern)
     int k;
 
     kit->kit.elemNum = ACTMOCK_ACTIONS;
+    /* what ACT_pst_FindTransition would read if its 0xFFFF guard went */
+    kit->actions[0xFFFF] = &acts[1].action;
     kit->kit.usageCount = 1;
     kit->kit.flags = 0;
     kit->kit.savedActions = NULL;
@@ -469,7 +476,8 @@ static void ACTMOCK_BuildKit(tActKitBuf* kit, tActBuf* acts, int pattern)
             elems[j].actionFrequency = (uint8_t)(16 + 7 * i);
             elems[j].customBits = (uint8_t)(i * 3);
             elems[j].designFlags = (int16_t)(i * 17 + j);
-            elems[j].b5 = (uint8_t)((i * 13 + j * 5) & 0xFF);
+            elems[j].b5 = (uint8_t)(((i * 13 + j * 5) & 0x7F)
+                                    | ((i & 2) ? 0x80 : 0));
             elems[j]._pad = 0;
 
             if ((i + j) % 3 == 2)
@@ -494,6 +502,7 @@ static void ACTMOCK_BuildKit(tActKitBuf* kit, tActBuf* acts, int pattern)
                     (uint16_t)((k * 3 + i) % ACTMOCK_ACTIONS);
                 ACTMOCK_scene.transElems[i][j][k].flags =
                     (uint8_t)(((i + k) & 3) | (((i + k) & 1) ? 0x10 : 0)
+                              | (((i + 2 * k) & 2) ? 0x20 : 0)
                               | (((i * k) & 1) ? 0x40 : 0));
                 ACTMOCK_scene.transElems[i][j][k].transitionLength =
                     (uint8_t)((pattern >> 6) & 1 ? 0 : (k % 3) * 4);
@@ -526,19 +535,31 @@ void ACTMOCK_BuildScene(unsigned int seed, int pattern)
     for (i = 0; i < 4; i++)
     {
         ACTMOCK_scene.anims[i].ptr = &ACTMOCK_scene.animData[i];
+        /* bit 7 short-circuits the blend's key-frame test, so only the
+           anims without it reach the rest of the condition */
         ACTMOCK_scene.anims[i].flags = (int16_t)(((i & 1) ? 0x80 : 0) | (i * 7));
         ACTMOCK_scene.anims[i].frequency = (uint8_t)(30 + i);
         ACTMOCK_scene.animData[i].eventListStruct = &ACTMOCK_scene.eventLists[i];
         ACTMOCK_scene.animData[i].tracks = &ACTMOCK_scene.animTracks[i];
-        /* the blend test wants the track sitting exactly on its last
-           key for some of these and not for others */
-        ACTMOCK_scene.animTracks[i].currElemKeyFrame =
-            (uint16_t)(ACTMOCK_scene.listElems[i].elemNum - 1);
-        ACTMOCK_scene.animTracks[i].currTime =
-            (i & 1) ? (float)((double)ACTMOCK_scene.trackElems[i][
-                          ACTMOCK_scene.animTracks[i].currElemKeyFrame].duration
-                          * 0.016666668)
-                    : 0.5f;
+
+        /* anim 0: on its last key and exactly at that key's duration,
+           so both halves of the test are true and either one of them
+           moving changes the outcome.
+           anim 2: exactly at a key's duration but not the last key, so
+           the key-frame half decides on its own.
+           the odd ones carry bit 7 and never get this far. */
+        if (i == 2)
+            ACTMOCK_scene.animTracks[i].currElemKeyFrame = 0;
+        else
+            ACTMOCK_scene.animTracks[i].currElemKeyFrame =
+                (uint16_t)(ACTMOCK_scene.listElems[i].elemNum - 1);
+        if (i & 1)
+            ACTMOCK_scene.animTracks[i].currTime = 0.5f;
+        else
+            ACTMOCK_scene.animTracks[i].currTime =
+                (float)((double)ACTMOCK_scene.trackElems[i][
+                            ACTMOCK_scene.animTracks[i].currElemKeyFrame].duration
+                        * 0.016666668);
     }
 
     ACTMOCK_BuildKit(&ACTMOCK_scene.kit, ACTMOCK_scene.actions, pattern);
@@ -640,8 +661,10 @@ void ACTMOCK_BuildFiles(unsigned int seed, int pattern)
     ACTMOCK_w = ACTMOCK_scene.kitFile;
     for (i = 0; i < ACTMOCK_ACTIONS; i++)
     {
-        if (i == ACTMOCK_ACTIONS - 1 && ((pattern >> 9) & 1))
+        if (i == ACTMOCK_ACTIONS - 1 && ((pattern >> 1) & 1))
             W32(1);                                 /* the terminator key */
+        else if (i == 2)
+            W32(2);                                 /* next to the terminator */
         else if ((i + pattern) % 4 == 3)
             W32(-1);
         else if ((i + pattern) % 7 == 6)

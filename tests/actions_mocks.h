@@ -44,10 +44,18 @@ extern size_t ACTMOCK_arenaUsed;
 /* One action kit laid out the way the engine lays it out: the header
    followed by the action pointer table, and each action header followed
    by its element table. */
+/* The pointer table runs to 0x10000 entries although the kit only
+   declares ACTMOCK_ACTIONS of them, so that index 0xFFFF -- the "no
+   current action" sentinel ACT_pst_FindTransition guards against -- is
+   memory the harness owns and can put a real action in. Without that
+   the guard cannot be tested: both copies would read the same
+   out-of-bounds bytes and agree. */
+#define ACTMOCK_FAR 0x10000
+
 typedef struct sActKitBuf
 {
     tActionKit kit;
-    tAction* actions[ACTMOCK_ACTIONS];
+    tAction* actions[ACTMOCK_FAR];
 } tActKitBuf;
 
 /* The engine puts an action's element table directly after the 4-byte
@@ -109,8 +117,9 @@ extern tActScene ACTMOCK_scene;
    ACT_pst_FindTransition, reduced to an integer. */
 typedef struct sActScratch
 {
-    int ret[64];
+    int ret[256];
     int retLen;
+    unsigned long long hash;   /* every pushed value, not just the first 256 */
 } tActScratch;
 
 extern tActScratch ACTMOCK_scratch;

@@ -132,9 +132,11 @@ static void Case_SetAction(const tActSide* s, int arg)
 {
     int i;
 
-    ENG_gb_EVERunning = (arg >> 10) & 1;
-    ENG_gb_AIRunning = (arg >> 11) & 1;
-    ACTMOCK_scene.actor.currTime = (int16_t)((arg >> 12) & 3);
+    /* bits 13 and above are the case's own knobs; the scene pattern
+       only reaches bit 9, so the two do not collide */
+    ENG_gb_EVERunning = (arg >> 14) & 1;
+    ENG_gb_AIRunning = (arg >> 15) & 1;
+    ACTMOCK_scene.actor.currTime = (int16_t)((arg >> 16) & 3);
 
     for (i = 0; i < ACTMOCK_ACTIONS + 2; i++)
     {
@@ -153,7 +155,8 @@ static void Case_SetActionRepeat(const tActSide* s, int arg)
     int id = arg % ACTMOCK_ACTIONS;
 
     ENG_gb_EVERunning = 0;
-    ENG_gb_AIRunning = (arg >> 11) & 1;
+    ENG_gb_AIRunning = (arg >> 1) & 1;
+    ACTMOCK_scene.actor.currTime = (int16_t)(arg % 3);
 
     s->SetAction(&ACTMOCK_scene.gao, id, 0);
     s->SetAction(&ACTMOCK_scene.gao, id, 0);
@@ -162,6 +165,8 @@ static void Case_SetActionRepeat(const tActSide* s, int arg)
     s->SetAction(&ACTMOCK_scene.gao, -id - 1, 0);
     s->SetAction(&ACTMOCK_scene.gao, -1, 1);
     s->SetAction(&ACTMOCK_scene.gao, 1000, 0);
+    s->SetAction(&ACTMOCK_scene.gao, (int)(0x80010000u | (unsigned)id), 0);
+    s->SetAction(&ACTMOCK_scene.gao, (int)(0x80010000u | (unsigned)id), 1);
     ACTMOCK_Push(ACTMOCK_scene.actor.currentAction);
     ACTMOCK_Push(ACTMOCK_scene.actor.currentActionTransition);
 }
@@ -196,6 +201,89 @@ static void Case_SetActionDuringTransition(const tActSide* s, int arg)
     }
 }
 
+/* The arm that reads the running transition's own flags. It is reached
+   only when a transition is in progress, the action it was heading for
+   is 0xFFFF, and the lookup from the current action finds nothing --
+   so the current action and item are chosen to be a pair that carries
+   no transition at all. */
+static void Case_SetActionNoFromTransition(const tActSide* s, int arg)
+{
+    int i;
+    int j;
+
+    ENG_gb_EVERunning = 0;
+    ENG_gb_AIRunning = 0;
+
+    for (i = 0; i < ACTMOCK_ACTIONS; i++)
+    {
+        int item = (2 - i % 3 + 3) % 3;          /* (i + item) % 3 == 2 */
+
+        if (item >= ACTMOCK_ELEMS)
+            continue;
+        ACTMOCK_scene.actor.currentAction = (uint16_t)i;
+        ACTMOCK_scene.actor.actionItem = (uint8_t)item;
+        ACTMOCK_scene.actor.currentActionTransition = 0xFFFF;
+        ACTMOCK_scene.actor.animPtr[0] = &ACTMOCK_scene.anims[(i + arg) % 3];
+        ACTMOCK_scene.actor.animPtr[1] = &ACTMOCK_scene.anims[2];
+        ACTMOCK_scene.actor.flagsEgBlendIw2 = 0;
+
+        for (j = 0; j < ACTMOCK_ACTIONS; j++)
+        {
+            ACTMOCK_scene.actor.transitionElem =
+                &ACTMOCK_scene.transElems[j][0][(j + arg) % ACTMOCK_TRANS];
+            ACTMOCK_scene.actor.currentAction = (uint16_t)i;
+            ACTMOCK_scene.actor.actionItem = (uint8_t)item;
+            ACTMOCK_scene.actor.currentActionTransition = 0xFFFF;
+            s->SetAction(&ACTMOCK_scene.gao, j, (arg >> 1) & 1);
+            ACTMOCK_Push(ACTMOCK_Tag(ACTMOCK_scene.actor.transitionElem));
+            ACTMOCK_Push(ACTMOCK_scene.actor.currentAction);
+        }
+    }
+}
+
+/* The blend's own flag test, driven on purpose. It is reached only when
+   a transition is found whose length is not zero, and it reads the
+   track the outgoing animation was on: the pair below puts that track
+   on its last key at duration zero, which is the one arrangement where
+   the test's second half can be true at all. */
+static void Case_SetActionBlend(const tActSide* s, int arg)
+{
+    int anim;
+    int from;
+
+    ENG_gb_EVERunning = 0;
+    ENG_gb_AIRunning = 0;
+
+    for (anim = 0; anim < 4; anim++)
+        for (from = 0; from < ACTMOCK_ACTIONS; from++)
+        {
+            int other = (anim + 1) & 3;
+
+            /* the blend swaps the two animations' event data, so both
+               have to be put back before the next one */
+            ACTMOCK_scene.anims[anim].ptr = &ACTMOCK_scene.animData[anim];
+            ACTMOCK_scene.anims[other].ptr = &ACTMOCK_scene.animData[other];
+            ACTMOCK_scene.animData[anim].eventListStruct = &ACTMOCK_scene.eventLists[anim];
+            ACTMOCK_scene.animData[anim].tracks = &ACTMOCK_scene.animTracks[anim];
+            ACTMOCK_scene.animData[other].eventListStruct = &ACTMOCK_scene.eventLists[other];
+            ACTMOCK_scene.animData[other].tracks = &ACTMOCK_scene.animTracks[other];
+
+            ACTMOCK_scene.actor.animPtr[0] = &ACTMOCK_scene.anims[anim];
+            ACTMOCK_scene.actor.animPtr[1] = &ACTMOCK_scene.anims[other];
+            ACTMOCK_scene.actor.currentAction = (uint16_t)from;
+            ACTMOCK_scene.actor.actionItem = 0;
+            ACTMOCK_scene.actor.currentActionTransition = 0xFFFF;
+            ACTMOCK_scene.actor.transitionElem = NULL;
+            ACTMOCK_scene.actor.flagsEgBlendIw2 = 0;
+
+            /* key 2 is the one whose transition length is not zero */
+            s->SetAction(&ACTMOCK_scene.gao, 2 + 4 * ((arg >> 1) & 1), arg & 1);
+            ACTMOCK_Push(ACTMOCK_scene.anims[other].transitionFlags);
+            ACTMOCK_Push(ACTMOCK_scene.anims[other].flags2);
+            ACTMOCK_Push(ACTMOCK_scene.anims[other].actionLength);
+        }
+}
+
 /* ---- ACT_pst_FindTransition ------------------------------------------- */
 
 static void Case_FindTransition(const tActSide* s, int arg)
@@ -210,8 +298,14 @@ static void Case_FindTransition(const tActSide* s, int arg)
                 ACTMOCK_Push(ACTMOCK_Tag(s->FindTransition(&ACTMOCK_scene.kit.kit,
                                                            (uint16_t)a, (uint8_t)e,
                                                            (uint16_t)id)));
-    ACTMOCK_Push(ACTMOCK_Tag(s->FindTransition(&ACTMOCK_scene.kit.kit, 0xFFFF, 0,
-                                               (uint16_t)arg)));
+    for (id = 0; id < 2 * ACTMOCK_TRANS + 1; id++)
+    {
+        ACTMOCK_Push(ACTMOCK_Tag(s->FindTransition(&ACTMOCK_scene.kit.kit, 0xFFFF,
+                                                   0, (uint16_t)id)));
+        ACTMOCK_Push(ACTMOCK_Tag(s->FindTransition(&ACTMOCK_scene.kit.kit, 0xFFFE,
+                                                   0, (uint16_t)id)));
+    }
+    (void)arg;
 }
 
 /* ---- the reference counts and the free paths -------------------------- */
@@ -370,6 +464,14 @@ int main(void)
         RunCase(name, Case_SetAction, arg);
         sprintf(name, "setaction2/%d", arg);
         RunCase(name, Case_SetAction, arg | (1 << 13));
+        sprintf(name, "setactionEVE/%d", arg);
+        RunCase(name, Case_SetAction, arg | (1 << 14));
+        sprintf(name, "setactionAI/%d", arg);
+        RunCase(name, Case_SetAction, arg | (1 << 15) | ((arg & 3) << 16));
+        sprintf(name, "nofrom/%d", arg);
+        RunCase(name, Case_SetActionNoFromTransition, arg);
+        sprintf(name, "blend/%d", arg);
+        RunCase(name, Case_SetActionBlend, arg);
         sprintf(name, "repeat/%d", arg);
         RunCase(name, Case_SetActionRepeat, arg);
         sprintf(name, "during/%d", arg);
