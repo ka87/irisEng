@@ -55,6 +55,7 @@ void WAY_RemoveAllNetworks(tWayAllNetworks* allNetworks)
 
     if (allNetworks)
     {
+        // preserved: networks is indexed here and only null-tested after the loop
         for (i = 0; i < allNetworks->networkNum; ++i)
         {
             if (allNetworks->networks[i])
@@ -210,6 +211,7 @@ void WAY_ComputePoundNetworksRec(tWayNetwork* network, tGameObjectMain* gao, tGa
         dz = pos.z - linked->matrices->Pos.z;
         link->weight = (float)sqrt(dz * dz + dy * dy + dx * dx);
 
+        // preserved: this returns from the whole call, so the waypoint's remaining links go unweighted
         if (link->gao == stopAt)
             return;
         WAY_ComputePoundNetworksRec(network, link->gao, stopAt);
