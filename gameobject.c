@@ -718,375 +718,337 @@ void OBJ_ComputeBV(tGameObjectMain* gao, int onlyIfEmpty)
     }
 }
 
-void OBJ_GameObject_CreateExtended(tGameObjectMain* a1)
+void OBJ_GameObject_CreateExtended(tGameObjectMain* gao)
 {
-    a1->extended = (tGameObjectExtended*)MEM_p_Alloc(sizeof(tGameObjectExtended));
-    memset(a1->extended, 0, sizeof(tGameObjectExtended));
-    a1->extended->AIPriority = 127;
-    a1->extended->sectorID = 0xffff;
-    a1->extended->sectorElemIdx = 0xffff;
+    gao->extended = (tGameObjectExtended*)MEM_p_Alloc(sizeof(tGameObjectExtended));
+    memset(gao->extended, 0, sizeof(tGameObjectExtended));
+    gao->extended->AIPriority = 127;
+    gao->extended->sectorID = 0xffff;
+    gao->extended->sectorElemIdx = 0xffff;
 }
 
-void OBJ_GameObject_CreateExtendedIfNot(struct sGameObjectMain* a1)
+void OBJ_GameObject_CreateExtendedIfNot(struct sGameObjectMain* gao)
 {
-    if ((a1->flags & 0x2000) == 0)
+    if ((gao->flags & 0x2000) == 0)
     {
-        OBJ_GameObject_CreateExtended(a1);
-        a1->flags |= 0x2000u;
+        OBJ_GameObject_CreateExtended(gao);
+        gao->flags |= 0x2000u;
     }
 }
 
-tGaoMatrix* OBJ_pst_GetLocalMatrix(tGameObjectMain* a1)
+tGaoMatrix* OBJ_pst_GetLocalMatrix(tGameObjectMain* gao)
 {
     tGaoMatrix* result;
 
-    if ((a1->flags & 0x400000) != 0)
-        result = a1->basic->mtx;
+    if ((gao->flags & 0x400000) != 0)
+        result = gao->basic->mtx;
     else
         result = 0;
     return result;
 }
 
-void OBJ_SightSet(struct sGameObjectMain* a1, Vec3* a2)
+void OBJ_SightSet(struct sGameObjectMain* gao, Vec3* sight)
 {
-    MATH_OrientMatrix_UsingSight(a1->matrices, a2, 0);
+    MATH_OrientMatrix_UsingSight(gao->matrices, sight, 0);
 }
 
-void OBJ_BankingSet(struct sGameObjectMain* a1, Vec3* a3)
+void OBJ_BankingSet(struct sGameObjectMain* gao, Vec3* banking)
 {
-    MATH_OrientMatrix_UsingBanking(a1->matrices, 0, a3);
+    MATH_OrientMatrix_UsingBanking(gao->matrices, 0, banking);
 }
 
-void OBJ_SightGeneralSet(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3)
+void OBJ_SightGeneralSet(struct sGameObjectMain* gao, Vec3* sight, Vec3* banking)
 {
-    MATH_OrientMatrix_UsingSight(a1->matrices, a2, a3);
+    MATH_OrientMatrix_UsingSight(gao->matrices, sight, banking);
 }
 
-void OBJ_BankingGeneralSet(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3)
+void OBJ_BankingGeneralSet(struct sGameObjectMain* gao, Vec3* sight, Vec3* banking)
 {
-    MATH_OrientMatrix_UsingBanking(a1->matrices, a2, a3);
+    MATH_OrientMatrix_UsingBanking(gao->matrices, sight, banking);
 }
 
-void OBJ_ComputeRecursivScale(tGameObjectMain* a1, Vec3* scale)
+void OBJ_ComputeRecursivScale(tGameObjectMain* gao, Vec3* scale)
 {
-    tGameObjectMain* v2;
-    tGameObjectBasic* v3;
-    tGaoMatrix* v4;
-    tGaoMatrix* v5;
-    tGameObjectBasic* v6;
-    tGaoMatrix* v7;
-    Mtx4x4* v8;
-    Vec3 a1a;
+    tGameObjectMain* walk;
+    tGameObjectBasic* basic;
+    tGaoMatrix* local;
+    Mtx4x4* absMtx;
+    Vec3 step;
 
-    v2 = a1;
+    walk = gao;
     scale->x = 1.0;
     scale->y = 1.0;
     scale->z = 1.0;
-    if ((a1->flags & 0x400000) != 0 && (v3 = a1->basic) != 0 && (v4 = v3->mtx) != 0 && v4->refGao2)
+    if ((gao->flags & 0x400000) != 0 && (basic = gao->basic) != 0 && (local = basic->mtx) != 0 && local->refGao2)
     {
-        if ((a1->flags & 0x400000) != 0)
+        do
         {
-            do
-            {
-                v5 = OBJ_pst_GetLocalMatrix(v2);
-                MATH_GetScale(&a1a, &v5->mtx);
-                scale->x = a1a.x * scale->x;
-                scale->y = a1a.y * scale->y;
-                scale->z = a1a.z * scale->z;
-                if (v2 && (v6 = v2->basic) != 0 && (v7 = v6->mtx) != 0)
-                    v2 = v7->refGao2;
-                else
-                    v2 = 0;
-            } while ((v2->flags & 0x400000) != 0);
-        }
-        MATH_GetScale(&a1a, v2->matrices);
-        scale->x = a1a.x * scale->x;
-        scale->y = a1a.y * scale->y;
-        scale->z = a1a.z * scale->z;
+            local = OBJ_pst_GetLocalMatrix(walk);
+            MATH_GetScale(&step, &local->mtx);
+            scale->x = step.x * scale->x;
+            scale->y = step.y * scale->y;
+            scale->z = step.z * scale->z;
+            if (walk && (basic = walk->basic) != 0 && (local = basic->mtx) != 0)
+                walk = local->refGao2;
+            else
+                walk = 0;
+        } while ((walk->flags & 0x400000) != 0);
+        MATH_GetScale(&step, walk->matrices);
+        scale->x = step.x * scale->x;
+        scale->y = step.y * scale->y;
+        scale->z = step.z * scale->z;
     }
     else
     {
-        v8 = OBJ_pst_GetAbsoluteMatrix(a1);
-        MATH_GetScale(scale, v8);
+        absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+        MATH_GetScale(scale, absMtx);
     }
 }
 
-void OBJ_SetAbsoluteMatrix(struct sGameObjectMain* a1, Mtx4x4* a2)
+void OBJ_SetAbsoluteMatrix(struct sGameObjectMain* gao, Mtx4x4* mtx)
 {
-    Mtx4x4* v2;
-
-    v2 = a1->matrices;
-    if (v2 != a2)
-        memcpy(v2, a2, sizeof(Mtx4x4));
+    MATH_CopyMatrix(gao->matrices, mtx);
 }
 
-void OBJ_MakeAbsoluteMatrix(tGameObjectMain* a1, Mtx4x4* a2)
+void OBJ_MakeAbsoluteMatrix(tGameObjectMain* gao, Mtx4x4* dest)
 {
-    Mtx4x4* v3;
-
-    v3 = a1->matrices;
-    if (a2 != v3)
-        memcpy(a2, v3, sizeof(Mtx4x4));
+    MATH_CopyMatrix(dest, gao->matrices);
 }
 
-void OBJ_SightGet(tGameObjectMain* a1, Vec3* a2)
+void OBJ_SightGet(tGameObjectMain* gao, Vec3* sight)
 {
-    Mtx4x4* v2;
+    Mtx4x4* mtx;
 
-    v2 = a1->matrices;
-    a2->x = -v2->v2.x;
-    a2->y = -v2->v2.y;
-    a2->z = -v2->v2.z;
+    mtx = gao->matrices;
+    sight->x = -mtx->v2.x;
+    sight->y = -mtx->v2.y;
+    sight->z = -mtx->v2.z;
 }
 
-void OBJ_SightInitGet(struct sGameObjectMain* a1, Vec3* a2)
+void OBJ_SightInitGet(struct sGameObjectMain* gao, Vec3* sight)
 {
-    Mtx4x4* v2;
+    Mtx4x4* mtx;
 
-    if ((a1->flags & 0x10000) != 0)
+    if ((gao->flags & 0x10000) != 0)
     {
-        v2 = a1->matrices;
-        a2->x = -v2[1].v2.x;
-        a2->y = -v2[1].v2.y;
-        a2->z = -v2[1].v2.z;
+        mtx = gao->matrices;
+        sight->x = -mtx[1].v2.x;
+        sight->y = -mtx[1].v2.y;
+        sight->z = -mtx[1].v2.z;
     }
 }
 
-void OBJ_BankingGet(tGameObjectMain* a1, Vec3* a2)
+void OBJ_BankingGet(tGameObjectMain* gao, Vec3* banking)
 {
-    Mtx4x4* v2; //MATH_NormalizeVector inline
-    double v4;
+    Mtx4x4* mtx; //MATH_NormalizeVector inline
+    double len;
 
-    v2 = a1->matrices;
-    v4 = sqrt(v2->v3.z * v2->v3.z + v2->v3.y * v2->v3.y + v2->v3.x * v2->v3.x);
-    a2->x = (float)(1.0 / v4 * v2->v3.x);
-    a2->y = (float)(1.0 / v4 * v2->v3.y);
-    a2->z = (float)(1.0 / v4 * v2->v3.z);
+    mtx = gao->matrices;
+    len = sqrt(mtx->v3.z * mtx->v3.z + mtx->v3.y * mtx->v3.y + mtx->v3.x * mtx->v3.x);
+    banking->x = (float)(1.0 / len * mtx->v3.x);
+    banking->y = (float)(1.0 / len * mtx->v3.y);
+    banking->z = (float)(1.0 / len * mtx->v3.z);
 }
 
-void OBJ_HorizonGet(struct sGameObjectMain* a1, Vec3* a2)
+void OBJ_HorizonGet(struct sGameObjectMain* gao, Vec3* horizon)
 {
-    Mtx4x4* v2;
-    double v3;
+    Mtx4x4* mtx;
+    double len;
 
-    v2 = a1->matrices;
-    v3 = sqrt(v2->v1.z * v2->v1.z + v2->v1.y * v2->v1.y + v2->v1.x * v2->v1.x);
-    a2->x = (float)(1.0 / v3 * v2->v1.x);
-    a2->y = (float)(1.0 / v3 * v2->v1.y);
-    a2->z = (float)(1.0 / v3 * v2->v1.z);
+    mtx = gao->matrices;
+    len = sqrt(mtx->v1.z * mtx->v1.z + mtx->v1.y * mtx->v1.y + mtx->v1.x * mtx->v1.x);
+    horizon->x = (float)(1.0 / len * mtx->v1.x);
+    horizon->y = (float)(1.0 / len * mtx->v1.y);
+    horizon->z = (float)(1.0 / len * mtx->v1.z);
 }
 
-void OBJ_SetLocalPosition(struct sGameObjectMain* a1, Vec3* a2)
+void OBJ_SetLocalPosition(struct sGameObjectMain* gao, Vec3* pos)
 {
-    tGaoMatrix* v2;
+    tGaoMatrix* local;
 
-    if ((a1->flags & 0x400000) != 0)
+    if ((gao->flags & 0x400000) != 0)
     {
-        v2 = a1->basic->mtx;
-        v2->mtx.Pos = *a2;
-        v2->mtx.mtxflag |= 2u;
-        OBJ_ComputeGlobalWhenHie(a1);
+        local = gao->basic->mtx;
+        local->mtx.Pos = *pos;
+        local->mtx.mtxflag |= 2u;
+        OBJ_ComputeGlobalWhenHie(gao);
     }
 }
 
-void OBJ_SetAbsolutePosition(struct sGameObjectMain* a1, Vec3* a2)
+void OBJ_SetAbsolutePosition(struct sGameObjectMain* gao, Vec3* pos)
 {
-    Mtx4x4* v2;
+    Mtx4x4* mtx;
 
-    v2 = a1->matrices;
-    v2->Pos = *a2;
-    v2->mtxflag |= 2u;
+    mtx = gao->matrices;
+    mtx->Pos = *pos;
+    mtx->mtxflag |= 2u;
 }
 
-void OBJ_SetInitialAbsolutePosition(struct sGameObjectMain* a1, Vec3* a2)
+void OBJ_SetInitialAbsolutePosition(struct sGameObjectMain* gao, Vec3* pos)
 {
-    Mtx4x4* v2;
-    tGameObjectBasic* v3;
-    Mtx4x4* v4;
-    Mtx4x4* v5;
-    Mtx4x4 dest;
-    Mtx4x4 a1a;
+    Mtx4x4* mtx;
+    tGameObjectBasic* basic;
+    Mtx4x4* parentMtx;
+    Mtx4x4 local;
+    Mtx4x4 invParent;
 
-    v2 = a1->matrices;
-    if ((a1->flags & 0x10000) != 0)
-        ++v2;
-    v2->Pos = *a2;
-    v2->mtxflag |= 2u;
-    if ((a1->flags & 0x400000) != 0)
+    mtx = gao->matrices;
+    if ((gao->flags & 0x10000) != 0)
+        ++mtx;
+    mtx->Pos = *pos;
+    mtx->mtxflag |= 2u;
+    if ((gao->flags & 0x400000) != 0)
     {
-        v3 = a1->basic;
-        if (v3->mtx->refGao2)
+        basic = gao->basic;
+        if (basic->mtx->refGao2)
         {
-            if ((a1->flags & 0x10000) != 0)
+            if ((gao->flags & 0x10000) != 0)
             {
-                v4 = OBJ_pst_GetAbsoluteMatrix(v3->mtx->refGao2);
-                MATH_InvertMatrix(&a1a, v4);
-                MATH_MulMatrixMatrix(&dest, a1->matrices + 1, &a1a);
-                v5 = a1->matrices + 1;
-                if (v5 != &dest)
-                    memcpy(v5, &dest, sizeof(Mtx4x4));
+                parentMtx = OBJ_pst_GetAbsoluteMatrix(basic->mtx->refGao2);
+                MATH_InvertMatrix(&invParent, parentMtx);
+                MATH_MulMatrixMatrix(&local, gao->matrices + 1, &invParent);
+                MATH_CopyMatrix(gao->matrices + 1, &local);
             }
         }
     }
 }
 
-void OBJ_SetInitialAbsoluteMatrix(tGameObjectMain* a1, Mtx4x4* a2)
+void OBJ_SetInitialAbsoluteMatrix(tGameObjectMain* gao, Mtx4x4* mtx)
 {
-    Mtx4x4* v2;
-    Mtx4x4* v3;
-    Mtx4x4* v4;
-    tGaoMatrix* v5;
-    Mtx4x4* v6;
-    Mtx4x4* v7;
-    Mtx4x4 a1a;
-    Mtx4x4 a3;
+    Mtx4x4* flashMtx;
+    tGaoMatrix* gaoMtx;
+    Mtx4x4* parentMtx;
+    Mtx4x4 local;
+    Mtx4x4 invParent;
 
-    if ((a1->flags & 0x10000) != 0)
+    if ((gao->flags & 0x10000) != 0)
     {
-        v2 = a1->matrices + 1;
-        if (v2 != a2)
-            memcpy(v2, a2, sizeof(Mtx4x4));
-        if ((a1->flags & 0x4000000) != 0)
+        MATH_CopyMatrix(gao->matrices + 1, mtx);
+        if ((gao->flags & 0x4000000) != 0)
         {
-            v3 = a1->matrices;
-            v4 = (a1->flags & 0x10000) != 0 ? &v3[2] : &v3[1];
-            if (v4 != a2)
-                memcpy(v4, a2, sizeof(Mtx4x4));
+            flashMtx = (gao->flags & 0x10000) != 0 ? &gao->matrices[2] : &gao->matrices[1];
+            MATH_CopyMatrix(flashMtx, mtx);
         }
-        if ((a1->flags & 0x400000) != 0)
+        if ((gao->flags & 0x400000) != 0)
         {
-            v5 = a1->basic->mtx;
-            if (v5->refGao2)
+            gaoMtx = gao->basic->mtx;
+            if (gaoMtx->refGao2)
             {
-                if ((a1->flags & 0x10000) != 0)
+                if ((gao->flags & 0x10000) != 0)
                 {
-                    v6 = OBJ_pst_GetAbsoluteMatrix(v5->refGao2);
-                    MATH_InvertMatrix(&a3, v6);
-                    MATH_MulMatrixMatrix(&a1a, a1->matrices + 1, &a3);
-                    v7 = a1->matrices + 1;
-                    if (v7 != &a1a)
-                        memcpy(v7, &a1a, sizeof(Mtx4x4));
+                    parentMtx = OBJ_pst_GetAbsoluteMatrix(gaoMtx->refGao2);
+                    MATH_InvertMatrix(&invParent, parentMtx);
+                    MATH_MulMatrixMatrix(&local, gao->matrices + 1, &invParent);
+                    MATH_CopyMatrix(gao->matrices + 1, &local);
                 }
             }
         }
     }
 }
 
-void OBJ_ComputeGlobalWithLocal(struct sGameObjectMain* a1, Mtx4x4* a2, int a3)
+void OBJ_ComputeGlobalWithLocal(struct sGameObjectMain* gao, Mtx4x4* dest, int withRootAbsolute)
 {
-    tGameObjectMain* v3; // ebx
-    tGameObjectBasic* v4; // eax
-    tGaoMatrix* v5; // eax
-    Mtx4x4* v6; // esi
-    Mtx4x4* v7; // eax
-    Mtx4x4* v8; // eax
-    tGameObjectMain* v9; // [esp+Ch] [ebp-54h]
-    Mtx4x4 v10; // [esp+10h] [ebp-50h] BYREF
+    tGameObjectMain* walk; // ebx
+    tGameObjectBasic* basic; // eax
+    tGaoMatrix* local; // eax
+    Mtx4x4* rootMtx; // eax
+    tGameObjectMain* parent; // [esp+Ch] [ebp-54h]
+    Mtx4x4 acc; // [esp+10h] [ebp-50h] BYREF
 
-    v3 = a1;
-    if ((a1->flags & 0x400000) != 0 && (v4 = a1->basic) != 0 && (v5 = v4->mtx) != 0 && v5->refGao2)
+    walk = gao;
+    if ((gao->flags & 0x400000) != 0 && (basic = gao->basic) != 0 && (local = basic->mtx) != 0 && local->refGao2)
     {
-        v6 = a2;
-        MATH_SetIdentityMatrix(a2);
-        if ((a1->flags & 0x400000) != 0)
+        MATH_SetIdentityMatrix(dest);
+        do
         {
-            do
-            {
-                v9 = v3->basic->mtx->refGao2;
-                if (!v9)
-                    break;
-                if (&v10 != v6)
-                {
-                    memcpy(&v10, v6, sizeof(v10));
-                    v6 = a2;
-                }
-                MATH_MulMatrixMatrix(v6, &v10, &v3->basic->mtx->mtx);
-                v3 = v9;
-            } while ((v9->flags & 0x400000) != 0);
-        }
-        if (a3)
+            parent = walk->basic->mtx->refGao2;
+            if (!parent)
+                break;
+            MATH_CopyMatrix(&acc, dest);
+            MATH_MulMatrixMatrix(dest, &acc, &walk->basic->mtx->mtx);
+            walk = parent;
+        } while ((parent->flags & 0x400000) != 0);
+        if (withRootAbsolute)
         {
-            MATH_CopyMatrix(&v10, v6);
-            v7 = OBJ_pst_GetAbsoluteMatrix(v3);
-            MATH_MulMatrixMatrix(v6, &v10, v7);
+            MATH_CopyMatrix(&acc, dest);
+            rootMtx = OBJ_pst_GetAbsoluteMatrix(walk);
+            MATH_MulMatrixMatrix(dest, &acc, rootMtx);
         }
     }
     else
     {
-        v8 = OBJ_pst_GetAbsoluteMatrix(a1);
-        if (a2 != v8)
-            memcpy(a2, v8, sizeof(Mtx4x4));
+        MATH_CopyMatrix(dest, OBJ_pst_GetAbsoluteMatrix(gao));
     }
 }
 
-void OBJ_ComputeLocalWhenHie(struct sGameObjectMain* a1)
+void OBJ_ComputeLocalWhenHie(struct sGameObjectMain* gao)
 {
-    tGaoMatrix* v1; // esi
-    tGameObjectMain* v2; // eax
-    Mtx4x4* v3; // eax
-    Mtx4x4* v4; // eax
-    unsigned int v5; // eax
-    Vec3 a1a; // [esp+14h] [ebp-ACh] BYREF
-    Mtx4x4 a3; // [esp+20h] [ebp-A0h] BYREF
-    Mtx4x4 a2; // [esp+70h] [ebp-50h] BYREF
+    tGaoMatrix* local; // esi
+    tGameObjectMain* parent; // eax
+    Mtx4x4* parentMtx; // eax
+    Mtx4x4* absMtx; // eax
+    unsigned int mtxflag; // eax
+    Vec3 scale; // [esp+14h] [ebp-ACh] BYREF
+    Mtx4x4 invParent; // [esp+20h] [ebp-A0h] BYREF
+    Mtx4x4 parentGlobal; // [esp+70h] [ebp-50h] BYREF
 
-    if ((a1->flags & 0x400000) != 0)
+    if ((gao->flags & 0x400000) != 0)
     {
-        v1 = a1->basic->mtx;
-        v2 = v1->refGao2;
-        if (v2)
+        local = gao->basic->mtx;
+        parent = local->refGao2;
+        if (parent)
         {
-            if ((v2->flags & 0x400000) != 0)
+            if ((parent->flags & 0x400000) != 0)
             {
-                OBJ_ComputeGlobalWithLocal(v2, &a2, 1);
-                MATH_InvertMatrix(&a3, &a2);
+                OBJ_ComputeGlobalWithLocal(parent, &parentGlobal, 1);
+                MATH_InvertMatrix(&invParent, &parentGlobal);
             }
             else
             {
-                v3 = OBJ_pst_GetAbsoluteMatrix(v1->refGao2);
-                MATH_InvertMatrix(&a3, v3);
+                parentMtx = OBJ_pst_GetAbsoluteMatrix(local->refGao2);
+                MATH_InvertMatrix(&invParent, parentMtx);
             }
-            v4 = OBJ_pst_GetAbsoluteMatrix(a1);
-            MATH_MulMatrixMatrix(&v1->mtx, v4, &a3);
-            if ((v1->mtx.mtxflag & 8) != 0)
+            absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+            MATH_MulMatrixMatrix(&local->mtx, absMtx, &invParent);
+            if ((local->mtx.mtxflag & 8) != 0)
             {
-                MATH_GetScale(&a1a, &v1->mtx);
-                if (MATH_b_EqVectorWithEpsilon(&MATH_gst_IdentityVector, &a1a, 0.001f)
-                    || MATH_b_EqVectorWithEpsilon(&MATH_gst_NulVector, &a1a, 0.001f))
+                MATH_GetScale(&scale, &local->mtx);
+                if (MATH_b_EqVectorWithEpsilon(&MATH_gst_IdentityVector, &scale, 0.001f)
+                    || MATH_b_EqVectorWithEpsilon(&MATH_gst_NulVector, &scale, 0.001f))
                 {
-                    v5 = v1->mtx.mtxflag & ~8u;
-                    v1->mtx._m14 = 0.0;
-                    v1->mtx._m24 = 0.0;
-                    v1->mtx._m34 = 0.0;
-                    v1->mtx.mtxflag = v5;
+                    mtxflag = local->mtx.mtxflag & ~8u;
+                    local->mtx._m14 = 0.0;
+                    local->mtx._m24 = 0.0;
+                    local->mtx._m34 = 0.0;
+                    local->mtx.mtxflag = mtxflag;
                 }
             }
-            MATH_Orthonormalize(&v1->mtx);
+            MATH_Orthonormalize(&local->mtx);
         }
     }
 }
 
-Vec3* OBJ_pst_GetPos(struct sGameObjectMain* a1)
+Vec3* OBJ_pst_GetPos(struct sGameObjectMain* gao)
 {
-    Mtx4x4* v1;
+    Mtx4x4* mtx;
     Vec3* result;
 
-    v1 = a1->matrices;
-    if ((a1->flags & 0x10000) != 0)
-        result = &v1[1].Pos;
+    mtx = gao->matrices;
+    if ((gao->flags & 0x10000) != 0)
+        result = &mtx[1].Pos;
     else
-        result = &v1->Pos;
+        result = &mtx->Pos;
     return result;
 }
 
-struct sDyn* OBJ_pst_GetDynaStruct(struct sGameObjectMain* a1)
+struct sDyn* OBJ_pst_GetDynaStruct(struct sGameObjectMain* gao)
 {
-    tGameObjectBasic* v1;
+    tGameObjectBasic* basic;
     tDyn* result;
 
-    v1 = a1->basic;
-    if (v1)
-        result = v1->dyn;
+    basic = gao->basic;
+    if (basic)
+        result = basic->dyn;
     else
         result = NULL;
     return result;
@@ -1095,135 +1057,100 @@ struct sDyn* OBJ_pst_GetDynaStruct(struct sGameObjectMain* a1)
 // TODO: ell
 int OBJ_b_test_flag(struct sGameObjectMain* gao, int flagMustHave, int flagMustNothave, int whatToTest)
 {
-    int v4;
-    BOOL v5;
-    int v7;
-    int v8;
+    int flags;
 
     switch (whatToTest)
     {
     case 0:
-        v4 = gao->flags;
-        v5 = (v4 & flagMustHave) == 0;
-        if (!v5)
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
+        flags = gao->flags;
+        if ((flags & flagMustHave) != 0 && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 1:
-        v4 = gao->designFlags;
-        if (!(uint8_t)v4 && flagMustHave == -1)
+        flags = gao->designFlags;
+        if (!(uint8_t)flags && flagMustHave == -1)
             return 1;
-        v4 = (uint8_t)v4;
-        v5 = (uint8_t)(v4 & flagMustHave) == 0;
-        if (!v5)
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
+        flags = (uint8_t)flags;
+        if ((uint8_t)(flags & flagMustHave) != 0 && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 2:
         if ((gao->flags & 0x2000) == 0 || (gao->flags & 0x40) == 0)
             return 0;
-        v4 = gao->extended->fields->designFlags;
-        v7 = flagMustHave;
-        if (!v4 && flagMustHave == -1)
+        flags = gao->extended->fields->designFlags;
+        if (!flags && flagMustHave == -1)
             return 1;
-        v5 = (v4 & v7) == 0;
-        if (!v5)
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
+        if ((flags & flagMustHave) != 0 && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 3:
         if ((gao->flags & 0x2000) == 0)
             return 0;
-        v4 = gao->extended->capa;
-        v7 = flagMustHave;
-        if (!(int16_t)v4 && flagMustHave == -1)
+        flags = gao->extended->capa;
+        if (!(int16_t)flags && flagMustHave == -1)
             return 1;
-        v4 = (uint16_t)v4;
-        v5 = (v4 & v7) == 0;
-        if (!v5)
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
+        flags = (uint16_t)flags;
+        if ((flags & flagMustHave) != 0 && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 4:
         if ((gao->flags & 0x2000) == 0 || (gao->flags & 0x40) == 0)
             return 0;
-        v4 = gao->extended->fields->designDesFlags;
-        v7 = flagMustHave;
-        if (!v4 && flagMustHave == -1)
+        flags = gao->extended->fields->designDesFlags;
+        if (!flags && flagMustHave == -1)
             return 1;
-        v5 = (v4 & v7) == 0;
-        if (!v5)
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
+        if ((flags & flagMustHave) != 0 && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 5:
-        v4 = gao->flags2;
-        v5 = (v4 & flagMustHave) == 0;
-        if (!v5)
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
+        flags = gao->flags2;
+        if ((flags & flagMustHave) != 0 && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 10:
-        v4 = gao->flags;
-        if ((flagMustHave & v4) != flagMustHave)
-            return 0;
-        if ((v4 & flagMustNothave) == 0)
+        flags = gao->flags;
+        if ((flagMustHave & flags) == flagMustHave && (flags & flagMustNothave) == 0)
             return 1;
         return 0;
     case 11:
-        v4 = gao->designFlags;
-        if (!(uint8_t)v4 && flagMustHave == -1)
+        flags = gao->designFlags;
+        if (!(uint8_t)flags && flagMustHave == -1)
             return 1;
-        v4 = (uint8_t)v4;
-        if ((uint8_t)(flagMustHave & v4) == flagMustHave)
-        if ((v4 & flagMustNothave) == 0)
+        flags = (uint8_t)flags;
+        if ((uint8_t)(flagMustHave & flags) == flagMustHave && (flags & flagMustNothave) == 0)
             return 1;
         return 0;
     case 12:
         if ((gao->flags & 0x2000) == 0 || (gao->flags & 0x40) == 0)
             return 0;
-        v4 = gao->extended->fields->designFlags;
-        v8 = flagMustHave;
-        if (!v4 && flagMustHave == -1)
+        flags = gao->extended->fields->designFlags;
+        if (!flags && flagMustHave == -1)
             return 1;
-        if ((v8 & v4) == v8)
-        {
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
-        }
+        if ((flagMustHave & flags) == flagMustHave && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 13:
         if ((gao->flags & 0x2000) == 0)
             return 0;
-        v4 = gao->extended->capa;
-        v8 = flagMustHave;
-        if (!(int16_t)v4 && flagMustHave == -1)
+        flags = gao->extended->capa;
+        if (!(int16_t)flags && flagMustHave == -1)
             return 1;
-        v4 = (uint16_t)v4;
-        if ((v8 & v4) == v8)
-        {
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
-        }
+        flags = (uint16_t)flags;
+        if ((flagMustHave & flags) == flagMustHave && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 14:
         if ((gao->flags & 0x2000) == 0 || (gao->flags & 0x40) == 0)
             return 0;
-        v4 = gao->extended->fields->designDesFlags;
-        v8 = flagMustHave;
-        if (!v4 && flagMustHave == -1)
+        flags = gao->extended->fields->designDesFlags;
+        if (!flags && flagMustHave == -1)
             return 1;
-        if ((v8 & v4) == v8)
-        {
-            if ((v4 & flagMustNothave) == 0)
-                return 1;
-        }
+        if ((flagMustHave & flags) == flagMustHave && (flags & flagMustNothave) == 0)
+            return 1;
         return 0;
     case 15:
-        v4 = gao->flags2;
-        if ((flagMustHave & v4) != flagMustHave)
-            return 0;
-        if ((v4 & flagMustNothave) == 0)
+        flags = gao->flags2;
+        if ((flagMustHave & flags) == flagMustHave && (flags & flagMustNothave) == 0)
             return 1;
         return 0;
     default:
@@ -1231,56 +1158,56 @@ int OBJ_b_test_flag(struct sGameObjectMain* gao, int flagMustHave, int flagMustN
     }
 }
 
-void OBJ_putInGroup(tGameObjectMain* a1, tGroup* a2)
+void OBJ_putInGroup(tGameObjectMain* gao, tGroup* grp)
 {
-    tGameObjectExtended* v2;
+    tGameObjectExtended* extended;
 
-    v2 = a1->extended;
-    if (v2)
+    extended = gao->extended;
+    if (extended)
     {
-        if (a2)
+        if (grp)
         {
-            a1->flags |= 0x800000u;
-            v2->grp = a2;
-            ++a2->groupElemNum;
+            gao->flags |= 0x800000u;
+            extended->grp = grp;
+            ++grp->groupElemNum;
         }
     }
 }
 
-void OBJ_AddInGroup(struct sGroup* a1, struct sGameObjectMain* object)
+void OBJ_AddInGroup(struct sGroup* grp, struct sGameObjectMain* object)
 {
-    TAB_PFTable_AddElemToTable(a1->tablePF, object, 0);
+    TAB_PFTable_AddElemToTable(grp->tablePF, object, 0);
 }
 
-struct sGameObjectMain* OBJ_pst_GroupGetByRank(struct sGroup* a1, int idx)
+struct sGameObjectMain* OBJ_pst_GroupGetByRank(struct sGroup* grp, int idx)
 {
-    tableElemStructPF* v2;
-    tableElemStructPF* v3;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
 
-    if (!a1)
+    if (!grp)
         return 0;
-    v2 = (tableElemStructPF *)(a1->tablePF->firstElemPtr);
-    v3 = ((tableElemStructPF *)(a1->tablePF->nextElemPtr)) - 1;
-    if (v2 > v3)
+    elem = (tableElemStructPF *)(grp->tablePF->firstElemPtr);
+    last = ((tableElemStructPF *)(grp->tablePF->nextElemPtr)) - 1;
+    if (elem > last)
         return 0;
     while (idx)
     {
-        ++v2;
+        ++elem;
         --idx;
-        if (v2 > v3)
+        if (elem > last)
             return 0;
     }
-    return (tGameObjectMain*)v2->objectPtr;
+    return (tGameObjectMain*)elem->objectPtr;
 }
 
-BOOL OBJ_b_IsChild(struct sGameObjectMain* a1)
+BOOL OBJ_b_IsChild(struct sGameObjectMain* gao)
 {
     BOOL result;
-    tGameObjectBasic* v2;
-    tGaoMatrix* v3;
+    tGameObjectBasic* basic;
+    tGaoMatrix* local;
 
-    if ((a1->flags & 0x400000) != 0 && (v2 = a1->basic) != 0 && (v3 = v2->mtx) != 0)
-        result = v3->refGao2 != 0;
+    if ((gao->flags & 0x400000) != 0 && (basic = gao->basic) != 0 && (local = basic->mtx) != 0)
+        result = local->refGao2 != 0;
     else
         result = 0;
     return result;
@@ -1289,15 +1216,12 @@ BOOL OBJ_b_IsChild(struct sGameObjectMain* a1)
 struct sGameObjectMain* OBJ_GameObject_Create(int flags)
 {
     tGameObjectMain* gaomain;
-    Mtx4x4* v2;
-    int v3;
-    tGameObjectBasic* v4;
-    tGameObjectVisualObject* v5;
-    tDyn* v6;
-    int v7;
-    int v8;
-    tGameObjectCollMain* v9;
-    int v10;
+    tGameObjectBasic* basic;
+    tGameObjectVisualObject* visual;
+    tDyn* dyn;
+    int bvSize;
+    tGameObjectCollMain* coll;
+    int flags2;
 
     gaomain = (tGameObjectMain*)MEM_p_Alloc(sizeof(tGameObjectMain));
     LOA_ul_FileTypeSize_37 += sizeof(tGameObjectMain);
@@ -1332,57 +1256,39 @@ struct sGameObjectMain* OBJ_GameObject_Create(int flags)
         LOA_ul_FileTypeSize_29 += sizeof(Mtx4x4);
     }
 
-    v2 = gaomain->matrices;
-    v3 = v2->mtxflag & 2;
-    v2->v1.x = 1.0;
-    v2->v1.y = 0.0;                               //  MATH_SetIdentityMatrix
-    v2->v1.z = 0.0;
-    v2->_m14 = 0.0;
-    v2->v2.x = 0.0;
-    v2->v2.y = 1.0;
-    v2->v2.z = 0.0;
-    v2->_m24 = 0.0;
-    v2->v3.x = 0.0;
-    v2->v3.y = 0.0;
-    v2->v3.z = 1.0;
-    v2->_m34 = 0.0;
-    v2->Pos.x = 0.0;
-    v2->Pos.y = 0.0;
-    v2->Pos.z = 0.0;
-    v2->w = 1.0;
-    v2->mtxflag = v3;
+    MATH_SetIdentityMatrix(gaomain->matrices);    //  MATH_SetIdentityMatrix
     if ((gaomain->flags & 0x1000) != 0)
     {
         gaomain->basic = (tGameObjectBasic*)MEM_p_Alloc(sizeof(tGameObjectBasic));
         LOA_ul_FileTypeSize_37 += 20;
-        v4 = gaomain->basic;
-        v4->actorObjectOrVisualObject = 0;
-        v4->dyn = 0;
-        v4->mtx = 0;
-        v4->multiPartData = 0;
-        v4->extraMaterial = 0;
+        basic = gaomain->basic;
+        basic->actorObjectOrVisualObject = 0;
+        basic->dyn = 0;
+        basic->mtx = 0;
+        basic->multiPartData = 0;
+        basic->extraMaterial = 0;
         if ((gaomain->flags & 0x4000) != 0)
         {
-            v4->actorObjectOrVisualObject = (tGameObjectVisualObject*)MEM_p_Alloc(sizeof(tGameObjectVisualObject));
+            basic->actorObjectOrVisualObject = (tGameObjectVisualObject*)MEM_p_Alloc(sizeof(tGameObjectVisualObject));
             LOA_ul_FileTypeSize_37 += 20;
-            v5 = v4->actorObjectOrVisualObject;
-            v5->GROGEOOrSomethingElse = 0;
-            v5->GROMAT = 0;
-            v5->objDrawMask = 0;
-            v5->RLIVertexColors = 0;
-            v5->renderOnlyWithGFXRender = 0;
-            v5->culledFlagFromCullingObject = 0;
-            v5->vmilyenDistanceLightAttenuationFactor = 0;
-            v5->boneDisplayOrder_zListBufferNum = 0;
-            ((tGameObjectVisualObject*)(v4->actorObjectOrVisualObject))->objDrawMask = 0xffffffff;
+            visual = basic->actorObjectOrVisualObject;
+            visual->GROGEOOrSomethingElse = 0;
+            visual->GROMAT = 0;
+            visual->objDrawMask = 0;
+            visual->RLIVertexColors = 0;
+            visual->renderOnlyWithGFXRender = 0;
+            visual->culledFlagFromCullingObject = 0;
+            visual->vmilyenDistanceLightAttenuationFactor = 0;
+            visual->boneDisplayOrder_zListBufferNum = 0;
+            ((tGameObjectVisualObject*)(basic->actorObjectOrVisualObject))->objDrawMask = 0xffffffff;
         }
         if ((gaomain->flags & 2) != 0)
-            v4->actorObjectOrVisualObject = ANI_pst_CreateGameObjectAnim();
+            basic->actorObjectOrVisualObject = ANI_pst_CreateGameObjectAnim();
         if ((gaomain->flags & 4) != 0)
         {
-            v6 = DYN_pst_Dyna_Create();
-            v4->dyn = v6;
-            DYN_Dyna_Init(v6, 65, 1.0, 3.402822e38f, 3.402822e38f, &MATH_gst_NulVector, &gaomain->matrices->Pos);
+            dyn = DYN_pst_Dyna_Create();
+            basic->dyn = dyn;
+            DYN_Dyna_Init(dyn, 65, 1.0, 3.402822e38f, 3.402822e38f, &MATH_gst_NulVector, &gaomain->matrices->Pos);
         }
         if ((gaomain->flags & 0x400000) != 0)
         {
@@ -1404,17 +1310,16 @@ struct sGameObjectMain* OBJ_GameObject_Create(int flags)
     if ((gaomain->flags & 0x80000) != 0)
     {
         gaomain->boundingVolume = (tGameObjectBV*)MEM_p_Alloc(72u);
-        v7 = LOA_ul_FileTypeSize_37 + 72;
-        v8 = 18;
+        LOA_ul_FileTypeSize_37 += 72;
+        bvSize = 72;
     }
     else
     {
         gaomain->boundingVolume = (tGameObjectBV*)MEM_p_Alloc(48u);
-        v7 = LOA_ul_FileTypeSize_37 + 48;
-        v8 = 12;
+        LOA_ul_FileTypeSize_37 += 48;
+        bvSize = 48;
     }
-    LOA_ul_FileTypeSize_37 = v7;
-    memset(gaomain->boundingVolume, 0, 4 * v8);
+    memset(gaomain->boundingVolume, 0, bvSize);
     if ((gaomain->flags & 0x2000) != 0)
     {
         OBJ_GameObject_CreateExtended(gaomain);
@@ -1422,17 +1327,17 @@ struct sGameObjectMain* OBJ_GameObject_Create(int flags)
         {
             gaomain->extended->coll = (tGameObjectCollMain*)MEM_p_Alloc(sizeof(tGameObjectCollMain));
             LOA_ul_FileTypeSize_37 += sizeof(tGameObjectCollMain);
-            v9 = gaomain->extended->coll;
-            v9->detectionList = 0;
-            v9->colInstance = 0;
-            v9->colMap = 0;
+            coll = gaomain->extended->coll;
+            coll->detectionList = 0;
+            coll->colInstance = 0;
+            coll->colMap = 0;
         }
         if ((gaomain->flags & 0x20) != 0)
         {
-            v10 = gaomain->flags2;
-            if ((v10 & 0x20) == 0)
+            flags2 = gaomain->flags2;
+            if ((flags2 & 0x20) == 0)
             {
-                gaomain->flags2 = v10 | 0x20;
+                gaomain->flags2 = flags2 | 0x20;
                 COL_AllocDetectionList(gaomain);
             }
         }
@@ -1447,181 +1352,170 @@ struct sGameObjectMain* OBJ_GameObject_Create(int flags)
     return gaomain;
 }
 
-void OBJ_ReinitMatrixStorageByFlags(tGameObjectMain* a1, Mtx4x4* a2)
+void OBJ_ReinitMatrixStorageByFlags(tGameObjectMain* gao, Mtx4x4* mtx)
 {
-    int v2;
-    Mtx4x4* v3;
-    Mtx4x4* v4;
-    int v5;
-    Mtx4x4* v6;
-    Mtx4x4* v7;
-    Mtx4x4 v8;
+    int flags;
+    Mtx4x4* matrices;
+    Mtx4x4* flashMtx;
+    Mtx4x4 saved;
 
-    v2 = a1->flags;
-    if ((a1->flags & 0x4000000) != 0)
+    flags = gao->flags;
+    if ((gao->flags & 0x4000000) != 0)
     {
-        v3 = a1->matrices;
-        if ((v2 & 0x10000) != 0)
-            v4 = v3 + 2;
+        matrices = gao->matrices;
+        if ((flags & 0x10000) != 0)
+            flashMtx = matrices + 2;
         else
-            v4 = v3 + 1;
-        if (v4 != a2)
-            memcpy(v4, a2, sizeof(Mtx4x4));
+            flashMtx = matrices + 1;
+        MATH_CopyMatrix(flashMtx, mtx);
     }
     else
     {
-        v5 = v2 | 0x4000000;
-        a1->flags = v5;
-        if ((v5 & 0x10000) != 0)
+        flags |= 0x4000000;
+        gao->flags = flags;
+        MATH_CopyMatrix(&saved, mtx);
+        if ((flags & 0x10000) != 0)
         {
-            if (&v8 != a2)
-                memcpy(&v8, a2, sizeof(v8));
-            v6 = MATH_Matrix_ReallocArray(a1->matrices, 3);
-            v7 = v6 + 2;
+            matrices = MATH_Matrix_ReallocArray(gao->matrices, 3);
+            flashMtx = matrices + 2;
         }
         else
         {
-            if (&v8 != a2)
-                memcpy(&v8, a2, sizeof(v8));
-            v6 = MATH_Matrix_ReallocArray(a1->matrices, 2);
-            v7 = v6 + 1;
+            matrices = MATH_Matrix_ReallocArray(gao->matrices, 2);
+            flashMtx = matrices + 1;
         }
-        a1->matrices = v6;
-        if (v7 != &v8)
-            memcpy(v7, &v8, sizeof(Mtx4x4));
+        gao->matrices = matrices;
+        MATH_CopyMatrix(flashMtx, &saved);
     }
 }
 
-void OBJ_RestoreInitialPos(struct sGameObjectMain* a1)
+void OBJ_RestoreInitialPos(struct sGameObjectMain* gao)
 {
-    int v1;
-    tGameObjectBasic* v2;
-    tGaoMatrix* v3;
-    Mtx4x4* v5;
-    Mtx4x4* v6;
-    tGaoMatrix* v7;
-    Mtx4x4* v9;
+    int flags;
+    tGameObjectBasic* basic;
+    tGaoMatrix* local;
+    Mtx4x4* absMtx;
+    Mtx4x4* matrices;
+    tGaoMatrix* sourceMtx;
+    Mtx4x4* parentMtx;
 
-    v1 = a1->flags;
-    if ((a1->flags & 0x400000) != 0 && (v2 = a1->basic) != 0 && (v3 = v2->mtx) != 0 && v3->refGao)
+    flags = gao->flags;
+    if ((gao->flags & 0x400000) != 0 && (basic = gao->basic) != 0 && (local = basic->mtx) != 0 && local->refGao)
     {
-        if ((v1 & 0x10000) != 0)
-            MATH_CopyMatrix(&v3->mtx, a1->matrices + 1);
-        v9 = OBJ_pst_GetAbsoluteMatrix(a1->basic->mtx->refGao);
-        v5 = OBJ_pst_GetAbsoluteMatrix(a1);
-        MATH_MulMatrixMatrix(v5, (Mtx4x4*)(a1->basic->mtx), v9); //FIXME a1->basic->mtx nem biztos hogy jó, kidebuggolni
+        if ((flags & 0x10000) != 0)
+            MATH_CopyMatrix(&local->mtx, gao->matrices + 1);
+        parentMtx = OBJ_pst_GetAbsoluteMatrix(gao->basic->mtx->refGao);
+        absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+        MATH_MulMatrixMatrix(absMtx, (Mtx4x4*)(gao->basic->mtx), parentMtx); //FIXME a1->basic->mtx nem biztos hogy jó, kidebuggolni
     }
-    else if ((v1 & 0x10000) != 0)
+    else if ((flags & 0x10000) != 0)
     {
-        v6 = a1->matrices;
-        if (v6 != &v6[1])
-            memcpy(v6, &v6[1], sizeof(Mtx4x4));
+        matrices = gao->matrices;
+        MATH_CopyMatrix(matrices, &matrices[1]);
     }
-    if ((a1->flags & 2) != 0)
+    if ((gao->flags & 2) != 0)
     {
-        if ((a1->flags & 0x400000) != 0)
-            v7 = OBJ_pst_GetLocalMatrix(a1);
+        if ((gao->flags & 0x400000) != 0)
+            sourceMtx = OBJ_pst_GetLocalMatrix(gao);
         else
-            v7 = (tGaoMatrix*)OBJ_pst_GetAbsoluteMatrix(a1);
-        OBJ_ReinitMatrixStorageByFlags(a1, &v7->mtx);
+            sourceMtx = (tGaoMatrix*)OBJ_pst_GetAbsoluteMatrix(gao);
+        OBJ_ReinitMatrixStorageByFlags(gao, &sourceMtx->mtx);
     }
 }
 
-void OBJ_Reinit(struct sGameObjectMain* a1)
+void OBJ_Reinit(struct sGameObjectMain* gao)
 {
-    tGaoMatrix* v1;
-    tGameObjectBasic* v2;
-    tGameObjectVisualObject* v3;
-    tGameObjectBasic* v5;
-    tGroGeneric* v4;
-    tGroGeneric* v6;
+    tGaoMatrix* local;
+    tGameObjectBasic* basic;
+    tGameObjectVisualObject* visual;
+    tGroGeneric* gro;
+    tGroGeneric* grm;
 
-    if ((a1->flags & 1) == 0 && (a1->flags & 0x400000) != 0)
+    if ((gao->flags & 1) == 0 && (gao->flags & 0x400000) != 0)
     {
-        v1 = a1->basic->mtx;
-        if (v1->refGao2)
-            OBJ_Reinit(v1->refGao2);
+        local = gao->basic->mtx;
+        if (local->refGao2)
+            OBJ_Reinit(local->refGao2);
     }
-    OBJ_RestoreInitialPos(a1);
-    v2 = a1->basic;
-    if (v2)
+    OBJ_RestoreInitialPos(gao);
+    basic = gao->basic;
+    if (basic)
     {
-        v2->extraMaterial = 0;
-        if ((a1->flags & 0x4000) == 0) {
-            MDF_Reinit(a1);
+        basic->extraMaterial = 0;
+        if ((gao->flags & 0x4000) == 0) {
+            MDF_Reinit(gao);
             return;
         }
-        v3 = a1->basic->actorObjectOrVisualObject;
-        if (v3)
-            v3->objDrawMask |= 0x60100000u;
+        visual = gao->basic->actorObjectOrVisualObject;
+        if (visual)
+            visual->objDrawMask |= 0x60100000u;
     }
-    if ((a1->flags & 0x4000) != 0)
+    if ((gao->flags & 0x4000) != 0)
     {
-        v4 = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse;
-        if (v4 && v4->intf)
-            v4->intf->Reinit(v4);
-        v5 = a1->basic;
-        v6 = ((tGameObjectVisualObject*)(v5->actorObjectOrVisualObject))->GROMAT;
-        if (v6 && v6->intf)
-            v6->intf->Reinit(v6);
+        gro = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse;
+        if (gro && gro->intf)
+            gro->intf->Reinit(gro);
+        grm = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROMAT;
+        if (grm && grm->intf)
+            grm->intf->Reinit(grm);
     }
 
-    MDF_Reinit(a1);
+    MDF_Reinit(gao);
 }
 
-void OBJ_CheckFlagsAndActivateObject(tGameObjectMain* a1, int a2)
+void OBJ_CheckFlagsAndActivateObject(tGameObjectMain* gao, int newFlags2)
 {
-    tWorld* v2;
-    int v3;
+    tWorld* world;
+    int flags2;
 
-    if (a1)
+    if (gao)
     {
-        v2 = WOR_gpst_CurrentWorld;
-        a1->flags2 &= 0x0000ffff;
-        v3 = a2 & 0xFFFF0000 | a1->flags2;
-        a1->flags2 = v3;
-        if ((a2 & 0x8000000) != 0 && (v3 & 1) == 0)
-            WOR_ActivateObjectIfFlagsAllow(a1, v2);
-        if ((a2 & 0x400000) != 0)
-            v2->tablesManagerAndEOTNeeded = 1;
-        if ((a2 & 0x100000) != 0 && (a1->flags2 & 0x20) == 0)
+        world = WOR_gpst_CurrentWorld;
+        gao->flags2 &= 0x0000ffff;
+        flags2 = newFlags2 & 0xFFFF0000 | gao->flags2;
+        gao->flags2 = flags2;
+        if ((newFlags2 & 0x8000000) != 0 && (flags2 & 1) == 0)
+            WOR_ActivateObjectIfFlagsAllow(gao, world);
+        if ((newFlags2 & 0x400000) != 0)
+            world->tablesManagerAndEOTNeeded = 1;
+        if ((newFlags2 & 0x100000) != 0 && (gao->flags2 & 0x20) == 0)
         {
-            COL_AllocDetectionList(a1);
-            a1->flags2 |= 0x20u;
+            COL_AllocDetectionList(gao);
+            gao->flags2 |= 0x20u;
         }
-        if ((a2 & 0x100000) == 0 && (a1->flags2 & 0x20) != 0 && (a1->flags & 0x20) == 0)
+        if ((newFlags2 & 0x100000) == 0 && (gao->flags2 & 0x20) != 0 && (gao->flags & 0x20) == 0)
         {
-            COL_FreeDetectionList(a1->extended->coll);
-            a1->extended->coll->detectionList = 0;
-            a1->flags2 &= ~0x20u;
+            COL_FreeDetectionList(gao->extended->coll);
+            gao->extended->coll->detectionList = 0;
+            gao->flags2 &= ~0x20u;
         }
-        OBJ_UpdateStatusFlagRTL(a1);
+        OBJ_UpdateStatusFlagRTL(gao);
     }
 }
 
-void OBJ_SetProcess(tGameObjectMain* a1, char a2, char a3)
+void OBJ_SetProcess(tGameObjectMain* gao, char callCount, char mask)
 {
-    if ((a2 & 1) != 0)
-        a1->process &= ~a3;
+    if ((callCount & 1) != 0)
+        gao->process &= ~mask;
     else
-        a1->process |= a3;
+        gao->process |= mask;
 }
 
-void OBJ_FreeGroupGrl(tableDescStruct* a1)
+void OBJ_FreeGroupGrl(tableDescStruct* table)
 {
-    if (a1)
+    if (table)
     {
-        TAB_PFtable_Close(a1);
-        LOA_DeleteAddress((int)a1);
-        MEM_Free(a1);
+        TAB_PFtable_Close(table);
+        LOA_DeleteAddress((int)table);
+        MEM_Free(table);
     }
 }
 
-void OBJ_FreeGroup(tGroup* a1)
+void OBJ_FreeGroup(tGroup* grp)
 {
-    OBJ_FreeGroupGrl(a1->tablePF);
-    MEM_Free(a1);
-    LOA_DeleteAddress((int)a1);
+    OBJ_FreeGroupGrl(grp->tablePF);
+    MEM_Free(grp);
+    LOA_DeleteAddress((int)grp);
 }
 
 void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
