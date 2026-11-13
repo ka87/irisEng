@@ -12,13 +12,14 @@ ones: `sprites.c`, `textures.c`, `animation.c`, `events.c` and
 `strings.c`. The batch after it adds `collision.c` and `world.c`, and
 the one after that the seven remaining large files: `sound.c`,
 `gameobject.c`, `proceduraltextures.c`, `ok3.c`,
-`particlegenerator.c`, `gfx.c` and `photo.c`. Twenty-four of the 46
-are rewritten now and twelve were already source, which leaves nine --
-`soundmodifier.c`, `materialanddraw.c`, `snp.c`, `actions.c`,
-`profiler.c`, `inputoutput.c`, `ways.c`, `tables.c` and `bigfiles.c`,
-the largest of them `soundmodifier.c` at 750 residue lines and
-`materialanddraw.c` at 492. (`main.c` is the harness and is out of
-scope.)
+`particlegenerator.c`, `gfx.c` and `photo.c`. The fourth and last
+batch takes the final nine: `soundmodifier.c`, `materialanddraw.c`,
+`snp.c`, `actions.c`, `profiler.c`, `inputoutput.c`, `ways.c`,
+`tables.c` and `bigfiles.c`.
+
+**The directory is finished.** Thirty-three of the 46 are rewritten,
+twelve were already source, and `main.c` is the harness and out of
+scope.
 
 Four of those five were done in parallel, and each came back with a
 differential test of its own. Those tests are as much the batch's
@@ -58,19 +59,19 @@ run them.
 | `proceduraltextures.c` | 1,751 to 1,400 | 1,108 to 5 | 11 to 0 | done |
 | `ok3.c` | 1,316 to 885 | 974 to 0 | 23 to 0 | done |
 | `particlegenerator.c` | 1,112 to 668 | 835 to 1 | 22 to 0 | done |
-| `soundmodifier.c` | 1,506 | 750 | 12 | |
+| `soundmodifier.c` | 1,505 to 1,354 | 750 to 1 | 12 to 0 | done |
 | `gfx.c` | 1,574 to 1,444 | 721 to 0 | 60 to 0 | done |
-| `materialanddraw.c` | 1,012 | 492 | 12 | |
+| `materialanddraw.c` | 1,011 to 806 | 492 to 2 | 12 to 0 | done |
 | `photo.c` | 747 to 649 | 425 to 0 | 13 to 0 | done |
-| `snp.c` | 922 | 378 | 12 | |
-| `actions.c` | 725 | 310 | 6 | |
-| `profiler.c` | 505 | 246 | 8 | |
-| `inputoutput.c` | 1,141 | 231 | 14 | |
-| `ways.c` | 392 | 225 | 1 | |
+| `snp.c` | 921 to 665 | 378 to 7 | 12 to 0 | done |
+| `actions.c` | 724 to 612 | 310 to 0 | 6 to 0 | done |
+| `profiler.c` | 504 to 390 | 246 to 0 | 8 to 0 | done |
+| `inputoutput.c` | 1,141 to 1,073 | 231 to 0 | 14 to 0 | done |
+| `ways.c` | 392 to 296 | 225 to 0 | 1 to 0 | done |
 | `sprites.c` | 341 to 336 | 211 to 0 | 0 | done |
-| `tables.c` | 500 | 186 | 2 | |
+| `tables.c` | 499 to 470 | 186 to 0 | 2 to 0 | done |
 | `ai_common.c` | 1,838 | 139 to 0 | 0 | done (belongs to `ai/`) |
-| `bigfiles.c` | 916 | 124 | 9 | |
+| `bigfiles.c` | 915 to 872 | 124 to 0 | 9 to 0 | done |
 | `engine.c` | 925 | 81 to 0 | 0 | done |
 | `memory.c` | 664 | 78 to 0 | 2 | done |
 | `loading.c` | 615 | 22 to 0 | 1 to 0 | done |
@@ -1673,3 +1674,346 @@ caught 39; the three not caught are measured no-ops.
 `photo.h` defines three globals in a header rather than declaring them,
 which is left alone and noted here because it is the kind of thing that
 only bites when a second translation unit includes it.
+
+---
+
+# Batch 4: the last nine files, and the directory is done
+
+`soundmodifier.c`, `materialanddraw.c`, `snp.c`, `actions.c`,
+`profiler.c`, `inputoutput.c`, `ways.c`, `tables.c` and `bigfiles.c`
+-- 7,612 lines to 6,538, **76 `goto`s to none**, and 2,942 residue
+lines to 10, every one of the ten inside a comment of the user's own.
+
+Five passes ran. `tests/run.sh` takes in all nine standalone runners,
+so it is the single entry point again, and it now covers the whole
+root directory.
+
+## The shared-checkout collision, because it cost real time
+
+**Four of the five passes started in the shared checkout rather than a
+worktree of their own, and they collided.** One of them --
+`cleanup/matdraw-prof` -- stayed there, and before the others
+relocated its `git add -A` swept their in-progress files into its own
+commits: `ways.c` and `ways.h` landed inside a commit titled
+"profiler.c: rewrite decompiler output as source", and
+`soundmodifier.c`, `snp.c` and `actions.c` arrived as early drafts.
+`cleanup/io-ways` was also reset back to the base commit under the
+pass that owned it, which had to redo its commits.
+
+Two passes reported this independently, which is what made it
+credible rather than one agent misreading its own history.
+
+**Nothing was lost**, and the integration branch was never touched.
+The resolution: merge each pass's own branch normally, and from
+`cleanup/matdraw-prof` take **only its own sixteen files** rather than
+merging it, since merging it whole would have brought stale duplicates
+of three other passes' work. Checked afterwards that no foreign file
+moved.
+
+The lesson for next time is one line: **give every parallel pass its
+own worktree up front**, and never let one run `git add -A` in a tree
+another is using.
+
+## Two corrections made to the passes' output
+
+Both the same shape, and worth recording because they are the kind of
+thing a green test cannot catch:
+
+- **Eight findings across `ways.c`, `snp.c` and `actions.c` were
+  described in a report as "preserved" with no line in the file saying
+  so.** The brief asks for exactly one, and it is the only comment the
+  no-comments rule allows. Each was checked against the pre-pass code
+  first -- all eight are unchanged from it -- and then given its line.
+- **`soundmodifier.c`'s one preserved line overstated its defect**,
+  saying an index "collapses onto 0 for every instance" where the
+  divide actually maps the first 152 onto 0 and the rest onto 1. The
+  report had it right and the line did not.
+
+---
+
+## soundmodifier.c
+
+1,505 lines to 1,354, **12 `goto`s to none**, residue 750 to one
+inside the user's own commented-out Hex-Rays line. 37 functions, an
+identical set. No header changed: eleven prototypes live in `sound.h`
+and one in `modifiers/gensoundmodifier.h`, both named in the `sound.c`
+batch, and this pass adopted those names exactly.
+
+672 cases, 2,674,296 bytes of state and call log, none differing.
+`sound.c` is not linked -- the 28 entry points it reaches are stood up
+in `tests/soundmod_side.c`, compiled twice so each side drives its own
+globals, with the four whose behaviour matters following `sound.c`'s
+own bodies.
+
+### SND_SModifierFadeInitInstance sets the wrong instance's volume
+
+It computes
+`(unsigned)(inst - (tSoundInstanceElem*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem)`.
+Pointer subtraction **already** yields an element index; dividing by
+the element size again throws it away. `sizeof(tSoundInstanceElem)` is
+152 in a 32-bit build and `soundInstanceNum` reaches 200, so instances
+0-151 all map to 0 and 152-199 to 1 -- never the instance the function
+was handed. Every sibling in the file spells the same conversion
+correctly with `(char*)` arithmetic. Reached whenever a type-1 fade
+modifier is instanced.
+
+### The fade-in arm's lower clamp cannot fire
+
+`255 - *(uint32_t*)&rounded` is an **unsigned** subtraction, so the
+guard written as `>= 0` is always true and the `else step = 0` is
+dead -- leaving a negative index into `SND_SModifier_FadeTable`. The
+pass found this by driving it deliberately and watching the test
+process die. In practice the value read is discarded one line later,
+so it is a dead out-of-bounds *read* rather than a wrong volume, as
+long as `i4 == 255/i3` as `FadeInit` sets it. The fade-out arm reads
+the same double as `int32_t` and clamps both ends correctly, so the
+two were written differently.
+
+### Pick -- a mutation that scored clean is a no-op of the code *(binary)*
+
+Making slot 3's interface inherit slot 0's instead of slot 1's scores
+completely clean. It is not a fixture gap: slot 1 is itself a copy of
+slot 0 with exactly `{Type, Init, Update, InitChainedElemVersion,
+PlayApplyOnInstance}` overridden, and slot 3 re-sets all five. Every
+field the two candidate sources differ in is overwritten, so the two
+spellings cannot be told apart by anything.
+
+Also recorded: `tLinkedSoundFade` is the named version of
+`tSoundModifierDataFade`, same 36 bytes and same layout, measured --
+renaming those six fields in `sound.h` is the right fix and waits for
+the next baseline rebuild; a `.smd` record with a zero payload length
+is fatal, because the loader's `else` arm passes a null pointer to an
+`Init` that dereferences it on its first statement; and
+`SND_InitMdFModule` hardcodes a 4-byte pointer, kept for the same
+reason `SND_i_AllocSound`'s 56-byte stride is.
+
+---
+
+## inputoutput.c and ways.c
+
+`inputoutput.c` 1,141 lines to 1,073, **14 `goto`s to none**, residue
+231 to 0, header 27 to 0. `ways.c` 392 to 296, its one `goto` gone,
+residue 225 to 0, header 6 to 0. Two deliberate `static` helpers added
+to `inputoutput.c`: `INO_l_ApplyJoystickDir` and `INO_l_RunCardOp`,
+the latter absorbing a `[state + 1]` dispatch that was one label
+shared by sixteen `goto`s.
+
+2,404 cases and 222 cases, none differing, both at **100% line
+coverage** of the file under test.
+
+**The card-manager table and the `+1` dispatch are exactly matched.**
+The 21 dispatching states map to precisely the set of slots
+`INO_SavInitModule` fills, minus the async slot and the two
+module-init ones. Nothing is off by one and no dispatching state hits
+a hole -- which also explains the fall-through that is preserved:
+state 8 and state 11 share one body because the buffer setup is the
+same, and they dispatch to a read and a write respectively.
+
+**`INO_Keys` is never filled from the keyboard.** The DirectInput
+state goes into `pcINO_keyboardDataBackup` in
+`win/wininputoutput.c`, and the only writes to `INO_Keys`' contents
+anywhere in the tree are a `memset` and two stores mapping codes
+59..68 to 96..105 and 164 while 157 is held. So `INO_b_IsKeyPressed`
+and its three siblings can only ever report those eleven codes.
+Grep-verified tree-wide; it may simply be the `win/` side being
+unfinished.
+
+**`SAV_PhotoSet` reads past its array at photo 99.** `elems[photo +
+1]` lands on `photoBufSize`, because `elems[100]` starts exactly at
+that member's offset -- measured by compiling the struct standalone,
+same at 32- and 64-bit. With a size change there the `memcpy` length
+goes non-positive and converts to a huge `size_t`.
+
+**`INO_PafSet` clamps above but not below**, so a negative intensity
+reaches `s_JoystickPafIntensity` unchanged -- live, not theoretical:
+adding the lower clamp moves 28 cases. And **`SAV_PhotoDecal`'s two
+bounds are checked apart, never together**, so `first + count` can
+reach 197 and walk well past the hundred entries.
+
+`ways.c`: **"pound" is *poids*** -- these functions compute each
+link's weight as the distance between its two waypoints.
+`gpst_CurrentWorld` is `ways.h`'s own global, not `world.h`'s
+`WOR_gpst_CurrentWorld`, and nothing but `WAY_ComputePoundNetworks`
+touches it, so its set-and-clear is dead; renaming it would make the
+pound walk clear the engine's real current world, so it was left
+alone. `WAY_RemoveAllNetworks` indexes `networks[i]` and only
+afterwards tests `if (allNetworks->networks)`, and the stop object in
+`WAY_ComputePoundNetworksRec` returns from the whole call rather than
+the loop, so the waypoint's remaining links go unweighted. Both now
+carry their line.
+
+---
+
+## materialanddraw.c and profiler.c
+
+`materialanddraw.c` 1,011 lines to 806, **12 `goto`s to none**,
+residue 492 to 2 (both inside the user's Hungarian comments).
+`profiler.c` 504 to 390, 8 `goto`s to none, residue 246 to 0.
+
+1,280 cases over 999,504 values and 30 cases over 38,220 raster
+fields, none differing. No float tolerance anywhere in either, so
+there is no count to pin.
+
+### All nine of profiler.c's implicit declarations resolved
+
+They were undeclared Win32 calls -- `GetSysColor`, `SetBkColor`,
+`SetTextColor`, `CreateSolidBrush`, `ExtTextOutA`, `DrawTextA`,
+`GetDC`, `ReleaseDC` and `GetModuleHandleA`. None needed an invented
+prototype; they went into `tests/stub/windows.h` exactly as the Bink
+declarations did, which also took `win/wininputoutput.c` from **10 to
+9**. `profiler.c` is off `implicitcheck.sh`'s baseline entirely.
+
+### ENG_ForceStartRasters clears one of eleven user rasters
+
+`raster += sizeof(profilerRasterStructElem)` applies a byte count to a
+**typed** pointer, so it steps 48 elements -- 2,304 bytes -- past a
+528-byte group, and the bound test fails on the first pass. Only
+`PRO_UserProfilerRasters[0]` is zeroed; the other five user rasters,
+`PRO_COBFromVisual`, the two unknown rasters and
+`PRO_UserProfilerRastersEND` keep their counters. The sibling loop in
+`profiler_dbg_init` steps by one element and the bound only makes
+sense for a one-element stride, so the intended step is `++raster`.
+**Preserved**, and a one-token change if it should be fixed.
+
+Also: `PRO_RecordTimeDecRef` and `PRO_PerfCounterEndBlock` are the
+same function written twice, identical once the alias locals are
+folded, with six engine files calling the first and four sites the
+second. `MAT_SetRenderState` and `MAT_DrawIndexedSprites` do not guard
+the multi-material count where `MAT_DrawIndexedTriangle` does, so a
+type-4 material with a count of zero indexes `[-1]` at two of the
+three sites. Eight inlined profiler start/end blocks were restored to
+calls after checking each against the real bodies including the
+`int16_t` wrap -- the symbol table confirms it, since the frozen copy
+references `TIM_GetTicksAsInt32` directly and the rewrite does not.
+
+One harness detail worth keeping: `tGEOMAT.idxOrPtr` is an `int`
+holding a `tMultiTextureElemStruct*`, which does not round-trip on
+x86-64, so the texture-element pool is `mmap`ed with `MAP_32BIT`.
+
+---
+
+## snp.c and actions.c
+
+`snp.c` 921 lines to 665, **12 `goto`s to none**, residue 378 to 7
+(all inside the user's own commented-out fragments), three deliberate
+`static` helpers added. `actions.c` 724 to 612, 6 `goto`s to none,
+residue 310 to 0. **There is no `actions.h`** -- its prototypes live
+in `gameobject.h`, already with real parameter names, so nothing
+needed propagating.
+
+416 cases over 167,318 comparisons and 864 over 138,204, none
+differing. Real `math.c` and `basic_array.c` are linked in the actions
+test, so the transition binary search is the engine's own.
+
+**`INT_SnP_l_PairBitIndex(0, 0, 1024)` is -1**, which indexes
+`flagsArray[-1]` -- the pointer sitting in front of the array. Every
+caller guards against equal indices except `INT_SnP_ComputeInversion`,
+which is reached with them whenever an object's own start and end
+endpoints invert. Not driven, because doing so corrupts the table, but
+reachable.
+
+Both overlap functions return outright when the **first** object's
+collision structures are missing, so the second object's list is never
+touched -- a real asymmetry, not cosmetic: swapping the arguments
+moves 17 cases.
+
+The insertion sort carried **two copies of the same comparison**; the
+pass re-derived that `prevKey` always holds the previous element's key
+at that point and dropped the duplicate. Its sink loop narrows a
+threshold to `float` while the loop-entry test uses the `double`, and
+the fixture that distinguishes the two now exists.
+
+In `actions.c`, three mutations scored clean and all three are
+**provable no-ops**, each measured rather than argued -- the sharpest
+being that the blend's "track has finished" test can essentially never
+fire: over all 65,536 `uint16_t` durations, `(double)d * 0.016666668`
+is exactly representable as a `float` only for `d == 0`.
+
+### A harness bug worth knowing about
+
+The pass found that its own mock `Reset` cleared the arena only up to
+the **previous** case's high-water mark, so an earlier larger case's
+bytes survived for one side and not the other. It produced two
+spurious failures. Both harnesses now clear a global high-water mark
+-- and it is worth checking whether any other `tests/*_mocks.c` has
+the same shape.
+
+---
+
+## tables.c and bigfiles.c
+
+`tables.c` 499 lines to 470, both `goto`s gone, residue 186 to 0,
+header 15 to 0. `bigfiles.c` 915 to 872, **9 `goto`s to none**,
+residue 124 to 0, header 1 to 0. No helper added to either.
+
+3,207 cases and 473 cases, none differing.
+
+### bigfiles.c was stood up for testing without touching the file
+
+`BIG_fseek` is left **byte-identical**. `tests/bigfiles_compat.h` is
+forced in ahead of both copies with `-include`: it redefines `fpos_t`
+as the 64-bit integer it is on the target, after the real `<stdio.h>`
+has made its own typedef, redirects `fgetpos`/`fsetpos` with it and
+the file calls to an in-memory bin, and supplies `_access`, `_chmod`
+and `_S_IWRITE`. So the seek arithmetic under test is the file's own,
+run over the target's type -- confirmed by perturbing exactly that
+arithmetic, which moves 7 cases.
+
+Not covered, and the test header says so: LZO (every synthetic block
+is stored uncompressed and `lzo1x_decompress` aborts, so a change
+reaching it fails the run), `PreLoadMoveBlocks`' move arm, and the
+`LOA_`/`BAS_` stand-ins.
+
+### The fpos_t question, answered
+
+`BIG_fseek` is the **only** site: `fpos_t posToSet`, `posToSet +=
+(unsigned int)offset`, and `posToSet = (unsigned int)offset`. No other
+function in the file touches an `fpos_t`; `loading.c:379` has the
+sibling shape. Three options, none taken, for whoever decides: an
+`fgetpos`/`fsetpos` pair doing the arithmetic in an explicit
+`int64_t`; a 64-bit integer type with `_fseeki64`/`_ftelli64` on the
+target; or a typedef switched per toolchain. All three change the
+same case -- an absolute seek with a negative offset, where
+`(unsigned int)offset` currently turns `-1` into position
+4294967295.
+
+**`bigfiles.c` has a second, independent reason not to parse here**,
+which was not previously recorded: `_S_IWRITE` is an MSVC macro and
+the stub set has no `sys/stat.h`. So settling `fpos_t` alone would not
+put the file into the parse sweep. Its two implicit declarations are
+`_access` and `_chmod`.
+
+### The compressed-buffer rotate in BIG_fread is unreachable, and its dead branch has a wild write
+
+`memcpy(&BIG_gp_CompressedBuffer - keptSize, ...)` takes the address
+of the **global pointer variable** and steps back that many pointer
+widths, where the twin in `BIG_SpeedMode_fread` writes
+`&BIG_gp_CompressedBuffer[-keptSize]`, before the buffer. The
+enclosing `if` compares the pointer against the value assigned to it
+two statements earlier. That was checked with the harness rather than
+argued: replacing the branch's condition with a null dereference runs
+clean over all 473 cases, while changing the `else` arm breaks the run
+at once.
+
+**`BIG_fread` also counts the decoded block twice in its loop exit** --
+the test runs after the increment where the twin computes it before.
+It exits a block early, and the consequence is measurable: a request
+the loop satisfies short leaves `BIG_gi_ReadSeek` above
+`BIG_si_DecompressedSize`, so the next call takes the difference as an
+unsigned length. Both copies do it.
+
+The two `fread` twins are near-duplicates that disagree in four
+places, which is why the shared refill and init blocks were **not**
+extracted after the attempt was started.
+
+In `tables.c`: `TAB_PFtable_RemoveElem` tests the **element**, not the
+object it holds, so its `--holeNum` arm is dead and removing the top
+element always decrements `actElemNum` -- confirmed independently at
+review, where a mutation on that arm scored clean and turned out to be
+a provable no-op rather than a coverage gap. `TAB_Ptable_RemoveHoles`
+and `TAB_PFtable_RemoveHoles` are the same function with different
+endings, and the PF version leaves `holeNum` untouched on all three
+exits, so a PF table compacted to the end of its array keeps its hole
+count and is compacted again next frame. `TAB_DLlist_Remove` frees
+every element and leaves `firstElem`, `lastElem` and `elemNum`
+pointing at freed memory.

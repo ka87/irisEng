@@ -37,12 +37,12 @@ typedef struct sSnp
 } tSnp;
 
 void INT_SnP_Alloc(struct sWorld* world);
-void INT_SnP_AddObject(struct sGameObjectMain* gao, struct sSnp* world);
-void INT_SnP_InsertionSort(struct sSnp* a1, int a2);
+void INT_SnP_AddObject(struct sGameObjectMain* gao, struct sSnp* snp);
+void INT_SnP_InsertionSort(struct sSnp* snp, int axisMode);
 void INT_SnP_DetachObject(struct sGameObjectMain* gao, struct sWorld* world);
 void INT_SnP_AttachObject(struct sGameObjectMain* gao, struct sWorld* world);
 void INT_SnP_DesAlloc(struct sWorld* world);
 void INT_SnP_Refresh(struct sSnp* snp, tableDescStruct* table);
 void INT_SnP_Reinit(struct sWorld* world);
-int INT_SnP_FullGetFlag(int* a1, int a2, int a3, int a4, int* a5, int* a6);
-int INT_SnP_GetFlag(int* flagArr, char offset, int idx);
+int INT_SnP_FullGetFlag(int* flagArr, int snpIndexA, int snpIndexB, int count, int* bitOut, int* wordOut);
+int INT_SnP_GetFlag(int* flagArr, char bit, int word);

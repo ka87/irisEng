@@ -20,6 +20,10 @@
 # proceduraltextures.c was here with 2, for BinkSetMemory and
 # BinkSetIOSize. Its pass added them to tests/stub/bink.h, so it is
 # off the list and the parse sweep is 133 of 137 rather than 132.
+#
+# profiler.c was here with 9, all of them GDI and system-colour calls.
+# Its pass added them to tests/stub/windows.h, which also took
+# win/wininputoutput.c from 10 to 9.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -29,12 +33,11 @@ CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
 
 BASELINE="bigfiles.c 2
 engine.c 2
-profiler.c 9
 sideload.c 1
 sound.c 1
 strings.c 1
 win/wingdi.c 25
-win/wininputoutput.c 10
+win/wininputoutput.c 9
 win/winsound.c 13"
 
 files=$(python3 - <<'EOF'

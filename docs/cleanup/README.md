@@ -563,14 +563,13 @@ Two things found in those files are worth the space:
 
 ### 7. The root directory
 
-**In progress.** Per-file record in [root.md](root.md).
+**Done.** Per-file record in [root.md](root.md).
 
 46 files, 72,692 lines, 635 `goto`s — the engine proper, and the largest
 thing left. Twelve of the 46 were already source.
 
-**Twenty-four of the 46 are rewritten now**, and twelve were already
-source, which leaves nine (`main.c` is the harness and is out of
-scope). `grid.c`, **2,064 lines to 1,700**
+**All 46 are accounted for**: thirty-three rewritten, twelve already
+source, and `main.c` the harness, out of scope. `grid.c`, **2,064 lines to 1,700**
 with all **23** `goto`s gone, came first because `ai/ai_gridfunctions.c`
 was waiting on it to learn what the grid functions' arguments mean.
 `math.c` and `dynamics.c` followed, then `ai_common.c` and six small
@@ -714,6 +713,55 @@ happened to be byte-identical to each other; and a corner-scan bound
 whose stop index does not reach the output at all, so only a box whose
 sole on-screen corner is the last one could ever see it change. Both
 are closed, with a hand-built box and camera for the second.
+
+#### Batch 4: the last nine files
+
+`soundmodifier.c` (**1,505 to 1,354**, 12 `goto`s gone),
+`inputoutput.c` (1,141 to 1,073, **14**), `materialanddraw.c` (1,011
+to 806, 12), `bigfiles.c` (915 to 872, 9), `snp.c` (921 to 665, 12),
+`actions.c` (724 to 612, 6), `profiler.c` (504 to 390, 8), `tables.c`
+(499 to 470, 2) and `ways.c` (392 to 296, 1). Residue across the nine
+goes from 2,942 lines to 10, all ten inside comments of the user's
+own. `tests/run.sh` takes in all nine runners, and now covers the
+whole directory.
+
+**Four of the five passes started in the shared checkout rather than
+their own worktree, and collided.** One stayed there, and its
+`git add -A` swept three other passes' in-progress files into its own
+commits before they relocated; one branch was also reset back to its
+base under the pass that owned it. Two passes reported this
+independently. Nothing was lost and the integration branch was never
+touched: each pass's own branch was merged normally, and from the
+contaminated one **only its own sixteen files** were taken, since
+merging it whole would have brought stale duplicates. The lesson is
+one line -- **give every parallel pass its own worktree up front**.
+
+Two corrections were made to the passes' output, both of a kind a
+green test cannot catch: eight findings across three files were
+described in a report as "preserved" with no line in the file saying
+so, and one preserved line overstated its own defect. All were checked
+against the pre-pass code before being written.
+
+`bigfiles.c` was stood up for testing **without touching the file** --
+a compat header forced in with `-include` redefines `fpos_t` as the
+64-bit integer it is on the target, so the seek arithmetic under test
+is the file's own. That also settles the standing `fpos_t` question:
+`BIG_fseek` is the only site in the file, three options are written up
+in root.md, and all three change the same case, an absolute seek with
+a negative offset. A **second, previously unrecorded** reason the file
+will not parse here also turned up: `_S_IWRITE` is an MSVC macro the
+stub set has no header for.
+
+Also resolved: all nine of `profiler.c`'s implicit declarations, which
+were undeclared Win32 calls. Adding them to the stub took
+`win/wininputoutput.c` from 10 to 9 as well.
+
+Two findings worth a decision, both preserved with a line:
+`ENG_ForceStartRasters` applies a byte count to a typed pointer, so it
+steps 48 elements and clears **one of eleven** user rasters; and
+`BIG_fread` counts a decoded block twice in its loop-exit test, where
+its twin tests the sum before the increment, leaving the read seek
+above the decompressed size on a short read.
 
 
 What it holds: a per-world array of capability bytes with a small live

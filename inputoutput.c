@@ -17,7 +17,7 @@ int Photo_gi_Init = 0; // TODO FIXME: nem állítja a játék
 int INO_gai_PresentLanguage[12] = { 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 3 };
 int INO_ge_MasterType = 0; // TODO FIXME: nem állítja a játék
 
-void INO_Joystick_Init(HWND a1)
+void INO_Joystick_Init(HWND hwnd)
 {
     memset(&INO_gst_JoySimulateAsked, 0, sizeof(INO_gst_JoySimulateAsked));
     memset(&INO_gst_JoySimulateCurrent, 0, sizeof(INO_gst_JoySimulateCurrent));
@@ -39,7 +39,7 @@ void INO_Joystick_Init(HWND a1)
     INO_gi_PafIntensity = 0;
     INO_gi_PifPafEnable = 1;
     INO_gi_CurrentPadId = -1;
-    s_JoystickInit(a1);
+    s_JoystickInit(hwnd);
 }
 
 void INO_SavInitModule() {
@@ -85,9 +85,9 @@ void INO_InitModule()
     INO_SavInitModule();
 }
 
-int INO_i_SetCurrentPad(int a1)
+int INO_i_SetCurrentPad(int pad)
 {
-    return s_SetCurrentPad(a1);
+    return s_SetCurrentPad(pad);
 }
 
 int INO_i_GetCurrentPad()
@@ -97,12 +97,9 @@ int INO_i_GetCurrentPad()
 
 int INO_SimulateReset()
 {
-    int result;
-
-    result = 0;
     memset(&INO_gst_JoySimulateAsked, 0, sizeof(INO_gst_JoySimulateAsked));
     memset(&INO_gst_JoySimulateCurrent, 0, sizeof(INO_gst_JoySimulateCurrent));
-    return result;
+    return 0;
 }
 
 void INO_Joystick_Close(void)
@@ -112,87 +109,81 @@ void INO_Joystick_Close(void)
 
 void INO_Joystick_Update()
 {
-    int i; 
-    float pifDurRemaining, pafDurRemaining;
-    uint8_t controlsMask[16];
-    uint8_t buttons[16];
+    float remaining;
+    int i;
 
-    if (INO_l_Joystick_Enable)
+    if (!INO_l_Joystick_Enable)
+        return;
+
+    memcpy(&INO_gst_JoySimulateCurrent, &INO_gst_JoySimulateAsked, sizeof(INO_gst_JoySimulateCurrent));
+    memset(&INO_gst_JoySimulateAsked, 0, sizeof(INO_gst_JoySimulateAsked));
+    memcpy(INO_gst_PrevPad, INO_gst_CurrPad, sizeof(INO_gst_PrevPad));
+
+    s_JoystickUpdate(INO_gst_CurrPad);
+
+    if (!Demo_gb_Exit)
     {
-        memcpy(&INO_gst_JoySimulateCurrent, &INO_gst_JoySimulateAsked, sizeof(INO_gst_JoySimulateCurrent));
-        memset(&INO_gst_JoySimulateAsked, 0, sizeof(INO_gst_JoySimulateAsked));
-        memcpy(INO_gst_PrevPad, INO_gst_CurrPad, sizeof(INO_gst_PrevPad));
-
-        s_JoystickUpdate(INO_gst_CurrPad);
-
-        if (!Demo_gb_Exit)
+        for (i = 0; i < 4; i++)
         {
-            for (i = 0; i < 4; i++) {
-                if (INO_gst_CurrPad[i].padData[8] && INO_gst_CurrPad[i].padData[9]) {
-                    Demo_gb_Exit = 1;
-                    break;
-                }
-            }          
+            if (INO_gst_CurrPad[i].padData[8] && INO_gst_CurrPad[i].padData[9])
+            {
+                Demo_gb_Exit = 1;
+                break;
+            }
         }
+    }
 
-        if (INO_gi_CurrentPadId != -1)
+    if (INO_gi_CurrentPadId != -1)
+    {
+        for (i = 0; i < 12; i++)
+        {
+            if (((1 << i) & INO_l_JoystickMask) == 0)
+                INO_gst_CurrPad[INO_gi_CurrentPadId].padData[i] = 0;
+        }
+        if (INO_gst_JoySimulateCurrent.controlsMask)
         {
             for (i = 0; i < 12; i++)
             {
-                if (((1 << i) & INO_l_JoystickMask) == 0)
-                    INO_gst_CurrPad[INO_gi_CurrentPadId].padData[i] = 0;
-            }
-            if (INO_gst_JoySimulateCurrent.controlsMask)
-            {
-                memset(controlsMask, 0, sizeof(controlsMask));
-                memset(buttons, 0, sizeof(buttons));
-                for (i = 0; i < 12; i++)
-                {
-                    if (((1 << i) & INO_gst_JoySimulateCurrent.controlsMask) != 0)
-                        controlsMask[i] = -1;
-                    if (((1 << i) & INO_gst_JoySimulateCurrent.buttons) != 0)
-                        buttons[i] = -1;
-                    INO_gst_CurrPad[INO_gi_CurrentPadId].padData[i] = INO_gst_CurrPad[INO_gi_CurrentPadId].padData[i] & ~controlsMask[i] | controlsMask[i] & buttons[i];
-                }
+                if (((1 << i) & INO_gst_JoySimulateCurrent.controlsMask) != 0)
+                    INO_gst_CurrPad[INO_gi_CurrentPadId].padData[i] =
+                        ((1 << i) & INO_gst_JoySimulateCurrent.buttons) != 0 ? 0xFF : 0;
             }
         }
-        if (s_IsMouseBeingUsedFunction())
+    }
+
+    if (s_IsMouseBeingUsedFunction())
+    {
+        if (INO_gi_PifDuration != 0.0f)
         {
-            if (INO_gi_PifDuration != 0.0f)
+            remaining = INO_gi_PifDuration - TIM_gf_dt;
+            INO_gi_PifDuration = remaining;
+            if (remaining <= 0.0f)
             {
-                pifDurRemaining = INO_gi_PifDuration - TIM_gf_dt;
-                INO_gi_PifDuration = (float)pifDurRemaining;
-                if (pifDurRemaining <= 0.0f)
-                {
-                    s_JoystickPifPafEnable(0);
-                    INO_gi_PifDuration = 0.0f;
-                }
+                s_JoystickPifPafEnable(0);
+                INO_gi_PifDuration = 0.0f;
             }
-            if (INO_gi_PafDuration != 0.0f)
+        }
+        if (INO_gi_PafDuration != 0.0f)
+        {
+            remaining = INO_gi_PafDuration - TIM_gf_dt;
+            INO_gi_PafDuration = remaining;
+            if (remaining <= 0.0f)
             {
-                pafDurRemaining = INO_gi_PafDuration - TIM_gf_dt;
-                INO_gi_PafDuration = (float)pafDurRemaining;
-                if (pafDurRemaining <= 0.0f)
-                {
-                    s_JoystickPafIntensity(0);
-                    INO_gi_PafDuration = 0.0f;
-                }
+                s_JoystickPafIntensity(0);
+                INO_gi_PafDuration = 0.0f;
             }
         }
     }
 }
 
-int INO_i_PifPafEnable(int a1)
+int INO_i_PifPafEnable(int enable)
 {
-    int result;
-
-    if (a1 != -1)
+    if (enable != -1)
     {
-        if (a1)
+        if (enable)
         {
-            result = 1;
             INO_gi_PifPafEnable = 1;
-            return result;
+            return 1;
         }
         INO_gi_PifPafEnable = 0;
         INO_gi_PifDuration = 0.0;
@@ -203,110 +194,95 @@ int INO_i_PifPafEnable(int a1)
     return INO_gi_PifPafEnable;
 }
 
-void INO_PifSet(int a1)
+void INO_PifSet(int duration)
 {
-    int v1;
-
     if (INO_gi_PifPafEnable)
     {
-        if (a1 < 0)
-            v1 = -a1;
-        else
-            v1 = a1;
-        INO_gi_PifDuration = (float)((double)v1 * 0.032000002);
-        s_JoystickPifPafEnable(a1 != 0);
+        INO_gi_PifDuration = (float)((double)(duration < 0 ? -duration : duration) * 0.032000002);
+        s_JoystickPifPafEnable(duration != 0);
     }
 }
 
-void INO_PafSet(int a1, int a2)
+void INO_PafSet(int intensity, int duration)
 {
-    int v2;
-    double v3;
-    int v4;
+    int clamped;
 
     if (INO_gi_PifPafEnable)
     {
-        v2 = a2;
-        if (a2 < 0)
-            v2 = -a2;
-        v3 = (double)v2;
-        v4 = a1;
-        INO_gi_PafDuration = (float)(v3 * 0.032000002);
-        if (a1 > 255)
-            v4 = 255;
-        INO_gi_PafIntensity = v4;
-        s_JoystickPafIntensity(v4);
+        INO_gi_PafDuration = (float)((double)(duration < 0 ? -duration : duration) * 0.032000002);
+        // preserved: clamped above but not below, so a negative intensity goes through
+        clamped = intensity > 255 ? 255 : intensity;
+        INO_gi_PafIntensity = clamped;
+        s_JoystickPafIntensity(clamped);
     }
 }
 
-int INO_b_Joystick_IsButtonDown(int a1)
+int INO_b_Joystick_IsButtonDown(int button)
 {
-    int result;
-
     if (INO_gi_CurrentPadId == -1)
-        result = 0;
-    else
-        result = INO_gst_CurrPad[INO_gi_CurrentPadId].padData[a1];
-    return result;
+        return 0;
+    return INO_gst_CurrPad[INO_gi_CurrentPadId].padData[button];
 }
 
-BOOL INO_b_Joystick_IsButtonJustDown(int a1)
+BOOL INO_b_Joystick_IsButtonJustDown(int button)
 {
     return INO_gi_CurrentPadId != -1
-        && INO_gst_CurrPad[INO_gi_CurrentPadId].padData[a1]
-        && !INO_gst_PrevPad[INO_gi_CurrentPadId].padData[a1];
+        && INO_gst_CurrPad[INO_gi_CurrentPadId].padData[button]
+        && !INO_gst_PrevPad[INO_gi_CurrentPadId].padData[button];
 }
 
-BOOL INO_b_Joystick_IsButtonJustUp(int a1)
+BOOL INO_b_Joystick_IsButtonJustUp(int button)
 {
     return INO_gi_CurrentPadId != -1
-        && !INO_gst_CurrPad[INO_gi_CurrentPadId].padData[a1]
-        && INO_gst_PrevPad[INO_gi_CurrentPadId].padData[a1];
+        && !INO_gst_CurrPad[INO_gi_CurrentPadId].padData[button]
+        && INO_gst_PrevPad[INO_gi_CurrentPadId].padData[button];
 }
 
-void INO_Joystick_Move(Vec3* a1, int a2)
+static void INO_l_ApplyJoystickDir(Vec3* move)
 {
-    int v2;
-    double v3;
-    double v4;
-
-    if (!INO_l_Joystick_Enable || INO_gi_CurrentPadId == -1)
-        goto LABEL_16;
-    v2 = 1 << (a2 + 24);
-    if ((v2 & INO_gst_JoySimulateCurrent.controlsMask) != 0)
-    {
-        if (a2)
-        {
-            v3 = INO_gst_JoySimulateCurrent.amountXRight;
-            v4 = INO_gst_JoySimulateCurrent.amountYRight;
-        }
-        else
-        {
-            v3 = INO_gst_JoySimulateCurrent.amountXLeft;
-            v4 = INO_gst_JoySimulateCurrent.amountYLeft;
-        }
-        a1->x = (float)v3;
-        a1->z = 0.0;
-        a1->y = (float)v4;
-        if ((INO_l_JoystickDir & 1) != 0)
-            a1->x = (float)(a1->x * -1.0);
-        if ((INO_l_JoystickDir & 2) != 0)
-            a1->y = (float)(a1->y * -1.0);
-        return;
-    }
-    if ((v2 & INO_l_JoystickMask) == 0)
-    {
-    LABEL_16:
-        a1->x = 0.0;
-        a1->y = 0.0;
-        a1->z = 0.0;
-        return;
-    }
-    s_joyMoveFunction(a1, a2);
     if ((INO_l_JoystickDir & 1) != 0)
-        a1->x = (float)(a1->x * -1.0);
+        move->x = -move->x;
     if ((INO_l_JoystickDir & 2) != 0)
-        a1->y = (float)(a1->y * -1.0);
+        move->y = -move->y;
+}
+
+void INO_Joystick_Move(Vec3* move, int stickID)
+{
+    double amountX;
+    double amountY;
+    int stickBit;
+
+    if (INO_l_Joystick_Enable && INO_gi_CurrentPadId != -1)
+    {
+        stickBit = 1 << (stickID + 24);
+        if ((stickBit & INO_gst_JoySimulateCurrent.controlsMask) != 0)
+        {
+            if (stickID)
+            {
+                amountX = INO_gst_JoySimulateCurrent.amountXRight;
+                amountY = INO_gst_JoySimulateCurrent.amountYRight;
+            }
+            else
+            {
+                amountX = INO_gst_JoySimulateCurrent.amountXLeft;
+                amountY = INO_gst_JoySimulateCurrent.amountYLeft;
+            }
+            move->x = (float)amountX;
+            move->y = (float)amountY;
+            move->z = 0.0;
+            INO_l_ApplyJoystickDir(move);
+            return;
+        }
+        if ((stickBit & INO_l_JoystickMask) != 0)
+        {
+            s_joyMoveFunction(move, stickID);
+            INO_l_ApplyJoystickDir(move);
+            return;
+        }
+    }
+    move->x = 0.0;
+    move->y = 0.0;
+    move->z = 0.0;
 }
 
 void INO_JoySimulate(int controlMask, int buttons, Vec3* leftStick, Vec3* rightStick)
@@ -325,20 +301,20 @@ void INO_JoySimulate(int controlMask, int buttons, Vec3* leftStick, Vec3* rightS
     }
 }
 
-void INO_SetControlSubmode(int a1)
+void INO_SetControlSubmode(int submode)
 {
-    INO_SetControlSubmode_inner_sub_48A650(a1);
+    INO_SetControlSubmode_inner_sub_48A650(submode);
 }
 
-void INO_SetControlMode(int a1)
+void INO_SetControlMode(int mode)
 {
-    INO_SetControlMode_inner_sub_48ACB0(a1);
+    INO_SetControlMode_inner_sub_48ACB0(mode);
 }
 
 /* Mouse sensitivity, 0..1 from the options slider. */
-void INO_SetMouseSensitivity(float a1)
+void INO_SetMouseSensitivity(float sensitivity)
 {
-    pcINO_SetMouseSensitivity(a1);
+    pcINO_SetMouseSensitivity(sensitivity);
 }
 
 void INO_KeyboardClose()
@@ -360,21 +336,21 @@ void INO_CloseModule()
 
 void INO_Keyboard_Update()
 {
-    uint8_t* v0;
+    uint8_t* keys;
     int i;
 
-    v0 = INO_Keys_Prev;
+    keys = INO_Keys_Prev;
     INO_Keys_Prev = INO_Keys;
-    memset(v0, 0, 256u);
-    INO_Keys = v0;
+    memset(keys, 0, 256u);
+    INO_Keys = keys;
     if (pcINO_keyboardDataBackup[157])
     {
         for (i = 0; i < 10; ++i)
         {
             if (pcINO_keyboardDataBackup[i + 59])
             {
-                v0[164] = 0x80;
-                v0[i + 96] = 0x80;
+                keys[164] = 0x80;
+                keys[i + 96] = 0x80;
             }
         }
     }
@@ -391,51 +367,49 @@ void INO_Reinit()
     // INO_SavReinit(); // nullsub
 }
 
-BOOL INO_b_LanguageIsPresent(int a1)
+BOOL INO_b_LanguageIsPresent(int lang)
 {
-    return a1 < 11
-        && a1 >= 0
-        && (INO_ge_MasterType == 1 || INO_ge_MasterType != 2 || a1 <= 1 || a1 == 3)
-        && INO_gai_PresentLanguage[a1];
+    return lang < 11
+        && lang >= 0
+        && (INO_ge_MasterType == 1 || INO_ge_MasterType != 2 || lang <= 1 || lang == 3)
+        && INO_gai_PresentLanguage[lang];
 }
 
-int INO_i_SavGetCardStatus(int a1, int* a2)
+int INO_i_SavGetCardStatus(int slot, int* savButtons)
 {
-    int result;
+    if (savButtons)
+        memcpy(savButtons, INO_gi_SavButton, sizeof(INO_gi_SavButton));
 
-    if (a2)
-        memcpy(a2, INO_gi_SavButton, 32u);
     if (INO_ge_SavState != 27 && INO_ge_SavState)
-        goto LABEL_8;
-    result = pcINO_gi_LastError;
+        return -1;
+
     if (INO_ge_SavSetNextNextState != -1 && !pcINO_gi_LastError)
     {
         INO_ge_SavState = INO_ge_SavSetNextNextState;
         INO_ge_SavSetNextNextState = -1;
-    LABEL_8:
-        result = -1;
+        return -1;
     }
-    return result;
+    return pcINO_gi_LastError;
 }
 
-int INO_b_IsKeyPressed(uint8_t a1)
+int INO_b_IsKeyPressed(uint8_t key)
 {
-    return INO_Keys[a1] & 0x80;
+    return INO_Keys[key] & 0x80;
 }
 
-BOOL INO_b_IsKeyJustPressed(uint8_t a1)
+BOOL INO_b_IsKeyJustPressed(uint8_t key)
 {
-    return (INO_Keys[a1] & 0x80) != 0 && (INO_Keys_Prev[a1] & 0x80) == 0;
+    return (INO_Keys[key] & 0x80) != 0 && (INO_Keys_Prev[key] & 0x80) == 0;
 }
 
-BOOL INO_b_IsKeyReleased(uint8_t a1)
+BOOL INO_b_IsKeyReleased(uint8_t key)
 {
-    return (INO_Keys[a1] & 0x80) == 0;
+    return (INO_Keys[key] & 0x80) == 0;
 }
 
-BOOL INO_b_IsKeyJustReleased(uint8_t a1)
+BOOL INO_b_IsKeyJustReleased(uint8_t key)
 {
-    return (INO_Keys[a1] & 0x80) == 0 && (INO_Keys_Prev[a1] & 0x80) != 0;
+    return (INO_Keys[key] & 0x80) == 0 && (INO_Keys_Prev[key] & 0x80) != 0;
 }
 
 int INO_i_GetDiscError()
@@ -443,9 +417,9 @@ int INO_i_GetDiscError()
     return INO_gi_DiscError;
 }
 
-int INO_b_IoButtonPressed(int a1)
+int INO_b_IoButtonPressed(int button)
 {
-    return (uint8_t)-(INO_b_Joystick_IsButtonDown(a1) != 0);
+    return INO_b_Joystick_IsButtonDown(button) ? 0xFF : 0;
 }
 
 void SAV_PhotoFirstInit()
@@ -463,6 +437,7 @@ void SAV_PhotoInit()
 
     if (!Photo_gi_Init)
     {
+        // preserved: the saved pointer is put back and then dropped by the alloc below
         photoBufPtrBackup = SAV_gst_Photos.photoBuf;
         memset(&SAV_gst_Photos, 0, sizeof(SAV_gst_Photos));
         SAV_gst_Photos.photoBufSize = SAV_PHOTO_BUFFER_SIZE;
@@ -474,283 +449,266 @@ void SAV_PhotoInit()
     }
 }
 
-BOOL SAV_b_IsMoreRecent(int a1, int a2)
+BOOL SAV_b_IsMoreRecent(int slotA, int slotB)
 {
-    BOOL result;
+    if (!SAV_gst_Data[slotA].superiorAtOrdering)
+    {
+        if (SAV_gst_Data[slotB].superiorAtOrdering)
+            return 0;
+        return slotA < slotB;
+    }
+    if (!SAV_gst_Data[slotB].superiorAtOrdering)
+        return 1;
 
-    if (SAV_gst_Data[a1].superiorAtOrdering)
-    {
-        if (SAV_gst_Data[a2].superiorAtOrdering)
-        {
-            if (SAV_gst_Data[a1].year == SAV_gst_Data[a2].year)
-            {
-                if (SAV_gst_Data[a1].month == SAV_gst_Data[a2].month)
-                {
-                    if (SAV_gst_Data[a1].mday == SAV_gst_Data[a2].mday)
-                    {
-                        if (SAV_gst_Data[a1].hour == SAV_gst_Data[a2].hour)
-                        {
-                            if (SAV_gst_Data[a1].min == SAV_gst_Data[a2].min)
-                                result = SAV_gst_Data[a1].sec >= SAV_gst_Data[a2].sec;
-                            else
-                                result = SAV_gst_Data[a1].min > SAV_gst_Data[a2].min;
-                        }
-                        else
-                        {
-                            result = SAV_gst_Data[a1].hour > SAV_gst_Data[a2].hour;
-                        }
-                    }
-                    else
-                    {
-                        result = SAV_gst_Data[a1].mday > SAV_gst_Data[a2].mday;
-                    }
-                }
-                else
-                {
-                    result = SAV_gst_Data[a1].month > SAV_gst_Data[a2].month;
-                }
-            }
-            else
-            {
-                result = SAV_gst_Data[a1].year > SAV_gst_Data[a2].year;
-            }
-        }
-        else
-        {
-            result = 1;
-        }
-    }
-    else if (SAV_gst_Data[a2].superiorAtOrdering)
-    {
-        result = 0;
-    }
-    else
-    {
-        result = a1 < a2;
-    }
-    return result;
+    if (SAV_gst_Data[slotA].year != SAV_gst_Data[slotB].year)
+        return SAV_gst_Data[slotA].year > SAV_gst_Data[slotB].year;
+    if (SAV_gst_Data[slotA].month != SAV_gst_Data[slotB].month)
+        return SAV_gst_Data[slotA].month > SAV_gst_Data[slotB].month;
+    if (SAV_gst_Data[slotA].mday != SAV_gst_Data[slotB].mday)
+        return SAV_gst_Data[slotA].mday > SAV_gst_Data[slotB].mday;
+    if (SAV_gst_Data[slotA].hour != SAV_gst_Data[slotB].hour)
+        return SAV_gst_Data[slotA].hour > SAV_gst_Data[slotB].hour;
+    if (SAV_gst_Data[slotA].min != SAV_gst_Data[slotB].min)
+        return SAV_gst_Data[slotA].min > SAV_gst_Data[slotB].min;
+    return SAV_gst_Data[slotA].sec >= SAV_gst_Data[slotB].sec;
 }
 
 void SAV_OrderData()
 {
-    int j;
-    int v1[10];
-    int k;
+    int order[10];
     int i;
+    int j;
+    int k;
 
     for (i = 0; i < 10; ++i)
-        v1[i] = i;
+        order[i] = i;
     for (i = 1; i < 10; ++i)
     {
-        for (j = 0; j < i && !SAV_b_IsMoreRecent(i, v1[j]); ++j);
+        for (j = 0; j < i && !SAV_b_IsMoreRecent(i, order[j]); ++j);
         for (k = i - 1; k >= j; --k)
-            v1[k + 1] = v1[k];
-        v1[j] = i;
+            order[k + 1] = order[k];
+        order[j] = i;
     }
     for (i = 0; i < 10; ++i)
     {
-        SAV_gst_Data[i].s4 = v1[i];
-        SAV_gst_Data[v1[i]].s3 = i;
+        SAV_gst_Data[i].s4 = order[i];
+        SAV_gst_Data[order[i]].s3 = i;
     }
+}
+
+static void INO_l_RunCardOp(int slot)
+{
+    INO_ge_SavState = INO_gst_MemoryCardManager[INO_ge_SavState + 1](slot);
 }
 
 void INO_v_MemoryCardManager(int defaultSlot)
 {
+    tSavIdxElem* entry;
     struct tm* lt;
-    int16_t v3;
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    int v8;
-    int v9; 
-    int v10;
-    int v11;
-    int v12;
-    time_t Time;
+    time_t now;
 
-    if (!INO_gst_MemoryCardManager[0](defaultSlot))
+    if (INO_gst_MemoryCardManager[0](defaultSlot))
+        return;
+
+    switch (INO_ge_SavState)
     {
-        switch (INO_ge_SavState)
+    case 0:
+    case 27:
+        return;
+
+    case 1:
+        pcINO_gi_LastError = 0;
+        INO_l_RunCardOp(defaultSlot);
+        break;
+
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 18:
+    case 20:
+    case 21:
+    case 22:
+    case 23:
+    case 24:
+    case 25:
+    case 31:
+    case 32:
+        INO_l_RunCardOp(defaultSlot);
+        break;
+
+    case 7:
+        INO_ge_SavState = 21;
+        INO_ge_SavSetNextState = 8;
+        return;
+
+    case 8:
+        memset(SAV_gst_Data, 0, sizeof(SAV_gst_Data));
+    case 11:
+        if (!INO_gst_SavFileDesc.fp)
         {
-        case 0:
-        case 27:
-            return;
-        case 1:
-            pcINO_gi_LastError = 0;
-            goto LABEL_7;
-        case 2:
-        case 3:
-        case 4:
-        case 5:
-        case 6:
-        case 18:
-        case 20:
-        case 21:
-        case 22:
-        case 23:
-        case 24:
-        case 25:
-        case 31:
-        case 32:
-            goto LABEL_7;
-        case 7:
-            INO_ge_SavState = 21;
-            INO_ge_SavSetNextState = 8;
-            return;
-        case 8:
-            memset(SAV_gst_Data, 0, sizeof(SAV_gst_Data));
-            goto LABEL_10;
-        case 9:
-            SAV_OrderData();
-            INO_ge_SavState = 22;
-            return;
-        case 10:
-            goto LABEL_28;
-        case 11:
-        LABEL_10:
-            if (!INO_gst_SavFileDesc.fp)
-                goto LABEL_4;
-            INO_gst_SavFileDesc.size = 640;
-            INO_gst_SavFileDesc.saveBuffer = (char*)SAV_gst_Data;
-        LABEL_7:
-            INO_ge_SavState = INO_gst_MemoryCardManager[INO_ge_SavState + 1](defaultSlot);
-            break;
-        case 12:
-            INO_ge_SavState = 21;
-            INO_ge_SavSetNextState = 13;
-            return;
-        case 13:
-            if (!INO_gst_SavFileDesc.fp)
-                goto LABEL_4;
-            INO_gst_SavFileDesc.size = AI_gi_SaveBufferSize;
-            INO_gst_SavFileDesc.saveBuffer = (char*)MEM_p_Alloc(AI_gi_SaveBufferSize);
-            memset(INO_gst_SavFileDesc.saveBuffer, 0, INO_gst_SavFileDesc.size);
-            INO_ge_SavState = INO_gst_MemoryCardManager[INO_ge_SavState + 1](defaultSlot);
-            break;
-        case 14:
-            memcpy(AI_gpc_SaveBuffer, INO_gst_SavFileDesc.saveBuffer, AI_gi_SaveBufferSize);
-            MEM_Free(INO_gst_SavFileDesc.saveBuffer);
-            SAV_PhotoInit();
-            pc_Buffer_304 = SAV_gst_PhotosValidate.photoBuf;
-            INO_gst_SavFileDesc.size = 812;
-            INO_gst_SavFileDesc.saveBuffer = (char*)&SAV_gst_PhotosValidate;
-            INO_ge_SavState = INO_gst_MemoryCardManager[INO_ge_SavState + 1](defaultSlot);
-            return;
-        case 15:
-            SAV_gst_PhotosValidate.photoBuf = pc_Buffer_304;
-            pc_Buffer_304 = 0;
-            /* usedSize arrives from the slot file, and the read below
-               is a bare fread into a fixed buffer. Clamp it so a
-               truncated or foreign file cannot run off the end. */
-            if (SAV_gst_PhotosValidate.usedSize < 0
-                || SAV_gst_PhotosValidate.usedSize > SAV_PHOTO_BUFFER_SIZE)
-            {
-                DBG_OutputDebugString(
-                    "SAV: photo block %d outside 0..%d, clamped\n",
-                    SAV_gst_PhotosValidate.usedSize, SAV_PHOTO_BUFFER_SIZE);
-                SAV_gst_PhotosValidate.usedSize =
-                    SAV_gst_PhotosValidate.usedSize < 0 ? 0 : SAV_PHOTO_BUFFER_SIZE;
-            }
-            SAV_gst_PhotosValidate.photoBufSize = SAV_gst_PhotosValidate.usedSize;
-            INO_gst_SavFileDesc.size = SAV_gst_PhotosValidate.usedSize;
-            INO_gst_SavFileDesc.saveBuffer = SAV_gst_PhotosValidate.photoBuf;
-            goto LABEL_7;
-        case 16:
-            INO_ge_SavState = 21;
-            INO_ge_SavSetNextState = 17;
-            return;
-        case 17:
-            if (!INO_gst_SavFileDesc.fp)
-                goto LABEL_4;
-            INO_gst_SavFileDesc.size = AI_gi_SaveBufferSize;
-            INO_gst_SavFileDesc.saveBuffer = (char*)MEM_p_Alloc(AI_gi_SaveBufferSize);
-            memset(INO_gst_SavFileDesc.saveBuffer, 0, INO_gst_SavFileDesc.size);
-            memcpy(INO_gst_SavFileDesc.saveBuffer, AI_gpc_SaveBuffer, INO_gst_SavFileDesc.size);
-            INO_ge_SavState = 18;
-            break;
-        case 19:
-            MEM_Free(INO_gst_SavFileDesc.saveBuffer);
-            SAV_PhotoInit();
-            INO_gst_SavFileDesc.saveBuffer = (char*)&SAV_gst_PhotosValidate;
-            INO_gst_SavFileDesc.size = 812;
-            INO_ge_SavState = 20;
-            return;
-        case 26:
-            pcINO_gi_LastError = 1;
-            INO_ge_SavSetNextNextState = -1;
-            INO_ge_SavSetNextState = -1;
-            INO_ge_SavCommand = -1;
-            goto LABEL_4;
-        case 28:
-            if (SAV_gst_PhotosValidate.usedSize)
-            {
-                INO_gst_SavFileDesc.saveBuffer = SAV_gst_PhotosValidate.photoBuf;
-                INO_gst_SavFileDesc.size = SAV_gst_PhotosValidate.usedSize;
-                INO_ge_SavState = INO_gst_MemoryCardManager[INO_ge_SavState + 1](defaultSlot);
-                INO_ge_SavSetNextState = 29;
-            }
-            else
-            {
-                INO_ge_SavSetNextState = 29;
-                INO_ge_SavState = 22;
-            }
-            return;
-        case 29:
-            if (INO_gst_SavSlotDesc.id < 10)
-            {
-                time(&Time);
-                lt = localtime(&Time);
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].superiorAtOrdering = 1;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].sec = lt->tm_sec;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].min = lt->tm_min;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].hour = lt->tm_hour;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].mday = lt->tm_mday;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].month = lt->tm_mon;
-                v3 = INO_gst_SavSlotDesc.i2;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].year = lt->tm_year + 1900;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].s1 = v3;
-                v4 = INO_gst_SavSlotDesc.i4;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].s2 = (int16_t)INO_gst_SavSlotDesc.i3;
-                v5 = SAV_idx_Field_i2;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i1 = v4;
-                v6 = SAV_idx_Field_i3;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i2 = v5;
-                v7 = SAV_idx_Field_i4;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i3 = v6;
-                v8 = SAV_idx_Field_i5;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i4 = v7;
-                v9 = SAV_idx_Field_i6;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i5= v8;
-                v10 = SAV_idx_Field_i7;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i6 = v9;
-                v11 = SAV_idx_Field_i8;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i7 = v10;
-                v12 = SAV_idx_Field_i9;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i8 = v11;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i9 = v12;
-                strcpy(INO_gsz_SavFileName, "sally.idx");
-            LABEL_28:
-                INO_ge_SavState = 21;
-                INO_ge_SavSetNextState = 11;
-            }
-            return;
-        case 30:
-            INO_gi_FreeSpace = 0;
-            INO_ge_SavState = 1;
-            INO_ge_SavSetNextState = 31;
-            return;
-        case 34:
-            sprintf(INO_gsz_SavFileName, "slot%d.sav", INO_gst_SavSlotDesc.id);
-            INO_ge_SavState = 1;
-            INO_ge_SavSetNextState = 16;
-            INO_ge_SavCommand = 16;
-            return;
-        default:
-        LABEL_4:
             INO_ge_SavState = 0;
             break;
         }
+        INO_gst_SavFileDesc.size = 640;
+        INO_gst_SavFileDesc.saveBuffer = (char*)SAV_gst_Data;
+        INO_l_RunCardOp(defaultSlot);
+        break;
+
+    case 9:
+        SAV_OrderData();
+        INO_ge_SavState = 22;
+        return;
+
+    case 10:
+        INO_ge_SavState = 21;
+        INO_ge_SavSetNextState = 11;
+        return;
+
+    case 12:
+        INO_ge_SavState = 21;
+        INO_ge_SavSetNextState = 13;
+        return;
+
+    case 13:
+        if (!INO_gst_SavFileDesc.fp)
+        {
+            INO_ge_SavState = 0;
+            break;
+        }
+        INO_gst_SavFileDesc.size = AI_gi_SaveBufferSize;
+        INO_gst_SavFileDesc.saveBuffer = (char*)MEM_p_Alloc(AI_gi_SaveBufferSize);
+        memset(INO_gst_SavFileDesc.saveBuffer, 0, INO_gst_SavFileDesc.size);
+        INO_l_RunCardOp(defaultSlot);
+        break;
+
+    case 14:
+        memcpy(AI_gpc_SaveBuffer, INO_gst_SavFileDesc.saveBuffer, AI_gi_SaveBufferSize);
+        MEM_Free(INO_gst_SavFileDesc.saveBuffer);
+        SAV_PhotoInit();
+        pc_Buffer_304 = SAV_gst_PhotosValidate.photoBuf;
+        INO_gst_SavFileDesc.size = 812;
+        INO_gst_SavFileDesc.saveBuffer = (char*)&SAV_gst_PhotosValidate;
+        INO_l_RunCardOp(defaultSlot);
+        return;
+
+    case 15:
+        SAV_gst_PhotosValidate.photoBuf = pc_Buffer_304;
+        pc_Buffer_304 = 0;
+        /* usedSize arrives from the slot file, and the read below
+           is a bare fread into a fixed buffer. Clamp it so a
+           truncated or foreign file cannot run off the end. */
+        if (SAV_gst_PhotosValidate.usedSize < 0
+            || SAV_gst_PhotosValidate.usedSize > SAV_PHOTO_BUFFER_SIZE)
+        {
+            DBG_OutputDebugString(
+                "SAV: photo block %d outside 0..%d, clamped\n",
+                SAV_gst_PhotosValidate.usedSize, SAV_PHOTO_BUFFER_SIZE);
+            SAV_gst_PhotosValidate.usedSize =
+                SAV_gst_PhotosValidate.usedSize < 0 ? 0 : SAV_PHOTO_BUFFER_SIZE;
+        }
+        SAV_gst_PhotosValidate.photoBufSize = SAV_gst_PhotosValidate.usedSize;
+        INO_gst_SavFileDesc.size = SAV_gst_PhotosValidate.usedSize;
+        INO_gst_SavFileDesc.saveBuffer = SAV_gst_PhotosValidate.photoBuf;
+        INO_l_RunCardOp(defaultSlot);
+        break;
+
+    case 16:
+        INO_ge_SavState = 21;
+        INO_ge_SavSetNextState = 17;
+        return;
+
+    case 17:
+        if (!INO_gst_SavFileDesc.fp)
+        {
+            INO_ge_SavState = 0;
+            break;
+        }
+        INO_gst_SavFileDesc.size = AI_gi_SaveBufferSize;
+        INO_gst_SavFileDesc.saveBuffer = (char*)MEM_p_Alloc(AI_gi_SaveBufferSize);
+        memset(INO_gst_SavFileDesc.saveBuffer, 0, INO_gst_SavFileDesc.size);
+        memcpy(INO_gst_SavFileDesc.saveBuffer, AI_gpc_SaveBuffer, INO_gst_SavFileDesc.size);
+        INO_ge_SavState = 18;
+        break;
+
+    case 19:
+        MEM_Free(INO_gst_SavFileDesc.saveBuffer);
+        SAV_PhotoInit();
+        INO_gst_SavFileDesc.saveBuffer = (char*)&SAV_gst_PhotosValidate;
+        INO_gst_SavFileDesc.size = 812;
+        INO_ge_SavState = 20;
+        return;
+
+    case 26:
+        pcINO_gi_LastError = 1;
+        INO_ge_SavSetNextNextState = -1;
+        INO_ge_SavSetNextState = -1;
+        INO_ge_SavCommand = -1;
+        INO_ge_SavState = 0;
+        break;
+
+    case 28:
+        if (SAV_gst_PhotosValidate.usedSize)
+        {
+            INO_gst_SavFileDesc.saveBuffer = SAV_gst_PhotosValidate.photoBuf;
+            INO_gst_SavFileDesc.size = SAV_gst_PhotosValidate.usedSize;
+            INO_l_RunCardOp(defaultSlot);
+            INO_ge_SavSetNextState = 29;
+        }
+        else
+        {
+            INO_ge_SavSetNextState = 29;
+            INO_ge_SavState = 22;
+        }
+        return;
+
+    case 29:
+        if (INO_gst_SavSlotDesc.id < 10)
+        {
+            time(&now);
+            lt = localtime(&now);
+            entry = &SAV_gst_Data[INO_gst_SavSlotDesc.id];
+            entry->superiorAtOrdering = 1;
+            entry->sec = lt->tm_sec;
+            entry->min = lt->tm_min;
+            entry->hour = lt->tm_hour;
+            entry->mday = lt->tm_mday;
+            entry->month = lt->tm_mon;
+            entry->year = lt->tm_year + 1900;
+            entry->s1 = INO_gst_SavSlotDesc.i2;
+            entry->s2 = (int16_t)INO_gst_SavSlotDesc.i3;
+            entry->i1 = INO_gst_SavSlotDesc.i4;
+            entry->i2 = SAV_idx_Field_i2;
+            entry->i3 = SAV_idx_Field_i3;
+            entry->i4 = SAV_idx_Field_i4;
+            entry->i5 = SAV_idx_Field_i5;
+            entry->i6 = SAV_idx_Field_i6;
+            entry->i7 = SAV_idx_Field_i7;
+            entry->i8 = SAV_idx_Field_i8;
+            entry->i9 = SAV_idx_Field_i9;
+            strcpy(INO_gsz_SavFileName, "sally.idx");
+            INO_ge_SavState = 21;
+            INO_ge_SavSetNextState = 11;
+        }
+        return;
+
+    case 30:
+        INO_gi_FreeSpace = 0;
+        INO_ge_SavState = 1;
+        INO_ge_SavSetNextState = 31;
+        return;
+
+    case 34:
+        sprintf(INO_gsz_SavFileName, "slot%d.sav", INO_gst_SavSlotDesc.id);
+        INO_ge_SavState = 1;
+        INO_ge_SavSetNextState = 16;
+        INO_ge_SavCommand = 16;
+        return;
+
+    default:
+        INO_ge_SavState = 0;
+        break;
     }
 }
 
@@ -761,12 +719,14 @@ void INO_Update()
     INO_v_MemoryCardManager(SAVE_gi_DefaultSlot);
 }
 
-void INO_SavSetCardStatus(int a1, int a2)
-{    
-    if (a2 < 0 || a2 >= 41)
+void INO_SavSetCardStatus(int slot, int status)
+{
+    tSavIdxElem* entry;
+
+    if (status < 0 || status >= 41)
     {
         DBG_OutputDebugString(
-            "SAV: bad param state, requested %d (slot %d)\n", a2, a1);
+            "SAV: bad param state, requested %d (slot %d)\n", status, slot);
         DBG_assert(0, __FILE__, __LINE__, "0", "SAVING : Bad Param State", 0, 1);
     }
     if (INO_ge_SavState && INO_ge_SavState != 27)
@@ -783,88 +743,89 @@ void INO_SavSetCardStatus(int a1, int a2)
         DBG_OutputDebugString(
             "SAV: request %d dropped, busy: state=%d command=%d "
             "nextState=%d nextNextState=%d lastError=%d\n",
-            a2, INO_ge_SavState, INO_ge_SavCommand,
+            status, INO_ge_SavState, INO_ge_SavCommand,
             INO_ge_SavSetNextState, INO_ge_SavSetNextNextState,
             pcINO_gi_LastError);
         return;
     }
 
-    if (INO_ge_SavState != a2)
+    if (INO_ge_SavState == status)
+        return;
+
+    switch (status)
     {
-        switch (a2)
+    case 7:
+        pcINO_gi_LastError = 0;
+        strcpy(INO_gsz_SavFileName, "sally.idx");
+        INO_ge_SavState = 1;
+        INO_ge_SavSetNextState = 7;
+        INO_ge_SavCommand = 7;
+        return;
+
+    case 10:
+        pcINO_gi_LastError = 0;
+        strcpy(INO_gsz_SavFileName, "sally.idx");
+        INO_ge_SavState = 1;
+        INO_ge_SavSetNextState = 10;
+        INO_ge_SavCommand = 10;
+        return;
+
+    case 12:
+        sprintf(INO_gsz_SavFileName, "slot%d.sav", INO_gst_SavSlotDesc.id);
+        pcINO_gi_LastError = 0;
+        INO_ge_SavState = 1;
+        INO_ge_SavSetNextState = 12;
+        INO_ge_SavCommand = 12;
+        return;
+
+    case 16:
+        if (INO_gst_SavSlotDesc.id < 10)
         {
-        case 1:
-            goto LABEL_9;
-        case 7:
-            pcINO_gi_LastError = 0;
-            strcpy(INO_gsz_SavFileName, "sally.idx");
-            INO_ge_SavState = 1;
-            INO_ge_SavSetNextState = 7;
-            INO_ge_SavCommand = 7;
-            return;
-        case 10:
-            pcINO_gi_LastError = 0;
-            strcpy(INO_gsz_SavFileName, "sally.idx");
-            INO_ge_SavState = 1;
-            INO_ge_SavSetNextState = 10;
-            INO_ge_SavCommand = 10;
-            return;
-        case 12:
-            sprintf(INO_gsz_SavFileName, "slot%d.sav", INO_gst_SavSlotDesc.id);
-            pcINO_gi_LastError = 0;
-            INO_ge_SavState = 1;
-            INO_ge_SavSetNextState = 12;
-            INO_ge_SavCommand = 12;
-            return;
-        case 16:
-            if (INO_gst_SavSlotDesc.id < 10)
-            {
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].superiorAtOrdering = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].sec = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].min = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].hour = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].mday = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].month = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].year = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].s1 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].s2 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i1 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i2 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i3 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i4 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i5 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i6 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i7 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i8 = 0;
-                SAV_gst_Data[INO_gst_SavSlotDesc.id].i9 = 0;
-            }
-            INO_SavSetCardStatus(a1, 10);
-            pcINO_gi_LastError = 0;
-            INO_ge_SavSetNextNextState = 34;
-            return;
-        case 30:
-            INO_gi_FreeSpace = 0;
-        LABEL_9:
-            INO_ge_SavCommand = a2;
-            goto LABEL_10;
-        default:
-        LABEL_10:
-            pcINO_gi_LastError = 0;
-            INO_ge_SavState = a2;
-            break;
+            entry = &SAV_gst_Data[INO_gst_SavSlotDesc.id];
+            entry->superiorAtOrdering = 0;
+            entry->sec = 0;
+            entry->min = 0;
+            entry->hour = 0;
+            entry->mday = 0;
+            entry->month = 0;
+            entry->year = 0;
+            entry->s1 = 0;
+            entry->s2 = 0;
+            entry->i1 = 0;
+            entry->i2 = 0;
+            entry->i3 = 0;
+            entry->i4 = 0;
+            entry->i5 = 0;
+            entry->i6 = 0;
+            entry->i7 = 0;
+            entry->i8 = 0;
+            entry->i9 = 0;
         }
+        INO_SavSetCardStatus(slot, 10);
+        pcINO_gi_LastError = 0;
+        INO_ge_SavSetNextNextState = 34;
+        return;
+
+    case 30:
+        INO_gi_FreeSpace = 0;
+    case 1:
+        INO_ge_SavCommand = status;
+    default:
+        pcINO_gi_LastError = 0;
+        INO_ge_SavState = status;
+        break;
     }
 }
 
 void* SAV_PhotoReinit()
 {
     void* result;
-    char* v1;
+    char* photoBuf;
 
-    v1 = SAV_gst_Photos.photoBuf;
+    photoBuf = SAV_gst_Photos.photoBuf;
     result = memset(&SAV_gst_Photos, 0, 812u);
     SAV_gst_Photos.photoBufSize = SAV_PHOTO_BUFFER_SIZE;
-    SAV_gst_Photos.photoBuf = v1;
+    SAV_gst_Photos.photoBuf = photoBuf;
     return result;
 }
 
@@ -897,137 +858,138 @@ void SAV_PhotoLastClose()
     }
 }
 
-void SAV_PhotoSet(int a1, void* Src, size_t Size)
+void SAV_PhotoSet(int photo, void* src, size_t size)
 {
-    int v3;
+    int oldSize;
+    int nextStart;
     int i;
-    int v5;
 
     SAV_PhotoInit();
-    if (a1 >= 0 && a1 < 100)
+    if (photo < 0 || photo >= 100)
+        return;
+
+    oldSize = SAV_gst_Photos.elems[photo].photoSize;
+    if (size != oldSize)
     {
-        v5 = SAV_gst_Photos.elems[a1].photoSize;
-        if (Size != v5)
-        {
-            if (Size - v5 + SAV_gst_Photos.usedSize > SAV_gst_Photos.photoBufSize)
-                return;
-            v3 = SAV_gst_Photos.elems[a1 + 1].startOffset;
-            for (i = 99; i > a1; --i)
-                SAV_gst_Photos.elems[i].startOffset += Size - v5;
-            memcpy(&SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[a1 + 1].startOffset], &SAV_gst_Photos.photoBuf[v3], SAV_gst_Photos.usedSize - v3);
-        }
-        SAV_gst_Photos.elems[a1].photoSize = Size;
-        memcpy(&SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[a1].startOffset], Src, Size);
-        SAV_gst_Photos.usedSize += Size - v5;
+        if (size - oldSize + SAV_gst_Photos.usedSize > SAV_gst_Photos.photoBufSize)
+            return;
+        // preserved: elems[photo + 1] reads past the array for photo 99, where it lands on photoBufSize
+        nextStart = SAV_gst_Photos.elems[photo + 1].startOffset;
+        for (i = 99; i > photo; --i)
+            SAV_gst_Photos.elems[i].startOffset += size - oldSize;
+        memcpy(&SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[photo + 1].startOffset],
+               &SAV_gst_Photos.photoBuf[nextStart],
+               SAV_gst_Photos.usedSize - nextStart);
     }
+    SAV_gst_Photos.elems[photo].photoSize = size;
+    memcpy(&SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[photo].startOffset], src, size);
+    SAV_gst_Photos.usedSize += size - oldSize;
 }
 
-void SAV_PhotoDel(int a1)
+void SAV_PhotoDel(int photo)
 {
-    int v1;
-    int v2;
-    int v3;
-    signed int Size;
-    int Sizea;
-    int v6;
+    int size;
+    int end;
+    int index;
+    int i;
 
     SAV_PhotoInit();
-    if (a1 < 1000)
+    if (photo < 1000)
     {
-        if (a1 >= 0 && a1 < 100)
+        if (photo < 0 || photo >= 100)
+            return;
+
+        size = SAV_gst_Photos.elems[photo].photoSize;
+        if (!size)
+            return;
+
+        for (i = photo; i < 99; ++i)
         {
-            v3 = SAV_gst_Photos.elems[a1].photoSize;
-            if (v3)
+            SAV_gst_Photos.elems[i].photoSize = SAV_gst_Photos.elems[i + 1].photoSize;
+            SAV_gst_Photos.elems[i].startOffset = SAV_gst_Photos.elems[i + 1].startOffset - size;
+            if (SAV_gst_Photos.elems[i + 1].photoSize)
             {
-                for (Sizea = a1; Sizea < 99; ++Sizea)
-                {
-                    SAV_gst_Photos.elems[Sizea].photoSize = SAV_gst_Photos.elems[Sizea + 1].photoSize;
-                    SAV_gst_Photos.elems[Sizea].startOffset = SAV_gst_Photos.elems[Sizea + 1].startOffset - v3;
-                    if (SAV_gst_Photos.elems[Sizea + 1].photoSize)
-                    {
-                        memcpy(
-                            &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[Sizea].startOffset],
-                            &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[Sizea + 1].startOffset],
-                            SAV_gst_Photos.elems[Sizea].photoSize);
-                        SAV_gst_Photos.elems[Sizea + 1].photoSize = 0;
-                    }
-                }
-                SAV_gst_Photos.elems[99].photoSize = 0;
-                SAV_gst_Photos.elems[99].startOffset = 0;
-                SAV_gst_Photos.usedSize -= v3;
+                memcpy(
+                    &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[i].startOffset],
+                    &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[i + 1].startOffset],
+                    SAV_gst_Photos.elems[i].photoSize);
+                SAV_gst_Photos.elems[i + 1].photoSize = 0;
             }
         }
+        SAV_gst_Photos.elems[99].photoSize = 0;
+        SAV_gst_Photos.elems[99].startOffset = 0;
+        SAV_gst_Photos.usedSize -= size;
+        return;
+    }
+
+    index = photo - 1000;
+    if (index < 0 || index >= 100)
+        return;
+
+    size = SAV_gst_Photos.elems[index].photoSize;
+    if (!size)
+        return;
+
+    SAV_gst_Photos.elems[index].photoSize = 0;
+    end = size + SAV_gst_Photos.elems[index].startOffset;
+    if (SAV_gst_Photos.usedSize != end)
+        memcpy(
+            &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[index].startOffset],
+            &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[index].startOffset + size],
+            SAV_gst_Photos.usedSize - end);
+    SAV_gst_Photos.usedSize -= size;
+    for (i = index + 1; i < 100; ++i)
+        SAV_gst_Photos.elems[i].startOffset -= size;
+}
+
+void SAV_PhotoDecal(int photo, int count)
+{
+    int first;
+    int dst;
+    int end;
+    int i;
+
+    SAV_PhotoInit();
+    if (photo < 1000)
+        return;
+
+    first = photo - 1000;
+    // preserved: first and count are bounded apart, so first + count may run past the 100 entries
+    if (first < 0 || first >= 100 || count < 0 || count >= 100)
+        return;
+
+    dst = first;
+    for (i = first; i < count + first; ++i)
+    {
+        if (SAV_gst_Photos.elems[i].photoSize)
+        {
+            if (dst != i)
+            {
+                SAV_gst_Photos.elems[dst].photoSize = SAV_gst_Photos.elems[i].photoSize;
+                SAV_gst_Photos.elems[dst].startOffset = SAV_gst_Photos.elems[i].startOffset;
+            }
+            ++dst;
+        }
+    }
+    if (dst) {
+        end = SAV_gst_Photos.elems[dst - 1].photoSize + SAV_gst_Photos.elems[dst - 1].startOffset; // TODO FIXME, ez igy jó?
     }
     else
+        end = 0;
+    while (dst < count + first)
     {
-        v6 = a1 - 1000;
-        if (v6 >= 0 && v6 < 100)
-        {
-            v2 = SAV_gst_Photos.elems[v6].photoSize;
-            if (v2)
-            {
-                SAV_gst_Photos.elems[v6].photoSize = 0;
-                v1 = v2 + SAV_gst_Photos.elems[v6].startOffset;
-                if (SAV_gst_Photos.usedSize != v1)
-                    memcpy(
-                        &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[v6].startOffset],
-                        &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[v6].startOffset + v2],
-                        SAV_gst_Photos.usedSize - v1);
-                SAV_gst_Photos.usedSize -= v2;
-                for (Size = v6 + 1; Size < 100; ++Size)
-                    SAV_gst_Photos.elems[Size].startOffset -= v2;
-            }
-        }
+        SAV_gst_Photos.elems[dst].photoSize = 0;
+        SAV_gst_Photos.elems[dst++].startOffset = end;
     }
 }
 
-void SAV_PhotoDecal(int a1, int a2)
-{
-    int v2;
-    int v3;
-    int i;
-    int v5;
-
-    SAV_PhotoInit();
-    if (a1 >= 1000)
-    {
-        v5 = a1 - 1000;
-        if (v5 >= 0 && v5 < 100 && a2 >= 0 && a2 < 100)
-        {
-            v3 = v5;
-            for (i = v5; i < a2 + v5; ++i)
-            {
-                if (SAV_gst_Photos.elems[i].photoSize)
-                {
-                    if (v3 != i)
-                    {
-                        SAV_gst_Photos.elems[v3].photoSize = SAV_gst_Photos.elems[i].photoSize;
-                        SAV_gst_Photos.elems[v3].startOffset = SAV_gst_Photos.elems[i].startOffset;
-                    }
-                    ++v3;
-                }
-            }
-            if (v3) {
-                v2 = SAV_gst_Photos.elems[v3 - 1].photoSize + SAV_gst_Photos.elems[v3 - 1].startOffset; // TODO FIXME, ez igy jó?
-            }
-            else
-                v2 = 0;
-            while (v3 < a2 + v5)
-            {
-                SAV_gst_Photos.elems[v3].photoSize = 0;
-                SAV_gst_Photos.elems[v3++].startOffset = v2;
-            }
-        }
-    }
-}
-
-char* SAV_PhotoGet(int a1, int32_t* a2)
+char* SAV_PhotoGet(int photo, int32_t* size)
 {
     SAV_PhotoInit();
-    if (a1 < 0 || a1 >= 100)
+    if (photo < 0 || photo >= 100)
         return 0;
-    *a2 = SAV_gst_Photos.elems[a1].photoSize;
-    return &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[a1].startOffset];
+    *size = SAV_gst_Photos.elems[photo].photoSize;
+    return &SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[photo].startOffset];
 }
 
 void SAV_PhotoValidate()
@@ -1050,90 +1012,60 @@ void SAV_PhotoUnvalidate()
         memcpy(SAV_gst_Photos.photoBuf, SAV_gst_PhotosValidate.photoBuf, SAV_gst_PhotosValidate.usedSize);
 }
 
-void SAV_LoadData(int a1)
+void SAV_LoadData(int forSaving)
 {
-    INO_gb_ReadIdxForSaving = a1 != 0;
+    INO_gb_ReadIdxForSaving = forSaving != 0;
     INO_SavSetCardStatus(SAVE_gi_DefaultSlot, 7);
 }
 
-int Demo_Geti(int a1)
+int Demo_Geti(int field)
 {
-    int result;
-    int v2;
+    int exitAsked;
 
-    switch (a1)
+    switch (field)
     {
     case 1:
-        result = 0;
-        break;
     case 2:
-        result = 0;
-        break;
     case 3:
-        result = 0;
-        break;
+        return 0;
     case 4:
-        result = 60;
-        break;
+        return 60;
     case 5:
-        result = 240;
-        break;
+        return 240;
     case 6:
-        v2 = Demo_gb_Exit;
+        exitAsked = Demo_gb_Exit;
         Demo_gb_Exit = 0;
-        result = v2;
-        break;
+        return exitAsked;
     default:
-        result = -1;
-        break;
+        return -1;
     }
-    return result;
 }
 
-int Demo_Seti(int a1)
+int Demo_Seti(int field)
 {
-    if (a1 <= 202)
+    switch (field)
     {
-        if (a1 == 202)
-        {
-            INO_gi_LaunchDemo = 2;
-            ENG_gb_ExitApplication = 1;
-            ENG_gb_ForceEndEngine = 1;
-            return 0;
-        }
-        if (a1 != 6)
-        {
-            if (a1 == 200)
-            {
-                INO_gi_LaunchDemo = 0;
-                ENG_gb_ExitApplication = 1;
-                ENG_gb_ForceEndEngine = 1;
-                return 0;
-            }
-            if (a1 == 201)
-            {
-                INO_gi_LaunchDemo = 1;
-                ENG_gb_ExitApplication = 1;
-                ENG_gb_ForceEndEngine = 1;
-                return 0;
-            }
-            return -1;
-        }
-    LABEL_9:
-        ENG_gb_ExitApplication = 1;
-        ENG_gb_ForceEndEngine = 1;
-        return 0;
-    }
-    if (a1 == 203)
-    {
+    case 200:
+        INO_gi_LaunchDemo = 0;
+        break;
+    case 201:
+        INO_gi_LaunchDemo = 1;
+        break;
+    case 202:
+        INO_gi_LaunchDemo = 2;
+        break;
+    case 203:
         INO_gi_LaunchDemo = 3;
-        ENG_gb_ExitApplication = 1;
-        ENG_gb_ForceEndEngine = 1;
-        return 0;
+        break;
+    case 6:
+    case 666:
+        break;
+    default:
+        return -1;
     }
-    if (a1 == 666)
-        goto LABEL_9;
-    return -1;
+    ENG_gb_ExitApplication = 1;
+    ENG_gb_ForceEndEngine = 1;
+    return 0;
 }
 
 int INO_i_IsMouseBeingUsed() {
