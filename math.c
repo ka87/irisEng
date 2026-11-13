@@ -191,38 +191,38 @@ BOOL MATH_b_EqVectorWithEpsilon(Vec3* vec1, Vec3* vec2, float epsilon)
     return TRUE;
 }
 
-float MATH_f_VecSin(Vec3* v1, Vec3* v2, Vec3* v3)
+float MATH_f_VecSin(Vec3* vec1, Vec3* vec2, Vec3* axis)
 {    
     Vec3 tmpv1, tmpv2, cp;
     float len;
 
-    MATH_NormalizeVector(&tmpv1, v1);
-    MATH_NormalizeVector(&tmpv2, v2);
+    MATH_NormalizeVector(&tmpv1, vec1);
+    MATH_NormalizeVector(&tmpv2, vec2);
     MATH_CrossProduct(&cp, &tmpv1, &tmpv2);
     
     len = MATH_VecLen(&cp);
 
-    if (v3 && cp.x * v3->x + v3->y * cp.y + v3->z * cp.z < 0.0f)
+    if (axis && cp.x * axis->x + axis->y * cp.y + axis->z * cp.z < 0.0f)
         return -len;
     else
         return len;
 }
 
-float MATH_f_VecCos(Vec3* v1, Vec3* v2)
+float MATH_f_VecCos(Vec3* vec1, Vec3* vec2)
 {
     Vec3 tmpv1, tmpv2;
 
-    MATH_NormalizeVector(&tmpv1, v1);
-    MATH_NormalizeVector(&tmpv2, v2);
+    MATH_NormalizeVector(&tmpv1, vec1);
+    MATH_NormalizeVector(&tmpv2, vec2);
 
     return tmpv1.x * tmpv2.x + tmpv1.y * tmpv2.y + tmpv1.z * tmpv2.z;
 }
 
-float MATH_f_VecAngle(Vec3* v1, Vec3* v2, Vec3* v3)
+float MATH_f_VecAngle(Vec3* vec1, Vec3* vec2, Vec3* axis)
 {
     float vc, vs, ret;
 
-    vc = MATH_f_VecCos(v1, v2);
+    vc = MATH_f_VecCos(vec1, vec2);
 
     if (vc >= 1.0f)
         return 0.0f;
@@ -232,7 +232,7 @@ float MATH_f_VecAngle(Vec3* v1, Vec3* v2, Vec3* v3)
     else
         ret = MATH_f_Pi;
 
-    vs = MATH_f_VecSin(v1, v2, v3);
+    vs = MATH_f_VecSin(vec1, vec2, axis);
 
    if (vs < 0.0f)
        ret = -ret;
@@ -240,12 +240,12 @@ float MATH_f_VecAngle(Vec3* v1, Vec3* v2, Vec3* v3)
     return ret;
 }
 
-float MATH_f_ZAngle(Vec3* v1, Vec3* v2)
+float MATH_f_ZAngle(Vec3* vec1, Vec3* vec2)
 {
     float ret;
 
-    Vec3 tmpVec1 = { v1->x, v1->y, 0.0f };
-    Vec3 tmpVec2 = { v2->x, v2->y, 0.0f };
+    Vec3 tmpVec1 = { vec1->x, vec1->y, 0.0f };
+    Vec3 tmpVec2 = { vec2->x, vec2->y, 0.0f };
 
     MATH_NormalizeEqualVector(&tmpVec1);
     MATH_NormalizeEqualVector(&tmpVec2);
@@ -258,23 +258,23 @@ float MATH_f_ZAngle(Vec3* v1, Vec3* v2)
     return (float)ret;
 }
 
-float MATH_f_XAngle(Vec3* v1, Vec3* v2)
+float MATH_f_XAngle(Vec3* vec1, Vec3* vec2)
 {
     float v1AngleAbs, v2AngleAbs, ret;
-    Vec3 tmpVec1 = { v1->x, v1->y, 0.0f };
-    Vec3 tmpVec2 = { v2->x, v2->y, 0.0f };
+    Vec3 tmpVec1 = { vec1->x, vec1->y, 0.0f };
+    Vec3 tmpVec2 = { vec2->x, vec2->y, 0.0f };
 
     MATH_NormalizeEqualVector(&tmpVec1);
     MATH_NormalizeEqualVector(&tmpVec2);
 
-    v1AngleAbs = (float)fabs(MATH_f_VecAngle(&tmpVec1, v1, &MATH_gst_BaseVectorI));
+    v1AngleAbs = (float)fabs(MATH_f_VecAngle(&tmpVec1, vec1, &MATH_gst_BaseVectorI));
     
-    if (v1->z < 0.0f)
+    if (vec1->z < 0.0f)
         v1AngleAbs = -v1AngleAbs;
 
-    v2AngleAbs = (float)fabs(MATH_f_VecAngle(&tmpVec2, v2, &MATH_gst_BaseVectorI));
+    v2AngleAbs = (float)fabs(MATH_f_VecAngle(&tmpVec2, vec2, &MATH_gst_BaseVectorI));
     
-    if (v2->z < 0.0f)
+    if (vec2->z < 0.0f)
         v2AngleAbs = -v2AngleAbs;
     
     ret = v1AngleAbs - v2AngleAbs;
@@ -290,11 +290,11 @@ float MATH_f_XAngle(Vec3* v1, Vec3* v2)
     return ret;
 }
 
-float MATH_DistanceOfTwoPoints(Vec3* v1, Vec3* v2)
+float MATH_DistanceOfTwoPoints(Vec3* p1, Vec3* p2)
 {
-    double xDif = v1->x - v2->x;
-    double yDif = v1->y - v2->y;
-    double zDif = v1->z - v2->z;
+    double xDif = p1->x - p2->x;
+    double yDif = p1->y - p2->y;
+    double zDif = p1->z - p2->z;
 
     return (float)sqrt(xDif * xDif + yDif * yDif + zDif * zDif);
 }
@@ -541,22 +541,22 @@ void MATH_SetNormVector(Vec3* dest, Vec3* src, float norm)
     MATH_VecMultScalarWithoutBuffer(dest, norm);
 }
 
-void MATH_BlendVector(Vec3* dest, Vec3* v1, Vec3* v2, float amount)
+void MATH_BlendVector(Vec3* dest, Vec3* from, Vec3* to, float amount)
 {
     if (amount < 0.0f)
         amount = 0.0f;
     if (amount > 1.0f)
         amount = 1.0f;
-    dest->x = (1.0f - amount) * v1->x + amount * v2->x;
-    dest->y = (1.0f - amount) * v1->y + amount * v2->y;
-    dest->z = (1.0f - amount) * v1->z + amount * v2->z;
+    dest->x = (1.0f - amount) * from->x + amount * to->x;
+    dest->y = (1.0f - amount) * from->y + amount * to->y;
+    dest->z = (1.0f - amount) * from->z + amount * to->z;
 }
 
-BOOL MATH_b_VecColinear(Vec3* v1, Vec3* v2)
+BOOL MATH_b_VecColinear(Vec3* vec1, Vec3* vec2)
 {
     Vec3 cp;
     
-    MATH_CrossProduct(&cp, v1, v2);
+    MATH_CrossProduct(&cp, vec1, vec2);
     
     if (fabs(cp.x) > 0.0000001f)
         return FALSE;
@@ -626,238 +626,238 @@ void MATH_PointSegmentProjection(Vec3* dest, Vec3* point, Vec3* line1, Vec3* lin
     }
 }
 
-double MATH_PowLimitedCE(float a1)
+double MATH_PowLimitedCE(float x)
 {
-    if (a1 > 0.0)
-        return pow(a1, 0.3333333432674408);
-    if (a1 >= 0.0)
+    if (x > 0.0)
+        return pow(x, 0.3333333432674408);
+    if (x >= 0.0)
         return 0.0;
-    return -pow(-a1, 0.3333333432674408);
+    return -pow(-x, 0.3333333432674408);
 }
 
-int MATH_i_SolveCubicEquation(float a1, float a2, float a3, Vec3* dest)
+int MATH_i_SolveCubicEquation(float a, float b, float c, Vec3* dest)
 {
-    double v4;
-    long double v5;
-    double v7;
+    double aSq;
+    long double disc;
+    double sqrtDisc;
+    double w;
+    double root;
+    double phi;
+    double amp;
+    double amp2;
+    double cbrtRoot;
+    double shift;
+    float pThird;
+    float pThirdCubed;
+    float u;
+    float qHalf;
     int ret;
-    double v10;
-    double v11;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    double v16;
-    float v20;
-    float v21;
-    float v22;
-    float v23;
 
-    v4 = a1 * a1;
-    v20 = (float)((a2 - 0.33333334 * v4) * 0.33333334);
-    v23 = (float)((v4 * a1 * 0.074074075 - a1 * a2 * 0.33333334 + a3) * 0.5);
-    v21 = v20 * v20 * v20;
-    v5 = v23 * v23 + v21;
-    if (fabs(v5) >= 0.0000099999997)
+    aSq = a * a;
+    pThird = (float)((b - 0.33333334 * aSq) * 0.33333334);
+    qHalf = (float)((aSq * a * 0.074074075 - a * b * 0.33333334 + c) * 0.5);
+    pThirdCubed = pThird * pThird * pThird;
+    disc = qHalf * qHalf + pThirdCubed;
+
+    if (fabs(disc) >= 0.0000099999997)
     {
-        if (v5 >= 0.0)
+        if (disc >= 0.0)
         {
-            v13 = sqrt(v5);
-            v22 = (float)MATH_PowLimitedCE((float)(v13 - v23));
-            v14 = (float)MATH_PowLimitedCE((float)(v13 + v23));
-            v15 = v22 - v14;
-            dest->x = (float)v15;
-            dest->y = (float)v15;
-            dest->z = (float)v15;
+            sqrtDisc = sqrt(disc);
+            u = (float)MATH_PowLimitedCE((float)(sqrtDisc - qHalf));
+            w = (float)MATH_PowLimitedCE((float)(sqrtDisc + qHalf));
+            root = u - w;
+            dest->x = (float)root;
+            dest->y = (float)root;
+            dest->z = (float)root;
             ret = 1;
-            v16 = a1 * 0.33333334;
-            dest->x = (float)(dest->x - v16);
-            dest->y = (float)(dest->y - v16);
-            dest->z = (float)(dest->z - v16);
-            return ret;
         }
-        v10 = acos(-(v23 / sqrt(-v21))) * 0.33333334;
-        ret = 3;
-        v11 = sqrt(-v20);
-        v12 = v11 + v11;
-        dest->x = (float)(cos(v10) * v12);
-        dest->y = (float)(-(cos(v10 + 1.0471976) * v12));
-        dest->z = (float)(-(cos(v10 - 1.0471976) * v12));
+        else
+        {
+            phi = acos(-(qHalf / sqrt(-pThirdCubed))) * 0.33333334;
+            amp = sqrt(-pThird);
+            amp2 = amp + amp;
+            dest->x = (float)(cos(phi) * amp2);
+            dest->y = (float)(-(cos(phi + 1.0471976) * amp2));
+            dest->z = (float)(-(cos(phi - 1.0471976) * amp2));
+            ret = 3;
+        }
     }
     else
     {
-        if (fabs(v23) < 0.0000099999997)
+        if (fabs(qHalf) < 0.0000099999997)
         {
             dest->x = 0.0;
             dest->y = 0.0;
             dest->z = 0.0;
             ret = 1;
-            v16 = a1 * 0.33333334;
-            dest->x = (float)(dest->x - v16);
-            dest->y = (float)(dest->y - v16);
-            dest->z = (float)(dest->z - v16);
-            return ret;
         }
-        v7 = MATH_PowLimitedCE(-v23);
-        ret = 2;
-        dest->x = (float)(v7 + v7);
-        dest->y = (float)(-v7);
-        dest->z = (float)(-v7);
+        else
+        {
+            cbrtRoot = MATH_PowLimitedCE(-qHalf);
+            dest->x = (float)(cbrtRoot + cbrtRoot);
+            dest->y = (float)(-cbrtRoot);
+            dest->z = (float)(-cbrtRoot);
+            ret = 2;
+        }
     }
-    v16 = a1 * 0.33333334;
-    dest->x = (float)(dest->x - v16);
-    dest->y = (float)(dest->y - v16);
-    dest->z = (float)(dest->z - v16);
+
+    shift = a * 0.33333334;
+    dest->x = (float)(dest->x - shift);
+    dest->y = (float)(dest->y - shift);
+    dest->z = (float)(dest->z - shift);
     return ret;
 }
 
-void MATH_PointParabolProjection2D(Vec3* a1, Vec3* a2, float a3, float a4)
+void MATH_PointParabolProjection2D(Vec3* dest, Vec3* point, float curvature, float height)
 {
-    double v4;
-    int v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    double v12;
-    double v13;
-    float a2a;
-    float a3a;
-    float v16;
-    float v17;
-    Vec3 a4a;
+    double invCurv;
+    int numRoots;
+    double chosen;
+    double dyX;
+    double dxX;
+    double distX;
+    double dyY;
+    double dxY;
+    double dxZ;
+    double dyZ;
+    float coefB;
+    float coefC;
+    float distY;
+    float distZ;
+    Vec3 roots;
 
-    if (fabs(a3) >= 0.00000000099999997)
+    if (fabs(curvature) >= 0.00000000099999997)
     {
-        v4 = 1.0 / a3;
-        a3a = (float)(-(0.5 * v4 * a2->x * v4));
-        a2a = (float)((0.5 * v4 + a4 - a2->y) * v4);
-        v5 = MATH_i_SolveCubicEquation(0.0, a2a, a3a, &a4a);
-        v6 = a4a.x;
-        if (v5 > 1)
+        invCurv = 1.0 / curvature;
+        coefC = (float)(-(0.5 * invCurv * point->x * invCurv));
+        coefB = (float)((0.5 * invCurv + height - point->y) * invCurv);
+        numRoots = MATH_i_SolveCubicEquation(0.0, coefB, coefC, &roots);
+        chosen = roots.x;
+        if (numRoots > 1)
         {
-            v7 = v6 * a4a.x * a3 + a4 - a2->y;
-            v8 = a4a.x - a2->x;
-            v9 = v7 * v7 + v8 * v8;
-            v10 = a4a.y * a4a.y * a3 + a4 - a2->y;
-            v11 = a4a.y - a2->x;
-            v16 = (float)(v10 * v10 + v11 * v11);
-            v12 = a4a.z - a2->x;
-            v13 = a4a.z * a4a.z * a3 + a4 - a2->y;
-            v17 = (float)(v13 * v13 + v12 * v12);
-            if (v9 >= v16)
+            dyX = chosen * roots.x * curvature + height - point->y;
+            dxX = roots.x - point->x;
+            distX = dyX * dyX + dxX * dxX;
+            dyY = roots.y * roots.y * curvature + height - point->y;
+            dxY = roots.y - point->x;
+            distY = (float)(dyY * dyY + dxY * dxY);
+            dxZ = roots.z - point->x;
+            dyZ = roots.z * roots.z * curvature + height - point->y;
+            distZ = (float)(dyZ * dyZ + dxZ * dxZ);
+            if (distX >= distY)
             {
-                if (v16 < (double)v17)
+                if (distY < (double)distZ)
                 {
-                    a1->x = a4a.y;
-                    a1->z = 0.0;
-                    a1->y = (float)(v6 * v6 * a3 + a4);
+                    // takes its x from roots.y and its height from roots.x
+                    dest->x = roots.y;
+                    dest->z = 0.0;
+                    dest->y = (float)(chosen * chosen * curvature + height);
                     return;
                 }
             }
-            else if (v9 < v17)
+            else if (distX < distZ)
             {
-                a1->x = a4a.x;
-                a1->z = 0.0;
-                a1->y = (float)(v6 * v6 * a3 + a4);
+                dest->x = roots.x;
+                dest->z = 0.0;
+                dest->y = (float)(chosen * chosen * curvature + height);
                 return;
             }
-            v6 = a4a.z;
+            chosen = roots.z;
         }
-        a1->x = (float)v6;
-        a1->z = 0.0;
-        a1->y = (float)(v6 * v6 * a3 + a4);
+        dest->x = (float)chosen;
+        dest->z = 0.0;
+        dest->y = (float)(chosen * chosen * curvature + height);
         return;
     }
-    a1->y = a4;
-    a1->x = a2->x;
-    a1->z = 0.0;
+    dest->y = height;
+    dest->x = point->x;
+    dest->z = 0.0;
 }
 
-void MATH_PointParabolProjection3D(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, float a7)
+void MATH_PointParabolProjection3D(Vec3* dest, Vec3* tangent, Vec3* point, Vec3* refA, Vec3* refB, Vec3* origin, float time)
 {
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    float a4a;
-    float v19;
-    float v20;
+    double dxA;
+    double dyA;
+    double invLenA;
+    double ayNorm;
+    double azNorm;
+    double invLenB;
+    double axisX;
+    double axisY;
+    double invBisLen;
+    float height;
+    float invAxisLen;
+    float curvature;
     Vec3 src;
-    Vec3 a3a;
-    Mtx4x4 a2a;
-    Vec3 a1a;
-    Vec3 v25;
-    Vec3 v26;
-    Vec3 v27;
-    Vec3 dest;
+    Vec3 ptA;
+    Mtx4x4 frame;
+    Vec3 localA;
+    Vec3 localTangent;
+    Vec3 localProj;
+    Vec3 localPoint;
+    Vec3 localB;
 
-    v7 = a4->x - a6->x;
-    v8 = a4->y - a6->y;
-    a3a.z = a4->z - a6->z;
-    src.x = a5->x - a6->x;
-    src.y = a5->y - a6->y;
-    src.z = a5->z - a6->z;
-    v9 = 1.0 / sqrt(v8 * v8 + v7 * v7 + a3a.z * a3a.z);
-    a3a.x = (float)(v9 * v7);
-    v10 = v8 * v9;
-    v11 = v9 * a3a.z;
-    v12 = 1.0 / sqrt(src.z * src.z + src.y * src.y + src.x * src.x);
-    src.x = (float)(src.x * v12);
-    src.y = (float)(src.y * v12);
-    src.z = (float)(src.z * v12);
-    v13 = src.x - a3a.x;
-    v14 = src.y - v10;
-    a2a.v1.z = (float)(src.z - v11);
-    a2a.v2.x = src.x + a3a.x;
-    a2a.v2.y = (float)(src.y + v10);
-    a2a.v2.z = (float)(src.z + v11);
-    v19 = (float)(1.0 / sqrt(a2a.v1.z * a2a.v1.z + v14 * v14 + v13 * v13));
-    a2a.v1.x = (float)(v13 * v19);
-    a2a.v1.y = (float)(v14 * v19);
-    a2a.v1.z = a2a.v1.z * v19;
-    v15 = 1.0 / sqrt(a2a.v2.z * a2a.v2.z + a2a.v2.y * a2a.v2.y + a2a.v2.x * a2a.v2.x);
-    a2a.v2.x = (float)(a2a.v2.x * v15);
-    a2a.v2.y = (float)(a2a.v2.y * v15);
-    a2a.v2.z = (float)(a2a.v2.z * v15);
-    a2a.v3.x = a2a.v2.z * a2a.v1.y - a2a.v2.y * a2a.v1.z;
-    a2a.Pos.x = a6->x;
-    a2a.Pos.y = a6->y;
-    a2a.Pos.z = a6->z;
-    a2a.v3.y = a2a.v2.x * a2a.v1.z - a2a.v2.z * a2a.v1.x;
-    a2a._m14 = 0.0;
-    a2a._m24 = 0.0;
-    a2a._m34 = 0.0;
-    a2a.mtxflag = (a2a.mtxflag | 2) & ~8u;
-    a2a.v3.z = a2a.v2.y * a2a.v1.x - a2a.v2.x * a2a.v1.y;
-    a3a.x = a3a.x * a7;
-    a3a.y = (float)(v10 * a7);
-    src.y = src.y * a7;
-    src.z = src.z * a7;
-    a3a.x = a3a.x + a6->x;
-    a3a.y = a3a.y + a6->y;
-    a3a.z = (float)(v11 * a7 + a6->z);
-    src.x = src.x * a7 + a6->x;
-    src.y = src.y + a6->y;
-    src.z = src.z + a6->z;
-    MATH_VertexGlobalToLocal(&a1a, &a2a, &a3a);
-    MATH_VertexGlobalToLocal(&dest, &a2a, &src);
-    MATH_VertexGlobalToLocal(&v27, &a2a, a3);
-    v20 = a1a.y / (a1a.x * a1a.x + a1a.x * a1a.x);
-    a4a = a1a.y * 0.5f;
-    MATH_PointParabolProjection2D(&v26, &v27, v20, a4a);
-    MATH_TransformVertex(a1, &a2a, &v26);
-    v25.y = v26.x * v20 + v26.x * v20;
-    v25.x = 1.0;
-    v25.z = 0.0;
-    MATH_TransformVectorNoScale(a2, &a2a, &v25);
+    dxA = refA->x - origin->x;
+    dyA = refA->y - origin->y;
+    ptA.z = refA->z - origin->z;
+    src.x = refB->x - origin->x;
+    src.y = refB->y - origin->y;
+    src.z = refB->z - origin->z;
+    invLenA = 1.0 / sqrt(dyA * dyA + dxA * dxA + ptA.z * ptA.z);
+    ptA.x = (float)(invLenA * dxA);
+    ayNorm = dyA * invLenA;
+    azNorm = invLenA * ptA.z;
+    invLenB = 1.0 / sqrt(src.z * src.z + src.y * src.y + src.x * src.x);
+    src.x = (float)(src.x * invLenB);
+    src.y = (float)(src.y * invLenB);
+    src.z = (float)(src.z * invLenB);
+    axisX = src.x - ptA.x;
+    axisY = src.y - ayNorm;
+    frame.v1.z = (float)(src.z - azNorm);
+    frame.v2.x = src.x + ptA.x;
+    frame.v2.y = (float)(src.y + ayNorm);
+    frame.v2.z = (float)(src.z + azNorm);
+    invAxisLen = (float)(1.0 / sqrt(frame.v1.z * frame.v1.z + axisY * axisY + axisX * axisX));
+    frame.v1.x = (float)(axisX * invAxisLen);
+    frame.v1.y = (float)(axisY * invAxisLen);
+    frame.v1.z = frame.v1.z * invAxisLen;
+    invBisLen = 1.0 / sqrt(frame.v2.z * frame.v2.z + frame.v2.y * frame.v2.y + frame.v2.x * frame.v2.x);
+    frame.v2.x = (float)(frame.v2.x * invBisLen);
+    frame.v2.y = (float)(frame.v2.y * invBisLen);
+    frame.v2.z = (float)(frame.v2.z * invBisLen);
+    frame.v3.x = frame.v2.z * frame.v1.y - frame.v2.y * frame.v1.z;
+    frame.Pos.x = origin->x;
+    frame.Pos.y = origin->y;
+    frame.Pos.z = origin->z;
+    frame.v3.y = frame.v2.x * frame.v1.z - frame.v2.z * frame.v1.x;
+    frame._m14 = 0.0;
+    frame._m24 = 0.0;
+    frame._m34 = 0.0;
+    frame.mtxflag = (frame.mtxflag | 2) & ~8u;
+    frame.v3.z = frame.v2.y * frame.v1.x - frame.v2.x * frame.v1.y;
+    ptA.x = ptA.x * time;
+    ptA.y = (float)(ayNorm * time);
+    src.y = src.y * time;
+    src.z = src.z * time;
+    ptA.x = ptA.x + origin->x;
+    ptA.y = ptA.y + origin->y;
+    ptA.z = (float)(azNorm * time + origin->z);
+    src.x = src.x * time + origin->x;
+    src.y = src.y + origin->y;
+    src.z = src.z + origin->z;
+    MATH_VertexGlobalToLocal(&localA, &frame, &ptA);
+    // localB is computed and never read; the parabola is built from localA alone
+    MATH_VertexGlobalToLocal(&localB, &frame, &src);
+    MATH_VertexGlobalToLocal(&localPoint, &frame, point);
+    curvature = localA.y / (localA.x * localA.x + localA.x * localA.x);
+    height = localA.y * 0.5f;
+    MATH_PointParabolProjection2D(&localProj, &localPoint, curvature, height);
+    MATH_TransformVertex(dest, &frame, &localProj);
+    localTangent.y = localProj.x * curvature + localProj.x * curvature;
+    localTangent.x = 1.0;
+    localTangent.z = 0.0;
+    MATH_TransformVectorNoScale(tangent, &frame, &localTangent);
 }
 
 void MATH_VecRound(Vec3* v)
@@ -982,276 +982,276 @@ void MATH_MulMatrixMatrix(Mtx4x4* dest, Mtx4x4* src1, Mtx4x4* src2)
     }
 }
 
-void MATH_MakeRotationMatrix_AxisAngle(Mtx4x4* a1, Vec3* a2, float a3, Quat4* a4, char a5)
+void MATH_MakeRotationMatrix_AxisAngle(Mtx4x4* mtx, Vec3* axis, float angle, Quat4* quatOut, char resetTranslation)
 {
-    Quat4* v5;
-    float v6;
-    float v7;
-    float v8;
-    float v9;
-    float v10;
-    float v11;
-    float v12;
-    float v13;
-    unsigned int v14;
-    unsigned int v15;
-    float v16;
-    float v17;
-    float v18;
-    Quat4 v19;
-    float a2a;
-    float a3a;
-    float a4a;
-    float a4b;
+    Quat4* q;
+    float half;
+    float s;
+    float c;
+    float x2;
+    float xx;
+    float xy;
+    float xz;
+    float zz;
+    unsigned int flags;
+    unsigned int flagsNoScale;
+    float wy;
+    float wx;
+    float yy;
+    Quat4 scratch;
+    float wz;
+    float z2;
+    float y2;
+    float yz;
 
-    v5 = a4;
-    v6 = a3 * 0.5f;
-    v7 = (float)sin(v6);
-    if (!a4)
-        v5 = &v19;
-    v5->q1 = v7 * a2->x;
-    v5->q2 = a2->y * v7;
-    v5->q3 = a2->z * v7;
-    v8 = (float)cos(v6);
-    v5->q4 = v8;
-    v9 = v5->q1 + v5->q1;
-    a4a = v5->q2 + v5->q2;
-    a3a = v5->q3 + v5->q3;
-    v17 = v8 * v9;
-    v16 = v8 * a4a;
-    a2a = v8 * a3a;
-    v10 = v9 * v5->q1;
-    v11 = a4a * v5->q1;
-    v12 = a3a * v5->q1;
-    v18 = a4a * v5->q2;
-    a4b = a3a * v5->q2;
-    v13 = a3a * v5->q3;
-    a1->v1.x = 1.0f - (v18 + v13);
-    a1->v1.y = v11 + a2a;
-    a1->v1.z = v12 - v16;
-    a1->v2.x = v11 - a2a;
-    v14 = a1->mtxflag;
-    a1->v2.y = 1.0f - (v13 + v10);
-    a1->v2.z = a4b + v17;
-    a1->v3.x = v12 + v16;
-    a1->v3.y = a4b - v17;
-    a1->v3.z = 1.0f - (v18 + v10);
-    if (a5)
+    q = quatOut;
+    half = angle * 0.5f;
+    s = (float)sin(half);
+    if (!quatOut)
+        q = &scratch;
+    q->q1 = s * axis->x;
+    q->q2 = axis->y * s;
+    q->q3 = axis->z * s;
+    c = (float)cos(half);
+    q->q4 = c;
+    x2 = q->q1 + q->q1;
+    y2 = q->q2 + q->q2;
+    z2 = q->q3 + q->q3;
+    wx = c * x2;
+    wy = c * y2;
+    wz = c * z2;
+    xx = x2 * q->q1;
+    xy = y2 * q->q1;
+    xz = z2 * q->q1;
+    yy = y2 * q->q2;
+    yz = z2 * q->q2;
+    zz = z2 * q->q3;
+    mtx->v1.x = 1.0f - (yy + zz);
+    mtx->v1.y = xy + wz;
+    mtx->v1.z = xz - wy;
+    mtx->v2.x = xy - wz;
+    flags = mtx->mtxflag;
+    mtx->v2.y = 1.0f - (zz + xx);
+    mtx->v2.z = yz + wx;
+    mtx->v3.x = xz + wy;
+    mtx->v3.y = yz - wx;
+    mtx->v3.z = 1.0f - (yy + xx);
+    if (resetTranslation)
     {
-        a1->_m14 = 0.0;
-        a1->_m24 = 0.0;
-        a1->_m34 = 0.0;
-        a1->mtxflag = v14 & ~8u;
-        a1->Pos.x = 0.0;
-        a1->Pos.y = 0.0;
-        a1->Pos.z = 0.0;
-        v15 = a1->mtxflag & ~2u;
-        a1->mtxflag = v15;
-        v14 = v15;
+        mtx->_m14 = 0.0;
+        mtx->_m24 = 0.0;
+        mtx->_m34 = 0.0;
+        mtx->mtxflag = flags & ~8u;
+        mtx->Pos.x = 0.0;
+        mtx->Pos.y = 0.0;
+        mtx->Pos.z = 0.0;
+        flagsNoScale = mtx->mtxflag & ~2u;
+        mtx->mtxflag = flagsNoScale;
+        flags = flagsNoScale;
     }
-    a1->mtxflag = v14 | 4;
+    mtx->mtxflag = flags | 4;
 }
 
 void MATH_RotateMatrix_AroundGlobalXAxis(Mtx4x4* mtx, float angle)
 {
-    double v2;
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
+    double cosA;
+    double sinA;
+    double u1;
+    double w1;
+    double u2;
+    double w2;
+    double u3;
+    double w3;
 
-    v2 = cos(angle);
+    cosA = cos(angle);
     mtx->mtxflag |= 4u;
-    v3 = sin(angle);
-    v4 = mtx->v1.y;
-    v5 = mtx->v1.z;
-    mtx->v1.y = (float)(v4 * v2 - v5 * v3);
-    mtx->v1.z = (float)(v4 * v3 + v5 * v2);
-    v6 = mtx->v2.y;
-    v7 = mtx->v2.z;
-    mtx->v2.y = (float)(v6 * v2 - v7 * v3);
-    mtx->v2.z = (float)(v6 * v3 + v7 * v2);
-    v8 = mtx->v3.y;
-    v9 = mtx->v3.z;
-    mtx->v3.y = (float)(v8 * v2 - v9 * v3);
-    mtx->v3.z = (float)(v8 * v3 + v9 * v2);
+    sinA = sin(angle);
+    u1 = mtx->v1.y;
+    w1 = mtx->v1.z;
+    mtx->v1.y = (float)(u1 * cosA - w1 * sinA);
+    mtx->v1.z = (float)(u1 * sinA + w1 * cosA);
+    u2 = mtx->v2.y;
+    w2 = mtx->v2.z;
+    mtx->v2.y = (float)(u2 * cosA - w2 * sinA);
+    mtx->v2.z = (float)(u2 * sinA + w2 * cosA);
+    u3 = mtx->v3.y;
+    w3 = mtx->v3.z;
+    mtx->v3.y = (float)(u3 * cosA - w3 * sinA);
+    mtx->v3.z = (float)(u3 * sinA + w3 * cosA);
 }
 
 void MATH_RotateMatrix_AroundGlobalYAxis(Mtx4x4* mtx, float angle)
 {
-    double v2;
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
+    double cosA;
+    double sinA;
+    double u1;
+    double w1;
+    double u2;
+    double w2;
+    double u3;
+    double w3;
 
-    v2 = cos(angle);
+    cosA = cos(angle);
     mtx->mtxflag |= 4u;
-    v3 = sin(angle);
-    v4 = mtx->v1.x;
-    v5 = mtx->v1.z;
-    mtx->v1.x = (float)(v5 * v3 + v4 * v2);
-    mtx->v1.z = (float)(v5 * v2 - v4 * v3);
-    v6 = mtx->v2.x;
-    v7 = mtx->v2.z;
-    mtx->v2.x = (float)(v7 * v3 + v6 * v2);
-    mtx->v2.z = (float)(v7 * v2 - v6 * v3);
-    v8 = mtx->v3.x;
-    v9 = mtx->v3.z;
-    mtx->v3.x = (float)(v9 * v3 + v8 * v2);
-    mtx->v3.z = (float)(v9 * v2 - v8 * v3);
+    sinA = sin(angle);
+    u1 = mtx->v1.x;
+    w1 = mtx->v1.z;
+    mtx->v1.x = (float)(w1 * sinA + u1 * cosA);
+    mtx->v1.z = (float)(w1 * cosA - u1 * sinA);
+    u2 = mtx->v2.x;
+    w2 = mtx->v2.z;
+    mtx->v2.x = (float)(w2 * sinA + u2 * cosA);
+    mtx->v2.z = (float)(w2 * cosA - u2 * sinA);
+    u3 = mtx->v3.x;
+    w3 = mtx->v3.z;
+    mtx->v3.x = (float)(w3 * sinA + u3 * cosA);
+    mtx->v3.z = (float)(w3 * cosA - u3 * sinA);
 }
 
 void MATH_RotateMatrix_AroundGlobalZAxis(Mtx4x4* mtx, float angle)
 {
-    double v2;
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
+    double cosA;
+    double sinA;
+    double u1;
+    double w1;
+    double u2;
+    double w2;
+    double u3;
+    double w3;
 
-    v2 = cos(angle);
+    cosA = cos(angle);
     mtx->mtxflag |= 4u;
-    v3 = sin(angle);
-    v4 = mtx->v1.x;
-    v5 = mtx->v1.y;
-    mtx->v1.x = (float)(v4 * v2 - v5 * v3);
-    mtx->v1.y = (float)(v4 * v3 + v5 * v2);
-    v6 = mtx->v2.x;
-    v7 = mtx->v2.y;
-    mtx->v2.x = (float)(v6 * v2 - v7 * v3);
-    mtx->v2.y = (float)(v6 * v3 + v7 * v2);
-    v8 = mtx->v3.x;
-    v9 = mtx->v3.y;
-    mtx->v3.x = (float)(v8 * v2 - v9 * v3);
-    mtx->v3.y = (float)(v8 * v3 + v9 * v2);
+    sinA = sin(angle);
+    u1 = mtx->v1.x;
+    w1 = mtx->v1.y;
+    mtx->v1.x = (float)(u1 * cosA - w1 * sinA);
+    mtx->v1.y = (float)(u1 * sinA + w1 * cosA);
+    u2 = mtx->v2.x;
+    w2 = mtx->v2.y;
+    mtx->v2.x = (float)(u2 * cosA - w2 * sinA);
+    mtx->v2.y = (float)(u2 * sinA + w2 * cosA);
+    u3 = mtx->v3.x;
+    w3 = mtx->v3.y;
+    mtx->v3.x = (float)(u3 * cosA - w3 * sinA);
+    mtx->v3.y = (float)(u3 * sinA + w3 * cosA);
 }
 
 void MATH_RotateMatrix_AroundLocalXAxis(Mtx4x4* mtx, float angle)
 {
-    double v2;
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
+    double cosA;
+    double sinA;
+    double u1;
+    double w1;
+    double u2;
+    double w2;
+    double u3;
+    double w3;
 
-    v2 = cos(angle);
+    cosA = cos(angle);
     mtx->mtxflag |= 4u;
-    v3 = sin(angle);
-    v4 = mtx->v2.x;
-    v5 = mtx->v3.x;
-    mtx->v2.x = (float)(v5 * v3 + v4 * v2);
-    mtx->v3.x = (float)(v5 * v2 - v4 * v3);
-    v6 = mtx->v2.y;
-    v7 = mtx->v3.y;
-    mtx->v2.y = (float)(v7 * v3 + v6 * v2);
-    mtx->v3.y = (float)(v7 * v2 - v6 * v3);
-    v8 = mtx->v2.z;
-    v9 = mtx->v3.z;
-    mtx->v2.z = (float)(v9 * v3 + v8 * v2);
-    mtx->v3.z = (float)(v9 * v2 - v8 * v3);
+    sinA = sin(angle);
+    u1 = mtx->v2.x;
+    w1 = mtx->v3.x;
+    mtx->v2.x = (float)(w1 * sinA + u1 * cosA);
+    mtx->v3.x = (float)(w1 * cosA - u1 * sinA);
+    u2 = mtx->v2.y;
+    w2 = mtx->v3.y;
+    mtx->v2.y = (float)(w2 * sinA + u2 * cosA);
+    mtx->v3.y = (float)(w2 * cosA - u2 * sinA);
+    u3 = mtx->v2.z;
+    w3 = mtx->v3.z;
+    mtx->v2.z = (float)(w3 * sinA + u3 * cosA);
+    mtx->v3.z = (float)(w3 * cosA - u3 * sinA);
 }
 
 void MATH_RotateMatrix_AroundLocalYAxis(Mtx4x4* mtx, float angle)
 {
-    double v2;
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
+    double cosA;
+    double sinA;
+    double u1;
+    double w1;
+    double u2;
+    double w2;
+    double u3;
+    double w3;
 
-    v2 = cos(angle);
+    cosA = cos(angle);
     mtx->mtxflag |= 4u;
-    v3 = sin(angle);
-    v4 = mtx->v1.x;
-    v5 = mtx->v3.x;
-    mtx->v1.x = (float)(v4 * v2 - v5 * v3);
-    mtx->v3.x = (float)(v4 * v3 + v5 * v2);
-    v6 = mtx->v1.y;
-    v7 = mtx->v3.y;
-    mtx->v1.y = (float)(v6 * v2 - v7 * v3);
-    mtx->v3.y = (float)(v6 * v3 + v7 * v2);
-    v8 = mtx->v1.z;
-    v9 = mtx->v3.z;
-    mtx->v1.z = (float)(v8 * v2 - v9 * v3);
-    mtx->v3.z = (float)(v8 * v3 + v9 * v2);
+    sinA = sin(angle);
+    u1 = mtx->v1.x;
+    w1 = mtx->v3.x;
+    mtx->v1.x = (float)(u1 * cosA - w1 * sinA);
+    mtx->v3.x = (float)(u1 * sinA + w1 * cosA);
+    u2 = mtx->v1.y;
+    w2 = mtx->v3.y;
+    mtx->v1.y = (float)(u2 * cosA - w2 * sinA);
+    mtx->v3.y = (float)(u2 * sinA + w2 * cosA);
+    u3 = mtx->v1.z;
+    w3 = mtx->v3.z;
+    mtx->v1.z = (float)(u3 * cosA - w3 * sinA);
+    mtx->v3.z = (float)(u3 * sinA + w3 * cosA);
 }
 
 void MATH_RotateMatrix_AroundLocalZAxis(Mtx4x4* mtx, float angle)
 {
-    double v2;
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
+    double cosA;
+    double sinA;
+    double u1;
+    double w1;
+    double u2;
+    double w2;
+    double u3;
+    double w3;
 
-    v2 = cos(angle);
+    cosA = cos(angle);
     mtx->mtxflag |= 4u;
-    v3 = sin(angle);
-    v4 = mtx->v1.x;
-    v5 = mtx->v2.x;
-    mtx->v1.x = (float)(v5 * v3 + v4 * v2);
-    mtx->v2.x = (float)(v5 * v2 - v4 * v3);
-    v6 = mtx->v1.y;
-    v7 = mtx->v2.y;
-    mtx->v1.y = (float)(v7 * v3 + v6 * v2);
-    mtx->v2.y = (float)(v7 * v2 - v6 * v3);
-    v8 = mtx->v1.z;
-    v9 = mtx->v2.z;
-    mtx->v1.z = (float)(v9 * v3 + v8 * v2);
-    mtx->v2.z = (float)(v9 * v2 - v8 * v3);
+    sinA = sin(angle);
+    u1 = mtx->v1.x;
+    w1 = mtx->v2.x;
+    mtx->v1.x = (float)(w1 * sinA + u1 * cosA);
+    mtx->v2.x = (float)(w1 * cosA - u1 * sinA);
+    u2 = mtx->v1.y;
+    w2 = mtx->v2.y;
+    mtx->v1.y = (float)(w2 * sinA + u2 * cosA);
+    mtx->v2.y = (float)(w2 * cosA - u2 * sinA);
+    u3 = mtx->v1.z;
+    w3 = mtx->v2.z;
+    mtx->v1.z = (float)(w3 * sinA + u3 * cosA);
+    mtx->v2.z = (float)(w3 * cosA - u3 * sinA);
 }
 
 void MATH_MakeRotationMatrix_UsingSight(Mtx4x4* dest, Vec3* sight, Vec3* banking, char onlyRotation)
 {
-    double v4;
-    double v7;
-    double v12;
-    Vec3 v16;
+    double sightLen;
+    double bankLen;
+    double rightLen;
+    Vec3 bank;
 
-    v4 = sqrt(sight->z * sight->z + sight->y * sight->y + sight->x * sight->x);
-    dest->v2.x = (float)(1.0 / v4 * sight->x);
-    dest->v2.y = (float)(1.0 / v4 * sight->y);
-    dest->v2.z = (float)(1.0 / v4 * sight->z);
+    sightLen = sqrt(sight->z * sight->z + sight->y * sight->y + sight->x * sight->x);
+    dest->v2.x = (float)(1.0 / sightLen * sight->x);
+    dest->v2.y = (float)(1.0 / sightLen * sight->y);
+    dest->v2.z = (float)(1.0 / sightLen * sight->z);
     dest->v2.y = -dest->v2.y;
     dest->v2.z = -dest->v2.z;
     dest->v2.x = -dest->v2.x;
 
     if (banking)
     {
-        v7 = sqrt(banking->z * banking->z + banking->y * banking->y + banking->x * banking->x);
-        v16.x = (float)(1.0 / v7 * banking->x);
-        v16.y = (float)(1.0 / v7 * banking->y);
-        v16.z = (float)(1.0 / v7 * banking->z);
-        dest->v1.x = v16.z * sight->y - v16.y * sight->z;
-        dest->v1.y = v16.x * sight->z - v16.z * sight->x;
-        dest->v1.z = v16.y * sight->x - v16.x * sight->y;
+        bankLen = sqrt(banking->z * banking->z + banking->y * banking->y + banking->x * banking->x);
+        bank.x = (float)(1.0 / bankLen * banking->x);
+        bank.y = (float)(1.0 / bankLen * banking->y);
+        bank.z = (float)(1.0 / bankLen * banking->z);
+        dest->v1.x = bank.z * sight->y - bank.y * sight->z;
+        dest->v1.y = bank.x * sight->z - bank.z * sight->x;
+        dest->v1.z = bank.y * sight->x - bank.x * sight->y;
         if (fabs(dest->v1.x) <= 1e-09 && fabs(dest->v1.y) <= 1e-09 && fabs(dest->v1.z) <= 1e-09)
         {
-            v16.x = (float)(v16.x + 0.000099999997);
-            dest->v1.x = v16.z * sight->y - v16.y * sight->z;
-            dest->v1.y = v16.x * sight->z - v16.z * sight->x;
-            dest->v1.z = v16.y * sight->x - v16.x * sight->y;
+            bank.x = (float)(bank.x + 0.000099999997);
+            dest->v1.x = bank.z * sight->y - bank.y * sight->z;
+            dest->v1.y = bank.x * sight->z - bank.z * sight->x;
+            dest->v1.z = bank.y * sight->x - bank.x * sight->y;
         }
-        dest->v3 = v16;
+        dest->v3 = bank;
         dest->v1.x = -dest->v1.x;
         dest->v1.y = -dest->v1.y;
         dest->v1.z = -dest->v1.z;
@@ -1262,10 +1262,10 @@ void MATH_MakeRotationMatrix_UsingSight(Mtx4x4* dest, Vec3* sight, Vec3* banking
         dest->v1.y = dest->v3.x * dest->v2.z - dest->v3.z * dest->v2.x;
         dest->v1.z = dest->v2.x * dest->v3.y - dest->v2.y * dest->v3.x;
     }
-    v12 = sqrt(dest->v1.x * dest->v1.x + dest->v1.y * dest->v1.y + dest->v1.z * dest->v1.z);
-    dest->v1.x = (float)(1.0 / v12 * dest->v1.x);
-    dest->v1.y = (float)(1.0 / v12 * dest->v1.y);
-    dest->v1.z = (float)(1.0 / v12 * dest->v1.z);
+    rightLen = sqrt(dest->v1.x * dest->v1.x + dest->v1.y * dest->v1.y + dest->v1.z * dest->v1.z);
+    dest->v1.x = (float)(1.0 / rightLen * dest->v1.x);
+    dest->v1.y = (float)(1.0 / rightLen * dest->v1.y);
+    dest->v1.z = (float)(1.0 / rightLen * dest->v1.z);
     dest->v3.x = dest->v1.y * dest->v2.z - dest->v1.z * dest->v2.y;
     dest->v3.y = dest->v2.x * dest->v1.z - dest->v2.z * dest->v1.x;
     dest->v3.z = dest->v2.y * dest->v1.x - dest->v1.y * dest->v2.x;
@@ -1283,25 +1283,25 @@ void MATH_MakeRotationMatrix_UsingSight(Mtx4x4* dest, Vec3* sight, Vec3* banking
     dest->mtxflag |= 0x4;
 }
 
-void MATH_MakeRotationMatrix_UsingBanking(Mtx4x4* mtx, Vec3* v1, Vec3* v2, char onlyRotation)
+void MATH_MakeRotationMatrix_UsingBanking(Mtx4x4* mtx, Vec3* sight, Vec3* banking, char onlyRotation)
 {
-    double v4; // normalize equalvector croosproduct nullveectorwithepsilon inlineok
-    double v5;
-    double v7;
+    double bankLen; // normalize equalvector croosproduct nullveectorwithepsilon inlineok
+    double sightLen;
+    double rightLen;
 
-    v4 = sqrt(v2->z * v2->z + v2->y * v2->y + v2->x * v2->x);
-    mtx->v3.x = (float)(1.0 / v4 * v2->x);
-    mtx->v3.y = (float)(1.0 / v4 * v2->y);
-    mtx->v3.z = (float)(1.0 / v4 * v2->z);
-    if (v1)
+    bankLen = sqrt(banking->z * banking->z + banking->y * banking->y + banking->x * banking->x);
+    mtx->v3.x = (float)(1.0 / bankLen * banking->x);
+    mtx->v3.y = (float)(1.0 / bankLen * banking->y);
+    mtx->v3.z = (float)(1.0 / bankLen * banking->z);
+    if (sight)
     {
-        mtx->v2.x = -v1->x;
-        mtx->v2.y = -v1->y;
-        mtx->v2.z = -v1->z;
-        v5 = sqrt(mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y + mtx->v2.z * mtx->v2.z);
-        mtx->v2.x = (float)(1.0 / v5 * mtx->v2.x);
-        mtx->v2.y = (float)(1.0 / v5 * mtx->v2.y);
-        mtx->v2.z = (float)(1.0 / v5 * mtx->v2.z);
+        mtx->v2.x = -sight->x;
+        mtx->v2.y = -sight->y;
+        mtx->v2.z = -sight->z;
+        sightLen = sqrt(mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y + mtx->v2.z * mtx->v2.z);
+        mtx->v2.x = (float)(1.0 / sightLen * mtx->v2.x);
+        mtx->v2.y = (float)(1.0 / sightLen * mtx->v2.y);
+        mtx->v2.z = (float)(1.0 / sightLen * mtx->v2.z);
     }
     mtx->v1.x = mtx->v2.y * mtx->v3.z - mtx->v2.z * mtx->v3.y;
     mtx->v1.y = mtx->v2.z * mtx->v3.x - mtx->v3.z * mtx->v2.x;
@@ -1315,10 +1315,10 @@ void MATH_MakeRotationMatrix_UsingBanking(Mtx4x4* mtx, Vec3* v1, Vec3* v2, char 
         mtx->v1.y = mtx->v2.z * mtx->v3.x - mtx->v3.z * mtx->v2.x;
         mtx->v1.z = mtx->v3.y * mtx->v2.x - mtx->v2.y * mtx->v3.x;
     }
-    v7 = sqrt(mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z);
-    mtx->v1.x = (float)(1.0 / v7 * mtx->v1.x);
-    mtx->v1.y = (float)(1.0 / v7 * mtx->v1.y);
-    mtx->v1.z = (float)(1.0 / v7 * mtx->v1.z);
+    rightLen = sqrt(mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z);
+    mtx->v1.x = (float)(1.0 / rightLen * mtx->v1.x);
+    mtx->v1.y = (float)(1.0 / rightLen * mtx->v1.y);
+    mtx->v1.z = (float)(1.0 / rightLen * mtx->v1.z);
     mtx->v2.x = mtx->v1.z * mtx->v3.y - mtx->v1.y * mtx->v3.z;
     mtx->v2.y = mtx->v3.z * mtx->v1.x - mtx->v1.z * mtx->v3.x;
     mtx->v2.z = mtx->v3.x * mtx->v1.y - mtx->v1.x * mtx->v3.y;
@@ -1336,22 +1336,22 @@ void MATH_MakeRotationMatrix_UsingBanking(Mtx4x4* mtx, Vec3* v1, Vec3* v2, char 
     mtx->mtxflag |= 4u;
 }
 
-void MATH_OrientMatrix_UsingSight(Mtx4x4* mtx, Vec3* v1, Vec3* v2)
+void MATH_OrientMatrix_UsingSight(Mtx4x4* mtx, Vec3* sight, Vec3* banking)
 {
-    MATH_MakeRotationMatrix_UsingSight(mtx, v1, v2, 0);
+    MATH_MakeRotationMatrix_UsingSight(mtx, sight, banking, 0);
 }
 
-void MATH_OrientMatrix_UsingBanking(Mtx4x4* mtx, Vec3* v1, Vec3* v2)
+void MATH_OrientMatrix_UsingBanking(Mtx4x4* mtx, Vec3* sight, Vec3* banking)
 {
-    MATH_MakeRotationMatrix_UsingBanking(mtx, v1, v2, 0);
+    MATH_MakeRotationMatrix_UsingBanking(mtx, sight, banking, 0);
 }
 
-void MATH_InvertQuaternion(Quat4* a1)
+void MATH_InvertQuaternion(Quat4* q)
 {
-    a1->q1 = -a1->q1;
-    a1->q2 = -a1->q2;
-    a1->q3 = -a1->q3;
-    a1->q4 = -a1->q4;
+    q->q1 = -q->q1;
+    q->q2 = -q->q2;
+    q->q3 = -q->q3;
+    q->q4 = -q->q4;
 }
 
 void MATH_NormQuat(Quat4* dest, Quat4* src)
@@ -1366,31 +1366,32 @@ void MATH_NormQuat(Quat4* dest, Quat4* src)
 
 void MATH_Invert33Matrix(Mtx4x4* dest, Mtx4x4* src)
 {
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
+    double cof00;
+    double det1;
+    double cof01;
+    double det2;
+    double cof02;
+    double invDet;
 
-    v3 = src->v3.z * src->v2.y - src->v3.y * src->v2.z;
-    dest->v1.x = (float)v3;
-    v4 = v3 * src->v1.x;
-    v5 = src->v1.z * src->v3.y - src->v1.y * src->v3.z;
-    dest->v1.y = (float)v5;
-    v6 = v4 + v5 * src->v2.x;
-    v7 = src->v2.z * src->v1.y - src->v1.z * src->v2.y;
-    dest->v1.z = (float)v7;
-    v8 = 1.0 / (v6 + v7 * src->v3.x);
-    dest->v2.x = (float)((src->v3.x * src->v2.z - src->v3.z * src->v2.x) * v8);
-    dest->v2.y = (float)((src->v1.x * src->v3.z - src->v1.z * src->v3.x) * v8);
-    dest->v2.z = (float)((src->v1.z * src->v2.x - src->v2.z * src->v1.x) * v8);
-    dest->v3.x = (float)((src->v3.y * src->v2.x - src->v3.x * src->v2.y) * v8);
-    dest->v3.y = (float)((src->v3.x * src->v1.y - src->v3.y * src->v1.x) * v8);
-    dest->v3.z = (float)((src->v1.x * src->v2.y - src->v1.y * src->v2.x) * v8);
-    dest->v1.x = (float)(v8 * dest->v1.x);
-    dest->v1.y = (float)(v8 * dest->v1.y);
-    dest->v1.z = (float)(v8 * dest->v1.z);
+    cof00 = src->v3.z * src->v2.y - src->v3.y * src->v2.z;
+    dest->v1.x = (float)cof00;
+    det1 = cof00 * src->v1.x;
+    cof01 = src->v1.z * src->v3.y - src->v1.y * src->v3.z;
+    dest->v1.y = (float)cof01;
+    det2 = det1 + cof01 * src->v2.x;
+    cof02 = src->v2.z * src->v1.y - src->v1.z * src->v2.y;
+    dest->v1.z = (float)cof02;
+    invDet = 1.0 / (det2 + cof02 * src->v3.x);
+    dest->v2.x = (float)((src->v3.x * src->v2.z - src->v3.z * src->v2.x) * invDet);
+    dest->v2.y = (float)((src->v1.x * src->v3.z - src->v1.z * src->v3.x) * invDet);
+    dest->v2.z = (float)((src->v1.z * src->v2.x - src->v2.z * src->v1.x) * invDet);
+    dest->v3.x = (float)((src->v3.y * src->v2.x - src->v3.x * src->v2.y) * invDet);
+    dest->v3.y = (float)((src->v3.x * src->v1.y - src->v3.y * src->v1.x) * invDet);
+    dest->v3.z = (float)((src->v1.x * src->v2.y - src->v1.y * src->v2.x) * invDet);
+    // the first row scales the float already stored, not the double cofactor
+    dest->v1.x = (float)(invDet * dest->v1.x);
+    dest->v1.y = (float)(invDet * dest->v1.y);
+    dest->v1.z = (float)(invDet * dest->v1.z);
 }
 
 void MATH_TranspEq33Matrix(Mtx4x4* mtx)
@@ -1410,115 +1411,115 @@ void MATH_TranspEq33Matrix(Mtx4x4* mtx)
 
 void MATH_Orthonormalize(Mtx4x4* mtx)
 {    
-    double v3;
-    double v8; 
-    double v13;
+    double len1;
+    double len2; 
+    double len3;
 
-    v3 = sqrt(mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z);
-    mtx->v1.x = (float)(1.0 / v3 * mtx->v1.x);
-    mtx->v1.y = (float)(1.0 / v3 * mtx->v1.y);
-    mtx->v1.z = (float)(1.0 / v3 * mtx->v1.z);
+    len1 = sqrt(mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z);
+    mtx->v1.x = (float)(1.0 / len1 * mtx->v1.x);
+    mtx->v1.y = (float)(1.0 / len1 * mtx->v1.y);
+    mtx->v1.z = (float)(1.0 / len1 * mtx->v1.z);
     mtx->v2.x = mtx->v1.z * mtx->v3.y - mtx->v1.y * mtx->v3.z;
     mtx->v2.y = mtx->v1.x * mtx->v3.z - mtx->v1.z * mtx->v3.x;
     mtx->v2.z = mtx->v3.x * mtx->v1.y - mtx->v3.y * mtx->v1.x;
-    v8 = sqrt(mtx->v2.z * mtx->v2.z + mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y);
-    mtx->v2.x = (float)(1.0 / v8 * mtx->v2.x);
-    mtx->v2.y = (float)(1.0 / v8 * mtx->v2.y);
-    mtx->v2.z = (float)(1.0 / v8 * mtx->v2.z);
+    len2 = sqrt(mtx->v2.z * mtx->v2.z + mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y);
+    mtx->v2.x = (float)(1.0 / len2 * mtx->v2.x);
+    mtx->v2.y = (float)(1.0 / len2 * mtx->v2.y);
+    mtx->v2.z = (float)(1.0 / len2 * mtx->v2.z);
     mtx->v3.x = mtx->v2.z * mtx->v1.y - mtx->v2.y * mtx->v1.z;
     mtx->v3.y = mtx->v1.z * mtx->v2.x - mtx->v2.z * mtx->v1.x;
     mtx->v3.z = mtx->v1.x * mtx->v2.y - mtx->v2.x * mtx->v1.y;
-    v13 = sqrt(mtx->v3.z * mtx->v3.z + mtx->v3.x * mtx->v3.x + mtx->v3.y * mtx->v3.y);
-    mtx->v3.x = (float)(1.0 / v13 * mtx->v3.x);
-    mtx->v3.y = (float)(1.0 / v13 * mtx->v3.y);
-    mtx->v3.z = (float)(1.0 / v13 * mtx->v3.z);
+    len3 = sqrt(mtx->v3.z * mtx->v3.z + mtx->v3.x * mtx->v3.x + mtx->v3.y * mtx->v3.y);
+    mtx->v3.x = (float)(1.0 / len3 * mtx->v3.x);
+    mtx->v3.y = (float)(1.0 / len3 * mtx->v3.y);
+    mtx->v3.z = (float)(1.0 / len3 * mtx->v3.z);
 }
 
-void MATH_Slerp(Quat4* dest, float a2, Quat4* src1, Quat4* src2, float a5, float a6)
+void MATH_Slerp(Quat4* dest, float factor, Quat4* src1, Quat4* src2, float theta, float invSinTheta)
 {
-    double v6;
-    double v7;
-    float v8;
-    float v9;
-    float v10;
-    float v11;
+    double wFrom;
+    double wTo;
+    float s1;
+    float s2;
+    float s3;
+    float s4;
 
-    if (a5 == 0.0)
+    if (theta == 0.0)
     {
         *dest = *src1;
     }
     else
     {
-        v6 = sin((1.0 - a2) * a5) * a6;
-        v7 = sin((double)a2 * a5) * a6;
-        v8 = (float)(src1->q1 * v6);
-        v9 = (float)(src1->q2 * v6);
-        v10 = (float)(src1->q3 * v6);
-        v11 = (float)(src1->q4 * v6);
-        dest->q1 = (float)(src2->q1 * v7);
-        dest->q2 = (float)(src2->q2 * v7);
-        dest->q3 = (float)(src2->q3 * v7);
-        dest->q4 = (float)(src2->q4 * v7);
-        dest->q1 = v8 + dest->q1;
-        dest->q2 = v9 + dest->q2;
-        dest->q3 = v10 + dest->q3;
-        dest->q4 = v11 + dest->q4;
+        wFrom = sin((1.0 - factor) * theta) * invSinTheta;
+        wTo = sin((double)factor * theta) * invSinTheta;
+        s1 = (float)(src1->q1 * wFrom);
+        s2 = (float)(src1->q2 * wFrom);
+        s3 = (float)(src1->q3 * wFrom);
+        s4 = (float)(src1->q4 * wFrom);
+        dest->q1 = (float)(src2->q1 * wTo);
+        dest->q2 = (float)(src2->q2 * wTo);
+        dest->q3 = (float)(src2->q3 * wTo);
+        dest->q4 = (float)(src2->q4 * wTo);
+        dest->q1 = s1 + dest->q1;
+        dest->q2 = s2 + dest->q2;
+        dest->q3 = s3 + dest->q3;
+        dest->q4 = s4 + dest->q4;
         MATH_NormQuat(dest, dest);
     }
 }
 
 void MATH_ConvertQuaternionToMatrix(Mtx4x4* mtx, Quat4* q)
 {
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    double v16;
-    double v17;
-    float v18; 
-    float v19; 
-    float a2a; 
+    double xx;
+    double halfMinusXX;
+    double xy;
+    double xy2;
+    double xz;
+    double xz2;
+    double wx;
+    double yy;
+    double yz;
+    double wy;
+    double wy2;
+    double zz;
+    double halfMinusZZ;
+    double wz;
+    double wz2;
+    float wx2; 
+    float halfMinusYY; 
+    float yz2; 
 
-    v3 = q->q1 * q->q1;
-    v4 = 0.5 - (v3 + v3);
-    v5 = q->q2 * q->q1;
-    v6 = v5 + v5;
-    v7 = q->q3 * q->q1;
-    v8 = v7 + v7;
-    v9 = q->q4 * q->q1;
-    v18 = (float)(v9 + v9);
-    v10 = q->q2 * q->q2;
-    v19 = (float)(0.5 - (v10 + v10));
-    v11 = q->q3 * q->q2;
-    a2a = (float)(v11 + v11);
-    v12 = q->q4 * q->q2;
-    v13 = v12 + v12;
-    v14 = q->q3 * q->q3;
-    v15 = 0.5 - (v14 + v14);
-    v16 = q->q4 * q->q3;
+    xx = q->q1 * q->q1;
+    halfMinusXX = 0.5 - (xx + xx);
+    xy = q->q2 * q->q1;
+    xy2 = xy + xy;
+    xz = q->q3 * q->q1;
+    xz2 = xz + xz;
+    wx = q->q4 * q->q1;
+    wx2 = (float)(wx + wx);
+    yy = q->q2 * q->q2;
+    halfMinusYY = (float)(0.5 - (yy + yy));
+    yz = q->q3 * q->q2;
+    yz2 = (float)(yz + yz);
+    wy = q->q4 * q->q2;
+    wy2 = wy + wy;
+    zz = q->q3 * q->q3;
+    halfMinusZZ = 0.5 - (zz + zz);
+    wz = q->q4 * q->q3;
     mtx->_m14 = 0.0;
     mtx->_m24 = 0.0;
-    v17 = v16 + v16;
+    wz2 = wz + wz;
     mtx->_m34 = 0.0;
     mtx->mtxflag = mtx->mtxflag & ~8u | 4;
-    mtx->v1.x = (float)(v15 + v19);
-    mtx->v2.x = (float)(v6 - v17);
-    mtx->v3.x = (float)(v13 + v8);
-    mtx->v1.y = (float)(v17 + v6);
-    mtx->v2.y = (float)(v15 + v4);
-    mtx->v3.y = a2a - v18;
-    mtx->v1.z = (float)(v8 - v13);
-    mtx->v2.z = a2a + v18;
-    mtx->v3.z = (float)(v19 + v4);
+    mtx->v1.x = (float)(halfMinusZZ + halfMinusYY);
+    mtx->v2.x = (float)(xy2 - wz2);
+    mtx->v3.x = (float)(wy2 + xz2);
+    mtx->v1.y = (float)(wz2 + xy2);
+    mtx->v2.y = (float)(halfMinusZZ + halfMinusXX);
+    mtx->v3.y = yz2 - wx2;
+    mtx->v1.z = (float)(xz2 - wy2);
+    mtx->v2.z = yz2 + wx2;
+    mtx->v3.z = (float)(halfMinusYY + halfMinusXX);
 }
 
 void MATH_InvNormalQuaternion(Quat4* dest, Quat4* src) {
@@ -1531,62 +1532,62 @@ void MATH_InvNormalQuaternion(Quat4* dest, Quat4* src) {
 }
 
 void MATH_ConvertMatrixToQuaternion(Quat4 *dest, Mtx4x4 *src) {
-    float v2;
-    double v3;
-    double v4;
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    double v12;
+    float trace;
+    double rW;
+    double scaleW;
+    double rZ;
+    double scale;
+    double wNum;
+    double rY;
+    double rX;
 
-    v2 = src->v1.x + src->v3.z + src->v2.y;
-    if (v2 <= 0.0) {
+    trace = src->v1.x + src->v3.z + src->v2.y;
+    if (trace <= 0.0) {
         if (src->v1.x < src->v2.y) {
             if (src->v2.y >= src->v3.z) {
-                v11 = sqrt(1.0 - src->v1.x + src->v2.y - src->v3.z);
-                dest->q2 = (float)(0.5 * v11);
-                v9 = 0.5 / v11;
-                dest->q3 = (float)((src->v3.y + src->v2.z) * v9);
-                dest->q1 = (float)((src->v2.x + src->v1.y) * v9);
-                v10 = src->v3.x - src->v1.z;
+                rY = sqrt(1.0 - src->v1.x + src->v2.y - src->v3.z);
+                dest->q2 = (float)(0.5 * rY);
+                scale = 0.5 / rY;
+                dest->q3 = (float)((src->v3.y + src->v2.z) * scale);
+                dest->q1 = (float)((src->v2.x + src->v1.y) * scale);
+                wNum = src->v3.x - src->v1.z;
             }
             else {
-                v8 = sqrt(1.0 - src->v1.x - src->v2.y + src->v3.z); // same
-                dest->q3 = (float)(0.5 * v8);
-                v9 = 0.5 / v8;
-                dest->q1 = (float)((src->v3.x + src->v1.z) * v9);
-                dest->q2 = (float)((src->v3.y + src->v2.z) * v9);
-                v10 = src->v1.y - src->v2.x;
+                rZ = sqrt(1.0 - src->v1.x - src->v2.y + src->v3.z); // same
+                dest->q3 = (float)(0.5 * rZ);
+                scale = 0.5 / rZ;
+                dest->q1 = (float)((src->v3.x + src->v1.z) * scale);
+                dest->q2 = (float)((src->v3.y + src->v2.z) * scale);
+                wNum = src->v1.y - src->v2.x;
             }
         }
         else if (src->v1.x >= src->v3.z) {
-            v12 = sqrt(src->v1.x + 1.0 - src->v2.y - src->v3.z);
-            dest->q1 = (float)(0.5 * v12);
-            v9 = 0.5 / v12;
-            dest->q2 = (float)((src->v2.x + src->v1.y) * v9);
-            dest->q3 = (float)((src->v3.x + src->v1.z) * v9);
-            v10 = src->v2.z - src->v3.y;
+            rX = sqrt(src->v1.x + 1.0 - src->v2.y - src->v3.z);
+            dest->q1 = (float)(0.5 * rX);
+            scale = 0.5 / rX;
+            dest->q2 = (float)((src->v2.x + src->v1.y) * scale);
+            dest->q3 = (float)((src->v3.x + src->v1.z) * scale);
+            wNum = src->v2.z - src->v3.y;
         }
         else {
-            v8 = sqrt(1.0 - src->v1.x - src->v2.y + src->v3.z); // same
-            dest->q3 = (float)(0.5 * v8);
-            v9 = 0.5 / v8;
-            dest->q1 = (float)((src->v3.x + src->v1.z) * v9);
-            dest->q2 = (float)((src->v3.y + src->v2.z) * v9);
-            v10 = src->v1.y - src->v2.x;
+            rZ = sqrt(1.0 - src->v1.x - src->v2.y + src->v3.z); // same
+            dest->q3 = (float)(0.5 * rZ);
+            scale = 0.5 / rZ;
+            dest->q1 = (float)((src->v3.x + src->v1.z) * scale);
+            dest->q2 = (float)((src->v3.y + src->v2.z) * scale);
+            wNum = src->v1.y - src->v2.x;
         }
 
-        dest->q4 = (float)(v10 * v9);
+        dest->q4 = (float)(wNum * scale);
         MATH_InvNormalQuaternion(dest, dest);
         return;
     }
-    v3 = sqrt(v2 + 1.0);
-    dest->q4 = (float)(0.5 * v3);
-    v4 = 0.5 / v3;
-    dest->q1 = (float)((src->v2.z - src->v3.y) * v4);
-    dest->q2 = (float)((src->v3.x - src->v1.z) * v4);
-    dest->q3 = (float)((src->v1.y - src->v2.x) * v4);
+    rW = sqrt(trace + 1.0);
+    dest->q4 = (float)(0.5 * rW);
+    scaleW = 0.5 / rW;
+    dest->q1 = (float)((src->v2.z - src->v3.y) * scaleW);
+    dest->q2 = (float)((src->v3.x - src->v1.z) * scaleW);
+    dest->q3 = (float)((src->v1.y - src->v2.x) * scaleW);
 
     MATH_InvNormalQuaternion(dest, dest);
 }
@@ -1594,31 +1595,31 @@ void MATH_ConvertMatrixToQuaternion(Quat4 *dest, Mtx4x4 *src) {
 void MATH_MatrixBlend(Mtx4x4* dest, Mtx4x4* src1, Mtx4x4* src2, float factor, BOOL dontUseStoredValues)
 {
     Quat4 tmpQ;
-    float a5a;
+    float cosTheta;
 
     if (dontUseStoredValues)
     {
-        MATH_ConvertMatrixToQuaternion(&Q0_137, src1);
-        MATH_ConvertMatrixToQuaternion(&Q1_138, src2);
-        a5a = (float)(Q1_138.q4 * Q0_137.q4 + Q1_138.q3 * Q0_137.q3 + Q1_138.q2 * Q0_137.q2 + Q1_138.q1 * Q0_137.q1);
-        if (a5a < 0.0)
+        MATH_ConvertMatrixToQuaternion(&MATH_gst_BlendQuatFrom, src1);
+        MATH_ConvertMatrixToQuaternion(&MATH_gst_BlendQuatTo, src2);
+        cosTheta = (float)(MATH_gst_BlendQuatTo.q4 * MATH_gst_BlendQuatFrom.q4 + MATH_gst_BlendQuatTo.q3 * MATH_gst_BlendQuatFrom.q3 + MATH_gst_BlendQuatTo.q2 * MATH_gst_BlendQuatFrom.q2 + MATH_gst_BlendQuatTo.q1 * MATH_gst_BlendQuatFrom.q1);
+        if (cosTheta < 0.0)
         {
-            a5a = -a5a;
-            MATH_InvertQuaternion(&Q1_138);
+            cosTheta = -cosTheta;
+            MATH_InvertQuaternion(&MATH_gst_BlendQuatTo);
         }
-        if (fabs(a5a) >= 0.99999988)
+        if (fabs(cosTheta) >= 0.99999988)
         {
-            fTheta_139 = 0.0;
-            fInvSinTheta_140 = 0.0;
+            MATH_gf_BlendTheta = 0.0;
+            MATH_gf_BlendInvSinTheta = 0.0;
         }
         else
         {
-            fTheta_139 = (float)acos(a5a);
-            fInvSinTheta_140 = (float)(1.0 / sqrt(1.0 - a5a * a5a));
+            MATH_gf_BlendTheta = (float)acos(cosTheta);
+            MATH_gf_BlendInvSinTheta = (float)(1.0 / sqrt(1.0 - cosTheta * cosTheta));
         }
     }
     dest->mtxflag |= 4u;
-    MATH_Slerp(&tmpQ, factor, &Q0_137, &Q1_138, fTheta_139, fInvSinTheta_140);
+    MATH_Slerp(&tmpQ, factor, &MATH_gst_BlendQuatFrom, &MATH_gst_BlendQuatTo, MATH_gf_BlendTheta, MATH_gf_BlendInvSinTheta);
     MATH_ConvertQuaternionToMatrix(dest, &tmpQ);
 }
 
@@ -1627,34 +1628,35 @@ void MATH_QuaternionBlend(Mtx4x4* dest, Quat4* src1, Quat4* src2, float factor, 
     float invSinTheta;
     float theta;
     Quat4 tmpQ;
-    float v12;
+    float cosTheta;
 
     theta = 1.5700001f;
     invSinTheta = 1.0f;
     if (dontUseDefaultValues)
     {
-        v12 = src1->q3 * src2->q3 + src1->q2 * src2->q2 + src1->q4 * src2->q4 + src1->q1 * src2->q1;
-        if (v12 <= 1.0)
+        cosTheta = src1->q3 * src2->q3 + src1->q2 * src2->q2 + src1->q4 * src2->q4 + src1->q1 * src2->q1;
+        if (cosTheta <= 1.0)
         {
-            if (v12 < 0.0)
+            if (cosTheta < 0.0)
             {
-                v12 = -v12;
+                cosTheta = -cosTheta;
+                // inverts the caller's quaternion in place
                 MATH_InvertQuaternion(src2);
             }
         }
         else
         {
-            v12 = 1.0;
+            cosTheta = 1.0;
         }
-        if (fabs(v12 - 1.0f) <= 0.0000001f)
+        if (fabs(cosTheta - 1.0f) <= 0.0000001f)
         {
             theta = 0.0;
             invSinTheta = 0.0;
         }
         else
         {
-            theta = (float)acos(v12);
-            invSinTheta = (float)(1.0 / sqrt(1.0 - v12 * v12));
+            theta = (float)acos(cosTheta);
+            invSinTheta = (float)(1.0 / sqrt(1.0 - cosTheta * cosTheta));
         }
     }
     dest->mtxflag |= 4u;
@@ -1722,31 +1724,31 @@ void MATH_SetCorrectType(Mtx4x4* mtx)
 
 void MATH_RoundVectorWithPrecision(Vec3* vec, float precision)
 {
-    float v2;
-    float v3;
-    float v4;
-    double v5;
-    double v6;
-    double v7;
-    float v8;
+    float rz;
+    float ry;
+    float rx;
+    double bz;
+    double by;
+    double bx;
+    float invPrec;
 
-    v8 = (float)(1.0 / precision);
-    v7 = v8 * vec->x + MATH_gd_magicDoubleForRound;
-    v6 = v8 * vec->y + MATH_gd_magicDoubleForRound;
-    v5 = v8 * vec->z + MATH_gd_magicDoubleForRound;
-    v4 = (float)*(int32_t *)&v7;
-    vec->x = v4 * precision;
-    v3 = (float)*(int32_t*)&v6;
-    vec->y = v3 * precision;
-    v2 = (float)*(int32_t*)&v5;
-    vec->z = v2 * precision;
+    invPrec = (float)(1.0 / precision);
+    bx = invPrec * vec->x + MATH_gd_magicDoubleForRound;
+    by = invPrec * vec->y + MATH_gd_magicDoubleForRound;
+    bz = invPrec * vec->z + MATH_gd_magicDoubleForRound;
+    rx = (float)*(int32_t *)&bx;
+    vec->x = rx * precision;
+    ry = (float)*(int32_t*)&by;
+    vec->y = ry * precision;
+    rz = (float)*(int32_t*)&bz;
+    vec->z = rz * precision;
 }
 
-void MATH_SubstractVec(Vec3* dest, Vec3* v1, Vec3* v2)
+void MATH_SubstractVec(Vec3* dest, Vec3* src1, Vec3* src2)
 {
-    dest->x = v1->x - v2->x;
-    dest->y = v1->y - v2->y;
-    dest->z = v1->z - v2->z;
+    dest->x = src1->x - src2->x;
+    dest->y = src1->y - src2->y;
+    dest->z = src1->z - src2->z;
 }
 
 float MATH_VecLen(Vec3* v)
@@ -1754,25 +1756,25 @@ float MATH_VecLen(Vec3* v)
     return (float)sqrt(MATH_VecLenSquared(v));
 }
 
-float MATH_f_PointLineDistance(Vec3* v1, Vec3* v2, Vec3* v3)
+float MATH_f_PointLineDistance(Vec3* point, Vec3* lineFrom, Vec3* lineTo)
 {
     Vec3 src1;
     Vec3 src2;
     Vec3 dest;
 
-    MATH_SubstractVec(&src1, v3, v2);
-    MATH_SubstractVec(&src2, v1, v2);
+    MATH_SubstractVec(&src1, lineTo, lineFrom);
+    MATH_SubstractVec(&src2, point, lineFrom);
 
     MATH_NormalizeEqualVector(&src1);
     MATH_CrossProduct(&dest, &src1, &src2);
     return MATH_VecLen(&dest);
 }
 
-float MATH_f_VecCosPlusArcCos(Vec3* a1, Vec3* a2)
+float MATH_f_VecCosPlusArcCos(Vec3* vec1, Vec3* vec2)
 {
     float vecCos;
 
-    vecCos = MATH_f_VecCos(a1, a2);
+    vecCos = MATH_f_VecCos(vec1, vec2);
     if (vecCos >= 1.0f)
         return 0.0f;
     if (vecCos <= -1.0f)
@@ -1780,74 +1782,74 @@ float MATH_f_VecCosPlusArcCos(Vec3* a1, Vec3* a2)
     return (float)acos(vecCos);
 }
 
-void MATH_calc_curr_quat_from_dt_800(Quat4* a1, CompressedQuat* a2)
+void MATH_calc_curr_quat_from_dt_800(Quat4* quat, CompressedQuat* delta)
 {
-    float v2;
-    float v3;
-    float v4;
+    float dz;
+    float dy;
+    float dx;
 
-    v4 = (float)a2->s1;
-    a1->q1 = (float)(v4 / 1024.0);
-    v3 = (float)a2->s2;
-    a1->q2 = (float)(v3 / 1024.0);
-    v2 = (float)a2->s3;
-    a1->q3 = (float)(v2 / 1024.0);
+    dx = (float)delta->s1;
+    quat->q1 = (float)(dx / 1024.0);
+    dy = (float)delta->s2;
+    quat->q2 = (float)(dy / 1024.0);
+    dz = (float)delta->s3;
+    quat->q3 = (float)(dz / 1024.0);
 }
 
-void MATH_calc_curr_quat_from_dt_1000(Quat4* a1, CompressedQuat* a2)
+void MATH_calc_curr_quat_from_dt_1000(Quat4* quat, CompressedQuat* delta)
 {
-    float v2;
-    float v3;
-    float v4;
+    float dz;
+    float dy;
+    float dx;
 
-    v4 = (float)a2->s1;
-    a1->q1 = (float)(v4 / 1024.0 + a1->q1);
-    v3 = (float)a2->s2;
-    a1->q2 = (float)(v3 / 1024.0 + a1->q2);
-    v2 = (float)a2->s3;
-    a1->q3 = (float)(v2 / 1024.0 + a1->q3);
+    dx = (float)delta->s1;
+    quat->q1 = (float)(dx / 1024.0 + quat->q1);
+    dy = (float)delta->s2;
+    quat->q2 = (float)(dy / 1024.0 + quat->q2);
+    dz = (float)delta->s3;
+    quat->q3 = (float)(dz / 1024.0 + quat->q3);
 }
 
-void MATH_calc_curr_quat_from_dt_2000(Quat4* a1, UltraCompressedQuat* a2)
+void MATH_calc_curr_quat_from_dt_2000(Quat4* quat, UltraCompressedQuat* delta)
 {
-    float v2;
-    float v3;
-    float v4;
+    float dz;
+    float dy;
+    float dx;
 
-    v4 = (float)a2->s1;
-    a1->q1 = (float)(v4 / 1024.0 + a1->q1);
-    v3 = (float)a2->b2;
-    a1->q2 = (float)(v3 / 1024.0 + a1->q2);
-    v2 = (float)a2->b3;
-    a1->q3 = (float)(v2 / 1024.0 + a1->q3);
+    dx = (float)delta->s1;
+    quat->q1 = (float)(dx / 1024.0 + quat->q1);
+    dy = (float)delta->b2;
+    quat->q2 = (float)(dy / 1024.0 + quat->q2);
+    dz = (float)delta->b3;
+    quat->q3 = (float)(dz / 1024.0 + quat->q3);
 }
 
-void MATH_calc_curr_quat_from_dt_4000(Quat4* a1, UltraCompressedQuat* a2)
+void MATH_calc_curr_quat_from_dt_4000(Quat4* quat, UltraCompressedQuat* delta)
 {
-    float v2;
-    float v3;
-    float v4;
+    float dz;
+    float dy;
+    float dx;
 
-    v4 = (float)a2->b2;
-    a1->q1 = (float)(v4 / 1024.0 + a1->q1);
-    v3 = (float)a2->s1;
-    a1->q2 = (float)(v3 / 1024.0 + a1->q2);
-    v2 = (float)a2->b3;
-    a1->q3 = (float)(v2 / 1024.0 + a1->q3);
+    dx = (float)delta->b2;
+    quat->q1 = (float)(dx / 1024.0 + quat->q1);
+    dy = (float)delta->s1;
+    quat->q2 = (float)(dy / 1024.0 + quat->q2);
+    dz = (float)delta->b3;
+    quat->q3 = (float)(dz / 1024.0 + quat->q3);
 }
 
-void MATH_calc_curr_quat_from_dt_8000(Quat4* a1, UltraCompressedQuat* a2)
+void MATH_calc_curr_quat_from_dt_8000(Quat4* quat, UltraCompressedQuat* delta)
 {
-    float v2;
-    float v3;
-    float v4;
+    float dz;
+    float dy;
+    float dx;
 
-    v4 = (float)a2->b2;
-    a1->q1 = (float)(v4 / 1024.0 + a1->q1);
-    v3 = (float)a2->b3;
-    a1->q2 = (float)(v3 / 1024.0 + a1->q2);
-    v2 = (float)a2->s1;
-    a1->q3 = (float)(v2 / 1024.0 + a1->q3);
+    dx = (float)delta->b2;
+    quat->q1 = (float)(dx / 1024.0 + quat->q1);
+    dy = (float)delta->b3;
+    quat->q2 = (float)(dy / 1024.0 + quat->q2);
+    dz = (float)delta->s1;
+    quat->q3 = (float)(dz / 1024.0 + quat->q3);
 }
 
 void MATH_CompressQuaternion(CompressedQuat* compressedQuat, Quat4* quat)
@@ -1892,11 +1894,11 @@ void MATH_VecAddVec(Vec3* dest, Vec3* src1, Vec3* src2)
     dest->z = src1->z + src2->z;
 }
 
-void MATH_VecAddVecWithoutBuffer(Vec3* a1, Vec3* a2)
+void MATH_VecAddVecWithoutBuffer(Vec3* dest, Vec3* src)
 {
-    a1->x = a1->x + a2->x;
-    a1->y = a2->y + a1->y;
-    a1->z = a2->z + a1->z;
+    dest->x = dest->x + src->x;
+    dest->y = src->y + dest->y;
+    dest->z = src->z + dest->z;
 }
 
 void MATH_VecMultScalar(Vec3* dest, Vec3* src, float scalar)
@@ -1995,105 +1997,101 @@ Mtx4x4* MATH_Matrix_Alloc()
     return (Mtx4x4*)MEM_p_AllocAligned(sizeof(Mtx4x4), 16);
 }
 
-float float_get_max_of_3vals_sub_48BBB0(float a1, float a2, float a3)
+float MATH_f_MaxOf3(float a, float b, float c)
 {
-    double result; 
+    double result;
 
-    result = a1;
-    if (a2 > (double)a1)
-        result = a2;
-    if (a3 > result)
-        result = a3;
+    result = a;
+    if (b > (double)a)
+        result = b;
+    if (c > result)
+        result = c;
     return (float)result;
 }
 
-float float_get_min_of_3vals_sub_48BB80(float a1, float a2, float a3)
+float MATH_f_MinOf3(float a, float b, float c)
 {
-    double result; // st7
+    double result;
 
-    result = a1;
-    if (a2 < (double)a1)
-        result = a2;
-    if (a3 < result)
-        result = a3;
+    result = a;
+    if (b < (double)a)
+        result = b;
+    if (c < result)
+        result = c;
     return (float)result;
 }
 
-void MATH_VecRotate(Vec3* a1, Vec3* a2, Vec3* a3, float a4)
+void MATH_VecRotate(Vec3* dest, Vec3* axis, Vec3* src, float angle)
 {
-    float v4;
-    float v5;
-    Vec3 v6;
-    float v7;
-    Vec3* v8;
-    Vec3* v9;
-    Vec3 a3a;
-    Vec3 dest;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    float v16;
+    float sinA;
+    float cosA;
+    Vec3 sinTerm;
+    Vec3 perp;
+    Vec3 perpCross;
+    float proj;
+    float axisLenSq;
+    float parX;
+    float parY;
+    float parZ;
 
-    v8 = &a3a;
-    v9 = a3;
-    a3a = *a3;
-    v12 = a3a.z * a2->z + a3a.y * a2->y + a3a.x * a2->x;
-    v13 = a2->z * a2->z + a2->y * a2->y + a2->x * a2->x;
-    v12 = v12 / v13;
-    v14 = v12 * a2->x;
-    v15 = a2->y * v12;
-    v16 = a2->z * v12;
-    a3a.x = a3a.x - v14;
-    a3a.y = a3a.y - v15;
-    a3a.z = a3a.z - v16;
-    v5 = (float)cos(a4);
-    v7 = v5;
-    a1->x = a3a.x * v5;
-    a1->y = a3a.y * v7;
-    a1->z = a3a.z * v7;
-    MATH_NormalizeEqualVector(a2);
-    MATH_CrossProduct(&dest, a2, &a3a);
-    v4 = (float)sin(a4);
-    v6.x = dest.x * v4;
-    v6.y = dest.y * v4;
-    v6.z = dest.z * v4;
-    MATH_VecAddVec(a1, a1, &v6);
-    a1->x = v14 + a1->x;
-    a1->y = v15 + a1->y;
-    a1->z = v16 + a1->z;
+    perp = *src;
+    proj = perp.z * axis->z + perp.y * axis->y + perp.x * axis->x;
+    axisLenSq = axis->z * axis->z + axis->y * axis->y + axis->x * axis->x;
+    proj = proj / axisLenSq;
+    parX = proj * axis->x;
+    parY = axis->y * proj;
+    parZ = axis->z * proj;
+    perp.x = perp.x - parX;
+    perp.y = perp.y - parY;
+    perp.z = perp.z - parZ;
+    cosA = (float)cos(angle);
+    dest->x = perp.x * cosA;
+    dest->y = perp.y * cosA;
+    dest->z = perp.z * cosA;
+    // normalizes the caller's axis in place
+    MATH_NormalizeEqualVector(axis);
+    MATH_CrossProduct(&perpCross, axis, &perp);
+    sinA = (float)sin(angle);
+    sinTerm.x = perpCross.x * sinA;
+    sinTerm.y = perpCross.y * sinA;
+    sinTerm.z = perpCross.z * sinA;
+    MATH_VecAddVec(dest, dest, &sinTerm);
+    dest->x = parX + dest->x;
+    dest->y = parY + dest->y;
+    dest->z = parZ + dest->z;
 }
+
 
 float MATH_GetCos(float f)
 {
-    int v1;
-    double v3;
+    int idx;
+    double biased;
 
-    v3 = MATH_gf_1024by2Pi * f + MATH_gd_magicDoubleForRound;
-    v1 = (*((int32_t *)(&v3))) + 256;
-    if ((*((int32_t*)(&v3))) + 256 < 0) {
-        v1 |= ~0x3FF; // make sure it's not greather than -1023 (0x3ff) (negative numbers are like 0xffffffffe formats two's complement)
-        return MATH_gf_TableSin[1024 + v1];
+    biased = MATH_gf_1024by2Pi * f + MATH_gd_magicDoubleForRound;
+    idx = (*((int32_t *)(&biased))) + 256;
+    if ((*((int32_t*)(&biased))) + 256 < 0) {
+        idx |= ~0x3FF; // make sure it's not greather than -1023 (0x3ff) (negative numbers are like 0xffffffffe formats two's complement)
+        return MATH_gf_TableSin[1024 + idx];
     }
-    if (v1 > 1023)
-        v1 &= 0x3FFu;
-    return MATH_gf_TableSin[v1];
+    if (idx > 1023)
+        idx &= 0x3FFu;
+    return MATH_gf_TableSin[idx];
 }
 
 float MATH_GetSin(float f)
 {
-    int v1;
-    double v3;
+    int idx;
+    double biased;
 
-    v3 = MATH_gf_1024by2Pi * f + MATH_gd_magicDoubleForRound;
-    v1 = (*((uint32_t*)(&v3)));
-    if ((*((int32_t*)(&v3))) < 0) {
-        v1 |= ~0x3FF; // make sure it's not greather than -1023 (0x3ff) (negative numbers are like 0xffffffffe formats two's complement)
-        return MATH_gf_TableSin[1024 + v1];
+    biased = MATH_gf_1024by2Pi * f + MATH_gd_magicDoubleForRound;
+    idx = (*((uint32_t*)(&biased)));
+    if ((*((int32_t*)(&biased))) < 0) {
+        idx |= ~0x3FF; // make sure it's not greather than -1023 (0x3ff) (negative numbers are like 0xffffffffe formats two's complement)
+        return MATH_gf_TableSin[1024 + idx];
     }
-    if ((*((int32_t*)(&v3))) > 1023)
-        v1 = (*((uint32_t*)(&v3))) & 0x3FF;
-    return MATH_gf_TableSin[v1];
+    if ((*((int32_t*)(&biased))) > 1023)
+        idx = (*((uint32_t*)(&biased))) & 0x3FF;
+    return MATH_gf_TableSin[idx];
 }
 
 float MATH_GetSqrt(float f)
@@ -2125,8 +2123,8 @@ float MATH_RandFloatRange(float min, float max) {
     return MATH_RandFloat() * (max - min) + min;
 }
 
-float MATH_DotProduct(Vec3* v1, Vec3* v2)
+float MATH_DotProduct(Vec3* vec1, Vec3* vec2)
 {
-    return v1->z * v2->z + v1->y * v2->y + v1->x * v2->x;
+    return vec1->z * vec2->z + vec1->y * vec2->y + vec1->x * vec2->x;
 }
 

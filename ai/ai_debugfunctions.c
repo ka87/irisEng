@@ -37,7 +37,7 @@ tAINode* AI_EvalFunc_DbgTraceVector(tAINode* node)
 
 tAINode* AI_EvalFunc_DbgTraceString(tAINode* node)
 {
-    char* s = get_a_string_from_globalstack_sub_4D2040();
+    char* s = AI_GetStringFromStack();
     DBG_OutputDebugString("AI: %s\n", s ? s : "(null)");
     return node + 1;
 }
@@ -116,7 +116,7 @@ tAINode* AI_EvalFunc_DbgStartRaster(tAINode* node)
     unsigned int index;
     char* name;
 
-    name = get_a_string_from_globalstack_sub_4D2040();
+    name = AI_GetStringFromStack();
     index = AI_GetIntFromStack();
     if (index >= 10)
         return node + 1;

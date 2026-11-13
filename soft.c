@@ -209,13 +209,13 @@ void SOFT_ZList_Unlock()
     ZList_Locked = FALSE;
 }
 
-void SOFT_TransformInComputingBuffer(tBigBufferStruct* a1, Vec3* vertices, int vertexNum, tDDContainerStruct* a4)
+void SOFT_TransformInComputingBuffer(tBigBufferStruct* bigBuf, Vec3* vertices, int vertexNum, tDDContainerStruct* container)
 {
     int i;
-    Vec3* buffer = (Vec3*)a1->data6;
+    Vec3* buffer = (Vec3*)bigBuf->data6;
 
     for (i = 0; i < vertexNum; i++) {
-        MATH_TransformVertex(&buffer[i], a4->cam.viewMtxPtr_setInGRORender, &vertices[i]);
+        MATH_TransformVertex(&buffer[i], container->cam.viewMtxPtr_setInGRORender, &vertices[i]);
     }
 }
 

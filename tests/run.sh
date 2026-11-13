@@ -131,7 +131,159 @@ GFX_Flare_Render GFXF_f_depth f_9Factor_296"
 
 reveal_syms="STR_l_Effect_Reveal"
 
+events_syms="EVE_InitData EVE_pst_DuplicateData EVE_Duplicate \
+EVE_b_Track_UseFlash EVE_Event_AIFunction_Play EVE_i_SearchLabel \
+EVE_i_SearchTime EVE_SetAllTimesTo EVE_RunningTracksAtStart \
+EVE_SetRunningTrack EVE_SetRunningTracks EVE_SetPauseTrack \
+EVE_SetPauseTracks EVE_FlashMatrix EVE_GetTracksTime EVE_SetTracksTime \
+EVE_SynchronizeTracks EVE_FreeTrack EVE_DeleteListTracks \
+EVE_FreeMainStruct EVE_p_GetPdata EVE_w_Event_InterpolationKey_GetType \
+EVE_pst_Event_InterpolationKey_GetQuaternion \
+EVE_Anim_InterpolationKey_CopyMatrix \
+EVE_pst_Event_InterpolationKey_GetNextValue \
+EVE_pst_Event_InterpolationKey_GetRotation \
+EVE_Event_InterpolationKey_CopyMatrix \
+EVE_pf_Event_InterpolationKey_GetTime \
+EVE_f_Event_InterpolationKey_InterpolateTime EVE_Event_AIFunction_Resolve \
+EVE_Event_AIFunction_Load EVE_Anim_ComputeInterpoledMatrix \
+EVE_Event_ComputeInterpoledMatrix EVE_pst_Event_InterpolationKey_GetPos \
+EVE_Anim_TranslationKey_Play EVE_Anim_QuaternionKey_Play \
+EVE_RunAnimTrack EVE_c_UpdateLOD EVE_Event_InterpolationKey_Play \
+EVE_RunOneTrack EVE_b_RunAnimation EVE_b_RunAllTracks \
+EVE_AllocateMainStruct EVE_ResolveTrackRef EVE_ResolveListTrackRef \
+EVE_ReinitTrack EVE_ReinitData EVE_ResolveRefs \
+EVE_Event_InterpolationKey_Load EVE_LoadListEvents \
+EVE_ul_CallbackLoadListTracks EVE_MainCall EVE_gb_CanFlash"
+
+
+textures_syms="TEX_Compress24_Xo2 TEX_Compress24_Yo2 TEX_Compress_Xo2 TEX_Compress_Yo2 \
+TEX_Compress8_Xo2 TEX_Compress8_Yo2 TEX_Compress4_Xo2 TEX_Compress4_Yo2 \
+TEX_Expand_XBy2 TEX_Expand_YBy2 TEX_Expand8_XBy2 TEX_Expand8_YBy2 \
+TEX_Expand4_XBy2 TEX_Expand4_YBy2 TEX_Expand24_XBy2 TEX_Expand24_YBy2 \
+TEX_Convert_32SwapRB TEX_Convert_24To32 TEX_Convert_24To32SwapRB \
+TEX_Convert_4To32 TEX_Convert_8To32 TEX_Convert_4To32SwapRB TEX_Convert_8To32SwapRB \
+TEX_ul_GetPower2Up TEX_uc_GetMaskShift TEX_GetMaskParams TEX_GetColorConvertParams \
+TEX_l_ConvertPF TEX_l_ConvertSize TEX_l_ConvertSize_24To32 TEX_File_VSwap \
+TEX_l_File_TgaUncompress TEX_File_DevelopParams TEX_l_MemoryNeeded TEX_l_DimensionIsGood \
+TEX_File_TransformParams TEX_b_File_CheckParams TEX_l_ConvertSizeFast TEX_File_LoadPalette \
+TEX_Manager_ComputeCompression TEX_Manager_Init TEX_Manager_Reinit \
+TEX_l_File_LoadTga TEX_l_File_LoadBmp TEX_l_File_LoadRaw TEX_l_File_LoadRawPalette \
+TEX_l_File_LoadAnimated TEX_pst_List_FindTexture TEX_pst_List_FindPalette \
+TEX_w_List_AddTexture TEX_w_List_AddPalette TEX_List_Init TEX_List_Free \
+TEX_pst_Anim_Get TEX_pst_Anim_Add TEX_Anim_Update TEX_Anim_Reinit \
+TEX_w_Manager_ChooseGoodInTex TEX_File_FreeDescription \
+al_QualityCompressionOrder al_QualityCompressionLimit \
+TEX_gst_GlobalList TEX_gdst_Animated TEX_gi_NbAnimated TEX_gi_NbAnimatedMax \
+sf_TimeLeft_218"
+
+
+math_syms="MATH_CreateTrigTables MATH_CreateSqrtTable MATH_CreateInvTable \
+MATH_CreateInvSqrtTable MATH_InitModule MATH_CopyMatrix \
+MATH_SetIdentityMatrix MATH_NormalizeVector MATH_CrossProduct \
+MATH_NormalizeEqualVector MATH_b_NulVector MATH_b_EqVectorWithEpsilon \
+MATH_f_VecSin MATH_f_VecCos MATH_f_VecAngle MATH_f_ZAngle MATH_f_XAngle \
+MATH_DistanceOfTwoPoints MATH_AddScaleVector MATH_TransformVector \
+MATH_TransformVertex MATH_TransformVectorNoScale \
+MATH_TransformVertexNoScale MATH_Copy33Matrix MATH_Mul33MatrixMatrix \
+MATH_Transp33MatrixWithoutBuffer MATH_InvertMatrix \
+MATH_VectorGlobalToLocal MATH_VertexGlobalToLocal MATH_GetScale \
+MATH_SetScale MATH_SetZoom MATH_NormalizeVectorWithNullVectorCheck \
+MATH_SetNormVector MATH_BlendVector MATH_b_VecColinear \
+MATH_InterpolateBetweenTwoPosWithFactor MATH_GetRotationMatrix \
+MATH_PointLineProjection MATH_PointSegmentProjection MATH_PowLimitedCE \
+MATH_i_SolveCubicEquation MATH_PointParabolProjection2D \
+MATH_PointParabolProjection3D MATH_VecRound MATH_GetZoom \
+MATH_SetZoomBuffered MATH_MakeOGLMatrix MATH_Mul44MatrixMatrix \
+MATH_MulMatrixMatrix MATH_MakeRotationMatrix_AxisAngle \
+MATH_RotateMatrix_AroundGlobalXAxis MATH_RotateMatrix_AroundGlobalYAxis \
+MATH_RotateMatrix_AroundGlobalZAxis MATH_RotateMatrix_AroundLocalXAxis \
+MATH_RotateMatrix_AroundLocalYAxis MATH_RotateMatrix_AroundLocalZAxis \
+MATH_MakeRotationMatrix_UsingSight MATH_MakeRotationMatrix_UsingBanking \
+MATH_OrientMatrix_UsingSight MATH_OrientMatrix_UsingBanking \
+MATH_InvertQuaternion MATH_NormQuat MATH_Invert33Matrix \
+MATH_TranspEq33Matrix MATH_Orthonormalize MATH_Slerp \
+MATH_ConvertQuaternionToMatrix MATH_InvNormalQuaternion \
+MATH_ConvertMatrixToQuaternion MATH_MatrixBlend MATH_QuaternionBlend \
+MATH_l_CalculateCorrectType MATH_b_TypeIsCorrect MATH_SetCorrectType \
+MATH_RoundVectorWithPrecision MATH_SubstractVec MATH_VecLen \
+MATH_f_PointLineDistance MATH_f_VecCosPlusArcCos \
+MATH_calc_curr_quat_from_dt_800 MATH_calc_curr_quat_from_dt_1000 \
+MATH_calc_curr_quat_from_dt_2000 MATH_calc_curr_quat_from_dt_4000 \
+MATH_calc_curr_quat_from_dt_8000 MATH_CompressQuaternion \
+MATH_DecompressQuaternion MATH_VecSet MATH_VecAddVec \
+MATH_VecAddVecWithoutBuffer MATH_VecMultScalar \
+MATH_VecMultScalarWithoutBuffer MATH_VecLenSquared MATH_SetNullVector \
+MATH_VecInvert MATH_VecMultNormScalar MATH_b_NulVectorWithEpsilon \
+MATH_LinearInterpolateFloats MATH_Matrix_AllocArray \
+MATH_Matrix_ReallocArray MATH_Matrix_Free MATH_Matrix_Alloc MATH_f_MaxOf3 \
+MATH_f_MinOf3 MATH_VecRotate MATH_GetCos MATH_GetSin MATH_GetSqrt \
+MATH_GetInverseSqrt MATH_GetInverse MATH_RandFloat MATH_RandFloatRange \
+MATH_DotProduct MATH_gf_1024by2Pi MATH_gd_magicDoubleForRound \
+MATH_gst_IdentityMatrix MATH_gstUnknownMatrix MATH_gst_IdentityVector \
+MATH_gst_BaseVectorI MATH_gst_BaseVectorJ MATH_gst_BaseVectorK \
+MATH_gst_NulVector MATH_gf_TableSin MATH_gl_TableRacine \
+MATH_gl_TableInverse MATH_gl_TableInverseRacine MATH_gst_BlendQuatFrom \
+MATH_gst_BlendQuatTo MATH_gf_BlendTheta MATH_gf_BlendInvSinTheta \
+float_get_max_of_3vals_sub_48BBB0 float_get_min_of_3vals_sub_48BB80 Q0_137 \
+Q1_138 fTheta_139 fInvSinTheta_140"
+
+
 FILTER=$1
+
+run_math() {
+    name=math
+    [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' "$name"
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c math.c -o "$OUT/math.new.o" $(defs NEW_ $math_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/baseline_math.c -o "$OUT/math.base.o" $(defs BASE_ $math_syms)
+    $CC $CFLAGS -c tests/math_mocks.c -o "$OUT/math.mocks.o"
+    $CC $CFLAGS -c tests/test_math.c -o "$OUT/math.drv.o"
+    $CC "$OUT/math.new.o" "$OUT/math.base.o" "$OUT/math.mocks.o" \
+        "$OUT/math.drv.o" -o "$OUT/math" -lm
+    "$OUT/math" || fails=$((fails + 1))
+    echo
+}
+
+run_math
+
+run_textures() {
+    name=textures
+    [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' "$name"
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c textures.c -o "$OUT/textures.new.o" $(defs NEW_ $textures_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/baseline_textures.c -o "$OUT/textures.base.o" $(defs BASE_ $textures_syms)
+    $CC $CFLAGS -c tests/textures_mocks.c -o "$OUT/textures.mocks.o"
+    $CC $CFLAGS -c tests/test_textures.c -o "$OUT/textures.drv.o"
+    $CC "$OUT/textures.new.o" "$OUT/textures.base.o" "$OUT/textures.mocks.o" \
+        "$OUT/textures.drv.o" -o "$OUT/textures" -lm
+    "$OUT/textures" || fails=$((fails + 1))
+    echo
+}
+
+run_textures
+
+run_events() {
+    name=events
+    [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' "$name"
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c events.c -o "$OUT/events.new.o" $(defs NEW_ $events_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/baseline_events.c -o "$OUT/events.base.o" $(defs BASE_ $events_syms)
+    $CC $CFLAGS -c math.c -o "$OUT/events.math.o"
+    $CC $CFLAGS -c tests/events_mocks.c -o "$OUT/events.mocks.o"
+    $CC $CFLAGS -c tests/test_events.c -o "$OUT/events.drv.o"
+    $CC "$OUT/events.new.o" "$OUT/events.base.o" "$OUT/events.math.o" \
+        "$OUT/events.mocks.o" "$OUT/events.drv.o" -o "$OUT/events" -lm
+    "$OUT/events" || fails=$((fails + 1))
+    echo
+}
+
+run_events
 
 run_one snakemodifier modifiers/snakemodifier.c \
         tests/baseline_snakemodifier.c modifiers "$snake_syms"
@@ -186,6 +338,100 @@ run_reveal() {
 }
 
 run_reveal
+
+# animation.c: the file sits at the repo root, so the frozen copy needs
+# the root on the *quoted* include path only -- -I. would also put the
+# engine's own strings.h in front of the system <strings.h>.
+animation_syms="ANI_pst_CreateGameObjectAnim ANI_LimitFrequencyBetween0And255 \
+ANI_ClearBlendingFlag ANI_DestroyAnimation ANI_DestroySkeleton ANI_Free \
+ANI_AllocAnim ANI_ApplyHierarchyOnFlash ANI_GaoAnimationIsTransitioning \
+ANI_RecomputeFlash ANI_UpdateFlash ANI_uc_GetEngineCanalByAICanal \
+ANI_pst_GetObjectByAICanal ANI_ChangeBoneShape ANI_ApplyShape ANI_ChangeShape \
+ANI_SetTrackList ANI_ChangeAction ANI_UpdateFlashAfterMagicBoxTranslation \
+ANI_GetEndSpeedOfMB ANI_InterpolateMagicBoxPositionAfterEndOfAnim \
+ANI_b_ComputeMagicBoxPositionForBlendAnim ANI_b_BlendMagicBox \
+ANI_PlayLeadAnimation ANI_PlayGameObjectAnimation ANI_OneCall ANI_InitSkeleton \
+ANI_pst_DuplicateGameObjectAnim ANI_ul_ShapeCallback \
+ANI_AttachSkeletonModelToWorld ANI_pst_Load ANI_ResolveRefs ANI_ReinitAnimation \
+ANI_Reinit ANI_RemoveHierarchyOnFlash ANI_pst_GetReference \
+ANI_PlayBlendAnimationWithoutMagicBox ANI_BeforeRender ANI_BeforeRendering \
+ANI_MainCall ANI_pst_GetReferenceInit ANI_ComputeBoneMatrix ANI_Render \
+ANI_ChangeDefaultSkeleton ANI_RestoreDefaultSkeleton ANI_DestroyShape \
+ANI_CloneSet ANI_c_DefaultBitFieldLOD"
+
+run_animation() {
+    [ -n "$FILTER" ] && case "animation" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' animation
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c animation.c -o "$OUT/animation.new.o" $(defs NEW_ $animation_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -iquote . -c tests/baseline_animation.c -o "$OUT/animation.base.o" \
+        $(defs BASE_ $animation_syms)
+    $CC $CFLAGS -c math.c -o "$OUT/animation.math.o"
+    $CC $CFLAGS -c tests/animation_mocks.c -o "$OUT/animation.mocks.o"
+    $CC $CFLAGS -c tests/test_animation.c -o "$OUT/animation.drv.o"
+    $CC "$OUT/animation.new.o" "$OUT/animation.base.o" "$OUT/animation.math.o" \
+        "$OUT/animation.mocks.o" "$OUT/animation.drv.o" -o "$OUT/animation" -lm
+    "$OUT/animation" || fails=$((fails + 1))
+    echo
+}
+
+run_animation
+
+# strings.c: like animation.c it sits at the repo root, and the frozen
+# copy includes its headers through "../" for the same reason -- -I.
+# would put the engine's own strings.h in front of the system one,
+# which glibc's <string.h> pulls in. Both copies' file-scope globals
+# are renamed as well as their functions: the initialised ones collide
+# at link time otherwise, and the rest would be silently shared.
+strings_syms="STR_3DStringList_Reinit STR_3DStringList_Clear STR_3DStringList_Add \
+STR_pst_GetFont STR_FontResolveAlternativeKey STR_FontAddAlternativeKey \
+STR_b_LoadFontDescriptor STR_AddFont STR_SetDisplay STR_Close STR_pst_GetFontDesc \
+STR_pst_Get STR_l_GetLength STR_pst_GetString STR_l_GetMarkIndex STR_l_GetValidIndex \
+STR_l_GetValidNumber STR_GetRectShort STR_GlobalSet STR_GlobalSetChar STR_sz_GlobalGet \
+STR_Reset STR_GetKeyName STR_sz_ControlsReadFormat_pcINO STR_l_ReadFormat_Int \
+STR_l_ReadFormat_Hexa STR_l_ReadFormat_Float STR_l_ReadFormat STR_SetCurEffect \
+STR_i_EffectAdd STR_ParseString STR_ChangeStringLength STR_RecomputePos \
+STR_i_GlobalLength STR_l_GetStringLength STR_EffectDelAllForAString STR_SetString \
+STR_SetSize STR_pst_GetSize STR_Align STR_SetStringExt STR_InsertString STR_SetFloat \
+STR_InsertFloat STR_SetPivot STR_pst_GetPivot STR_SetFlag STR_ul_GetFlag STR_SetColor \
+STR_SetAlpha STR_SetColorExt STR_GetColor STR_ChangePage STR_SetPos STR_EffectCheck \
+STR_DelChar STR_SetChar STR_i_GetChar STR_l_GetSubLength STR_pst_GetMin STR_pst_GetMax \
+STR_SetFrame STR_EffectDelAll STR_EffectDel STR_SetFramePos STR_SetFrameBorderSize \
+STR_SetFrameColor STR_SetSubStringWithLine STR_SetSubStringWithMark STR_SetSubString \
+STR_i_CountLine STR_i_CountMark STR_ToString STR_SetLetterFlag STR_GetLetterFlag \
+STR_ToUpper STR_EffectSeti STR_i_EffectGetId STR_EffectGeti STR_EffectSetf \
+STR_ReinitAll STR_Init3DStringExtExt STR_Init3DString STR_Init3DStringExt \
+STR_Init3DStringCenter STR_Init3DStringFromSTR \
+pcINO_ControlsReadFormatBufferSize pcINO_ControlsReadFormatBuffer STRDataPtrStart \
+STR_sgst_Format STR_si_Id STR_f_DefaultLetterDepth \
+STRU1Offset STRV1Offset STRU2Offset STRV2Offset \
+STRU3Offset STRV3Offset STRU4Offset STRV4Offset"
+
+run_strings() {
+    [ -n "$FILTER" ] && case "strings" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' strings
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c strings.c -o "$OUT/strings.new.o" $(defs NEW_ $strings_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/baseline_strings.c -o "$OUT/strings.base.o" \
+        $(defs BASE_ $strings_syms)
+    $CC $CFLAGS -c tests/strings_mocks.c -o "$OUT/strings.mocks.o"
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/strings_runner.c -o "$OUT/strings.rb.o" \
+        -DRUNNER=STRCASE_RunBase $(defs BASE_ $strings_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/strings_runner.c -o "$OUT/strings.rn.o" \
+        -DRUNNER=STRCASE_RunNew $(defs NEW_ $strings_syms)
+    $CC $CFLAGS -c tests/test_strings.c -o "$OUT/strings.drv.o"
+    $CC "$OUT/strings.new.o" "$OUT/strings.base.o" "$OUT/strings.mocks.o" \
+        "$OUT/strings.rb.o" "$OUT/strings.rn.o" "$OUT/strings.drv.o" \
+        -o "$OUT/strings" -lm
+    "$OUT/strings" || fails=$((fails + 1))
+    echo
+}
+
+run_strings
 
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"

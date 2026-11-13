@@ -112,6 +112,12 @@ def pops_per_statement(path):
     return found
 
 
+# Functions this pass renamed, so a rename does not read as a deletion.
+RENAMED = {
+    'get_a_string_from_globalstack_sub_4D2040': 'AI_GetStringFromStack',
+}
+
+
 def compare(rev, path):
     old = subprocess.run(['git', 'show', '%s:%s' % (rev, path)],
                          capture_output=True).stdout.decode('latin-1')
@@ -120,6 +126,7 @@ def compare(rev, path):
         return 0
     new = open(path, encoding='latin-1').read()
     before, after = functions(old), functions(new)
+    before = {RENAMED.get(k, k): v for k, v in before.items()}
 
     gone = [k for k in before if k not in after]
     bad = []

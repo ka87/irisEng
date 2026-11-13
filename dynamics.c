@@ -20,21 +20,21 @@ void DYN_SpeedGetVector(struct sDyn* dyn, Vec3* v)
     MATH_VecMultScalar(v, &dyn->forceVector, dyn->mass);
 }
 
-void DYN_CalcSlideVector(Vec3* slideVec, Vec3* v1, Vec3* v2, float scale)
+void DYN_CalcSlideVector(Vec3* slideVec, Vec3* normal, Vec3* speed, float scale)
 {
-    MATH_AddScaleVector(slideVec, v2, v1, -MATH_DotProduct(v1, v2));
+    MATH_AddScaleVector(slideVec, speed, normal, -MATH_DotProduct(normal, speed));
     MATH_VecMultScalar(slideVec, slideVec, scale);
 }
 
-void DYN_CalcReboundVector(Vec3* reboundVec, Vec3* v1, Vec3* v2, float scale)
+void DYN_CalcReboundVector(Vec3* reboundVec, Vec3* normal, Vec3* speed, float scale)
 {
-    MATH_VecMultScalar(reboundVec, v1, -MATH_DotProduct(v1, v2));
+    MATH_VecMultScalar(reboundVec, normal, -MATH_DotProduct(normal, speed));
     MATH_VecMultScalar(reboundVec, reboundVec, scale);
 }
 
-void DYN_SetSpeedVector(struct sDyn* a1, Vec3* a2)
+void DYN_SetSpeedVector(struct sDyn* dyn, Vec3* speed)
 {
-    MATH_VecMultScalar(&a1->forceVector, a2, (1.0f / a1->mass));
+    MATH_VecMultScalar(&dyn->forceVector, speed, (1.0f / dyn->mass));
 }
 
 tDynForces* DYN_pst_Forces_Create()
@@ -90,128 +90,126 @@ tDynCol* DYN_pst_ColCreate()
     return (tDynCol*)MEM_p_Alloc(sizeof(tDynCol));
 }
 
-void DYN_ColInit(tDynCol* a1, float a2, float a3, float a4, float a5)
+void DYN_ColInit(tDynCol* col, float rebound, float slide, float reboundCos, float slideCos)
 {
-    if (a1)
+    if (col)
     {
-        a1->reboundHorizCosAngle = a4;
-        a1->slideHorizCosAngle = a5;
-        a1->rebound = a2;
-        a1->slide = a3;
+        col->reboundHorizCosAngle = reboundCos;
+        col->slideHorizCosAngle = slideCos;
+        col->rebound = rebound;
+        col->slide = slide;
     }
 }
 
-void DYN_ColReinit(tDynCol* a1)
+void DYN_ColReinit(tDynCol* col)
 {
-    DYN_ColInit(a1, 0.0f, 1.0f, 1.0f, 1.0f);
+    DYN_ColInit(col, 0.0f, 1.0f, 1.0f, 1.0f);
 }
 
-void DYN_ColClose(void* a1)
+void DYN_ColClose(void* col)
 {
-    MEM_Free(a1);
+    MEM_Free(col);
 }
 
 tDynConstraint* DYN_pst_ConstraintCreate()
 {
-    tDynConstraint* v0; // edx
+    tDynConstraint* constraint;
 
-    v0 = (tDynConstraint*)MEM_p_Alloc(sizeof(tDynConstraint));
-    memset(v0, 0, sizeof(tDynConstraint));
-    v0->tangentVec = MATH_gst_NulVector;
-    return v0;
+    constraint = (tDynConstraint*)MEM_p_Alloc(sizeof(tDynConstraint));
+    memset(constraint, 0, sizeof(tDynConstraint));
+    constraint->tangentVec = MATH_gst_NulVector;
+    return constraint;
 }
 
-void DYN_ConstraintReinit(tDynConstraint* a1)
+void DYN_ConstraintReinit(tDynConstraint* constraint)
 {
-    a1->constraintType = 0;
-    a1->tangentVec = MATH_gst_NulVector;
+    constraint->constraintType = 0;
+    constraint->tangentVec = MATH_gst_NulVector;
 }
 
-void DYN_ConstraintClose(void* a1)
+void DYN_ConstraintClose(void* constraint)
 {
-    MEM_Free(a1);
+    MEM_Free(constraint);
 }
 
-void DYN_ChangeDynFlags(struct sDyn* a1, int a2, int a3)
+void DYN_ChangeDynFlags(struct sDyn* dyn, int newFlags, int oldFlags)
 {
-    int v3;
-    tDynForces* v4;
-    tDynSolid* v5;
-    tDynCol* v6;
-    tDynConstraint* v7;
-    Vec3* v8;
+    int flags;
+    tDynForces* forces;
+    tDynSolid* solid;
+    tDynCol* col;
+    tDynConstraint* constraint;
+    Vec3* pos;
 
-    if ((a2 & 2) + (a2 & 4) + (a2 & 8))
-        v3 = a2 & ~1u;
+    if ((newFlags & 2) + (newFlags & 4) + (newFlags & 8))
+        flags = newFlags & ~1u;
     else
-        v3 = a2 | 1;
-    if ((v3 & 4) != 0)
+        flags = newFlags | 1;
+    if ((flags & 4) != 0)
     {
-        if ((a3 & 4) == 0)
+        if ((oldFlags & 4) == 0)
         {
-            v4 = DYN_pst_Forces_Create();
-            a1->forces = v4;
-            DYN_Forces_Init(v4, &MATH_gst_NulVector, &MATH_gst_NulVector, &MATH_gst_NulVector, 1.0);
-            v3 &= ~2u;
+            forces = DYN_pst_Forces_Create();
+            dyn->forces = forces;
+            DYN_Forces_Init(forces, &MATH_gst_NulVector, &MATH_gst_NulVector, &MATH_gst_NulVector, 1.0);
+            flags &= ~2u;
         }
     }
-    else if ((a3 & 4) != 0)
+    else if ((oldFlags & 4) != 0)
     {
-        DYN_Forces_Close(a1->forces);               // DYN_Forces_Close
-        a1->forces = 0;
+        DYN_Forces_Close(dyn->forces);               // DYN_Forces_Close
+        dyn->forces = 0;
     }
-    if ((v3 & 0x10000) != 0)
+    if ((flags & 0x10000) != 0)
     {
-        if ((a3 & 0x10000) == 0)
+        if ((oldFlags & 0x10000) == 0)
         {
-            v5 = DYN_pst_SolidCreate();
-            v8 = a1->vptr;
-            a1->solid = v5;
-            DYN_SolidInit(v5, &MATH_gst_NulVector, &MATH_gst_NulVector, v8, 3.402822e38f);
+            solid = DYN_pst_SolidCreate();
+            pos = dyn->vptr;
+            dyn->solid = solid;
+            DYN_SolidInit(solid, &MATH_gst_NulVector, &MATH_gst_NulVector, pos, 3.402822e38f);
         }
     }
-    else if ((a3 & 0x10000) != 0)
+    else if ((oldFlags & 0x10000) != 0)
     {
-        DYN_SolidClose(a1->solid);
-        a1->solid = 0;
+        DYN_SolidClose(dyn->solid);
+        dyn->solid = 0;
     }
-    if ((v3 & 0x20000) != 0)
+    if ((flags & 0x20000) != 0)
     {
-        if ((a3 & 0x20000) == 0)
+        if ((oldFlags & 0x20000) == 0)
         {
-            v6 = DYN_pst_ColCreate();
-            a1->collision = v6;
-            DYN_ColReinit(v6);
+            col = DYN_pst_ColCreate();
+            dyn->collision = col;
+            DYN_ColReinit(col);
         }
     }
-    else if ((a3 & 0x20000) != 0)
+    else if ((oldFlags & 0x20000) != 0)
     {
-        DYN_ColClose(a1->collision);
-        a1->collision = 0;
+        DYN_ColClose(dyn->collision);
+        dyn->collision = 0;
     }
-    if ((v3 & 0x200000) != 0)
+    if ((flags & 0x200000) != 0)
     {
-        if ((a3 & 0x200000) == 0)
+        if ((oldFlags & 0x200000) == 0)
         {
-            v7 = DYN_pst_ConstraintCreate();
-            a1->constraint = v7;
-            DYN_ConstraintReinit(v7);
-            a1->flags = v3;
-            return;
+            constraint = DYN_pst_ConstraintCreate();
+            dyn->constraint = constraint;
+            DYN_ConstraintReinit(constraint);
         }
     }
-    else if ((a3 & 0x200000) != 0)
+    else if ((oldFlags & 0x200000) != 0)
     {
-        DYN_ConstraintClose(a1->constraint);
-        a1->constraint = 0;
+        DYN_ConstraintClose(dyn->constraint);
+        dyn->constraint = 0;
     }
-    a1->flags = v3;
+    dyn->flags = flags;
 }
 
 void DYN_Dyna_Init(tDyn* dyn, int flags, float mmass, float speedLimit, float speedLimitVertical, Vec3* speedVec, Vec3* pos)
 {
     double mass;
-    int v8;
+    int oldFlags;
 
     mass = 1.0 / mmass;
     dyn->mass = (float)mass;
@@ -219,235 +217,224 @@ void DYN_Dyna_Init(tDyn* dyn, int flags, float mmass, float speedLimit, float sp
     dyn->forceVector.y = (float)(speedVec->y * (1.0 / mass));
     dyn->forceVector.z = (float)(speedVec->z * (1.0 / mass));
     dyn->vptr = pos;
-    v8 = dyn->flags;
+    oldFlags = dyn->flags;
     dyn->speedLimit = speedLimit;
     dyn->speedLimitVertical = speedLimitVertical;
-    DYN_ChangeDynFlags(dyn, flags, v8);
+    DYN_ChangeDynFlags(dyn, flags, oldFlags);
     dyn->flags &= ~0xC00000u;
 }
 
-float DYN_f_FindFrictionForMaxSpeed(struct sDyn* a1, float a2)
+float DYN_f_FindFrictionForMaxSpeed(struct sDyn* dyn, float maxSpeed)
 {
-    tDynForces* v2;
+    tDynForces* forces;
 
-    v2 = a1->forces;
-    return (float)sqrt(
-        v2->tractionVector.x * v2->tractionVector.x
-        + v2->tractionVector.y * v2->tractionVector.y
-        + v2->tractionVector.z * v2->tractionVector.z)
-        / a2;
+    forces = dyn->forces;
+    return MATH_VecLen(&forces->tractionVector) / maxSpeed;
 }
 
-void DYN_ApplyHorizontalSpeed(struct sDyn* a1, float a2)
+void DYN_ApplyHorizontalSpeed(struct sDyn* dyn, float speed)
 {
-    long double v2; // st4
-    long double v3; // st7
+    long double speedLen;
+    long double scale;
 
-    v2 = sqrt(
-        a1->forceVector.x * a1->forceVector.x
-        + a1->forceVector.y * a1->forceVector.y
-        + a1->forceVector.z * a1->forceVector.z);
-    if (v2 != 0.0)
+    speedLen = sqrt(
+        dyn->forceVector.x * dyn->forceVector.x
+        + dyn->forceVector.y * dyn->forceVector.y
+        + dyn->forceVector.z * dyn->forceVector.z);
+    if (speedLen != 0.0)
     {
-        v3 = 1.0 / a1->mass * a2 / v2;
-        a1->forceVector.x = (float)(v3 * a1->forceVector.x);
-        a1->forceVector.y = (float)(v3 * a1->forceVector.y);
-        a1->forceVector.z = (float)(v3 * a1->forceVector.z);
+        scale = 1.0 / dyn->mass * speed / speedLen;
+        dyn->forceVector.x = (float)(scale * dyn->forceVector.x);
+        dyn->forceVector.y = (float)(scale * dyn->forceVector.y);
+        dyn->forceVector.z = (float)(scale * dyn->forceVector.z);
     }
 }
 
-void DYN_ConstraintToSegment(tDyn* a1, tDynConstraint* a2, Vec3* a3)
+void DYN_ConstraintToSegment(tDyn* dyn, tDynConstraint* constraint, Vec3* segEnd)
 {
-    tDynConstraint* v3;
-    long double v4;
-    Vec3 v5;
+    tDynConstraint* dynConstraint;
+    long double len;
+    Vec3 projected;
 
-    v3 = a1->constraint;
-    MATH_PointSegmentProjection(&v5, a1->vptr, &a2->point1, a3);
-    *a1->vptr = v5;
-    v3->tangentVec.x = a3->x - a2->point1.x;        // MATH_NormalizeEqualVector inline
-    v3->tangentVec.y = a3->y - a2->point1.y;
-    v3->tangentVec.z = a3->z - a2->point1.z;
-    v4 = sqrt(v3->tangentVec.x * v3->tangentVec.x + v3->tangentVec.y * v3->tangentVec.y + v3->tangentVec.z
-        * v3->tangentVec.z);
-    v3->tangentVec.x = (float)(1.0 / v4 * v3->tangentVec.x);
-    v3->tangentVec.y = (float)(1.0 / v4 * v3->tangentVec.y);
-    v3->tangentVec.z = (float)(1.0 / v4 * v3->tangentVec.z);
+    dynConstraint = dyn->constraint;
+    MATH_PointSegmentProjection(&projected, dyn->vptr, &constraint->point1, segEnd);
+    *dyn->vptr = projected;
+    dynConstraint->tangentVec.x = segEnd->x - constraint->point1.x;        // MATH_NormalizeEqualVector inline
+    dynConstraint->tangentVec.y = segEnd->y - constraint->point1.y;
+    dynConstraint->tangentVec.z = segEnd->z - constraint->point1.z;
+    len = sqrt(dynConstraint->tangentVec.x * dynConstraint->tangentVec.x + dynConstraint->tangentVec.y * dynConstraint->tangentVec.y + dynConstraint->tangentVec.z
+        * dynConstraint->tangentVec.z);
+    dynConstraint->tangentVec.x = (float)(1.0 / len * dynConstraint->tangentVec.x);
+    dynConstraint->tangentVec.y = (float)(1.0 / len * dynConstraint->tangentVec.y);
+    dynConstraint->tangentVec.z = (float)(1.0 / len * dynConstraint->tangentVec.z);
 }
 
-void DYN_ConstraintToParabol(tDyn* a1, tDynConstraint* a2, Vec3* a3, Vec3* a4, float a5)
+void DYN_ConstraintToParabol(tDyn* dyn, tDynConstraint* constraint, Vec3* refB, Vec3* origin, float time)
 {
-    Vec3* v5;
-    long double v6;
-    Vec3 a1a;
+    Vec3* tangent;
+    long double len;
+    Vec3 projected;
 
-    v5 = &a1->constraint->tangentVec;
-    MATH_PointParabolProjection3D(&a1a, v5, a1->vptr, &a2->point1, a3, a4, a5);
-    *a1->vptr = a1a;                              // MATH_NormalizeEqualVector inline
-    v6 = sqrt(v5->x * v5->x + v5->y * v5->y + v5->z * v5->z);
-    v5->x = (float)(1.0 / v6 * v5->x);
-    v5->y = (float)(1.0 / v6 * v5->y);
-    v5->z = (float)(1.0 / v6 * v5->z);
+    tangent = &dyn->constraint->tangentVec;
+    MATH_PointParabolProjection3D(&projected, tangent, dyn->vptr, &constraint->point1, refB, origin, time);
+    *dyn->vptr = projected;                              // MATH_NormalizeEqualVector inline
+    len = sqrt(tangent->x * tangent->x + tangent->y * tangent->y + tangent->z * tangent->z);
+    tangent->x = (float)(1.0 / len * tangent->x);
+    tangent->y = (float)(1.0 / len * tangent->y);
+    tangent->z = (float)(1.0 / len * tangent->z);
 }
 
-void DYN_ApplyConstraint(tDyn* a1)
+void DYN_ApplyConstraint(tDyn* dyn)
 {
-    tDynConstraint* v2;
-    uint8_t v3;
-    double v4;
-    double v5;
-    double v6;
-    float v7;
-    float v8;
-    float v9;
-    float v10;
-    float v11;
+    tDynConstraint* constraint;
+    uint8_t type;
+    double invMass;
+    double along;
+    double mass;
+    float speedX;
+    float speedY;
+    float alongY;
+    float speedZ;
+    float alongZ;
 
-    v2 = a1->constraint;
-    v3 = v2->constraintType;
-    if (v3 == 1)
+    constraint = dyn->constraint;
+    type = constraint->constraintType;
+    if (type == 1)
     {
-        DYN_ConstraintToSegment(a1, v2, &v2->point2);
+        DYN_ConstraintToSegment(dyn, constraint, &constraint->point2);
     }
-    else if (v3 == 2)
+    else if (type == 2)
     {
-        DYN_ConstraintToParabol(a1, v2, &v2->point2, &v2->parabolO, v2->parabolRadius);
+        DYN_ConstraintToParabol(dyn, constraint, &constraint->point2, &constraint->parabolO, constraint->parabolRadius);
     }
-    if (v2->constraintType)
+    if (constraint->constraintType)
     {
-        v4 = a1->mass;
-        v7 = (float)(v4 * a1->forceVector.x);
-        if (fabs(v7) > 0.0001// MATH_b_NulVectorWithEpsilon inline
-            || fabs(a1->forceVector.y * v4) > 0.0001
-            || fabs(a1->forceVector.z * v4) > 0.0001)
+        invMass = dyn->mass;
+        speedX = (float)(invMass * dyn->forceVector.x);
+        if (fabs(speedX) > 0.0001// MATH_b_NulVectorWithEpsilon inline
+            || fabs(dyn->forceVector.y * invMass) > 0.0001
+            || fabs(dyn->forceVector.z * invMass) > 0.0001)
         {
-            v8 = (float)(a1->forceVector.y * v4);
-            v10 = (float)(a1->forceVector.z * v4);
-            v5 = v2->tangentVec.z * v10 + v2->tangentVec.y * v8 + v7 * v2->tangentVec.x;
-            v9 = (float)(v2->tangentVec.y * v5);
-            v11 = (float)(v2->tangentVec.z * v5);
-            v6 = 1.0 / a1->mass;
-            a1->forceVector.x = (float)(v6 * (v5 * v2->tangentVec.x));
-            a1->forceVector.y = (float)(v9 * v6);
-            a1->forceVector.z = (float)(v11 * v6);
+            speedY = (float)(dyn->forceVector.y * invMass);
+            speedZ = (float)(dyn->forceVector.z * invMass);
+            along = constraint->tangentVec.z * speedZ + constraint->tangentVec.y * speedY + speedX * constraint->tangentVec.x;
+            alongY = (float)(constraint->tangentVec.y * along);
+            alongZ = (float)(constraint->tangentVec.z * along);
+            mass = 1.0 / dyn->mass;
+            dyn->forceVector.x = (float)(mass * (along * constraint->tangentVec.x));
+            dyn->forceVector.y = (float)(alongY * mass);
+            dyn->forceVector.z = (float)(alongZ * mass);
         }
     }
 }
 
-void DYN_SolidInitWithDefaults(tDynSolid* a1)
+void DYN_SolidInitWithDefaults(tDynSolid* solid)
 {
-    DYN_SolidInit(a1, &MATH_gst_NulVector, &MATH_gst_NulVector, &MATH_gst_NulVector, 3.402822e38f);
+    DYN_SolidInit(solid, &MATH_gst_NulVector, &MATH_gst_NulVector, &MATH_gst_NulVector, 3.402822e38f);
 }
 
-void DYN_CalcRotationSpeed(tDyn* a1, float a2)
+void DYN_CalcRotationSpeed(tDyn* dyn, float dt)
 {
-    tDynSolid* v2;
-    Vec3* v3;
-    double v4;
-    float v5;
-    float v6;
+    tDynSolid* solid;
+    Vec3* torque;
+    double scale;
+    float addY;
+    float addZ;
 
-    v2 = a1->solid;
-    if (v2)
-        v3 = &v2->torqueVector;
-    else
-        v3 = 0;
-    v4 = a1->mass * a2;
-    v5 = (float)(v3->y * v4);
-    v6 = (float)(v3->z * v4);
-    v2->rotSpeedVector.x = (float)(v4 * v3->x + v2->rotSpeedVector.x);
-    v2->rotSpeedVector.y = v5 + v2->rotSpeedVector.y;
-    v2->rotSpeedVector.z = v6 + v2->rotSpeedVector.z;
+    solid = dyn->solid;
+    torque = &solid->torqueVector;
+    scale = dyn->mass * dt;
+    addY = (float)(torque->y * scale);
+    addZ = (float)(torque->z * scale);
+    solid->rotSpeedVector.x = (float)(scale * torque->x + solid->rotSpeedVector.x);
+    solid->rotSpeedVector.y = addY + solid->rotSpeedVector.y;
+    solid->rotSpeedVector.z = addZ + solid->rotSpeedVector.z;
 }
 
-void DYN_ApplyRotationSpeedLimit(tDyn* a1)
+void DYN_ApplyRotationSpeedLimit(tDyn* dyn)
 {
-    tDynSolid* v1;
-    long double v2;
-    float v3;
+    tDynSolid* solid;
+    long double speedLen;
+    float limit;
 
-    v1 = a1->solid;
-    v2 = sqrt(
-        v1->rotSpeedVector.x * v1->rotSpeedVector.x
-        + v1->rotSpeedVector.y * v1->rotSpeedVector.y
-        + v1->rotSpeedVector.z * v1->rotSpeedVector.z);
-    if (v1)
-        v3 = v1->rotSpeedLimit;
-    else
-        v3 = 0.0;
-    if (v2 > v3)
-        MATH_SetNormVector(&v1->rotSpeedVector, &v1->rotSpeedVector, v3);
+    solid = dyn->solid;
+    speedLen = sqrt(
+        solid->rotSpeedVector.x * solid->rotSpeedVector.x
+        + solid->rotSpeedVector.y * solid->rotSpeedVector.y
+        + solid->rotSpeedVector.z * solid->rotSpeedVector.z);
+    limit = solid->rotSpeedLimit;
+    if (speedLen > limit)
+        MATH_SetNormVector(&solid->rotSpeedVector, &solid->rotSpeedVector, limit);
 }
 
-void DYN_MakeWMatrix(Mtx4x4* a1, Vec3* a2, float a3)
+void DYN_MakeWMatrix(Mtx4x4* mtx, Vec3* rotSpeed, float dt)
 {
-    double v3;
-    double v4;
-    double v6;
-    int v7;
-    double v8;
-    long double v9;
-    long double v10;
-    long double v11;
-    float v12;
-    float a3a;
+    double wx;
+    double wy;
+    double wz;
+    int flags;
+    double row1x;
+    long double len1;
+    long double len2;
+    long double len3;
+    float wzF;
+    float negWyF;
 
-    v3 = a3 * a2->x;                              // MATH_SetIdentityMatrix
-    v4 = a2->y * a3;
-    v6 = a2->z * a3;
-    a1->v2.x = 0.0;
-    a1->v2.z = 0.0;
-    v12 = (float)v6;
-    a1->v3.x = 0.0;
-    a1->v3.y = 0.0;
-    a1->v1.x = 1.0;
-    a3a = (float)-v4;
-    a1->v1.y = 0.0;
-    a1->v1.z = 0.0;
-    a1->_m14 = 0.0;
-    a1->v2.x = -v12;
-    a1->_m24 = 0.0;
-    a1->_m34 = 0.0;
-    a1->v2.z = (float)v3;
-    a1->Pos.x = 0.0;
-    a1->Pos.y = 0.0;
-    a1->v3.x = (float)v4;
-    a1->Pos.z = 0.0;
-    v7 = a1->mtxflag;
-    a1->v2.y = 1.0;
-    a1->v3.y = (float)-v3;
-    a1->v3.z = 1.0;
-    v8 = a1->v1.x;
-    a1->w = 1.0;
-    a1->mtxflag = v7 & 2;
-    v9 = sqrt(a3a * a3a + v8 * v8 + v12 * v12);   // MATH_NormalizeEqualVector x3
-    a1->v1.x = (float)(1.0 / v9 * a1->v1.x);
-    a1->v1.y = (float)(v12 * (1.0 / v9));
-    a1->v1.z = (float)(a3a * (1.0 / v9));
-    v10 = sqrt(a1->v2.x * a1->v2.x + a1->v2.y * a1->v2.y + a1->v2.z * a1->v2.z);
-    a1->v2.x = (float)(1.0 / v10 * a1->v2.x);
-    a1->v2.y = (float)(1.0 / v10 * a1->v2.y);
-    a1->v2.z = (float)(1.0 / v10 * a1->v2.z);
-    v11 = sqrt(a1->v3.x * a1->v3.x + a1->v3.y * a1->v3.y + a1->v3.z * a1->v3.z);
-    a1->v3.x = (float)(1.0 / v11 * a1->v3.x);
-    a1->v3.y = (float)(1.0 / v11 * a1->v3.y);
-    a1->v3.z = (float)(1.0 / v11 * a1->v3.z);
+    wx = dt * rotSpeed->x;                              // MATH_SetIdentityMatrix
+    wy = rotSpeed->y * dt;
+    wz = rotSpeed->z * dt;
+    mtx->v2.x = 0.0;
+    mtx->v2.z = 0.0;
+    wzF = (float)wz;
+    mtx->v3.x = 0.0;
+    mtx->v3.y = 0.0;
+    mtx->v1.x = 1.0;
+    negWyF = (float)-wy;
+    mtx->v1.y = 0.0;
+    mtx->v1.z = 0.0;
+    mtx->_m14 = 0.0;
+    mtx->v2.x = -wzF;
+    mtx->_m24 = 0.0;
+    mtx->_m34 = 0.0;
+    mtx->v2.z = (float)wx;
+    mtx->Pos.x = 0.0;
+    mtx->Pos.y = 0.0;
+    mtx->v3.x = (float)wy;
+    mtx->Pos.z = 0.0;
+    flags = mtx->mtxflag;
+    mtx->v2.y = 1.0;
+    mtx->v3.y = (float)-wx;
+    mtx->v3.z = 1.0;
+    row1x = mtx->v1.x;
+    mtx->w = 1.0;
+    mtx->mtxflag = flags & 2;
+    len1 = sqrt(negWyF * negWyF + row1x * row1x + wzF * wzF);   // MATH_NormalizeEqualVector x3
+    mtx->v1.x = (float)(1.0 / len1 * mtx->v1.x);
+    mtx->v1.y = (float)(wzF * (1.0 / len1));
+    mtx->v1.z = (float)(negWyF * (1.0 / len1));
+    len2 = sqrt(mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y + mtx->v2.z * mtx->v2.z);
+    mtx->v2.x = (float)(1.0 / len2 * mtx->v2.x);
+    mtx->v2.y = (float)(1.0 / len2 * mtx->v2.y);
+    mtx->v2.z = (float)(1.0 / len2 * mtx->v2.z);
+    len3 = sqrt(mtx->v3.x * mtx->v3.x + mtx->v3.y * mtx->v3.y + mtx->v3.z * mtx->v3.z);
+    mtx->v3.x = (float)(1.0 / len3 * mtx->v3.x);
+    mtx->v3.y = (float)(1.0 / len3 * mtx->v3.y);
+    mtx->v3.z = (float)(1.0 / len3 * mtx->v3.z);
 }
 
-void DYN_ApplyAngularVelocity(tDyn* a1, float a3)
+void DYN_ApplyAngularVelocity(tDyn* dyn, float dt)
 {
-    Mtx4x4* v2;
-    Mtx4x4 a1a;
-    Mtx4x4 a2a;
+    Mtx4x4* mtx;
+    Mtx4x4 product;
+    Mtx4x4 wMtx;
 
-    DYN_MakeWMatrix(&a2a, &a1->solid->rotSpeedVector, a3);
-    v2 = (Mtx4x4*)&a1->vptr[-4]; // ez egy rettentõ igénytelen megoldás ohgy egy pozícióbol (mátrix 4. sora) haogyan kapjuk vissza az egész mátrixot, és ez egyben azt is feltételezi
+    DYN_MakeWMatrix(&wMtx, &dyn->solid->rotSpeedVector, dt);
+    mtx = (Mtx4x4*)&dyn->vptr[-4]; // ez egy rettentõ igénytelen megoldás ohgy egy pozícióbol (mátrix 4. sora) haogyan kapjuk vissza az egész mátrixot, és ez egyben azt is feltételezi
                                  // hogy ne egy egyedüöli vektor lett megadva, hanem a mátrix adott része (&mtx.Pos) A vptr a DYN_Dyna_Init-ben állítódik be ami két helyrõl van hívva, 
                                  // és mindkét helyen egy mátrix adott részét kapja. Ez a szerencse
-    MATH_MulMatrixMatrix(&a1a, &a2a, v2);
-    if (v2 != &a1a)
-        memcpy(v2, &a1a, sizeof(Mtx4x4));
-    MATH_Orthonormalize(v2);
+    MATH_MulMatrixMatrix(&product, &wMtx, mtx);
+    MATH_CopyMatrix(mtx, &product);
+    MATH_Orthonormalize(mtx);
 }
 
 tDyn* DYN_pst_Dyna_Create()
@@ -460,719 +447,718 @@ tDyn* DYN_pst_Dyna_Create()
     return dyn;
 }
 
-void DYN_Dyna_Close(tDyn* a1)
+void DYN_Dyna_Close(tDyn* dyn)
 {
-    if ((a1->flags & 4) != 0)
-        DYN_Forces_Close(a1->forces);
-    if ((a1->flags & 0x10000) != 0)
-        DYN_SolidClose(a1->solid);
-    if ((a1->flags & 0x20000) != 0)
-        DYN_ColClose(a1->collision);
-    if ((a1->flags & 0x200000) != 0)
-        DYN_ConstraintClose(a1->constraint);
-    MEM_Free(a1);
+    if ((dyn->flags & 4) != 0)
+        DYN_Forces_Close(dyn->forces);
+    if ((dyn->flags & 0x10000) != 0)
+        DYN_SolidClose(dyn->solid);
+    if ((dyn->flags & 0x20000) != 0)
+        DYN_ColClose(dyn->collision);
+    if ((dyn->flags & 0x200000) != 0)
+        DYN_ConstraintClose(dyn->constraint);
+    MEM_Free(dyn);
 }
 
-void DYN_SetHorizontalSpeedComponent(struct sDyn* a1, Vec3* a2)
+void DYN_SetHorizontalSpeedComponent(struct sDyn* dyn, Vec3* speed)
 {
-    tDynForces* v3; // eax
-    double v4; // st7
-    double v5; // st7
-    double v6; // st7
-    long double v7; // st6
-    long double v8; // rt1
-    long double v9; // st6
-    float v10; // [esp+0h] [ebp-18h]
-    Vec3 v11; // [esp+0h] [ebp-18h]
-    float v12; // [esp+4h] [ebp-14h]
-    float v13; // [esp+4h] [ebp-14h]
-    float v14; // [esp+8h] [ebp-10h]
-    float v15; // [esp+8h] [ebp-10h]
-    float v16; // [esp+Ch] [ebp-Ch]
-    float v17; // [esp+10h] [ebp-8h]
-    float v18; // [esp+14h] [ebp-4h]
-    float a1a; // [esp+1Ch] [ebp+4h]
+    tDynForces* forces;
+    double mass;
+    double sz;
+    double invMass;
+    long double invGravLen;
+    long double gxN;
+    long double along;
+    float gx;
+    Vec3 newSpeed;
+    float gy;
+    float gyN;
+    float gz;
+    float gzN;
+    float sx;
+    float sy;
+    float alongZ;
+    float alongF;
+    BOOL projectOut;
 
-    if ((a1->flags & 0x40004) != 4)
-        goto LABEL_5;
-    v3 = a1->forces;
-    v10 = v3->gravityVector.x;
-    v14 = v3->gravityVector.z;
-    v12 = v3->gravityVector.y;
-    v4 = 1.0 / (1.0 / a1->mass);
-    v16 = (float)(v4 * a1->forceVector.x);
-    v17 = (float)(a1->forceVector.y * v4);
-    v5 = (float)(v4 * a1->forceVector.z);
-    if (v3->gravityVector.x != 0.0)
-        goto LABEL_7;
-    if (v12 == 0.0 && v14 == 0.0)
+    projectOut = FALSE;
+    if ((dyn->flags & 0x40004) == 4)
     {
-    LABEL_5:
-        v11 = *a2;
+        forces = dyn->forces;
+        gx = forces->gravityVector.x;
+        gz = forces->gravityVector.z;
+        gy = forces->gravityVector.y;
+        mass = 1.0 / (1.0 / dyn->mass);
+        sx = (float)(mass * dyn->forceVector.x);
+        sy = (float)(dyn->forceVector.y * mass);
+        sz = (float)(mass * dyn->forceVector.z);
+        if (forces->gravityVector.x != 0.0 || gy != 0.0 || gz != 0.0)
+            projectOut = TRUE;
+    }
+    if (projectOut)
+    {
+        invGravLen = 1.0 / sqrt(gz * gz + gy * gy + gx * gx);
+        gyN = (float)(invGravLen * gy);
+        gzN = (float)(invGravLen * gz);
+        gxN = gx * invGravLen;
+        along = sz * gzN + sy * gyN + sx * gxN;
+        alongF = (float)along;
+        alongZ = alongF * gzN;
+        newSpeed.x = (float)(along * gxN + speed->x);
+        newSpeed.y = speed->y + alongF * gyN;
+        newSpeed.z = speed->z + alongZ;
     }
     else
     {
-    LABEL_7:
-        v7 = 1.0 / sqrt(v14 * v14 + v12 * v12 + v10 * v10);
-        v13 = (float)(v7 * v12);
-        v15 = (float)(v7 * v14);
-        v8 = v10 * v7;
-        v9 = v5 * v15 + v17 * v13 + v16 * v8;
-        a1a = (float)v9;
-        v18 = a1a * v15;
-        v11.x = (float)(v9 * v8 + a2->x);
-        v11.y = a2->y + a1a * v13;
-        v11.z = a2->z + v18;
+        newSpeed = *speed;
     }
-    v6 = 1.0 / a1->mass;
-    a1->forceVector.x = (float)(v11.x * v6);
-    a1->forceVector.y = (float)(v11.y * v6);
-    a1->forceVector.z = (float)(v11.z * v6);
+    invMass = 1.0 / dyn->mass;
+    dyn->forceVector.x = (float)(newSpeed.x * invMass);
+    dyn->forceVector.y = (float)(newSpeed.y * invMass);
+    dyn->forceVector.z = (float)(newSpeed.z * invMass);
 }
 
 
-void DYN_CalculateSpeedWhenFrictionVector(tDyn* a1, float a2)
-{
-    int v2;
-    tDynForces* v3;
-    long double v4;
-    Vec3* v5;
-    double v6;
-    double v7;
-    double v7a;
-    double v10;
-    double v11;
-    double v11a;
-    double v14;
-    double v15;
-    double v15a;
-    Vec3 v18;
-    Vec3 v19;
 
-    v2 = 0;
-    MATH_VectorGlobalToLocal(&v19, (Mtx4x4*)&a1->vptr[-4], &a1->momentum); // a vptr[-4] egy gányolás, mivel az egész mátrix kell, lásd másik megjegyzést ezzel kapcs...
-    MATH_VectorGlobalToLocal(&v18, (Mtx4x4*)&a1->vptr[-4], &a1->forceVector);
-    v3 = a1->forces;
-    v4 = v3->frictionVector.x;
-    v5 = &v3->frictionVector;
-    if (fabs(v4) >= 0.0000001)
-        v2 = 1;
+void DYN_CalculateSpeedWhenFrictionVector(tDyn* dyn, float dt)
+{
+    int axes;
+    tDynForces* forces;
+    long double frictionX;
+    Vec3* friction;
+    double fx;
+    double log2DecayX;
+    double roundedX;
+    double fy;
+    double log2DecayY;
+    double roundedY;
+    double fz;
+    double log2DecayZ;
+    double roundedZ;
+    Vec3 localForce;
+    Vec3 localMomentum;
+
+    axes = 0;
+    MATH_VectorGlobalToLocal(&localMomentum, (Mtx4x4*)&dyn->vptr[-4], &dyn->momentum); // a vptr[-4] egy gányolás, mivel az egész mátrix kell, lásd másik megjegyzést ezzel kapcs...
+    MATH_VectorGlobalToLocal(&localForce, (Mtx4x4*)&dyn->vptr[-4], &dyn->forceVector);
+    forces = dyn->forces;
+    frictionX = forces->frictionVector.x;
+    friction = &forces->frictionVector;
+    if (fabs(frictionX) >= 0.0000001)
+        axes = 1;
     else
-        v18.x = v19.x * a2 + v18.x;
-    if (fabs(v5->y) >= 0.0000001)
-        v2 += 2;
+        localForce.x = localMomentum.x * dt + localForce.x;
+    if (fabs(friction->y) >= 0.0000001)
+        axes += 2;
     else
-        v18.y = v19.y * a2 + v18.y;
-    if (fabs(v5->z) >= 0.0000001)
-        v2 += 4;
+        localForce.y = localMomentum.y * dt + localForce.y;
+    if (fabs(friction->z) >= 0.0000001)
+        axes += 4;
     else
-        v18.z = v19.z * a2 + v18.z;
-    if (v2)
+        localForce.z = localMomentum.z * dt + localForce.z;
+    if (axes)
     {
-        if ((v2 & 1) != 0)
+        /* Each axis decays by 2 to the power of -friction*mass*dt. The
+           integer part of that exponent is rounded off and then never
+           applied: the original sequence scaled by it with FSCALE, and
+           the decompilation kept only the F2XM1 of the fraction. Left
+           as written. */
+        if ((axes & 1) != 0)
         {
-            v6 = a1->mass * v5->x;
-            v7 = -(v6 * a2) * 1.442695040888963387;
-            //_ST4 = v7;
+            fx = dyn->mass * friction->x;
+            log2DecayX = -(fx * dt) * 1.442695040888963387;
+            //_ST4 = log2DecayX;
             //__asm { frndint }
-            v7a = (float)((int)(v7 + 0.5f));
-            //v18.x = 1.0 / v6 * v19.x - (__F2XM1__(v7 - _ST4) + 1.0) * (1.0 / v6 * v19.x - v18.x);
-            v18.x = (float)(1.0 / v6 * v19.x - ((pow(2, (v7 - v7a)) - 1.0) + 1.0) * (1.0 / v6 * v19.x - v18.x));
+            roundedX = (float)((int)(log2DecayX + 0.5f));
+            //localForce.x = 1.0 / fx * localMomentum.x - (__F2XM1__(log2DecayX - _ST4) + 1.0) * (1.0 / fx * localMomentum.x - localForce.x);
+            localForce.x = (float)(1.0 / fx * localMomentum.x - ((pow(2, (log2DecayX - roundedX)) - 1.0) + 1.0) * (1.0 / fx * localMomentum.x - localForce.x));
         }
-        if ((v2 & 2) != 0)
+        if ((axes & 2) != 0)
         {
-            v10 = a1->mass * v5->y;
-            v11 = -(v10 * a2) * 1.442695040888963387;
-            //_ST4 = v11;
+            fy = dyn->mass * friction->y;
+            log2DecayY = -(fy * dt) * 1.442695040888963387;
+            //_ST4 = log2DecayY;
             //__asm { frndint }
-            v11a = (float)((int)(v11 + 0.5f));
-            //v18.y = 1.0 / v10 * v19.y - (__F2XM1__(v11 - _ST4) + 1.0) * (1.0 / v10 * v19.y - v18.y);
-            v18.y = (float)(1.0 / v10 * v19.y - ((pow(2, (v11 - v11a)) - 1.0) + 1.0) * (1.0 / v10 * v19.y - v18.y));
+            roundedY = (float)((int)(log2DecayY + 0.5f));
+            //localForce.y = 1.0 / fy * localMomentum.y - (__F2XM1__(log2DecayY - _ST4) + 1.0) * (1.0 / fy * localMomentum.y - localForce.y);
+            localForce.y = (float)(1.0 / fy * localMomentum.y - ((pow(2, (log2DecayY - roundedY)) - 1.0) + 1.0) * (1.0 / fy * localMomentum.y - localForce.y));
         }
-        if ((v2 & 4) != 0)
+        if ((axes & 4) != 0)
         {
-            v14 = a1->mass * v5->z;
-            v15 = -(v14 * a2) * 1.442695040888963387;
-            //_ST4 = v15;
+            fz = dyn->mass * friction->z;
+            log2DecayZ = -(fz * dt) * 1.442695040888963387;
+            //_ST4 = log2DecayZ;
             //__asm { frndint }
-            v15a = (float)((int)(v15 + 0.5f));
-            //v18.z = 1.0 / v14 * v19.z - (__F2XM1__(v15 - _ST4) + 1.0) * (1.0 / v14 * v19.z - v18.z);
-            v18.z = (float)(1.0 / v14 * v19.z - ((pow(2, (v15 - v15a)) - 1.0) + 1.0) * (1.0 / v14 * v19.z - v18.z));
+            roundedZ = (float)((int)(log2DecayZ + 0.5f));
+            //localForce.z = 1.0 / fz * localMomentum.z - (__F2XM1__(log2DecayZ - _ST4) + 1.0) * (1.0 / fz * localMomentum.z - localForce.z);
+            localForce.z = (float)(1.0 / fz * localMomentum.z - ((pow(2, (log2DecayZ - roundedZ)) - 1.0) + 1.0) * (1.0 / fz * localMomentum.z - localForce.z));
         }
     }
-    MATH_TransformVectorNoScale(&a1->forceVector, (Mtx4x4*)&a1->vptr[-4], &v18);
+    MATH_TransformVectorNoScale(&dyn->forceVector, (Mtx4x4*)&dyn->vptr[-4], &localForce);
 }
 
-void dyn_frictionvector_subfunc_sub_427630(tDyn* a1, float a2, int a3)
+static void DYN_l_ApplyFrictionVector(tDyn* dyn, float dt, int flags)
 {
-    tDynForces* v4;
-    tDynForces* v8;
-    tDynForces* v10;
-    double v11;
-    tDynForces* v12;
-    float v13;
-    Vec3* v14;
-    double v15;
-    double v16;
-    double v17;
-    double v18;
-    double v19;
-    double v20;
-    double v21;
-    float v22;
-    long double v24;
-    Vec3 v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    float v32;
-    float v33;
-    float v34;
+    tDynForces* forces;
+    double mass;
+    float frictionX;
+    Vec3* friction;
+    double addX;
+    double addY;
+    double srcZ;
+    double fx;
+    double termZ;
+    double diffY;
+    double log2Decay;
+    float rounded;
+    long double decay;
+    Vec3 accel;
+    float deltaX;
+    float gyTerm;
+    float gzTerm;
+    float diffZ;
+    float deltaZ;
+    float addZ;
+    float termX;
+    float termY;
+    float decayF;
 
-    if ((a3 & 4) != 0)
+    if ((flags & 4) != 0)
     {
-        if ((a3 & 0x100000) != 0)
+        if ((flags & 0x100000) != 0)
         {
-            v25.x = MATH_gst_NulVector.x;
-            v25.y = MATH_gst_NulVector.y;
-            v25.z = MATH_gst_NulVector.z;
+            accel.x = MATH_gst_NulVector.x;
+            accel.y = MATH_gst_NulVector.y;
+            accel.z = MATH_gst_NulVector.z;
         }
         else
         {
-            v4 = a1->forces;
-            v25.x = v4->streamVec.x;
-            v25.z = v4->streamVec.z;
-            v25.y = v4->streamVec.y;
+            forces = dyn->forces;
+            accel.x = forces->streamVec.x;
+            accel.z = forces->streamVec.z;
+            accel.y = forces->streamVec.y;
         }
-        if ((a3 & 0x80000) == 0)
+        if ((flags & 0x80000) == 0)
         {
-            v8 = a1->forces;
-            v25.x = v25.x + v8->tractionVector.x;
-            v25.y = v25.y + v8->tractionVector.y;
-            v25.z = v25.z + v8->tractionVector.z;
+            forces = dyn->forces;
+            accel.x = accel.x + forces->tractionVector.x;
+            accel.y = accel.y + forces->tractionVector.y;
+            accel.z = accel.z + forces->tractionVector.z;
         }
-        if ((a3 & 0x40000) == 0)
+        if ((flags & 0x40000) == 0)
         {
-            v10 = a1->forces;
-            v11 = 1.0 / a1->mass;
-            v27 = (float)(v10->gravityVector.y * v11);
-            v28 = (float)(v10->gravityVector.z * v11);
-            v25.x = (float)(v25.x + v11 * v10->gravityVector.x);
-            v25.y = v25.y + v27;
-            v25.z = v25.z + v28;
+            forces = dyn->forces;
+            mass = 1.0 / dyn->mass;
+            gyTerm = (float)(forces->gravityVector.y * mass);
+            gzTerm = (float)(forces->gravityVector.z * mass);
+            accel.x = (float)(accel.x + mass * forces->gravityVector.x);
+            accel.y = accel.y + gyTerm;
+            accel.z = accel.z + gzTerm;
         }
-        a1->momentum = v25;
-        v12 = a1->forces;
-        if ((a3 & 0x1000) != 0)
+        dyn->momentum = accel;
+        forces = dyn->forces;
+        if ((flags & 0x1000) != 0)
         {
-            v13 = v12->frictionVector.x;
-            v14 = &v12->frictionVector;
-            if (fabs(v13) > 0.0001// MATH_b_NulVectorWithEpsilon inline
-                || fabs(v14->y) > 0.0001
-                || fabs(v14->z) > 0.0001)
+            frictionX = forces->frictionVector.x;
+            friction = &forces->frictionVector;
+            if (fabs(frictionX) > 0.0001// MATH_b_NulVectorWithEpsilon inline
+                || fabs(friction->y) > 0.0001
+                || fabs(friction->z) > 0.0001)
             {
-                DYN_CalculateSpeedWhenFrictionVector(a1, a2);
+                DYN_CalculateSpeedWhenFrictionVector(dyn, dt);
                 return;
             }
         }
-        else if (fabs(v12->frictionVector.x) >= 0.000099999997)
+        else if (fabs(forces->frictionVector.x) >= 0.000099999997)
         {
-            v18 = v12->frictionVector.x * a1->mass;
-            v32 = (float)(v25.x * (1.0 / v18));
-            v33 = (float)(v25.y * (1.0 / v18));
-            v19 = 1.0 / v18 * v25.z;
-            v20 = v33 - a1->forceVector.y;
-            v29 = (float)(v19 - a1->forceVector.z);
-            v21 = -(v18 * a2) * 1.442695040888963387;
-            //_ST2 = v21;
+            fx = forces->frictionVector.x * dyn->mass;
+            termX = (float)(accel.x * (1.0 / fx));
+            termY = (float)(accel.y * (1.0 / fx));
+            termZ = 1.0 / fx * accel.z;
+            diffY = termY - dyn->forceVector.y;
+            diffZ = (float)(termZ - dyn->forceVector.z);
+            log2Decay = -(fx * dt) * 1.442695040888963387;
+            //_ST2 = log2Decay;
             //__asm { frndint }
-            v22 = (float)((int)(v21 + 0.5f));
-            //v24 = __F2XM1__(v21 - _ST2) + 1.0;
-            v24 = (pow(2, (v21 - v22)) - 1.0) + 1.0; // TODO FIXME, jó ez így?
-            v34 = (float)v24;
-            v26 = (float)(v24 * (v32 - a1->forceVector.x));
-            v30 = v29 * v34;
-            a1->forceVector.x = v32 - v26;
-            a1->forceVector.y = (float)(v33 - v34 * v20);
-            a1->forceVector.z = (float)(v19 - v30);
+            rounded = (float)((int)(log2Decay + 0.5f));
+            //decay = __F2XM1__(log2Decay - _ST2) + 1.0;
+            decay = (pow(2, (log2Decay - rounded)) - 1.0) + 1.0; // TODO FIXME, jó ez így?
+            decayF = (float)decay;
+            deltaX = (float)(decay * (termX - dyn->forceVector.x));
+            deltaZ = diffZ * decayF;
+            dyn->forceVector.x = termX - deltaX;
+            dyn->forceVector.y = (float)(termY - decayF * diffY);
+            dyn->forceVector.z = (float)(termZ - deltaZ);
             return;
         }
-        v15 = v25.x * a2;
-        v16 = v25.y * a2;
-        v17 = v25.z;
+        addX = accel.x * dt;
+        addY = accel.y * dt;
+        srcZ = accel.z;
     }
     else
     {
-        if ((a3 & 2) == 0)
+        if ((flags & 2) == 0)
             return;
-        v15 = a2 * a1->momentum.x;
-        v16 = a1->momentum.y * a2;
-        v17 = a1->momentum.z;
+        addX = dt * dyn->momentum.x;
+        addY = dyn->momentum.y * dt;
+        srcZ = dyn->momentum.z;
     }
-    v31 = (float)(v17 * a2);
-    a1->forceVector.x = (float)(v15 + a1->forceVector.x);
-    a1->forceVector.y = (float)(v16 + a1->forceVector.y);
-    a1->forceVector.z = v31 + a1->forceVector.z;
+    addZ = (float)(srcZ * dt);
+    dyn->forceVector.x = (float)(addX + dyn->forceVector.x);
+    dyn->forceVector.y = (float)(addY + dyn->forceVector.y);
+    dyn->forceVector.z = addZ + dyn->forceVector.z;
 }
 
-void DYN_ApplySpeedLimit(struct sDyn* a1)
+void DYN_ApplySpeedLimit(struct sDyn* dyn)
 {
-    double v2;
-    double v3;
-    double v5;
-    tDynForces* v8;
-    double v9;
-    float v10;
-    float v11;
-    char v12;
-    long double v13;
-    long double v14;
-    long double v15;
-    double v16;
-    double v17;
-    double v18;
-    long double v19;
-    float a3;
-    float norm;
-    Vec3 a1a;
-    Vec3 a2;
-    float v24;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
+    double invMass;
+    double speedX;
+    double speedY;
+    tDynForces* forces;
+    double forceZ;
+    float gy;
+    float gz;
+    char horizClamped;
+    long double invGravLen;
+    long double gxN;
+    long double gzN;
+    double horizZ;
+    double sumY;
+    double mass;
+    long double speedLen;
+    float limit;
+    float vertLimit;
+    Vec3 gravDir;
+    Vec3 horiz;
+    Vec3 alongVec;
+    float speedYF;
+    float speedZ;
+    float along;
+    float alongAbs;
+    float massF;
+    float clamped;
 
-    a3 = a1->speedLimit;
-    norm = a1->speedLimitVertical;
-    v2 = a1->mass;
-    v3 = v2 * a1->forceVector.x;
-    v5 = a1->forceVector.y * v2;
-    if (a3 == norm)
+    limit = dyn->speedLimit;
+    vertLimit = dyn->speedLimitVertical;
+    invMass = dyn->mass;
+    speedX = invMass * dyn->forceVector.x;
+    speedY = dyn->forceVector.y * invMass;
+    if (limit == vertLimit)
     {
-        v19 = sqrt(a1->forceVector.z * v2 * (a1->forceVector.z * v2) + v5 * v5 + v3 * v3);
-        v29 = (float)v19;
-        if (v19 > a3)
-            v29 = a3;
-        DYN_ApplyHorizontalSpeed(a1, v29);
+        speedLen = sqrt(dyn->forceVector.z * invMass * (dyn->forceVector.z * invMass) + speedY * speedY + speedX * speedX);
+        clamped = (float)speedLen;
+        if (speedLen > limit)
+            clamped = limit;
+        DYN_ApplyHorizontalSpeed(dyn, clamped);
     }
     else
     {
-        v24 = (float)v5;
-        v8 = a1->forces;
-        v9 = a1->forceVector.z;
-        a1a.x = v8->gravityVector.x;
-        v10 = v8->gravityVector.y;
-        v11 = v8->gravityVector.z;
-        v25 = (float)(v9 * v2);
-        v12 = 0;
-        v13 = 1.0 / sqrt(v11 * v11 + v10 * v10 + a1a.x * a1a.x);
-        v14 = a1a.x * v13;
-        a1a.y = (float)(v10 * v13);
-        v15 = v11 * v13;
-        a1a.z = (float)v15;
-        v26 = (float)(v15 * v25 + a1a.y * v24 + v14 * v3);
-        a2.x = (float)(v14 * v26);
-        a2.y = a1a.y * v26;
-        a2.z = a1a.z * v26;
-        v27 = (float)fabs(v26);
-        a1a.x = (float)(v3 - a2.x);
-        a1a.y = v24 - a2.y;
-        v16 = v25 - a2.z;
-        a1a.z = (float)v16;
-        if (sqrt(v16 * a1a.z + a1a.y * a1a.y + a1a.x * a1a.x) > a3)
+        speedYF = (float)speedY;
+        forces = dyn->forces;
+        forceZ = dyn->forceVector.z;
+        gravDir.x = forces->gravityVector.x;
+        gy = forces->gravityVector.y;
+        gz = forces->gravityVector.z;
+        speedZ = (float)(forceZ * invMass);
+        horizClamped = 0;
+        invGravLen = 1.0 / sqrt(gz * gz + gy * gy + gravDir.x * gravDir.x);
+        gxN = gravDir.x * invGravLen;
+        gravDir.y = (float)(gy * invGravLen);
+        gzN = gz * invGravLen;
+        gravDir.z = (float)gzN;
+        along = (float)(gzN * speedZ + gravDir.y * speedYF + gxN * speedX);
+        alongVec.x = (float)(gxN * along);
+        alongVec.y = gravDir.y * along;
+        alongVec.z = gravDir.z * along;
+        alongAbs = (float)fabs(along);
+        horiz.x = (float)(speedX - alongVec.x);
+        horiz.y = speedYF - alongVec.y;
+        horizZ = speedZ - alongVec.z;
+        horiz.z = (float)horizZ;
+        if (sqrt(horizZ * horiz.z + horiz.y * horiz.y + horiz.x * horiz.x) > limit)
         {
-            MATH_SetNormVector(&a1a, &a1a, a3);
-            v12 = 1;
+            MATH_SetNormVector(&horiz, &horiz, limit);
+            horizClamped = 1;
         }
-        if (v27 <= (double)norm)
+        if (alongAbs <= (double)vertLimit)
         {
-            if (!v12)
+            if (!horizClamped)
                 return;
         }
         else
         {
-            MATH_SetNormVector(&a2, &a2, norm);
+            MATH_SetNormVector(&alongVec, &alongVec, vertLimit);
         }
-        v17 = a1a.y + a2.y;
-        v25 = a1a.z + a2.z;
-        v18 = 1.0 / a1->mass;
-        v28 = (float)v18;
-        a1->forceVector.x = (float)(v18 * (a1a.x + a2.x));
-        a1->forceVector.y = (float)(v17 * v28);
-        a1->forceVector.z = v25 * v28;
+        sumY = horiz.y + alongVec.y;
+        speedZ = horiz.z + alongVec.z;
+        mass = 1.0 / dyn->mass;
+        massF = (float)mass;
+        dyn->forceVector.x = (float)(mass * (horiz.x + alongVec.x));
+        dyn->forceVector.y = (float)(sumY * massF);
+        dyn->forceVector.z = speedZ * massF;
     }
 }
 
-void DYN_ApplySpeed_sub_427870(tGameObjectMain* a1, tDyn* a2, float a3, int a4, Vec3* a5)
+static void DYN_l_ApplySpeed(tGameObjectMain* gao, tDyn* dyn, float dt, int flags, Vec3* otherSpeed)
 {
-    Vec3* v5;
-    double v6;
-    double v7;
-    float v8;
-    double v9;
-    double v10;
-    double v11;
-    tDynConstraint* v12;
-    double v13;
-    Vec3* v14;
-    float v15;
-    tGameObjectBasic* v16;
-    tGaoMatrix* v17;
-    tGameObjectMain* v18;
-    Mtx4x4* v19;
-    tGameObjectBasic* v20;
-    Mtx4x4* v21;
-    tGameObjectBasic* v22;
-    tGameObjectActorObject* v23;
-    Vec3 a3a;
-    Vec3 v25;
-    float v26;
-    float v27;
-    float v28;
-    Mtx4x4 a1a;
+    Vec3* pos;
+    double invMass;
+    double speedX;
+    float posZ;
+    double forceY;
+    double sumX;
+    double sumY;
+    tDynConstraint* constraint;
+    double along;
+    Vec3* curPos;
+    float maxX;
+    tGameObjectBasic* basic;
+    tGaoMatrix* gaoMtx;
+    tGameObjectMain* refGao;
+    Mtx4x4* absMtx;
+    tGameObjectBasic* basic2;
+    Mtx4x4* flashMtx;
+    tGameObjectBasic* basic3;
+    tGameObjectActorObject* actor;
+    Vec3 delta;
+    Vec3 avg;
+    float oldX;
+    float oldY;
+    float oldZ;
+    Mtx4x4 invMtx;
 
-    v5 = a2->vptr;
-    v6 = a2->mass;
-    v7 = v6 * a2->forceVector.x;
-    v26 = v5->x;
-    v27 = v5->y;
-    v8 = v5->z;
-    a3a.x = (float)v7;
-    v9 = a2->forceVector.y;
-    v28 = v8;
-    a3a.y = (float)(v9 * v6);
-    a3a.z = (float)(a2->forceVector.z * v6);
-    if (a5)
+    pos = dyn->vptr;
+    invMass = dyn->mass;
+    speedX = invMass * dyn->forceVector.x;
+    oldX = pos->x;
+    oldY = pos->y;
+    posZ = pos->z;
+    delta.x = (float)speedX;
+    forceY = dyn->forceVector.y;
+    oldZ = posZ;
+    delta.y = (float)(forceY * invMass);
+    delta.z = (float)(dyn->forceVector.z * invMass);
+    if (otherSpeed)
     {
-        v10 = a3a.x + a5->x;
-        v11 = a5->y + a3a.y;
-        v25.z = a5->z + a3a.z;
-        v25.x = (float)(v10 * 0.5);
-        v25.y = (float)(v11 * 0.5);
-        v25.z = (float)(v25.z * 0.5);
+        sumX = delta.x + otherSpeed->x;
+        sumY = otherSpeed->y + delta.y;
+        avg.z = otherSpeed->z + delta.z;
+        avg.x = (float)(sumX * 0.5);
+        avg.y = (float)(sumY * 0.5);
+        avg.z = (float)(avg.z * 0.5);
     }
     else
     {
-        v25 = a3a;
+        avg = delta;
     }
-    if ((a4 & 0x10000000) != 0 && a2->forces)
+    if ((flags & 0x10000000) != 0 && dyn->forces)
     {
-        a3a = v25;
+        delta = avg;
     }
     else
     {
-        a3a.x = v25.x * a3;
-        a3a.y = v25.y * a3;
-        a3a.z = v25.z * a3;
+        delta.x = avg.x * dt;
+        delta.y = avg.y * dt;
+        delta.z = avg.z * dt;
     }
-    if ((a4 & 0x200000) != 0)
+    if ((flags & 0x200000) != 0)
     {
-        v12 = a2->constraint;
-        if (fabs(v12->tangentVec.x) > 0.0001// MATH_b_NulVectorWithEpsilon inline
-            || fabs(v12->tangentVec.y) > 0.0001
-            || fabs(v12->tangentVec.z) > 0.0001)
+        constraint = dyn->constraint;
+        if (fabs(constraint->tangentVec.x) > 0.0001// MATH_b_NulVectorWithEpsilon inline
+            || fabs(constraint->tangentVec.y) > 0.0001
+            || fabs(constraint->tangentVec.z) > 0.0001)
         {
-            v13 = v12->tangentVec.z * a3a.z + v12->tangentVec.y * a3a.y + a3a.x * v12->tangentVec.x;
-            a3a.x = (float)(v13 * v12->tangentVec.x);
-            a3a.y = (float)(v12->tangentVec.y * v13);
-            a3a.z = (float)(v12->tangentVec.z * v13);
+            along = constraint->tangentVec.z * delta.z + constraint->tangentVec.y * delta.y + delta.x * constraint->tangentVec.x;
+            delta.x = (float)(along * constraint->tangentVec.x);
+            delta.y = (float)(constraint->tangentVec.y * along);
+            delta.z = (float)(constraint->tangentVec.z * along);
         }
-        v5->x = a3a.x + v5->x;
-        v5->y = a3a.y + v5->y;
-        v5->z = a3a.z + v5->z;
-        DYN_ApplyConstraint(a2);
+        pos->x = delta.x + pos->x;
+        pos->y = delta.y + pos->y;
+        pos->z = delta.z + pos->z;
+        DYN_ApplyConstraint(dyn);
     }
     else
     {
-        v5->x = a3a.x + v5->x;
-        v5->y = a3a.y + v5->y;
-        v5->z = a3a.z + v5->z;
-        if ((a2->flags & 0x4000) != 0)
+        pos->x = delta.x + pos->x;
+        pos->y = delta.y + pos->y;
+        pos->z = delta.z + pos->z;
+        if ((dyn->flags & 0x4000) != 0)
         {
-            v14 = a2->vptr;
-            if (a3a.z * (a2->maxPos.z - v14->z) + (a2->maxPos.y - v14->y) * a3a.y + (a2->maxPos.x - v14->x) * a3a.x < 0.0)
+            curPos = dyn->vptr;
+            if (delta.z * (dyn->maxPos.z - curPos->z) + (dyn->maxPos.y - curPos->y) * delta.y + (dyn->maxPos.x - curPos->x) * delta.x < 0.0)
             {
-                v15 = a2->maxPos.x;
-                a3a.x = v15 - v26;
-                a3a.y = a2->maxPos.y - v27;
-                a3a.z = a2->maxPos.z - v28;
-                v14->x = v15;
-                v14->y = a2->maxPos.y;
-                v14->z = a2->maxPos.z;
+                maxX = dyn->maxPos.x;
+                delta.x = maxX - oldX;
+                delta.y = dyn->maxPos.y - oldY;
+                delta.z = dyn->maxPos.z - oldZ;
+                curPos->x = maxX;
+                curPos->y = dyn->maxPos.y;
+                curPos->z = dyn->maxPos.z;
             }
         }
     }
-    if ((a1->flags & 0x400000) != 0)
+    if ((gao->flags & 0x400000) != 0)
     {
-        v16 = a1->basic;
-        if (v16 && (v17 = v16->mtx) != 0)
-            v18 = v17->refGao2;
+        basic = gao->basic;
+        if (basic && (gaoMtx = basic->mtx) != 0)
+            refGao = gaoMtx->refGao2;
         else
-            v18 = 0;
-        v19 = OBJ_pst_GetAbsoluteMatrix(v18);
-        MATH_InvertMatrix(&a1a, v19);
-        MATH_TransformVector(&a3a, &a1a, &a3a);
+            refGao = 0;
+        absMtx = OBJ_pst_GetAbsoluteMatrix(refGao);
+        MATH_InvertMatrix(&invMtx, absMtx);
+        MATH_TransformVector(&delta, &invMtx, &delta);
     }
-    if ((a1->flags & 2) != 0)
+    if ((gao->flags & 2) != 0)
     {
-        v20 = a1->basic;
-        if (v20)
+        basic2 = gao->basic;
+        if (basic2)
         {
-            if (v20->actorObjectOrVisualObject)
+            if (basic2->actorObjectOrVisualObject)
             {
-                if ((a1->flags & 0x4000000) != 0)
+                if ((gao->flags & 0x4000000) != 0)
                 {
-                    v21 = OBJ_pst_GetFlashMatrix(a1);
-                    MATH_VecAddVecWithoutBuffer(&v21->Pos, &a3a);
+                    flashMtx = OBJ_pst_GetFlashMatrix(gao);
+                    MATH_VecAddVecWithoutBuffer(&flashMtx->Pos, &delta);
                 }
-                if (ANI_GaoAnimationIsTransitioning(a1))
+                if (ANI_GaoAnimationIsTransitioning(gao))
                 {
-                    v22 = a1->basic;
-                    v23 = (tGameObjectActorObject*)v22->actorObjectOrVisualObject;
-                    MATH_VecAddVecWithoutBuffer(&v23->animPtr[1]->flashMtx.Pos, &a3a);
-                    MATH_VecAddVecWithoutBuffer((Vec3*)&v23->animPtr[0]->flashMtx._m14, &a3a);
-                    MATH_VecAddVecWithoutBuffer(&v23->animPtr[0]->flashMtx.Pos, &a3a);
+                    basic3 = gao->basic;
+                    actor = (tGameObjectActorObject*)basic3->actorObjectOrVisualObject;
+                    MATH_VecAddVecWithoutBuffer(&actor->animPtr[1]->flashMtx.Pos, &delta);
+                    MATH_VecAddVecWithoutBuffer((Vec3*)&actor->animPtr[0]->flashMtx._m14, &delta);
+                    MATH_VecAddVecWithoutBuffer(&actor->animPtr[0]->flashMtx.Pos, &delta);
                 }
             }
         }
     }
 }
 
-void DYN_AutoOrient_sub_4273F0(tGameObjectMain* a1, tDyn* a2, int a3, float a4)
+static void DYN_l_AutoOrient(tGameObjectMain* gao, tDyn* dyn, int flags, float dt)
 {
-    Vec3* v4; // esi
-    int v5; // edi
-    long double v6; // st4
-    double v7; // st7
-    double v8; // st7
-    double v8a;
-    float a4a; // [esp+0h] [ebp-48h]
-    Vec3 a1a; // [esp+18h] [ebp-30h] BYREF
-    Vec3 a3a; // [esp+24h] [ebp-24h] BYREF
-    Vec3 v14; // [esp+30h] [ebp-18h] BYREF
-    Vec3 a2a; // [esp+3Ch] [ebp-Ch] BYREF
+    Vec3* speed;
+    int inertia;
+    long double speedLen;
+    double inertiaValue;
+    double log2Decay;
+    double rounded;
+    float factor;
+    Vec3 up;
+    Vec3 speedDir;
+    Vec3 target;
+    Vec3 sight;
 
-    v4 = &a2->forceVector;
-    if (fabs(a2->forceVector.x) > 0.01// MATH_b_NulVectorWithEpsilon inline
-        || fabs(a2->forceVector.y) > 0.01
-        || fabs(a2->forceVector.z) > 0.01)
+    speed = &dyn->forceVector;
+    if (fabs(dyn->forceVector.x) > 0.01// MATH_b_NulVectorWithEpsilon inline
+        || fabs(dyn->forceVector.y) > 0.01
+        || fabs(dyn->forceVector.z) > 0.01)
     {
-        v5 = a3 & 0xC00;
-        if ((a3 & 0xC00) != 0)
+        inertia = flags & 0xC00;
+        if ((flags & 0xC00) != 0)
         {                                           // MATH_NormalizeVector inline
-            v6 = sqrt(a2->forceVector.z * a2->forceVector.z + a2->forceVector.y * a2->forceVector.y + v4->x * v4->x);
-            a3a.x = (float)(1.0 / v6 * v4->x);
-            a3a.y = (float)(1.0 / v6 * a2->forceVector.y);
-            a3a.z = (float)(1.0 / v6 * a2->forceVector.z);
-            OBJ_SightGet(a1, &a2a);
-            if (v5 == 0x400)
+            speedLen = sqrt(dyn->forceVector.z * dyn->forceVector.z + dyn->forceVector.y * dyn->forceVector.y + speed->x * speed->x);
+            speedDir.x = (float)(1.0 / speedLen * speed->x);
+            speedDir.y = (float)(1.0 / speedLen * dyn->forceVector.y);
+            speedDir.z = (float)(1.0 / speedLen * dyn->forceVector.z);
+            OBJ_SightGet(gao, &sight);
+            if (inertia == 0x400)
             {
-                v7 = DYN_gf_AutoOrientLowInertiaValue;
+                inertiaValue = DYN_gf_AutoOrientLowInertiaValue;
             }
-            else if (v5 == 0x800)
+            else if (inertia == 0x800)
             {
-                v7 = DYN_gf_AutoOrientMediumInertiaValue;
+                inertiaValue = DYN_gf_AutoOrientMediumInertiaValue;
             }
             else
             {
-                v7 = DYN_gf_AutoOrientHiInertiaValue;
+                inertiaValue = DYN_gf_AutoOrientHiInertiaValue;
             }
-            v8 = v7 * a4 * 1.442695040888963387;
-            v8a = (float)((int)(v8 + 0.5f));
-            //_ST6 = v8;
+            /* Same missing scale as DYN_CalculateSpeedWhenFrictionVector:
+               the integer part of the exponent is rounded off and then
+               never applied. The TODO below is the user's own. */
+            log2Decay = inertiaValue * dt * 1.442695040888963387;
+            rounded = (float)((int)(log2Decay + 0.5f));
+            //_ST6 = log2Decay;
             //__asm { frndint }
-            //a4a = __F2XM1__(v8 - _ST6) + 1.0;
+            //factor = __F2XM1__(log2Decay - _ST6) + 1.0;
             
-            a4a = (float)((pow(2, (v8 - v8a)) - 1.0) + 1.0); // TODO FIXME, jó ez így?
-            MATH_InterpolateBetweenTwoPosWithFactor(&v14, &a2a, &a3a, a4a);
-            if ((a3 & 0x2000) != 0)
+            factor = (float)((pow(2, (log2Decay - rounded)) - 1.0) + 1.0); // TODO FIXME, jó ez így?
+            MATH_InterpolateBetweenTwoPosWithFactor(&target, &sight, &speedDir, factor);
+            if ((flags & 0x2000) != 0)
             {
-                MATH_NormalizeVector(&a1a, &a2->forces->gravityVector);
-                a1a.y = -a1a.y;
-                a1a.x = -a1a.x;
-                a1a.z = -a1a.z;
-                if (MATH_b_VecColinear(&a1a, &v14))
-                {
-                LABEL_8:
-                    OBJ_BankingGeneralSet(a1, &MATH_gst_NulVector, &a1a);
-                    return;
-                }
-                OBJ_BankingGeneralSet(a1, &v14, &a1a);
+                MATH_NormalizeVector(&up, &dyn->forces->gravityVector);
+                MATH_VecInvert(&up, &up);
+                if (MATH_b_VecColinear(&up, &target))
+                    OBJ_BankingGeneralSet(gao, &MATH_gst_NulVector, &up);
+                else
+                    OBJ_BankingGeneralSet(gao, &target, &up);
             }
             else
             {
-                OBJ_SightSet(a1, &v14);
+                OBJ_SightSet(gao, &target);
             }
         }
         else
         {
-            if ((a3 & 0x2000) != 0)
+            if ((flags & 0x2000) != 0)
             {
-                MATH_NormalizeVector(&a1a, &a2->forces->gravityVector);
-                a1a.y = -a1a.y;
-                a1a.x = -a1a.x;
-                a1a.z = -a1a.z;
-                if (!MATH_b_VecColinear(&a1a, v4))
-                {
-                    OBJ_BankingGeneralSet(a1, v4, &a1a);
-                    return;
-                }
-                goto LABEL_8;
+                MATH_NormalizeVector(&up, &dyn->forces->gravityVector);
+                MATH_VecInvert(&up, &up);
+                if (!MATH_b_VecColinear(&up, speed))
+                    OBJ_BankingGeneralSet(gao, speed, &up);
+                else
+                    OBJ_BankingGeneralSet(gao, &MATH_gst_NulVector, &up);
+                return;
             }
-            OBJ_SightSet(a1, &a2->forceVector);
+            OBJ_SightSet(gao, &dyn->forceVector);
         }
     }
 }
 
-void DYN_OneCall(struct sGameObjectMain* a1)
+void DYN_OneCall(struct sGameObjectMain* gao)
 {
-    tDyn* v2;
-    int v3;
-    double v4;
-    int v5;
-    BOOL v6;
-    tDynForces* v7;
-    Vec3 v8;
-    int v9;
+    tDyn* dyn;
+    int hieFlag;
+    double invMass;
+    int flags;
+    BOOL noGravityFlag;
+    tDynForces* forces;
+    Vec3 speed;
+    int hieFlagSaved;
 
-    v2 = a1->basic->dyn;
-    v3 = a1->flags & 0x400000;
-    v9 = v3;
-    if ((v2->flags & 0x4000000) != 0)
+    dyn = gao->basic->dyn;
+    hieFlag = gao->flags & 0x400000;
+    hieFlagSaved = hieFlag;
+    if ((dyn->flags & 0x4000000) != 0)
         TIM_gf_dt = TIM_gf_dt / TIM_gf_SpeedFactor;
-    if (v3)
-        OBJ_ComputeGlobalWhenHie(a1);
-    v4 = v2->mass;
-    v5 = v2->flags;
-    v6 = (v2->flags & 1) == 0;
-    v8.x = (float)(v4 * v2->forceVector.x);
-    v8.y = (float)(v2->forceVector.y * v4);
-    v8.z = (float)(v2->forceVector.z * v4);
-    if (v6)
+    if (hieFlag)
+        OBJ_ComputeGlobalWhenHie(gao);
+    invMass = dyn->mass;
+    flags = dyn->flags;
+    noGravityFlag = (dyn->flags & 1) == 0;
+    speed.x = (float)(invMass * dyn->forceVector.x);
+    speed.y = (float)(dyn->forceVector.y * invMass);
+    speed.z = (float)(dyn->forceVector.z * invMass);
+    if (noGravityFlag)
     {
-        if ((v5 & 0x10000000) != 0 && (v7 = v2->forces) != 0)
+        if ((flags & 0x10000000) != 0 && (forces = dyn->forces) != 0)
         {
-            v2->forceVector = v7->tractionVector;
+            dyn->forceVector = forces->tractionVector;
         }
-        else if ((v5 & 0x1C0000) != 0x1C0000)
+        else if ((flags & 0x1C0000) != 0x1C0000)
         {
-            dyn_frictionvector_subfunc_sub_427630(v2, TIM_gf_dt, v5);
+            DYN_l_ApplyFrictionVector(dyn, TIM_gf_dt, flags);
         }
     }
-    if ((v5 & 0x10000000) == 0 || !v2->forces)
-        DYN_ApplySpeedLimit(v2);
-    if ((v2->flags & 0x8000000) != 0 || (v5 & 0x10000000) != 0 && v2->forces)
-        DYN_ApplySpeed_sub_427870(a1, v2, TIM_gf_dt, v5, 0);
+    if ((flags & 0x10000000) == 0 || !dyn->forces)
+        DYN_ApplySpeedLimit(dyn);
+    if ((dyn->flags & 0x8000000) != 0 || (flags & 0x10000000) != 0 && dyn->forces)
+        DYN_l_ApplySpeed(gao, dyn, TIM_gf_dt, flags, 0);
     else
-        DYN_ApplySpeed_sub_427870(a1, v2, TIM_gf_dt, v5, &v8);
-    if ((v5 & 0x200) != 0)
-        DYN_AutoOrient_sub_4273F0(a1, v2, v5, TIM_gf_dt);
-    if ((v5 & 0x10000) != 0)
+        DYN_l_ApplySpeed(gao, dyn, TIM_gf_dt, flags, &speed);
+    if ((flags & 0x200) != 0)
+        DYN_l_AutoOrient(gao, dyn, flags, TIM_gf_dt);
+    if ((flags & 0x10000) != 0)
     {
-        DYN_CalcRotationSpeed(v2, TIM_gf_dt);
-        DYN_ApplyRotationSpeedLimit(v2);
-        DYN_ApplyAngularVelocity(v2, TIM_gf_dt);
+        DYN_CalcRotationSpeed(dyn, TIM_gf_dt);
+        DYN_ApplyRotationSpeedLimit(dyn);
+        DYN_ApplyAngularVelocity(dyn, TIM_gf_dt);
     }
-    if (v9)
-        OBJ_ComputeLocalWhenHie(a1);
+    if (hieFlagSaved)
+        OBJ_ComputeLocalWhenHie(gao);
 }
 
-int DYN_MainCall(struct sWorld* a1)
+int DYN_MainCall(struct sWorld* world)
 {
-    tableElemStructPF* v2;
-    tableElemStructPF* v3;
-    tGameObjectMain* v4;
-    tGameObjectExtended* v5;
-    tGameObjectCollMain* v6;
-    tColInstance* v7;
-    tGameObjectBasic* v8;
-    int v9;
-    tGaoMatrix* v10;
-    tGameObjectMain* v11;
-    tGameObjectBasic* v12;
-    tDyn* v13;
+    tableElemStructPF* elem;
+    tableElemStructPF* lastElemBound;
+    tGameObjectMain* gao;
+    tGameObjectExtended* ext;
+    tGameObjectCollMain* coll;
+    tColInstance* colInst;
+    tGameObjectBasic* basic;
+    int climbed;
+    tGaoMatrix* gaoMtx;
+    tGameObjectMain* parent;
+    tGameObjectBasic* basic2;
+    tDyn* dyn;
     int result;
-    float i;
-    tableElemStructPF* v16;
+    float dt;
+    tableElemStructPF* lastElem;
 
-    v2 = a1->eot.dynamicObjectsTablePF.firstElemPtr;
-    v16 = ((tableElemStructPF*)(a1->eot.dynamicObjectsTablePF.nextElemPtr)) - 1;
-    v3 = v16;
-    for (i = TIM_gf_dt; v2 <= v3; ++v2)
+    elem = world->eot.dynamicObjectsTablePF.firstElemPtr;
+    lastElem = ((tableElemStructPF*)(world->eot.dynamicObjectsTablePF.nextElemPtr)) - 1;
+    lastElemBound = lastElem;
+    for (dt = TIM_gf_dt; elem <= lastElemBound; ++elem)
     {
-        v4 = (tGameObjectMain*)v2->objectPtr;
-        if (v2->objectPtr && ((uint8_t)v4 & 3) != 1)
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (elem->objectPtr && ((uint8_t)gao & 3) != 1)
         {
-            TIM_gf_dt = i;
+            TIM_gf_dt = dt;
             if (ENG_gb_FirstFrame)
             {
-                if ((v4->flags & 0x600) != 0)
+                if ((gao->flags & 0x600) != 0)
                 {
-                    v5 = v4->extended;
-                    if (v5)
+                    ext = gao->extended;
+                    if (ext)
                     {
-                        v6 = v5->coll;
-                        if (v6)
+                        coll = ext->coll;
+                        if (coll)
                         {
-                            v7 = v6->colInstance;
-                            if (v7)
+                            colInst = coll->colInstance;
+                            if (colInst)
                             {
-                                if ((v4->flags & 0x400000) != 0)
-                                    MATH_CopyMatrix(v7->mtx, &v4->basic->mtx->mtx);
+                                if ((gao->flags & 0x400000) != 0)
+                                    MATH_CopyMatrix(colInst->mtx, &gao->basic->mtx->mtx);
                                 else
-                                    MATH_CopyMatrix(v7->mtx, v4->matrices);
+                                    MATH_CopyMatrix(colInst->mtx, gao->matrices);
                             }
                         }
                     }
                 }
             }
-            if (!OBJ_b_HasBeenProcess(v4, a1->dynCallCount, 64))
+            if (!OBJ_b_HasBeenProcess(gao, world->dynCallCount, 64))
             {
-                v8 = v4->basic;
-                v9 = 0;
-                if (v8)
+                basic = gao->basic;
+                climbed = 0;
+                if (basic)
                 {
                     while (1)
                     {
-                        v10 = v8->mtx;
-                        if (!v10)
+                        gaoMtx = basic->mtx;
+                        if (!gaoMtx)
                             break;
-                        v11 = v10->refGao2;
-                        if (!v11 || OBJ_b_HasBeenProcess(v11, a1->dynCallCount, 64))
+                        parent = gaoMtx->refGao2;
+                        if (!parent || OBJ_b_HasBeenProcess(parent, world->dynCallCount, 64))
                             break;
-                        v4 = v4->basic->mtx->refGao2;
-                        v8 = v4->basic;
-                        v9 = 1;
-                        if (!v8)
-                            goto LABEL_20;
+                        gao = gao->basic->mtx->refGao2;
+                        basic = gao->basic;
+                        climbed = 1;
+                        if (!basic)
+                            break;
                     }
-                    if (!v9)
-                        goto LABEL_21;
-                LABEL_20:
-                    --v2;
+                    /* Having climbed to a parent, the slot is visited
+                       again so the child is processed after it. */
+                    if (climbed)
+                        --elem;
                 }
-            LABEL_21:
-                OBJ_SetProcess(v4, a1->dynCallCount, 64);
-                v12 = v4->basic;
-                if (v12)
+                OBJ_SetProcess(gao, world->dynCallCount, 64);
+                basic2 = gao->basic;
+                if (basic2)
                 {
-                    v13 = v12->dyn;
-                    if (v13)
+                    dyn = basic2->dyn;
+                    if (dyn)
                     {
-                        if ((v13->flags & 0x20000000) == 0 && (v4->flags2 & 0x4400000) == 0)
-                            DYN_OneCall(v4);
+                        if ((dyn->flags & 0x20000000) == 0 && (gao->flags2 & 0x4400000) == 0)
+                            DYN_OneCall(gao);
                     }
                 }
-                v3 = v16;
+                lastElemBound = lastElem;
             }
         }
     }
-    result = a1->dynCallCount + 1;
-    a1->dynCallCount = result;
+    result = world->dynCallCount + 1;
+    world->dynCallCount = result;
     return result;
 }
 
@@ -1217,34 +1203,34 @@ void DYN_InitWithDefaults(tDyn* dyn)
     dyn->flags &= ~0xc00000;
 }
 
-int DYN_b_SpeedReachInTime(struct sDyn* a1, float* a2, Vec3* a3, Vec3* a4, float a5)
+int DYN_b_SpeedReachInTime(struct sDyn* dyn, float* frictionOut, Vec3* tractionOut, Vec3* targetSpeed, float time)
 {
-    double v6; // st7
-    double v7; // st6
-    double v8; // st5
-    int result; // eax
-    long double v10; // st4
-    double v11; // st7
-    float v12; // [esp+8h] [ebp-4h]
-    float v13; // [esp+10h] [ebp+4h]
+    double invMass;
+    double speedX;
+    double forceY;
+    int result;
+    long double targetVecLen;
+    double scale;
+    float invMassF;
+    float targetLen;
 
-    v6 = a1->mass;
-    v12 = a1->mass;
-    v7 = v6 * a1->forceVector.x;
-    v8 = a1->forceVector.y;
+    invMass = dyn->mass;
+    invMassF = dyn->mass;
+    speedX = invMass * dyn->forceVector.x;
+    forceY = dyn->forceVector.y;
     result = 0;
-    v13 = (float)sqrt(a4->x * a4->x + a4->y * a4->y + a4->z * a4->z);
+    targetLen = (float)sqrt(targetSpeed->x * targetSpeed->x + targetSpeed->y * targetSpeed->y + targetSpeed->z * targetSpeed->z);
 
     /*
-      *a2 = -(__FYL2X__(
+      *frictionOut = -(__FYL2X__(
             fabs(
-              v13
-            / (sqrt(a1->speedVector.z * v6 * (a1->speedVector.z * v6) + v8 * v6 * (v8 * v6) + v7 * v7) - v13)
+              targetLen
+            / (sqrt(dyn->speedVector.z * invMass * (dyn->speedVector.z * invMass) + forceY * invMass * (forceY * invMass) + speedX * speedX) - targetLen)
             * -0.090909094),
             0.69314718055994528623)
         * (1.0
-         / (v12
-          * a5)));
+         / (invMassF
+          * time)));
     */
 
     // fyl2x => (ST(1) ? log2 ST(0)) 
@@ -1252,20 +1238,20 @@ int DYN_b_SpeedReachInTime(struct sDyn* a1, float* a2, Vec3* a3, Vec3* a4, float
     // log2 => c: log2
     // log10 => c: log10
 
-    *a2 = (float)(-((log(2) * log2(fabs(v13 / (sqrt(a1->forceVector.z * v6 * (a1->forceVector.z * v6) + v8 * v6 * (v8 * v6) + v7 * v7) - v13) * -0.090909094))) * (1.0 / (v12 * a5))));
+    *frictionOut = (float)(-((log(2) * log2(fabs(targetLen / (sqrt(dyn->forceVector.z * invMass * (dyn->forceVector.z * invMass) + forceY * invMass * (forceY * invMass) + speedX * speedX) - targetLen) * -0.090909094))) * (1.0 / (invMassF * time))));
 
-    v10 = sqrt(a4->z * a4->z + a4->y * a4->y + a4->x * a4->x);
-    a3->x = (float)(1.0 / v10 * a4->x);                    // MATH_NormalizeVector
-    a3->y = (float)(1.0 / v10 * a4->y);
-    a3->z = (float)(1.0 / v10 * a4->z);
-    v11 = v13 * *a2 * v12;
-    a3->x = (float)(v11 * a3->x);
-    a3->y = (float)(v11 * a3->y);
-    a3->z = (float)(v11 * a3->z);
-    if ((a1->flags & 4) != 0)
+    targetVecLen = sqrt(targetSpeed->z * targetSpeed->z + targetSpeed->y * targetSpeed->y + targetSpeed->x * targetSpeed->x);
+    tractionOut->x = (float)(1.0 / targetVecLen * targetSpeed->x);                    // MATH_NormalizeVector
+    tractionOut->y = (float)(1.0 / targetVecLen * targetSpeed->y);
+    tractionOut->z = (float)(1.0 / targetVecLen * targetSpeed->z);
+    scale = targetLen * *frictionOut * invMassF;
+    tractionOut->x = (float)(scale * tractionOut->x);
+    tractionOut->y = (float)(scale * tractionOut->y);
+    tractionOut->z = (float)(scale * tractionOut->z);
+    if ((dyn->flags & 4) != 0)
     {
-        a1->forces->frictionVector.x = *a2;
-        a1->forces->tractionVector = *a3;
+        dyn->forces->frictionVector.x = *frictionOut;
+        dyn->forces->tractionVector = *tractionOut;
         result = 1;
     }
     return result;

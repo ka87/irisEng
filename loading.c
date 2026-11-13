@@ -87,7 +87,7 @@ uint16_t LOA_ReadShort(char** offset, uint16_t* retVal, char readMode)
     return result;
 }
 
-float LOA_ReadFloat(char** offset, float* a2, char readMode)
+float LOA_ReadFloat(char** offset, float* out, char readMode)
 {
     float result;
     int size;
@@ -103,8 +103,8 @@ float LOA_ReadFloat(char** offset, float* a2, char readMode)
         size = 4;
     }
     *offset += size;
-    if (a2)
-        *a2 = result;
+    if (out)
+        *out = result;
     return result;
 }
 
@@ -277,23 +277,23 @@ void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags
     }
 }
 
-uint8_t LOA_HashPos(uint32_t a1)
+uint8_t LOA_HashPos(uint32_t pos)
 {
-    return (a1 >> 8) + a1;
+    return (pos >> 8) + pos;
 }
 
-int LOA_ul_SearchAddress(int a1)
+int LOA_ul_SearchAddress(int pos)
 {
-    uint8_t hash = LOA_HashPos(a1);
-    return BAS_bsearch(a1, &LOA_gst_Array[hash]);
+    uint8_t hash = LOA_HashPos(pos);
+    return BAS_bsearch(pos, &LOA_gst_Array[hash]);
 }
 
-void LOA_DeleteAddress(int a1)
+void LOA_DeleteAddress(int pos)
 {
     uint8_t hash;
     uint32_t val = 0;
 
-    BAS_bdeletegetval(a1, &LOA_gst_InvArray, &val);
+    BAS_bdeletegetval(pos, &LOA_gst_InvArray, &val);
     if (val)
     {
         hash = LOA_HashPos(val);
@@ -315,17 +315,17 @@ int LOA_ul_GetCurrentKey()
     return LOA_gast_Stack[LOA_gi_CurRef].key;
 }
 
-BOOL LOA_IsSpecial(unsigned int a1)
+BOOL LOA_IsSpecial(unsigned int key)
 {
     if (BIG_gi_ReadMode)
-        return BAS_bsearch(a1, &LOA_gst_SpecialArray) != -1;
+        return BAS_bsearch(key, &LOA_gst_SpecialArray) != -1;
     else
         return FALSE;
 }
 
-void LOA_AddKeyToSpecialArray(int a1)
+void LOA_AddKeyToSpecialArray(int key)
 {
-    BAS_binsert(a1, 1, &LOA_gst_SpecialArray);
+    BAS_binsert(key, 1, &LOA_gst_SpecialArray);
 }
 
 void LOA_KillSpecialArray()
@@ -450,7 +450,7 @@ void LOA_AfterLoading()
 void LOA_BeginSpeedMode(int key)
 {
     int binKey;
-    unsigned int v2;
+    unsigned int pos;
 
     if (ENG_PlatformID == 2)
     {
@@ -478,6 +478,7 @@ void LOA_BeginSpeedMode(int key)
     }
     if (!LOA_ul_BinKey && (key == 0xFF800000 || key == 0xFF400000 || (key & 0xFF000000) == 0xFE000000))
         return;
+    LOA_sb_ActivateSoundLoadAfterBin = 0;
     if (key == 0xFF400000)
     {
         gi_TestBin = 4;
@@ -508,25 +509,25 @@ void LOA_BeginSpeedMode(int key)
             binKey = key & 0xFFFFF | 0xFF000000;
             LOA_gb_CompressBin = 1;
             LOA_sb_ActivateSoundLoadAfterBin = 1;
-            goto LABEL_31;
         }
-        gi_TestBin = 2;
-        binKey = (key ^ LOA_ul_BinKey) & 0xFFFFF ^ key;
-        LOA_gb_CompressBin = 1;
+        else
+        {
+            gi_TestBin = 2;
+            binKey = (key ^ LOA_ul_BinKey) & 0xFFFFF ^ key;
+            LOA_gb_CompressBin = 1;
+        }
     }
-    LOA_sb_ActivateSoundLoadAfterBin = 0;
-LABEL_31:
     LOA_ul_BinKey = binKey;
     BIG_gi_ReadSeek = 0;
     BIG_gp_ReadBuffer = 0;
     BIG_gp_CompressedBuffer = 0;
     BIG_gi_ReadSize = 0;
     BIG_gi_ReadMode = 0;
-    v2 = BIG_ul_SearchKeyToPos(binKey);           // speedmodeban (ami itt mindig lesz) a key-el tér vissza
+    pos = BIG_ul_SearchKeyToPos(binKey);           // speedmodeban (ami itt mindig lesz) a key-el tér vissza
                                                   // 
-    if (v2 != -1)                               // szóval ez itt mindig teljesül
+    if (pos != -1)                               // szóval ez itt mindig teljesül
     {
-        BIG_gul_ReadPos = v2;
+        BIG_gul_ReadPos = pos;
         BIG_gi_ReadMode = 2;
         BIG_gi_ReadSize = 0x200000;
         BIG_gi_ReadSeek = 0;
@@ -567,7 +568,7 @@ void LOA_CloseModule(void)
 
 void LOA_EndSpeedMode()
 {
-    int v0;
+    int langKey;
 
     if (LOA_gb_SpeedMode)
     {
@@ -595,9 +596,9 @@ void LOA_EndSpeedMode()
             SND_LoadAllSounds();
             if (LOA_gb_SpeedMode)
             {
-                v0 = LOA_ul_BinKey & 0xFFFFF | ((((TEXT_gst_Global.language & 0xff) + 1) | 0xFFFFFFE0) << 20);
-                LOA_BeginSpeedMode(v0);
-                SND_HeaderLoadArray(&SND_gst_HeaderArray, v0);
+                langKey = LOA_ul_BinKey & 0xFFFFF | ((((TEXT_gst_Global.language & 0xff) + 1) | 0xFFFFFFE0) << 20);
+                LOA_BeginSpeedMode(langKey);
+                SND_HeaderLoadArray(&SND_gst_HeaderArray, langKey);
                 LOA_EndSpeedMode();
             }
             else

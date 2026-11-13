@@ -18,6 +18,107 @@ int gi_LastES = -1;
 int al_QualityCompressionOrder[] = { 0, 1, 0, 2, 0, 1, 3, 0, 1, 2, 0, 1, 0, 2, 0, 1, 3, 0, 1, 2, 4 };
 int al_QualityCompressionLimit[] = { 0x10, 0x10, 0x20, 0x40, 0x400, 0 };
 
+typedef struct sTexScaleTap
+{
+    unsigned int first;
+    unsigned int firstWeight;
+    unsigned int last;
+    unsigned int lastWeight;
+} tTexScaleTap;
+
+static char* TEX_l_AllocImgData(unsigned int size)
+{
+    char* data;
+
+    data = (char*)MEM_p_AllocAligned(size, 64);
+    MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetAligned(data);
+
+    return data;
+}
+
+static void TEX_l_FreeImgData(void* data)
+{
+    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(data);
+    MEM_FreeAlign(data);
+}
+
+static char* TEX_l_FreeScaleSrc(char* src)
+{
+    if (src)
+        TEX_l_FreeImgData(src);
+
+    return NULL;
+}
+
+static void* TEX_l_GrowAlignedList(void* elems, int num, int bytes)
+{
+    void* grown;
+
+    if (num == 256)
+    {
+        grown = MEM_p_AllocAligned(bytes, 64);
+    }
+    else
+    {
+        MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAligned(elems);
+        grown = MEM_p_ReallocAligned(elems, bytes, 64);
+    }
+    MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetAligned(grown);
+
+    return grown;
+}
+
+static int TEX_l_SwapRB(int color)
+{
+    return color & 0xFF00FF00 | ((uint8_t)color << 16) | (uint8_t)(color >> 16);
+}
+
+static unsigned int TEX_l_ShiftChannel(unsigned int pixel, unsigned int mask, int shift)
+{
+    if (shift < 0)
+        return (mask & pixel) << -(char)shift;
+
+    return (mask & pixel) >> shift;
+}
+
+static int TEX_l_BuildScaleTaps(tTexScaleTap* taps, int srcSize, int destSize)
+{
+    unsigned int acc;
+    unsigned int first;
+    int step;
+    int i;
+
+    acc = 0;
+    first = 0;
+    step = (srcSize << 8) / destSize;
+    for (i = 0; i < destSize; i++)
+    {
+        taps[i].first = first;
+        taps[i].firstWeight = 256 - (uint8_t)acc;
+        acc += step;
+        taps[i].last = acc >> 8;
+        if (acc >> 8 == taps[i].first)
+            taps[i].firstWeight += (uint8_t)acc - 256;
+        else
+            taps[i].lastWeight = (uint8_t)acc;
+        first = acc >> 8;
+    }
+    taps[destSize - 1].last = srcSize - 1;
+    taps[destSize - 1].lastWeight = 255;
+
+    return step;
+}
+
+static unsigned int TEX_l_TapWeight(tTexScaleTap* tap, unsigned int i)
+{
+    if (i == tap->first)
+        return tap->firstWeight;
+    if (i == tap->last)
+        return tap->lastWeight;
+
+    return 256;
+}
+
 void PreLoadTex_Finished(int *ret)
 {
     *ret = 1;
@@ -94,7 +195,7 @@ void JpegRead(tJpegLibIntf* jpg)
         jpeg_read_header(&jds, 1);
         jpeg_start_decompress(&jds);
         jpg->bytesNumPerPixel = jds.num_components;
-        
+
         scanLineArray = jds.mem->alloc_sarray(((j_common_ptr)&jds), 1, (jds.output_width * jds.output_components), 1);
 
         currData = (char*)jpg->indata;
@@ -117,8 +218,7 @@ void JpegRead(tJpegLibIntf* jpg)
 
 void JpegWrite(tJpegLibIntf* jpg)
 {
-    int i;
-    char* currOffset;
+    char* row;
 
     struct jpeg_compress_struct jcs;
     struct jpeg_error_st jerr;
@@ -147,9 +247,9 @@ void JpegWrite(tJpegLibIntf* jpg)
         jcs.image_height = jpg->height;
         jcs.num_components = 3;
         jcs.input_components = 3; // todo fixme: ez nincs az eredetiben
-        
+
         jpeg_set_defaults(&jcs);
-        
+
         jcs.smoothing_factor = jpg->smoothing_factor;
         jcs.data_precision = 8;
         jcs.arith_code = jpg->arith_coding;
@@ -165,10 +265,10 @@ void JpegWrite(tJpegLibIntf* jpg)
         jpeg_default_colorspace(&jcs);
         jpeg_start_compress(&jcs, 1);
 
-        for (i = jcs.next_scanline; jcs.next_scanline < jcs.image_height; i = jcs.next_scanline)
+        while (jcs.next_scanline < jcs.image_height)
         {
-            currOffset = (char*)(jpg->indata) + 3 * jpg->width * i;
-            jpeg_write_scanlines(&jcs, &currOffset, 1);
+            row = (char*)(jpg->indata) + 3 * jpg->width * jcs.next_scanline;
+            jpeg_write_scanlines(&jcs, &row, 1);
         }
         jpeg_finish_compress(&jcs);
         jpeg_destroy_compress(&jcs);
@@ -176,11 +276,11 @@ void JpegWrite(tJpegLibIntf* jpg)
     }
 }
 
-void TEX_Compress24_Xo2(char* src, char* dest, int a3, int a4)
+void TEX_Compress24_Xo2(char* src, char* dest, int w, int h)
 {
     unsigned int i;
 
-    for (i = (unsigned int)(a4 * a3) >> 1; i; --i)
+    for (i = (unsigned int)(h * w) >> 1; i; --i)
     {
         *dest = ((*src >> 1) & 0x7E) + ((src[3] >> 1) & 0x7E);
         dest[1] = ((src[1] >> 1) & 0x7E) + ((src[4] >> 1) & 0x7E);
@@ -190,49 +290,40 @@ void TEX_Compress24_Xo2(char* src, char* dest, int a3, int a4)
     }
 }
 
-void TEX_Compress24_Yo2(char* a1, char* a2, int a3, unsigned int a4)
+void TEX_Compress24_Yo2(char* src, char* dest, int w, unsigned int h)
 {
-    unsigned int v4;
-    int i;
-    int v8;
-    char v9;
-    char v10;
+    unsigned int y;
+    int x;
+    int stride;
 
-    v4 = a4 >> 1;
-    for (i = 3 * a3; v4; --v4)
+    stride = 3 * w;
+    for (y = h >> 1; y; --y)
     {
-        if (i)
+        for (x = stride; x; --x)
         {
-            v8 = 3 * a3;
-            do
-            {
-                v9 = (a1[3 * a3] >> 1) & 0x7E;
-                v10 = (*a1++ >> 1) & 0x7E;
-                *a2++ = v10 + v9;
-                --v8;
-            } while (v8);
+            *dest++ = ((*src >> 1) & 0x7E) + ((src[stride] >> 1) & 0x7E);
+            ++src;
         }
-        a1 += i;
+        src += stride;
     }
 }
 
-void TEX_Procedural_Reinit(struct sGdi_DisplayData* a1)
+void TEX_Procedural_Reinit(struct sGdi_DisplayData* dd)
 {
-    tTexProceduralStruct* v1;
+    tTexProceduralStruct* pro;
     int i;
 
     if (TEX_gi_NbProcedural)
     {
-        v1 = TEX_gdst_Procedural;
-        for (i = 0; i < TEX_gi_NbProcedural; ++v1)
+        pro = TEX_gdst_Procedural;
+        for (i = 0; i < TEX_gi_NbProcedural; ++i, ++pro)
         {
-            v1->proceduralIntf->Free(v1);
-            if ((a1->texManager.flags & 0x200000) == 0 || (v1->s2 & 1) == 0)
+            pro->proceduralIntf->Free(pro);
+            if ((dd->texManager.flags & 0x200000) == 0 || (pro->s2 & 1) == 0)
             {
-                if (v1->proceduralPicData)
-                    MEM_FreeAlign(v1->proceduralPicData);
+                if (pro->proceduralPicData)
+                    MEM_FreeAlign(pro->proceduralPicData);
             }
-            ++i;
         }
         TEX_gi_NbProcedural = 0;
         MEM_Free(TEX_gdst_Procedural);
@@ -242,27 +333,14 @@ void TEX_Procedural_Reinit(struct sGdi_DisplayData* a1)
 
 void TEX_Anim_Reinit()
 {
-    int v0;
-    int v1;
-    tTexAnimatedElem* v2;
+    int i;
 
-    v0 = TEX_gi_NbAnimated;
     if (TEX_gi_NbAnimated)
     {
-        v1 = 0;
-        if (TEX_gi_NbAnimated > 0)
+        for (i = 0; i < TEX_gi_NbAnimated; ++i)
         {
-            v2 = TEX_gdst_Animated;
-            do
-            {
-                if (v2->texNum)
-                {
-                    MEM_Free(v2->texPtr);
-                    v0 = TEX_gi_NbAnimated;
-                }
-                ++v1;
-                ++v2;
-            } while (v1 < v0);
+            if (TEX_gdst_Animated[i].texNum)
+                MEM_Free(TEX_gdst_Animated[i].texPtr);
         }
         TEX_gi_NbAnimatedMax = 0;
         TEX_gi_NbAnimated = 0;
@@ -271,23 +349,23 @@ void TEX_Anim_Reinit()
     }
 }
 
-struct sEngTexListElemStruct* TEX_pst_List_FindTexture(struct sEngTexListStruct* a1, int key)
+struct sEngTexListElemStruct* TEX_pst_List_FindTexture(struct sEngTexListStruct* list, int key)
 {
     int i;
 
-    for (i = 0; i < a1->actTexElemNum; i++) {
-        if (a1->texElems[i].texKey == key) return &a1->texElems[i];
+    for (i = 0; i < list->actTexElemNum; i++) {
+        if (list->texElems[i].texKey == key) return &list->texElems[i];
     }
 
     return NULL;
 }
 
-struct sEngPaletteElem* TEX_pst_List_FindPalette(tEngTexListStruct* a1, int key)
+struct sEngPaletteElem* TEX_pst_List_FindPalette(tEngTexListStruct* list, int key)
 {
     int i;
 
-    for (i = 0; i < a1->paletteNum; i++) {
-        if (a1->palettes[i].key == key) return &a1->palettes[i];
+    for (i = 0; i < list->paletteNum; i++) {
+        if (list->palettes[i].key == key) return &list->palettes[i];
     }
 
     return NULL;
@@ -306,219 +384,194 @@ struct sTexAnimatedElem* TEX_pst_Anim_Get(int16_t id)
 
 struct sTexAnimatedElem* TEX_pst_Anim_Add(int16_t id, char texNum, int16_t flags, struct sTexAnimatedInnerElem* data)
 {
-    tTexAnimatedElem* v4;
-    tTexAnimatedElem* result;
-    unsigned int v6;
+    tTexAnimatedElem* anim;
 
     if (TEX_gi_NbAnimated == TEX_gi_NbAnimatedMax)
     {
         TEX_gi_NbAnimatedMax += 16;
-        v6 = 16 * TEX_gi_NbAnimatedMax;
         if (TEX_gi_NbAnimatedMax == 16)
-            v4 = (tTexAnimatedElem*)MEM_p_Alloc(v6);
+            TEX_gdst_Animated = (tTexAnimatedElem*)MEM_p_Alloc(sizeof(tTexAnimatedElem) * TEX_gi_NbAnimatedMax);
         else
-            v4 = (tTexAnimatedElem*)MEM_p_Realloc(TEX_gdst_Animated, v6);
-        TEX_gdst_Animated = v4;
+            TEX_gdst_Animated = (tTexAnimatedElem*)MEM_p_Realloc(TEX_gdst_Animated, sizeof(tTexAnimatedElem) * TEX_gi_NbAnimatedMax);
     }
-    result = &TEX_gdst_Animated[TEX_gi_NbAnimated++];
-    result->flags = flags;
-    result->texNum = texNum;
-    result->id = id;
-    result->b3 = 0;
-    result->animationFlags = 0;
-    result->texPtr = data;
+    anim = &TEX_gdst_Animated[TEX_gi_NbAnimated++];
+    anim->flags = flags;
+    anim->texNum = texNum;
+    anim->id = id;
+    anim->b3 = 0;
+    anim->animationFlags = 0;
+    anim->texPtr = data;
     if (data)
     {
-        result->currentTex = 0;
-        result->remainingTime = data->texTime;
+        anim->currentTex = 0;
+        anim->remainingTime = data->texTime;
         TEX_gst_GlobalList.texElems[id].animatedData.textureID = data->texIdx;
     }
     else
     {
-        result->remainingTime = 0;
-        result->currentTex = -1;
+        anim->remainingTime = 0;
+        anim->currentTex = -1;
         TEX_gst_GlobalList.texElems[id].animatedData.textureID = -1;
     }
-    return result;
+    return anim;
 }
 
 void TEX_Anim_Update()
 {
-    double v0;
-    tTexAnimatedElem* v1;
-    int v2;
-    int v3;
-    uint8_t v4;
-    uint8_t v5;
-    uint8_t v6;
-    int16_t v7;
-    tTexAnimatedInnerElem* v8;
-    tTexAnimatedInnerElem* v9;
+    double time;
+    tTexAnimatedElem* anim;
+    int frames;
+    int i;
+    uint8_t texNum;
+    uint8_t animationFlags;
+    uint8_t forced;
+    int16_t next;
+    tTexAnimatedInnerElem* tex;
 
-    v0 = TIM_gf_dt + sf_TimeLeft_218;
-    v1 = TEX_gdst_Animated;
-    v2 = (unsigned int)(60.0f * v0);
-    sf_TimeLeft_218 = (float)(v0 - (double)v2 * 0.016666668);
+    time = TIM_gf_dt + sf_TimeLeft_218;
+    anim = TEX_gdst_Animated;
+    frames = (unsigned int)(60.0f * time);
+    sf_TimeLeft_218 = (float)(time - (double)frames * 0.016666668);
 
-    for (v3 = 0; v3 < TEX_gi_NbAnimated; ++v1)
+    for (i = 0; i < TEX_gi_NbAnimated; ++i, ++anim)
     {
-        v4 = v1->texNum;
-        if (v4)
+        texNum = anim->texNum;
+        if (!texNum)
+            continue;
+
+        animationFlags = anim->animationFlags;
+        forced = anim->b3;
+        if ((animationFlags & 2) == 0 || forced == anim->currentTex)
         {
-            v5 = v1->animationFlags;
-            if ((v5 & 2) == 0 || (v6 = v1->b3, v6 == v1->currentTex))
-            {
-                if ((v5 & 1) != 0)
-                    goto LABEL_10;
-                v1->remainingTime -= v2;
-                if (v1->remainingTime >= 0)
-                    goto LABEL_10;
-                v7 = (uint8_t)(v1->currentTex + 1) % (int16_t)v4;
-            }
-            else
-            {
-                v7 = (v6 % v4) & 0xff;
-                v1->b3 = (uint8_t)v7;
-            }
-            v8 = v1->texPtr;
-            v1->currentTex = (uint8_t)v7;
-            v9 = &v8[(uint8_t)v7];
-            v1->remainingTime = v9->texTime;
-            TEX_gst_GlobalList.texElems[v1->id].animatedData.textureID = v9->texIdx;
+            if ((animationFlags & 1) != 0)
+                continue;
+            anim->remainingTime -= frames;
+            if (anim->remainingTime >= 0)
+                continue;
+            next = (uint8_t)(anim->currentTex + 1) % (int16_t)texNum;
         }
-    LABEL_10:
-        ++v3;
+        else
+        {
+            next = (forced % texNum) & 0xff;
+            anim->b3 = (uint8_t)next;
+        }
+        anim->currentTex = (uint8_t)next;
+        tex = &anim->texPtr[(uint8_t)next];
+        anim->remainingTime = tex->texTime;
+        TEX_gst_GlobalList.texElems[anim->id].animatedData.textureID = tex->texIdx;
     }
 }
 
-void TEX_Procedural_AfterLoad(struct sGdi_DisplayData* a1)
+void TEX_Procedural_AfterLoad(struct sGdi_DisplayData* dd)
 {
-    tTexProceduralStruct* v1;
-    tEngTexListElemStruct* v2;
-    uint32_t* v3;
+    tTexProceduralStruct* pro;
+    tEngTexListElemStruct* tle;
     int i;
 
-    v1 = TEX_gdst_Procedural;
+    pro = TEX_gdst_Procedural;
+    for (i = 0; i < TEX_gi_NbProcedural; ++i, ++pro)
+    {
+        tle = &TEX_gst_GlobalList.texElems[pro->elemIdx];
+        pro->height = tle->normalData.height;
+        pro->width = tle->normalData.width;
+        if ((dd->texManager.flags & 0x200000) != 0 && (pro->s2 & 1) != 0)
+            pro->proceduralPicData = (uint32_t *)(gpst_DX_stDD->Request(34, (void *)(tle->texKey)));
+        if (!pro->proceduralPicData)
+        {
+            pro->proceduralPicData = (uint32_t*)MEM_p_AllocAligned(4 * tle->normalData.height * tle->normalData.width, 16);
+            memset(pro->proceduralPicData, 0, 4 * tle->normalData.height * tle->normalData.width);
+        }
+    }
+}
+
+struct sTexProceduralStruct* TEX_pst_Procedural_Get(int16_t elemIdx)
+{
+    int i;
+
     for (i = 0; i < TEX_gi_NbProcedural; ++i)
     {
-        v2 = &TEX_gst_GlobalList.texElems[v1->elemIdx];
-        v1->height = v2->normalData.height;
-        v1->width = v2->normalData.width;
-        if ((a1->texManager.flags & 0x200000) != 0 && (v1->s2 & 1) != 0)
-            v1->proceduralPicData = (uint32_t *)(gpst_DX_stDD->Request(34, (void *)(v2->texKey)));
-        if (!v1->proceduralPicData)
-        {
-            v3 = (uint32_t*)MEM_p_AllocAligned(4 * v2->normalData.height * v2->normalData.width, 16);
-            v1->proceduralPicData = v3;
-            memset(v3, 0, 4 * v2->normalData.height * v2->normalData.width);
-        }
-        ++v1;
+        if (TEX_gdst_Procedural[i].elemIdx == elemIdx)
+            return &TEX_gdst_Procedural[i];
     }
+
+    return 0;
 }
 
-struct sTexProceduralStruct* TEX_pst_Procedural_Get(int16_t a1)
+void TEX_Procedural_Update(struct sGdi_DisplayData* dd)
 {
-    int v1;
-    tTexProceduralStruct* i;
-
-    v1 = 0;
-    if (TEX_gi_NbProcedural <= 0)
-        return 0;
-    for (i = TEX_gdst_Procedural; i->elemIdx != a1; ++i)
-    {
-        if (++v1 >= TEX_gi_NbProcedural)
-            return 0;
-    }
-    return &TEX_gdst_Procedural[v1];
-}
-
-void TEX_Procedural_Update(struct sGdi_DisplayData* a1)
-{
-    int v1;
-    tTexProceduralStruct* i;
+    int i;
+    tTexProceduralStruct* pro;
     tTexUploadRequest tur;
-    char v5;
 
-    gpst_DX_stDD = a1;
-    if (TEXPRO_sul_UpdateCounter != a1->rasters[4].unk1)
+    gpst_DX_stDD = dd;
+    if (TEXPRO_sul_UpdateCounter != dd->rasters[4].unk1)
     {
-        TEXPRO_sul_UpdateCounter = a1->rasters[4].unk1;
-        v1 = 0;
-        for (i = TEX_gdst_Procedural; v1 < TEX_gi_NbProcedural; ++i)
+        TEXPRO_sul_UpdateCounter = dd->rasters[4].unk1;
+        pro = TEX_gdst_Procedural;
+        for (i = 0; i < TEX_gi_NbProcedural; ++i, ++pro)
         {
-            i->proceduralIntf->Disrupt(i);
-            if (i->proceduralIntf->Update(i) || (i->s2 & 0x100) == 0)
+            pro->proceduralIntf->Disrupt(pro);
+            if (pro->proceduralIntf->Update(pro) || (pro->s2 & 0x100) == 0)
             {
-                i->s2 |= 0x100u;
-                if ((a1->texManager.flags & 0x200000) == 0 || (i->s2 & 1) == 0)
+                pro->s2 |= 0x100u;
+                if ((dd->texManager.flags & 0x200000) == 0 || (pro->s2 & 1) == 0)
                 {
-                    tur.idx = i->elemIdx;
-                    tur.dataPtr = i->proceduralPicData;
-                    v5 = 0;
-                    a1->Request(12, (void *)&tur);
+                    tur.idx = pro->elemIdx;
+                    tur.dataPtr = pro->proceduralPicData;
+                    dd->Request(12, (void *)&tur);
                 }
             }
-            ++v1;
         }
     }
 }
 
-void TEX_Compress_Xo2(char* a2, char* dest, int a4, int a5)
+void TEX_Compress_Xo2(char* src, char* dest, int w, int h)
 {
     unsigned int i;
 
-    for (i = (unsigned int)(a5 * a4) >> 1; i; --i)
+    for (i = (unsigned int)(h * w) >> 1; i; --i)
     {
-        *(uint32_t*)dest = ((*(uint32_t*)a2 >> 1) & 0x7E7E7E7E) + ((*((uint32_t*)a2 + 1) >> 1) & 0x7E7E7E7E);
-        a2 += 8;
+        *(uint32_t*)dest = ((*(uint32_t*)src >> 1) & 0x7E7E7E7E) + ((*((uint32_t*)src + 1) >> 1) & 0x7E7E7E7E);
+        src += 8;
         dest += 4;
     }
 }
 
-void TEX_Compress_Yo2(char* a1, char* a2, int a3, unsigned int a4)
+void TEX_Compress_Yo2(char* src, char* dest, int w, unsigned int h)
 {
-    int v6;
-    int v7;
-    unsigned int a4a;
+    unsigned int y;
+    int x;
+    int stride;
 
-    if (a4 >> 1)
+    stride = 4 * w;
+    for (y = h >> 1; y; --y)
     {
-        a4a = a4 >> 1;
-        v6 = 4 * a3;
-        do
+        for (x = w; x; --x)
         {
-            if (a3)
-            {
-                v7 = a3;
-                do
-                {
-                    *(uint32_t*)a2 = ((*(uint32_t*)a1 >> 1) & 0x7E7E7E7E) + ((*(uint32_t*)&a1[v6] >> 1) & 0x7E7E7E7E);
-                    a1 += 4;
-                    a2 += 4;
-                    --v7;
-                } while (v7);
-            }
-            a1 += v6;
-            --a4a;
-        } while (a4a);
+            *(uint32_t*)dest = ((*(uint32_t*)src >> 1) & 0x7E7E7E7E) + ((*(uint32_t*)&src[stride] >> 1) & 0x7E7E7E7E);
+            src += 4;
+            dest += 4;
+        }
+        src += stride;
     }
 }
 
-void TEX_Procedural_UpdateWithAnother(struct sTexProceduralStruct* a1, struct sTexProceduralStruct* a2)
+void TEX_Procedural_UpdateWithAnother(struct sTexProceduralStruct* dest, struct sTexProceduralStruct* src)
 {
-    uint16_t v2;
-    uint16_t i;
+    uint16_t w;
+    uint16_t h;
 
-    v2 = a2->width;
-    for (i = a2->height; v2 > a1->width; v2 >>= 1)
-        TEX_Compress_Xo2((char*)a2->proceduralPicData, (char*)a2->proceduralPicData, v2, i);
-    for (; i > a1->height; i >>= 1)
-        TEX_Compress_Yo2((char*)a2->proceduralPicData, (char*)a2->proceduralPicData, v2, i);
-    memcpy(a1->proceduralPicData, a2->proceduralPicData, 4 * ((4 * v2 * (unsigned int)i) >> 2));
-    a1->s2 &= ~100u; //HIBYTE(s2) &= ~0x1
+    w = src->width;
+    h = src->height;
+    for (; w > dest->width; w >>= 1)
+        TEX_Compress_Xo2((char*)src->proceduralPicData, (char*)src->proceduralPicData, w, h);
+    for (; h > dest->height; h >>= 1)
+        TEX_Compress_Yo2((char*)src->proceduralPicData, (char*)src->proceduralPicData, w, h);
+    memcpy(dest->proceduralPicData, src->proceduralPicData, 4 * w * (unsigned int)h);
+    dest->s2 &= ~100u; //HIBYTE(s2) &= ~0x1
 }
 
-unsigned int TEX_ul_GetPower2Up(unsigned int a1)
+unsigned int TEX_ul_GetPower2Up(unsigned int n)
 {
     unsigned int result;
     unsigned int i;
@@ -526,265 +579,212 @@ unsigned int TEX_ul_GetPower2Up(unsigned int a1)
     result = 1;
     for (i = 0; i < 30; ++i)
     {
-        if (a1 <= result)
+        if (n <= result)
             break;
         result *= 2;
     }
     return result;
 }
 
-void TEX_Expand8_XBy2(char* a1, char* a2, int a3, int a4)
+void TEX_Expand8_XBy2(char* src, char* dest, int w, int h)
 {
-    char* v4;
-    char* i;
-    char* v6;
-    char v7;
+    char* in;
+    char* out;
 
-    v4 = &a2[2 * a4 * a3];
-    for (i = &a1[a4 * a3 - 1]; i > a1; *v4 = v7)
+    out = &dest[2 * h * w];
+    // preserved: the walk stops above src[0], so the first pixel is not expanded
+    for (in = &src[h * w - 1]; in > src; --in)
     {
-        v6 = v4 - 1;
-        *v6 = *i;
-        v7 = *i;
-        v4 = v6 - 1;
-        --i;
+        out[-1] = *in;
+        out[-2] = *in;
+        out -= 2;
     }
 }
 
-void TEX_Expand_YBy2(char* a1, char* a2, int a3, int a4)
+void TEX_Expand_YBy2(char* src, char* dest, int w, int h)
 {
-    char* v5;
-    char* v6;
-    int v7;
-    char* v8;
-    int v9;
-    int v10;
-    int a3a;
+    char* in;
+    char* out;
+    int stride;
+    int x;
+    int y;
 
-    v5 = &a2[8 * a4 * a3];
-    v6 = &a1[4 * a4 * a3];
-    if (a4)
+    out = &dest[8 * h * w];
+    in = &src[4 * h * w];
+    stride = 4 * w;
+    for (y = h; y; --y)
     {
-        v7 = 4 * a3;
-        a3a = a4;
-        do
+        for (x = w; x; --x)
         {
-            if (a3)
-            {
-                v8 = &v5[-v7];
-                v9 = a3;
-                do
-                {
-                    v10 = *((uint32_t*)v6 - 1);
-                    v6 -= 4;
-                    v5 -= 4;
-                    *(uint32_t*)v5 = v10;
-                    v8 -= 4;
-                    --v9;
-                    *(uint32_t*)v8 = *(uint32_t*)v6;
-                } while (v9);
-            }
-            v5 -= v7;
-            --a3a;
-        } while (a3a);
+            in -= 4;
+            out -= 4;
+            *(uint32_t*)out = *(uint32_t*)in;
+            *(uint32_t*)&out[-stride] = *(uint32_t*)in;
+        }
+        out -= stride;
     }
 }
 
-int __cdecl TEX_l_File_LoadAnimated(char* offset, tEngTexIntermediateStruct* a2, int a3)
+int __cdecl TEX_l_File_LoadAnimated(char* offset, tEngTexIntermediateStruct* tex, int size)
 {
-    uint8_t v3;
-    tEngTexIntermediateStruct* v4;
-    int v5;
-    tTexAnimatedInnerElem* v6;
-    tTexAnimatedInnerElem* v7;
-    uint16_t v9;
-    tTexAnimatedInnerElem* v10;
+    uint8_t num;
+    uint16_t flags;
+    int i;
+    tTexAnimatedInnerElem* elems;
 
-    if (a3)
+    if (size)
     {
         LOA_ReadLong(&offset, 0, 1);
-        v9 = LOA_ReadShort(&offset, 0, 1);
-        v3 = LOA_ReadChar(&offset, 0, 1);
+        flags = LOA_ReadShort(&offset, 0, 1);
+        num = LOA_ReadChar(&offset, 0, 1);
         LOA_ReadChar(&offset, 0, 2);
     }
     else
     {
-        v9 = 0;
-        v3 = 0;
+        flags = 0;
+        num = 0;
     }
-    v4 = a2;
-    a2->flags |= 0x20u;
-    v10 = 0;
-    if (v3)
+    tex->flags |= 0x20u;
+    elems = 0;
+    if (num)
     {
-        v5 = v3;
-        v6 = (tTexAnimatedInnerElem*)MEM_p_Alloc(sizeof(tTexAnimatedInnerElem) * v3);
-        v10 = v6;
-        v7 = v6;
-        do
+        elems = (tTexAnimatedInnerElem*)MEM_p_Alloc(sizeof(tTexAnimatedInnerElem) * num);
+        for (i = 0; i < num; i++)
         {
-            v7->key = LOA_ReadLong(&offset, 0, 1);
-            v7->texTime = LOA_ReadShort(&offset, 0, 1);
-            v7->texIdx = -1;
+            elems[i].key = LOA_ReadLong(&offset, 0, 1);
+            elems[i].texTime = LOA_ReadShort(&offset, 0, 1);
+            elems[i].texIdx = -1;
             LOA_ReadShort(&offset, 0, 2);
-            ++v7;
-            --v5;
-        } while (v5);
+        }
     }
-    v4->tp.animatedParams.aiePtr = v10;
-    v4->tp.animatedParams.num = v3;
-    v4->tp.animatedParams.flags = v9;
+    tex->tp.animatedParams.aiePtr = elems;
+    tex->tp.animatedParams.num = num;
+    tex->tp.animatedParams.flags = flags;
     return 1;
 }
 
-int TEX_l_File_LoadRawPalette(char* offset, tEngTexIntermediateStruct* a2, unsigned int a3)
+int TEX_l_File_LoadRawPalette(char* offset, tEngTexIntermediateStruct* tex, unsigned int size)
 {
-    int* v3;
-    unsigned int v4;
+    int* elems;
+    unsigned int i;
 
-    v3 = (int*)a2->elems;
-    memset(a2->elems, 0xFFu, sizeof(a2->elems));
-    if (a3 > 80 || (a3 & 3) != 0)
+    elems = (int*)tex->elems;
+    memset(tex->elems, 0xFFu, sizeof(tex->elems));
+    if (size > 80 || (size & 3) != 0)
         return 0;
-    if ((a3 - 32) >> 2)
-    {
-        v4 = (a3 - 32) >> 2;
-        do
-        {
-            *v3++ = LOA_ReadLong(&offset, 0, 1);
-            --v4;
-        } while (v4);
-    }
+    for (i = (size - 32) >> 2; i; --i)
+        *elems++ = LOA_ReadLong(&offset, 0, 1);
+
     return 1;
 }
 
-void TEX_File_VSwap(char* a1, char* a2, int a3, int a4, int a5)
+void TEX_File_VSwap(char* dest, char* src, int w, int h, int bpp)
 {
-    unsigned int v5;
-    char* v6;
-    int a3a;
+    unsigned int stride;
+    char* in;
+    int y;
 
-    v5 = a5 * a3;
-    v6 = &a2[a5 * a3 * (a4 - 1)];
-    if (a4)
+    stride = bpp * w;
+    in = &src[stride * (h - 1)];
+    for (y = h; y; --y)
     {
-        a3a = a4;
-        do
-        {
-            memcpy(a1, v6, v5);
-            a1 += v5;
-            v6 -= v5;
-            --a3a;
-        } while (a3a);
+        memcpy(dest, in, stride);
+        dest += stride;
+        in -= stride;
     }
 }
 
-void TEX_File_FreeDescription(struct sEngTexIntermediateStruct* a1)
+void TEX_File_FreeDescription(struct sEngTexIntermediateStruct* tex)
 {
-    char* v1;
-
-    if (a1->descriptionPtr && a1->tgaUnkS1)
+    if (tex->descriptionPtr && tex->tgaUnkS1)
     {
-        MEM_Free((void*)a1->descriptionPtr);
-        a1->descriptionPtr = 0;
+        MEM_Free((void*)tex->descriptionPtr);
+        tex->descriptionPtr = 0;
     }
-    v1 = a1->imgDataPtr;
-    if (v1)
+    if (tex->imgDataPtr)
     {
-        MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v1);
-        MEM_FreeAlign(a1->imgDataPtr);
-        a1->imgDataPtr = 0;
+        TEX_l_FreeImgData(tex->imgDataPtr);
+        tex->imgDataPtr = 0;
     }
 }
 
-int TEX_l_File_LoadJpeg(char* a1, struct sEngTexIntermediateStruct* a2, size_t a3)
+int TEX_l_File_LoadJpeg(char* data, struct sEngTexIntermediateStruct* tex, size_t size)
 {
-    uint16_t v3;
-    uint8_t v4;
-    char v5;
-    uint8_t v6;
-    int v7;
-    int v8;
-    char* v10;
-    char* v11;
-    uint8_t v12;
-    char* v13;
-    char* v14;
-    char* i;
-    char* j;
-    char v17;
-    tJpegLibIntf v18;
+    uint8_t colorDepth;
+    char texFlags;
+    int pixels;
+    int bytes;
+    char* temp;
+    char* gray;
+    char* rgb;
+    char* p;
+    char c;
+    tJpegLibIntf jpg;
 
-    memset(&v18, 0, sizeof(v18));
-    if ((a2->flags & 1) != 0)
+    memset(&jpg, 0, sizeof(jpg));
+    if ((tex->flags & 1) != 0)
     {
-        lJADE_JPEG_INPOUT_FILE_LENGTH = a3;
-        ucJADE_JPEG_INPOUT_FILE = a1;
-        JpegInfo(&v18);
-        v3 = v18.width;
-        a2->realHeight = v18.height;
-        v4 = 8 * (v18.bytesNumPerPixel & 0xff);
-        a2->colorDepth2 = 8 * (v18.bytesNumPerPixel & 0xff);
-        a2->colorDepth1 = v4;
-        v5 = (char)(a2->tp.flagsUnkAndProceduralUnkb1);
-        a2->tgaUnk1b = 0;
-        a2->tgaUnkS1 = 0;
-        a2->realWidth = v3;
-        a2->redMask = 0xFF;
-        a2->greenMask = 0xFF00;
-        a2->blueMask = 0xFF0000;
-        a2->alphaMask = 0;
-        if ((v5 & 8) != 0)
-            a2->bmpUnkb1 |= 0x10;
+        lJADE_JPEG_INPOUT_FILE_LENGTH = size;
+        ucJADE_JPEG_INPOUT_FILE = data;
+        JpegInfo(&jpg);
+        tex->realHeight = jpg.height;
+        tex->realWidth = jpg.width;
+        tex->colorDepth2 = 8 * (jpg.bytesNumPerPixel & 0xff);
+        tex->colorDepth1 = 8 * (jpg.bytesNumPerPixel & 0xff);
+        texFlags = (char)(tex->tp.flagsUnkAndProceduralUnkb1);
+        tex->tgaUnk1b = 0;
+        tex->tgaUnkS1 = 0;
+        tex->redMask = 0xFF;
+        tex->greenMask = 0xFF00;
+        tex->blueMask = 0xFF0000;
+        tex->alphaMask = 0;
+        if ((texFlags & 8) != 0)
+            tex->bmpUnkb1 |= 0x10;
     }
-    v6 = a2->colorDepth1;
-    if (v6 != 8 && v6 != 24)
+    colorDepth = tex->colorDepth1;
+    if (colorDepth != 8 && colorDepth != 24)
         return 0;
-    if ((a2->flags & 2) != 0)
+    if ((tex->flags & 2) != 0)
     {
-        v7 = a2->realWidth * a2->realHeight;
-        v8 = 3 * v7;
-        if (!(3 * v7))
+        pixels = tex->realWidth * tex->realHeight;
+        bytes = 3 * pixels;
+        if (!bytes)
             return 0;
-        v10 = (char*)MEM_p_AllocAligned(3 * v7, 64);
-        a2->imgDataPtr = v10;
-        MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetAligned(v10);
-        v11 = (char*)MEM_p_Alloc(v8);
-        v18.indata = v11;
-        lJADE_JPEG_INPOUT_FILE_LENGTH = a3;
-        ucJADE_JPEG_INPOUT_FILE = a1;
-        JpegRead(&v18);
-        v12 = a2->colorDepth1;
-        if (v12 == 8)
+        tex->imgDataPtr = TEX_l_AllocImgData(bytes);
+        temp = (char*)MEM_p_Alloc(bytes);
+        jpg.indata = temp;
+        lJADE_JPEG_INPOUT_FILE_LENGTH = size;
+        ucJADE_JPEG_INPOUT_FILE = data;
+        JpegRead(&jpg);
+        if (tex->colorDepth1 == 8)
         {
-            TEX_File_VSwap(a2->imgDataPtr, v11, a2->realWidth, a2->realHeight, 1);
-            v13 = a2->imgDataPtr;
-            v14 = &v13[v8 - 3];
-            for (i = &v13[a2->realWidth * a2->realHeight - 1]; v14 >= i; --i)
+            TEX_File_VSwap(tex->imgDataPtr, temp, tex->realWidth, tex->realHeight, 1);
+            rgb = &tex->imgDataPtr[bytes - 3];
+            for (gray = &tex->imgDataPtr[tex->realWidth * tex->realHeight - 1]; rgb >= gray; --gray)
             {
-                *v14 = *i;
-                v14[1] = *i;
-                v14[2] = *i;
-                v14 -= 3;
+                rgb[0] = *gray;
+                rgb[1] = *gray;
+                rgb[2] = *gray;
+                rgb -= 3;
             }
         }
-        else if (v12 == 24)
+        else if (tex->colorDepth1 == 24)
         {
-            for (j = v11; j < &v11[v8]; j += 3)
+            for (p = temp; p < &temp[bytes]; p += 3)
             {
-                v17 = *j;
-                *j = j[2];
-                j[2] = v17;
+                c = p[0];
+                p[0] = p[2];
+                p[2] = c;
             }
-            TEX_File_VSwap(a2->imgDataPtr, v11, a2->realWidth, a2->realHeight, 3);
+            TEX_File_VSwap(tex->imgDataPtr, temp, tex->realWidth, tex->realHeight, 3);
         }
-        MEM_Free(v11);
+        MEM_Free(temp);
 
         /*
         FILE* fp = fopen("dbg_readback.ppm", "wb");
         if (fp) {
-            fprintf(fp, "P6\n%d %d\n255\n", a2->realWidth, a2->realHeight);
-            fwrite(a2->imgDataPtr, 1, a2->realWidth * a2->realHeight * 3, fp);
+            fprintf(fp, "P6\n%d %d\n255\n", tex->realWidth, tex->realHeight);
+            fwrite(tex->imgDataPtr, 1, tex->realWidth * tex->realHeight * 3, fp);
             fclose(fp);
         }
         */
@@ -793,223 +793,193 @@ int TEX_l_File_LoadJpeg(char* a1, struct sEngTexIntermediateStruct* a2, size_t a
     return 1;
 }
 
-void TEX_l_File_TgaUncompress(char a1, char* a2, char* a3, int a4)
+void TEX_l_File_TgaUncompress(char colorDepth, char* dest, char* src, int size)
 {
-    int v4;
-    char v7;
-    uint8_t v8;
-    int v9;
-    int v10;
-    char* v11;
-    int v12;
-    char v13;
-    char* v14;
-    char* v15;
-    uint8_t v16;
+    int left;
+    char packet;
+    uint8_t count;
+    int pixel;
+    int i;
 
-    v4 = a4;
-    while (v4 > 0)
+    left = size;
+    while (left > 0)
     {
-        v7 = *a3;
-        v8 = (*a3++ & 0x7F) + 1;
-        v16 = v8;
-        if (v7 >= 0)
+        packet = *src;
+        count = (*src++ & 0x7F) + 1;
+        if (packet >= 0)
         {
-            if (v8)
+            for (i = count; i; --i)
             {
-                v12 = v8;
-                do
+                if (colorDepth == 24)
                 {
-                    if (a1 == 24)
-                    {
-                        *a2 = *a3;
-                        v13 = a3[1];
-                        v14 = a2 + 1;
-                        v15 = a3 + 1;
-                        *v14++ = v13;
-                        *v14 = v15[1];
-                        a2 = v14 + 1;
-                        a3 = v15 + 2;
-                        v4 -= 3;
-                    }
-                    else
-                    {
-                        *(uint32_t*)a2 = *(uint32_t*)a3;
-                        a3 += 4;
-                        a2 += 4;
-                        v4 -= 4;
-                    }
-                    --v12;
-                } while (v12);
+                    dest[0] = src[0];
+                    dest[1] = src[1];
+                    dest[2] = src[2];
+                    dest += 3;
+                    src += 3;
+                    left -= 3;
+                }
+                else
+                {
+                    *(uint32_t*)dest = *(uint32_t*)src;
+                    src += 4;
+                    dest += 4;
+                    left -= 4;
+                }
             }
         }
         else
         {
-            v9 = *(uint32_t*)a3;
-            if (a1 == 24)
-                a3 += 3;
+            pixel = *(uint32_t*)src;
+            if (colorDepth == 24)
+                src += 3;
             else
-                a3 += 4;
-            if (v16)
+                src += 4;
+            for (i = count; i; --i)
             {
-                v10 = v16;
-                do
+                if (colorDepth == 24)
                 {
-                    if (a1 == 24)
-                    {
-                        *a2 = v9;
-                        v11 = a2 + 1;
-                        *v11++ = ((v9 >> 8) & 0xff);
-                        *v11 = ((v9 >> 16) & 0xff);
-                        a2 = v11 + 1;
-                        v4 -= 3;
-                    }
-                    else
-                    {
-                        *(uint32_t*)a2 = v9;
-                        v4 -= 4;
-                    }
-                    --v10;
-                } while (v10);
+                    dest[0] = pixel;
+                    dest[1] = (pixel >> 8) & 0xff;
+                    dest[2] = (pixel >> 16) & 0xff;
+                    dest += 3;
+                    left -= 3;
+                }
+                else
+                {
+                    // preserved: a run of 32 bit pixels is written to the same address every time
+                    *(uint32_t*)dest = pixel;
+                    left -= 4;
+                }
             }
         }
     }
 }
 
-int TEX_l_File_LoadTga(char* a1, tEngTexIntermediateStruct* a2)
+int TEX_l_File_LoadTga(char* data, tEngTexIntermediateStruct* tex)
 {
-    uint16_t v2;
-    uint16_t v3;
-    char v4;
-    tEngTexIntermediateStruct* v5;
-    int16_t v6;
-    char* v7;
-    BOOL v8;
-    int v9;
-    char* v11;
-    unsigned int v12;
-    char* v13;
-    uint8_t v14;
-    uint8_t v15;
-    int16_t v16;
+    uint16_t mapLength;
+    uint16_t w;
+    int16_t h;
+    uint8_t imageType;
+    uint8_t mapEntryBits;
     char colorDepth;
+    int16_t flags;
+    char* afterHeader;
+    int pixels;
+    char* imgData;
+    unsigned int bytes;
 
-    LOA_ReadChar(&a1, 0, 1);
-    LOA_ReadChar(&a1, 0, 1);
-    v14 = LOA_ReadChar(&a1, 0, 1);
-    LOA_ReadShort(&a1, 0, 1);
-    v2 = LOA_ReadShort(&a1, 0, 1);
-    v15 = LOA_ReadChar(&a1, 0, 1);
-    LOA_ReadShort(&a1, 0, 1);
-    LOA_ReadShort(&a1, 0, 1);
-    v3 = LOA_ReadShort(&a1, 0, 1);
-    v16 = LOA_ReadShort(&a1, 0, 1);
-    v4 = LOA_ReadChar(&a1, 0, 1);
-    colorDepth = v4;
-    LOA_ReadChar(&a1, 0, 1);
-    v5 = a2;
-    v6 = a2->flags;
-    if ((a2->flags & 1) != 0)
+    LOA_ReadChar(&data, 0, 1);
+    LOA_ReadChar(&data, 0, 1);
+    imageType = LOA_ReadChar(&data, 0, 1);
+    LOA_ReadShort(&data, 0, 1);
+    mapLength = LOA_ReadShort(&data, 0, 1);
+    mapEntryBits = LOA_ReadChar(&data, 0, 1);
+    LOA_ReadShort(&data, 0, 1);
+    LOA_ReadShort(&data, 0, 1);
+    w = LOA_ReadShort(&data, 0, 1);
+    h = LOA_ReadShort(&data, 0, 1);
+    colorDepth = LOA_ReadChar(&data, 0, 1);
+    LOA_ReadChar(&data, 0, 1);
+    flags = tex->flags;
+    if ((tex->flags & 1) != 0)
     {
-        a2->realWidth = v3;
-        v5->realHeight = v16;
-        v7 = a1;
-        v8 = (v5->tp.flagsUnkAndProceduralUnkb1 & 8) == 0;
-        v5->tgaUnkS1 = v2;
-        v5->colorDepth2 = v4;
-        v5->colorDepth1 = v4;
-        v5->tgaUnk1b = v15;
-        v5->tgaDataEndPtr = (int)v7;
-        v5->tgaDataStartPtr = 0;
-        if (!v8)
-            v5->bmpUnkb1 |= 0x10u;
-        switch (v4)
+        afterHeader = data;
+        tex->realWidth = w;
+        tex->realHeight = h;
+        tex->tgaUnkS1 = mapLength;
+        tex->colorDepth2 = colorDepth;
+        tex->colorDepth1 = colorDepth;
+        tex->tgaUnk1b = mapEntryBits;
+        tex->tgaDataEndPtr = (int)afterHeader;
+        tex->tgaDataStartPtr = 0;
+        if ((tex->tp.flagsUnkAndProceduralUnkb1 & 8) != 0)
+            tex->bmpUnkb1 |= 0x10u;
+        switch (colorDepth)
         {
         case 32:
-            v5->alphaMask = 0xFF000000;
-        LABEL_6:
-            v5->redMask = 0xFF0000;
-            v5->greenMask = 0xFF00;
-            v5->blueMask = 0xFF;
+            tex->alphaMask = 0xFF000000;
+            tex->redMask = 0xFF0000;
+            tex->greenMask = 0xFF00;
+            tex->blueMask = 0xFF;
             break;
         case 24:
-            v5->redMask = 0xFF0000;
-            v5->greenMask = 0xFF00;
-            v5->blueMask = 0xFF;
-            v5->alphaMask = 0;
+            tex->redMask = 0xFF0000;
+            tex->greenMask = 0xFF00;
+            tex->blueMask = 0xFF;
+            tex->alphaMask = 0;
             break;
         case 16:
-            v5->alphaMask = 0;
-            goto LABEL_6;
+            // preserved: the 16 bit case takes the 24 bit masks, not 5-5-5 as the bmp loader does
+            tex->alphaMask = 0;
+            tex->redMask = 0xFF0000;
+            tex->greenMask = 0xFF00;
+            tex->blueMask = 0xFF;
+            break;
         case 8:
-            v5->tgaDataStartPtr = (int)v7;
-            v5->tgaDataEndPtr = (int)&v7[v2 * (v15 >> 3)];
+            tex->tgaDataStartPtr = (int)afterHeader;
+            tex->tgaDataEndPtr = (int)&afterHeader[mapLength * (mapEntryBits >> 3)];
             break;
         default:
             return 0;
         }
     }
-    if ((v6 & 2) != 0)
+    if ((flags & 2) != 0)
     {
-        v9 = v5->realWidth * v5->realHeight;
-        if (!v9)
+        pixels = tex->realWidth * tex->realHeight;
+        if (!pixels)
             return 0;
-        LOA_ReadCharArray(&a1, 0, v2 * (v5->tgaUnk1b >> 3), 2);
-        v11 = (char*)MEM_p_AllocTmp(v9 * (v5->colorDepth2 >> 3));
-        v5->imgDataPtr = v11;
-        MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetTmpAddressSpace(v11);
-        v12 = v9 * (v5->colorDepth1 >> 3);
-        v13 = v5->imgDataPtr;
-        if (v14 >= 9u)
+        LOA_ReadCharArray(&data, 0, mapLength * (tex->tgaUnk1b >> 3), 2);
+        imgData = (char*)MEM_p_AllocTmp(pixels * (tex->colorDepth2 >> 3));
+        tex->imgDataPtr = imgData;
+        MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetTmpAddressSpace(imgData);
+        bytes = pixels * (tex->colorDepth1 >> 3);
+        if (imageType >= 9u)
         {
-            TEX_l_File_TgaUncompress(colorDepth, v13, a1, v9 * (v5->colorDepth1 >> 3));
-            LOA_ReadCharArray(&a1, 0, v12, 1);
+            TEX_l_File_TgaUncompress(colorDepth, tex->imgDataPtr, data, bytes);
+            LOA_ReadCharArray(&data, 0, bytes, 1);
             return 1;
         }
-        LOA_ReadCharArray(&a1, v13, v12, 1);
+        LOA_ReadCharArray(&data, tex->imgDataPtr, bytes, 1);
     }
     return 1;
 }
 
-int TEX_l_File_LoadBmp(tTexWeirdBMPHeader* a1, tEngTexIntermediateStruct* a2)
+int TEX_l_File_LoadBmp(tTexWeirdBMPHeader* hdr, tEngTexIntermediateStruct* tex)
 {
-    int16_t v2;
-    uint8_t v3;
-    uint8_t v4;
-    int v6;
-    uint8_t v7;
-    char* v8;
+    int16_t flags;
+    uint8_t colorDepth;
+    int pixels;
 
-    v2 = a2->flags;
-    if ((a2->flags & 1) != 0)
+    flags = tex->flags;
+    if ((tex->flags & 1) != 0)
     {
-        a2->realWidth = a1->width;
-        a2->realHeight = a1->height;
-        v3 = a1->colorDepth;
-        a2->colorDepth2 = v3;
-        a2->colorDepth1 = v3;
-        if ((a2->tp.flagsUnkAndProceduralUnkb1 & 8) != 0)
-            a2->bmpUnkb1 |= 0x10u;
-        v4 = a2->colorDepth1;
-        switch (v4)
+        tex->realWidth = hdr->width;
+        tex->realHeight = hdr->height;
+        tex->colorDepth2 = hdr->colorDepth;
+        tex->colorDepth1 = hdr->colorDepth;
+        if ((tex->tp.flagsUnkAndProceduralUnkb1 & 8) != 0)
+            tex->bmpUnkb1 |= 0x10u;
+        switch (tex->colorDepth1)
         {
         case 32u:
-            a2->alphaMask = 0xFF000000;
-            a2->redMask = 0xFF0000;
-            a2->greenMask = 0xFF00;
-            a2->blueMask = 0xFF;
+            tex->alphaMask = 0xFF000000;
+            tex->redMask = 0xFF0000;
+            tex->greenMask = 0xFF00;
+            tex->blueMask = 0xFF;
             break;
         case 24u:
-            a2->redMask = 0xFF0000;
-            a2->greenMask = 0xFF00;
-            a2->blueMask = 0xFF;
-            a2->alphaMask = 0;
+            tex->redMask = 0xFF0000;
+            tex->greenMask = 0xFF00;
+            tex->blueMask = 0xFF;
+            tex->alphaMask = 0;
             break;
         case 16u:
-            a2->redMask = 0x7C00;
-            a2->greenMask = 0x3E0;
-            a2->blueMask = 0x1F;
-            a2->alphaMask = 32768;
+            tex->redMask = 0x7C00;
+            tex->greenMask = 0x3E0;
+            tex->blueMask = 0x1F;
+            tex->alphaMask = 32768;
             break;
         case 8u:
             break;
@@ -1017,370 +987,272 @@ int TEX_l_File_LoadBmp(tTexWeirdBMPHeader* a1, tEngTexIntermediateStruct* a2)
             return 0;
         }
     }
-    if ((v2 & 2) == 0)
+    if ((flags & 2) == 0)
         return 1;
 
-    v6 = a2->realWidth * a2->realHeight;
-    if (!v6)
+    pixels = tex->realWidth * tex->realHeight;
+    if (!pixels)
         return 0;
 
-    v7 = a2->colorDepth1;
-    if (v7 != 32 && v7 != 24 && v7 != 16 && v7 != 8)
+    colorDepth = tex->colorDepth1;
+    if (colorDepth != 32 && colorDepth != 24 && colorDepth != 16 && colorDepth != 8)
         return 0;
 
-    v8 = (char*)MEM_p_AllocAligned(v6 * (a2->colorDepth2 >> 3), 64);
-    a2->imgDataPtr = v8;
-    MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetAligned(v8);
-    memcpy(a2->imgDataPtr, a1 + sizeof(tTexWeirdBMPHeader), v6 * (a2->colorDepth1 >> 3));
+    tex->imgDataPtr = TEX_l_AllocImgData(pixels * (tex->colorDepth2 >> 3));
+    // preserved: hdr is stepped by whole headers, so the pixels are read sizeof^2 bytes in
+    memcpy(tex->imgDataPtr, hdr + sizeof(tTexWeirdBMPHeader), pixels * (tex->colorDepth1 >> 3));
 
     return 1;
 }
 
-int TEX_l_File_LoadRaw(char* offset, tEngTexIntermediateStruct* a2)
+int TEX_l_File_LoadRaw(char* offset, tEngTexIntermediateStruct* tex)
 {
-    tEngTexIntermediateStruct* v2;
-    int result;
-    unsigned int v4;
-    char* v5;
+    int pixels;
+    unsigned int bytes;
 
-    v2 = a2;
-    if ((a2->flags & 2) != 0)
+    if ((tex->flags & 2) != 0)
     {
-        result = a2->realWidth * a2->realHeight;
-        if (!result)
+        pixels = tex->realWidth * tex->realHeight;
+        if (!pixels)
             return 0;
-        v4 = (result * (unsigned int)a2->colorDepth2) >> 3;
-        v5 = (char*)MEM_p_AllocAligned(v4, 64);
-        v2->imgDataPtr = v5;
-        MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetAligned(v5);
-        LOA_ReadCharArray(&offset, v2->imgDataPtr, v4, 1);
+        bytes = (pixels * (unsigned int)tex->colorDepth2) >> 3;
+        tex->imgDataPtr = TEX_l_AllocImgData(bytes);
+        LOA_ReadCharArray(&offset, tex->imgDataPtr, bytes, 1);
     }
     return 1;
 }
 
-void TEX_File_DevelopParams(tEngTexIntermediateStruct* a1)
+void TEX_File_DevelopParams(tEngTexIntermediateStruct* tex)
 {
-    uint16_t v1;
-    int v2;
-    uint8_t v3;
-    uint8_t v4;
-    uint8_t v5;
-
-    v1 = a1->tp.imageDataHeight;
-    a1->realWidth = a1->tp.imageDataWidth;
-    v2 = a1->tp.imageDataColorDepth - 16;
-    a1->realHeight = v1;
-    switch (v2)
+    tex->realWidth = tex->tp.imageDataWidth;
+    tex->realHeight = tex->tp.imageDataHeight;
+    switch (tex->tp.imageDataColorDepth - 16)
     {
     case 0:
-        a1->colorDepth1 = 32;
-        a1->alphaMask = 0xFF000000;
-        goto LABEL_4;
+        tex->colorDepth1 = 32;
+        tex->alphaMask = 0xFF000000;
+        tex->redMask = 0xFF0000;
+        tex->greenMask = 0xFF00;
+        tex->blueMask = 0xFF;
+        tex->colorDepth2 = tex->colorDepth1;
+        return;
     case 16:
-        a1->colorDepth1 = 24;
-        a1->alphaMask = 0;
-    LABEL_4:
-        v3 = a1->colorDepth1;
-        a1->redMask = 0xFF0000;
-        a1->greenMask = 0xFF00;
-        a1->blueMask = 0xFF;
-        a1->colorDepth2 = v3;
+        tex->colorDepth1 = 24;
+        tex->alphaMask = 0;
+        tex->redMask = 0xFF0000;
+        tex->greenMask = 0xFF00;
+        tex->blueMask = 0xFF;
+        tex->colorDepth2 = tex->colorDepth1;
         return;
     case 32:
-        a1->colorDepth1 = 16;
-        v4 = a1->colorDepth1;
-        a1->alphaMask = 0x8000;
-        a1->redMask = 0x7C00;
-        a1->greenMask = 0x3E0;
-        a1->blueMask = 0x1F;
-        a1->colorDepth2 = v4;
+        tex->colorDepth1 = 16;
+        tex->alphaMask = 0x8000;
+        tex->redMask = 0x7C00;
+        tex->greenMask = 0x3E0;
+        tex->blueMask = 0x1F;
+        tex->colorDepth2 = tex->colorDepth1;
         return;
     case 33:
-        a1->colorDepth1 = 16;
-        v5 = a1->colorDepth1;
-        a1->alphaMask = 0xF000;
-        a1->redMask = 0xF00;
-        a1->greenMask = 0xF0;
-        a1->blueMask = 0xF;
-        a1->colorDepth2 = v5;
+        tex->colorDepth1 = 16;
+        tex->alphaMask = 0xF000;
+        tex->redMask = 0xF00;
+        tex->greenMask = 0xF0;
+        tex->blueMask = 0xF;
+        tex->colorDepth2 = tex->colorDepth1;
         return;
     case 48:
-        a1->colorDepth1 = 8;
-        a1->colorDepth2 = a1->colorDepth1;
+        tex->colorDepth1 = 8;
+        tex->colorDepth2 = tex->colorDepth1;
         return;
     case 64:
-        a1->colorDepth1 = 4;
-        goto LABEL_9;
+        tex->colorDepth1 = 4;
+        tex->colorDepth2 = tex->colorDepth1;
+        return;
     default:
-    LABEL_9:
-        a1->colorDepth2 = a1->colorDepth1;
+        tex->colorDepth2 = tex->colorDepth1;
         return;
     }
 }
 
-void TEX_GetMaskParams(uint32_t a1, uint8_t* a2, uint8_t* a3)
+void TEX_GetMaskParams(uint32_t mask, uint8_t* bits, uint8_t* shift)
 {
-    uint32_t v3;
-    uint8_t v4;
-    uint8_t v5;
+    uint32_t rest;
+    uint8_t n;
 
-    v3 = a1;
-    *a2 = 0;
-    *a3 = 0;
-    if (a1)
+    rest = mask;
+    *bits = 0;
+    *shift = 0;
+    if (mask)
     {
-        if ((a1 & 1) == 0)
+        if ((mask & 1) == 0)
         {
-            v4 = 0;
+            n = 0;
             do
             {
-                v3 >>= 1;
-                ++v4;
-            } while ((v3 & 1) == 0);
-            *a3 = v4;
+                rest >>= 1;
+                ++n;
+            } while ((rest & 1) == 0);
+            *shift = n;
         }
-        v5 = *a2;
+        n = *bits;
         do
         {
-            v3 >>= 1;
-            ++v5;
-        } while ((v3 & 1) != 0);
-        *a2 = v5;
+            rest >>= 1;
+            ++n;
+        } while ((rest & 1) != 0);
+        *bits = n;
     }
 }
 
-void TEX_GetColorConvertParams(int a1, unsigned int a2, int* a3, unsigned int* a4)
+void TEX_GetColorConvertParams(int srcMask, unsigned int destMask, int* shift, unsigned int* mask)
 {
-    unsigned int v4;
-    int v5;
-    unsigned int v6;
-    unsigned int* v7;
-    uint8_t v8;
-    uint8_t v9;
-    uint8_t v10;
-    uint8_t a1a;
+    int n;
+    uint8_t srcBits;
+    uint8_t srcShift;
+    uint8_t destBits;
+    uint8_t destShift;
 
-    if (a1 && (v4 = a2) != 0)
+    if (srcMask && destMask != 0)
     {
-        TEX_GetMaskParams(a1, &a1a, &v10);
-        TEX_GetMaskParams(v4, &v8, &v9);
-        if (a1a >= v8)
+        TEX_GetMaskParams(srcMask, &srcBits, &srcShift);
+        TEX_GetMaskParams(destMask, &destBits, &destShift);
+        // preserved: a source channel narrower than the destination one leaves both outputs unwritten
+        if (srcBits >= destBits)
         {
-            v5 = a1a - v8 - v9 + v10;
-            *a3 = v5;
-            if (v5 <= 0)
-                v6 = v4 >> -(char)v5;
+            n = srcBits - destBits - destShift + srcShift;
+            *shift = n;
+            if (n <= 0)
+                *mask = destMask >> -(char)n;
             else
-                v6 = v4 << v5;
-            *a4 = v6;
+                *mask = destMask << n;
         }
     }
     else
     {
-        v7 = a4;
-        *a3 = 0;
-        *v7 = 0;
+        *shift = 0;
+        *mask = 0;
     }
 }
 
-int TEX_l_ConvertPF(struct sEngTexIntermediateStruct* a1, struct sEngTexIntermediateStruct* a2)
+int TEX_l_ConvertPF(struct sEngTexIntermediateStruct* src, struct sEngTexIntermediateStruct* dest)
 {
-    tEngTexIntermediateStruct* v2;
-    uint8_t v3;
-    char* v4;
-    char* v5;
-    char v6;
-    int v7; 
-    BOOL v8;
-    uint16_t v9;
-    int v10;
-    int v11;
-    int v12;
-    unsigned int v13;
-    unsigned int v14;
-    unsigned int v15;
-    int v16;
-    unsigned int v17;
-    int v18;
-    unsigned int v19;
-    unsigned int v20;
-    int v21;
-    int v22;
-    char v25;
-    int v26;
-    int v27;
-    int a3;
-    unsigned int a4;
-    unsigned int v30;
-    unsigned int v31;
-    unsigned int v32;
-    int v33;
-    int v34;
-    int v35;
-    int v36;
-    int v37;
-    int v38;
-    char v39;
+    int redShift;
+    int greenShift;
+    int blueShift;
+    int alphaShift;
+    unsigned int redMask;
+    unsigned int greenMask;
+    unsigned int blueMask;
+    unsigned int alphaMask;
+    char* in;
+    char* out;
+    int srcBpp;
+    int destBpp;
+    unsigned int keep;
+    unsigned int drop;
+    unsigned int pixel;
+    int x;
+    int y;
 
-    v2 = a1;
-    TEX_GetColorConvertParams(a1->redMask, a2->redMask, &a3, &a4);
-    TEX_GetColorConvertParams(a1->greenMask, a2->greenMask, &v26, &v30);
-    TEX_GetColorConvertParams(a1->blueMask, a2->blueMask, &v27, &v31);
-    TEX_GetColorConvertParams(a1->alphaMask, a2->alphaMask, &v35, &v32);
-    v3 = a2->colorDepth1;
-    v4 = a1->imgDataPtr;
-    v5 = a2->imgDataPtr;
-    v6 = a1->colorDepth1 >> 3;
-    v25 = v6;
-    v39 = v3 >> 3;
-    if (v3 == 16)
-        v7 = 0xFFFF;
+    TEX_GetColorConvertParams(src->redMask, dest->redMask, &redShift, &redMask);
+    TEX_GetColorConvertParams(src->greenMask, dest->greenMask, &greenShift, &greenMask);
+    TEX_GetColorConvertParams(src->blueMask, dest->blueMask, &blueShift, &blueMask);
+    TEX_GetColorConvertParams(src->alphaMask, dest->alphaMask, &alphaShift, &alphaMask);
+    in = src->imgDataPtr;
+    out = dest->imgDataPtr;
+    srcBpp = src->colorDepth1 >> 3;
+    destBpp = dest->colorDepth1 >> 3;
+    if (dest->colorDepth1 == 16)
+        keep = 0xFFFF;
     else
-        v7 = v3 != 24 ? -1 : 0xFFFFFF;
-    v8 = a1->realHeight == 0;
-    v33 = v7;
-    v36 = ~v7;
-    v34 = 0;
-    if (!v8)
+        keep = dest->colorDepth1 != 24 ? -1 : 0xFFFFFF;
+    drop = ~keep;
+
+    for (y = 0; y < src->realHeight; y++)
     {
-        v9 = a1->realWidth;
-        v10 = a3;
-        do
+        for (x = 0; x < src->realWidth; x++)
         {
-            v11 = 0;
-            if (v9)
-            {
-                v37 = v39;
-                v38 = v6;
-                do
-                {
-                    v12 = *(uint32_t*)v4;
-                    v13 = a4 & *(uint32_t*)v4;
-                    if (v10 < 0)
-                        v14 = v13 << -(char)v10;
-                    else
-                        v14 = v13 >> v10;
-                    if (v26 < 0)
-                        v15 = (v30 & v12) << -(char)v26;
-                    else
-                        v15 = (v30 & v12) >> v26;
-                    v16 = v15 | v14;
-                    if (v27 < 0)
-                        v17 = (v31 & v12) << -(char)v27;
-                    else
-                        v17 = (v31 & v12) >> v27;
-                    v18 = v17 | v16;
-                    v19 = v32 & v12;
-                    if (v35 < 0)
-                        v20 = v19 << -(char)v35;
-                    else
-                        v20 = v19 >> v35;
-                    v21 = (v20 | v18) & v33;
-                    v22 = v37;
-                    v4 += v38;
-                    v2 = a1;
-                    *(uint32_t*)v5 = v21 | v36 & *(uint32_t*)v5;
-                    v10 = a3;
-                    v5 += v22;
-                    v9 = a1->realWidth;
-                    ++v11;
-                } while (v11 < v9);
-                v6 = v25;
-            }
-        } while (++v34 < v2->realHeight);
+            pixel = *(uint32_t*)in;
+            *(uint32_t*)out = (keep & (TEX_l_ShiftChannel(pixel, redMask, redShift)
+                | TEX_l_ShiftChannel(pixel, greenMask, greenShift)
+                | TEX_l_ShiftChannel(pixel, blueMask, blueShift)
+                | TEX_l_ShiftChannel(pixel, alphaMask, alphaShift)))
+                | (drop & *(uint32_t*)out);
+            in += srcBpp;
+            out += destBpp;
+        }
     }
     return 1;
 }
 
-char TEX_uc_GetMaskShift(unsigned int a1)
+char TEX_uc_GetMaskShift(unsigned int mask)
 {
-    unsigned int v1;
+    unsigned int rest;
     char result;
 
-    v1 = a1;
+    rest = mask;
     result = 0;
-    if (a1 && (a1 & 1) == 0)
+    if (mask && (mask & 1) == 0)
     {
         do
         {
-            v1 >>= 1;
+            rest >>= 1;
             ++result;
-        } while ((v1 & 1) == 0);
+        } while ((rest & 1) == 0);
     }
     return result;
 }
 
-void TEX_Manager_Init(struct sTexManagerStruct* a1)
+void TEX_Manager_Init(struct sTexManagerStruct* mgr)
 {
-    a1->keyLoadOrderIDs[0] = 3;
-    a1->keyLoadOrderIDs[1] = 0;
-    a1->keyLoadOrderIDs[2] = -1;
-    a1->keyLoadOrderIDs[3] = -1;
-    a1->i2 = 512;
-    a1->i3 = 8;
-    a1->texMemoryNeededCompressedCase2Backup = 0x1000000;
-    a1->texMemoryNeededCompressedCase1Backup = 0x80000;
-    a1->flags = 0x10d;
+    mgr->keyLoadOrderIDs[0] = 3;
+    mgr->keyLoadOrderIDs[1] = 0;
+    mgr->keyLoadOrderIDs[2] = -1;
+    mgr->keyLoadOrderIDs[3] = -1;
+    mgr->i2 = 512;
+    mgr->i3 = 8;
+    mgr->texMemoryNeededCompressedCase2Backup = 0x1000000;
+    mgr->texMemoryNeededCompressedCase1Backup = 0x80000;
+    mgr->flags = 0x10d;
 }
 
-void TEX_Manager_Reinit(struct sTexManagerStruct* a1)
+void TEX_Manager_Reinit(struct sTexManagerStruct* mgr)
 {
-    int v1;
-
-    v1 = a1->texMemoryNeededCompressedCase1Backup;
-    a1->texMemoryNeededCompressedCase2 = a1->texMemoryNeededCompressedCase2Backup;
-    a1->texMemoryNeededUncompressedCase2 = 0;
-    a1->texMemoryNeededCompressedCase1 = v1;
-    a1->texMemoryNeededUncompressedCase1 = 0;
-    a1->paletteUsedMemory = 0;
-    a1->timsIdx = 0;
-    a1->elemsFlagsWithoutFlag2 = 0;
-    a1->elemsFlagsWithFlag2 = 0;
+    mgr->texMemoryNeededCompressedCase2 = mgr->texMemoryNeededCompressedCase2Backup;
+    mgr->texMemoryNeededUncompressedCase2 = 0;
+    mgr->texMemoryNeededCompressedCase1 = mgr->texMemoryNeededCompressedCase1Backup;
+    mgr->texMemoryNeededUncompressedCase1 = 0;
+    mgr->paletteUsedMemory = 0;
+    mgr->timsIdx = 0;
+    mgr->elemsFlagsWithoutFlag2 = 0;
+    mgr->elemsFlagsWithFlag2 = 0;
 }
 
-void TEX_List_Free(tEngTexListStruct* a1)
+void TEX_List_Free(tEngTexListStruct* list)
 {
-    tEngTexListElemStruct* v1;
-    int v3;
-    int v4;
-    uint8_t* v5;
-    tEngPaletteElem* v7;
+    int i;
 
-    if (a1->maxTexNum)
+    if (list->maxTexNum)
+        TEX_l_FreeImgData(list->texElems);
+
+    if (list->unk1)
     {
-        v1 = a1->texElems;
-        MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v1);
-        MEM_FreeAlign(a1->texElems);
-    }
-    if (a1->unk1)
-    {
-        v3 = 0;
-        if (a1->paletteNum > 0)
+        for (i = 0; i < list->paletteNum; ++i)
         {
-            v4 = 0;
-            do
+            if (list->palettes[i].paletteData)
             {
-                v5 = a1->palettes[v4].paletteData;
-                if (v5)
-                {
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v5);
-                    MEM_FreeAlign(a1->palettes[v4].paletteData);
-                    a1->palettes[v4].paletteData = 0;
-                }
-                ++v3;
-                ++v4;
-            } while (v3 < a1->paletteNum);
+                TEX_l_FreeImgData(list->palettes[i].paletteData);
+                list->palettes[i].paletteData = 0;
+            }
         }
-        v7 = a1->palettes;
-        MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v7);
-        MEM_FreeAlign(a1->palettes);
+        TEX_l_FreeImgData(list->palettes);
     }
-    memset(a1, 0, sizeof(tEngTexListStruct));
+    memset(list, 0, sizeof(tEngTexListStruct));
 }
 
-void TEX_List_Init(struct sEngTexListStruct* a1)
+void TEX_List_Init(struct sEngTexListStruct* list)
 {
-    memset(a1, 0, sizeof(tEngTexListStruct));
+    memset(list, 0, sizeof(tEngTexListStruct));
 }
 
 // a pc-s verzióban ennek semmi értelme
@@ -1396,40 +1268,20 @@ void ResetPreloadTexAll()
     memset(gaui_CurBinFilePos, 0, sizeof(gaui_CurBinFilePos));
 }
 
-int16_t TEX_w_List_AddTexture(tEngTexListStruct* a1, int key)
+int16_t TEX_w_List_AddTexture(tEngTexListStruct* list, int key)
 {
     int correctedKey;
     int16_t result;
-    int v4;
-    tEngTexListElemStruct* v5;
-    int v6;
-    int v7;
-    char* v8;
-    unsigned int v9;
-    tEngTexListElemStruct* v10;
-    int v11;
-    tEngTexListElemStruct* v12;
-    tEngTexListElemStruct* v13;
+    int num;
+    tEngTexListElemStruct* tle;
 
     correctedKey = key;
     if (key == -1)
         return -1;
-    if ((key & 0xFFFFFF0F) == 0 && (key & 0xF0) != 0)
-    {
-        if (ENG_PlatformID == 2)
-        {
-            correctedKey = key + 1;
-            goto LABEL_10;
-        }
-        if (ENG_PlatformID == 3)
-        {
-            correctedKey = key + 2;
-            goto LABEL_19;
-        }
-    }
     if (ENG_PlatformID == 2)
     {
-    LABEL_10:
+        if ((key & 0xFFFFFF0F) == 0 && (key & 0xF0) != 0)
+            correctedKey = key + 1;
         switch (correctedKey)
         {
         case 0x1F0016B6:
@@ -1445,11 +1297,11 @@ int16_t TEX_w_List_AddTexture(tEngTexListStruct* a1, int key)
             correctedKey = 0x8F005899;
             break;
         }
-        goto LABEL_27;
     }
-    if (ENG_PlatformID == 3)
+    else if (ENG_PlatformID == 3)
     {
-    LABEL_19:
+        if ((key & 0xFFFFFF0F) == 0 && (key & 0xF0) != 0)
+            correctedKey = key + 2;
         switch (correctedKey)
         {
         case 0x1F0016B6:
@@ -1466,217 +1318,181 @@ int16_t TEX_w_List_AddTexture(tEngTexListStruct* a1, int key)
             break;
         }
     }
-LABEL_27:
-    v4 = a1->actTexElemNum;
-    if (v4)
+    num = list->actTexElemNum;
+    if (num)
     {
-        v5 = TEX_pst_List_FindTexture(a1, correctedKey);
-        if (v5)
-            return v5->textElemIdx;
+        tle = TEX_pst_List_FindTexture(list, correctedKey);
+        if (tle)
+            return tle->textElemIdx;
     }
-    if (v4 == a1->maxTexNum)
+    if (num == list->maxTexNum)
     {
-        v6 = a1->maxTexNum + 256;
-        v7 = sizeof(tEngTexListElemStruct) * v6;
-        a1->maxTexNum = v6;
-        if (v6 == 256)
-        {
-            v8 = (char*)MEM_p_AllocAligned(v7, 64);
-            a1->texElems = (tEngTexListElemStruct*)v8;            
-            v9 = MEM_MemBlockSizeGetAligned(v8) + MEM_gst_MemoryInfo.usedMemoryByTextures;
-        }
-        else
-        {
-            
-            MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAligned(a1->texElems);
-            v10 = (tEngTexListElemStruct*)MEM_p_ReallocAligned(a1->texElems, v7, 64);
-            a1->texElems = v10;
-            v9 = MEM_MemBlockSizeGetAligned(v10) + MEM_gst_MemoryInfo.usedMemoryByTextures;
-        }
-        MEM_gst_MemoryInfo.usedMemoryByTextures = v9;
+        list->maxTexNum += 256;
+        list->texElems = (tEngTexListElemStruct*)TEX_l_GrowAlignedList(list->texElems, list->maxTexNum,
+            sizeof(tEngTexListElemStruct) * list->maxTexNum);
     }
-    v11 = a1->actTexElemNum;
-    v12 = a1->texElems;
-    a1->actTexElemNum = v11 + 1;
-    v13 = &v12[v11];
-    v13->texKey = 0;
-    v13->normalData.width = 0;
-    v13->normalData.height = 0;
-    v13->texElemFlag = 0;
-    v13->texKey = correctedKey;
-    result = (short)((a1->actTexElemNum & 0xffff) - 1);
-    v13->textElemIdx = result;
+    tle = &list->texElems[list->actTexElemNum++];
+    tle->texKey = 0;
+    tle->normalData.width = 0;
+    tle->normalData.height = 0;
+    tle->texElemFlag = 0;
+    tle->texKey = correctedKey;
+    result = (short)((list->actTexElemNum & 0xffff) - 1);
+    tle->textElemIdx = result;
     return result;
 }
 
-BOOL TEX_b_File_CheckParams(tEngTexIntermediateStructTexParams* a1)
+BOOL TEX_b_File_CheckParams(tEngTexIntermediateStructTexParams* tp)
 {
     BOOL result;
 
-    if (a1->magicParams.magic3 == 0xC0DEC0DE && a1->magicParams.magic2 == 0x00FF00FF)
-        result = a1->magicParams.magic1 == 0xCAD01234;
+    if (tp->magicParams.magic3 == 0xC0DEC0DE && tp->magicParams.magic2 == 0x00FF00FF)
+        result = tp->magicParams.magic1 == 0xCAD01234;
     else
         result = 0;
     return result;
 }
 
-void TEX_File_TransformParams(tEngTexIntermediateStructTexParams* a1)
+void TEX_File_TransformParams(tEngTexIntermediateStructTexParams* tp)
 {
-    int16_t v1;
-    int v2;
+    int16_t flags;
+    int type;
 
-    v1 = a1->uuuu;
-    a1->unk = *(uint32_t*)&a1->flagsUnkAndProceduralUnkb1; // TODO FIXME? ez itt átmásol 4 bájtot (flagsUnkAndProceduralUnkb1, imageDataColorDepth, type)
-    v2 = (unsigned int)a1->uuuu >> 28;
-    a1->flagsUnkAndProceduralUnkb1 = v1;
-    a1->type = v2;
-    a1->imageDataColorDepth = 0;
+    flags = tp->uuuu;
+    tp->unk = *(uint32_t*)&tp->flagsUnkAndProceduralUnkb1; // TODO FIXME? ez itt átmásol 4 bájtot (flagsUnkAndProceduralUnkb1, imageDataColorDepth, type)
+    type = (unsigned int)tp->uuuu >> 28;
+    tp->flagsUnkAndProceduralUnkb1 = flags;
+    tp->type = type;
+    tp->imageDataColorDepth = 0;
 }
 
-tBumpMapElem* MAT_pst_BumpMap_Add(int a1)
+tBumpMapElem* MAT_pst_BumpMap_Add(int id)
 {
     return NULL;
 }
 
-void MAT_BumpMap_Del(tBumpMapElem* a1)
+void MAT_BumpMap_Del(tBumpMapElem* bump)
 {
-    int v2;
+    int i;
 
-    if (a1->b1-- == 1)
+    if (bump->b1-- == 1)
     {
-        if ((a1->b2 & 1) == 0)
-            MEM_Free(a1->ptr);
-        MEM_Free(a1);
-        v2 = 0;
-        if (MAT_gst_BumpMapList.num)
+        if ((bump->b2 & 1) == 0)
+            MEM_Free(bump->ptr);
+        MEM_Free(bump);
+        for (i = 0; i < MAT_gst_BumpMapList.num; ++i)
         {
-            while (MAT_gst_BumpMapList.ptr[v2] != a1)
+            if (MAT_gst_BumpMapList.ptr[i] == bump)
             {
-                if (++v2 >= MAT_gst_BumpMapList.num)
-                    return;
+                MAT_gst_BumpMapList.ptr[i] = MAT_gst_BumpMapList.ptr[--MAT_gst_BumpMapList.num];
+                return;
             }
-            MAT_gst_BumpMapList.ptr[v2] = MAT_gst_BumpMapList.ptr[--MAT_gst_BumpMapList.num];
         }
     }
 }
 
-tMatSpriteElem* MAT_pst_SpriteGen_Load(int a1, char* offset, int a3)
+tMatSpriteElem* MAT_pst_SpriteGen_Load(int id, char* offset, int size)
 {
-    tMatSpriteList* v3;
-    tMatSpriteElem* v4;
-    tMatSpriteList* v5;
-    tMatSpriteElem* result;
-    tMatSpriteElem* v7;
-    tEngTexListElemStruct* v8;
-    tBumpMapElem* v9;
-    int v10;
-    int v11;
-    tEngTexListElemStruct* v12;
+    tMatSpriteList* node;
+    tMatSpriteElem* sprite;
+    tEngTexListElemStruct* tle;
+    tBumpMapElem* bump;
 
-    v3 = MAT_SPRT_AllSprt;
-    if (MAT_SPRT_AllSprt)
+    for (node = MAT_SPRT_AllSprt; node; node = node->prev)
     {
-        while (v3->idx != a1)
-        {
-            v3 = v3->prev;
-            if (!v3)
-                goto LABEL_4;
-        }
-        v7 = v3->elem;
-        v8 = TEX_pst_List_FindTexture(&TEX_gst_GlobalList, v7->texKey);
-        if (v8)
-            v7->texIdx = v8->textElemIdx;
+        if (node->idx == id)
+            break;
+    }
+    if (node)
+    {
+        sprite = node->elem;
+        tle = TEX_pst_List_FindTexture(&TEX_gst_GlobalList, sprite->texKey);
+        if (tle)
+            sprite->texIdx = tle->textElemIdx;
         else
-            v7->texIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList, v7->texKey);
-        v9 = v3->elem->bumpMapPtr;
-        if (v9)
+            sprite->texIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList, sprite->texKey);
+        bump = node->elem->bumpMapPtr;
+        if (bump)
         {
-            v3->elem->bumpMapPtr = MAT_pst_BumpMap_Add(v7->bumpMapID);
-            if (v3->elem->bumpMapPtr != v9)
-                MAT_BumpMap_Del(v9);
+            node->elem->bumpMapPtr = MAT_pst_BumpMap_Add(sprite->bumpMapID);
+            if (node->elem->bumpMapPtr != bump)
+                MAT_BumpMap_Del(bump);
         }
-        result = v7;
+        return sprite;
+    }
+
+    sprite = (tMatSpriteElem*)MEM_p_Alloc(sizeof(tMatSpriteElem));
+    memset(sprite, 0, sizeof(tMatSpriteElem));
+    node = (tMatSpriteList*)MEM_p_Alloc(sizeof(tMatSpriteList));
+    node->prev = MAT_SPRT_AllSprt;
+    node->elem = sprite;
+    node->idx = id;
+    MAT_SPRT_AllSprt = node;
+    if (size)
+    {
+        sprite->i1 = LOA_ReadLong(&offset, 0, 1);
+        sprite->i2 = LOA_ReadLong(&offset, 0, 1);
+        sprite->texKey = LOA_ReadLong(&offset, 0, 1);
+        sprite->s1 = LOA_ReadShort(&offset, 0, 1);
+        sprite->texIdx = LOA_ReadShort(&offset, 0, 1);
+        sprite->f1 = LOA_ReadFloat(&offset, 0, 1);
+        sprite->f2 = LOA_ReadFloat(&offset, 0, 1);
+        sprite->flags = LOA_ReadLong(&offset, 0, 1);
+        sprite->f3 = LOA_ReadFloat(&offset, 0, 1);
+        sprite->f4 = LOA_ReadFloat(&offset, 0, 1);
+        sprite->f5 = LOA_ReadFloat(&offset, 0, 1);
+        sprite->f6 = LOA_ReadFloat(&offset, 0, 1);
+        sprite->bumpMapID = LOA_ReadLong(&offset, 0, 1);
+        sprite->bumpMapPtr = (tBumpMapElem*)LOA_ReadLong(&offset, 0, 1);
+        sprite->f7 = LOA_ReadFloat(&offset, 0, 1);
+        sprite->i7 = LOA_ReadLong(&offset, 0, 1);
+        sprite->i8 = LOA_ReadLong(&offset, 0, 1);
+        if (sprite->texKey == -1)
+        {
+            sprite->texIdx = -1;
+        }
+        else
+        {
+            tle = TEX_pst_List_FindTexture(&TEX_gst_GlobalList, sprite->texKey);
+            if (tle)
+                sprite->texIdx = tle->textElemIdx;
+            else
+                sprite->texIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList, sprite->texKey);
+        }
+        sprite->bumpMapPtr = MAT_pst_BumpMap_Add(sprite->bumpMapID);
     }
     else
     {
-    LABEL_4:
-        v4 = (tMatSpriteElem*)MEM_p_Alloc(sizeof(tMatSpriteElem));
-        memset(v4, 0, sizeof(tMatSpriteElem));
-        v5 = (tMatSpriteList*)MEM_p_Alloc(sizeof(tMatSpriteList));
-        v5->prev = MAT_SPRT_AllSprt;
-        v5->elem = v4;
-        v5->idx = a1;
-        MAT_SPRT_AllSprt = v5;
-        if (a3)
-        {
-            v4->i1 = LOA_ReadLong(&offset, 0, 1);
-            v4->i2 = LOA_ReadLong(&offset, 0, 1);
-            v4->texKey = LOA_ReadLong(&offset, 0, 1);
-            v4->s1 = LOA_ReadShort(&offset, 0, 1);
-            v4->texIdx = LOA_ReadShort(&offset, 0, 1);
-            v4->f1 = LOA_ReadFloat(&offset, 0, 1);
-            v4->f2 = LOA_ReadFloat(&offset, 0, 1);
-            v4->flags = LOA_ReadLong(&offset, 0, 1);
-            v4->f3 = LOA_ReadFloat(&offset, 0, 1);
-            v4->f4 = LOA_ReadFloat(&offset, 0, 1);
-            v4->f5 = LOA_ReadFloat(&offset, 0, 1);
-            v4->f6 = LOA_ReadFloat(&offset, 0, 1);
-            v4->bumpMapID = LOA_ReadLong(&offset, 0, 1);
-            v4->bumpMapPtr = (tBumpMapElem*)LOA_ReadLong(&offset, 0, 1);
-            v4->f7 = LOA_ReadFloat(&offset, 0, 1);
-            v4->i7 = LOA_ReadLong(&offset, 0, 1);
-            v10 = LOA_ReadLong(&offset, 0, 1);
-            v11 = v4->texKey;
-            v4->i8 = v10;
-            if (v11 == -1)
-            {
-                v4->texIdx = -1;
-            }
-            else
-            {
-                v12 = TEX_pst_List_FindTexture(&TEX_gst_GlobalList, v11);
-                if (v12)
-                    v4->texIdx = v12->textElemIdx;
-                else
-                    v4->texIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList, v11);
-            }
-            v4->bumpMapPtr = MAT_pst_BumpMap_Add(v4->bumpMapID);
-            result = v4;
-        }
-        else
-        {
-            v4->f1 = 1.0;
-            v4->f5 = 1.0;
-            v4->f7 = 1.0;
-            v4->i1 = 0xC0DE1999;
-            v4->i2 = 0xC0DE2000;
-            v4->texKey = 0xFFFFFFFF;
-            v4->f2 = 0.0;
-            v4->texIdx = -1;
-            v4->flags = 0x80000000;
-            v4->f6 = 1.2f;
-            v4->bumpMapID = 0xFFFFFFFF;
-            result = v4;
-        }
+        sprite->f1 = 1.0;
+        sprite->f5 = 1.0;
+        sprite->f7 = 1.0;
+        sprite->i1 = 0xC0DE1999;
+        sprite->i2 = 0xC0DE2000;
+        sprite->texKey = 0xFFFFFFFF;
+        sprite->f2 = 0.0;
+        sprite->texIdx = -1;
+        sprite->flags = 0x80000000;
+        sprite->f6 = 1.2f;
+        sprite->bumpMapID = 0xFFFFFFFF;
     }
-    return result;
+    return sprite;
 }
 
-void MAT_BumpMap_Close(char a1)
+void MAT_BumpMap_Close(char freeList)
 {
     int i;
-    tBumpMapElem* v2;
+    tBumpMapElem* bump;
 
     if (MAT_gst_BumpMapList.i2)
     {
         for (i = 0; i < MAT_gst_BumpMapList.num; ++i)
         {
-            v2 = MAT_gst_BumpMapList.ptr[i];
-            if ((v2->b2 & 1) == 0)
-                MEM_Free(v2->ptr);
+            bump = MAT_gst_BumpMapList.ptr[i];
+            if ((bump->b2 & 1) == 0)
+                MEM_Free(bump->ptr);
             MEM_Free(MAT_gst_BumpMapList.ptr[i]);
         }
-        if (a1)
+        if (freeList)
         {
             MEM_Free(MAT_gst_BumpMapList.ptr);
             MAT_gst_BumpMapList.num = 0;
@@ -1692,1035 +1508,609 @@ void MAT_BumpMap_Close(char a1)
 
 void MAT_SpriteGen_Close()
 {
-    tMatSpriteList* v0;
-    tMatSpriteList* v1;
-    tMatSpriteElem* v2;
-    tBumpMapElem* v3;
+    tMatSpriteList* node;
+    tMatSpriteList* next;
+    tMatSpriteElem* sprite;
 
-    v0 = MAT_SPRT_AllSprt;
-    while (v0)
+    node = MAT_SPRT_AllSprt;
+    while (node)
     {
-        v1 = v0;
-        v2 = v0->elem;
-        v0 = v0->prev;
-        if (v2)
+        next = node->prev;
+        sprite = node->elem;
+        if (sprite)
         {
-            v3 = v2->bumpMapPtr;
-            if (v3)
-                MAT_BumpMap_Del(v3);
-            MEM_Free(v1->elem);
+            if (sprite->bumpMapPtr)
+                MAT_BumpMap_Del(sprite->bumpMapPtr);
+            MEM_Free(node->elem);
         }
-        MEM_Free(v1);
+        MEM_Free(node);
+        node = next;
     }
     MAT_SPRT_AllSprt = 0;
     MAT_BumpMap_Close(1);
 }
 
 // FIXME: sztem ezeknek nem sok értelme van, fõleg a bumpmapnek, mert csak az engine-ben maradt szemét
-int TEX_l_File_LoadSpriteGen(int a1, char* a2, tEngTexIntermediateStruct* a3, int a4)
+int TEX_l_File_LoadSpriteGen(int key, char* offset, tEngTexIntermediateStruct* tex, int size)
 {
-    a3->tp.matSpriteParams.matSprite = MAT_pst_SpriteGen_Load(a1, a2, a4);
+    tex->tp.matSpriteParams.matSprite = MAT_pst_SpriteGen_Load(key, offset, size);
     return 1;
 }
 
-int TEX_l_File_Read(int a1, tEngTexIntermediateStruct* a2)
+int TEX_l_File_Read(int key, tEngTexIntermediateStruct* tex)
 {
-    tEngTexIntermediateStruct* v2;
-    int16_t v3;
-    int v4;
-    int result;
-    char* v6;
+    int16_t flags;
+    int pos;
+    int ok;
+    char* data;
+    char* params;
     int texModifyNeeded;
-    uint8_t v8;
-    int v9;
-    int v10;
-    uint16_t v11;
-    uint16_t v12;
+    uint8_t type;
+    uint16_t w;
+    uint16_t h;
     int size;
-    char* v14;
 
-    v2 = a2;
-    v3 = a2->flags;
-    if ((a2->flags & 1) != 0)
+    flags = tex->flags;
+    if ((tex->flags & 1) != 0)
     {
-        memset(a2, 0, sizeof(tEngTexIntermediateStruct));
-        v2->flags = v3;
+        memset(tex, 0, sizeof(tEngTexIntermediateStruct));
+        tex->flags = flags;
     }
-    v4 = BIG_ul_SearchKeyToPos(a1);
-    if (v4 == -1)
+    pos = BIG_ul_SearchKeyToPos(key);
+    if (pos == -1)
         return 0;
-    v6 = BIG_pc_ReadFileTmp(v4, &size);
-    v14 = v6;
+    data = BIG_pc_ReadFileTmp(pos, &size);
+    params = data;
     if (!LOA_gb_SpeedMode || BIG_gi_ReadMode != 2)
-        v14 = &v6[size - 32];
-    v2->tp.uuuu = LOA_ReadLong(&v14, 0, 1);
-    v2->tp.flagsUnkAndProceduralUnkb1 = LOA_ReadShort(&v14, 0, 1);
-    v2->tp.type = LOA_ReadChar(&v14, 0, 1);
-    v2->tp.imageDataColorDepth = LOA_ReadChar(&v14, 0, 1);
-    v2->tp.imageDataWidth = LOA_ReadShort(&v14, 0, 1);
-    v2->tp.imageDataHeight = LOA_ReadShort(&v14, 0, 1);
-    v2->tp.unk = LOA_ReadLong(&v14, 0, 1);
-    v2->tp.magicParams.fontDescriptorKey = LOA_ReadLong(&v14, 0, 1);
-    v2->tp.magicParams.magic1 = LOA_ReadLong(&v14, 0, 1);
-    v2->tp.magicParams.magic2 = LOA_ReadLong(&v14, 0, 1);
-    v2->tp.magicParams.magic3 = LOA_ReadLong(&v14, 0, 1);
-    if (v6 && LOA_gb_SpeedMode && BIG_gi_ReadMode == 2)
-        v6 = v14;
-    if (TEX_b_File_CheckParams(&v2->tp))
+        params = &data[size - 32];
+    tex->tp.uuuu = LOA_ReadLong(&params, 0, 1);
+    tex->tp.flagsUnkAndProceduralUnkb1 = LOA_ReadShort(&params, 0, 1);
+    tex->tp.type = LOA_ReadChar(&params, 0, 1);
+    tex->tp.imageDataColorDepth = LOA_ReadChar(&params, 0, 1);
+    tex->tp.imageDataWidth = LOA_ReadShort(&params, 0, 1);
+    tex->tp.imageDataHeight = LOA_ReadShort(&params, 0, 1);
+    tex->tp.unk = LOA_ReadLong(&params, 0, 1);
+    tex->tp.magicParams.fontDescriptorKey = LOA_ReadLong(&params, 0, 1);
+    tex->tp.magicParams.magic1 = LOA_ReadLong(&params, 0, 1);
+    tex->tp.magicParams.magic2 = LOA_ReadLong(&params, 0, 1);
+    tex->tp.magicParams.magic3 = LOA_ReadLong(&params, 0, 1);
+    if (data && LOA_gb_SpeedMode && BIG_gi_ReadMode == 2)
+        data = params;
+    if (TEX_b_File_CheckParams(&tex->tp))
     {
-        v8 = v2->tp.type;
-        if (v8 == 4 || v8 == 5 || v8 == 9 || v8 == 7)
-            v2->flags &= ~4u;
+        type = tex->tp.type;
+        if (type == 4 || type == 5 || type == 9 || type == 7)
+            tex->flags &= ~4u;
         texModifyNeeded = 0;
     }
     else
     {
-        TEX_File_TransformParams(&v2->tp);
-        v2->flags &= ~4u;
+        TEX_File_TransformParams(&tex->tp);
+        tex->flags &= ~4u;
         texModifyNeeded = 1;
     }
-    if ((v2->flags & 1) != 0)
+    if ((tex->flags & 1) != 0)
     {
-        TEX_File_DevelopParams(v2);
-        if ((v2->flags & 4) != 0)
+        TEX_File_DevelopParams(tex);
+        if ((tex->flags & 4) != 0)
             return 1;
     }
-    switch (v2->tp.type)
+    switch (tex->tp.type)
     {
     case 1u:
-        v9 = TEX_l_File_LoadTga(v6, v2);
-        goto LABEL_27;
+        ok = TEX_l_File_LoadTga(data, tex);
+        break;
     case 2u:
-        v9 = TEX_l_File_LoadBmp((tTexWeirdBMPHeader*)v6, v2);
-        goto LABEL_27;
+        ok = TEX_l_File_LoadBmp((tTexWeirdBMPHeader*)data, tex);
+        break;
     case 3u:
-        v9 = TEX_l_File_LoadJpeg(v6, v2, size);
-        goto LABEL_27;
+        ok = TEX_l_File_LoadJpeg(data, tex, size);
+        break;
     case 4u:
-        v9 = TEX_l_File_LoadSpriteGen(a1, v6, v2, size - 32);
-        goto LABEL_27;
+        ok = TEX_l_File_LoadSpriteGen(key, data, tex, size - 32);
+        break;
     case 5u:
-        v9 = TEX_l_File_LoadProcedural(v6, v2, size - 32);
-        goto LABEL_27;
+        ok = TEX_l_File_LoadProcedural(data, tex, size - 32);
+        break;
     case 6u:
-        v9 = TEX_l_File_LoadRaw(v6, v2);
-        goto LABEL_27;
+        ok = TEX_l_File_LoadRaw(data, tex);
+        break;
     case 7u:
-        v9 = TEX_l_File_LoadRawPalette(v6, v2, size);
-        goto LABEL_27;
+        ok = TEX_l_File_LoadRawPalette(data, tex, size);
+        break;
     case 9u:
-        v9 = TEX_l_File_LoadAnimated(v6, v2, size - 32);
-    LABEL_27:
-        v10 = v9;
-        if (v9)
-        {
-            if ((v2->flags & 2) != 0 && (v2->tp.flagsUnkAndProceduralUnkb1 & 0x40) != 0)
-                STR_AddFont(a1, v2);
-            if (texModifyNeeded)
-            {
-                v11 = v2->realWidth;
-                v12 = v2->realHeight;
-                v2->tp.imageDataColorDepth = v2->colorDepth1 != 32 ? 32 : 16;
-                v2->tp.imageDataHeight = v12;
-                v2->tp.imageDataWidth = v11;
-            }
-        }
-        result = v10;
+        ok = TEX_l_File_LoadAnimated(data, tex, size - 32);
         break;
     default:
-        result = 0;
-        break;
+        return 0;
     }
-    return result;
-}
-
-int TEX_l_File_GetInfo(int a1, tEngTexIntermediateStruct* a2, int a3)
-{
-    int16_t v3;
-
-    v3 = a2->flags & ~2 | 1;
-    a2->flags = v3;
-    if (a3)
-        a2->flags = v3 | 4;
-    else
-        a2->flags = v3 & ~4;
-    return TEX_l_File_Read(a1, a2);
-}
-
-int TEX_l_File_GetContent(int a1, tEngTexIntermediateStruct* a2)
-{
-    a2->flags = a2->flags & ~5 | 2;
-    return TEX_l_File_Read(a1, a2);
-}
-
-void TEX_Expand_XBy2(int* a1, int* a2, int a3, int a4)
-{
-    int* v4; // ecx
-    int* i; // eax
-    int v6; // esi
-    int* v7; // ecx
-
-    v4 = &a2[2 * a4 * a3];
-    for (i = &a1[a4 * a3]; i > a1; *v4 = *i)
+    if (ok)
     {
-        v6 = *--i;
-        v7 = v4 - 1;
-        *v7 = v6;
-        v4 = v7 - 1;
+        if ((tex->flags & 2) != 0 && (tex->tp.flagsUnkAndProceduralUnkb1 & 0x40) != 0)
+            STR_AddFont(key, tex);
+        if (texModifyNeeded)
+        {
+            w = tex->realWidth;
+            h = tex->realHeight;
+            tex->tp.imageDataColorDepth = tex->colorDepth1 != 32 ? 32 : 16;
+            tex->tp.imageDataHeight = h;
+            tex->tp.imageDataWidth = w;
+        }
+    }
+    return ok;
+}
+
+int TEX_l_File_GetInfo(int key, tEngTexIntermediateStruct* tex, int paramsOnly)
+{
+    int16_t flags;
+
+    flags = tex->flags & ~2 | 1;
+    tex->flags = flags;
+    if (paramsOnly)
+        tex->flags = flags | 4;
+    else
+        tex->flags = flags & ~4;
+    return TEX_l_File_Read(key, tex);
+}
+
+int TEX_l_File_GetContent(int key, tEngTexIntermediateStruct* tex)
+{
+    tex->flags = tex->flags & ~5 | 2;
+    return TEX_l_File_Read(key, tex);
+}
+
+void TEX_Expand_XBy2(int* src, int* dest, int w, int h)
+{
+    int* in;
+    int* out;
+
+    out = &dest[2 * h * w];
+    for (in = &src[h * w]; in > src; )
+    {
+        --in;
+        out[-1] = *in;
+        out[-2] = *in;
+        out -= 2;
     }
 }
 
-void TEX_Compress8_Xo2(char* a1, char* a2, int a3, int a4)
+void TEX_Compress8_Xo2(char* src, char* dest, int w, int h)
 {
     unsigned int i;
 
-    for (i = (unsigned int)(a4 * a3) >> 1; i; --i)
+    for (i = (unsigned int)(h * w) >> 1; i; --i)
     {
-        *a2++ = *a1;
-        a1 += 2;
+        *dest++ = *src;
+        src += 2;
     }
 }
 
-void TEX_Compress8_Yo2(char* a1, char* a2, int a3, unsigned int a4)
+void TEX_Compress8_Yo2(char* src, char* dest, int w, unsigned int h)
 {
-    unsigned int v5;
-    int v7;
+    unsigned int y;
+    int x;
 
-    if (a4 >> 1)
+    for (y = h >> 1; y; --y)
     {
-        v5 = a4 >> 1;
-        do
-        {
-            if (a3)
-            {
-                v7 = a3;
-                do
-                {
-                    *a2++ = *a1++;
-                    --v7;
-                } while (v7);
-            }
-            a1 += a3;
-            --v5;
-        } while (v5);
+        for (x = w; x; --x)
+            *dest++ = *src++;
+        src += w;
     }
 }
 
-void TEX_Expand8_YBy2(char* a1, char* a2, int a3, int a4)
+void TEX_Expand8_YBy2(char* src, char* dest, int w, int h)
 {
-    int v4;
-    char* v5;
-    char* i;
-    char* v7;
-    int v8;
-    char v9;
+    char* in;
+    char* out;
+    int x;
+    int y;
 
-    v4 = a4;
-    v5 = &a2[2 * a4 * a3 - 1];
-    for (i = &a1[a4 * a3 - 1]; v4; --v4)
+    out = &dest[2 * h * w - 1];
+    in = &src[h * w - 1];
+    for (y = h; y; --y)
     {
-        if (a3)
+        for (x = w; x; --x)
         {
-            v7 = &v5[-a3];
-            v8 = a3;
-            do
-            {
-                *v5 = *i;
-                v9 = *i--;
-                --v5;
-                *v7-- = v9;
-                --v8;
-            } while (v8);
+            *out = *in;
+            out[-w] = *in;
+            --out;
+            --in;
         }
-        v5 -= a3;
+        out -= w;
     }
 }
 
-void TEX_Compress4_Xo2(char* a1, char* a2, int a3, int a4)
+void TEX_Compress4_Xo2(char* src, char* dest, int w, int h)
 {
     unsigned int i;
 
-    for (i = (unsigned int)(a4 * a3) >> 2; i; --i)
+    for (i = (unsigned int)(h * w) >> 2; i; --i)
     {
-        *a2++ = *a1 & 0xF0 | (a1[1] >> 4);
-        a1 += 2;
+        // preserved: the second nibble is shifted signed, so a high bit sets the whole top nibble
+        *dest++ = *src & 0xF0 | (src[1] >> 4);
+        src += 2;
     }
 }
 
-void TEX_Compress4_Yo2(char* a1, char* a2, unsigned int a3, unsigned int a4)
+void TEX_Compress4_Yo2(char* src, char* dest, unsigned int w, unsigned int h)
 {
-    unsigned int v4;
-    unsigned int v6;
-    unsigned int v8;
+    unsigned int y;
+    unsigned int x;
 
-    v4 = a3 >> 1;
-    if (a4 >> 1)
+    for (y = h >> 1; y; --y)
     {
-        v6 = a4 >> 1;
-        do
+        for (x = w >> 1; x; --x)
+            *dest++ = *src++;
+        src += w >> 1;
+    }
+}
+
+void TEX_Expand4_XBy2(char* src, char* dest, int w, int h)
+{
+    char* in;
+    char* out;
+
+    out = &dest[h * w];
+    // preserved: the first store lands one byte past the destination, so the whole
+    // walk is shifted by one and the first byte pair is never written
+    for (in = &src[((unsigned int)(h * w) >> 1) - 1]; in > src; --in)
+    {
+        out[0] = (16 * *in) | *in & 0xF;
+        out[-1] = ((uint8_t)*in >> 4) | *in & 0xF0;
+        out -= 2;
+    }
+}
+
+void TEX_Expand4_YBy2(char* src, char* dest, unsigned int w, int h)
+{
+    char* in;
+    char* out;
+    int stride;
+    unsigned int x;
+    int y;
+
+    stride = w >> 1;
+    out = &dest[h * w - 1];
+    in = &src[((h * w) >> 1) - 1];
+    for (y = h; y; --y)
+    {
+        for (x = w >> 1; x; --x)
         {
-            if (v4)
-            {
-                v8 = a3 >> 1;
-                do
-                {
-                    *a2++ = *a1++;
-                    --v8;
-                } while (v8);
-            }
-            a1 += v4;
-            --v6;
-        } while (v6);
-    }
-}
-
-void TEX_Expand4_XBy2(char* a1, char* a2, int a3, int a4)
-{
-    char* v4;
-    char* i; 
-    char* v6;
-
-    v4 = &a2[a4 * a3];
-    for (i = &a1[((unsigned int)(a4 * a3) >> 1) - 1]; i > a1; --i)
-    {
-        *v4 = (16 * *i) | *i & 0xF;
-        v6 = v4 - 1;
-        *v6 = ((uint8_t)*i >> 4) | *i & 0xF0;
-        v4 = v6 - 1;
-    }
-}
-
-void TEX_Expand4_YBy2(char* a1, char* a2, unsigned int a3, int a4)
-{
-    int v4;
-    char* v5;
-    int v6;
-    char* i;
-    char* v8;
-    unsigned int v9;
-    char v10;
-
-    v4 = a4;
-    v5 = &a2[a4 * a3 - 1];
-    v6 = a3 >> 1;
-    for (i = &a1[((a4 * a3) >> 1) - 1]; v4; --v4)
-    {
-        if (v6)
-        {
-            v8 = &v5[-v6];
-            v9 = a3 >> 1;
-            do
-            {
-                *v5 = *i;
-                v10 = *i--;
-                --v5;
-                *v8-- = v10;
-                --v9;
-            } while (v9);
+            *out = *in;
+            out[-stride] = *in;
+            --out;
+            --in;
         }
-        v5 -= v6;
+        out -= stride;
     }
 }
 
-void TEX_Expand24_XBy2(char* a1, char* a2, int a3, int a4)
+void TEX_Expand24_XBy2(char* src, char* dest, int w, int h)
 {
-    char* v4;
-    char* i;
-    char* v6;
-    char v7;
-    char* v8;
-    char v9;
-    char v10;
+    char* in;
+    char* out;
 
-    v4 = &a2[6 * a4 * a3];
-    for (i = &a1[2 * a4 * a3 - 1 + a4 * a3]; i > a1; *v4 = v10)
+    out = &dest[6 * h * w];
+    for (in = &src[3 * h * w - 1]; in > src; in -= 3)
     {
-        *(v4 - 1) = *i;
-        v6 = v4 - 1;
-        *(v6 - 1) = *(i - 1);
-        v6 -= 2;
-        *v6 = *(i - 2);
-        v7 = *i;
-        --v6;
-        v8 = i - 1;
-        *v6 = v7;
-        v9 = *v8;
-        --v6;
-        --v8;
-        *v6 = v9;
-        v10 = *v8;
-        v4 = v6 - 1;
-        i = v8 - 1;
+        out -= 6;
+        out[5] = in[0];
+        out[4] = in[-1];
+        out[3] = in[-2];
+        out[2] = in[0];
+        out[1] = in[-1];
+        out[0] = in[-2];
     }
 }
 
-void TEX_Expand24_YBy2(char* a1, char* a2, int a3, int a4)
+void TEX_Expand24_YBy2(char* src, char* dest, int w, int h)
 {
-    int v4;
-    int v5;
-    int v6;
-    char* v7;
-    char* i;
-    char* v9;
-    int v10;
-    char v11;
+    char* in;
+    char* out;
+    int stride;
+    int x;
+    int y;
 
-    v4 = a4;
-    v5 = 3 * a3;
-    v6 = a4 * 3 * a3;
-    v7 = &a2[2 * v6 - 1];
-    for (i = &a1[v6 - 1]; v4; --v4)
+    stride = 3 * w;
+    out = &dest[2 * h * stride - 1];
+    in = &src[h * stride - 1];
+    for (y = h; y; --y)
     {
-        if (v5)
+        for (x = stride; x; --x)
         {
-            v9 = &v7[-v5];
-            v10 = 3 * a3;
-            do
-            {
-                *v7 = *i;
-                v11 = *i--;
-                --v7;
-                *v9-- = v11;
-                --v10;
-            } while (v10);
+            *out = *in;
+            out[-stride] = *in;
+            --out;
+            --in;
         }
-        v7 -= v5;
+        out -= stride;
     }
 }
 
-int TEX_l_ConvertSizeFast(tEngTexIntermediateStruct* a1)
+int TEX_l_ConvertSizeFast(tEngTexIntermediateStruct* tex)
 {
-    unsigned int v1;
-    unsigned int v3;
-    unsigned int v4;
-    unsigned int v5;
-    unsigned int v6;
-    int v7;
-    char* v8;
-    char* v9;
-    uint8_t v10;
+    unsigned int w;
+    unsigned int h;
+    unsigned int destW;
+    unsigned int destH;
+    unsigned int destPixels;
+    char* src;
 
-    v1 = a1->realWidth;
-    if (TEX_ul_GetPower2Up(v1) != v1)
+    w = tex->realWidth;
+    if (TEX_ul_GetPower2Up(w) != w)
         return 0;
-    v3 = a1->realWidthResizeToThis;
-    if (TEX_ul_GetPower2Up(v3) != v3)
+    destW = tex->realWidthResizeToThis;
+    if (TEX_ul_GetPower2Up(destW) != destW)
         return 0;
-    v4 = a1->realHeight;
-    if (TEX_ul_GetPower2Up(v4) != v4)
+    h = tex->realHeight;
+    if (TEX_ul_GetPower2Up(h) != h)
         return 0;
-    v5 = a1->realHeightResizeToThis;
-    if (TEX_ul_GetPower2Up(v5) != v5)
+    destH = tex->realHeightResizeToThis;
+    if (TEX_ul_GetPower2Up(destH) != destH)
         return 0;
-    v6 = v3 * v5;
-    if (v6 <= a1->realWidth * v4)
+    destPixels = destW * destH;
+    if (destPixels <= tex->realWidth * h)
     {
-        v8 = 0;
+        src = 0;
     }
     else
     {
-        v7 = v6 * a1->colorDepth1;
-        v8 = a1->imgDataPtr;
-        v9 = (char*)MEM_p_AllocAligned(v7, 64);
-        a1->imgDataPtr = v9;
-        MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetAligned(v9); //MEM_GetBlockSizeBySize(*((void**)v9 - 1));
+        src = tex->imgDataPtr;
+        tex->imgDataPtr = TEX_l_AllocImgData(destPixels * tex->colorDepth1);
     }
-    v10 = a1->colorDepth1;
-    if (v10 != 24)
+    switch (tex->colorDepth1)
     {
-        switch (v10)
+    case 32u:
+        for (; tex->realWidth > tex->realWidthResizeToThis; tex->realWidth >>= 1)
         {
-        case 0x20u:
-            for (; a1->realWidth > a1->realWidthResizeToThis; a1->realWidth >>= 1)
-            {
-                if (v8)
-                {
-                    TEX_Compress_Xo2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;                    
-                }
-                else
-                {
-                    TEX_Compress_Xo2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            for (; a1->realHeight > a1->realHeightResizeToThis; a1->realHeight >>= 1)
-            {
-                if (v8)
-                {
-                    TEX_Compress_Yo2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Compress_Yo2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            for (; a1->realWidth < a1->realWidthResizeToThis; a1->realWidth *= 2)
-            {
-                if (v8)
-                {
-                    TEX_Expand_XBy2((int*)v8, (int *)a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Expand_XBy2((int *)a1->imgDataPtr, (int*)a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            if (a1->realHeight < a1->realHeightResizeToThis)
-            {
-                do
-                {
-                    if (v8)
-                    {
-                        TEX_Expand_YBy2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                        MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                        MEM_FreeAlign(v8);
-                        v8 = NULL;
-                    }
-                    else
-                    {
-                        TEX_Expand_YBy2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    }
-                    a1->realHeight *= 2;
-                } while (a1->realHeight < a1->realHeightResizeToThis);
-                return 1;
-            }
-            return 1;
-        case 8u:
-            for (; a1->realWidth > a1->realWidthResizeToThis; a1->realWidth >>= 1)
-            {
-                if (v8)
-                {
-                    TEX_Compress8_Xo2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Compress8_Xo2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            for (; a1->realHeight > a1->realHeightResizeToThis; a1->realHeight >>= 1)
-            {
-                if (v8)
-                {
-                    TEX_Compress8_Yo2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Compress8_Yo2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            for (; a1->realWidth < a1->realWidthResizeToThis; a1->realWidth *= 2)
-            {
-                if (v8)
-                {
-                    TEX_Expand8_XBy2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Expand8_XBy2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            if (a1->realHeight < a1->realHeightResizeToThis)
-            {
-                do
-                {
-                    if (v8)
-                    {
-                        TEX_Expand8_YBy2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                        MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                        MEM_FreeAlign(v8);
-                        v8 = NULL;
-                    }
-                    else
-                    {
-                        TEX_Expand8_YBy2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    }
-                    a1->realHeight *= 2;
-                } while (a1->realHeight < a1->realHeightResizeToThis);
-                return 1;
-            }
-            return 1;
-        case 4u:
-            for (; a1->realWidth > a1->realWidthResizeToThis; a1->realWidth >>= 1)
-            {
-                if (v8)
-                {
-                    TEX_Compress4_Xo2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Compress4_Xo2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            for (; a1->realHeight > a1->realHeightResizeToThis; a1->realHeight >>= 1)
-            {
-                if (v8)
-                {
-                    TEX_Compress4_Yo2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Compress4_Yo2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            for (; a1->realWidth < a1->realWidthResizeToThis; a1->realWidth *= 2)
-            {
-                if (v8)
-                {
-                    TEX_Expand4_XBy2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Expand4_XBy2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            for (; a1->realHeight < a1->realHeightResizeToThis; a1->realHeight *= 2)
-            {
-                if (v8)
-                {
-                    TEX_Expand4_YBy2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                    MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-                    MEM_FreeAlign(v8);
-                    v8 = NULL;
-                }
-                else
-                {
-                    TEX_Expand4_YBy2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-                }
-            }
-            return 1;
+            TEX_Compress_Xo2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
         }
-        return 0;
-    }
-    for (; a1->realWidth > a1->realWidthResizeToThis; a1->realWidth >>= 1)
-    {
-        if (v8)
+        for (; tex->realHeight > tex->realHeightResizeToThis; tex->realHeight >>= 1)
         {
-            TEX_Compress24_Xo2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-            MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-            MEM_FreeAlign(v8);
-            v8 = NULL;
+            TEX_Compress_Yo2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
         }
-        else
+        for (; tex->realWidth < tex->realWidthResizeToThis; tex->realWidth *= 2)
         {
-            TEX_Compress24_Xo2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
+            TEX_Expand_XBy2((int*)(src ? src : tex->imgDataPtr), (int*)tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
         }
-    }
-    for (; a1->realHeight > a1->realHeightResizeToThis; a1->realHeight >>= 1)
-    {
-        if (v8)
+        for (; tex->realHeight < tex->realHeightResizeToThis; tex->realHeight *= 2)
         {
-            TEX_Compress24_Yo2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-            MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-            MEM_FreeAlign(v8);
-            v8 = NULL;
+            TEX_Expand_YBy2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
         }
-        else
-        {
-            TEX_Compress24_Yo2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-        }
-    }
-    for (; a1->realWidth < a1->realWidthResizeToThis; a1->realWidth *= 2)
-    {
-        if (v8)
-        {
-            TEX_Expand24_XBy2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-            MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-            MEM_FreeAlign(v8);
-            v8 = NULL;
-        }
-        else
-        {
-            TEX_Expand24_XBy2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-        }
-    }
-    if (a1->realHeight >= a1->realHeightResizeToThis)
         return 1;
-    do
-    {
-        if (v8)
+    case 24u:
+        for (; tex->realWidth > tex->realWidthResizeToThis; tex->realWidth >>= 1)
         {
-            TEX_Expand24_YBy2(v8, a1->imgDataPtr, a1->realWidth, a1->realHeight);
-            MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(v8);
-            MEM_FreeAlign(v8);
-            v8 = NULL;
+            TEX_Compress24_Xo2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
         }
-        else
+        for (; tex->realHeight > tex->realHeightResizeToThis; tex->realHeight >>= 1)
         {
-            TEX_Expand24_YBy2(a1->imgDataPtr, a1->imgDataPtr, a1->realWidth, a1->realHeight);
+            TEX_Compress24_Yo2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
         }
-        a1->realHeight *= 2;
-    } while (a1->realHeight < a1->realHeightResizeToThis);
-    return 1;
+        for (; tex->realWidth < tex->realWidthResizeToThis; tex->realWidth *= 2)
+        {
+            TEX_Expand24_XBy2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        for (; tex->realHeight < tex->realHeightResizeToThis; tex->realHeight *= 2)
+        {
+            TEX_Expand24_YBy2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        return 1;
+    case 8u:
+        for (; tex->realWidth > tex->realWidthResizeToThis; tex->realWidth >>= 1)
+        {
+            TEX_Compress8_Xo2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        for (; tex->realHeight > tex->realHeightResizeToThis; tex->realHeight >>= 1)
+        {
+            TEX_Compress8_Yo2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        for (; tex->realWidth < tex->realWidthResizeToThis; tex->realWidth *= 2)
+        {
+            TEX_Expand8_XBy2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        for (; tex->realHeight < tex->realHeightResizeToThis; tex->realHeight *= 2)
+        {
+            TEX_Expand8_YBy2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        return 1;
+    case 4u:
+        for (; tex->realWidth > tex->realWidthResizeToThis; tex->realWidth >>= 1)
+        {
+            TEX_Compress4_Xo2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        for (; tex->realHeight > tex->realHeightResizeToThis; tex->realHeight >>= 1)
+        {
+            TEX_Compress4_Yo2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        for (; tex->realWidth < tex->realWidthResizeToThis; tex->realWidth *= 2)
+        {
+            TEX_Expand4_XBy2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        for (; tex->realHeight < tex->realHeightResizeToThis; tex->realHeight *= 2)
+        {
+            TEX_Expand4_YBy2(src ? src : tex->imgDataPtr, tex->imgDataPtr, tex->realWidth, tex->realHeight);
+            src = TEX_l_FreeScaleSrc(src);
+        }
+        return 1;
+    }
+    return 0;
 }
 
-void TEX_Convert_32SwapRB(int* a1, int a2)
+void TEX_Convert_32SwapRB(int* data, int num)
 {
     int i;
 
-    for (i = a2; i; --i)
+    for (i = num; i; --i)
     {
-        *a1 = *a1 & 0xFF00FF00 | *((uint8_t*)a1 + 2) | ((uint8_t)*a1 << 16);
-        ++a1;
+        *data = *data & 0xFF00FF00 | *((uint8_t*)data + 2) | ((uint8_t)*data << 16);
+        ++data;
     }
 }
 
-void TEX_Convert_24To32(char* a1, int a2)
+void TEX_Convert_24To32(char* data, int num)
 {
-    int v2;
-    char* v3;
-    int* i;
-    int v5;
-    int v6;
+    char* in;
+    int* out;
+    int i;
 
-    v2 = a2;
-    v3 = &a1[2 * a2 + a2];
-    for (i = (int*)&a1[4 * a2]; v2; *i = ((uint8_t)v3[2] + ((v6 + (v5 << 8)) << 8)) | 0xFF000000)
+    in = &data[3 * num];
+    out = (int*)&data[4 * num];
+    for (i = num; i; --i)
     {
-        v5 = (uint8_t)*(v3 - 3);
-        v6 = (uint8_t)*(v3 - 2);
-        v3 -= 3;
-        --i;
-        --v2;
+        in -= 3;
+        --out;
+        *out = (uint8_t)in[0] << 16 | (uint8_t)in[1] << 8 | (uint8_t)in[2] | 0xFF000000;
     }
 }
 
-void TEX_Convert_24To32SwapRB(char* a1, int a2)
+void TEX_Convert_24To32SwapRB(char* data, int num)
 {
-    int v2;
-    char* v3;
-    int* i;
-    int v5;
-    int v6;
+    char* in;
+    int* out;
+    int i;
 
-    v2 = a2;
-    v3 = &a1[2 * a2 + a2];
-    for (i = (int*)&a1[4 * a2]; v2; *i = ((uint8_t)*v3 + ((v6 + (v5 << 8)) << 8)) | 0xFF000000)
+    in = &data[3 * num];
+    out = (int*)&data[4 * num];
+    for (i = num; i; --i)
     {
-        v5 = (uint8_t)*(v3 - 1);
-        v6 = (uint8_t)*(v3 - 2);
-        v3 -= 3;
-        --i;
-        --v2;
+        in -= 3;
+        --out;
+        *out = (uint8_t)in[2] << 16 | (uint8_t)in[1] << 8 | (uint8_t)in[0] | 0xFF000000;
     }
 }
 
-int TEX_l_ConvertSize(tEngTexIntermediateStruct* a1, tEngTexIntermediateStruct* a2)
+int TEX_l_ConvertSize(tEngTexIntermediateStruct* src, tEngTexIntermediateStruct* dest)
 {
-    tEngTexIntermediateStruct* v2;
-    unsigned int v3;
-    unsigned int v4;
-    unsigned int* i;
-    int v6;
-    BOOL v7;
-    int v8;
-    unsigned int* v9;
-    unsigned int v10;
-    int v11;
-    unsigned int* v12;
-    unsigned int j;
-    int v14;
-    unsigned int v15;
-    unsigned int* v16;
-    uint8_t v17;
-    uint8_t v18;
-    unsigned int v19;
-    unsigned int v20;
-    int* v21;
-    int* v22;
-    unsigned int v23;
-    unsigned int v24;
-    unsigned int v25;
-    unsigned int v26;
-    int v27;
-    unsigned int v28;
-    char* v29;
-    int v30;
-    int v31;
-    unsigned int v32;
-    BOOL v33;
-    int* v35;
-    uint8_t v36;
-    uint8_t v37;
-    char v38;
-    char v39;
-    char v40;
-    char v41;
-    int v42;
-    int v43;
-    unsigned int v44;
-    unsigned int v45;
-    int* k;
-    int v47;
-    int v48;
-    char* v49;
-    uint32_t* v50;
-    unsigned int v51;
-    unsigned int v52;
-    unsigned int v53;
-    unsigned int v54;
-    unsigned int v55;
-    uint8_t v56;
-    int v57;
-    int v58;
-    uint32_t* Block;
-    int v60;
-    unsigned int v61;
-    unsigned int v62;
-    uint8_t v63;
-    uint8_t v64;
-    uint8_t v65;
-    unsigned int v66;
-    int v67;
-    unsigned int v68;
-    int v69;
-    char* v70;
-    int v71;
-    int v72;
-    int v73;
-    int v74;
-    unsigned int v75;
-    int v76;
-    int v77;
-    int v78;
-    int v79;
+    tTexScaleTap* cols;
+    tTexScaleTap* rows;
+    tTexScaleTap* col;
+    tTexScaleTap* row;
+    char* in;
+    char* out;
+    int srcBpp;
+    int destBpp;
+    int srcStride;
+    int xStep;
+    int yStep;
+    unsigned int norm;
+    unsigned int keep;
+    uint8_t srcAlphaShift;
+    uint8_t srcRedShift;
+    uint8_t srcGreenShift;
+    uint8_t srcBlueShift;
+    uint8_t destAlphaShift;
+    uint8_t destRedShift;
+    uint8_t destGreenShift;
+    uint8_t destBlueShift;
+    unsigned int alpha;
+    unsigned int red;
+    unsigned int green;
+    unsigned int blue;
+    unsigned int weight;
+    unsigned int rowWeight;
+    unsigned int pixel;
+    char* p;
+    unsigned int sx;
+    unsigned int sy;
+    int x;
+    int y;
 
-    v2 = a2;
-    Block = malloc(16 * a2->realWidth);
-    v50 = malloc(16 * a2->realHeight);
-    v3 = 0;
-    v4 = 0;
-    v44 = 0;
-    v42 = (a1->realWidth << 8) / a2->realWidth;
-    for (i = Block; v44 < a2->realWidth; ++v44)
+    cols = malloc(dest->realWidth * sizeof(tTexScaleTap));
+    rows = malloc(dest->realHeight * sizeof(tTexScaleTap));
+    xStep = TEX_l_BuildScaleTaps(cols, src->realWidth, dest->realWidth);
+    yStep = TEX_l_BuildScaleTaps(rows, src->realHeight, dest->realHeight);
+    norm = xStep * yStep;
+
+    srcAlphaShift = TEX_uc_GetMaskShift(src->alphaMask);
+    srcRedShift = TEX_uc_GetMaskShift(src->redMask);
+    srcGreenShift = TEX_uc_GetMaskShift(src->greenMask);
+    srcBlueShift = TEX_uc_GetMaskShift(src->blueMask);
+    destAlphaShift = TEX_uc_GetMaskShift(dest->alphaMask);
+    destRedShift = TEX_uc_GetMaskShift(dest->redMask);
+    destGreenShift = TEX_uc_GetMaskShift(dest->greenMask);
+    destBlueShift = TEX_uc_GetMaskShift(dest->blueMask);
+    // preserved: the bits kept from the destination pixel come from the channel
+    // shifts and not from the channel masks
+    keep = ~(destBlueShift | destGreenShift | destRedShift | destAlphaShift);
+
+    srcBpp = src->colorDepth1 >> 3;
+    destBpp = dest->colorDepth1 >> 3;
+    srcStride = srcBpp * src->realWidth;
+    in = src->imgDataPtr;
+    out = dest->imgDataPtr;
+
+    for (y = 0; y < dest->realHeight; y++)
     {
-        *i = v3;
-        v6 = 256 - (uint8_t)v4;
-        v4 += v42;
-        i[1] = v6;
-        v3 = v4 >> 8;
-        v7 = v4 >> 8 == *i;
-        i[2] = v4 >> 8;
-        if (v7)
-            i[1] += (uint8_t)v4 - 256;
-        else
-            i[3] = (uint8_t)v4;
-        i += 4;
-    }
-    v8 = a1->realWidth;
-    v9 = i - 4;
-    v9[3] = 255;
-    v9[2] = v8 - 1;
-    v10 = 0;
-    v47 = 0;
-    v11 = (a1->realHeight << 8) / a2->realHeight;
-    v12 = v50;
-    if (a2->realHeight)
-    {
-        for (j = 0; ; j = v10 >> 8)
+        row = &rows[y];
+        for (x = 0; x < dest->realWidth; x++)
         {
-            *v12 = j;
-            v14 = (uint8_t)v10;
-            v10 += v11;
-            v12[1] = 256 - v14;
-            v15 = *v12;
-            v12[2] = v10 >> 8;
-            if (v10 >> 8 == v15)
-                v12[1] += (uint8_t)v10 - 256;
-            else
-                v12[3] = (uint8_t)v10;
-            v12 += 4;
-            if (++v47 >= a2->realHeight)
-                break;
+            col = &cols[x];
+            alpha = 0;
+            red = 0;
+            green = 0;
+            blue = 0;
+            for (sy = row->first; sy <= row->last; sy++)
+            {
+                rowWeight = TEX_l_TapWeight(row, sy);
+                p = &in[sy * srcStride + col->first * srcBpp];
+                for (sx = col->first; sx <= col->last; sx++)
+                {
+                    weight = rowWeight * TEX_l_TapWeight(col, sx);
+                    pixel = *(uint32_t*)p;
+                    alpha += weight * ((src->alphaMask & pixel) >> srcAlphaShift);
+                    red += weight * ((src->redMask & pixel) >> srcRedShift);
+                    green += weight * ((src->greenMask & pixel) >> srcGreenShift);
+                    blue += weight * ((src->blueMask & pixel) >> srcBlueShift);
+                    p += srcBpp;
+                }
+            }
+            *(uint32_t*)out = keep & *(uint32_t*)out
+                | dest->blueMask & ((blue / norm) << destBlueShift)
+                | dest->greenMask & ((green / norm) << destGreenShift)
+                | dest->redMask & ((red / norm) << destRedShift)
+                | dest->alphaMask & ((alpha / norm) << destAlphaShift);
+            out += destBpp;
         }
     }
-    v16 = v12 - 4;
-    v16[2] = a1->realHeight - 1;
-    v16[3] = 255;
-    v71 = a1->alphaMask;
-    v38 = TEX_uc_GetMaskShift(v71);
-    v72 = a1->redMask;
-    v39 = TEX_uc_GetMaskShift(v72);
-    v73 = a1->greenMask;
-    v40 = TEX_uc_GetMaskShift(v73);
-    v74 = a1->blueMask;
-    v41 = TEX_uc_GetMaskShift(v74);
-    v76 = a2->alphaMask;
-    v17 = TEX_uc_GetMaskShift(v76);
-    v77 = a2->redMask;
-    v36 = TEX_uc_GetMaskShift(v77);
-    v78 = a2->greenMask;
-    v37 = TEX_uc_GetMaskShift(v78);
-    v79 = a2->blueMask;
-    v18 = TEX_uc_GetMaskShift(v79);
-    v19 = v42 * v11;
-    v56 = v36;
-    v63 = v17;
-    v67 = ~(v18 | v37 | v36 | v17);
-    v65 = v18;
-    v69 = a2->colorDepth1 >> 3;
-    v49 = a2->imgDataPtr;
-    v70 = a1->imgDataPtr;
-    v64 = v37;
-    v75 = v19;
-    v57 = a1->colorDepth1 >> 3;
-    v60 = v57 * a1->realWidth;
-    v48 = 0;
-    if (a2->realHeight)
-    {
-        v20 = a2->realWidth;
-        v21 = v50 + 1;
-        v35 = v50 + 1;
-        do
-        {
-            v45 = 0;
-            if (v20)
-            {
-                v22 = Block + 1;
-                for (k = Block + 1; ; v22 = k)
-                {
-                    v23 = *(v21 - 1);
-                    v54 = 0;
-                    v53 = 0;
-                    v52 = 0;
-                    v51 = 0;
-                    v24 = v21[1];
-                    v25 = v23;
-                    v62 = v23;
-                    v61 = v23;
-                    v68 = v24;
-                    if (v23 <= v24)
-                    {
-                        v55 = *(v22 - 1);
-                        v26 = v22[1];
-                        v27 = v23 * v60;
-                        v66 = v26;
-                        v58 = v23 * v60;
-                        while (1)
-                        {
-                            if (v25 == v23)
-                            {
-                                v43 = *v21;
-                            }
-                            else if (v25 == v24)
-                            {
-                                v43 = v21[2];
-                            }
-                            else
-                            {
-                                v43 = 256;
-                            }
-                            v28 = v55;
-                            if (v55 <= v26)
-                            {
-                                v29 = &v70[v27 + v55 * v57];
-                                do
-                                {
-                                    if (v28 == v55)
-                                    {
-                                        v30 = *k;
-                                    }
-                                    else if (v28 == v26)
-                                    {
-                                        v30 = k[2];
-                                    }
-                                    else
-                                    {
-                                        v30 = 256;
-                                    }
-                                    v31 = v43 * v30;
-                                    v51 += v31 * (((unsigned int)v71 & *(uint32_t*)v29) >> v38);
-                                    v52 += v31 * (((unsigned int)v72 & *(uint32_t*)v29) >> v39);
-                                    v53 += v31 * (((unsigned int)v73 & *(uint32_t*)v29) >> v40);
-                                    v32 = v31 * (((unsigned int)v74 & *(uint32_t*)v29) >> v41);
-                                    v26 = v66;
-                                    ++v28;
-                                    v29 += v57;
-                                    v54 += v32;
-                                } while (v28 <= v66);
-                                v25 = v61;
-                                v19 = v75;
-                                v24 = v68;
-                                v27 = v58;
-                                v21 = v35;
-                            }
-                            ++v25;
-                            v27 += v60;
-                            v61 = v25;
-                            v58 = v27;
-                            if (v25 > v24)
-                                break;
-                            v23 = v62;
-                        }
-                    }
-                    v21 = v35;
-                    *(unsigned int*)v49 = v67 & *(unsigned int*)v49 | v79 & ((v54 / v19) << v65) | v78 & ((v53 / v19) << v64) | v77 & ((v52 / v19) << v56) | v76 & ((v51 / v19) << v63);
-                    v49 += v69;
-                    v20 = a2->realWidth;
-                    ++v45;
-                    k += 4;
-                    if (v45 >= v20)
-                        break;
-                }
-                v2 = a2;
-            }
-            v21 += 4;
-            v33 = ++v48 < v2->realHeight;
-            v35 = v21;
-        } while (v33);
-    }
-    free(Block);
-    free(v50);
+    free(cols);
+    free(rows);
     return 1;
 }
 
-void TEX_Hardware_Load(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* a2, int idx)
+void TEX_Hardware_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* tex, int idx)
 {
-    char* v4;
-    tGdi_DisplayData* v5;
-    int16_t v6;
-    int v7;
-    char* v8;
-    int v9;
-    unsigned int v10;
-    tEngTexIntermediateStruct v11;
+    int16_t bmpFlags;
+    int bytes;
+    int pixels;
+    tEngTexIntermediateStruct resized;
 
-    if ((a2->flags & 0x20) == 0)
+    if ((tex->flags & 0x20) == 0)
     {
-        v6 = a2->bmpUnkb1;
-        if ((v6 & 0x20) != 0)
+        bmpFlags = tex->bmpUnkb1;
+        if ((bmpFlags & 0x20) != 0)
         {
-            tle->texElemFlag = v6;
-            tle->imgLink.ptr = a2->imgDataPtr;
+            tle->texElemFlag = bmpFlags;
+            tle->imgLink.ptr = tex->imgDataPtr;
             return;
         }
         GDI_f_Delay_AttachWorld_TextureCreate_GetContent = GDI_f_Delay_AttachWorld_TextureCreate_GetContent - TIM_f_Clock_TrueRead();
-        if (a2->tp.type != 7 && !TEX_l_File_GetContent(tle->texKey, a2))
+        if (tex->tp.type != 7 && !TEX_l_File_GetContent(tle->texKey, tex))
         {
             GDI_f_Delay_AttachWorld_TextureCreate_GetContent = TIM_f_Clock_TrueRead()
                 + GDI_f_Delay_AttachWorld_TextureCreate_GetContent;
@@ -2729,67 +2119,59 @@ void TEX_Hardware_Load(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct
         GDI_f_Delay_AttachWorld_TextureCreate_GetContent = TIM_f_Clock_TrueRead()
             + GDI_f_Delay_AttachWorld_TextureCreate_GetContent;
         GDI_f_Delay_AttachWorld_TextureCreate_Compress = GDI_f_Delay_AttachWorld_TextureCreate_Compress - TIM_f_Clock_TrueRead();
-        if (a2->realWidth != a2->realWidthResizeToThis || a2->realHeightResizeToThis != a2->realHeight)
+        if (tex->realWidth != tex->realWidthResizeToThis || tex->realHeightResizeToThis != tex->realHeight)
         {
-            v5 = a1;
-            if ((a1->texManager.flags & 4) != 0 && TEX_l_ConvertSizeFast(a2))
+            if ((dd->texManager.flags & 4) == 0 || !TEX_l_ConvertSizeFast(tex))
             {
-            LABEL_14:
-                GDI_f_Delay_AttachWorld_TextureCreate_Compress = TIM_f_Clock_TrueRead()
-                    + GDI_f_Delay_AttachWorld_TextureCreate_Compress;
-                if (a2->colorDepth1 == a2->colorDepth2)
-                {
-                    GDI_f_Delay_AttachWorld_TextureCreate_Convert32Colors = GDI_f_Delay_AttachWorld_TextureCreate_Convert32Colors - TIM_f_Clock_TrueRead();
-                    if ((v5->texManager.flags & 0x100000) != 0 && a2->colorDepth1 == 32)
-                        TEX_Convert_32SwapRB((int*)a2->imgDataPtr, a2->realWidth * a2->realHeight);
-                    GDI_f_Delay_AttachWorld_TextureCreate_Convert32Colors = TIM_f_Clock_TrueRead() + GDI_f_Delay_AttachWorld_TextureCreate_Convert32Colors;
-                }
-                else
-                {
-                    v9 = a2->realWidth * a2->realHeight;
-                    GDI_f_Delay_AttachWorld_TextureCreate_Convert24To32 = GDI_f_Delay_AttachWorld_TextureCreate_Convert24To32 - TIM_f_Clock_TrueRead();
-                    if (a2->colorDepth1 == 24 && a2->colorDepth2 == 32)
-                    {
-                        if ((v5->texManager.flags & 0x100000) != 0)
-                            TEX_Convert_24To32(a2->imgDataPtr, v9);
-                        else
-                            TEX_Convert_24To32SwapRB(a2->imgDataPtr, v9);
-                    }
-                    GDI_f_Delay_AttachWorld_TextureCreate_Convert24To32 = TIM_f_Clock_TrueRead() + GDI_f_Delay_AttachWorld_TextureCreate_Convert24To32;
-                }
-                goto LABEL_25;
+                bytes = (tex->realWidthResizeToThis * tex->realHeightResizeToThis * (unsigned int)tex->colorDepth2) >> 3;
+                memcpy(&resized, tex, sizeof(resized));
+                resized.realWidth = resized.realWidthResizeToThis;
+                resized.realHeight = resized.realHeightResizeToThis;
+                resized.imgDataPtr = TEX_l_AllocImgData(bytes);
+                memset(resized.imgDataPtr, 0, bytes);
+                TEX_l_ConvertSize(tex, &resized);
+                TEX_File_FreeDescription(tex);
+                memcpy(tex, &resized, sizeof(tEngTexIntermediateStruct));
             }
-            v7 = (a2->realWidthResizeToThis * a2->realHeightResizeToThis * (unsigned int)a2->colorDepth2) >> 3;
-            memcpy(&v11, a2, sizeof(v11));
-            v10 = v7;
-            v11.realWidth = v11.realWidthResizeToThis;
-            v11.realHeight = v11.realHeightResizeToThis;
-            v8 = (char*)MEM_p_AllocAligned(v7, 64);
-            v11.imgDataPtr = v8;
-            MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetAligned(v8); 
-            memset(v8, 0, v10);
-            TEX_l_ConvertSize(a2, &v11);
-            TEX_File_FreeDescription(a2);
-            memcpy(a2, &v11, sizeof(tEngTexIntermediateStruct));
         }
-        v5 = a1;
-        goto LABEL_14;
+        GDI_f_Delay_AttachWorld_TextureCreate_Compress = TIM_f_Clock_TrueRead()
+            + GDI_f_Delay_AttachWorld_TextureCreate_Compress;
+        if (tex->colorDepth1 == tex->colorDepth2)
+        {
+            GDI_f_Delay_AttachWorld_TextureCreate_Convert32Colors = GDI_f_Delay_AttachWorld_TextureCreate_Convert32Colors - TIM_f_Clock_TrueRead();
+            if ((dd->texManager.flags & 0x100000) != 0 && tex->colorDepth1 == 32)
+                TEX_Convert_32SwapRB((int*)tex->imgDataPtr, tex->realWidth * tex->realHeight);
+            GDI_f_Delay_AttachWorld_TextureCreate_Convert32Colors = TIM_f_Clock_TrueRead() + GDI_f_Delay_AttachWorld_TextureCreate_Convert32Colors;
+        }
+        else
+        {
+            pixels = tex->realWidth * tex->realHeight;
+            GDI_f_Delay_AttachWorld_TextureCreate_Convert24To32 = GDI_f_Delay_AttachWorld_TextureCreate_Convert24To32 - TIM_f_Clock_TrueRead();
+            if (tex->colorDepth1 == 24 && tex->colorDepth2 == 32)
+            {
+                if ((dd->texManager.flags & 0x100000) != 0)
+                    TEX_Convert_24To32(tex->imgDataPtr, pixels);
+                else
+                    TEX_Convert_24To32SwapRB(tex->imgDataPtr, pixels);
+            }
+            GDI_f_Delay_AttachWorld_TextureCreate_Convert24To32 = TIM_f_Clock_TrueRead() + GDI_f_Delay_AttachWorld_TextureCreate_Convert24To32;
+        }
     }
-    v4 = (char*)MEM_p_AllocAligned((a2->realWidthResizeToThis * a2->realHeightResizeToThis * (unsigned int)a2->colorDepth2) >> 3, 64);
-    a2->imgDataPtr = v4;
-    v5 = a1;
-    MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetAligned(v4);
-LABEL_25:
-    tle->normalData.height = a2->realWidthResizeToThis;
-    tle->normalData.width = a2->realHeightResizeToThis;
-    if ((v5->texManager.flags & 8) == 0)
-        a2->tp.flagsUnkAndProceduralUnkb1 &= ~0x8;
-    if ((a2->tp.flagsUnkAndProceduralUnkb1 & 0x200) == 0
-        || (v5->texManager.flags & 0x200000) == 0
-        || !v5->SetTexturePalette(v5, tle, a2, idx))
+    else
     {
-        v5->PaletteLoad(v5, tle, a2, idx);
-        TEX_File_FreeDescription(a2);
+        tex->imgDataPtr = TEX_l_AllocImgData((tex->realWidthResizeToThis * tex->realHeightResizeToThis * (unsigned int)tex->colorDepth2) >> 3);
+    }
+    // preserved: the width is taken from the resized height and the height from the resized width
+    tle->normalData.height = tex->realWidthResizeToThis;
+    tle->normalData.width = tex->realHeightResizeToThis;
+    if ((dd->texManager.flags & 8) == 0)
+        tex->tp.flagsUnkAndProceduralUnkb1 &= ~0x8;
+    if ((tex->tp.flagsUnkAndProceduralUnkb1 & 0x200) == 0
+        || (dd->texManager.flags & 0x200000) == 0
+        || !dd->SetTexturePalette(dd, tle, tex, idx))
+    {
+        dd->PaletteLoad(dd, tle, tex, idx);
+        TEX_File_FreeDescription(tex);
     }
 }
 
@@ -2801,8 +2183,8 @@ void TEX_Convert_4To32SwapRB(int* dest, unsigned char* src, int* paletteData, in
 
     for (i = num; i; i -= 2)
     {
-        dest[0] = paletteData[(uint8_t)*src >> 4] & 0xFF00FF00 | ((uint8_t)paletteData[(uint8_t)*src >> 4] << 16) | (uint8_t)((paletteData[(uint8_t)*src >> 4]) >> 16);
-        dest[1] = paletteData[*src & 0xF] & 0xFF00FF00 | ((uint8_t)paletteData[*src & 0xF] << 16) | (uint8_t)((paletteData[*src & 0xF]) >> 16);
+        dest[0] = TEX_l_SwapRB(paletteData[(uint8_t)*src >> 4]);
+        dest[1] = TEX_l_SwapRB(paletteData[*src & 0xF]);
         dest += 2;
         ++src;
     }
@@ -2817,7 +2199,7 @@ void TEX_Convert_8To32SwapRB(int* dest, unsigned char* src, int* paletteData, in
 
     for (i = num; i; --i)
     {
-        *dest = paletteData[(uint8_t)*src] & 0xFF00FF00 | ((uint8_t)paletteData[(uint8_t)*src] << 16) | (uint8_t)((paletteData[(uint8_t)*src]) >> 16);
+        *dest = TEX_l_SwapRB(paletteData[(uint8_t)*src]);
         ++src;
         ++dest;
     }
@@ -2841,18 +2223,18 @@ void TEX_Convert_8To32(int* dest, unsigned char* src, int* paletteData, int num)
     int i;
 
     if (!paletteData) return;
- 
+
     for (i = num; i; --i)
         *dest++ = paletteData[*src++];
 
 }
 
 int TEX_l_MemoryNeeded(tEngTexIntermediateStruct* texIM)
-{    
+{
     int i, tmp, ret;
 
     ret = (texIM->realHeightResizeToThis * texIM->realWidthResizeToThis * texIM->colorDepth2) / 8;
-   
+
     if ((texIM->tp.flagsUnkAndProceduralUnkb1 & 8) != 0)
     {
         tmp = (texIM->realHeightResizeToThis * texIM->realWidthResizeToThis * texIM->colorDepth2) / 8;
@@ -2903,263 +2285,190 @@ BOOL TEX_l_DimensionIsGood(tEngTexIntermediateStruct* texIM, int minSize, int ma
     return texIM->realHeight == texIMRet->realHeight && texIM->realWidth == texIMRet->realWidth;
 }
 
-void TEX_Manager_ComputeCompression(struct sTexManagerStruct* a1, struct sEngTexIntermediateStruct* tims, int timsIdx, char a4)
+void TEX_Manager_ComputeCompression(struct sTexManagerStruct* mgr, struct sEngTexIntermediateStruct* tims, int timsIdx, char paletted)
 {
-    tEngTexIntermediateStruct* v4;
-    int* v5;
-    int* v6;
-    int v7;
-    tEngTexIntermediateStruct* v8;
-    unsigned int v9;
-    int v10;
-    uint16_t v11;
-    uint8_t v12;
-    uint16_t v13;
-    uint8_t v14;
-    int v15;
-    int v16;
-    tEngTexIntermediateStruct* v17;
-    int v18;
-    uint16_t v19;
-    uint16_t v20;
-    uint16_t v21;
-    int v22;
-    int* v23;
-    int v24;
-    int* v25;
-    int v26;
-    unsigned int v27;
-    tEngTexIntermediateStruct v28;
+    tEngTexIntermediateStruct* end;
+    tEngTexIntermediateStruct* tim;
+    int* backup;
+    int* budget;
+    int* uncompressed;
+    int onlySquare;
+    int isPaletted;
+    int classIdx;
+    int texClass;
+    int limit;
+    int mark;
+    uint16_t w;
+    uint16_t h;
+    tEngTexIntermediateStruct wanted;
 
-    v4 = &tims[timsIdx];
-    if (a4)
+    end = &tims[timsIdx];
+    if (paletted)
     {
-        v23 = &a1->texMemoryNeededUncompressedCase1;
-        v5 = &a1->texMemoryNeededCompressedCase1Backup;
-        v6 = &a1->texMemoryNeededCompressedCase1;
+        uncompressed = &mgr->texMemoryNeededUncompressedCase1;
+        backup = &mgr->texMemoryNeededCompressedCase1Backup;
+        budget = &mgr->texMemoryNeededCompressedCase1;
     }
     else
     {
-        v23 = &a1->texMemoryNeededUncompressedCase2;
-        v5 = &a1->texMemoryNeededCompressedCase2Backup;
-        v6 = &a1->texMemoryNeededCompressedCase2;
+        uncompressed = &mgr->texMemoryNeededUncompressedCase2;
+        backup = &mgr->texMemoryNeededCompressedCase2Backup;
+        budget = &mgr->texMemoryNeededCompressedCase2;
     }
-    v25 = v5;
-    v7 = a1->flags & 1;
-    *v23 = 0;
-    if (tims < v4)
+    onlySquare = mgr->flags & 1;
+    *uncompressed = 0;
+    for (tim = tims; tim < end; tim++) // ezzel kezdeni vmit, todo
     {
-        v8 = tims;
-        v9 = (sizeof(tEngTexIntermediateStruct) * timsIdx - 1) / sizeof(tEngTexIntermediateStruct) + 1; // ezzel kezdeni vmit, todo
-        v27 = v9;
-        do
+        if ((tim->flags & 0x10) != 0)
+            continue;
+        isPaletted = (tim->tp.flagsUnkAndProceduralUnkb1 & 0x200) != 0 && (mgr->flags & 0x200000) != 0;
+        if (isPaletted != paletted)
+            continue;
+        tim->realHeightResizeToThis = tim->realHeight;
+        tim->realWidthResizeToThis = tim->realWidth;
+        tim->colorDepth2 = tim->colorDepth1;
+        if (!TEX_l_DimensionIsGood(tim, mgr->i3, mgr->i2, onlySquare, &wanted))
         {
-            if ((v8->flags & 0x10) == 0)
+            tim->realHeightResizeToThis = wanted.realHeight;
+            tim->realWidthResizeToThis = wanted.realWidth;
+        }
+        if (tim->colorDepth1 == 24 && (mgr->flags & 0x200) == 0
+            || tim->colorDepth1 == 16 && (mgr->flags & 0x400) == 0
+            || (tim->colorDepth1 == 8 || tim->colorDepth1 == 4) && tim->tp.type == 7)
+        {
+            tim->colorDepth2 = 32;
+        }
+        *uncompressed += TEX_l_MemoryNeeded(tim);
+    }
+    *budget = *backup - *uncompressed;
+    if (*budget >= 0)
+        return;
+
+    classIdx = 0;
+    mark = *budget;
+    while (1)
+    {
+        texClass = al_QualityCompressionOrder[classIdx];
+        for (tim = tims; tim < end; tim++)
+        {
+            if ((tim->flags & 0x10) != 0 || (tim->tp.flagsUnkAndProceduralUnkb1 & 7) != texClass)
+                continue;
+            limit = al_QualityCompressionLimit[texClass];
+            if (tim->realHeightResizeToThis <= limit && tim->realWidthResizeToThis <= limit)
+                continue;
+
+            *budget += TEX_l_MemoryNeeded(tim);
+            h = tim->realHeightResizeToThis;
+            w = tim->realWidthResizeToThis;
+            if (h > w)
             {
-                v10 = (v8->tp.flagsUnkAndProceduralUnkb1 & 0x200) != 0 && (a1->flags & 0x200000) != 0;
-                if (v10 == a4)
-                {
-                    v11 = v8->realWidth;
-                    v12 = v8->colorDepth1;
-                    v8->realHeightResizeToThis = v8->realHeight;
-                    v8->realWidthResizeToThis = v11;
-                    v8->colorDepth2 = v12;
-                    if (!TEX_l_DimensionIsGood(v8, a1->i3, a1->i2, v7, &v28))
-                    {
-                        v13 = v28.realWidth;
-                        v8->realHeightResizeToThis = v28.realHeight;
-                        v8->realWidthResizeToThis = v13;
-                    }
-                    v14 = v8->colorDepth1;
-                    if (v14 == 24 && (a1->flags & 0x200) == 0
-                        || v14 == 16 && (a1->flags & 0x400) == 0
-                        || (v14 == 8 || v14 == 4) && v8->tp.type == 7)
-                    {
-                        v8->colorDepth2 = 32;
-                    }
-                    *v23 += TEX_l_MemoryNeeded(v8);
-                    v9 = v27;
-                }
-                v4 = &tims[timsIdx];
+                tim->realHeightResizeToThis = h >> 1;
             }
-            v8++;
-            v27 = --v9;
-        } while (v9);
-    }
-    v15 = *v25 - *v23;
-    *v6 = v15;
-    v24 = 0;
-    v26 = v15;
-    if (v15 < 0)
-    {
-        while (1)
-        {
-            v16 = al_QualityCompressionOrder[v24];
-            if (tims < v4)
+            else if (h == w)
+            {
+                tim->realHeightResizeToThis = h >> 1;
+                tim->realWidthResizeToThis = w >> 1;
+            }
+            else
+            {
+                tim->realWidthResizeToThis = w >> 1;
+            }
+            *budget -= TEX_l_MemoryNeeded(tim);
+            if (*budget > 0)
                 break;
-        LABEL_40:
-            if (++v24 == 21)
-            {
-                v24 = 0;
-                if (*v6 == v26)
-                    return;
-                v26 = *v6;
-            }
-            if (*v6 >= 0)
+        }
+        if (++classIdx == 21)
+        {
+            classIdx = 0;
+            if (*budget == mark)
                 return;
+            mark = *budget;
         }
-        v17 = tims;
-        while (1)
-        {
-            if ((v17->flags & 0x10) == 0 && (v17->tp.flagsUnkAndProceduralUnkb1 & 7) == v16)
-            {
-                v18 = al_QualityCompressionLimit[v16];
-                if (v17->realHeightResizeToThis > v18 || v17->realWidthResizeToThis > v18)
-                    break;
-            }
-        LABEL_39:
-            v17++;
-            if (v17 >= v4)
-                goto LABEL_40;
-        }
-        *v6 += TEX_l_MemoryNeeded(v17);
-        v19 = v17->realHeightResizeToThis;
-        v20 = v17->realWidthResizeToThis;
-        if (v19 >= v17->realWidthResizeToThis)
-        {
-            if (v19 > v17->realWidthResizeToThis)
-            {
-                v17->realHeightResizeToThis = v19 >> 1;
-                goto LABEL_38;
-            }
-            v21 = v20 >> 1;
-            v17->realHeightResizeToThis = v19 >> 1;
-        }
-        else
-        {
-            v21 = v20 >> 1;
-        }
-        v17->realWidthResizeToThis = v21;
-    LABEL_38:
-        v22 = *v6 - TEX_l_MemoryNeeded(v17);
-        *v6 = v22;
-        v4 = &tims[timsIdx];
-        if (v22 > 0)
-            goto LABEL_40;
-        goto LABEL_39;
+        if (*budget >= 0)
+            return;
     }
 }
 
-int16_t TEX_w_List_AddPalette(tEngTexListStruct* a1, int key)
+int16_t TEX_w_List_AddPalette(tEngTexListStruct* list, int key)
 {
     int16_t result;
-    int v3;
-    tEngPaletteElem* v4;
-    int v5;
-    int v6;
-    int v7;
-    tEngPaletteElem* v8;
-    unsigned int v9;
-    tEngPaletteElem* v10;
-    int v11;
-    tEngPaletteElem* v12;
-    tEngPaletteElem* v13;
+    int num;
+    tEngPaletteElem* pal;
 
     if (key == -1)
         return -1;
-    v3 = a1->paletteNum;
-    if (v3)
+    num = list->paletteNum;
+    if (num)
     {
-        v4 = TEX_pst_List_FindPalette(a1, key);
-        if (v4)
-            return v4->paletteID;
+        pal = TEX_pst_List_FindPalette(list, key);
+        if (pal)
+            return pal->paletteID;
     }
-    v5 = a1->unk1;
-    if (v3 == v5)
+    if (num == list->unk1)
     {
-        v6 = v5 + 256;
-        v7 = sizeof(tEngPaletteElem) * v6;
-        a1->unk1 = v6;
-        if (v6 == 256)
-        {
-            v8 = (tEngPaletteElem*)MEM_p_AllocAligned(v7, 64);
-            a1->palettes = v8;
-            v9 = MEM_MemBlockSizeGetAligned(v8) + MEM_gst_MemoryInfo.usedMemoryByTextures;
-        }
-        else
-        {
-            MEM_gst_MemoryInfo.usedMemoryByTextures -= MEM_MemBlockSizeGetAligned(a1->palettes);
-            v10 = (tEngPaletteElem*)MEM_p_ReallocAligned(a1->palettes, v7, 64);
-            a1->palettes = v10;
-            v9 = MEM_MemBlockSizeGetAligned(v10) + MEM_gst_MemoryInfo.usedMemoryByTextures;
-        }
-        MEM_gst_MemoryInfo.usedMemoryByTextures = v9;
+        list->unk1 += 256;
+        list->palettes = (tEngPaletteElem*)TEX_l_GrowAlignedList(list->palettes, list->unk1,
+            sizeof(tEngPaletteElem) * list->unk1);
     }
-    v11 = a1->paletteNum;
-    v12 = a1->palettes;
-    a1->paletteNum = v11 + 1;
-    v13 = &v12[v11];
-    v13->key = 0;
-    v13->paletteData = 0;
-    v13->flags = 0;
-    v13->b1 = 0;
-    v13->paletteID = 0;
-    v13->key = key;
-    result = (a1->paletteNum & 0xffff) - 1;
-    v13->paletteID = result;
+    pal = &list->palettes[list->paletteNum++];
+    pal->key = 0;
+    pal->paletteData = 0;
+    pal->flags = 0;
+    pal->b1 = 0;
+    pal->paletteID = 0;
+    pal->key = key;
+    result = (list->paletteNum & 0xffff) - 1;
+    pal->paletteID = result;
     return result;
 }
 
-int16_t TEX_w_Manager_ChooseGoodInTex(struct sTexManagerStruct* a1, struct sEngTexIntermediateStruct* tims)
+int16_t TEX_w_Manager_ChooseGoodInTex(struct sTexManagerStruct* mgr, struct sEngTexIntermediateStruct* tims)
 {
-    int i; 
+    int i;
     int flagsHas0x7000;
-    int v4;
+    int slot;
     int16_t result;
-    tEngTexIntermediateStruct* v6;
-    BOOL v7;
     int* paletteID;
 
     i = 0;
-    flagsHas0x7000 = a1->flags & 0x7000;
+    flagsHas0x7000 = mgr->flags & 0x7000;
     tims->texIdx = -1;
     tims->probablyType = 0; // TODO FIXME az biztos jó?
     tims->paletteID = -1;
     tims->textureID = -1;
     do
     {
-        v4 = a1->keyLoadOrderIDs[i];
-        if (v4 == -1)
+        slot = mgr->keyLoadOrderIDs[i];
+        if (slot == -1)
             return -1;
-        if (tims->elems[v4].paletteID != -1)
+        if (tims->elems[slot].paletteID != -1)
             break;
-        if (tims->elems[v4].palettedTextureID != -1)
+        if (tims->elems[slot].palettedTextureID != -1)
             break;
-        if (tims->elems[v4].textureID != -1)
+        if (tims->elems[slot].textureID != -1)
             break;
         ++i;
     } while (i < 4);
     if (i == 4)
         return -1;
-    
-    v6 = tims;
 
-    if (v6->elems[v4].palettedTextureID == -1
-        || (paletteID = &tims->elems[v4].paletteID, *paletteID == -1)
-        || v6->elems[v4].textureID != -1 && flagsHas0x7000 != 0x7000)
+    paletteID = &tims->elems[slot].paletteID;
+
+    if (tims->elems[slot].palettedTextureID == -1
+        || *paletteID == -1
+        || tims->elems[slot].textureID != -1 && flagsHas0x7000 != 0x7000)
     {
-        if (v6->elems[v4].textureID != -1)
-            tims->texIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList, tims->elems[v4].textureID);
+        if (tims->elems[slot].textureID != -1)
+            tims->texIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList, tims->elems[slot].textureID);
         result = tims->texIdx;
         tims->probablyType = 2;
     }
     else
     {
         tims->paletteID = TEX_w_List_AddPalette(&TEX_gst_GlobalList, *paletteID);
-        tims->textureID = TEX_w_List_AddTexture(&TEX_gst_GlobalList, v6->elems[v4].palettedTextureID);
-        v7 = (tims->tp.flagsUnkAndProceduralUnkb1 & 0x100) == 0;
+        tims->textureID = TEX_w_List_AddTexture(&TEX_gst_GlobalList, tims->elems[slot].palettedTextureID);
         tims->probablyType = (flagsHas0x7000 == 0x7000 ? 0 : 4) | 1;
-        if (!v7 && *paletteID != -1)
+        if ((tims->tp.flagsUnkAndProceduralUnkb1 & 0x100) != 0 && *paletteID != -1)
         {
             TEX_gst_GlobalList.palettes[tims->paletteID].flags |= 0x18; //LOBYTE(ADJ(v8)->unk3InCarteUpdatePalette) |= 0x18u;
         }
@@ -3168,159 +2477,122 @@ int16_t TEX_w_Manager_ChooseGoodInTex(struct sTexManagerStruct* a1, struct sEngT
     return result;
 }
 
-void TEX_File_LoadPalette(tEngPaletteElem* a1, int a2)
+void TEX_File_LoadPalette(tEngPaletteElem* pal, int swapRB)
 {
-    int v2;
-    uint8_t v3;
-    unsigned int v4;
-    uint8_t v5;
-    uint8_t* v6;
-    uint8_t* i;
-    int v8; 
-    uint16_t v9;
-    uint8_t* v10;
-    int v11;
-    uint8_t* v12;
-    uint8_t* v13;
-    char v14;
-    int v15; 
-    char v16;
-    int v17; 
-    int v18; 
-    char* v19;
+    int pos;
+    unsigned int allocSize;
+    uint8_t* out;
+    uint8_t* in;
+    int left;
+    int size;
+    char* data;
 
-    v2 = BIG_ul_SearchKeyToPos(a1->key);
-    if (v2 == -1)
+    pos = BIG_ul_SearchKeyToPos(pal->key);
+    if (pos == -1)
         return;
-    v19 = BIG_pc_ReadFileTmp(v2, &v18);
-    if (v18 == 1024)
+    data = BIG_pc_ReadFileTmp(pos, &size);
+    if (size == 1024)
     {
-        v3 = a1->flags | 2;
-        v4 = 1024;
+        pal->flags |= 2;
+        allocSize = 1024;
+    }
+    else if (size == 768)
+    {
+        allocSize = 1024;
+    }
+    else if (size == 64)
+    {
+        pal->flags |= 3;
+        allocSize = 64;
+    }
+    else if (size == 48)
+    {
+        pal->flags |= 1;
+        allocSize = 64;
     }
     else
     {
-        if (v18 == 768)
-        {
-            v4 = 1024;
-            goto LABEL_12;
-        }
-        if (v18 == 64)
-        {
-            v3 = a1->flags | 3;
-        }
-        else
-        {
-            v5 = a1->flags;
-            if (v18 != 48)
-            {
-                a1->flags = v5 | 4;
-                return;
-            }
-            v3 = v5 | 1;
-        }
-        v4 = 64;
+        pal->flags |= 4;
+        return;
     }
-    a1->flags = v3;
-LABEL_12:
-    v6 = (uint8_t*)MEM_p_AllocTmp(v4);
-    a1->paletteData = v6;
-    MEM_gst_MemoryInfo.usedMemoryByTextures += *((uint32_t*)v6 - 1); // TODO FIXME
-    LOA_ReadCharArray(&v19, (char*)a1->paletteData, v18, 1);
-    if ((a1->flags & 2) != 0)
+    pal->paletteData = (uint8_t*)MEM_p_AllocTmp(allocSize);
+    MEM_gst_MemoryInfo.usedMemoryByTextures += *((uint32_t*)pal->paletteData - 1); // TODO FIXME
+    LOA_ReadCharArray(&data, (char*)pal->paletteData, size, 1);
+    left = size;
+    if ((pal->flags & 2) != 0)
     {
-        if (a2)
+        if (swapRB)
         {
-            for (i = &a1->paletteData[4 * (v4 >> 2)]; v18; *(uint32_t*)i = i[2] | ((v8 | (v9 << 8)) << 8))
+            out = &pal->paletteData[4 * (allocSize >> 2)];
+            while (left)
             {
-                v18 -= 4;
-                v8 = *(i - 3);
-                v9 = (v9 & 0xff) | ((*(i - 1)) << 8); // HIBYTE(v9) = *(i - 1);
-                i -= 4;
-                v9 = (v9 & 0xff00) | *i; // LOBYTE(v9) = *i;
+                left -= 4;
+                out -= 4;
+                *(uint32_t*)out = (uint32_t)out[2] | (uint32_t)out[1] << 8 | (uint32_t)out[0] << 16 | (uint32_t)out[3] << 24;
             }
         }
     }
     else
     {
-        v10 = a1->paletteData;
-        v11 = v18;
-        v12 = &v10[4 * (v4 >> 2)];
-        v13 = &v10[v18];
-        if (a2)
+        out = &pal->paletteData[4 * (allocSize >> 2)];
+        in = &pal->paletteData[size];
+        if (swapRB)
         {
-            for (; v18; v11 = v18)
+            while (left)
             {
-                v18 = v11 - 3;
-                v14 = *(v13 - 3);
-                v15 = *(v13 - 2);
-                v13 -= 3;
-                v12 -= 4;
-                *(uint32_t*)v12 = v13[2] | ((v15 | ((*(uint32_t*)&v14 | 0xFFFFFF00) << 8)) << 8);
+                left -= 3;
+                in -= 3;
+                out -= 4;
+                *(uint32_t*)out = (uint32_t)in[2] | (uint32_t)in[1] << 8 | (uint32_t)in[0] << 16 | 0xFF000000;
             }
         }
         else
         {
-            for (; v18; v11 = v18)
+            while (left)
             {
-                v18 = v11 - 3;
-                v16 = *(v13 - 1);
-                v17 = *(v13 - 2);
-                v13 -= 3;
-                v12 -= 4;
-                *(uint32_t*)v12 = *v13 | ((v17 | ((*(uint32_t*)&v16 | 0xFFFFFF00) << 8)) << 8);
+                left -= 3;
+                in -= 3;
+                out -= 4;
+                *(uint32_t*)out = (uint32_t)in[0] | (uint32_t)in[1] << 8 | (uint32_t)in[2] << 16 | 0xFF000000;
             }
         }
     }
 }
 
-void TEX_l_ConvertSize_24To32(struct sEngTexIntermediateStruct* a1, struct sEngTexIntermediateStruct* a2)
+void TEX_l_ConvertSize_24To32(struct sEngTexIntermediateStruct* src, struct sEngTexIntermediateStruct* dest)
 {
-    int v2;
-    int v3;
-    unsigned int* v4;
-    double v5;
-    unsigned int v6;
-    int v7;
-    double v8;
-    char* v9;
-    int i;
-    float v11;
-    float v12;
-    int v13;
-    int v14[1024];
+    int destW;
+    int srcW;
+    uint32_t* out;
+    double xPos;
+    double yPos;
+    float xStep;
+    float yStep;
+    char* row;
+    int x;
+    int y;
+    int offsets[1024];
 
-    v2 = a2->realWidth;
-    v13 = a1->realWidth;
-    v3 = 0;
-    v4 = (unsigned int*)a2->imgDataPtr;
-    v5 = 0.0;
-    if (a2->realWidth)
+    destW = dest->realWidth;
+    srcW = src->realWidth;
+    out = (uint32_t*)dest->imgDataPtr;
+    xPos = 0.0;
+    xStep = (float)((double)srcW / (double)destW);
+    for (x = 0; x < destW; x++)
     {
-        do
-        {
-            v6 = (unsigned int)v5;
-            v11 = (float)((double)v13 / (double)v2);
-            v5 = v5 + v11;
-            v14[v3++] = 3 * v6;
-        } while (v3 < v2);
+        offsets[x] = 3 * (unsigned int)xPos;
+        xPos = xPos + xStep;
     }
-    v7 = 0;
-    v12 = (float)((double)a1->realHeight / (double)a2->realHeight);
-    v8 = 0.0;
-    if (a2->realHeight)
+    yStep = (float)((double)src->realHeight / (double)dest->realHeight);
+    yPos = 0.0;
+    for (y = 0; y < dest->realHeight; y++)
     {
-        do
+        row = &src->imgDataPtr[3 * srcW * (unsigned int)yPos];
+        for (x = 0; x < destW; x++)
         {
-            v9 = &a1->imgDataPtr[3 * v13 * (unsigned int)v8];
-            for (i = 0; i < v2; ++i)
-            {
-                *v4 = *(uint32_t*)&v9[v14[i]] & 0xFFFFFF;
-                v2 = a2->realWidth;
-                ++v4;
-            }
-            v8 = v8 + v12;
-            ++v7;
-        } while (v7 < a2->realHeight);
+            *out = *(uint32_t*)&row[offsets[x]] & 0xFFFFFF;
+            ++out;
+        }
+        yPos = yPos + yStep;
     }
 }

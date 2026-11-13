@@ -2162,7 +2162,7 @@ float AI_EvalFunc_BVSizeGet_C(struct sGameObjectMain* gao)
     extentZ = bv->BVMax.z - bv->BVMin.z;
     extentY = bv->BVMax.y - bv->BVMin.y;
     extentX = bv->BVMax.x - bv->BVMin.x;
-    return float_get_max_of_3vals_sub_48BBB0(extentX, extentY, extentZ) * 0.5f;
+    return MATH_f_MaxOf3(extentX, extentY, extentZ) * 0.5f;
 }
 
 tAINode* AI_EvalFunc_BVSizeGet(tAINode* node)
@@ -2333,7 +2333,7 @@ float AI_EvalFunc_BVSizeGetMin_C(tGameObjectMain* gao)
     extentZ = bv->BVMax.z - bv->BVMin.z;
     extentY = bv->BVMax.y - bv->BVMin.y;
     extentX = bv->BVMax.x - bv->BVMin.x;
-    return float_get_min_of_3vals_sub_48BB80(extentX, extentY, extentZ) * 0.5f;
+    return MATH_f_MinOf3(extentX, extentY, extentZ) * 0.5f;
 }
 
 tAINode* AI_EvalFunc_BVSizeGetMin(tAINode* node)
