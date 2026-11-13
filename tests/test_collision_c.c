@@ -104,6 +104,8 @@ D(tGameObjectMain*, COL_RayBV, (tableDescStruct*, Vec3*, Vec3*, float, int, int,
 D(int, COL_TriangleCollision, (Vec3*, Vec3*, Vec3*, Vec3*, tWorld*, int, int, int))
 D(int, COL_ListCreate, (tGameObjectMain*, int, int, int, char, tWorld*, tGameObjectMain**, char))
 
+void MATH_InitModule(void);
+
 /* ---- bookkeeping -------------------------------------------------- */
 
 static long gCases;
@@ -199,12 +201,31 @@ static void randmtx(Mtx4x4* m)
     m->unk1 = 0; m->unk2 = 0; m->unk3 = 0;
 }
 
+/* A matrix with the scale flag set but a sane rotation and scale, so
+   the arms of COL_ZDE_ZDECollide that only run for a scaled matrix
+   reach their intersecting case instead of always missing. */
+static void scaledmtx(Mtx4x4* m);
+
 static void identity(Mtx4x4* m)
 {
     memset(m, 0, sizeof *m);
     m->v1.x = 1.0f; m->v2.y = 1.0f; m->v3.z = 1.0f;
     m->_m14 = 1.0f; m->_m24 = 1.0f; m->_m34 = 1.0f;
     m->w = 1.0f;
+}
+
+static void scaledmtx(Mtx4x4* m)
+{
+    memset(m, 0, sizeof *m);
+    m->v1.x = 1.0f; m->v2.y = 1.0f; m->v3.z = 1.0f;
+    m->_m14 = (float)nexti(1, 6) / 2.0f;
+    m->_m24 = (float)nexti(1, 6) / 2.0f;
+    m->_m34 = (float)nexti(1, 6) / 2.0f;
+    m->Pos.x = (float)nexti(-4, 4);
+    m->Pos.y = (float)nexti(-4, 4);
+    m->Pos.z = (float)nexti(-4, 4);
+    m->w = 1.0f;
+    m->mtxflag = 8u;
 }
 
 static void make_sphere(tGameObjectBV* bv, const Vec3* centre, float radius)
@@ -337,6 +358,18 @@ static void test_bv(long n)
         if (c & 1) make_sphere(&bv1, &a, nextf()); else make_box(&bv1, &a, &b);
         randv(&a); randv(&b);
         if (c & 2) make_sphere(&bv2, &a, nextf()); else make_box(&bv2, &a, &b);
+        /* One case in four puts the two volumes exactly on top of each
+           other with both matrices at the origin, so every >= and <=
+           in the six-way bound test is answered at equality rather
+           than being decided by a wide margin. */
+        if ((c & 3) == 0)
+        {
+            identity(&m1); identity(&m2);
+            m1.Pos.x = 0.0f; m1.Pos.y = 0.0f; m1.Pos.z = 0.0f;
+            m2.Pos = m1.Pos;
+            if ((c & 4) == 0) m2.Pos.x = nextf();
+            bv2 = bv1;
+        }
         g1.matrices = &m1; g1.boundingVolume = &bv1;
         g2.matrices = &m2; g2.boundingVolume = &bv2;
         g1.flags = (int)nextu(); g2.flags = (int)nextu();
@@ -439,38 +472,62 @@ typedef struct
     Mtx4x4 mtx;
 } ZoneGao;
 
-static void build_zone_gao(ZoneGao* z, int withScale)
+/* mode 0: identity near the origin, 1: an arbitrary matrix,
+   2: a sane scaled matrix with the scale flag set. */
+static void build_zone_gao(ZoneGao* z, int mode)
 {
     int i;
     Vec3 lo, hi, c;
 
     memset(z, 0, sizeof *z);
-    if (withScale) randmtx(&z->mtx); else identity(&z->mtx);
-    randv(&lo); randv(&hi); randv(&c);
+    if (mode == 1) randmtx(&z->mtx);
+    else if (mode == 2) scaledmtx(&z->mtx);
+    else identity(&z->mtx);
+    if (mode == 0)
+    {
+        z->mtx.Pos.x = (float)nexti(-4, 4);
+        z->mtx.Pos.y = (float)nexti(-4, 4);
+        z->mtx.Pos.z = (float)nexti(-4, 4);
+    }
+    randv(&c);
+    lo.x = (float)nexti(-8, -1); lo.y = (float)nexti(-8, -1); lo.z = (float)nexti(-8, -1);
+    hi.x = (float)nexti(1, 8);   hi.y = (float)nexti(1, 8);   hi.z = (float)nexti(1, 8);
     make_box(&z->bv, &lo, &hi);
     for (i = 0; i < 4; ++i)
     {
-        z->elems[i].colFlags = (uint8_t)(nextu() & 0x0Fu);
-        z->elems[i].elemType = (uint8_t)nexti(0, 3);
+        /* colFlags keeps bit 2 -- the "zone is live" bit every ZDE
+           entry point tests -- set most of the time, and elemType
+           stays in the box/sphere pair, so COL_ZDE_ZDECollide's
+           switch is reached instead of being bailed out of first. */
+        z->elems[i].colFlags = (uint8_t)((nextu() & 0x0Bu) | ((nextu() % 8) ? 4u : 0u));
+        z->elems[i].elemType = (uint8_t)((nextu() % 8) ? nexti(1, 2) : nexti(0, 3));
         z->elems[i].unk1 = (uint8_t)nextu();
         z->elems[i].design = (uint8_t)nextu();
-        randv(&z->boxes[i].pos1);
-        randv(&z->boxes[i].pos2);
-        randv(&z->spheres[i].center);
-        z->spheres[i].radius = nextf();
+        /* Shapes near the origin at a comparable size, so the collide
+           tests come out both ways instead of always apart. */
+        z->boxes[i].pos1.x = (float)nexti(-6, 6);
+        z->boxes[i].pos1.y = (float)nexti(-6, 6);
+        z->boxes[i].pos1.z = (float)nexti(-6, 6);
+        z->boxes[i].pos2.x = z->boxes[i].pos1.x - (float)nexti(1, 8);
+        z->boxes[i].pos2.y = z->boxes[i].pos1.y - (float)nexti(1, 8);
+        z->boxes[i].pos2.z = z->boxes[i].pos1.z - (float)nexti(1, 8);
+        z->spheres[i].center.x = (float)nexti(-6, 6);
+        z->spheres[i].center.y = (float)nexti(-6, 6);
+        z->spheres[i].center.z = (float)nexti(-6, 6);
+        z->spheres[i].radius = (float)nexti(0, 8);
         z->elems[i].elemShapePtr = (z->elems[i].elemType == 2)
             ? (void*)&z->spheres[i] : (void*)&z->boxes[i];
         z->slots[i] = &z->elems[i];
     }
     for (i = 0; i < 16; ++i)
-        z->zoneIDs[i] = (uint8_t)((nextu() & 1) ? 0xFFu : (unsigned)nexti(0, 3));
+        z->zoneIDs[i] = (uint8_t)((nextu() % 8) ? (unsigned)nexti(0, 3) : 0xFFu);
     z->set.zoneIDs = z->zoneIDs;
     z->set.instElemNum = 4;
     z->inst.colSet = &z->set;
     z->inst.zoneNum = 4;
     z->inst.selectedInstElemPtrs = z->slots;
     z->inst.colInstElems = z->elems;
-    z->inst.activationFlags = (uint16_t)nextu();
+    z->inst.activationFlags = (uint16_t)((nextu() % 8) ? 0xFFFFu : (unsigned)nextu());
     z->inst.instElemBitmask = (uint16_t)(nextu() & 0x0Fu);
     z->coll.colInstance = &z->inst;
     z->ext.coll = &z->coll;
@@ -494,9 +551,9 @@ static void test_zone(long n)
         uint8_t id = (uint8_t)nexti(0, 15);
 
         seed((unsigned)(0x6666 + c));
-        build_zone_gao(&zb, (int)(c & 1));
+        build_zone_gao(&zb, (int)(c % 3));
         seed((unsigned)(0x6666 + c));
-        build_zone_gao(&zn, (int)(c & 1));
+        build_zone_gao(&zn, (int)(c % 3));
 
         memset(&minb, 0xA5, sizeof minb); memset(&maxb, 0xA5, sizeof maxb);
         memset(&minn, 0xA5, sizeof minn); memset(&maxn, 0xA5, sizeof maxn);
@@ -549,8 +606,8 @@ static void test_zde(long n)
         int dir = nexti(0, 1);
         unsigned base = (unsigned)(0x7777 + c * 2);
 
-        seed(base);      build_zone_gao(&za, (int)(c & 1));
-        seed(base + 1);  build_zone_gao(&zb2, (int)((c >> 1) & 1));
+        seed(base);      build_zone_gao(&za, (int)(c % 3));
+        seed(base + 1);  build_zone_gao(&zb2, (int)((c / 3) % 3));
 
         eq_i(c, BASE_COL_ZDE_PivotCollide(&za.gao, id1, &zb2.gao, dir),
                 NEW_COL_ZDE_PivotCollide(&za.gao, id1, &zb2.gao, dir), "PivotCollide");
@@ -582,9 +639,15 @@ static void build_gaos(void)
         Vec3 lo, hi;
         memset(&gGao[i], 0, sizeof gGao[i]);
         identity(&gGaoMtx[i]);
-        gGaoMtx[i].Pos.x = (float)i;
-        randv(&lo); randv(&hi);
+        gGaoMtx[i].Pos.x = (float)(i * 6);
+        gGaoMtx[i].Pos.y = (float)(i & 1);
+        /* Boxes the ray and range tests can hit: a spread along x with
+           a size the fixtures' rays actually cross. */
+        lo.x = -2.0f; lo.y = -2.0f; lo.z = -2.0f;
+        hi.x = 2.0f;  hi.y = 2.0f;  hi.z = 2.0f;
+        if (i == 2) { hi.x = 0.25f; hi.y = 0.25f; hi.z = 0.25f; }
         make_box(&gGaoBV[i], &lo, &hi);
+        if (i == 4) make_sphere(&gGaoBV[i], &lo, 3.0f);
         gGao[i].matrices = &gGaoMtx[i];
         gGao[i].boundingVolume = &gGaoBV[i];
         gGao[i].flags = 0x100 | (int)(nextu() & 0xFFu);
@@ -834,7 +897,10 @@ static void build_mesh_gao(MeshGao* m, unsigned s)
     identity(&m->mtx);
     m->mtx.Pos.x = 1.5f;
     m->mtx.Pos.y = -2.5f;
-    randv(&lo); randv(&hi);
+    /* A volume that actually covers the mesh, so COL_TriangleCollision
+       gets past its bounding-box reject. */
+    lo.x = -5.0f; lo.y = -5.0f; lo.z = -5.0f;
+    hi.x = 45.0f; hi.y = 45.0f; hi.z = 5.0f;
     make_box(&m->bv, &lo, &hi);
     m->gao.extended = &m->ext;
     m->gao.matrices = &m->mtx;
@@ -993,12 +1059,19 @@ static void test_lists(long n)
         wn->activatedObjectsTable4PF = wb->activatedObjectsTable4PF;
         wn->visibleGameObjectsPF = wb->visibleGameObjectsPF;
 
-        mustHave = (int)(nextu() & 0x1FFu);
-        mustNot = (int)(nextu() & 0x1FFu);
+        /* Most cases ask for nothing in particular, so the body of
+           each list builder is actually entered; the rest keep the
+           flag filtering under test. */
+        if (c & 1) { mustHave = 0; mustNot = 0; }
+        else { mustHave = (int)(nextu() & 0x1FFu); mustNot = (int)(nextu() & 0x1FFu); }
         what = nexti(0, 1);
-        randv(&pos);
-        randv(&dir);
-        range = nextf();
+        pos.x = (float)nexti(-10, 40);
+        pos.y = (float)nexti(-4, 4);
+        pos.z = (float)nexti(-4, 4);
+        dir.x = 1.0f; dir.y = 0.0f; dir.z = 0.0f;
+        if ((c & 6) == 2) { dir.x = 0.0f; dir.y = 1.0f; }
+        if ((c & 6) == 4) { randv(&dir); }
+        range = (float)nexti(1, 60);
 
         memset(lb, 0, sizeof lb); memset(ln, 0, sizeof ln);
         eq_i(c, BASE_COL_VisibleObjectListCreate(wb, mustHave, mustNot, what, lb),
@@ -1050,9 +1123,15 @@ static void test_trisweep(long n)
         wn->eot.collMapObjectsTablePF.nextElemPtr = &en[1];
 
         seed((unsigned)(0x12000 + c));
-        t1.x = (float)nexti(-5, 45); t1.y = (float)nexti(-5, 45); t1.z = (float)nexti(-3, 3);
-        t2.x = t1.x + (float)nexti(-8, 8); t2.y = t1.y + (float)nexti(-8, 8); t2.z = t1.z + (float)nexti(-3, 3);
-        t3.x = t1.x + (float)nexti(-8, 8); t3.y = t1.y + (float)nexti(-8, 8); t3.z = t1.z + (float)nexti(-3, 3);
+        /* A triangle standing on edge across the sheet, so the
+           tri/tri test comes out both ways rather than always missing;
+           one case in eight lies flat and one is well clear. */
+        t1.x = (float)nexti(0, 40); t1.y = (float)nexti(0, 40); t1.z = -3.0f;
+        t2.x = t1.x + (float)nexti(-8, 8); t2.y = t1.y + (float)nexti(-8, 8); t2.z = 3.0f;
+        t3.x = t1.x + (float)nexti(-8, 8); t3.y = t1.y + (float)nexti(-8, 8); t3.z = 3.0f;
+        if ((c & 7) == 0) { t1.z = (float)nexti(-3, 3); t2.z = t1.z; t3.z = t1.z; }
+        if ((c & 7) == 1) { t1.z = 9.0f; t2.z = 9.0f; t3.z = 9.0f; }
+        if ((c & 7) == 2) { t2.z = 20.0f; t3.z = 20.0f; }
 
         memset(&outb, 0xA5, sizeof outb);
         memset(&outn, 0xA5, sizeof outn);
@@ -1070,6 +1149,10 @@ int main(void)
 {
     printf("collision.c functions 98-158: frozen copy against the rewrite\n\n");
 
+    /* The engine's base vectors and lookup tables. Without this
+       MATH_gst_BaseVectorK is all zeroes and every dot product the
+       edge search takes against it comes out zero. */
+    MATH_InitModule();
     build_gaos();
 
     test_lowlevel(60000);
@@ -1078,12 +1161,12 @@ int main(void)
     test_bv(20000);
     test_bvoverlap(20000);
     test_zone(6000);
-    test_zde(6000);
+    test_zde(12000);
     test_reports(3000);
     test_edges(500);
     test_jumppoint(500);
     test_lists(3000);
-    test_trisweep(400);
+    test_trisweep(1200);
 
     printf("\n%ld comparisons, %ld differing\n", gCases, gFails);
     if (gFails)
