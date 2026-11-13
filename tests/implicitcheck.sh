@@ -25,6 +25,10 @@
 # Its pass added them to tests/stub/windows.h, which also took
 # win/wininputoutput.c from 10 to 9.
 #
+# win/winsound.c was here with 13, all of them handle, thread, file and
+# COM calls. Its pass added them to tests/stub/windows.h, which took
+# engine.c from 2 to 1 and win/wingdi.c from 13 to 11 as well.
+#
 # win/wingdi.c went from 25 to 13 when the D3D9, D3DX and message-loop
 # declarations went into the stubs; that work also took the parse
 # sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
@@ -37,13 +41,12 @@ CC=${CC:-gcc}
 CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
 
 BASELINE="bigfiles.c 2
-engine.c 2
+engine.c 1
 sideload.c 1
 sound.c 1
 strings.c 1
-win/wingdi.c 13
-win/wininputoutput.c 9
-win/winsound.c 13"
+win/wingdi.c 11
+win/wininputoutput.c 9"
 
 files=$(python3 - <<'EOF'
 import re
