@@ -398,7 +398,9 @@ static void runOp(const Side* s, const Case* c, State* st)
     st->retInt = 0;
     st->retFloat = 0.0f;
     st->retStrTag = -9;
-    memset(st->retStr, 0, sizeof(st->retStr));
+    /* 0xBB, not 0: a zeroed destination hides a missing terminator */
+    memset(st->retStr, 0xBB, sizeof(st->retStr));
+    st->retStr[sizeof(st->retStr) - 1] = 0;
     memset(&st->pad, 0, sizeof(st->pad));
     memset(&st->moveOut, 0, sizeof(st->moveOut));
     st->propOut = 0;
@@ -700,6 +702,18 @@ static void countCoverage(const Case* c, const State* st)
     }
 }
 
+/* The two copies run one after the other from this same frame, so an
+   uninitialised local in the second lands on the bytes the first left
+   behind and reads back as correct. Dropping Joystick_Update's clear
+   of mouseData scored clean until this was here. */
+static void dirtyStack(void)
+{
+    volatile unsigned char scratch[3072];
+    int i;
+    for (i = 0; i < 3072; i++)
+        scratch[i] = (unsigned char)(0xC3 + i * 7);
+}
+
 static void runCase(const Case* c, const State* start, long key)
 {
     State a, b;
@@ -709,6 +723,7 @@ static void runCase(const Case* c, const State* start, long key)
     cases++;
     countCoverage(c, start);
 
+    dirtyStack();
     WINIO_ResetMocks();
     installState(&baseSide, start);
     a = *start;
@@ -719,6 +734,7 @@ static void runCase(const Case* c, const State* start, long key)
     for (i = 0; i < n; i++)
         memcpy(baseLog[i], WINIO_LogLine(i), WINIO_LINEMAX);
 
+    dirtyStack();
     WINIO_ResetMocks();
     installState(&newSide, start);
     b = *start;
@@ -979,6 +995,24 @@ static void sweepPure(void)
             runCase(&c, &st, key++);
         }
 
+    group = "statemachine/ontime";
+    /* the clock exactly on the deadline, which is the only input that
+       separates > from >= there */
+    for (i = 0; i <= 40; i++)
+        for (j = 0; j < 4; j++)
+        {
+            baseState(&st);
+            memset(&winioScript, 0, sizeof(winioScript));
+            randomCase(&c);
+            c.op = OP_STATEMACHINE;
+            c.i0 = j & 1;
+            c.f0 = (j & 2) ? 0.2f : 0.0f;
+            st.stateMachineFlags = i;
+            st.case1DividedTime2 = 1.5f;
+            c.clock = 1.5f;
+            runCase(&c, &st, key++);
+        }
+
     group = "mouseamount";
     for (i = 0; i < 4000; i++)
     {
@@ -1081,6 +1115,37 @@ static void sweepHandlers(void)
                 st.selSubmode = sub;
                 runCase(&c, &st, key++);
             }
+}
+
+/* pcINO_InputHandlerCase4 at submode 0 and pcINO_InputHandlerCase100
+   both normalise the left stick only when its length passes 0.1. The
+   random sweep's magnitudes put the length in the tens, so the band
+   around the bound needs driving on purpose. */
+static void sweepNormalise(void)
+{
+    Case c;
+    State st;
+    long key = 300000;
+    int h, i;
+
+    group = "normalise";
+    rngState = 0x7A7Au;
+    for (h = 0; h < 2; h++)
+        for (i = 0; i < 4000; i++)
+        {
+            randomState(&st);
+            randomScript();
+            randomCase(&c);
+            c.op = OP_HANDLER;
+            c.i0 = h ? 6 : 2;              /* Case100, Case4 */
+            st.selSubmode = 0;
+            st.mouseSensitivity = 1.0f;
+            st.joy[0].x = rndFloat(-0.25f, 0.25f);
+            st.joy[0].y = rndFloat(-0.25f, 0.25f);
+            c.mouse[0] = rndFloat(-1.0f, 1.0f);
+            c.mouse[1] = rndFloat(-1.0f, 1.0f);
+            runCase(&c, &st, key++);
+        }
 }
 
 static void sweepModes(void)
@@ -1197,11 +1262,14 @@ static void sweepNames(void)
     rngState = 0x8888u;
     for (i = 0; i < 400; i++)
     {
+        int j;
         randomState(&st);
         randomScript();
         randomCase(&c);
         c.op = OP_ALLKEYNAMES;
         st.haveKeyb = 1;
+        for (j = 0; j < 18; j++)
+            memset(st.buttonNames[j], 0xBB, 63);
         /* drive the five special table entries on purpose as well as
            at random */
         if (i < 100)
@@ -1423,6 +1491,8 @@ int main(void)
     printf("  after pure:     %ld cases\n", cases);
     sweepHandlers();
     printf("  after handlers: %ld cases\n", cases);
+    sweepNormalise();
+    printf("  after normalise:%ld cases\n", cases);
     sweepModes();
     printf("  after modes:    %ld cases\n", cases);
     sweepNames();
