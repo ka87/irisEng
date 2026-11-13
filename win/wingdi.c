@@ -2138,13 +2138,12 @@ void D3D_SetAlphaTestParams(unsigned int mask, int16_t flags)
     D3DRenderParams.colorMaskAlpha = (flags & 0x400) != 0 ? 0xFF000000 : 0;
 }
 
-void D3D_SetAlphaBlendingOptions(unsigned int a1, char a2)
+void D3D_SetAlphaBlendingOptions(unsigned int mask, char flags)
 {
-    int v2;
-    int v3;
+    int destBlend;
 
     d3d_alphablendIsCase3 = 0;
-    switch (((a1 >> 16) & 0xffff) & 0xF)
+    switch (((mask >> 16) & 0xffff) & 0xF)
     {
     case 0:
     case 7:
@@ -2154,30 +2153,31 @@ void D3D_SetAlphaBlendingOptions(unsigned int a1, char a2)
         return;
     case 1:
         D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
-        if (a2 >= 0)
+        if (flags >= 0)
         {
             D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-            v2 = 6;
+            destBlend = 6;
         }
         else
         {
             D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_INVSRCALPHA);
-            v2 = 5;
+            destBlend = 5;
         }
-        goto LABEL_30;
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, destBlend);
+        return;
     case 2:
         D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
         D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
-        v3 = renderStateConfig.d3dDestBlend;
-        if (a2 >= 0)
-            v2 = D3DBLEND_INVSRCALPHA;
+        if (flags >= 0)
+            destBlend = D3DBLEND_INVSRCALPHA;
         else
-            v2 = D3DBLEND_SRCALPHA;
-        goto LABEL_31;
+            destBlend = D3DBLEND_SRCALPHA;
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, destBlend);
+        return;
     case 3:
         d3d_alphablendIsCase3 = 1;
         D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
-        if (a2 >= 0)
+        if (flags >= 0)
         {
             D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
             D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA);
@@ -2185,42 +2185,21 @@ void D3D_SetAlphaBlendingOptions(unsigned int a1, char a2)
         else
         {
             D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_INVDESTALPHA);
-            v2 = 7;
-        LABEL_30:
-            v3 = renderStateConfig.d3dDestBlend;
-        LABEL_31:
-            if (v3 != v2)
-            {
-                renderStateConfig.d3dDestBlend = v2;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, v2);
-            }
+            D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, 7);
         }
         return;
     case 4:
         D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
-        if (a2 >= 0)
-        {
+        if (flags >= 0)
             D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
-            if (renderStateConfig.d3dDestBlend != D3DBLEND_ONE)
-                goto LABEL_53;
-        }
         else
-        {
             D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_INVDESTALPHA);
-            if (renderStateConfig.d3dDestBlend != D3DBLEND_ONE)
-            {
-            LABEL_53:
-                renderStateConfig.d3dDestBlend = D3DBLEND_ONE;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, D3DBLEND_ONE);
-                return;
-            }
-        }
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ONE);
         return;
     case 5:
         D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
         D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
-        if (renderStateConfig.d3dDestBlend != D3DBLEND_ONE)
-            goto LABEL_53;
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ONE);
         return;
     case 6:
     case 8:
@@ -2233,58 +2212,51 @@ void D3D_SetAlphaBlendingOptions(unsigned int a1, char a2)
     }
 }
 
-void D3D_SetFogParams(unsigned int a1)
+void D3D_SetFogParams(unsigned int mask)
 {
-    int v1;
-    int v2;
-    int v3;
+    int mode;
+    int enable;
+    int color;
 
-    v1 = D3DRenderParams.d3dFogModeProbably;
-    v2 = (gpst_DX_stDD->drawMaskAllowedStuffCurrent & 0x4000) != 0 && D3DRenderParams.d3dFogModeProbably;
-    if (renderStateConfig.d3dFogEnable != v2)
+    mode = D3DRenderParams.d3dFogModeProbably;
+    enable = (gpst_DX_stDD->drawMaskAllowedStuffCurrent & 0x4000) != 0 && D3DRenderParams.d3dFogModeProbably;
+    if (renderStateConfig.d3dFogEnable != enable)
     {
-        renderStateConfig.d3dFogEnable = v2;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, v2);
-        v1 = D3DRenderParams.d3dFogModeProbably;
+        renderStateConfig.d3dFogEnable = enable;
+        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, enable);
+        mode = D3DRenderParams.d3dFogModeProbably;
     }
-    if (v1)
+    if (!mode)
+        return;
+    switch (HIWORD(mask) & 0xF)
     {
-        switch (HIWORD(a1) & 0xF)
-        {
-        case 0:
-        case 1:
-        case 3:
-        case 7:
-            if (v1 != 1)
-            {
-                v3 = D3DRenderParams.d3dFogColor;
-                D3DRenderParams.d3dFogModeProbably = 1;
-                goto LABEL_15;
-            }
-            break;
-        case 2:
-        case 4:
-            if (v1 != 5)
-            {
-                v3 = D3DRenderParams.d3dFogColor;
-                D3DRenderParams.d3dFogModeProbably = 5;
-                goto LABEL_15;
-            }
-            break;
-        case 5:
-        case 6:
-            if (v1 != 3)
-            {
-                v3 = D3DRenderParams.d3dFogColor2Case5and6;
-                D3DRenderParams.d3dFogModeProbably = 3;
-            LABEL_15:
-                D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, v3);
-            }
-            break;
-        default:
+    case 0:
+    case 1:
+    case 3:
+    case 7:
+        if (mode == 1)
             return;
-        }
+        color = D3DRenderParams.d3dFogColor;
+        D3DRenderParams.d3dFogModeProbably = 1;
+        break;
+    case 2:
+    case 4:
+        if (mode == 5)
+            return;
+        color = D3DRenderParams.d3dFogColor;
+        D3DRenderParams.d3dFogModeProbably = 5;
+        break;
+    case 5:
+    case 6:
+        if (mode == 3)
+            return;
+        color = D3DRenderParams.d3dFogColor2Case5and6;
+        D3DRenderParams.d3dFogModeProbably = 3;
+        break;
+    default:
+        return;
     }
+    D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, color);
 }
 
 void D3D_l_Texture_Init(int a1, int a2, char a3)
@@ -3420,60 +3392,35 @@ void D3D_SunSurfacesClear()
 
 void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
 {
-    D3DADAPTER_IDENTIFIER9 v0;
+    D3DADAPTER_IDENTIFIER9 adapter;
+    DWORD device;
 
-    D3DRenderParams.d3d_if->lpVtbl->GetAdapterIdentifier(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, 0, &v0);
-    D3D_OutputDebugString("%d, %d, %d, %d\n", HIWORD(v0.DriverVersion.HighPart), LOWORD(v0.DriverVersion.HighPart), HIWORD(v0.DriverVersion.LowPart), LOWORD(v0.DriverVersion.LowPart));
-    if (v0.VendorId == 0x1002)
+    D3DRenderParams.d3d_if->lpVtbl->GetAdapterIdentifier(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, 0, &adapter);
+    D3D_OutputDebugString("%d, %d, %d, %d\n", HIWORD(adapter.DriverVersion.HighPart), LOWORD(adapter.DriverVersion.HighPart), HIWORD(adapter.DriverVersion.LowPart), LOWORD(adapter.DriverVersion.LowPart));
+    device = adapter.DeviceId;
+    if (adapter.VendorId == 0x1002)
     {
         ENG_IsDLBFEnabled = 1;
-        if (v0.DeviceId > 0x4E45)
+        if (device >= 0x4144 && device <= 0x4146
+            || device == 16740
+            || device >= 0x4E44 && device <= 0x4E45
+            || device >= 0x4E64 && device <= 0x4E65)
         {
-            if (v0.DeviceId > 0x5157)
-            {
-                if (v0.DeviceId < 0x5159 || v0.DeviceId > 0x515A)
-                    goto LABEL_27;
-            }
-            else if (v0.DeviceId != 0x5157)
-            {
-                if (v0.DeviceId > 0x5147)
-                    goto LABEL_27;
-                if (v0.DeviceId < 0x5144)
-                {
-                    if (v0.DeviceId < 0x4E64 || v0.DeviceId > 0x4E65)
-                        goto LABEL_27;
-                    goto LABEL_23;
-                }
-            }
+            D3DRenderParams.argbIsSupportedForTextures = -1;
         }
-        else
+        else if (device == 0x4C57
+                 || device >= 0x4C59 && device <= 0x4C5A
+                 || device >= 0x5144 && device <= 0x5147
+                 || device == 0x5157
+                 || device >= 0x5159 && device <= 0x515A)
         {
-            if (v0.DeviceId >= 0x4E44)
-                goto LABEL_23;
-            if (v0.DeviceId > 0x4C57)
-            {
-                if (v0.DeviceId < 0x4C59 || v0.DeviceId > 0x4C5A)
-                    goto LABEL_27;
-            }
-            else if (v0.DeviceId != 0x4C57)
-            {
-                if (v0.DeviceId < 0x4144 || v0.DeviceId > 0x4146 && v0.DeviceId != 16740)
-                    goto LABEL_27;
-            LABEL_23:
-                D3DRenderParams.argbIsSupportedForTextures = -1;
-                return;
-            }
+            ENG_IsSingleStream = 1;
         }
-    LABEL_26:
-        ENG_IsSingleStream = 1;
-        goto LABEL_27;
-    }
-    if (v0.VendorId != 4318)
-    {
-    LABEL_27:
         return;
     }
-    switch (v0.DeviceId)
+    if (adapter.VendorId != 4318)
+        return;
+    switch (device)
     {
     case 0x110u:
     case 0x111u:
@@ -3484,7 +3431,8 @@ void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
     case 0x176u:
     case 0x179u:
         ENG_IsDLBFEnabled = 1;
-        goto LABEL_26;
+        ENG_IsSingleStream = 1;
+        break;
     case 0x170u:
     case 0x171u:
     case 0x172u:
@@ -3493,7 +3441,7 @@ void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
         ENG_IsSingleStream = 1;
         break;
     default:
-        goto LABEL_27;
+        break;
     }
 }
 
@@ -3636,43 +3584,36 @@ void D3D_BeginSceneCall()
     D3DRenderParams.d3d_defaultZEnable = D3DRenderParams.setsDefaultZEnableAtBeginScene;
 }
 
-void D3D_Request_SetFogParams(tFogParams* a1)
+void D3D_Request_SetFogParams(tFogParams* fog)
 {
     int fogColor;
-    float v2;
 
-    if ((a1->flags & 1) != 0)
+    if ((fog->flags & 1) != 0)
     {
         if ((D3DRenderParams.d3dcaps.RasterCaps & 0x100) != 0)
         {
-            D3D_RenderStateSet(&renderStateConfig.d3dFogTableMode, D3DRS_FOGTABLEMODE, engineFogTableModeToD3D[a1->fogVertexMode]);
-        LABEL_8:
-            fogColor = (a1->fogColor & 0xFF00FF00 | ((a1->fogColor >> 16) & 0xff) | ((uint8_t)a1->fogColor << 16));
-            D3DRenderParams.d3dFogColor = fogColor;
-            D3DRenderParams.d3dFogColor2Case5and6 = 0;
-            if (renderStateConfig.d3dFogDensity != a1->density)
-            {
-                renderStateConfig.d3dFogDensity = a1->density;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGDENSITY, *(uint32_t *)&(renderStateConfig.d3dFogDensity));
-                fogColor = D3DRenderParams.d3dFogColor;
-            }
-            D3DRenderParams.d3dFogModeProbably = 1;
-            D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, fogColor);
-            D3D_RenderStateSetF(&renderStateConfig.d3dFogStart, D3DRS_FOGSTART, a1->fogStart);
-            v2 = a1->fogEnd;
-            if (renderStateConfig.d3dFogEnd != v2)
-            {
-                renderStateConfig.d3dFogEnd = a1->fogEnd;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGEND, *(uint32_t*)&v2);
-            }
-            D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, TRUE);
+            D3D_RenderStateSet(&renderStateConfig.d3dFogTableMode, D3DRS_FOGTABLEMODE, engineFogTableModeToD3D[fog->fogVertexMode]);
+        }
+        else if ((D3DRenderParams.d3dcaps.RasterCaps & 0x80) != 0)
+        {
+            D3D_RenderStateSet(&renderStateConfig.d3dFogVertexMode, D3DRS_FOGVERTEXMODE, engineFogTableModeToD3D[fog->fogVertexMode]);
+        }
+        else
+        {
+            D3DRenderParams.d3dFogModeProbably = 0;
+            D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, FALSE);
             return;
         }
-        if ((D3DRenderParams.d3dcaps.RasterCaps & 0x80) != 0)
-        {
-            D3D_RenderStateSet(&renderStateConfig.d3dFogVertexMode, D3DRS_FOGVERTEXMODE, engineFogTableModeToD3D[a1->fogVertexMode]);
-            goto LABEL_8;
-        }
+        fogColor = (fog->fogColor & 0xFF00FF00 | ((fog->fogColor >> 16) & 0xff) | ((uint8_t)fog->fogColor << 16));
+        D3DRenderParams.d3dFogColor = fogColor;
+        D3DRenderParams.d3dFogColor2Case5and6 = 0;
+        D3D_RenderStateSetF(&renderStateConfig.d3dFogDensity, D3DRS_FOGDENSITY, fog->density);
+        D3DRenderParams.d3dFogModeProbably = 1;
+        D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, D3DRenderParams.d3dFogColor);
+        D3D_RenderStateSetF(&renderStateConfig.d3dFogStart, D3DRS_FOGSTART, fog->fogStart);
+        D3D_RenderStateSetF(&renderStateConfig.d3dFogEnd, D3DRS_FOGEND, fog->fogEnd);
+        D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, TRUE);
+        return;
     }
     D3DRenderParams.d3dFogModeProbably = 0;
     D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, FALSE);
@@ -4118,44 +4059,34 @@ void D3D_FillSelectedVBOWithSprite(tD3dSpriteData* a1)
 
 int D3D_l_Request(int type, void *param)
 {
-    int result;
-
     switch (type)
     {
     case 1:
         D3D_Request_SetFogParams((tFogParams*)param);
-        result = 0;
         break;
     case 12:
         D3D_TextureStore((tTexUploadRequest*)param);
-        result = 0;
         break;
     case 18:
-        D3D_Request_PrepareForDrawing((int)param);
-        result = 0;
+        D3D_Request_PrepareForDrawing((int)(size_t)param);
         break;
     case 19:
     case 33:
         D3D_FillSelectedVBOWithSprite((tD3dSpriteData*)param);
-        result = 0;
         break;
     case 20:
         D3D_Request_SpriteDraw();
-        result = 0;
         break;
     case 24:
         D3D_GetSnapShot((tD3dRequestSnapshot*)param);
-        result = 0;
         break;
     case 25:
-        D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, (int)param);
-        goto LABEL_10;
+        D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, (int)(size_t)param);
+        break;
     default:
-    LABEL_10:
-        result = 0;
         break;
     }
-    return result;
+    return 0;
 }
 
 int D3D_l_Texture_Store(struct sGdi_DisplayData* a1, int a2)
@@ -5278,47 +5209,36 @@ int  D3D_Set_Texture_Palette(struct sGdi_DisplayData* a1, struct sEngTexListElem
 void D3D_SetTextureTarget(struct sGdi_DisplayData* a1, int a2, int a3, int a4) {
 }
 
-int PC_HandleWindowOpenAndCloseMessages(HWND a1, GLOBAL_MainHandles* mainHandles, unsigned int Msg)
+int PC_HandleWindowOpenAndCloseMessages(HWND hwnd, GLOBAL_MainHandles* mainHandles, unsigned int msg)
 {
-    int result;
-
-    if (Msg > WM_CLOSE)
+    if (msg > WM_CLOSE)
     {
-        if (Msg != WM_MOUSEFIRST)
-            return 0;
-        SetCursor(0);
-        result = 0;
+        if (msg == WM_MOUSEFIRST)
+            SetCursor(0);
+        return 0;
     }
-    else
+    if (msg == WM_CLOSE || msg == WM_DESTROY)
     {
-        if (Msg == WM_CLOSE)
-        {
-        LABEL_8:
-            if (!mainHandles || !mainHandles->displayData)
-                return 0;
-            GDI_DetachDisplay(mainHandles->displayData);
-            mainHandles->displayData->DestroyDevice(mainHandles->displayData->pd3drp);
-            GDI_DestroyDisplayData(mainHandles->displayData);
+        if (!mainHandles || !mainHandles->displayData)
             return 0;
-        }
-        if (Msg != WM_CREATE)
-        {
-            if (Msg != WM_DESTROY)
-                return 0;
-            goto LABEL_8;
-        }
+        GDI_DetachDisplay(mainHandles->displayData);
+        mainHandles->displayData->DestroyDevice(mainHandles->displayData->pd3drp);
+        GDI_DestroyDisplayData(mainHandles->displayData);
+        return 0;
+    }
+    if (msg == WM_CREATE)
+    {
         if (!mainHandles)
             return 0;
-        mainHandles->hwnd = a1;
+        mainHandles->hwnd = hwnd;
         fbss = GDI_fnpst_CreateDisplayData();
         mainHandles->displayData = fbss;
         GDI_fnl_InitInterface(mainHandles->displayData);
         mainHandles->displayData->pd3drp = (tGdi_D3DRenderParams*)mainHandles->displayData->CreateDevice();
         PRO_InitRasters(mainHandles->displayData->rasters, "Display Data");
-        GDI_AttachDisplayAndReadaptDisplay(mainHandles->displayData, a1);
-        result = 0;
+        GDI_AttachDisplayAndReadaptDisplay(mainHandles->displayData, hwnd);
     }
-    return result;
+    return 0;
 }
 
 int PC_HandleWindowCreateAndEraseBackgroundMessages(HWND hwnd, GLOBAL_MainHandles* globalHandles, int msg, int wparam, int lparam, int* plparam)

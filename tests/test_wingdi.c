@@ -1126,8 +1126,34 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         ret = s->SelectSupportedDeviceFormat((int)(seed % 5u));
         break;
     case C_PRESETS:
-        s->ApplyPresets();
+    {
+        /* every boundary of the ATI device-id tree and of the nVidia
+           switch, so each arm of the dispatcher is driven on purpose */
+        static const unsigned int ids[] = {
+            0x4143, 0x4144, 0x4145, 0x4146, 0x4147, 0x4163, 0x4164, 0x4165,
+            0x4C56, 0x4C57, 0x4C58, 0x4C59, 0x4C5A, 0x4C5B,
+            0x4E43, 0x4E44, 0x4E45, 0x4E46, 0x4E63, 0x4E64, 0x4E65, 0x4E66,
+            0x5143, 0x5144, 0x5147, 0x5148, 0x5156, 0x5157, 0x5158, 0x5159,
+            0x515A, 0x515B,
+            0x10F, 0x110, 0x111, 0x112, 0x113, 0x114,
+            0x16F, 0x170, 0x171, 0x172, 0x173, 0x174, 0x175, 0x176, 0x177,
+            0x178, 0x179, 0x17A };
+        static const unsigned int vendors[] = { 0x1002u, 4318u, 0x8086u };
+        unsigned int v, d;
+        for (v = 0; v < 3; v++)
+            for (d = 0; d < sizeof(ids) / sizeof(ids[0]); d++)
+            {
+                ENG_IsSingleStream = 0;
+                ENG_IsDLBFEnabled = 0;
+                D3DRenderParams.argbIsSupportedForTextures = 0;
+                WGM_vendorId = vendors[v];
+                WGM_deviceId = ids[d];
+                s->ApplyPresets();
+                ret = ret * 3 + ENG_IsSingleStream * 4 + ENG_IsDLBFEnabled * 2
+                    + D3DRenderParams.argbIsSupportedForTextures;
+            }
         break;
+    }
     case C_VIEWPORT:
         s->SetViewPort((int)(seed % 9u) - 4, (int)((seed >> 2) % 9u) - 4,
                        (int)(seed % 900u), (int)(seed % 700u));
