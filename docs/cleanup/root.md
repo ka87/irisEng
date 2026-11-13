@@ -45,7 +45,7 @@ run them.
 | `animation.c` | 3,068 to 2,097 | 1,846 to 1 | 16 to 0 | done |
 | `textures.c` | 3,326 to 2,598 | 1,783 to 1 | 23 to 0 | done |
 | `strings.c` | 3,360 to 2,823 | 1,701 to 0 | 44 to 0 | done |
-| `world.c` | 2,881 | 1,499 | 9 | |
+| `world.c` | 2,881 to 2,318 | 1,499 to 11 | 9 to 0 | done |
 | `events.c` | 2,723 to 2,347 | 1,463 to 0 | 9 to 0 | done |
 | `proceduraltextures.c` | 1,752 | 1,108 | 11 | |
 | `ok3.c` | 1,317 | 974 | 23 | |
@@ -896,3 +896,199 @@ the rewrite. Adding the include would be behaviour-neutral in principle
 but turns the call into a macro, which the frozen copy would not get, so
 it is a change the differential test cannot speak to. Left as it was,
 and recorded in `tests/implicitcheck.sh`'s baseline.
+
+---
+
+## world.c
+
+2,881 lines to 2,318, nine `goto`s to none, and 53 functions to 54:
+nothing lost, the two oddly-named helpers renamed, and one new `static`
+helper for the plane inversion the mask pre-compute does twice. Residue
+1,499 to 11 in the source and 21 to 0 in the header, 21 of whose 27
+prototypes picked up names from the definitions.
+
+**The eleven residue lines left are all inside comments of the user's
+own** and are kept byte for byte: the commented-out `AddElemP inline`
+block in `WOR_World_AttachGameObject` and the crash-fix note under it
+that names `v25`, the `// fixed:` note on the static-LOD element read,
+and the two `COERCE_FLOAT` notes recording the Hex-Rays form of the
+bit-twiddling sign test.
+
+**Seven comments were removed and they were all the same note.** The
+bounding-volume mask's corner test was unrolled eight times, and each
+copy carried its own
+`//if (v60 == COERCE_FLOAT(LODWORD(v3N) & 0xBF800000 | 0x3F800000))`
+naming that copy's local. Folding the eight copies into one loop leaves
+one site, so one of the eight is kept verbatim on it and the other seven
+went with the code they annotated. Nothing else was dropped: the comment
+multiset is otherwise identical to `origin/claude/sideload`.
+
+### The nine gotos, which were four shapes
+
+- **Five `goto LABEL_64` in `WOR_pst_World_Load`** are one test written
+  five times. Each is `if (world == target)`, with the merge work
+  between them and `v10` reloaded from `world` before every one, so the
+  whole run is `if (loaded == target) ... else { merge; }` and the label
+  is the `if` arm of the final GRO-cursor pick.
+- **`goto restart` in `EOT_AISortWithPriority`** is "a hole turned up
+  while counting, compact the table and start the histogram again". A
+  `do { ... } while (holeFound)` around the count.
+- **`goto LABEL_9` in `WOR_BVMaskPreCompute`** skips to the shared
+  `pool[3].z` store from the arm that picks a different value for it.
+  The three arms write it out, which is what `dynamics.c`'s auto-orient
+  goto became.
+- **Three in `WOR_Render_All_GO`**: `LABEL_25` is the flag store two
+  paths share before `continue`, `LABEL_51` is the loop's increment, and
+  `LABEL_50` is the unapply tail. The tail's only live variable, `v21`,
+  is assigned `dxdd` on both paths that reach it, so the two arms and
+  the tail collapse into one `if`/`else if` with the tail written once.
+
+### What reading it settled
+
+**The bounding-volume mask is a four-point quad, not a box.**
+`WOR_BVMaskPreCompute` picks the object's flattest axis, builds the four
+corners of the box's cross-section through the other two, pushes them
+out to world space, and makes a plane per edge from the camera position.
+`is14` records whether the quad is flat in Z -- which is why the inside
+test zeroes the X difference when it is clear and the Z difference when
+it is set -- and `is15` is the facing of the quad, whose sign flips all
+four planes.
+
+**`WOR_BVMaskComputeInside`'s eight-times unrolled block is one loop
+over the box's eight corners**, with the index carried in the running
+`v13` (`+= 1` through `+= 7` at the breaks, `+= 8` at the fall-through)
+and `v16 += 2` at the bottom dead because the loop can only run once.
+It stops at the first corner on the same side of the quad as the camera;
+only a box with all eight corners on the far side goes on to the
+four-plane test.
+
+**`_floatIsNegative` is `copysignf(1.0f, x)`** -- the mask keeps the sign
+bit and the `| 0x3F800000` forces the exponent of 1.0 -- and every one of
+its nine uses is a same-sign comparison. It is `WOR_l_SignOf` now, and
+`static`, which leaves twenty-one `_sub_`-style names in the tree.
+
+**The other `_sub_` name is a per-frame statistics reset.**
+`zero_out_param1_values_statistics_sub_43EBF0` clears the `unk2` field of
+rasters 3 through 14 of the display's raster array, once per
+`WOR_Render`; it is `WOR_l_ResetRasterStats` now, and `static`, since
+`WOR_Render` is its only caller and no header declared it.
+
+**`EOT_AISortWithPriority` is a counting sort with cycle placement.** A
+histogram of the 256 AI priorities, a five-times unrolled prefix sum over
+it, and then a walk that carries one displaced element at a time to its
+slot and marks each placed entry with `0x40000000`. The sentinel for
+"nothing in hand" is the pointer `-1`, which is also what an emptied slot
+holds. Its `v16`/`v29` pair and its `v30` are constants -- the table's
+last and first element -- so the three `v16 = v29` restores are dead, and
+the two `objectFlags` stores at each placement site are a dead store
+followed by the real one.
+
+**Nine inlined copies of `TAB_AddElemToTablePF` and one of
+`TAB_PTable_AddElemToTable` are restored**, after reading both bodies:
+eight in `EOT_SetOfEOT_Build`, one in `EOT_SetOfEOT_OneBuild`, one in
+`WOR_ul_GameObjectGroupCallback`, and the resize-then-add in
+`WOR_pst_World_Load`'s static-LOD walk, which keeps the cursor-index
+save and restore around it because the resize moves the array. Field for
+field, including the order the two words are written in.
+
+### The differential test
+
+`tests/test_world.c` with `tests/world_mocks.c`, run by
+`tests/runworld.sh`: **16,760 cases, 324,326 engine calls and 3.3 GB of
+state compared, no differences.** Both copies run over one 188KB scene
+at one address with the mock allocator rewound between them, so pointers
+are directly comparable; a case passes only when the scene bytes, the
+used prefix of the mock heap, the per-side world globals, the profiler
+rasters, the return values and the full ordered call log all match. The
+real `tables.c` is linked rather than mocked, because the restored adds
+above are only worth checking against the engine's own primitives.
+
+Nineteen entry points are driven, including both mask functions, the
+three `EOT_SetOfEOT` builders, the priority sort, the activation and
+visibility walks, the father and group checks, the AI-reference resolve,
+and `WOR_World_AttachGameObject` and `WOR_World_JustAfterLoadObject`
+against fake graphics-object interfaces whose `AddRef` is logged.
+
+**What it does not cover, and why.** `WOR_pst_World_Load`, the two
+loader callbacks, `WOR_World_Init`/`Close`/`Destroy`, `WOR_Render`,
+`WOR_Render_All_GO`, `WOR_SetCam` and `WOR_pst_Universe_AddWorldList`
+need the big-file reader, the loader's address table and a Direct3D
+display device; standing them up means measuring the mocks. Every mock
+on those paths aborts rather than returning, so a rewrite that reached
+one of them fails the test instead of passing on a stand-in. That leaves
+the five `goto LABEL_64` in `WOR_pst_World_Load` and the three in
+`WOR_Render_All_GO` verified by reading only.
+
+#### Teeth
+
+**26 one-token defects injected, 25 caught.** Four of the first 25 were
+missed and three of those were real coverage holes, now closed:
+
+- the flattest-axis pick's two `>=` only differ from `>` when two of the
+  box's extents tie exactly, which random floats never produce. Every
+  fourth box now ties a pair, and both `>=` mutations produce 412 and
+  418 differing cases;
+- the sub-material filter's `id == 5` arm was never entered, because no
+  fixture material had that id. A third interface does, and the mutation
+  now produces 1,728;
+- `WOR_World_JustAfterLoadObject`'s `flags & 0x700` was driven with one
+  object per seed and no flag word ever had bit `0x400` without its
+  neighbours. The collision field is now driven exhaustively from the
+  case index, and the mutation produces 640.
+
+The one still not caught is `WOR_GetLastChildObj`'s `++step >= depth`,
+and it is a provable no-op -- see below.
+
+Two of the caught mutations, both in the counting sort, are caught as a
+**segmentation fault** rather than as a reported difference: a corrupted
+prefix sum or a lost placement flag walks the table outside its bounds.
+That is a pass for the harness and a fact about the function.
+
+### Preserved rather than fixed, each with a line in the file
+
+- **`WOR_GetLastChildObj` can only ever return NULL.** `child` is the
+  object itself or an ancestor, and neither can be NULL by the time the
+  tail runs, so the `onlyChild == child` arm sets the result to NULL and
+  the other arm returns NULL outright; the loop below it then calls
+  `WOR_i_GetAllChildrenOf` with a NULL parent, which returns 0 at once.
+  Read from the code, and the test agrees: none of its 320 calls returned
+  anything else. That is also why the one uncaught mutation is a no-op --
+  `step` and `depth` are dead.
+- **`WOR_GetLastChildObj` passes a single pointer as a children array.**
+  `WOR_i_GetAllChildrenOf` writes one entry per match with no bound, so
+  an object whose parent has more than one child writes past the local.
+  Not reachable from this tree, because nothing calls the function.
+- **`BVMask_ga_Masks` is `[200]` and nothing bounds the index.**
+  `WOR_BVMaskPreComputeAll` increments `BVMask_gi_Num` once per visible
+  object with the BV-mask flag and `WOR_BVMaskPreCompute` writes
+  `BVMask_ga_Masks[BVMask_gi_Num]` with no cap, so a world with more
+  than 200 of them writes past the array. Read from the code; not
+  measured in a running game.
+- **`WOR_pst_World_Load`'s GRO-table walk dereferences a hole.** It reads
+  `((tGroGeneric*)cursor->objectPtr)->intf->id` with none of the
+  null-or-tagged test every other walk in the file makes, so a
+  `worldGROTable` with a hole in it faults.
+
+### Reported without a comment
+
+- **The two cross products are narrowed differently.**
+  `WOR_BVMaskComputeInside` narrows all three components of its quad
+  normal to `float`; `WOR_BVMaskPreCompute` computes the same cross
+  product for `is15` and leaves the Z component a `double`. Both are
+  preserved exactly as written -- this is the narrowing trap, and the
+  test would see a change.
+- **`EOT_AISortWithPriority`'s placement loop can spin.** If the cycle
+  drain breaks because its target slot is past the table's end, the
+  cursor does not advance and the next iteration recomputes the same
+  slot and breaks at the same place. The priorities are `uint8_t` and
+  the prefix sum is over the table's own contents, so the break looks
+  defensive rather than reachable; the test's 1,280 sort cases never
+  reached it, and I could not construct an input that does.
+- **`WOR_DelObj`'s decrement is dead, and that one has a line in the
+  file.** The loop has no `break`, so the loop variable is
+  `deletedObjNum` when it ends and the `i == deletedObjNum - 1` test can
+  never hold. The slot is cleared and reused by the next `WOR_AddDelObj`,
+  so the list works -- it just never shrinks. Removing the `- 1` is one
+  of the injected mutations and moves 320 cases, so the test sees it.
+- `WOR_gi_NumKilledGO` is reset by `WOR_ResetKillGO` here and filled in
+  `ai/ai_gameobjectfunctions.c`, which does bound it at 200.

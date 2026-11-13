@@ -121,34 +121,34 @@ extern int WOR_gb_FinalWorld;
 extern int WOR_gul_WorldText;
 extern int WOR_gul_WorldKey;
 
-void WOR_ActivateObjectIfFlagsAllow(struct sGameObjectMain* a1, struct sWorld* a2);
-void WOR_World_DetachObject(struct sWorld* a1, struct sGameObjectMain* a2);
-void WOR_World_AttachGameObject(struct sWorld* a1, struct sGameObjectMain* a2);
-void WOR_World_JustAfterLoadObject(struct sWorld* a1, struct sGameObjectMain* a2, int resolveAI, int attach);
-void WOR_DelObj(struct sWorld* a1, struct sGameObjectMain* a2);
-int WOR_i_GetAllChildrenOf(struct sWorld* a1, struct sGameObjectMain* a2, struct sGameObjectMain** ret);
-void WOR_AddDelObj(struct sWorld* a1, struct sGameObjectMain* a2, int* a3);
+void WOR_ActivateObjectIfFlagsAllow(struct sGameObjectMain* gao, struct sWorld* world);
+void WOR_World_DetachObject(struct sWorld* world, struct sGameObjectMain* gao);
+void WOR_World_AttachGameObject(struct sWorld* world, struct sGameObjectMain* gao);
+void WOR_World_JustAfterLoadObject(struct sWorld* world, struct sGameObjectMain* gao, int resolveAI, int attach);
+void WOR_DelObj(struct sWorld* world, struct sGameObjectMain* gao);
+int WOR_i_GetAllChildrenOf(struct sWorld* world, struct sGameObjectMain* parent, struct sGameObjectMain** children);
+void WOR_AddDelObj(struct sWorld* world, struct sGameObjectMain* gao, int* data);
 struct sWorld* WOR_pst_Universe_AddWorld(int worldKey, int unused1, int resolveAI);
-int WOR_l_Universe_GetWorldIndex(struct sWorld* a1);
-void WOR_World_ActivateObjects(struct sWorld* a1);
-void WOR_World_MakeObjectsVisible(struct sWorld* a1);
+int WOR_l_Universe_GetWorldIndex(struct sWorld* world);
+void WOR_World_ActivateObjects(struct sWorld* world);
+void WOR_World_MakeObjectsVisible(struct sWorld* world);
 void WOR_ResetKillGO();
-void WOR_World_Attached(tWorld* a1);
+void WOR_World_Attached(tWorld* world);
 void WOR_Render(struct sWorld* world, struct sGdi_DisplayData* dxdd);
-void WOR_Universe_Open(int a1);
+void WOR_Universe_Open(int aiInstanceKey);
 void WOR_InitModule();
 void WOR_CloseModule();
 void WOR_Universe_Close();
-void WOR_Universe_DeleteWorld(struct sWorld* a1);
-struct sWorld* WOR_pst_Universe_GetActiveWorld(int a1);
-void WOR_World_ResolveAIRef(struct sWorld* a1);
-struct sWorld* WOR_pst_Universe_AddWorldList(int a1, int worldKey, int unused1);
+void WOR_Universe_DeleteWorld(struct sWorld* world);
+struct sWorld* WOR_pst_Universe_GetActiveWorld(int idx);
+void WOR_World_ResolveAIRef(struct sWorld* world);
+struct sWorld* WOR_pst_Universe_AddWorldList(int unused0, int worldKey, int unused1);
 
-void EOT_UpdateIdentityFlagsOfTable(tableDescStruct* a1);
-void EOT_RemoveObjectFromTableIfBadFlag(tableDescStruct* a1, int a2);
-void EOT_SetOfEOT_Close(tEOTStructs* a1);
-void EOT_SetOfEOT_Build(tEOTStructs* a1, tableDescStruct* a2);
-void EOT_SetOfEOT_OneBuild(tableDescStruct* a1, int a2, tableDescStruct* a3);
+void EOT_UpdateIdentityFlagsOfTable(tableDescStruct* table);
+void EOT_RemoveObjectFromTableIfBadFlag(tableDescStruct* table, int flagMask);
+void EOT_SetOfEOT_Close(tEOTStructs* eot);
+void EOT_SetOfEOT_Build(tEOTStructs* eot, tableDescStruct* src);
+void EOT_SetOfEOT_OneBuild(tableDescStruct* dest, int flagMask, tableDescStruct* src);
 
 
 
