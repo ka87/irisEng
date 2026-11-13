@@ -157,26 +157,30 @@ static IDirect3DTexture9Vtbl texVtbl = {
 
 static HRESULT DevSetRenderState(IDirect3DDevice9* d, D3DRENDERSTATETYPE s, DWORD v)
 {
-    AEMOCK_Record("SetRenderState", 2, (long long)s, (long long)v);
+    AEMOCK_Record("SetRenderState", 2, (long long)(unsigned int)s,
+                  (long long)(unsigned int)v);
     return 0;
 }
 
 static HRESULT DevSetTextureStageState(IDirect3DDevice9* d, DWORD stage,
                                        D3DTEXTURESTAGESTATETYPE s, DWORD v)
 {
-    AEMOCK_Record("SetTextureStageState", 3, (long long)stage, (long long)s, (long long)v);
+    AEMOCK_Record("SetTextureStageState", 3, (long long)(unsigned int)stage,
+                  (long long)(unsigned int)s, (long long)(unsigned int)v);
     return 0;
 }
 
 static HRESULT DevSetSamplerState(IDirect3DDevice9* d, DWORD samp, DWORD s, DWORD v)
 {
-    AEMOCK_Record("SetSamplerState", 3, (long long)samp, (long long)s, (long long)v);
+    AEMOCK_Record("SetSamplerState", 3, (long long)(unsigned int)samp,
+                  (long long)(unsigned int)s, (long long)(unsigned int)v);
     return 0;
 }
 
 static HRESULT DevSetTexture(IDirect3DDevice9* d, DWORD stage, IDirect3DBaseTexture9* t)
 {
-    AEMOCK_Record("SetTexture", 2, (long long)stage, (long long)AEMOCK_Index(t));
+    AEMOCK_Record("SetTexture", 2, (long long)(unsigned int)stage,
+                  (long long)AEMOCK_Index(t));
     return 0;
 }
 
@@ -188,7 +192,7 @@ static HRESULT DevSetVertexShader(IDirect3DDevice9* d, IDirect3DVertexShader9* s
 
 static HRESULT DevSetFVF(IDirect3DDevice9* d, DWORD fvf)
 {
-    AEMOCK_Record("SetFVF", 1, (long long)fvf);
+    AEMOCK_Record("SetFVF", 1, (long long)(unsigned int)fvf);
     return 0;
 }
 
@@ -199,8 +203,8 @@ static HRESULT DevDrawPrimitiveUP(IDirect3DDevice9* d, DWORD type, UINT count,
     unsigned int words;
     unsigned int i;
 
-    AEMOCK_Record("DrawPrimitiveUP", 3, (long long)type, (long long)count,
-                  (long long)stride);
+    AEMOCK_Record("DrawPrimitiveUP", 3, (long long)(unsigned int)type,
+                  (long long)(unsigned int)count, (long long)(unsigned int)stride);
     /* a triangle strip of `count` primitives is count + 2 vertices */
     words = (stride * (count + 2)) / 4;
     for (i = 0; i < words; i++)
@@ -265,8 +269,8 @@ static HRESULT DevClear(IDirect3DDevice9* d, DWORD n, const D3DRECT* rects, DWOR
 {
     DWORD i;
 
-    AEMOCK_Record("Clear", 4, (long long)n, (long long)flags, (long long)col,
-                  (long long)*(unsigned int*)&z);
+    AEMOCK_Record("Clear", 4, (long long)(unsigned int)n, (long long)(unsigned int)flags,
+                  (long long)(unsigned int)col, (long long)*(unsigned int*)&z);
     for (i = 0; rects && i < n; i++)
         AEMOCK_Record("clear.rect", 4, (long long)rects[i].x1, (long long)rects[i].y1,
                       (long long)rects[i].x2, (long long)rects[i].y2);
@@ -294,8 +298,9 @@ static HRESULT DevCreateTexture(IDirect3DDevice9* d, UINT w, UINT h, UINT levels
                                 DWORD usage, D3DFORMAT fmt, D3DPOOL pool,
                                 IDirect3DTexture9** out, HANDLE* shared)
 {
-    AEMOCK_Record("CreateTexture", 6, (long long)w, (long long)h, (long long)levels,
-                  (long long)usage, (long long)fmt, (long long)pool);
+    AEMOCK_Record("CreateTexture", 6, (long long)(unsigned int)w, (long long)(unsigned int)h,
+                  (long long)(unsigned int)levels, (long long)(unsigned int)usage,
+                  (long long)(unsigned int)fmt, (long long)(unsigned int)pool);
     *out = (IDirect3DTexture9*)&createdTexture;
     return 0;
 }
@@ -303,7 +308,7 @@ static HRESULT DevCreateTexture(IDirect3DDevice9* d, UINT w, UINT h, UINT levels
 static HRESULT DevColorFill(IDirect3DDevice9* d, IDirect3DSurface9* s, const RECT* r,
                             D3DCOLOR c)
 {
-    AEMOCK_Record("ColorFill", 2, (long long)AEMOCK_Index(s), (long long)c);
+    AEMOCK_Record("ColorFill", 2, (long long)AEMOCK_Index(s), (long long)(unsigned int)c);
     return 0;
 }
 
