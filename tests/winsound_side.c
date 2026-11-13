@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "winsound_mocks.h"
 #include "../sound.h"
@@ -347,12 +348,23 @@ static void dump_fx(const char* tag, tSoundFxParams* p)
 
 /* ------------------------------------------------------------ fixture */
 
-static void mtx_set(Mtx4x4* m, float base)
+/* An orientation matrix with unit rows, so that a dot product with a
+   normalised direction lands in [-1, 1] and the clamps and the
+   attenuation lookup under them are actually exercised. */
+static void mtx_set(Mtx4x4* m, float angle)
 {
-    float* f = (float*)m;
-    int i;
-    for (i = 0; i < 16; ++i)
-        f[i] = base + 0.125f * (float)i;
+    float c = (float)cos((double)angle);
+    float sn = (float)sin((double)angle);
+
+    m->v1.x = c;    m->v1.y = sn;   m->v1.z = 0.0f;   m->_m14 = 0.0f;
+    m->v2.x = -sn;  m->v2.y = c;    m->v2.z = 0.0f;   m->_m24 = 0.0f;
+    m->v3.x = 0.0f; m->v3.y = 0.0f; m->v3.z = 1.0f;   m->_m34 = 0.0f;
+    m->Pos.x = angle; m->Pos.y = -angle; m->Pos.z = 0.5f * angle;
+    m->w = 1.0f;
+    m->mtxflag = 0;
+    m->unk1 = 0;
+    m->unk2 = 0;
+    m->unk3 = 0;
 }
 
 static void fixture_reset(unsigned seed)
@@ -418,6 +430,9 @@ static void fixture_reset(unsigned seed)
     mtx_set(&fx_micro, 0.25f);
     mtx_set(&fx_ref, -0.5f);
     mtx_set(&fx_gaoMtx, 2.0f);
+    fx_micro.v3.x = 0.6f;
+    fx_micro.v3.y = 0.0f;
+    fx_micro.v3.z = 0.8f;
     SND_gst_Params.microPosMtxPtr = &fx_micro;
     SND_gst_Params.sndMatrixRef = &fx_ref;
 
@@ -545,7 +560,7 @@ static tSndSoundBufferElem* make_sbe(int idx, int withMisc, int format)
 
 /* ------------------------------------------------------------- cases */
 
-#define GROUPS 13
+#define GROUPS 14
 #define SUBCASES 96
 
 int SIDE_CASES(void) { return GROUPS * SUBCASES; }
@@ -728,6 +743,9 @@ void SIDE_RUN(int c)
         sbe->miscData->unk6 = 120 * (sub % 3);
         SND_gst_Params.soundRenderMode = (sub & 4) ? 1 : 2;
         wsnd_read_bytes = 36 * (1 + (sub % 11));
+        /* decoded comes out a multiple of 120, so this is a value the
+           short-read test can actually land on. */
+        sbe->miscData->sizeToUpload = 120 * (1 + (sub % 11));
         if (sbe->miscData->readThroughWithMultipleLoop)
         {
             /* The refill loop only ends when each pass decodes a whole
@@ -1004,12 +1022,12 @@ void SIDE_RUN(int c)
                out of the play list, so the slot is refilled (index 0)
                before the next one walks it; index 1 and index 3, which
                empty it for good, come last. */
-            script[0] = 4 + (sub & 1);
+            script[0] = 4 + ((sub >> 2) & 1);
             script[1] = (int)0xFFFFFFFF;
             script[2] = 0;
-            script[3] = 4 + (sub & 1);
+            script[3] = 4 + ((sub >> 2) & 1);
             script[4] = 0;
-            script[5] = 4 + (sub & 1);
+            script[5] = 4 + ((sub >> 2) & 1);
             script[6] = 1;
             script[7] = 3;
             wsnd_thread_script(script, 8);
@@ -1057,6 +1075,44 @@ void SIDE_RUN(int c)
         dump_globals();
         if (sndEventsNum == 0 && !SND_gc_NoSound)
             d("cleaned\n");
+        break;
+    }
+
+    case 13:
+    {
+        /* The doppler ratio, swept through its clamps on purpose. The
+           closing speed passes through zero as fx_DopplerSpeed walks, so
+           the ratio spans the whole range either side of both clamps --
+           which is the only way the 1000.0 cap is ever reached. */
+        tSoundInstanceElem* inst = &fx_instances[sub % INSTANCES];
+        Vec3 speed;
+
+        inst->soundBufElemFromModel = make_sbe(0, 0, 1);
+        inst->sndPosMtxSetInSetPos = 0;
+        inst->gao = 0;
+        inst->sndPositionSetInSetPosPtr = &inst->sndInstPosVec;
+        inst->sndInstPosVec.x = 3.0f;
+        inst->sndInstPosVec.y = 4.0f;
+        inst->sndInstPosVec.z = 0.0f;
+        inst->sndInstPosVecPrevious.x = 2.5f;
+        inst->sndInstPosVecPrevious.y = 3.0f;
+        inst->sndInstPosVecPrevious.z = 0.0f;
+        inst->freq = (sub < 48) ? 100 : 300000;
+        SND_gst_Params.sndMatrixRef->Pos.x = 0.0f;
+        SND_gst_Params.sndMatrixRef->Pos.y = 0.0f;
+        SND_gst_Params.sndMatrixRef->Pos.z = 0.0f;
+        SND_gst_Params.fx_doppler = 1.0f + 0.25f * (float)(sub % 4);
+        /* closing = fx_DopplerSpeed * 5 - 11, so this walks it through
+           zero and the ratio sweeps both the 1000.0 cap and the -1.0
+           clamp. */
+        SND_gst_Params.fx_DopplerSpeed = 2.2f + 0.00390625f * (float)(sub - 48);
+        TIM_gf_dt = 0.0166666f;
+        speed.x = 1.0f;
+        speed.y = 2.0f;
+        speed.z = 0.0f;
+        SND_ComputeDoppler(&speed, &SND_gst_Params.sndMatrixRef->Pos, inst);
+        d("dop s=%08X d=%08X\n", fbits(SND_gst_Params.fx_DopplerSpeed),
+          fbits(SND_gst_Params.fx_doppler));
         break;
     }
     }
