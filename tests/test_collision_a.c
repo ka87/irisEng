@@ -1479,6 +1479,27 @@ static void rcBuild(RcFixture* f, int seed, int withMaterial, int mtxFlag)
     for (k = 0; k < RC_VERTS; k++)
         randv(&f->verts[k], 4.0f);
 
+    /* On every fourth seed the mesh and the ray source are both snapped
+       to a half-unit grid, and on half of those the ray is made exactly
+       perpendicular to one axis. Both are degenerate shapes the random
+       sweep never produces.
+
+       Neither closes the one gap known to be open here: the slab
+       rejection folded out of twelve sites compares a triangle's
+       extreme coordinate against the ray's, and a > for a >= on any of
+       its six bounds still scores clean. That needs the bound exactly
+       equal to the origin AND a hit at the ray's own start plane, and
+       two attempts at building it did not get there. */
+    if ((seed & 3) == 0)
+    {
+        for (k = 0; k < RC_VERTS; k++)
+        {
+            f->verts[k].x = (float)((int)(f->verts[k].x * 2.0f)) * 0.5f;
+            f->verts[k].y = (float)((int)(f->verts[k].y * 2.0f)) * 0.5f;
+            f->verts[k].z = (float)((int)(f->verts[k].z * 2.0f)) * 0.5f;
+        }
+    }
+
     for (c = 0; c < RC_CHUNKS; c++)
     {
         for (t = 0; t < RC_TRIS_PER_CHUNK; t++)
@@ -1660,6 +1681,25 @@ static void runMeshRayCasts(void)
         gSeed = (unsigned int)(0xA5A50000u + (unsigned int)i);
         randv(&src, 10.0f);
         randUnit(&dir);
+        if ((i & 3) == 0)
+        {
+            /* the same half-unit grid rcBuild snapped the mesh to */
+            src.x = (float)((int)(src.x * 2.0f)) * 0.5f;
+            src.y = (float)((int)(src.y * 2.0f)) * 0.5f;
+            src.z = (float)((int)(src.z * 2.0f)) * 0.5f;
+        }
+        if ((i & 7) == 4)
+        {
+            /* an exactly axis-perpendicular ray, so the slab test's
+               dir == 0 arm runs against a grid-aligned mesh */
+            float l;
+            if ((i & 24) == 0) dir.x = 0.0f;
+            else if ((i & 24) == 8) dir.y = 0.0f;
+            else dir.z = 0.0f;
+            l = (float)sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+            if (l > 0.0001f)
+                setv(&dir, dir.x / l, dir.y / l, dir.z / l);
+        }
         if ((i & 3) == 0)
         {
             /* aim at a triangle's centroid so the hit arm runs */
