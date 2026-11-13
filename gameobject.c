@@ -1520,13 +1520,13 @@ void OBJ_FreeGroup(tGroup* grp)
 
 void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
 {
-    tGroGeneric* v2;
-    tGroGeneric* v3;
-    tGameObjectVisualObject* v4;
-    tGameObjectMultiPartData* v5;
-    tGroGeneric* v6;
-    tModifier* v7;
-    tModifier* v8;
+    tGroGeneric* gro;
+    tGroGeneric* grm;
+    tGameObjectVisualObject* visual;
+    tGameObjectMultiPartData* multiPart;
+    tGroGeneric* light;
+    tModifier* mdf;
+    tModifier* next;
 
     GRPSectDelObj(gao);
     if ((gao->flags & 8) == 0)
@@ -1535,24 +1535,24 @@ void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
     {
         if ((gao->flags & 0x4000) != 0)
         {
-            v2 = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse;
-            if (v2)
+            gro = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse;
+            if (gro)
             {
                 if (refCountDown)
-                    v2->intf->AddRef(v2, -1);
-                v2->intf->Destroy(v2);
+                    gro->intf->AddRef(gro, -1);
+                gro->intf->Destroy(gro);
             }
-            v3 = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROMAT;
-            if (v3)
+            grm = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROMAT;
+            if (grm)
             {
                 if (refCountDown)
-                    v3->intf->AddRef(v3, -1);
-                v3->intf->Destroy(v3);
+                    grm->intf->AddRef(grm, -1);
+                grm->intf->Destroy(grm);
             }
-            v4 = gao->basic->actorObjectOrVisualObject;
-            if (v4->RLIVertexColors)
-                MEM_Free(v4->RLIVertexColors);
-            v4->RLIVertexColors = 0;
+            visual = gao->basic->actorObjectOrVisualObject;
+            if (visual->RLIVertexColors)
+                MEM_Free(visual->RLIVertexColors);
+            visual->RLIVertexColors = 0;
             MEM_Free(gao->basic->actorObjectOrVisualObject);
         }
         if ((gao->flags & 2) != 0)
@@ -1563,9 +1563,9 @@ void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
             MEM_FreeAlign(gao->basic->mtx);
         if ((gao->flags & 0x200000) != 0)
         {
-            v5 = gao->basic->multiPartData;
-            if (v5->elemNum)
-                MEM_FreeAlign(v5->multipartGaoObjectPartsOrMatrices);
+            multiPart = gao->basic->multiPartData;
+            if (multiPart->elemNum)
+                MEM_FreeAlign(multiPart->multipartGaoObjectPartsOrMatrices);
             MEM_Free(gao->basic->multiPartData);
         }
         MEM_Free(gao->basic);
@@ -1582,11 +1582,11 @@ void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
             WAY_FreeStruct(gao->extended->way);
         if ((gao->flags & 0x10) != 0)
         {
-            v6 = gao->extended->light;
-            if (v6)
+            light = gao->extended->light;
+            if (light)
             {
-                v6->intf->AddRef(v6, -1);
-                v6->intf->Destroy(v6);
+                light->intf->AddRef(light, -1);
+                light->intf->Destroy(light);
             }
         }
         if ((gao->flags & 0x40) != 0)
@@ -1600,15 +1600,12 @@ void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
             gao->extended->messages = 0;
         }
         COL_Free(gao);
-        v7 = gao->extended->mdf;
-        if (v7)
+        mdf = gao->extended->mdf;
+        while (mdf)
         {
-            do
-            {
-                v8 = v7->nextElem;
-                MDF_Modifier_Destroy(v7);
-                v7 = v8;
-            } while (v8);
+            next = mdf->nextElem;
+            MDF_Modifier_Destroy(mdf);
+            mdf = next;
         }
 
         if ((gao->flags & 0x8000000) != 0)
@@ -1620,708 +1617,563 @@ void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
     MEM_Free(gao);
 }
 
-Mtx4x4* OBJ_pst_GetFlashMatrix(struct sGameObjectMain* a1)
+Mtx4x4* OBJ_pst_GetFlashMatrix(struct sGameObjectMain* gao)
 {
-    Mtx4x4* v1;
+    Mtx4x4* matrices;
     Mtx4x4* result;
 
-    if ((a1->flags & 0x4000000) == 0)
+    if ((gao->flags & 0x4000000) == 0)
         return 0;
-    v1 = a1->matrices;
-    if ((a1->flags & 0x10000) != 0)
-        result = v1 + 2;
+    matrices = gao->matrices;
+    if ((gao->flags & 0x10000) != 0)
+        result = matrices + 2;
     else
-        result = v1 + 1;
+        result = matrices + 1;
     return result;
 }
 
-void OBJ_ChangeIdentityFlags(tGameObjectMain* a1, unsigned int a2, int a3)
+void OBJ_ChangeIdentityFlags(tGameObjectMain* gao, unsigned int newFlags, int oldFlags)
 {
-    int v3;
-    unsigned int v4;
-    tGameObjectBasic* v5;
-    int v6; // fixed: char
-    Mtx4x4* v7;
-    Mtx4x4* v8;
-    Mtx4x4* v9;
-    Mtx4x4* v10;
-    Mtx4x4* v11;
-    Mtx4x4* v12;
-    tGameObjectVisualObject* v13;
-    tGroGeneric* v14;
-    tGroGeneric* v15;
-    tGameObjectBasic* v16;
+    tGameObjectBasic* basic;
+    Mtx4x4* matrices;
+    Mtx4x4* initMtx;
+    Mtx4x4* flashMtx;
+    tGameObjectVisualObject* visual;
+    tGroGeneric* gro;
+    tGroGeneric* grm;
     tDyn* dyn;
-    tGameObjectBasic* v18;
-    tGameObjectMain* v19;
-    Mtx4x4* v20;
-    tGameObjectMain* v21;
-    int v22;
-    tGameObjectBasic* v23;
-    tGameObjectMain* v24;
-    Mtx4x4* v25;
-    unsigned int v26;
-    tGameObjectBasic* v27;
-    tGameObjectMultiPartData* v28;
-    tGameObjectMultiPartData* v29;
-    int v30;
-    int v31;
-    tGameObjectMultiPartData* v32;
-    int v33;
-    int v34;
-    Mtx4x4** v35;
-    Mtx4x4* v36;
-    unsigned int v37;
-    tWay* v38;
-    tGroGeneric* v39;
-    tGroGeneric* v40;
-    tGameObjectBV* v41;
-    tWorld* v42;
-    tGameObjectMain* v43;
-    int v44;
-    Mtx4x4 a2a;
-    Mtx4x4 v46;
+    tGameObjectMain* parent;
+    Mtx4x4* parentMtx;
+    tGameObjectMain* walk;
+    int walkFlags;
+    tGameObjectMultiPartData* multiPart;
+    int elemIdx;
+    Mtx4x4* partMtx;
+    tWay* way;
+    tGroGeneric* light;
+    tWorld* world;
+    tGameObjectMain* walkNext;
+    int bvResized;
+    Mtx4x4 acc;
+    Mtx4x4 tmp;
 
-    v44 = 0;
-    if (a1)
+    bvResized = 0;
+    if (!gao)
+        return;
+
+    world = WOR_gpst_CurrentWorld;
+    if (oldFlags == -1)
+        oldFlags = gao->flags;
+
+    if ((newFlags & 0x1000000) != 0)
+        newFlags |= 0x200000u;
+    if ((newFlags & 0x1604000) != 0 || (newFlags & 6) != 0)
+        newFlags |= 0x1000u;
+    if ((newFlags & 0x1000) != 0 && (oldFlags & 0x1000) == 0)
     {
-        v42 = WOR_gpst_CurrentWorld;
-        v3 = a3;
-        if (a3 == -1)
-        {
-            a3 = a1->flags;
-            v3 = a1->flags;
-        }
-        v4 = a2;
-        if ((a2 & 0x1000000) != 0)
-        {
-            v4 = a2 | 0x200000;
-            a2 |= 0x200000u;
-        }
-        if ((v4 & 0x1604000) != 0 || (v4 & 6) != 0)
-        {
-            v4 |= 0x1000u;
-            a2 = v4;
-        }
-        if ((v4 & 0x1000) != 0 && (v3 & 0x1000) == 0)
-        {
-            v5 = (tGameObjectBasic*)MEM_p_Alloc(sizeof(tGameObjectBasic));
-            a1->basic = v5;
-            v5->actorObjectOrVisualObject = 0;
-            v5->dyn = 0;
-            v5->mtx = 0;
-            v5->multiPartData = 0;
-            v5->extraMaterial = 0;
-            v3 = a3;
-        }
-        v6 = a2;
-        if ((a2 & 0x70) != 0 || (a2 & 0xA048700) != 0)
-        {
-            v6 = a2 | 0x2000u;
-            a2 |= 0x2000u;
-        }
-        if ((v6 & 0x2000) != 0 && (v3 & 0x2000) == 0)
-        {
-            OBJ_GameObject_CreateExtended(a1);
-            v3 = a3;
-        }
-        if ((a2 & 0x10000) != 0)
-        {
-            if ((v3 & 0x10000) != 0)
-                goto LABEL_33;
-            a1->flags |= 0x10000u;
-            if ((a2 & 0x4000000) != 0)
-            {
-                v7 = (Mtx4x4*)MATH_Matrix_ReallocArray(a1->matrices, 3);
-                v8 = v7 + 1;
-                a1->matrices = v7;
-                v9 = v7 + 2;
-                if (v9 != v8)
-                    memcpy(v9, v8, sizeof(Mtx4x4));
-                OBJ_SetInitialAbsoluteMatrix(a1, a1->matrices);
-            }
-            else
-            {
-                v10 = (Mtx4x4*)MATH_Matrix_ReallocArray(a1->matrices, 2);
-                a1->matrices = v10;
-                OBJ_SetInitialAbsoluteMatrix(a1, v10);
-            }
-        }
-        else
-        {
-            if ((v3 & 0x10000) == 0)
-                goto LABEL_33;
-            if ((a2 & 0x4000000) != 0)
-            {
-                v11 = a1->matrices;
-                if (&v11[1] != &v11[2])
-                    memcpy(&v11[1], &v11[2], sizeof(Mtx4x4));
-                v12 = (Mtx4x4*)MATH_Matrix_ReallocArray(a1->matrices, 2);
-            }
-            else
-            {
-                v12 = (Mtx4x4*)MATH_Matrix_ReallocArray(a1->matrices, 1);
-            }
-            a1->matrices = v12;
-        }
-        v3 = a3;
-    LABEL_33:
-        if ((a2 & 0x4000) != 0)
-        {
-            if ((v3 & 0x4000) != 0)
-                goto LABEL_45;
-            a1->basic->actorObjectOrVisualObject = (tGameObjectVisualObject*)MEM_p_Alloc(sizeof(tGameObjectVisualObject));
-            v13 = a1->basic->actorObjectOrVisualObject;
-            v13->GROGEOOrSomethingElse = 0;
-            v13->GROMAT = 0;
-            v13->objDrawMask = 0;
-            v13->RLIVertexColors = 0;
-            v13->renderOnlyWithGFXRender = 0;
-            v13->culledFlagFromCullingObject = 0;
-            v13->vmilyenDistanceLightAttenuationFactor;
-            v13->boneDisplayOrder_zListBufferNum;
-            ((tGameObjectVisualObject *)(a1->basic->actorObjectOrVisualObject))->objDrawMask = 0xffffffff;
-        }
-        else
-        {
-            if ((v3 & 0x4000) == 0)
-                goto LABEL_45;
-            v14 = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse;
-            if (v14)
-            {
-                v14->intf->AddRef(v14, -1);
-                v14->intf->Destroy(v14);
-            }
-            v15 = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-            if (v15)
-            {
-                v15->intf->AddRef(v15, -1);
-                v15->intf->Destroy(v15);
-            }
-            v16 = a1->basic;
-            if (((tGameObjectVisualObject*)(v16->actorObjectOrVisualObject))->RLIVertexColors)
-                MEM_Free(((tGameObjectVisualObject*)(v16->actorObjectOrVisualObject))->RLIVertexColors);
-            MEM_Free(a1->basic->actorObjectOrVisualObject);
-            a1->basic->actorObjectOrVisualObject = 0;
-        }
-        v3 = a3;
-    LABEL_45:
-        if ((a2 & 2) != 0)
-        {
-            if ((v3 & 2) != 0)
-                goto LABEL_51;
-            a1->basic->actorObjectOrVisualObject = ANI_pst_CreateGameObjectAnim();
-        }
-        else
-        {
-            if ((v3 & 2) == 0)
-                goto LABEL_51;
-            ANI_Free(a1->basic->actorObjectOrVisualObject);
-            a1->basic->actorObjectOrVisualObject = 0;
-        }
-        v3 = a3;
-    LABEL_51:
-        if ((a2 & 4) != 0)
-        {
-            if ((v3 & 4) != 0)
-                goto LABEL_57;
-            dyn = DYN_pst_Dyna_Create();
-            DYN_Dyna_Init(dyn, 65, 1.0, 3.402822e38f, 3.402822e38f, &MATH_gst_NulVector, &a1->matrices->Pos);
-            a1->basic->dyn = dyn;
-            OBJ_ResetProcess(a1, WOR_gpst_CurrentWorld->dynCallCount, 64);
-        }
-        else
-        {
-            if ((v3 & 4) == 0)
-                goto LABEL_57;
-            DYN_Dyna_Close(a1->basic->dyn);
-            a1->basic->dyn = 0;
-            EOT_UpdateIdentityFlagsOfTable(&v42->activatedObjectsTable4PF);
-            EOT_RemoveObjectFromTableIfBadFlag(&v42->eot.dynamicObjectsTablePF, 4);
-        }
-        v3 = a3;
-    LABEL_57:
-        if ((a2 & 0x400000) != 0)
-        {
-            if ((v3 & 0x400000) == 0)
-            {
-                a1->basic->mtx = (tGaoMatrix*)MEM_p_AllocAligned(96, 16);
-                a1->basic->mtx->refGao = 0;
-                a1->basic->mtx->refGao2 = 0;
-                MATH_SetIdentityMatrix(&a1->basic->mtx->mtx);
-            LABEL_73:
-                v3 = a3;
-                goto LABEL_74;
-            }
-        }
-        else if ((v3 & 0x400000) != 0)
-        {
-            if ((a2 & 0x10000) != 0)
-            {
-                v18 = a1->basic;
-                v19 = v18->mtx->refGao;
-                if (v19)
-                {
-                    if ((v19->flags & 0x10000) != 0)
-                    {
-                        v20 = OBJ_pst_GetAbsoluteMatrix(v18->mtx->refGao);
-                        MATH_MulMatrixMatrix(&a2a, a1->matrices + 1, v20 + 1);
-                        v21 = a1->basic->mtx->refGao;
-                        v22 = v21->flags;
-                        v43 = v21;
-                        if ((v21->flags & 0x10000) != 0)
-                        {
-                            while ((v22 & 0x400000) != 0)
-                            {
-                                v23 = v21->basic;
-                                v24 = v23->mtx->refGao;
-                                if (!v24)
-                                    break;
-                                if ((v24->flags & 0x10000) == 0)
-                                    break;
-                                v25 = OBJ_pst_GetAbsoluteMatrix(v23->mtx->refGao);
-                                MATH_MulMatrixMatrix(&v46, &a2a, v25 + 1);
-                                memcpy(&a2a, &v46, sizeof(a2a));
-                                v43 = v43->basic->mtx->refGao;
-                                v22 = v43->flags;
-                                if ((v43->flags & 0x10000) == 0)
-                                    break;
-                                v21 = v43;
-                            }
-                        }
-                        MATH_CopyMatrix(a1->matrices + 1, &a2a);
-                    }
-                }
-            }
-            MEM_FreeAlign(a1->basic->mtx);
-            a1->basic->mtx = 0;
-            goto LABEL_73;
-        }
-    LABEL_74:
-        v26 = a2;
-        if ((a2 & 0x1000000) != 0 && (v3 & 0x200000) == 0)
-        {
-            v26 = a2 | 0x200000;
-            a2 |= 0x200000u;
-        }
-        if ((v26 & 0x200000) != 0)
-        {
-            if ((v3 & 0x200000) != 0)
-                goto LABEL_85;
-            a1->basic->multiPartData = (tGameObjectMultiPartData*)MEM_p_Alloc(sizeof(tGameObjectMultiPartData));
-            a1->basic->multiPartData->elemNum = 0;
-            a1->basic->multiPartData->multipartGaoObjectPartsOrMatrices = 0;
-        }
-        else
-        {
-            if ((v3 & 0x200000) == 0)
-                goto LABEL_85;
-            v27 = a1->basic;
-            a1->flags |= 0x200000u;
-            v28 = v27->multiPartData;
-            if (v28->elemNum)
-                MEM_Free(v28->multipartGaoObjectPartsOrMatrices);
-            MEM_Free(a1->basic->multiPartData);
-            a1->basic->multiPartData = 0;
-        }
-        v3 = a3;
-    LABEL_85:
-        if ((a2 & 0x1000000) != 0)
-        {
-            if ((v3 & 0x1000000) == 0)
-            {
-                v29 = a1->basic->multiPartData;
-                if (v29->elemNum)
-                {
-                    MEM_Free(v29->multipartGaoObjectPartsOrMatrices);
-                    a1->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_Alloc(sizeof(tMultiPartGameObjectLinks) * a1->basic->multiPartData->elemNum);
-                    v30 = 0;
-                    if (a1->basic->multiPartData->elemNum > 0)
-                    {
-                        v31 = 0;
-                        do
-                        {
-                            ((tMultiPartGameObjectLinks**)(a1->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[v30]->mtxPtr = 0;
-                            ++v30;
-                        } while (v30 < a1->basic->multiPartData->elemNum);
-                    }
-                LABEL_97:
-                    v3 = a3;
-                    goto LABEL_98;
-                }
-            }
-        }
-        else if ((v3 & 0x1000000) != 0)
-        {
-            v32 = a1->basic->multiPartData;
-            if (v32->elemNum)
-            {
-                MEM_Free(v32->multipartGaoObjectPartsOrMatrices);
-                a1->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_AllocAligned(sizeof(Mtx4x4) * a1->basic->multiPartData->elemNum, 16);
-                v33 = 0;
-                if (a1->basic->multiPartData->elemNum > 0)
-                {
-                    v34 = 0;
-                    do
-                    {
-                        v35 = (Mtx4x4**)a1->basic->multiPartData->multipartGaoObjectPartsOrMatrices;
-                        v36 = v35[v33];
-                        v36->mtxflag &= 2;
-                        v36->v1.x = 1.0;
-                        v36->v1.y = 0.0;
-                        v36->v1.z = 0.0;
-                        v36->_m14 = 0.0;
-                        v36->v2.x = 0.0;
-                        v36->v2.y = 1.0;
-                        v36->v2.z = 0.0;
-                        v36->_m24 = 0.0;
-                        v36->v3.x = 0.0;
-                        v36->v3.y = 0.0;
-                        v36->v3.z = 1.0;
-                        v36->_m34 = 0.0;
-                        v36->Pos.x = 0.0;
-                        v36->Pos.y = 0.0;
-                        v36->Pos.z = 0.0;
-                        v36->w = 1.0;
-                        ++v33;
-                    } while (v33 < a1->basic->multiPartData->elemNum);
-                }
-                goto LABEL_97;
-            }
-        }
-    LABEL_98:
-        if ((a2 & 0x40) != 0)
-        {
-            if ((v3 & 0x40) != 0)
-                goto LABEL_104;
-            a1->extended->fields = (tGameObjectDesignFields*)MEM_p_Alloc(0x58u);
-            memset(a1->extended->fields, 0, sizeof(tGameObjectDesignFields));
-        }
-        else
-        {
-            if ((v3 & 0x40) == 0)
-                goto LABEL_104;
-            MEM_Free(a1->extended->fields);
-            a1->extended->fields = 0;
-        }
-        v3 = a3;
-    LABEL_104:
-        if ((a2 & 0x8000) == 0)
-        {
-            if ((v3 & 0x8000) != 0)
-            {
-                MEM_Free(a1->extended->messages);
-                a1->extended->messages = 0;
-                goto LABEL_109;
-            }
-        }
-        else if ((v3 & 0x8000) == 0)
-        {
-            a1->extended->messages = (tGameObjectMessages*)MEM_p_Alloc(0x108u);
-            memset(a1->extended->messages, 0, sizeof(tGameObjectMessages));
-        LABEL_109:
-            v3 = a3;
-            goto LABEL_110;
-        }
-    LABEL_110:
-        if ((a2 & 0x100) != 0 && (v3 & 0x100) == 0)
-        {
-            if ((a2 & 0x4000) != 0)
-            {
-                COL_AllocColMap(a1);
-                a1->flags2 |= 0x80u;
-                INT_SnP_AddObject(a1, v42->snp);
-                INT_SnP_InsertionSort(v42->snp, 0);
-                v3 = a3;
-            }
-            else
-            {
-                a2 &= ~0x100u;
-                a1->flags2 &= ~0x80u;
-            }
-        }
-        if ((a2 & 0x100) == 0 && (v3 & 0x100) != 0)
-        {
-            COL_FreeColMap(a1->extended->coll);
-            v3 = a3;
-        }
-        v37 = a2;
-        if ((a2 & 0x200) != 0 && (v3 & 0x200) == 0)
-        {
-            v37 = a2 & ~0x200u;
-            a2 &= ~0x200u;
-        }
-        if ((v37 & 0x400) != 0 && (v3 & 0x400) == 0)
-        {
-            v37 &= ~0x400u;
-            a2 = v37;
-        }
-        if ((v37 & 0x200) == 0 && (v3 & 0x200) != 0)
-        {
-            a2 = v37 & ~0x400u;
-            COL_FreeInstance(a1->extended->coll);
-            v3 = a3;
-        }
-        if ((a2 & 0x400) == 0 && (v3 & 0x400) != 0)
-        {
-            a2 &= ~0x200;
-            COL_FreeInstance(a1->extended->coll);
-            v3 = a3;
-        }
-        if ((a2 & 0x20) != 0 && (v3 & 0x20) == 0)
-        {
-            COL_AllocDetectionList(a1);
-            a1->flags2 |= 0x20u;
-            v3 = a3;
-        }
-        if ((a2 & 0x20) != 0)
-        {
-            if ((v3 & 0x20) == 0)
-                a2 &= ~0x20u;
-        }
-        else
-        {
-            if ((v3 & 0x20) != 0 && (a1->flags2 & 0x100000) == 0)
-            {
-                COL_FreeDetectionList(a1->extended->coll);
-                a1->extended->coll->detectionList = 0;
-                a1->flags2 &= ~0x20u;
-                v3 = a3;
-            }
-            if ((v3 & 0x20) != 0)
-            {
-                AI_FreeInstance(a1->extended->AIInstance);
-                a1->extended->AIInstance = 0;
-                EOT_UpdateIdentityFlagsOfTable(&v42->activatedObjectsTable4PF);
-                EOT_RemoveObjectFromTableIfBadFlag(&v42->eot.AICallbacksTablePF, 32);
-                v3 = a3;
-            }
-        }
-        if ((a2 & 0x800000) != 0)
-        {
-            if ((v3 & 0x800000) == 0)
-                a2 &= 0xFF7FFFFF;
-        }
-        else if ((v3 & 0x800000) != 0)
-        {
-            GRP_ObjDetachGroup(a1);
-            v3 = a3;
-        }
-        if ((a2 & 0x2000000) != 0)
-        {
-            if ((v3 & 0x2000000) != 0)
-                goto LABEL_153;
-            EVE_AllocateMainStruct(a1);
-        }
-        else
-        {
-            if ((v3 & 0x2000000) == 0)
-                goto LABEL_153;
-            EVE_FreeMainStruct(a1);
-            EOT_UpdateIdentityFlagsOfTable(&v42->activatedObjectsTable4PF);
-            EOT_RemoveObjectFromTableIfBadFlag(&v42->eot.eventGameObjectsTablePF, 0x2000000);
-        }
-        v3 = a3;
-    LABEL_153:
-        if ((a2 & 0x8000000) != 0)
-        {
-            if ((v3 & 0x8000000) == 0)
-                a2 &= ~0x8000000u;
-        }
-        else if ((v3 & 0x8000000) != 0)
-        {
-            a1->flags |= 0x8000000u;
-            SND_FreeMainStruct(a1);
-            a1->flags &= ~0x8000000u;
-            v3 = a3;
-        }
-        if ((a2 & 0x40000) != 0)
-        {
-            if ((v3 & 0x40000) != 0)
-                goto LABEL_164;
-            a1->extended->way = (tWay*)MEM_p_Alloc(8u);
-            v38 = a1->extended->way;
-            v38->wayElems = 0;
-            v38->wayElemNum = 0;
-        }
-        else
-        {
-            if ((v3 & 0x40000) == 0)
-                goto LABEL_164;
-            WAY_FreeStruct(a1->extended->way);
-            a1->extended->way = 0;
-        }
-        v3 = a3;
-    LABEL_164:
-        if ((a2 & 0x10) != 0)
-        {
-            if ((v3 & 0x10) == 0)
-            {
-                v39 = (tGroGeneric*)GRO_pst_Struct_Create(2);
-                if (TAB_ul_Ptable_GetElemIndexWithPointer(&v42->worldGROTable, v39) == -1)
-                {
-                    TAB_PTable_AddElemToTable(&v42->worldGROTable, v39);
-                    v39->intf->AddRef(v39, 1);
-                }
-                v39->intf->AddRef(v39, 1);
-                v3 = a3;
-                a1->extended->light = v39;
-            }
-        }
-        else if ((v3 & 0x10) != 0)
-        {
-            v40 = a1->extended->light;
-            if (v40)
-            {
-                v40->intf->AddRef(v40, -1);
-                v40->intf->Destroy(v40);
-                v3 = a3;
-            }
-            a1->extended->light = 0;
-        }
-        if ((a2 & 0x80000) != 0)
-        {
-            if ((v3 & 0x80000) != 0)
-                goto LABEL_179;
-            v41 = (tGameObjectBV*)MEM_p_Realloc(a1->boundingVolume, 0x48u);
-        }
-        else
-        {
-            if ((v3 & 0x80000) == 0)
-                goto LABEL_179;
-            v41 = (tGameObjectBV*)MEM_p_Realloc(a1->boundingVolume, 0x30u);
-        }
-        a1->boundingVolume = v41;
-        v44 = 1;
-    LABEL_179:
-        a1->flags = a2;
-        OBJ_UpdateStatusFlagRTL(a1);
-        if (v44)
-            OBJ_ComputeBV(a1, 0);
+        basic = (tGameObjectBasic*)MEM_p_Alloc(sizeof(tGameObjectBasic));
+        gao->basic = basic;
+        basic->actorObjectOrVisualObject = 0;
+        basic->dyn = 0;
+        basic->mtx = 0;
+        basic->multiPartData = 0;
+        basic->extraMaterial = 0;
     }
-}
+    if ((newFlags & 0x70) != 0 || (newFlags & 0xA048700) != 0)
+        newFlags |= 0x2000u;                      // fixed: char
+    if ((newFlags & 0x2000) != 0 && (oldFlags & 0x2000) == 0)
+        OBJ_GameObject_CreateExtended(gao);
 
-void OBJ_GameObject_AllocateGizmo(struct sGameObjectMain* a1, int a2, int a3)
-{
-    int v3;
-    int v4;
-    unsigned int v5;
-    tGameObjectMultiPartData* v6;
-    int v7;
-
-    if (a3)
+    if ((newFlags & 0x10000) != 0)
     {
-        if (a1)
-            v3 = a1->flags | 0x1200000;
+        if ((oldFlags & 0x10000) == 0)
+        {
+            gao->flags |= 0x10000u;
+            if ((newFlags & 0x4000000) != 0)
+            {
+                matrices = (Mtx4x4*)MATH_Matrix_ReallocArray(gao->matrices, 3);
+                gao->matrices = matrices;
+                MATH_CopyMatrix(matrices + 2, matrices + 1);
+                OBJ_SetInitialAbsoluteMatrix(gao, gao->matrices);
+            }
+            else
+            {
+                matrices = (Mtx4x4*)MATH_Matrix_ReallocArray(gao->matrices, 2);
+                gao->matrices = matrices;
+                OBJ_SetInitialAbsoluteMatrix(gao, matrices);
+            }
+        }
+    }
+    else if ((oldFlags & 0x10000) != 0)
+    {
+        if ((newFlags & 0x4000000) != 0)
+        {
+            matrices = gao->matrices;
+            MATH_CopyMatrix(&matrices[1], &matrices[2]);
+            matrices = (Mtx4x4*)MATH_Matrix_ReallocArray(gao->matrices, 2);
+        }
         else
-            v3 = 0x1200000;
+        {
+            matrices = (Mtx4x4*)MATH_Matrix_ReallocArray(gao->matrices, 1);
+        }
+        gao->matrices = matrices;
+    }
+
+    if ((newFlags & 0x4000) != 0)
+    {
+        if ((oldFlags & 0x4000) == 0)
+        {
+            gao->basic->actorObjectOrVisualObject = (tGameObjectVisualObject*)MEM_p_Alloc(sizeof(tGameObjectVisualObject));
+            visual = gao->basic->actorObjectOrVisualObject;
+            visual->GROGEOOrSomethingElse = 0;
+            visual->GROMAT = 0;
+            visual->objDrawMask = 0;
+            visual->RLIVertexColors = 0;
+            visual->renderOnlyWithGFXRender = 0;
+            visual->culledFlagFromCullingObject = 0;
+            // preserved: these two have no "= 0", so unlike OBJ_GameObject_Create they are left uninitialised
+            visual->vmilyenDistanceLightAttenuationFactor;
+            visual->boneDisplayOrder_zListBufferNum;
+            ((tGameObjectVisualObject *)(gao->basic->actorObjectOrVisualObject))->objDrawMask = 0xffffffff;
+        }
+    }
+    else if ((oldFlags & 0x4000) != 0)
+    {
+        gro = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse;
+        if (gro)
+        {
+            gro->intf->AddRef(gro, -1);
+            gro->intf->Destroy(gro);
+        }
+        grm = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROMAT;
+        if (grm)
+        {
+            grm->intf->AddRef(grm, -1);
+            grm->intf->Destroy(grm);
+        }
+        visual = gao->basic->actorObjectOrVisualObject;
+        if (visual->RLIVertexColors)
+            MEM_Free(visual->RLIVertexColors);
+        MEM_Free(gao->basic->actorObjectOrVisualObject);
+        gao->basic->actorObjectOrVisualObject = 0;
+    }
+
+    if ((newFlags & 2) != 0)
+    {
+        if ((oldFlags & 2) == 0)
+            gao->basic->actorObjectOrVisualObject = ANI_pst_CreateGameObjectAnim();
+    }
+    else if ((oldFlags & 2) != 0)
+    {
+        ANI_Free(gao->basic->actorObjectOrVisualObject);
+        gao->basic->actorObjectOrVisualObject = 0;
+    }
+
+    if ((newFlags & 4) != 0)
+    {
+        if ((oldFlags & 4) == 0)
+        {
+            dyn = DYN_pst_Dyna_Create();
+            DYN_Dyna_Init(dyn, 65, 1.0, 3.402822e38f, 3.402822e38f, &MATH_gst_NulVector, &gao->matrices->Pos);
+            gao->basic->dyn = dyn;
+            OBJ_ResetProcess(gao, WOR_gpst_CurrentWorld->dynCallCount, 64);
+        }
+    }
+    else if ((oldFlags & 4) != 0)
+    {
+        DYN_Dyna_Close(gao->basic->dyn);
+        gao->basic->dyn = 0;
+        EOT_UpdateIdentityFlagsOfTable(&world->activatedObjectsTable4PF);
+        EOT_RemoveObjectFromTableIfBadFlag(&world->eot.dynamicObjectsTablePF, 4);
+    }
+
+    if ((newFlags & 0x400000) != 0)
+    {
+        if ((oldFlags & 0x400000) == 0)
+        {
+            gao->basic->mtx = (tGaoMatrix*)MEM_p_AllocAligned(96, 16);
+            gao->basic->mtx->refGao = 0;
+            gao->basic->mtx->refGao2 = 0;
+            MATH_SetIdentityMatrix(&gao->basic->mtx->mtx);
+        }
+    }
+    else if ((oldFlags & 0x400000) != 0)
+    {
+        if ((newFlags & 0x10000) != 0)
+        {
+            basic = gao->basic;
+            parent = basic->mtx->refGao;
+            if (parent && (parent->flags & 0x10000) != 0)
+            {
+                parentMtx = OBJ_pst_GetAbsoluteMatrix(basic->mtx->refGao);
+                MATH_MulMatrixMatrix(&acc, gao->matrices + 1, parentMtx + 1);
+                walk = gao->basic->mtx->refGao;
+                walkFlags = walk->flags;
+                walkNext = walk;
+                if ((walk->flags & 0x10000) != 0)
+                {
+                    while ((walkFlags & 0x400000) != 0)
+                    {
+                        basic = walk->basic;
+                        parent = basic->mtx->refGao;
+                        if (!parent)
+                            break;
+                        if ((parent->flags & 0x10000) == 0)
+                            break;
+                        parentMtx = OBJ_pst_GetAbsoluteMatrix(basic->mtx->refGao);
+                        MATH_MulMatrixMatrix(&tmp, &acc, parentMtx + 1);
+                        MATH_CopyMatrix(&acc, &tmp);
+                        walkNext = walkNext->basic->mtx->refGao;
+                        walkFlags = walkNext->flags;
+                        if ((walkNext->flags & 0x10000) == 0)
+                            break;
+                        walk = walkNext;
+                    }
+                }
+                MATH_CopyMatrix(gao->matrices + 1, &acc);
+            }
+        }
+        MEM_FreeAlign(gao->basic->mtx);
+        gao->basic->mtx = 0;
+    }
+
+    if ((newFlags & 0x1000000) != 0 && (oldFlags & 0x200000) == 0)
+        newFlags |= 0x200000u;
+    if ((newFlags & 0x200000) != 0)
+    {
+        if ((oldFlags & 0x200000) == 0)
+        {
+            gao->basic->multiPartData = (tGameObjectMultiPartData*)MEM_p_Alloc(sizeof(tGameObjectMultiPartData));
+            gao->basic->multiPartData->elemNum = 0;
+            gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices = 0;
+        }
+    }
+    else if ((oldFlags & 0x200000) != 0)
+    {
+        basic = gao->basic;
+        gao->flags |= 0x200000u;
+        multiPart = basic->multiPartData;
+        if (multiPart->elemNum)
+            MEM_Free(multiPart->multipartGaoObjectPartsOrMatrices);
+        MEM_Free(gao->basic->multiPartData);
+        gao->basic->multiPartData = 0;
+    }
+
+    if ((newFlags & 0x1000000) != 0)
+    {
+        if ((oldFlags & 0x1000000) == 0)
+        {
+            multiPart = gao->basic->multiPartData;
+            if (multiPart->elemNum)
+            {
+                MEM_Free(multiPart->multipartGaoObjectPartsOrMatrices);
+                gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_Alloc(sizeof(tMultiPartGameObjectLinks) * gao->basic->multiPartData->elemNum);
+                // preserved: indexed as an array of pointers, where every other site indexes the array itself
+                for (elemIdx = 0; elemIdx < gao->basic->multiPartData->elemNum; ++elemIdx)
+                    ((tMultiPartGameObjectLinks**)(gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx]->mtxPtr = 0;
+            }
+        }
+    }
+    else if ((oldFlags & 0x1000000) != 0)
+    {
+        multiPart = gao->basic->multiPartData;
+        if (multiPart->elemNum)
+        {
+            MEM_Free(multiPart->multipartGaoObjectPartsOrMatrices);
+            gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_AllocAligned(sizeof(Mtx4x4) * gao->basic->multiPartData->elemNum, 16);
+            // preserved: indexed as an array of pointers, where every other site indexes the array itself
+            for (elemIdx = 0; elemIdx < gao->basic->multiPartData->elemNum; ++elemIdx)
+            {
+                partMtx = ((Mtx4x4**)gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices)[elemIdx];
+                MATH_SetIdentityMatrix(partMtx);
+            }
+        }
+    }
+
+    if ((newFlags & 0x40) != 0)
+    {
+        if ((oldFlags & 0x40) == 0)
+        {
+            gao->extended->fields = (tGameObjectDesignFields*)MEM_p_Alloc(0x58u);
+            memset(gao->extended->fields, 0, sizeof(tGameObjectDesignFields));
+        }
+    }
+    else if ((oldFlags & 0x40) != 0)
+    {
+        MEM_Free(gao->extended->fields);
+        gao->extended->fields = 0;
+    }
+
+    if ((newFlags & 0x8000) != 0)
+    {
+        if ((oldFlags & 0x8000) == 0)
+        {
+            gao->extended->messages = (tGameObjectMessages*)MEM_p_Alloc(0x108u);
+            memset(gao->extended->messages, 0, sizeof(tGameObjectMessages));
+        }
+    }
+    else if ((oldFlags & 0x8000) != 0)
+    {
+        MEM_Free(gao->extended->messages);
+        gao->extended->messages = 0;
+    }
+
+    if ((newFlags & 0x100) != 0 && (oldFlags & 0x100) == 0)
+    {
+        if ((newFlags & 0x4000) != 0)
+        {
+            COL_AllocColMap(gao);
+            gao->flags2 |= 0x80u;
+            INT_SnP_AddObject(gao, world->snp);
+            INT_SnP_InsertionSort(world->snp, 0);
+        }
+        else
+        {
+            newFlags &= ~0x100u;
+            gao->flags2 &= ~0x80u;
+        }
+    }
+    if ((newFlags & 0x100) == 0 && (oldFlags & 0x100) != 0)
+        COL_FreeColMap(gao->extended->coll);
+
+    if ((newFlags & 0x200) != 0 && (oldFlags & 0x200) == 0)
+        newFlags &= ~0x200u;
+    if ((newFlags & 0x400) != 0 && (oldFlags & 0x400) == 0)
+        newFlags &= ~0x400u;
+    if ((newFlags & 0x200) == 0 && (oldFlags & 0x200) != 0)
+    {
+        newFlags &= ~0x400u;
+        COL_FreeInstance(gao->extended->coll);
+    }
+    if ((newFlags & 0x400) == 0 && (oldFlags & 0x400) != 0)
+    {
+        newFlags &= ~0x200;
+        COL_FreeInstance(gao->extended->coll);
+    }
+
+    if ((newFlags & 0x20) != 0 && (oldFlags & 0x20) == 0)
+    {
+        COL_AllocDetectionList(gao);
+        gao->flags2 |= 0x20u;
+    }
+    if ((newFlags & 0x20) != 0)
+    {
+        if ((oldFlags & 0x20) == 0)
+            newFlags &= ~0x20u;
     }
     else
     {
-        if (a1)
-            v4 = a1->flags;
-        else
-            v4 = 0;
-        v3 = v4 | 0x200000;
-    }
-    v5 = v3;
-    if ((a1->flags & 0x200000) != 0)
-    {
-        v6 = a1->basic->multiPartData;
-        if (v6->multipartGaoObjectPartsOrMatrices)
+        if ((oldFlags & 0x20) != 0 && (gao->flags2 & 0x100000) == 0)
         {
-            MEM_FreeAlign(v6->multipartGaoObjectPartsOrMatrices);
-            MEM_Free(a1->basic->multiPartData);
-            a1->flags &= ~0x1200000u;
+            COL_FreeDetectionList(gao->extended->coll);
+            gao->extended->coll->detectionList = 0;
+            gao->flags2 &= ~0x20u;
+        }
+        if ((oldFlags & 0x20) != 0)
+        {
+            AI_FreeInstance(gao->extended->AIInstance);
+            gao->extended->AIInstance = 0;
+            EOT_UpdateIdentityFlagsOfTable(&world->activatedObjectsTable4PF);
+            EOT_RemoveObjectFromTableIfBadFlag(&world->eot.AICallbacksTablePF, 32);
         }
     }
-    OBJ_ChangeIdentityFlags(a1, v5, -1);
-    v7 = a2 * (a3 != 0 ? sizeof(tMultiPartGameObjectLinks) : sizeof(Mtx4x4));
-    a1->basic->multiPartData->elemNum = a2;
-    a1->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_AllocAligned(v7, 16);
-    memset(a1->basic->multiPartData->multipartGaoObjectPartsOrMatrices, 0, v7);
+
+    if ((newFlags & 0x800000) != 0)
+    {
+        if ((oldFlags & 0x800000) == 0)
+            newFlags &= 0xFF7FFFFF;
+    }
+    else if ((oldFlags & 0x800000) != 0)
+    {
+        GRP_ObjDetachGroup(gao);
+    }
+
+    if ((newFlags & 0x2000000) != 0)
+    {
+        if ((oldFlags & 0x2000000) == 0)
+            EVE_AllocateMainStruct(gao);
+    }
+    else if ((oldFlags & 0x2000000) != 0)
+    {
+        EVE_FreeMainStruct(gao);
+        EOT_UpdateIdentityFlagsOfTable(&world->activatedObjectsTable4PF);
+        EOT_RemoveObjectFromTableIfBadFlag(&world->eot.eventGameObjectsTablePF, 0x2000000);
+    }
+
+    if ((newFlags & 0x8000000) != 0)
+    {
+        if ((oldFlags & 0x8000000) == 0)
+            newFlags &= ~0x8000000u;
+    }
+    else if ((oldFlags & 0x8000000) != 0)
+    {
+        gao->flags |= 0x8000000u;
+        SND_FreeMainStruct(gao);
+        gao->flags &= ~0x8000000u;
+    }
+
+    if ((newFlags & 0x40000) != 0)
+    {
+        if ((oldFlags & 0x40000) == 0)
+        {
+            gao->extended->way = (tWay*)MEM_p_Alloc(8u);
+            way = gao->extended->way;
+            way->wayElems = 0;
+            way->wayElemNum = 0;
+        }
+    }
+    else if ((oldFlags & 0x40000) != 0)
+    {
+        WAY_FreeStruct(gao->extended->way);
+        gao->extended->way = 0;
+    }
+
+    if ((newFlags & 0x10) != 0)
+    {
+        if ((oldFlags & 0x10) == 0)
+        {
+            light = (tGroGeneric*)GRO_pst_Struct_Create(2);
+            if (TAB_ul_Ptable_GetElemIndexWithPointer(&world->worldGROTable, light) == -1)
+            {
+                TAB_PTable_AddElemToTable(&world->worldGROTable, light);
+                light->intf->AddRef(light, 1);
+            }
+            light->intf->AddRef(light, 1);
+            gao->extended->light = light;
+        }
+    }
+    else if ((oldFlags & 0x10) != 0)
+    {
+        light = gao->extended->light;
+        if (light)
+        {
+            light->intf->AddRef(light, -1);
+            light->intf->Destroy(light);
+        }
+        gao->extended->light = 0;
+    }
+
+    if ((newFlags & 0x80000) != 0)
+    {
+        if ((oldFlags & 0x80000) == 0)
+        {
+            gao->boundingVolume = (tGameObjectBV*)MEM_p_Realloc(gao->boundingVolume, 0x48u);
+            bvResized = 1;
+        }
+    }
+    else if ((oldFlags & 0x80000) != 0)
+    {
+        gao->boundingVolume = (tGameObjectBV*)MEM_p_Realloc(gao->boundingVolume, 0x30u);
+        bvResized = 1;
+    }
+
+    gao->flags = newFlags;
+    OBJ_UpdateStatusFlagRTL(gao);
+    if (bvResized)
+        OBJ_ComputeBV(gao, 0);
 }
 
-void OBJ_ResolveAIRef(struct sGameObjectMain* a1)
+void OBJ_GameObject_AllocateGizmo(struct sGameObjectMain* gao, int elemNum, int asLinks)
 {
-    tGameObjectExtended* v1;
-    tAI* v2;
-    tGameObjectBasic* v3;
-    tGameObjectActorObject* v4;
-    tActionKit* v5;
-    tAction** v6;
-    int v7;
-    int v8;
-    tAnim* v9;
-    tGameObjectEventsList** v10;
-    int v11;
+    unsigned int newFlags;
+    tGameObjectMultiPartData* multiPart;
+    int size;
+
+    if (asLinks)
+    {
+        if (gao)
+            newFlags = gao->flags | 0x1200000;
+        else
+            newFlags = 0x1200000;
+    }
+    else
+    {
+        if (gao)
+            newFlags = gao->flags;
+        else
+            newFlags = 0;
+        newFlags |= 0x200000;
+    }
+    if ((gao->flags & 0x200000) != 0)
+    {
+        multiPart = gao->basic->multiPartData;
+        if (multiPart->multipartGaoObjectPartsOrMatrices)
+        {
+            MEM_FreeAlign(multiPart->multipartGaoObjectPartsOrMatrices);
+            MEM_Free(gao->basic->multiPartData);
+            gao->flags &= ~0x1200000u;
+        }
+    }
+    OBJ_ChangeIdentityFlags(gao, newFlags, -1);
+    size = elemNum * (asLinks != 0 ? sizeof(tMultiPartGameObjectLinks) : sizeof(Mtx4x4));
+    gao->basic->multiPartData->elemNum = elemNum;
+    gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_AllocAligned(size, 16);
+    memset(gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices, 0, size);
+}
+
+void OBJ_ResolveAIRef(struct sGameObjectMain* gao)
+{
+    tGameObjectExtended* extended;
+    tAI* ai;
+    tGameObjectBasic* basic;
+    tGameObjectActorObject* actor;
+    tActionKit* actionKit;
+    tAction** action;
+    int elemIdx;
+    tAnim* anim;
+    int actionIdx;
     tAction** actions;
     tActionElem* actionElems;
 
-    if ((a1->flags & 0x20) != 0)
+    if ((gao->flags & 0x20) != 0)
     {
-        v1 = a1->extended;
-        if (v1)
+        extended = gao->extended;
+        if (extended)
         {
-            v2 = v1->AIInstance;
-            if (v2)
+            ai = extended->AIInstance;
+            if (ai)
             {
-                AI_ResolveInstanceRef(v2);
-                AI_ReinitInstance(a1->extended->AIInstance);
+                AI_ResolveInstanceRef(ai);
+                AI_ReinitInstance(gao->extended->AIInstance);
             }
         }
     }
-    if ((a1->flags & 0x2000000) != 0)
-        EVE_ResolveRefs(a1, 1);
-    if ((a1->flags & 2) != 0)
+    if ((gao->flags & 0x2000000) != 0)
+        EVE_ResolveRefs(gao, 1);
+    if ((gao->flags & 2) != 0)
     {
-        v3 = a1->basic;
-        if (v3)
+        basic = gao->basic;
+        if (basic)
         {
-            v4 = (tGameObjectActorObject*)v3->actorObjectOrVisualObject;
-            if (v3->actorObjectOrVisualObject)
+            actor = (tGameObjectActorObject*)basic->actorObjectOrVisualObject;
+            if (basic->actorObjectOrVisualObject)
             {
-                v5 = v4->actionKit;
-                if (v5)
+                actionKit = actor->actionKit;
+                if (actionKit)
                 {
-                    v11 = 0;
-                    if (v5->elemNum)
+                    actions = (tAction**)(((char*)(actionKit)) + sizeof(tActionKit));
+                    for (actionIdx = 0; actionIdx < actionKit->elemNum; ++actionIdx)
                     {
-                        actions = (tAction**)(((char*)(v5)) + sizeof(tActionKit));
-                        v6 = actions;
-                        do
+                        action = &actions[actionIdx];
+                        if (!*action)
+                            continue;
+                        actionElems = (tActionElem*)(((char*)*action) + sizeof(tAction));
+                        for (elemIdx = 0; elemIdx < (*action)->actionElemNum; ++elemIdx)
                         {
-                            if (*v6)
-                            {
-                                v7 = 0;
-                                if ((*v6)->actionElemNum)
-                                {
-                                    v8 = 0;
-                                    do
-                                    {
-                                        actionElems = (tActionElem*)(((char*)*v6) + sizeof(tAction));
-                                        if (actionElems[v8].eventLists)
-                                            EVE_ResolveListTrackRef(actionElems[v8].eventLists);
-                                        ++v7;
-                                        ++v8;
-                                    } while (v7 < (*v6)->actionElemNum);
-                                }
-                            }
-                            ++v6;
-                            ++v11;
-                        } while (v11 < v5->elemNum);
+                            if (actionElems[elemIdx].eventLists)
+                                EVE_ResolveListTrackRef(actionElems[elemIdx].eventLists);
+                        }
                     }
                 }
                 else
                 {
-                    v9 = v4->animPtr[0];
-                    if (v9)
+                    anim = actor->animPtr[0];
+                    if (anim)
                     {
-                        if (v9 != (tAnim*)-1)
+                        if (anim != (tAnim*)-1)
                         {
-                            v10 = &v9->ptr->eventListStruct;
-                            if (v10)
-                                EVE_ResolveListTrackRef(*v10);
+                            if (anim->ptr)
+                                EVE_ResolveListTrackRef(anim->ptr->eventListStruct);
                         }
                     }
                 }
