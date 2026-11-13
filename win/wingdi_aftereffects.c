@@ -1738,533 +1738,470 @@ void D3D_DoBlurWaterTexture()
     waterSurface->lpVtbl->Release(waterSurface);
 }
 
-void D3D_ZoomSmooth(IDirect3DTexture9* a1, IDirect3DTexture9* a2, float a3)
+void D3D_ZoomSmooth(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom)
 {
-    int v3;
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    int* v8;
-    double v9;
-    int v10;
-    int v11;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    double v16;
-    double v17;
-    double v18;
-    double v19;
-    tVertex_type_444* v20;
-    int v21;
-    int v22;
-    int v23;
-    IDirect3DDevice9* v24;
-    IDirect3DDevice9* v25;
-    float v26;
-    float v27;
-    int v28;
-    float v29;
-    float v30;
-    float v31;
-    int v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    float v43;
-    float v44;
-    float v45;
-    float v46;
-    float v47;
-    float v48;
-    int v49;
-    float v50;
-    float v51;
-    float v52;
-    float v53;
-    float v54;
-    float v55;
-    float v56;
-    float v57;
-    float v58;
-    float v59;
-    float v60;
-    float v61;
-    float v62;
-    tVertex_type_444 v63[4];
-    float a3a;
+    int clampedStages;
+    int lastStage;
+    int disableStage;
+    int i;
+    double bottom480;
+    int pass;
+    int tapColour;
+    double startSpan;
+    double vTap0d;
+    double vTap2d;
+    double vTap3d;
+    double bottomVd;
+    double vTopEdgeTap1;
+    double rightUd;
+    float bottomV;
+    float rightU;
+    int samples;
+    float stagesF;
+    float uLeftTap2;
+    float vTopEdgeTap2;
+    int stages;
+    float vStep;
+    float uStep;
+    float vOffset;
+    float uOffset;
+    float rightX;
+    float vDecrement;
+    float uLeftTap3;
+    float vTopEdgeTap3;
+    float vBottomTap2;
+    float uRightTap3;
+    float vBottomTap1;
+    float uRightTap2;
+    float vTap3;
+    float vTap0;
+    float uTap3;
+    float height;
+    int passes;
+    float uTap0;
+    float vTap2;
+    float uTap2;
+    float vTopTap1;
+    float vBottomTap3;
+    float bottomVBase;
+    float topY;
+    float vBottomTap0;
+    float vTopEdgeTap0;
+    float vTopTap2;
+    float uDecrement;
+    float vTopTap0;
+    float vTopTap3;
+    tVertex_type_444 quad[4];
+    float scaledZoom;
 
-    v3 = gMaxSimultaneousTextures;
+    clampedStages = gMaxSimultaneousTextures;
     if (gMaxSimultaneousTextures >= 4)
-        v3 = 4;
-    if (v3 >= ENG_ifSingleStreamThenEq2Otherwise8)
+        clampedStages = 4;
+    if (clampedStages >= ENG_ifSingleStreamThenEq2Otherwise8)
     {
-        v32 = ENG_ifSingleStreamThenEq2Otherwise8;
+        stages = ENG_ifSingleStreamThenEq2Otherwise8;
     }
     else if (gMaxSimultaneousTextures >= 4)
     {
-        v32 = 4;
+        stages = 4;
     }
     else
     {
-        v32 = gMaxSimultaneousTextures;
+        stages = gMaxSimultaneousTextures;
     }
-    v49 = 8 / v32;
-    v28 = v32 * (8 / v32);
-    a3a = (float)(8.0 / (double)v28 * a3);
-    D3D_SetRenderTargetFromTexture(a2);
+    passes = 8 / stages;
+    samples = stages * (8 / stages);
+    scaledZoom = (float)(8.0 / (double)samples * zoom);
+    D3D_SetRenderTargetFromTexture(dest);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)a1);
-    v4 = 1;
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)src);
+    lastStage = 1;
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATEALPHA_ADDCOLOR);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_CURRENT);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_TEXTURE);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)a1);
-    if (v32 >= 3)
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)src);
+    if (stages >= 3)
     {
-        v4 = 2;
+        lastStage = 2;
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATEALPHA_ADDCOLOR);
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_CURRENT);
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_TEXTURE);
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 2, (IDirect3DBaseTexture9*)a1);
-        if (v32 >= 4)
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 2, (IDirect3DBaseTexture9*)src);
+        if (stages >= 4)
         {
-            v4 = 3;
+            lastStage = 3;
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATEALPHA_ADDCOLOR);
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_CURRENT);
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_TEXTURE);
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-            D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 3, (IDirect3DBaseTexture9*)a1);
+            D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 3, (IDirect3DBaseTexture9*)src);
         }
     }
-    v5 = v4 + 1;
-    v6 = v4 + 1;
-    v7 = textureStageTypeConfig[v6].d3d_colorOp;
-    v8 = &textureStageTypeConfig[v6].d3d_colorOp;
-    if (v7 != 1)
+    disableStage = lastStage + 1;
+    AE_SetStageState(disableStage, &textureStageTypeConfig[disableStage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+    AE_SetStageState(disableStage, &textureStageTypeConfig[disableStage].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+    height = (float)D3DRenderParams.presentParams.BackBufferHeight;
+    bottom480 = bandsVal2 * 480.0;
+    pass = 0;
+    bottomVBase = (float)((bottom480 - 1.0) * 0.0020833334);
+    tapColour = ((((((256 / samples - 1) << 8) | (256 / samples - 1)) << 16) | ((256 / samples - 1) << 8) | (256 / samples - 1)) << 24) | ((((256 / samples - 1) << 8) | (256 / samples - 1)) << 16) | ((256 / samples - 1) << 8) | (256 / samples - 1);
+    uStep = (float)(scaledZoom * 6400.0 / bottom480 * 0.0015625);
+    vStep = (float)(scaledZoom * 10.0 * 0.0020833334);
+    stagesF = (float)stages;
+    startSpan = (double)(passes - 1) * stagesF;
+    uOffset = (float)(uStep * startSpan);
+    vOffset = (float)(startSpan * vStep);
+    if (passes > 0)
     {
-        *v8 = 1;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v5, 1, 1);
-    }
-    AE_SetStageState(v5, &textureStageTypeConfig[v5].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-    v48 = (float)D3DRenderParams.presentParams.BackBufferHeight;
-    v9 = bandsVal2 * 480.0;
-    v10 = 0;
-    v55 = (float)((v9 - 1.0) * 0.0020833334);
-    v11 = ((((((256 / v28 - 1) << 8) | (256 / v28 - 1)) << 16) | ((256 / v28 - 1) << 8) | (256 / v28 - 1)) << 24) | ((((256 / v28 - 1) << 8) | (256 / v28 - 1)) << 16) | ((256 / v28 - 1) << 8) | (256 / v28 - 1);
-    v34 = (float)(a3a * 6400.0 / v9 * 0.0015625);
-    v33 = (float)(a3a * 10.0 * 0.0020833334);
-    v29 = (float)v32;
-    v12 = (double)(v49 - 1) * v29;
-    v36 = (float)(v34 * v12);
-    v35 = (float)(v12 * v33);
-    if (v49 > 0)
-    {
-        v50 = (float)(v34 * 0.0);
-        v52 = v34 + v34;
-        v47 = (float)(v34 * 3.0);
-        v37 = (float)((double)D3DRenderParams.presentParams.BackBufferWidth - 0.5);
-        v13 = v33 * 0.0;
-        v46 = (float)v13;
-        v61 = (float)(v13 + bandsVal1);
-        v53 = v33 + bandsVal1;
-        v14 = v33 + v33;
-        v51 = (float)v14;
-        v59 = (float)(v14 + bandsVal1);
-        v15 = v33 * 3.0;
-        v62 = (float)(v15 + bandsVal1);
-        v60 = v29 * v34;
-        v38 = v29 * v33;
-        do
+        uTap0 = (float)(uStep * 0.0);
+        uTap2 = uStep + uStep;
+        uTap3 = (float)(uStep * 3.0);
+        rightX = (float)((double)D3DRenderParams.presentParams.BackBufferWidth - 0.5);
+        vTap0d = vStep * 0.0;
+        vTap0 = (float)vTap0d;
+        vTopTap0 = (float)(vTap0d + bandsVal1);
+        vTopTap1 = vStep + bandsVal1;
+        vTap2d = vStep + vStep;
+        vTap2 = (float)vTap2d;
+        vTopTap2 = (float)(vTap2d + bandsVal1);
+        vTap3d = vStep * 3.0;
+        vTopTap3 = (float)(vTap3d + bandsVal1);
+        uDecrement = stagesF * uStep;
+        vDecrement = stagesF * vStep;
+        for (pass = 0; pass < passes; pass++)
         {
-            v63[0].v1.x = 0.0;
-            v63[1].v1.x = 0.0;
-            v63[2].v1.x = v37;
-            v63[0].v1.y = (float)(bandsVal2 * v48 - 0.5);
-            v63[0].uvSet4.u = v50 + v36;
-            v16 = v55 - v35;
-            v26 = (float)v16;
-            v57 = (float)(v16 - v46);
-            v63[0].uvSet4.v = v57;
-            v63[0].uvSet3.u = v36 + v34;
-            v43 = v26 - v33;
-            v63[0].uvSet3.v = v43;
-            v30 = v52 + v36;
-            v63[0].uvSet2.u = v30;
-            v63[1].uvSet2.u = v30;
-            v63[2].uvSet4.v = v57;
-            v41 = v26 - v51;
-            v63[0].uvSet2.v = v41;
-            v39 = v47 + v36;
-            v63[0].uvSet1.u = v39;
-            v63[1].uvSet1.u = v39;
-            v63[2].uvSet3.v = v43;
-            v45 = (float)v15;
-            v54 = v26 - v45;
-            v63[0].uvSet1.v = v54;
-            v56 = bandsVal1 * v48;
-            v63[1].v1.y = v56;
-            v63[1].uvSet4.u = v63[0].uvSet4.u;
-            v58 = v61 + v35;
-            v63[1].uvSet4.v = v58;
-            v63[1].uvSet3.u = v63[0].uvSet3.u;
-            v17 = v53 + v35;
-            v63[1].uvSet3.v = (float)v17;
-            v31 = v59 + v35;
-            v63[1].uvSet2.v = v31;
-            v40 = v62 + v35;
-            v63[1].uvSet1.v = v40;
-            v18 = v17;
-            v63[2].v1.y = v63[0].v1.y;
-            v19 = 0.99843752 - v36;
-            v27 = (float)v19;
-            v63[2].uvSet4.u = (float)(v19 - v50);
-            v63[2].uvSet3.u = v27 - v34;
-            v44 = v27 - v52;
-            v63[2].uvSet1.v = v54;
-            v63[2].uvSet2.u = v44;
-            v63[2].uvSet2.v = v41;
-            v63[3].v1.x = v37;
-            v42 = v27 - v47;
-            v63[3].uvSet4.v = v58;
-            v63[2].uvSet1.u = v42;
-            v63[3].v1.y = v56;
-            v63[3].uvSet4.u = v63[2].uvSet4.u;
-            v63[3].uvSet2.u = v44;
-            v63[3].uvSet3.u = v63[2].uvSet3.u;
-            v63[3].uvSet1.u = v42;
-            v63[3].uvSet3.v = (float)v18;
-            v63[3].uvSet2.v = v31;
-            v63[3].uvSet1.v = v40;
-            if (v10)
+            quad[0].v1.x = 0.0;
+            quad[1].v1.x = 0.0;
+            quad[2].v1.x = rightX;
+            quad[0].v1.y = (float)(bandsVal2 * height - 0.5);
+            quad[0].uvSet4.u = uTap0 + uOffset;
+            bottomVd = bottomVBase - vOffset;
+            bottomV = (float)bottomVd;
+            vBottomTap0 = (float)(bottomVd - vTap0);
+            quad[0].uvSet4.v = vBottomTap0;
+            quad[0].uvSet3.u = uOffset + uStep;
+            vBottomTap1 = bottomV - vStep;
+            quad[0].uvSet3.v = vBottomTap1;
+            uLeftTap2 = uTap2 + uOffset;
+            quad[0].uvSet2.u = uLeftTap2;
+            quad[1].uvSet2.u = uLeftTap2;
+            quad[2].uvSet4.v = vBottomTap0;
+            vBottomTap2 = bottomV - vTap2;
+            quad[0].uvSet2.v = vBottomTap2;
+            uLeftTap3 = uTap3 + uOffset;
+            quad[0].uvSet1.u = uLeftTap3;
+            quad[1].uvSet1.u = uLeftTap3;
+            quad[2].uvSet3.v = vBottomTap1;
+            vTap3 = (float)vTap3d;
+            vBottomTap3 = bottomV - vTap3;
+            quad[0].uvSet1.v = vBottomTap3;
+            topY = bandsVal1 * height;
+            quad[1].v1.y = topY;
+            quad[1].uvSet4.u = quad[0].uvSet4.u;
+            vTopEdgeTap0 = vTopTap0 + vOffset;
+            quad[1].uvSet4.v = vTopEdgeTap0;
+            quad[1].uvSet3.u = quad[0].uvSet3.u;
+            vTopEdgeTap1 = vTopTap1 + vOffset;
+            quad[1].uvSet3.v = (float)vTopEdgeTap1;
+            vTopEdgeTap2 = vTopTap2 + vOffset;
+            quad[1].uvSet2.v = vTopEdgeTap2;
+            vTopEdgeTap3 = vTopTap3 + vOffset;
+            quad[1].uvSet1.v = vTopEdgeTap3;
+            quad[2].v1.y = quad[0].v1.y;
+            rightUd = 0.99843752 - uOffset;
+            rightU = (float)rightUd;
+            quad[2].uvSet4.u = (float)(rightUd - uTap0);
+            quad[2].uvSet3.u = rightU - uStep;
+            uRightTap2 = rightU - uTap2;
+            quad[2].uvSet1.v = vBottomTap3;
+            quad[2].uvSet2.u = uRightTap2;
+            quad[2].uvSet2.v = vBottomTap2;
+            quad[3].v1.x = rightX;
+            uRightTap3 = rightU - uTap3;
+            quad[3].uvSet4.v = vTopEdgeTap0;
+            quad[2].uvSet1.u = uRightTap3;
+            quad[3].v1.y = topY;
+            quad[3].uvSet4.u = quad[2].uvSet4.u;
+            quad[3].uvSet2.u = uRightTap2;
+            quad[3].uvSet3.u = quad[2].uvSet3.u;
+            quad[3].uvSet1.u = uRightTap3;
+            quad[3].uvSet3.v = (float)vTopEdgeTap1;
+            quad[3].uvSet2.v = vTopEdgeTap2;
+            quad[3].uvSet1.v = vTopEdgeTap3;
+            if (pass)
             {
                 AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
                 AE_SetRenderState(&renderStateConfig.d3d_BlendOp, D3DRS_BLENDOP, D3DBLENDOP_ADD);
                 AE_SetRenderState(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
                 AE_SetRenderState(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ONE);
             }
-            else if (renderStateConfig.d3dAlphaBlendEnable)
+            else
             {
-                renderStateConfig.d3dAlphaBlendEnable = 0;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 27, 0);
+                AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
             }
-            v20 = &v63[0];
-            v21 = 4;
-            do
+            for (i = 0; i < 4; i++)
             {
-                v20->v1.z = 0.0f;
-                v20->hw = 1.0f;
-                v20->color = v11;
-                ++v20;
-                --v21;
-            } while (v21);
-            D3D_DrawASurface(v63, D3DFVF_TEX4 | D3DFVF_DIFFUSE | D3DFVF_XYZRHW);
-            ++v10;
-            v36 = v36 - v60;
-            v35 = v35 - v38;
-        } while (v10 < v49);
+                quad[i].v1.z = 0.0f;
+                quad[i].hw = 1.0f;
+                quad[i].color = tapColour;
+            }
+            D3D_DrawASurface(quad, D3DFVF_TEX4 | D3DFVF_DIFFUSE | D3DFVF_XYZRHW);
+            uOffset = uOffset - uDecrement;
+            vOffset = vOffset - vDecrement;
+        }
     }
-    v22 = 0;
-    if (v32 > 0)
+    for (i = 0; i < stages; i++)
     {
-        v23 = 0;
-        do
-        {
-            AE_SetStageState(v22, &textureStageTypeConfig[v23].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
-            AE_SetStageState(v22, &textureStageTypeConfig[v23].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-            D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, v22++, NULL);
-            ++v23;
-        } while (v22 < v32);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, i, NULL);
     }
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
 }
 
-void D3D_ZoomSmooth2(IDirect3DTexture9* a1, IDirect3DTexture9* a2, float a3)
+void D3D_ZoomSmooth2(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom)
 {
-    int v3;
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    int* v8;
-    double v9;
-    int v10;
-    int v11;
-    long double v12;
-    tVertex_type_444* v13;
-    int v14;
-    long double v15;
-    long double v16;
-    long double v17;
-    long double v18;
-    long double v19;
-    double v20;
-    double v21;
-    double v22;
-    double v23;
-    double v24;
-    tVertex_type_444* v25;
-    int v26;
-    double v27;
-    int v28;
-    int v29;
-    IDirect3DDevice9* v30;
-    IDirect3DDevice9* v31;
-    int v32;
-    double v33;
-    double v34;
-    float v35; 
-    float v36; 
-    float v37; 
-    float v38; 
-    float v39; 
-    float v40; 
-    int v41; 
-    float v42;
-    float v43;
-    float v44;
-    int v45; 
-    float v46;
-    float v47;
-    float v48;
-    float v49;
-    double v50;
-    double v51;
-    double v52;
-    tVertex_type_444 v53[4];
+    int clampedStages;
+    int lastStage;
+    int disableStage;
+    int i;
+    double stagesD;
+    int pass;
+    int tapColour;
+    long double cos0;
+    long double sin0;
+    long double cos1;
+    long double sin1;
+    long double cos2;
+    long double angle3;
+    double dv0;
+    double dv1;
+    double dv2;
+    double dv3;
+    double du3;
+    double scaledX;
+    int samples;
+    double angle1;
+    double angle2;
+    float u0;
+    float u1;
+    float u2;
+    float u3;
+    float top480;
+    float bottom480;
+    int stages;
+    float angle;
+    float angleStep;
+    float angleAdvance;
+    int passes;
+    float angleStep2;
+    float height;
+    float width;
+    float angleStep3;
+    double sin2;
+    double sin3;
+    double cos3;
+    tVertex_type_444 quad[4];
 
-    v3 = gMaxSimultaneousTextures;
+    clampedStages = gMaxSimultaneousTextures;
     if (gMaxSimultaneousTextures >= 4)
-        v3 = 4;
-    if (v3 >= ENG_ifSingleStreamThenEq2Otherwise8)
+        clampedStages = 4;
+    if (clampedStages >= ENG_ifSingleStreamThenEq2Otherwise8)
     {
-        v41 = ENG_ifSingleStreamThenEq2Otherwise8;
+        stages = ENG_ifSingleStreamThenEq2Otherwise8;
     }
     else if (gMaxSimultaneousTextures >= 4)
     {
-        v41 = 4;
+        stages = 4;
     }
     else
     {
-        v41 = gMaxSimultaneousTextures;
+        stages = gMaxSimultaneousTextures;
     }
-    v45 = 8 / v41;
-    D3D_SetRenderTargetFromTexture(a2);
+    passes = 8 / stages;
+    D3D_SetRenderTargetFromTexture(dest);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)a1);
-    v4 = 1;
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)src);
+    lastStage = 1;
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATEALPHA_ADDCOLOR);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_CURRENT);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_TEXTURE);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)a1);
-    if (v41 >= 3)
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)src);
+    if (stages >= 3)
     {
-        v4 = 2;
+        lastStage = 2;
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATEALPHA_ADDCOLOR);
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_CURRENT);
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_TEXTURE);
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
         AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 2, (IDirect3DBaseTexture9*)a1);
-        if (v41 >= 4)
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 2, (IDirect3DBaseTexture9*)src);
+        if (stages >= 4)
         {
-            v4 = 3;
+            lastStage = 3;
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATEALPHA_ADDCOLOR);
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_CURRENT);
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_TEXTURE);
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
             AE_SetStageState(3, &textureStageTypeConfig[3].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-            D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 3, (IDirect3DBaseTexture9*)a1);
+            D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 3, (IDirect3DBaseTexture9*)src);
         }
     }
-    v5 = v4 + 1;
-    v6 = v4 + 1;
-    v7 = textureStageTypeConfig[v6].d3d_colorOp;
-    v8 = &textureStageTypeConfig[v6].d3d_colorOp;
-    if (v7 != 1)
+    disableStage = lastStage + 1;
+    AE_SetStageState(disableStage, &textureStageTypeConfig[disableStage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+    AE_SetStageState(disableStage, &textureStageTypeConfig[disableStage].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+    width = (float)D3DRenderParams.presentParams.BackBufferWidth;
+    height = (float)D3DRenderParams.presentParams.BackBufferHeight;
+    bottom480 = (float)(bandsVal2 * 480.0);
+    top480 = (float)(bandsVal1 * 480.0);
+    angleStep = (float)(zoom * 0.039999999);
+    stagesD = (double)stages;
+    pass = 0;
+    angle = (float)((double)passes * stagesD * angleStep * -0.5);
+    samples = stages * (8 / stages);
+    tapColour = ((((((256 / samples - 1) << 8) | (256 / samples - 1)) << 16) | ((256 / samples - 1) << 8) | (256 / samples - 1)) << 24) | ((((256 / samples - 1) << 8) | (256 / samples - 1)) << 16) | ((256 / samples - 1) << 8) | (256 / samples - 1);
+    if (passes > 0)
     {
-        *v8 = 1;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v4 + 1, 1, 1);
-    }
-    AE_SetStageState(v4 + 1, &textureStageTypeConfig[v5].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-    v48 = (float)D3DRenderParams.presentParams.BackBufferWidth;
-    v47 = (float)D3DRenderParams.presentParams.BackBufferHeight;
-    v40 = (float)(bandsVal2 * 480.0);
-    v39 = (float)(bandsVal1 * 480.0);
-    v43 = (float)(a3 * 0.039999999);
-    v9 = (double)v41;
-    v10 = 0;
-    v42 = (float)((double)v45 * v9 * v43 * -0.5);
-    v32 = v41 * (8 / v41);
-    v11 = ((((((256 / v32 - 1) << 8) | (256 / v32 - 1)) << 16) | ((256 / v32 - 1) << 8) | (256 / v32 - 1)) << 24) | ((((256 / v32 - 1) << 8) | (256 / v32 - 1)) << 16) | ((256 / v32 - 1) << 8) | (256 / v32 - 1);
-    if (v45 > 0)
-    {
-        v44 = (float)(v9 * v43);
-        do
+        angleAdvance = (float)(stagesD * angleStep);
+        for (pass = 0; pass < passes; pass++)
         {
-            v12 = cos(v42);
-            v53[0].v1.y = (float)(v40 - 0.5);
-            v53[0].uvSet2.v = v40;
-            v53[0].uvSet1.v = v40;
-            v53[0].uvSet3.v = v40;
-            v53[0].uvSet4.v = v40;
-            v53[1].v1.y = v39;
-            v53[1].uvSet3.v = v39;
-            v53[1].uvSet1.v = v39;
-            v53[1].uvSet2.v = v39;
-            v53[1].uvSet4.v = v39;
-            v53[2].v1.y = v53[0].v1.y;
-            v53[2].uvSet2.v = v40;
-            v53[2].uvSet1.v = v40;
-            v53[2].uvSet4.v = v40;
-            v53[2].uvSet3.v = v40;
-            v53[3].v1.y = v39;
-            v53[3].uvSet2.v = v39;
-            v53[3].uvSet3.v = v39;
-            v53[0].v1.x = 0.0;
-            v53[0].uvSet1.u = 0.0;
-            v53[0].uvSet2.u = 0.0;
-            v53[0].uvSet3.u = 0.0;
-            v53[0].uvSet4.u = 0.0;
-            v53[1].v1.x = 0.0;
-            v53[1].uvSet1.u = 0.0;
-            v53[1].uvSet2.u = 0.0;
-            v53[1].uvSet3.u = 0.0;
-            v53[1].uvSet4.u = 0.0;
-            v53[2].v1.x = 639.5;
-            v53[2].uvSet1.u = 640.0;
-            v53[2].uvSet2.u = 640.0;
-            v53[2].uvSet3.u = 640.0;
-            v53[2].uvSet4.u = 640.0;
-            v53[3].v1.x = 639.5;
-            v53[3].uvSet1.u = 640.0;
-            v53[3].uvSet1.v = v39;
-            v53[3].uvSet2.u = 640.0;
-            v53[3].uvSet3.u = 640.0;
-            v53[3].uvSet4.u = 640.0;
-            v53[3].uvSet4.v = v39;
-            v13 = &v53[0];
-            v14 = 4;
-            v15 = sin(v42);
-            v33 = v42 + v43;
-            v16 = cos(v33);
-            v17 = sin(v33);
-            v46 = v43 + v43;
-            v34 = v46 + v42;
-            v18 = cos(v34);
-            v50 = sin(v34);
-            v49 = (float)(v43 * 3.0);
-            v19 = v49 + v42;
-            v52 = cos(v19);
-            v51 = sin(v19);
-            do
+            cos0 = cos(angle);
+            quad[0].v1.y = (float)(bottom480 - 0.5);
+            quad[0].uvSet2.v = bottom480;
+            quad[0].uvSet1.v = bottom480;
+            quad[0].uvSet3.v = bottom480;
+            quad[0].uvSet4.v = bottom480;
+            quad[1].v1.y = top480;
+            quad[1].uvSet3.v = top480;
+            quad[1].uvSet1.v = top480;
+            quad[1].uvSet2.v = top480;
+            quad[1].uvSet4.v = top480;
+            quad[2].v1.y = quad[0].v1.y;
+            quad[2].uvSet2.v = bottom480;
+            quad[2].uvSet1.v = bottom480;
+            quad[2].uvSet4.v = bottom480;
+            quad[2].uvSet3.v = bottom480;
+            quad[3].v1.y = top480;
+            quad[3].uvSet2.v = top480;
+            quad[3].uvSet3.v = top480;
+            quad[0].v1.x = 0.0;
+            quad[0].uvSet1.u = 0.0;
+            quad[0].uvSet2.u = 0.0;
+            quad[0].uvSet3.u = 0.0;
+            quad[0].uvSet4.u = 0.0;
+            quad[1].v1.x = 0.0;
+            quad[1].uvSet1.u = 0.0;
+            quad[1].uvSet2.u = 0.0;
+            quad[1].uvSet3.u = 0.0;
+            quad[1].uvSet4.u = 0.0;
+            quad[2].v1.x = 639.5;
+            quad[2].uvSet1.u = 640.0;
+            quad[2].uvSet2.u = 640.0;
+            quad[2].uvSet3.u = 640.0;
+            quad[2].uvSet4.u = 640.0;
+            quad[3].v1.x = 639.5;
+            quad[3].uvSet1.u = 640.0;
+            quad[3].uvSet1.v = top480;
+            quad[3].uvSet2.u = 640.0;
+            quad[3].uvSet3.u = 640.0;
+            quad[3].uvSet4.u = 640.0;
+            quad[3].uvSet4.v = top480;
+            sin0 = sin(angle);
+            angle1 = angle + angleStep;
+            cos1 = cos(angle1);
+            sin1 = sin(angle1);
+            angleStep2 = angleStep + angleStep;
+            angle2 = angleStep2 + angle;
+            cos2 = cos(angle2);
+            sin2 = sin(angle2);
+            angleStep3 = (float)(angleStep * 3.0);
+            angle3 = angleStep3 + angle;
+            cos3 = cos(angle3);
+            sin3 = sin(angle3);
+            for (i = 0; i < 4; i++)
             {
-                v20 = v13->uvSet1.v - 240.0;
-                v35 = (float)((v13->uvSet1.u - 320.0) * v12 + v15 * v20);
-                v13->uvSet1.u = v35;
-                v13->uvSet1.v = (float)(v12 * v20 - v35 * v15);
-                v13->uvSet1.u = (float)(v13->uvSet1.u + 320.0);
-                v13->uvSet1.v = (float)(v13->uvSet1.v + 240.0);
-                v21 = v13->uvSet2.v - 240.0;
-                v36 = (float)((v13->uvSet2.u - 320.0) * v16 + v17 * v21);
-                v13->uvSet2.u = v36;
-                v13->uvSet2.v = (float)(v16 * v21 - v36 * v17);
-                v13->uvSet2.u = (float)(v13->uvSet2.u + 320.0);
-                v13->uvSet2.v = (float)(v13->uvSet2.v + 240.0);
-                v22 = v13->uvSet3.v - 240.0;
-                v37 = (float)((v13->uvSet3.u - 320.0) * v18 + v50 * v22);
-                v13->uvSet3.u = v37;
-                v13->uvSet3.v = (float)(v18 * v22 - v37 * v50);
-                v13->uvSet3.u = (float)(v13->uvSet3.u + 320.0);
-                v13->uvSet3.v = (float)(v13->uvSet3.v + 240.0);
-                v23 = v13->uvSet4.v - 240.0;
-                v24 = v13->uvSet4.u - 320.0;
-                v38 = (float)(v24 * v52 + v23 * v51);
-                v13->uvSet4.u = v38;
-                v13->uvSet4.v = (float)(v23 * v52 - v38 * v51);
-                v13->uvSet4.u = (float)(v13->uvSet4.u + 320.0);
-                v13->uvSet4.v = (float)(v13->uvSet4.v + 240.0);
-                ++v13;
-                --v14;
-            } while (v14);
-            v25 = &v53[0];
-            v26 = 4;
-            do
+                dv0 = quad[i].uvSet1.v - 240.0;
+                u0 = (float)((quad[i].uvSet1.u - 320.0) * cos0 + sin0 * dv0);
+                quad[i].uvSet1.u = u0;
+                quad[i].uvSet1.v = (float)(cos0 * dv0 - u0 * sin0);
+                quad[i].uvSet1.u = (float)(quad[i].uvSet1.u + 320.0);
+                quad[i].uvSet1.v = (float)(quad[i].uvSet1.v + 240.0);
+                dv1 = quad[i].uvSet2.v - 240.0;
+                u1 = (float)((quad[i].uvSet2.u - 320.0) * cos1 + sin1 * dv1);
+                quad[i].uvSet2.u = u1;
+                quad[i].uvSet2.v = (float)(cos1 * dv1 - u1 * sin1);
+                quad[i].uvSet2.u = (float)(quad[i].uvSet2.u + 320.0);
+                quad[i].uvSet2.v = (float)(quad[i].uvSet2.v + 240.0);
+                dv2 = quad[i].uvSet3.v - 240.0;
+                u2 = (float)((quad[i].uvSet3.u - 320.0) * cos2 + sin2 * dv2);
+                quad[i].uvSet3.u = u2;
+                quad[i].uvSet3.v = (float)(cos2 * dv2 - u2 * sin2);
+                quad[i].uvSet3.u = (float)(quad[i].uvSet3.u + 320.0);
+                quad[i].uvSet3.v = (float)(quad[i].uvSet3.v + 240.0);
+                dv3 = quad[i].uvSet4.v - 240.0;
+                du3 = quad[i].uvSet4.u - 320.0;
+                u3 = (float)(du3 * cos3 + dv3 * sin3);
+                quad[i].uvSet4.u = u3;
+                quad[i].uvSet4.v = (float)(dv3 * cos3 - u3 * sin3);
+                quad[i].uvSet4.u = (float)(quad[i].uvSet4.u + 320.0);
+                quad[i].uvSet4.v = (float)(quad[i].uvSet4.v + 240.0);
+            }
+            for (i = 0; i < 4; i++)
             {
-                v25->v1.z = 0.0f;
-                v27 = v48 * v25->v1.x;
-                v25->hw = 1.0f;
-                v25->color = v11;
+                quad[i].v1.z = 0.0f;
+                scaledX = width * quad[i].v1.x;
+                quad[i].hw = 1.0f;
+                quad[i].color = tapColour;
 
-                v25->v1.x = (float)(v27 * 0.0015625);
-                v25->v1.y = (float)(v47 * v25->v1.y * 0.0020833334);
-                v25->uvSet1.u = (float)(v25->uvSet1.u * 0.0015625);
-                v25->uvSet1.v = (float)(v25->uvSet1.v * 0.0020833334);
-                v25->uvSet2.u = (float)(v25->uvSet2.u * 0.0015625);
-                v25->uvSet2.v = (float)(v25->uvSet2.v * 0.0020833334);
-                v25->uvSet3.u = (float)(v25->uvSet3.u * 0.0015625);
-                v25->uvSet3.v = (float)(v25->uvSet3.v * 0.0020833334);
-                v25->uvSet4.u = (float)(v25->uvSet4.u * 0.0015625);
-                v25->uvSet4.v = (float)(v25->uvSet4.v * 0.0020833334);
-
-                ++v25;
-                --v26;
-            } while (v26);
-            if (v10)
+                quad[i].v1.x = (float)(scaledX * 0.0015625);
+                quad[i].v1.y = (float)(height * quad[i].v1.y * 0.0020833334);
+                quad[i].uvSet1.u = (float)(quad[i].uvSet1.u * 0.0015625);
+                quad[i].uvSet1.v = (float)(quad[i].uvSet1.v * 0.0020833334);
+                quad[i].uvSet2.u = (float)(quad[i].uvSet2.u * 0.0015625);
+                quad[i].uvSet2.v = (float)(quad[i].uvSet2.v * 0.0020833334);
+                quad[i].uvSet3.u = (float)(quad[i].uvSet3.u * 0.0015625);
+                quad[i].uvSet3.v = (float)(quad[i].uvSet3.v * 0.0020833334);
+                quad[i].uvSet4.u = (float)(quad[i].uvSet4.u * 0.0015625);
+                quad[i].uvSet4.v = (float)(quad[i].uvSet4.v * 0.0020833334);
+            }
+            if (pass)
             {
                 AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
                 AE_SetRenderState(&renderStateConfig.d3d_BlendOp, D3DRS_BLENDOP, D3DBLENDOP_ADD);
                 AE_SetRenderState(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
                 AE_SetRenderState(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ONE);
             }
-            else if (renderStateConfig.d3dAlphaBlendEnable)
+            else
             {
-                renderStateConfig.d3dAlphaBlendEnable = 0;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 27, 0);
+                AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
             }
-            D3D_DrawASurface(v53, D3DFVF_TEX4 | D3DFVF_DIFFUSE | D3DFVF_XYZRHW);
-            ++v10;
-            v42 = v44 + v42;
-        } while (v10 < v45);
+            D3D_DrawASurface(quad, D3DFVF_TEX4 | D3DFVF_DIFFUSE | D3DFVF_XYZRHW);
+            angle = angleAdvance + angle;
+        }
     }
-    v28 = 0;
-    if (v41 > 0)
+    for (i = 0; i < stages; i++)
     {
-        v29 = 0;
-        do
-        {
-            AE_SetStageState(v28, &textureStageTypeConfig[v29].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
-            AE_SetStageState(v28, &textureStageTypeConfig[v29].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-            D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, v28++, 0);
-            ++v29;
-        } while (v28 < v41);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, i, 0);
     }
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
