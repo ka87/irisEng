@@ -3703,8 +3703,8 @@ void COL_SetFaceTag(tCobOK3* ok3, unsigned int face)
         tags[face >> 5] |= 1 << (face - 32 * (face >> 5));
 }
 
-// preserved: BOOL is int8_t, so the returned bit is truncated away for every face whose index mod 32 is 8 or more
-BOOL COL_b_TestFaceTag(tCobOK3* ok3, unsigned int face)
+// the whole word is returned, not a byte: the tested bit is 1 << (face % 32)
+int COL_b_TestFaceTag(tCobOK3* ok3, unsigned int face)
 {
     int* tags;
 

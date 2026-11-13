@@ -79,8 +79,8 @@ int TEXPRO_l_WaterUpdate(tTexProceduralStruct* procedural)
         {
             if (width != 2)
             {
-                // preserved: rowBytes is unsigned, so this divides by 4294967294 and samples the centre cell, not the row above
-                above = &previous[rowBytes / -2];
+                // one row back, as previous[rowBytes / 2] below is one row on
+                above = previous - rowBytes / 2;
                 for (col = width - 2; col; --col)
                 {
                     value = ((previous[1] + *above + *(previous - 1) + previous[rowBytes / 2]) >> 1)

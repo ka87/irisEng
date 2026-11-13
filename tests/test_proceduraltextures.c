@@ -205,6 +205,7 @@ typedef struct
 } tHolder;
 
 static tHolder holder[2];
+static int waterFieldsSkipped;
 
 static void setupHolder(int w, int h, uint32_t seed)
 {
@@ -307,9 +308,23 @@ static void waterCases(void)
                     BASE_TEXPRO_Free(&holder[s].st);
             }
             sprintf(name, "water %dx%d seed %d", w, h, seed);
-            compareSides(name);
-            comparePic(name, w * h);
-            compareHolderTail(name, w * h);
+            /* The two copies cannot be compared on the field itself once
+               a ripple is in it. The frozen copy samples the centre cell
+               where the row above belongs, so the four-tap kernel is
+               really three taps plus the centre; the rewrite reads the
+               row above. With no disruption both fields stay flat and
+               agree, which is why only the disrupted sizes are skipped.
+               waterSymmetryCase below is what checks the rewrite. */
+            if (w >= 16 && h >= 16)
+            {
+                waterFieldsSkipped++;
+            }
+            else
+            {
+                compareSides(name);
+                comparePic(name, w * h);
+                compareHolderTail(name, w * h);
+            }
             checkInt(name, "disrupt counter", BASE_TexPro_WaterDistruptCounter,
                      NEW_TexPro_WaterDistruptCounter);
             checkInt(name, "kx0", (int)(BASE_KX_442[0] * 1000), (int)(NEW_KX_442[0] * 1000));
@@ -320,6 +335,80 @@ static void waterCases(void)
             checkInt(name, "alpha1", (int)(BASE_ALPHA_441[1] * 1000), (int)(NEW_ALPHA_441[1] * 1000));
         }
     }
+}
+
+/* The rewrite reads the row above where the frozen copy re-reads the
+   centre cell, so the two fields cannot be compared once a ripple is in
+   them. This checks the rewrite on a property the correct kernel has and
+   the frozen one does not.
+
+   A single impulse at the centre of a square field, propagated with the
+   four-neighbour kernel, stays symmetric about the horizontal axis: the
+   row above and the row below contribute the same way. Replacing the
+   "above" tap with the centre cell destroys that, because only the row
+   below still feeds back. So the rewrite must be symmetric and the
+   frozen copy must not be -- the second half is what gives the check
+   teeth. */
+static void waterSymmetryCase(void)
+{
+    enum { W = 32, H = 32 };
+    int s, step, row, col;
+    int asym[2];
+
+    for (s = 0; s < 2; ++s)
+    {
+        tTexProcWater* water;
+        int16_t* f;
+
+        MOCKP_Reset();
+        MOCKP_SetSide(s);
+        memset(&holder[s], 0, sizeof(holder[s]));
+        holder[s].st.width = (int16_t)W;
+        holder[s].st.height = (int16_t)H;
+        holder[s].st.proceduralPicData = holder[s].pic;
+        water = s ? (tTexProcWater*)NEW_TEXPRO_pv_WaterLoad(0, 0, W, H)
+                  : (tTexProcWater*)BASE_TEXPRO_pv_WaterLoad(0, 0, W, H);
+        holder[s].st.proceduralTexPtr = water;
+
+        /* one impulse, dead centre, in both buffers so the first step
+           has nothing else to work from */
+        water->ptr1[(H / 2) * W + W / 2] = 8000;
+        water->ptr2[(H / 2) * W + W / 2] = 8000;
+
+        for (step = 0; step < 4; ++step)
+        {
+            if (s)
+                NEW_TEXPRO_l_WaterUpdate(&holder[s].st);
+            else
+                BASE_TEXPRO_l_WaterUpdate(&holder[s].st);
+        }
+
+        /* how far the field is from mirror-symmetric about the centre row */
+        asym[s] = 0;
+        f = water->ptr2;
+        for (row = 1; row < H / 2; ++row)
+            for (col = 1; col < W - 1; ++col)
+            {
+                int a = f[(H / 2 - row) * W + col];
+                int b = f[(H / 2 + row) * W + col];
+                asym[s] += a > b ? a - b : b - a;
+            }
+
+        if (s)
+            NEW_TEXPRO_Free(&holder[s].st);
+        else
+            BASE_TEXPRO_Free(&holder[s].st);
+    }
+
+    if (asym[1] != 0)
+        fail("water symmetry", "the rewrite is not symmetric about the centre row",
+             asym[1], 0);
+    if (asym[0] == 0)
+        fail("water symmetry", "the frozen copy is symmetric too, so this check has no teeth",
+             asym[0], 0);
+    printf("  water symmetry: rewrite %d, frozen copy %d\n", asym[1], asym[0]);
+    printf("  water fields not compared side by side: %d (the disrupted sizes)\n",
+           waterFieldsSkipped);
 }
 
 /* ---- group 2: fire ---- */
@@ -1325,6 +1414,7 @@ int main(void)
 
     printf("proceduraltextures.c: frozen copy against the rewrite\n");
     waterCases();
+    waterSymmetryCase();
     fireCases();
     plasmaCases();
     photoCases();
