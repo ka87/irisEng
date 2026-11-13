@@ -26,12 +26,12 @@ unsigned char commandWindowDlgTemplate[88] = {
 
 
 // TODO FIXME: ezek mik?? a játék nem 0ázza õket
-int dword_990164 = 0;
-int dword_990168 = 0;
-int dword_99016C = 0;
-int dword_990170 = 0;
-int dword_990174 = 0;
-int dword_990178 = 0;
+int pcINO_savPresenceFailure = 0;
+int pcINO_savMountFailure = 0;
+int pcINO_savCheckFailure = 0;
+int pcINO_savFormatFailure = 0;
+int pcINO_savFreeSpaceFailure = 0;
+int pcINO_savCardTestFailure = 0;
 
 /*
 IDirectInput8A* pDI;
@@ -107,25 +107,18 @@ uint8_t pcINO_InputHandlerSubModeCase10[24] = { 0, 0x0F, 0xFE, 0x10, 0xFE, 0xFE,
                                                 0xFE, 0xFE, 0xFE, 0xFE, 0x0F, 0x0E, 0x0C, 0x0A,
                                                 0x0D, 0x0B, 0xFE, 0xFE, 0xFE, 0xFE, 0, 0 };
 
-void pcINO_JoystickPositionAlignSetFromKeyboard(int zero, uint8_t* keybData)
+void pcINO_JoystickPositionAlignSetFromKeyboard(int stick, uint8_t* keyboard)
 {
-    int v2;
-    int v3;
-    int v4;
-
-    v2 = pcINO_IntKeybDataLink[24];
-    v3 = zero;
-    pcINO_joystickPosition[v3].x = 0.0;
-    if (keybData[v2] || keybData[pcINO_IntKeybDataLink[25]])
-        pcINO_joystickPosition[v3].x = -1.0;
-    if (keybData[pcINO_IntKeybDataLink[26]] || keybData[pcINO_IntKeybDataLink[27]])
-        pcINO_joystickPosition[v3].x = (float)(pcINO_joystickPosition[v3].x + 1.0);
-    v4 = pcINO_IntKeybDataLink[20];
-    pcINO_joystickPosition[v3].y = 0.0;
-    if (keybData[v4] || keybData[pcINO_IntKeybDataLink[21]])
-        pcINO_joystickPosition[v3].y = 1.0;
-    if (keybData[pcINO_IntKeybDataLink[22]] || keybData[pcINO_IntKeybDataLink[23]])
-        pcINO_joystickPosition[v3].y = (float)(pcINO_joystickPosition[v3].y - 1.0);
+    pcINO_joystickPosition[stick].x = 0.0;
+    if (keyboard[pcINO_IntKeybDataLink[24]] || keyboard[pcINO_IntKeybDataLink[25]])
+        pcINO_joystickPosition[stick].x = -1.0;
+    if (keyboard[pcINO_IntKeybDataLink[26]] || keyboard[pcINO_IntKeybDataLink[27]])
+        pcINO_joystickPosition[stick].x = (float)(pcINO_joystickPosition[stick].x + 1.0);
+    pcINO_joystickPosition[stick].y = 0.0;
+    if (keyboard[pcINO_IntKeybDataLink[20]] || keyboard[pcINO_IntKeybDataLink[21]])
+        pcINO_joystickPosition[stick].y = 1.0;
+    if (keyboard[pcINO_IntKeybDataLink[22]] || keyboard[pcINO_IntKeybDataLink[23]])
+        pcINO_joystickPosition[stick].y = (float)(pcINO_joystickPosition[stick].y - 1.0);
 }
 
 /* Control mode 1 -- retail 0x00423220..0x00423563, keymaps 0x00B65768.
@@ -213,36 +206,36 @@ void pcINO_SetMouseSensitivity(float t)
         pcINO_mouseSensitivity = t * 1.0f + 0.2f;
 }
 
-void pcINO_InputHandlerCase1(tInoPad* a1, float* mouse, uint8_t* keybData)
+void pcINO_InputHandlerCase1(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
-    int v4;
-    double v5;
+    int forward;
+    double y;
 
-    if (keybData[pcINO_IntKeybDataLink[0]] || keybData[pcINO_IntKeybDataLink[1]])
-        a1->padData[0] = -1;
-    if (keybData[pcINO_IntKeybDataLink[2]] && !pcINO_keyboardDataBackup[pcINO_IntKeybDataLink[2]]
-        || keybData[pcINO_IntKeybDataLink[3]] && !pcINO_keyboardDataBackup[pcINO_IntKeybDataLink[3]])
+    if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
+        pad->padData[0] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[2]] && !pcINO_keyboardDataBackup[pcINO_IntKeybDataLink[2]]
+        || keyboard[pcINO_IntKeybDataLink[3]] && !pcINO_keyboardDataBackup[pcINO_IntKeybDataLink[3]])
     {
-        a1->padData[2] = -1;
+        pad->padData[2] = -1;
     }
-    if (keybData[pcINO_IntKeybDataLink[16]] || keybData[pcINO_IntKeybDataLink[17]])
-        a1->padData[15] = -1;
-    if (keybData[257])                                  /* wheel down */
-        a1->padData[15] = -1;
-    if (keybData[pcINO_IntKeybDataLink[18]] || keybData[pcINO_IntKeybDataLink[19]])
-        a1->padData[13] = -1;
-    if (keybData[256])                                  /* wheel up */
-        a1->padData[13] = -1;
-    if (keybData[pcINO_IntKeybDataLink[4]] || keybData[pcINO_IntKeybDataLink[5]])
-        a1->padData[1] = -1;
-    if (keybData[pcINO_IntKeybDataLink[6]] || keybData[pcINO_IntKeybDataLink[7]])
-        a1->padData[3] = -1;
-    if (keybData[pcINO_IntKeybDataLink[8]] || keybData[pcINO_IntKeybDataLink[9]])
-        a1->padData[5] = -1;
-    if (keybData[pcINO_IntKeybDataLink[10]] || keybData[pcINO_IntKeybDataLink[11]])
-        a1->padData[10] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[16]] || keyboard[pcINO_IntKeybDataLink[17]])
+        pad->padData[15] = -1;
+    if (keyboard[257])                                  /* wheel down */
+        pad->padData[15] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[18]] || keyboard[pcINO_IntKeybDataLink[19]])
+        pad->padData[13] = -1;
+    if (keyboard[256])                                  /* wheel up */
+        pad->padData[13] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[4]] || keyboard[pcINO_IntKeybDataLink[5]])
+        pad->padData[1] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[6]] || keyboard[pcINO_IntKeybDataLink[7]])
+        pad->padData[3] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[8]] || keyboard[pcINO_IntKeybDataLink[9]])
+        pad->padData[5] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[10]] || keyboard[pcINO_IntKeybDataLink[11]])
+        pad->padData[10] = -1;
 
-    pcINO_JoystickPositionAlignSetFromKeyboard(0, keybData);
+    pcINO_JoystickPositionAlignSetFromKeyboard(0, keyboard);
 
     if (pcINO_stateMachineFlags == 0x12)                /* 0x00423349 */
     {
@@ -257,27 +250,27 @@ void pcINO_InputHandlerCase1(tInoPad* a1, float* mouse, uint8_t* keybData)
         }
     }
 
-    v4 = keybData[pcINO_IntKeybDataLink[12]] || keybData[pcINO_IntKeybDataLink[13]];
+    forward = keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]];
 
-    pcINO_case64StateMachineHandler(v4, &pcINO_stateMachineFlags,
+    pcINO_case64StateMachineHandler(forward, &pcINO_stateMachineFlags,
                                     &pcINO_case1DividedTime2, 0.2f);
 
     if ((pcINO_stateMachineFlags & 0x10) != 0)
-        a1->padData[7] = -1;
+        pad->padData[7] = -1;
     /* 0x00423449: from the keyboard, not from flags & 0x20. */
-    if (keybData[pcINO_IntKeybDataLink[14]] || keybData[pcINO_IntKeybDataLink[15]])
-        a1->padData[4] = -1;
+    if (keyboard[pcINO_IntKeybDataLink[14]] || keyboard[pcINO_IntKeybDataLink[15]])
+        pad->padData[4] = -1;
 
     if (pcINO_SelectedControlSubmode)                   /* 0x00423466 */
     {
         pcINO_joystickPosition[1].x = (float)(mouse[0] * -0.029999999f);
-        v5 = pcINO_joystickPosition[1].y - mouse[1] * 0.001f;
-        if (v5 < -1.0f)
+        y = pcINO_joystickPosition[1].y - mouse[1] * 0.001f;
+        if (y < -1.0f)
             pcINO_joystickPosition[1].y = -1.0f;
-        else if (v5 > 1.0f)
+        else if (y > 1.0f)
             pcINO_joystickPosition[1].y = 1.0f;
         else
-            pcINO_joystickPosition[1].y = (float)v5;
+            pcINO_joystickPosition[1].y = (float)y;
     }
     else
     {
@@ -287,13 +280,13 @@ void pcINO_InputHandlerCase1(tInoPad* a1, float* mouse, uint8_t* keybData)
         pcINO_joystickPosition[1].x =
             (float)((mouse[0] * -0.019999998f - pcINO_joystickPosition[1].x) * 0.60000002f
                     + pcINO_joystickPosition[1].x);
-        v5 = pcINO_joystickPosition[1].y + mouse[1] * 0.001f;
-        if (v5 < -0.2f)
+        y = pcINO_joystickPosition[1].y + mouse[1] * 0.001f;
+        if (y < -0.2f)
             pcINO_joystickPosition[1].y = -0.2f;
-        else if (v5 > 0.30000001f)
+        else if (y > 0.30000001f)
             pcINO_joystickPosition[1].y = 0.30000001f;
         else
-            pcINO_joystickPosition[1].y = (float)v5;
+            pcINO_joystickPosition[1].y = (float)y;
     }
 }
 
@@ -379,7 +372,7 @@ void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, uint8_t* keyboard)
     }
 }
 
-void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, uint8_t* keyboard)
+void pcINO_InputHandlerCase4(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
     int submode;
     double gain;
@@ -388,11 +381,11 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, uint8_t* keyboard)
     double inv;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
-        a1->padData[0] = -1;
+        pad->padData[0] = -1;
     if (keyboard[pcINO_IntKeybDataLink[4]] || keyboard[pcINO_IntKeybDataLink[5]])
-        a1->padData[0] = -1;
+        pad->padData[0] = -1;
     if (keyboard[pcINO_IntKeybDataLink[32]] || keyboard[pcINO_IntKeybDataLink[33]])
-        a1->padData[3] = -1;
+        pad->padData[3] = -1;
 
     submode = pcINO_SelectedControlSubmode;
     if (!submode)
@@ -417,15 +410,15 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, uint8_t* keyboard)
         }
 
         if (keyboard[pcINO_IntKeybDataLink[34]] || keyboard[pcINO_IntKeybDataLink[35]])
-            a1->padData[1] = -1;
+            pad->padData[1] = -1;
         if (keyboard[260])                                    /* mouse button 3 */
-            a1->padData[1] = -1;
+            pad->padData[1] = -1;
         if (keyboard[67] && keyboard[68])                     /* DIK_F9 + DIK_F10 */
         {
-            a1->padData[5] = -1;
-            a1->padData[7] = -1;
+            pad->padData[5] = -1;
+            pad->padData[7] = -1;
             if (keyboard[pcINO_IntKeybDataLink[6]] || keyboard[pcINO_IntKeybDataLink[7]])
-                a1->padData[1] = -1;
+                pad->padData[1] = -1;
             pcINO_JoystickPositionAlignSetFromKeyboard(0, keyboard);
         }
         return;
@@ -442,8 +435,8 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, uint8_t* keyboard)
     case 2:
         if (keyboard[pcINO_IntKeybDataLink[34]] || keyboard[pcINO_IntKeybDataLink[35]])
         {
-            a1->padData[5] = -1;
-            a1->padData[3] = 0;
+            pad->padData[5] = -1;
+            pad->padData[3] = 0;
             /* retail writes no [1].y on this path */
         }
         else if (keyboard[256])
@@ -469,7 +462,7 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, uint8_t* keyboard)
 
     case 3: case 4: case 5: case 6: case 8: case 9:
         if (keyboard[pcINO_IntKeybDataLink[34]] || keyboard[pcINO_IntKeybDataLink[35]])
-            a1->padData[1] = -1;
+            pad->padData[1] = -1;
         if (keyboard[256])
             pcINO_joystickPosition[0].y = 1.0f;
         else if (keyboard[257])
@@ -478,7 +471,7 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, uint8_t* keyboard)
 
     case 10:
         if (keyboard[pcINO_IntKeybDataLink[30]] || keyboard[pcINO_IntKeybDataLink[31]])
-            a1->padData[1] = -1;
+            pad->padData[1] = -1;
         break;
 
     default:
@@ -486,16 +479,16 @@ void pcINO_InputHandlerCase4(tInoPad* a1, float* mouse, uint8_t* keyboard)
     }
 }
 
-void pcINO_InputHandlerCase8(tInoPad* a1, float* mouse, uint8_t* keyboard)
+void pcINO_InputHandlerCase8(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
-        a1->padData[0] = -1;
+        pad->padData[0] = -1;
     /* 0x00424223: retail has this block, the demo did not. Same keys as
        the padData[1] test below. */
     if (keyboard[pcINO_IntKeybDataLink[32]] || keyboard[pcINO_IntKeybDataLink[33]])
-        a1->padData[3] = -1;
+        pad->padData[3] = -1;
     if (keyboard[pcINO_IntKeybDataLink[32]] || keyboard[pcINO_IntKeybDataLink[33]])
-        a1->padData[1] = -1;
+        pad->padData[1] = -1;
 
     pcINO_joystickPosition[0].x = 0.0f;
     pcINO_joystickPosition[0].y = 0.0f;
@@ -527,28 +520,28 @@ void pcINO_InputHandlerCase8(tInoPad* a1, float* mouse, uint8_t* keyboard)
     }
 }
 
-void pcINO_InputHandlerCase32(tInoPad* a1, float* mouse, uint8_t* keyboard)
+void pcINO_InputHandlerCase32(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
-    double v;
+    double amount;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
-        a1->padData[0] = -1;
+        pad->padData[0] = -1;
     if (keyboard[pcINO_IntKeybDataLink[2]] || keyboard[pcINO_IntKeybDataLink[3]])
-        a1->padData[2] = -1;
+        pad->padData[2] = -1;
     if (keyboard[pcINO_IntKeybDataLink[16]] || keyboard[pcINO_IntKeybDataLink[17]])
-        a1->padData[15] = -1;
+        pad->padData[15] = -1;
     if (keyboard[257])
-        a1->padData[15] = -1;
+        pad->padData[15] = -1;
     if (keyboard[pcINO_IntKeybDataLink[18]] || keyboard[pcINO_IntKeybDataLink[19]])
-        a1->padData[13] = -1;
+        pad->padData[13] = -1;
     if (keyboard[256])
-        a1->padData[13] = -1;
+        pad->padData[13] = -1;
     if (keyboard[pcINO_IntKeybDataLink[4]] || keyboard[pcINO_IntKeybDataLink[5]])
-        a1->padData[1] = -1;
+        pad->padData[1] = -1;
     if (keyboard[pcINO_IntKeybDataLink[6]] || keyboard[pcINO_IntKeybDataLink[7]])
-        a1->padData[3] = -1;
+        pad->padData[3] = -1;
     if (keyboard[pcINO_IntKeybDataLink[8]] || keyboard[pcINO_IntKeybDataLink[9]])
-        a1->padData[5] = -1;
+        pad->padData[5] = -1;
 
     /* 0x00423D51: links 12/13 drive the shared state machine; padData[7]
        comes from its flag, not straight from the keys. */
@@ -556,20 +549,20 @@ void pcINO_InputHandlerCase32(tInoPad* a1, float* mouse, uint8_t* keyboard)
         keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]],
         &pcINO_stateMachineFlags, &pcINO_case1DividedTime2, 0.2f);
     if ((pcINO_stateMachineFlags & 0x10) != 0)
-        a1->padData[7] = -1;
+        pad->padData[7] = -1;
 
     pcINO_JoystickPositionAlignSetFromKeyboard(0, keyboard);   /* 0x00423DF7 */
 
     /* 0x00B50200 = 0.06f, accumulated onto the keyboard seed. */
-    v = (double)mouse[0] * 0.059999999f + pcINO_joystickPosition[0].x;
-    if (v < -1.0)      pcINO_joystickPosition[0].x = -1.0f;
-    else if (v > 1.0)  pcINO_joystickPosition[0].x = 1.0f;
-    else               pcINO_joystickPosition[0].x = (float)v;
+    amount = (double)mouse[0] * 0.059999999f + pcINO_joystickPosition[0].x;
+    if (amount < -1.0)      pcINO_joystickPosition[0].x = -1.0f;
+    else if (amount > 1.0)  pcINO_joystickPosition[0].x = 1.0f;
+    else                    pcINO_joystickPosition[0].x = (float)amount;
 
-    v = pcINO_joystickPosition[0].y - (double)mouse[1] * 0.059999999f;
-    if (v < -1.0)      pcINO_joystickPosition[0].y = -1.0f;
-    else if (v > 1.0)  pcINO_joystickPosition[0].y = 1.0f;
-    else               pcINO_joystickPosition[0].y = (float)v;
+    amount = pcINO_joystickPosition[0].y - (double)mouse[1] * 0.059999999f;
+    if (amount < -1.0)      pcINO_joystickPosition[0].y = -1.0f;
+    else if (amount > 1.0)  pcINO_joystickPosition[0].y = 1.0f;
+    else                    pcINO_joystickPosition[0].y = (float)amount;
 
     pcINO_joystickPosition[1].x = 0.0f;
     pcINO_joystickPosition[1].y = 0.0f;
@@ -582,7 +575,7 @@ void pcINO_InputHandlerCase32(tInoPad* a1, float* mouse, uint8_t* keyboard)
 void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
     int   boost;
-    float v;
+    float amount;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
         pad->padData[0] = -1;
@@ -631,10 +624,10 @@ void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, uint8_t* keyboard)
     else if (pcINO_SelectedControlSubmode == 4)
     {
         pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.019999999f + pcINO_joystickPosition[0].x);
-        v = (float)(mouse[1] * 0.00050000002f + pcINO_joystickPosition[1].y);
-        if (v < 0.0f)                 pcINO_joystickPosition[1].y = 0.0f;
-        else if (v > 0.80000001f)     pcINO_joystickPosition[1].y = 0.80000001f;
-        else                          pcINO_joystickPosition[1].y = v;
+        amount = (float)(mouse[1] * 0.00050000002f + pcINO_joystickPosition[1].y);
+        if (amount < 0.0f)              pcINO_joystickPosition[1].y = 0.0f;
+        else if (amount > 0.80000001f)  pcINO_joystickPosition[1].y = 0.80000001f;
+        else                            pcINO_joystickPosition[1].y = amount;
     }
     else
     {
@@ -652,10 +645,10 @@ void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, uint8_t* keyboard)
                 (float)(mouse[0] * 0.039999999f + pcINO_joystickPosition[0].x);
         }
 
-        v = (float)(mouse[1] * 0.001f + pcINO_joystickPosition[1].y);
-        if (v < -0.40000001f)         pcINO_joystickPosition[1].y = -0.40000001f;
-        else if (v > 0.1f)            pcINO_joystickPosition[1].y = 0.1f;
-        else                          pcINO_joystickPosition[1].y = v;
+        amount = (float)(mouse[1] * 0.001f + pcINO_joystickPosition[1].y);
+        if (amount < -0.40000001f)      pcINO_joystickPosition[1].y = -0.40000001f;
+        else if (amount > 0.1f)         pcINO_joystickPosition[1].y = 0.1f;
+        else                            pcINO_joystickPosition[1].y = amount;
 
         if ((pcINO_stateMachineFlags & 0x10) != 0 && pcINO_joystickPosition[0].x != 0.0f)
             return;
@@ -666,20 +659,20 @@ void pcINO_InputHandlerHoverCraft(tInoPad* pad, float* mouse, uint8_t* keyboard)
         pcINO_joystickPosition[0].y = (float)(pcINO_joystickPosition[0].y + 1.0);
 }
 
-void pcINO_InputHandlerCase100(tInoPad* a1, float* mouse, uint8_t* keyboard)
+void pcINO_InputHandlerCase100(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
     double angle;
     double len;
     double inv;
 
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
-        a1->padData[0] = -1;
+        pad->padData[0] = -1;
     if (keyboard[pcINO_IntKeybDataLink[4]] || keyboard[pcINO_IntKeybDataLink[5]])
-        a1->padData[0] = -1;                                   /* 0x00424383 */
+        pad->padData[0] = -1;                                   /* 0x00424383 */
     if (keyboard[pcINO_IntKeybDataLink[12]] || keyboard[pcINO_IntKeybDataLink[13]])
-        a1->padData[0] = -1;                                   /* 0x004243A0 */
+        pad->padData[0] = -1;                                   /* 0x004243A0 */
     if (keyboard[pcINO_IntKeybDataLink[2]] || keyboard[pcINO_IntKeybDataLink[3]])
-        a1->padData[1] = -1;                                   /* 0x004243BD */
+        pad->padData[1] = -1;                                   /* 0x004243BD */
 
     /* No clock gate in retail: the rotation runs every frame, and the
        demo's pcINO_case2DividedTime throttle is not here at all. */
@@ -709,10 +702,10 @@ void pcINO_InputHandlerCase100(tInoPad* a1, float* mouse, uint8_t* keyboard)
     }
 }
 
-void pcINO_InputHandlerCase101(tInoPad* a1, float* mouse, uint8_t* keyboard)
+void pcINO_InputHandlerCase101(tInoPad* pad, float* mouse, uint8_t* keyboard)
 {
     if (keyboard[pcINO_IntKeybDataLink[0]] || keyboard[pcINO_IntKeybDataLink[1]])
-        a1->padData[0] = -1;
+        pad->padData[0] = -1;
     pcINO_joystickPosition[0].x = 0.0;
     if (keyboard[30])
         pcINO_joystickPosition[0].x = -1.0;
@@ -735,7 +728,7 @@ void pcINO_InputHandlerCase101(tInoPad* a1, float* mouse, uint8_t* keyboard)
         pcINO_joystickPosition[1].y = (float)(pcINO_joystickPosition[1].y - 1.0);
 }
 
-int DINPUT_GetProperty(IDirectInputDevice8A* a1, int obj, int how, const GUID* propertyGuid, int* dataRet)
+int DINPUT_GetProperty(IDirectInputDevice8A* device, int obj, int how, const GUID* propertyGuid, int* dataRet)
 {
     int result;
     DIPROPDWORD diprop;
@@ -746,35 +739,29 @@ int DINPUT_GetProperty(IDirectInputDevice8A* a1, int obj, int how, const GUID* p
     diprop.diph.dwHeaderSize = sizeof(DIPROPHEADER);
     diprop.dwData = 0;
     
-    result = a1->lpVtbl->GetProperty(a1, propertyGuid, (LPDIPROPHEADER)&diprop);
+    result = device->lpVtbl->GetProperty(device, propertyGuid, (LPDIPROPHEADER)&diprop);
     *dataRet = diprop.dwData;
 
     return result;
 }
 
-void DINPUT_InitVariables(int a1)
+void DINPUT_InitVariables(int kind)
 {
-    BOOL v1;
-
-    switch (a1)
+    switch (kind)
     {
     case 0:
         memset(pcINO_joystickPosition, 0, sizeof(pcINO_joystickPosition));
         pcINO_stateMachineFlags = 0;
         break;
     case 1:
-        if (pcINO_stateMachineFlags == 18)
-            goto LABEL_8;
-        v1 = pcINO_stateMachineFlags == 34;
-        goto LABEL_7;
+        if (pcINO_stateMachineFlags == 18 || pcINO_stateMachineFlags == 34)
+            pcINO_stateMachineFlags = 0;
+        break;
     case 2:
         pcINO_stateMachineFlags = 0;
         break;
     case 3:
-        v1 = pcINO_stateMachineFlags == 18;
-    LABEL_7:
-        if (v1)
-            LABEL_8 :
+        if (pcINO_stateMachineFlags == 18)
             pcINO_stateMachineFlags = 0;
         break;
     case 4:
@@ -784,235 +771,202 @@ void DINPUT_InitVariables(int a1)
             pcINO_stateMachineFlags = 0;
         break;
     default:
-        return;
+        break;
     }
 }
 
-void pcINO_getKeyNames(int dwhow, char* a2)
+void pcINO_getKeyNames(int keyOffset, char* dest)
 {
-    char* v2;
-    char v3;
-    char *v4;
-    DIDEVICEOBJECTINSTANCEA pdidoi;
-    
+    char* out;
+    char* src;
+    DIDEVICEOBJECTINSTANCEA keyInfo;
+
     char* prefix = "\\P4\\\x8F\0";
     char* postfix = "\x90\0";
 
-    memset(&pdidoi, 0, sizeof(DIDEVICEOBJECTINSTANCEA));
-    pdidoi.dwSize = sizeof(DIDEVICEOBJECTINSTANCEA);
-    keyb_if_dword_98F238->lpVtbl->GetObjectInfo(keyb_if_dword_98F238, &pdidoi, dwhow, DIPH_BYOFFSET);
-    v2 = a2;
-    v3 = *prefix;
-    
-    while (v3)
-    {
-        *v2 = v3;
-        v3 = *(++prefix);
-        v2++;
-    }
+    memset(&keyInfo, 0, sizeof(DIDEVICEOBJECTINSTANCEA));
+    keyInfo.dwSize = sizeof(DIDEVICEOBJECTINSTANCEA);
+    pcINO_keybDevice->lpVtbl->GetObjectInfo(pcINO_keybDevice, &keyInfo, keyOffset, DIPH_BYOFFSET);
 
-    v4 = pdidoi.tszName;
-    if (pdidoi.tszName[0])
-    {
-        do
-        {
-            *v2 = *v4;
-            v4++;
-            v2++;
-        } while (*v4);
-    }
-
-    v3 = *postfix;
-
-    while (v3)
-    {
-        *v2 = v3;
-        v3 = *(++postfix);
-        v2++;
-    }
-
-    *v2 = 0;
+    out = dest;
+    for (src = prefix; *src; src++)
+        *out++ = *src;
+    for (src = keyInfo.tszName; *src; src++)
+        *out++ = *src;
+    for (src = postfix; *src; src++)
+        *out++ = *src;
+    *out = 0;
 }
 
 void pcINO_getKeyNamesForEverything()
 {
-    tInoButtonNames* v1;
-    uint16_t* v2;
-    
-    v1 = buttonNames;
-    v2 = pcINO_IntKeybDataLink;
-    do
+    tInoButtonNames* name;
+    int i;
+
+    for (i = 0; i < 36; i += 2)
     {
-        switch (*v2)
+        name = &buttonNames[i / 2];
+        switch (pcINO_IntKeybDataLink[i])
         {
         case 57u:
-            memcpy(v1, prefixSpaces, sizeof(prefixSpaces));
+            memcpy(name, prefixSpaces, sizeof(prefixSpaces));
             break;
         case 256u:
         case 257u:
         case 260u:
-            memcpy(v1, prefixOneSpace, sizeof(prefixOneSpace));
+            memcpy(name, prefixOneSpace, sizeof(prefixOneSpace));
             break;
         case 258u:
-            strcpy(v1->str, "\\p16\\0");
+            strcpy(name->str, "\\p16\\0");
             break;
         case 259u:
-            strcpy(v1->str, "\\p16\\1");
+            strcpy(name->str, "\\p16\\1");
             break;
         default:
-            pcINO_getKeyNames(*v2, v1->str);
+            pcINO_getKeyNames(pcINO_IntKeybDataLink[i], name->str);
             break;
         }
-        v2 += 2;
-        ++v1;
-    } while ((int)v2 <= (int)&(pcINO_IntKeybDataLink[35]));
+    }
 }
 
-char* pcINO_GetFourKeyNamesCattedTogether(int a1, int a2, int a3, int a4)
+char* pcINO_GetFourKeyNamesCattedTogether(int action1, int action2, int action3, int action4)
 {
-    int v4;
-    int v5;
-    int v6;
-    int v7;    
+    int name1;
+    int name2;
+    int name3;
+    int name4;
 
-    v4 = pcINO_keyMaps[a1];
-    v5 = pcINO_keyMaps[a2];
-    v6 = pcINO_keyMaps[a3];
-    v7 = pcINO_keyMaps[a4];
-    if (v4 == -1)
+    name1 = pcINO_keyMaps[action1];
+    name2 = pcINO_keyMaps[action2];
+    name3 = pcINO_keyMaps[action3];
+    name4 = pcINO_keyMaps[action4];
+    if (name1 == -1)
         return prefix_p16_2;
-    if (v4 < 0 || v5 < 0 || v6 < 0 || v7 < 0)
+    if (name1 < 0 || name2 < 0 || name3 < 0 || name4 < 0)
         return prefixOneSpace;
 
-    strcpy(pcINO_KeyNamesToRet, buttonNames[v4].str);
-    strcat(pcINO_KeyNamesToRet, buttonNames[v5].str);
-    strcat(pcINO_KeyNamesToRet, buttonNames[v6].str);
-    strcat(pcINO_KeyNamesToRet, buttonNames[v7].str);
+    strcpy(pcINO_KeyNamesToRet, buttonNames[name1].str);
+    strcat(pcINO_KeyNamesToRet, buttonNames[name2].str);
+    strcat(pcINO_KeyNamesToRet, buttonNames[name3].str);
+    strcat(pcINO_KeyNamesToRet, buttonNames[name4].str);
     return pcINO_KeyNamesToRet;
 }
 
-void INO_SetControlSubmode_inner_sub_48A650(int a1)
+void INO_SetControlSubmode_inner_sub_48A650(int submode)
 {
-    if (a1 >= 0)
+    if (submode < 0)
     {
-        if (pcINO_SelectedControlSubmode != a1)
+        DINPUT_InitVariables(-submode);
+        return;
+    }
+    if (pcINO_SelectedControlSubmode == submode)
+        return;
+
+    if (pcINO_SelectedControlMode == 4)
+    {
+        if (!pcINO_SelectedControlSubmode)
+            pcINO_joyPositionBeforeControlSubmodeSet = pcINO_joystickPosition[0];
+        switch (submode)
         {
-            if (pcINO_SelectedControlMode == 4)
-            {
-                if (!pcINO_SelectedControlSubmode)
-                    pcINO_joyPositionBeforeControlSubmodeSet = pcINO_joystickPosition[0];
-                switch (a1)
-                {
-                case 0:
-                    pcINO_joystickPosition[0] = pcINO_joyPositionBeforeControlSubmodeSet;
-                    pcINO_keyMaps = pcINO_InputHandlerSubModeCase0;
-                    pcINO_SelectedControlSubmode = a1;
-                    break;
-                case 2:
-                    pcINO_keyMaps = pcINO_InputHandlerSubModeCase2;
-                    pcINO_SelectedControlSubmode = a1;
-                    break;
-                case 7:
-                    pcINO_keyMaps = pcINO_InputHandlerSubModeCase7;
-                    DINPUT_InitVariables(2);
-                    pcINO_SelectedControlSubmode = a1;
-                    break;
-                case 10:
-                    pcINO_keyMaps = pcINO_InputHandlerSubModeCase10;
-                    pcINO_SelectedControlSubmode = a1;
-                    break;
-                default:
-                    pcINO_keyMaps = pcINO_InputHandlerSubModeCaseDef;
-                    pcINO_SelectedControlSubmode = a1;
-                    break;
-                }
-            }
-            else
-            {
-                /* Retail 0x00424931. Mode 64 picks between two values
-                   on the submode rather than always using one, and
-                   mode 1 centres the right stick. The demo had
-                   neither. */
-                if (pcINO_SelectedControlMode == 64)
-                {
-                    if (a1 == 4)
-                        pcINO_joystickPosition[1].y = 0.44999999f;  /* 0x3EE66666 */
-                    else
-                        pcINO_joystickPosition[1].y = -0.1f;        /* 0xBDCCCCCD */
-                }
-                else if (pcINO_SelectedControlMode == 1)
-                {
-                    pcINO_joystickPosition[1].y = 0.0f;
-                }
-                pcINO_SelectedControlSubmode = a1;
-            }
+        case 0:
+            pcINO_joystickPosition[0] = pcINO_joyPositionBeforeControlSubmodeSet;
+            pcINO_keyMaps = pcINO_InputHandlerSubModeCase0;
+            break;
+        case 2:
+            pcINO_keyMaps = pcINO_InputHandlerSubModeCase2;
+            break;
+        case 7:
+            pcINO_keyMaps = pcINO_InputHandlerSubModeCase7;
+            DINPUT_InitVariables(2);
+            break;
+        case 10:
+            pcINO_keyMaps = pcINO_InputHandlerSubModeCase10;
+            break;
+        default:
+            pcINO_keyMaps = pcINO_InputHandlerSubModeCaseDef;
+            break;
         }
     }
     else
     {
-        DINPUT_InitVariables(-a1);
+        /* Retail 0x00424931. Mode 64 picks between two values
+           on the submode rather than always using one, and
+           mode 1 centres the right stick. The demo had
+           neither. */
+        if (pcINO_SelectedControlMode == 64)
+        {
+            if (submode == 4)
+                pcINO_joystickPosition[1].y = 0.44999999f;  /* 0x3EE66666 */
+            else
+                pcINO_joystickPosition[1].y = -0.1f;        /* 0xBDCCCCCD */
+        }
+        else if (pcINO_SelectedControlMode == 1)
+        {
+            pcINO_joystickPosition[1].y = 0.0f;
+        }
     }
+    pcINO_SelectedControlSubmode = submode;
 }
 
-void INO_SetControlMode_inner_sub_48ACB0(int a1)
+void INO_SetControlMode_inner_sub_48ACB0(int mode)
 {
-    if (pcINO_SelectedControlMode != a1)
+    if (pcINO_SelectedControlMode == mode)
+        return;
+
+    if (pcINO_SelectedControlMode == 4 && !pcINO_SelectedControlSubmode)
+        pcINO_joyPositionBeforeControlSubmodeSet = pcINO_joystickPosition[0];
+    pcINO_joystickPosition[0].x = 0.0;
+    pcINO_joystickPosition[0].y = 0.0;
+    switch (mode)
     {
-        if (pcINO_SelectedControlMode == 4 && !pcINO_SelectedControlSubmode)
-            pcINO_joyPositionBeforeControlSubmodeSet = pcINO_joystickPosition[0];
-        pcINO_joystickPosition[0].x = 0.0;
-        pcINO_joystickPosition[0].y = 0.0;
-        switch (a1)
-        {
-        case 1:
-            sJoystickHandlerFunction = pcINO_InputHandlerCase1;
-            pcINO_keyMaps = pcINO_keyMapsCase1;
-            DINPUT_InitVariables(3);
-            break;
-        case 2:
-            sJoystickHandlerFunction = pcINO_InputHandlerCase2;
-            pcINO_keyMaps = pcINO_keyMapsCase2;
-            break;
-        case 4:
-            pcINO_joystickPosition[0] = pcINO_joyPositionBeforeControlSubmodeSet;
-            sJoystickHandlerFunction = pcINO_InputHandlerCase4;
-            break;
-        case 8:
-            sJoystickHandlerFunction = pcINO_InputHandlerCase8;
-            pcINO_keyMaps = pcINO_keyMapsCase8;
-            break;
-        case 32:
-            sJoystickHandlerFunction = pcINO_InputHandlerCase32;
-            pcINO_keyMaps = pcINO_keyMapsCase32;
-            break;
-        case 64:
-            sJoystickHandlerFunction = pcINO_InputHandlerHoverCraft;
-            pcINO_keyMaps = pcINO_keyMapsCase64;
-            break;
-        /* Retail numbers these 128 and 129 (jump table at 0x00424764
-           over a1-1, entries only for 1/2/4/8/32/64/128/129). The demo
-           build these were decompiled from used 100 and 101, so
-           INO_SetControlMode(128) -- which the board panel really does
-           call -- was falling through to default and leaving whatever
-           handler was installed before. */
-        case 128:
-            sJoystickHandlerFunction = pcINO_InputHandlerCase100;
-            pcINO_keyMaps = pcINO_keyMapsCase100;
-            /* 0x004246F2: mode 128 starts with the stick fully over,
-               set after the common code above has zeroed x and y. */
-            pcINO_joystickPosition[0].y = 1.0f;
-            break;
-        case 129:
-            sJoystickHandlerFunction = pcINO_InputHandlerCase101;
-            pcINO_keyMaps = pcINO_keyMapsCase101;
-            break;
-        default:
-            break;
-        }
-        pcINO_SelectedControlMode = a1;
-        pcINO_SelectedControlSubmode = 0xffffffff;
-        INO_SetControlSubmode_inner_sub_48A650(0);
+    case 1:
+        sJoystickHandlerFunction = pcINO_InputHandlerCase1;
+        pcINO_keyMaps = pcINO_keyMapsCase1;
+        DINPUT_InitVariables(3);
+        break;
+    case 2:
+        sJoystickHandlerFunction = pcINO_InputHandlerCase2;
+        pcINO_keyMaps = pcINO_keyMapsCase2;
+        break;
+    case 4:
+        pcINO_joystickPosition[0] = pcINO_joyPositionBeforeControlSubmodeSet;
+        sJoystickHandlerFunction = pcINO_InputHandlerCase4;
+        break;
+    case 8:
+        sJoystickHandlerFunction = pcINO_InputHandlerCase8;
+        pcINO_keyMaps = pcINO_keyMapsCase8;
+        break;
+    case 32:
+        sJoystickHandlerFunction = pcINO_InputHandlerCase32;
+        pcINO_keyMaps = pcINO_keyMapsCase32;
+        break;
+    case 64:
+        sJoystickHandlerFunction = pcINO_InputHandlerHoverCraft;
+        pcINO_keyMaps = pcINO_keyMapsCase64;
+        break;
+    /* Retail numbers these 128 and 129 (jump table at 0x00424764
+       over a1-1, entries only for 1/2/4/8/32/64/128/129). The demo
+       build these were decompiled from used 100 and 101, so
+       INO_SetControlMode(128) -- which the board panel really does
+       call -- was falling through to default and leaving whatever
+       handler was installed before. */
+    case 128:
+        sJoystickHandlerFunction = pcINO_InputHandlerCase100;
+        pcINO_keyMaps = pcINO_keyMapsCase100;
+        /* 0x004246F2: mode 128 starts with the stick fully over,
+           set after the common code above has zeroed x and y. */
+        pcINO_joystickPosition[0].y = 1.0f;
+        break;
+    case 129:
+        sJoystickHandlerFunction = pcINO_InputHandlerCase101;
+        pcINO_keyMaps = pcINO_keyMapsCase101;
+        break;
+    default:
+        break;
     }
+    pcINO_SelectedControlMode = mode;
+    pcINO_SelectedControlSubmode = 0xffffffff;
+    INO_SetControlSubmode_inner_sub_48A650(0);
 }
 
 void pcINO_Joystick_Init(HWND hwnd)
@@ -1023,23 +977,23 @@ void pcINO_Joystick_Init(HWND hwnd)
 
     if (DirectInput8Create(GetModuleHandleA(0), DIRECTINPUT_VERSION, &IID_IDirectInput8A, (LPVOID*)&dinput_if, 0) >= 0)
     {
-        if (dinput_if->lpVtbl->CreateDevice(dinput_if, &GUID_SysMouse, &mouse_if_dword_98F248, 0) >= 0)
+        if (dinput_if->lpVtbl->CreateDevice(dinput_if, &GUID_SysMouse, &pcINO_mouseDevice, 0) >= 0)
         {
-            if (mouse_if_dword_98F248->lpVtbl->SetDataFormat(mouse_if_dword_98F248, &c_dfDIMouse2) < 0
-                || mouse_if_dword_98F248->lpVtbl->SetCooperativeLevel(mouse_if_dword_98F248, hwnd, DISCL_FOREGROUND | DISCL_EXCLUSIVE) < 0)
+            if (pcINO_mouseDevice->lpVtbl->SetDataFormat(pcINO_mouseDevice, &c_dfDIMouse2) < 0
+                || pcINO_mouseDevice->lpVtbl->SetCooperativeLevel(pcINO_mouseDevice, hwnd, DISCL_FOREGROUND | DISCL_EXCLUSIVE) < 0)
             {
-                mouse_if_dword_98F248->lpVtbl->Release(mouse_if_dword_98F248);
-                mouse_if_dword_98F248 = 0;
+                pcINO_mouseDevice->lpVtbl->Release(pcINO_mouseDevice);
+                pcINO_mouseDevice = 0;
             }
-            if (DINPUT_GetProperty(mouse_if_dword_98F248, 8, 1, (const GUID*)3, &mouseGranularity) < 0)// DIPROP_GRANULARITY
+            if (DINPUT_GetProperty(pcINO_mouseDevice, 8, 1, (const GUID*)3, &mouseGranularity) < 0)// DIPROP_GRANULARITY
                 mouseGranularity = 1;
         }
-        if (dinput_if->lpVtbl->CreateDevice(dinput_if, &GUID_SysKeyboard, &keyb_if_dword_98F238, 0) >= 0
-            && (keyb_if_dword_98F238->lpVtbl->SetDataFormat(keyb_if_dword_98F238, &c_dfDIKeyboard) < 0
-                || keyb_if_dword_98F238->lpVtbl->SetCooperativeLevel(keyb_if_dword_98F238, hwnd, DISCL_NOWINKEY | DISCL_FOREGROUND | DISCL_EXCLUSIVE) < 0))
+        if (dinput_if->lpVtbl->CreateDevice(dinput_if, &GUID_SysKeyboard, &pcINO_keybDevice, 0) >= 0
+            && (pcINO_keybDevice->lpVtbl->SetDataFormat(pcINO_keybDevice, &c_dfDIKeyboard) < 0
+                || pcINO_keybDevice->lpVtbl->SetCooperativeLevel(pcINO_keybDevice, hwnd, DISCL_NOWINKEY | DISCL_FOREGROUND | DISCL_EXCLUSIVE) < 0))
         {
-            keyb_if_dword_98F238->lpVtbl->Release(keyb_if_dword_98F238);
-            keyb_if_dword_98F238 = 0;
+            pcINO_keybDevice->lpVtbl->Release(pcINO_keybDevice);
+            pcINO_keybDevice = 0;
         }
         INO_l_Joystick_Enable = 1;
         INO_gi_CurrentPadId = 0;
@@ -1065,15 +1019,15 @@ void pcINO_Joystick_Init(HWND hwnd)
 
 void pcINO_Joystick_Close()
 {
-    if (mouse_if_dword_98F248)
+    if (pcINO_mouseDevice)
     {
-        mouse_if_dword_98F248->lpVtbl->Release(mouse_if_dword_98F248);
-        mouse_if_dword_98F248 = 0;
+        pcINO_mouseDevice->lpVtbl->Release(pcINO_mouseDevice);
+        pcINO_mouseDevice = 0;
     }
-    if (keyb_if_dword_98F238)
+    if (pcINO_keybDevice)
     {
-        keyb_if_dword_98F238->lpVtbl->Release(keyb_if_dword_98F238);
-        keyb_if_dword_98F238 = 0;
+        pcINO_keybDevice->lpVtbl->Release(pcINO_keybDevice);
+        pcINO_keybDevice = 0;
     }
     if (dinput_if)
     {
@@ -1083,11 +1037,11 @@ void pcINO_Joystick_Close()
     INO_l_Joystick_Enable = 0;
 }
 
-void pcINO_Joystick_Move(Vec3* a1, int stickID)
+void pcINO_Joystick_Move(Vec3* move, int stickID)
 {
-    a1->x = pcINO_joystickPosition[stickID].x;
-    a1->y = pcINO_joystickPosition[stickID].y;
-    a1->z = pcINO_joystickPosition[stickID].z;
+    move->x = pcINO_joystickPosition[stickID].x;
+    move->y = pcINO_joystickPosition[stickID].y;
+    move->z = pcINO_joystickPosition[stickID].z;
 }
 
 int pcINO_i_IsMouseBeingUsed()
@@ -1095,66 +1049,63 @@ int pcINO_i_IsMouseBeingUsed()
     return 1;
 }
 
-int pcINO_i_SetCurrentPad(int a1)
+int pcINO_i_SetCurrentPad(int pad)
 {
     INO_gi_CurrentPadId = 0;
-    return -(a1 != 0);
+    return -(pad != 0);
 }
 
-void pcINO_JoystickPifPafEnable(BOOL b) {
+void pcINO_JoystickPifPafEnable(BOOL enable) {
 }
 
-void pcINO_JoystickPafIntensity(int i1) {
+void pcINO_JoystickPafIntensity(int intensity) {
 }
 
-INT_PTR WINAPI DbgDialogFunc(HWND hDlg, UINT a2, WPARAM hWnd, LPARAM a4)
+INT_PTR WINAPI DbgDialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (a2 == 272)
+    if (msg == 272)
     {
-        SetFocus((HWND)hWnd);
-        SetWindowTextA((HWND)hWnd, dbgDialogBuff);
-        SendMessageA((HWND)hWnd, 0xB1u, 0, -1);
+        SetFocus((HWND)wParam);
+        SetWindowTextA((HWND)wParam, dbgDialogBuff);
+        SendMessageA((HWND)wParam, 0xB1u, 0, -1);
         return 0;
     }
-    if (a2 != 273)
+    if (msg != 273)
         return 0;
-    if (hWnd == 1)
+    if (wParam == 1)
     {
         GetDlgItemTextA(hDlg, 1, dbgDialogBuff, 128);
     }
-    else if (hWnd != 2)
+    else if (wParam != 2)
     {
         return 0;
     }
-    EndDialog(hDlg, hWnd);
+    EndDialog(hDlg, wParam);
     return 1;
 }
 
 void pcINO_dinput_mouse_and_keyb_acquire()
 {
-    if (mouse_if_dword_98F248)
-        mouse_if_dword_98F248->lpVtbl->Acquire(mouse_if_dword_98F248);
-    if (keyb_if_dword_98F238)
-        keyb_if_dword_98F238->lpVtbl->Acquire(keyb_if_dword_98F238);
-    pcINO_unkKeyStateTest = GetKeyState(144) != 0;
+    if (pcINO_mouseDevice)
+        pcINO_mouseDevice->lpVtbl->Acquire(pcINO_mouseDevice);
+    if (pcINO_keybDevice)
+        pcINO_keybDevice->lpVtbl->Acquire(pcINO_keybDevice);
+    pcINO_numLockAtAcquire = GetKeyState(144) != 0;
     memset(pcINO_keyboardDataBackup, 0, sizeof(pcINO_keyboardDataBackup));
 }
 
 void pcINO_dinput_mouse_and_keyb_unacquire()
 {
-    if (mouse_if_dword_98F248)
-        mouse_if_dword_98F248->lpVtbl->Unacquire(mouse_if_dword_98F248);
-    if (keyb_if_dword_98F238)
-        keyb_if_dword_98F238->lpVtbl->Unacquire(keyb_if_dword_98F238);
+    if (pcINO_mouseDevice)
+        pcINO_mouseDevice->lpVtbl->Unacquire(pcINO_mouseDevice);
+    if (pcINO_keybDevice)
+        pcINO_keybDevice->lpVtbl->Unacquire(pcINO_keybDevice);
 }
 
 void pcINO_HandleTweakFlags(HWND hWndParent)
 {
-    tTweakElem* v1;
-    tTweakElem* v2;
-    int v3;
-    int v4;
-    float v5 = 0.0; // game doesn't initialize it, but it helps with sscanf fail.
+    tTweakElem* tweak;
+    float value = 0.0; // game doesn't initialize it, but it helps with sscanf fail.
     char Key[32];
 
     if (!tweakFlagsDisabled)
@@ -1162,29 +1113,16 @@ void pcINO_HandleTweakFlags(HWND hWndParent)
         // TODO FIXME: megcsinalni azt a dialogot rendesen, nem csak egy karaktertömböt átadni!!!
         if (DialogBoxIndirectParamA(0, (LPCDLGTEMPLATEA)commandWindowDlgTemplate, hWndParent, DbgDialogFunc, 0) == 1)
         {
-            sscanf(dbgDialogBuff, "%s %f", Key, &v5);
-            v1 = (tTweakElem*)bsearch(Key, &tweaks, 17u, sizeof(tTweakElem), strcmp);
-            v2 = v1;
-            if (v1)
+            sscanf(dbgDialogBuff, "%s %f", Key, &value);
+            tweak = (tTweakElem*)bsearch(Key, &tweaks, 17u, sizeof(tTweakElem), strcmp);
+            if (tweak)
             {
-                v3 = v1->type;
-                if (v3)
-                {
-                    v4 = v3 - 1;
-                    if (v4)
-                    {
-                        if (v4 == 1)
-                            ((void(*)(float))v2->ptr)(v5);
-                    }
-                    else
-                    {
-                        *((float*)(v2->ptr)) = v5;
-                    }
-                }
-                else
-                {
-                    *((int32_t*)(v2->ptr)) = (uint64_t)v5;
-                }
+                if (tweak->type == 0)
+                    *((int32_t*)(tweak->ptr)) = (uint64_t)value;
+                else if (tweak->type == 1)
+                    *((float*)(tweak->ptr)) = value;
+                else if (tweak->type == 2)
+                    ((void(*)(float))tweak->ptr)(value);
             }
         }
         pcINO_dinput_mouse_and_keyb_acquire();
@@ -1193,9 +1131,7 @@ void pcINO_HandleTweakFlags(HWND hWndParent)
 
 void pcINO_Joystick_Update(struct sInoPad* padData)
 {
-    int v1;
-    int16_t v2;
-    int v3;
+    int status;
     int mouseData[5];
     /* 266, not 264: retail writes mouse buttons 7 and 8 at
        [esp+0x138]/[esp+0x139] (0x00423026, 0x00423035), i.e.
@@ -1209,58 +1145,50 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
 
     memset(padData->padData, 0, sizeof(padData->padData));
 
-    if (!mouse_if_dword_98F248)
-        goto LABEL_7;
-    v1 = mouse_if_dword_98F248->lpVtbl->GetDeviceState(mouse_if_dword_98F248, 20, mouseData);
-    if (v1 == 0x8007001E)
+    status = -1;
+    if (pcINO_mouseDevice)
     {
-        v1 = mouse_if_dword_98F248->lpVtbl->Acquire(mouse_if_dword_98F248);
-        if (v1 < 0)
+        status = pcINO_mouseDevice->lpVtbl->GetDeviceState(pcINO_mouseDevice, 20, mouseData);
+        if (status == 0x8007001E)
         {
-            DBG_OutputDebugString("Mouse input lost but acquire fails\n");
-        }
-        else
-        {
-            DBG_OutputDebugString("Mouse input lost & re-acquired\n");
-            v1 = mouse_if_dword_98F248->lpVtbl->GetDeviceState(mouse_if_dword_98F248, 20, mouseData);
-        }
-    }
-    if (v1 >= 0)
-    {
-        v2 = mouseData[4] & 0xffff;
-    }
-    else
-    {
-    LABEL_7:
-        v2 = 0;
-        mouseData[4] = 0;
-        mouseData[0] = 0;
-        mouseData[1] = 0;
-        mouseData[2] = 0;
-        mouseData[3] = 0;
-    }
-    if (!keyb_if_dword_98F238)
-        goto LABEL_15;
-    v3 = keyb_if_dword_98F238->lpVtbl->GetDeviceState(keyb_if_dword_98F238, 256, keyboardData);
-    if (v3 == 0x8007001E)
-    {
-        v3 = keyb_if_dword_98F238->lpVtbl->Acquire(keyb_if_dword_98F238);
-        if (v3 < 0)
-        {
-            DBG_OutputDebugString("Keyboard input lost but acquire fails\n");
-        }
-        else
-        {
-            DBG_OutputDebugString("Keyboard input lost & re-acquired\n");
-            v3 = keyb_if_dword_98F238->lpVtbl->GetDeviceState(keyb_if_dword_98F238, 266, keyboardData);
+            status = pcINO_mouseDevice->lpVtbl->Acquire(pcINO_mouseDevice);
+            if (status < 0)
+            {
+                DBG_OutputDebugString("Mouse input lost but acquire fails\n");
+            }
+            else
+            {
+                DBG_OutputDebugString("Mouse input lost & re-acquired\n");
+                status = pcINO_mouseDevice->lpVtbl->GetDeviceState(pcINO_mouseDevice, 20, mouseData);
+            }
         }
     }
-    v2 = mouseData[4] & 0xffff;
-    if (v3 < 0)
+    if (status < 0)
+        memset(mouseData, 0, sizeof(mouseData));
+
+    status = -1;
+    if (pcINO_keybDevice)
     {
-    LABEL_15:
+        status = pcINO_keybDevice->lpVtbl->GetDeviceState(pcINO_keybDevice, 256, keyboardData);
+        if (status == 0x8007001E)
+        {
+            status = pcINO_keybDevice->lpVtbl->Acquire(pcINO_keybDevice);
+            if (status < 0)
+            {
+                DBG_OutputDebugString("Keyboard input lost but acquire fails\n");
+            }
+            else
+            {
+                DBG_OutputDebugString("Keyboard input lost & re-acquired\n");
+                /* preserved: 266, where the first call and the buffer
+                   DirectInput fills are 256 */
+                status = pcINO_keybDevice->lpVtbl->GetDeviceState(pcINO_keybDevice, 266, keyboardData);
+            }
+        }
+    }
+    if (status < 0)
         memset(keyboardData, 0, sizeof(keyboardData));
-    }
+
     keyboardData[0] = 0;
     keyboardData[256] = mouseData[2] <= 0 ? 0 : 0x80;
     keyboardData[257] = mouseData[2] >= 0 ? 0 : 0x80;
@@ -1268,8 +1196,8 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
     keyboardData[259] = ((mouseData[3] >> 8) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[260] = ((mouseData[3] >> 16) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[261] = ((mouseData[3] >> 24) & 0xff) == 0 ? 0 : 0x80;
-    keyboardData[262] = (uint8_t)(v2 & 0xff) == 0 ? 0 : 0x80;
-    keyboardData[263] = (((v2) >> 8) & 0xff) == 0 ? 0 : 0x80;
+    keyboardData[262] = (mouseData[4] & 0xff) == 0 ? 0 : 0x80;
+    keyboardData[263] = ((mouseData[4] >> 8) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[264] = ((mouseData[4] >> 16) & 0xff) == 0 ? 0 : 0x80;
     keyboardData[265] = ((mouseData[4] >> 24) & 0xff) == 0 ? 0 : 0x80;
 
@@ -1287,7 +1215,7 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
         padData->padData[8] = -1;
     if ((keyboardData[56] || keyboardData[184]) && keyboardData[62])
     {
-        keyb_if_dword_98F238->lpVtbl->Unacquire(keyb_if_dword_98F238);
+        pcINO_keybDevice->lpVtbl->Unacquire(pcINO_keybDevice);
         keybd_event(0xA4u, 0, 1u, 0);
         keybd_event(0x73u, 0, 1u, 0);
         keybd_event(0x73u, 0, 3u, 0);
@@ -1295,11 +1223,34 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
     }
     if (keyboardData[88] && !pcINO_keyboardDataBackup[88])
     {
-        keyb_if_dword_98F238->lpVtbl->Unacquire(keyb_if_dword_98F238);
+        pcINO_keybDevice->lpVtbl->Unacquire(pcINO_keybDevice);
         pcINO_HandleTweakFlags(pcINO_Hwnd);
-        keyb_if_dword_98F238->lpVtbl->Acquire(keyb_if_dword_98F238);
+        pcINO_keybDevice->lpVtbl->Acquire(pcINO_keybDevice);
     }
     memcpy(pcINO_keyboardDataBackup, keyboardData, sizeof(pcINO_keyboardDataBackup));
+}
+
+static int pcINO_l_TakeNextState()
+{
+    int next;
+
+    next = INO_ge_SavSetNextState;
+    INO_ge_SavSetNextState = -1;
+    return next == -1 ? 0 : next;
+}
+
+static int pcINO_l_SavRead(int nextState)
+{
+    if (INO_gst_SavFileDesc.fp)
+        fread(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
+    return nextState;
+}
+
+static int pcINO_l_SavWrite(int nextState)
+{
+    if (INO_gst_SavFileDesc.fp)
+        fwrite(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
+    return nextState;
 }
 
 int pcINO_SavModuleInit() {
@@ -1310,7 +1261,7 @@ int pcINO_SavModuleClose()
 {
     int result;
 
-    result = (int)INO_gst_SavFileDesc.fp;
+    result = 0;
     if (INO_gst_SavFileDesc.fp)
         result = fclose(INO_gst_SavFileDesc.fp);
     INO_gst_SavFileDesc.fp = 0;
@@ -1326,17 +1277,17 @@ int pcINO_i_TestPresence()
 {
     int result; // eax
 
-    if (dword_990164) // TODO, FIXME: ezt nem kéne initelni?
+    if (pcINO_savPresenceFailure) // TODO, FIXME: ezt nem kéne initelni?
     {
-        INO_gi_SavButton[2] = 0;
-        INO_gi_SavButton[6] = 0;
-        INO_gi_SavButton[3] = 0;
-        INO_gi_SavButton[7] = 0;
         pcINO_gi_LastError = 304;
         INO_gi_SavButton[0] = 3;
-        INO_gi_SavButton[4] = 24;
         INO_gi_SavButton[1] = 6;
+        INO_gi_SavButton[2] = 0;
+        INO_gi_SavButton[3] = 0;
+        INO_gi_SavButton[4] = 24;
         INO_gi_SavButton[5] = 26;
+        INO_gi_SavButton[6] = 0;
+        INO_gi_SavButton[7] = 0;
         result = 27;
     }
     else
@@ -1349,19 +1300,19 @@ int pcINO_i_TestPresence()
 
 int pcINO_i_MountCard()
 {
-    if (!dword_990168) // TODO FIXME nem kéne initelni?
+    if (!pcINO_savMountFailure) // TODO FIXME nem kéne initelni?
         return 4;
-    if (dword_990168 == 1)
+    if (pcINO_savMountFailure == 1)
         pcINO_gi_LastError = 5;
     else
-        pcINO_gi_LastError = dword_990168 != 2 ? 301 : 3;
+        pcINO_gi_LastError = pcINO_savMountFailure != 2 ? 301 : 3;
     INO_gi_SavButton[0] = 3;
-    INO_gi_SavButton[4] = 24;
     INO_gi_SavButton[1] = 6;
-    INO_gi_SavButton[5] = 26;
     INO_gi_SavButton[2] = 5;
-    INO_gi_SavButton[6] = 5;
     INO_gi_SavButton[3] = 0;
+    INO_gi_SavButton[4] = 24;
+    INO_gi_SavButton[5] = 26;
+    INO_gi_SavButton[6] = 5;
     INO_gi_SavButton[7] = 0;
     return 27;
 }
@@ -1372,16 +1323,16 @@ int pcINO_i_UnmountCard() {
 
 int pcINO_i_CheckCard()
 {
-    if (!dword_99016C) // TODO FIXME nem kéne initelni?
+    if (!pcINO_savCheckFailure) // TODO FIXME nem kéne initelni?
         return 6;
-    INO_gi_SavButton[2] = 0;
-    INO_gi_SavButton[6] = 0;
-    INO_gi_SavButton[1] = 0;
-    INO_gi_SavButton[5] = 0;
     pcINO_gi_LastError = 602;
     INO_gi_SavButton[0] = 3;
-    INO_gi_SavButton[4] = 24;
+    INO_gi_SavButton[1] = 0;
+    INO_gi_SavButton[2] = 0;
     INO_gi_SavButton[3] = 6;
+    INO_gi_SavButton[4] = 24;
+    INO_gi_SavButton[5] = 0;
+    INO_gi_SavButton[6] = 0;
     INO_gi_SavButton[7] = 26;
     return 27;
 }
@@ -1390,25 +1341,25 @@ int pcINO_i_FormatCard()
 {
     INO_gi_SavButton[5] = 0;
     INO_gi_SavButton[1] = 0;
-    if (dword_990170) // TODO FIXME nem kéne initelni?
+    if (pcINO_savFormatFailure) // TODO FIXME nem kéne initelni?
     {
         pcINO_gi_LastError = 705;
         INO_gi_SavButton[0] = 3;
-        INO_gi_SavButton[4] = 24;
-        INO_gi_SavButton[3] = 6;
-        INO_gi_SavButton[7] = 26;
         INO_gi_SavButton[2] = 5;
+        INO_gi_SavButton[3] = 6;
+        INO_gi_SavButton[4] = 24;
         INO_gi_SavButton[6] = 5;
+        INO_gi_SavButton[7] = 26;
     }
     else
     {
-        INO_gi_SavButton[3] = 0;
-        INO_gi_SavButton[7] = 0;
-        INO_gi_SavButton[2] = 0;
-        INO_gi_SavButton[6] = 0;
         pcINO_gi_LastError = 704;
         INO_gi_SavButton[0] = 4;
+        INO_gi_SavButton[2] = 0;
+        INO_gi_SavButton[3] = 0;
         INO_gi_SavButton[4] = 1;
+        INO_gi_SavButton[6] = 0;
+        INO_gi_SavButton[7] = 0;
     }
     return 27;
 }
@@ -1416,8 +1367,6 @@ int pcINO_i_FormatCard()
 int pcINO_i_TestFreeSpace()
 {
     ULARGE_INTEGER freeBytes;
-    int v0;
-    BOOL v1;
 
     /* Free space on the current drive, clamped to a positive int.
        A failed query reports nothing free, which makes the caller
@@ -1434,10 +1383,7 @@ int pcINO_i_TestFreeSpace()
         INO_gi_FreeSpace = 0;
     }
 
-    v0 = INO_ge_SavSetNextState;
-    v1 = INO_ge_SavSetNextState == -1;
-    INO_ge_SavSetNextState = -1;
-    return v1 ? 0 : v0;
+    return pcINO_l_TakeNextState();
 }
 
 int pcINO_i_Retry()
@@ -1455,164 +1401,113 @@ int pcINO_i_ActiveConsole() {
 
 int pcINO_i_Open()
 {
-    int result;
-    int v1;
-    BOOL v2;
-
     INO_gst_SavFileDesc.fp = fopen(INO_gsz_SavFileName, "r+b");
-    if (INO_gst_SavFileDesc.fp)
-        goto LABEL_13;
-    if (INO_ge_SavCommand == 16)
+    if (!INO_gst_SavFileDesc.fp)
     {
-        if (INO_gi_FreeSpace < SAV_PHOTO_BUFFER_SIZE)
+        if (INO_ge_SavCommand == 16 && INO_gi_FreeSpace < SAV_PHOTO_BUFFER_SIZE
+            || INO_ge_SavCommand == 10 && INO_gi_FreeSpace < 1024)
         {
-            INO_gi_SavButton[2] = 0;
-            INO_gi_SavButton[6] = 0;
-            INO_gi_SavButton[1] = 0;
-            INO_gi_SavButton[5] = 0;
             pcINO_gi_LastError = 302;
             INO_gi_SavButton[0] = 3;
-            INO_gi_SavButton[4] = 24;
+            INO_gi_SavButton[1] = 0;
+            INO_gi_SavButton[2] = 0;
             INO_gi_SavButton[3] = 6;
+            INO_gi_SavButton[4] = 24;
+            INO_gi_SavButton[5] = 0;
+            INO_gi_SavButton[6] = 0;
             INO_gi_SavButton[7] = 26;
-            INO_ge_SavSetNextState = 16;
+            INO_ge_SavSetNextState = INO_ge_SavCommand;
+            return 27;
+        }
+
+        INO_gst_SavFileDesc.fp = fopen(INO_gsz_SavFileName, "w+b");
+        if (!INO_gst_SavFileDesc.fp)
+        {
+            if (INO_ge_SavCommand == 10 || INO_ge_SavCommand == 16)
+                pcINO_gi_LastError = 308;
+            else
+                pcINO_gi_LastError = 405;
+            INO_gi_SavButton[0] = 3;
+            INO_gi_SavButton[1] = 0;
+            INO_gi_SavButton[2] = 0;
+            INO_gi_SavButton[3] = 6;
+            INO_gi_SavButton[4] = 24;
+            INO_gi_SavButton[5] = 0;
+            INO_gi_SavButton[6] = 0;
+            INO_gi_SavButton[7] = 26;
+            INO_ge_SavSetNextState = INO_ge_SavCommand;
             return 27;
         }
     }
-    else if (INO_ge_SavCommand == 10 && INO_gi_FreeSpace < 1024)
-    {
-        INO_gi_SavButton[2] = 0;
-        INO_gi_SavButton[6] = 0;
-        INO_gi_SavButton[1] = 0;
-        INO_gi_SavButton[5] = 0;
-        pcINO_gi_LastError = 302;
-        INO_gi_SavButton[0] = 3;
-        INO_gi_SavButton[4] = 24;
-        INO_gi_SavButton[3] = 6;
-        INO_gi_SavButton[7] = 26;
-        INO_ge_SavSetNextState = 10;
-        return 27;
-    }
-    INO_gst_SavFileDesc.fp = fopen(INO_gsz_SavFileName, "w+b");
-    if (INO_gst_SavFileDesc.fp)
-    {
-    LABEL_13:
-        v1 = INO_ge_SavSetNextState;
-        v2 = INO_ge_SavSetNextState == -1;
-        INO_ge_SavSetNextState = -1;
-        result = v2 ? 0 : v1;
-    }
-    else
-    {
-        if (INO_ge_SavCommand == 10 || (pcINO_gi_LastError = 405, INO_ge_SavCommand == 16))
-            pcINO_gi_LastError = 308;
-        INO_gi_SavButton[2] = 0;
-        INO_gi_SavButton[6] = 0;
-        INO_gi_SavButton[1] = 0;
-        INO_gi_SavButton[5] = 0;
-        INO_ge_SavSetNextState = INO_ge_SavCommand;
-        INO_gi_SavButton[0] = 3;
-        INO_gi_SavButton[4] = 24;
-        INO_gi_SavButton[3] = 6;
-        INO_gi_SavButton[7] = 26;
-        result = 27;
-    }
-    return result;
+    return pcINO_l_TakeNextState();
 }
 
 int pcINO_i_Close()
 {
-    int v0;
-    BOOL v1;
-
     if (INO_gst_SavFileDesc.fp)
         fclose(INO_gst_SavFileDesc.fp);
-    v0 = INO_ge_SavSetNextState;
-    v1 = INO_ge_SavSetNextState == -1;
     INO_gst_SavFileDesc.fp = 0;
-    INO_ge_SavSetNextState = -1;
-    return v1 ? 0 : v0;
+    return pcINO_l_TakeNextState();
 }
 
 int pcINO_i_ReadIndex_1()
 {
-    if (INO_gst_SavFileDesc.fp)
-        fread(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
-    return 9;
+    return pcINO_l_SavRead(9);
 }
 
 int pcINO_i_WriteIndex()
 {
-    if (INO_gst_SavFileDesc.fp)
-        fwrite(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
-    return 22;
+    return pcINO_l_SavWrite(22);
 }
 
 int pcINO_i_ReadSlot_1()
 {
-    if (INO_gst_SavFileDesc.fp)
-        fread(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
-    return 14;
+    return pcINO_l_SavRead(14);
 }
 
 int pcINO_i_ReadSlot_2()
 {
-    if (INO_gst_SavFileDesc.fp)
-        fread(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
-    return 15;
+    return pcINO_l_SavRead(15);
 }
 
 int pcINO_i_ReadSlot_3()
 {
-    if (INO_gst_SavFileDesc.fp)
-        fread(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
-    return 22;
+    return pcINO_l_SavRead(22);
 }
 
 int pcINO_i_WriteSlot_C()
 {
-    if (INO_gst_SavFileDesc.fp)
-        fwrite(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
-    return 19;
+    return pcINO_l_SavWrite(19);
 }
 
 int pcINO_i_WriteSlot_E()
 {
-    if (INO_gst_SavFileDesc.fp)
-        fwrite(INO_gst_SavFileDesc.saveBuffer, 1u, INO_gst_SavFileDesc.size, INO_gst_SavFileDesc.fp);
-    return 28;
+    return pcINO_l_SavWrite(28);
 }
 
 int pcINO_i_CheckFreeSpace()
 {
     pcINO_gi_LastError = 0;
-    if (!dword_990174) // TODO FIXME nem kéne initelni?
+    if (!pcINO_savFreeSpaceFailure) // TODO FIXME nem kéne initelni?
         return 0;
-    INO_gi_SavButton[2] = 0;
-    INO_gi_SavButton[6] = 0;
-    INO_gi_SavButton[3] = 0;
-    INO_gi_SavButton[7] = 0;
     pcINO_gi_LastError = 302;
     INO_gi_SavButton[0] = 3;
-    INO_gi_SavButton[4] = 24;
     INO_gi_SavButton[1] = 6;
+    INO_gi_SavButton[2] = 0;
+    INO_gi_SavButton[3] = 0;
+    INO_gi_SavButton[4] = 24;
     INO_gi_SavButton[5] = 26;
+    INO_gi_SavButton[6] = 0;
+    INO_gi_SavButton[7] = 0;
     return 27;
 }
 
 int pcINO_i_TestCard()
 {
     pcINO_gi_LastError = 0;
-    if (!dword_990178) // TODO FIXME nem kéne initelni?
+    if (!pcINO_savCardTestFailure) // TODO FIXME nem kéne initelni?
         return 0;
-    INO_gi_SavButton[0] = 0;
-    INO_gi_SavButton[4] = 0;
-    INO_gi_SavButton[1] = 0;
-    INO_gi_SavButton[5] = 0;
-    INO_gi_SavButton[2] = 0;
-    INO_gi_SavButton[6] = 0;
-    INO_gi_SavButton[3] = 0;
-    INO_gi_SavButton[7] = 0;
     pcINO_gi_LastError = 310;
+    memset(INO_gi_SavButton, 0, sizeof(INO_gi_SavButton));
     return 27;
 }
