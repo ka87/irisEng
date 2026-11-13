@@ -9,8 +9,9 @@ Twelve of the 46 were already source and need nothing. Of the rest,
 `ai/ai_gridfunctions.c` was blocked on it. This batch adds `math.c`,
 `dynamics.c`, `ai_common.c`, the six small files, and five of the large
 ones: `sprites.c`, `textures.c`, `animation.c`, `events.c` and
-`strings.c`. Fifteen of the 46 are rewritten now and twelve were
-already source, which leaves eighteen.
+`strings.c`. The batch after it adds `collision.c` and `world.c`.
+Seventeen of the 46 are rewritten now and twelve were already source,
+which leaves sixteen.
 
 Four of those five were done in parallel, and each came back with a
 differential test of its own. Those tests are as much the batch's
@@ -39,7 +40,7 @@ run them.
 | `time.c` | 135 | | | already source |
 | `view.c` | 97 | | | already source |
 | `water.c` | 2,828 | | | already source |
-| `collision.c` | 14,241 | 9,202 | 204 | |
+| `collision.c` | 14,241 to 11,303 | 9,202 to 29 | 204 to 0 | done |
 | `sound.c` | 7,110 | 3,134 | 72 | |
 | `gameobject.c` | 4,693 | 2,841 | 42 | |
 | `animation.c` | 3,068 to 2,097 | 1,846 to 1 | 16 to 0 | done |
@@ -92,11 +93,14 @@ harness, and its `v2`, `v5a` and `v6` are deliberately arbitrary names
 that the `printf` strings beside them name out loud. The same decision as
 `ai/ai_compiledscripts.c`.
 
-**`collision.c`** is the one left that is worth doing early for a
-reason beyond its own size, and it is the same reason `grid.c` and
-`math.c` came first: `ai/ai_colfunctions.c` named four arguments from
-`collision.h` and had to leave a fifth as `edgeSearchArg`, because the
-edge search it reaches is still decompiler output.
+**`collision.c` was done for a reason beyond its own size**, the same
+reason `grid.c` and `math.c` came first: `ai/ai_colfunctions.c` named
+four arguments from `collision.h` and had to leave a fifth as
+`edgeSearchArg`, because the edge search it reaches was still
+decompiler output. It is `down`, and the word `edgeSearchArg` is gone
+from the tree. `collision.h` still carries 5 residue lines, all in
+prototypes for functions defined in files that have not had their
+pass.
 
 ---
 
@@ -962,6 +966,25 @@ It stops at the first corner on the same side of the quad as the camera;
 only a box with all eight corners on the far side goes on to the
 four-plane test.
 
+**Four of those eight corners can never be the first match**, which
+the fold made visible and which is worth recording because it says the
+original's eight copies were half redundant. The loop projects each
+corner onto two axes -- (x,y) when `is14` is set and (y,z) when it is
+clear -- and the box's eight corners give only four distinct
+projections either way: `{0,5} {1,3} {2,6} {4,7}` in the first case
+and `{0,4} {1,6} {2,3} {5,7}` in the second. A corner whose projection
+already appeared cannot stop the walk, so it can only ever stop at 0,
+1, 2 and then 4 or 5.
+
+This was found by mutation rather than by reading: an off-by-one in
+the folded loop's exit test scored completely clean, because the
+random scene never placed the first match past corner 2. `K_BVCORNER`
+builds the mask and the box by hand so the 4 and the 5 are both hit --
+a plane whose dot product is positive at every earlier corner and
+negative at the target, with `is15` negative so the walk is looking
+for the negative one -- and the off-by-one now moves 2,280 cases. The
+same mutation at corner 7 is still not caught and cannot be.
+
 **`_floatIsNegative` is `copysignf(1.0f, x)`** -- the mask keeps the sign
 bit and the `| 0x3F800000` forces the exponent of 1.0 -- and every one of
 its nine uses is a same-sign comparison. It is `WOR_l_SignOf` now, and
@@ -1092,3 +1115,152 @@ That is a pass for the harness and a fact about the function.
   of the injected mutations and moves 320 cases, so the test sees it.
 - `WOR_gi_NumKilledGO` is reset by `WOR_ResetKillGO` here and filled in
   `ai/ai_gameobjectfunctions.c`, which does bound it at 200.
+
+---
+
+## collision.c
+
+14,241 lines to 11,303, **204 `goto`s to none**, 159 functions plus
+twelve new `static` helpers. Residue 9,202 to 29 -- all 29 inside
+comments of the user's own, checked line by line -- and the header 64
+to 5.
+
+### Done in three ranges at once, and how they were merged
+
+The file is four times the size of the largest one any single pass had
+handled, so it was split at two function boundaries into thirds of
+roughly equal weight: lines 18-4988, 4989-9506 and 9507-end, at about
+3,050 residue lines each. Each range was rewritten in its own worktree
+on its own branch.
+
+Three branches each rewriting a disjoint region of one file merge
+cleanly in principle, and that was checked on a throwaway clone before
+the passes started rather than discovered afterwards. What actually
+conflicted was something else: **range A renamed the file's two
+`_sub_<address>` functions and, to keep its own branch linking, their
+eight call sites too -- six of which sit in the other two ranges.**
+Where another range had rewritten the same line, git could not align
+A's rename of the old text with the other's rewrite.
+
+The resolution is mechanical and the same every time: the rewritten
+side wins the hunk, and the two renames are reapplied over the merged
+file afterwards. `COL_test_flag_sub_436970` is
+`COL_w_TestInstanceFlag` and
+`COL_get_activation_flag_for_id__max_16_sub_4132C0` is
+`COL_i_ZoneActivationGet`; neither old name survives anywhere. The
+header conflicts are the ranges naming disjoint prototypes in one
+block, resolved per prototype.
+
+**What says the merge is sound rather than merely conflict-free** is
+that all three ranges' tests run against the *merged* file and compare
+it with one frozen baseline: 971,406 comparisons for A, 376,599 for B
+and 555,902 for C, none differing.
+
+A tool worth keeping from this: a range-compliance check that reports,
+in base-file line numbers, the first and last line each branch
+changed. It is what caught A's eight strays before the merge rather
+than after.
+
+### COL_ComputeJumpPoint's fourth argument, which is why this file came first
+
+`ai/ai_colfunctions.c` had carried it as `edgeSearchArg` since the
+`ai/` pass, with a comment saying `collision.c` does not name it. It
+is **`down`**, settled three ways independently:
+
+1. It is passed straight through as `COL_FindEdgeInFollowDirection`'s
+   seventh parameter, which that function already calls `down`.
+2. Its second use picks which end of a steep edge to walk to: the
+   lower endpoint when set, the higher when clear.
+3. **The game's own script names it.** Both call sites pass a variable
+   called `i_rayjump_down_point`.
+
+The third argument is the **margin kept from each end of the edge**,
+not a distance to travel: the jump point is placed at least that far
+along the edge from either endpoint, and an edge shorter than twice it
+is halved instead.
+
+### Three findings that change what the engine does
+
+Preserved with one line each, because changing any of them changes
+what the engine computes.
+
+**`INT_SphereAABBox` returns TRUE for every well-formed box.** The x
+and y arms cannot reject: the `c.x > max.x` arm then tests
+`c.x < min.x`, which needs `min > max`, and the `else` arm tests
+`c.x - max.x > radius`, which is `<= 0 > radius`. The z arm returns 1
+outright whenever `c.z > max.z`. Measured over 398,580,750 cases, zero
+rejections -- and confirmed separately from the code, which is the
+stronger of the two. The author's own `// TODO FIXME lehet nem jo` sits
+on the y arm. At `lights.c:548` the light's far-plane cull therefore
+never fires, and in the OK3 acceleration walk no box is ever rejected,
+so the tree costs its traversal and buys nothing.
+
+**`COL_b_TestFaceTag` truncates its own result.** It returns `BOOL`,
+which `common.h` makes `int8_t`, and the body returns
+`tags[face >> 5] & (1 << (face % 32))` -- an `int` with one bit set.
+Every bit above 7 is lost, so the function reports false for
+three-quarters of face indices even when the tag is set. Measured: of
+128 faces set and tested, 32 read back true, the first false at index
+8. Its one caller uses it as a "have I already collided this face"
+guard, so those faces are tested again every time.
+
+**`COL_b_SingleBVIn` has two branches that cannot be taken.**
+`OBJ_BV_IsAABBox` and `OBJ_BV_IsSphere` are exact complements on the
+same volume, and inside `if (OBJ_BV_IsAABBox(outer))` the code tests
+`OBJ_BV_IsAABBox(outer)` again -- always true -- so the
+sphere-inside-box arm is dead and a sphere passed as the inner volume
+is measured as a box. The mirror arm is dead the same way, and it is
+the only call site of `COL_f_SqrLen`. Both tests look as though they
+were meant to be on the *inner* volume.
+
+### Pick -- tColCylinder's field names are left as they are *(open)*
+
+`collision.h`'s `tColCylinder` calls the radius `height` and the
+half-height `radius`. The evidence is not in doubt: `COL_ZDM_Cylinder`
+scales `->radius` by `scale.z` and feeds it as the half-height while
+scaling `->height` by `max(scaleX, scaleY)` and feeding it as the
+radius, `INT_b_FullRayCylinder` uses those two arguments as the radius
+squared and as the axial coordinate, and the loader reads them in that
+order off disk.
+
+The rename was made and then reverted. `collision.h` is included by
+`tests/baseline_collision.c`, the frozen pre-pass copy that all three
+differential tests measure against, so renaming a field stops that
+file compiling -- and editing the baseline to follow a change made to
+the live tree would break the one rule the baseline exists under. The
+rename is two lines in the header and twelve identifier substitutions
+in `collision.c`, with the field **order** untouched so the asset
+layout is unaffected. Worth doing the next time the baseline is
+rebuilt.
+
+### What could not be stood up
+
+The detection pipeline: `COL_MainCall`, `COL_Compute`, `COL_OneCall`,
+`COL_PreComputeReports`, `COL_ComputeReports`, `COL_Actor_GameObject`,
+`COL_ZDM_ZDR`'s mesh walk, the `REC_` set and the five loader
+callbacks. The reason is stated rather than papered over: a test would
+have had to build a `tWorld` with consistent object tables, a
+game-object graph with matrices, hierarchy parents and bounding
+volumes, `tDyn` with forces and gravity, animation channels, a
+sweep-and-prune list the engine's own insertion sort agrees with,
+per-object detection lists, a loaded collision mesh with its OK3 tree
+and face-tag bitmap, and a camera-assigned object. Every number those
+functions produce would then come out of that fixture.
+
+What stands in for it is a **per-function ordered call-multiset
+comparison**, old against new, with calls that moved into a helper
+credited back to the caller, plus the same check on the loaders'
+ordered stream-read and allocation sequences. No unexplained
+difference.
+
+### One blind spot left open
+
+Changing `>` to `>=` on any of the slab rejection's six bounds scores
+clean. It needs a triangle's extreme coordinate exactly equal to the
+ray origin's **and** a hit at the ray's own start plane; two attempts
+at constructing it -- snapping both mesh and ray to a half-unit grid,
+then adding exactly axis-perpendicular rays -- did not get there.
+Those cases are kept, because grid-aligned geometry and a `dir == 0`
+slab arm had no coverage at all, but the comment on them says they do
+not close this. It is a real blind spot, not a no-op, and it is
+narrow.
