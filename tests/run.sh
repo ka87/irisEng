@@ -449,7 +449,16 @@ for one in tests/runworld.sh \
            tests/run_particle.sh \
            tests/run_photo.sh \
            tests/run_proctex.sh \
-           tests/rungameobject.sh
+           tests/rungameobject.sh \
+           tests/runsoundmod.sh \
+           tests/run_io.sh \
+           tests/run_ways.sh \
+           tests/run_matdraw.sh \
+           tests/run_profiler.sh \
+           tests/run_snp.sh \
+           tests/run_actions.sh \
+           tests/run_tables.sh \
+           tests/run_bigfiles.sh
 do
     name=$(basename "$one" .sh)
     [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) continue ;; esac
