@@ -80,7 +80,7 @@
     void p##D3D_WaterBuffersInit(void); \
     int  p##D3D_FillWaterStreamData(struct sWaterParamsGlobalStruct*); \
     void p##D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct*); \
-    void p##MAT_ComputeUV_sub_4521A0(tGEOGRO*, tGeoTriangleChunks*, tMultiTextureElemStruct*); \
+    void p##MAT_UV_ComputeAndSetTransform(tGEOGRO*, tGeoTriangleChunks*, tMultiTextureElemStruct*); \
     void p##MAT_UV_Compute_Chrome(tGdi_DisplayData*, tGEOGRO*, tGeoTriangleChunks*, unsigned int); \
     void p##MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData*, tGEOGRO*, tGeoTriangleChunks*, unsigned int); \
     int  p##D3D_DrawSprites(struct sGeoSprites*, void*, int); \
@@ -258,7 +258,7 @@ typedef struct sSide
     p##D3D_FillSelectedVBOWithSprite, p##D3D_Request_SpriteDraw, p##D3D_l_Request, \
     p##Rasters_Update, p##D3D_RastersSetAndDrawAQuad, p##D3D_DrawARaster, \
     p##D3D_WaterBuffersInit, p##D3D_FillWaterStreamData, \
-    p##D3D_DrawWater_DrawVertexTable, p##MAT_ComputeUV_sub_4521A0, \
+    p##D3D_DrawWater_DrawVertexTable, p##MAT_UV_ComputeAndSetTransform, \
     p##MAT_UV_Compute_Chrome, p##MAT_UV_Compute_PLANAR_GIZMO_NOSTORE, \
     p##D3D_DrawSprites, p##D3D_l_DrawElementIndexedTriangles, \
     p##D3D_CreateIndexAndVertexBuffForElemsIfSuitable, p##PC_FreeABackCache, \

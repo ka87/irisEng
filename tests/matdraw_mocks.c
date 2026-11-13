@@ -133,11 +133,22 @@ struct sGEOMAT* GEO_GetMaterial(struct sGEOMAT* mat, int idx)
     return MDMOCK_geoMaterials[idx];
 }
 
-void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* chunks,
-                              tMultiTextureElemStruct* texElem)
+void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks,
+                                   tMultiTextureElemStruct* texElem)
 {
     MDMOCK_Record("MAT_ComputeUV", 3, (long long)MDMOCK_Index(geogro),
                   (long long)MDMOCK_Index(chunks), (long long)MDMOCK_Index(texElem));
+}
+
+/* The frozen tests/baseline_matdraw.c still calls this by its old
+   spelling. A forwarder rather than a second body, so both sides log
+   the same entry. */
+void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* chunks,
+                              tMultiTextureElemStruct* texElem);
+void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* chunks,
+                              tMultiTextureElemStruct* texElem)
+{
+    MAT_UV_ComputeAndSetTransform(geogro, chunks, texElem);
 }
 
 void SOFT_TransformInComputingBuffer(tBigBufferStruct* bb, Vec3* verts, int num,

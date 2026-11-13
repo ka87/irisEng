@@ -79,8 +79,8 @@ int  pcINO_case64StateMachineHandler(int pressed, int* state, float* deadline, f
 void pcINO_dinput_mouse_and_keyb_acquire();
 void pcINO_dinput_mouse_and_keyb_unacquire();
 char* pcINO_GetFourKeyNamesCattedTogether(int action1, int action2, int action3, int action4);
-void INO_SetControlSubmode_inner_sub_48A650(int submode);
-void INO_SetControlMode_inner_sub_48ACB0(int mode);
+void pcINO_SetControlSubmode(int submode);
+void pcINO_SetControlMode(int mode);
 
 int pcINO_SavModuleInit();
 int pcINO_SavModuleClose();

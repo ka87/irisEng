@@ -23,7 +23,7 @@ mkdir -p "$OUT"
 syms="PRO_RasterAdd PRO_InitModule profiler_dbg_init ENG_ForceStartRasters \
 PRO_RecordTimeDecRef PRO_PerfCounterStartBlock PRO_PerfCounterEndBlock \
 PRO_QPC_RecordTimeDecRef PRO_ClearOneRaster PRO_ClearAllRasters PRO_InitRasters \
-PRO_DisplayTextsOnRasterWindow PRO_ProfilerDisplayHandler PRO_ProfilerWindowHander \
+PRO_DisplayTextsOnRasterWindow PRO_ProfilerDisplayHandler PRO_ProfilerWindowHandler \
 PRO_rasterWindowIsOn PRO_rasterDetailPage PRO_FirstRasterPtr \
 pointsToUnkRaster_dword_98F944 PRO_CurrRaster PRO_rasterHWND gfDBGRasterSetTo60"
 
@@ -35,7 +35,10 @@ defs() {
 
 echo "=== profiler ==="
 $CC $CFLAGS -c profiler.c -o "$OUT/profiler.new.o" $(defs NEW_ $syms)
-$CC $CFLAGS -c tests/baseline_profiler.c -o "$OUT/profiler.base.o" $(defs BASE_ $syms)
+# the frozen copy still spells one function without its final letter;
+# map it onto the same per-side symbol the corrected name takes
+$CC $CFLAGS -DPRO_ProfilerWindowHander=BASE_PRO_ProfilerWindowHandler \
+    -c tests/baseline_profiler.c -o "$OUT/profiler.base.o" $(defs BASE_ $syms)
 $CC $CFLAGS -c tests/profiler_mocks.c -o "$OUT/profiler.mocks.o"
 $CC $CFLAGS -c tests/test_profiler.c -o "$OUT/profiler.drv.o"
 $CC "$OUT/profiler.new.o" "$OUT/profiler.base.o" "$OUT/profiler.mocks.o" \

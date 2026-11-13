@@ -173,14 +173,27 @@ void pcINO_SetMouseSensitivity(float t)
     IOMOCK_Log("pcINO_SetMouseSensitivity", (long)(t * 1000.0f), 0, 0);
 }
 
-void INO_SetControlSubmode_inner_sub_48A650(int a1)
+void pcINO_SetControlSubmode(int submode)
 {
-    IOMOCK_Log("SetControlSubmode_inner", a1, 0, 0);
+    IOMOCK_Log("SetControlSubmode_inner", submode, 0, 0);
 }
 
-void INO_SetControlMode_inner_sub_48ACB0(int a1)
+void pcINO_SetControlMode(int mode)
 {
-    IOMOCK_Log("SetControlMode_inner", a1, 0, 0);
+    IOMOCK_Log("SetControlMode_inner", mode, 0, 0);
+}
+
+/* The frozen tests/baseline_inputoutput.c still calls these two by
+   their old spelling. Forwarders rather than second bodies, so both
+   sides log the same entry. */
+void INO_SetControlSubmode_inner_sub_48A650(int submode)
+{
+    pcINO_SetControlSubmode(submode);
+}
+
+void INO_SetControlMode_inner_sub_48ACB0(int mode)
+{
+    pcINO_SetControlMode(mode);
 }
 
 /* ------------------------------------------------------------------ */

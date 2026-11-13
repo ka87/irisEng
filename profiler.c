@@ -331,7 +331,7 @@ void PRO_ProfilerDisplayHandler(HWND hWnd, HDC hdc, int y)
     }
 }
 
-void PRO_ProfilerWindowHander()
+void PRO_ProfilerWindowHandler()
 {
     HWND hwnd;
     HMODULE instance;

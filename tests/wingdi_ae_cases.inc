@@ -406,7 +406,7 @@ static void RUN(int caseId)
                               (long long)PC_AE_MASTER,
                               (long long)AE_Bits(X(PC_AE_MASTER_GET_P1)(i, j)));
                 AEMOCK_Record("onoff", 2, (long long)i,
-                              (long long)X(PC_AE_MASTER_GET_ONOFF_sub_4A37D0)(i));
+                              (long long)X(PC_AE_MASTER_GET_ONOFF)(i));
             }
         break;
     }

@@ -52,7 +52,10 @@ defs() {
 
 echo "=== wingdi ==="
 $CC $CFLAGS -c win/wingdi.c -o "$OUT/wingdi.new.o" $(defs NEW_ $syms)
-$CC $CFLAGS -c tests/baseline_wingdi.c -o "$OUT/wingdi.base.o" $(defs BASE_ $syms)
+# the frozen copy still spells one function the way the decompiler named
+# it; map it onto the same per-side symbol the rewrite's new name takes
+$CC $CFLAGS -DMAT_ComputeUV_sub_4521A0=BASE_MAT_UV_ComputeAndSetTransform \
+    -c tests/baseline_wingdi.c -o "$OUT/wingdi.base.o" $(defs BASE_ $syms)
 $CC $CFLAGS -c math.c -o "$OUT/wingdi.math.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"
 $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
