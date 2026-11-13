@@ -64,7 +64,9 @@ void MAT_SetRenderState(tGEOMAT* geomat, int materialNum)
                 gpst_DX_stDD->bigBuffer->colorMask |= (texElem->phongOrPlanarParam & 0xFF00) << 16;
                 gpst_DX_stDD->bigBuffer->colorMask ^= 0xFF000000;
             }
-            gpst_DX_stDD->TextureInit(texElem->texElemIdx, texElem->subTextureFlags, texElem->phongOrPlanarParam);
+            // the field packs two: the high byte is taken for the colour mask above,
+            // and the callee reads only bits 0 and 1 of the low byte
+            gpst_DX_stDD->TextureInit(texElem->texElemIdx, texElem->subTextureFlags, (char)texElem->phongOrPlanarParam);
         }
         else
         {
