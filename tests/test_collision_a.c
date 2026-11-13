@@ -60,7 +60,13 @@ D(tCobGameMaterialElems*, COL_pst_GMat_Get, (tColCollisionObject*, tCobMeshChunk
 D(BOOL, COL_GMat_Skip, (tCobGameMaterialElems*, tColGlobal*))
 D(void, COL_ComputeProximity, (tColCollisionObject*))
 D(void, COL_SetFaceTag, (tCobOK3*, unsigned int))
-D(BOOL, COL_b_TestFaceTag, (tCobOK3*, unsigned int))
+/* The return type differs between the copies on purpose: the frozen one
+   is BOOL, which is int8_t, and truncates the tested bit away for every
+   face whose index mod 32 is 8 or more. The rewrite returns int. They
+   cannot be compared, so the block below checks the rewrite against the
+   bit the tag array actually holds. */
+int  NEW_COL_b_TestFaceTag(tCobOK3*, unsigned int);
+BOOL BASE_COL_b_TestFaceTag(tCobOK3*, unsigned int);
 D(int, COL_i_ZoneActivationGet, (tColInstance*, char))
 D(int16_t, COL_w_TestInstanceFlag, (struct sColInstance*, int16_t))
 D(BOOL, COL_NeedRecomputation, (tColGlobal*, tGameObjectMain*, int16_t))
@@ -75,6 +81,9 @@ void COLA_MockResetArena(void);
 /* ---- bookkeeping -------------------------------------------------- */
 
 static long gCases;
+static long faceTagHighBits;
+static long faceTagHighSet;
+static long faceTagTruncated;
 static long gDiffs;
 static const char* gGroup = "?";
 static long gGroupCases;
@@ -1096,6 +1105,7 @@ static void runTables(void)
     }
 
     group("COL_SetFaceTag / COL_b_TestFaceTag");
+    faceTagHighBits = faceTagHighSet = faceTagTruncated = 0;
     for (i = 0; i < 2000; i++)
     {
         int tagsA[8];
@@ -1120,9 +1130,27 @@ static void runTables(void)
         check("COL_SetFaceTag", tagsA, tagsB, sizeof(tagsA));
         for (face = 0; face < 128u; face++)
         {
-            ra = NEW_COL_b_TestFaceTag(&okA, face);
-            rb = BASE_COL_b_TestFaceTag(&okB, face);
-            check("COL_b_TestFaceTag", &ra, &rb, sizeof(ra));
+            int got = NEW_COL_b_TestFaceTag(&okA, face);
+            int want = tagsA[face >> 5] & (1 << (face & 31));
+            int wantSet = want != 0;
+            int gotSet = got != 0;
+            check("COL_b_TestFaceTag/value", &got, &want, sizeof(got));
+            check("COL_b_TestFaceTag/set", &gotSet, &wantSet, sizeof(gotSet));
+            /* the frozen copy agrees only while the bit fits in a byte */
+            if (face % 32u < 8u)
+            {
+                int old = BASE_COL_b_TestFaceTag(&okB, face);
+                int oldSet = old != 0;
+                check("COL_b_TestFaceTag/lowbits", &gotSet, &oldSet, sizeof(gotSet));
+            }
+            else
+            {
+                faceTagHighBits++;
+                if (want)
+                    faceTagHighSet++;
+                if (BASE_COL_b_TestFaceTag(&okB, face) == 0 && want != 0)
+                    faceTagTruncated++;
+            }
         }
         okA.faceTagInts = 0;
         okB.faceTagInts = 0;
@@ -1891,6 +1919,9 @@ int main(void)
     runNonFinite();
     endGroups();
 
+    printf("  face tags: %ld bits at index mod 32 >= 8, %ld of them set;\n"
+           "             the frozen copy truncates %ld of those %ld to zero\n",
+           faceTagHighBits, faceTagHighSet, faceTagTruncated, faceTagHighSet);
     printf("\n%ld cases, %ld differing\n", gCases, gDiffs);
     if (gDiffs)
     {

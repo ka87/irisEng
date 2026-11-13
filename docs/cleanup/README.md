@@ -660,13 +660,14 @@ the lower end of a steep edge, and -- decisively -- named by the
 game's own script, which passes `i_rayjump_down_point` into it. The
 word `edgeSearchArg` is gone from the tree.
 
-Three findings in `collision.c` change what the engine does and are
-preserved with a line each. **`INT_SphereAABBox` returns TRUE for
+Three findings in `collision.c` were reported as changing what the
+engine does; one has since been withdrawn. **`INT_SphereAABBox` returns TRUE for
 every well-formed box**, so the light far-plane cull at `lights.c:548`
 never fires and the OK3 acceleration walk rejects nothing;
-**`COL_b_TestFaceTag` returns `BOOL`, which is `int8_t`**, so the bit
-it reads is truncated away for three-quarters of face indices and
-those faces are re-collided every frame; and **`COL_b_SingleBVIn` has
+~~**`COL_b_TestFaceTag` returns `BOOL`, which is `int8_t`**~~ -- that
+one was wrong and is withdrawn: `common.h`'s `int8_t` typedef is
+inside a comment block, so `BOOL` is `windows.h`'s `int` and nothing
+is truncated (see [defects.md](defects.md)); and **`COL_b_SingleBVIn` has
 two dead branches**, each testing the outer volume where it meant the
 inner.
 

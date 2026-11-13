@@ -24,8 +24,9 @@ the wrong type, a struct pointer stepped through an array of pointers.
 Those are artefacts of the transcription, not behaviour, and leaving
 them in would have shipped a wild write.
 
-The split is **4 corrected against 143 preserved** — 119 carrying a
-`// preserved:` line and 24 a prose note at the site.
+The split is **5 corrected, 1 withdrawn, and 141 preserved** — 117
+carrying a `// preserved:` line and 24 a prose note at the site.
+Part 3 records the two that moved and why.
 
 Nothing here covers defects the rewrites themselves introduced; those
 were caught by the differential tests (or, in one case, by reading)
@@ -73,6 +74,11 @@ fields.
 `gSunEffectOnOffArray`. That and `gD3dSunSurfaces` are parallel
 sixteen-entry tables, and both are now walked by index.
 
+### `proceduraltextures.c:82` — the water kernel's "row above"
+
+Read against the gold binary and corrected; Part 3 has the
+disassembly and the test that replaced the side-by-side comparison.
+
 ### One prototype corrected, for completeness
 
 `textures.h`'s loader prototype gave its third argument as a pointer
@@ -90,9 +96,9 @@ the running game, rather than dead code:
 
 | site | what it does |
 |---|---|
-| `collision.c:3706` | `COL_b_TestFaceTag` returns `BOOL`, which is `int8_t`, so the bit is truncated away for every face whose index mod 32 is 8 or more — those faces are re-collided every frame |
+| `collision.c:3706` | ~~`COL_b_TestFaceTag` truncates its result~~ — **withdrawn, see Part 3**: the premise was a `BOOL` typedef that is commented out |
 | `grid.c:1129` | `GRID_ul_CallbackCompressedGrid` dispatches the run tag with `(tag & 0xC0) == 0xFFFFFFC0`, which can never hold because `tag` is a `char`; a short-run tag's value byte is never read and the stream desynchronises from that record on. **The identical artefact two functions away already carries your own fix**, noted `// for routing fix, it was char`. The one-line equivalent here is `((uint8_t)tag & 0xC0) == 0xC0` |
-| `proceduraltextures.c:82` | `rowBytes` is unsigned, so the subtraction divides by 4294967294 and samples the centre cell instead of the row above |
+| `proceduraltextures.c:82` | ~~samples the centre cell where the row above belongs~~ — **corrected, see Part 3**: gold reads the row above |
 | `proceduraltextures.c:1072` | a byte row stride and a byte indent applied to a `uint32_t` pointer, so every write lands four times too far in |
 | `textures.c:1002` | the BMP header pointer is stepped by whole headers, so the pixels are read `sizeof²` bytes in |
 | `textures.c:1754` | the first store lands one byte past the destination, so the whole walk is shifted and the first byte pair is never written |
@@ -103,7 +109,7 @@ the running game, rather than dead code:
 
 ### Every site, by file
 
-119 sites use the `// preserved:` convention:
+117 sites use the `// preserved:` convention:
 
 **`actions.c`** (1)
 
@@ -116,11 +122,10 @@ the running game, rather than dead code:
 - `:381` — the block is counted twice in this test, where the twin in BIG_SpeedMode_fread tests the sum before the increment
 - `:745` — the read lands on the caller's pointer variable rather than on what it points at
 
-**`collision.c`** (16)
+**`collision.c`** (15)
 
 - `:2643` — this scales by the hit distance of the previous triangle, which is zero until one is found, and nothing reads the result
 - `:3353` — the other fifteen angles here are multiples of pi/4 and this one is not
-- `:3706` — BOOL is int8_t, so the returned bit is truncated away for every face whose index mod 32 is 8 or more
 - `:4740` — the contact normal's z is always zero -- the subtraction here is hitPosTalan->z minus itself
 - `:4764` — as above -- the radial offset's z is center->z minus itself
 - `:7348` — both calls ask for the rebound angle, so the slide normal is computed with it too
@@ -177,9 +182,8 @@ the running game, rather than dead code:
 - `:413` — the screen test reports the frame thresholds rather than its own
 - `:522` — *code is still 0 here on every path, so the ratio test can never be reached
 
-**`proceduraltextures.c`** (14)
+**`proceduraltextures.c`** (13)
 
-- `:82` — rowBytes is unsigned, so this divides by 4294967294 and samples the centre cell, not the row above
 - `:124` — the last pixel of the buffer reads damped[1], one entry past the end
 - `:188` — the lower pair of the 2x2 splash is indexed at twice its element offset
 - `:611` — decimal 100, where the note beside it is the byte-1 bit, 0x100
@@ -324,6 +328,133 @@ the `// preserved:` prefix. Twenty-four more:
 - **`gfx/gfxprofiler.c:398`** — `GFX_SetNumberOfP` computes `255 / num`, so a slice count of zero faults
 - **`modifiers/xmenmodifier.c:565`** — the entry stride is half the 192 bytes an entry really occupies, so every entry past the first draws a window that straddles two of them
 
+
+---
+
+## Part 3 — Checked against the gold binary
+
+Two of the preserved sites were put to `BGE.exe` directly. One was a
+real defect and is now corrected; the other was never a defect at all
+and the claim is withdrawn.
+
+### `proceduraltextures.c:82` — corrected
+
+`TEXPRO_l_WaterUpdate` propagates a water height field with a
+four-neighbour kernel. The transcription reads
+
+```c
+above = &previous[rowBytes / -2];
+```
+
+and `rowBytes` is `unsigned`, so `rowBytes / -2` is
+`rowBytes / 4294967294`, which is **zero** for any field smaller than
+4 GB. The "row above" tap therefore re-read the centre cell, and the
+kernel was three neighbours plus the centre feeding back into itself.
+
+**Gold settles it.** The function is at `0x439090`, identified by its
+four taps, `sar eax,1`, the `value -= value >> 8` damping and the
+±`0x2000` clamps — all of which match the transcription exactly. The
+row pointers are:
+
+```
+43907a:  lea  edx,[ebx+edx*1+0x2]   ; previous = base + rowBytes + 2
+43909b:  mov  ecx,edx
+43909d:  sub  ecx,ebx               ; above  = previous - rowBytes
+4390a0:  movsx ebp,WORD PTR [edx-0x2]     ; previous[-1]
+4390a4:  movsx eax,WORD PTR [ebx+edx*1]   ; previous + rowBytes, the row below
+4390aa:  movsx ebp,WORD PTR [ecx]         ; the row above
+4390af:  movsx ebp,WORD PTR [edx+0x2]     ; previous[+1]
+```
+
+`ebx` is the byte stride. Retail **subtracts** it, so `above` is one
+whole row back. The `/ -2` is an artefact of the pointer's type being
+read as unsigned, not something the game does. Now:
+
+```c
+above = previous - rowBytes / 2;
+```
+
+**How it is tested.** The two copies can no longer be compared on the
+field once a ripple is in it, so the nine disrupted cases are left out
+of the side-by-side comparison — the sizes with no disruption keep a
+flat field, agree, and stay in. In their place
+`waterSymmetryCase` checks a property the correct kernel has and the
+broken one does not: a single impulse at the centre of a square field
+stays mirror-symmetric about the centre row, because the row above and
+the row below contribute alike. Replacing the "above" tap with the
+centre cell destroys that.
+
+```
+water symmetry: rewrite 0, frozen copy 37554
+```
+
+The second number is what gives the check teeth. Two mutations
+confirm it: stepping half a row instead of a whole one scores 50542,
+and reinstating the original defect scores **exactly 37554**, the
+frozen copy's own figure.
+
+### `collision.c:3706` — withdrawn, there was no defect
+
+The claim was that `COL_b_TestFaceTag` returns `BOOL`, which
+`common.h` makes `int8_t`, so the bit it reads is truncated away for
+every face whose index mod 32 is 8 or more, and those faces are
+re-collided every frame.
+
+**The premise is false.** `common.h`'s `typedef int8_t BOOL;` sits
+inside a `/* */` block. The live typedef is `windows.h`'s
+`typedef int BOOL;`, exactly as in the Win32 SDK, and a static assert
+compiled in a real translation unit of `collision.c` confirms
+`sizeof(BOOL) == 4`. Nothing was ever truncated.
+
+**Gold agrees, independently.** Both `COL_b_TestFaceTag` and
+`COL_SetFaceTag` are inlined into their one caller at `0x4922b1`:
+
+```
+4922b1:  mov  eax,edi          ; face
+4922b3:  shr  eax,0x5
+4922b6:  mov  edx,eax
+4922b8:  shl  edx,0x5
+4922bb:  mov  ecx,edi
+4922bd:  sub  ecx,edx          ; face - 32 * (face >> 5)
+4922bf:  mov  edx,0x1
+4922c4:  shl  edx,cl
+4922c6:  mov  ecx,DWORD PTR [esp+0x4c]
+4922ca:  and  edx,DWORD PTR [ecx+eax*4]
+4922cd:  test edx,edx          ; the whole word
+4922cf:  jne  0x49232f
+...
+49232c:  or   DWORD PTR [eax+edx*4],esi   ; COL_SetFaceTag
+```
+
+`test edx,edx` is a full 32-bit test with no narrowing anywhere, and
+the structure matches the source exactly: the tag array at `+0x8` of
+`tCobOK3`, the skip-when-set branch of
+`if (!COL_b_TestFaceTag(ok3, faceIdx))`, the collide call at
+`0x492307` and the `|=` after it.
+
+The function now returns `int` instead of `BOOL`. That is a
+clarification — it says what it does without depending on which `BOOL`
+is in scope — not a behaviour change.
+
+**How the wrong claim survived.** The fixture declared the same `BOOL`
+return for *both* copies, so the call truncated identically on each
+side and no comparison could ever have seen a difference. It scored
+clean before and after the change. Rebuilt to count rather than
+compare, it now reports:
+
+```
+face tags: 192000 bits at index mod 32 >= 8, 48000 of them set;
+           the frozen copy truncates 0 of those 48000 to zero
+```
+
+Zero. The "measured: 32 of 128 read back true" figure in
+[root.md](root.md) was never measured; that entry is struck through
+there.
+
+The lesson is the one the rest of this work keeps relearning: **a
+fixture that declares both sides the same way cannot see a difference
+between them**, and a figure quoted as measured has to come from a run
+that could have come out otherwise.
 
 ---
 

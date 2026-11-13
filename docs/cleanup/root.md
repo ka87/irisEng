@@ -1203,14 +1203,27 @@ on the y arm. At `lights.c:548` the light's far-plane cull therefore
 never fires, and in the OK3 acceleration walk no box is ever rejected,
 so the tree costs its traversal and buys nothing.
 
-**`COL_b_TestFaceTag` truncates its own result.** It returns `BOOL`,
-which `common.h` makes `int8_t`, and the body returns
-`tags[face >> 5] & (1 << (face % 32))` -- an `int` with one bit set.
-Every bit above 7 is lost, so the function reports false for
-three-quarters of face indices even when the tag is set. Measured: of
-128 faces set and tested, 32 read back true, the first false at index
-8. Its one caller uses it as a "have I already collided this face"
-guard, so those faces are tested again every time.
+**`COL_b_TestFaceTag` truncates its own result.** ***Withdrawn --
+this was wrong, and the correction is below.***
+
+The claim was that `BOOL` is `int8_t`, so the function's
+`tags[face >> 5] & (1 << (face % 32))` loses every bit above 7 and
+reports false for three-quarters of face indices. The premise does not
+hold: **`common.h`'s `typedef int8_t BOOL;` sits inside a `/* */`
+block**, so the live typedef is `windows.h`'s `typedef int BOOL;`,
+exactly as in the Win32 SDK. `sizeof(BOOL)` is 4 in a real translation
+unit of this tree, checked with a static assert in `collision.c`
+itself. Nothing was ever truncated.
+
+The "measured: 32 of 128 read back true" figure was never measured.
+The fixture declared the same `BOOL` return for both copies, so it
+could not have seen a difference either way; rebuilt to count, it
+reports **0 of 48,000 high-index bits truncated** by the frozen copy.
+
+The function now returns `int` rather than `BOOL`, which says what it
+does without depending on which `BOOL` is in scope. That is a
+clarification, not a behaviour change, and the gold binary agrees: see
+[defects.md](defects.md).
 
 **`COL_b_SingleBVIn` has two branches that cannot be taken.**
 `OBJ_BV_IsAABBox` and `OBJ_BV_IsSphere` are exact complements on the
