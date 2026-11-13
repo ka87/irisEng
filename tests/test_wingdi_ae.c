@@ -26,7 +26,7 @@ void MATH_InitModule(void);
 extern int tweak_ae_no;
 extern int tweak_ae_nobands;
 
-#define AE_GROUPS           11
+#define AE_GROUPS           12
 #define AE_CASES_PER_GROUP  48
 #define AE_CASES            (AE_GROUPS * AE_CASES_PER_GROUP)
 
@@ -174,10 +174,14 @@ static int AE_MasterBits(int k)
    every "set it only if it changed" guard are driven: a spread of
    plausible values, all-zero, and the values the effects themselves
    leave behind. */
+static int AE_seedModeSeen[3];
+
 static void AE_SeedCaches(unsigned int* s)
 {
     int mode = (int)(AE_Rand(s) % 3);
     int i;
+
+    AE_seedModeSeen[mode]++;
 
     memset(&renderStateConfig, 0, sizeof(renderStateConfig));
     memset(textureStageTypeConfig, 0, sizeof(textureStageTypeConfig));
@@ -459,7 +463,16 @@ int main(void)
                " exercised\n");
         failures++;
     }
-    printf("  depthblur_Type seen:");
+    printf("  cached-state seedings:");
+    for (i = 0; i < 3; i++)
+        printf(" mode%d=%d", i, AE_seedModeSeen[i]);
+    for (i = 0; i < 3; i++)
+        if (!AE_seedModeSeen[i])
+        {
+            printf("\nFAIL: cached-state seeding mode %d never used\n", i);
+            failures++;
+        }
+    printf("\n  depthblur_Type seen:");
     for (i = 0; i < 5; i++)
         printf(" %d=%d", i, blurTypeSeen[i]);
     printf("\n  stage counts seen:");

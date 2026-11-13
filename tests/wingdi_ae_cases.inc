@@ -365,7 +365,32 @@ static void RUN(int caseId)
         break;
     }
 
-    /* --- group 10: the script-facing control and getters ----------- */
+    /* --- group 10: the fade's own step, driven on purpose ---------
+       The step subtracted from the opacity each frame is 255 over the
+       span, so a small gAEOpacity makes it larger than the opacity
+       itself and the clamp at zero is the only thing that stops it
+       wrapping. Nothing in group 9 reaches that, so it is driven here
+       rather than left to a seed. */
+    case 10:
+    {
+        int k = caseId % AE_CASES_PER_GROUP;
+
+        gMaxSimultaneousTextures = AE_Stages(k);
+        PC_AE_MASTER = 0x40000;
+        D3DRenderParams.opacity = (k < 24) ? 1 + (k % 5) : 255;
+        X(gAEOpacity) = 0.03f + (float)(k % 7) * 0.01f;
+        AE_SeedCaches(&seed);
+        X(D3D_PC_AE)(NULL);
+        AEMOCK_Record("fade.opacity", 1, (long long)D3DRenderParams.opacity);
+        X(D3D_PC_AE)(NULL);
+        AEMOCK_Record("fade.opacity", 1, (long long)D3DRenderParams.opacity);
+        X(D3D_PC_AE)(NULL);
+        AEMOCK_Record("fade.opacity", 2, (long long)D3DRenderParams.opacity,
+                      (long long)PC_AE_MASTER);
+        break;
+    }
+
+    /* --- group 11: the script-facing control and getters ----------- */
     default:
     {
         int k = caseId % AE_CASES_PER_GROUP;
