@@ -15,7 +15,7 @@ static void PAG_l_ScaleToRandomSpeed(tPAGElemStruct* elem, float speedMin, float
     len = sqrt(elem->v1.x * elem->v1.x + elem->v1.y * elem->v1.y + elem->v1.z * elem->v1.z);
     if (len == 0.0)
     {
-        scale = len;
+        scale = 0.0;
     }
     else
     {
