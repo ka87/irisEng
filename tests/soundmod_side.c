@@ -823,7 +823,7 @@ static void g_bank(int sub)
     }
     g.flags = (sub & 1) ? 0x800 : 0x400;
     g.idx = (sub & 2) ? -1 : 3;
-    g.soundIndex = (sub % 11 == 10) ? 20 : ri(8);
+    g.soundIndex = (sub % 11 == 10) ? 20 : ((sub % 5 == 3) ? bank_store.elemNum : ri(8));
     g.soundBank = (sub % 9 == 8) ? 0 : &bank_store;
     g.flags2 = (int)(r32() & 0xFFu);
     d("bank=%d\n", MDF_SndGetSoundIndexFromBank(&g));
@@ -1098,13 +1098,135 @@ static void g_instanciate(int sub)
     dump_instances();
 }
 
+/* 11. the per-axis active-volume test, driven on purpose
+ *
+ * The random geometry in group 5 almost always fails at least one
+ * enabled axis, so the answer is 0 whichever axis the loop reads and a
+ * wrong row or a wrong bound is invisible. Here the instance matrix is
+ * the identity and the three far bounds are far apart, so the projection
+ * on axis k is exactly |delta[k]| and each axis's decision shows on its
+ * own. Several of the deltas land exactly on a bound, which is what
+ * makes the >= visible, and the prefetch radius is set to the exact
+ * distance on every third subcase for the same reason. The seed base
+ * sits above every other group's so that inserting a case here cannot
+ * shift another group's random stream.
+ */
+static void g_axis(int sub)
+{
+    tSoundMdfStruct g;
+    tSoundInstanceElem* e;
+    static const float delta[6] = { 2.0f, 7.0f, 12.0f, 10.0f, 5.0f, 15.0f };
+    int idx = 0;
+    int combo = (sub % 7) + 1;
+    int pick = (sub / 7) % 6;
+    int farTest = (sub >= 42);
+
+    state_init(20000u + sub);
+    memset(&g, 0, sizeof(g));
+    g.sndInstanceID = idx;
+
+    ref_mtx.Pos.x = 0.0f;
+    ref_mtx.Pos.y = 0.0f;
+    ref_mtx.Pos.z = 0.0f;
+    if (farTest)
+    {
+        pos_store[idx].x = -3.0f;
+        pos_store[idx].y = -4.0f;
+        pos_store[idx].z = 0.0f;
+    }
+    else
+    {
+        pos_store[idx].x = -delta[pick];
+        pos_store[idx].y = -delta[(pick + 1) % 6];
+        pos_store[idx].z = -delta[(pick + 2) % 6];
+    }
+
+    memset(&inst_mtx_store[idx], 0, sizeof(Mtx4x4));
+    inst_mtx_store[idx].v1.x = 1.0f;
+    inst_mtx_store[idx].v2.y = 1.0f;
+    inst_mtx_store[idx].v3.z = 1.0f;
+
+    e = &SND_gst_Params.soundInstances[idx];
+    e->flags = 0x400 | (farTest ? 0x10000000 : (combo << 24));
+    e->sndPositionSetInSetPosPtr = &pos_store[idx];
+    e->sndPosMtxSetInSetPos = &inst_mtx_store[idx];
+    e->farArr[0] = 5.0f;
+    e->farArr[1] = 10.0f;
+    e->farArr[2] = 15.0f;
+    e->dtFar = 0.0f;
+    g.far1 = farTest ? 5.0f : 11.0f;
+    g.distPrefetchVolume = (sub % 3 == 0)
+        ? MATH_DistanceOfTwoPoints(&ref_mtx.Pos, &pos_store[idx])
+        : 13.0f;
+
+    d("combo=%d far=%d pos=(%08X,%08X,%08X) rad=%08X active=%d",
+      combo, farTest, fbits(pos_store[idx].x), fbits(pos_store[idx].y),
+      fbits(pos_store[idx].z), fbits(g.distPrefetchVolume),
+      MDF_b_SndIsInActiveVolume(&g));
+    d(" prefetch=%d\n", MDF_b_SndIsInPrefetchVolume(&g));
+}
+
+/* 12. the fade-out modifier, with its endpoints the right way round
+ *
+ * For a fade-out i1 is the level it starts from and i2 the floor it
+ * stops at, and the arm's terminal test is volume <= i2 where the
+ * fade-in's is volume >= i2. Group 7b ran type 4 with i1 = 0 and
+ * i2 = 1, so the terminal test fired on the first update and the table
+ * arm's own arithmetic was never compared -- a swap of its two
+ * endpoints scored clean. The seed base sits above every other group's.
+ */
+static void g_fadeout(int sub)
+{
+    tSndModifierElem elem;
+    tSoundModifierDataFade data;
+    tSoundInstanceElem* inst;
+    int step;
+    int mode = (int[]){1, 2, 0x80}[sub % 3];
+
+    state_init(21000u + sub);
+    memset(&elem, 0, sizeof(elem));
+    memset(&data, 0, sizeof(data));
+    data.gen.sndKey = 0x44;
+    data.gen.sndIndexInAllocatedSounds = 2;
+    data.i1 = 1.0f;
+    data.i2 = (sub % 5 == 4) ? 0.25f : 0.0f;
+    data.i3 = (float[]){1.0f, 0.5f, 2.0f, 0.3f}[(sub / 3) % 4];
+    data.i5 = mode | 0x10 | ((sub & 16) ? 0x20 : 0) | ((sub & 32) ? 8 : 0);
+    data.i6 = 0.0f;
+
+    elem.sndModifierModelIntf = SND_gs_SoundModifiers[4].sndModifierModelIntf;
+    elem.sndModifierModelIntf->Init(&elem, &data, 36);
+    dump_chain("O", &elem);
+
+    SND_l_Request(0, 0);
+    inst = &SND_gst_Params.soundInstances[0];
+    inst->volume = 1.0f;
+    if (elem.sndModifierModelIntf->NotifyPlay)
+        elem.sndModifierModelIntf->NotifyPlay(&elem, inst);
+    ((tSoundModifierDataFade*)elem.linkedSoundData)->i5 |= 0x10;
+
+    TIM_gf_dt = (float[]){1.0f / 255.0f, 0.01f, 0.1f, 0.25f}[(sub / 12) % 4];
+    for (step = 0; step < 300; ++step)
+    {
+        if (step == 200 && elem.sndModifierModelIntf->NotifyPause)
+            elem.sndModifierModelIntf->NotifyPause(&elem, inst);
+        elem.sndModifierModelIntf->Update(&elem, inst, 0);
+        d("q%03d vol=%08X i5=%08X i6=%08X\n", step, fbits(inst->volume),
+          ((tSoundModifierDataFade*)elem.linkedSoundData)->i5,
+          fbits(((tSoundModifierDataFade*)elem.linkedSoundData)->i6));
+    }
+    TIM_gf_dt = 0.0f;
+    dump_instances();
+}
+
 /* ------------------------------------------------------------ driver */
 
 #define SUB 48
 
 static void (*const groups[])(int) = {
     g_tables, g_chain, g_addsmd, g_addsmd_bad, g_create,
-    g_volume, g_bank, g_fade, g_fade_overrun, g_player, g_3d, g_instanciate
+    g_volume, g_bank, g_fade, g_fade_overrun, g_player, g_3d, g_instanciate,
+    g_axis, g_fadeout
 };
 
 #define NGROUPS ((int)(sizeof(groups) / sizeof(groups[0])))
