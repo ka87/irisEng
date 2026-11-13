@@ -378,6 +378,61 @@ run_animation() {
 
 run_animation
 
+# strings.c: like animation.c it sits at the repo root, and the frozen
+# copy includes its headers through "../" for the same reason -- -I.
+# would put the engine's own strings.h in front of the system one,
+# which glibc's <string.h> pulls in. Both copies' file-scope globals
+# are renamed as well as their functions: the initialised ones collide
+# at link time otherwise, and the rest would be silently shared.
+strings_syms="STR_3DStringList_Reinit STR_3DStringList_Clear STR_3DStringList_Add \
+STR_pst_GetFont STR_FontResolveAlternativeKey STR_FontAddAlternativeKey \
+STR_b_LoadFontDescriptor STR_AddFont STR_SetDisplay STR_Close STR_pst_GetFontDesc \
+STR_pst_Get STR_l_GetLength STR_pst_GetString STR_l_GetMarkIndex STR_l_GetValidIndex \
+STR_l_GetValidNumber STR_GetRectShort STR_GlobalSet STR_GlobalSetChar STR_sz_GlobalGet \
+STR_Reset STR_GetKeyName STR_sz_ControlsReadFormat_pcINO STR_l_ReadFormat_Int \
+STR_l_ReadFormat_Hexa STR_l_ReadFormat_Float STR_l_ReadFormat STR_SetCurEffect \
+STR_i_EffectAdd STR_ParseString STR_ChangeStringLength STR_RecomputePos \
+STR_i_GlobalLength STR_l_GetStringLength STR_EffectDelAllForAString STR_SetString \
+STR_SetSize STR_pst_GetSize STR_Align STR_SetStringExt STR_InsertString STR_SetFloat \
+STR_InsertFloat STR_SetPivot STR_pst_GetPivot STR_SetFlag STR_ul_GetFlag STR_SetColor \
+STR_SetAlpha STR_SetColorExt STR_GetColor STR_ChangePage STR_SetPos STR_EffectCheck \
+STR_DelChar STR_SetChar STR_i_GetChar STR_l_GetSubLength STR_pst_GetMin STR_pst_GetMax \
+STR_SetFrame STR_EffectDelAll STR_EffectDel STR_SetFramePos STR_SetFrameBorderSize \
+STR_SetFrameColor STR_SetSubStringWithLine STR_SetSubStringWithMark STR_SetSubString \
+STR_i_CountLine STR_i_CountMark STR_ToString STR_SetLetterFlag STR_GetLetterFlag \
+STR_ToUpper STR_EffectSeti STR_i_EffectGetId STR_EffectGeti STR_EffectSetf \
+STR_ReinitAll STR_Init3DStringExtExt STR_Init3DString STR_Init3DStringExt \
+STR_Init3DStringCenter STR_Init3DStringFromSTR \
+pcINO_ControlsReadFormatBufferSize pcINO_ControlsReadFormatBuffer STRDataPtrStart \
+STR_sgst_Format STR_si_Id STR_f_DefaultLetterDepth \
+STRU1Offset STRV1Offset STRU2Offset STRV2Offset \
+STRU3Offset STRV3Offset STRU4Offset STRV4Offset"
+
+run_strings() {
+    [ -n "$FILTER" ] && case "strings" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' strings
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c strings.c -o "$OUT/strings.new.o" $(defs NEW_ $strings_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/baseline_strings.c -o "$OUT/strings.base.o" \
+        $(defs BASE_ $strings_syms)
+    $CC $CFLAGS -c tests/strings_mocks.c -o "$OUT/strings.mocks.o"
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/strings_runner.c -o "$OUT/strings.rb.o" \
+        -DRUNNER=STRCASE_RunBase $(defs BASE_ $strings_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/strings_runner.c -o "$OUT/strings.rn.o" \
+        -DRUNNER=STRCASE_RunNew $(defs NEW_ $strings_syms)
+    $CC $CFLAGS -c tests/test_strings.c -o "$OUT/strings.drv.o"
+    $CC "$OUT/strings.new.o" "$OUT/strings.base.o" "$OUT/strings.mocks.o" \
+        "$OUT/strings.rb.o" "$OUT/strings.rn.o" "$OUT/strings.drv.o" \
+        -o "$OUT/strings" -lm
+    "$OUT/strings" || fails=$((fails + 1))
+    echo
+}
+
+run_strings
+
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"
     exit 1

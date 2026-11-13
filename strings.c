@@ -26,6 +26,62 @@ char STRV3Offset = 1;
 char STRU4Offset = 1;
 char STRV4Offset = 0;
 
+static tFontData* STR_l_NewFont()
+{
+    tFontData* fonts;
+    size_t size;
+    int num;
+
+    fonts = STR_sgpst_Font;
+    num = STR_sgl_NumberOfFont;
+    if (num >= STR_sgl_MaxNumberOfFont)
+    {
+        size = sizeof(tFontData) * (STR_sgl_MaxNumberOfFont + 20);
+        STR_sgl_MaxNumberOfFont += 20;
+        if (STR_sgpst_Font)
+            fonts = (tFontData*)MEM_p_Realloc(STR_sgpst_Font, size);
+        else
+            fonts = (tFontData*)MEM_p_Alloc(size);
+        num = STR_sgl_NumberOfFont;
+        STR_sgpst_Font = fonts;
+    }
+    STR_sgl_NumberOfFont = num + 1;
+    return &fonts[num];
+}
+
+static tFontData* STR_l_FontDescForPage(int page)
+{
+    return STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (int16_t)page);
+}
+
+static void STR_l_UseGaoMaterial(tGEOSTRStruct* str, tGameObjectMain* gao)
+{
+    ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROMAT;
+    str->fontMaterialID = -1;
+    str->fontDesc = NULL;
+}
+
+static int STR_l_GlyphIndex(uint32_t flagsAndChar)
+{
+    unsigned int ch;
+
+    ch = (uint8_t)flagsAndChar;
+    if (ch < 32)
+        return 0;
+    return ch - 32;
+}
+
+static int STR_l_LetterRange(tGEOSTRStruct* str, tGEOSTRStringData* sd, int firstChar, int charNum,
+                             tGEOSTRLetter** begin, tGEOSTRLetter** end)
+{
+    int first;
+
+    first = STR_l_GetValidIndex(str, sd, firstChar);
+    *begin = &str->letters[first + sd->index];
+    *end = *begin + STR_l_GetValidNumber(str, sd, first, charNum);
+    return first;
+}
+
 void STR_3DStringList_Reinit()
 {
     int i;
@@ -44,176 +100,119 @@ void STR_3DStringList_Clear()
     STR_3DString_Number = 0;
 };
 
-void STR_3DStringList_Add(struct sGameObjectMain* a1)
+void STR_3DStringList_Add(struct sGameObjectMain* gao)
 {
-    int v1;
-    int v2;
+    int i;
 
-    v1 = STR_3DString_Number;
-    if (STR_3DString_Number != 64)
+    if (STR_3DString_Number == 64)
+        return;
+
+    for (i = 0; i < STR_3DString_Number; i++)
     {
-        v2 = 0;
-        if (STR_3DString_Number <= 0)
-        {
-        LABEL_5:
-            STR_3DString_Obj[STR_3DString_Number] = a1;
-            STR_3DString_Number = v1 + 1;
-        }
-        else
-        {
-            while (STR_3DString_Obj[v2] != a1)
-            {
-                if (++v2 >= STR_3DString_Number)
-                    goto LABEL_5;
-            }
-        }
+        if (STR_3DString_Obj[i] == gao)
+            return;
     }
+
+    STR_3DString_Obj[STR_3DString_Number] = gao;
+    STR_3DString_Number++;
 }
 
-tFontData* STR_pst_GetFont(int a1)
+tFontData* STR_pst_GetFont(int key)
 {
-    int v1;
-    tFontData* i; 
+    int i;
 
-    v1 = 0;
-    if (STR_sgl_NumberOfFont <= 0)
-        return 0;
-    for (i = STR_sgpst_Font; i->texKey != a1; ++i)
+    for (i = 0; i < STR_sgl_NumberOfFont; i++)
     {
-        if (++v1 >= STR_sgl_NumberOfFont)
-            return 0;
+        if (STR_sgpst_Font[i].texKey == key)
+            return &STR_sgpst_Font[i];
     }
-    return &STR_sgpst_Font[v1];
+    return 0;
 }
 
 void STR_FontResolveAlternativeKey()
 {
-    int v0;
+    tFontData* font;
     int i;
-    tFontData* v2;
 
-    v0 = STR_FontAltKeyNumber;
-    for (i = 0; i < v0; ++i)
+    for (i = 0; i < STR_FontAltKeyNumber; ++i)
     {
-        v2 = STR_pst_GetFont(STR_FontAltKey[i].key);
-        if (v2)
-            v2->texKeyAlternative = STR_FontAltKey[i].key2;
+        font = STR_pst_GetFont(STR_FontAltKey[i].key);
+        if (font)
+            font->texKeyAlternative = STR_FontAltKey[i].key2;
     }
     STR_FontAltKeyNumber = 0;
 }
 
-void STR_FontAddAlternativeKey(int a1, int a2)
+void STR_FontAddAlternativeKey(int key, int altKey)
 {
-    int v2;
-
-    v2 = STR_FontAltKeyNumber;
     if (STR_FontAltKeyNumber < 16)
     {
-        STR_FontAltKey[STR_FontAltKeyNumber].key = a1;
-        STR_FontAltKey[v2].key2 = a2;
-        STR_FontAltKeyNumber = v2 + 1;
+        STR_FontAltKey[STR_FontAltKeyNumber].key = key;
+        STR_FontAltKey[STR_FontAltKeyNumber].key2 = altKey;
+        STR_FontAltKeyNumber++;
     }
 }
 
-BOOL STR_b_LoadFontDescriptor(struct sFontData* a1, int key)
+BOOL STR_b_LoadFontDescriptor(struct sFontData* font, int key)
 {
-    int v2;
-    char* v4;
-    unsigned int v5;
+    unsigned int ch;
     tFontGlypthElem* fge;
+    char* data;
     char* offset;
+    char* end;
+    char* tail;
+    int pos;
     int size;
-    char* a1a;
-    char Str1[8];
+    char magic[8];
 
-    v2 = BIG_ul_SearchKeyToPos(key);
-    if (v2 == -1)
+    pos = BIG_ul_SearchKeyToPos(key);
+    if (pos == -1)
         return 0;
-    v4 = BIG_pc_ReadFileTmp(v2, &size);
-    offset = v4;
+    data = BIG_pc_ReadFileTmp(pos, &size);
+    offset = data;
     if ((unsigned int)size < 12)
         return 0;
-    LOA_ReadCharArray(&offset, Str1, 8u, 1);
-    if (strncmp(Str1, "FONTDESC", 8u))
+    LOA_ReadCharArray(&offset, magic, 8u, 1);
+    if (strncmp(magic, "FONTDESC", 8u))
         return 0;
-    a1a = &v4[size - 4];
-    if (LOA_ReadLong(&a1a, 0, 4) != -1)
+    end = &data[size - 4];
+    tail = end;
+    if (LOA_ReadLong(&tail, 0, 4) != -1)
         return 0;
     LOA_ReadLong(&offset, 0, 1);
-    if (offset < &v4[size - 4])
+    while (offset < end)
     {
-        while (1)
-        {
-            v5 = LOA_ReadLong(&offset, 0, 1);
-            if (v5 < 32 || v5 > 255)
-                break;
-            fge = &(a1->fge[v5 - 32]);
-            fge->x = LOA_ReadFloat(&offset, 0, 1);
-            fge->w = LOA_ReadFloat(&offset, 0, 1);
-            fge->y = LOA_ReadFloat(&offset, 0, 1);
-            fge->h = LOA_ReadFloat(&offset, 0, 1);
-            if (offset >= &v4[size - 4])
-                return LOA_ReadLong(&offset, 0, 1) == -1;
-        }
-        return 0;
+        ch = LOA_ReadLong(&offset, 0, 1);
+        if (ch < 32 || ch > 255)
+            return 0;
+        fge = &(font->fge[ch - 32]);
+        fge->x = LOA_ReadFloat(&offset, 0, 1);
+        fge->w = LOA_ReadFloat(&offset, 0, 1);
+        fge->y = LOA_ReadFloat(&offset, 0, 1);
+        fge->h = LOA_ReadFloat(&offset, 0, 1);
     }
     return LOA_ReadLong(&offset, 0, 1) == -1;
 }
 
-void STR_AddFont(int key, struct sEngTexIntermediateStruct* a2)
+void STR_AddFont(int key, struct sEngTexIntermediateStruct* tex)
 {
-    tFontData* v2;
-    int v3;
-    tFontData* v4;
-    tFontData* v5;
-    BOOL v6;
-    int v7;
-    size_t v8;
+    tFontData* font;
 
-    if (a2 && a2->imgDataPtr)
+    if (!tex || !tex->imgDataPtr)
+        return;
+
+    font = STR_pst_GetFont(key);
+    if (!font)
     {
-        v2 = STR_sgpst_Font;
-        v3 = STR_sgl_NumberOfFont;
-        if (!STR_sgl_NumberOfFont)
-            goto LABEL_10;
-        v4 = STR_sgpst_Font;
-        v5 = &STR_sgpst_Font[STR_sgl_NumberOfFont];
-        v6 = STR_sgpst_Font == v5;
-        if (STR_sgpst_Font < v5)
-        {
-            do
-            {
-                if (v4->texKey == key)
-                    break;
-                ++v4;
-            } while (v4 < v5);
-            v6 = v4 == v5;
-        }
-        if (v6 || !v4)
-        {
-        LABEL_10:
-            v7 = STR_sgl_MaxNumberOfFont;
-            if (STR_sgl_NumberOfFont >= STR_sgl_MaxNumberOfFont)
-            {
-                STR_sgl_MaxNumberOfFont += 20;
-                v8 = sizeof(tFontData) * (v7 + 20);
-                if (STR_sgpst_Font)
-                    v2 = (tFontData*)MEM_p_Realloc(STR_sgpst_Font, v8);
-                else
-                    v2 = (tFontData*)MEM_p_Alloc(v8);
-                v3 = STR_sgl_NumberOfFont;
-                STR_sgpst_Font = v2;
-            }
-            v4 = &v2[v3];
-            STR_sgl_NumberOfFont = v3 + 1;
-            v4->texKey = key;
-        }
-        v4->width = a2->realWidth;
-        v4->height = a2->realHeight;
-        memset(v4->fge, 0, sizeof(v4->fge));
-        if (a2->tp.magicParams.fontDescriptorKey)
-            STR_b_LoadFontDescriptor(v4, a2->tp.magicParams.fontDescriptorKey);
+        font = STR_l_NewFont();
+        font->texKey = key;
     }
+
+    font->width = tex->realWidth;
+    font->height = tex->realHeight;
+    memset(font->fge, 0, sizeof(font->fge));
+    if (tex->tp.magicParams.fontDescriptorKey)
+        STR_b_LoadFontDescriptor(font, tex->tp.magicParams.fontDescriptorKey);
 }
 
 void STR_SetDisplay()
@@ -247,116 +246,76 @@ void STR_Close()
     }
 }
 
-struct sFontData* STR_pst_GetFontDesc(struct sGEOMAT* a1, int matNum)
+struct sFontData* STR_pst_GetFontDesc(struct sGEOMAT* mat, int matNum)
 {
-    tGEOMAT* v2;
-    unsigned int v4;
-    int v5;
-    tFontData* v6;
-    int v7;
-    int v8;
-    tMultiTextureElemStruct* v9;
-    int v10;
-    tFontData* v11;
-    tFontData* v12;
-    tFontData* v13;
-    tFontData* v14;
-    int v15;
-    tFontGlypthElem* v16;
-    int v17;
-    size_t v18;
+    tMultiTextureElemStruct* multiTex;
+    tFontData* font;
+    tFontGlypthElem* fge;
+    int texIdx;
+    int texKey;
+    int sub;
+    int i;
 
-    v2 = a1;
-    if (!a1)
+    if (!mat)
         return 0;
-    if (a1->intf->id == 4)
+
+    if (mat->intf->id == 4)
     {
-        v4 = matNum;
-        if (matNum >= a1->multiMaterialNumIfType4ThenAmbiantColor)
-            v4 = 0;
-        v2 = a1->multiMaterialPtrIfType4ThenDiffuseColor[v4];
+        sub = matNum;
+        if (matNum >= mat->multiMaterialNumIfType4ThenAmbiantColor)
+            sub = 0;
+        mat = mat->multiMaterialPtrIfType4ThenDiffuseColor[sub];
     }
-    v5 = v2->intf->id;
-    v6 = STR_sgpst_Font;
-    v7 = STR_sgl_NumberOfFont;
-    if (v5 == 3)
+
+    texIdx = -1;
+    if (mat->intf->id == 3)
     {
-        v8 = v2->idxOrPtr;
+        texIdx = mat->idxOrPtr;
     }
-    else
+    else if (mat->intf->id == 5)
     {
-        if (v5 != 5)
-            goto LABEL_19;
-        v9 = (tMultiTextureElemStruct*)v2->idxOrPtr;
-        if (!v9)
-            goto LABEL_19;
-        v8 = v9->texElemIdx;
+        multiTex = (tMultiTextureElemStruct*)mat->idxOrPtr;
+        if (multiTex)
+            texIdx = multiTex->texElemIdx;
     }
-    if (v8 != -1)
+
+    if (texIdx != -1)
     {
-        if ((TEX_gst_GlobalList.texElems[v8].texElemFlag & 0x40) != 0)
-            v8 = TEX_gst_GlobalList.texElems[v8].palettedData.textureID;
-        v10 = TEX_gst_GlobalList.texElems[v8].texKey;
-        v11 = STR_sgpst_Font;
-        v12 = &STR_sgpst_Font[STR_sgl_NumberOfFont];
-        if (STR_sgpst_Font < v12)
+        if ((TEX_gst_GlobalList.texElems[texIdx].texElemFlag & 0x40) != 0)
+            texIdx = TEX_gst_GlobalList.texElems[texIdx].palettedData.textureID;
+        texKey = TEX_gst_GlobalList.texElems[texIdx].texKey;
+        for (i = 0; i < STR_sgl_NumberOfFont; i++)
         {
-            while (v11->texKey != v10 && v11->texKeyAlternative != v10)
-            {
-                if (++v11 >= v12)
-                    goto LABEL_19;
-            }
-            return v11;
+            if (STR_sgpst_Font[i].texKey == texKey || STR_sgpst_Font[i].texKeyAlternative == texKey)
+                return &STR_sgpst_Font[i];
         }
     }
-LABEL_19:
-    v13 = STR_sgpst_Font;
-    v14 = &STR_sgpst_Font[STR_sgl_NumberOfFont];
-    if (STR_sgpst_Font >= v14)
+
+    for (i = 0; i < STR_sgl_NumberOfFont; i++)
     {
-    LABEL_22:
-        v15 = STR_sgl_MaxNumberOfFont;
-        if (STR_sgl_NumberOfFont >= STR_sgl_MaxNumberOfFont)
-        { 
-            STR_sgl_MaxNumberOfFont += 20;
-            v18 = sizeof(tFontData) * (v15 + 20);
-            if (STR_sgpst_Font)
-                v6 = (tFontData*)MEM_p_Realloc(STR_sgpst_Font, v18);
-            else
-                v6 = (tFontData*)MEM_p_Alloc(v18);
-            v7 = STR_sgl_NumberOfFont;
-            STR_sgpst_Font = v6;
-        }
-        v11 = &v6[v7];
-        STR_sgl_NumberOfFont = v7 + 1;
-        v11->mat = v2;
-        v16 = v11->fge;
-        v17 = 224;
-        do
-        {
-            v16->x = 0.0;
-            v16->y = 0.0;
-            v16->w = 0.0;
-            v16->h = 1.0;
-            ++v16;
-            --v17;
-        } while (v17);
-        return v11;
+        if (STR_sgpst_Font[i].mat == mat)
+            return &STR_sgpst_Font[i];
     }
-    while (v13->mat != v2)
+
+    font = STR_l_NewFont();
+    font->mat = mat;
+    fge = font->fge;
+    for (i = 0; i < 224; i++)
     {
-        if (++v13 >= v14)
-            goto LABEL_22;
+        fge[i].x = 0.0;
+        fge[i].y = 0.0;
+        fge[i].w = 0.0;
+        fge[i].h = 1.0;
     }
-    return v13;
+    return font;
 }
 
-struct sGEOSTRStruct* STR_pst_Get(struct sGameObjectMain* a1)
+struct sGEOSTRStruct* STR_pst_Get(struct sGameObjectMain* gao)
 {
     tGEOSTRStruct* result;
 
-    if ((a1->flags & 0x4000) == 0
-        || (result = (tGEOSTRStruct*)((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse) == 0
+    if ((gao->flags & 0x4000) == 0
+        || (result = (tGEOSTRStruct*)((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse) == 0
         || result->intf->id != 10)
     {
         result = NULL;
@@ -364,639 +323,522 @@ struct sGEOSTRStruct* STR_pst_Get(struct sGameObjectMain* a1)
     return result;
 }
 
-int STR_l_GetLength(struct sGEOSTRStruct* a1, unsigned int a2)
+int STR_l_GetLength(struct sGEOSTRStruct* str, unsigned int strIdx)
 {
-    int result;
-
-    if (a2 < a1->stringNum)
-        result = a1->stringData[a2].number;
-    else
-        result = -1;
-    return result;
+    if (strIdx < str->stringNum)
+        return str->stringData[strIdx].number;
+    return -1;
 }
 
-struct sGEOSTRStringData* STR_pst_GetString(struct sGEOSTRStruct* a1, int idx)
+struct sGEOSTRStringData* STR_pst_GetString(struct sGEOSTRStruct* str, int strIdx)
 {
-    tGEOSTRStringData* result;
-
-    if (a1->letters && idx >= 0 && idx < a1->stringNum)
-        result = &a1->stringData[idx];
-    else
-        result = 0;
-    return result;
+    if (str->letters && strIdx >= 0 && strIdx < str->stringNum)
+        return &str->stringData[strIdx];
+    return 0;
 }
 
-int STR_l_GetMarkIndex(struct sGEOSTRStruct* a1, struct sGEOSTRStringData* a2, int a3)
+int STR_l_GetMarkIndex(struct sGEOSTRStruct* str, struct sGEOSTRStringData* sd, int mark)
 {
-    tGEOSTRLetter* v3;
-    int result;
+    int i;
 
-    v3 = &a1->letters[a2->index];
-    result = 0;
-    if (a2->number)
+    for (i = 0; i < sd->number; i++)
     {
-        do
-        {
-            if (((v3->flagsAndChar >> 20) & 0xF) == a3)
-                break;
-            ++result;
-            ++v3;
-        } while (result < a2->number);
+        if (((str->letters[sd->index + i].flagsAndChar >> 20) & 0xF) == mark)
+            break;
     }
-    return result;
+    return i;
 }
 
-int STR_l_GetValidIndex(struct sGEOSTRStruct* a1, struct sGEOSTRStringData* a2, int a3)
+int STR_l_GetValidIndex(struct sGEOSTRStruct* str, struct sGEOSTRStringData* sd, int firstChar)
 {
-    int result;
+    int first;
 
-    result = a3;
-    if (a3 <= -50)
-        result = STR_l_GetMarkIndex(a1, a2, (-2 - (uint8_t)a3) & 0xF);
-    if (result <= -10)
-        result = STR_l_GetMarkIndex(a1, a2, (6 - (uint8_t)result) & 0xF) + 1;
-    if (result == -2)
-        result = a2->index2;
-    if (result < 0 || result >= a2->number)
-        result = a2->number;
-    return result;
+    first = firstChar;
+    if (firstChar <= -50)
+        first = STR_l_GetMarkIndex(str, sd, (-2 - (uint8_t)firstChar) & 0xF);
+    if (first <= -10)
+        first = STR_l_GetMarkIndex(str, sd, (6 - (uint8_t)first) & 0xF) + 1;
+    if (first == -2)
+        first = sd->index2;
+    if (first < 0 || first >= sd->number)
+        first = sd->number;
+    return first;
 }
 
-int STR_l_GetValidNumber(struct sGEOSTRStruct* a1, struct sGEOSTRStringData* a2, int a3, int a4)
+int STR_l_GetValidNumber(struct sGEOSTRStruct* str, struct sGEOSTRStringData* sd, int firstChar, int charNum)
 {
-    int result;
-    int v5;
-    int v6;
+    int num;
+    int markIdx;
 
-    result = a4;
-    if (a4 <= -10)
+    if (charNum <= -10)
     {
-        v5 = STR_l_GetMarkIndex(a1, a2, (6 - (uint8_t)a4) & 0xF);
-        v6 = a3;
-        if (v5 >= a3)
-            return v5 - a3;
-        return a2->number - v6;
+        markIdx = STR_l_GetMarkIndex(str, sd, (6 - (uint8_t)charNum) & 0xF);
+        if (markIdx >= firstChar)
+            return markIdx - firstChar;
+        return sd->number - firstChar;
     }
-    v6 = a3;
-    if (a4 == -2)
-        result = a2->index2 + a2->number2 - a3;
-    if (result <= 0 || a3 + result > a2->number)
-        return a2->number - v6;
-    return result;
+
+    num = charNum;
+    if (charNum == -2)
+        num = sd->index2 + sd->number2 - firstChar;
+    if (num <= 0 || firstChar + num > sd->number)
+        return sd->number - firstChar;
+    return num;
 }
 
-void STR_GetRectShort(struct sGEOSTRStruct* a1, int idx, int a3, int a4, Vec3* min, Vec3* max)
+void STR_GetRectShort(struct sGEOSTRStruct* str, int strIdx, int firstChar, int charNum, Vec3* min, Vec3* max)
 {
-    int16_t v6;
-    int16_t v7;
-    tGEOSTRStringData* v8;
-    tGEOSTRStringData* v9;
-    int v10;
-    tGEOSTRLetter* v11; 
-    tGEOSTRLetter* i;
-    int16_t v13;
-    int16_t v14;
-    int16_t v15;
-    int16_t v16;
-    int16_t v17;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    int16_t minX;
+    int16_t minY;
+    int16_t maxX;
+    int16_t maxY;
+    int16_t x;
+    int16_t y;
 
-    v6 = 10000;
-    v7 = -10000;
-    v16 = 10000;
-    v15 = 10000;
-    v17 = -10000;
-    v8 = STR_pst_GetString(a1, idx);
-    v9 = v8;
-    if (v8)
+    minX = 10000;
+    minY = 10000;
+    maxX = -10000;
+    maxY = -10000;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
     {
-        v10 = STR_l_GetValidIndex(a1, v8, a3);
-        v11 = &a1->letters[v10 + v9->index];
-        for (i = &v11[STR_l_GetValidNumber(a1, v9, v10, a4)]; v11 < i; ++v11)
+        STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+        for (; letter < end; ++letter)
         {
-            v13 = v11->x;
-            if (v13 < v15)
-                v15 = v11->x;
-            v14 = v11->y;
-            if (v14 < v16)
-                v16 = v11->y;
-            if ((int16_t)(v13 + v11->width) > v7)
-                v7 = v13 + v11->width;
-            if ((int16_t)(v14 + v11->height) > v17)
-                v17 = v14 + v11->height;
+            x = letter->x;
+            if (x < minX)
+                minX = x;
+            y = letter->y;
+            if (y < minY)
+                minY = y;
+            if ((int16_t)(x + letter->width) > maxX)
+                maxX = x + letter->width;
+            if ((int16_t)(y + letter->height) > maxY)
+                maxY = y + letter->height;
         }
-        v6 = v15;
     }
+
     if (min)
     {
         min->z = 0.0;
-        if (v6 == 10000)
+        if (minX == 10000)
         {
             min->x = 0.0;
             min->y = 0.0;
         }
         else
         {
-            min->x = (float)v6;
-            min->y = (float)v16;
+            min->x = (float)minX;
+            min->y = (float)minY;
         }
     }
     if (max)
     {
         max->z = 0.0;
-        if (v6 == 10000)
+        if (minX == 10000)
         {
             max->x = 0.0;
             max->y = 0.0;
         }
         else
         {
-            max->x = (float)v7;
-            max->y = (float)v17;
+            max->x = (float)maxX;
+            max->y = (float)maxY;
         }
     }
 }
 
-void STR_GlobalSet(int a1, char* a2)
+void STR_GlobalSet(int globalIdx, char* src)
 {
-    int v3;
-    int v4;
-    char v5;
-    char v6;
-    char v7;
-    char v8;
+    int i;
 
-    if ((uint8_t)a1 < 24u)
+    // preserved: the bound test truncates to a byte but the index does not
+    if ((uint8_t)globalIdx < 24u)
     {
-        v3 = 0;
-        while (*a2)
-        {
-            v4 = a1;
-            STR_sgaac_Global[a1].str[v3] = *a2;
-            v5 = a2[1];
-            if (!v5)
-            {
-                STR_sgaac_Global[a1].str[v3 + 1] = 0;
-                return;
-            }
-            STR_sgaac_Global[v4].str[v3 + 1] = v5;
-            v6 = a2[2];
-            if (!v6)
-            {
-                STR_sgaac_Global[a1].str[v3 + 2] = 0;
-                return;
-            }
-            STR_sgaac_Global[v4].str[v3 + 2] = v6;
-            v7 = a2[3];
-            if (!v7)
-            {
-                STR_sgaac_Global[a1].str[v3 + 3] = 0;
-                return;
-            }
-            STR_sgaac_Global[v4].str[v3 + 3] = v7;
-            v8 = a2[4];
-            if (!v8)
-            {
-                v3 += 4;
-                break;
-            }
-            STR_sgaac_Global[v4].str[v3 + 4] = v8;
-            v3 += 5;
-            a2 += 5;
-            if (v3 >= 15)
-            {
-                STR_sgaac_Global[a1].str[v3] = 0;
-                return;
-            }
-        }
-        STR_sgaac_Global[a1].str[v3] = 0;
+        for (i = 0; i < 15 && src[i]; i++)
+            STR_sgaac_Global[globalIdx].str[i] = src[i];
+        STR_sgaac_Global[globalIdx].str[i] = 0;
     }
 }
 
-void STR_GlobalSetChar(int a1, int a2, char a3)
+void STR_GlobalSetChar(int globalIdx, int charIdx, char character)
 {
-    if ((uint8_t)a1 < 24u)
+    if ((uint8_t)globalIdx < 24u)
     {
-        STR_sgaac_Global[a1].str[15] = 0;
-        if ((uint8_t)a2 < 15u)
-            STR_sgaac_Global[a1].str[a2] = a3;
+        STR_sgaac_Global[globalIdx].str[15] = 0;
+        if ((uint8_t)charIdx < 15u)
+            STR_sgaac_Global[globalIdx].str[charIdx] = character;
     }
 }
 
-tStrGlobalStruct* STR_sz_GlobalGet(int a1)
+tStrGlobalStruct* STR_sz_GlobalGet(int globalIdx)
 {
-    tStrGlobalStruct* result;
-
-    if ((uint8_t)a1 < 24u)
-        result = &STR_sgaac_Global[a1];
-    else
-        result = 0;
-    return result;
+    if ((uint8_t)globalIdx < 24u)
+        return &STR_sgaac_Global[globalIdx];
+    return 0;
 }
 
-void STR_Reset(tGameObjectMain* a1)
+void STR_Reset(tGameObjectMain* gao)
 {
-    tGEOSTRStruct* v1;
+    tGEOSTRStruct* str;
 
-    v1 = STR_pst_Get(a1);
-    if (v1)
-        STR_Reinit((tGroGeneric*)v1);
+    str = STR_pst_Get(gao);
+    if (str)
+        STR_Reinit((tGroGeneric*)str);
 }
 
-char* STR_GetKeyName(int a1, int a2)
+static char* STR_l_TwoKeyNames(int mapIdx1, int mapIdx2)
 {
-    int v2;
-    int v3;
-    tInoButtonNames* v4;
-    int v8;
-    int v9;
-    int v10;
+    int key1;
+    int key2;
+
+    key1 = pcINO_keyMaps[mapIdx1];
+    key2 = pcINO_keyMaps[mapIdx2];
+    if (key1 == -1)
+        return "\\p16\\2";
+    if (key1 < 0 || key2 < 0)
+        return prefixOneSpace;
+    strcpy(pcINO_KeyNamesToRet, buttonNames[key1].str);
+    strcat(pcINO_KeyNamesToRet, buttonNames[key2].str);
+    return pcINO_KeyNamesToRet;
+}
+
+char* STR_GetKeyName(int ch, int combo)
+{
+    int key;
 
     if (!pcINO_keyMaps)
         return "";
-    if (a1 >= '0' && a1 <= '=')
+
+    if (ch >= '0' && ch <= '=')
     {
-        v8 = pcINO_keyMaps[a1 - '0'];
-        if (v8 >= 0)
-            return buttonNames[v8].str;
+        key = pcINO_keyMaps[ch - '0'];
+        if (key >= 0)
+            return buttonNames[key].str;
         return prefixOneSpace;
     }
-    if (a1 == '?')
+    if (ch == '?')
     {
-        v8 = pcINO_keyMaps[3];
-        if (v8 >= 0)
-            return buttonNames[v8].str;
+        key = pcINO_keyMaps[3];
+        if (key >= 0)
+            return buttonNames[key].str;
         return prefixOneSpace;
     }
-    if (a1 < 'A' || a1 > 'S')
+    if (ch < 'A' || ch > 'S')
     {
-        pcINO_KeyNamesToRet[0] = a1;
+        pcINO_KeyNamesToRet[0] = ch;
         pcINO_KeyNamesToRet[1] = 0;
         return pcINO_KeyNamesToRet;
     }
-    if (a1 == 'A')
+    if (ch == 'A')
     {
-        switch (a2)
+        switch (combo)
         {
         case 1214:
-            v9 = 16;
-            v10 = 14;
-            goto LABEL_31;
+            return STR_l_TwoKeyNames(14, 16);
         case 1315:
-            v9 = 17;
-            v10 = 15;
-            goto LABEL_31;
+            return STR_l_TwoKeyNames(15, 17);
         case 2345:
             return pcINO_GetFourKeyNamesCattedTogether(14, 15, 17, 16);
         }
         return "";
     }
-    if (a1 == 'F')
+    if (ch == 'F')
     {
-        switch (a2)
+        switch (combo)
         {
         case 1214:
-            v9 = 20;
-            v10 = 18;
-            goto LABEL_31;
+            return STR_l_TwoKeyNames(18, 20);
         case 1315:
-            v9 = 21;
-            v10 = 19;
-            goto LABEL_31;
+            return STR_l_TwoKeyNames(19, 21);
         case 2345:
             return pcINO_GetFourKeyNamesCattedTogether(18, 19, 21, 20);
         }
         return "";
     }
-    if (a1 != 'O')
+    if (ch != 'O')
         return "";
-    if (a2 == 24)
-    {
-        v9 = 10;
-        v10 = 8;
-    }
-    else
-    {
-        v9 = 11;
-        v10 = 9;
-    }
-LABEL_31:
-    v2 = pcINO_keyMaps[v10];
-    v3 = pcINO_keyMaps[v9];
-    if (v2 == -1)
-        return "\\p16\\2";
-    if (v2 < 0 || v3 < 0)
-        return prefixOneSpace;
-    v4 = &buttonNames[v2];
-    strcpy(pcINO_KeyNamesToRet, v4->str);   
-    strcat(pcINO_KeyNamesToRet, buttonNames[v3].str);
-    return pcINO_KeyNamesToRet;
+    if (combo == 24)
+        return STR_l_TwoKeyNames(8, 10);
+    return STR_l_TwoKeyNames(9, 11);
+}
+
+static char* STR_l_CopyUpTo(char* dst, char* src, char* last)
+{
+    char* p;
+
+    for (p = src; p != last + 1; ++p)
+        *dst++ = *p;
+    return dst;
 }
 
 char* STR_sz_ControlsReadFormat_pcINO(char* str)
 {
-    unsigned int v1;
-    char* v2;
-    unsigned int v3;
-    char* v4;
-    char v5;
-    char* v6;
-    char* v7;
-    unsigned int v8;
-    unsigned int v9;
-    unsigned int v10;
-    char* v11;
-    char* v12;
-    char* j;
-    unsigned int v14;
-    char* v15;
-    char* i;
-    int v17;
-    int v18;
-    char v19;
-    char* v20;
-    char v21;
-    char* v22;
-    char* v23;
-    char v24;
-    char* v25;
-    char* k;
-    unsigned int v28;
-    int a2;
-    int v30;
-    unsigned int v31;
-    int v32;
-    int a1;
+    char* src;
+    char* dst;
+    char* end;
+    char* name;
+    char ch;
+    unsigned int value;
+    unsigned int curPage;
+    unsigned int page;
+    unsigned int pageSet;
+    unsigned int restorePage;
+    unsigned int back;
+    int combo;
+    int modeChanged;
+    int savedMode;
+    int savedSubmode;
 
-    v1 = 0;
-    a1 = pcINO_SelectedControlSubmode;
-    v2 = pcINO_ControlsReadFormatBuffer;
-    v3 = 0;
-    v32 = pcINO_SelectedControlMode;
-    v30 = 0;
-    v28 = 0;
-    v31 = 0;
-    a2 = 0;
+    curPage = 0;
+    page = 0;
+    pageSet = 0;
+    restorePage = 0;
+    combo = 0;
+    modeChanged = 0;
+    savedSubmode = pcINO_SelectedControlSubmode;
+    savedMode = pcINO_SelectedControlMode;
+
     if (!pcINO_ControlsReadFormatBuffer)
     {
         pcINO_ControlsReadFormatBufferSize = 512;
-        v2 = (char*)MEM_p_Alloc(512u);
-        pcINO_ControlsReadFormatBuffer = v2;
+        pcINO_ControlsReadFormatBuffer = (char*)MEM_p_Alloc(512u);
     }
-    v4 = str;
-    v5 = *str;
-    v6 = v2;
-    if (*str)
+
+    src = str;
+    dst = pcINO_ControlsReadFormatBuffer;
+
+    for (ch = *src; ch; ch = *++src)
     {
-        do
+        if (ch == '\\')
         {
-            if (v5 == '\\')
+            switch (src[1])
             {
-                switch (v4[1])
+            case '-':
+            case 'n':
+                dst[0] = '\\';
+                dst[1] = src[1];
+                dst += 2;
+                ++src;
+                break;
+            case 'd':
+                dst[0] = '\\';
+                dst[1] = src[1];
+                dst[2] = src[2];
+                dst += 3;
+                src += 2;
+                break;
+            case 'O':
+                INO_SetControlMode_inner_sub_48ACB0(strtoul(src + 2, &end, 10));
+                if (end)
                 {
-                case '-':
-                case 'n':
-                    *v6 = '\\';
-                    v19 = v4[1];
-                    v20 = v6 + 1;
-                    ++v4;
-                    *v20 = v19;
-                    v6 = v20 + 1;
-                    goto LABEL_38;
-                case 'O':
-                    v17 = strtoul(v4 + 2, &str, 10);
-                    INO_SetControlMode_inner_sub_48ACB0(v17);
-                    goto LABEL_29;
-                case 'P':
-                    if (v3 != 16)
-                        v31 = v3;
-                    v14 = strtoul(v4 + 2, &str, 10);
-                    v11 = str;
-                    v1 = v14;
-                    v28 = v14;
-                    if (!str)
-                        goto LABEL_37;
-                    if (v14 != 16)
-                    {
-                        v15 = str + 1;
-                        for (i = v4; i != v15; ++i)
-                            *v6++ = *i;
-                    }
-                    break;
-                case 'b':
-                    v9 = strtoul(v4 + 2, &str, 10);
-                    v4 = str;
-                    a2 = v9;
-                    goto LABEL_38;
-                case 'd':
-                    *v6 = 92;
-                    v21 = v4[1];
-                    v22 = v6 + 1;
-                    v23 = v4 + 1;
-                    *v22 = v21;
-                    v24 = v23[1];
-                    ++v22;
-                    v4 = v23 + 1;
-                    *v22 = v24;
-                    v6 = v22 + 1;
-                    goto LABEL_38;
-                case 'o':
-                    v18 = strtoul(v4 + 2, &str, 10);
-                    INO_SetControlSubmode_inner_sub_48A650(v18);
-                LABEL_29:
-                    if (str)
-                    {
-                        v30 = 1;
-                        v4 = str;
-                    }
-                    goto LABEL_38;
-                case 'p':
-                    v10 = strtoul(v4 + 2, &str, 10);
-                    v11 = str;
-                    v1 = v10;
-                    if (!str)
-                        goto LABEL_37;
-                    if (v10 != 16)
-                    {
-                        v12 = str + 1;
-                        for (j = v4; j != v12; ++j)
-                            *v6++ = *j;
-                    }
-                    break;
-                default:
-                    v25 = strchr(v4 + 2, '\\');
-                    v11 = v25;
-                    str = v25;
-                    if (!v25)
-                        goto LABEL_37;
-                    for (k = v4; k != v25 + 1; ++k)
-                        *v6++ = *k;
-                    break;
+                    modeChanged = 1;
+                    src = end;
                 }
-                v4 = v11;
-            LABEL_37:
-                v3 = v28;
-            }
-            else if (v1 == 16)
-            {
-                v7 = STR_GetKeyName(v5, a2);
-                if (v7 && *v7)
+                break;
+            case 'o':
+                INO_SetControlSubmode_inner_sub_48A650(strtoul(src + 2, &end, 10));
+                if (end)
                 {
-                    v8 = v3;
-                    if (v3 == 16)
-                        v8 = v31;
-                    v6 += sprintf(v6, "%s\\P%d\\", v7, v8);
+                    modeChanged = 1;
+                    src = end;
                 }
-                v1 = v3;
-                a2 = 0;
+                break;
+            case 'b':
+                combo = strtoul(src + 2, &end, 10);
+                src = end;
+                break;
+            case 'P':
+                if (page != 16)
+                    restorePage = page;
+                value = strtoul(src + 2, &end, 10);
+                curPage = value;
+                pageSet = value;
+                if (end)
+                {
+                    if (value != 16)
+                        dst = STR_l_CopyUpTo(dst, src, end);
+                    src = end;
+                }
+                page = pageSet;
+                break;
+            case 'p':
+                value = strtoul(src + 2, &end, 10);
+                curPage = value;
+                if (end)
+                {
+                    if (value != 16)
+                        dst = STR_l_CopyUpTo(dst, src, end);
+                    src = end;
+                }
+                page = pageSet;
+                break;
+            default:
+                end = strchr(src + 2, '\\');
+                if (end)
+                {
+                    dst = STR_l_CopyUpTo(dst, src, end);
+                    src = end;
+                }
+                page = pageSet;
+                break;
             }
-            else
+        }
+        else if (curPage == 16)
+        {
+            name = STR_GetKeyName(ch, combo);
+            if (name && *name)
             {
-                *v6++ = v5;
-                v1 = v3;
-                a2 = 0;
+                back = page;
+                if (page == 16)
+                    back = restorePage;
+                dst += sprintf(dst, "%s\\P%d\\", name, back);
             }
-        LABEL_38:
-            v5 = *++v4;
-        } while (v5);
-        v2 = pcINO_ControlsReadFormatBuffer;
+            curPage = page;
+            combo = 0;
+        }
+        else
+        {
+            *dst++ = ch;
+            curPage = page;
+            combo = 0;
+        }
     }
-    *v6 = 0;
-    if (!v30)
-        return v2;
-    INO_SetControlMode_inner_sub_48ACB0(v32);
-    INO_SetControlSubmode_inner_sub_48A650(a1);
+
+    *dst = 0;
+    if (modeChanged)
+    {
+        INO_SetControlMode_inner_sub_48ACB0(savedMode);
+        INO_SetControlSubmode_inner_sub_48A650(savedSubmode);
+    }
     return pcINO_ControlsReadFormatBuffer;
 }
 
-int STR_l_ReadFormat_Int(char* a1)
+int STR_l_ReadFormat_Int(char* str)
 {
-    char* v1;
-    int v2;
-    char v3;
-    int v4;
-    int i;
+    char* p;
+    char ch;
+    int value;
+    int len;
+    int done;
 
-    v1 = a1;
-    v2 = 0;
+    p = str;
+    value = 0;
+    len = 0;
+    done = 0;
     STRDataPtrStart = 0;
-    v3 = *a1;
-    v4 = 0;
-    for (i = 0; v3 != '\\'; ++v4)
+    ch = *str;
+    while (ch != '\\' && ch)
     {
-        if (!v3)
-            break;
-        if (!i)
+        if (!done)
         {
-            if (isdigit(v3))
+            if (isdigit(ch))
             {
-                v2 = *v1 + 10 * v2 - '0';
-                STRDataPtrStart = v2;
+                value = ch + 10 * value - '0';
+                STRDataPtrStart = value;
             }
             else
             {
-                i = 1;
+                done = 1;
             }
         }
-        v3 = *++v1;
+        ch = *++p;
+        ++len;
     }
-    return v4;
+    return len;
 }
 
-int STR_l_ReadFormat_Hexa(char* a1)
+int STR_l_ReadFormat_Hexa(char* str)
 {
-    char* v1;
-    int v2;
-    char v3; 
-    int v4;
-    int i;
-    char v7;
+    char* p;
+    char ch;
+    int value;
+    int len;
+    int done;
 
-    v1 = a1;
-    v2 = 0;
+    p = str;
+    value = 0;
+    len = 0;
+    done = 0;
     STRDataPtrStart = 0;
-    v3 = *a1;
-    v4 = 0;
-    for (i = 0; v3 != '\\'; ++v4)
+    ch = *str;
+    while (ch != '\\' && ch)
     {
-        if (!v3)
-            break;
-        if (!i)
-        {            
-            if (isdigit(v3))
+        if (!done)
+        {
+            if (isdigit(ch))
             {
-                v2 = *v1 + 16 * (v2 + 0xFFFFFFD);
-                STRDataPtrStart = v2;
+                value = 16 * value + ch - '0';
+                STRDataPtrStart = value;
+            }
+            else if (ch >= 'a' && ch <= 'f')
+            {
+                value = 16 * value + ch - 87;
+                STRDataPtrStart = value;
+            }
+            else if (ch >= 'A' && ch <= 'F')
+            {
+                value = 16 * value + ch - 55;
+                STRDataPtrStart = value;
             }
             else
             {
-                v7 = *v1;
-                if (*v1 < 'a' || v7 > 'f')
+                done = 1;
+            }
+        }
+        ch = *++p;
+        ++len;
+    }
+    return len;
+}
+
+int STR_l_ReadFormat_Float(char* str)
+{
+    char* p;
+    char ch;
+    float scale;
+    int len;
+    int done;
+
+    p = str;
+    scale = 0.0;
+    len = 0;
+    done = 0;
+    STRDataPtrStart = 0;
+    ch = *str;
+    while (ch != '\\' && ch)
+    {
+        if (!done)
+        {
+            if (isdigit(ch))
+            {
+                if (scale == 0.0)
                 {
-                    if (v7 < 'A' || v7 > 'F')
-                    {
-                        i = 1;
-                    }
-                    else
-                    {
-                        v2 = 16 * v2 + v7 - 55;
-                        STRDataPtrStart = v2;
-                    }
+                    *(float*)&STRDataPtrStart = (float)((double)(ch - 48) + *(float*)&STRDataPtrStart * 10.0);
                 }
                 else
                 {
-                    v2 = 16 * v2 + v7 - 87;
-                    STRDataPtrStart = v2;
+                    *(float*)&STRDataPtrStart = (float)((double)(ch - 48) * scale + *(float*)&STRDataPtrStart);
+                    scale = scale * 0.1f;
                 }
             }
-        }
-        v3 = *++v1;
-    }
-    return v4;
-}
-
-int STR_l_ReadFormat_Float(char* a1)
-{
-    int v1;
-    char* v2;
-    char v3;
-    int v4;
-    float i;
-
-    v1 = 0;
-    v2 = a1;
-    STRDataPtrStart = 0;
-    v3 = *a1;
-    v4 = 0;
-    for (i = 0.0; v3 != '\\'; ++v4)
-    {
-        if (!v3)
-            break;
-        if (!v1)
-        {            
-            if (isdigit(v3))
+            else if (ch == '.')
             {
-                if (i == 0.0)
-                {
-                    *(float*)&STRDataPtrStart = (float)((double)((char)*v2 - 48) + *(float*)&STRDataPtrStart * 10.0);
-                }
-                else
-                {
-                    *(float*)&STRDataPtrStart = (float)((double)((char)*v2 - 48) * i + *(float*)&STRDataPtrStart);
-                    i = i * 0.1f;
-                }
-            }
-            else if (*v2 == '.')
-            {
-                i = 0.1f;
+                scale = 0.1f;
             }
             else
             {
-                v1 = 1;
+                done = 1;
             }
         }
-        v3 = *++v2;
+        ch = *++p;
+        ++len;
     }
-    return v4;
+    return len;
 }
 
 int STR_l_ReadFormat(char* format)
@@ -1171,58 +1013,67 @@ int STR_i_EffectAdd(void* geoStrOrGao, uint32_t effectType, int stringID, int st
     }
 }
 
-void STR_ParseString(struct sGEOSTRStruct* geostr, int idx, struct sGEOSTRLetter* dest, char* EndPtr, int len, float width, float height, int color, int a9)
+void STR_ParseString(struct sGEOSTRStruct* geostr, int strIdx, struct sGEOSTRLetter* dest, char* src, int len, float width, float height, int color, int firstChar)
 {
-    tGEOSTRLetter* v9;
-    tGEOSTRLetter* v10;
-    tStrGlobalStruct* v11;
-    tGEOSTRStruct* v12;
-    char v13;
-    int v14;
-    int v15;
-    BOOL v16;
-    unsigned int v17;
-    uint8_t v18;
-    unsigned int v19;
-    int v20;
+    tGEOSTRLetter* prev;
+    tGEOSTRLetter* letter;
+    tStrGlobalStruct* global;
+    tGEOSTREffectStructType20* es19;
+    char* currPtr;
+    char ch;
+    uint8_t rawChar;
+    char rawFlag;
+    unsigned int flags;
+    int page;
+    int pageSticky;
+    int effectId;
+    int n;
+    int rest;
     float x;
     float y;
-    tGEOSTRLetter* v23;
-    int v24;
-    char desta; 
-    char* currPtr;
-    tGEOSTREffectStructType20 *es19;
 
-    v9 = 0;
-    v10 = dest;
-    v18 = 0;
-    v19 = 0;
+    prev = 0;
+    letter = dest;
+    rawChar = 0;
+    flags = 0;
     x = 0.0;
     y = 0.0;
-    v20 = 0;
-    v24 = 0;
-    desta = 0;
-    v11 = 0;
-    v23 = 0;
-    v12 = geostr;
-    currPtr = STR_sz_ControlsReadFormat_pcINO(EndPtr);
+    page = 0;
+    pageSticky = 0;
+    rawFlag = 0;
+    global = 0;
+    currPtr = STR_sz_ControlsReadFormat_pcINO(src);
+
     while (1)
     {
-        v13 = *currPtr;
-        if (!*currPtr)
+        ch = *currPtr;
+        if (!ch)
             break;
-        switch (v13)
+
+        if (ch == '\r')
         {
-        case '\\':
+            ++currPtr;
+            continue;
+        }
+        if (ch == '\n')
+        {
+            ++currPtr;
+            if (prev)
+                prev->flagsAndChar |= 0x20000000;
+            continue;
+        }
+
+        if (ch == '\\')
+        {
             currPtr += STR_l_ReadFormat(currPtr);
             switch (STR_sgst_Format)
             {
             case 1:
-                if (v9)
-                    v9->flagsAndChar |= 0x20000000;
+                if (prev)
+                    prev->flagsAndChar |= 0x20000000;
                 break;
             case 2:
-                v19 = (v19 & 0xFF0FFFFF) + (STRDataPtrStart << 20);
+                flags = (flags & 0xFF0FFFFF) + (STRDataPtrStart << 20);
                 break;
             case 3:
                 color = STRDataPtrStart;
@@ -1240,45 +1091,43 @@ void STR_ParseString(struct sGEOSTRStruct* geostr, int idx, struct sGEOSTRLetter
                 height = *(float*)&STRDataPtrStart;
                 break;
             case 8:
-                v20 = STRDataPtrStart;
+                page = STRDataPtrStart;
                 break;
             case 9:
-                v20 = STRDataPtrStart;
-                v24 = STRDataPtrStart;
+                page = STRDataPtrStart;
+                pageSticky = STRDataPtrStart;
                 break;
             case 10:
-                v18 = STRDataPtrStart;
-                desta = 1;
-                goto LABEL_16;
+                rawChar = STRDataPtrStart;
+                rawFlag = 1;
+                break;
             case 11:
-                v19 |= 0x10000000u;
+                flags |= 0x10000000u;
                 break;
             case 12:
-                v11 = STR_sz_GlobalGet(STRDataPtrStart);
+                global = STR_sz_GlobalGet(STRDataPtrStart);
                 break;
             case 13:
-                v14 = STR_i_EffectAdd(v12, 0x80000013, idx, a9 + v10 - dest, 1); // 19-es effect (0x13)
-                if (v14 != -1)
+                effectId = STR_i_EffectAdd(geostr, 0x80000013, strIdx, firstChar + (letter - dest), 1); // 19-es effect (0x13)
+                if (effectId != -1)
                 {
-                    STR_SetCurEffect(v12, v14);
+                    STR_SetCurEffect(geostr, effectId);
                     if (STR_spst_CurEffect)
                     {
                         es19 = (tGEOSTREffectStructType20*)STR_spst_CurEffect;
                         es19->flagsAndChar = 0;
                         es19->unkb1 = 0;
-                        v15 = STRDataPtrStart;
-                        v16 = STRDataPtrStart == 0;
+                        n = STRDataPtrStart;
                         es19->unki1 = 0;
-                        if (!v16)
+                        if (n)
                         {
                             do
                             {
-                                es19->unki1 = (v15 % 10) | (16 * es19->unki1);
-                                v17 = (v15 - v15 % 10) % 10;
-                                v15 = (v15 - v15 % 10) / 10;
-                            } while ((v17 >> 31) + v17);
-                            v9 = v23;
-                            v12 = geostr;
+                                es19->unki1 = (n % 10) | (16 * es19->unki1);
+                                // preserved: (n - n % 10) % 10 is always 0, so only the lowest digit is packed
+                                rest = (n - n % 10) % 10;
+                                n = (n - n % 10) / 10;
+                            } while ((rest >> 31) + rest);
                         }
                         es19->color2 = 0.0;
                         es19->color1 = 0.40000001f;
@@ -1288,353 +1137,294 @@ void STR_ParseString(struct sGEOSTRStruct* geostr, int idx, struct sGEOSTRLetter
             default:
                 break;
             }
-            if (v11)
+
+            if (!rawFlag && !global)
+                continue;
+        }
+
+        if (!len)
+            return;
+
+        while (1)
+        {
+            if (rawFlag)
             {
-            LABEL_16:
-                if (!len)
-                    return;
-                if (desta)
-                {
-                    v10->flagsAndChar = v19 | v18;
-                    goto LABEL_37;
-                }
-                if (!v11)
-                {
-                    v10->flagsAndChar = v19 | STR_sgac_CharTable[(uint8_t)*currPtr];
-                    goto LABEL_37;
-                }
-                while (1)
-                {
-                    v10->flagsAndChar = v19 | STR_sgac_CharTable[v11->str[0]];
-                    v11 = (tStrGlobalStruct*)((char*)v11 + 1);
-                LABEL_37:
-                    v10->flagsAndChar |= v20 << 12;
-                    v10->x = (int)((double)(uint16_t)v12->width * x)
-                           + D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
-                                                  (int)gpst_DX_stDD->ct.cam.height);
-                    v10->y = (int)((double)(uint16_t)v12->height * y);
-                    v10->width = (unsigned int)((double)(uint16_t)v12->width * width);
-                    v10->height = (unsigned int)((double)(uint16_t)v12->height * height);
-                    v10->textColor = color;
-                    if (!v11 || !v11->str[0])
-                        break;
-                    ++v10;
-                    --len;
-                }
-                if (!desta && !v11)
-                    ++currPtr;
-                v9 = v10++;
-                v23 = v9;
-                --len;
-                v19 = 0;
-                v20 = v24;
-                desta = 0;
-                v11 = 0;
+                letter->flagsAndChar = flags | rawChar;
             }
-            break;
-        case '\r':
+            else if (!global)
+            {
+                letter->flagsAndChar = flags | STR_sgac_CharTable[(uint8_t)*currPtr];
+            }
+            else
+            {
+                // preserved: a global's characters index the table as signed chars
+                letter->flagsAndChar = flags | STR_sgac_CharTable[global->str[0]];
+                global = (tStrGlobalStruct*)((char*)global + 1);
+            }
+
+            letter->flagsAndChar |= page << 12;
+            letter->x = (int)((double)(uint16_t)geostr->width * x)
+                      + D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+                                             (int)gpst_DX_stDD->ct.cam.height);
+            letter->y = (int)((double)(uint16_t)geostr->height * y);
+            letter->width = (unsigned int)((double)(uint16_t)geostr->width * width);
+            letter->height = (unsigned int)((double)(uint16_t)geostr->height * height);
+            letter->textColor = color;
+
+            if (!global || !global->str[0])
+                break;
+            ++letter;
+            --len;
+        }
+
+        if (!rawFlag && !global)
             ++currPtr;
+        prev = letter++;
+        --len;
+        flags = 0;
+        page = pageSticky;
+        rawFlag = 0;
+        global = 0;
+    }
+}
+
+void STR_ChangeStringLength(tGEOSTRStruct* str, int strIdx, int lenToSet)
+{
+    tGEOSTRStringData* sd;
+    tGEOSTRStringData* next;
+    tGEOSTRStringData* end;
+    tGEOSTRLetter* newEnd;
+    tGEOSTRLetter* oldNext;
+    int first;
+    int capacity;
+    int moved;
+    int total;
+    uint16_t at;
+    uint16_t left;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+    if (lenToSet == sd->number)
+        return;
+
+    first = sd->index;
+    capacity = str->unkNum;
+    if (lenToSet + first > capacity)
+        lenToSet = capacity - first;
+    if (lenToSet == sd->number)
+        return;
+
+    next = sd + 1;
+    end = &str->stringData[str->stringNum];
+    if (next >= end)
+    {
+        sd->number = lenToSet;
+        sd->number2 = lenToSet;
+        return;
+    }
+
+    newEnd = &str->letters[lenToSet + first];
+    oldNext = &str->letters[next->index];
+    moved = end[-1].number + end[-1].index - next->index;
+    if (lenToSet + moved + first > capacity)
+        moved = capacity - sd->index - lenToSet;
+    if (moved > 0)
+        memcpy(newEnd, oldNext, 16 * moved);
+    if (newEnd > oldNext)
+        memset(oldNext, 0, (char*)newEnd - (char*)oldNext);
+    sd->number = lenToSet;
+    sd->number2 = lenToSet;
+
+    while (1)
+    {
+        at = next[-1].number + next[-1].index;
+        total = at + next->number;
+        next->index = at;
+        if (total > (str->unkNum & 0xffff))
             break;
-        case '\n':
-            ++currPtr;
-            if (v9)
-                v9->flagsAndChar |= 0x20000000;
-            break;
-        default:
-            goto LABEL_16;
-        }
+        if (++next >= end)
+            return;
+    }
+
+    left = (str->unkNum & 0xffff) - at;
+    next->number = left;
+    // preserved: the clamped length goes into the edited string's number2, not next's
+    sd->number2 = left;
+    for (++next; next < end; ++next)
+    {
+        next->index = str->unkNum;
+        next->number = 0;
+        next->number2 = 0;
     }
 }
 
-void STR_ChangeStringLength(tGEOSTRStruct* a1, int idx, int lenToSet)
+void STR_RecomputePos(tGEOSTRStruct* str, tGEOSTRStringData* sd, int firstChar, int charNum)
 {
-    tGEOSTRStringData* v3;
-    int v4;
-    int v5;
-    int v6;
-    int v7;
-    tGEOSTRStringData* v8;
-    tGEOSTRStringData* v9;
-    tGEOSTRLetter* v10;
-    tGEOSTRLetter* v11;
-    tGEOSTRLetter* v12;
-    int v13;
-    tGEOSTRStringData* v14;
-    uint16_t v15;
-    int v16;
-    uint16_t v17;
-    tGEOSTRStringData* v18;
-    tGEOSTRStringData* v19;
-    int v20;
-    int v21;
+    tGEOSTRLetter* letters;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    tGEOSTRLetter* lead;
+    unsigned int pageVal;
+    int16_t pageId;
+    int16_t lineX;
+    int16_t penX;
+    int16_t topY;
+    int16_t leadX;
+    int bottom;
+    int lineY;
+    int h;
+    int leadH;
+    int first;
+    int skipped;
 
-    v3 = STR_pst_GetString(a1, idx);
-    v19 = v3;
-    if (v3)
+    letters = str->letters;
+    first = sd->index;
+    letter = &letters[first + firstChar];
+    if (charNum > 0)
+        end = &letter[charNum];
+    else
+        end = &letters[first + sd->number];
+
+    skipped = 0;
+    if (!firstChar && (letter->flagsAndChar & 0x10000000) != 0 && &letter[1] < end)
     {
-        v4 = lenToSet;
-        v5 = v3->number;
-        if (lenToSet != v5)
+        skipped = 1;
+        ++letter;
+    }
+
+    bottom = (uint16_t)letter->y;
+    lineX = letter->x;
+    topY = bottom;
+    lineY = (uint16_t)bottom;
+    penX = lineX;
+
+    if ((sd->flags & 0x10) != 0)
+    {
+        for (; letter < end; ++letter)
         {
-            v6 = v3->index;
-            v7 = a1->unkNum;
-            v20 = v6;
-            v21 = v7;
-            if (lenToSet + v6 > v7)
+            pageVal = (letter->flagsAndChar >> 12) & 0x3F;
+            if ((int16_t)pageVal != str->fontMaterialID)
             {
-                lenToSet = v7 - v6;
-                v4 = v7 - v6;
+                str->fontMaterialID = pageVal;
+                str->fontDesc = STR_l_FontDescForPage(pageVal);
             }
-            if (v4 != v5)
+            if (str->fontDesc)
             {
-                v8 = v3 + 1;
-                v9 = &a1->stringData[a1->stringNum];
-                if (&v3[1] >= v9)
+                letter->x = penX;
+                penX += letter->width;
+                h = letter->height;
+                letter->y = lineY;
+                if ((int16_t)lineY + (int16_t)h > (int16_t)bottom)
+                    bottom = h + lineY;
+                if ((letter->flagsAndChar & 0x20000000) != 0)
                 {
-                    v3->number = v4;
-                    v3->number2 = v4;
-                }
-                else
-                {
-                    v10 = a1->letters;
-                    v11 = &v10[v4 + v6];
-                    v12 = &v10[v8->index];
-                    v13 = v9[-1].number + v9[-1].index - v8->index;
-                    v14 = v19;
-                    if (v4 + v13 + v20 > v21)
-                        v13 = v21 - v19->index - lenToSet;
-                    if (v13 > 0)
-                    {
-                        memcpy(v11, v12, 16 * v13);
-                        v14 = v19;
-                    }
-                    if (v11 > v12)
-                        memset(v12, 0, (char*)v11 - (char*)v12);
-                    v14->number = lenToSet;
-                    v14->number2 = lenToSet;
-                    while (1)
-                    {
-                        v15 = v8[-1].number + v8[-1].index;
-                        v16 = v15 + v8->number;
-                        v8->index = v15;
-                        if (v16 > (a1->unkNum & 0xffff))
-                            break;
-                        if (++v8 >= v9)
-                            return;
-                    }
-                    v17 = (a1->unkNum & 0xffff) - v15;
-                    v8->number = v17;
-                    v18 = v8 + 1;
-                    for (v14->number2 = v17; v18 < v9; ++v18)
-                    {
-                        v18->index = a1->unkNum;
-                        v18->number = 0;
-                        v18->number2 = 0;
-                    }
+                    pageId = str->fontMaterialID;
+                    penX = lineX;
+                    lineY = bottom;
+                    if (pageId >= 0 && pageId < 24)
+                        lineY = bottom + str->shorts[pageId];
                 }
             }
         }
     }
-}
-
-void STR_RecomputePos(tGEOSTRStruct* a1, tGEOSTRStringData* a2, int a3, int a4)
-{
-    tGEOSTRLetter* v4;
-    int v5;
-    tGEOSTRLetter* v6;
-    tGEOSTRLetter* v7;
-    tGEOSTRLetter* v8;
-    int v9;
-    int16_t v10;
-    int v11;
-    unsigned int v12;
-    int v13;
-    int16_t v14;
-    int v15;
-    tGEOSTRLetter* v16;
-    int v17;
-    int16_t v18;
-    int v19;
-    tGEOSTRLetter* v20;
-    tGEOSTRLetter* v21;
-    int v22;
-    int16_t v23;
-    int16_t a4a;
-
-    v4 = a1->letters;
-    v5 = a2->index;
-    v6 = &v4[v5 + a3];
-    if (a4 > 0)
-        v7 = &v6[a4];
-    else
-        v7 = &v4[v5 + a2->number];
-    v21 = v7;
-    if (a3 || (v6->flagsAndChar & 0x10000000) == 0)
-    {
-        v8 = v7;
-    }
     else
     {
-        v8 = v7;
-        if (&v6[1] < v7)
+        for (; letter < end; ++letter)
         {
-            v22 = 1;
-            ++v6;
-            goto LABEL_10;
-        }
-    }
-    v22 = 0;
-LABEL_10:
-    v9 = (uint16_t)v6->y;
-    v10 = v6->x;
-    v23 = v9;
-    v11 = (uint16_t)v9;
-    a4a = v10;
-    if ((a2->flags & 0x10) != 0)
-    {
-        if (v6 < v8)
-        {
-            do
+            letter->x = penX;
+            penX += letter->width;
+            h = letter->height;
+            letter->y = lineY;
+            if ((int16_t)lineY + (int16_t)h > (int16_t)bottom)
+                bottom = h + lineY;
+            if ((letter->flagsAndChar & 0x20000000) != 0)
             {
-                v12 = (v6->flagsAndChar >> 12) & 0x3F;
-                if ((int16_t)v12 != a1->fontMaterialID)
-                {
-                    a1->fontMaterialID = v12;
-                    a1->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (int16_t)v12);
-                }
-                if (a1->fontDesc)
-                {
-                    v6->x = a4a;
-                    a4a += v6->width;
-                    v13 = v6->height;
-                    v6->y = v11;
-                    if ((int16_t)v11 + (int16_t)v13 > (int16_t)v9)
-                        v9 = v13 + v11;
-                    if ((v6->flagsAndChar & 0x20000000) != 0)
-                    {
-                        v14 = a1->fontMaterialID;
-                        a4a = v10;
-                        v11 = v9;
-                        if (v14 >= 0 && v14 < 24)
-                            v11 = v9 + a1->shorts[v14];
-                    }
-                }
-                ++v6;
-            } while (v6 < v21);
-        }
-    }
-    else if (v6 < v8)
-    {
-        do
-        {
-            v6->x = a4a;
-            a4a += v6->width;
-            v15 = v6->height;
-            v6->y = v11;
-            if ((int16_t)v11 + (int16_t)v15 > (int16_t)v9)
-                v9 = v15 + v11;
-            if ((v6->flagsAndChar & 0x20000000) != 0)
-            {
-                a4a = v10;
-                v11 = v9;
+                penX = lineX;
+                lineY = bottom;
             }
-            ++v6;
-        } while (v6 < v7);
+        }
     }
-    if (v22)
+
+    if (skipped)
     {
-        v16 = a1->letters;
-        v17 = a3 + a2->index;
-        v18 = v10 - v16[v17].width;
-        v19 = (int16_t)v16[v17].height;
-        v20 = &v16[v17];
-        v20->y = v23;
-        v20->x = v18 - 4;
-        if (v23 + v19 > (int16_t)v9)
-            v20->y = v23 - ((v19 + v23 - (int16_t)v9) >> 1);
+        lead = &str->letters[firstChar + sd->index];
+        leadX = lineX - lead->width;
+        leadH = (int16_t)lead->height;
+        lead->y = topY;
+        lead->x = leadX - 4;
+        if (topY + leadH > (int16_t)bottom)
+            lead->y = topY - ((leadH + topY - (int16_t)bottom) >> 1);
     }
 }
 
-unsigned int STR_i_GlobalLength(int a1)
+unsigned int STR_i_GlobalLength(int globalIdx)
 {
-    unsigned int result;
-
-    if ((uint8_t)a1 < 24u)
-        result = strlen(STR_sgaac_Global[a1].str);
-    else
-        result = 0;
-    return result;
+    if ((uint8_t)globalIdx < 24u)
+        return strlen(STR_sgaac_Global[globalIdx].str);
+    return 0;
 }
 
 int STR_l_GetStringLength(char* string)
 {
-    int v1;
-    char* v2;
-    char i;
+    char* p;
+    char ch;
+    int len;
 
-    v1 = 0;
-    v2 = STR_sz_ControlsReadFormat_pcINO(string);
-    for (i = *v2; *v2; i = *v2)
+    len = 0;
+    p = STR_sz_ControlsReadFormat_pcINO(string);
+    while (*p)
     {
-        if (i == '\\')
+        ch = *p;
+        if (ch == '\\')
         {
-            v2 += STR_l_ReadFormat(v2);
+            p += STR_l_ReadFormat(p);
             if (STR_sgst_Format == 10)
             {
-                ++v1;
+                ++len;
             }
             else if (STR_sgst_Format == 12)
             {
-                v1 += STR_i_GlobalLength(STRDataPtrStart);
+                len += STR_i_GlobalLength(STRDataPtrStart);
             }
         }
-        else if (i == '\n' || i == '\r')
+        else if (ch == '\n' || ch == '\r')
         {
-            ++v2;
+            ++p;
         }
         else
         {
-            ++v2;
-            ++v1;
+            ++p;
+            ++len;
         }
     }
-    return v1;
+    return len;
 }
 
-void STR_EffectDelAllForAString(tGEOSTRStruct* a1, int a2)
+void STR_EffectDelAllForAString(tGEOSTRStruct* str, int strIdx)
 {
-    int v2;
-    tGEOSTREffectStruct* v3;
-    uint8_t v4;
+    uint8_t last;
+    int i;
 
-    v2 = 0;
-    if (a1->effectsNum)
+    i = 0;
+    while (i < str->effectsNum)
     {
-        v3 = a1->effect;
-        do
+        if (str->effect[i].stringid == strIdx)
         {
-            if (v3->stringid == a2)
-            {
-                v4 = a1->effectsNum - 1;
-                a1->effectsNum = v4;
-                if (v2 < v4)
-                    memcpy(v3, &a1->effect[v4], sizeof(tGEOSTREffectStruct));
-            }
-            else
-            {
-                ++v2;
-                ++v3;
-            }
-        } while (v2 < a1->effectsNum);
-        STR_spst_CurEffect = 0;
+            last = str->effectsNum - 1;
+            str->effectsNum = last;
+            if (i < last)
+                memcpy(&str->effect[i], &str->effect[last], sizeof(tGEOSTREffectStruct));
+        }
+        else
+        {
+            ++i;
+        }
     }
-    else
-    {
-        STR_spst_CurEffect = 0;
-    }
+    STR_spst_CurEffect = 0;
 }
 
-void STR_SetString(struct sGameObjectMain* gao, int idx, char* stringToSet)
+void STR_SetString(struct sGameObjectMain* gao, int strIdx, char* stringToSet)
 {
     tGEOSTRStruct* str;
     tGEOSTRStringData* sd;
@@ -1647,17 +1437,15 @@ void STR_SetString(struct sGameObjectMain* gao, int idx, char* stringToSet)
     if (!str)
         return;
 
-    ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROMAT;
-    str->fontMaterialID = -1;
-    str->fontDesc = NULL;    
-    sd = STR_pst_GetString(str, idx);
+    STR_l_UseGaoMaterial(str, gao);
+    sd = STR_pst_GetString(str, strIdx);
 
     if (!sd)
         return;
 
-    STR_EffectDelAllForAString(str, idx);
-    STR_ChangeStringLength(str, idx, STR_l_GetStringLength(stringToSet));
-    STR_ParseString(str, idx, &str->letters[sd->index], stringToSet, sd->number, 0.050000001f, 0.050000001f, -1, 0);
+    STR_EffectDelAllForAString(str, strIdx);
+    STR_ChangeStringLength(str, strIdx, STR_l_GetStringLength(stringToSet));
+    STR_ParseString(str, strIdx, &str->letters[sd->index], stringToSet, sd->number, 0.050000001f, 0.050000001f, -1, 0);
     
     if ((sd->flags & 0x200) == 0)
         STR_RecomputePos(str, sd, 0, -1);
@@ -1666,1550 +1454,1253 @@ void STR_SetString(struct sGameObjectMain* gao, int idx, char* stringToSet)
     sd->number2 = sd->number;
 }
 
-void STR_SetSize(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5)
+void STR_SetSize(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* size)
 {
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-    tGEOSTRLetter* v7;
-    tGEOSTRLetter* v8;
-    unsigned int v9;
-    tFontData* v10;
-    unsigned int v11;
-    unsigned int v12;
-    int v13;
-    unsigned int v14;
-    tFontData* v15;
-    unsigned int v16;
-    unsigned int v17;
-    int v18;
-    tGEOSTRLetter* v19;
-    tGEOSTRStringData* a2; 
-    int a3a;
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    tFontData* font;
+    unsigned int pageVal;
+    unsigned int h;
+    int glyph;
+    int first;
 
-    v5 = STR_pst_Get(a1);
-    if (v5)
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    STR_l_UseGaoMaterial(str, gao);
+    first = STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+
+    if (size->x < 0.0 || size->y <= 0.0)
     {
-        v6 = STR_pst_GetString(v5, idx);
-        a2 = v6;
-        if (v6)
+        for (; letter < end; ++letter)
         {
-            ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-            v5->fontMaterialID = -1;
-            v5->fontDesc = 0;
-            a3a = STR_l_GetValidIndex(v5, v6, a3);
-            v7 = &v5->letters[a3a + v6->index];
-            v8 = &v7[STR_l_GetValidNumber(v5, v6, a3a, a4)];
-            v19 = v8;
-            if (a5->x < 0.0 || a5->y <= 0.0)
+            pageVal = (letter->flagsAndChar >> 12) & 0x3F;
+            if ((int16_t)pageVal != str->fontMaterialID)
             {
-                for (; v7 < v8; ++v7)
-                {
-                    v9 = (v7->flagsAndChar >> 12) & 0x3F;
-                    if ((int16_t)v9 != v5->fontMaterialID)
-                    {
-                        v5->fontMaterialID = v9;
-                        v5->fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), (int16_t)v9);
-                    }
-                    v10 = v5->fontDesc;
-                    if (v10 && a5->x < 0.0)
-                    {
-                        v11 = (uint8_t)v7->flagsAndChar;
-                        if (v11 < 32)
-                            v12 = 0;
-                        else
-                            v12 = v11 - 32;
-                        v13 = v12;
-                        // across, scale by the width the text was laid
-                        // out across rather than the whole window, so
-                        // the glyphs keep their shape
-                        v7->width = (unsigned int)(fabs(v10->fge[v13].y - v10->fge[v13].x)
-                            * (double)(uint16_t)v10->width
-                            * D3D_FlatLayerWidth((int)gpst_DX_stDD->ct.cam.width,
-                                                 (int)gpst_DX_stDD->ct.cam.height)
-                            * 0.0015625);
-                        v14 = (unsigned int)(fabs(v10->fge[v13].h - v10->fge[v13].w)
-                            * (double)(uint16_t)v5->fontDesc->height
-                            * gpst_DX_stDD->ct.cam.height
-                            * 0.0020833334);
-                        v8 = v19;
-                    }
-                    else
-                    {
-                        v14 = (unsigned int)((double)(uint16_t)v5->width * a5->x);
-                        v7->width = v14;
-                        v15 = v5->fontDesc;
-                        if (v15)
-                        {
-                            v16 = (uint8_t)v7->flagsAndChar;
-                            if (v16 < 0x20)
-                                v17 = 0;
-                            else
-                                v17 = v16 - 32;
-                            v18 = v17;
-                            v14 = (unsigned int)(fabs(v15->fge[v18].h - v15->fge[v18].w)
-                                / fabs(v15->fge[v18].y - v15->fge[v18].x)
-                                * a5->x
-                                * (double)(uint16_t)v5->height);
-                        }
-                    }
-                    v7->height = v14;
-                }
+                str->fontMaterialID = pageVal;
+                str->fontDesc = STR_l_FontDescForPage(pageVal);
+            }
+            font = str->fontDesc;
+            if (font && size->x < 0.0)
+            {
+                glyph = STR_l_GlyphIndex(letter->flagsAndChar);
+                // across, scale by the width the text was laid
+                // out across rather than the whole window, so
+                // the glyphs keep their shape
+                letter->width = (unsigned int)(fabs(font->fge[glyph].y - font->fge[glyph].x)
+                    * (double)(uint16_t)font->width
+                    * D3D_FlatLayerWidth((int)gpst_DX_stDD->ct.cam.width,
+                                         (int)gpst_DX_stDD->ct.cam.height)
+                    * 0.0015625);
+                h = (unsigned int)(fabs(font->fge[glyph].h - font->fge[glyph].w)
+                    * (double)(uint16_t)str->fontDesc->height
+                    * gpst_DX_stDD->ct.cam.height
+                    * 0.0020833334);
             }
             else
             {
-                for (; v7 < v8; ++v7)
+                h = (unsigned int)((double)(uint16_t)str->width * size->x);
+                letter->width = h;
+                if (font)
                 {
-                    v7->width = (unsigned int)((double)(uint16_t)v5->width * a5->x);
-                    v7->height = (unsigned int)((double)(uint16_t)v5->height * a5->y);
+                    glyph = STR_l_GlyphIndex(letter->flagsAndChar);
+                    h = (unsigned int)(fabs(font->fge[glyph].h - font->fge[glyph].w)
+                        / fabs(font->fge[glyph].y - font->fge[glyph].x)
+                        * size->x
+                        * (double)(uint16_t)str->height);
                 }
             }
-            if ((a2->flags & 0x200) == 0)
-                STR_RecomputePos(v5, a2, a3a, -1);
+            letter->height = h;
         }
     }
+    else
+    {
+        for (; letter < end; ++letter)
+        {
+            letter->width = (unsigned int)((double)(uint16_t)str->width * size->x);
+            letter->height = (unsigned int)((double)(uint16_t)str->height * size->y);
+        }
+    }
+
+    if ((sd->flags & 0x200) == 0)
+        STR_RecomputePos(str, sd, first, -1);
 }
 
-Vec3* STR_pst_GetSize(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5)
+Vec3* STR_pst_GetSize(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* size)
 {
-    tGEOSTRStruct* v6;
-    double v7;
+    tGEOSTRStruct* str;
+    double dx;
+    float dy;
     Vec3 max;
     Vec3 min;
-    float a5a;
 
-    if (a5)
+    if (!size)
+        return 0;
+
+    str = STR_pst_Get(gao);
+    if (str)
     {
-        v6 = STR_pst_Get(a1);
-        if (v6)
+        STR_l_UseGaoMaterial(str, gao);
+        STR_GetRectShort(str, strIdx, firstChar, charNum, &min, &max);
+        dx = max.x - min.x;
+        size->x = (float)dx;
+        dy = max.y - min.y;
+        size->y = dy;
+        size->z = max.z - min.z;
+        if (dx < 0.0)
+            size->x = (float)(dx * -1.0);
+        if (dy < 0.0)
+            size->y = (float)(dy * -1.0);
+        size->x = (float)(size->x / (double)(uint16_t)str->width);
+        size->y = (float)(size->y / (double)(uint16_t)str->height);
+    }
+    return size;
+}
+
+void STR_Align(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, int align)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    tGEOSTRLetter* lineStart;
+    int16_t minX;
+    int16_t minY;
+    int16_t maxX;
+    int16_t maxY;
+    int16_t x;
+    int16_t y;
+    int16_t dy;
+    int dx;
+    int first;
+    int num;
+    Vec3 size;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    first = STR_l_GetValidIndex(str, sd, firstChar);
+    num = STR_l_GetValidNumber(str, sd, first, charNum);
+    if (!align)
+    {
+        STR_pst_GetSize(gao, strIdx, first, num, &size);
+        size.x = (float)((double)(uint16_t)str->width * size.x);
+    }
+
+    letter = &str->letters[first + sd->index];
+    end = &letter[num];
+    if ((letter->flagsAndChar & 0x10000000) != 0)
+        ++letter;
+    lineStart = letter;
+
+    while (letter < end)
+    {
+        maxY = -10000;
+        minY = 10000;
+        minX = 10000;
+        maxX = -10000;
+
+        while (letter < end)
         {
-            ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-            v6->fontMaterialID = -1;
-            v6->fontDesc = 0;
-            STR_GetRectShort(v6, idx, a3, a4, &min, &max);
-            v7 = max.x - min.x;
-            a5->x = (float)v7;
-            a5a = max.y - min.y;
-            a5->y = a5a;
-            a5->z = max.z - min.z;
-            if (v7 < 0.0)
-                a5->x = (float)(v7 * -1.0);
-            if (a5a < 0.0)
-                a5->y = (float)(a5a * -1.0);
-            a5->x = (float)(a5->x / (double)(uint16_t)v6->width);
-            a5->y = (float)(a5->y / (double)(uint16_t)v6->height);
+            x = letter->x;
+            if (x < minX)
+                minX = x;
+            y = letter->y;
+            if (y < minY)
+                minY = y;
+            if ((int16_t)(x + letter->width) > maxX)
+                maxX = x + letter->width;
+            if ((int16_t)(y + letter->height) > maxY)
+                maxY = y + letter->height;
+            ++letter;
+            if ((letter[-1].flagsAndChar & 0x20000000) != 0)
+                break;
         }
-    }
-    return a5;
-}
 
-void STR_Align(struct sGameObjectMain* a1, int a2, int a3, int a4, int a5)
-{
-    tGEOSTRStruct* v5;
-    tGEOSTRStruct* v6;
-    tGEOSTRStringData* v7;
-    tGEOSTRStringData* v8;
-    int v9;
-    int v10;
-    int v11;
-    tGEOSTRLetter* v12;
-    int v13;
-    tGEOSTRLetter* v14;
-    tGEOSTRLetter* v15;
-    tGEOSTRLetter* v16;
-    int16_t v17;
-    int16_t v18;
-    int16_t v19;
-    int16_t v20;
-    int16_t v21;
-    int16_t i;
-    int j;
-    int16_t v24;
-    int16_t v25;
-    tGEOSTRLetter* v26;
-    Vec3 v27;
-
-    v5 = STR_pst_Get(a1);
-    v6 = v5;
-    if (v5)
-    {
-        v7 = STR_pst_GetString(v5, a2);
-        v8 = v7;
-        if (v7)
+        if (align)
         {
-            v9 = STR_l_GetValidIndex(v6, v7, a3);
-            v10 = STR_l_GetValidNumber(v6, v8, v9, a4);
-            if (!a5)
+            if (align == 1)
             {
-                STR_pst_GetSize(a1, a2, v9, v10, &v27);
-                v27.x = (float)((double)(uint16_t)v6->width * v27.x);
+                dy = maxY - minY;
+                for (; lineStart < letter; ++lineStart)
+                    lineStart->y += (dy - (int16_t)lineStart->height) / 2;
             }
-            v11 = v9 + v8->index;
-            v12 = v6->letters;
-            v13 = v12[v11].flagsAndChar;
-            v14 = &v12[v11];
-            v15 = &v14[v10];
-            v26 = v15;
-            if ((v13 & 0x10000000) != 0)
-                ++v14;
-            v16 = v14;
-            if (v14 < v15)
+            else if (align == 2)
             {
-                do
-                {
-                    v17 = -10000;
-                    v24 = 10000;
-                    v25 = 10000;
-                    v18 = -10000;
-                    if (v14 < v15)
-                    {
-                        while (1)
-                        {
-                            v19 = v14->x;
-                            if (v19 < v25)
-                                v25 = v14->x;
-                            v20 = v14->y;
-                            if (v20 < v24)
-                                v24 = v14->y;
-                            if ((int16_t)(v19 + v14->width) > v18)
-                                v18 = v19 + v14->width;
-                            if ((int16_t)(v20 + v14->height) > v17)
-                                v17 = v20 + v14->height;
-                            if ((v14->flagsAndChar & 0x20000000) != 0)
-                                break;
-                            if (++v14 >= v26)
-                                goto LABEL_22;
-                        }
-                        if (v14 < v26)
-                            ++v14;
-                    }
-                LABEL_22:
-                    if (a5)
-                    {
-                        if (a5 == 1)
-                        {
-                            for (i = v17 - v24; v16 < v14; ++v16)
-                                v16->y += (i - (int16_t)v16->height) / 2;
-                        }
-                        else if (a5 == 2 && v16 < v14)
-                        {
-                            do
-                            {
-                                v21 = v17 - v16->height;
-                                ++v16;
-                                v16[-1].y = v21;
-                            } while (v16 < v14);
-                        }
-                    }
-                    else
-                    {
-                        for (j = (v25 + (int16_t)(unsigned int)v27.x - v18) / 2; v16 < v14; ++v16)
-                            v16->x += j;
-                    }
-                    v15 = v26;
-                } while (v14 < v26);
-            }
-        }
-    }
-}
-
-void STR_SetStringExt(struct sGameObjectMain* a1, int a2, int a3, char* EndPtr, Vec3* a5)
-{
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-    int v7;
-    uint16_t v8;
-    Vec3 a5a;
-
-    if (EndPtr)
-    {
-        v5 = STR_pst_Get(a1);
-        if (v5)
-        {
-            ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-            v5->fontMaterialID = -1;
-            v5->fontDesc = 0;
-            v6 = STR_pst_GetString(v5, a2);
-            if (v6)
-            {
-                if ((a3 & 0x10000) != 0)
-                {
-                    v7 = STR_l_GetStringLength(EndPtr);
-                    STR_ChangeStringLength(v5, a2, v7);
-                    STR_ParseString(v5, a2, &v5->letters[v6->index], EndPtr, v6->number, 0.050000001f, 0.050000001f, -1, 0);
-                    v8 = v6->number;
-                    v6->index2 = 0;
-                    v6->number2 = v8;
-                }
-                if ((a3 & 0x100000) != 0)
-                    v6->flags = a3;
-                if ((a3 & 0x40000) != 0)
-                    v6->pivotPoint = *a5;
-                if ((a3 & 0x20000) != 0)
-                {
-                    a5a.x = -1.0;
-                    a5a.y = 0.0;
-                    a5a.z = 0.0;
-                    STR_SetSize(a1, a2, 0, -1, &a5a);
-                }
-                if ((a3 & 0x80000) != 0)
-                    STR_Align(a1, a2, 0, -1, ((int)(a3 >> 16) >> 8) & 0xF);
-            }
-        }
-    }
-}
-
-void STR_InsertString(struct sGameObjectMain* a1, int idx, int a3, char* EndPtr)
-{
-    tGEOSTRStruct* v4;
-    tGEOSTRStringData* v5;
-    int v6;
-    int v7;
-    tGEOSTRLetter* v8;
-    int v9;
-    int a5;
-    int a8;
-    int a8a;
-
-    if (EndPtr)
-    {
-        v4 = STR_pst_Get(a1);
-        if (v4)
-        {
-            ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-            v4->fontMaterialID = -1;
-            v4->fontDesc = 0;
-            v5 = STR_pst_GetString(v4, idx);
-            if (v5)
-            {
-                v6 = STR_l_GetStringLength(EndPtr);
-                a5 = v6;
-                if (v6)
-                {
-                    v7 = STR_l_GetValidIndex(v4, v5, a3);
-                    a8 = v5->number;
-                    STR_ChangeStringLength(v4, idx, v6 + a8);
-                    v8 = &v4->letters[v7 + v5->index];
-                    if (v7 == a8 || (v9 = v5->number, v9 <= a5))
-                    {
-                        if (v7)
-                            STR_ParseString(v4, idx, v8, EndPtr, a5, 0.0, 0.0, v8[-1].textColor, v7);
-                        else
-                            STR_ParseString(v4, idx, v8, EndPtr, a5, 0.050000001f, 0.050000001f, -1, 0);
-                    }
-                    else
-                    {
-                        a8a = v8->textColor;
-                        memcpy(&v8[a5], v8, 16 * (v9 - a5 - v7));
-                        STR_ParseString(v4, idx, v8, EndPtr, a5, 0.0, 0.0, a8a, v7);
-                    }
-                    if ((v5->flags & 0x200) == 0)
-                        STR_RecomputePos(v4, v5, 0, -1);
-                }
-            }
-        }
-    }
-}
-
-void STR_SetFloat(struct sGameObjectMain* a1, int idx, float a3, char a4)
-{
-    char Format[8];
-    char Buffer[32];
-
-    strcpy(Format, "%.0f");
-    Format[2] = a4 + '0';
-    sprintf(Buffer, Format, a3);
-    STR_SetString(a1, idx, Buffer);
-}
-
-void STR_InsertFloat(tGameObjectMain* a1, int idx, int a3, float a4, char precision)
-{
-    char Format[8];
-    char Buffer[32];
-
-    strcpy(Format, "%.0f");
-    Format[2] = precision + '0';
-    sprintf(Buffer, Format, a4);
-    STR_InsertString(a1, idx, a3, Buffer);
-}
-
-void STR_SetPivot(struct sGEOSTRStruct* a1, int idx, Vec3* a3)
-{
-    tGEOSTRStringData* v3;
-
-    v3 = STR_pst_GetString(a1, idx);
-    if (v3)
-        v3->pivotPoint = *a3;
-}
-
-Vec3* STR_pst_GetPivot(struct sGEOSTRStruct* a1, int idx)
-{
-    Vec3* result = NULL;
-    tGEOSTRStringData* i2;
-
-    i2 = STR_pst_GetString(a1, idx);
-    if (i2)
-        result = &(i2->pivotPoint);
-    return result;
-}
-
-void STR_SetFlag(struct sGEOSTRStruct* a1, int idx, int16_t a3)
-{
-    tGEOSTRStringData* v3;
-
-    v3 = STR_pst_GetString(a1, idx);
-    if (v3)
-        v3->flags = a3;
-}
-
-int STR_ul_GetFlag(struct sGEOSTRStruct* a1, int idx)
-{
-    tGEOSTRStringData* it;
-    int16_t ret = 0;
-
-    it = STR_pst_GetString(a1, idx);
-    if (it)
-        ret = it->flags;
-    return ret;
-}
-
-void STR_SetColor(struct sGEOSTRStruct* a1, int idx, int a3, int a4, int a5)
-{
-    tGEOSTRStringData* v5;
-    tGEOSTRStringData* v6;
-    int v7;
-    tGEOSTRLetter* v8;
-    tGEOSTRLetter* i;
-
-    v5 = STR_pst_GetString(a1, idx);
-    v6 = v5;
-    if (v5)
-    {
-        v7 = STR_l_GetValidIndex(a1, v5, a3);
-        v8 = &a1->letters[v7 + v6->index];
-        for (i = &v8[STR_l_GetValidNumber(a1, v6, v7, a4)]; v8 < i; ++v8)
-            v8->textColor = a5;
-    }
-}
-
-void STR_SetAlpha(struct sGEOSTRStruct* a1, int idx, int a3, int a4, int a5)
-{
-    tGEOSTRStringData* v5;
-    tGEOSTRStringData* v6;
-    int v7;
-    tGEOSTRLetter* v8;
-    tGEOSTRLetter* i;
-
-    v5 = STR_pst_GetString(a1, idx);
-    v6 = v5;
-    if (v5)
-    {
-        v7 = STR_l_GetValidIndex(a1, v5, a3);
-        v8 = &a1->letters[v7 + v6->index];
-        for (i = &v8[STR_l_GetValidNumber(a1, v6, v7, a4)]; v8 < i; ++v8)
-        {
-            v8->textColor &= ~0xff000000;
-            v8->textColor |= a5 << 24;
-        }
-    }
-}
-
-void STR_SetColorExt(struct sGEOSTRStruct* a1, int idx, int a3, int a4, int a5, int a6)
-{
-    tGEOSTRStringData* v6;
-    tGEOSTRStringData* v7;
-    int v8;
-    tGEOSTRLetter* v9;
-    int v10;
-    tGEOSTRLetter* i;
-    int a6a;
-
-    v6 = STR_pst_GetString(a1, idx);
-    v7 = v6;
-    if (v6)
-    {
-        v8 = STR_l_GetValidIndex(a1, v6, a3);
-        v9 = &a1->letters[v8 + v7->index];
-        v10 = a6 & a5;
-        a6a = ~a6;
-        for (i = &v9[STR_l_GetValidNumber(a1, v7, v8, a4)]; v9 < i; ++v9)
-            v9->textColor = v10 | v9->textColor & a6a;
-    }
-}
-
-unsigned int STR_GetColor(struct sGEOSTRStruct* a1, int idx, int a3)
-{
-    tGEOSTRStringData* result;
-    unsigned int ret = 0;
-
-    result = STR_pst_GetString(a1, idx);
-    if (result)
-        ret = a1->letters[result->index + STR_l_GetValidIndex(a1, result, a3)].textColor;
-    return ret;
-}
-
-void STR_ChangePage(struct sGEOSTRStruct* a1, int a2, int a3, int a4, int a5, int a6)
-{
-    tGEOSTRStringData* v6;
-    tGEOSTRStringData* v7;
-    int v8;
-    tGEOSTRLetter* v9;
-    tGEOSTRLetter* v10;
-    int v11;
-
-    v6 = STR_pst_GetString(a1, a2);
-    v7 = v6;
-    if (v6)
-    {
-        v8 = STR_l_GetValidIndex(a1, v6, a3);
-        v9 = &a1->letters[v8 + v7->index];
-        v10 = &v9[STR_l_GetValidNumber(a1, v7, v8, a4)];
-        v11 = a5 << 12;
-        if (a6 >= 0)
-        {
-            if (a6 >= 256)
-            {
-                if (a6 < 512 && v9 < v10)
-                {
-                    do
-                    {
-                        if ((v9->flagsAndChar & 0x3F000) != a6 - 256)
-                            v9->flagsAndChar = v11 | v9->flagsAndChar & 0xFFFC0FFF;
-                        ++v9;
-                    } while (v9 < v10);
-                }
-            }
-            else
-            {
-                for (; v9 < v10; ++v9)
-                {
-                    if ((v9->flagsAndChar & 0x3F000) == a6)
-                        v9->flagsAndChar = v11 | v9->flagsAndChar & 0xFFFC0FFF;
-                }
+                for (; lineStart < letter; ++lineStart)
+                    lineStart->y = maxY - lineStart->height;
             }
         }
         else
         {
-            for (; v9 < v10; ++v9)
-                v9->flagsAndChar = v11 | v9->flagsAndChar & 0xFFFC0FFF;
+            dx = (minX + (int16_t)(unsigned int)size.x - maxX) / 2;
+            for (; lineStart < letter; ++lineStart)
+                lineStart->x += dx;
         }
     }
 }
 
-void STR_SetPos(struct sGameObjectMain* a1, int a2, int a3, int a4, Vec3* a5)
+void STR_SetStringExt(struct sGameObjectMain* gao, int strIdx, int flags, char* src, Vec3* pivot)
 {
-    tGEOSTRStruct* v5;
-    tGEOSTRStruct* v6;
-    tGEOSTRStringData* v7;
-    tGEOSTRStringData* v8;
-    int v9;
-    int v10;
-    int v11;
-    tGEOSTRLetter* v12;
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    uint16_t num;
+    Vec3 size;
 
-    v5 = STR_pst_Get(a1);
-    v6 = v5;
-    if (v5)
+    if (!src)
+        return;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    STR_l_UseGaoMaterial(str, gao);
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    if ((flags & 0x10000) != 0)
     {
-        v7 = STR_pst_GetString(v5, a2);
-        v8 = v7;
-        if (v7)
-        {
-            v9 = STR_l_GetValidIndex(v6, v7, a3);
-            v10 = STR_l_GetValidNumber(v6, v8, v9, a4);
-            if (v10)
-            {
-                if (a5->z == 0.0f)
-                    a5->z = STR_f_DefaultLetterDepth;
-                v11 = v9 + v8->index;
-                if (v11 < v6->unkNum)
-                {
-                    v12 = &v6->letters[v11];
-                    v12->x = (int)((double)(int16_t)v6->width * a5->x)
-                           + D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
-                                                  (int)gpst_DX_stDD->ct.cam.height);
-                    v12->y = (int)((double)(int16_t)v6->height * a5->y);
-                }
-                if ((v8->flags & 0x200) == 0)
-                {
-                    ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-                    v6->fontMaterialID = -1;
-                    v6->fontDesc = 0;
-                    STR_RecomputePos(v6, v8, v9, v10);
-                }
-            }
-        }
+        STR_ChangeStringLength(str, strIdx, STR_l_GetStringLength(src));
+        STR_ParseString(str, strIdx, &str->letters[sd->index], src, sd->number, 0.050000001f, 0.050000001f, -1, 0);
+        num = sd->number;
+        sd->index2 = 0;
+        sd->number2 = num;
     }
-}
-
-void STR_EffectCheck(tGEOSTRStruct* a1, int a2, int a3, int a4)
-{
-    int v4;
-    tGEOSTREffectStruct* i;
-    unsigned int v6;
-    int v7;
-    tGEOSTREffectStruct* v8;
-    int v9;
-    int v10;
-
-    v4 = 0;
-    if (a1->effectsNum)
+    if ((flags & 0x100000) != 0)
+        sd->flags = flags;
+    if ((flags & 0x40000) != 0)
+        sd->pivotPoint = *pivot;
+    if ((flags & 0x20000) != 0)
     {
-        for (i = a1->effect; i->stringid != a2; i++)
-        {
-            if (++v4 >= a1->effectsNum)
-                return;
-        }
-        v6 = v4;
-        v7 = a1->effect[v6].index;
-        v8 = &(a1->effect[v4]);
-        if (a3 < v7)
-        {
-            if (a3 + a4 >= v7)
-            {
-                v9 = v8->number;
-                v8->index = a3;
-                if (v9 > 0)
-                {
-                    v10 = v9 - a4;
-                    v8->number = v10;
-                    if (v10 < 0)
-                        v8->flags |= 1u;
-                }
-            }
-            else
-            {
-                v8->index = v7 - a4;
-            }
-        }
+        size.x = -1.0;
+        size.y = 0.0;
+        size.z = 0.0;
+        STR_SetSize(gao, strIdx, 0, -1, &size);
     }
+    if ((flags & 0x80000) != 0)
+        STR_Align(gao, strIdx, 0, -1, ((int)(flags >> 16) >> 8) & 0xF);
 }
 
-void STR_DelChar(struct sGameObjectMain* a1, int a2, int a3, int a4)
+void STR_InsertString(struct sGameObjectMain* gao, int strIdx, int firstChar, char* src)
 {
-    tGEOSTRStruct* v4;
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-    int v7;
-    int v8;
-    int v9;
-    tGEOSTRLetter* v10;
-    int v11;
-    int a3a;
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    int len;
+    int first;
+    int oldNum;
+    int color;
 
-    v4 = STR_pst_Get(a1);
-    v5 = v4;
-    if (v4)
+    if (!src)
+        return;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    STR_l_UseGaoMaterial(str, gao);
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    len = STR_l_GetStringLength(src);
+    if (!len)
+        return;
+
+    first = STR_l_GetValidIndex(str, sd, firstChar);
+    oldNum = sd->number;
+    STR_ChangeStringLength(str, strIdx, len + oldNum);
+    letter = &str->letters[first + sd->index];
+
+    if (first != oldNum && sd->number > len)
     {
-        v6 = STR_pst_GetString(v4, a2);
-        if (v6)
-        {
-            v11 = a4 > -10 ? -1 : -10 - a4;
-            v7 = STR_l_GetValidIndex(v5, v6, a3);
-            a3a = v7;
-            if (v7 < v6->number)
-            {
-                v8 = STR_l_GetValidNumber(v5, v6, v7, a4);
-                STR_EffectCheck(v5, a2, v7, v8);
-                v9 = v6->number;
-                if (v8 + v7 != v9)
-                {
-                    v10 = &v5->letters[v7 + v6->index];
-                    memcpy(&v5->letters[a3a + v6->index], &v10[v8], 16 * (v9 - a3a - v8));
-                    if (v11 != -1)
-                        v10->flagsAndChar &= ~((v11 & 0xF) << 20);
-                }
-                STR_ChangeStringLength(v5, a2, v6->number - v8);
-                ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-                v5->fontMaterialID = -1;
-                v5->fontDesc = 0;
-                if ((v6->flags & 0x200) == 0)
-                    STR_RecomputePos(v5, v6, 0, -1);
-            }
-        }
+        color = letter->textColor;
+        memcpy(&letter[len], letter, 16 * (sd->number - len - first));
+        STR_ParseString(str, strIdx, letter, src, len, 0.0, 0.0, color, first);
     }
-}
-
-void STR_SetChar(struct sGEOSTRStruct* a1, int a2, int a3, int a4)
-{
-    tGEOSTRStringData* v4;
-    tGEOSTRStringData* v5;
-    int v6;
-
-    v4 = STR_pst_GetString(a1, a2);
-    v5 = v4;
-    if (v4)
+    else if (first)
     {
-        v6 = STR_l_GetValidIndex(a1, v4, a3);
-        if (v6 < v5->number)
-            a1->letters[v6 + v5->index].flagsAndChar ^= (a4 ^ a1->letters[v6 + v5->index].flagsAndChar) & 0x3FFFF;
+        STR_ParseString(str, strIdx, letter, src, len, 0.0, 0.0, letter[-1].textColor, first);
     }
-}
-
-unsigned int STR_i_GetChar(tGEOSTRStruct* a1, int idx, int a3)
-{
-    tGEOSTRStringData* v3;
-    tGEOSTRStringData* v4;
-    int v5;
-    unsigned int result;
-
-    v3 = STR_pst_GetString(a1, idx);
-    v4 = v3;
-    if (v3 && (v5 = STR_l_GetValidIndex(a1, v3, a3), v5 < v4->number))
-        result = a1->letters[v5 + v4->index].flagsAndChar & 0x3FFFF;
     else
-        result = 0;
-    return result;
+    {
+        STR_ParseString(str, strIdx, letter, src, len, 0.050000001f, 0.050000001f, -1, 0);
+    }
+
+    if ((sd->flags & 0x200) == 0)
+        STR_RecomputePos(str, sd, 0, -1);
 }
 
-int STR_l_GetSubLength(struct sGEOSTRStruct* a1, int idx, int a3)
+void STR_SetFloat(struct sGameObjectMain* gao, int strIdx, float value, char precision)
 {
-    tGEOSTRStringData* v3;
-    tGEOSTRLetter* v4;
-    int v5;
-    int v6;
-    tGEOSTRLetter* v7;
-    int v8;
-    int result;
+    char format[8];
+    char buf[32];
 
-    v3 = STR_pst_GetString(a1, idx);
-    if (!v3)
-        return 0;
-    v4 = &a1->letters[v3->index];
-    v5 = v3->number;
-    v6 = a3;
-    v7 = &v4[v5];
-    if (a3 < 0)
+    strcpy(format, "%.0f");
+    format[2] = precision + '0';
+    sprintf(buf, format, value);
+    STR_SetString(gao, strIdx, buf);
+}
+
+void STR_InsertFloat(tGameObjectMain* gao, int strIdx, int firstChar, float value, char precision)
+{
+    char format[8];
+    char buf[32];
+
+    strcpy(format, "%.0f");
+    format[2] = precision + '0';
+    sprintf(buf, format, value);
+    STR_InsertString(gao, strIdx, firstChar, buf);
+}
+
+void STR_SetPivot(struct sGEOSTRStruct* str, int strIdx, Vec3* pivot)
+{
+    tGEOSTRStringData* sd;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
+        sd->pivotPoint = *pivot;
+}
+
+Vec3* STR_pst_GetPivot(struct sGEOSTRStruct* str, int strIdx)
+{
+    tGEOSTRStringData* sd;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
+        return &sd->pivotPoint;
+    return NULL;
+}
+
+void STR_SetFlag(struct sGEOSTRStruct* str, int strIdx, int16_t flags)
+{
+    tGEOSTRStringData* sd;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
+        sd->flags = flags;
+}
+
+int STR_ul_GetFlag(struct sGEOSTRStruct* str, int strIdx)
+{
+    tGEOSTRStringData* sd;
+    int16_t flags = 0;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
+        flags = sd->flags;
+    return flags;
+}
+
+void STR_SetColor(struct sGEOSTRStruct* str, int strIdx, int firstChar, int charNum, int color)
+{
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
     {
-        v8 = 0;
-        result = 0;
-        if (v4 < v7)
+        STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+        for (; letter < end; ++letter)
+            letter->textColor = color;
+    }
+}
+
+void STR_SetAlpha(struct sGEOSTRStruct* str, int strIdx, int firstChar, int charNum, int alpha)
+{
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
+    {
+        STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+        for (; letter < end; ++letter)
         {
-            do
-            {
-                ++v8;
-                if ((v4->flagsAndChar & 0x20000000) != 0)
-                {
-                    if (v8 > result)
-                        result = v8;
-                    v8 = 0;
-                }
-                ++v4;
-            } while (v4 < v7);
-            if (v8 > result)
-                result = v8;
+            letter->textColor &= ~0xff000000;
+            letter->textColor |= alpha << 24;
         }
-        return result;
     }
-    if (a3)
+}
+
+void STR_SetColorExt(struct sGEOSTRStruct* str, int strIdx, int firstChar, int charNum, int color, int mask)
+{
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    int masked;
+    int keep;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
     {
-        do
+        STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+        masked = mask & color;
+        keep = ~mask;
+        for (; letter < end; ++letter)
+            letter->textColor = masked | letter->textColor & keep;
+    }
+}
+
+unsigned int STR_GetColor(struct sGEOSTRStruct* str, int strIdx, int charIdx)
+{
+    tGEOSTRStringData* sd;
+    unsigned int color = 0;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
+        color = str->letters[sd->index + STR_l_GetValidIndex(str, sd, charIdx)].textColor;
+    return color;
+}
+
+void STR_ChangePage(struct sGEOSTRStruct* str, int strIdx, int firstChar, int charNum, int page, int matchPage)
+{
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    int bits;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+    bits = page << 12;
+
+    if (matchPage < 0)
+    {
+        for (; letter < end; ++letter)
+            letter->flagsAndChar = bits | letter->flagsAndChar & 0xFFFC0FFF;
+    }
+    else if (matchPage < 256)
+    {
+        for (; letter < end; ++letter)
         {
-            if ((v4->flagsAndChar & 0x20000000) != 0)
-                --v6;
-            if (++v4 >= v7)
-                return 0;
-        } while (v6);
+            if ((letter->flagsAndChar & 0x3F000) == matchPage)
+                letter->flagsAndChar = bits | letter->flagsAndChar & 0xFFFC0FFF;
+        }
     }
-    for (result = 0; v4 < v7; ++v4)
+    else if (matchPage < 512)
     {
-        ++result;
-        if ((v4->flagsAndChar & 0x20000000) != 0)
+        for (; letter < end; ++letter)
+        {
+            if ((letter->flagsAndChar & 0x3F000) != matchPage - 256)
+                letter->flagsAndChar = bits | letter->flagsAndChar & 0xFFFC0FFF;
+        }
+    }
+}
+
+void STR_SetPos(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* pos)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    int first;
+    int num;
+    int at;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    first = STR_l_GetValidIndex(str, sd, firstChar);
+    num = STR_l_GetValidNumber(str, sd, first, charNum);
+    if (!num)
+        return;
+
+    if (pos->z == 0.0f)
+        pos->z = STR_f_DefaultLetterDepth;
+
+    at = first + sd->index;
+    if (at < str->unkNum)
+    {
+        letter = &str->letters[at];
+        letter->x = (int)((double)(int16_t)str->width * pos->x)
+                  + D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+                                         (int)gpst_DX_stDD->ct.cam.height);
+        letter->y = (int)((double)(int16_t)str->height * pos->y);
+    }
+    if ((sd->flags & 0x200) == 0)
+    {
+        STR_l_UseGaoMaterial(str, gao);
+        STR_RecomputePos(str, sd, first, num);
+    }
+}
+
+void STR_EffectCheck(tGEOSTRStruct* str, int strIdx, int firstChar, int charNum)
+{
+    tGEOSTREffectStruct* effect;
+    int i;
+    int at;
+    int left;
+
+    for (i = 0; i < str->effectsNum; i++)
+    {
+        if (str->effect[i].stringid == strIdx)
             break;
     }
-    return result;
+    if (i >= str->effectsNum)
+        return;
+
+    effect = &str->effect[i];
+    at = effect->index;
+    if (firstChar >= at)
+        return;
+
+    if (firstChar + charNum < at)
+    {
+        effect->index = at - charNum;
+        return;
+    }
+
+    left = effect->number;
+    effect->index = firstChar;
+    if (left > 0)
+    {
+        effect->number = left - charNum;
+        if (left - charNum < 0)
+            effect->flags |= 1u;
+    }
 }
 
-Vec3* STR_pst_GetMin(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5)
+void STR_DelChar(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum)
 {
-    tGEOSTRStruct* v6;
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    int first;
+    int num;
+    int oldNum;
+    int mark;
 
-    if (!a5)
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    mark = charNum > -10 ? -1 : -10 - charNum;
+    first = STR_l_GetValidIndex(str, sd, firstChar);
+    if (first >= sd->number)
+        return;
+
+    num = STR_l_GetValidNumber(str, sd, first, charNum);
+    STR_EffectCheck(str, strIdx, first, num);
+    oldNum = sd->number;
+    if (num + first != oldNum)
+    {
+        letter = &str->letters[first + sd->index];
+        memcpy(letter, &letter[num], 16 * (oldNum - first - num));
+        if (mark != -1)
+            letter->flagsAndChar &= ~((mark & 0xF) << 20);
+    }
+    STR_ChangeStringLength(str, strIdx, sd->number - num);
+    STR_l_UseGaoMaterial(str, gao);
+    if ((sd->flags & 0x200) == 0)
+        STR_RecomputePos(str, sd, 0, -1);
+}
+
+void STR_SetChar(struct sGEOSTRStruct* str, int strIdx, int charIdx, int character)
+{
+    tGEOSTRStringData* sd;
+    int at;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd)
+    {
+        at = STR_l_GetValidIndex(str, sd, charIdx);
+        if (at < sd->number)
+            str->letters[at + sd->index].flagsAndChar ^= (character ^ str->letters[at + sd->index].flagsAndChar) & 0x3FFFF;
+    }
+}
+
+unsigned int STR_i_GetChar(tGEOSTRStruct* str, int strIdx, int charIdx)
+{
+    tGEOSTRStringData* sd;
+    int at;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd && (at = STR_l_GetValidIndex(str, sd, charIdx), at < sd->number))
+        return str->letters[at + sd->index].flagsAndChar & 0x3FFFF;
+    return 0;
+}
+
+int STR_l_GetSubLength(struct sGEOSTRStruct* str, int strIdx, int lineIdx)
+{
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    int left;
+    int run;
+    int longest;
+    int len;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
         return 0;
-    v6 = STR_pst_Get(a1);
-    if (v6)
+
+    letter = &str->letters[sd->index];
+    end = &letter[sd->number];
+
+    if (lineIdx < 0)
     {
-        ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-        v6->fontMaterialID = -1;
-        v6->fontDesc = 0;
-        STR_GetRectShort(v6, idx, a3, a4, a5, 0);
-        a5->x = (float)(a5->x / (double)(uint16_t)v6->width);
-        a5->y = (float)(a5->y / (double)(uint16_t)v6->height);
+        run = 0;
+        longest = 0;
+        for (; letter < end; ++letter)
+        {
+            ++run;
+            if ((letter->flagsAndChar & 0x20000000) != 0)
+            {
+                if (run > longest)
+                    longest = run;
+                run = 0;
+            }
+        }
+        if (run > longest)
+            longest = run;
+        return longest;
     }
-    return a5;
+
+    if (lineIdx)
+    {
+        left = lineIdx;
+        do
+        {
+            if ((letter->flagsAndChar & 0x20000000) != 0)
+                --left;
+            if (++letter >= end)
+                return 0;
+        } while (left);
+    }
+
+    for (len = 0; letter < end; ++letter)
+    {
+        ++len;
+        if ((letter->flagsAndChar & 0x20000000) != 0)
+            break;
+    }
+    return len;
 }
 
-Vec3* STR_pst_GetMax(struct sGameObjectMain* a1, int idx, int a3, int a4, Vec3* a5)
+Vec3* STR_pst_GetMin(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* min)
 {
-    tGEOSTRStruct* v6;
+    tGEOSTRStruct* str;
 
-    if (!a5)
+    if (!min)
         return 0;
-    v6 = STR_pst_Get(a1);
-    if (v6)
+
+    str = STR_pst_Get(gao);
+    if (str)
     {
-        ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-        v6->fontMaterialID = -1;
-        v6->fontDesc = 0;
-        STR_GetRectShort(v6, idx, a3, a4, 0, a5);
-        a5->x = (float)(a5->x / (double)(uint16_t)v6->width);
-        a5->y = (float)(a5->y / (double)(uint16_t)v6->height);
+        STR_l_UseGaoMaterial(str, gao);
+        STR_GetRectShort(str, strIdx, firstChar, charNum, min, 0);
+        min->x = (float)(min->x / (double)(uint16_t)str->width);
+        min->y = (float)(min->y / (double)(uint16_t)str->height);
     }
-    return a5;
+    return min;
 }
 
-void STR_SetFrame(struct sGameObjectMain* a1, int a2, char a3, int16_t a4)
+Vec3* STR_pst_GetMax(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, Vec3* max)
 {
-    tGEOSTRStruct* v4;
-    tGEOSTRStringData* v5;
+    tGEOSTRStruct* str;
 
-    v4 = STR_pst_Get(a1);
-    if (v4)
+    if (!max)
+        return 0;
+
+    str = STR_pst_Get(gao);
+    if (str)
     {
-        v5 = STR_pst_GetString(v4, a2);
-        if (v5)
-            v5->frame = a4 & 0xFFF | ((a3 & 0x3F) << 12);
+        STR_l_UseGaoMaterial(str, gao);
+        STR_GetRectShort(str, strIdx, firstChar, charNum, 0, max);
+        max->x = (float)(max->x / (double)(uint16_t)str->width);
+        max->y = (float)(max->y / (double)(uint16_t)str->height);
+    }
+    return max;
+}
+
+void STR_SetFrame(struct sGameObjectMain* gao, int strIdx, char frame, int16_t flags)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+
+    str = STR_pst_Get(gao);
+    if (str)
+    {
+        sd = STR_pst_GetString(str, strIdx);
+        if (sd)
+            sd->frame = flags & 0xFFF | ((frame & 0x3F) << 12);
     }
 }
 
-void STR_EffectDelAll(tGEOSTRStruct* a1)
+void STR_EffectDelAll(tGEOSTRStruct* str)
 {
-    a1->effectsNum = 0;
+    str->effectsNum = 0;
     STR_spst_CurEffect = NULL;
 }
 
-void STR_EffectDel(struct sGameObjectMain* a1, int a2)
+void STR_EffectDel(struct sGameObjectMain* gao, int effectId)
 {
-    tGEOSTRStruct* v2;
-    int v3;
-    uint8_t v4;
+    tGEOSTRStruct* str;
+    uint8_t last;
+    int at;
 
-    v2 = STR_pst_Get(a1);
-    if (v2)
-    {
-        if (a2 >= 0)
-        {
-            STR_SetCurEffect(v2, a2);
-            if (STR_spst_CurEffect)
-            {
-                v3 = ((char*)STR_spst_CurEffect - (char*)&v2->effect[0]) / sizeof(tGEOSTREffectStruct);
-                v4 = v2->effectsNum - 1;
-                v2->effectsNum = v4;
-                if (v3 < v4)
-                    memcpy(STR_spst_CurEffect, &v2->effect[v4], sizeof(tGEOSTREffectStruct));
-                STR_spst_CurEffect = NULL;
-            }
-        }
-        else
-        {
-            STR_EffectDelAll(v2);
-        }
-    }
-}
-
-void STR_SetFramePos(struct sGameObjectMain* a1, int idx, Vec3* a3, Vec3* a4)
-{
-    tGEOSTRStruct* v4;
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-
-    v4 = STR_pst_Get(a1);
-    v5 = v4;
-    if (v4)
-    {
-        v6 = STR_pst_GetString(v4, idx);
-        if (v6)
-        {
-            v6->framePosX1 = (int)((double)(uint16_t)v5->width * a3->x);
-            v6->framePosY1 = (int)((double)(uint16_t)v5->height * a3->y);
-            v6->framePosX2 = (int)((double)(uint16_t)v5->width * a4->x);
-            v6->framePosY2 = (int)((double)(uint16_t)v5->height * a4->y);
-        }
-    }
-}
-
-void STR_SetFrameBorderSize(struct sGameObjectMain* a1, int a2, float a3)
-{
-    tGEOSTRStruct* v3;
-    tGEOSTRStruct* v4;
-    tGEOSTRStringData* v5;
-
-    v3 = STR_pst_Get(a1);
-    v4 = v3;
-    if (v3)
-    {
-        v5 = STR_pst_GetString(v3, a2);
-        if (v5)
-        {
-            v5->frameBorderSize1 = (int)((double)(uint16_t)v4->width * a3);
-            v5->frameBorderSize2 = (int)((double)(uint16_t)v4->height * a3);
-        }
-    }
-}
-
-void STR_SetFrameColor(struct sGameObjectMain* a1, int a2, int a3)
-{
-    tGEOSTRStruct* v3;
-    tGEOSTRStringData* v4;
-
-    v3 = STR_pst_Get(a1);
-    if (v3)
-    {
-        v4 = STR_pst_GetString(v3, a2);
-        if (v4)
-            v4->frameColor = a3;
-    }
-}
-
-void STR_SetSubStringWithLine(struct sGameObjectMain* a1, int a2, int a3, int a4)
-{
-    tGEOSTRStruct* v4;
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-    tGEOSTRLetter* v7;
-    int v8;
-    tGEOSTRLetter* v9;
-    int v10;
-    int v11;
-
-    v4 = STR_pst_Get(a1);
-    v5 = v4;
-    if (v4)
-    {
-        v6 = STR_pst_GetString(v4, a2);
-        if (v6)
-        {
-            v7 = v5->letters;
-            v8 = a3;
-            v9 = &v7[v6->index];
-            v10 = 0;
-            if (a3 <= 0)
-            {
-            LABEL_8:
-                v11 = a4;
-                v6->index2 = v10;
-                if (a4 > 0)
-                {
-                    do
-                    {
-                        if ((v9->flagsAndChar & 0x20000000) != 0)
-                            --v11;
-                        ++v9;
-                        ++v10;
-                    } while (v10 < v6->number && v11 > 0);
-                }
-                v6->number2 = v10 - v6->index2;
-            }
-            else
-            {
-                while (1)
-                {
-                    if ((v9->flagsAndChar & 0x20000000) != 0)
-                        --v8;
-                    ++v9;
-                    if (++v10 >= v6->number)
-                        break;
-                    if (v8 <= 0)
-                        goto LABEL_8;
-                }
-            }
-        }
-    }
-}
-
-void STR_SetSubStringWithMark(struct sGameObjectMain* a1, int a2, int a3, int a4)
-{
-    tGEOSTRStruct* v4;
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-    tGEOSTRLetter* v7;
-    int v8;
-    tGEOSTRLetter* v9;
-    int v10;
-    int v11;
-    int v12;
-    int v13;
-    uint16_t v14;
-
-    v4 = STR_pst_Get(a1);
-    v5 = v4;
-    if (v4)
-    {
-        v6 = STR_pst_GetString(v4, a2);
-        if (v6)
-        {
-            v7 = v5->letters;
-            v8 = a3;
-            v9 = &v7[v6->index];
-            v10 = 0;
-            if (a3 <= 0)
-            {
-            LABEL_11:
-                v12 = a4;
-                if (a4 > 0)
-                {
-                    do
-                    {
-                        if ((v9->flagsAndChar & 0xF00000) == 0xF00000)
-                            --v12;
-                        ++v9;
-                        ++v10;
-                    } while (v10 < v6->number && v12 > 0);
-                }
-                v13 = v6->number;
-                v14 = v10 - v6->index2;
-                v6->number2 = v14;
-                if (v10 < v13)
-                {
-                    if (v14)
-                        v6->number2 = v14 - 1;
-                }
-            }
-            else
-            {
-                v11 = v6->number;
-                while (1)
-                {
-                    if ((v9->flagsAndChar & 0xF00000) == 0xF00000)
-                        --v8;
-                    if (!v8)
-                        v6->index2 = v10;
-                    ++v9;
-                    if (++v10 >= v11)
-                        break;
-                    if (v8 <= 0)
-                        goto LABEL_11;
-                }
-            }
-        }
-    }
-}
-
-void STR_SetSubString(struct sGameObjectMain* a1, int a2, int a3, int a4)
-{
-    tGEOSTRStruct* v4;
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-    tGEOSTRStringData* v7;
-    int v8;
-    uint16_t v9;
-
-    v4 = STR_pst_Get(a1);
-    v5 = v4;
-    if (v4)
-    {
-        v6 = STR_pst_GetString(v4, a2);
-        v7 = v6;
-        if (v6)
-        {
-            v8 = STR_l_GetValidIndex(v5, v6, a3);
-            if (v8 < v7->number)
-            {
-                v9 = STR_l_GetValidNumber(v5, v7, v8, a4);
-                v7->index2 = v8;
-                v7->number2 = v9;
-            }
-        }
-    }
-}
-
-int STR_i_CountLine(struct sGameObjectMain* a1, int idx, int a3, int a4)
-{
-    tGEOSTRStruct* ret;
-    tGEOSTRStringData* ret2;
-    int result = 0;
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-    int v7;
-    int v8;
-    tGEOSTRLetter* v9;
-    tGEOSTRLetter* v10;
-    int i;
-
-    ret = STR_pst_Get(a1);
-    v5 = ret;
-    if (ret)
-    {
-        ret2 = STR_pst_GetString(ret, idx);
-        v6 = ret2;
-        if (ret2)
-        {
-            v7 = STR_l_GetValidIndex(v5, ret2, a3);
-            v8 = STR_l_GetValidNumber(v5, v6, v7, a4);
-            v9 = &v5->letters[v7 + v6->index];
-            v10 = &v9[v8];
-            for (i = 0; v9 < v10; ++v9)
-            {
-                if ((v9->flagsAndChar & 0x20000000) != 0)
-                    ++i;
-            }
-            result = i + 1;
-        }
-    }
-    return result;
-}
-
-int STR_i_CountMark(struct sGameObjectMain* a1, int idx, int a3, int a4, int a5)
-{
-    tGEOSTRStruct* ret;
-    tGEOSTRStringData *ret2;
-    int result = 0;
-    tGEOSTRStruct* v6;
-    tGEOSTRStringData* v7;
-    int v8;
-    int v9;
-    tGEOSTRLetter* v10;
-    tGEOSTRLetter* v11;
-    int i;
-
-    ret = STR_pst_Get(a1);
-    v6 = ret;
-    if (ret)
-    {
-        ret2 = STR_pst_GetString(ret, idx);
-        v7 = ret2;
-        if (ret2)
-        {
-            v8 = STR_l_GetValidIndex(v6, ret2, a3);
-            v9 = STR_l_GetValidNumber(v6, v7, v8, a4);
-            v10 = &v6->letters[v8 + v7->index];
-            v11 = &v10[v9];
-            for (i = 0; v10 < v11; ++v10)
-            {
-                if (((v10->flagsAndChar >> 20) & 0xF) == a5)
-                    ++i;
-            }
-            result = i + 1;
-        }
-    }
-    return result;
-}
-
-void STR_ToString(struct sGameObjectMain* a1, int idx, int a3, int a4, unsigned char* a5)
-{
-    tGEOSTRStruct* v5;
-    tGEOSTRStruct* v6;
-    tGEOSTRStringData* v7;
-    tGEOSTRStringData* v8;
-    int v9;
-    int v10;
-    tGEOSTRLetter* v12;
-    tGEOSTRLetter* i;
-    signed int v14;
-    uint8_t* v15;
-    uint8_t* v16;
-    uint8_t* v17;
-
-    v5 = STR_pst_Get(a1);
-    v6 = v5;
-    if (v5)
-    {
-        v7 = STR_pst_GetString(v5, idx);
-        v8 = v7;
-        if (v7)
-        {
-            v9 = STR_l_GetValidIndex(v6, v7, a3);
-            v10 = STR_l_GetValidNumber(v6, v8, v9, a4);
-            v12 = &v6->letters[v9 + v8->index];
-            for (i = &v12[v10]; v12 < i; ++a5)
-            {
-                if ((v12->flagsAndChar & 0x3F000) != 0)
-                {
-                    v14 = (v12->flagsAndChar >> 12) & 0x3F;
-                    *a5 = '\\';
-                    v15 = a5 + 1;
-                    *v15 = 'p';
-                    v16 = v15 + 1;
-                    if (v14 >= 10)
-                    {
-                        *v16++ = v14 / 10 + '0';
-                        v14 = v14 % 10;
-                    }
-                    *v16 = v14 + '0';
-                    v17 = v16 + 1;
-                    *v17 = '\\';
-                    a5 = v17 + 1;
-                }
-                *a5 = v12->flagsAndChar;
-                ++v12;
-            }
-            *a5 = 0;
-        }
-    }
-}
-
-void STR_SetLetterFlag(struct sGameObjectMain* a1, int a2, int a3, int a4, int a5)
-{
-    tGEOSTRStruct* v5;
-    tGEOSTRStruct* v6;
-    tGEOSTRStringData* v7;
-    tGEOSTRStringData* v8;
-    int v9;
-    tGEOSTRLetter* v10;
-    tGEOSTRLetter* i;
-
-    v5 = STR_pst_Get(a1);
-    v6 = v5;
-    if (v5)
-    {
-        v7 = STR_pst_GetString(v5, a2);
-        v8 = v7;
-        if (v7)
-        {
-            v9 = STR_l_GetValidIndex(v6, v7, a3);
-            v10 = &v6->letters[v9 + v8->index];
-            for (i = &v10[STR_l_GetValidNumber(v6, v8, v9, a4)]; v10 < i; ++v10)
-            {
-                v10->flagsAndChar &= ~0xff000000;
-                v10->flagsAndChar |= a5 << 24;
-            }
-        }
-    }
-}
-
-int STR_GetLetterFlag(struct sGameObjectMain* a1, int idx, int a3)
-{
-    tGEOSTRStruct* v3;
-    tGEOSTRStringData* v4;
-    tGEOSTRStringData* v5;
-    int v6;
-    int result;
-
-    v3 = STR_pst_Get(a1);
-    v4 = STR_pst_GetString(v3, idx);
-    v5 = v4;
-    if (v4 && (v6 = STR_l_GetValidIndex(v3, v4, a3), v6 < v5->number))
-        result = v3->letters[v6 + v5->index].flagsAndChar >> 24;
-    else
-        result = 0;
-    return result;
-}
-
-void STR_ToUpper(struct sGameObjectMain* a1, int a2, int a3, int a4)
-{
-    tGEOSTRStruct* v4;
-    tGEOSTRStringData* v5;
-    int v6;
-    tGEOSTRLetter* v7;
-    tGEOSTRLetter* i;
-    unsigned int v9;
-
-    v4 = STR_pst_Get(a1);
-    if (v4)
-    {
-        v5 = STR_pst_GetString(v4, a2);
-        if (v5)
-        {
-            ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-            v4->fontMaterialID = -1;
-            v4->fontDesc = 0;
-            v6 = STR_l_GetValidIndex(v4, v5, a3);
-            v7 = &v4->letters[v6 + v5->index];
-            for (i = &v7[STR_l_GetValidNumber(v4, v5, v6, a4)]; v7 < i; ++v7)
-            {
-                v9 = (uint8_t)v7->flagsAndChar;
-                if (v9 >= 'a' && (uint8_t)v7->flagsAndChar <= 'z')
-                {
-                    v7->flagsAndChar &= ~0xff;
-                    v7->flagsAndChar |= v9 - ' ';
-                }
-            }
-        }
-    }
-}
-
-void STR_EffectSeti(struct sGameObjectMain* a1, int a2, int a3, int a4)
-{
-    tGEOSTRStruct* v4;
-    int v5;
-    int v6;
-    int i;
-    unsigned int* tmp;
-
-    v4 = STR_pst_Get(a1);
-    if (!v4)
+    str = STR_pst_Get(gao);
+    if (!str)
         return;
-    if (a3 == -1)
+
+    if (effectId < 0)
     {
-        if (a2)
-        {
-            if (a2 == 1)
-                STR_EffectDelAllForAString(v4, a4);
-        }
-        else
-        {
-            STR_EffectDelAll(v4);
-        }
+        STR_EffectDelAll(str);
         return;
     }
-    if (a3 == -2)
+
+    STR_SetCurEffect(str, effectId);
+    if (STR_spst_CurEffect)
     {
-        if (a2 >= 0)
-        {
-            if (a2 < 24)
-                v4->shorts[a2] = a4;
-        }
-        else
-        {
-            v5 = a4;
-            // TODO FIXME: ezt megcsinálni igényesre, mert ez elég gáz így shortból int és az bele a shortos mezõbe
-            v6 = v5 << 16;
-            v6 = a4;
-            tmp = (unsigned int*)(v4->shorts);
-            for (i = 0; i < 12; i++) {
-                tmp[i] = v6;
-            }
-        }
-        return;
+        at = ((char*)STR_spst_CurEffect - (char*)&str->effect[0]) / sizeof(tGEOSTREffectStruct);
+        last = str->effectsNum - 1;
+        str->effectsNum = last;
+        if (at < last)
+            memcpy(STR_spst_CurEffect, &str->effect[last], sizeof(tGEOSTREffectStruct));
+        STR_spst_CurEffect = NULL;
     }
-    STR_SetCurEffect(v4, a2);
-    if (!STR_spst_CurEffect)
-        return;
-    if (a3 <= 301)
+}
+
+void STR_SetFramePos(struct sGameObjectMain* gao, int strIdx, Vec3* pos, Vec3* size)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+
+    str = STR_pst_Get(gao);
+    if (str)
     {
-        if (a3 == 301)
+        sd = STR_pst_GetString(str, strIdx);
+        if (sd)
         {
-            *(uint32_t *)&(STR_spst_CurEffect->timeElapsed) = a4;
-            return;
+            sd->framePosX1 = (int)((double)(uint16_t)str->width * pos->x);
+            sd->framePosY1 = (int)((double)(uint16_t)str->height * pos->y);
+            sd->framePosX2 = (int)((double)(uint16_t)str->width * size->x);
+            sd->framePosY2 = (int)((double)(uint16_t)str->height * size->y);
         }
-        if (a3 <= 200)
+    }
+}
+
+void STR_SetFrameBorderSize(struct sGameObjectMain* gao, int strIdx, float border)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+
+    str = STR_pst_Get(gao);
+    if (str)
+    {
+        sd = STR_pst_GetString(str, strIdx);
+        if (sd)
         {
-            if (a3 != 200)
-            {
-                if (a3)
-                {
-                    if (a3 == 1)
-                        STR_spst_CurEffect->flags ^= ((uint16_t)STR_spst_CurEffect->flags ^ (uint16_t)((int32_t)a4 << 8)) & 0xFF00;
-                }
-                else
-                {
-                    STR_spst_CurEffect->flags ^= (STR_spst_CurEffect->flags ^ (a4 << 16)) & 0xFF0000;
-                }
+            sd->frameBorderSize1 = (int)((double)(uint16_t)str->width * border);
+            sd->frameBorderSize2 = (int)((double)(uint16_t)str->height * border);
+        }
+    }
+}
+
+void STR_SetFrameColor(struct sGameObjectMain* gao, int strIdx, int color)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+
+    str = STR_pst_Get(gao);
+    if (str)
+    {
+        sd = STR_pst_GetString(str, strIdx);
+        if (sd)
+            sd->frameColor = color;
+    }
+}
+
+void STR_SetSubStringWithLine(struct sGameObjectMain* gao, int strIdx, int firstLine, int lineNum)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    int left;
+    int at;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    letter = &str->letters[sd->index];
+    at = 0;
+
+    if (firstLine > 0)
+    {
+        left = firstLine;
+        while (1)
+        {
+            if ((letter->flagsAndChar & 0x20000000) != 0)
+                --left;
+            ++letter;
+            if (++at >= sd->number)
                 return;
-            }
-        LABEL_21:
-            *(uint32_t*)&(STR_spst_CurEffect->color1) = a4;
-            return;
+            if (left <= 0)
+                break;
         }
-        if (a3 != 201)
+    }
+
+    sd->index2 = at;
+    if (lineNum > 0)
+    {
+        left = lineNum;
+        do
         {
-            if (a3 == 300)
-                *(uint32_t*)&(STR_spst_CurEffect->f1) = a4;
-            return;
+            if ((letter->flagsAndChar & 0x20000000) != 0)
+                --left;
+            ++letter;
+            ++at;
+        } while (at < sd->number && left > 0);
+    }
+    sd->number2 = at - sd->index2;
+}
+
+void STR_SetSubStringWithMark(struct sGameObjectMain* gao, int strIdx, int firstMark, int markNum)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    uint16_t num;
+    int left;
+    int at;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    letter = &str->letters[sd->index];
+    at = 0;
+
+    if (firstMark > 0)
+    {
+        left = firstMark;
+        while (1)
+        {
+            if ((letter->flagsAndChar & 0xF00000) == 0xF00000)
+                --left;
+            if (!left)
+                sd->index2 = at;
+            ++letter;
+            if (++at >= sd->number)
+                return;
+            if (left <= 0)
+                break;
         }
-    LABEL_30:
-        *(uint32_t*)&(STR_spst_CurEffect->color2) = a4;
+    }
+
+    if (markNum > 0)
+    {
+        left = markNum;
+        do
+        {
+            if ((letter->flagsAndChar & 0xF00000) == 0xF00000)
+                --left;
+            ++letter;
+            ++at;
+        } while (at < sd->number && left > 0);
+    }
+
+    num = at - sd->index2;
+    sd->number2 = num;
+    if (at < sd->number && num)
+        sd->number2 = num - 1;
+}
+
+void STR_SetSubString(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    uint16_t num;
+    int first;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    first = STR_l_GetValidIndex(str, sd, firstChar);
+    if (first < sd->number)
+    {
+        num = STR_l_GetValidNumber(str, sd, first, charNum);
+        sd->index2 = first;
+        sd->number2 = num;
+    }
+}
+
+int STR_i_CountLine(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    int lines;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return 0;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return 0;
+
+    STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+    lines = 0;
+    for (; letter < end; ++letter)
+    {
+        if ((letter->flagsAndChar & 0x20000000) != 0)
+            ++lines;
+    }
+    return lines + 1;
+}
+
+int STR_i_CountMark(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, int mark)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    int marks;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return 0;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return 0;
+
+    STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+    marks = 0;
+    for (; letter < end; ++letter)
+    {
+        if (((letter->flagsAndChar >> 20) & 0xF) == mark)
+            ++marks;
+    }
+    return marks + 1;
+}
+
+void STR_ToString(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, unsigned char* dest)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    int page;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+    for (; letter < end; ++letter)
+    {
+        if ((letter->flagsAndChar & 0x3F000) != 0)
+        {
+            page = (letter->flagsAndChar >> 12) & 0x3F;
+            *dest++ = '\\';
+            *dest++ = 'p';
+            if (page >= 10)
+            {
+                *dest++ = page / 10 + '0';
+                page = page % 10;
+            }
+            *dest++ = page + '0';
+            *dest++ = '\\';
+        }
+        *dest = letter->flagsAndChar;
+        ++dest;
+    }
+    *dest = 0;
+}
+
+void STR_SetLetterFlag(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum, int flags)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+    for (; letter < end; ++letter)
+    {
+        letter->flagsAndChar &= ~0xff000000;
+        letter->flagsAndChar |= flags << 24;
+    }
+}
+
+int STR_GetLetterFlag(struct sGameObjectMain* gao, int strIdx, int charIdx)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    int at;
+
+    str = STR_pst_Get(gao);
+    // preserved: the string is not checked for NULL before it is used
+    sd = STR_pst_GetString(str, strIdx);
+    if (sd && (at = STR_l_GetValidIndex(str, sd, charIdx), at < sd->number))
+        return str->letters[at + sd->index].flagsAndChar >> 24;
+    return 0;
+}
+
+void STR_ToUpper(struct sGameObjectMain* gao, int strIdx, int firstChar, int charNum)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    unsigned int ch;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    STR_l_UseGaoMaterial(str, gao);
+    STR_l_LetterRange(str, sd, firstChar, charNum, &letter, &end);
+    for (; letter < end; ++letter)
+    {
+        ch = (uint8_t)letter->flagsAndChar;
+        if (ch >= 'a' && (uint8_t)letter->flagsAndChar <= 'z')
+        {
+            letter->flagsAndChar &= ~0xff;
+            letter->flagsAndChar |= ch - ' ';
+        }
+    }
+}
+
+void STR_EffectSeti(struct sGameObjectMain* gao, int effectId, int field, int value)
+{
+    tGEOSTRStruct* str;
+    unsigned int* fill;
+    int i;
+
+    str = STR_pst_Get(gao);
+    if (!str)
+        return;
+
+    if (field == -1)
+    {
+        if (!effectId)
+            STR_EffectDelAll(str);
+        else if (effectId == 1)
+            STR_EffectDelAllForAString(str, value);
         return;
     }
-    if (a3 > 400)
+
+    if (field == -2)
     {
-        if (a3 == 401)
-            goto LABEL_30;
-        if (a3 == 1600)
-            *(uint32_t*)&(STR_spst_CurEffect->color2) = a4;
-    }
-    else
-    {
-        switch (a3)
+        if (effectId >= 0)
         {
-        case 400:
-            goto LABEL_21;
-        case 302:
-            *(uint32_t*)&(STR_spst_CurEffect->color1) = a4;
-            return;
-        case 303:
-            goto LABEL_30;
+            if (effectId < 24)
+                str->shorts[effectId] = value;
+        }
+        else
+        {
+            // TODO FIXME: ezt megcsinálni igényesre, mert ez elég gáz így shortból int és az bele a shortos mezõbe
+            fill = (unsigned int*)(str->shorts);
+            for (i = 0; i < 12; i++) {
+                fill[i] = value;
+            }
+        }
+        return;
+    }
+
+    STR_SetCurEffect(str, effectId);
+    if (!STR_spst_CurEffect)
+        return;
+
+    switch (field)
+    {
+    case 0:
+        STR_spst_CurEffect->flags ^= (STR_spst_CurEffect->flags ^ (value << 16)) & 0xFF0000;
+        break;
+    case 1:
+        STR_spst_CurEffect->flags ^= ((uint16_t)STR_spst_CurEffect->flags ^ (uint16_t)((int32_t)value << 8)) & 0xFF00;
+        break;
+    case 200:
+    case 302:
+    case 400:
+        *(uint32_t*)&(STR_spst_CurEffect->color1) = value;
+        break;
+    case 201:
+    case 303:
+    case 401:
+    case 1600:
+        *(uint32_t*)&(STR_spst_CurEffect->color2) = value;
+        break;
+    case 300:
+        *(uint32_t*)&(STR_spst_CurEffect->f1) = value;
+        break;
+    case 301:
+        *(uint32_t*)&(STR_spst_CurEffect->timeElapsed) = value;
+        break;
+    default:
+        break;
+    }
+}
+
+int STR_i_EffectGetId(struct sGEOSTRStruct* str, int strIdx)
+{
+    int i;
+
+    for (i = 0; i < str->effectsNum; i++)
+    {
+        if (str->effect[i].stringid == strIdx)
+        {
+            STR_spst_CurEffect = &str->effect[i];
+            return STR_spst_CurEffect->effectID;
         }
     }
+    return -1;
 }
 
-int STR_i_EffectGetId(struct sGEOSTRStruct* a1, int a2)
+int STR_EffectGeti(struct sGameObjectMain* gao, int effectId, int field)
 {
-    int v2;
-    tGEOSTREffectStruct* i;
-    tGEOSTREffectStruct* v5;
+    tGEOSTRStruct* str;
 
-    v2 = 0;
-    if (!a1->effectsNum)
+    str = STR_pst_Get(gao);
+    if (!str)
         return -1;
-    for (i = a1->effect; i->stringid != a2; i++)
-    {
-        if (++v2 >= a1->effectsNum)
-            return -1;
-    }
-    v5 = &a1->effect[v2];
-    STR_spst_CurEffect = v5;
-    return v5->effectID;
-}
-
-int STR_EffectGeti(struct sGameObjectMain* a1, int a2, int a3)
-{
-    tGEOSTRStruct* v3;
-
-    v3 = STR_pst_Get(a1);
-    if (!v3)
-        return -1;
-    if (a2 == -1)
-        return STR_i_EffectGetId(v3, a3);
-    STR_SetCurEffect(v3, a2);
+    if (effectId == -1)
+        return STR_i_EffectGetId(str, field);
+    STR_SetCurEffect(str, effectId);
     if (!STR_spst_CurEffect)
         return -1;
-    if (!a3)
+    if (!field)
         return (STR_spst_CurEffect->flags >> 16) & 0xff;
-    if (a3 == 1)
+    if (field == 1)
         return (STR_spst_CurEffect->flags >> 8) & 0xff;
-    if (a3 != 2)
+    if (field != 2)
         return -1;
     return (STR_spst_CurEffect->flags >> 24) & 0xff;
 }
 
-void STR_EffectSetf(struct sGameObjectMain* a1, int a2, int a3, float a4)
+void STR_EffectSetf(struct sGameObjectMain* gao, int effectId, int field, float value)
 {
-    tGEOSTRStruct* v4;
-    tGEOSTRStruct* v5;
-    int v6;
-    tGEOSTRStringData* v7;
-    tGEOSTRStringData* v8;
-    int v9;
-    int v10;
-    int v11;
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    int first;
 
-    v4 = STR_pst_Get(a1);
-    v5 = v4;
-    if (!v4)
+    str = STR_pst_Get(gao);
+    if (!str)
         return;
-    STR_SetCurEffect(v4, a2);
+
+    STR_SetCurEffect(str, effectId);
     if (!STR_spst_CurEffect)
         return;
-    if (a3 > 752)
+
+    switch (field)
     {
-        if (a3 > 1650)
+    case 150:
+    case 250:
+    case 450:
+    case 550:
+    case 650:
+    case 1150:
+    case 1350:
+    case 1550:
+    case 1650:
+    case 1750:
+    case 1850:
+    case 2050:
+        STR_spst_CurEffect->f1 = value;
+        break;
+    case 151:
+    case 451:
+        STR_spst_CurEffect->f3 = value;
+        break;
+    case 551:
+    case 651:
+    case 751:
+    case 1551:
+    case 1751:
+        STR_spst_CurEffect->timeElapsed = value;
+        break;
+    case 552:
+    case 652:
+    case 1152:
+    case 1351:
+    case 1651:
+    case 2051:
+        STR_spst_CurEffect->color1 = value;
+        break;
+    case 553:
+    case 1151:
+        STR_spst_CurEffect->color2 = value;
+        break;
+    case 750:
+        if (value >= 0.0)
         {
-            if (a3 > 1850)
-            {
-                v10 = a3 - 2050;
-                if (a3 == 2050)
-                    goto LABEL_44;
-            LABEL_42:
-                if (v10 != 1)
-                    return;
-                goto LABEL_43;
-            }
-            if (a3 == 1850)
-                goto LABEL_44;
-            v6 = a3 - 1651;
-            if (a3 != 1651)
-                goto LABEL_38;
+            STR_spst_CurEffect->f1 = value;
+            break;
         }
-        else
+        sd = STR_pst_GetString(str, STR_spst_CurEffect->stringid);
+        if (sd)
         {
-            if (a3 == 1650)
-                goto LABEL_44;
-            if (a3 <= 1350)
-            {
-                if (a3 == 1350)
-                    goto LABEL_44;
-                if (a3 == 1150)
-                    goto LABEL_12;
-                v10 = a3 - 1151;
-                if (a3 == 1151)
-                {
-                LABEL_18:
-                    STR_spst_CurEffect->color2 = a4;
-                    return;
-                }
-                goto LABEL_42;
-            }
-            if (a3 != 1351)
-            {
-                if (a3 != 1550)
-                {
-                    if (a3 == 1551)
-                        STR_spst_CurEffect->timeElapsed = a4;
-                    return;
-                }
-            LABEL_44:
-                STR_spst_CurEffect->f1 = a4;
-                return;
-            }
+            first = STR_l_GetValidIndex(str, sd, STR_spst_CurEffect->index);
+            STR_spst_CurEffect->f1 = (float)(-value * (double)STR_l_GetValidNumber(str, sd, first, STR_spst_CurEffect->number));
         }
-    LABEL_43:
-        STR_spst_CurEffect->color1 = a4;
-        return;
-    }
-    if (a3 == 752)
-    {
-        STR_spst_CurEffect->color2 = a4;
+        break;
+    case 752:
+        STR_spst_CurEffect->color2 = value;
         STR_spst_CurEffect->color1 = 0.0;
-        return;
+        break;
+    default:
+        break;
     }
-    if (a3 > 552)
-    {
-        switch (a3)
-        {
-        case 553:
-            goto LABEL_18;
-        case 650:
-            goto LABEL_12;
-        case 651:
-        case 751:
-            STR_spst_CurEffect->timeElapsed = a4;
-            break;
-        case 652:
-            goto LABEL_43;
-        case 750:
-            if (a4 >= 0.0)
-                goto LABEL_12;
-            v7 = STR_pst_GetString(v5, STR_spst_CurEffect->stringid);
-            v8 = v7;
-            if (v7)
-            {
-                v9 = STR_l_GetValidIndex(v5, v7, STR_spst_CurEffect->index);
-                STR_spst_CurEffect->f1 = (float)(-a4 * (double)STR_l_GetValidNumber(v5, v8, v9, STR_spst_CurEffect->number));
-            }
-            break;
-        default:
-            return;
-        }
-        return;
-    }
-    if (a3 == 552)
-    {
-        STR_spst_CurEffect->color1 = a4;
-        return;
-    }
-    if (a3 > 450)
-    {
-        v6 = a3 - 451;
-        if (a3 == 451)
-        {
-            STR_spst_CurEffect->f3 = a4;
-            return;
-        }
-    LABEL_38:
-        v11 = v6 - 99;
-        if (v11)
-        {
-            if (v11 == 1)
-                STR_spst_CurEffect->timeElapsed = a4;
-            return;
-        }
-        goto LABEL_44;
-    }
-    if (a3 == 450)
-        goto LABEL_44;
-    if (a3 == 150)
-    {
-    LABEL_12:
-        STR_spst_CurEffect->f1 = a4;
-        return;
-    }
-    if (a3 != 151)
-    {
-        if (a3 != 250)
-            return;
-        goto LABEL_12;
-    }
-    STR_spst_CurEffect->f3 = a4;
 }
 
 void STR_ReinitAll()
@@ -3217,144 +2708,116 @@ void STR_ReinitAll()
     STR_sgl_NumberOfFont = 0;
 }
 
-void STR_Init3DStringExtExt(struct sGameObjectMain* a1, char* str, int a3)
+void STR_Init3DStringExtExt(struct sGameObjectMain* gao, char* str, int maxLetters)
 {
-    tGEOGRO* v3;
-    tGEOGRO* v4;
-    int v5;
-    int v6;
-    int v7;
-    int v8;
-    tGEOGRO* v9;
-    tGeoUVElem* v10;
-    tGeoUVElem* v11;
-    tGEOSTRLetter* v12;
-    uint16_t v13;
-    tFontData* v14;
-    unsigned int v15;
-    unsigned int v16;
-    tFontGlypthElem* v17;
-    tGEOGRO* v19;
-    tGEOSTRStruct geostr;
-    tGEOSTRLetter dest[256];
-
-    v3 = (tGEOGRO*)OBJ_p_GetGro(a1);
-    v4 = v3;
-    v19 = v3;
-    if (v3 && v3->intf->id == 1)
-    {
-        v5 = STR_l_GetStringLength(str);
-        v6 = v4->uvNum >> 2;
-        v7 = v5;
-        if (v5 >= v6)
-            v7 = v4->uvNum >> 2;
-        if (a3 >= 0 && v7 > a3)
-            v7 = a3;
-        v8 = STR_l_GetStringLength(str);
-        geostr.height = (unsigned int)gpst_DX_stDD->ct.cam.width;
-        geostr.width = (unsigned int)gpst_DX_stDD->ct.cam.height;
-        STR_ParseString(&geostr, 0, dest, str, v8, 0.050000001f, 0.050000001f, -1, 0);
-        ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROMAT;
-        geostr.fontDesc = 0;
-        geostr.fontMaterialID = 0;
-        geostr.fontDesc = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), 0);
-        if (geostr.fontDesc)
-        {
-            v9 = v19;
-            v10 = v19->UVs;
-            v11 = &v10[4 * v6];
-            v19->triangleChunks->materialNum = (dest[0].flagsAndChar >> 12) & 0x3F;
-            v12 = dest;
-            geostr.fontMaterialID = -1;
-            if (v7 > 0)
-            {
-                do
-                {
-                    v13 = (v12->flagsAndChar >> 12) & 0x3F;
-                    if (v13 != geostr.fontMaterialID)
-                    {
-                        geostr.fontMaterialID = (v12->flagsAndChar >> 12) & 0x3F;
-                        v14 = STR_pst_GetFontDesc((tGEOMAT*)(((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT), v13);
-                        v9 = v19;
-                        geostr.fontDesc = v14;
-                    }
-                    v15 = (uint8_t)v12->flagsAndChar;
-                    if (v15 < 32)
-                        v16 = 0;
-                    else
-                        v16 = v15 - 32;
-                    v17 = &geostr.fontDesc->fge[v16];
-                    v10[0].u = *(&v17->x + STRU1Offset);
-                    v10[0].v = *(&v17->w + STRV1Offset);
-                    v10[1].u = *(&v17->x + STRU2Offset);
-                    v10[1].v = *(&v17->w + STRV2Offset);
-                    v10[2].u = *(&v17->x + STRU3Offset);
-                    v10[2].v = *(&v17->w + STRV3Offset);
-                    v10[3].u = *(&v17->x + STRU4Offset);
-                    v10[3].v = *(&v17->w + STRV4Offset);
-                    v10 += 4;
-                    ++v12;
-                    --v7;
-                } while (v7);
-            }
-            for (; v10 < v11; ++v10)
-            {
-                v10->u = 0.0;
-                v10->v = 0.0;
-            }
-            if (v9->d3dIndexBuf)
-                PC_FreeABackCache(v9);
-        }
-    }
-}
-
-void STR_Init3DString(struct sGameObjectMain* a1, char* str)
-{
-    STR_Init3DStringExtExt(a1, str, -1);
-}
-
-void STR_Init3DStringExt(struct sGameObjectMain* a1, char* EndPtr, int a3)
-{
-    STR_Init3DStringExtExt(a1, EndPtr, a3);
-}
-
-void STR_Init3DStringCenter(struct sGameObjectMain* a1, char* EndPtr, int a3)
-{
-    STR_Init3DStringExtExt(a1, EndPtr, a3);
-}
-
-void STR_Init3DStringFromSTR(struct sGameObjectMain* a1, struct sGameObjectMain* a2, int idx, int a4)
-{
-    tGEOSTRStruct* v4;
-    tGEOSTRStruct* v5;
-    tGEOSTRStringData* v6;
-    tGEOSTRStringData* v7;
-    int v8;
-    int v9;
-    tGEOSTRLetter* v10;
-    tGEOSTRLetter* v11;
+    tGEOGRO* gro;
+    tGeoUVElem* uv;
+    tGeoUVElem* uvEnd;
+    tGEOSTRLetter* letter;
+    tFontGlypthElem* fge;
+    uint16_t page;
+    int quads;
+    int count;
+    int glyph;
     int i;
-    char EndPtr[256];
+    tGEOSTRStruct geostr;
+    tGEOSTRLetter letters[256];
 
-    v4 = STR_pst_Get(a2);
-    v5 = v4;
-    if (v4)
+    gro = (tGEOGRO*)OBJ_p_GetGro(gao);
+    if (!gro || gro->intf->id != 1)
+        return;
+
+    count = STR_l_GetStringLength(str);
+    quads = gro->uvNum >> 2;
+    if (count >= quads)
+        count = gro->uvNum >> 2;
+    if (maxLetters >= 0 && count > maxLetters)
+        count = maxLetters;
+
+    // preserved: the scratch string takes the camera width as its height and the height as its width
+    geostr.height = (unsigned int)gpst_DX_stDD->ct.cam.width;
+    geostr.width = (unsigned int)gpst_DX_stDD->ct.cam.height;
+    STR_ParseString(&geostr, 0, letters, str, STR_l_GetStringLength(str), 0.050000001f, 0.050000001f, -1, 0);
+    ((tGameObjectVisualObject*)(STR_sgpst_GO->basic->actorObjectOrVisualObject))->GROMAT = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROMAT;
+    geostr.fontDesc = 0;
+    geostr.fontMaterialID = 0;
+    geostr.fontDesc = STR_l_FontDescForPage(0);
+    if (!geostr.fontDesc)
+        return;
+
+    uv = gro->UVs;
+    uvEnd = &uv[4 * quads];
+    gro->triangleChunks->materialNum = (letters[0].flagsAndChar >> 12) & 0x3F;
+    letter = letters;
+    geostr.fontMaterialID = -1;
+    for (i = 0; i < count; i++)
     {
-        v6 = STR_pst_GetString(v4, idx);
-        v7 = v6;
-        if (v6)
+        page = (letter->flagsAndChar >> 12) & 0x3F;
+        if (page != geostr.fontMaterialID)
         {
-            v8 = STR_l_GetValidIndex(v5, v6, 0);
-            v9 = STR_l_GetValidNumber(v5, v7, v8, -1);
-            v10 = &v5->letters[v8 + v7->index];
-            v11 = &v10[v9];
-            for (i = 0; v10 < v11; ++i)
-            {
-                EndPtr[i] = v10->flagsAndChar;
-                ++v10;
-            }
-            EndPtr[i] = 0;
-            STR_Init3DStringExtExt(a1, EndPtr, a4);
+            geostr.fontMaterialID = (letter->flagsAndChar >> 12) & 0x3F;
+            geostr.fontDesc = STR_l_FontDescForPage(page);
         }
+        glyph = STR_l_GlyphIndex(letter->flagsAndChar);
+        fge = &geostr.fontDesc->fge[glyph];
+        uv[0].u = *(&fge->x + STRU1Offset);
+        uv[0].v = *(&fge->w + STRV1Offset);
+        uv[1].u = *(&fge->x + STRU2Offset);
+        uv[1].v = *(&fge->w + STRV2Offset);
+        uv[2].u = *(&fge->x + STRU3Offset);
+        uv[2].v = *(&fge->w + STRV3Offset);
+        uv[3].u = *(&fge->x + STRU4Offset);
+        uv[3].v = *(&fge->w + STRV4Offset);
+        uv += 4;
+        ++letter;
     }
+    for (; uv < uvEnd; ++uv)
+    {
+        uv->u = 0.0;
+        uv->v = 0.0;
+    }
+    if (gro->d3dIndexBuf)
+        PC_FreeABackCache(gro);
+}
+
+void STR_Init3DString(struct sGameObjectMain* gao, char* str)
+{
+    STR_Init3DStringExtExt(gao, str, -1);
+}
+
+void STR_Init3DStringExt(struct sGameObjectMain* gao, char* str, int maxLetters)
+{
+    STR_Init3DStringExtExt(gao, str, maxLetters);
+}
+
+void STR_Init3DStringCenter(struct sGameObjectMain* gao, char* str, int maxLetters)
+{
+    STR_Init3DStringExtExt(gao, str, maxLetters);
+}
+
+void STR_Init3DStringFromSTR(struct sGameObjectMain* gao, struct sGameObjectMain* source, int strIdx, int maxLetters)
+{
+    tGEOSTRStruct* str;
+    tGEOSTRStringData* sd;
+    tGEOSTRLetter* letter;
+    tGEOSTRLetter* end;
+    int i;
+    char buf[256];
+
+    str = STR_pst_Get(source);
+    if (!str)
+        return;
+
+    sd = STR_pst_GetString(str, strIdx);
+    if (!sd)
+        return;
+
+    STR_l_LetterRange(str, sd, 0, -1, &letter, &end);
+    for (i = 0; letter < end; ++i)
+    {
+        buf[i] = letter->flagsAndChar;
+        ++letter;
+    }
+    buf[i] = 0;
+    STR_Init3DStringExtExt(gao, buf, maxLetters);
 }

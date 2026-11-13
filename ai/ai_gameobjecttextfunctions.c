@@ -127,20 +127,20 @@ tAINode* AI_EvalFunc_OBJ_TextSetExt(tAINode* node)
 {
     tGameObjectMain* gaoUltra;
     char* str;
-    Vec3* pos;
+    Vec3* pivot;
     int strIdx;
-    int firstChar;
+    int flags;
 
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
 
-    // the position is read where the stack keeps it rather than copied out
-    pos = (Vec3*)AI_PopStackSlot();
+    // the pivot is read where the stack keeps it rather than copied out
+    pivot = (Vec3*)AI_PopStackSlot();
     str = AI_GetStringFromStack();
-    firstChar = AI_GetIntFromStack();
+    flags = AI_GetIntFromStack();
     strIdx = AI_GetIntFromStack();
-    STR_SetStringExt(gaoUltra, strIdx, firstChar, str, pos);
+    STR_SetStringExt(gaoUltra, strIdx, flags, str, pivot);
     return node + 1;
 }
 
@@ -1166,11 +1166,11 @@ tAINode* AI_EvalFunc_OBJ_3DText(tAINode* node)
 tAINode* AI_EvalFunc_OBJ_3DTextExt(tAINode* node)
 {
     char* str;
-    int flags;
+    int maxLetters;
 
-    flags = AI_GetIntFromStack();
+    maxLetters = AI_GetIntFromStack();
     str = AI_GetStringFromStack();
-    STR_Init3DStringExt((tGameObjectMain*)AI_GetObjectFromStack(), str, flags);
+    STR_Init3DStringExt((tGameObjectMain*)AI_GetObjectFromStack(), str, maxLetters);
     return node + 1;
 }
 
@@ -1183,11 +1183,11 @@ tAINode* AI_EvalFunc_OBJ_3DTextLangDependent(tAINode* node)
 tAINode* AI_EvalFunc_OBJ_3DTextCenter(tAINode* node)
 {
     char* str;
-    int flags;
+    int maxLetters;
 
-    flags = AI_GetIntFromStack();
+    maxLetters = AI_GetIntFromStack();
     str = AI_GetStringFromStack();
-    STR_Init3DStringCenter((tGameObjectMain*)AI_GetObjectFromStack(), str, flags);
+    STR_Init3DStringCenter((tGameObjectMain*)AI_GetObjectFromStack(), str, maxLetters);
     return node + 1;
 }
 
@@ -1195,13 +1195,13 @@ tAINode* AI_EvalFunc_OBJ_3DTextFromStrObj(tAINode* node)
 {
     tGameObjectMain* source;
     int strIdx;
-    int flags;
+    int maxLetters;
 
     // the builtin takes five arguments and drops the last one pushed
     AI_GetIntFromStack();
-    flags = AI_GetIntFromStack();
+    maxLetters = AI_GetIntFromStack();
     strIdx = AI_GetIntFromStack();
     source = (tGameObjectMain*)AI_GetObjectFromStack();
-    STR_Init3DStringFromSTR((tGameObjectMain*)AI_GetObjectFromStack(), source, strIdx, flags);
+    STR_Init3DStringFromSTR((tGameObjectMain*)AI_GetObjectFromStack(), source, strIdx, maxLetters);
     return node + 1;
 }
