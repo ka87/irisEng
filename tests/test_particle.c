@@ -549,6 +549,8 @@ static void sweepRenderDriving(void)
     TIM_gf_dt = 0.0f;
 }
 
+#define PARTICLE_EXPECTED_FLOAT_DIFFS 19637L
+
 int main(void)
 {
     PMOCK_Init();
@@ -573,5 +575,26 @@ int main(void)
     PMOCK_Summary("particlegenerator.c");
     if (PMOCK_logOverflow)
         printf("  WARNING: the call log overflowed\n");
+
+    /* The float differences above are the accepted class: the frozen
+       copy keeps the inlined arithmetic in the decompiler's doubles
+       where the restored helpers round to float at each step. They are
+       accepted, but they are not free -- a tolerance that swallows real
+       differences is how a narrowing change gets through, and that is
+       the mistake this project has made most often.
+
+       So the count is pinned. It is a property of the two copies, not
+       of the machine: nothing here is timing- or address-dependent, so
+       it moves only when the arithmetic moves. Injecting one narrowing
+       into PAG_l_ScaleToRandomSpeed -- dividing by the double length
+       rather than the float it is narrowed into -- leaves every case
+       passing and takes this count from 19,637 to 20,216, which is the
+       only thing that sees it. */
+    if (PMOCK_floatsDiffering != PARTICLE_EXPECTED_FLOAT_DIFFS)
+    {
+        printf("  FAIL: %ld floats differ, expected %ld -- the arithmetic moved\n",
+               PMOCK_floatsDiffering, (long)PARTICLE_EXPECTED_FLOAT_DIFFS);
+        return 1;
+    }
     return PMOCK_failures ? 1 : 0;
 }
