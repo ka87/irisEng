@@ -276,8 +276,8 @@ void COL_DuplicateInstance(struct sGameObjectMain* a1, struct sGameObjectMain* a
 void COL_DuplicateColMap(struct sGameObjectMain* a1, struct sGameObjectMain* a2);
 void COL_ResolveRefs(struct sGameObjectMain* a1);
 void COL_Reinit(struct sGameObjectMain* a1);
-void COL_MainCall(struct sWorld* a1);
-void COL_OneCall(struct sGameObjectMain* a1, int a2);
+void COL_MainCall(struct sWorld* world);
+void COL_OneCall(struct sGameObjectMain* gao, int firstRecord);
 BOOL COL_b_BVIn(struct sGameObjectMain* a1, struct sGameObjectMain* a2);
 BOOL COL_b_BVOverlap(struct sGameObjectMain* gao1, struct sGameObjectMain* gao2, BOOL OBBoxOfFirstGao, BOOL OBBoxOfSecondGao, BOOL useSnP);
 void COL_InitModule();
@@ -329,7 +329,7 @@ int COL_Report_ul_GMatReportGet(struct sGameObjectMain* a1, struct sWorld* a2, i
 float col_sqrlen_sub_409560(Vec3* a1, Vec3* a2);
 
 int INT_PointInTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, uint8_t* a6);
-BOOL INT_SphereAABBox(Vec3* a1, float a2, Vec3* a3, Vec3* a4);
+BOOL INT_SphereAABBox(Vec3* center, float radius, Vec3* boxMin, Vec3* boxMax);
 
 void COL_OK3_Build(void* aa, int type, int a3);
 

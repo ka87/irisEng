@@ -4986,1057 +4986,952 @@ int INT_b_IntersectEdgeWithBoxWithHit(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Ve
     return result;
 }
 
-int INT_FullAABBoxTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, Vec3* a7, uint32_t* a8, uint32_t* a9)
+static void COL_l_SwapRecords(tRecordElem* a, tRecordElem* b)
 {
-    int v9;
-    double v10;
-    double v11;
-    double v13;
-    Vec3* v14;
-    float v15;
-    float v16;
-    double v17;
-    Vec3* v18;
-    float v19;
-    float v20;
-    double v21;
-    Vec3* v22;
-    float v23;
-    float v24;
-    double v25;
-    Vec3* v26;
-    Vec3* v27;
-    float v28;
-    float v29;
-    char v30;
-    int v31; 
-    float v32;
-    Vec3* v33;
-    float v34;
-    int v35;
-    float v36;
-    Vec3* v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    int v43;
-    int v44;
-    int v45;
-    int v46;
-    int v47;
-    float v48;
-    int v49;
-    Vec3 a1a;
-    Vec3 v51;
-    Vec3 v52;
+    tRecordElem tmp;
 
-    *a8 = 0;
-    v43 = 0;
-    v9 = INT_ul_GetPositionPointWithBox(a1, a5, a6);
-    v44 = INT_ul_GetPositionPointWithBox(a2, a5, a6);
-    v46 = INT_ul_GetPositionPointWithBox(a3, a5, a6);
-    if ((v44 & v46 & v9) != 0)
-        return 0;
-    v51.x = a6->x - a5->x;
-    v10 = a6->y - a5->y;
-    v52.x = -v51.x;
-    v51.y = (float)v10;
-    v11 = a6->z - a5->z;
-    v52.y = -v51.y;
-    v51.z = (float)v11;
-    v52.z = -v51.z;
-    v49 = (INT_ul_GetPositionPointWithEdgeBox(a1, a5, a6, &v51, &v52) << 8) | v9;
-    v45 = (INT_ul_GetPositionPointWithEdgeBox(a2, a5, a6, &v51, &v52) << 8) | v44;
-    v47 = (INT_ul_GetPositionPointWithEdgeBox(a3, a5, a6, &v51, &v52) << 8) | v46;
-    if ((v45 & v47 & v49) != 0)
-        return 0;
-    if (a9)
-        *a9 |= 1u;
-    v48 = -(a1->y * a4->y + a4->x * a1->x + a1->z * a4->z);
-    v13 = v51.x * a4->x + v51.y * a4->y + v51.z * a4->z;
-    if (v13 != 0.0f)
-    {
-        v39 = (float)(-((a4->z * a5->z + a5->y * a4->y + a4->x * a5->x + v48) / v13));
-        if (v39 > 0.0 && v39 < 1.0)
-        {
-            a1a.x = v39 * v51.x + a5->x;
-            a1a.y = v39 * v51.y + a5->y;
-            a1a.z = v39 * v51.z + a5->z;
-            if (INT_PointInTriangle(&a1a, a1, a2, a3, a4, 0))
-            {
-                v14 = &a7[(*a8)++];
-                v15 = a1a.y;
-                v14->x = a1a.x;
-                v16 = a1a.z;
-                v14->y = v15;
-                v14->z = v16;
-                v43 = 1;
-            }
-        }
-    }
-    v17 = v51.x * a4->x + v52.y * a4->y + v51.z * a4->z;
-    if (v17 != 0.0f)
-    {
-        v40 = (float)(-((a4->z * a5->z + a6->y * a4->y + a4->x * a5->x + v48) / v17));
-        if (v40 > 0.0 && v40 < 1.0)
-        {
-            a1a.x = v40 * v51.x + a5->x;
-            a1a.y = v52.y * v40 + a6->y;
-            a1a.z = v40 * v51.z + a5->z;
-            if (INT_PointInTriangle(&a1a, a1, a2, a3, a4, 0))
-            {
-                v18 = &a7[(*a8)++];
-                v19 = a1a.y;
-                v18->x = a1a.x;
-                v20 = a1a.z;
-                v18->y = v19;
-                v18->z = v20;
-                v43 = 1;
-            }
-        }
-    }
-    v21 = v51.x * a4->x + v51.y * a4->y + v52.z * a4->z;
-    if (v21 != 0.0f)
-    {
-        v41 = (float)(-((a5->y * a4->y + a4->z * a6->z + a4->x * a5->x + v48) / v21));
-        if (v41 > 0.0 && v41 < 1.0)
-        {
-            a1a.x = v41 * v51.x + a5->x;
-            a1a.y = v41 * v51.y + a5->y;
-            a1a.z = v52.z * v41 + a6->z;
-            if (INT_PointInTriangle(&a1a, a1, a2, a3, a4, 0))
-            {
-                v22 = &a7[(*a8)++];
-                v23 = a1a.y;
-                v22->x = a1a.x;
-                v24 = a1a.z;
-                v22->y = v23;
-                v22->z = v24;
-                v43 = 1;
-            }
-        }
-    }
-    v25 = v51.x * a4->x + v52.y * a4->y + v52.z * a4->z;
-    if (v25 == 0.0f || (v42 = (float)(-((a4->z * a6->z + a6->y * a4->y + a4->x * a5->x + v48) / v25)), v42 <= 0.0f) || v42 >= 1.0f)
-    {
-        v26 = a2;
-        goto LABEL_27;
-    }
-    v26 = a2;
-    a1a.x = v42 * v51.x + a5->x;
-    a1a.y = v52.y * v42 + a6->y;
-    a1a.z = v52.z * v42 + a6->z;
-    if (!INT_PointInTriangle(&a1a, a1, a2, a3, a4, 0))
-    {
-    LABEL_27:
-        if (v43)
-            return v43;
-        if ((v45 & v49) == 0)
-        {
-            v52.x = v26->x - a1->x;
-            v52.y = v26->y - a1->y;
-            v52.z = v26->z - a1->z;
-            if (INT_b_IntersectEdgeWithBoxWithHit(a1, v26, &v52, a5, a6, v49 | v45, &a1a))
-            {
-                v27 = &a7[(*a8)++];
-                v28 = a1a.y;
-                v27->x = a1a.x;
-                v29 = a1a.z;
-                v43 = 1;
-                v27->y = v28;
-                v27->z = v29;
-            }
-        }
-        v30 = v47;
-        if ((v47 & v49) == 0)
-        {
-            v52.x = a3->x - a1->x;
-            v52.y = a3->y - a1->y;
-            v52.z = a3->z - a1->z;
-            if (INT_b_IntersectEdgeWithBoxWithHit(a1, a3, &v52, a5, a6, v49 | v47, &a1a))
-            {
-                v31 = (*a8)++;
-                v32 = a1a.y;
-                v33 = &a7[v31];
-                v33->x = a1a.x;
-                v34 = a1a.z;
-                v43 = 1;
-                v33->y = v32;
-                v33->z = v34;
-            }
-            v30 = v47;
-        }
-        if ((v45 & v47) != 0)
-            return v43;
-        v52.x = a3->x - v26->x;
-        v52.y = a3->y - v26->y;
-        v52.z = a3->z - v26->z;
-        if (!INT_b_IntersectEdgeWithBoxWithHit(v26, a3, &v52, a5, a6, v45 | v30, &a1a))
-            return v43;
-    }
-    v35 = (*a8)++;
-    v36 = a1a.y;
-    v37 = &a7[v35];
-    v37->x = a1a.x;
-    v38 = a1a.z;
-    v37->y = v36;
-    v43 = 1;
-    v37->z = v38;
-    return v43;
+    memcpy(&tmp, a, sizeof(tmp));
+    memcpy(a, b, sizeof(tRecordElem));
+    memcpy(b, &tmp, sizeof(tRecordElem));
 }
 
-int COL_Box_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, int16_t a3, int16_t a4, int16_t a5, Vec3* a6, int a7, int16_t a8)
+static void COL_l_ExpandBVByColInstanceOffset(tGameObjectMain* gao)
 {
-    tColCollisionObject* v8;
-    Vec3* v9;
-    Vec3* v10;
-    Vec3* v11;
-    Vec3* v12;
-    long double v13;
-    Mtx4x4* v15;
-    int a6a;
-    Vec3 a5a;
-    float v18;
-    unsigned int v19;
-    unsigned int v20;
-    Vec3 v21;
-    Vec3 v22;
-    Vec3 v23;
-    Vec3 v24;
-    Vec3 v25;
-    Vec3 v26;
-    Vec3 v27;
-    Vec3 v28;
-    Vec3 v29;
-    Vec3 a4a;
-    Vec3 v31;
-    Vec3 a1; 
-    Mtx4x4 a2a;
-    Vec3 v34[6]; 
+    Mtx4x4* colInstMtx;
+    Mtx4x4* gaoMtx;
+    tGameObjectBV* bv;
+    float dx;
+    float dy;
+    float dz;
+    Mtx4x4 hieMtx;
 
-    v8 = colGlobal->collisionObjectPtr;
-    a6a = 0x4000;
-    v9 = ((tCobMeshObjectMesh*)(v8->objectPtrByType))->vertices;
-    v10 = &v9[(uint16_t)a5];
-    v11 = &v9[(uint16_t)a4];
-    v15 = colGlobal->colMapGaoMatrices;
-    v18 = -100000.0f;
-    MATH_TransformVertexNoScale(&a1, v15, &v9[(uint16_t)a3]);
-    MATH_TransformVertexNoScale(&v25, colGlobal->colMapGaoMatrices, v11);
-    MATH_TransformVertexNoScale(&v23, colGlobal->colMapGaoMatrices, v10);
-    MATH_TransformVectorNoScale(&v27, colGlobal->colMapGaoMatrices, a6);
-    MATH_InvertMatrix(&a2a, colGlobal->colInstGaoMatrices);
-    MATH_TransformVertexNoScale(&v26, &a2a, &a1);
-    MATH_TransformVertexNoScale(&v24, &a2a, &v25);
-    MATH_TransformVertexNoScale(&v29, &a2a, &v23);
-    MATH_TransformVectorNoScale(&v31, &a2a, &v27);
-    memset(&v34, 0, 32u); // FIXME: miert csak ennyit?
+    colInstMtx = gao->extended->coll->colInstance->mtx;
+    if ((gao->flags & 0x400000) != 0)
+    {
+        MATH_MulMatrixMatrix(&hieMtx, colInstMtx, gao->basic->mtx->refGao2->matrices);
+        gaoMtx = gao->matrices;
+        dx = gaoMtx->Pos.x - hieMtx.Pos.x;
+        dy = gaoMtx->Pos.y - hieMtx.Pos.y;
+        dz = gaoMtx->Pos.z - hieMtx.Pos.z;
+    }
+    else
+    {
+        gaoMtx = gao->matrices;
+        dx = gaoMtx->Pos.x - colInstMtx->Pos.x;
+        dy = gaoMtx->Pos.y - colInstMtx->Pos.y;
+        dz = gaoMtx->Pos.z - colInstMtx->Pos.z;
+    }
+    bv = gao->boundingVolume;
+    bv->BVMin = bv->BVMinOriginal;
+    bv->BVMax.x = bv->BVMaxOriginal.x;
+    bv->BVMax.y = bv->BVMaxOriginal.y;
+    bv->BVMax.z = bv->BVMaxOriginal.z;
+    if (dx <= 0.0f)
+        bv->BVMax.x = bv->BVMax.x - dx;
+    else
+        bv->BVMin.x = bv->BVMin.x - dx;
+    if (dy <= 0.0f)
+        bv->BVMax.y = bv->BVMax.y - dy;
+    else
+        bv->BVMin.y = bv->BVMin.y - dy;
+    if (dz <= 0.0f)
+        bv->BVMax.z = bv->BVMax.z - dz;
+    else
+        bv->BVMin.z = bv->BVMin.z - dz;
+}
+
+static void COL_l_AddHitPoint(Vec3* hits, uint32_t* hitCount, Vec3* point)
+{
+    hits[(*hitCount)++] = *point;
+}
+
+int INT_FullAABBoxTriangle(Vec3* p0, Vec3* p1, Vec3* p2, Vec3* normal, Vec3* boxMin, Vec3* boxMax, Vec3* hits, uint32_t* hitCount, uint32_t* flags)
+{
+    int hit;
+    double denom;
+    int out0;
+    int out1;
+    int out2;
+    int side0;
+    int side1;
+    int side2;
+    float t;
+    float planeD;
+    Vec3 point;
+    Vec3 diag;
+    Vec3 diagFlip;
+
+    *hitCount = 0;
+    hit = 0;
+    out0 = INT_ul_GetPositionPointWithBox(p0, boxMin, boxMax);
+    out1 = INT_ul_GetPositionPointWithBox(p1, boxMin, boxMax);
+    out2 = INT_ul_GetPositionPointWithBox(p2, boxMin, boxMax);
+    if ((out1 & out2 & out0) != 0)
+        return 0;
+    diag.x = boxMax->x - boxMin->x;
+    diag.y = (float)(boxMax->y - boxMin->y);
+    diag.z = (float)(boxMax->z - boxMin->z);
+    diagFlip.x = -diag.x;
+    diagFlip.y = -diag.y;
+    diagFlip.z = -diag.z;
+    side0 = (INT_ul_GetPositionPointWithEdgeBox(p0, boxMin, boxMax, &diag, &diagFlip) << 8) | out0;
+    side1 = (INT_ul_GetPositionPointWithEdgeBox(p1, boxMin, boxMax, &diag, &diagFlip) << 8) | out1;
+    side2 = (INT_ul_GetPositionPointWithEdgeBox(p2, boxMin, boxMax, &diag, &diagFlip) << 8) | out2;
+    if ((side1 & side2 & side0) != 0)
+        return 0;
+    if (flags)
+        *flags |= 1u;
+    planeD = -(p0->y * normal->y + normal->x * p0->x + p0->z * normal->z);
+    denom = diag.x * normal->x + diag.y * normal->y + diag.z * normal->z;
+    if (denom != 0.0f)
+    {
+        t = (float)(-((normal->z * boxMin->z + boxMin->y * normal->y + normal->x * boxMin->x + planeD) / denom));
+        if (t > 0.0 && t < 1.0)
+        {
+            point.x = t * diag.x + boxMin->x;
+            point.y = t * diag.y + boxMin->y;
+            point.z = t * diag.z + boxMin->z;
+            if (INT_PointInTriangle(&point, p0, p1, p2, normal, 0))
+            {
+                COL_l_AddHitPoint(hits, hitCount, &point);
+                hit = 1;
+            }
+        }
+    }
+    denom = diag.x * normal->x + diagFlip.y * normal->y + diag.z * normal->z;
+    if (denom != 0.0f)
+    {
+        t = (float)(-((normal->z * boxMin->z + boxMax->y * normal->y + normal->x * boxMin->x + planeD) / denom));
+        if (t > 0.0 && t < 1.0)
+        {
+            point.x = t * diag.x + boxMin->x;
+            point.y = diagFlip.y * t + boxMax->y;
+            point.z = t * diag.z + boxMin->z;
+            if (INT_PointInTriangle(&point, p0, p1, p2, normal, 0))
+            {
+                COL_l_AddHitPoint(hits, hitCount, &point);
+                hit = 1;
+            }
+        }
+    }
+    denom = diag.x * normal->x + diag.y * normal->y + diagFlip.z * normal->z;
+    if (denom != 0.0f)
+    {
+        t = (float)(-((boxMin->y * normal->y + normal->z * boxMax->z + normal->x * boxMin->x + planeD) / denom));
+        if (t > 0.0 && t < 1.0)
+        {
+            point.x = t * diag.x + boxMin->x;
+            point.y = t * diag.y + boxMin->y;
+            point.z = diagFlip.z * t + boxMax->z;
+            if (INT_PointInTriangle(&point, p0, p1, p2, normal, 0))
+            {
+                COL_l_AddHitPoint(hits, hitCount, &point);
+                hit = 1;
+            }
+        }
+    }
+    denom = diag.x * normal->x + diagFlip.y * normal->y + diagFlip.z * normal->z;
+    if (denom != 0.0f)
+    {
+        t = (float)(-((normal->z * boxMax->z + boxMax->y * normal->y + normal->x * boxMin->x + planeD) / denom));
+        if (t > 0.0f && t < 1.0f)
+        {
+            point.x = t * diag.x + boxMin->x;
+            point.y = diagFlip.y * t + boxMax->y;
+            point.z = diagFlip.z * t + boxMax->z;
+            if (INT_PointInTriangle(&point, p0, p1, p2, normal, 0))
+            {
+                COL_l_AddHitPoint(hits, hitCount, &point);
+                return 1;
+            }
+        }
+    }
+    if (hit)
+        return hit;
+    if ((side1 & side0) == 0)
+    {
+        diagFlip.x = p1->x - p0->x;
+        diagFlip.y = p1->y - p0->y;
+        diagFlip.z = p1->z - p0->z;
+        if (INT_b_IntersectEdgeWithBoxWithHit(p0, p1, &diagFlip, boxMin, boxMax, side0 | side1, &point))
+        {
+            COL_l_AddHitPoint(hits, hitCount, &point);
+            hit = 1;
+        }
+    }
+    if ((side2 & side0) == 0)
+    {
+        diagFlip.x = p2->x - p0->x;
+        diagFlip.y = p2->y - p0->y;
+        diagFlip.z = p2->z - p0->z;
+        if (INT_b_IntersectEdgeWithBoxWithHit(p0, p2, &diagFlip, boxMin, boxMax, side0 | side2, &point))
+        {
+            COL_l_AddHitPoint(hits, hitCount, &point);
+            hit = 1;
+        }
+    }
+    if ((side1 & side2) != 0)
+        return hit;
+    diagFlip.x = p2->x - p1->x;
+    diagFlip.y = p2->y - p1->y;
+    diagFlip.z = p2->z - p1->z;
+    if (!INT_b_IntersectEdgeWithBoxWithHit(p1, p2, &diagFlip, boxMin, boxMax, side1 | side2, &point))
+        return hit;
+    COL_l_AddHitPoint(hits, hitCount, &point);
+    return 1;
+}
+
+int COL_Box_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* tri, int16_t i0, int16_t i1, int16_t i2, Vec3* normal, int reportA, int16_t reportB)
+{
+    tColCollisionObject* colObj;
+    Vec3* verts;
+    Vec3* cursor;
+    long double len;
+    unsigned int hitCount;
+    unsigned int n;
+    int flags;
+    float bestLen;
+    Vec3 bestRecal;
+    Vec3 worldP0;
+    Vec3 worldP1;
+    Vec3 worldP2;
+    Vec3 worldNormal;
+    Vec3 localP0;
+    Vec3 localP1;
+    Vec3 localP2;
+    Vec3 localNormal;
+    Vec3 hitWorld;
+    Vec3 hitLocal;
+    Vec3 recalVec;
+    Vec3 reportNormal;
+    Mtx4x4 instInvMtx;
+    Vec3 hits[6];
+
+    colObj = colGlobal->collisionObjectPtr;
+    flags = 0x4000;
+    verts = ((tCobMeshObjectMesh*)(colObj->objectPtrByType))->vertices;
+    bestLen = -100000.0f;
+    MATH_TransformVertexNoScale(&worldP0, colGlobal->colMapGaoMatrices, &verts[(uint16_t)i0]);
+    MATH_TransformVertexNoScale(&worldP1, colGlobal->colMapGaoMatrices, &verts[(uint16_t)i1]);
+    MATH_TransformVertexNoScale(&worldP2, colGlobal->colMapGaoMatrices, &verts[(uint16_t)i2]);
+    MATH_TransformVectorNoScale(&worldNormal, colGlobal->colMapGaoMatrices, normal);
+    MATH_InvertMatrix(&instInvMtx, colGlobal->colInstGaoMatrices);
+    MATH_TransformVertexNoScale(&localP0, &instInvMtx, &worldP0);
+    MATH_TransformVertexNoScale(&localP1, &instInvMtx, &worldP1);
+    MATH_TransformVertexNoScale(&localP2, &instInvMtx, &worldP2);
+    MATH_TransformVectorNoScale(&localNormal, &instInvMtx, &worldNormal);
+    memset(&hits, 0, 32u); // FIXME: miert csak ennyit?
     if (!INT_FullAABBoxTriangle(
-        &v26,
-        &v24,
-        &v29,
-        &v31,
+        &localP0,
+        &localP1,
+        &localP2,
+        &localNormal,
         &(((tColBox*)(colGlobal->collInstanceElem->elemShapePtr))->pos2),
         &(((tColBox*)(colGlobal->collInstanceElem->elemShapePtr))->pos1),
-        v34,
-        &v19,
-        &a6a))
+        hits,
+        &hitCount,
+        &flags))
         return 0;
-    v20 = 0;
-    if (v19)
+    n = 0;
+    if (hitCount)
     {
-        v12 = v34;
+        cursor = hits;
         do
         {
-            MATH_TransformVertex(&v22, colGlobal->colInstGaoMatrices, v12);
-            MATH_TransformVertex(&v28, &colGlobal->colMapGaoInvMatrix, &v22);
-            a6a |= 0x20u;
-            if (COL_ComputeReport(&v28, a6, &v22, &a4a, &a5a, &a6a, a7, a8, colGlobal))
+            MATH_TransformVertex(&hitWorld, colGlobal->colInstGaoMatrices, cursor);
+            MATH_TransformVertex(&hitLocal, &colGlobal->colMapGaoInvMatrix, &hitWorld);
+            flags |= 0x20u;
+            if (COL_ComputeReport(&hitLocal, normal, &hitWorld, &reportNormal, &recalVec, &flags, reportA, reportB, colGlobal))
             {
-                v13 = sqrt(a5a.z * a5a.z + a5a.x * a5a.x + a5a.y * a5a.y);
-                if (v13 > v18)
+                len = sqrt(recalVec.z * recalVec.z + recalVec.x * recalVec.x + recalVec.y * recalVec.y);
+                if (len > bestLen)
                 {
-                    v18 = (float)v13;
-                    v21 = a5a;
+                    bestLen = (float)len;
+                    bestRecal = recalVec;
                 }
-                a5a.x = 0.0;
-                a5a.y = 0.0;
-                a5a.z = 0.0;
+                recalVec.x = 0.0;
+                recalVec.y = 0.0;
+                recalVec.z = 0.0;
             }
-            ++v12;
-            ++v20;
-        } while (v20 < v19);
-        if (v18 != -100000.0f)
-            COL_ReportCollision(&v22, &a4a, &v21, a6a & ~0x1000u, a7, a8, colGlobal);
+            ++cursor;
+            ++n;
+        } while (n < hitCount);
+        if (bestLen != -100000.0f)
+            COL_ReportCollision(&hitWorld, &reportNormal, &bestRecal, flags & ~0x1000u, reportA, reportB, colGlobal);
     }
     return 1;
 }
 
-int COL_Sphere_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* a2, int16_t a3, int16_t a4, int16_t a5, Vec3* normalVec, int a7, int16_t a8, int a9)
+int COL_Sphere_Triangle(tColGlobal* colGlobal, tCobMeshTriangleElem* tri, int16_t i0, int16_t i1, int16_t i2, Vec3* normalVec, int reportA, int16_t reportB, int testDynamic)
 {
-    tColCollisionObject* v9;
-    Vec3* v10;
-    Vec3* v11;
-    Vec3* v12;
-    Vec3* v13;
-    Vec3* v14;
-    int16_t v15;
-    int v16;
-    int v17;
-    int a6a;
-    Vec3 a1;
-    Vec3 a5a;
-    Vec3 a4a;
-    Vec3 a3a;
-    Vec3 a10;
+    tColCollisionObject* colObj;
+    Vec3* verts;
+    Vec3* p1;
+    Vec3* p0;
+    Vec3* p2;
+    Vec3* contact;
+    int reported;
+    int flags;
+    Vec3 staticHit;
+    Vec3 recalVec;
+    Vec3 reportNormal;
+    Vec3 collidedPoint;
+    Vec3 dynHit;
 
-    v9 = colGlobal->collisionObjectPtr;
-    a6a = 0;
-    v10 = ((tCobMeshObjectMesh*)(v9->objectPtrByType))->vertices;
-    v11 = &v10[(uint16_t)a4];
-    v12 = &v10[(uint16_t)a3];
-    v13 = &v10[(uint16_t)a5];
-    if (a9
+    colObj = colGlobal->collisionObjectPtr;
+    flags = 0;
+    verts = ((tCobMeshObjectMesh*)(colObj->objectPtrByType))->vertices;
+    p1 = &verts[(uint16_t)i1];
+    p0 = &verts[(uint16_t)i0];
+    p2 = &verts[(uint16_t)i2];
+    if (testDynamic
         && INT_DynamicHit(
             &colGlobal->dynCenterPos,
             colGlobal->dynRadius,
             &colGlobal->centerPos,
             colGlobal->radius,
             &colGlobal->moveVecUnit,
-            v12,
-            v11,
-            v13,
+            p0,
+            p1,
+            p2,
             normalVec,
-            &a10,
-            &a6a))
+            &dynHit,
+            &flags))
     {
-        if (INT_FullSphereTriangle(&colGlobal->centerPos, colGlobal->radius, v12, v11, v13, normalVec, &a1, &a6a))
+        if (INT_FullSphereTriangle(&colGlobal->centerPos, colGlobal->radius, p0, p1, p2, normalVec, &staticHit, &flags))
         {
-            a6a |= 0x20u;
-            v14 = &a1;
+            flags |= 0x20u;
+            contact = &staticHit;
         }
         else
         {
-            a6a |= 0x10u;
-            v14 = &a10;
+            flags |= 0x10u;
+            contact = &dynHit;
         }
-        v15 = a8;
-        v16 = a7;
-        v17 = COL_ComputeReport(v14, normalVec, &a3a, &a4a, &a5a, &a6a, a7, a8, colGlobal);
+        reported = COL_ComputeReport(contact, normalVec, &collidedPoint, &reportNormal, &recalVec, &flags, reportA, reportB, colGlobal);
     }
     else
     {
         // TODO CHECK: triangle collision happens here (mammago edge collision bug)
-        if (!INT_FullSphereTriangle(&colGlobal->centerPos, colGlobal->radius, v12, v11, v13, normalVec, &a1, &a6a))
+        if (!INT_FullSphereTriangle(&colGlobal->centerPos, colGlobal->radius, p0, p1, p2, normalVec, &staticHit, &flags))
             return 0;
-        v15 = a8;
-        v16 = a7;
-        a6a |= 0x20u;
-        v17 = COL_ComputeReport(&a1, normalVec, &a3a, &a4a, &a5a, &a6a, a7, a8, colGlobal);
+        flags |= 0x20u;
+        reported = COL_ComputeReport(&staticHit, normalVec, &collidedPoint, &reportNormal, &recalVec, &flags, reportA, reportB, colGlobal);
     }
     //a6a &= ~0x40000;
     //a6a &= ~0x80;
     //a6a &= ~0x8; ?? ez javit rajta
-    if (v17) {
+    if (reported) {
         //DBG_OutputDebugString("a1: ");
         //DBG_DumpVec(&a1);
-        COL_ReportCollision(&a3a, &a4a, &a5a, a6a, v16, v15, colGlobal);
+        COL_ReportCollision(&collidedPoint, &reportNormal, &recalVec, flags, reportA, reportB, colGlobal);
     }
     //if (HACCCCCK) DBG_OutputDebugString("a6a: %x\n", a6a);
     return 1;
 }
 
-void COL_TestAndCollideTriangleIfNeeded(tColGlobal* colglobal, tCobMeshTriangleElem* a2, Vec3* a3, int16_t a4, uint16_t a5, Vec3* a6, Vec3* a7, int a8)
+void COL_TestAndCollideTriangleIfNeeded(tColGlobal* colglobal, tCobMeshTriangleElem* tri, Vec3* normal, int16_t chunkId, uint16_t triIndex, Vec3* rejectMin, Vec3* rejectMax, int testDynamic)
 {
-    long double v8;
-    long double v9;
-    BOOL v10;
-    tColInstance* v11;
-    double v12;
-    int v13;
-    Mtx4x4* v14;
-    double v15;
-    uint16_t v16;
-    Vec3* v17;
-    Vec3* v18;
-    Vec3* v19;
-    float v20;
-    Vec3* v21;
-    float a3a;
-    int a3b; 
-    float a4a;
-    int a4b; 
-    float a5a;
-    int16_t a5b;
-    Vec3 a1;
+    long double absY;
+    long double absZ;
+    tColInstance* colInstance;
+    int instFlags;
+    Mtx4x4* mapMtx;
+    double xPart;
+    int wantsAccelTest;
+    uint16_t i2;
+    Vec3* verts;
+    Vec3* p0;
+    Vec3* p1;
+    Vec3* p2;
+    float p2x;
+    float ny;
+    int i0;
+    float nx;
+    int i1;
+    float nz;
+    int16_t i2s;
+    Vec3 step;
 
-    if (fabs(a3->x) >= 0.001)
-        a4a = a3->x;
+    if (fabs(normal->x) >= 0.001)
+        nx = normal->x;
     else
-        a4a = 0.0;
-    v8 = fabs(a3->y);
-    a3->x = a4a;
-    if (v8 >= 0.001)
-        a3a = a3->y;
+        nx = 0.0;
+    absY = fabs(normal->y);
+    normal->x = nx;
+    if (absY >= 0.001)
+        ny = normal->y;
     else
-        a3a = 0.0;
-    v9 = fabs(a3->z);
-    a3->y = a3a;
-    if (v9 >= 0.001)
-        a5a = a3->z;
+        ny = 0.0;
+    absZ = fabs(normal->z);
+    normal->y = ny;
+    if (absZ >= 0.001)
+        nz = normal->z;
     else
-        a5a = 0.0;
-    v10 = fabs(a3->x) == 0.0f;     // MATH_b_NulVector
-    a3->z = a5a;
-    if (v10 && fabs(a3->y) == 0.0f && fabs(a5a) == 0.0f)
+        nz = 0.0;
+    normal->z = nz;
+    if (MATH_b_NulVector(normal))     // MATH_b_NulVector
         return;
-    v11 = colglobal->colInstance;
-    if (v11->backface)
+    colInstance = colglobal->colInstance;
+    if (colInstance->backface)
     {
-        MATH_TransformVectorNoScale(&a1, &colglobal->colMapGaoInvMatrix, &v11->backFaceVec);
-        v12 = a1.y * a3->y + a1.x * a3->x + a1.z * a3->z;
-        goto LABEL_30;
+        MATH_TransformVectorNoScale(&step, &colglobal->colMapGaoInvMatrix, &colInstance->backFaceVec);
+        if (step.y * normal->y + step.x * normal->x + step.z * normal->z > 0.0)
+            return;
     }
-    v13 = colglobal->colInstanceGao->flags;
-    if ((v13 & 4) != 0 && (colglobal->collisionObjectPtr->flags & 4) == 0)
+    else
     {
-        if ((v13 & 0x400000) == 0 || colglobal->recomputeNeeded)
+        instFlags = colglobal->colInstanceGao->flags;
+        if ((instFlags & 4) != 0 && (colglobal->collisionObjectPtr->flags & 4) == 0)
         {
-            v14 = colglobal->colMapGaoMatrices;
-            a1.x = colglobal->centerPos.x - colglobal->centerPosPrevious.x;
-            a1.y = colglobal->centerPos.y - colglobal->centerPosPrevious.y;
-            a1.z = colglobal->centerPos.z - colglobal->centerPosPrevious.z;
-            if (fabs(v14->v3.z - 1.0) >= 0.001
-                || fabs(MATH_DotProduct(colglobal->ptrSetToVec6InZDMZDRGravityNeg, a3)) >= colglobal->wallCosAngle)
+            wantsAccelTest = 0;
+            if ((instFlags & 0x400000) == 0 || colglobal->recomputeNeeded)
             {
-                if (a1.z * a5a + a3a * a1.y + a4a * a1.x > 0.0)
+                mapMtx = colglobal->colMapGaoMatrices;
+                step.x = colglobal->centerPos.x - colglobal->centerPosPrevious.x;
+                step.y = colglobal->centerPos.y - colglobal->centerPosPrevious.y;
+                step.z = colglobal->centerPos.z - colglobal->centerPosPrevious.z;
+                if (fabs(mapMtx->v3.z - 1.0) >= 0.001
+                    || fabs(MATH_DotProduct(colglobal->ptrSetToVec6InZDMZDRGravityNeg, normal)) >= colglobal->wallCosAngle)
                 {
-                LABEL_29:
-                    v12 = MATH_DotProduct(&colglobal->accelVecInZDMZDR, a3);
-                LABEL_30:
-                    if (v12 > 0.0)
-                        return;
-                    goto LABEL_31;
+                    if (step.z * nz + ny * step.y + nx * step.x > 0.0)
+                        wantsAccelTest = 1;
+                }
+                else
+                {
+                    xPart = nx * step.x;
+                    if (ny * step.y + xPart > 0.0 && step.z * nz + ny * step.y + xPart > 0.0)
+                        wantsAccelTest = 1;
                 }
             }
-            else
+            else if (fabs(colglobal->colMapGaoMatrices->v3.z - 1.0) >= 0.001
+                || fabs(MATH_DotProduct(colglobal->ptrSetToVec6InZDMZDRGravityNeg, normal)) >= colglobal->wallCosAngle
+                || ny * colglobal->accelVecInZDMZDR.y + nx * colglobal->accelVecInZDMZDR.x > 0.0)
             {
-                v15 = a4a * a1.x;
-                if (a3a * a1.y + v15 > 0.0 && a1.z * a5a + a3a * a1.y + v15 > 0.0)
-                    goto LABEL_29;
+                wantsAccelTest = 1;
             }
-        }
-        else if (fabs(colglobal->colMapGaoMatrices->v3.z - 1.0) >= 0.001
-            || fabs(MATH_DotProduct(colglobal->ptrSetToVec6InZDMZDRGravityNeg, a3)) >= colglobal->wallCosAngle
-            || a3a * colglobal->accelVecInZDMZDR.y + a4a * colglobal->accelVecInZDMZDR.x > 0.0)
-        {
-            goto LABEL_29;
+            if (wantsAccelTest && MATH_DotProduct(&colglobal->accelVecInZDMZDR, normal) > 0.0)
+                return;
         }
     }
-LABEL_31:
-    v16 = a2->v3;
-    v17 = ((tCobMeshObjectMesh *)(colglobal->collisionObjectPtr->objectPtrByType))->vertices;
-    a3b = a2->v1;
-    v18 = &v17[a3b];
-    a4b = a2->v2;
-    v19 = &v17[a4b];
-    v20 = v17[v16].x;
-    a5b = v16;
-    v21 = &v17[v16];
-    if (MATH_f_MaxOf3(v18->x, v19->x, v20) >= (double)a6->x
-        && MATH_f_MinOf3(v18->x, v19->x, v21->x) <= (double)a7->x
-        && MATH_f_MaxOf3(v18->y, v19->y, v21->y) >= (double)a6->y
-        && MATH_f_MinOf3(v18->y, v19->y, v21->y) <= (double)a7->y
-        && MATH_f_MaxOf3(v18->z, v19->z, v21->z) >= (double)a6->z
-        && MATH_f_MinOf3(v18->z, v19->z, v21->z) <= (double)a7->z)
+    i2 = tri->v3;
+    verts = ((tCobMeshObjectMesh *)(colglobal->collisionObjectPtr->objectPtrByType))->vertices;
+    i0 = tri->v1;
+    p0 = &verts[i0];
+    i1 = tri->v2;
+    p1 = &verts[i1];
+    p2x = verts[i2].x;
+    i2s = i2;
+    p2 = &verts[i2];
+    if (MATH_f_MaxOf3(p0->x, p1->x, p2x) >= (double)rejectMin->x
+        && MATH_f_MinOf3(p0->x, p1->x, p2->x) <= (double)rejectMax->x
+        && MATH_f_MaxOf3(p0->y, p1->y, p2->y) >= (double)rejectMin->y
+        && MATH_f_MinOf3(p0->y, p1->y, p2->y) <= (double)rejectMax->y
+        && MATH_f_MaxOf3(p0->z, p1->z, p2->z) >= (double)rejectMin->z
+        && MATH_f_MinOf3(p0->z, p1->z, p2->z) <= (double)rejectMax->z)
     {
         if (colglobal->collInstanceElem->elemType == 2)
-            COL_Sphere_Triangle(colglobal, a2, a3b, a4b, a5b, a3, a5, a4, a8);
+            COL_Sphere_Triangle(colglobal, tri, i0, i1, i2s, normal, triIndex, chunkId, testDynamic);
         else
-            COL_Box_Triangle(colglobal, a2, a3b, a4b, a5b, a3, a5, a4);
+            COL_Box_Triangle(colglobal, tri, i0, i1, i2s, normal, triIndex, chunkId);
     }
 }
 
-BOOL INT_SphereAABBox(Vec3* a1, float a2, Vec3* a3, Vec3* a4)
+BOOL INT_SphereAABBox(Vec3* center, float radius, Vec3* boxMin, Vec3* boxMax)
 {
-    double v5;
-    double v10;
-    double v14;
-    double v17;
+    double cx;
+    double cy;
+    double cz;
+    double dist;
 
-    v5 = a1->x;
-    if (a1->x > a4->x)
+    cx = center->x;
+    if (center->x > boxMax->x)
     {
-        if (v5 < a3->x && a3->x - a1->x > a2)
+        if (cx < boxMin->x && boxMin->x - center->x > radius)
             return 0;
     }
-    else if (v5 - a4->x > a2)
+    else if (cx - boxMax->x > radius)
     {
         return 0;
     }
-    v10 = a1->y;
-    if (a1->y > a4->y) // TODO FIXME lehet nem jó
+    cy = center->y;
+    if (center->y > boxMax->y) // TODO FIXME lehet nem jó
     {
-        if (v10 < a3->y && a3->y - a1->y > a2)
+        if (cy < boxMin->y && boxMin->y - center->y > radius)
             return 0;
     }
-    else if (v10 - a4->y > a2)
+    else if (cy - boxMax->y > radius)
     {
         return 0;
     }
-    v14 = a1->z;
-    if (a1->z > a4->z)
+    cz = center->z;
+    if (center->z > boxMax->z)
     {
-        if (v14 >= a3->z)
+        if (cz >= boxMin->z)
             return 1;
-        v17 = a3->z - a1->z;
+        dist = boxMin->z - center->z;
     }
     else
     {
-        v17 = v14 - a4->z;
+        dist = cz - boxMax->z;
     }
-    return v17 <= a2;
+    return dist <= radius;
 }
 
-BOOL INT_SphereOBBox(Vec3* a1, float a2, Vec3* a3, Vec3* a4, Vec3* a5)
+BOOL INT_SphereOBBox(Vec3* center, float radius, Vec3* boxMin, Vec3* boxMax, Vec3* closest)
 {
-    float v5;
-    float v6;
-    float v7;
-    float v12;
-    float v13;
-    float fVar4;
+    float cx;
+    float cy;
+    float cz;
+    float distSq;
 
-    if (a1->x >= (double)a3->x)
+    if (center->x >= (double)boxMin->x)
     {
-        if (a1->x <= (double)a4->x)
-            v5 = a1->x;
+        if (center->x <= (double)boxMax->x)
+            cx = center->x;
         else
-            v5 = a4->x;
+            cx = boxMax->x;
     }
     else
     {
-        v5 = a3->x;
+        cx = boxMin->x;
     }
-    v12 = v5;
-    if (a1->y >= (double)a3->y)
+    if (center->y >= (double)boxMin->y)
     {
-        if (a1->y <= (double)a4->y)
-            v6 = a1->y;
+        if (center->y <= (double)boxMax->y)
+            cy = center->y;
         else
-            v6 = a4->y;
+            cy = boxMax->y;
     }
     else
     {
-        v6 = a3->y;
+        cy = boxMin->y;
     }
-    if (a1->z >= (double)a3->z)
+    if (center->z >= (double)boxMin->z)
     {
-        if (a1->z > (double)a4->z)
-        {
-            v13 = a4->z;
-            goto LABEL_17;
-        }
-        v7 = a1->z;
+        if (center->z > (double)boxMax->z)
+            cz = boxMax->z;
+        else
+            cz = center->z;
     }
     else
     {
-        v7 = a3->z;
+        cz = boxMin->z;
     }
-    v13 = v7;
-LABEL_17:
-    if (a5)
+    if (closest)
     {
-        a5->x = v12;
-        a5->y = v6;
-        a5->z = v13;
+        closest->x = cx;
+        closest->y = cy;
+        closest->z = cz;
     }
-    fVar4 = (a1->y - v6) * (a1->y - v6) + (a1->x - v5) * (a1->x - v5) + (a1->z - v13) * (a1->z - v13);
+    distSq = (center->y - cy) * (center->y - cy) + (center->x - cx) * (center->x - cx) + (center->z - cz) * (center->z - cz);
 
-    if (a2 * a2 <= fVar4) {
+    if (radius * radius <= distSq) {
         return FALSE;
     }
     return TRUE;
 }
 
-int INT_FullSphereOBBox(Vec3* a1, float a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, Vec3* a7, Vec3* a8, int* a9)
+int INT_FullSphereOBBox(Vec3* center, float radius, Vec3* boxMin, Vec3* boxMax, Vec3* rayOrigin, Vec3* rayDir, Vec3* outNormal, Vec3* outHit, int* outFlags)
 {
-    double v10;
-    float v11;
-    double v12;
-    double v13;
-    double v14;
-    float v15;
-    float v16;
-    float v17;
-    float v18;
-    float v19;
+    double dx;
+    double dy;
+    double dz;
     int result;
-    BOOL v21;
-    tColBox a3a;
-    float v23;
+    tColBox box;
+    float maxDist;
 
-    v10 = a1->x - a5->x;
-    v11 = a3->y;
-    v12 = a1->y - a5->y;
-    v13 = a5->z;
-    a3a.pos1.x = a3->x;
-    v14 = a1->z - v13;
-    v15 = a3->z;
-    a3a.pos1.y = v11;
-    v16 = a4->x;
-    a3a.pos1.z = v15;
-    v17 = a4->y;
-    a3a.pos2.x = v16;
-    v18 = a4->z;
-    a3a.pos2.y = v17;
-    v19 = a6->x;
-    a3a.pos2.z = v18;
-    v23 = (float)(sqrt(v14 * v14 + v12 * v12 + v10 * v10) + a2);
-    if ((fabs(v19) != 0 || fabs(a6->y) != 0 || fabs(a6->z) != 0)
-        && INT_FullRayAABBox(a5, a6, &a3a, a8, v23, 0))
+    dx = center->x - rayOrigin->x;
+    dy = center->y - rayOrigin->y;
+    dz = center->z - rayOrigin->z;
+    box.pos1 = *boxMin;
+    box.pos2 = *boxMax;
+    maxDist = (float)(sqrt(dz * dz + dy * dy + dx * dx) + radius);
+    if ((fabs(rayDir->x) != 0 || fabs(rayDir->y) != 0 || fabs(rayDir->z) != 0)
+        && INT_FullRayAABBox(rayOrigin, rayDir, &box, outHit, maxDist, 0))
     {
-        if (a9)
-            *a9 = 544;
-        if (fabs(a8->x - a4->x) < 0.0000099999997)
+        if (outFlags)
+            *outFlags = 544;
+        if (fabs(outHit->x - boxMax->x) < 0.0000099999997)
         {
-            a7->x = 1.0;
-            a7->y = 0.0;
-            a7->z = 0.0;
+            outNormal->x = 1.0;
+            outNormal->y = 0.0;
+            outNormal->z = 0.0;
         }
-        if (fabs(a8->y - a4->y) < 0.0000099999997)
+        if (fabs(outHit->y - boxMax->y) < 0.0000099999997)
         {
-            a7->x = 0.0;
-            a7->y = 1.0;
-            a7->z = 0.0;
+            outNormal->x = 0.0;
+            outNormal->y = 1.0;
+            outNormal->z = 0.0;
         }
-        if (fabs(a8->z - a4->z) < 0.0000099999997)
+        if (fabs(outHit->z - boxMax->z) < 0.0000099999997)
         {
-            a7->x = 0.0;
-            a7->y = 0.0;
-            a7->z = 1.0;
+            outNormal->x = 0.0;
+            outNormal->y = 0.0;
+            outNormal->z = 1.0;
         }
-        if (fabs(a8->x - a3->x) < 0.0000099999997)
+        if (fabs(outHit->x - boxMin->x) < 0.0000099999997)
         {
-            a7->x = -1.0;
-            a7->y = 0.0;
-            a7->z = 0.0;
+            outNormal->x = -1.0;
+            outNormal->y = 0.0;
+            outNormal->z = 0.0;
         }
-        if (fabs(a8->y - a3->y) < 0.0000099999997)
+        if (fabs(outHit->y - boxMin->y) < 0.0000099999997)
         {
-            a7->x = 0.0;
-            a7->y = -1.0;
-            a7->z = 0.0;
+            outNormal->x = 0.0;
+            outNormal->y = -1.0;
+            outNormal->z = 0.0;
         }
-        if (fabs(a8->z - a3->z) < 0.0000099999997)
+        if (fabs(outHit->z - boxMin->z) < 0.0000099999997)
         {
-            a7->x = 0.0;
-            a7->y = 0.0;
-            a7->z = -1.0;
+            outNormal->x = 0.0;
+            outNormal->y = 0.0;
+            outNormal->z = -1.0;
         }
         result = 1;
     }
     else
     {
-        if (!INT_SphereOBBox(a1, a2, a3, a4, a8))
-            goto LABEL_27;
-        if (a9)
-            *a9 = 544;
-        a7->x = a1->x - a8->x;
-        v21 = fabs(a7->x) == 0;
-        a7->y = a1->y - a8->y;
-        a7->z = a1->z - a8->z;
-        if (!v21 || fabs(a7->y) != 0 || fabs(a7->z) != 0)
-        {
-            MATH_NormalizeEqualVector(a7);
-            result = 1;
-        }
-        else
-        {
-        LABEL_27:
-            result = 0;
-        }
+        if (!INT_SphereOBBox(center, radius, boxMin, boxMax, outHit))
+            return 0;
+        if (outFlags)
+            *outFlags = 544;
+        outNormal->x = center->x - outHit->x;
+        outNormal->y = center->y - outHit->y;
+        outNormal->z = center->z - outHit->z;
+        if (MATH_b_NulVector(outNormal))
+            return 0;
+        MATH_NormalizeEqualVector(outNormal);
+        result = 1;
     }
     return result;
 }
 
-int INT_FullSphereCylinder(Vec3* arg0, float arg4, Vec3* a3, float a4, float a5, Vec3* a6, Vec3* a7, Vec3* a1, Vec3* hitPosTalan, int* a10)
+int INT_FullSphereCylinder(Vec3* center, float radius, Vec3* cylCenter, float cylRadius, float cylHalfHeight, Vec3* rayOrigin, Vec3* rayDir, Vec3* outNormal, Vec3* hitPosTalan, int* outFlags)
 {
-    double v10;
-    float v11;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    long double v16;
-    double v17;
-    Vec3* v19;
-    double v20;
-    BOOL v21;
-    BOOL v22;
-    double v23;
-    double v24;
-    float a7a;
-    Vec3 a2;
-    float v27;
-    float v28;
-    float v29;
+    double dx;
+    double dy;
+    double dz;
+    double radialX;
+    long double invLen;
+    double zeroZ;
+    Vec3* normal;
+    double centerZ;
+    float maxDist;
+    Vec3 radial;
+    float cylX;
+    float cylY;
+    float hitZ;
 
-    v10 = arg0->x - a6->x;
-    v11 = a3->y;
-    v12 = arg0->y - a6->y;
-    v13 = arg0->z - a6->z;
-    v27 = a3->x;
-    v28 = v11;
-    a7a = (float)sqrt(v13 * v13 + v12 * v12 + v10 * v10);
-    if (INT_b_FullRayCylinder(a6, a7, a3, &MATH_gst_BaseVectorK, a4, a5, a7a, 0, hitPosTalan))
+    dx = center->x - rayOrigin->x;
+    dy = center->y - rayOrigin->y;
+    dz = center->z - rayOrigin->z;
+    cylX = cylCenter->x;
+    cylY = cylCenter->y;
+    maxDist = (float)sqrt(dz * dz + dy * dy + dx * dx);
+    if (INT_b_FullRayCylinder(rayOrigin, rayDir, cylCenter, &MATH_gst_BaseVectorK, cylRadius, cylHalfHeight, maxDist, 0, hitPosTalan))
     {
-        v14 = hitPosTalan->z;
-        a2.x = (float)(hitPosTalan->x - v27);
-        a2.y = (float)(hitPosTalan->y - v28);
-        a2.z = (float)(hitPosTalan->z - v14);
-        if (fabs(a2.x) != 0 || fabs(a2.y) != 0 || fabs(a2.z) != 0)
+        radial.x = (float)(hitPosTalan->x - cylX);
+        radial.y = (float)(hitPosTalan->y - cylY);
+        // preserved: the contact normal's z is always zero -- the subtraction here is hitPosTalan->z minus itself
+        radial.z = (float)(hitPosTalan->z - hitPosTalan->z);
+        if (fabs(radial.x) != 0 || fabs(radial.y) != 0 || fabs(radial.z) != 0)
         {
-            v15 = a2.x;
+            radialX = radial.x;
         }
         else
         {
-            v15 = 0.0;
-            a2.y = 0.0;
-            a2.z = 1.0;
+            radialX = 0.0;
+            radial.y = 0.0;
+            radial.z = 1.0;
         }
-        v16 = 1.0 / sqrt(a2.z * a2.z + a2.y * a2.y + v15 * v15);
-        a1->x = (float)(v16 * v15);
-        a1->y = (float)(a2.y * v16);
-        a1->z = (float)(a2.z * v16);
+        invLen = 1.0 / sqrt(radial.z * radial.z + radial.y * radial.y + radialX * radialX);
+        outNormal->x = (float)(invLen * radialX);
+        outNormal->y = (float)(radial.y * invLen);
+        outNormal->z = (float)(radial.z * invLen);
     }
     else
     {
-        v29 = arg0->z;
-        if (arg4 + a5 < fabs(v29 - a3->z))
+        hitZ = center->z;
+        if (radius + cylHalfHeight < fabs(hitZ - cylCenter->z))
             return 0;
-        a2.x = arg0->x - v27;
-        a2.y = arg0->y - v28;
-        v17 = arg0->z - v29;
-        a2.z = (float)v17;
-        if (arg4 + a4 < sqrt(v17 * a2.z + a2.y * a2.y + a2.x * a2.x))
+        radial.x = center->x - cylX;
+        radial.y = center->y - cylY;
+        // preserved: as above -- the radial offset's z is center->z minus itself
+        zeroZ = center->z - hitZ;
+        radial.z = (float)zeroZ;
+        if (radius + cylRadius < sqrt(zeroZ * radial.z + radial.y * radial.y + radial.x * radial.x))
             return 0;
-        if (fabs(a2.x) != 0 || fabs(a2.y) != 0 || fabs(a2.z) != 0)
+        if (fabs(radial.x) != 0 || fabs(radial.y) != 0 || fabs(radial.z) != 0)
         {
-            v19 = a1;
-            MATH_NormalizeVector(a1, &a2);
+            normal = outNormal;
+            MATH_NormalizeVector(outNormal, &radial);
         }
         else
         {
-            v20 = arg0->z;
-            v19 = a1;
-            v21 = v20 < a3->z;
-            v22 = v20 == a3->z;
-            a1->y = 0.0;
-            a1->x = 0.0;
-            if (v21 || v22)
-                a1->z = -1.0;
+            centerZ = center->z;
+            normal = outNormal;
+            outNormal->y = 0.0;
+            outNormal->x = 0.0;
+            if (centerZ < cylCenter->z || centerZ == cylCenter->z)
+                outNormal->z = -1.0;
             else
-                a1->z = 1.0;
+                outNormal->z = 1.0;
         }
-        v23 = a4 * v19->x;
-        v24 = v19->y * a4;
-        a2.z = v19->z * a4;
-        hitPosTalan->x = (float)(v23 + v27);
-        hitPosTalan->y = (float)(v24 + v28);
-        hitPosTalan->z = (float)(a2.z + v29);
+        radial.z = normal->z * cylRadius;
+        hitPosTalan->x = (float)(cylRadius * normal->x + cylX);
+        hitPosTalan->y = (float)(normal->y * cylRadius + cylY);
+        hitPosTalan->z = (float)(radial.z + hitZ);
     }
-    if (a10)
-        *a10 = 0x420;
+    if (outFlags)
+        *outFlags = 0x420;
     return 1;
 }
 
-int COL_ZDM_Box(tColGlobal* a1)
+int COL_ZDM_Box(tColGlobal* colGlobal)
 {
-    tColGlobal* v1;
-    tCobGameMaterialElems* v2;
-    tColCollisionObject* v3;
-    tColBox* v4;
-    tColBox* v6;
-    float v7;
-    Mtx4x4* v8;
-    Vec3 v10;
-    Vec3 v11;
-    Vec3 a1a;
-    Vec3 v13;
-    Vec3 v14;
-    Vec3 a3;
-    Vec3 a2;
+    tCobGameMaterialElems* gmat;
+    tColCollisionObject* colObj;
+    tColBox* box;
+    Mtx4x4* mapMtx;
+    int flags;
+    Vec3 scale;
+    Vec3 boxMax;
+    Vec3 boxMin;
+    Vec3 normal;
+    Vec3 hit;
+    Vec3 recalVec;
+    Vec3 reportNormal;
     Vec3 collidedPoint;
-    int a1b;
 
-    v1 = a1;
-    v2 = COL_pst_GMat_Get(a1->collisionObjectPtr, 0);
-    if (COL_GMat_Skip(v2, v1))
+    gmat = COL_pst_GMat_Get(colGlobal->collisionObjectPtr, 0);
+    if (COL_GMat_Skip(gmat, colGlobal))
         return 0;
-    v3 = v1->collisionObjectPtr;
-    a1 = 0;
-    v4 = (tColBox*)(((tCobNormalObjectGeneric*)(v3->objectPtrByType))->enclosurePtr);
-    v11.x = v4->pos2.x;
-    v11.y = v4->pos2.y;
-    v11.z = v4->pos2.z;
-    v6 = (tColBox*)(((tCobNormalObjectGeneric*)(v3->objectPtrByType))->enclosurePtr);
-    v10.x = v6->pos1.x;
-    v10.y = v6->pos1.y;
-    v7 = v6->pos1.z;
-    v8 = v1->colMapGaoMatrices;
-    v10.z = v7;
-    if ((v8->mtxflag & 8) != 0)
+    colObj = colGlobal->collisionObjectPtr;
+    box = (tColBox*)(((tCobNormalObjectGeneric*)(colObj->objectPtrByType))->enclosurePtr);
+    boxMin.x = box->pos2.x;
+    boxMin.y = box->pos2.y;
+    boxMin.z = box->pos2.z;
+    box = (tColBox*)(((tCobNormalObjectGeneric*)(colObj->objectPtrByType))->enclosurePtr);
+    boxMax.x = box->pos1.x;
+    boxMax.y = box->pos1.y;
+    boxMax.z = box->pos1.z;
+    mapMtx = colGlobal->colMapGaoMatrices;
+    if ((mapMtx->mtxflag & 8) != 0)
     {
-        MATH_GetScale(&a1a, v8);
-        v11.x = v11.x * a1a.x;
-        v11.y = v11.y * a1a.y;
-        v11.z = v11.z * a1a.z;
-        v10.x = v10.x * a1a.x;
-        v10.y = v10.y * a1a.y;
-        v10.z = v10.z * a1a.z;
+        MATH_GetScale(&scale, mapMtx);
+        boxMin.x = boxMin.x * scale.x;
+        boxMin.y = boxMin.y * scale.y;
+        boxMin.z = boxMin.z * scale.z;
+        boxMax.x = boxMax.x * scale.x;
+        boxMax.y = boxMax.y * scale.y;
+        boxMax.z = boxMax.z * scale.z;
     }
-    if (!INT_FullSphereOBBox(&v1->centerPos, v1->radius, &v11, &v10, &v1->centerPosPrevious, &v1->moveVecUnit, &v13, &v14, &a1b))
+    if (!INT_FullSphereOBBox(&colGlobal->centerPos, colGlobal->radius, &boxMin, &boxMax, &colGlobal->centerPosPrevious, &colGlobal->moveVecUnit, &normal, &hit, &flags))
         return 0;
-    if (COL_ComputeReport(&v14, &v13, &collidedPoint, &a2, &a3, &a1b, -1, -1, v1))
-        COL_ReportCollision(&collidedPoint, &a2, &a3, a1b, -1, -1, v1);
+    if (COL_ComputeReport(&hit, &normal, &collidedPoint, &reportNormal, &recalVec, &flags, -1, -1, colGlobal))
+        COL_ReportCollision(&collidedPoint, &reportNormal, &recalVec, flags, -1, -1, colGlobal);
     return 1;
 }
 
-int COL_ZDM_Sphere(tColGlobal* a2)
+int COL_ZDM_Sphere(tColGlobal* colGlobal)
 {
-    tColGlobal* v1;
-    tCobGameMaterialElems* v2;
-    tColCollisionObject* v3;
-    tColSphere* v4;
-    float v5;
-    Mtx4x4* v6;
-    BOOL v7;
-    float v9;
-    Vec3 v10;
-    Vec3 a1; 
-    Vec3 v12;
-    Vec3 v13;
-    Vec3 a5; 
-    Vec3 a4; 
-    Vec3 a3; 
-    int v17; 
+    tCobGameMaterialElems* gmat;
+    tColCollisionObject* colObj;
+    tColSphere* sphere;
+    Mtx4x4* mapMtx;
+    BOOL intersects;
+    float scaledRadius;
+    int flags;
+    Vec3 center;
+    Vec3 scale;
+    Vec3 normal;
+    Vec3 hit;
+    Vec3 recalVec;
+    Vec3 reportNormal;
+    Vec3 collidedPoint;
 
-    v1 = a2;
-    v2 = COL_pst_GMat_Get(a2->collisionObjectPtr, 0);
-    if (COL_GMat_Skip(v2, v1))
+    gmat = COL_pst_GMat_Get(colGlobal->collisionObjectPtr, 0);
+    if (COL_GMat_Skip(gmat, colGlobal))
         return 0;
-    a2 = 0;
-    v3 = v1->collisionObjectPtr;
-    v4 = (tColSphere*)(((tCobNormalObjectGeneric *)(v3->objectPtrByType))->enclosurePtr);
-    v10.x = v4->center.x;
-    v10.y = v4->center.y;
-    v5 = v4->center.z;
-    v6 = v1->colMapGaoMatrices;
-    v10.z = v5;
-    if ((v6->mtxflag & 8) != 0)
+    colObj = colGlobal->collisionObjectPtr;
+    sphere = (tColSphere*)(((tCobNormalObjectGeneric *)(colObj->objectPtrByType))->enclosurePtr);
+    center.x = sphere->center.x;
+    center.y = sphere->center.y;
+    center.z = sphere->center.z;
+    mapMtx = colGlobal->colMapGaoMatrices;
+    if ((mapMtx->mtxflag & 8) != 0)
     {
-        MATH_GetScale(&a1, v6);
-        v9 = MATH_f_MaxOf3(a1.x, a1.y, a1.z) * ((tColSphere*)(((tCobNormalObjectGeneric*)(v3->objectPtrByType))->enclosurePtr))->radius;
-        v10.x = v10.x * a1.x;
-        v10.y = v10.y * a1.y;
-        v10.z = v10.z * a1.z;
-        v7 = INT_FullSphereSphere(&v1->centerPos, v1->radius, &v10, v9, &v12, &v13);
+        MATH_GetScale(&scale, mapMtx);
+        scaledRadius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * ((tColSphere*)(((tCobNormalObjectGeneric*)(colObj->objectPtrByType))->enclosurePtr))->radius;
+        center.x = center.x * scale.x;
+        center.y = center.y * scale.y;
+        center.z = center.z * scale.z;
+        intersects = INT_FullSphereSphere(&colGlobal->centerPos, colGlobal->radius, &center, scaledRadius, &normal, &hit);
     }
     else
     {
-        v7 = INT_FullSphereSphere(&v1->centerPos, v1->radius, &v10, ((tColSphere*)(((tCobNormalObjectGeneric*)(v3->objectPtrByType))->enclosurePtr))->radius, &v12, &v13);
+        intersects = INT_FullSphereSphere(&colGlobal->centerPos, colGlobal->radius, &center, ((tColSphere*)(((tCobNormalObjectGeneric*)(colObj->objectPtrByType))->enclosurePtr))->radius, &normal, &hit);
     }
-    if (!v7)
+    if (!intersects)
         return 0;
-    v17 = 0x120;
-    if (COL_ComputeReport(&v13, &v12, &a3, &a4, &a5, &v17, -1, -1, v1))
-        COL_ReportCollision(&a3, &a4, &a5, v17, -1, -1, v1);
+    flags = 0x120;
+    if (COL_ComputeReport(&hit, &normal, &collidedPoint, &reportNormal, &recalVec, &flags, -1, -1, colGlobal))
+        COL_ReportCollision(&collidedPoint, &reportNormal, &recalVec, flags, -1, -1, colGlobal);
     return 1;
 }
 
-int COL_ZDM_Cylinder(tColGlobal* a2)
+int COL_ZDM_Cylinder(tColGlobal* colGlobal)
 {
-    tColGlobal* v1;
-    tCobGameMaterialElems* v2;
-    tColCollisionObject* v3;
-    tColCylinder* v4;
-    float v5;
-    Mtx4x4* v6;
-    double v7;
-    tCobNormalObjectGeneric* v8;
-    double v9;
-    tCobNormalObjectGeneric* v10;
-    float v12;
-    float v13;
-    Vec3 v14;
-    Vec3 a1; 
-    Vec3 v16;
-    Vec3 v17;
-    Vec3 a5; 
-    Vec3 a4; 
-    Vec3 a3; 
-    int a2a;
+    tCobGameMaterialElems* gmat;
+    tColCollisionObject* colObj;
+    tColCylinder* cylinder;
+    Mtx4x4* mapMtx;
+    double maxXYScale;
+    tCobNormalObjectGeneric* cob;
+    double scaledHalfHeight;
+    float cylRadius;
+    float cylHalfHeight;
+    int flags;
+    Vec3 center;
+    Vec3 scale;
+    Vec3 normal;
+    Vec3 hit;
+    Vec3 recalVec;
+    Vec3 reportNormal;
+    Vec3 collidedPoint;
 
-    v1 = a2;
-    v2 = COL_pst_GMat_Get(a2->collisionObjectPtr, 0);
-    if (COL_GMat_Skip(v2, v1))
+    gmat = COL_pst_GMat_Get(colGlobal->collisionObjectPtr, 0);
+    if (COL_GMat_Skip(gmat, colGlobal))
         return 0;
-    a2 = 0;
-    v3 = v1->collisionObjectPtr;
-    v4 = (tColCylinder*)(((tCobNormalObjectGeneric*)(v3->objectPtrByType))->enclosurePtr);
-    v14.x = v4->center.x;
-    v14.y = v4->center.y;
-    v5 = v4->center.z;
-    v6 = v1->colMapGaoMatrices;
-    v14.z = v5;
-    if ((v6->mtxflag & 8) != 0)
+    colObj = colGlobal->collisionObjectPtr;
+    cylinder = (tColCylinder*)(((tCobNormalObjectGeneric*)(colObj->objectPtrByType))->enclosurePtr);
+    center.x = cylinder->center.x;
+    center.y = cylinder->center.y;
+    center.z = cylinder->center.z;
+    mapMtx = colGlobal->colMapGaoMatrices;
+    if ((mapMtx->mtxflag & 8) != 0)
     {
-        MATH_GetScale(&a1, v6);
-        v14.x = v14.x * a1.x;
-        v14.y = v14.y * a1.y;
-        v14.z = v14.z * a1.z;
-        v7 = a1.x < (double)a1.y ? a1.y : a1.x;
-        v8 = v3->objectPtrByType;
-        v13 = (float)(((tColCylinder*)(v8->enclosurePtr))->height * v7);
-        v9 = ((tColCylinder*)(v8->enclosurePtr))->radius * a1.z;
+        MATH_GetScale(&scale, mapMtx);
+        center.x = center.x * scale.x;
+        center.y = center.y * scale.y;
+        center.z = center.z * scale.z;
+        maxXYScale = scale.x < (double)scale.y ? scale.y : scale.x;
+        cob = colObj->objectPtrByType;
+        cylRadius = (float)(((tColCylinder*)(cob->enclosurePtr))->height * maxXYScale);
+        scaledHalfHeight = ((tColCylinder*)(cob->enclosurePtr))->radius * scale.z;
     }
     else
     {
-        v10 = v3->objectPtrByType;
-        v13 = ((tColCylinder*)(v10->enclosurePtr))->height;
-        v9 = ((tColCylinder*)(v10->enclosurePtr))->radius;
+        cob = colObj->objectPtrByType;
+        cylRadius = ((tColCylinder*)(cob->enclosurePtr))->height;
+        scaledHalfHeight = ((tColCylinder*)(cob->enclosurePtr))->radius;
     }
-    v12 = (float)v9;
+    cylHalfHeight = (float)scaledHalfHeight;
     if (!INT_FullSphereCylinder(
-        &v1->centerPos,
-        v1->radius,
-        &v14,
-        v13,
-        v12,
-        &v1->centerPosPrevious,
-        &v1->moveVecUnit,
-        &v16,
-        &v17,
-        &a2a))
+        &colGlobal->centerPos,
+        colGlobal->radius,
+        &center,
+        cylRadius,
+        cylHalfHeight,
+        &colGlobal->centerPosPrevious,
+        &colGlobal->moveVecUnit,
+        &normal,
+        &hit,
+        &flags))
         return 0;
-    if (COL_ComputeReport(&v17, &v16, &a3, &a4, &a5, &a2a, -1, -1, v1))
-        COL_ReportCollision(&a3, &a4, &a5, a2a, -1, -1, v1);
+    if (COL_ComputeReport(&hit, &normal, &collidedPoint, &reportNormal, &recalVec, &flags, -1, -1, colGlobal))
+        COL_ReportCollision(&collidedPoint, &reportNormal, &recalVec, flags, -1, -1, colGlobal);
     return 1;
 }
 
-void COL_ComputeRejection(tColGlobal* a1, Vec3* a2, Vec3* a3, int a4)
+void COL_ComputeRejection(tColGlobal* colGlobal, Vec3* outMin, Vec3* outMax, int useDynamic)
 {
-    double v4;
-    Vec3* v5;
+    double radius;
+    Vec3* center;
 
-    if (a4)
+    if (useDynamic)
     {
-        v4 = a1->dynRadius;
-        v5 = &a1->dynCenterPos;
+        radius = colGlobal->dynRadius;
+        center = &colGlobal->dynCenterPos;
     }
     else
     {
-        v4 = a1->radius;
-        v5 = &a1->centerPos;
+        radius = colGlobal->radius;
+        center = &colGlobal->centerPos;
     }
-    a3->x = (float)(v4 + v5->x);
-    a3->y = (float)(v4 + v5->y);
-    a3->z = (float)(v4 + v5->z);
-    a2->x = (float)(v5->x - v4);
-    a2->y = (float)(v5->y - v4);
-    a2->z = (float)(v5->z - v4);
+    outMax->x = (float)(radius + center->x);
+    outMax->y = (float)(radius + center->y);
+    outMax->z = (float)(radius + center->z);
+    outMin->x = (float)(center->x - radius);
+    outMin->y = (float)(center->y - radius);
+    outMin->z = (float)(center->z - radius);
 }
 
 void COL_ZDM_ZDR(tColGlobal* colGlobal)
 {
     tColCollisionObject* colObj;
     tGameObjectMain* colInstGao;
-    Vec3* v3;
-    tGameObjectBasic* v4;
-    tDyn* v5;
-    double v6;
-    Vec3* v7;
-    float v8;
-    float v9;
-    double v10;
-    double v11;
-    double v12;
-    tColInstance* v13;
-    tCobMeshObjectMesh* v14;
-    tCobMeshChunkElem* v15;
-    Vec3* v16;
-    tCobMeshObjectMesh* v17;
-    tCobOK3* v18;
-    tCobOK3AABBoxElem* v19;
-    tCobOK3AABBoxElem* v20;
-    tCobOK3AABBoxElemChunkElem* v21;
-    tCobMeshChunkElem* v22;
-    tCobGameMaterialElems* v23;
-    int v24;
-    tCobMeshChunkElem* v25;
-    tCobMeshTriangleElem* v26;
-    unsigned int v27;
-    Vec3* v28;
-    tCobGameMaterialElems* v29;
-    tCobMeshTriangleElem* v30;
-    tCobMeshTriangleElem* v31;
-    int v32;
-    Vec3* v33;
-    tDyn* v34;
-    float v35;
-    int v36;
-    int j;
-    int v38;
-    int v39;
-    int16_t v40;
-    int a4;
-    tCobOK3* v42;
-    int v43;
-    tColCollisionObject* v44;
-    tCobMeshChunkElem* v45;
-    tCobOK3AABBoxElem* i;
-    tCobMeshChunkElem* v47;
-    tCobOK3AABBoxElem* v48;
-    tCobOK3AABBoxElemChunkElem* v49;
-    tCobMeshTriangleElem* v50;
-    tCobMeshChunkElem* v51;
-    tCobMeshTriangleElem* a2;
-    uint16_t a5;
-    Vec3 dest;
+    Vec3* accelField;
+    tGameObjectBasic* basic;
+    tDyn* dyn;
+    double mass;
+    Vec3* gravity;
+    float negY;
+    float negZ;
+    double clampedX;
+    double clampedY;
+    double clampedZ;
+    tColInstance* colInstance;
+    tCobMeshObjectMesh* mesh;
+    tCobMeshChunkElem* chunk;
+    Vec3* prevPos;
+    tCobOK3* ok3;
+    tCobOK3AABBoxElem* aabox;
+    tCobOK3AABBoxElem* aaboxEnd;
+    tCobOK3AABBoxElemChunkElem* chunkRef;
+    tCobGameMaterialElems* gmat;
+    int faceBase;
+    tCobMeshChunkElem* countChunk;
+    tCobMeshTriangleElem* tri;
+    unsigned int faceIdx;
+    Vec3* normal;
+    tCobMeshTriangleElem* triEnd;
+    int face;
+    float dt;
+    int k;
+    int faceAcc;
+    int remaining;
+    int16_t chunkId;
+    int useDynamic;
+    tCobMeshChunkElem* chunkEnd;
+    tCobOK3AABBoxElemChunkElem* chunkRefEnd;
+    uint16_t triIdx;
+    Vec3 rejectMin;
     Vec3 accelVec;
-    Vec3 a3; 
-    Mtx4x4 a1a;
+    Vec3 rejectMax;
+    Mtx4x4 hieMtx;
 
     colObj = colGlobal->collisionObjectPtr;
     colInstGao = colGlobal->colInstanceGao;
     colGlobal->ptrSetToVec6InZDMZDRGravityNeg = &MATH_gst_BaseVectorK;
-    v44 = colObj;
-    a4 = 0;
-    v3 = &colGlobal->accelVecInZDMZDR;
+    useDynamic = 0;
+    accelField = &colGlobal->accelVecInZDMZDR;
     if ((colInstGao->flags & 4) != 0)
     {
-        v4 = colInstGao->basic;                     // OBJ_pst_GetDynaStruct
-        if (v4)
-        {
-            v5 = v4->dyn;
-            v34 = v5;
-        }
+        basic = colInstGao->basic;                  // OBJ_pst_GetDynaStruct
+        if (basic)
+            dyn = basic->dyn;
         else
+            dyn = 0;
+        mass = dyn->mass;
+        accelVec.x = (float)(mass * dyn->forceVector.x);        // DYN_GetSpeedVector + MATH_ScaleVector
+        accelVec.y = (float)(dyn->forceVector.y * mass);
+        accelVec.z = (float)(dyn->forceVector.z * mass);
+        if ((dyn->flags & 4) != 0)
         {
-            v34 = 0;
-            v5 = 0;
-        }
-        v6 = v5->mass;
-        accelVec.x = (float)(v6 * v5->forceVector.x);        // DYN_GetSpeedVector + MATH_ScaleVector
-        accelVec.y = (float)(v5->forceVector.y * v6);
-        accelVec.z = (float)(v5->forceVector.z * v6);
-        if ((v5->flags & 4) != 0)
-        {
-            v7 = &v5->forces->gravityVector;
-            if (fabs(v7->x) != 0 || fabs(v7->y) != 0 || fabs(v7->z) != 0)
+            gravity = &dyn->forces->gravityVector;
+            if (!MATH_b_NulVector(gravity))
             {
                 if ((colInstGao->flags & 0x400000) != 0)// OBJ_b_TestIdentityFlag
                 {
@@ -6044,45 +5939,43 @@ void COL_ZDM_ZDR(tColGlobal* colGlobal)
                         colInstGao->matrices,
                         &colInstGao->basic->mtx->mtx,
                         colInstGao->basic->mtx->refGao2->matrices);
-                    a4 = 1;
+                    useDynamic = 1;
                 }
-                if ((v5->flags & 0x40000) == 0)       // DYN_ul_TestDynFlags inine
+                if ((dyn->flags & 0x40000) == 0)       // DYN_ul_TestDynFlags inine
                 {
-                    MATH_NormalizeVector(&colGlobal->vec6InZDMZDRGravityNeg, &v34->forces->gravityVector);// DYN_pst_GetGravity
-                    v8 = colGlobal->vec6InZDMZDRGravityNeg.y;
+                    MATH_NormalizeVector(&colGlobal->vec6InZDMZDRGravityNeg, &dyn->forces->gravityVector);// DYN_pst_GetGravity
+                    negY = colGlobal->vec6InZDMZDRGravityNeg.y;
                     colGlobal->vec6InZDMZDRGravityNeg.x = -colGlobal->vec6InZDMZDRGravityNeg.x; // MATH_NegEqualVector
-                    v9 = colGlobal->vec6InZDMZDRGravityNeg.z;
-                    colGlobal->vec6InZDMZDRGravityNeg.y = -v8;
-                    colGlobal->vec6InZDMZDRGravityNeg.z = -v9;
+                    negZ = colGlobal->vec6InZDMZDRGravityNeg.z;
+                    colGlobal->vec6InZDMZDRGravityNeg.y = -negY;
+                    colGlobal->vec6InZDMZDRGravityNeg.z = -negZ;
                     colGlobal->ptrSetToVec6InZDMZDRGravityNeg = &colGlobal->vec6InZDMZDRGravityNeg;
                 }
             }
         }
-        v3 = &colGlobal->accelVecInZDMZDR;
         MATH_TransformVector(&colGlobal->accelVecInZDMZDR, &colGlobal->colMapGaoInvMatrix, &accelVec);
-        colObj = v44;
     }
     else
     {
-        v3->x = 0.0;
+        accelField->x = 0.0;
         colGlobal->accelVecInZDMZDR.y = 0.0;
         colGlobal->accelVecInZDMZDR.z = 0.0;
     }
-    if (fabs(v3->x) >= 0.001)
-        v10 = v3->x;
+    if (fabs(accelField->x) >= 0.001)
+        clampedX = accelField->x;
     else
-        v10 = 0.0;
-    v3->x = (float)v10;
-    if (fabs(v3->y) >= 0.001)
-        v11 = v3->y;
+        clampedX = 0.0;
+    accelField->x = (float)clampedX;
+    if (fabs(accelField->y) >= 0.001)
+        clampedY = accelField->y;
     else
-        v11 = 0.0;
-    v3->y = (float)v11;
-    if (fabs(v3->z) >= 0.001)
-        v12 = v3->z;
+        clampedY = 0.0;
+    accelField->y = (float)clampedY;
+    if (fabs(accelField->z) >= 0.001)
+        clampedZ = accelField->z;
     else
-        v12 = 0.0;
-    v3->z = (float)v12;
+        clampedZ = 0.0;
+    accelField->z = (float)clampedZ;
     switch (colObj->objectType)
     {
     case 1u:
@@ -6100,133 +5993,117 @@ void COL_ZDM_ZDR(tColGlobal* colGlobal)
     case 5u:
         if ((colObj->flags & 4) != 0)
         {
-            v13 = colInstGao->extended->coll->colInstance;
-            v13->flag &= ~0x8000u; //HIBYTE(v13->flag) &= ~0x80u;
+            colInstance = colInstGao->extended->coll->colInstance;
+            colInstance->flag &= ~0x8000u; //HIBYTE(v13->flag) &= ~0x80u;
         }
-        v14 = colObj->objectPtrByType;
-        v15 = v14->meshChunkElems;
-        v45 = &v15[v14->meshChunkElemNum];
+        mesh = colObj->objectPtrByType;
+        chunk = mesh->meshChunkElems;
+        chunkEnd = &chunk[mesh->meshChunkElemNum];
         colGlobal->recordCountBackup = colGlobal->colWorld->recordCount;
-        v47 = v15;
         if ((colInstGao->flags & 4) != 0)       // OBJ_b_TestIdentityFlag inline
         {
-            v35 = TIM_gf_dt;
+            dt = TIM_gf_dt;
             if ((colInstGao->basic->dyn->flags & 0x4000000) != 0)
-                v35 = TIM_gf_dt / TIM_gf_SpeedFactor;
-            if (colGlobal->radius + colGlobal->radius < MATH_VecLen(&colGlobal->accelVecInZDMZDR) * v35
-                || !a4
-                && ((colInstGao->flags & 0x400000) == 0 ? (v16 = &colInstGao->extended->coll->colInstance->mtx->Pos) : (MATH_MulMatrixMatrix(&a1a, colInstGao->extended->coll->colInstance->mtx, colInstGao->basic->mtx->refGao2->matrices), v16 = &a1a.Pos),
-                    MATH_SubstractVec(&dest, &colInstGao->matrices->Pos, v16),
-                    colGlobal->radius + colGlobal->radius < MATH_VecLen(&dest)))
+                dt = TIM_gf_dt / TIM_gf_SpeedFactor;
+            if (colGlobal->radius + colGlobal->radius < MATH_VecLen(&colGlobal->accelVecInZDMZDR) * dt)
             {
-                a4 = 1;
+                useDynamic = 1;
+            }
+            else if (!useDynamic)
+            {
+                if ((colInstGao->flags & 0x400000) == 0)
+                {
+                    prevPos = &colInstGao->extended->coll->colInstance->mtx->Pos;
+                }
+                else
+                {
+                    MATH_MulMatrixMatrix(&hieMtx, colInstGao->extended->coll->colInstance->mtx, colInstGao->basic->mtx->refGao2->matrices);
+                    prevPos = &hieMtx.Pos;
+                }
+                MATH_SubstractVec(&rejectMin, &colInstGao->matrices->Pos, prevPos);
+                if (colGlobal->radius + colGlobal->radius < MATH_VecLen(&rejectMin))
+                    useDynamic = 1;
             }
         }
-        COL_ComputeRejection(colGlobal, &dest, &a3, a4);
+        COL_ComputeRejection(colGlobal, &rejectMin, &rejectMax, useDynamic);
         if (((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->ok3)
         {
-            v17 = (tCobMeshObjectMesh*)(v44->objectPtrByType);
-            v18 = v17->ok3;
-            memset(v18->faceTagInts, 0, 4 * (v17->faceCount >> 5) + 4);
-            v19 = v18->aaBoxes;
-            v20 = &v19[v18->num];
-            v42 = v18;
-            v48 = v19;
-            for (i = v20; v19 < v20; v48 = v19)
+            ok3 = mesh->ok3;
+            memset(ok3->faceTagInts, 0, 4 * (mesh->faceCount >> 5) + 4);
+            aabox = ok3->aaBoxes;
+            aaboxEnd = &aabox[ok3->num];
+            for (; aabox < aaboxEnd; ++aabox)
             {
-                if (INT_SphereAABBox(&colGlobal->dynCenterPos, colGlobal->dynRadius, &v19->vec1, &v19->vec2))
+                if (!INT_SphereAABBox(&colGlobal->dynCenterPos, colGlobal->dynRadius, &aabox->vec1, &aabox->vec2))
+                    continue;
+                chunkRef = aabox->chunkElems;
+                chunkRefEnd = &chunkRef[aabox->num];
+                for (; chunkRef < chunkRefEnd; ++chunkRef)
                 {
-                    v21 = v19->chunkElems;
-                    v49 = &v21[v19->num];
-                    if (v21 < v49)
+                    chunk = &mesh->meshChunkElems[chunkRef->triangleChunkID];
+                    gmat = COL_pst_GMat_Get(colObj, chunk);
+                    if (COL_GMat_Skip(gmat, colGlobal))
+                        continue;
+                    colGlobal->cobMeshChunkElem = chunk;
+                    faceBase = 0;
+                    if (chunkRef->triangleChunkID)
                     {
+                        countChunk = mesh->meshChunkElems;
+                        remaining = chunkRef->triangleChunkID;
+                        faceAcc = 0;
                         do
                         {
-                            v51 = &(((tCobMeshObjectMesh*)(v44->objectPtrByType))->meshChunkElems[v21->triangleChunkID]);
-                            v22 = v51;
-                            v23 = COL_pst_GMat_Get(v44, v51);
-                            if (!COL_GMat_Skip(v23, colGlobal))
-                            {
-                                colGlobal->cobMeshChunkElem = v51;
-                                v24 = 0;
-                                v38 = 0;
-                                if (v21->triangleChunkID)
-                                {
-                                    v25 = ((tCobMeshObjectMesh*)(v44->objectPtrByType))->meshChunkElems;
-                                    v39 = v21->triangleChunkID;
-                                    do
-                                    {
-                                        v24 += v25->elemNum;
-                                        ++v25;
-                                        --v39;
-                                    } while (v39);
-                                    v38 = v24;
-                                }
-                                v36 = 0;
-                                if (v21->num)
-                                {
-                                    while (1)
-                                    {
-                                        a5 = v21->triangleChunkElemIDs[v36];
-                                        v26 = &v22->triangleElems[a5];
-                                        v27 = a5 + v24;
-                                        a2 = v26;
-                                        if (!COL_b_TestFaceTag(v42, v27))
-                                        {
-                                            v28 = &(((tCobMeshObjectMesh*)(v44->objectPtrByType))->normals[v27]);
-                                            colGlobal->cobMeshTriangleElem = a2;
-                                            COL_TestAndCollideTriangleIfNeeded(colGlobal, a2, v28, v21->triangleChunkID, a5, &dest, &a3, a4);
-                                            COL_SetFaceTag(v42, v27);
-                                        }
-                                        if (++v36 >= v21->num)
-                                            break;
-                                        v24 = v38;
-                                        v22 = v51;
-                                    }
-                                }
-                            }
-                            ++v21;
-                        } while (v21 < v49);
-                        v19 = v48;
+                            faceAcc += countChunk->elemNum;
+                            ++countChunk;
+                            --remaining;
+                        } while (remaining);
+                        faceBase = faceAcc;
                     }
-                    v20 = i;
+                    for (k = 0; k < chunkRef->num; k++)
+                    {
+                        triIdx = chunkRef->triangleChunkElemIDs[k];
+                        tri = &chunk->triangleElems[triIdx];
+                        faceIdx = triIdx + faceBase;
+                        if (!COL_b_TestFaceTag(ok3, faceIdx))
+                        {
+                            normal = &mesh->normals[faceIdx];
+                            colGlobal->cobMeshTriangleElem = tri;
+                            COL_TestAndCollideTriangleIfNeeded(colGlobal, tri, normal, chunkRef->triangleChunkID, triIdx, &rejectMin, &rejectMax, useDynamic);
+                            COL_SetFaceTag(ok3, faceIdx);
+                        }
+                    }
                 }
-                ++v19;
             }
         }
         else
         {
-            v40 = 0;
-            for (j = 0; v15 < v45; ++v40)
+            faceBase = 0;
+            chunkId = 0;
+            for (; chunk < chunkEnd; ++chunk, ++chunkId)
             {
-                v29 = COL_pst_GMat_Get(v44, v15);
-                if (COL_GMat_Skip(v29, colGlobal))
+                gmat = COL_pst_GMat_Get(colObj, chunk);
+                if (COL_GMat_Skip(gmat, colGlobal))
                 {
-                    j += v15->elemNum;
+                    faceBase += chunk->elemNum;
+                    continue;
                 }
-                else
+                colGlobal->cobMeshChunkElem = chunk;
+                tri = chunk->triangleElems;
+                triEnd = &tri[chunk->elemNum];
+                if (tri >= triEnd)
+                    continue;
+                face = faceBase;
+                faceBase += chunk->elemNum;
+                k = 0;
+                do
                 {
-                    colGlobal->cobMeshChunkElem = v15;
-                    v30 = v15->triangleElems;
-                    v31 = &v30[v15->elemNum];
-                    v50 = v31;
-                    v43 = 0;
-                    if (v30 < v31)
-                    {
-                        v32 = j;
-                        j += ((char*)v31 - (char*)v30 - 1) / sizeof(tCobMeshTriangleElem) + 1;
-                        do
-                        {
-                            v33 = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[v32]);
-                            colGlobal->cobMeshTriangleElem = v30;
-                            COL_TestAndCollideTriangleIfNeeded(colGlobal, v30++, v33, v40, v43, &dest, &a3, a4);
-                            ++v32;
-                            ++v43;
-                        } while (v30 < v50);
-                        v15 = v47;
-                    }
-                }
-                v47 = ++v15;
+                    normal = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[face]);
+                    colGlobal->cobMeshTriangleElem = tri;
+                    COL_TestAndCollideTriangleIfNeeded(colGlobal, tri, normal, chunkId, k, &rejectMin, &rejectMax, useDynamic);
+                    ++tri;
+                    ++face;
+                    ++k;
+                } while (tri < triEnd);
             }
         }
         break;
@@ -6235,97 +6112,82 @@ void COL_ZDM_ZDR(tColGlobal* colGlobal)
     }
 }
 
-int COL_Actor_GameObject(tColGlobal* a1)
+int COL_Actor_GameObject(tColGlobal* colGlobal)
 {
-    tColInstance* v2;
+    tColInstance* colInstance;
     tColMap* colMap;
-    tColInstanceElem** v4;
-    char v5;
-    tColCollisionObject** v6;
-    uint8_t v7;
-    Mtx4x4* v8;
-    char v9;
-    char v10;
-    BOOL v11;
-    char v13;
-    tColInstanceElem** v14;
-    tColInstance* v15;
+    tColInstanceElem** elem;
+    tColCollisionObject** colObj;
+    uint8_t zone;
+    Mtx4x4* mapMtx;
     int invMatrixCalculated;
-    tColCollisionObject** v17;
-    tColMap* v18;
-    tColInstanceElem** v19;
+    tColCollisionObject** colObjEnd;
+    tColInstanceElem** elemEnd;
     uint8_t elemType;
-    char i;
-    char j;
+    int elemIdx;
+    int objIdx;
 
-    v2 = a1->colInstanceGao->extended->coll->colInstance;
-    colMap = a1->colMapGao->extended->coll->colMap;
+    colInstance = colGlobal->colInstanceGao->extended->coll->colInstance;
+    colMap = colGlobal->colMapGao->extended->coll->colMap;
     invMatrixCalculated = 0;
-    v15 = v2;
-    v18 = colMap;
-    if (colMap)
+    if (!colMap)
+        return 1;
+    colGlobal->colInstance = colInstance;
+    colGlobal->colMap = colMap;
+    elem = colInstance->selectedInstElemPtrs;
+    elemEnd = &elem[colInstance->zoneNum];
+    colGlobal->colInstanceElemPtrs = elem;
+    for (elemIdx = 0; elem < elemEnd; ++elem, ++elemIdx)
     {
-        a1->colInstance = v2;
-        a1->colMap = colMap;
-        v4 = v2->selectedInstElemPtrs;
-        v5 = 0;
-        v14 = v4;
-        v19 = &v4[v2->zoneNum];
-        a1->colInstanceElemPtrs = v4;
-        v13 = 0;
-        if (v4 < v19)
+        colObj = colMap->collisionObjectPtr;
+        colObjEnd = &colObj[colMap->colObjectID];
+        zone = 0;
+        while (colInstance->colSet->zoneIDs[zone] != (char)elemIdx)
         {
-            while (1)
+            if (++zone >= 16u)
+                break;
+        }
+        if (zone >= 16u)
+            continue;
+        if ((colInstance->activationFlags & (1 << zone)) == 0 || ((*elem)->colFlags & 1) == 0)
+            continue;
+        if (!invMatrixCalculated)
+        {
+            mapMtx = colGlobal->colMapGao->matrices;
+            invMatrixCalculated = 1;
+            if ((mapMtx->mtxflag & 8) != 0)
             {
-                v6 = colMap->collisionObjectPtr;
-                v17 = &v6[colMap->colObjectID];
-                v7 = 0;
-                while (v2->colSet->zoneIDs[v7] != v5)
+                MATH_Transp33MatrixWithoutBuffer(&colGlobal->colMapGaoInvMatrix, mapMtx);
+                colGlobal->colMapGaoInvMatrix.mtxflag = mapMtx->mtxflag;
+                if ((mapMtx->mtxflag & 8) != 0)
                 {
-                    if (++v7 >= 16u)
-                        goto LABEL_28;
+                    colGlobal->colMapGaoInvMatrix._m14 = (float)(1.0 / mapMtx->_m14);
+                    colGlobal->colMapGaoInvMatrix._m24 = (float)(1.0 / mapMtx->_m24);
+                    colGlobal->colMapGaoInvMatrix._m34 = (float)(1.0 / mapMtx->_m34);
                 }
-                if ((v15->activationFlags & (1 << v7)) != 0 && ((*v14)->colFlags & 1) != 0)
+                colGlobal->colMapGaoInvMatrix.Pos.x = -mapMtx->Pos.x;
+                colGlobal->colMapGaoInvMatrix.Pos.y = -mapMtx->Pos.y;
+                colGlobal->colMapGaoInvMatrix.Pos.z = -mapMtx->Pos.z;
+                MATH_TransformVectorNoScale(
+                    &colGlobal->colMapGaoInvMatrix.Pos,
+                    &colGlobal->colMapGaoInvMatrix,
+                    &colGlobal->colMapGaoInvMatrix.Pos);
+            }
+            else
+            {
+                MATH_InvertMatrix(&colGlobal->colMapGaoInvMatrix, mapMtx);
+            }
+        }
+        elemType = (*elem)->elemType;
+        colGlobal->collInstanceElem = *elem;
+        COL_A_BCS_ComputeZDxInfo(colGlobal);
+        if (elemType == 1)
+        {
+            for (objIdx = 0; colObj < colObjEnd; ++colObj, ++objIdx)
+            {
+                if (((uint8_t)(1 << objIdx) & colMap->activation) != 0)
                 {
-                    if (!invMatrixCalculated)
-                    {
-                        v8 = a1->colMapGao->matrices;
-                        invMatrixCalculated = 1;
-                        if ((v8->mtxflag & 8) != 0)
-                        {
-                            MATH_Transp33MatrixWithoutBuffer(&a1->colMapGaoInvMatrix, v8);
-                            a1->colMapGaoInvMatrix.mtxflag = v8->mtxflag;
-                            if ((v8->mtxflag & 8) != 0)
-                            {
-                                a1->colMapGaoInvMatrix._m14 = (float)(1.0 / v8->_m14);
-                                a1->colMapGaoInvMatrix._m24 = (float)(1.0 / v8->_m24);
-                                a1->colMapGaoInvMatrix._m34 = (float)(1.0 / v8->_m34);
-                            }
-                            a1->colMapGaoInvMatrix.Pos.x = -v8->Pos.x;
-                            a1->colMapGaoInvMatrix.Pos.y = -v8->Pos.y;
-                            a1->colMapGaoInvMatrix.Pos.z = -v8->Pos.z;
-                            MATH_TransformVectorNoScale(
-                                &a1->colMapGaoInvMatrix.Pos,
-                                &a1->colMapGaoInvMatrix,
-                                &a1->colMapGaoInvMatrix.Pos);
-                            colMap = v18;
-                        }
-                        else
-                        {
-                            MATH_InvertMatrix(&a1->colMapGaoInvMatrix, v8);
-                        }
-                    }
-                    elemType = (*v14)->elemType;
-                    a1->collInstanceElem = *v14;
-                    COL_A_BCS_ComputeZDxInfo(a1);
-                    if (elemType == 1)
-                    {
-                        v10 = 0;
-                        for (j = 0; v6 < v17; ++j)
-                        {
-                            if (((uint8_t)(1 << v10) & colMap->activation) != 0)
-                            {
-                                a1->collisionObjectPtr = *v6;
+                    colGlobal->collisionObjectPtr = *colObj;
                                 /* TEST code, to be removed
                                 tGameObjectMain* sally = (tGameObjectMain*)AI_ul_RealResolveOneRefObject(0x71003f5a);
                                 tGameObjectMain* mammagodecal = (tGameObjectMain*)AI_ul_RealResolveOneRefObject(0xf3000404);
@@ -6334,20 +6196,17 @@ int COL_Actor_GameObject(tColGlobal* a1)
                                    // DBG_OutputDebugString("(1) Mammago level mesh and sally coll %d\n", v10);
                                 }
                                 */
-                                COL_ZDM_ZDR(a1);
-                            }
-                            ++v6;
-                            v10 = j + 1;
-                        }
-                    }
-                    else if (elemType == 2)
-                    {
-                        v9 = 0;
-                        for (i = 0; v6 < v17; ++i)
-                        {
-                            if (((uint8_t)(1 << v9) & colMap->activation) != 0)
-                            {
-                                a1->collisionObjectPtr = *v6;
+                    COL_ZDM_ZDR(colGlobal);
+                }
+            }
+        }
+        else if (elemType == 2)
+        {
+            for (objIdx = 0; colObj < colObjEnd; ++colObj, ++objIdx)
+            {
+                if (((uint8_t)(1 << objIdx) & colMap->activation) != 0)
+                {
+                    colGlobal->collisionObjectPtr = *colObj;
                                 /* TEST code, to be removed
                                 tGameObjectMain* sally = (tGameObjectMain*)AI_ul_RealResolveOneRefObject(0x71003f5a);
                                 tGameObjectMain* mammagodecal = (tGameObjectMain*)AI_ul_RealResolveOneRefObject(0xf3000404);
@@ -6356,739 +6215,650 @@ int COL_Actor_GameObject(tColGlobal* a1)
                                    // DBG_OutputDebugString("(2) Mammago level mesh and sally coll %d\n", v9);
                                 }
                                 */
-                                COL_ZDM_ZDR(a1);
-                            }
-                            ++v6;
-                            v9 = i + 1;
-                        }
-                    }
+                    COL_ZDM_ZDR(colGlobal);
                 }
-            LABEL_28:
-                v5 = v13 + 1;
-                v11 = ++v14 < v19;
-                ++v13;
-                if (!v11)
-                    break;
-                v2 = v15;
             }
         }
     }
     return 1;
 }
 
-void COL_UpdateDynamicHierarchyLink(tGameObjectMain* a1, tGameObjectMain* a2)
+void COL_UpdateDynamicHierarchyLink(tGameObjectMain* gao, tGameObjectMain* refGao)
 {
-    tGameObjectMain* v2;
-    tGaoMatrix* v3;
-    Mtx4x4* v4;
-    tGameObjectExtended* v5;
-    tGameObjectCollMain* v6;
-    tGameObjectMain* v7;
-    int a3;
-    Mtx4x4 v9;
-    Mtx4x4 a2a;
-    Mtx4x4 v11;
+    tGaoMatrix* gaoMtx;
+    Mtx4x4* colInstMtx;
+    tGameObjectExtended* extended;
+    tGameObjectCollMain* coll;
+    tGameObjectMain* walk;
+    int flags;
+    int attach;
+    Mtx4x4 refInvMtx;
+    Mtx4x4 refAbsMtx;
+    Mtx4x4 localMtx;
 
-    v2 = a2;
-    if ((a1->flags & 0x400000) != 0)
+    if ((gao->flags & 0x400000) != 0)
     {
-        v3 = a1->basic->mtx;
-        if (!v3->refGao && ((a2->flags & 4) == 0 || a2 != v3->refGao2))
+        gaoMtx = gao->basic->mtx;
+        if (!gaoMtx->refGao && ((refGao->flags & 4) == 0 || refGao != gaoMtx->refGao2))
         {
-            OBJ_ComputeGlobalWhenHie(a1);
-            MATH_MulMatrixMatrix(&v9, a1->extended->coll->colInstance->mtx, a1->basic->mtx->refGao2->matrices);
-            v4 = a1->extended->coll->colInstance->mtx;
-            if (v4 != &v9)
-            {
-                memcpy(v4, &v9, sizeof(Mtx4x4));
-                v2 = a2;
-            }
-            if ((a1->flags & 0x4000000) != 0)
-                ANI_RemoveHierarchyOnFlash(a1);
-            a1->flags &= ~0x400000u;
-            MEM_Free(a1->basic->mtx);
-            a1->basic->mtx = 0;
+            OBJ_ComputeGlobalWhenHie(gao);
+            MATH_MulMatrixMatrix(&refInvMtx, gao->extended->coll->colInstance->mtx, gao->basic->mtx->refGao2->matrices);
+            colInstMtx = gao->extended->coll->colInstance->mtx;
+            if (colInstMtx != &refInvMtx)
+                memcpy(colInstMtx, &refInvMtx, sizeof(Mtx4x4));
+            if ((gao->flags & 0x4000000) != 0)
+                ANI_RemoveHierarchyOnFlash(gao);
+            gao->flags &= ~0x400000u;
+            MEM_Free(gao->basic->mtx);
+            gao->basic->mtx = 0;
         }
     }
-    a3 = a1->flags;
-    if ((a1->flags & 0x400000) == 0 && (a1->flags & 4) != 0 && (a1->basic->dyn->flags & 0x1000000) == 0)
+    flags = gao->flags;
+    if ((gao->flags & 0x400000) != 0 || (gao->flags & 4) == 0 || (gao->basic->dyn->flags & 0x1000000) != 0)
+        return;
+    extended = refGao->extended;
+    if (!extended)
+        return;
+    coll = extended->coll;
+    if (!coll)
+        return;
+    if (!coll->colMap || (refGao->flags & 4) == 0 || (refGao->basic->dyn->flags & 0x8000u) != 0) // BYTE1(v2->basic->dyn->flags) & 0x80u
+        return;
+    attach = 1;
+    walk = refGao;
+    if (get_reference_point_gao_2_from_gao_sub_40BEA0(refGao))
     {
-        v5 = v2->extended;
-        if (v5)
+        attach = 0;
+        while (get_reference_point_gao_2_from_gao_sub_40BEA0(walk) != gao)
         {
-            v6 = v5->coll;
-            if (v6)
+            walk = get_reference_point_gao_2_from_gao_sub_40BEA0(walk);
+            if (!get_reference_point_gao_2_from_gao_sub_40BEA0(walk))
             {
-                if (v6->colMap && (v2->flags & 4) != 0 && (v2->basic->dyn->flags & 0x8000u) == 0) // BYTE1(v2->basic->dyn->flags) & 0x80u
-                {
-                    v7 = v2;
-                    if (get_reference_point_gao_2_from_gao_sub_40BEA0(v2))
-                    {
-                        while (get_reference_point_gao_2_from_gao_sub_40BEA0(v7) != a1)
-                        {
-                            v7 = get_reference_point_gao_2_from_gao_sub_40BEA0(v7);
-                            if (!get_reference_point_gao_2_from_gao_sub_40BEA0(v7))
-                                goto LABEL_21;
-                        }
-                    }
-                    else
-                    {
-                    LABEL_21:
-                        OBJ_ChangeIdentityFlags(a1, a3 | 0x400000, a3);
-                        if ((v2->flags & 0x600) != 0)
-                        {
-                            if ((v2->flags & 0x400000) != 0)
-                            {
-                                MATH_MulMatrixMatrix(&a2a, v2->extended->coll->colInstance->mtx, v2->basic->mtx->refGao2->matrices);
-                                MATH_InvertMatrix(&v9, &a2a);
-                            }
-                            else
-                            {
-                                MATH_InvertMatrix(&v9, v2->extended->coll->colInstance->mtx);
-                            }
-                        }
-                        else
-                        {
-                            MATH_InvertMatrix(&v9, v2->matrices);
-                        }
-                        MATH_MulMatrixMatrix(&a1->basic->mtx->mtx, a1->matrices, &v9);
-                        MATH_MulMatrixMatrix(&v11, a1->extended->coll->colInstance->mtx, &v9);
-                        MATH_CopyMatrix(a1->extended->coll->colInstance->mtx, &v11);
-                        a1->basic->mtx->refGao = 0;
-                        a1->basic->mtx->refGao2 = v2;
-                        if ((a1->flags & 0x4000000) != 0)
-                            ANI_ApplyHierarchyOnFlash(a1);
-                    }
-                }
+                attach = 1;
+                break;
             }
         }
     }
+    if (!attach)
+        return;
+    OBJ_ChangeIdentityFlags(gao, flags | 0x400000, flags);
+    if ((refGao->flags & 0x600) != 0)
+    {
+        if ((refGao->flags & 0x400000) != 0)
+        {
+            MATH_MulMatrixMatrix(&refAbsMtx, refGao->extended->coll->colInstance->mtx, refGao->basic->mtx->refGao2->matrices);
+            MATH_InvertMatrix(&refInvMtx, &refAbsMtx);
+        }
+        else
+        {
+            MATH_InvertMatrix(&refInvMtx, refGao->extended->coll->colInstance->mtx);
+        }
+    }
+    else
+    {
+        MATH_InvertMatrix(&refInvMtx, refGao->matrices);
+    }
+    MATH_MulMatrixMatrix(&gao->basic->mtx->mtx, gao->matrices, &refInvMtx);
+    MATH_MulMatrixMatrix(&localMtx, gao->extended->coll->colInstance->mtx, &refInvMtx);
+    MATH_CopyMatrix(gao->extended->coll->colInstance->mtx, &localMtx);
+    gao->basic->mtx->refGao = 0;
+    gao->basic->mtx->refGao2 = refGao;
+    if ((gao->flags & 0x4000000) != 0)
+        ANI_ApplyHierarchyOnFlash(gao);
 }
 
 int COL_b_SlowActorVsFastActor(tRecordElem* recElem, tColGlobal* colGlobal)
 {
-    tGameObjectMain* v4;
-    tGameObjectExtended* v5;
-    int v6;
-    tGameObjectMain* v7;
-    tGameObjectBasic* v8;
-    tDyn* v9;
-    tGameObjectBasic* v10;
-    tDyn* v11;
-    tColInstance* v12;
-    tGameObjectMain* v13;
-    tGameObjectExtended* v14;
-    tGameObjectCollMain* v15;
-    tColInstance* v16;
-    tColInstance* v17;
-    int8_t v18;
-    int8_t v19;
-    tDyn* v20;
-    long double v21;
-    long double v22;
-    tDyn* v23;
-    int v24;
-    float v25;
-    tGameObjectExtended* v27;
-    tGameObjectCollMain* v28;
-    tColMap* v29;
-    tColCollisionObject* v30;
-    int v31;
-    tWorld* v32;
-    tRecordElem* v34;
-    tRecordElem* v35;
-    Vec3* a1;
-    Vec3 v37;
-    float v38;
-    float v39;
-    tWorld* recElema;
-    float recElemb;
+    tGameObjectMain* instGao;
+    tGameObjectExtended* instExt;
+    int instIsFast;
+    tGameObjectMain* mapGao;
+    tGameObjectBasic* instBasic;
+    tDyn* instDyn;
+    tGameObjectBasic* mapBasic;
+    tDyn* mapDyn;
+    tColInstance* instColInstance;
+    tGameObjectMain* otherGao;
+    tGameObjectExtended* otherExt;
+    tGameObjectCollMain* otherColl;
+    tColInstance* otherColInstance;
+    tColInstance* myColInstance;
+    int higherPriority;
+    int8_t myPriority;
+    int8_t otherPriority;
+    tDyn* myDyn;
+    long double myForceY;
+    long double myForceX;
+    tDyn* otherDyn;
+    int slot;
+    float recalX;
+    tGameObjectExtended* mapExt;
+    tGameObjectCollMain* mapColl;
+    tColMap* mapColMap;
+    tColCollisionObject* mapColObj;
+    int newCount;
+    tWorld* world;
+    tRecordElem* scan;
+    tRecordElem* scanEnd;
+    Vec3* recalVec;
+    Vec3 negNormal;
+    tWorld* recWorld;
+    float otherLenSq;
+    float negRecalY;
+    float negRecalZ;
 
     if (!recElem)
         return 0;
-    v4 = recElem->collisionInstanceGameObject;
-    v5 = recElem->collisionInstanceGameObject->extended;
-    if (v5 && (v5->extraFlag & 0x100) != 0)
+    instGao = recElem->collisionInstanceGameObject;
+    instExt = recElem->collisionInstanceGameObject->extended;
+    if (instExt && (instExt->extraFlag & 0x100) != 0)
         return 0;
-    v6 = 0;
-    if (v5 && (v5->extraFlag & 0x10) != 0)
-        v6 = 1;
-    if ((v4->flags & 0x600) != 0
-        && (v7 = recElem->collisionMapGameObject, (v7->flags & 0x600) != 0)
-        && (v8 = v4->basic) != 0
-        && (v9 = v8->dyn) != 0
-        && (v9->flags & 0x2000000) != 0
-        && (v10 = v7->basic) != 0
-        && (v11 = v10->dyn) != 0
-        && (v11->flags & 0x2000000) != 0
-        && (v12 = v5->coll->colInstance, v12->priority == v7->extended->coll->colInstance->priority))
+    instIsFast = 0;
+    if (instExt && (instExt->extraFlag & 0x10) != 0)
+        instIsFast = 1;
+    if ((instGao->flags & 0x600) != 0
+        && (mapGao = recElem->collisionMapGameObject, (mapGao->flags & 0x600) != 0)
+        && (instBasic = instGao->basic) != 0
+        && (instDyn = instBasic->dyn) != 0
+        && (instDyn->flags & 0x2000000) != 0
+        && (mapBasic = mapGao->basic) != 0
+        && (mapDyn = mapBasic->dyn) != 0
+        && (mapDyn->flags & 0x2000000) != 0
+        && (instColInstance = instExt->coll->colInstance, instColInstance->priority == mapGao->extended->coll->colInstance->priority))
     {
-        if ((recElem->flags & 0x80) == 0 || (v12->flag & 0x100) != 0)
+        if ((recElem->flags & 0x80) == 0 || (instColInstance->flag & 0x100) != 0)
             return 0;
     }
-    else
+    else if (!instIsFast)
     {
-        if (v6)
-            goto LABEL_32;
-        if (v4)
+        higherPriority = 0;
+        if (instGao)
         {
-            v13 = recElem->collisionMapGameObject;
-            if (v13)
+            otherGao = recElem->collisionMapGameObject;
+            if (otherGao
+                && (otherExt = otherGao->extended) != 0
+                && (otherColl = otherExt->coll) != 0
+                && (otherColInstance = otherColl->colInstance) != 0
+                && instExt
+                && instExt->coll
+                && (myColInstance = instExt->coll->colInstance) != 0)
             {
-                v14 = v13->extended;
-                if (v14)
-                {
-                    v15 = v14->coll;
-                    if (v15)
-                    {
-                        v16 = v15->colInstance;
-                        if (v16)
-                        {
-                            if (v5)
-                            {
-                                if (v5->coll)
-                                {
-                                    v17 = v5->coll->colInstance;
-                                    if (v17)
-                                    {
-                                        v18 = v17->priority;
-                                        v19 = v16->priority;
-                                        if (v18 > v19)
-                                            goto LABEL_32;
-                                        if (v18 < v19)
-                                            return 0;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                myPriority = myColInstance->priority;
+                otherPriority = otherColInstance->priority;
+                if (myPriority > otherPriority)
+                    higherPriority = 1;
+                else if (myPriority < otherPriority)
+                    return 0;
             }
         }
-        v20 = v4->basic->dyn;
-        v21 = fabs(v20->forceVector.y);
-        v22 = v20->forceVector.x;
-        v23 = recElem->collisionMapGameObject->basic->dyn;
-        if (v21 + fabs(v22) >= fabs(v23->forceVector.y) + fabs(v23->forceVector.x))
-            return 0;
+        if (!higherPriority)
+        {
+            myDyn = instGao->basic->dyn;
+            myForceY = fabs(myDyn->forceVector.y);
+            myForceX = myDyn->forceVector.x;
+            otherDyn = recElem->collisionMapGameObject->basic->dyn;
+            if (myForceY + fabs(myForceX) >= fabs(otherDyn->forceVector.y) + fabs(otherDyn->forceVector.x))
+                return 0;
+        }
     }
-LABEL_32:
-    v24 = colGlobal->num;
+    slot = colGlobal->num;
     if (colGlobal->num >= 1000u)
         return 0;
-    v25 = recElem->recalVec.x;
-    a1 = &recElem->recalVec;
-    v39 = -recElem->recalVec.z;
-    v37.x = -recElem->normalVec.x;
-    v37.y = -recElem->normalVec.y;
-    v37.z = -recElem->normalVec.z;
-    v38 = -recElem->recalVec.y;
+    recalX = recElem->recalVec.x;
+    recalVec = &recElem->recalVec;
+    negRecalZ = -recElem->recalVec.z;
+    negNormal.x = -recElem->normalVec.x;
+    negNormal.y = -recElem->normalVec.y;
+    negNormal.z = -recElem->normalVec.z;
+    negRecalY = -recElem->recalVec.y;
     colGlobal->colInstanceGao = recElem->collisionMapGameObject;
     colGlobal->colMapGao = recElem->collisionInstanceGameObject;
-    recElema = colGlobal->colWorld;
-    colGlobal->colWorld->records[v24].collidedPoint = recElem->collidedPoint;
-    colGlobal->colWorld->records[v24].recalVec.x = -v25;
-    colGlobal->colWorld->records[v24].recalVec.y = v38;
-    colGlobal->colWorld->records[v24].recalVec.z = v39;
-    colGlobal->colWorld->records[v24].normalVec = v37;
-    colGlobal->colWorld->records[v24].collisionInstanceGameObject = recElem->collisionMapGameObject;
-    colGlobal->colWorld->records[v24].collisionMapGameObject = recElem->collisionInstanceGameObject;
-    colGlobal->colWorld->records[v24].flags = recElem->flags;
-    colGlobal->colWorld->records[v24].triangleChunkElemID = recElem->triangleChunkElemID;
-    colGlobal->colWorld->records[v24].triangleChunkID = recElem->triangleChunkID;
+    recWorld = colGlobal->colWorld;
+    colGlobal->colWorld->records[slot].collidedPoint = recElem->collidedPoint;
+    colGlobal->colWorld->records[slot].recalVec.x = -recalX;
+    colGlobal->colWorld->records[slot].recalVec.y = negRecalY;
+    colGlobal->colWorld->records[slot].recalVec.z = negRecalZ;
+    colGlobal->colWorld->records[slot].normalVec = negNormal;
+    colGlobal->colWorld->records[slot].collisionInstanceGameObject = recElem->collisionMapGameObject;
+    colGlobal->colWorld->records[slot].collisionMapGameObject = recElem->collisionInstanceGameObject;
+    colGlobal->colWorld->records[slot].flags = recElem->flags;
+    colGlobal->colWorld->records[slot].triangleChunkElemID = recElem->triangleChunkElemID;
+    colGlobal->colWorld->records[slot].triangleChunkID = recElem->triangleChunkID;
     if (recElem->collisionInstanceGameObject
-        && (v27 = recElem->collisionInstanceGameObject->extended) != 0
-        && (v28 = v27->coll) != 0
-        && (v29 = v28->colMap) != 0
-        && (v30 = *v29->collisionObjectPtr) != 0
-        && v30->gameMaterial
-        && v30->objectType != 5)
+        && (mapExt = recElem->collisionInstanceGameObject->extended) != 0
+        && (mapColl = mapExt->coll) != 0
+        && (mapColMap = mapColl->colMap) != 0
+        && (mapColObj = *mapColMap->collisionObjectPtr) != 0
+        && mapColObj->gameMaterial
+        && mapColObj->objectType != 5)
     {
-        colGlobal->colWorld->records[v24].gameMaterial = COL_pst_GMat_Get(v30, 0);
+        colGlobal->colWorld->records[slot].gameMaterial = COL_pst_GMat_Get(mapColObj, 0);
     }
     else
     {
-        colGlobal->colWorld->records[v24].gameMaterial = 0;
+        colGlobal->colWorld->records[slot].gameMaterial = 0;
     }
-    v31 = colGlobal->num + 1;
-    colGlobal->num = v31;
-    recElema->recordCount = v31;
+    newCount = colGlobal->num + 1;
+    colGlobal->num = newCount;
+    recWorld->recordCount = newCount;
     recElem->flags |= 0x1000u;
-    v32 = colGlobal->colWorld;
+    world = colGlobal->colWorld;
     if (colGlobal->recomputeNeeded)
-    {
-        v34 = &v32->records[colGlobal->firstRecordToRecompute];
-        v35 = &v32->records[colGlobal->num - 1];
-    }
+        scan = &world->records[colGlobal->firstRecordToRecompute];
     else
+        scan = world->records;
+    scanEnd = &world->records[colGlobal->num - 1];
+    if (scan < scanEnd)
     {
-        v34 = v32->records;
-        v35 = &v32->records[colGlobal->num - 1];
-    }
-    if (v34 < v35)
-    {
-        while ((v34->flags & 0x800F3000) != 0
-            || v34->collisionInstanceGameObject != recElem->collisionMapGameObject
-            || v34->collisionMapGameObject != recElem->collisionInstanceGameObject)
+        while ((scan->flags & 0x800F3000) != 0
+            || scan->collisionInstanceGameObject != recElem->collisionMapGameObject
+            || scan->collisionMapGameObject != recElem->collisionInstanceGameObject)
         {
-            if (++v34 >= v35)
+            if (++scan >= scanEnd)
                 return 1;
         }
-        recElemb = MATH_VecLenSquared(&v34->recalVec);
-        if (MATH_VecLenSquared(a1) < (double)recElemb)
+        otherLenSq = MATH_VecLenSquared(&scan->recalVec);
+        if (MATH_VecLenSquared(recalVec) < (double)otherLenSq)
         {
-            v32->records[colGlobal->num - 1].flags = v32->records[colGlobal->num - 1].flags | 0x1000;
+            world->records[colGlobal->num - 1].flags = world->records[colGlobal->num - 1].flags | 0x1000;
             return 1;
         }
-        v34->flags |= 0x1000u;
+        scan->flags |= 0x1000u;
     }
     return 1;
 }
 
-void COL_PreComputeReports(tColGlobal* colglobal)
+static void COL_l_CollideWithDetectionList(tGameObjectMain* gao)
 {
-    tWorld* v1;
-    tRecordElem* v2;
-    tRecordElem* v3;
-    tRecordElem* v4;
-    tGameObjectMain* v5;
-    tGameObjectMain* v6;
-    tGameObjectExtended* v7;
-    tGameObjectCollMain* v8;
-    tColInstance* v9;
-    tGameObjectExtended* v10;
-    tColInstance* v11;
-    int v12;
-    tRecordElem* v13;
-    int v14;
-    tRecordElem* v15;
-    BOOL v16;
-    tRecordElem* v17;
-    tGameObjectExtended* v18;
-    tGameObjectCollMain* v19;
-    tColInstance* v20;
-    tRecordElem* v21;
-    tRecordElem* v22;
-    tGameObjectMain* v23;
-    tGameObjectMain* v24;
-    tGameObjectExtended* v25;
-    tGameObjectCollMain* v26;
-    tColInstance* v27;
-    tColInstance* v28;
-    tGameObjectExtended* v29;
-    tGameObjectExtended* v30;
-    tGameObjectCollMain* v31;
-    tColInstance* v32;
-    tRecordElem* v33;
-    tRecordElem* v34;
-    long double v35;
-    tWorld* v36;
-    long double v38;
-    tColInstance* v39;
-    int v40;
-    tColInstance* v41;
-    tRecordElem* v42;
-    BOOL v43;
-    double v44;
-    double v45;
-    int v46;
-    char v47;
-    tRecordElem* v48;
-    tRecordElem* v49;
-    float v50;
-    tGameObjectMain* a2;
-    tRecordElem* a2a;
-    tRecordElem* v53;
-    tGameObjectMain* v54;
-    int v55;
-    float v56;
-    float v57;
-    Vec3 v58; 
-    float v59;
-    float v60;
-    tRecordElem v61;
+    tGameObjectCollDetectionList* list;
+    tGameObjectMain** entry;
+    tGameObjectMain** last;
+    tGameObjectMain* other;
+    int otherFlags;
 
-    if (colglobal->recomputeNeeded)
+    list = gao->extended->coll->detectionList;
+    entry = list->detectionListGaos;
+    for (last = &entry[list->overlapNum - 1]; entry <= last; ++entry)
     {
-        v1 = colglobal->colWorld;
-        v2 = &v1->records[colglobal->firstRecordToRecompute];
-        v3 = &v1->records[colglobal->num];
-    }
-    else
-    {
-        v2 = colglobal->colWorld->records;
-        v3 = &v2[colglobal->num];
-    }
-    v49 = v2;
-    v48 = v3;
-    v53 = v2;
-    if (v2 < v3)
-    {
-        v4 = v2;
-        do
+        other = *entry;
+        otherFlags = (*entry)->flags;
+        if ((otherFlags & 0x100) != 0
+            && (other->flags2 & 1) != 0
+            && ((otherFlags & 0x400000) == 0 || other->basic->mtx->refGao2 != gao))
         {
-            if ((v4->flags & 0x800F3080) == 0)
-            {
-                v5 = v2->collisionInstanceGameObject;
-                v6 = v4->collisionMapGameObject;
-                a2 = v6;
-                if (!v2->collisionInstanceGameObject
-                    || (v7 = v5->extended) == 0
-                    || (v8 = v7->coll) == 0
-                    || (v9 = v8->colInstance) == 0
-                    || (v9->flag & 0x8000) == 0)
-                {
-                    if (v6
-                        && ((v10 = v5->extended) != 0 && (v10->extraFlag & 0x10) != 0 && (v6->flags & 4) != 0
-                            || (v5->flags & 4) != 0 && (v6->flags & 4) != 0)
-                        && COL_b_SlowActorVsFastActor(v2, colglobal))
-                    {
-                        COL_NeedRecomputation(colglobal, a2, 256);
-                        ++v3;
-                    }
-                    else
-                    {
-                        if (v5 == WOR_gpst_CurrentWorld->viewPtr->assignedGao)
-                        {
-                            v11 = v5->extended->coll->colInstance;
-                            //HIBYTE(v11->flag) |= 0x40u;
-                            v11->flag |= 0x4000u;
-                        }
-                        v12 = 0;
-                        if (v53 < v3)
-                        {
-                            v13 = v53;
-                            do
-                            {
-                                if (v13 != v2 && v13->collisionInstanceGameObject == v5)
-                                {
-                                    v14 = v13->flags;
-                                    if ((v13->flags & 0x80u) != 0 && (v14 & 0xF0000) == 0)
-                                    {
-                                        v13->flags = v14 | 0x1000;
-                                        v12 = 1;
-                                    }
-                                }
-                                ++v13;
-                            } while (v13 < v3);
-                            if (v12)
-                                COL_NeedRecomputation(colglobal, v5, 0x10);
-                        }
-                        v15 = v4 + 1;
-                        v16 = (v4->flags & 0x20) == 0;
-                        if (&v4[1] < v3)
-                        {
-                            v17 = &v4[1]; // next
-                            do
-                            {
-                                if (v15->collisionInstanceGameObject == v5 && (v17->flags & 0x3080) == 0)
-                                {
-                                    if (!v16)
-                                        v16 = (v17->flags & 0x20) == 0;
-                                    if (v17->recalVec.z > (double)v4->recalVec.z)
-                                    {
-                                        v4->recalVec.x = v17->recalVec.x;
-                                        v4->recalVec.y = v17->recalVec.y;
-                                        v4->recalVec.z = v17->recalVec.z;
-                                        v4->normalVec.x = v17->normalVec.x;
-                                        v4->normalVec.y = v17->normalVec.y;
-                                        v4->normalVec.z = v17->normalVec.z;
-                                        v4->collidedPoint.x = v17->collidedPoint.x;
-                                        v4->collidedPoint.y = v17->collidedPoint.y;
-                                        v4->collidedPoint.z = v17->collidedPoint.z;
-                                        v4->collisionMapGameObject = v17->collisionMapGameObject;
-                                        v4->flags = v17->flags;
-                                        v4->gameMaterial = v17->gameMaterial;
-                                        a2 = v17->collisionMapGameObject;
-                                    }
-                                    v17->flags |= 0x1000u;
-                                }
-                                ++v15;
-                                ++v17;
-                            } while (v15 < v3);
-                        }
-                        COL_UpdateDynamicHierarchyLink(v5, a2);
-                        if (v5
-                            && (v18 = v5->extended) != 0
-                            && (v19 = v18->coll) != 0
-                            && (v20 = v19->colInstance) != 0
-                            && (v20->flag & 0x4000) != 0)
-                        {
-                            COL_NeedRecomputation(colglobal, v5, 0x200);
-                        }
-                        else if (v16)
-                        {
-                            COL_NeedRecomputation(colglobal, v5, 0x80);
-                        }
-                        v2 = v49;
-                    }
-                }
-            }
-            ++v2;
-            ++v4;
-            v49 = v2;
-        } while (v2 < v3);
-        v48 = v3;
-    }
-    v21 = colglobal->colWorld->records;
-    if (colglobal->recomputeNeeded)
-        v21 += colglobal->firstRecordToRecompute;
-    if (v21 < v3)
-    {
-        v22 = v21;
-        a2a = v21;
-        while (1)
-        {
-            if ((v22->flags & 0x800F3040) != 0)
-                goto LABEL_119;
-            v23 = v21->collisionInstanceGameObject;
-            v24 = v22->collisionMapGameObject;
-            v54 = v21->collisionInstanceGameObject;
-            if (v21->collisionInstanceGameObject)
-            {
-                v25 = v23->extended;
-                if (v25)
-                {
-                    v26 = v25->coll;
-                    if (v26)
-                    {
-                        v27 = v26->colInstance;
-                        if (v27)
-                        {
-                            if ((v27->flag & 0x8000) != 0)
-                                goto LABEL_119;
-                        }
-                    }
-                }
-            }
-            if ((v23->flags & 0x600) != 0)
-            {
-                v28 = v23->extended->coll->colInstance;
-                v28->flag |= 0x4000u; //HIBYTE(v28->flag) |= 0x40u;
-            }
-            if (!v24)
-                break;
-            v29 = v23->extended;
-            if ((!v29 || (v29->extraFlag & 0x10) == 0 || (v24->flags & 4) == 0)
-                && ((v23->flags & 4) == 0 || (v24->flags & 4) == 0))
-            {
-                break;
-            }
-            if (!COL_b_SlowActorVsFastActor(v21, colglobal))
-                break;
-            COL_NeedRecomputation(colglobal, v24, 0x100);
-            ++v48;
-        LABEL_119:
-            ++v21;
-            ++v22;
-            a2a = v22;
-            if (v21 >= v48)
-                return;
+            COL_InitGlobalVars(gao, *entry);
+            COL_Actor_GameObject(&COL_gst_GlobalVars);
         }
-        v30 = v23->extended;
-        if (v30)
-        {
-            v31 = v30->coll;
-            if (v31)
-            {
-                v32 = v31->colInstance;
-                if (v32)
-                {
-                    if ((v32->flag & 1) == 0)
-                    {
-                        if ((v22->flags & 0x800) != 0)
-                        {
-                            v57 = 0.0;
-                            v59 = 0.0;
-                            v60 = 0.0;
-                            v47 = 0;
-                        }
-                        else
-                        {
-                            v57 = v22->normalVec.x;
-                            v59 = v22->normalVec.y;
-                            v60 = v22->normalVec.z;
-                            v47 = 1;
-                        }
-                        v33 = v22 + 1;
-                        if (&v22[1] < v48)
-                        {
-                            v34 = &v22[1]; // next
-                            do
-                            {
-                                if (v33->collisionInstanceGameObject == v23
-                                    && (v34->flags & 0x80003840) == 0
-                                    && v60 * v34->normalVec.z + v59 * v34->normalVec.y + v57 * v34->normalVec.x < 0.60000002)
-                                {
-                                    ++v47;
-                                    v57 = v57 + v34->normalVec.x;
-                                    v59 = v59 + v34->normalVec.y;
-                                    v60 = v60 + v34->normalVec.z;
-                                    if (fabs(v57) != 0 || fabs(v59) != 0 || fabs(v60) != 0)
-                                    {
-                                        v35 = 1.0 / sqrt(v59 * v59 + v57 * v57 + v60 * v60);
-                                        v57 = (float)(v57 * v35);
-                                        v59 = (float)(v59 * v35);
-                                        v60 = (float)(v35 * v60);
-                                    }
-                                    v22 = a2a;
-                                    v23 = v54;
-                                }
-                                ++v33;
-                                ++v34;
-                            } while (v33 < v48);
-                        }
-                        if ((uint8_t)v47 >= 2u
-                            && (fabs(v57) != 0 || fabs(v59) != 0 || fabs(v60) != 0) && colglobal->num < 1000u)
-                        {
-                            v36 = colglobal->colWorld;
-                            v36->records[colglobal->num].collidedPoint = MATH_gst_NulVector;
-                            v36->records[colglobal->num].recalVec = MATH_gst_NulVector;
-                            v36->records[colglobal->num].collisionInstanceGameObject = v23;
-                            v38 = 1.0 / sqrt(v59 * v59 + v57 * v57);
-                            v58.x = (float)(v57 * v38);
-                            v58.y = (float)(v59 * v38);
-                            v58.z = (float)(v38 * 0.0);
-                            v36->records[colglobal->num].normalVec = v58;
-                            v36->records[colglobal->num].collisionMapGameObject = v22->collisionMapGameObject;
-                            v36->records[colglobal->num].triangleChunkElemID = 0;
-                            v36->records[colglobal->num].triangleChunkID = 0;
-                            v36->records[colglobal->num].gameMaterial = 0;
-                            v36->records[colglobal->num].flags = 0x100A1;
-                            v39 = v23->extended->coll->colInstance;
-                            v39->flag |= 2u; //LOBYTE(v39->flag) |= 2u;
-                            v40 = colglobal->num + 1;
-                            colglobal->num = v40;
-                            v48 = &colglobal->colWorld->records[v40];
-                            v36->recordCount = v40;
-                        }
-                        v41 = v23->extended->coll->colInstance;
-                        v41->flag |= 1u; //LOBYTE(v41->flag) |= 1u;
-                    }
-                }
-            }
-        }
-        if ((v22->flags & 0x20000) != 0)
-            goto LABEL_119;
-        v55 = v22->flags & 0x800;
-        v42 = a2a + 1;
-        v43 = ((v22->flags & 0x20) == 0);
-        v44 = a2a->recalVec.y * a2a->recalVec.y
-            + a2a->recalVec.z * a2a->recalVec.z
-            + a2a->recalVec.x * a2a->recalVec.x;
-        v56 = (float)v44;
-        v45 = v44;
-        if (&a2a[1] >= v48) // NEXT
-        {
-        LABEL_118:
-            COL_NeedRecomputation(colglobal, v54, 64);
-            v22 = a2a;
-            goto LABEL_119;
-        }
-        while (1)
-        {
-            if (v42->collisionInstanceGameObject != v54)
-                goto LABEL_117;
-            v46 = v42->flags;
-            if ((v46 & 0x800F3040) != 0)
-                goto LABEL_117;
-            v50 = v42->recalVec.x * v42->recalVec.x + v42->recalVec.y * v42->recalVec.y + v42->recalVec.z * v42->recalVec.z;
-            if (v43)
-                break;
-            if (v55)
-            {
-                if ((v46 & 0x800) == 0)
-                    goto LABEL_116;
-            LABEL_107:
-                if (v50 > v45)
-                {
-                    v45 = v50;
-                LABEL_115:
-                    memcpy(&v61, v21, sizeof(v61));
-                    memcpy(v21, v42, sizeof(tRecordElem));
-                    memcpy(v42, &v61, sizeof(tRecordElem));
-                    goto LABEL_116;
-                }
-                goto LABEL_116;
-            }
-            if ((v46 & 0x20) == 0)
-            {
-                v43 = 1;
-                v45 = v50;
-                goto LABEL_115;
-            }
-            if ((v46 & 0x800) != 0)
-            {
-                v55 = 1;
-                v45 = v50;
-                goto LABEL_115;
-            }
-            if (v50 > (double)v56)
-            {
-                v56 = v42->recalVec.x * v42->recalVec.x + v42->recalVec.y * v42->recalVec.y + v42->recalVec.z * v42->recalVec.z;
-                goto LABEL_115;
-            }
-        LABEL_116:
-            v42->flags |= 0x1000u;
-        LABEL_117:
-            if (++v42 >= v48)
-                goto LABEL_118;
-        }
-        if ((v46 & 0x20) != 0)
-            goto LABEL_116;
-        goto LABEL_107;
     }
 }
 
-void COL_ComputeReports(tColGlobal* colglobal, int a2)
+static void COL_l_ApplyRecomputedMoves(uint8_t count)
 {
-    tColGlobal* v2;
-    tWorld* v3;
-    tRecordElem* v4;
-    tRecordElem* v5;
-    int v6;
-    tGameObjectMain* v7;
-    tColInstance* v8;
-    int v9;
-    Mtx4x4* v10;
-    tRecordElem* v12;
-    int v13;
-    tGameObjectMain* v14;
-    tColInstance* v15;
-    int v16;
-    tGameObjectBasic* v17;
-    tGaoMatrix* v18;
-    tGameObjectMain* v19;
-    Mtx4x4* v20;
-    tRecordElem* v21;
-    int v22;
-    tGameObjectMain* v23;
-    tColInstance* v24;
-    int16_t v25;
-    tGaoMatrix* v26;
-    Vec3* v27;
-    tRecordElem* v28;
-    tRecordElem* v29;
-    tGameObjectMain* v30;
-    int v31;
-    tColInstance* v32;
-    tGaoMatrix* v33;
-    Mtx4x4* v34;
-    Vec3* v35;
-    int v37;
-    tGameObjectBasic* v38;
-    Mtx4x4* v39;
-    Mtx4x4* v40;
-    tGameObjectBasic* v41;
-    tGameObjectActorObject* v42;
-    tAnim* v43;
-    Vec3* v45;
-    Vec3* v46;
-    tRecordElem* v47;
-    int v48;
-    int v49;
-    Vec3 a2a;
-    Mtx4x4 a1;
+    int n;
+    tGameObjectMain* gao;
+    Mtx4x4** gaoMtx;
+    Mtx4x4* colInstMtx;
+    Vec3* pos;
+    tColInstance* colInstance;
+    Vec3 move;
+    Mtx4x4 hieMtx;
+
+    if (!count)
+        return;
+    n = 0;
+    do
+    {
+        gao = COL_gst_GlobalVars.gaosNeededToBeRecomputed[n];
+        if ((gao->flags & 0x400000) != 0)
+        {
+            MATH_MulMatrixMatrix(&hieMtx, gao->extended->coll->colInstance->mtx, gao->basic->mtx->refGao2->matrices);
+            gaoMtx = &COL_gst_GlobalVars.gaosNeededToBeRecomputed[n]->matrices;
+            move.x = hieMtx.Pos.x - (*gaoMtx)->Pos.x;
+            move.y = hieMtx.Pos.y - (*gaoMtx)->Pos.y;
+            move.z = hieMtx.Pos.z - (*gaoMtx)->Pos.z;
+        }
+        else
+        {
+            gaoMtx = &gao->matrices;
+            colInstMtx = gao->extended->coll->colInstance->mtx;
+            move.x = colInstMtx->Pos.x - (*gaoMtx)->Pos.x;
+            move.y = colInstMtx->Pos.y - (*gaoMtx)->Pos.y;
+            move.z = colInstMtx->Pos.z - (*gaoMtx)->Pos.z;
+        }
+        pos = &(*gaoMtx)->Pos;
+        // !!!a Collision itt is pozíciót állít, ha ütközik valami valamivel és a ComputeReports fvben is!!!
+        pos->x = move.x + pos->x;
+        pos->y = move.y + pos->y;
+        pos->z = move.z + pos->z;
+
+        // TODO FIXME: ez így jó?
+        // TODO FIXME ez biztos jó?
+        ANI_UpdateFlashAfterMagicBoxTranslation(gao, &move, 3);
+        colInstance = COL_gst_GlobalVars.gaosNeededToBeRecomputed[n]->extended->coll->colInstance;
+        if (colInstance)
+            colInstance->flag |= 2u;
+        ++n;
+    } while (n < COL_gst_GlobalVars.gaosNeededToBeRecomputedNum);
+}
+
+void COL_PreComputeReports(tColGlobal* colglobal)
+{
+    tWorld* world;
+    tRecordElem* rec;
+    tRecordElem* end;
+    tRecordElem* endLimit;
+    tRecordElem* scanStart;
+    tRecordElem* scan;
+    tGameObjectMain* instGao;
+    tGameObjectMain* mapGao;
+    tGameObjectExtended* instExt;
+    tGameObjectCollMain* instColl;
+    tColInstance* instColInstance;
+    int anyDropped;
+    int scanFlags;
+    int anyNoNormal;
+    int noNormal;
+    tGameObjectExtended* ext;
+    tGameObjectCollMain* coll;
+    tColInstance* colInstance;
+    long double invLen;
+    long double invLen2D;
+    int newCount;
+    tRecordElem* cand;
+    double bestLen;
+    int candFlags;
+    char count;
+    float candLen;
+    int slippery;
+    float bestLenF;
+    float nx;
+    float ny;
+    float nz;
+    Vec3 avgNormal;
+
+    if (colglobal->recomputeNeeded)
+    {
+        world = colglobal->colWorld;
+        rec = &world->records[colglobal->firstRecordToRecompute];
+        end = &world->records[colglobal->num];
+    }
+    else
+    {
+        rec = colglobal->colWorld->records;
+        end = &rec[colglobal->num];
+    }
+    scanStart = rec;
+    endLimit = end;
+    if (rec < end)
+    {
+        do
+        {
+            if ((rec->flags & 0x800F3080) == 0)
+            {
+                instGao = rec->collisionInstanceGameObject;
+                mapGao = rec->collisionMapGameObject;
+                if (!instGao
+                    || (instExt = instGao->extended) == 0
+                    || (instColl = instExt->coll) == 0
+                    || (instColInstance = instColl->colInstance) == 0
+                    || (instColInstance->flag & 0x8000) == 0)
+                {
+                    if (mapGao
+                        && ((ext = instGao->extended) != 0 && (ext->extraFlag & 0x10) != 0 && (mapGao->flags & 4) != 0
+                            || (instGao->flags & 4) != 0 && (mapGao->flags & 4) != 0)
+                        && COL_b_SlowActorVsFastActor(rec, colglobal))
+                    {
+                        COL_NeedRecomputation(colglobal, mapGao, 256);
+                        ++end;
+                    }
+                    else
+                    {
+                        if (instGao == WOR_gpst_CurrentWorld->viewPtr->assignedGao)
+                        {
+                            colInstance = instGao->extended->coll->colInstance;
+                            //HIBYTE(v11->flag) |= 0x40u;
+                            colInstance->flag |= 0x4000u;
+                        }
+                        anyDropped = 0;
+                        if (scanStart < end)
+                        {
+                            scan = scanStart;
+                            do
+                            {
+                                if (scan != rec && scan->collisionInstanceGameObject == instGao)
+                                {
+                                    scanFlags = scan->flags;
+                                    if ((scan->flags & 0x80u) != 0 && (scanFlags & 0xF0000) == 0)
+                                    {
+                                        scan->flags = scanFlags | 0x1000;
+                                        anyDropped = 1;
+                                    }
+                                }
+                                ++scan;
+                            } while (scan < end);
+                            if (anyDropped)
+                                COL_NeedRecomputation(colglobal, instGao, 0x10);
+                        }
+                        anyNoNormal = (rec->flags & 0x20) == 0;
+                        for (scan = rec + 1; scan < end; ++scan) // next
+                        {
+                            if (scan->collisionInstanceGameObject == instGao && (scan->flags & 0x3080) == 0)
+                            {
+                                if (!anyNoNormal)
+                                    anyNoNormal = (scan->flags & 0x20) == 0;
+                                if (scan->recalVec.z > (double)rec->recalVec.z)
+                                {
+                                    rec->recalVec.x = scan->recalVec.x;
+                                    rec->recalVec.y = scan->recalVec.y;
+                                    rec->recalVec.z = scan->recalVec.z;
+                                    rec->normalVec.x = scan->normalVec.x;
+                                    rec->normalVec.y = scan->normalVec.y;
+                                    rec->normalVec.z = scan->normalVec.z;
+                                    rec->collidedPoint.x = scan->collidedPoint.x;
+                                    rec->collidedPoint.y = scan->collidedPoint.y;
+                                    rec->collidedPoint.z = scan->collidedPoint.z;
+                                    rec->collisionMapGameObject = scan->collisionMapGameObject;
+                                    rec->flags = scan->flags;
+                                    rec->gameMaterial = scan->gameMaterial;
+                                    mapGao = scan->collisionMapGameObject;
+                                }
+                                scan->flags |= 0x1000u;
+                            }
+                        }
+                        COL_UpdateDynamicHierarchyLink(instGao, mapGao);
+                        if (instGao
+                            && (ext = instGao->extended) != 0
+                            && (coll = ext->coll) != 0
+                            && (colInstance = coll->colInstance) != 0
+                            && (colInstance->flag & 0x4000) != 0)
+                        {
+                            COL_NeedRecomputation(colglobal, instGao, 0x200);
+                        }
+                        else if (anyNoNormal)
+                        {
+                            COL_NeedRecomputation(colglobal, instGao, 0x80);
+                        }
+                    }
+                }
+            }
+            ++rec;
+        } while (rec < end);
+        endLimit = end;
+    }
+    rec = colglobal->colWorld->records;
+    if (colglobal->recomputeNeeded)
+        rec += colglobal->firstRecordToRecompute;
+    for (; rec < endLimit; ++rec)
+    {
+        if ((rec->flags & 0x800F3040) != 0)
+            continue;
+        instGao = rec->collisionInstanceGameObject;
+        mapGao = rec->collisionMapGameObject;
+        if (instGao
+            && (ext = instGao->extended) != 0
+            && (coll = ext->coll) != 0
+            && (colInstance = coll->colInstance) != 0
+            && (colInstance->flag & 0x8000) != 0)
+        {
+            continue;
+        }
+        if ((instGao->flags & 0x600) != 0)
+        {
+            colInstance = instGao->extended->coll->colInstance;
+            colInstance->flag |= 0x4000u; //HIBYTE(v28->flag) |= 0x40u;
+        }
+        if (mapGao
+            && ((ext = instGao->extended) != 0 && (ext->extraFlag & 0x10) != 0 && (mapGao->flags & 4) != 0
+                || (instGao->flags & 4) != 0 && (mapGao->flags & 4) != 0)
+            && COL_b_SlowActorVsFastActor(rec, colglobal))
+        {
+            COL_NeedRecomputation(colglobal, mapGao, 0x100);
+            ++endLimit;
+            continue;
+        }
+        ext = instGao->extended;
+        if (ext
+            && (coll = ext->coll) != 0
+            && (colInstance = coll->colInstance) != 0
+            && (colInstance->flag & 1) == 0)
+        {
+            if ((rec->flags & 0x800) != 0)
+            {
+                nx = 0.0;
+                ny = 0.0;
+                nz = 0.0;
+                count = 0;
+            }
+            else
+            {
+                nx = rec->normalVec.x;
+                ny = rec->normalVec.y;
+                nz = rec->normalVec.z;
+                count = 1;
+            }
+            for (scan = rec + 1; scan < endLimit; ++scan) // next
+            {
+                if (scan->collisionInstanceGameObject == instGao
+                    && (scan->flags & 0x80003840) == 0
+                    && nz * scan->normalVec.z + ny * scan->normalVec.y + nx * scan->normalVec.x < 0.60000002)
+                {
+                    ++count;
+                    nx = nx + scan->normalVec.x;
+                    ny = ny + scan->normalVec.y;
+                    nz = nz + scan->normalVec.z;
+                    if (fabs(nx) != 0 || fabs(ny) != 0 || fabs(nz) != 0)
+                    {
+                        invLen = 1.0 / sqrt(ny * ny + nx * nx + nz * nz);
+                        nx = (float)(nx * invLen);
+                        ny = (float)(ny * invLen);
+                        nz = (float)(invLen * nz);
+                    }
+                }
+            }
+            if ((uint8_t)count >= 2u
+                && (fabs(nx) != 0 || fabs(ny) != 0 || fabs(nz) != 0) && colglobal->num < 1000u)
+            {
+                world = colglobal->colWorld;
+                world->records[colglobal->num].collidedPoint = MATH_gst_NulVector;
+                world->records[colglobal->num].recalVec = MATH_gst_NulVector;
+                world->records[colglobal->num].collisionInstanceGameObject = instGao;
+                invLen2D = 1.0 / sqrt(ny * ny + nx * nx);
+                avgNormal.x = (float)(nx * invLen2D);
+                avgNormal.y = (float)(ny * invLen2D);
+                avgNormal.z = (float)(invLen2D * 0.0);
+                world->records[colglobal->num].normalVec = avgNormal;
+                world->records[colglobal->num].collisionMapGameObject = rec->collisionMapGameObject;
+                world->records[colglobal->num].triangleChunkElemID = 0;
+                world->records[colglobal->num].triangleChunkID = 0;
+                world->records[colglobal->num].gameMaterial = 0;
+                world->records[colglobal->num].flags = 0x100A1;
+                colInstance = instGao->extended->coll->colInstance;
+                colInstance->flag |= 2u; //LOBYTE(v39->flag) |= 2u;
+                newCount = colglobal->num + 1;
+                colglobal->num = newCount;
+                endLimit = &colglobal->colWorld->records[newCount];
+                world->recordCount = newCount;
+            }
+            colInstance = instGao->extended->coll->colInstance;
+            colInstance->flag |= 1u; //LOBYTE(v41->flag) |= 1u;
+        }
+        if ((rec->flags & 0x20000) != 0)
+            continue;
+        slippery = rec->flags & 0x800;
+        noNormal = (rec->flags & 0x20) == 0;
+        bestLen = rec->recalVec.y * rec->recalVec.y
+            + rec->recalVec.z * rec->recalVec.z
+            + rec->recalVec.x * rec->recalVec.x;
+        bestLenF = (float)bestLen;
+        for (cand = rec + 1; cand < endLimit; ++cand) // NEXT
+        {
+            if (cand->collisionInstanceGameObject != instGao)
+                continue;
+            candFlags = cand->flags;
+            if ((candFlags & 0x800F3040) != 0)
+                continue;
+            candLen = cand->recalVec.x * cand->recalVec.x + cand->recalVec.y * cand->recalVec.y + cand->recalVec.z * cand->recalVec.z;
+            if (noNormal)
+            {
+                if ((candFlags & 0x20) == 0 && candLen > bestLen)
+                {
+                    bestLen = candLen;
+                    COL_l_SwapRecords(rec, cand);
+                }
+            }
+            else if (slippery)
+            {
+                if ((candFlags & 0x800) != 0 && candLen > bestLen)
+                {
+                    bestLen = candLen;
+                    COL_l_SwapRecords(rec, cand);
+                }
+            }
+            else if ((candFlags & 0x20) == 0)
+            {
+                noNormal = 1;
+                bestLen = candLen;
+                COL_l_SwapRecords(rec, cand);
+            }
+            else if ((candFlags & 0x800) != 0)
+            {
+                slippery = 1;
+                bestLen = candLen;
+                COL_l_SwapRecords(rec, cand);
+            }
+            else if (candLen > (double)bestLenF)
+            {
+                bestLenF = candLen;
+                COL_l_SwapRecords(rec, cand);
+            }
+            cand->flags |= 0x1000u;
+        }
+        COL_NeedRecomputation(colglobal, instGao, 64);
+    }
+}
+
+void COL_ComputeReports(tColGlobal* colglobal, int firstRecord)
+{
+    tWorld* world;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
+    tGameObjectMain* gao;
+    tColInstance* colInstance;
+    int gaoFlags;
+    Mtx4x4* gaoMtx;
+    tGameObjectBasic* basic;
+    tGaoMatrix* gaoHieMtx;
+    tGameObjectMain* refGao;
+    Mtx4x4* refAbsMtx;
+    int16_t colFlag;
+    tGaoMatrix* posMtx;
+    Vec3* pos;
+    Mtx4x4* colInstMtx;
+    int anyDeferred;
+    int sawPending;
+    Vec3 move;
+    Mtx4x4 refInvMtx;
 
     // Collision records dump testcode - to be removed
     /*
@@ -7113,2397 +6883,1451 @@ void COL_ComputeReports(tColGlobal* colglobal, int a2)
 
     //return;
 
-    v2 = colglobal;
-    v49 = 0;
+    sawPending = 0;
     if (colglobal->num == colglobal->firstRecordToRecompute)
     {
-        v47 = &colglobal->colWorld->records[colglobal->colWorld->recordCount];
+        end = &colglobal->colWorld->records[colglobal->colWorld->recordCount];
     }
     else
     {
-        v48 = 0;
+        anyDeferred = 0;
         COL_PreComputeReports(colglobal);
-        v3 = colglobal->colWorld;
+        world = colglobal->colWorld;
         if (colglobal->recomputeNeeded)
         {
-            v4 = &v3->records[colglobal->firstRecordToRecompute];
-            v5 = &v3->records[v3->recordCount];
+            rec = &world->records[colglobal->firstRecordToRecompute];
+            end = &world->records[world->recordCount];
         }
         else
         {
-            v4 = &v3->records[a2];
-            v5 = &v4[v3->recordCount];
+            rec = &world->records[firstRecord];
+            end = &rec[world->recordCount];
         }
-        v47 = v5;
-        if (v4 < v5)
+        if (rec < end)
         {
             do
             {
-                v6 = v4->flags;
-                if ((v6 & 0x800F3000) == 0)
+                flags = rec->flags;
+                if ((flags & 0x800F3000) == 0)
                 {
-                    v7 = v4->collisionInstanceGameObject;
-                    v8 = v4->collisionInstanceGameObject->extended->coll->colInstance;
-                    v9 = v4->collisionInstanceGameObject->flags;
-                    if ((v9 & 0x400000) != 0)
+                    gao = rec->collisionInstanceGameObject;
+                    colInstance = rec->collisionInstanceGameObject->extended->coll->colInstance;
+                    gaoFlags = rec->collisionInstanceGameObject->flags;
+                    if ((gaoFlags & 0x400000) != 0)
                     {
-                        v48 = 1;
+                        anyDeferred = 1;
                     }
                     else
                     {
-                        if ((v6 & 0x40) != 0 && (v9 & 4) != 0)
-                            v7->basic->dyn->flags |= 0x400000u;
-                        if (!v8 || v8->flag >= 0)
+                        if ((flags & 0x40) != 0 && (gaoFlags & 4) != 0)
+                            gao->basic->dyn->flags |= 0x400000u;
+                        if (!colInstance || colInstance->flag >= 0)
                         {
-                            v10 = v7->matrices;
-                            v10->Pos.x = v4->recalVec.x + v10->Pos.x;
-                            v10->Pos.y = v4->recalVec.y + v10->Pos.y;
-                            v10->Pos.z = v4->recalVec.z + v10->Pos.z;
-                            ANI_UpdateFlashAfterMagicBoxTranslation(v7, &v4->recalVec, 3);
+                            gaoMtx = gao->matrices;
+                            gaoMtx->Pos.x = rec->recalVec.x + gaoMtx->Pos.x;
+                            gaoMtx->Pos.y = rec->recalVec.y + gaoMtx->Pos.y;
+                            gaoMtx->Pos.z = rec->recalVec.z + gaoMtx->Pos.z;
+                            ANI_UpdateFlashAfterMagicBoxTranslation(gao, &rec->recalVec, 3);
                         }
                     }
                 }
-                ++v4;
-            } while (v4 < v47);
-            if (v48)
+                ++rec;
+            } while (rec < end);
+            if (anyDeferred)
             {
                 if (colglobal->recomputeNeeded)
-                    v12 = &colglobal->colWorld->records[colglobal->firstRecordToRecompute];
+                    rec = &colglobal->colWorld->records[colglobal->firstRecordToRecompute];
                 else
-                    v12 = colglobal->colWorld->records;
-                for (; v12 < v47; ++v12)
+                    rec = colglobal->colWorld->records;
+                for (; rec < end; ++rec)
                 {
-                    v13 = v12->flags;
-                    if ((v13 & 0x800F3000) == 0)
+                    flags = rec->flags;
+                    if ((flags & 0x800F3000) == 0)
                     {
-                        v14 = v12->collisionInstanceGameObject;
-                        v15 = v12->collisionInstanceGameObject->extended->coll->colInstance;
-                        v16 = v12->collisionInstanceGameObject->flags;
-                        if ((v16 & 4) != 0 && (!v15 || (v15->flag & 0x8000) == 0) && (v16 & 0x400000) != 0)
+                        gao = rec->collisionInstanceGameObject;
+                        colInstance = rec->collisionInstanceGameObject->extended->coll->colInstance;
+                        gaoFlags = rec->collisionInstanceGameObject->flags;
+                        if ((gaoFlags & 4) != 0 && (!colInstance || (colInstance->flag & 0x8000) == 0) && (gaoFlags & 0x400000) != 0)
                         {
-                            if ((v13 & 0x40) != 0)
-                                v14->basic->dyn->flags |= 0x400000u;
-                            v17 = v14->basic;
-                            v18 = v17->mtx;
-                            if (v17 && v18)
-                                v19 = v18->refGao2;
+                            if ((flags & 0x40) != 0)
+                                gao->basic->dyn->flags |= 0x400000u;
+                            basic = gao->basic;
+                            gaoHieMtx = basic->mtx;
+                            if (basic && gaoHieMtx)
+                                refGao = gaoHieMtx->refGao2;
                             else
-                                v19 = 0;
-                            v20 = OBJ_pst_GetAbsoluteMatrix(v19);
-                            MATH_InvertMatrix(&a1, v20);
-                            MATH_TransformVector(&a2a, &a1, &v12->recalVec);
-                            v18->mtx.Pos.x = a2a.x + v18->mtx.Pos.x;
-                            v18->mtx.Pos.y = a2a.y + v18->mtx.Pos.y;
-                            v18->mtx.Pos.z = a2a.z + v18->mtx.Pos.z;
-                            OBJ_ComputeGlobalWhenHie(v14);
-                            ANI_UpdateFlashAfterMagicBoxTranslation(v14, &a2a, 3);
+                                refGao = 0;
+                            refAbsMtx = OBJ_pst_GetAbsoluteMatrix(refGao);
+                            MATH_InvertMatrix(&refInvMtx, refAbsMtx);
+                            MATH_TransformVector(&move, &refInvMtx, &rec->recalVec);
+                            gaoHieMtx->mtx.Pos.x = move.x + gaoHieMtx->mtx.Pos.x;
+                            gaoHieMtx->mtx.Pos.y = move.y + gaoHieMtx->mtx.Pos.y;
+                            gaoHieMtx->mtx.Pos.z = move.z + gaoHieMtx->mtx.Pos.z;
+                            OBJ_ComputeGlobalWhenHie(gao);
+                            ANI_UpdateFlashAfterMagicBoxTranslation(gao, &move, 3);
                         }
                     }
                 }
-                v2 = colglobal;
-            }
+                        }
         }
     }
-    if (!v2->gaosNeededToBeRecomputedNum || COL_gb_LastLoop)
+    if (colglobal->gaosNeededToBeRecomputedNum && !COL_gb_LastLoop)
+        return;
+    rec = &colglobal->colWorld->records[firstRecord];
+    if (rec >= end)
+        return;
+    for (; rec < end; ++rec)
     {
-        v21 = &v2->colWorld->records[a2];
-        if (v21 < v47)
+        flags = rec->flags;
+        if ((flags & 0x80043000) != 0)
+            continue;
+        gao = rec->collisionInstanceGameObject;
+        colInstance = rec->collisionInstanceGameObject->extended->coll->colInstance;
+        if (colInstance && colInstance->flag < 0)
+            sawPending = 1;
+        if ((flags & 0x850) != 0)
+            continue;
+        if (gao == WOR_gpst_CurrentWorld->viewPtr->assignedGao)
+            continue;
+        if (!colInstance)
+            continue;
+        if (!colInstance->wallPush)
+            continue;
+        colFlag = colInstance->flag;
+        if ((colFlag & 0x8000) != 0)
+            continue;
+        if ((gao->flags & 0x400000) != 0)
+            posMtx = gao->basic->mtx;
+        else
+            posMtx = (tGaoMatrix*)gao->matrices;
+        pos = &posMtx->mtx.Pos;
+        if ((colFlag & 2) != 0)
         {
-            while (1)
+            if ((flags & 0x10000) == 0)
+                continue;
+            move.x = rec->normalVec.x * -0.0099999998f;
+            move.y = rec->normalVec.y * -0.0099999998f;
+        }
+        else
+        {
+            if ((flags & 0x800) != 0)
+                continue;
+            move.x = rec->normalVec.x * -0.0020000001f;
+            move.y = rec->normalVec.y * -0.0020000001f;
+        }
+        pos->x = move.x + pos->x;
+        pos->y = move.y + pos->y;
+        move.z = 0.0;
+        ANI_UpdateFlashAfterMagicBoxTranslation(gao, &move, 3);
+    }
+    if (!sawPending)
+        return;
+    rec = &colglobal->colWorld->records[firstRecord];
+    if (rec >= end)
+        return;
+    do
+    {
+        if ((rec->flags & 0x80043000) == 0)
+        {
+            gao = rec->collisionInstanceGameObject;
+            gaoFlags = rec->collisionInstanceGameObject->flags;
+            colInstance = rec->collisionInstanceGameObject->extended->coll->colInstance;
+            if ((gaoFlags & 4) != 0 && colInstance && colInstance->flag < 0)
             {
-                v22 = v21->flags;
-                if ((v22 & 0x80043000) != 0)
-                    goto LABEL_57;
-                v23 = v21->collisionInstanceGameObject;
-                v24 = v21->collisionInstanceGameObject->extended->coll->colInstance;
-                if (v24 && v24->flag < 0)
-                    v49 = 1;
-                if ((v22 & 0x850) != 0)
-                    goto LABEL_57;
-                if (v23 == WOR_gpst_CurrentWorld->viewPtr->assignedGao)
-                    goto LABEL_57;
-                if (!v24)
-                    goto LABEL_57;
-                if (!v24->wallPush)
-                    goto LABEL_57;
-                v25 = v24->flag;
-                if ((v25 & 0x8000) != 0)
-                    goto LABEL_57;
-                if ((v23->flags & 0x400000) != 0)
-                    v26 = v23->basic->mtx;
+                if ((gaoFlags & 0x400000) != 0)
+                    posMtx = gao->basic->mtx;
                 else
-                    v26 = (tGaoMatrix*)v23->matrices;
-                v27 = &v26->mtx.Pos;
-                if ((v25 & 2) != 0)
-                {
-                    if ((v22 & 0x10000) != 0)
-                    {
-                        a2a.x = v21->normalVec.x * -0.0099999998f;
-                        a2a.y = v21->normalVec.y * -0.0099999998f;
-                        v27->x = a2a.x + v27->x;
-                        v27->y = a2a.y + v27->y;
-                        v27->z = v27->z;
-                    LABEL_56:
-                        a2a.z = 0.0;
-                        ANI_UpdateFlashAfterMagicBoxTranslation(v23, &a2a, 3);
-                        goto LABEL_57;
-                    }
-                }
-                else if ((v22 & 0x800) == 0)
-                {
-                    a2a.x = v21->normalVec.x * -0.0020000001f;
-                    a2a.y = v21->normalVec.y * -0.0020000001f;
-                    v27->x = a2a.x + v27->x;
-                    v27->y = a2a.y + v27->y;
-                    v27->z = v27->z;
-                    goto LABEL_56;
-                }
-            LABEL_57:
-                v28 = v47;
-                if (++v21 >= v47)
-                {
-                    if (v49)
-                    {
-                        v29 = &v2->colWorld->records[a2];
-                        if (v29 < v47)
-                        {
-                            do
-                            {
-                                if ((v29->flags & 0x80043000) == 0)
-                                {
-                                    v30 = v29->collisionInstanceGameObject;
-                                    v31 = v29->collisionInstanceGameObject->flags;
-                                    v32 = v29->collisionInstanceGameObject->extended->coll->colInstance;
-                                    if ((v31 & 4) != 0 && v32 && v32->flag < 0)
-                                    {
-                                        if ((v31 & 0x400000) != 0)
-                                            v33 = v30->basic->mtx;
-                                        else
-                                            v33 = (tGaoMatrix*)v30->matrices;
-                                        v34 = v32->mtx;
-                                        v35 = &v33->mtx.Pos;
-                                        a2a.x = v34->Pos.x - v35->x;
-                                        a2a.y = v34->Pos.y - v35->y;
-                                        a2a.z = v34->Pos.z - v35->z;
-                                        v35->x = a2a.x + v35->x;
-                                        v35->y = a2a.y + v35->y;
-                                        v35->z = a2a.z + v35->z;
-                                        if ((v30->flags & 0x400000) != 0)
-                                            OBJ_ComputeGlobalWhenHie(v30);
-                                        v37 = v30->flags;
-                                        if ((v30->flags & 2) != 0)
-                                        {
-                                            v38 = v30->basic;
-                                            if (v38)
-                                            {
-                                                if (v38->actorObjectOrVisualObject)
-                                                {
-                                                    if ((v37 & 0x4000000) != 0)
-                                                    {
-                                                        v39 = v30->matrices;
-                                                        if ((v37 & 0x10000) != 0)
-                                                            v40 = v39 + 2;
-                                                        else
-                                                            v40 = v39 + 1;
-                                                        v40->Pos.x = a2a.x + v40->Pos.x;
-                                                        v40->Pos.y = a2a.y + v40->Pos.y;
-                                                        v40->Pos.z = a2a.z + v40->Pos.z;
-                                                    }
-                                                    if ((v30->flags & 2) != 0)
-                                                    {
-                                                        v41 = v30->basic;
-                                                        if (v41)
-                                                        {
-                                                            v42 = (tGameObjectActorObject*)v41->actorObjectOrVisualObject;
-                                                            if (v41->actorObjectOrVisualObject)
-                                                            {
-                                                                if ((v42->flagsEgBlendIw2 & 2) != 0)
-                                                                {
-                                                                    v43 = v42->animPtr[1];
-                                                                    v43->flashMtx.Pos.x = a2a.x + v43->flashMtx.Pos.x;
-                                                                    v43->flashMtx.Pos.y = a2a.y + v43->flashMtx.Pos.y;
-                                                                    v43->flashMtx.Pos.z = a2a.z + v43->flashMtx.Pos.z;
-                                                                    v45 = (Vec3*)&v42->animPtr[0]->flashMtx._m14;
-                                                                    v45->x = a2a.x + v45->x;
-                                                                    v45->y = a2a.y + v45->y;
-                                                                    v45->z = a2a.z + v45->z;
-                                                                    v46 = &v42->animPtr[0]->flashMtx.Pos;
-                                                                    v46->x = a2a.x + v46->x;
-                                                                    v46->y = a2a.y + v46->y;
-                                                                    v46->z = a2a.z + v46->z;
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        v32->flag &= ~0x8000u; //HIBYTE(v32->flag) &= ~0x80u;
-                                        v28 = v47;
-                                    }
-                                }
-                                ++v29;
-                            } while (v29 < v28);
-                        }
-                    }
-                    return;
-                }
+                    posMtx = (tGaoMatrix*)gao->matrices;
+                colInstMtx = colInstance->mtx;
+                pos = &posMtx->mtx.Pos;
+                move.x = colInstMtx->Pos.x - pos->x;
+                move.y = colInstMtx->Pos.y - pos->y;
+                move.z = colInstMtx->Pos.z - pos->z;
+                pos->x = move.x + pos->x;
+                pos->y = move.y + pos->y;
+                pos->z = move.z + pos->z;
+                if ((gao->flags & 0x400000) != 0)
+                    OBJ_ComputeGlobalWhenHie(gao);
+                ANI_UpdateFlashAfterMagicBoxTranslation(gao, &move, 3);
+                colInstance->flag &= ~0x8000u; //HIBYTE(v32->flag) &= ~0x80u;
             }
         }
-    }
+        ++rec;
+    } while (rec < end);
 }
 
-void COL_OneCall(struct sGameObjectMain* a1, int a2)
+void COL_OneCall(struct sGameObjectMain* gao, int firstRecord)
 {
-    Mtx4x4* v2;
-    Mtx4x4* v3;
-    double v4;
-    double v5;
-    Mtx4x4* v6;
-    tGameObjectBV* v8;
-    tGameObjectBV* v9;
-    int v11;
-    tGameObjectCollMain* v12;
-    tColInstance* v13;
-    uint8_t v14;
-    uint8_t v15;
-    tGameObjectBasic* v16;
-    tDyn* v17;
-    tGameObjectBasic* v18;
-    tDyn* v19;
-    Mtx4x4* v20;
-    long double v21;
-    double v22;
-    Mtx4x4* v23;
-    tColInstance* v24;
-    tColInstance* v25;
-    tGameObjectCollDetectionList* v26;
-    tGameObjectMain** v27;
-    tGameObjectMain** i;
-    tGameObjectMain* v29;
-    int v30;
-    uint8_t v31;
-    int v32;
-    BOOL v33;
-    tGameObjectMain* v34;
-    tGameObjectBasic* v35;
-    tDyn* v36;
-    tGameObjectCollMain* v37;
-    tGameObjectMain** v38;
-    tGameObjectMain** j;
-    tGameObjectMain* v40;
-    int v41;
-    int v42;
-    tGameObjectMain* v43;
-    Mtx4x4** v44;
-    double v45;
-    Mtx4x4* v46;
-    Mtx4x4* v47;
-    double v48;
-    Vec3* v49;
-    tGameObjectMain* v50;
-    int v51;
-    tGameObjectBasic* v52;
-    Mtx4x4* v53;
-    Mtx4x4* v54;
-    tGameObjectBasic* v55;
-    tGameObjectActorObject* v56;
-    tAnim* v57;
-    double v58;
-    Vec3* v59;
-    Vec3* v60;
-    tColInstance* v61;
-    uint8_t v62;
-    char a2a;
-    int a2b;
-    tColInstanceElem** v65;
-    int v66;
-    int v67;
-    tWorld* a1a;
-    float v69;
-    float v70;
-    float v71;
-    float v72;
-    float v73;
-    float v74;
-    float v75;
-    float v76;
-    Mtx4x4 v77;
+    int flags2;
+    tGameObjectCollMain* coll;
+    tColInstance* colInstance;
+    uint8_t zoneNum;
+    tGameObjectBasic* basic;
+    tDyn* dyn;
+    Mtx4x4* colInstMtx;
+    long double deltaX;
+    double deltaY;
+    tColInstance* instance;
+    tGameObjectMain* recomputed;
+    tGameObjectBasic* recBasic;
+    tDyn* recDyn;
+    int pass;
+    uint8_t pending;
+    int reachedLimit;
+    int n;
+    int idx;
+    tColInstanceElem** elems;
+    int passSaved;
+    int pendingSaved;
+    tWorld* world;
+    float forceX;
+    float forceY;
+    float deltaYf;
+    Mtx4x4 hieMtx;
 
     COL_gst_GlobalVars.COL_gb_SpecialCamera = 1;
-    if (OBJ_BV_IsAABBox(a1->boundingVolume))
-    {
-        v2 = a1->extended->coll->colInstance->mtx;
-        if ((a1->flags & 0x400000) != 0)
-        {
-            MATH_MulMatrixMatrix(&v77, v2, a1->basic->mtx->refGao2->matrices);
-            v3 = a1->matrices;
-            v4 = v3->Pos.x - v77.Pos.x;
-            v71 = v3->Pos.y - v77.Pos.y;
-            v5 = v3->Pos.z - v77.Pos.z;
-        }
-        else
-        {
-            v6 = a1->matrices;
-            v4 = v6->Pos.x - v2->Pos.x;
-            v71 = v6->Pos.y - v2->Pos.y;
-            v5 = v6->Pos.z - v2->Pos.z;
-        }
-        v8 = a1->boundingVolume;
-        v8->BVMin = v8->BVMinOriginal;
-        v9 = a1->boundingVolume;
-        v74 = (float)v5;
-        v8->BVMax.x = v9->BVMaxOriginal.x;
-        v8->BVMax.y = v9->BVMaxOriginal.y;
-        v8->BVMax.z = v9->BVMaxOriginal.z;
-        if (v4 <= 0.0)
-            v8->BVMax.x = (float)(v8->BVMax.x - v4);
-        else
-            v8->BVMin.x = (float)(v8->BVMin.x - v4);
-        if (v71 <= 0.0)
-            v8->BVMax.y = v8->BVMax.y - v71;
-        else
-            v8->BVMin.y = v8->BVMin.y - v71;
-        if (v74 <= 0.0)
-            v8->BVMax.z = v8->BVMax.z - v74;
-        else
-            v8->BVMin.z = v8->BVMin.z - v74;
-    }
+    if (OBJ_BV_IsAABBox(gao->boundingVolume))
+        COL_l_ExpandBVByColInstanceOffset(gao);
     COL_gb_LastLoop = 0;
     COL_gst_GlobalVars.COL_uc_RecomputingLoop = 0;
     COL_gst_GlobalVars.firstRecordToRecompute = COL_gst_GlobalVars.num;
     COL_gst_GlobalVars.recomputeNeeded = 1;
-    v11 = a1->flags2;
-    if ((v11 & 1) == 0)
+    flags2 = gao->flags2;
+    if ((flags2 & 1) == 0)
         return;
-    if ((v11 & 0x400000) != 0)
+    if ((flags2 & 0x400000) != 0)
         return;
     COL_gst_GlobalVars.COL_gb_AfterEngine = 1;
-    a1a = WOR_gpst_CurrentWorld;
+    world = WOR_gpst_CurrentWorld;
     INT_SnP_InsertionSort(WOR_gpst_CurrentWorld->snp, 0);
-    if ((a1->flags2 & 0x20) == 0)
+    if ((gao->flags2 & 0x20) == 0)
         return;
-    v12 = a1->extended->coll;
-    v13 = v12->colInstance;
-    v14 = v13->zoneNum;
-    v15 = 0;
-    a2a = 0;
-    v62 = v14;
-    if (!v14)
+    coll = gao->extended->coll;
+    colInstance = coll->colInstance;
+    zoneNum = colInstance->zoneNum;
+    if (!zoneNum)
         return;
-    v65 = v13->selectedInstElemPtrs;
-    while ((v65[v15]->colFlags & 1) == 0)
+    elems = colInstance->selectedInstElemPtrs;
+    for (idx = 0; idx < zoneNum; ++idx)
     {
-    LABEL_22:
-        a2a = ++v15;
-        if (v15 >= v14)
-            return;
+        if ((elems[idx]->colFlags & 1) != 0
+            && COL_get_activation_flag_for_id__max_16_sub_4132C0(coll->colInstance, (char)idx))
+            break;
     }
-    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(v12->colInstance, a2a))
+    if (idx >= zoneNum)
+        return;
+    if (!coll->detectionList->overlapNum)
+        return;
+    coll->colInstance->flag = 0;
+    basic = gao->basic;
+    if (basic && (dyn = basic->dyn) != 0)
+        COL_gst_GlobalVars.maxStepSize = dyn->maxStepSize;
+    else
+        COL_gst_GlobalVars.maxStepSize = -1.0;
+    if ((gao->flags & 4) != 0)
     {
-        v14 = v62;
-        goto LABEL_22;
-    }
-    if (v12->detectionList->overlapNum)
-    {
-        v12->colInstance->flag = 0;
-        v16 = a1->basic;
-        if (v16 && (v17 = v16->dyn) != 0)
-            COL_gst_GlobalVars.maxStepSize = v17->maxStepSize;
+        basic = gao->basic;
+        if (basic)
+            dyn = basic->dyn;
         else
-            COL_gst_GlobalVars.maxStepSize = -1.0;
-        if ((a1->flags & 4) != 0)
+            dyn = 0;
+        forceX = dyn->mass * dyn->forceVector.x;
+        forceY = dyn->forceVector.y * dyn->mass;
+        if ((gao->flags & 0x400000) != 0)
         {
-            v18 = a1->basic;
-            if (v18)
-                v19 = v18->dyn;
-            else
-                v19 = 0;
-            v69 = v19->mass * v19->forceVector.x;
-            v72 = v19->forceVector.y * v19->mass;
-            if ((a1->flags & 0x400000) != 0)
-            {
-                MATH_MulMatrixMatrix(&v77, v12->colInstance->mtx, v18->mtx->refGao2->matrices);
-                v20 = a1->matrices;
-                v21 = v77.Pos.x - v20->Pos.x;
-                v22 = v77.Pos.y - v20->Pos.y;
-            }
-            else
-            {
-                v23 = v12->colInstance->mtx;
-                v21 = v23->Pos.x - a1->matrices->Pos.x;
-                v22 = v23->Pos.y - a1->matrices->Pos.y;
-            }
-            if ((a1->basic->dyn->flags & 0x400000) != 0
-                && fabs(v69) < 0.001
-                && fabs(v72) < 0.001
-                && fabs(v21) < 0.001
-                && (v76 = (float)v22, fabs(v76) < 0.001))
-            {
-                v24 = a1->extended->coll->colInstance;
-                v24->flag |= 0x8000u; //HIBYTE(v25->flag) |= 0x80;
-            }
-            else
-            {
-                v25 = a1->extended->coll->colInstance;
-                v25->flag &= ~0x8000u; //HIBYTE(v25->flag) &= ~0x80u;
-            }
-            a1->basic->dyn->flags &= ~0x800000u;
-            a1->basic->dyn->flags &= ~0x400000u;
-        }
-        if ((a1->flags & 0x400000) != 0)
-            OBJ_ComputeGlobalWhenHie(a1);
-        v26 = v12->detectionList;
-        v27 = v12->detectionList->detectionListGaos;
-        for (i = &v27[v26->overlapNum - 1]; v27 <= i; ++v27)
-        {
-            v29 = *v27;
-            v30 = (*v27)->flags;
-            if ((v30 & 0x100) != 0 && (v29->flags2 & 1) != 0 && ((v30 & 0x400000) == 0 || v29->basic->mtx->refGao2 != a1))
-            {
-                COL_InitGlobalVars(a1, *v27);
-                COL_Actor_GameObject(&COL_gst_GlobalVars);
-            }
-        }
-        COL_ComputeReports(&COL_gst_GlobalVars, a2);
-        v31 = COL_gst_GlobalVars.gaosNeededToBeRecomputedNum;
-        v32 = 0;
-        if (COL_gst_GlobalVars.gaosNeededToBeRecomputedNum)
-        {
-            while (1)
-            {
-                v33 = v32 == 6;
-                if (v32 >= 6)
-                    break;
-                v67 = ++v32;
-                COL_gst_GlobalVars.COL_uc_RecomputingLoop = v32;
-                COL_gb_LastLoop = v32 == 6;
-                COL_gst_GlobalVars.firstRecordToRecompute = COL_gst_GlobalVars.num;
-                v66 = v31;
-                COL_gst_GlobalVars.gaosNeededToBeRecomputedNum = 0;
-                a2b = 0;
-                if (v31)
-                {
-                    do
-                    {
-                        v34 = COL_gst_GlobalVars.gaosNeededToBeRecomputed[a2b];
-                        v34->extended->coll->colInstance->flag &= ~4u; //LOBYTE(v34->extended->coll->colInstance->flag) &= ~4u;
-                        v34->extended->coll->colInstance->flag &= ~0x3F0u;
-                        v35 = v34->basic;
-                        if (v35 && (v36 = v35->dyn) != 0)
-                            COL_gst_GlobalVars.maxStepSize = v36->maxStepSize;
-                        else
-                            COL_gst_GlobalVars.maxStepSize = -1.0;
-                        v37 = v34->extended->coll;
-                        v38 = v37->detectionList->detectionListGaos;
-                        for (j = &v38[v37->detectionList->overlapNum - 1]; v38 <= j; ++v38)
-                        {
-                            v40 = *v38;
-                            v41 = (*v38)->flags;
-                            if ((v41 & 0x100) != 0
-                                && (v40->flags2 & 1) != 0
-                                && ((v41 & 0x400000) == 0 || v40->basic->mtx->refGao2 != v34))
-                            {
-                                COL_InitGlobalVars(v34, *v38);
-                                COL_Actor_GameObject(&COL_gst_GlobalVars);
-                            }
-                        }
-                        ++a2b;
-                    } while (a2b < v66);
-                    v32 = v67;
-                }
-                COL_ComputeReports(&COL_gst_GlobalVars, a2);
-                v31 = COL_gst_GlobalVars.gaosNeededToBeRecomputedNum;
-                if (!COL_gst_GlobalVars.gaosNeededToBeRecomputedNum)
-                {
-                    v33 = v32 == 6;
-                    break;
-                }
-            }
-            if (v33)
-            {
-                v42 = 0;
-                if (v31)
-                {
-                    do
-                    {
-                        v43 = COL_gst_GlobalVars.gaosNeededToBeRecomputed[v42];
-                        if ((v43->flags & 0x400000) != 0)
-                        {
-                            MATH_MulMatrixMatrix(&v77, v43->extended->coll->colInstance->mtx, v43->basic->mtx->refGao2->matrices);
-                            v44 = &COL_gst_GlobalVars.gaosNeededToBeRecomputed[v42]->matrices;
-                            v70 = v77.Pos.x - (*v44)->Pos.x;
-                            v73 = v77.Pos.y - (*v44)->Pos.y;
-                            v45 = v77.Pos.z - (*v44)->Pos.z;
-                        }
-                        else
-                        {
-                            v46 = v43->matrices;
-                            v44 = &v43->matrices;
-                            v47 = v43->extended->coll->colInstance->mtx;
-                            v48 = v47->Pos.x - v46->Pos.x;
-                            v70 = (float)v48;
-                            v73 = v47->Pos.y - v46->Pos.y;
-                            v45 = v47->Pos.z - v46->Pos.z;
-                        }
-                        v49 = &(*v44)->Pos;
-                        v75 = (float)v45;
-                        v49->x = v70 + v49->x;
-                        v49->y = v73 + v49->y;
-                        v49->z = v75 + v49->z;
-                        v50 = COL_gst_GlobalVars.gaosNeededToBeRecomputed[v42];
-                        if (v50)
-                        {
-                            v51 = v50->flags;
-                            if ((v50->flags & 2) != 0)
-                            {
-                                v52 = v50->basic;
-                                if (v52)
-                                {
-                                    if (v52->actorObjectOrVisualObject)
-                                    {
-                                        if ((v51 & 0x4000000) != 0)
-                                        {
-                                            v53 = v50->matrices;
-                                            if ((v51 & 0x10000) != 0)
-                                                v54 = v53 + 2;
-                                            else
-                                                v54 = v53 + 1;
-                                            v54->Pos.x = v70 + v54->Pos.x;
-                                            v54->Pos.y = v73 + v54->Pos.y;
-                                            v54->Pos.z = v75 + v54->Pos.z;
-                                        }
-                                        if ((v50->flags & 2) != 0)
-                                        {
-                                            v55 = v50->basic;
-                                            if (v55)
-                                            {
-                                                v56 = (tGameObjectActorObject*)v55->actorObjectOrVisualObject;
-                                                if (v55->actorObjectOrVisualObject)
-                                                {
-                                                    if ((v56->flagsEgBlendIw2 & 2) != 0)
-                                                    {
-                                                        v57 = v56->animPtr[1];
-                                                        v58 = v70 + v57->flashMtx.Pos.x;
-                                                        v57->flashMtx.Pos.x = (float)v58;
-                                                        v57->flashMtx.Pos.y = v73 + v57->flashMtx.Pos.y;
-                                                        v57->flashMtx.Pos.z = v75 + v57->flashMtx.Pos.z;
-                                                        v59 = (Vec3*)&v56->animPtr[0]->flashMtx._m14; // TODO FIXME: ez így jó?
-                                                        v59->x = v70 + v59->x;
-                                                        v59->y = v73 + v59->y;
-                                                        v59->z = v75 + v59->z;
-                                                        v60 = &v56->animPtr[0]->flashMtx.Pos;
-                                                        v60->x = v70 + v60->x;
-                                                        v60->y = v73 + v60->y;
-                                                        v60->z = v75 + v60->z;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        v61 = COL_gst_GlobalVars.gaosNeededToBeRecomputed[v42]->extended->coll->colInstance;
-                        if (v61)
-                            v61->flag |= 2u;
-                        ++v42;
-                    } while (v42 < COL_gst_GlobalVars.gaosNeededToBeRecomputedNum);
-                }
-            }
-        }
-        COL_UpdateOldMatrix(a1a);
-        COL_gst_GlobalVars.COL_gb_SpecialCamera = 0;
-    }
-}
-
-void COL_ComputeMove(tGameObjectMain* a1, Vec3* move)
-{
-    Mtx4x4* v2;
-    Mtx4x4* v4;
-    Mtx4x4* v5;
-    Mtx4x4 a1a;
-
-    if ((a1->flags & 0x400000) != 0)
-    {
-        MATH_MulMatrixMatrix(&a1a, a1->extended->coll->colInstance->mtx, a1->basic->mtx->refGao2->matrices);
-        v2 = a1->matrices;
-        move->x = a1a.Pos.x - v2->Pos.x;
-        move->y = a1a.Pos.y - v2->Pos.y;
-        move->z = a1a.Pos.z - v2->Pos.z;
-    }
-    else
-    {
-        v4 = a1->matrices;
-        v5 = a1->extended->coll->colInstance->mtx;
-        move->x = v5->Pos.x - v4->Pos.x;
-        move->y = v5->Pos.y - v4->Pos.y;
-        move->z = v5->Pos.z - v4->Pos.z;
-    }
-}
-
-void COL_DynamicHierarchisation(tGameObjectMain* a1, tGameObjectMain* a2)
-{
-    int v2;
-    int v3;
-    Mtx4x4* v4;
-    Mtx4x4 a3;
-    Mtx4x4 v6;
-
-    if (a1)
-    {
-        v2 = a1->flags;
-        v3 = a1->flags;
-    }
-    else
-    {
-        v2 = 0;
-        v3 = 0;
-    }
-    OBJ_ChangeIdentityFlags(a1, v3 | 0x400000, v2);
-    MATH_InvertMatrix(&a3, a2->matrices);
-    MATH_MulMatrixMatrix(&a1->basic->mtx->mtx, a1->matrices, &a3);
-    MATH_MulMatrixMatrix(&v6, a1->extended->coll->colInstance->mtx, &a3);
-    v4 = a1->extended->coll->colInstance->mtx;
-    if (v4 != &v6)
-        memcpy(v4, &v6, sizeof(Mtx4x4));
-    a1->basic->mtx->refGao = 0;
-    a1->basic->mtx->refGao2 = a2;
-    if ((a1->flags & 0x4000000) != 0)
-        ANI_ApplyHierarchyOnFlash(a1);
-}
-
-int COL_b_MoveReports(tGameObjectMain* a1, unsigned int* a2)
-{
-    unsigned int v2;
-    tRecordElem* v3;
-    tGameObjectMain* v4;
-    int v5;
-    int v7;
-    tColInstance* v8;
-    tGameObjectMain* v9;
-    tGameObjectExtended* v10;
-    tGameObjectCollMain* v11;
-    tColMap* v12;
-    tColCollisionObject** v13;
-    tGameObjectMain* v14;
-    tGameObjectExtended* v15;
-    tGameObjectCollMain* v16;
-    tColInstance* v17;
-    tRecordElem* v18;
-    tRecordElem v19;
-    Vec3 dest;
-    unsigned int v21;
-    tRecordElem* v22;
-    int v23;
-    int v24;
-    unsigned int v25;
-
-    v2 = *a2;
-    v3 = &COL_gst_GlobalVars.colWorld->records[*a2];
-    v4 = a1;
-    v5 = a1->flags & 0x400000;
-    v23 = 0;
-    v24 = v5;
-    v21 = v2;
-    v22 = &COL_gst_GlobalVars.colWorld->records[COL_gst_GlobalVars.num];
-    v25 = v2;
-    if (v3 >= v22)
-        return v23;
-    while (1)
-    {
-        if (v3->collisionInstanceGameObject != v4
-            || v3->collisionMapGameObject && MEM_b_CheckBlockHasBeenFreed(v3->collisionMapGameObject))
-        {
-            goto LABEL_33;
-        }
-        v7 = v3->flags;
-        if ((v7 & 0x1000) != 0)
-            goto LABEL_33;
-        if ((v7 & 0x10000) != 0)
-        {
-            v8 = v4->extended->coll->colInstance;
-            if (v8)
-                v8->flag |= 2u; //LOBYTE(v8->flag) |= 2u;
-        }
-        v9 = v3->collisionMapGameObject;
-        if (v9)
-        {
-            if ((v9->flags & 0x100) != 0)
-            {
-                v10 = v9->extended;
-                if (v10)
-                {
-                    v11 = v10->coll;
-                    if (v11)
-                    {
-                        v12 = v11->colMap;
-                        if (v12)
-                        {
-                            v13 = v12->collisionObjectPtr;
-                            if ((*v13)->objectType == 5 && ((*v13)->flags & 0x20) != 0)
-                                break;
-                        }
-                    }
-                }
-            }
-        }
-        if (!v5 && (v3->flags & 0x40) != 0 && v9 && (v9->flags & 4) != 0)
-        {
-            COL_DynamicHierarchisation(v4, v3->collisionMapGameObject);
-            v24 = 1;
-        }
-        v14 = v3->collisionMapGameObject;
-        if (!v14
-            || (v15 = v14->extended) == 0
-            || (v16 = v15->coll) == 0
-            || (v17 = v16->colInstance) == 0
-            || get_reference_point_gao_2_from_gao_sub_40BEA0(v3->collisionInstanceGameObject) == v14
-            || (MATH_SubstractVec(&dest, &v17->mtx->Pos, &v14->matrices->Pos), fabs(dest.x) < 0.0000099999997)
-            && fabs(dest.y) < 0.0000099999997)
-        {
-            if (v25 > * a2)
-            {
-                v18 = &COL_gst_GlobalVars.colWorld->records[*a2];
-                memcpy(&v19, v18, sizeof(v19));
-                memcpy(v18, v3, sizeof(tRecordElem));
-                memcpy(v3, &v19, sizeof(tRecordElem));
-            }
-            ++* a2;
-            v23 = 1;
-        }
-    LABEL_33:
-        ++v3;
-        ++v25;
-        if (v3 >= v22)
-            return v23;
-        v5 = v24;
-        v4 = a1;
-    }
-    *a2 = v21;
-    return 0;
-}
-
-void COL_UpdateBV(tableDescStruct* a1)
-{
-    tableElemStructPF* v1;
-    tableElemStructPF* i;
-    tGameObjectMain* v3;
-    Mtx4x4* v4;
-    Mtx4x4* v5;
-    double v6;
-    double v7;
-    Mtx4x4* v8;
-    double v9;
-    tGameObjectBV* v10;
-    tGameObjectBV* v11;
-    float v13;
-    float v14;
-    Mtx4x4 a1a;
-
-    v1 = a1->firstElemPtr;
-    for (i = ((tableElemStructPF*)(a1->nextElemPtr)) - 1; v1 <= i; ++v1)
-    {
-        v3 = (tGameObjectMain*)v1->objectPtr;
-        if (v1->objectPtr
-            && ((uint8_t)v3 & 3) != 1
-            && (v3->flags & 0x200) != 0
-            && !OBJ_BV_IsSphere(v3->boundingVolume))
-        {
-            v4 = v3->extended->coll->colInstance->mtx;
-            if ((v3->flags & 0x400000) != 0)
-            {
-                MATH_MulMatrixMatrix(&a1a, v4, v3->basic->mtx->refGao2->matrices);
-                v5 = v3->matrices;
-                v6 = v5->Pos.x - a1a.Pos.x;
-                v13 = v5->Pos.y - a1a.Pos.y;
-                v7 = v5->Pos.z - a1a.Pos.z;
-            }
-            else
-            {
-                v8 = v3->matrices;
-                v9 = v8->Pos.x;
-                v6 = v9 - v4->Pos.x;
-                v13 = v8->Pos.y - v4->Pos.y;
-                v7 = v8->Pos.z - v4->Pos.z;
-            }
-            v10 = v3->boundingVolume;
-            v10->BVMin.x = v10->BVMinOriginal.x;
-            v10->BVMin.y = v10->BVMinOriginal.y;
-            v10->BVMin.z = v10->BVMinOriginal.z;
-            v11 = v3->boundingVolume;
-            v14 = (float)v7;
-            v10->BVMax.x = v11->BVMaxOriginal.x;
-            v10->BVMax.y = v11->BVMaxOriginal.y;
-            v10->BVMax.z = v11->BVMaxOriginal.z;
-            if (v6 <= 0.0)
-                v10->BVMax.x = (float)(v10->BVMax.x - v6);
-            else
-                v10->BVMin.x = (float)(v10->BVMin.x - v6);
-            if (v13 <= 0.0)
-                v10->BVMax.y = v10->BVMax.y - v13;
-            else
-                v10->BVMin.y = v10->BVMin.y - v13;
-            if (v14 <= 0.0)
-                v10->BVMax.z = v10->BVMax.z - v14;
-            else
-                v10->BVMin.z = v10->BVMin.z - v14;
-        }
-    }
-}
-
-void COL_UpdateCobFromVisualRealTime(tGameObjectMain* a1, tColCollisionObject* a2, tGEOGRO* a3)
-{
-    tCobMeshObjectMesh* v3;
-    tModifier* v4;
-    tOtcMdfStruct* v5;
-    Vec3* v6;
-    Vec3* v7;
-    int v8;
-    int* v9;
-    int* v10;
-    uint8_t* v11;
-    uint8_t* v12;
-    uint8_t* v13;
-    uint8_t* v14;
-    uint8_t* v15;
-    uint8_t* v16;
-    uint8_t* v17;
-    uint8_t* v18;
-    uint8_t* v19;
-    uint8_t* v20;
-    uint8_t* v21;
-    uint8_t* v22;
-    double v23;
-    tCobMeshChunkElem* v24;
-    tCobMeshChunkElem* v25;
-    int v26;
-    tCobMeshTriangleElem* v27;
-    int v28;
-    Vec3* v29;
-    Vec3* v30;
-    Vec3* v31;
-    double v32;
-    double v33;
-    Vec3* v34;
-    double v35;
-    double v36;
-    Vec3* v37; 
-    long double v38;
-    float a1a;
-    float a1b;
-    float a1c;
-    float a1d;
-    float a1e;
-    float a1f;
-    float a1g;
-    float a1h;
-    float a1i;
-    float a1j;
-    float a1k;
-    float a1l;
-    float a1m;
-    float a1n;
-    float a1o;
-    float a1p;
-    float a1q;
-    float a1r;
-    float a1s;
-    float a1t;
-    float a1u;
-    float a1v;
-    float a1w;
-    float a1x;
-    float a1y;
-    float a1z;
-    float a1ba;
-    float a1bb;
-    float a1bc;
-    float a1bd;
-    float a1be;
-    float a1bf;
-    float a1bg;
-    float a1bh;
-    float a1bi;
-    float a1bj;
-    tCobMeshObjectMesh* v75;
-    tCobMeshChunkElem* j;
-    float v77;
-    float v78;
-    float v79;
-    float v80;
-    float v81;
-    float v82;
-    float v83;
-    tCobMeshTriangleElem* v84;
-    unsigned int v85;
-    Vec3 v86;
-    float v87;
-    float v88;
-    float v89;
-    float v90;
-    float v91;
-    float v92;
-    float v93;
-    float v94;
-    float v95;
-    float v96;
-    float v97;
-    float v98;
-    float v99;
-    float v100;
-    float v101;
-    float v102;
-    float i;
-    tCobMeshChunkElem* v104;
-
-    if (a2 && a3 && a2->objectType == 5)
-    {
-        v3 = a2->objectPtrByType;
-        v75 = v3;
-        if (v3->vertexCount == a3->vertexNum)
-        {
-            if ((a1->flags & 0x2000) != 0)
-            {
-                if (a1->extended)
-                {
-                    PRO_PerfCounterStartBlock(&PRO_RasterGroup.PRO_COBFromVisual);
-                    v4 = a1->extended->mdf;
-                    if (v4)
-                    {
-                        while ((v4->modifierFlags & 0xF000000) != 0 || v4->modifierIntf->mdfId != 1)// GEO_ModifierOnduleTonCorps
-                        {
-                            v4 = v4->nextElem;
-                            if (!v4)
-                                return;
-                        }
-                        memcpy(v3->vertices, a3->vertices, 12 * a3->vertexNum);
-                        v5 = (tOtcMdfStruct*)v4->mdfPrivateDataPtr;
-                        v6 = v3->vertices;
-                        v7 = &v6[v3->vertexCount];
-                        v8 = v5->flags;
-                        v9 = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->RLIVertexColors;
-                        if ((v5->flags & 0x10) != 0 && v9)
-                        {
-                            v10 = v9 + 1;
-                            if ((v8 & 0x20) != 0)
-                            {
-                                if ((v8 & 1) != 0)
-                                {
-                                    if ((v8 & 8) != 0)
-                                    {
-                                        if (v6 < v7)
-                                        {
-                                            v11 = (uint8_t*)v10 + 3;
-                                            do
-                                            {
-                                                v89 = (float)((1.0 - (double)*v11 * 0.00390625) * v5->intensity);
-                                                a1a = v6->y * v5->speed + v5->offset;
-                                                v77 = (float)(MATH_GetSin(a1a) * v89 + v6->x);
-                                                v6->x = v77;
-                                                a1b = v6->z * v5->speed + v5->offset;
-                                                ++v6;
-                                                v11 += 4;
-                                                v6[-1].x = (float)(MATH_GetSin(a1b) * v89 + v77);
-                                            } while (v6 < v7);
-                                            v3 = v75;
-                                        }
-                                    }
-                                    else if (v6 < v7)
-                                    {
-                                        v12 = (uint8_t*)v10 + 3;
-                                        do
-                                        {
-                                            v90 = (float)((1.0 - (double)*v12 * 0.00390625) * v5->intensity);
-                                            a1c = v5->speed * v6->x + v5->offset;
-                                            v6->y = (float)(MATH_GetSin(a1c) * v90 + v6->y);
-                                            a1d = v5->speed * v6->x + v5->offset;
-                                            ++v6;
-                                            v12 += 4;
-                                            v6[-1].z = MATH_GetCos(a1d) * v90 + v6[-1].z;
-                                        } while (v6 < v7);
-                                        v3 = v75;
-                                    }
-                                }
-                                else if ((v8 & 2) != 0)
-                                {
-                                    if ((v8 & 8) != 0)
-                                    {
-                                        if (v6 < v7)
-                                        {
-                                            v13 = (uint8_t*)v10 + 3;
-                                            do
-                                            {
-                                                v91 = (float)((1.0 - (double)*v13 * 0.00390625) * v5->intensity);
-                                                a1e = v5->speed * v6->x + v5->offset;
-                                                v78 = (float)(MATH_GetSin(a1e) * v91 + v6->y);
-                                                v6->y = v78;
-                                                a1f = v6->z * v5->speed + v5->offset;
-                                                ++v6;
-                                                v13 += 4;
-                                                v6[-1].y = (float)(MATH_GetSin(a1f) * v91 + v78);
-                                            } while (v6 < v7);
-                                            v3 = v75;
-                                        }
-                                    }
-                                    else if (v6 < v7)
-                                    {
-                                        v14 = (uint8_t*)v10 + 3;
-                                        do
-                                        {
-                                            v92 = (float)((1.0 - (double)*v14 * 0.00390625) * v5->intensity);
-                                            a1g = v5->speed * v6->y + v5->offset;
-                                            v6->x = (float)(MATH_GetSin(a1g) * v92 + v6->x);
-                                            a1h = v5->speed * v6->y + v5->offset;
-                                            ++v6;
-                                            v14 += 4;
-                                            v6[-1].z = MATH_GetCos(a1h) * v92 + v6[-1].z;
-                                        } while (v6 < v7);
-                                        v3 = v75;
-                                    }
-                                }
-                                else if ((v8 & 4) != 0)
-                                {
-                                    if ((v8 & 8) != 0)
-                                    {
-                                        if (v6 < v7)
-                                        {
-                                            v15 = (uint8_t*)v10 + 3;
-                                            do
-                                            {
-                                                v93 = (float)((1.0 - (double)*v15 * 0.00390625) * v5->intensity);
-                                                a1i = v5->speed * v6->x + v5->offset;
-                                                v79 = (float)(MATH_GetSin(a1i) * v93 + v6->z);
-                                                v6->z = v79;
-                                                a1j = v6->y * v5->speed + v5->offset;
-                                                ++v6;
-                                                v15 += 4;
-                                                v6[-1].z = (float)(MATH_GetSin(a1j) * v93 + v79);
-                                            } while (v6 < v7);
-                                            v3 = v75;
-                                        }
-                                    }
-                                    else if (v6 < v7)
-                                    {
-                                        v16 = (uint8_t*)v10 + 3;
-                                        do
-                                        {
-                                            v94 = (float)((1.0 - (double)*v16 * 0.00390625) * v5->intensity);
-                                            a1k = v5->speed * v6->z + v5->offset;
-                                            v6->x = (float)(MATH_GetSin(a1k) * v94 + v6->x);
-                                            a1l = v5->speed * v6->z + v5->offset;
-                                            ++v6;
-                                            v16 += 4;
-                                            v6[-1].y = MATH_GetCos(a1l) * v94 + v6[-1].y;
-                                        } while (v6 < v7);
-                                        v3 = v75;
-                                    }
-                                }
-                            }
-                            else if ((v8 & 1) != 0)
-                            {
-                                if ((v8 & 8) != 0)
-                                {
-                                    if (v6 < v7)
-                                    {
-                                        v17 = (uint8_t*)v10 + 3;
-                                        do
-                                        {
-                                            v95 = (float)((double)*v17 * v5->intensity * 0.00390625);
-                                            a1m = v6->y * v5->speed + v5->offset;
-                                            v80 = (float)(MATH_GetSin(a1m) * v95 + v6->x);
-                                            v6->x = v80;
-                                            a1n = v6->z * v5->speed + v5->offset;
-                                            ++v6;
-                                            v17 += 4;
-                                            v6[-1].x = (float)(MATH_GetSin(a1n) * v95 + v80);
-                                        } while (v6 < v7);
-                                        v3 = v75;
-                                    }
-                                }
-                                else if (v6 < v7)
-                                {
-                                    v18 = (uint8_t*)v10 + 3;
-                                    do
-                                    {
-                                        v96 = (float)((double)*v18 * v5->intensity * 0.00390625);
-                                        a1o = v5->speed * v6->x + v5->offset;
-                                        v6->y = (float)(MATH_GetSin(a1o) * v96 + v6->y);
-                                        a1p = v5->speed * v6->x + v5->offset;
-                                        ++v6;
-                                        v18 += 4;
-                                        v6[-1].z = MATH_GetCos(a1p) * v96 + v6[-1].z;
-                                    } while (v6 < v7);
-                                    v3 = v75;
-                                }
-                            }
-                            else if ((v8 & 2) != 0)
-                            {
-                                if ((v8 & 8) != 0)
-                                {
-                                    if (v6 < v7)
-                                    {
-                                        v19 = (uint8_t*)v10 + 3;
-                                        do
-                                        {
-                                            v97 = (float)((double)*v19 * v5->intensity * 0.00390625);
-                                            a1q = v5->speed * v6->x + v5->offset;
-                                            v81 = (float)(MATH_GetSin(a1q) * v97 + v6->y);
-                                            v6->y = v81;
-                                            a1r = v6->z * v5->speed + v5->offset;
-                                            ++v6;
-                                            v19 += 4;
-                                            v6[-1].y = (float)(MATH_GetSin(a1r) * v97 + v81);
-                                        } while (v6 < v7);
-                                        v3 = v75;
-                                    }
-                                }
-                                else if (v6 < v7)
-                                {
-                                    v20 = (uint8_t*)v10 + 3;
-                                    do
-                                    {
-                                        v98 = (float)((double)*v20 * v5->intensity * 0.00390625);
-                                        a1s = v5->speed * v6->y + v5->offset;
-                                        v6->x = (float)(MATH_GetSin(a1s) * v98 + v6->x);
-                                        a1t = v5->speed * v6->y + v5->offset;
-                                        ++v6;
-                                        v20 += 4;
-                                        v6[-1].z = MATH_GetCos(a1t) * v98 + v6[-1].z;
-                                    } while (v6 < v7);
-                                    v3 = v75;
-                                }
-                            }
-                            else if ((v8 & 4) != 0)
-                            {
-                                if ((v8 & 8) != 0)
-                                {
-                                    if (v6 < v7)
-                                    {
-                                        v21 = (uint8_t*)v10 + 3;
-                                        do
-                                        {
-                                            v99 = (float)((double)*v21 * v5->intensity * 0.00390625);
-                                            a1u = v5->speed * v6->x + v5->offset;
-                                            v82 = (float)(MATH_GetSin(a1u) * v99 + v6->z);
-                                            v6->z = v82;
-                                            a1v = v6->y * v5->speed + v5->offset;
-                                            ++v6;
-                                            v21 += 4;
-                                            v6[-1].z = (float)(MATH_GetSin(a1v) * v99 + v82);
-                                        } while (v6 < v7);
-                                        v3 = v75;
-                                    }
-                                }
-                                else if (v6 < v7)
-                                {
-                                    v22 = (uint8_t*)v10 + 3;
-                                    do
-                                    {
-                                        v100 = (float)((double)*v22 * v5->intensity * 0.00390625);
-                                        a1w = v5->speed * v6->z + v5->offset;
-                                        v6->x = (float)(MATH_GetSin(a1w) * v100 + v6->x);
-                                        a1x = v5->speed * v6->z + v5->offset;
-                                        ++v6;
-                                        v22 += 4;
-                                        v6[-1].y = MATH_GetCos(a1x) * v100 + v6[-1].y;
-                                    } while (v6 < v7);
-                                    v3 = v75;
-                                }
-                            }
-                        }
-                        else if ((v8 & 1) != 0)
-                        {
-                            if ((v8 & 8) != 0)
-                            {
-                                for (; v6 < v7; v6[-1].x = (float)(MATH_GetSin(a1z) * v5->intensity + v101))
-                                {
-                                    a1y = v6->y * v5->speed + v5->offset;
-                                    v101 = (float)(MATH_GetSin(a1y) * v5->intensity + v6->x);
-                                    v6->x = v101;
-                                    a1z = v6->z * v5->speed + v5->offset;
-                                    ++v6;
-                                }
-                            }
-                            else
-                            {
-                                for (; v6 < v7; v6[-1].z = MATH_GetCos(a1bb) * v5->intensity + v6[-1].z)
-                                {
-                                    a1ba = v5->speed * v6->x + v5->offset;
-                                    v6->y = (float)(MATH_GetSin(a1ba) * v5->intensity + v6->y);
-                                    a1bb = v5->speed * v6->x + v5->offset;
-                                    ++v6;
-                                }
-                            }
-                        }
-                        else if ((v8 & 2) != 0)
-                        {
-                            if ((v8 & 8) != 0)
-                            {
-                                for (; v6 < v7; v6[-1].y = (float)(MATH_GetSin(a1bd) * v5->intensity + v102))
-                                {
-                                    a1bc = v5->speed * v6->x + v5->offset;
-                                    v102 = (float)(MATH_GetSin(a1bc) * v5->intensity + v6->y);
-                                    v6->y = v102;
-                                    a1bd = v6->z * v5->speed + v5->offset;
-                                    ++v6;
-                                }
-                            }
-                            else
-                            {
-                                for (; v6 < v7; v6[-1].z = MATH_GetCos(a1bf) * v5->intensity + v6[-1].z)
-                                {
-                                    a1be = v5->speed * v6->y + v5->offset;
-                                    v6->x = (float)(MATH_GetSin(a1be) * v5->intensity + v6->x);
-                                    a1bf = v5->speed * v6->y + v5->offset;
-                                    ++v6;
-                                }
-                            }
-                        }
-                        else if ((v8 & 4) != 0)
-                        {
-                            if ((v8 & 8) != 0)
-                            {
-                                v23 = MATH_GetSin(v5->offset);
-                                for (i = (float)(v23 * v5->intensity + v23 * v5->intensity);
-                                    v6 < v7;
-                                    v6[-1].z = (float)((MATH_GetSin(a1bh) + v83) * i + v6[-1].z))
-                                {
-                                    a1bg = v6->y * v5->speed;
-                                    v83 = (float)(MATH_GetSin(a1bg));
-                                    a1bh = v5->speed * v6->x;
-                                    ++v6;
-                                }
-                            }
-                            else
-                            {
-                                for (; v6 < v7; v6[-1].y = MATH_GetCos(a1bj) * v5->intensity + v6[-1].y)
-                                {
-                                    a1bi = v5->speed * v6->z + v5->offset;
-                                    v6->x = (float)(MATH_GetSin(a1bi) * v5->intensity + v6->x);
-                                    a1bj = v5->speed * v6->z + v5->offset;
-                                    ++v6;
-                                }
-                            }
-                        }
-                        v24 = v3->meshChunkElems;
-                        v25 = &v24[v3->meshChunkElemNum];
-                        v26 = 0;
-                        v104 = v24;
-                        for (j = v25; v24 < v25; v104 = v24)
-                        {
-                            if (v24->elemNum)
-                            {
-                                v27 = v24->triangleElems;
-                                v84 = &v27[v24->elemNum];
-                                if (v27 < v84)
-                                {
-                                    v28 = v26;
-                                    v85 = v26 + (sizeof(tCobMeshTriangleElem) * v24->elemNum - 1) / sizeof(tCobMeshTriangleElem) + 1;
-                                    do
-                                    {
-                                        v29 = v3->vertices;
-                                        v30 = &v29[v27->v2];
-                                        v31 = &v29[v27->v1];
-                                        v32 = v30->x - v31->x;
-                                        v33 = v30->y - v31->y;
-                                        v34 = &v29[v27->v3];
-                                        v35 = v30->z - v31->z;
-                                        v87 = v34->x - v31->x;
-                                        v88 = v34->y - v31->y;
-                                        v36 = v34->z - v31->z;
-                                        v86.x = (float)(v36 * v33 - v88 * v35);
-                                        v86.y = (float)(v35 * v87 - v36 * v32);
-                                        v86.z = (float)(v88 * v32 - v33 * v87);
-                                        if (fabs(v86.x) != 0 || fabs(v35 * v87 - v36 * v32) || fabs(v88 * v32 - v33 * v87))
-                                        {
-                                            v37 = &v3->normals[v28];
-                                            v38 = 1.0 / sqrt(v86.z * v86.z + v86.y * v86.y + v86.x * v86.x);
-                                            v37->x = (float)(v86.x * v38);
-                                            v37->y = (float)(v86.y * v38);
-                                            v37->z = (float)(v86.z * v38);
-                                        }
-                                        else
-                                        {
-                                            v3->normals[v28] = v86;
-                                        }
-                                        ++v27;
-                                        ++v28;
-                                    } while (v27 < v84);
-                                    v25 = j;
-                                    v24 = v104;
-                                    v26 = v85;
-                                }
-                            }
-                            ++v24;
-                        }
-                        if (PRO_RasterGroup.PRO_COBFromVisual.insideCounter)
-                        {
-                            if (!--PRO_RasterGroup.PRO_COBFromVisual.insideCounter)
-                                PRO_RasterGroup.PRO_COBFromVisual.sumTime += TIM_GetTicksAsInt32() - PRO_RasterGroup.PRO_COBFromVisual.startTick;
-                        }
-                    }
-                }
-            }
+            MATH_MulMatrixMatrix(&hieMtx, coll->colInstance->mtx, basic->mtx->refGao2->matrices);
+            colInstMtx = gao->matrices;
+            deltaX = hieMtx.Pos.x - colInstMtx->Pos.x;
+            deltaY = hieMtx.Pos.y - colInstMtx->Pos.y;
         }
         else
         {
-            a2->flags &= ~0x40u;
+            colInstMtx = coll->colInstance->mtx;
+            deltaX = colInstMtx->Pos.x - gao->matrices->Pos.x;
+            deltaY = colInstMtx->Pos.y - gao->matrices->Pos.y;
         }
-    }
-}
-
-void COL_UpdateRealTimeColMaps(tWorld* a1)
-{
-    tableElemStructPF* v1; // esi
-    tableElemStructPF* i; // edi
-    tGameObjectMain* v3; // eax
-    int v4; // ecx
-    tColMap* v5; // ecx
-    tColCollisionObject* v6; // edx
-    tGameObjectBasic* v7; // ecx
-    tGameObjectVisualObject* v8; // ecx
-    tGEOGRO* v9; // ecx
-
-    v1 = a1->eot.collMapObjectsTablePF.firstElemPtr;
-    for (i = ((tableElemStructPF*)(a1->eot.collMapObjectsTablePF.nextElemPtr)) - 1; v1 <= i; ++v1)
-    {
-        v3 = (tGameObjectMain*)v1->objectPtr;
-        if (v1->objectPtr)
+        if ((gao->basic->dyn->flags & 0x400000) != 0
+            && fabs(forceX) < 0.001
+            && fabs(forceY) < 0.001
+            && fabs(deltaX) < 0.001
+            && (deltaYf = (float)deltaY, fabs(deltaYf) < 0.001))
         {
-            if (((uint8_t)v3 & 3) != 1)
-            {
-                v4 = v3->flags2;
-                if ((v4 & 1) != 0 && (v4 & 0x400000) == 0)
-                {
-                    v5 = v3->extended->coll->colMap;
-                    if (v5)
-                    {
-                        if (v5->colObjectID)
-                        {
-                            v6 = *v5->collisionObjectPtr;
-                            if (v6->objectType == 5 && (v6->flags & 0x40) != 0)
-                            {
-                                v7 = v3->basic;
-                                if (v7)
-                                {
-                                    v8 = v7->actorObjectOrVisualObject;
-                                    if (v8)
-                                    {
-                                        v9 = (tGEOGRO*)(v8->GROGEOOrSomethingElse);
-                                        if (v9)
-                                            COL_UpdateCobFromVisualRealTime(v3, v6, v9);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            instance = gao->extended->coll->colInstance;
+            instance->flag |= 0x8000u; //HIBYTE(v25->flag) |= 0x80;
         }
-    }
-}
-
-void COL_Compute(tWorld* a1)
-{
-    tWorld* v1;
-    int v2;
-    tableElemStructPF* v3;
-    tableElemStructPF* v4;
-    tGameObjectMain* currInstance;
-    int v6;
-    tGameObjectCollMain* v7;
-    tColInstance* v8;
-    uint8_t v9;
-    uint8_t v10;
-    int v11;
-    tColInstance* v12;
-    tGameObjectBasic* v13;
-    tDyn* v14;
-    double v15;
-    int v16;
-    tableElemStructPF* v19;
-    tableElemStructPF* v20;
-    tGameObjectMain* colInstGao;
-    int v22;
-    tGameObjectCollMain* v23;
-    tColInstance* v24;
-    int16_t v25;
-    int16_t v26;
-    tGameObjectBasic* v27;
-    tDyn* v28;
-    tGameObjectCollDetectionList* v29;
-    tGameObjectMain** colMapGao;
-    tGameObjectMain** i;
-    tGameObjectMain* v32;
-    int v33;
-    int v34;
-    Vec3 v35;
-    Vec3 move;
-    float v37;
-    float v38;
-    float v39;
-    unsigned int v40;
-    uint8_t a2;
-    tableElemStructPF* v42;
-    tableElemStructPF* v43;
-    uint8_t v44;
-
-    v1 = a1;
-    v2 = 0;
-    COL_gst_GlobalVars.gaosNeededToBeRecomputedNum = 0;
-    COL_gst_GlobalVars.firstRecordToRecompute = 0;
-    COL_gst_GlobalVars.recomputeNeeded = 0;
-    COL_gst_GlobalVars.colWorld = a1;
-    v3 = a1->eot.collInstanceZDMGameObjectsPF.firstElemPtr;
-    v4 = ((tableElemStructPF*)(a1->eot.collInstanceZDMGameObjectsPF.nextElemPtr)) - 1;
-    v40 = 0;
-    v43 = v3;
-    v42 = v4;
-    if (v3 <= v4)
-    {
-        while (1)
+        else
         {
-            currInstance = (tGameObjectMain*)(v3->objectPtr);
-            if (!v3->objectPtr)
-                goto LABEL_35;
-            if (((uint8_t)currInstance & 3) == 1)
-                goto LABEL_35;
-            v6 = currInstance->flags2;
-            if ((v6 & 1) == 0
-                || (v6 & 0x400000) != 0
-                || (v6 & 0x20) == 0
-                || (currInstance->flags & 4) != 0 && (currInstance->basic->dyn->flags & 0x20000000) != 0)
-            {
-                goto LABEL_35;
-            }
-            v7 = currInstance->extended->coll;
-            if (!v7->detectionList->overlapNum)
-                goto LABEL_35;
-            v7->colInstance->flag = 0;
-            v8 = v7->colInstance;
-            v9 = v8->zoneNum;
-            v10 = 0;
-            a2 = 0;
-            v44 = v9;
-            if (!v9)
-                goto LABEL_35;
-            while ((v8->selectedInstElemPtrs[v10]->colFlags & 1) == 0)
-            {
-            LABEL_14:
-                a2 = ++v10;
-                if (v10 >= v9)
-                    goto LABEL_35;
-            }
-            if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(v8, a2))
-                break;
-            currInstance->extended->coll->colInstance->flag = 1;
-            COL_ComputeMove(currInstance, &move);
-            v11 = currInstance->flags & 4;
-            if ((!v11 || (currInstance->basic->dyn->flags & 0x800000) != 0) && v11)
-                goto LABEL_24;
-            if (fabs(move.x) < 0.0000099999997 && fabs(move.y) < 0.0000099999997 && fabs(move.z) < 0.0000099999997)
-            {
-                v12 = currInstance->extended->coll->colInstance;
-                v12->flag |= 4u; //LOBYTE(v12->flag) |= 4u;
-                goto LABEL_35;
-            }
-            if (v11)
-            {
-            LABEL_24:
-                v13 = currInstance->basic;
-                if (v13)
-                    v14 = v13->dyn;
-                else
-                    v14 = 0;
-                v15 = v14->mass;
-                v37 = (float)(v15 * v14->forceVector.x);
-                v38 = (float)(v14->forceVector.y * v15);
-                v39 = (float)(v14->forceVector.z * v15);
-                COL_ComputeMove(currInstance, &v35);
-                v16 = currInstance->basic->dyn->flags;
-                if ((v16 & 0x800000) == 0
-                    && (v16 & 0x400000) != 0
-                    && fabs(v37) < 0.0000099999997
-                    && fabs(v38) < 0.0000099999997
-                    && v39 < 0.0)
-                {
-                    if (COL_b_MoveReports(currInstance, &v40))
-                    {
-                        currInstance->extended->coll->colInstance->flag |= 0x8000;
-                    }
-                    else
-                    {
-                        currInstance->extended->coll->colInstance->flag &= ~0x8000;
-                    }
-                }
-            }
-        LABEL_35:
-            v3 = ++v43;
-            if (v43 > v42)
-            {
-                v1 = a1;
-                v2 = v40;
-                goto LABEL_37;
-            }
+            instance = gao->extended->coll->colInstance;
+            instance->flag &= ~0x8000u; //HIBYTE(v25->flag) &= ~0x80u;
         }
-        v9 = v44;
-        goto LABEL_14;
+        gao->basic->dyn->flags &= ~0x800000u;
+        gao->basic->dyn->flags &= ~0x400000u;
     }
-LABEL_37:
-    COL_gst_GlobalVars.num = v2;
-    COL_gst_GlobalVars.colWorld->recordCount = v2;
-    v20 = ((tableElemStructPF*)(v1->eot.collInstanceZDMGameObjectsPF.nextElemPtr)) - 1;
-    v43 = v1->eot.collInstanceZDMGameObjectsPF.firstElemPtr;
-    v19 = v43;
-    for (v42 = v20; v19 <= v20; v43 = v19)
-    {
-        colInstGao = (tGameObjectMain*)(v19->objectPtr);
-        if (v19->objectPtr)
-        {
-            if (((uint8_t)colInstGao & 3) != 1)
-            {
-                v22 = colInstGao->flags2;
-                if ((v22 & 1) != 0
-                    && (v22 & 0x400000) == 0
-                    && (v22 & 0x20) != 0
-                    && ((colInstGao->flags & 4) == 0 || (colInstGao->basic->dyn->flags & 0x20000000) == 0))
-                {
-                    v23 = colInstGao->extended->coll;
-                    if (v23->detectionList->overlapNum)
-                    {
-                        v24 = v23->colInstance;
-                        v25 = v24->flag;
-                        if ((v25 & 1) != 0)
-                        {
-                            v24->flag = v25 & 0xFFFE;
-                            v26 = colInstGao->extended->coll->colInstance->flag;
-                            if ((v26 & 4) == 0 && v26 >= 0)
-                            {
-                                v27 = colInstGao->basic;
-                                if (v27 && (v28 = v27->dyn) != 0)
-                                    COL_gst_GlobalVars.maxStepSize = v28->maxStepSize;
-                                else
-                                    COL_gst_GlobalVars.maxStepSize = -1.0;
-                                if ((colInstGao->flags & 0x400000) != 0)
-                                    OBJ_ComputeGlobalWhenHie(colInstGao);
-                                if ((colInstGao->flags & 4) != 0)
-                                {
-                                    colInstGao->basic->dyn->flags &= ~0x800000u;
-                                    colInstGao->basic->dyn->flags &= ~0x400000u;
-                                }
-                                v29 = v23->detectionList;
-                                colMapGao = v23->detectionList->detectionListGaos;
-                                for (i = &colMapGao[v29->overlapNum - 1]; colMapGao <= i; ++colMapGao)
-                                {
-                                    v32 = *colMapGao;
-                                    v33 = (*colMapGao)->flags;
-                                    if ((v33 & 0x100) != 0)
-                                    {
-                                        v34 = v32->flags2;
-                                        if ((v34 & 1) != 0
-                                            && (v34 & 0x400000) == 0
-                                            && ((v33 & 0x400000) == 0 || v32->basic->mtx->refGao2 != colInstGao))
-                                        {
-                                            COL_InitGlobalVars(colInstGao, *colMapGao);
-                                            COL_Actor_GameObject(&COL_gst_GlobalVars);
-                                        }
-                                    }
-                                }
-                                v20 = v42;
-                                v19 = v43;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        ++v19;
-    }
-}
-
-void COL_MainCall(struct sWorld* a1)
-{
-    tWorld* v1;
-    uint8_t v2;
-    int v3;
-    BOOL v4;
-    int v5;
-    int v6;
-    tGameObjectMain* v7;
-    tColInstance* v8;
-    tColInstance* v9;
-    tGameObjectBasic* v10;
-    tDyn* v11;
-    tGameObjectCollDetectionList* v12;
-    tGameObjectMain** v13;
-    tGameObjectMain** v14;
-    tGameObjectMain* v15;
-    int v16;
-    int v17;
-    tGameObjectMain* v18;
-    Mtx4x4** v19;
-    double v20;
-    Mtx4x4* v21;
-    Mtx4x4* v22;
-    double v23;
-    Vec3* v24;
-    tGameObjectMain* v25;
-    int v26;
-    tGameObjectBasic* v27;
-    Mtx4x4* v28;
-    Mtx4x4* v29;
-    tGameObjectBasic* v30;
-    tGameObjectActorObject* v31;
-    tAnim* v32;
-    Vec3* v34;
-    Vec3* v35;
-    tColInstance* v36;
-    int v37;
-    int v38;
-    int v39;
-    float v40;
-    float v41;
-    float v42;
-    Mtx4x4 a1a;
-
-    v1 = a1;
-    COL_gb_LastLoop = 0;
-    COL_gst_GlobalVars.COL_uc_RecomputingLoop = 0;
-    COL_gst_GlobalVars.COL_gb_AfterEngine = 0;
-    COL_UpdateBV(&a1->eot.collInstanceZDMGameObjectsPF);
-    INT_SnP_InsertionSort(a1->snp, 0);
-    COL_ul_SnP_RefreshType = (COL_ul_SnP_RefreshType == 1) + 1;
-    COL_UpdateRealTimeColMaps(a1);
-    COL_Compute(a1);
-    if (COL_gst_GlobalVars.num)
-        COL_ComputeReports(&COL_gst_GlobalVars, 0);
-    v2 = COL_gst_GlobalVars.gaosNeededToBeRecomputedNum;
-    v3 = 0;
+    if ((gao->flags & 0x400000) != 0)
+        OBJ_ComputeGlobalWhenHie(gao);
+    COL_l_CollideWithDetectionList(gao);
+    COL_ComputeReports(&COL_gst_GlobalVars, firstRecord);
+    pending = COL_gst_GlobalVars.gaosNeededToBeRecomputedNum;
+    pass = 0;
     if (COL_gst_GlobalVars.gaosNeededToBeRecomputedNum)
     {
         while (1)
         {
-            v4 = v3 == 6;
-            if (v3 >= 6)
+            reachedLimit = pass == 6;
+            if (pass >= 6)
                 break;
-            ++v3;
+            passSaved = ++pass;
+            COL_gst_GlobalVars.COL_uc_RecomputingLoop = pass;
+            COL_gb_LastLoop = pass == 6;
             COL_gst_GlobalVars.firstRecordToRecompute = COL_gst_GlobalVars.num;
-            v5 = v2;
-            v39 = v3;
-            COL_gst_GlobalVars.COL_uc_RecomputingLoop = v3;
-            COL_gb_LastLoop = v3 == 6;
-            v6 = 0;
-            COL_gst_GlobalVars.recomputeNeeded = 1;
-            v38 = v2;
+            pendingSaved = pending;
             COL_gst_GlobalVars.gaosNeededToBeRecomputedNum = 0;
-            v37 = 0;
-            if (v2)
+            n = 0;
+            if (pending)
             {
                 do
                 {
-                    v7 = COL_gst_GlobalVars.gaosNeededToBeRecomputed[v6];
-                    v8 = v7->extended->coll->colInstance;
-                    v8->flag &= ~4u; //LOBYTE(v8->flag) &= ~4u;
-                    v9 = v7->extended->coll->colInstance;
-                    v9->flag &= ~0x3F0u;
-                    v10 = v7->basic;
-                    if (v10 && (v11 = v10->dyn) != 0)
-                        COL_gst_GlobalVars.maxStepSize = v11->maxStepSize;
+                    recomputed = COL_gst_GlobalVars.gaosNeededToBeRecomputed[n];
+                    recomputed->extended->coll->colInstance->flag &= ~4u; //LOBYTE(v34->extended->coll->colInstance->flag) &= ~4u;
+                    recomputed->extended->coll->colInstance->flag &= ~0x3F0u;
+                    recBasic = recomputed->basic;
+                    if (recBasic && (recDyn = recBasic->dyn) != 0)
+                        COL_gst_GlobalVars.maxStepSize = recDyn->maxStepSize;
                     else
                         COL_gst_GlobalVars.maxStepSize = -1.0;
-                    v12 = v7->extended->coll->detectionList;
-                    v13 = v12->detectionListGaos;
-                    v14 = &v12->detectionListGaos[v12->overlapNum - 1];
-                    if (v12->detectionListGaos <= v14)
-                    {
-                        do
-                        {
-                            v15 = *v13;
-                            v16 = (*v13)->flags;
-                            if ((v16 & 0x100) != 0
-                                && (v15->flags2 & 1) != 0
-                                && ((v16 & 0x400000) == 0 || v15->basic->mtx->refGao2 != v7))
-                            {
-                                COL_InitGlobalVars(v7, *v13);
-                                COL_Actor_GameObject(&COL_gst_GlobalVars);
-                            }
-                            ++v13;
-                        } while (v13 <= v14);
-                        v6 = v37;
-                        v5 = v38;
-                    }
-                    v37 = ++v6;
-                } while (v6 < v5);
-                v3 = v39;
-                v1 = a1;
+                    COL_l_CollideWithDetectionList(recomputed);
+                    ++n;
+                } while (n < pendingSaved);
+                pass = passSaved;
             }
-            COL_ComputeReports(&COL_gst_GlobalVars, 0);
-            v2 = COL_gst_GlobalVars.gaosNeededToBeRecomputedNum;
+            COL_ComputeReports(&COL_gst_GlobalVars, firstRecord);
+            pending = COL_gst_GlobalVars.gaosNeededToBeRecomputedNum;
             if (!COL_gst_GlobalVars.gaosNeededToBeRecomputedNum)
             {
-                v4 = v3 == 6;
+                reachedLimit = pass == 6;
                 break;
             }
         }
-        if (v4)
-        {
-            v17 = 0;
-            if (v2)
-            {
-                do
-                {
-                    v18 = COL_gst_GlobalVars.gaosNeededToBeRecomputed[v17];
-                    if ((v18->flags & 0x400000) != 0)
-                    {
-                        MATH_MulMatrixMatrix(&a1a, v18->extended->coll->colInstance->mtx, v18->basic->mtx->refGao2->matrices);
-                        v19 = &COL_gst_GlobalVars.gaosNeededToBeRecomputed[v17]->matrices;
-                        v40 = a1a.Pos.x - (*v19)->Pos.x;
-                        v41 = a1a.Pos.y - (*v19)->Pos.y;
-                        v20 = a1a.Pos.z - (*v19)->Pos.z;
-                    }
-                    else
-                    {
-                        v21 = v18->matrices;
-                        v19 = &v18->matrices;
-                        v22 = v18->extended->coll->colInstance->mtx;
-                        v23 = v22->Pos.x - v21->Pos.x;
-                        v40 = v22->Pos.x - v21->Pos.x;
-                        v41 = v22->Pos.y - v21->Pos.y;
-                        v20 = v22->Pos.z - v21->Pos.z;
-                    }
-                    v24 = &(*v19)->Pos;
-                    v42 = (float)v20;
-                    // !!!a Collision itt is pozíciót állít, ha ütközik valami valamivel és a ComputeReports fvben is!!!
-                    v24->x = v40 + v24->x;
-                    v24->y = v41 + v24->y;
-                    v24->z = v42 + v24->z;
+        if (reachedLimit)
+            COL_l_ApplyRecomputedMoves(pending);
+    }
+    COL_UpdateOldMatrix(world);
+    COL_gst_GlobalVars.COL_gb_SpecialCamera = 0;
+}
 
-                    v25 = COL_gst_GlobalVars.gaosNeededToBeRecomputed[v17];
-                    if (v25)
-                    {
-                        v26 = v25->flags;
-                        if ((v25->flags & 2) != 0)
-                        {
-                            v27 = v25->basic;
-                            if (v27)
-                            {
-                                if (v27->actorObjectOrVisualObject)
-                                {
-                                    if ((v26 & 0x4000000) != 0)
-                                    {
-                                        v28 = v25->matrices;
-                                        if ((v26 & 0x10000) != 0)
-                                            v29 = v28 + 2;
-                                        else
-                                            v29 = v28 + 1;
-                                        v29->Pos.x = v40 + v29->Pos.x;
-                                        v29->Pos.y = v41 + v29->Pos.y;
-                                        v29->Pos.z = v42 + v29->Pos.z;
-                                    }
-                                    if ((v25->flags & 2) != 0)
-                                    {
-                                        v30 = v25->basic;
-                                        if (v30)
-                                        {
-                                            v31 = (tGameObjectActorObject*)v30->actorObjectOrVisualObject;
-                                            if (v30->actorObjectOrVisualObject)
-                                            {
-                                                if ((v31->flagsEgBlendIw2 & 2) != 0)
-                                                {
-                                                    v32 = v31->animPtr[1];
-                                                    v32->flashMtx.Pos.x = v40 + v32->flashMtx.Pos.x;
-                                                    v32->flashMtx.Pos.y = v41 + v32->flashMtx.Pos.y;
-                                                    v32->flashMtx.Pos.z = v42 + v32->flashMtx.Pos.z;
-                                                    v34 = (Vec3*)&v31->animPtr[0]->flashMtx._m14; // TODO FIXME ez biztos jó?
-                                                    v34->x = v40 + v34->x;
-                                                    v34->y = v41 + v34->y;
-                                                    v34->z = v42 + v34->z;
-                                                    v35 = &v31->animPtr[0]->flashMtx.Pos;
-                                                    v35->x = v40 + v35->x;
-                                                    v35->y = v41 + v35->y;
-                                                    v35->z = v42 + v35->z;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    v36 = COL_gst_GlobalVars.gaosNeededToBeRecomputed[v17]->extended->coll->colInstance;
-                    if (v36)
-                        v36->flag |= 2u;
-                    ++v17;
-                } while (v17 < COL_gst_GlobalVars.gaosNeededToBeRecomputedNum);
+void COL_ComputeMove(tGameObjectMain* gao, Vec3* move)
+{
+    Mtx4x4* gaoMtx;
+    Mtx4x4* colInstMtx;
+    Mtx4x4 hieMtx;
+
+    if ((gao->flags & 0x400000) != 0)
+    {
+        MATH_MulMatrixMatrix(&hieMtx, gao->extended->coll->colInstance->mtx, gao->basic->mtx->refGao2->matrices);
+        gaoMtx = gao->matrices;
+        move->x = hieMtx.Pos.x - gaoMtx->Pos.x;
+        move->y = hieMtx.Pos.y - gaoMtx->Pos.y;
+        move->z = hieMtx.Pos.z - gaoMtx->Pos.z;
+    }
+    else
+    {
+        gaoMtx = gao->matrices;
+        colInstMtx = gao->extended->coll->colInstance->mtx;
+        move->x = colInstMtx->Pos.x - gaoMtx->Pos.x;
+        move->y = colInstMtx->Pos.y - gaoMtx->Pos.y;
+        move->z = colInstMtx->Pos.z - gaoMtx->Pos.z;
+    }
+}
+
+void COL_DynamicHierarchisation(tGameObjectMain* gao, tGameObjectMain* refGao)
+{
+    int flags;
+    Mtx4x4* colInstMtx;
+    Mtx4x4 refInvMtx;
+    Mtx4x4 localMtx;
+
+    if (gao)
+        flags = gao->flags;
+    else
+        flags = 0;
+    OBJ_ChangeIdentityFlags(gao, flags | 0x400000, flags);
+    MATH_InvertMatrix(&refInvMtx, refGao->matrices);
+    MATH_MulMatrixMatrix(&gao->basic->mtx->mtx, gao->matrices, &refInvMtx);
+    MATH_MulMatrixMatrix(&localMtx, gao->extended->coll->colInstance->mtx, &refInvMtx);
+    colInstMtx = gao->extended->coll->colInstance->mtx;
+    if (colInstMtx != &localMtx)
+        memcpy(colInstMtx, &localMtx, sizeof(Mtx4x4));
+    gao->basic->mtx->refGao = 0;
+    gao->basic->mtx->refGao2 = refGao;
+    if ((gao->flags & 0x4000000) != 0)
+        ANI_ApplyHierarchyOnFlash(gao);
+}
+
+int COL_b_MoveReports(tGameObjectMain* gao, unsigned int* cursor)
+{
+    unsigned int startIdx;
+    tRecordElem* rec;
+    int hierarchised;
+    int flags;
+    tColInstance* colInstance;
+    tGameObjectMain* mapGao;
+    tGameObjectExtended* mapExt;
+    tGameObjectCollMain* mapColl;
+    tColMap* mapColMap;
+    tColCollisionObject** mapObjs;
+    tGameObjectMain* refGao;
+    tGameObjectExtended* refExt;
+    tGameObjectCollMain* refColl;
+    tColInstance* refColInstance;
+    tRecordElem* dst;
+    Vec3 delta;
+    tRecordElem* end;
+    int moved;
+    unsigned int idx;
+
+    startIdx = *cursor;
+    rec = &COL_gst_GlobalVars.colWorld->records[*cursor];
+    hierarchised = gao->flags & 0x400000;
+    moved = 0;
+    end = &COL_gst_GlobalVars.colWorld->records[COL_gst_GlobalVars.num];
+    idx = startIdx;
+    for (; rec < end; ++rec, ++idx)
+    {
+        if (rec->collisionInstanceGameObject != gao
+            || rec->collisionMapGameObject && MEM_b_CheckBlockHasBeenFreed(rec->collisionMapGameObject))
+        {
+            continue;
+        }
+        flags = rec->flags;
+        if ((flags & 0x1000) != 0)
+            continue;
+        if ((flags & 0x10000) != 0)
+        {
+            colInstance = gao->extended->coll->colInstance;
+            if (colInstance)
+                colInstance->flag |= 2u; //LOBYTE(v8->flag) |= 2u;
+        }
+        mapGao = rec->collisionMapGameObject;
+        if (mapGao
+            && (mapGao->flags & 0x100) != 0
+            && (mapExt = mapGao->extended) != 0
+            && (mapColl = mapExt->coll) != 0
+            && (mapColMap = mapColl->colMap) != 0)
+        {
+            mapObjs = mapColMap->collisionObjectPtr;
+            if ((*mapObjs)->objectType == 5 && ((*mapObjs)->flags & 0x20) != 0)
+            {
+                *cursor = startIdx;
+                return 0;
+            }
+        }
+        if (!hierarchised && (rec->flags & 0x40) != 0 && mapGao && (mapGao->flags & 4) != 0)
+        {
+            COL_DynamicHierarchisation(gao, rec->collisionMapGameObject);
+            hierarchised = 1;
+        }
+        refGao = rec->collisionMapGameObject;
+        if (!refGao
+            || (refExt = refGao->extended) == 0
+            || (refColl = refExt->coll) == 0
+            || (refColInstance = refColl->colInstance) == 0
+            || get_reference_point_gao_2_from_gao_sub_40BEA0(rec->collisionInstanceGameObject) == refGao
+            || (MATH_SubstractVec(&delta, &refColInstance->mtx->Pos, &refGao->matrices->Pos), fabs(delta.x) < 0.0000099999997)
+            && fabs(delta.y) < 0.0000099999997)
+        {
+            if (idx > *cursor)
+            {
+                dst = &COL_gst_GlobalVars.colWorld->records[*cursor];
+                COL_l_SwapRecords(dst, rec);
+            }
+            ++*cursor;
+            moved = 1;
+        }
+    }
+    return moved;
+}
+
+void COL_UpdateBV(tableDescStruct* table)
+{
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+
+    elem = table->firstElemPtr;
+    for (last = ((tableElemStructPF*)(table->nextElemPtr)) - 1; elem <= last; ++elem)
+    {
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (elem->objectPtr
+            && ((uint8_t)gao & 3) != 1
+            && (gao->flags & 0x200) != 0
+            && !OBJ_BV_IsSphere(gao->boundingVolume))
+        {
+            COL_l_ExpandBVByColInstanceOffset(gao);
+        }
+    }
+}
+
+static float COL_l_CobWaveAmplitude(tOtcMdfStruct* otc, const uint8_t* weight, int invertWeight)
+{
+    if (!weight)
+        return otc->intensity;
+    if (invertWeight)
+        return (float)((1.0 - (double)*weight * 0.00390625) * otc->intensity);
+    return (float)((double)*weight * otc->intensity * 0.00390625);
+}
+
+static void COL_l_CobWave(tOtcMdfStruct* otc, Vec3* verts, unsigned int num,
+                          const uint8_t* weight, int invertWeight,
+                          int dstA, int srcA, int dstB, int srcB,
+                          int secondIsCos)
+{
+    unsigned int i;
+    float amp;
+    float* v;
+
+    for (i = 0; i < num; i++)
+    {
+        amp = COL_l_CobWaveAmplitude(otc, weight, invertWeight);
+        v = (float*)&verts[i];
+        v[dstA] = (float)(MATH_GetSin(v[srcA] * otc->speed + otc->offset) * amp + v[dstA]);
+        if (secondIsCos)
+            v[dstB] = MATH_GetCos(v[srcB] * otc->speed + otc->offset) * amp + v[dstB];
+        else
+            v[dstB] = (float)(MATH_GetSin(v[srcB] * otc->speed + otc->offset) * amp + v[dstB]);
+        if (weight)
+            weight += 4;
+    }
+}
+
+static void COL_l_CobWaveZFromXY(tOtcMdfStruct* otc, Vec3* verts, unsigned int num)
+{
+    unsigned int i;
+    double atOffset;
+    float amp;
+
+    atOffset = MATH_GetSin(otc->offset);
+    amp = (float)(atOffset * otc->intensity + atOffset * otc->intensity);
+    for (i = 0; i < num; i++)
+    {
+        verts[i].z = (float)((MATH_GetSin(otc->speed * verts[i].x)
+                              + MATH_GetSin(verts[i].y * otc->speed)) * amp + verts[i].z);
+    }
+}
+
+void COL_UpdateCobFromVisualRealTime(tGameObjectMain* gao, tColCollisionObject* colObj, tGEOGRO* geogro)
+{
+    tCobMeshObjectMesh* mesh;
+    tModifier* mdf;
+    tOtcMdfStruct* otc;
+    Vec3* verts;
+    unsigned int num;
+    int flags;
+    int* rliColors;
+    const uint8_t* weight;
+    int invertWeight;
+    tCobMeshChunkElem* chunk;
+    tCobMeshChunkElem* chunkEnd;
+    int faceBase;
+    tCobMeshTriangleElem* tri;
+    tCobMeshTriangleElem* triEnd;
+    int face;
+    Vec3* p0;
+    Vec3* p1;
+    Vec3* p2;
+    double e1x;
+    double e1y;
+    double e1z;
+    double e2z;
+    Vec3* dst;
+    long double invLen;
+    float e2x;
+    float e2y;
+    Vec3 normal;
+
+    if (!colObj || !geogro || colObj->objectType != 5)
+        return;
+    mesh = colObj->objectPtrByType;
+    if (mesh->vertexCount != geogro->vertexNum)
+    {
+        colObj->flags &= ~0x40u;
+        return;
+    }
+    if ((gao->flags & 0x2000) == 0)
+        return;
+    if (!gao->extended)
+        return;
+    PRO_PerfCounterStartBlock(&PRO_RasterGroup.PRO_COBFromVisual);
+    mdf = gao->extended->mdf;
+    if (!mdf)
+        return;
+    while ((mdf->modifierFlags & 0xF000000) != 0 || mdf->modifierIntf->mdfId != 1)// GEO_ModifierOnduleTonCorps
+    {
+        mdf = mdf->nextElem;
+        if (!mdf)
+            return;
+    }
+    memcpy(mesh->vertices, geogro->vertices, 12 * geogro->vertexNum);
+    otc = (tOtcMdfStruct*)mdf->mdfPrivateDataPtr;
+    verts = mesh->vertices;
+    num = mesh->vertexCount;
+    flags = otc->flags;
+    rliColors = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->RLIVertexColors;
+    if ((flags & 0x10) != 0 && rliColors)
+    {
+        weight = (const uint8_t*)(rliColors + 1) + 3;
+        invertWeight = (flags & 0x20) != 0;
+    }
+    else
+    {
+        weight = 0;
+        invertWeight = 0;
+    }
+    if ((flags & 1) != 0)
+    {
+        if ((flags & 8) != 0)
+            COL_l_CobWave(otc, verts, num, weight, invertWeight, 0, 1, 0, 2, 0);
+        else
+            COL_l_CobWave(otc, verts, num, weight, invertWeight, 1, 0, 2, 0, 1);
+    }
+    else if ((flags & 2) != 0)
+    {
+        if ((flags & 8) != 0)
+            COL_l_CobWave(otc, verts, num, weight, invertWeight, 1, 0, 1, 2, 0);
+        else
+            COL_l_CobWave(otc, verts, num, weight, invertWeight, 0, 1, 2, 1, 1);
+    }
+    else if ((flags & 4) != 0)
+    {
+        if ((flags & 8) != 0)
+        {
+            if (weight)
+                COL_l_CobWave(otc, verts, num, weight, invertWeight, 2, 0, 2, 1, 0);
+            else
+                COL_l_CobWaveZFromXY(otc, verts, num);
+        }
+        else
+        {
+            COL_l_CobWave(otc, verts, num, weight, invertWeight, 0, 2, 1, 2, 1);
+        }
+    }
+    chunk = mesh->meshChunkElems;
+    chunkEnd = &chunk[mesh->meshChunkElemNum];
+    faceBase = 0;
+    for (; chunk < chunkEnd; ++chunk)
+    {
+        if (!chunk->elemNum)
+            continue;
+        tri = chunk->triangleElems;
+        triEnd = &tri[chunk->elemNum];
+        if (tri >= triEnd)
+            continue;
+        face = faceBase;
+        faceBase += chunk->elemNum;
+        do
+        {
+            p1 = &mesh->vertices[tri->v2];
+            p0 = &mesh->vertices[tri->v1];
+            p2 = &mesh->vertices[tri->v3];
+            e1x = p1->x - p0->x;
+            e1y = p1->y - p0->y;
+            e1z = p1->z - p0->z;
+            e2x = p2->x - p0->x;
+            e2y = p2->y - p0->y;
+            e2z = p2->z - p0->z;
+            normal.x = (float)(e2z * e1y - e2y * e1z);
+            normal.y = (float)(e1z * e2x - e2z * e1x);
+            normal.z = (float)(e2y * e1x - e1y * e2x);
+            if (fabs(normal.x) != 0 || fabs(e1z * e2x - e2z * e1x) || fabs(e2y * e1x - e1y * e2x))
+            {
+                dst = &mesh->normals[face];
+                invLen = 1.0 / sqrt(normal.z * normal.z + normal.y * normal.y + normal.x * normal.x);
+                dst->x = (float)(normal.x * invLen);
+                dst->y = (float)(normal.y * invLen);
+                dst->z = (float)(normal.z * invLen);
+            }
+            else
+            {
+                mesh->normals[face] = normal;
+            }
+            ++tri;
+            ++face;
+        } while (tri < triEnd);
+    }
+    if (PRO_RasterGroup.PRO_COBFromVisual.insideCounter)
+    {
+        if (!--PRO_RasterGroup.PRO_COBFromVisual.insideCounter)
+            PRO_RasterGroup.PRO_COBFromVisual.sumTime += TIM_GetTicksAsInt32() - PRO_RasterGroup.PRO_COBFromVisual.startTick;
+    }
+}
+
+void COL_UpdateRealTimeColMaps(tWorld* world)
+{
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    int flags2;
+    tColMap* colMap;
+    tColCollisionObject* colObj;
+    tGameObjectBasic* basic;
+    tGameObjectVisualObject* visual;
+    tGEOGRO* geogro;
+
+    elem = world->eot.collMapObjectsTablePF.firstElemPtr;
+    for (last = ((tableElemStructPF*)(world->eot.collMapObjectsTablePF.nextElemPtr)) - 1; elem <= last; ++elem)
+    {
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (!elem->objectPtr)
+            continue;
+        if (((uint8_t)gao & 3) == 1)
+            continue;
+        flags2 = gao->flags2;
+        if ((flags2 & 1) == 0 || (flags2 & 0x400000) != 0)
+            continue;
+        colMap = gao->extended->coll->colMap;
+        if (!colMap || !colMap->colObjectID)
+            continue;
+        colObj = *colMap->collisionObjectPtr;
+        if (colObj->objectType != 5 || (colObj->flags & 0x40) == 0)
+            continue;
+        basic = gao->basic;
+        if (!basic)
+            continue;
+        visual = basic->actorObjectOrVisualObject;
+        if (!visual)
+            continue;
+        geogro = (tGEOGRO*)(visual->GROGEOOrSomethingElse);
+        if (geogro)
+            COL_UpdateCobFromVisualRealTime(gao, colObj, geogro);
+    }
+}
+
+void COL_Compute(tWorld* world)
+{
+    unsigned int recordCount;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* colInstGao;
+    int flags2;
+    tGameObjectCollMain* coll;
+    tColInstance* colInstance;
+    uint8_t zoneNum;
+    int isDynamic;
+    tGameObjectBasic* basic;
+    tDyn* dyn;
+    double mass;
+    int dynFlags;
+    int16_t colFlag;
+    tGameObjectMain** mapGao;
+    tGameObjectMain** mapGaoEnd;
+    tGameObjectMain* other;
+    int otherFlags;
+    int otherFlags2;
+    int idx;
+    Vec3 hierMove;
+    Vec3 move;
+    float forceX;
+    float forceY;
+    float forceZ;
+
+    COL_gst_GlobalVars.gaosNeededToBeRecomputedNum = 0;
+    COL_gst_GlobalVars.firstRecordToRecompute = 0;
+    COL_gst_GlobalVars.recomputeNeeded = 0;
+    COL_gst_GlobalVars.colWorld = world;
+    elem = world->eot.collInstanceZDMGameObjectsPF.firstElemPtr;
+    last = ((tableElemStructPF*)(world->eot.collInstanceZDMGameObjectsPF.nextElemPtr)) - 1;
+    recordCount = 0;
+    for (; elem <= last; ++elem)
+    {
+        colInstGao = (tGameObjectMain*)(elem->objectPtr);
+        if (!elem->objectPtr)
+            continue;
+        if (((uint8_t)colInstGao & 3) == 1)
+            continue;
+        flags2 = colInstGao->flags2;
+        if ((flags2 & 1) == 0
+            || (flags2 & 0x400000) != 0
+            || (flags2 & 0x20) == 0
+            || (colInstGao->flags & 4) != 0 && (colInstGao->basic->dyn->flags & 0x20000000) != 0)
+        {
+            continue;
+        }
+        coll = colInstGao->extended->coll;
+        if (!coll->detectionList->overlapNum)
+            continue;
+        coll->colInstance->flag = 0;
+        colInstance = coll->colInstance;
+        zoneNum = colInstance->zoneNum;
+        if (!zoneNum)
+            continue;
+        for (idx = 0; idx < zoneNum; ++idx)
+        {
+            if ((colInstance->selectedInstElemPtrs[idx]->colFlags & 1) != 0
+                && COL_get_activation_flag_for_id__max_16_sub_4132C0(colInstance, (char)idx))
+                break;
+        }
+        if (idx >= zoneNum)
+            continue;
+        colInstGao->extended->coll->colInstance->flag = 1;
+        COL_ComputeMove(colInstGao, &move);
+        isDynamic = colInstGao->flags & 4;
+        if (!isDynamic || (colInstGao->basic->dyn->flags & 0x800000) == 0)
+        {
+            if (fabs(move.x) < 0.0000099999997 && fabs(move.y) < 0.0000099999997 && fabs(move.z) < 0.0000099999997)
+            {
+                colInstance = colInstGao->extended->coll->colInstance;
+                colInstance->flag |= 4u; //LOBYTE(v12->flag) |= 4u;
+                continue;
+            }
+            if (!isDynamic)
+                continue;
+        }
+        basic = colInstGao->basic;
+        if (basic)
+            dyn = basic->dyn;
+        else
+            dyn = 0;
+        mass = dyn->mass;
+        forceX = (float)(mass * dyn->forceVector.x);
+        forceY = (float)(dyn->forceVector.y * mass);
+        forceZ = (float)(dyn->forceVector.z * mass);
+        COL_ComputeMove(colInstGao, &hierMove);
+        dynFlags = colInstGao->basic->dyn->flags;
+        if ((dynFlags & 0x800000) == 0
+            && (dynFlags & 0x400000) != 0
+            && fabs(forceX) < 0.0000099999997
+            && fabs(forceY) < 0.0000099999997
+            && forceZ < 0.0)
+        {
+            if (COL_b_MoveReports(colInstGao, &recordCount))
+                colInstGao->extended->coll->colInstance->flag |= 0x8000;
+            else
+                colInstGao->extended->coll->colInstance->flag &= ~0x8000;
+        }
+    }
+    COL_gst_GlobalVars.num = recordCount;
+    COL_gst_GlobalVars.colWorld->recordCount = recordCount;
+    elem = world->eot.collInstanceZDMGameObjectsPF.firstElemPtr;
+    last = ((tableElemStructPF*)(world->eot.collInstanceZDMGameObjectsPF.nextElemPtr)) - 1;
+    for (; elem <= last; ++elem)
+    {
+        colInstGao = (tGameObjectMain*)(elem->objectPtr);
+        if (!elem->objectPtr)
+            continue;
+        if (((uint8_t)colInstGao & 3) == 1)
+            continue;
+        flags2 = colInstGao->flags2;
+        if ((flags2 & 1) == 0
+            || (flags2 & 0x400000) != 0
+            || (flags2 & 0x20) == 0
+            || (colInstGao->flags & 4) != 0 && (colInstGao->basic->dyn->flags & 0x20000000) != 0)
+        {
+            continue;
+        }
+        coll = colInstGao->extended->coll;
+        if (!coll->detectionList->overlapNum)
+            continue;
+        colInstance = coll->colInstance;
+        colFlag = colInstance->flag;
+        if ((colFlag & 1) == 0)
+            continue;
+        colInstance->flag = colFlag & 0xFFFE;
+        colFlag = colInstGao->extended->coll->colInstance->flag;
+        if ((colFlag & 4) != 0 || colFlag < 0)
+            continue;
+        basic = colInstGao->basic;
+        if (basic && (dyn = basic->dyn) != 0)
+            COL_gst_GlobalVars.maxStepSize = dyn->maxStepSize;
+        else
+            COL_gst_GlobalVars.maxStepSize = -1.0;
+        if ((colInstGao->flags & 0x400000) != 0)
+            OBJ_ComputeGlobalWhenHie(colInstGao);
+        if ((colInstGao->flags & 4) != 0)
+        {
+            colInstGao->basic->dyn->flags &= ~0x800000u;
+            colInstGao->basic->dyn->flags &= ~0x400000u;
+        }
+        mapGao = coll->detectionList->detectionListGaos;
+        for (mapGaoEnd = &mapGao[coll->detectionList->overlapNum - 1]; mapGao <= mapGaoEnd; ++mapGao)
+        {
+            other = *mapGao;
+            otherFlags = (*mapGao)->flags;
+            if ((otherFlags & 0x100) != 0)
+            {
+                otherFlags2 = other->flags2;
+                if ((otherFlags2 & 1) != 0
+                    && (otherFlags2 & 0x400000) == 0
+                    && ((otherFlags & 0x400000) == 0 || other->basic->mtx->refGao2 != colInstGao))
+                {
+                    COL_InitGlobalVars(colInstGao, *mapGao);
+                    COL_Actor_GameObject(&COL_gst_GlobalVars);
+                }
             }
         }
     }
-    COL_UpdateOldMatrix(v1);
 }
 
-void REC_OrderReports(tWorld* a1)
+void COL_MainCall(struct sWorld* world)
 {
-    tRecordElem* v1;
-    tRecordElem* v2;
-    tRecordElem* v3; 
-    tGameObjectBasic* v4;
-    tDyn* v5;
-    double v6;
-    tRecordElem* v7;
-    double v8;
-    tRecordElem* v9;
-    double v10; 
-    tRecordElem* v11;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    tRecordElem v16;
-    tRecordElem* a1a;
+    uint8_t pending;
+    int pass;
+    int reachedLimit;
+    int n;
+    tGameObjectMain* recomputed;
+    tColInstance* colInstance;
+    tGameObjectBasic* basic;
+    tDyn* dyn;
 
-    v1 = a1->records;
-    v2 = &a1->records[a1->recordCount];
-    v11 = a1->records;
-    if (a1->records < v2)
+    COL_gb_LastLoop = 0;
+    COL_gst_GlobalVars.COL_uc_RecomputingLoop = 0;
+    COL_gst_GlobalVars.COL_gb_AfterEngine = 0;
+    COL_UpdateBV(&world->eot.collInstanceZDMGameObjectsPF);
+    INT_SnP_InsertionSort(world->snp, 0);
+    COL_ul_SnP_RefreshType = (COL_ul_SnP_RefreshType == 1) + 1;
+    COL_UpdateRealTimeColMaps(world);
+    COL_Compute(world);
+    if (COL_gst_GlobalVars.num)
+        COL_ComputeReports(&COL_gst_GlobalVars, 0);
+    pending = COL_gst_GlobalVars.gaosNeededToBeRecomputedNum;
+    pass = 0;
+    if (COL_gst_GlobalVars.gaosNeededToBeRecomputedNum)
     {
-        v3 = &(a1->records[0]);
-        do
+        while (1)
         {
-            if ((v3->flags & 0x80003000) == 0)
+            reachedLimit = pass == 6;
+            if (pass >= 6)
+                break;
+            ++pass;
+            COL_gst_GlobalVars.firstRecordToRecompute = COL_gst_GlobalVars.num;
+            COL_gst_GlobalVars.COL_uc_RecomputingLoop = pass;
+            COL_gb_LastLoop = pass == 6;
+            COL_gst_GlobalVars.recomputeNeeded = 1;
+            COL_gst_GlobalVars.gaosNeededToBeRecomputedNum = 0;
+            for (n = 0; n < pending; ++n)
             {
-                v4 = v1->collisionInstanceGameObject->basic;
-                if (v4)
+                recomputed = COL_gst_GlobalVars.gaosNeededToBeRecomputed[n];
+                colInstance = recomputed->extended->coll->colInstance;
+                colInstance->flag &= ~4u; //LOBYTE(v8->flag) &= ~4u;
+                colInstance = recomputed->extended->coll->colInstance;
+                colInstance->flag &= ~0x3F0u;
+                basic = recomputed->basic;
+                if (basic && (dyn = basic->dyn) != 0)
+                    COL_gst_GlobalVars.maxStepSize = dyn->maxStepSize;
+                else
+                    COL_gst_GlobalVars.maxStepSize = -1.0;
+                COL_l_CollideWithDetectionList(recomputed);
+            }
+            COL_ComputeReports(&COL_gst_GlobalVars, 0);
+            pending = COL_gst_GlobalVars.gaosNeededToBeRecomputedNum;
+            if (!COL_gst_GlobalVars.gaosNeededToBeRecomputedNum)
+            {
+                reachedLimit = pass == 6;
+                break;
+            }
+        }
+        if (reachedLimit)
+            COL_l_ApplyRecomputedMoves(pending);
+    }
+    COL_UpdateOldMatrix(world);
+}
+
+void REC_OrderReports(tWorld* world)
+{
+    tRecordElem* rec;
+    tRecordElem* end;
+    tGameObjectBasic* basic;
+    tDyn* dyn;
+    double mass;
+    tRecordElem* cand;
+    double bestDot;
+    double dot;
+    tRecordElem* best;
+    float dotF;
+    float speedX;
+    float speedY;
+    float speedZ;
+
+    rec = world->records;
+    end = &world->records[world->recordCount];
+    for (; rec < end; ++rec)
+    {
+        if ((rec->flags & 0x80003000) != 0)
+            continue;
+        basic = rec->collisionInstanceGameObject->basic;
+        if (!basic)
+            continue;
+        dyn = basic->dyn;
+        if (!dyn)
+            continue;
+        mass = dyn->mass;
+        best = 0;
+        speedX = (float)(mass * dyn->forceVector.x);
+        speedY = (float)(dyn->forceVector.y * mass);
+        speedZ = (float)(dyn->forceVector.z * mass);
+        bestDot = rec->normalVec.z * speedZ + speedX * rec->normalVec.x + speedY * rec->normalVec.y - 0.001;
+        for (cand = rec + 1; cand < end; ++cand)
+        {
+            if ((cand->flags & 0x80003000) == 0
+                && cand->collisionInstanceGameObject == rec->collisionInstanceGameObject)
+            {
+                dot = cand->normalVec.z * speedZ + speedX * cand->normalVec.x + speedY * cand->normalVec.y;
+                if (dot < bestDot)
                 {
-                    v5 = v4->dyn;
-                    if (v5)
-                    {
-                        v6 = v5->mass;
-                        v7 = v3 + 1;
-                        a1a = 0;
-                        v13 = (float)(v6 * v5->forceVector.x);
-                        v14 = (float)(v5->forceVector.y * v6);
-                        v15 = (float)(v5->forceVector.z * v6);
-                        v8 = v3->normalVec.z * v15 + v13 * v3->normalVec.x + v14 * v3->normalVec.y - 0.001;
-                        if (&(v3[1]) < v2)
-                        {
-                            v9 = &(v3[1]);
-                            do
-                            {
-                                if ((v9->flags & 0x80003000) == 0
-                                    && v7->collisionInstanceGameObject == v1->collisionInstanceGameObject)
-                                {
-                                    v10 = v9->normalVec.z * v15 + v13 * v9->normalVec.x + v14 * v9->normalVec.y;
-                                    if (v10 < v8)
-                                    {
-                                        a1a = v7;
-                                        v12 = (float)v10;
-                                        v8 = v12 - 0.001;
-                                    }
-                                }
-                                ++v7;
-                                ++v9;
-                            } while (v7 < v2);
-                            if (a1a)
-                            {
-                                memcpy(&v16, v1, sizeof(v16));
-                                memcpy(v11, a1a, sizeof(tRecordElem));
-                                memcpy(a1a, &v16, sizeof(tRecordElem));
-                                v1 = v11;
-                            }
-                        }
-                    }
+                    best = cand;
+                    dotF = (float)dot;
+                    bestDot = dotF - 0.001;
                 }
             }
-            ++v1;
-            ++v3;
-            v11 = v1;
-        } while (v1 < v2);
+        }
+        if (best)
+        {
+            COL_l_SwapRecords(rec, best);
+        }
     }
 }
 
 void REC_PhysicalCall(tGameObjectMain* gao, tWorld* world)
 {
-    tDyn* v2;
-    tDynSolid* v3;
-    double v4;
-    tColBox* v5;
-    double v6;
-    double v7;
-    int v8;
-    tRecordElem* v9;
-    tRecordElem* v10;
-    double v11;
-    tDynSolid* v12;
-    double v13;
-    double v14;
-    double v15;
-    double v16;
-    double v17;
-    Vec3* v18; 
-    double v19;
-    double v20;
-    Mtx4x4* v21;
-    Vec3* v23;
-    float v24;
-    float v25;
-    Vec3 v26; 
-    float v27;
-    float v28;
-    Vec3 v29; 
-    float v30;
-    float v31;
-    float v32;
-    float i; 
-    tRecordElem* v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    Vec3 a3;
-    Vec3 v40;
-    Vec3 a1a;
-    Vec3 v42;
-    float v43;
-    float v44;
-    float v45;
-    float v46;
-    Mtx4x4 a2a;
+    tDyn* dyn;
+    tDynSolid* solid;
+    double mass;
+    tColBox* box;
+    double sumX;
+    double sumY;
+    tRecordElem* rec;
+    tRecordElem* end;
+    double armX;
+    double spinX;
+    double spinY;
+    double torqueY;
+    double torqueZ;
+    double impulse;
+    Vec3* spin;
+    double impTorqueY;
+    double impTorqueZ;
+    Mtx4x4* gaoMtx;
+    Vec3* oldPos;
+    float armY;
+    float armZ;
+    Vec3 localNormal;
+    float spinZ;
+    float velX;
+    Vec3 impulseVec;
+    float massA;
+    float massB;
+    float centerZ;
+    float impCrossZ;
+    float impTorqueX;
+    float torqueCrossX;
+    float torqueCrossY;
+    float torqueX;
+    Vec3 speedVec;
+    Vec3 worldImpulse;
+    Vec3 localSpeed;
+    Vec3 localPoint;
+    float crossZ;
+    float centerX;
+    float centerY;
+    Mtx4x4 gaoInvMtx;
 
-    v2 = gao->basic->dyn;
-    v30 = -100000.0f;
-    if (v2 && v2->solid)
+    dyn = gao->basic->dyn;
+    if (!dyn || !dyn->solid)
+        return;
+    MATH_InvertMatrix(&gaoInvMtx, gao->matrices);
+    solid = dyn->solid;
+    solid->torqueVector.x = 0.0;
+    solid->torqueVector.y = 0.0;
+    solid->torqueVector.z = 0.0;
+    dyn->solid->rotSpeedVector.x = (float)(dyn->solid->rotSpeedVector.x * 0.94999999);
+    dyn->solid->rotSpeedVector.y = (float)(dyn->solid->rotSpeedVector.y * 0.94999999);
+    dyn->solid->rotSpeedVector.z = (float)(dyn->solid->rotSpeedVector.z * 0.94999999);
+    mass = dyn->mass;
+    speedVec.x = (float)(mass * dyn->forceVector.x);
+    speedVec.y = (float)(dyn->forceVector.y * mass);
+    speedVec.z = (float)(dyn->forceVector.z * mass);
+    MATH_TransformVector(&localSpeed, &gaoInvMtx, &speedVec);
+    box = (tColBox*)((*gao->extended->coll->colInstance->selectedInstElemPtrs)->elemShapePtr); // TODO ez jó így?
+    sumX = box->pos2.x + box->pos1.x;
+    sumY = box->pos2.y + box->pos1.y;
+    end = &world->records[world->recordCount];
+    centerZ = box->pos2.z + box->pos1.z;
+    centerX = (float)(sumX * 0.5);
+    rec = world->records;
+    centerY = (float)(sumY * 0.5);
+    centerZ = (float)(centerZ * 0.5);
+    for (; rec < end; ++rec)
     {
-        MATH_InvertMatrix(&a2a, gao->matrices);
-        v3 = v2->solid;
-        v3->torqueVector.x = 0.0;
-        v3->torqueVector.y = 0.0;
-        v3->torqueVector.z = 0.0;
-        v2->solid->rotSpeedVector.x = (float)(v2->solid->rotSpeedVector.x * 0.94999999);
-        v2->solid->rotSpeedVector.y = (float)(v2->solid->rotSpeedVector.y * 0.94999999);
-        v2->solid->rotSpeedVector.z = (float)(v2->solid->rotSpeedVector.z * 0.94999999);
-        v4 = v2->mass;
-        a3.x = (float)(v4 * v2->forceVector.x);
-        a3.y = (float)(v2->forceVector.y * v4);
-        a3.z = (float)(v2->forceVector.z * v4);
-        MATH_TransformVector(&a1a, &a2a, &a3);
-        v5 = (tColBox*)((*gao->extended->coll->colInstance->selectedInstElemPtrs)->elemShapePtr); // TODO ez jó így?
-        v6 = v5->pos2.x + v5->pos1.x;
-        v7 = v5->pos2.y + v5->pos1.y;
-        v8 = world->recordCount;
-        i = v5->pos2.z + v5->pos1.z;
-        v31 = (float)(v6 * 0.5);
-        v9 = &world->records[v8];
-        v10 = world->records;
-        v32 = (float)(v7 * 0.5);
-        v34 = v9;
-        for (i = (float)(i * 0.5); v10 < v9; ++v10)
+        if ((rec->flags & 0x80043800) == 0
+            && rec->collisionInstanceGameObject == gao
+            && (rec->recalVec.x != 0.0 || rec->recalVec.y != 0.0 || rec->recalVec.z != 0.0))
         {
-            if ((v10->flags & 0x80043800) == 0
-                && v10->collisionInstanceGameObject == gao
-                && (v10->recalVec.x != 0.0 || v10->recalVec.y != 0.0 || v10->recalVec.z != 0.0))
-            {
-                MATH_TransformVertex(&v42, &a2a, &v10->collidedPoint);
-                MATH_TransformVector(&v26, &a2a, &v10->normalVec);
-                v11 = v42.x - v31;
-                v12 = v2->solid;
-                v24 = v42.y - v32;
-                v25 = v42.z - i;
-                v13 = (float)(v25 * v12->rotSpeedVector.y - v24 * v12->rotSpeedVector.z);
-                v14 = (float)(v11 * v12->rotSpeedVector.z - v25 * v12->rotSpeedVector.x);
-                v45 = (float)(v24 * v12->rotSpeedVector.x - v11 * v12->rotSpeedVector.y);
-                v46 = (float)(a1a.x + v13);
-                v27 = v2->mass;
-                v36 = (float)(v26.y * v11 - v24 * v26.x);
-                v35 = (v26.z * v24 - v26.y * v25) * v27;
-                v15 = (v25 * v26.x - v26.z * v11) * v27;
-                v16 = v36 * v27;
-                v43 = (float)(v15 * v25 - v16 * v24);
-                v44 = (float)(v16 * v11 - v25 * v35);
-                v17 = -((v26.z * (a1a.z + v45) + v26.y * (a1a.y + v14) + v46 * v26.x) * (v12->elastic + 1.0))
-                    / ((v24 * v35 - v15 * v11) * v26.z + v44 * v26.y + v43 * v26.x + v2->mass);
-                if (v17 > v30)
-                    v30 = (float)v17;
-                v29.x = (float)(v26.x * v17);
-                v29.y = (float)(v26.y * v17);
-                v29.z = (float)(v26.z * v17);
-                v18 = &v2->solid->rotSpeedVector;
-                v28 = v2->mass;
-                v38 = (float)(v29.y * v11 - v24 * v29.x);
-                v37 = (v29.z * v24 - v29.y * v25) * v28;
-                v19 = (v25 * v29.x - v29.z * v11) * v28;
-                v20 = v38 * v28;
-                v18->x = v37 + v18->x;
-                v18->y = (float)(v19 + v18->y);
-                v18->z = (float)(v20 + v18->z);
-                MATH_TransformVector(&v40, gao->matrices, &v29);
-                v9 = v34;
-                v2->forceVector.x = v40.x + v2->forceVector.x;
-                v2->forceVector.y = v40.y + v2->forceVector.y;
-                v2->forceVector.z = v40.z + v2->forceVector.z;
-            }
+            MATH_TransformVertex(&localPoint, &gaoInvMtx, &rec->collidedPoint);
+            MATH_TransformVector(&localNormal, &gaoInvMtx, &rec->normalVec);
+            armX = localPoint.x - centerX;
+            solid = dyn->solid;
+            armY = localPoint.y - centerY;
+            armZ = localPoint.z - centerZ;
+            spinX = (float)(armZ * solid->rotSpeedVector.y - armY * solid->rotSpeedVector.z);
+            spinY = (float)(armX * solid->rotSpeedVector.z - armZ * solid->rotSpeedVector.x);
+            spinZ = (float)(armY * solid->rotSpeedVector.x - armX * solid->rotSpeedVector.y);
+            velX = (float)(localSpeed.x + spinX);
+            massA = dyn->mass;
+            crossZ = (float)(localNormal.y * armX - armY * localNormal.x);
+            torqueX = (localNormal.z * armY - localNormal.y * armZ) * massA;
+            torqueY = (armZ * localNormal.x - localNormal.z * armX) * massA;
+            torqueZ = crossZ * massA;
+            torqueCrossX = (float)(torqueY * armZ - torqueZ * armY);
+            torqueCrossY = (float)(torqueZ * armX - armZ * torqueX);
+            impulse = -((localNormal.z * (localSpeed.z + spinZ) + localNormal.y * (localSpeed.y + spinY) + velX * localNormal.x) * (solid->elastic + 1.0))
+                / ((armY * torqueX - torqueY * armX) * localNormal.z + torqueCrossY * localNormal.y + torqueCrossX * localNormal.x + dyn->mass);
+            impulseVec.x = (float)(localNormal.x * impulse);
+            impulseVec.y = (float)(localNormal.y * impulse);
+            impulseVec.z = (float)(localNormal.z * impulse);
+            spin = &dyn->solid->rotSpeedVector;
+            massB = dyn->mass;
+            impCrossZ = (float)(impulseVec.y * armX - armY * impulseVec.x);
+            impTorqueX = (impulseVec.z * armY - impulseVec.y * armZ) * massB;
+            impTorqueY = (armZ * impulseVec.x - impulseVec.z * armX) * massB;
+            impTorqueZ = impCrossZ * massB;
+            spin->x = impTorqueX + spin->x;
+            spin->y = (float)(impTorqueY + spin->y);
+            spin->z = (float)(impTorqueZ + spin->z);
+            MATH_TransformVector(&worldImpulse, gao->matrices, &impulseVec);
+            dyn->forceVector.x = worldImpulse.x + dyn->forceVector.x;
+            dyn->forceVector.y = worldImpulse.y + dyn->forceVector.y;
+            dyn->forceVector.z = worldImpulse.z + dyn->forceVector.z;
         }
-        v21 = gao->matrices;
-        v23 = &v2->solid->oldPos;
-        v23->x = v21->Pos.x;
-        v23->y = v21->Pos.y;
-        v23->z = v21->Pos.z;
     }
+    gaoMtx = gao->matrices;
+    oldPos = &dyn->solid->oldPos;
+    oldPos->x = gaoMtx->Pos.x;
+    oldPos->y = gaoMtx->Pos.y;
+    oldPos->z = gaoMtx->Pos.z;
 }
 
-void REC_ApplyDynObj(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5)
+void REC_ApplyDynObj(Vec3* speed1, Vec3* speed2, Vec3* out1, Vec3* out2, Vec3* normal)
 {
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    Vec3* v12;
-    float v13;
-    float v14;
-    float v15;
-    float v16;
-    float v17;
-    float v18;
-    float v19;
-    float v20;
-    float v21;
-    float v22;
-    float v23;
-    float v24;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    float v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float a1a;
-    float a2a;
-    float a5a;
+    double len1;
+    double len2;
+    double keep1;
+    double give2;
+    double out1Z;
+    float nx;
+    float ny;
+    float nz;
+    float dot1;
+    float dot2;
+    float normal1X;
+    float normal1Y;
+    float normal1Z;
+    float normal2X;
+    float normal2Y;
+    float normal2Z;
+    float tangent1X;
+    float tangent1Y;
+    float tangent1Z;
+    float tangent2X;
+    float tangent2Y;
+    float tangent2Z;
+    float kept1X;
+    float kept1Y;
+    float kept1Z;
+    float given2X;
+    float given2Y;
+    float out1X;
+    float out1Y;
+    float out2X;
+    float out2Y;
+    float out2Z;
+    float kept2Z;
+    float given1Y;
+    float given1Z;
+    float give1;
+    float keep2;
 
-    v14 = -a5->x;
-    v17 = -a5->y;
-    v20 = -a5->z;
-    v7 = sqrt(a1->x * a1->x + a1->y * a1->y + a1->z * a1->z);
-    v8 = sqrt(a2->x * a2->x + a2->y * a2->y + a2->z * a2->z);
-    a2a = v14 * a1->x + v20 * a1->z + v17 * a1->y;
-    v13 = v14 * a2->x + v20 * a2->z + v17 * a2->y;
-    v29 = v14 * a2a;
-    v30 = v17 * a2a;
-    v31 = v20 * a2a;
-    v22 = v14 * v13;
-    v24 = v17 * v13;
-    v26 = v20 * v13;
-    v32 = a1->x - v29;
-    v33 = a1->y - v30;
-    v34 = a1->z - v31;
-    v35 = a2->x - v22;
-    v36 = a2->y - v24;
-    v37 = a2->z - v26;
-    if (v7 <= 5.0 * v8)
+    nx = -normal->x;
+    ny = -normal->y;
+    nz = -normal->z;
+    len1 = sqrt(speed1->x * speed1->x + speed1->y * speed1->y + speed1->z * speed1->z);
+    len2 = sqrt(speed2->x * speed2->x + speed2->y * speed2->y + speed2->z * speed2->z);
+    dot1 = nx * speed1->x + nz * speed1->z + ny * speed1->y;
+    dot2 = nx * speed2->x + nz * speed2->z + ny * speed2->y;
+    normal1X = nx * dot1;
+    normal1Y = ny * dot1;
+    normal1Z = nz * dot1;
+    normal2X = nx * dot2;
+    normal2Y = ny * dot2;
+    normal2Z = nz * dot2;
+    tangent1X = speed1->x - normal1X;
+    tangent1Y = speed1->y - normal1Y;
+    tangent1Z = speed1->z - normal1Z;
+    tangent2X = speed2->x - normal2X;
+    tangent2Y = speed2->y - normal2Y;
+    tangent2Z = speed2->z - normal2Z;
+    if (len1 <= 5.0 * len2)
     {
-        if (v8 <= v7 * 5.0)
+        if (len2 <= len1 * 5.0)
         {
-            v9 = 0.2f;
-            a5a = 0.2f;
-            v10 = 0.80000001f;
-            a1a = 0.80000001f;
+            keep1 = 0.2f;
+            keep2 = 0.2f;
+            give2 = 0.80000001f;
+            give1 = 0.80000001f;
         }
         else
         {
-            v9 = 0.1f;
-            a5a = 0.80000001f;
-            v10 = 1.5f;
-            a1a = 0.2f;
+            keep1 = 0.1f;
+            keep2 = 0.80000001f;
+            give2 = 1.5f;
+            give1 = 0.2f;
         }
     }
     else
     {
-        a5a = 0.1f;
-        a1a = 1.5;
-        v9 = 0.80000001f;
-        v10 = 0.2f;
+        keep2 = 0.1f;
+        give1 = 1.5;
+        keep1 = 0.80000001f;
+        give2 = 0.2f;
     }
-    v15 = (float)(v29 * v9);
-    v18 = (float)(v30 * v9);
-    v21 = (float)(v31 * v9);
-    v38 = (float)(v22 * v10);
-    v39 = (float)(v24 * v10);
-    v16 = v38 + v15;
-    v19 = v39 + v18;
-    v11 = v26 * v10 + v21;
-    v27 = v26 * a5a;
-    v40 = v30 * a1a;
-    v41 = v31 * a1a;
-    v23 = v29 * a1a + v22 * a5a;
-    v25 = v40 + v24 * a5a;
-    v28 = v41 + v27;
-    if (v13 * a2a <= 0.0)
+    kept1X = (float)(normal1X * keep1);
+    kept1Y = (float)(normal1Y * keep1);
+    kept1Z = (float)(normal1Z * keep1);
+    given2X = (float)(normal2X * give2);
+    given2Y = (float)(normal2Y * give2);
+    out1X = given2X + kept1X;
+    out1Y = given2Y + kept1Y;
+    out1Z = normal2Z * give2 + kept1Z;
+    kept2Z = normal2Z * keep2;
+    given1Y = normal1Y * give1;
+    given1Z = normal1Z * give1;
+    out2X = normal1X * give1 + normal2X * keep2;
+    out2Y = given1Y + normal2Y * keep2;
+    out2Z = given1Z + kept2Z;
+    if (dot2 * dot1 > 0.0 && dot1 <= (double)dot2)
     {
-        v12 = a3;
+        *out1 = *speed1;
+        *out2 = *speed2;
+        return;
     }
-    else
-    {
-        v12 = a3;
-        if (a2a <= (double)v13)
-        {
-            *a3 = *a1;
-            *a4 = *a2;
-            return;
-        }
-    }
-    v12->x = v16 + v32;
-    v12->y = v19 + v33;
-    v12->z = (float)(v11 + v34);
-    a4->x = v35 + v23;
-    a4->y = v25 + v36;
-    a4->z = v28 + v37;
+    out1->x = out1X + tangent1X;
+    out1->y = out1Y + tangent1Y;
+    out1->z = (float)(out1Z + tangent1Z);
+    out2->x = tangent2X + out2X;
+    out2->y = out2Y + tangent2Y;
+    out2->z = out2Z + tangent2Z;
 }
 
-void REC_ApplyDyn(tGameObjectMain* a1, tGameObjectMain* a2, Vec3* a5)
+void REC_ApplyDyn(tGameObjectMain* gao1, tGameObjectMain* gao2, Vec3* normal)
 {
-    tGameObjectBasic* v3;
-    tDyn* v4;
-    tGameObjectBasic* v5;
-    tDyn* v6;
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    Vec3 a2a;
-    Vec3 a1a;
-    Vec3 a3;
-    Vec3 a4;
+    tGameObjectBasic* basic1;
+    tDyn* dyn1;
+    tGameObjectBasic* basic2;
+    tDyn* dyn2;
+    double mass1;
+    double mass2;
+    double invMass1;
+    double invMass2;
+    Vec3 speed2;
+    Vec3 speed1;
+    Vec3 out1;
+    Vec3 out2;
 
-    v3 = a1->basic;
-    if (v3)
-        v4 = v3->dyn;
+    basic1 = gao1->basic;
+    if (basic1)
+        dyn1 = basic1->dyn;
     else
-        v4 = 0;
-    v5 = a2->basic;
-    if (v5)
-        v6 = v5->dyn;
+        dyn1 = 0;
+    basic2 = gao2->basic;
+    if (basic2)
+        dyn2 = basic2->dyn;
     else
-        v6 = 0;
-    v7 = v4->mass;
-    a1a.x = (float)(v7 * v4->forceVector.x);
-    a1a.y = (float)(v4->forceVector.y * v7);
-    a1a.z = (float)(v4->forceVector.z * v7);
-    v8 = v6->mass;
-    a2a.x = (float)(v8 * v6->forceVector.x);
-    a2a.y = (float)(v6->forceVector.y * v8);
-    a2a.z = (float)(v6->forceVector.z * v8);
-    REC_ApplyDynObj(&a1a, &a2a, &a3, &a4, a5);
-    v9 = 1.0 / v4->mass;
-    v4->forceVector.x = (float)(a3.x * v9);
-    v4->forceVector.y = (float)(a3.y * v9);
-    v4->forceVector.z = (float)(a3.z * v9);
-    DYN_ApplySpeedLimit(v4);
-    v10 = 1.0 / v6->mass;
-    v6->forceVector.x = (float)(a4.x * v10);
-    v6->forceVector.y = (float)(a4.y * v10);
-    v6->forceVector.z = (float)(a4.z * v10);
-    DYN_ApplySpeedLimit(v6);
+        dyn2 = 0;
+    mass1 = dyn1->mass;
+    speed1.x = (float)(mass1 * dyn1->forceVector.x);
+    speed1.y = (float)(dyn1->forceVector.y * mass1);
+    speed1.z = (float)(dyn1->forceVector.z * mass1);
+    mass2 = dyn2->mass;
+    speed2.x = (float)(mass2 * dyn2->forceVector.x);
+    speed2.y = (float)(dyn2->forceVector.y * mass2);
+    speed2.z = (float)(dyn2->forceVector.z * mass2);
+    REC_ApplyDynObj(&speed1, &speed2, &out1, &out2, normal);
+    invMass1 = 1.0 / dyn1->mass;
+    dyn1->forceVector.x = (float)(out1.x * invMass1);
+    dyn1->forceVector.y = (float)(out1.y * invMass1);
+    dyn1->forceVector.z = (float)(out1.z * invMass1);
+    DYN_ApplySpeedLimit(dyn1);
+    invMass2 = 1.0 / dyn2->mass;
+    dyn2->forceVector.x = (float)(out2.x * invMass2);
+    dyn2->forceVector.y = (float)(out2.y * invMass2);
+    dyn2->forceVector.z = (float)(out2.z * invMass2);
+    DYN_ApplySpeedLimit(dyn2);
 }
 
-void REC_CalcNormalForImpulse(tDyn* a1, Vec3* a2, Vec3* a3, Vec3* a4, int a5)
+void REC_CalcNormalForImpulse(tDyn* dyn, Vec3* outNormal, Vec3* upVec, Vec3* hitNormal, int useRebound)
 {
-    tDynCol* v6;
-    double v7;
-    double v8;
-    float a4a;
-    float a2a;
+    tDynCol* col;
+    double cosLimit;
+    double halfLimit;
+    float blend;
+    float cosAngle;
 
-    v6 = a1->collision;
-    a2a = -(a3->x * a4->x + a3->y * a4->y + a3->z * a4->z);
-    if (a5)
+    col = dyn->collision;
+    cosAngle = -(upVec->x * hitNormal->x + upVec->y * hitNormal->y + upVec->z * hitNormal->z);
+    if (!col)
+        cosLimit = 0.0;
+    else if (useRebound)
+        cosLimit = col->reboundHorizCosAngle;
+    else
+        cosLimit = col->slideHorizCosAngle;
+    outNormal->x = -hitNormal->x;
+    outNormal->y = -hitNormal->y;
+    outNormal->z = -hitNormal->z;
+    if (cosAngle < cosLimit)
     {
-        if (v6)
+        halfLimit = (3.0 * cosLimit - 1.0) * 0.5;
+        if (cosAngle >= halfLimit)
         {
-            v7 = v6->reboundHorizCosAngle;
-            goto LABEL_7;
-        }
-    }
-    else if (v6)
-    {
-        v7 = v6->slideHorizCosAngle;
-        goto LABEL_7;
-    }
-    v7 = 0.0;
-LABEL_7:
-    a2->x = -a4->x;
-    a2->y = -a4->y;
-    a2->z = -a4->z;
-    if (a2a < v7)
-    {
-        v8 = (3.0 * v7 - 1.0) * 0.5;
-        if (a2a >= v8)
-        {
-            a4a = (float)((a2a - v8) / (v7 - v8));
-            MATH_BlendVector(a2, a3, a2, a4a);
+            blend = (float)((cosAngle - halfLimit) / (cosLimit - halfLimit));
+            MATH_BlendVector(outNormal, upVec, outNormal, blend);
         }
         else
         {
-            *a2 = *a3;
+            *outNormal = *upVec;
         }
     }
 }
 
-void REC_CalcImpulse(tGameObjectMain* a1, tDyn* a2, Vec3* a3, Vec3* a4, Vec3* a5, char a6, tGameObjectMain* a7, int a8)
+void REC_CalcImpulse(tGameObjectMain* gao, tDyn* dyn, Vec3* outSpeed, Vec3* hitNormal, Vec3* unused, char mode, tGameObjectMain* otherGao, int forceRebound)
 {
-    double v9;
-    BOOL v10;
-    tDynForces* v11;
-    long double v12;
-    tDynCol* v13;
-    Vec3* v14;
-    Vec3* v15;
-    float v16;
-    float v17;
-    float v18;
-    Vec3 a4a; 
-    Vec3 v20; 
-    Vec3 v21; 
-    Vec3 a2a; 
-    Vec3 v23; 
-    float a1a;
+    double mass;
+    tDynForces* forces;
+    long double gravityLen;
+    tDynCol* col;
+    Vec3* slideNormal;
+    Vec3* reboundNormal;
+    Vec3 upVec;
+    Vec3 speedVec;
+    Vec3 slideVec;
+    Vec3 slideBase;
+    Vec3 reboundBase;
+    float slide;
+    float rebound;
 
-    v9 = a2->mass;
-    v10 = (a2->flags & 0x20000) == 0;
-    v20.x = (float)(v9 * a2->forceVector.x);
-    v20.y = (float)(a2->forceVector.y * v9);
-    v20.z = (float)(a2->forceVector.z * v9);
-    if (v10)
+    mass = dyn->mass;
+    speedVec.x = (float)(mass * dyn->forceVector.x);
+    speedVec.y = (float)(dyn->forceVector.y * mass);
+    speedVec.z = (float)(dyn->forceVector.z * mass);
+    if ((dyn->flags & 0x20000) == 0)
     {
-        v14 = a4;
-        v15 = a4;
-        a1a = 1.0;
-    LABEL_13:
-        v18 = 0.0;
-        goto LABEL_14;
-    }
-    v11 = a2->forces;
-    if (fabs(v11->gravityVector.x) != 0
-        || fabs(v11->gravityVector.y) != 0
-        || fabs(v11->gravityVector.z) != 0)
-    {
-        v12 = sqrt(
-            v11->gravityVector.z * v11->gravityVector.z
-            + v11->gravityVector.y * v11->gravityVector.y
-            + v11->gravityVector.x * v11->gravityVector.x);
-        a4a.x = (float)(1.0 / v12 * v11->gravityVector.x);
-        a4a.y = (float)(1.0 / v12 * v11->gravityVector.y);
-        a4a.z = (float)(1.0 / v12 * v11->gravityVector.z);
+        slideNormal = hitNormal;
+        reboundNormal = hitNormal;
+        slide = 1.0;
+        rebound = 0.0;
     }
     else
     {
-        a4a.x = 0.0;
-        a4a.y = 0.0;
-        a4a.z = -1.0;
-    }
-    REC_CalcNormalForImpulse(a2, &a2a, a4, &a4a, 1);
-    REC_CalcNormalForImpulse(a2, &v23, a4, &a4a, 1);
-    v13 = a2->collision;
-    v14 = &a2a;
-    v15 = &v23;
-    if (v13)
-        a1a = v13->slide;
-    else
-        a1a = 1.0;
-    if (!v13)
-        goto LABEL_13;
-    v18 = v13->rebound;
-LABEL_14:
-    if (fabs(v20.x) <= 0.0000001//  MATH_b_NulVectorWithEpsilon
-        && fabs(v20.y) <= 0.0000001
-        && fabs(v20.z) <= 0.0000001)
-    {
-        a3->x = 0.0;
-        a3->y = 0.0;
-        a3->z = 0.0;
-    }
-    else if (a6 == 2)
-    {
-        DYN_CalcSlideVector(&v21, v14, &v20, a1a);
-        if (a8 || a2->flags >= 0)
+        forces = dyn->forces;
+        if (!MATH_b_NulVector(&forces->gravityVector))
         {
-            DYN_CalcReboundVector(&a4a, v15, &v20, v18);
+            gravityLen = sqrt(
+                forces->gravityVector.z * forces->gravityVector.z
+                + forces->gravityVector.y * forces->gravityVector.y
+                + forces->gravityVector.x * forces->gravityVector.x);
+            upVec.x = (float)(1.0 / gravityLen * forces->gravityVector.x);
+            upVec.y = (float)(1.0 / gravityLen * forces->gravityVector.y);
+            upVec.z = (float)(1.0 / gravityLen * forces->gravityVector.z);
         }
         else
         {
-            a4a.x = 0.0;
-            a4a.y = 0.0;
-            a4a.z = 0.0;
+            upVec.x = 0.0;
+            upVec.y = 0.0;
+            upVec.z = -1.0;
         }
-        if (sqrt(a4a.z * a4a.z + a4a.y * a4a.y + a4a.x * a4a.x) <= 0.0099999998)
+        // preserved: both calls ask for the rebound angle, so the slide normal is computed with it too
+        REC_CalcNormalForImpulse(dyn, &slideBase, hitNormal, &upVec, 1);
+        REC_CalcNormalForImpulse(dyn, &reboundBase, hitNormal, &upVec, 1);
+        col = dyn->collision;
+        slideNormal = &slideBase;
+        reboundNormal = &reboundBase;
+        if (col)
+            slide = col->slide;
+        else
+            slide = 1.0;
+        if (col)
+            rebound = col->rebound;
+        else
+            rebound = 0.0;
+    }
+    if (fabs(speedVec.x) <= 0.0000001//  MATH_b_NulVectorWithEpsilon
+        && fabs(speedVec.y) <= 0.0000001
+        && fabs(speedVec.z) <= 0.0000001)
+    {
+        outSpeed->x = 0.0;
+        outSpeed->y = 0.0;
+        outSpeed->z = 0.0;
+    }
+    else if (mode == 2)
+    {
+        DYN_CalcSlideVector(&slideVec, slideNormal, &speedVec, slide);
+        if (forceRebound || dyn->flags >= 0)
         {
-            v16 = v21.y;
-            a3->x = v21.x;
-            v17 = v21.z;
-            a3->y = v16;
-            a3->z = v17;
+            DYN_CalcReboundVector(&upVec, reboundNormal, &speedVec, rebound);
         }
         else
         {
-            a3->x = v21.x + a4a.x;
-            a3->y = v21.y + a4a.y;
-            a3->z = v21.z + a4a.z;
+            upVec.x = 0.0;
+            upVec.y = 0.0;
+            upVec.z = 0.0;
+        }
+        if (sqrt(upVec.z * upVec.z + upVec.y * upVec.y + upVec.x * upVec.x) <= 0.0099999998)
+        {
+            outSpeed->x = slideVec.x;
+            outSpeed->y = slideVec.y;
+            outSpeed->z = slideVec.z;
+        }
+        else
+        {
+            outSpeed->x = slideVec.x + upVec.x;
+            outSpeed->y = slideVec.y + upVec.y;
+            outSpeed->z = slideVec.z + upVec.z;
         }
     }
     else
     {
-        a3->z = 0.0;
+        outSpeed->z = 0.0;
     }
 }
 
-void REC_Apply(tGameObjectMain* a1, tGameObjectMain* a2, Vec3* a3, int a4)
+void REC_Apply(tGameObjectMain* gao, tGameObjectMain* otherGao, Vec3* hitNormal, int forceRebound)
 {
-    tGameObjectBasic* v4;
-    tDyn* v5;
-    float v6;
-    long double v7;
-    double v8;
-    Vec3 a4a;
-    Vec3 a3a;
+    tGameObjectBasic* basic;
+    tDyn* dyn;
+    long double invLen;
+    double invMass;
+    Vec3 normal;
+    Vec3 newSpeed;
 
-    v4 = a1->basic;
-    if (v4)
+    basic = gao->basic;
+    if (!basic)
+        return;
+    dyn = basic->dyn;
+    if (!dyn)
+        return;
+    normal.x = hitNormal->x;
+    normal.y = hitNormal->y;
+    normal.z = hitNormal->z;
+    if (forceRebound)
     {
-        v5 = v4->dyn;
-        if (v5)
-        {
-            a4a.x = a3->x;
-            v6 = a3->y;
-            a4a.z = a3->z;
-            a4a.y = v6;
-            if (a4)
-            {
-                v7 = 1.0 / sqrt(a4a.y * a4a.y + a4a.x * a4a.x);// MATH_NormalizeEqualVector
-                a4a.x = (float)(a4a.x * v7);
-                a4a.y = (float)(a4a.y * v7);
-                a4a.z = (float)(v7 * 0.0);
-            }
-            REC_CalcImpulse(a1, v5, &a3a, &a4a, &a3a, 2, a2, a4);
-            v8 = 1.0 / v5->mass;
-            v5->forceVector.x = (float)(a3a.x * v8);
-            v5->forceVector.y = (float)(a3a.y * v8);
-            v5->forceVector.z = (float)(a3a.z * v8);
-            DYN_ApplySpeedLimit(v5);
-        }
+        invLen = 1.0 / sqrt(normal.y * normal.y + normal.x * normal.x);// MATH_NormalizeEqualVector
+        normal.x = (float)(normal.x * invLen);
+        normal.y = (float)(normal.y * invLen);
+        normal.z = (float)(invLen * 0.0);
     }
+    REC_CalcImpulse(gao, dyn, &newSpeed, &normal, &newSpeed, 2, otherGao, forceRebound);
+    invMass = 1.0 / dyn->mass;
+    dyn->forceVector.x = (float)(newSpeed.x * invMass);
+    dyn->forceVector.y = (float)(newSpeed.y * invMass);
+    dyn->forceVector.z = (float)(newSpeed.z * invMass);
+    DYN_ApplySpeedLimit(dyn);
 }
-
 void REC_MainCall(struct sWorld* a1, int a2)
 {
     tRecordElem* v2;
