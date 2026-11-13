@@ -13,3533 +13,3788 @@
 #include "../photo.h"
 #include "../modifiers/photomodifier.h"
 
-// A game object's visual, which it only has while it carries the
-// visual flag.
-static tGameObjectVisualObject* AI_l_Visual(struct sGameObjectMain* gao)
-{
-    if (!gao->basic || !gao->basic->actorObjectOrVisualObject || (gao->flags & 0x4000) == 0)
-        return NULL;
-    return (tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject);
-}
-
-// The actor behind a game object.
-static tGameObjectActorObject* AI_l_Actor(struct sGameObjectMain* gao)
-{
-    return (tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject);
-}
-
-// The matrix an animation flash keeps beside the object's own: the
-// third where the object also has an init matrix, the second
-// otherwise. Only called where the object is known to be flashing.
-static Mtx4x4* AI_l_FlashMatrix(struct sGameObjectMain* gao)
-{
-    if ((gao->flags & 0x10000) != 0)
-        return gao->matrices + 2;
-    return gao->matrices + 1;
-}
-
-// While an event is driving the behaviour, a per-call delta is scaled
-// by the frame time over the event's own duration in seconds.
-static float AI_l_EventScale(void)
-{
-    float duration;
-
-    duration = (float)EVE_gpst_CurrentEvent->duration;
-    return (float)(EVE_gf_DT / (duration * 1.0 / 60.0));
-}
-
-/* flags2 holds two things: the upper sixteen bits are the control
-   flags a script sets and the lower sixteen the status bits the engine
-   keeps. Every write to the upper half came out as three statements --
-   build the new half, truncate the word, OR the half back -- which
-   comes to a plain set or clear of those bits, and is written that way
-   throughout. */
-
-int AI_EvalFunc_OBJ_HasBeenKilled_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJ_HasBeenKilled_C(struct sGameObjectMain* a1)
 {
     int i;
 
     for (i = 0; i < WOR_gi_NumKilledGO; ++i)
     {
-        if (WOR_AllKilledGO[i] == gao)
+        if (WOR_AllKilledGO[i] == a1)
             return 1;
     }
     return 0;
 }
 
-tAINode* AI_EvalFunc_OBJ_HasBeenKilled(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_HasBeenKilled(tAINode* a1)
 {
-    tGameObjectMain* gao;
+    int v1;
 
-    gao = (tGameObjectMain*)AI_GetObjectFromStack();
-    AI_PutIntToStack(AI_EvalFunc_OBJ_HasBeenKilled_C(gao));
-    return node + 1;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    v1 = AI_EvalFunc_OBJ_HasBeenKilled_C(*(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-// Writes the progress array out beside the executable, behind its own
-// four-character magic.
-void AI_EvalFunc_OutputProgress_C(int num, void* values)
+void AI_EvalFunc_OutputProgress_C(int a1, void* a2)
 {
-    FILE* stream;
-    int magic;
+    FILE* Stream;
+    int Buffer;
 
-    stream = fopen("SFTime.sav", "wb");
-    if (stream)
+    Stream = fopen("SFTime.sav", "wb");
+    if (Stream)
     {
-        magic = '.TFS';
-        fwrite(&magic, 4u, 1u, stream);
-        fwrite(&num, 4u, 1u, stream);
-        fwrite(values, 4 * num, 1u, stream);
-        fclose(stream);
+        Buffer = '.TFS';
+        fwrite(&Buffer, 4u, 1u, Stream);
+        fwrite(&a1, 4u, 1u, Stream);
+        fwrite(a2, 4 * a1, 1u, Stream);
+        fclose(Stream);
     }
 }
 
-tAINode* AI_EvalFunc_OutputProgress(tAINode* node)
+tAINode* AI_EvalFunc_OutputProgress(tAINode* a1)
 {
-    char converted[52];
-    tVarStackElem var;
-    int num;
+    tVarStackElem a2;
+    char dest[52];
+    int a1a;
 
-    AI_GetVarFromStack(converted, &var);
-    num = AI_GetIntFromStack();
-    AI_EvalFunc_OutputProgress_C(num, var.ptr);
-    return node + 1;
+    AI_GetVarFromStack(dest, &a2);
+    a1a = AI_GetIntFromStack();
+    AI_EvalFunc_OutputProgress_C(a1a, a2.ptr);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJDrawMaskSet_C(struct sGameObjectMain* gao, int toSet, int toClear)
+void AI_EvalFunc_OBJDrawMaskSet_C(struct sGameObjectMain* a1, int a2, int a3)
 {
-    tGameObjectVisualObject* visual;
-
-    visual = AI_l_Visual(gao);
-    if (visual)
+    if (a1->basic && a1->basic->actorObjectOrVisualObject && (a1->flags & 0x4000) != 0)
     {
-        visual->objDrawMask |= toSet;
-        visual->objDrawMask &= ~toClear;
+        ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->objDrawMask |= a2;
+        ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->objDrawMask &= ~a3;
     }
 }
 
-tAINode* AI_EvalFunc_OBJDrawMaskSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJDrawMaskSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int toSet;
-    int toClear;
+    tGameObjectMain* v2;
+    int a2;
+    int a3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    toClear = AI_GetIntFromStack();
-    toSet = AI_GetIntFromStack();
-    AI_EvalFunc_OBJDrawMaskSet_C(gaoUltra, toSet, toClear);
-    return node + 1;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJDrawMaskSet_C(v2, a2, a3);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJDrawMaskGet_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJDrawMaskGet_C(struct sGameObjectMain* a1)
 {
-    tGameObjectVisualObject* visual;
-
-    visual = AI_l_Visual(gao);
-    if (!visual)
+    if (!a1->basic)
         return 0;
-    return visual->objDrawMask;
+    if (!a1->basic->actorObjectOrVisualObject)
+        return 0;
+    if ((a1->flags & 0x4000) != 0)
+        return ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->objDrawMask;
+    return 0;
 }
 
-tAINode* AI_EvalFunc_OBJDrawMaskGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJDrawMaskGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJDrawMaskGet_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJDrawMaskGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-tAINode* AI_EvalFunc_OBJMe(tAINode* node)
+tAINode* AI_EvalFunc_OBJMe(tAINode* a1)
 {
-    tGameObjectMain* me;
+    int v2[3];
 
-    me = AI_gpst_CurrentGameObject;
-    AI_PutObjectToStack(&me, AI_gaw_EnumLink[40]);
-    return node + 1;
+    v2[0] = (int)AI_gpst_CurrentGameObject;
+    AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
+    return a1 + 1;
 }
 
 struct sGameObjectMain* AI_EvalFunc_OBJDuplicate_C(struct sGameObjectMain* srcGao, Vec3* pos)
 {
-    tGameObjectMain* copy;
+    tGameObjectMain* a1a;
 
     OBJ_gb_DuplicateAI = 1;
-    copy = OBJ_GameObject_Duplicate(WOR_gpst_CurrentWorld, srcGao, 1, 0, pos);
-    OBJ_SetInitialAbsolutePosition(copy, pos);
-    OBJ_RestoreInitialPos(copy);
-    ENG_ReinitOneObject(copy, 13);
-    INT_SnP_AttachObject(copy, WOR_gpst_CurrentWorld);
+    a1a = OBJ_GameObject_Duplicate(WOR_gpst_CurrentWorld, srcGao, 1, 0, pos);
+    OBJ_SetInitialAbsolutePosition(a1a, pos);
+    OBJ_RestoreInitialPos(a1a);
+    ENG_ReinitOneObject(a1a, 13);
+    INT_SnP_AttachObject(a1a, WOR_gpst_CurrentWorld);
     OBJ_gb_DuplicateAI = 0;
-    return copy;
+    return a1a;
 }
 
-tAINode* AI_EvalFunc_OBJDuplicate(tAINode* node)
+tAINode* AI_EvalFunc_OBJDuplicate(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* copy;
+    int a1a[3];
+    tGameObjectMain* v3;
+    tGameObjectMain* srcGao;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-
-    // the position is read where the stack holds it rather than copied out
-    copy = AI_EvalFunc_OBJDuplicate_C(gaoUltra, (Vec3*)AI_PopStackSlot());
-    AI_PutObjectToStack(&copy, AI_gaw_EnumLink[40]);
-    return node + 1;
+    srcGao = v3;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    a1a[0] = (int)AI_EvalFunc_OBJDuplicate_C(v3, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    AI_PutObjectToStack(a1a, AI_gaw_EnumLink[40]);
+    return a1 + 1;
 }
 
-// Removes a duplicate outright, and otherwise marks the object
-// invisible and inactive and leaves the engine to tidy up. Returns an
-// interpreter control code when the object destroying itself is the
-// one running the behaviour: 6 for a removal, 1 for a deactivation.
-int AI_EvalFunc_OBJDestroy_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJDestroy_C(struct sGameObjectMain* a1)
 {
-    tWorld* world;
+    int result;
+    unsigned int v2;
+    unsigned int v3;
+    tWorld* a2;
+    tWorld* a2a;
 
     if (WOR_gi_NumKilledGO < 200)
-        WOR_AllKilledGO[WOR_gi_NumKilledGO++] = gao;
-
-    if ((gao->flags & 0x20000) != 0)
+        WOR_AllKilledGO[WOR_gi_NumKilledGO++] = a1;
+    if ((a1->flags & 0x20000) != 0)
     {
-        world = WOR_gpst_CurrentWorld;
-        if (world)
+        a2a = WOR_gpst_CurrentWorld;
+        if (WOR_gpst_CurrentWorld)
         {
-            WOR_DelObj(world, gao);
-            WOR_World_DetachObject(world, gao);
-            INT_SnP_DetachObject(gao, world);
-            SND_DetachObject(gao);
+            WOR_DelObj(WOR_gpst_CurrentWorld, a1);
+            WOR_World_DetachObject(a2a, a1);
+            INT_SnP_DetachObject(a1, a2a);
+            SND_DetachObject(a1);
         }
-        OBJ_GameObject_Remove(gao, 1);
-        if (gao == AI_gpst_CurrentGameObject)
+        OBJ_GameObject_Remove(a1, 1);
+        if (a1 == AI_gpst_CurrentGameObject)
             return 6;
     }
     else
     {
-        gao->flags2 |= 0x200000;
-        gao->flags2 |= 0x400000;
-
-        world = WOR_gpst_CurrentWorld;
-        if (world)
+        v3 = a1->flags2 & 0xFFFF0000 | 0x200000;
+        a1->flags2 = (uint16_t)a1->flags2;
+        a1->flags2 |= v3 & 0xFFFF0000;
+        v2 = a1->flags2 & 0xFFFF0000 | 0x400000;
+        a1->flags2 = (uint16_t)a1->flags2;
+        a1->flags2 |= v2 & 0xFFFF0000;
+        a2 = WOR_gpst_CurrentWorld;
+        if (WOR_gpst_CurrentWorld)
         {
-            world->tablesManagerAndEOTNeeded = 1;
-            world->visibilityCallNeeded = 1;
+            WOR_gpst_CurrentWorld->tablesManagerAndEOTNeeded = 1;
+            a2->visibilityCallNeeded = 1;
         }
-
         QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_DestroyInstanceOfGao(gao);
+        SND_DestroyInstanceOfGao(a1);
         PRO_QPC_RecordTimeDecRef(39);
-
-        // a hierarchy root with nothing above it loses its local matrix
-        if ((gao->flags & 0x400000) != 0 && gao->basic && gao->basic->mtx && !gao->basic->mtx->refGao)
+        if ((a1->flags & 0x400000) != 0 && a1->basic && a1->basic->mtx && !a1->basic->mtx->refGao)
         {
-            OBJ_ComputeGlobalWhenHie(gao);
-            if ((gao->flags & 0x4000000) != 0)
-                ANI_RemoveHierarchyOnFlash(gao);
-            gao->flags &= ~0x400000u;
-            MEM_Free(gao->basic->mtx);
-            gao->basic->mtx = 0;
+            OBJ_ComputeGlobalWhenHie(a1);
+            if ((a1->flags & 0x4000000) != 0)
+                ANI_RemoveHierarchyOnFlash(a1);
+            a1->flags &= ~0x400000u;
+            MEM_Free(a1->basic->mtx);
+            a1->basic->mtx = 0;
         }
     }
-
-    if (gao == AI_gpst_CurrentGameObject)
-        return 1;
-    return 1000;
+    if (a1 == AI_gpst_CurrentGameObject)
+        result = 1;
+    else
+        result = 1000;
+    return result;
 }
 
-tAINode* AI_EvalFunc_OBJDestroy(tAINode* node)
+tAINode* AI_EvalFunc_OBJDestroy(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int code;
+    tGameObjectMain* v2;
+    int v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    code = AI_EvalFunc_OBJDestroy_C(gaoUltra);
-    if (code == 1)
+    v3 = AI_EvalFunc_OBJDestroy_C(v2);
+    if (v3 == 1)
         return (tAINode*)1;
-    if (code == 6)
+    if (v3 == 6)
         return (tAINode*)6;
-    return node + 1;
+    return a1 + 1;
 }
 
-// Note that the scaling is applied to the caller's vector in place, so
-// a script variable passed here is changed while an event runs.
-void AI_EvalFunc_OBJMove_C(struct sGameObjectMain* gao, Vec3* move)
+void AI_EvalFunc_OBJMove_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    float scale;
+    float v2;
+    Vec3* v3;
+    float v4;
 
     if (ENG_gb_EVERunning)
     {
-        scale = AI_l_EventScale();
-        move->x = scale * move->x;
-        move->y = move->y * scale;
-        move->z = move->z * scale;
+        v2 = (float)EVE_gpst_CurrentEvent->duration;
+        v4 = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0));
+        a2->x = v4 * a2->x;
+        a2->y = a2->y * v4;
+        a2->z = a2->z * v4;
     }
-
-    MATH_VecAddVecWithoutBuffer(&gao->matrices->Pos, move);
-
-    if ((gao->flags & 4) != 0)
-        gao->basic->dyn->flags |= 0x800000u;
+    v3 = &a1->matrices->Pos;
+    v3->x = v3->x + a2->x;
+    v3->y = v3->y + a2->y;
+    v3->z = v3->z + a2->z;
+    if ((a1->flags & 4) != 0)
+        a1->basic->dyn->flags |= 0x800000u;
 }
 
-tAINode* AI_EvalFunc_OBJMove(tAINode* node)
+tAINode* AI_EvalFunc_OBJMove(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJMove_C(gaoUltra, (Vec3*)AI_PopStackSlot());
-    return node + 1;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJMove_C(v2, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJRotateAround_C(struct sGameObjectMain* gao, Vec3* axis, float angle)
+void AI_EvalFunc_OBJRotateAround_C(struct sGameObjectMain* a2, Vec3* a3, float a4)
 {
-    Mtx4x4 rotation;
-    Mtx4x4 before;
-    Mtx4x4* flash;
-    int hierarchical;
-    int flashing;
+    Mtx4x4* v4;
+    Mtx4x4 v5;
+    Mtx4x4* v6;
+    Mtx4x4* v7;
+    Mtx4x4 v8;
+    int v9;
+    int v10;
 
-    hierarchical = gao->flags & 0x400000;
-    flashing = gao->flags & 0x4000000;
-    if (hierarchical)
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-
-    MATH_MakeRotationMatrix_AxisAngle(&rotation, axis, angle, 0, 1);
-    before = *gao->matrices;
-    MATH_MulMatrixMatrix(gao->matrices, &rotation, &before);
-
-    if (flashing)
+    v10 = a2->flags & 0x400000;
+    v9 = a2->flags & 0x4000000;
+    if (v10)
+        OBJ_ComputeGlobalWithLocal(a2, a2->matrices, 1);
+    MATH_MakeRotationMatrix_AxisAngle(&v8, a3, a4, 0, 1);
+    v7 = a2->matrices;
+    v6 = v7;
+    if (&v5 != v7)
+        memcpy(&v5, v7, sizeof(v5));
+    MATH_MulMatrixMatrix(a2->matrices, &v8, &v5);
+    if (v9)
     {
-        flash = AI_l_FlashMatrix(gao);
-        before = *flash;
-        MATH_MulMatrixMatrix(flash, &rotation, &before);
-    }
-
-    if (hierarchical)
-        OBJ_ComputeLocalWhenHie(gao);
-}
-
-tAINode* AI_EvalFunc_OBJRotateAround(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    Vec3 axis;
-    float angle;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    angle = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&axis);
-    AI_EvalFunc_OBJRotateAround_C(gaoUltra, &axis, angle);
-    return node + 1;
-}
-// A hierarchical object is lifted into world space, rotated, and put
-// back with the position its local matrix held. The flash matrix, when
-// there is one, is turned by the same angle.
-void AI_EvalFunc_OBJRotateLocal_C(struct sGameObjectMain* gao, Vec3* angles)
-{
-    float scale;
-    int hierarchical;
-    int flashing;
-    Vec3 localPos;
-
-    if (ENG_gb_EVERunning)
-    {
-        scale = AI_l_EventScale();
-        angles->x = scale * angles->x;
-        angles->y = scale * angles->y;
-        angles->z = scale * angles->z;
-    }
-
-    hierarchical = gao->flags & 0x400000;
-    flashing = gao->flags & 0x4000000;
-    if (hierarchical)
-    {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    }
-
-    if (angles->x != 0.0)
-    {
-        MATH_RotateMatrix_AroundLocalXAxis(gao->matrices, angles->x);
-        if (flashing)
-            MATH_RotateMatrix_AroundLocalXAxis(AI_l_FlashMatrix(gao), angles->x);
-    }
-    if (angles->y != 0.0)
-    {
-        MATH_RotateMatrix_AroundLocalYAxis(gao->matrices, angles->y);
-        if (flashing)
-            MATH_RotateMatrix_AroundLocalYAxis(AI_l_FlashMatrix(gao), angles->y);
-    }
-    if (angles->z != 0.0)
-    {
-        MATH_RotateMatrix_AroundLocalZAxis(gao->matrices, angles->z);
-        if (flashing)
-            MATH_RotateMatrix_AroundLocalZAxis(AI_l_FlashMatrix(gao), angles->z);
-    }
-
-    if (hierarchical)
-    {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
-    }
-}
-
-tAINode* AI_EvalFunc_OBJRotateLocal(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    Vec3 angles;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&angles);
-    AI_EvalFunc_OBJRotateLocal_C(gaoUltra, &angles);
-    return node + 1;
-}
-
-// The single-axis forms also turn the blend matrix of an animation in
-// transition, which the three-axis form above leaves alone. The second
-// test of the angle is not redundant: the event scale can bring it to
-// zero.
-void AI_EvalFunc_OBJRotateLocalX_C(struct sGameObjectMain* gao, float angle)
-{
-    int hierarchical;
-    Vec3 localPos;
-
-    if (angle == 0.0)
-        return;
-
-    if (ENG_gb_EVERunning)
-        angle = (float)(AI_l_EventScale() * angle);
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-    {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    }
-
-    if (angle != 0.0)
-    {
-        MATH_RotateMatrix_AroundLocalXAxis(gao->matrices, angle);
-        if ((gao->flags & 0x4000000) != 0)
-            MATH_RotateMatrix_AroundLocalXAxis(AI_l_FlashMatrix(gao), angle);
-        if (ANI_GaoAnimationIsTransitioning(gao))
-            MATH_RotateMatrix_AroundLocalXAxis(&AI_l_Actor(gao)->animPtr[1]->flashMtx, angle);
-    }
-
-    if (hierarchical)
-    {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
-    }
-}
-
-tAINode* AI_EvalFunc_OBJRotateLocalX(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    float angle;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    angle = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJRotateLocalX_C(gaoUltra, angle);
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJRotateLocalY_C(struct sGameObjectMain* gao, float angle)
-{
-    int hierarchical;
-    Vec3 localPos;
-
-    if (angle == 0.0)
-        return;
-
-    if (ENG_gb_EVERunning)
-        angle = (float)(AI_l_EventScale() * angle);
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-    {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    }
-
-    if (angle != 0.0)
-    {
-        MATH_RotateMatrix_AroundLocalYAxis(gao->matrices, angle);
-        if ((gao->flags & 0x4000000) != 0)
-            MATH_RotateMatrix_AroundLocalYAxis(AI_l_FlashMatrix(gao), angle);
-        if (ANI_GaoAnimationIsTransitioning(gao))
-            MATH_RotateMatrix_AroundLocalYAxis(&AI_l_Actor(gao)->animPtr[1]->flashMtx, angle);
-    }
-
-    if (hierarchical)
-    {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
-    }
-}
-
-tAINode* AI_EvalFunc_OBJRotateLocalY(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    float angle;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    angle = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJRotateLocalY_C(gaoUltra, angle);
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJRotateLocalZ_c(struct sGameObjectMain* gao, float angle)
-{
-    int hierarchical;
-    Vec3 localPos;
-
-    if (angle == 0.0)
-        return;
-
-    if (ENG_gb_EVERunning)
-        angle = (float)(AI_l_EventScale() * angle);
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-    {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    }
-
-    if (angle != 0.0)
-    {
-        MATH_RotateMatrix_AroundLocalZAxis(gao->matrices, angle);
-        if ((gao->flags & 0x4000000) != 0)
-            MATH_RotateMatrix_AroundLocalZAxis(AI_l_FlashMatrix(gao), angle);
-        if (ANI_GaoAnimationIsTransitioning(gao))
-            MATH_RotateMatrix_AroundLocalZAxis(&AI_l_Actor(gao)->animPtr[1]->flashMtx, angle);
-    }
-
-    if (hierarchical)
-    {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
-    }
-}
-
-tAINode* AI_EvalFunc_OBJRotateLocalZ(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    float angle;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    angle = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJRotateLocalZ_c(gaoUltra, angle);
-    return node + 1;
-}
-
-// The global-axis three-axis form does not restore the hierarchy
-// position afterwards, unlike its local counterpart.
-void AI_EvalFunc_OBJRotateGlobal_C(struct sGameObjectMain* gao, Vec3* angles)
-{
-    float scale;
-    int hierarchical;
-    int flashing;
-
-    if (ENG_gb_EVERunning)
-    {
-        scale = AI_l_EventScale();
-        angles->x = scale * angles->x;
-        angles->y = scale * angles->y;
-        angles->z = scale * angles->z;
-    }
-
-    hierarchical = gao->flags & 0x400000;
-    flashing = gao->flags & 0x4000000;
-    if (hierarchical)
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-
-    if (angles->x != 0.0)
-    {
-        MATH_RotateMatrix_AroundGlobalXAxis(gao->matrices, angles->x);
-        if (flashing)
-            MATH_RotateMatrix_AroundGlobalXAxis(AI_l_FlashMatrix(gao), angles->x);
-    }
-    if (angles->y != 0.0)
-    {
-        MATH_RotateMatrix_AroundGlobalYAxis(gao->matrices, angles->y);
-        if (flashing)
-            MATH_RotateMatrix_AroundGlobalYAxis(AI_l_FlashMatrix(gao), angles->y);
-    }
-    if (angles->z != 0.0)
-    {
-        MATH_RotateMatrix_AroundGlobalZAxis(gao->matrices, angles->z);
-        if (flashing)
-            MATH_RotateMatrix_AroundGlobalZAxis(AI_l_FlashMatrix(gao), angles->z);
-    }
-
-    if (hierarchical)
-        OBJ_ComputeLocalWhenHie(gao);
-}
-
-tAINode* AI_EvalFunc_OBJRotateGlobal(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    Vec3 angles;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&angles);
-    AI_EvalFunc_OBJRotateGlobal_C(gaoUltra, &angles);
-    return node + 1;
-}
-
-// The single-axis global forms do restore it, and unlike the local ones
-// they leave a transitioning animation alone.
-void AI_EvalFunc_OBJRotateGlobalX_C(struct sGameObjectMain* gao, float angle)
-{
-    int hierarchical;
-    Vec3 localPos;
-
-    if (angle == 0.0)
-        return;
-
-    if (ENG_gb_EVERunning)
-        angle = (float)(AI_l_EventScale() * angle);
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-    {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    }
-
-    if (angle != 0.0)
-    {
-        MATH_RotateMatrix_AroundGlobalXAxis(gao->matrices, angle);
-        if ((gao->flags & 0x4000000) != 0)
-            MATH_RotateMatrix_AroundGlobalXAxis(AI_l_FlashMatrix(gao), angle);
-    }
-
-    if (hierarchical)
-    {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
-    }
-}
-
-tAINode* AI_EvalFunc_OBJRotateGlobalX(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    float angle;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    angle = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJRotateGlobalX_C(gaoUltra, angle);
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJRotateGlobalY_C(struct sGameObjectMain* gao, float angle)
-{
-    int hierarchical;
-    Vec3 localPos;
-
-    if (angle == 0.0)
-        return;
-
-    if (ENG_gb_EVERunning)
-        angle = (float)(AI_l_EventScale() * angle);
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-    {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    }
-
-    if (angle != 0.0)
-    {
-        MATH_RotateMatrix_AroundGlobalYAxis(gao->matrices, angle);
-        if ((gao->flags & 0x4000000) != 0)
-            MATH_RotateMatrix_AroundGlobalYAxis(AI_l_FlashMatrix(gao), angle);
-    }
-
-    if (hierarchical)
-    {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
-    }
-}
-
-tAINode* AI_EvalFunc_OBJRotateGlobalY(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    float angle;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    angle = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJRotateGlobalY_C(gaoUltra, angle);
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJRotateGlobalZ_C(struct sGameObjectMain* gao, float angle)
-{
-    int hierarchical;
-    Vec3 localPos;
-
-    if (angle == 0.0)
-        return;
-
-    if (ENG_gb_EVERunning)
-        angle = (float)(AI_l_EventScale() * angle);
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-    {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    }
-
-    if (angle != 0.0)
-    {
-        MATH_RotateMatrix_AroundGlobalZAxis(gao->matrices, angle);
-        if ((gao->flags & 0x4000000) != 0)
-            MATH_RotateMatrix_AroundGlobalZAxis(AI_l_FlashMatrix(gao), angle);
-    }
-
-    if (hierarchical)
-    {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
-    }
-}
-
-tAINode* AI_EvalFunc_OBJRotateGlobalZ(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    float angle;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    angle = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJRotateGlobalZ_C(gaoUltra, angle);
-    return node + 1;
-}
-
-// A bone's position is the product of its own local matrix with every
-// local matrix up the chain to its animation reference, and then the
-// reference's own matrix. Anything else just reads its position.
-void AI_EvalFunc_OBJGetPos_C(struct sGameObjectMain* gao, Vec3* pos)
-{
-    tGameObjectMain* reference;
-    tGameObjectMain* walk;
-    tGaoMatrix* local;
-    Mtx4x4 chain;
-    Mtx4x4 product;
-
-    if ((gao->flags & 1) == 0)
-    {
-        *pos = gao->matrices->Pos;
-        return;
-    }
-
-    reference = ANI_pst_GetReference(gao);
-    MATH_SetIdentityMatrix(&chain);
-    walk = gao;
-    while (walk != reference)
-    {
-        local = OBJ_pst_GetLocalMatrix(walk);
-        MATH_MulMatrixMatrix(&product, &chain, &local->mtx);
-        chain = product;
-        if (walk && walk->basic && walk->basic->mtx)
-            walk = walk->basic->mtx->refGao2;
+        if ((a2->flags & 0x4000000) != 0)
+        {
+            if ((a2->flags & 0x10000) != 0)
+                v4 = a2->matrices + 2;
+            else
+                v4 = a2->matrices + 1;
+        }
         else
-            walk = 0;
+        {
+            v4 = 0;
+        }
+        if (&v5 != v4)
+            memcpy(&v5, v4, sizeof(v5));
+        if ((a2->flags & 0x4000000) != 0)
+        {
+            if ((a2->flags & 0x10000) != 0)
+                MATH_MulMatrixMatrix(a2->matrices + 2, &v8, &v5);
+            else
+                MATH_MulMatrixMatrix(a2->matrices + 1, &v8, &v5);
+        }
+        else
+        {
+            MATH_MulMatrixMatrix(0, &v8, &v5);
+        }
     }
-    MATH_MulMatrixMatrix(&product, &chain, reference->matrices);
-    *pos = product.Pos;
+    if (v10)
+        OBJ_ComputeLocalWhenHie(a2);
 }
 
-void AI_EvalFunc_OBJGetPos_C_CURRENT(Vec3* pos)
+tAINode* AI_EvalFunc_OBJRotateAround(tAINode* a1)
 {
-    AI_EvalFunc_OBJGetPos_C(AI_gpst_CurrentGameObject, pos);
-}
+    tGameObjectMain* v2;
+    float a4;
+    Vec3 a1a;
+    tGameObjectMain* a2;
 
-tAINode* AI_EvalFunc_OBJGetPos(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    Vec3 pos;
-
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJGetPos_C(gaoUltra, &pos);
-    AI_PutVecToStack(&pos);
-    return node + 1;
+    a2 = v2;
+    a4 = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&a1a);
+    AI_EvalFunc_OBJRotateAround_C(a2, &a1a, a4);
+    return a1 + 1;
 }
 
-tAINode* AI_EvalFunc_OBJRestoreInitMatrix(tAINode* node)
+void AI_EvalFunc_OBJRotateLocal_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    tGameObjectMain* gaoUltra;
+    float v2;
+    float v3;
+    int v4;
+    int v5;
+    Vec3 v6;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    if (ENG_gb_EVERunning)
+    {
+        v2 = (float)EVE_gpst_CurrentEvent->duration;
+        v3 = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0));
+        a2->x = v3 * a2->x;
+        a2->y = v3 * a2->y;
+        a2->z = v3 * a2->z;
+    }
+    v4 = a1->flags & 0x400000;
+    v5 = a1->flags & 0x4000000;
+    if (v4)
+    {
+        v6 = a1->basic->mtx->mtx.Pos;
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+    }
+    if (a2->x != 0.0)
+    {
+        MATH_RotateMatrix_AroundLocalXAxis(a1->matrices, a2->x);
+        if (v5)
+        {
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundLocalXAxis(a1->matrices + 2, a2->x);
+                else
+                    MATH_RotateMatrix_AroundLocalXAxis(a1->matrices + 1, a2->x);
+            }
+            else
+            {
+                MATH_RotateMatrix_AroundLocalXAxis(0, a2->x);
+            }
+        }
+    }
+    if (a2->y != 0.0)
+    {
+        MATH_RotateMatrix_AroundLocalYAxis(a1->matrices, a2->y);
+        if (v5)
+        {
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundLocalYAxis(a1->matrices + 2, a2->y);
+                else
+                    MATH_RotateMatrix_AroundLocalYAxis(a1->matrices + 1, a2->y);
+            }
+            else
+            {
+                MATH_RotateMatrix_AroundLocalYAxis(0, a2->y);
+            }
+        }
+    }
+    if (a2->z != 0.0)
+    {
+        MATH_RotateMatrix_AroundLocalZAxis(a1->matrices, a2->z);
+        if (v5)
+        {
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundLocalZAxis(a1->matrices + 2, a2->z);
+                else
+                    MATH_RotateMatrix_AroundLocalZAxis(a1->matrices + 1, a2->z);
+            }
+            else
+            {
+                MATH_RotateMatrix_AroundLocalZAxis(0, a2->z);
+            }
+        }
+    }
+    if (v4)
+    {
+        OBJ_ComputeLocalWhenHie(a1);
+        a1->basic->mtx->mtx.Pos = v6;
+    }
+}
+
+tAINode* AI_EvalFunc_OBJRotateLocal(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
+
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    OBJ_RestoreInitialPos(gaoUltra);
-    return node + 1;
+    v4 = v2;
+    AI_GetVecFromStack(&a1a);
+    AI_EvalFunc_OBJRotateLocal_C(v4, &a1a);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJGetPosInit_C(struct sGameObjectMain* gao, Vec3* pos)
+void AI_EvalFunc_OBJRotateLocalX_C(struct sGameObjectMain* a1, float a2)
 {
-    if ((gao->flags & 0x10000) != 0)
-        *pos = gao->matrices[1].Pos;
+    float v2;
+    int v3;
+    Vec3 v4;
+
+    if (a2 != 0.0)
+    {
+        if (ENG_gb_EVERunning)
+        {
+            v2 = (float)EVE_gpst_CurrentEvent->duration;
+            a2 = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0) * a2);
+        }
+        v3 = a1->flags & 0x400000;
+        if (v3)
+        {
+            v4 = a1->basic->mtx->mtx.Pos;
+            OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+        }
+        if (a2 != 0.0)
+        {
+            MATH_RotateMatrix_AroundLocalXAxis(a1->matrices, a2);
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundLocalXAxis(a1->matrices + 2, a2);
+                else
+                    MATH_RotateMatrix_AroundLocalXAxis(a1->matrices + 1, a2);
+            }
+            if (ANI_GaoAnimationIsTransitioning(a1))
+                MATH_RotateMatrix_AroundLocalXAxis(&(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[1]->flashMtx), a2);
+        }
+        if (v3)
+        {
+            OBJ_ComputeLocalWhenHie(a1);
+            a1->basic->mtx->mtx.Pos = v4;
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJRotateLocalX(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    float a2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a2 = AI_GetFloatFromStack();
+    AI_EvalFunc_OBJRotateLocalX_C(v2, a2);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJRotateLocalY_C(struct sGameObjectMain* a1, float angle)
+{
+    float v2;
+    int v3;
+    Vec3 v4;
+
+    if (angle != 0.0)
+    {
+        if (ENG_gb_EVERunning)
+        {
+            v2 = (float)EVE_gpst_CurrentEvent->duration;
+            angle = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0) * angle);
+        }
+        v3 = a1->flags & 0x400000;
+        if (v3)
+        {
+            v4 = a1->basic->mtx->mtx.Pos;
+            OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+        }
+        if (angle != 0.0)
+        {
+            MATH_RotateMatrix_AroundLocalYAxis(a1->matrices, angle);
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundLocalYAxis(a1->matrices + 2, angle);
+                else
+                    MATH_RotateMatrix_AroundLocalYAxis(a1->matrices + 1, angle);
+            }
+            if (ANI_GaoAnimationIsTransitioning(a1))
+                MATH_RotateMatrix_AroundLocalYAxis(&(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[1]->flashMtx), angle);
+        }
+        if (v3)
+        {
+            OBJ_ComputeLocalWhenHie(a1);
+            a1->basic->mtx->mtx.Pos = v4;
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJRotateLocalY(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    float angle;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    angle = AI_GetFloatFromStack();
+    AI_EvalFunc_OBJRotateLocalY_C(v2, angle);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJRotateLocalZ_c(struct sGameObjectMain* a1, float a2)
+{
+    float v2;
+    int v3;
+    Vec3 v4;
+
+    if (a2 != 0.0)
+    {
+        if (ENG_gb_EVERunning)
+        {
+            v2 = (float)EVE_gpst_CurrentEvent->duration;
+            a2 = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0) * a2);
+        }
+        v3 = a1->flags & 0x400000;
+        if (v3)
+        {
+            v4 = a1->basic->mtx->mtx.Pos;
+            OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+        }
+        if (a2 != 0.0)
+        {
+            MATH_RotateMatrix_AroundLocalZAxis(a1->matrices, a2);
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundLocalZAxis(a1->matrices + 2, a2);
+                else
+                    MATH_RotateMatrix_AroundLocalZAxis(a1->matrices + 1, a2);
+            }
+            if (ANI_GaoAnimationIsTransitioning(a1))
+                MATH_RotateMatrix_AroundLocalZAxis(&(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->animPtr[1]->flashMtx), a2);
+        }
+        if (v3)
+        {
+            OBJ_ComputeLocalWhenHie(a1);
+            a1->basic->mtx->mtx.Pos = v4;
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJRotateLocalZ(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    float a2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a2 = AI_GetFloatFromStack();
+    AI_EvalFunc_OBJRotateLocalZ_c(v2, a2);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJRotateGlobal_C(struct sGameObjectMain* a1, Vec3* a2)
+{
+    float v2;
+    float v3;
+    int v4;
+    int v5;
+
+    if (ENG_gb_EVERunning)
+    {
+        v2 = (float)EVE_gpst_CurrentEvent->duration;
+        v3 = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0));
+        a2->x = v3 * a2->x;
+        a2->y = v3 * a2->y;
+        a2->z = v3 * a2->z;
+    }
+    v4 = a1->flags & 0x400000;
+    v5 = a1->flags & 0x4000000;
+    if (v4)
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+    if (a2->x != 0.0)
+    {
+        MATH_RotateMatrix_AroundGlobalXAxis(a1->matrices, a2->x);
+        if (v5)
+        {
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundGlobalXAxis(a1->matrices + 2, a2->x);
+                else
+                    MATH_RotateMatrix_AroundGlobalXAxis(a1->matrices + 1, a2->x);
+            }
+            else
+            {
+                MATH_RotateMatrix_AroundGlobalXAxis(0, a2->x);
+            }
+        }
+    }
+    if (a2->y != 0.0)
+    {
+        MATH_RotateMatrix_AroundGlobalYAxis(a1->matrices, a2->y);
+        if (v5)
+        {
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundGlobalYAxis(a1->matrices + 2, a2->y);
+                else
+                    MATH_RotateMatrix_AroundGlobalYAxis(a1->matrices + 1, a2->y);
+            }
+            else
+            {
+                MATH_RotateMatrix_AroundGlobalYAxis(0, a2->y);
+            }
+        }
+    }
+    if (a2->z != 0.0)
+    {
+        MATH_RotateMatrix_AroundGlobalZAxis(a1->matrices, a2->z);
+        if (v5)
+        {
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundGlobalZAxis(a1->matrices + 2, a2->z);
+                else
+                    MATH_RotateMatrix_AroundGlobalZAxis(a1->matrices + 1, a2->z);
+            }
+            else
+            {
+                MATH_RotateMatrix_AroundGlobalZAxis(0, a2->z);
+            }
+        }
+    }
+    if (v4)
+        OBJ_ComputeLocalWhenHie(a1);
+}
+
+tAINode* AI_EvalFunc_OBJRotateGlobal(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v4 = v2;
+    AI_GetVecFromStack(&a1a);
+    AI_EvalFunc_OBJRotateGlobal_C(v4, &a1a);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJRotateGlobalX_C(struct sGameObjectMain* a1, float a2)
+{
+    float v2;
+    int v3;
+    Vec3 v4;
+
+    if (a2 != 0.0)
+    {
+        if (ENG_gb_EVERunning)
+        {
+            v2 = (float)EVE_gpst_CurrentEvent->duration;
+            a2 = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0) * a2);
+        }
+        v3 = a1->flags & 0x400000;
+        if (v3)
+        {
+            v4 = a1->basic->mtx->mtx.Pos;
+            OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+        }
+        if (a2 != 0.0)
+        {
+            MATH_RotateMatrix_AroundGlobalXAxis(a1->matrices, a2);
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundGlobalXAxis(a1->matrices + 2, a2);
+                else
+                    MATH_RotateMatrix_AroundGlobalXAxis(a1->matrices + 1, a2);
+            }
+        }
+        if (v3)
+        {
+            OBJ_ComputeLocalWhenHie(a1);
+            a1->basic->mtx->mtx.Pos = v4;
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJRotateGlobalX(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    float a2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a2 = AI_GetFloatFromStack();
+    AI_EvalFunc_OBJRotateGlobalX_C(v2, a2);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJRotateGlobalY_C(struct sGameObjectMain* a1, float a2)
+{
+    float v2;
+    int v3;
+    Vec3 v4;
+
+    if (a2 != 0.0)
+    {
+        if (ENG_gb_EVERunning)
+        {
+            v2 = (float)EVE_gpst_CurrentEvent->duration;
+            a2 = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0) * a2);
+        }
+        v3 = a1->flags & 0x400000;
+        if (v3)
+        {
+            v4 = a1->basic->mtx->mtx.Pos;
+            OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+        }
+        if (a2 != 0.0)
+        {
+            MATH_RotateMatrix_AroundGlobalYAxis(a1->matrices, a2);
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundGlobalYAxis(a1->matrices + 2, a2);
+                else
+                    MATH_RotateMatrix_AroundGlobalYAxis(a1->matrices + 1, a2);
+            }
+        }
+        if (v3)
+        {
+            OBJ_ComputeLocalWhenHie(a1);
+            a1->basic->mtx->mtx.Pos = v4;
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJRotateGlobalY(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    float a2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a2 = AI_GetFloatFromStack();
+    AI_EvalFunc_OBJRotateGlobalY_C(v2, a2);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJRotateGlobalZ_C(struct sGameObjectMain* a1, float a2)
+{
+    float v2;
+    int v3;
+    Vec3 v4;
+
+    if (a2 != 0.0)
+    {
+        if (ENG_gb_EVERunning)
+        {
+            v2 = (float)EVE_gpst_CurrentEvent->duration;
+            a2 = (float)(EVE_gf_DT / (v2 * 1.0 / 60.0) * a2);
+        }
+        v3 = a1->flags & 0x400000;
+        if (v3)
+        {
+            v4 = a1->basic->mtx->mtx.Pos;
+            OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+        }
+        if (a2 != 0.0)
+        {
+            MATH_RotateMatrix_AroundGlobalZAxis(a1->matrices, a2);
+            if ((a1->flags & 0x4000000) != 0)
+            {
+                if ((a1->flags & 0x10000) != 0)
+                    MATH_RotateMatrix_AroundGlobalZAxis(a1->matrices + 2, a2);
+                else
+                    MATH_RotateMatrix_AroundGlobalZAxis(a1->matrices + 1, a2);
+            }
+        }
+        if (v3)
+        {
+            OBJ_ComputeLocalWhenHie(a1);
+            a1->basic->mtx->mtx.Pos = v4;
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJRotateGlobalZ(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    float a2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a2 = AI_GetFloatFromStack();
+    AI_EvalFunc_OBJRotateGlobalZ_C(v2, a2);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJGetPos_C(struct sGameObjectMain* a2, Vec3* a3)
+{
+    tGaoMatrix* v3;
+    Mtx4x4 v4;
+    tGameObjectMain* v5;
+    Mtx4x4 v6;
+    tGameObjectMain* v7;
+    Vec3* v8;
+    Vec3* v9;
+    Vec3* v10;
+
+    if ((a2->flags & 1) != 0)
+    {
+        v7 = ANI_pst_GetReference(a2);
+        MATH_SetIdentityMatrix(&v6);
+        v5 = a2;
+        while (v5 != v7)
+        {
+            v3 = OBJ_pst_GetLocalMatrix(v5);
+            MATH_MulMatrixMatrix(&v4, &v6, &v3->mtx);
+            if (&v6 != &v4)
+                memcpy(&v6, &v4, sizeof(v6));
+            if (v5 && v5->basic && v5->basic->mtx)
+                v5 = v5->basic->mtx->refGao2;
+            else
+                v5 = 0;
+        }
+        MATH_MulMatrixMatrix(&v4, &v6, v7->matrices);
+        *a3 = v4.Pos;
+    }
     else
-        *pos = gao->matrices->Pos;
+    {
+        v10 = &a2->matrices->Pos;
+        v9 = a3;
+        v8 = v10;
+        a3->x = v10->x;
+        v9->y = v8->y;
+        v9->z = v8->z;
+    }
 }
 
-tAINode* AI_EvalFunc_OBJGetPosInit(tAINode* node)
+void AI_EvalFunc_OBJGetPos_C_CURRENT(Vec3* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 pos;
+    AI_EvalFunc_OBJGetPos_C(AI_gpst_CurrentGameObject, a1);
+}
 
-    gaoUltra = AI_gpst_CurrentUltra;
+tAINode* AI_EvalFunc_OBJGetPos(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    Vec3 a3;
+    tGameObjectMain* a2;
+
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJGetPosInit_C(gaoUltra, &pos);
-    AI_PutVecToStack(&pos);
-    return node + 1;
+    a2 = v2;
+    AI_EvalFunc_OBJGetPos_C(v2, &a3);
+    AI_PutVecToStack(&a3);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJSetPos_C(struct sGameObjectMain* gao, Vec3* pos)
+tAINode* AI_EvalFunc_OBJRestoreInitMatrix(tAINode* a1)
 {
-    int hierarchical;
+    tGameObjectMain* v2;
 
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-
-    OBJ_SetAbsolutePosition(gao, pos);
-
-    if (hierarchical)
-        OBJ_ComputeLocalWhenHie(gao);
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
-    if ((gao->flags & 4) != 0)
-        gao->basic->dyn->flags |= 0x800000u;
-}
-
-void AI_EvalFunc_OBJSetPos_C_CURRENT(Vec3* pos)
-{
-    AI_EvalFunc_OBJSetPos_C(AI_gpst_CurrentGameObject, pos);
-}
-
-tAINode* AI_EvalFunc_OBJSetPos(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJSetPos_C(gaoUltra, (Vec3*)AI_PopStackSlot());
-    return node + 1;
+    OBJ_RestoreInitialPos(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJSetLocalPos_C(struct sGameObjectMain* gao, Vec3* pos)
+void AI_EvalFunc_OBJGetPosInit_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    OBJ_SetLocalPosition(gao, pos);
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
-    if ((gao->flags & 4) != 0)
-        gao->basic->dyn->flags |= 0x800000u;
-}
+    Vec3* v2;
 
-tAINode* AI_EvalFunc_OBJSetLocalPos(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJSetLocalPos_C(gaoUltra, (Vec3*)AI_PopStackSlot());
-    return node + 1;
-}
-
-// Note that it is the moving object's own hierarchy flag that decides
-// whether the TARGET is lifted into world space first.
-void AI_EvalFunc_OBJ_Rejoin_C(tGameObjectMain* gao, tGameObjectMain* target)
-{
-    int hierarchical;
-
-    if (!target)
-        return;
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-        OBJ_ComputeGlobalWhenHie(target);
-
-    OBJ_SetAbsolutePosition(gao, &target->matrices->Pos);
-
-    if (hierarchical)
-        OBJ_ComputeLocalWhenHie(gao);
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
-}
-
-tAINode* AI_EvalFunc_OBJ_Rejoin(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_Rejoin_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJ_RejoinAndOrient_C(struct sGameObjectMain* gao, struct sGameObjectMain* target)
-{
-    int hierarchical;
-
-    if (!target)
-        return;
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-        OBJ_ComputeGlobalWhenHie(target);
-
-    OBJ_SetAbsoluteMatrix(gao, OBJ_pst_GetAbsoluteMatrix(target));
-
-    if (hierarchical)
-        OBJ_ComputeLocalWhenHie(gao);
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
-    if ((gao->flags & 4) != 0)
-        gao->basic->dyn->flags |= 0x800000u;
-}
-
-tAINode* AI_EvalFunc_OBJ_RejoinAndOrient(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_RejoinAndOrient_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
-    return node + 1;
-}
-
-// Reinit kind 1000 keeps the invisibility count the object already had.
-void AI_EvalFunc_OBJReinit_C(struct sGameObjectMain* gao, int kind)
-{
-    uint8_t invisible;
-
-    invisible = gao->if_this_not0_wont_render_gao;
-    ENG_ReinitOneObject(gao, kind);
-    if (kind == 1000)
-        gao->if_this_not0_wont_render_gao = invisible;
-    INT_SnP_AttachObject(gao, WOR_gpst_CurrentWorld);
-}
-
-tAINode* AI_EvalFunc_OBJReinit(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int kind;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    kind = AI_GetIntFromStack();
-    AI_EvalFunc_OBJReinit_C(gaoUltra, kind);
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJ_ExtraFlagsSet_C(struct sGameObjectMain* gao, int16_t toSet, int16_t mask)
-{
-    if (gao->extended)
-        gao->extended->extraFlag = toSet | (~mask & gao->extended->extraFlag);
-}
-
-tAINode* AI_EvalFunc_OBJ_ExtraFlagsSet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int16_t toSet;
-    int16_t mask;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    mask = AI_GetIntFromStack();
-    toSet = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_ExtraFlagsSet_C(gaoUltra, toSet, mask);
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJ_AILodSet_C(struct sGameObjectMain* gao, float aiLod)
-{
-    if (gao->extended)
-        gao->extended->aiLod = aiLod;
-}
-
-tAINode* AI_EvalFunc_OBJ_AILodSet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    float aiLod;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    aiLod = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJ_AILodSet_C(gaoUltra, aiLod);
-    return node + 1;
-}
-
-// Whichever of two box corners sits further from the origin on one
-// axis. Each fabs is recomputed rather than reused, as it was.
-static float AI_l_MaxAbs(float first, float second)
-{
-    if ((float)fabs(second) >= (double)(float)fabs(first))
-        return (float)fabs(second);
-    return (float)fabs(first);
-}
-
-// Sets the object's AI level of detail from the size of its bounding
-// box: the half-diagonal of the box squared, plus eight.
-void AI_EvalFunc_OBJ_AILodBV_C(tGameObjectMain* gao)
-{
-    Vec3 boxMin;
-    Vec3 boxMax;
-    Vec3 extent;
-    float aiLod;
-
-    if (!gao->extended)
-        return;
-
-    if (OBJ_BV_IsAABBox(gao->boundingVolume))
-        boxMin = gao->boundingVolume->BVMinOriginal;
+    if ((a1->flags & 0x10000) != 0)
+        v2 = &a1->matrices[1].Pos;
     else
-        boxMin = MATH_gst_NulVector;
-
-    if (OBJ_BV_IsAABBox(gao->boundingVolume))
-        boxMax = gao->boundingVolume->BVMaxOriginal;
-    else
-        boxMax = MATH_gst_NulVector;
-
-    extent.x = AI_l_MaxAbs(boxMin.x, boxMax.x);
-    extent.y = AI_l_MaxAbs(boxMin.y, boxMax.y);
-    extent.z = AI_l_MaxAbs(boxMin.z, boxMax.z);
-
-    aiLod = MATH_VecLen(&extent);
-    aiLod = aiLod * aiLod;
-    aiLod = (float)(aiLod + 8.0);
-
-    gao->extended->extraFlag |= 8u;
-    gao->extended->aiLod = aiLod;
+        v2 = &a1->matrices->Pos;
+    *a2 = *v2;
 }
 
-tAINode* AI_EvalFunc_OBJ_AILodBV(tAINode* node)
+tAINode* AI_EvalFunc_OBJGetPosInit(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_AILodBV_C(gaoUltra);
-    return node + 1;
+    v4 = v2;
+    AI_EvalFunc_OBJGetPosInit_C(v2, &a1a);
+    AI_PutVecToStack(&a1a);
+    return a1 + 1;
 }
 
-float AI_EvalFunc_OBJ_SqrDist_C(struct sGameObjectMain* gao, struct sGameObjectMain* other)
+void AI_EvalFunc_OBJSetPos_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    Vec3 between;
+    int v2;
 
-    MATH_SubstractVec(&between, &other->matrices->Pos, &gao->matrices->Pos);
-    return between.z * between.z + between.y * between.y + between.x * between.x;
+    v2 = a1->flags & 0x400000;
+    if (v2)
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+    OBJ_SetAbsolutePosition(a1, a2);
+    if (v2)
+        OBJ_ComputeLocalWhenHie(a1);
+    if ((a1->flags & 0x4000000) != 0)
+        ANI_UpdateFlash(a1, 3);
+    if ((a1->flags & 4) != 0)
+        a1->basic->dyn->flags |= 0x800000u;
 }
 
-tAINode* AI_EvalFunc_OBJ_SqrDist(tAINode* node)
+void AI_EvalFunc_OBJSetPos_C_CURRENT(Vec3* a1)
 {
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* other;
+    AI_EvalFunc_OBJSetPos_C(AI_gpst_CurrentGameObject, a1);
+}
 
-    gaoUltra = AI_gpst_CurrentUltra;
+tAINode* AI_EvalFunc_OBJSetPos(tAINode* a1)
+{
+    tGameObjectMain* v2;
+
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    other = (tGameObjectMain*)AI_GetObjectFromStack();
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_SqrDist_C(gaoUltra, other));
-    return node + 1;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJSetPos_C(v2, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    return a1 + 1;
 }
 
-// The same ignoring height. The height term was a folded zero.
-float AI_EvalFunc_OBJ_SqrDistHorz_C(struct sGameObjectMain* gao, struct sGameObjectMain* other)
+void AI_EvalFunc_OBJSetLocalPos_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    Vec3 between;
-
-    MATH_SubstractVec(&between, &other->matrices->Pos, &gao->matrices->Pos);
-    return between.y * between.y + between.x * between.x;
+    OBJ_SetLocalPosition(a1, a2);
+    if ((a1->flags & 0x4000000) != 0)
+        ANI_UpdateFlash(a1, 3);
+    if ((a1->flags & 4) != 0)
+        a1->basic->dyn->flags |= 0x800000u;
 }
 
-tAINode* AI_EvalFunc_OBJ_SqrDistHorz(tAINode* node)
+tAINode* AI_EvalFunc_OBJSetLocalPos(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* other;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    other = (tGameObjectMain*)AI_GetObjectFromStack();
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_SqrDistHorz_C(gaoUltra, other));
-    return node + 1;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJSetLocalPos_C(v2, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    return a1 + 1;
 }
 
-// Sets and clears control flags in one go, and tells the world which
-// of its tables that invalidates. Returns the new control half.
-unsigned int AI_EvalFunc_OBJ_FlagsControlSet_C(struct sGameObjectMain* gao, int toSet, int toClear)
+void AI_EvalFunc_OBJ_Rejoin_C(tGameObjectMain* a1, tGameObjectMain* a2)
 {
-    unsigned int control;
-    tWorld* world;
+    int v2;
 
-    control = (toSet | (~toClear & gao->flags2)) & 0xFFFF0000;
-    gao->flags2 = (uint16_t)gao->flags2 | control;
+    if (a2)
+    {
+        v2 = a1->flags & 0x400000;
+        if (v2)
+            OBJ_ComputeGlobalWhenHie(a2);
+        OBJ_SetAbsolutePosition(a1, &a2->matrices->Pos);
+        if (v2)
+            OBJ_ComputeLocalWhenHie(a1);
+        if ((a1->flags & 0x4000000) != 0)
+            ANI_UpdateFlash(a1, 3);
+    }
+}
 
-    if ((toSet & 0x400000) != 0)
+tAINode* AI_EvalFunc_OBJ_Rejoin(tAINode* a1)
+{
+    tGameObjectMain* v2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJ_Rejoin_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_RejoinAndOrient_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+{
+    Mtx4x4* v2;
+    int v3;
+
+    if (a2)
+    {
+        v3 = a1->flags & 0x400000;
+        if (v3)
+            OBJ_ComputeGlobalWhenHie(a2);
+        v2 = OBJ_pst_GetAbsoluteMatrix(a2);
+        OBJ_SetAbsoluteMatrix(a1, v2);
+        if (v3)
+            OBJ_ComputeLocalWhenHie(a1);
+        if ((a1->flags & 0x4000000) != 0)
+            ANI_UpdateFlash(a1, 3);
+        if ((a1->flags & 4) != 0)
+            a1->basic->dyn->flags |= 0x800000u;
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_RejoinAndOrient(tAINode* a1)
+{
+    tGameObjectMain* v2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJ_RejoinAndOrient_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJReinit_C(struct sGameObjectMain* a1, int a2)
+{
+    uint8_t v2;
+
+    v2 = a1->if_this_not0_wont_render_gao;
+    ENG_ReinitOneObject(a1, a2);
+    if (a2 == 1000)
+        a1->if_this_not0_wont_render_gao = v2;
+    INT_SnP_AttachObject(a1, WOR_gpst_CurrentWorld);
+}
+
+tAINode* AI_EvalFunc_OBJReinit(tAINode* a1)
+{
+    int v1;
+    tGameObjectMain* v3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJReinit_C(v3, v1);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_ExtraFlagsSet_C(struct sGameObjectMain* a1, int16_t a2, int16_t a3)
+{
+    if (a1->extended)
+        a1->extended->extraFlag = a2 | ~a3 & a1->extended->extraFlag;
+}
+
+tAINode* AI_EvalFunc_OBJ_ExtraFlagsSet(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    int16_t a3;
+    int16_t a2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_ExtraFlagsSet_C(v2, a2, a3);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_AILodSet_C(struct sGameObjectMain* a1, float a2)
+{
+    if (a1->extended)
+        a1->extended->aiLod = a2;
+}
+
+tAINode* AI_EvalFunc_OBJ_AILodSet(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    float a2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a2 = AI_GetFloatFromStack();
+    AI_EvalFunc_OBJ_AILodSet_C(v2, a2);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_AILodBV_C(tGameObjectMain* a1)
+{
+    float v1;
+    float v2;
+    float v3;
+    float v4;
+    float v5;
+    float v6;
+    float v7;
+    float v8;
+    float v9;
+    float v10;
+    float v11;
+    float v12;
+    float v13;
+    float v14;
+    float v15;
+    Vec3 v16;
+    Vec3 a1a;
+    Vec3 v18;
+    float v19;
+
+    if (a1->extended)
+    {
+        if (OBJ_BV_IsAABBox(a1->boundingVolume))
+            v18 = a1->boundingVolume->BVMinOriginal;
+        else
+            v18 = MATH_gst_NulVector;
+        if (OBJ_BV_IsAABBox(a1->boundingVolume))
+            v16 = a1->boundingVolume->BVMaxOriginal;
+        else
+            v16 = MATH_gst_NulVector;
+        v15 = (float)fabs(v18.x);
+        v14 = (float)fabs(v16.x);
+        if (v14 >= (double)v15)
+        {
+            v11 = (float)fabs(v16.x);
+            v12 = v11;
+        }
+        else
+        {
+            v13 = (float)fabs(v18.x);
+            v12 = v13;
+        }
+        a1a.x = v12;
+        v10 = (float)fabs(v18.y);
+        v9 = (float)fabs(v16.y);
+        if (v9 >= (double)v10)
+        {
+            v6 = (float)fabs(v16.y);
+            v7 = v6;
+        }
+        else
+        {
+            v8 = (float)fabs(v18.y);
+            v7 = v8;
+        }
+        a1a.y = v7;
+        v5 = (float)fabs(v18.z);
+        v4 = (float)fabs(v16.z);
+        if (v4 >= (double)v5)
+        {
+            v1 = (float)fabs(v16.z);
+            v2 = v1;
+        }
+        else
+        {
+            v3 = (float)fabs(v18.z);
+            v2 = v3;
+        }
+        a1a.z = v2;
+        v19 = MATH_VecLen(&a1a);
+        v19 = v19 * v19;
+        v19 = (float)(v19 + 8.0);
+        a1->extended->extraFlag |= 8u;
+        a1->extended->aiLod = v19;
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_AILodBV(tAINode* a1)
+{
+    tGameObjectMain* v2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_EvalFunc_OBJ_AILodBV_C(v2);
+    return a1 + 1;
+}
+
+float AI_EvalFunc_OBJ_SqrDist_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+{
+    Vec3 dest;
+
+    MATH_SubstractVec(&dest, &a2->matrices->Pos, &a1->matrices->Pos);
+    return dest.z * dest.z + dest.y * dest.y + dest.x * dest.x;
+}
+
+tAINode* AI_EvalFunc_OBJ_SqrDist(tAINode* a1)
+{
+    float v2;
+    tGameObjectMain* v3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    v2 = AI_EvalFunc_OBJ_SqrDist_C(v3, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
+}
+
+float AI_EvalFunc_OBJ_SqrDistHorz_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+{
+    Vec3 dest;
+
+    MATH_SubstractVec(&dest, &a2->matrices->Pos, &a1->matrices->Pos);
+    return 0.0f * 0.0f + dest.y * dest.y + dest.x * dest.x;
+}
+
+tAINode* AI_EvalFunc_OBJ_SqrDistHorz(tAINode* a1)
+{
+    float v2;
+    tGameObjectMain* v3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    v2 = AI_EvalFunc_OBJ_SqrDistHorz_C(v3, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
+}
+
+unsigned int AI_EvalFunc_OBJ_FlagsControlSet_C(struct sGameObjectMain* a1, int a2, int a3)
+{
+    unsigned int v4;
+    tWorld* v5;
+
+    v4 = a2 | ~a3 & a1->flags2 & 0xFFFF0000;
+    a1->flags2 = (uint16_t)a1->flags2;
+    a1->flags2 |= v4 & 0xFFFF0000;
+    if ((a2 & 0x400000) != 0)
     {
         QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_RegisterInactiveGAO(gao);
+        SND_RegisterInactiveGAO(a1);
         PRO_QPC_RecordTimeDecRef(39);
     }
-    if ((toSet & 0x400000) != 0 || (toClear & 0x400000) != 0)
+    if ((a2 & 0x400000) != 0 || (a3 & 0x400000) != 0)
     {
-        world = WOR_gpst_CurrentWorld;
-        world->tablesManagerAndEOTNeeded = 1;
-        world->visibilityCallNeeded = 1;
-        world->SnPRefreshNeeded = TRUE;
+        v5 = WOR_gpst_CurrentWorld;
+        WOR_gpst_CurrentWorld->tablesManagerAndEOTNeeded = 1;
+        v5->visibilityCallNeeded = 1;
+        v5->SnPRefreshNeeded = TRUE;
     }
-    if ((toSet & 0x200000) != 0 || (toClear & 0x200000) != 0)
+    if ((a2 & 0x200000) != 0 || (a3 & 0x200000) != 0)
         WOR_gpst_CurrentWorld->visibilityCallNeeded = 1;
-
-    return control;
+    return v4 & 0xFFFF0000;
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagsControlSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsControlSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int toSet;
-    int toClear;
+    int v1;
+    tGameObjectMain* v3;
+    int a3;
+    int a2;
 
-    toClear = AI_GetIntFromStack();
-    toSet = AI_GetIntFromStack();
-    gaoUltra = AI_gpst_CurrentUltra;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_FlagsControlSet_C(gaoUltra, toSet, toClear));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_FlagsControlSet_C(v3, a2, a3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-unsigned int AI_EvalFunc_OBJ_FlagsControlGet_C(struct sGameObjectMain* gao)
+unsigned int AI_EvalFunc_OBJ_FlagsControlGet_C(struct sGameObjectMain* a1)
 {
-    if (!gao)
-        return 0;
-    return gao->flags2 & 0xFFFF0000;
+    unsigned int v2;
+
+    v2 = 0;
+    if (a1)
+        v2 = a1->flags2 & 0xFFFF0000;
+    return v2;
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagsControlGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsControlGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_FlagsControlGet_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_FlagsControlGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-// The world is only told to recompute visibility when the flag
-// actually changed.
-void AI_EvalFunc_OBJ_FlagInvisibleSet_C(struct sGameObjectMain* gao, int invisible)
+void AI_EvalFunc_OBJ_FlagInvisibleSet_C(struct sGameObjectMain* a1, int a2)
 {
-    if (invisible)
+    unsigned int v2;
+
+    if (a2)
     {
-        if ((gao->flags2 & 0x200000) != 0)
+        if ((a1->flags2 & 0x200000) != 0)
             return;
-        gao->flags2 |= 0x200000;
+        v2 = a1->flags2 & 0xFFFF0000 | 0x200000;
     }
     else
     {
-        if ((gao->flags2 & 0x200000) == 0)
+        if ((a1->flags2 & 0x200000) == 0)
             return;
-        gao->flags2 &= ~0x200000u;
+        v2 = a1->flags2 & 0xFFDF0000;
     }
+    a1->flags2 = (uint16_t)a1->flags2;
+    a1->flags2 |= v2 & 0xFFFF0000;
     WOR_gpst_CurrentWorld->visibilityCallNeeded = 1;
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagInvisibleSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagInvisibleSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int invisible;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    invisible = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_FlagInvisibleSet_C(gaoUltra, invisible);
-    return node + 1;
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_FlagInvisibleSet_C(v3, v1);
+    return a1 + 1;
 }
 
-// Going inactive also drops the local matrix of a hierarchy root that
-// has nothing above it, and hands the object to the sound engine.
-void AI_EvalFunc_OBJ_FlagInactiveSet_C(struct sGameObjectMain* gao, int inactive)
+void AI_EvalFunc_OBJ_FlagInactiveSet_C(struct sGameObjectMain* a1, int a2)
 {
-    tWorld* world;
+    unsigned int v2;
+    tWorld* v3;
 
-    if (inactive)
+    if (a2)
     {
-        if ((gao->flags2 & 0x400000) != 0)
+        if ((a1->flags2 & 0x400000) != 0)
             return;
-        gao->flags2 |= 0x400000;
+        v2 = a1->flags2 & 0xFFFF0000 | 0x400000;
     }
     else
     {
-        if ((gao->flags2 & 0x400000) == 0)
+        if ((a1->flags2 & 0x400000) == 0)
             return;
-        gao->flags2 &= ~0x400000u;
+        v2 = a1->flags2 & ~0x40FFFFu;
     }
-
-    world = WOR_gpst_CurrentWorld;
-    world->tablesManagerAndEOTNeeded = 1;
-    world->visibilityCallNeeded = 1;
-    world->SnPRefreshNeeded = TRUE;
-
-    if (inactive && (gao->flags & 0x400000) != 0 && gao->basic && gao->basic->mtx && !gao->basic->mtx->refGao)
+    a1->flags2 = (uint16_t)a1->flags2;
+    a1->flags2 |= v2 & 0xFFFF0000;
+    v3 = WOR_gpst_CurrentWorld;
+    WOR_gpst_CurrentWorld->tablesManagerAndEOTNeeded = 1;
+    v3->visibilityCallNeeded = 1;
+    v3->SnPRefreshNeeded = TRUE;
+    if (a2 && (a1->flags & 0x400000) != 0 && a1->basic && a1->basic->mtx && !a1->basic->mtx->refGao)
     {
-        OBJ_ComputeGlobalWhenHie(gao);
-        if ((gao->flags & 0x4000000) != 0)
-            ANI_RemoveHierarchyOnFlash(gao);
-        gao->flags &= ~0x400000u;
-        MEM_Free(gao->basic->mtx);
-        gao->basic->mtx = 0;
+        OBJ_ComputeGlobalWhenHie(a1);
+        if ((a1->flags & 0x4000000) != 0)
+            ANI_RemoveHierarchyOnFlash(a1);
+        a1->flags &= ~0x400000u;
+        MEM_Free(a1->basic->mtx);
+        a1->basic->mtx = 0;
     }
-
-    if (inactive)
+    if (a2)
     {
         QueryPerformanceCounter(&PerfCounterStruct[39]);
-        SND_RegisterInactiveGAO(gao);
+        SND_RegisterInactiveGAO(a1);
         PRO_QPC_RecordTimeDecRef(39);
     }
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagInactiveSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagInactiveSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int inactive;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    inactive = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_FlagInactiveSet_C(gaoUltra, inactive);
-    return node + 1;
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_FlagInactiveSet_C(v3, v1);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_FlagsStatusGet_C(tGameObjectMain* gao)
+int AI_EvalFunc_OBJ_FlagsStatusGet_C(tGameObjectMain* a1)
 {
-    if (!gao)
-        return 0;
-    return (uint16_t)gao->flags2;
+    int v2;
+
+    v2 = 0;
+    if (a1)
+        v2 = (uint16_t)a1->flags2;
+    return v2;
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagsStatusGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsStatusGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_FlagsStatusGet_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_FlagsStatusGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-// The custom bits a script owns are the top byte of the status half.
-void AI_EvalFunc_OBJ_CustomBitsSet_C(struct sGameObjectMain* gao, int16_t toSet, int16_t toClear)
+void AI_EvalFunc_OBJ_CustomBitsSet_C(struct sGameObjectMain* a1, int16_t a2, int16_t a3)
 {
-    gao->flags2 &= ~(toClear & 0xFF00);
-    gao->flags2 |= toSet & 0xFF00;
+    a1->flags2 &= ~(a3 & 0xFF00);
+    a1->flags2 |= a2 & 0xFF00;
 }
 
-void AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(int16_t toSet, int16_t toClear)
+void AI_EvalFunc_OBJ_CustomBitsSet_C_CURRENT(int16_t a1, int16_t a2)
 {
-    AI_EvalFunc_OBJ_CustomBitsSet_C(AI_gpst_CurrentGameObject, toSet, toClear);
+    AI_gpst_CurrentGameObject->flags2 &= ~(a2 & 0xFF00);
+    AI_gpst_CurrentGameObject->flags2 |= a1 & 0xFF00;
 }
 
-tAINode* AI_EvalFunc_OBJ_CustomBitsSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_CustomBitsSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int16_t toSet;
-    int16_t toClear;
+    tGameObjectMain* v2;
+    int16_t a2;
+    int16_t a3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    toClear = AI_GetIntFromStack();
-    toSet = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_CustomBitsSet_C(gaoUltra, toSet, toClear);
-    return node + 1;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_CustomBitsSet_C(v2, a2, a3);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_CustomBitsGet_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJ_CustomBitsGet_C(struct sGameObjectMain* a1)
 {
-    return gao->flags2 & 0xFF00;
+    return a1->flags2 & 0xFF00;
 }
 
-tAINode* AI_EvalFunc_OBJ_CustomBitsGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_CustomBitsGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_CustomBitsGet_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_CustomBitsGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-BOOL AI_EvalFunc_OBJ_CustomBitsTest_C(struct sGameObjectMain* gao, int16_t mask)
+BOOL AI_EvalFunc_OBJ_CustomBitsTest_C(struct sGameObjectMain* a1, int16_t a2)
 {
-    return (mask & gao->flags2 & 0xFF00) != 0;
+    return (a2 & 0xFF00 & a1->flags2 & 0xFF00) != 0;
 }
 
-tAINode* AI_EvalFunc_OBJ_CustomBitsTest(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_CustomBitsTest(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int16_t mask;
+    int16_t v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    mask = AI_GetIntFromStack();
-    if (AI_EvalFunc_OBJ_CustomBitsTest_C(gaoUltra, mask))
+    v1 = AI_GetIntFromStack();
+    if (AI_EvalFunc_OBJ_CustomBitsTest_C(v3, v1))
         AI_PutIntToStack(1);
     else
         AI_PutIntToStack(0);
-    return node + 1;
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_CustomBitsNot_C(tGameObjectMain* gao, int16_t mask)
+int AI_EvalFunc_OBJ_CustomBitsNot_C(tGameObjectMain* a1, int16_t a2)
 {
-    gao->flags2 ^= mask & 0xFF00;
-    return gao->flags2;
+    a1->flags2 ^= a2 & 0xFF00;
+    return a1->flags2;
 }
 
-tAINode* AI_EvalFunc_OBJ_CustomBitsNot(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_CustomBitsNot(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int16_t mask;
+    int16_t v1;
+    int v2;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v4 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    mask = AI_GetIntFromStack();
-    AI_PutIntToStack(AI_EvalFunc_OBJ_CustomBitsNot_C(gaoUltra, mask));
-    return node + 1;
+    v1 = AI_GetIntFromStack();
+    v2 = AI_EvalFunc_OBJ_CustomBitsNot_C(v4, v1);
+    AI_PutIntToStack(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_CapaSet_C(struct sGameObjectMain* gao, int16_t set, int16_t remove)
+void AI_EvalFunc_OBJ_CapaSet_C(struct sGameObjectMain* a1, int16_t set, int16_t remove)
 {
-    gao->extended->capa &= ~remove;
-    gao->extended->capa |= set;
+    a1->extended->capa &= ~remove;
+    a1->extended->capa |= set;
 }
 
 void AI_EvalFunc_OBJ_CapaSet_C_CURRENT(int16_t set, int16_t remove)
 {
-    AI_EvalFunc_OBJ_CapaSet_C(AI_gpst_CurrentGameObject, set, remove);
+    AI_gpst_CurrentGameObject->extended->capa &= ~remove;
+    AI_gpst_CurrentGameObject->extended->capa |= set;
 }
 
-tAINode* AI_EvalFunc_OBJ_CapaSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_CapaSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int16_t set;
-    int16_t remove;
+    tGameObjectMain* v2;
+    int16_t a2;
+    int16_t a3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    remove = AI_GetIntFromStack();
-    set = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_CapaSet_C(gaoUltra, set, remove);
-    return node + 1;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_CapaSet_C(v2, a2, a3);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_CapaGet_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJ_CapaGet_C(struct sGameObjectMain* a1)
 {
-    return gao->extended->capa;
+    return a1->extended->capa;
 }
 
-tAINode* AI_EvalFunc_OBJ_CapaGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_CapaGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_CapaGet_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_CapaGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-BOOL AI_EvalFunc_OBJ_CapaTest_C(struct sGameObjectMain* gao, int16_t mask)
+BOOL AI_EvalFunc_OBJ_CapaTest_C(struct sGameObjectMain* a1, int16_t a2)
 {
-    if (!gao->extended)
-        return 0;
-    return (uint16_t)(mask & gao->extended->capa) != 0;
+    BOOL result;
+
+    if (a1->extended)
+        result = (uint16_t)(a2 & a1->extended->capa) != 0;
+    else
+        result = 0;
+    return result;
 }
 
-BOOL AI_EvalFunc_OBJ_CapaTest_C_CURRENT(int16_t mask)
+BOOL AI_EvalFunc_OBJ_CapaTest_C_CURRENT(int16_t a1)
 {
-    return AI_EvalFunc_OBJ_CapaTest_C(AI_gpst_CurrentGameObject, mask);
+    BOOL result;
+
+    if (AI_gpst_CurrentGameObject->extended)
+        result = (uint16_t)(a1 & AI_gpst_CurrentGameObject->extended->capa) != 0;
+    else
+        result = 0;
+    return result;
 }
 
-// Note that the argument is only popped when the object has an
-// extended block, so a capability test on an object without one
-// leaves the argument on the stack.
-tAINode* AI_EvalFunc_OBJ_CapaTest(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_CapaTest(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int16_t mask;
+    tAINode* result;
+    int16_t v2;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    if (gaoUltra->extended)
+    if (v3->extended)
     {
-        mask = AI_GetIntFromStack();
-        if (AI_EvalFunc_OBJ_CapaTest_C(gaoUltra, mask))
+        v2 = AI_GetIntFromStack();
+        if (AI_EvalFunc_OBJ_CapaTest_C(v3, v2))
             AI_PutIntToStack(1);
         else
             AI_PutIntToStack(0);
+        result = a1 + 1;
     }
     else
     {
         AI_PutIntToStack(0);
+        result = a1 + 1;
     }
-    return node + 1;
+    return result;
 }
 
-// Note that this toggles capa and then returns flags2.
-int AI_EvalFunc_OBJ_CapaNot_C(struct sGameObjectMain* gao, int16_t mask)
+int AI_EvalFunc_OBJ_CapaNot_C(struct sGameObjectMain* a1, int16_t a2)
 {
-    gao->extended->capa ^= mask;
-    return gao->flags2;
+    a1->extended->capa ^= a2;
+    return a1->flags2;
 }
 
-tAINode* AI_EvalFunc_OBJ_CapaNot(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_CapaNot(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int16_t mask;
+    int16_t v1;
+    int v2;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v4 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    mask = AI_GetIntFromStack();
-    AI_PutIntToStack(AI_EvalFunc_OBJ_CapaNot_C(gaoUltra, mask));
-    return node + 1;
+    v1 = AI_GetIntFromStack();
+    v2 = AI_EvalFunc_OBJ_CapaNot_C(v4, v1);
+    AI_PutIntToStack(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_SightGeneralSet_C(struct sGameObjectMain* gao, Vec3* sight, Vec3* up)
+void AI_EvalFunc_OBJ_SightGeneralSet_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3)
 {
-    int hierarchical;
-    Vec3 localPos;
+    int v3;
+    Vec3 v4;
 
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
+    v3 = a1->flags & 0x400000;
+    if (v3)
     {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
+        v4 = a1->basic->mtx->mtx.Pos;
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
     }
-
-    OBJ_SightGeneralSet(gao, sight, up);
-
-    if (hierarchical)
+    OBJ_SightGeneralSet(a1, a2, a3);
+    if (v3)
     {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
+        OBJ_ComputeLocalWhenHie(a1);
+        a1->basic->mtx->mtx.Pos = v4;
     }
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
+    if ((a1->flags & 0x4000000) != 0)
+        ANI_UpdateFlash(a1, 3);
 }
 
-tAINode* AI_EvalFunc_OBJ_SightGeneralSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_SightGeneralSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 sight;
-    Vec3 up;
+    tGameObjectMain* v2;
+    Vec3 a2;
+    Vec3 a1a;
+    tGameObjectMain* v5;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&up);
-    AI_GetVecFromStack(&sight);
-    AI_EvalFunc_OBJ_SightGeneralSet_C(gaoUltra, &sight, &up);
-    return node + 1;
+    v5 = v2;
+    AI_GetVecFromStack(&a1a);
+    AI_GetVecFromStack(&a2);
+    AI_EvalFunc_OBJ_SightGeneralSet_C(v5, &a2, &a1a);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_SightSet_C(struct sGameObjectMain* gao, Vec3* sight)
+void AI_EvalFunc_OBJ_SightSet_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    int hierarchical;
-    Vec3 localPos;
+    int v2;
+    Vec3 v3;
 
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
+    v2 = a1->flags & 0x400000;
+    if (v2)
     {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
+        v3 = a1->basic->mtx->mtx.Pos;
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
     }
-
-    OBJ_SightSet(gao, sight);
-
-    if (hierarchical)
+    OBJ_SightSet(a1, a2);
+    if (v2)
     {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
+        OBJ_ComputeLocalWhenHie(a1);
+        a1->basic->mtx->mtx.Pos = v3;
     }
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
+    if ((a1->flags & 0x4000000) != 0)
+        ANI_UpdateFlash(a1, 3);
 }
 
-tAINode* AI_EvalFunc_OBJ_SightSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_SightSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 sight;
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&sight);
-    AI_EvalFunc_OBJ_SightSet_C(gaoUltra, &sight);
-    return node + 1;
+    v4 = v2;
+    AI_GetVecFromStack(&a1a);
+    AI_EvalFunc_OBJ_SightSet_C(v4, &a1a);
+    return a1 + 1;
 }
 
-// An AI canal of -1 means the object itself rather than one of its
-// bones.
-void AI_EvalFunc_OBJ_BoneDisplayOrder_C(struct sGameObjectMain* gao, int aiCanal, char order)
+void AI_EvalFunc_OBJ_BoneDisplayOrder_C(struct sGameObjectMain* a1, int a2, char a3)
 {
-    tGameObjectVisualObject* visual;
-
-    if (aiCanal != -1)
-        gao = ANI_pst_GetObjectByAICanal(gao, aiCanal);
-    if (!gao)
-        return;
-
-    visual = AI_l_Visual(gao);
-    if (visual)
-        visual->boneDisplayOrder_zListBufferNum = order;
-}
-
-tAINode* AI_EvalFunc_OBJ_BoneDisplayOrder(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int aiCanal;
-    char order;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    order = AI_GetIntFromStack();
-    aiCanal = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_BoneDisplayOrder_C(gaoUltra, aiCanal, order);
-    return node + 1;
-}
-
-// Orients the local matrix instead of the global one, which only means
-// anything for an object in a hierarchy.
-void AI_EvalFunc_OBJ_LocalSightSet_C(tGameObjectMain* gao, Vec3* sight, Vec3* up)
-{
-    if ((gao->flags & 0x400000) == 0)
-        return;
-
-    OBJ_SightGeneralSet(gao, sight, up);
-    MATH_Copy33Matrix(&gao->basic->mtx->mtx, gao->matrices);
-    OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
-}
-
-tAINode* AI_EvalFunc_OBJ_LocalSightSet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    Vec3 sight;
-    Vec3 up;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&up);
-    AI_GetVecFromStack(&sight);
-    AI_EvalFunc_OBJ_LocalSightSet_C(gaoUltra, &sight, &up);
-    return node + 1;
-}
-
-// Turns the object to face another, keeping world Z as up.
-void AI_EvalFunc_OBJ_OrientTo_C(tGameObjectMain* gao, tGameObjectMain* target)
-{
-    int hierarchical;
-    Vec3 sight;
-    Vec3 up;
-    Vec3 localPos;
-
-    if (!target)
-        return;
-
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
+    if (a2 != -1)
+        a1 = ANI_pst_GetObjectByAICanal(a1, a2);
+    if (a1 && (a1->flags & 0x4000) != 0 && a1->basic)
     {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWhenHie(gao);
+        if (a1->basic->actorObjectOrVisualObject)
+            ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->boneDisplayOrder_zListBufferNum = a3;
     }
-    if ((target->flags & 0x400000) != 0)
-        OBJ_ComputeGlobalWhenHie(target);
-
-    sight = target->matrices->Pos;
-    MATH_SubstractVec(&sight, &sight, &gao->matrices->Pos);
-    up.x = 0.0;
-    up.y = 0.0;
-    up.z = 1.0;
-    OBJ_SightGeneralSet(gao, &sight, &up);
-
-    if (hierarchical)
-    {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
-    }
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
 }
 
-tAINode* AI_EvalFunc_OBJ_OrientTo(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_BoneDisplayOrder(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
+    char a3;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_OrientTo_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
-    return node + 1;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_BoneDisplayOrder_C(v2, a2, a3);
+    return a1 + 1;
 }
 
-// The sight direction is the second row of the matrix, negated. An
-// object in a hierarchy is composed into a scratch matrix rather than
-// having its own touched.
-void AI_EvalFunc_OBJ_SightGet_C(struct sGameObjectMain* gao, Vec3* sight)
+void AI_EvalFunc_OBJ_LocalSightSet_C(tGameObjectMain* a1, Vec3* a2, Vec3* a3)
 {
-    Vec3* row;
-    Mtx4x4 global;
-
-    if ((gao->flags & 0x400000) != 0)
+    if ((a1->flags & 0x400000) != 0)
     {
-        OBJ_ComputeGlobalWithLocal(gao, &global, 1);
-        row = &global.v2;
+        OBJ_SightGeneralSet(a1, a2, a3);
+        MATH_Copy33Matrix(&a1->basic->mtx->mtx, a1->matrices);
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+        if ((a1->flags & 0x4000000) != 0)
+            ANI_UpdateFlash(a1, 3);
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_LocalSightSet(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    Vec3 a2;
+    Vec3 a1a;
+    tGameObjectMain* v5;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v5 = v2;
+    AI_GetVecFromStack(&a1a);
+    AI_GetVecFromStack(&a2);
+    AI_EvalFunc_OBJ_LocalSightSet_C(v5, &a2, &a1a);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_OrientTo_C(tGameObjectMain* a1, tGameObjectMain* a2)
+{
+    int v2;
+    Vec3 dest;
+    Vec3 a3;
+    Vec3 v5;
+
+    if (a2)
+    {
+        v2 = a1->flags & 0x400000;
+        if (v2)
+        {
+            v5 = a1->basic->mtx->mtx.Pos;
+            OBJ_ComputeGlobalWhenHie(a1);
+        }
+        if ((a2->flags & 0x400000) != 0)
+            OBJ_ComputeGlobalWhenHie(a2);
+        dest = a2->matrices->Pos;
+        MATH_SubstractVec(&dest, &dest, &a1->matrices->Pos);
+        a3.x = 0.0;
+        a3.y = 0.0;
+        a3.z = 1.0;
+        OBJ_SightGeneralSet(a1, &dest, &a3);
+        if (v2)
+        {
+            OBJ_ComputeLocalWhenHie(a1);
+            a1->basic->mtx->mtx.Pos = v5;
+        }
+        if ((a1->flags & 0x4000000) != 0)
+            ANI_UpdateFlash(a1, 3);
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_OrientTo(tAINode* a1)
+{
+    tGameObjectMain* v2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJ_OrientTo_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_SightGet_C(struct sGameObjectMain* a2, Vec3* a3)
+{
+    Vec3* v3;
+    Mtx4x4 v4;
+
+    if ((a2->flags & 0x400000) != 0)
+    {
+        OBJ_ComputeGlobalWithLocal(a2, &v4, 1);
+        a3->x = -v4.v2.x;
+        a3->y = -v4.v2.y;
+        a3->z = -v4.v2.z;
     }
     else
     {
-        row = &gao->matrices->v2;
+        v3 = &a2->matrices->v2;
+        a3->x = -v3->x;
+        a3->y = -v3->y;
+        a3->z = -v3->z;
     }
-    sight->x = -row->x;
-    sight->y = -row->y;
-    sight->z = -row->z;
 }
 
-void AI_EvalFunc_OBJ_SightGet_C_CURRENT(Vec3* sight)
+void AI_EvalFunc_OBJ_SightGet_C_CURRENT(Vec3* a1)
 {
-    AI_EvalFunc_OBJ_SightGet_C(AI_gpst_CurrentGameObject, sight);
+    AI_EvalFunc_OBJ_SightGet_C(AI_gpst_CurrentGameObject, a1);
 }
 
-tAINode* AI_EvalFunc_OBJ_SightGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_SightGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 sight;
+    tGameObjectMain* v2;
+    Vec3 a3;
+    tGameObjectMain* a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_SightGet_C(gaoUltra, &sight);
-    AI_PutVecToStack(&sight);
-    return node + 1;
+    a2 = v2;
+    AI_EvalFunc_OBJ_SightGet_C(v2, &a3);
+    AI_PutVecToStack(&a3);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_SightInitGet_C(struct sGameObjectMain* gao, Vec3* sight)
+void AI_EvalFunc_OBJ_SightInitGet_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    if ((gao->flags & 0x400000) != 0)
-        OBJ_ComputeGlobalWhenHie(gao);
-    OBJ_SightInitGet(gao, sight);
+    if ((a1->flags & 0x400000) != 0)
+        OBJ_ComputeGlobalWhenHie(a1);
+    OBJ_SightInitGet(a1, a2);
 }
 
-tAINode* AI_EvalFunc_OBJ_SightInitGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_SightInitGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 sight;
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_SightInitGet_C(gaoUltra, &sight);
-    AI_PutVecToStack(&sight);
-    return node + 1;
+    v4 = v2;
+    AI_EvalFunc_OBJ_SightInitGet_C(v2, &a1a);
+    AI_PutVecToStack(&a1a);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_BankingGeneralSet_C(struct sGameObjectMain* gao, Vec3* banking, Vec3* up)
+void AI_EvalFunc_OBJ_BankingGeneralSet_C(struct sGameObjectMain* a1, Vec3* a2, Vec3* a3)
 {
-    int hierarchical;
-    Vec3 localPos;
+    int v3;
+    Vec3 v4;
 
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
+    v3 = a1->flags & 0x400000;
+    if (v3)
     {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
+        v4 = a1->basic->mtx->mtx.Pos;
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
     }
-
-    OBJ_BankingGeneralSet(gao, banking, up);
-
-    if (hierarchical)
+    OBJ_BankingGeneralSet(a1, a2, a3);
+    if (v3)
     {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
+        OBJ_ComputeLocalWhenHie(a1);
+        a1->basic->mtx->mtx.Pos = v4;
     }
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
+    if ((a1->flags & 0x4000000) != 0)
+        ANI_UpdateFlash(a1, 3);
 }
 
-void AI_EvalFunc_OBJ_BankingGeneralSet_C_CURRENT(Vec3* banking, Vec3* up)
+void AI_EvalFunc_OBJ_BankingGeneralSet_C_CURRENT(Vec3* a1, Vec3* a3)
 {
-    AI_EvalFunc_OBJ_BankingGeneralSet_C(AI_gpst_CurrentGameObject, banking, up);
+    AI_EvalFunc_OBJ_BankingGeneralSet_C(AI_gpst_CurrentGameObject, a1, a3);
 }
 
-tAINode* AI_EvalFunc_OBJ_BankingGeneralSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_BankingGeneralSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 banking;
-    Vec3 up;
+    tGameObjectMain* v2;
+    Vec3 a2;
+    Vec3 a1a;
+    tGameObjectMain* v5;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&up);
-    AI_GetVecFromStack(&banking);
-    AI_EvalFunc_OBJ_BankingGeneralSet_C(gaoUltra, &banking, &up);
-    return node + 1;
+    v5 = v2;
+    AI_GetVecFromStack(&a1a);
+    AI_GetVecFromStack(&a2);
+    AI_EvalFunc_OBJ_BankingGeneralSet_C(v5, &a2, &a1a);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_BankingSet_C(struct sGameObjectMain* gao, Vec3* banking)
+void AI_EvalFunc_OBJ_BankingSet_C(struct sGameObjectMain* a1, Vec3* a3)
 {
-    int hierarchical;
-    Vec3 localPos;
+    int v2;
+    Vec3 v3;
 
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
+    v2 = a1->flags & 0x400000;
+    if (v2)
     {
-        localPos = gao->basic->mtx->mtx.Pos;
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
+        v3 = a1->basic->mtx->mtx.Pos;
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
     }
-
-    OBJ_BankingSet(gao, banking);
-
-    if (hierarchical)
+    OBJ_BankingSet(a1, a3);
+    if (v2)
     {
-        OBJ_ComputeLocalWhenHie(gao);
-        gao->basic->mtx->mtx.Pos = localPos;
+        OBJ_ComputeLocalWhenHie(a1);
+        a1->basic->mtx->mtx.Pos = v3;
     }
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_UpdateFlash(gao, 3);
+    if ((a1->flags & 0x4000000) != 0)
+        ANI_UpdateFlash(a1, 3);
 }
 
-tAINode* AI_EvalFunc_OBJ_BankingSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_BankingSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 banking;
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&banking);
-    AI_EvalFunc_OBJ_BankingSet_C(gaoUltra, &banking);
-    return node + 1;
+    v4 = v2;
+    AI_GetVecFromStack(&a1a);
+    AI_EvalFunc_OBJ_BankingSet_C(v4, &a1a);
+    return a1 + 1;
 }
 
-// Banking is the third row of the matrix.
-void AI_EvalFunc_OBJ_BankingGet_C(struct sGameObjectMain* gao, Vec3* banking)
+void AI_EvalFunc_OBJ_BankingGet_C(struct sGameObjectMain* a2, Vec3* a3)
 {
-    Mtx4x4 global;
+    Mtx4x4 v3;
 
-    if ((gao->flags & 0x400000) != 0)
+    if ((a2->flags & 0x400000) != 0)
     {
-        OBJ_ComputeGlobalWithLocal(gao, &global, 1);
-        *banking = global.v3;
+        OBJ_ComputeGlobalWithLocal(a2, &v3, 1);
+        *a3 = v3.v3;
     }
     else
     {
-        *banking = gao->matrices->v3;
+        *a3 = a2->matrices->v3;
     }
 }
 
-void AI_EvalFunc_OBJ_BankingGet_C_CURRENT(Vec3* banking)
+void AI_EvalFunc_OBJ_BankingGet_C_CURRENT(Vec3* a1)
 {
-    AI_EvalFunc_OBJ_BankingGet_C(AI_gpst_CurrentGameObject, banking);
+    AI_EvalFunc_OBJ_BankingGet_C(AI_gpst_CurrentGameObject, a1);
 }
 
-tAINode* AI_EvalFunc_OBJ_BankingGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_BankingGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 banking;
+    tGameObjectMain* v2;
+    Vec3 a3;
+    tGameObjectMain* a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_BankingGet_C(gaoUltra, &banking);
-    AI_PutVecToStack(&banking);
-    return node + 1;
+    a2 = v2;
+    AI_EvalFunc_OBJ_BankingGet_C(v2, &a3);
+    AI_PutVecToStack(&a3);
+    return a1 + 1;
 }
 
-// Note that this composes into the object's own matrix and does not
-// put it back, unlike the other getters here.
-void AI_EvalFunc_OBJ_HorizonGet_C(struct sGameObjectMain* gao, Vec3* horizon)
+void AI_EvalFunc_OBJ_HorizonGet_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    if ((gao->flags & 0x400000) != 0)
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    OBJ_HorizonGet(gao, horizon);
+    if ((a1->flags & 0x400000) != 0)
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+    OBJ_HorizonGet(a1, a2);
 }
 
-void AI_EvalFunc_OBJ_HorizonGet_C_CURRENT(Vec3* horizon)
+void AI_EvalFunc_OBJ_HorizonGet_C_CURRENT(Vec3* a2)
 {
-    AI_EvalFunc_OBJ_HorizonGet_C(AI_gpst_CurrentGameObject, horizon);
+    if ((AI_gpst_CurrentGameObject->flags & 0x400000) != 0)
+        OBJ_ComputeGlobalWithLocal(AI_gpst_CurrentGameObject, AI_gpst_CurrentGameObject->matrices, 1);
+    OBJ_HorizonGet(AI_gpst_CurrentGameObject, a2);
 }
 
-tAINode* AI_EvalFunc_OBJ_HorizonGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_HorizonGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 horizon;
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_HorizonGet_C(gaoUltra, &horizon);
-    AI_PutVecToStack(&horizon);
-    return node + 1;
+    v4 = v2;
+    AI_EvalFunc_OBJ_HorizonGet_C(v2, &a1a);
+    AI_PutVecToStack(&a1a);
+    return a1 + 1;
 }
 
-// Note that the scale is popped before the current object is saved,
-// unlike every other wrapper in this file.
-tAINode* AI_EvalFunc_OBJ_ScaleSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_ScaleSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 scale;
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
 
-    AI_GetVecFromStack(&scale);
-    gaoUltra = AI_gpst_CurrentUltra;
+    AI_GetVecFromStack(&a1a);
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    OBJ_ScaleSet(gaoUltra, &scale);
-    return node + 1;
+    v4 = v2;
+    OBJ_ScaleSet(v2, &a1a);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_ScaleGet_C(struct sGameObjectMain* gao, Vec3* scale)
+void AI_EvalFunc_OBJ_ScaleGet_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    MATH_GetScale(scale, gao->matrices);
+    MATH_GetScale(a2, a1->matrices);
 }
 
-tAINode* AI_EvalFunc_OBJ_ScaleGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_ScaleGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 scale;
+    tGameObjectMain* v2;
+    Vec3 a1a;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_ScaleGet_C(gaoUltra, &scale);
-    AI_PutVecToStack(&scale);
-    return node + 1;
+    v4 = v2;
+    AI_EvalFunc_OBJ_ScaleGet_C(v2, &a1a);
+    AI_PutVecToStack(&a1a);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_ZoomSet_C(struct sGameObjectMain* gao, float zoom)
+void AI_EvalFunc_OBJ_ZoomSet_C(struct sGameObjectMain* a1, float zoom)
 {
-    int hierarchical;
+    int v2;
 
-    hierarchical = gao->flags & 0x400000;
-    if (hierarchical)
-        OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
-    OBJ_ZoomSet(gao, zoom);
-    if (hierarchical)
-        OBJ_ComputeLocalWhenHie(gao);
+    v2 = a1->flags & 0x400000;
+    if (v2)
+        OBJ_ComputeGlobalWithLocal(a1, a1->matrices, 1);
+    OBJ_ZoomSet(a1, zoom);
+    if (v2)
+        OBJ_ComputeLocalWhenHie(a1);
 }
 
-tAINode* AI_EvalFunc_OBJ_ZoomSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_ZoomSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
     float zoom;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     zoom = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJ_ZoomSet_C(gaoUltra, zoom);
-    return node + 1;
+    AI_EvalFunc_OBJ_ZoomSet_C(v2, zoom);
+    return a1 + 1;
 }
 
-// The zoom is the largest of the three scale components.
-float AI_EvalFunc_OBJ_ZoomGet_C(struct sGameObjectMain* gao)
+float AI_EvalFunc_OBJ_ZoomGet_C(struct sGameObjectMain* a2)
 {
-    Vec3 scale;
+    Vec3 a1;
 
-    MATH_GetScale(&scale, gao->matrices);
-    return MATH_f_MaxOf3(scale.x, scale.y, scale.z);
+    MATH_GetScale(&a1, a2->matrices);
+    return float_get_max_of_3vals_sub_48BBB0(a1.x, a1.y, a1.z);
 }
 
-tAINode* AI_EvalFunc_OBJ_ZoomGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_ZoomGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    float v2;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_ZoomGet_C(gaoUltra));
-    return node + 1;
+    v2 = AI_EvalFunc_OBJ_ZoomGet_C(v3);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_FlagsIdentityGet_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJ_FlagsIdentityGet_C(struct sGameObjectMain* a1)
 {
-    if (!gao)
-        return 0;
-    return gao->flags;
-}
+    int v2;
 
-tAINode* AI_EvalFunc_OBJ_FlagsIdentityGet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_FlagsIdentityGet_C(gaoUltra));
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJ_FlagsIdentitySet_C(struct sGameObjectMain* gao, int toSet, int toClear)
-{
-    int newFlags;
-
-    if (!gao)
-    {
-        OBJ_ChangeIdentityFlags(0, toSet, 0);
-        return;
-    }
-    newFlags = toSet | (~toClear & gao->flags);
-    OBJ_ChangeIdentityFlags(gao, newFlags, gao->flags);
-}
-
-tAINode* AI_EvalFunc_OBJ_FlagsIdentitySet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int toSet;
-    int toClear;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    toClear = AI_GetIntFromStack();
-    toSet = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_FlagsIdentitySet_C(gaoUltra, toSet, toClear);
-    return node + 1;
-}
-
-BOOL AI_EvalFunc_OBJ_FlagsIdentityTest_C(struct sGameObjectMain* gao, int mask)
-{
-    int flags;
-
-    if (gao)
-        flags = gao->flags;
+    if (a1)
+        v2 = a1->flags;
     else
-        flags = 0;
-    return (mask & flags) != 0;
+        v2 = 0;
+    return v2;
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagsIdentityTest(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsIdentityGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int mask;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    mask = AI_GetIntFromStack();
-    AI_PutIntToStack(AI_EvalFunc_OBJ_FlagsIdentityTest_C(gaoUltra, mask));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_FlagsIdentityGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_FlagsDesignGet_C(struct sGameObjectMain* gao)
+void AI_EvalFunc_OBJ_FlagsIdentitySet_C(struct sGameObjectMain* a1, int a2, int a3)
 {
-    if (!gao)
-        return 0;
-    return gao->designFlags;
+    int a2a;
+    int a2b;
+
+    if (a1)
+        a2a = a1->flags;
+    else
+        a2a = 0;
+    a2b = a2 | ~a3 & a2a;
+    if (a1)
+        OBJ_ChangeIdentityFlags(a1, a2b, a1->flags);
+    else
+        OBJ_ChangeIdentityFlags(0, a2b, 0);
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagsDesignGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsIdentitySet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
+    int a3;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_FlagsDesignGet_C(gaoUltra));
-    return node + 1;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_FlagsIdentitySet_C(v2, a2, a3);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_FlagsDesignSet_C(struct sGameObjectMain* gao, char toSet, char toClear)
+BOOL AI_EvalFunc_OBJ_FlagsIdentityTest_C(struct sGameObjectMain* a1, int a2)
 {
-    uint8_t newFlags;
+    int v3;
 
-    if (!gao)
+    if (a1)
+        v3 = a1->flags;
+    else
+        v3 = 0;
+    return (a2 & v3) != 0;
+}
+
+tAINode* AI_EvalFunc_OBJ_FlagsIdentityTest(tAINode* a1)
+{
+    int v1;
+    int v2;
+    tGameObjectMain* v4;
+
+    v4 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v1 = AI_GetIntFromStack();
+    v2 = AI_EvalFunc_OBJ_FlagsIdentityTest_C(v4, v1);
+    AI_PutIntToStack(v2);
+    return a1 + 1;
+}
+
+int AI_EvalFunc_OBJ_FlagsDesignGet_C(struct sGameObjectMain* a1)
+{
+    uint8_t v2;
+
+    v2 = 0;
+    if (a1)
+        v2 = a1->designFlags;
+    return v2;
+}
+
+tAINode* AI_EvalFunc_OBJ_FlagsDesignGet(tAINode* a1)
+{
+    int v1;
+    tGameObjectMain* v3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v1 = AI_EvalFunc_OBJ_FlagsDesignGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
+}
+
+int AI_EvalFunc_OBJ_FlagsDesignSet_C(struct sGameObjectMain* a1, char a2, char a3)
+{
+    uint8_t v4;
+
+    if (!a1)
         return -1;
-    newFlags = toSet | (~toClear & gao->designFlags);
-    gao->designFlags = newFlags;
-    return newFlags;
+    v4 = a2 | ~a3 & a1->designFlags;
+    a1->designFlags = v4;
+    return v4;
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagsDesignSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsDesignSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    char toSet;
-    char toClear;
+    int v1;
+    tGameObjectMain* v3;
+    char v4;
+    char v5;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    toClear = AI_GetIntFromStack();
-    toSet = AI_GetIntFromStack();
-    AI_PutIntToStack(AI_EvalFunc_OBJ_FlagsDesignSet_C(gaoUltra, toSet, toClear));
-    return node + 1;
+    v5 = AI_GetIntFromStack();
+    v4 = AI_GetIntFromStack();
+    v1 = AI_EvalFunc_OBJ_FlagsDesignSet_C(v3, v4, v5);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_OBJ_FlagsFixSet_C(tGameObjectMain* gao, char toSet, char toClear)
+tGameObjectMain* AI_EvalFunc_OBJ_FlagsFixSet_C(tGameObjectMain* a1, char a2, char a3)
 {
-    gao->process &= ~toClear;
-    gao->process |= toSet;
-    return gao;
+    tGameObjectMain* result; // eax
+
+    a1->process &= ~a3;
+    result = a1;
+    a1->process |= a2;
+    return result;
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagsFixSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsFixSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    char toSet;
-    char toClear;
+    tGameObjectMain* v2;
+    char a3;
+    char a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    toClear = AI_GetIntFromStack();
-    toSet = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_FlagsFixSet_C(gaoUltra, toSet, toClear);
-    return node + 1;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_FlagsFixSet_C(v2, a2, a3);
+    return a1 + 1;
 }
 
-tAINode* AI_EvalFunc_OBJ_FlagsFixGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsFixGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(gaoUltra->process);
-    return node + 1;
+    AI_PutIntToStack(v2->process);
+    return a1 + 1;
 }
 
-// Only the two init bits of the process flags can be set this way.
-tAINode* AI_EvalFunc_OBJ_FlagsFixSetInit(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_FlagsFixSetInit(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    gaoUltra->process |= AI_GetIntFromStack() & 0xC;
-    return node + 1;
+    v2->process |= AI_GetIntFromStack() & 0xC;
+    return a1 + 1;
 }
 
-// Copies the morph channels of one object onto another, channel by
-// channel, as far as the shorter of the two reaches. A data index the
-// destination cannot hold becomes -1.
-void AI_EvalFunc_OBJ_MorphCopy_C(struct sGameObjectMain* gao, struct sGameObjectMain* src)
+void AI_EvalFunc_OBJ_MorphCopy_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
 {
-    tMorphMdfStruct* dstMorph;
-    tMorphMdfStruct* srcMorph;
-    tMorphMdfInner2Struct* dstChannel;
-    tMorphMdfInner2Struct* srcChannel;
-    int channels;
-    int slots;
-    int channel;
-    int slot;
+    int v3;
+    int v4;
+    tMorphMdfStruct* v5;
+    int j;
+    int v7;
+    tMorphMdfStruct* v8;
+    tMorphMdfInner2Struct* v9;
+    tMorphMdfInner2Struct* i;
 
-    dstMorph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!dstMorph)
-        return;
-    srcMorph = GEO_pst_ModifierMorphing_Get(src);
-    if (!srcMorph)
-        return;
+    v8 = GEO_pst_ModifierMorphing_Get(a1);
+    if (v8)
+    {
+        v5 = GEO_pst_ModifierMorphing_Get(a2);
+        if (v5)
+        {
+            if (v8->num2 <= v5->num2)
+                v4 = v8->num2;
+            else
+                v4 = v5->num2;
+            v7 = v4;
+            v9 = v8->ptr2;
+            for (i = v5->ptr2; v7--; ++i)
+            {
+                v9->Factor = i->Factor;
+                v9->Prog = i->Prog;
+                if (v9->num >= i->num)
+                    v3 = i->num;
+                else
+                    v3 = v9->num;
+                for (j = 0; j < v3; ++j)
+                {
+                    v9->ptr[j] = i->ptr[j];
+                    if (v9->ptr[j] >= v8->num)
+                        v9->ptr[j] = -1;
+                }
+                ++v9;
+            }
+        }
+    }
+}
 
-    if (dstMorph->num2 <= srcMorph->num2)
-        channels = dstMorph->num2;
+tAINode* AI_EvalFunc_OBJ_MorphCopy(tAINode* a1)
+{
+    tGameObjectMain* v2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJ_MorphCopy_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    return a1 + 1;
+}
+
+int AI_EvalFunc_OBJ_NumberOfData_C(tGameObjectMain* a1)
+{
+    int result;
+    tMorphMdfStruct* v2;
+
+    v2 = GEO_pst_ModifierMorphing_Get(a1);
+    if (v2)
+        result = v2->num;
     else
-        channels = srcMorph->num2;
+        result = 0;
+    return result;
+}
 
-    for (channel = 0; channel < channels; ++channel)
+tAINode* AI_EvalFunc_OBJ_NumberOfData(tAINode* a1)
+{
+    int v1;
+    tGameObjectMain* v3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v1 = AI_EvalFunc_OBJ_NumberOfData_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
+}
+
+int AI_EvalFunc_OBJ_NumberOfChannel_C(tGameObjectMain* a1)
+{
+    int result;
+    tMorphMdfStruct* v2;
+
+    v2 = GEO_pst_ModifierMorphing_Get(a1);
+    if (v2)
+        result = v2->num2;
+    else
+        result = 0;
+    return result;
+}
+
+tAINode* AI_EvalFunc_OBJ_NumberOfChannel(tAINode* a1)
+{
+    int v1;
+    tGameObjectMain* v3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v1 = AI_EvalFunc_OBJ_NumberOfChannel_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
+}
+
+float AI_EvalFunc_OBJ_GetChannelFactor_C(struct sGameObjectMain* a1, int a2)
+{
+    tMorphMdfStruct* v3;
+
+    v3 = GEO_pst_ModifierMorphing_Get(a1);
+    if (!v3)
+        return 0.0;
+    if (a2 >= 0 && a2 < v3->num2)
+        return v3->ptr2[a2].Factor;
+    return 0.0;
+}
+
+tAINode* AI_EvalFunc_OBJ_GetChannelFactor(tAINode* a1)
+{
+    int v1;
+    float v3;
+    tGameObjectMain* v4;
+
+    v4 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v1 = AI_GetIntFromStack();
+    v3 = AI_EvalFunc_OBJ_GetChannelFactor_C(v4, v1);
+    AI_PutFloatToStack(v3);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_SetChannelFactor_C(struct sGameObjectMain* a1, int a2, float a3)
+{
+    tMorphMdfStruct* v3;
+
+    v3 = GEO_pst_ModifierMorphing_Get(a1);
+    if (v3 && a2 >= 0 && a2 < v3->num2)
+        v3->ptr2[a2].Factor = a3;
+}
+
+tAINode* AI_EvalFunc_OBJ_SetChannelFactor(tAINode* a1)
+{
+    int v1;
+    tGameObjectMain* v3;
+    float a3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a3 = AI_GetFloatFromStack();
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_SetChannelFactor_C(v3, v1, a3);
+    return a1 + 1;
+}
+
+float AI_EvalFunc_OBJ_GetChannelProg_C(struct sGameObjectMain* a1, int a2)
+{
+    tMorphMdfStruct* v3;
+
+    v3 = GEO_pst_ModifierMorphing_Get(a1);
+    if (!v3)
+        return 0.0;
+    if (a2 >= 0 && a2 < v3->num2)
+        return v3->ptr2[a2].Prog;
+    return 0.0;
+}
+
+tAINode* AI_EvalFunc_OBJ_GetChannelProg(tAINode* a1)
+{
+    int v1;
+    float v3;
+    tGameObjectMain* v4;
+
+    v4 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v1 = AI_GetIntFromStack();
+    v3 = AI_EvalFunc_OBJ_GetChannelProg_C(v4, v1);
+    AI_PutFloatToStack(v3);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_SetChannelProg_C(struct sGameObjectMain* a1, int a2, float a3)
+{
+    tMorphMdfStruct* v3;
+
+    v3 = GEO_pst_ModifierMorphing_Get(a1);
+    if (v3 && a2 >= 0 && a2 < v3->num2)
+        v3->ptr2[a2].Prog = a3;
+}
+
+tAINode* AI_EvalFunc_OBJ_SetChannelProg(tAINode* a1)
+{
+    int v1;
+    tGameObjectMain* v3;
+    float a3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a3 = AI_GetFloatFromStack();
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_SetChannelProg_C(v3, v1, a3);
+    return a1 + 1;
+}
+
+int AI_EvalFunc_OBJ_GetChannelData_C(struct sGameObjectMain* a1, int a2, int a3)
+{
+    int result;
+    tMorphMdfStruct* v4;
+    tMorphMdfInner2Struct* v5;
+
+    v4 = GEO_pst_ModifierMorphing_Get(a1);
+    if (!v4)
+        return 0;
+    if (a2 < 0 || a2 >= v4->num2)
+        return 0;
+    v5 = &v4->ptr2[a2];
+    if (a3 >= 0 && a3 < v5->num)
+        result = v5->ptr[a3];
+    else
+        result = v5->num;
+    return result;
+}
+
+tAINode* AI_EvalFunc_OBJ_GetChannelData(tAINode* a1)
+{
+    int v1;
+    int v2;
+    int v4;
+    tGameObjectMain* v5;
+
+    v5 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v4 = AI_GetIntFromStack();
+    v1 = AI_GetIntFromStack();
+    v2 = AI_EvalFunc_OBJ_GetChannelData_C(v5, v1, v4);
+    AI_PutIntToStack(v2);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_SetChannelData_C(struct sGameObjectMain* a1, int a2, int a3, int a4)
+{
+    tMorphMdfStruct* v4;
+    tMorphMdfInner2Struct* v5;
+
+    v4 = GEO_pst_ModifierMorphing_Get(a1);
+    if (v4)
     {
-        dstChannel = &dstMorph->ptr2[channel];
-        srcChannel = &srcMorph->ptr2[channel];
+        if (a2 >= 0 && a2 < v4->num2)
+        {
+            v5 = &v4->ptr2[a2];
+            if (a4 >= 0 && a4 < v5->num && a3 < v4->num)
+                v5->ptr[a4] = a3;
+        }
+    }
+}
 
-        dstChannel->Factor = srcChannel->Factor;
-        dstChannel->Prog = srcChannel->Prog;
+tAINode* AI_EvalFunc_OBJ_SetChannelData(tAINode* a1)
+{
+    int v1;
+    int v3;
+    tGameObjectMain* v4;
+    int a4;
 
-        if (dstChannel->num >= srcChannel->num)
-            slots = srcChannel->num;
+    v4 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a4 = AI_GetIntFromStack();
+    v3 = AI_GetIntFromStack();
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_SetChannelData_C(v4, v1, v3, a4);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_SetModuleChannelData_C(tGameObjectMain* a1, int a2, int a3, int a4, int a5)
+{
+    tMorphMdfStruct* v5;
+    tMorphMdfInner2Struct* v6;
+
+    if (a2 == -1 || (a1 = ANI_pst_GetObjectByAICanal(a1, a2)) != 0)
+    {
+        v5 = GEO_pst_ModifierMorphing_Get(a1);
+        if (v5)
+        {
+            if (a3 >= 0 && a3 < v5->num2)
+            {
+                v6 = &v5->ptr2[a3];
+                if (a4 >= 0 && a4 < v6->num && a5 < v5->num)
+                    v6->ptr[a4] = a5;
+            }
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_SetModuleChannelData(tAINode* a1)
+{
+    int v1;
+    int v3;
+    tGameObjectMain* v4;
+    int a4;
+    int a5;
+
+    v4 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a5 = AI_GetIntFromStack();
+    a4 = AI_GetIntFromStack();
+    v3 = AI_GetIntFromStack();
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_SetModuleChannelData_C(v4, v1, v3, a4, a5);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_ResetModuleChannelData_C(tGameObjectMain* a1, int a2, int a3)
+{
+    tMorphMdfStruct* v3;
+    tMorphMdfInner2Struct* v4;
+    int i;
+
+    if (a2 == -1 || (a1 = ANI_pst_GetObjectByAICanal(a1, a2)) != 0)
+    {
+        v3 = GEO_pst_ModifierMorphing_Get(a1);
+        if (v3 && a3 >= 0 && a3 < v3->num2)
+        {
+            v4 = &v3->ptr2[a3];
+            for (i = 0; i < v4->num; ++i)
+                v4->ptr[i] = -1;
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_ResetModuleChannelData(tAINode* a1)
+{
+    int v1;
+    int v3;
+    tGameObjectMain* v4;
+
+    v4 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v3 = AI_GetIntFromStack();
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_ResetModuleChannelData_C(v4, v1, v3);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_AnimMorphFactor_C(tGameObjectMain* a1, tGameObjectMain* a2, int a3, int a4, int a5, int a6)
+{
+    if (a3 == -1 || (a2 = ANI_pst_GetObjectByAICanal(a2, a3)) != 0)
+    {
+        AI_EvalFunc_OBJ_SetChannelData_C(a2, a4, a5, 0);
+        AI_EvalFunc_OBJ_SetChannelData_C(a2, a4, a6, 1);
+        AI_EvalFunc_OBJ_SetChannelFactor_C(a2, a4, a1->matrices->Pos.x);
+        AI_EvalFunc_OBJ_SetChannelProg_C(a2, a4, a1->matrices->Pos.y);
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_AnimMorphFactor(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    int a5;
+    int a6;
+    int a3;
+    int a4;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a6 = AI_GetIntFromStack();
+    a5 = AI_GetIntFromStack();
+    a4 = AI_GetIntFromStack();
+    a3 = AI_GetIntFromStack();
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJ_AnimMorphFactor_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3, a4, a5, a6);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_AnimMorphFactorNoKey_C(tGameObjectMain* a1, tGameObjectMain* a2, int a3, int a4)
+{
+    float v4;
+
+    if (a3 == -1 || (a2 = ANI_pst_GetObjectByAICanal(a2, a3)) != 0)
+    {
+        AI_EvalFunc_OBJ_SetChannelFactor_C(a2, a4, a1->matrices->Pos.x);
+        v4 = (float)(a1->matrices->Pos.y + 1.0);
+        AI_EvalFunc_OBJ_SetChannelProg_C(a2, a4, v4);
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_AnimMorphFactorNoKey(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    int a3;
+    tGameObjectMain* a2;
+    int a4;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a4 = AI_GetIntFromStack();
+    a3 = AI_GetIntFromStack();
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    a2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    if (a2)
+        AI_EvalFunc_OBJ_AnimMorphFactorNoKey_C(v2, a2, a3, a4);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_RLICarteSet_C(struct sGameObjectMain* a1, unsigned int a2, int a3)
+{
+    tRliCarteMdfStruct* v3;
+    tModifier* v4;
+
+    v4 = MDF_pst_GetByType(a1, 23);
+    if (v4 && v4->mdfPrivateDataPtr)
+    {
+        v3 = (tRliCarteMdfStruct*)v4->mdfPrivateDataPtr;
+        if (a2 == -1)
+        {
+            v3->b1 = a3;
+        }
+        else if (a2 == -2)
+        {
+            v3->b2Max3 = a3;
+        }
+        else if (a2 < 64)
+        {
+            v3->colors[a2] = a3;
+        }
+    }
+}
+
+tAINode* AI_EvalFunc_OBJ_RLICarteSet(tAINode* a1)
+{
+    int v1;
+    int v3;
+    tGameObjectMain* v4;
+
+    v4 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v3 = AI_GetIntFromStack();
+    v1 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_RLICarteSet_C(v4, v1, v3);
+    return a1 + 1;
+}
+
+float AI_EvalFunc_OBJ_LodVisGet_C(struct sGameObjectMain* a1)
+{
+    float v2;
+
+    v2 = (float)a1->distance;
+    return (float)(v2 * 0.0039215689);
+}
+
+tAINode* AI_EvalFunc_OBJ_LodVisGet(tAINode* a1)
+{
+    float v2;
+    tGameObjectMain* v3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v2 = AI_EvalFunc_OBJ_LodVisGet_C(v3);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
+}
+
+float AI_EvalFunc_OBJ_LodDistGet_c_inner(uint8_t a1)
+{
+    double result;
+    float v2;
+    float v3;
+
+    if (a1 <= 127u)
+    {
+        v2 = (float)(8 * a1);
+        result = v2;
+    }
+    else
+    {
+        v3 = (float)(((a1 - 128) << 6) + 1024);
+        result = v3;
+    }
+    return (float)result;
+}
+
+float AI_EvalFunc_OBJ_LodDistGet_C(tGameObjectMain* a1)
+{
+    return AI_EvalFunc_OBJ_LodDistGet_c_inner(a1->LODDist);
+}
+
+tAINode* AI_EvalFunc_OBJ_LodDistGet(tAINode* a1)
+{
+    float v2;
+    tGameObjectMain* v3;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v2 = AI_EvalFunc_OBJ_LodDistGet_C(v3);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
+}
+
+struct sGameObjectMain* AI_EvalFunc_OBJ_HierarchyGet_C(struct sGameObjectMain* a1)
+{
+    tGameObjectMain* v2;
+
+    v2 = 0;
+    if ((a1->flags & 0x400000) != 0)
+        v2 = a1->basic->mtx->refGao2;
+    return v2;
+}
+
+tAINode* AI_EvalFunc_OBJ_HierarchyGet(tAINode* a1)
+{
+    int v2[3];
+    tGameObjectMain* v3;
+    tGameObjectMain* v4;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v4 = v3;
+    v2[0] = (int)AI_EvalFunc_OBJ_HierarchyGet_C(v3);
+    AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
+    return a1 + 1;
+}
+
+int AI_EvalFunc_OBJ_HierarchyGetChildren_C(tGameObjectMain* a1, tGameObjectMain** ret)
+{
+    return WOR_i_GetAllChildrenOf(WOR_gpst_CurrentWorld, a1, ret);
+}
+
+tAINode* AI_EvalFunc_OBJ_HierarchyGetChilds(tAINode* a1)
+{
+    int v1;
+    tGameObjectMain* v3;
+    char dest[52];
+    tVarStackElem a2;
+    tGameObjectMain* v6;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v6 = v3;
+    AI_GetVarFromStack(dest, &a2);
+    v1 = AI_EvalFunc_OBJ_HierarchyGetChildren_C(v6, (tGameObjectMain**)a2.ptr);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_HierarchyReset_C(struct sGameObjectMain* a2)
+{
+
+    int v2;
+    int v3;
+    Mtx4x4* v4;
+    Mtx4x4 v5;
+
+    if (a2->basic && a2->basic->mtx)
+    {
+        if ((a2->flags & 0x4000000) != 0)
+            ANI_RemoveHierarchyOnFlash(a2);
+        if ((a2->flags & 0x600) != 0)
+        {
+            MATH_MulMatrixMatrix(&v5, a2->extended->coll->colInstance->mtx, a2->basic->mtx->refGao2->matrices);
+            v4 = a2->extended->coll->colInstance->mtx;
+            if (v4 != &v5)
+                memcpy(v4, &v5, sizeof(Mtx4x4));
+        }
+        if (a2)
+            v3 = a2->flags;
         else
-            slots = dstChannel->num;
+            v3 = 0;
+        if (a2)
+            v2 = a2->flags;
+        else
+            v2 = 0;
+        OBJ_ChangeIdentityFlags(a2, v2 & ~0x400000u, v3);
+        TAB_PFtable_RemoveElemWithPointer(&WOR_gpst_CurrentWorld->eot.objectsWithHiearchyTablePF, a2);
+    }
+}
 
-        for (slot = 0; slot < slots; ++slot)
+tAINode* AI_EvalFunc_OBJ_HierarchyReset(tAINode* a1)
+{
+    tGameObjectMain* v2;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_EvalFunc_OBJ_HierarchyReset_C(v2);
+    return a1 + 1;
+}
+
+struct sGameObjectMain* AI_EvalFunc_OBJ_HierarchySet_C(struct sGameObjectMain* a2, struct sGameObjectMain* a3)
+{
+    Mtx4x4* v4;
+    Mtx4x4 v5;
+    Mtx4x4 v6;
+    tGameObjectMain* v7;
+    int v8;
+    int v9;
+    tWorld* v10;
+
+    if (!a3 || a3 == a2)
+        return 0;
+    v10 = WOR_gpst_CurrentWorld;
+    AI_EvalFunc_OBJ_HierarchyReset_C(a2);
+    if (a2)
+        v9 = a2->flags;
+    else
+        v9 = 0;
+    if (a2)
+        v8 = a2->flags;
+    else
+        v8 = 0;
+    OBJ_ChangeIdentityFlags(a2, v8 | 0x400000, v9);
+    v7 = a2->basic->mtx->refGao2;
+    a2->basic->mtx->refGao2 = a3;
+    OBJ_ComputeLocalWhenHie(a2);
+    if ((a2->flags & 0x600) != 0)
+    {
+        MATH_InvertMatrix(&v6, a3->matrices);
+        MATH_MulMatrixMatrix(&v5, a2->extended->coll->colInstance->mtx, &v6);
+        v4 = a2->extended->coll->colInstance->mtx;
+        if (v4 != &v5)
+            memcpy(v4, &v5, sizeof(Mtx4x4));
+    }
+    if ((a2->flags & 0x4000000) != 0)
+        ANI_ApplyHierarchyOnFlash(a2);
+    if (v10)
+        v10->tablesManagerAndEOTNeeded = 1;
+    return v7;
+}
+
+tAINode* AI_EvalFunc_OBJ_HierarchySet(tAINode* a1)
+{
+    int v2[3];
+    tGameObjectMain* v3;
+    tGameObjectMain* a3;
+    tGameObjectMain* a2;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a2 = v3;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    a3 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    AI_EvalFunc_OBJ_HierarchyReset_C(v3);
+    v2[0] = (int)AI_EvalFunc_OBJ_HierarchySet_C(v3, a3);
+    AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
+    return a1 + 1;
+}
+
+struct sGameObjectMain* AI_EvalFunc_OBJ_HierarchySetFather_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+{
+    tGameObjectMain* v3;
+
+    if (a2 == a1)
+        return 0;
+    if ((a1->flags & 0x400000) == 0)
+        return 0;
+    v3 = a1->basic->mtx->refGao2;
+    a1->basic->mtx->refGao2 = a2;
+    OBJ_ComputeLocalWhenHie(a1);
+    return v3;
+}
+
+tAINode* AI_EvalFunc_OBJ_HierarchySetFather(tAINode* a1)
+{
+    int v2[3];
+    tGameObjectMain* v3;
+    tGameObjectMain* a2;
+    tGameObjectMain* v5;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v5 = v3;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    a2 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    v2[0] = (int)AI_EvalFunc_OBJ_HierarchySetFather_C(v3, a2);
+    AI_PutObjectToStack(v2, AI_gaw_EnumLink[40]);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_HierarchyMoveFather_C(tGameObjectMain* a1, Vec3* a2)
+{
+    Mtx4x4* v2;
+    Vec3* v3;
+    BOOL v4;
+    tGameObjectMain* v5;
+    tGameObjectMain* a1a;
+    Vec3 a2a;
+    tableElemStructPF* v8;
+    tableElemStructPF* v9;
+    tWorld* v10;
+
+    if ((a1->flags & 0x400000) != 0)
+    {
+        a1a = a1->basic->mtx->refGao2;
+        if (a1a)
         {
-            dstChannel->ptr[slot] = srcChannel->ptr[slot];
-            if (dstChannel->ptr[slot] >= dstMorph->num)
-                dstChannel->ptr[slot] = -1;
+            v3 = &a1->basic->mtx->mtx.Pos;
+            v2 = OBJ_pst_GetAbsoluteMatrix(a1a);
+            MATH_TransformVector(&a2a, v2, v3);
+            MATH_SubstractVec(&a2a, a2, &a2a);
+            OBJ_SetAbsolutePosition(a1a, &a2a);
+            v10 = WOR_gpst_CurrentWorld;
+            v9 = WOR_gpst_CurrentWorld->objectTablePF.firstElemPtr;
+            v8 = WOR_gpst_CurrentWorld->objectTablePF.nextElemPtr;
+            while (v9 < v8)
+            {
+                v5 = (tGameObjectMain*)v9->objectPtr;
+                v4 = !v9->objectPtr || ((int)v9->objectPtr & 3) == 1;
+                if (!v4 && (v5->flags & 0x400000) != 0 && v5->basic && v5->basic->mtx && v5->basic->mtx->refGao2 == a1a)
+                {
+                    if (v5 == a1)
+                        a2a.x = 0.0;
+                    OBJ_ComputeGlobalWhenHie(v5);
+                }
+                ++v9;
+            }
         }
     }
 }
 
-tAINode* AI_EvalFunc_OBJ_MorphCopy(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_HierarchyMoveFather(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_MorphCopy_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack());
-    return node + 1;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJ_HierarchyMoveFather_C(v2, (Vec3*)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_NumberOfData_C(tGameObjectMain* gao)
+tAINode* AI_EvalFunc_OBJ_IsValidGAO(tAINode* a1)
 {
-    tMorphMdfStruct* morph;
+    tGameObjectMain* v2;
+    tableElemStructPF* i;
 
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!morph)
-        return 0;
-    return morph->num;
-}
-
-tAINode* AI_EvalFunc_OBJ_NumberOfData(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_NumberOfData_C(gaoUltra));
-    return node + 1;
-}
-
-int AI_EvalFunc_OBJ_NumberOfChannel_C(tGameObjectMain* gao)
-{
-    tMorphMdfStruct* morph;
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!morph)
-        return 0;
-    return morph->num2;
-}
-
-tAINode* AI_EvalFunc_OBJ_NumberOfChannel(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_NumberOfChannel_C(gaoUltra));
-    return node + 1;
-}
-
-float AI_EvalFunc_OBJ_GetChannelFactor_C(struct sGameObjectMain* gao, int channel)
-{
-    tMorphMdfStruct* morph;
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!morph)
-        return 0.0;
-    if (channel >= 0 && channel < morph->num2)
-        return morph->ptr2[channel].Factor;
-    return 0.0;
-}
-
-tAINode* AI_EvalFunc_OBJ_GetChannelFactor(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int channel;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    channel = AI_GetIntFromStack();
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_GetChannelFactor_C(gaoUltra, channel));
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJ_SetChannelFactor_C(struct sGameObjectMain* gao, int channel, float factor)
-{
-    tMorphMdfStruct* morph;
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (morph && channel >= 0 && channel < morph->num2)
-        morph->ptr2[channel].Factor = factor;
-}
-
-tAINode* AI_EvalFunc_OBJ_SetChannelFactor(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int channel;
-    float factor;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    factor = AI_GetFloatFromStack();
-    channel = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_SetChannelFactor_C(gaoUltra, channel, factor);
-    return node + 1;
-}
-
-float AI_EvalFunc_OBJ_GetChannelProg_C(struct sGameObjectMain* gao, int channel)
-{
-    tMorphMdfStruct* morph;
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!morph)
-        return 0.0;
-    if (channel >= 0 && channel < morph->num2)
-        return morph->ptr2[channel].Prog;
-    return 0.0;
-}
-
-tAINode* AI_EvalFunc_OBJ_GetChannelProg(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int channel;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    channel = AI_GetIntFromStack();
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_GetChannelProg_C(gaoUltra, channel));
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJ_SetChannelProg_C(struct sGameObjectMain* gao, int channel, float prog)
-{
-    tMorphMdfStruct* morph;
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (morph && channel >= 0 && channel < morph->num2)
-        morph->ptr2[channel].Prog = prog;
-}
-
-tAINode* AI_EvalFunc_OBJ_SetChannelProg(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int channel;
-    float prog;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    prog = AI_GetFloatFromStack();
-    channel = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_SetChannelProg_C(gaoUltra, channel, prog);
-    return node + 1;
-}
-
-// Note that an out-of-range slot reads back the slot count rather
-// than failing.
-int AI_EvalFunc_OBJ_GetChannelData_C(struct sGameObjectMain* gao, int channel, int slot)
-{
-    tMorphMdfStruct* morph;
-    tMorphMdfInner2Struct* morphChannel;
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!morph)
-        return 0;
-    if (channel < 0 || channel >= morph->num2)
-        return 0;
-
-    morphChannel = &morph->ptr2[channel];
-    if (slot >= 0 && slot < morphChannel->num)
-        return morphChannel->ptr[slot];
-    return morphChannel->num;
-}
-
-tAINode* AI_EvalFunc_OBJ_GetChannelData(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int channel;
-    int slot;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    slot = AI_GetIntFromStack();
-    channel = AI_GetIntFromStack();
-    AI_PutIntToStack(AI_EvalFunc_OBJ_GetChannelData_C(gaoUltra, channel, slot));
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJ_SetChannelData_C(struct sGameObjectMain* gao, int channel, int dataIdx, int slot)
-{
-    tMorphMdfStruct* morph;
-    tMorphMdfInner2Struct* morphChannel;
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!morph)
-        return;
-    if (channel < 0 || channel >= morph->num2)
-        return;
-
-    morphChannel = &morph->ptr2[channel];
-    if (slot >= 0 && slot < morphChannel->num && dataIdx < morph->num)
-        morphChannel->ptr[slot] = dataIdx;
-}
-
-tAINode* AI_EvalFunc_OBJ_SetChannelData(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int channel;
-    int dataIdx;
-    int slot;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    slot = AI_GetIntFromStack();
-    dataIdx = AI_GetIntFromStack();
-    channel = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_SetChannelData_C(gaoUltra, channel, dataIdx, slot);
-    return node + 1;
-}
-
-// The same for one bone of the object, named by its AI canal, where
-// -1 means the object itself.
-void AI_EvalFunc_OBJ_SetModuleChannelData_C(tGameObjectMain* gao, int aiCanal, int channel, int slot, int dataIdx)
-{
-    tMorphMdfStruct* morph;
-    tMorphMdfInner2Struct* morphChannel;
-
-    if (aiCanal != -1)
+    for (i = WOR_gpst_CurrentWorld->objectTablePF.firstElemPtr; i < (tableElemStructPF*)(WOR_gpst_CurrentWorld->objectTablePF.nextElemPtr); ++i)
     {
-        gao = ANI_pst_GetObjectByAICanal(gao, aiCanal);
-        if (!gao)
-            return;
-    }
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!morph)
-        return;
-    if (channel < 0 || channel >= morph->num2)
-        return;
-
-    morphChannel = &morph->ptr2[channel];
-    if (slot >= 0 && slot < morphChannel->num && dataIdx < morph->num)
-        morphChannel->ptr[slot] = dataIdx;
-}
-
-tAINode* AI_EvalFunc_OBJ_SetModuleChannelData(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int aiCanal;
-    int channel;
-    int slot;
-    int dataIdx;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    dataIdx = AI_GetIntFromStack();
-    slot = AI_GetIntFromStack();
-    channel = AI_GetIntFromStack();
-    aiCanal = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_SetModuleChannelData_C(gaoUltra, aiCanal, channel, slot, dataIdx);
-    return node + 1;
-}
-
-void AI_EvalFunc_OBJ_ResetModuleChannelData_C(tGameObjectMain* gao, int aiCanal, int channel)
-{
-    tMorphMdfStruct* morph;
-    tMorphMdfInner2Struct* morphChannel;
-    int slot;
-
-    if (aiCanal != -1)
-    {
-        gao = ANI_pst_GetObjectByAICanal(gao, aiCanal);
-        if (!gao)
-            return;
-    }
-
-    morph = GEO_pst_ModifierMorphing_Get(gao);
-    if (!morph || channel < 0 || channel >= morph->num2)
-        return;
-
-    morphChannel = &morph->ptr2[channel];
-    for (slot = 0; slot < morphChannel->num; ++slot)
-        morphChannel->ptr[slot] = -1;
-}
-
-tAINode* AI_EvalFunc_OBJ_ResetModuleChannelData(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int aiCanal;
-    int channel;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    channel = AI_GetIntFromStack();
-    aiCanal = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_ResetModuleChannelData_C(gaoUltra, aiCanal, channel);
-    return node + 1;
-}
-
-// Drives a morph channel from the position of a second object: its x
-// becomes the blend factor and its y the progress, so an animation
-// moving that object animates the morph.
-void AI_EvalFunc_OBJ_AnimMorphFactor_C(tGameObjectMain* driver, tGameObjectMain* gao, int aiCanal, int channel, int dataIdxAt0, int dataIdxAt1)
-{
-    if (aiCanal != -1)
-    {
-        gao = ANI_pst_GetObjectByAICanal(gao, aiCanal);
-        if (!gao)
-            return;
-    }
-
-    AI_EvalFunc_OBJ_SetChannelData_C(gao, channel, dataIdxAt0, 0);
-    AI_EvalFunc_OBJ_SetChannelData_C(gao, channel, dataIdxAt1, 1);
-    AI_EvalFunc_OBJ_SetChannelFactor_C(gao, channel, driver->matrices->Pos.x);
-    AI_EvalFunc_OBJ_SetChannelProg_C(gao, channel, driver->matrices->Pos.y);
-}
-
-tAINode* AI_EvalFunc_OBJ_AnimMorphFactor(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int aiCanal;
-    int channel;
-    int dataIdxAt0;
-    int dataIdxAt1;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    dataIdxAt1 = AI_GetIntFromStack();
-    dataIdxAt0 = AI_GetIntFromStack();
-    channel = AI_GetIntFromStack();
-    aiCanal = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_AnimMorphFactor_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack(), aiCanal, channel, dataIdxAt0, dataIdxAt1);
-    return node + 1;
-}
-
-// The same without touching the channel's data slots, and with the
-// progress offset by one.
-void AI_EvalFunc_OBJ_AnimMorphFactorNoKey_C(tGameObjectMain* driver, tGameObjectMain* gao, int aiCanal, int channel)
-{
-    float prog;
-
-    if (aiCanal != -1)
-    {
-        gao = ANI_pst_GetObjectByAICanal(gao, aiCanal);
-        if (!gao)
-            return;
-    }
-
-    AI_EvalFunc_OBJ_SetChannelFactor_C(gao, channel, driver->matrices->Pos.x);
-    prog = (float)(driver->matrices->Pos.y + 1.0);
-    AI_EvalFunc_OBJ_SetChannelProg_C(gao, channel, prog);
-}
-
-tAINode* AI_EvalFunc_OBJ_AnimMorphFactorNoKey(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* gao;
-    int aiCanal;
-    int channel;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    channel = AI_GetIntFromStack();
-    aiCanal = AI_GetIntFromStack();
-    gao = (tGameObjectMain*)AI_GetObjectFromStack();
-    if (gao)
-        AI_EvalFunc_OBJ_AnimMorphFactorNoKey_C(gaoUltra, gao, aiCanal, channel);
-    return node + 1;
-}
-
-// Channel -1 and -2 address the two scalar fields of the RLI card
-// modifier; anything else is one of its sixty-four colours.
-void AI_EvalFunc_OBJ_RLICarteSet_C(struct sGameObjectMain* gao, unsigned int channel, int value)
-{
-    tRliCarteMdfStruct* rliCarte;
-    tModifier* modifier;
-
-    modifier = MDF_pst_GetByType(gao, 23);
-    if (!modifier || !modifier->mdfPrivateDataPtr)
-        return;
-
-    rliCarte = (tRliCarteMdfStruct*)modifier->mdfPrivateDataPtr;
-    if (channel == -1)
-        rliCarte->b1 = value;
-    else if (channel == -2)
-        rliCarte->b2Max3 = value;
-    else if (channel < 64)
-        rliCarte->colors[channel] = value;
-}
-
-tAINode* AI_EvalFunc_OBJ_RLICarteSet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int channel;
-    int value;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    value = AI_GetIntFromStack();
-    channel = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_RLICarteSet_C(gaoUltra, channel, value);
-    return node + 1;
-}
-
-// The visibility distance is kept as a byte over the range 0..1.
-float AI_EvalFunc_OBJ_LodVisGet_C(struct sGameObjectMain* gao)
-{
-    float distance;
-
-    distance = (float)gao->distance;
-    return (float)(distance * 0.0039215689);   // 1/255
-}
-
-tAINode* AI_EvalFunc_OBJ_LodVisGet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_LodVisGet_C(gaoUltra));
-    return node + 1;
-}
-
-// The level-of-detail distance is a byte on two scales: eight units a
-// step up to 1024, and sixty-four a step above it.
-float AI_EvalFunc_OBJ_LodDistGet_c_inner(uint8_t lodDist)
-{
-    if (lodDist <= 127u)
-        return (float)(8 * lodDist);
-    return (float)(((lodDist - 128) << 6) + 1024);
-}
-
-float AI_EvalFunc_OBJ_LodDistGet_C(tGameObjectMain* gao)
-{
-    return AI_EvalFunc_OBJ_LodDistGet_c_inner(gao->LODDist);
-}
-
-tAINode* AI_EvalFunc_OBJ_LodDistGet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_LodDistGet_C(gaoUltra));
-    return node + 1;
-}
-
-struct sGameObjectMain* AI_EvalFunc_OBJ_HierarchyGet_C(struct sGameObjectMain* gao)
-{
-    if ((gao->flags & 0x400000) == 0)
-        return 0;
-    return gao->basic->mtx->refGao2;
-}
-
-tAINode* AI_EvalFunc_OBJ_HierarchyGet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* father;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    father = AI_EvalFunc_OBJ_HierarchyGet_C(gaoUltra);
-    AI_PutObjectToStack(&father, AI_gaw_EnumLink[40]);
-    return node + 1;
-}
-
-int AI_EvalFunc_OBJ_HierarchyGetChildren_C(tGameObjectMain* gao, tGameObjectMain** children)
-{
-    return WOR_i_GetAllChildrenOf(WOR_gpst_CurrentWorld, gao, children);
-}
-
-tAINode* AI_EvalFunc_OBJ_HierarchyGetChilds(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    char converted[52];
-    tVarStackElem var;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVarFromStack(converted, &var);
-    AI_PutIntToStack(AI_EvalFunc_OBJ_HierarchyGetChildren_C(gaoUltra, (tGameObjectMain**)var.ptr));
-    return node + 1;
-}
-
-// Takes the object out of its hierarchy, putting its collision matrix
-// back into world space on the way.
-void AI_EvalFunc_OBJ_HierarchyReset_C(struct sGameObjectMain* gao)
-{
-    Mtx4x4 global;
-
-    if (!gao->basic || !gao->basic->mtx)
-        return;
-
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_RemoveHierarchyOnFlash(gao);
-
-    if ((gao->flags & 0x600) != 0)
-    {
-        MATH_MulMatrixMatrix(&global, gao->extended->coll->colInstance->mtx, gao->basic->mtx->refGao2->matrices);
-        *gao->extended->coll->colInstance->mtx = global;
-    }
-
-    OBJ_ChangeIdentityFlags(gao, gao->flags & ~0x400000u, gao->flags);
-    TAB_PFtable_RemoveElemWithPointer(&WOR_gpst_CurrentWorld->eot.objectsWithHiearchyTablePF, gao);
-}
-
-tAINode* AI_EvalFunc_OBJ_HierarchyReset(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_HierarchyReset_C(gaoUltra);
-    return node + 1;
-}
-
-// Hangs the object under a new father and returns the old one. The
-// collision matrix goes the other way here, into the father's space.
-struct sGameObjectMain* AI_EvalFunc_OBJ_HierarchySet_C(struct sGameObjectMain* gao, struct sGameObjectMain* father)
-{
-    Mtx4x4 fatherInverse;
-    Mtx4x4 local;
-    tGameObjectMain* oldFather;
-    tWorld* world;
-
-    if (!father || father == gao)
-        return 0;
-
-    world = WOR_gpst_CurrentWorld;
-    AI_EvalFunc_OBJ_HierarchyReset_C(gao);
-    OBJ_ChangeIdentityFlags(gao, gao->flags | 0x400000, gao->flags);
-
-    oldFather = gao->basic->mtx->refGao2;
-    gao->basic->mtx->refGao2 = father;
-    OBJ_ComputeLocalWhenHie(gao);
-
-    if ((gao->flags & 0x600) != 0)
-    {
-        MATH_InvertMatrix(&fatherInverse, father->matrices);
-        MATH_MulMatrixMatrix(&local, gao->extended->coll->colInstance->mtx, &fatherInverse);
-        *gao->extended->coll->colInstance->mtx = local;
-    }
-
-    if ((gao->flags & 0x4000000) != 0)
-        ANI_ApplyHierarchyOnFlash(gao);
-    if (world)
-        world->tablesManagerAndEOTNeeded = 1;
-
-    return oldFather;
-}
-
-// Note that the hierarchy is reset here and again inside the call.
-tAINode* AI_EvalFunc_OBJ_HierarchySet(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* father;
-    tGameObjectMain* oldFather;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    father = (tGameObjectMain*)AI_GetObjectFromStack();
-    AI_EvalFunc_OBJ_HierarchyReset_C(gaoUltra);
-    oldFather = AI_EvalFunc_OBJ_HierarchySet_C(gaoUltra, father);
-    AI_PutObjectToStack(&oldFather, AI_gaw_EnumLink[40]);
-    return node + 1;
-}
-
-// Swaps the father without touching the collision matrix or the
-// world's tables, for an object already in a hierarchy.
-struct sGameObjectMain* AI_EvalFunc_OBJ_HierarchySetFather_C(struct sGameObjectMain* gao, struct sGameObjectMain* father)
-{
-    tGameObjectMain* oldFather;
-
-    if (father == gao)
-        return 0;
-    if ((gao->flags & 0x400000) == 0)
-        return 0;
-
-    oldFather = gao->basic->mtx->refGao2;
-    gao->basic->mtx->refGao2 = father;
-    OBJ_ComputeLocalWhenHie(gao);
-    return oldFather;
-}
-
-tAINode* AI_EvalFunc_OBJ_HierarchySetFather(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* father;
-    tGameObjectMain* oldFather;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    father = (tGameObjectMain*)AI_GetObjectFromStack();
-    oldFather = AI_EvalFunc_OBJ_HierarchySetFather_C(gaoUltra, father);
-    AI_PutObjectToStack(&oldFather, AI_gaw_EnumLink[40]);
-    return node + 1;
-}
-
-// Moves the father so that this object lands on the given position,
-// then recomputes every one of the father's children.
-void AI_EvalFunc_OBJ_HierarchyMoveFather_C(tGameObjectMain* gao, Vec3* pos)
-{
-    tGameObjectMain* father;
-    tGameObjectMain* child;
-    Vec3 fatherPos;
-    tableElemStructPF* elem;
-    tableElemStructPF* end;
-
-    if ((gao->flags & 0x400000) == 0)
-        return;
-
-    father = gao->basic->mtx->refGao2;
-    if (!father)
-        return;
-
-    MATH_TransformVector(&fatherPos, OBJ_pst_GetAbsoluteMatrix(father), &gao->basic->mtx->mtx.Pos);
-    MATH_SubstractVec(&fatherPos, pos, &fatherPos);
-    OBJ_SetAbsolutePosition(father, &fatherPos);
-
-    elem = WOR_gpst_CurrentWorld->objectTablePF.firstElemPtr;
-    end = WOR_gpst_CurrentWorld->objectTablePF.nextElemPtr;
-    while (elem < end)
-    {
-        child = (tGameObjectMain*)elem->objectPtr;
-        if (child && ((uintptr_t)elem->objectPtr & 3) != 1 &&
-            (child->flags & 0x400000) != 0 && child->basic && child->basic->mtx &&
-            child->basic->mtx->refGao2 == father)
-        {
-            if (child == gao)
-                fatherPos.x = 0.0;   // dead store, kept as found
-            OBJ_ComputeGlobalWhenHie(child);
-        }
-        ++elem;
-    }
-}
-
-tAINode* AI_EvalFunc_OBJ_HierarchyMoveFather(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_HierarchyMoveFather_C(gaoUltra, (Vec3*)AI_PopStackSlot());
-    return node + 1;
-}
-
-// True while the object is still in the world's object table.
-tAINode* AI_EvalFunc_OBJ_IsValidGAO(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    tableElemStructPF* elem;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    for (elem = WOR_gpst_CurrentWorld->objectTablePF.firstElemPtr;
-         elem < (tableElemStructPF*)(WOR_gpst_CurrentWorld->objectTablePF.nextElemPtr);
-         ++elem)
-    {
-        if (elem->objectPtr == gaoUltra)
+        if (i->objectPtr == v2)
         {
             AI_PutIntToStack(1);
-            return node + 1;
+            return a1 + 1;
         }
     }
     AI_PutIntToStack(0);
-    return node + 1;
+    return a1 + 1;
 }
 
-// Lends this object the material of another's visual. A multi-material
-// is indexed by the slot, wrapping round.
-void AI_EvalFunc_OBJ_AddMaterial_C(struct sGameObjectMain* gao, struct sGameObjectMain* from, int slot)
+void AI_EvalFunc_OBJ_AddMaterial_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2, int a3)
 {
-    tGEOMAT* material;
+    tGEOMAT* v3;
 
-    if ((gao->flags & 0x1000) == 0 || (from->flags & 0x4000) == 0)
-        return;
-
-    if (slot == -1)
+    if ((a1->flags & 0x1000) != 0 && (a2->flags & 0x4000) != 0)
     {
-        gao->basic->extraMaterial = 0;
-        return;
-    }
-
-    material = (tGEOMAT*)(((tGameObjectVisualObject*)(from->basic->actorObjectOrVisualObject))->GROMAT);
-    if (material && material->intf->id == 4)
-        material = material->multiMaterialPtrIfType4ThenDiffuseColor[slot % material->multiMaterialNumIfType4ThenAmbiantColor];
-    gao->basic->extraMaterial = material;
-}
-
-tAINode* AI_EvalFunc_OBJ_AddMaterial(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int slot;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    slot = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_AddMaterial_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack(), slot);
-    return node + 1;
-}
-
-// Note that the object the builtin was called on plays no part.
-void AI_EvalFunc_OBJ_RegisterKill_C(struct sGameObjectMain* gao, struct sGameObjectMain* toKill, int* flag)
-{
-    WOR_AddDelObj(WOR_gpst_CurrentWorld, toKill, flag);
-}
-
-// Note that both arguments are popped before the current object is
-// saved, unlike most wrappers here.
-tAINode* AI_EvalFunc_OBJ_RegisterKill(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* toKill;
-    char converted[52];
-    tVarStackElem var;
-
-    AI_GetVarFromStack(converted, &var);
-    toKill = (tGameObjectMain*)AI_GetObjectFromStack();
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_RegisterKill_C(gaoUltra, toKill, (int*)var.ptr);
-    return node + 1;
-}
-
-// Returns the distance to the position when it lies inside the cone of
-// the object's sight, and zero when it does not. The flat flag drops
-// the height from both the offset and the sight direction.
-float AI_EvalFunc_OBJIsInCone_C(struct sGameObjectMain* gao, Vec3* pos, float cosHalfAngle, float range, int flat)
-{
-    Vec3 sight;
-    Vec3 offset;
-    float distance;
-    float alignment;
-
-    MATH_SubstractVec(&offset, pos, &gao->matrices->Pos);
-    if (flat)
-        offset.z = 0.0;
-
-    distance = MATH_VecLen(&offset);
-    if (distance > (double)range)
-        return 0.0;
-
-    MATH_NormalizeVector(&offset, &offset);
-    OBJ_SightGet(gao, &sight);
-    if (flat)
-    {
-        sight.z = 0.0;
-        MATH_NormalizeVector(&sight, &sight);
-    }
-
-    alignment = sight.z * offset.z + sight.y * offset.y + offset.x * sight.x;
-    if (alignment <= (double)cosHalfAngle)
-        return 0.0;
-    return distance;
-}
-
-tAINode* AI_EvalFunc_OBJIsInCone(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    Vec3 pos;
-    float cosHalfAngle;
-    float range;
-    int flat;
-
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    flat = AI_GetIntFromStack();
-    range = AI_GetFloatFromStack();
-    cosHalfAngle = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&pos);
-    AI_PutFloatToStack(AI_EvalFunc_OBJIsInCone_C(gaoUltra, &pos, cosHalfAngle, range, flat));
-    return node + 1;
-}
-
-// Solves a two-bone limb for the hip, knee and foot the caller names,
-// then writes each joint back: into its local matrix where it hangs
-// under a father, and into its own otherwise. A segment length of zero
-// is taken from the joint's init position.
-void AI_OBJIKFatherPosSet(tGameObjectMain* foot, tGameObjectMain* hip, tGameObjectMain* knee, float upperLen, float lowerLen)
-{
-    Mtx4x4 hipGlobal;
-    Mtx4x4 kneeGlobal;
-    Mtx4x4 footGlobal;
-    Mtx4x4 fatherGlobal;
-    Mtx4x4 fatherInverse;
-    Mtx4x4* initMtx;
-    tGameObjectMain* father;
-
-    OBJ_ComputeGlobalWithLocal(hip, &hipGlobal, 1);
-    OBJ_ComputeGlobalWithLocal(knee, &kneeGlobal, 1);
-    OBJ_ComputeGlobalWithLocal(foot, &footGlobal, 1);
-
-    if (upperLen == 0.0)
-    {
-        if ((knee->flags & 0x10000) != 0)
-            initMtx = knee->matrices + 1;
+        if (a3 == -1)
+        {
+            a1->basic->extraMaterial = 0;
+        }
         else
-            initMtx = knee->matrices;
-        upperLen = MATH_VecLen(&initMtx->Pos);
+        {
+            v3 = (tGEOMAT*)(((tGameObjectVisualObject*)(a2->basic->actorObjectOrVisualObject))->GROMAT);
+            if (v3)
+            {
+                if (v3->intf->id == 4)
+                    v3 = v3->multiMaterialPtrIfType4ThenDiffuseColor[a3 % v3->multiMaterialNumIfType4ThenAmbiantColor];
+            }
+            a1->basic->extraMaterial = v3;
+        }
     }
-    if (lowerLen == 0.0)
+}
+
+tAINode* AI_EvalFunc_OBJ_AddMaterial(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    int a3;
+
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    a3 = AI_GetIntFromStack();
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJ_AddMaterial_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3);
+    return a1 + 1;
+}
+
+void AI_EvalFunc_OBJ_RegisterKill_C(struct sGameObjectMain* a1, struct sGameObjectMain* a2, int* a3)
+{
+    WOR_AddDelObj(WOR_gpst_CurrentWorld, a2, a3);
+}
+
+tAINode* AI_EvalFunc_OBJ_RegisterKill(tAINode* a1)
+{
+    tGameObjectMain* v2;
+    char dest[52];
+    int* a3;
+    tVarStackElem a2;
+    tGameObjectMain* v6;
+
+    AI_GetVarFromStack(dest, &a2);
+    a3 = (int*)a2.ptr;
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    v6 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    AI_EvalFunc_OBJ_RegisterKill_C(v2, v6, (int*)a2.ptr);
+    return a1 + 1;
+}
+
+float AI_EvalFunc_OBJIsInCone_C(struct sGameObjectMain* a1, Vec3* a2, float a3, float a4, int a5)
+{
+    double result;
+    float v6;
+    Vec3 v7;
+    Vec3 dest;
+    float v9;
+
+    MATH_SubstractVec(&dest, a2, &a1->matrices->Pos);
+    if (a5)
+        dest.z = 0.0;
+    v6 = MATH_VecLen(&dest);
+    if (v6 > (double)a4)
+        return 0.0;
+    MATH_NormalizeVector(&dest, &dest);
+    OBJ_SightGet(a1, &v7);
+    if (a5)
     {
-        if ((foot->flags & 0x10000) != 0)
-            initMtx = foot->matrices + 1;
+        v7.z = 0.0;
+        MATH_NormalizeVector(&v7, &v7);
+    }
+    v9 = v7.z * dest.z + v7.y * dest.y + dest.x * v7.x;
+    if (v9 <= (double)a3)
+        result = 0.0;
+    else
+        result = v6;
+    return (float)result;
+}
+
+tAINode* AI_EvalFunc_OBJIsInCone(tAINode* a1)
+{
+    float v2;
+    tGameObjectMain* v3;
+    float a4;
+    Vec3 a1a;
+    int a5;
+    float a3;
+    tGameObjectMain* v8;
+
+    v3 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    v8 = v3;
+    a5 = AI_GetIntFromStack();
+    a4 = AI_GetFloatFromStack();
+    a3 = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&a1a);
+    v2 = AI_EvalFunc_OBJIsInCone_C(v8, &a1a, a3, a4, a5);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
+}
+
+void AI_OBJIKFatherPosSet(tGameObjectMain* a2, tGameObjectMain* a3, tGameObjectMain* a4, float a5, float a6)
+{
+
+    Mtx4x4* v6;
+    Mtx4x4* v7;
+    Mtx4x4 v8;
+    Mtx4x4 v9;
+    tGameObjectMain* v10;
+    Mtx4x4* v11;
+    Mtx4x4* v12;
+    Mtx4x4 v13;
+    Mtx4x4 v14;
+    Mtx4x4 v15;
+
+    OBJ_ComputeGlobalWithLocal(a3, &v15, 1);
+    OBJ_ComputeGlobalWithLocal(a4, &v14, 1);
+    OBJ_ComputeGlobalWithLocal(a2, &v13, 1);
+    if (a5 == 0.0)
+    {
+        if ((a4->flags & 0x10000) != 0)
+            v12 = a4->matrices + 1;
         else
-            initMtx = foot->matrices;
-        lowerLen = MATH_VecLen(&initMtx->Pos);
+            v12 = a4->matrices;
+        a5 = MATH_VecLen(&v12->Pos);
     }
-
-    GAO_ModifierLegLink_Compute(&hipGlobal, &kneeGlobal, &footGlobal, upperLen, lowerLen);
-
-    if (hip && hip->basic && hip->basic->mtx)
-        father = hip->basic->mtx->refGao2;
-    else
-        father = 0;
-    if (father)
+    if (a6 == 0.0)
     {
-        OBJ_ComputeGlobalWithLocal(father, &fatherGlobal, 1);
-        MATH_InvertMatrix(&fatherInverse, &fatherGlobal);
-        MATH_MulMatrixMatrix(&hip->basic->mtx->mtx, &hipGlobal, &fatherInverse);
-        MATH_Orthonormalize(&hip->basic->mtx->mtx);
+        if ((a2->flags & 0x10000) != 0)
+            v11 = a2->matrices + 1;
+        else
+            v11 = a2->matrices;
+        a6 = MATH_VecLen(&v11->Pos);
     }
+    GAO_ModifierLegLink_Compute(&v15, &v14, &v13, a5, a6);
+    if (a3 && a3->basic && a3->basic->mtx)
+        v10 = a3->basic->mtx->refGao2;
     else
+        v10 = 0;
+    if (v10)
     {
-        *hip->matrices = hipGlobal;
-    }
-
-    if (knee && knee->basic && knee->basic->mtx)
-        father = knee->basic->mtx->refGao2;
-    else
-        father = 0;
-    if (father)
-    {
-        // the knee hangs under the hip, so the hip's own global matrix
-        // is what it is put back into
-        MATH_InvertMatrix(&fatherInverse, &hipGlobal);
-        MATH_MulMatrixMatrix(&knee->basic->mtx->mtx, &kneeGlobal, &fatherInverse);
-        MATH_Orthonormalize(&knee->basic->mtx->mtx);
+        OBJ_ComputeGlobalWithLocal(v10, &v9, 1);
+        MATH_InvertMatrix(&v8, &v9);
+        MATH_MulMatrixMatrix(&a3->basic->mtx->mtx, &v15, &v8);
+        MATH_Orthonormalize(&a3->basic->mtx->mtx);
     }
     else
     {
-        *knee->matrices = kneeGlobal;
+        v7 = a3->matrices;
+        if (v7 != &v15)
+            memcpy(v7, &v15, sizeof(Mtx4x4));
     }
-
-    if (foot && foot->basic && foot->basic->mtx)
-        father = foot->basic->mtx->refGao2;
+    if (a4 && a4->basic && a4->basic->mtx)
+        v10 = a4->basic->mtx->refGao2;
     else
-        father = 0;
-    if (father)
+        v10 = 0;
+    if (v10)
     {
-        OBJ_ComputeGlobalWithLocal(father, &fatherGlobal, 1);
-        MATH_InvertMatrix(&fatherInverse, &fatherGlobal);
-        MATH_MulMatrixMatrix(&foot->basic->mtx->mtx, &footGlobal, &fatherInverse);
-        MATH_Orthonormalize(&foot->basic->mtx->mtx);
+        MATH_InvertMatrix(&v8, &v15);
+        MATH_MulMatrixMatrix(&a4->basic->mtx->mtx, &v14, &v8);
+        MATH_Orthonormalize(&a4->basic->mtx->mtx);
+    }
+    else
+    {
+        v6 = a4->matrices;
+        if (v6 != &v14)
+            memcpy(v6, &v14, sizeof(Mtx4x4));
+    }
+    if (a2 && a2->basic && a2->basic->mtx)
+        v10 = a2->basic->mtx->refGao2;
+    else
+        v10 = 0;
+    if (v10)
+    {
+        OBJ_ComputeGlobalWithLocal(v10, &v9, 1);
+        MATH_InvertMatrix(&v8, &v9);
+        MATH_MulMatrixMatrix(&a2->basic->mtx->mtx, &v13, &v8);
+        MATH_Orthonormalize(&a2->basic->mtx->mtx);
     }
 }
 
-// Note that the two joints and the two lengths both arrive swapped.
-void AI_EvalFunc_OBJIKFatherPosSetExt_C(tGameObjectMain* gao, tGameObjectMain* knee, tGameObjectMain* hip, float lowerLen, float upperLen)
+void AI_EvalFunc_OBJIKFatherPosSetExt_C(tGameObjectMain* a1, tGameObjectMain* a2, tGameObjectMain* a3, float a4, float a5)
 {
-    AI_OBJIKFatherPosSet(gao, hip, knee, upperLen, lowerLen);
+    AI_OBJIKFatherPosSet(a1, a3, a2, a5, a4);
 }
 
-tAINode* AI_EvalFunc_OBJIKFatherPosSetExt(tAINode* node)
+tAINode* AI_EvalFunc_OBJIKFatherPosSetExt(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    tGameObjectMain* hip;
-    float lowerLen;
-    float upperLen;
+    tGameObjectMain* v2;
+    tGameObjectMain* a3;
+    float a5;
+    float a4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    upperLen = AI_GetFloatFromStack();
-    lowerLen = AI_GetFloatFromStack();
-    hip = (tGameObjectMain*)AI_GetObjectFromStack();
-    AI_EvalFunc_OBJIKFatherPosSetExt_C(gaoUltra, (tGameObjectMain*)AI_GetObjectFromStack(), hip, lowerLen, upperLen);
-    return node + 1;
+    a5 = AI_GetFloatFromStack();
+    a4 = AI_GetFloatFromStack();
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    a3 = *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
+    AI_gul_SizeGlobalStack -= 32;
+    --AI_gul_SizeGlobalVarStack;
+    AI_EvalFunc_OBJIKFatherPosSetExt_C(v2, *(tGameObjectMain**)&AI_gac_GlobalStack[AI_gul_SizeGlobalStack], a3, a4, a5);
+    return a1 + 1;
 }
 
-// Takes the knee and the hip to be the object's father and
-// grandfather, and both lengths from the init positions.
-void AI_EvalFunc_OBJIKFatherPosSet_C(tGameObjectMain* gao)
+void AI_EvalFunc_OBJIKFatherPosSet_C(tGameObjectMain* a1)
 {
-    tGameObjectMain* knee;
-    tGameObjectMain* hip;
+    tGameObjectMain* a3;
+    tGameObjectMain* a4;
 
-    if (gao && gao->basic && gao->basic->mtx)
-        knee = gao->basic->mtx->refGao2;
+    if (a1 && a1->basic && a1->basic->mtx)
+        a4 = a1->basic->mtx->refGao2;
     else
-        knee = 0;
-    if (!knee)
-        return;
-
-    if (knee->basic && knee->basic->mtx)
-        hip = knee->basic->mtx->refGao2;
-    else
-        hip = 0;
-    if (hip)
-        AI_OBJIKFatherPosSet(gao, hip, knee, 0.0, 0.0);
+        a4 = 0;
+    if (a4)
+    {
+        if (a4->basic && a4->basic->mtx)
+            a3 = a4->basic->mtx->refGao2;
+        else
+            a3 = 0;
+        if (a3)
+            AI_OBJIKFatherPosSet(a1, a3, a4, 0.0, 0.0);
+    }
 }
 
-tAINode* AI_EvalFunc_OBJIKFatherPosSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJIKFatherPosSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJIKFatherPosSet_C(gaoUltra);
-    return node + 1;
+    AI_EvalFunc_OBJIKFatherPosSet_C(v2);
+    return a1 + 1;
 }
 
-// The limits within which a character's head and torso turn to follow
-// what its eyes are on. These are engine-wide, not per object.
-void AI_EvalFunc_OBJ_EyeFollowParamSet_C(float headZMax, float headZMin, float headXMax, float headXMin, float torsoZMax, float torsoZMin, float headXOffset)
+void AI_EvalFunc_OBJ_EyeFollowParamSet_C(float a1, float a2, float a3, float a4, float a5, float a6, float a7)
 {
-    OBJ_gf_EYEFOLLOW_HeadZMax = headZMax;
-    OBJ_gf_EYEFOLLOW_HeadZMin = headZMin;
-    OBJ_gf_EYEFOLLOW_HeadXMax = headXMax;
-    OBJ_gf_EYEFOLLOW_HeadXMin = headXMin;
-    OBJ_gf_EYEFOLLOW_TorsoZMax = torsoZMax;
-    OBJ_gf_EYEFOLLOW_TorsoZMin = torsoZMin;
-    OBJ_gf_EYEFOLLOW_HeadXOffset = headXOffset;
+    OBJ_gf_EYEFOLLOW_HeadZMax = a1;
+    OBJ_gf_EYEFOLLOW_HeadZMin = a2;
+    OBJ_gf_EYEFOLLOW_HeadXMax = a3;
+    OBJ_gf_EYEFOLLOW_HeadXMin = a4;
+    OBJ_gf_EYEFOLLOW_TorsoZMax = a5;
+    OBJ_gf_EYEFOLLOW_TorsoZMin = a6;
+    OBJ_gf_EYEFOLLOW_HeadXOffset = a7;
 }
 
-tAINode* AI_EvalFunc_OBJ_EyeFollowParamSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_EyeFollowParamSet(tAINode* a1)
 {
-    float headZMax;
-    float headZMin;
-    float headXMax;
-    float headXMin;
-    float torsoZMax;
-    float torsoZMin;
-    float headXOffset;
+    float a5;
+    float a2;
+    float a7;
+    float a1a;
+    float a3;
+    float a4;
+    float a6;
 
-    headXOffset = AI_GetFloatFromStack();
-    torsoZMin = AI_GetFloatFromStack();
-    torsoZMax = AI_GetFloatFromStack();
-    headXMin = AI_GetFloatFromStack();
-    headXMax = AI_GetFloatFromStack();
-    headZMin = AI_GetFloatFromStack();
-    headZMax = AI_GetFloatFromStack();
-    AI_EvalFunc_OBJ_EyeFollowParamSet_C(headZMax, headZMin, headXMax, headXMin, torsoZMax, torsoZMin, headXOffset);
-    return node + 1;
+    a7 = AI_GetFloatFromStack();
+    a6 = AI_GetFloatFromStack();
+    a5 = AI_GetFloatFromStack();
+    a4 = AI_GetFloatFromStack();
+    a3 = AI_GetFloatFromStack();
+    a2 = AI_GetFloatFromStack();
+    a1a = AI_GetFloatFromStack();
+    AI_EvalFunc_OBJ_EyeFollowParamSet_C(a1a, a2, a3, a4, a5, a6, a7);
+    return a1 + 1;
 }
 
-// The script passes one int holding seven switches in its top bits and
-// a count in the low twenty-six.
-void AI_EvalFunc_OBJEyeFollow_C(struct sGameObjectMain* gao, Vec3* target, float weight, int flags)
+void AI_EvalFunc_OBJEyeFollow_C(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4)
 {
     OBJ_EyeFollow(
-        gao,
-        target,
-        weight,
-        flags & 0x3FFFFFF,
-        flags & 0x80000000,
-        flags & 0x40000000,
-        flags & 0x20000000,
-        flags & 0x10000000,
-        flags & 0x8000000,
-        flags & 0x4000000);
+        a1,
+        a2,
+        a3,
+        a4 & 0x3FFFFFF,
+        a4 & 0x80000000,
+        a4 & 0x40000000,
+        a4 & 0x20000000,
+        a4 & 0x10000000,
+        a4 & 0x8000000,
+        a4 & 0x4000000);
 }
 
-tAINode* AI_EvalFunc_OBJEyeFollow(tAINode* node)
+tAINode* AI_EvalFunc_OBJEyeFollow(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 target;
-    float weight;
-    int flags;
+    tGameObjectMain* v2;
+    float a3;
+    Vec3 a1a;
+    tGameObjectMain* v5;
+    int a4;
 
-    flags = AI_GetIntFromStack();
-    weight = AI_GetFloatFromStack();
-    AI_GetVecFromStack(&target);
-    gaoUltra = AI_gpst_CurrentUltra;
+    a4 = AI_GetIntFromStack();
+    a3 = AI_GetFloatFromStack();
+    AI_GetVecFromStack(&a1a);
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJEyeFollow_C(gaoUltra, &target, weight, flags);
-    return node + 1;
+    v5 = v2;
+    AI_EvalFunc_OBJEyeFollow_C(v2, &a1a, a3, a4);
+    return a1 + 1;
 }
 
-tAINode* AI_EvalFunc_OBJFreezeModifier(tAINode* node)
+tAINode* AI_EvalFunc_OBJFreezeModifier(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
+    int a3;
+    int a2;
+
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    v2 = AI_gpst_CurrentUltra;
+    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
+    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
+    OBJ_FreezeModifier_C(v2, a2, a3);
+    return a1 + 1;
+}
+
+tAINode* AI_EvalFunc_OBJModifierType(tAINode* a1)
+{
+    int v1;
+    tGameObjectMain* v3;
     int mdfId;
-    int setOrReset;
-
-    setOrReset = AI_GetIntFromStack();
-    mdfId = AI_GetIntFromStack();
-    gaoUltra = AI_gpst_CurrentUltra;
-    AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
-    AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    OBJ_FreezeModifier_C(gaoUltra, mdfId, setOrReset);
-    return node + 1;
-}
-
-// Note that an object with no modifier list pushes a result and then
-// falls through and pushes a second one.
-tAINode* AI_EvalFunc_OBJModifierType(tAINode* node)
-{
-    tGameObjectMain* gaoUltra;
-    int mdfId;
 
     mdfId = AI_GetIntFromStack();
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    if (!gaoUltra->extended || !gaoUltra->extended->mdf)
+    if (!v3->extended || !v3->extended->mdf)
         AI_PutIntToStack(0);
-    AI_PutIntToStack(OBJ_ModifierType_C(gaoUltra, mdfId));
-    return node + 1;
+    v1 = OBJ_ModifierType_C(v3, mdfId);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_ColMapOptimize_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJ_ColMapOptimize_C(struct sGameObjectMain* a1)
 {
-    if ((gao->flags & 0x100) == 0
-        || !gao->extended
-        || !gao->extended->coll->colMap
-        || !gao->extended->coll->colMap->collisionObjectPtr)
+    int result;
+
+    if ((a1->flags & 0x100) != 0
+        && a1->extended
+        && a1->extended->coll->colMap
+        && a1->extended->coll->colMap->collisionObjectPtr)
     {
-        return 0;
+        result = (*a1->extended->coll->colMap->collisionObjectPtr)->flags & 2;
     }
-    return (*gao->extended->coll->colMap->collisionObjectPtr)->flags & 2;
+    else
+    {
+        result = 0;
+    }
+    return result;
 }
 
-tAINode* AI_EvalFunc_OBJ_ColMapOptimize(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_ColMapOptimize(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_ColMapOptimize_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_ColMapOptimize_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-// Runs this object's dynamics, collision and recording for one frame
-// out of turn, from the record mark the world is at.
-void AI_EvalFunc_OBJEngineCall_C(struct sGameObjectMain* gao)
+void AI_EvalFunc_OBJEngineCall_C(struct sGameObjectMain* a1)
 {
-    tWorld* world;
-    int recordMark;
+    int a2;
+    tWorld* v2;
 
-    world = WOR_gpst_CurrentWorld;
-    if (!world)
-        return;
-
-    recordMark = world->recordCount;
-    DYN_OneCall(gao);
-    COL_OneCall(gao, recordMark);
-    REC_MainCall(world, recordMark);
+    v2 = WOR_gpst_CurrentWorld;
+    if (WOR_gpst_CurrentWorld)
+    {
+        a2 = WOR_gpst_CurrentWorld->recordCount;
+        DYN_OneCall(a1);
+        COL_OneCall(a1, a2);
+        REC_MainCall(v2, a2);
+    }
 }
 
-tAINode* AI_EvalFunc_OBJEngineCall(tAINode* node)
+tAINode* AI_EvalFunc_OBJEngineCall(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJEngineCall_C(gaoUltra);
-    return node + 1;
+    AI_EvalFunc_OBJEngineCall_C(v2);
+    return a1 + 1;
 }
 
-// Asks the image analyser whether the object is in shot. A photo value
-// of -1 means any, otherwise it is the top byte of the mask.
-BOOL AI_EvalFunc_OBJHasPhotoValue_C(struct sGameObjectMain* gao, int photoValue, int* result)
+BOOL AI_EvalFunc_OBJHasPhotoValue_C(struct sGameObjectMain* a1, int a2, int* a7)
 {
-    tGdi_DisplayData* displayData;
-    int mask;
+    int v4;
+    tGdi_DisplayData* a3;
 
     if (!WOR_gpst_CurrentWorld)
         return 0;
-
-    displayData = WOR_gpst_CurrentWorld->viewPtr->displayData;
-    if (photoValue == -1)
-        mask = -1;
+    a3 = WOR_gpst_CurrentWorld->viewPtr->displayData;
+    if (a2 == -1)
+        v4 = IMG_ObjectAnalyser(a1, WOR_gpst_CurrentWorld, a3, -1, 1, 0, 0, a7);
     else
-        mask = photoValue << 24;
-    return IMG_ObjectAnalyser(gao, WOR_gpst_CurrentWorld, displayData, mask, 1, 0, 0, result) != 0;
+        v4 = IMG_ObjectAnalyser(a1, WOR_gpst_CurrentWorld, a3, a2 << 24, 1, 0, 0, a7);
+    return v4 != 0;
 }
 
-tAINode* AI_EvalFunc_OBJHasPhotoValue(tAINode* node)
+tAINode* AI_EvalFunc_OBJHasPhotoValue(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    tVarStackElem var;
-    char converted[52];
-    int photoValue;
+    tGameObjectMain* v2;
+    tVarStackElem a2;
+    char dest[52];
+    int v5;
+    tGameObjectMain* v6;
 
-    AI_GetVarFromStack(converted, &var);
-    photoValue = AI_GetIntFromStack();
-    gaoUltra = AI_gpst_CurrentUltra;
+    AI_GetVarFromStack(dest, &a2);
+    v5 = AI_GetIntFromStack();
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    if (AI_EvalFunc_OBJHasPhotoValue_C(gaoUltra, photoValue, (int*)var.ptr))
+    v6 = v2;
+    if (AI_EvalFunc_OBJHasPhotoValue_C(v2, v5, (int*)a2.ptr))
         AI_PutIntToStack(1);
     else
         AI_PutIntToStack(0);
-    return node + 1;
+    return a1 + 1;
 }
 
-// The same analyser asked whether the object is centred in shot.
-BOOL AI_EvalFunc_OBJCentred_C(tGameObjectMain* gao, int* result)
+BOOL AI_EvalFunc_OBJCentred_C(tGameObjectMain* a1, int* a7)
 {
-    if (!WOR_gpst_CurrentWorld)
-        return 0;
-    return IMG_ObjectAnalyser(gao, WOR_gpst_CurrentWorld, WOR_gpst_CurrentWorld->viewPtr->displayData, -1, 1, 0, 1, result) != 0;
+    BOOL result;
+
+    if (WOR_gpst_CurrentWorld)
+        result = IMG_ObjectAnalyser(a1, WOR_gpst_CurrentWorld, WOR_gpst_CurrentWorld->viewPtr->displayData, -1, 1, 0, 1, a7) != 0;
+    else
+        result = 0;
+    return result;
 }
 
-tAINode* AI_EvalFunc_OBJCentred(tAINode* node)
+tAINode* AI_EvalFunc_OBJCentred(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    tVarStackElem var;
-    char converted[52];
+    tGameObjectMain* v2;
+    tVarStackElem a2;
+    char dest[52];
+    tGameObjectMain* a1a;
 
-    AI_GetVarFromStack(converted, &var);
-    gaoUltra = AI_gpst_CurrentUltra;
+    AI_GetVarFromStack(dest, &a2);
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    if (AI_EvalFunc_OBJCentred_C(gaoUltra, (int*)var.ptr))
+    a1a = v2;
+    if (AI_EvalFunc_OBJCentred_C(v2, (int*)a2.ptr))
         AI_PutIntToStack(1);
     else
         AI_PutIntToStack(0);
-    return node + 1;
+    return a1 + 1;
 }
 
-// The point a photo of this object is aimed at: the offset the photo
-// modifier carries, or failing that the centre of the bounding volume
-// of its first bone, or of the object itself.
-void AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(struct sGameObjectMain* gao, Vec3* pivot)
+void AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    tModifier* photo;
-    tGameObjectMain* snapGao;
-    tGameObjectMain* bone;
+    tGameObjectMain* v2;
+    tGameObjectMain* v3;
+    tModifier* v4;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (photo)
+    v4 = GAO_ModifierPhoto_Get(a1, 0);
+    if (v4)
     {
-        snapGao = GAO_ModifierPhoto_SnapGOGet(gao, (tPhotoMdfStruct*)photo->mdfPrivateDataPtr, 1);
-        MATH_TransformVertex(pivot, snapGao->matrices, &(((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->infoOffset));
-        return;
+        v3 = GAO_ModifierPhoto_SnapGOGet(a1, (tPhotoMdfStruct*)v4->mdfPrivateDataPtr, 1);
+        MATH_TransformVertex(a2, v3->matrices, &(((tPhotoMdfStruct*)(v4->mdfPrivateDataPtr))->infoOffset));
     }
-
-    bone = 0;
-    if ((gao->flags & 2) != 0)
-        bone = ANI_pst_GetObjectByAICanal(gao, 0);
-    if (bone)
-        OBJ_BV_ComputeCenter(bone, pivot);
+    else if ((a1->flags & 2) != 0 && (v2 = ANI_pst_GetObjectByAICanal(a1, 0)) != 0)
+    {
+        OBJ_BV_ComputeCenter(v2, a2);
+    }
     else
-        OBJ_BV_ComputeCenter(gao, pivot);
+    {
+        OBJ_BV_ComputeCenter(a1, a2);
+    }
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoPivotGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoPivotGet(tAINode* arg0)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 pivot;
+    tGameObjectMain* v2;
+    Vec3 a1;
+    tGameObjectMain* v4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(gaoUltra, &pivot);
-    AI_PutVecToStack(&pivot);
-    return node + 1;
+    v4 = v2;
+    AI_EvalFunc_OBJ_InfoPhotoPivotGet_C(v2, &a1);
+    AI_PutVecToStack(&a1);
+    return arg0 + 1;
 }
 
-int AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(struct sGameObjectMain* a1)
 {
-    tModifier* photo;
+    int result;
+    tModifier* v2;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (!photo)
-        return -1;
-    return ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->mission;
+    v2 = GAO_ModifierPhoto_Get(a1, 0);
+    if (v2)
+        result = ((tPhotoMdfStruct*)(v2->mdfPrivateDataPtr))->mission;
+    else
+        result = -1;
+    return result;
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoMissionGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoMissionGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_InfoPhotoMissionGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(struct sGameObjectMain* a1)
 {
-    tModifier* photo;
+    int result;
+    tModifier* v2;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (!photo)
-        return -1;
-    return ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->info;
+    v2 = GAO_ModifierPhoto_Get(a1, 0);
+    if (v2)
+        result = ((tPhotoMdfStruct*)(v2->mdfPrivateDataPtr))->info;
+    else
+        result = -1;
+    return result;
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoInfoGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoInfoGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_OBJ_InfoPhotoInfoGet_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-float AI_EvalFunc_OBJ_InfoPhotoLODGet_C(struct sGameObjectMain* gao, int which)
+float AI_EvalFunc_OBJ_InfoPhotoLODGet_C(struct sGameObjectMain* a1, int a2)
 {
-    tModifier* photo;
+    tModifier* v3;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (!photo)
+    v3 = GAO_ModifierPhoto_Get(a1, 0);
+    if (!v3)
         return -1.0f;
-
-    switch (which)
+    switch (a2)
     {
     case 0:
-        return ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->lod0_frameCullingSphereRet2;
+        return ((tPhotoMdfStruct*)(v3->mdfPrivateDataPtr))->lod0_frameCullingSphereRet2;
     case 1:
-        return ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->lod1;
+        return ((tPhotoMdfStruct*)(v3->mdfPrivateDataPtr))->lod1;
     case 2:
-        return ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->lod2;
+        return ((tPhotoMdfStruct*)(v3->mdfPrivateDataPtr))->lod2;
     }
     return -1.0f;
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoLODGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoLODGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int which;
+    float v2;
+    tGameObjectMain* v3;
+    int a2;
 
-    which = AI_GetIntFromStack();
-    gaoUltra = AI_gpst_CurrentUltra;
+    a2 = AI_GetIntFromStack();
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_InfoPhotoLODGet_C(gaoUltra, which));
-    return node + 1;
+    v2 = AI_EvalFunc_OBJ_InfoPhotoLODGet_C(v3, a2);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
 }
 
-float AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(struct sGameObjectMain* gao, int which)
+float AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(struct sGameObjectMain* a1, int a2)
 {
-    tModifier* photo;
+    tModifier* v3;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (!photo)
+    v3 = GAO_ModifierPhoto_Get(a1, 0);
+    if (!v3)
         return -1.0f;
-
-    switch (which)
+    switch (a2)
     {
     case 0:
-        return ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->frame0_frameCullingSphereRet1;
+        return ((tPhotoMdfStruct*)(v3->mdfPrivateDataPtr))->frame0_frameCullingSphereRet1;
     case 1:
-        return ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->frame1;
+        return ((tPhotoMdfStruct*)(v3->mdfPrivateDataPtr))->frame1;
     case 2:
-        return ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->frame2;
+        return ((tPhotoMdfStruct*)(v3->mdfPrivateDataPtr))->frame2;
     }
     return -1.0f;
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoFrameGet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoFrameGet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int which;
+    float v2; 
+    tGameObjectMain* v3;
+    int a2;
 
-    which = AI_GetIntFromStack();
-    gaoUltra = AI_gpst_CurrentUltra;
+    a2 = AI_GetIntFromStack();
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutFloatToStack(AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(gaoUltra, which));
-    return node + 1;
+    v2 = AI_EvalFunc_OBJ_InfoPhotoFrameGet_C(v3, a2);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_InfoPhotoSphereOffsetSet_C(struct sGameObjectMain* gao, Vec3* offset)
+void AI_EvalFunc_OBJ_InfoPhotoSphereOffsetSet_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    tModifier* photo;
+    tModifier* v2;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (photo)
-        ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->sphereOffset = *offset;
+    v2 = GAO_ModifierPhoto_Get(a1, 0);
+    if (v2)
+        ((tPhotoMdfStruct*)(v2->mdfPrivateDataPtr))->sphereOffset = *a2;
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoSphereOffsetSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoSphereOffsetSet(tAINode* arg0)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 offset;
+    tGameObjectMain* v2;
+    Vec3 a2;
+    tGameObjectMain* a1;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&offset);
-    AI_EvalFunc_OBJ_InfoPhotoSphereOffsetSet_C(gaoUltra, &offset);
-    return node + 1;
+    a1 = v2;
+    AI_GetVecFromStack(&a2);
+    AI_EvalFunc_OBJ_InfoPhotoSphereOffsetSet_C(a1, &a2);
+    return arg0 + 1;
 }
 
-void AI_EvalFunc_OBJ_InfoPhotoInfoOffsetSet_C(struct sGameObjectMain* gao, Vec3* offset)
+void AI_EvalFunc_OBJ_InfoPhotoInfoOffsetSet_C(struct sGameObjectMain* a1, Vec3* a2)
 {
-    tModifier* photo;
+    tModifier* v2;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (photo)
-        ((tPhotoMdfStruct*)(photo->mdfPrivateDataPtr))->infoOffset = *offset;
+    v2 = GAO_ModifierPhoto_Get(a1, 0);
+    if (v2)
+        ((tPhotoMdfStruct*)(v2->mdfPrivateDataPtr))->infoOffset = *a2;
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoInfoOffsetSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoInfoOffsetSet(tAINode* arg0)
 {
-    tGameObjectMain* gaoUltra;
-    Vec3 offset;
+    tGameObjectMain* v2;
+    Vec3 a2;
+    tGameObjectMain* a1;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_GetVecFromStack(&offset);
-    AI_EvalFunc_OBJ_InfoPhotoInfoOffsetSet_C(gaoUltra, &offset);
-    return node + 1;
+    a1 = v2;
+    AI_GetVecFromStack(&a2);
+    AI_EvalFunc_OBJ_InfoPhotoInfoOffsetSet_C(a1, &a2);
+    return arg0 + 1;
 }
 
-// Creates the photo modifier if the object has none, appending it to
-// the end of the modifier list. Note that the far frame is fixed.
-void AI_EvalFunc_OBJ_InfoPhotoParamSet_C(struct sGameObjectMain* gao, int mission, int info, int aiCanal1, int aiCanal2, float lod1, float lod2, float frame1, float radius)
+void AI_EvalFunc_OBJ_InfoPhotoParamSet_C(struct sGameObjectMain* a1, int a2, int a3, int a4, int a5, float a6, float a7, float a8, float a9)
 {
-    tModifier** tail;
-    tModifier* photo;
-    tPhotoMdfStruct* params;
+    tModifier** i;
+    tModifier* v10;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (!photo)
+    v10 = GAO_ModifierPhoto_Get(a1, 0);
+    if (!v10)
     {
-        OBJ_GameObject_CreateExtendedIfNot(gao);
-        for (tail = &gao->extended->mdf; *tail; tail = &(*tail)->nextElem)
+        OBJ_GameObject_CreateExtendedIfNot(a1);
+        for (i = &a1->extended->mdf; *i; i = &(*i)->nextElem)
             ;
-        *tail = MDF_pst_Modifier_Create(gao, 20, 0);
-        photo = *tail;
-        photo->modifierFlags |= 0x1000000u;
-        photo->gao = gao;
+        *i = MDF_pst_Modifier_Create(a1, 20, 0);
+        v10 = *i;
+        v10->modifierFlags |= 0x1000000u;
+        v10->gao = a1;
     }
-
-    params = (tPhotoMdfStruct*)photo->mdfPrivateDataPtr;
-    params->radius = radius;
-    params->frame1 = frame1;
-    params->frame2 = 1.001f;
-    params->lod1 = lod1;
-    params->lod2 = lod2;
-    params->aiCanal1 = aiCanal1;
-    params->aiCanal2 = aiCanal2;
-    params->info = info;
-    params->mission = mission;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->radius = a9;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->frame1 = a8;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->frame2 = 1.001f;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->lod1 = a6;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->lod2 = a7;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->aiCanal1 = a4;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->aiCanal2 = a5;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->info = a3;
+    ((tPhotoMdfStruct*)(v10->mdfPrivateDataPtr))->mission = a2;
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoParamSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoParamSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int mission;
-    int info;
-    int aiCanal1;
-    int aiCanal2;
-    float lod1;
-    float lod2;
-    float frame1;
-    float radius;
+    tGameObjectMain* v2;
+    float a9;
+    float a8;
+    float a6;
+    int a5;
+    int a2;
+    int a3;
+    float a7;
+    int a4;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    radius = AI_GetFloatFromStack();
-    frame1 = AI_GetFloatFromStack();
-    lod2 = AI_GetFloatFromStack();
-    lod1 = AI_GetFloatFromStack();
-    aiCanal2 = AI_GetIntFromStack();
-    aiCanal1 = AI_GetIntFromStack();
-    info = AI_GetIntFromStack();
-    mission = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_InfoPhotoParamSet_C(gaoUltra, mission, info, aiCanal1, aiCanal2, lod1, lod2, frame1, radius);
-    return node + 1;
+    a9 = AI_GetFloatFromStack();
+    a8 = AI_GetFloatFromStack();
+    a7 = AI_GetFloatFromStack();
+    a6 = AI_GetFloatFromStack();
+    a5 = AI_GetIntFromStack();
+    a4 = AI_GetIntFromStack();
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_InfoPhotoParamSet_C(v2, a2, a3, a4, a5, a6, a7, a8, a9);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_OBJ_InfoPhotoFlagsSet_C(struct sGameObjectMain* gao, int toSet, int toClear)
+void AI_EvalFunc_OBJ_InfoPhotoFlagsSet_C(struct sGameObjectMain* a1, int a2, int a3)
 {
-    tPhotoMdfStruct* params;
-    tModifier* photo;
+    tModifier* v3;
 
-    photo = GAO_ModifierPhoto_Get(gao, 0);
-    if (photo)
+    v3 = GAO_ModifierPhoto_Get(a1, 0);
+    if (v3)
     {
-        params = (tPhotoMdfStruct*)photo->mdfPrivateDataPtr;
-        params->flags |= toSet;
-        params->flags &= ~toClear;
+        ((tPhotoMdfStruct*)(v3->mdfPrivateDataPtr))->flags |= a2;
+        ((tPhotoMdfStruct*)(v3->mdfPrivateDataPtr))->flags &= ~a3;
     }
 }
 
-tAINode* AI_EvalFunc_OBJ_InfoPhotoFlagsSet(tAINode* node)
+tAINode* AI_EvalFunc_OBJ_InfoPhotoFlagsSet(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int toSet;
-    int toClear;
+    tGameObjectMain* v2;
+    int a3;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    toClear = AI_GetIntFromStack();
-    toSet = AI_GetIntFromStack();
-    AI_EvalFunc_OBJ_InfoPhotoFlagsSet_C(gaoUltra, toSet, toClear);
-    return node + 1;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_OBJ_InfoPhotoFlagsSet_C(v2, a2, a3);
+    return a1 + 1;
 }
-
