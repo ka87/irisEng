@@ -343,20 +343,15 @@ tAINode* AI_EvalFunc_COLCollideType(tAINode* node)
     return node + 1;
 }
 
-// Note the return: the second arm hands back the address of a local,
-// which no caller reads. Preserved as written.
-Vec3* AI_EvalFunc_COLNormalGet_C(struct sGameObjectMain* gao, int reportFilter, Vec3* normal)
+void AI_EvalFunc_COLNormalGet_C(struct sGameObjectMain* gao, int reportFilter, Vec3* normal)
 {
     Vec3 reported;
 
     COL_Report_GetNormal(gao, WOR_gpst_CurrentWorld, &reported, reportFilter);
     if (MATH_b_NulVector(&reported))
-    {
         *normal = MATH_gst_NulVector;
-        return normal;
-    }
-    *normal = reported;
-    return &reported;
+    else
+        *normal = reported;
 }
 
 tAINode* AI_EvalFunc_COLNormalGet(tAINode* node)

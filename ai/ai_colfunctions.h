@@ -10,7 +10,7 @@ BOOL AI_EvalFunc_COLBVObjectObject_C(struct sGameObjectMain* gao, struct sGameOb
 tGameObjectMain* AI_EvalFunc_COLRayBVDist_C(tGameObjectMain* gao, Vec3* rayV1, Vec3* rayV2, float rayF1, int flagMustHave, int flagMustNothave, int whatToTest);
 tGameObjectMain* AI_EvalFunc_COLRayBVVector_C(tGameObjectMain* gao, Vec3* rayV1, Vec3* ray, int flagMustHave, int flagMustNothave, int whatToTest);
 int AI_EvalFunc_COLCollideType_C(struct sGameObjectMain* gao, int reportFilter);
-Vec3* AI_EvalFunc_COLNormalGet_C(struct sGameObjectMain* gao, int reportFilter, Vec3* normal);
+void AI_EvalFunc_COLNormalGet_C(struct sGameObjectMain* gao, int reportFilter, Vec3* normal);
 struct sGameObjectMain* AI_EvalFunc_COLRayObjectDist_C(struct sGameObjectMain* gao, Vec3* rayV1, Vec3* rayV2, float rayF1, int flagMustHave, int flagMustNothave, int whatToTest, int castKind);
 struct sGameObjectMain* AI_EvalFunc_COLRayObjectVector_C(struct sGameObjectMain* gao, Vec3* rayV1, Vec3* ray, int flagMustHave, int flagMustNothave, int whatToTest, int castKind);
 Vec3* AI_EvalFunc_COLRayPosGet_C(struct sGameObjectMain* gao, Vec3* pos);
