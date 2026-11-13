@@ -9,7 +9,7 @@ typedef struct sGroup
     int groupElemNum;
 } tGroup;
 
-void GRP_ObjDetachGroup(struct sGameObjectMain* a1);
-void GRP_DuplicateGroupObjects(struct sWorld* a1, struct sGroup* a2, struct sGroup* a3);
+void GRP_ObjDetachGroup(struct sGameObjectMain* gao);
+void GRP_DuplicateGroupObjects(struct sWorld* world, struct sGroup* srcGroup, struct sGroup* destGroup);
 struct sGroup* GRP_pst_CreateNewGroup();
 struct sGroup* GRP_ul_LoadGrpCallback(uint32_t Offset);

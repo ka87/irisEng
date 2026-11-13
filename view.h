@@ -16,10 +16,10 @@ typedef struct sViewElem
     float viewPortPosY;
     float viewPortSizeWidth;
     float viewPortSizeHeight;
-    void (*viewFunctionPtr)(struct sViewElem* a1);
+    void (*viewFunctionPtr)(struct sViewElem* view);
     uint8_t gap1[12];
 } tViewElem;
 
 unsigned int WOR_View_Create(struct sWorld* world);
 void WOR_View_Close(struct sViewElem *ve);
-void WOR_View_SetViewport(struct sViewElem* a1, float a2, float a3, float a4, float a5);
+void WOR_View_SetViewport(struct sViewElem* view, float viewPortPosX, float viewPortPosY, float viewPortSizeWidth, float viewPortSizeHeight);

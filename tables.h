@@ -51,7 +51,7 @@ BOOL gb_TablesManagerListInitialized;
 
 void TAB_PFTable_AddElemToTable(tableDescStruct* a1, void* object, int flags);
 void TAB_PTable_AddElemToTable(tableDescStruct* a1, void* a2);
-void TAB_AddElemToTablePF(tableDescStruct* a1, void* a2, int a3);
+void TAB_AddElemToTablePF(tableDescStruct* table, void* objectPtr, int objectFlags);
 void TAB_PFtable_RemoveElemWithPointer(tableDescStruct* a1, void* a2);
 void TAB_PFtable_Clear(tableDescStruct* a1);
 int TAB_ul_PFtable_GetElemIndexWithPointer(tableDescStruct* a1, void* a2);
@@ -61,7 +61,7 @@ void TAB_Ptable_Init(tableDescStruct* a1, unsigned int num, float defragRatio);
 void TAB_PFtable_RemoveElem(tableDescStruct* a1, tableElemStructPF* a2);
 void TAB_PFtable_Close(tableDescStruct* a1);
 void TAB_PFtable_RemoveHoles(tableDescStruct* a1);
-BOOL TAB_TableElemIsInvalid(void* a1);
+BOOL TAB_TableElemIsInvalid(void* elem);
 void TAB_Ptable_Resize(tableDescStruct* a1, unsigned int num);
 void TAB_Ptable_Close(tableDescStruct* a1);
 void TAB_Ptable_RemoveHoles(tableDescStruct* a1);
