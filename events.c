@@ -2170,9 +2170,17 @@ void EVE_LoadListEvents(tGameObjectEventsListElem* track, char* src, uint32_t* r
         {
             isLink = 0;
             if ((flags & 0x200) != 0)
-                keys[i].duration = LOA_ReadChar(&src, 0, 1);
+            {
+                // LOA_ReadChar returns a signed char and duration is a
+                // uint16_t, so a compact duration of 128 or more has to be
+                // taken as a byte: without the cast it sign-extends and a
+                // 150-frame key becomes 65430
+                keys[i].duration = (uint8_t)LOA_ReadChar(&src, 0, 1);
+            }
             else
+            {
                 keys[i].duration = LOA_ReadShort(&src, 0, 1);
+            }
             if ((flags & 0x800) != 0)
             {
                 if (i)
