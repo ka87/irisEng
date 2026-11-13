@@ -77,5 +77,5 @@ typedef struct sPAGStruct
     uint8_t gap[116];
 } tPAGStruct;
 
-void PAG_RenderCommon(struct sGameObjectMain* a1, struct sPAGStruct* a2);
-void PAG_Update(struct sGameObjectMain* a1, struct sPAGStruct* a2, float dt);
+void PAG_RenderCommon(struct sGameObjectMain* gao, struct sPAGStruct* pag);
+void PAG_Update(struct sGameObjectMain* gao, struct sPAGStruct* pag, float dt);
