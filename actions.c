@@ -10,65 +10,44 @@
 
 void ACT_FreeAction(tAction** act)
 {
-    int v1;
-    int v2;
-    int v5;
-    int v6;
-    BASStruct* v7;
-    int v8;
     tActionElem* actionElems;
+    BASStruct* transition;
+    int i;
+    int k;
 
-    v1 = 0;
-    if ((*act)->actionElemNum)
+    actionElems = (tActionElem*)(((char*)*act) + sizeof(tAction));
+
+    for (i = 0; i < (*act)->actionElemNum; i++)
     {
-        v2 = 0;
-        do
+        if (actionElems[i].eventLists)
+            EVE_DeleteListTracks(actionElems[i].eventLists);
+
+        if (actionElems[i].shape)
         {
-            actionElems = (tActionElem*)(((char*)*act) + sizeof(tAction));
-
-            if (actionElems[v2].eventLists)
-                EVE_DeleteListTracks(actionElems[v2].eventLists);
-
-            if (actionElems[v2].shape)
+            --actionElems[i].shape->usageCount;
+            if (!actionElems[i].shape->usageCount)
             {
-                --actionElems[v2].shape->usageCount;
-                if (!actionElems[v2].shape->usageCount)
-                {
-                    MEM_Free(actionElems[v2].shape);
-                    LOA_DeleteAddress((int)actionElems[v2].shape);
-                    actionElems[v2].shape = NULL;
-                }
+                MEM_Free(actionElems[i].shape);
+                LOA_DeleteAddress((int)actionElems[i].shape);
+                actionElems[i].shape = NULL;
             }
-            ++v1;
-            ++v2;
-        } while (v1 < (*act)->actionElemNum);
+        }
     }
+
     if (!--(*act)->usageCount)
     {
-        v5 = 0;
-        if ((*act)->actionElemNum)
+        for (i = 0; i < (*act)->actionElemNum; i++)
         {
-            v6 = 0;
-            do
+            transition = actionElems[i].transition;
+            if (transition)
             {
-                actionElems = (tActionElem*)(((char*)*act) + sizeof(tAction));
-                v7 = actionElems[v6].transition;
-                if (v7)
-                {
-                    v8 = 0;
-                    if (v7->actElemNum > 0)
-                    {
-                        do
-                            MEM_Free((void *)(actionElems[v6].transition->keyValPtr[v8++].val));
-                        while (v8 < actionElems[v6].transition->actElemNum);
-                    }
-                    BAS_bfree((BASStruct*)actionElems[v6].transition);
-                    MEM_Free(actionElems[v6].transition);
-                    actionElems[v6].transition = 0;
-                }
-                ++v5;
-                ++v6;
-            } while (v5 < (*act)->actionElemNum);
+                for (k = 0; k < transition->actElemNum; k++)
+                    MEM_Free((void *)(transition->keyValPtr[k].val));
+
+                BAS_bfree(transition);
+                MEM_Free(transition);
+                actionElems[i].transition = 0;
+            }
         }
         MEM_Free(*act);
         LOA_DeleteAddress((int)*act);
@@ -126,478 +105,386 @@ void ACT_FreeActionKit(tActionKit** ak)
     }
 }
 
-struct sTransitionElem* ACT_pst_FindTransition(tActionKit* a1, uint16_t action, uint8_t actionelem, uint16_t id)
+struct sTransitionElem* ACT_pst_FindTransition(tActionKit* ak, uint16_t action, uint8_t actionElemIdx, uint16_t id)
 {
-    tAction* v5;
-    int v6;
+    tAction* actionStruct;
     tActionElem* actionElems;
-    tAction** actions = (tAction**)(((char*)a1) + sizeof(tActionKit));
+    int val;
+    tAction** actions = (tAction**)(((char*)ak) + sizeof(tActionKit));
 
     if (action == 0xFFFF)
         return 0;
-    v5 = actions[action];
-    actionElems = (tActionElem*)(((char*)v5) + sizeof(tAction));
-    if (!v5 || !actionElems[actionelem].transition)
+    actionStruct = actions[action];
+    actionElems = (tActionElem*)(((char*)actionStruct) + sizeof(tAction));
+    if (!actionStruct || !actionElems[actionElemIdx].transition)
         return 0;
-    v6 = BAS_bsearch(id, (BASStruct*)actionElems[actionelem].transition);
-    return (tTransitionElem*)(v6 == -1 ? 0 : v6);
+    val = BAS_bsearch(id, (BASStruct*)actionElems[actionElemIdx].transition);
+    return (tTransitionElem*)(val == -1 ? 0 : val);
 }
 
-void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced)
+void ACT_SetAction(struct sGameObjectMain* gao, int actionId, int forced)
 {
-    tGameObjectActorObject* gaoao;
-    int aactionID;
-    tAnim* v5;
+    tGameObjectActorObject* actor;
     tActionKit* actKit;
-    tTransitionElem* v7;
-    uint16_t v8;
-    tTransitionElem* v9;
-    tTransitionElem* v10;
-    uint16_t v11;
-    tTransitionElem* v12;
-    uint8_t v13;
-    tAnim* animPtr;
-    tEventData* ptrToChain;
-    tEventData* v19;
-    tAnimTracks* v20;
-    tGameObjectEventsListElem* v21;
-    uint16_t v22;
-    tAction* actionStruct;
-    tAnim* v24;
-    tGameObjectEventsList* v25;
-    tAnim* v26;
-    tEventData* v27;
-    tGameObjectMain* v28;
-    uint8_t v29;
-    double v30;
-    uint16_t v31;
-    tGameObjectMain* v32;
-    tEventData* v33;
-    tGameObjectEventsList* v34;
-    Mtx4x4* v35;
-    tGameObjectExtended* v36;
-    float v37;
-    tTransitionElem* v38;
-    tGameObjectEventElem* v39;
-    tActionKit* v40;
-    tAnimTracks* v41;
-    float a3a = 0;
-    float a4 = 0;
-    float v44;
-    float a2b;
-    float a2a;
-    char forceda;
-    tGameObjectEventsListElem* forcedb;
     tAction** actions;
+    tAction* actionStruct;
     tActionElem* actionElems;
+    tTransitionElem* prevTransition;
+    tTransitionElem* fromTransition;
+    tTransitionElem* selfTransition;
+    tTransitionElem* transition;
+    tGameObjectEventsList* eventList;
+    tGameObjectEventsListElem* track;
+    tGameObjectExtended* extended;
+    tAnimTracks* tracks;
+    tEventData* animData;
+    tEventData* recycledData;
+    tAnim* anim;
+    tAnim* blendAnim;
+    Mtx4x4* savedRefMatrix;
+    tGameObjectMain* savedOwnerGao;
+    tEventData* savedData;
+    tGameObjectEventsList* savedListTracks;
+    tGameObjectEventsListElem* savedTrack;
+    tGameObjectEventElem* savedEvent;
+    tAnimTracks* savedParam;
+    float savedDt;
+    double blendTime;
+    float newFullTime;
+    float oldCurrTime = 0;
+    float oldFullTime = 0;
+    uint16_t keyFrame;
+    uint16_t startTime;
+    uint8_t actionFlags;
+    uint8_t selfFlags;
+    char hadTransition;
+    int actionIdx;
 
-    gaoao = a1->basic->actorObjectOrVisualObject;
-    aactionID = actionId;
+    actor = gao->basic->actorObjectOrVisualObject;
+    actionIdx = actionId;
     if (actionId >= 0)
     {
-        if (!forced && actionId == gaoao->currentAction)
+        if (!forced && actionId == actor->currentAction)
         {
-            v5 = gaoao->animPtr[0];
-            if (v5)
-            {
-                if ((~((v5->flags & 0xff) >> 7) & 1) != 0)
-                    return;
-            }
+            anim = actor->animPtr[0];
+            if (anim && (anim->flags & 0x80) == 0)
+                return;
         }
     }
     else
     {
-        aactionID = actionId & 0x7FFFFFFF;
+        actionIdx = actionId & 0x7FFFFFFF;
     }
+
     if (ENG_gb_EVERunning)
     {
-        gaoao->eventRunningFrequency = -1;
-        gaoao->elapsedDT = EVE_gf_ElapsedDT;
-        gaoao->currentActionTransition = aactionID;
+        actor->eventRunningFrequency = -1;
+        actor->elapsedDT = EVE_gf_ElapsedDT;
+        actor->currentActionTransition = actionIdx;
         return;
     }
-    actKit = gaoao->actionKit;
-    actions = (tAction**)(((char*)actKit) + sizeof(tActionKit));
-    v40 = actKit;
-    if (aactionID >= 0 && aactionID < actKit->elemNum && (!aactionID || actions[aactionID]))
-    {
-        v7 = 0;
-        forceda = 0;
-        if (gaoao->transitionElem)
-        {
-            v7 = gaoao->transitionElem;
-            forceda = 1;
-            if (gaoao->currentActionTransition == aactionID)
-                return;
-            gaoao->transitionElem = 0;
-        }
-        gaoao->flagsEgBlendIw2 &= ~2u;
-        v8 = gaoao->currentAction;
-        if (v8 == 0xFFFF)
-        {
-            v38 = 0;
-            goto LABEL_48;
-        }
-        v9 = ACT_pst_FindTransition(actKit, v8, gaoao->actionItem, aactionID);
-        v10 = v9;
-        v38 = v9;
-        if (v9)
-        {
-            if (gaoao->currentAction != (int16_t)aactionID || (v9->flags & 0x10) == 0)
-                goto LABEL_34;
-            v38 = 0;
-            v10 = 0;
-        }
-        if (!forceda
-            || v7 && ((v7->flags & 0x40) != 0 || (v11 = gaoao->currentActionTransition, aactionID != v11) && v11 != 0xFFFF))
-        {
-            v12 = ACT_pst_FindTransition(v40, aactionID, 0, aactionID);
-            v38 = v12;
-            if (!v12)
-            {
-            LABEL_48:
-                v10 = v38;
-                goto LABEL_49;
-            }
-            v13 = v12->flags;
-            if ((v13 & 0x10) == 0)
-            {
-                v38 = 0;
-                goto LABEL_48;
-            }
-            if (gaoao->currentAction == (int16_t)aactionID && (v13 & 0x40) == 0)
-            {
-                v38 = 0;
-                goto LABEL_48;
-            }
-            v10 = v38;
-        }
-        if (!v10)
-        {
-        LABEL_49:
-            actionStruct = actions[aactionID];
-            gaoao->actionPtr = actionStruct;
-            gaoao->currentAction = aactionID;
-            if (actionStruct && actionStruct->actionElemNum)
-            {
-                v24 = gaoao->animPtr[0];
-                actionElems = (tActionElem*)(((char*)actionStruct) + sizeof(tAction));
-                v25 = actionElems[0].eventLists;
-                if (!v24 || v24 == (tAnim*)-1)
-                    gaoao->animPtr[0] = ANI_AllocAnim();
-                v26 = gaoao->animPtr[0];
-                v27 = v26->ptr;
-                if (!v27 || v27->eventListStruct != v25)
-                    ANI_SetTrackList(v26, v25);
-                if (actionElems[0].shape)
-                {
-                    v28 = a1;
-                    ANI_ChangeShape(a1, actionElems[0].shape);
-                }
-                else
-                {
-                    ANI_ChangeShape(a1, NULL);
-                    v28 = a1;
-                }
-                gaoao->flagsEgBlendIw2 |= 0x1;
-                gaoao->actionItem = 0;
-                gaoao->callCountForChangeAction = 0;
-                v29 = actionElems[0].b5;
-                if ((v28->flags & 4) != 0)
-                    v28->basic->dyn->flags ^= (v28->basic->dyn->flags ^ (v29 << 14)) & 0x1C0000;
-                gaoao->animPtr[0]->flags = (gaoao->animPtr[0]->flags & 0xff00) | (gaoao->animPtr[0]->flags & 0xF0);
-                gaoao->animPtr[0]->flags = (gaoao->animPtr[0]->flags & 0xff00) | (gaoao->animPtr[0]->flags & 0x7F);
-                gaoao->animPtr[0]->flags |= v29 & 0xF;
-                gaoao->animPtr[0]->frequency = 60 * actionElems[0].actionFrequency / 64;
-                if (v10)
-                {
-                    if ((v10->flags & 3) != 0)
-                    {
-                        EVE_GetTracksTime(gaoao->animPtr[0]->ptr, 0, 0, &v44);
-                        if ((v10->flags & 1) != 0)
-                            v30 = v44 / a4 * a3a;
-                        else
-                            v30 = (1.0 - a3a / a4) * v44;
-                        a2b = (float)v30;
-                        EVE_SetTracksTime(gaoao->animPtr[0]->ptr, a2b);
-                        ANI_UpdateFlash(v28, 1);
-                    }
-                    if (gaoao->currentActionTransition == gaoao->currentAction)
-                    {
-                        gaoao->transitionElem = 0;
-                        gaoao->currentActionTransition = -1;
-                    }
-                }
-                if (ENG_gb_AIRunning)
-                {
-                    v31 = gaoao->currTime;
-                    if (v31)
-                    {
-                        v37 = (float)((double)v31 * 0.016666668);
-                        EVE_SetTracksTime(gaoao->animPtr[0]->ptr, v37);
-                    }
-                }
-                v32 = EVE_gpst_OwnerGAO;
-                v33 = EVE_gpst_CurrentData;
-                v34 = EVE_gpst_CurrentListTracks;
-                v35 = EVE_gpst_CurrentRefMatrix;
-                a2a = TIM_gf_dt;
-                forcedb = EVE_gpst_CurrentTrack;
-                TIM_gf_dt = 0.0;
-                v39 = EVE_gpst_CurrentEvent;
-                v36 = a1->extended;
-                v41 = EVE_gpst_CurrentParam;
-                if (!v36 || (v36->extraFlag & 1) == 0)
-                    ANI_OneCall(a1);
-                EVE_gpst_CurrentData = v33;
-                EVE_gpst_CurrentRefMatrix = v35;
-                EVE_gpst_OwnerGAO = v32;
-                EVE_gpst_CurrentTrack = forcedb;
-                EVE_gpst_CurrentListTracks = v34;
-                EVE_gpst_CurrentParam = v41;
-                EVE_gpst_CurrentEvent = v39;
-                TIM_gf_dt = a2a;
-            }
-            else
-            {
-                gaoao->flagsEgBlendIw2 = 0;
-            }
-            return;
-        }
-    LABEL_34:
-        if ((v10->flags & 3) != 0)
-            EVE_GetTracksTime(gaoao->animPtr[0]->ptr, 0, &a3a, &a4);
 
-        if (v10->transitionLength && gaoao->animPtr[0])
-        {
-            if ((gaoao->flagsEgBlendIw2 & 2) == 0 && !gaoao->animPtr[1])
-                gaoao->animPtr[1] = ANI_AllocAnim();
-            animPtr = gaoao->animPtr[1];
-            gaoao->flagsEgBlendIw2 |= 2u;
-            ptrToChain = animPtr->ptr;
-            memcpy(animPtr, gaoao->animPtr[0], sizeof(tAnim));
-            gaoao->animPtr[0]->ptr = ptrToChain;
-            gaoao->animPtr[0]->ptr->eventListStruct = 0;
-            MATH_CopyMatrix(&animPtr->flashMtx, OBJ_pst_GetFlashMatrix(a1));
-            animPtr->actionLength = v38->transitionLength;
-            animPtr->actionForTransition = gaoao->currentAction;
-            animPtr->actionElemForTransition = gaoao->actionItem;
-            animPtr->transitionFlags = v38->flags;
-            animPtr->startTime = 0;
-            animPtr->flags2 = 0;
-            if ((~((animPtr->flags & 0xff) >> 7) & 1) == 0
-                || (v19 = animPtr->ptr,
-                    v20 = v19->tracks,
-                    v21 = v19->eventListStruct->listElems,
-                    v22 = v20->currElemKeyFrame,
-                    v22 == v21->elemNum - 1)
-                && (double)v21->trackElems[v22].duration * 0.016666668 == v20->currTime)
-            {
-                animPtr->transitionFlags |= 0x4;
-                animPtr->flags2 = 2;
-            }
-            v10 = v38;
-            aactionID = (aactionID & 0xffff0000) | actionId;
-        }
-        gaoao->currentActionTransition = aactionID;
-        gaoao->transitionElem = v10;
-        aactionID = v10->actionID;
-        goto LABEL_49;
+    actKit = actor->actionKit;
+    actions = (tAction**)(((char*)actKit) + sizeof(tActionKit));
+    if (actionIdx < 0 || actionIdx >= actKit->elemNum || (actionIdx && !actions[actionIdx]))
+        return;
+
+    prevTransition = 0;
+    hadTransition = 0;
+    if (actor->transitionElem)
+    {
+        prevTransition = actor->transitionElem;
+        hadTransition = 1;
+        if (actor->currentActionTransition == actionIdx)
+            return;
+        actor->transitionElem = 0;
     }
+    actor->flagsEgBlendIw2 &= ~2u;
+
+    transition = 0;
+    if (actor->currentAction != 0xFFFF)
+    {
+        fromTransition = ACT_pst_FindTransition(actKit, actor->currentAction, actor->actionItem, actionIdx);
+        if (fromTransition
+            && (actor->currentAction != (int16_t)actionIdx || (fromTransition->flags & 0x10) == 0))
+        {
+            transition = fromTransition;
+        }
+        else if (!hadTransition
+            || prevTransition && ((prevTransition->flags & 0x40) != 0
+                || actionIdx != actor->currentActionTransition && actor->currentActionTransition != 0xFFFF))
+        {
+            selfTransition = ACT_pst_FindTransition(actKit, actionIdx, 0, actionIdx);
+            if (selfTransition)
+            {
+                selfFlags = selfTransition->flags;
+                if ((selfFlags & 0x10) != 0
+                    && (actor->currentAction != (int16_t)actionIdx || (selfFlags & 0x40) != 0))
+                {
+                    transition = selfTransition;
+                }
+            }
+        }
+    }
+
+    if (transition)
+    {
+        if ((transition->flags & 3) != 0)
+            EVE_GetTracksTime(actor->animPtr[0]->ptr, 0, &oldCurrTime, &oldFullTime);
+
+        if (transition->transitionLength && actor->animPtr[0])
+        {
+            if ((actor->flagsEgBlendIw2 & 2) == 0 && !actor->animPtr[1])
+                actor->animPtr[1] = ANI_AllocAnim();
+            blendAnim = actor->animPtr[1];
+            actor->flagsEgBlendIw2 |= 2u;
+            recycledData = blendAnim->ptr;
+            memcpy(blendAnim, actor->animPtr[0], sizeof(tAnim));
+            actor->animPtr[0]->ptr = recycledData;
+            actor->animPtr[0]->ptr->eventListStruct = 0;
+            MATH_CopyMatrix(&blendAnim->flashMtx, OBJ_pst_GetFlashMatrix(gao));
+            blendAnim->actionLength = transition->transitionLength;
+            blendAnim->actionForTransition = actor->currentAction;
+            blendAnim->actionElemForTransition = actor->actionItem;
+            blendAnim->transitionFlags = transition->flags;
+            blendAnim->startTime = 0;
+            blendAnim->flags2 = 0;
+            animData = blendAnim->ptr;
+            tracks = animData->tracks;
+            track = animData->eventListStruct->listElems;
+            keyFrame = tracks->currElemKeyFrame;
+            if ((blendAnim->flags & 0x80) != 0
+                || keyFrame == track->elemNum - 1
+                && (double)track->trackElems[keyFrame].duration * 0.016666668 == tracks->currTime)
+            {
+                blendAnim->transitionFlags |= 0x4;
+                blendAnim->flags2 = 2;
+            }
+            actionIdx = (actionIdx & 0xffff0000) | actionId;
+        }
+        actor->currentActionTransition = actionIdx;
+        actor->transitionElem = transition;
+        actionIdx = transition->actionID;
+    }
+
+    actionStruct = actions[actionIdx];
+    actor->actionPtr = actionStruct;
+    actor->currentAction = actionIdx;
+    if (!actionStruct || !actionStruct->actionElemNum)
+    {
+        actor->flagsEgBlendIw2 = 0;
+        return;
+    }
+
+    actionElems = (tActionElem*)(((char*)actionStruct) + sizeof(tAction));
+    eventList = actionElems[0].eventLists;
+    anim = actor->animPtr[0];
+    if (!anim || anim == (tAnim*)-1)
+        actor->animPtr[0] = ANI_AllocAnim();
+    anim = actor->animPtr[0];
+    animData = anim->ptr;
+    if (!animData || animData->eventListStruct != eventList)
+        ANI_SetTrackList(anim, eventList);
+
+    if (actionElems[0].shape)
+        ANI_ChangeShape(gao, actionElems[0].shape);
+    else
+        ANI_ChangeShape(gao, NULL);
+
+    actor->flagsEgBlendIw2 |= 0x1;
+    actor->actionItem = 0;
+    actor->callCountForChangeAction = 0;
+    actionFlags = actionElems[0].b5;
+    if ((gao->flags & 4) != 0)
+        gao->basic->dyn->flags = (gao->basic->dyn->flags & ~0x1C0000) | ((actionFlags << 14) & 0x1C0000);
+
+    actor->animPtr[0]->flags = (actor->animPtr[0]->flags & 0xFF70) | (actionFlags & 0xF);
+    actor->animPtr[0]->frequency = 60 * actionElems[0].actionFrequency / 64;
+
+    if (transition)
+    {
+        if ((transition->flags & 3) != 0)
+        {
+            EVE_GetTracksTime(actor->animPtr[0]->ptr, 0, 0, &newFullTime);
+            if ((transition->flags & 1) != 0)
+                blendTime = newFullTime / oldFullTime * oldCurrTime;
+            else
+                blendTime = (1.0 - oldCurrTime / oldFullTime) * newFullTime;
+            EVE_SetTracksTime(actor->animPtr[0]->ptr, (float)blendTime);
+            ANI_UpdateFlash(gao, 1);
+        }
+        if (actor->currentActionTransition == actor->currentAction)
+        {
+            actor->transitionElem = 0;
+            actor->currentActionTransition = -1;
+        }
+    }
+
+    if (ENG_gb_AIRunning)
+    {
+        startTime = actor->currTime;
+        if (startTime)
+            EVE_SetTracksTime(actor->animPtr[0]->ptr, (float)((double)startTime * 0.016666668));
+    }
+
+    savedOwnerGao = EVE_gpst_OwnerGAO;
+    savedData = EVE_gpst_CurrentData;
+    savedListTracks = EVE_gpst_CurrentListTracks;
+    savedRefMatrix = EVE_gpst_CurrentRefMatrix;
+    savedTrack = EVE_gpst_CurrentTrack;
+    savedEvent = EVE_gpst_CurrentEvent;
+    savedParam = EVE_gpst_CurrentParam;
+    savedDt = TIM_gf_dt;
+    TIM_gf_dt = 0.0;
+
+    extended = gao->extended;
+    if (!extended || (extended->extraFlag & 1) == 0)
+        ANI_OneCall(gao);
+
+    EVE_gpst_CurrentData = savedData;
+    EVE_gpst_CurrentRefMatrix = savedRefMatrix;
+    EVE_gpst_OwnerGAO = savedOwnerGao;
+    EVE_gpst_CurrentTrack = savedTrack;
+    EVE_gpst_CurrentListTracks = savedListTracks;
+    EVE_gpst_CurrentParam = savedParam;
+    EVE_gpst_CurrentEvent = savedEvent;
+    TIM_gf_dt = savedDt;
 }
 
 // TODO FIXME: kicsit át lett írva, megnézni jó-e
-void ACT_SetUsageCounts(struct sActionKit* a1)
+void ACT_SetUsageCounts(struct sActionKit* ak)
 {
-    int v1;
-    tAction** v2;
-    tAction* v3;
-    uint8_t v4;
-    int v5;
-    tActionElem* v6;
+    tAction* actionStruct;
     tActionElem* actionElems;
-    tGameObjectEventsList* v7;
-    tAction **actions = (tAction**)(((char*)a1) + sizeof(tActionKit)); // fixed, tAction volt
+    tGameObjectEventsList* eventList;
+    int i;
+    int k;
+    tAction **actions = (tAction**)(((char*)ak) + sizeof(tActionKit)); // fixed, tAction volt
 
-    ++a1->usageCount;
-    v1 = 0;
-    if (a1->elemNum)
+    ++ak->usageCount;
+
+    for (i = 0; i < ak->elemNum; i++)
     {
-        v2 = actions;
-        do
+        actionStruct = actions[i];
+        if (!actionStruct)
+            continue;
+
+        ++actionStruct->usageCount;
+        actionElems = (tActionElem*)(((char*)actionStruct) + sizeof(tAction));
+        for (k = 0; k < actionStruct->actionElemNum; k++)
         {
-            v3 = *v2;
-            if (*v2)
-            {
-                v4 = v3->actionElemNum;
-                ++v3->usageCount;
-                v5 = 0;
-                if (v4)
-                {
-                    actionElems = (tActionElem*)(((char*)v3) + sizeof(tAction));
-                    v6 = actionElems;
-                    do
-                    {
-                        v7 = v6->eventLists;
-                        if (v7)
-                            ++v7->usageCount;
-                        if (v6->shape)
-                            ++(v6->shape->usageCount);
-                        ++v5;
-                        v6++;
-                    } while (v5 < v3->actionElemNum);
-                }
-            }
-            ++v1;
-            ++v2;
-        } while (v1 < a1->elemNum);
+            eventList = actionElems[k].eventLists;
+            if (eventList)
+                ++eventList->usageCount;
+            if (actionElems[k].shape)
+                ++(actionElems[k].shape->usageCount);
+        }
     }
 }
 
 struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
 {
-    uint8_t v1;
-    int v1a;
-    int v2;
-    tAction* v3;
-    tAction* v4;
-    tActionElem* v5;
-    tActionElem* v6;
-    int v7;
-    tActionElem* v8;
-    int v9;
-    tActionElem* v10;
-    BASStruct* v11;
-    int v12;
-    BASKeyValStruct* v13;
-    BASKeyValStruct* v14;
-    int i;
-    int v16;
-    BASKeyValStruct* v17;
-    tTransitionElem* v18;
-    BOOL v19;
-    unsigned int v21;
-    char* a1;
-    tAction* v23;
-    tActionElem* v24;
+    tAction* act;
     tActionElem* actionElems;
-    int v25;
+    BASStruct* transition;
+    BASKeyValStruct* keyVal;
+    tTransitionElem* transitionElem;
+    char* readPtr;
+    uint8_t elemNum;
+    int shapeKey;
+    int i;
+    int k;
     int size;
 
-    v1 = 0;
-    a1 = BIG_pc_ReadFileTmp(Offset, &size);
-    if (size && (v1 = LOA_ReadChar(&a1, 0, 1), v2 = v1, 20 * v1 != 0xFFFFFFFC))
+    elemNum = 0;
+    readPtr = BIG_pc_ReadFileTmp(Offset, &size);
+    if (size)
+        elemNum = LOA_ReadChar(&readPtr, 0, 1);
+
+    if (size && 20 * elemNum != 0xFFFFFFFC)
     {
-        v4 = (tAction*)MEM_p_Alloc(20 * v1 + 4);
-        v23 = v4;
-        v4->actionElemNum = v1;
-        v4->actionElemIDForTransition = LOA_ReadChar(&a1, 0, 1);
-        LOA_ReadShort(&a1, 0, 2);
-        actionElems = (tActionElem*)(((char*)v4) + sizeof(tAction));
-        v5 = actionElems;
-        if (v1)
+        act = (tAction*)MEM_p_Alloc(20 * elemNum + 4);
+        act->actionElemNum = elemNum;
+        act->actionElemIDForTransition = LOA_ReadChar(&readPtr, 0, 1);
+        LOA_ReadShort(&readPtr, 0, 2);
+        actionElems = (tActionElem*)(((char*)act) + sizeof(tAction));
+
+        for (i = 0; i < elemNum; i++)
         {
-            v6 = (tActionElem *) actionElems;
-            do
-            {
-                v5->eventLists = (tGameObjectEventsList*)LOA_ReadLong(&a1, 0, 1);
-                v5->transition = (BASStruct*)LOA_ReadLong(&a1, 0, 1);
-                v5->shape = (tShape*)LOA_ReadLong(&a1, 0, 1);
-                v5->changeActionCallAmountToChange = LOA_ReadChar(&a1, 0, 1);
-                v5->b2 = LOA_ReadChar(&a1, 0, 1);
-                v5->actionFrequency = LOA_ReadChar(&a1, 0, 1);
-                v5->customBits = LOA_ReadChar(&a1, 0, 1);
-                v5->designFlags = LOA_ReadShort(&a1, 0, 1);
-                v5->b5 = LOA_ReadChar(&a1, 0, 1);
-                LOA_ReadChar(&a1, 0, 2);
-                if (!v6->changeActionCallAmountToChange)
-                    v6->changeActionCallAmountToChange = 1;
-                ++v6;
-                ++v5;
-                --v2;
-            } while (v2);
+            actionElems[i].eventLists = (tGameObjectEventsList*)LOA_ReadLong(&readPtr, 0, 1);
+            actionElems[i].transition = (BASStruct*)LOA_ReadLong(&readPtr, 0, 1);
+            actionElems[i].shape = (tShape*)LOA_ReadLong(&readPtr, 0, 1);
+            actionElems[i].changeActionCallAmountToChange = LOA_ReadChar(&readPtr, 0, 1);
+            actionElems[i].b2 = LOA_ReadChar(&readPtr, 0, 1);
+            actionElems[i].actionFrequency = LOA_ReadChar(&readPtr, 0, 1);
+            actionElems[i].customBits = LOA_ReadChar(&readPtr, 0, 1);
+            actionElems[i].designFlags = LOA_ReadShort(&readPtr, 0, 1);
+            actionElems[i].b5 = LOA_ReadChar(&readPtr, 0, 1);
+            LOA_ReadChar(&readPtr, 0, 2);
+            if (!actionElems[i].changeActionCallAmountToChange)
+                actionElems[i].changeActionCallAmountToChange = 1;
         }
-        v3 = v23;
     }
     else
     {
-        v3 = (tAction*)MEM_p_Alloc(324u);
-        v23 = v3;
-        v3->actionElemNum = 0;
-        v3->actionElemIDForTransition = 0;
+        act = (tAction*)MEM_p_Alloc(324u);
+        act->actionElemNum = 0;
+        act->actionElemIDForTransition = 0;
     }
-    v7 = v1;
-    v3->usageCount = 0;
-    actionElems = (tActionElem*)(((char*)v3) + sizeof(tAction));
-    v8 = actionElems;
-    if (v1)
+
+    act->usageCount = 0;
+    actionElems = (tActionElem*)(((char*)act) + sizeof(tAction));
+
+    if (!elemNum)
+        return act;
+
+    for (i = 0; i < elemNum; i++)
     {
-        v1a = v1;
-        do
-        {
-            if (v8->eventLists != (tGameObjectEventsList*)-1)
-                LOA_MakeFileRef((int)v8->eventLists, &v8->eventLists, EVE_ul_CallbackLoadListTracks, 1);
-            v9 = (int)v8->shape;
-            if (v9 == -1)
-                v8->shape = 0;
-            else
-                LOA_MakeFileRef(v9, &v8->shape, ANI_ul_ShapeCallback, 1);
-            ++v8;
-            --v1a;
-        } while (v1a);
-        if (v7 > 0)
-        {
-            v10 = (tActionElem *)actionElems;
-            v24 = (tActionElem *)actionElems;
-            v25 = v7;
-            do
-            {
-                if (v10->transition)
-                {
-                    v11 = (BASStruct*)MEM_p_Alloc(16u);
-                    LOA_ReadLong(&a1, 0, 2);
-                    v11->actElemNum = LOA_ReadLong(&a1, 0, 1);
-                    LOA_ReadLong(&a1, 0, 2);
-                    v11->maxElemNum = v11->actElemNum;
-                    v12 = LOA_ReadLong(&a1, 0, 1);
-                    v21 = 8 * v11->maxElemNum;
-                    v11->elemNumToAddWhenFull = v12;
-                    v13 = (BASKeyValStruct*)MEM_p_Alloc(v21);
-                    v11->keyValPtr = v13;
-                    v14 = v13;
-                    for (i = 0; i < v11->actElemNum; ++v14)
-                    {
-                        v14->key = LOA_ReadLong(&a1, 0, 1);
-                        LOA_ReadLong(&a1, 0, 2);
-                        ++i;
-                    }
-                    v16 = 0;
-                    if (v11->actElemNum > 0)
-                    {
-                        v17 = (BASKeyValStruct *) v11->keyValPtr;
-                        do
-                        {
-                            v18 = (tTransitionElem*)MEM_p_Alloc(sizeof(tTransitionElem));
-                            v17->val = (int)v18;
-                            v18->actionID = LOA_ReadShort(&a1, 0, 1);
-                            v18->flags = LOA_ReadChar(&a1, 0, 1);
-                            v18->transitionLength = LOA_ReadChar(&a1, 0, 1);
-                            ++v16;
-                            ++v17;
-                        } while (v16 < v11->actElemNum);
-                        v10 = v24;
-                    }
-                    v3 = v23;
-                    v10->transition = v11;
-                }
-                ++v10;
-                v19 = v25 == 1;
-                v24 = v10;
-                --v25;
-            } while (!v19);
-        }
+        if (actionElems[i].eventLists != (tGameObjectEventsList*)-1)
+            LOA_MakeFileRef((int)actionElems[i].eventLists, &actionElems[i].eventLists,
+                EVE_ul_CallbackLoadListTracks, 1);
+
+        shapeKey = (int)actionElems[i].shape;
+        if (shapeKey == -1)
+            actionElems[i].shape = 0;
+        else
+            LOA_MakeFileRef(shapeKey, &actionElems[i].shape, ANI_ul_ShapeCallback, 1);
     }
-    return v3;
+
+    for (i = 0; i < elemNum; i++)
+    {
+        if (!actionElems[i].transition)
+            continue;
+
+        transition = (BASStruct*)MEM_p_Alloc(16u);
+        LOA_ReadLong(&readPtr, 0, 2);
+        transition->actElemNum = LOA_ReadLong(&readPtr, 0, 1);
+        LOA_ReadLong(&readPtr, 0, 2);
+        transition->maxElemNum = transition->actElemNum;
+        transition->elemNumToAddWhenFull = LOA_ReadLong(&readPtr, 0, 1);
+        transition->keyValPtr = (BASKeyValStruct*)MEM_p_Alloc(8 * transition->maxElemNum);
+
+        keyVal = transition->keyValPtr;
+        for (k = 0; k < transition->actElemNum; k++, ++keyVal)
+        {
+            keyVal->key = LOA_ReadLong(&readPtr, 0, 1);
+            LOA_ReadLong(&readPtr, 0, 2);
+        }
+
+        keyVal = transition->keyValPtr;
+        for (k = 0; k < transition->actElemNum; k++, ++keyVal)
+        {
+            transitionElem = (tTransitionElem*)MEM_p_Alloc(sizeof(tTransitionElem));
+            keyVal->val = (int)transitionElem;
+            transitionElem->actionID = LOA_ReadShort(&readPtr, 0, 1);
+            transitionElem->flags = LOA_ReadChar(&readPtr, 0, 1);
+            transitionElem->transitionLength = LOA_ReadChar(&readPtr, 0, 1);
+        }
+
+        actionElems[i].transition = transition;
+    }
+
+    return act;
 }
 
 struct sActionKit* ACT_ul_ActionKitCallback(uint32_t Offset)
