@@ -2,324 +2,333 @@
 #include "../gameobject.h"
 #include "ai_eventtrackfunctions.h"
 
-void AI_EvalFunc_TRAPlayAll_C(struct sGameObjectMain* gao)
+void AI_EvalFunc_TRAPlayAll_C(struct sGameObjectMain* a1)
 {
-    EVE_SetRunningTracks(gao->extended->eve, 1);
+    EVE_SetRunningTracks(a1->extended->eve, 1);
 }
 
-tAINode* AI_EvalFunc_TRAPlayAll(tAINode* node)
+tAINode* AI_EvalFunc_TRAPlayAll(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_TRAPlayAll_C(gaoUltra);
-    return node + 1;
+    AI_EvalFunc_TRAPlayAll_C(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRAStopAll_C(struct sGameObjectMain* gao)
+void AI_EvalFunc_TRAStopAll_C(struct sGameObjectMain* a1)
 {
-    EVE_SetRunningTracks(gao->extended->eve, 0);
+    EVE_SetRunningTracks(a1->extended->eve, 0);
 }
 
-tAINode* AI_EvalFunc_TRAStopAll(tAINode* node)
+tAINode* AI_EvalFunc_TRAStopAll(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_TRAStopAll_C(gaoUltra);
-    return node + 1;
+    AI_EvalFunc_TRAStopAll_C(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRAPauseAll_C(tGameObjectMain* gao)
+void AI_EvalFunc_TRAPauseAll_C(tGameObjectMain* a1)
 {
-    EVE_SetPauseTracks(gao->extended->eve, 1);
+    EVE_SetPauseTracks(a1->extended->eve, 1);
 }
 
-tAINode* AI_EvalFunc_TRAPauseAll(tAINode* node)
+tAINode* AI_EvalFunc_TRAPauseAll(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_TRAPauseAll_C(gaoUltra);
-    return node + 1;
+    AI_EvalFunc_TRAPauseAll_C(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRAUnPauseAll_C(tGameObjectMain* gao)
+void AI_EvalFunc_TRAUnPauseAll_C(tGameObjectMain* a1)
 {
-    EVE_SetPauseTracks(gao->extended->eve, 0);
+    EVE_SetPauseTracks(a1->extended->eve, 0);
 }
 
-tAINode* AI_EvalFunc_TRAUnPauseAll(tAINode* node)
+tAINode* AI_EvalFunc_TRAUnPauseAll(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_TRAUnPauseAll_C(gaoUltra);
-    return node + 1;
+    AI_EvalFunc_TRAUnPauseAll_C(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRAReinitAll_C(struct sGameObjectMain* gao)
+void AI_EvalFunc_TRAReinitAll_C(struct sGameObjectMain* a1)
 {
-    EVE_ReinitData(gao->extended->eve);
+    EVE_ReinitData(a1->extended->eve);
 }
 
-tAINode* AI_EvalFunc_TRAReinitAll(tAINode* node)
+tAINode* AI_EvalFunc_TRAReinitAll(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    tGameObjectMain* v2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_TRAReinitAll_C(gaoUltra);
-    return node + 1;
+    AI_EvalFunc_TRAReinitAll_C(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRAPlay_C(struct sGameObjectMain* gao, int trackIdx)
+void AI_EvalFunc_TRAPlay_C(struct sGameObjectMain* a1, int a2)
 {
-    EVE_SetRunningTrack(&gao->extended->eve->tracks[trackIdx], 1);
+    EVE_SetRunningTrack(&a1->extended->eve->tracks[a2], 1);
 }
 
-tAINode* AI_EvalFunc_TRAPlay(tAINode* node)
+tAINode* AI_EvalFunc_TRAPlay(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int trackIdx;
+    tGameObjectMain* v2;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    trackIdx = AI_GetIntFromStack();
-    AI_EvalFunc_TRAPlay_C(gaoUltra, trackIdx);
-    return node + 1;
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_TRAPlay_C(v2, a2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRAStop_C(tGameObjectMain* gao, int trackIdx)
+void AI_EvalFunc_TRAStop_C(tGameObjectMain* a1, int a2)
 {
-    EVE_SetRunningTrack(&gao->extended->eve->tracks[trackIdx], 0);
+    EVE_SetRunningTrack(&a1->extended->eve->tracks[a2], 0);
 }
 
-tAINode* AI_EvalFunc_TRAStop(tAINode* node)
+tAINode* AI_EvalFunc_TRAStop(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int trackIdx;
+    tGameObjectMain* v2;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    trackIdx = AI_GetIntFromStack();
-    AI_EvalFunc_TRAStop_C(gaoUltra, trackIdx);
-    return node + 1;
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_TRAStop_C(v2, a2);
+    return a1 + 1;
 }
 
-tAINode* AI_EvalFunc_TRAPause(tAINode* node)
+tAINode* AI_EvalFunc_TRAPause(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int trackIdx;
+    tGameObjectMain* v2;
+    int v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    trackIdx = AI_GetIntFromStack();
-    EVE_SetPauseTrack(&gaoUltra->extended->eve->tracks[trackIdx], 1);
-    return node + 1;
+    v3 = AI_GetIntFromStack();
+    EVE_SetPauseTrack(&v2->extended->eve->tracks[v3], 1);
+    return a1 + 1;
 }
 
-tAINode* AI_EvalFunc_TRAUnPause(tAINode* node)
+tAINode* AI_EvalFunc_TRAUnPause(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int trackIdx;
+    tGameObjectMain* v2;
+    int v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    trackIdx = AI_GetIntFromStack();
-    EVE_SetPauseTrack(&gaoUltra->extended->eve->tracks[trackIdx], 0);
-    return node + 1;
+    v3 = AI_GetIntFromStack();
+    EVE_SetPauseTrack(&v2->extended->eve->tracks[v3], 0);
+    return a1 + 1;
 }
 
-tAINode* AI_EvalFunc_TRAReinit(tAINode* node)
+tAINode* AI_EvalFunc_TRAReinit(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int trackIdx;
+    tGameObjectMain* v2;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    trackIdx = AI_GetIntFromStack();
-    EVE_ReinitTrack(gaoUltra->extended->eve, trackIdx);
-    return node + 1;
+    a2 = AI_GetIntFromStack();
+    EVE_ReinitTrack(v2->extended->eve, a2);
+    return a1 + 1;
 }
 
-BOOL AI_EvalFunc_TRAIsStop_C(struct sGameObjectMain* gao, int trackIdx)
+BOOL AI_EvalFunc_TRAIsStop_C(struct sGameObjectMain* a1, int a2)
 {
-    return (gao->extended->eve->tracks[trackIdx].flag & 1) == 0;
+    return (a1->extended->eve->tracks[a2].flag & 1) == 0;
 }
 
-tAINode* AI_EvalFunc_TRAIsStop(tAINode* node)
+tAINode* AI_EvalFunc_TRAIsStop(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int trackIdx;
+    int v1;
+    tGameObjectMain* v3;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    trackIdx = AI_GetIntFromStack();
-    AI_PutIntToStack(AI_EvalFunc_TRAIsStop_C(gaoUltra, trackIdx));
-    return node + 1;
+    a2 = AI_GetIntFromStack();
+    v1 = AI_EvalFunc_TRAIsStop_C(v3, a2);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-int AI_EvalFunc_TRAIsStopAll_C(struct sGameObjectMain* gao)
+int AI_EvalFunc_TRAIsStopAll_C(struct sGameObjectMain* a1)
 {
-    tEventData* eve;
     int i;
+    tEventData* v3;
 
-    eve = gao->extended->eve;
-    if (!eve
-        || !eve->eventListStruct
-        || !eve->eventListStruct->listElems
-        || eve->eventListStruct->listElems == (tGameObjectEventsListElem*)-1)
+    v3 = a1->extended->eve;
+    if (!v3
+        || !v3->eventListStruct
+        || !v3->eventListStruct->listElems
+        || v3->eventListStruct->listElems == (tGameObjectEventsListElem*)-1)
     {
         return 1;
     }
-
-    for (i = 0; i < eve->eventListStruct->num; ++i)
+    for (i = 0; i < v3->eventListStruct->num; ++i)
     {
-        if (eve->eventListStruct->listElems[i].trackElems && (eve->tracks[i].flag & 1) != 0)
+        if (v3->eventListStruct->listElems[i].trackElems && (v3->tracks[i].flag & 1) != 0)
             return 0;
     }
     return 1;
 }
 
-tAINode* AI_EvalFunc_TRAIsStopAll(tAINode* node)
+tAINode* AI_EvalFunc_TRAIsStopAll(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    int v1;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_TRAIsStopAll_C(gaoUltra));
-    return node + 1;
+    v1 = AI_EvalFunc_TRAIsStopAll_C(v3);
+    AI_PutIntToStack(v1);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRASetEnd_C(struct sGameObjectMain* gao, int trackIdx)
+void AI_EvalFunc_TRASetEnd_C(struct sGameObjectMain* a1, int a2)
 {
-    tEventData* eve;
-    int lastKeyFrame;
-    float frames;
+    float v2;
+    tEventData* v3;
+    int v4;
 
-    eve = gao->extended->eve;
-    if (eve->eventListStruct->listElems[trackIdx].elemNum)
+    v3 = a1->extended->eve;
+    if (v3->eventListStruct->listElems[a2].elemNum)
     {
-        lastKeyFrame = eve->eventListStruct->listElems[trackIdx].elemNum - 1;
-        eve->tracks[trackIdx].currElemKeyFrame = lastKeyFrame;
-        frames = (float)eve->eventListStruct->listElems[trackIdx].trackElems[lastKeyFrame].duration;
-        eve->tracks[trackIdx].currTime = (float)(frames / 60.0);
+        v4 = v3->eventListStruct->listElems[a2].elemNum - 1;
+        v3->tracks[a2].currElemKeyFrame = v4;
+        v2 = (float)v3->eventListStruct->listElems[a2].trackElems[v4].duration;
+        v3->tracks[a2].currTime = (float)(v2 * 1.0 / 60.0);
     }
 }
 
-tAINode* AI_EvalFunc_TRASetEnd(tAINode* node)
+tAINode* AI_EvalFunc_TRASetEnd(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int trackIdx;
+    tGameObjectMain* v2;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    trackIdx = AI_GetIntFromStack();
-    AI_EvalFunc_TRASetEnd_C(gaoUltra, trackIdx);
-    return node + 1;
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_TRASetEnd_C(v2, a2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRASetTime_C(tGameObjectMain* gao, float time)
+void AI_EvalFunc_TRASetTime_C(tGameObjectMain* a1, float a2)
 {
-    EVE_SetTracksTime(gao->extended->eve, time);
+    EVE_SetTracksTime(a1->extended->eve, a2);
 }
 
-tAINode* AI_EvalFunc_TRASetTime(tAINode* node)
+tAINode* AI_EvalFunc_TRASetTime(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    float time;
+    tGameObjectMain* v2;
+    float a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    time = AI_GetFloatFromStack();
-    AI_EvalFunc_TRASetTime_C(gaoUltra, time);
-    return node + 1;
+    a2 = AI_GetFloatFromStack();
+    AI_EvalFunc_TRASetTime_C(v2, a2);
+    return a1 + 1;
 }
 
-float AI_EvalFunc_TRAGetTotalTime_C(tGameObjectMain* gao)
+float AI_EvalFunc_TRAGetTotalTime_C(tGameObjectMain* a1)
 {
-    float totalTime;
+    float a4;
 
-    EVE_GetTracksTime(gao->extended->eve, 0, 0, &totalTime);
-    return totalTime;
+    EVE_GetTracksTime(a1->extended->eve, 0, 0, &a4);
+    return a4;
 }
 
-tAINode* AI_EvalFunc_TRAGetTotalTime(tAINode* node)
+tAINode* AI_EvalFunc_TRAGetTotalTime(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    float v2;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutFloatToStack(AI_EvalFunc_TRAGetTotalTime_C(gaoUltra));
-    return node + 1;
+    v2 = AI_EvalFunc_TRAGetTotalTime_C(v3);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
 }
 
-float AI_EvalFunc_TRAGetCurrentTime_C(tGameObjectMain* gao)
+float AI_EvalFunc_TRAGetCurrentTime_C(tGameObjectMain* a1)
 {
-    float currentTime;
+    float a3;
 
-    EVE_GetTracksTime(gao->extended->eve, 0, &currentTime, 0);
-    return currentTime;
+    EVE_GetTracksTime(a1->extended->eve, 0, &a3, 0);
+    return a3;
 }
 
-tAINode* AI_EvalFunc_TRAGetCurrentTime(tAINode* node)
+tAINode* AI_EvalFunc_TRAGetCurrentTime(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
+    float v2;
+    tGameObjectMain* v3;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v3 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutFloatToStack(AI_EvalFunc_TRAGetCurrentTime_C(gaoUltra));
-    return node + 1;
+    v2 = AI_EvalFunc_TRAGetCurrentTime_C(v3);
+    AI_PutFloatToStack(v2);
+    return a1 + 1;
 }
 
-void AI_EvalFunc_TRASetTimeToLabel_C(tGameObjectMain* gao, int trackIdx, int labelId)
+void AI_EvalFunc_TRASetTimeToLabel_C(tGameObjectMain* a1, int a2, int a3)
 {
-    tEventData* eve;
-    float labelTime;
+    float a3a;
+    tEventData* v4;
+    int v5;
 
-    eve = gao->extended->eve;
-    if (EVE_i_SearchLabel(&eve->eventListStruct->listElems[trackIdx], labelId << 12, &labelTime) == -1)
-        return;
-
-    EVE_gpst_CurrentListTracks = eve->eventListStruct;
-    EVE_gpst_OwnerGAO = gao;
-    EVE_SetAllTimesTo(labelTime);
-    EVE_gpst_CurrentListTracks = 0;
-    EVE_gpst_OwnerGAO = 0;
+    v4 = a1->extended->eve;
+    v5 = EVE_i_SearchLabel(&v4->eventListStruct->listElems[a2], a3 << 12, &a3a);
+    if (v5 != -1)
+    {
+        EVE_gpst_CurrentListTracks = v4->eventListStruct;
+        EVE_gpst_OwnerGAO = a1;
+        EVE_SetAllTimesTo(a3a);
+        EVE_gpst_CurrentListTracks = 0;
+        EVE_gpst_OwnerGAO = 0;
+    }
 }
 
-tAINode* AI_EvalFunc_TRASetTimeToLabel(tAINode* node)
+tAINode* AI_EvalFunc_TRASetTimeToLabel(tAINode* a1)
 {
-    tGameObjectMain* gaoUltra;
-    int trackIdx;
-    int labelId;
+    tGameObjectMain* v2;
+    int a3;
+    int a2;
 
-    gaoUltra = AI_gpst_CurrentUltra;
+    v2 = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    labelId = AI_GetIntFromStack();
-    trackIdx = AI_GetIntFromStack();
-    AI_EvalFunc_TRASetTimeToLabel_C(gaoUltra, trackIdx, labelId);
-    return node + 1;
+    a3 = AI_GetIntFromStack();
+    a2 = AI_GetIntFromStack();
+    AI_EvalFunc_TRASetTimeToLabel_C(v2, a2, a3);
+    return a1 + 1;
 }
