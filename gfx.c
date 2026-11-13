@@ -627,14 +627,8 @@ void GFX_Render(tGfxElem** list, int zlistLock)
     GFX_ppst_CurrentList = list;
     savedFlags = gpst_DX_stDD->flags;
     savedDrawMask = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
-    gpst_DX_stDD->drawMaskAllowedStuffCurrent = gpst_DX_stDD->drawMaskAllowedStuff & ~0x10000u;
     savedMatrixElem = gpst_DX_stDD->matrixStack.currElemNum;
-    gpst_DX_stDD->matrixStack.currElemNum = 0;
-    gpst_DX_stDD->matrixStack.actMatrixElem = gpst_DX_stDD->matrixStack.elems;
-    gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
-    gpst_DX_stDD->SetViewMatrix(gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender);
-    gpst_DX_stDD->currTargetGao = GFX_gpst_GO;
-    gpst_DX_stDD->extraMaterialToGeo = 0;
+    GFX_SetRenderState();
     if ((uint8_t)zlistLock)
     {
         SOFT_ZList_Lock();
