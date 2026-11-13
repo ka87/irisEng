@@ -11,10 +11,12 @@
    What it is for. The rewrite replaced all 42 gotos -- thirteen of them
    in OBJ_ChangeIdentityFlags, whose 27 "v3 = a3" statements turned out
    to be dead, and seven in OBJ_EyeFollow, whose blend ramp and torso
-   target were a maze of shared tails. It also restored 24 inlined
+   target were a maze of shared tails. It also restored 21 inlined
    copies of MATH_CopyMatrix, two of MATH_SetIdentityMatrix, four of
-   MATH_NormalizeEqualVector, one of MATH_GetSqrt and one of memcpy, and
-   collapsed two identical accumulator sets in OBJ_Frame_CullingSphere.
+   MATH_NormalizeEqualVector and one of MATH_GetSqrt, folded the
+   dword-plus-remainder memcpy in OBJ_GameObject_Duplicate back into one
+   call, and collapsed two identical accumulator sets in
+   OBJ_Frame_CullingSphere.
    Those are the changes a reading cannot settle.
 
    What it does not cover, and why: OBJ_ul_GameObjectCallback and
