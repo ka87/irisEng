@@ -40,12 +40,12 @@ void COL_AllocDetectionList(struct sGameObjectMain* gao)
     memset(gao->extended->coll->detectionList->detectionListGaos, 0, (150 * sizeof(tGameObjectMain*)));
 }
 
-void COL_FreeDetectionList(struct sGameObjectCollMain* gao)
+void COL_FreeDetectionList(struct sGameObjectCollMain* coll)
 {
-    if (!gao || !gao->detectionList) return;
+    if (!coll || !coll->detectionList) return;
 
-    MEM_Free(gao->detectionList->detectionListGaos);
-    MEM_Free(gao->detectionList);
+    MEM_Free(coll->detectionList->detectionListGaos);
+    MEM_Free(coll->detectionList);
 }
 
 BOOL COL_BV_PivotCollide(struct sGameObjectMain* gao1, struct sGameObjectMain* gao2, BOOL reverse)
@@ -212,77 +212,62 @@ void COL_FreeMathematicalCob(tColCollisionObject* cob)
 }
 
 
-void COL_FreeColMap(struct sGameObjectCollMain* a1)
+void COL_FreeColMap(struct sGameObjectCollMain* coll)
 {
-    tGameObjectCollMain* v1;
-    tColMap* v2;
-    tColCollisionObject** v3;
-    tColCollisionObject** v4;
-    BOOL v5;
-    BOOL v6;
+    tColMap* colMap;
+    tColCollisionObject** cob;
+    tColCollisionObject** end;
+    BOOL isMesh;
 
-    v1 = a1;
-    if (a1)
+    if (!coll) return;
+
+    colMap = coll->colMap;
+    if (!colMap) return;
+
+    LOA_DeleteAddress((int)colMap);
+    if (colMap->colObjectID)
     {
-        v2 = a1->colMap;
-        if (v2)
+        cob = colMap->collisionObjectPtr;
+        end = &cob[colMap->colObjectID];
+        for (; cob < end; ++cob)
         {
-            LOA_DeleteAddress((int)a1->colMap);
-            if (v2->colObjectID)
+            isMesh = (*cob)->objectType == 5;
+            if (!--(*cob)->usageCount)
             {
-                v3 = v2->collisionObjectPtr;
-                v4 = &v3[v2->colObjectID];
-                if (v3 < v4)
-                {
-                    do
-                    {
-                        v5 = (*v3)->objectType == 5;
-                        --(*v3)->usageCount;
-                        v6 = v5;
-                        if (!(*v3)->usageCount)
-                        {
-                            COL_FreeGameMaterial(*v3);
-                            LOA_DeleteAddress((int)*v3);
-                            if (v6)
-                                COL_FreeTrianglesIndexedCob(*v3);
-                            else
-                                COL_FreeMathematicalCob(*v3);
-                        }
-                        ++v3;
-                    } while (v3 < v4);
-                    v1 = a1;
-                }
-                MEM_Free(v2->collisionObjectPtr);
+                COL_FreeGameMaterial(*cob);
+                LOA_DeleteAddress((int)*cob);
+                if (isMesh)
+                    COL_FreeTrianglesIndexedCob(*cob);
+                else
+                    COL_FreeMathematicalCob(*cob);
             }
-            MEM_Free(v2);
-            v1->colMap = 0;
         }
+        MEM_Free(colMap->collisionObjectPtr);
     }
+    MEM_Free(colMap);
+    coll->colMap = 0;
 }
 
-void COL_Free(struct sGameObjectMain* a1)
+void COL_Free(struct sGameObjectMain* gao)
 {
-    tGameObjectExtended* v1;
-    tGameObjectCollMain* v2;
+    tGameObjectExtended* ext;
+    tGameObjectCollMain* coll;
 
-    if (a1)
-    {
-        v1 = a1->extended;
-        if (v1)
-        {
-            v2 = v1->coll;
-            if (v1->coll)
-            {
-                if (v2->colInstance)
-                    COL_FreeInstance(v2);
-                if (v2->detectionList)
-                    COL_FreeDetectionList(v2);
-                if (v2->colMap)
-                    COL_FreeColMap(v2);
-                MEM_Free(v2);
-            }
-        }
-    }
+    if (!gao) return;
+
+    ext = gao->extended;
+    if (!ext) return;
+
+    coll = ext->coll;
+    if (!coll) return;
+
+    if (coll->colInstance)
+        COL_FreeInstance(coll);
+    if (coll->detectionList)
+        COL_FreeDetectionList(coll);
+    if (coll->colMap)
+        COL_FreeColMap(coll);
+    MEM_Free(coll);
 }
 
 int COL_AllocColMap(struct sGameObjectMain* gao)
@@ -315,2411 +300,2071 @@ int COL_AllocColMap(struct sGameObjectMain* gao)
     return 0;
 }
 
-int INT_PointInTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, uint8_t* a6)
+int INT_PointInTriangle(Vec3* point, Vec3* p1, Vec3* p2, Vec3* p3, Vec3* normal, uint8_t* edgeOut)
 {
-    float v6; // eax
-    double v7; // st7
-    double v8; // st6
-    float v10; // [esp+0h] [ebp-24h]
-    float v11; // [esp+4h] [ebp-20h]
-    float v12; // [esp+8h] [ebp-1Ch]
-    float v13; // [esp+Ch] [ebp-18h]
-    float v14; // [esp+10h] [ebp-14h]
-    float v15; // [esp+14h] [ebp-10h]
-    float v16; // [esp+18h] [ebp-Ch]
-    float v17; // [esp+1Ch] [ebp-8h]
-    float v18; // [esp+20h] [ebp-4h]
-    float v19; // [esp+2Ch] [ebp+8h]
-    float v20; // [esp+2Ch] [ebp+8h]
-    float v21; // [esp+2Ch] [ebp+8h]
-    float v22; // [esp+2Ch] [ebp+8h]
-    float v23; // [esp+2Ch] [ebp+8h]
-    float v24; // [esp+2Ch] [ebp+8h]
-    float v25; // [esp+2Ch] [ebp+8h]
+    float axis;
+    double lastA;
+    double lastB;
+    float e1x;
+    float e1y;
+    float e1z;
+    float e2x;
+    float e2y;
+    float e2z;
+    float e3x;
+    float e3y;
+    float e3z;
+    float cross12;
+    float cross23;
+    float cross31;
 
-    v13 = a2->x - a1->x;
-    v14 = a2->y - a1->y;
-    v15 = a2->z - a1->z;
-    v10 = a3->x - a1->x;
-    v11 = a3->y - a1->y;
-    v12 = a3->z - a1->z;
-    v16 = a4->x - a1->x;
-    v17 = a4->y - a1->y;
-    v18 = a4->z - a1->z;
-    if (fabs(a5->x) <= 0.57735026) // invsqrt3
+    e1x = p1->x - point->x;
+    e1y = p1->y - point->y;
+    e1z = p1->z - point->z;
+    e2x = p2->x - point->x;
+    e2y = p2->y - point->y;
+    e2z = p2->z - point->z;
+    e3x = p3->x - point->x;
+    e3y = p3->y - point->y;
+    e3z = p3->z - point->z;
+
+    if (fabs(normal->x) <= 0.57735026) // invsqrt3
     {
-        if (fabs(a5->y) <= 0.57735026)
+        if (fabs(normal->y) <= 0.57735026)
         {
-            v6 = a5->z;
-            v23 = v13 * v11 - v10 * v14;
-            if (( (*(int32_t *)&v23) ^ (*(int32_t*)&v6)) >= 0)
-            {
-                v24 = v10 * v17 - v16 * v11;
-                if ( ((*(int32_t*)&v24) ^ (*(int32_t*)&v6)) >= 0)
-                {
-                    v7 = v16 * v14;
-                    v8 = v13 * v17;
-                    goto LABEL_16;
-                }
-                goto LABEL_13;
-            }
+            axis = normal->z;
+            cross12 = e1x * e2y - e2x * e1y;
+            cross23 = e2x * e3y - e3x * e2y;
+            lastA = e3x * e1y;
+            lastB = e1x * e3y;
         }
         else
         {
-            v6 = a5->y;
-            v21 = v10 * v15 - v13 * v12;
-            if (((*(int32_t*)&v21) ^ (*(int32_t*)&v6)) >= 0)
-            {
-                v22 = v16 * v12 - v10 * v18;
-                if (((*(int32_t*)&v22) ^ (*(int32_t*)&v6)) >= 0)
-                {
-                    v7 = v13 * v18;
-                    v8 = v16 * v15;
-                    goto LABEL_16;
-                }
-            LABEL_13:
-                if (a6)
-                {
-                    *a6 = 1;
-                    return 0;
-                }
-                return 0;
-            }
+            axis = normal->y;
+            cross12 = e2x * e1z - e1x * e2z;
+            cross23 = e3x * e2z - e2x * e3z;
+            lastA = e1x * e3z;
+            lastB = e3x * e1z;
         }
-    LABEL_10:
-        if (a6)
-        {
-            *a6 = 0;
-            return 0;
-        }
+    }
+    else
+    {
+        axis = normal->x;
+        cross12 = e2z * e1y - e2y * e1z;
+        cross23 = e3z * e2y - e3y * e2z;
+        lastA = e3y * e1z;
+        lastB = e3z * e1y;
+    }
+
+    if (((*(int32_t*)&cross12) ^ (*(int32_t*)&axis)) < 0)
+    {
+        if (edgeOut)
+            *edgeOut = 0;
         return 0;
     }
-    v6 = a5->x;
-    v19 = v12 * v14 - v11 * v15;
-    if (((*(int32_t*)&v19) ^ (*(int32_t*)&a5->x)) < 0)
-        goto LABEL_10;
-    v20 = v18 * v11 - v17 * v12;
-    if (((*(int32_t*)&v20) ^ (*(int32_t*)&v6)) < 0)
-        goto LABEL_13;
-    v7 = v17 * v15;
-    v8 = v18 * v14;
-LABEL_16:
-    v25 = (float)(v7 - v8);
-    if (((*(int32_t*)&v25) ^ (*(int32_t*)&v6)) >= 0)
+    if (((*(int32_t*)&cross23) ^ (*(int32_t*)&axis)) < 0)
+    {
+        if (edgeOut)
+            *edgeOut = 1;
+        return 0;
+    }
+    cross31 = (float)(lastA - lastB);
+    if (((*(int32_t*)&cross31) ^ (*(int32_t*)&axis)) >= 0)
         return 1;
-    if (a6)
-        *a6 = 2;
+    if (edgeOut)
+        *edgeOut = 2;
     return 0;
 }
 
-void COL_ComputeProximity(tColCollisionObject* a1)
+void COL_ComputeProximity(tColCollisionObject* cob)
 {
-    tCobMeshObjectMesh* v1;
-    int v2;
-    tCobMeshChunkElem* v3;
-    tCobMeshTriangleElem* v4;
-    uint16_t v5;
-    tCobMeshTriangleElem* v6;
-    uint16_t v7;
-    tCobMeshChunkElem* meshinner1;
-    tCobMeshTriangleElem* v9;
-    uint16_t vertid1;
-    uint16_t vvertid1;
-    BOOL v12;
-    uint16_t v13;
-    uint16_t v14;
-    uint16_t v15;
-    BOOL v16;
-    BOOL v17;
-    BOOL v18;
+    tCobMeshObjectMesh* mesh;
+    tCobMeshChunkElem* chunk;
+    tCobMeshTriangleElem* tri;
+    tCobMeshChunkElem* otherChunk;
+    tCobMeshTriangleElem* otherTri;
+    uint16_t triV3;
+    uint16_t otherV1;
+    uint16_t otherV2;
+    uint16_t otherV3;
+    uint16_t neighbour;
+    BOOL shares1;
+    BOOL shares2;
+    BOOL shares3;
     int prox1Set;
     int prox2Set;
     int prox3Set;
-    int currInner1ElemID;
-    int j;
-    int i;
-    uint16_t v25;
-    int v26;
-    tCobMeshObjectMesh* v27;
-    unsigned int currInner1ElemNumInside;
-    unsigned int currelemId;
-    unsigned int currInner1ElemNum;
-    tCobMeshChunkElem* v31;
-    tCobMeshChunkElem* v32;
-    int a1a;
+    unsigned int chunkID;
+    unsigned int elemID;
+    unsigned int otherChunkID;
+    unsigned int otherElemID;
 
-    v1 = (tCobMeshObjectMesh*)a1->objectPtrByType;
-    v2 = 0;
-    v27 = v1;
-    currInner1ElemNum = 0;
-    if (v1->meshChunkElemNum)
+    mesh = (tCobMeshObjectMesh*)cob->objectPtrByType;
+
+    for (chunkID = 0; chunkID < mesh->meshChunkElemNum; ++chunkID)
     {
-        i = 0;
-        do
+        chunk = &mesh->meshChunkElems[chunkID];
+        for (elemID = 0; elemID < chunk->elemNum; ++elemID)
         {
-            v3 = &v1->meshChunkElems[i];
-            v32 = v3;
-            currelemId = 0;
-            if (!v3->elemNum)
-                goto LABEL_44;
-            j = 0;
-            do
+            tri = &chunk->triangleElems[elemID];
+            triV3 = tri->v3;
+            tri->proximity1 = -1;
+            tri->proximity2 = -1;
+            tri->proximity3 = -1;
+            neighbour = 0;
+            prox1Set = 0;
+            prox2Set = 0;
+            prox3Set = 0;
+
+            for (otherChunkID = 0; otherChunkID < mesh->meshChunkElemNum; ++otherChunkID)
             {
-                v4 = v3->triangleElems;
-                v5 = v4[j].v3;
-                v6 = &v4[j];
-                v25 = v5;
-                v6->proximity1 = -1;
-                v6->proximity2 = -1;
-                v6->proximity3 = -1;
-                v7 = 0;
-                prox1Set = 0;
-                prox2Set = 0;
-                prox3Set = 0;
-                currInner1ElemNumInside = 0;
-                if (!v1->meshChunkElemNum)
-                    goto LABEL_43;
-                currInner1ElemID = 0;
-                do
+                otherChunk = &mesh->meshChunkElems[otherChunkID];
+                for (otherElemID = 0; otherElemID < otherChunk->elemNum; ++otherElemID, ++neighbour)
                 {
-                    meshinner1 = &v1->meshChunkElems[currInner1ElemID];
-                    v31 = meshinner1;
-                    v26 = 0;
-                    if (!meshinner1->elemNum)
-                        goto LABEL_38;
-                    a1a = 0;
-                    while (1)
+                    otherTri = &otherChunk->triangleElems[otherElemID];
+                    if (otherTri == tri)
+                        continue;
+
+                    otherV1 = otherTri->v1;
+                    otherV2 = otherTri->v2;
+                    otherV3 = otherTri->v3;
+                    shares1 = tri->v1 == otherV1 || tri->v1 == otherV2 || tri->v1 == otherV3;
+                    shares2 = tri->v2 == otherV1 || tri->v2 == otherV2 || tri->v2 == otherV3;
+                    shares3 = triV3 == otherV1 || triV3 == otherV2 || triV3 == otherV3;
+                    if (shares1 + shares2 + shares3 != 2)
+                        continue;
+
+                    if (shares1 && shares2)
                     {
-                        v9 = &meshinner1->triangleElems[a1a];
-                        if (v9 != v6)
-                            break;
-                    LABEL_35:
-                        ++a1a;
-                        ++v7;
-                        if (++v26 >= meshinner1->elemNum)
-                            goto LABEL_38;
-                    }
-                    vertid1 = v9->v1;
-                    vvertid1 = v6->v1;
-                    v12 = v6->v1 == v9->v1;
-                    v13 = v9->v2;
-                    v14 = v9->v3;
-                    if (v12 || vvertid1 == v13 || vvertid1 == v14)
-                        v2 = 1;
-                    v15 = v6->v2;
-                    v16 = v15 == vertid1 || v15 == v13 || v15 == v14;
-                    v17 = v25 == vertid1 || v25 == v13 || v25 == v14;
-                    if (v2 + v17 + v16 != 2)
-                    {
-                    LABEL_34:
-                        v1 = v27;
-                        meshinner1 = v31;
-                        v2 = 0;
-                        goto LABEL_35;
-                    }
-                    if (!v2)
-                        goto LABEL_30;
-                    if (v16)
-                    {
-                        v6->proximity1 = v7;
+                        tri->proximity1 = neighbour;
                         prox1Set = 1;
-                        goto LABEL_32;
                     }
-                    if (v17)
+                    else if (shares1 && shares3)
                     {
-                        v6->proximity2 = v7;
+                        tri->proximity2 = neighbour;
                         prox2Set = 1;
                     }
                     else
                     {
-                    LABEL_30:
-                        v6->proximity3 = v7;
+                        tri->proximity3 = neighbour;
                         prox3Set = 1;
                     }
-                    if (!prox1Set)
-                        goto LABEL_34;
-                LABEL_32:
-                    if (!prox2Set || !prox3Set)
-                        goto LABEL_34;
-                    v1 = v27;
-                    v2 = 0;
-                LABEL_38:
+
                     if (prox1Set && prox2Set && prox3Set)
                         break;
-                    v18 = ++currInner1ElemNumInside < v1->meshChunkElemNum;
-                    ++currInner1ElemID;
-                } while (v18);
-                v3 = v32;
-            LABEL_43:
-                ++j;
-                ++currelemId;
-            } while (currelemId < v3->elemNum);
-        LABEL_44:
-            v18 = ++currInner1ElemNum < v1->meshChunkElemNum;
-            ++i;
-        } while (v18);
+                }
+                if (prox1Set && prox2Set && prox3Set)
+                    break;
+            }
+        }
     }
 }
 
-void COL_ColMap_AddSphere(tColCollisionObject* a1, tColCollisionObject* a2, Vec3* a3)
+void COL_ColMap_AddSphere(tColCollisionObject* cob, tColCollisionObject* srcCob, Vec3* center)
 {
-    tColSphere* v3;
-    tColSphere* v4;
+    tColSphere* sphere;
+    tColSphere* srcSphere;
+    tCobNormalObjectGeneric* shape;
 
-    tCobNormalObjectGeneric* cob1 = (tCobNormalObjectGeneric*)a1->objectPtrByType;
-    tCobNormalObjectGeneric* cob2 = (tCobNormalObjectGeneric*)a2->objectPtrByType;
+    shape = (tCobNormalObjectGeneric*)cob->objectPtrByType;
+    shape->enclosurePtr = MEM_p_Alloc(sizeof(tColSphere));
+    sphere = (tColSphere*)shape->enclosurePtr;
 
-    cob1->enclosurePtr = MEM_p_Alloc(16u);
-    v3 = (tColSphere*)(cob1->enclosurePtr);
-    if (a2)
+    if (srcCob)
     {
-        v4 = (tColSphere*)(cob2->enclosurePtr);
-        v3->radius = v4->radius;
-        if (a3)
-        {
-            v3->center = *a3;
-        }
+        srcSphere = (tColSphere*)((tCobNormalObjectGeneric*)srcCob->objectPtrByType)->enclosurePtr;
+        sphere->radius = srcSphere->radius;
+        if (center)
+            sphere->center = *center;
         else
-        {
-            v3->center.x = v4->center.x;
-            v3->center.y = v4->center.y;
-            v3->center.z = v4->center.z;
-        }
-        a1->flags = a2->flags;
-        a1->objectType = 2;
+            sphere->center = srcSphere->center;
+        cob->flags = srcCob->flags;
     }
     else
     {
-        v3->radius = 1.0;
-        if (a3)
+        sphere->radius = 1.0;
+        if (center)
         {
-            v3->center = *a3;
+            sphere->center = *center;
         }
         else
         {
-            v3->center.x = 0.0;
-            v3->center.y = 0.0;
-            v3->center.z = 0.0;
+            sphere->center.x = 0.0;
+            sphere->center.y = 0.0;
+            sphere->center.z = 0.0;
         }
-        a1->objectType = 2;
     }
+    cob->objectType = 2;
 }
 
-tCobGameMaterialElems* COL_pst_GMat_Get(tColCollisionObject* a1, tCobMeshChunkElem* a2)
+tCobGameMaterialElems* COL_pst_GMat_Get(tColCollisionObject* cob, tCobMeshChunkElem* chunk)
 {
-    tCobGameMaterial* v2;
-    tCobGameMaterialElems* gmatelem;
-    unsigned int v4;
+    tCobGameMaterial* gameMaterial;
+    tCobGameMaterialElems* elems;
+    unsigned int wantedID;
     int num;
-    int* v6;
-    unsigned int v7;
-    unsigned int v8;
-    unsigned int v9;
-    int v11;
-    int* i;
-    tCobNormalObjectGeneric* cob;
+    int* ids;
+    unsigned int mid;
+    unsigned int value;
+    unsigned int low;
+    int index;
+    int* id;
+    tCobNormalObjectGeneric* shape;
 
-    v2 = a1->gameMaterial;
-    if (!v2)
+    gameMaterial = cob->gameMaterial;
+    if (!gameMaterial)
         return 0;
-    gmatelem = v2->elems;
-    if (!gmatelem)
+    elems = gameMaterial->elems;
+    if (!elems)
         return 0;
-    if (a2)
+
+    if (chunk)
     {
-        v4 = a2->gameMaterialElemID;
+        wantedID = chunk->gameMaterialElemID;
     }
     else
     {
-        if (a1->objectType == 5)
+        if (cob->objectType == 5)
             return 0;
-        cob = (tCobNormalObjectGeneric*)a1->objectPtrByType;
-        v4 = cob->gameMaterialElemID;
+        shape = (tCobNormalObjectGeneric*)cob->objectPtrByType;
+        wantedID = shape->gameMaterialElemID;
     }
-    num = v2->num;
-    if (v2->num > 10u)
+
+    num = gameMaterial->num;
+    if (gameMaterial->num > 10u)
     {
-        v6 = v2->ptrInts;
-        v7 = num >> 1;
-        v8 = v6[num >> 1];
-        v9 = 0;
-        if (v8 == v4)
+        ids = gameMaterial->ptrInts;
+        mid = num >> 1;
+        value = ids[num >> 1];
+        low = 0;
+        while (value != wantedID)
         {
-        LABEL_14:
-            gmatelem[v7].id = v4;
-            return &a1->gameMaterial->elems[v7];
-        }
-        while (v9 + 1 != num)
-        {
-            if (v8 <= v4)
-                v9 = v7;
+            if (low + 1 == num)
+                return 0;
+            if (value <= wantedID)
+                low = mid;
             else
-                num = v7;
-            v7 = (num + v9) >> 1;
-            v8 = v6[v7];
-            if (v8 == v4)
-                goto LABEL_14;
+                num = mid;
+            mid = (num + low) >> 1;
+            value = ids[mid];
         }
-        return 0;
+        elems[mid].id = wantedID;
+        return &cob->gameMaterial->elems[mid];
     }
-    v11 = 0;
+
+    index = 0;
     if (!num)
         return 0;
-    for (i = v2->ptrInts; *i != v4; ++i)
+    for (id = gameMaterial->ptrInts; *id != wantedID; ++id)
     {
-        if (++v11 >= num)
+        if (++index >= num)
             return 0;
     }
-    gmatelem[v11].id = v4;
-    return &a1->gameMaterial->elems[v11];
+    elems[index].id = wantedID;
+    return &cob->gameMaterial->elems[index];
 }
 
-BOOL COL_GMat_Skip(tCobGameMaterialElems* a1, tColGlobal* a2)
+BOOL COL_GMat_Skip(tCobGameMaterialElems* gameMaterial, tColGlobal* colGlobal)
 {
-    return a1
-        && ((a1->flags & 0x200000) != 0 && (a2->collInstanceElem->colFlags & 0x10) == 0
-            || (a1->flags & 0x1000) != 0
-            && (a2->collisionObjectPtr->flags & 2) != 0
-            && (a2->collInstanceElem->colFlags & 0x80u) == 0)
-        || (a2->collInstanceElem->colFlags & 0x80u) != 0
-        && a1
-        && (a1->flags & 0x1000) == 0
-        && (a2->collisionObjectPtr->flags & 2) != 0;
+    if (!gameMaterial)
+        return FALSE;
+
+    if ((gameMaterial->flags & 0x200000) != 0 && (colGlobal->collInstanceElem->colFlags & 0x10) == 0)
+        return TRUE;
+    if ((gameMaterial->flags & 0x1000) != 0
+        && (colGlobal->collisionObjectPtr->flags & 2) != 0
+        && (colGlobal->collInstanceElem->colFlags & 0x80u) == 0)
+        return TRUE;
+    return (colGlobal->collInstanceElem->colFlags & 0x80u) != 0
+        && (gameMaterial->flags & 0x1000) == 0
+        && (colGlobal->collisionObjectPtr->flags & 2) != 0;
 }
 
-BOOL INT_PointSphere(Vec3* param_1, float param_2, Vec3* param_3)
-
+BOOL INT_PointSphere(Vec3* point, float radius, Vec3* center)
 {
-    float fVar1;
+    float distSquared;
 
-    fVar1 = (param_1->x - param_3->x) * (param_1->x - param_3->x) +
-        (param_1->y - param_3->y) * (param_1->y - param_3->y) +
-        (param_1->z - param_3->z) * (param_1->z - param_3->z);
-    if ((uint16_t)((uint16_t)(param_2 * param_2 < fVar1) << 8 | // ez milyen egy megoldás float összehasonlításra?????? TODO FIXME
-        (uint16_t)(param_2 * param_2 == fVar1) << 14) == 0) {
+    distSquared = (point->x - center->x) * (point->x - center->x) +
+        (point->y - center->y) * (point->y - center->y) +
+        (point->z - center->z) * (point->z - center->z);
+    if ((uint16_t)((uint16_t)(radius * radius < distSquared) << 8 | // ez milyen egy megoldás float összehasonlításra?????? TODO FIXME
+        (uint16_t)(radius * radius == distSquared) << 14) == 0) {
         return 1;
     }
     return 0;
 }
 
-BOOL INT_SphereSphere(Vec3* param_1, float a2, Vec3* param_3, float a4)
+BOOL INT_SphereSphere(Vec3* center1, float radius1, Vec3* center2, float radius2)
 {
-    float param_2; // [esp+0h] [ebp-8h]
-
-    param_2 = a2 + a4;
-    return INT_PointSphere(param_1, param_2, param_3);
+    return INT_PointSphere(center1, radius1 + radius2, center2);
 }
 
-BOOL INT_FullSphereSphere(Vec3* a1, float a2, Vec3* a3, float a4, Vec3* a5, Vec3* a6)
+BOOL INT_FullSphereSphere(Vec3* center1, float radius1, Vec3* center2, float radius2, Vec3* normalOut, Vec3* pointOut)
 {
-    BOOL result; 
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    double v12;
-    float v13;
-    float v14;
-    Vec3 v15;
-    float v16;
+    double deltaX;
+    double deltaY;
+    double deltaZ;
+    double offsetX;
+    double offsetY;
+    float invLength;
+    float offsetZ;
+    Vec3 dir;
+    float deltaZf;
 
-    result = INT_SphereSphere(a1, a2, a3, a4);
-    if (result)
-    {
-        v8 = a1->x - a3->x; //TODO FIXME v7 volt az a3, így biztos jó?
-        v9 = a1->y - a3->y;
-        v10 = a1->z - a3->z;
-        v16 = (float)v10;
-        v13 = (float)(1.0 / sqrt(v10 * v16 + v8 * v8 + v9 * v9));
-        v15.x = (float)(v8 * v13);
-        v15.y = (float)(v9 * v13);
-        v15.z = v16 * v13;
-        v11 = v15.x * a4;
-        a6->x = (float)v11;
-        v12 = v15.y * a4;
-        a6->y = (float)v12;
-        v14 = v15.z * a4;
-        a6->z = (float)v14;
-        a6->x = (float)(v11 + a3->x);
-        a6->y = (float)(v12 + a3->y);
-        a6->z = (float)(v14 + a3->z);
-        *a5 = v15;
-        result = 1;
-    }
-    return result;
+    if (!INT_SphereSphere(center1, radius1, center2, radius2))
+        return FALSE;
+
+    deltaX = center1->x - center2->x; //TODO FIXME v7 volt az a3, így biztos jó?
+    deltaY = center1->y - center2->y;
+    deltaZ = center1->z - center2->z;
+    deltaZf = (float)deltaZ;
+    invLength = (float)(1.0 / sqrt(deltaZ * deltaZf + deltaX * deltaX + deltaY * deltaY));
+    dir.x = (float)(deltaX * invLength);
+    dir.y = (float)(deltaY * invLength);
+    dir.z = deltaZf * invLength;
+    offsetX = dir.x * radius2;
+    pointOut->x = (float)offsetX;
+    offsetY = dir.y * radius2;
+    pointOut->y = (float)offsetY;
+    offsetZ = dir.z * radius2;
+    pointOut->z = offsetZ;
+    pointOut->x = (float)(offsetX + center2->x);
+    pointOut->y = (float)(offsetY + center2->y);
+    pointOut->z = (float)(offsetZ + center2->z);
+    *normalOut = dir;
+    return TRUE;
 }
 
-int INT_FullSegmentSphere(Vec3* segmentPoint1, Vec3* segmentPoint2, Vec3* a3, float a4, Vec3* a1)
+int INT_FullSegmentSphere(Vec3* segStart, Vec3* segEnd, Vec3* center, float radius, Vec3* hitOut)
 {
-    double v7; // st7
-    double v8; // st6
-    long double v9; // st5
-    int result; // eax
-    double v11; // st5
-    double v12; // st7
-    double v13; // st7
-    double v14; // st7
-    float v15; // [esp+4h] [ebp-28h]
-    float v16; // [esp+8h] [ebp-24h]
-    float v17; // [esp+Ch] [ebp-20h]
-    float v18; // [esp+10h] [ebp-1Ch]
-    Vec3 v19; // [esp+14h] [ebp-18h] BYREF
-    float v20; // [esp+24h] [ebp-8h]
-    float a2a; // [esp+30h] [ebp+4h]
-    float v22; // [esp+34h] [ebp+8h]
-    float v23; // [esp+38h] [ebp+Ch]
+    double deltaX;
+    double deltaZ;
+    long double length;
+    double invLength;
+    double proj;
+    double perpSquared;
+    float toCenterX;
+    float toCenterY;
+    float toCenterZ;
+    Vec3 dir;
+    float startDistSquared;
+    float deltaY;
+    float projF;
+    float radiusSquared;
+    float lengthF;
 
-    v16 = segmentPoint1->x - a3->x;
-    v17 = segmentPoint1->y - a3->y;
-    v18 = segmentPoint1->z - a3->z;
-    v7 = segmentPoint2->x - segmentPoint1->x;
-    v20 = segmentPoint2->y - segmentPoint1->y;
-    v8 = segmentPoint2->z - segmentPoint1->z;
-    v9 = sqrt(v8 * v8 + v20 * v20 + v7 * v7);
-    v23 = (float)v9;
-    if (v9 == 0.0f)
+    toCenterX = segStart->x - center->x;
+    toCenterY = segStart->y - center->y;
+    toCenterZ = segStart->z - center->z;
+    deltaX = segEnd->x - segStart->x;
+    deltaY = segEnd->y - segStart->y;
+    deltaZ = segEnd->z - segStart->z;
+    length = sqrt(deltaZ * deltaZ + deltaY * deltaY + deltaX * deltaX);
+    lengthF = (float)length;
+    if (length == 0.0f)
         return 0;
-    v11 = 1.0 / v23;
-    v19.x = (float)(v11 * v7);
-    v19.y = (float)(v20 * v11);
-    v19.z = (float)(v11 * v8);
-    v12 = -(v18 * v19.z + v17 * v19.y + v16 * v19.x);
-    a2a = (float)v12;
-    v13 = v12 * a2a;
-    v15 = v18 * v18 + v16 * v16 + v17 * v17;
-    v22 = a4 * a4;
-    if (a2a < 0.0 && v15 >(double)v22)
+
+    invLength = 1.0 / lengthF;
+    dir.x = (float)(invLength * deltaX);
+    dir.y = (float)(deltaY * invLength);
+    dir.z = (float)(invLength * deltaZ);
+    proj = -(toCenterZ * dir.z + toCenterY * dir.y + toCenterX * dir.x);
+    projF = (float)proj;
+    startDistSquared = toCenterZ * toCenterZ + toCenterX * toCenterX + toCenterY * toCenterY;
+    radiusSquared = radius * radius;
+    if (projF < 0.0 && startDistSquared > (double)radiusSquared)
         return 0;
-    v14 = v15 - v13;
-    if (v14 > v22 || a2a - sqrt(v22 - v14) > v23)
+
+    perpSquared = startDistSquared - proj * projF;
+    if (perpSquared > radiusSquared || projF - sqrt(radiusSquared - perpSquared) > lengthF)
         return 0;
-    if (a2a <= (double)v23)
+
+    if (projF <= (double)lengthF)
     {
-        if (v15 <= (double)v22)
+        if (startDistSquared <= (double)radiusSquared)
         {
-            *a1 = *segmentPoint1;
+            *hitOut = *segStart;
         }
         else
         {
-            MATH_VecMultScalar(a1, &v19, a2a);
-            MATH_VecAddVec(a1, segmentPoint1, a1);
+            MATH_VecMultScalar(hitOut, &dir, projF);
+            MATH_VecAddVec(hitOut, segStart, hitOut);
         }
-        result = 1;
     }
     else
     {
-        *a1 = *segmentPoint2;
-        result = 1;
+        *hitOut = *segEnd;
     }
-    return result;
+    return 1;
 }
 
-int INT_FullSegmentTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, Vec3* a7, uint8_t* a8)
+int INT_FullSegmentTriangle(Vec3* segStart, Vec3* segEnd, Vec3* p1, Vec3* p2, Vec3* p3, Vec3* normal, Vec3* hitOut, uint8_t* edgeOut)
 {
-    double v9; // st6
-    double v11; // st7
-    double v12; // st6
-    float v13; // [esp+4h] [ebp-Ch]
-    float v14; // [esp+8h] [ebp-8h]
-    float v15; // [esp+Ch] [ebp-4h]
-    float a2a; // [esp+1Ch] [ebp+Ch]
-    float a2b; // [esp+1Ch] [ebp+Ch]
+    double denom;
+    double offsetX;
+    double offsetY;
+    float deltaX;
+    float deltaY;
+    float deltaZ;
+    float ratio;
+    float offsetZ;
 
-    v13 = a2->x - a1->x;
-    v14 = a2->y - a1->y;
-    v15 = a2->z - a1->z;
-    v9 = v15 * a6->z + v13 * a6->x + v14 * a6->y;
-    if (v9 < 0.0000099999997f && v9 > -0.0000099999997f)
+    deltaX = segEnd->x - segStart->x;
+    deltaY = segEnd->y - segStart->y;
+    deltaZ = segEnd->z - segStart->z;
+    denom = deltaZ * normal->z + deltaX * normal->x + deltaY * normal->y;
+    if (denom < 0.0000099999997f && denom > -0.0000099999997f)
         return 0;
-    a2a = (float)(((a3->z - a1->z) * a6->z + (a3->x - a1->x) * a6->x + (a3->y - a1->y) * a6->y) / v9);
-    if (a2a <= 0.0 || a2a >= 1.0)
+
+    ratio = (float)(((p1->z - segStart->z) * normal->z
+        + (p1->x - segStart->x) * normal->x
+        + (p1->y - segStart->y) * normal->y) / denom);
+    if (ratio <= 0.0 || ratio >= 1.0)
         return 0;
-    v11 = v13 * a2a;
-    a7->x = (float)v11;
-    v12 = v14 * a2a;
-    a7->y = (float)v12;
-    a2b = v15 * a2a;
-    a7->z = a2b;
-    a7->x = (float)(v11 + a1->x);
-    a7->y = (float)(v12 + a1->y);
-    a7->z = a2b + a1->z;
-    return INT_PointInTriangle(a7, a3, a4, a5, a6, a8);
+
+    offsetX = deltaX * ratio;
+    hitOut->x = (float)offsetX;
+    offsetY = deltaY * ratio;
+    hitOut->y = (float)offsetY;
+    offsetZ = deltaZ * ratio;
+    hitOut->z = offsetZ;
+    hitOut->x = (float)(offsetX + segStart->x);
+    hitOut->y = (float)(offsetY + segStart->y);
+    hitOut->z = offsetZ + segStart->z;
+    return INT_PointInTriangle(hitOut, p1, p2, p3, normal, edgeOut);
 }
 
 int INT_FullSphereTriangle(Vec3* centerPos, float radius, Vec3* point1, Vec3* point2, Vec3* point3, Vec3* nomalVec, Vec3* collisionPoint, int* collisionType)
 {
-    float v8; // st7
-    float v9; // st6
-    Vec3* v10; // edi
-    float v11; // st7
-    float v12; // st6
-    Vec3* v14; // [esp-1Ch] [ebp-40h]
-    Vec3 a1; // [esp+0h] [ebp-24h] BYREF
-    float v16; // [esp+10h] [ebp-14h]
-    float v17; // [esp+14h] [ebp-10h]
-    Vec3 a2; // [esp+18h] [ebp-Ch] BYREF
-    uint8_t ct;
+    Vec3 segStart;
+    Vec3 segEnd;
+    float backStep;
+    uint8_t edge;
 
-    v8 = radius * nomalVec->x;
-    v9 = radius * nomalVec->y;
-    a1.z = radius * nomalVec->z;
-    v10 = collisionPoint;
-    a1.x = v8 + centerPos->x;
-    v14 = nomalVec;
-    a1.y = centerPos->y + v9;
-    a1.z = centerPos->z + a1.z;
-    ct = 0;
-    v11 = -(radius + radius);
-    v12 = v11 * v14->x;
-    v16 = v11 * v14->y;
-    v17 = v11 * v14->z;
-    a2.x = v12 + a1.x;
-    a2.y = v16 + a1.y;
-    a2.z = v17 + a1.z;
-    if (INT_FullSegmentTriangle(&a1, &a2, point1, point2, point3, v14, collisionPoint, &ct))
+    segStart.z = radius * nomalVec->z;
+    segStart.x = radius * nomalVec->x + centerPos->x;
+    segStart.y = centerPos->y + radius * nomalVec->y;
+    segStart.z = centerPos->z + segStart.z;
+    edge = 0;
+    backStep = -(radius + radius);
+    segEnd.x = backStep * nomalVec->x + segStart.x;
+    segEnd.y = backStep * nomalVec->y + segStart.y;
+    segEnd.z = backStep * nomalVec->z + segStart.z;
+
+    if (INT_FullSegmentTriangle(&segStart, &segEnd, point1, point2, point3, nomalVec, collisionPoint, &edge))
     {
         *collisionType = 1;
         return 1;
     }
-    if (!ct)
+
+    if (edge == 0)
     {
-        if (INT_FullSegmentSphere(point1, point2, centerPos, radius, v10))
+        if (INT_FullSegmentSphere(point1, point2, centerPos, radius, collisionPoint))
         {
             *collisionType = 2;
             return 1;
         }
-        if (INT_FullSegmentSphere(point2, point3, centerPos, radius, v10))
+        if (INT_FullSegmentSphere(point2, point3, centerPos, radius, collisionPoint))
         {
             *collisionType = 8;
             return 1;
         }
-        if (INT_FullSegmentSphere(point3, point1, centerPos, radius, v10))
-            goto LABEL_21;
-        return 0;
-    }
-    if (ct == 1)
-    {
-        if (INT_FullSegmentSphere(point2, point3, centerPos, radius, v10))
-        {
-        LABEL_11:
-            *collisionType = 8;
-            return 1;
-        }
-        if (INT_FullSegmentSphere(point1, point2, centerPos, radius, v10))
-        {
-            *collisionType = 2;
-            return 1;
-        }
-        if (INT_FullSegmentSphere(point3, point1, centerPos, radius, v10))
+        if (INT_FullSegmentSphere(point3, point1, centerPos, radius, collisionPoint))
         {
             *collisionType = 4;
             return 1;
         }
         return 0;
     }
-    if (ct == 2)
+
+    if (edge == 1)
     {
-        if (!INT_FullSegmentSphere(point3, point1, centerPos, radius, v10))
+        if (INT_FullSegmentSphere(point2, point3, centerPos, radius, collisionPoint))
         {
-            if (INT_FullSegmentSphere(point1, point2, centerPos, radius, v10))
-            {
-                *collisionType = 2;
-                return 1;
-            }
-            if (!INT_FullSegmentSphere(point2, point3, centerPos, radius, v10))
-                return 0;
-            goto LABEL_11;
+            *collisionType = 8;
+            return 1;
         }
-    LABEL_21:
-        *collisionType = 4;
-        return 1;
+        if (INT_FullSegmentSphere(point1, point2, centerPos, radius, collisionPoint))
+        {
+            *collisionType = 2;
+            return 1;
+        }
+        if (INT_FullSegmentSphere(point3, point1, centerPos, radius, collisionPoint))
+        {
+            *collisionType = 4;
+            return 1;
+        }
+        return 0;
+    }
+
+    if (edge == 2)
+    {
+        if (INT_FullSegmentSphere(point3, point1, centerPos, radius, collisionPoint))
+        {
+            *collisionType = 4;
+            return 1;
+        }
+        if (INT_FullSegmentSphere(point1, point2, centerPos, radius, collisionPoint))
+        {
+            *collisionType = 2;
+            return 1;
+        }
+        if (INT_FullSegmentSphere(point2, point3, centerPos, radius, collisionPoint))
+        {
+            *collisionType = 8;
+            return 1;
+        }
+        return 0;
     }
     return 1;
 }
 
-void COL_ReportCollision(Vec3* a1, Vec3* a2, Vec3* a3, int a4, int a5, int16_t a6, tColGlobal* a7)
+void COL_ReportCollision(Vec3* collidedPoint, Vec3* normalVec, Vec3* recalVec, int flags, int triangleChunkElemID, int16_t triangleChunkID, tColGlobal* colGlobal)
 {
-    tWorld* v7;
-    tColCollisionObject* v9;
-    tCobGameMaterialElems* v10;
-    int v11;
+    tWorld* world;
+    tRecordElem* record;
+    tColCollisionObject* cob;
+    tCobGameMaterialElems* gameMaterial;
 
-    if (a7->num < 1000u)
+    if (colGlobal->num >= 1000u)
+        return;
+
+    world = colGlobal->colWorld;
+    record = &world->records[colGlobal->num];
+    record->collidedPoint = *collidedPoint;
+    record->recalVec = *recalVec;
+    record->normalVec = *normalVec;
+    record->collisionInstanceGameObject = colGlobal->colInstanceGao;
+    record->collisionMapGameObject = colGlobal->colMapGao;
+    record->flags = flags;
+    record->triangleChunkElemID = triangleChunkElemID;
+    record->triangleChunkID = triangleChunkID;
+
+    cob = colGlobal->collisionObjectPtr;
+    if ((flags & 0xF) != 0)
     {
-        v7 = a7->colWorld;
-        v7->records[a7->num].collidedPoint = *a1;
-        v7->records[a7->num].recalVec = *a3;
-        v7->records[a7->num].normalVec = *a2;
-        v7->records[a7->num].collisionInstanceGameObject = a7->colInstanceGao;
-        v7->records[a7->num].collisionMapGameObject = a7->colMapGao;
-        v7->records[a7->num].flags = a4;
-        v7->records[a7->num].triangleChunkElemID = a5;
-        v7->records[a7->num].triangleChunkID = a6;
-        v9 = a7->collisionObjectPtr;
-        if ((a4 & 0xF) != 0)
-        {
-            v10 = COL_pst_GMat_Get(v9, a7->cobMeshChunkElem);
-            v7->records[a7->num].designVal = a7->cobMeshChunkElem->designVal;
-        }
-        else
-        {
-            v10 = COL_pst_GMat_Get(v9, 0);
-            v7->records[a7->num].designVal = 0;
-        }
-        v7->records[a7->num].gameMaterial = v10;
-        if (v10)
-        {
-            if ((a7->colInstance->crossable & v10->flags) != 0)
-                v7->records[a7->num].flags |= 0x2000u;
-        }
-        v11 = a7->num + 1;
-        a7->num = v11;
-        v7->recordCount = v11;
+        gameMaterial = COL_pst_GMat_Get(cob, colGlobal->cobMeshChunkElem);
+        record->designVal = colGlobal->cobMeshChunkElem->designVal;
     }
+    else
+    {
+        gameMaterial = COL_pst_GMat_Get(cob, 0);
+        record->designVal = 0;
+    }
+    record->gameMaterial = gameMaterial;
+    if (gameMaterial && (colGlobal->colInstance->crossable & gameMaterial->flags) != 0)
+        record->flags |= 0x2000u;
+
+    ++colGlobal->num;
+    world->recordCount = colGlobal->num;
 }
 
-BOOL COL_NeedRecomputation(tColGlobal* a1, tGameObjectMain* a2, int16_t a3)
+BOOL COL_NeedRecomputation(tColGlobal* colGlobal, tGameObjectMain* gao, int16_t flag)
 {
-    tGameObjectMain* v3;
-    tGameObjectExtended* v4;
-    tColInstance* v5;
-    int v6;
-    uint8_t v7;
-    int v8;
-    tGameObjectMain** v9;
-    tGameObjectExtended* v10;
-    tGameObjectCollMain* v11;
-    tColInstance* v12;
+    tColInstance* instance;
+    uint8_t count;
+    int i;
 
-    v3 = a2;
-    v4 = a2->extended;
-    v5 = v4->coll->colInstance;
-    if ((a2->flags2 & 0x20) != 0)
+    if ((gao->flags2 & 0x20) == 0)
+        return 1;
+
+    instance = gao->extended->coll->colInstance;
+    if (!instance || instance->flag < 0)
+        return 1;
+
+    count = colGlobal->gaosNeededToBeRecomputedNum;
+    if (count >= 50u)
+        return 0;
+
+    for (i = 0; i < count; ++i)
     {
-        v6 = 0;
-        if (v5)
+        if (colGlobal->gaosNeededToBeRecomputed[i] == gao)
         {
-            if (v5->flag >= 0)
-            {
-                v7 = a1->gaosNeededToBeRecomputedNum;
-                if (v7 < 50u)
-                {
-                    v8 = v7;
-                    a2 = 0;
-                    if (v7)
-                    {
-                        v9 = a1->gaosNeededToBeRecomputed;
-                        while (*v9 != v3)
-                        {
-                            ++v6;
-                            ++v9;
-                            if (v6 >= a1->gaosNeededToBeRecomputedNum)
-                                goto LABEL_10;
-                            v5 = v4->coll->colInstance;
-                        }
-                        a2 = (tGameObjectMain*)1;
-                        if (v4 && v4->coll && v5)
-                        {
-                            v5->flag |= a3;
-                            return 0;
-                        }
-                    }
-                    else
-                    {
-                    LABEL_10:
-                        a1->gaosNeededToBeRecomputed[v8] = v3;
-                        ++a1->gaosNeededToBeRecomputedNum;
-                        v10 = v3->extended;
-                        if (v10)
-                        {
-                            v11 = v10->coll;
-                            if (v11)
-                            {
-                                v12 = v11->colInstance;
-                                if (v12)
-                                    v12->flag |= a3;
-                            }
-                        }
-                    }
-                }
-                return a2 == 0;
-            }
+            instance->flag |= flag;
+            return 0;
         }
     }
+
+    colGlobal->gaosNeededToBeRecomputed[count] = gao;
+    ++colGlobal->gaosNeededToBeRecomputedNum;
+    instance->flag |= flag;
     return 1;
 }
 
-int16_t COL_test_flag_sub_436970(struct sColInstance* a1, int16_t a2)
+int16_t COL_w_TestInstanceFlag(struct sColInstance* instance, int16_t mask)
 {
-    int16_t result;
-
-    if (a1)
-        result = a2 & a1->flag;
-    else
-        result = 0;
-    return result;
+    if (!instance)
+        return 0;
+    return mask & instance->flag;
 }
 
-BOOL COL_b_IsARealTopologicEdge(tColGlobal* a1, Vec3* a2, uint8_t a3)
+BOOL COL_b_IsARealTopologicEdge(tColGlobal* colGlobal, Vec3* normal, uint8_t edgeFlags)
 {
-    BOOL v3;
-    uint16_t v4;
-    tCobMeshTriangleElem* v6;
-    Vec3* v7;
-    Vec3* v8;
-    BOOL v9;
-    int v10;
-    Vec3* v11;
-    double v12;
-    double v13;
-    Vec3 a1a;
-    Vec3 v15;
+    BOOL faceIsWall;
+    BOOL neighbourIsWall;
+    BOOL instanceUpright;
+    uint16_t neighbour;
+    tCobMeshTriangleElem* tri;
+    Vec3* neighbourNormal;
+    Vec3* gravityNeg;
+    double faceDot;
+    double neighbourDot;
+    Vec3 faceInMapSpace;
+    Vec3 neighbourInMapSpace;
 
-    a1->colMapEdgeNormalVec.x = 0.0;
-    a1->colMapEdgeNormalVec.y = 0.0;
-    a1->colMapEdgeNormalVec.z = 0.0;
-    v3 = fabs(a1->colInstGaoMatrices->v3.z - 1.0) < 0.001;
-    if ((a3 & 2) != 0)
-    {
-        v4 = a1->cobMeshTriangleElem->proximity1;
-    }
+    colGlobal->colMapEdgeNormalVec.x = 0.0;
+    colGlobal->colMapEdgeNormalVec.y = 0.0;
+    colGlobal->colMapEdgeNormalVec.z = 0.0;
+    instanceUpright = fabs(colGlobal->colInstGaoMatrices->v3.z - 1.0) < 0.001;
+
+    tri = colGlobal->cobMeshTriangleElem;
+    if ((edgeFlags & 2) != 0)
+        neighbour = tri->proximity1;
+    else if ((edgeFlags & 4) != 0)
+        neighbour = tri->proximity2;
     else
-    {
-        v6 = a1->cobMeshTriangleElem;
-        if ((a3 & 4) == 0)
-        {
-            v4 = v6->proximity3;
-            if (v4 == 0xFFFF)
-                return 1;
-            goto LABEL_8;
-        }
-        v4 = v6->proximity2;
-    }
-    if (v4 == 0xFFFF)
+        neighbour = tri->proximity3;
+    if (neighbour == 0xFFFF)
         return 1;
-LABEL_8:    
-    v7 = &(((tCobMeshObjectMesh*)(a1->collisionObjectPtr->objectPtrByType))->normals[v4]);
-    a1->colMapEdgeNormalVec.x = v7->x + a2->x;
-    a1->colMapEdgeNormalVec.y = v7->y + a2->y;
-    a1->colMapEdgeNormalVec.z = v7->z + a2->z;
-    if (!v3)
-    {
-        MATH_TransformVectorNoScale(&a1a, a1->colMapGaoMatrices, a2);
-        MATH_TransformVectorNoScale(&v15, a1->colMapGaoMatrices, v7);
-        v11 = a1->ptrSetToVec6InZDMZDRGravityNeg;
-        v12 = v11->z * a1a.z + v11->y * a1a.y + a1a.x * v11->x;
-        if (v12 >= 0.0f && v12 < a1->wallCosAngle)
-            v9 = 1;
-        else
-            v9 = v12 < 0.0 && v12 > -0.80000001f;
-        v13 = v11->z * v15.z + v11->y * v15.y + v15.x * v11->x;
-        if (v13 >= 0.0f && v13 < a1->wallCosAngle)
-        {
-            v10 = 1;
-            goto LABEL_25;
-        }
-        if (v13 < 0.0f && v13 > -0.80000001f)
-        {
-            v10 = 1;
-            goto LABEL_25;
-        }
-    LABEL_24:
-        v10 = 0;
-        goto LABEL_25;
-    }
-    v8 = a1->ptrSetToVec6InZDMZDRGravityNeg;
-    v9 = v8->z * a2->z + v8->y * a2->y + v8->x * a2->x < a1->wallCosAngle;
-    if (v8->z * v7->z + v8->y * v7->y + v7->x * v8->x >= a1->wallCosAngle)
-        goto LABEL_24;
-    v10 = 1;
-LABEL_25:
-    a1->colMapEdgeNormalVec.x = a1->colMapEdgeNormalVec.x * 0.5f;
-    a1->colMapEdgeNormalVec.y = a1->colMapEdgeNormalVec.y * 0.5f;
-    a1->colMapEdgeNormalVec.z = a1->colMapEdgeNormalVec.z * 0.5f;
-    return v9 && v10 && cos(0.3141592741012573) > v7->z * a2->z + v7->y * a2->y + v7->x * a2->x;
-}
 
-int COL_ComputeReport(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, int* a6, int a7, int16_t a8, tColGlobal* colGlobal)
-{
-    float a4a;
-    double v10; // st7
-    int* v11; // edx
-    Vec3* v12; // eax
-    tGameObjectMain* v13; // ecx
-    tColInstance* v14; // eax
-    tCobGameMaterialElems* v15; // eax
-    double v17; // st7
-    double v18; // st7
-    BOOL v19; // edi
-    int v20; // eax
-    int* v21; // eax
-    int v22; // ecx
-    int v23; // eax
-    float v24; // edx
-    float v25; // eax
-    Mtx4x4* v26; // ecx
-    float v27; // edx
-    float v28; // ecx
-    tColInstanceElem* v29; // eax
-    int v30; // eax
-    double v31; // st6
-    long double v32; // st7
-    long double v33; // st7
-    tColCollisionObject* v34; // edi
-    tCobMeshChunkElem* v35; // eax
-    double v36; // st6
-    double v37; // st7
-    tGameObjectMain* v38; // edi
-    tGameObjectExtended* v39; // eax
-    tGameObjectCollMain* v40; // eax
-    tColInstance* v41 = NULL; // eax
-    tWorld* v42; // edi
-    tCobGameMaterialElems* gmat; // eax
-    double v44; // st7
-    BOOL v45; // zf
-    tColCollisionObject* v46; // eax
-    tCobGameMaterialElems* v47; // eax
-    tColInstance* v48; // eax
-    int v49; // ecx
-    Vec3* v50; // eax
-    tColBox* v51; // ebp
-    int i; // ebx
-    double v53; // st7
-    int v54; // [esp+10h] [ebp-58h]
-    Vec3 a1a; // [esp+14h] [ebp-54h] BYREF
-    Vec3 v56; // [esp+20h] [ebp-48h] BYREF
-    Vec3 a2a; // [esp+2Ch] [ebp-3Ch] BYREF
-    Vec3 v58; // [esp+38h] [ebp-30h] BYREF
-    Vec3 a3a; // [esp+44h] [ebp-24h] BYREF
-    Vec3 v60; // [esp+50h] [ebp-18h] BYREF
-    Vec3 v61; // [esp+5Ch] [ebp-Ch] BYREF
-    float v62; // [esp+78h] [ebp+10h]
-    float colGlobala; // [esp+8Ch] [ebp+24h]
-    float colGlobalc; // [esp+8Ch] [ebp+24h]
-    float colGlobalb; // [esp+8Ch] [ebp+24h]
-    float colGlobald; // [esp+8Ch] [ebp+24h]
+    neighbourNormal = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[neighbour]);
+    colGlobal->colMapEdgeNormalVec.x = neighbourNormal->x + normal->x;
+    colGlobal->colMapEdgeNormalVec.y = neighbourNormal->y + normal->y;
+    colGlobal->colMapEdgeNormalVec.z = neighbourNormal->z + normal->z;
 
-    MATH_TransformVectorNoScale(a4, colGlobal->colMapGaoMatrices, a2);
-    MATH_TransformVertexNoScale(a3, colGlobal->colMapGaoMatrices, a1);
-    v10 = colGlobal->ptrSetToVec6InZDMZDRGravityNeg->y * a4->y
-        + colGlobal->ptrSetToVec6InZDMZDRGravityNeg->z * a4->z
-        + colGlobal->ptrSetToVec6InZDMZDRGravityNeg->x * a4->x;
-    colGlobala = (float)v10;
-    if (v10 >= 0.0 && colGlobala < (double)colGlobal->wallCosAngle || colGlobala < 0.0 && colGlobala > -0.80000001)
+    if (instanceUpright)
     {
-        v11 = a6;
+        gravityNeg = colGlobal->ptrSetToVec6InZDMZDRGravityNeg;
+        faceIsWall = gravityNeg->z * normal->z + gravityNeg->y * normal->y + gravityNeg->x * normal->x < colGlobal->wallCosAngle;
+        neighbourIsWall = gravityNeg->z * neighbourNormal->z + gravityNeg->y * neighbourNormal->y + neighbourNormal->x * gravityNeg->x
+            < colGlobal->wallCosAngle;
     }
     else
     {
-        v11 = a6;
-        if ((*a6 & 0x400) == 0 || a4->x == 0.0f && a4->y == 0.0f)
-        {
-            *a6 |= 0x40u;
-            v12 = colGlobal->ptrSetToVec6InZDMZDRGravityNeg;
-            if (colGlobala >= 0.0)
-            {
-                a3a = *v12;
-            }
-            else
-            {
-                a3a.x = -v12->x;
-                v13 = colGlobal->colInstanceGao;
-                a3a.y = -v12->y;
-                a3a.z = -v12->z;
-                v13->extended->coll->colInstance->flag |= 0x4000u;
-            }
-            goto LABEL_17;
-        }
+        MATH_TransformVectorNoScale(&faceInMapSpace, colGlobal->colMapGaoMatrices, normal);
+        MATH_TransformVectorNoScale(&neighbourInMapSpace, colGlobal->colMapGaoMatrices, neighbourNormal);
+        gravityNeg = colGlobal->ptrSetToVec6InZDMZDRGravityNeg;
+        faceDot = gravityNeg->z * faceInMapSpace.z + gravityNeg->y * faceInMapSpace.y + faceInMapSpace.x * gravityNeg->x;
+        if (faceDot >= 0.0f && faceDot < colGlobal->wallCosAngle)
+            faceIsWall = 1;
+        else
+            faceIsWall = faceDot < 0.0 && faceDot > -0.80000001f;
+        neighbourDot = gravityNeg->z * neighbourInMapSpace.z + gravityNeg->y * neighbourInMapSpace.y + neighbourInMapSpace.x * gravityNeg->x;
+        neighbourIsWall = neighbourDot >= 0.0f && neighbourDot < colGlobal->wallCosAngle
+            || neighbourDot < 0.0f && neighbourDot > -0.80000001f;
     }
-    *v11 |= 0x80u;
-    v14 = colGlobal->colInstance;
-    if (v14)
+
+    colGlobal->colMapEdgeNormalVec.x = colGlobal->colMapEdgeNormalVec.x * 0.5f;
+    colGlobal->colMapEdgeNormalVec.y = colGlobal->colMapEdgeNormalVec.y * 0.5f;
+    colGlobal->colMapEdgeNormalVec.z = colGlobal->colMapEdgeNormalVec.z * 0.5f;
+    return faceIsWall && neighbourIsWall
+        && cos(0.3141592741012573) > neighbourNormal->z * normal->z + neighbourNormal->y * normal->y + neighbourNormal->x * normal->x;
+}
+
+int COL_ComputeReport(Vec3* localPoint, Vec3* localNormal, Vec3* worldPoint, Vec3* worldNormal, Vec3* recalVec, int* flags, int triangleChunkElemID, int16_t triangleChunkID, tColGlobal* colGlobal)
+{
+    float alongPush;
+    double upDot;
+    Vec3* gravityNeg;
+    tGameObjectMain* gao;
+    tGameObjectExtended* ext;
+    tGameObjectCollMain* coll;
+    tColInstance* instance;
+    tColInstance* reportInstance = NULL;
+    tCobGameMaterialElems* gameMaterial;
+    tColCollisionObject* cob;
+    tCobMeshChunkElem* chunkElem;
+    tColInstanceElem* elem;
+    tColBox* boxShape;
+    tWorld* world;
+    tRecordElem* record;
+    Mtx4x4* mapMtx;
+    Vec3* edgeNormal;
+    double prevCenterZ;
+    double centerZ;
+    double alongPushRaw;
+    double toCenterLenSquared;
+    double cornerDepth;
+    double pushDistanceEps;
+    long double pushDistanceRaw;
+    long double toCenterLen;
+    BOOL movingAway;
+    BOOL isTopologicEdge;
+    int flagsNow;
+    int corner;
+    Vec3 pushDir;
+    Vec3 toCenter;
+    Vec3 pushDirWorld;
+    Vec3 scratch;
+    Vec3 toPrevCenter;
+    Vec3 moveDirUnit;
+    Vec3 groundNormal;
+    Vec3 scratch2;
+    Vec3 pushVec;
+    float upDotF;
+    float maxPenetration;
+    float radicand;
+    float pushDistance;
+
+    MATH_TransformVectorNoScale(worldNormal, colGlobal->colMapGaoMatrices, localNormal);
+    MATH_TransformVertexNoScale(worldPoint, colGlobal->colMapGaoMatrices, localPoint);
+    upDot = colGlobal->ptrSetToVec6InZDMZDRGravityNeg->y * worldNormal->y
+        + colGlobal->ptrSetToVec6InZDMZDRGravityNeg->z * worldNormal->z
+        + colGlobal->ptrSetToVec6InZDMZDRGravityNeg->x * worldNormal->x;
+    upDotF = (float)upDot;
+
+    if (upDot >= 0.0 && upDotF < (double)colGlobal->wallCosAngle
+        || upDotF < 0.0 && upDotF > -0.80000001
+        || (*flags & 0x400) != 0 && !(worldNormal->x == 0.0f && worldNormal->y == 0.0f))
     {
-        if ((v14->flag & 4) != 0)
+        *flags |= 0x80u;
+        instance = colGlobal->colInstance;
+        if (instance && (instance->flag & 4) != 0)
         {
-            v15 = COL_pst_GMat_Get(colGlobal->collisionObjectPtr, colGlobal->cobMeshChunkElem);
-            if (!v15 || (colGlobal->colInstance->crossable & v15->flags) == 0)
+            gameMaterial = COL_pst_GMat_Get(colGlobal->collisionObjectPtr, colGlobal->cobMeshChunkElem);
+            if (!gameMaterial || (colGlobal->colInstance->crossable & gameMaterial->flags) == 0)
             {
                 COL_NeedRecomputation(colGlobal, colGlobal->colInstanceGao, 16);
                 return 0;
             }
         }
     }
-LABEL_17:
-    a2a.x = colGlobal->centerPosPrevious.x - a1->x;
-    a2a.y = colGlobal->centerPosPrevious.y - a1->y;
-    v17 = colGlobal->centerPosPrevious.z - a1->z;
-    a2a.z = (float)v17;
-    if (v17 * a2->z + a2a.y * a2->y + a2a.x * a2->x <= 0.0)
+    else
     {
-        *a6 |= 0x80001000;
+        *flags |= 0x40u;
+        gravityNeg = colGlobal->ptrSetToVec6InZDMZDRGravityNeg;
+        if (upDotF >= 0.0)
+        {
+            groundNormal = *gravityNeg;
+        }
+        else
+        {
+            MATH_VecInvert(&groundNormal, gravityNeg);
+            colGlobal->colInstanceGao->extended->coll->colInstance->flag |= 0x4000u;
+        }
+    }
+
+    toPrevCenter.x = colGlobal->centerPosPrevious.x - localPoint->x;
+    toPrevCenter.y = colGlobal->centerPosPrevious.y - localPoint->y;
+    prevCenterZ = colGlobal->centerPosPrevious.z - localPoint->z;
+    toPrevCenter.z = (float)prevCenterZ;
+    if (prevCenterZ * localNormal->z + toPrevCenter.y * localNormal->y + toPrevCenter.x * localNormal->x <= 0.0)
+    {
+        *flags |= 0x80001000;
         return 1;
     }
-    v56.x = colGlobal->centerPos.x - a1->x;
-    v56.y = colGlobal->centerPos.y - a1->y;
-    v18 = colGlobal->centerPos.z - a1->z;
-    v56.z = (float)v18;
-    v19 = v18 * a2->z + v56.y * a2->y + v56.x * a2->x < 0.0;
-    v20 = *a6;
-    if ((*a6 & 0xE) != 0 && (v20 & 0x80u) != 0 && (v20 & 0x20) != 0 && COL_b_IsARealTopologicEdge(colGlobal, a2, *a6))
+
+    toCenter.x = colGlobal->centerPos.x - localPoint->x;
+    toCenter.y = colGlobal->centerPos.y - localPoint->y;
+    centerZ = colGlobal->centerPos.z - localPoint->z;
+    toCenter.z = (float)centerZ;
+    movingAway = centerZ * localNormal->z + toCenter.y * localNormal->y + toCenter.x * localNormal->x < 0.0;
+
+    flagsNow = *flags;
+    if ((*flags & 0xE) != 0 && (flagsNow & 0x80u) != 0 && (flagsNow & 0x20) != 0
+        && COL_b_IsARealTopologicEdge(colGlobal, localNormal, *flags))
     {
-        v21 = a6;
-        v22 = 1;
-        v54 = 1;
-        *a6 |= 0x800u;
+        isTopologicEdge = 1;
+        *flags |= 0x800u;
     }
     else
     {
-        v21 = a6;
-        v22 = 0;
-        v54 = 0;
+        isTopologicEdge = 0;
     }
-    v23 = *v21;
-    if ((v23 & 0x40) == 0 || (colGlobal->collisionObjectPtr->flags & 0x10) != 0)
+
+    flagsNow = *flags;
+    if ((flagsNow & 0x40) == 0 || (colGlobal->collisionObjectPtr->flags & 0x10) != 0)
     {
-        if (v22 || COL_gst_GlobalVars.COL_gb_SpecialCamera && (v23 & 0x20) == 0)
+        if (isTopologicEdge || COL_gst_GlobalVars.COL_gb_SpecialCamera && (flagsNow & 0x20) == 0)
         {
-            MATH_NormalizeVector(&v58, &a2a);
-            MATH_TransformVectorNoScale(a4, colGlobal->colMapGaoMatrices, &v58);
+            MATH_NormalizeVector(&moveDirUnit, &toPrevCenter);
+            MATH_TransformVectorNoScale(worldNormal, colGlobal->colMapGaoMatrices, &moveDirUnit);
             if (colGlobal->colInstanceGao == WOR_gpst_CurrentWorld->viewPtr->assignedGao)
             {
-                a1a = v58;
+                pushDir = moveDirUnit;
             }
             else if (fabs(colGlobal->colMapGaoMatrices->v3.z - 1.0) >= 0.001)
             {
-                v28 = a4->y;
-                a2a.x = a4->x;
-                a2a.y = v28;
-                a2a.z = 0.0;
-                MATH_NormalizeEqualVector(&a2a);
-                MATH_TransformVectorNoScale(&a1a, &colGlobal->colMapGaoInvMatrix, &a2a);
+                scratch.x = worldNormal->x;
+                scratch.y = worldNormal->y;
+                scratch.z = 0.0;
+                MATH_NormalizeEqualVector(&scratch);
+                MATH_TransformVectorNoScale(&pushDir, &colGlobal->colMapGaoInvMatrix, &scratch);
             }
             else
             {
-                a1a = v58;
-                if (fabs(v58.z) >= 0.001)
+                pushDir = moveDirUnit;
+                if (fabs(moveDirUnit.z) >= 0.001)
                 {
-                    a1a.z = 0.0;
-                    MATH_NormalizeEqualVector(&a1a);
+                    pushDir.z = 0.0;
+                    MATH_NormalizeEqualVector(&pushDir);
                 }
             }
         }
         else if ((colGlobal->collisionObjectPtr->flags & 0x10) != 0)
         {
-            MATH_TransformVectorNoScale(&v60, colGlobal->colMapGaoMatrices, a2);
-            MATH_TransformVectorNoScale(&a1a, &colGlobal->colMapGaoInvMatrix, &v60);
+            MATH_TransformVectorNoScale(&scratch2, colGlobal->colMapGaoMatrices, localNormal);
+            MATH_TransformVectorNoScale(&pushDir, &colGlobal->colMapGaoInvMatrix, &scratch2);
         }
         else if (colGlobal->colInstanceGao == WOR_gpst_CurrentWorld->viewPtr->assignedGao)
         {
-            v24 = a2->y;
-            v25 = a2->z;
-            a1a.x = a2->x;
-            a1a.y = v24;
-            a1a.z = v25;
+            pushDir.x = localNormal->x;
+            pushDir.y = localNormal->y;
+            pushDir.z = localNormal->z;
         }
         else
         {
-            v26 = colGlobal->colMapGaoMatrices;
-            if (fabs(v26->v3.z - 1.0) >= 0.001)
+            mapMtx = colGlobal->colMapGaoMatrices;
+            if (fabs(mapMtx->v3.z - 1.0) >= 0.001)
             {
-                MATH_TransformVectorNoScale(&a2a, v26, a2);
-                a2a.z = 0.0;
-                MATH_NormalizeEqualVector(&a2a);
-                MATH_TransformVectorNoScale(&a1a, &colGlobal->colMapGaoInvMatrix, &a2a);
+                MATH_TransformVectorNoScale(&scratch, mapMtx, localNormal);
+                scratch.z = 0.0;
+                MATH_NormalizeEqualVector(&scratch);
+                MATH_TransformVectorNoScale(&pushDir, &colGlobal->colMapGaoInvMatrix, &scratch);
             }
             else
             {
-                v27 = a2->y;
-                a1a.x = a2->x;
-                a1a.y = v27;
-                a1a.z = 0.0;
-                MATH_NormalizeEqualVector(&a1a);
+                pushDir.x = localNormal->x;
+                pushDir.y = localNormal->y;
+                pushDir.z = 0.0;
+                MATH_NormalizeEqualVector(&pushDir);
             }
         }
     }
     else
     {
-        MATH_TransformVector(&a1a, &colGlobal->colMapGaoInvMatrix, &a3a);
-        MATH_NormalizeEqualVector(&a1a);
+        MATH_TransformVector(&pushDir, &colGlobal->colMapGaoInvMatrix, &groundNormal);
+        MATH_NormalizeEqualVector(&pushDir);
     }
-    v29 = colGlobal->collInstanceElem;
-    if (v29->elemType != 2)
+
+    elem = colGlobal->collInstanceElem;
+    if (elem->elemType != 2)
     {
-        v51 = (tColBox*)v29->elemShapePtr;
-        MATH_TransformVectorNoScale(&v56, colGlobal->colMapGaoMatrices, &a1a);
-        v62 = -100000.0f;
-        for (i = 0; i < 8; ++i)
+        boxShape = (tColBox*)elem->elemShapePtr;
+        MATH_TransformVectorNoScale(&pushDirWorld, colGlobal->colMapGaoMatrices, &pushDir);
+        maxPenetration = -100000.0f;
+        for (corner = 0; corner < 8; ++corner)
         {
-            if ((i & 1) != 0)
-                a2a.x = v51->pos2.x;
+            if ((corner & 1) != 0)
+                scratch.x = boxShape->pos2.x;
             else
-                a2a.x = v51->pos1.x;
-            if ((i & 2) != 0)
-                a2a.y = v51->pos2.y;
+                scratch.x = boxShape->pos1.x;
+            if ((corner & 2) != 0)
+                scratch.y = boxShape->pos2.y;
             else
-                a2a.y = v51->pos1.y;
-            if ((i & 4) != 0)
-                a2a.z = v51->pos2.z;
+                scratch.y = boxShape->pos1.y;
+            if ((corner & 4) != 0)
+                scratch.z = boxShape->pos2.z;
             else
-                a2a.z = v51->pos1.z;
-            MATH_TransformVertex(&v60, colGlobal->colInstGaoMatrices, &a2a);
-            v53 = v56.z * (a3->z - v60.z) + v56.y * (a3->y - v60.y) + (a3->x - v60.x) * v56.x;
-            if (v53 > v62)
-                v62 = (float)v53;
+                scratch.z = boxShape->pos1.z;
+            MATH_TransformVertex(&scratch2, colGlobal->colInstGaoMatrices, &scratch);
+            cornerDepth = pushDirWorld.z * (worldPoint->z - scratch2.z)
+                + pushDirWorld.y * (worldPoint->y - scratch2.y)
+                + (worldPoint->x - scratch2.x) * pushDirWorld.x;
+            if (cornerDepth > maxPenetration)
+                maxPenetration = (float)cornerDepth;
         }
-        if (v62 >= 0.001)
+        if (maxPenetration >= 0.001)
         {
-            a5->x = v56.x * v62;
-            a5->y = v56.y * v62;
-            a5->z = v56.z * v62;
+            recalVec->x = pushDirWorld.x * maxPenetration;
+            recalVec->y = pushDirWorld.y * maxPenetration;
+            recalVec->z = pushDirWorld.z * maxPenetration;
             return 1;
         }
-    LABEL_105:
-        *a6 |= 0x40000u;
-        a5->x = 0.0;
-        a5->y = 0.0;
-        a5->z = 0.0;
+        *flags |= 0x40000u;
+        recalVec->x = 0.0;
+        recalVec->y = 0.0;
+        recalVec->z = 0.0;
         return 1;
     }
-    v30 = *a6;
-    if ((*a6 & 0x20) == 0)
+
+    flagsNow = *flags;
+    if ((*flags & 0x20) == 0)
     {
-        v32 = -(v56.z * a1a.z + a1a.y * v56.y + a1a.x * v56.x);
-        goto LABEL_65;
+        pushDistanceRaw = -(toCenter.z * pushDir.z + pushDir.y * toCenter.y + pushDir.x * toCenter.x);
+        pushDistance = (float)pushDistanceRaw;
     }
-    if ((v30 & 1) == 0 && (v30 & 0x700) == 0)
+    else if ((flagsNow & 1) == 0 && (flagsNow & 0x700) == 0)
     {
-        v31 = v56.z * a1a.z + a1a.y * v56.y + a1a.x * v56.x;
-        a4a = (float)v31;
-        colGlobalc = (float)(v31 * a4a + colGlobal->radius * colGlobal->radius);
-        v32 = sqrt(colGlobalc - MATH_VecLenSquared(&v56)) - a4a;
-    LABEL_65:
-        colGlobalb = (float)v32;
-        goto LABEL_66;
+        alongPushRaw = toCenter.z * pushDir.z + pushDir.y * toCenter.y + pushDir.x * toCenter.x;
+        alongPush = (float)alongPushRaw;
+        radicand = (float)(alongPushRaw * alongPush + colGlobal->radius * colGlobal->radius);
+        pushDistanceRaw = sqrt(radicand - MATH_VecLenSquared(&toCenter)) - alongPush;
+        pushDistance = (float)pushDistanceRaw;
     }
-    v33 = sqrt(v56.z * v56.z + v56.y * v56.y + v56.x * v56.x);
-    if (v19)
-        colGlobalb = (float)((v33 + colGlobal->radius) / (a1a.y * a2->y + a1a.x * a2->x + a1a.z * a2->z));
     else
-        colGlobalb = (float)((colGlobal->radius - v33) / (a1a.y * a2->y + a1a.x * a2->x + a1a.z * a2->z));
-    if ((v30 & 0x40) != 0 && (v30 & 1) != 0)
     {
-        v34 = colGlobal->collisionObjectPtr;
-        if ((v34->flags & 0x10) == 0 && a4->z < 0.94999999)
+        toCenterLen = sqrt(toCenter.z * toCenter.z + toCenter.y * toCenter.y + toCenter.x * toCenter.x);
+        if (movingAway)
+            pushDistance = (float)((toCenterLen + colGlobal->radius)
+                / (pushDir.y * localNormal->y + pushDir.x * localNormal->x + pushDir.z * localNormal->z));
+        else
+            pushDistance = (float)((colGlobal->radius - toCenterLen)
+                / (pushDir.y * localNormal->y + pushDir.x * localNormal->x + pushDir.z * localNormal->z));
+
+        if ((flagsNow & 0x40) != 0 && (flagsNow & 1) != 0)
         {
-            MATH_VecMultScalar(&a2a, a2, colGlobal->radius);
-            a2a.x = -a2a.x;
-            a2a.y = -a2a.y;
-            a2a.z = -a2a.z;
-            MATH_VecAddVecWithoutBuffer(&a2a, &colGlobal->centerPos);
-            MATH_VecMultScalar(&v60, &a1a, colGlobalb);
-            v35 = colGlobal->cobMeshChunkElem;
-            a2a.x = v60.x + a2a.x;
-            a2a.y = v60.y + a2a.y;
-            a2a.z = v60.z + a2a.z;
-            if (!INT_PointInTriangle(&a2a, 
-                &(((tCobMeshObjectMesh*)(v34->objectPtrByType))->vertices[v35->triangleElems[a7].v1]), 
-                &(((tCobMeshObjectMesh*)(v34->objectPtrByType))->vertices[v35->triangleElems[a7].v2]),
-                &(((tCobMeshObjectMesh*)(v34->objectPtrByType))->vertices[v35->triangleElems[a7].v3]), a2, 0))
+            cob = colGlobal->collisionObjectPtr;
+            if ((cob->flags & 0x10) == 0 && worldNormal->z < 0.94999999)
             {
-                *a6 = *a6 & 0xFFFFFFFE | 0xE;
-                v36 = v56.z * a1a.z + a1a.y * v56.y + a1a.x * v56.x;
-                a4a = (float)v36;
-                colGlobald = (float)(v36 * a4a + colGlobal->radius * colGlobal->radius);
-                v37 = MATH_VecLenSquared(&v56);
-                v38 = colGlobal->colInstanceGao;
-                colGlobalb = (float)(sqrt(colGlobald - v37) - a4a);
-                if (!v38)
-                    goto LABEL_61;
-                v39 = v38->extended;
-                if (v39 && (v40 = v39->coll) != 0)
-                    v41 = v40->colInstance;
-                else
-                    LABEL_61:
-                v41 = 0;
-                if (!COL_test_flag_sub_436970(v41, 1024))
-                    COL_NeedRecomputation(colGlobal, v38, 1024);
+                MATH_VecMultScalar(&scratch, localNormal, colGlobal->radius);
+                MATH_VecInvert(&scratch, &scratch);
+                MATH_VecAddVecWithoutBuffer(&scratch, &colGlobal->centerPos);
+                MATH_VecMultScalar(&scratch2, &pushDir, pushDistance);
+                chunkElem = colGlobal->cobMeshChunkElem;
+                scratch.x = scratch2.x + scratch.x;
+                scratch.y = scratch2.y + scratch.y;
+                scratch.z = scratch2.z + scratch.z;
+                if (!INT_PointInTriangle(&scratch,
+                    &(((tCobMeshObjectMesh*)(cob->objectPtrByType))->vertices[chunkElem->triangleElems[triangleChunkElemID].v1]),
+                    &(((tCobMeshObjectMesh*)(cob->objectPtrByType))->vertices[chunkElem->triangleElems[triangleChunkElemID].v2]),
+                    &(((tCobMeshObjectMesh*)(cob->objectPtrByType))->vertices[chunkElem->triangleElems[triangleChunkElemID].v3]),
+                    localNormal, 0))
+                {
+                    *flags = *flags & 0xFFFFFFFE | 0xE;
+                    alongPushRaw = toCenter.z * pushDir.z + pushDir.y * toCenter.y + pushDir.x * toCenter.x;
+                    alongPush = (float)alongPushRaw;
+                    radicand = (float)(alongPushRaw * alongPush + colGlobal->radius * colGlobal->radius);
+                    toCenterLenSquared = MATH_VecLenSquared(&toCenter);
+                    gao = colGlobal->colInstanceGao;
+                    pushDistance = (float)(sqrt(radicand - toCenterLenSquared) - alongPush);
+
+                    reportInstance = 0;
+                    if (gao)
+                    {
+                        ext = gao->extended;
+                        if (ext)
+                        {
+                            coll = ext->coll;
+                            if (coll)
+                                reportInstance = coll->colInstance;
+                        }
+                    }
+                    if (!COL_w_TestInstanceFlag(reportInstance, 1024))
+                        COL_NeedRecomputation(colGlobal, gao, 1024);
+                }
             }
         }
     }
-LABEL_66:
-    if (v54 && (colGlobal->colInstance->flag & 1) == 0 && colGlobal->num < 1000u) // reportcollision inline ?
+
+    if (isTopologicEdge && (colGlobal->colInstance->flag & 1) == 0 && colGlobal->num < 1000u) // reportcollision inline ?
     {
-        v42 = colGlobal->colWorld;
-        v42->records[colGlobal->num].collidedPoint = *a3;
-        v42->records[colGlobal->num].recalVec = MATH_gst_NulVector;
-        MATH_TransformVectorNoScale(&v42->records[colGlobal->num].normalVec, colGlobal->colMapGaoMatrices, a2);
-        v42->records[colGlobal->num].collisionInstanceGameObject = colGlobal->colInstanceGao;
-        v42->records[colGlobal->num].collisionMapGameObject = colGlobal->colMapGao;
-        v42->records[colGlobal->num].flags = *a6 & 0xE | 0x200A0;
-        v42->records[colGlobal->num].triangleChunkElemID = a7;
-        v42->records[colGlobal->num].triangleChunkID = a8;
-        gmat = COL_pst_GMat_Get(colGlobal->collisionObjectPtr, colGlobal->cobMeshChunkElem);
-        v42->records[colGlobal->num].gameMaterial = gmat;
-        if (gmat && (colGlobal->colInstance->crossable & gmat->flags) != 0)
-            v42->records[colGlobal->num].flags |= 0x2000u;
-        v42->records[colGlobal->num].gameMaterial = gmat;
+        world = colGlobal->colWorld;
+        record = &world->records[colGlobal->num];
+        record->collidedPoint = *worldPoint;
+        record->recalVec = MATH_gst_NulVector;
+        MATH_TransformVectorNoScale(&record->normalVec, colGlobal->colMapGaoMatrices, localNormal);
+        record->collisionInstanceGameObject = colGlobal->colInstanceGao;
+        record->collisionMapGameObject = colGlobal->colMapGao;
+        record->flags = *flags & 0xE | 0x200A0;
+        record->triangleChunkElemID = triangleChunkElemID;
+        record->triangleChunkID = triangleChunkID;
+        gameMaterial = COL_pst_GMat_Get(colGlobal->collisionObjectPtr, colGlobal->cobMeshChunkElem);
+        if (gameMaterial && (colGlobal->colInstance->crossable & gameMaterial->flags) != 0)
+            record->flags |= 0x2000u;
+        record->gameMaterial = gameMaterial;
         ++colGlobal->num;
     }
-    if (colGlobalb < 0.001)
-        goto LABEL_105;
-    v44 = colGlobalb + 0.0000099999997;
-    v45 = (*a6 & 0x40) == 0;
-    v61.x = (float)(a1a.x * v44);
-    v61.y = (float)(a1a.y * v44);
-    v61.z = (float)(a1a.z * v44);
-    if (!v45)
+
+    if (pushDistance < 0.001)
     {
-        v46 = colGlobal->collisionObjectPtr;
-        if ((v46->flags & 0x10) == 0)
+        *flags |= 0x40000u;
+        recalVec->x = 0.0;
+        recalVec->y = 0.0;
+        recalVec->z = 0.0;
+        return 1;
+    }
+
+    pushDistanceEps = pushDistance + 0.0000099999997;
+    pushVec.x = (float)(pushDir.x * pushDistanceEps);
+    pushVec.y = (float)(pushDir.y * pushDistanceEps);
+    pushVec.z = (float)(pushDir.z * pushDistanceEps);
+
+    if ((*flags & 0x40) != 0)
+    {
+        cob = colGlobal->collisionObjectPtr;
+        if ((cob->flags & 0x10) == 0)
         {
-            v47 = COL_pst_GMat_Get(v46, colGlobal->cobMeshChunkElem);
-            if (!v47 || (colGlobal->colInstance->crossable & v47->flags) == 0)
+            gameMaterial = COL_pst_GMat_Get(cob, colGlobal->cobMeshChunkElem);
+            if (!gameMaterial || (colGlobal->colInstance->crossable & gameMaterial->flags) == 0)
             {
-                v48 = colGlobal->colInstance;
-                if (v48)
-                    v48->flag |= 4u;
-                v49 = *a6;
-                if ((*a6 & 0xE) != 0)
+                instance = colGlobal->colInstance;
+                if (instance)
+                    instance->flag |= 4u;
+                flagsNow = *flags;
+                if ((*flags & 0xE) != 0)
                 {
-                    if ((v49 & 2) != 0)
-                        v50 = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity1]);
+                    if ((flagsNow & 2) != 0)
+                        edgeNormal = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity1]);
                     else
-                        v50 = a4;
-                    if ((v49 & 4) != 0)
-                        v50 = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity2]);
-                    if ((v49 & 8) != 0)
-                        v50 = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity3]);
-                    if (MATH_DotProduct(v50, a2) < 0.94999999)
+                        edgeNormal = worldNormal;
+                    if ((flagsNow & 4) != 0)
+                        edgeNormal = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity2]);
+                    if ((flagsNow & 8) != 0)
+                        edgeNormal = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity3]);
+                    if (MATH_DotProduct(edgeNormal, localNormal) < 0.94999999)
                         COL_NeedRecomputation(colGlobal, colGlobal->colInstanceGao, 32);
                 }
             }
         }
     }
-    MATH_TransformVectorNoScale(a5, colGlobal->colMapGaoMatrices, &v61);
+
+    MATH_TransformVectorNoScale(recalVec, colGlobal->colMapGaoMatrices, &pushVec);
     return 1;
 }
 
-void COL_AllocInstance(struct sGameObjectMain* a1)
+void COL_AllocInstance(struct sGameObjectMain* gao)
 {
-    tGameObjectCollMain* v1;
-    tGameObjectCollMain* v2;
-    Mtx4x4* v3;
-    int v4;
+    tGameObjectCollMain* coll;
 
-    if (!a1->extended->coll)
+    if (!gao->extended->coll)
     {
-        a1->extended->coll = (tGameObjectCollMain*)MEM_p_Alloc(sizeof(tGameObjectCollMain));
+        gao->extended->coll = (tGameObjectCollMain*)MEM_p_Alloc(sizeof(tGameObjectCollMain));
         LOA_ul_FileTypeSize_38 += sizeof(tGameObjectCollMain);
-        v1 = a1->extended->coll;
-        v1->detectionList = 0;
-        v1->colInstance = 0;
-        v1->colMap = 0;
+        coll = gao->extended->coll;
+        coll->detectionList = 0;
+        coll->colInstance = 0;
+        coll->colMap = 0;
     }
-    v2 = a1->extended->coll;
-    v2->colInstance = (tColInstance*)MEM_p_Alloc(sizeof(tColInstance));
+
+    coll = gao->extended->coll;
+    coll->colInstance = (tColInstance*)MEM_p_Alloc(sizeof(tColInstance));
     LOA_ul_FileTypeSize_38 += sizeof(tColInstance);
-    memset(v2->colInstance, 0, sizeof(tColInstance));
-    v2->colInstance->mtx = MATH_Matrix_Alloc();
+    memset(coll->colInstance, 0, sizeof(tColInstance));
+    coll->colInstance->mtx = MATH_Matrix_Alloc();
     LOA_ul_FileTypeSize_38 += sizeof(Mtx4x4);
-    v3 = v2->colInstance->mtx;
-    v3->v1.x = 1.0;
-    v3->v2.y = 1.0;
-    v3->v3.z = 1.0;
-    v3->w = 1.0;
-    v4 = v3->mtxflag;
-    v3->v1.y = 0.0;
-    v3->v1.z = 0.0;
-    v3->_m14 = 0.0;
-    v3->v2.x = 0.0;
-    v3->v2.z = 0.0;
-    v3->_m24 = 0.0;
-    v3->v3.x = 0.0;
-    v3->v3.y = 0.0;
-    v3->_m34 = 0.0;
-    v3->Pos.x = 0.0;
-    v3->Pos.y = 0.0;
-    v3->Pos.z = 0.0;
-    v3->mtxflag = v4 & 2;
+    MATH_SetIdentityMatrix(coll->colInstance->mtx);
 }
 
-void COL_DuplicateInstance(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+void COL_DuplicateInstance(struct sGameObjectMain* dest, struct sGameObjectMain* src)
 {
-    tColInstance* v2;
-    tColInstance* v3;
-    tColInstSet* v4; 
-    uint8_t v5;
-    tColInstanceElem* v6;
-    tColInstanceElem* v7;
-    tColSphere* v8;
-    tColSphere* v9;
-    tColBox* v10;
-    tColBox* v11;
-    tColInstanceElem** unkPtrCurr;
-    char v15;
-    tColInstanceElem* v16;
-    tColInstanceElem* v17;
-    uint8_t v18;
-    tColInstanceElem* v19;
-    tColInstanceElem* v20;
-    tColInstanceElem* v21;
-    tColInstSet* v22;
-    tColInstanceElem* v23;
-    tColInstanceElem* v24;
-    tColInstanceElem** v25;
-    tColInstanceElem** a1a;
-    tColInstanceElem* a2a;
-    char a2b;
+    tColInstance* srcInstance;
+    tColInstance* destInstance;
+    tColInstSet* colSet;
+    tColInstanceElem* srcElem;
+    tColInstanceElem* destElem;
+    tColInstanceElem* srcEnd;
+    tColInstanceElem* searchElem;
+    tColInstanceElem* searchEnd;
+    tColInstanceElem* table;
+    tColSphere* srcSphere;
+    tColSphere* destSphere;
+    tColBox* srcBox;
+    tColBox* destBox;
+    tColInstanceElem** destSlot;
+    tColInstanceElem** srcSlot;
+    tColInstanceElem** slotEnd;
+    uint8_t index;
+    uint8_t zone;
 
-    v2 = a2->extended->coll->colInstance;
-    COL_AllocInstance(a1);
-    v3 = a1->extended->coll->colInstance;
-    v4 = v2->colSet;
-    v3->colSet = v2->colSet;
-    v3->zoneNum = v2->zoneNum;
-    v3->sharedZoneNum = v2->sharedZoneNum;
-    v3->instElemNum = v2->instElemNum;
-    v3->instElemBitmask = v2->instElemBitmask;
-    v3->activationFlags = v2->activationFlags;
-    v3->minLod = v2->minLod;
-    v3->maxLod = v2->maxLod;
-    v22 = v4;
-    v3->selectedInstElemPtrs = (tColInstanceElem**)MEM_p_Alloc(4 * v4->instElemNum);
-    LOA_ul_FileTypeSize_38 += 4 * v4->instElemNum;
-    v5 = v2->instElemNum;
-    if (v5)
+    srcInstance = src->extended->coll->colInstance;
+    COL_AllocInstance(dest);
+    destInstance = dest->extended->coll->colInstance;
+    colSet = srcInstance->colSet;
+
+    destInstance->colSet = srcInstance->colSet;
+    destInstance->zoneNum = srcInstance->zoneNum;
+    destInstance->sharedZoneNum = srcInstance->sharedZoneNum;
+    destInstance->instElemNum = srcInstance->instElemNum;
+    destInstance->instElemBitmask = srcInstance->instElemBitmask;
+    destInstance->activationFlags = srcInstance->activationFlags;
+    destInstance->minLod = srcInstance->minLod;
+    destInstance->maxLod = srcInstance->maxLod;
+
+    destInstance->selectedInstElemPtrs = (tColInstanceElem**)MEM_p_Alloc(4 * colSet->instElemNum);
+    LOA_ul_FileTypeSize_38 += 4 * colSet->instElemNum;
+
+    if (srcInstance->instElemNum)
     {
-        v3->colInstElems = (tColInstanceElem*)MEM_p_Alloc(8 * v5);
-        LOA_ul_FileTypeSize_38 += 8 * v2->instElemNum;
-        memcpy(v3->colInstElems, v2->colInstElems, 8 * v2->instElemNum);
-        v6 = v2->colInstElems;
-        a2a = &v6[v2->instElemNum];
-        if (v6 < a2a)
+        destInstance->colInstElems = (tColInstanceElem*)MEM_p_Alloc(8 * srcInstance->instElemNum);
+        LOA_ul_FileTypeSize_38 += 8 * srcInstance->instElemNum;
+        memcpy(destInstance->colInstElems, srcInstance->colInstElems, 8 * srcInstance->instElemNum);
+
+        srcElem = srcInstance->colInstElems;
+        srcEnd = &srcElem[srcInstance->instElemNum];
+        destElem = destInstance->colInstElems;
+        for (; srcElem < srcEnd; ++srcElem, ++destElem)
         {
-            v7 = v3->colInstElems;
-            do
+            if (srcElem->elemType == 1)
             {
-                if (v6->elemType == 1)
-                {
-                    v7->elemShapePtr = MEM_p_Alloc(sizeof(tColBox));
-                    LOA_ul_FileTypeSize_38 += sizeof(tColBox);
-                    v10 = (tColBox*)v6->elemShapePtr;
-                    v11 = (tColBox*)v7->elemShapePtr;
-                    v11->pos1.x = v10->pos1.x;
-                    v11->pos1.y = v10->pos1.y;
-                    v11->pos1.z = v10->pos1.z;
-                    v11->pos2.x = v10->pos2.x;
-                    v11->pos2.y = v10->pos2.y;
-                    v11->pos2.z = v10->pos2.z;
-                }
-                else if (v6->elemType == 2)
-                {
-                    v7->elemShapePtr = MEM_p_Alloc(sizeof(tColSphere));
-                    LOA_ul_FileTypeSize_38 += sizeof(tColSphere);
-                    v8 = (tColSphere*)v6->elemShapePtr;
-                    v9 = (tColSphere*)v7->elemShapePtr;
-                    v9->center.x = v8->center.x;
-                    v9->center.y = v8->center.y;
-                    v9->center.z = v8->center.z;
-                    v9->radius = v8->radius;
-                }
-                ++v6;
-                ++v7;
-            } while (v6 < a2a);
+                destElem->elemShapePtr = MEM_p_Alloc(sizeof(tColBox));
+                LOA_ul_FileTypeSize_38 += sizeof(tColBox);
+                srcBox = (tColBox*)srcElem->elemShapePtr;
+                destBox = (tColBox*)destElem->elemShapePtr;
+                destBox->pos1.x = srcBox->pos1.x;
+                destBox->pos1.y = srcBox->pos1.y;
+                destBox->pos1.z = srcBox->pos1.z;
+                destBox->pos2.x = srcBox->pos2.x;
+                destBox->pos2.y = srcBox->pos2.y;
+                destBox->pos2.z = srcBox->pos2.z;
+            }
+            else if (srcElem->elemType == 2)
+            {
+                destElem->elemShapePtr = MEM_p_Alloc(sizeof(tColSphere));
+                LOA_ul_FileTypeSize_38 += sizeof(tColSphere);
+                srcSphere = (tColSphere*)srcElem->elemShapePtr;
+                destSphere = (tColSphere*)destElem->elemShapePtr;
+                destSphere->center.x = srcSphere->center.x;
+                destSphere->center.y = srcSphere->center.y;
+                destSphere->center.z = srcSphere->center.z;
+                destSphere->radius = srcSphere->radius;
+            }
         }
-        v4 = v22;
     }
-    unkPtrCurr = v3->selectedInstElemPtrs;
-    a1a = v2->selectedInstElemPtrs;
-    v23 = v3->colInstElems;
-    v15 = 0;
-    v25 = &unkPtrCurr[v3->zoneNum];
-    v24 = v3->colSet->colInstElems;
-    a2b = 0;
-    if (unkPtrCurr >= v25)
+
+    destSlot = destInstance->selectedInstElemPtrs;
+    srcSlot = srcInstance->selectedInstElemPtrs;
+    slotEnd = &destSlot[destInstance->zoneNum];
+    for (zone = 0; destSlot < slotEnd; ++destSlot, ++srcSlot, ++zone)
     {
-        ++v4->instanceNum;
+        if (((1 << zone) & destInstance->instElemBitmask) != 0)
+        {
+            searchElem = srcInstance->colInstElems;
+            searchEnd = &searchElem[srcInstance->instElemNum];
+            table = destInstance->colInstElems;
+        }
+        else
+        {
+            searchElem = srcInstance->colSet->colInstElems;
+            searchEnd = &searchElem[srcInstance->colSet->instElemNum];
+            table = destInstance->colSet->colInstElems;
+        }
+
+        index = 0;
+        if (searchElem >= searchEnd)
+        {
+            index = -1;
+        }
+        else
+        {
+            while (searchElem != *srcSlot)
+            {
+                ++searchElem;
+                ++index;
+                if (searchElem >= searchEnd)
+                {
+                    index = -1;
+                    break;
+                }
+            }
+        }
+        *destSlot = &table[index];
+    }
+    ++colSet->instanceNum;
+}
+
+void COL_DuplicateColMap(struct sGameObjectMain* dest, struct sGameObjectMain* src)
+{
+    tColMap* srcColMap;
+    tColMap* destColMap;
+    tColCollisionObject** cob;
+    tColCollisionObject** end;
+    uint8_t i;
+
+    srcColMap = src->extended->coll->colMap;
+    COL_AllocColMap(dest);
+    destColMap = dest->extended->coll->colMap;
+    destColMap->activation = srcColMap->activation;
+    destColMap->b3 = srcColMap->b3;
+    destColMap->b4 = srcColMap->b4;
+    destColMap->colObjectID = srcColMap->colObjectID;
+    destColMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Alloc(4 * srcColMap->colObjectID);
+    LOA_ul_FileTypeSize_38 += 4 * srcColMap->colObjectID;
+
+    cob = srcColMap->collisionObjectPtr;
+    end = &cob[srcColMap->colObjectID];
+    for (i = 0; cob < end; ++i)
+    {
+        destColMap->collisionObjectPtr[i] = *cob;
+        ++(*cob++)->usageCount;
+    }
+}
+
+void COL_ColMap_AddGeometric(struct sColCollisionObject* cob, struct sGEOGRO* geo, tGameObjectMain* gao)
+{
+    tCobMeshObjectMesh* mesh;
+    Mtx4x4* absMtx;
+    Vec3* srcVertex;
+    Vec3* destVertex;
+    Vec3* vertexEnd;
+    Vec3* vertices;
+    unsigned int byteCount;
+    tGeoTriangleChunks* geoChunk;
+    tGeoTriangleChunks* geoChunkEnd;
+    tCobMeshChunkElem* chunkElem;
+    tCobMeshChunkElem* chunkElemEnd;
+    tCobMeshTriangleElem* destTri;
+    tGeoTriangleChunkElem* srcTri;
+    tCobMeshTriangleElem* triEnd;
+    int faceIndex;
+    Vec3* verts;
+    Vec3* vertB;
+    Vec3* vertA;
+    double abX;
+    double abY;
+    Vec3* vertC;
+    double abZ;
+    double acZ;
+    Vec3* normal;
+    long double invLength;
+    int globalFace;
+    float normalX;
+    float normalY;
+    float normalZ;
+    Vec3 scale;
+    Vec3 ac;
+
+    if (!geo)
+    {
+        if ((gao->flags & 0x4000) == 0)
+            return;
+        geo = (tGEOGRO*)(((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse);
+        if (geo->intf->id == 8)                   // lod
+            geo = ((tGEOSTATICLOD *)(geo))->geo[0];
+        if (!geo)
+            return;
+    }
+    if (!geo->vertexNum || !geo->triangleChunkCount)
+        return;
+
+    cob->objectType = 5;
+    mesh = (tCobMeshObjectMesh*)MEM_p_Alloc(0x1Cu);
+    cob->objectPtrByType = mesh;
+    mesh->ok3 = 0;
+    GEO_MRM_SetNumberOfPoints_Percent(geo, 2.0);
+    mesh->vertexCount = geo->vertexNum;
+
+    if (gao && (OBJ_pst_GetAbsoluteMatrix(gao)->mtxflag & 8) != 0)
+    {
+        mesh->vertices = (Vec3*)MEM_p_Alloc(12 * mesh->vertexCount);
+        absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+        MATH_GetScale(&scale, absMtx);
+        srcVertex = geo->vertices;
+        destVertex = mesh->vertices;
+        for (vertexEnd = &srcVertex[geo->vertexNum]; srcVertex < vertexEnd; ++srcVertex, ++destVertex)
+        {
+            destVertex->x = scale.x * srcVertex->x;
+            destVertex->y = scale.y * srcVertex->y;
+            destVertex->z = scale.z * srcVertex->z;
+        }
     }
     else
     {
+        vertices = (Vec3*)MEM_p_Alloc(12 * mesh->vertexCount);
+        byteCount = 12 * mesh->vertexCount;
+        mesh->vertices = vertices;
+        memcpy(vertices, geo->vertices, byteCount);
+    }
+
+    mesh->meshChunkElemNum = geo->triangleChunkCount;
+    mesh->meshChunkElems = (tCobMeshChunkElem*)MEM_p_Alloc(16 * geo->triangleChunkCount);
+
+    geoChunk = geo->triangleChunks;
+    geoChunkEnd = &geoChunk[geo->triangleChunkCount];
+    mesh->faceCount = 0;
+    for (; geoChunk < geoChunkEnd; ++geoChunk)
+        mesh->faceCount += geoChunk->triangleNum;
+    mesh->normals = (Vec3*)MEM_p_Alloc(12 * mesh->faceCount);
+
+    chunkElem = mesh->meshChunkElems;
+    chunkElemEnd = &chunkElem[mesh->meshChunkElemNum];
+    geoChunk = geo->triangleChunks;
+    globalFace = 0;
+    for (; chunkElem < chunkElemEnd; ++chunkElem, ++geoChunk)
+    {
+        chunkElem->flags = 0;
+        chunkElem->gameMaterialElemID = geoChunk->materialNum;
+        chunkElem->elemNum = geoChunk->triangleNum;
+        if ((geoChunk->triangleNum & 0xffff) == 0)
+            continue;
+
+        destTri = (tCobMeshTriangleElem*)MEM_p_Alloc(12 * geoChunk->triangleNum);
+        chunkElem->triangleElems = destTri;
+        srcTri = geoChunk->triangleChunkElems;
+        triEnd = &destTri[chunkElem->elemNum];
+        if (destTri >= triEnd)
+            continue;
+
+        faceIndex = globalFace;
+        globalFace += ((char*)triEnd - (char*)destTri - 1) / 12 + 1; // TODO FIXME, ez undorito, megcsinálni
         do
         {
-            if (((1 << v15) & v3->instElemBitmask) != 0)
+            destTri->v1 = srcTri->v1;
+            destTri->v2 = srcTri->v2;
+            destTri->v3 = srcTri->v3;
+            verts = mesh->vertices;
+            vertB = &verts[srcTri->v2];
+            vertA = &verts[srcTri->v1];
+            abX = vertB->x - vertA->x;
+            abY = vertB->y - vertA->y;
+            vertC = &verts[srcTri->v3];
+            abZ = vertB->z - vertA->z;
+            ac.x = vertC->x - vertA->x;
+            ac.y = vertC->y - vertA->y;
+            acZ = vertC->z - vertA->z;
+            normalX = (float)(acZ * abY - ac.y * abZ);
+            normalY = (float)(abZ * ac.x - acZ * abX);
+            normalZ = (float)(ac.y * abX - abY * ac.x);
+            if (normalX == 0.0f && normalY == 0.0f && normalZ == 0.0f)
             {
-                v16 = v2->colInstElems;
-                v17 = &v16[v2->instElemNum];
-                v18 = 0;
-                if (v16 >= v17)
-                {
-                LABEL_15:
-                    v18 = -1;
-                }
-                else
-                {
-                    while (v16 != *a1a)
-                    {
-                        ++v16;
-                        ++v18;
-                        if (v16 >= v17)
-                            goto LABEL_15;
-                    }
-                }
-                v19 = v23;
+                normal = &mesh->normals[faceIndex];
+                normal->x = normalX;
+                normal->y = normalY;
+                normal->z = normalZ;
             }
             else
             {
-                v20 = v2->colSet->colInstElems;
-                v21 = &v20[v2->colSet->instElemNum];
-                v18 = 0;
-                if (v20 >= v21)
-                {
-                LABEL_20:
-                    v18 = -1;
-                }
-                else
-                {
-                    while (v20 != *a1a)
-                    {
-                        ++v20;
-                        ++v18;
-                        if (v20 >= v21)
-                            goto LABEL_20;
-                    }
-                }
-                v19 = v24;
+                normal = &mesh->normals[faceIndex];
+                invLength = 1.0 / sqrt(normalZ * normalZ + normalY * normalY + normalX * normalX);
+                normal->x = (float)(normalX * invLength);
+                normal->y = (float)(normalY * invLength);
+                normal->z = (float)(invLength * normalZ);
             }
-            *unkPtrCurr = &v19[v18];
-            ++a1a;
-            ++unkPtrCurr;
-            v15 = ++a2b;
-        } while (unkPtrCurr < v25);
-        ++v22->instanceNum;
+            ++destTri;
+            ++srcTri;
+            ++faceIndex;
+        } while (destTri < triEnd);
     }
 }
 
-void COL_DuplicateColMap(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+void COL_ColMap_AddCob(tGameObjectMain* gao, uint8_t type, void* src, Vec3* center)
 {
-    tColMap* v2;
-    tColMap* v3;
-    tColCollisionObject** v4;
-    tColCollisionObject** v5;
-    uint8_t i;
+    tColMap* colMap;
+    uint8_t count;
+    tColCollisionObject* cob;
+    tCobNormalObjectGeneric* shape;
 
-    v2 = a2->extended->coll->colMap;
-    COL_AllocColMap(a1);
-    v3 = a1->extended->coll->colMap;
-    v3->activation = v2->activation;
-    v3->b3 = v2->b3;
-    v3->b4 = v2->b4;
-    v3->colObjectID = v2->colObjectID;
-    v3->collisionObjectPtr = (tColCollisionObject**)MEM_p_Alloc(4 * v2->colObjectID);
-    LOA_ul_FileTypeSize_38 += 4 * v2->colObjectID;
-    v4 = v2->collisionObjectPtr;
-    v5 = &v4[v2->colObjectID];
-    for (i = 0; v4 < v5; ++i)
-    {
-        v3->collisionObjectPtr[i] = *v4;
-        ++(*v4++)->usageCount;
-    }
-}
-
-void COL_ColMap_AddGeometric(struct sColCollisionObject* a1, struct sGEOGRO* a3_1, tGameObjectMain* a3)
-{
-    tGEOGRO* v3;
-    tCobMeshObjectMesh* v4;
-    Mtx4x4* v5;
-    Vec3* v6;
-    Vec3* v7;
-    Vec3* i; 
-    Vec3* v9;
-    unsigned int v10;
-    tGeoTriangleChunks* v11;
-    tGeoTriangleChunks* v12;
-    int v13;
-    Vec3* v14;
-    tCobMeshChunkElem* v15;
-    tGeoTriangleChunks* v16;
-    tCobMeshChunkElem* v17;
-    BOOL v18;
-    tCobMeshTriangleElem* v19;
-    tGeoTriangleChunkElem* v20;
-    tCobMeshTriangleElem* v21;
-    tCobMeshTriangleElem* v22;
-    int v23;
-    Vec3* v24;
-    Vec3* v25;
-    Vec3* v26;
-    double v27;
-    double v28;
-    Vec3* v29; 
-    double v30;
-    double v31;
-    Vec3* v32;
-    Vec3* v33; 
-    long double v34;
-    tCobMeshChunkElem* v35;
-    tCobMeshChunkElem* v36;
-    tGeoTriangleChunks* j;
-    tCobMeshTriangleElem* v38;
-    float v39;
-    float v40;
-    float v41;
-    Vec3 a1a; 
-    int geogroa; 
-
-    v3 = a3_1;
-    if (a3_1)
-        goto LABEL_31;
-    if ((a3->flags & 0x4000) != 0)
-    {
-        v3 = (tGEOGRO*)(((tGameObjectVisualObject*)(a3->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse);
-        if (v3->intf->id == 8)                    // lod
-            v3 = ((tGEOSTATICLOD *)(v3))->geo[0];
-        if (v3)
-        {
-        LABEL_31:
-            if (v3->vertexNum && v3->triangleChunkCount)
-            {
-                a1->objectType = 5;
-                v4 = (tCobMeshObjectMesh*)MEM_p_Alloc(0x1Cu);
-                a1->objectPtrByType = v4;
-                v4->ok3 = 0;
-                GEO_MRM_SetNumberOfPoints_Percent(v3, 2.0);
-                v4->vertexCount = v3->vertexNum;
-                if (a3 && (OBJ_pst_GetAbsoluteMatrix(a3)->mtxflag & 8) != 0)
-                {
-                    v4->vertices = (Vec3*)MEM_p_Alloc(12 * v4->vertexCount);
-                    v5 = OBJ_pst_GetAbsoluteMatrix(a3);
-                    MATH_GetScale(&a1a, v5);
-                    v6 = v3->vertices;
-                    v7 = v4->vertices;
-                    for (i = &v6[v3->vertexNum]; v6 < i; )
-                    {
-                        ++v6;
-                        ++v7;
-                        v7[-1].x = a1a.x * v6[-1].x;
-                        v7[-1].y = a1a.y * v6[-1].y;
-                        v7[-1].z = a1a.z * v6[-1].z;
-                    }
-                }
-                else
-                {
-                    v9 = (Vec3*)MEM_p_Alloc(12 * v4->vertexCount);
-                    v10 = 12 * v4->vertexCount;
-                    v4->vertices = v9;
-                    memcpy(v9, v3->vertices, v10);
-                }
-                v4->meshChunkElemNum = v3->triangleChunkCount;
-                v4->meshChunkElems = (tCobMeshChunkElem*)MEM_p_Alloc(16 * v3->triangleChunkCount);
-                v11 = v3->triangleChunks;
-                v12 = &v11[v3->triangleChunkCount];
-                for (v4->faceCount = 0; v11 < v12; v4->faceCount = v13)
-                {
-                    v13 = v11->triangleNum + v4->faceCount;
-                    ++v11;
-                }
-                v14 = (Vec3*)MEM_p_Alloc(12 * v4->faceCount);
-                v15 = v4->meshChunkElems;
-                v4->normals = v14;
-                v16 = v3->triangleChunks;
-                v17 = &v15[v4->meshChunkElemNum];
-                geogroa = 0;
-                v36 = v15;
-                v35 = v17;
-                for (j = v16; v15 < v17; j = v16)
-                {
-                    v15->flags = 0;
-                    v15->gameMaterialElemID = v16->materialNum;
-                    v18 = ((v16->triangleNum & 0xffff) == 0);
-                    v15->elemNum = v16->triangleNum;
-                    if (!v18)
-                    {
-                        v19 = (tCobMeshTriangleElem*)MEM_p_Alloc(12 * v16->triangleNum);
-                        v15->triangleElems = v19;
-                        v20 = v16->triangleChunkElems;
-                        v21 = v19;
-                        v22 = &v19[v15->elemNum];
-                        v38 = v22;
-                        if (v21 < v22)
-                        {
-                            v23 = geogroa;
-                            geogroa += ((char*)v22 - (char*)v21 - 1) / 12 + 1; // TODO FIXME, ez undorito, megcsinálni
-                            do
-                            {
-                                v21->v1 = v20->v1;
-                                v21->v2 = v20->v2;
-                                v21->v3 = v20->v3;
-                                v24 = v4->vertices;
-                                v25 = &v24[v20->v2];
-                                v26 = &v24[v20->v1];
-                                v27 = v25->x - v26->x;
-                                v28 = v25->y - v26->y;
-                                v29 = &v24[v20->v3];
-                                v30 = v25->z - v26->z;
-                                a1a.x = v29->x - v26->x;
-                                a1a.y = v29->y - v26->y;
-                                v31 = v29->z - v26->z;
-                                v39 = (float)(v31 * v28 - a1a.y * v30);
-                                v40 = (float)(v30 * a1a.x - v31 * v27);
-                                v41 = (float)(a1a.y * v27 - v28 * a1a.x);
-                                if (v39 == 0.0f && v40 == 0.0f && v41 == 0.0f)
-                                {
-                                    v32 = &v4->normals[v23];
-                                    v32->x = v39;
-                                    v32->y = v40;
-                                    v32->z = v41;
-                                }
-                                else
-                                {
-                                    v33 = &v4->normals[v23];
-                                    v34 = 1.0 / sqrt(v41 * v41 + v40 * v40 + v39 * v39);
-                                    v33->x = (float)(v39 * v34);
-                                    v33->y = (float)(v40 * v34);
-                                    v33->z = (float)(v34 * v41);
-                                }
-                                ++v21;
-                                ++v20;
-                                ++v23;
-                            } while (v21 < v38);
-                            v15 = v36;
-                            v16 = j;
-                        }
-                        v17 = v35;
-                    }
-                    ++v15;
-                    ++v16;
-                    v36 = v15;
-                }
-            }
-        }
-    }
-}
-
-void COL_ColMap_AddCob(tGameObjectMain* a1, uint8_t type, void* a3, Vec3* a4)
-{
-    tColMap* v4;
-    uint8_t v5;
-    tColCollisionObject* v6;
-    tCobNormalObjectGeneric* v7;
-
-    v4 = a1->extended->coll->colMap;
-    v5 = v4->colObjectID;
-    if (v4->colObjectID == 8)
+    colMap = gao->extended->coll->colMap;
+    count = colMap->colObjectID;
+    if (colMap->colObjectID == 8)
         DBG_assert(0,__FILE__, __LINE__, 0, "Sorry, Max number of Cobs reached", 0, 1);
-    if (v5)
+
+    if (count)
     {
-        v4->collisionObjectPtr = (tColCollisionObject**)MEM_p_Realloc(v4->collisionObjectPtr, 4 * v5 + 4);
-        v4->collisionObjectPtr[v4->colObjectID] = (tColCollisionObject*)MEM_p_Alloc(sizeof(tColCollisionObject));
-        v6 = v4->collisionObjectPtr[v4->colObjectID];
+        colMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Realloc(colMap->collisionObjectPtr, 4 * count + 4);
+        colMap->collisionObjectPtr[colMap->colObjectID] = (tColCollisionObject*)MEM_p_Alloc(sizeof(tColCollisionObject));
+        cob = colMap->collisionObjectPtr[colMap->colObjectID];
     }
     else
     {
-        v4->collisionObjectPtr = (tColCollisionObject**)MEM_p_Alloc(4u);
-        *v4->collisionObjectPtr = (tColCollisionObject*)MEM_p_Alloc(sizeof(tColCollisionObject));
-        v6 = *v4->collisionObjectPtr;
+        colMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Alloc(4u);
+        *colMap->collisionObjectPtr = (tColCollisionObject*)MEM_p_Alloc(sizeof(tColCollisionObject));
+        cob = *colMap->collisionObjectPtr;
     }
-    v6->usageCount = 0;
-    v6->gameMaterial = 0;
+    cob->usageCount = 0;
+    cob->gameMaterial = 0;
+
     if (type == 2)
     {
-        v7 = (tCobNormalObjectGeneric*)MEM_p_Alloc(8u);
-        v6->objectPtrByType = v7;
-        v7->enclosurePtr = 0;
-        v7->gameMaterialElemID = 0;
-        COL_ColMap_AddSphere(v6, (tColCollisionObject*)a3, a4);
+        shape = (tCobNormalObjectGeneric*)MEM_p_Alloc(8u);
+        cob->objectPtrByType = shape;
+        shape->enclosurePtr = 0;
+        shape->gameMaterialElemID = 0;
+        COL_ColMap_AddSphere(cob, (tColCollisionObject*)src, center);
     }
     else if (type == 5)
     {
-        COL_ColMap_AddGeometric(v6, (tGEOGRO*)a3, a1);
-        ++v4->colObjectID;
-        ++v6->usageCount;
+        COL_ColMap_AddGeometric(cob, (tGEOGRO*)src, gao);
+    }
+    ++colMap->colObjectID;
+    ++cob->usageCount;
+}
+
+void COL_ResolveRefs(struct sGameObjectMain* gao)
+{
+    tColMap* colMap;
+    tColCollisionObject** cob;
+    tColCollisionObject** cobEnd;
+    tCobGameMaterial* gameMaterial;
+    tColInstance* instance;
+    tColInstanceElem** slots;
+    tColInstanceElem** slot;
+    tColInstSet* colSet;
+    uint8_t elemNum;
+    uint8_t index;
+    uint8_t zone;
+    uint8_t i;
+
+    if ((gao->flags & 0x100) != 0)
+    {
+        colMap = gao->extended->coll->colMap;
+        if (!colMap || !colMap->colObjectID)
+        {
+            COL_AllocColMap(gao);
+            COL_ColMap_AddCob(gao, 5u, 0, 0);
+        }
+        else
+        {
+            cob = colMap->collisionObjectPtr;
+            cobEnd = &cob[colMap->colObjectID];
+            for (; cob < cobEnd; ++cob)
+            {
+                if (!*cob)
+                {
+                    gao->flags &= ~0x100u;
+                    MEM_Free(colMap->collisionObjectPtr);
+                    LOA_DeleteAddress((int)colMap);
+                    MEM_Free(colMap);
+                    gao->extended->coll->colMap = 0;
+                    break;
+                }
+                gameMaterial = (*cob)->gameMaterial;
+                if (gameMaterial && !(*cob)->usageCount)
+                    ++gameMaterial->gameMaterialUsageCnt;
+                ++(*cob)->usageCount;
+                if ((*cob)->objectType == 5)
+                {
+                    if (!LOA_gb_SpeedMode || BIG_gi_ReadMode != 2)
+                        COL_ComputeProximity(*cob);
+                    COL_OK3_Build(gao, 1, 0);
+                }
+            }
+        }
+    }
+
+    if ((gao->flags & 0x600) == 0)
+        return;
+
+    instance = gao->extended->coll->colInstance;
+    if (!instance || !instance->colSet)
+    {
+        gao->flags &= ~0x600u;
         return;
     }
-    ++v4->colObjectID;
-    ++v6->usageCount;
-}
 
-void COL_ResolveRefs(struct sGameObjectMain* a1)
-{
-    tColMap* colMap; // ebx
-    tColCollisionObject** v2; // esi
-    tColCollisionObject** v3; // ebp
-    tColCollisionObject* v4; // eax
-    tCobGameMaterial* v5; // ecx
-    int v6; // eax
-    tColInstance* v7; // ebp
-    tGaoMatrix* v8; // esi
-    tGaoMatrix* v9; // edi
-    Mtx4x4* v10; // eax
-    uint8_t v11; // al
-    uint8_t v12; // bl
-    tColInstanceElem** v13; // eax
-    tColInstanceElem** v14; // eax
-    unsigned int v15; // edx
-    uint8_t i; // al
-    uint8_t v17; // bl
-    tColInstanceElem** v18; // eax
-    uint8_t v19; // dl
-    tColInstanceElem** v20; // eax
-    tColInstSet* v21; // ebp
+    if ((gao->flags & 0x400000) != 0)
+        MATH_CopyMatrix(instance->mtx, &gao->basic->mtx->mtx);
+    else
+        MATH_CopyMatrix(instance->mtx, OBJ_pst_GetAbsoluteMatrix(gao));
 
-    if ((a1->flags & 0x100) != 0)
+    elemNum = instance->colSet->instElemNum;
+    if (instance->zoneNum != elemNum)
     {
-        colMap = a1->extended->coll->colMap;
-        if (colMap && colMap->colObjectID)
+        instance->zoneNum = elemNum;
+        instance->sharedZoneNum = elemNum;
+        if (instance->instElemNum)
         {
-            v2 = colMap->collisionObjectPtr;
-            v3 = &v2[colMap->colObjectID];
-            if (v2 < v3)
-            {
-                while (1)
-                {
-                    v4 = *v2;
-                    if (!*v2)
-                        break;
-                    v5 = v4->gameMaterial;
-                    if (v5 && !v4->usageCount)
-                        ++v5->gameMaterialUsageCnt;
-                    ++(*v2)->usageCount;
-                    if ((*v2)->objectType == 5)
-                    {
-                        if (!LOA_gb_SpeedMode || BIG_gi_ReadMode != 2)
-                            COL_ComputeProximity(*v2);
-                        COL_OK3_Build(a1, 1, 0);
-                    }
-                    if (++v2 >= v3)
-                        goto LABEL_18;
-                }
-                a1->flags &= ~0x100u;
-                MEM_Free(colMap->collisionObjectPtr);
-                LOA_DeleteAddress((int)colMap);
-                MEM_Free(colMap);
-                a1->extended->coll->colMap = 0;
-            }
+            for (i = 0; i < instance->instElemNum; ++i)
+                MEM_Free((void*)instance->colInstElems[i].elemShapePtr);
+            MEM_Free(instance->colInstElems);
         }
-        else
+        slots = instance->selectedInstElemPtrs;
+        instance->instElemNum = 0;
+        if (slots)
+            MEM_Free(slots);
+        instance->selectedInstElemPtrs = (tColInstanceElem**)MEM_p_Alloc(4 * instance->zoneNum);
+        memset(instance->selectedInstElemPtrs, 0, 4 * instance->zoneNum);
+        for (i = 0; i < instance->zoneNum; ++i)
+            instance->selectedInstElemPtrs[i] = (tColInstanceElem*)i;
+        instance->instElemBitmask = 0;
+    }
+
+    if (instance->zoneNum)
+    {
+        zone = 0;
+        while (1)
         {
-            COL_AllocColMap(a1);
-            COL_ColMap_AddCob(a1, 5u, 0, 0);
+            slot = &instance->selectedInstElemPtrs[zone];
+            index = (uint8_t)*slot;
+            if (index > 16u)
+            {
+                gao->flags &= ~0x600u;
+                return;
+            }
+            if ((instance->instElemBitmask & (1 << zone)) != 0)
+                *slot = &instance->colInstElems[index];
+            else
+                *slot = &instance->colSet->colInstElems[index];
+            if (++zone >= instance->zoneNum)
+                break;
         }
     }
-LABEL_18:
-    v6 = a1->flags;
-    if ((a1->flags & 0x600) != 0)
-    {
-        v7 = a1->extended->coll->colInstance;
-        if (!v7 || !v7->colSet)
-        {
-            a1->flags = v6 & ~0x600u;
-            return;
-        }
-        if ((v6 & 0x400000) != 0)
-        {
-            v8 = a1->basic->mtx;
-            v9 = (tGaoMatrix*)v7->mtx;
-            if (v9 == v8)
-                goto LABEL_27;
-        }
-        else
-        {
-            v10 = OBJ_pst_GetAbsoluteMatrix(a1);
-            v9 = (tGaoMatrix*)v7->mtx;
-            if (v9 == (tGaoMatrix*)v10)
-                goto LABEL_27;
-            v8 = (tGaoMatrix*)v10;
-        }
-        memcpy(v9, v8, sizeof(Mtx4x4));
-    LABEL_27:
-        v11 = v7->colSet->instElemNum;
-        if (v7->zoneNum != v11)
-        {
-            v7->zoneNum = v11;
-            v7->sharedZoneNum = v11;
-            if (v7->instElemNum)
-            {
-                v12 = 0;
-                do
-                    MEM_Free((void*)v7->colInstElems[v12++].elemShapePtr);
-                while (v12 < v7->instElemNum);
-                MEM_Free(v7->colInstElems);
-            }
-            v13 = v7->selectedInstElemPtrs;
-            v7->instElemNum = 0;
-            if (v13)
-                MEM_Free(v13);
-            v14 = (tColInstanceElem**)MEM_p_Alloc(4 * v7->zoneNum);
-            v15 = 4 * v7->zoneNum;
-            v7->selectedInstElemPtrs = v14;
-            memset(v14, 0, v15);
-            for (i = 0; i < v7->zoneNum; ++i)
-                v7->selectedInstElemPtrs[i] = (tColInstanceElem*)i;
-            v7->instElemBitmask = 0;
-        }
-        v17 = 0;
-        if (v7->zoneNum)
-        {
-            while (1)
-            {
-                v18 = v7->selectedInstElemPtrs;
-                v19 = (uint8_t)v18[v17];
-                v20 = &v18[v17];
-                if (v19 > 16u)
-                    break;
-                if ((v7->instElemBitmask & (1 << v17)) != 0)
-                    *v20 = &v7->colInstElems[v19];
-                else
-                    *v20 = &v7->colSet->colInstElems[v19];
-                if (++v17 >= v7->zoneNum)
-                    goto LABEL_43;
-            }
-            a1->flags &= ~0x600u;
-        }
-        else
-        {
-        LABEL_43:
-            v21 = v7->colSet;
-            if (v21)
-                ++v21->instanceNum;
-        }
-    }
+
+    colSet = instance->colSet;
+    if (colSet)
+        ++colSet->instanceNum;
 }
 
-void COL_Reinit(struct sGameObjectMain* a1)
+void COL_Reinit(struct sGameObjectMain* gao)
 {
-    tGameObjectExtended* v1;
-    tGameObjectCollMain* v2;
-    tColInstance* v3;
-    Mtx4x4* v4;
-    tColMap* v5;
+    tGameObjectExtended* ext;
+    tGameObjectCollMain* coll;
+    tColInstance* instance;
+    tColMap* colMap;
 
     if (WOR_gpst_CurrentWorld)
-        INT_SnP_DetachObject(a1, WOR_gpst_CurrentWorld);
+        INT_SnP_DetachObject(gao, WOR_gpst_CurrentWorld);
     else
-        a1->snpIndex = -1;
-    v1 = a1->extended;
-    if (v1)
+        gao->snpIndex = -1;
+
+    ext = gao->extended;
+    if (!ext)
+        return;
+    coll = ext->coll;
+    if (!coll)
+        return;
+
+    if ((gao->flags2 & 0x20) != 0)
+        coll->detectionList->overlapNum = 0;
+
+    if ((gao->flags & 0x600) != 0)
     {
-        v2 = v1->coll;
-        if (v2)
+        instance = coll->colInstance;
+        if (instance)
         {
-            if ((a1->flags2 & 0x20) != 0)
-                v2->detectionList->overlapNum = 0;
-            if ((a1->flags & 0x600) != 0)
-            {
-                v3 = a1->extended->coll->colInstance;
-                if (v3)
-                {
-                    v3->activationFlags = -1;
-                    a1->extended->coll->colInstance->crossable = 0x589A;
-                    if ((a1->flags & 0x400000) != 0)
-                    {
-                        MATH_CopyMatrix(a1->extended->coll->colInstance->mtx, &a1->basic->mtx->mtx);
-                    }
-                    else
-                    {
-                        v4 = OBJ_pst_GetAbsoluteMatrix(a1);
-                        MATH_CopyMatrix(a1->extended->coll->colInstance->mtx, v4);
-                    }
-                }
-                else
-                {
-                    a1->flags &= ~0x600u;
-                }
-            }
-            if ((a1->flags & 0x100) != 0)
-            {
-                v5 = a1->extended->coll->colMap;
-                if (v5)
-                    v5->activation = -1;
-                else
-                    a1->flags &= ~0x100u;
-            }
+            instance->activationFlags = -1;
+            instance->crossable = 0x589A;
+            if ((gao->flags & 0x400000) != 0)
+                MATH_CopyMatrix(instance->mtx, &gao->basic->mtx->mtx);
+            else
+                MATH_CopyMatrix(instance->mtx, OBJ_pst_GetAbsoluteMatrix(gao));
         }
+        else
+        {
+            gao->flags &= ~0x600u;
+        }
+    }
+
+    if ((gao->flags & 0x100) != 0)
+    {
+        colMap = coll->colMap;
+        if (colMap)
+            colMap->activation = -1;
+        else
+            gao->flags &= ~0x100u;
     }
 }
 
-int INT_FullRayTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, float* distance, Vec3* a7)
+int INT_FullRayTriangle(Vec3* origin, Vec3* dir, Vec3* p1, Vec3* p2, Vec3* p3, float* distance, Vec3* hitOut)
 {
-    double v10;
-    double v11;
-    double v12;
-    double v13;
-    int result;
-    double v15;
-    double v16;
-    double v17;
-    float v18;
-    float v19;
-    float v20;
-    float v21;
-    Vec3 a1a; 
-    float v23;
-    float v24;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float a3a;
-    float v30;
-    float a2a;
+    double pvecX;
+    double pvecY;
+    double pvecZ;
+    double det;
+    double vRaw;
+    double hitDist;
+    float weight1;
+    Vec3 edge1;
+    float edge2X;
+    float edge2Y;
+    float edge2Z;
+    float qvecX;
+    float qvecY;
+    float qvecZ;
+    float v;
+    float u;
+    float invDet;
+    float toOriginX;
+    float toOriginY;
+    float toOriginZ;
+    Vec3 scaled;
 
-    a1a.x = a4->x - a3->x;
-    a1a.y = a4->y - a3->y;
-    a1a.z = a4->z - a3->z;
-    v23 = a5->x - a3->x;
-    v24 = a5->y - a3->y;
-    v25 = a5->z - a3->z;
-    v10 = v25 * a2->y - v24 * a2->z;
-    v11 = v23 * a2->z - v25 * a2->x;
-    v12 = v24 * a2->x - v23 * a2->y;
-    v13 = a1a.z * v12 + v11 * a1a.y + v10 * a1a.x;
-    if (v13 < 0.0000099999997 && v13 > -0.0000099999997)
-        goto LABEL_3;
-    a2a = (float)(1.0 / v13);
-    v19 = a1->x - a3->x;
-    v20 = a1->y - a3->y;
-    v15 = a1->z - a3->z;
-    v21 = (float)v15;
-    v30 = (float)((v15 * v12 + v20 * v11 + v19 * v10) * a2a);
-    if (v30 < 0.0)
-        goto LABEL_3;
-    if (v30 > 1.0)
-        goto LABEL_3;
-    v26 = v20 * a1a.z - v21 * a1a.y;
-    v27 = v21 * a1a.x - a1a.z * v19;
-    v28 = v19 * a1a.y - v20 * a1a.x;
-    v16 = (v26 * a2->x + v27 * a2->y + v28 * a2->z) * a2a;
-    a3a = (float)v16;
-    if (v16 < 0.0 || a3a + v30 > 1.0)
-        goto LABEL_3;
-    if (a7)
+    edge1.x = p2->x - p1->x;
+    edge1.y = p2->y - p1->y;
+    edge1.z = p2->z - p1->z;
+    edge2X = p3->x - p1->x;
+    edge2Y = p3->y - p1->y;
+    edge2Z = p3->z - p1->z;
+
+    pvecX = edge2Z * dir->y - edge2Y * dir->z;
+    pvecY = edge2X * dir->z - edge2Z * dir->x;
+    pvecZ = edge2Y * dir->x - edge2X * dir->y;
+    det = edge1.z * pvecZ + pvecY * edge1.y + pvecX * edge1.x;
+    if (det < 0.0000099999997 && det > -0.0000099999997)
+        return 0;
+
+    invDet = (float)(1.0 / det);
+    toOriginX = origin->x - p1->x;
+    toOriginY = origin->y - p1->y;
+    toOriginZ = origin->z - p1->z;
+    u = (float)(((origin->z - p1->z) * pvecZ + toOriginY * pvecY + toOriginX * pvecX) * invDet);
+    if (u < 0.0)
+        return 0;
+    if (u > 1.0)
+        return 0;
+
+    qvecX = toOriginY * edge1.z - toOriginZ * edge1.y;
+    qvecY = toOriginZ * edge1.x - edge1.z * toOriginX;
+    qvecZ = toOriginX * edge1.y - toOriginY * edge1.x;
+    vRaw = (qvecX * dir->x + qvecY * dir->y + qvecZ * dir->z) * invDet;
+    v = (float)vRaw;
+    if (vRaw < 0.0 || v + u > 1.0)
+        return 0;
+
+    if (hitOut)
     {
-        MATH_VecMultScalar(&a1a, a5, a3a);
-        MATH_VecMultScalar(a7, a4, v30);
-        MATH_VecAddVecWithoutBuffer(a7, &a1a);
-        v18 = (float)(1.0 - v30 - a3a);
-        MATH_VecMultScalar(&a1a, a3, v18);
-        MATH_VecAddVecWithoutBuffer(a7, &a1a);
+        MATH_VecMultScalar(&scaled, p3, v);
+        MATH_VecMultScalar(hitOut, p2, u);
+        MATH_VecAddVecWithoutBuffer(hitOut, &scaled);
+        weight1 = (float)(1.0 - u - v);
+        MATH_VecMultScalar(&scaled, p1, weight1);
+        MATH_VecAddVecWithoutBuffer(hitOut, &scaled);
     }
-    v17 = (v28 * v25 + v27 * v24 + v26 * v23) * a2a;
-    *distance = (float)v17;
-    if (v17 < 0.0)
-        LABEL_3:
-    result = 0;
-    else
-        result = 1;
-    return result;
+
+    hitDist = (qvecZ * edge2Z + qvecY * edge2Y + qvecX * edge2X) * invDet;
+    *distance = (float)hitDist;
+    if (hitDist < 0.0)
+        return 0;
+    return 1;
 }
 
 
 // TODO FIXME, ez át lett írva, ill bele lett javítva a generált kódba nem biztos hogy jó
-int INT_FullRayAABBox(Vec3* a1, Vec3* a2, tColBox* a3, Vec3* a4, float a5, float* a6)
+int INT_FullRayAABBox(Vec3* origin, Vec3* dir, tColBox* box, Vec3* hitOut, float maxDist, float* distOut)
 {
-    int v6;
-    int v7;
-    int v8;
-    Vec3* v9;
-    int v11;
-    double v12;
-    double v13;
-    double v14;
-    double v18;
-    double v22;
-    float v26;
-    float v27;
-    Vec3 v28; 
-    float v29;
-    float v30;
-    float v31;
-    Vec3 v32;
-    int v32a;
-    float v33;
+    int allInside;
+    int xSide;
+    int ySide;
+    int zSide;
+    int axis;
+    Vec3* hit;
+    double candidate;
+    double hitX;
+    double hitY;
+    double hitZ;
+    Vec3 boxMax;
+    Vec3 localHit;
+    float planeX;
+    float planeY;
+    float planeZ;
+    float enter;
 
-    v26 = a3->pos1.y;
-    v27 = a3->pos1.z;
-    v28 = a3->pos2;
-    v6 = 1;
-    if (a1->x >= (double)a3->pos1.x)
+    boxMax = box->pos2;
+    allInside = 1;
+    if (origin->x >= (double)box->pos1.x)
     {
-        if (a1->x <= (double)v28.x)
+        if (origin->x <= (double)boxMax.x)
         {
-            v7 = 2;
+            xSide = 2;
         }
         else
         {
-            v7 = 0;
-            v29 = a3->pos2.x;
-            v6 = 0;
+            xSide = 0;
+            planeX = box->pos2.x;
+            allInside = 0;
         }
     }
     else
     {
-        v7 = 1;
-        v29 = a3->pos1.x;
-        v6 = 0;
+        xSide = 1;
+        planeX = box->pos1.x;
+        allInside = 0;
     }
-    if (a1->y >= (double)v26)
+
+    if (origin->y >= (double)box->pos1.y)
     {
-        if (a1->y <= (double)v28.y)
+        if (origin->y <= (double)boxMax.y)
         {
-            v32a = 2;
+            ySide = 2;
         }
         else
         {
-            v6 = 0;
-            v32a = 0; // fixed v32.y = 0.0 volt
-            v30 = v28.y;
+            allInside = 0;
+            ySide = 0; // fixed v32.y = 0.0 volt
+            planeY = boxMax.y;
         }
     }
     else
     {
-        v32a = 1;
-        v30 = v26;
-        v6 = 0;
+        ySide = 1;
+        planeY = box->pos1.y;
+        allInside = 0;
     }
-    if (a1->z >= (double)v27)
+
+    if (origin->z >= (double)box->pos1.z)
     {
-        if (a1->z <= (double)v28.z)
+        if (origin->z <= (double)boxMax.z)
         {
-            v8 = 2;
+            zSide = 2;
         }
         else
         {
-            v8 = 0;
-            v31 = v28.z;
-            v6 = 0;
+            zSide = 0;
+            planeZ = boxMax.z;
+            allInside = 0;
         }
     }
     else
     {
-        v31 = v27;
-        v8 = 1;
-        v6 = 0;
+        planeZ = box->pos1.z;
+        zSide = 1;
+        allInside = 0;
     }
-    v9 = a4;
-    if (!a4)
-        v9 = &v32;
-    if (!v6)
+
+    hit = hitOut;
+    if (!hitOut)
+        hit = &localHit;
+
+    if (allInside)
     {
-        v11 = 0;
-        if (v7 == 2 || a2->x == 0.0f)
-            v33 = -1.0;
-        else
-            v33 = (v29 - a1->x) / a2->x;
-        if (v32a != 2 && a2->y != 0.0f)
-        {
-            v12 = (v30 - a1->y) / a2->y;
-            if (v12 > v33)
-            {
-                v33 = (float)v12;
-                v11 = 1;
-            }
-        }
-        if (v8 != 2 && a2->z != 0.0f)
-        {
-            v13 = (v31 - a1->z) / a2->z;
-            if (v13 > v33)
-            {
-                v33 = (float)v13;
-                v11 = 2;
-            }
-        }
-        if (v33 < 0.0 || v33 >(double)a5)
-            return 0;
-        if (a6)
-            *a6 = v33;
-        if (v11)
-        {
-            v14 = v33 * a2->x + a1->x;
-            v9->x = (float)v14;
-            if (v14 < a3->pos1.x)
-                return 0;
-            if (v14 > v28.x)
-                return 0;
-            if (v11 == 1)
-            {
-                v9->y = v30;
-            LABEL_47:
-                v22 = v33 * a2->z + a1->z;
-                v9->z = (float)v22;
-                if (v22 >= a3->pos1.z) 
-                {
-                    if (v22 > v28.z)
-                        return 0;
-                    return v11 + 1;
-                }
-                return 0;
-            }
-        }
-        else
-        {
-            v9->x = v29;
-        }
-        v18 = v33 * a2->y + a1->y;
-        v9->y = (float)v18;
-        if (v18 < a3->pos1.y) 
-            return 0;
-        if (v18 > v28.y)
-            return 0;
-        if (v11 == 2)
-        {
-            v9->z = v31;
-            return v11 + 1;
-        }
-        goto LABEL_47;
+        *hit = *origin;
+        if (distOut)
+            *distOut = -1.0;
+        return 1;
     }
-    *v9 = *a1;
-    if (a6)
-        *a6 = -1.0;
+
+    axis = 0;
+    if (xSide == 2 || dir->x == 0.0f)
+        enter = -1.0;
+    else
+        enter = (planeX - origin->x) / dir->x;
+
+    if (ySide != 2 && dir->y != 0.0f)
+    {
+        candidate = (planeY - origin->y) / dir->y;
+        if (candidate > enter)
+        {
+            enter = (float)candidate;
+            axis = 1;
+        }
+    }
+    if (zSide != 2 && dir->z != 0.0f)
+    {
+        candidate = (planeZ - origin->z) / dir->z;
+        if (candidate > enter)
+        {
+            enter = (float)candidate;
+            axis = 2;
+        }
+    }
+
+    if (enter < 0.0 || enter > (double)maxDist)
+        return 0;
+    if (distOut)
+        *distOut = enter;
+
+    if (axis != 0)
+    {
+        hitX = enter * dir->x + origin->x;
+        hit->x = (float)hitX;
+        if (hitX < box->pos1.x)
+            return 0;
+        if (hitX > boxMax.x)
+            return 0;
+    }
+    else
+    {
+        hit->x = planeX;
+    }
+
+    if (axis != 1)
+    {
+        hitY = enter * dir->y + origin->y;
+        hit->y = (float)hitY;
+        if (hitY < box->pos1.y)
+            return 0;
+        if (hitY > boxMax.y)
+            return 0;
+    }
+    else
+    {
+        hit->y = planeY;
+    }
+
+    if (axis != 2)
+    {
+        hitZ = enter * dir->z + origin->z;
+        hit->z = (float)hitZ;
+        if (hitZ >= box->pos1.z)
+        {
+            if (hitZ > boxMax.z)
+                return 0;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        hit->z = planeZ;
+    }
+    return axis + 1;
+}
+
+int INT_FullRaySphere(Vec3* origin, Vec3* dir, tColSphere* sphere, Vec3* hitOut, float maxDist, float* distOut)
+{
+    double toCenterX;
+    double toCenterY;
+    double toCenterZ;
+    double projection;
+    double perpSquared;
+    long double hitDist;
+    float projSquared;
+    float projF;
+    float centerDistSquared;
+    float radiusSquared;
+    float hitDistF;
+
+    toCenterX = sphere->center.x - origin->x;
+    toCenterY = sphere->center.y - origin->y;
+    toCenterZ = sphere->center.z - origin->z;
+    projection = dir->z * toCenterZ + dir->y * toCenterY + toCenterX * dir->x;
+    projF = (float)projection;
+    centerDistSquared = (float)(toCenterZ * toCenterZ + toCenterX * toCenterX + toCenterY * toCenterY);
+    radiusSquared = sphere->radius * sphere->radius;
+
+    if (radiusSquared <= (double)centerDistSquared)
+    {
+        if (projF < 0.0 && centerDistSquared > (double)radiusSquared)
+            return 0;
+        projSquared = (float)(projection * projF);
+        perpSquared = centerDistSquared - projSquared;
+        if (perpSquared > radiusSquared)
+            return 0;
+        hitDist = projF - sqrt(radiusSquared - perpSquared);
+        *distOut = (float)hitDist;
+        if (hitDist > maxDist)
+            return 0;
+
+        if (hitOut)
+        {
+            hitDistF = (float)hitDist;
+            MATH_VecMultScalar(hitOut, dir, hitDistF);
+            MATH_VecAddVec(hitOut, origin, hitOut);
+        }
+        return 1;
+    }
+
+    *distOut = -1.0;
     return 1;
 }
 
-int INT_FullRaySphere(Vec3* a1, Vec3* a2, tColSphere* a3, Vec3* talanHitPos, float a5, float* a6)
+int INT_b_FullRayCylinder(Vec3* origin, Vec3* dir, Vec3* center, Vec3* axis, float radius, float halfHeight, float maxDist, float* distOut, Vec3* hitOut)
 {
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    int result;
-    double v13;
-    long double v14;
-    float v15;
-    float v16;
-    float a2a;
-    float a3a;
-    float a3b;
+    double axisDotDir;
+    double offset;
+    double doubleOffset;
+    long double discriminant;
+    float toOriginX;
+    float toOriginY;
+    float toOriginZ;
+    float axialOffset;
+    float sinSquared;
+    float hitDist;
+    float cosAngle;
 
-    v8 = a3->center.x - a1->x;
-    v9 = a3->center.y - a1->y;
-    v10 = a3->center.z - a1->z;
-    v11 = a2->z * v10 + a2->y * v9 + v8 * a2->x;
-    v16 = (float)v11;
-    a2a = (float)(v10 * v10 + v8 * v8 + v9 * v9);
-    a3a = a3->radius * a3->radius;
-    if (a3a <= (double)a2a)
-    {
-        if (v16 < 0.0 && a2a >(double)a3a
-            || (v15 = (float)(v11 * v16), v13 = a2a - v15, v13 > a3a)
-            || (v14 = v16 - sqrt(a3a - v13), *a6 = (float)v14, v14 > a5))
-        {
-            result = 0;
-        }
-        else
-        {
-            if (talanHitPos)
-            {
-                a3b = (float)v14;
-                MATH_VecMultScalar(talanHitPos, a2, a3b);
-                MATH_VecAddVec(talanHitPos, a1, talanHitPos);
-            }
-            result = 1;
-        }
-    }
-    else
-    {
-        *a6 = -1.0;
-        result = 1;
-    }
-    return result;
+    hitOut->x = 0.0;
+    hitOut->y = 0.0;
+    hitOut->z = 0.0;
+    toOriginX = origin->x - center->x;
+    toOriginY = origin->y - center->y;
+    toOriginZ = origin->z - center->z;
+    axialOffset = toOriginZ * axis->z + toOriginX * axis->x + toOriginY * axis->y;
+    axisDotDir = axis->x * dir->x + axis->z * dir->z + dir->y * axis->y;
+    cosAngle = (float)axisDotDir;
+    if (fabs(fabs(axisDotDir) - 1.0) < 0.0000099999997)
+        return 0;
+
+    sinSquared = (float)(1.0 - cosAngle * cosAngle);
+    offset = toOriginY * dir->y + toOriginZ * dir->z + toOriginX * dir->x - cosAngle * axialOffset;
+    doubleOffset = offset + offset;
+    discriminant = doubleOffset * doubleOffset
+        - -(axialOffset * axialOffset + radius * radius
+            - (toOriginZ * toOriginZ + toOriginY * toOriginY + toOriginX * toOriginX)) * sinSquared * 4.0;
+    if (discriminant < 0.0)
+        return 0;
+
+    hitDist = (float)((-doubleOffset - sqrt(fabs(discriminant))) / (sinSquared + sinSquared));
+    if (hitDist < 0.0 || hitDist > (double)maxDist)
+        return 0;
+
+    hitOut->x = hitDist * dir->x;
+    hitOut->y = hitDist * dir->y;
+    hitOut->z = hitDist * dir->z;
+    hitOut->x = hitOut->x + origin->x;
+    hitOut->y = origin->y + hitOut->y;
+    hitOut->z = hitOut->z + origin->z;
+    if (distOut)
+        *distOut = hitDist;
+    if (fabs(hitDist * cosAngle + axialOffset) > halfHeight)
+        return 0;
+    return 1;
 }
 
-int INT_b_FullRayCylinder(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, float a5, float a6, float a7, float* dist, Vec3* hitPosTalan)
+static BOOL COL_l_b_TriangleInRayExtent(Vec3* p1, Vec3* p2, Vec3* p3, Vec3* origin, Vec3* dir, float maxDist)
 {
-    double v11;
-    double v12;
-    double v13;
-    long double v14;
-    int result;
-    float v16;
-    float v17;
-    float v18;
-    float v19;
-    float v20;
-    float v21;
-    float hitPosTalana;
+    double stepX;
+    double stepY;
+    double bound;
+    float farX;
+    float farY;
+    float farZ;
 
-    hitPosTalan->x = 0.0;
-    hitPosTalan->y = 0.0;
-    hitPosTalan->z = 0.0;
-    v16 = a1->x - a3->x;
-    v17 = a1->y - a3->y;
-    v18 = a1->z - a3->z;
-    v19 = v18 * a4->z + v16 * a4->x + v17 * a4->y;
-    v11 = a4->x * a2->x + a4->z * a2->z + a2->y * a4->y;
-    hitPosTalana = (float)v11;
-    if (fabs(fabs(v11) - 1.0) < 0.0000099999997)
-        goto LABEL_3;
-    v20 = (float)(1.0 - hitPosTalana * hitPosTalana);
-    v12 = v17 * a2->y + v18 * a2->z + v16 * a2->x - hitPosTalana * v19;
-    v13 = v12 + v12;
-    v14 = v13 * v13 - -(v19 * v19 + a5 * a5 - (v18 * v18 + v17 * v17 + v16 * v16)) * v20 * 4.0;
-    if (v14 < 0.0)
-        goto LABEL_3;
-    v21 = (float)((-v13 - sqrt(fabs(v14))) / (v20 + v20));
-    if (v21 < 0.0 || v21 >(double)a7)
-        goto LABEL_3;
-    hitPosTalan->x = v21 * a2->x;
-    hitPosTalan->y = v21 * a2->y;
-    hitPosTalan->z = v21 * a2->z;
-    hitPosTalan->x = hitPosTalan->x + a1->x;
-    hitPosTalan->y = a1->y + hitPosTalan->y;
-    hitPosTalan->z = hitPosTalan->z + a1->z;
-    if (dist)
-        *dist = v21;
-    if (fabs(v21 * hitPosTalana + v19) > a6)
-        LABEL_3:
-    result = 0;
+    stepX = maxDist * dir->x;
+    stepY = maxDist * dir->y;
+    farZ = maxDist * dir->z;
+    farX = (float)(origin->x + stepX);
+    farY = (float)(stepY + origin->y);
+    farZ = origin->z + farZ;
+
+    if (dir->x <= 0.0)
+    {
+        bound = MATH_f_MinOf3(p1->x, p2->x, p3->x);
+        if (bound > origin->x)
+            return 0;
+        bound = MATH_f_MaxOf3(p1->x, p2->x, p3->x);
+        if (bound < farX)
+            return 0;
+    }
     else
-        result = 1;
-    return result;
+    {
+        bound = MATH_f_MaxOf3(p1->x, p2->x, p3->x);
+        if (bound < origin->x)
+            return 0;
+        bound = MATH_f_MinOf3(p1->x, p2->x, p3->x);
+        if (bound > farX)
+            return 0;
+    }
+
+    if (dir->y <= 0.0)
+    {
+        bound = MATH_f_MinOf3(p1->y, p2->y, p3->y);
+        if (bound > origin->y)
+            return 0;
+        bound = MATH_f_MaxOf3(p1->y, p2->y, p3->y);
+        if (bound < farY)
+            return 0;
+    }
+    else
+    {
+        bound = MATH_f_MaxOf3(p1->y, p2->y, p3->y);
+        if (bound < origin->y)
+            return 0;
+        bound = MATH_f_MinOf3(p1->y, p2->y, p3->y);
+        if (bound > farY)
+            return 0;
+    }
+
+    if (dir->z <= 0.0)
+    {
+        bound = MATH_f_MinOf3(p1->z, p2->z, p3->z);
+        if (bound > origin->z)
+            return 0;
+        bound = MATH_f_MaxOf3(p1->z, p2->z, p3->z);
+        if (bound < farZ)
+            return 0;
+    }
+    else
+    {
+        bound = MATH_f_MaxOf3(p1->z, p2->z, p3->z);
+        if (bound < origin->z)
+            return 0;
+        bound = MATH_f_MinOf3(p1->z, p2->z, p3->z);
+        if (bound > farZ)
+            return 0;
+    }
+    return 1;
+}
+
+static int COL_l_i_RayCrossable(void)
+{
+    if (COL_gst_Ray.useUserCrossable)
+        return COL_guw_UserCrossable;
+    if (COL_gst_Ray.colMapGao && (COL_gst_Ray.colMapGao->flags & 0x200) != 0)
+        return COL_gst_Ray.colMapGao->extended->coll->colInstance->crossable;
+    return 0x589A;                              // == usercrossable?
 }
 
 void COL_ColMap_Triangles_RayCast(tGameObjectMain* gao, tColMap* colMap)
 {
-    tCobMeshObjectMesh* v2;
-    Mtx4x4* v3;
-    BOOL v4;
-    int v5;
-    tCobMeshChunkElem* v6;
-    Mtx4x4* v7;
-    long double v8;
-    tColCollisionObject* v9;
-    tCobGameMaterialElems* v10;
-    tCobMeshTriangleElem* v11;
-    tCobMeshTriangleElem* v12;
-    int v13;
-    Vec3* v14;
-    Vec3* v15;
-    Vec3* v17;
-    Vec3* v18;
-    Vec3* v19;
-    Vec3* v20;
-    double v21;
-    double v22;
-    double v23;
-    double v24;
-    double v25;
-    double v26;
-    double v27;
-    double v28;
-    double v29;
-    double v30;
-    double v31;
-    double v32;
-    double v33;
-    double v34;
-    tCobMeshChunkElem* v35;
-    BOOL v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    float v43;
-    float v44;
-    float v45;
-    int v46;
-    Vec3* v47;
-    Vec3 dest;
-    Vec3 v49;
-    int v50;
-    int v51;
-    tCobMeshChunkElem* v52;
+    tCobMeshObjectMesh* mesh;
+    Mtx4x4* mtx;
+    tColCollisionObject* cob;
+    tCobGameMaterialElems* gameMaterial;
+    tCobMeshChunkElem* chunk;
+    tCobMeshChunkElem* chunkEnd;
+    tCobMeshTriangleElem* tri;
+    tCobMeshTriangleElem* triEnd;
+    Vec3* verts;
+    Vec3* p1;
+    Vec3* p2;
+    Vec3* p3;
+    Vec3* dir;
+    long double invLength;
+    int crossable;
+    int globalTriangle;
+    int chunkID;
+    int triangleID;
+    Vec3 origin;
+    Vec3 localDir;
+    Vec3 normal;
+    Vec3 hitPos;
     float distance;
-    int v54;
-    float v55;
-    float v56;
-    float v57;
-    tCobMeshObjectMesh* v58;
-    tCobMeshChunkElem* v59;
-    int v60;
-    tCobMeshTriangleElem* v61;
-    Vec3 a3;
-    tCobMeshTriangleElem* v63;
-    Vec3 a7;
-    Mtx4x4 a2a;
-    Mtx4x4 a1a;
+    Mtx4x4 noScaleMtx;
+    Mtx4x4 invMtx;
 
-    v2 = (tCobMeshObjectMesh*)(*colMap->collisionObjectPtr)->objectPtrByType;
-    v3 = gao->matrices;
-    v4 = (v3->mtxflag & 8) == 0;
-    v58 = v2;
-    if (v4)
+    mesh = (tCobMeshObjectMesh*)(*colMap->collisionObjectPtr)->objectPtrByType;
+    mtx = gao->matrices;
+    if ((mtx->mtxflag & 8) == 0)
     {
-        MATH_InvertMatrix(&a1a, v3);
-        v5 = 0;
+        MATH_InvertMatrix(&invMtx, mtx);
     }
     else
     {
-        if (&a2a != v3)
-            memcpy(&a2a, v3, sizeof(a2a));
-        a2a.mtxflag &= ~8u;
-        v5 = 0;
-        a2a._m14 = 0.0;
-        a2a._m24 = 0.0;
-        a2a._m34 = 0.0;
-        MATH_InvertMatrix(&a1a, &a2a);
+        MATH_CopyMatrix(&noScaleMtx, mtx);
+        noScaleMtx.mtxflag &= ~8u;
+        noScaleMtx._m14 = 0.0;
+        noScaleMtx._m24 = 0.0;
+        noScaleMtx._m34 = 0.0;
+        MATH_InvertMatrix(&invMtx, &noScaleMtx);
     }
-    v6 = v2->meshChunkElems;
-    v59 = &v6[v2->meshChunkElemNum];
-    v7 = gao->matrices;
-    v4 = (v7->mtxflag & 0x3C) == 0;
-    v52 = v6;
-    if (v4)
+
+    chunk = mesh->meshChunkElems;
+    chunkEnd = &chunk[mesh->meshChunkElemNum];
+    mtx = gao->matrices;
+    if ((mtx->mtxflag & 0x3C) == 0)
     {
-        v47 = COL_gst_Ray.direction;
-        dest.x = COL_gst_Ray.sourcePoint->x - v7->Pos.x;
-        dest.y = COL_gst_Ray.sourcePoint->y - v7->Pos.y;
-        dest.z = COL_gst_Ray.sourcePoint->z - v7->Pos.z;
+        dir = COL_gst_Ray.direction;
+        origin.x = COL_gst_Ray.sourcePoint->x - mtx->Pos.x;
+        origin.y = COL_gst_Ray.sourcePoint->y - mtx->Pos.y;
+        origin.z = COL_gst_Ray.sourcePoint->z - mtx->Pos.z;
     }
     else
     {
-        MATH_TransformVertex(&dest, &a1a, COL_gst_Ray.sourcePoint);
-        MATH_TransformVector(&v49, &a1a, COL_gst_Ray.direction);
-        v47 = &v49;
-        v8 = 1.0 / sqrt(v49.z * v49.z + v49.y * v49.y + v49.x * v49.x);
-        v49.x = (float)(v49.x * v8);
-        v49.y = (float)(v49.y * v8);
-        v49.z = (float)(v49.z * v8);
+        MATH_TransformVertex(&origin, &invMtx, COL_gst_Ray.sourcePoint);
+        MATH_TransformVector(&localDir, &invMtx, COL_gst_Ray.direction);
+        dir = &localDir;
+        invLength = 1.0 / sqrt(localDir.z * localDir.z + localDir.y * localDir.y + localDir.x * localDir.x);
+        localDir.x = (float)(localDir.x * invLength);
+        localDir.y = (float)(localDir.y * invLength);
+        localDir.z = (float)(localDir.z * invLength);
     }
-    v46 = 0;
-    v54 = 0;
-    if (v6 < v59)
+
+    globalTriangle = 0;
+    for (chunkID = 0; chunk < chunkEnd; ++chunk, ++chunkID)
     {
-        while (COL_gst_Ray.skipFlagX || COL_gst_Ray.skipCrossable || COL_gst_Ray.skipCamera)
+        if (COL_gst_Ray.skipFlagX || COL_gst_Ray.skipCrossable || COL_gst_Ray.skipCamera)
         {
-            v9 = *colMap->collisionObjectPtr;
-            if (!v9->gameMaterial)
-                break;
-            if (COL_gst_Ray.useUserCrossable)
+            cob = *colMap->collisionObjectPtr;
+            if (cob->gameMaterial)
             {
-                v51 = COL_guw_UserCrossable;
+                crossable = COL_l_i_RayCrossable();
+                gameMaterial = COL_pst_GMat_Get(cob, chunk);
+                if (COL_gst_Ray.skipCrossable && gameMaterial && ((uint16_t)crossable & gameMaterial->flags) != 0
+                    || COL_gst_Ray.skipCamera && gameMaterial && (gameMaterial->flags & 0x1000) != 0
+                    || COL_gst_Ray.skipFlagX && gameMaterial && (gameMaterial->flags & 0x200000) != 0)
+                {
+                    globalTriangle += chunk->elemNum;
+                    continue;
+                }
             }
-            else if (COL_gst_Ray.colMapGao && (COL_gst_Ray.colMapGao->flags & 0x200) != 0)
-            {
-                v51 = COL_gst_Ray.colMapGao->extended->coll->colInstance->crossable;
-            }
-            else
-            {
-                v51 = 0x589A;                           // == usercrossable?
-            }
-            v10 = COL_pst_GMat_Get(v9, v6);
-            if (COL_gst_Ray.skipCrossable && v10 && ((uint16_t)v51 & v10->flags) != 0)
-            {
-                v5 += v6->elemNum;
-                v46 = v5;
-            }
-            else if (COL_gst_Ray.skipCamera && v10 && (v10->flags & 0x1000) != 0)
-            {
-                v5 += v6->elemNum;
-                v46 = v5;
-            }
-            else
-            {
-                if (!COL_gst_Ray.skipFlagX || !v10 || (v10->flags & 0x200000) == 0)
-                    break;
-                v5 += v6->elemNum;
-                v46 = v5;
-            }
-        LABEL_61:
-            v52 = ++v6;
-            ++v54;
-            if (v6 >= v59)
-                return;
         }
-        v11 = v6->triangleElems;
-        v12 = &v11[v6->elemNum];
-        v61 = v11;
-        v63 = v12;
-        v50 = 0;
-        if (v11 >= v12)
-            goto LABEL_61;
-        v13 = v5;
-        v60 = v13;
-        while (1)
+
+        tri = chunk->triangleElems;
+        triEnd = &tri[chunk->elemNum];
+        for (triangleID = 0; tri < triEnd; ++tri, ++triangleID, ++globalTriangle)
         {
-            v14 = v2->normals;
-            v15 = &v14[v13];
-            a3.x = v15->x;
-            a3.y = v15->y;
-            a3.z = v15->z;
-            v17 = v2->vertices;
-            v18 = &v17[v11->v2];
-            v19 = &v17[v11->v1];
-            v20 = &v17[v11->v3];
-            if (a3.y * v47->y + a3.z * v47->z + a3.x * v47->x <= 0.0)
+            normal = mesh->normals[globalTriangle];
+            verts = mesh->vertices;
+            p2 = &verts[tri->v2];
+            p1 = &verts[tri->v1];
+            p3 = &verts[tri->v3];
+            if (normal.y * dir->y + normal.z * dir->z + normal.x * dir->x <= 0.0)
             {
-                v21 = COL_gst_Ray.distance * v47->x;
-                v43 = v20->x;
-                v22 = COL_gst_Ray.distance * v47->y;
-                v57 = COL_gst_Ray.distance * v47->z;
-                v55 = (float)(dest.x + v21);
-                v56 = (float)(v22 + dest.y);
-                v57 = dest.z + v57;
-                v40 = v18->x;
-                v37 = v19->x;
-                if (v47->x <= 0.0)
-                {
-                    v25 = MATH_f_MinOf3(v37, v40, v43);
-                    if (v25 > dest.x)
-                        goto LABEL_59;
-                    v26 = MATH_f_MaxOf3(v19->x, v18->x, v20->x);
-                    if (v26 < v55)
-                        goto LABEL_59;
-                }
-                else
-                {
-                    v23 = MATH_f_MaxOf3(v37, v40, v43);
-                    if (v23 < dest.x)
-                        goto LABEL_59;
-                    v24 = MATH_f_MinOf3(v19->x, v18->x, v20->x);
-                    if (v24 > v55)
-                        goto LABEL_59;
-                }
-                v44 = v20->y;
-                v41 = v18->y;
-                v38 = v19->y;
-                if (v47->y <= 0.0)
-                {
-                    v29 = MATH_f_MinOf3(v38, v41, v44);
-                    if (v29 > dest.y)
-                        goto LABEL_59;
-                    v30 = MATH_f_MaxOf3(v19->y, v18->y, v20->y);
-                    if (v30 < v56)
-                        goto LABEL_59;
-                }
-                else
-                {
-                    v27 = MATH_f_MaxOf3(v38, v41, v44);
-                    if (v27 < dest.y)
-                        goto LABEL_59;
-                    v28 = MATH_f_MinOf3(v19->y, v18->y, v20->y);
-                    if (v28 > v56)
-                        goto LABEL_59;
-                }
-                v45 = v20->z;
-                v42 = v18->z;
-                v39 = v19->z;
-                if (v47->z <= 0.0)
-                {
-                    v33 = MATH_f_MinOf3(v39, v42, v45);
-                    if (v33 > dest.z)
-                        goto LABEL_59;
-                    v34 = MATH_f_MaxOf3(v19->z, v18->z, v20->z);
-                    if (v34 < v57)
-                        goto LABEL_59;
-                }
-                else
-                {
-                    v31 = MATH_f_MaxOf3(v39, v42, v45);
-                    if (v31 < dest.z)
-                        goto LABEL_59;
-                    v32 = MATH_f_MinOf3(v19->z, v18->z, v20->z);
-                    if (v32 > v57)
-                        goto LABEL_59;
-                }
-                if (INT_FullRayTriangle(&dest, v47, v19, v18, v20, &distance, &a7)
+                if (!COL_l_b_TriangleInRayExtent(p1, p2, p3, &origin, dir, COL_gst_Ray.distance))
+                    continue;
+                if (INT_FullRayTriangle(&origin, dir, p1, p2, p3, &distance, &hitPos)
                     && distance < (double)COL_gst_Ray.distance
                     && (!COL_gb_UseMinDistance || distance > (double)COL_gf_MinDistance))
                 {
@@ -2728,34 +2373,18 @@ void COL_ColMap_Triangles_RayCast(tGameObjectMain* gao, tColMap* colMap)
                         *COL_gst_Ray.ignoreColMapRayCastResult = 0;
                         return;
                     }
-                    MATH_TransformVertexNoScale(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, gao->matrices, &a7);
-                    MATH_TransformVectorNoScale(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec, gao->matrices, &a3);
+                    MATH_TransformVertexNoScale(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, gao->matrices, &hitPos);
+                    MATH_TransformVectorNoScale(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec, gao->matrices, &normal);
                     MATH_NormalizeEqualVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec);
-                    v35 = v52;
-                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = v54;
-                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = v50;
-                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = v46;
-                    COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = COL_pst_GMat_Get(*colMap->collisionObjectPtr, v35);
-                    COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = v35->designVal;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = chunkID;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = triangleID;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = globalTriangle;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = COL_pst_GMat_Get(*colMap->collisionObjectPtr, chunk);
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = chunk->designVal;
                     COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
                     COL_gst_Ray.gao = gao;
                     COL_gst_Ray.distance = distance;
                 }
-            }
-        LABEL_59:
-            v2 = v58;
-            v11 = v61 + 1;
-            ++v46;
-            v13 = v60 + 1;
-            v36 = &v61[1] < v63;
-            ++v61;
-            ++v60;
-            ++v50;
-            if (!v36)
-            {
-                v6 = v52;
-                v5 = v46;
-                goto LABEL_61;
             }
         }
     }
@@ -2763,905 +2392,466 @@ void COL_ColMap_Triangles_RayCast(tGameObjectMain* gao, tColMap* colMap)
 
 void COL_ColMap_OK3_RayCast(tGameObjectMain* gao, tColMap* colMap)
 {
-    Mtx4x4* v2;
-    BOOL v3;
-    tCobMeshObjectMesh* v4;
-    tCobOK3* v5;
-    Mtx4x4* v6;
-    long double v7;
-    BOOL v8;
-    tCobOK3AABBoxElem* v9;
-    int v10;
-    int v11;
-    tCobOK3AABBoxElemChunkElem* v12;
-    int v13;
-    int v14;
-    tCobMeshChunkElem* v15;
-    tColCollisionObject* v16;
-    tCobGameMaterialElems* v17;
-    int v18;
-    tCobMeshTriangleElem* v19;
-    Vec3* v20;
-    int v21;
-    tCobMeshTriangleElem* v22;
-    Vec3* v23;
-    Vec3* v24;
-    Vec3* v25;
-    Vec3* v26;
-    int v27;
-    float v28;
-    Vec3* v29;
-    float v30;
-    double v31;
-    double v32;
-    double v33;
-    double v34;
-    double v35;
-    double v36;
-    double v37;
-    double v38;
-    double v39;
-    double v40;
-    double v41;
-    double v42;
-    double v43;
-    double v44;
-    tCobOK3AABBoxElemChunkElem* v45;
-    int v46;
-    int v47;
-    int v48;
-    float v49;
-    float v50;
-    float v51;
-    float v52;
-    float v53;
-    float v54;
-    float v55;
-    float v56;
-    Vec3* v57;
-    int v58;
-    int v59;
-    tCobMeshObjectMesh* v60;
-    Vec3 dest;
-    int v62;
-    Vec3 v63;
+    Mtx4x4* mtx;
+    tCobMeshObjectMesh* mesh;
+    tCobOK3* ok3;
+    tCobOK3AABBoxElem* aaBox;
+    tCobOK3AABBoxElemChunkElem* chunkElem;
+    tColCollisionObject* cob;
+    tCobGameMaterialElems* gameMaterial;
+    tCobMeshTriangleElem* tris;
+    Vec3* verts;
+    Vec3* p1;
+    Vec3* p2;
+    Vec3* p3;
+    Vec3* dir;
+    long double invLength;
+    int chunkID;
+    int triangleBase;
+    int triangleID;
+    int crossable;
+    unsigned int boxID;
+    int chunkElemID;
+    int elemID;
+    int k;
+    Vec3 origin;
+    Vec3 localDir;
+    Vec3 normal;
+    Vec3 hitPos;
+    tColBox aabb;
     float distance;
-    int v65;
-    tCobOK3AABBoxElemChunkElem* v66;
-    unsigned int v67;
-    float v68;
-    float v69;
-    float v70;
-    int v71;
-    tCobOK3AABBoxElem* v72;
-    tCobGameMaterialElems* v73;
-    unsigned int v74;
-    tCobOK3* v75;
-    Vec3 src;
-    tColBox a3;
-    Vec3 a7;
-    Mtx4x4 a2a;
-    Mtx4x4 a1a;
+    Mtx4x4 noScaleMtx;
+    Mtx4x4 invMtx;
 
-    v2 = gao->matrices;
-    v3 = (v2->mtxflag & 8) == 0;
-    v4 = (tCobMeshObjectMesh*)(*colMap->collisionObjectPtr)->objectPtrByType;
-    v5 = v4->ok3;
-    v60 = v4;
-    v75 = v5;
-    if (v3)
+    mtx = gao->matrices;
+    mesh = (tCobMeshObjectMesh*)(*colMap->collisionObjectPtr)->objectPtrByType;
+    ok3 = mesh->ok3;
+    if ((mtx->mtxflag & 8) == 0)
     {
-        MATH_InvertMatrix(&a1a, v2);
+        MATH_InvertMatrix(&invMtx, mtx);
     }
     else
     {
-        if (&a2a != v2)
-        {
-            memcpy(&a2a, v2, sizeof(a2a));
-            v5 = v75;
-        }
-        a2a._m14 = 0.0;
-        a2a._m24 = 0.0;
-        a2a._m34 = 0.0;
-        a2a.mtxflag &= ~8u;
-        MATH_InvertMatrix(&a1a, &a2a);
+        MATH_CopyMatrix(&noScaleMtx, mtx);
+        noScaleMtx._m14 = 0.0;
+        noScaleMtx._m24 = 0.0;
+        noScaleMtx._m34 = 0.0;
+        noScaleMtx.mtxflag &= ~8u;
+        MATH_InvertMatrix(&invMtx, &noScaleMtx);
     }
-    v6 = gao->matrices;
-    if ((v6->mtxflag & 0x3C) != 0)
+
+    mtx = gao->matrices;
+    if ((mtx->mtxflag & 0x3C) != 0)
     {
-        MATH_TransformVertex(&dest, &a1a, COL_gst_Ray.sourcePoint);
-        MATH_TransformVector(&v63, &a1a, COL_gst_Ray.direction);
-        v57 = &v63;
-        v7 = 1.0 / sqrt(v63.z * v63.z + v63.y * v63.y + v63.x * v63.x);
-        v63.x = (float)(v63.x * v7);
-        v63.y = (float)(v63.y * v7);
-        v63.z = (float)(v63.z * v7);
+        MATH_TransformVertex(&origin, &invMtx, COL_gst_Ray.sourcePoint);
+        MATH_TransformVector(&localDir, &invMtx, COL_gst_Ray.direction);
+        dir = &localDir;
+        invLength = 1.0 / sqrt(localDir.z * localDir.z + localDir.y * localDir.y + localDir.x * localDir.x);
+        localDir.x = (float)(localDir.x * invLength);
+        localDir.y = (float)(localDir.y * invLength);
+        localDir.z = (float)(localDir.z * invLength);
     }
     else
     {
-        v57 = COL_gst_Ray.direction;
-        dest.x = COL_gst_Ray.sourcePoint->x - v6->Pos.x;
-        dest.y = COL_gst_Ray.sourcePoint->y - v6->Pos.y;
-        dest.z = COL_gst_Ray.sourcePoint->z - v6->Pos.z;
+        dir = COL_gst_Ray.direction;
+        origin.x = COL_gst_Ray.sourcePoint->x - mtx->Pos.x;
+        origin.y = COL_gst_Ray.sourcePoint->y - mtx->Pos.y;
+        origin.z = COL_gst_Ray.sourcePoint->z - mtx->Pos.z;
     }
-    v8 = v5->num <= 0;
-    v74 = 0;
-    if (!v8)
+
+    for (boxID = 0; boxID < ok3->num; ++boxID)
     {
-        v67 = 0;
-        do
+        aaBox = &ok3->aaBoxes[boxID];
+        aabb.pos1.x = aaBox->vec1.x;
+        aabb.pos1.y = aaBox->vec1.y;
+        aabb.pos1.z = aaBox->vec1.z;
+        aabb.pos2 = aaBox->vec2;
+        if (!INT_FullRayAABBox(&origin, dir, &aabb, 0, COL_gst_Ray.distance, 0))
+            continue;
+
+        for (chunkElemID = 0; chunkElemID < (int)aaBox->num; ++chunkElemID)
         {
-            v9 = &v5->aaBoxes[v67];
-            a3.pos1.x = v9->vec1.x;
-            a3.pos1.y = v9->vec1.y;
-            a3.pos1.z = v9->vec1.z;
-            a3.pos2 = v9->vec2;
-            v72 = v9;
-            if (INT_FullRayAABBox(&dest, v57, &a3, 0, COL_gst_Ray.distance, 0))
+            chunkElem = &aaBox->chunkElems[chunkElemID];
+            chunkID = chunkElem->triangleChunkID;
+            triangleBase = 0;
+            for (k = 0; k < chunkID; ++k)
+                triangleBase += mesh->meshChunkElems[k].elemNum;
+
+            gameMaterial = 0;                           // 0x589A == usercrossable?
+            if (COL_gst_Ray.skipFlagX || COL_gst_Ray.skipCrossable || COL_gst_Ray.skipCamera)
             {
-                v10 = v9->num;
-                v11 = 0;
-                v71 = 0;
-                if (v10 > 0)
+                cob = *colMap->collisionObjectPtr;
+                if (cob->gameMaterial)
                 {
-                    do
+                    crossable = COL_l_i_RayCrossable();
+                    gameMaterial = COL_pst_GMat_Get(cob, &mesh->meshChunkElems[chunkID]);
+                    if (COL_gst_Ray.skipCrossable && gameMaterial && ((uint16_t)crossable & gameMaterial->flags) != 0
+                        || COL_gst_Ray.skipCamera && gameMaterial && (gameMaterial->flags & 0x1000) != 0
+                        || COL_gst_Ray.skipFlagX && gameMaterial && (gameMaterial->flags & 0x200000) != 0)
                     {
-                        v12 = &v9->chunkElems[v11];
-                        v13 = v12->triangleChunkID;
-                        v14 = 0;
-                        v66 = v12;
-                        v58 = 0;
-                        if (v13)
-                        {
-                            v15 = v4->meshChunkElems;
-                            v59 = v13;
-                            do
-                            {
-                                v14 += v15->elemNum;
-                                ++v15;
-                                --v59;
-                            } while (v59);
-                            v9 = v72;
-                            v58 = v14;
-                        }
-                        v73 = 0;                            // 0x589A == usercrossable?
-                        if (!COL_gst_Ray.skipFlagX && !COL_gst_Ray.skipCrossable && !COL_gst_Ray.skipCamera
-                            || (v16 = *colMap->collisionObjectPtr, !v16->gameMaterial)
-                            || (!COL_gst_Ray.useUserCrossable ? (!COL_gst_Ray.colMapGao || (COL_gst_Ray.colMapGao->flags & 0x200) == 0 ? (v65 = 0x589A) : (v65 = COL_gst_Ray.colMapGao->extended->coll->colInstance->crossable)) : (v65 = COL_guw_UserCrossable),
-                                ((v17 = COL_pst_GMat_Get(v16, &v4->meshChunkElems[v13]), v73 = v17, !COL_gst_Ray.skipCrossable)
-                                    || !v17
-                                    || ((uint16_t)v65 & v17->flags) == 0)
-                                && (!COL_gst_Ray.skipCamera || !v17 || (v17->flags & 0x1000) == 0)
-                                && (!COL_gst_Ray.skipFlagX || !v17 || (v17->flags & 0x200000) == 0)))
-                        {
-                            v3 = v12->num == 0;
-                            v62 = 0;
-                            if (!v3)
-                            {
-                                while (1)
-                                {
-                                    v18 = v12->triangleChunkElemIDs[v62];
-                                    v19 = v4->meshChunkElems[v12->triangleChunkID].triangleElems;
-                                    v20 = v4->vertices;
-                                    v21 = v19[v18].v2;
-                                    v22 = &v19[v18];
-                                    v23 = &v20[v22->v3];
-                                    v24 = &v20[v22->v1];
-                                    v25 = &v20[v21];
-                                    v26 = v60->normals;
-                                    v27 = v58 + v18;
-                                    v28 = v26[v27].x;
-                                    v29 = &v26[v27];
-                                    src.x = v28;
-                                    src.y = v29->y;
-                                    src.z = v29->z;
-                                    if (src.z * v57->z + v28 * v57->x + src.y * v57->y > 0.0)
-                                        goto LABEL_64;
-                                    v30 = v25->x;
-                                    v31 = COL_gst_Ray.distance * v57->x;
-                                    v32 = COL_gst_Ray.distance * v57->y;
-                                    v70 = COL_gst_Ray.distance * v57->z;
-                                    v68 = (float)(dest.x + v31);
-                                    v69 = (float)(v32 + dest.y);
-                                    v70 = dest.z + v70;
-                                    v54 = v23->x;
-                                    v49 = v24->x;
-                                    if (v57->x <= 0.0)
-                                    {
-                                        v35 = MATH_f_MinOf3(v49, v30, v54);
-                                        if (v35 > dest.x)
-                                            goto LABEL_64;
-                                        v36 = MATH_f_MaxOf3(v24->x, v25->x, v23->x);
-                                        if (v36 < v68)
-                                            goto LABEL_64;
-                                    }
-                                    else
-                                    {
-                                        v33 = MATH_f_MaxOf3(v49, v30, v54);
-                                        if (v33 < dest.x)
-                                            goto LABEL_64;
-                                        v34 = MATH_f_MinOf3(v24->x, v25->x, v23->x);
-                                        if (v34 > v68)
-                                            goto LABEL_64;
-                                    }
-                                    v55 = v23->y;
-                                    v52 = v25->y;
-                                    v50 = v24->y;
-                                    if (v57->y <= 0.0)
-                                    {
-                                        v39 = MATH_f_MinOf3(v50, v52, v55);
-                                        if (v39 > dest.y)
-                                            goto LABEL_64;
-                                        v40 = MATH_f_MaxOf3(v24->y, v25->y, v23->y);
-                                        if (v40 < v69)
-                                            goto LABEL_64;
-                                    }
-                                    else
-                                    {
-                                        v37 = MATH_f_MaxOf3(v50, v52, v55);
-                                        if (v37 < dest.y)
-                                            goto LABEL_64;
-                                        v38 = MATH_f_MinOf3(v24->y, v25->y, v23->y);
-                                        if (v38 > v69)
-                                            goto LABEL_64;
-                                    }
-                                    v56 = v23->z;
-                                    v53 = v25->z;
-                                    v51 = v24->z;
-                                    if (v57->z <= 0.0)
-                                    {
-                                        v43 = MATH_f_MinOf3(v51, v53, v56);
-                                        if (v43 > dest.z)
-                                            goto LABEL_64;
-                                        v44 = MATH_f_MaxOf3(v24->z, v25->z, v23->z);
-                                        if (v44 < v70)
-                                            goto LABEL_64;
-                                    }
-                                    else
-                                    {
-                                        v41 = MATH_f_MaxOf3(v51, v53, v56);
-                                        if (v41 < dest.z)
-                                            goto LABEL_64;
-                                        v42 = MATH_f_MinOf3(v24->z, v25->z, v23->z);
-                                        if (v42 > v70)
-                                            goto LABEL_64;
-                                    }
-                                    if (INT_FullRayTriangle(&dest, v57, v24, v25, v23, &distance, &a7)
-                                        && distance < (double)COL_gst_Ray.distance
-                                        && (!COL_gb_UseMinDistance || distance > (double)COL_gf_MinDistance))
-                                    {
-                                        if (COL_gst_Ray.ignoreColMapRayCastResult)
-                                        {
-                                            *COL_gst_Ray.ignoreColMapRayCastResult = 0;
-                                            return;
-                                        }
-                                        MATH_TransformVertexNoScale(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, gao->matrices, &a7);
-                                        MATH_TransformVectorNoScale(
-                                            &COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec,
-                                            gao->matrices,
-                                            &src);
-                                        MATH_NormalizeEqualVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec);
-                                        v45 = v66;
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = v66->triangleChunkID;
-                                        v46 = v62;
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = v45->triangleChunkElemIDs[v62];
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = v58
-                                            + v45->triangleChunkElemIDs[v46];
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = v73;
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = v60->meshChunkElems[v45->triangleChunkID].designVal;
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
-                                        COL_gst_Ray.distance = distance;
-                                        COL_gst_Ray.gao = gao;
-                                    }
-                                LABEL_64:
-                                    v47 = v66->num;
-                                    v4 = v60;
-                                    if (++v62 >= v47)
-                                    {
-                                        v9 = v72;
-                                        break;
-                                    }
-                                    v12 = v66;
-                                }
-                            }
-                        }
-                        v48 = v9->num;
-                        v11 = ++v71;
-                    } while (v71 < v48);
-                    v5 = v75;
+                        continue;
+                    }
                 }
             }
-            v8 = ++v74 < v5->num;
-            ++v67;
-        } while (v8);
+
+            for (elemID = 0; elemID < (int)chunkElem->num; ++elemID)
+            {
+                triangleID = chunkElem->triangleChunkElemIDs[elemID];
+                tris = mesh->meshChunkElems[chunkElem->triangleChunkID].triangleElems;
+                verts = mesh->vertices;
+                p3 = &verts[tris[triangleID].v3];
+                p1 = &verts[tris[triangleID].v1];
+                p2 = &verts[tris[triangleID].v2];
+                normal = mesh->normals[triangleBase + triangleID];
+                if (normal.z * dir->z + normal.x * dir->x + normal.y * dir->y > 0.0)
+                    continue;
+                if (!COL_l_b_TriangleInRayExtent(p1, p2, p3, &origin, dir, COL_gst_Ray.distance))
+                    continue;
+
+                if (INT_FullRayTriangle(&origin, dir, p1, p2, p3, &distance, &hitPos)
+                    && distance < (double)COL_gst_Ray.distance
+                    && (!COL_gb_UseMinDistance || distance > (double)COL_gf_MinDistance))
+                {
+                    if (COL_gst_Ray.ignoreColMapRayCastResult)
+                    {
+                        *COL_gst_Ray.ignoreColMapRayCastResult = 0;
+                        return;
+                    }
+                    MATH_TransformVertexNoScale(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, gao->matrices, &hitPos);
+                    MATH_TransformVectorNoScale(
+                        &COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec,
+                        gao->matrices,
+                        &normal);
+                    MATH_NormalizeEqualVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec);
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = chunkElem->triangleChunkID;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = triangleID;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = triangleBase + triangleID;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = gameMaterial;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = mesh->meshChunkElems[chunkElem->triangleChunkID].designVal;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
+                    COL_gst_Ray.distance = distance;
+                    COL_gst_Ray.gao = gao;
+                }
+            }
+        }
     }
 }
 
 void COL_Visual_OK3_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
 {
-    tGEOGRO* v2;
-    tCobOK3* v3;
-    Vec3* v4;
-    Mtx4x4* v5;
-    Vec3* v6;
-    double v7;
-    long double v8;
-    BOOL v9;
-    tCobOK3AABBoxElem* v10;
-    int v11;
-    int v12;
-    tCobOK3AABBoxElemChunkElem* v13;
-    int v14;
-    int triangleNumSum;
-    tGeoTriangleChunks* v16;
-    int v17;
-    int ii;
-    BOOL numEq0;
-    Vec3* v20;
-    tGeoTriangleChunkElem* v21;
-    Vec3* v22; 
-    Vec3* v23; 
-    Vec3* v24; 
-    double v25;
-    double v26;
-    double v27;
-    double v28;
-    float v29;
-    double v30;
-    double v31;
-    double v32;
-    double v33;
-    double v34;
-    double v35;
-    double v36;
-    double v37;
-    double v38;
-    double v39;
-    double v40;
-    double v41;
-    double v42;
-    double v43;
-    Vec3* v44;
-    tCobOK3AABBoxElemChunkElem* v45;
-    int iii;
-    int nnum;
-    int v48;
-    Vec3* v49;
-    float v50;
-    float v51;
-    float v52;
-    float v53;
-    float v54;
-    Mtx4x4* v55;
-    float v56;
-    float v57;
-    float v58;
+    tCobOK3* ok3;
+    tCobOK3AABBoxElem* aaBox;
+    tCobOK3AABBoxElemChunkElem* chunkElem;
+    tGeoTriangleChunks* geoChunk;
+    tGeoTriangleChunkElem* tri;
+    Vec3* pos;
+    Mtx4x4* mtx;
+    Vec3* rayDir;
+    Vec3* dir;
+    Vec3* p1;
+    Vec3* p2;
+    Vec3* p3;
+    double sourceX;
+    long double invLength;
+    double edge1X;
+    double edge1Y;
+    double edge1Z;
+    double edge2Z;
+    int chunkID;
+    int triangleBase;
+    unsigned int boxID;
+    int chunkElemID;
+    int elemID;
+    int k;
+    float edge2X;
+    float edge2Y;
     float distance;
-    float a5;
-    Vec3* v61;
-    Vec3 src;
-    Vec3 a3;
-    tCobOK3AABBoxElemChunkElem* v64;
-    Vec3 dest;
-    Vec3 v66;
-    int v67;
-    int i;
-    float v69;
-    float v70;
-    float v71;
-    Vec3 v72;
-    int v73;
-    int ttriangleNumSum;
-    unsigned int j;
-    tCobOK3* v76;
-    tCobOK3AABBoxElem* v77;
-    float v78;
-    float v79;
-    Vec3 a7;
-    tColBox v81;
-    Mtx4x4 a2a;
-    Mtx4x4 a1a;
+    float maxDist;
+    Vec3 scaled;
+    Vec3 scaledDir;
+    Vec3 origin;
+    Vec3 localDir;
+    Vec3 normal;
+    Vec3 hitPos;
+    tColBox aabb;
+    Mtx4x4 invMtx;
+    Mtx4x4 oglMtx;
 
-    v2 = geogro;
-    v3 = geogro->collisionPtr;
-    v55 = gao->matrices;
+    ok3 = geogro->collisionPtr;
     distance = 0.0;
-    v76 = v3;
-    MATH_MakeOGLMatrix(&a1a, v55);
-    a1a._m14 = 0.0;
-    a1a._m24 = 0.0;
-    a1a._m34 = 0.0;
-    a1a.mtxflag &= ~8u;
-    MATH_Invert33Matrix(&a2a, &a1a);
-    a2a._m14 = 0.0;
-    a2a._m24 = 0.0;
-    a2a._m34 = 0.0;
-    v4 = &gao->matrices->Pos;
-    a2a.mtxflag &= ~8u;
-    a2a.Pos.x = -v4->x;
-    a2a.Pos.y = -v4->y;
-    a2a.Pos.z = -v4->z;
-    MATH_TransformVector(&a2a.Pos, &a2a, &a2a.Pos);
-    v5 = gao->matrices;
-    if ((v5->mtxflag & 0x3C) != 0)
+    MATH_MakeOGLMatrix(&oglMtx, gao->matrices);
+    oglMtx._m14 = 0.0;
+    oglMtx._m24 = 0.0;
+    oglMtx._m34 = 0.0;
+    oglMtx.mtxflag &= ~8u;
+    MATH_Invert33Matrix(&invMtx, &oglMtx);
+    invMtx._m14 = 0.0;
+    invMtx._m24 = 0.0;
+    invMtx._m34 = 0.0;
+    pos = &gao->matrices->Pos;
+    invMtx.mtxflag &= ~8u;
+    invMtx.Pos.x = -pos->x;
+    invMtx.Pos.y = -pos->y;
+    invMtx.Pos.z = -pos->z;
+    MATH_TransformVector(&invMtx.Pos, &invMtx, &invMtx.Pos);
+
+    mtx = gao->matrices;
+    if ((mtx->mtxflag & 0x3C) != 0)
     {
-        MATH_TransformVertex(&dest, &a2a, COL_gst_Ray.sourcePoint);
-        MATH_TransformVector(&v66, &a2a, COL_gst_Ray.direction);
-        v6 = COL_gst_Ray.direction;
-        v61 = &v66;
-        v8 = 1.0 / sqrt(v66.z * v66.z + v66.y * v66.y + v66.x * v66.x);
-        v66.x = (float)(v66.x * v8);
-        v66.y = (float)(v66.y * v8);
-        v66.z = (float)(v66.z * v8);
+        MATH_TransformVertex(&origin, &invMtx, COL_gst_Ray.sourcePoint);
+        MATH_TransformVector(&localDir, &invMtx, COL_gst_Ray.direction);
+        rayDir = COL_gst_Ray.direction;
+        dir = &localDir;
+        invLength = 1.0 / sqrt(localDir.z * localDir.z + localDir.y * localDir.y + localDir.x * localDir.x);
+        localDir.x = (float)(localDir.x * invLength);
+        localDir.y = (float)(localDir.y * invLength);
+        localDir.z = (float)(localDir.z * invLength);
     }
     else
     {
-        v6 = COL_gst_Ray.direction;
-        v7 = COL_gst_Ray.sourcePoint->x - v5->Pos.x;
-        v61 = COL_gst_Ray.direction;
-        dest.x = (float)v7;
-        dest.y = (float)(COL_gst_Ray.sourcePoint->y - v5->Pos.y);
-        dest.z = (float)(COL_gst_Ray.sourcePoint->z - v5->Pos.z);
+        rayDir = COL_gst_Ray.direction;
+        sourceX = COL_gst_Ray.sourcePoint->x - mtx->Pos.x;
+        dir = COL_gst_Ray.direction;
+        origin.x = (float)sourceX;
+        origin.y = (float)(COL_gst_Ray.sourcePoint->y - mtx->Pos.y);
+        origin.z = (float)(COL_gst_Ray.sourcePoint->z - mtx->Pos.z);
     }
+
     if ((gao->matrices->mtxflag & 8) != 0)
     {
-        a3.x = COL_gst_Ray.distance * v6->x;
-        a3.y = v6->y * COL_gst_Ray.distance;
-        a3.z = v6->z * COL_gst_Ray.distance;
-        MATH_TransformVector(&src, &a2a, &a3);
-        a5 = (float)sqrt(src.x * src.x + src.z * src.z + src.y * src.y);
+        scaled.x = COL_gst_Ray.distance * rayDir->x;
+        scaled.y = rayDir->y * COL_gst_Ray.distance;
+        scaled.z = rayDir->z * COL_gst_Ray.distance;
+        MATH_TransformVector(&scaledDir, &invMtx, &scaled);
+        maxDist = (float)sqrt(scaledDir.x * scaledDir.x + scaledDir.z * scaledDir.z + scaledDir.y * scaledDir.y);
     }
     else
     {
-        a5 = COL_gst_Ray.distance;
+        maxDist = COL_gst_Ray.distance;
     }
-    v9 = v3->num <= 0;
-    j = 0;
-    if (!v9)
+
+    for (boxID = 0; boxID < ok3->num; ++boxID)
     {
-        v67 = 0;
-        do
+        aaBox = &ok3->aaBoxes[boxID];
+        aabb.pos1.x = aaBox->vec1.x;
+        aabb.pos1.y = aaBox->vec1.y;
+        aabb.pos1.z = aaBox->vec1.z;
+        aabb.pos2 = aaBox->vec2;
+        if (!INT_FullRayAABBox(&origin, dir, &aabb, 0, maxDist, 0))
+            continue;
+
+        // preserved: this scales by the hit distance of the previous triangle,
+        // which is zero until one is found, and nothing reads the result
+        if ((gao->matrices->mtxflag & 8) != 0)
         {
-            v10 = &v3->aaBoxes[v67];
-            v81.pos1.x = v10->vec1.x;
-            v81.pos1.y = v10->vec1.y;
-            v81.pos1.z = v10->vec1.z;
-            v81.pos2 = v10->vec2;
-            v77 = v10;
-            if (INT_FullRayAABBox(&dest, v61, &v81, 0, a5, 0))
+            scaledDir.x = distance * COL_gst_Ray.direction->x;
+            scaledDir.y = COL_gst_Ray.direction->y * distance;
+            scaledDir.z = COL_gst_Ray.direction->z * distance;
+            MATH_TransformVector(&scaled, &oglMtx, &scaledDir);
+            distance = (float)sqrt(scaled.x * scaled.x + scaled.z * scaled.z + scaled.y * scaled.y);
+        }
+
+        for (chunkElemID = 0; chunkElemID < (int)aaBox->num; ++chunkElemID)
+        {
+            chunkElem = &aaBox->chunkElems[chunkElemID];
+            chunkID = chunkElem->triangleChunkID;
+            triangleBase = 0;
+            for (k = 0; k < chunkID; ++k)
+                triangleBase += geogro->triangleChunks[k].triangleNum;
+
+            if (!geogro->triangleChunks[chunkID].triangleChunkElems)
+                continue;
+
+            for (elemID = 0; elemID < (int)chunkElem->num; ++elemID)
             {
-                if ((gao->matrices->mtxflag & 8) != 0)
+                tri = &geogro->triangleChunks[chunkElem->triangleChunkID].triangleChunkElems[chunkElem->triangleChunkElemIDs[elemID]];
+                p1 = &geogro->vertices[tri->v1];
+                p2 = &geogro->vertices[tri->v2];
+                p3 = &geogro->vertices[tri->v3];
+                edge1X = p2->x - p1->x;
+                edge1Y = p2->y - p1->y;
+                edge1Z = p2->z - p1->z;
+                edge2X = p3->x - p1->x;
+                edge2Y = p3->y - p1->y;
+                edge2Z = p3->z - p1->z;
+                normal.x = (float)(edge2Z * edge1Y - edge2Y * edge1Z);
+                normal.y = (float)(edge1Z * edge2X - edge2Z * edge1X);
+                normal.z = (float)(edge2Y * edge1X - edge1Y * edge2X);
+                if (normal.y * dir->y + normal.x * dir->x + normal.z * dir->z > 0.0)
+                    continue;
+                if (!COL_l_b_TriangleInRayExtent(p1, p2, p3, &origin, dir, maxDist))
+                    continue;
+
+                if (INT_FullRayTriangle(&origin, dir, p1, p2, p3, &distance, &hitPos)
+                    && distance < (double)maxDist
+                    && (!COL_gb_UseMinDistance || distance > (double)COL_gf_MinDistance))
                 {
-                    src.x = distance * COL_gst_Ray.direction->x;
-                    src.y = COL_gst_Ray.direction->y * distance;
-                    src.z = COL_gst_Ray.direction->z * distance;
-                    MATH_TransformVector(&a3, &a1a, &src);
-                    distance = (float)sqrt(a3.x * a3.x + a3.z * a3.z + a3.y * a3.y);
-                }
-                v11 = v10->num;
-                v12 = 0;
-                v73 = 0;
-                if (v11 > 0)
-                {
-                    do
+                    if (COL_gst_Ray.ignoreColMapRayCastResult)
                     {
-                        v13 = &v10->chunkElems[v12];
-                        v14 = v13->triangleChunkID;
-                        triangleNumSum = 0;
-                        v64 = v13;
-                        ttriangleNumSum = 0;
-                        if (v14)
-                        {
-                            v16 = v2->triangleChunks;
-                            v17 = v14;
-                            do
-                            {
-                                triangleNumSum += v16->triangleNum;
-                                ++v16;
-                                --v17;
-                            } while (v17);
-                            v13 = v64;
-                            ttriangleNumSum = triangleNumSum;
-                        }
-                        if (v2->triangleChunks[v14].triangleChunkElems)
-                        {
-                            ii = 0;
-                            numEq0 = v13->num == 0;
-                            i = 0;
-                            if (!numEq0)
-                            {
-                                while (1)
-                                {
-                                    v20 = v2->vertices;
-                                    v21 = &v2->triangleChunks[v13->triangleChunkID].triangleChunkElems[v13->triangleChunkElemIDs[ii]];
-                                    v22 = &v20[v21->v1];
-                                    v23 = &v20[v21->v2];
-                                    v24 = &v20[v21->v3];
-                                    v25 = v23->x - v22->x;
-                                    v26 = v23->y - v22->y;
-                                    v27 = v23->z - v22->z;
-                                    v78 = v24->x - v22->x;
-                                    v79 = v24->y - v22->y;
-                                    v28 = v24->z - v22->z;
-                                    v72.x = (float)(v28 * v26 - v79 * v27);
-                                    v72.y = (float)(v27 * v78 - v28 * v25);
-                                    v72.z = (float)(v79 * v25 - v26 * v78);
-                                    if (v72.y * v61->y + v72.x * v61->x + v72.z * v61->z > 0.0)
-                                        goto LABEL_56;
-                                    v29 = v22->x;
-                                    v30 = a5 * v61->x;
-                                    v31 = a5 * v61->y;
-                                    v71 = a5 * v61->z;
-                                    v69 = (float)(dest.x + v30);
-                                    v70 = (float)(v31 + dest.y);
-                                    v71 = dest.z + v71;
-                                    v56 = v24->x;
-                                    v52 = v23->x;
-                                    if (v61->x <= 0.0)
-                                    {
-                                        v34 = MATH_f_MinOf3(v29, v52, v56);
-                                        if (v34 > dest.x)
-                                            goto LABEL_56;
-                                        v35 = MATH_f_MaxOf3(v22->x, v23->x, v24->x);
-                                        if (v35 < v69)
-                                            goto LABEL_56;
-                                    }
-                                    else
-                                    {
-                                        v32 = MATH_f_MaxOf3(v29, v52, v56);
-                                        if (v32 < dest.x)
-                                            goto LABEL_56;
-                                        v33 = MATH_f_MinOf3(v22->x, v23->x, v24->x);
-                                        if (v33 > v69)
-                                            goto LABEL_56;
-                                    }
-                                    v57 = v24->y;
-                                    v53 = v23->y;
-                                    v50 = v22->y;
-                                    if (v61->y <= 0.0)
-                                    {
-                                        v38 = MATH_f_MinOf3(v50, v53, v57);
-                                        if (v38 > dest.y)
-                                            goto LABEL_56;
-                                        v39 = MATH_f_MaxOf3(v22->y, v23->y, v24->y);
-                                        if (v39 < v70)
-                                            goto LABEL_56;
-                                    }
-                                    else
-                                    {
-                                        v36 = MATH_f_MaxOf3(v50, v53, v57);
-                                        if (v36 < dest.y)
-                                            goto LABEL_56;
-                                        v37 = MATH_f_MinOf3(v22->y, v23->y, v24->y);
-                                        if (v37 > v70)
-                                            goto LABEL_56;
-                                    }
-                                    v58 = v24->z;
-                                    v54 = v23->z;
-                                    v51 = v22->z;
-                                    if (v61->z <= 0.0)
-                                    {
-                                        v42 = MATH_f_MinOf3(v51, v54, v58);
-                                        if (v42 > dest.z)
-                                            goto LABEL_56;
-                                        v43 = MATH_f_MaxOf3(v22->z, v23->z, v24->z);
-                                        if (v43 < v71)
-                                            goto LABEL_56;
-                                    }
-                                    else
-                                    {
-                                        v40 = MATH_f_MaxOf3(v51, v54, v58);
-                                        if (v40 < dest.z)
-                                            goto LABEL_56;
-                                        v41 = MATH_f_MinOf3(v22->z, v23->z, v24->z);
-                                        if (v41 > v71)
-                                            goto LABEL_56;
-                                    }
-                                    v49 = v23;
-                                    v44 = v61;
-                                    if (INT_FullRayTriangle(&dest, v61, v22, v49, v24, &distance, &a7)
-                                        && distance < (double)a5
-                                        && (!COL_gb_UseMinDistance || distance > (double)COL_gf_MinDistance))
-                                    {
-                                        if (COL_gst_Ray.ignoreColMapRayCastResult)
-                                        {
-                                            *COL_gst_Ray.ignoreColMapRayCastResult = 0;
-                                            return;
-                                        }
-                                        if (COL_gst_Ray.skipVecsTransformationToGaoSpace)
-                                            COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos = a7;
-                                        else
-                                            MATH_TransformVertex(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, &a1a, &a7);
-                                        if (COL_gst_Ray.skipVecsTransformationToGaoSpace)
-                                            COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec = v72;
-                                        else
-                                            MATH_TransformVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec, &a1a, &v72);
-                                        MATH_NormalizeEqualVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec);
-                                        v45 = v64;
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = v64->triangleChunkID;
-                                        iii = i;
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = v45->triangleChunkElemIDs[i];
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = ttriangleNumSum
-                                            + v45->triangleChunkElemIDs[iii];
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = 0;
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = 0;
-                                        COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
-                                        COL_gst_Ray.gao = gao;
-                                        if ((gao->matrices->mtxflag & 8) != 0)
-                                        {
-                                            src.x = distance * v44->x;
-                                            src.y = distance * v44->y;
-                                            src.z = distance * v44->z;
-                                            MATH_TransformVector(&a3, &a1a, &src);
-                                            distance = MATH_VecLen(&a3);
-                                        }
-                                        COL_gst_Ray.distance = distance;
-                                        if ((gao->matrices->mtxflag & 8) != 0)
-                                        {
-                                            a3.x = distance * COL_gst_Ray.direction->x;
-                                            a3.y = COL_gst_Ray.direction->y * distance;
-                                            a3.z = COL_gst_Ray.direction->z * distance;
-                                            MATH_TransformVector(&src, &a2a, &a3);
-                                            a5 = MATH_VecLen(&src);
-                                        }
-                                        else
-                                        {
-                                            a5 = distance;
-                                        }
-                                    }
-                                LABEL_56:
-                                    nnum = v64->num;
-                                    v2 = geogro;
-                                    ii = ++i;
-                                    if (i >= nnum)
-                                    {
-                                        v10 = v77;
-                                        break;
-                                    }
-                                    v13 = v64;
-                                }
-                            }
-                        }
-                        v48 = v10->num;
-                        v12 = ++v73;
-                    } while (v73 < v48);
-                    v3 = v76;
+                        *COL_gst_Ray.ignoreColMapRayCastResult = 0;
+                        return;
+                    }
+                    if (COL_gst_Ray.skipVecsTransformationToGaoSpace)
+                        COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos = hitPos;
+                    else
+                        MATH_TransformVertex(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, &oglMtx, &hitPos);
+                    if (COL_gst_Ray.skipVecsTransformationToGaoSpace)
+                        COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec = normal;
+                    else
+                        MATH_TransformVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec, &oglMtx, &normal);
+                    MATH_NormalizeEqualVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec);
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = chunkElem->triangleChunkID;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = chunkElem->triangleChunkElemIDs[elemID];
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = triangleBase
+                        + chunkElem->triangleChunkElemIDs[elemID];
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = 0;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = 0;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
+                    COL_gst_Ray.gao = gao;
+                    if ((gao->matrices->mtxflag & 8) != 0)
+                    {
+                        scaledDir.x = distance * dir->x;
+                        scaledDir.y = distance * dir->y;
+                        scaledDir.z = distance * dir->z;
+                        MATH_TransformVector(&scaled, &oglMtx, &scaledDir);
+                        distance = MATH_VecLen(&scaled);
+                    }
+                    COL_gst_Ray.distance = distance;
+                    if ((gao->matrices->mtxflag & 8) != 0)
+                    {
+                        scaled.x = distance * COL_gst_Ray.direction->x;
+                        scaled.y = COL_gst_Ray.direction->y * distance;
+                        scaled.z = COL_gst_Ray.direction->z * distance;
+                        MATH_TransformVector(&scaledDir, &invMtx, &scaled);
+                        maxDist = MATH_VecLen(&scaledDir);
+                    }
+                    else
+                    {
+                        maxDist = distance;
+                    }
                 }
             }
-            v9 = ++j < v3->num;
-            ++v67;
-        } while (v9);
+        }
     }
 }
 
 void COL_Visual_Triangles_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
 {
-    Vec3* v2; // eax
-    Mtx4x4* v3; // eax
-    Vec3* v4; // edx
-    double v5; // st7
-    long double v6; // st7
-    tGeoTriangleChunks* v7; // ecx
-    tGeoTriangleChunks* v8; // edi
-    tGeoTriangleChunkElem* v9; // eax
-    tGeoTriangleChunkElem* v10; // edx
-    Vec3* v11; // ebx
-    Vec3* v12; // esi
-    Vec3* v13; // edi
-    double v14; // st7
-    float v15; // ecx
-    Vec3* v16; // ebx
-    double v17; // st6
-    float v18; // edx
-    double v19; // st7
-    double v20; // st7
-    double v21; // st7
-    double v22; // st7
-    double v23; // st7
-    double v24; // st7
-    double v25; // st7
-    double v26; // st7
-    double v27; // st7
-    double v28; // st7
-    double v29; // st7
-    double v30; // st7
-    double v31; // st7
-    double v32; // st6
-    double v33; // st5
-    double v34; // st4
-    BOOL v35; // cf
-    float v36; // [esp-Ch] [ebp-14Ch]
-    float v37; // [esp-Ch] [ebp-14Ch]
-    float v38; // [esp-8h] [ebp-148h]
-    float v39; // [esp-8h] [ebp-148h]
-    float v40; // [esp-4h] [ebp-144h]
-    float v41; // [esp-4h] [ebp-144h]
-    float v42; // [esp-4h] [ebp-144h]
-    float distance; // [esp+18h] [ebp-128h] BYREF
-    float v44; // [esp+1Ch] [ebp-124h]
-    Vec3* v45; // [esp+20h] [ebp-120h]
-    Vec3 v46; // [esp+24h] [ebp-11Ch] BYREF
-    Vec3 v47; // [esp+30h] [ebp-110h] BYREF
-    int v48; // [esp+3Ch] [ebp-104h]
-    int v49; // [esp+40h] [ebp-100h]
-    int v50; // [esp+44h] [ebp-FCh]
-    tGeoTriangleChunkElem* v51; // [esp+48h] [ebp-F8h]
-    float v52; // [esp+4Ch] [ebp-F4h]
-    float v53; // [esp+50h] [ebp-F0h]
-    float v54; // [esp+54h] [ebp-ECh]
-    Vec3 v55; // [esp+58h] [ebp-E8h] BYREF
-    Vec3 v56; // [esp+64h] [ebp-DCh] BYREF
-    tGeoTriangleChunks* v57; // [esp+70h] [ebp-D0h]
-    Vec3 a3; // [esp+74h] [ebp-CCh] BYREF
-    tGeoTriangleChunks* v59; // [esp+80h] [ebp-C0h]
-    tGeoTriangleChunkElem* v60; // [esp+84h] [ebp-BCh]
-    float v61; // [esp+88h] [ebp-B8h]
-    float v62; // [esp+8Ch] [ebp-B4h]
-    Vec3 a7; // [esp+94h] [ebp-ACh] BYREF
-    Mtx4x4 a2a; // [esp+A0h] [ebp-A0h] BYREF
-    Mtx4x4 a1a; // [esp+F0h] [ebp-50h] BYREF
+    Vec3* pos;
+    Mtx4x4* mtx;
+    Vec3* rayDir;
+    Vec3* dir;
+    Vec3* p1;
+    Vec3* p2;
+    Vec3* p3;
+    tGeoTriangleChunks* chunk;
+    tGeoTriangleChunks* chunkEnd;
+    tGeoTriangleChunkElem* tri;
+    tGeoTriangleChunkElem* triEnd;
+    double sourceX;
+    long double invLength;
+    double edge1X;
+    double edge1Y;
+    double edge1Z;
+    double edge2Z;
+    int globalTriangle;
+    int chunkID;
+    int triangleID;
+    float edge2X;
+    float edge2Y;
+    float distance;
+    float maxDist;
+    Vec3 origin;
+    Vec3 localDir;
+    Vec3 normal;
+    Vec3 hitPos;
+    Vec3 scaled;
+    Vec3 scaledDir;
+    Mtx4x4 invMtx;
+    Mtx4x4 oglMtx;
 
-    MATH_MakeOGLMatrix(&a1a, gao->matrices);
-    a1a._m14 = 0.0;
-    a1a._m24 = 0.0;
-    a1a._m34 = 0.0;
-    a1a.mtxflag &= ~8u;
-    MATH_Invert33Matrix(&a2a, &a1a);
-    a2a.mtxflag &= ~8u;
-    v2 = &gao->matrices->Pos;
-    a2a._m14 = 0.0;
-    a2a._m24 = 0.0;
-    a2a._m34 = 0.0;
-    a2a.Pos.x = -v2->x;
-    a2a.Pos.y = -v2->y;
-    a2a.Pos.z = -v2->z;
-    MATH_TransformVector(&a2a.Pos, &a2a, &a2a.Pos);
-    v3 = gao->matrices;
-    if ((v3->mtxflag & 0x3C) != 0)
+    MATH_MakeOGLMatrix(&oglMtx, gao->matrices);
+    oglMtx._m14 = 0.0;
+    oglMtx._m24 = 0.0;
+    oglMtx._m34 = 0.0;
+    oglMtx.mtxflag &= ~8u;
+    MATH_Invert33Matrix(&invMtx, &oglMtx);
+    invMtx.mtxflag &= ~8u;
+    pos = &gao->matrices->Pos;
+    invMtx._m14 = 0.0;
+    invMtx._m24 = 0.0;
+    invMtx._m34 = 0.0;
+    invMtx.Pos.x = -pos->x;
+    invMtx.Pos.y = -pos->y;
+    invMtx.Pos.z = -pos->z;
+    MATH_TransformVector(&invMtx.Pos, &invMtx, &invMtx.Pos);
+
+    mtx = gao->matrices;
+    if ((mtx->mtxflag & 0x3C) != 0)
     {
-        MATH_TransformVertex(&v46, &a2a, COL_gst_Ray.sourcePoint);
-        MATH_TransformVector(&v47, &a2a, COL_gst_Ray.direction);
-        v4 = COL_gst_Ray.direction;
-        v45 = &v47;
-        v6 = 1.0 / sqrt(v47.z * v47.z + v47.y * v47.y + v47.x * v47.x);
-        v47.x = (float)(v47.x * v6);
-        v47.y = (float)(v47.y * v6);
-        v47.z = (float)(v47.z * v6);
+        MATH_TransformVertex(&origin, &invMtx, COL_gst_Ray.sourcePoint);
+        MATH_TransformVector(&localDir, &invMtx, COL_gst_Ray.direction);
+        rayDir = COL_gst_Ray.direction;
+        dir = &localDir;
+        invLength = 1.0 / sqrt(localDir.z * localDir.z + localDir.y * localDir.y + localDir.x * localDir.x);
+        localDir.x = (float)(localDir.x * invLength);
+        localDir.y = (float)(localDir.y * invLength);
+        localDir.z = (float)(localDir.z * invLength);
     }
     else
     {
-        v4 = COL_gst_Ray.direction;
-        v5 = COL_gst_Ray.sourcePoint->x - v3->Pos.x;
-        v45 = COL_gst_Ray.direction;
-        v46.x = (float)v5;
-        v46.y = COL_gst_Ray.sourcePoint->y - v3->Pos.y;
-        v46.z = COL_gst_Ray.sourcePoint->z - v3->Pos.z;
+        rayDir = COL_gst_Ray.direction;
+        sourceX = COL_gst_Ray.sourcePoint->x - mtx->Pos.x;
+        dir = COL_gst_Ray.direction;
+        origin.x = (float)sourceX;
+        origin.y = COL_gst_Ray.sourcePoint->y - mtx->Pos.y;
+        origin.z = COL_gst_Ray.sourcePoint->z - mtx->Pos.z;
     }
+
     if ((gao->matrices->mtxflag & 8) != 0)
     {
-        a3.x = COL_gst_Ray.distance * v4->x;
-        a3.y = v4->y * COL_gst_Ray.distance;
-        a3.z = v4->z * COL_gst_Ray.distance;
-        MATH_TransformVector(&v55, &a2a, &a3);
-        v44 = (float)sqrt(v55.z * v55.z + v55.y * v55.y + v55.x * v55.x);
+        scaled.x = COL_gst_Ray.distance * rayDir->x;
+        scaled.y = rayDir->y * COL_gst_Ray.distance;
+        scaled.z = rayDir->z * COL_gst_Ray.distance;
+        MATH_TransformVector(&scaledDir, &invMtx, &scaled);
+        maxDist = (float)sqrt(scaledDir.z * scaledDir.z + scaledDir.y * scaledDir.y + scaledDir.x * scaledDir.x);
     }
     else
     {
-        v44 = COL_gst_Ray.distance;
+        maxDist = COL_gst_Ray.distance;
     }
-    v7 = geogro->triangleChunks;
-    v8 = &v7[geogro->triangleChunkCount];
-    v57 = v7;
-    v59 = v8;
-    v49 = 0;
-    v48 = 0;
-    if (v7 < v8)
+
+    chunk = geogro->triangleChunks;
+    chunkEnd = &chunk[geogro->triangleChunkCount];
+    globalTriangle = 0;
+    for (chunkID = 0; chunk < chunkEnd; ++chunk, ++chunkID)
     {
-        while (1)
+        tri = chunk->triangleChunkElems;
+        if (!tri)
+            continue;
+        triEnd = &tri[chunk->triangleNum];
+
+        for (triangleID = 0; tri < triEnd; ++tri, ++triangleID, ++globalTriangle)
         {
-            v9 = v7->triangleChunkElems;
-            if (v9)
-            {
-                v10 = &v9[v7->triangleNum];
-                v51 = v7->triangleChunkElems;
-                v60 = v10;
-                v50 = 0;
-                if (v9 < v10)
-                    break;
-            }
-        LABEL_49:
-            v57 = ++v7;
-            ++v48;
-            if (v7 >= v8)
-                return;
-        }
-        while (1)
-        {
-            v11 = geogro->vertices;
-            v12 = &v11[v9->v1];
-            v13 = &v11[v9->v2];
-            v14 = v44 * v45->x;
-            v15 = v13->x;
-            v16 = &v11[v9->v3];
-            v17 = v44 * v45->y;
-            v18 = v12->x;
-            v54 = v44 * v45->z;
-            v52 = (float)(v46.x + v14);
-            v53 = (float)(v17 + v46.y);
-            v54 = v46.z + v54;
-            v40 = v16->x;
-            if (v45->x <= 0.0)
-            {
-                v21 = MATH_f_MinOf3(v18, v15, v40);
-                if (v21 > v46.x)
-                    goto LABEL_47;
-                v22 = MATH_f_MaxOf3(v12->x, v13->x, v16->x);
-                if (v22 < v52)
-                    goto LABEL_47;
-            }
-            else
-            {
-                v19 = MATH_f_MaxOf3(v18, v15, v40);
-                if (v19 < v46.x)
-                    goto LABEL_47;
-                v20 = MATH_f_MinOf3(v12->x, v13->x, v16->x);
-                if (v20 > v52)
-                    goto LABEL_47;
-            }
-            v41 = v16->y;
-            v38 = v13->y;
-            v36 = v12->y;
-            if (v45->y <= 0.0)
-            {
-                v25 = MATH_f_MinOf3(v36, v38, v41);
-                if (v25 > v46.y)
-                    goto LABEL_47;
-                v26 = MATH_f_MaxOf3(v12->y, v13->y, v16->y);
-                if (v26 < v53)
-                    goto LABEL_47;
-            }
-            else
-            {
-                v23 = MATH_f_MaxOf3(v36, v38, v41);
-                if (v23 < v46.y)
-                    goto LABEL_47;
-                v24 = MATH_f_MinOf3(v12->y, v13->y, v16->y);
-                if (v24 > v53)
-                    goto LABEL_47;
-            }
-            v42 = v16->z;
-            v39 = v13->z;
-            v37 = v12->z;
-            if (v45->z <= 0.0)
-            {
-                v29 = MATH_f_MinOf3(v37, v39, v42);
-                if (v29 > v46.z)
-                    goto LABEL_47;
-                v30 = MATH_f_MaxOf3(v12->z, v13->z, v16->z);
-                if (v30 < v54)
-                    goto LABEL_47;
-            }
-            else
-            {
-                v27 = MATH_f_MaxOf3(v37, v39, v42);
-                if (v27 < v46.z)
-                    goto LABEL_47;
-                v28 = MATH_f_MinOf3(v12->z, v13->z, v16->z);
-                if (v28 > v54)
-                    goto LABEL_47;
-            }
-            v31 = v13->x - v12->x;
-            v32 = v13->y - v12->y;
-            v33 = v13->z - v12->z;
-            v61 = v16->x - v12->x;
-            v62 = v16->y - v12->y;
-            v34 = v16->z - v12->z;
-            v56.x = (float)(v34 * v32 - v62 * v33);
-            v56.y = (float)(v33 * v61 - v34 * v31);
-            v56.z = (float)(v62 * v31 - v32 * v61);
-            if (v56.z * v45->z + v56.y * v45->y + v56.x * v45->x <= 0.0
-                && INT_FullRayTriangle(&v46, v45, v12, v13, v16, &distance, &a7)
-                && distance < (double)v44
+            p1 = &geogro->vertices[tri->v1];
+            p2 = &geogro->vertices[tri->v2];
+            p3 = &geogro->vertices[tri->v3];
+            if (!COL_l_b_TriangleInRayExtent(p1, p2, p3, &origin, dir, maxDist))
+                continue;
+
+            edge1X = p2->x - p1->x;
+            edge1Y = p2->y - p1->y;
+            edge1Z = p2->z - p1->z;
+            edge2X = p3->x - p1->x;
+            edge2Y = p3->y - p1->y;
+            edge2Z = p3->z - p1->z;
+            normal.x = (float)(edge2Z * edge1Y - edge2Y * edge1Z);
+            normal.y = (float)(edge1Z * edge2X - edge2Z * edge1X);
+            normal.z = (float)(edge2Y * edge1X - edge1Y * edge2X);
+
+            if (normal.z * dir->z + normal.y * dir->y + normal.x * dir->x <= 0.0
+                && INT_FullRayTriangle(&origin, dir, p1, p2, p3, &distance, &hitPos)
+                && distance < (double)maxDist
                 && (!COL_gb_UseMinDistance || distance > (double)COL_gf_MinDistance))
             {
                 if (COL_gst_Ray.ignoreColMapRayCastResult)
@@ -3670,649 +2860,586 @@ void COL_Visual_Triangles_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
                     return;
                 }
                 if (COL_gst_Ray.skipVecsTransformationToGaoSpace)
-                    COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos = a7;
+                    COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos = hitPos;
                 else
-                    MATH_TransformVertex(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, &a1a, &a7);
+                    MATH_TransformVertex(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, &oglMtx, &hitPos);
                 if (COL_gst_Ray.skipVecsTransformationToGaoSpace)
-                    COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec = v56;
+                    COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec = normal;
                 else
-                    MATH_TransformVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec, &a1a, &v56);
+                    MATH_TransformVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec, &oglMtx, &normal);
                 MATH_NormalizeEqualVector(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec);
-                COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = v48;
-                COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = v50;
-                COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = v49;
+                COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = chunkID;
+                COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = triangleID;
+                COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = globalTriangle;
                 COL_gst_Ray.gao = gao;
                 if ((gao->matrices->mtxflag & 8) != 0)
                 {
-                    MATH_VecMultScalar(&v55, v45, distance);
-                    MATH_TransformVector(&a3, &a1a, &v55);
-                    distance = MATH_VecLen(&a3);
+                    MATH_VecMultScalar(&scaledDir, dir, distance);
+                    MATH_TransformVector(&scaled, &oglMtx, &scaledDir);
+                    distance = MATH_VecLen(&scaled);
                 }
                 COL_gst_Ray.distance = distance;
                 if ((gao->matrices->mtxflag & 8) != 0)
                 {
-                    MATH_VecMultScalar(&a3, COL_gst_Ray.direction, distance);
-                    MATH_TransformVector(&v55, &a2a, &a3);
-                    v44 = MATH_VecLen(&v55);
+                    MATH_VecMultScalar(&scaled, COL_gst_Ray.direction, distance);
+                    MATH_TransformVector(&scaledDir, &invMtx, &scaled);
+                    maxDist = MATH_VecLen(&scaledDir);
                 }
                 else
                 {
-                    v44 = distance;
+                    maxDist = distance;
                 }
             }
-        LABEL_47:
-            v35 = &v51[1] < v60;
-            ++v51;
-            ++v49;
-            ++v50;
-            if (!v35)
-            {
-                v7 = v57;
-                v8 = v59;
-                goto LABEL_49;
-            }
-            v9 = v51;
         }
     }
 }
 
 void COL_ColMap_Box_RayCast(tGameObjectMain* gao, tCobNormalObjectGeneric * box)
 {
-    Vec3* v2;
-    long double v3;
-    tColBox* v4;
-    Mtx4x4* v5;
-    float a6;
-    Vec3 v7;
-    Vec3 a3;
-    Vec3 v9;
-    float a5;
-    tColBox colBox;
-    Vec3 a4;
-    Mtx4x4 a2a;
-    Vec3 v14;
-    Mtx4x4 a1a;
+    Vec3* pos;
+    long double invLength;
+    tColBox* shape;
+    Mtx4x4* mtx;
+    float hitDist;
+    Vec3 localDir;
+    Vec3 scaledDir;
+    Vec3 scratch;
+    float maxDist;
+    tColBox localBox;
+    Vec3 hitPos;
+    Mtx4x4 invMtx;
+    Vec3 localSource;
+    Mtx4x4 oglMtx;
 
-    MATH_MakeOGLMatrix(&a1a, gao->matrices);
-    a1a._m14 = 0.0;
-    a1a._m24 = 0.0;
-    a1a._m34 = 0.0;
-    a1a.mtxflag &= ~8u;
-    MATH_Invert33Matrix(&a2a, &a1a);
-    v2 = &gao->matrices->Pos;
-    a2a.mtxflag &= ~8u;
-    a2a._m14 = 0.0;
-    a2a._m24 = 0.0;
-    a2a._m34 = 0.0;
-    a2a.Pos.x = -v2->x;
-    a2a.Pos.y = -v2->y;
-    a2a.Pos.z = -v2->z;
-    MATH_TransformVector(&a2a.Pos, &a2a, &a2a.Pos);
-    MATH_TransformVertex(&v14, &a2a, COL_gst_Ray.sourcePoint);
-    MATH_TransformVector(&v7, &a2a, COL_gst_Ray.direction);
-    v3 = 1.0 / sqrt(v7.z * v7.z + v7.y * v7.y + v7.x * v7.x);
-    v7.x = (float)(v7.x * v3);
-    v7.y = (float)(v7.y * v3);
-    v4 = (tColBox *)(box->enclosurePtr);
-    v7.z = (float)(v3 * v7.z);
-    colBox.pos2 = v4->pos1;
-    colBox.pos1.x = v4->pos2.x;
-    v5 = gao->matrices;
-    colBox.pos1.y = v4->pos2.y;
-    colBox.pos1.z = v4->pos2.z;
-    if ((v5->mtxflag & 8) != 0)
+    MATH_MakeOGLMatrix(&oglMtx, gao->matrices);
+    oglMtx._m14 = 0.0;
+    oglMtx._m24 = 0.0;
+    oglMtx._m34 = 0.0;
+    oglMtx.mtxflag &= ~8u;
+    MATH_Invert33Matrix(&invMtx, &oglMtx);
+    pos = &gao->matrices->Pos;
+    invMtx.mtxflag &= ~8u;
+    invMtx._m14 = 0.0;
+    invMtx._m24 = 0.0;
+    invMtx._m34 = 0.0;
+    invMtx.Pos.x = -pos->x;
+    invMtx.Pos.y = -pos->y;
+    invMtx.Pos.z = -pos->z;
+    MATH_TransformVector(&invMtx.Pos, &invMtx, &invMtx.Pos);
+    MATH_TransformVertex(&localSource, &invMtx, COL_gst_Ray.sourcePoint);
+    MATH_TransformVector(&localDir, &invMtx, COL_gst_Ray.direction);
+    invLength = 1.0 / sqrt(localDir.z * localDir.z + localDir.y * localDir.y + localDir.x * localDir.x);
+    localDir.x = (float)(localDir.x * invLength);
+    localDir.y = (float)(localDir.y * invLength);
+    shape = (tColBox *)(box->enclosurePtr);
+    localDir.z = (float)(invLength * localDir.z);
+    localBox.pos2 = shape->pos1;
+    localBox.pos1.x = shape->pos2.x;
+    mtx = gao->matrices;
+    localBox.pos1.y = shape->pos2.y;
+    localBox.pos1.z = shape->pos2.z;
+
+    if ((mtx->mtxflag & 8) != 0)
     {
-        a3.x = COL_gst_Ray.distance * COL_gst_Ray.direction->x;
-        a3.y = COL_gst_Ray.direction->y * COL_gst_Ray.distance;
-        a3.z = COL_gst_Ray.direction->z * COL_gst_Ray.distance;
-        MATH_TransformVector(&v9, &a2a, &a3);
-        a5 = (float)sqrt(v9.z * v9.z + v9.y * v9.y + v9.x * v9.x);
+        scratch.x = COL_gst_Ray.distance * COL_gst_Ray.direction->x;
+        scratch.y = COL_gst_Ray.direction->y * COL_gst_Ray.distance;
+        scratch.z = COL_gst_Ray.direction->z * COL_gst_Ray.distance;
+        MATH_TransformVector(&scaledDir, &invMtx, &scratch);
+        maxDist = (float)sqrt(scaledDir.z * scaledDir.z + scaledDir.y * scaledDir.y + scaledDir.x * scaledDir.x);
     }
     else
     {
-        a5 = COL_gst_Ray.distance;
+        maxDist = COL_gst_Ray.distance;
     }
-    if (INT_FullRayAABBox(&v14, &v7, &colBox, &a4, a5, &a6))
-    {
-        if ((gao->matrices->mtxflag & 8) != 0)
-        {
-            v9.x = a6 * COL_gst_Ray.direction->x;
-            v9.y = COL_gst_Ray.direction->y * a6;
-            v9.z = COL_gst_Ray.direction->z * a6;
-            MATH_TransformVector(&a3, &a1a, &v9);
-            a6 = (float)sqrt(a3.z * a3.z + a3.y * a3.y + a3.x * a3.x);
-        }
-        if (!COL_gb_UseMinDistance || a6 > (double)COL_gf_MinDistance)
-        {
-            MATH_TransformVertex(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, &a1a, &a4);
-            MATH_TransformVertex(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, &a1a, &a4);
-            COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = -1;
-            COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = -1;
-            COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = -1;
-            COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = 0;
-            COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = 0;
-            COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
-            COL_gst_Ray.gao = gao;
-            COL_gst_Ray.distance = a6;
-        }
-    }
-}
 
-void COL_ColMap_Sphere_RayCast(tGameObjectMain* a1, tCobNormalObjectGeneric* a2)
-{
-    tGameObjectMain* v2;
-    tCobNormalObjectGeneric* v3;
-    Mtx4x4* v4;
-    Mtx4x4* v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
-    Vec3* v10;
-    tColSphere* v11;
-    Vec3 a4;
-    Vec3 v13;
-    float v14;
-    tColSphere a3;
-    float v16;
-    float a1a;
+    if (!INT_FullRayAABBox(&localSource, &localDir, &localBox, &hitPos, maxDist, &hitDist))
+        return;
 
-    v2 = a1;
-    v3 = a2;
-    v11 = a2->enclosurePtr;
-    v4 = OBJ_pst_GetAbsoluteMatrix(a1);
-    MATH_TransformVertex(&a3.center, v4, &v11->center);
-    if ((v2->matrices->mtxflag & 8) != 0)
+    if ((gao->matrices->mtxflag & 8) != 0)
     {
-        v5 = OBJ_pst_GetAbsoluteMatrix(v2);
-        MATH_GetScale(&v13, v5);
-        v16 = ((tColSphere*)(v3->enclosurePtr))->radius;
-        v6 = MATH_f_MaxOf3(v13.x, v13.y, v13.z);
-        v7 = v6 * v16;
+        scaledDir.x = hitDist * COL_gst_Ray.direction->x;
+        scaledDir.y = COL_gst_Ray.direction->y * hitDist;
+        scaledDir.z = COL_gst_Ray.direction->z * hitDist;
+        MATH_TransformVector(&scratch, &oglMtx, &scaledDir);
+        hitDist = (float)sqrt(scratch.z * scratch.z + scratch.y * scratch.y + scratch.x * scratch.x);
     }
-    else
+
+    if (!COL_gb_UseMinDistance || hitDist > (double)COL_gf_MinDistance)
     {
-        v7 = ((tColSphere*)(v3->enclosurePtr))->radius;
-    }
-    a3.radius = (float)v7;
-    if (INT_FullRaySphere(COL_gst_Ray.sourcePoint, COL_gst_Ray.direction, &a3, &a4, COL_gst_Ray.distance, &a1a)
-        && (!COL_gb_UseMinDistance || a1a > (double)COL_gf_MinDistance))
-    {
-        COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos = a4;
-        v8 = a4.x - a3.center.x;
-        v9 = a4.y - a3.center.y;
-        v10 = &COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec;
-        v14 = a4.z - a3.center.z;
-        v16 = (float)(1.0 / sqrt(v14 * v14 + v9 * v9 + v8 * v8));// normalizevector inline
-        COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec.x = (float)(v8 * v16);
-        v10->y = (float)(v9 * v16);
-        v10->z = v14 * v16;
+        MATH_TransformVertex(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, &oglMtx, &hitPos);
+        MATH_TransformVertex(&COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos, &oglMtx, &hitPos);
         COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = -1;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = -1;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = -1;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = 0;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = 0;
-        COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = v2;
-        COL_gst_Ray.gao = v2;
-        COL_gst_Ray.distance = a1a;
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
+        COL_gst_Ray.gao = gao;
+        COL_gst_Ray.distance = hitDist;
     }
 }
 
-void COL_ColMap_Cylinder_RayCast(tGameObjectMain* a1, tCobNormalObjectGeneric* a2)
+void COL_ColMap_Sphere_RayCast(tGameObjectMain* gao, tCobNormalObjectGeneric* shape)
 {
-    tCobNormalObjectGeneric* v2;
-    Mtx4x4* v3;
-    Mtx4x4* v4;
-    double v5;
-    Vec3* v6;
-    Vec3* v7;
-    tColCylinder* v8;
-    float v9;
-    float v10;
-    Vec3 v11;
-    Vec3 v12;
-    Vec3 v13;
-    float a2a;
+    Mtx4x4* mtx;
+    double maxScale;
+    double radius;
+    double offsetX;
+    double offsetY;
+    Vec3* normal;
+    tColSphere* srcSphere;
+    Vec3 hitPos;
+    Vec3 scale;
+    float offsetZ;
+    tColSphere sphere;
+    float srcRadius;
+    float invLength;
+    float hitDist;
 
-    v2 = a2;
-    v8 = (tColCylinder*)(a2->enclosurePtr);
-    v3 = OBJ_pst_GetAbsoluteMatrix(a1);
-    MATH_TransformVertex(&v13, v3, &v8->center);
-    v4 = OBJ_pst_GetAbsoluteMatrix(a1);
-    MATH_GetScale(&v11, v4);
-    if (v11.x < (double)v11.y)
-        v5 = v11.y;
-    else
-        v5 = v11.x;
-    v10 = (float)(((tColCylinder*)(v2->enclosurePtr))->height * v5);
-    v9 = ((tColCylinder*)(v2->enclosurePtr))->radius * v11.z;
-    if (INT_b_FullRayCylinder(COL_gst_Ray.sourcePoint, COL_gst_Ray.direction, &v13, &MATH_gst_BaseVectorK, v10, v9, COL_gst_Ray.distance, &a2a, &v12)
-        && (!COL_gb_UseMinDistance || a2a > (double)COL_gf_MinDistance))
+    srcSphere = shape->enclosurePtr;
+    mtx = OBJ_pst_GetAbsoluteMatrix(gao);
+    MATH_TransformVertex(&sphere.center, mtx, &srcSphere->center);
+
+    if ((gao->matrices->mtxflag & 8) != 0)
     {
-        COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos = v12;
-        v6 = COL_gst_Ray.direction;
-        v7 = &COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec;
-        COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec.x = -COL_gst_Ray.direction->x;
-        v7->y = -v6->y;
-        v7->z = -v6->z;
+        MATH_GetScale(&scale, OBJ_pst_GetAbsoluteMatrix(gao));
+        srcRadius = ((tColSphere*)(shape->enclosurePtr))->radius;
+        maxScale = MATH_f_MaxOf3(scale.x, scale.y, scale.z);
+        radius = maxScale * srcRadius;
+    }
+    else
+    {
+        radius = ((tColSphere*)(shape->enclosurePtr))->radius;
+    }
+    sphere.radius = (float)radius;
+
+    if (INT_FullRaySphere(COL_gst_Ray.sourcePoint, COL_gst_Ray.direction, &sphere, &hitPos, COL_gst_Ray.distance, &hitDist)
+        && (!COL_gb_UseMinDistance || hitDist > (double)COL_gf_MinDistance))
+    {
+        COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos = hitPos;
+        offsetX = hitPos.x - sphere.center.x;
+        offsetY = hitPos.y - sphere.center.y;
+        normal = &COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec;
+        offsetZ = hitPos.z - sphere.center.z;
+        invLength = (float)(1.0 / sqrt(offsetZ * offsetZ + offsetY * offsetY + offsetX * offsetX));// normalizevector inline
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec.x = (float)(offsetX * invLength);
+        normal->y = (float)(offsetY * invLength);
+        normal->z = offsetZ * invLength;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = -1;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = -1;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = -1;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = 0;
         COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = 0;
-        COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = a1;
-        COL_gst_Ray.gao = a1;
-        COL_gst_Ray.distance = a2a;
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
+        COL_gst_Ray.gao = gao;
+        COL_gst_Ray.distance = hitDist;
+    }
+}
+
+void COL_ColMap_Cylinder_RayCast(tGameObjectMain* gao, tCobNormalObjectGeneric* shape)
+{
+    Mtx4x4* mtx;
+    double scaleXY;
+    tColCylinder* cylinder;
+    float scaledHeight;
+    float scaledRadius;
+    Vec3 scale;
+    Vec3 hitPos;
+    Vec3 center;
+    float hitDist;
+
+    cylinder = (tColCylinder*)(shape->enclosurePtr);
+    mtx = OBJ_pst_GetAbsoluteMatrix(gao);
+    MATH_TransformVertex(&center, mtx, &cylinder->center);
+    MATH_GetScale(&scale, OBJ_pst_GetAbsoluteMatrix(gao));
+    if (scale.x < (double)scale.y)
+        scaleXY = scale.y;
+    else
+        scaleXY = scale.x;
+    scaledHeight = (float)(((tColCylinder*)(shape->enclosurePtr))->height * scaleXY);
+    scaledRadius = ((tColCylinder*)(shape->enclosurePtr))->radius * scale.z;
+
+    if (INT_b_FullRayCylinder(COL_gst_Ray.sourcePoint, COL_gst_Ray.direction, &center, &MATH_gst_BaseVectorK, scaledHeight, scaledRadius, COL_gst_Ray.distance, &hitDist, &hitPos)
+        && (!COL_gb_UseMinDistance || hitDist > (double)COL_gf_MinDistance))
+    {
+        COL_gst_Ray.worldSetInColMapRayCast->colRayHitPos = hitPos;
+        MATH_VecInvert(&COL_gst_Ray.worldSetInColMapRayCast->rayCastNormalVec, COL_gst_Ray.direction);
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkID = -1;
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkElemID = -1;
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastTriangleChunkLastElemID = -1;
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastCobGmat = 0;
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastCobMeshChunkElemsDesignVal = 0;
+        COL_gst_Ray.worldSetInColMapRayCast->rayCastGao = gao;
+        COL_gst_Ray.gao = gao;
+        COL_gst_Ray.distance = hitDist;
     }
 }
 
 // TODO ÁTNÉZNI!
-int COL_RaySphereBV(Vec3* a1, Vec3* a2, tGameObjectMain* a3, float* a6, float a5)
+int COL_RaySphereBV(Vec3* origin, Vec3* dir, tGameObjectMain* gao, float* distOut, float maxDist)
 {
-    tGameObjectBV* v5;
-    Mtx4x4* v6;
-    double v7;
-    int result; 
-    tColSphere a3a;
+    tGameObjectBV* bv;
+    Mtx4x4* mtx;
+    double centerX;
+    tColSphere sphere;
     float x, y, z;
-    float tmp;
+    float radius;
 
-    v5 = a3->boundingVolume;
-    v6 = a3->matrices;
-    v7 = v5->BVMin.x + v6->Pos.x;
-    a3a.center.x = (float)v7;
-    a3a.center.y = v5->BVMin.y + v6->Pos.y;
-    a3a.center.z = v5->BVMin.z + v6->Pos.z;
-    a3a.radius = v5->BVMax.x;
+    bv = gao->boundingVolume;
+    mtx = gao->matrices;
+    centerX = bv->BVMin.x + mtx->Pos.x;
+    sphere.center.x = (float)centerX;
+    sphere.center.y = bv->BVMin.y + mtx->Pos.y;
+    sphere.center.z = bv->BVMin.z + mtx->Pos.z;
+    sphere.radius = bv->BVMax.x;
 
 
-    tmp = v5->BVMax.x;   
-    x = tmp;
-    if (a2->x < 0.0) { // TODO FIXME assemblyben megnéztem, olyan mint ha el lenne írva, mert mindenhez az x-et nézi, Rendben van mert ez a SUGÁR!!
-        x = -tmp;
+    radius = bv->BVMax.x;
+    x = radius;
+    if (dir->x < 0.0) { // TODO FIXME assemblyben megnéztem, olyan mint ha el lenne írva, mert mindenhez az x-et nézi, Rendben van mert ez a SUGÁR!!
+        x = -radius;
     }
-    y = tmp;
-    if (a2->x < 0.0) {
-        y = -tmp;
+    y = radius;
+    if (dir->x < 0.0) {
+        y = -radius;
     }
-    z = tmp;
-    if (a2->x < 0.0) {
-        z = -tmp;
+    z = radius;
+    if (dir->x < 0.0) {
+        z = -radius;
     }
 
-    if (((x + a3a.center.x) - a1->x) * a2->x +  a2->y * ((y + a3a.center.y) - a1->y) + a2->z * ((z + a3a.center.z) - a1->z) < 0.0)     
-        result = 0;
-    else
-        result = INT_FullRaySphere(a1, a2, &a3a, 0, a5, a6);
-    return result;
+    if (((x + sphere.center.x) - origin->x) * dir->x + dir->y * ((y + sphere.center.y) - origin->y) + dir->z * ((z + sphere.center.z) - origin->z) < 0.0)
+        return 0;
+    return INT_FullRaySphere(origin, dir, &sphere, 0, maxDist, distOut);
 }
 
-int COL_RayAABBox(Vec3* a1, Vec3* a2, tGameObjectMain* a3, float* a6, float a5)
+int COL_RayAABBox(Vec3* origin, Vec3* dir, tGameObjectMain* gao, float* distOut, float maxDist)
 {
-    Mtx4x4* v5;
-    tGameObjectBV* v6;
-    double v7;
-    float v9;
-    float v10;
-    float v11;
-    float v12;
-    tColBox colBox;
+    Mtx4x4* mtx;
+    tGameObjectBV* bv;
+    double minX;
+    float farX;
+    float farY;
+    float stepZ;
+    float farZ;
+    tColBox box;
 
-    v5 = a3->matrices;
-    v6 = a3->boundingVolume;
-    colBox.pos2.x = v6->BVMax.x + v5->Pos.x;
-    colBox.pos2.y = v6->BVMax.y + v5->Pos.y;
-    colBox.pos2.z = v6->BVMax.z + v5->Pos.z;
-    v7 = v5->Pos.x + v6->BVMin.x;
-    colBox.pos1.x = (float)v7;
-    colBox.pos1.y = v5->Pos.y + v6->BVMin.y;
-    colBox.pos1.z = v5->Pos.z + v6->BVMin.z;
-    v11 = a5 * a2->z;
-    v9 = a5 * a2->x + a1->x;
-    v10 = a5 * a2->y + a1->y;
-    v12 = v11 + a1->z;
-    if (a2->x <= 0.0)
+    mtx = gao->matrices;
+    bv = gao->boundingVolume;
+    box.pos2.x = bv->BVMax.x + mtx->Pos.x;
+    box.pos2.y = bv->BVMax.y + mtx->Pos.y;
+    box.pos2.z = bv->BVMax.z + mtx->Pos.z;
+    minX = mtx->Pos.x + bv->BVMin.x;
+    box.pos1.x = (float)minX;
+    box.pos1.y = mtx->Pos.y + bv->BVMin.y;
+    box.pos1.z = mtx->Pos.z + bv->BVMin.z;
+    stepZ = maxDist * dir->z;
+    farX = maxDist * dir->x + origin->x;
+    farY = maxDist * dir->y + origin->y;
+    farZ = stepZ + origin->z;
+
+    if (dir->x <= 0.0)
     {
-        if (v7 > a1->x || v9 > (double)colBox.pos2.x)
+        if (minX > origin->x || farX > (double)box.pos2.x)
             return 0;
     }
     else
     {
-        if (a1->x > (double)colBox.pos2.x)
+        if (origin->x > (double)box.pos2.x)
             return 0;
-        if (v7 > v9)
+        if (minX > farX)
             return 0;
     }
-    if (a2->y <= 0.0)
+
+    if (dir->y <= 0.0)
     {
-        if (colBox.pos1.y > (double)a1->y || v10 > (double)colBox.pos2.y)
-            return 0;
-        goto LABEL_14;
-    }
-    if (a1->y > (double)colBox.pos2.y)
-        return 0;
-    if (colBox.pos1.y > (double)v10)
-        return 0;
-LABEL_14:
-    if (a2->z <= 0.0)
-    {
-        if (colBox.pos1.z > (double)a1->z || v12 > (double)colBox.pos2.z)
+        if (box.pos1.y > (double)origin->y || farY > (double)box.pos2.y)
             return 0;
     }
     else
     {
-        if (a1->z > (double)colBox.pos2.z)
+        if (origin->y > (double)box.pos2.y)
             return 0;
-        if (colBox.pos1.z > (double)v12)
+        if (box.pos1.y > (double)farY)
             return 0;
     }
-    return INT_FullRayAABBox(a1, a2, &colBox, 0, a5, a6);
+
+    if (dir->z <= 0.0)
+    {
+        if (box.pos1.z > (double)origin->z || farZ > (double)box.pos2.z)
+            return 0;
+    }
+    else
+    {
+        if (origin->z > (double)box.pos2.z)
+            return 0;
+        if (box.pos1.z > (double)farZ)
+            return 0;
+    }
+    return INT_FullRayAABBox(origin, dir, &box, 0, maxDist, distOut);
 }
 
-struct sGameObjectMain* COL_Visual_RayCast(struct sWorld* a1, struct sGameObjectMain* a2, Vec3* a3, Vec3* a4, float a5, int flagMustHave, int flagMustNothave, int whatToTest, int* a9, int a10)
+struct sGameObjectMain* COL_Visual_RayCast(struct sWorld* world, struct sGameObjectMain* skipGao, Vec3* source, Vec3* direction, float maxDist, int flagMustHave, int flagMustNothave, int whatToTest, int* ignoreResult, int skipRayCast)
 {
-    Vec3* v11;
-    tableElemStructPF* v12;
-    tGameObjectMain* result;
+    tableElemStructPF* elem;
+    tableElemStructPF* end;
     tGameObjectMain* currGao;
-    tWorld* v15;
-    int v16;
-    tGEOGRO* v17;
-    tColMap* v18;
-    tColCollisionObject* v19;
+    tWorld* rayWorld;
+    int gaoFlags;
+    tGEOGRO* geo;
+    tColMap* colMap;
+    tColCollisionObject* firstCob;
+    tColCollisionObject* cob;
+    tCobNormalObjectGeneric* shape;
     uint8_t i;
-    tColCollisionObject* v21;
-    tCobNormalObjectGeneric* v22;
-    int v23;
-    int v24;
-    tableElemStructPF* v25;
-    tableElemStructPF* v26;
-    float a9a;
+    float hitDist;
 
-    COL_gst_Ray.direction = a4;
-    v11 = a3;
-    COL_gst_Ray.distance = a5;
-    COL_gst_Ray.worldSetInColMapRayCast = a1;
-    COL_gst_Ray.sourcePoint = a3;
+    COL_gst_Ray.direction = direction;
+    COL_gst_Ray.distance = maxDist;
+    COL_gst_Ray.worldSetInColMapRayCast = world;
+    COL_gst_Ray.sourcePoint = source;
     COL_gst_Ray.gao = 0;
-    COL_gst_Ray.ignoreColMapRayCastResult = a9;
-    COL_gst_Ray.skipRayCast = a10;
+    COL_gst_Ray.ignoreColMapRayCastResult = ignoreResult;
+    COL_gst_Ray.skipRayCast = skipRayCast;
     COL_gst_Ray.skipVecsTransformationToGaoSpace = 0;
-    if (a9)
-        *a9 = 1;
-    a1->colCrossObjectNumber = 0;
-    v12 = a1->visibleGameObjectsPF.firstElemPtr;
-    v25 = v12;
-    v26 = ((tableElemStructPF*)(a1->visibleGameObjectsPF.nextElemPtr)) - 1;
-    if (v12 <= v26)
+    if (ignoreResult)
+        *ignoreResult = 1;
+    world->colCrossObjectNumber = 0;
+
+    elem = world->visibleGameObjectsPF.firstElemPtr;
+    end = ((tableElemStructPF*)(world->visibleGameObjectsPF.nextElemPtr)) - 1;
+    for (; elem <= end; ++elem)
     {
-        while (1)
+        currGao = (tGameObjectMain*)elem->objectPtr;
+        if (!elem->objectPtr
+            || ((uint8_t)currGao & 3) == 1
+            || !OBJ_b_test_flag(currGao, flagMustHave, flagMustNothave, whatToTest)
+            || (currGao->flags & 0x4000) == 0 && (currGao->flags & 2) == 0
+            || currGao == skipGao
+            || !(OBJ_BV_IsSphere(currGao->boundingVolume)
+                 && COL_RaySphereBV(source, direction, currGao, &hitDist, COL_gst_Ray.distance)
+                 || OBJ_BV_IsAABBox(currGao->boundingVolume)
+                 && COL_RayAABBox(source, direction, currGao, &hitDist, COL_gst_Ray.distance)))
         {
-            currGao = (tGameObjectMain*)v12->objectPtr;
-            if (v12->objectPtr
-                && ((uint8_t)currGao & 3) != 1
-                && OBJ_b_test_flag(currGao, flagMustHave, flagMustNothave, whatToTest)
-                && ((currGao->flags & 0x4000) != 0 || (currGao->flags & 2) != 0)
-                && currGao != a2
-                && (OBJ_BV_IsSphere(currGao->boundingVolume)
-                    && COL_RaySphereBV(v11, a4, currGao, &a9a, COL_gst_Ray.distance)
-                    || OBJ_BV_IsAABBox(currGao->boundingVolume)
-                    && COL_RayAABBox(v11, a4, currGao, &a9a, COL_gst_Ray.distance)))
+            continue;
+        }
+
+        if (COL_gst_Ray.skipRayCast && (currGao->flags2 & 0x1000000) != 0)
+        {
+            rayWorld = COL_gst_Ray.worldSetInColMapRayCast;
+            if (rayWorld->colCrossObjectNumber == 16)
+                rayWorld->colCrossObjectNumber = 15;
+            rayWorld->collCrossObjects[rayWorld->colCrossObjectNumber] = currGao;
+            ++COL_gst_Ray.worldSetInColMapRayCast->colCrossObjectNumber;
+            continue;
+        }
+
+        gaoFlags = currGao->flags;
+        if ((currGao->flags & 0x4000) != 0)
+        {
+            if ((((tGameObjectVisualObject*)(currGao->basic->actorObjectOrVisualObject))->objDrawMask & 8) != 0)
             {
-                if (COL_gst_Ray.skipRayCast && (currGao->flags2 & 0x1000000) != 0)
+                geo = OBJ_p_GetCurrentGeo(currGao);
+                if (geo)
                 {
-                    v15 = COL_gst_Ray.worldSetInColMapRayCast;
-                    if (COL_gst_Ray.worldSetInColMapRayCast->colCrossObjectNumber == 16)
-                    {
-                        COL_gst_Ray.worldSetInColMapRayCast->colCrossObjectNumber = 15;
-                        v15 = COL_gst_Ray.worldSetInColMapRayCast;
-                    }
-                    v15->collCrossObjects[v15->colCrossObjectNumber] = currGao;
-                    ++COL_gst_Ray.worldSetInColMapRayCast->colCrossObjectNumber;
-                }
-                else
-                {
-                    v16 = currGao->flags;
-                    if ((currGao->flags & 0x4000) != 0)
-                    {
-                        if ((((tGameObjectVisualObject*)(currGao->basic->actorObjectOrVisualObject))->objDrawMask & 8) != 0)
-                        {
-                            v17 = OBJ_p_GetCurrentGeo(currGao);
-                            if (v17)
-                            {
-                                //nullsub_32();
-                                if (v17->collisionPtr)
-                                    COL_Visual_OK3_RayCast(currGao, v17);
-                                else
-                                    COL_Visual_Triangles_RayCast(currGao, v17);
-                                //nullsub_32();
-                            }
-                        }
-                    }
-                    else if ((v16 & 2) != 0 && (v16 & 0x100) != 0)
-                    {
-                        v18 = currGao->extended->coll->colMap;
-                        v19 = *v18->collisionObjectPtr;
-                        if (v19->objectType == 5)
-                        {
-                            if ((v18->activation & 1) != 0)
-                            {
-                                if (((tCobMeshObjectMesh*)(v19->objectPtrByType))->ok3)
-                                    COL_ColMap_OK3_RayCast(currGao, v18);
-                                else
-                                    COL_ColMap_Triangles_RayCast(currGao, v18);
-                                if (COL_gst_Ray.ignoreColMapRayCastResult && !*COL_gst_Ray.ignoreColMapRayCastResult)
-                                    return 0;
-                            }
-                        }
-                        else
-                        {
-                            for (i = 0; i < v18->colObjectID; ++i)
-                            {
-                                if (((uint8_t)(1 << i) & v18->activation) != 0)
-                                {
-                                    v21 = v18->collisionObjectPtr[i];
-                                    v22 = (tCobNormalObjectGeneric*)(v21->objectPtrByType);
-                                    v23 = v21->objectType - 1;
-                                    if (v23)
-                                    {
-                                        v24 = v23 - 1;
-                                        if (v24)
-                                        {
-                                            if (v24 == 1)
-                                                COL_ColMap_Cylinder_RayCast(currGao, v22);
-                                        }
-                                        else
-                                        {
-                                            COL_ColMap_Sphere_RayCast(currGao, v22);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        COL_ColMap_Box_RayCast(currGao, v22);
-                                    }
-                                }
-                            }
-                            v12 = v25;
-                        }
-                    }
+                    //nullsub_32();
+                    if (geo->collisionPtr)
+                        COL_Visual_OK3_RayCast(currGao, geo);
+                    else
+                        COL_Visual_Triangles_RayCast(currGao, geo);
+                    //nullsub_32();
                 }
             }
-            v25 = ++v12;
-            if (v12 > v26)
-                break;
-            v11 = a3;
         }
-        result = COL_gst_Ray.gao;
-        COL_gb_UseMinDistance = 0;
+        else if ((gaoFlags & 2) != 0 && (gaoFlags & 0x100) != 0)
+        {
+            colMap = currGao->extended->coll->colMap;
+            firstCob = *colMap->collisionObjectPtr;
+            if (firstCob->objectType == 5)
+            {
+                if ((colMap->activation & 1) != 0)
+                {
+                    if (((tCobMeshObjectMesh*)(firstCob->objectPtrByType))->ok3)
+                        COL_ColMap_OK3_RayCast(currGao, colMap);
+                    else
+                        COL_ColMap_Triangles_RayCast(currGao, colMap);
+                    if (COL_gst_Ray.ignoreColMapRayCastResult && !*COL_gst_Ray.ignoreColMapRayCastResult)
+                        return 0;
+                }
+            }
+            else
+            {
+                for (i = 0; i < colMap->colObjectID; ++i)
+                {
+                    if (((uint8_t)(1 << i) & colMap->activation) == 0)
+                        continue;
+                    cob = colMap->collisionObjectPtr[i];
+                    shape = (tCobNormalObjectGeneric*)(cob->objectPtrByType);
+                    if (cob->objectType == 1)
+                        COL_ColMap_Box_RayCast(currGao, shape);
+                    else if (cob->objectType == 2)
+                        COL_ColMap_Sphere_RayCast(currGao, shape);
+                    else if (cob->objectType == 3)
+                        COL_ColMap_Cylinder_RayCast(currGao, shape);
+                }
+            }
+        }
     }
-    else
-    {
-        result = COL_gst_Ray.gao;
-        COL_gb_UseMinDistance = 0;
-    }
-    return result;
+
+    COL_gb_UseMinDistance = 0;
+    return COL_gst_Ray.gao;
 }
 
-void COL_RayCompute(Vec3* a1, struct sWorld* a2, struct sGameObjectMain* a3, Vec3* a4, Vec3* a5, int a6, int a7, int a8, int a9, unsigned int* a10)
+void COL_RayCompute(Vec3* offsetOut, struct sWorld* world, struct sGameObjectMain* gao, Vec3* source, Vec3* direction, int flagMustHave, int flagMustNothave, int whatToTest, int skipRayCast, unsigned int* resultFlags)
 {
-    float v10;
-    float v11;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    Vec3* v16;
-    double v17;
-    double v18;
-    double v19;
-    Vec3* v20; 
-    double v21;
-    double v22;
-    double v23;
-    Vec3 v24;
-    int v25[51]; // TODO FIXME: 17 nem elég?
-    Vec3 v26;
-    float v27;
-    tGameObjectMain* v28;
-    float a5a;
-    Vec3 a2a;
+    float roundedZ;
+    float roundedY;
+    float roundedX;
+    float dirZ;
+    float dirY;
+    float dirX;
+    Vec3* candidate;
+    double scaledZ;
+    double scaledY;
+    double scaledX;
+    double sourceZ;
+    double sourceY;
+    double sourceX;
+    Vec3 xAxis;
+    int blocked[51]; // TODO FIXME: 17 nem elég?
+    Vec3 zAxis;
+    float toGaoLen;
+    tGameObjectMain* hitGao;
+    float length;
+    Vec3 toGao;
     int i;
-    float v32;
-    Vec3 a1a[17]; // meg ennek is
+    float invLength;
+    Vec3 candidates[17]; // meg ennek is
 
-    a5a = MATH_VecLen(a5);
-    v32 = (float)(1.0 / a5a);
-    a5->x = v32 * a5->x;
-    a5->y = a5->y * v32;
-    a5->z = a5->z * v32;
-    v26.y = 0.0;
-    v26.x = 0.0;
-    v26.z = 1.0;
-    v24.z = 0.0;
-    v24.y = 0.0;
-    v24.x = 1.0;
-    a1a[0] = *a5;
-    MATH_VecRotate(&a1a[1], &v26, a5, 0.78539819f);
-    MATH_VecRotate(&a1a[2], &v26, a5, -0.78539819f);
-    MATH_VecRotate(&a1a[3], &v26, a5, 1.5707964f);
-    MATH_VecRotate(&a1a[4], &v26, a5, -1.5707964f);
-    MATH_VecRotate(&a1a[5], &v26, a5, 2.3561945f);
-    MATH_VecRotate(&a1a[6], &v26, a5, -2.3561945f);
-    MATH_VecRotate(&a1a[7], &v26, a5, 3.1415927f);
-    a1a[8].x = a5->x;
-    a1a[8].y = a5->y;
-    a1a[8].z = 0.0;
-    MATH_VecRotate(&a1a[9], &v26, &a1a[8], 0.78539819f);
-    MATH_VecRotate(&a1a[10], &v26, &a1a[8], -0.78539819f);
-    MATH_VecRotate(&a1a[11], &v26, &a1a[8], 1.5707964f);
-    MATH_VecRotate(&a1a[12], &v26, &a1a[8], -1.5707964f);
-    MATH_VecRotate(&a1a[13], &v26, &a1a[8], 2.3561945f);
-    MATH_VecRotate(&a1a[14], &v26, &a1a[8], -2.3561945f);
-    MATH_VecRotate(&a1a[15], &v26, &a1a[8], 3.1415927f);
-    a1a[16].x = a5->x;
-    a1a[16].y = a5->y;
-    a1a[16].z = 0.0;
-    MATH_VecRotate(&a1a[16], a1a, &v24, 1.4707963f);
-    v23 = 1.0 / 0.1 * a4->x + MATH_gd_magicDoubleForRound;
-    v15 = (float)(*((int32_t *)(&v23)));
-    a4->x = (float)(v15 * 0.1);
-    v22 = 1.0 / 0.1 * a4->y + MATH_gd_magicDoubleForRound;
-    v14 = (float)(*((int32_t*)(&v22)));
-    a4->y = (float)(v14 * 0.1);
-    v21 = 1.0 / 0.1 * a4->z + MATH_gd_magicDoubleForRound;
-    v13 = (float)(*((int32_t*)(&v21)));
-    a4->z = (float)(v13 * 0.1);
+    length = MATH_VecLen(direction);
+    invLength = (float)(1.0 / length);
+    direction->x = invLength * direction->x;
+    direction->y = direction->y * invLength;
+    direction->z = direction->z * invLength;
+
+    zAxis.y = 0.0;
+    zAxis.x = 0.0;
+    zAxis.z = 1.0;
+    xAxis.z = 0.0;
+    xAxis.y = 0.0;
+    xAxis.x = 1.0;
+
+    candidates[0] = *direction;
+    MATH_VecRotate(&candidates[1], &zAxis, direction, 0.78539819f);
+    MATH_VecRotate(&candidates[2], &zAxis, direction, -0.78539819f);
+    MATH_VecRotate(&candidates[3], &zAxis, direction, 1.5707964f);
+    MATH_VecRotate(&candidates[4], &zAxis, direction, -1.5707964f);
+    MATH_VecRotate(&candidates[5], &zAxis, direction, 2.3561945f);
+    MATH_VecRotate(&candidates[6], &zAxis, direction, -2.3561945f);
+    MATH_VecRotate(&candidates[7], &zAxis, direction, 3.1415927f);
+    candidates[8].x = direction->x;
+    candidates[8].y = direction->y;
+    candidates[8].z = 0.0;
+    MATH_VecRotate(&candidates[9], &zAxis, &candidates[8], 0.78539819f);
+    MATH_VecRotate(&candidates[10], &zAxis, &candidates[8], -0.78539819f);
+    MATH_VecRotate(&candidates[11], &zAxis, &candidates[8], 1.5707964f);
+    MATH_VecRotate(&candidates[12], &zAxis, &candidates[8], -1.5707964f);
+    MATH_VecRotate(&candidates[13], &zAxis, &candidates[8], 2.3561945f);
+    MATH_VecRotate(&candidates[14], &zAxis, &candidates[8], -2.3561945f);
+    MATH_VecRotate(&candidates[15], &zAxis, &candidates[8], 3.1415927f);
+    candidates[16].x = direction->x;
+    candidates[16].y = direction->y;
+    candidates[16].z = 0.0;
+    // preserved: the other fifteen angles here are multiples of pi/4 and this one is not
+    MATH_VecRotate(&candidates[16], candidates, &xAxis, 1.4707963f);
+
+    sourceX = 1.0 / 0.1 * source->x + MATH_gd_magicDoubleForRound;
+    dirX = (float)(*((int32_t *)(&sourceX)));
+    source->x = (float)(dirX * 0.1);
+    sourceY = 1.0 / 0.1 * source->y + MATH_gd_magicDoubleForRound;
+    dirY = (float)(*((int32_t*)(&sourceY)));
+    source->y = (float)(dirY * 0.1);
+    sourceZ = 1.0 / 0.1 * source->z + MATH_gd_magicDoubleForRound;
+    dirZ = (float)(*((int32_t*)(&sourceZ)));
+    source->z = (float)(dirZ * 0.1);
+
     for (i = 0; i <= 16; ++i)
     {
-        MATH_NormalizeVector(&a1a[i], &a1a[i]);
-        v20 = &a1a[i];
-        *a1 = *v20;
-        a1->x = a5a * a1->x;
-        a1->y = a1->y * a5a;
-        a1->z = a1->z * a5a;
-        v19 = 1.0 / 0.1 * a1a[i].x + MATH_gd_magicDoubleForRound;
-        v12 = (float)(*((int32_t*)(&v19)));
-        a1a[i].x = (float)(v12 * 0.1);
-        v18 = 1.0 / 0.1 * a1a[i].y + MATH_gd_magicDoubleForRound;
-        v11 = (float)(*((int32_t*)(&v18)));
-        a1a[i].y = (float)(v11 * 0.1);
-        v17 = 1.0 / 0.1 * a1a[i].z + MATH_gd_magicDoubleForRound;
-        v10 = (float)(*((int32_t*)(&v17)));
-        a1a[i].z = (float)(v10 * 0.1);
-        v28 = COL_Visual_RayCast(a2, a3, a4, &a1a[i], a5a, a6, a7, a8, 0, a9);
-        v25[i] = v28 == 0;
-        if (!v28)
+        MATH_NormalizeVector(&candidates[i], &candidates[i]);
+        candidate = &candidates[i];
+        *offsetOut = *candidate;
+        offsetOut->x = length * offsetOut->x;
+        offsetOut->y = offsetOut->y * length;
+        offsetOut->z = offsetOut->z * length;
+
+        scaledX = 1.0 / 0.1 * candidates[i].x + MATH_gd_magicDoubleForRound;
+        roundedX = (float)(*((int32_t*)(&scaledX)));
+        candidates[i].x = (float)(roundedX * 0.1);
+        scaledY = 1.0 / 0.1 * candidates[i].y + MATH_gd_magicDoubleForRound;
+        roundedY = (float)(*((int32_t*)(&scaledY)));
+        candidates[i].y = (float)(roundedY * 0.1);
+        scaledZ = 1.0 / 0.1 * candidates[i].z + MATH_gd_magicDoubleForRound;
+        roundedZ = (float)(*((int32_t*)(&scaledZ)));
+        candidates[i].z = (float)(roundedZ * 0.1);
+
+        hitGao = COL_Visual_RayCast(world, gao, source, &candidates[i], length, flagMustHave, flagMustNothave, whatToTest, 0, skipRayCast);
+        blocked[i] = hitGao == 0;
+        if (hitGao)
+            continue;
+
+        toGao = *source;
+        MATH_VecAddVec(&toGao, &toGao, offsetOut);
+        MATH_SubstractVec(&toGao, &toGao, &gao->matrices->Pos);
+        toGaoLen = MATH_VecLen(&toGao);
+        MATH_NormalizeVector(&toGao, &toGao);
+        hitGao = COL_Visual_RayCast(world, gao, &gao->matrices->Pos, &toGao, toGaoLen, flagMustHave, flagMustNothave, whatToTest, 0, skipRayCast);
+        if (!hitGao)
         {
-            a2a = *a4;
-            MATH_VecAddVec(&a2a, &a2a, a1);
-            MATH_SubstractVec(&a2a, &a2a, &a3->matrices->Pos);
-            v27 = MATH_VecLen(&a2a);
-            MATH_NormalizeVector(&a2a, &a2a);
-            v28 = COL_Visual_RayCast(a2, a3, &a3->matrices->Pos, &a2a, v27, a6, a7, a8, 0, a9);
-            if (!v28)
-            {
-                *a10 |= 0x10u;
-                *a10 &= ~0x20u;
-                return;
-            }
-        }
-    }
-    for (i = 0; i <= 16; ++i)
-    {
-        if (v25[i])
-        {
-            v16 = &a1a[i];
-            *a1 = *v16;
-            a1->x = a5a * a1->x;
-            a1->y = a1->y * a5a;
-            a1->z = a1->z * a5a;
-            *a10 |= 0x10u;
-            *a10 |= 0x20u;
+            *resultFlags |= 0x10u;
+            *resultFlags &= ~0x20u;
             return;
         }
     }
-    *a10 &= ~0x10u;
-    *a10 &= ~0x20u;
+
+    for (i = 0; i <= 16; ++i)
+    {
+        if (blocked[i])
+        {
+            *offsetOut = candidates[i];
+            offsetOut->x = length * offsetOut->x;
+            offsetOut->y = offsetOut->y * length;
+            offsetOut->z = offsetOut->z * length;
+            *resultFlags |= 0x10u;
+            *resultFlags |= 0x20u;
+            return;
+        }
+    }
+    *resultFlags &= ~0x10u;
+    *resultFlags &= ~0x20u;
 }
 
-void COL_UpdateOldMatrix(tWorld* a1)
+void COL_UpdateOldMatrix(tWorld* world)
 {
-    tableElemStructPF* v1;
-    tableElemStructPF* i;
-    tGameObjectMain* v3;
-    tColInstance* v4;
-    tGaoMatrix* v5;
-    tGaoMatrix* v6;
-    tGaoMatrix* v7;
+    tableElemStructPF* elem;
+    tableElemStructPF* end;
+    tGameObjectMain* gao;
+    tColInstance* instance;
+    Mtx4x4* src;
 
-    v1 = a1->eot.collInstanceZDMGameObjectsPF.firstElemPtr;
-    for (i = ((tableElemStructPF*)(a1->eot.collInstanceZDMGameObjectsPF.nextElemPtr)) - 1; v1 <= i; ++v1)
+    elem = world->eot.collInstanceZDMGameObjectsPF.firstElemPtr;
+    for (end = ((tableElemStructPF*)(world->eot.collInstanceZDMGameObjectsPF.nextElemPtr)) - 1; elem <= end; ++elem)
     {
-        v3 = (tGameObjectMain*)v1->objectPtr;
-        if (!v1->objectPtr || ((uint8_t)v3 & 3) == 1 || (v3->flags & 0x200) == 0)
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (!elem->objectPtr || ((uint8_t)gao & 3) == 1 || (gao->flags & 0x200) == 0)
             continue;
 
-        v4 = v3->extended->coll->colInstance;
-        v5 = (tGaoMatrix*)v4->mtx;
-        v4->backface = 0;
-        if ((v3->flags & 0x400000) != 0)
-        {
-            v6 = v3->basic->mtx;
-            if (v5 != v6)
-                goto LABEL_10;
-        }
+        instance = gao->extended->coll->colInstance;
+        instance->backface = 0;
+        if ((gao->flags & 0x400000) != 0)
+            src = &gao->basic->mtx->mtx;
         else
-        {
-            v7 = (tGaoMatrix*)v3->matrices;
-            if (v5 != v7)
-            {
-                v6 = v7;
-            LABEL_10:
-                memcpy(v5, v6, sizeof(Mtx4x4));
-                continue;
-            }
-        }
+            src = gao->matrices;
+        MATH_CopyMatrix(instance->mtx, src);
     }
 }
 
@@ -4325,665 +3452,642 @@ void COL_InitGlobalVars(tGameObjectMain* inst, tGameObjectMain* map)
     COL_gst_GlobalVars.colMapGaoMatrices = map->matrices;
 }
 
-int COL_get_activation_flag_for_id__max_16_sub_4132C0(tColInstance* a1, char a2)
+int COL_i_ZoneActivationGet(tColInstance* instance, char zoneID)
 {
-    uint8_t v2;
+    uint8_t i;
 
-    v2 = 0;
-    while (a1->colSet->zoneIDs[v2] != a2)
+    i = 0;
+    while (instance->colSet->zoneIDs[i] != zoneID)
     {
-        if (++v2 >= 16u)
+        if (++i >= 16u)
             return 0;
     }
-    return a1->activationFlags & (1 << v2);
+    return instance->activationFlags & (1 << i);
 }
 
-void COL_A_BCS_ComputeZDxInfo(tColGlobal* a1)
+void COL_A_BCS_ComputeZDxInfo(tColGlobal* colGlobal)
 {
-    tColInstanceElem* v1;
-    tColSphere* v2;
-    Vec3* v3;
-    tGameObjectMain* v4;
-    int v5;
-    Vec3* v6;
-    Mtx4x4* v7;
-    double v8;
-    double v9;
-    double v10;
-    long double v11;
-    long double v12;
-    tColBox* v13;
-    double v14;
-    double v15;
-    double v16;
-    Vec3* v17;
-    tGameObjectMain* v18;
-    int v19;
-    Vec3* v20;
-    Mtx4x4* v21;
-    double v22;
-    double v23;
-    double v24;
-    long double v25;
-    tColSphere* v26;
-    float v27;
-    float v28;
-    Vec3 dest;
+    tColInstanceElem* elem;
+    tColSphere* sphere;
+    tColBox* box;
+    tGameObjectMain* gao;
+    Mtx4x4* instMtx;
+    Vec3* centerPos;
+    Vec3* prevCenterPos;
+    int gaoFlags;
+    double moveX;
+    double moveY;
+    double moveZ;
+    double boxCenterZ;
+    double halfX;
+    double halfY;
+    long double moveLen;
+    long double dynRadius;
+    float radius;
+    float halfDiagonal;
+    Vec3 worldCenter;
     Vec3 scale;
-    Vec3 a3;
-    Mtx4x4 a1a;
+    Vec3 halfExtent;
+    Vec3 boxCenter;
+    Mtx4x4 combined;
 
-    v1 = a1->collInstanceElem;
-    if (v1->elemType == 2)
+    elem = colGlobal->collInstanceElem;
+    if (elem->elemType == 2)
     {
-        v2 = (tColSphere*)v1->elemShapePtr;
-        v26 = v2;
-        if ((v1->colFlags & 8) != 0)
+        sphere = (tColSphere*)elem->elemShapePtr;
+        if ((elem->colFlags & 8) != 0)
         {
-            MATH_TransformVertexNoScale(&dest, a1->colInstGaoMatrices, &v2->center);
+            MATH_TransformVertexNoScale(&worldCenter, colGlobal->colInstGaoMatrices, &sphere->center);
+            colGlobal->radius = sphere->radius;
         }
         else
         {
-            MATH_TransformVertex(&dest, a1->colInstGaoMatrices, &v2->center);
-            if ((a1->colInstGaoMatrices->mtxflag & 8) != 0)
+            MATH_TransformVertex(&worldCenter, colGlobal->colInstGaoMatrices, &sphere->center);
+            if ((colGlobal->colInstGaoMatrices->mtxflag & 8) != 0)
             {
-                MATH_GetScale(&scale, a1->colInstGaoMatrices);
-                a1->radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * v2->radius;
-            LABEL_7:
-                v3 = &a1->centerPos;
-                MATH_TransformVertexNoScale(&a1->centerPos, &a1->colMapGaoInvMatrix, &dest);
-                MATH_TransformVertexNoScale(&a1->centerPos, &a1->colMapGaoInvMatrix, &dest);
-                v4 = a1->colInstanceGao;
-                v5 = v4->flags;
-                if ((a1->collInstanceElem->colFlags & 8) != 0)
-                {
-                    if ((v5 & 0x400000) != 0)
-                    {
-                        MATH_MulMatrixMatrix(&a1a, v4->extended->coll->colInstance->mtx, v4->basic->mtx->refGao2->matrices);
-                        MATH_TransformVertexNoScale(&dest, &a1a, &v2->center);
-                    }
-                    else
-                    {
-                        MATH_TransformVertexNoScale(&dest, a1->colInstMatrix, &v2->center);
-                    }
-                }
-                else if ((v5 & 0x400000) != 0)
-                {
-                    MATH_MulMatrixMatrix(&a1a, v4->extended->coll->colInstance->mtx, v4->basic->mtx->refGao2->matrices);
-                    MATH_TransformVertex(&dest, &a1a, &v2->center);
-                }
-                else
-                {
-                    MATH_TransformVertex(&dest, a1->colInstMatrix, &v2->center);
-                }
-                v6 = &a1->centerPosPrevious;
-                MATH_TransformVertexNoScale(&a1->centerPosPrevious, &a1->colMapGaoInvMatrix, &dest);
-                a1->moveVec.x = v3->x - a1->centerPosPrevious.x;
-                a1->moveVec.y = a1->centerPos.y - a1->centerPosPrevious.y;
-                a1->moveVec.z = a1->centerPos.z - a1->centerPosPrevious.z;
-                if (fabs(a1->moveVec.x) != 0 || fabs(a1->moveVec.y) != 0 || fabs(a1->moveVec.z) != 0)
-                {
-                    MATH_NormalizeVector(&a1->moveVecUnit, &a1->moveVec);
-                }
-                else
-                {
-                    a1->moveVecUnit.x = 0.0;
-                    a1->moveVecUnit.y = 0.0;
-                    a1->moveVecUnit.z = 0.0;
-                }
-                a1->dynCenterPos.x = v3->x - v6->x;
-                a1->dynCenterPos.y = a1->centerPos.y - a1->centerPosPrevious.y;
-                a1->dynCenterPos.z = a1->centerPos.z - a1->centerPosPrevious.z;
-                a1->dynCenterPos.x = (float)(a1->dynCenterPos.x * 0.5);
-                a1->dynCenterPos.y = (float)(a1->dynCenterPos.y * 0.5);
-                a1->dynCenterPos.z = (float)(a1->dynCenterPos.z * 0.5);
-                a1->dynCenterPos.x = a1->dynCenterPos.x + v6->x;
-                a1->dynCenterPos.y = a1->centerPosPrevious.y + a1->dynCenterPos.y;
-                a1->dynCenterPos.z = a1->centerPosPrevious.z + a1->dynCenterPos.z;
-                v7 = a1->colInstGaoMatrices;
-                v8 = a1->dynCenterPos.y - a1->centerPosPrevious.y;
-                v9 = a1->dynCenterPos.z - a1->centerPosPrevious.z;
-                v10 = a1->dynCenterPos.x - v6->x;
-                v11 = sqrt(v10 * v10 + v9 * v9 + v8 * v8);
-                a1->dynRadius = (float)v11;
-                v12 = v11 + v26->radius;
-                a1->dynRadius = (float)v12;
-                if ((v7->mtxflag & 8) == 0 || (a1->collInstanceElem->colFlags & 8) != 0)
-                {
-                    a1->dynRadius = (float)(v12 + v26->radius);
-                }
-                else
-                {
-                    MATH_GetScale(&scale, v7);
-                    v27 = v26->radius;
-                    a1->dynRadius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * v27 + a1->dynRadius;
-                }
-                return;
+                MATH_GetScale(&scale, colGlobal->colInstGaoMatrices);
+                colGlobal->radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * sphere->radius;
+            }
+            else
+            {
+                colGlobal->radius = sphere->radius;
             }
         }
-        a1->radius = v2->radius;
-        goto LABEL_7;
-    }
-    v13 = (tColBox*)v1->elemShapePtr;
-    a3.x = v13->pos1.x + v13->pos2.x;
-    a3.y = v13->pos2.y + v13->pos1.y;
-    v14 = v13->pos2.z + v13->pos1.z;
-    a3.x = (float)(a3.x * 0.5);
-    a3.y = (float)(a3.y * 0.5);
-    a3.z = (float)(v14 * 0.5);
-    v15 = v13->pos1.x - v13->pos2.x;
-    v16 = v13->pos1.y - v13->pos2.y;
-    scale.z = v13->pos1.z - v13->pos2.z;
-    scale.x = (float)(v15 * 0.5);
-    v28 = (float)sqrt(scale.x * scale.x + scale.z * 0.5 * (scale.z * 0.5) + v16 * 0.5 * (v16 * 0.5));
-    if ((v1->colFlags & 8) != 0)
-    {
-        MATH_TransformVertexNoScale(&dest, a1->colInstGaoMatrices, &a3);
-        a1->radius = v28;
-    }
-    else
-    {
-        MATH_TransformVertex(&dest, a1->colInstGaoMatrices, &a3);
-        if ((a1->colInstGaoMatrices->mtxflag & 8) != 0)
-        {
-            MATH_GetScale(&scale, a1->colInstGaoMatrices);
-            a1->radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * v28;
-        }
-        else
-        {
-            a1->radius = v28;
-        }
-    }
-    v17 = &a1->centerPos;
-    MATH_TransformVertexNoScale(&a1->centerPos, &a1->colMapGaoInvMatrix, &dest);
-    MATH_TransformVertexNoScale(&a1->centerPos, &a1->colMapGaoInvMatrix, &dest);
-    v18 = a1->colInstanceGao;
-    v19 = v18->flags;
-    if ((a1->collInstanceElem->colFlags & 8) != 0)
-    {
-        if ((v19 & 0x400000) != 0)
-        {
-            MATH_MulMatrixMatrix(&a1a, v18->extended->coll->colInstance->mtx, v18->basic->mtx->refGao2->matrices);
-            MATH_TransformVertexNoScale(&dest, &a1a, &a3);
-        }
-        else
-        {
-            MATH_TransformVertexNoScale(&dest, a1->colInstMatrix, &a3);
-        }
-    }
-    else if ((v19 & 0x400000) != 0)
-    {
-        MATH_MulMatrixMatrix(&a1a, v18->extended->coll->colInstance->mtx, v18->basic->mtx->refGao2->matrices);
-        MATH_TransformVertex(&dest, &a1a, &a3);
-    }
-    else
-    {
-        MATH_TransformVertex(&dest, a1->colInstMatrix, &a3);
-    }
-    v20 = &a1->centerPosPrevious;
-    MATH_TransformVertexNoScale(&a1->centerPosPrevious, &a1->colMapGaoInvMatrix, &dest);
-    a1->moveVec.x = v17->x - a1->centerPosPrevious.x;
-    a1->moveVec.y = a1->centerPos.y - a1->centerPosPrevious.y;
-    a1->moveVec.z = a1->centerPos.z - a1->centerPosPrevious.z;
-    if (fabs(a1->moveVec.x) != 0 || fabs(a1->moveVec.y) != 0 || fabs(a1->moveVec.z) != 0)
-    {
-        MATH_NormalizeVector(&a1->moveVecUnit, &a1->moveVec);
-    }
-    else
-    {
-        a1->moveVecUnit.x = 0.0;
-        a1->moveVecUnit.y = 0.0;
-        a1->moveVecUnit.z = 0.0;
-    }
-    a1->dynCenterPos.x = v17->x - v20->x;
-    a1->dynCenterPos.y = a1->centerPos.y - a1->centerPosPrevious.y;
-    a1->dynCenterPos.z = a1->centerPos.z - a1->centerPosPrevious.z;
-    a1->dynCenterPos.x = (float)(a1->dynCenterPos.x * 0.5);
-    a1->dynCenterPos.y = (float)(a1->dynCenterPos.y * 0.5);
-    a1->dynCenterPos.z = (float)(a1->dynCenterPos.z * 0.5);
-    a1->dynCenterPos.x = v20->x + a1->dynCenterPos.x;
-    a1->dynCenterPos.y = a1->centerPosPrevious.y + a1->dynCenterPos.y;
-    a1->dynCenterPos.z = a1->centerPosPrevious.z + a1->dynCenterPos.z;
-    v21 = a1->colInstGaoMatrices;
-    v22 = a1->dynCenterPos.y - a1->centerPosPrevious.y;
-    v23 = a1->dynCenterPos.z - a1->centerPosPrevious.z;
-    v24 = a1->dynCenterPos.x - v20->x;
-    v25 = sqrt(v23 * v23 + v22 * v22 + v24 * v24) + v28;
-    a1->dynRadius = (float)v25;
-    if ((v21->mtxflag & 8) == 0 || (a1->collInstanceElem->colFlags & 8) != 0)
-    {
-        a1->dynRadius = (float)(v25 + v28);
-    }
-    else
-    {
-        MATH_GetScale(&scale, v21);
-        a1->dynRadius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * v28 + a1->dynRadius;
-    }
-}
 
-void COL_SetFaceTag(tCobOK3* a1, unsigned int a2)
-{
-    int* v2;
-
-    if (a1)
-    {
-        v2 = a1->faceTagInts;
-        if (v2)
-            v2[a2 >> 5] |= 1 << (a2 - 32 * (a2 >> 5));
-    }
-}
-
-BOOL COL_b_TestFaceTag(tCobOK3* a1, unsigned int a2)
-{
-    int* v2;
-    int result;
-
-    if (a1 && (v2 = a1->faceTagInts) != 0)
-        result = v2[a2 >> 5] & (1 << (a2 - 32 * (a2 >> 5)));
-    else
-        result = 0;
-    return result;
-}
-
-Vec3* INT_PointLineClosestPoint(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5)
-{
-    double v6;
-    double v7;
-    double v8;
-    double v9;
-    long double v10;
-    Vec3* result;
-    double v12;
-    double v13;
-    float v14;
-    float v15;
-    float v16;
-    float v17;
-    float v18;
-    float v19;
-    float v20;
-
-    v14 = a3->x - a2->x;
-    v15 = a3->y - a2->y;
-    v6 = a3->z - a2->z;
-    v16 = (float)v6;
-    v7 = v6 * v16;
-    v8 = v15 * v15;
-    v9 = v14 * v14;
-    v10 = 1.0 / sqrt(v8 + v7 + v9);
-    v17 = (float)(v14 * v10);
-    v18 = (float)(v15 * v10);
-    v19 = (float)(-((a4->z * (v10 * v16) + a4->y * v18 + v17 * a4->x) / sqrt(v7 + v8 + v9)));
-    if (v19 >= 0.0)
-    {
-        result = a5;
-        if (v19 <= 1.0)
+        centerPos = &colGlobal->centerPos;
+        MATH_TransformVertexNoScale(&colGlobal->centerPos, &colGlobal->colMapGaoInvMatrix, &worldCenter);
+        MATH_TransformVertexNoScale(&colGlobal->centerPos, &colGlobal->colMapGaoInvMatrix, &worldCenter);
+        gao = colGlobal->colInstanceGao;
+        gaoFlags = gao->flags;
+        if ((colGlobal->collInstanceElem->colFlags & 8) != 0)
         {
-            v12 = v14 * v19;
-            a5->x = (float)v12;
-            v13 = v15 * v19;
-            a5->y = (float)v13;
-            v20 = v16 * v19;
-            a5->z = v20;
-            a5->x = (float)(v12 + a2->x);
-            a5->y = (float)(v13 + a2->y);
-            a5->z = (float)(v20 + a2->z);
-        }
-        else
-        {
-            *a5 = *a3;
-        }
-    }
-    else
-    {
-        result = a5;
-        *a5 = *a2;
-    }
-    return result;
-}
-
-void INT_PointTriangleClosestPointGet(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, uint32_t* a7)
-{
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    float v11;
-    float v12;
-    float v13;
-    Vec3 v14;
-    Vec3 a4a;
-
-    if (INT_PointInTriangle(a5, a1, a2, a3, a4, 0))
-    {
-        *a6 = *a5;
-        *a7 = 1;
-    }
-    else
-    {
-        v14.x = a1->x - a5->x;
-        v14.y = a1->y - a5->y;
-        v14.z = a1->z - a5->z;
-        a4a.x = a2->x - a5->x;
-        a4a.y = a2->y - a5->y;
-        a4a.z = a2->z - a5->z;
-        v7 = a3->x - a5->x;
-        v8 = a3->y - a5->y;
-        v9 = a3->z - a5->z;
-        v11 = v14.z * v14.z + v14.x * v14.x + v14.y * v14.y;
-        v12 = a4a.z * a4a.z + a4a.y * a4a.y + a4a.x * a4a.x;
-        v13 = (float)(v9 * v9 + v8 * v8 + v7 * v7);
-        v10 = MATH_f_MaxOf3(v11, v12, v13);
-        if (v10 == v11)
-        {
-            INT_PointLineClosestPoint(a5, a2, a3, &a4a, a6);
-            *a7 = 8;
-        }
-        else if (v10 == v12)
-        {
-            INT_PointLineClosestPoint(a5, a1, a3, &v14, a6);
-            *a7 = 4;
-        }
-        else if (v10 == v13)
-        {
-            INT_PointLineClosestPoint(a5, a1, a2, &v14, a6);
-            *a7 = 2;
-        }
-    }
-}
-
-BOOL INT_DynamicHit(Vec3* a1, float a2, Vec3* a3, float a4, Vec3* a5, Vec3* a6, Vec3* a7, Vec3* a8, Vec3* a9, Vec3* a10, int* a11)
-{
-    double v11;
-    double v12;
-    Vec3* v13; 
-    double v14;
-    double v15;
-    double v16;
-    long double v17;
-    long double v18;
-    double v19;
-    double v20;
-    double v21;
-    double v22;
-    double v23;
-    double v24;
-    double v25;
-    double v26;
-    double v27;
-    double v28;
-    double v29;
-    double v30;
-    double v31;
-    double v32;
-    double v33;
-    double v34;
-    double v35;
-    double v36;
-    double v37;
-    double v38;
-    double v39;
-    double v40;
-    int v42;
-    Vec3 a5a;
-    float v44;
-    float v45;
-    float v46;
-    float v47;
-    float v48;
-    float v49;
-
-    v11 = -a2;
-    v12 = v11 * a5->x;
-    v13 = a6;
-    a5a.y = (float)(v11 * a5->y);
-    v42 = 1;
-    a5a.z = (float)(v11 * a5->z);
-    v47 = a2 * a5->x;
-    v48 = a2 * a5->y;
-    v49 = a2 * a5->z;
-    v44 = (float)(v12 + a1->x);
-    v14 = a5a.y + a1->y;
-    v46 = a5a.z + a1->z;
-    v15 = a1->x - v44;
-    v16 = a1->y - v14;
-    a5a.z = a1->z - v46;
-    a5a.x = (float)(v15 + v47);
-    a5a.y = (float)(v16 + v48);
-    a5a.z = (float)(a5a.z + v49);
-    v17 = a5a.y * a9->y + a5a.x * a9->x + a5a.z * a9->z;
-    if (v17 > 0.0 || fabs(v17) < 0.0000099999997)
-        v42 = 0;
-    v18 = ((a6->y - v14) * a9->y + (a6->x - v44) * a9->x + (a6->z - v46) * a9->z) / v17;
-    if (v18 > 0.0)
-    {
-        a5a.z = (float)(a5a.z * v18);
-        a5a.x = (float)(a5a.x * v18 + v44);
-        a5a.y = (float)(a5a.y * v18 + v14);
-        a5a.z = (float)(a5a.z + v46);
-        INT_PointTriangleClosestPointGet(a6, a7, a8, a9, &a5a, a10, a11);
-        v19 = a10->y - a1->y;
-        v20 = a10->z - a1->z;
-        v21 = a10->x - a1->x;
-        if (sqrt(v20 * v20 + v19 * v19 + v21 * v21) <= a2)
-        {
-            v22 = (a3->y - a10->y) * a5->y + (a3->z - a10->z) * a5->z + (a3->x - a10->x) * a5->x;
-            v23 = v22 * a5->x;
-            v45 = (float)(v22 * a5->y);
-            v46 = (float)(v22 * a5->z);
-            v24 = v23 + a10->x;
-            v25 = v45 + a10->y;
-            a5a.z = v46 + a10->z;
-            v26 = v25;
-            v47 = (float)(v24 - a3->x);
-            v27 = a5a.z - a3->z;
-            v28 = v26 - a3->y;
-            if (sqrt(v27 * v27 + v28 * v28 + v47 * v47) <= a4)
+            if ((gaoFlags & 0x400000) != 0)
             {
-                if (v42)
-                    return 1;
+                MATH_MulMatrixMatrix(&combined, gao->extended->coll->colInstance->mtx, gao->basic->mtx->refGao2->matrices);
+                MATH_TransformVertexNoScale(&worldCenter, &combined, &sphere->center);
+            }
+            else
+            {
+                MATH_TransformVertexNoScale(&worldCenter, colGlobal->colInstMatrix, &sphere->center);
             }
         }
-        v13 = a6;
+        else if ((gaoFlags & 0x400000) != 0)
+        {
+            MATH_MulMatrixMatrix(&combined, gao->extended->coll->colInstance->mtx, gao->basic->mtx->refGao2->matrices);
+            MATH_TransformVertex(&worldCenter, &combined, &sphere->center);
+        }
+        else
+        {
+            MATH_TransformVertex(&worldCenter, colGlobal->colInstMatrix, &sphere->center);
+        }
+
+        prevCenterPos = &colGlobal->centerPosPrevious;
+        MATH_TransformVertexNoScale(&colGlobal->centerPosPrevious, &colGlobal->colMapGaoInvMatrix, &worldCenter);
+        colGlobal->moveVec.x = centerPos->x - colGlobal->centerPosPrevious.x;
+        colGlobal->moveVec.y = colGlobal->centerPos.y - colGlobal->centerPosPrevious.y;
+        colGlobal->moveVec.z = colGlobal->centerPos.z - colGlobal->centerPosPrevious.z;
+        if (fabs(colGlobal->moveVec.x) != 0 || fabs(colGlobal->moveVec.y) != 0 || fabs(colGlobal->moveVec.z) != 0)
+        {
+            MATH_NormalizeVector(&colGlobal->moveVecUnit, &colGlobal->moveVec);
+        }
+        else
+        {
+            colGlobal->moveVecUnit.x = 0.0;
+            colGlobal->moveVecUnit.y = 0.0;
+            colGlobal->moveVecUnit.z = 0.0;
+        }
+
+        colGlobal->dynCenterPos.x = centerPos->x - prevCenterPos->x;
+        colGlobal->dynCenterPos.y = colGlobal->centerPos.y - colGlobal->centerPosPrevious.y;
+        colGlobal->dynCenterPos.z = colGlobal->centerPos.z - colGlobal->centerPosPrevious.z;
+        colGlobal->dynCenterPos.x = (float)(colGlobal->dynCenterPos.x * 0.5);
+        colGlobal->dynCenterPos.y = (float)(colGlobal->dynCenterPos.y * 0.5);
+        colGlobal->dynCenterPos.z = (float)(colGlobal->dynCenterPos.z * 0.5);
+        colGlobal->dynCenterPos.x = colGlobal->dynCenterPos.x + prevCenterPos->x;
+        colGlobal->dynCenterPos.y = colGlobal->centerPosPrevious.y + colGlobal->dynCenterPos.y;
+        colGlobal->dynCenterPos.z = colGlobal->centerPosPrevious.z + colGlobal->dynCenterPos.z;
+
+        instMtx = colGlobal->colInstGaoMatrices;
+        moveY = colGlobal->dynCenterPos.y - colGlobal->centerPosPrevious.y;
+        moveZ = colGlobal->dynCenterPos.z - colGlobal->centerPosPrevious.z;
+        moveX = colGlobal->dynCenterPos.x - prevCenterPos->x;
+        moveLen = sqrt(moveX * moveX + moveZ * moveZ + moveY * moveY);
+        colGlobal->dynRadius = (float)moveLen;
+        dynRadius = moveLen + sphere->radius;
+        colGlobal->dynRadius = (float)dynRadius;
+        if ((instMtx->mtxflag & 8) == 0 || (colGlobal->collInstanceElem->colFlags & 8) != 0)
+        {
+            colGlobal->dynRadius = (float)(dynRadius + sphere->radius);
+        }
+        else
+        {
+            MATH_GetScale(&scale, instMtx);
+            radius = sphere->radius;
+            colGlobal->dynRadius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * radius + colGlobal->dynRadius;
+        }
+        return;
     }
-    v29 = (v13->x - a1->x) * a9->x + (v13->z - a1->z) * a9->z + (v13->y - a1->y) * a9->y;
-    v30 = v29 * a9->x;
-    v48 = (float)(v29 * a9->y);
-    v49 = (float)(v29 * a9->z);
-    a5a.x = (float)(v30 + a1->x);
-    a5a.y = v48 + a1->y;
-    a5a.z = v49 + a1->z;
-    INT_PointTriangleClosestPointGet(v13, a7, a8, a9, &a5a, a10, a11);
-    v31 = a10->y - a1->y;
-    v32 = a10->z - a1->z;
-    v33 = a10->x - a1->x;
-    if (sqrt(v32 * v32 + v31 * v31 + v33 * v33) > a2)
+
+    box = (tColBox*)elem->elemShapePtr;
+    boxCenter.x = box->pos1.x + box->pos2.x;
+    boxCenter.y = box->pos2.y + box->pos1.y;
+    boxCenterZ = box->pos2.z + box->pos1.z;
+    boxCenter.x = (float)(boxCenter.x * 0.5);
+    boxCenter.y = (float)(boxCenter.y * 0.5);
+    boxCenter.z = (float)(boxCenterZ * 0.5);
+    halfX = box->pos1.x - box->pos2.x;
+    halfY = box->pos1.y - box->pos2.y;
+    halfExtent.z = box->pos1.z - box->pos2.z;
+    halfExtent.x = (float)(halfX * 0.5);
+    halfDiagonal = (float)sqrt(halfExtent.x * halfExtent.x
+        + halfExtent.z * 0.5 * (halfExtent.z * 0.5)
+        + halfY * 0.5 * (halfY * 0.5));
+
+    if ((elem->colFlags & 8) != 0)
+    {
+        MATH_TransformVertexNoScale(&worldCenter, colGlobal->colInstGaoMatrices, &boxCenter);
+        colGlobal->radius = halfDiagonal;
+    }
+    else
+    {
+        MATH_TransformVertex(&worldCenter, colGlobal->colInstGaoMatrices, &boxCenter);
+        if ((colGlobal->colInstGaoMatrices->mtxflag & 8) != 0)
+        {
+            MATH_GetScale(&scale, colGlobal->colInstGaoMatrices);
+            colGlobal->radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * halfDiagonal;
+        }
+        else
+        {
+            colGlobal->radius = halfDiagonal;
+        }
+    }
+
+    centerPos = &colGlobal->centerPos;
+    MATH_TransformVertexNoScale(&colGlobal->centerPos, &colGlobal->colMapGaoInvMatrix, &worldCenter);
+    MATH_TransformVertexNoScale(&colGlobal->centerPos, &colGlobal->colMapGaoInvMatrix, &worldCenter);
+    gao = colGlobal->colInstanceGao;
+    gaoFlags = gao->flags;
+    if ((colGlobal->collInstanceElem->colFlags & 8) != 0)
+    {
+        if ((gaoFlags & 0x400000) != 0)
+        {
+            MATH_MulMatrixMatrix(&combined, gao->extended->coll->colInstance->mtx, gao->basic->mtx->refGao2->matrices);
+            MATH_TransformVertexNoScale(&worldCenter, &combined, &boxCenter);
+        }
+        else
+        {
+            MATH_TransformVertexNoScale(&worldCenter, colGlobal->colInstMatrix, &boxCenter);
+        }
+    }
+    else if ((gaoFlags & 0x400000) != 0)
+    {
+        MATH_MulMatrixMatrix(&combined, gao->extended->coll->colInstance->mtx, gao->basic->mtx->refGao2->matrices);
+        MATH_TransformVertex(&worldCenter, &combined, &boxCenter);
+    }
+    else
+    {
+        MATH_TransformVertex(&worldCenter, colGlobal->colInstMatrix, &boxCenter);
+    }
+
+    prevCenterPos = &colGlobal->centerPosPrevious;
+    MATH_TransformVertexNoScale(&colGlobal->centerPosPrevious, &colGlobal->colMapGaoInvMatrix, &worldCenter);
+    colGlobal->moveVec.x = centerPos->x - colGlobal->centerPosPrevious.x;
+    colGlobal->moveVec.y = colGlobal->centerPos.y - colGlobal->centerPosPrevious.y;
+    colGlobal->moveVec.z = colGlobal->centerPos.z - colGlobal->centerPosPrevious.z;
+    if (fabs(colGlobal->moveVec.x) != 0 || fabs(colGlobal->moveVec.y) != 0 || fabs(colGlobal->moveVec.z) != 0)
+    {
+        MATH_NormalizeVector(&colGlobal->moveVecUnit, &colGlobal->moveVec);
+    }
+    else
+    {
+        colGlobal->moveVecUnit.x = 0.0;
+        colGlobal->moveVecUnit.y = 0.0;
+        colGlobal->moveVecUnit.z = 0.0;
+    }
+
+    colGlobal->dynCenterPos.x = centerPos->x - prevCenterPos->x;
+    colGlobal->dynCenterPos.y = colGlobal->centerPos.y - colGlobal->centerPosPrevious.y;
+    colGlobal->dynCenterPos.z = colGlobal->centerPos.z - colGlobal->centerPosPrevious.z;
+    colGlobal->dynCenterPos.x = (float)(colGlobal->dynCenterPos.x * 0.5);
+    colGlobal->dynCenterPos.y = (float)(colGlobal->dynCenterPos.y * 0.5);
+    colGlobal->dynCenterPos.z = (float)(colGlobal->dynCenterPos.z * 0.5);
+    colGlobal->dynCenterPos.x = prevCenterPos->x + colGlobal->dynCenterPos.x;
+    colGlobal->dynCenterPos.y = colGlobal->centerPosPrevious.y + colGlobal->dynCenterPos.y;
+    colGlobal->dynCenterPos.z = colGlobal->centerPosPrevious.z + colGlobal->dynCenterPos.z;
+
+    instMtx = colGlobal->colInstGaoMatrices;
+    moveY = colGlobal->dynCenterPos.y - colGlobal->centerPosPrevious.y;
+    moveZ = colGlobal->dynCenterPos.z - colGlobal->centerPosPrevious.z;
+    moveX = colGlobal->dynCenterPos.x - prevCenterPos->x;
+    dynRadius = sqrt(moveZ * moveZ + moveY * moveY + moveX * moveX) + halfDiagonal;
+    colGlobal->dynRadius = (float)dynRadius;
+    if ((instMtx->mtxflag & 8) == 0 || (colGlobal->collInstanceElem->colFlags & 8) != 0)
+    {
+        colGlobal->dynRadius = (float)(dynRadius + halfDiagonal);
+    }
+    else
+    {
+        MATH_GetScale(&scale, instMtx);
+        colGlobal->dynRadius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * halfDiagonal + colGlobal->dynRadius;
+    }
+}
+
+void COL_SetFaceTag(tCobOK3* ok3, unsigned int face)
+{
+    int* tags;
+
+    if (!ok3)
+        return;
+    tags = ok3->faceTagInts;
+    if (tags)
+        tags[face >> 5] |= 1 << (face - 32 * (face >> 5));
+}
+
+// preserved: BOOL is int8_t, so the returned bit is truncated away for every face whose index mod 32 is 8 or more
+BOOL COL_b_TestFaceTag(tCobOK3* ok3, unsigned int face)
+{
+    int* tags;
+
+    if (!ok3)
         return 0;
-    v34 = (a3->y - a10->y) * a5->y + (a3->z - a10->z) * a5->z + (a3->x - a10->x) * a5->x;
-    v35 = v34 * a5->x;
-    v45 = (float)(v34 * a5->y);
-    v46 = (float)(v34 * a5->z);
-    v36 = v35 + a10->x;
-    v37 = v45 + a10->y;
-    a5a.z = v46 + a10->z;
-    v38 = v37;
-    v47 = (float)(v36 - a3->x);
-    v39 = a5a.z - a3->z;
-    v40 = v38 - a3->y;
-    return sqrt(v39 * v39 + v40 * v40 + v47 * v47) <= a4;
+    tags = ok3->faceTagInts;
+    if (!tags)
+        return 0;
+    return tags[face >> 5] & (1 << (face - 32 * (face >> 5)));
 }
 
-int INT_ul_GetPositionPointWithBox(Vec3* a1, Vec3* a2, Vec3* a3)
+Vec3* INT_PointLineClosestPoint(Vec3* point, Vec3* lineStart, Vec3* lineEnd, Vec3* startToPoint, Vec3* closestOut)
 {
-    int v3; // edx
+    double deltaZ;
+    double deltaZSquared;
+    double deltaYSquared;
+    double deltaXSquared;
+    long double invLength;
+    double offsetX;
+    double offsetY;
+    float deltaX;
+    float deltaY;
+    float deltaZf;
+    float unitX;
+    float unitY;
+    float ratio;
+    float offsetZ;
 
-    v3 = 0;
-    if (a1->x >= (double)a2->x)
+    deltaX = lineEnd->x - lineStart->x;
+    deltaY = lineEnd->y - lineStart->y;
+    deltaZ = lineEnd->z - lineStart->z;
+    deltaZf = (float)deltaZ;
+    deltaZSquared = deltaZ * deltaZf;
+    deltaYSquared = deltaY * deltaY;
+    deltaXSquared = deltaX * deltaX;
+    invLength = 1.0 / sqrt(deltaYSquared + deltaZSquared + deltaXSquared);
+    unitX = (float)(deltaX * invLength);
+    unitY = (float)(deltaY * invLength);
+    ratio = (float)(-((startToPoint->z * (invLength * deltaZf) + startToPoint->y * unitY + unitX * startToPoint->x)
+        / sqrt(deltaZSquared + deltaYSquared + deltaXSquared)));
+
+    if (ratio >= 0.0)
     {
-        if (a1->x > (double)a3->x)
-            v3 = 2;
+        if (ratio <= 1.0)
+        {
+            offsetX = deltaX * ratio;
+            closestOut->x = (float)offsetX;
+            offsetY = deltaY * ratio;
+            closestOut->y = (float)offsetY;
+            offsetZ = deltaZf * ratio;
+            closestOut->z = offsetZ;
+            closestOut->x = (float)(offsetX + lineStart->x);
+            closestOut->y = (float)(offsetY + lineStart->y);
+            closestOut->z = (float)(offsetZ + lineStart->z);
+        }
+        else
+        {
+            *closestOut = *lineEnd;
+        }
     }
     else
     {
-        v3 = 1;
+        *closestOut = *lineStart;
     }
-    if (a1->y >= (double)a2->y)
+    return closestOut;
+}
+
+void INT_PointTriangleClosestPointGet(Vec3* p1, Vec3* p2, Vec3* p3, Vec3* normal, Vec3* point, Vec3* closestOut, uint32_t* edgeOut)
+{
+    double toP3X;
+    double toP3Y;
+    double toP3Z;
+    double farthest;
+    float distToP1Squared;
+    float distToP2Squared;
+    float distToP3Squared;
+    Vec3 toP1;
+    Vec3 toP2;
+
+    if (INT_PointInTriangle(point, p1, p2, p3, normal, 0))
     {
-        if (a1->y > (double)a3->y)
-            v3 |= 8u;
+        *closestOut = *point;
+        *edgeOut = 1;
+        return;
+    }
+
+    toP1.x = p1->x - point->x;
+    toP1.y = p1->y - point->y;
+    toP1.z = p1->z - point->z;
+    toP2.x = p2->x - point->x;
+    toP2.y = p2->y - point->y;
+    toP2.z = p2->z - point->z;
+    toP3X = p3->x - point->x;
+    toP3Y = p3->y - point->y;
+    toP3Z = p3->z - point->z;
+    distToP1Squared = toP1.z * toP1.z + toP1.x * toP1.x + toP1.y * toP1.y;
+    distToP2Squared = toP2.z * toP2.z + toP2.y * toP2.y + toP2.x * toP2.x;
+    distToP3Squared = (float)(toP3Z * toP3Z + toP3Y * toP3Y + toP3X * toP3X);
+    farthest = MATH_f_MaxOf3(distToP1Squared, distToP2Squared, distToP3Squared);
+
+    if (farthest == distToP1Squared)
+    {
+        INT_PointLineClosestPoint(point, p2, p3, &toP2, closestOut);
+        *edgeOut = 8;
+    }
+    else if (farthest == distToP2Squared)
+    {
+        INT_PointLineClosestPoint(point, p1, p3, &toP1, closestOut);
+        *edgeOut = 4;
+    }
+    else if (farthest == distToP3Squared)
+    {
+        INT_PointLineClosestPoint(point, p1, p2, &toP1, closestOut);
+        *edgeOut = 2;
+    }
+}
+
+static BOOL INT_l_b_ContactWithinRadii(Vec3* center1, float radius1, Vec3* center2, float radius2, Vec3* moveDir, Vec3* closest)
+{
+    double toClosestX;
+    double toClosestY;
+    double toClosestZ;
+    double along;
+    double slidX;
+    double slidY;
+    double toCenter2X;
+    double toCenter2Y;
+    double toCenter2Z;
+    float slidYf;
+    float slidZf;
+    float slidZ;
+    float toCenter2Xf;
+
+    toClosestY = closest->y - center1->y;
+    toClosestZ = closest->z - center1->z;
+    toClosestX = closest->x - center1->x;
+    if (sqrt(toClosestZ * toClosestZ + toClosestY * toClosestY + toClosestX * toClosestX) > radius1)
+        return 0;
+
+    along = (center2->y - closest->y) * moveDir->y
+        + (center2->z - closest->z) * moveDir->z
+        + (center2->x - closest->x) * moveDir->x;
+    slidX = along * moveDir->x;
+    slidYf = (float)(along * moveDir->y);
+    slidZf = (float)(along * moveDir->z);
+    toCenter2X = slidX + closest->x;
+    slidY = slidYf + closest->y;
+    slidZ = slidZf + closest->z;
+    toCenter2Y = slidY;
+    toCenter2Xf = (float)(toCenter2X - center2->x);
+    toCenter2Z = slidZ - center2->z;
+    toCenter2Y = toCenter2Y - center2->y;
+    return sqrt(toCenter2Z * toCenter2Z + toCenter2Y * toCenter2Y + toCenter2Xf * toCenter2Xf) <= radius2;
+}
+
+BOOL INT_DynamicHit(Vec3* sweptCenter, float sweptRadius, Vec3* center, float radius, Vec3* moveDir, Vec3* p1, Vec3* p2, Vec3* p3, Vec3* normal, Vec3* closestOut, int* edgeOut)
+{
+    double negRadius;
+    double backStepX;
+    double startY;
+    long double sweepDotNormal;
+    long double planeRatio;
+    double normalDist;
+    double sweepOffsetX;
+    double sweepOffsetY;
+    BOOL sweepFacesTriangle;
+    Vec3 sweep;
+    float startX;
+    float startZ;
+    float forwardX;
+    float forwardY;
+    float forwardZ;
+
+    negRadius = -sweptRadius;
+    backStepX = negRadius * moveDir->x;
+    sweep.y = (float)(negRadius * moveDir->y);
+    sweepFacesTriangle = 1;
+    sweep.z = (float)(negRadius * moveDir->z);
+    forwardX = sweptRadius * moveDir->x;
+    forwardY = sweptRadius * moveDir->y;
+    forwardZ = sweptRadius * moveDir->z;
+    startX = (float)(backStepX + sweptCenter->x);
+    startY = sweep.y + sweptCenter->y;
+    startZ = sweep.z + sweptCenter->z;
+    sweepOffsetX = sweptCenter->x - startX;
+    sweepOffsetY = sweptCenter->y - startY;
+    sweep.z = sweptCenter->z - startZ;
+    sweep.x = (float)(sweepOffsetX + forwardX);
+    sweep.y = (float)(sweepOffsetY + forwardY);
+    sweep.z = (float)(sweep.z + forwardZ);
+
+    sweepDotNormal = sweep.y * normal->y + sweep.x * normal->x + sweep.z * normal->z;
+    if (sweepDotNormal > 0.0 || fabs(sweepDotNormal) < 0.0000099999997)
+        sweepFacesTriangle = 0;
+
+    planeRatio = ((p1->y - startY) * normal->y + (p1->x - startX) * normal->x + (p1->z - startZ) * normal->z)
+        / sweepDotNormal;
+    if (planeRatio > 0.0)
+    {
+        sweep.z = (float)(sweep.z * planeRatio);
+        sweep.x = (float)(sweep.x * planeRatio + startX);
+        sweep.y = (float)(sweep.y * planeRatio + startY);
+        sweep.z = (float)(sweep.z + startZ);
+        INT_PointTriangleClosestPointGet(p1, p2, p3, normal, &sweep, closestOut, edgeOut);
+        if (INT_l_b_ContactWithinRadii(sweptCenter, sweptRadius, center, radius, moveDir, closestOut)
+            && sweepFacesTriangle)
+            return 1;
+    }
+
+    normalDist = (p1->x - sweptCenter->x) * normal->x
+        + (p1->z - sweptCenter->z) * normal->z
+        + (p1->y - sweptCenter->y) * normal->y;
+    sweep.x = (float)(normalDist * normal->x + sweptCenter->x);
+    sweep.y = (float)(normalDist * normal->y) + sweptCenter->y;
+    sweep.z = (float)(normalDist * normal->z) + sweptCenter->z;
+    INT_PointTriangleClosestPointGet(p1, p2, p3, normal, &sweep, closestOut, edgeOut);
+    return INT_l_b_ContactWithinRadii(sweptCenter, sweptRadius, center, radius, moveDir, closestOut);
+}
+
+int INT_ul_GetPositionPointWithBox(Vec3* point, Vec3* boxMin, Vec3* boxMax)
+{
+    int code;
+
+    code = 0;
+    if (point->x >= (double)boxMin->x)
+    {
+        if (point->x > (double)boxMax->x)
+            code = 2;
     }
     else
     {
-        v3 |= 4u;
+        code = 1;
     }
-    if (a1->z < (double)a2->z)
-        return v3 | 0x10;
-    if (a1->z > (double)a3->z)
-        v3 |= 0x20u;
-    return v3;
-}
-
-int INT_ul_GetPositionPointWithEdgeBox(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5)
-{
-    double v5;
-    int v6; 
-    double v7;
-    double v8;
-    float v10;
-    float v11;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    float v16;
-    float v17;
-    float v18;
-
-    v5 = a1->x * a5->x;
-    v6 = 0;
-    v17 = a5->y * a1->y;
-    v18 = a5->z * a1->z;
-    v7 = a3->x * a4->x;
-    v15 = a3->y * a4->y;
-    v16 = a3->z * a4->z;
-    v8 = a1->x * a4->x;
-    v13 = a1->y * a4->y;
-    v14 = a1->z * a4->z;
-    v10 = a2->x * a5->x;
-    v11 = a2->y * a5->y;
-    v12 = a2->z * a5->z;
-    if (v15 + v7 < v13 + v8)
-        v6 = 1;
-    if (v11 + v7 < v17 + v8)
-        v6 |= 2u;
-    if (v10 + v15 < v13 + v5)
-        v6 |= 4u;
-    if (v11 + v10 < v17 + v5)
-        v6 |= 8u;
-    if (v16 + v7 < v14 + v8)
-        v6 |= 0x10u;
-    if (v12 + v7 < v18 + v8)
-        v6 |= 0x20u;
-    if (v10 + v16 < v14 + v5)
-        v6 |= 0x40u;
-    if (v12 + v10 < v18 + v5)
-        v6 |= 0x80u;
-    if (v16 + v15 < v14 + v13)
-        v6 |= 0x100u;
-    if (v12 + v15 < v13 + v18)
-        v6 |= 0x200u;
-    if (v11 + v16 < v14 + v17)
-        v6 |= 0x400u;
-    if (v12 + v11 < v18 + v17)
-        v6 |= 0x800u;
-    return v6;
-}
-
-BOOL INT_b_InYZRange(Vec3* a1, Vec3* a2, Vec3* a3)
-{
-    return a1->y >= (double)a2->y && a1->y <= (double)a3->y && a1->z >= (double)a2->z && a1->z <= (double)a3->z;
-}
-
-BOOL INT_b_InXZRange(Vec3* a1, Vec3* a2, Vec3* a3)
-{
-    return a1->x >= (double)a2->x && a1->x <= (double)a3->x && a1->z >= (double)a2->z && a1->z <= (double)a3->z;
-}
-
-BOOL INT_b_InXYRange(Vec3* a1, Vec3* a2, Vec3* a3)
-{
-    return a1->x >= (double)a2->x && a1->x <= (double)a3->x && a1->y >= (double)a2->y && a1->y <= (double)a3->y;
-}
-
-int INT_b_IntersectEdgeWithBoxWithHit(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, char a6, Vec3* a7)
-{
-    double v7;
-    double v8;
-    double v9;
-    double v10;
-    double v11;
-    double v12;
-    int result;
-
-    if ((a6 & 1) != 0)
+    if (point->y >= (double)boxMin->y)
     {
-        v7 = (a4->x - a1->x) / a3->x;
-        a7->x = a4->x;
-        a7->y = (float)(v7 * a3->y + a1->y);
-        a7->z = (float)(v7 * a3->z + a1->z);
-        if (INT_b_InYZRange(a7, a4, a5))
-            goto LABEL_13;
-    }
-    if ((a6 & 2) != 0)
-    {
-        v8 = (a5->x - a1->x) / a3->x;
-        a7->x = a5->x;
-        a7->y = (float)(v8 * a3->y + a1->y);
-        a7->z = (float)(v8 * a3->z + a1->z);
-        if (INT_b_InYZRange(a7, a4, a5))
-            goto LABEL_13;
-    }
-    if ((a6 & 4) != 0)
-    {
-        v9 = (a4->y - a1->y) / a3->y;
-        a7->x = (float)(v9 * a3->x + a1->x);
-        a7->y = a4->y;
-        a7->z = (float)(v9 * a3->z + a1->z);
-        if (INT_b_InXZRange(a7, a4, a5))
-            goto LABEL_13;
-    }
-    if ((a6 & 8) != 0)
-    {
-        v10 = (a5->y - a1->y) / a3->y;
-        a7->x = (float)(v10 * a3->x + a1->x);
-        a7->y = a5->y;
-        a7->z = (float)(v10 * a3->z + a1->z);
-        if (INT_b_InXZRange(a7, a4, a5))
-            goto LABEL_13;
-    }
-    if ((a6 & 0x10) != 0)
-    {
-        v11 = (a4->z - a1->z) / a3->z;
-        a7->x = (float)(v11 * a3->x + a1->x);
-        a7->y = (float)(v11 * a3->y + a1->y);
-        a7->z = a4->z;
-        if (INT_b_InXYRange(a7, a4, a5))
-            goto LABEL_13;
-    }
-    if ((a6 & 0x20) != 0
-        && (v12 = (a5->z - a1->z) / a3->z,
-            a7->x = (float)(v12 * a3->x + a1->x),
-            a7->y = (float)(v12 * a3->y + a1->y),
-            a7->z = a5->z,
-            INT_b_InXYRange(a7, a4, a5)))
-    {
-    LABEL_13:
-        result = 1;
+        if (point->y > (double)boxMax->y)
+            code |= 8u;
     }
     else
     {
-        result = 0;
+        code |= 4u;
     }
-    return result;
+    if (point->z < (double)boxMin->z)
+        return code | 0x10;
+    if (point->z > (double)boxMax->z)
+        code |= 0x20u;
+    return code;
+}
+
+int INT_ul_GetPositionPointWithEdgeBox(Vec3* point, Vec3* boxMin, Vec3* boxMax, Vec3* extent, Vec3* negExtent)
+{
+    double pointNegX;
+    double maxExtX;
+    double pointExtX;
+    int code;
+    float pointNegY;
+    float pointNegZ;
+    float maxExtY;
+    float maxExtZ;
+    float pointExtY;
+    float pointExtZ;
+    float minNegX;
+    float minNegY;
+    float minNegZ;
+
+    pointNegX = point->x * negExtent->x;
+    code = 0;
+    pointNegY = negExtent->y * point->y;
+    pointNegZ = negExtent->z * point->z;
+    maxExtX = boxMax->x * extent->x;
+    maxExtY = boxMax->y * extent->y;
+    maxExtZ = boxMax->z * extent->z;
+    pointExtX = point->x * extent->x;
+    pointExtY = point->y * extent->y;
+    pointExtZ = point->z * extent->z;
+    minNegX = boxMin->x * negExtent->x;
+    minNegY = boxMin->y * negExtent->y;
+    minNegZ = boxMin->z * negExtent->z;
+
+    if (maxExtY + maxExtX < pointExtY + pointExtX)
+        code = 1;
+    if (minNegY + maxExtX < pointNegY + pointExtX)
+        code |= 2u;
+    if (minNegX + maxExtY < pointExtY + pointNegX)
+        code |= 4u;
+    if (minNegY + minNegX < pointNegY + pointNegX)
+        code |= 8u;
+    if (maxExtZ + maxExtX < pointExtZ + pointExtX)
+        code |= 0x10u;
+    if (minNegZ + maxExtX < pointNegZ + pointExtX)
+        code |= 0x20u;
+    if (minNegX + maxExtZ < pointExtZ + pointNegX)
+        code |= 0x40u;
+    if (minNegZ + minNegX < pointNegZ + pointNegX)
+        code |= 0x80u;
+    if (maxExtZ + maxExtY < pointExtZ + pointExtY)
+        code |= 0x100u;
+    if (minNegZ + maxExtY < pointExtY + pointNegZ)
+        code |= 0x200u;
+    if (minNegY + maxExtZ < pointExtZ + pointNegY)
+        code |= 0x400u;
+    if (minNegZ + minNegY < pointNegZ + pointNegY)
+        code |= 0x800u;
+    return code;
+}
+
+BOOL INT_b_InYZRange(Vec3* point, Vec3* boxMin, Vec3* boxMax)
+{
+    return point->y >= (double)boxMin->y && point->y <= (double)boxMax->y
+        && point->z >= (double)boxMin->z && point->z <= (double)boxMax->z;
+}
+
+BOOL INT_b_InXZRange(Vec3* point, Vec3* boxMin, Vec3* boxMax)
+{
+    return point->x >= (double)boxMin->x && point->x <= (double)boxMax->x
+        && point->z >= (double)boxMin->z && point->z <= (double)boxMax->z;
+}
+
+BOOL INT_b_InXYRange(Vec3* point, Vec3* boxMin, Vec3* boxMax)
+{
+    return point->x >= (double)boxMin->x && point->x <= (double)boxMax->x
+        && point->y >= (double)boxMin->y && point->y <= (double)boxMax->y;
+}
+
+int INT_b_IntersectEdgeWithBoxWithHit(Vec3* edgeStart, Vec3* edgeEnd, Vec3* edgeDir, Vec3* boxMin, Vec3* boxMax, char planeMask, Vec3* hitOut)
+{
+    double ratio;
+
+    if ((planeMask & 1) != 0)
+    {
+        ratio = (boxMin->x - edgeStart->x) / edgeDir->x;
+        hitOut->x = boxMin->x;
+        hitOut->y = (float)(ratio * edgeDir->y + edgeStart->y);
+        hitOut->z = (float)(ratio * edgeDir->z + edgeStart->z);
+        if (INT_b_InYZRange(hitOut, boxMin, boxMax))
+            return 1;
+    }
+    if ((planeMask & 2) != 0)
+    {
+        ratio = (boxMax->x - edgeStart->x) / edgeDir->x;
+        hitOut->x = boxMax->x;
+        hitOut->y = (float)(ratio * edgeDir->y + edgeStart->y);
+        hitOut->z = (float)(ratio * edgeDir->z + edgeStart->z);
+        if (INT_b_InYZRange(hitOut, boxMin, boxMax))
+            return 1;
+    }
+    if ((planeMask & 4) != 0)
+    {
+        ratio = (boxMin->y - edgeStart->y) / edgeDir->y;
+        hitOut->x = (float)(ratio * edgeDir->x + edgeStart->x);
+        hitOut->y = boxMin->y;
+        hitOut->z = (float)(ratio * edgeDir->z + edgeStart->z);
+        if (INT_b_InXZRange(hitOut, boxMin, boxMax))
+            return 1;
+    }
+    if ((planeMask & 8) != 0)
+    {
+        ratio = (boxMax->y - edgeStart->y) / edgeDir->y;
+        hitOut->x = (float)(ratio * edgeDir->x + edgeStart->x);
+        hitOut->y = boxMax->y;
+        hitOut->z = (float)(ratio * edgeDir->z + edgeStart->z);
+        if (INT_b_InXZRange(hitOut, boxMin, boxMax))
+            return 1;
+    }
+    if ((planeMask & 0x10) != 0)
+    {
+        ratio = (boxMin->z - edgeStart->z) / edgeDir->z;
+        hitOut->x = (float)(ratio * edgeDir->x + edgeStart->x);
+        hitOut->y = (float)(ratio * edgeDir->y + edgeStart->y);
+        hitOut->z = boxMin->z;
+        if (INT_b_InXYRange(hitOut, boxMin, boxMax))
+            return 1;
+    }
+    if ((planeMask & 0x20) != 0)
+    {
+        ratio = (boxMax->z - edgeStart->z) / edgeDir->z;
+        hitOut->x = (float)(ratio * edgeDir->x + edgeStart->x);
+        hitOut->y = (float)(ratio * edgeDir->y + edgeStart->y);
+        hitOut->z = boxMax->z;
+        if (INT_b_InXYRange(hitOut, boxMin, boxMax))
+            return 1;
+    }
+    return 0;
 }
 
 static void COL_l_SwapRecords(tRecordElem* a, tRecordElem* b)
@@ -7111,7 +6215,7 @@ void COL_OneCall(struct sGameObjectMain* gao, int firstRecord)
     for (idx = 0; idx < zoneNum; ++idx)
     {
         if ((elems[idx]->colFlags & 1) != 0
-            && COL_get_activation_flag_for_id__max_16_sub_4132C0(coll->colInstance, (char)idx))
+            && COL_i_ZoneActivationGet(coll->colInstance, (char)idx))
             break;
     }
     if (idx >= zoneNum)
@@ -7662,7 +6766,7 @@ void COL_Compute(tWorld* world)
         for (idx = 0; idx < zoneNum; ++idx)
         {
             if ((colInstance->selectedInstElemPtrs[idx]->colFlags & 1) != 0
-                && COL_get_activation_flag_for_id__max_16_sub_4132C0(colInstance, (char)idx))
+                && COL_i_ZoneActivationGet(colInstance, (char)idx))
                 break;
         }
         if (idx >= zoneNum)
@@ -9573,7 +8677,7 @@ int COL_Report_CollideType(struct sGameObjectMain* a1, struct sWorld* a2, int a3
     if ((a3 & 0x10000) != 0)
     {
         if (a1 && (v3 = a1->extended) != 0 && (v4 = v3->coll) != 0 && (v5 = v4->colInstance) != 0)
-            result = (uint16_t)COL_test_flag_sub_436970(v5, 2);
+            result = (uint16_t)COL_w_TestInstanceFlag(v5, 2);
         else
             result = 0;
     }
@@ -11486,7 +10590,7 @@ int COL_ZDE_PivotCollide(struct sGameObjectMain* a1, uint8_t id, struct sGameObj
                             v29 = v8; // byte cast
                             if (v9)
                             {
-                                if (COL_get_activation_flag_for_id__max_16_sub_4132C0(v7, v29))
+                                if (COL_i_ZoneActivationGet(v7, v29))
                                 {
                                     v10 = v7->selectedInstElemPtrs[v8];
                                     if ((v10->colFlags & 4) != 0)
@@ -11706,7 +10810,7 @@ BOOL COL_ZDE_BVCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGameObjec
     v27a = v9[a2];
     if (!v10)
         return 0;
-    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(v8, v27a))
+    if (!COL_i_ZoneActivationGet(v8, v27a))
         return 0;
     v11 = v8->selectedInstElemPtrs[v27a];
     if ((v11->colFlags & 4) == 0)
@@ -11840,7 +10944,7 @@ int COL_ZDE_BVCenterCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGame
                             v25 = v8; // byte assign
                             if (v9)
                             {
-                                if (COL_get_activation_flag_for_id__max_16_sub_4132C0(v7, v25))
+                                if (COL_i_ZoneActivationGet(v7, v25))
                                 {
                                     v10 = v7->selectedInstElemPtrs[v8];
                                     if ((v10->colFlags & 4) != 0)
@@ -12015,7 +11119,7 @@ BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, stru
     a4ab = v10[a2];
     if (!v11)
         return 0;
-    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(v6, a4ab))
+    if (!COL_i_ZoneActivationGet(v6, a4ab))
         return 0;
     v12 = v6->selectedInstElemPtrs[a4ab];
     if ((v12->colFlags & 4) == 0)
@@ -12024,7 +11128,7 @@ BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, stru
     a4ab = v9->colSet->zoneIDs[a3];
     if (a4ab > v13 - 1)
         return 0;
-    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(v9, a4ab))
+    if (!COL_i_ZoneActivationGet(v9, a4ab))
         return 0;
     v14 = v9->selectedInstElemPtrs[a4ab];
     if ((v14->colFlags & 4) == 0)
