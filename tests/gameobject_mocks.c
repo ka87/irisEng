@@ -386,8 +386,8 @@ void SOFT_TransformAndProject(Vec3* dest, Vec3* src, int count, tDDCamStruct* ca
         }
         else
         {
-            px = src[i].x - cam->objectMtx.Pos.x;
-            py = src[i].y - cam->objectMtx.Pos.y;
+            px = src[i].x - cam->objectMtx.Pos.x + 0.3f * w;
+            py = src[i].y - cam->objectMtx.Pos.y - 0.2f * w;
             dest[i].x = cam->centerX + (px + 0.25f * py) * cam->factorX / w;
             dest[i].y = cam->centerY + (py - 0.125f * px) * cam->factorY / w;
             dest[i].z = w;

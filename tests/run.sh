@@ -433,15 +433,23 @@ run_strings() {
 
 run_strings
 
-# world.c and collision.c. Each of these four was produced with a
-# standalone runner of its own; rather than inline four more symbol
-# lists -- collision's is 161 names long and is derived with nm so it
-# cannot drift -- run.sh calls them. They each build and run exactly
-# as the blocks above do, and each returns non-zero on a difference.
+# The rest each came with a standalone runner of its own; rather than
+# inline their symbol lists -- collision's is 161 names long and is
+# derived with nm so it cannot drift -- run.sh calls them. They each
+# build and run exactly as the blocks above do, each sets -e, and each
+# ends with its test binary, so a difference leaves the script's status
+# non-zero and the loop below counts it.
 for one in tests/runworld.sh \
            tests/run_collision_a.sh \
            tests/run_collision_b.sh \
-           tests/run_collision_c.sh
+           tests/run_collision_c.sh \
+           tests/runsound.sh \
+           tests/run_gfx.sh \
+           tests/run_ok3.sh \
+           tests/run_particle.sh \
+           tests/run_photo.sh \
+           tests/run_proctex.sh \
+           tests/rungameobject.sh
 do
     name=$(basename "$one" .sh)
     [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) continue ;; esac

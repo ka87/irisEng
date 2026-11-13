@@ -1113,6 +1113,62 @@ static void t_culling(void)
             g_scene.view.cameraMtx.Pos.z = (float)(i % 8) * 2.0f;
             g_ret[SIDE] = PICK(OBJ_uc_CalcLODVis)(&g_scene.gao[0], &g_scene.view);
         });
+
+    /* Both loops below are driven from a seed base of their own, above
+       everything this function uses, so that adding them does not shift
+       the random scenes of the cases before them. */
+    seed = 5900;
+
+    /* The corner scan's stop index does not reach the output: once it has
+       found one corner, the measuring loop reads all eight regardless.
+       What the scan decides is only whether a match exists at all, so
+       only a box whose SOLE on-screen corner is the last one can see a
+       change in the loop bound. The random boxes above never produce
+       that -- every match they find is at corner 0, 2, 4 or 6.
+
+       The camera sits at (-1,-2,-8) and the projection shears depth into
+       x and y, so in camera-relative terms this box spans X -3..5,
+       Y 2..14, W 10..40 at a focal length of 2000. Corner 7 projects to
+       the exact centre; every other corner fails the inside test and
+       both straddle arms, which needs each of them either outside the
+       rect on both axes, or outside on one and on the latch's
+       non-triggering side of the other. */
+    for (i = 0; i < 4; ++i)
+        CASE(seed++, "frame culling last corner", {
+            float a = 0.0f;
+            float b = 0.0f;
+            g_scene.cam.factorX = 2000.0f;
+            g_scene.cam.factorY = 2000.0f;
+            g_scene.scratch[1].x = -4.0f;
+            g_scene.scratch[1].y = 0.0f;
+            g_scene.scratch[1].z = 2.0f;
+            g_scene.scratch[0].x = 4.0f;
+            g_scene.scratch[0].y = 12.0f;
+            g_scene.scratch[0].z = 32.0f;
+            g_ret[SIDE] = PICK(OBJ_Frame_CullingAABBox)(&g_scene.scratch[1], &g_scene.scratch[0],
+                                                        &g_scene.cam, 640, 480,
+                                                        (i & 1) ? &a : 0, (i & 2) ? &b : 0);
+            g_scene.fscratch[0] = a;
+            g_scene.fscratch[1] = b;
+        });
+
+    /* lod only reaches its 255 clamp for a large volume seen from very
+       close. The loop above hit that by luck of the seed, which means a
+       case added anywhere before it took the coverage away again; this
+       drives it on purpose. */
+    for (i = 0; i < 4; ++i)
+        CASE(seed++, "CalcLODVis clamp", {
+            g_scene.bv[0].BVMin.x = -500.0f;
+            g_scene.bv[0].BVMin.y = -500.0f;
+            g_scene.bv[0].BVMin.z = -500.0f;
+            g_scene.bv[0].BVMax.x = 500.0f;
+            g_scene.bv[0].BVMax.y = 500.0f;
+            g_scene.bv[0].BVMax.z = 500.0f;
+            g_scene.view.cameraMtx.Pos.x = 0.5f + (float)i;
+            g_scene.view.cameraMtx.Pos.y = 0.5f;
+            g_scene.view.cameraMtx.Pos.z = 0.5f;
+            g_ret[SIDE] = PICK(OBJ_uc_CalcLODVis)(&g_scene.gao[0], &g_scene.view);
+        });
 }
 
 static void t_hierarchy_call(void)
@@ -1269,6 +1325,22 @@ static void t_lifecycle(void)
             tGameObjectMain* src = PICK(OBJ_GameObject_Create)(createFlags[i % 19] | 0x1000 | 0x2000);
             tGameObjectMain* dup;
             src->flags2 = i * 0x111111;
+            /* Create leaves the source's matrices identical to each
+               other, which makes a copy taken from the wrong one of them
+               invisible. Give each slot a mark of its own -- in v1, not
+               in Pos, which Duplicate overwrites when it is handed a
+               position. */
+            src->matrices[0].v1.x = 11.0f + (float)i;
+            if (src->flags & 0x10000)
+            {
+                src->matrices[1].v1.x = 22.0f + (float)i;
+                if (src->flags & 0x4000000)
+                    src->matrices[2].v1.x = 33.0f + (float)i;
+            }
+            else if (src->flags & 0x4000000)
+            {
+                src->matrices[1].v1.x = 22.0f + (float)i;
+            }
             dup = PICK(OBJ_GameObject_Duplicate)(&g_scene.world, src, i & 1, i & 2,
                                                  (i & 4) ? &g_scene.scratch[0] : 0);
             g_ret[SIDE] = (long)dup->flags * 31 + (long)dup->flags2;
