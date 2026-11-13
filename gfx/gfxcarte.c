@@ -136,7 +136,6 @@ int GFX_i_Carte_Render(struct sGfxCarteData* carte, struct sGEOMAT* mat,
     float cursorX;
     float cursorY;
     int hideRest;
-    int blinking;
     int k;
 
     if (!mat || mat->intf->id != 5 || !gao || !carte->objectCount || !carte->gao[0])

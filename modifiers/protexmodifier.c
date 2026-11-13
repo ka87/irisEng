@@ -45,7 +45,7 @@ void PROTEX_Disturb(struct sGameObjectMain* gao, struct sGEOGRO* geogro)
     int half;
     int du;
     int dv;
-    int i;
+    unsigned int i;
 
     if (!gao || (gao->flags & 5) == 0)
         return;

@@ -2542,7 +2542,6 @@ void COL_Visual_OK3_RayCast(tGameObjectMain* gao, tGEOGRO* geogro)
     tCobOK3* ok3;
     tCobOK3AABBoxElem* aaBox;
     tCobOK3AABBoxElemChunkElem* chunkElem;
-    tGeoTriangleChunks* geoChunk;
     tGeoTriangleChunkElem* tri;
     Vec3* pos;
     Mtx4x4* mtx;
@@ -7544,7 +7543,6 @@ BOOL COL_b_SingleBVIn(struct sGameObjectMain* outerGao, struct sGameObjectMain* 
     Mtx4x4* innerMtx;
     Mtx4x4* outerMtx;
     Mtx4x4* boxMtx;
-    double outerRadius;
     double halfX;
     double halfY;
     double halfZ;

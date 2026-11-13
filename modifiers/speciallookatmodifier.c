@@ -109,7 +109,8 @@ void GAO_ModifierSpecialLookAt_Apply(struct sModifier* mdf, void* unk1)
             radius = (float)((height + sla->f2) / height * 100.0);
             step = (float)(12.566371 / (double)geo->vertexNum);
             angle = 0.0;
-            for (i = 0; i < geo->vertexNum; i += 2)
+            // signed, as the compiled loop compares it
+            for (i = 0; i < (int)geo->vertexNum; i += 2)
             {
                 geo->vertices[i].x = (float)(sin(angle) * radius);
                 geo->vertices[i].y = -sla->f3;

@@ -1637,8 +1637,6 @@ void OBJ_ChangeIdentityFlags(tGameObjectMain* gao, unsigned int newFlags, int ol
 {
     tGameObjectBasic* basic;
     Mtx4x4* matrices;
-    Mtx4x4* initMtx;
-    Mtx4x4* flashMtx;
     tGameObjectVisualObject* visual;
     tGroGeneric* gro;
     tGroGeneric* grm;
@@ -3495,7 +3493,6 @@ int OBJ_Frame_CullingAABBox(Vec3* min, Vec3* max, struct sDDCamStruct* cam, int 
     uint8_t cornerIdx;
     long double dxWide;
     long double absDx;
-    double edgeTmp;
     double maxYTmp;
     Vec3* corner;
     int remaining;
