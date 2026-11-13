@@ -349,6 +349,8 @@ void pcINO_InputHandlerCase2(tInoPad* pad, float* mouse, uint8_t* keyboard)
        accumulates whole notches and decays by exactly one per 0.04s.
        The demo added/subtracted mouseGranularity here to compensate for
        the raw delta it was being handed. */
+    /* preserved: the caller passes a float here, so this reads its bits;
+       one notch adds 1065353216 to a scroll that decays by 1 per 0.04s */
     wheel = ((int*)mouse)[2];
     if (wheel)
     {
@@ -985,6 +987,8 @@ void pcINO_Joystick_Init(HWND hwnd)
                 pcINO_mouseDevice->lpVtbl->Release(pcINO_mouseDevice);
                 pcINO_mouseDevice = 0;
             }
+            /* preserved: reached with pcINO_mouseDevice NULL when either
+               call above failed, and DINPUT_GetProperty does not test it */
             if (DINPUT_GetProperty(pcINO_mouseDevice, 8, 1, (const GUID*)3, &mouseGranularity) < 0)// DIPROP_GRANULARITY
                 mouseGranularity = 1;
         }
@@ -1013,6 +1017,8 @@ void pcINO_Joystick_Init(HWND hwnd)
 
         INO_SetControlMode_inner_sub_48ACB0(4);
         INO_SetControlSubmode_inner_sub_48A650(8);
+        /* preserved: pcINO_getKeyNames dereferences pcINO_keybDevice
+           unconditionally, and this runs whether or not it was created */
         pcINO_getKeyNamesForEverything();
     }
 }
