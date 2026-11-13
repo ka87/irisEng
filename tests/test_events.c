@@ -941,9 +941,19 @@ static void putTrackList(int trackFlags, int keyType)
         for (k = 0; k < 2; ++k)
         {
             if (tf & 0x200)
-                pb(3);
+            {
+                /* 0x96 is 150 frames. The compact duration is a single
+                   byte read with LOA_ReadChar, which returns a signed
+                   char, so anything from 0x80 up sign-extends into the
+                   uint16_t field unless it is taken as a byte. The
+                   fixture used to write 3 at every key and could not
+                   see that. */
+                pb(k ? 0x96 : 3);
+            }
             else
+            {
                 ps(3);          /* duration */
+            }
             if (!(tf & 0x800) || k == 0)
                 ps(0x80);       /* flags2: an interpolation key */
             kf = (k ? (tf & 0xFF00) : 0);
@@ -982,6 +992,22 @@ static void case_listLoad(int side)
     else
         NEW_EVE_LoadListEvents(&scene.tracks[3], MOCK_FileBase(), &read, (int16_t)c_type);
     scene.outI[1] = (int)read;
+
+    /* Hash the durations the list loader actually produced. Without
+       this the case compared only the byte count and the call log, so
+       a compact duration byte that sign-extended into the uint16_t
+       field was invisible. */
+    scene.outI[2] = 0;
+    if (scene.outP[0])
+    {
+        tGameObjectEventsList* L = (tGameObjectEventsList*)scene.outP[0];
+        unsigned t2, k2;
+        for (t2 = 0; t2 < L->num && t2 < 4u; ++t2)
+            if (L->listElems[t2].trackElems)
+                for (k2 = 0; k2 < L->listElems[t2].elemNum && k2 < 4u; ++k2)
+                    scene.outI[2] = scene.outI[2] * 131
+                                  + (int)L->listElems[t2].trackElems[k2].duration;
+    }
 }
 
 /* 8. allocation, duplication, the ref resolve and the main call */
