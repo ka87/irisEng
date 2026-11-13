@@ -176,3 +176,14 @@ WORD   RegisterClassA(const WNDCLASSA*);
 HWND   CreateWindowExA(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, void*);
 BOOL   ShowWindow(HWND, int);
 BOOL   UpdateWindow(HWND);
+
+/* GDI and the system-colour calls the profiler window draws with. */
+HMODULE  GetModuleHandleA(LPCSTR);
+HDC      GetDC(HWND);
+int      ReleaseDC(HWND, HDC);
+DWORD    GetSysColor(int);
+COLORREF SetBkColor(HDC, COLORREF);
+COLORREF SetTextColor(HDC, COLORREF);
+HBRUSH   CreateSolidBrush(COLORREF);
+BOOL     ExtTextOutA(HDC, int, int, UINT, const RECT*, LPCSTR, UINT, const int*);
+int      DrawTextA(HDC, LPCSTR, int, RECT*, UINT);
