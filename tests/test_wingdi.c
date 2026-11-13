@@ -90,6 +90,22 @@
     void p##D3D_ReleaseMeshSpecificData(tGameObjectMain*); \
     void p##D3D_ReleaseMeshSpecificDataOfAWorld(tWorld*); \
     void p##D3D_ReleaseEveryCache(void); \
+    void p##D3D_Flip(void); \
+    void p##D3D_BeginSceneCall(void); \
+    void p##D3D_SetRenderTargetAndDepthStencilSurface(void); \
+    void p##D3D_PresentAndClear(void); \
+    void p##D3D_CreateWaterTexture(void); \
+    void p##D3D_CreateFullScreenTextureAndGetDepthStencilSurface(void); \
+    IDirect3DTexture9* p##D3D_GetWaterTexture(void); \
+    void p##D3D_CycleThroughVBOs(void); \
+    void p##D3D_InitEverything(tGdi_DisplayData*); \
+    void p##D3D_CreateIndexAndVertexBuffForGameObject(tGameObjectMain*); \
+    int  p##D3D_l_Close(void); \
+    void p##D3D_SunSurfacesClear(void); \
+    void p##D3D_ReleaseWaterIndices(void); \
+    void p##D3D_ReleaseSunSurfaces(void); \
+    void p##D3D_CreateSunTexturesForSunSurfaces(void); \
+    int  p##PC_HandleWindowOpenAndCloseMessages(HWND, GLOBAL_MainHandles*, unsigned int); \
     void p##D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld*); \
     void p##D3D_ReleaseTextures(struct sGdi_DisplayData*); \
     void p##D3D_ReleaseShadowTextures(void); \
@@ -180,6 +196,22 @@ typedef struct sSide
     void (*ReleaseMeshDataOfWorld)(tWorld*);
     void (*ReleaseEveryCache)(void);
     void (*CreateGameObjectsD3DStuff)(struct sWorld*);
+    void (*Flip)(void);
+    void (*BeginSceneCall)(void);
+    void (*SetRenderTargetAndDS)(void);
+    void (*PresentAndClear)(void);
+    void (*CreateWaterTexture)(void);
+    void (*CreateFullScreenTexture)(void);
+    IDirect3DTexture9* (*GetWaterTexture)(void);
+    void (*CycleThroughVBOs)(void);
+    void (*InitEverything)(tGdi_DisplayData*);
+    void (*CreateBuffersForGao)(tGameObjectMain*);
+    int (*Close)(void);
+    void (*SunSurfacesClear)(void);
+    void (*ReleaseWaterIndices)(void);
+    void (*ReleaseSunSurfaces)(void);
+    void (*CreateSunTextures)(void);
+    int (*WndOpenClose)(HWND, GLOBAL_MainHandles*, unsigned int);
     void (*ReleaseTextures)(struct sGdi_DisplayData*);
     void (*ReleaseShadowTextures)(void);
     void (*ReleaseVBOs)(void);
@@ -232,6 +264,13 @@ typedef struct sSide
     p##D3D_CreateIndexAndVertexBuffForElemsIfSuitable, p##PC_FreeABackCache, \
     p##D3D_ReleaseMeshSpecificData, p##D3D_ReleaseMeshSpecificDataOfAWorld, \
     p##D3D_ReleaseEveryCache, p##D3D_CreateGameObjectsD3DStuffForMultiStream, \
+    p##D3D_Flip, p##D3D_BeginSceneCall, p##D3D_SetRenderTargetAndDepthStencilSurface, \
+    p##D3D_PresentAndClear, p##D3D_CreateWaterTexture, \
+    p##D3D_CreateFullScreenTextureAndGetDepthStencilSurface, p##D3D_GetWaterTexture, \
+    p##D3D_CycleThroughVBOs, p##D3D_InitEverything, \
+    p##D3D_CreateIndexAndVertexBuffForGameObject, p##D3D_l_Close, \
+    p##D3D_SunSurfacesClear, p##D3D_ReleaseWaterIndices, p##D3D_ReleaseSunSurfaces, \
+    p##D3D_CreateSunTexturesForSunSurfaces, p##PC_HandleWindowOpenAndCloseMessages, \
     p##D3D_ReleaseTextures, p##D3D_ReleaseShadowTextures, p##D3D_ReleaseVBOs, \
     p##D3D_ReleaseEverything, p##D3D_CreateVBOs, p##D3D_CreateAndCopySourceTexturesToThem, \
     p##D3D_l_Texture_Store, p##D3D_Palette_Load, p##D3D_TextureStore, \
@@ -313,6 +352,7 @@ typedef struct sWgFixture
     tGEOSTATICLOD otherLod;
     tGroIntf lodIntf;
     tGroIntf otherIntf;
+    tGfxSunD3DSpecificData sun[16];
     tD3dRenderStateConfigStruct rsIn;
     tD3dSamplerConfigStruct smIn[8];
     tD3dTextureStageTypeStruct tsIn[8];
@@ -448,7 +488,7 @@ enum {
     C_RASTERS, C_RASTERQUAD, C_WATERBUFFERS, C_WATERSTREAM, C_DRAWWATER,
     C_UVCOMPUTE, C_UVCHROME, C_UVPLANAR, C_SPRITES, C_DRAWTRIS,
     C_CREATEBUFFERS, C_RELEASE, C_RELEASEMESH, C_CREATE, C_PALETTE, C_SNAPSHOT,
-    C_WNDMSG, C_SETUVMATRIX,
+    C_WNDMSG, C_SETUVMATRIX, C_DEVICE, C_SCENE, C_MULTISTREAM,
     C_COUNT
 };
 
@@ -461,7 +501,7 @@ static const char* caseName[C_COUNT] = {
     "rasters", "raster quad", "water buffers", "water stream", "draw water",
     "uv compute", "uv chrome", "uv planar", "sprites", "draw triangles",
     "create buffers", "release", "release mesh data", "create", "palette load", "snapshot",
-    "window message", "uv matrix"
+    "window message", "uv matrix", "device lifecycle", "scene", "multi stream"
 };
 
 static void ResetShared(void)
@@ -859,8 +899,10 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     W.sprites.globalRatio = rf(&r, 0.2f, 3.0f);
     for (i = 0; i < 8; i++)
     {
+        /* idx and size are the two halves of one union: the index is
+           encoded in the low word of the float */
         W.spriteElems[i].idx = (uint16_t)((seed + (unsigned)i) % 12u);
-        W.spriteElems[i].size = rf(&r, 0.1f, 2.0f);
+        W.spriteElems[i].dummy = (uint16_t)(0x3F00u + ((seed + (unsigned)i) % 0x80u));
         W.spritePos[i].x = rf(&r, -5.0f, 5.0f);
         W.spritePos[i].y = rf(&r, -5.0f, 5.0f);
         W.spritePos[i].z = rf(&r, -5.0f, 5.0f);
@@ -1236,6 +1278,37 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         ret = ret * 7 + extra + lp;
         break;
     }
+    case C_DEVICE:
+        s->SunSurfacesClear();
+        for (extra = 0; extra < 16; extra++)
+            gD3dSunSurfaces[extra] = ((seed >> (extra & 7)) & 1) ? &W.sun[extra] : NULL;
+        s->CreateSunTextures();
+        s->CreateWaterTexture();
+        s->CreateFullScreenTexture();
+        s->PresentAndClear();
+        s->ReleaseSunSurfaces();
+        s->ReleaseWaterIndices();
+        ret = s->Close();
+        extra = 0;
+        break;
+    case C_SCENE:
+        s->BeginSceneCall();
+        s->SetRenderTargetAndDS();
+        s->CycleThroughVBOs();
+        (void)s->GetWaterTexture();
+        s->InitEverything(&W.dd);
+        s->Flip();
+        break;
+    case C_MULTISTREAM:
+        *s->multiStreamWorld = NULL;
+        ENG_IsSingleStream = (int)(seed & 1);
+        s->CreateGameObjectsD3DStuff(&W.world);
+        s->CreateBuffersForGao(&W.gaos[seed % 4u]);
+        ret = s->WndOpenClose((HWND)0x100,
+                              (seed & 2) ? &W.handles : NULL,
+                              (unsigned int)(seed % 0x210u));
+        *s->multiStreamWorld = NULL;
+        break;
     case C_SETUVMATRIX:
         s->SetUVMatrix(&W.viewMtx, &W.verts[0], &W.verts[1], &W.verts[2],
                        &W.verts[3], &W.verts[4], (int)seed, (int)(seed % 9u));
@@ -1293,6 +1366,7 @@ static void CompareLogs(int kind, unsigned int seed, tWgmCall* a, int na)
 }
 
 static tWgmCall savedLog[WGM_LOG_MAX];
+static unsigned char savedLock[WGM_LOCK_BYTES];
 
 static void RunCase(int kind, unsigned int seed)
 {
@@ -1304,6 +1378,7 @@ static void RunCase(int kind, unsigned int seed)
     Snapshot(&sides[0], &shots[0], ret0, f0);
     na = WGM_logLen;
     memcpy(savedLog, WGM_log, sizeof(tWgmCall) * (size_t)na);
+    memcpy(savedLock, WGM_lockMem, sizeof(savedLock));
 
     Setup(&sides[1], kind, seed);
     ret1 = RunSide(&sides[1], kind, seed, &f1);
@@ -1323,6 +1398,27 @@ static void RunCase(int kind, unsigned int seed)
                     printf("        first differing byte at offset %zu\n", i);
                 break;
             }
+        if (shots[0].lockHash != shots[1].lockHash)
+        {
+            for (i = 0; i < sizeof(savedLock); i++)
+                if (savedLock[i] != WGM_lockMem[i])
+                {
+                    if (diffs < 12)
+                    {
+                        size_t v = (i / 24) * 24;
+                        size_t k;
+                        printf("        lock byte %zu: base %02x new %02x"
+                               "  (vertex %zu)\n", i, savedLock[i],
+                               WGM_lockMem[i], i / 24);
+                        printf("          base:");
+                        for (k = v; k < v + 24; k++) printf(" %02x", savedLock[k]);
+                        printf("\n          new :");
+                        for (k = v; k < v + 24; k++) printf(" %02x", WGM_lockMem[k]);
+                        printf("\n");
+                    }
+                    break;
+                }
+        }
     }
     CompareLogs(kind, seed, savedLog, na);
 }

@@ -373,9 +373,15 @@ static HRESULT Vt_CreateVertexDeclaration(IDirect3DDevice9* d,
 {
     int i;
     (void)d;
-    for (i = 0; i < 4; i++)
+    /* the declaration ends at the Stream 255 marker; what follows it
+       is whatever was on the stack and is not passed to the driver */
+    for (i = 0; i < 8; i++)
+    {
         L5("VertexElement", e[i].Stream, e[i].Offset, e[i].Type, e[i].Usage,
            e[i].UsageIndex);
+        if (e[i].Stream == 255)
+            break;
+    }
     *out = &WGM_decl[(WGM_createCount++) % WGM_DECLS];
     return 0;
 }
