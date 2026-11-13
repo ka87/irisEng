@@ -792,6 +792,7 @@ void OBJ_ComputeRecursivScale(tGameObjectMain* gao, Vec3* scale)
                 walk = local->refGao2;
             else
                 walk = 0;
+            // preserved: the three guards above can leave walk null and the test below dereferences it
         } while ((walk->flags & 0x400000) != 0);
         MATH_GetScale(&step, walk->matrices);
         scale->x = step.x * scale->x;
@@ -3265,6 +3266,7 @@ void OBJ_EyeFollow(struct sGameObjectMain* gao, Vec3* target, float weight, int 
         MATH_RotateMatrix_AroundLocalXAxis(third->matrices, thirdXFromBlend - thirdXCurrent);
         OBJ_SightGet(third, &thirdSight);
         OBJ_SightGeneralSet(third, &thirdSight, &thirdHorizon);
+        // preserved: the getter is null-safe and all three of its results here are dereferenced unchecked
         parent = get_reference_point_gao_2_from_gao_sub_40BEA0(third);
         OBJ_ComputeGlobalWithLocal(parent, parent->matrices, 1);
         OBJ_ComputeLocalWhenHie(third);
@@ -3851,6 +3853,7 @@ BOOL OBJ_CullingObject(struct sGameObjectMain* gao)
     float relZ;
     Vec3 boxMax;
     Vec3 boxMin;
+    // preserved: OBJ_CullingAABBox writes this only when the box is inside, and it is stored either way
     uint8_t cullFlags;
 
     bv = gao->boundingVolume;
