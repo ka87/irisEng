@@ -25,7 +25,7 @@ void GFX_Desintegrate_Init(tGfxDesintegrateData* desint)
     int baseVertex;
     int chunk;
     int t;
-    int i;
+    unsigned int i;
 
     source = desint->geogro;
     desint->flags |= 1u;
