@@ -21,7 +21,7 @@ float AI_EvalFunc_COLGMSlideGet_C(struct sGameObjectMain* gao, int reportFilter)
 float AI_EvalFunc_COLGMReboundGet_C(tGameObjectMain* gao, int reportFilter);
 int AI_EvalFunc_COLGMSoundGet_C(struct sGameObjectMain* gao, int reportFilter);
 void AI_EvalFunc_COLGlobalWallCosAngleSet_C(float cosAngle);
-void AI_EvalFunc_COLComputeJumpPoint_C(struct sGameObjectMain* gao, float distance, int edgeSearchArg, int useLastRayHit, Vec3* point);
+void AI_EvalFunc_COLComputeJumpPoint_C(struct sGameObjectMain* gao, float margin, int down, int useLastRayHit, Vec3* point);
 void AI_EvalFunc_COLCrossableSet_C(struct sGameObjectMain* gao, int16_t toSet, int16_t mask);
 int AI_EvalFunc_COLZDMObjectListGet_C(tGameObjectMain* gao, tGameObjectMain** outList, Vec3* pos, int reportFilter);
 struct sGameObjectMain* AI_EvalFunc_COLBestWallGaoGet_C(struct sGameObjectMain* gao, Vec3* direction, int* outRank);
