@@ -437,6 +437,7 @@ enum
     K_DELOBJ, K_CHILDREN, K_UNIVERSE,
     K_CHECKFATHER, K_CHECKGROUP,
     K_ATTACH, K_JUSTAFTER, K_RESOLVEAI,
+    K_BVCORNER,
     K_NUM
 };
 
@@ -449,7 +450,8 @@ static const char* KindName(int k)
         "AddLoadedObject", "DetachObject", "DelObj/AddDelObj",
         "GetAllChildrenOf", "Universe lookups",
         "CheckFather", "CheckGroup",
-        "AttachGameObject", "JustAfterLoadObject", "ResolveAIRef"
+        "AttachGameObject", "JustAfterLoadObject", "ResolveAIRef",
+        "BVMask corner walk"
     };
     return names[k];
 }
@@ -466,6 +468,7 @@ static void Run(int side, const Case* c, Capture* cap)
 {
     tWorld* w;
     tWorld* w2;
+    tBVMasks* m;
     int i;
     int n;
 
@@ -507,6 +510,54 @@ static void Run(int side, const Case* c, Capture* cap)
         /* and again with the probe itself in the table, which stops the walk */
         Masks(side)[c->a % (NMASK + 1) > 0 ? (c->a % (NMASK + 1)) - 1 : 0].gao = &scene.gao[c->b % NG];
         cap->ret[cap->retNum++] = CALL(WOR_BVMaskComputeInside, &scene.gao[c->b % NG]);
+        break;
+
+    /* The eight-corner loop in WOR_BVMaskComputeInside projects each
+       corner onto two axes, and the box's eight corners give only four
+       distinct projections: with is14 set they are {0,5} {1,3} {2,6}
+       {4,7} on (x,y), and with it clear {0,4} {1,6} {2,3} {5,7} on
+       (y,z). So the first sign match can only ever land on corner 0,
+       1, 2 and then 4 or 5 -- never on 3, 6 or 7.
+
+       The random scene never reaches the 4 or the 5, which left the
+       tail of the loop untested: an off-by-one in its exit test
+       scored clean. Both are built here by hand. The box is
+       min(-1,-2,-3) max(4,5,6) at the origin and the plane is chosen
+       so the dot product is positive at every earlier corner and
+       negative at the target, with is15 negative so the walk is
+       looking for the negative one. */
+    case K_BVCORNER:
+        scene.bv[0].BVMin.x = -1.0f; scene.bv[0].BVMax.x = 4.0f;
+        scene.bv[0].BVMin.y = -2.0f; scene.bv[0].BVMax.y = 5.0f;
+        scene.bv[0].BVMin.z = -3.0f; scene.bv[0].BVMax.z = 6.0f;
+        memset(&scene.gao[0].matrices[0].Pos, 0, sizeof(Vec3));
+
+        *BvNum(side) = 1;
+        m = &Masks(side)[0];
+        memset(m, 0, sizeof(*m));
+        m->gao = &scene.gao[1 % NG];       /* not the probe, or the walk stops */
+        m->is14 = (c->a & 1) ? 0 : 1;
+        m->is15 = -1.0f;
+        m->flags = c->b;
+        if (m->is14)
+        {
+            /* normal (-1, 1, 0); first match at corner 4 */
+            m->pool[0].x = 0.0f; m->pool[0].y = 2.0f; m->pool[0].z = 0.0f;
+            m->pool[1].x = 1.0f; m->pool[1].y = 3.0f; m->pool[1].z = 1.0f;
+            m->pool[2].x = 2.0f; m->pool[2].y = 4.0f; m->pool[2].z = 1.0f;
+        }
+        else
+        {
+            /* normal (0, 1, -1); first match at corner 5 */
+            m->pool[0].x = 0.0f; m->pool[0].y = 2.0f; m->pool[0].z = 0.0f;
+            m->pool[1].x = 1.0f; m->pool[1].y = 2.0f; m->pool[1].z = 0.0f;
+            m->pool[2].x = 1.0f; m->pool[2].y = 1.0f; m->pool[2].z = -1.0f;
+        }
+        m->planeLeft.x  = (float)(c->b & 3) - 1.0f;
+        m->planeUp.y    = (float)((c->b >> 2) & 3) - 1.0f;
+        m->planeRight.z = (float)((c->b >> 4) & 3) - 1.0f;
+        m->planeDown.x  = (float)((c->b >> 6) & 3) - 1.0f;
+        cap->ret[cap->retNum++] = CALL(WOR_BVMaskComputeInside, &scene.gao[0]);
         break;
 
     case K_BVALL:
@@ -873,6 +924,14 @@ int main(void)
         {
             RunCase(K_BVALL, seed, a, a);
             perKind[K_BVALL]++;
+        }
+        for (a = 0; a < 2; ++a)
+        {
+            for (b = 0; b < 16; ++b)
+            {
+                RunCase(K_BVCORNER, seed, a, b * 17);
+                perKind[K_BVCORNER]++;
+            }
         }
     }
 
