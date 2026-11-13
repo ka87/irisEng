@@ -103,72 +103,73 @@ static void EVE_l_MirrorPos(Vec3* dest, Vec3* src)
     dest->z = src->z;
 }
 
-void EVE_InitData(tEventData* eve, tGameObjectEventsList* list)
+/* BISECT: body restored from 675b6f2 */
+void EVE_InitData(tEventData* ed, tGameObjectEventsList* el)
 {
-    if (eve->eventListStruct && eve->tracks)
+    if (ed->eventListStruct && ed->tracks)
     {
-        if (eve->eventListStruct->num >= list->num)
+        if (ed->eventListStruct->num >= el->num)
         {
-            memset(eve->tracks, 0, sizeof(tAnimTracks) * eve->eventListStruct->num);
+            memset(ed->tracks, 0, sizeof(tAnimTracks) * ed->eventListStruct->num);
         }
         else
         {
-            eve->tracks = (tAnimTracks*)MEM_p_Realloc(eve->tracks, sizeof(tAnimTracks) * list->num);
-            memset(eve->tracks, 0, sizeof(tAnimTracks) * list->num);
+            ed->tracks = (tAnimTracks*)MEM_p_Realloc(ed->tracks, sizeof(tAnimTracks) * el->num);
+            memset(ed->tracks, 0, sizeof(tAnimTracks) * el->num);
         }
     }
     else
     {
-        if (eve->tracks)
+        if (ed->tracks)
         {
-            MEM_Free(eve->tracks);
-            eve->tracks = NULL;
+            MEM_Free(ed->tracks);
+            ed->tracks = NULL;
         }
-        eve->tracks = (tAnimTracks*)MEM_p_Alloc(sizeof(tAnimTracks) * list->num);
-        memset(eve->tracks, 0, sizeof(tAnimTracks) * list->num);
+        ed->tracks = (tAnimTracks*)MEM_p_Alloc(sizeof(tAnimTracks) * el->num);
+        memset(ed->tracks, 0, sizeof(tAnimTracks) * el->num);
     }
-    eve->eventListStruct = list;
+    ed->eventListStruct = el;
 }
 
-tEventData* EVE_pst_DuplicateData(tEventData* eve)
+/* BISECT: body restored from 675b6f2 */
+tEventData* EVE_pst_DuplicateData(tEventData* ed)
 {
     int i, j;
     tGameObjectEventsListElem* newListElems;
-    tEventData* newEve;
+    tEventData* newEd;
     void* newElemPtr;
 
-    newEve = (tEventData*)MEM_p_Alloc(sizeof(tEventData));
-    newEve->tracks = NULL;
-    newEve->eventListStruct = NULL;
+    newEd = (tEventData*)MEM_p_Alloc(sizeof(tEventData));
+    newEd->tracks = NULL;
+    newEd->eventListStruct = NULL;
 
-    if (eve && eve->tracks)
+    if (ed && ed->tracks)
     {
-        newEve->tracks = (tAnimTracks*)MEM_p_Alloc(sizeof(tAnimTracks) * eve->eventListStruct->num);
-        memcpy(newEve->tracks, eve->tracks, sizeof(tAnimTracks) * eve->eventListStruct->num);
+        newEd->tracks = (tAnimTracks*)MEM_p_Alloc(sizeof(tAnimTracks) * ed->eventListStruct->num);
+        memcpy(newEd->tracks, ed->tracks, sizeof(tAnimTracks) * ed->eventListStruct->num);
     }
 
-    if (eve && eve->eventListStruct)
+    if (ed && ed->eventListStruct)
     {
-        newEve->eventListStruct = (tGameObjectEventsList*)MEM_p_Alloc(sizeof(tGameObjectEventsList));
-        memcpy(newEve->eventListStruct, eve->eventListStruct, sizeof(tGameObjectEventsList));
-        if (eve->eventListStruct->listElems)
+        newEd->eventListStruct = (tGameObjectEventsList*)MEM_p_Alloc(sizeof(tGameObjectEventsList));
+        memcpy(newEd->eventListStruct, ed->eventListStruct, sizeof(tGameObjectEventsList));
+        if (ed->eventListStruct->listElems)
         {
-            newEve->eventListStruct->listElems = (tGameObjectEventsListElem*)MEM_p_Alloc(sizeof(tGameObjectEventsListElem) * eve->eventListStruct->num);
-            memcpy(newEve->eventListStruct->listElems, eve->eventListStruct->listElems, sizeof(tGameObjectEventsListElem) * eve->eventListStruct->num);
+            newEd->eventListStruct->listElems = (tGameObjectEventsListElem*)MEM_p_Alloc(sizeof(tGameObjectEventsListElem) * ed->eventListStruct->num);
+            memcpy(newEd->eventListStruct->listElems, ed->eventListStruct->listElems, sizeof(tGameObjectEventsListElem) * ed->eventListStruct->num);
 
-            newListElems = newEve->eventListStruct->listElems;
+            newListElems = newEd->eventListStruct->listElems;
 
-            for (i = 0; i < newEve->eventListStruct->num; ++i)
+            for (i = 0; i < newEd->eventListStruct->num; ++i)
             {
                 if (newListElems->trackElems)
                 {
                     newListElems->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * newListElems->elemNum);
-                    memcpy(newListElems->trackElems, eve->eventListStruct->listElems[i].trackElems, sizeof(tGameObjectEventElem) * newListElems->elemNum);
+                    memcpy(newListElems->trackElems, ed->eventListStruct->listElems[i].trackElems, sizeof(tGameObjectEventElem) * newListElems->elemNum);
                     for (j = 0; j < newListElems->elemNum; ++j)
                     {
                         if (newListElems->trackElems[j].eptrdu.data)
                         {
-                            // eptrdu is a union, so this length is the data pointer's own low half.
                             newElemPtr = MEM_p_Alloc(newListElems->trackElems[j].eptrdu.size);
                             memcpy(newElemPtr, newListElems->trackElems[j].eptrdu.data, newListElems->trackElems[j].eptrdu.size);
                             newListElems->trackElems[j].eptrdu.data = newElemPtr;
@@ -178,15 +179,16 @@ tEventData* EVE_pst_DuplicateData(tEventData* eve)
                 if (newListElems->dataPtr)
                 {
                     newListElems->dataPtr = (uint8_t*)MEM_p_Alloc(newListElems->size);
-                    memcpy(newListElems->dataPtr, eve->eventListStruct->listElems[i].dataPtr, newListElems->size);
+                    memcpy(newListElems->dataPtr, ed->eventListStruct->listElems[i].dataPtr, newListElems->size);
                 }
                 ++newListElems;
             }
         }
     }
-    return newEve;
+    return newEd;
 }
 
+/* BISECT: body restored from 675b6f2 */
 void EVE_Duplicate(struct sGameObjectMain* srcGao, struct sGameObjectMain* destGao, int wholeEVEWithTrackData)
 {
     tEventData* destEVE;
@@ -215,6 +217,7 @@ void EVE_Duplicate(struct sGameObjectMain* srcGao, struct sGameObjectMain* destG
     }
 }
 
+/* BISECT: body restored from 675b6f2 */
 BOOL EVE_b_Track_UseFlash(tGameObjectEventsListElem* elt, tGameObjectMain* currentGao, tGameObjectMain* ownerGao, tGameObjectEventsList* currentListTracks)
 {
     tGameObjectEventsList* clt;
@@ -226,7 +229,7 @@ BOOL EVE_b_Track_UseFlash(tGameObjectEventsListElem* elt, tGameObjectMain* curre
         gao = currentGao;
     else
         gao = EVE_gpst_CurrentGAO;
-
+    
     if (ownerGao)
         owner = ownerGao;
     else
@@ -236,36 +239,43 @@ BOOL EVE_b_Track_UseFlash(tGameObjectEventsListElem* elt, tGameObjectMain* curre
         clt = currentListTracks;
     else
         clt = EVE_gpst_CurrentListTracks;
-
-    for (currListElem = clt->listElems; currListElem <= elt; ++currListElem)
+    
+    currListElem = clt->listElems;
+    
+    while (currListElem <= elt)
     {
         if ((currListElem->gao || gao == owner)
             && (!currListElem->gao || currListElem->gao == gao)
             && currListElem->trackElems
-            && (currListElem->trackElems->flags2 & 0x7C0) == 0x80
-            && (currListElem->trackElems->flags2 & 4) != 0)
+            && (currListElem->trackElems->flags2 & 0x7C0) == 0x80)
         {
-            return TRUE;
+            if ((currListElem->trackElems->flags2 & 4) != 0)
+                return TRUE;
+            ++currListElem;
+        }
+        else
+        {
+            ++currListElem;
         }
     }
     return FALSE;
 }
 
-tGameObjectEventElem* EVE_Event_AIFunction_Play(tGameObjectEventElem* key)
+/* BISECT: body restored from 675b6f2 */
+tGameObjectEventElem* EVE_Event_AIFunction_Play(tGameObjectEventElem* a1)
 {
-    tGameObjectActorObject* actor;
-    tAIFunction* savedFunction;
-    tGameObjectMain* savedGao;
-    tAI* savedInstance;
-    tGameObjectMain* bone;
+    tGameObjectActorObject* v2;
+    tAIFunction* v3;
+    tGameObjectMain* v4;
+    tAI* v5;
 
-    if (key->eptrdu.data)
+    if (a1->eptrdu.data)
     {
         AI_gul_SizeGlobalVarStack = 0;
         AI_gul_SizeGlobalStack = 0;
-        savedFunction = AI_gpst_CurrentFunction;
-        savedInstance = AI_gpst_CurrentInstance;
-        savedGao = AI_gpst_CurrentGameObject;
+        v3 = AI_gpst_CurrentFunction;
+        v5 = AI_gpst_CurrentInstance;
+        v4 = AI_gpst_CurrentGameObject;
         AI_gpst_CurrentFunction = 0;
         AI_gpst_CurrentInstanceUltra = 0;
         AI_gpst_CurrentInstance = 0;
@@ -284,339 +294,383 @@ tGameObjectEventElem* EVE_Event_AIFunction_Play(tGameObjectEventElem* key)
         }
         else
         {
-            // These two returns leave the AI globals zeroed above unrestored.
             if (!EVE_gpst_CurrentTrack->gao
                 || (EVE_gpst_CurrentTrack->gao->flags & 2) == 0
                 || !EVE_gpst_CurrentTrack->gao->basic
                 || !EVE_gpst_CurrentTrack->gao->basic->actorObjectOrVisualObject
-                || !EVE_l_Actor(EVE_gpst_CurrentTrack->gao)->skeletonGroup)
+                || !((tGameObjectActorObject*)(EVE_gpst_CurrentTrack->gao->basic->actorObjectOrVisualObject))->skeletonGroup)
             {
-                return key;
+                return a1;
             }
-            actor = EVE_l_Actor(EVE_gpst_CurrentTrack->gao);
-            bone = EVE_l_Bone(actor, EVE_gpst_CurrentTrack->boneID);
-            if (!bone)
-                return key;
-            AI_gpst_CurrentUltra = bone;
+            v2 = EVE_gpst_CurrentTrack->gao->basic->actorObjectOrVisualObject;
+            if (EVE_gpst_CurrentTrack->boneID >= v2->skeletonGroup->tablePF->actElemNum)
+                return a1;
+            AI_gpst_CurrentUltra = (tGameObjectMain*)(((tableElemStructPF*)(v2->skeletonGroup->tablePF->firstElemPtr))[EVE_gpst_CurrentTrack->boneID].objectPtr);
             AI_gpst_CurrentGameObject = AI_gpst_CurrentUltra;
         }
-        AI_RunNode((tAINode*)(((uint8_t*)key->eptrdu.data) + 4));
+        AI_RunNode((tAINode*)(((uint8_t*)a1->eptrdu.data) + 4));
 
         if (AI_gul_SizeGlobalStack)
             EVE_gpst_CurrentParam->privateData = *(uint32_t*)AI_gac_GlobalStack;
-        AI_gpst_CurrentFunction = savedFunction;
-        AI_gpst_CurrentInstanceUltra = savedInstance;
-        AI_gpst_CurrentInstance = savedInstance;
-        AI_gpst_CurrentUltra = savedGao;
-        AI_gpst_CurrentGameObject = savedGao;
+        AI_gpst_CurrentFunction = v3;
+        AI_gpst_CurrentInstanceUltra = v5;
+        AI_gpst_CurrentInstance = v5;
+        AI_gpst_CurrentUltra = v4;
+        AI_gpst_CurrentGameObject = v4;
     }
-    return key;
+    return a1;
 }
 
-int EVE_i_SearchLabel(struct sGameObjectEventsListElem* track, int label, float* labelTime)
+/* BISECT: body restored from 675b6f2 */
+int EVE_i_SearchLabel(struct sGameObjectEventsListElem* a1, int a2, float* a3)
 {
-    float elapsed;
+    float v4;
+    float v5;
     int i;
 
-    elapsed = 0.0;
-    for (i = 0; i < track->elemNum; ++i)
+    v5 = 0.0;
+    for (i = 0; i < a1->elemNum; ++i)
     {
-        if ((track->trackElems[i].flags2 & 0xF000) == label
-            && (track->trackElems[i].flags2 & 0x7C0) != 0x200
-            && (track->trackElems[i].flags2 & 0x7C0) != 0x400)
+        if ((a1->trackElems[i].flags2 & 0xF000) == a2
+            && (a1->trackElems[i].flags2 & 0x7C0) != 0x200
+            && (a1->trackElems[i].flags2 & 0x7C0) != 0x400)
         {
-            *labelTime = elapsed;
+            *a3 = v5;
             return i;
         }
-        elapsed = track->trackElems[i].duration * 1.0f / 60.0f + elapsed;
+        v4 = (float)a1->trackElems[i].duration;
+        v5 = v4 * 1.0f / 60.0f + v5;
     }
     return -1;
 }
 
-int EVE_i_SearchTime(tGameObjectEventsListElem* track, float* time)
+/* BISECT: body restored from 675b6f2 */
+int EVE_i_SearchTime(tGameObjectEventsListElem* a1, float* a2)
 {
-    float keyTime;
-    float remaining;
+    int result;
+    float v3;
+    float v4;
+    float v5;
+    float v6;
+    float v7;
     int i;
 
-    remaining = *time;
-    for (i = 0; i < track->elemNum; ++i)
+    v6 = *a2;
+    for (i = 0; ; ++i)
     {
-        keyTime = (float)EVE_l_FrameTime(track->trackElems[i].duration);
-        if (keyTime >= (double)remaining)
+        if (i >= a1->elemNum)
         {
-            if (keyTime - remaining >= 0.016656667)
+            if (a1->trackElems)
             {
-                *time = remaining;
+                v3 = (float)a1->trackElems[a1->elemNum - 1].duration;
+                *a2 = (float)(v3 * 1.0 / 60.0);
+                result = a1->elemNum - 1;
             }
             else
             {
-                *time = 0.0;
-                ++i;
+                *a2 = 0.0;
+                result = 0;
             }
-            return i;
+            return result;
         }
-        remaining = (float)(remaining - EVE_l_FrameTime(track->trackElems[i].duration));
+        v5 = (float)a1->trackElems[i].duration;
+        v7 = (float)(v5 * 1.0 / 60.0);
+        if (v7 >= (double)v6)
+            break;
+        v4 = (float)a1->trackElems[i].duration;
+        v6 = (float)(v6 - v4 * 1.0 / 60.0);
     }
-    if (track->trackElems)
+    if (v7 - v6 >= 0.016656667)
     {
-        *time = (float)EVE_l_FrameTime(track->trackElems[track->elemNum - 1].duration);
-        return track->elemNum - 1;
+        *a2 = v6;
     }
-    *time = 0.0;
-    return 0;
+    else
+    {
+        *a2 = 0.0;
+        ++i;
+    }
+    return i;
 }
 
-void EVE_SetAllTimesTo(float time)
+/* BISECT: body restored from 675b6f2 */
+void EVE_SetAllTimesTo(float a1)
 {
-    int keyFrame;
-    float trackTime;
+    int v1;
+    float v2;
     int i;
 
     for (i = 0; i < EVE_gpst_CurrentListTracks->num; ++i)
     {
-        trackTime = time;
-        keyFrame = EVE_i_SearchTime(&EVE_gpst_CurrentListTracks->listElems[i], &trackTime);
-        if (keyFrame != -1)
+        v2 = a1;
+        v1 = EVE_i_SearchTime(&EVE_gpst_CurrentListTracks->listElems[i], &v2);
+        if (v1 != -1)
         {
             EVE_gpst_OwnerGAO->extended->eve->tracks[i].flag &= ~4u;
-            EVE_gpst_OwnerGAO->extended->eve->tracks[i].currElemKeyFrame = keyFrame;
-            EVE_gpst_OwnerGAO->extended->eve->tracks[i].currTime = trackTime;
+            EVE_gpst_OwnerGAO->extended->eve->tracks[i].currElemKeyFrame = v1;
+            EVE_gpst_OwnerGAO->extended->eve->tracks[i].currTime = v2;
         }
     }
 }
 
-void EVE_RunningTracksAtStart(tEventData* eve)
+/* BISECT: body restored from 675b6f2 */
+void EVE_RunningTracksAtStart(tEventData* a1)
 {
     int i;
 
-    if (eve)
+    if (a1)
     {
-        for (i = 0; i < eve->eventListStruct->num; ++i)
+        for (i = 0; i < a1->eventListStruct->num; ++i)
         {
-            if ((eve->tracks[i].flag & 1) != 0)
+            if ((a1->tracks[i].flag & 1) != 0)
             {
-                eve->tracks[i].flag &= ~4u;
-                eve->tracks[i].currElemKeyFrame = 0;
-                eve->tracks[i].currTime = 0.0;
+                a1->tracks[i].flag &= ~4u;
+                a1->tracks[i].currElemKeyFrame = 0;
+                a1->tracks[i].currTime = 0.0;
             }
         }
     }
 }
 
-void EVE_SetRunningTrack(struct sAnimTracks* state, int running)
+/* BISECT: body restored from 675b6f2 */
+void EVE_SetRunningTrack(struct sAnimTracks* a1, int a2)
 {
-    if (running)
+    if (a2)
     {
-        if ((state->flag & 1) == 0)
+        if ((a1->flag & 1) == 0)
         {
-            state->currTime = 0.0;
-            state->flag |= 1u;
-            state->flag &= ~2u;
-            state->flag &= ~4u;
-            state->currElemKeyFrame = 0;
+            a1->currTime = 0.0;
+            a1->flag |= 1u;
+            a1->flag &= ~2u;
+            a1->flag &= ~4u;
+            a1->currElemKeyFrame = 0;
         }
     }
     else
     {
-        state->flag &= ~1u;
+        a1->flag &= ~1u;
     }
 }
 
-void EVE_SetRunningTracks(struct sEventData* eve, int running)
+/* BISECT: body restored from 675b6f2 */
+void EVE_SetRunningTracks(struct sEventData* a1, int a2)
 {
     uint16_t i;
 
-    if (eve)
+    if (a1)
     {
-        for (i = 0; i < (int)eve->eventListStruct->num; ++i)
-            EVE_SetRunningTrack(&eve->tracks[i], running);
+        for (i = 0; i < (int)a1->eventListStruct->num; ++i)
+            EVE_SetRunningTrack(&a1->tracks[i], a2);
     }
 }
 
-void EVE_SetPauseTrack(struct sAnimTracks* state, int paused)
+/* BISECT: body restored from 675b6f2 */
+void EVE_SetPauseTrack(struct sAnimTracks* a1, int a2)
 {
-    if (paused)
+    if (a2)
     {
-        if ((state->flag & 2) == 0)
-            state->flag |= 2u;
+        if ((a1->flag & 2) == 0)
+            a1->flag |= 2u;
     }
     else
     {
-        state->flag &= ~2u;
+        a1->flag &= ~2u;
     }
 }
 
-void EVE_SetPauseTracks(struct sEventData* eve, int paused)
+/* BISECT: body restored from 675b6f2 */
+void EVE_SetPauseTracks(struct sEventData* a1, int a2)
 {
     uint16_t i;
 
-    for (i = 0; i < (int)eve->eventListStruct->num; ++i)
-        EVE_SetPauseTrack(&eve->tracks[i], paused);
+    for (i = 0; i < (int)a1->eventListStruct->num; ++i)
+        EVE_SetPauseTrack(&a1->tracks[i], a2);
 }
 
+/* BISECT: body restored from 675b6f2 */
 void EVE_FlashMatrix()
 {
-    Mtx4x4* mtx;
+    tGaoMatrix* v0;
 
     if (EVE_gb_CanFlash && EVE_gpst_CurrentListTracks && EVE_gpst_CurrentGAO)
     {
-        mtx = EVE_l_CurrentMatrix(EVE_gpst_CurrentGAO);
+        if ((EVE_gpst_CurrentGAO->flags & 0x400000) != 0)
+            v0 = OBJ_pst_GetLocalMatrix(EVE_gpst_CurrentGAO);
+        else
+            v0 = (tGaoMatrix*)OBJ_pst_GetAbsoluteMatrix(EVE_gpst_CurrentGAO);
         if (EVE_gpst_CurrentRefMatrix)
         {
-            if (EVE_gpst_CurrentRefMatrix != mtx)
-                memcpy(EVE_gpst_CurrentRefMatrix, mtx, sizeof(Mtx4x4));
+            if (EVE_gpst_CurrentRefMatrix != (Mtx4x4*)v0)
+                memcpy(EVE_gpst_CurrentRefMatrix, v0, sizeof(Mtx4x4));
         }
         else
         {
-            OBJ_ReinitMatrixStorageByFlags(EVE_gpst_CurrentGAO, mtx);
+            OBJ_ReinitMatrixStorageByFlags(EVE_gpst_CurrentGAO, &v0->mtx);
         }
     }
 }
 
-void EVE_GetTracksTime(struct sEventData* eve, int trackIdx, float* currTime, float* fullTime)
+/* BISECT: body restored from 675b6f2 */
+void EVE_GetTracksTime(struct sEventData* a1, int a2, float* currTime, float* fullTime)
 {
-    tGameObjectEventElem* key;
-    tGameObjectEventElem* end;
+    float v4;
+    float v5;
+    float v6;
+    tGameObjectEventElem* v7;
+    tGameObjectEventElem* v8;
+    tGameObjectEventElem* v9;
+    tGameObjectEventElem* v10;
+    tGameObjectEventElem* v11;
 
     if (currTime)
         *currTime = 0.0;
     if (fullTime)
         *fullTime = 0.0;
-    if (eve && eve->eventListStruct && eve->eventListStruct->listElems && eve->eventListStruct->listElems[trackIdx].trackElems)
+    if (a1 && a1->eventListStruct && a1->eventListStruct->listElems && a1->eventListStruct->listElems[a2].trackElems)
     {
         if (currTime)
         {
-            key = eve->eventListStruct->listElems[trackIdx].trackElems;
-            end = &key[eve->tracks[trackIdx].currElemKeyFrame];
-            while (key < end)
+            v8 = a1->eventListStruct->listElems[a2].trackElems;
+            v10 = &v8[a1->tracks[a2].currElemKeyFrame];
+            while (v8 < v10)
             {
-                *currTime = (float)(EVE_l_FrameTime(key->duration) + *currTime);
-                ++key;
+                v5 = (float)v8->duration;
+                *currTime = (float)(v5 * 1.0 / 60.0 + *currTime);
+                ++v8;
             }
             if (fullTime)
             {
                 *fullTime = *currTime;
-                end = &eve->eventListStruct->listElems[trackIdx].trackElems[eve->eventListStruct->listElems[trackIdx].elemNum];
-                while (key < end)
+                v11 = &a1->eventListStruct->listElems[a2].trackElems[a1->eventListStruct->listElems[a2].elemNum];
+                while (v8 < v11)
                 {
-                    *fullTime = (float)(EVE_l_FrameTime(key->duration) + *fullTime);
-                    ++key;
+                    v4 = (float)v8->duration;
+                    *fullTime = (float)(v4 * 1.0 / 60.0 + *fullTime);
+                    ++v8;
                 }
             }
-            *currTime = *currTime + eve->tracks[trackIdx].currTime;
+            *currTime = *currTime + a1->tracks[a2].currTime;
         }
         else if (fullTime)
         {
-            key = eve->eventListStruct->listElems[trackIdx].trackElems;
-            end = &key[eve->eventListStruct->listElems[trackIdx].elemNum];
-            while (key < end)
+            v7 = a1->eventListStruct->listElems[a2].trackElems;
+            v9 = &v7[a1->eventListStruct->listElems[a2].elemNum];
+            while (v7 < v9)
             {
-                *fullTime = (float)(EVE_l_FrameTime(key->duration) + *fullTime);
-                ++key;
+                v6 = (float)v7->duration;
+                *fullTime = (float)(v6 * 1.0 / 60.0 + *fullTime);
+                ++v7;
             }
         }
     }
 }
 
-void EVE_SetTracksTime(struct sEventData* eve, float time)
+/* BISECT: body restored from 675b6f2 */
+void EVE_SetTracksTime(struct sEventData* a1, float time)
 {
-    float fraction;
-    tGameObjectEventElem* key;
-    tGameObjectEventElem* keyEnd;
-    tGameObjectEventsListElem* track;
-    uint16_t frames;
-    tGameObjectEventsListElem* trackEnd;
-    tAnimTracks* state;
+    float v2;
+    float v3;
+    tGameObjectEventElem* v4;
+    tGameObjectEventElem* v5;
+    float v6;
+    tGameObjectEventsListElem* v7;
+    uint16_t v8;
+    tGameObjectEventsListElem* v9;
+    tAnimTracks* v10;
 
-    track = eve->eventListStruct->listElems;
-    trackEnd = &track[eve->eventListStruct->num];
-    state = eve->tracks;
-    while (track < trackEnd)
+    v7 = a1->eventListStruct->listElems;
+    v9 = &v7[a1->eventListStruct->num];
+    v10 = a1->tracks;
+    while (v7 < v9)
     {
-        frames = (uint16_t)(time * 60.0);
-        key = track->trackElems;
-        keyEnd = &key[track->elemNum];
-        state->currElemKeyFrame = 0;
-        while (key < keyEnd)
+        v8 = (uint16_t)(time * 60.0);
+        v4 = v7->trackElems;
+        v5 = &v4[v7->elemNum];
+        v10->currElemKeyFrame = 0;
+        while (v4 < v5)
         {
-            if (frames < (int)key->duration)
+            if (v8 < (int)v4->duration)
             {
-                fraction = (float)(time - (uint16_t)(time * 60.0) / 60.0);
-                state->currTime = (float)(frames / 60.0 + fraction);
-                state->flag |= 4u;
+                v2 = (float)v8;
+                v3 = (float)(uint16_t)(time * 60.0);
+                v6 = (float)(time - v3 / 60.0);
+                v10->currTime = (float)(v2 / 60.0 + v6);
+                v10->flag |= 4u;
                 break;
             }
-            frames -= key->duration;
-            state->currTime = 0.0;
-            state->flag |= 4u;
-            ++key;
-            ++state->currElemKeyFrame;
+            v8 -= v4->duration;
+            v10->currTime = 0.0;
+            v10->flag |= 4u;
+            ++v4;
+            ++v10->currElemKeyFrame;
         }
-        if (state->currElemKeyFrame == track->elemNum)
-            state->currElemKeyFrame = track->elemNum - 1;
-        ++track;
-        ++state;
+        if (v10->currElemKeyFrame == v7->elemNum)
+            v10->currElemKeyFrame = v7->elemNum - 1;
+        ++v7;
+        ++v10;
     }
 }
 
-void EVE_SynchronizeTracks(tGameObjectActorObject* actor)
+/* BISECT: body restored from 675b6f2 */
+void EVE_SynchronizeTracks(tGameObjectActorObject* a1)
 {
-    tEventData* eve;
-    float currTime;
+    tEventData* a1a;
+    float a3;
 
-    eve = actor->animPtr[0]->ptr;
-    EVE_GetTracksTime(eve, 0, &currTime, 0);
-    EVE_SetTracksTime(eve, currTime);
-    if (actor->flagsEgBlendIw2 != 1)
-        actor->flagsEgBlendIw2 = 1;
+    a1a = a1->animPtr[0]->ptr;
+    EVE_GetTracksTime(a1a, 0, &a3, 0);
+    EVE_SetTracksTime(a1a, a3);
+    if (a1->flagsEgBlendIw2 != 1)
+        a1->flagsEgBlendIw2 = 1;
 }
 
-void EVE_FreeTrack(tGameObjectEventsListElem* track)
+/* BISECT: body restored from 675b6f2 */
+void EVE_FreeTrack(tGameObjectEventsListElem* a1)
 {
-    if (track->trackElems)
+    if (a1->trackElems)
     {
-        if (track->dataPtr)
-            MEM_Free(track->dataPtr);
-        MEM_Free(track->trackElems);
-        track->trackElems = 0;
-        track->dataPtr = 0;
+        if (a1->dataPtr)
+            MEM_Free(a1->dataPtr);
+        MEM_Free(a1->trackElems);
+        a1->trackElems = 0;
+        a1->dataPtr = 0;
     }
 }
 
-void EVE_DeleteListTracks(tGameObjectEventsList* list)
+/* BISECT: body restored from 675b6f2 */
+void EVE_DeleteListTracks(tGameObjectEventsList* a1)
 {
     unsigned int i;
 
-    if (list)
+    if (a1)
     {
-        if (ENG_gb_ExitApplication && list->usageCount > 1000000u)
-            list->usageCount -= 1000000;
-        if (!--list->usageCount || list->usageCount == -1)
+        if (ENG_gb_ExitApplication && a1->usageCount > 1000000u)
+            a1->usageCount -= 1000000;
+        if (!--a1->usageCount || a1->usageCount == -1)
         {
-            for (i = 0; i < list->num; ++i)
-                EVE_FreeTrack(&list->listElems[i]);
-            if (list->listElems)
-                MEM_Free(list->listElems);
-            LOA_DeleteAddress((int)list);
-            MEM_Free(list);
+            for (i = 0; i < a1->num; ++i)
+                EVE_FreeTrack(&a1->listElems[i]);
+            if (a1->listElems)
+                MEM_Free(a1->listElems);
+            LOA_DeleteAddress((int)a1);
+            MEM_Free(a1);
         }
     }
 }
 
-void EVE_FreeMainStruct(tGameObjectMain* gao)
+/* BISECT: body restored from 675b6f2 */
+void EVE_FreeMainStruct(tGameObjectMain* a1)
 {
-    tEventData* eve;
+    tEventData* v1;
 
-    eve = gao->extended->eve;
-    if (eve)
+    v1 = a1->extended->eve;
+    if (v1)
     {
-        if (eve->tracks)
-            MEM_Free(eve->tracks);
-        if (eve->eventListStruct)
-            EVE_DeleteListTracks(eve->eventListStruct);
-        MEM_Free(eve);
-        gao->extended->eve = 0;
+        if (v1->tracks)
+            MEM_Free(v1->tracks);
+        if (v1->eventListStruct)
+            EVE_DeleteListTracks(v1->eventListStruct);
+        MEM_Free(v1);
+        a1->extended->eve = 0;
     }
 }
 
@@ -629,84 +683,120 @@ elemPtr felépítése [keyframe]
 vagy az elemPtr egy intként van használva ami két részbõl áll: alsó short rész: (2 x hossz | 1) felsõ rész, flagek
 */
 
-uint8_t* EVE_p_GetPdata(tGameObjectEventElem* key)
+/* BISECT: body restored from 675b6f2 */
+uint8_t* EVE_p_GetPdata(tGameObjectEventElem* a1)
 {
-    if ((((uint32_t)key->eptrdu.size) & 0x1) != 0) // &1 != 0: az elemptr nem mutat sehova, hanem intként van használva és ebbõl kell kiszámolni a ptr-t
-        return &EVE_gpst_CurrentTrack->dataPtr[((key->eptrdu.size >> 1) - 4) * (key - EVE_gpst_CurrentTrack->trackElems)];
-    return ((uint8_t*)key->eptrdu.data) + 4;
+    uint8_t* result;
+
+    if ((((uint32_t)a1->eptrdu.size) & 0x1) != 0) // &1 != 0: az elemptr nem mutat sehova, hanem intként van használva és ebbõl kell kiszámolni a ptr-t
+        result = &EVE_gpst_CurrentTrack->dataPtr[((a1->eptrdu.size >> 1) - 4) * (a1 - EVE_gpst_CurrentTrack->trackElems)];
+    else
+        result = ((uint8_t*)a1->eptrdu.data) + 4;
+    return result;
 }
 
-uint16_t EVE_w_Event_InterpolationKey_GetType(struct sGameObjectEventElem* key)
+/* BISECT: body restored from 675b6f2 */
+uint16_t EVE_w_Event_InterpolationKey_GetType(struct sGameObjectEventElem* a1)
 {
     // ha az elemptr elso ket bajta & 0x1 != 0, akkor csak a felso ket bajt kell nekunk, ami a tipus
     // ha nem, es az adatterulet amire az elemptr mutat nem 0, akkor az egy memoriacim, amit ha 2-vel eltolunk (mivel a felso 2 bajt kell [tipus-ra mutat]), megkapjuk
-    if ((key->eptrdu.size & 0x1) != 0)
-        return key->eptrdu.type;
-    if (key->eptrdu.data)
-        return *((uint16_t*)key->eptrdu.data + 1);
+    if ((a1->eptrdu.size & 0x1) != 0)
+        return a1->eptrdu.type;
+    if (a1->eptrdu.data)
+        return *((uint16_t*)a1->eptrdu.data + 1);
 
     return 0;
 }
 
-Quat4* EVE_pst_Event_InterpolationKey_GetQuaternion(tGameObjectEventElem* key)
+/* BISECT: body restored from 675b6f2 */
+Quat4* EVE_pst_Event_InterpolationKey_GetQuaternion(tGameObjectEventElem* a1)
 {
-    int type;
-    uint8_t* data;
+    int v2;
+    uint8_t* v3;
 
-    // type is int, so the 0xFFFF-means-no-key test below can never fire.
-    type = EVE_w_Event_InterpolationKey_GetType(key);
-    if (type == -1 || (type & 0x10) == 0)
+    v2 = EVE_w_Event_InterpolationKey_GetType(a1);
+    if (v2 == -1 || (v2 & 0x10) == 0)
         return 0;
-    data = EVE_p_GetPdata(key);
-    data += sizeof(Vec3) * (type & 0x3);
-    return (Quat4*)data;
-}
-
-int EVE_Anim_InterpolationKey_CopyMatrix(Mtx4x4* dest, tGameObjectEventElem* key)
-{
-    MATH_ConvertQuaternionToMatrix(dest, EVE_pst_Event_InterpolationKey_GetQuaternion(key));
-    dest->mtxflag |= 4;
-    return dest->mtxflag;
-}
-
-uint8_t* EVE_pst_Event_InterpolationKey_GetNextValue(tGameObjectEventElem* key)
-{
-    int type;
-    uint8_t* data;
-
-    // type is int, so the 0xFFFF-means-no-key test below can never fire.
-    type = EVE_w_Event_InterpolationKey_GetType(key);
-    if (type == -1 || (type & 0x40) == 0)
-        return 0;
-    data = EVE_p_GetPdata(key);
-    if ((type & 3) != 0)
+    v3 = EVE_p_GetPdata(a1);
+    if ((v2 & 0x3) != 0)
     {
-        data += sizeof(Vec3) * (type & 3);
+        v3 = ((char*)v3 + 12);
+        if ((v2 & 0x3) > 1)
+        {
+            v3 = ((char*)v3 + 12);
+            if ((v2 & 0x3) > 2)
+                v3 = ((char*)v3 + 12);
+        }
     }
-    else if ((type & 4) != 0)
+    return (Quat4*)v3;
+}
+
+/* BISECT: body restored from 675b6f2 */
+int EVE_Anim_InterpolationKey_CopyMatrix(Mtx4x4* a1, tGameObjectEventElem* a2)
+{
+    Quat4* v2;
+    int result;
+
+    v2 = EVE_pst_Event_InterpolationKey_GetQuaternion(a2);
+    MATH_ConvertQuaternionToMatrix(a1, v2);
+    result = a1->mtxflag | 4;
+    a1->mtxflag = result;
+    return result;
+}
+
+/* BISECT: body restored from 675b6f2 */
+uint8_t* EVE_pst_Event_InterpolationKey_GetNextValue(tGameObjectEventElem* a1)
+{
+    int v2;
+    uint8_t* v3;
+
+    v2 = EVE_w_Event_InterpolationKey_GetType(a1);
+    if (v2 == -1 || (v2 & 0x40) == 0)
+        return 0;
+    v3 = EVE_p_GetPdata(a1);
+    if ((v2 & 3) != 0)
     {
-        data += 68; // Mtx4x4, de az utolsó 3 int értelmetlenséget nem tárolja le, nézd a Load metódust, FIXME: meg kéne nézni a loadnál, hogy nem-e írjuk túl a buffert, 
+        v3 += sizeof(Vec3);
+        if ((v2 & 3u) > 1)
+        {
+            v3 += sizeof(Vec3);
+            if ((v2 & 3u) > 2)
+                v3 += sizeof(Vec3);
+        }
+    }
+    else if ((v2 & 4) != 0)
+    {
+        v3 += 68; // Mtx4x4, de az utolsó 3 int értelmetlenséget nem tárolja le, nézd a Load metódust, FIXME: meg kéne nézni a loadnál, hogy nem-e írjuk túl a buffert, 
         //mivel a ReadMatrix mind a 80 bájtot beolvassa és leteszi, mi viszont csak kevesebbel növeljük az offsetet így azok az adatok felülíródnak
     }
-    else if ((type & 0x10) != 0)
+    else if ((v2 & 0x10) != 0)
     {
-        data += sizeof(Quat4);
+        v3 += sizeof(Quat4);
     }
-    return data;
+    return v3;
 }
 
-Mtx4x4* EVE_pst_Event_InterpolationKey_GetRotation(tGameObjectEventElem* key)
+/* BISECT: body restored from 675b6f2 */
+Mtx4x4* EVE_pst_Event_InterpolationKey_GetRotation(tGameObjectEventElem* a1)
 {
-    int type;
-    uint8_t* data;
+    int v2;
+    uint8_t* v3;
 
-    // type is int, so the 0xFFFF-means-no-key test below can never fire.
-    type = EVE_w_Event_InterpolationKey_GetType(key);
-    if (type == -1 || (type & 4) == 0)
+    v2 = EVE_w_Event_InterpolationKey_GetType(a1);
+    if (v2 == -1 || (v2 & 4) == 0)
         return 0;
-    data = EVE_p_GetPdata(key);
-    data += sizeof(Vec3) * (type & 3);
-    return (Mtx4x4*)data;
+    v3 = EVE_p_GetPdata(a1);
+    if ((v2 & 3) != 0)
+    {
+        v3 += sizeof(Vec3);
+        if ((v2 & 3u) > 1)
+        {
+            v3 += sizeof(Vec3);
+            if ((v2 & 3u) > 2)
+                v3 += sizeof(Vec3);
+        }
+    }
+    return (Mtx4x4*)v3;
 }
 
 void EVE_Event_InterpolationKey_CopyMatrix(Mtx4x4* dest, tGameObjectEventElem* key, int useNextValue)
