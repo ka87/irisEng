@@ -9,7 +9,7 @@ void GAO_XMN_Render_TransparentTriangles(struct sGEOGRO* geogro, struct sGEOMAT*
 void MAT_DrawIndexedTriangle(struct sGEOGRO* geogro, struct sGEOMAT* geomat, struct sGeoTriangleChunks* triangleChunks);
 void GEO_Render_TransparentTriangles(struct sGdi_DisplayData* a1, struct sGEOGRO* a2, struct sGameObjectVisualObject* a3);
 BOOL MAT_IsMaterialTransparent(struct sGEOMAT* geomat, int idx, int renderingFlags, void* unk1);
-void MAT_DrawIndexedSprites(struct sGEOGRO* a1, struct sGEOMAT* a2, struct sGeoSprites* a4);
+void MAT_DrawIndexedSprites(struct sGEOGRO* geogro, struct sGEOMAT* geomat, struct sGeoSprites* spr);
 unsigned int MAT_GetValidityMASK(struct sGEOMAT* a1, int a2, struct sGEOGRO* a3);
 BOOL MAT_VUISIdentity(struct sMultiTextureElemStruct* a1);
 void MAT_UV_COMPUTE_GetMAtrix(struct sGdi_DisplayData* a1, struct sGameObjectMain* a2, unsigned int a3, Mtx4x4* a4);

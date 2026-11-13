@@ -433,6 +433,22 @@ run_strings() {
 
 run_strings
 
+# world.c and collision.c. Each of these four was produced with a
+# standalone runner of its own; rather than inline four more symbol
+# lists -- collision's is 161 names long and is derived with nm so it
+# cannot drift -- run.sh calls them. They each build and run exactly
+# as the blocks above do, and each returns non-zero on a difference.
+for one in tests/runworld.sh \
+           tests/run_collision_a.sh \
+           tests/run_collision_b.sh \
+           tests/run_collision_c.sh
+do
+    name=$(basename "$one" .sh)
+    [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) continue ;; esac
+    "$one" || fails=$((fails + 1))
+    echo
+done
+
 if [ "$fails" -ne 0 ]; then
     echo "$fails test binary/binaries reported differences"
     exit 1

@@ -161,13 +161,13 @@ typedef struct sGEOGRO
     IDirect3DIndexBuffer9* d3dIndexBuf;
 } tGEOGRO;
 
-void GEO_MRM_SetNumberOfPoints_Percent(struct sGEOGRO* a1, float a2);
-void GEO_UseNormals(struct sGEOGRO* a1);
-void GEO_ComputeNormals(struct sGEOGRO* a1);
-void GEO_SKN_ComputeNormals(struct sGEOGRO* a1, Vec3* a2);
-struct sGEOGRO* GEO_pst_Create(int a1, int a2, int a3, int* a4);
-void GEO_AllocElementContent(struct sGeoTriangleChunks* a1);
-void GEO_Free(struct sGroGeneric* a1);
-int GEO_l_GetNumberOfTriangles(struct sGEOGRO* a1);
-struct sGEOMAT* GEO_GetMaterial(struct sGEOMAT* a1, int a2);
+void GEO_MRM_SetNumberOfPoints_Percent(struct sGEOGRO* geo, float quality);
+void GEO_UseNormals(struct sGEOGRO* geogro);
+void GEO_ComputeNormals(struct sGEOGRO* geo);
+void GEO_SKN_ComputeNormals(struct sGEOGRO* geo, Vec3* vertices);
+struct sGEOGRO* GEO_pst_Create(int vertexNum, int uvNum, int triangleChunkNum, int* vertexColors);
+void GEO_AllocElementContent(struct sGeoTriangleChunks* tc);
+void GEO_Free(struct sGroGeneric* geo);
+int GEO_l_GetNumberOfTriangles(struct sGEOGRO* geo);
+struct sGEOMAT* GEO_GetMaterial(struct sGEOMAT* mat, int idx);
 void GEO_Init();

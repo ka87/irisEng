@@ -541,8 +541,8 @@ Two things found in those files are worth the space:
 46 files, 72,692 lines, 635 `goto`s — the engine proper, and the largest
 thing left. Twelve of the 46 were already source.
 
-**Fifteen of the 46 are rewritten now**, and twelve were already
-source, which leaves eighteen. `grid.c`, **2,064 lines to 1,700**
+**Seventeen of the 46 are rewritten now**, and twelve were already
+source, which leaves sixteen. `grid.c`, **2,064 lines to 1,700**
 with all **23** `goto`s gone, came first because `ai/ai_gridfunctions.c`
 was waiting on it to learn what the grid functions' arguments mean.
 `math.c` and `dynamics.c` followed, then `ai_common.c` and six small
@@ -606,6 +606,41 @@ not a first-character index, and `STR_Init3DString*`'s last is a cap on
 the letter count and not a flag word. `ai_gameobjecttextfunctions.c`'s
 four locals follow, and `tests/popcheck.py` still matches on all 1,660
 `ai/` functions.
+
+**`collision.c`, the largest file in the tree, and `world.c`.**
+`collision.c` goes from 14,241 lines to 11,303 with **all 204 `goto`s
+gone** and residue from 9,202 to 29, every one of those inside a
+comment of the user's own. `world.c` goes from 2,881 to 2,318 with its
+nine gone and 1,499 to 11.
+
+`collision.c` was done in **three ranges at once**, split at function
+boundaries into thirds of roughly equal weight, each in its own
+worktree. That the three merge cleanly was checked on a throwaway
+clone first. What actually conflicted was one range renaming two
+`_sub_<address>` functions and their call sites, six of which sit in
+the other ranges -- resolved by taking the rewritten side of every
+hunk and reapplying the two renames over the merged file. The evidence
+that the merge is sound is that all three ranges' tests run against
+the *merged* file against one frozen baseline: **1.9 million
+comparisons, none differing.**
+
+**The file was done first for a reason beyond its size.**
+`ai/ai_colfunctions.c` had carried `edgeSearchArg` as a placeholder
+since the `ai/` pass. It is `down`: passed straight through as
+`COL_FindEdgeInFollowDirection`'s parameter of that name, used to pick
+the lower end of a steep edge, and -- decisively -- named by the
+game's own script, which passes `i_rayjump_down_point` into it. The
+word `edgeSearchArg` is gone from the tree.
+
+Three findings in `collision.c` change what the engine does and are
+preserved with a line each. **`INT_SphereAABBox` returns TRUE for
+every well-formed box**, so the light far-plane cull at `lights.c:548`
+never fires and the OK3 acceleration walk rejects nothing;
+**`COL_b_TestFaceTag` returns `BOOL`, which is `int8_t`**, so the bit
+it reads is truncated away for three-quarters of face indices and
+those faces are re-collided every frame; and **`COL_b_SingleBVIn` has
+two dead branches**, each testing the outer volume where it meant the
+inner.
 
 What it holds: a per-world array of capability bytes with a small live
 window sliding over it, the window run-length encoded in the big file,

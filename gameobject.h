@@ -320,7 +320,7 @@ BOOL OBJ_CullingObject(struct sGameObjectMain* a1);
 BOOL OBJ_CullingPointInside(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, char flags);
 struct sGameObjectMain* OBJ_GameObject_Create(int flags);
 struct sGameObjectMain* get_reference_point_gao_2_from_gao_sub_40BEA0(struct sGameObjectMain* a1);
-void OBJ_HierarchyMainCall(struct sWorld* a1);
+void OBJ_HierarchyMainCall(struct sWorld* world);
 struct sGroGeneric* OBJ_p_GetGro(struct sGameObjectMain* a1);
 struct sGameObjectMain* OBJ_pst_GroupGetByRank(struct sGroup* a1, int idx);
 Vec3* OBJ_pst_GetPos(struct sGameObjectMain* a1);
@@ -331,10 +331,10 @@ struct sDyn* OBJ_pst_GetDynaStruct(struct sGameObjectMain* a1);
 
 tableDescStruct* OBJ_ul_World_LoadGolCallback(uint32_t Offset);
 
-void ACT_FreeActionKit(tActionKit** a1);
+void ACT_FreeActionKit(tActionKit** ak);
 void ACT_SetAction(struct sGameObjectMain* a1, int actionId, int forced);
-void ACT_ActionRestoreInit(struct sActionKit* a1);
+void ACT_ActionRestoreInit(struct sActionKit* ak);
 void ACT_SetUsageCounts(struct sActionKit* a1);
 struct sActionKit* ACT_ul_ActionKitCallback(uint32_t Offset);
-void ACTKitMergeNoOver(struct sGameObjectMain* a1, struct sGameObjectMain* a2, int a3, int a4);
-void ACTKitMergeOver(struct sGameObjectMain* a1, struct sGameObjectMain* a2, int a3, int a4);
+void ACTKitMergeNoOver(struct sGameObjectMain* gaoDest, struct sGameObjectMain* gaoSrc, int firstActionID, int lastActionID);
+void ACTKitMergeOver(struct sGameObjectMain* gaoDest, struct sGameObjectMain* gaoSrc, int firstActionID, int lastActionID);

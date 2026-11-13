@@ -596,29 +596,26 @@ tAINode* AI_EvalFunc_COLGlobalWallCosAngleSet(tAINode* node)
     return node + 1;
 }
 
-/* edgeSearchArg is handed on to the edge search in collision.c, which
-   does not name it. useLastRayHit starts the search from the world's
-   last ray-cast hit instead of from nothing. */
-void AI_EvalFunc_COLComputeJumpPoint_C(struct sGameObjectMain* gao, float distance, int edgeSearchArg, int useLastRayHit, Vec3* point)
+void AI_EvalFunc_COLComputeJumpPoint_C(struct sGameObjectMain* gao, float margin, int down, int useLastRayHit, Vec3* point)
 {
-    COL_ComputeJumpPoint(gao, point, distance, edgeSearchArg, useLastRayHit);
+    COL_ComputeJumpPoint(gao, point, margin, down, useLastRayHit);
 }
 
 tAINode* AI_EvalFunc_COLComputeJumpPoint(tAINode* node)
 {
     tGameObjectMain* gaoUltra;
     Vec3 point;
-    float distance;
-    int edgeSearchArg;
+    float margin;
+    int down;
     int useLastRayHit;
 
     useLastRayHit = AI_GetIntFromStack();
-    edgeSearchArg = AI_GetIntFromStack();
-    distance = AI_GetFloatFromStack();
+    down = AI_GetIntFromStack();
+    margin = AI_GetFloatFromStack();
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_EvalFunc_COLComputeJumpPoint_C(gaoUltra, distance, edgeSearchArg, useLastRayHit, &point);
+    AI_EvalFunc_COLComputeJumpPoint_C(gaoUltra, margin, down, useLastRayHit, &point);
     AI_PutVecToStack(&point);
     return node + 1;
 }

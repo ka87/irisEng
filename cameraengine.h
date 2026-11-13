@@ -70,11 +70,11 @@ float g_fDistance;
 tDDCamStruct CAM_gst_IsoNoClip;
 
 
-void CAM_AssignCameraToDevice(tDDContainerStruct2ForIDA* a1, tDDContainerStruct* a2, int winWidth, int winHeight);
-void CAM_2Dto3D(struct sDDCamStruct* a1, Vec3* a2, Vec3* a3);
+void CAM_AssignCameraToDevice(tDDContainerStruct2ForIDA* srcdd, tDDContainerStruct* dstdd, int winWidth, int winHeight);
+void CAM_2Dto3D(struct sDDCamStruct* cam, Vec3* dest, Vec3* src);
 void CAM_2Dto3DCamera(struct sDDCamStruct* cam, Vec3* cam3D, Vec3* cam2D);
-void CAM_2Dto3DCamera2(struct sDDCamStruct* a1, Vec3* a2, Vec3* a3);
-void CAM_Engine_ComputePlans(tDDContainerStruct* a1);
-int CAM_SetCameraMatrix(tDDContainerStruct* a1, Mtx4x4* a2);
-void CAM_Inverse(tDDContainerStruct* a1);
-void CAM_Engine_Init(tDDContainerStruct* a1);
+void CAM_2Dto3DCamera2(struct sDDCamStruct* cam, Vec3* cam3D, Vec3* cam2D);
+void CAM_Engine_ComputePlans(tDDContainerStruct* dd);
+int CAM_SetCameraMatrix(tDDContainerStruct* ddc, Mtx4x4* mtx);
+void CAM_Inverse(tDDContainerStruct* ddc);
+void CAM_Engine_Init(tDDContainerStruct* dd);

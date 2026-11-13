@@ -254,7 +254,7 @@ Vec3 AE_MS_CurrVec;
 Vec3 AE_MS_PrevVec;
 
 void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* a2, tMultiTextureElemStruct* a3);
-void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int a4);
+void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int type);
 void MAT_UV_Compute_Chrome(tGdi_DisplayData* a1, tGEOGRO* a21, tGeoTriangleChunks* a31, unsigned int a41);
 void D3D_SetProjectionMatrix(tDDCamStruct* a1);
 void D3D_BeginSceneCall();
@@ -274,7 +274,7 @@ void D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct* a1);
 
 struct sGdi_D3DRenderParams* D3D_pst_CreateDevice();
 void D3D_DestroyDevice(struct sGdi_D3DRenderParams* a1);
-int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* a6);
+int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd);
 int D3D_l_Close();
 void D3D_Clear(int a1, int color);
 void D3D_Flip();
@@ -287,8 +287,8 @@ void D3D_l_Texture_Init(int a1, int a2, char a3);
 int D3D_l_Texture_Store(struct sGdi_DisplayData* a1, int a2);
 void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* a3, int idx);
 void D3D_ReleaseTextures(struct sGdi_DisplayData* a1);
-void D3D_SetRenderTargetAndBackupPreviousSDW(int a1, int clear);
-void D3D_SetViewMatrix_SDW(Mtx4x4* a1, float* x);
+void D3D_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear);
+void D3D_SetViewMatrix_SDW(Mtx4x4* mtx, float* x);
 void D3D_Texture_Unload(struct sGdi_DisplayData* a1, struct sEngPaletteElem* a2, int a3);
 int D3D_l_ReadaptDisplay(HWND hwnd, struct sGdi_DisplayData* gdd);
 int  D3D_Set_Texture_Palette(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* a2, struct sEngTexIntermediateStruct* a3, int a4);

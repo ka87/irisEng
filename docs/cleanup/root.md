@@ -9,8 +9,9 @@ Twelve of the 46 were already source and need nothing. Of the rest,
 `ai/ai_gridfunctions.c` was blocked on it. This batch adds `math.c`,
 `dynamics.c`, `ai_common.c`, the six small files, and five of the large
 ones: `sprites.c`, `textures.c`, `animation.c`, `events.c` and
-`strings.c`. Fifteen of the 46 are rewritten now and twelve were
-already source, which leaves eighteen.
+`strings.c`. The batch after it adds `collision.c` and `world.c`.
+Seventeen of the 46 are rewritten now and twelve were already source,
+which leaves sixteen.
 
 Four of those five were done in parallel, and each came back with a
 differential test of its own. Those tests are as much the batch's
@@ -39,13 +40,13 @@ run them.
 | `time.c` | 135 | | | already source |
 | `view.c` | 97 | | | already source |
 | `water.c` | 2,828 | | | already source |
-| `collision.c` | 14,241 | 9,202 | 204 | |
+| `collision.c` | 14,241 to 11,303 | 9,202 to 29 | 204 to 0 | done |
 | `sound.c` | 7,110 | 3,134 | 72 | |
 | `gameobject.c` | 4,693 | 2,841 | 42 | |
 | `animation.c` | 3,068 to 2,097 | 1,846 to 1 | 16 to 0 | done |
 | `textures.c` | 3,326 to 2,598 | 1,783 to 1 | 23 to 0 | done |
 | `strings.c` | 3,360 to 2,823 | 1,701 to 0 | 44 to 0 | done |
-| `world.c` | 2,881 | 1,499 | 9 | |
+| `world.c` | 2,881 to 2,318 | 1,499 to 11 | 9 to 0 | done |
 | `events.c` | 2,723 to 2,347 | 1,463 to 0 | 9 to 0 | done |
 | `proceduraltextures.c` | 1,752 | 1,108 | 11 | |
 | `ok3.c` | 1,317 | 974 | 23 | |
@@ -92,11 +93,14 @@ harness, and its `v2`, `v5a` and `v6` are deliberately arbitrary names
 that the `printf` strings beside them name out loud. The same decision as
 `ai/ai_compiledscripts.c`.
 
-**`collision.c`** is the one left that is worth doing early for a
-reason beyond its own size, and it is the same reason `grid.c` and
-`math.c` came first: `ai/ai_colfunctions.c` named four arguments from
-`collision.h` and had to leave a fifth as `edgeSearchArg`, because the
-edge search it reaches is still decompiler output.
+**`collision.c` was done for a reason beyond its own size**, the same
+reason `grid.c` and `math.c` came first: `ai/ai_colfunctions.c` named
+four arguments from `collision.h` and had to leave a fifth as
+`edgeSearchArg`, because the edge search it reaches was still
+decompiler output. It is `down`, and the word `edgeSearchArg` is gone
+from the tree. `collision.h` still carries 5 residue lines, all in
+prototypes for functions defined in files that have not had their
+pass.
 
 ---
 
@@ -896,3 +900,367 @@ the rewrite. Adding the include would be behaviour-neutral in principle
 but turns the call into a macro, which the frozen copy would not get, so
 it is a change the differential test cannot speak to. Left as it was,
 and recorded in `tests/implicitcheck.sh`'s baseline.
+
+---
+
+## world.c
+
+2,881 lines to 2,318, nine `goto`s to none, and 53 functions to 54:
+nothing lost, the two oddly-named helpers renamed, and one new `static`
+helper for the plane inversion the mask pre-compute does twice. Residue
+1,499 to 11 in the source and 21 to 0 in the header, 21 of whose 27
+prototypes picked up names from the definitions.
+
+**The eleven residue lines left are all inside comments of the user's
+own** and are kept byte for byte: the commented-out `AddElemP inline`
+block in `WOR_World_AttachGameObject` and the crash-fix note under it
+that names `v25`, the `// fixed:` note on the static-LOD element read,
+and the two `COERCE_FLOAT` notes recording the Hex-Rays form of the
+bit-twiddling sign test.
+
+**Seven comments were removed and they were all the same note.** The
+bounding-volume mask's corner test was unrolled eight times, and each
+copy carried its own
+`//if (v60 == COERCE_FLOAT(LODWORD(v3N) & 0xBF800000 | 0x3F800000))`
+naming that copy's local. Folding the eight copies into one loop leaves
+one site, so one of the eight is kept verbatim on it and the other seven
+went with the code they annotated. Nothing else was dropped: the comment
+multiset is otherwise identical to `origin/claude/sideload`.
+
+### The nine gotos, which were four shapes
+
+- **Five `goto LABEL_64` in `WOR_pst_World_Load`** are one test written
+  five times. Each is `if (world == target)`, with the merge work
+  between them and `v10` reloaded from `world` before every one, so the
+  whole run is `if (loaded == target) ... else { merge; }` and the label
+  is the `if` arm of the final GRO-cursor pick.
+- **`goto restart` in `EOT_AISortWithPriority`** is "a hole turned up
+  while counting, compact the table and start the histogram again". A
+  `do { ... } while (holeFound)` around the count.
+- **`goto LABEL_9` in `WOR_BVMaskPreCompute`** skips to the shared
+  `pool[3].z` store from the arm that picks a different value for it.
+  The three arms write it out, which is what `dynamics.c`'s auto-orient
+  goto became.
+- **Three in `WOR_Render_All_GO`**: `LABEL_25` is the flag store two
+  paths share before `continue`, `LABEL_51` is the loop's increment, and
+  `LABEL_50` is the unapply tail. The tail's only live variable, `v21`,
+  is assigned `dxdd` on both paths that reach it, so the two arms and
+  the tail collapse into one `if`/`else if` with the tail written once.
+
+### What reading it settled
+
+**The bounding-volume mask is a four-point quad, not a box.**
+`WOR_BVMaskPreCompute` picks the object's flattest axis, builds the four
+corners of the box's cross-section through the other two, pushes them
+out to world space, and makes a plane per edge from the camera position.
+`is14` records whether the quad is flat in Z -- which is why the inside
+test zeroes the X difference when it is clear and the Z difference when
+it is set -- and `is15` is the facing of the quad, whose sign flips all
+four planes.
+
+**`WOR_BVMaskComputeInside`'s eight-times unrolled block is one loop
+over the box's eight corners**, with the index carried in the running
+`v13` (`+= 1` through `+= 7` at the breaks, `+= 8` at the fall-through)
+and `v16 += 2` at the bottom dead because the loop can only run once.
+It stops at the first corner on the same side of the quad as the camera;
+only a box with all eight corners on the far side goes on to the
+four-plane test.
+
+**Four of those eight corners can never be the first match**, which
+the fold made visible and which is worth recording because it says the
+original's eight copies were half redundant. The loop projects each
+corner onto two axes -- (x,y) when `is14` is set and (y,z) when it is
+clear -- and the box's eight corners give only four distinct
+projections either way: `{0,5} {1,3} {2,6} {4,7}` in the first case
+and `{0,4} {1,6} {2,3} {5,7}` in the second. A corner whose projection
+already appeared cannot stop the walk, so it can only ever stop at 0,
+1, 2 and then 4 or 5.
+
+This was found by mutation rather than by reading: an off-by-one in
+the folded loop's exit test scored completely clean, because the
+random scene never placed the first match past corner 2. `K_BVCORNER`
+builds the mask and the box by hand so the 4 and the 5 are both hit --
+a plane whose dot product is positive at every earlier corner and
+negative at the target, with `is15` negative so the walk is looking
+for the negative one -- and the off-by-one now moves 2,280 cases. The
+same mutation at corner 7 is still not caught and cannot be.
+
+**`_floatIsNegative` is `copysignf(1.0f, x)`** -- the mask keeps the sign
+bit and the `| 0x3F800000` forces the exponent of 1.0 -- and every one of
+its nine uses is a same-sign comparison. It is `WOR_l_SignOf` now, and
+`static`, which leaves twenty-one `_sub_`-style names in the tree.
+
+**The other `_sub_` name is a per-frame statistics reset.**
+`zero_out_param1_values_statistics_sub_43EBF0` clears the `unk2` field of
+rasters 3 through 14 of the display's raster array, once per
+`WOR_Render`; it is `WOR_l_ResetRasterStats` now, and `static`, since
+`WOR_Render` is its only caller and no header declared it.
+
+**`EOT_AISortWithPriority` is a counting sort with cycle placement.** A
+histogram of the 256 AI priorities, a five-times unrolled prefix sum over
+it, and then a walk that carries one displaced element at a time to its
+slot and marks each placed entry with `0x40000000`. The sentinel for
+"nothing in hand" is the pointer `-1`, which is also what an emptied slot
+holds. Its `v16`/`v29` pair and its `v30` are constants -- the table's
+last and first element -- so the three `v16 = v29` restores are dead, and
+the two `objectFlags` stores at each placement site are a dead store
+followed by the real one.
+
+**Nine inlined copies of `TAB_AddElemToTablePF` and one of
+`TAB_PTable_AddElemToTable` are restored**, after reading both bodies:
+eight in `EOT_SetOfEOT_Build`, one in `EOT_SetOfEOT_OneBuild`, one in
+`WOR_ul_GameObjectGroupCallback`, and the resize-then-add in
+`WOR_pst_World_Load`'s static-LOD walk, which keeps the cursor-index
+save and restore around it because the resize moves the array. Field for
+field, including the order the two words are written in.
+
+### The differential test
+
+`tests/test_world.c` with `tests/world_mocks.c`, run by
+`tests/runworld.sh`: **16,760 cases, 324,326 engine calls and 3.3 GB of
+state compared, no differences.** Both copies run over one 188KB scene
+at one address with the mock allocator rewound between them, so pointers
+are directly comparable; a case passes only when the scene bytes, the
+used prefix of the mock heap, the per-side world globals, the profiler
+rasters, the return values and the full ordered call log all match. The
+real `tables.c` is linked rather than mocked, because the restored adds
+above are only worth checking against the engine's own primitives.
+
+Nineteen entry points are driven, including both mask functions, the
+three `EOT_SetOfEOT` builders, the priority sort, the activation and
+visibility walks, the father and group checks, the AI-reference resolve,
+and `WOR_World_AttachGameObject` and `WOR_World_JustAfterLoadObject`
+against fake graphics-object interfaces whose `AddRef` is logged.
+
+**What it does not cover, and why.** `WOR_pst_World_Load`, the two
+loader callbacks, `WOR_World_Init`/`Close`/`Destroy`, `WOR_Render`,
+`WOR_Render_All_GO`, `WOR_SetCam` and `WOR_pst_Universe_AddWorldList`
+need the big-file reader, the loader's address table and a Direct3D
+display device; standing them up means measuring the mocks. Every mock
+on those paths aborts rather than returning, so a rewrite that reached
+one of them fails the test instead of passing on a stand-in. That leaves
+the five `goto LABEL_64` in `WOR_pst_World_Load` and the three in
+`WOR_Render_All_GO` verified by reading only.
+
+#### Teeth
+
+**26 one-token defects injected, 25 caught.** Four of the first 25 were
+missed and three of those were real coverage holes, now closed:
+
+- the flattest-axis pick's two `>=` only differ from `>` when two of the
+  box's extents tie exactly, which random floats never produce. Every
+  fourth box now ties a pair, and both `>=` mutations produce 412 and
+  418 differing cases;
+- the sub-material filter's `id == 5` arm was never entered, because no
+  fixture material had that id. A third interface does, and the mutation
+  now produces 1,728;
+- `WOR_World_JustAfterLoadObject`'s `flags & 0x700` was driven with one
+  object per seed and no flag word ever had bit `0x400` without its
+  neighbours. The collision field is now driven exhaustively from the
+  case index, and the mutation produces 640.
+
+The one still not caught is `WOR_GetLastChildObj`'s `++step >= depth`,
+and it is a provable no-op -- see below.
+
+Two of the caught mutations, both in the counting sort, are caught as a
+**segmentation fault** rather than as a reported difference: a corrupted
+prefix sum or a lost placement flag walks the table outside its bounds.
+That is a pass for the harness and a fact about the function.
+
+### Preserved rather than fixed, each with a line in the file
+
+- **`WOR_GetLastChildObj` can only ever return NULL.** `child` is the
+  object itself or an ancestor, and neither can be NULL by the time the
+  tail runs, so the `onlyChild == child` arm sets the result to NULL and
+  the other arm returns NULL outright; the loop below it then calls
+  `WOR_i_GetAllChildrenOf` with a NULL parent, which returns 0 at once.
+  Read from the code, and the test agrees: none of its 320 calls returned
+  anything else. That is also why the one uncaught mutation is a no-op --
+  `step` and `depth` are dead.
+- **`WOR_GetLastChildObj` passes a single pointer as a children array.**
+  `WOR_i_GetAllChildrenOf` writes one entry per match with no bound, so
+  an object whose parent has more than one child writes past the local.
+  Not reachable from this tree, because nothing calls the function.
+- **`BVMask_ga_Masks` is `[200]` and nothing bounds the index.**
+  `WOR_BVMaskPreComputeAll` increments `BVMask_gi_Num` once per visible
+  object with the BV-mask flag and `WOR_BVMaskPreCompute` writes
+  `BVMask_ga_Masks[BVMask_gi_Num]` with no cap, so a world with more
+  than 200 of them writes past the array. Read from the code; not
+  measured in a running game.
+- **`WOR_pst_World_Load`'s GRO-table walk dereferences a hole.** It reads
+  `((tGroGeneric*)cursor->objectPtr)->intf->id` with none of the
+  null-or-tagged test every other walk in the file makes, so a
+  `worldGROTable` with a hole in it faults.
+
+### Reported without a comment
+
+- **The two cross products are narrowed differently.**
+  `WOR_BVMaskComputeInside` narrows all three components of its quad
+  normal to `float`; `WOR_BVMaskPreCompute` computes the same cross
+  product for `is15` and leaves the Z component a `double`. Both are
+  preserved exactly as written -- this is the narrowing trap, and the
+  test would see a change.
+- **`EOT_AISortWithPriority`'s placement loop can spin.** If the cycle
+  drain breaks because its target slot is past the table's end, the
+  cursor does not advance and the next iteration recomputes the same
+  slot and breaks at the same place. The priorities are `uint8_t` and
+  the prefix sum is over the table's own contents, so the break looks
+  defensive rather than reachable; the test's 1,280 sort cases never
+  reached it, and I could not construct an input that does.
+- **`WOR_DelObj`'s decrement is dead, and that one has a line in the
+  file.** The loop has no `break`, so the loop variable is
+  `deletedObjNum` when it ends and the `i == deletedObjNum - 1` test can
+  never hold. The slot is cleared and reused by the next `WOR_AddDelObj`,
+  so the list works -- it just never shrinks. Removing the `- 1` is one
+  of the injected mutations and moves 320 cases, so the test sees it.
+- `WOR_gi_NumKilledGO` is reset by `WOR_ResetKillGO` here and filled in
+  `ai/ai_gameobjectfunctions.c`, which does bound it at 200.
+
+---
+
+## collision.c
+
+14,241 lines to 11,303, **204 `goto`s to none**, 159 functions plus
+twelve new `static` helpers. Residue 9,202 to 29 -- all 29 inside
+comments of the user's own, checked line by line -- and the header 64
+to 5.
+
+### Done in three ranges at once, and how they were merged
+
+The file is four times the size of the largest one any single pass had
+handled, so it was split at two function boundaries into thirds of
+roughly equal weight: lines 18-4988, 4989-9506 and 9507-end, at about
+3,050 residue lines each. Each range was rewritten in its own worktree
+on its own branch.
+
+Three branches each rewriting a disjoint region of one file merge
+cleanly in principle, and that was checked on a throwaway clone before
+the passes started rather than discovered afterwards. What actually
+conflicted was something else: **range A renamed the file's two
+`_sub_<address>` functions and, to keep its own branch linking, their
+eight call sites too -- six of which sit in the other two ranges.**
+Where another range had rewritten the same line, git could not align
+A's rename of the old text with the other's rewrite.
+
+The resolution is mechanical and the same every time: the rewritten
+side wins the hunk, and the two renames are reapplied over the merged
+file afterwards. `COL_test_flag_sub_436970` is
+`COL_w_TestInstanceFlag` and
+`COL_get_activation_flag_for_id__max_16_sub_4132C0` is
+`COL_i_ZoneActivationGet`; neither old name survives anywhere. The
+header conflicts are the ranges naming disjoint prototypes in one
+block, resolved per prototype.
+
+**What says the merge is sound rather than merely conflict-free** is
+that all three ranges' tests run against the *merged* file and compare
+it with one frozen baseline: 971,406 comparisons for A, 376,599 for B
+and 555,902 for C, none differing.
+
+A tool worth keeping from this: a range-compliance check that reports,
+in base-file line numbers, the first and last line each branch
+changed. It is what caught A's eight strays before the merge rather
+than after.
+
+### COL_ComputeJumpPoint's fourth argument, which is why this file came first
+
+`ai/ai_colfunctions.c` had carried it as `edgeSearchArg` since the
+`ai/` pass, with a comment saying `collision.c` does not name it. It
+is **`down`**, settled three ways independently:
+
+1. It is passed straight through as `COL_FindEdgeInFollowDirection`'s
+   seventh parameter, which that function already calls `down`.
+2. Its second use picks which end of a steep edge to walk to: the
+   lower endpoint when set, the higher when clear.
+3. **The game's own script names it.** Both call sites pass a variable
+   called `i_rayjump_down_point`.
+
+The third argument is the **margin kept from each end of the edge**,
+not a distance to travel: the jump point is placed at least that far
+along the edge from either endpoint, and an edge shorter than twice it
+is halved instead.
+
+### Three findings that change what the engine does
+
+Preserved with one line each, because changing any of them changes
+what the engine computes.
+
+**`INT_SphereAABBox` returns TRUE for every well-formed box.** The x
+and y arms cannot reject: the `c.x > max.x` arm then tests
+`c.x < min.x`, which needs `min > max`, and the `else` arm tests
+`c.x - max.x > radius`, which is `<= 0 > radius`. The z arm returns 1
+outright whenever `c.z > max.z`. Measured over 398,580,750 cases, zero
+rejections -- and confirmed separately from the code, which is the
+stronger of the two. The author's own `// TODO FIXME lehet nem jo` sits
+on the y arm. At `lights.c:548` the light's far-plane cull therefore
+never fires, and in the OK3 acceleration walk no box is ever rejected,
+so the tree costs its traversal and buys nothing.
+
+**`COL_b_TestFaceTag` truncates its own result.** It returns `BOOL`,
+which `common.h` makes `int8_t`, and the body returns
+`tags[face >> 5] & (1 << (face % 32))` -- an `int` with one bit set.
+Every bit above 7 is lost, so the function reports false for
+three-quarters of face indices even when the tag is set. Measured: of
+128 faces set and tested, 32 read back true, the first false at index
+8. Its one caller uses it as a "have I already collided this face"
+guard, so those faces are tested again every time.
+
+**`COL_b_SingleBVIn` has two branches that cannot be taken.**
+`OBJ_BV_IsAABBox` and `OBJ_BV_IsSphere` are exact complements on the
+same volume, and inside `if (OBJ_BV_IsAABBox(outer))` the code tests
+`OBJ_BV_IsAABBox(outer)` again -- always true -- so the
+sphere-inside-box arm is dead and a sphere passed as the inner volume
+is measured as a box. The mirror arm is dead the same way, and it is
+the only call site of `COL_f_SqrLen`. Both tests look as though they
+were meant to be on the *inner* volume.
+
+### Pick -- tColCylinder's field names are left as they are *(open)*
+
+`collision.h`'s `tColCylinder` calls the radius `height` and the
+half-height `radius`. The evidence is not in doubt: `COL_ZDM_Cylinder`
+scales `->radius` by `scale.z` and feeds it as the half-height while
+scaling `->height` by `max(scaleX, scaleY)` and feeding it as the
+radius, `INT_b_FullRayCylinder` uses those two arguments as the radius
+squared and as the axial coordinate, and the loader reads them in that
+order off disk.
+
+The rename was made and then reverted. `collision.h` is included by
+`tests/baseline_collision.c`, the frozen pre-pass copy that all three
+differential tests measure against, so renaming a field stops that
+file compiling -- and editing the baseline to follow a change made to
+the live tree would break the one rule the baseline exists under. The
+rename is two lines in the header and twelve identifier substitutions
+in `collision.c`, with the field **order** untouched so the asset
+layout is unaffected. Worth doing the next time the baseline is
+rebuilt.
+
+### What could not be stood up
+
+The detection pipeline: `COL_MainCall`, `COL_Compute`, `COL_OneCall`,
+`COL_PreComputeReports`, `COL_ComputeReports`, `COL_Actor_GameObject`,
+`COL_ZDM_ZDR`'s mesh walk, the `REC_` set and the five loader
+callbacks. The reason is stated rather than papered over: a test would
+have had to build a `tWorld` with consistent object tables, a
+game-object graph with matrices, hierarchy parents and bounding
+volumes, `tDyn` with forces and gravity, animation channels, a
+sweep-and-prune list the engine's own insertion sort agrees with,
+per-object detection lists, a loaded collision mesh with its OK3 tree
+and face-tag bitmap, and a camera-assigned object. Every number those
+functions produce would then come out of that fixture.
+
+What stands in for it is a **per-function ordered call-multiset
+comparison**, old against new, with calls that moved into a helper
+credited back to the caller, plus the same check on the loaders'
+ordered stream-read and allocation sequences. No unexplained
+difference.
+
+### One blind spot left open
+
+Changing `>` to `>=` on any of the slab rejection's six bounds scores
+clean. It needs a triangle's extreme coordinate exactly equal to the
+ray origin's **and** a hit at the ray's own start plane; two attempts
+at constructing it -- snapping both mesh and ray to a half-unit grid,
+then adding exactly axis-perpendicular rays -- did not get there.
+Those cases are kept, because grid-aligned geometry and a `dir == 0`
+slab arm had no coverage at all, but the comment on them says they do
+not close this. It is a real blind spot, not a no-op, and it is
+narrow.

@@ -28,5 +28,5 @@ int SDW_TextNum;
 
 void SDW_Destroy();
 void SDW_Clear();
-void SDW_AddAShadow(struct sShadowElemStruct* a1);
+void SDW_AddAShadow(struct sShadowElemStruct* ses);
 void SDW_UpdatePositions();

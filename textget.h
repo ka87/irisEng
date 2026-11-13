@@ -38,7 +38,7 @@ int TEXT_ChangeLangUnkVar;
 int* gpi_NumLoaded;
 
 int TEXT_i_GetLang();
-void TEXT_ChangeLang(int a1);
+void TEXT_ChangeLang(int langID);
 void TEXT_FreeAll();
 void TEXT_InitModule();
 void TEXT_CloseModule();

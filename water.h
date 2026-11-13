@@ -132,7 +132,7 @@ int Workkkk_748;
 
 void WTR_Get_A_DifVector(Vec3* position, Vec3* result, int wantAbsolute);
 void WTR_Get_A_MrmVector(Vec3* position, Vec3* normalOut);
-void WTR_SetExportParams(tUserWaterParamsStruct* a1);
+void WTR_SetExportParams(tUserWaterParamsStruct* exported);
 void PC_AE_ZListHook(int zListId);
 void WTR_BeginLoadWorldHook();
 void WTR_SetDefaulExp(struct sUserWaterParamsStruct* exported);

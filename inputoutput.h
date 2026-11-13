@@ -144,7 +144,7 @@ int INO_b_IoButtonPressed(int a1);
 void INO_Joystick_Move(Vec3* a1, int a2);
 BOOL INO_b_Joystick_IsButtonJustDown(int a1);
 BOOL INO_b_Joystick_IsButtonJustUp(int a1);
-void INO_JoySimulate(int a1, int a2, Vec3* a3, Vec3* a4);
+void INO_JoySimulate(int controlMask, int buttons, Vec3* leftStick, Vec3* rightStick);
 void INO_PifSet(int a1);
 void INO_PafSet(int a1, int a2);
 int INO_i_PifPafEnable(int a1);

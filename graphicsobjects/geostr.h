@@ -145,5 +145,5 @@ int16_t STR_w_YPivot;
 int16_t STR_w_LetterDX; // unused ?
 int16_t STR_w_LetterDY; // unused ?
 
-void STR_Reinit(struct sGroGeneric* a1);
+void STR_Reinit(struct sGroGeneric* gro);
 void STR_Init();
