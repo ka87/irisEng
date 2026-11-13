@@ -1143,6 +1143,180 @@ static void test_trisweep(long n)
     free(mb); free(mn); free(wb); free(wn);
 }
 
+
+/* ---- 9. COL_ListCreate's dispatch and COL_SwapToSpecific ---------- */
+
+#define NZONE 5
+
+static void test_listcreate(long n)
+{
+    long c;
+    static ZoneGao zb[NZONE], zn[NZONE];
+    static tableElemStructPF eb[NZONE], en[NZONE];
+    tWorld* wb = (tWorld*)malloc(sizeof(tWorld));
+    tWorld* wn = (tWorld*)malloc(sizeof(tWorld));
+
+    gGroup = "COL_ListCreate";
+    for (c = 0; c < n; ++c)
+    {
+        tGameObjectMain* lb[64];
+        tGameObjectMain* ln[64];
+        long ib[64], in_[64];
+        int i, rb, rn;
+        char mode;
+        char id;
+
+        for (i = 0; i < NZONE; ++i)
+        {
+            seed((unsigned)(0x13000 + c * NZONE + i));
+            build_zone_gao(&zb[i], (int)((c + i) % 3));
+            seed((unsigned)(0x13000 + c * NZONE + i));
+            build_zone_gao(&zn[i], (int)((c + i) % 3));
+            zb[i].gao.flags |= 0x400;
+            zn[i].gao.flags |= 0x400;
+            eb[i].objectPtr = &zb[i].gao;
+            en[i].objectPtr = &zn[i].gao;
+            eb[i].objectFlags = zb[i].gao.flags;
+            en[i].objectFlags = zn[i].gao.flags;
+        }
+        memset(wb, 0, sizeof *wb);
+        memset(wn, 0, sizeof *wn);
+        /* The two tables hold different spans of the same objects, so
+           which one the sentinel set selects is visible. */
+        wb->activatedObjectsTable4PF.firstElemPtr = eb;
+        wb->activatedObjectsTable4PF.nextElemPtr = &eb[NZONE];
+        wb->eot.collInstanceZDEGameObjectsPF.firstElemPtr = &eb[1];
+        wb->eot.collInstanceZDEGameObjectsPF.nextElemPtr = &eb[NZONE - 1];
+        wn->activatedObjectsTable4PF.firstElemPtr = en;
+        wn->activatedObjectsTable4PF.nextElemPtr = &en[NZONE];
+        wn->eot.collInstanceZDEGameObjectsPF.firstElemPtr = &en[1];
+        wn->eot.collInstanceZDEGameObjectsPF.nextElemPtr = &en[NZONE - 1];
+
+        seed((unsigned)(0x14000 + c));
+        id = (char)nexti(0, 15);
+        /* the eight sentinels, and a plain zone number for the
+           zone-against-zone arm the default case reaches */
+        switch (c % 9)
+        {
+        case 0: mode = -1; break;
+        case 1: mode = -2; break;
+        case 2: mode = -3; break;
+        case 3: mode = -4; break;
+        case 4: mode = -5; break;
+        case 5: mode = -6; break;
+        case 6: mode = -17; break;
+        case 7: mode = -18; break;
+        default: mode = (char)nexti(0, 15); break;
+        }
+
+        memset(lb, 0, sizeof lb); memset(ln, 0, sizeof ln);
+        rb = BASE_COL_ListCreate(&zb[0].gao, 0, 0, 0, id, wb, lb, mode);
+        rn = NEW_COL_ListCreate(&zn[0].gao, 0, 0, 0, id, wn, ln, mode);
+        eq_i(c, rb, rn, "result");
+        /* the two copies hold different objects, so compare which
+           object of the set each entry names */
+        for (i = 0; i < 64; ++i)
+        {
+            ib[i] = lb[i] ? ((char*)lb[i] - (char*)zb) / (long)sizeof(ZoneGao) : -1;
+            in_[i] = ln[i] ? ((char*)ln[i] - (char*)zn) / (long)sizeof(ZoneGao) : -1;
+        }
+        eq_mem(c, ib, in_, sizeof ib, "list");
+    }
+    free(wb); free(wn);
+}
+
+/* Where a zone slot points after the swap, as something that does not
+   depend on the allocator: the instance's own element block moves
+   under a realloc, so the two copies hold different addresses and only
+   the index within whichever block a slot names can be compared. */
+static long slot_tag(ZoneGao* z, int i)
+{
+    tColInstanceElem* p = z->inst.selectedInstElemPtrs[i];
+    long k;
+
+    if (!p) return -1;
+    k = p - z->inst.colInstElems;
+    if (k >= 0 && k < z->inst.instElemNum) return 100 + k;
+    k = p - z->elems;
+    if (k >= 0 && k < 4) return k;
+    return -2;
+}
+
+static void test_swap(long n)
+{
+    long c;
+    static ZoneGao zb, zn;
+
+    gGroup = "COL_SwapToSpecific";
+    for (c = 0; c < n; ++c)
+    {
+        uint8_t id;
+        int i;
+        long sb[4], sn[4];
+
+        seed((unsigned)(0x15000 + c));
+        id = (uint8_t)((c & 31) == 0 ? 0xFFu : (unsigned)nexti(0, 15));
+        build_zone_gao(&zb, (int)(c % 3));
+        seed((unsigned)(0x15000 + c));
+        (void)nexti(0, 15);
+        build_zone_gao(&zn, (int)(c % 3));
+
+        /* Two elements of the instance's own in a heap block, so the
+           realloc arm runs rather than the first-element arm. */
+        if (c & 1)
+        {
+            zb.inst.colInstElems = (tColInstanceElem*)malloc(2 * sizeof(tColInstanceElem));
+            zn.inst.colInstElems = (tColInstanceElem*)malloc(2 * sizeof(tColInstanceElem));
+            memcpy(zb.inst.colInstElems, zb.elems, 2 * sizeof(tColInstanceElem));
+            memcpy(zn.inst.colInstElems, zn.elems, 2 * sizeof(tColInstanceElem));
+            zb.inst.instElemNum = 2;
+            zn.inst.instElemNum = 2;
+            zb.inst.instElemBitmask = 3;
+            zn.inst.instElemBitmask = 3;
+            zb.slots[0] = &zb.inst.colInstElems[0];
+            zb.slots[1] = &zb.inst.colInstElems[1];
+            zn.slots[0] = &zn.inst.colInstElems[0];
+            zn.slots[1] = &zn.inst.colInstElems[1];
+        }
+        else
+        {
+            zb.inst.instElemNum = 0;
+            zn.inst.instElemNum = 0;
+            zb.inst.instElemBitmask = 0;
+            zn.inst.instElemBitmask = 0;
+            zb.inst.colInstElems = zb.elems;
+            zn.inst.colInstElems = zn.elems;
+        }
+        zb.inst.sharedZoneNum = 4;
+        zn.inst.sharedZoneNum = 4;
+
+        BASE_COL_SwapToSpecific(&zb.gao, id);
+        NEW_COL_SwapToSpecific(&zn.gao, id);
+
+        eq_i(c, zb.inst.instElemNum, zn.inst.instElemNum, "instElemNum");
+        eq_i(c, zb.inst.sharedZoneNum, zn.inst.sharedZoneNum, "sharedZoneNum");
+        eq_i(c, zb.inst.instElemBitmask, zn.inst.instElemBitmask, "instElemBitmask");
+        for (i = 0; i < 4; ++i)
+        {
+            sb[i] = slot_tag(&zb, i);
+            sn[i] = slot_tag(&zn, i);
+        }
+        eq_mem(c, sb, sn, sizeof sb, "zone slots");
+        if (zb.inst.instElemNum && zn.inst.instElemNum)
+        {
+            tColInstanceElem* ab = &zb.inst.colInstElems[zb.inst.instElemNum - 1];
+            tColInstanceElem* an = &zn.inst.colInstElems[zn.inst.instElemNum - 1];
+            eq_i(c, ab->elemType, an->elemType, "new elem type");
+            eq_i(c, ab->colFlags, an->colFlags, "new elem colFlags");
+            eq_i(c, ab->unk1, an->unk1, "new elem unk1");
+            eq_i(c, ab->design, an->design, "new elem design");
+            if (ab->elemShapePtr && an->elemShapePtr && ab->elemType == an->elemType)
+                eq_mem(c, ab->elemShapePtr, an->elemShapePtr,
+                       ab->elemType == 2 ? sizeof(tColSphere) : sizeof(tColBox), "new elem shape");
+        }
+    }
+}
+
 /* ---- main --------------------------------------------------------- */
 
 int main(void)
@@ -1167,6 +1341,8 @@ int main(void)
     test_jumppoint(500);
     test_lists(3000);
     test_trisweep(1200);
+    test_listcreate(2000);
+    test_swap(2000);
 
     printf("\n%ld comparisons, %ld differing\n", gCases, gFails);
     if (gFails)
