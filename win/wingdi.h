@@ -295,7 +295,7 @@ int  D3D_Set_Texture_Palette(struct sGdi_DisplayData* a1, struct sEngTexListElem
 void D3D_SetTextureTarget(struct sGdi_DisplayData* a1, int a2, int a3, int a4);
 int D3D_UpdateBlurTexture();
 void D3D_CreateSunTextures(tGfxSunD3DSpecificData* a1);
-uint32_t  D3D_DepthBlurBlurFuncCalc2(float a1);
+uint32_t  D3D_DepthBlurBlurFuncCalc2(float depth);
 void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* a1);
 void D3D_PrepareWaterRendering();
 void D3D_PC_AE(tWorld* param1);
@@ -307,7 +307,7 @@ void D3D_SaveScreenshot(void);
 void s_HandleWinMessages();
 void ENG_WinGameWindowInit(HINSTANCE a1);
 
-void PC_AE_MASTER_CTRL(int a1, int a2, int a3, float a4);
+void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value);
 void PC_CIN_CutsceneMode(int on);
 
 // Aspect handling. With D3D_gi_Widescreen set, the projection is
@@ -349,4 +349,4 @@ void D3D_GetBandFractions(float* top, float* bottom);
 // window.
 float D3D_FlatLayerToLayoutX(float windowFraction, int w, int h);
 float D3D_FlatLayerFromLayoutX(float layoutFraction, int w, int h);
-float PC_AE_MASTER_GET_P1(int a1, int a2);
+float PC_AE_MASTER_GET_P1(int effect, int slot);

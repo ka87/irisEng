@@ -610,8 +610,7 @@ void D3D_Blur(IDirect3DTexture9* texture, IDirect3DTexture9* renderTarget, float
 
     scaled = strength * 0.039999999;
     step = (float)scaled;
-    // preserved: the first pass takes its vertical offset from the unnarrowed
-    // product, every later one from the narrowed step
+    // preserved: the first pass's vertical offset comes from the unnarrowed product, the rest from the narrowed step
     D3D_DepthBlur(texture, renderTarget, (float)(step * 0.0015625),
                   (float)(scaled * 0.0020833334));
     for (pass = 2; pass <= 7; pass++)
@@ -1366,29 +1365,29 @@ void D3D_ColorBalance(IDirect3DTexture9* dest, IDirect3DTexture9* src, float bal
 
 void D3D_WaterBlurHD(tUnkWaterBlurStruct* src, IDirect3DTexture9* texture, tUnkWaterBlurStruct* dst, float uStep, float vStep, float overscan)
 {
-    double uSrcLeft; // st7
-    double uSrcRight; // st6
-    double vScale; // st5
-    int dstTop; // ecx
-    double srcBottom; // st4
-    double halfOverscan; // st5
+    double uSrcLeft;
+    double uSrcRight;
+    double vScale;
+    int dstTop;
+    double srcBottom;
+    double halfOverscan;
     int i;
-    float uScale; // [esp+21Ch] [ebp-E4h]
-    float vSrcBottom; // [esp+21Ch] [ebp-E4h]
-    float vSet4Bottom; // [esp+21Ch] [ebp-E4h]
-    float vSrcTop; // [esp+220h] [ebp-E0h]
-    float yExpand; // [esp+224h] [ebp-DCh]
-    int dstWidth; // [esp+228h] [ebp-D8h]
-    float xExpand; // [esp+228h] [ebp-D8h]
-    int dstLeft; // [esp+22Ch] [ebp-D4h]
-    float vSet2Bottom; // [esp+22Ch] [ebp-D4h]
-    int dstRight; // [esp+230h] [ebp-D0h]
-    float rightX; // [esp+230h] [ebp-D0h]
-    int dstBottom; // [esp+234h] [ebp-CCh]
-    float vSet1Bottom; // [esp+234h] [ebp-CCh]
-    float vSet3Bottom; // [esp+238h] [ebp-C8h]
-    float topY; // [esp+23Ch] [ebp-C4h]
-    tVertex_type_404 quad[4]; // [esp+240h] [ebp-C0h] BYREF
+    float uScale;
+    float vSrcBottom;
+    float vSet4Bottom;
+    float vSrcTop;
+    float yExpand;
+    int dstWidth;
+    float xExpand;
+    int dstLeft;
+    float vSet2Bottom;
+    int dstRight;
+    float rightX;
+    int dstBottom;
+    float vSet1Bottom;
+    float vSet3Bottom;
+    float topY;
+    tVertex_type_404 quad[4];
 
     AE_SetRenderState(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, 0x80FFFFFF);
     AE_SetSamplerState(0, &samplerConfig[0].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
@@ -1505,14 +1504,14 @@ void D3D_WaterBlurHD(tUnkWaterBlurStruct* src, IDirect3DTexture9* texture, tUnkW
 void D3D_WaterBlurSD(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, tUnkWaterBlurStruct* dst, float uStep, float vStep)
 {
     int i;
-    float width; // [esp+1ECh] [ebp-8Ch]
-    float uSet1Right; // [esp+1ECh] [ebp-8Ch]
-    float vSet2Top; // [esp+1ECh] [ebp-8Ch]
-    float uSet2Right; // [esp+1F0h] [ebp-88h]
-    float vSet1Top; // [esp+1F0h] [ebp-88h]
-    float height; // [esp+1F4h] [ebp-84h]
-    float topY; // [esp+1F4h] [ebp-84h]
-    tVertex_type_204 quad[4]; // [esp+1F8h] [ebp-80h] BYREF
+    float width;
+    float uSet1Right;
+    float vSet2Top;
+    float uSet2Right;
+    float vSet1Top;
+    float height;
+    float topY;
+    tVertex_type_204 quad[4];
 
     width = (float)D3DRenderParams.presentParams.BackBufferWidth;
     height = (float)D3DRenderParams.presentParams.BackBufferHeight;
@@ -2788,22 +2787,16 @@ HRESULT CopyRenderTargetTexture(LPDIRECT3DDEVICE9 pDevice, IDirect3DTexture9* pS
 
 void D3D_PC_AE(tWorld* param1)
 {
-    IDirect3DTexture9* v1;
-    IDirect3DTexture9* v2;
-    IDirect3DTexture9* v3;
-    IDirect3DTexture9* v4;
-    IDirect3DTexture9* v5;
-    double v6;
-    BOOL v7;
-    IDirect3DTexture9* v8;
-    double v9;
-    IDirect3DTexture9* v10;
-    IDirect3DTexture9* v11;
-    IDirect3DTexture9* v12;
-    float a5;
-    float a6;
-    float v15;
-    RECT a2;
+    IDirect3DTexture9* current;
+    IDirect3DTexture9* spare;
+    IDirect3DTexture9* swap;
+    double fadeSpan;
+    BOOL fadeDone;
+    double dx;
+    float motionX;
+    float motionY;
+    float fadeStep;
+    RECT wholeScreen;
 
     D3D_SetD3DStatesDefaultForAE();
     if (tweak_ae_nobands || !CIN_Bands)
@@ -2827,8 +2820,8 @@ void D3D_PC_AE(tWorld* param1)
                         (int)D3DRenderParams.presentParams.BackBufferWidth,
                         (int)D3DRenderParams.presentParams.BackBufferHeight);
     }
-    v1 = D3DRenderParams.blurTex;
-    v2 = D3DRenderParams.blurRenderTarget2;
+    current = D3DRenderParams.blurTex;
+    spare = D3DRenderParams.blurRenderTarget2;
     if (tweak_ae_no)
     {
         PC_AE_MASTER = 0;
@@ -2838,59 +2831,59 @@ void D3D_PC_AE(tWorld* param1)
     if ((PC_AE_MASTER & 8) != 0 || (PC_AE_MASTER & 0x1000) != 0)// depthblur
     {
         D3D_DepthBlur(D3DRenderParams.blurTex, D3DRenderParams.blurRenderTarget, 0.0015625f, 0.0020833334f);
-        D3D_DepthBlur(D3DRenderParams.blurRenderTarget, v2, 0.003125f, 0.0041666669f);
-        D3D_DepthBlur(v2, D3DRenderParams.blurRenderTarget, 0.0046875002f, 0.0062500001f);
-        D3D_Unknown_AE_FuncDepthBlur(v1);
+        D3D_DepthBlur(D3DRenderParams.blurRenderTarget, spare, 0.003125f, 0.0041666669f);
+        D3D_DepthBlur(spare, D3DRenderParams.blurRenderTarget, 0.0046875002f, 0.0062500001f);
+        D3D_Unknown_AE_FuncDepthBlur(current);
     }
     if ((PC_AE_MASTER & 4) != 0)
     {
-        v3 = v2;
-        D3D_Unkown_AE_Func_Flag_4(v1, v2, unknownAEFlag4GlobalVar, texFactorManual);
-        v2 = v1;
-        v1 = v3;
+        swap = spare;
+        D3D_Unkown_AE_Func_Flag_4(current, spare, unknownAEFlag4GlobalVar, texFactorManual);
+        spare = current;
+        current = swap;
     }
     if ((PC_AE_MASTER & 0x800) != 0 && remenanceFactor > 0.0099999998)
     {
-        v4 = v2;
-        D3D_Remenance(v1, v2, remenanceFactor);
-        v2 = v1;
-        v1 = v4;
+        swap = spare;
+        D3D_Remenance(current, spare, remenanceFactor);
+        spare = current;
+        current = swap;
     }
     if ((PC_AE_MASTER & 0x40000) != 0)
     {
-        v5 = v2;
-        v6 = gAEOpacity * 60.0;
-        if (v6 >= 255.0)
-            v15 = 1.0;
+        swap = spare;
+        fadeSpan = gAEOpacity * 60.0;
+        if (fadeSpan >= 255.0)
+            fadeStep = 1.0;
         else
-            v15 = (float)(255.0 / v6);
+            fadeStep = (float)(255.0 / fadeSpan);
         if (D3DRenderParams.opacity == 255)
         {
-            a2.left = 0;
-            a2.top = 0;
-            a2.right = (unsigned int)(double)D3DRenderParams.presentParams.BackBufferWidth;
-            a2.bottom = (unsigned int)(double)D3DRenderParams.presentParams.BackBufferHeight;
+            wholeScreen.left = 0;
+            wholeScreen.top = 0;
+            wholeScreen.right = (unsigned int)(double)D3DRenderParams.presentParams.BackBufferWidth;
+            wholeScreen.bottom = (unsigned int)(double)D3DRenderParams.presentParams.BackBufferHeight;
             D3D_SetRenderTargetFromTexture(D3DRenderParams.unktex1_dword_B31988);
-            D3D_StretchRect(v1, &a2);
+            D3D_StretchRect(current, &wholeScreen);
         }
-        D3D_Fade(v1, v2, D3DRenderParams.opacity);
-        v2 = v1;
-        v1 = v5;
-        v7 = D3DRenderParams.opacity == 0;
+        D3D_Fade(current, spare, D3DRenderParams.opacity);
+        spare = current;
+        current = swap;
+        fadeDone = D3DRenderParams.opacity == 0;
         if (D3DRenderParams.opacity > 0)
         {
-            D3DRenderParams.opacity = (int)(D3DRenderParams.opacity - (unsigned int)v15) < 0 ? 0 : D3DRenderParams.opacity - (unsigned int)v15;
-            v7 = D3DRenderParams.opacity == 0;
+            D3DRenderParams.opacity = (int)(D3DRenderParams.opacity - (unsigned int)fadeStep) < 0 ? 0 : D3DRenderParams.opacity - (unsigned int)fadeStep;
+            fadeDone = D3DRenderParams.opacity == 0;
         }
-        if (v7)
+        if (fadeDone)
             PC_AE_MASTER &= ~0x40000u;
     }
     if ((PC_AE_MASTER & 0x10) != 0 && motionBlurFactor != 0.0)
     {
-        v8 = v2;
-        D3D_MotionBlur(v1, v2, motionBlurFactor);
-        v2 = v1;
-        v1 = v8;
+        swap = spare;
+        D3D_MotionBlur(current, spare, motionBlurFactor);
+        spare = current;
+        current = swap;
     }
     if ((PC_AE_MASTER & 0x80u) != 0)
     {
@@ -2898,254 +2891,187 @@ void D3D_PC_AE(tWorld* param1)
         AE_MS_CurrVec.y = 1.0;
         AE_MS_CurrVec.z = 1.0;
         MATH_TransformVector(&AE_MS_CurrVec, &gpst_DX_stDD->ct.cam.cameraMtx, &AE_MS_CurrVec);
-        v9 = AE_MS_CurrVec.x - AE_MS_PrevVec.x;
+        dx = AE_MS_CurrVec.x - AE_MS_PrevVec.x;
         if (sqrt(
-            v9 * v9
+            dx * dx
             + (AE_MS_CurrVec.z - AE_MS_PrevVec.z) * (AE_MS_CurrVec.z - AE_MS_PrevVec.z)
             + (AE_MS_CurrVec.y - AE_MS_PrevVec.y) * (AE_MS_CurrVec.y - AE_MS_PrevVec.y)) > 0.0049999999)
         {
-            v10 = v2;
-            a6 = (float)((AE_MS_CurrVec.y - AE_MS_PrevVec.y) * 50.0);
-            a5 = (float)(v9 * 50.0);
-            D3D_MotionSmooth(v2, v1, v1, v2, a5, a6);
-            v2 = v1;
-            v1 = v10;
+            swap = spare;
+            motionY = (float)((AE_MS_CurrVec.y - AE_MS_PrevVec.y) * 50.0);
+            motionX = (float)(dx * 50.0);
+            D3D_MotionSmooth(spare, current, current, spare, motionX, motionY);
+            spare = current;
+            current = swap;
         }
         AE_MS_PrevVec = AE_MS_CurrVec;
     }
     if ((PC_AE_MASTER & 0x400) != 0 && zoomSmoothFactor != 0.0)
     {
-        v11 = v2;
-        D3D_ZoomSmooth(v1, v2, zoomSmoothFactor);
-        v2 = v1;
-        v1 = v11;
+        swap = spare;
+        D3D_ZoomSmooth(current, spare, zoomSmoothFactor);
+        spare = current;
+        current = swap;
     }
     if ((PC_AE_MASTER & 0x20) != 0 && blurFactor != 0.0)
     {
-        v12 = v2;
-        D3D_Blur(v1, v2, blurFactor);
-        v2 = v1;
-        v1 = v12;
+        swap = spare;
+        D3D_Blur(current, spare, blurFactor);
+        spare = current;
+        current = swap;
     }
     if ((PC_AE_MASTER & 0x8000) != 0 && zoomSmoothFactor2 != 0.0)
     {
-        D3D_ZoomSmooth2(v1, v2, zoomSmoothFactor2);
-        v1 = v2;
+        D3D_ZoomSmooth2(current, spare, zoomSmoothFactor2);
+        current = spare;
     }
     if (unkAEFunc2Param != 0.5) {
-        D3D_Unkown_AE_Func_2(D3DRenderParams.tmpRenderTarget, v1, unkAEFunc2Param);
-        CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, v1);
+        D3D_Unkown_AE_Func_2(D3DRenderParams.tmpRenderTarget, current, unkAEFunc2Param);
+        CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, current);
     }
     if (colorBalanceParam1 != 0.5) {
-        D3D_ColorBalance(D3DRenderParams.tmpRenderTarget, v1, colorBalanceParam1);
-        CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, v1);
+        D3D_ColorBalance(D3DRenderParams.tmpRenderTarget, current, colorBalanceParam1);
+        CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, current);
     }
     if ((PC_AE_MASTER & 1) != 0) {
-        D3D_Unkown_AE_Func_Flag_1(D3DRenderParams.tmpRenderTarget, v1);
-        CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, v1);
+        D3D_Unkown_AE_Func_Flag_1(D3DRenderParams.tmpRenderTarget, current);
+        CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, current);
     }
-    D3D_AE_CopyToScreen(v1);
+    D3D_AE_CopyToScreen(current);
     D3D_SetD3DStatesDefaultForAE();
     D3DRenderParams.d3d_defaultZEnable = 1;
 }
 
-void PC_AE_MASTER_CTRL(int a1, int a2, int a3, float a4)
+void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)
 {
-    int v4;
-    double v5;
-    unsigned int v6;
-    unsigned int v7;
-    unsigned int v8;
-    unsigned int v9;
-    unsigned int v10;
-    unsigned int v11;
-    unsigned int v12;
-    unsigned int v13;
-    unsigned int v14;
-    int v15;
-    unsigned int v16;
-    unsigned int v17;
+    int toggled;
+    int changed;
+    unsigned int cleared;
 
-    switch (a1)
+    switch (effect)
     {
     case 0:
-        v4 = 0;
-        if (a2)
-        {
-            if ((PC_AE_MASTER & 8) != 0)
-                goto LABEL_7;
-        }
-        else if ((PC_AE_MASTER & 8) == 0)
-        {
-            goto LABEL_7;
-        }
-        v4 = 1;
-    LABEL_7:
-        if (a3)
-        {
-            if (a3 == 1)
-            {
-                v5 = depthBlurType1;
-            }
-            else
-            {
-                if (a3 != 2)
-                    goto LABEL_14;
-                v5 = depthBlurType2;
-            }
-        }
-        else
-        {
-            v5 = depthBlurType0;
-        }
-        if (v5 != a4)
-        {
-        LABEL_15:
-            v6 = PC_AE_MASTER & ~8u;
-            PC_AE_MASTER &= ~8u;
-            if (a2)
-                PC_AE_MASTER = v6 | 8;
-            if (a3)
-            {
-                if (a3 == 1)
-                {
-                    depthBlurType1 = a4;
-                }
-                else if (a3 == 2)
-                {
-                    depthBlurType2 = a4;
-                }
-            }
-            else
-            {
-                depthBlurType0 = a4;
-            }
-            goto LABEL_21;
-        }
-    LABEL_14:
-        if (v4)
-            goto LABEL_15;
+        toggled = (onOff != 0) != ((PC_AE_MASTER & 8) != 0);
+        changed = toggled;
+        if (slot == 0)
+            changed = depthBlurType0 != value || toggled;
+        else if (slot == 1)
+            changed = depthBlurType1 != value || toggled;
+        else if (slot == 2)
+            changed = depthBlurType2 != value || toggled;
+        if (!changed)
+            return;
+        cleared = PC_AE_MASTER & ~8u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 8;
+        if (slot == 0)
+            depthBlurType0 = value;
+        else if (slot == 1)
+            depthBlurType1 = value;
+        else if (slot == 2)
+            depthBlurType2 = value;
+        D3D_UpdateBlurTexture();
         return;
     case 1:
-        v7 = PC_AE_MASTER & ~0x10u;
-        PC_AE_MASTER &= ~0x10u;
-        if (a2)
-            PC_AE_MASTER = v7 | 0x10;
-        motionBlurFactor = a4;
+        cleared = PC_AE_MASTER & ~0x10u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 0x10;
+        motionBlurFactor = value;
         return;
     case 2:
-        v8 = PC_AE_MASTER & ~0x20u;
-        PC_AE_MASTER &= ~0x20u;
-        if (a2)
-            PC_AE_MASTER = v8 | 0x20;
-        blurFactor = a4;
+        cleared = PC_AE_MASTER & ~0x20u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 0x20;
+        blurFactor = value;
         return;
     case 4:                                     // motionsmooth
-        v9 = PC_AE_MASTER & ~0x80u;
-        PC_AE_MASTER &= ~0x80u;
-        if (a2)
-            PC_AE_MASTER = v9 | 0x80;
+        cleared = PC_AE_MASTER & ~0x80u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 0x80;
         return;
     case 5:
-        v10 = PC_AE_MASTER & ~0x400u;
-        PC_AE_MASTER &= ~0x400u;
-        if (a2)
-            PC_AE_MASTER = v10 | 0x400;
-        zoomSmoothFactor = a4;
+        cleared = PC_AE_MASTER & ~0x400u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 0x400;
+        zoomSmoothFactor = value;
         return;
     case 6:
-        v11 = PC_AE_MASTER & ~0x8000u;
-        PC_AE_MASTER &= ~0x8000u;
-        if (a2)
-            PC_AE_MASTER = v11 | 0x8000;
-        zoomSmoothFactor2 = a4;
+        cleared = PC_AE_MASTER & ~0x8000u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 0x8000;
+        zoomSmoothFactor2 = value;
         return;
     case 7:
-        v12 = PC_AE_MASTER & ~0x800u;
-        PC_AE_MASTER &= ~0x800u;
-        if (a2)
-            PC_AE_MASTER = v12 | 0x800;
-        remenanceFactor = a4;
+        cleared = PC_AE_MASTER & ~0x800u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 0x800;
+        remenanceFactor = value;
         return;
     case 8:
-        unkAEFunc2Param = a4;
+        unkAEFunc2Param = value;
         return;
     case 9:
-        colorBalanceParam1 = a4;
+        colorBalanceParam1 = value;
         return;
     case 11:
-        v13 = PC_AE_MASTER & ~1u;
-        PC_AE_MASTER &= ~1u;
-        if (a2)
-            PC_AE_MASTER = v13 | 1;
-        blackAndWhiteParam1 = a4;
+        cleared = PC_AE_MASTER & ~1u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 1;
+        blackAndWhiteParam1 = value;
         return;
     case 12:
-        if (a3)
-        {
-            if (a3 == 1)
-            {
-                texFactorManual = a4;
-            }
-            else if (a3 == 2)
-            {
-                texFactorProbablyUnunsedType2 = a4;
-            }
-        }
-        else
-        {
-            unknownAEFlag4GlobalVar = a4;
-        }
-        v14 = PC_AE_MASTER & ~4u;
-        PC_AE_MASTER &= ~4u;
-        if (a2)
-            PC_AE_MASTER = v14 | 4;
+        if (slot == 0)
+            unknownAEFlag4GlobalVar = value;
+        else if (slot == 1)
+            texFactorManual = value;
+        else if (slot == 2)
+            texFactorProbablyUnunsedType2 = value;
+        cleared = PC_AE_MASTER & ~4u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
+            PC_AE_MASTER = cleared | 4;
         return;
     case 14:
-        v15 = 0;
-        if (a2)
+        toggled = (onOff != 0) != ((PC_AE_MASTER & 0x1000) != 0);
+        if (depthBlurNear1 != value || toggled)
         {
-            if ((PC_AE_MASTER & 0x1000) != 0)
-                goto LABEL_60;
-        }
-        else if ((PC_AE_MASTER & 0x1000) == 0)
-        {
-            goto LABEL_60;
-        }
-        v15 = 1;
-    LABEL_60:
-        if (depthBlurNear1 != a4 || v15)
-        {
-            v16 = PC_AE_MASTER & ~0x1000u;
-            PC_AE_MASTER &= ~0x1000u;
-            if (a2)
-                PC_AE_MASTER = v16 | 0x1000;
-            depthBlurNear1 = a4;
-        LABEL_21:
+            cleared = PC_AE_MASTER & ~0x1000u;
+            PC_AE_MASTER = cleared;
+            if (onOff)
+                PC_AE_MASTER = cleared | 0x1000;
+            depthBlurNear1 = value;
             D3D_UpdateBlurTexture();
         }
         return;
     case 15:
-        v17 = PC_AE_MASTER & ~0x40000u;
-        PC_AE_MASTER &= ~0x40000u;
-        if (a2)
+        cleared = PC_AE_MASTER & ~0x40000u;
+        PC_AE_MASTER = cleared;
+        if (onOff)
         {
-            PC_AE_MASTER = v17 | 0x40000;
+            PC_AE_MASTER = cleared | 0x40000;
             if (!D3DRenderParams.opacity)
                 D3DRenderParams.opacity = 255;
         }
-        gAEOpacity = a4;
+        gAEOpacity = value;
         return;
     default:
         return;
     }
 }
 
-int PC_AE_MASTER_GET_ONOFF_sub_4A37D0(int a1)
+int PC_AE_MASTER_GET_ONOFF_sub_4A37D0(int effect)
 {
     int result;
 
-    switch (a1)
+    switch (effect)
     {
     case 0:
         result = PC_AE_MASTER & 8;                // depthblur
@@ -3193,33 +3119,24 @@ int PC_AE_MASTER_GET_ONOFF_sub_4A37D0(int a1)
     return result;
 }
 
-float PC_AE_MASTER_GET_P1(int a1, int a2)
+float PC_AE_MASTER_GET_P1(int effect, int slot)
 {
     double result;
 
-    switch (a1)
+    switch (effect)
     {
     case 0:
-        if (a2)                                 // 17 warp
-        {
-            if (a2 == 1)
-            {
-                result = depthBlurType1;
-            }
-            else
-            {
-                if (a2 != 2)
-                    goto LABEL_8;
-                result = depthBlurType2;
-            }
-        }
-        else
-        {
+        if (slot == 0)                          // 17 warp
             result = depthBlurType0;
-        }
+        else if (slot == 1)
+            result = depthBlurType1;
+        else if (slot == 2)
+            result = depthBlurType2;
+        else
+            // preserved: every other getter's unknown slot gives zero; this one gives the motion blur
+            result = motionBlurFactor;
         break;
     case 1:
-    LABEL_8:
         result = motionBlurFactor;
         break;
     case 2:
@@ -3244,29 +3161,19 @@ float PC_AE_MASTER_GET_P1(int a1, int a2)
         result = blackAndWhiteParam1;
         break;
     case 12:
-        if (a2)
-        {
-            if (a2 == 1)
-            {
-                result = texFactorManual;
-            }
-            else
-            {
-                if (a2 != 2)
-                    goto LABEL_23;
-                result = texFactorProbablyUnunsedType2;
-            }
-        }
-        else
-        {
+        if (slot == 0)
             result = unknownAEFlag4GlobalVar;
-        }
+        else if (slot == 1)
+            result = texFactorManual;
+        else if (slot == 2)
+            result = texFactorProbablyUnunsedType2;
+        else
+            result = 0.0;
         break;
     case 14:
         result = depthBlurNear1;
         break;
     default:
-    LABEL_23:
         result = 0.0;
         break;
     }
