@@ -202,7 +202,7 @@ void TAB_Ptable_RemoveHoles(tableDescStruct* table)
                 break;
             dest->objectPtr = scan->objectPtr;
             scan->objectPtr = (void*)1;
-            if (++dest >= end)
+            if (++dest >= end) // FIXME
             {
                 table->holeNum = 0;
                 return;
@@ -338,7 +338,7 @@ void TAB_PFtable_RemoveHoles(tableDescStruct* table)
             dest->objectPtr = scan->objectPtr;
             dest->objectFlags = scan->objectFlags;
             scan->objectPtr = (void*)1;
-            if (++dest >= end)
+            if (++dest >= end) // FIXME
                 return;
         }
         if (!table->holeNum)
@@ -366,7 +366,7 @@ void TAB_PFtable_RemoveElem(tableDescStruct* table, tableElemStructPF* elem)
         {
             elem->objectPtr = (void*)1;
             ++table->holeNum;
-            --table->actElemNum;
+            --table->actElemNum; // edx
         }
         elem->objectFlags = 0;
     }
@@ -390,8 +390,8 @@ int TAB_ul_PFtable_GetElemIndexWithPointer(tableDescStruct* table, void* object)
 
 tableElemStructPF* TAB_pst_PFtable_GetElemWithPointer(tableDescStruct* table, void* object)
 {
-    tableElemStructPF* elem;
-    tableElemStructPF* end;
+    tableElemStructPF* elem; // eax
+    tableElemStructPF* end; // ecx
 
     elem = (tableElemStructPF*)table->firstElemPtr;
     end = (tableElemStructPF*)table->nextElemPtr;
@@ -437,7 +437,7 @@ void TAB_TablesManager_RemoveHolesFromTablesList(tabDlistStruct* list)
 {
     tabDlistElemStruct* elem;
     tableDescStruct* table;
-    uint8_t tableType;
+    uint8_t tableType; // al
 
     for (elem = list->firstElem; elem; elem = elem->nextElem)
     {
