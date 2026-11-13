@@ -87,6 +87,14 @@ DECL2(void, OBJ_ComputeRecursivScale, (tGameObjectMain*, Vec3*))
 DECL2(void, OBJ_SetAbsoluteMatrix, (tGameObjectMain*, Mtx4x4*))
 DECL2(void, OBJ_MakeAbsoluteMatrix, (tGameObjectMain*, Mtx4x4*))
 DECL2(void, OBJ_SightGet, (tGameObjectMain*, Vec3*))
+DECL2(void, OBJ_SightSet, (tGameObjectMain*, Vec3*))
+DECL2(void, OBJ_BankingSet, (tGameObjectMain*, Vec3*))
+DECL2(void, OBJ_SightGeneralSet, (tGameObjectMain*, Vec3*, Vec3*))
+DECL2(void, OBJ_BankingGeneralSet, (tGameObjectMain*, Vec3*, Vec3*))
+DECL2(void, OBJ_AddInGroup, (tGroup*, tGameObjectMain*))
+DECL2(void, OBJ_GameObject_CreateExtendedIfNot, (tGameObjectMain*))
+DECL2(void, OBJ_FreeGroupGrl, (tableDescStruct*))
+DECL2(void, OBJ_FreeGroup, (tGroup*))
 DECL2(void, OBJ_SightInitGet, (tGameObjectMain*, Vec3*))
 DECL2(void, OBJ_BankingGet, (tGameObjectMain*, Vec3*))
 DECL2(void, OBJ_HorizonGet, (tGameObjectMain*, Vec3*))
@@ -158,6 +166,7 @@ typedef struct
     tGroup group[2];
     tableDescStruct table[2];
     tableElemStructPF elems[2][NGAO];
+    tableElemStructPF helems[NGAO];
 
     tGroIntf intf[12];
     tGroGeneric gro[12];
@@ -438,9 +447,16 @@ static void scene_build(unsigned int seed)
     s->display.ct.cam.factorX = 300.0f;
     s->display.NormalizedWidthOrHeightMultBy255 = 255.0f / 640.0f;
 
-    /* the world: one hierarchy table over the six objects */
-    s->world.eot.objectsWithHiearchyTablePF.firstElemPtr = s->elems[1];
-    s->world.eot.objectsWithHiearchyTablePF.nextElemPtr = &s->elems[1][NGAO];
+    /* the world's hierarchy table, children before parents: in
+       parent-first order the pass never has to climb, so the step back
+       over the cursor is never taken */
+    for (j = 0; j < NGAO; ++j)
+    {
+        s->helems[j].objectPtr = &s->gao[NGAO - 1 - j];
+        s->helems[j].objectFlags = s->gao[NGAO - 1 - j].flags;
+    }
+    s->world.eot.objectsWithHiearchyTablePF.firstElemPtr = s->helems;
+    s->world.eot.objectsWithHiearchyTablePF.nextElemPtr = &s->helems[NGAO];
     s->world.hierarchyCallCount = (int)(seed & 1);
     s->world.dynCallCount = (int)((seed >> 1) & 1);
     s->world.snp = 0;
@@ -718,6 +734,29 @@ static void t_bv_basics(void)
             PICK(OBJ_MergeBVs)(&g_scene.gao[5], &g_scene.gao[3]);
         });
 
+    /* the one pair of values for which the merge's six clamps can tell
+       `>=` from `>`: a negative zero reaching a positive zero. For every
+       other pair the two spellings store the same bits, because the
+       clamp assigns the value it just compared equal to. */
+    for (i = 0; i < 8; ++i)
+        CASE(seed++, "bv merge signed zero", {
+            int k;
+            for (k = 0; k < NGAO; ++k)
+            {
+                g_scene.matrices[k][0].Pos.x = (k & 1) ? -0.0f : 0.0f;
+                g_scene.matrices[k][0].Pos.y = (k & 1) ? -0.0f : 0.0f;
+                g_scene.matrices[k][0].Pos.z = (k & 1) ? -0.0f : 0.0f;
+                g_scene.bv[k].BVMin.x = (k & 1) ? -0.0f : 0.0f;
+                g_scene.bv[k].BVMin.y = (k & 1) ? -0.0f : 0.0f;
+                g_scene.bv[k].BVMin.z = (k & 1) ? -0.0f : 0.0f;
+                g_scene.bv[k].BVMax.x = (k & 1) ? 0.0f : -0.0f;
+                g_scene.bv[k].BVMax.y = (k & 1) ? 0.0f : -0.0f;
+                g_scene.bv[k].BVMax.z = (k & 1) ? 0.0f : -0.0f;
+            }
+            PICK(OBJ_MergeBVs)(&g_scene.gao[i % 3], &g_scene.gao[(i + 1) % 3]);
+            PICK(OBJ_BV_CalcBVForTwoOBJs)(&g_scene.gao[(i + 2) % 3], &g_scene.gao[i % 3]);
+        });
+
     /* the merge path with equal and with inverted bounds, which the
        random fixture never produces */
     for (i = 0; i < 16; ++i)
@@ -913,6 +952,30 @@ static void t_groups(void)
         });
 }
 
+/* The seven one- and two-line entry points the larger cases never
+   reach, so that the only functions the test does not enter are the two
+   loader callbacks. */
+static void t_small(void)
+{
+    unsigned int seed = 4500;
+    int i;
+
+    for (i = 0; i < 16; ++i)
+        CASE(seed++, "small", {
+            tGameObjectMain* g = &g_scene.gao[i % NGAO];
+            PICK(OBJ_SightSet)(g, &g_scene.scratch[0]);
+            PICK(OBJ_BankingSet)(g, &g_scene.scratch[1]);
+            PICK(OBJ_SightGeneralSet)(g, &g_scene.scratch[2], &g_scene.scratch[3]);
+            PICK(OBJ_BankingGeneralSet)(g, &g_scene.scratch[4], &g_scene.scratch[5]);
+            PICK(OBJ_AddInGroup)(&g_scene.group[i & 1], g);
+            if (i & 2)
+                g->flags &= ~0x2000;
+            PICK(OBJ_GameObject_CreateExtendedIfNot)(g);
+            PICK(OBJ_FreeGroupGrl)((i & 4) ? &g_scene.table[1] : 0);
+            PICK(OBJ_FreeGroup)(&g_scene.group[1]);
+        });
+}
+
 static void t_culling(void)
 {
     unsigned int seed = 5000;
@@ -1009,6 +1072,36 @@ static void t_culling(void)
             g_ret[SIDE] = acc;
         });
 
+    /* boxes wide enough and near enough that their corners land
+       outside the viewport, which is the only way the clamped and the
+       unclamped extents the two ratios divide can differ */
+    for (i = 0; i < 128; ++i)
+        CASE(seed++, "frame culling wide", {
+            float a = 0.0f;
+            float b = 0.0f;
+            long acc;
+            float sz = 0.5f + (float)(i % 11) * 2.0f;
+            g_scene.cam.factorX = 200.0f + (float)(i % 5) * 400.0f;
+            g_scene.cam.factorY = g_scene.cam.factorX;
+            g_scene.scratch[0].x = (float)((i % 7) - 3) * sz;
+            g_scene.scratch[0].y = (float)((i % 5) - 2) * sz;
+            g_scene.scratch[0].z = (float)(i % 13) - 7.5f;
+            g_scene.scratch[1].x = g_scene.scratch[0].x - sz;
+            g_scene.scratch[1].y = g_scene.scratch[0].y - sz * 1.5f;
+            g_scene.scratch[1].z = g_scene.scratch[0].z - sz * 0.5f;
+            acc = PICK(OBJ_Frame_CullingAABBox)(&g_scene.scratch[1], &g_scene.scratch[0],
+                                                &g_scene.cam, 640, 480, &a, &b);
+            g_scene.fscratch[0] = a;
+            g_scene.fscratch[1] = b;
+            a = 0.0f;
+            b = 0.0f;
+            acc = acc * 7 + PICK(OBJ_Frame_CullingSphere)(&g_scene.scratch[0], sz,
+                                                          &g_scene.cam, 640, 480, &a, &b);
+            g_scene.fscratch[2] = a;
+            g_scene.fscratch[3] = b;
+            g_ret[SIDE] = acc;
+        });
+
     for (i = 0; i < 32; ++i)
         CASE(seed++, "CalcLODVis", {
             if (i & 1)
@@ -1025,12 +1118,19 @@ static void t_hierarchy_call(void)
     unsigned int seed = 6000;
     int i;
 
-    for (i = 0; i < 24; ++i)
+    for (i = 0; i < 48; ++i)
         CASE(seed++, "HierarchyMainCall", {
+            if (i & 32)
+            {
+                /* the other order, parents first */
+                int k;
+                for (k = 0; k < NGAO; ++k)
+                    g_scene.helems[k].objectPtr = &g_scene.gao[k];
+            }
             if (i & 1)
-                g_scene.elems[1][2].objectPtr = 0;
+                g_scene.helems[2].objectPtr = 0;
             if (i & 2)
-                g_scene.elems[1][4].objectPtr = (void*)-1;
+                g_scene.helems[4].objectPtr = (void*)-1;
             if (i & 4)
                 g_scene.gaomtx[3].refGao2 = &g_scene.gao[2];
             if (i & 8)
@@ -1197,6 +1297,7 @@ int main(void)
     t_bv_dispatch();
     t_matrix();
     t_groups();
+    t_small();
     t_culling();
     t_hierarchy_call();
     t_eyefollow();

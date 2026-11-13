@@ -359,11 +359,20 @@ tGEOGRO* GEO_pst_StaticLOD_GetLOD(tGEOSTATICLOD* lod, uint8_t distance)
 
 /* A deterministic projection: the real one needs a display device. The
    sentinel 0x4F000000 (2147483648.0f) is produced for points behind the
-   camera, because both culling frames branch on exactly that word. */
+   camera, because both culling frames branch on exactly that word.
+
+   The two cross terms are not decoration. Without them the projected x
+   depends only on (x, z) and the projected y only on (y, z), so each of
+   the eight box corners shares its x with one sibling and its y with
+   another -- and moving a corner onto another corner's position becomes
+   invisible. With the shear every corner is its own point, which is
+   what the real projection matrix gives. */
 void SOFT_TransformAndProject(Vec3* dest, Vec3* src, int count, tDDCamStruct* cam)
 {
     int i;
     float w;
+    float px;
+    float py;
 
     GMOCK_Log("SOFT_TransformAndProject %d", count);
     for (i = 0; i < count; ++i)
@@ -377,8 +386,10 @@ void SOFT_TransformAndProject(Vec3* dest, Vec3* src, int count, tDDCamStruct* ca
         }
         else
         {
-            dest[i].x = cam->centerX + (src[i].x - cam->objectMtx.Pos.x) * cam->factorX / w;
-            dest[i].y = cam->centerY + (src[i].y - cam->objectMtx.Pos.y) * cam->factorY / w;
+            px = src[i].x - cam->objectMtx.Pos.x;
+            py = src[i].y - cam->objectMtx.Pos.y;
+            dest[i].x = cam->centerX + (px + 0.25f * py) * cam->factorX / w;
+            dest[i].y = cam->centerY + (py - 0.125f * px) * cam->factorY / w;
             dest[i].z = w;
         }
     }
