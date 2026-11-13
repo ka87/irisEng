@@ -1022,6 +1022,47 @@ static void test_jumppoint(long n)
         eq_mem(c, &pb, &pn, sizeof pb, "jump point");
         eq_mem(c, &wb->rayCastNormalVec, &wn->rayCastNormalVec, sizeof wb->rayCastNormalVec, "normal");
         eq_mem(c, mb->verts, mn->verts, sizeof mb->verts, "mesh untouched");
+
+        /* The other arm scans the collision records instead. It leaves
+           the world pointer it writes the normal through null, so only
+           the cases that return before that are safe to drive: a scan
+           that matches nothing, which is also the arm that reads one
+           record past the end, and a match whose map object carries no
+           collision map. */
+        {
+            int k;
+            int matching = (int)(c & 1);
+
+            wb->recordCount = 4;
+            wn->recordCount = 4;
+            for (k = 0; k < 4; ++k)
+            {
+                memset(&wb->records[k], 0, sizeof wb->records[k]);
+                wb->records[k].collisionInstanceGameObject =
+                    (k == 2 && matching) ? &mb->gao : &gGao[k % NGAO];
+                wb->records[k].collisionMapGameObject = &gGao[k % NGAO];
+                wb->records[k].flags = matching
+                    ? (int)(0x80u | (unsigned)nexti(1, 15))
+                    : (int)(nextu() & 0x7Fu);
+                wb->records[k].triangleChunkID = 0;
+                wb->records[k].triangleChunkElemID = ti;
+                randv(&wb->records[k].collidedPoint);
+                wn->records[k] = wb->records[k];
+                if (wn->records[k].collisionInstanceGameObject == &mb->gao)
+                    wn->records[k].collisionInstanceGameObject = &mn->gao;
+            }
+            memset(&wb->records[4], 0, sizeof wb->records[4]);
+            memset(&wn->records[4], 0, sizeof wn->records[4]);
+
+            memset(&pb, 0xA5, sizeof pb);
+            memset(&pn, 0xA5, sizeof pn);
+            WOR_gpst_CurrentWorld = wb;
+            BASE_COL_ComputeJumpPoint(&mb->gao, &pb, margin, down, 0);
+            WOR_gpst_CurrentWorld = wn;
+            NEW_COL_ComputeJumpPoint(&mn->gao, &pn, margin, down, 0);
+            WOR_gpst_CurrentWorld = NULL;
+            eq_mem(c, &pb, &pn, sizeof pb, "jump point from a report");
+        }
     }
     free(mb); free(mn); free(wb); free(wn);
 }
@@ -1317,6 +1358,77 @@ static void test_swap(long n)
     }
 }
 
+/* ---- 10. COL_GeoColMap_PosSet ------------------------------------ */
+
+static void test_geocolmap(long n)
+{
+    long c;
+    gGroup = "COL_GeoColMap_PosSet";
+    for (c = 0; c < n; ++c)
+    {
+        tGameObjectMain gb, gn;
+        tGameObjectExtended eb, en;
+        tGameObjectCollMain cb, cn;
+        tColMap mb, mn;
+        tColCollisionObject ob[3], on[3];
+        tColCollisionObject* pb[3];
+        tColCollisionObject* pn[3];
+        tCobNormalObjectGeneric gnb[3], gnn[3];
+        tColSphere sb[3], sn[3];
+        tColCylinder yb[3], yn[3];
+        Vec3 pos;
+        uint8_t idx;
+        int i;
+
+        seed((unsigned)(0x16000 + c));
+        memset(&gb, 0, sizeof gb); memset(&gn, 0, sizeof gn);
+        memset(&eb, 0, sizeof eb); memset(&en, 0, sizeof en);
+        memset(&cb, 0, sizeof cb); memset(&cn, 0, sizeof cn);
+        memset(&mb, 0, sizeof mb); memset(&mn, 0, sizeof mn);
+        for (i = 0; i < 3; ++i)
+        {
+            memset(&ob[i], 0, sizeof ob[i]); memset(&on[i], 0, sizeof on[i]);
+            ob[i].objectType = (uint8_t)nexti(1, 5);
+            on[i].objectType = ob[i].objectType;
+            randv(&sb[i].center); sb[i].radius = nextf();
+            sn[i] = sb[i];
+            randv(&yb[i].center); yb[i].radius = nextf(); yb[i].height = nextf();
+            yn[i] = yb[i];
+            gnb[i].gameMaterialElemID = 0;
+            gnn[i].gameMaterialElemID = 0;
+            gnb[i].enclosurePtr = (ob[i].objectType == 3) ? (void*)&yb[i] : (void*)&sb[i];
+            gnn[i].enclosurePtr = (on[i].objectType == 3) ? (void*)&yn[i] : (void*)&sn[i];
+            ob[i].objectPtrByType = &gnb[i];
+            on[i].objectPtrByType = &gnn[i];
+            pb[i] = &ob[i];
+            pn[i] = &on[i];
+        }
+        mb.colObjectID = (uint8_t)nexti(0, 3);
+        mn.colObjectID = mb.colObjectID;
+        mb.collisionObjectPtr = pb;
+        mn.collisionObjectPtr = pn;
+        cb.colMap = &mb; cn.colMap = &mn;
+        eb.coll = &cb; en.coll = &cn;
+        gb.extended = &eb; gn.extended = &en;
+        gb.flags = (nextu() & 1) ? 0x100 : 0;
+        gn.flags = gb.flags;
+        idx = (uint8_t)nexti(0, 3);
+        randv(&pos);
+
+        BASE_COL_GeoColMap_PosSet(&gb, idx, &pos);
+        NEW_COL_GeoColMap_PosSet(&gn, idx, &pos);
+        eq_mem(c, sb, sn, sizeof sb, "spheres");
+        eq_mem(c, yb, yn, sizeof yb, "cylinders");
+
+        if ((c & 15) == 0)
+        {
+            BASE_COL_GeoColMap_PosSet(NULL, idx, &pos);
+            NEW_COL_GeoColMap_PosSet(NULL, idx, &pos);
+            ++gCases;
+        }
+    }
+}
+
 /* ---- main --------------------------------------------------------- */
 
 int main(void)
@@ -1343,6 +1455,7 @@ int main(void)
     test_trisweep(1200);
     test_listcreate(2000);
     test_swap(2000);
+    test_geocolmap(4000);
 
     printf("\n%ld comparisons, %ld differing\n", gCases, gFails);
     if (gFails)
