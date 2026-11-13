@@ -558,6 +558,29 @@ void SIDE_RUN(int c)
             dump_faders();
         }
         SND_ResetAllMute();
+
+        /* The fade's terminal step, which the sweep above cannot reach.
+           SND_Fade sets i6 = 256/duration, so the step index is
+           elapsed*256/duration -- and step 255 needs elapsed/duration
+           to be exactly 255/256, which no sum of the dt values used
+           above can produce. It matters because SND_gf_FadeOut[255] is
+           0.0, so the level lands exactly on the target: the > 255 cap
+           and the level >= target terminator are each one boundary
+           away from behaving differently, and both scored clean until
+           this case existed. 256 is driven too, for the cap itself. */
+        for (i = 0; i < 4; ++i)
+        {
+            int grp = (i & 1) ? 5 : 3;          /* 5 is the gap in the switch */
+            SND_Fade(grp, 0.25f, 0.75f, 1.0f);
+            TIM_gf_dt = (i < 2) ? (255.0f / 256.0f) : 1.0f;
+            SND_FadeUpdate();
+            dump_faders();
+            SND_Fade(grp, 0.75f, 0.25f, 1.0f);   /* the other flag arm */
+            TIM_gf_dt = (i < 2) ? (255.0f / 256.0f) : 1.0f;
+            SND_FadeUpdate();
+            dump_faders();
+        }
+        SND_ResetAllMute();
         break;
 
     case 3:                       /* the spherical and per-axis attenuation */

@@ -45,10 +45,23 @@ static void show(const char* who, const char* s, int len, int at)
     fputc('\n', stderr);
 }
 
+void MATH_InitModule(void);
+
 int main(void)
 {
     int cases, c, bad = 0, checked = 0;
     long long bytes = 0;
+
+    /* The engine calls this at startup and the harness did not, which
+       left MATH_gd_magicDoubleForRound at 0. SND_FadeUpdate's step
+       index is the low word of elapsed*i6 + that constant, so without
+       it the index was 0 in every case: SND_gf_FadeOut[0] is 1.0, so
+       the level never left its starting value, the table's other 255
+       entries were never read, and the > 255 cap never fired. Two
+       boundary mutations on that path scored clean because of it.
+       math.c is linked whole here, so one call fixes it for both
+       sides. */
+    MATH_InitModule();
 
     if (BASE_snd_side_cases() != NEW_snd_side_cases())
     {
