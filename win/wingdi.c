@@ -1733,147 +1733,111 @@ void D3D_CycleThroughVBOs()
     currentVBOSelected = (currentVBOSelected + 1) % 3u;
 }
 
-void PC_FreeABackCache(struct sGEOGRO* a1)
+void PC_FreeABackCache(struct sGEOGRO* geogro)
 {
-    IDirect3DVertexBuffer9* v1;
-    IDirect3DVertexBuffer9* v2;
     //int v3;
     int i;
-    IDirect3DVertexBuffer9** v5;
-    IDirect3DVertexBuffer9* v6;
-    IDirect3DIndexBuffer9* v7;
 
-    v1 = a1->d3dvb;
-    if (v1)
+    if (geogro->d3dvb)
     {
-        v1->lpVtbl->Release(a1->d3dvb);
-        a1->d3dvb = NULL;
+        geogro->d3dvb->lpVtbl->Release(geogro->d3dvb);
+        geogro->d3dvb = NULL;
     }
-    v2 = a1->d3dvb2;
-    if (v2)
+    if (geogro->d3dvb2)
     {
-        v2->lpVtbl->Release(a1->d3dvb2);
-        a1->d3dvb2 = NULL;
+        geogro->d3dvb2->lpVtbl->Release(geogro->d3dvb2);
+        geogro->d3dvb2 = NULL;
     }
     /* TODO FIXME
-    v3 = *(_DWORD*)a1->gap4b;
+    v3 = *(_DWORD*)geogro->gap4b;
     if (v3)
     {
-        (*(void(__stdcall**)(_DWORD))(*(_DWORD*)v3 + 8))(*(_DWORD*)a1->gap4b);
-        *(_DWORD*)a1->gap4b = 0;
+        (*(void(__stdcall**)(_DWORD))(*(_DWORD*)v3 + 8))(*(_DWORD*)geogro->gap4b);
+        *(_DWORD*)geogro->gap4b = 0;
     }
     */
-    if (a1->d3dUVVB)
+    if (geogro->d3dUVVB)
     {
-        for (i = 0; i < a1->d3dUVVBNum; ++i)
+        for (i = 0; i < geogro->d3dUVVBNum; ++i)
         {
-            v5 = a1->d3dUVVB;
-            v6 = v5[i];
-            if (v6)
+            if (geogro->d3dUVVB[i])
             {
-                v6->lpVtbl->Release(v5[i]);
-                a1->d3dUVVB[i] = NULL;
+                geogro->d3dUVVB[i]->lpVtbl->Release(geogro->d3dUVVB[i]);
+                geogro->d3dUVVB[i] = NULL;
             }
         }
-        MEM_Free(a1->d3dUVVB);
-        a1->d3dUVVB = NULL;
+        MEM_Free(geogro->d3dUVVB);
+        geogro->d3dUVVB = NULL;
     }
-    v7 = a1->d3dIndexBuf;
-    if (v7)
+    if (geogro->d3dIndexBuf)
     {
-        v7->lpVtbl->Release(a1->d3dIndexBuf);
-        a1->d3dIndexBuf = NULL;
+        geogro->d3dIndexBuf->lpVtbl->Release(geogro->d3dIndexBuf);
+        geogro->d3dIndexBuf = NULL;
     }
 }
 
-void D3D_ReleaseMeshSpecificData(tGameObjectMain* result)
+void D3D_ReleaseMeshSpecificData(tGameObjectMain* gao)
 {
-    tGameObjectVisualObject* v1;
-    tGEOGRO* v2;
-    tGEOSTATICLOD* v2b;
-    int v3;
-    tGEOGRO** v4;
-    tGEOGRO* v5;
+    tGameObjectVisualObject* visual;
+    tGEOGRO* geogro;
+    tGEOSTATICLOD* lod;
+    int i;
 
-    if ((result->flags & 0x4000) != 0)
+    if ((gao->flags & 0x4000) != 0)
     {
-        v1 = result->basic->actorObjectOrVisualObject;
-        v2 = (tGEOGRO*)v1->GROGEOOrSomethingElse;
-        v2b = (tGEOSTATICLOD*)v1->GROGEOOrSomethingElse;
-        if (v1->GROGEOOrSomethingElse)
+        visual = gao->basic->actorObjectOrVisualObject;
+        geogro = (tGEOGRO*)visual->GROGEOOrSomethingElse;
+        lod = (tGEOSTATICLOD*)visual->GROGEOOrSomethingElse;
+        if (visual->GROGEOOrSomethingElse)
         {
-            if (v2->intf->id == 1)
+            if (geogro->intf->id == 1)
             {
-                if (v2->triangleChunkCount && v2->triangleChunks && v2->vertexNum)
-                    PC_FreeABackCache((tGEOGRO*)v1->GROGEOOrSomethingElse);
+                if (geogro->triangleChunkCount && geogro->triangleChunks && geogro->vertexNum)
+                    PC_FreeABackCache(geogro);
             }
-            else if (v2b->intf->id == 8)
+            else if (lod->intf->id == 8)
             {
-                v3 = 0;
-                if (v2b->lodNum)
+                for (i = 0; i < lod->lodNum; i++)
                 {
-                    v4 = v2b->geo;
-                    do
-                    {
-                        v5 = *v4;
-                        if ((*v4)->triangleChunkCount && v5->triangleChunks)
-                        {
-                            if (v5->vertexNum)
-                                PC_FreeABackCache(*v4);
-                        }
-                        ++v3;
-                        ++v4;
-                    } while (v3 < v2b->lodNum);
+                    if (lod->geo[i]->triangleChunkCount && lod->geo[i]->triangleChunks
+                        && lod->geo[i]->vertexNum)
+                        PC_FreeABackCache(lod->geo[i]);
                 }
             }
         }
     }
 }
 
-void D3D_ReleaseMeshSpecificDataOfAWorld(tWorld* a1)
+void D3D_ReleaseMeshSpecificDataOfAWorld(tWorld* world)
 {
-    tableElemStructPF* v1;
-    tableElemStructPF* i;
-    tGameObjectMain* v3;
-    tGroup* v4;
-    tableDescStruct* v5;
-    tableElemStructPF* v6;
-    tableElemStructPF* j;
-    tGameObjectMain* v8;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    tGroup* skeleton;
+    tableDescStruct* table;
+    tableElemStructPF* bone;
+    tableElemStructPF* lastBone;
 
-    if (a1)
+    if (world && world->objectTablePF.actElemNum)
     {
-        if (a1->objectTablePF.actElemNum)
+        last = ((tableElemStructPF*)(world->objectTablePF.nextElemPtr)) - 1;
+        for (elem = world->objectTablePF.firstElemPtr; elem <= last; ++elem)
         {
-            v1 = a1->objectTablePF.firstElemPtr;
-            for (i = ((tableElemStructPF*)(a1->objectTablePF.nextElemPtr)) - 1; v1 <= i; ++v1)
+            gao = (tGameObjectMain*)elem->objectPtr;
+            if (!gao || ((uint8_t)(size_t)gao & 3) == 1)
+                continue;
+            D3D_ReleaseMeshSpecificData(gao);
+            if ((gao->flags & 2) == 0)
+                continue;
+            skeleton = ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->skeletonGroup;
+            if (!skeleton)
+                continue;
+            table = skeleton->tablePF;
+            lastBone = ((tableElemStructPF*)(table->nextElemPtr)) - 1;
+            for (bone = table->firstElemPtr; bone <= lastBone; ++bone)
             {
-                v3 = (tGameObjectMain*)v1->objectPtr;
-                if (v1->objectPtr)
-                {
-                    if (((uint8_t)v3 & 3) != 1)
-                    {
-                        D3D_ReleaseMeshSpecificData((tGameObjectMain*)v1->objectPtr);
-                        if ((v3->flags & 2) != 0)
-                        {
-                            v4 = ((tGameObjectActorObject*)(v3->basic->actorObjectOrVisualObject))->skeletonGroup;
-                            if (v4)
-                            {
-                                v5 = v4->tablePF;
-                                v6 = v5->firstElemPtr;
-                                for (j = ((tableElemStructPF*)(v5->nextElemPtr)) - 1; v6 <= j; ++v6)
-                                {
-                                    v8 = (tGameObjectMain*)v6->objectPtr;
-                                    if (v6->objectPtr)
-                                    {
-                                        if (((uint8_t)v8 & 3) != 1)
-                                            D3D_ReleaseMeshSpecificData(v8);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                if (bone->objectPtr && ((uint8_t)(size_t)bone->objectPtr & 3) != 1)
+                    D3D_ReleaseMeshSpecificData((tGameObjectMain*)bone->objectPtr);
             }
         }
     }
@@ -1890,178 +1854,140 @@ void D3D_ReleaseWaterIndices()
     }
 }
 
-void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* a1)
+void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* sun)
 {
-    IDirect3DTexture9* v1;
-
-    if (a1->d3dTexture)
+    if (sun->d3dTexture)
     {
-        a1->d3dRenderTarget->lpVtbl->Release(a1->d3dRenderTarget);
-        v1 = a1->d3dTexture;
-        a1->d3dRenderTarget = NULL;
-        v1->lpVtbl->Release(v1);
-        a1->d3dTexture = NULL;
+        sun->d3dRenderTarget->lpVtbl->Release(sun->d3dRenderTarget);
+        sun->d3dRenderTarget = NULL;
+        sun->d3dTexture->lpVtbl->Release(sun->d3dTexture);
+        sun->d3dTexture = NULL;
     }
 }
 
 void D3D_ReleaseSunSurfaces()
 {
-    tGfxSunD3DSpecificData** v0;
+    int i;
 
-    v0 = gD3dSunSurfaces;
-    do
+    for (i = 0; i < 16; i++)
     {
-        if (*v0)
-            D3D_ReleaseSunRenderTargetAndTexture(*v0);
-        ++v0;
-    } while (v0 <= &(gD3dSunSurfaces[15]));
+        if (gD3dSunSurfaces[i])
+            D3D_ReleaseSunRenderTargetAndTexture(gD3dSunSurfaces[i]);
+    }
 }
 
 void D3D_ReleaseEveryCache()
 {
-    IDirect3DTexture9** v0;
-    IDirect3DTexture9** v1;
+    int i;
 
     D3D_ReleaseWaterIndices();
     D3D_ReleaseSunSurfaces();
     D3D_ReleaseEverything();
     D3D_ReleaseMeshSpecificDataOfAWorld(WOR_gpst_CurrentWorld);
-    v0 = D3DRenderParams.d3dTextures;
     if (D3DRenderParams.d3dTextures)
     {
-        v1 = &D3DRenderParams.d3dTextures[D3DRenderParams.d3dTextureNum];
-        if (D3DRenderParams.d3dTextures < v1)
+        for (i = 0; i < D3DRenderParams.d3dTextureNum; i++)
         {
-            do
-            {
-                if (*v0)
-                    (*v0)->lpVtbl->Release(*v0);
-                ++v0;
-            } while (v0 < v1);
-            v0 = D3DRenderParams.d3dTextures;
+            if (D3DRenderParams.d3dTextures[i])
+                D3DRenderParams.d3dTextures[i]->lpVtbl->Release(D3DRenderParams.d3dTextures[i]);
         }
-        MEM_Free(v0);
+        MEM_Free(D3DRenderParams.d3dTextures);
         D3DRenderParams.d3dTextures = NULL;
     }
 }
 
-int D3D_CalculateStride(unsigned int a1)
+int D3D_CalculateStride(unsigned int fvf)
 {
-    int result;
-    unsigned int v2;
-    unsigned int v3;
-    int v4;
+    int stride;
+    unsigned int texCount;
+    unsigned int texSizes;
 
-    result = 0;
-    switch (a1 & 0x400E)
+    stride = 0;
+    switch (fvf & 0x400E)
     {
     case 2u:
-        v4 = 12;
+        stride = 12;
         break;
     case 4u:
     case 6u:
-        v4 = 16;
+        stride = 16;
         break;
     case 8u:
-        v4 = 20;
+        stride = 20;
         break;
     case 0xAu:
-        v4 = 24;
+        stride = 24;
         break;
     case 0xCu:
-        v4 = 28;
+        stride = 28;
         break;
     case 0xEu:
-        v4 = 32;
+        stride = 32;
         break;
     default:
-        goto LABEL_15;
+        break;
     }
-    result = v4;
-LABEL_15:
-    if ((a1 & 0x10) != 0)
-        result += 12;
-    if ((a1 & 0x20) != 0)
-        result += 4;
-    if ((a1 & 0x40) != 0)
-        result += 4;
-    if ((a1 & 0x80u) != 0)
-        result += 4;
-    v2 = (a1 >> 8) & 0xF;
-    v3 = (a1 >> 16) & 0xffff;
-    if (v3)
+    if ((fvf & 0x10) != 0)
+        stride += 12;
+    if ((fvf & 0x20) != 0)
+        stride += 4;
+    if ((fvf & 0x40) != 0)
+        stride += 4;
+    if ((fvf & 0x80u) != 0)
+        stride += 4;
+    texCount = (fvf >> 8) & 0xF;
+    texSizes = (fvf >> 16) & 0xffff;
+    if (texSizes)
     {
-        for (; v2; --v2)
+        for (; texCount; --texCount)
         {
-            if ((v3 & 3) != 0)
+            switch (texSizes & 3)
             {
-                switch (v3 & 3)
-                {
-                case 1u:
-                    result += 12;
-                    break;
-                case 2u:
-                    result += 16;
-                    break;
-                case 3u:
-                    result += 4;
-                    break;
-                }
+            case 0u:
+                stride += 8;
+                break;
+            case 1u:
+                stride += 12;
+                break;
+            case 2u:
+                stride += 16;
+                break;
+            case 3u:
+                stride += 4;
+                break;
             }
-            else
-            {
-                result += 8;
-            }
-            v3 >>= 2;
+            texSizes >>= 2;
         }
     }
     else
     {
-        result += 8 * v2;
+        stride += 8 * texCount;
     }
-    return result;
+    return stride;
 }
 
 void D3D_CreateThreeVbos()
 {
-    int v0;
-    int v1;
-    int v2;
+    int i;
+    int result;
 
-    v0 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
-        D3DRenderParams.d3dDev,
-        2097152,
-        D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-        D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ,
-        D3DPOOL_DEFAULT,
-        &VBOs[0],
-        NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v0);
-    v1 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
-        D3DRenderParams.d3dDev,
-        2097152,
-        D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-        D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ,
-        D3DPOOL_DEFAULT,
-        &VBOs[1],
-        NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v1);
-    v2 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
-        D3DRenderParams.d3dDev,
-        2097152,
-        D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-        D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ,
-        D3DPOOL_DEFAULT,
-        &VBOs[2],
-        NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v2);
+    for (i = 0; i < 3; i++)
+    {
+        result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+            D3DRenderParams.d3dDev,
+            2097152,
+            D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
+            D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ,
+            D3DPOOL_DEFAULT,
+            &VBOs[i],
+            NULL);
+        D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+    }
 }
 
 void D3D_CreateVBOs()
 {
-    int v0;
-    int v1;
-    int v2;
+    int result;
 
     D3D_CreateThreeVbos();
     D3DRenderParams.prevVertexElemIdx2 = 0;
@@ -2069,7 +1995,7 @@ void D3D_CreateVBOs()
     D3DRenderParams.currTargetGao = 0;
     D3DRenderParams.xyzFVF = D3DFVF_XYZ;
     D3DRenderParams.stride2 = D3D_CalculateStride(D3DFVF_XYZ);
-    v0 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
         D3DRenderParams.d3dDev,
         65535 * D3DRenderParams.stride2,
         D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
@@ -2077,13 +2003,13 @@ void D3D_CreateVBOs()
         D3DPOOL_DEFAULT,
         &D3DRenderParams.d3dXYZVB,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v0);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
     D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle = 0;
     D3DRenderParams.currVertexStartOffset = 0;
     D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle = 0;
     D3DRenderParams.normalsFVF = D3DFVF_NORMAL;
     D3DRenderParams.d3dStride = D3D_CalculateStride(D3DFVF_NORMAL);
-    v1 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
         D3DRenderParams.d3dDev,
         65535 * D3DRenderParams.d3dStride,
         D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
@@ -2091,13 +2017,13 @@ void D3D_CreateVBOs()
         D3DPOOL_DEFAULT,
         &D3DRenderParams.d3dNormalsBuffer,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v1);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
     D3DRenderParams.prevVertexElemIdx = 0;
     D3DRenderParams.startVertexElemIdx = 0;
     D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 = 0;
     D3DRenderParams.colorsFVF = D3DFVF_DIFFUSE;
     D3DRenderParams.stride = D3D_CalculateStride(D3DFVF_DIFFUSE);
-    v2 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
         D3DRenderParams.d3dDev,
         262143 * D3DRenderParams.stride,
         D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
@@ -2105,119 +2031,103 @@ void D3D_CreateVBOs()
         D3DPOOL_DEFAULT,
         &D3DRenderParams.d3dColorsVB,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v2);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
 }
 
-void D3D_SetColorWriteEnable(char a1)
+void D3D_SetColorWriteEnable(char flags)
 {
-    int v1;
+    int mask;
 
-    v1 = 0;
-    if ((a1 & 0x20) == 0)
-        v1 = D3DCOLORWRITEENABLE_ALPHA;
-    if ((a1 & 0x40) == 0)
-        v1 |= (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE);
-    D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, v1);
+    mask = 0;
+    if ((flags & 0x20) == 0)
+        mask = D3DCOLORWRITEENABLE_ALPHA;
+    if ((flags & 0x40) == 0)
+        mask |= (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE);
+    D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, mask);
 }
 
 void D3D_SetCullingParams()
 {
-    int v0;
-    BOOL v1;
-    int v2;
-    int v3;
+    int drawMask;
+    int cullMode;
 
-    v0 = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
-    if ((v0 & 0x800) != 0)
+    drawMask = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
+    if ((drawMask & 0x800) != 0)
     {
-        v1 = (v0 & 0x2000) == 0;
-        v2 = renderStateConfig.d3dCullMode;
-        if (v1)
-            v3 = D3DCULL_CCW;
+        if ((drawMask & 0x2000) == 0)
+            cullMode = D3DCULL_CCW;
         else
-            v3 = D3DCULL_CW;
+            cullMode = D3DCULL_CW;
     }
     else
     {
-        v2 = renderStateConfig.d3dCullMode;
-        v3 = 1;
+        cullMode = 1;
     }
-    if (v2 != v3)
-    {
-        renderStateConfig.d3dCullMode = v3;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_CULLMODE, v3);
-    }
+    D3D_RenderStateSet(&renderStateConfig.d3dCullMode, D3DRS_CULLMODE, cullMode);
 }
 
-void D3D_SetTextureStageStates(int a1, int a2)
+void D3D_SetTextureStageStates(int stage, int textureID)
 {
-    int v6;
-    int v7;
-
-    if (a2 == -1)
+    if (textureID == -1)
     {
-        if (textureStageTypeConfig[a1].d3d_colorarg1)
+        if (textureStageTypeConfig[stage].d3d_colorarg1)
         { 
-            textureStageTypeConfig[a1].d3d_colorarg1 = D3DTA_DIFFUSE;
-            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, a1, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+            textureStageTypeConfig[stage].d3d_colorarg1 = D3DTA_DIFFUSE;
+            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
         }
-        D3D_StageStateSet(a1, &textureStageTypeConfig[a1].d3d_colorOp, 1, D3DTOP_SELECTARG1);
-        if (textureStageTypeConfig[a1].d3d_alphaArg1)
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, 1, D3DTOP_SELECTARG1);
+        if (textureStageTypeConfig[stage].d3d_alphaArg1)
         {
-            textureStageTypeConfig[a1].d3d_alphaArg1 = D3DTA_DIFFUSE;
-            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, a1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+            textureStageTypeConfig[stage].d3d_alphaArg1 = D3DTA_DIFFUSE;
+            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
         }
-        D3D_StageStateSet(a1, &textureStageTypeConfig[a1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     }
-    else if (a2 != -2)
+    else if (textureID != -2)
     {
-        if (D3DRenderParams.tweak_ae_d2x && D3DRenderParams.diffuse2x && a2 >= 0)
+        if (D3DRenderParams.tweak_ae_d2x && D3DRenderParams.diffuse2x && textureID >= 0)
         {
-            v6 = a1;
-            v7 = a1;
-            D3D_StageStateSet(a1, &textureStageTypeConfig[a1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE2X);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE2X);
         }
         else
         {
-            v6 = a1;
-            v7 = a1;
-            D3D_StageStateSet(a1, &textureStageTypeConfig[a1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE);
         }
-        D3D_StageStateSet(v6, &textureStageTypeConfig[v7].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-        D3D_StageStateSet(v6, &textureStageTypeConfig[v7].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-        if (textureStageTypeConfig[v7].d3d_colorarg2)
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+        if (textureStageTypeConfig[stage].d3d_colorarg2)
         {
-            textureStageTypeConfig[v7].d3d_colorarg2 = D3DTA_DIFFUSE;
-            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v6, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+            textureStageTypeConfig[stage].d3d_colorarg2 = D3DTA_DIFFUSE;
+            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
         }
-        D3D_StageStateSet(v6, &textureStageTypeConfig[v7].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-        if (textureStageTypeConfig[v7].d3d_alphaArg2)
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+        if (textureStageTypeConfig[stage].d3d_alphaArg2)
         {
-            textureStageTypeConfig[v7].d3d_alphaArg2 = D3DTA_DIFFUSE;
-            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v6, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+            textureStageTypeConfig[stage].d3d_alphaArg2 = D3DTA_DIFFUSE;
+            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
         }
     }
 }
 
-void D3D_SetAlphaTestParams(unsigned int a1, int16_t a2)
+void D3D_SetAlphaTestParams(unsigned int mask, int16_t flags)
 {
-    int v2;
+    int compare;
 
-    if ((a2 & 0x10) != 0)
+    if ((flags & 0x10) != 0)
     {
         if (renderStateConfig.d3dAlphaTest != 1)
         {
             renderStateConfig.d3dAlphaTest = 1;
             D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHATESTENABLE, TRUE);
         }
-        v2 = D3DCMP_LESS;
-        if ((a2 & 0x80u) == 0)
-            v2 = D3DCMP_GREATER;
-        D3D_RenderStateSet(&renderStateConfig.d3dAlphaFunc, D3DRS_ALPHAFUNC, v2);
-        if (renderStateConfig.d3dAlphaRef != ((a1 >> 22) & 0xFC))
+        compare = D3DCMP_LESS;
+        if ((flags & 0x80u) == 0)
+            compare = D3DCMP_GREATER;
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaFunc, D3DRS_ALPHAFUNC, compare);
+        if (renderStateConfig.d3dAlphaRef != ((mask >> 22) & 0xFC))
         {
-            renderStateConfig.d3dAlphaRef = (a1 >> 22) & 0xFC;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAREF, (a1 >> 22) & 0xFC);
+            renderStateConfig.d3dAlphaRef = (mask >> 22) & 0xFC;
+            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAREF, (mask >> 22) & 0xFC);
         }
     }
     else if (renderStateConfig.d3dAlphaTest)
@@ -2225,7 +2135,7 @@ void D3D_SetAlphaTestParams(unsigned int a1, int16_t a2)
         renderStateConfig.d3dAlphaTest = 0;
         D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHATESTENABLE, FALSE);
     }
-    D3DRenderParams.colorMaskAlpha = (a2 & 0x400) != 0 ? 0xFF000000 : 0;
+    D3DRenderParams.colorMaskAlpha = (flags & 0x400) != 0 ? 0xFF000000 : 0;
 }
 
 void D3D_SetAlphaBlendingOptions(unsigned int a1, char a2)
@@ -3300,37 +3210,35 @@ void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* a1)
     }
 }
 
-void D3D_CreateSunTextures(tGfxSunD3DSpecificData* a1)
+void D3D_CreateSunTextures(tGfxSunD3DSpecificData* sun)
 {
-    int v1;
+    int result;
 
-    if (!a1->d3dTexture)
+    if (!sun->d3dTexture)
     {
-        v1 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+        result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
             16,
             1,
             1,
             D3DUSAGE_RENDERTARGET,
             D3DFMT_A8R8G8B8,
             D3DPOOL_DEFAULT,
-            &a1->d3dTexture,
+            &sun->d3dTexture,
             NULL);
-        D3D_CheckReturnAndRunSettingsApplicationIfProblem(v1);
-        a1->d3dTexture->lpVtbl->GetSurfaceLevel(a1->d3dTexture, 0, &a1->d3dRenderTarget);
+        D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+        sun->d3dTexture->lpVtbl->GetSurfaceLevel(sun->d3dTexture, 0, &sun->d3dRenderTarget);
     }
 }
 
 void D3D_CreateSunTexturesForSunSurfaces()
 {
-    tGfxSunD3DSpecificData** v0;
+    int i;
 
-    v0 = gD3dSunSurfaces;
-    do
+    for (i = 0; i < 16; i++)
     {
-        if (*v0)
-            D3D_CreateSunTextures(*v0);
-        ++v0;
-    } while (v0 <= &gD3dSunSurfaces[15]);
+        if (gD3dSunSurfaces[i])
+            D3D_CreateSunTextures(gD3dSunSurfaces[i]);
+    }
 }
 
 void D3D_WaterBuffersInit()

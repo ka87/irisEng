@@ -87,6 +87,10 @@
     int  p##D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks*, Vec3*, struct sGeoUVElem*, int); \
     void p##D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain*, tGEOGRO*); \
     void p##PC_FreeABackCache(struct sGEOGRO*); \
+    void p##D3D_ReleaseMeshSpecificData(tGameObjectMain*); \
+    void p##D3D_ReleaseMeshSpecificDataOfAWorld(tWorld*); \
+    void p##D3D_ReleaseEveryCache(void); \
+    void p##D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld*); \
     void p##D3D_ReleaseTextures(struct sGdi_DisplayData*); \
     void p##D3D_ReleaseShadowTextures(void); \
     void p##D3D_ReleaseVBOs(void); \
@@ -172,6 +176,10 @@ typedef struct sSide
     int (*DrawElementIndexedTriangles)(struct sGeoTriangleChunks*, Vec3*, struct sGeoUVElem*, int);
     void (*CreateBuffers)(tGameObjectMain*, tGEOGRO*);
     void (*FreeBackCache)(struct sGEOGRO*);
+    void (*ReleaseMeshData)(tGameObjectMain*);
+    void (*ReleaseMeshDataOfWorld)(tWorld*);
+    void (*ReleaseEveryCache)(void);
+    void (*CreateGameObjectsD3DStuff)(struct sWorld*);
     void (*ReleaseTextures)(struct sGdi_DisplayData*);
     void (*ReleaseShadowTextures)(void);
     void (*ReleaseVBOs)(void);
@@ -222,6 +230,8 @@ typedef struct sSide
     p##MAT_UV_Compute_Chrome, p##MAT_UV_Compute_PLANAR_GIZMO_NOSTORE, \
     p##D3D_DrawSprites, p##D3D_l_DrawElementIndexedTriangles, \
     p##D3D_CreateIndexAndVertexBuffForElemsIfSuitable, p##PC_FreeABackCache, \
+    p##D3D_ReleaseMeshSpecificData, p##D3D_ReleaseMeshSpecificDataOfAWorld, \
+    p##D3D_ReleaseEveryCache, p##D3D_CreateGameObjectsD3DStuffForMultiStream, \
     p##D3D_ReleaseTextures, p##D3D_ReleaseShadowTextures, p##D3D_ReleaseVBOs, \
     p##D3D_ReleaseEverything, p##D3D_CreateVBOs, p##D3D_CreateAndCopySourceTexturesToThem, \
     p##D3D_l_Texture_Store, p##D3D_Palette_Load, p##D3D_TextureStore, \
@@ -291,6 +301,18 @@ typedef struct sWgFixture
     tEngTexIntermediateStruct inter;
     unsigned char imgData[64 * 64 * 4];
     GLOBAL_MainHandles handles;
+    tWorld world;
+    tableElemStructPF worldElems[4];
+    tableElemStructPF boneElems[3];
+    tGroup skeleton;
+    tableDescStruct boneTable;
+    tGameObjectMain gaos[4];
+    tGameObjectBasic basics[4];
+    tGameObjectActorObject actors[4];
+    tGEOSTATICLOD lod;
+    tGEOSTATICLOD otherLod;
+    tGroIntf lodIntf;
+    tGroIntf otherIntf;
     tD3dRenderStateConfigStruct rsIn;
     tD3dSamplerConfigStruct smIn[8];
     tD3dTextureStageTypeStruct tsIn[8];
@@ -405,7 +427,7 @@ static void Snapshot(const tSide* s, tShot* o, int ret, float fret)
 
 /* ---------- guard-distribution bookkeeping ---------- */
 
-#define GUARDS 24
+#define GUARDS 30
 static int guardHit[GUARDS][2];
 static const char* guardName[GUARDS];
 
@@ -425,7 +447,7 @@ enum {
     C_VIEWMATRIX, C_XFORMSAVE, C_WATERPARAMS, C_VBO, C_REQUEST,
     C_RASTERS, C_RASTERQUAD, C_WATERBUFFERS, C_WATERSTREAM, C_DRAWWATER,
     C_UVCOMPUTE, C_UVCHROME, C_UVPLANAR, C_SPRITES, C_DRAWTRIS,
-    C_CREATEBUFFERS, C_RELEASE, C_CREATE, C_PALETTE, C_SNAPSHOT,
+    C_CREATEBUFFERS, C_RELEASE, C_RELEASEMESH, C_CREATE, C_PALETTE, C_SNAPSHOT,
     C_WNDMSG, C_SETUVMATRIX,
     C_COUNT
 };
@@ -438,7 +460,7 @@ static const char* caseName[C_COUNT] = {
     "view matrix", "transform save", "water params", "vbo ring", "request",
     "rasters", "raster quad", "water buffers", "water stream", "draw water",
     "uv compute", "uv chrome", "uv planar", "sprites", "draw triangles",
-    "create buffers", "release", "create", "palette load", "snapshot",
+    "create buffers", "release", "release mesh data", "create", "palette load", "snapshot",
     "window message", "uv matrix"
 };
 
@@ -725,7 +747,7 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
         W.chunks[c].triangleStripBlock = ((seed >> (unsigned)c) & 1) ? &W.blocks[c] : NULL;
     }
     Guard(4, "strip block", (int)(seed & 1));
-    W.intf.id = ((seed >> 12) & 1) ? 1 : 8;
+    W.intf.id = 1;
     W.geogro.intf = &W.intf;
     W.geogro.vertexNum = 16u + (seed % 8u);
     W.geogro.vertices = W.verts;
@@ -934,6 +956,66 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     Guard(23, "palette 32 bit", (seed % 3u) == 0);
     for (i = 0; i < (int)sizeof(W.imgData); i++)
         W.imgData[i] = (unsigned char)((seed + (unsigned)i * 31u) & 0xFF);
+    /* a small world: four objects, one of them a skeleton owner */
+    W.lodIntf.id = 8;
+    W.lod.intf = &W.lodIntf;
+    W.lod.lodNum = 2;
+    W.lod.geo[0] = &W.geogro;
+    W.lod.geo[1] = &W.geogro;
+    W.otherIntf.id = 3;
+    W.otherLod.intf = &W.otherIntf;
+    for (i = 0; i < 4; i++)
+    {
+        W.gaos[i].basic = &W.basics[i];
+        W.gaos[i].flags = (int)((seed >> i) & 1) * 0x4000
+                        | (int)((seed >> (i + 1)) & 1) * 2;
+        W.basics[i].actorObjectOrVisualObject =
+            (struct sGameObjectVisualObject*)&W.actors[i];
+        /* one of each kind the dispatcher knows, plus a kind it does
+           not and a null one */
+        switch (((int)(seed >> i) + i) % 4)
+        {
+        case 0:
+            ((tGameObjectVisualObject*)&W.actors[i])->GROGEOOrSomethingElse =
+                (struct sGroGeneric*)&W.geogro;
+            break;
+        case 1:
+            ((tGameObjectVisualObject*)&W.actors[i])->GROGEOOrSomethingElse =
+                (struct sGroGeneric*)&W.lod;
+            break;
+        case 2:
+            ((tGameObjectVisualObject*)&W.actors[i])->GROGEOOrSomethingElse =
+                (struct sGroGeneric*)&W.otherLod;
+            break;
+        default:
+            ((tGameObjectVisualObject*)&W.actors[i])->GROGEOOrSomethingElse = NULL;
+            break;
+        }
+
+        W.actors[i].skeletonGroup = ((seed >> i) & 1) ? &W.skeleton : NULL;
+        W.worldElems[i].objectPtr = ((seed >> (i + 2)) & 1)
+            ? (void*)&W.gaos[i] : NULL;
+    }
+    for (i = 0; i < 4; i++)
+    {
+        static const char* kindName[4] = { "mesh geogro", "mesh lod",
+                                           "mesh other kind", "mesh none" };
+        int k;
+        for (k = 0; k < 4; k++)
+            Guard(26 + k, kindName[k], (((int)(seed >> i) + i) % 4) == k);
+    }
+    W.worldElems[3].objectPtr = (void*)((size_t)&W.gaos[3] | 1u);
+    W.world.objectTablePF.actElemNum = (seed & 1) ? 4u : 0u;
+    W.world.objectTablePF.firstElemPtr = W.worldElems;
+    W.world.objectTablePF.nextElemPtr = &W.worldElems[4];
+    W.skeleton.tablePF = &W.boneTable;
+    W.boneTable.firstElemPtr = W.boneElems;
+    W.boneTable.nextElemPtr = &W.boneElems[3];
+    for (i = 0; i < 3; i++)
+        W.boneElems[i].objectPtr = ((seed >> i) & 1) ? (void*)&W.gaos[i] : NULL;
+    Guard(24, "world table populated", (int)(seed & 1));
+    Guard(25, "lod geometry", (int)(seed & 1) == 0);
+
     W.handles.hwnd = (HWND)0x100;
     W.unkVals[0] = rf(&r, -1.0f, 1.0f);
     (void)kind;
@@ -1113,6 +1195,12 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         *s->multiStreamWorld = (tWorld*)(size_t)1;
         s->CreateBuffers(&W.gao, &W.geogro);
         *s->multiStreamWorld = NULL;
+        break;
+    case C_RELEASEMESH:
+        s->ReleaseMeshData(&W.gaos[(seed % 4u)]);
+        WOR_gpst_CurrentWorld = &W.world;
+        s->ReleaseMeshDataOfWorld(&W.world);
+        s->ReleaseEveryCache();
         break;
     case C_RELEASE:
         s->FreeBackCache(&W.geogro);
