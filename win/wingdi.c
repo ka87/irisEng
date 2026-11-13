@@ -752,7 +752,7 @@ void D3D_SetProjectionMatrix(tDDCamStruct* cam)
         if (D3D_gi_Widescreen)
         {
             // the authored vertical half angle, kept whatever the
-            // window shape is; the horizontal one follows screenRatio
+            // window shape is; the horizontal one follows v46
             float cotY = ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
                              ? cotFov
                              : (float)(cotFov / D3D_gf_RefYoverX);
@@ -1526,7 +1526,7 @@ void D3D_RastersSetAndDrawAQuad(int color, float x, float y, float w, float h, i
     quad[5].v.y = (float)bottom;
     quad[5].color = color;
     //rastersDrawPrimitiveUPDataEnd += sizeof(tVertexAndColor) * 6;
-    rastersDrawPrimitiveUPDataEnd = (char *)(quad + 6); // a vége az 6 db tVertexAndColor elemet fog tartalmazni, mivel a quad az egy tVertexAndColor típusra mutató pointer
+    rastersDrawPrimitiveUPDataEnd = (char *)(quad + 6); // a vége az 6 db tVertexAndColor elemet fog tartalmazni, mivel a v6 az egy tVertexAndColor típusra mutató pointer
     if (flush)
         D3D_RastersDrawUPStream();
 }
@@ -1749,11 +1749,11 @@ void PC_FreeABackCache(struct sGEOGRO* geogro)
         geogro->d3dvb2 = NULL;
     }
     /* TODO FIXME
-    v3 = *(_DWORD*)geogro->gap4b;
+    v3 = *(_DWORD*)a1->gap4b;
     if (v3)
     {
-        (*(void(__stdcall**)(_DWORD))(*(_DWORD*)v3 + 8))(*(_DWORD*)geogro->gap4b);
-        *(_DWORD*)geogro->gap4b = 0;
+        (*(void(__stdcall**)(_DWORD))(*(_DWORD*)v3 + 8))(*(_DWORD*)a1->gap4b);
+        *(_DWORD*)a1->gap4b = 0;
     }
     */
     if (geogro->d3dUVVB)
@@ -2520,7 +2520,7 @@ void D3D_InitEverything(tGdi_DisplayData* dd)
     decl[3].UsageIndex = 0;
     D3DRenderParams.d3dDev->lpVtbl->CreateVertexDeclaration(D3DRenderParams.d3dDev, decl, &D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
     gpst_DX_stDD = dd;
-    dd->rasters[3].unk1 = 0; // TODO FIXME ez biztos jó így ???? megnézni. az idaban csak siman dd->rasters[3] = 0 van de az nem jó
+    dd->rasters[3].unk1 = 0; // TODO FIXME ez biztos jó így ???? megnézni. az idaban csak siman a1->rasters[3] = 0 van de az nem jó
     D3D_SetViewPort(0,
         (D3DRenderParams.Rect.bottom - (D3DRenderParams.Rect.right - D3DRenderParams.Rect.left) - D3DRenderParams.Rect.top) / 2,
         D3DRenderParams.Rect.right - D3DRenderParams.Rect.left, D3DRenderParams.Rect.right - D3DRenderParams.Rect.left);
@@ -2552,7 +2552,7 @@ void D3D_InitEverything(tGdi_DisplayData* dd)
     D3D_PresentAndClear();
     D3D_CreateBlurTextures();
     D3D_AETexturesInit();
-    //*(_DWORD*)&decl[3].Stream = v4; / ????
+    //*(_DWORD*)&v5[3].Stream = v4; / ????
     for (i = 7; i >= 0; i--)
     {
         result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, 128, 128, 1, 1, 21, 0, &D3DRenderParams.d3dShadowTextures[i], 0);
@@ -2683,8 +2683,10 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
 
             if (geogro->vertexNum)
             {
-                for (i = 0; i < (int)((sizeof(tGeoUVElem) * geogro->vertexNum - 1) >> 2) + 1; i++)
+                for (i = 0; i < (int)((sizeof(tGeoUVElem) * geogro->vertexNum - 1) >> 2) + 1; i++) {
                     ((float*)uvBufs[0])[i] = FLT_MAX;
+     //               *((int*)(&(v88[0][i]))) = 0x7F7FFFFF; // ez FLOAT_MAX, TODO FIXME
+                }
             }
             for (chunk = 0; chunk < (int)geogro->triangleChunkCount; chunk++)
             {
@@ -2694,9 +2696,6 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                 for (strip = 0; strip < (int)block->triangleStripNum; strip++)
                 {
                     strips = &block->triangleStrips[strip];
-                    /* the first UV buffer in which every one of this
-                       strip's vertices is either untouched or already
-                       carries the coordinates it wants */
                     found = -1;
                     for (buf = 0; buf < geogro->d3dUVVBNum; buf++)
                     {
@@ -2759,8 +2758,10 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                     uv = uvBufs[newBuf];
                     if (geogro->vertexNum)
                     {
-                        for (i = 0; i < (int)((sizeof(tGeoUVElem) * geogro->vertexNum - 1) >> 2) + 1; i++)
+                        for (i = 0; i < (int)((sizeof(tGeoUVElem) * geogro->vertexNum - 1) >> 2) + 1; i++) {
                             ((float*)uv)[i] = FLT_MAX;
+                                            //*((int*)(&(v40[i]))) = 0x7F7FFFFF; // ez FLOAT_MAX, TODO FIXME
+                        }
                     }
                     for (elem = 0; elem < strips->triangleStripElemNum; elem++)
                     {
@@ -2778,8 +2779,6 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
         }
         if (geogro->d3dIndexBuf || (int)geogro->triangleChunkCount <= 0)
             return;
-        /* how many indices the strip-per-UV-buffer grouping needs, and
-           how many streams each chunk ends up with */
         total = 0;
         for (chunk = 0; chunk < (int)geogro->triangleChunkCount; chunk++)
         {
@@ -2798,7 +2797,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                     if (streamStart != total)
                     {
                         total += 2;
-                        if ((((uint8_t)total - (uint8_t)streamStart) & 1) != 0)
+                        if ((((uint8_t)total - (uint8_t)streamStart) & 1) != 0) // ez nembiztos hogy jó így TODO IFXME
                             ++total;
                     }
                     total += strips->triangleStripElemNum;
@@ -2820,7 +2819,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
             &geogro->d3dIndexBuf,
             NULL);
         D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
-        geogro->d3dIndexBuf->lpVtbl->Lock(geogro->d3dIndexBuf, 0, 0, (void**)&out, 0);
+        geogro->d3dIndexBuf->lpVtbl->Lock(geogro->d3dIndexBuf, 0, 0, (void**)&out, 0); // ide uj v75 kéne
         for (chunk = 0; chunk < (int)geogro->triangleChunkCount; chunk++)
         {
             block = geogro->triangleChunks[chunk].triangleStripBlock;
@@ -2836,6 +2835,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                 block->d3dStreamInfoElems[streams].startIndex = pos;
                 for (strip = 0; strip < (int)block->triangleStripNum; strip++)
                 {
+                    //v68 = v63[v77].triangleStrips;
                     strips = &block->triangleStrips[strip];
                     if (strips->vbIdx != buf)
                         continue;
@@ -2846,9 +2846,6 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                     }
                     else
                     {
-                        /* a degenerate pair joins this strip to the one
-                           before it, with a third index when the parity
-                           would otherwise flip */
                         *out = *(out - 1);
                         *++out = strips->triangleStripElems->triangleIdx;
                         pos += 2;
@@ -3385,6 +3382,7 @@ int D3D_FillWaterStreamData(struct sWaterParamsGlobalStruct* water)
     camZ = gpst_DX_stDD->ct.cam.objectMtx.Pos.z;
     camY = gpst_DX_stDD->ct.cam.objectMtx.Pos.y;
     waterStreamData->lpVtbl->Lock(waterStreamData, 0, 0, (void**)&out, 0x2000);
+    // align 16
     align = (uint8_t)(size_t)out & 0xF;
     waterOffsetInBytes = 16 - align;
     // preserved: align is masked to 0..15, so this test can never fail
@@ -4139,7 +4137,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
     unsigned int i;
     void* locked;
     unsigned int* lockedColors;
-    unsigned int v91 = 0;// TODO FIXME ???????? játék nem initeli
+    unsigned int solidColor = 0;// TODO FIXME ???????? játék nem initeli
 
     triangleNum = triangleChunks->triangleNum;
     if (!triangleNum)
@@ -4169,7 +4167,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         colors = bb->vertexColorArray;
         if (!colors)
         {
-            v91 = (mask ^ (alpha | bb->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(mask ^ (alpha | (bb->solidVertexColor & 0xff))) << 16) | (uint8_t)((mask ^ (alpha | bb->solidVertexColor)) >> 16);
+            solidColor = (mask ^ (alpha | bb->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(mask ^ (alpha | (bb->solidVertexColor & 0xff))) << 16) | (uint8_t)((mask ^ (alpha | bb->solidVertexColor)) >> 16);
         }
         if (D3DRenderParams.textureUVMode == 2)
         {
@@ -4179,7 +4177,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1, 2, 0);
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2, 3, 0);
             colors = 0;
-            v91 = 0;
+            solidColor = 0;
         }
         useVertexUv = (gpst_DX_stDD->flags & 2) != 0;
         tri = triangleChunks->triangleChunkElems;
@@ -4198,15 +4196,14 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
                 if (colors)
                 {
                     secondIdx = idx;
-                    // preserved: this one site scales the second colour
-                    // array's index by four, where the other seven do not
+                    // preserved: this one of eight second-colour lookups scales its index by four
                     if (UVs && useVertexUv && k == 1)
                         secondIdx = idx * 4;
                     out->color = D3D_VertexColor(colors, second, mask, alpha, idx, secondIdx);
                 }
                 else
                 {
-                    out->color = v91;
+                    out->color = solidColor;
                 }
                 if (UVs)
                 {

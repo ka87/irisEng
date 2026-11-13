@@ -253,59 +253,59 @@ float depthBlur1TypeOrcamUnkf2Save;
 Vec3 AE_MS_CurrVec;
 Vec3 AE_MS_PrevVec;
 
-void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* a2, tMultiTextureElemStruct* a3);
-void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int type);
-void MAT_UV_Compute_Chrome(tGdi_DisplayData* a1, tGEOGRO* a21, tGeoTriangleChunks* a31, unsigned int a41);
-void D3D_SetProjectionMatrix(tDDCamStruct* a1);
+void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem);
+void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
+void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
+void D3D_SetProjectionMatrix(tDDCamStruct* cam);
 void D3D_BeginSceneCall();
-void D3D_SetVertexShader(IDirect3DVertexShader9* a1);
+void D3D_SetVertexShader(IDirect3DVertexShader9* shader);
 
-void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int a2);
+void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int result);
 
 // temp
-int D3D_CalculateStride(unsigned int a1);
+int D3D_CalculateStride(unsigned int fvf);
 
 void D3D_SaveAEParams();
 void D3D_CreateBlurTextures();
 void D3D_AETexturesInit();
 
 void D3D_DoBlurWaterTexture();
-void D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct* a1);
+void D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct* water);
 
 struct sGdi_D3DRenderParams* D3D_pst_CreateDevice();
-void D3D_DestroyDevice(struct sGdi_D3DRenderParams* a1);
+void D3D_DestroyDevice(struct sGdi_D3DRenderParams* renderParams);
 int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd);
 int D3D_l_Close();
-void D3D_Clear(int a1, int color);
+void D3D_Clear(int flags, int color);
 void D3D_Flip();
-int D3D_SetViewMatrix(Mtx4x4* a1);
-void D3D_SetProjectionMatrix(tDDCamStruct* a1);
+int D3D_SetViewMatrix(Mtx4x4* mtx);
+void D3D_SetProjectionMatrix(tDDCamStruct* cam);
 int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks, Vec3* verticesIN, struct sGeoUVElem* UVs, int);
-int D3D_DrawSprites(struct sGeoSprites* a1, void* a2, int x);
+int D3D_DrawSprites(struct sGeoSprites* sprites, void* positions, int num);
 int D3D_l_Request(int type, void* param);
-void D3D_l_Texture_Init(int a1, int a2, char a3);
-int D3D_l_Texture_Store(struct sGdi_DisplayData* a1, int a2);
-void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* a3, int idx);
-void D3D_ReleaseTextures(struct sGdi_DisplayData* a1);
+void D3D_l_Texture_Init(int textureID, int flags, char mode);
+int D3D_l_Texture_Store(struct sGdi_DisplayData* dd, int textureNum);
+void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* inter, int idx);
+void D3D_ReleaseTextures(struct sGdi_DisplayData* dd);
 void D3D_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear);
-void D3D_SetViewMatrix_SDW(Mtx4x4* mtx, float* x);
-void D3D_Texture_Unload(struct sGdi_DisplayData* a1, struct sEngPaletteElem* a2, int a3);
+void D3D_SetViewMatrix_SDW(Mtx4x4* mtx, float* unkVals);
+void D3D_Texture_Unload(struct sGdi_DisplayData* dd, struct sEngPaletteElem* palette, int idx);
 int D3D_l_ReadaptDisplay(HWND hwnd, struct sGdi_DisplayData* gdd);
-int  D3D_Set_Texture_Palette(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* a2, struct sEngTexIntermediateStruct* a3, int a4);
-void D3D_SetTextureTarget(struct sGdi_DisplayData* a1, int a2, int a3, int a4);
+int  D3D_Set_Texture_Palette(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* inter, int idx);
+void D3D_SetTextureTarget(struct sGdi_DisplayData* dd, int target, int width, int height);
 int D3D_UpdateBlurTexture();
-void D3D_CreateSunTextures(tGfxSunD3DSpecificData* a1);
+void D3D_CreateSunTextures(tGfxSunD3DSpecificData* sun);
 uint32_t  D3D_DepthBlurBlurFuncCalc2(float a1);
-void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* a1);
+void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* sun);
 void D3D_PrepareWaterRendering();
 void D3D_PC_AE(tWorld* param1);
-void PC_FreeABackCache(struct sGEOGRO* a1);
-void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* a1);
+void PC_FreeABackCache(struct sGEOGRO* geogro);
+void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* world);
 
 void PC_EngineCheatFinal();
 void D3D_SaveScreenshot(void);
 void s_HandleWinMessages();
-void ENG_WinGameWindowInit(HINSTANCE a1);
+void ENG_WinGameWindowInit(HINSTANCE instance);
 
 void PC_AE_MASTER_CTRL(int a1, int a2, int a3, float a4);
 void PC_CIN_CutsceneMode(int on);
