@@ -95,7 +95,7 @@ static void D3D_RenderStateSet(int* current, DWORD state, int value)
     if (*current != value)
     {
         *current = value;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, state, value);
+        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, state, (DWORD)(unsigned int)value);
     }
 }
 
@@ -113,7 +113,7 @@ static void D3D_StageStateSet(int stage, int* current, DWORD state, int value)
     if (*current != value)
     {
         *current = value;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, state, value);
+        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, state, (DWORD)(unsigned int)value);
     }
 }
 
@@ -131,7 +131,7 @@ static void D3D_SamplerStateSet(int sampler, int* current, DWORD state, int valu
     if (*current != value)
     {
         *current = value;
-        D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, sampler, state, value);
+        D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, sampler, state, (DWORD)(unsigned int)value);
     }
 }
 

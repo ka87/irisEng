@@ -29,6 +29,13 @@
 # declarations went into the stubs; that work also took the parse
 # sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
 # which are the fpos_t question.
+#
+# win/wingdi.c is off the list entirely now: its pass added the last
+# thirteen -- the window, cursor, module and directory calls, plus
+# Direct3DCreate9, QueryPerformanceFrequency and
+# MsgWaitForMultipleObjectsEx -- to tests/stub, all with their real
+# signatures. The same declarations took win/wininputoutput.c from 9
+# to 8 and win/winsound.c from 13 to 11.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -41,9 +48,8 @@ engine.c 2
 sideload.c 1
 sound.c 1
 strings.c 1
-win/wingdi.c 13
-win/wininputoutput.c 9
-win/winsound.c 13"
+win/wininputoutput.c 8
+win/winsound.c 11"
 
 files=$(python3 - <<'EOF'
 import re

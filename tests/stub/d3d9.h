@@ -404,3 +404,5 @@ typedef IDirect3DIndexBuffer9*   LPDIRECT3DINDEXBUFFER9;
 #define D3DERR_DEVICENOTRESET              4198
 #define D3DX_DEFAULT                       0x5001
 #define D3DX_FILTER_LINEAR                 0x5002
+
+IDirect3D9* Direct3DCreate9(UINT SDKVersion);

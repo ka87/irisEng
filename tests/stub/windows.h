@@ -267,3 +267,20 @@ BOOL  PeekMessageA(MSG*, HWND, UINT, UINT, UINT);
 BOOL  TranslateMessage(const MSG*);
 LRESULT DispatchMessageA(const MSG*);
 DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD);
+
+/* The window, cursor, module and directory calls win/wingdi.c makes.
+   Real signatures; these were the last implicit declarations in that
+   file. */
+typedef INT_PTR (*FARPROC)(void);
+HMODULE  LoadLibraryA(LPCSTR);
+FARPROC  GetProcAddress(HMODULE, LPCSTR);
+HICON    LoadIconA(HINSTANCE, LPCSTR);
+#define  MAKEINTRESOURCEA(i) ((LPSTR)((UINT_PTR)((WORD)(i))))
+HCURSOR  SetCursor(HCURSOR);
+BOOL     SetWindowTextA(HWND, LPCSTR);
+BOOL     AdjustWindowRect(RECT*, DWORD, BOOL);
+BOOL     InvalidateRect(HWND, const RECT*, BOOL);
+UINT     RegisterWindowMessageA(LPCSTR);
+BOOL     CreateDirectoryA(LPCSTR, void*);
+BOOL     QueryPerformanceFrequency(LARGE_INTEGER*);
+DWORD    MsgWaitForMultipleObjectsEx(DWORD, const HANDLE*, DWORD, DWORD, DWORD);
