@@ -7,12 +7,12 @@ BOOL TAB_TableElemIsInvalid(void* elem)
     return !elem || ((uint8_t)elem & 3) == 1;
 }
 
-void TAB_DLlist_CreateElem(tabDlistElemStruct** tab)
+void TAB_DLlist_CreateElem(tabDlistElemStruct** elem)
 {
-    *tab = (tabDlistElemStruct*)MEM_p_Alloc(sizeof(tabDlistElemStruct));
-    (*tab)->nextElem = NULL;
-    (*tab)->prevElem = NULL;
-    (*tab)->tableElemPtr = NULL;
+    *elem = (tabDlistElemStruct*)MEM_p_Alloc(sizeof(tabDlistElemStruct));
+    (*elem)->nextElem = NULL;
+    (*elem)->prevElem = NULL;
+    (*elem)->tableElemPtr = NULL;
 }
 
 void TAB_DLlist_CreateAndAddElem(tabDlistStruct* tableList, tableDescStruct* table)
@@ -28,7 +28,7 @@ void TAB_DLlist_CreateAndAddElem(tabDlistStruct* tableList, tableDescStruct* tab
     if (lastElem)
     {
         lastElem->nextElem = elem;
-        elem->prevElem = tableList->lastElem;
+        elem->prevElem = lastElem;
     }
     else
     {
@@ -38,47 +38,42 @@ void TAB_DLlist_CreateAndAddElem(tabDlistStruct* tableList, tableDescStruct* tab
     ++tableList->elemNum;
 }
 
-void TAB_DLlist_Create(tabDlistStruct* a1)
+void TAB_DLlist_Create(tabDlistStruct* list)
 {
-    a1->elemNum = 0;
-    a1->lastElem = 0;
-    a1->firstElem = 0;
+    list->elemNum = 0;
+    list->lastElem = 0;
+    list->firstElem = 0;
 }
 
-void TAB_DLlist_Remove(tabDlistStruct* a1)
+void TAB_DLlist_Remove(tabDlistStruct* list)
 {
-    tabDlistElemStruct* currElem;
+    tabDlistElemStruct* elem;
     tabDlistElemStruct* nextElem;
 
-    currElem = a1->firstElem;
-    if (a1->firstElem)
+    for (elem = list->firstElem; elem; elem = nextElem)
     {
-        do
-        {
-            nextElem = currElem->nextElem;
-            MEM_Free(currElem);
-            currElem = nextElem;
-        } while (nextElem);
+        nextElem = elem->nextElem;
+        MEM_Free(elem);
     }
 }
 
-void TAB_DLlist_RemoveElem(tabDlistStruct* a1, tabDlistElemStruct* a2)
+void TAB_DLlist_RemoveElem(tabDlistStruct* list, tabDlistElemStruct* elem)
 {
     tabDlistElemStruct* prevElem;
     tabDlistElemStruct* nextElem;
 
-    prevElem = a2->prevElem;
-    nextElem = a2->nextElem;
+    prevElem = elem->prevElem;
+    nextElem = elem->nextElem;
     if (prevElem)
         prevElem->nextElem = nextElem;
     else
-        a1->firstElem = nextElem;
+        list->firstElem = nextElem;
     if (nextElem)
         nextElem->prevElem = prevElem;
     else
-        a1->lastElem = prevElem;
-    --a1->elemNum;
-    MEM_Free(a2);
+        list->lastElem = prevElem;
+    --list->elemNum;
+    MEM_Free(elem);
 }
 
 void TAB_TablesManager_Init()
@@ -93,20 +88,17 @@ void TAB_TablesManager_RegisterTable(tableDescStruct* table)
         TAB_DLlist_CreateAndAddElem(&gst_TablesManagerList, table);
 }
 
-void TAB_TablesManager_UnregisterTable(tableDescStruct* a1)
+void TAB_TablesManager_UnregisterTable(tableDescStruct* table)
 {
-    tabDlistElemStruct* currElem;
+    tabDlistElemStruct* elem;
 
-    currElem = gst_TablesManagerList.firstElem;
-    if (gst_TablesManagerList.firstElem)
+    for (elem = gst_TablesManagerList.firstElem; elem; elem = elem->nextElem)
     {
-        while (currElem->tableElemPtr != a1)
+        if (elem->tableElemPtr == table)
         {
-            currElem = currElem->nextElem;
-            if (!currElem)
-                return;
+            TAB_DLlist_RemoveElem(&gst_TablesManagerList, elem);
+            return;
         }
-        TAB_DLlist_RemoveElem(&gst_TablesManagerList, currElem);
     }
 }
 
@@ -117,320 +109,298 @@ void TAB_TablesManager_Close()
     gb_TablesManagerListInitialized = 0;
 }
 
-void TAB_Ptable_Init(tableDescStruct* a1, unsigned int num, float defragRatio)
+void TAB_Ptable_Init(tableDescStruct* table, unsigned int num, float defragRatio)
 {
     tableElemStructP* newPtr;
 
     if (num < 2)
         num = 2;
     newPtr = (tableElemStructP*)MEM_p_Alloc(sizeof(tableElemStructP) * num);
-    a1->firstElemPtr = newPtr;
-    a1->nextElemPtr = newPtr;
-    a1->holeNum = 0;
-    a1->actElemNum = 0;
-    a1->lastElemPtr = &newPtr[num - 1];
-    a1->tableType = 20;
-    a1->defragRatio = defragRatio;
-    TAB_TablesManager_RegisterTable(a1);
+    table->firstElemPtr = newPtr;
+    table->nextElemPtr = newPtr;
+    table->holeNum = 0;
+    table->actElemNum = 0;
+    table->lastElemPtr = &newPtr[num - 1];
+    table->tableType = 20;
+    table->defragRatio = defragRatio;
+    TAB_TablesManager_RegisterTable(table);
 }
 
-void TAB_Ptable_Resize(tableDescStruct* a1, unsigned int num)
+void TAB_Ptable_Resize(tableDescStruct* table, unsigned int num)
 {
-    unsigned int newSize;
-    tableElemStructP* firstElemPtr;
-    unsigned int oldElemNum;
+    tableElemStructP* oldPtr;
     tableElemStructP* newPtr;
+    unsigned int oldElemNum;
+    unsigned int newElemNum;
+    unsigned int usedElemNum;
     unsigned int elemNumToCopy;
     unsigned int i;
-    tableElemStructP* oldptr;
-    unsigned int usedElemNum;
 
-    newSize = num;
-    firstElemPtr = (tableElemStructP*)a1->firstElemPtr;
-    oldElemNum = (tableElemStructP*)a1->lastElemPtr - firstElemPtr + 1;
-    oldptr = firstElemPtr;
-    if (abs(num - oldElemNum) < 256)
-        newSize = (tableElemStructP*)a1->lastElemPtr - firstElemPtr + 257;
-    usedElemNum = (tableElemStructP*)a1->nextElemPtr - firstElemPtr;
-    if (newSize < 2)
-        newSize = 2;
-    newPtr = (tableElemStructP*)MEM_p_Alloc(sizeof(tableElemStructP) * newSize);
-    a1->lastElemPtr = &newPtr[newSize - 1];
-    elemNumToCopy = ((int)(sizeof(tableElemStructP) * newSize - sizeof(tableElemStructP)) >> 2) + 1;
-    a1->firstElemPtr = newPtr;
+    oldPtr = (tableElemStructP*)table->firstElemPtr;
+    oldElemNum = (tableElemStructP*)table->lastElemPtr - oldPtr + 1;
+    newElemNum = num;
+    if (abs((int)(num - oldElemNum)) < 256)
+        newElemNum = oldElemNum + 256;
+    usedElemNum = (tableElemStructP*)table->nextElemPtr - oldPtr;
+    if (newElemNum < 2)
+        newElemNum = 2;
+    newPtr = (tableElemStructP*)MEM_p_Alloc(sizeof(tableElemStructP) * newElemNum);
+    table->lastElemPtr = &newPtr[newElemNum - 1];
+    table->firstElemPtr = newPtr;
+    elemNumToCopy = newElemNum;
     if (elemNumToCopy >= oldElemNum)
         elemNumToCopy = oldElemNum;
     for (i = 0; i < elemNumToCopy; ++i)
-        ((tableElemStructP*)a1->firstElemPtr)[i] = oldptr[i];
-    if (usedElemNum >= newSize)
-        usedElemNum = newSize - 1;
-    a1->nextElemPtr = &(((tableElemStructP*)a1->firstElemPtr)[usedElemNum]);
-    MEM_Free(oldptr);
+        newPtr[i] = oldPtr[i];
+    if (usedElemNum >= newElemNum)
+        usedElemNum = newElemNum - 1;
+    table->nextElemPtr = &newPtr[usedElemNum];
+    MEM_Free(oldPtr);
 }
 
-void TAB_Ptable_Close(tableDescStruct* a1)
+void TAB_Ptable_Close(tableDescStruct* table)
 {
-    MEM_Free(a1->firstElemPtr);
-    a1->firstElemPtr = 0;
-    a1->actElemNum = 0;
-    a1->holeNum = 0;
-    a1->nextElemPtr = 0;
-    a1->lastElemPtr = 0;
-    TAB_TablesManager_UnregisterTable(a1);
+    MEM_Free(table->firstElemPtr);
+    table->firstElemPtr = 0;
+    table->actElemNum = 0;
+    table->holeNum = 0;
+    table->nextElemPtr = 0;
+    table->lastElemPtr = 0;
+    TAB_TablesManager_UnregisterTable(table);
 }
 
-void TAB_Ptable_RemoveHoles(tableDescStruct* a1)
+void TAB_Ptable_RemoveHoles(tableDescStruct* table)
 {
-    tableElemStructP* v1;
-    tableElemStructP* v2;
-    tableElemStructP* v3;
+    tableElemStructP* dest;
+    tableElemStructP* end;
+    tableElemStructP* scan;
 
-    v1 = a1->firstElemPtr;
-    v2 = a1->nextElemPtr;
-    v3 = v1;
-    a1->nextElemPtr = &v2[-(int)(a1->holeNum)];
-    if (v1 < v2)
+    dest = (tableElemStructP*)table->firstElemPtr;
+    end = (tableElemStructP*)table->nextElemPtr;
+    scan = dest;
+    table->nextElemPtr = &end[-(int)table->holeNum];
+    if (dest < end)
     {
-        while (v1->objectPtr && ((int)v1->objectPtr & 3) != 1)
+        for (;;)
         {
-        LABEL_10:
-            if (++v1 >= v2)
+            while (!TAB_TableElemIsInvalid(dest->objectPtr))
             {
-                a1->holeNum = 0;
+                if (++dest >= end)
+                {
+                    table->holeNum = 0;
+                    return;
+                }
+            }
+            if (scan < dest)
+                scan = dest;
+            while (++scan != end)
+            {
+                if (!TAB_TableElemIsInvalid(scan->objectPtr))
+                    break;
+            }
+            if (scan == end)
+                break;
+            dest->objectPtr = scan->objectPtr;
+            scan->objectPtr = (void*)1;
+            if (++dest >= end) // FIXME
+            {
+                table->holeNum = 0;
                 return;
             }
         }
-        if (v3 < v1)
-            v3 = v1;
-        while (++v3 != v2)
-        {
-            if (v3->objectPtr && ((int)v3->objectPtr & 3) != 1)
-            {
-                v1->objectPtr = v3->objectPtr;
-                v3->objectPtr = (void *)1;
-                goto LABEL_10; // FIXME
-            }
-        }
-        if (!a1->holeNum)
-            a1->nextElemPtr = (tableElemStructP*)a1->nextElemPtr - 1;
-        a1->holeNum = 0;
+        if (!table->holeNum)
+            table->nextElemPtr = (tableElemStructP*)table->nextElemPtr - 1;
     }
-    a1->holeNum = 0;
+    table->holeNum = 0;
 }
 
-void TAB_PTable_AddElemToTable(tableDescStruct* a1, void* a2)
+void TAB_PTable_AddElemToTable(tableDescStruct* table, void* object)
 {
-    if (a1->nextElemPtr > a1->lastElemPtr)
-        TAB_Ptable_Resize(a1, 2 * (a1->holeNum + a1->actElemNum));
-    ((tableElemStructP*)(a1->nextElemPtr))->objectPtr = a2;
-    ++a1->actElemNum;
-    a1->nextElemPtr = ((tableElemStructP*)(a1->nextElemPtr)) + 1;
+    if (table->nextElemPtr > table->lastElemPtr)
+        TAB_Ptable_Resize(table, 2 * (table->holeNum + table->actElemNum));
+    ((tableElemStructP*)(table->nextElemPtr))->objectPtr = object;
+    ++table->actElemNum;
+    table->nextElemPtr = ((tableElemStructP*)(table->nextElemPtr)) + 1;
 }
 
-int TAB_ul_Ptable_GetElemIndexWithPointer(tableDescStruct* a1, void *a2)
+int TAB_ul_Ptable_GetElemIndexWithPointer(tableDescStruct* table, void* object)
 {
-    tableElemStructP* v2;
-    tableElemStructP* v3;
-    int result;
+    tableElemStructP* elem;
+    tableElemStructP* end;
+    int index;
 
-    v2 = a1->firstElemPtr;
-    v3 = a1->nextElemPtr;
-    result = 0;
-    if (v2 >= v3)
-        return -1;
-    while (a2 != v2->objectPtr)
+    elem = (tableElemStructP*)table->firstElemPtr;
+    end = (tableElemStructP*)table->nextElemPtr;
+    for (index = 0; elem < end; ++index, ++elem)
     {
-        ++v2;
-        ++result;
-        if (v2 >= v3)
-            return -1;
+        if (object == elem->objectPtr)
+            return index;
     }
-    return result;
+    return -1;
 }
 
-void TAB_PFtable_Init(tableDescStruct* a1, unsigned int num, float defragRatio)
+void TAB_PFtable_Init(tableDescStruct* table, unsigned int num, float defragRatio)
 {
     tableElemStructPF* newPtr;
 
     if (num < 2)
         num = 2;
     newPtr = (tableElemStructPF*)MEM_p_Alloc(sizeof(tableElemStructPF) * num);
-    a1->firstElemPtr = newPtr;
-    a1->nextElemPtr = newPtr;
-    a1->holeNum = 0;
-    a1->actElemNum = 0;
-    a1->lastElemPtr = &newPtr[num - 1];
-    a1->defragRatio = defragRatio;
-    a1->tableType = 30;
-    TAB_TablesManager_RegisterTable(a1);
+    table->firstElemPtr = newPtr;
+    table->nextElemPtr = newPtr;
+    table->holeNum = 0;
+    table->actElemNum = 0;
+    table->lastElemPtr = &newPtr[num - 1];
+    table->defragRatio = defragRatio;
+    table->tableType = 30;
+    TAB_TablesManager_RegisterTable(table);
 }
 
-void TAB_PFtable_Clear(tableDescStruct* a1)
+void TAB_PFtable_Clear(tableDescStruct* table)
 {
-    a1->nextElemPtr = a1->firstElemPtr;
-    a1->holeNum = 0;
-    a1->actElemNum = 0;
+    table->nextElemPtr = table->firstElemPtr;
+    table->holeNum = 0;
+    table->actElemNum = 0;
 }
 
-void TAB_PFtable_Resize(tableDescStruct* a1, unsigned int size)
+void TAB_PFtable_Resize(tableDescStruct* table, unsigned int size)
 {
-    unsigned int newSize;
-    tableElemStructPF* firstElemPtr;
-    unsigned int oldElemNum;
+    tableElemStructPF* oldPtr;
     tableElemStructPF* newPtr;
+    unsigned int oldElemNum;
+    unsigned int newElemNum;
+    unsigned int usedElemNum;
     unsigned int elemNumToCopy;
     unsigned int i;
-    unsigned int finalElemNumToCopy;
-    tableElemStructPF* oldptr;
-    unsigned int usedElemNum;
 
-    newSize = size;
-    firstElemPtr = a1->firstElemPtr;
-    oldElemNum = ((tableElemStructPF*)(a1->lastElemPtr)) - firstElemPtr + 1;
-    oldptr = firstElemPtr;
-    if (abs(oldElemNum - size) < 256)
-        newSize = ((tableElemStructPF *)(a1->lastElemPtr)) - firstElemPtr + 257;
-    usedElemNum = ((tableElemStructPF*)(a1->nextElemPtr)) - firstElemPtr;
-    if (newSize < 2)
-        newSize = 2;
-    newPtr = (tableElemStructPF*)MEM_p_Alloc(sizeof(tableElemStructPF) * newSize);
-    a1->lastElemPtr = &newPtr[newSize - 1];
-    elemNumToCopy = ((int)(sizeof(tableElemStructPF) * newSize - sizeof(tableElemStructPF)) >> 3) + 1;
-    a1->firstElemPtr = newPtr;
-    for (i = 0; ; ++i)
-    {
-        finalElemNumToCopy = elemNumToCopy;
-        if (elemNumToCopy >= oldElemNum)
-            finalElemNumToCopy = oldElemNum;
-        if (i >= finalElemNumToCopy)
-            break;
-        ((tableElemStructPF*)(a1->firstElemPtr))[i] = oldptr[i];
-        elemNumToCopy = ((int)(8 * newSize - 8) >> 3) + 1;
-    }
-    if (usedElemNum >= newSize)
-        usedElemNum = newSize - 1;
-    a1->nextElemPtr = &(((tableElemStructPF*)(a1->firstElemPtr))[usedElemNum]);
-    MEM_Free(oldptr);
+    oldPtr = (tableElemStructPF*)table->firstElemPtr;
+    oldElemNum = ((tableElemStructPF*)(table->lastElemPtr)) - oldPtr + 1;
+    newElemNum = size;
+    if (abs((int)(oldElemNum - size)) < 256)
+        newElemNum = oldElemNum + 256;
+    usedElemNum = ((tableElemStructPF*)(table->nextElemPtr)) - oldPtr;
+    if (newElemNum < 2)
+        newElemNum = 2;
+    newPtr = (tableElemStructPF*)MEM_p_Alloc(sizeof(tableElemStructPF) * newElemNum);
+    table->lastElemPtr = &newPtr[newElemNum - 1];
+    table->firstElemPtr = newPtr;
+    elemNumToCopy = newElemNum;
+    if (elemNumToCopy >= oldElemNum)
+        elemNumToCopy = oldElemNum;
+    for (i = 0; i < elemNumToCopy; ++i)
+        newPtr[i] = oldPtr[i];
+    if (usedElemNum >= newElemNum)
+        usedElemNum = newElemNum - 1;
+    table->nextElemPtr = &newPtr[usedElemNum];
+    MEM_Free(oldPtr);
 }
 
-void TAB_PFtable_Close(tableDescStruct* a1)
+void TAB_PFtable_Close(tableDescStruct* table)
 {
-    if (a1->firstElemPtr)
-        MEM_Free(a1->firstElemPtr);
-    a1->firstElemPtr = 0;
-    a1->actElemNum = 0;
-    a1->holeNum = 0;
-    a1->nextElemPtr = 0;
-    a1->lastElemPtr = 0;
-    TAB_TablesManager_UnregisterTable(a1);
+    if (table->firstElemPtr)
+        MEM_Free(table->firstElemPtr);
+    table->firstElemPtr = 0;
+    table->actElemNum = 0;
+    table->holeNum = 0;
+    table->nextElemPtr = 0;
+    table->lastElemPtr = 0;
+    TAB_TablesManager_UnregisterTable(table);
 }
 
-void TAB_PFtable_RemoveHoles(tableDescStruct* a1)
+void TAB_PFtable_RemoveHoles(tableDescStruct* table)
 {
-    tableElemStructPF* v1;
-    tableElemStructPF* v2;
-    tableElemStructPF* v3;
+    tableElemStructPF* dest;
+    tableElemStructPF* end;
+    tableElemStructPF* scan;
 
-    v1 = a1->firstElemPtr;
-    v2 = a1->nextElemPtr;
-    v3 = v1;
-    a1->nextElemPtr = &v2[-(int)(a1->holeNum)];
-    if (v1 < v2)
+    dest = (tableElemStructPF*)table->firstElemPtr;
+    end = (tableElemStructPF*)table->nextElemPtr;
+    scan = dest;
+    table->nextElemPtr = &end[-(int)table->holeNum];
+    if (dest < end)
     {
-        while (v1->objectPtr && ((int)v1->objectPtr & 3) != 1)
+        for (;;)
         {
-        LABEL_10:
-            if (++v1 >= v2)
+            while (!TAB_TableElemIsInvalid(dest->objectPtr))
+            {
+                if (++dest >= end)
+                    return;
+            }
+            if (scan < dest)
+                scan = dest;
+            while (++scan != end)
+            {
+                if (!TAB_TableElemIsInvalid(scan->objectPtr))
+                    break;
+            }
+            if (scan == end)
+                break;
+            dest->objectPtr = scan->objectPtr;
+            dest->objectFlags = scan->objectFlags;
+            scan->objectPtr = (void*)1;
+            if (++dest >= end) // FIXME
                 return;
         }
-        if (v3 < v1)
-            v3 = v1;
-        while (++v3 != v2)
-        {
-            if (v3->objectPtr && ((int)v3->objectPtr & 3) != 1)
-            {
-                v1->objectPtr = v3->objectPtr;
-                v1->objectFlags = v3->objectFlags;
-                v3->objectPtr = (void*)1;
-                goto LABEL_10; // FIXME
-            }
-        }
-        if (!a1->holeNum)
-            a1->nextElemPtr = (tableElemStructPF*)a1->nextElemPtr - 1;
-        a1->holeNum = 0;
+        if (!table->holeNum)
+            table->nextElemPtr = (tableElemStructPF*)table->nextElemPtr - 1;
+        table->holeNum = 0;
     }
 }
 
-void TAB_PFtable_RemoveElem(tableDescStruct* a1, tableElemStructPF* a2)
+void TAB_PFtable_RemoveElem(tableDescStruct* table, tableElemStructPF* elem)
 {
-    unsigned int v2; // edx
-
-    if (a2 == ((tableElemStructPF*)(a1->nextElemPtr)) - 1)
+    if (elem == ((tableElemStructPF*)(table->nextElemPtr)) - 1)
     {
-        if (a2 && ((uint8_t)a2 & 3) != 1)
-        {
-            --a1->actElemNum;
-            a1->nextElemPtr = a2;
-            a2->objectPtr = (void*)1;
-            a2->objectFlags = 0;
-        }
+        // preserved: the test is on the element and not on the object it holds, so the hole arm is unreachable
+        if (!TAB_TableElemIsInvalid(elem))
+            --table->actElemNum;
         else
-        {
-            --a1->holeNum;
-            a1->nextElemPtr = a2;
-            a2->objectPtr = (void*)1;
-            a2->objectFlags = 0;
-        }
+            --table->holeNum;
+        table->nextElemPtr = elem;
+        elem->objectPtr = (void*)1;
+        elem->objectFlags = 0;
     }
     else
     {
-        if (a2->objectPtr && ((int)a2->objectPtr & 3) != 1)
+        if (!TAB_TableElemIsInvalid(elem->objectPtr))
         {
-            a2->objectPtr = (void*)1;
-            v2 = a1->actElemNum - 1;
-            ++a1->holeNum;
-            a1->actElemNum = v2;
+            elem->objectPtr = (void*)1;
+            ++table->holeNum;
+            --table->actElemNum; // edx
         }
-        a2->objectFlags = 0;
+        elem->objectFlags = 0;
     }
 }
 
-int TAB_ul_PFtable_GetElemIndexWithPointer(tableDescStruct* a1, void* a2)
+int TAB_ul_PFtable_GetElemIndexWithPointer(tableDescStruct* table, void* object)
 {
-    tableElemStructPF* v2;
-    tableElemStructPF* v3;
-    int result;
+    tableElemStructPF* elem;
+    tableElemStructPF* end;
+    int index;
 
-    v2 = a1->firstElemPtr;
-    v3 = a1->nextElemPtr;
-    result = 0;
-    if (v2 >= v3)
-        return -1;
-    while (a2 != v2->objectPtr)
+    elem = (tableElemStructPF*)table->firstElemPtr;
+    end = (tableElemStructPF*)table->nextElemPtr;
+    for (index = 0; elem < end; ++index, ++elem)
     {
-        ++v2;
-        ++result;
-        if (v2 >= v3)
-            return -1;
+        if (object == elem->objectPtr)
+            return index;
     }
-    return result;
+    return -1;
 }
 
-tableElemStructPF* TAB_pst_PFtable_GetElemWithPointer(tableDescStruct* a1, void* a2)
+tableElemStructPF* TAB_pst_PFtable_GetElemWithPointer(tableDescStruct* table, void* object)
 {
-    tableElemStructPF* result; // eax
-    tableElemStructPF* v3; // ecx
+    tableElemStructPF* elem; // eax
+    tableElemStructPF* end; // ecx
 
-    result = a1->firstElemPtr;
-    v3 = a1->nextElemPtr;
-    if (result >= v3)
-        return 0;
-    while (a2 != result->objectPtr)
+    elem = (tableElemStructPF*)table->firstElemPtr;
+    end = (tableElemStructPF*)table->nextElemPtr;
+    for (; elem < end; ++elem)
     {
-        if (++result >= v3)
-            return 0;
+        if (object == elem->objectPtr)
+            return elem;
     }
-    return result;
+    return 0;
 }
 
 void TAB_AddElemToTablePF(tableDescStruct* table, void* objectPtr, int objectFlags)
@@ -441,16 +411,16 @@ void TAB_AddElemToTablePF(tableDescStruct* table, void* objectPtr, int objectFla
     table->nextElemPtr = ((tableElemStructPF*)(table->nextElemPtr)) + 1;
 }
 
-void TAB_PFTable_AddElemToTable(tableDescStruct* a1, void* object, int flags)
+void TAB_PFTable_AddElemToTable(tableDescStruct* table, void* object, int flags)
 {
-    if (a1->nextElemPtr > a1->lastElemPtr)
+    if (table->nextElemPtr > table->lastElemPtr)
     {
-        if (a1->holeNum)
-            TAB_PFtable_RemoveHoles(a1);
-        if (a1->nextElemPtr > a1->lastElemPtr)
-            TAB_PFtable_Resize(a1, 2 * (a1->holeNum + a1->actElemNum));
+        if (table->holeNum)
+            TAB_PFtable_RemoveHoles(table);
+        if (table->nextElemPtr > table->lastElemPtr)
+            TAB_PFtable_Resize(table, 2 * (table->holeNum + table->actElemNum));
     }
-    TAB_AddElemToTablePF(a1, object, flags);
+    TAB_AddElemToTablePF(table, object, flags);
 }
 
 void TAB_InitModule()
@@ -463,24 +433,24 @@ void TAB_CloseModule()
     TAB_TablesManager_Close();
 }
 
-void TAB_TablesManager_RemoveHolesFromTablesList(tabDlistStruct* a1)
+void TAB_TablesManager_RemoveHolesFromTablesList(tabDlistStruct* list)
 {
-    tabDlistElemStruct* actElem;
-    tableDescStruct* v2;
-    uint8_t v3; // al
+    tabDlistElemStruct* elem;
+    tableDescStruct* table;
+    uint8_t tableType; // al
 
-    for (actElem = a1->firstElem; actElem; actElem = actElem->nextElem)
+    for (elem = list->firstElem; elem; elem = elem->nextElem)
     {
-        v2 = actElem->tableElemPtr;
-        v3 = v2->tableType;
-        if (v3 == 20)
+        table = elem->tableElemPtr;
+        tableType = table->tableType;
+        if (tableType == 20)
         {
-            if (v2->defragRatio < (double)v2->holeNum / (double)v2->actElemNum)
-                TAB_Ptable_RemoveHoles(actElem->tableElemPtr);
+            if (table->defragRatio < (double)table->holeNum / (double)table->actElemNum)
+                TAB_Ptable_RemoveHoles(table);
         }
-        else if (v3 == 30 && v2->defragRatio < (double)v2->holeNum / (double)v2->actElemNum)
+        else if (tableType == 30 && table->defragRatio < (double)table->holeNum / (double)table->actElemNum)
         {
-            TAB_PFtable_RemoveHoles(actElem->tableElemPtr);
+            TAB_PFtable_RemoveHoles(table);
         }
     }
 }
@@ -490,11 +460,11 @@ void TAB_TablesManager_Call()
     TAB_TablesManager_RemoveHolesFromTablesList(&gst_TablesManagerList);
 }
 
-void TAB_PFtable_RemoveElemWithPointer(tableDescStruct* a1, void* a2)
+void TAB_PFtable_RemoveElemWithPointer(tableDescStruct* table, void* object)
 {
-    tableElemStructPF* v2;
+    tableElemStructPF* elem;
 
-    v2 = TAB_pst_PFtable_GetElemWithPointer(a1, a2);
-    if (v2)
-        TAB_PFtable_RemoveElem(a1, v2);
+    elem = TAB_pst_PFtable_GetElemWithPointer(table, object);
+    if (elem)
+        TAB_PFtable_RemoveElem(table, elem);
 }
