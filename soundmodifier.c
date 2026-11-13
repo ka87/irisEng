@@ -623,7 +623,7 @@ void SND_SModifierFadeUpdate(tSndModifierElem* modifier, tSoundInstanceElem* ins
 void SND_SModifierFadeInitInstance(struct sSndModifierElem* modifier, void* linkedsound, int dataSize, struct sSoundInstanceElem* inst)
 {
     tSoundModifierDataFade* data = (tSoundModifierDataFade*)linkedsound;
-    // preserved: the subtraction is already in instance units, so the extra divide makes this index 0 for every instance
+    // preserved: the subtraction already yields an element index, so dividing by the size again collapses every instance onto 0 or 1
     SND_SetVol(((unsigned int)(inst - (struct sSoundInstanceElem*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem)), data->i1);
 }
 
