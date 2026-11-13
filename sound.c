@@ -988,16 +988,28 @@ int SND_l_GetSoundIndex(int soundKEy)
 int SND_i_AllocSound()
 {
     int idx;
+    unsigned int* flagsPtr;
     tSndSoundElem* grown;
     int oldMaxNum;
     size_t size;
 
-    for (idx = 0; idx < SND_gst_Params.allocatedSoundsMaxNum; ++idx)
+    idx = 0;
+    if (SND_gst_Params.allocatedSoundsMaxNum > 0)
     {
-        if ((SND_gst_Params.allocatedSounds[idx].flags & 0x400) == 0)
+        // preserved: the scan steps by a hardcoded 56 bytes, which is
+        // sizeof(tSndSoundElem) only in the engine's own 32-bit build
+        flagsPtr = &SND_gst_Params.allocatedSounds->flags;
+        while ((*flagsPtr & 0x400) != 0)
+        {
+            ++idx;
+            flagsPtr += 14;
+            if (idx >= SND_gst_Params.allocatedSoundsMaxNum)
+                break;
+        }
+        if (idx < SND_gst_Params.allocatedSoundsMaxNum)
             return idx;
     }
-    size = sizeof(tSndSoundElem) * (SND_gst_Params.allocatedSoundsMaxNum + 1000);
+    size = 56 * (SND_gst_Params.allocatedSoundsMaxNum + 1000);
     if (SND_gst_Params.allocatedSoundsMaxNum)
         grown = (tSndSoundElem*)MEM_p_Realloc(SND_gst_Params.allocatedSounds, size);
     else
