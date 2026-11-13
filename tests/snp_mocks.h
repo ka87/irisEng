@@ -90,7 +90,8 @@ void SNPMOCK_MoveObjects(unsigned int seed, float amount);
    chain, each one the float nearest the next plus `step`. That puts the
    sort's epsilon and the comparison inside its sink loop on their exact
    boundaries, which randomly placed objects never reach. */
-void SNPMOCK_ChainKeys(double step, float extent);
+void SNPMOCK_ChainKeys(double step, float extent, int roundUp);
+void SNPMOCK_TouchingKeys(float base, float extent);
 
 /* snp.c's two game-object calls and its one math call, wrapped so the
    sequence can be compared. The real math.c is linked, so the wrapper

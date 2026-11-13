@@ -297,14 +297,36 @@ void SNPMOCK_BuildScene(unsigned int seed, int pattern)
     SNPMOCK_scene.world.SnPRefreshNeeded = 0;
 }
 
-void SNPMOCK_ChainKeys(double step, float extent)
+void SNPMOCK_ChainKeys(double step, float extent, int roundUp)
 {
     int i;
+    int tries;
     float c[SNPMOCK_OBJECTS];
 
+    /* Which way `key + step` rounds when it is narrowed back to float
+       depends only on the binade: step divided by the ulp there has the
+       same fractional part for every key in it, so nudging a key by
+       whole ulps cannot change the direction and only a different
+       binade can. Rounding up is the only arrangement where narrowing
+       the sink loop's threshold to float changes its comparison, so
+       the base is doubled until it rounds that way. */
     c[SNPMOCK_OBJECTS - 1] = 3.5f;
+    for (tries = 0; roundUp && tries < 60; tries++)
+    {
+        if ((double)(float)((double)c[SNPMOCK_OBJECTS - 1] + step)
+            > (double)c[SNPMOCK_OBJECTS - 1] + step)
+            break;
+        c[SNPMOCK_OBJECTS - 1] = c[SNPMOCK_OBJECTS - 1] * 2.0f;
+    }
     for (i = SNPMOCK_OBJECTS - 2; i >= 0; i--)
         c[i] = (float)((double)c[i + 1] + step);
+
+    if (roundUp && !((double)c[0] > (double)c[1] + step))
+    {
+        printf("  [%s] the key chain no longer rounds up; the sink loop's "
+               "narrowing is untested\n", SNPMOCK_case);
+        SNPMOCK_failures++;
+    }
 
     for (i = 0; i < SNPMOCK_OBJECTS; i++)
     {
@@ -325,6 +347,41 @@ void SNPMOCK_ChainKeys(double step, float extent)
         SNPMOCK_scene.bvs[i].BVMax.x = c[i] + extent;
         SNPMOCK_scene.bvs[i].BVMax.y = c[i] + extent;
         SNPMOCK_scene.bvs[i].BVMax.z = c[i] + extent;
+        SNPMOCK_scene.gaos[i].snpIndex = 0xFFFF;
+    }
+}
+
+/* Boxes laid end to end: each one's far edge is exactly the next one's
+   near edge, so two neighbouring elements carry the same key. At a
+   magnitude where half an ulp of double is above the sort's 0.001, the
+   epsilon is absorbed and the sort's outer test sits exactly on its
+   boundary -- which is the only place `<` and `<=` differ there. */
+void SNPMOCK_TouchingKeys(float base, float extent)
+{
+    int i;
+    float edge;
+
+    edge = base;
+    for (i = 0; i < SNPMOCK_OBJECTS; i++)
+    {
+        SNPMOCK_scene.isBox[i] = 1;
+        SNPMOCK_scene.basePos[i].x = 0.0f;
+        SNPMOCK_scene.basePos[i].y = 0.0f;
+        SNPMOCK_scene.basePos[i].z = 0.0f;
+        memset(&SNPMOCK_scene.mtx[i], 0, sizeof(Mtx4x4));
+        SNPMOCK_scene.mtx[i].v1.x = 1.0f;
+        SNPMOCK_scene.mtx[i].v2.y = 1.0f;
+        SNPMOCK_scene.mtx[i].v3.z = 1.0f;
+        SNPMOCK_scene.mtx[i].w = 1.0f;
+        SNPMOCK_scene.mtx[i].mtxflag = 0x3C;
+
+        SNPMOCK_scene.bvs[i].BVMin.x = edge;
+        SNPMOCK_scene.bvs[i].BVMin.y = edge;
+        SNPMOCK_scene.bvs[i].BVMin.z = edge;
+        edge = edge + extent;
+        SNPMOCK_scene.bvs[i].BVMax.x = edge;
+        SNPMOCK_scene.bvs[i].BVMax.y = edge;
+        SNPMOCK_scene.bvs[i].BVMax.z = edge;
         SNPMOCK_scene.gaos[i].snpIndex = 0xFFFF;
     }
 }

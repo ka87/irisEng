@@ -522,7 +522,7 @@ static void Case_SortTies(const tSnpSide* s, int arg)
 {
     tSnp* snp;
 
-    SNPMOCK_ChainKeys(0.001, 20.0f);
+    SNPMOCK_ChainKeys(0.001, 20.0f, arg & 1);
     s->Alloc(&SNPMOCK_scene.world);
     snp = SNPMOCK_scene.world.snp;
     SNPMOCK_FillAxisTails(snp);
@@ -535,7 +535,23 @@ static void Case_SortEpsilon(const tSnpSide* s, int arg)
 {
     tSnp* snp;
 
-    SNPMOCK_ChainKeys(0.0005, 0.0002f);
+    SNPMOCK_ChainKeys(0.0005, 0.0002f, (arg >> 1) & 1);
+    s->Alloc(&SNPMOCK_scene.world);
+    snp = SNPMOCK_scene.world.snp;
+    SNPMOCK_FillAxisTails(snp);
+    AttachAll(s, 0);
+    s->InsertionSort(snp, arg % 3);
+    s->InsertionSort(snp, 0);
+}
+
+/* The sort's outer boundary: at a magnitude where the 0.001 is absorbed
+   by the double addition, two touching boxes give keyPlusEps exactly
+   equal to the previous key. */
+static void Case_SortTouching(const tSnpSide* s, int arg)
+{
+    tSnp* snp;
+
+    SNPMOCK_TouchingKeys(3.0e13f, 1.0e8f);
     s->Alloc(&SNPMOCK_scene.world);
     snp = SNPMOCK_scene.world.snp;
     SNPMOCK_FillAxisTails(snp);
@@ -640,7 +656,7 @@ int main(void)
         sprintf(name, "computeinv/%d", arg);
         RunCase(name, Case_ComputeInversion, arg);
         sprintf(name, "sort/%d", arg);
-        RunCase(name, Case_Sort, arg);
+        RunCase(name, Case_Sort, arg | (1 << 17) | (1 << 19));
         sprintf(name, "sortempty/%d", arg);
         RunCase(name, Case_SortEmpty, arg);
         sprintf(name, "frames/%d", arg);
@@ -649,6 +665,8 @@ int main(void)
         RunCase(name, Case_SortTies, arg);
         sprintf(name, "sorteps/%d", arg);
         RunCase(name, Case_SortEpsilon, arg);
+        sprintf(name, "sorttouch/%d", arg);
+        RunCase(name, Case_SortTouching, arg);
         sprintf(name, "clearlists/%d", arg);
         RunCase(name, Case_ClearLists, arg | (1 << 19));
     }
