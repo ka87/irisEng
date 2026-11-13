@@ -102,6 +102,7 @@ static int INT_SnP_l_PairBitIndex(int snpIndexA, int snpIndexB, int count)
     if (snpIndexA > snpIndexB)
         lo = snpIndexB;
 
+    // preserved: equal indices give -1 here, which indexes the pointer in front of flagsArray
     return lo * (count - 1) - (((lo + 1) * (lo + 1) - lo - 1) >> 1) + hi - 1;
 }
 
@@ -346,6 +347,7 @@ static BOOL INT_SnP_l_AddToDetectionList(tGameObjectMain* gao, tGameObjectMain* 
 
 void INT_SnP_AddOverlap(tGameObjectMain* gao1, tGameObjectMain* gao2)
 {
+    // preserved: gao1 missing its collision structures abandons gao2's list too
     if (!INT_SnP_l_AddToDetectionList(gao1, gao2))
         return;
 
@@ -380,6 +382,7 @@ static BOOL INT_SnP_l_RemoveFromDetectionList(tGameObjectMain* gao, tGameObjectM
 
 void INT_SnP_RemoveOverlap(tGameObjectMain* gao1, tGameObjectMain* gao2)
 {
+    // preserved: gao1 missing its collision structures abandons gao2's list too
     if (!INT_SnP_l_RemoveFromDetectionList(gao1, gao2))
         return;
 
@@ -413,6 +416,7 @@ void INT_SnP_UpdateAllDetectionLists(tSnp* snp)
             overlaps = list->detectionListGaos;
             for (remaining = list->overlapNum; remaining > 0; remaining--)
             {
+                // preserved: overlaps[0] is dereferenced here and only null-tested below
                 INT_SnP_FullSetFlag(
                     snp->axisPtr[0]->flagsArray,
                     gao->snpIndex,
@@ -472,6 +476,7 @@ void INT_SnP_UpdateAxisTable(tSnp* snp, int axis)
     }
 
     lastQueued = queue->queueNum - 1; // fixed, off by one
+    // preserved: read even when the queue is empty, where it takes a stale entry
     queue->destPos = queue->elemIdxes[0];
 
     for (q = 0; q < lastQueued; q++)

@@ -229,6 +229,7 @@ void ACT_SetAction(struct sGameObjectMain* gao, int actionId, int forced)
 
     if (transition)
     {
+        // preserved: animPtr[0] is dereferenced here and null-tested on the next statement
         if ((transition->flags & 3) != 0)
             EVE_GetTracksTime(actor->animPtr[0]->ptr, 0, &oldCurrTime, &oldFullTime);
 
