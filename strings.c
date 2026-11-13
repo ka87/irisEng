@@ -633,7 +633,7 @@ char* STR_sz_ControlsReadFormat_pcINO(char* str)
                 src += 2;
                 break;
             case 'O':
-                INO_SetControlMode_inner_sub_48ACB0(strtoul(src + 2, &end, 10));
+                pcINO_SetControlMode(strtoul(src + 2, &end, 10));
                 if (end)
                 {
                     modeChanged = 1;
@@ -641,7 +641,7 @@ char* STR_sz_ControlsReadFormat_pcINO(char* str)
                 }
                 break;
             case 'o':
-                INO_SetControlSubmode_inner_sub_48A650(strtoul(src + 2, &end, 10));
+                pcINO_SetControlSubmode(strtoul(src + 2, &end, 10));
                 if (end)
                 {
                     modeChanged = 1;
@@ -712,8 +712,8 @@ char* STR_sz_ControlsReadFormat_pcINO(char* str)
     *dst = 0;
     if (modeChanged)
     {
-        INO_SetControlMode_inner_sub_48ACB0(savedMode);
-        INO_SetControlSubmode_inner_sub_48A650(savedSubmode);
+        pcINO_SetControlMode(savedMode);
+        pcINO_SetControlSubmode(savedSubmode);
     }
     return pcINO_ControlsReadFormatBuffer;
 }

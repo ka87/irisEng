@@ -73,7 +73,7 @@ typedef struct sSide
     void p##PRO_InitRasters(profilerRasterStructElem*, char*); \
     int  p##PRO_DisplayTextsOnRasterWindow(HWND, HDC, int, profilerRasterStructElem*, int); \
     void p##PRO_ProfilerDisplayHandler(HWND, HDC, int); \
-    void p##PRO_ProfilerWindowHander(void); \
+    void p##PRO_ProfilerWindowHandler(void); \
     extern int p##PRO_rasterWindowIsOn; \
     extern int p##PRO_rasterDetailPage; \
     extern profilerRasterStructElem* p##PRO_FirstRasterPtr; \
@@ -90,7 +90,7 @@ DECL(NEW_)
     p##PRO_RecordTimeDecRef, p##PRO_PerfCounterStartBlock, p##PRO_PerfCounterEndBlock, \
     p##PRO_QPC_RecordTimeDecRef, p##PRO_ClearOneRaster, p##PRO_ClearAllRasters, \
     p##PRO_InitRasters, p##PRO_DisplayTextsOnRasterWindow, p##PRO_ProfilerDisplayHandler, \
-    p##PRO_ProfilerWindowHander, \
+    p##PRO_ProfilerWindowHandler, \
     &p##PRO_rasterWindowIsOn, &p##PRO_rasterDetailPage, &p##PRO_FirstRasterPtr, \
     &p##pointsToUnkRaster_dword_98F944, &p##PRO_CurrRaster, &p##PRO_rasterHWND, \
     &p##gfDBGRasterSetTo60 }

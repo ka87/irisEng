@@ -303,12 +303,12 @@ void INO_JoySimulate(int controlMask, int buttons, Vec3* leftStick, Vec3* rightS
 
 void INO_SetControlSubmode(int submode)
 {
-    INO_SetControlSubmode_inner_sub_48A650(submode);
+    pcINO_SetControlSubmode(submode);
 }
 
 void INO_SetControlMode(int mode)
 {
-    INO_SetControlMode_inner_sub_48ACB0(mode);
+    pcINO_SetControlMode(mode);
 }
 
 /* Mouse sensitivity, 0..1 from the options slider. */

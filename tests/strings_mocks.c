@@ -116,16 +116,29 @@ char* pcINO_GetFourKeyNamesCattedTogether(int a, int b, int c, int d)
     return pcINO_KeyNamesToRet;
 }
 
-void INO_SetControlMode_inner_sub_48ACB0(int mode)
+void pcINO_SetControlMode(int mode)
 {
     STRMOCK_Record("INO_SetControlMode %d", mode);
     pcINO_SelectedControlMode = mode;
 }
 
-void INO_SetControlSubmode_inner_sub_48A650(int mode)
+void pcINO_SetControlSubmode(int mode)
 {
     STRMOCK_Record("INO_SetControlSubmode %d", mode);
     pcINO_SelectedControlSubmode = mode;
+}
+
+/* The frozen tests/baseline_strings.c still calls these two by their
+   old spelling. Forwarders rather than second bodies, so both sides
+   log the same entry. */
+void INO_SetControlMode_inner_sub_48ACB0(int mode)
+{
+    pcINO_SetControlMode(mode);
+}
+
+void INO_SetControlSubmode_inner_sub_48A650(int mode)
+{
+    pcINO_SetControlSubmode(mode);
 }
 
 /* --- the big file and the loader ---------------------------------- */

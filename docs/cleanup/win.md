@@ -233,34 +233,69 @@ un-caught a mutation that had been caught before. Added loops go on a
 fresh seed base — 5900 there — and the condition they are meant to
 drive is driven deliberately rather than left to the sweep.
 
-## Not renamed
+## The cross-file renames, and how the frozen baselines were kept
 
-Four `_sub_<address>` names survive in `win/`, all of them because the
-call sites are outside the pass that found them:
+Four `_sub_<address>` names in `win/` and one misspelling left over
+from the root batch were renamed across every call site. All five were
+blocked on the same thing — a frozen `tests/baseline_*.c` uses the old
+spelling and must keep compiling — and all five are resolved the same
+way: **the old name is carried alongside the new one, on whichever
+side of the test needs it.**
 
-| name | proposed | other sites |
-|---|---|---|
-| `MAT_ComputeUV_sub_4521A0` | `MAT_UV_ComputeAndSetTransform` | `materialanddraw.c`, `tests/matdraw_mocks.c`, and the frozen `tests/baseline_matdraw.c` |
-| `INO_SetControlMode_inner_sub_48ACB0` | `pcINO_SetControlMode` | `inputoutput.c`, `strings.c`, `tests/io_mocks.c`, `tests/strings_mocks.c` |
-| `INO_SetControlSubmode_inner_sub_48A650` | `pcINO_SetControlSubmode` | the same four |
-| `PC_AE_MASTER_GET_ONOFF_sub_4A37D0` | `PC_AE_MASTER_GET_ONOFF` | `ai/ai_miscfunctions.c` and its header |
+| old | new | defined in | called from |
+|---|---|---|---|
+| `MAT_ComputeUV_sub_4521A0` | `MAT_UV_ComputeAndSetTransform` | `win/wingdi.c` | `materialanddraw.c` |
+| `INO_SetControlMode_inner_sub_48ACB0` | `pcINO_SetControlMode` | `win/wininputoutput.c` | `inputoutput.c`, `strings.c` |
+| `INO_SetControlSubmode_inner_sub_48A650` | `pcINO_SetControlSubmode` | `win/wininputoutput.c` | `inputoutput.c`, `strings.c` |
+| `PC_AE_MASTER_GET_ONOFF_sub_4A37D0` | `PC_AE_MASTER_GET_ONOFF` | `win/wingdi_aftereffects.c` | `ai/ai_miscfunctions.c` |
+| `PRO_ProfilerWindowHander` | `PRO_ProfilerWindowHandler` | `profiler.c` | `engine.c` |
 
-All four are blocked on the same question: a frozen baseline calls the
-old name, so either the mock files carry **both** spellings or the
-baselines are regenerated. That is the user's call, and it is the same
-question as the five deferred shared-header field renames.
+Which half of the fix applies depends on whether the frozen copy
+**defines** the function or **calls** it, and both halves were already
+in the tree before this change:
+
+- **The frozen copy defines it.** `tests/baseline_wingdi.c`,
+  `tests/baseline_winio.c`, `tests/baseline_wingdi_ae.c` and
+  `tests/baseline_profiler.c` each still define one or two of these
+  under the old name. Their runner maps the old name onto the same
+  per-side symbol the new name takes — `-D<old>=BASE_<new>` — so the
+  driver's one `SIDE(…)` table reaches both copies. `run_winio.sh`
+  already did exactly this for the six card-failure flags the frozen
+  copy calls `dword_*`, so the two setters simply joined that list.
+- **The frozen copy calls it.** `tests/baseline_matdraw.c`,
+  `tests/baseline_inputoutput.c` and `tests/baseline_strings.c` call
+  into a mock. `tests/matdraw_mocks.c`, `tests/io_mocks.c` and
+  `tests/strings_mocks.c` now define the new name and keep the old one
+  as a **forwarder** to it — one body, not two, so both sides log the
+  same entry and the comparison cannot drift.
+
+All eight affected tests pass unchanged after the rename, with the
+same case and comparison counts as before.
+
+`tests/hdrcheck.py` reports the five as `gone` rather than `renamed`,
+which is correct: the prototype under the old name no longer exists in
+any header.
+
+## Still not renamed: the `v1` struct fields
 
 The eleven residue lines in `win/wingdi.h` are the `v1` field of
 `tVertex_type_204/404/244/104/144/444/142_generic` and `v1`..`v4` of
-`tD3dSpriteData`. `v1` should be `pos`, but the field is read by
-`win/wingdi.c`, `win/wingdi_aftereffects.c` and two frozen baselines,
-and the usual `#define` shim does not work because `v1` is also an
-`Mtx4x4` field.
+`tD3dSpriteData`. `v1` should be `pos`.
 
-The last parameter of `D3D_l_DrawElementIndexedTriangles` is left
-deliberately unnamed: naming it makes `tests/hdrcheck.py` report
-`types moved 1`, because the checker parses a bare `int` as the
-parameter name.
+A field is not a function, so neither half of the fix above applies: a
+mock cannot forward a field, and a `-D` cannot map one, because `v1` is
+also an `Mtx4x4` field (`math.h:18`) and both frozen baselines use
+both. The only mechanism that carries both spellings of a field is an
+anonymous union in the header itself —
+`union { Vec3 pos; Vec3 v1; };` — eleven of them, in a shipped engine
+header, kept only so that frozen test copies compile.
+
+The scale, measured: about **290 uses in the live sources**
+(`win/wingdi.c` 85, `win/wingdi_aftereffects.c` 199,
+`tests/test_wingdi.c` 6) and about **370 in the two frozen
+baselines**. Left as it is pending a decision, because the union is a
+permanent cost in the engine for a temporary problem in the tests, and
+regenerating the baselines removes it outright.
 
 ## What the tests cannot reach
 
@@ -287,5 +322,8 @@ multiset against the pre-pass copy.
   question.
 - The six memory-card failure flags in `win/wininputoutput.c` are set
   and never read.
-- Whether the frozen baselines may be regenerated, which unblocks all
-  four `_sub_` renames and the `v1` → `pos` field rename.
+- Whether the frozen baselines may be regenerated. The five function
+  renames no longer need it — they carry both spellings — but it is
+  what would let the `v1` → `pos` field rename go in without eleven
+  anonymous unions in `win/wingdi.h`, and it would let the five old
+  spellings be dropped from the mocks and the runners.

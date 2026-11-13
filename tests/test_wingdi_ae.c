@@ -100,7 +100,7 @@ extern int tweak_ae_nobands;
                                         IDirect3DTexture9* d); \
     void  P##_D3D_PC_AE(tWorld* world); \
     void  P##_PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value); \
-    int   P##_PC_AE_MASTER_GET_ONOFF_sub_4A37D0(int effect); \
+    int   P##_PC_AE_MASTER_GET_ONOFF(int effect); \
     float P##_PC_AE_MASTER_GET_P1(int effect, int slot)
 
 AE_DECLS(BASE);

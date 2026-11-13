@@ -3067,7 +3067,7 @@ void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)
     }
 }
 
-int PC_AE_MASTER_GET_ONOFF_sub_4A37D0(int effect)
+int PC_AE_MASTER_GET_ONOFF(int effect)
 {
     int result;
 

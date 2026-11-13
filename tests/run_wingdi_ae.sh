@@ -42,7 +42,7 @@ D3D_ColorBalance D3D_WaterBlurHD D3D_WaterBlurSD D3D_WaterBlur \
 D3D_DoBlurWaterTexture D3D_ZoomSmooth D3D_ZoomSmooth2 D3D_MotionSmoothHD \
 D3D_MotionSmoothSD D3D_MotionSmooth D3D_RemenanceSD D3D_RemenanceHD \
 D3D_Remenance D3D_Unknown_AE_FuncDepthBlur CopyRenderTargetTexture D3D_PC_AE \
-PC_AE_MASTER_CTRL PC_AE_MASTER_GET_ONOFF_sub_4A37D0 PC_AE_MASTER_GET_P1 \
+PC_AE_MASTER_CTRL PC_AE_MASTER_GET_ONOFF PC_AE_MASTER_GET_P1 \
 AE_SetRenderState AE_SetStageState AE_SetSamplerState"
 
 globals="depthBlurNear1 depthBlurType0 depthBlurType1 depthBlurType2 \
@@ -60,7 +60,11 @@ defs() {
 echo "=== wingdi_aftereffects ==="
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c win/wingdi_aftereffects.c \
     -o "$OUT/wingdi_ae.new.o" $(defs NEW_ $fns $globals)
-$CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/baseline_wingdi_ae.c \
+# the frozen copy still spells one function the way the decompiler named
+# it; map it onto the same per-side symbol the rewrite's new name takes
+$CC $CFLAGS -include tests/wingdi_ae_sdk.h \
+    -DPC_AE_MASTER_GET_ONOFF_sub_4A37D0=BASE_PC_AE_MASTER_GET_ONOFF \
+    -c tests/baseline_wingdi_ae.c \
     -o "$OUT/wingdi_ae.base.o" $(defs BASE_ $fns $globals)
 $CC $CFLAGS -c math.c -o "$OUT/wingdi_ae.math.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/wingdi_ae_mocks.c \

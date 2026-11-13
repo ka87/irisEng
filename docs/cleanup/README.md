@@ -847,12 +847,22 @@ fixed together.
 which is the shape of defect a differential test is worst at.
 Eighteen further oddities are preserved with a line each.
 
-**Four `_sub_<address>` names and eleven `v1` struct fields are left**,
-all blocked on the same question: a frozen `tests/baseline_*.c` calls
-the old name, so either the mock files carry both spellings or the
-baselines are regenerated. It is the same question as the five
-deferred field renames in `gameobject.h`, `particlegenerator.h`,
-`collision.h` and `sound.h`.
+**Five cross-file renames went in afterwards**, four `_sub_<address>`
+names and `PRO_ProfilerWindowHander`'s missing letter. Each was
+blocked on a frozen `tests/baseline_*.c` using the old spelling, and
+each is resolved by carrying both: where the frozen copy *defines* the
+function, its runner maps the old name onto the same per-side symbol
+with `-D<old>=BASE_<new>`; where it *calls* one, the mock keeps the old
+name as a forwarder to the new body. All eight affected tests pass with
+the same counts as before.
+
+**Eleven `v1` struct fields in `win/wingdi.h` are still left**, because
+neither half of that works for a field: a mock cannot forward one and a
+`-D` cannot map one, since `v1` is also an `Mtx4x4` field and both
+frozen baselines use both. Carrying both spellings there means eleven
+anonymous unions in a shipped header, so it waits on the same decision
+as the deferred field renames in `gameobject.h`,
+`particlegenerator.h`, `collision.h` and `sound.h`.
 
 ## Where the tree stands
 

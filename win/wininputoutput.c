@@ -854,7 +854,7 @@ char* pcINO_GetFourKeyNamesCattedTogether(int action1, int action2, int action3,
     return pcINO_KeyNamesToRet;
 }
 
-void INO_SetControlSubmode_inner_sub_48A650(int submode)
+void pcINO_SetControlSubmode(int submode)
 {
     if (submode < 0)
     {
@@ -910,7 +910,7 @@ void INO_SetControlSubmode_inner_sub_48A650(int submode)
     pcINO_SelectedControlSubmode = submode;
 }
 
-void INO_SetControlMode_inner_sub_48ACB0(int mode)
+void pcINO_SetControlMode(int mode)
 {
     if (pcINO_SelectedControlMode == mode)
         return;
@@ -968,7 +968,7 @@ void INO_SetControlMode_inner_sub_48ACB0(int mode)
     }
     pcINO_SelectedControlMode = mode;
     pcINO_SelectedControlSubmode = 0xffffffff;
-    INO_SetControlSubmode_inner_sub_48A650(0);
+    pcINO_SetControlSubmode(0);
 }
 
 void pcINO_Joystick_Init(HWND hwnd)
@@ -1015,8 +1015,8 @@ void pcINO_Joystick_Init(HWND hwnd)
         pcINO_IntKeybDataLink[2] = swappedSecondary;
         pcINO_IntKeybDataLink[32] = swappedSecondary;
 
-        INO_SetControlMode_inner_sub_48ACB0(4);
-        INO_SetControlSubmode_inner_sub_48A650(8);
+        pcINO_SetControlMode(4);
+        pcINO_SetControlSubmode(8);
         /* preserved: pcINO_getKeyNames dereferences pcINO_keybDevice
            unconditionally, and this runs whether or not it was created */
         pcINO_getKeyNamesForEverything();

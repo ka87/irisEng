@@ -33,8 +33,8 @@ pcINO_InputHandlerCase2 pcINO_InputHandlerCase4 pcINO_InputHandlerCase8 \
 pcINO_InputHandlerCase32 pcINO_InputHandlerHoverCraft pcINO_InputHandlerCase100 \
 pcINO_InputHandlerCase101 DINPUT_GetProperty DINPUT_InitVariables \
 pcINO_getKeyNames pcINO_getKeyNamesForEverything \
-pcINO_GetFourKeyNamesCattedTogether INO_SetControlSubmode_inner_sub_48A650 \
-INO_SetControlMode_inner_sub_48ACB0 pcINO_Joystick_Init pcINO_Joystick_Close \
+pcINO_GetFourKeyNamesCattedTogether pcINO_SetControlSubmode \
+pcINO_SetControlMode pcINO_Joystick_Init pcINO_Joystick_Close \
 pcINO_Joystick_Move pcINO_i_IsMouseBeingUsed pcINO_i_SetCurrentPad \
 pcINO_JoystickPifPafEnable pcINO_JoystickPafIntensity DbgDialogFunc \
 pcINO_dinput_mouse_and_keyb_acquire pcINO_dinput_mouse_and_keyb_unacquire \
@@ -56,10 +56,14 @@ pcINO_InputHandlerSubModeCaseDef pcINO_InputHandlerSubModeCase0 \
 pcINO_InputHandlerSubModeCase2 pcINO_InputHandlerSubModeCase7 \
 pcINO_InputHandlerSubModeCase10"
 
-# the six card-failure flags, which the frozen copy still calls dword_*
-old="dword_990164 dword_990168 dword_99016C dword_990170 dword_990174 dword_990178"
+# the six card-failure flags, which the frozen copy still calls dword_*,
+# and the two control-mode setters, which it still calls by the name the
+# decompiler gave them
+old="dword_990164 dword_990168 dword_99016C dword_990170 dword_990174 dword_990178 \
+INO_SetControlSubmode_inner_sub_48A650 INO_SetControlMode_inner_sub_48ACB0"
 new="pcINO_savPresenceFailure pcINO_savMountFailure pcINO_savCheckFailure \
-pcINO_savFormatFailure pcINO_savFreeSpaceFailure pcINO_savCardTestFailure"
+pcINO_savFormatFailure pcINO_savFreeSpaceFailure pcINO_savCardTestFailure \
+pcINO_SetControlSubmode pcINO_SetControlMode"
 
 # two globals and one field the pass renamed; the frozen copy keeps the
 # old spelling and is mapped onto the header's new one

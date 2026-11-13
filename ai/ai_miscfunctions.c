@@ -100,7 +100,7 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETONOFF(tAINode* node)
     int effect;
 
     effect = AI_GetIntFromStack();
-    AI_PutIntToStack(PC_AE_MASTER_GET_ONOFF_sub_4A37D0(effect));
+    AI_PutIntToStack(PC_AE_MASTER_GET_ONOFF(effect));
     return node + 1;
 }
 

@@ -764,7 +764,7 @@ void s_OneTrame()
         PRO_RasterGroup.unkRaster1.startTick = TIM_GetTicksAsInt32();
     ++PRO_RasterGroup.unkRaster1.insideCounter;
 
-    PRO_ProfilerWindowHander();
+    PRO_ProfilerWindowHandler();
     
     if (PRO_RasterGroup.unkRaster1.insideCounter)
     {

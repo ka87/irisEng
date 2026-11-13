@@ -50,8 +50,8 @@
     void P##pcINO_getKeyNames(int, char*); \
     void P##pcINO_getKeyNamesForEverything(void); \
     char* P##pcINO_GetFourKeyNamesCattedTogether(int, int, int, int); \
-    void P##INO_SetControlSubmode_inner_sub_48A650(int); \
-    void P##INO_SetControlMode_inner_sub_48ACB0(int); \
+    void P##pcINO_SetControlSubmode(int); \
+    void P##pcINO_SetControlMode(int); \
     void P##pcINO_Joystick_Init(HWND); \
     void P##pcINO_Joystick_Close(void); \
     void P##pcINO_Joystick_Move(Vec3*, int); \
@@ -165,8 +165,8 @@ typedef struct
     P##DINPUT_GetProperty, P##DINPUT_InitVariables, \
     P##pcINO_getKeyNames, P##pcINO_getKeyNamesForEverything, \
     P##pcINO_GetFourKeyNamesCattedTogether, \
-    P##INO_SetControlSubmode_inner_sub_48A650, \
-    P##INO_SetControlMode_inner_sub_48ACB0, \
+    P##pcINO_SetControlSubmode, \
+    P##pcINO_SetControlMode, \
     P##pcINO_Joystick_Init, P##pcINO_Joystick_Close, P##pcINO_Joystick_Move, \
     P##pcINO_i_IsMouseBeingUsed, P##pcINO_i_SetCurrentPad, P##DbgDialogFunc, \
     P##pcINO_dinput_mouse_and_keyb_acquire, \

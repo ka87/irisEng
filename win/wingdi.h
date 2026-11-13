@@ -253,7 +253,7 @@ float depthBlur1TypeOrcamUnkf2Save;
 Vec3 AE_MS_CurrVec;
 Vec3 AE_MS_PrevVec;
 
-void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem);
+void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem);
 void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
 void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
 void D3D_SetProjectionMatrix(tDDCamStruct* cam);

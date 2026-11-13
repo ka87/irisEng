@@ -237,7 +237,7 @@ void MAT_DrawIndexedTriangle_MT(tGdi_DisplayData* dxdd, tGEOGRO* geogro, tGEOMAT
                     if (!materialsHaveAlphaBlending)
                         flags |= 0x20u;
                     dxdd->TextureInit(texElem->texElemIdx, flags, 0);
-                    MAT_ComputeUV_sub_4521A0(geogro, triangleChunks, texElem);
+                    MAT_UV_ComputeAndSetTransform(geogro, triangleChunks, texElem);
                     gpst_DX_stDD->rasters[9].unk2 += triangleChunks->triangleNum;
                     dxdd->DrawElementIndexedTriangles(triangleChunks, dxdd->verticesCurrent, (tGeoUVElem*)(bigBuff->UVData), geogro->vertexNum);
                     if (D3DRenderParams.diffuse2x && !D3DRenderParams.tweak_ae_d2x)

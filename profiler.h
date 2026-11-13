@@ -82,4 +82,4 @@ void profiler_dbg_init();
 void PRO_InitModule();
 
 // windows specific
-void PRO_ProfilerWindowHander();
+void PRO_ProfilerWindowHandler();
