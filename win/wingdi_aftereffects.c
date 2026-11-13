@@ -1615,7 +1615,7 @@ void D3D_WaterBlurSD(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, tUnkW
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
 }
 
-void __cdecl D3D_WaterBlur(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, IDirect3DTexture9* renderTarget, tUnkWaterBlurStruct* dst, float smoothX, float smoothY, float overscan)
+void D3D_WaterBlur(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, IDirect3DTexture9* renderTarget, tUnkWaterBlurStruct* dst, float smoothX, float smoothY, float overscan)
 {
     int i;
     double uSpread;

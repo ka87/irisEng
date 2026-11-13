@@ -3071,7 +3071,7 @@ void SND_SetNearFar(int idx, int type, float near1, float far1)
 void SND_SModifierNotifyPauseInstance(tSoundInstanceElem* inst)
 {
     tSndModifierElem* i;
-    void(__cdecl * notify)(tSndModifierElem*, tSoundInstanceElem*);
+    void (*notify)(tSndModifierElem*, tSoundInstanceElem*);
 
     for (i = inst->modifierInstances; i; i = i->nextModifier)
     {

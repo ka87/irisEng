@@ -3,7 +3,7 @@
 #include "../loading.h"
 #include "leglinkmodifier.h"
 
-void __cdecl GAO_ModifierLegLink_Compute(Mtx4x4* hip, Mtx4x4* knee, Mtx4x4* foot,
+void GAO_ModifierLegLink_Compute(Mtx4x4* hip, Mtx4x4* knee, Mtx4x4* foot,
                                          float upperLen, float lowerLen)
 {
     Vec3 dir;
