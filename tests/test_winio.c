@@ -497,6 +497,7 @@ static long cases, diffs;
 static const char* group = "?";
 static long opRan[OP_NUM];
 
+static long wheelScrollSkipped;
 static char baseLog[WINIO_LOGMAX][WINIO_LINEMAX];
 static int baseLogCount;
 
@@ -763,7 +764,14 @@ static void runCase(const Case* c, const State* start, long key)
     CMP(case1DividedTime, "case1DividedTime");
     CMP(case1DividedTime2, "case1DividedTime2");
     CMP(case2DividedTime, "case2DividedTime");
-    CMP(case2Scroll, "case2_mouseScroll");
+    /* case2_mouseScroll is deliberately not compared. The frozen copy
+       hands the wheel to the handler as a float where the retail
+       producer stores the idiv quotient as a raw int, so its
+       accumulator gains the bit pattern of the notch count -- 1065353216
+       for one notch -- instead of the count. The two cannot agree.
+       wheelNotchCase below checks the rewrite against what the binary
+       does. */
+    wheelScrollSkipped++;
     CMP(case4X, "case4_mouseMoveX");
     CMP(case4Y, "case4_mouseMoveY");
     CMP(case4XD, "case4_mouseMoveXDeadline");
@@ -1281,6 +1289,82 @@ static void sweepNames(void)
     }
 }
 
+/* The wheel notch check.
+
+   The frozen copy cannot take part. It hands the handler a float where
+   the retail producer stores the idiv quotient as a raw int, so one
+   notch moves its accumulator by 1065353216 -- the bit pattern of 1.0f
+   -- instead of by 1, and with the decay of one per 0.04s it stays
+   pinned for about 486 days of wall clock. So this drives the rewrite
+   alone and checks it against what the binary does: the accumulator
+   gains exactly delta / granularity, truncated toward zero by the
+   idiv, and the handler's zoom axis follows its sign.
+
+   The last line is what gives the check teeth -- it asserts the frozen
+   copy fails the same test, so a regression that reinstated the float
+   could not pass this quietly. */
+static void wheelNotchCase(void)
+{
+    static const struct { int delta, gran, want; } wcases[] = {
+        {  120, 120,   1 }, { -120, 120,  -1 }, {  360, 120,   3 },
+        { -240, 120,  -2 }, {    0, 120,   0 }, {  120,   1, 120 },
+        {   59, 120,   0 }, { -119, 120,   0 }, {  240,   0, 240 },
+    };
+    unsigned i;
+    State st;
+    long baseWrong = 0;
+
+    group = "wheel";
+    rngState = 0x5151u;
+    for (i = 0; i < sizeof(wcases) / sizeof(wcases[0]); ++i)
+    {
+        int got;
+
+        randomState(&st);
+        randomScript();
+        st.haveMouse = 1;
+        st.haveKeyb = 1;
+        winioScript.mouseStateResult[0] = 0;
+        winioScript.keybStateResult[0] = 0;
+        memset(winioScript.mouseData, 0, sizeof(winioScript.mouseData));
+        memset(winioScript.keybData, 0, sizeof(winioScript.keybData));
+        winioScript.mouseData[2] = wcases[i].delta;
+        st.granularity = (unsigned int)wcases[i].gran;
+        st.case2Scroll = 0;
+        /* the case 2 handler, and a deadline in the future so the decay
+           cannot fire in the same call */
+        st.handlerIdx = 1;
+        st.case2DividedTime = 1.0e9f;
+
+        dirtyStack();
+        WINIO_ResetMocks();
+        installState(&newSide, &st);
+        newSide.joyUpdate(&st.pad);
+        got = pcINO_case2_mouseScroll;
+        if (got != wcases[i].want)
+        {
+            printf("  DIFF wheel            delta=%d gran=%d want=%d got=%d\n",
+                   wcases[i].delta, wcases[i].gran, wcases[i].want, got);
+            diffs++;
+        }
+
+        dirtyStack();
+        WINIO_ResetMocks();
+        installState(&baseSide, &st);
+        baseSide.joyUpdate(&st.pad);
+        if (pcINO_case2_mouseScroll != wcases[i].want)
+            baseWrong++;
+        cases += 2;
+    }
+    if (baseWrong == 0)
+    {
+        printf("  DIFF wheel            the frozen copy passes too, so this check has no teeth\n");
+        diffs++;
+    }
+    printf("  wheel notches: %u cases, the frozen copy is wrong on %ld of them\n",
+           (unsigned)(sizeof(wcases) / sizeof(wcases[0])), baseWrong);
+}
+
 static void sweepDevices(void)
 {
     Case c;
@@ -1310,6 +1394,8 @@ static void sweepDevices(void)
         st.handlerIdx = (int)(rnd() % NHANDLER);
         runCase(&c, &st, key++);
     }
+
+    wheelNotchCase();
 
     group = "init/close";
     rngState = 0xAAAAu;
@@ -1522,6 +1608,8 @@ int main(void)
     }
     printf("\n");
 
+    printf("  case2_mouseScroll not compared side by side in %ld cases\n",
+           wheelScrollSkipped);
     printf("%ld cases, %ld differences\n", cases, diffs);
     if (diffs)
     {
