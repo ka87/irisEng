@@ -1680,7 +1680,7 @@ void Rasters_Update()
                     if (rasterNames[raster].unk1
                         && (double)PerfCountertimeSumArray[raster] * scale > 0.01)
                     {
-                        barY = barY + 15.0;
+                        barY = (float)(barY + 15.0);
                         if (barY > viewHeight)
                             break;
                     }
