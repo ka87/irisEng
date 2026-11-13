@@ -133,135 +133,125 @@ int16_t gaa_Paramv_Offset[] = {
                                 0, 0x0C, 0x18, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
+
 void GFX_NeedGeomEx(unsigned int pointsNum, unsigned int UVNum, unsigned int triangleChunkNum, unsigned int triangleNum, int useVertexColors)
 {
-    int* v5;
-    int* v6;
-    unsigned int v7;
-    unsigned int v8;
-    tGeoTriangleChunks* v9;
-    int v10;
-    tGeoTriangleChunks* v11;
+    tGeoTriangleChunks* chunk;
+    unsigned int oldChunkCount;
 
-    if (pointsNum && pointsNum <= 5000)
+    if (!pointsNum || pointsNum > 5000)
+        return;
+
+    if (useVertexColors)
     {
-        if (useVertexColors)
+        if (GFX_ul_MaxRLI < pointsNum)
         {
-            if (GFX_ul_MaxRLI < pointsNum)
-            {
-                if (GFX_pul_RLI)
-                    v5 = (int*)MEM_p_Realloc(GFX_pul_RLI, 4 * pointsNum + 4);
-                else
-                    v5 = (int*)MEM_p_Alloc(4 * pointsNum + 4);
-                GFX_pul_RLI = v5;
-                GFX_ul_MaxRLI = pointsNum;
-            }
-            *GFX_pul_RLI = pointsNum;
+            if (GFX_pul_RLI)
+                GFX_pul_RLI = (int*)MEM_p_Realloc(GFX_pul_RLI, 4 * pointsNum + 4);
+            else
+                GFX_pul_RLI = (int*)MEM_p_Alloc(4 * pointsNum + 4);
+            GFX_ul_MaxRLI = pointsNum;
         }
-        if (GFX_gpst_GO)
+        *GFX_pul_RLI = pointsNum;
+    }
+
+    if (!GFX_gpst_GO)
+    {
+        memset(GFX_aul_MaxTriangles, 0, sizeof(GFX_aul_MaxTriangles));
+        GEO_b_IsInFix = 1;
+        GFX_gpst_Geo = GEO_pst_Create(pointsNum, UVNum, triangleChunkNum, 0);
+        GEO_b_IsInFix = 0;
+        chunk = GFX_gpst_Geo->triangleChunks;
+        chunk->triangleNum = triangleNum;
+        chunk->MRMUVIndexElems = 0;
+        chunk->triangleStripBlock = 0;
+        chunk->MRMUVIndicesNum = 0;
+        GEO_AllocElementContent(chunk);
+        GFX_gpst_GO = OBJ_GameObject_Create(0x5000);
+        ((tGameObjectVisualObject*)(GFX_gpst_GO->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse = (tGroGeneric*)GFX_gpst_Geo;
+        gpst_DX_stDD->currTargetGao = GFX_gpst_GO;
+        GFX_ul_MaxElements = triangleChunkNum;
+        GFX_ul_MaxElemSprites = 0;
+        GFX_ul_MaxPoints = pointsNum;
+        GFX_ul_MaxUVs = UVNum;
+        GFX_aul_MaxTriangles[0] = triangleNum;
+        if (useVertexColors)
+            GFX_gpst_Geo->vertexColors = GFX_pul_RLI;
+        return;
+    }
+
+    GFX_gpst_Geo->spritesNum = 0;
+    GFX_gpst_Geo->vertexColors = useVertexColors ? GFX_pul_RLI : NULL;
+    if (pointsNum > GFX_ul_MaxPoints)
+    {
+        MEM_FreeAlign(GFX_gpst_Geo->vertices);
+        GFX_gpst_Geo->vertices = (Vec3*)MEM_p_AllocAligned(sizeof(Vec3) * pointsNum, 16);
+        MEM_FreeAlign(GFX_gpst_Geo->normals);
+        GFX_gpst_Geo->normals = (Vec3*)MEM_p_AllocAligned(sizeof(Vec3) * pointsNum, 16);
+        GFX_ul_MaxPoints = pointsNum;
+    }
+    GFX_gpst_Geo->vertexNum = pointsNum;
+    if (UVNum > GFX_ul_MaxUVs)
+    {
+        MEM_FreeAlign(GFX_gpst_Geo->UVs);
+        GFX_gpst_Geo->UVs = (tGeoUVElem*)MEM_p_AllocAligned(sizeof(tGeoUVElem) * UVNum, 8);
+        GFX_ul_MaxUVs = UVNum;
+    }
+    GFX_gpst_Geo->uvNum = UVNum;
+    if (triangleNum > GFX_aul_MaxTriangles[0])
+    {
+        MEM_FreeAlign(GFX_gpst_Geo->triangleChunks->triangleChunkElems);
+        GFX_gpst_Geo->triangleChunks->triangleChunkElems = (tGeoTriangleChunkElem*)MEM_p_AllocAligned(
+            sizeof(tGeoTriangleChunkElem) * triangleNum,
+            16);
+        GFX_aul_MaxTriangles[0] = triangleNum;
+    }
+    GFX_gpst_Geo->triangleChunks->triangleNum = triangleNum;
+    if (triangleChunkNum > GFX_ul_MaxElements)
+    {
+        oldChunkCount = GFX_ul_MaxElements;
+        if (oldChunkCount)
         {
-            v6 = GFX_pul_RLI;
-            GFX_gpst_Geo->spritesNum = 0;
-            GFX_gpst_Geo->vertexColors = (int*)(useVertexColors != 0 ? (unsigned int)v6 : 0);
-            if (pointsNum > GFX_ul_MaxPoints)
-            {
-                MEM_FreeAlign(GFX_gpst_Geo->vertices);
-                GFX_gpst_Geo->vertices = (Vec3*)MEM_p_AllocAligned(sizeof(Vec3) * pointsNum, 16);
-                MEM_FreeAlign(GFX_gpst_Geo->normals);
-                GFX_gpst_Geo->normals = (Vec3*)MEM_p_AllocAligned(sizeof(Vec3) * pointsNum, 16);
-                GFX_ul_MaxPoints = pointsNum;
-            }
-            v7 = GFX_ul_MaxUVs;
-            GFX_gpst_Geo->vertexNum = pointsNum;
-            if (UVNum > v7)
-            {
-                MEM_FreeAlign(GFX_gpst_Geo->UVs);
-                GFX_gpst_Geo->UVs = (tGeoUVElem*)MEM_p_AllocAligned(sizeof(tGeoUVElem) * UVNum, 8);
-                GFX_ul_MaxUVs = UVNum;
-            }
-            GFX_gpst_Geo->uvNum = UVNum;
-            if (triangleNum > GFX_aul_MaxTriangles[0])
-            {
-                MEM_FreeAlign(GFX_gpst_Geo->triangleChunks->triangleChunkElems);
-                GFX_gpst_Geo->triangleChunks->triangleChunkElems = (tGeoTriangleChunkElem*)MEM_p_AllocAligned(
-                    sizeof(tGeoTriangleChunkElem) * triangleNum,
-                    16);
-                GFX_aul_MaxTriangles[0] = triangleNum;
-            }
-            v8 = GFX_ul_MaxElements;
-            GFX_gpst_Geo->triangleChunks->triangleNum = triangleNum;
-            if (triangleChunkNum > v8)
-            {
-                if (v8)
-                {
-                    v9 = (tGeoTriangleChunks*)MEM_p_Realloc(GFX_gpst_Geo->triangleChunks, sizeof(tGeoTriangleChunks) * triangleChunkNum);
-                    v10 = GFX_ul_MaxElements;
-                    GFX_gpst_Geo->triangleChunks = v9;
-                    memset(&GFX_gpst_Geo->triangleChunks[v10], 0, sizeof(tGeoTriangleChunks) * (triangleChunkNum - v10));
-                    GFX_ul_MaxElements = triangleChunkNum;
-                    GFX_gpst_Geo->triangleChunkCount = triangleChunkNum;
-                    return;
-                }
-                GFX_gpst_Geo->triangleChunks = (tGeoTriangleChunks*)MEM_p_Alloc(sizeof(tGeoTriangleChunks) * triangleChunkNum);
-                GFX_ul_MaxElements = triangleChunkNum;
-            }
-            GFX_gpst_Geo->triangleChunkCount = triangleChunkNum;
+            GFX_gpst_Geo->triangleChunks = (tGeoTriangleChunks*)MEM_p_Realloc(GFX_gpst_Geo->triangleChunks, sizeof(tGeoTriangleChunks) * triangleChunkNum);
+            memset(&GFX_gpst_Geo->triangleChunks[oldChunkCount], 0, sizeof(tGeoTriangleChunks) * (triangleChunkNum - oldChunkCount));
         }
         else
         {
-            memset(GFX_aul_MaxTriangles, 0, sizeof(GFX_aul_MaxTriangles));
-            GEO_b_IsInFix = 1;
-            GFX_gpst_Geo = GEO_pst_Create(pointsNum, UVNum, triangleChunkNum, 0);
-            GEO_b_IsInFix = 0;
-            v11 = GFX_gpst_Geo->triangleChunks;
-            v11->triangleNum = triangleNum;
-            v11->MRMUVIndexElems = 0;
-            v11->triangleStripBlock = 0;
-            v11->MRMUVIndicesNum = 0;
-            GEO_AllocElementContent(v11);
-            GFX_gpst_GO = OBJ_GameObject_Create(0x5000);
-            ((tGameObjectVisualObject*)(GFX_gpst_GO->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse = (tGroGeneric*)GFX_gpst_Geo;
-            gpst_DX_stDD->currTargetGao = GFX_gpst_GO;
-            GFX_ul_MaxElements = triangleChunkNum;
-            GFX_ul_MaxElemSprites = 0;
-            GFX_ul_MaxPoints = pointsNum;
-            GFX_ul_MaxUVs = UVNum;
-            GFX_aul_MaxTriangles[0] = triangleNum;
-            if (useVertexColors)
-                GFX_gpst_Geo->vertexColors = GFX_pul_RLI;
+            GFX_gpst_Geo->triangleChunks = (tGeoTriangleChunks*)MEM_p_Alloc(sizeof(tGeoTriangleChunks) * triangleChunkNum);
         }
+        GFX_ul_MaxElements = triangleChunkNum;
     }
+    GFX_gpst_Geo->triangleChunkCount = triangleChunkNum;
 }
+
 
 void GFX_NeedGeomExElem(unsigned int triangleChunkIdx, unsigned int triangleNum)
 {
-    tGeoTriangleChunks* v2;
-    unsigned int v3;
-    tGeoTriangleChunks* v4;
+    tGeoTriangleChunks* chunk;
+    unsigned int capacity;
 
-    if (triangleChunkIdx < GFX_gpst_Geo->triangleChunkCount)
+    if (triangleChunkIdx >= GFX_gpst_Geo->triangleChunkCount)
+        return;
+
+    chunk = &GFX_gpst_Geo->triangleChunks[triangleChunkIdx];
+    capacity = GFX_aul_MaxTriangles[triangleChunkIdx];
+    if (triangleNum > capacity)
     {
-        v2 = GFX_gpst_Geo->triangleChunks;
-        v3 = GFX_aul_MaxTriangles[triangleChunkIdx];
-        v4 = &v2[triangleChunkIdx];
-        if (triangleNum > v3)
+        if (capacity)
         {
-            if (v3)
-            {
-                v4->triangleChunkElems = (tGeoTriangleChunkElem*)MEM_p_ReallocAligned(v4->triangleChunkElems, sizeof(tGeoTriangleChunkElem) * triangleNum, 16);
-                GFX_aul_MaxTriangles[triangleChunkIdx] = triangleNum;
-                v4->triangleNum = triangleNum;
-                return;
-            }
-            v4->triangleNum = triangleNum;
-            v4->MRMUVIndexElems = 0;
-            v4->triangleStripBlock = 0;
-            v4->MRMUVIndicesNum = 0;
-            GEO_AllocElementContent(&v2[triangleChunkIdx]);
-            GFX_aul_MaxTriangles[triangleChunkIdx] = triangleNum;
+            chunk->triangleChunkElems = (tGeoTriangleChunkElem*)MEM_p_ReallocAligned(chunk->triangleChunkElems, sizeof(tGeoTriangleChunkElem) * triangleNum, 16);
         }
-        v4->triangleNum = triangleNum;
+        else
+        {
+            chunk->triangleNum = triangleNum;
+            chunk->MRMUVIndexElems = 0;
+            chunk->triangleStripBlock = 0;
+            chunk->MRMUVIndicesNum = 0;
+            GEO_AllocElementContent(chunk);
+        }
+        GFX_aul_MaxTriangles[triangleChunkIdx] = triangleNum;
     }
+    chunk->triangleNum = triangleNum;
 }
 
 void GFX_End()
@@ -289,103 +279,92 @@ void GFX_End()
     }
 }
 
-void GFX_SetCurrent(struct sGfxElem* a1, int16_t id)
+
+void GFX_SetCurrent(struct sGfxElem* list, int16_t id)
 {
-    tGfxElem* v2;
+    tGfxElem* elem;
 
     if (!GFX_gpst_Current || GFX_gpst_Current->id != id)
     {
-        v2 = a1;
-        for (GFX_gpst_Current = a1; v2; GFX_gpst_Current = v2)
-        {
-            if (v2->id == id)
-                break;
-            v2 = v2->prevGfxElem;
-        }
+        elem = list;
+        while (elem && elem->id != id)
+            elem = elem->prevGfxElem;
+        GFX_gpst_Current = elem;
     }
 }
 
-void GFX_FlagSet(tGfxElem* a1, int16_t id, char a3, int set)
-{
-    int v4;
-    uint8_t v5;
 
-    GFX_SetCurrent(a1, id);
+void GFX_FlagSet(tGfxElem* list, int16_t id, char bit, int set)
+{
+    int mask;
+    uint8_t flags;
+
+    GFX_SetCurrent(list, id);
     if (GFX_gpst_Current)
     {
-        v4 = 1 << a3;
-        v5 = GFX_gpst_Current->gfxFlags;
+        mask = 1 << bit;
+        flags = GFX_gpst_Current->gfxFlags;
         if (set)
-            GFX_gpst_Current->gfxFlags = v4 | v5;
+            GFX_gpst_Current->gfxFlags = mask | flags;
         else
-            GFX_gpst_Current->gfxFlags = ~(uint8_t)v4 & v5;
+            GFX_gpst_Current->gfxFlags = ~(uint8_t)mask & flags;
     }
 }
 
-void GFX_SetMaterial(tGfxElem* a1, int16_t id, struct sGEOMAT* a3)
+
+void GFX_SetMaterial(tGfxElem* list, int16_t id, struct sGEOMAT* material)
 {
-    GFX_SetCurrent(a1, id);
+    GFX_SetCurrent(list, id);
     if (GFX_gpst_Current)
-        GFX_gpst_Current->material = a3;
+        GFX_gpst_Current->material = material;
 }
 
-void GFX_NeedGeomNbElemSprites(unsigned int a1)
-{
-    int v1;
-    BOOL v2;
-    tGeoSprites* v3;
-    size_t v4;
 
-    v1 = GFX_ul_MaxElemSprites;
-    v2 = a1 < GFX_ul_MaxElemSprites;
-    GFX_gpst_Geo->spritesNum = a1;
-    if (!v2)
+void GFX_NeedGeomNbElemSprites(unsigned int spriteChunkNum)
+{
+    unsigned int capacity;
+
+    capacity = GFX_ul_MaxElemSprites;
+    GFX_gpst_Geo->spritesNum = spriteChunkNum;
+    if (spriteChunkNum >= capacity)
     {
-        v4 = sizeof(tGeoSprites) * a1;
-        if (v1)
-        {
-            v3 = (tGeoSprites*)MEM_p_Realloc(GFX_gpst_Geo->spritesPtr, v4);
-            GFX_ul_MaxElemSprites = a1;
-            GFX_gpst_Geo->spritesPtr = v3;
-        }
+        if (capacity)
+            GFX_gpst_Geo->spritesPtr = (tGeoSprites*)MEM_p_Realloc(GFX_gpst_Geo->spritesPtr, sizeof(tGeoSprites) * spriteChunkNum);
         else
-        {
-            GFX_gpst_Geo->spritesPtr = (tGeoSprites*)MEM_p_Alloc(v4);
-            GFX_ul_MaxElemSprites = a1;
-        }
+            GFX_gpst_Geo->spritesPtr = (tGeoSprites*)MEM_p_Alloc(sizeof(tGeoSprites) * spriteChunkNum);
+        GFX_ul_MaxElemSprites = spriteChunkNum;
     }
 }
 
-void GFX_NeedGeomElemNbSprites(unsigned int a1, unsigned int a2)
+
+void GFX_NeedGeomElemNbSprites(unsigned int spriteChunkIdx, unsigned int spriteNum)
 {
-    unsigned int v2;
-    tGeoSprites* v3;
+    unsigned int capacity;
+    tGeoSprites* chunk;
 
-    if (a1 < GFX_gpst_Geo->spritesNum)
+    if (spriteChunkIdx >= GFX_gpst_Geo->spritesNum)
+        return;
+
+    // preserved: the capacity tested is the triangle table's, the one updated is the sprite table's
+    capacity = GFX_aul_MaxTriangles[spriteChunkIdx];
+    chunk = &GFX_gpst_Geo->spritesPtr[spriteChunkIdx];
+    if (spriteNum > capacity)
     {
-        v2 = GFX_aul_MaxTriangles[a1];
-        v3 = &GFX_gpst_Geo->spritesPtr[a1];
-        if (a2 > v2)
-        {
-            if (v2)
-            {
-                v3->spriteElems = (tGeoSpriteElem*)MEM_p_Realloc(v3->spriteElems, sizeof(tGeoSpriteElem) * a2);
-                GFX_aul_MaxSprites[a1] = a2;
-                v3->num = a2;
-                return;
-            }
-            v3->spriteElems = (tGeoSpriteElem*)MEM_p_Alloc(sizeof(tGeoSpriteElem) * a2);
-            GFX_aul_MaxSprites[a1] = a2;
-        }
-        v3->num = a2;
+        if (capacity)
+            chunk->spriteElems = (tGeoSpriteElem*)MEM_p_Realloc(chunk->spriteElems, sizeof(tGeoSpriteElem) * spriteNum);
+        else
+            chunk->spriteElems = (tGeoSpriteElem*)MEM_p_Alloc(sizeof(tGeoSpriteElem) * spriteNum);
+        GFX_aul_MaxSprites[spriteChunkIdx] = spriteNum;
     }
+    chunk->num = spriteNum;
 }
 
-int GFX_i_Request(int a1)
+
+int GFX_i_Request(int id)
 {
     int result;
 
-    if (a1 < 1000 || a1 >= 2000)
+    if (id < 1000 || id >= 2000)
         result = 0;
     else
         result = 0; // return_0_sub_492830(); GFX_i_Line_Request();
@@ -441,20 +420,17 @@ void GFX_RenderGeom(unsigned int maskBitsToClear)
     gpst_DX_stDD->drawMaskAllowedStuffCurrent = savedMask;
 }
 
-struct sGfxElem* GFX_pst_FindById(struct sGfxElem** a1, int16_t gfxId)
-{
-    tGfxElem* result;
 
-    result = *a1;
-    if (!*a1)
-        return 0;
-    while (result->id != gfxId)
+struct sGfxElem* GFX_pst_FindById(struct sGfxElem** list, int16_t gfxId)
+{
+    tGfxElem* elem;
+
+    for (elem = *list; elem; elem = elem->prevGfxElem)
     {
-        result = result->prevGfxElem;
-        if (!result)
-            return 0;
+        if (elem->id == gfxId)
+            return elem;
     }
-    return result;
+    return 0;
 }
 
 void GFX_SetRenderState()
@@ -468,360 +444,327 @@ void GFX_SetRenderState()
     gpst_DX_stDD->extraMaterialToGeo = 0;
 }
 
-struct sGfxElem* GFX_Attached(struct sGfxElem* a1)
-{
-    tGfxElem* result;
 
-    for (result = a1; result; result = result->prevGfxElem)
+struct sGfxElem* GFX_Attached(struct sGfxElem* list)
+{
+    tGfxElem* elem;
+
+    // preserved: the walk never stops early, so the value returned is always NULL
+    for (elem = list; elem; elem = elem->prevGfxElem)
     {
-        if (result->type == 16)                   // carte
-            ((tGfxCarteData*)(result->privateData))->currentPieceStatus = -1;
+        if (elem->type == 16)                   // carte
+            ((tGfxCarteData*)(elem->privateData))->currentPieceStatus = -1;
     }
-    return result;
+    return elem;
 }
 
-void GFX_FreeOne(tGfxElem* a1)
-{
-    int8_t v1;
 
-    v1 = a1->type;
-    if (a1->type == 3)
+void GFX_FreeOne(tGfxElem* elem)
+{
+    switch (elem->type)
     {
-        GFX_Desintegrate_Destroy((tGfxDesintegrateData*)(a1->privateData));
+    case 2:
+        GFX_Lightning_Destroy((tGfxLightningData*)(elem->privateData));
+        break;
+    case 3:
+        GFX_Desintegrate_Destroy((tGfxDesintegrateData*)(elem->privateData));
+        break;
+    case 6:
+        GFX_Smoke_Destroy((tGfxSmokeData*)(elem->privateData));
+        break;
+    case 9:
+        GFX_Spark_Destroy((tGfxSparkData*)(elem->privateData));
+        break;
+    case 10:
+        GFX_Water2_Destroy((tGfxWater2Data*)(elem->privateData));
+        break;
+    case 12:
+        GFX_Profiler_Destroy((tGfxProfilerData*)(elem->privateData));
+        break;
+    case 13:
+        GFX_Explode_Destroy((tGfxExplodeData*)(elem->privateData));
+        MEM_FreeAlign(elem->privateData);
+        break;
+    case 16:
+        GFX_Carte_Destroy((tGfxCarteData*)(elem->privateData), elem->material);
+        break;
+    case 17:
+        GFX_Gao_Destroy((tGfxGaoData*)(elem->privateData));
+        break;
+    case 18:
+        GFX_Sun_Destroy(&(((tGfxSunData*)(elem->privateData))->d3dStuff));
+        break;
+    case 19:
+        GFX_Str_Destroy((tGfxStrData*)(elem->privateData));
+        break;
+    case 20:
+        GFX_Ripple_Destroy((tGfxRippleData*)(elem->privateData));
+        break;
     }
-    else
-    {
-        switch (v1)
-        {
-        case 2:
-            GFX_Lightning_Destroy((tGfxLightningData*)(a1->privateData));
-            break;
-        case 6:
-            GFX_Smoke_Destroy((tGfxSmokeData*)(a1->privateData));
-            break;
-        case 9:
-            GFX_Spark_Destroy((tGfxSparkData*)(a1->privateData));
-            break;
-        case 10:
-            GFX_Water2_Destroy((tGfxWater2Data*)(a1->privateData));
-            break;
-        case 12:
-            GFX_Profiler_Destroy((tGfxProfilerData*)(a1->privateData));
-            break;
-        case 13:
-            GFX_Explode_Destroy((tGfxExplodeData*)(a1->privateData));
-            MEM_FreeAlign(a1->privateData);
-            break;
-        case 16:
-            GFX_Carte_Destroy((tGfxCarteData*)(a1->privateData), a1->material);
-            break;
-        case 17:
-            GFX_Gao_Destroy((tGfxGaoData*)(a1->privateData));
-            break;
-        case 19:
-            GFX_Str_Destroy((tGfxStrData*)(a1->privateData));
-            break;
-        case 20:
-            GFX_Ripple_Destroy((tGfxRippleData*)(a1->privateData));
-            break;
-        case 18:
-            GFX_Sun_Destroy(&(((tGfxSunData*)(a1->privateData))->d3dStuff));
-            break;
-        }
-    }
-    if (a1->type != 13)
-        MEM_Free(a1->privateData);
-    MEM_Free(a1);
+    if (elem->type != 13)
+        MEM_Free(elem->privateData);
+    MEM_Free(elem);
 }
 
-void GFX_Del(tGfxElem** a1, int16_t id)
-{
-    tGfxElem* v2;
-    tGfxElem* v3;
 
-    v2 = *a1;
-    v3 = 0;
-    if (*a1)
+void GFX_Del(tGfxElem** list, int16_t id)
+{
+    tGfxElem* elem;
+    tGfxElem* prev;
+
+    elem = *list;
+    prev = 0;
+    if (elem)
     {
-        while (v2->id != id)
+        while (elem->id != id)
         {
-            v3 = v2;
-            v2 = v2->prevGfxElem;
-            if (!v2)
+            prev = elem;
+            elem = elem->prevGfxElem;
+            if (!elem)
             {
                 GFX_gpst_Current = 0;
                 return;
             }
         }
-        if (v3)
-            v3->prevGfxElem = v2->prevGfxElem;
+        if (prev)
+            prev->prevGfxElem = elem->prevGfxElem;
         else
-            *a1 = v2->prevGfxElem;
-        GFX_FreeOne(v2);
+            *list = elem->prevGfxElem;
+        GFX_FreeOne(elem);
     }
     GFX_gpst_Current = 0;
 }
 
-void GFX_Test(tGfxElem* a1)
-{
-    tGfxElem* v1;
-    uint16_t v2;
-    char v3;
 
-    v1 = a1;
-    if (a1)
+void GFX_Test(tGfxElem* list)
+{
+    tGfxElem* elem;
+    uint16_t savedMatrixElem;
+    char flags;
+
+    elem = list;
+    if (list)
     {
-        v2 = gpst_DX_stDD->matrixStack.currElemNum;
+        savedMatrixElem = gpst_DX_stDD->matrixStack.currElemNum;
         gpst_DX_stDD->matrixStack.currElemNum = 0;
         gpst_DX_stDD->matrixStack.actMatrixElem = gpst_DX_stDD->matrixStack.elems;
         gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
-        GFX_gpst_Current = a1;
+        GFX_gpst_Current = list;
         do
         {
-            v3 = v1->gfxFlags;
-            if ((v3 & 1) != 0 && v3 >= 0 && v1->type >= 4 && v1->type <= 5)
+            flags = elem->gfxFlags;
+            if ((flags & 1) != 0 && flags >= 0 && elem->type >= 4 && elem->type <= 5)
             {
-                GFX_Flare_Test((tGfxFlareData*)(v1->privateData));
-                v1 = GFX_gpst_Current;
+                GFX_Flare_Test((tGfxFlareData*)(elem->privateData));
+                elem = GFX_gpst_Current;
             }
-            v1 = v1->prevGfxElem;
-            GFX_gpst_Current = v1;
-        } while (v1);
-        gpst_DX_stDD->matrixStack.currElemNum = v2;
-        gpst_DX_stDD->matrixStack.actMatrixElem = &gpst_DX_stDD->matrixStack.elems[v2];
+            elem = elem->prevGfxElem;
+            GFX_gpst_Current = elem;
+        } while (elem);
+        gpst_DX_stDD->matrixStack.currElemNum = savedMatrixElem;
+        gpst_DX_stDD->matrixStack.actMatrixElem = &gpst_DX_stDD->matrixStack.elems[savedMatrixElem];
         gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
     }
 }
 
-int GFX_i_SetDeath(struct sGfxElem** a1, struct sGfxElem* a2)
-{
-    tGfxFlareData* v3;
-    int v4;
 
-    if (a2)
+int GFX_i_SetDeath(struct sGfxElem** list, struct sGfxElem* elem)
+{
+    tGfxFlareData* flare;
+    int flareFlags;
+
+    if (elem)
     {
-        if (a2->type == 4)                        // flare
+        if (elem->type == 4)                      // flare
         {
-            v3 = (tGfxFlareData*)(a2->privateData);
-            v4 = v3->basic.flags;
-            if ((v4 & 0x20) != 0)
+            flare = (tGfxFlareData*)(elem->privateData);
+            flareFlags = flare->basic.flags;
+            if ((flareFlags & 0x20) != 0)
             {
-                v3->basic.flags = v4 | 0x4000000;
-                ((tGfxFlareData*)(a2->privateData))->basic.i15 = -1;
+                flare->basic.flags = flareFlags | 0x4000000;
+                ((tGfxFlareData*)(elem->privateData))->basic.i15 = -1;
                 return 1;
             }
         }
-        else if (a2->type == 21)                  // anotherflare
+        else if (elem->type == 21)                // anotherflare
         {
-            ((tGfxAnotherFlareData*)(a2->privateData))->flags |= 1u;
-            a2->lifeTime = ((tGfxAnotherFlareData*)(a2->privateData))->totalTime + 10.0f;
+            ((tGfxAnotherFlareData*)(elem->privateData))->flags |= 1u;
+            elem->lifeTime = ((tGfxAnotherFlareData*)(elem->privateData))->totalTime + 10.0f;
             return 1;
         }
-        GFX_gpst_Current = a2;
-        GFX_Del(a1, a2->id);
+        GFX_gpst_Current = elem;
+        GFX_Del(list, elem->id);
     }
     return 0;
 }
 
-void GFX_Render(tGfxElem** a1, int zlistLock)
-{
-    tGfxElem* v2;
-    profilerRasterStructElem* v3;
-    int v4;
-    int v5;
-    int v6;
-    unsigned int v7;
-    int v8;
-    char v9;
-    tGfxElem* v10;
-    double v11;
-    char v12;
-    uint8_t v13;
-    int v14; 
-    int v15; 
-    profilerRasterStructElem* v16;
-    int16_t v17;
-    int16_t v18;
-    int v19;
-    int v20;
-    int v21;
-    int v22;
-    uint16_t v23;
 
-    v2 = *a1;
-    if (!*a1)
+void GFX_Render(tGfxElem** list, int zlistLock)
+{
+    tGfxElem* elem;
+    tGfxElem* next;
+    profilerRasterStructElem* raster;
+    int stateZList;
+    int stateSorted;
+    unsigned int stateDirect;
+    int rendered;
+    char flags;
+    uint8_t renderFlags;
+    double remaining;
+    int16_t inside;
+    int savedDrawMask;
+    int savedFlags;
+    uint16_t savedMatrixElem;
+
+    elem = *list;
+    if (!elem)
         return;
     QueryPerformanceCounter(&PerfCounterStruct[7]);
-    v3 = &gpst_DX_stDD->rasters[45];
-    if (!gpst_DX_stDD->rasters[45].insideCounter)
-        v3->startTick = TIM_GetTicksAsInt32();
-    ++v3->insideCounter;
-    GFX_ppst_CurrentList = a1;
-    v4 = gpst_DX_stDD->flags;
-    v21 = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
-    gpst_DX_stDD->drawMaskAllowedStuffCurrent = gpst_DX_stDD->drawMaskAllowedStuff & ~0x10000u;
-    v22 = v4;
-    v23 = gpst_DX_stDD->matrixStack.currElemNum;
-    gpst_DX_stDD->matrixStack.currElemNum = 0;
-    gpst_DX_stDD->matrixStack.actMatrixElem = gpst_DX_stDD->matrixStack.elems;
-    gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
-    gpst_DX_stDD->SetViewMatrix(gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender);
-    gpst_DX_stDD->currTargetGao = GFX_gpst_GO;
-    gpst_DX_stDD->extraMaterialToGeo = 0;
+    raster = &gpst_DX_stDD->rasters[45];
+    if (!raster->insideCounter)
+        raster->startTick = TIM_GetTicksAsInt32();
+    ++raster->insideCounter;
+    GFX_ppst_CurrentList = list;
+    savedFlags = gpst_DX_stDD->flags;
+    savedDrawMask = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
+    savedMatrixElem = gpst_DX_stDD->matrixStack.currElemNum;
+    GFX_SetRenderState();
     if ((uint8_t)zlistLock)
     {
         SOFT_ZList_Lock();
-        v5 = gpst_DX_stDD->flags | 4;
-        v6 = v5;
-        v7 = gpst_DX_stDD->flags & ~4u;
+        stateZList = gpst_DX_stDD->flags | 4;
+        stateSorted = stateZList;
+        stateDirect = gpst_DX_stDD->flags & ~4u;
     }
     else
     {
         gpst_DX_stDD->flags |= 8u;
-        v8 = gpst_DX_stDD->flags;
-        v6 = v8 | 0x200;
-        v5 = v8 | 4;
-        v7 = v8 & ~0x200u;
+        stateZList = gpst_DX_stDD->flags | 4;
+        stateSorted = gpst_DX_stDD->flags | 0x200;
+        stateDirect = gpst_DX_stDD->flags & ~0x200u;
     }
-    v19 = v5;
-    v20 = v7;
-    do
+    for (elem = *list; elem; elem = next)
     {
         ++gpst_DX_stDD->rasters[13].unk2;
-        v9 = v2->gfxFlags;
-        v10 = v2->prevGfxElem;
-        if (v9 < 0 && (v9 & 8) != 0)
+        flags = elem->gfxFlags;
+        next = elem->prevGfxElem;
+        if (flags < 0 && (flags & 8) != 0)
         {
-            GFX_gpst_Current = v2;
-            GFX_Del(a1, v2->id);
-            goto LABEL_50;
+            GFX_gpst_Current = elem;
+            GFX_Del(list, elem->id);
+            continue;
         }
-        v11 = v2->lifeTime - TIM_gf_dt;
-        v2->lifeTime = (float)v11;
-        if (v11 > 0.0 || GFX_i_SetDeath(a1, v2))
+        remaining = elem->lifeTime - TIM_gf_dt;
+        elem->lifeTime = (float)remaining;
+        if (remaining <= 0.0 && !GFX_i_SetDeath(list, elem))
+            continue;
+        flags = elem->gfxFlags;
+        if ((flags & 1) == 0 || flags < 0)
+            continue;
+        if (GFX_gpst_GO)
+            ((tGameObjectVisualObject*)(GFX_gpst_GO->basic->actorObjectOrVisualObject))->GROMAT = (tGroGeneric*)(elem->material);
+        renderFlags = elem->gfxFlags;
+        if ((renderFlags & 4) == 0)
+            gpst_DX_stDD->flags = stateDirect;
+        else if ((renderFlags & 2) != 0)
+            gpst_DX_stDD->flags = stateZList;
+        else
+            gpst_DX_stDD->flags = stateSorted;
+        GFX_gpst_Current = elem;
+        rendered = 1;
+        switch (elem->type)
         {
-            v12 = v2->gfxFlags;
-            if ((v12 & 1) != 0 && v12 >= 0)
-            {
-                if (GFX_gpst_GO)
-                    ((tGameObjectVisualObject*)(GFX_gpst_GO->basic->actorObjectOrVisualObject))->GROMAT = (tGroGeneric*)(v2->material);
-                v13 = v2->gfxFlags;
-                if ((v13 & 4) != 0)
-                {
-                    if ((v13 & 2) == 0)
-                    {
-                        gpst_DX_stDD->flags = v6;
-                    LABEL_23:
-                        GFX_gpst_Current = v2;
-                        switch (v2->type)
-                        {
-                        case 1:
-                            GFX_Line_Render((tGfxLineData*)v2->privateData);
-                            break;
-                        case 2:
-                            v15 = GFX_i_Lightning_Render((tGfxLightningData*)v2->privateData);
-                            goto LABEL_46;
-                        case 3:
-                            v15 = GFX_i_Desintegrate_Render((tGfxDesintegrateData*)v2->privateData);
-                            goto LABEL_46;
-                        case 4:
-                        case 5:
-                            GFX_Flare_Render((tGfxFlareData*)v2->privateData);
-                            break;
-                        case 6:
-                            v15 = GFX_i_Smoke_Render((tGfxSmokeData*)v2->privateData);
-                            goto LABEL_46;
-                        case 7:
-                            v15 = GFX_i_Table_Render((tGfxTableData*)v2->privateData);
-                            goto LABEL_46;
-                        case 8:
-                            v15 = GFX_i_Speed_Render((tGfxSpeedData*)v2->privateData);
-                            goto LABEL_46;
-                        case 9:
-                            v15 = GFX_i_Spark_Render((tGfxSparkData*)v2->privateData);
-                            goto LABEL_46;
-                        case 10:
-                            v15 = GFX_i_Water2_Render((tGfxWater2Data*)v2->privateData);
-                            goto LABEL_46;
-                        case 11:
-                            v15 = GFX_i_Fade_Render((tGfxFadeData*)v2->privateData);
-                            goto LABEL_46;
-                        case 12:
-                            v15 = GFX_i_Profiler_Render((tGfxProfilerData*)v2->privateData);
-                            goto LABEL_46;
-                        case 13:
-                            if (!GFX_i_Explode_Render((tGfxExplodeData*)v2->privateData, v2->material))
-                                v2->gfxFlags |= 0x80u;
-                            GFX_SetRenderStateForExplode();
-                            break;
-                        case 14:
-                            v15 = GFX_i_BorderFade_Render((tGfxBorderFadeData*)v2->privateData);
-                            goto LABEL_46;
-                        case 15:
-                            v15 = GFX_i_Diaphragm_Render((tGfxDiaphragmData*)v2->privateData);
-                            goto LABEL_46;
-                        case 16:
-                            v15 = GFX_i_Carte_Render((tGfxCarteData*)v2->privateData, v2->material, v2->aiGameObject);
-                            goto LABEL_46;
-                        case 17:
-                            draw_game_object_in_GFX_sub_45DBB0((tGfxGaoData*)v2->privateData);
-                            gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
-                            gpst_DX_stDD->SetViewMatrix(gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender);
-                            break;
-                        case 18:
-                            GFX_Sun_Render((tGfxSunData*)v2->privateData);
-                            break;
-                        case 19:
-                            v15 = GFX_i_Str_Render((tGfxStrData*)v2->privateData);
-                            goto LABEL_46;
-                        case 20:
-                            v15 = GFX_i_Ripple_Render((tGfxRippleData*)v2->privateData);
-                            goto LABEL_46;
-                        case 21:
-                            v15 = GFX_i_AnotherFlare_Render((tGfxAnotherFlareData*)v2->privateData);
-                        LABEL_46:
-                            if (!v15)
-                                v2->gfxFlags |= 0x80u;
-                            break;
-                        case 22:
-                            //nullsub_32();                   // GFX_Tetris_Render
-                            break;
-                        default:
-                            break;
-                        }
-                        ++gpst_DX_stDD->rasters[14].unk2;
-                        goto LABEL_50;
-                    }
-                    v14 = v19;
-                }
-                else
-                {
-                    v14 = v20;
-                }
-                gpst_DX_stDD->flags = v14;
-                goto LABEL_23;
-            }
+        case 1:
+            GFX_Line_Render((tGfxLineData*)elem->privateData);
+            break;
+        case 2:
+            rendered = GFX_i_Lightning_Render((tGfxLightningData*)elem->privateData);
+            break;
+        case 3:
+            rendered = GFX_i_Desintegrate_Render((tGfxDesintegrateData*)elem->privateData);
+            break;
+        case 4:
+        case 5:
+            GFX_Flare_Render((tGfxFlareData*)elem->privateData);
+            break;
+        case 6:
+            rendered = GFX_i_Smoke_Render((tGfxSmokeData*)elem->privateData);
+            break;
+        case 7:
+            rendered = GFX_i_Table_Render((tGfxTableData*)elem->privateData);
+            break;
+        case 8:
+            rendered = GFX_i_Speed_Render((tGfxSpeedData*)elem->privateData);
+            break;
+        case 9:
+            rendered = GFX_i_Spark_Render((tGfxSparkData*)elem->privateData);
+            break;
+        case 10:
+            rendered = GFX_i_Water2_Render((tGfxWater2Data*)elem->privateData);
+            break;
+        case 11:
+            rendered = GFX_i_Fade_Render((tGfxFadeData*)elem->privateData);
+            break;
+        case 12:
+            rendered = GFX_i_Profiler_Render((tGfxProfilerData*)elem->privateData);
+            break;
+        case 13:
+            if (!GFX_i_Explode_Render((tGfxExplodeData*)elem->privateData, elem->material))
+                elem->gfxFlags |= 0x80u;
+            GFX_SetRenderStateForExplode();
+            break;
+        case 14:
+            rendered = GFX_i_BorderFade_Render((tGfxBorderFadeData*)elem->privateData);
+            break;
+        case 15:
+            rendered = GFX_i_Diaphragm_Render((tGfxDiaphragmData*)elem->privateData);
+            break;
+        case 16:
+            rendered = GFX_i_Carte_Render((tGfxCarteData*)elem->privateData, elem->material, elem->aiGameObject);
+            break;
+        case 17:
+            draw_game_object_in_GFX_sub_45DBB0((tGfxGaoData*)elem->privateData);
+            gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
+            gpst_DX_stDD->SetViewMatrix(gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender);
+            break;
+        case 18:
+            GFX_Sun_Render((tGfxSunData*)elem->privateData);
+            break;
+        case 19:
+            rendered = GFX_i_Str_Render((tGfxStrData*)elem->privateData);
+            break;
+        case 20:
+            rendered = GFX_i_Ripple_Render((tGfxRippleData*)elem->privateData);
+            break;
+        case 21:
+            rendered = GFX_i_AnotherFlare_Render((tGfxAnotherFlareData*)elem->privateData);
+            break;
+        case 22:
+            //nullsub_32();                   // GFX_Tetris_Render
+            break;
+        default:
+            break;
         }
-    LABEL_50:
-        v2 = v10;
-    } while (v10);
-    gpst_DX_stDD->drawMaskAllowedStuffCurrent = v21;
-    gpst_DX_stDD->flags = v22;
-    gpst_DX_stDD->matrixStack.currElemNum = v23;
-    gpst_DX_stDD->matrixStack.actMatrixElem = &gpst_DX_stDD->matrixStack.elems[v23];
+        if (!rendered)
+            elem->gfxFlags |= 0x80u;
+        ++gpst_DX_stDD->rasters[14].unk2;
+    }
+    gpst_DX_stDD->drawMaskAllowedStuffCurrent = savedDrawMask;
+    gpst_DX_stDD->flags = savedFlags;
+    gpst_DX_stDD->matrixStack.currElemNum = savedMatrixElem;
+    gpst_DX_stDD->matrixStack.actMatrixElem = &gpst_DX_stDD->matrixStack.elems[savedMatrixElem];
     gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender = gpst_DX_stDD->matrixStack.actMatrixElem;
     gpst_DX_stDD->SetViewMatrix(gpst_DX_stDD->ct.cam.viewMtxPtr_setInGRORender);
     if ((uint8_t)zlistLock)
         SOFT_ZList_Unlock();
     PRO_QPC_RecordTimeDecRef(7);
-    v16 = &gpst_DX_stDD->rasters[45];
-    v17 = gpst_DX_stDD->rasters[45].insideCounter;
-    if (v17)
+    raster = &gpst_DX_stDD->rasters[45];
+    inside = gpst_DX_stDD->rasters[45].insideCounter;
+    if (inside)
     {
-        v18 = v17 - 1;
-        gpst_DX_stDD->rasters[45].insideCounter = v18;
-        if (!v18)
-            v16->sumTime += TIM_GetTicksAsInt32() - v16->startTick;
+        gpst_DX_stDD->rasters[45].insideCounter = inside - 1;
+        if (inside - 1 == 0)
+            raster->sumTime += TIM_GetTicksAsInt32() - raster->startTick;
     }
 }
 
@@ -829,747 +772,674 @@ void* GFX_Tetris_Dummy_Create() {
     return NULL;
 }
 
+
 int GFX_i_Add(tGfxElem** gfxList, char type, struct sGameObjectMain* aiGao)
 {
-    uint8_t v3;
-    void* v4;
-    void* v5;
-    int result;
+    uint8_t initialFlags;
+    void* privateData;
     tGfxElem* newGfxElem;
-    int16_t v8;
+    int16_t id;
 
     if (!GFX_gpst_GO)
         GFX_NeedGeom(4u, 4u, 2u, 1);
-    v3 = 0;
+    initialFlags = 0;
     switch (type)
     {
     case 1:
-        v4 = GFX_Line_Create();
-        goto LABEL_27;
+        privateData = GFX_Line_Create();
+        break;
     case 2:
-        v4 = GFX_Lightning_Create();
-        goto LABEL_27;
+        privateData = GFX_Lightning_Create();
+        break;
     case 3:
-        v4 = GFX_Desintegrate_Create(aiGao);
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Desintegrate_Create(aiGao);
+        initialFlags = 8;
+        break;
     case 4:
-        v4 = GFX_Flare_Create(0);
-        goto LABEL_27;
+        privateData = GFX_Flare_Create(0);
+        break;
     case 5:
-        v4 = GFX_Flare_Create(1);
-        goto LABEL_27;
+        privateData = GFX_Flare_Create(1);
+        break;
     case 6:
-        v4 = GFX_Smoke_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Smoke_Create();
+        initialFlags = 8;
+        break;
     case 7:
-        v4 = GFX_Table_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Table_Create();
+        initialFlags = 8;
+        break;
     case 8:
-        v4 = GFX_Speed_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Speed_Create();
+        initialFlags = 8;
+        break;
     case 9:
-        v4 = GFX_Spark_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Spark_Create();
+        initialFlags = 8;
+        break;
     case 10:
-        v4 = GFX_Water2_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Water2_Create();
+        initialFlags = 8;
+        break;
     case 11:
-        v4 = GFX_Fade_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Fade_Create();
+        initialFlags = 8;
+        break;
     case 12:                                    // watertrace??
-        v4 = GFX_Profiler_Create();
-        goto LABEL_27;
+        privateData = GFX_Profiler_Create();
+        break;
     case 13:                                    // flames is
-        v4 = GFX_Explode_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Explode_Create();
+        initialFlags = 8;
+        break;
     case 14:
-        v4 = GFX_BorderFade_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_BorderFade_Create();
+        initialFlags = 8;
+        break;
     case 15:
-        v4 = GFX_Diaphragm_Create();
-        v3 = 8;
-        goto LABEL_27;
+        privateData = GFX_Diaphragm_Create();
+        initialFlags = 8;
+        break;
     case 16:
-        v4 = GFX_Carte_Create();
-        goto LABEL_27;
+        privateData = GFX_Carte_Create();
+        break;
     case 17:
-        v4 = GFX_Gao_Create(aiGao);
-        goto LABEL_26;
+        privateData = GFX_Gao_Create(aiGao);
+        initialFlags = 1;
+        break;
     case 18:                                    // flash
-        v4 = GFX_Sun_Create();
-        goto LABEL_26;
+        privateData = GFX_Sun_Create();
+        initialFlags = 1;
+        break;
     case 19:
-        v4 = GFX_Str_Create(aiGao);
-        v3 = 9;
-        goto LABEL_27;
+        privateData = GFX_Str_Create(aiGao);
+        initialFlags = 9;
+        break;
     case 20:
-        v4 = GFX_Ripple_Create(aiGao);
-        v3 = 13;
-        goto LABEL_27;
+        privateData = GFX_Ripple_Create(aiGao);
+        initialFlags = 13;
+        break;
     case 21:                                    // halo
-        v4 = GFX_AnotherFlare_Create(aiGao);
-        v3 = 13;
-        goto LABEL_27;
+        privateData = GFX_AnotherFlare_Create(aiGao);
+        initialFlags = 13;
+        break;
     case 22:
-        v4 = GFX_Tetris_Dummy_Create();
-    LABEL_26:
-        v3 = 1;
-    LABEL_27:
-        v5 = v4;
-        if (!v4)
-            goto LABEL_28;
-        if (GFX_sguw_Id < 1024u)
-            GFX_sguw_Id = 1024;
-        newGfxElem = (tGfxElem*)MEM_p_Alloc(sizeof(tGfxElem));
-        newGfxElem->prevGfxElem = *gfxList;
-        v8 = GFX_sguw_Id;
-        newGfxElem->gfxFlags = v3;
-        newGfxElem->privateData = v5;
-        newGfxElem->aiGameObject = aiGao;
-        newGfxElem->id = v8;
-        newGfxElem->type = type;
-        newGfxElem->material = 0;
-        newGfxElem->lifeTime = 3.402822e38f; // TODO FIXME? float.max?
-        GFX_gpst_Current = newGfxElem;
-        *gfxList = newGfxElem;
-        result = (uint16_t)newGfxElem->id;
-        GFX_sguw_Id = v8 + 1;
+        privateData = GFX_Tetris_Dummy_Create();
+        initialFlags = 1;
         break;
     default:
-    LABEL_28:
-        result = -1;
-        break;
+        return -1;
     }
-    return result;
+    if (!privateData)
+        return -1;
+    if (GFX_sguw_Id < 1024u)
+        GFX_sguw_Id = 1024;
+    newGfxElem = (tGfxElem*)MEM_p_Alloc(sizeof(tGfxElem));
+    newGfxElem->prevGfxElem = *gfxList;
+    id = GFX_sguw_Id;
+    newGfxElem->gfxFlags = initialFlags;
+    newGfxElem->privateData = privateData;
+    newGfxElem->aiGameObject = aiGao;
+    newGfxElem->id = id;
+    newGfxElem->type = type;
+    newGfxElem->material = 0;
+    newGfxElem->lifeTime = 3.402822e38f; // TODO FIXME? float.max?
+    GFX_gpst_Current = newGfxElem;
+    *gfxList = newGfxElem;
+    GFX_sguw_Id = id + 1;
+    return (uint16_t)newGfxElem->id;
 }
 
-int GFX_i_AddSorted(tGfxElem** a1, char type, uint16_t idx, struct sGameObjectMain* a4)
+
+int GFX_i_AddSorted(tGfxElem** gfxList, char type, uint16_t idx, struct sGameObjectMain* aiGao)
 {
-    int result;
-    tGfxElem* v5;
-    uint16_t v6;
-    uint8_t v7;
-    void* v8;
-    void* v9;
-    tGfxElem* v10;
-    tGfxElem* i;
+    tGfxElem* below;
+    tGfxElem* above;
+    uint16_t elemId;
+    uint8_t initialFlags;
+    void* privateData;
+    tGfxElem* newGfxElem;
 
     if (!GFX_gpst_GO)
         GFX_NeedGeom(4u, 4u, 2u, 1);
     if (idx >= 1024u)
         return -1;
-    v5 = *a1;
-    for (i = 0; v5; v5 = v5->prevGfxElem)
+    above = 0;
+    for (below = *gfxList; below; below = below->prevGfxElem)
     {
-        v6 = v5->id;
-        if (v6 < idx)
+        elemId = below->id;
+        if (elemId < idx)
             break;
-        if (v6 == idx)
+        if (elemId == idx)
             return -1;
-        i = v5;
+        above = below;
     }
-    v7 = 0;
+    initialFlags = 0;
     switch (type)
     {
     case 1:
-        v8 = GFX_Line_Create();
-        goto LABEL_34;
+        privateData = GFX_Line_Create();
+        break;
     case 2:
-        v8 = GFX_Lightning_Create();
-        goto LABEL_34;
+        privateData = GFX_Lightning_Create();
+        break;
     case 3:
-        v8 = GFX_Desintegrate_Create(a4);
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Desintegrate_Create(aiGao);
+        initialFlags = 8;
+        break;
     case 4:
-        v8 = GFX_Flare_Create(0);
-        goto LABEL_34;
+        privateData = GFX_Flare_Create(0);
+        break;
     case 5:
-        v8 = GFX_Flare_Create(1);
-        goto LABEL_34;
+        privateData = GFX_Flare_Create(1);
+        break;
     case 6:
-        v8 = GFX_Smoke_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Smoke_Create();
+        initialFlags = 8;
+        break;
     case 7:
-        v8 = GFX_Table_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Table_Create();
+        initialFlags = 8;
+        break;
     case 8:
-        v8 = GFX_Speed_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Speed_Create();
+        initialFlags = 8;
+        break;
     case 9:
-        v8 = GFX_Spark_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Spark_Create();
+        initialFlags = 8;
+        break;
     case 10:
-        v8 = GFX_Water2_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Water2_Create();
+        initialFlags = 8;
+        break;
     case 11:
-        v8 = GFX_Fade_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Fade_Create();
+        initialFlags = 8;
+        break;
     case 12:
-        v8 = GFX_Profiler_Create();
-        goto LABEL_34;
+        privateData = GFX_Profiler_Create();
+        break;
     case 13:
-        v8 = GFX_Explode_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Explode_Create();
+        initialFlags = 8;
+        break;
     case 14:
-        v8 = GFX_BorderFade_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_BorderFade_Create();
+        initialFlags = 8;
+        break;
     case 15:
-        v8 = GFX_Diaphragm_Create();
-        v7 = 8;
-        goto LABEL_34;
+        privateData = GFX_Diaphragm_Create();
+        initialFlags = 8;
+        break;
     case 16:
-        v8 = GFX_Carte_Create();
-        goto LABEL_34;
+        privateData = GFX_Carte_Create();
+        break;
     case 17:
-        v8 = GFX_Gao_Create(a4);
-        goto LABEL_33;
+        privateData = GFX_Gao_Create(aiGao);
+        initialFlags = 1;
+        break;
     case 18:
-        v8 = GFX_Sun_Create();
-        goto LABEL_33;
+        privateData = GFX_Sun_Create();
+        initialFlags = 1;
+        break;
     case 19:
-        v8 = GFX_Str_Create(a4);
-        v7 = 9;
-        goto LABEL_34;
+        privateData = GFX_Str_Create(aiGao);
+        initialFlags = 9;
+        break;
     case 20:
-        v8 = GFX_Ripple_Create(a4);
-        v7 = 13;
-        goto LABEL_34;
+        privateData = GFX_Ripple_Create(aiGao);
+        initialFlags = 13;
+        break;
     case 21:
-        v8 = GFX_AnotherFlare_Create(a4);
-        v7 = 13;
-        goto LABEL_34;
+        privateData = GFX_AnotherFlare_Create(aiGao);
+        initialFlags = 13;
+        break;
     case 22:
-        v8 = GFX_Tetris_Dummy_Create();
-    LABEL_33:
-        v7 = 1;
-    LABEL_34:
-        v9 = v8;
-        if (!v8)
-            return -1;
-        v10 = (tGfxElem*)MEM_p_Alloc(sizeof(tGfxElem));
-        v10->type = type;
-        v10->prevGfxElem = v5;
-        v10->gfxFlags = v7;
-        v10->privateData = v9;
-        v10->aiGameObject = a4;
-        v10->material = 0;
-        v10->id = idx;
-        v10->lifeTime = 3.402822e38f; // TODO FIXME: float.max?
-        GFX_gpst_Current = v10;
-        if (i)
-            i->prevGfxElem = v10;
-        else
-            *a1 = v10;
-        result = idx;
+        privateData = GFX_Tetris_Dummy_Create();
+        initialFlags = 1;
         break;
     default:
         return -1;
     }
-    return result;
+    if (!privateData)
+        return -1;
+    newGfxElem = (tGfxElem*)MEM_p_Alloc(sizeof(tGfxElem));
+    newGfxElem->type = type;
+    newGfxElem->prevGfxElem = below;
+    newGfxElem->gfxFlags = initialFlags;
+    newGfxElem->privateData = privateData;
+    newGfxElem->aiGameObject = aiGao;
+    newGfxElem->material = 0;
+    newGfxElem->id = idx;
+    newGfxElem->lifeTime = 3.402822e38f; // TODO FIXME: float.max?
+    GFX_gpst_Current = newGfxElem;
+    if (above)
+        above->prevGfxElem = newGfxElem;
+    else
+        *gfxList = newGfxElem;
+    return idx;
 }
 
-Vec3* GFX_pst_Getv(tGfxElem* a1, int16_t a2, int a3)
-{
-    int v3;
-    int v4;
-    int16_t v5;
-    Vec3* result;
 
-    GFX_SetCurrent(a1, a2);
-    if (!GFX_gpst_Current
-        || (v3 = GFX_gpst_Current->type, v4 = ga_Paramv_First[v3], a3 < v4)
-        || a3 >= v4 + ga_Paramv_Number[v3]
-        || (v5 = gaa_Paramv_Offset[a3 + 20 * v3 - v4], (v5 & 0x4000) != 0))
-    {
-        result = NULL;
-    }
-    else
-    {
-        result = (Vec3*)((char*)GFX_gpst_Current->privateData + v5);
-    }
-    return result;
+Vec3* GFX_pst_Getv(tGfxElem* list, int16_t id, int param)
+{
+    int type;
+    int first;
+    int16_t offset;
+
+    GFX_SetCurrent(list, id);
+    if (!GFX_gpst_Current)
+        return NULL;
+    type = GFX_gpst_Current->type;
+    first = ga_Paramv_First[type];
+    if (param < first || param >= first + ga_Paramv_Number[type])
+        return NULL;
+    offset = gaa_Paramv_Offset[param + 20 * type - first];
+    if ((offset & 0x4000) != 0)
+        return NULL;
+    return (Vec3*)((char*)GFX_gpst_Current->privateData + offset);
 }
 
-float GFX_f_Getf(tGfxElem* a1, int16_t id, int a3)
-{
-    int v3;
-    int v4;
-    int16_t v5;
-    float result;
 
-    GFX_SetCurrent(a1, id);
-    if (!GFX_gpst_Current
-        || (v3 = GFX_gpst_Current->type, v4 = ga_Paramf_First[v3], a3 < v4)
-        || a3 >= v4 + ga_Paramf_Number[v3]
-        || (v5 = gaa_Paramf_Offset[a3 + 21 * v3 - v4], (v5 & 0x4000) != 0))
-    {
-        result = 0.0;
-    }
-    else
-    {
-        result = *(float*)((char*)GFX_gpst_Current->privateData + v5);
-    }
-    return result;
+float GFX_f_Getf(tGfxElem* list, int16_t id, int param)
+{
+    int type;
+    int first;
+    int16_t offset;
+
+    GFX_SetCurrent(list, id);
+    if (!GFX_gpst_Current)
+        return 0.0;
+    type = GFX_gpst_Current->type;
+    first = ga_Paramf_First[type];
+    if (param < first || param >= first + ga_Paramf_Number[type])
+        return 0.0;
+    offset = gaa_Paramf_Offset[param + 21 * type - first];
+    if ((offset & 0x4000) != 0)
+        return 0.0;
+    return *(float*)((char*)GFX_gpst_Current->privateData + offset);
 }
 
 // TOOD FIXME ezek biztos hogy signedek?
-int GFX_i_Geti(tGfxElem* a1, int16_t a2, int a3)
-{
-    int v4;
-    int v5;
-    int16_t v6;
 
-    GFX_SetCurrent(a1, a2);
+int GFX_i_Geti(tGfxElem* list, int16_t id, int param)
+{
+    int type;
+    int first;
+    int16_t offset;
+
+    GFX_SetCurrent(list, id);
     if (!GFX_gpst_Current)
         return 0;
-    v4 = GFX_gpst_Current->type;
-    v5 = ga_Parami_First[v4];
-    if (a3 < v5 || a3 >= v5 + ga_Parami_Number[v4])
+    type = GFX_gpst_Current->type;
+    first = ga_Parami_First[type];
+    if (param < first || param >= first + ga_Parami_Number[type])
         return 0;
-    v6 = gaa_Parami_Offset[a3 + 20 * v4 - v5];
-    if ((v6 & 0x4000) != 0)
+    offset = gaa_Parami_Offset[param + 20 * type - first];
+    if ((offset & 0x4000) != 0)
     {
         if (GFX_gpst_Current->type == 13)
-            return GFX_i_Explode_Geti((tGfxExplodeData*)GFX_gpst_Current->privateData, a3);
+            return GFX_i_Explode_Geti((tGfxExplodeData*)GFX_gpst_Current->privateData, param);
         return 0;
     }
-    if ((v6 & 0x1000) != 0)
-        return *((int8_t*)GFX_gpst_Current->privateData + (v6 & 0xFFF));
-    if ((v6 & 0x2000) != 0)
-        return *(int16_t*)((char*)GFX_gpst_Current->privateData + (v6 & 0xFFF));
-    return *(int32_t*)((char*)GFX_gpst_Current->privateData + v6);
+    if ((offset & 0x1000) != 0)
+        return *((int8_t*)GFX_gpst_Current->privateData + (offset & 0xFFF));
+    if ((offset & 0x2000) != 0)
+        return *(int16_t*)((char*)GFX_gpst_Current->privateData + (offset & 0xFFF));
+    return *(int32_t*)((char*)GFX_gpst_Current->privateData + offset);
 }
 
-void GFX_Seti(tGfxElem* a1, int16_t id, int a3, int a4)
-{
-    int8_t v4;
-    int v5;
-    int v6;
-    int16_t v7;
-    char* v8;
 
-    GFX_SetCurrent(a1, id);
-    if (GFX_gpst_Current)
+void GFX_Seti(tGfxElem* list, int16_t id, int param, int value)
+{
+    int type;
+    int first;
+    int16_t offset;
+    char* data;
+
+    GFX_SetCurrent(list, id);
+    if (!GFX_gpst_Current)
+        return;
+    type = GFX_gpst_Current->type;
+    first = ga_Parami_First[type];
+    if (param < first || param >= first + ga_Parami_Number[type])
+        return;
+    offset = gaa_Parami_Offset[param + 20 * type - first];
+    if ((offset & 0x4000) != 0)
     {
-        v4 = GFX_gpst_Current->type;
-        v5 = GFX_gpst_Current->type;
-        v6 = ga_Parami_First[v5];
-        if (a3 >= v6 && a3 < v6 + ga_Parami_Number[v5])
+        switch (type)
         {
-            v7 = gaa_Parami_Offset[a3 + 20 * v5 - v6];
-            if ((v7 & 0x4000) != 0)
-            {
-                switch (v4)
-                {
-                case 6:
-                    GFX_Smoke_Seti((tGfxSmokeData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                case 10:
-                    GFX_Water2_Seti((tGfxWater2Data*)GFX_gpst_Current->privateData, a3, v7 & ~0x4000u, a4);
-                    break;
-                case 12:
-                    GFX_Profiler_Seti((tGfxProfilerData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                case 13:
-                    GFX_Explode_Seti((tGfxExplodeData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                case 18:
-                    GFX_Sun_Seti((tGfxSunData*)GFX_gpst_Current->privateData, a3);
-                    break;
-                case 16:
-                    GFX_Carte_Seti((tGfxCarteData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                case 19:
-                    GFX_Str_Seti((tGfxStrData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                case 20:
-                    GFX_Ripple_Seti((tGfxRippleData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                }
-            }
-            else if ((v7 & 0x1000) != 0)
-            {
-                *((int8_t*)GFX_gpst_Current->privateData + (v7 & 0xFFF)) = a4;
-            }
-            else
-            {
-                v8 = (char*)GFX_gpst_Current->privateData;
-                if ((v7 & 0x2000) != 0)
-                    *(int16_t*)&v8[v7 & 0xFFF] = a4;
-                else
-                    *(int32_t*)&v8[v7] = a4;
-            }
+        case 6:
+            GFX_Smoke_Seti((tGfxSmokeData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 10:
+            GFX_Water2_Seti((tGfxWater2Data*)GFX_gpst_Current->privateData, param, offset & ~0x4000u, value);
+            break;
+        case 12:
+            GFX_Profiler_Seti((tGfxProfilerData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 13:
+            GFX_Explode_Seti((tGfxExplodeData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 16:
+            GFX_Carte_Seti((tGfxCarteData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 18:
+            GFX_Sun_Seti((tGfxSunData*)GFX_gpst_Current->privateData, param);
+            break;
+        case 19:
+            GFX_Str_Seti((tGfxStrData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 20:
+            GFX_Ripple_Seti((tGfxRippleData*)GFX_gpst_Current->privateData, param, value);
+            break;
         }
+    }
+    else if ((offset & 0x1000) != 0)
+    {
+        *((int8_t*)GFX_gpst_Current->privateData + (offset & 0xFFF)) = value;
+    }
+    else
+    {
+        data = (char*)GFX_gpst_Current->privateData;
+        if ((offset & 0x2000) != 0)
+            *(int16_t*)&data[offset & 0xFFF] = value;
+        else
+            *(int32_t*)&data[offset] = value;
     }
 }
 
-void GFX_Setf(tGfxElem* a1, int id, int a2, float a3)
-{
-    int8_t v4;
-    int v5;
-    int v6;
-    int16_t v7;
 
-    GFX_SetCurrent(a1, id);
-    if (GFX_gpst_Current)
+void GFX_Setf(tGfxElem* list, int id, int param, float value)
+{
+    int type;
+    int first;
+    int16_t offset;
+
+    GFX_SetCurrent(list, id);
+    if (!GFX_gpst_Current)
+        return;
+    type = GFX_gpst_Current->type;
+    first = ga_Paramf_First[type];
+    if (param < first || param >= first + ga_Paramf_Number[type])
+        return;
+    offset = gaa_Paramf_Offset[param + 21 * type - first];
+    if ((offset & 0x4000) != 0)
     {
-        v4 = GFX_gpst_Current->type;
-        v5 = GFX_gpst_Current->type;
-        v6 = ga_Paramf_First[v5];
-        if (a2 >= v6 && a2 < v6 + ga_Paramf_Number[v5])
+        switch (type)
         {
-            v7 = gaa_Paramf_Offset[a2 + 21 * v5 - v6];
-            if ((v7 & 0x4000) != 0)
-            {
-                switch (v4)
-                {
-                case 10:
-                    GFX_Water2_Setf((tGfxWater2Data*)GFX_gpst_Current->privateData, a2, v7 & ~0x4000, a3);
-                    break;
-                case 12:
-                    GFX_Profiler_Setf((tGfxProfilerData*)GFX_gpst_Current->privateData, a2, a3);
-                    break;
-                case 13:
-                    GFX_Explode_Setf((tGfxExplodeData*)GFX_gpst_Current->privateData, a2, a3);
-                    break;
-                case 20:
-                    GFX_Ripple_Setf((tGfxRippleData*)GFX_gpst_Current->privateData, a2, a3);
-                    break;
-                }
-            }
-            else
-            {
-                *(float*)((char*)GFX_gpst_Current->privateData + v7) = a3;
-            }
+        case 10:
+            GFX_Water2_Setf((tGfxWater2Data*)GFX_gpst_Current->privateData, param, offset & ~0x4000, value);
+            break;
+        case 12:
+            GFX_Profiler_Setf((tGfxProfilerData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 13:
+            GFX_Explode_Setf((tGfxExplodeData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 20:
+            GFX_Ripple_Setf((tGfxRippleData*)GFX_gpst_Current->privateData, param, value);
+            break;
         }
+    }
+    else
+    {
+        *(float*)((char*)GFX_gpst_Current->privateData + offset) = value;
     }
 }
 
-void GFX_Setv(tGfxElem* a1, int16_t a2, int a3, Vec3* a4)
-{
-    int8_t v4;
-    int v5;
-    int v6;
-    int16_t v7;
 
-    GFX_SetCurrent(a1, a2);
-    if (GFX_gpst_Current)
+void GFX_Setv(tGfxElem* list, int16_t id, int param, Vec3* value)
+{
+    int type;
+    int first;
+    int16_t offset;
+
+    GFX_SetCurrent(list, id);
+    if (!GFX_gpst_Current)
+        return;
+    type = GFX_gpst_Current->type;
+    first = ga_Paramv_First[type];
+    if (param < first || param >= first + ga_Paramv_Number[type])
+        return;
+    offset = gaa_Paramv_Offset[param + 20 * type - first];
+    if ((offset & 0x4000) != 0)
     {
-        v4 = GFX_gpst_Current->type;
-        v5 = GFX_gpst_Current->type;
-        v6 = ga_Paramv_First[v5];
-        if (a3 >= v6 && a3 < v6 + ga_Paramv_Number[v5])
+        switch (type)
         {
-            v7 = gaa_Paramv_Offset[a3 + 20 * v5 - v6];
-            if ((v7 & 0x4000) != 0)
-            {
-                switch (v4)
-                {
-                case 10:
-                    GFX_Water2_Setv((tGfxWater2Data*)GFX_gpst_Current->privateData, a3, v7 & ~0x4000u, a4);
-                    break;
-                case 12:
-                    GFX_Profiler_Setv((tGfxProfilerData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                case 13:
-                    GFX_Explode_Setv((tGfxExplodeData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                case 7:
-                    GFX_Table_Setv((tGfxTableData*)GFX_gpst_Current->privateData, a3, a4);
-                    break;
-                }
-            }
-            else
-            {
-                *(Vec3*)((char*)GFX_gpst_Current->privateData + v7) = *a4;
-            }
+        case 7:
+            GFX_Table_Setv((tGfxTableData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 10:
+            GFX_Water2_Setv((tGfxWater2Data*)GFX_gpst_Current->privateData, param, offset & ~0x4000u, value);
+            break;
+        case 12:
+            GFX_Profiler_Setv((tGfxProfilerData*)GFX_gpst_Current->privateData, param, value);
+            break;
+        case 13:
+            GFX_Explode_Setv((tGfxExplodeData*)GFX_gpst_Current->privateData, param, value);
+            break;
         }
+    }
+    else
+    {
+        *(Vec3*)((char*)GFX_gpst_Current->privateData + offset) = *value;
     }
 }
 
-void GFX_CreateExplosion(float a1, float a2, Vec3* a3, struct sGameObjectMain* aiGao, struct sGEOMAT* a5)
-{
-    tGfxElem** v6;
-    int v7;
-    double v8;
-    double v9;
-    int v10;
-    int v11;
-    int v12;
-    float a3a;
-    float a3b;
-    float a3c;
-    float a3d;
-    float a3e;
-    float a3f;
-    float a3g;
-    float a3h;
-    float a3i;
-    float a3j;
-    float a3k;
-    float a3l;
-    float a3m;
-    float a3n;
-    float a3o;
-    float a3p;
-    float a3q;
-    float a3r;
-    float a3s;
-    float a3t;
-    float a3u;
-    float a3v;
-    float a3w;
-    float a3x;
-    float a3y;
-    float a3z;
-    float a3ba;
-    float a3bb;
-    float v41;
-    float v42;
-    float v43;
-    float v44;
-    float v45;
-    float v46;
-    float v47;
-    float v48;
-    float v49;
-    float v50;
-    float v51;
-    Vec3 v52;
-    float a4;
-    float a4b;
 
-    v41 = (float)(1.0 / a2);
-    a3->z = (float)(a3->z + 0.1);
-    v6 = &WOR_gpst_CurrentWorld->gfxCurrentList;
-    v7 = GFX_i_Add(&WOR_gpst_CurrentWorld->gfxCurrentList, 13, aiGao);
-    GFX_SetMaterial(*v6, v7, a5);
-    GFX_Seti(*v6, v7, 13100, 10);
-    GFX_Seti(*v6, v7, 13106, 10);
-    GFX_Seti(*v6, v7, 13101, 1);
-    GFX_Seti(*v6, v7, 13103, 0);
-    GFX_Seti(*v6, v7, 13104, 0xFFFFFF);
-    GFX_Seti(*v6, v7, 13105, 0);
-    v8 = v41 * a1;
-    a4 = (float)v8;
-    a3a = (float)(v8 * 0.80000001);
-    GFX_Setf(*v6, v7, 13000, a3a);
-    a3b = (float)(a4 * 0.89999998);
-    GFX_Setf(*v6, v7, 13001, a3b);
-    v42 = (float)(v41 * 0.1);
-    GFX_Setf(*v6, v7, 13002, v42);
-    v44 = (float)(a2 * 0.029999999);
-    GFX_Setf(*v6, v7, 13003, v44);
-    GFX_Setf(*v6, v7, 13004, v44);
-    v45 = (float)(a1 * 0.039999999);
-    GFX_Setf(*v6, v7, 13005, v45);
-    GFX_Setf(*v6, v7, 13006, v45);
-    v9 = v41 * v41;
-    v43 = (float)v9;
-    a3c = (float)(v9 * 0.15000001);
-    GFX_Setf(*v6, v7, 13007, a3c);
-    a3d = (float)(a2 * 0.000049999999);
-    GFX_Setf(*v6, v7, 13008, a3d);
-    v46 = (float)(a4 * 0.5);
-    GFX_Setf(*v6, v7, 13009, v46);
-    v50 = (float)(a4 * 0.60000002);
-    GFX_Setf(*v6, v7, 13010, v50);
-    a3e = (float)(a3->z - 0.1);
-    GFX_Setf(*v6, v7, 13011, a3e);
-    GFX_Setv(*v6, v7, 13200, a3);
-    v52.x = 1.0;
-    v52.y = 1.0;
-    v52.z = 1.0;
-    GFX_Setv(*v6, v7, 13201, &v52);
-    v52.x = -1.0;
-    v52.y = -1.0;
-    v52.z = 0.0;
-    GFX_Setv(*v6, v7, 13202, &v52);
-    v52.z = (float)(v41 * 0.5);
-    v52.x = v42;
-    v52.y = v42;
-    GFX_Setv(*v6, v7, 13203, &v52);
-    GFX_FlagSet(*v6, v7, 0, 1);
-    GFX_FlagSet(*v6, v7, 2, 1);
-    v10 = GFX_i_Add(v6, 13, aiGao);
-    GFX_SetMaterial(*v6, v10, a5);
-    GFX_Seti(*v6, v10, 13100, 80);
-    GFX_Seti(*v6, v10, 13106, 80);
-    GFX_Seti(*v6, v10, 13101, 2);
-    GFX_Seti(*v6, v10, 13103, -1);
-    GFX_Seti(*v6, v10, 13104, -1);
-    GFX_Seti(*v6, v10, 13105, 0);
-    v47 = (float)(a4 * 0.0);
-    GFX_Setf(*v6, v10, 13000, v47);
-    GFX_Setf(*v6, v10, 13001, v47);
-    GFX_Setf(*v6, v10, 13002, v42);
-    v48 = a2 + a2;
-    GFX_Setf(*v6, v10, 13003, v48);
-    GFX_Setf(*v6, v10, 13004, v48);
-    a3f = (float)(a1 * 0.0020000001);
-    GFX_Setf(*v6, v10, 13005, a3f);
-    a3g = (float)(a1 * 0.0049999999);
-    GFX_Setf(*v6, v10, 13006, a3g);
-    a3h = (float)(v43 * -2.5);
-    GFX_Setf(*v6, v10, 13007, a3h);
-    a3i = (float)(a2 * 0.001);
-    GFX_Setf(*v6, v10, 13008, a3i);
-    v49 = (float)(a4 * 0.2);
-    GFX_Setf(*v6, v10, 13009, v49);
-    GFX_Setf(*v6, v10, 13010, v46);
-    a3j = (float)(a3->z - 0.5);
-    GFX_Setf(*v6, v10, 13011, a3j);
-    GFX_Setv(*v6, v10, 13200, a3);
-    v52.x = -1.0;
-    v52.y = -1.0;
-    v52.z = 0.0;
-    GFX_Setv(*v6, v10, 13201, &v52);
-    v52.x = 1.0;
-    v52.y = 1.0;
-    v52.z = 2.0;
-    GFX_Setv(*v6, v10, 13202, &v52);
-    v52.x = (float)(v41 * 0.0099999998);
-    v52.y = v52.x;
-    v52.z = (float)(v41 * 0.000099999997);
-    GFX_Setv(*v6, v10, 13203, &v52);
-    GFX_FlagSet(*v6, v10, 0, 1);
-    GFX_FlagSet(*v6, v10, 2, 1);
-    v11 = GFX_i_Add(v6, 13, aiGao);
-    GFX_SetMaterial(*v6, v11, a5);
-    GFX_Seti(*v6, v11, 13100, 30);
-    GFX_Seti(*v6, v11, 13106, 30);
-    GFX_Seti(*v6, v11, 13101, 1);
-    GFX_Seti(*v6, v11, 13103, 0);
-    GFX_Seti(*v6, v11, 13104, 0xFF000000);
-    GFX_Seti(*v6, v11, 13105, 0);
-    a3k = (float)(a4 * 0.1);
-    GFX_Setf(*v6, v11, 13000, a3k);
-    a3l = (float)(a4 * 0.13);
-    GFX_Setf(*v6, v11, 13001, a3l);
-    a3m = (float)(v41 * 0.02);
-    GFX_Setf(*v6, v11, 13002, a3m);
-    a3n = (float)(a2 * 0.30000001);
-    GFX_Setf(*v6, v11, 13003, a3n);
-    a3o = (float)(a2 * 1.4);
-    GFX_Setf(*v6, v11, 13004, a3o);
-    a3p = (float)(a1 * 0.050000001);
-    GFX_Setf(*v6, v11, 13005, a3p);
-    a3q = (float)(a1 * 0.059999999);
-    GFX_Setf(*v6, v11, 13006, a3q);
-    a3r = (float)(v43 * 0.0049999999);
-    GFX_Setf(*v6, v11, 13007, a3r);
-    a3s = (float)(a2 * 0.0049999999);
-    GFX_Setf(*v6, v11, 13008, a3s);
-    GFX_Setv(*v6, v11, 13200, a3);
-    a3t = (float)(a4 * 0.30000001);
-    GFX_Setf(*v6, v11, 13009, a3t);
-    GFX_Setf(*v6, v11, 13010, v50);
-    v52.x = 1.0;
-    v52.y = 1.0;
-    v52.z = 0.0;
-    GFX_Setv(*v6, v11, 13201, &v52);
-    v52.x = -1.0;
-    v52.y = -1.0;
-    v52.z = 0.0;
-    GFX_Setv(*v6, v11, 13202, &v52);
-    v52.x = (float)(v41 * 0.050000001);
-    v51 = v52.x;
-    v52.y = v52.x;
-    v52.z = (float)(v41 * 0.0);
-    GFX_Setv(*v6, v11, 13203, &v52);
-    GFX_FlagSet(*v6, v11, 0, 1);
-    GFX_FlagSet(*v6, v11, 2, 1);
-    v12 = GFX_i_Add(v6, 13, aiGao);
-    GFX_SetMaterial(*v6, v12, a5);
-    GFX_Seti(*v6, v12, 13100, 50);
-    GFX_Seti(*v6, v12, 13106, 50);
-    GFX_Seti(*v6, v12, 13101, 0);
-    GFX_Seti(*v6, v12, 13103, 0xFFFFFF);
-    GFX_Seti(*v6, v12, 13104, 0xFF080808);
-    GFX_Seti(*v6, v12, 13105, 0);
-    a3u = (float)(a4 * 0.15000001);
-    GFX_Setf(*v6, v12, 13000, a3u);
-    GFX_Setf(*v6, v12, 13001, v49);
-    a4b = (float)(v41 * 0.029999999);
-    GFX_Setf(*v6, v12, 13002, a4b);
-    a3v = (float)(a2 * 1.2);
-    GFX_Setf(*v6, v12, 13003, a3v);
-    a3w = (float)(a2 * 2.2);
-    GFX_Setf(*v6, v12, 13004, a3w);
-    a3x = (float)(a1 * 0.02);
-    GFX_Setf(*v6, v12, 13005, a3x);
-    a3y = (float)(a1 * 0.022);
-    GFX_Setf(*v6, v12, 13006, a3y);
-    a3z = (float)(v43 * 0.02);
-    GFX_Setf(*v6, v12, 13007, a3z);
-    a3ba = (float)(a2 * 0.0040000002);
-    GFX_Setf(*v6, v12, 13008, a3ba);
-    GFX_Setv(*v6, v12, 13200, a3);
-    GFX_Setf(*v6, v12, 13009, v49);
-    GFX_Setf(*v6, v12, 13010, v46);
-    a3bb = v41 + v41;
-    GFX_Setf(*v6, v12, 13012, a3bb);
-    v52.x = 1.0;
-    v52.y = 1.0;
-    v52.z = (float)1.2;
-    GFX_Setv(*v6, v12, 13201, &v52);
-    v52.x = -1.0;
-    v52.y = -1.0;
-    v52.z = 0.0;
-    GFX_Setv(*v6, v12, 13202, &v52);
-    v52.x = v51;
-    v52.y = v51;
-    v52.z = a4b;
-    GFX_Setv(*v6, v12, 13203, &v52);
-    GFX_FlagSet(*v6, v12, 0, 1);
-    GFX_FlagSet(*v6, v12, 2, 1);
+void GFX_CreateExplosion(float size, float duration, Vec3* pos, struct sGameObjectMain* aiGao, struct sGEOMAT* material)
+{
+    tGfxElem** list;
+    int layer1;
+    int layer2;
+    int layer3;
+    int layer4;
+    double growD;
+    double gravityD;
+    float invDuration;
+    float grow;
+    float gravityBase;
+    float friction;
+    float frictionXY;
+    float frictionZ;
+    float phaseTime;
+    float phaseTime2;
+    float initialSize;
+    float growZero;
+    float normSpeed02;
+    float normSpeed05;
+    float normSpeed06;
+    Vec3 vec;
+
+    invDuration = (float)(1.0 / duration);
+    pos->z = (float)(pos->z + 0.1);
+    list = &WOR_gpst_CurrentWorld->gfxCurrentList;
+    layer1 = GFX_i_Add(&WOR_gpst_CurrentWorld->gfxCurrentList, 13, aiGao);
+    GFX_SetMaterial(*list, layer1, material);
+    GFX_Seti(*list, layer1, 13100, 10);
+    GFX_Seti(*list, layer1, 13106, 10);
+    GFX_Seti(*list, layer1, 13101, 1);
+    GFX_Seti(*list, layer1, 13103, 0);
+    GFX_Seti(*list, layer1, 13104, 0xFFFFFF);
+    GFX_Seti(*list, layer1, 13105, 0);
+    growD = invDuration * size;
+    grow = (float)growD;
+    GFX_Setf(*list, layer1, 13000, (float)(growD * 0.80000001));
+    GFX_Setf(*list, layer1, 13001, (float)(grow * 0.89999998));
+    friction = (float)(invDuration * 0.1);
+    GFX_Setf(*list, layer1, 13002, friction);
+    phaseTime = (float)(duration * 0.029999999);
+    GFX_Setf(*list, layer1, 13003, phaseTime);
+    GFX_Setf(*list, layer1, 13004, phaseTime);
+    initialSize = (float)(size * 0.039999999);
+    GFX_Setf(*list, layer1, 13005, initialSize);
+    GFX_Setf(*list, layer1, 13006, initialSize);
+    gravityD = invDuration * invDuration;
+    gravityBase = (float)gravityD;
+    GFX_Setf(*list, layer1, 13007, (float)(gravityD * 0.15000001));
+    GFX_Setf(*list, layer1, 13008, (float)(duration * 0.000049999999));
+    normSpeed05 = (float)(grow * 0.5);
+    GFX_Setf(*list, layer1, 13009, normSpeed05);
+    normSpeed06 = (float)(grow * 0.60000002);
+    GFX_Setf(*list, layer1, 13010, normSpeed06);
+    GFX_Setf(*list, layer1, 13011, (float)(pos->z - 0.1));
+    GFX_Setv(*list, layer1, 13200, pos);
+    vec.x = 1.0;
+    vec.y = 1.0;
+    vec.z = 1.0;
+    GFX_Setv(*list, layer1, 13201, &vec);
+    vec.x = -1.0;
+    vec.y = -1.0;
+    vec.z = 0.0;
+    GFX_Setv(*list, layer1, 13202, &vec);
+    vec.z = (float)(invDuration * 0.5);
+    vec.x = friction;
+    vec.y = friction;
+    GFX_Setv(*list, layer1, 13203, &vec);
+    GFX_FlagSet(*list, layer1, 0, 1);
+    GFX_FlagSet(*list, layer1, 2, 1);
+
+    layer2 = GFX_i_Add(list, 13, aiGao);
+    GFX_SetMaterial(*list, layer2, material);
+    GFX_Seti(*list, layer2, 13100, 80);
+    GFX_Seti(*list, layer2, 13106, 80);
+    GFX_Seti(*list, layer2, 13101, 2);
+    GFX_Seti(*list, layer2, 13103, -1);
+    GFX_Seti(*list, layer2, 13104, -1);
+    GFX_Seti(*list, layer2, 13105, 0);
+    growZero = (float)(grow * 0.0);
+    GFX_Setf(*list, layer2, 13000, growZero);
+    GFX_Setf(*list, layer2, 13001, growZero);
+    GFX_Setf(*list, layer2, 13002, friction);
+    phaseTime2 = duration + duration;
+    GFX_Setf(*list, layer2, 13003, phaseTime2);
+    GFX_Setf(*list, layer2, 13004, phaseTime2);
+    GFX_Setf(*list, layer2, 13005, (float)(size * 0.0020000001));
+    GFX_Setf(*list, layer2, 13006, (float)(size * 0.0049999999));
+    GFX_Setf(*list, layer2, 13007, (float)(gravityBase * -2.5));
+    GFX_Setf(*list, layer2, 13008, (float)(duration * 0.001));
+    normSpeed02 = (float)(grow * 0.2);
+    GFX_Setf(*list, layer2, 13009, normSpeed02);
+    GFX_Setf(*list, layer2, 13010, normSpeed05);
+    GFX_Setf(*list, layer2, 13011, (float)(pos->z - 0.5));
+    GFX_Setv(*list, layer2, 13200, pos);
+    vec.x = -1.0;
+    vec.y = -1.0;
+    vec.z = 0.0;
+    GFX_Setv(*list, layer2, 13201, &vec);
+    vec.x = 1.0;
+    vec.y = 1.0;
+    vec.z = 2.0;
+    GFX_Setv(*list, layer2, 13202, &vec);
+    vec.x = (float)(invDuration * 0.0099999998);
+    vec.y = vec.x;
+    vec.z = (float)(invDuration * 0.000099999997);
+    GFX_Setv(*list, layer2, 13203, &vec);
+    GFX_FlagSet(*list, layer2, 0, 1);
+    GFX_FlagSet(*list, layer2, 2, 1);
+
+    layer3 = GFX_i_Add(list, 13, aiGao);
+    GFX_SetMaterial(*list, layer3, material);
+    GFX_Seti(*list, layer3, 13100, 30);
+    GFX_Seti(*list, layer3, 13106, 30);
+    GFX_Seti(*list, layer3, 13101, 1);
+    GFX_Seti(*list, layer3, 13103, 0);
+    GFX_Seti(*list, layer3, 13104, 0xFF000000);
+    GFX_Seti(*list, layer3, 13105, 0);
+    GFX_Setf(*list, layer3, 13000, (float)(grow * 0.1));
+    GFX_Setf(*list, layer3, 13001, (float)(grow * 0.13));
+    GFX_Setf(*list, layer3, 13002, (float)(invDuration * 0.02));
+    GFX_Setf(*list, layer3, 13003, (float)(duration * 0.30000001));
+    GFX_Setf(*list, layer3, 13004, (float)(duration * 1.4));
+    GFX_Setf(*list, layer3, 13005, (float)(size * 0.050000001));
+    GFX_Setf(*list, layer3, 13006, (float)(size * 0.059999999));
+    GFX_Setf(*list, layer3, 13007, (float)(gravityBase * 0.0049999999));
+    GFX_Setf(*list, layer3, 13008, (float)(duration * 0.0049999999));
+    GFX_Setv(*list, layer3, 13200, pos);
+    GFX_Setf(*list, layer3, 13009, (float)(grow * 0.30000001));
+    GFX_Setf(*list, layer3, 13010, normSpeed06);
+    vec.x = 1.0;
+    vec.y = 1.0;
+    vec.z = 0.0;
+    GFX_Setv(*list, layer3, 13201, &vec);
+    vec.x = -1.0;
+    vec.y = -1.0;
+    vec.z = 0.0;
+    GFX_Setv(*list, layer3, 13202, &vec);
+    vec.x = (float)(invDuration * 0.050000001);
+    frictionXY = vec.x;
+    vec.y = vec.x;
+    vec.z = (float)(invDuration * 0.0);
+    GFX_Setv(*list, layer3, 13203, &vec);
+    GFX_FlagSet(*list, layer3, 0, 1);
+    GFX_FlagSet(*list, layer3, 2, 1);
+
+    layer4 = GFX_i_Add(list, 13, aiGao);
+    GFX_SetMaterial(*list, layer4, material);
+    GFX_Seti(*list, layer4, 13100, 50);
+    GFX_Seti(*list, layer4, 13106, 50);
+    GFX_Seti(*list, layer4, 13101, 0);
+    GFX_Seti(*list, layer4, 13103, 0xFFFFFF);
+    GFX_Seti(*list, layer4, 13104, 0xFF080808);
+    GFX_Seti(*list, layer4, 13105, 0);
+    GFX_Setf(*list, layer4, 13000, (float)(grow * 0.15000001));
+    GFX_Setf(*list, layer4, 13001, normSpeed02);
+    frictionZ = (float)(invDuration * 0.029999999);
+    GFX_Setf(*list, layer4, 13002, frictionZ);
+    GFX_Setf(*list, layer4, 13003, (float)(duration * 1.2));
+    GFX_Setf(*list, layer4, 13004, (float)(duration * 2.2));
+    GFX_Setf(*list, layer4, 13005, (float)(size * 0.02));
+    GFX_Setf(*list, layer4, 13006, (float)(size * 0.022));
+    GFX_Setf(*list, layer4, 13007, (float)(gravityBase * 0.02));
+    GFX_Setf(*list, layer4, 13008, (float)(duration * 0.0040000002));
+    GFX_Setv(*list, layer4, 13200, pos);
+    GFX_Setf(*list, layer4, 13009, normSpeed02);
+    GFX_Setf(*list, layer4, 13010, normSpeed05);
+    GFX_Setf(*list, layer4, 13012, invDuration + invDuration);
+    vec.x = 1.0;
+    vec.y = 1.0;
+    vec.z = 1.2f;
+    GFX_Setv(*list, layer4, 13201, &vec);
+    vec.x = -1.0;
+    vec.y = -1.0;
+    vec.z = 0.0;
+    GFX_Setv(*list, layer4, 13202, &vec);
+    vec.x = frictionXY;
+    vec.y = frictionXY;
+    vec.z = frictionZ;
+    GFX_Setv(*list, layer4, 13203, &vec);
+    GFX_FlagSet(*list, layer4, 0, 1);
+    GFX_FlagSet(*list, layer4, 2, 1);
 }
 
-void GFX_Free(struct sGfxElem** a1, int a2)
-{
-    tGfxElem* v2;
-    tGfxElem* v3;
-    tGfxElem* v4;
-    tGameObjectMain* v5;
 
-    v2 = *a1;
-    v3 = 0;
-    if (*a1)
+void GFX_Free(struct sGfxElem** list, int reinitType)
+{
+    tGfxElem* elem;
+    tGfxElem* kept;
+    tGfxElem* next;
+    tGameObjectMain* gao;
+
+    elem = *list;
+    kept = 0;
+    while (elem)
     {
-        do
+        next = elem->prevGfxElem;
+        gao = elem->aiGameObject;
+        if (reinitType == 20 && gao && (gao->flags2 & 0x4000000) == 0)
         {
-            v4 = v2->prevGfxElem;
-            if (a2 == 20 && (v5 = v2->aiGameObject) != 0 && (v5->flags2 & 0x4000000) == 0)
-            {
-                v3 = v2;
-            }
+            kept = elem;
+        }
+        else
+        {
+            GFX_FreeOne(elem);
+            if (kept)
+                kept->prevGfxElem = next;
             else
-            {
-                GFX_FreeOne(v2);
-                if (v3)
-                    v3->prevGfxElem = v4;
-                else
-                    *a1 = v4;
-            }
-            v2 = v4;
-        } while (v4);
+                *list = next;
+        }
+        elem = next;
     }
 }
