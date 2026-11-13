@@ -2982,6 +2982,7 @@ void COL_ColMap_Box_RayCast(tGameObjectMain* gao, tCobNormalObjectGeneric * box)
 void COL_ColMap_Sphere_RayCast(tGameObjectMain* gao, tCobNormalObjectGeneric* shape)
 {
     Mtx4x4* mtx;
+    double maxScale;
     double radius;
     double offsetX;
     double offsetY;
@@ -3003,7 +3004,8 @@ void COL_ColMap_Sphere_RayCast(tGameObjectMain* gao, tCobNormalObjectGeneric* sh
     {
         MATH_GetScale(&scale, OBJ_pst_GetAbsoluteMatrix(gao));
         srcRadius = ((tColSphere*)(shape->enclosurePtr))->radius;
-        radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * srcRadius;
+        maxScale = MATH_f_MaxOf3(scale.x, scale.y, scale.z);
+        radius = maxScale * srcRadius;
     }
     else
     {

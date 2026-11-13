@@ -28,6 +28,8 @@
 
 #include "../gameobject.h"
 #include "../collision.h"
+#include "../world.h"
+#include "../graphicsobjects/geo.h"
 
 /* ---- the two copies ---------------------------------------------- */
 
@@ -64,6 +66,8 @@ D(int16_t, COL_w_TestInstanceFlag, (struct sColInstance*, int16_t))
 D(BOOL, COL_NeedRecomputation, (tColGlobal*, tGameObjectMain*, int16_t))
 D(int, COL_RaySphereBV, (Vec3*, Vec3*, tGameObjectMain*, float*, float))
 D(int, COL_RayAABBox, (Vec3*, Vec3*, tGameObjectMain*, float*, float))
+D(void, COL_ColMap_Triangles_RayCast, (tGameObjectMain*, tColMap*))
+D(void, COL_ColMap_OK3_RayCast, (tGameObjectMain*, tColMap*))
 D(BOOL, COL_b_IsARealTopologicEdge, (tColGlobal*, Vec3*, uint8_t))
 
 void COLA_MockResetArena(void);
@@ -407,6 +411,41 @@ static void runSegments(void)
         check("INT_FullSegmentTriangle", &C, &Dd, sizeof(C));
     }
 
+    /* a segment whose start sits exactly on the triangle's plane, which
+       is the only input that separates the ratio's <= bound from a < */
+    for (i = 0; i < 2000; i++)
+    {
+        randv(&p1, 8.0f);
+        randv(&p2, 8.0f);
+        randv(&p3, 8.0f);
+        faceNormal(&n, &p1, &p2, &p3);
+        s1 = (i & 1) ? p1 : p2;
+        if ((i & 2) == 0)
+        {
+            /* still on the plane, but not on a vertex */
+            s1.x = (p1.x + p2.x) * 0.5f;
+            s1.y = (p1.y + p2.y) * 0.5f;
+            s1.z = (p1.z + p2.z) * 0.5f;
+        }
+        randv(&s2, 8.0f);
+        if ((i & 4) == 0)
+        {
+            s2.x = s1.x - n.x;
+            s2.y = s1.y - n.y;
+            s2.z = s1.z - n.z;
+        }
+        memset(&ha, 0xA5, sizeof(ha));
+        memset(&hb, 0xA5, sizeof(hb));
+        ea = 0xAA; eb = 0xAA;
+        ra2 = NEW_INT_FullSegmentTriangle(&s1, &s2, &p1, &p2, &p3, &n, &ha, &ea);
+        rb2 = BASE_INT_FullSegmentTriangle(&s1, &s2, &p1, &p2, &p3, &n, &hb, &eb);
+        memset(&C, 0, sizeof(C)); memset(&Dd, 0, sizeof(Dd));
+        C.r = ra2; Dd.r = rb2;
+        C.h = ha; C.e = ea;
+        Dd.h = hb; Dd.e = eb;
+        check("INT_FullSegmentTriangle/onplane", &C, &Dd, sizeof(C));
+    }
+
     group("INT_FullSphereTriangle");
     for (i = 0; i < 8000; i++)
     {
@@ -572,6 +611,66 @@ static void runRays(void)
         memset(&A.h, 0, sizeof(A.h));
         memset(&B.h, 0, sizeof(B.h));
         check("INT_FullRaySphere/nohit", &A, &B, sizeof(A));
+    }
+
+    /* a direction exactly perpendicular to origin->centre, which makes
+       the projection exactly zero and separates `< 0` from `<= 0` */
+    for (i = 0; i < 4000; i++)
+    {
+        Vec3 toCentre;
+        Vec3 perp;
+        float len;
+        randv(&o, 8.0f);
+        randv(&toCentre, 6.0f);
+        if (toCentre.x == 0.0f && toCentre.y == 0.0f)
+            toCentre.x = 1.0f;
+        /* any vector in the plane normal to toCentre */
+        setv(&perp, -toCentre.y, toCentre.x, 0.0f);
+        len = (float)sqrt(perp.x * perp.x + perp.y * perp.y + perp.z * perp.z);
+        if (len < 1e-6f)
+            continue;
+        setv(&d, perp.x / len, perp.y / len, perp.z / len);
+        setv(&sph.center, o.x + toCentre.x, o.y + toCentre.y, o.z + toCentre.z);
+        sph.radius = randf(0.0f, 8.0f);
+        maxDist = randf(0.0f, 20.0f);
+        memset(&ha, 0xA5, sizeof(ha));
+        memset(&hb, 0xA5, sizeof(hb));
+        da = -12345.0f; db = -12345.0f;
+        memset(&A, 0, sizeof(A)); memset(&B, 0, sizeof(B));
+        A.r = NEW_INT_FullRaySphere(&o, &d, &sph, &ha, maxDist, &da);
+        B.r = BASE_INT_FullRaySphere(&o, &d, &sph, &hb, maxDist, &db);
+        A.h = ha; A.d = da;
+        B.h = hb; B.d = db;
+        check("INT_FullRaySphere/perpendicular", &A, &B, sizeof(A));
+    }
+
+    /* axis-aligned so the projection is exactly zero rather than merely
+       small: a direction along one axis and a centre offset along
+       another makes every term of the dot product an exact zero */
+    for (i = 0; i < 2000; i++)
+    {
+        static const int axisPairs[6][2] = { {0,1},{0,2},{1,0},{1,2},{2,0},{2,1} };
+        const int* pair = axisPairs[i % 6];
+        float offset = randf(-8.0f, 8.0f);
+        float dcomp = (i & 1) ? 1.0f : -1.0f;
+
+        randv(&o, 8.0f);
+        setv(&d, 0.0f, 0.0f, 0.0f);
+        (&d.x)[pair[0]] = dcomp;
+        sph.center = o;
+        (&sph.center.x)[pair[1]] = o.x * 0.0f + ((&o.x)[pair[1]] + offset);
+        sph.radius = randf(0.0f, 10.0f);
+        maxDist = randf(0.0f, 20.0f);
+
+        memset(&ha, 0xA5, sizeof(ha));
+        memset(&hb, 0xA5, sizeof(hb));
+        da = -12345.0f; db = -12345.0f;
+        memset(&A, 0, sizeof(A)); memset(&B, 0, sizeof(B));
+        A.r = NEW_INT_FullRaySphere(&o, &d, &sph, &ha, maxDist, &da);
+        B.r = BASE_INT_FullRaySphere(&o, &d, &sph, &hb, maxDist, &db);
+        A.h = ha; A.d = da;
+        B.h = hb; B.d = db;
+        check("INT_FullRaySphere/axisperp", &A, &B, sizeof(A));
     }
 
     group("INT_b_FullRayCylinder");
@@ -856,6 +955,54 @@ static void runTables(void)
         check("COL_pst_GMat_Get/nogmat", &offA, &offB, sizeof(offA));
     }
 
+    /* the same lookup over ids that are NOT ascending: the two search
+       arms agree on a sorted table whatever the threshold is, so only
+       an unsorted one can see the threshold move */
+    for (i = 0; i < 400; i++)
+    {
+        static int ids[64];
+        static tCobGameMaterialElems elemsA[64];
+        static tCobGameMaterialElems elemsB[64];
+        tCobGameMaterial gmA, gmB;
+        tColCollisionObject cobA, cobB;
+        tCobMeshChunkElem chunk;
+        tCobNormalObjectGeneric shape;
+        tCobGameMaterialElems* ra;
+        tCobGameMaterialElems* rb;
+        long offA, offB;
+        int num = i % 40;
+
+        for (j = 0; j < num; j++)
+            ids[j] = ((j * 17) % 41) * 3 + 1;
+        memset(elemsA, 0, sizeof(elemsA));
+        memset(elemsB, 0, sizeof(elemsB));
+
+        gmA.num = num; gmA.ptrInts = ids; gmA.elems = elemsA; gmA.gameMaterialUsageCnt = 1;
+        gmB.num = num; gmB.ptrInts = ids; gmB.elems = elemsB; gmB.gameMaterialUsageCnt = 1;
+        shape.enclosurePtr = 0;
+        shape.gameMaterialElemID = (i * 7) % 130;
+        cobA.objectType = 2;
+        cobA.flags = 0;
+        cobA.usageCount = 1;
+        cobA.gameMaterial = &gmA;
+        cobA.objectPtrByType = &shape;
+        cobB = cobA;
+        cobB.gameMaterial = &gmB;
+
+        chunk.elemNum = 1;
+        chunk.designVal = 0;
+        chunk.flags = 0;
+        chunk.gameMaterialElemID = ((i * 13) % 41) * 3 + 1;
+        chunk.triangleElems = 0;
+
+        ra = NEW_COL_pst_GMat_Get(&cobA, &chunk);
+        rb = BASE_COL_pst_GMat_Get(&cobB, &chunk);
+        offA = ra ? (long)(ra - elemsA) : -1;
+        offB = rb ? (long)(rb - elemsB) : -1;
+        check("COL_pst_GMat_Get/unsorted", &offA, &offB, sizeof(offA));
+        check("COL_pst_GMat_Get/unsorted-table", elemsA, elemsB, sizeof(elemsA));
+    }
+
     group("COL_GMat_Skip");
     for (i = 0; i < 4096; i++)
     {
@@ -1012,6 +1159,33 @@ static void runTables(void)
         check("COL_i_ZoneActivationGet", &ra, &rb, sizeof(ra));
     }
 
+    /* the only matching zone sitting at index 15, which is the slot the
+       scan's bound of 16 is there to allow */
+    for (i = 0; i < 2000; i++)
+    {
+        uint8_t zones[16];
+        tColInstSet set;
+        tColInstance inst;
+        int ra, rb;
+        int z;
+        int slot = i % 17;                       /* 16 means "no match" */
+
+        for (z = 0; z < 16; z++)
+            zones[z] = (uint8_t)(100 + z);
+        if (slot < 16)
+            zones[slot] = 42;
+        memset(&set, 0, sizeof(set));
+        memset(&inst, 0, sizeof(inst));
+        set.zoneIDs = zones;
+        set.instElemNum = 16;
+        inst.colSet = &set;
+        inst.activationFlags = (uint16_t)(i * 37 + 1);
+
+        ra = NEW_COL_i_ZoneActivationGet(&inst, 42);
+        rb = BASE_COL_i_ZoneActivationGet(&inst, 42);
+        check("COL_i_ZoneActivationGet/lastslot", &ra, &rb, sizeof(ra));
+    }
+
     group("COL_w_TestInstanceFlag");
     for (i = 0; i < 2000; i++)
     {
@@ -1025,6 +1199,65 @@ static void runTables(void)
         ra = NEW_COL_w_TestInstanceFlag(0, (int16_t)i);
         rb = BASE_COL_w_TestInstanceFlag(0, (int16_t)i);
         check("COL_w_TestInstanceFlag/null", &ra, &rb, sizeof(ra));
+    }
+
+    group("COL_NeedRecomputation/full");
+    for (i = 0; i < 400; i++)
+    {
+        tGameObjectMain gaos[8];
+        tGameObjectMain absent;
+        tGameObjectExtended exts[8];
+        tGameObjectExtended absentExt;
+        tGameObjectCollMain colls[8];
+        tGameObjectCollMain absentColl;
+        tColInstance insts[8];
+        tColInstance absentInst;
+        tColGlobal cgA, cgB;
+        int g;
+        struct { BOOL r; uint8_t num; int16_t flag; } A, B;
+        /* one guard slot past the array, so a write past the bound shows */
+        struct { tColGlobal cg; tGameObjectMain* guard; } boxA, boxB;
+
+        memset(gaos, 0, sizeof(gaos));
+        memset(exts, 0, sizeof(exts));
+        memset(colls, 0, sizeof(colls));
+        memset(insts, 0, sizeof(insts));
+        memset(&absent, 0, sizeof(absent));
+        memset(&absentExt, 0, sizeof(absentExt));
+        memset(&absentColl, 0, sizeof(absentColl));
+        memset(&absentInst, 0, sizeof(absentInst));
+        for (g = 0; g < 8; g++)
+        {
+            insts[g].flag = 1;
+            colls[g].colInstance = &insts[g];
+            exts[g].coll = &colls[g];
+            gaos[g].extended = &exts[g];
+            gaos[g].flags2 = 0x20;
+        }
+        absentInst.flag = 1;
+        absentColl.colInstance = &absentInst;
+        absentExt.coll = &absentColl;
+        absent.extended = &absentExt;
+        absent.flags2 = 0x20;
+
+        memset(&boxA, 0, sizeof(boxA));
+        boxA.cg.gaosNeededToBeRecomputedNum = (uint8_t)(48 + (i % 3));
+        for (g = 0; g < boxA.cg.gaosNeededToBeRecomputedNum; g++)
+            boxA.cg.gaosNeededToBeRecomputed[g] = &gaos[g % 8];
+        boxB = boxA;
+
+        memset(&A, 0, sizeof(A));
+        memset(&B, 0, sizeof(B));
+        A.r = NEW_COL_NeedRecomputation(&boxA.cg, &absent, 4);
+        A.num = boxA.cg.gaosNeededToBeRecomputedNum;
+        A.flag = absentInst.flag;
+        absentInst.flag = 1;
+        B.r = BASE_COL_NeedRecomputation(&boxB.cg, &absent, 4);
+        B.num = boxB.cg.gaosNeededToBeRecomputedNum;
+        B.flag = absentInst.flag;
+        absentInst.flag = 1;
+        check("COL_NeedRecomputation/full", &A, &B, sizeof(A));
+        check("COL_NeedRecomputation/full-box", &boxA, &boxB, sizeof(boxA));
     }
 
     group("COL_NeedRecomputation");
@@ -1195,6 +1428,288 @@ static void runTopologicEdge(void)
     }
 }
 
+/* ---- 11. the mesh ray casts ---------------------------------------
+ *
+ * The two walkers whose per-axis slab rejection the rewrite pulled out
+ * into one static helper, and whose per-chunk skip decision was a
+ * while loop with two labels. Nothing else in the test reaches either,
+ * so without this group the largest structural change in the range
+ * would be untested -- which is what the mutation sweep said.
+ *
+ * The fixture is a hand-built indexed mesh rather than a loaded world:
+ * a scatter of vertices, two chunks of triangles over them, face
+ * normals computed to match, and a tWorld that exists only to receive
+ * the hit. COL_gst_Ray is one global shared by both copies, so it is
+ * rebuilt before each side runs, and each side gets its own material
+ * table because COL_pst_GMat_Get writes into it.
+ */
+
+#define RC_VERTS 12
+#define RC_TRIS_PER_CHUNK 5
+#define RC_CHUNKS 2
+
+typedef struct
+{
+    Vec3 verts[RC_VERTS];
+    Vec3 normals[RC_CHUNKS * RC_TRIS_PER_CHUNK];
+    tCobMeshTriangleElem tris[RC_CHUNKS][RC_TRIS_PER_CHUNK];
+    tCobMeshChunkElem chunks[RC_CHUNKS];
+    tCobMeshObjectMesh mesh;
+    tColCollisionObject cob;
+    tColCollisionObject* cobPtr;
+    tColMap colMap;
+    int ids[4];
+    tCobGameMaterialElems elems[4];
+    tCobGameMaterial gameMaterial;
+    tCobOK3 ok3;
+    tCobOK3AABBoxElem aaBoxes[2];
+    tCobOK3AABBoxElemChunkElem boxChunks[2][RC_CHUNKS];
+    uint16_t boxTriIDs[2][RC_CHUNKS][RC_TRIS_PER_CHUNK];
+    Mtx4x4 mtx;
+    tGameObjectMain gao;
+} RcFixture;
+
+static void rcBuild(RcFixture* f, int seed, int withMaterial, int mtxFlag)
+{
+    int c, t, k, b;
+
+    memset(f, 0, sizeof(*f));
+    gSeed = (unsigned int)(0x5EED0000u + (unsigned int)seed);
+
+    for (k = 0; k < RC_VERTS; k++)
+        randv(&f->verts[k], 4.0f);
+
+    for (c = 0; c < RC_CHUNKS; c++)
+    {
+        for (t = 0; t < RC_TRIS_PER_CHUNK; t++)
+        {
+            int g = c * RC_TRIS_PER_CHUNK + t;
+            f->tris[c][t].v1 = (uint16_t)((seed + g * 3) % RC_VERTS);
+            f->tris[c][t].v2 = (uint16_t)((seed + g * 3 + 1) % RC_VERTS);
+            f->tris[c][t].v3 = (uint16_t)((seed + g * 3 + 2) % RC_VERTS);
+            f->tris[c][t].proximity1 = 0xFFFF;
+            f->tris[c][t].proximity2 = 0xFFFF;
+            f->tris[c][t].proximity3 = 0xFFFF;
+            faceNormal(&f->normals[g],
+                       &f->verts[f->tris[c][t].v1],
+                       &f->verts[f->tris[c][t].v2],
+                       &f->verts[f->tris[c][t].v3]);
+        }
+        f->chunks[c].elemNum = RC_TRIS_PER_CHUNK;
+        f->chunks[c].designVal = (uint8_t)(c + 1);
+        f->chunks[c].flags = 0;
+        f->chunks[c].gameMaterialElemID = c;
+        f->chunks[c].triangleElems = f->tris[c];
+    }
+
+    f->mesh.vertexCount = RC_VERTS;
+    f->mesh.faceCount = RC_CHUNKS * RC_TRIS_PER_CHUNK;
+    f->mesh.meshChunkElemNum = RC_CHUNKS;
+    f->mesh.vertices = f->verts;
+    f->mesh.normals = f->normals;
+    f->mesh.meshChunkElems = f->chunks;
+    f->mesh.ok3 = &f->ok3;
+
+    for (k = 0; k < 4; k++)
+    {
+        f->ids[k] = k;
+        f->elems[k].flags = (k & 1) ? 0x200000 : 0x1000;
+        f->elems[k].id = 0;
+    }
+    f->gameMaterial.num = 4;
+    f->gameMaterial.ptrInts = f->ids;
+    f->gameMaterial.elems = f->elems;
+    f->gameMaterial.gameMaterialUsageCnt = 1;
+
+    f->cob.objectType = 5;
+    f->cob.flags = 0;
+    f->cob.usageCount = 1;
+    f->cob.gameMaterial = withMaterial ? &f->gameMaterial : 0;
+    f->cob.objectPtrByType = &f->mesh;
+    f->cobPtr = &f->cob;
+
+    f->colMap.colObjectID = 1;
+    f->colMap.activation = 1;
+    f->colMap.collisionObjectPtr = &f->cobPtr;
+
+    /* two OK3 boxes, each listing both chunks: one covering everything
+       and one deliberately far away, so the box rejection is exercised */
+    for (b = 0; b < 2; b++)
+    {
+        for (c = 0; c < RC_CHUNKS; c++)
+        {
+            for (t = 0; t < RC_TRIS_PER_CHUNK; t++)
+                f->boxTriIDs[b][c][t] = (uint16_t)t;
+            f->boxChunks[b][c].triangleChunkID = (uint16_t)c;
+            f->boxChunks[b][c].num = RC_TRIS_PER_CHUNK;
+            f->boxChunks[b][c].triangleChunkElemIDs = f->boxTriIDs[b][c];
+        }
+        f->aaBoxes[b].num = RC_CHUNKS;
+        f->aaBoxes[b].chunkElems = f->boxChunks[b];
+    }
+    setv(&f->aaBoxes[0].vec1, -6.0f, -6.0f, -6.0f);
+    setv(&f->aaBoxes[0].vec2, 6.0f, 6.0f, 6.0f);
+    setv(&f->aaBoxes[1].vec1, 90.0f, 90.0f, 90.0f);
+    setv(&f->aaBoxes[1].vec2, 92.0f, 92.0f, 92.0f);
+    f->ok3.num = 2;
+    f->ok3.aaBoxes = f->aaBoxes;
+    f->ok3.faceTagInts = 0;
+
+    f->mtx.v1.x = 1.0f;
+    f->mtx.v2.y = 1.0f;
+    f->mtx.v3.z = 1.0f;
+    f->mtx.w = 1.0f;
+    setv(&f->mtx.Pos, 0.25f, -0.5f, 0.75f);
+    f->mtx.mtxflag = mtxFlag;
+
+    f->gao.matrices = &f->mtx;
+    f->gao.flags = 2 | 0x100;
+}
+
+typedef struct
+{
+    Vec3 hitPos;
+    Vec3 normal;
+    int16_t chunkID;
+    uint8_t designVal;
+    int elemID;
+    int lastElemID;
+    int gmatIndex;
+    int gaoSet;
+    float distance;
+    int ignore;
+    int gaoStored;
+    tCobGameMaterialElems elems[4];
+} RcResult;
+
+/* The two copies run over their own fixtures, so the two pointers the
+   walker stores are bound to differ. They are captured as the index
+   and the identity they stand for, then cleared, so the rest of the
+   world can still be compared byte for byte. */
+static void rcCapture(RcResult* r, tWorld* w, RcFixture* f, int ignore)
+{
+    memset(r, 0, sizeof(*r));
+    r->hitPos = w->colRayHitPos;
+    r->normal = w->rayCastNormalVec;
+    r->chunkID = w->rayCastTriangleChunkID;
+    r->designVal = w->rayCastCobMeshChunkElemsDesignVal;
+    r->elemID = w->rayCastTriangleChunkElemID;
+    r->lastElemID = w->rayCastTriangleChunkLastElemID;
+    r->gmatIndex = w->rayCastCobGmat ? (int)(w->rayCastCobGmat - f->elems) : -1;
+    r->gaoSet = COL_gst_Ray.gao == &f->gao;
+    r->distance = COL_gst_Ray.distance;
+    r->ignore = ignore;
+    memcpy(r->elems, f->elems, sizeof(r->elems));
+    r->gaoStored = w->rayCastGao == &f->gao ? 1 : (w->rayCastGao ? 2 : 0);
+    w->rayCastGao = 0;
+    w->rayCastCobGmat = 0;
+}
+
+static void rcSetRay(tWorld* w, Vec3* src, Vec3* dir, float dist, int skipMask,
+                     int useUser, int* ignore, tGameObjectMain* colMapGao)
+{
+    memset(w, 0, sizeof(*w));
+    memset(&COL_gst_Ray, 0, sizeof(COL_gst_Ray));
+    COL_gst_Ray.worldSetInColMapRayCast = w;
+    COL_gst_Ray.sourcePoint = src;
+    COL_gst_Ray.direction = dir;
+    COL_gst_Ray.distance = dist;
+    COL_gst_Ray.skipCrossable = (skipMask & 1) != 0;
+    COL_gst_Ray.skipCamera = (skipMask & 2) != 0;
+    COL_gst_Ray.skipFlagX = (skipMask & 4) != 0;
+    COL_gst_Ray.useUserCrossable = useUser;
+    COL_gst_Ray.colMapGao = colMapGao;
+    COL_gst_Ray.ignoreColMapRayCastResult = ignore;
+    COL_gst_Ray.gao = 0;
+    if (ignore)
+        *ignore = 1;
+}
+
+static tWorld rcWorldA;
+static tWorld rcWorldB;
+static RcFixture rcFixA;
+static RcFixture rcFixB;
+
+static void runMeshRayCasts(void)
+{
+    int i;
+
+    group("ColMap mesh ray casts");
+
+    for (i = 0; i < 3000; i++)
+    {
+        Vec3 src;
+        Vec3 dir;
+        RcResult A;
+        RcResult B;
+        int ignoreA = 1;
+        int ignoreB = 1;
+        int wantIgnore = (i & 7) == 0;
+        int skipMask = (i >> 1) & 7;
+        int useUser = (i & 16) != 0;
+        int withMaterial = (i & 32) != 0;
+        int mtxFlag = (i & 64) ? 8 : ((i & 128) ? 0x3C : 0);
+        float dist;
+
+        rcBuild(&rcFixA, i, withMaterial, mtxFlag);
+        rcBuild(&rcFixB, i, withMaterial, mtxFlag);
+        COL_guw_UserCrossable = (uint16_t)(i * 7);
+        COL_gb_UseMinDistance = (i & 256) != 0;
+        COL_gf_MinDistance = 0.5f;
+
+        gSeed = (unsigned int)(0xA5A50000u + (unsigned int)i);
+        randv(&src, 10.0f);
+        randUnit(&dir);
+        if ((i & 3) == 0)
+        {
+            /* aim at a triangle's centroid so the hit arm runs */
+            Vec3* a = &rcFixA.verts[rcFixA.tris[0][0].v1];
+            Vec3* b = &rcFixA.verts[rcFixA.tris[0][0].v2];
+            Vec3* c = &rcFixA.verts[rcFixA.tris[0][0].v3];
+            Vec3 mid;
+            float l;
+            setv(&mid, (a->x + b->x + c->x) / 3.0f - src.x,
+                 (a->y + b->y + c->y) / 3.0f - src.y,
+                 (a->z + b->z + c->z) / 3.0f - src.z);
+            l = (float)sqrt(mid.x * mid.x + mid.y * mid.y + mid.z * mid.z);
+            if (l > 0.0001f)
+                setv(&dir, mid.x / l, mid.y / l, mid.z / l);
+        }
+        dist = randf(0.0f, 30.0f);
+
+        rcSetRay(&rcWorldA, &src, &dir, dist, skipMask, useUser,
+                 wantIgnore ? &ignoreA : 0, (i & 512) ? &rcFixA.gao : 0);
+        NEW_COL_ColMap_Triangles_RayCast(&rcFixA.gao, &rcFixA.colMap);
+        rcCapture(&A, &rcWorldA, &rcFixA, ignoreA);
+
+        rcSetRay(&rcWorldB, &src, &dir, dist, skipMask, useUser,
+                 wantIgnore ? &ignoreB : 0, (i & 512) ? &rcFixB.gao : 0);
+        BASE_COL_ColMap_Triangles_RayCast(&rcFixB.gao, &rcFixB.colMap);
+        rcCapture(&B, &rcWorldB, &rcFixB, ignoreB);
+        B.gaoSet = COL_gst_Ray.gao == &rcFixB.gao;
+
+        check("COL_ColMap_Triangles_RayCast", &A, &B, sizeof(A));
+        check("COL_ColMap_Triangles_RayCast/world", &rcWorldA, &rcWorldB, sizeof(rcWorldA));
+
+        ignoreA = 1;
+        ignoreB = 1;
+        rcSetRay(&rcWorldA, &src, &dir, dist, skipMask, useUser,
+                 wantIgnore ? &ignoreA : 0, (i & 512) ? &rcFixA.gao : 0);
+        NEW_COL_ColMap_OK3_RayCast(&rcFixA.gao, &rcFixA.colMap);
+        rcCapture(&A, &rcWorldA, &rcFixA, ignoreA);
+
+        rcSetRay(&rcWorldB, &src, &dir, dist, skipMask, useUser,
+                 wantIgnore ? &ignoreB : 0, (i & 512) ? &rcFixB.gao : 0);
+        BASE_COL_ColMap_OK3_RayCast(&rcFixB.gao, &rcFixB.colMap);
+        rcCapture(&B, &rcWorldB, &rcFixB, ignoreB);
+        B.gaoSet = COL_gst_Ray.gao == &rcFixB.gao;
+
+        check("COL_ColMap_OK3_RayCast", &A, &B, sizeof(A));
+        check("COL_ColMap_OK3_RayCast/world", &rcWorldA, &rcWorldB, sizeof(rcWorldA));
+    }
+    COL_gb_UseMinDistance = 0;
+}
+
 /* ---- 10. non-finite torture --------------------------------------
  *
  * Several relations were rewritten the other way round (an `if`/`else`
@@ -1332,6 +1847,7 @@ int main(void)
     runTables();
     runBVRays();
     runTopologicEdge();
+    runMeshRayCasts();
     runNonFinite();
     endGroups();
 
