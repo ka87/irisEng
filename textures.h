@@ -424,7 +424,7 @@ int16_t TEX_w_List_AddTexture(tEngTexListStruct* list, int key);
 void TEX_List_Free(tEngTexListStruct* list);
 void MAT_SpriteGen_Close();
 void TEX_Manager_Init(struct sTexManagerStruct* mgr);
-int TEX_l_File_LoadProcedural(char* offset, tEngTexIntermediateStruct* tex, int readPtr);
+int TEX_l_File_LoadProcedural(char* offset, tEngTexIntermediateStruct* tex, int size);
 void TEX_Procedural_Add(int16_t elemIdx, int interfaceIdx, int16_t flags, void* texPtr);
 void TEX_Procedural_AfterLoad(struct sGdi_DisplayData* dd);
 int TEX_l_File_GetContent(int key, tEngTexIntermediateStruct* tex);

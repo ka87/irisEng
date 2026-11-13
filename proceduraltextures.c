@@ -13,551 +13,472 @@ float KX_442[2];
 float KY_443[2];
 float ALPHA_441[2];
 
-struct sTexProcWater* TEXPRO_pv_WaterLoad(char* offset, int vmilyensize, int width, int height)
+struct sTexProcWater* TEXPRO_pv_WaterLoad(char* data, int size, int width, int height)
 {
-    unsigned int v4;
-    tTexProcWater* v5;
-    int16_t* v6;
-    int16_t* v7;
-    int v8;
-    long double v10;
-    unsigned int v11;
+    unsigned int bytes;
+    tTexProcWater* water;
+    int16_t* current;
+    int16_t* previous;
+    int i;
+    long double wave;
+    unsigned int intensity;
 
-    v4 = 2 * height * width;
-    v5 = (tTexProcWater*)MEM_p_Alloc(sizeof(tTexProcWater));
-    v6 = (int16_t*)MEM_p_Alloc(v4);
-    v5->ptr1 = v6;
-    memset(v6, 0, v4);
-    v7 = (int16_t*)MEM_p_Alloc(v4);
-    v5->ptr2 = v7;
-    memset(v7, 0, v4);
-    v8 = 256;
+    bytes = 2 * height * width;
+    water = (tTexProcWater*)MEM_p_Alloc(sizeof(tTexProcWater));
+    current = (int16_t*)MEM_p_Alloc(bytes);
+    water->ptr1 = current;
+    memset(current, 0, bytes);
+    previous = (int16_t*)MEM_p_Alloc(bytes);
+    water->ptr2 = previous;
+    memset(previous, 0, bytes);
+    i = 256;
     do
     {
-        --v8;
-        v10 = fabs(sin((double)v8 * 0.049087387));
-        if (v8 <= 128)
-            v11 = 0;
+        --i;
+        wave = fabs(sin((double)i * 0.049087387));
+        if (i <= 128)
+            intensity = 0;
         else
-            v11 = (unsigned int)(v10 * v10 * (v10 * v10) * 128.0);
-        v5->values[v8] = v11 | (((unsigned int)v11 | (((unsigned int)v11 | ((unsigned int)(unsigned int)(255.0 * v10) << 8)) << 8)) << 8);
-    } while (v8);
-    return v5;
+            intensity = (unsigned int)(wave * wave * (wave * wave) * 128.0);
+        water->values[i] = intensity | (intensity << 8) | (intensity << 16)
+                         | ((unsigned int)(255.0 * wave) << 24);
+    } while (i);
+    return water;
 }
 
-int TEXPRO_l_WaterUpdate(tTexProceduralStruct* a1)
+int TEXPRO_l_WaterUpdate(tTexProceduralStruct* procedural)
 {
-    unsigned int v1;
-    int16_t* v2;
-    int16_t* v3;
-    int v4;
-    int v5;
-    int16_t* v6;
-    int v7;
-    int16_t* v8;
-    int16_t* v9;
-    int16_t* v10;
-    int16_t* v11;
-    int v12;
-    int16_t v13;
-    uint16_t v14;
-    int16_t* v15;
-    int16_t* v16;
-    int* i; 
-    int j;
-    uint16_t v19;
-    uint16_t v20;
-    tTexProcWater* v22;
-    int v23;
-    int v24;
-    int v25;
+    tTexProcWater* water;
+    unsigned int rowBytes;
+    int16_t* current;
+    int16_t* previous;
+    int16_t* above;
+    int16_t* damped;
+    int width;
+    int height;
+    int row;
+    int col;
+    int value;
+    uint32_t* dst;
+    uint16_t here;
+    uint16_t right;
 
-    v22 = (tTexProcWater*)a1->proceduralTexPtr;
-    v1 = 2 * a1->width;
-    v2 = &v22->ptr1[v1 / 2 + 1];
-    v24 = a1->height;
-    v23 = a1->width;
-    v3 = &v22->ptr2[v1 / 2 + 1];
-    memset(v22->ptr1, 0, v1);
-    memset(v22->ptr2, 0, v1);
-    memset((char*)v22->ptr1 + v23 * (2 * v24 - 2), 0, v1);
-    memset((char*)v22->ptr2 + v23 * (2 * v24 - 2), 0, v1);
-    v4 = v24;
-    if (v24 != 2)
+    water = (tTexProcWater*)procedural->proceduralTexPtr;
+    rowBytes = 2 * procedural->width;
+    current = &water->ptr1[rowBytes / 2 + 1];
+    height = procedural->height;
+    width = procedural->width;
+    previous = &water->ptr2[rowBytes / 2 + 1];
+    memset(water->ptr1, 0, rowBytes);
+    memset(water->ptr2, 0, rowBytes);
+    memset((char*)water->ptr1 + width * (2 * height - 2), 0, rowBytes);
+    memset((char*)water->ptr2 + width * (2 * height - 2), 0, rowBytes);
+    if (height != 2)
     {
-        v25 = v24 - 2;
-        do
+        for (row = height - 2; row; --row)
         {
-            v5 = v23 - 2;
-            if (v23 != 2)
+            if (width != 2)
             {
-                v6 = &v3[v1 / -2];
-                do
+                // preserved: rowBytes is unsigned, so this divides by 4294967294 and samples the centre cell, not the row above
+                above = &previous[rowBytes / -2];
+                for (col = width - 2; col; --col)
                 {
-                    v7 = ((v3[1] + *v6 + *(v3 - 1) + v3[v1 / 2]) >> 1)
-                        - *v2
-                        - ((((v3[1] + *v6 + *(v3 - 1) + v3[v1 / 2]) >> 1) - *v2) >> 8);
-                    if (v7 >= (int)0xFFFFE000)
-                    {
-                        if (v7 > 0x2000)
-                            v7 = (v7 & 0xffff0000) | 0x2000;
-                    }
-                    else
-                    {
-                        v7 =  (v7 & 0xffff0000) | 0xE000;
-                    }
-                    *v2++ = v7;
-                    ++v3;
-                    ++v6;
-                    --v5;
-                } while (v5);
-                v4 = v24;
+                    value = ((previous[1] + *above + *(previous - 1) + previous[rowBytes / 2]) >> 1)
+                          - *current;
+                    value -= value >> 8;
+                    if (value < -8192)
+                        value = -8192;
+                    else if (value > 8192)
+                        value = 8192;
+                    *current++ = value;
+                    ++previous;
+                    ++above;
+                }
             }
-            *v2 = 0;
-            v8 = v2 + 1;
-            *v8 = 0;
-            *v3 = 0;
-            v9 = v3 + 1;
-            *v9 = 0;
-            v2 = v8 + 1;
-            v3 = v9 + 1;
-            --v25;
-        } while (v25);
+            current[0] = 0;
+            current[1] = 0;
+            previous[0] = 0;
+            previous[1] = 0;
+            current += 2;
+            previous += 2;
+        }
     }
-    v10 = v22->ptr1;
-    v11 = v22->ptr2;
-    if (v23 * v4)
+    current = water->ptr1;
+    previous = water->ptr2;
+    for (col = width * height; col; --col)
     {
-        v12 = v23 * v4;
-        do
-        {
-            v13 = *v10;
-            v14 = *v10++ >> 6;
-            ++v11;
-            *(v10 - 1) = v13 - v14;
-            --v12;
-            *(v11 - 1) -= *(v11 - 1) >> 6;
-        } while (v12);
+        *current -= (uint16_t)(*current >> 6);
+        ++current;
+        *previous -= *previous >> 6;
+        ++previous;
     }
-    v15 = v22->ptr2;
-    v22->ptr2 = v22->ptr1;
-    v22->ptr1 = v15;
-    v16 = v15;
-    for (i = a1->proceduralPicData; v4; --v4)
+    damped = water->ptr2;
+    water->ptr2 = water->ptr1;
+    water->ptr1 = damped;
+    dst = procedural->proceduralPicData;
+    for (row = height; row; --row)
     {
-        for (j = v23; j; *(i - 1) = v22->values[(char)((v19 - v20) >> 6) + 128])
+        for (col = width; col; --col)
         {
-            v19 = *v16;
-            v20 = v16[1];
-            ++i;
-            ++v16;
-            --j;
+            here = *damped;
+            // preserved: the last pixel of the buffer reads damped[1], one entry past the end
+            right = damped[1];
+            ++damped;
+            *dst++ = water->values[(char)((here - right) >> 6) + 128];
         }
     }
     return 1;
 }
 
-void TEXPRO_WaterDisrupt(tTexProceduralStruct* a1)
+void TEXPRO_WaterDisrupt(tTexProceduralStruct* procedural)
 {
-    tTexProcWater* v1;
-    unsigned int v2;
-    unsigned int v3;
-    int16_t* v4;
-    int16_t* v5;
-    int16_t* v6;
-    unsigned int v7;
-    int v8;
-    long double v9;
-    long double v10;
-    unsigned int v11;
-    unsigned int v12;
-    int v13; 
-    unsigned int v14;
-    unsigned int v15;
-    int v16;
-    float v17;
-    float v18;
-    signed int v19;
-    int idx;
+    tTexProcWater* water;
+    unsigned int width;
+    unsigned int height;
+    int16_t* current;
+    int16_t* previous;
+    int splash;
+    int noise;
+    long double angle;
+    float kx;
+    float ky;
+    unsigned int y;
+    unsigned int amount;
+    int base;
+    int below;
+    float radius;
+    signed int x;
+    int spin;
 
-    v1 = (tTexProcWater*)a1->proceduralTexPtr;
-    v2 = a1->width;
-    v3 = a1->height;
-    v4 = v1->ptr2;
+    water = (tTexProcWater*)procedural->proceduralTexPtr;
+    width = procedural->width;
+    height = procedural->height;
     ++TexPro_WaterDistruptCounter;
-    v15 = v3;
-    v14 = v2;
-    v5 = &v1->ptr1[v2];
-    v6 = &v4[v2];
-    v7 = 4;
-    v16 = RND_JADErand() % 100;
+    current = &water->ptr1[width];
+    previous = &water->ptr2[width];
+    splash = 4;
+    spin = RND_JADErand() % 100;
     while (1)
     {
-        --v7;
-        v8 = RND_JADErand();
-        if (v7 >= 2)
+        --splash;
+        noise = RND_JADErand();
+        if (splash >= 2)
         {
-            v19 = v8 % (int)(v2 - 8) + 4;
-            v11 = RND_JADErand() % (int)(v15 - 8) + 4;
+            x = noise % (int)(width - 8) + 4;
+            y = RND_JADErand() % (int)(height - 8) + 4;
         }
         else
         {
-            v9 = (double)(50 - v8 % 100) * 0.0049999999 + ALPHA_441[v7];
-            ALPHA_441[v7] = (float)v9;
-            v18 = (float)(unsigned int)v16;
-            v17 = (float)(sin(v9) * v18 * 0.02 + KX_442[v7]);
-            KX_442[v7] = v17;
-            v10 = (float)(cos(v9) * v18 * 0.02 + KY_443[v7]);
-            KY_443[v7] = (float)v10;
-            v19 = (unsigned int)v17 % v2;
-            v11 = (unsigned int)v10 % v15;
-            if (v19 > (int)(v14 - 8))
-                v19 = v14 - 8;
-            if ((int)((unsigned int)v10 % v15) > (int)(v15 - 8))
-                v11 = v15 - 8;
+            angle = (double)(50 - noise % 100) * 0.0049999999 + ALPHA_441[splash];
+            ALPHA_441[splash] = (float)angle;
+            radius = (float)(unsigned int)spin;
+            kx = (float)(sin(angle) * radius * 0.02 + KX_442[splash]);
+            KX_442[splash] = kx;
+            ky = (float)(cos(angle) * radius * 0.02 + KY_443[splash]);
+            KY_443[splash] = ky;
+            x = (unsigned int)kx % width;
+            y = (unsigned int)ky % height;
+            if (x > (int)(width - 8))
+                x = width - 8;
+            if ((int)y > (int)(height - 8))
+                y = height - 8;
         }
-        v12 = (unsigned int)(sin((double)TexPro_WaterDistruptCounter * 0.2) * 200.0);
-        v13 = v19 + v14 * v11;
-        v5[v13] += v12;
-        idx = 2 * (v19 + v14 * (v11 + 1));
-        v5[idx] += v12;
-        v5[v13 + 1] += v12;
-        v5[idx + 1] += v12;
-        v6[v13] += v12;
-        v6[idx] += v12;
-        v6[v13 + 1] += v12;
-        v6[idx + 1] += v12;
-        if (!(v7 * 4))
+        amount = (unsigned int)(sin((double)TexPro_WaterDistruptCounter * 0.2) * 200.0);
+        base = x + width * y;
+        // preserved: the lower pair of the 2x2 splash is indexed at twice its element offset
+        below = 2 * (x + width * (y + 1));
+        current[base] += amount;
+        current[below] += amount;
+        current[base + 1] += amount;
+        current[below + 1] += amount;
+        previous[base] += amount;
+        previous[below] += amount;
+        previous[base + 1] += amount;
+        previous[below + 1] += amount;
+        if (!(splash * 4))
             break;
-        v2 = v14;
     }
 
 }
 
-int TEX_l_File_LoadProcedural(char* a1, tEngTexIntermediateStruct* a2, int readPtr)
+int TEX_l_File_LoadProcedural(char* offset, tEngTexIntermediateStruct* tex, int size)
 {
-    int v3;
-    int v4;
-    tEngTexIntermediateStruct* v5;
-    int v6;
-    int16_t v7;
-    int16_t v8;
-    int v9;
+    int used;
+    int16_t flags;
+    int interfaceIdx;
 
-    v3 = readPtr;
-    v4 = 0;
-    if (readPtr)
+    used = 0;
+    if (size)
     {
-        v4 = LOA_ReadLong(&a1, 0, 1);
-        v8 = LOA_ReadShort(&a1, 0, 1);
-        v5 = a2;
-        v7 = v8;
-        v5->realWidth = LOA_ReadShort(&a1, 0, 1);
-        v5->realHeight = LOA_ReadShort(&a1, 0, 1);
-        v6 = (uint16_t)LOA_ReadShort(&a1, 0, 1);
+        used = LOA_ReadLong(&offset, 0, 1);
+        flags = LOA_ReadShort(&offset, 0, 1);
+        tex->realWidth = LOA_ReadShort(&offset, 0, 1);
+        tex->realHeight = LOA_ReadShort(&offset, 0, 1);
+        interfaceIdx = (uint16_t)LOA_ReadShort(&offset, 0, 1);
     }
     else
     {
-        v5 = a2;
-        a2->realWidth = 128;
-        v5->realHeight = 128;
-        v6 = 0;
-        v7 = 0;
+        tex->realWidth = 128;
+        tex->realHeight = 128;
+        interfaceIdx = 0;
+        flags = 0;
     }
-    v5->flags |= 0x20u;
-    v5->colorDepth1 = 32;
-    v5->colorDepth2 = 32;
-    v5->alphaMask = 0xFF000000;
-    v5->redMask = 0xFF0000;
-    v5->greenMask = 0xFF00;
-    v5->blueMask = 0xFF;
-    if ((v7 & 1) != 0)
-        v5->tp.flagsUnkAndProceduralUnkb1 |= 0x200; // HIBYTE(v5->tp.flagsUnkAndProceduralUnkb1) |= 2
-    v9 = v5->realWidth;
-    v5->tp.proceduralParams.interfaceIdx = v6;
-    v5->tp.proceduralParams.interfacePtr = TEX_gast_ProceduralInterface[v6].Load(a1, v3 - v4, v9, v5->realHeight); // FIXME, értékadás
-    v5->tp.proceduralParams.flags = v7;
+    tex->flags |= 0x20u;
+    tex->colorDepth1 = 32;
+    tex->colorDepth2 = 32;
+    tex->alphaMask = 0xFF000000;
+    tex->redMask = 0xFF0000;
+    tex->greenMask = 0xFF00;
+    tex->blueMask = 0xFF;
+    if ((flags & 1) != 0)
+        tex->tp.flagsUnkAndProceduralUnkb1 |= 0x200; // HIBYTE(v5->tp.flagsUnkAndProceduralUnkb1) |= 2
+    tex->tp.proceduralParams.interfaceIdx = interfaceIdx;
+    tex->tp.proceduralParams.interfacePtr = TEX_gast_ProceduralInterface[interfaceIdx].Load(offset, size - used, tex->realWidth, tex->realHeight); // FIXME, értékadás
+    tex->tp.proceduralParams.flags = flags;
     return 1;
 }
 
-void TEX_Procedural_Add(int16_t elemIdx, int a2, int16_t a3, void* a4)
+void TEX_Procedural_Add(int16_t elemIdx, int interfaceIdx, int16_t flags, void* texPtr)
 {
-    int v4;
-    tTexProceduralStruct* v5;
-    tTexProceduralStruct* v6;
-    tEngTexListElemStruct* v7;
-    tEngTexListElemStruct* v8;
+    int count;
+    tTexProceduralStruct* entry;
+    tEngTexListElemStruct* elem;
 
-    v4 = TEX_gi_NbProcedural;
+    count = TEX_gi_NbProcedural;
     if (!TEX_gi_NbProcedural)
     {
-        v5 = (tTexProceduralStruct*)MEM_p_Alloc(16 * sizeof(tTexProceduralStruct));
-        v4 = TEX_gi_NbProcedural;
-        TEX_gdst_Procedural = v5;
+        TEX_gdst_Procedural = (tTexProceduralStruct*)MEM_p_Alloc(16 * sizeof(tTexProceduralStruct));
+        count = TEX_gi_NbProcedural;
     }
-    if (v4 < 16)
+    if (count < 16)
     {
-        v6 = &TEX_gdst_Procedural[v4];
-        TEX_gi_NbProcedural = v4 + 1;
-        v7 = TEX_gst_GlobalList.texElems;
-        v6->elemIdx = elemIdx;
-        v8 = &v7[elemIdx];
-        v6->s2 = a3;
-        v6->height = v8->normalData.width;
-        v6->width = v8->normalData.height;
-        v6->proceduralPicData = 0;
-        v6->proceduralIntf = &TEX_gast_ProceduralInterface[a2];
-        v6->proceduralTexPtr = a4;
+        entry = &TEX_gdst_Procedural[count];
+        TEX_gi_NbProcedural = count + 1;
+        entry->elemIdx = elemIdx;
+        elem = &TEX_gst_GlobalList.texElems[elemIdx];
+        entry->s2 = flags;
+        entry->height = elem->normalData.width;
+        entry->width = elem->normalData.height;
+        entry->proceduralPicData = 0;
+        entry->proceduralIntf = &TEX_gast_ProceduralInterface[interfaceIdx];
+        entry->proceduralTexPtr = texPtr;
     }
 }
 
-void PTR4* RADLINK calls_mem_Alloc_sub_46D600(U32 bytes)
+static void PTR4* RADLINK BINK_pv_MemAlloc(U32 bytes)
 {
     return (void PTR4*)MEM_p_Alloc(bytes);
 }
 
-void RADLINK calls_MEM_free_sub_46D610(void PTR4* ptr) 
+static void RADLINK BINK_MemFree(void PTR4* ptr)
 {
     MEM_Free((void*)ptr);
 }
 
-void TEXPRO_Bink_RemoveActSlotIDFromUsedSlots(tBinkUnkStruct* a1)
+void TEXPRO_Bink_RemoveActSlotIDFromUsedSlots(tBinkUnkStruct* block)
 {
-    int v1;
-    int v2;
+    int mask;
 
-    v1 = 1 << a1->actSlotID;
-    v2 = gBinkReadUsedSlots;
-    a1->stateMachine2MeansBusy = 1;
-    a1->actSlotID = -1;
-    gBinkReadUsedSlots = ~v1 & v2;
+    mask = 1 << block->actSlotID;
+    block->stateMachine2MeansBusy = 1;
+    block->actSlotID = -1;
+    gBinkReadUsedSlots &= ~mask;
 }
 
 int TEXPRO_Bink_GetNextFreeSlotID()
 {
-    int result;
+    int slot;
 
-    result = 0;
-    if ((gBinkReadUsedSlots & 1) != 0)
-    {
-        do
-            ++result;
-        while (((1 << result) & gBinkReadUsedSlots) != 0);
-    }
-    return result;
+    for (slot = 0; (gBinkReadUsedSlots & (1 << slot)) != 0; ++slot)
+        ;
+    return slot;
 }
 
-int TEXPRO_Bink_ReadActBlock(tBinkIFPtr* a1)
+int TEXPRO_Bink_ReadActBlock(tBinkIFPtr* stream)
 {
-    tBinkUnkStruct* v1;
-    int v2;
-    tBinkUnkStruct* v3;
-    int v4;
-    int v5;
-    int v6;
+    tBinkUnkStruct* block;
+    int chunk;
 
-    a1->actualElemInLinkedList->actSlotID = TEXPRO_Bink_GetNextFreeSlotID();
-    v1 = a1->actualElemInLinkedList;
-    if (v1->actSlotID >= 10u)
+    block = stream->actualElemInLinkedList;
+    block->actSlotID = TEXPRO_Bink_GetNextFreeSlotID();
+    if ((unsigned int)block->actSlotID >= 10u)
         return 0;
-    v2 = a1->size;
-    if (!v2)
+    if (!stream->size)
         return 0;
-    if (v2 >= 4096)
-        v2 = 4096;
-    BINK_SeekAndReadFromBF(a1->filePosInBF, v1->blockDataStartPtr, v2);
-    v3 = a1->actualElemInLinkedList;
-    v4 = a1->size;
-    gBinkReadUsedSlots |= 1 << v3->actSlotID;
-    v5 = 4096;
-    if (v4 < 4096)
-        v5 = v4;
-    a1->filePosInBF += v5;
-    v6 = 4096;
-    if (v4 < 4096)
-        v6 = v4;
-    a1->size = v4 - v6;
-    v3->stateMachine2MeansBusy = 2;
-    TEXPRO_Bink_RemoveActSlotIDFromUsedSlots(a1->actualElemInLinkedList);
+    chunk = stream->size;
+    if (chunk >= 4096)
+        chunk = 4096;
+    BINK_SeekAndReadFromBF(stream->filePosInBF, block->blockDataStartPtr, chunk);
+    gBinkReadUsedSlots |= 1 << block->actSlotID;
+    stream->filePosInBF += chunk;
+    stream->size -= chunk;
+    block->stateMachine2MeansBusy = 2;
+    TEXPRO_Bink_RemoveActSlotIDFromUsedSlots(stream->actualElemInLinkedList);
     return 1;
 }
 
-void TEXPRO_BINK_ReadActBlockAndAdvance(tBinkIFPtr* a1)
+void TEXPRO_BINK_ReadActBlockAndAdvance(tBinkIFPtr* stream)
 {
-    tBinkUnkStruct* v1;
-
-    if (a1->dataAndLinkedList && !a1->actualElemInLinkedList->stateMachine2MeansBusy)
+    while (stream->dataAndLinkedList
+           && !stream->actualElemInLinkedList->stateMachine2MeansBusy)
     {
-        do
-        {
-            if (!TEXPRO_Bink_ReadActBlock(a1))
-                break;
-            v1 = a1->actualElemInLinkedList->nextDataBlock;
-            a1->actualElemInLinkedList = v1;
-        } while (!v1->stateMachine2MeansBusy);
+        if (!TEXPRO_Bink_ReadActBlock(stream))
+            break;
+        stream->actualElemInLinkedList = stream->actualElemInLinkedList->nextDataBlock;
     }
 }
 
-int TEXPRO_Bink_GetAlreadyProcessedFileSize(tBinkIFPtr* a1)
+int TEXPRO_Bink_GetAlreadyProcessedFileSize(tBinkIFPtr* stream)
 {
-    int result;
-    int v2;
-    tBinkUnkStruct* v3;
+    int total;
+    int offset;
+    tBinkUnkStruct* block;
 
-    if (!a1->dataAndLinkedList || !a1->size)
+    if (!stream->dataAndLinkedList || !stream->size)
         return -1;
-    v2 = a1->dataBlockStartCurrOffset;
-    v3 = a1->linkedListStart;
-    result = 0;
-    if (v3->stateMachine2MeansBusy == 1)
+    offset = stream->dataBlockStartCurrOffset;
+    block = stream->linkedListStart;
+    total = 0;
+    while (block->stateMachine2MeansBusy == 1)
     {
+        block = block->nextDataBlock;
+        total += 4096 - offset;
+        offset = 0;
+        if (block == stream->linkedListStart)
+            break;
+    }
+    return total;
+}
+
+void BINK_releaseLinkedList(tBinkIFPtr* stream)
+{
+    tBinkUnkStruct* last;
+    tBinkUnkStruct* block;
+
+    if (stream->dataAndLinkedList)
+    {
+        last = stream->actualElemInLinkedList;
+        block = last;
         do
         {
-            v3 = v3->nextDataBlock;
-            result += 4096 - v2;
-            v2 = 0;
-        } while (a1->linkedListStart != v3 && v3->stateMachine2MeansBusy == 1);
-    }
-    return result;
-}
-
-void BINK_releaseLinkedList(tBinkIFPtr* a1)
-{
-    tBinkUnkStruct* v1;
-    tBinkUnkStruct* i;
-
-    if (a1->dataAndLinkedList)
-    {
-        v1 = a1->actualElemInLinkedList;
-        for (i = v1->nextDataBlock; i != v1; i = i->nextDataBlock)
-        {
-            while (i->stateMachine2MeansBusy == 2);
-            i->stateMachine2MeansBusy = 0;
-        }
-        while (i->stateMachine2MeansBusy == 2);
-        i->stateMachine2MeansBusy = 0;
-        a1->linkedListStart = i;
-        a1->actualElemInLinkedList = i;
-        a1->dataBlockStartCurrOffset = 0;
+            block = block->nextDataBlock;
+            while (block->stateMachine2MeansBusy == 2)
+                ;
+            block->stateMachine2MeansBusy = 0;
+        } while (block != last);
+        stream->linkedListStart = last;
+        stream->actualElemInLinkedList = last;
+        stream->dataBlockStartCurrOffset = 0;
     }
 }
 
-void PC_VideoStreamRestart_Bink(tBinkIFPtr* a1)
+void PC_VideoStreamRestart_Bink(tBinkIFPtr* stream)
 {
-    BINK_IF_PTR_GLOBAL = a1;
-    if (a1->filePosInBF)
+    BINK_IF_PTR_GLOBAL = stream;
+    if (stream->filePosInBF)
     {
-        BinkClose(a1->binkHandle);
-        BINK_releaseLinkedList(a1);
-        PC_VideoStreamCreate_Bink(a1, a1->binkVideoKey);
+        BinkClose(stream->binkHandle);
+        BINK_releaseLinkedList(stream);
+        PC_VideoStreamCreate_Bink(stream, stream->binkVideoKey);
     }
 }
 
-void PC_VideoStreamSync_Bink(tBinkIFPtr* a1)
+void PC_VideoStreamSync_Bink(tBinkIFPtr* stream)
 {
-    int v1;
+    int frames;
 
-    BINK_IF_PTR_GLOBAL = a1;
-    if (a1->filePosInBF)
+    BINK_IF_PTR_GLOBAL = stream;
+    if (!stream->filePosInBF)
+        return;
+    if (stream->videofilesize < TEXPRO_Bink_GetAlreadyProcessedFileSize(stream)
+        && !BinkWait(stream->binkHandle))
     {
-        if (a1->videofilesize >= TEXPRO_Bink_GetAlreadyProcessedFileSize(a1) || BinkWait(a1->binkHandle))
+        frames = 0;
+        while (1)
         {
-        LABEL_9:
-            TEXPRO_BINK_ReadActBlockAndAdvance(a1);
-        }
-        else
-        {
-            v1 = 0;
-            while (1)
+            BinkDoFrame(stream->binkHandle);
+            if (stream->binkHandle->FrameNum >= stream->binkHandle->Frames)
             {
-                BinkDoFrame(a1->binkHandle);
-                if (a1->binkHandle->FrameNum >= a1->binkHandle->Frames)
-                    break;
-                BinkNextFrame(a1->binkHandle);
-                ++v1;
-                if (BinkWait(a1->binkHandle) || v1 >= 3)
-                {
-                    BinkCopyToBuffer(a1->binkHandle, a1->proceduralStructPtr->proceduralPicData, 4 * a1->proceduralStructPtr->width, a1->proceduralStructPtr->height, 0, 0, BINKSURFACE32 | BINKCOPYALL);
-                    goto LABEL_9;
-                }
+                PC_VideoStreamRestart_Bink(stream);
+                return;
             }
-            PC_VideoStreamRestart_Bink(a1);
+            BinkNextFrame(stream->binkHandle);
+            ++frames;
+            if (BinkWait(stream->binkHandle) || frames >= 3)
+            {
+                BinkCopyToBuffer(stream->binkHandle, stream->proceduralStructPtr->proceduralPicData, 4 * stream->proceduralStructPtr->width, stream->proceduralStructPtr->height, 0, 0, BINKSURFACE32 | BINKCOPYALL);
+                break;
+            }
         }
     }
+    TEXPRO_BINK_ReadActBlockAndAdvance(stream);
 }
 
 
-U32 RADLINK BINK_GetBufferSize(BINKIO* a1, U32 a2)
+U32 RADLINK BINK_GetBufferSize(BINKIO* binkIO, U32 size)
 {
     return 2048;
 }
 
-int TEXPRO_Bink_ReadAndCopyNextBlockToReadBuffer(tBinkIFPtr* a1, char* dest, signed int a3)
+int TEXPRO_Bink_ReadAndCopyNextBlockToReadBuffer(tBinkIFPtr* stream, char* dest, signed int remaining)
 {
-    signed int v4;
-    tBinkUnkStruct* v6;
-    signed int v7;
-    int v8;
+    tBinkUnkStruct* block;
+    signed int chunk;
+    int offset;
 
-    if (!a1->dataAndLinkedList)
+    if (!stream->dataAndLinkedList)
         return -1;
-    v4 = a3;
-    if (!a3)
-        return 0;
-    while (1)
+    while (remaining)
     {
-        v6 = a1->linkedListStart;
-        if (v6->stateMachine2MeansBusy != 1)
+        block = stream->linkedListStart;
+        if (block->stateMachine2MeansBusy != 1)
         {
-            a1->dataBlockStartCurrOffset = 0;
-            if (!v6->stateMachine2MeansBusy)
-                TEXPRO_BINK_ReadActBlockAndAdvance(a1);
-            v6 = a1->linkedListStart;
-            while (v6->stateMachine2MeansBusy == 2)
+            stream->dataBlockStartCurrOffset = 0;
+            if (!block->stateMachine2MeansBusy)
+                TEXPRO_BINK_ReadActBlockAndAdvance(stream);
+            block = stream->linkedListStart;
+            while (block->stateMachine2MeansBusy == 2)
                 ;
-            if (v6->stateMachine2MeansBusy != 1)
-                break;
+            if (block->stateMachine2MeansBusy != 1)
+                return -1;
         }
-        v7 = 4096 - a1->dataBlockStartCurrOffset;
-        if (v4 <= v7)
-            v7 = v4;
-        memcpy(dest, &v6->blockDataStartPtr[a1->dataBlockStartCurrOffset], v7);
-        v8 = v7 + a1->dataBlockStartCurrOffset;
-        dest += v7;
-        a1->dataBlockStartCurrOffset = v8;
-        if (v8 == 4096)
+        chunk = 4096 - stream->dataBlockStartCurrOffset;
+        if (remaining <= chunk)
+            chunk = remaining;
+        memcpy(dest, &block->blockDataStartPtr[stream->dataBlockStartCurrOffset], chunk);
+        offset = chunk + stream->dataBlockStartCurrOffset;
+        dest += chunk;
+        stream->dataBlockStartCurrOffset = offset;
+        if (offset == 4096)
         {
-            a1->linkedListStart->stateMachine2MeansBusy = 0;
-            a1->linkedListStart = a1->linkedListStart->nextDataBlock;
-            a1->dataBlockStartCurrOffset = 0;
+            stream->linkedListStart->stateMachine2MeansBusy = 0;
+            stream->linkedListStart = stream->linkedListStart->nextDataBlock;
+            stream->dataBlockStartCurrOffset = 0;
         }
-        a3 -= v7;
-        if (!a3)
-            return 0;
-        v4 = a3;
+        remaining -= chunk;
     }
-    return -1;
+    return 0;
 }
 
-int TEXPRO_BINK_ReadNumBytes(BINKIO* a1, void* DstBuf, unsigned int MaxCharCount)
+int TEXPRO_BINK_ReadNumBytes(BINKIO* binkIO, void* DstBuf, unsigned int MaxCharCount)
 {
     if (TEXPRO_Bink_ReadAndCopyNextBlockToReadBuffer(BINK_IF_PTR_GLOBAL, (char*)DstBuf, MaxCharCount))
     {
         BINK_SeekAndReadFromBF(BINK_IF_PTR_GLOBAL->filePosInBF, DstBuf, MaxCharCount);
         BINK_IF_PTR_GLOBAL->filePosInBF += MaxCharCount;
     }
-    a1->BytesRead = MaxCharCount;
+    binkIO->BytesRead = MaxCharCount;
     return 0;
 }
 
-U32 RADLINK BINK_ReadHeader(BINKIO* a1, S32 a2, void PTR4* DstBuf, U32 MaxCharCount)
+U32 RADLINK BINK_ReadHeader(BINKIO* binkIO, S32 offset, void PTR4* DstBuf, U32 MaxCharCount)
 {
-    return TEXPRO_BINK_ReadNumBytes(a1, DstBuf, MaxCharCount);
+    return TEXPRO_BINK_ReadNumBytes(binkIO, DstBuf, MaxCharCount);
 }
 
-U32 RADLINK BINK_ReadFrame(BINKIO* a1, U32 a2, S32 a3, void* DstBuf, U32 MaxCharCount)
+U32 RADLINK BINK_ReadFrame(BINKIO* binkIO, U32 frameNum, S32 offset, void* DstBuf, U32 MaxCharCount)
 {
-    return TEXPRO_BINK_ReadNumBytes(a1, DstBuf, MaxCharCount);
+    return TEXPRO_BINK_ReadNumBytes(binkIO, DstBuf, MaxCharCount);
 }
 
 void RADLINK BINK_SetInfo(struct BINKIO PTR4* Bnkio, void PTR4* Buf, U32 Size, U32 FileSize, U32 simulate) {
@@ -567,16 +488,16 @@ U32 RADLINK BINK_Idle(struct BINKIO PTR4* Bnkio) {
     return 0;
 }
 
-void TEXPRO_BINK_Close(tBinkIFPtr* a1)
+void TEXPRO_BINK_Close(tBinkIFPtr* stream)
 {
-    if (a1->dataAndLinkedList)
+    if (stream->dataAndLinkedList)
     {
-        BINK_releaseLinkedList(a1);
-        MEM_Free(a1->dataAndLinkedList);
-        a1->dataBlockStartCurrOffset = 0;
-        a1->actualElemInLinkedList = 0;
-        a1->linkedListStart = 0;
-        a1->dataAndLinkedList = 0;
+        BINK_releaseLinkedList(stream);
+        MEM_Free(stream->dataAndLinkedList);
+        stream->dataBlockStartCurrOffset = 0;
+        stream->actualElemInLinkedList = 0;
+        stream->linkedListStart = 0;
+        stream->dataAndLinkedList = 0;
     }
 }
 
@@ -588,35 +509,32 @@ void RADLINK BINK_Close(struct BINKIO PTR4* Bnkio)
 
 void BINK_AllocLinkedList(tBinkIFPtr* binkIFPtr, int videosize)
 {
-    unsigned int v2;
-    unsigned int v3;
-    char* v4;
-    char* v5;
-    tBinkUnkStruct* v6;
+    unsigned int bufferBytes;
+    unsigned int blockCount;
+    unsigned int total;
+    char* blockData;
+    tBinkUnkStruct* block;
 
     binkIFPtr->videofilesize = videosize;
-    v2 = 2 * (videosize & 0xFFFFF000) + 0x2000;
-    v3 = v2 >> 12;
-    v4 = (char*)MEM_p_Alloc(16 * (v2 >> 12) + v2);// >> 12 => / 4096
-    binkIFPtr->dataAndLinkedList = v4;
-    memset(v4, 0, 4 * ((16 * (v2 >> 12) + v2) >> 2));
-    v5 = binkIFPtr->dataAndLinkedList;
-    v6 = (tBinkUnkStruct*)&v5[v2];
-    binkIFPtr->linkedListStart = (tBinkUnkStruct*)&v5[v2];
-    binkIFPtr->actualElemInLinkedList = (tBinkUnkStruct*)&v5[v2];
-    if (v2 >> 12)
+    bufferBytes = 2 * (videosize & 0xFFFFF000) + 0x2000;
+    blockCount = bufferBytes >> 12;// >> 12 => / 4096
+    total = 16 * blockCount + bufferBytes;
+    blockData = (char*)MEM_p_Alloc(total);
+    binkIFPtr->dataAndLinkedList = blockData;
+    memset(blockData, 0, total);
+    block = (tBinkUnkStruct*)&blockData[bufferBytes];
+    binkIFPtr->linkedListStart = block;
+    binkIFPtr->actualElemInLinkedList = block;
+    while (blockCount)
     {
-        do
-        {
-            v6->blockDataStartPtr = v5;
-            v5 += 4096;
-            --v3;
-            v6->stateMachine2MeansBusy = 0;
-            v6->nextDataBlock = v6 + 1;
-            ++v6;
-        } while (v3);
+        block->blockDataStartPtr = blockData;
+        blockData += 4096;
+        --blockCount;
+        block->stateMachine2MeansBusy = 0;
+        block->nextDataBlock = block + 1;
+        ++block;
     }
-    v6[-1].nextDataBlock = (tBinkUnkStruct*)&binkIFPtr->dataAndLinkedList[v2];// ez csinálja meg a loopot, gondolom ha a végére ér az elejére ugorjon
+    block[-1].nextDataBlock = (tBinkUnkStruct*)&binkIFPtr->dataAndLinkedList[bufferBytes];// ez csinálja meg a loopot, gondolom ha a végére ér az elejére ugorjon
     binkIFPtr->dataBlockStartCurrOffset = 0;
 }
 
@@ -634,7 +552,7 @@ S32 RADLINK BINK_IO_FUNC(BINKIO* binkIOPtr, const char PTR4* name, U32 flags)
         return 0;
 
     BINK_SeekAndReadFromBF(BINK_IF_PTR_GLOBAL->filePosInBF, &chunkSize, 4);
-    
+
     if (chunkSize == 8)
     {
         BINK_IF_PTR_GLOBAL->filePosInBF = 0;
@@ -643,17 +561,17 @@ S32 RADLINK BINK_IO_FUNC(BINKIO* binkIOPtr, const char PTR4* name, U32 flags)
 
     BINK_IF_PTR_GLOBAL->size = chunkSize;
     BINK_IF_PTR_GLOBAL->filePosInBF += 4;
-    
+
     BINK_SeekAndReadFromBF(BINK_IF_PTR_GLOBAL->filePosInBF + 12, &videoSize, 4);
     BINK_AllocLinkedList(BINK_IF_PTR_GLOBAL, videoSize);
-    
+
     binkIOPtr->GetBufferSize = BINK_GetBufferSize;
     binkIOPtr->ReadHeader = BINK_ReadHeader;
     binkIOPtr->ReadFrame = BINK_ReadFrame;
     binkIOPtr->SetInfo = BINK_SetInfo;
     binkIOPtr->Idle = BINK_Idle;
     binkIOPtr->Close = BINK_Close;
-    
+
     return -1;
 }
 
@@ -662,7 +580,7 @@ void PC_VideoStreamCreate_Bink(tBinkIFPtr* binkIFPtr, int videoKey)
     BINK_IF_PTR_GLOBAL = binkIFPtr;
     binkIFPtr->binkVideoKey = videoKey;
     BinkSetSoundTrack(0, 0);
-    BinkSetMemory(calls_mem_Alloc_sub_46D600, calls_MEM_free_sub_46D610);
+    BinkSetMemory(BINK_pv_MemAlloc, BINK_MemFree);
     BinkSetIOSize(2048);
     BinkSetIO(BINK_IO_FUNC);
     binkIFPtr->binkHandle = BinkOpen((char*)binkIFPtr, BINKNOTHREADEDIO | BINKIOPROCESSOR | BINKIOSIZE | BINKSNDTRACK);
@@ -670,946 +588,702 @@ void PC_VideoStreamCreate_Bink(tBinkIFPtr* binkIFPtr, int videoKey)
 
 void TEXPRO_MPEG_Start()
 {
-    int v0;
+    int pos;
 
-    v0 = TEXPRO_pst_CurrentMpeg->pos;
-    if (v0 != -1)
+    pos = TEXPRO_pst_CurrentMpeg->pos;
+    if (pos != -1)
     {
-        TEXPRO_pst_CurrentMpeg->startOffset = v0 + 4;
+        TEXPRO_pst_CurrentMpeg->startOffset = pos + 4;
         TEXPRO_pst_CurrentMpeg->flags &= ~0x100; //BYTE1(TEXPRO_pst_CurrentMpeg->flags) &= ~1u;
     }
 }
 
 int TEXPRO_MPEG_ReadNext(void* DstBuf)
 {
-    tTexProcMpeg* v1;
-    signed int v3;
+    tTexProcMpeg* mpeg;
+    signed int chunk;
 
-    v1 = TEXPRO_pst_CurrentMpeg;
-    if (TEXPRO_pst_CurrentMpeg->pos == -1)
+    mpeg = TEXPRO_pst_CurrentMpeg;
+    if (mpeg->pos == -1)
         return 0;
-    v3 = TEXPRO_pst_CurrentMpeg->endOffset - TEXPRO_pst_CurrentMpeg->startOffset;
-    if (v3 <= 2048)
-    {
-        TEXPRO_pst_CurrentMpeg->flags |= 100u; // BYTE1(TEXPRO_pst_CurrentMpeg->flags) |= 1u;
-        v1 = TEXPRO_pst_CurrentMpeg;
-    }
+    chunk = mpeg->endOffset - mpeg->startOffset;
+    if (chunk <= 2048)
+        // preserved: decimal 100, where the note beside it is the byte-1 bit, 0x100
+        mpeg->flags |= 100u; // BYTE1(TEXPRO_pst_CurrentMpeg->flags) |= 1u;
     else
-    {
-        v3 = 2048;
-    }
-    BINK_SeekAndReadFromBF(v1->startOffset, DstBuf, v3);
-    TEXPRO_pst_CurrentMpeg->startOffset += v3;
-    return v3;
+        chunk = 2048;
+    BINK_SeekAndReadFromBF(mpeg->startOffset, DstBuf, chunk);
+    mpeg->startOffset += chunk;
+    return chunk;
 }
-
-tTexProcMpeg* TEXPRO_pv_MpegLoad(char* readptr, int vmilyensize, int width, int height)
+tTexProcMpeg* TEXPRO_pv_MpegLoad(char* readptr, int size, int width, int height)
 {
-    tTexProcMpeg* v4;
-    int v5;
-    BOOL v6;
-    int v7;
+    tTexProcMpeg* mpeg;
+    int pos;
 
-    v4 = (tTexProcMpeg*)MEM_p_Alloc(sizeof(tTexProcMpeg));
-    memset(v4, 0, sizeof(tTexProcMpeg));
-    v5 = vmilyensize;
-    v6 = vmilyensize == 0;
-    v4->sub.bufferSize = 2048;
-    v4->sub.Start = TEXPRO_MPEG_Start;
-    v4->sub.ReadNext = TEXPRO_MPEG_ReadNext;
-    if (v6 || v5 != LOA_ReadLong(&readptr, 0, 1))
+    mpeg = (tTexProcMpeg*)MEM_p_Alloc(sizeof(tTexProcMpeg));
+    memset(mpeg, 0, sizeof(tTexProcMpeg));
+    mpeg->sub.bufferSize = 2048;
+    mpeg->sub.Start = TEXPRO_MPEG_Start;
+    mpeg->sub.ReadNext = TEXPRO_MPEG_ReadNext;
+    if (size == 0 || size != LOA_ReadLong(&readptr, 0, 1))
     {
-        v4->key = -1;
-        v4->i6 = -1;
-        v4->sub.binkKey = -1;
-        v4->pos = -1;
+        mpeg->key = -1;
+        mpeg->i6 = -1;
+        mpeg->sub.binkKey = -1;
+        mpeg->pos = -1;
     }
     else
     {
-        v4->key = LOA_ReadLong(&readptr, 0, 1);
-        if (v5 == 8)
+        mpeg->key = LOA_ReadLong(&readptr, 0, 1);
+        if (size == 8)
         {
-            v4->i6 = -1;
-            v4->sub.binkKey = -1;
-            v4->sub.ii5 = -1;
-            v4->i8 = 0;
-            v4->i9 = 0;
-            v4->i11 = 0;
-            v4->i10 = 0;
-            v4->i7 = 0;
+            mpeg->i6 = -1;
+            mpeg->sub.binkKey = -1;
+            mpeg->sub.ii5 = -1;
+            mpeg->i8 = 0;
+            mpeg->i9 = 0;
+            mpeg->i11 = 0;
+            mpeg->i10 = 0;
+            mpeg->i7 = 0;
         }
-        else if (v5 == 32)
+        else if (size == 32)
         {
-            v4->i6 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i7 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i10 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i11 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i9 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i8 = LOA_ReadLong(&readptr, 0, 1);
-            v4->sub.binkKey = -1;
-            v4->sub.ii3 = 0;
-            v4->sub.ii1 = 0;
-            v4->sub.ii2 = 0;
-            v4->sub.ii5 = -1;
+            mpeg->i6 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i7 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i10 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i11 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i9 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i8 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->sub.binkKey = -1;
+            mpeg->sub.ii3 = 0;
+            mpeg->sub.ii1 = 0;
+            mpeg->sub.ii2 = 0;
+            mpeg->sub.ii5 = -1;
         }
         else
         {
-            v4->i6 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i7 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i10 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i11 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i9 = LOA_ReadLong(&readptr, 0, 1);
-            v4->i8 = LOA_ReadLong(&readptr, 0, 1);
-            v4->sub.binkKey = LOA_ReadLong(&readptr, 0, 1);
-            v4->sub.ii1 = LOA_ReadLong(&readptr, 0, 1);
-            v4->sub.ii2 = LOA_ReadLong(&readptr, 0, 1);
-            v4->sub.ii3 = LOA_ReadLong(&readptr, 0, 1);
-            if (v5 == 48)
-                v4->sub.ii5 = -1;
+            mpeg->i6 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i7 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i10 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i11 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i9 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->i8 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->sub.binkKey = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->sub.ii1 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->sub.ii2 = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->sub.ii3 = LOA_ReadLong(&readptr, 0, 1);
+            if (size == 48)
+                mpeg->sub.ii5 = -1;
             else
-                v4->sub.ii5 = LOA_ReadLong(&readptr, 0, 1);
+                mpeg->sub.ii5 = LOA_ReadLong(&readptr, 0, 1);
         }
-        v7 = BIG_ul_SearchKeyToPos(v4->key);
-        v4->pos = v7;
-        if (v7 != -1)
+        pos = BIG_ul_SearchKeyToPos(mpeg->key);
+        mpeg->pos = pos;
+        if (pos != -1)
         {
-            v4->startOffset = v7 + 4;
-            v4->endOffset = v4->startOffset + BIG_ul_GetLengthFile(v7);
-            TEXPRO_pst_CurrentMpeg = v4;
+            mpeg->startOffset = pos + 4;
+            mpeg->endOffset = mpeg->startOffset + BIG_ul_GetLengthFile(pos);
+            TEXPRO_pst_CurrentMpeg = mpeg;
             if (!LOA_gb_SpeedMode || BIG_gi_ReadMode != 2)
             {
                 //TODO FIXME: mpeg2dec should be linked, pointless isnce it's kind of a leftover and doesn't even work.
                 //mpeg_init_and_open_sub_486910(&v4->sub);
-                return v4;
+                return mpeg;
             }
         }
     }
-    return v4;
+    return mpeg;
 }
 
-int TEXPRO_l_MpegUpdate(tTexProceduralStruct* a1)
+int TEXPRO_l_MpegUpdate(tTexProceduralStruct* procedural)
 {
-    tTexProcMpeg* v1;
-    tTexProcMpeg* v2;
-    tBinkIFPtr* v3;
-    char v4;
+    tTexProcMpeg* mpeg;
+    tBinkIFPtr* stream;
+    char state;
 
-    v1 = (tTexProcMpeg*)a1->proceduralTexPtr;
-    v2 = v1;
-    TEXPRO_pst_CurrentMpeg = v1;
-    if (v1->sub.binkKey != -1)
+    mpeg = (tTexProcMpeg*)procedural->proceduralTexPtr;
+    TEXPRO_pst_CurrentMpeg = mpeg;
+    if (mpeg->sub.binkKey != -1)
     {
-        if (!v1->sub.binkIFPtr)
+        if (!mpeg->sub.binkIFPtr)
         {
-            v3 = (tBinkIFPtr*)MEM_p_Alloc(sizeof(tBinkIFPtr));
-            v1->sub.binkIFPtr = v3;
-            memset(v3, 0, sizeof(tBinkIFPtr));
-            v1->sub.binkIFPtr->proceduralStructPtr = a1;
-            PC_VideoStreamCreate_Bink(v1->sub.binkIFPtr, v1->sub.binkKey);
-            v2 = TEXPRO_pst_CurrentMpeg;
+            stream = (tBinkIFPtr*)MEM_p_Alloc(sizeof(tBinkIFPtr));
+            mpeg->sub.binkIFPtr = stream;
+            memset(stream, 0, sizeof(tBinkIFPtr));
+            mpeg->sub.binkIFPtr->proceduralStructPtr = procedural;
+            PC_VideoStreamCreate_Bink(mpeg->sub.binkIFPtr, mpeg->sub.binkKey);
         }
-        if ((v2->flags & 0x100) != 0 && (v2->flags & 2) != 0 && ((v2->flags >> 16) & 0xff) != 2) // ...BYTE2(v2->flags) != 2
+        if ((mpeg->flags & 0x100) != 0 && (mpeg->flags & 2) != 0 && ((mpeg->flags >> 16) & 0xff) != 2) // ...BYTE2(v2->flags) != 2
         {
-            v2->flags &= 0xff00ffff;
-            v2->flags |= 0x00010000;
-            v2 = TEXPRO_pst_CurrentMpeg;
+            mpeg->flags &= 0xff00ffff;
+            mpeg->flags |= 0x00010000;
         }
-        v4 = (v2->flags >> 16) & 0xff; //v4 = BYTE2(v2->flags);
-        if (v4)
+        state = (mpeg->flags >> 16) & 0xff; //v4 = BYTE2(v2->flags);
+        if (state)
         {
-            if (v4 == 1)
+            if (state == 1)
             {
-                v2->flags |= 1u;
-                memset(a1->proceduralPicData, 0, 4 * a1->width * a1->height);
-                TEXPRO_pst_CurrentMpeg->flags &= 0xff00ffff; //BYTE2(TEXPRO_pst_CurrentMpeg->flags) = 0;
+                mpeg->flags |= 1u;
+                memset(procedural->proceduralPicData, 0, 4 * procedural->width * procedural->height);
+                mpeg->flags &= 0xff00ffff; //BYTE2(TEXPRO_pst_CurrentMpeg->flags) = 0;
                 return 1;
             }
-            if (v4 == 2)
+            if (state == 2)
             {
-                v2->flags &= ~1u;
-                PC_VideoStreamRestart_Bink(v1->sub.binkIFPtr);
-                v2 = TEXPRO_pst_CurrentMpeg;
+                mpeg->flags &= ~1u;
+                PC_VideoStreamRestart_Bink(mpeg->sub.binkIFPtr);
             }
-            v2->flags &= 0xff00ffff; //BYTE2(v2->flags) = 0;
-            v2 = TEXPRO_pst_CurrentMpeg;
+            mpeg->flags &= 0xff00ffff; //BYTE2(v2->flags) = 0;
         }
-        if ((v2->flags & 1) != 0)
+        if ((mpeg->flags & 1) != 0)
             return 0;
-        PC_VideoStreamSync_Bink(v1->sub.binkIFPtr);
+        PC_VideoStreamSync_Bink(mpeg->sub.binkIFPtr);
     }
     return 1;
 }
 
-void BINK_CloseAll(tBinkIFPtr* a1)
+void BINK_CloseAll(tBinkIFPtr* stream)
 {
-    BINK_IF_PTR_GLOBAL = a1;
-    if (a1->filePosInBF)
+    BINK_IF_PTR_GLOBAL = stream;
+    if (stream->filePosInBF)
     {
-        BinkClose(a1->binkHandle);
-        TEXPRO_BINK_Close(a1);
+        BinkClose(stream->binkHandle);
+        TEXPRO_BINK_Close(stream);
     }
 }
 
-void TEXPRO_MpegFree(tTexProceduralStruct* a1)
+void TEXPRO_MpegFree(tTexProceduralStruct* procedural)
 {
-    tTexProcMpeg* v1;
+    tTexProcMpeg* mpeg;
 
-    v1 = (tTexProcMpeg*)a1->proceduralTexPtr;
-    if (v1->sub.binkKey != -1 && v1->sub.binkIFPtr)
+    mpeg = (tTexProcMpeg*)procedural->proceduralTexPtr;
+    if (mpeg->sub.binkKey != -1 && mpeg->sub.binkIFPtr)
     {
-        BINK_CloseAll(v1->sub.binkIFPtr);
-        MEM_Free(v1->sub.binkIFPtr);
-        v1->sub.binkIFPtr = 0;
+        BINK_CloseAll(mpeg->sub.binkIFPtr);
+        MEM_Free(mpeg->sub.binkIFPtr);
+        mpeg->sub.binkIFPtr = 0;
     }
-    MEM_Free(v1);
+    MEM_Free(mpeg);
 }
 
-tTexProFire* TEXPRO_pv_FireLoad(char* readptr, int vmilyensize, int width, int height)
+tTexProFire* TEXPRO_pv_FireLoad(char* readptr, int size, int width, int height)
 {
-    tTexProFire* v4;
-    uint8_t* v5;
-    uint8_t* v6;
-    int v7;
+    tTexProFire* fire;
+    uint8_t* current;
+    uint8_t* previous;
+    int i;
 
-    v4 = (tTexProFire*)MEM_p_Alloc(sizeof(tTexProFire));
-    v5 = (uint8_t*)MEM_p_Alloc(height * width);
-    v4->ptr = v5;
-    memset(v5, 0, height * width);
-    v6 = (uint8_t*)MEM_p_Alloc(height * width);
-    v4->ptr2 = v6;
-    memset(v6, 0, height * width);
-    v7 = 64;
-    do
+    fire = (tTexProFire*)MEM_p_Alloc(sizeof(tTexProFire));
+    current = (uint8_t*)MEM_p_Alloc(height * width);
+    fire->ptr = current;
+    memset(current, 0, height * width);
+    previous = (uint8_t*)MEM_p_Alloc(height * width);
+    fire->ptr2 = previous;
+    memset(previous, 0, height * width);
+    // preserved: the fourth quarter is written at 172, not 192, so arr[236..255] is never set and the struct is not zeroed
+    for (i = 63; i >= 0; --i)
     {
-        --v7;
-        v4->arr[v7] = (v7 | ((v7 | (v7 << 8)) << 8)) << 10;
-        v4->arr[v7 + 64] = 4 * (v7 | 0xFFFFFFC0);
-        v4->arr[v7 + 128] = -1;
-        v4->arr[v7 + 172] = (4 * (63 - v7)) | ((63 - v7) << 18) | ((63 - v7) << 10) | ((-1 - v7) << 26);
-    } while (v7);
-    return v4;
+        fire->arr[i] = (i << 10) | (i << 18) | (i << 26);
+        fire->arr[i + 64] = 4 * (i | 0xFFFFFFC0);
+        fire->arr[i + 128] = -1;
+        fire->arr[i + 172] = (4 * (63 - i)) | ((63 - i) << 18) | ((63 - i) << 10) | ((-1 - i) << 26);
+    }
+    return fire;
 }
 
-int TEXPRO_l_FireUpdate(tTexProceduralStruct* a1)
+int TEXPRO_l_FireUpdate(tTexProceduralStruct* procedural)
 {
-    int v1;
-    tTexProFire* v2;
-    int v3;
-    int v4;
-    uint8_t* v5;
-    uint8_t* v6;
-    int v7;
-    int v8;
-    uint8_t* v9;
-    uint8_t* v10;
-    uint8_t* v11;
-    uint8_t* v12;
-    uint8_t* v13;
-    int* i;
-    int v15;
-    int v17;
-    int v18;
-    int v19;
-    tTexProFire* v20;
+    int height;
+    tTexProFire* fire;
+    int width;
+    uint8_t* current;
+    uint8_t* previous;
+    uint8_t* tail;
+    uint8_t* above;
+    uint8_t* left;
+    uint8_t* swap;
+    uint8_t* src;
+    uint32_t* dst;
+    int row;
+    int col;
+    int cell;
+    int average;
 
-    v1 = a1->height;
-    v2 = (tTexProFire*)a1->proceduralTexPtr;
-    v3 = a1->width;
-    v4 = v2->unknum;
-    v20 = v2;
-    v19 = v1;
-    if (v4)
+    height = procedural->height;
+    fire = (tTexProFire*)procedural->proceduralTexPtr;
+    width = procedural->width;
+    // preserved: unknum is never written anywhere in the tree and the struct is not zeroed, so this branches on uninitialised memory
+    if (fire->unknum)
     {
-        if (v4 == 1)
+        if (fire->unknum == 1)
         {
-            v10 = &v2->ptr[v3 * v1];
-            if (v3 * (v1 - 2))
+            // preserved: the walk starts one entry past the end of the buffer
+            tail = &fire->ptr[width * height];
+            if (width * (height - 2))
             {
                 // TODO: ezeket jó lenne nem - offsetesre megcsinálni
-                v11 = &v10[-2 * v3];
-                v12 = &v10[-v3 + 1];
-                v18 = v3 * (v1 - 2);
-                do
+                above = &tail[-2 * width];
+                left = &tail[-width + 1];
+                for (cell = width * (height - 2); cell; --cell)
                 {
-                    *v10-- = (*v12 + *v11-- + *(v12 - 1) + *(v12 - 2)) >> 2;
-                    --v12;
-                    --v18;
-                } while (v18);
+                    *tail-- = (*left + *above-- + *(left - 1) + *(left - 2)) >> 2;
+                    --left;
+                }
             }
         }
     }
     else
     {
-        v5 = &v2->ptr[3 * v3 + 1];
-        v6 = &v2->ptr2[v3 + 1];
-        if (v1 != 4)
+        current = &fire->ptr[3 * width + 1];
+        previous = &fire->ptr2[width + 1];
+        if (height != 4)
         {
-            v17 = v1 - 4;
-            do
+            for (row = height - 4; row; --row)
             {
-                v7 = v3 - 2;
-                if (v3 != 2)
+                if (width != 2)
                 {
-                    do
+                    for (col = width - 2; col; --col)
                     {
-                        v8 = (*(v6 - 1) + v6[1] + v6[-v3] + v6[v3]) >> 2;
-                        *v5++ = v8 - ((uint8_t)v8 >> 4);
-                        ++v6;
-                        --v7;
-                    } while (v7);
-                    v2 = v20;
-                    v1 = v19;
+                        average = (*(previous - 1) + previous[1] + previous[-width] + previous[width]) >> 2;
+                        *current++ = average - ((uint8_t)average >> 4);
+                        ++previous;
+                    }
                 }
-                v5 += 2;
-                v6 += 2;
-                --v17;
-            } while (v17);
+                current += 2;
+                previous += 2;
+            }
         }
-        v9 = v2->ptr;
-        v2->ptr = v2->ptr2;
-        v2->ptr2 = v9;
+        swap = fire->ptr;
+        fire->ptr = fire->ptr2;
+        fire->ptr2 = swap;
     }
-    v13 = v2->ptr;
-    for (i = (int*)a1->proceduralPicData; v3; --v3)
+    src = fire->ptr;
+    dst = procedural->proceduralPicData;
+    for (col = width; col; --col)
     {
-        if (v1)
-        {
-            v15 = v1;
-            do
-            {
-                *i++ = v2->arr[*v13++];
-                --v15;
-            } while (v15);
-        }
+        for (row = height; row; --row)
+            *dst++ = fire->arr[*src++];
     }
     return 1;
 }
 
-tTexProcPlasma* TEXPRO_pv_PlasmaLoad(char* readptr, int vmilyensize, int width, int height)
+tTexProcPlasma* TEXPRO_pv_PlasmaLoad(char* readptr, int size, int width, int height)
 {
-    int v4;
-    int v5;
-    uint8_t* v6;
-    uint8_t* v7;
-    int v8;
-    uint8_t* v9;
-    int v10;
-    uint8_t* v11;
-    int v12;
-    int v13;
-    int v14;
-    int v15;
-    int v16;
-    int v17;
-    uint8_t* v18;
-    uint8_t* v19;
-    uint8_t* v20;
-    int v21;
-    int v22;
-    int v23;
-    int v24;
-    int v25;
-    int v26;
-    int v27;
+    tTexProcPlasma* plasma;
+    uint8_t* field;
+    uint8_t* copy;
+    uint8_t* column;
+    int pass;
+    int step;
+    int half;
+    int col;
+    int halfCol;
+    int nextCol;
+    int row;
+    int rowBelow;
+    int topLeft;
+    int topRight;
+    int bottomLeft;
+    int bottomRight;
+    int sum;
     int i;
-    int v31;
-    tTexProcPlasma* v32;
-    int v33;
-    int v34;
-    int v35;
-    uint8_t* v36;
-    uint8_t* v37;
-    int v38;
-    int v39;
-    int v40;
-    int j; 
-    int v42;
-    int v43;
-    int v44;
-    int v45;
-    uint8_t* v46;
 
-    v4 = width;
-    v5 = height;
-    v32 = (tTexProcPlasma*)MEM_p_Alloc(sizeof(tTexProcPlasma));
-    v6 = (uint8_t*)MEM_p_Alloc(height * width);
-    v32->ptr1 = v6;
-    memset(v6, 0, height * width);
-    v7 = (uint8_t*)MEM_p_Alloc(height * width);
-    v32->ptr2 = v7;
-    memset(v7, 0, height * width);
-    v32->f1 = (float)((double)rand() * 0.000030518509 * 360.0);
-    v8 = rand();
-    v9 = v32->ptr1;
-    v46 = v32->ptr2;
-    v39 = 0;
-    v32->f2 = (float)((double)v8 * 0.000030518509 * 360.0);
-    do
+    plasma = (tTexProcPlasma*)MEM_p_Alloc(sizeof(tTexProcPlasma));
+    field = (uint8_t*)MEM_p_Alloc(height * width);
+    plasma->ptr1 = field;
+    memset(field, 0, height * width);
+    copy = (uint8_t*)MEM_p_Alloc(height * width);
+    plasma->ptr2 = copy;
+    memset(copy, 0, height * width);
+    plasma->f1 = (float)((double)rand() * 0.000030518509 * 360.0);
+    plasma->f2 = (float)((double)rand() * 0.000030518509 * 360.0);
+    field = plasma->ptr1;
+    copy = plasma->ptr2;
+    // preserved: both passes generate into ptr1, so the first is discarded and the two fields end up identical
+    for (pass = 0; pass < 2; ++pass)
     {
-        v10 = 0;
-        for (i = 0; v10 < v4; i = v10)
+        for (col = 0; col < width; ++col)
         {
-            if (v5 > 0)
+            column = &field[col];
+            for (row = 0; row < height; ++row)
             {
-                v11 = &v9[v10];
-                do
-                {
-                    *v11 = RND_JADErand();
-                    v11 += v4;
-                    --v5;
-                } while (v5);
-                v10 = i;
-                v5 = height;
+                *column = RND_JADErand();
+                column += width;
             }
-            ++v10;
         }
-        v12 = 32;
-        v38 = 32;
-        do
+        for (step = 32; step; step >>= 1)
         {
-            v31 = 0;
-            if (v4 > 0)
+            half = step / 2;
+            for (col = 0; col < width; col += step)
             {
-                v13 = v12 / 2;
-                v45 = v12 / 2;
-                v34 = v12 / 2;
-                do
+                halfCol = col + half;
+                nextCol = col + step;
+                if (nextCol == width)
+                    nextCol = 0;
+                for (row = 0; row < height; row += step)
                 {
-                    v14 = v12 + v31;
-                    v15 = v12 + v31;
-                    v44 = v12 + v31;
-                    v35 = v12 + v31;
-                    if (v12 + v31 == v4)
-                    {
-                        v35 = 0;
-                        v15 = 0;
-                    }
-                    v40 = 0;
-                    if (v5 > 0)
-                    {
-                        v16 = v4 * v13;
-                        v33 = v12;
-                        v17 = v4 * v12;
-                        v18 = &v9[v16 + v34];
-                        v19 = &v9[v16 + v15];
-                        v20 = &v9[v15];
-                        v21 = v31 - v15;
-                        v36 = &v9[v15];
-                        v37 = v18;
-                        for (j = v31 - v15; ; v21 = j)
-                        {
-                            v22 = v33;
-                            v43 = v20[v21];
-                            v23 = *v20;
-                            if (v33 == height)
-                                v22 = 0;
-                            v24 = width * v22;
-                            v42 = v9[v24 + v31];
-                            v25 = v9[v24 + v15];
-                            *v19 = (v25 + v23) / 2;
-                            v26 = v42 + v25;
-                            *v37 = (v43 + v26 + v23) / 4;
-                            v9[v24 + v34] = v26 / 2;
-                            v33 += v38;
-                            v36 += v17;
-                            v19 += v17;
-                            v40 += v38;
-                            v37 += v17;
-                            if (v40 >= height)
-                                break;
-                            v15 = v35;
-                            v20 = v36;
-                        }
-                        v4 = width;
-                        v12 = v38;
-                        v14 = v44;
-                        v13 = v45;
-                        v5 = height;
-                    }
-                    v31 = v14;
-                    v34 += v12;
-                } while (v14 < v4);
+                    rowBelow = row + step;
+                    if (rowBelow == height)
+                        rowBelow = 0;
+                    topLeft = field[row * width + col];
+                    topRight = field[row * width + nextCol];
+                    bottomLeft = field[rowBelow * width + col];
+                    bottomRight = field[rowBelow * width + nextCol];
+                    field[(row + half) * width + nextCol] = (bottomRight + topRight) / 2;
+                    sum = bottomLeft + bottomRight;
+                    field[(row + half) * width + halfCol] = (topLeft + sum + topRight) / 4;
+                    field[rowBelow * width + halfCol] = sum / 2;
+                }
             }
-            v12 >>= 1;
-            v38 = v12;
-        } while (v12);
-        if (v39)
-        {
-            memcpy(v46, v9, height * width);
-            v5 = height;
         }
-        ++v39;
-    } while (v39 < 2);
-    v27 = 0;
-    do
+        if (pass)
+            memcpy(copy, field, height * width);
+    }
+    // preserved: the fourth quarter is written at 172, not 192, so values[236..255] is never set
+    for (i = 0; i < 64; ++i)
     {
-        v32->values[v27 + 64] = 4 * (v27 | 0xFFC00000);
-        v32->values[v27] = 0xFF000000;
-        v32->values[v27 + 128] = (4 * (64 - v27)) | 0xFF000000;
-        v32->values[v27 + 172] = 0xFF000000;
-        ++v27;
-    } while (v27 < 64);
-    return v32;
+        plasma->values[i + 64] = 4 * (i | 0xFFC00000);
+        plasma->values[i] = 0xFF000000;
+        plasma->values[i + 128] = (4 * (64 - i)) | 0xFF000000;
+        plasma->values[i + 172] = 0xFF000000;
+    }
+    return plasma;
 }
 
-int TEXPRO_l_PlasmaUpdate(tTexProceduralStruct* a1)
+int TEXPRO_l_PlasmaUpdate(tTexProceduralStruct* procedural)
 {
-    tTexProcPlasma* v1;
-    int v2;
-    long double v3;
-    int v4;
-    int v5;
-    unsigned int v6; 
-    double v7;
-    double v10;
-    int v11;
-    int v14;
-    int v15;
-    int v16;
-    int v17;
-    int v18;
-    int v19;
-    int v20;
-    int v22;
-    int v23;
-    int* v24;
-    int v25;
-    int v26;
-    int v27;
-    int v28;
-    int v29;
+    tTexProcPlasma* plasma;
+    int rotated;
+    long double phaseX;
+    int width;
+    int height;
+    unsigned int offsetX;
+    double nextX;
+    double nextY;
+    unsigned int offsetY;
+    int col;
+    int row;
+    int srcCol;
+    int srcRow;
+    uint32_t* dst;
 
-    v1 = (tTexProcPlasma*)a1->proceduralTexPtr;
-    v2 = v1->values[0];
-    memcpy(v1->values, &v1->values[1], sizeof(v1->values) - 4); // egyel odébbtoljuk az egészet
-    v3 = sin(v1->f1 * 0.017453292);
-    v1->values[255] = (v2 & 0xFF000000) + ((uint16_t)v2 << 8) + ((v2 >> 16) && 0xff);
-    v4 = a1->width;
-    v5 = a1->height;
-    v26 = v5;
-    v24 = (int*)a1->proceduralPicData;
-    v6 = (unsigned int)((v3 + 1.0) * (double)(v4 >> 1));
-    v7 = v1->f1 + 1.666;
-    v22 = v6;
-    v1->f1 = (float)v7;
-    if (v7 >= 360.0)
-        v1->f1 = (float)(v7 - 360.0);
-    v10 = v1->f2 + 1.88;
-    v11 = (unsigned int)((sin(v1->f2 * 0.017453292) + 1.0) * (double)(v5 >> 1));
-    v27 = v11;
-    v1->f2 = (float)v10;
-    if (v10 >= 360.0)
-        v1->f2 = (float)(v10 - 360.0);
-    v14 = 0;
-    v28 = 0;
-    if (v4 > 0)
+    plasma = (tTexProcPlasma*)procedural->proceduralTexPtr;
+    rotated = plasma->values[0];
+    memcpy(plasma->values, &plasma->values[1], sizeof(plasma->values) - 4); // egyel odébbtoljuk az egészet
+    phaseX = sin(plasma->f1 * 0.017453292);
+    // preserved: a logical and where the two terms beside it are channel masks
+    plasma->values[255] = (rotated & 0xFF000000) + ((uint16_t)rotated << 8) + ((rotated >> 16) && 0xff);
+    width = procedural->width;
+    height = procedural->height;
+    dst = procedural->proceduralPicData;
+    offsetX = (unsigned int)((phaseX + 1.0) * (double)(width >> 1));
+    nextX = plasma->f1 + 1.666;
+    plasma->f1 = (float)nextX;
+    if (nextX >= 360.0)
+        plasma->f1 = (float)(nextX - 360.0);
+    nextY = plasma->f2 + 1.88;
+    offsetY = (unsigned int)((sin(plasma->f2 * 0.017453292) + 1.0) * (double)(height >> 1));
+    plasma->f2 = (float)nextY;
+    if (nextY >= 360.0)
+        plasma->f2 = (float)(nextY - 360.0);
+    for (col = 0; col < width; ++col)
     {
-        v15 = v6 - v4;
-        do
+        srcCol = col + offsetX;
+        if (srcCol >= width)
+            srcCol -= width;
+        for (row = 0; row < height; ++row)
         {
-            v23 = v14 + v22;
-            if (v14 + v22 >= v4)
-                v23 = v15 + v14;
-            v16 = 0;
-            if (v5 > 0)
-            {
-                v17 = v4 * v11;
-                v18 = v4 * (v11 - v5);
-                v29 = 0;
-                v25 = v18;
-                do
-                {
-                    v19 = v17;
-                    if (v16 + v27 >= v26)
-                        v19 = v18;
-                    v20 = v1->ptr2[v19 + v23];
-                    v14 = v28;
-                    *v24++ = v1->values[(v1->ptr1[v29 + v28] + v20) >> 1];
-                    v29 += v4;
-                    v5 = v26;
-                    ++v16;
-                    v18 = v4 + v25;
-                    v17 += v4;
-                    v25 += v4;
-                } while (v16 < v26);
-                v15 = v22 - v4;
-                v11 = v27;
-            }
-            v28 = ++v14;
-        } while (v14 < v4);
+            srcRow = row + offsetY;
+            if (srcRow >= height)
+                srcRow -= height;
+            *dst++ = plasma->values[(plasma->ptr1[row * width + col]
+                                     + plasma->ptr2[srcRow * width + srcCol]) >> 1];
+        }
     }
     return 1;
 }
-
-tTexProcPhoto* TEXPRO_pv_PhotoLoad(char* offset, int vmilyensize, int width, int height)
+tTexProcPhoto* TEXPRO_pv_PhotoLoad(char* offset, int size, int width, int height)
 {
-    tTexProcPhoto* v4;
-    BOOL v5;
+    tTexProcPhoto* photo;
 
-    v4 = (tTexProcPhoto*)MEM_p_Alloc(32u);
-    v5 = vmilyensize == 0;
-    v4->b2 = -1;
-    v4->b1 = -1;
-    v4->b3 = 0;
-    v4->b4 = 0;
-    v4->x = 0;
-    if (!v5)
+    photo = (tTexProcPhoto*)MEM_p_Alloc(sizeof(tTexProcPhoto));
+    photo->b2 = -1;
+    photo->b1 = -1;
+    photo->b3 = 0;
+    photo->b4 = 0;
+    photo->x = 0;
+    if (size)
     {
         LOA_ReadLong(&offset, 0, 2);
-        v4->b1 = LOA_ReadChar(&offset, 0, 1);
+        photo->b1 = LOA_ReadChar(&offset, 0, 1);
     }
-    return v4;
+    return photo;
 }
 
-int TEXPRO_l_PhotoUpdate(tTexProceduralStruct* a1)
+int TEXPRO_l_PhotoUpdate(tTexProceduralStruct* procedural)
 {
-    tTexProceduralStruct* v1;
-    tTexProcPhoto* v2;
-    int v3;
-    double v4;
-    int v8;
-    int v9;
-    int v10;
-    int v11;
-    int v12;
-    int* v13;
-    int16_t* v14;
-    int v15;
-    int v16;
-    int v17;
-    int v18;
-    int v19;
-    int v20;
-    int v21;
-    int v22;
-    int v23;
-    int v24;
-    int i;
-    unsigned int v26;
-    int v27;
-    int v28;
-    char v30;
-    char* v31;
-    uint16_t v32;
-    uint32_t* v33;
-    uint16_t v34;
-    int* v35;
-    size_t v36;
-    int* v37;
-    int v38;
-    int v39;
-    int* v40;
-    int v41; 
-    int* v42;
-    int* v43;
-    int* v44;
-    int* v45;
-    int v46; 
-    int* v47;
-    int* v48;
-    int v49; 
-    tTexProcPhoto* v50;
-    int v51[2];
-    size_t a3; 
-    int v53; 
-    int v54; 
-    tEngTexIntermediateStruct a2;
-    tEngTexIntermediateStruct a1a; 
+    tTexProcPhoto* photo;
+    int wasAt;
+    double remaining;
+    int now;
+    int scan;
+    int scanOffset;
+    uint32_t* px;
+    int crossings;
+    int edge;
+    int next;
+    int y0;
+    int y1;
+    int left;
+    int right;
+    int x;
+    int n;
+    unsigned int colour;
+    char requested;
+    char* photoData;
+    uint16_t width;
+    uint16_t height;
+    uint32_t* line;
+    uint32_t* bottom;
+    uint32_t* last;
+    uint32_t* cursor;
+    int* pixel;
+    int* pixelEnd;
+    int span[2];
+    size_t photoSize;
+    tEngTexIntermediateStruct dst;
+    tEngTexIntermediateStruct src;
 
-    v1 = a1;
-    v2 = (tTexProcPhoto*)a1->proceduralTexPtr;
-    v3 = v2->x;
-    v50 = v2;    
-    if (v3 && v3 <= 128)
+    photo = (tTexProcPhoto*)procedural->proceduralTexPtr;
+    wasAt = photo->x;
+    if (wasAt && wasAt <= 128)
     {
-        v4 = v2->remainingTime - TIM_gf_dt;
-        v2->remainingTime = (float)v4;
-        if (v4 < 0.0)     
-            v2->x = 0;
+        remaining = photo->remainingTime - TIM_gf_dt;
+        photo->remainingTime = (float)remaining;
+        if (remaining < 0.0)
+            photo->x = 0;
         else
-            v2->x = (unsigned int)(v4 / v2->f1 * 128.0);
-        v8 = v2->x;
-        if (v8 < v3)
+            photo->x = (unsigned int)(remaining / photo->f1 * 128.0);
+        now = photo->x;
+        if (now >= wasAt)
+            return 0;
+        scan = wasAt - 1;
+        // preserved: a byte row stride and a byte indent applied to a uint32_t pointer, so every write lands four times too far in
+        scanOffset = scan << 10;
+        while (scan >= photo->x)
         {
-            v9 = v3 - 1;
-            v49 = v9;
-            if (v9 < v8)
-                return 1;
-            v10 = v9 << 10;
-            v53 = v9 << 10;
-            while (1)
+            if (scan >= 2 && scan <= 125)
             {
-                if (v9 < 2 || v9 > 125)
-                    goto LABEL_53;
-                v11 = 0;
-                v12 = 0;
-                v13 = (int*)&v1->proceduralPicData[v10 + 8];
-                v14 = &v50->sa[4];
-                while (1)
+                px = &procedural->proceduralPicData[scanOffset + 8];
+                crossings = 0;
+                for (edge = 0; edge < 4; ++edge)
                 {
-                    v54 = v12 + 1;
-                    v15 = (v12 + 1) % 4;
-                    v16 = *v14;
-                    if (v16 == v49)
-                        break;
-                    if (v16 >= v49)
+                    next = (edge + 1) % 4;
+                    y0 = photo->sa[4 + edge];
+                    y1 = photo->sa[4 + next];
+                    // preserved: span[2] is written when a vertex on the scanline is followed by a third crossing
+                    if (y0 == scan)
                     {
-                        if (v16 <= v49)
-                            goto LABEL_21;
-                        v17 = v50->sa[v15 + 4];
-                        if (v17 < v49)
-                        {
-                        LABEL_20:
-                            v51[v11++] = *(v14 - 4) + (v49 - v16) * (v50->sa[v15] - *(v14 - 4)) / (v17 - v16);
-                        LABEL_21:
-                            if (v11 == 2)
-                                goto LABEL_29;
-                            goto LABEL_22;
-                        }
+                        if (y1 == scan)
+                            break;
+                        span[crossings++] = photo->sa[edge];
+                    }
+                    else if ((y0 > scan && y1 < scan) || (y0 < scan && y1 > scan))
+                    {
+                        span[crossings++] = photo->sa[edge]
+                                          + (scan - y0) * (photo->sa[next] - photo->sa[edge]) / (y1 - y0);
+                        if (crossings == 2)
+                            break;
+                    }
+                }
+                if (crossings != 2)
+                {
+                    for (n = 252; n; --n)
+                    {
+                        *px = LIGHT_ul_Interpol2Colors(*px, 0, 0.5);
+                        ++px;
+                    }
+                }
+                else
+                {
+                    left = span[0];
+                    right = span[1];
+                    if (left > right)
+                    {
+                        left = span[1];
+                        right = span[0];
+                    }
+                    if (left > 254)
+                    {
+                        left = 254;
+                        right = 254;
                     }
                     else
                     {
-                        v17 = v50->sa[v15 + 4];
-                        if (v17 > v49)
-                            goto LABEL_20;
+                        if (left < 2)
+                            left = 2;
+                        if (right > 254)
+                            right = 254;
                     }
-                LABEL_22:
-                    v12 = v54;
-                    ++v14;
-                    if (v54 >= 4)
-                        goto LABEL_25;
-                }
-                if (v50->sa[v15 + 4] != v49)
-                    break;
-                v18 = v50->sa[v12 + 4];
-                v51[0] = v50->sa[v12];
-                v51[1] = v18;
-            LABEL_25:
-                if (v11 != 2)
-                {
-                    v19 = 252;
-                    do
+                    x = 2;
+                    if (left > 2)
                     {
-                        *v13 = LIGHT_ul_Interpol2Colors(*v13, 0, 0.5);
-                        ++v13;
-                        --v19;
-                    } while (v19);
-                    goto LABEL_52;
-                }
-            LABEL_29:
-                v20 = v51[0];
-                v21 = v51[1];
-                if (v51[0] > v51[1])
-                {
-                    v21 = v51[0];
-                    v20 = v51[1];
-                    v51[1] = v51[0];
-                    v51[0] = v20;
-                }
-                if (v20 > 254)
-                {
-                    v20 = 254;
-                    v51[0] = 254;
-                    goto LABEL_36;
-                }
-                if (v20 < 2)
-                {
-                    v20 = 2;
-                    v51[0] = 2;
-                }
-                if (v21 > 254)
-                    LABEL_36:
-                v51[1] = 254;
-                v22 = 2;
-                if (v20 > 2)
-                {
-                    v23 = v20 - 2;
-                    v22 = v23 + 2;
-                    do
+                        for (n = left - 2; n; --n)
+                        {
+                            *px = LIGHT_ul_Interpol2Colors(*px, 0, 0.5);
+                            ++px;
+                        }
+                        x = left;
+                    }
+                    if ((scan & 7) != 0)
                     {
-                        *v13 = LIGHT_ul_Interpol2Colors(*v13, 0, 0.5);
-                        ++v13;
-                        --v23;
-                    } while (v23);
-                }
-                if ((v49 & 7) != 0)
-                {
-                    for (i = v51[1]; v22 < i; ++v22)
+                        for (; x < right; ++x)
+                        {
+                            colour = ~*px | 0xFF000000;
+                            *px = colour;
+                            if ((x & 7) == 0)
+                                *px = colour | 0xFF00FF00;
+                            ++px;
+                        }
+                    }
+                    else if (x < right)
                     {
-                        v26 = ~*v13 | 0xFF000000;
-                        *v13 = v26;
-                        if ((v22 & 7) == 0)
-                            *v13 = v26 | 0xFF00FF00;
-                        ++v13;
+                        for (n = right - x; n; --n)
+                        {
+                            *px = ~*px | 0xFF00FF00;
+                            ++px;
+                        }
+                        x = right;
+                    }
+                    if (x < 254)
+                    {
+                        for (n = 254 - x; n; --n)
+                        {
+                            *px = LIGHT_ul_Interpol2Colors(*px, 0, 0.5);
+                            ++px;
+                        }
                     }
                 }
-                else if (v22 < v51[1])
-                {
-                    v24 = v51[1] - v22;
-                    v22 = v51[1];
-                    do
-                    {
-                        *v13 = ~*v13 | 0xFF00FF00;
-                        ++v13;
-                        --v24;
-                    } while (v24);
-                }
-                if (v22 < 254)
-                {
-                    v27 = 254 - v22;
-                    do
-                    {
-                        *v13 = LIGHT_ul_Interpol2Colors(*v13, 0, 0.5);
-                        ++v13;
-                        --v27;
-                    } while (v27);
-                }
-            LABEL_52:
-                v9 = v49;
-                v1 = a1;
-            LABEL_53:
-                v28 = v50->x;
-                --v9;
-                v10 = v53 - 1024;
-                v49 = v9;
-                v53 -= 1024;
-                if (v9 < v28)
-                    return 1;
             }
-            v51[v11++] = *(v14 - 4);
-            goto LABEL_22;
+            --scan;
+            scanOffset -= 1024;
         }
+        return 1;
+    }
+    if (!photo->b4)
+    {
+        if (photo->b3 || photo->b2 != photo->b1)
+            photo->b4 = 1;
         return 0;
     }
-    if (!v2->b4)
-    {
-        if (v2->b3 || v2->b2 != v2->b1)
-            v2->b4 = 1;
+    requested = photo->b2;
+    photo->b4 = 0;
+    photo->b3 = 0;
+    photo->b1 = requested;
+    if (requested == -1)
         return 0;
+    memset(&dst, 0, sizeof(dst));
+    dst.flags = 3;
+    if (photo->b1 <= 100)
+    {
+        photoData = SAV_PhotoGet(photo->b1, (int*)&photoSize);
+        if (!photoData || !photoSize)
+            return 0;
+        TEX_l_File_LoadJpeg(photoData, &dst, photoSize);
     }
-    v30 = v2->b2;
-    v2->b4 = 0;
-    v2->b3 = 0;
-    v2->b1 = v30;
-    if (v30 == -1)
-        return 0;
-    memset(&a2, 0, sizeof(a2));
-    a2.flags = 3;
-    if (v2->b1 > 100)
-        goto LABEL_65;
-    v31 = SAV_PhotoGet(v2->b1, (int*)&a3);
-    if (!v31 || !a3)
-        return 0;
-    TEX_l_File_LoadJpeg(v31, &a2, a3);
-LABEL_65:
-    v32 = a1->width;
-    v33 = a1->proceduralPicData;
-    memcpy(&a1a, &a2, sizeof(a1a));
-    a2.imgDataPtr = (char *)v33;
-    a2.colorDepth1 = 32;
-    if (a2.realWidth == v32 && a2.realHeight == a1->height)
+    width = procedural->width;
+    memcpy(&src, &dst, sizeof(src));
+    dst.imgDataPtr = (char*)procedural->proceduralPicData;
+    dst.colorDepth1 = 32;
+    if (dst.realWidth == width && dst.realHeight == procedural->height)
     {
-        TEX_l_ConvertPF(&a1a, &a2);
+        TEX_l_ConvertPF(&src, &dst);
     }
     else
     {
-        v34 = a1->height;
-        a2.realWidth = v32;
-        a2.realHeight = v34;
-        TEX_l_ConvertSize_24To32(&a1a, &a2);
+        height = procedural->height;
+        dst.realWidth = width;
+        dst.realHeight = height;
+        TEX_l_ConvertSize_24To32(&src, &dst);
     }
-    v35 = (int*)a2.imgDataPtr;
-    v36 = 4 * a1->width * a1->height;
-    v37 = (int*)&a2.imgDataPtr[v36];
-    a3 = v36;
-    if (a2.imgDataPtr < &a2.imgDataPtr[v36])
+    pixel = (int*)dst.imgDataPtr;
+    pixelEnd = (int*)&dst.imgDataPtr[4 * procedural->width * procedural->height];
+    while (pixel < pixelEnd)
+    {
+        *pixel = *pixel & 0xFF00FF00 | *((uint8_t*)pixel + 2) | ((uint8_t)*pixel << 16);
+        ++pixel;
+    }
+    cursor = procedural->proceduralPicData;
+    line = &cursor[procedural->width];
+    bottom = &cursor[procedural->width * (procedural->height - 2)];
+    last = &cursor[procedural->width * (procedural->height - 1)];
+    n = 0;
+    if (procedural->width)
     {
         do
         {
-            *v35 = *v35 & 0xFF00FF00 | *((uint8_t*)v35 + 2) | ((uint8_t)*v35 << 16);
-            ++v35;
-        } while (v35 < v37);
+            *cursor++ = -1;
+            *line++ = -1;
+            *bottom++ = -1;
+            *last++ = -1;
+            ++n;
+        } while (n < procedural->width);
     }
-    v38 = a1->width;
-    v39 = a1->height;
-    v40 = (int*)a1->proceduralPicData;
-    v41 = 0;
-    v42 = &v40[v38];
-    v43 = &v40[v38 * (v39 - 2)];
-    v44 = &v40[v38 * (v39 - 1)];
-    if (a1->width)
+    cursor = procedural->proceduralPicData;
+    n = 0;
+    if (procedural->height)
     {
         do
         {
-            *v40 = -1;
-            *v42 = -1;
-            *v43 = -1;
-            *v44 = -1;
-            ++v40;
-            ++v42;
-            ++v43;
-            ++v44;
-            ++v41;
-        } while (v41 < a1->width);
+            cursor[0] = -1;
+            cursor[1] = -1;
+            cursor[procedural->width - 2] = -1;
+            cursor[procedural->width - 1] = -1;
+            cursor += procedural->width;
+            ++n;
+        } while (n < procedural->height);
     }
-    v45 = (int*)a1->proceduralPicData;
-    v46 = 0;
-    if (a1->height)
-    {
-        do
-        {
-            *v45 = -1;
-            v47 = v45 + 1;
-            *v47 = -1;
-            v48 = &v47[a1->width - 3];
-            *v48++ = -1;
-            *v48 = -1;
-            v45 = v48 + 1;
-            ++v46;
-        } while (v46 < a1->height);
-    }
-    if (v50->x == 129)
-        v50->x = 128;
-    TEX_File_FreeDescription(&a1a);
+    if (photo->x == 129)
+        photo->x = 128;
+    TEX_File_FreeDescription(&src);
     return 1;
 }
 
-void TEXPRO_Free(tTexProceduralStruct* a1)
+void TEXPRO_Free(tTexProceduralStruct* procedural)
 {
-    tTexProcPlasma* v1; // esi
+    tTexProcPlasma* common; // esi
 
-    v1 = (tTexProcPlasma*)a1->proceduralTexPtr;  // a water, fire, plasma struktúrának ugyanaz az eleje, ezért ez az egy függvény jó rájuk
-    MEM_Free(v1->ptr1);
-    MEM_Free(v1->ptr2);
-    MEM_Free(v1);
+    common = (tTexProcPlasma*)procedural->proceduralTexPtr;  // a water, fire, plasma struktúrának ugyanaz az eleje, ezért ez az egy függvény jó rájuk
+    MEM_Free(common->ptr1);
+    MEM_Free(common->ptr2);
+    MEM_Free(common);
 }
 
-void TEXPRO_PhotoFree(tTexProceduralStruct* a1)
+void TEXPRO_PhotoFree(tTexProceduralStruct* procedural)
 {
-    MEM_Free(a1->proceduralTexPtr);
+    MEM_Free(procedural->proceduralTexPtr);
 }
 
-void TEXPRO_DummyDisrupt(tTexProceduralStruct* a1) {
+void TEXPRO_DummyDisrupt(tTexProceduralStruct* procedural) {
 
 }
 
-void TEXPRO_DummyFree(tTexProceduralStruct* a1) {
+void TEXPRO_DummyFree(tTexProceduralStruct* procedural) {
 }
 
-void* TEXPRO_pv_EmptyLoad(char* offset, int vmilyensize, int width, int height) {
+void* TEXPRO_pv_EmptyLoad(char* offset, int size, int width, int height) {
     return NULL;
 }
 
-int TEXPRO_l_DummyUpdate(tTexProceduralStruct* a1) {
+int TEXPRO_l_DummyUpdate(tTexProceduralStruct* procedural) {
     return 0;
 }
 
 void TEX_Procedural_Init()
 {
-    int v0;
-    int v1;
+    int i;
 
-    v0 = 0;
     TEX_gast_ProceduralInterface[0].id = 0;
     TEX_gast_ProceduralInterface[0].Update = TEXPRO_l_DummyUpdate;
     TEX_gast_ProceduralInterface[0].Load = TEXPRO_pv_EmptyLoad;
@@ -1640,113 +1314,82 @@ void TEX_Procedural_Init()
     TEX_gast_ProceduralInterface[5].Load = TEXPRO_pv_PlasmaLoad;
     TEX_gast_ProceduralInterface[5].Disrupt = TEXPRO_DummyDisrupt;
     TEX_gast_ProceduralInterface[5].Free = TEXPRO_Free;
-    v1 = 0;
-    do
-    {
-        TEXPRO_Cos[v0++] = (unsigned int)(cos((double)v1 * 0.049087387) * 30.0);
-        v1 = v0;
-    } while (v0 < 256);
+    for (i = 0; i < 256; ++i)
+        TEXPRO_Cos[i] = (unsigned int)(cos((double)i * 0.049087387) * 30.0);
 }
 
-void TEXPRO_Photo_SetMapGao(struct sTexProceduralStruct* a1, struct sGameObjectMain* a2)
+void TEXPRO_Photo_SetMapGao(struct sTexProceduralStruct* procedural, struct sGameObjectMain* gao)
 {
-    tGEOGRO* v2;
-    int v3;
-    int v4;
-    double v5;
-    tDDContainerStruct* v6;
-    Mtx4x4* v7;
-    int v8; 
-    Vec3* v9;
-    int16_t* v10;
-    Mtx4x4* v11;
-    float v12;
-    int v13;
-    float v14;
-    int v15;
-    float v16;
-    int a4; 
-    tDDContainerStruct* a4a;
-    tGEOGRO* v19;
-    tTexProcPhoto* v20; 
-    int v21[4];
-    Vec3 dest;
-    Vec3 v23; 
-    Mtx4x4 v24;
+    tGEOGRO* gro;
+    tTexProcPhoto* photo;
+    int i;
+    int j;
+    double dot;
+    tDDContainerStruct* container;
+    Mtx4x4* absolute;
+    int16_t* coord;
+    float best;
+    int offsetX;
+    int offsetY;
+    float fOffsetX;
+    float fOffsetY;
+    int order[4];
+    Vec3 edge0;
+    Vec3 edge1;
+    Vec3 projected[4];
+    Mtx4x4 viewMtx;
 
-    if (gpst_DX_stDD)
+    if (!gpst_DX_stDD || !procedural || !gao)
+        return;
+    if (gpst_DX_stDD->winWidth < 512 || gpst_DX_stDD->winHeight < 256)
+        return;
+    photo = (tTexProcPhoto*)procedural->proceduralTexPtr;
+    gro = (tGEOGRO*)OBJ_p_GetGro(gao);
+    if (!gro)
+        return;
+    if (gro->intf->id != 1 || gro->vertexNum != 4)
+        return;
+    best = 0.0;
+    order[0] = 0;
+    for (i = 1; i <= 3; ++i)
     {
-        if (a1)
+        MATH_SubstractVec(&edge0, gro->vertices, &gro->vertices[i]);
+        j = i + 1;
+        if (i + 1 > 3)
+            j = i - 2;
+        MATH_SubstractVec(&edge1, &gro->vertices[j], &gro->vertices[6 - j - i]);
+        dot = (float)(edge1.z * edge0.z + edge1.y * edge0.y + edge1.x * edge0.x);
+        if (dot < 0.0)
         {
-            if (a2)
-            {
-                if (gpst_DX_stDD->winWidth >= 512 && gpst_DX_stDD->winHeight >= 256)
-                {
-                    v20 = (tTexProcPhoto*)a1->proceduralTexPtr;
-                    v2 = (tGEOGRO*)OBJ_p_GetGro(a2);
-                    v19 = v2;
-                    if (v2)
-                    {
-                        if (v2->intf->id == 1 && v2->vertexNum == 4)
-                        {
-                            v12 = 0.0;
-                            v21[0] = 0;
-                            v3 = 1;
-                            a4 = 1;
-                            while (1)
-                            {
-                                MATH_SubstractVec(&dest, v2->vertices, &v2->vertices[a4]);
-                                v4 = v3 + 1;
-                                if (v3 + 1 > 3)
-                                    v4 = v3 - 2;
-                                MATH_SubstractVec(&v23, &v19->vertices[v4], &v19->vertices[6 - v4 - v3]);
-                                v5 = (float)(v23.z * dest.z + v23.y * dest.y + v23.x * dest.x);
-                                if (v5 < 0.0)
-                                {
-                                    v5 = -v5;
-                                    v4 = 6 - v4 - v3;
-                                }
-                                if (v5 > v12)
-                                {
-                                    v12 = (float)v5;
-                                    v21[1] = v3;
-                                    v21[2] = 6 - v4 - v3;
-                                    v21[3] = v4;
-                                }
-                                ++v3;
-                                if (++a4 > 3)
-                                    break;
-                                v2 = v19;
-                            }
-                            v15 = (gpst_DX_stDD->winWidth - 512) / 2;
-                            v6 = &gpst_DX_stDD->ct;
-                            v13 = (gpst_DX_stDD->winHeight - 256) / 2;
-                            v11 = &gpst_DX_stDD->ct.cam.cameraMtx;
-                            a4a = &gpst_DX_stDD->ct;
-                            v7 = OBJ_pst_GetAbsoluteMatrix(a2);
-                            MATH_MulMatrixMatrix(&v24, v7, v11);
-                            v16 = (float)v15;
-                            v6->cam.viewMtxPtr_setInGRORender = &v24;
-                            v8 = 0;
-                            v9 = &dest;
-                            v10 = &v20->sa[4]; // TODO megcsinálni igényesre
-                            v14 = (float)v13;
-                            do
-                            {
-                                SOFT_TransformAndProject(v9, &v19->vertices[v21[v8]], 1, &a4a->cam);
-                                *(v10 - 4) = (unsigned int)((v9->x - v16) * 0.5);
-                                *v10 = (unsigned int)((v9->y - v14) * 0.5);
-                                ++v8;
-                                ++v10;
-                                ++v9;
-                            } while (v8 < 4);
-                            v20->x = 0x10000000;
-                            v20->remainingTime = 1.0;
-                            v20->f1 = 1.0;
-                        }
-                    }
-                }
-            }
+            dot = -dot;
+            j = 6 - j - i;
+        }
+        if (dot > best)
+        {
+            best = (float)dot;
+            order[1] = i;
+            order[2] = 6 - j - i;
+            order[3] = j;
         }
     }
+    offsetX = (gpst_DX_stDD->winWidth - 512) / 2;
+    container = &gpst_DX_stDD->ct;
+    offsetY = (gpst_DX_stDD->winHeight - 256) / 2;
+    absolute = OBJ_pst_GetAbsoluteMatrix(gao);
+    MATH_MulMatrixMatrix(&viewMtx, absolute, &gpst_DX_stDD->ct.cam.cameraMtx);
+    fOffsetX = (float)offsetX;
+    container->cam.viewMtxPtr_setInGRORender = &viewMtx;
+    coord = &photo->sa[4]; // TODO megcsinálni igényesre
+    fOffsetY = (float)offsetY;
+    for (i = 0; i < 4; ++i)
+    {
+        SOFT_TransformAndProject(&projected[i], &gro->vertices[order[i]], 1, &container->cam);
+        *(coord - 4) = (unsigned int)((projected[i].x - fOffsetX) * 0.5);
+        *coord = (unsigned int)((projected[i].y - fOffsetY) * 0.5);
+        ++coord;
+    }
+    // preserved: no test in the file matches 0x10000000, so the reveal this field drives never starts
+    photo->x = 0x10000000;
+    photo->remainingTime = 1.0;
+    photo->f1 = 1.0;
 }
