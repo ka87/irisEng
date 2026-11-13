@@ -2182,60 +2182,39 @@ void OBJ_ResolveAIRef(struct sGameObjectMain* gao)
     }
 }
 
-struct sGameObjectMain* OBJ_GameObject_Duplicate(struct sWorld* a1, struct sGameObjectMain* srcGao, int a3, int a4, Vec3* pos)
+struct sGameObjectMain* OBJ_GameObject_Duplicate(struct sWorld* world, struct sGameObjectMain* srcGao, int attach, int dupEvents, Vec3* pos)
 {
-    int v5; // eax
+    int srcFlags; // eax
     tGameObjectMain* gao; // ebp
-    int v7; // ecx
-    int v8; // edx
-    int v9; // edx
-    tGameObjectExtended* v10; // eax
-    Mtx4x4* v11; // esi
-    Mtx4x4* v12; // edi
-    Mtx4x4* v13; // esi
-    Mtx4x4* v14; // edi
-    Mtx4x4* v15; // esi
-    Mtx4x4* v16; // edi
-    Vec3* v17; // ecx
-    Mtx4x4* v18; // esi
-    Mtx4x4* v19; // edi
-    tGameObjectExtended* v20; // eax
-    int* v21; // eax
-    unsigned int v22; // esi
-    int v23; // eax
-    tGameObjectMultiPartData* v24; // eax
-    char* v25; // esi
-    char* v26; // edi
-    unsigned int v27; // eax
-    char* v28; // edi
-    char* v29; // esi
-    char v30; // cl
-    tGameObjectMultiPartData* v31; // eax
-    char* v32; // esi
-    char* v33; // edi
-    unsigned int v34; // edx
-    tWorld* v35; // esi
-    int v36; // eax
+    int flags; // ecx
+    int flags2; // edx
+    tGameObjectExtended* srcExtended; // eax
+    int* srcColors; // eax
+    unsigned int colorBytes; // esi
+    int elemNum; // eax
+    tGameObjectMultiPartData* srcMultiPart; // eax
+    unsigned int partBytes; // eax
+    tWorld* destWorld; // esi
 
     if (srcGao)
-        v5 = srcGao->flags;
+        srcFlags = srcGao->flags;
     else
-        v5 = 0;
-    gao = OBJ_GameObject_Create(v5 | 0x20000);
+        srcFlags = 0;
+    gao = OBJ_GameObject_Create(srcFlags | 0x20000);
     gao->process = srcGao->process & 0xEF;
     gao->designFlags = srcGao->designFlags;
-    v7 = gao->flags;
+    flags = gao->flags;
     gao->u3 = srcGao->u3;
     gao->flags2 = gao->flags2 & 0xffff00ff; //BYTE1(gao->flags2) = 0;
-    v8 = gao->flags2;
+    flags2 = gao->flags2;
     gao->if_this_not0_wont_render_gao = 0;
-    v9 = srcGao->flags2 & 0xFF00 | v8;
-    gao->flags2 = v9;
-    gao->flags = v7 & 0xFFFBFFFF;
-    if (a4)
+    flags2 = srcGao->flags2 & 0xFF00 | flags2;
+    gao->flags2 = flags2;
+    gao->flags = flags & 0xFFFBFFFF;
+    if (dupEvents)
     {
         if ((srcGao->flags2 & 0x40000000) != 0)
-            gao->flags2 = v9 | 0x40000000;
+            gao->flags2 = flags2 | 0x40000000;
         if ((srcGao->flags2 & 0x20000000) != 0)
             gao->flags2 |= 0x20000000u;
     }
@@ -2249,59 +2228,37 @@ struct sGameObjectMain* OBJ_GameObject_Duplicate(struct sWorld* a1, struct sGame
         gao->flags2 |= 0x100000u;
     if ((srcGao->flags2 & 0x800000) != 0)
         gao->flags2 |= 0x800000u;
-    v10 = srcGao->extended;
-    if (v10)
+    srcExtended = srcGao->extended;
+    if (srcExtended)
     {
-        gao->extended->extraFlag = v10->extraFlag;
+        gao->extended->extraFlag = srcExtended->extraFlag;
         gao->extended->sectorID = -1;
         gao->extended->sectorElemIdx = -1;
     }
-    v11 = srcGao->matrices;
-    v12 = gao->matrices;
-    if (v12 != v11)
-        memcpy(v12, v11, sizeof(Mtx4x4));
+    MATH_CopyMatrix(gao->matrices, srcGao->matrices);
     if (pos)
         gao->matrices->Pos = *pos;
     if ((gao->flags & 0x10000) != 0)
     {
-        v13 = srcGao->matrices + 1;
-        v14 = gao->matrices + 1;
-        if (v14 != v13)
-            memcpy(v14, v13, sizeof(Mtx4x4));
+        MATH_CopyMatrix(gao->matrices + 1, srcGao->matrices + 1);
         if (pos)
             gao->matrices[1].Pos = *pos;
         if ((gao->flags & 0x4000000) != 0)
         {
-            v15 = srcGao->matrices;
-            v16 = gao->matrices + 2;
-            if (v16 != v15)
-                memcpy(v16, v15, sizeof(Mtx4x4));
+            MATH_CopyMatrix(gao->matrices + 2, srcGao->matrices);
             if (pos)
-            {
-                v17 = &gao->matrices[2].Pos;
-            LABEL_40:
-                *v17 = *pos;
-                goto LABEL_41;
-            }
+                gao->matrices[2].Pos = *pos;
         }
     }
     else if ((gao->flags & 0x4000000) != 0)
     {
-        v18 = srcGao->matrices;
-        v19 = gao->matrices + 1;
-        if (v19 != v18)
-            memcpy(v19, v18, sizeof(Mtx4x4));
+        MATH_CopyMatrix(gao->matrices + 1, srcGao->matrices);
         if (pos)
-        {
-            v17 = &gao->matrices[1].Pos;
-            goto LABEL_40;
-        }
+            gao->matrices[1].Pos = *pos;
     }
-LABEL_41:
-    v20 = gao->extended;
-    if (v20)
+    if (gao->extended)
     {
-        v20->capaBackup = srcGao->extended->capaBackup;
+        gao->extended->capaBackup = srcGao->extended->capaBackup;
         gao->extended->AIPriority = srcGao->extended->AIPriority;
         MDF_Modifier_DuplicateList(gao, srcGao->extended->mdf);
     }
@@ -2311,15 +2268,15 @@ LABEL_41:
             gao->basic->actorObjectOrVisualObject,
             srcGao->basic->actorObjectOrVisualObject,
             sizeof(tGameObjectVisualObject));
-        v21 = ((tGameObjectVisualObject*)(srcGao->basic->actorObjectOrVisualObject))->RLIVertexColors;
-        if (v21)
+        srcColors = ((tGameObjectVisualObject*)(srcGao->basic->actorObjectOrVisualObject))->RLIVertexColors;
+        if (srcColors)
         {
-            v22 = 4 * *v21 + 4;
-            ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->RLIVertexColors = (int*)MEM_p_Alloc(v22);
+            colorBytes = 4 * *srcColors + 4;
+            ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->RLIVertexColors = (int*)MEM_p_Alloc(colorBytes);
             memcpy(
                 ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->RLIVertexColors,
                 ((tGameObjectVisualObject*)(srcGao->basic->actorObjectOrVisualObject))->RLIVertexColors,
-                v22);
+                colorBytes);
         }
         else
         {
@@ -2330,51 +2287,42 @@ LABEL_41:
         gao->extended->grp = srcGao->extended->grp;
     if ((gao->flags & 0x400000) != 0)
     {
+        // preserved: the second copy repeats the first 0x50 bytes the first one has already copied
         memcpy(gao->basic->mtx, srcGao->basic->mtx, sizeof(tGaoMatrix));
         memcpy(gao->basic->mtx, srcGao->basic->mtx, 0x50u);
     }
     if ((gao->flags & 0x200000) != 0)
     {
-        v23 = srcGao->basic->multiPartData->elemNum;
-        if (v23)
+        elemNum = srcGao->basic->multiPartData->elemNum;
+        if (elemNum)
         {
-            gao->basic->multiPartData->elemNum = v23;
+            gao->basic->multiPartData->elemNum = elemNum;
+            srcMultiPart = srcGao->basic->multiPartData;
             if ((gao->flags & 0x1000000) != 0)
             {
                 gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_Alloc(12 * gao->basic->multiPartData->elemNum);
-                v24 = srcGao->basic->multiPartData;
-                v25 = (char*)v24->multipartGaoObjectPartsOrMatrices;
-                v26 = (char*)gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices;
-                v27 = sizeof(tMultiPartGameObjectLinks) * v24->elemNum;
-                memcpy(v26, v25, 4 * (v27 >> 2));
-                v29 = &v25[4 * (v27 >> 2)];
-                v28 = &v26[4 * (v27 >> 2)];
-                v30 = v27;
+                partBytes = sizeof(tMultiPartGameObjectLinks) * srcMultiPart->elemNum;
             }
             else
             {
                 gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_AllocAligned(
                     sizeof(Mtx4x4) * gao->basic->multiPartData->elemNum,
                     16);
-                v31 = srcGao->basic->multiPartData;
-                v32 = (char*)v31->multipartGaoObjectPartsOrMatrices;
-                v33 = (char*)gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices;
-                v34 = 80 * v31->elemNum;
-                memcpy(v33, v32, 4 * (v34 >> 2));
-                v29 = &v32[4 * (v34 >> 2)];
-                v28 = &v33[4 * (v34 >> 2)];
-                v30 = v34;
+                partBytes = 80 * srcMultiPart->elemNum;
             }
-            memcpy(v28, v29, v30 & 3);
+            memcpy(
+                gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices,
+                srcMultiPart->multipartGaoObjectPartsOrMatrices,
+                partBytes);
         }
     }
-    v35 = a1;
+    destWorld = world;
     if ((srcGao->flags & 2) != 0)
-        ANI_pst_DuplicateGameObjectAnim(a1, gao, srcGao);
+        ANI_pst_DuplicateGameObjectAnim(world, gao, srcGao);
     if ((gao->flags & 0x20) != 0)
         AI_DuplicateInstance(srcGao, gao);
     if ((gao->flags & 0x2000000) != 0)
-        EVE_Duplicate(srcGao, gao, a4);
+        EVE_Duplicate(srcGao, gao, dupEvents);
     if ((gao->flags & 0x8000000) != 0)
         SND_Duplicate(srcGao, gao);
     if ((gao->flags & 0x10) != 0)
@@ -2383,8 +2331,8 @@ LABEL_41:
         COL_DuplicateInstance(gao, srcGao);
     if ((gao->flags & 0x100) != 0)
         COL_DuplicateColMap(gao, srcGao);
-    v36 = gao->flags2;
-    if ((v36 & 0x100000) != 0 && (v36 & 0x20) == 0)
+    flags2 = gao->flags2;
+    if ((flags2 & 0x100000) != 0 && (flags2 & 0x20) == 0)
     {
         COL_AllocDetectionList(gao);
         gao->flags2 |= 0x20u;
@@ -2393,61 +2341,50 @@ LABEL_41:
     {
         gao->extended->fields = (tGameObjectDesignFields*)MEM_p_Alloc(0x58u);
         memcpy(gao->extended->fields, srcGao->extended->fields, sizeof(tGameObjectDesignFields));
-        v35 = a1;
+        destWorld = world;
     }
     OBJ_DuplicateBV(srcGao, gao);
-    if (a3)
-        WOR_World_AttachGameObject(v35, gao);
-    if (v35)
+    if (attach)
+        WOR_World_AttachGameObject(destWorld, gao);
+    if (destWorld)
     {
-        v35->tablesManagerAndEOTNeeded = 1;
-        v35->visibilityCallNeeded = 1;
-        v35->SnPRefreshNeeded = TRUE;
+        destWorld->tablesManagerAndEOTNeeded = 1;
+        destWorld->visibilityCallNeeded = 1;
+        destWorld->SnPRefreshNeeded = TRUE;
     }
     return gao;
 }
 
-void OBJ_Gizmo_UpdateGizmoPtr(struct sGameObjectMain* a1)
+void OBJ_Gizmo_UpdateGizmoPtr(struct sGameObjectMain* gao)
 {
-    tGameObjectMultiPartData* v1;
-    int v2;
-    int v3;
-    tMultiPartGameObjectLinks* v4;
-    tGameObjectMain* v5;
-    tMultiPartGameObjectLinks* v6;
-    int v7;
-    tGameObjectMultiPartData* v8;
+    tGameObjectMultiPartData* multiPart;
+    int elemIdx;
+    tMultiPartGameObjectLinks* link;
+    tGameObjectMain* partGao;
+    int mtxIdx;
+    tGameObjectMultiPartData* partMultiPart;
 
-    if ((a1->flags & 0x200000) != 0 && (a1->flags & 0x1000000) != 0)
+    if ((gao->flags & 0x200000) != 0 && (gao->flags & 0x1000000) != 0)
     {
-        v1 = a1->basic->multiPartData;
-        v2 = 0;
-        if (v1->elemNum > 0)
+        multiPart = gao->basic->multiPartData;
+        for (elemIdx = 0; elemIdx < multiPart->elemNum; ++elemIdx)
         {
-            v3 = 0;
-            do
+            link = &((tMultiPartGameObjectLinks*)multiPart->multipartGaoObjectPartsOrMatrices)[elemIdx];
+            link->mtxPtr = NULL;
+            partGao = link->gao;
+            if (!partGao)
+                continue;
+            mtxIdx = link->mtxIdx;
+            if (mtxIdx == -1)
             {
-                ((tMultiPartGameObjectLinks*)v1->multipartGaoObjectPartsOrMatrices)[v3].mtxPtr = NULL;
-                v4 = (tMultiPartGameObjectLinks*)v1->multipartGaoObjectPartsOrMatrices;
-                v5 = v4[v3].gao;
-                v6 = &v4[v3];
-                if (v5)
-                {
-                    v7 = v6->mtxIdx;
-                    if (v7 == -1)
-                    {
-                        v6->mtxPtr = v5->matrices;
-                    }
-                    else if ((v5->flags & 0x200000) != 0 && (v5->flags & 0x1000000) == 0)
-                    {
-                        v8 = v5->basic->multiPartData;
-                        if (v7 < v8->elemNum)
-                            v6->mtxPtr = &(((Mtx4x4*)(v8->multipartGaoObjectPartsOrMatrices))[v7]);
-                    }
-                }
-                ++v2;
-                ++v3;
-            } while (v2 < v1->elemNum);
+                link->mtxPtr = partGao->matrices;
+            }
+            else if ((partGao->flags & 0x200000) != 0 && (partGao->flags & 0x1000000) == 0)
+            {
+                partMultiPart = partGao->basic->multiPartData;
+                if (mtxIdx < partMultiPart->elemNum)
+                    link->mtxPtr = &(((Mtx4x4*)(partMultiPart->multipartGaoObjectPartsOrMatrices))[mtxIdx]);
+            }
         }
     }
 }
@@ -2455,87 +2392,67 @@ void OBJ_Gizmo_UpdateGizmoPtr(struct sGameObjectMain* a1)
 struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
 {
     tGameObjectMain* gameObject;
-    int v3;
-    tGameObjectExtended* v4;
-    int v5;
-    tGameObjectCollMain* v6;
-    unsigned int v7;
-    int v8;
-    char v9;
-    Mtx4x4* v10;
-    Mtx4x4* v11;
-    tGameObjectBV* v12;
-    tGameObjectBV* v13;
-    tGameObjectBV* v14;
-    tGameObjectBV* v15;
-    int v16;
-    int v17;
-    tGameObjectBasic* v18;
-    tGameObjectVisualObject* v19;
-    char v20;
-    int v21;
-    int v22;
-    unsigned int v23;
-    int* i;
-    tGaoMatrix* v25;
-    int v26;
-    tGameObjectActorObject* v27;
-    int v28;
-    int v29;
-    int v30;
-    int v31;
-    int v32;
-    tGameObjectMain** v33;
-    int v34;
-    int v35;
-    int v36;
-    BOOL v37;
-    int v38;
-    int v39;
-    int v40;
-    int v41;
-    int v42;
-    int v43;
-    int v44;
-    int v45;
-    int v46;
+    int fileFlags2;
+    tGameObjectExtended* extended;
+    int flags2;
+    tGameObjectCollMain* coll;
+    unsigned int detectionBit;
+    char processByte;
+    tGameObjectBV* bv;
+    int key;
+    tGameObjectBasic* basic;
+    tGameObjectVisualObject* visual;
+    char zListBufferNum;
+    int colorCount;
+    unsigned int colorBytes;
+    int* colorPtr;
+    tGaoMatrix* gaoMtx;
+    tGameObjectActorObject* actor;
+    int elemNum;
+    int remaining;
+    int partBytes;
+    int elemIdx;
+    tGameObjectMain** linkSlot;
+    BOOL hasModifiers;
+    int modifierBytes;
+    int nameLen;
     char* currRdrPtr;
     int Str1;
     char sstr1[4];
-    int v49;
-    int a1;
+    int fileFlags;
+    int fileSize;
     Mtx4x4 mtx;
     char gameObjectName[256];
 
-    currRdrPtr = BIG_pc_ReadFileTmp(Offset, &a1);
+    currRdrPtr = BIG_pc_ReadFileTmp(Offset, &fileSize);
     LOA_ReadCharArray(&currRdrPtr, sstr1, 4u, 1);
     if (strncmp(sstr1, ".gao", 4u))
         return 0;
     LOA_ReadLong(&currRdrPtr, 0, 2);
     LOA_ReadLong(&currRdrPtr, 0, 1);
-    v49 = LOA_ReadLong(&currRdrPtr, 0, 1) & ~4u;
-    gameObject = OBJ_GameObject_Create(v49);
+    fileFlags = LOA_ReadLong(&currRdrPtr, 0, 1) & ~4u;
+    gameObject = OBJ_GameObject_Create(fileFlags);
     OBJ_gpst_ObjectToLoadIn = gameObject;
     gameObject->flags2 = 0x7B9C0080;
-    v3 = LOA_ReadLong(&currRdrPtr, 0, 1);
-    v4 = gameObject->extended;
-    v5 = v3 & gameObject->flags2;
-    gameObject->flags2 = v5;
-    if (v4 && (v6 = v4->coll) != 0 && v6->detectionList)
-        v7 = v5 | 0x20;
+    fileFlags2 = LOA_ReadLong(&currRdrPtr, 0, 1);
+    extended = gameObject->extended;
+    flags2 = fileFlags2 & gameObject->flags2;
+    gameObject->flags2 = flags2;
+    if (extended && (coll = extended->coll) != 0 && coll->detectionList)
+        detectionBit = flags2 | 0x20;
     else
-        v7 = v5 & ~0x20u;
-    gameObject->flags2 = v7;
-    if ((v3 & 0x20000000) != 0)
-        gameObject->flags2 = v7 | 0x200000;
-    if ((v3 & 0x40000000) != 0)
+        detectionBit = flags2 & ~0x20u;
+    gameObject->flags2 = detectionBit;
+    if ((fileFlags2 & 0x20000000) != 0)
+        gameObject->flags2 = detectionBit | 0x200000;
+    if ((fileFlags2 & 0x40000000) != 0)
         gameObject->flags2 |= 0x400000u;
-    gameObject->flags2 |= v3 & 0xFF00;
+    gameObject->flags2 |= fileFlags2 & 0xFF00;
     OBJ_UpdateStatusFlagRTL(gameObject);
-    v8 = gameObject->flags2;
-    if ((v8 & 0x20) == 0 && (v8 & 0x100000) != 0)
+    flags2 = gameObject->flags2;
+    if ((flags2 & 0x20) == 0 && (flags2 & 0x100000) != 0)
     {
-        gameObject->flags2 = v8 | 0x20;
+        gameObject->flags2 = flags2 | 0x20;
         COL_AllocDetectionList(gameObject);
     }
     LOA_ReadChar(&currRdrPtr, 0, 1);
@@ -2547,191 +2464,159 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
     gameObject->distance = LOA_ReadChar(&currRdrPtr, 0, 1);
     gameObject->LODDist = LOA_ReadChar(&currRdrPtr, 0, 1);
     gameObject->designFlags = LOA_ReadChar(&currRdrPtr, 0, 1);
-    v9 = LOA_ReadChar(&currRdrPtr, 0, 1);
-    gameObject->process = v9 & 0xC | ((v9 & 0xC) >> 2) & 1 | ((v9 & 0xC | ((v9 & 0xC) >> 2) & 1) >> 2) & 2;
+    processByte = LOA_ReadChar(&currRdrPtr, 0, 1);
+    gameObject->process = processByte & 0xC | ((processByte & 0xC) >> 2) & 1 | ((processByte & 0xC | ((processByte & 0xC) >> 2) & 1) >> 2) & 2;
     gameObject->if_this_not0_wont_render_gao = 0;
     LOA_ReadMatrix(&currRdrPtr, &mtx, 1);
     MATH_SetCorrectType(&mtx);
-    if ((v49 & 0x10000) != 0)
-    {
-        v10 = gameObject->matrices + 1;
-        if (v10 != &mtx)
-            memcpy(v10, &mtx, sizeof(Mtx4x4));
-    }
-    v11 = gameObject->matrices;
-    if (v11 != &mtx)
-        memcpy(v11, &mtx, sizeof(Mtx4x4));
+    if ((fileFlags & 0x10000) != 0)
+        MATH_CopyMatrix(gameObject->matrices + 1, &mtx);
+    MATH_CopyMatrix(gameObject->matrices, &mtx);
     if (gameObject->boundingVolume)
     {
         LOA_ReadLong(&currRdrPtr, 0, 2);
-        if ((v49 & 0x80000) != 0)
+        LOA_ReadVector(&currRdrPtr, &gameObject->boundingVolume->BVMinOriginal, 1);
+        bv = gameObject->boundingVolume;
+        bv->BVMin.x = bv->BVMinOriginal.x;
+        bv->BVMin.y = bv->BVMinOriginal.y;
+        bv->BVMin.z = bv->BVMinOriginal.z;
+        LOA_ReadVector(&currRdrPtr, &gameObject->boundingVolume->BVMaxOriginal, 1);
+        bv = gameObject->boundingVolume;
+        bv->BVMax.x = bv->BVMaxOriginal.x;
+        bv->BVMax.y = bv->BVMaxOriginal.y;
+        bv->BVMax.z = bv->BVMaxOriginal.z;
+        if ((fileFlags & 0x80000) != 0)
         {
-            LOA_ReadVector(&currRdrPtr, &gameObject->boundingVolume->BVMinOriginal, 1);
-            v12 = gameObject->boundingVolume;
-            v12->BVMin.x = v12->BVMinOriginal.x;
-            v12->BVMin.y = v12->BVMinOriginal.y;
-            v12->BVMin.z = v12->BVMinOriginal.z;
-            LOA_ReadVector(&currRdrPtr, &gameObject->boundingVolume->BVMaxOriginal, 1);
-            v13 = gameObject->boundingVolume;
-            v13->BVMax.x = v13->BVMaxOriginal.x;
-            v13->BVMax.y = v13->BVMaxOriginal.y;
-            v13->BVMax.z = v13->BVMaxOriginal.z;
             LOA_ReadVector(&currRdrPtr, &gameObject->boundingVolume->BVMinLocal, 1);
             LOA_ReadVector(&currRdrPtr, &gameObject->boundingVolume->BVMaxLocal, 1);
         }
-        else
-        {
-            LOA_ReadVector(&currRdrPtr, &gameObject->boundingVolume->BVMinOriginal, 1);
-            v14 = gameObject->boundingVolume;
-            v14->BVMin.x = v14->BVMinOriginal.x;
-            v14->BVMin.y = v14->BVMinOriginal.y;
-            v14->BVMin.z = v14->BVMinOriginal.z;
-            LOA_ReadVector(&currRdrPtr, &gameObject->boundingVolume->BVMaxOriginal, 1);
-            v15 = gameObject->boundingVolume;
-            v15->BVMax.x = v15->BVMaxOriginal.x;
-            v15->BVMax.y = v15->BVMaxOriginal.y;
-            v15->BVMax.z = v15->BVMaxOriginal.z;
-        }
     }
-    if ((v49 & 0x1000) != 0)
+    if ((fileFlags & 0x1000) != 0)
     {
-        if ((v49 & 0x4000) != 0)
+        if ((fileFlags & 0x4000) != 0)
         {
-            v16 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v16;
-            if (v16 == -1)
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key == -1)
                 ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse = 0;
             else
                 LOA_MakeFileRef(
-                    v16, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse), GEO_ul_Load_ObjectCallback, 1);
-            v17 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v17;
-            if (v17 == -1)
+                    key, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse), GEO_ul_Load_ObjectCallback, 1);
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key == -1)
                 ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROMAT = 0;
             else
-                LOA_MakeFileRef(v17, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROMAT), GEO_ul_Load_ObjectCallback, 1);
+                LOA_MakeFileRef(key, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROMAT), GEO_ul_Load_ObjectCallback, 1);
             ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->objDrawMask = LOA_ReadLong(&currRdrPtr, 0, 1);
             ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->boneDisplayOrder_zListBufferNum = (uint8_t)LOA_ReadLong(&currRdrPtr, 0, 1);// csak az elsõ bájtot veszi figyelembe
-            v18 = gameObject->basic;
-            v19 = v18->actorObjectOrVisualObject;
-            v20 = ((tGameObjectVisualObject*)(v18->actorObjectOrVisualObject))->boneDisplayOrder_zListBufferNum;
-            if (v20 == -1)
+            basic = gameObject->basic;
+            visual = basic->actorObjectOrVisualObject;
+            zListBufferNum = ((tGameObjectVisualObject*)(basic->actorObjectOrVisualObject))->boneDisplayOrder_zListBufferNum;
+            if (zListBufferNum == -1)
             {
-                v19->boneDisplayOrder_zListBufferNum = 0;
+                visual->boneDisplayOrder_zListBufferNum = 0;
             }
-            else if (v20 > 10)
+            else if (zListBufferNum > 10)
             {
-                v19->boneDisplayOrder_zListBufferNum = v20 - 16;
+                visual->boneDisplayOrder_zListBufferNum = zListBufferNum - 16;
             }
-            v21 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            v22 = v21;
-            if (v21)
+            colorCount = LOA_ReadLong(&currRdrPtr, 0, 1);
+            if (colorCount)
             {
-                v23 = 4 * v21 + 4;
-                ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->RLIVertexColors = (int*)MEM_p_Alloc(v23);
-                LOA_ul_FileTypeSize_27 += v23;
-                ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->RLIVertexColors[0] = v22; // num
-                for (i = ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->RLIVertexColors + 1; v22; --v22)
-                    *i++ = LOA_ReadLong(&currRdrPtr, 0, 1);
+                colorBytes = 4 * colorCount + 4;
+                ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->RLIVertexColors = (int*)MEM_p_Alloc(colorBytes);
+                LOA_ul_FileTypeSize_27 += colorBytes;
+                ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->RLIVertexColors[0] = colorCount; // num
+                for (colorPtr = ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->RLIVertexColors + 1; colorCount; --colorCount)
+                    *colorPtr++ = LOA_ReadLong(&currRdrPtr, 0, 1);
             }
             else
             {
                 ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->RLIVertexColors = 0;
             }
         }
-        if ((v49 & 0x400000) != 0)
+        if ((fileFlags & 0x400000) != 0)
         {
-            v25 = gameObject->basic->mtx;
-            v26 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v26;
-            if (v26 == -1)
+            gaoMtx = gameObject->basic->mtx;
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key == -1)
             {
-                v25->refGao2 = NULL;
-                v25->refGao = NULL;
+                gaoMtx->refGao2 = NULL;
+                gaoMtx->refGao = NULL;
             }
             else
             {
-                LOA_MakeFileRef(v26, &v25->refGao, OBJ_ul_GameObjectCallback, 1);
-                LOA_MakeFileRef(Str1, &v25->refGao2, OBJ_ul_GameObjectCallback, 1);
+                LOA_MakeFileRef(key, &gaoMtx->refGao, OBJ_ul_GameObjectCallback, 1);
+                LOA_MakeFileRef(Str1, &gaoMtx->refGao2, OBJ_ul_GameObjectCallback, 1);
             }
-            LOA_ReadMatrix(&currRdrPtr, &v25->mtx, 1);
+            LOA_ReadMatrix(&currRdrPtr, &gaoMtx->mtx, 1);
         }
-        if ((v49 & 2) != 0)
+        if ((fileFlags & 2) != 0)
         {
-            v27 = (tGameObjectActorObject*)gameObject->basic->actorObjectOrVisualObject;
+            actor = (tGameObjectActorObject*)gameObject->basic->actorObjectOrVisualObject;
             Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            v27->animPtr[0] = (tAnim*)Str1;
+            actor->animPtr[0] = (tAnim*)Str1;
             Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            v27->shape = (tShape*)Str1;
+            actor->shape = (tShape*)Str1;
             Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            v27->group = (tGroup*)Str1;
-            v28 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v28;
-            if (v28 != -1)
+            actor->group = (tGroup*)Str1;
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key != -1)
             {
-                if (v28)
-                    LOA_MakeFileRef(v28, &(((tGameObjectActorObject*)(gameObject->basic->actorObjectOrVisualObject))->actionKit), ACT_ul_ActionKitCallback, 1);
+                if (key)
+                    LOA_MakeFileRef(key, &(((tGameObjectActorObject*)(gameObject->basic->actorObjectOrVisualObject))->actionKit), ACT_ul_ActionKitCallback, 1);
             }
         }
-        if ((v49 & 0x200000) != 0)
+        if ((fileFlags & 0x200000) != 0)
         {
-            v29 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            v30 = v29;
-            gameObject->basic->multiPartData->elemNum = v29;
-            if (v29)
+            elemNum = LOA_ReadLong(&currRdrPtr, 0, 1);
+            remaining = elemNum;
+            gameObject->basic->multiPartData->elemNum = elemNum;
+            if (elemNum)
             {
-                if ((v49 & 0x1000000) != 0)
+                if ((fileFlags & 0x1000000) != 0)
                 {
-                    v31 = sizeof(tMultiPartGameObjectLinks) * v29;
-                    gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_Alloc(sizeof(tMultiPartGameObjectLinks) * v29);
-                    LOA_ul_FileTypeSize_34 += v31;
-                    if (v30 > 0)
+                    partBytes = sizeof(tMultiPartGameObjectLinks) * elemNum;
+                    gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_Alloc(sizeof(tMultiPartGameObjectLinks) * elemNum);
+                    LOA_ul_FileTypeSize_34 += partBytes;
+                    for (elemIdx = 0; remaining > 0; ++elemIdx, --remaining)
                     {
-                        v32 = 0;
-                        do
-                        {
-                            ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[v32].mtxPtr = NULL;
-                            Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-                            ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[v32].gao = (tGameObjectMain*)Str1; // ez csak a key egyelore
-                            v33 = &(((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[v32].gao);
-                            if (*v33 == (tGameObjectMain*)-1)
-                                *v33 = 0;
-                            else
-                                LOA_MakeFileRef(Str1, v33, OBJ_ul_GameObjectCallback, 1);
-                            ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[v32].mtxIdx = LOA_ReadLong(&currRdrPtr, 0, 1);
-                            ++v32;
-                            --v30;
-                        } while (v30);
+                        ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].mtxPtr = NULL;
+                        Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
+                        ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao = (tGameObjectMain*)Str1; // ez csak a key egyelore
+                        linkSlot = &(((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao);
+                        if (*linkSlot == (tGameObjectMain*)-1)
+                            *linkSlot = 0;
+                        else
+                            LOA_MakeFileRef(Str1, linkSlot, OBJ_ul_GameObjectCallback, 1);
+                        ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].mtxIdx = LOA_ReadLong(&currRdrPtr, 0, 1);
                     }
                 }
                 else
                 {
-                    v34 = sizeof(Mtx4x4) * v29;
-                    gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_AllocAligned(sizeof(Mtx4x4) * v29, 16);
-                    LOA_ul_FileTypeSize_34 += v34;
-                    if (v30 > 0)
+                    partBytes = sizeof(Mtx4x4) * elemNum;
+                    gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_AllocAligned(sizeof(Mtx4x4) * elemNum, 16);
+                    LOA_ul_FileTypeSize_34 += partBytes;
+                    for (elemIdx = 0; remaining > 0; ++elemIdx, --remaining)
                     {
-                        v35 = 0;
-                        do
-                        {
-                            LOA_ReadMatrix(&currRdrPtr, &(((Mtx4x4*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[v35]), 1);
-                            LOA_ReadString(&currRdrPtr, 0, 64, 2);
-                            ++v35;
-                            --v30;
-                        } while (v30);
+                        LOA_ReadMatrix(&currRdrPtr, &(((Mtx4x4*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx]), 1);
+                        LOA_ReadString(&currRdrPtr, 0, 64, 2);
                     }
                 }
             }
         }
     }
-    if ((v49 & 0x2000) != 0)
+    if ((fileFlags & 0x2000) != 0)
     {
-        v36 = LOA_ReadLong(&currRdrPtr, 0, 1);
-        Str1 = v36;
-        if ((v49 & 0x800000) != 0 && v36)
-            LOA_MakeFileRef(v36, &gameObject->extended->grp, GRP_ul_LoadGrpCallback, 1);
+        key = LOA_ReadLong(&currRdrPtr, 0, 1);
+        Str1 = key;
+        if ((fileFlags & 0x800000) != 0 && key)
+            LOA_MakeFileRef(key, &gameObject->extended->grp, GRP_ul_LoadGrpCallback, 1);
         Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-        v37 = Str1 != 0;
+        hasModifiers = Str1 != 0;
         gameObject->extended->aiLod = LOA_ReadFloat(&currRdrPtr, 0, 1);
         gameObject->extended->renderMinReqDistSq = LOA_ReadFloat(&currRdrPtr, 0, 1);
         gameObject->extended->renderMinReqDistSq = 0.0;
@@ -2749,23 +2634,23 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
         gameObject->extended->extraFlag &= ~8u; // LOBYTE
         gameObject->extended->sectorID = -1;
         gameObject->extended->sectorElemIdx = -1;
-        if ((v49 & 0x20) != 0)
+        if ((fileFlags & 0x20) != 0)
         {
-            v38 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v38;
-            if (v38)
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key)
             {
-                if (v38 != -1)
-                    LOA_MakeFileRef(v38, &(gameObject->extended->AIInstance), AI_ul_CallbackLoadInstance, 1);
+                if (key != -1)
+                    LOA_MakeFileRef(key, &(gameObject->extended->AIInstance), AI_ul_CallbackLoadInstance, 1);
             }
         }
-        if ((v49 & 0x2000000) != 0)
+        if ((fileFlags & 0x2000000) != 0)
         {
-            v39 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v39;
-            if (v39)
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key)
             {
-                if (v39 != -1)
+                if (key != -1)
                 {
                     gameObject->extended->eve = (tEventData*)MEM_p_Alloc(sizeof(tEventData));
                     LOA_ul_FileTypeSize_37 += sizeof(tEventData);
@@ -2774,37 +2659,37 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
                 }
             }
         }
-        if ((v49 & 0x8000000) != 0)
+        if ((fileFlags & 0x8000000) != 0)
         {
-            v40 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v40;
-            if (v40)
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key)
             {
-                if (v40 != -1)
-                    LOA_MakeFileRef(v40, &gameObject->extended->snd, SND_ul_CallbackLoad, 1);
+                if (key != -1)
+                    LOA_MakeFileRef(key, &gameObject->extended->snd, SND_ul_CallbackLoad, 1);
             }
         }
-        if ((v49 & 0x40000) != 0)
+        if ((fileFlags & 0x40000) != 0)
         {
-            v41 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v41;
-            if (v41)
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key)
             {
-                if (v41 != -1)
-                    LOA_MakeFileRef(v41, &gameObject->extended->way, WAY_ul_AllLinkListsCallback, 1);
+                if (key != -1)
+                    LOA_MakeFileRef(key, &gameObject->extended->way, WAY_ul_AllLinkListsCallback, 1);
             }
         }
-        if ((v49 & 0x10) != 0)
+        if ((fileFlags & 0x10) != 0)
         {
-            v42 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            Str1 = v42;
-            if (v42)
+            key = LOA_ReadLong(&currRdrPtr, 0, 1);
+            Str1 = key;
+            if (key)
             {
-                if (v42 != -1)
-                    LOA_MakeFileRef(v42, &gameObject->extended->light, GEO_ul_Load_ObjectCallback, 1);
+                if (key != -1)
+                    LOA_MakeFileRef(key, &gameObject->extended->light, GEO_ul_Load_ObjectCallback, 1);
             }
         }
-        if ((v49 & 0x40) != 0)
+        if ((fileFlags & 0x40) != 0)
         {
             LOA_ReadLong(&currRdrPtr, 0, 1);
             gameObject->extended->fields = (tGameObjectDesignFields*)MEM_p_Alloc(88u);
@@ -2829,40 +2714,39 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
             gameObject->extended->fields->designInt3 = LOA_ReadLong(&currRdrPtr, 0, 1);
             gameObject->extended->fields->designDesFlags = gameObject->extended->fields->u13;
         }
-        if (v37)
+        if (hasModifiers)
         {
-            v43 = MDF_ul_Modifier_Load(&gameObject->extended->mdf, currRdrPtr, 1, gameObject);
-            currRdrPtr += v43;
+            modifierBytes = MDF_ul_Modifier_Load(&gameObject->extended->mdf, currRdrPtr, 1, gameObject);
+            currRdrPtr += modifierBytes;
             LOA_ReadLong(&currRdrPtr, 0, 1);
         }
     }
-    if ((v49 & 0x600) != 0)
+    if ((fileFlags & 0x600) != 0)
     {
-        v44 = LOA_ReadLong(&currRdrPtr, 0, 1);
-        Str1 = v44;
-        if (v44)
+        key = LOA_ReadLong(&currRdrPtr, 0, 1);
+        Str1 = key;
+        if (key)
         {
-            if (v44 != -1)
-                LOA_MakeFileRef(v44, &gameObject->extended->coll->colInstance, COL_ul_CallBackLoadInstance, 1);
+            if (key != -1)
+                LOA_MakeFileRef(key, &gameObject->extended->coll->colInstance, COL_ul_CallBackLoadInstance, 1);
         }
     }
-    if ((v49 & 0x100) != 0)
+    if ((fileFlags & 0x100) != 0)
     {
-        v45 = LOA_ReadLong(&currRdrPtr, 0, 1);
-        Str1 = v45;
-        if (v45)
+        key = LOA_ReadLong(&currRdrPtr, 0, 1);
+        Str1 = key;
+        if (key)
         {
-            if (v45 != -1)
+            if (key != -1)
             {
-                LOA_MakeFileRef(v45, &gameObject->extended->coll->colMap, COL_ul_CallBackLoadColMap, 1);
+                LOA_MakeFileRef(key, &gameObject->extended->coll->colMap, COL_ul_CallBackLoadColMap, 1);
                 gameObject->flags2 |= 0x80u;
             }
         }
     }
-    v46 = LOA_ReadLong(&currRdrPtr, 0, 1);
-    a1 = v46;
-    if (v46) {
-        LOA_ReadString(&currRdrPtr, gameObjectName, v46, 1); //LOA_ReadString(&currRdrPtr, 0, v46, 1);
+    nameLen = LOA_ReadLong(&currRdrPtr, 0, 1);
+    if (nameLen) {
+        LOA_ReadString(&currRdrPtr, gameObjectName, nameLen, 1); //LOA_ReadString(&currRdrPtr, 0, v46, 1);
         DBG_OutputDebugString("Loading game object: %s (flags: %x, flags2: %x)\n", gameObjectName, gameObject->flags, gameObject->flags2);
     }
     else {
@@ -2878,97 +2762,92 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
 
 tableDescStruct* OBJ_ul_World_LoadGolCallback(uint32_t Offset)
 {
-    tableDescStruct* v1;
-    char* v2;
-    tableElemStructPF* v3;
-    int v4;
-    void** v6;
-    char* a1;
+    tableDescStruct* table;
+    char* start;
+    tableElemStructPF* elem;
+    int key;
+    void** slot;
+    char* rdr;
     int size;
 
-    v1 = (tableDescStruct*)MEM_p_Alloc(sizeof(tableDescStruct));
-    memset(v1, 0, sizeof(tableDescStruct));
-    v2 = BIG_pc_ReadFileTmp(Offset, &size);
-    a1 = v2;
+    table = (tableDescStruct*)MEM_p_Alloc(sizeof(tableDescStruct));
+    memset(table, 0, sizeof(tableDescStruct));
+    start = BIG_pc_ReadFileTmp(Offset, &size);
+    rdr = start;
 
-    TAB_PFtable_Init(v1, size, 0.1f);
-    if (v2 < &v2[size])
+    TAB_PFtable_Init(table, size, 0.1f);
+    while (rdr < &start[size])
     {
-        do
-        {
-            ((tableElemStructPF*)(v1->nextElemPtr))->objectPtr = 0;
-            ((tableElemStructPF*)(v1->nextElemPtr))->objectFlags = 0;
-            v3 = v1->nextElemPtr;
-            ++v1->actElemNum;
-            ++v3;
-            v6 = &v3[-1].objectPtr;
-            v1->nextElemPtr = v3;
-            v4 = LOA_ReadLong(&a1, 0, 1);
-            LOA_MakeFileRef(v4, v6, OBJ_ul_GameObjectCallback, 1);
-            LOA_ReadLong(&a1, 0, 2);
-        } while (a1 < &v2[size]);
+        ((tableElemStructPF*)(table->nextElemPtr))->objectPtr = 0;
+        ((tableElemStructPF*)(table->nextElemPtr))->objectFlags = 0;
+        elem = table->nextElemPtr;
+        ++table->actElemNum;
+        ++elem;
+        slot = &elem[-1].objectPtr;
+        table->nextElemPtr = elem;
+        key = LOA_ReadLong(&rdr, 0, 1);
+        LOA_MakeFileRef(key, slot, OBJ_ul_GameObjectCallback, 1);
+        LOA_ReadLong(&rdr, 0, 2);
     }
-    return v1;
+    return table;
 }
 
-void OBJ_ScaleSet(struct sGameObjectMain* a1, Vec3* a2)
+void OBJ_ScaleSet(struct sGameObjectMain* gao, Vec3* scale)
 {
-    tGaoMatrix* v2;
-    Vec3 v3;
+    tGaoMatrix* local;
+    Vec3 parentScale;
 
-    if ((a1->flags & 0x400000) != 0)
+    if ((gao->flags & 0x400000) != 0)
     {
-        if ((a1->flags & 1) != 0)
+        if ((gao->flags & 1) != 0)
         {
-            OBJ_ComputeRecursivScale(a1, &v3);
-            a2->x = a2->x / v3.x;
-            a2->y = a2->y / v3.y;
-            a2->z = a2->z / v3.z;
+            OBJ_ComputeRecursivScale(gao, &parentScale);
+            scale->x = scale->x / parentScale.x;
+            scale->y = scale->y / parentScale.y;
+            scale->z = scale->z / parentScale.z;
         }
-        v2 = OBJ_pst_GetLocalMatrix(a1);
-        MATH_SetScale(&v2->mtx, a2);
-        OBJ_ComputeGlobalWhenHie(a1);
-        OBJ_ComputeBV(a1, 0);
+        local = OBJ_pst_GetLocalMatrix(gao);
+        MATH_SetScale(&local->mtx, scale);
+        OBJ_ComputeGlobalWhenHie(gao);
+        OBJ_ComputeBV(gao, 0);
     }
     else
     {
-        MATH_SetScale(a1->matrices, a2);
-        OBJ_ComputeBV(a1, 0);
+        MATH_SetScale(gao->matrices, scale);
+        OBJ_ComputeBV(gao, 0);
     }
 }
 
-void OBJ_ZoomSet(struct sGameObjectMain* a1, float zoom)
+void OBJ_ZoomSet(struct sGameObjectMain* gao, float zoom)
 {
-    Mtx4x4* v2;
-    int v3;
-    BOOL v4;
-    Mtx4x4* v5;
-    Mtx4x4* v6;
+    Mtx4x4* absMtx;
+    int flags;
+    Mtx4x4* matrices;
+    Mtx4x4* flashMtx;
 
-    v2 = OBJ_pst_GetAbsoluteMatrix(a1);
-    MATH_SetZoom(v2, zoom);
-    v3 = a1->flags;
-    if ((a1->flags & 2) != 0 && (v3 & 0x4000000) != 0)
+    absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+    MATH_SetZoom(absMtx, zoom);
+    flags = gao->flags;
+    if ((gao->flags & 2) != 0 && (flags & 0x4000000) != 0)
     {
-        v4 = (v3 & 0x10000) == 0;
-        v5 = a1->matrices;
-        if (v4)
-            v6 = v5 + 1;
+        matrices = gao->matrices;
+        if ((flags & 0x10000) == 0)
+            flashMtx = matrices + 1;
         else
-            v6 = v5 + 2;
-        MATH_SetZoom(v6, zoom);
+            flashMtx = matrices + 2;
+        MATH_SetZoom(flashMtx, zoom);
     }
-    OBJ_ComputeBV(a1, 0);
+    OBJ_ComputeBV(gao, 0);
 }
 
-struct sGameObjectMain* get_reference_point_gao_2_from_gao_sub_40BEA0(struct sGameObjectMain* a1)
+struct sGameObjectMain* get_reference_point_gao_2_from_gao_sub_40BEA0(struct sGameObjectMain* gao)
 {
-    tGameObjectBasic* v1;
-    tGaoMatrix* v2;
+    tGameObjectBasic* basic;
+    tGaoMatrix* local;
     tGameObjectMain* result;
 
-    if (a1 && (v1 = a1->basic) != 0 && (v2 = v1->mtx) != 0)
-        result = v2->refGao2;
+    if (gao && (basic = gao->basic) != 0 && (local = basic->mtx) != 0)
+        result = local->refGao2;
     else
         result = 0;
     return result;
@@ -3488,37 +3367,37 @@ void OBJ_EyeFollow(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a
     }
 }
 
-void OBJ_FreezeModifier_C(struct sGameObjectMain* a1, int a2, int setOrReset)
+void OBJ_FreezeModifier_C(struct sGameObjectMain* gao, int mdfId, int setOrReset)
 {
-    unsigned int v3;
-    tModifier* v4;
+    unsigned int modifierFlags;
+    tModifier* mdf;
 
-    v4 = MDF_pst_GetByType(a1, a2);
-    if (v4)
+    mdf = MDF_pst_GetByType(gao, mdfId);
+    if (mdf)
     {
         if (setOrReset)
-            v3 = v4->modifierFlags | 0x2000000;
+            modifierFlags = mdf->modifierFlags | 0x2000000;
         else
-            v3 = v4->modifierFlags & ~0x2000000u;
-        v4->modifierFlags = v3;
+            modifierFlags = mdf->modifierFlags & ~0x2000000u;
+        mdf->modifierFlags = modifierFlags;
     }
 }
 
-BOOL OBJ_ModifierType_C(struct sGameObjectMain* a1, int mdfId)
+BOOL OBJ_ModifierType_C(struct sGameObjectMain* gao, int mdfId)
 {
-    return MDF_pst_GetByType(a1, mdfId) != 0;
+    return MDF_pst_GetByType(gao, mdfId) != 0;
 }
 
-struct sGEOGRO* OBJ_p_GetCurrentGeo(struct sGameObjectMain* a1)
+struct sGEOGRO* OBJ_p_GetCurrentGeo(struct sGameObjectMain* gao)
 {
     tGroGeneric* result;
-    int v2;
+    int id;
 
-    if (!a1
-        || (a1->flags & 0x4000) == 0
-        || (result = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse) == 0
-        || (v2 = result->intf->id, v2 != 1)
-        && (v2 != 8
+    if (!gao
+        || (gao->flags & 0x4000) == 0
+        || (result = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse) == 0
+        || (id = result->intf->id, id != 1)
+        && (id != 8
             || (result = (tGroGeneric*)GEO_pst_StaticLOD_GetLOD((tGEOSTATICLOD*)result, ((tGEOSTATICLOD*)(result))->currDistance)) == 0
             || result->intf->id != 1))
     {
