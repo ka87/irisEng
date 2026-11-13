@@ -187,3 +187,83 @@ COLORREF SetTextColor(HDC, COLORREF);
 HBRUSH   CreateSolidBrush(COLORREF);
 BOOL     ExtTextOutA(HDC, int, int, UINT, const RECT*, LPCSTR, UINT, const int*);
 int      DrawTextA(HDC, LPCSTR, int, RECT*, UINT);
+
+/* ---- messages, keys and window/queue flags for the win/ directory.
+   Distinct values, not the SDK's; see tests/stub/d3d9.h. */
+/* QS */
+#define QS_HOTKEY                          0x00000001
+#define QS_KEY                             0x00000002
+#define QS_MOUSE                           0x00000004
+#define QS_PAINT                           0x00000008
+#define QS_POSTMESSAGE                     0x00000010
+#define QS_SENDMESSAGE                     0x00000020
+#define QS_TIMER                           0x00000040
+/* WS */
+#define WS_BORDER                          0x00000001
+#define WS_DLGFRAME                        0x00000002
+#define WS_MAXIMIZEBOX                     0x00000004
+#define WS_MINIMIZEBOX                     0x00000008
+#define WS_SYSMENU                         0x00000010
+#define WS_THICKFRAME                      0x00000020
+/* MB */
+#define MB_ICONERROR                       0x00000001
+#define MB_TASKMODAL                       0x00000002
+/* MWMO */
+#define MWMO_ALERTABLE                     0x00000001
+#define MWMO_INPUTAVAILABLE                0x00000002
+/* PM */
+#define PM_REMOVE                          0x00000001
+/* WM */
+#define WM_ACTIVATEAPP                     16385
+#define WM_CLOSE                           16386
+#define WM_CREATE                          16387
+#define WM_DESTROY                         16388
+#define WM_ERASEBKGND                      16389
+#define WM_MOUSEFIRST                      16390
+#define WM_NCLBUTTONDOWN                   16391
+#define WM_QUIT                            16392
+#define WM_SYSCOMMAND                      16393
+/* VK */
+#define VK_F1                              16394
+#define VK_F2                              16395
+#define VK_F3                              16396
+#define VK_F4                              16397
+#define VK_F5                              16398
+#define VK_F6                              16399
+#define VK_F7                              16400
+#define VK_F10                             16401
+/* SC */
+#define SC_CLOSE                           16402
+/* SW */
+#define SW_SHOW                            16403
+/* MISC */
+#define NORMAL_PRIORITY_CLASS              16404
+#define E_FAIL                             16405
+#define E_INVALIDARG                       16406
+
+/* CreateProcessA and friends, for the win/ relauncher. */
+typedef struct _PROCESS_INFORMATION {
+    HANDLE hProcess, hThread; DWORD dwProcessId, dwThreadId;
+} PROCESS_INFORMATION;
+typedef struct _STARTUPINFOA {
+    DWORD cb; LPSTR lpReserved, lpDesktop, lpTitle;
+    DWORD dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars;
+    DWORD dwFillAttribute, dwFlags; WORD wShowWindow, cbReserved2;
+    BYTE* lpReserved2; HANDLE hStdInput, hStdOutput, hStdError;
+} STARTUPINFOA;
+BOOL  CreateProcessA(LPCSTR, LPSTR, void*, void*, BOOL, DWORD, void*, LPCSTR,
+                     STARTUPINFOA*, PROCESS_INFORMATION*);
+
+/* The message loop and the clock the win/ directory uses. */
+typedef struct tagMSG {
+    HWND hwnd; UINT message; WPARAM wParam; LPARAM lParam;
+    DWORD time; POINT pt;
+} MSG;
+typedef struct _SYSTEMTIME {
+    WORD wYear, wMonth, wDayOfWeek, wDay, wHour, wMinute, wSecond, wMilliseconds;
+} SYSTEMTIME;
+void  GetLocalTime(SYSTEMTIME*);
+BOOL  PeekMessageA(MSG*, HWND, UINT, UINT, UINT);
+BOOL  TranslateMessage(const MSG*);
+LRESULT DispatchMessageA(const MSG*);
+DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD);

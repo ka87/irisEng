@@ -24,6 +24,11 @@
 # profiler.c was here with 9, all of them GDI and system-colour calls.
 # Its pass added them to tests/stub/windows.h, which also took
 # win/wininputoutput.c from 10 to 9.
+#
+# win/wingdi.c went from 25 to 13 when the D3D9, D3DX and message-loop
+# declarations went into the stubs; that work also took the parse
+# sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
+# which are the fpos_t question.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -36,7 +41,7 @@ engine.c 2
 sideload.c 1
 sound.c 1
 strings.c 1
-win/wingdi.c 25
+win/wingdi.c 13
 win/wininputoutput.c 9
 win/winsound.c 13"
 
