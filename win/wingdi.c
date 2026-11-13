@@ -165,80 +165,75 @@ void PC_SetUVMatrix(Mtx4x4* dest, Vec3* v1, Vec3* v2, Vec3* v3, Vec3* pos, Vec3*
     dest->mtxflag = flags;
 }
 
-void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* a2, tMultiTextureElemStruct* a3)
+void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem)
 {
-    profilerRasterStructElem* v3;
-    int v4;
-    unsigned int v5;
-    int v6;
-    profilerRasterStructElem* v7;
-    int16_t v8;
-    int16_t v9;
-    tMatDecompressedStruct a2a;
-    Vec3 v11;
-    Vec3 v12;
-    Vec3 v13;
-    Vec3 v14;
-    Mtx4x4 a1;
-    Mtx4x4 a3a;
-    Vec3 a2a2; 
+    int planarParam;
+    unsigned int uvFunc;
+    int transform1;
+    tMatDecompressedStruct decompressed;
+    Vec3 axisV;
+    Vec3 axisU;
+    Vec3 axisW;
+    Vec3 speed;
+    Mtx4x4 oglMtx;
+    Mtx4x4 uvMtx;
+    Vec3 scale;
 
-    v3 = &gpst_DX_stDD->rasters[38];
-    if (!gpst_DX_stDD->rasters[38].insideCounter)
-        v3->startTick = TIM_GetTicksAsInt32();
-    ++v3->insideCounter;
-    v4 = a3->phongOrPlanarParam;
-    v5 = (a3->subTextureFlags >> 20) & 0xF;
+    PRO_PerfCounterStartBlock(&gpst_DX_stDD->rasters[38]);
+    planarParam = texElem->phongOrPlanarParam;
+    uvFunc = (texElem->subTextureFlags >> 20) & 0xF;
     D3DRenderParams.textureUVMode = 0;
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
     gpst_DX_stDD->flags &= ~0x10u;
-    MAT_FuncTable[v5](gpst_DX_stDD, geogro, a2, v4);
+    MAT_FuncTable[uvFunc](gpst_DX_stDD, geogro, chunks, planarParam);
     if (!gpst_DX_stDD->bigBuffer->UVData)
     {
         if (D3DRenderParams.textureUVMode)
         {
-            MATH_MakeOGLMatrix(&a1, &GLOBAL_UVTransformMatrix);
-            memcpy(d3dTransformationMatrix, &a1, sizeof(Mtx4x4WithoutAdditionalData));
-            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX *)&a1);
+            MATH_MakeOGLMatrix(&oglMtx, &GLOBAL_UVTransformMatrix);
+            memcpy(d3dTransformationMatrix, &oglMtx, sizeof(Mtx4x4WithoutAdditionalData));
+            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX *)&oglMtx);
         }
+        // preserved: this return skips the matching end block, so raster 38 stays entered
         return;
     }
-    v6 = a3->transform1;
-    if (v6 == 0x3F800000 && a3->transform2 == 0x3F800000 || !v6 || !a3->transform2) // TODO: MAT_VUIsIdentity inline
+    transform1 = texElem->transform1;
+    if (transform1 == 0x3F800000 && texElem->transform2 == 0x3F800000 || !transform1 || !texElem->transform2) // TODO: MAT_VUIsIdentity inline
     {
         if (!D3DRenderParams.textureUVMode)
         {
             D3DRenderParams.textureUVMode = 0;
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
-            goto LABEL_28;
+            PRO_PerfCounterEndBlock(&gpst_DX_stDD->rasters[38]);
+            return;
         }
-        MATH_MakeOGLMatrix(&a1, &GLOBAL_UVTransformMatrix);
+        MATH_MakeOGLMatrix(&oglMtx, &GLOBAL_UVTransformMatrix);
     }
     else
     {
-        MAT_UVDecompress(a3, &a2a);
-        v12.x = a2a.f1;
-        v12.y = a2a.f2;
-        v11.x = a2a.f3;
-        v11.y = a2a.f4;
-        v14.x = a2a.speedU;
-        v14.y = a2a.speedV;
-        v12.z = 0.0;
-        v11.z = 0.0;
-        v13.x = 0.0;
-        v13.y = 0.0;
-        v13.z = 1.0;
-        v14.z = 0.0;
-        a2a2.x = 1.0;
-        a2a2.y = 1.0;
-        a2a2.z = 1.0;
-        PC_SetUVMatrix(&a3a, &v12, &v11, &v13, &v14, &a2a2, 0, 6);
+        MAT_UVDecompress(texElem, &decompressed);
+        axisV.x = decompressed.f1;
+        axisV.y = decompressed.f2;
+        axisU.x = decompressed.f3;
+        axisU.y = decompressed.f4;
+        speed.x = decompressed.speedU;
+        speed.y = decompressed.speedV;
+        axisV.z = 0.0;
+        axisU.z = 0.0;
+        axisW.x = 0.0;
+        axisW.y = 0.0;
+        axisW.z = 1.0;
+        speed.z = 0.0;
+        scale.x = 1.0;
+        scale.y = 1.0;
+        scale.z = 1.0;
+        PC_SetUVMatrix(&uvMtx, &axisV, &axisU, &axisW, &speed, &scale, 0, 6);
         if (D3DRenderParams.textureUVMode)
         {
-            MATH_MulMatrixMatrix(&a1, &GLOBAL_UVTransformMatrix, &a3a);
-            MATH_MakeOGLMatrix(&a1, &a1);
+            MATH_MulMatrixMatrix(&oglMtx, &GLOBAL_UVTransformMatrix, &uvMtx);
+            MATH_MakeOGLMatrix(&oglMtx, &oglMtx);
         }
         else
         {
@@ -249,79 +244,70 @@ void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* a2, tMultiTex
                 textureStageTypeConfig[0].d3dTextureTransformFlags = 2;
                 D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
             }
-            MATH_MakeOGLMatrix(&a1, &a3a);
-            a1.v3.x = a1.Pos.x;
-            a1.v3.y = a1.Pos.y;
+            MATH_MakeOGLMatrix(&oglMtx, &uvMtx);
+            oglMtx.v3.x = oglMtx.Pos.x;
+            oglMtx.v3.y = oglMtx.Pos.y;
         }
     }
-    memcpy(d3dTransformationMatrix, &a1, sizeof(Mtx4x4WithoutAdditionalData));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&a1);
-LABEL_28:
-    v7 = &gpst_DX_stDD->rasters[38];
-    v8 = gpst_DX_stDD->rasters[38].insideCounter;
-    if (v8)
-    {
-        v9 = v8 - 1;
-        gpst_DX_stDD->rasters[38].insideCounter = v9;
-        if (!v9)
-            v7->sumTime += TIM_GetTicksAsInt32() - v7->startTick;
-    }
+    memcpy(d3dTransformationMatrix, &oglMtx, sizeof(Mtx4x4WithoutAdditionalData));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&oglMtx);
+    PRO_PerfCounterEndBlock(&gpst_DX_stDD->rasters[38]);
 }
 
-void MAT_UV_Compute_Chrome(tGdi_DisplayData* a1, tGEOGRO* a21, tGeoTriangleChunks* a31, unsigned int a41)
+void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type)
 {
-    int v1;
-    Vec3 a3;
-    Vec3 a4;
-    Vec3 a5;
-    Vec3 a6;
-    Vec3 a2;
+    int drawMask;
+    Vec3 axisV;
+    Vec3 axisW;
+    Vec3 pos;
+    Vec3 scale;
+    Vec3 axisU;
 
     D3DRenderParams.textureUVMode = 2;
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-    v1 = a1->drawMaskAllowedStuffCurrent;
-    a2.z = 0.0;
-    a2.y = 0.0;
-    a2.x = 0.5;
-    if ((v1 & 0x8000) != 0)
-        a2.x = -0.5;
-    a3.x = 0.0;
-    a3.y = -0.5;
-    a3.z = 0.0;
-    a4.x = 0.0;
-    a4.y = 0.0;
-    a4.z = -0.5;
-    a5.x = 0.5;
-    a5.y = 0.5;
-    a5.z = 0.0;
-    a6.x = 1.0;
-    a6.y = 1.0;
-    a6.z = 1.0;
-    PC_SetUVMatrix(&GLOBAL_UVTransformMatrix, &a2, &a3, &a4, &a5, &a6, 0, 4);
-    a1->bigBuffer->UVData = a1->bigBuffer->data7;
-    a1->flags |= 2u;
+    drawMask = dd->drawMaskAllowedStuffCurrent;
+    axisU.z = 0.0;
+    axisU.y = 0.0;
+    axisU.x = 0.5;
+    if ((drawMask & 0x8000) != 0)
+        axisU.x = -0.5;
+    axisV.x = 0.0;
+    axisV.y = -0.5;
+    axisV.z = 0.0;
+    axisW.x = 0.0;
+    axisW.y = 0.0;
+    axisW.z = -0.5;
+    pos.x = 0.5;
+    pos.y = 0.5;
+    pos.z = 0.0;
+    scale.x = 1.0;
+    scale.y = 1.0;
+    scale.z = 1.0;
+    PC_SetUVMatrix(&GLOBAL_UVTransformMatrix, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
+    dd->bigBuffer->UVData = dd->bigBuffer->data7;
+    dd->flags |= 2u;
 }
 
-void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int type)
+void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type)
 {
     int elemIdx;
     tMultiPartGameObjectLinks* link;
     Mtx4x4* multiPartMtx;
     //double v14; 
     Mtx4x4* viewMtx;
-    Vec3 v1, v2, v3, pos, scale; 
+    Vec3 axisU, axisV, axisW, pos, scale;
     Mtx4x4 multiPartMtxLocal = {0};
     Mtx4x4 viewMtxStd;
     Mtx4x4 viewMtxStdInv;
     Mtx4x4 modelViewMtx;
 
-    a1->bigBuffer->UVData = a1->bigBuffer->data7;
-    a1->flags |= 0x2;
+    dd->bigBuffer->UVData = dd->bigBuffer->data7;
+    dd->flags |= 0x2;
     D3DRenderParams.textureUVMode = 1;
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-    viewMtx = a1->ct.cam.viewMtxPtr_setInGRORender;
+    viewMtx = dd->ct.cam.viewMtxPtr_setInGRORender;
     if ((viewMtx->mtxflag & 8) != 0)
     {
         MATH_MakeOGLMatrix(&viewMtxStd, viewMtx);
@@ -338,15 +324,15 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
         switch ((type >> 4) & 3)
         {
         case 0:
-            v1.x = 1.0f;
-            v1.y = 1.0f;
-            v1.z = 1.0f;
-            v2.x = 0.0f;
-            v2.y = 0.0f;
-            v2.z = 0.0f;
-            v3.x = 0.0f;
-            v3.y = 1.0f;
-            v3.z = 0.0f;
+            axisU.x = 1.0f;
+            axisU.y = 1.0f;
+            axisU.z = 1.0f;
+            axisV.x = 0.0f;
+            axisV.y = 0.0f;
+            axisV.z = 0.0f;
+            axisW.x = 0.0f;
+            axisW.y = 1.0f;
+            axisW.z = 0.0f;
             pos.x = 1.0f;
             pos.y = 0.0f;
             pos.z = 0.0f;
@@ -354,48 +340,48 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
             scale.y = 0.0f;
             scale.z = 1.0f;
 
-            PC_SetUVMatrix(&viewMtxStd, &scale, &pos, &v3, &v2, &v1, 0, 4);
+            PC_SetUVMatrix(&viewMtxStd, &scale, &pos, &axisW, &axisV, &axisU, 0, 4);
             MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
             break;
         case 1:
-            v1.x = 1.0f;
-            v1.y = 0.0f;
-            v1.z = 0.0f;
-            v2.x = 0.0f;
-            v2.y = 0.0f;
-            v2.z = 1.0f;
-            v3.x = 0.0f;
-            v3.y = 1.0f;
-            v3.z = 0.0f;
+            axisU.x = 1.0f;
+            axisU.y = 0.0f;
+            axisU.z = 0.0f;
+            axisV.x = 0.0f;
+            axisV.y = 0.0f;
+            axisV.z = 1.0f;
+            axisW.x = 0.0f;
+            axisW.y = 1.0f;
+            axisW.z = 0.0f;
             pos.x = 0.0f;
             pos.y = 0.0f;
             pos.z = 0.0f;
             scale.x = 1.0f;
             scale.y = 1.0f;
             scale.z = 1.0f;
-            PC_SetUVMatrix(&viewMtxStd, &v1, &v2, &v3, &pos, &scale, 0, 4);
+            PC_SetUVMatrix(&viewMtxStd, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
             MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
             break;
         case 2:
             memcpy(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, sizeof(GLOBAL_UVTransformMatrix));
             break;
         case 3:
-            v1.x = 0.70710677f;
-            v1.y = -0.57735026f;
-            v1.z = 0.40799999f;
-            v2.x = -0.70710677f;
-            v2.y = -0.57735026f;
-            v2.z = 0.40799999f;
-            v3.x = 0.0f;
-            v3.y = 0.57735026f;
-            v3.z = 0.81599998f;
+            axisU.x = 0.70710677f;
+            axisU.y = -0.57735026f;
+            axisU.z = 0.40799999f;
+            axisV.x = -0.70710677f;
+            axisV.y = -0.57735026f;
+            axisV.z = 0.40799999f;
+            axisW.x = 0.0f;
+            axisW.y = 0.57735026f;
+            axisW.z = 0.81599998f;
             pos.x = 0.0f;
             pos.y = 0.0f;
             pos.z = 0.0f;
             scale.x = 1.0f;
             scale.y = 1.0f;
             scale.z = 1.0f;
-            PC_SetUVMatrix(&viewMtxStd, &v1, &v2, &v3, &pos, &scale, 0, 0x4);
+            PC_SetUVMatrix(&viewMtxStd, &axisU, &axisV, &axisW, &pos, &scale, 0, 0x4);
             MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
             break;
         default:
@@ -406,28 +392,28 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
 
     elemIdx = (type >> 8) & 7;
 
-    if (((uint8_t)type >> 6) != 3 || (a1->currTargetGao->flags & 0x200000) == 0)
+    if (((uint8_t)type >> 6) != 3 || (dd->currTargetGao->flags & 0x200000) == 0)
     {
         if (((uint8_t)type >> 6) == 2)
         {
-            MATH_MakeOGLMatrix(&multiPartMtxLocal, a1->matrixStack.actMatrixElem);
-            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v1, (a1->ct.cam.factorX / a1->ct.cam.centerX));
-            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v2, (a1->ct.cam.factorX / a1->ct.cam.centerX));
-            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v3, (a1->ct.cam.factorX / a1->ct.cam.centerX));            
+            MATH_MakeOGLMatrix(&multiPartMtxLocal, dd->matrixStack.actMatrixElem);
+            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v1, (dd->ct.cam.factorX / dd->ct.cam.centerX));
+            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v2, (dd->ct.cam.factorX / dd->ct.cam.centerX));
+            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v3, (dd->ct.cam.factorX / dd->ct.cam.centerX));            
         }
         else
         {
-            MATH_MakeOGLMatrix(&multiPartMtxLocal, a1->currTargetGao->matrices);
+            MATH_MakeOGLMatrix(&multiPartMtxLocal, dd->currTargetGao->matrices);
         }
-    } else if (a1->currTargetGao->basic->multiPartData->elemNum <= elemIdx)
+    } else if (dd->currTargetGao->basic->multiPartData->elemNum <= elemIdx)
     {
-        MATH_MakeOGLMatrix(&multiPartMtxLocal, a1->currTargetGao->matrices);
-    } else if ((a1->currTargetGao->flags & 0x1000000) == 0)
+        MATH_MakeOGLMatrix(&multiPartMtxLocal, dd->currTargetGao->matrices);
+    } else if ((dd->currTargetGao->flags & 0x1000000) == 0)
     {
-        multiPartMtx = ((Mtx4x4*)(a1->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices));
+        multiPartMtx = ((Mtx4x4*)(dd->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices));
         MATH_InvertMatrix(&multiPartMtxLocal, &multiPartMtx[elemIdx]);
         MATH_MakeOGLMatrix(&multiPartMtxLocal, &multiPartMtxLocal);
-    } else if (link = ((tMultiPartGameObjectLinks*)a1->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices), link[elemIdx].gao != NULL)
+    } else if (link = ((tMultiPartGameObjectLinks*)dd->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices), link[elemIdx].gao != NULL)
     {
         if ((link[elemIdx].gao->flags & 0x200000) != 0 && (link[elemIdx].gao->flags & 0x1000000) == 0)
         {
@@ -442,8 +428,8 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
             MATH_MakeOGLMatrix(&multiPartMtxLocal, &multiPartMtxLocal);
         }
         else {
-            MATH_InvertMatrix(&multiPartMtxLocal, ((tMultiPartGameObjectLinks*)(a1->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao->matrices);
-            MATH_MulMatrixMatrix(&viewMtxStd, a1->currTargetGao->matrices, &multiPartMtxLocal);
+            MATH_InvertMatrix(&multiPartMtxLocal, ((tMultiPartGameObjectLinks*)(dd->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao->matrices);
+            MATH_MulMatrixMatrix(&viewMtxStd, dd->currTargetGao->matrices, &multiPartMtxLocal);
             MATH_MakeOGLMatrix(&multiPartMtxLocal, &viewMtxStd);
         }
     }
@@ -456,42 +442,42 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
     switch ((type >> 4) & 3)
     {
     case 0:
-        v1.x = 0.0f;
-        v1.y = 0.0f;
-        v1.z = 1.0f;
-        v2.x = 1.0f;
-        v2.y = 0.0f;
-        v2.z = 0.0f;
-        v3.x = 0.0f;
-        v3.y = 1.0f;
-        v3.z = 0.0f;
+        axisU.x = 0.0f;
+        axisU.y = 0.0f;
+        axisU.z = 1.0f;
+        axisV.x = 1.0f;
+        axisV.y = 0.0f;
+        axisV.z = 0.0f;
+        axisW.x = 0.0f;
+        axisW.y = 1.0f;
+        axisW.z = 0.0f;
         pos.x = 0.0f;
         pos.y = 0.0f;
         pos.z = 0.0f;
         scale.x = 1.0f;
         scale.y = 1.0f;
         scale.z = 1.0f;
-        PC_SetUVMatrix(&viewMtxStd, &v1, &v2, &v3, &pos, &scale, 0, 0x4);
+        PC_SetUVMatrix(&viewMtxStd, &axisU, &axisV, &axisW, &pos, &scale, 0, 0x4);
         MATH_MulMatrixMatrix(&modelViewMtx, &multiPartMtxLocal, &viewMtxStd);
         MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &modelViewMtx);
         break;
     case 1:
-        v1.x = 1.0f;
-        v1.y = 0.0f;
-        v1.z = 0.0f;
-        v2.x = 0.0f;
-        v2.y = 0.0f;
-        v2.z = 1.0f;
-        v3.x = 0.0f;
-        v3.y = 1.0f;
-        v3.z = 0.0f;
+        axisU.x = 1.0f;
+        axisU.y = 0.0f;
+        axisU.z = 0.0f;
+        axisV.x = 0.0f;
+        axisV.y = 0.0f;
+        axisV.z = 1.0f;
+        axisW.x = 0.0f;
+        axisW.y = 1.0f;
+        axisW.z = 0.0f;
         pos.x = 0.0f;
         pos.y = 0.0f;
         pos.z = 0.0f;
         scale.x = 1.0f;
         scale.y = 1.0f;
         scale.z = 1.0f;
-        PC_SetUVMatrix(&modelViewMtx, &v1, &v2, &v3, &pos, &scale, 0, 4);
+        PC_SetUVMatrix(&modelViewMtx, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
         MATH_MulMatrixMatrix(&viewMtxStd, &multiPartMtxLocal, &modelViewMtx);
         MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
         break;
@@ -500,79 +486,80 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
         break;
     case 3:
         MATH_TranspEq33Matrix(&multiPartMtxLocal);
-        v1.x = 0.70710677f;
-        v1.y = -0.57735026f;
-        v1.z = 0.40799999f;
-        v2.x = -0.70710677f;
-        v2.y = -0.57735026f;
-        v2.z = 0.40799999f;
-        v3.x = 0.0;
-        v3.y = 0.57735026f;
-        v3.z = 0.81599998f;
+        axisU.x = 0.70710677f;
+        axisU.y = -0.57735026f;
+        axisU.z = 0.40799999f;
+        axisV.x = -0.70710677f;
+        axisV.y = -0.57735026f;
+        axisV.z = 0.40799999f;
+        axisW.x = 0.0;
+        axisW.y = 0.57735026f;
+        axisW.z = 0.81599998f;
         pos.x = 0.0;
         pos.y = 0.0;
         pos.z = 0.0;
         scale.x = 1.0;
         scale.y = 1.0;
         scale.z = 1.0;
-        PC_SetUVMatrix(&modelViewMtx, &v1, &v2, &v3, &pos, &scale, 0, 4);
+        PC_SetUVMatrix(&modelViewMtx, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
         MATH_MulMatrixMatrix(&viewMtxStd, &multiPartMtxLocal, &modelViewMtx);
         MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
         break;
     default:
         break;
     }
-    a1->bigBuffer->UVData = a1->bigBuffer->data7;
-    a1->flags |= 0x2;
+    dd->bigBuffer->UVData = dd->bigBuffer->data7;
+    dd->flags |= 0x2;
 }
 
-void D3D_CalcAndSetProjection(float a1, float a2, float a3, float a4, float a5, float a6)
+void D3D_CalcAndSetProjection(float left, float right, float bottom, float top,
+                              float near, float far)
 {
-    double v6;
-    double v7;
-    float v8; 
-    D3DMATRIX v9;
+    double width;
+    double height;
+    float depth;
+    D3DMATRIX mtx;
 
-    v6 = a2 - a1;
-    memset(&v9, 0, sizeof(v9));
-    v9._44 = 1.0;
-    v9._11 = (float)(2.0 / v6);
-    v7 = a4 - a3;
-    v9._22 = (float)(2.0 / v7);
-    v8 = a6 - a5;
-    v9._33 = (float)(-4.0 / v8);
-    v9._14 = (float)(-((a1 + a2) / v6));
-    v9._24 = (float)(-((a3 + a4) / v7));
-    v9._34 = (float)(-((a5 + a6) / v8));
-    memcpy(&d3dProjectionMtx, &v9, sizeof(D3DMATRIX));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &v9);
+    width = right - left;
+    memset(&mtx, 0, sizeof(mtx));
+    mtx._44 = 1.0;
+    mtx._11 = (float)(2.0 / width);
+    height = top - bottom;
+    mtx._22 = (float)(2.0 / height);
+    depth = far - near;
+    mtx._33 = (float)(-4.0 / depth);
+    mtx._14 = (float)(-((left + right) / width));
+    mtx._24 = (float)(-((bottom + top) / height));
+    mtx._34 = (float)(-((near + far) / depth));
+    memcpy(&d3dProjectionMtx, &mtx, sizeof(D3DMATRIX));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &mtx);
 }
 
-void D3D_SetViewPort(int a1, int a2, int a3, int a4)
+void D3D_SetViewPort(int x, int y, int w, int h)
 {
-    int v4;
-    int v5;
-    int v6;
-    int v7;
+    int clampedX;
+    int clampedY;
+    int clampedW;
+    int clampedH;
 
     if (D3DRenderParams.d3dDev)
     {
-        v4 = a1;
-        if (a1 < 0)
-            v4 = 0;
-        v5 = a2;
-        if (a2 < 0)
-            v5 = 0;
-        v6 = a3;
-        if (v4 + a3 > (int)D3DRenderParams.presentParams.BackBufferWidth)
-            v6 = D3DRenderParams.presentParams.BackBufferWidth - v4;
-        v7 = a4;
-        if (v5 + a4 > (int)D3DRenderParams.presentParams.BackBufferHeight)
-            v7 = D3DRenderParams.presentParams.BackBufferHeight - v5;
-        D3DRenderParams.d3dViewPort.X = v4;
-        D3DRenderParams.d3dViewPort.Y = v5;
-        D3DRenderParams.d3dViewPort.Width = v6;
-        D3DRenderParams.d3dViewPort.Height = v7;
+        clampedX = x;
+        if (x < 0)
+            clampedX = 0;
+        clampedY = y;
+        if (y < 0)
+            clampedY = 0;
+        clampedW = w;
+        if (clampedX + w > (int)D3DRenderParams.presentParams.BackBufferWidth)
+            clampedW = D3DRenderParams.presentParams.BackBufferWidth - clampedX;
+        clampedH = h;
+        if (clampedY + h > (int)D3DRenderParams.presentParams.BackBufferHeight)
+            clampedH = D3DRenderParams.presentParams.BackBufferHeight - clampedY;
+        D3DRenderParams.d3dViewPort.X = clampedX;
+        D3DRenderParams.d3dViewPort.Y = clampedY;
+        D3DRenderParams.d3dViewPort.Width = clampedW;
+        D3DRenderParams.d3dViewPort.Height = clampedH;
         D3DRenderParams.d3dViewPort.MinZ = 0.0;
         D3DRenderParams.d3dViewPort.MaxZ = 1.0;
         D3DRenderParams.d3dDev->lpVtbl->SetViewport(D3DRenderParams.d3dDev, (&D3DRenderParams.d3dViewPort));
@@ -674,211 +661,173 @@ void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int vie
             gpst_DX_stDD->ct.cam.height / 480.0f);
 }
 
-void D3D_SetProjectionMatrix(tDDCamStruct* a1)
+void D3D_SetProjectionMatrix(tDDCamStruct* cam)
 {
-    int v1;
-    int v2;
-    int v3;
-    int v4;
-    int v5;
-    double v6;
-    double v7;
-    int v8;
-    int v9;
-    int v10;
-    int v11;
-    BOOL v12; 
-    double v13;
-    double v14;
-    double v16;
-    double v19;
-    double v20;
-    double v22;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    float v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    int v43; 
-    float v44; 
-    int v45;
-    float v46;
-    float v47;
-    int a3; 
-    int v49;
-    int v50;
-    int v51;
-    D3DMATRIX v52;
-    D3DMATRIX v53;
+    int ratioIdx;
+    int rectW;
+    int rectH;
+    int fitW;
+    int fitH;
+    int viewX;
+    int viewY;
+    int viewW;
+    int viewH;
+    int flags2;
+    float screenRatio;
+    float fitRatio;
+    float cotFov;
+    float isoSize;
+    double negCot;
+    double isoRatio;
+    double invRatio;
+    double negFar;
+    double isoLeft;
+    float orthoW;
+    float orthoH;
+    float halfTexel;
+    D3DMATRIX offsetMtx;
+    D3DMATRIX orthoMtx;
 
-    D3DRenderParams.projectionMatrix = &a1->projectionMtx;
-    v1 = gpst_DX_stDD->ddcs2.selectedScreenRatio;
-    if (v1 <= 0 || v1 >= 4)
-        v46 = gpst_DX_stDD->ddcs2.manualScreenRatio;
+    D3DRenderParams.projectionMatrix = &cam->projectionMtx;
+    ratioIdx = gpst_DX_stDD->ddcs2.selectedScreenRatio;
+    if (ratioIdx <= 0 || ratioIdx >= 4)
+        screenRatio = gpst_DX_stDD->ddcs2.manualScreenRatio;
     else
-        v46 = GDI_gaf_ScreenRatio[v1];
+        screenRatio = GDI_gaf_ScreenRatio[ratioIdx];
     if (D3D_gi_Widescreen)
-        v46 = D3D_RealYoverX();
-    v2 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-    v3 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-    v40 = gpst_DX_stDD->ddcs2.pixelYoverX * a1->YoverX * v46;
-    v43 = gpst_DX_stDD->ddcs2.flags2;
-    a3 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-    v50 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-    if ((v43 & 4) != 0)
+        screenRatio = D3D_RealYoverX();
+    rectW = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
+    rectH = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
+    fitRatio = gpst_DX_stDD->ddcs2.pixelYoverX * cam->YoverX * screenRatio;
+    flags2 = gpst_DX_stDD->ddcs2.flags2;
+    if ((flags2 & 4) != 0)
     {
-        v4 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-        v51 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-        v5 = (uint32_t)((double)v50 / v40);
-        v45 = v5;
-        if ((v43 & 1) != 0 && v5 > v2 || (v43 & 2) != 0 && v5 < v2)
+        fitH = rectH;
+        fitW = (uint32_t)((double)rectH / fitRatio);
+        if ((flags2 & 1) != 0 && fitW > rectW || (flags2 & 2) != 0 && fitW < rectW)
         {
-            v4 = (uint32_t)((double)a3 * v40);
-            v5 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-        LABEL_16:
-            v45 = v5;
-            v51 = v4;
-            goto LABEL_17;
+            fitH = (uint32_t)((double)rectW * fitRatio);
+            fitW = rectW;
         }
     }
     else
     {
-        v4 = (uint32_t)((double)a3 * v40);
-        v5 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-        v51 = v4;
-        v45 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-        if ((v43 & 1) != 0 && v4 > v3 || (v43 & 2) != 0 && v4 < v3)
+        fitH = (uint32_t)((double)rectW * fitRatio);
+        fitW = rectW;
+        if ((flags2 & 1) != 0 && fitH > rectH || (flags2 & 2) != 0 && fitH < rectH)
         {
-            v5 = (uint32_t)((double)v50 / v40);
-            v4 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-            goto LABEL_16;
+            fitW = (uint32_t)((double)rectH / fitRatio);
+            fitH = rectH;
         }
     }
-LABEL_17:
-    if (a1->viewPortSizeWidth == 0.0)
+    if (cam->viewPortSizeWidth == 0.0)
     {
-        a1->viewPortSizeWidth = 1.0;
-        a1->viewPortSizeHeight = 1.0;
-        a1->viewPortPosX = 0.0;
-        a1->viewPortPosY = 0.0;
+        cam->viewPortSizeWidth = 1.0;
+        cam->viewPortSizeHeight = 1.0;
+        cam->viewPortPosX = 0.0;
+        cam->viewPortPosY = 0.0;
     }
-    v6 = (double)v45;
-    v7 = (double)v51;
-    v8 = (int32_t)((double)((v2 - v5) / 2) + v6 * a1->viewPortPosX);
-    v9 = (int32_t)((double)((v3 - v4) / 2) + v7 * a1->viewPortPosY);
-    v10 = (uint32_t)(v7 * a1->viewPortSizeHeight);
-    v49 = (uint32_t)(v6 * a1->viewPortSizeWidth);
-    v11 = a1->flags;
-    v12 = (a1->flags & 0x400) == 0;
-    a1->viewPortRealPosX = v8;
-    a1->viewPortRealPosY = v9;
-    if (!v12)
+    viewX = (int32_t)((double)((rectW - fitW) / 2) + (double)fitW * cam->viewPortPosX);
+    viewY = (int32_t)((double)((rectH - fitH) / 2) + (double)fitH * cam->viewPortPosY);
+    viewH = (uint32_t)((double)fitH * cam->viewPortSizeHeight);
+    viewW = (uint32_t)((double)fitW * cam->viewPortSizeWidth);
+    cam->viewPortRealPosX = viewX;
+    cam->viewPortRealPosY = viewY;
+    if ((cam->flags & 0x400) != 0)
     {
-        v44 = (float)v49;
-        v47 = (float)(0.5 / v44);
-        D3DXMatrixTranslation(&v52, v47, v47, 0.0);
-        v31 = (float)v10;
-        D3DXMatrixOrthoOffCenterRH(&v53, 0.0, v44, 0.0, v31, 0.0, 1.0);
-        D3DXMatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &v53, &v52);
+        orthoW = (float)viewW;
+        halfTexel = (float)(0.5 / orthoW);
+        D3DXMatrixTranslation(&offsetMtx, halfTexel, halfTexel, 0.0);
+        orthoH = (float)viewH;
+        D3DXMatrixOrthoOffCenterRH(&orthoMtx, 0.0, orthoW, 0.0, orthoH, 0.0, 1.0);
+        D3DXMatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &orthoMtx, &offsetMtx);
         memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
         D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
         return;
     }
-    if ((v11 & 1) != 0)
+    if ((cam->flags & 1) != 0)
     {
-        v41 = (float)(1.0 / tan(a1->focale * 0.5));
+        cotFov = (float)(1.0 / tan(cam->focale * 0.5));
         MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
         if (D3D_gi_Widescreen)
         {
             // the authored vertical half angle, kept whatever the
-            // window shape is; the horizontal one follows v46
+            // window shape is; the horizontal one follows screenRatio
             float cotY = ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
-                             ? v41
-                             : (float)(v41 / D3D_gf_RefYoverX);
+                             ? cotFov
+                             : (float)(cotFov / D3D_gf_RefYoverX);
 
-            D3DRenderParams.projectionMatrix->v1.x = (float)(cotY * v46);
-            v13 = -cotY;
+            D3DRenderParams.projectionMatrix->v1.x = (float)(cotY * screenRatio);
+            negCot = -cotY;
         }
         else if ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
         {
-            D3DRenderParams.projectionMatrix->v1.x = v41 * v46;
-            v13 = -v41;
+            D3DRenderParams.projectionMatrix->v1.x = cotFov * screenRatio;
+            negCot = -cotFov;
         }
         else
         {
-            D3DRenderParams.projectionMatrix->v1.x = v41;
-            v13 = -(v41 / v46);
+            D3DRenderParams.projectionMatrix->v1.x = cotFov;
+            negCot = -(cotFov / screenRatio);
         }
-        D3DRenderParams.projectionMatrix->v2.y = (float)v13;
-        D3DRenderParams.projectionMatrix->v3.z = (a1->nearPlane + a1->farPlane) / (a1->farPlane - a1->nearPlane);
+        D3DRenderParams.projectionMatrix->v2.y = (float)negCot;
+        D3DRenderParams.projectionMatrix->v3.z = (cam->nearPlane + cam->farPlane) / (cam->farPlane - cam->nearPlane);
         D3DRenderParams.projectionMatrix->_m34 = 1.0;
         D3DRenderParams.projectionMatrix->Pos.z = -0.050000001f;
         D3DRenderParams.projectionMatrix->w = 0.0;
         memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
         D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
-        goto LABEL_34;
     }
-    MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
-    v42 = a1->isoZoom * a1->isoFactor;
-    if ((gpst_DX_stDD->ddcs2.flags2 & 4) == 0)
+    else
     {
-        v20 = D3D_gi_Widescreen ? D3D_RealYoverX()
-                                : gpst_DX_stDD->ddcs2.manualScreenRatio;
-        v22 = -a1->farPlane;
-        if (a1->isoFactor == 0.0) 
+        MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
+        isoSize = cam->isoZoom * cam->isoFactor;
+        negFar = -cam->farPlane;
+        if ((gpst_DX_stDD->ddcs2.flags2 & 4) == 0)
         {
-            v39 = (float)v22;
-            v36 = -a1->nearPlane;
-            v33 = (float)((v20 + 1.0) * 0.5);
-            v30 = (float)((1.0 - v20) * 0.5);
-            D3D_CalcAndSetProjection(0.0, 1.0, v30, v33, v36, v39);
-            goto LABEL_34;
+            isoRatio = D3D_gi_Widescreen ? D3D_RealYoverX()
+                                         : gpst_DX_stDD->ddcs2.manualScreenRatio;
+            if (cam->isoFactor == 0.0)
+            {
+                D3D_CalcAndSetProjection(0.0, 1.0,
+                                         (float)((1.0 - isoRatio) * 0.5),
+                                         (float)((isoRatio + 1.0) * 0.5),
+                                         -cam->nearPlane, (float)negFar);
+            }
+            else
+            {
+                isoLeft = isoSize * -1.0;
+                D3D_CalcAndSetProjection((float)isoLeft,
+                                         cam->isoZoom * cam->isoFactor,
+                                         (float)(isoSize * isoRatio),
+                                         (float)(-isoRatio * isoSize),
+                                         cam->farPlane, (float)negFar);
+            }
         }
-        v38 = (float)v22;
-        v35 = a1->farPlane;
-        v32 = (float)(-v20 * v42);
-        v29 = (float)(v42 * v20);
-        v28 = a1->isoZoom * a1->isoFactor;
-        v19 = v42 * -1.0;
-    LABEL_33:
-        v26 = (float)v19;
-        D3D_CalcAndSetProjection(v26, v28, v29, v32, v35, v38);
-        goto LABEL_34;
+        else
+        {
+            invRatio = 1.0 / (D3D_gi_Widescreen ? D3D_RealYoverX()
+                                                : gpst_DX_stDD->ddcs2.manualScreenRatio);
+            if (cam->isoFactor != 0.0)
+            {
+                isoLeft = -invRatio * isoSize;
+                D3D_CalcAndSetProjection((float)isoLeft,
+                                         (float)(isoSize * invRatio),
+                                         (float)(isoSize * -1.0),
+                                         cam->isoZoom * cam->isoFactor,
+                                         cam->farPlane, (float)negFar);
+            }
+            else
+            {
+                D3D_CalcAndSetProjection((float)((1.0 - invRatio) * 0.5),
+                                         (float)((invRatio + 1.0) * 0.5),
+                                         0.0, 1.0,
+                                         -cam->nearPlane, (float)negFar);
+            }
+        }
     }
-    v14 = 1.0 / (D3D_gi_Widescreen ? D3D_RealYoverX()
-                                   : gpst_DX_stDD->ddcs2.manualScreenRatio);
-    v16 = -a1->farPlane;
-    if (a1->isoFactor != 0.0)     
-    {
-        v38 = (float)v16;
-        v35 = a1->farPlane;
-        v32 = a1->isoZoom * a1->isoFactor;
-        v29 = (float)(v42 * -1.0);
-        v28 = (float)(v42 * v14);
-        v19 = -v14 * v42;
-        goto LABEL_33;
-    }
-    v37 = (float)v16;
-    v34 = -a1->nearPlane;
-    v27 = (float)((v14 + 1.0) * 0.5);
-    v25 = (float)((1.0 - v14) * 0.5);
-    D3D_CalcAndSetProjection(v25, v27, 0.0, 1.0, v34, v37);
-LABEL_34:
-    D3D_SetViewPort(v8, v9, v49, v10);
-    D3D_AspectTrace("proj", v8, v9, v49, v10);
+    D3D_SetViewPort(viewX, viewY, viewW, viewH);
+    D3D_AspectTrace("proj", viewX, viewY, viewW, viewH);
 }
 
 
