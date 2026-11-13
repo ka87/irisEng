@@ -1336,8 +1336,8 @@ void TEXPRO_Photo_SetMapGao(struct sTexProceduralStruct* procedural, struct sGam
     int order[4];
     Vec3 edge0;
     Vec3 edge1;
-    Vec3 projected[4];
     Mtx4x4 viewMtx;
+    Vec3* projWalk;
 
     if (!gpst_DX_stDD || !procedural || !gao)
         return;
@@ -1381,12 +1381,17 @@ void TEXPRO_Photo_SetMapGao(struct sTexProceduralStruct* procedural, struct sGam
     container->cam.viewMtxPtr_setInGRORender = &viewMtx;
     coord = &photo->sa[4]; // TODO megcsinálni igényesre
     fOffsetY = (float)offsetY;
+    // preserved: the walk starts in edge0 and advances one Vec3 per corner,
+    // so the third and fourth projections land past edge1, on viewMtx --
+    // the matrix container->cam is pointing at while they are taken.
+    projWalk = &edge0;
     for (i = 0; i < 4; ++i)
     {
-        SOFT_TransformAndProject(&projected[i], &gro->vertices[order[i]], 1, &container->cam);
-        *(coord - 4) = (unsigned int)((projected[i].x - fOffsetX) * 0.5);
-        *coord = (unsigned int)((projected[i].y - fOffsetY) * 0.5);
+        SOFT_TransformAndProject(projWalk, &gro->vertices[order[i]], 1, &container->cam);
+        *(coord - 4) = (unsigned int)((projWalk->x - fOffsetX) * 0.5);
+        *coord = (unsigned int)((projWalk->y - fOffsetY) * 0.5);
         ++coord;
+        ++projWalk;
     }
     // preserved: no test in the file matches 0x10000000, so the reveal this field drives never starts
     photo->x = 0x10000000;

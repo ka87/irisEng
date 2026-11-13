@@ -154,7 +154,6 @@ extern void MOCKP_SetBink(int, unsigned int, unsigned int, int);
 static int cases;
 static int failures;
 static int valuesCompared;
-static int fourthPointSkipped;
 
 static void fail(const char* what, const char* detail, int a, int b)
 {
@@ -606,23 +605,15 @@ static void setMapGaoCases(void)
             else
                 BASE_TEXPRO_Photo_SetMapGao(&holder[s].st, (struct sGameObjectMain*)1);
         }
-        /* The frozen copy walks a pointer off the end of one Vec3 local
-           through the next and into the matrix the camera is still
-           pointing at, which is what the rewrite reads as a four-element
-           array. Measured here: points 0, 1 and 2 agree exactly, and the
-           third projection lands on the first twelve bytes of that
-           matrix, so the fourth reads a matrix the frozen copy has just
-           overwritten. That one point is therefore not comparable and is
-           cleared on both sides before the arenas are compared; see the
-           note in docs for why the array is the reading taken. */
-        {
-            tTexProcPhoto* p0 = (tTexProcPhoto*)holder[0].st.proceduralTexPtr;
-            tTexProcPhoto* p1 = (tTexProcPhoto*)holder[1].st.proceduralTexPtr;
-
-            p0->sa[3] = 0; p1->sa[3] = 0;
-            p0->sa[7] = 0; p1->sa[7] = 0;
-            ++fourthPointSkipped;
-        }
+        /* Every one of the four projected points is comparable. The walk
+           in TEXPRO_Photo_SetMapGao runs past its two scratch vectors
+           into the view matrix, which is host-layout dependent -- but
+           it is written the same way on both sides now, so the two
+           agree and nothing has to be excluded. The pass originally
+           gave the walk an array of its own, which made the fourth
+           point incomparable; that was reverted, because the two
+           scratch vectors are used individually by the edge search
+           above and so are not slices of one array. */
         sprintf(name, "setmapgao quad %u", q);
         compareSides(name);
     }
@@ -1347,8 +1338,5 @@ int main(void)
 
     printf("  %d cases, %d values compared, %d failures\n",
            cases, valuesCompared, failures);
-    printf("  (%d SetMapGao cases compare three of four projected corners;\n"
-           "   the fourth is not comparable -- see the note at that case)\n",
-           fourthPointSkipped);
     return failures ? 1 : 0;
 }
