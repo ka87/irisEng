@@ -131,6 +131,31 @@ GFX_Flare_Render GFXF_f_depth f_9Factor_296"
 
 reveal_syms="STR_l_Effect_Reveal"
 
+events_syms="EVE_InitData EVE_pst_DuplicateData EVE_Duplicate \
+EVE_b_Track_UseFlash EVE_Event_AIFunction_Play EVE_i_SearchLabel \
+EVE_i_SearchTime EVE_SetAllTimesTo EVE_RunningTracksAtStart \
+EVE_SetRunningTrack EVE_SetRunningTracks EVE_SetPauseTrack \
+EVE_SetPauseTracks EVE_FlashMatrix EVE_GetTracksTime EVE_SetTracksTime \
+EVE_SynchronizeTracks EVE_FreeTrack EVE_DeleteListTracks \
+EVE_FreeMainStruct EVE_p_GetPdata EVE_w_Event_InterpolationKey_GetType \
+EVE_pst_Event_InterpolationKey_GetQuaternion \
+EVE_Anim_InterpolationKey_CopyMatrix \
+EVE_pst_Event_InterpolationKey_GetNextValue \
+EVE_pst_Event_InterpolationKey_GetRotation \
+EVE_Event_InterpolationKey_CopyMatrix \
+EVE_pf_Event_InterpolationKey_GetTime \
+EVE_f_Event_InterpolationKey_InterpolateTime EVE_Event_AIFunction_Resolve \
+EVE_Event_AIFunction_Load EVE_Anim_ComputeInterpoledMatrix \
+EVE_Event_ComputeInterpoledMatrix EVE_pst_Event_InterpolationKey_GetPos \
+EVE_Anim_TranslationKey_Play EVE_Anim_QuaternionKey_Play \
+EVE_RunAnimTrack EVE_c_UpdateLOD EVE_Event_InterpolationKey_Play \
+EVE_RunOneTrack EVE_b_RunAnimation EVE_b_RunAllTracks \
+EVE_AllocateMainStruct EVE_ResolveTrackRef EVE_ResolveListTrackRef \
+EVE_ReinitTrack EVE_ReinitData EVE_ResolveRefs \
+EVE_Event_InterpolationKey_Load EVE_LoadListEvents \
+EVE_ul_CallbackLoadListTracks EVE_MainCall EVE_gb_CanFlash"
+
+
 textures_syms="TEX_Compress24_Xo2 TEX_Compress24_Yo2 TEX_Compress_Xo2 TEX_Compress_Yo2 \
 TEX_Compress8_Xo2 TEX_Compress8_Yo2 TEX_Compress4_Xo2 TEX_Compress4_Yo2 \
 TEX_Expand_XBy2 TEX_Expand_YBy2 TEX_Expand8_XBy2 TEX_Expand8_YBy2 \
@@ -240,6 +265,25 @@ run_textures() {
 }
 
 run_textures
+
+run_events() {
+    name=events
+    [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) return 0 ;; esac
+    printf '=== %s\n' "$name"
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c events.c -o "$OUT/events.new.o" $(defs NEW_ $events_syms)
+    # shellcheck disable=SC2086
+    $CC $CFLAGS -c tests/baseline_events.c -o "$OUT/events.base.o" $(defs BASE_ $events_syms)
+    $CC $CFLAGS -c math.c -o "$OUT/events.math.o"
+    $CC $CFLAGS -c tests/events_mocks.c -o "$OUT/events.mocks.o"
+    $CC $CFLAGS -c tests/test_events.c -o "$OUT/events.drv.o"
+    $CC "$OUT/events.new.o" "$OUT/events.base.o" "$OUT/events.math.o" \
+        "$OUT/events.mocks.o" "$OUT/events.drv.o" -o "$OUT/events" -lm
+    "$OUT/events" || fails=$((fails + 1))
+    echo
+}
+
+run_events
 
 run_one snakemodifier modifiers/snakemodifier.c \
         tests/baseline_snakemodifier.c modifiers "$snake_syms"
