@@ -9504,232 +9504,211 @@ void REC_Apply(tGameObjectMain* a1, tGameObjectMain* a2, Vec3* a3, int a4)
     }
 }
 
-void REC_MainCall(struct sWorld* a1, int a2)
+void REC_MainCall(struct sWorld* world, int firstRecord)
 {
-    tRecordElem* v2;
-    tRecordElem* v3;
-    int v4;
-    tGameObjectMain* v5;
-    tGameObjectMain* v6;
-    tRecordElem* v7;
-    int v8;
-    tGameObjectBasic* v9;
-    tDyn* v10;
-    tGameObjectBasic* v11;
-    tDyn* v12;
-    float v13;
-    float v14;
-    Vec3* v15;
-    double v16;
-    float v17;
-    double v18;
-    long double v19;
-    Vec3 v20;
-    Vec3 a3;
-    tRecordElem* i;
+    tRecordElem* end;
+    tRecordElem* rec;
+    tRecordElem* other;
+    int flags;
+    int otherFlags;
+    tGameObjectMain* instGao;
+    tGameObjectMain* mapGao;
+    tGameObjectBasic* basic;
+    tDyn* dyn;
+    tGameObjectBasic* mapBasic;
+    tDyn* mapDyn;
+    Vec3* gravity;
+    double upX;
+    double upZ;
+    long double invLen;
+    Vec3 up;
+    Vec3 normal;
+    BOOL alreadyPaired;
 
-    REC_OrderReports(a1);
-    v2 = &a1->records[a1->recordCount];
-    v3 = &a1->records[a2];
-    for (i = v2; v3 < v2; ++v3)
+    REC_OrderReports(world);
+    end = &world->records[world->recordCount];
+    for (rec = &world->records[firstRecord]; rec < end; ++rec)
     {
-        v4 = v3->flags;
-        if ((v4 & 0x80043800) == 0)
+        flags = rec->flags;
+        if ((flags & 0x80043800) != 0)
+            continue;
+        instGao = rec->collisionInstanceGameObject;
+        mapGao = rec->collisionMapGameObject;
+        if ((flags & 0x4000) != 0)
         {
-            v5 = v3->collisionInstanceGameObject;
-            v6 = v3->collisionMapGameObject;
-            if ((v4 & 0x4000) != 0)
+            REC_PhysicalCall(instGao, world);
+            continue;
+        }
+        alreadyPaired = FALSE;
+        for (other = rec + 1; other < end; ++other)
+        {
+            otherFlags = other->flags;
+            if ((otherFlags & 0x43800) == 0
+                && ((flags & 0x80u) != 0 && (otherFlags & 0x80u) != 0
+                    || (flags & 0x40) != 0 && (otherFlags & 0x40) != 0)
+                && (other->collisionInstanceGameObject == instGao && other->collisionMapGameObject == mapGao
+                    || other->collisionInstanceGameObject == mapGao && other->collisionMapGameObject == instGao))
             {
-                REC_PhysicalCall(v5, a1);
+                alreadyPaired = TRUE;
+                break;
+            }
+        }
+        if (alreadyPaired)
+            continue;
+        basic = instGao->basic;
+        if (!basic)
+            continue;
+        dyn = basic->dyn;
+        if (!dyn)
+            continue;
+        if (mapGao
+            && (mapBasic = mapGao->basic) != 0
+            && (mapDyn = mapBasic->dyn) != 0
+            && (mapDyn->flags & 0x2000000) != 0
+            && (dyn->flags & 0x2000000) != 0
+            && (mapGao->flags & 0x400000) == 0
+            && (instGao->flags & 0x400000) == 0)
+        {
+            normal = rec->normalVec;
+            REC_ApplyDyn(instGao, mapGao, &normal);
+        }
+        else if ((flags & 0x40) != 0 && (dyn->flags & 0x40000000) != 0)
+        {
+            gravity = &dyn->forces->gravityVector;
+            if (gravity
+                && (fabs(gravity->x) != 0 || fabs(gravity->y) != 0 || fabs(gravity->z) != 0))
+            {
+                up.x = -gravity->x;
+                upX = up.x;
+                up.z = -gravity->z;
+                upZ = up.z;
+                up.y = -gravity->y;
             }
             else
             {
-                v2 = i;
-                v7 = v3 + 1;
-                if (&v3[1] >= i)
-                {
-                LABEL_16:
-                    v9 = v5->basic;
-                    if (v9)
-                    {
-                        v10 = v9->dyn;
-                        if (v10)
-                        {
-                            if (v6
-                                && (v11 = v6->basic) != 0
-                                && (v12 = v11->dyn) != 0
-                                && (v12->flags & 0x2000000) != 0
-                                && (v10->flags & 0x2000000) != 0
-                                && (v6->flags & 0x400000) == 0
-                                && (v5->flags & 0x400000) == 0)
-                            {
-                                v13 = v3->normalVec.y;
-                                a3.x = v3->normalVec.x;
-                                v14 = v3->normalVec.z;
-                                a3.y = v13;
-                                a3.z = v14;
-                                REC_ApplyDyn(v5, v6, &a3);
-                            }
-                            else if ((v4 & 0x40) != 0 && (v10->flags & 0x40000000) != 0)
-                            {
-                                v15 = &v10->forces->gravityVector;
-                                if (v15
-                                    && (fabs(v15->x) != 0 || fabs(v15->y) != 0  || fabs(v15->z) != 0))
-                                {
-                                    v20.x = -v15->x;
-                                    v16 = v20.x;
-                                    v17 = v15->y;
-                                    v20.z = -v15->z;
-                                    v18 = v20.z;
-                                    v20.y = -v17;
-                                }
-                                else
-                                {
-                                    v16 = 0.0;
-                                    v20.y = 0.0;
-                                    v18 = 1.0;
-                                }
-                                v19 = 1.0 / sqrt(v18 * v18 + v20.y * v20.y + v16 * v16);
-                                v20.x = (float)(v19 * v16);
-                                v20.y = (float)(v20.y * v19);
-                                v20.z = (float)(v18 * v19);
-                                REC_Apply(v5, v6, &v20, v4 & 0x80);
-                            }
-                            else
-                            {
-                                REC_Apply(v5, v6, &v3->normalVec, v3->flags & 0x80);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    while (1)
-                    {
-                        v8 = v7->flags;
-                        if ((v8 & 0x43800) == 0
-                            && ((v4 & 0x80u) != 0 && (v8 & 0x80u) != 0 || (v4 & 0x40) != 0 && (v8 & 0x40) != 0)
-                            && (v7->collisionInstanceGameObject == v5 && v7->collisionMapGameObject == v6
-                                || v7->collisionInstanceGameObject == v6 && v7->collisionMapGameObject == v5))
-                        {
-                            break;
-                        }
-                        if (++v7 >= i)
-                            goto LABEL_16;
-                    }
-                }
+                upX = 0.0;
+                up.y = 0.0;
+                upZ = 1.0;
             }
+            invLen = 1.0 / sqrt(upZ * upZ + up.y * up.y + upX * upX);
+            up.x = (float)(invLen * upX);
+            up.y = (float)(up.y * invLen);
+            up.z = (float)(upZ * invLen);
+            REC_Apply(instGao, mapGao, &up, flags & 0x80);
+        }
+        else
+        {
+            REC_Apply(instGao, mapGao, &rec->normalVec, rec->flags & 0x80);
         }
     }
 }
 
-float bvin_sqrlen_sub_412FD0(Vec3* a1)
+float COL_f_SqrLen(Vec3* vec)
 {
-    return a1->z * a1->z + a1->y * a1->y + a1->x * a1->x;
+    return vec->z * vec->z + vec->y * vec->y + vec->x * vec->x;
 }
 
-BOOL COL_b_SingleBVIn(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+BOOL COL_b_SingleBVIn(struct sGameObjectMain* outerGao, struct sGameObjectMain* innerGao)
 {
-    tGameObjectBV* v2;
-    tGameObjectBV* v3;
-    Mtx4x4* v4;
-    Mtx4x4* v5;
-    double v6;
-    double v7;
-    float v8;
-    float v9;
-    Mtx4x4* v11;
-    double v13;
-    double v17;
-    double v21;
-    float v24; 
-    float v25;
-    Vec3 a1a; 
-    Vec3 dest;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
+    tGameObjectBV* outerBV;
+    tGameObjectBV* innerBV;
+    Mtx4x4* innerMtx;
+    Mtx4x4* outerMtx;
+    Mtx4x4* boxMtx;
+    double outerRadius;
+    double halfX;
+    double halfY;
+    double halfZ;
+    float centreY;
+    float centreZ;
+    float corner;
+    float reach;
+    Vec3 boxMin;
+    Vec3 boxMax;
+    Vec3 half;
+    float deltaX;
+    float deltaY;
+    float deltaZ;
+    float radius;
 
-    if (a1 && a2)
+    if (outerGao && innerGao)
     {
-        v2 = a1->boundingVolume;
-        v3 = a2->boundingVolume;
-        if (OBJ_BV_IsAABBox(v2))
+        outerBV = outerGao->boundingVolume;
+        innerBV = innerGao->boundingVolume;
+        if (OBJ_BV_IsAABBox(outerBV))
         {
-            v4 = a2->matrices;
-            v5 = a1->matrices;
-            v6 = v4->Pos.x - v5->Pos.x;
-            v4 = (Mtx4x4*)((char*)v4 + 48);
-            v5 = (Mtx4x4*)((char*)v5 + 48);
-            v28 = (float)v6;
-            v29 = v4->v1.y - v5->v1.y;
-            v30 = v4->v1.z - v5->v1.z;
-            if (OBJ_BV_IsAABBox(v2))
+            innerMtx = innerGao->matrices;
+            outerMtx = outerGao->matrices;
+            deltaX = innerMtx->Pos.x - outerMtx->Pos.x;
+            deltaY = innerMtx->Pos.y - outerMtx->Pos.y;
+            deltaZ = innerMtx->Pos.z - outerMtx->Pos.z;
+            // preserved: re-tests the outer volume the enclosing branch already proved is a box, so the sphere-in-box arm below is unreachable
+            if (OBJ_BV_IsAABBox(outerBV))
             {
-                v7 = v28 + v3->BVMin.x;
-                a1a.y = v3->BVMin.y + v29;
-                a1a.z = v3->BVMin.z + v30;
-                dest.x = v28 + v3->BVMax.x;
-                dest.y = v3->BVMax.y + v29;
-                dest.z = v3->BVMax.z + v30;
-                return v7 >= v2->BVMin.x
-                    && v2->BVMax.x >= (double)dest.x
-                    && v2->BVMin.y <= (double)a1a.y
-                    && v2->BVMax.y >= (double)dest.y
-                    && v2->BVMin.z <= (double)a1a.z
-                    && v2->BVMax.z >= (double)dest.z;
+                boxMin.x = deltaX + innerBV->BVMin.x;
+                boxMin.y = innerBV->BVMin.y + deltaY;
+                boxMin.z = innerBV->BVMin.z + deltaZ;
+                boxMax.x = deltaX + innerBV->BVMax.x;
+                boxMax.y = innerBV->BVMax.y + deltaY;
+                boxMax.z = innerBV->BVMax.z + deltaZ;
+                return boxMin.x >= outerBV->BVMin.x
+                    && outerBV->BVMax.x >= boxMax.x
+                    && outerBV->BVMin.y <= boxMin.y
+                    && outerBV->BVMax.y >= boxMax.y
+                    && outerBV->BVMin.z <= boxMin.z
+                    && outerBV->BVMax.z >= boxMax.z;
             }
-            if (OBJ_BV_IsSphere(v3))
+            if (OBJ_BV_IsSphere(innerBV))
             {
-                v8 = v3->BVMin.y;
-                v9 = v3->BVMin.z;
-                v31 = v3->BVMax.x;
-                a1a.x = v3->BVMin.x;
-                dest.x = a1a.x + v28 + v31;
-                dest.y = v8 + v29 + v31;
-                dest.z = v9 + v30 + v31;
-                v25 = v31 - v29;
-                v7 = a1a.x - v25;
-                a1a.y = v8 - v25;
-                a1a.z = v9 - (v31 - v30);
-                return v7 >= v2->BVMin.x
-                    && v2->BVMax.x >= (double)dest.x
-                    && v2->BVMin.y <= (double)a1a.y
-                    && v2->BVMax.y >= (double)dest.y
-                    && v2->BVMin.z <= (double)a1a.z
-                    && v2->BVMax.z >= (double)dest.z;
+                centreY = innerBV->BVMin.y;
+                centreZ = innerBV->BVMin.z;
+                radius = innerBV->BVMax.x;
+                boxMin.x = innerBV->BVMin.x;
+                boxMax.x = boxMin.x + deltaX + radius;
+                boxMax.y = centreY + deltaY + radius;
+                boxMax.z = centreZ + deltaZ + radius;
+                reach = radius - deltaY;
+                boxMin.x = boxMin.x - reach;
+                boxMin.y = centreY - reach;
+                boxMin.z = centreZ - (radius - deltaZ);
+                return boxMin.x >= outerBV->BVMin.x
+                    && outerBV->BVMax.x >= boxMax.x
+                    && outerBV->BVMin.y <= boxMin.y
+                    && outerBV->BVMax.y >= boxMax.y
+                    && outerBV->BVMin.z <= boxMin.z
+                    && outerBV->BVMax.z >= boxMax.z;
             }
         }
-        else if (OBJ_BV_IsSphere(v2))
+        else if (OBJ_BV_IsSphere(outerBV))
         {
-            if (OBJ_BV_IsAABBox(v2))
+            // preserved: inside the sphere branch this can never hold, so the box-in-sphere arm and COL_f_SqrLen's only call site are unreachable
+            if (OBJ_BV_IsAABBox(outerBV))
             {
-                MATH_SubstractVec(&dest, &v2->BVMax, &v2->BVMin);
-                v11 = a2->matrices;
-                dest.x = (float)(dest.x * 0.5);
-                dest.y = (float)(dest.y * 0.5);
-                dest.z = (float)(dest.z * 0.5);
-                MATH_VecAddVec(&a1a, &v11->Pos, &dest);
-                v13 = dest.x;
-                if (a1a.x < 0.0)
-                    v13 = -v13;
-                a1a.x = (float)(v13 + a1a.x);
-                v17 = dest.y;
-                if (a1a.y < 0.0)
-                    v17 = -v17;
-                a1a.y = (float)(v17 + a1a.y);
-                v21 = dest.z;
-                if (a1a.z < 0.0)
-                    v21 = -v21;
-                v24 = v2->BVMax.x;
-                a1a.z = (float)(v21 + a1a.z);
-                if (v24 * v24 > bvin_sqrlen_sub_412FD0(&a1a))
+                MATH_SubstractVec(&half, &outerBV->BVMax, &outerBV->BVMin);
+                boxMtx = innerGao->matrices;
+                half.x = (float)(half.x * 0.5);
+                half.y = (float)(half.y * 0.5);
+                half.z = (float)(half.z * 0.5);
+                MATH_VecAddVec(&boxMin, &boxMtx->Pos, &half);
+                halfX = half.x;
+                if (boxMin.x < 0.0)
+                    halfX = -halfX;
+                boxMin.x = (float)(halfX + boxMin.x);
+                halfY = half.y;
+                if (boxMin.y < 0.0)
+                    halfY = -halfY;
+                boxMin.y = (float)(halfY + boxMin.y);
+                halfZ = half.z;
+                if (boxMin.z < 0.0)
+                    halfZ = -halfZ;
+                corner = outerBV->BVMax.x;
+                boxMin.z = (float)(halfZ + boxMin.z);
+                if (corner * corner > COL_f_SqrLen(&boxMin))
                     return 1;
             }
-            else if (OBJ_BV_IsSphere(v3)
-                && v2->BVMax.x >= (double)v3->BVMax.x
-                && MATH_DistanceOfTwoPoints(&v2->BVMin, &v3->BVMin) + v3->BVMax.x < v2->BVMax.x)
+            else if (OBJ_BV_IsSphere(innerBV)
+                && outerBV->BVMax.x >= innerBV->BVMax.x
+                && MATH_DistanceOfTwoPoints(&outerBV->BVMin, &innerBV->BVMin) + innerBV->BVMax.x < outerBV->BVMax.x)
             {
                 return 1;
             }
@@ -9738,48 +9717,44 @@ BOOL COL_b_SingleBVIn(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
     return 0;
 }
 
-BOOL COL_b_BVIn(struct sGameObjectMain* a1, struct sGameObjectMain* a2)
+BOOL COL_b_BVIn(struct sGameObjectMain* outerGao, struct sGameObjectMain* innerGao)
 {
-    BOOL result;
-
-    if (a1 && a2)
-        result = COL_b_SingleBVIn(a1, a2);
-    else
-        result = 0;
-    return result;
+    if (outerGao && innerGao)
+        return COL_b_SingleBVIn(outerGao, innerGao);
+    return 0;
 }
 
-BOOL INT_LowLevel_OBBoxOBBox(float a1, float a2, float a3, float a4, float a5, float a6, Mtx4x4* a7)
+BOOL INT_LowLevel_OBBoxOBBox(float aHalfX, float aHalfY, float aHalfZ, float bHalfX, float bHalfY, float bHalfZ, Mtx4x4* rel)
 {
-    long double v8; // st7
-    BOOL result; // eax
-    float v10; // [esp+0h] [ebp-1Ch]
-    float v11; // [esp+4h] [ebp-18h]
-    float v12; // [esp+8h] [ebp-14h]
-    float v13; // [esp+Ch] [ebp-10h]
-    float v14; // [esp+10h] [ebp-Ch]
-    float v15; // [esp+14h] [ebp-8h]
-    float v16; // [esp+18h] [ebp-4h]
-    float v17; // [esp+38h] [ebp+1Ch]
+    long double absXz;
+    BOOL result;
+    float absXx;
+    float absYz;
+    float absYy;
+    float absYx;
+    float absZz;
+    float absZy;
+    float absZx;
+    float absXy;
 
-    v13 = (float)fabs(a7->v2.x);
-    v16 = (float)fabs(a7->v3.x);
-    v10 = (float)fabs(a7->v1.x);
+    absYx = (float)fabs(rel->v2.x);
+    absZx = (float)fabs(rel->v3.x);
+    absXx = (float)fabs(rel->v1.x);
     result = 0;
-    if (v10 * a4 + v16 * a6 + v13 * a5 + a1 >= fabs(a7->Pos.x))
+    if (absXx * bHalfX + absZx * bHalfZ + absYx * bHalfY + aHalfX >= fabs(rel->Pos.x))
     {
-        v17 = (float)fabs(a7->v1.y);
-        v12 = (float)fabs(a7->v2.y);
-        v15 = (float)fabs(a7->v3.y);
-        if (v15 * a6 + v12 * a5 + v17 * a4 + a2 >= fabs(a7->Pos.y))
+        absXy = (float)fabs(rel->v1.y);
+        absYy = (float)fabs(rel->v2.y);
+        absZy = (float)fabs(rel->v3.y);
+        if (absZy * bHalfZ + absYy * bHalfY + absXy * bHalfX + aHalfY >= fabs(rel->Pos.y))
         {
-            v8 = (float)fabs(a7->v1.z);
-            v11 = (float)fabs(a7->v2.z);
-            v14 = (float)fabs(a7->v3.z);
-            if (v14 * a6 + v11 * a5 + v8 * a4 + a3 >= fabs(a7->Pos.z)
-                && v8 * a3 + v17 * a2 + v10 * a1 + a4 >= fabs(a7->Pos.z * a7->v1.z + a7->v1.y * a7->Pos.y + a7->v1.x * a7->Pos.x)
-                && v11 * a3 + v12 * a2 + v13 * a1 + a5 >= fabs(a7->Pos.y * a7->v2.y + a7->Pos.z * a7->v2.z + a7->v2.x * a7->Pos.x)
-                && v14 * a3 + v15 * a2 + v16 * a1 + a6 >= fabs(a7->Pos.y * a7->v3.y + a7->Pos.z * a7->v3.z + a7->v3.x * a7->Pos.x))
+            absXz = (float)fabs(rel->v1.z);
+            absYz = (float)fabs(rel->v2.z);
+            absZz = (float)fabs(rel->v3.z);
+            if (absZz * bHalfZ + absYz * bHalfY + absXz * bHalfX + aHalfZ >= fabs(rel->Pos.z)
+                && absXz * aHalfZ + absXy * aHalfY + absXx * aHalfX + bHalfX >= fabs(rel->Pos.z * rel->v1.z + rel->v1.y * rel->Pos.y + rel->v1.x * rel->Pos.x)
+                && absYz * aHalfZ + absYy * aHalfY + absYx * aHalfX + bHalfY >= fabs(rel->Pos.y * rel->v2.y + rel->Pos.z * rel->v2.z + rel->v2.x * rel->Pos.x)
+                && absZz * aHalfZ + absZy * aHalfY + absZx * aHalfX + bHalfZ >= fabs(rel->Pos.y * rel->v3.y + rel->Pos.z * rel->v3.z + rel->v3.x * rel->Pos.x))
             {
                 result = 1;
             }
@@ -9788,118 +9763,109 @@ BOOL INT_LowLevel_OBBoxOBBox(float a1, float a2, float a3, float a4, float a5, f
     return result;
 }
 
-BOOL INT_HighLevel_OBBoxOBBox(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Mtx4x4* a5, Vec3* a6)
+BOOL INT_HighLevel_OBBoxOBBox(Vec3* aMin, Vec3* aMax, Vec3* bMin, Vec3* bMax, Mtx4x4* rel, Vec3* aScale)
 {
-    double v6; // st7
-    float v9; // [esp+0h] [ebp-2Ch]
-    float v10; // [esp+4h] [ebp-28h]
-    float v11; // [esp+8h] [ebp-24h]
-    float v12; // [esp+14h] [ebp-18h]
-    float v13; // [esp+18h] [ebp-14h]
-    float v14; // [esp+1Ch] [ebp-10h]
-    Vec3 a1a; // [esp+20h] [ebp-Ch] BYREF
-    float v16; // [esp+38h] [ebp+Ch]
-    float v17; // [esp+3Ch] [ebp+10h]
-    float v18; // [esp+44h] [ebp+18h]
+    double extentZ;
+    float scaledBX;
+    float scaledBY;
+    float scaledBZ;
+    float aHalfY;
+    float aHalfX;
+    float bHalfX;
+    Vec3 scale;
+    float bHalfY;
+    float bHalfZ;
+    float aHalfZ;
 
-    if (a6)
+    if (aScale)
     {
-        v13 = (float)((a2->x - a1->x) * a6->x * 0.5);
-        v12 = (float)((a2->y - a1->y) * a6->y * 0.5);
-        v6 = (a2->z - a1->z) * a6->z;
+        aHalfX = (float)((aMax->x - aMin->x) * aScale->x * 0.5);
+        aHalfY = (float)((aMax->y - aMin->y) * aScale->y * 0.5);
+        extentZ = (aMax->z - aMin->z) * aScale->z;
     }
     else
     {
-        v13 = (float)((a2->x - a1->x) * 0.5);
-        v12 = (float)((a2->y - a1->y) * 0.5);
-        v6 = a2->z - a1->z;
+        aHalfX = (float)((aMax->x - aMin->x) * 0.5);
+        aHalfY = (float)((aMax->y - aMin->y) * 0.5);
+        extentZ = aMax->z - aMin->z;
     }
-    v18 = (float)(v6 * 0.5);
-    v14 = (float)((a4->x - a3->x) * 0.5);
-    v16 = (float)((a4->y - a3->y) * 0.5);
-    v17 = (float)((a4->z - a3->z) * 0.5);
-    if ((a5->mtxflag & 8) == 0)
-        return INT_LowLevel_OBBoxOBBox(v13, v12, v18, v14, v16, v17, a5);
-    MATH_GetScale(&a1a, a5);
-    v11 = a1a.z * v17;
-    v10 = a1a.y * v16;
-    v9 = a1a.x * v14;
-    return INT_LowLevel_OBBoxOBBox(v13, v12, v18, v9, v10, v11, a5);
+    aHalfZ = (float)(extentZ * 0.5);
+    bHalfX = (float)((bMax->x - bMin->x) * 0.5);
+    bHalfY = (float)((bMax->y - bMin->y) * 0.5);
+    bHalfZ = (float)((bMax->z - bMin->z) * 0.5);
+    if ((rel->mtxflag & 8) == 0)
+        return INT_LowLevel_OBBoxOBBox(aHalfX, aHalfY, aHalfZ, bHalfX, bHalfY, bHalfZ, rel);
+    MATH_GetScale(&scale, rel);
+    scaledBZ = scale.z * bHalfZ;
+    scaledBY = scale.y * bHalfY;
+    scaledBX = scale.x * bHalfX;
+    return INT_LowLevel_OBBoxOBBox(aHalfX, aHalfY, aHalfZ, scaledBX, scaledBY, scaledBZ, rel);
 }
 
-BOOL COL_b_SingleBVOverlap(tGameObjectMain* a1, tGameObjectMain* a2)
+BOOL COL_b_SingleBVOverlap(tGameObjectMain* gao1, tGameObjectMain* gao2)
 {
-    tGameObjectBV* v2; // esi
-    tGameObjectBV* v3; // edi
-    Mtx4x4* v4; // eax
-    double v5; // st7
-    double v6; // st6
-    Mtx4x4* v7; // eax
-    double v8; // st6
-    Mtx4x4* v10; // eax
-    Vec3* v11; // ebx
-    float v12; // [esp+1Ch] [ebp-30h]
-    float v13; // [esp+20h] [ebp-2Ch]
-    float v14; // [esp+24h] [ebp-28h]
-    float v15; // [esp+28h] [ebp-24h]
-    float v16; // [esp+2Ch] [ebp-20h]
-    float v17; // [esp+30h] [ebp-1Ch]
-    Vec3 a3; // [esp+34h] [ebp-18h] BYREF
-    Vec3 a4; // [esp+40h] [ebp-Ch] BYREF
+    tGameObjectBV* bv1;
+    tGameObjectBV* bv2;
+    Mtx4x4* mtx1;
+    Mtx4x4* mtx2;
+    Vec3* pos;
+    Vec3 min1;
+    Vec3 max1;
+    Vec3 min2;
+    Vec3 max2;
 
-    if (a1 && a2)
+    if (gao1 && gao2)
     {
-        v2 = a1->boundingVolume;
-        v3 = a2->boundingVolume;
-        if (OBJ_BV_IsAABBox(v2) && OBJ_BV_IsAABBox(v3))
+        bv1 = gao1->boundingVolume;
+        bv2 = gao2->boundingVolume;
+        if (OBJ_BV_IsAABBox(bv1) && OBJ_BV_IsAABBox(bv2))
         {
-            v4 = a1->matrices;
-            v5 = v2->BVMin.x + v4->Pos.x;
-            a3.y = v4->Pos.y + v2->BVMin.y;
-            a3.z = v4->Pos.z + v2->BVMin.z;
-            v12 = v4->Pos.x + v2->BVMax.x;
-            v13 = v4->Pos.y + v2->BVMax.y;
-            v6 = v4->Pos.z;
-            v7 = a2->matrices;
-            v14 = (float)(v6 + v2->BVMax.z);
-            v15 = v3->BVMin.x + v7->Pos.x;
-            v16 = v7->Pos.y + v3->BVMin.y;
-            v17 = v7->Pos.z + v3->BVMin.z;
-            v8 = v7->Pos.x + v3->BVMax.x;
-            a4.y = v7->Pos.y + v3->BVMax.y;
-            a4.z = v7->Pos.z + v3->BVMax.z;
-            if (v5 <= v8
-                && v12 >= (double)v15
-                && a3.y <= (double)a4.y
-                && v13 >= (double)v16
-                && a3.z <= (double)a4.z
-                && v14 >= (double)v17)
+            mtx1 = gao1->matrices;
+            min1.x = bv1->BVMin.x + mtx1->Pos.x;
+            min1.y = mtx1->Pos.y + bv1->BVMin.y;
+            min1.z = mtx1->Pos.z + bv1->BVMin.z;
+            max1.x = mtx1->Pos.x + bv1->BVMax.x;
+            max1.y = mtx1->Pos.y + bv1->BVMax.y;
+            max1.z = mtx1->Pos.z + bv1->BVMax.z;
+            mtx2 = gao2->matrices;
+            min2.x = bv2->BVMin.x + mtx2->Pos.x;
+            min2.y = mtx2->Pos.y + bv2->BVMin.y;
+            min2.z = mtx2->Pos.z + bv2->BVMin.z;
+            max2.x = mtx2->Pos.x + bv2->BVMax.x;
+            max2.y = mtx2->Pos.y + bv2->BVMax.y;
+            max2.z = mtx2->Pos.z + bv2->BVMax.z;
+            if (min1.x <= max2.x
+                && max1.x >= min2.x
+                && min1.y <= max2.y
+                && max1.y >= min2.y
+                && min1.z <= max2.z
+                && max1.z >= min2.z)
             {
                 return 1;
             }
         }
         else
         {
-            if (OBJ_BV_IsAABBox(v2) && OBJ_BV_IsSphere(v3))
+            if (OBJ_BV_IsAABBox(bv1) && OBJ_BV_IsSphere(bv2))
             {
-                v10 = a1->matrices;
-                a4.x = v10->Pos.x + v2->BVMax.x;
-                a4.y = v2->BVMax.y + v10->Pos.y;
-                a4.z = v2->BVMax.z + v10->Pos.z;
-                a3.x = v2->BVMin.x + v10->Pos.x;
-                a3.y = v10->Pos.y + v2->BVMin.y;
-                a3.z = v10->Pos.z + v2->BVMin.z;
-                return INT_SphereAABBox(&v3->BVMin, v3->BVMax.x, &a3, &a4);
+                mtx1 = gao1->matrices;
+                max1.x = mtx1->Pos.x + bv1->BVMax.x;
+                max1.y = bv1->BVMax.y + mtx1->Pos.y;
+                max1.z = bv1->BVMax.z + mtx1->Pos.z;
+                min1.x = bv1->BVMin.x + mtx1->Pos.x;
+                min1.y = mtx1->Pos.y + bv1->BVMin.y;
+                min1.z = mtx1->Pos.z + bv1->BVMin.z;
+                return INT_SphereAABBox(&bv2->BVMin, bv2->BVMax.x, &min1, &max1);
             }
-            if (OBJ_BV_IsSphere(v2) && OBJ_BV_IsAABBox(v3))
+            if (OBJ_BV_IsSphere(bv1) && OBJ_BV_IsAABBox(bv2))
             {
-                v11 = &a2->matrices->Pos;
-                MATH_VecAddVec(&a4, &v3->BVMax, v11);
-                MATH_VecAddVec(&a3, &v3->BVMin, v11);
-                return INT_SphereAABBox(&v2->BVMin, v2->BVMax.x, &a3, &a4);
+                pos = &gao2->matrices->Pos;
+                MATH_VecAddVec(&max1, &bv2->BVMax, pos);
+                MATH_VecAddVec(&min1, &bv2->BVMin, pos);
+                return INT_SphereAABBox(&bv1->BVMin, bv1->BVMax.x, &min1, &max1);
             }
-            if (OBJ_BV_IsSphere(v2) && OBJ_BV_IsSphere(v3))
-                return INT_SphereSphere(&v2->BVMin, v2->BVMax.x, &v3->BVMin, v3->BVMax.x);
+            if (OBJ_BV_IsSphere(bv1) && OBJ_BV_IsSphere(bv2))
+                return INT_SphereSphere(&bv1->BVMin, bv1->BVMax.x, &bv2->BVMin, bv2->BVMax.x);
         }
     }
     return 0;
@@ -9907,67 +9873,55 @@ BOOL COL_b_SingleBVOverlap(tGameObjectMain* a1, tGameObjectMain* a2)
 
 BOOL COL_b_BVOverlap(struct sGameObjectMain* gao1, struct sGameObjectMain* gao2, BOOL OBBoxOfFirstGao, BOOL OBBoxOfSecondGao, BOOL useSnP)
 {
-    tGameObjectMain* v5; // ebx
-    Vec3* v6; // edi
-    tGameObjectMain* v7; // edx
-    BOOL v8; // esi
-    int v9; // ecx
-    int v10; // eax
-    int v11; // eax
-    tSnp* v12; // esi
-    Vec3* v14; // esi
-    Mtx4x4* v15; // eax
-    Mtx4x4* v16; // eax
-    Mtx4x4* v17; // eax
-    Mtx4x4* v18; // eax
-    tGameObjectBV* v19; // esi
-    tGameObjectBV* v20; // edi
-    Mtx4x4* v21; // eax
-    Mtx4x4* v22; // eax
-    tGameObjectBV* v23; // esi
-    Vec3* v24; // edi
-    Mtx4x4* v25; // eax
-    Mtx4x4* v26; // eax
-    tGameObjectBV* v27; // edi
-    Vec3* v28; // esi
-    double v29; // st7
-    Mtx4x4* v30; // eax
-    double v31; // st7
-    Mtx4x4* v32; // eax
-    Vec3* v33; // [esp+14h] [ebp-21Ch] BYREF
-    Vec3* a6; // [esp+18h] [ebp-218h] BYREF
-    Vec3 v35; // [esp+1Ch] [ebp-214h] BYREF
-    Vec3 src; // [esp+28h] [ebp-208h] BYREF
-    Vec3 v37; // [esp+34h] [ebp-1FCh] BYREF
-    Vec3 v38; // [esp+40h] [ebp-1F0h] BYREF
-    Vec3 v39; // [esp+4Ch] [ebp-1E4h] BYREF
-    Vec3 v40; // [esp+58h] [ebp-1D8h] BYREF
-    Vec3 v41; // [esp+64h] [ebp-1CCh] BYREF
-    Mtx4x4 dest; // [esp+70h] [ebp-1C0h] BYREF
-    Vec3 v43; // [esp+C0h] [ebp-170h] BYREF
-    Vec3 v44; // [esp+CCh] [ebp-164h] BYREF
-    Vec3 v45; // [esp+D8h] [ebp-158h] BYREF
-    Vec3 v46; // [esp+E4h] [ebp-14Ch] BYREF
-    Mtx4x4 v47; // [esp+F0h] [ebp-140h] BYREF
-    Mtx4x4 v48; // [esp+140h] [ebp-F0h] BYREF
-    Mtx4x4 a2a; // [esp+190h] [ebp-A0h] BYREF
-    Mtx4x4 a3a; // [esp+1E0h] [ebp-50h] BYREF
-    int v33a;
-    int a6a;
+    tGameObjectMain* first;
+    tGameObjectMain* second;
+    BOOL snp;
+    int flags1;
+    int flags2;
+    BOOL swapped;
+    tSnp* snpTables;
+    tGameObjectBV* firstBV;
+    tGameObjectBV* secondBV;
+    Vec3* pos;
+    Mtx4x4* mtx;
+    Vec3* firstMin;
+    Vec3* firstMax;
+    Vec3* secondMin;
+    Vec3* secondMax;
+    Vec3 centreB;
+    Vec3 centreA;
+    Vec3 worldA;
+    Vec3 delta;
+    Vec3 worldB;
+    Vec3 relDelta;
+    Vec3 unitScale;
+    Mtx4x4 secondMtx;
+    Vec3 secondWorldMax;
+    Vec3 firstWorldMin;
+    Vec3 firstWorldMax;
+    Vec3 secondWorldMin;
+    Mtx4x4 rel;
+    Mtx4x4 noScale;
+    Mtx4x4 invFirst;
+    int snpIndex;
+    int snpSpan;
 
-    v5 = gao1;
-    v6 = 0;
+    first = gao1;
     if (!gao1)
         return FALSE;
-    v7 = gao2;
+    second = gao2;
     if (!gao2)
         return FALSE;
-    v8 = useSnP;
+    snp = useSnP;
     if (useSnP)
     {
-        v9 = gao1->flags2;
-        if ((v9 & 0x80u) == 0 || (v10 = gao2->flags2, (v10 & 0x80u) == 0) || (v9 & 0x20) == 0 && (v10 & 0x20) == 0)
-            v8 = FALSE;
+        flags1 = gao1->flags2;
+        if ((flags1 & 0x80u) == 0
+            || (flags2 = gao2->flags2, (flags2 & 0x80u) == 0)
+            || (flags1 & 0x20) == 0 && (flags2 & 0x20) == 0)
+        {
+            snp = FALSE;
+        }
     }
     if ((gao1->flags & 0x80000) == 0)
         OBBoxOfFirstGao = FALSE;
@@ -9975,179 +9929,139 @@ BOOL COL_b_BVOverlap(struct sGameObjectMain* gao1, struct sGameObjectMain* gao2,
         OBBoxOfSecondGao = FALSE;
     if ((gao1->flags2 & 0x20) == 0)
     {
-        v11 = OBBoxOfFirstGao;
+        swapped = OBBoxOfFirstGao;
         OBBoxOfFirstGao = OBBoxOfSecondGao;
-        v5 = gao2;
-        OBBoxOfSecondGao = v11;
+        first = gao2;
+        OBBoxOfSecondGao = swapped;
         gao2 = gao1;
-        v7 = gao1;
+        second = gao1;
     }
-    if (v8)
+    if (snp)
     {
-        v12 = WOR_gpst_CurrentWorld->snp;
-        if (!INT_SnP_FullGetFlag(v12->axisPtr[0]->flagsArray, v5->snpIndex, v7->snpIndex, 1024, &v33a, &a6a)
-            || !INT_SnP_GetFlag(v12->axisPtr[1]->flagsArray, v33a, a6a)
-            || !INT_SnP_GetFlag(v12->axisPtr[2]->flagsArray, v33a, a6a))
+        snpTables = WOR_gpst_CurrentWorld->snp;
+        if (!INT_SnP_FullGetFlag(snpTables->axisPtr[0]->flagsArray, first->snpIndex, second->snpIndex, 1024, &snpIndex, &snpSpan)
+            || !INT_SnP_GetFlag(snpTables->axisPtr[1]->flagsArray, snpIndex, snpSpan)
+            || !INT_SnP_GetFlag(snpTables->axisPtr[2]->flagsArray, snpIndex, snpSpan))
         {
             return FALSE;
         }
     }
-    else if (!COL_b_SingleBVOverlap(v5, v7))
+    else if (!COL_b_SingleBVOverlap(first, second))
     {
         return FALSE;
     }
     if (!OBBoxOfFirstGao && !OBBoxOfSecondGao)
         return TRUE;
-    v14 = 0;
-    a6 = 0;
-    v33 = 0;
     if (OBBoxOfFirstGao)
     {
-        if (!OBBoxOfSecondGao)
+        if ((OBJ_pst_GetAbsoluteMatrix(first)->mtxflag & 8) != 0)
         {
-            if ((OBJ_pst_GetAbsoluteMatrix(v5)->mtxflag & 8) != 0)
+            MATH_CopyMatrix(&noScale, OBJ_pst_GetAbsoluteMatrix(first));
+            noScale._m14 = 0.0;
+            noScale._m24 = 0.0;
+            noScale._m34 = 0.0;
+            noScale.mtxflag &= ~8u;
+            MATH_InvertMatrix(&invFirst, &noScale);
+        }
+        else
+        {
+            MATH_InvertMatrix(&invFirst, OBJ_pst_GetAbsoluteMatrix(first));
+        }
+        firstBV = first->boundingVolume;
+        firstMax = &firstBV->BVMaxLocal;
+        firstMin = &firstBV->BVMinLocal;
+        if (OBBoxOfSecondGao)
+        {
+            if ((OBJ_pst_GetAbsoluteMatrix(gao2)->mtxflag & 8) != 0)
             {
-                v21 = OBJ_pst_GetAbsoluteMatrix(v5);
-                MATH_CopyMatrix(&v48, v21);
-                v48._m14 = 0.0;
-                v48._m24 = 0.0;
-                v48._m34 = 0.0;
-                v48.mtxflag &= ~8u;
-                MATH_InvertMatrix(&a3a, &v48);
+                MATH_CopyMatrix(&secondMtx, OBJ_pst_GetAbsoluteMatrix(gao2));
+                secondMtx._m14 = 0.0;
+                secondMtx._m24 = 0.0;
+                secondMtx._m34 = 0.0;
+                secondMtx.mtxflag &= ~8u;
             }
             else
             {
-                v22 = OBJ_pst_GetAbsoluteMatrix(v5);
-                MATH_InvertMatrix(&a3a, v22);
+                MATH_CopyMatrix(&secondMtx, OBJ_pst_GetAbsoluteMatrix(gao2));
             }
-            memcpy(&v47, &a3a, sizeof(v47));
-            v23 = v5->boundingVolume;
-            v24 = &gao2->matrices->Pos;
-            v33 = &gao2->boundingVolume->BVMin;
-            a6 = &v23->BVMaxLocal;
-            v14 = &v23->BVMinLocal;
-            MATH_VecAddVec(&v43, v33 + 1, v24);
-            MATH_VecAddVec(&v46, v33, v24);
-            v33 = &v43;
-            v6 = &v46;
-            goto LABEL_43;
-        }
-        if ((OBJ_pst_GetAbsoluteMatrix(v5)->mtxflag & 8) != 0)
-        {
-            v15 = OBJ_pst_GetAbsoluteMatrix(v5);
-            MATH_CopyMatrix(&a2a, v15);
-            a2a.mtxflag &= ~8u;
-            a2a._m14 = 0.0;
-            a2a._m24 = 0.0;
-            a2a._m34 = 0.0;
-            MATH_InvertMatrix(&a3a, &a2a);
+            MATH_MulMatrixMatrix(&rel, &secondMtx, &invFirst);
+            secondBV = gao2->boundingVolume;
+            secondMax = &secondBV->BVMaxLocal;
+            secondMin = &secondBV->BVMinLocal;
         }
         else
         {
-            v16 = OBJ_pst_GetAbsoluteMatrix(v5);
-            MATH_InvertMatrix(&a3a, v16);
+            rel = invFirst;
+            pos = &gao2->matrices->Pos;
+            secondBV = gao2->boundingVolume;
+            MATH_VecAddVec(&secondWorldMax, &secondBV->BVMax, pos);
+            MATH_VecAddVec(&secondWorldMin, &secondBV->BVMin, pos);
+            secondMax = &secondWorldMax;
+            secondMin = &secondWorldMin;
         }
-        if ((OBJ_pst_GetAbsoluteMatrix(gao2)->mtxflag & 8) != 0)
-        {
-            v17 = OBJ_pst_GetAbsoluteMatrix(gao2);
-            MATH_CopyMatrix(&dest, v17);
-            dest._m14 = 0.0;
-            dest._m24 = 0.0;
-            dest._m34 = 0.0;
-            dest.mtxflag &= ~8u;
-        }
-        else
-        {
-            v18 = OBJ_pst_GetAbsoluteMatrix(gao2);
-            MATH_CopyMatrix(&dest, v18);
-        }
-        MATH_MulMatrixMatrix(&v47, &dest, &a3a);
-        v19 = v5->boundingVolume;
-        v20 = gao2->boundingVolume;
-        a6 = &v19->BVMaxLocal;
-        v14 = &v19->BVMinLocal;
-        v33 = &v20->BVMaxLocal;
-        goto LABEL_42;
     }
-    if (OBBoxOfSecondGao)
+    else
     {
         if ((OBJ_pst_GetAbsoluteMatrix(gao2)->mtxflag & 8) != 0)
         {
-            v25 = OBJ_pst_GetAbsoluteMatrix(gao2);
-            MATH_CopyMatrix(&dest, v25);
-            dest._m14 = 0.0;
-            dest._m24 = 0.0;
-            dest._m34 = 0.0;
-            dest.mtxflag &= ~8u;
-            memcpy(&v47, &dest, sizeof(v47));
+            MATH_CopyMatrix(&secondMtx, OBJ_pst_GetAbsoluteMatrix(gao2));
+            secondMtx._m14 = 0.0;
+            secondMtx._m24 = 0.0;
+            secondMtx._m34 = 0.0;
+            secondMtx.mtxflag &= ~8u;
+            rel = secondMtx;
         }
         else
         {
-            v26 = OBJ_pst_GetAbsoluteMatrix(gao2);
-            MATH_CopyMatrix(&v47, v26);
+            MATH_CopyMatrix(&rel, OBJ_pst_GetAbsoluteMatrix(gao2));
         }
-        v27 = v5->boundingVolume;
-        v28 = &v5->matrices->Pos;
-        MATH_VecAddVec(&v45, &v27->BVMax, v28);
-        MATH_VecAddVec(&v44, &v27->BVMin, v28);
-        v20 = gao2->boundingVolume;
-        a6 = &v45;
-        v14 = &v44;
-        v33 = &v20->BVMaxLocal;
-    LABEL_42:
-        v6 = &v20->BVMinLocal;
+        firstBV = first->boundingVolume;
+        pos = &first->matrices->Pos;
+        MATH_VecAddVec(&firstWorldMax, &firstBV->BVMax, pos);
+        MATH_VecAddVec(&firstWorldMin, &firstBV->BVMin, pos);
+        secondBV = gao2->boundingVolume;
+        firstMax = &firstWorldMax;
+        firstMin = &firstWorldMin;
+        secondMax = &secondBV->BVMaxLocal;
+        secondMin = &secondBV->BVMinLocal;
     }
-LABEL_43:
-    src.x = a6->x - v14->x;
-    src.y = a6->y - v14->y;
-    v29 = a6->z - v14->z;
-    src.x = (float)(src.x * 0.5);
-    src.y = (float)(src.y * 0.5);
-    src.z = (float)(v29 * 0.5);
-    src.x = src.x + v14->x;
-    src.y = src.y + v14->y;
-    src.z = src.z + v14->z;
+    centreA.x = (float)((firstMax->x - firstMin->x) * 0.5) + firstMin->x;
+    centreA.y = (float)((firstMax->y - firstMin->y) * 0.5) + firstMin->y;
+    centreA.z = (float)((firstMax->z - firstMin->z) * 0.5) + firstMin->z;
     if (OBBoxOfFirstGao)
     {
-        v30 = OBJ_pst_GetAbsoluteMatrix(v5);
-        MATH_TransformVertexNoScale(&v37, v30, &src);
+        mtx = OBJ_pst_GetAbsoluteMatrix(first);
+        MATH_TransformVertexNoScale(&worldA, mtx, &centreA);
     }
     else
     {
-        v37 = src;
+        worldA = centreA;
     }
-    v35.x = v33->x - v6->x;
-    v35.y = v33->y - v6->y;
-    v31 = v33->z - v6->z;
-    v35.x = (float)(v35.x * 0.5);
-    v35.y = (float)(v35.y * 0.5);
-    v35.z = (float)(v31 * 0.5);
-    v35.x = v35.x + v6->x;
-    v35.y = v35.y + v6->y;
-    v35.z = v35.z + v6->z;
+    centreB.x = (float)((secondMax->x - secondMin->x) * 0.5) + secondMin->x;
+    centreB.y = (float)((secondMax->y - secondMin->y) * 0.5) + secondMin->y;
+    centreB.z = (float)((secondMax->z - secondMin->z) * 0.5) + secondMin->z;
     if (OBBoxOfSecondGao)
     {
-        v32 = OBJ_pst_GetAbsoluteMatrix(gao2);
-        MATH_TransformVertexNoScale(&v39, v32, &v35);
+        mtx = OBJ_pst_GetAbsoluteMatrix(gao2);
+        MATH_TransformVertexNoScale(&worldB, mtx, &centreB);
     }
     else
     {
-        v39 = v35;
+        worldB = centreB;
     }
-    v38.x = v39.x - v37.x;
-    v38.y = v39.y - v37.y;
-    v38.z = v39.z - v37.z;
+    delta.x = worldB.x - worldA.x;
+    delta.y = worldB.y - worldA.y;
+    delta.z = worldB.z - worldA.z;
     if (OBBoxOfFirstGao)
-        MATH_TransformVectorNoScale(&v40, &a3a, &v38);
+        MATH_TransformVectorNoScale(&relDelta, &invFirst, &delta);
     else
-        v40 = v38;
-    v47.Pos = v40;
-    v41.x = 1.0;
-    v41.y = 1.0;
-    v41.z = 1.0;
-    return INT_HighLevel_OBBoxOBBox(v14, a6, v6, v33, &v47, &v41);
+        relDelta = delta;
+    rel.Pos = relDelta;
+    unitScale.x = 1.0;
+    unitScale.y = 1.0;
+    unitScale.z = 1.0;
+    return INT_HighLevel_OBBoxOBBox(firstMin, firstMax, secondMin, secondMax, &rel, &unitScale);
 }
-
 void COL_InitModule()
 {
     COL_gst_GlobalVars.wallCosAngle = 0.5f;
@@ -10155,471 +10069,415 @@ void COL_InitModule()
 
 tColInstSet* COL_AllocColSet()
 {
-    tColInstSet* v0;
-    uint8_t* v1;
+    tColInstSet* colSet;
 
-    v0 = (tColInstSet*)MEM_p_Alloc(sizeof(tColInstSet));
+    colSet = (tColInstSet*)MEM_p_Alloc(sizeof(tColInstSet));
     LOA_ul_FileTypeSize_38 += sizeof(tColInstSet);
-    v0->instElemNum = 0;
-    v0->unk1 = 0;
-    v0->instanceNum = 0;
-    v0->colInstElems = 0;
-    v0->zoneIDs = 0;
-    v0->unk2 = 0;
-    v0->zoneIDs = (uint8_t*)MEM_p_Alloc(16u);
+    colSet->instElemNum = 0;
+    colSet->unk1 = 0;
+    colSet->instanceNum = 0;
+    colSet->colInstElems = 0;
+    colSet->zoneIDs = 0;
+    colSet->unk2 = 0;
+    colSet->zoneIDs = (uint8_t*)MEM_p_Alloc(16u);
     LOA_ul_FileTypeSize_38 += 4;
-    v1 = v0->zoneIDs;
-    memset(v1, 0xff, 16);
+    memset(colSet->zoneIDs, 0xff, 16);
 
-    return v0;
+    return colSet;
 }
 
 tColInstSet* COL_ul_CallBackLoadColSet(uint32_t Offset)
 {
-    tColInstSet* v1;
-    int v2;
-    int v3;
-    tColInstanceElem* v4;
-    tColInstanceElem* i;
-    int v6;
-    char* a1;
+    tColInstSet* colSet;
+    int zone;
+    tColInstanceElem* elem;
+    tColInstanceElem* elemEnd;
+    int nameLength;
+    char* cursor;
     int size;
-    tColBox* cb;
-    tColSphere* cs;
-    tColCylinder* cc;
+    tColBox* box;
+    tColSphere* sphere;
+    tColCylinder* cylinder;
 
-    a1 = BIG_pc_ReadFileTmp(Offset, &size);
-    v1 = COL_AllocColSet();
-    v1->instElemNum = LOA_ReadChar(&a1, 0, 1);
-    v1->unk1 = LOA_ReadChar(&a1, 0, 1);
-    v1->instanceNum = 0;
-    LOA_ReadShort(&a1, 0, 2);
-    v2 = 0;
-    v3 = 16;
-    do
+    cursor = BIG_pc_ReadFileTmp(Offset, &size);
+    colSet = COL_AllocColSet();
+    colSet->instElemNum = LOA_ReadChar(&cursor, 0, 1);
+    colSet->unk1 = LOA_ReadChar(&cursor, 0, 1);
+    colSet->instanceNum = 0;
+    LOA_ReadShort(&cursor, 0, 2);
+    for (zone = 0; zone < 16; ++zone)
+        colSet->zoneIDs[zone] = LOA_ReadChar(&cursor, 0, 1);
+    if (colSet->instElemNum)
+        colSet->colInstElems = (tColInstanceElem*)MEM_p_Alloc(sizeof(tColInstanceElem) * colSet->instElemNum);
+    elem = colSet->colInstElems;
+    for (elemEnd = &elem[colSet->instElemNum]; elem < elemEnd; ++elem)
     {
-        v1->zoneIDs[v2++] = LOA_ReadChar(&a1, 0, 1);
-        --v3;
-    } while (v3);
-    if (v1->instElemNum)
-        v1->colInstElems = (tColInstanceElem*)MEM_p_Alloc(sizeof(tColInstanceElem) * v1->instElemNum);
-    v4 = v1->colInstElems;
-    for (i = &v4[v1->instElemNum]; v4 < i; ++v4)
-    {
-        v4->colFlags = LOA_ReadChar(&a1, 0, 1);
-        v4->elemType = LOA_ReadChar(&a1, 0, 1);
-        v4->unk1 = LOA_ReadChar(&a1, 0, 1);
-        v4->design = LOA_ReadChar(&a1, 0, 1);
-        v6 = LOA_ReadLong(&a1, 0, 1);
-        if (v6)
-            LOA_ReadString(&a1, 0, v6, 2);
-        LOA_ReadChar(&a1, 0, 2);
-        switch (v4->elemType)
+        elem->colFlags = LOA_ReadChar(&cursor, 0, 1);
+        elem->elemType = LOA_ReadChar(&cursor, 0, 1);
+        elem->unk1 = LOA_ReadChar(&cursor, 0, 1);
+        elem->design = LOA_ReadChar(&cursor, 0, 1);
+        nameLength = LOA_ReadLong(&cursor, 0, 1);
+        if (nameLength)
+            LOA_ReadString(&cursor, 0, nameLength, 2);
+        LOA_ReadChar(&cursor, 0, 2);
+        switch (elem->elemType)
         {
         case 1u:
-            cb = (tColBox*)MEM_p_Alloc(sizeof(tColBox));
-            v4->elemShapePtr = (void*)cb;
-            LOA_ReadVector(&a1, &(cb->pos1), 1);
-            LOA_ReadVector(&a1, &(cb->pos2), 1);
+            box = (tColBox*)MEM_p_Alloc(sizeof(tColBox));
+            elem->elemShapePtr = (void*)box;
+            LOA_ReadVector(&cursor, &(box->pos1), 1);
+            LOA_ReadVector(&cursor, &(box->pos2), 1);
             break;
         case 2u:
-            cs = (tColSphere*)MEM_p_Alloc(sizeof(tColSphere));
-            v4->elemShapePtr = (void*)cs;
-            LOA_ReadVector(&a1, &(cs->center), 1);
-            cs->radius = LOA_ReadFloat(&a1, 0, 1);
+            sphere = (tColSphere*)MEM_p_Alloc(sizeof(tColSphere));
+            elem->elemShapePtr = (void*)sphere;
+            LOA_ReadVector(&cursor, &(sphere->center), 1);
+            sphere->radius = LOA_ReadFloat(&cursor, 0, 1);
             break;
         case 3u:
-            cc = (tColCylinder*)MEM_p_Alloc(sizeof(tColCylinder));
-            v4->elemShapePtr = (void*)cc;
-            LOA_ReadVector(&a1, &(cc->center), 1);
-            cc->height = LOA_ReadFloat(&a1, 0, 1);
-            cc->radius = LOA_ReadFloat(&a1, 0, 1);
+            cylinder = (tColCylinder*)MEM_p_Alloc(sizeof(tColCylinder));
+            elem->elemShapePtr = (void*)cylinder;
+            LOA_ReadVector(&cursor, &(cylinder->center), 1);
+            cylinder->height = LOA_ReadFloat(&cursor, 0, 1);
+            cylinder->radius = LOA_ReadFloat(&cursor, 0, 1);
             break;
         }
     }
-    return v1;
+    return colSet;
 }
 
 struct sColInstance* COL_ul_CallBackLoadInstance(uint32_t Offset)
 {
-    tColInstance* v1;
-    int v2;
-    uint8_t v3;
-    int v4;
-    int v5;
-    uint8_t v7;
-    tColInstanceElem** v8;
-    unsigned int v9;
-    uint8_t i;
-    uint8_t v11;
-    tColInstanceElem* v12;
-    tColInstanceElem* v13;
-    int v14;
-    char* a1; 
-    int size; 
-    tColBox* cb;
-    tColSphere* cs;
-    tColCylinder* cc;
+    tColInstance* instance;
+    int colSetRef;
+    uint8_t ownElemNum;
+    tColInstanceElem** zoneSlots;
+    unsigned int zoneSlotBytes;
+    uint8_t zoneNum;
+    uint8_t zone;
+    tColInstanceElem* elem;
+    tColInstanceElem* elemEnd;
+    int nameLength;
+    char* cursor;
+    int size;
+    tColBox* box;
+    tColSphere* sphere;
+    tColCylinder* cylinder;
 
-    v1 = (tColInstance*)MEM_p_Alloc(sizeof(tColInstance));
-    memset(v1, 0, sizeof(tColInstance));
-    v1->activationFlags = -1;
-    v1->mtx = MATH_Matrix_Alloc();
-    a1 = BIG_pc_ReadFileTmp(Offset, &size);
-    v2 = LOA_ReadLong(&a1, 0, 1);
-    if (v2 != -1)
-        LOA_MakeFileRef(v2, &v1->colSet, COL_ul_CallBackLoadColSet, 1);
+    instance = (tColInstance*)MEM_p_Alloc(sizeof(tColInstance));
+    memset(instance, 0, sizeof(tColInstance));
+    instance->activationFlags = -1;
+    instance->mtx = MATH_Matrix_Alloc();
+    cursor = BIG_pc_ReadFileTmp(Offset, &size);
+    colSetRef = LOA_ReadLong(&cursor, 0, 1);
+    if (colSetRef != -1)
+        LOA_MakeFileRef(colSetRef, &instance->colSet, COL_ul_CallBackLoadColSet, 1);
     if (size != 4)
     {
-        v1->zoneNum = LOA_ReadChar(&a1, 0, 1);
-        v1->sharedZoneNum = LOA_ReadChar(&a1, 0, 1);
-        v3 = LOA_ReadChar(&a1, 0, 1);
-        v4 = v1->sharedZoneNum;
-        v5 = v1->zoneNum;
-        v1->instElemNum = v3;
-        if (v4 + v3 != v5)
+        instance->zoneNum = LOA_ReadChar(&cursor, 0, 1);
+        instance->sharedZoneNum = LOA_ReadChar(&cursor, 0, 1);
+        ownElemNum = LOA_ReadChar(&cursor, 0, 1);
+        instance->instElemNum = ownElemNum;
+        if (instance->sharedZoneNum + ownElemNum != instance->zoneNum)
         {
-            v1->zoneNum = 0;
-            v1->sharedZoneNum = 0;
-            v1->instElemNum = 0;
-            return v1;
+            instance->zoneNum = 0;
+            instance->sharedZoneNum = 0;
+            instance->instElemNum = 0;
+            return instance;
         }
-        v1->priority = LOA_ReadChar(&a1, 0, 1);
-        v7 = v1->zoneNum;
-        if (v7)
+        instance->priority = LOA_ReadChar(&cursor, 0, 1);
+        zoneNum = instance->zoneNum;
+        if (zoneNum)
         {
-            v8 = (tColInstanceElem**)MEM_p_Alloc(4 * v7);
-            v9 = 4 * v1->zoneNum;
-            v1->selectedInstElemPtrs = v8;
-            memset(v8, 0, v9);
+            zoneSlots = (tColInstanceElem**)MEM_p_Alloc(4 * zoneNum);
+            zoneSlotBytes = 4 * instance->zoneNum;
+            instance->selectedInstElemPtrs = zoneSlots;
+            memset(zoneSlots, 0, zoneSlotBytes);
         }
-        for (i = 0; i < v1->zoneNum; ++i)
-            v1->selectedInstElemPtrs[i] = (tColInstanceElem*)(uint8_t)LOA_ReadChar(&a1, 0, 1);
-        v11 = v1->instElemNum;
-        if (v11)
+        for (zone = 0; zone < instance->zoneNum; ++zone)
+            instance->selectedInstElemPtrs[zone] = (tColInstanceElem*)(uint8_t)LOA_ReadChar(&cursor, 0, 1);
+        if (instance->instElemNum)
         {
-            v12 = (tColInstanceElem*)MEM_p_Alloc(sizeof(tColInstanceElem) * v11);
-            v13 = &v12[v1->instElemNum];
-            for (v1->colInstElems = v12; v12 < v13; ++v12)
+            elem = (tColInstanceElem*)MEM_p_Alloc(sizeof(tColInstanceElem) * instance->instElemNum);
+            elemEnd = &elem[instance->instElemNum];
+            for (instance->colInstElems = elem; elem < elemEnd; ++elem)
             {
-                v12->colFlags = LOA_ReadChar(&a1, 0, 1);
-                v12->elemType = LOA_ReadChar(&a1, 0, 1);
-                v12->unk1 = LOA_ReadChar(&a1, 0, 1);
-                v12->design = LOA_ReadChar(&a1, 0, 1);
-                LOA_ReadChar(&a1, 0, 2);
-                v14 = LOA_ReadLong(&a1, 0, 1);
-                if (v14)
-                    LOA_ReadString(&a1, 0, v14, 2);
-                LOA_ReadChar(&a1, 0, 2);
-                switch (v12->elemType)
+                elem->colFlags = LOA_ReadChar(&cursor, 0, 1);
+                elem->elemType = LOA_ReadChar(&cursor, 0, 1);
+                elem->unk1 = LOA_ReadChar(&cursor, 0, 1);
+                elem->design = LOA_ReadChar(&cursor, 0, 1);
+                LOA_ReadChar(&cursor, 0, 2);
+                nameLength = LOA_ReadLong(&cursor, 0, 1);
+                if (nameLength)
+                    LOA_ReadString(&cursor, 0, nameLength, 2);
+                LOA_ReadChar(&cursor, 0, 2);
+                switch (elem->elemType)
                 {
                 case 1u:
-                    cb = (tColBox*)MEM_p_Alloc(sizeof(tColBox));
-                    v12->elemShapePtr = (void *)cb;
-                    LOA_ReadVector(&a1, &(cb->pos1), 1);
-                    LOA_ReadVector(&a1, &(cb->pos2), 1);
+                    box = (tColBox*)MEM_p_Alloc(sizeof(tColBox));
+                    elem->elemShapePtr = (void *)box;
+                    LOA_ReadVector(&cursor, &(box->pos1), 1);
+                    LOA_ReadVector(&cursor, &(box->pos2), 1);
                     break;
                 case 2u:
-                    cs = (tColSphere*)MEM_p_Alloc(sizeof(tColSphere));
-                    v12->elemShapePtr = (void *)cs;
-                    LOA_ReadVector(&a1, &(cs->center), 1);
-                    cs->radius = LOA_ReadFloat(&a1, 0, 1);
+                    sphere = (tColSphere*)MEM_p_Alloc(sizeof(tColSphere));
+                    elem->elemShapePtr = (void *)sphere;
+                    LOA_ReadVector(&cursor, &(sphere->center), 1);
+                    sphere->radius = LOA_ReadFloat(&cursor, 0, 1);
                     break;
                 case 3u:
-                    cc = (tColCylinder*)MEM_p_Alloc(sizeof(tColCylinder));
-                    v12->elemShapePtr = (void *)cc;
-                    LOA_ReadVector(&a1, &(cc->center), 1);
-                    cc->height = LOA_ReadFloat(&a1, 0, 1);
-                    cc->radius = LOA_ReadFloat(&a1, 0, 1);
+                    cylinder = (tColCylinder*)MEM_p_Alloc(sizeof(tColCylinder));
+                    elem->elemShapePtr = (void *)cylinder;
+                    LOA_ReadVector(&cursor, &(cylinder->center), 1);
+                    cylinder->height = LOA_ReadFloat(&cursor, 0, 1);
+                    cylinder->radius = LOA_ReadFloat(&cursor, 0, 1);
                     break;
                 }
             }
         }
-        v1->activationFlags = LOA_ReadShort(&a1, 0, 1);
-        v1->instElemBitmask = LOA_ReadShort(&a1, 0, 1);
-        LOA_ReadShort(&a1, 0, 2);
-        LOA_ReadShort(&a1, 0, 1);
-        v1->crossable = 0x589A;
-        v1->flag = LOA_ReadShort(&a1, 0, 1);
-        v1->minLod = LOA_ReadChar(&a1, 0, 1);
-        v1->maxLod = LOA_ReadChar(&a1, 0, 1);
-        v1->wallPush = 1;
-        v1->backface = 0;
+        instance->activationFlags = LOA_ReadShort(&cursor, 0, 1);
+        instance->instElemBitmask = LOA_ReadShort(&cursor, 0, 1);
+        LOA_ReadShort(&cursor, 0, 2);
+        LOA_ReadShort(&cursor, 0, 1);
+        instance->crossable = 0x589A;
+        instance->flag = LOA_ReadShort(&cursor, 0, 1);
+        instance->minLod = LOA_ReadChar(&cursor, 0, 1);
+        instance->maxLod = LOA_ReadChar(&cursor, 0, 1);
+        instance->wallPush = 1;
+        instance->backface = 0;
     }
-    return v1;
+    return instance;
 }
 
 struct sCobGameMaterial* COL_ul_CallBackLoadGameMaterial(uint32_t Offset)
 {
-    tCobGameMaterial* v1;
-    int v2;
-    tCobGameMaterialElems* v3;
-    int* v4;
+    tCobGameMaterial* material;
+    int count;
+    tCobGameMaterialElems* elems;
+    int* ref;
     int i;
-    tCobGameMaterialElems* v6;
-    int j;
-    char* a1;
+    tCobGameMaterialElems* elem;
+    char* cursor;
     int size;
 
-    a1 = BIG_pc_ReadFileTmp(Offset, &size);
-    v1 = (tCobGameMaterial*)MEM_p_Alloc(sizeof(tCobGameMaterial));
-    v1->num = 0;
-    v1->ptrInts = 0;
-    v1->elems = 0;
-    v1->gameMaterialUsageCnt = 0;
-    v2 = LOA_ReadLong(&a1, 0, 1);
-    v1->num = v2;
-    v1->ptrInts = (int*)MEM_p_Alloc(4 * v2);
-    v3 = (tCobGameMaterialElems*)MEM_p_Alloc(sizeof(tCobGameMaterialElems) * v1->num);
-    v4 = v1->ptrInts;
-    v1->elems = v3;
-    for (i = 0; i < v1->num; ++v4)
+    cursor = BIG_pc_ReadFileTmp(Offset, &size);
+    material = (tCobGameMaterial*)MEM_p_Alloc(sizeof(tCobGameMaterial));
+    material->num = 0;
+    material->ptrInts = 0;
+    material->elems = 0;
+    material->gameMaterialUsageCnt = 0;
+    count = LOA_ReadLong(&cursor, 0, 1);
+    material->num = count;
+    material->ptrInts = (int*)MEM_p_Alloc(4 * count);
+    elems = (tCobGameMaterialElems*)MEM_p_Alloc(sizeof(tCobGameMaterialElems) * material->num);
+    ref = material->ptrInts;
+    material->elems = elems;
+    for (i = 0; i < material->num; ++i)
+        *ref++ = LOA_ReadLong(&cursor, 0, 1);
+    elem = material->elems;
+    for (i = 0; i < material->num; ++i)
     {
-        *v4 = LOA_ReadLong(&a1, 0, 1);
-        ++i;
+        elem->flags = LOA_ReadLong(&cursor, 0, 1);
+        elem->slide = LOA_ReadFloat(&cursor, 0, 1);
+        elem->rebound = LOA_ReadFloat(&cursor, 0, 1);
+        elem->sound = LOA_ReadChar(&cursor, 0, 1);
+        elem->b2 = LOA_ReadChar(&cursor, 0, 1);
+        elem->id = LOA_ReadShort(&cursor, 0, 1);
+        ++elem;
     }
-    v6 = v1->elems;
-    for (j = 0; j < v1->num; ++v6)
-    {
-        v6->flags = LOA_ReadLong(&a1, 0, 1);
-        v6->slide = LOA_ReadFloat(&a1, 0, 1);
-        v6->rebound = LOA_ReadFloat(&a1, 0, 1);
-        v6->sound = LOA_ReadChar(&a1, 0, 1);
-        v6->b2 = LOA_ReadChar(&a1, 0, 1);
-        v6->id = LOA_ReadShort(&a1, 0, 1);
-        ++j;
-    }
-    return v1;
+    return material;
 }
 
 tColCollisionObject* COL_ul_CallBackLoadCob(uint32_t Offset)
 {
-    tColCollisionObject* v1;
-    int v2;
-    int v3;
+    tColCollisionObject* cob;
+    int vertexIndex;
+    int materialRef;
     uint8_t objType;
-    tCobNormalObjectGeneric* v6;
-    tColSphere* v7;
-    tColBox* v8;
-    tColCylinder* v9;
+    tCobNormalObjectGeneric* generic;
+    tColSphere* sphere;
+    tColBox* box;
+    tColCylinder* cylinder;
     tCobMeshObjectMesh* cobMesh;
-    int v11;
-    Vec3* v12;
-    Vec3* v13;
-    int v14;
-    Vec3* v15;
-    Vec3* v16;
+    unsigned int count;
+    Vec3* vertex;
+    Vec3* normal;
     unsigned int i;
-    int v18;
-    tCobMeshChunkElem* v19;
-    tCobMeshChunkElem* v20; 
-    uint16_t v21;
-    int v22;
-    tCobMeshTriangleElem* v23;
-    int v24;
-    BOOL v25;
-    int v26;
-    tCobMeshChunkElem* v27;
-    tCobMeshChunkElem* k;
-    int v29;
-    int v30;
-    tCobOK3* v31;
-    BOOL v32;
-    int v33;
-    unsigned int l;
-    int v35; 
-    unsigned int v36;
-    char* a1;
-    tCobMeshChunkElem* j;
-    unsigned int v39; 
-    tColCollisionObject* v40;
+    tCobMeshChunkElem* chunk;
+    tCobMeshChunkElem* chunkEnd;
+    uint16_t triangleCount;
+    int pointTotal;
+    tCobMeshTriangleElem* triangles;
+    int triangleIndex;
+    tCobMeshChunkElem* proxChunk;
+    tCobMeshChunkElem* proxEnd;
+    tCobOK3* ok3;
+    int boxIndex;
+    unsigned int chunkIndex;
+    int idIndex;
+    unsigned int boxesRead;
+    char* cursor;
+    tCobMeshChunkElem* savedChunkEnd;
+    unsigned int withProximity;
+    unsigned int tagBytes;
     int size;
 
-    a1 = BIG_pc_ReadFileTmp(Offset, &size);
-    v1 = (tColCollisionObject*)MEM_p_Alloc(sizeof(tColCollisionObject));
-    v1->objectType = 0;
-    v1->flags = 0;
-    v1->usageCount = 0;
-    v2 = 0;
-    v1->gameMaterial = NULL;
-    v40 = v1;
-    v1->objectPtrByType = NULL;
-    v3 = LOA_ReadLong(&a1, 0, 1);
-    v1->objectType = LOA_ReadChar(&a1, 0, 1);
-    v1->flags = LOA_ReadChar(&a1, 0, 1) & 0xFE;
-    objType = v1->objectType;
-    if (v1->objectType != 1 && objType != 2 && objType != 3 && objType != 5)
+    cursor = BIG_pc_ReadFileTmp(Offset, &size);
+    cob = (tColCollisionObject*)MEM_p_Alloc(sizeof(tColCollisionObject));
+    cob->objectType = 0;
+    cob->flags = 0;
+    cob->usageCount = 0;
+    vertexIndex = 0;
+    cob->gameMaterial = NULL;
+    cob->objectPtrByType = NULL;
+    materialRef = LOA_ReadLong(&cursor, 0, 1);
+    cob->objectType = LOA_ReadChar(&cursor, 0, 1);
+    cob->flags = LOA_ReadChar(&cursor, 0, 1) & 0xFE;
+    objType = cob->objectType;
+    if (cob->objectType != 1 && objType != 2 && objType != 3 && objType != 5)
         return 0;
-    if (v3 != -1)
+    if (materialRef != -1)
     {
-        LOA_MakeFileRef(v3, &v1->gameMaterial, COL_ul_CallBackLoadGameMaterial, 1);
-        v1->flags |= 1u;
+        LOA_MakeFileRef(materialRef, &cob->gameMaterial, COL_ul_CallBackLoadGameMaterial, 1);
+        cob->flags |= 1u;
     }
-    if (v1->objectType && v1->objectType <= 3u)
+    if (cob->objectType && cob->objectType <= 3u)
     {
-        v6 = (tCobNormalObjectGeneric*)MEM_p_Alloc(sizeof(tCobNormalObjectGeneric));
-        v1->objectPtrByType = (void*)v6;
-        v6->enclosurePtr = 0;
-        v6->gameMaterialElemID = 0;
-        ((tCobNormalObjectGeneric*)(v1->objectPtrByType))->gameMaterialElemID = LOA_ReadLong(&a1, 0, 1);
+        generic = (tCobNormalObjectGeneric*)MEM_p_Alloc(sizeof(tCobNormalObjectGeneric));
+        cob->objectPtrByType = (void*)generic;
+        generic->enclosurePtr = 0;
+        generic->gameMaterialElemID = 0;
+        ((tCobNormalObjectGeneric*)(cob->objectPtrByType))->gameMaterialElemID = LOA_ReadLong(&cursor, 0, 1);
     }
-    switch (v1->objectType)
+    switch (cob->objectType)
     {
     case 1u:
-        ((tCobNormalObjectGeneric*)(v1->objectPtrByType))->enclosurePtr = (void *)MEM_p_Alloc(sizeof(tColBox));
-        v8 = (tColBox*)((tCobNormalObjectGeneric*)(v1->objectPtrByType))->enclosurePtr;
-        LOA_ReadVector(&a1, &v8->pos1, 1);
-        LOA_ReadVector(&a1, &v8->pos2, 1);
+        ((tCobNormalObjectGeneric*)(cob->objectPtrByType))->enclosurePtr = (void *)MEM_p_Alloc(sizeof(tColBox));
+        box = (tColBox*)((tCobNormalObjectGeneric*)(cob->objectPtrByType))->enclosurePtr;
+        LOA_ReadVector(&cursor, &box->pos1, 1);
+        LOA_ReadVector(&cursor, &box->pos2, 1);
         break;
     case 2u:
-        ((tCobNormalObjectGeneric*)(v1->objectPtrByType))->enclosurePtr = (void *)MEM_p_Alloc(sizeof(tColSphere));
-        v7 = (tColSphere*)((tCobNormalObjectGeneric*)(v1->objectPtrByType))->enclosurePtr;
-        LOA_ReadVector(&a1, &v7->center, 1);
-        v7->radius = LOA_ReadFloat(&a1, 0, 1);
+        ((tCobNormalObjectGeneric*)(cob->objectPtrByType))->enclosurePtr = (void *)MEM_p_Alloc(sizeof(tColSphere));
+        sphere = (tColSphere*)((tCobNormalObjectGeneric*)(cob->objectPtrByType))->enclosurePtr;
+        LOA_ReadVector(&cursor, &sphere->center, 1);
+        sphere->radius = LOA_ReadFloat(&cursor, 0, 1);
         break;
     case 3u:
-        ((tCobNormalObjectGeneric*)(v1->objectPtrByType))->enclosurePtr = (void *)MEM_p_Alloc(sizeof(tColCylinder));
-        v9 = (tColCylinder*)((tCobNormalObjectGeneric*)(v1->objectPtrByType))->enclosurePtr;
-        LOA_ReadVector(&a1, &v9->center, 1);
-        v9->height = LOA_ReadFloat(&a1, 0, 1);
-        v9->radius = LOA_ReadFloat(&a1, 0, 1);
+        ((tCobNormalObjectGeneric*)(cob->objectPtrByType))->enclosurePtr = (void *)MEM_p_Alloc(sizeof(tColCylinder));
+        cylinder = (tColCylinder*)((tCobNormalObjectGeneric*)(cob->objectPtrByType))->enclosurePtr;
+        LOA_ReadVector(&cursor, &cylinder->center, 1);
+        cylinder->height = LOA_ReadFloat(&cursor, 0, 1);
+        cylinder->radius = LOA_ReadFloat(&cursor, 0, 1);
         break;
     case 5u:
         cobMesh = (tCobMeshObjectMesh*)MEM_p_Alloc(sizeof(tCobMeshObjectMesh));
-        v1->objectPtrByType = cobMesh;
+        cob->objectPtrByType = cobMesh;
         cobMesh->ok3 = NULL;
-        v11 = LOA_ReadLong(&a1, 0, 1);
-        cobMesh->vertexCount = v11;
-        v12 = (Vec3*)MEM_p_Alloc(sizeof(Vec3) * v11);
-        cobMesh->vertices = v12;
-        v13 = v12;
+        count = LOA_ReadLong(&cursor, 0, 1);
+        cobMesh->vertexCount = count;
+        vertex = (Vec3*)MEM_p_Alloc(sizeof(Vec3) * count);
+        cobMesh->vertices = vertex;
         if (cobMesh->vertexCount)
         {
             do
             {
-                LOA_ReadVector(&a1, v13, 1);
-                ++v2;
-                ++v13;
-            } while ((unsigned int)v2 < cobMesh->vertexCount);
+                LOA_ReadVector(&cursor, vertex, 1);
+                ++vertexIndex;
+                ++vertex;
+            } while ((unsigned int)vertexIndex < cobMesh->vertexCount);
         }
-        v14 = LOA_ReadLong(&a1, 0, 1);
-        cobMesh->faceCount = v14;
-        v15 = (Vec3*)MEM_p_Alloc(sizeof(Vec3) * v14);
-        cobMesh->normals = v15;
-        v16 = v15;
-        for (i = 0; i < cobMesh->faceCount; ++v16)
+        count = LOA_ReadLong(&cursor, 0, 1);
+        cobMesh->faceCount = count;
+        normal = (Vec3*)MEM_p_Alloc(sizeof(Vec3) * count);
+        cobMesh->normals = normal;
+        for (i = 0; i < cobMesh->faceCount; ++i)
         {
-            LOA_ReadVector(&a1, v16, 1);
-            ++i;
+            LOA_ReadVector(&cursor, normal, 1);
+            ++normal;
         }
-        v18 = LOA_ReadLong(&a1, 0, 1);
-        cobMesh->meshChunkElemNum = v18;
-        v19 = (tCobMeshChunkElem*)MEM_p_Alloc(16 * v18);
-        v20 = &v19[cobMesh->meshChunkElemNum];
-        cobMesh->meshChunkElems = v19;
-        for (j = v20; v19 < v20; ++v19)
+        count = LOA_ReadLong(&cursor, 0, 1);
+        cobMesh->meshChunkElemNum = count;
+        chunk = (tCobMeshChunkElem*)MEM_p_Alloc(16 * count);
+        chunkEnd = &chunk[cobMesh->meshChunkElemNum];
+        cobMesh->meshChunkElems = chunk;
+        for (savedChunkEnd = chunkEnd; chunk < chunkEnd; ++chunk)
         {
-            v21 = LOA_ReadShort(&a1, 0, 1);
-            v22 = ColMapPoints;
-            v19->elemNum = v21;
-            ColMapPoints = v21 + v22;
-            v19->designVal = LOA_ReadChar(&a1, 0, 1);
-            v19->flags = (uint8_t)LOA_ReadChar(&a1, 0, 1);
-            v19->gameMaterialElemID = LOA_ReadLong(&a1, 0, 1);
-            if (v19->elemNum)
+            triangleCount = LOA_ReadShort(&cursor, 0, 1);
+            pointTotal = ColMapPoints;
+            chunk->elemNum = triangleCount;
+            ColMapPoints = triangleCount + pointTotal;
+            chunk->designVal = LOA_ReadChar(&cursor, 0, 1);
+            chunk->flags = (uint8_t)LOA_ReadChar(&cursor, 0, 1);
+            chunk->gameMaterialElemID = LOA_ReadLong(&cursor, 0, 1);
+            if (chunk->elemNum)
             {
-                v23 = (tCobMeshTriangleElem*)MEM_p_Alloc(12 * v19->elemNum);
-                v24 = 0;
-                v25 = v19->elemNum == 0;
-                v19->triangleElems = v23;
-                if (!v25)
+                triangles = (tCobMeshTriangleElem*)MEM_p_Alloc(12 * chunk->elemNum);
+                chunk->triangleElems = triangles;
+                for (triangleIndex = 0; triangleIndex < chunk->elemNum; ++triangleIndex)
                 {
-                    v26 = 0;
-                    do
-                    {
-                        v19->triangleElems[v26].v1 = LOA_ReadShort(&a1, 0, 1);
-                        v19->triangleElems[v26].v2 = LOA_ReadShort(&a1, 0, 1);
-                        v19->triangleElems[v26].v3 = LOA_ReadShort(&a1, 0, 1);
-                        ++v24;
-                        ++v26;
-                    } while (v24 < v19->elemNum);
-                    v1 = v40;
+                    chunk->triangleElems[triangleIndex].v1 = LOA_ReadShort(&cursor, 0, 1);
+                    chunk->triangleElems[triangleIndex].v2 = LOA_ReadShort(&cursor, 0, 1);
+                    chunk->triangleElems[triangleIndex].v3 = LOA_ReadShort(&cursor, 0, 1);
                 }
-                v20 = j;
+                chunkEnd = savedChunkEnd;
             }
             else
             {
-                v19->triangleElems = 0;
+                chunk->triangleElems = 0;
             }
         }
-        if (!LOA_gb_SpeedMode || (v39 = 1, BIG_gi_ReadMode != 2))
-            v39 = 0;
-        if ((v1->flags & 0x80u) != 0)
+        if (!LOA_gb_SpeedMode || (withProximity = 1, BIG_gi_ReadMode != 2))
+            withProximity = 0;
+        if ((cob->flags & 0x80u) != 0)
         {
-            if (v39)
+            if (withProximity)
             {
-                v27 = cobMesh->meshChunkElems;
-                j = &v27[cobMesh->meshChunkElemNum];
-                for (k = j; v27 < k; ++v27)
+                proxChunk = cobMesh->meshChunkElems;
+                proxEnd = &proxChunk[cobMesh->meshChunkElemNum];
+                for (; proxChunk < proxEnd; ++proxChunk)
                 {
-                    if (v27->elemNum)
+                    if (proxChunk->elemNum)
                     {
-                        v29 = 0;
-                        if (v27->elemNum)
+                        for (triangleIndex = 0; triangleIndex < proxChunk->elemNum; ++triangleIndex)
                         {
-                            v30 = 0;
-                            do
-                            {
-                                v27->triangleElems[v30].proximity1 = LOA_ReadShort(&a1, 0, 1);
-                                v27->triangleElems[v30].proximity2 = LOA_ReadShort(&a1, 0, 1);
-                                v27->triangleElems[v30].proximity3 = LOA_ReadShort(&a1, 0, 1);
-                                ++v29;
-                                ++v30;
-                            } while (v29 < v27->elemNum);
-                            v1 = v40;
-                            k = j;
+                            proxChunk->triangleElems[triangleIndex].proximity1 = LOA_ReadShort(&cursor, 0, 1);
+                            proxChunk->triangleElems[triangleIndex].proximity2 = LOA_ReadShort(&cursor, 0, 1);
+                            proxChunk->triangleElems[triangleIndex].proximity3 = LOA_ReadShort(&cursor, 0, 1);
                         }
                     }
                 }
             }
         }
-        if ((v1->flags & 0x88) == 0x88 && v39)
+        if ((cob->flags & 0x88) == 0x88 && withProximity)
         {
-            v31 = (tCobOK3*)MEM_p_Alloc(sizeof(tCobOK3));
-            v36 = ((cobMesh->faceCount >> 3) & 0x1FFFFFFC) + 4;
-            cobMesh->ok3 = v31;
-            cobMesh->ok3->faceTagInts = (int*)MEM_p_Alloc(v36);
+            ok3 = (tCobOK3*)MEM_p_Alloc(sizeof(tCobOK3));
+            tagBytes = ((cobMesh->faceCount >> 3) & 0x1FFFFFFC) + 4;
+            cobMesh->ok3 = ok3;
+            cobMesh->ok3->faceTagInts = (int*)MEM_p_Alloc(tagBytes);
             memset(cobMesh->ok3->faceTagInts, 0, 4 * (cobMesh->faceCount >> 5) + 4);
-            cobMesh->ok3->num = LOA_ReadLong(&a1, 0, 1);
+            cobMesh->ok3->num = LOA_ReadLong(&cursor, 0, 1);
             cobMesh->ok3->aaBoxes = (tCobOK3AABBoxElem*)MEM_p_Alloc(sizeof(tCobOK3AABBoxElem) * cobMesh->ok3->num);
-            v32 = cobMesh->ok3->num <= 0;
-            v39 = 0;
-            if (!v32)
+            boxesRead = 0;
+            if (cobMesh->ok3->num > 0)
             {
-                v33 = 0;
+                boxIndex = 0;
                 do
                 {
-                    cobMesh->ok3->aaBoxes[v33].num = LOA_ReadLong(&a1, 0, 1);
-                    LOA_ReadVector(&a1, &cobMesh->ok3->aaBoxes[v33].vec2, 1);
-                    LOA_ReadVector(&a1, &cobMesh->ok3->aaBoxes[v33].vec1, 1);
-                    cobMesh->ok3->aaBoxes[v33].chunkElems = (tCobOK3AABBoxElemChunkElem*)MEM_p_Alloc(sizeof(tCobOK3AABBoxElemChunkElem) * cobMesh->ok3->aaBoxes[v33].num);
-                    for (l = 0; l < cobMesh->ok3->aaBoxes[v33].num; ++l)
+                    cobMesh->ok3->aaBoxes[boxIndex].num = LOA_ReadLong(&cursor, 0, 1);
+                    LOA_ReadVector(&cursor, &cobMesh->ok3->aaBoxes[boxIndex].vec2, 1);
+                    LOA_ReadVector(&cursor, &cobMesh->ok3->aaBoxes[boxIndex].vec1, 1);
+                    cobMesh->ok3->aaBoxes[boxIndex].chunkElems = (tCobOK3AABBoxElemChunkElem*)MEM_p_Alloc(sizeof(tCobOK3AABBoxElemChunkElem) * cobMesh->ok3->aaBoxes[boxIndex].num);
+                    for (chunkIndex = 0; chunkIndex < cobMesh->ok3->aaBoxes[boxIndex].num; ++chunkIndex)
                     {
-                        cobMesh->ok3->aaBoxes[v33].chunkElems[l].triangleChunkID = LOA_ReadShort(&a1, 0, 1);
-                        cobMesh->ok3->aaBoxes[v33].chunkElems[l].num = LOA_ReadShort(&a1, 0, 1);
-                        cobMesh->ok3->aaBoxes[v33].chunkElems[l].triangleChunkElemIDs = (uint16_t*)MEM_p_Alloc(2 * cobMesh->ok3->aaBoxes[v33].chunkElems[l].num);
-                        v35 = 0;
-                        if (cobMesh->ok3->aaBoxes[v33].chunkElems[l].num)
-                        {
-                            do
-                                cobMesh->ok3->aaBoxes[v33].chunkElems[l].triangleChunkElemIDs[v35++] = LOA_ReadShort(&a1, 0, 1);
-                            while (v35 < cobMesh->ok3->aaBoxes[v33].chunkElems[l].num);
-                        }
+                        cobMesh->ok3->aaBoxes[boxIndex].chunkElems[chunkIndex].triangleChunkID = LOA_ReadShort(&cursor, 0, 1);
+                        cobMesh->ok3->aaBoxes[boxIndex].chunkElems[chunkIndex].num = LOA_ReadShort(&cursor, 0, 1);
+                        cobMesh->ok3->aaBoxes[boxIndex].chunkElems[chunkIndex].triangleChunkElemIDs = (uint16_t*)MEM_p_Alloc(2 * cobMesh->ok3->aaBoxes[boxIndex].chunkElems[chunkIndex].num);
+                        for (idIndex = 0; idIndex < cobMesh->ok3->aaBoxes[boxIndex].chunkElems[chunkIndex].num; ++idIndex)
+                            cobMesh->ok3->aaBoxes[boxIndex].chunkElems[chunkIndex].triangleChunkElemIDs[idIndex] = LOA_ReadShort(&cursor, 0, 1);
                     }
-                    ++v33;
-                    v32 = ++v39 < cobMesh->ok3->num;
-                } while (v32);
-                v1 = v40;
+                    ++boxIndex;
+                } while (++boxesRead < cobMesh->ok3->num);
             }
         }
         else
@@ -10630,26 +10488,23 @@ tColCollisionObject* COL_ul_CallBackLoadCob(uint32_t Offset)
     default:
         break;
     }
-    v1->flags &= ~0x80u;
-    v1->usageCount = 0;
-    return v1;
+    cob->flags &= ~0x80u;
+    cob->usageCount = 0;
+    return cob;
 }
 
 struct sColMap* COL_ul_CallBackLoadColMap(uint32_t Offset)
 {
     tColMap* colMap;
-    int v2;
-    tColCollisionObject** v3;
-    tColMap* result;
-    tColCollisionObject** v5;
-    unsigned int v6;
-    tColCollisionObject** v7;
-    tColCollisionObject** i;
-    int v9;
-    char* a1;
+    int cobRef;
+    tColCollisionObject** cobs;
+    tColCollisionObject** cob;
+    tColCollisionObject** cobEnd;
+    unsigned int cobBytes;
+    char* cursor;
     int size;
 
-    a1 = BIG_pc_ReadFileTmp(Offset, &size);
+    cursor = BIG_pc_ReadFileTmp(Offset, &size);
     colMap = (tColMap*)MEM_p_Alloc(sizeof(tColMap));
     colMap->colObjectID = 0;
     colMap->activation = 0;
@@ -10659,2744 +10514,2173 @@ struct sColMap* COL_ul_CallBackLoadColMap(uint32_t Offset)
     colMap->activation = -1;
     if (size == 4)
     {
-        v2 = LOA_ReadLong(&a1, 0, 1);
+        cobRef = LOA_ReadLong(&cursor, 0, 1);
         colMap->colObjectID = 1;
         colMap->activation = -1;
         colMap->b3 = 0;
         colMap->b4 = 0;
-        v3 = (tColCollisionObject**)MEM_p_Alloc(4u);
-        colMap->collisionObjectPtr = v3;
-        LOA_MakeFileRef(v2, v3, COL_ul_CallBackLoadCob, 1);
-        result = colMap;
+        cobs = (tColCollisionObject**)MEM_p_Alloc(4u);
+        colMap->collisionObjectPtr = cobs;
+        LOA_MakeFileRef(cobRef, cobs, COL_ul_CallBackLoadCob, 1);
     }
     else
     {
-        colMap->colObjectID = LOA_ReadChar(&a1, 0, 1);
-        colMap->activation = LOA_ReadChar(&a1, 0, 1);
-        colMap->b3 = LOA_ReadChar(&a1, 0, 1);
-        colMap->b4 = LOA_ReadChar(&a1, 0, 1);
-        v5 = (tColCollisionObject**)MEM_p_Alloc(4 * colMap->colObjectID);
-        v6 = 4 * colMap->colObjectID;
-        colMap->collisionObjectPtr = v5;
-        memset(v5, 0, v6);
-        v7 = colMap->collisionObjectPtr;
-        for (i = &v7[colMap->colObjectID]; v7 < i; ++v7)
+        colMap->colObjectID = LOA_ReadChar(&cursor, 0, 1);
+        colMap->activation = LOA_ReadChar(&cursor, 0, 1);
+        colMap->b3 = LOA_ReadChar(&cursor, 0, 1);
+        colMap->b4 = LOA_ReadChar(&cursor, 0, 1);
+        cobs = (tColCollisionObject**)MEM_p_Alloc(4 * colMap->colObjectID);
+        cobBytes = 4 * colMap->colObjectID;
+        colMap->collisionObjectPtr = cobs;
+        memset(cobs, 0, cobBytes);
+        cob = colMap->collisionObjectPtr;
+        for (cobEnd = &cob[colMap->colObjectID]; cob < cobEnd; ++cob)
         {
-            v9 = LOA_ReadLong(&a1, 0, 1);
-            if (v9 != -1)
-                LOA_MakeFileRef(v9, v7, COL_ul_CallBackLoadCob, 1);
+            cobRef = LOA_ReadLong(&cursor, 0, 1);
+            if (cobRef != -1)
+                LOA_MakeFileRef(cobRef, cob, COL_ul_CallBackLoadCob, 1);
         }
-        result = colMap;
     }
-    return result;
+    return colMap;
 }
 
-struct sGameObjectMain* COL_RayBV(struct tableDescStruct* a1, Vec3* a2, Vec3* a3, float a4, int a5, int a6, int whatToTest, int a8)
+struct sGameObjectMain* COL_RayBV(struct tableDescStruct* table, Vec3* rayOrigin, Vec3* rayDir, float rayDistance, int flagMustHave, int flagMustNothave, int whatToTest, int skipCrossObjects)
 {
-    tableElemStructPF* v8;
-    tableElemStructPF* v9;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
     tGameObjectMain* gao;
-    float a5a;
-    tGameObjectMain* v13;
+    tGameObjectMain* hit;
+    float bestDistance;
 
-    a5a = a4;
-    v8 = a1->firstElemPtr;
-    v9 = ((tableElemStructPF*)(a1->nextElemPtr)) - 1;
-    v13 = 0;
-    if (v8 <= v9)
+    bestDistance = rayDistance;
+    last = ((tableElemStructPF*)(table->nextElemPtr)) - 1;
+    hit = 0;
+    for (elem = table->firstElemPtr; elem <= last; ++elem)
     {
-        while (1)
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (!elem->objectPtr
+            || ((uint8_t)gao & 3) == 1
+            || skipCrossObjects && (gao->flags2 & 0x1000000) != 0
+            || !OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
         {
-            gao = (tGameObjectMain*)v8->objectPtr;
-            if (!v8->objectPtr
-                || ((uint8_t)gao & 3) == 1
-                || a8 && (gao->flags2 & 0x1000000) != 0
-                || !OBJ_b_test_flag(gao, a5, a6, whatToTest))
-            {
-                goto LABEL_15;
-            }
-            if (OBJ_BV_IsSphere(gao->boundingVolume))
-            {
-                if (!COL_RaySphereBV(a2, a3, gao, &a4, a5a) || a4 == -1.0f)
-                    goto LABEL_15;
-                a5a = a4;
-            }
-            else
-            {
-                if (!COL_RayAABBox(a2, a3, gao, &a4, a5a) || a4 == -1.0f)
-                    goto LABEL_15;
-                a5a = a4;
-            }
-            v13 = gao;
-        LABEL_15:
-            if (++v8 > v9)
-                return v13;
+            continue;
+        }
+        if (OBJ_BV_IsSphere(gao->boundingVolume))
+        {
+            if (!COL_RaySphereBV(rayOrigin, rayDir, gao, &rayDistance, bestDistance) || rayDistance == -1.0f)
+                continue;
+        }
+        else
+        {
+            if (!COL_RayAABBox(rayOrigin, rayDir, gao, &rayDistance, bestDistance) || rayDistance == -1.0f)
+                continue;
+        }
+        bestDistance = rayDistance;
+        hit = gao;
+    }
+    return hit;
+}
+
+int COL_Report_CollideType(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
+{
+    tGameObjectExtended* extended;
+    tGameObjectCollMain* coll;
+    tColInstance* instance;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
+
+    if ((reportFilter & 0x10000) != 0)
+    {
+        if (gao && (extended = gao->extended) != 0 && (coll = extended->coll) != 0 && (instance = coll->colInstance) != 0)
+            return (uint16_t)COL_test_flag_sub_436970(instance, 2);
+        return 0;
+    }
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
+    {
+        if ((rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+            && ((reportFilter & 0x2000) != 0 || (rec->flags & 0x3000) == 0))
+        {
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0 && (reportFilter & flags) == reportFilter)
+                return 1;
         }
     }
     return 0;
 }
 
-int COL_Report_CollideType(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+void COL_Report_GetNormal(struct sGameObjectMain* gao, struct sWorld* world, Vec3* outNormal, int reportFilter)
 {
-    tGameObjectExtended* v3;
-    tGameObjectCollMain* v4;
-    tColInstance* v5;
-    int result;
-    tRecordElem* v7;
-    tRecordElem* v8;
-    int v9;
+    int skipZoneReports;
+    int skipSlippery;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
 
-    if ((a3 & 0x10000) != 0)
+    if (!outNormal)
+        return;
+    outNormal->x = 0.0;
+    outNormal->y = 0.0;
+    outNormal->z = 0.0;
+    if (reportFilter < 0)
     {
-        if (a1 && (v3 = a1->extended) != 0 && (v4 = v3->coll) != 0 && (v5 = v4->colInstance) != 0)
-            result = (uint16_t)COL_test_flag_sub_436970(v5, 2);
-        else
-            result = 0;
+        *outNormal = world->records[(uint16_t)reportFilter].normalVec;
+        return;
     }
-    else
+    skipZoneReports = 1;
+    skipSlippery = 0;
+    if ((reportFilter & 0x2000) != 0)
+        skipZoneReports = 0;
+    if ((reportFilter & 0x40000000) != 0)
+        skipSlippery = 1;
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
     {
-        v7 = a2->records;
-        v8 = &a2->records[a2->recordCount];
-        if (a2->records >= v8)
+        if ((!skipZoneReports || (rec->flags & 0x1000) == 0)
+            && (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+            && (!skipZoneReports || (rec->flags & 0x2000) == 0))
         {
-        LABEL_16:
-            result = 0;
-        }
-        else
-        {
-            while (1)
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0
+                && (!skipSlippery || (flags & 0x800) == 0)
+                && (reportFilter & 0xBFFFFFFF & flags) == (reportFilter & 0xBFFFFFFF))
             {
-                if ((v7->collisionInstanceGameObject == a1 || v7->collisionMapGameObject == a1)
-                    && ((a3 & 0x2000) != 0 || (v7->flags & 0x3000) == 0))
-                {
-                    v9 = v7->flags;
-                    if ((v9 & 0x80040000) == 0 && (a3 & v9) == a3)
-                        break;
-                }
-                if (++v7 >= v8)
-                    goto LABEL_16;
-            }
-            result = 1;
-        }
-    }
-    return result;
-}
-
-void COL_Report_GetNormal(struct sGameObjectMain* a1, struct sWorld* a2, Vec3* a3, int a4)
-{
-    int v5;
-    tRecordElem* v6;
-    tRecordElem* v7;
-    int v8;
-    int a3a;
-
-    if (a3)
-    {
-        a3->x = 0.0;
-        a3->y = 0.0;
-        a3->z = 0.0;
-        if (a4 >= 0)
-        {
-            v5 = 1;
-            a3a = 0;
-            if ((a4 & 0x2000) != 0)
-                v5 = 0;
-            if ((a4 & 0x40000000) != 0)
-                a3a = 1;
-            v6 = a2->records;
-            v7 = &a2->records[a2->recordCount];
-            if (a2->records < v7)
-            {
-                while (1)
-                {
-                    if ((!v5 || (v6->flags & 0x1000) == 0)
-                        && (v6->collisionInstanceGameObject == a1 || v6->collisionMapGameObject == a1)
-                        && (!v5 || (v6->flags & 0x2000) == 0))
-                    {
-                        v8 = v6->flags;
-                        if ((v8 & 0x80040000) == 0 && (!a3a || (v8 & 0x800) == 0) && (a4 & 0xBFFFFFFF & v8) == (a4 & 0xBFFFFFFF))
-                            break;
-                    }
-                    if (++v6 >= v7)
-                        return;
-                }
-                if (v6->collisionInstanceGameObject == a1)
-                    *a3 = v6->normalVec;
+                if (rec->collisionInstanceGameObject == gao)
+                    *outNormal = rec->normalVec;
                 else
-                    MATH_VecInvert(a3, &v6->normalVec);
+                    MATH_VecInvert(outNormal, &rec->normalVec);
+                return;
             }
-        }
-        else
-        {
-            *a3 = a2->records[(uint16_t)a4].normalVec;
         }
     }
 }
 
-struct sGameObjectMain* COL_ColMap_RayCast(struct sWorld* a1, struct sGameObjectMain* a2, Vec3* a3, Vec3* a4, float a5, int a6, int a7, int a8, int* a9, int a10, int a11, int a12, int a13, int a14)
+struct sGameObjectMain* COL_ColMap_RayCast(struct sWorld* world, struct sGameObjectMain* excludeGao, Vec3* rayOrigin, Vec3* rayDir, float rayDistance, int flagMustHave, int flagMustNothave, int whatToTest, int* outClearPath, int skipRayCast, int skipCrossable, int skipCamera, int skipFlagX, int useUserCrossable)
 {
-    Vec3* v14;
-    tableElemStructPF* v15;
-    tableElemStructPF* v16;
-    tGameObjectMain* result;
-    tGameObjectMain* v18;
-    tWorld* v19;
-    tColMap* v20;
-    tColCollisionObject** v21;
-    uint8_t v22;
-    int v23;
-    tColCollisionObject* v24;
-    tCobNormalObjectGeneric* v25;
-    tCobGameMaterialElems* v26;
-    uint16_t v27;
-    tCobGameMaterialElems* v28;
-    tColCollisionObject** v29;
-    tColMap* v30;
-    tCobNormalObjectGeneric* v31;
-    tableElemStructPF* v32;
-    uint8_t v33;
-    tableElemStructPF* v34;
-    float a13a;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    tWorld* rayWorld;
+    tColMap* colMap;
+    tColCollisionObject** cobs;
+    tColCollisionObject* cob;
+    tCobNormalObjectGeneric* shape;
+    tCobGameMaterialElems* gameMaterial;
+    uint16_t crossable;
+    uint8_t cobIndex;
+    float bvDistance;
 
-    COL_gst_Ray.skipCrossable = a11;
-    COL_gst_Ray.skipCamera = a12;
-    COL_gst_Ray.useUserCrossable = a14;
-    COL_gst_Ray.skipRayCast = a10;
-    v14 = a3;
-    COL_gst_Ray.direction = a4;
-    COL_gst_Ray.distance = a5;
-    COL_gst_Ray.skipFlagX = a13;
-    COL_gst_Ray.worldSetInColMapRayCast = a1;
-    COL_gst_Ray.sourcePoint = a3;
-    COL_gst_Ray.ignoreColMapRayCastResult = a9;
+    COL_gst_Ray.skipCrossable = skipCrossable;
+    COL_gst_Ray.skipCamera = skipCamera;
+    COL_gst_Ray.useUserCrossable = useUserCrossable;
+    COL_gst_Ray.skipRayCast = skipRayCast;
+    COL_gst_Ray.direction = rayDir;
+    COL_gst_Ray.distance = rayDistance;
+    COL_gst_Ray.skipFlagX = skipFlagX;
+    COL_gst_Ray.worldSetInColMapRayCast = world;
+    COL_gst_Ray.sourcePoint = rayOrigin;
+    COL_gst_Ray.ignoreColMapRayCastResult = outClearPath;
     COL_gst_Ray.gao = 0;
-    COL_gst_Ray.colMapGao = a2;
+    COL_gst_Ray.colMapGao = excludeGao;
     COL_gst_Ray.skipVecsTransformationToGaoSpace = 0;
-    if (a9)
-        *a9 = 1;
-    a1->colCrossObjectNumber = 0;
-    v15 = a1->eot.collMapObjectsTablePF.firstElemPtr;
-    v16 = ((tableElemStructPF*)(a1->eot.collMapObjectsTablePF.nextElemPtr)) - 1;
-    v34 = v15;
-    v32 = v16;
-    if (v15 > v16)
+    if (outClearPath)
+        *outClearPath = 1;
+    world->colCrossObjectNumber = 0;
+    last = ((tableElemStructPF*)(world->eot.collMapObjectsTablePF.nextElemPtr)) - 1;
+    for (elem = world->eot.collMapObjectsTablePF.firstElemPtr; elem <= last; ++elem)
     {
-        result = COL_gst_Ray.gao;
-        COL_gb_UseMinDistance = 0;
-        return result;
-    }
-    while (1)
-    {
-        v18 = (tGameObjectMain*)v15->objectPtr;
-        if (!v15->objectPtr
-            || ((uint8_t)v18 & 3) == 1
-            || (v18->flags & 0x100) == 0
-            || (v18->flags2 & 1) == 0
-            || !OBJ_b_test_flag(v18, a6, a7, a8)
-            || v18 == a2
-            || (!OBJ_BV_IsAABBox(v18->boundingVolume) || !COL_RayAABBox(v14, a4, v18, &a13a, COL_gst_Ray.distance))
-            && (!OBJ_BV_IsSphere(v18->boundingVolume) || !COL_RaySphereBV(v14, a4, v18, &a13a, COL_gst_Ray.distance)))
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (!elem->objectPtr
+            || ((uint8_t)gao & 3) == 1
+            || (gao->flags & 0x100) == 0
+            || (gao->flags2 & 1) == 0
+            || !OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest)
+            || gao == excludeGao
+            || (!OBJ_BV_IsAABBox(gao->boundingVolume) || !COL_RayAABBox(rayOrigin, rayDir, gao, &bvDistance, COL_gst_Ray.distance))
+            && (!OBJ_BV_IsSphere(gao->boundingVolume) || !COL_RaySphereBV(rayOrigin, rayDir, gao, &bvDistance, COL_gst_Ray.distance)))
         {
-            goto LABEL_53;
+            continue;
         }
-        if (COL_gst_Ray.skipRayCast && (v18->flags2 & 0x1000000) != 0)
+        if (COL_gst_Ray.skipRayCast && (gao->flags2 & 0x1000000) != 0)
         {
-            v19 = COL_gst_Ray.worldSetInColMapRayCast;
-            if (COL_gst_Ray.worldSetInColMapRayCast->colCrossObjectNumber == 16)
-            {
-                COL_gst_Ray.worldSetInColMapRayCast->colCrossObjectNumber = 15;
-                v19 = COL_gst_Ray.worldSetInColMapRayCast;
-            }
-            v19->collCrossObjects[v19->colCrossObjectNumber] = v18;
+            rayWorld = COL_gst_Ray.worldSetInColMapRayCast;
+            if (rayWorld->colCrossObjectNumber == 16)
+                rayWorld->colCrossObjectNumber = 15;
+            rayWorld->collCrossObjects[rayWorld->colCrossObjectNumber] = gao;
             ++COL_gst_Ray.worldSetInColMapRayCast->colCrossObjectNumber;
-            goto LABEL_53;
+            continue;
         }
-        if ((v18->flags & 0x100) == 0)
-            goto LABEL_53;
-        v20 = v18->extended->coll->colMap;
-        v21 = v20->collisionObjectPtr;
-        if ((*v21)->objectType != 5)
+        if ((gao->flags & 0x100) == 0)
+            continue;
+        colMap = gao->extended->coll->colMap;
+        cobs = colMap->collisionObjectPtr;
+        if ((*cobs)->objectType != 5)
         {
-            v22 = 0;
-            v33 = 0;
-            if (!v20->colObjectID)
-                goto LABEL_53;
-            while (1)
+            for (cobIndex = 0; cobIndex < colMap->colObjectID; ++cobIndex)
             {
-                v23 = v22;
-                if (((uint8_t)(1 << v22) & v20->activation) != 0)
+                if (((uint8_t)(1 << cobIndex) & colMap->activation) == 0)
+                    continue;
+                cob = colMap->collisionObjectPtr[cobIndex];
+                shape = (tCobNormalObjectGeneric*)cob->objectPtrByType;
+                if (skipCrossable)
                 {
-                    v24 = v20->collisionObjectPtr[v22];
-                    v25 = (tCobNormalObjectGeneric*)v24->objectPtrByType;
-                    v31 = v25;
-                    if (!a11)
-                        goto LABEL_45;
-                    if (!a14)
+                    if (useUserCrossable)
                     {
-                        if (v24->gameMaterial)
-                        {
-                            if (a2 && (a2->flags & 0x200) != 0)
-                                v27 = a2->extended->coll->colInstance->crossable;
-                            else
-                                v27 = 0x589A;
-                            v28 = COL_pst_GMat_Get(v24, 0);
-                            if (v28 && (v27 & v28->flags) != 0)
-                                goto LABEL_51;
-                            v25 = v31;
-                        }
-                    LABEL_45:
-                        v29 = v20->collisionObjectPtr;
-                        switch (v29[v23]->objectType)
-                        {
-                        case 1u:
-                            COL_ColMap_Box_RayCast(v18, v25);
-                            break;
-                        case 2u:
-                            COL_ColMap_Sphere_RayCast(v18, v25);
-                            break;
-                        case 3u:
-                            COL_ColMap_Cylinder_RayCast(v18, v25);
-                            break;
-                        }
-                        goto LABEL_51;
+                        gameMaterial = COL_pst_GMat_Get(cob, 0);
+                        if (gameMaterial && (COL_guw_UserCrossable & gameMaterial->flags) != 0)
+                            continue;
                     }
-                    v26 = COL_pst_GMat_Get(v24, 0);
-                    if (!v26 || (COL_guw_UserCrossable & v26->flags) == 0)
-                        goto LABEL_45;
+                    else if (cob->gameMaterial)
+                    {
+                        if (excludeGao && (excludeGao->flags & 0x200) != 0)
+                            crossable = excludeGao->extended->coll->colInstance->crossable;
+                        else
+                            crossable = 0x589A;
+                        gameMaterial = COL_pst_GMat_Get(cob, 0);
+                        if (gameMaterial && (crossable & gameMaterial->flags) != 0)
+                            continue;
+                    }
                 }
-            LABEL_51:
-                v22 = ++v33;
-                if (v33 >= v20->colObjectID)
+                switch (colMap->collisionObjectPtr[cobIndex]->objectType)
                 {
-                    v16 = v32;
-                    v15 = v34;
-                    goto LABEL_53;
+                case 1u:
+                    COL_ColMap_Box_RayCast(gao, shape);
+                    break;
+                case 2u:
+                    COL_ColMap_Sphere_RayCast(gao, shape);
+                    break;
+                case 3u:
+                    COL_ColMap_Cylinder_RayCast(gao, shape);
+                    break;
                 }
             }
+            continue;
         }
-        if ((v20->activation & 1) != 0)
+        if ((colMap->activation & 1) != 0)
         {
-            v30 = v18->extended->coll->colMap;
-            if (((tCobMeshObjectMesh*)((*v21)->objectPtrByType))->ok3)
-                COL_ColMap_OK3_RayCast(v18, v30);
+            if (((tCobMeshObjectMesh*)((*cobs)->objectPtrByType))->ok3)
+                COL_ColMap_OK3_RayCast(gao, gao->extended->coll->colMap);
             else
-                COL_ColMap_Triangles_RayCast(v18, v30);
+                COL_ColMap_Triangles_RayCast(gao, gao->extended->coll->colMap);
             if (COL_gst_Ray.ignoreColMapRayCastResult && !*COL_gst_Ray.ignoreColMapRayCastResult)
                 return 0;
         }
-    LABEL_53:
-        v34 = ++v15;
-        if (v15 > v16)
-            break;
-        v14 = a3;
     }
-    result = COL_gst_Ray.gao;
     COL_gb_UseMinDistance = 0;
-    return result;
+    return COL_gst_Ray.gao;
 }
 
-struct sGameObjectMain* COL_Report_GetCOBGameObject(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+struct sGameObjectMain* COL_Report_GetCOBGameObject(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
 {
-    int v4;
+    int rank;
     tGameObjectMain* result;
-    tRecordElem* v6;
-    tRecordElem* v7;
-    int v8;
-    BOOL v9;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
+    BOOL skipZoneReports;
 
-    if (a3 >= 0)
+    if (reportFilter < 0)
     {
-        v9 = (a3 & 0x2000) == 0;
-        v6 = a2->records;
-        v7 = &a2->records[a2->recordCount];
-        if (a2->records >= v7)
+        rank = (uint16_t)reportFilter;
+        result = world->records[rank].collisionMapGameObject;
+        if (result == gao)
+            result = world->records[rank].collisionInstanceGameObject;
+        return result;
+    }
+    skipZoneReports = (reportFilter & 0x2000) == 0;
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
+    {
+        if (!skipZoneReports || (rec->flags & 0x3000) == 0)
         {
-        LABEL_15:
-            result = 0;
-        }
-        else
-        {
-            while (1)
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0)
             {
-                if (!v9 || (v6->flags & 0x3000) == 0)
-                {
-                    v8 = v6->flags;
-                    if ((v8 & 0x80040000) == 0)
-                    {
-                        if (v6->collisionInstanceGameObject == a1 && (a3 & v8) == a3 && v6->collisionMapGameObject)
-                            return v6->collisionMapGameObject;
-                        if (v6->collisionMapGameObject == a1 && (a3 & v8) == a3 && v6->collisionInstanceGameObject)
-                            break;
-                    }
-                }
-                if (++v6 >= v7)
-                    goto LABEL_15;
+                if (rec->collisionInstanceGameObject == gao && (reportFilter & flags) == reportFilter && rec->collisionMapGameObject)
+                    return rec->collisionMapGameObject;
+                if (rec->collisionMapGameObject == gao && (reportFilter & flags) == reportFilter && rec->collisionInstanceGameObject)
+                    return rec->collisionInstanceGameObject;
             }
-            result = v6->collisionInstanceGameObject;
         }
     }
-    else
-    {
-        v4 = (uint16_t)a3;
-        result = a2->records[v4].collisionMapGameObject;
-        if (result == a1)
-            result = a2->records[v4].collisionInstanceGameObject;
-    }
-    return result;
+    return 0;
 }
 
-int COL_GameMaterial_GetFlags(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+int COL_GameMaterial_GetFlags(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
 {
-    int result;
-    tCobGameMaterialElems* v4;
-    tCobGameMaterialElems* v5;
-    tRecordElem* v6;
-    tRecordElem* v7;
-    int v8;
-    int* v9;
+    tCobGameMaterialElems* gameMaterial;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
 
-    if (!a2)
+    if (!world)
         return 0;
-    if (a3 == 0xFFFF)
+    if (reportFilter == 0xFFFF)
     {
-        v4 = a2->rayCastCobGmat;
-        if (v4)
-            return v4->flags;
+        gameMaterial = world->rayCastCobGmat;
+        if (gameMaterial)
+            return gameMaterial->flags;
         return 0;
     }
-    if (a3 >= 0)
+    if (reportFilter < 0)
     {
-        v6 = a2->records;
-        v7 = &a2->records[a2->recordCount];
-        if (a2->records >= v7)
-            goto LABEL_19;
-        while (1)
-        {
-            if (((a3 & 0x2000) != 0 || (v6->flags & 0x1000) == 0)
-                && (v6->collisionInstanceGameObject == a1 || v6->collisionMapGameObject == a1)
-                && ((a3 & 0x2000) != 0 || (v6->flags & 0x2000) == 0))
-            {
-                v8 = v6->flags;
-                if ((v8 & 0x80040000) == 0 && (a3 & v8) == a3)
-                    break;
-            }
-            if (++v6 >= v7)
-                goto LABEL_19;
-        }
-        v9 = &v6->gameMaterial->flags;
-        if (v9)
-            result = *v9;
-        else
-            LABEL_19:
-        result = 0;
-    }
-    else
-    {
-        v5 = a2->records[(uint16_t)a3].gameMaterial;
-        if (!v5)
+        gameMaterial = world->records[(uint16_t)reportFilter].gameMaterial;
+        if (!gameMaterial)
             return 0;
-        result = v5->flags;
+        return gameMaterial->flags;
     }
-    return result;
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
+    {
+        if (((reportFilter & 0x2000) != 0 || (rec->flags & 0x1000) == 0)
+            && (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+            && ((reportFilter & 0x2000) != 0 || (rec->flags & 0x2000) == 0))
+        {
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0 && (reportFilter & flags) == reportFilter)
+            {
+                if (rec->gameMaterial)
+                    return rec->gameMaterial->flags;
+                return 0;
+            }
+        }
+    }
+    return 0;
 }
 
-float COL_GameMaterial_GetSlide(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+float COL_GameMaterial_GetSlide(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
 {
-    double result;
-    tCobGameMaterialElems* v4;
-    tCobGameMaterialElems* v5;
-    tRecordElem* v6;
-    tRecordElem* v7;
-    int v8;
+    tCobGameMaterialElems* gameMaterial;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
 
-    if (!a2)
+    if (!world)
         return 0.0f;
-    if (a3 == 0xFFFF)
+    if (reportFilter == 0xFFFF)
     {
-        v4 = a2->rayCastCobGmat;
-        if (v4)
-            return v4->slide;
+        gameMaterial = world->rayCastCobGmat;
+        if (gameMaterial)
+            return gameMaterial->slide;
         return 0.0;
     }
-    if (a3 >= 0)
+    if (reportFilter < 0)
     {
-        v6 = a2->records;
-        v7 = &a2->records[a2->recordCount];
-        if (a2->records >= v7)
-        {
-        LABEL_20:
-            result = 0.0f;
-        }
-        else
-        {
-            while (1)
-            {
-                if (((a3 & 0x2000) != 0 || (v6->flags & 0x1000) == 0)
-                    && (v6->collisionInstanceGameObject == a1 || v6->collisionMapGameObject == a1)
-                    && ((a3 & 0x2000) != 0 || (v6->flags & 0x2000) == 0))
-                {
-                    v8 = v6->flags;
-                    if ((v8 & 0x80040000) == 0 && (a3 & v8) == a3 && v6->gameMaterial)
-                        break;
-                }
-                if (++v6 >= v7)
-                    goto LABEL_20;
-            }
-            result = v6->gameMaterial->slide;
-        }
-    }
-    else
-    {
-        v5 = a2->records[(uint16_t)a3].gameMaterial;
-        if (!v5)
+        gameMaterial = world->records[(uint16_t)reportFilter].gameMaterial;
+        if (!gameMaterial)
             return 0.0;
-        result = v5->slide;
+        return (float)gameMaterial->slide;
     }
-    return (float)result;
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
+    {
+        if (((reportFilter & 0x2000) != 0 || (rec->flags & 0x1000) == 0)
+            && (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+            && ((reportFilter & 0x2000) != 0 || (rec->flags & 0x2000) == 0))
+        {
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0 && (reportFilter & flags) == reportFilter && rec->gameMaterial)
+                return (float)rec->gameMaterial->slide;
+        }
+    }
+    return 0.0f;
 }
 
-float COL_GameMaterial_GetRebound(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+float COL_GameMaterial_GetRebound(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
 {
-    double result;
-    tCobGameMaterialElems* v4;
-    tCobGameMaterialElems* v5;
-    tRecordElem* v6;
-    tRecordElem* v7;
-    int v8;
+    tCobGameMaterialElems* gameMaterial;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
 
-    if (!a2)
+    if (!world)
         return 0.0;
-    if (a3 == 0xFFFF)
+    if (reportFilter == 0xFFFF)
     {
-        v4 = a2->rayCastCobGmat;
-        if (v4)
-            return v4->rebound;
+        gameMaterial = world->rayCastCobGmat;
+        if (gameMaterial)
+            return gameMaterial->rebound;
         return 0.0;
     }
-    if ((int)a3 >= 0)
+    if (reportFilter < 0)
     {
-        v6 = a2->records;
-        v7 = &a2->records[a2->recordCount];
-        if (a2->records >= v7)
-        {
-        LABEL_20:
-            result = 0.0;
-        }
-        else
-        {
-            while (1)
-            {
-                if (((a3 & 0x2000) != 0 || (v6->flags & 0x1000) == 0)
-                    && (v6->collisionInstanceGameObject == a1 || v6->collisionMapGameObject == a1)
-                    && ((a3 & 0x2000) != 0 || (v6->flags & 0x2000) == 0))
-                {
-                    v8 = v6->flags;
-                    if ((v8 & 0x80040000) == 0 && (a3 & v8) == a3 && v6->gameMaterial)
-                        break;
-                }
-                if (++v6 >= v7)
-                    goto LABEL_20;
-            }
-            result = v6->gameMaterial->rebound;
-        }
-    }
-    else
-    {
-        v5 = a2->records[a3].gameMaterial;
-        if (!v5)
+        // preserved: the rank is read without the (uint16_t) narrowing its three siblings use, so a tagged filter indexes far in front of the record array
+        gameMaterial = world->records[reportFilter].gameMaterial;
+        if (!gameMaterial)
             return 0.0;
-        result = v5->rebound;
+        return (float)gameMaterial->rebound;
     }
-    return (float)result;
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
+    {
+        if (((reportFilter & 0x2000) != 0 || (rec->flags & 0x1000) == 0)
+            && (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+            && ((reportFilter & 0x2000) != 0 || (rec->flags & 0x2000) == 0))
+        {
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0 && (reportFilter & flags) == reportFilter && rec->gameMaterial)
+                return (float)rec->gameMaterial->rebound;
+        }
+    }
+    return 0.0;
 }
 
-uint8_t COL_GameMaterial_GetSound(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+uint8_t COL_GameMaterial_GetSound(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
 {
-    uint8_t result;
-    tCobGameMaterialElems* v4;
-    tCobGameMaterialElems* v5;
-    tRecordElem* v6;
-    tRecordElem* v7;
-    int v8;
+    tCobGameMaterialElems* gameMaterial;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
 
-    if (!a2)
+    if (!world)
         return 0;
-    if (a3 == 0xFFFF)
+    if (reportFilter == 0xFFFF)
     {
-        v4 = a2->rayCastCobGmat;
-        if (v4)
-            return v4->sound;
+        gameMaterial = world->rayCastCobGmat;
+        if (gameMaterial)
+            return gameMaterial->sound;
         return 0;
     }
-    if (a3 >= 0)
+    if (reportFilter < 0)
     {
-        v6 = a2->records;
-        v7 = &a2->records[a2->recordCount];
-        if (a2->records >= v7)
-        {
-        LABEL_19:
-            result = 0;
-        }
-        else
-        {
-            while (1)
-            {
-                if (((a3 & 0x2000) != 0 || (v6->flags & 0x1000) == 0)
-                    && v6->collisionInstanceGameObject == a1
-                    && ((a3 & 0x2000) != 0 || (v6->flags & 0x2000) == 0))
-                {
-                    v8 = v6->flags;
-                    if ((v8 & 0x80040000) == 0 && (a3 & v8) == a3 && v6->gameMaterial)
-                        break;
-                }
-                if (++v6 >= v7)
-                    goto LABEL_19;
-            }
-            result = v6->gameMaterial->sound;
-        }
-    }
-    else
-    {
-        v5 = a2->records[(uint16_t)a3].gameMaterial;
-        if (!v5)
+        gameMaterial = world->records[(uint16_t)reportFilter].gameMaterial;
+        if (!gameMaterial)
             return 0;
-        result = v5->sound;
+        return gameMaterial->sound;
     }
-    return result;
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
+    {
+        if (((reportFilter & 0x2000) != 0 || (rec->flags & 0x1000) == 0)
+            && rec->collisionInstanceGameObject == gao
+            && ((reportFilter & 0x2000) != 0 || (rec->flags & 0x2000) == 0))
+        {
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0 && (reportFilter & flags) == reportFilter && rec->gameMaterial)
+                return rec->gameMaterial->sound;
+        }
+    }
+    return 0;
 }
-
 void COL_FindEdgeInFollowDirection(Vec3* hitPoint, Vec3** point1, Vec3** point2, Vec3** point3, Vec3* right, Vec3* normal, int down)
 {
-    Vec3* v7;
-    Vec3* v8;
-    Vec3* v9;
-    Vec3* v10;
-    BOOL v11; 
-    Vec3* v12;
-    Vec3* v13;
-    Vec3* v14;
-    Vec3* v15;
-    Vec3* v16;
-    Vec3* v17;
-    BOOL v18; 
-    Vec3* v19;
+    Vec3* first;
+    Vec3* second;
+    Vec3* third;
+    Vec3* extreme;
+    Vec3* chosen;
+    float side;
+    BOOL behind;
 
+    first = *point1;
+    second = *point2;
+    third = *point3;
     if (down)
     {
-        v14 = *point1;
-        v15 = *point2;
-        if ((*point1)->z > (double)(*point2)->z || (v16 = *point3, v14->z > (double)(*point3)->z))
+        if (first->z > (double)second->z || first->z > (double)third->z)
         {
-            if (v15->z > (double)v14->z || (v16 = *point3, v15->z > (double)(*point3)->z))
-            {
-                v16 = *point3;
-                v17 = *point3;
-            }
+            if (second->z > (double)first->z || second->z > (double)third->z)
+                extreme = third;
             else
-            {
-                v17 = *point2;
-            }
+                extreme = second;
         }
         else
         {
-            v17 = *point1;
-        }
-        v18 = right->z * (v17->z - hitPoint->z) + right->y * (v17->y - hitPoint->y) + (v17->x - hitPoint->x) * right->x <= 0.0f; // dotproduct
-        if (v17 == v15 && right->z * (v17->z - hitPoint->z) + right->y * (v17->y - hitPoint->y) + (v17->x - hitPoint->x) * right->x <= 0.0f
-            || v17 == v16 && right->z * (v17->z - hitPoint->z) + right->y * (v17->y - hitPoint->y) + (v17->x - hitPoint->x) * right->x > 0.0f)
-        {
-            v19 = v16;
-        }
-        else
-        {
-            v19 = *point1;
-        }
-        *point1 = v19;
-        v13 = *point3;
-        if (*point3 != v19 && (v17 == v19 && !v18 || v17 == v13 && v18))
-            goto LABEL_40;
-    LABEL_39:
-        v13 = *point2;
-        goto LABEL_40;
-    }
-    v7 = *point1;
-    v8 = *point2;
-    if ((*point1)->z < (double)(*point2)->z || (v9 = *point3, v7->z < (double)(*point3)->z))
-    {
-        if (v8->z < (double)v7->z || (v9 = *point3, v8->z < (double)(*point3)->z))
-        {
-            v9 = *point3;
-            v10 = *point3;
-        }
-        else
-        {
-            v10 = *point2;
+            extreme = first;
         }
     }
     else
     {
-        v10 = *point1;
+        if (first->z < (double)second->z || first->z < (double)third->z)
+        {
+            if (second->z < (double)first->z || second->z < (double)third->z)
+                extreme = third;
+            else
+                extreme = second;
+        }
+        else
+        {
+            extreme = first;
+        }
     }
-    v11 = right->z * (v10->z - hitPoint->z) + right->y * (v10->y - hitPoint->y) + (v10->x - hitPoint->x) * right->x <= 0.0f;
-    if (v10 == v8 && right->z * (v10->z - hitPoint->z) + right->y * (v10->y - hitPoint->y) + (v10->x - hitPoint->x) * right->x > 0.0f
-        || v10 == v9 && right->z * (v10->z - hitPoint->z) + right->y * (v10->y - hitPoint->y) + (v10->x - hitPoint->x) * right->x <= 0.0f)
+    side = right->z * (extreme->z - hitPoint->z) + right->y * (extreme->y - hitPoint->y)
+        + (extreme->x - hitPoint->x) * right->x; // dotproduct
+    behind = side <= 0.0f;
+    if (down)
     {
-        v12 = v9;
+        if (extreme == second && side <= 0.0f || extreme == third && side > 0.0f)
+            chosen = third;
+        else
+            chosen = first;
+        *point1 = chosen;
+        if (third != chosen && (extreme == chosen && !behind || extreme == third && behind))
+            *point2 = third;
     }
     else
     {
-        v12 = *point1;
+        if (extreme == second && side > 0.0f || extreme == third && side <= 0.0f)
+            chosen = third;
+        else
+            chosen = first;
+        *point1 = chosen;
+        if (third != chosen && (extreme == chosen && behind || extreme == third && !behind))
+            *point2 = third;
     }
-    *point1 = v12;
-    v13 = *point3;
-    if (*point3 == v12)
-        goto LABEL_39;
-    if (v10 == v12 && v11)
-        goto LABEL_40;
-    if (v10 != v13)
-        goto LABEL_39;
-    if (v11)
-    {
-        *point2 = *point2;
-        return;
-    }
-LABEL_40:
-    *point2 = v13;
 }
 
-tCobMeshTriangleElem* COL_GetZConnected(Vec3* a1, Vec3* a2, tCobMeshObjectMesh* a3, tCobMeshChunkElem* a4, tCobMeshTriangleElem* a5)
+tCobMeshTriangleElem* COL_GetZConnected(Vec3* point1, Vec3* point2, tCobMeshObjectMesh* mesh, tCobMeshChunkElem* chunk, tCobMeshTriangleElem* skip)
 {
-    int v6; 
-    tCobMeshTriangleElem* result;
-    tCobMeshTriangleElem* i;
-    Vec3* v9;
-    Vec3* v1;
-    Vec3* v2;
-    Vec3* v3;
-    int v13; 
-    int v14; 
-
-    v6 = a4->elemNum;
-    result = 0;
-    v13 = 0;
-    v14 = v6;
-    if (v6)
-    {
-        for (i = a4->triangleElems; ; ++i)
-        {
-            if (i != a5)
-            {
-                v9 = a3->vertices;
-                v1 = &v9[i->v1];
-                v2 = &v9[i->v2];
-                v3 = &v9[i->v3];
-                if ((a1 == v1 || a1 == v2 || a1 == v3) && (a2 == v1 || a2 == v2 || a2 == v3))
-                    return i;
-                v6 = v14;
-            }
-            if (++v13 >= v6)
-                return 0;
-        }
-    }
-    return result;
-}
-
-tCobMeshTriangleElem* COL_GetPointConnectedTriangleWithMuchHorizontalEdge(Vec3* a1, Vec3* a2, Vec3* a3, tCobMeshObjectMesh* a4, Mtx4x4* a5, tCobMeshChunkElem* a6)
-{
-    tCobMeshChunkElem* v6;
-    tCobMeshTriangleElem* result;
-    tCobMeshTriangleElem* v8;
-    int v9; 
-    Vec3* v10;
-    tCobMeshTriangleElem* v11;
-    Vec3* v12;
-    Vec3* v13;
-    Vec3* v14;
-    double v15;
-    double v16;
-    double v17;
-    long double v18;
-    long double v19;
-    Vec3* v20;
-    Vec3* v21;
-    float v22;
-    Vec3* v23;
-    Vec3* v24;
-    double v25;
-    double v26;
-    double v27;
-    long double v28;
-    long double v29;
-    Vec3* v30;
-    float v31;
-    Vec3* v32;
-    float v33;
-    double v34;
-    double v35;
-    double v36;
-    long double v37;
-    long double v38;
-    Vec3* v39;
-    float v40;
-    Vec3* v41;
-    float v42;
-    float v44;
-    tCobMeshTriangleElem* v45;
-    float v46;
-    float v47;
-    Vec3* src;
-    float srca;
+    tCobMeshTriangleElem* tri;
+    Vec3* vertices;
+    Vec3* corner1;
+    Vec3* corner2;
+    Vec3* corner3;
     int i;
-    int v51;
-    float v52;
-    float v53;
-    float v54;
-    float v55;
-    float v56;
-    float v57;
-    Vec3 dest;
-    Vec3 v59; 
-    Vec3 v60; 
 
-    v6 = a6;
-    result = 0;
-    v45 = 0;
-    v44 = 100000.0f;
-    v51 = 0;
-    if (a6->elemNum)
+    tri = chunk->triangleElems;
+    for (i = 0; i < chunk->elemNum; ++i)
     {
-        for (i = 0; ; ++i)
+        if (tri != skip)
         {
-            v8 = v6->triangleElems;
-            v9 = v8[i].v1;
-            v10 = a4->vertices;
-            v11 = &v8[i];
-            v12 = &v10[v9];
-            v13 = &v10[v11->v2];
-            v14 = &v10[v11->v3];
-            src = v14;
-            if (a1 == v12 || a1 == v13 || a1 == v14)
+            vertices = mesh->vertices;
+            corner1 = &vertices[tri->v1];
+            corner2 = &vertices[tri->v2];
+            corner3 = &vertices[tri->v3];
+            if ((point1 == corner1 || point1 == corner2 || point1 == corner3)
+                && (point2 == corner1 || point2 == corner2 || point2 == corner3))
             {
-                MATH_TransformVertexNoScale(&dest, a5, v12);
-                MATH_TransformVertexNoScale(&v60, a5, v13);
-                MATH_TransformVertexNoScale(&v59, a5, src);
-                if (a1 != v12 && a1 != v13)
-                    goto LABEL_15;
-                v15 = dest.x - v60.x;
-                v16 = dest.y - v60.y;
-                v17 = dest.z - v60.z;
-                v55 = (float)v17;
-                v18 = 1.0 / sqrt(v17 * v55 + v16 * v16 + v15 * v15);
-                v46 = (float)v18;
-                v52 = (float)(v18 * v15);
-                v19 = fabs(v55 * v46 * MATH_gst_BaseVectorK.z + v16 * v46 * MATH_gst_BaseVectorK.y + MATH_gst_BaseVectorK.x
-                    * v52);
-                if (v19 < v44)
-                {
-                    v44 = (float)v19;
-                    v45 = v11;
-                    v20 = &dest;
-                    if (a1 != v12)
-                        v20 = &v60;
-                    v21 = a2;
-                    a2->x = v20->x;
-                    v22 = v20->y;
-                    a2->z = v20->z;
-                    a2->y = v22;
-                    v23 = &v60;
-                    if (a1 != v12)
-                        v23 = &dest;
-                    v24 = a3;
-                    *a3 = *v23;
-                    if (fabs(v44) < 0.001)
-                        return v45;
-                }
-                else
-                {
-                LABEL_15:
-                    v21 = a2;
-                    v24 = a3;
-                }
-                if (a1 == v12 || a1 == src)
-                {
-                    v25 = dest.x - v59.x;
-                    v26 = dest.y - v59.y;
-                    v27 = dest.z - v59.z;
-                    v56 = (float)v27;
-                    v28 = 1.0 / sqrt(v27 * v56 + v26 * v26 + v25 * v25);
-                    v47 = (float)v28;
-                    v53 = (float)(v28 * v25);
-                    v29 = fabs(v56 * v47 * MATH_gst_BaseVectorK.z + v26 * v47 * MATH_gst_BaseVectorK.y + MATH_gst_BaseVectorK.x
-                        * v53);
-                    if (v29 < v44)
-                    {
-                        v44 = (float)v29;
-                        v45 = v11;
-                        v30 = &dest;
-                        if (a1 != v12)
-                            v30 = &v59;
-                        v21->x = v30->x;
-                        v31 = v30->y;
-                        v21->z = v30->z;
-                        v21->y = v31;
-                        v32 = &v59;
-                        if (a1 != v12)
-                            v32 = &dest;
-                        v24 = a3;
-                        a3->x = v32->x;
-                        v33 = v32->y;
-                        a3->z = v32->z;
-                        a3->y = v33;
-                        if (fabs(v44) < 0.001)
-                            return v45;
-                    }
-                }
-                if (a1 == v13 || a1 == src)
-                {
-                    v34 = v60.x - v59.x;
-                    v35 = v60.y - v59.y;
-                    v36 = v60.z - v59.z;
-                    v57 = (float)v36;
-                    v37 = 1.0 / sqrt(v36 * v57 + v35 * v35 + v34 * v34);
-                    srca = (float)v37;
-                    v54 = (float)(v37 * v34);
-                    v38 = fabs(v57 * srca * MATH_gst_BaseVectorK.z + v35 * srca * MATH_gst_BaseVectorK.y  + MATH_gst_BaseVectorK.x * v54);
-                    if (v38 < v44)
-                    {
-                        v44 = (float)v38;
-                        v45 = v11;
-                        v39 = &v60;
-                        if (a1 != v13)
-                            v39 = &v59;
-                        v21->x = v39->x;
-                        v40 = v39->y;
-                        v21->z = v39->z;
-                        v21->y = v40;
-                        v41 = &v59;
-                        if (a1 != v13)
-                            v41 = &v60;
-                        v24->x = v41->x;
-                        v42 = v41->y;
-                        v24->z = v41->z;
-                        v24->y = v42;
-                        if (fabs(v44) < 0.001)
-                            return v45;
-                    }
-                }
+                return tri;
             }
-            v6 = a6;
-            if (++v51 >= a6->elemNum)
-                return v45;
+        }
+        ++tri;
+    }
+    return 0;
+}
+
+static int COL_l_TakeMoreHorizontalEdge(Vec3* edgeFrom, Vec3* edgeTo, int fromIsShared, float* best, Vec3* outShared, Vec3* outOther)
+{
+    double deltaX;
+    double deltaY;
+    double deltaZ;
+    float deltaZf;
+    long double invLength;
+    float invLengthf;
+    float unitX;
+    long double verticality;
+
+    deltaX = edgeFrom->x - edgeTo->x;
+    deltaY = edgeFrom->y - edgeTo->y;
+    deltaZ = edgeFrom->z - edgeTo->z;
+    deltaZf = (float)deltaZ;
+    invLength = 1.0 / sqrt(deltaZ * deltaZf + deltaY * deltaY + deltaX * deltaX);
+    invLengthf = (float)invLength;
+    unitX = (float)(invLength * deltaX);
+    verticality = fabs(deltaZf * invLengthf * MATH_gst_BaseVectorK.z
+        + deltaY * invLengthf * MATH_gst_BaseVectorK.y
+        + MATH_gst_BaseVectorK.x * unitX);
+    if (verticality < *best)
+    {
+        *best = (float)verticality;
+        if (fromIsShared)
+        {
+            *outShared = *edgeFrom;
+            *outOther = *edgeTo;
+        }
+        else
+        {
+            *outShared = *edgeTo;
+            *outOther = *edgeFrom;
+        }
+        return 1;
+    }
+    return 0;
+}
+
+tCobMeshTriangleElem* COL_GetPointConnectedTriangleWithMuchHorizontalEdge(Vec3* sharedPoint, Vec3* outShared, Vec3* outOther, tCobMeshObjectMesh* mesh, Mtx4x4* mtx, tCobMeshChunkElem* chunk)
+{
+    tCobMeshTriangleElem* tri;
+    tCobMeshTriangleElem* bestTri;
+    Vec3* vertices;
+    Vec3* corner1;
+    Vec3* corner2;
+    Vec3* corner3;
+    float best;
+    int i;
+    Vec3 world1;
+    Vec3 world2;
+    Vec3 world3;
+
+    bestTri = 0;
+    best = 100000.0f;
+    for (i = 0; i < chunk->elemNum; ++i)
+    {
+        tri = &chunk->triangleElems[i];
+        vertices = mesh->vertices;
+        corner1 = &vertices[tri->v1];
+        corner2 = &vertices[tri->v2];
+        corner3 = &vertices[tri->v3];
+        if (sharedPoint != corner1 && sharedPoint != corner2 && sharedPoint != corner3)
+            continue;
+        MATH_TransformVertexNoScale(&world1, mtx, corner1);
+        MATH_TransformVertexNoScale(&world2, mtx, corner2);
+        MATH_TransformVertexNoScale(&world3, mtx, corner3);
+        if (sharedPoint == corner1 || sharedPoint == corner2)
+        {
+            if (COL_l_TakeMoreHorizontalEdge(&world1, &world2, sharedPoint == corner1, &best, outShared, outOther))
+            {
+                bestTri = tri;
+                if (fabs(best) < 0.001)
+                    return bestTri;
+            }
+        }
+        if (sharedPoint == corner1 || sharedPoint == corner3)
+        {
+            if (COL_l_TakeMoreHorizontalEdge(&world1, &world3, sharedPoint == corner1, &best, outShared, outOther))
+            {
+                bestTri = tri;
+                if (fabs(best) < 0.001)
+                    return bestTri;
+            }
+        }
+        if (sharedPoint == corner2 || sharedPoint == corner3)
+        {
+            if (COL_l_TakeMoreHorizontalEdge(&world2, &world3, sharedPoint == corner2, &best, outShared, outOther))
+            {
+                bestTri = tri;
+                if (fabs(best) < 0.001)
+                    return bestTri;
+            }
         }
     }
-    return result;
+    return bestTri;
 }
 
 // TODO FIXME átnézni, fõleg a &vec local változókat
-void COL_ComputeJumpPoint(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a5)
+void COL_ComputeJumpPoint(struct sGameObjectMain* gao, Vec3* outPoint, float margin, int down, int useLastRayHit)
 {
-    Vec3* v5;
-    tWorld* v6;
-    tWorld* v7;
-    int idx;
-    uint16_t rayCastTriangleChunkID;
-    tGameObjectMain* rayCastGao;
-    tRecordElem* v11;
-    tRecordElem* v12;
-    int v13;
-    int v14;
-    tGameObjectExtended* v15;
-    tGameObjectCollMain* v16;
-    tColMap* v17;
-    tColCollisionObject* v18;
-    tCobMeshObjectMesh* v19;
-    int TCHid;
-    tCobMeshTriangleElem* v21;
-    tCobMeshTriangleElem* i;
-    Mtx4x4* v23;
-    Mtx4x4* v24;
-    Mtx4x4* v25;
-    Vec3* v26;
-    double v27;
-    double v31;
-    double v32;
-    Vec3* v33;
-    int v34; 
-    Vec3* v35;
-    Mtx4x4* v36;
-    Mtx4x4* v37;
-    double v38; 
-    double v39; 
-    double v40; 
-    long double v41;
-    double v42;
-    uint8_t v43;
-    BOOL v44;
-    BOOL v45;
-    Mtx4x4* v46;
-    long double v47;
-    Vec3* v48;
-    Vec3* v49;
-    Vec3* v50;
-    Vec3* v51;
-    tWorld* v52;
-    Vec3* v53;
-    Vec3* v54;
-    Vec3* v55;
-    Vec3* v56;
-    tCobMeshChunkElem* v57;
-    char v58;
-    Vec3* tobbertekevanMEgnezni;
-    Vec3* v2; 
-    int v61; 
-    float v62;
-    tWorld* v63 = NULL; // TODO FIXME: game doesn't set it to anything, should chekc it. Game calls this function with a5 being set to true, so this shouldn1t happen.
-    Vec3* a4a;
-    tCobMeshTriangleElem* v65; 
-    Vec3 dest; 
-    Vec3 a1a;
-    Vec3 a2a;
-    Vec3 a5a;
-    Vec3 v70;
-    Vec3 a6; 
-    Vec3 v72;
-    Vec3 a3a;
-    float tobbertekevanMEgneznia;
-    float v65a;
-    float v2a;
+    tWorld* world;
+    int elemIndex;
+    uint16_t chunkID;
+    tGameObjectMain* hitGao;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
+    tGameObjectExtended* extended;
+    tGameObjectCollMain* coll;
+    tColMap* colMap;
+    tColCollisionObject* cob;
+    tCobMeshObjectMesh* mesh;
+    tCobMeshTriangleElem* tri;
+    tCobMeshTriangleElem* neighbour;
+    tCobMeshTriangleElem* normalTri;
+    Mtx4x4* mtx;
+    Vec3* chosenA;
+    Vec3* vertices;
+    Vec3* edgeA;
+    Vec3* edgeB;
+    Vec3* corner1;
+    Vec3* corner2;
+    Vec3* corner3;
+    tCobMeshChunkElem* chunk;
+    double along;
+    double offsetZ;
+    double unitZ;
+    double deltaX;
+    double deltaY;
+    double deltaZ;
+    long double invLength;
+    long double borderLength;
+    uint8_t step;
+    BOOL lower;
+    BOOL equal;
+    int sharedIndex;
+    int otherIndex;
+    int walk;
+    float twiceMargin;
+    tWorld* hitWorld = NULL; // TODO FIXME: game doesn't set it to anything, should chekc it. Game calls this function with a5 being set to true, so this shouldn1t happen.
+    Vec3* worldC;
+    float edgeLength;
+    float offsetX;
+    float offsetY;
+    float invLengthf;
+    float borderFactor;
+    Vec3 edgeVec;
+    Vec3 world1;
+    Vec3 world2;
+    Vec3 world3;
+    Vec3 right;
+    Vec3 normal;
+    Vec3 toPoint;
+    Vec3 side;
+    Vec3* worldA;
+    Vec3* worldB;
 
-    v5 = a2;
-    *a2 = MATH_gst_NulVector;
-    v6 = WOR_gpst_CurrentWorld;
+    *outPoint = MATH_gst_NulVector;
+    world = WOR_gpst_CurrentWorld;
     if (!WOR_gpst_CurrentWorld)
         return;
-    if (a5)
+    if (useLastRayHit)
     {
-        v7 = WOR_gpst_CurrentWorld;
-        a2->x = WOR_gpst_CurrentWorld->colRayHitPos.x;
-        a2->y = v6->colRayHitPos.y;
-        a2->z = v6->colRayHitPos.z;
-        idx = v6->rayCastTriangleChunkElemID;
-        rayCastTriangleChunkID = v7->rayCastTriangleChunkID;
-        rayCastGao = v7->rayCastGao;
-        v63 = v7;
+        outPoint->x = world->colRayHitPos.x;
+        outPoint->y = world->colRayHitPos.y;
+        outPoint->z = world->colRayHitPos.z;
+        elemIndex = world->rayCastTriangleChunkElemID;
+        chunkID = world->rayCastTriangleChunkID;
+        hitGao = world->rayCastGao;
+        hitWorld = world;
     }
     else
     {
-        v11 = WOR_gpst_CurrentWorld->records;
-        v12 = &WOR_gpst_CurrentWorld->records[WOR_gpst_CurrentWorld->recordCount];
-        if (WOR_gpst_CurrentWorld->records < v12)
+        rec = world->records;
+        end = &world->records[world->recordCount];
+        if (rec < end)
         {
             do
             {
-                if (v11->collisionInstanceGameObject == a1)
+                if (rec->collisionInstanceGameObject == gao)
                 {
-                    v13 = v11->flags;
-                    if ((v13 & 0x80u) != 0 && (v13 & 0xF) != 0)
+                    flags = rec->flags;
+                    if ((flags & 0x80u) != 0 && (flags & 0xF) != 0)
                         break;
                 }
-                ++v11;
-            } while (v11 < v12);
+                ++rec;
+            } while (rec < end);
         }
-        v14 = v11->flags;
-        if ((v14 & 0x80u) == 0 || (v14 & 0xF) == 0)
+        // preserved: with no matching record the cursor is one past the end and this reads past it
+        flags = rec->flags;
+        if ((flags & 0x80u) == 0 || (flags & 0xF) == 0)
             return;
-        *a2 = v11->collidedPoint;
-        idx = v11->triangleChunkElemID;
-        rayCastTriangleChunkID = v11->triangleChunkID;
-        rayCastGao = v11->collisionMapGameObject;
+        *outPoint = rec->collidedPoint;
+        elemIndex = rec->triangleChunkElemID;
+        chunkID = rec->triangleChunkID;
+        hitGao = rec->collisionMapGameObject;
     }
-    if (!rayCastGao)
+    if (!hitGao)
         return;
-    if ((rayCastGao->flags & 0x100) == 0)
+    if ((hitGao->flags & 0x100) == 0)
         return;
-    v15 = rayCastGao->extended;
-    if (!v15)
+    extended = hitGao->extended;
+    if (!extended)
         return;
-    v16 = v15->coll;
-    if (!v16)
+    coll = extended->coll;
+    if (!coll)
         return;
-    v17 = v16->colMap;
-    if (!v17)
+    colMap = coll->colMap;
+    if (!colMap)
         return;
-    v18 = *v17->collisionObjectPtr;
-    if (!v18 || v18->objectType != 5)
+    cob = *colMap->collisionObjectPtr;
+    if (!cob || cob->objectType != 5)
         return;
-    v19 = (tCobMeshObjectMesh*)(v18->objectPtrByType);
-    TCHid = rayCastTriangleChunkID;
-    v21 = v19->meshChunkElems[TCHid].triangleElems;
-    v62 = a3 + a3;
-    v61 = TCHid;
-    i = &v21[idx];
-    v58 = 0;
-    a4a = &v70;
-    while (2)
+    mesh = (tCobMeshObjectMesh*)(cob->objectPtrByType);
+    twiceMargin = margin + margin;
+    tri = &mesh->meshChunkElems[chunkID].triangleElems[elemIndex];
+    walk = 0;
+    for (;;)
     {
-        v53 = &v19->vertices[i->v1];
-        v23 = (Mtx4x4*)OBJ_pst_GetAbsoluteMatrix(rayCastGao);
-        MATH_TransformVertexNoScale(&a1a, v23, v53);
-        v54 = &v19->vertices[i->v2];
-        v24 = (Mtx4x4*)OBJ_pst_GetAbsoluteMatrix(rayCastGao);
-        MATH_TransformVertexNoScale(&a2a, v24, v54);
-        v55 = &v19->vertices[i->v3];
-        v25 = (Mtx4x4*)OBJ_pst_GetAbsoluteMatrix(rayCastGao);
-        MATH_TransformVertexNoScale(&v70, v25, v55);
-        tobbertekevanMEgnezni = &a1a;
-        v2 = &a2a;
-        MATH_SubstractVec(&dest, &a2a, &a1a);
-        MATH_SubstractVec(&a3a, &v70, &a1a);
-        MATH_CrossProduct(&a6, &dest, &a3a);
-        MATH_NormalizeEqualVector(&a6);
-        MATH_CrossProduct(&a5a, &MATH_gst_BaseVectorK, &a6);
-        COL_FindEdgeInFollowDirection(v5, &tobbertekevanMEgnezni, &v2, &a4a, &a5a, &a6, a4);
-        v26 = tobbertekevanMEgnezni;
-        MATH_SubstractVec(&dest, v2, tobbertekevanMEgnezni);
-        tobbertekevanMEgneznia = MATH_DistanceOfTwoPoints(v26, v2);
-        MATH_SubstractVec(&v72, v26, a2);
-        v27 = -(a5a.z * v72.z + a5a.y * v72.y + a5a.x * v72.x) / (dest.z * a5a.z + dest.y * a5a.y + dest.x * a5a.x);
-        if (tobbertekevanMEgneznia <= (double)v62)
+        MATH_TransformVertexNoScale(&world1, OBJ_pst_GetAbsoluteMatrix(hitGao), &mesh->vertices[tri->v1]);
+        MATH_TransformVertexNoScale(&world2, OBJ_pst_GetAbsoluteMatrix(hitGao), &mesh->vertices[tri->v2]);
+        MATH_TransformVertexNoScale(&world3, OBJ_pst_GetAbsoluteMatrix(hitGao), &mesh->vertices[tri->v3]);
+        worldA = &world1;
+        worldB = &world2;
+        worldC = &world3;
+        MATH_SubstractVec(&edgeVec, &world2, &world1);
+        MATH_SubstractVec(&side, &world3, &world1);
+        MATH_CrossProduct(&normal, &edgeVec, &side);
+        MATH_NormalizeEqualVector(&normal);
+        MATH_CrossProduct(&right, &MATH_gst_BaseVectorK, &normal);
+        COL_FindEdgeInFollowDirection(outPoint, &worldA, &worldB, &worldC, &right, &normal, down);
+        chosenA = worldA;
+        MATH_SubstractVec(&edgeVec, worldB, worldA);
+        edgeLength = MATH_DistanceOfTwoPoints(chosenA, worldB);
+        MATH_SubstractVec(&toPoint, chosenA, outPoint);
+        along = -(right.z * toPoint.z + right.y * toPoint.y + right.x * toPoint.x)
+            / (edgeVec.z * right.z + edgeVec.y * right.y + edgeVec.x * right.x);
+        if (edgeLength <= (double)twiceMargin)
         {
-            v27 = tobbertekevanMEgneznia * 0.5;
+            along = edgeLength * 0.5;
         }
-        else if (tobbertekevanMEgneznia * v27 < a3 || (1.0 - v27) * tobbertekevanMEgneznia < a3)
+        else if (edgeLength * along < margin || (1.0 - along) * edgeLength < margin)
         {
-            v27 = a3 / tobbertekevanMEgneznia;
-            if (tobbertekevanMEgneznia > v62)
-                v27 = 1.0 - v27;
+            along = margin / edgeLength;
+            if (edgeLength > twiceMargin)
+                along = 1.0 - along;
         }
-        tobbertekevanMEgneznia = (float)(dest.x * v27);
-        a2->x =  tobbertekevanMEgneznia;
-        v65a = (float)(dest.y * v27);
-        a2->y = v65a;
-        v31 = v27 * dest.z;
-        a2->z = (float)v31;
-        a2->x = tobbertekevanMEgneznia + v26->x;
-        v32 = v65a;
-        v65 = i;
-        a2->y = (float)(v32 + v26->y);
-        a2->z = (float)(v31 + v26->z);
-        v33 = v19->vertices;
-        if (&v70 == v26)
-            v34 = i->v3;
+        offsetX = (float)(edgeVec.x * along);
+        outPoint->x = offsetX;
+        offsetY = (float)(edgeVec.y * along);
+        outPoint->y = offsetY;
+        offsetZ = along * edgeVec.z;
+        outPoint->z = (float)offsetZ;
+        outPoint->x = offsetX + chosenA->x;
+        normalTri = tri;
+        outPoint->y = (float)(offsetY + chosenA->y);
+        outPoint->z = (float)(offsetZ + chosenA->z);
+        vertices = mesh->vertices;
+        if (&world3 == chosenA)
+            sharedIndex = tri->v3;
         else
-            v34 = i->v1;
-        tobbertekevanMEgnezni = &v33[v34];
-        if (&v70 == v2)
-            v35 = &v33[i->v3];
+            sharedIndex = tri->v1;
+        edgeA = &vertices[sharedIndex];
+        if (&world3 == worldB)
+            otherIndex = tri->v3;
         else
-            v35 = &v33[i->v2];
-        for (i = COL_GetZConnected(tobbertekevanMEgnezni, v35, v19, &v19->meshChunkElems[v61], i);
-            ;
-            i = 0)
+            otherIndex = tri->v2;
+        edgeB = &vertices[otherIndex];
+        neighbour = COL_GetZConnected(edgeA, edgeB, mesh, &mesh->meshChunkElems[chunkID], tri);
+        for (;;)
         {
-            if (!i)
+            if (!neighbour)
             {
-                v56 = tobbertekevanMEgnezni;
-                v36 = (Mtx4x4*)OBJ_pst_GetAbsoluteMatrix(rayCastGao);
-                MATH_TransformVertexNoScale(&a1a, v36, v56);
-                v37 = (Mtx4x4*)OBJ_pst_GetAbsoluteMatrix(rayCastGao);
-                MATH_TransformVertexNoScale(&a2a, v37, v35);
-                v38 = a1a.x - a2a.x;
-                v39 = a1a.y - a2a.y;
-                v40 = a1a.z - a2a.z;
-                dest.z = (float)v40;
-                v41 = 1.0 / sqrt(v40 * dest.z + v39 * v39 + v38 * v38);
-                v2a = (float)v41;
-                dest.x = (float)(v41 * v38);
-                dest.y = (float)(v39 * v2a);
-                v42 = dest.z * v2a;
-                dest.z = (float)v42;
-                if (fabs(v42 * MATH_gst_BaseVectorK.z + dest.y * MATH_gst_BaseVectorK.y + dest.x * MATH_gst_BaseVectorK.x) > gcjpUnkFloatflt_968524)
+                MATH_TransformVertexNoScale(&world1, OBJ_pst_GetAbsoluteMatrix(hitGao), edgeA);
+                MATH_TransformVertexNoScale(&world2, OBJ_pst_GetAbsoluteMatrix(hitGao), edgeB);
+                deltaX = world1.x - world2.x;
+                deltaY = world1.y - world2.y;
+                deltaZ = world1.z - world2.z;
+                edgeVec.z = (float)deltaZ;
+                invLength = 1.0 / sqrt(deltaZ * edgeVec.z + deltaY * deltaY + deltaX * deltaX);
+                invLengthf = (float)invLength;
+                edgeVec.x = (float)(invLength * deltaX);
+                edgeVec.y = (float)(deltaY * invLengthf);
+                unitZ = edgeVec.z * invLengthf;
+                edgeVec.z = (float)unitZ;
+                if (fabs(unitZ * MATH_gst_BaseVectorK.z + edgeVec.y * MATH_gst_BaseVectorK.y + edgeVec.x * MATH_gst_BaseVectorK.x) > gcjpUnkFloatflt_968524)
                 {
-                    v44 = a1a.z < (double)a2a.z;
-                    v45 = a1a.z == a2a.z;
-                    if (a4)
+                    lower = world1.z < (double)world2.z;
+                    equal = world1.z == world2.z;
+                    if (down)
                     {
-                        if (!v44 && !v45)
-                            goto LABEL_44;
+                        if (!lower && !equal)
+                            edgeA = edgeB;
                     }
-                    else if (v44 || v45)
+                    else if (lower || equal)
                     {
-                    LABEL_44:
-                        tobbertekevanMEgnezni = v35;
-                        goto LABEL_45;
+                        edgeA = edgeB;
                     }
-                LABEL_45:
-                    v57 = &(v19->meshChunkElems[v61]);
-                    v46 = OBJ_pst_GetAbsoluteMatrix(rayCastGao);
-                    COL_GetPointConnectedTriangleWithMuchHorizontalEdge(tobbertekevanMEgnezni, &a1a, &a2a, v19, v46, v57);
-                    dest.x = a2a.x - a1a.x;
-                    dest.y = a2a.y - a1a.y;
-                    dest.z = a2a.z - a1a.z;
-                    v47 = MATH_DistanceOfTwoPoints(&a2a, &a1a);
-                    if (v47 <= v62)
-                        v62 = (float)(v47 * 0.5);
+                    chunk = &mesh->meshChunkElems[chunkID];
+                    mtx = OBJ_pst_GetAbsoluteMatrix(hitGao);
+                    COL_GetPointConnectedTriangleWithMuchHorizontalEdge(edgeA, &world1, &world2, mesh, mtx, chunk);
+                    edgeVec.x = world2.x - world1.x;
+                    edgeVec.y = world2.y - world1.y;
+                    edgeVec.z = world2.z - world1.z;
+                    borderLength = MATH_DistanceOfTwoPoints(&world2, &world1);
+                    if (borderLength <= twiceMargin)
+                        borderFactor = (float)(borderLength * 0.5);
                     else
-                        v62 = (float)(a3 / v47);
-                    MATH_VecMultScalar(a2, &dest, v62);
-                    MATH_VecAddVecWithoutBuffer(a2, &a1a);
-                    goto LABEL_49;
+                        borderFactor = (float)(margin / borderLength);
+                    MATH_VecMultScalar(outPoint, &edgeVec, borderFactor);
+                    MATH_VecAddVecWithoutBuffer(outPoint, &world1);
+                    break;
                 }
             }
-            v43 = ++v58;
-            if (v58 != 14)
+            step = ++walk;
+            if (walk != 14)
                 break;
+            neighbour = 0;
         }
-        if (!i)
+        if (!neighbour)
         {
-        LABEL_49:
-            v48 = v19->vertices;
-            v49 = &v48[v65->v1];
-            v50 = &v48[v65->v2];
-            v51 = &v48[v65->v3];
-            MATH_SubstractVec(&a6, v50, v49);
-            MATH_SubstractVec(&a3a, v51, v49);
-            MATH_CrossProduct(&v72, &a6, &a3a);
-            MATH_NormalizeEqualVector(&v72);
-            MATH_TransformVector(&(v63->rayCastNormalVec), rayCastGao->matrices, &v72);
+            vertices = mesh->vertices;
+            corner1 = &vertices[normalTri->v1];
+            corner2 = &vertices[normalTri->v2];
+            corner3 = &vertices[normalTri->v3];
+            MATH_SubstractVec(&normal, corner2, corner1);
+            MATH_SubstractVec(&side, corner3, corner1);
+            MATH_CrossProduct(&toPoint, &normal, &side);
+            MATH_NormalizeEqualVector(&toPoint);
+            MATH_TransformVector(&(hitWorld->rayCastNormalVec), hitGao->matrices, &toPoint);
             return;
         }
-        if (v43 < 15u)
-        {
-            v5 = a2;
-            continue;
-        }
-        break;
+        if (step >= 15u)
+            break;
+        tri = neighbour;
     }
-    v52 = v63;
-    v63->rayCastNormalVec.x = 0;
-    v52->rayCastNormalVec.y = 0;
-    v52->rayCastNormalVec.z = 0;
+    // preserved: unreachable -- the walk counter only reaches 15 on a step that leaves no neighbour, and that path has already returned above
+    hitWorld->rayCastNormalVec.x = 0;
+    hitWorld->rayCastNormalVec.y = 0;
+    hitWorld->rayCastNormalVec.z = 0;
 }
-
-int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* a1, struct sWorld* a2, struct sGameObjectMain** a3, Vec3* a4, int a5)
+int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* gao, struct sWorld* world, struct sGameObjectMain** outList, Vec3* direction, int reportFilter)
 {
-    int v5;
-    int v7;
-    int v8;
-    tRecordElem* v9;
+    int count;
+    int index;
+    tRecordElem* rec;
 
-    v5 = 0;
-    if ((a1->flags & 0x100) == 0)
+    count = 0;
+    if ((gao->flags & 0x100) == 0)
         return 0;
-    v7 = 0;
-    if (a2->recordCount)
+    rec = world->records;
+    for (index = 0; index < world->recordCount; ++index)
     {
-        v8 = a5;
-        v9 = a2->records;
-        do
+        if (rec->collisionMapGameObject == gao
+            && (reportFilter & rec->flags) == reportFilter
+            && (fabs(direction->x) == 0.0f // todo inline
+                && fabs(direction->y) == 0.0f
+                && fabs(direction->z) == 0.0f
+                || rec->normalVec.z * direction->z + direction->y * rec->normalVec.y + rec->normalVec.x * direction->x > 0.0f))
         {
-            if (v9->collisionMapGameObject == a1
-                && (v8 & v9->flags) == v8
-                && (fabs(a4->x) == 0.0f // todo inline
-                    && fabs(a4->y) == 0.0f
-                    && fabs(a4->z) == 0.0f
-                    || v9->normalVec.z * a4->z + a4->y * v9->normalVec.y + v9->normalVec.x * a4->x > 0.0f))
-            {
-                a3[v5] = v9->collisionInstanceGameObject;
-                v8 = a5;
-                ++v5;
-            }
-            ++v7;
-            ++v9;
-        } while (v7 < a2->recordCount);
+            outList[count] = rec->collisionInstanceGameObject;
+            ++count;
+        }
+        ++rec;
     }
-    return v5;
+    return count;
 }
 
-struct sGameObjectMain* COL_Report_GetBestWallGOInDirection(struct sGameObjectMain* a1, struct sWorld* a2, Vec3* a3, float a4, int* a5)
+struct sGameObjectMain* COL_Report_GetBestWallGOInDirection(struct sGameObjectMain* gao, struct sWorld* world, Vec3* direction, float minCos, int* outRank)
 {
-    int* v5;
-    tRecordElem* v6;
-    int v7;
-    tRecordElem* v8;
-    int v9;
-    float v10;
-    double v11; 
-    tGameObjectMain* v12;
-    tGameObjectMain* v14;
-    Vec3 a1a;
-    float v16;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int index;
+    int flags;
+    double facing;
+    tGameObjectMain* other;
+    tGameObjectMain* best;
+    Vec3 wanted;
+    float bestFacing;
 
-    if (a4 == 0.0)
-        v16 = 0.0;
+    if (minCos == 0.0)
+        bestFacing = 0.0;
     else
-        v16 = (float)(0.001 - a4);
-    v5 = a5;
-    v6 = a2->records;
-    v7 = 0;
-    v8 = &a2->records[a2->recordCount];
-    v14 = 0;
-    if (a5)
-        *a5 = 0;
-    if (v6 >= v8)
+        bestFacing = (float)(0.001 - minCos);
+    rec = world->records;
+    index = 0;
+    end = &world->records[world->recordCount];
+    best = 0;
+    if (outRank)
+        *outRank = 0;
+    if (rec >= end)
         return 0;
 
     do
     {
-        if (v6->collisionInstanceGameObject == a1 || v6->collisionMapGameObject == a1)
+        if (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
         {
-            v9 = v6->flags;
-            if ((v9 & 0x80u) != 0 && (v9 & 0x80052800) == 0)
+            flags = rec->flags;
+            if ((flags & 0x80u) != 0 && (flags & 0x80052800) == 0)
             {
-                if (v6->collisionInstanceGameObject == a1)
-                {
-                    a1a.x = a3->x;
-                    v10 = a3->z;
-                    a1a.y = a3->y;
-                    a1a.z = v10;
-                }
+                if (rec->collisionInstanceGameObject == gao)
+                    wanted = *direction;
                 else
+                    MATH_VecInvert(&wanted, direction);
+                facing = rec->normalVec.z * wanted.z + rec->normalVec.y * wanted.y + wanted.x * rec->normalVec.x;
+                if (facing < bestFacing)
                 {
-                    MATH_VecInvert(&a1a, a3);
-                    v5 = a5;
-                }
-                v11 = v6->normalVec.z * a1a.z + v6->normalVec.y * a1a.y + a1a.x * v6->normalVec.x;
-                if (v11 < v16)
-                {
-                    if (v6->collisionMapGameObject)
+                    if (rec->collisionMapGameObject)
                     {
-                        *v5 = v7;
-                        v16 = (float)v11;
-                        v12 = v6->collisionInstanceGameObject;
-                        if (v6->collisionInstanceGameObject == a1)
-                            v12 = v6->collisionMapGameObject;
-                        v14 = v12;
+                        // preserved: the rank is written back without the null test the initialisation uses
+                        *outRank = index;
+                        bestFacing = (float)facing;
+                        other = rec->collisionInstanceGameObject;
+                        if (rec->collisionInstanceGameObject == gao)
+                            other = rec->collisionMapGameObject;
+                        best = other;
                     }
                 }
             }
         }
-        ++v6;
-        ++v7;
-    } while (v6 < v8);
-    return v14;
+        ++rec;
+        ++index;
+    } while (rec < end);
+    return best;
 }
 
-Vec3* COL_Report_GetCollidedPoint(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+Vec3* COL_Report_GetCollidedPoint(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
 {
-    int v5;
-    tRecordElem* v6;
-    tRecordElem* v7;
-    unsigned int v8;
-    int v9;
-    int v10;
+    int skipZoneReports;
+    int skipSlippery;
+    tRecordElem* rec;
+    tRecordElem* end;
+    unsigned int mask;
+    int flags;
 
-    if (a3 < 0)
-        return &a2->records[(uint16_t)a3].collidedPoint;
-    v5 = 1;
-    v10 = 0;
-    if ((a3 & 0x2000) != 0)
-        v5 = 0;
-    if ((a3 & 0x40000000) != 0)
-        v10 = 1;
-    v6 = a2->records;
-    v7 = &a2->records[a2->recordCount];
-    v8 = a3 & 0xBFFFFFFF;
-    if (a2->records >= v7)
-        return 0;
-    while (1)
+    if (reportFilter < 0)
+        return &world->records[(uint16_t)reportFilter].collidedPoint;
+    skipZoneReports = 1;
+    skipSlippery = 0;
+    if ((reportFilter & 0x2000) != 0)
+        skipZoneReports = 0;
+    if ((reportFilter & 0x40000000) != 0)
+        skipSlippery = 1;
+    end = &world->records[world->recordCount];
+    mask = reportFilter & 0xBFFFFFFF;
+    for (rec = world->records; rec < end; ++rec)
     {
-        if ((!v5 || (v6->flags & 0x1000) == 0)
-            && (v6->collisionInstanceGameObject == a1 || v6->collisionMapGameObject == a1)
-            && (!v5 || (v6->flags & 0x2000) == 0))
+        if ((!skipZoneReports || (rec->flags & 0x1000) == 0)
+            && (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+            && (!skipZoneReports || (rec->flags & 0x2000) == 0))
         {
-            v9 = v6->flags;
-            if ((v9 & 0x80040000) == 0
-                && (!v10 || (v9 & 0x800) == 0)
-                && (v8 & v9) == v8
-                && !MATH_b_NulVector(&v6->collidedPoint))
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0
+                && (!skipSlippery || (flags & 0x800) == 0)
+                && (mask & flags) == mask
+                && !MATH_b_NulVector(&rec->collidedPoint))
             {
-                break;
+                return &rec->collidedPoint;
             }
         }
-        if (++v6 >= v7)
-            return 0;
     }
-    return &v6->collidedPoint;
+    return 0;
 }
 
-Vec3* COL_Report_GMat_GetCollidedPoint(struct sGameObjectMain* a1, struct sWorld* a2, int a3, int* a4)
+Vec3* COL_Report_GMat_GetCollidedPoint(struct sGameObjectMain* gao, struct sWorld* world, int gameMaterialMask, int* outRank)
 {
-    tRecordElem* v4;
-    int v5;
-    tRecordElem* v6;
-    tCobGameMaterialElems* v7;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int index;
+    tCobGameMaterialElems* gameMaterial;
 
-    v4 = a2->records;
-    v5 = 0;
-    v6 = &a2->records[a2->recordCount];
-    if (a4)
-        *a4 = 0;
-    if (v4 >= v6)
-        return &MATH_gst_NulVector;
-    while (1)
+    rec = world->records;
+    index = 0;
+    end = &world->records[world->recordCount];
+    if (outRank)
+        *outRank = 0;
+    for (; rec < end; ++rec, ++index)
     {
-        if ((v4->collisionInstanceGameObject == a1 || v4->collisionMapGameObject == a1) && (v4->flags & 0xF0000) == 0)
+        if ((rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+            && (rec->flags & 0xF0000) == 0)
         {
-            v7 = v4->gameMaterial;
-            if (v7)
+            gameMaterial = rec->gameMaterial;
+            if (gameMaterial && (gameMaterialMask & gameMaterial->flags) != 0)
             {
-                if ((a3 & v7->flags) != 0)
-                    break;
+                if (outRank)
+                    *outRank = index;
+                return &rec->collidedPoint;
             }
         }
-        ++v4;
-        ++v5;
-        if (v4 >= v6)
-            return &MATH_gst_NulVector;
     }
-    if (a4)
-        *a4 = v5;
-    return &v4->collidedPoint;
+    return &MATH_gst_NulVector;
 }
 
-int COL_Report_GetAllReportsNormal(struct sGameObjectMain* a1, struct sWorld* a2, Vec3* a3, int a4)
+int COL_Report_GetAllReportsNormal(struct sGameObjectMain* gao, struct sWorld* world, Vec3* outNormals, int reportFilter)
 {
-    int v4;
-    int result;
-    Vec3* v6;
-    tRecordElem* v7;
-    int v8;
-    int v9;
+    int index;
+    int count;
+    Vec3* out;
+    tRecordElem* rec;
+    int flags;
 
-    v4 = 0;
-    result = 0;
-    v9 = 0;
-    if (a2->recordCount)
+    count = 0;
+    out = outNormals;
+    rec = world->records;
+    for (index = 0; index < world->recordCount; ++index)
     {
-        v6 = a3;
-        v7 = a2->records;
+        if (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+        {
+            flags = rec->flags;
+            if ((rec->flags & 0x80043000) == 0
+                && ((reportFilter & 0x40000000) == 0 || (flags & 0x800) == 0)
+                && (reportFilter & 0xBFFFFFFF & flags) == (reportFilter & 0xBFFFFFFF))
+            {
+                out->x = rec->normalVec.x;
+                out->y = rec->normalVec.y;
+                out->z = rec->normalVec.z;
+                ++count;
+                ++out;
+            }
+        }
+        ++rec;
+    }
+    return count;
+}
+
+int COL_VisibleObjectListCreate(struct sWorld* world, int flagMustHave, int flagMustNothave, int whatToTest, struct sGameObjectMain** outList)
+{
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    int count;
+    tGameObjectMain* gao;
+
+    last = ((tableElemStructPF*)(world->visibleGameObjectsPF.nextElemPtr)) - 1;
+    for (count = 0, elem = world->visibleGameObjectsPF.firstElemPtr; elem <= last; ++elem)
+    {
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (elem->objectPtr
+            && ((uint8_t)gao & 3) != 1
+            && gao->distance
+            && OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
+        {
+            outList[count++] = gao;
+        }
+    }
+    return count;
+}
+
+int COL_Report_GetNumberOfReports(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
+{
+    int count;
+    tRecordElem* rec;
+    int remaining;
+    int flags;
+
+    count = 0;
+    if (world->recordCount)
+    {
+        rec = world->records;
+        remaining = world->recordCount;
         do
         {
-            if (v7->collisionInstanceGameObject == a1 || v7->collisionMapGameObject == a1)
+            if (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
             {
-                v8 = v7->flags;
-                if ((v7->flags & 0x80043000) == 0
-                    && ((a4 & 0x40000000) == 0 || (v8 & 0x800) == 0)
-                    && (a4 & 0xBFFFFFFF & v8) == (a4 & 0xBFFFFFFF))
+                flags = rec->flags;
+                if ((rec->flags & 0x80043000) == 0
+                    && ((reportFilter & 0x40000000) == 0 || (flags & 0x800) == 0)
+                    && (reportFilter & 0xBFFFFFFF & flags) == (reportFilter & 0xBFFFFFFF)
+                    && ((reportFilter & 0x40) == 0 || rec->normalVec.z >= 0.0))
                 {
-                    v6->x = v7->normalVec.x;
-                    v6->y = v7->normalVec.y;
-                    v6->z = v7->normalVec.z;
-                    ++v9;
-                    ++v6;
+                    ++count;
                 }
             }
-            ++v4;
-            ++v7;
-        } while (v4 < a2->recordCount);
-        result = v9;
+            ++rec;
+            --remaining;
+        } while (remaining);
     }
-    return result;
+    return count;
 }
 
-int COL_VisibleObjectListCreate(struct sWorld* a1, int flagMustHave, int flagMustNothave, int whatToTest, struct sGameObjectMain** a5)
+void COL_Report_ComputeResultingNormal(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter, Vec3* outNormal)
 {
-    tableElemStructPF* v5;
-    tableElemStructPF* v6;
-    int i;
-    tGameObjectMain* v8;
+    int index;
+    tRecordElem* rec;
+    int flags;
+    long double length;
 
-    v5 = a1->visibleGameObjectsPF.firstElemPtr;
-    v6 = ((tableElemStructPF*)(a1->visibleGameObjectsPF.nextElemPtr)) - 1;
-    for (i = 0; v5 <= v6; ++v5)
+    index = 0;
+    if (!outNormal)
+        return;
+    outNormal->x = 0.0;
+    outNormal->y = 0.0;
+    outNormal->z = 0.0;
+    if (world->recordCount)
     {
-        v8 = (tGameObjectMain*)v5->objectPtr;
-        if (v5->objectPtr
-            && ((uint8_t)v8 & 3) != 1
-            && v8->distance
-            && OBJ_b_test_flag(v8, flagMustHave, flagMustNothave, whatToTest))
-        {
-            a5[i++] = v8;
-        }
-    }
-    return i;
-}
-
-int COL_Report_GetNumberOfReports(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
-{
-    int v3;
-    tRecordElem *v4;
-    int v5;
-    int v6;
-
-    v3 = 0;
-    if (a2->recordCount)
-    {
-        v4 = a2->records;
-        v5 = a2->recordCount;
+        rec = world->records;
         do
         {
-            if (v4->collisionInstanceGameObject == a1 || v4->collisionMapGameObject == a1)
+            if (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
             {
-                v6 = v4->flags;
-                if ((v4->flags & 0x80043000) == 0
-                    && ((a3 & 0x40000000) == 0 || (v6 & 0x800) == 0)
-                    && (a3 & 0xBFFFFFFF & v6) == (a3 & 0xBFFFFFFF)
-                    && ((a3 & 0x40) == 0 || v4->normalVec.z >= 0.0))
+                flags = rec->flags;
+                if ((rec->flags & 0x80043000) == 0
+                    && ((reportFilter & 0x40000000) == 0 || (flags & 0x800) == 0)
+                    && (reportFilter & 0xBFFFFFFF & flags) == (reportFilter & 0xBFFFFFFF)
+                    && ((reportFilter & 0x40) == 0 || rec->normalVec.z >= 0.0))
                 {
-                    ++v3;
+                    MATH_VecAddVecWithoutBuffer(outNormal, &rec->normalVec);
                 }
             }
-            ++v4;
-            --v5;
-        } while (v5);
+            ++index;
+            ++rec;
+        } while (index < world->recordCount);
     }
-    return v3;
-}
-
-void COL_Report_ComputeResultingNormal(struct sGameObjectMain* a1, struct sWorld* a2, int a3, Vec3* a4)
-{
-    int v4;
-    tWorld* v5;
-    tRecordElem* v6;
-    int v7;
-    long double v8;
-
-    v4 = 0;
-    if (a4)
+    if (fabs(outNormal->x) != 0.0 || fabs(outNormal->y) != 0.0 || fabs(outNormal->z) != 0.0)
     {
-        v5 = a2;
-        a4->x = 0.0;
-        a4->y = 0.0;
-        a4->z = 0.0;
-        if (a2->recordCount)
-        {
-            v6 = a2->records;
-            do
-            {
-                if (v6->collisionInstanceGameObject == a1 || v6->collisionMapGameObject == a1)
-                {
-                    v7 = v6->flags;
-                    if ((v6->flags & 0x80043000) == 0
-                        && ((a3 & 0x40000000) == 0 || (v7 & 0x800) == 0)
-                        && (a3 & 0xBFFFFFFF & v7) == (a3 & 0xBFFFFFFF)
-                        && ((a3 & 0x40) == 0 || v6->normalVec.z >= 0.0))
-                    {
-                        MATH_VecAddVecWithoutBuffer(a4, &v6->normalVec);
-                        v5 = a2;
-                    }
-                }
-                ++v4;
-                ++v6;
-            } while (v4 < v5->recordCount);
-        }
-        if (fabs(a4->x) != 0.0 || fabs(a4->y) != 0.0 || fabs(a4->z) != 0.0)
-        {
-            v8 = sqrt(a4->x * a4->x + a4->y * a4->y + a4->z * a4->z);
-            a4->x = (float)(1.0 / v8 * a4->x);
-            a4->y = (float)(1.0 / v8 * a4->y);
-            a4->z = (float)(1.0 / v8 * a4->z);
-        }
+        length = sqrt(outNormal->x * outNormal->x + outNormal->y * outNormal->y + outNormal->z * outNormal->z);
+        outNormal->x = (float)(1.0 / length * outNormal->x);
+        outNormal->y = (float)(1.0 / length * outNormal->y);
+        outNormal->z = (float)(1.0 / length * outNormal->z);
     }
 }
 
-struct sGameObjectMain* COL_Report_GetBestWallGOInDirectionSpecial(struct sGameObjectMain* a1, struct sWorld* a2, Vec3* a3, float a4, int* a5)
+struct sGameObjectMain* COL_Report_GetBestWallGOInDirectionSpecial(struct sGameObjectMain* gao, struct sWorld* world, Vec3* direction, float minCos, int* outRank)
 {
-    int* v5;
-    tRecordElem* v6;
-    int v7;
-    tRecordElem* v8;
-    int v9;
-    float v10;
-    double v11;
-    tGameObjectMain* v12;
-    tGameObjectMain* v14;
-    Vec3 a1a;
-    float v16;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int index;
+    int flags;
+    double facing;
+    tGameObjectMain* other;
+    tGameObjectMain* best;
+    Vec3 wanted;
+    float bestFacing;
 
-    if (a4 == 0.0)
-        v16 = 0.0;
+    if (minCos == 0.0)
+        bestFacing = 0.0;
     else
-        v16 = (float)(0.001 - a4);
-    v5 = a5;
-    v6 = a2->records;
-    v7 = 0;
-    v8 = &a2->records[a2->recordCount];
-    v14 = 0;
-    if (a5)
-        *a5 = 0;
-    if (v6 >= v8)
+        bestFacing = (float)(0.001 - minCos);
+    rec = world->records;
+    index = 0;
+    end = &world->records[world->recordCount];
+    best = 0;
+    if (outRank)
+        *outRank = 0;
+    if (rec >= end)
         return 0;
     do
     {
-        if (v6->collisionInstanceGameObject == a1 || v6->collisionMapGameObject == a1)
+        if (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
         {
-            v9 = v6->flags;
-            if ((v9 & 0x80u) != 0 && (v9 & 0x80072000) == 0)
+            flags = rec->flags;
+            if ((flags & 0x80u) != 0 && (flags & 0x80072000) == 0)
             {
-                if (v6->collisionInstanceGameObject == a1)
-                {
-                    a1a.x = a3->x;
-                    v10 = a3->z;
-                    a1a.y = a3->y;
-                    a1a.z = v10;
-                }
+                if (rec->collisionInstanceGameObject == gao)
+                    wanted = *direction;
                 else
+                    MATH_VecInvert(&wanted, direction);
+                facing = rec->normalVec.z * wanted.z + rec->normalVec.y * wanted.y + wanted.x * rec->normalVec.x;
+                if (facing < bestFacing)
                 {
-                    MATH_VecInvert(&a1a, a3);
-                    v5 = a5;
-                }
-                v11 = v6->normalVec.z * a1a.z + v6->normalVec.y * a1a.y + a1a.x * v6->normalVec.x;
-                if (v11 < v16)
-                {
-                    if (v6->collisionMapGameObject)
+                    if (rec->collisionMapGameObject)
                     {
-                        *v5 = v7;
-                        v16 = (float)v11;
-                        v12 = v6->collisionInstanceGameObject;
-                        if (v6->collisionInstanceGameObject == a1)
-                            v12 = v6->collisionMapGameObject;
-                        v14 = v12;
+                        // preserved: the rank is written back without the null test the initialisation uses
+                        *outRank = index;
+                        bestFacing = (float)facing;
+                        other = rec->collisionInstanceGameObject;
+                        if (rec->collisionInstanceGameObject == gao)
+                            other = rec->collisionMapGameObject;
+                        best = other;
                     }
                 }
             }
         }
-        ++v6;
-        ++v7;
-    } while (v6 < v8);
-    return v14;
+        ++rec;
+        ++index;
+    } while (rec < end);
+    return best;
 }
 
-int16_t COL_GameMaterial_GetID(struct sGameObjectMain* a1, struct sWorld* a2, uint16_t a3)
+int16_t COL_GameMaterial_GetID(struct sGameObjectMain* gao, struct sWorld* world, uint16_t reportFilter)
 {
-    int16_t result;
-    tCobGameMaterialElems* v4;
-    tCobGameMaterialElems* v5;
-    tRecordElem* v6;
-    tRecordElem* v7;
-    int v8;
+    tCobGameMaterialElems* gameMaterial;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
 
-    if (!a2)
+    if (!world)
         return -1;
-    if (a3 == 0xFFFF)
+    if (reportFilter == 0xFFFF)
     {
-        v4 = a2->rayCastCobGmat;
-        if (v4)
-            return v4->id;
+        gameMaterial = world->rayCastCobGmat;
+        if (gameMaterial)
+            return gameMaterial->id;
         return -1;
     }
-    if ((int)a3 >= 0)
+    // preserved: the filter is a uint16_t, so this is always taken and the rank arm below is dead
+    if ((int)reportFilter >= 0)
     {
-        v6 = a2->records;
-        v7 = &a2->records[a2->recordCount];
-        if (a2->records >= v7)
+        end = &world->records[world->recordCount];
+        for (rec = world->records; rec < end; ++rec)
         {
-        LABEL_19:
-            result = -1;
-        }
-        else
-        {
-            while (1)
+            if (((reportFilter & 0x2000) != 0 || (rec->flags & 0x1000) == 0)
+                && rec->collisionInstanceGameObject == gao
+                && ((reportFilter & 0x2000) != 0 || (rec->flags & 0x2000) == 0))
             {
-                if (((a3 & 0x2000) != 0 || (v6->flags & 0x1000) == 0)
-                    && v6->collisionInstanceGameObject == a1
-                    && ((a3 & 0x2000) != 0 || (v6->flags & 0x2000) == 0))
-                {
-                    v8 = v6->flags;
-                    if ((v8 & 0x80040000) == 0 && (a3 & v8) == a3 && v6->gameMaterial)
-                        break;
-                }
-                if (++v6 >= v7)
-                    goto LABEL_19;
+                flags = rec->flags;
+                if ((flags & 0x80040000) == 0 && (reportFilter & flags) == reportFilter && rec->gameMaterial)
+                    return rec->gameMaterial->id;
             }
-            result = v6->gameMaterial->id;
         }
+        return -1;
     }
-    else
-    {
-        v5 = a2->records[a3].gameMaterial;
-        if (!v5)
-            return -1;
-        result = v5->id;
-    }
-    return result;
+    gameMaterial = world->records[reportFilter].gameMaterial;
+    if (!gameMaterial)
+        return -1;
+    return gameMaterial->id;
 }
 
-int COL_Report_GetNumberOfReportsAndRanks(struct sGameObjectMain* a1, struct sWorld* a2, int a3, unsigned int a4, int* a5)
+int COL_Report_GetNumberOfReportsAndRanks(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter, unsigned int maxRanks, int* outRanks)
 {
-    int v5;
-    unsigned int v6;
-    tRecordElem* v7;
-    int v8;
-    unsigned int v9;
-    BOOL v12;
-    unsigned int v13;
-    unsigned int v14;
+    int index;
+    unsigned int count;
+    tRecordElem* rec;
+    int flags;
+    unsigned int seen;
+    BOOL skipSlippery;
+    unsigned int mask;
 
-    v5 = 0;
-    v6 = 0;
-    v12 = (a3 & 0x40000000) != 0;
-    v14 = a3 & ~0x40000000u;
-    v13 = 0;
-    if (a2->recordCount)
+    index = 0;
+    count = 0;
+    skipSlippery = (reportFilter & 0x40000000) != 0;
+    mask = reportFilter & ~0x40000000u;
+    if (world->recordCount)
     {
-        v7 = a2->records;
+        rec = world->records;
         do
         {
-            if (v7->collisionInstanceGameObject == a1 || v7->collisionMapGameObject == a1)
+            if (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
             {
-                v8 = v7->flags;
-                if ((v7->flags & 0x80043000) == 0 && (!v12 || (v8 & 0x800) == 0) && (v14 & v8) == v14)
+                flags = rec->flags;
+                if ((rec->flags & 0x80043000) == 0 && (!skipSlippery || (flags & 0x800) == 0) && (mask & flags) == mask)
                 {
-                    v9 = 0;
-                    if (v6)
+                    for (seen = 0; seen < count; ++seen)
                     {
-                        do
+                        if (world->records[outRanks[seen]].triangleChunkID == rec->triangleChunkID
+                            && world->records[outRanks[seen]].triangleChunkElemID == rec->triangleChunkElemID)
                         {
-                            if (a2->records[a5[v9]].triangleChunkID == v7->triangleChunkID
-                                && a2->records[a5[v9]].triangleChunkElemID == v7->triangleChunkElemID)
-                            {
-                                break;
-                            }
-                            ++v9;
-                        } while (v9 < v6);
-                        v5 = v13;
+                            break;
+                        }
                     }
-                    if (v9 == v6 && ((v14 & 0x40) == 0 || v7->normalVec.z >= 0.0))
+                    if (seen == count && ((mask & 0x40) == 0 || rec->normalVec.z >= 0.0))
                     {
-                        if (v6 < a4)
-                            a5[v6] = v5;
-                        ++v6;
+                        if (count < maxRanks)
+                            outRanks[count] = index;
+                        ++count;
                     }
                 }
             }
-            ++v5;
-            ++v7;
-            v13 = v5;
-        } while (v5 < a2->recordCount);
+            ++index;
+            ++rec;
+        } while (index < world->recordCount);
     }
-    return v6;
+    return count;
 }
 
-int COL_Report_b_ObjectsAreColliding(struct sGameObjectMain* a1, struct sGameObjectMain* a2, struct sWorld* a3)
+int COL_Report_b_ObjectsAreColliding(struct sGameObjectMain* gao1, struct sGameObjectMain* gao2, struct sWorld* world)
 {
-    int v3;
-    int v4;
-    tRecordElem* i;
-    tGameObjectMain* v6;
+    int recordCount;
+    int index;
+    tRecordElem* rec;
+    tGameObjectMain* inst;
 
-    v3 = a3->recordCount;
-    v4 = 0;
-    if (!v3)
+    recordCount = world->recordCount;
+    if (!recordCount)
         return 0;
-    for (i = a3->records; ; ++i)
+    rec = world->records;
+    for (index = 0; index < recordCount; ++index)
     {
-        if ((i->flags & 0x80043000) == 0)
+        if ((rec->flags & 0x80043000) == 0)
         {
-            v6 = i->collisionInstanceGameObject;
-            if (v6 == a1 && i->collisionMapGameObject == a2)
-                break;
-            if (v6 == a2 && i->collisionMapGameObject == a1)
-                break;
+            inst = rec->collisionInstanceGameObject;
+            if (inst == gao1 && rec->collisionMapGameObject == gao2)
+                return 1;
+            if (inst == gao2 && rec->collisionMapGameObject == gao1)
+                return 1;
         }
-        if (++v4 >= v3)
-            return 0;
+        ++rec;
     }
-    return 1;
+    return 0;
 }
 
-struct sGameObjectMain* COL_Visual_RayCast_OneObject(struct sGameObjectMain* a1, Vec3* rayV1, Vec3* rayV2, float rayF1, int flagMustHave, int flagMustNothave, int whatToTest, int* type7, int type1, int a10, int type6)
+struct sGameObjectMain* COL_Visual_RayCast_OneObject(struct sGameObjectMain* gao, Vec3* rayOrigin, Vec3* rayDir, float rayDistance, int flagMustHave, int flagMustNothave, int whatToTest, int* outClearPath, int skipRayCast, int skipBVTest, int skipTransform)
 {
-    Vec3* v11;
-    Vec3* v12;
-    int v13;
-    tGEOGRO* v14;
-    tGameObjectMain* result;
-    tColMap* v16;
-    tColCollisionObject* v17;
-    uint8_t i;
-    tColCollisionObject* v19;
-    tCobNormalObjectGeneric* v20;
-    int v21;
-    int v22;
-    float rayv1a;
+    int flags;
+    tGEOGRO* geo;
+    tColMap* colMap;
+    tColCollisionObject* firstCob;
+    uint8_t cobIndex;
+    tColCollisionObject* cob;
+    tCobNormalObjectGeneric* shape;
+    float bvDistance;
 
-    v11 = rayV2;
-    v12 = rayV1;
-    COL_gst_Ray.ignoreColMapRayCastResult = type7;
-    COL_gst_Ray.sourcePoint = rayV1;
-    COL_gst_Ray.direction = rayV2;
+    COL_gst_Ray.ignoreColMapRayCastResult = outClearPath;
+    COL_gst_Ray.sourcePoint = rayOrigin;
+    COL_gst_Ray.direction = rayDir;
     COL_gst_Ray.gao = 0;
-    COL_gst_Ray.distance = rayF1;
-    COL_gst_Ray.skipRayCast = type1;
-    COL_gst_Ray.skipVecsTransformationToGaoSpace = type6;
-    if (!a1
-        || ((uint8_t)a1 & 3) == 1
-        || !OBJ_b_test_flag(a1, flagMustHave, flagMustNothave, whatToTest)
-        || (a1->flags & 0x4000) == 0 && (a1->flags & 2) == 0)
+    COL_gst_Ray.distance = rayDistance;
+    COL_gst_Ray.skipRayCast = skipRayCast;
+    COL_gst_Ray.skipVecsTransformationToGaoSpace = skipTransform;
+    if (!gao
+        || ((uint8_t)gao & 3) == 1
+        || !OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest)
+        || (gao->flags & 0x4000) == 0 && (gao->flags & 2) == 0)
     {
         return 0;
     }
-    if (!a10
-        && (!OBJ_BV_IsSphere(a1->boundingVolume) || !COL_RaySphereBV(v12, v11, a1, &rayv1a, COL_gst_Ray.distance))
-        && (!OBJ_BV_IsAABBox(a1->boundingVolume) || !COL_RayAABBox(v12, v11, a1, &rayv1a, COL_gst_Ray.distance)))
+    if (!skipBVTest
+        && (!OBJ_BV_IsSphere(gao->boundingVolume) || !COL_RaySphereBV(rayOrigin, rayDir, gao, &bvDistance, COL_gst_Ray.distance))
+        && (!OBJ_BV_IsAABBox(gao->boundingVolume) || !COL_RayAABBox(rayOrigin, rayDir, gao, &bvDistance, COL_gst_Ray.distance)))
     {
-    LABEL_37:
-        result = COL_gst_Ray.gao;
         COL_gb_UseMinDistance = 0;
-        return result;
+        return COL_gst_Ray.gao;
     }
-    v13 = a1->flags;
-    if ((a1->flags & 0x4000) == 0)
+    flags = gao->flags;
+    if ((gao->flags & 0x4000) == 0)
     {
-        if ((v13 & 2) != 0 && (v13 & 0x100) != 0)
+        if ((flags & 2) != 0 && (flags & 0x100) != 0)
         {
-            v16 = a1->extended->coll->colMap;
-            v17 = *v16->collisionObjectPtr;
-            if (v17->objectType == 5)
+            colMap = gao->extended->coll->colMap;
+            firstCob = *colMap->collisionObjectPtr;
+            if (firstCob->objectType == 5)
             {
-                if ((v16->activation & 1) == 0)
+                if ((colMap->activation & 1) == 0)
                     return 0;
-                if (((tCobMeshObjectMesh*)(v17->objectPtrByType))->ok3)
-                    COL_ColMap_OK3_RayCast(a1, v16);
+                if (((tCobMeshObjectMesh*)(firstCob->objectPtrByType))->ok3)
+                    COL_ColMap_OK3_RayCast(gao, colMap);
                 else
-                    COL_ColMap_Triangles_RayCast(a1, v16);
+                    COL_ColMap_Triangles_RayCast(gao, colMap);
                 if (COL_gst_Ray.ignoreColMapRayCastResult && !*COL_gst_Ray.ignoreColMapRayCastResult)
                     return 0;
             }
             else
             {
-                for (i = 0; i < v16->colObjectID; ++i)
+                for (cobIndex = 0; cobIndex < colMap->colObjectID; ++cobIndex)
                 {
-                    if (((uint8_t)(1 << i) & v16->activation) != 0)
+                    if (((uint8_t)(1 << cobIndex) & colMap->activation) != 0)
                     {
-                        v19 = v16->collisionObjectPtr[i];
-                        v20 = (tCobNormalObjectGeneric*)(v19->objectPtrByType);
-                        v21 = v19->objectType - 1;
-                        if (v21)
+                        cob = colMap->collisionObjectPtr[cobIndex];
+                        shape = (tCobNormalObjectGeneric*)(cob->objectPtrByType);
+                        switch (cob->objectType)
                         {
-                            v22 = v21 - 1;
-                            if (v22)
-                            {
-                                if (v22 == 1)
-                                    COL_ColMap_Cylinder_RayCast(a1, v20);
-                            }
-                            else
-                            {
-                                COL_ColMap_Sphere_RayCast(a1, v20);
-                            }
-                        }
-                        else
-                        {
-                            COL_ColMap_Box_RayCast(a1, v20);
+                        case 1:
+                            COL_ColMap_Box_RayCast(gao, shape);
+                            break;
+                        case 2:
+                            COL_ColMap_Sphere_RayCast(gao, shape);
+                            break;
+                        case 3:
+                            COL_ColMap_Cylinder_RayCast(gao, shape);
+                            break;
                         }
                     }
                 }
             }
         }
-        goto LABEL_37;
+        COL_gb_UseMinDistance = 0;
+        return COL_gst_Ray.gao;
     }
-    if ((((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->objDrawMask & 8) == 0)
+    if ((((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->objDrawMask & 8) == 0)
         return 0;
-    v14 = OBJ_p_GetCurrentGeo(a1);
-    if (!v14)
+    geo = OBJ_p_GetCurrentGeo(gao);
+    if (!geo)
         return 0;
     //nullsub_32();
-    if (v14->collisionPtr)
-        COL_Visual_OK3_RayCast(a1, v14);
+    if (geo->collisionPtr)
+        COL_Visual_OK3_RayCast(gao, geo);
     else
-        COL_Visual_Triangles_RayCast(a1, v14);
+        COL_Visual_Triangles_RayCast(gao, geo);
     //nullsub_32();
-    result = COL_gst_Ray.gao;
     COL_gb_UseMinDistance = 0;
-    return result;
+    return COL_gst_Ray.gao;
 }
 
-int COL_Report_ul_BestReportGet(struct sGameObjectMain* a1, struct sWorld* a2, int a3, int a4)
+int COL_Report_ul_BestReportGet(struct sGameObjectMain* gao, struct sWorld* world, int flagsWanted, int flagsRejected)
 {
-    unsigned int v4;
-    int v5;
-    unsigned int v6;
-    tRecordElem* v7;
-    int v8;
-    double v9;
-    float v11;
+    unsigned int recordCount;
+    int bestRank;
+    unsigned int index;
+    tRecordElem* rec;
+    int flags;
+    double recalLength;
+    float bestLength;
 
-    v4 = a2->recordCount;
-    v5 = -1;
-    v6 = 0;
-    v11 = -1.0;
-    if (v4)
+    recordCount = world->recordCount;
+    bestRank = -1;
+    index = 0;
+    bestLength = -1.0;
+    if (recordCount)
     {
-        v7 = a2->records;
+        rec = world->records;
         do
         {
-            v8 = v7->flags;
-            if ((v7->flags & 0x80001000) == 0
-                && (v8 & a3) != 0
-                && (v8 & a4) == 0
-                && (v7->collisionInstanceGameObject == a1 || v7->collisionMapGameObject == a1))
+            flags = rec->flags;
+            if ((rec->flags & 0x80001000) == 0
+                && (flags & flagsWanted) != 0
+                && (flags & flagsRejected) == 0
+                && (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao))
             {
-                v9 = v7->recalVec.z * v7->recalVec.z + v7->recalVec.x * v7->recalVec.x + v7->recalVec.y * v7->recalVec.y;
-                if (v9 > v11)
+                recalLength = rec->recalVec.z * rec->recalVec.z + rec->recalVec.x * rec->recalVec.x + rec->recalVec.y * rec->recalVec.y;
+                if (recalLength > bestLength)
                 {
-                    v11 = (float)v9;
-                    v5 = v6;
+                    bestLength = (float)recalLength;
+                    bestRank = index;
                 }
             }
-            ++v6;
-            ++v7;
-        } while (v6 < v4);
+            ++index;
+            ++rec;
+        } while (index < recordCount);
     }
-    return v5;
+    return bestRank;
 }
 
-BOOL COL_Report_HasGMat(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+BOOL COL_Report_HasGMat(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter)
 {
-    tRecordElem* v4;
-    tRecordElem* v5;
-    int v6;
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
 
-    if (a3 < 0)
-        return a2->records[(uint16_t)a3].gameMaterial != 0;
-    v4 = a2->records;
-    v5 = &a2->records[a2->recordCount];
-    if (a2->records >= v5)
-        return 0;
-    while (1)
+    if (reportFilter < 0)
+        return world->records[(uint16_t)reportFilter].gameMaterial != 0;
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
     {
-        if ((v4->collisionInstanceGameObject == a1 || v4->collisionMapGameObject == a1)
-            && ((a3 & 0x2000) != 0 || (v4->flags & 0x3000) == 0))
+        if ((rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao)
+            && ((reportFilter & 0x2000) != 0 || (rec->flags & 0x3000) == 0))
         {
-            v6 = v4->flags;
-            if ((v6 & 0x80040000) == 0 && (a3 & v6) == a3)
-                break;
-        }
-        if (++v4 >= v5)
-            return 0;
-    }
-    return v4->gameMaterial != 0;
-}
-
-uint8_t COL_GetDesign(struct sGameObjectMain* a1, struct sWorld* a2, int32_t a3)
-{
-    tRecordElem* v4;
-    tRecordElem* v5;
-    int v6;
-
-    if (!a2)
-        return 0;
-    if (a3 == 0xFFFF)
-        return a2->rayCastCobMeshChunkElemsDesignVal;
-    if ((a3 & 0x80000000) != 0)
-        return a2->records[(uint16_t)a3].designVal;
-    v4 = a2->records;
-    v5 = &a2->records[a2->recordCount];
-    if (a2->records >= v5)
-        return 0;
-    while (1)
-    {
-        if (((a3 & 0x2000) != 0 || (v4->flags & 0x1000) == 0)
-            && v4->collisionInstanceGameObject == a1
-            && ((a3 & 0x2000) != 0 || (v4->flags & 0x2000) == 0))
-        {
-            v6 = v4->flags;
-            if ((v6 & 0x80040000) == 0 && (a3 & v6) == a3)
-                break;
-        }
-        if (++v4 >= v5)
-            return 0;
-    }
-    return v4->designVal;
-}
-
-int COL_ZDE_PivotCollide(struct sGameObjectMain* a1, uint8_t id, struct sGameObjectMain* a3, int direction)
-{
-    tGameObjectMain* v4;
-    tGameObjectExtended* v5;
-    tGameObjectCollMain* v6;
-    tColInstance* v7;
-    uint8_t v8;
-    BOOL v9;
-    tColInstanceElem* v10;
-    Mtx4x4* v11;
-    float v12;
-    Mtx4x4* v13;
-    Mtx4x4* v14;
-    double v15; 
-    Mtx4x4* v16;
-    tColBox* v18;
-    Mtx4x4* v19; 
-    float v20; 
-    Mtx4x4* v21;
-    Mtx4x4* v22;
-    Vec3* v23;
-    tColSphere* v24;
-    tGameObjectMain* a1a; 
-    float a1b;
-    Vec3 v27; 
-    Vec3 a3a; 
-    int v29; 
-    Vec3 v30;
-    Mtx4x4 a2a; 
-    Mtx4x4 v32; 
-
-    if (a1 && a3 && (a1->flags2 & 1) != 0 && (a3->flags2 & 1) != 0)
-    {
-        if (direction)
-        {
-            v4 = a3;
-            a1a = a1;
-        }
-        else
-        {
-            v4 = a1;
-            a1a = a3;
-        }
-        if ((v4->flags & 0x600) != 0)
-        {
-            v5 = v4->extended;
-            if (v5)
-            {
-                v6 = v5->coll;
-                if (v6)
-                {
-                    v7 = v6->colInstance;
-                    if (v7)
-                    {
-                        if (v7->colSet)
-                        {
-                            v8 = v7->colSet->zoneIDs[id];
-                            v9 = v8 < v7->zoneNum;
-                            v29 = v8; // byte cast
-                            if (v9)
-                            {
-                                if (COL_get_activation_flag_for_id__max_16_sub_4132C0(v7, v29))
-                                {
-                                    v10 = v7->selectedInstElemPtrs[v8];
-                                    if ((v10->colFlags & 4) != 0)
-                                    {
-                                        if (v10->elemType == 1)
-                                        {
-                                            v18 = (tColBox*)v10->elemShapePtr;
-                                            if (v18->pos2.x != v18->pos1.x && v18->pos2.y != v18->pos1.y && v18->pos2.z != v18->pos1.z)
-                                            {
-                                                v19 = OBJ_pst_GetAbsoluteMatrix(a1a);
-                                                v20 = v19->Pos.x;
-                                                a3a.x = v20;
-                                                a3a.y = v19->Pos.y;
-                                                a3a.z = v19->Pos.z;
-                                                if ((OBJ_pst_GetAbsoluteMatrix(v4)->mtxflag & 8) != 0 && (v10->colFlags & 8) != 0)
-                                                {
-                                                    v21 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                    MATH_CopyMatrix(&a2a, v21);
-                                                    a2a.mtxflag &= ~8u;
-                                                    a2a._m14 = 0.0;
-                                                    a2a._m24 = 0.0;
-                                                    a2a._m34 = 0.0;
-                                                    MATH_InvertMatrix(&v32, &a2a);
-                                                }
-                                                else
-                                                {
-                                                    v22 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                    MATH_InvertMatrix(&v32, v22);
-                                                }
-                                                MATH_TransformVertex(&v27, &v32, &a3a);
-                                                if (v27.x > (double)v18->pos2.x
-                                                    && v27.x < (double)v18->pos1.x
-                                                    && v27.y >(double)v18->pos2.y
-                                                    && v27.y < (double)v18->pos1.y
-                                                    && v27.z >(double)v18->pos2.z
-                                                    && v27.z < (double)v18->pos1.z)
-                                                {
-                                                    return 1;
-                                                }
-                                            }
-                                        }
-                                        else if (v10->elemType == 2 && ((tColSphere*)(v10->elemShapePtr))->radius != 0.0)
-                                        {
-                                            v11 = (Mtx4x4*)OBJ_pst_GetAbsoluteMatrix(a1a);
-                                            v12 = v11->Pos.x;
-                                            a3a.x = v12;
-                                            a3a.y = v11->Pos.y;
-                                            a3a.z = v11->Pos.z;
-                                            if ((OBJ_pst_GetAbsoluteMatrix(v4)->mtxflag & 8) == 0 || (v10->colFlags & 8) != 0)
-                                            {
-                                                v24 = (tColSphere*)(v10->elemShapePtr);
-                                                v16 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                MATH_TransformVertexNoScale(&v30, v16, &v24->center);
-                                                v15 = ((tColSphere*)(v10->elemShapePtr))->radius;
-                                            }
-                                            else
-                                            {
-                                                v13 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                MATH_GetScale(&v27, v13);
-                                                v23 = &(((tColSphere*)(v10->elemShapePtr))->center);
-                                                v14 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                MATH_TransformVertex(&v30, v14, v23);
-                                                v15 = MATH_f_MaxOf3(v27.x, v27.y, v27.z) * ((tColSphere*)(v10->elemShapePtr))->radius;
-                                            }
-                                            a1b = (float)v15;
-                                            v27.x = a3a.x - v30.x;
-                                            v27.y = a3a.y - v30.y;
-                                            v27.z = a3a.z - v30.z;
-                                            if (a1b * a1b > MATH_VecLenSquared(&v27))
-                                                return 1;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0 && (reportFilter & flags) == reportFilter)
+                return rec->gameMaterial != 0;
         }
     }
     return 0;
 }
 
-void COL_Zone_Transform(tColInstanceElem* a1, tGameObjectMain* a2, Vec3* dest, Vec3* a4)
+uint8_t COL_GetDesign(struct sGameObjectMain* gao, struct sWorld* world, int32_t reportFilter)
 {
-    Mtx4x4* v4;
-    int v5; 
-    tColBox* v6;
-    double v7;
-    long double v8;
-    long double v9;
-    float v10;
-    Vec3 a3a; 
-    Vec3 v12; 
-    Vec3 src; 
-    Vec3 scale; 
+    tRecordElem* rec;
+    tRecordElem* end;
+    int flags;
 
-    v4 = OBJ_pst_GetAbsoluteMatrix(a2);
-    v5 = v4->mtxflag & 8;
-    if (a1->elemType == 1)
+    if (!world)
+        return 0;
+    if (reportFilter == 0xFFFF)
+        return world->rayCastCobMeshChunkElemsDesignVal;
+    if ((reportFilter & 0x80000000) != 0)
+        return world->records[(uint16_t)reportFilter].designVal;
+    end = &world->records[world->recordCount];
+    for (rec = world->records; rec < end; ++rec)
     {
-        v6 = (tColBox*)a1->elemShapePtr;
-        a3a.x = v6->pos1.x + v6->pos2.x;
-        a3a.y = v6->pos2.y + v6->pos1.y;
-        v7 = v6->pos2.z + v6->pos1.z;
-        a3a.x = (float)(a3a.x * 0.5);
-        a3a.y = (float)(a3a.y * 0.5);
-        a3a.z = (float)(v7 * 0.5);
-        src.x = v6->pos1.x - a3a.x;
-        src.y = v6->pos1.y - a3a.y;
-        src.z = v6->pos1.z - a3a.z;
-        if (!v5 || (a1->colFlags & 8) != 0)
+        if (((reportFilter & 0x2000) != 0 || (rec->flags & 0x1000) == 0)
+            && rec->collisionInstanceGameObject == gao
+            && ((reportFilter & 0x2000) != 0 || (rec->flags & 0x2000) == 0))
         {
-            MATH_TransformVertexNoScale(&v12, v4, &a3a);
-            MATH_TransformVectorNoScale(&scale, v4, &src);
-        }
-        else
-        {
-            MATH_TransformVertex(&v12, v4, &a3a);
-            MATH_TransformVector(&scale, v4, &src);
-        }
-        v8 = fabs(scale.x);
-        dest->x = (float)(v12.x - v8);
-        v9 = fabs(scale.y);
-        dest->y = (float)(v12.y - v9);
-        v10 = (float)(fabs(scale.z));
-        dest->z = v12.z - v10;
-        a4->x = (float)(v8 + v12.x);
-        a4->y = (float)(v9 + v12.y);
-        a4->z = v10 + v12.z;
-    }
-    else if (a1->elemType == 2)
-    {
-        if ((v4->mtxflag & 8) == 0 || (a1->colFlags & 8) != 0)
-        {
-            MATH_TransformVertexNoScale(dest, v4, &(((tColSphere*)(a1->elemShapePtr))->center));
-            a4->x = ((tColSphere*)(a1->elemShapePtr))->radius;
-        }
-        else
-        {
-            MATH_GetScale(&scale, v4);
-            MATH_TransformVertex(dest, v4, &(((tColSphere*)(a1->elemShapePtr))->center));
-            a4->x = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * ((tColSphere*)(a1->elemShapePtr))->radius;
+            flags = rec->flags;
+            if ((flags & 0x80040000) == 0 && (reportFilter & flags) == reportFilter)
+                return rec->designVal;
         }
     }
+    return 0;
 }
-
-BOOL COL_ZDE_BVCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGameObjectMain* a3, int a4)
+int COL_ZDE_PivotCollide(struct sGameObjectMain* gao1, uint8_t id, struct sGameObjectMain* gao2, int direction)
 {
-    tGameObjectMain* v4;
-    tGameObjectMain* v5;
-    tGameObjectExtended* v6;
-    tGameObjectCollMain* v7;
-    tColInstance* v8;
-    uint8_t* v9;
-    BOOL v10;
-    tColInstanceElem* v11;
-    BOOL v12;
-    int v13;
-    int v15;
-    Mtx4x4* v16;
-    tGameObjectBV* v17;
-    Vec3* v18;
-    Mtx4x4* v19;
-    Mtx4x4* v20;
-    Vec3* v21;
-    tGameObjectBV* v22;
-    Mtx4x4* v23;
-    Mtx4x4* v24;
-    Mtx4x4* v25;
+    tGameObjectMain* zoneGao;
+    tGameObjectMain* pivotGao;
+    tGameObjectExtended* extended;
+    tGameObjectCollMain* coll;
+    tColInstance* instance;
+    uint8_t zoneSlot;
+    tColInstanceElem* elem;
+    tColBox* box;
+    tColSphere* sphere;
     Mtx4x4* mtx;
-    uint8_t v27a;
-    Vec3 v27b;
-    tGameObjectMain* v28;
-    Vec3 a3a;
-    Vec3 src;
-    Vec3 v31;
-    Vec3 v32;
-    Vec3 v33;
-    Vec3 v34;
-    Vec3 a4a;
-    Vec3 v36;
-    Vec3 v37;
-    Mtx4x4 v38;
-    Vec3 dest;
-    Mtx4x4 a5;
+    double radius;
+    float radiusf;
+    Vec3 local;
+    Vec3 scale;
+    Vec3 pivot;
+    Vec3 centre;
+    Mtx4x4 noScale;
+    Mtx4x4 inverse;
 
-    v4 = a1;
-    if (!a1 || !a3 || (a1->flags2 & 1) == 0 || (a3->flags2 & 1) == 0)
+    if (!gao1 || !gao2 || (gao1->flags2 & 1) == 0 || (gao2->flags2 & 1) == 0)
         return 0;
-    if (a4)
+    if (direction)
     {
-        v5 = a3;
-        v28 = a1;
+        zoneGao = gao2;
+        pivotGao = gao1;
     }
     else
     {
-        v5 = a1;
-        v28 = a3;
-        v4 = a3;
+        zoneGao = gao1;
+        pivotGao = gao2;
     }
-    if ((v5->flags & 0x600) == 0)
+    if ((zoneGao->flags & 0x600) == 0)
         return 0;
-    v6 = v5->extended;
-    if (!v6)
+    extended = zoneGao->extended;
+    if (!extended)
         return 0;
-    v7 = v6->coll;
-    if (!v7)
+    coll = extended->coll;
+    if (!coll)
         return 0;
-    v8 = v7->colInstance;
-    if (!v8)
+    instance = coll->colInstance;
+    if (!instance)
         return 0;
-    if (!v8->colSet)
+    if (!instance->colSet)
         return 0;
-    v9 = v8->colSet->zoneIDs;
-    v10 = v9[a2] < v8->zoneNum;
-    v27a = v9[a2];
-    if (!v10)
+    zoneSlot = instance->colSet->zoneIDs[id]; // byte cast
+    if (zoneSlot >= instance->zoneNum)
         return 0;
-    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(v8, v27a))
+    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(instance, zoneSlot))
         return 0;
-    v11 = v8->selectedInstElemPtrs[v27a];
-    if ((v11->colFlags & 4) == 0)
+    elem = instance->selectedInstElemPtrs[zoneSlot];
+    if ((elem->colFlags & 4) == 0)
         return 0;
-    if (v11->elemType == 1)
+    if (elem->elemType == 1)
     {
-        COL_Zone_Transform(v11, v5, &dest, &a4a);
-    }
-    else if (v11->elemType == 2)
-    {
-        COL_Zone_Transform(v11, v5, &v34, &v27b);
-    }
-    mtx = OBJ_pst_GetAbsoluteMatrix(v4);
-    v12 = !OBJ_BV_IsSphere(v4->boundingVolume);
-    v13 = v11->elemType;
-    if (!v12)
-    {
-        if (v13 == 2)
+        box = (tColBox*)elem->elemShapePtr;
+        if (box->pos2.x != box->pos1.x && box->pos2.y != box->pos1.y && box->pos2.z != box->pos1.z)
         {
-            MATH_TransformVertexNoScale(&v31, mtx, &v4->boundingVolume->BVMin);
-            return INT_SphereSphere(&v34, v27b.x, &v31, v4->boundingVolume->BVMax.x);
+            mtx = OBJ_pst_GetAbsoluteMatrix(pivotGao);
+            pivot.x = mtx->Pos.x;
+            pivot.y = mtx->Pos.y;
+            pivot.z = mtx->Pos.z;
+            if ((OBJ_pst_GetAbsoluteMatrix(zoneGao)->mtxflag & 8) != 0 && (elem->colFlags & 8) != 0)
+            {
+                MATH_CopyMatrix(&noScale, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+                noScale.mtxflag &= ~8u;
+                noScale._m14 = 0.0;
+                noScale._m24 = 0.0;
+                noScale._m34 = 0.0;
+                MATH_InvertMatrix(&inverse, &noScale);
+            }
+            else
+            {
+                MATH_InvertMatrix(&inverse, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+            }
+            MATH_TransformVertex(&local, &inverse, &pivot);
+            if (local.x > (double)box->pos2.x
+                && local.x < (double)box->pos1.x
+                && local.y >(double)box->pos2.y
+                && local.y < (double)box->pos1.y
+                && local.z >(double)box->pos2.z
+                && local.z < (double)box->pos1.z)
+            {
+                return 1;
+            }
         }
-        return 0;
     }
-    v15 = v13 - 1;
-    if (v15)
+    else if (elem->elemType == 2 && ((tColSphere*)(elem->elemShapePtr))->radius != 0.0)
     {
-        if (v15 == 1) // elemtype == 2 ez is
+        mtx = OBJ_pst_GetAbsoluteMatrix(pivotGao);
+        pivot.x = mtx->Pos.x;
+        pivot.y = mtx->Pos.y;
+        pivot.z = mtx->Pos.z;
+        if ((OBJ_pst_GetAbsoluteMatrix(zoneGao)->mtxflag & 8) == 0 || (elem->colFlags & 8) != 0)
         {
-            v16 = v4->matrices;
-            v17 = v4->boundingVolume;
-            v18 = &v16->Pos;
-            MATH_VecAddVec(&v37, &v17->BVMax, &v16->Pos);
-            MATH_VecAddVec(&v36, &v17->BVMin, v18);
-            return INT_SphereAABBox(&v34, v27b.x, &v36, &v37);
-        }
-        return 0;
-    }
-    if ((OBJ_pst_GetAbsoluteMatrix(v5)->mtxflag & 8) != 0)
-    {
-        v19 = OBJ_pst_GetAbsoluteMatrix(v5);
-        MATH_CopyMatrix(&v38, v19);
-        v38._m14 = 0.0;
-        v38._m24 = 0.0;
-        v38._m34 = 0.0;
-        v38.mtxflag &= ~8u;
-        MATH_InvertMatrix(&a5, &v38);
-    }
-    else
-    {
-        v20 = OBJ_pst_GetAbsoluteMatrix(v5);
-        MATH_InvertMatrix(&a5, v20);
-    }
-    v21 = (Vec3*)v11->elemShapePtr;
-    v22 = v4->boundingVolume;
-    MATH_VecAddVec(&a3a, v21, v21 + 1);
-    a3a.x = (float)(a3a.x * 0.5);
-    a3a.y = (float)(a3a.y * 0.5);
-    a3a.z = (float)(a3a.z * 0.5);
-    v23 = OBJ_pst_GetAbsoluteMatrix(v5);
-    MATH_TransformVertex(&v31, v23, &a3a);
-    MATH_VecAddVec(&src, &v22->BVMax, &v22->BVMin);
-    src.x = (float)(src.x * 0.5);
-    src.y = (float)(src.y * 0.5);
-    src.z = (float)(src.z * 0.5);
-    v24 = OBJ_pst_GetAbsoluteMatrix(v28);
-    MATH_TransformVertex(&v33, v24, &src);
-    v32.x = v33.x - v31.x;
-    v32.y = v33.y - v31.y;
-    v32.z = v33.z - v31.z;
-    a5.Pos = v32;
-    v25 = OBJ_pst_GetAbsoluteMatrix(v5);
-    MATH_GetScale(&a4a, v25);
-    return INT_HighLevel_OBBoxOBBox(v21 + 1, v21, &v22->BVMin, &v22->BVMax, &a5, &a4a);
-}
-
-int COL_ZDE_BVCenterCollide(struct sGameObjectMain* a1, uint8_t a2, struct sGameObjectMain* a3, int a4)
-{
-    tGameObjectMain* v4;
-    tGameObjectExtended* v5;
-    tGameObjectCollMain* v6;
-    tColInstance* v7;
-    uint8_t v8; 
-    BOOL v9; 
-    tColInstanceElem* v10;
-    Mtx4x4* v11;
-    Mtx4x4* v12;
-    double v13; 
-    Mtx4x4* v14; 
-    tColBox* v16;
-    Mtx4x4* v17; 
-    Mtx4x4* v18; 
-    Vec3* v19; 
-    Vec3* v20; 
-    tGameObjectMain* a1a;
-    float a1b;
-    Vec3 v23; 
-    Vec3 a2a; 
-    int v25; 
-    Vec3 v26;
-    Mtx4x4 v27;
-    Mtx4x4 v28;
-
-    if (a1 && a3 && (a1->flags2 & 1) != 0 && (a3->flags2 & 1) != 0)
-    {
-        if (a4)
-        {
-            v4 = a3;
-            a1a = a1;
+            sphere = (tColSphere*)(elem->elemShapePtr);
+            MATH_TransformVertexNoScale(&centre, OBJ_pst_GetAbsoluteMatrix(zoneGao), &sphere->center);
+            radius = ((tColSphere*)(elem->elemShapePtr))->radius;
         }
         else
         {
-            v4 = a1;
-            a1a = a3;
+            MATH_GetScale(&scale, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+            MATH_TransformVertex(&centre, OBJ_pst_GetAbsoluteMatrix(zoneGao), &(((tColSphere*)(elem->elemShapePtr))->center));
+            radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z) * ((tColSphere*)(elem->elemShapePtr))->radius;
         }
-        if ((v4->flags & 0x600) != 0)
-        {
-            v5 = v4->extended;
-            if (v5)
-            {
-                v6 = v5->coll;
-                if (v6)
-                {
-                    v7 = v6->colInstance;
-                    if (v7)
-                    {
-                        if (v7->colSet)
-                        {
-                            v8 = v7->colSet->zoneIDs[a2];
-                            v9 = v8 < v7->zoneNum;
-                            v25 = v8; // byte assign
-                            if (v9)
-                            {
-                                if (COL_get_activation_flag_for_id__max_16_sub_4132C0(v7, v25))
-                                {
-                                    v10 = v7->selectedInstElemPtrs[v8];
-                                    if ((v10->colFlags & 4) != 0)
-                                    {
-                                        if (v10->elemType == 1)
-                                        {
-                                            v16 = (tColBox*)v10->elemShapePtr;
-                                            if (v16->pos2.x != v16->pos1.x && v16->pos2.y != v16->pos1.y && v16->pos2.z != v16->pos1.z)
-                                            {
-                                                OBJ_BV_ComputeCenter(a1a, &a2a);
-                                                if ((OBJ_pst_GetAbsoluteMatrix(v4)->mtxflag & 8) == 0 || (v10->colFlags & 8) != 0)
-                                                {
-                                                    v18 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                    MATH_InvertMatrix(&v28, v18);
-                                                }
-                                                else
-                                                {
-                                                    v17 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                    MATH_CopyMatrix(&v27, v17);
-                                                    v27.mtxflag &= ~8u;
-                                                    v27._m14 = 0.0;
-                                                    v27._m24 = 0.0;
-                                                    v27._m34 = 0.0;
-                                                    MATH_InvertMatrix(&v28, &v27);
-                                                }
-                                                MATH_TransformVertex(&v23, &v28, &a2a);
-                                                if (v23.x > (double)v16->pos2.x
-                                                    && v23.x < (double)v16->pos1.x
-                                                    && v23.y >(double)v16->pos2.y
-                                                    && v23.y < (double)v16->pos1.y
-                                                    && v23.z >(double)v16->pos2.z
-                                                    && v23.z < (double)v16->pos1.z)
-                                                {
-                                                    return 1;
-                                                }
-                                            }
-                                        }
-                                        else if (v10->elemType == 2 && ((tColSphere*)(v10->elemShapePtr))->radius != 0.0)
-                                        {
-                                            OBJ_BV_ComputeCenter(a1a, &a2a);
-                                            if ((OBJ_pst_GetAbsoluteMatrix(v4)->mtxflag & 8) == 0 || (v10->colFlags & 8) != 0)
-                                            {
-                                                v20 = &(((tColSphere*)(v10->elemShapePtr))->center);
-                                                v14 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                MATH_TransformVertexNoScale(&v26, v14, v20);
-                                                v13 = ((tColSphere*)(v10->elemShapePtr))->radius;
-                                            }
-                                            else
-                                            {
-                                                v11 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                MATH_GetScale(&v23, v11);
-                                                v19 = &(((tColSphere*)(v10->elemShapePtr))->center);
-                                                v12 = OBJ_pst_GetAbsoluteMatrix(v4);
-                                                MATH_TransformVertex(&v26, v12, v19);
-                                                v13 = MATH_f_MaxOf3(v23.x, v23.y, v23.z)
-                                                    * ((tColSphere*)(v10->elemShapePtr))->radius;
-                                            }
-                                            a1b = (float)v13;
-                                            v23.x = a2a.x - v26.x;
-                                            v23.y = a2a.y - v26.y;
-                                            v23.z = a2a.z - v26.z;
-                                            if (a1b * a1b > MATH_VecLenSquared(&v23))
-                                                return 1;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        radiusf = (float)radius;
+        local.x = pivot.x - centre.x;
+        local.y = pivot.y - centre.y;
+        local.z = pivot.z - centre.z;
+        if (radiusf * radiusf > MATH_VecLenSquared(&local))
+            return 1;
     }
     return 0;
 }
 
-BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, struct sGameObjectMain* a4)
+void COL_Zone_Transform(tColInstanceElem* elem, tGameObjectMain* gao, Vec3* dest, Vec3* outMax)
 {
-    tGameObjectExtended* v4;
-    tGameObjectCollMain* v5;
-    tColInstance* v6;
-    tGameObjectExtended* v7;
-    tGameObjectCollMain* v8;
-    tColInstance* v9;
-    uint8_t* v10;
-    BOOL v11;
-    tColInstanceElem* v12;
-    int v13;
-    tColInstanceElem* v14;
-    BOOL result;
-    BOOL v16; 
-    tColBox* v17;
-    Mtx4x4* v18; 
-    Mtx4x4* v19; 
-    Mtx4x4* v20; 
-    Mtx4x4* v21; 
-    Mtx4x4* v22; 
-    Mtx4x4* v23; 
-    Mtx4x4* v24; 
-    Mtx4x4* v25; 
-    tColBox* v26; 
-    Mtx4x4* v27; 
-    Mtx4x4* v28; 
-    Mtx4x4* v29; 
-    Mtx4x4* v30; 
-    Mtx4x4* v31; 
-    Mtx4x4* v32; 
-    Mtx4x4* v33; 
-    Mtx4x4* v34; 
-    Mtx4x4* v35; 
-    Mtx4x4* v36; 
-    tColBox* v37;
-    tColBox* v38;
-    Mtx4x4* v39; 
-    Mtx4x4* v40; 
-    Mtx4x4* v41; 
-    Vec3* v42; 
-    Vec3* v43; 
-    Vec3* v44; 
-    Vec3* v45; 
-    float a4a; 
-    float v47; 
-    tColBox* v48;
-    Vec3 v49; 
-    Vec3 v50; 
-    Vec3 v51; 
-    Vec3 v52; 
-    Vec3 dest;
-    Vec3 a3a; 
-    Mtx4x4 v55; 
-    Vec3 a6; 
-    Mtx4x4 a5;
-    Mtx4x4 v58;
-    uint8_t a4ab;
-    Vec3 a4aa;
-    Vec3 v48a;
+    Mtx4x4* mtx;
+    int hasScale;
+    tColBox* box;
+    double centreZ;
+    long double absX;
+    long double absY;
+    float absZ;
+    Vec3 centre;
+    Vec3 worldCentre;
+    Vec3 src;
+    Vec3 corner;
 
-    if (!a1)
+    mtx = OBJ_pst_GetAbsoluteMatrix(gao);
+    hasScale = mtx->mtxflag & 8;
+    if (elem->elemType == 1)
+    {
+        box = (tColBox*)elem->elemShapePtr;
+        centre.x = box->pos1.x + box->pos2.x;
+        centre.y = box->pos2.y + box->pos1.y;
+        centreZ = box->pos2.z + box->pos1.z;
+        centre.x = (float)(centre.x * 0.5);
+        centre.y = (float)(centre.y * 0.5);
+        centre.z = (float)(centreZ * 0.5);
+        src.x = box->pos1.x - centre.x;
+        src.y = box->pos1.y - centre.y;
+        src.z = box->pos1.z - centre.z;
+        if (!hasScale || (elem->colFlags & 8) != 0)
+        {
+            MATH_TransformVertexNoScale(&worldCentre, mtx, &centre);
+            MATH_TransformVectorNoScale(&corner, mtx, &src);
+        }
+        else
+        {
+            MATH_TransformVertex(&worldCentre, mtx, &centre);
+            MATH_TransformVector(&corner, mtx, &src);
+        }
+        absX = fabs(corner.x);
+        dest->x = (float)(worldCentre.x - absX);
+        absY = fabs(corner.y);
+        dest->y = (float)(worldCentre.y - absY);
+        absZ = (float)(fabs(corner.z));
+        dest->z = worldCentre.z - absZ;
+        outMax->x = (float)(absX + worldCentre.x);
+        outMax->y = (float)(absY + worldCentre.y);
+        outMax->z = absZ + worldCentre.z;
+    }
+    else if (elem->elemType == 2)
+    {
+        if ((mtx->mtxflag & 8) == 0 || (elem->colFlags & 8) != 0)
+        {
+            MATH_TransformVertexNoScale(dest, mtx, &(((tColSphere*)(elem->elemShapePtr))->center));
+            outMax->x = ((tColSphere*)(elem->elemShapePtr))->radius;
+        }
+        else
+        {
+            MATH_GetScale(&corner, mtx);
+            MATH_TransformVertex(dest, mtx, &(((tColSphere*)(elem->elemShapePtr))->center));
+            outMax->x = MATH_f_MaxOf3(corner.x, corner.y, corner.z) * ((tColSphere*)(elem->elemShapePtr))->radius;
+        }
+    }
+}
+
+BOOL COL_ZDE_BVCollide(struct sGameObjectMain* gao1, uint8_t id, struct sGameObjectMain* gao2, int direction)
+{
+    tGameObjectMain* bvGao;
+    tGameObjectMain* zoneGao;
+    tGameObjectExtended* extended;
+    tGameObjectCollMain* coll;
+    tColInstance* instance;
+    tColInstanceElem* elem;
+    BOOL bvIsBox;
+    int elemType;
+    tGameObjectBV* bv;
+    Vec3* pos;
+    Mtx4x4* mtx;
+    tColBox* box;
+    uint8_t zoneSlot;
+    Vec3 zoneSphereMax;
+    Vec3 zoneCentre;
+    Vec3 bvCentre;
+    Vec3 worldZoneCentre;
+    Vec3 delta;
+    Vec3 worldBvCentre;
+    Vec3 zoneSphereCentre;
+    Vec3 zoneMax;
+    Vec3 bvWorldMin;
+    Vec3 bvWorldMax;
+    Mtx4x4 noScale;
+    Vec3 zoneMin;
+    Mtx4x4 rel;
+    Vec3 zoneScale;
+
+    bvGao = gao1;
+    if (!gao1 || !gao2 || (gao1->flags2 & 1) == 0 || (gao2->flags2 & 1) == 0)
         return 0;
-    if (!a4)
+    if (direction)
+    {
+        zoneGao = gao2;
+    }
+    else
+    {
+        zoneGao = gao1;
+        bvGao = gao2;
+    }
+    if ((zoneGao->flags & 0x600) == 0)
         return 0;
-    if ((a1->flags2 & 1) == 0)
+    extended = zoneGao->extended;
+    if (!extended)
         return 0;
-    if ((a4->flags2 & 1) == 0)
+    coll = extended->coll;
+    if (!coll)
         return 0;
-    if ((a1->flags & 0x600) == 0)
+    instance = coll->colInstance;
+    if (!instance)
         return 0;
-    v4 = a1->extended;
-    if (!v4)
+    if (!instance->colSet)
         return 0;
-    v5 = v4->coll;
-    if (!v5)
+    zoneSlot = instance->colSet->zoneIDs[id];
+    if (zoneSlot >= instance->zoneNum)
         return 0;
-    v6 = v5->colInstance;
-    if (!v6)
+    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(instance, zoneSlot))
         return 0;
-    if ((a4->flags & 0x600) == 0)
+    elem = instance->selectedInstElemPtrs[zoneSlot];
+    if ((elem->colFlags & 4) == 0)
         return 0;
-    v7 = a4->extended;
-    if (!v7)
+    if (elem->elemType == 1)
+        COL_Zone_Transform(elem, zoneGao, &zoneMin, &zoneMax);
+    else if (elem->elemType == 2)
+        COL_Zone_Transform(elem, zoneGao, &zoneSphereCentre, &zoneSphereMax);
+    mtx = OBJ_pst_GetAbsoluteMatrix(bvGao);
+    bvIsBox = !OBJ_BV_IsSphere(bvGao->boundingVolume);
+    elemType = elem->elemType;
+    if (!bvIsBox)
+    {
+        if (elemType == 2)
+        {
+            MATH_TransformVertexNoScale(&worldZoneCentre, mtx, &bvGao->boundingVolume->BVMin);
+            return INT_SphereSphere(&zoneSphereCentre, zoneSphereMax.x, &worldZoneCentre, bvGao->boundingVolume->BVMax.x);
+        }
         return 0;
-    v8 = v7->coll;
-    if (!v8)
+    }
+    if (elemType != 1)
+    {
+        if (elemType == 2) // elemtype == 2 ez is
+        {
+            mtx = bvGao->matrices;
+            bv = bvGao->boundingVolume;
+            pos = &mtx->Pos;
+            MATH_VecAddVec(&bvWorldMax, &bv->BVMax, &mtx->Pos);
+            MATH_VecAddVec(&bvWorldMin, &bv->BVMin, pos);
+            return INT_SphereAABBox(&zoneSphereCentre, zoneSphereMax.x, &bvWorldMin, &bvWorldMax);
+        }
         return 0;
-    v9 = v8->colInstance;
-    if (!v9)
+    }
+    if ((OBJ_pst_GetAbsoluteMatrix(zoneGao)->mtxflag & 8) != 0)
+    {
+        MATH_CopyMatrix(&noScale, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+        noScale._m14 = 0.0;
+        noScale._m24 = 0.0;
+        noScale._m34 = 0.0;
+        noScale.mtxflag &= ~8u;
+        MATH_InvertMatrix(&rel, &noScale);
+    }
+    else
+    {
+        MATH_InvertMatrix(&rel, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+    }
+    box = (tColBox*)elem->elemShapePtr;
+    bv = bvGao->boundingVolume;
+    MATH_VecAddVec(&zoneCentre, &box->pos1, &box->pos2);
+    zoneCentre.x = (float)(zoneCentre.x * 0.5);
+    zoneCentre.y = (float)(zoneCentre.y * 0.5);
+    zoneCentre.z = (float)(zoneCentre.z * 0.5);
+    MATH_TransformVertex(&worldZoneCentre, OBJ_pst_GetAbsoluteMatrix(zoneGao), &zoneCentre);
+    MATH_VecAddVec(&bvCentre, &bv->BVMax, &bv->BVMin);
+    bvCentre.x = (float)(bvCentre.x * 0.5);
+    bvCentre.y = (float)(bvCentre.y * 0.5);
+    bvCentre.z = (float)(bvCentre.z * 0.5);
+    MATH_TransformVertex(&worldBvCentre, OBJ_pst_GetAbsoluteMatrix(bvGao), &bvCentre);
+    delta.x = worldBvCentre.x - worldZoneCentre.x;
+    delta.y = worldBvCentre.y - worldZoneCentre.y;
+    delta.z = worldBvCentre.z - worldZoneCentre.z;
+    rel.Pos = delta;
+    MATH_GetScale(&zoneScale, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+    return INT_HighLevel_OBBoxOBBox(&box->pos2, &box->pos1, &bv->BVMin, &bv->BVMax, &rel, &zoneScale);
+}
+
+int COL_ZDE_BVCenterCollide(struct sGameObjectMain* gao1, uint8_t id, struct sGameObjectMain* gao2, int direction)
+{
+    tGameObjectMain* zoneGao;
+    tGameObjectMain* otherGao;
+    tGameObjectExtended* extended;
+    tGameObjectCollMain* coll;
+    tColInstance* instance;
+    uint8_t zoneSlot;
+    tColInstanceElem* elem;
+    tColBox* box;
+    double radius;
+    Mtx4x4* mtx;
+    float radiusf;
+    Vec3 local;
+    Vec3 scale;
+    Vec3 bvCentre;
+    Vec3 sphereCentre;
+    Mtx4x4 noScale;
+    Mtx4x4 inverse;
+
+    if (!gao1 || !gao2 || (gao1->flags2 & 1) == 0 || (gao2->flags2 & 1) == 0)
         return 0;
-    if (!v6->colSet)
+    if (direction)
+    {
+        zoneGao = gao2;
+        otherGao = gao1;
+    }
+    else
+    {
+        zoneGao = gao1;
+        otherGao = gao2;
+    }
+    if ((zoneGao->flags & 0x600) == 0)
         return 0;
-    v10 = v6->colSet->zoneIDs;
-    v11 = v10[a2] < v6->zoneNum;
-    a4ab = v10[a2];
-    if (!v11)
+    extended = zoneGao->extended;
+    if (!extended)
         return 0;
-    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(v6, a4ab))
+    coll = extended->coll;
+    if (!coll)
         return 0;
-    v12 = v6->selectedInstElemPtrs[a4ab];
-    if ((v12->colFlags & 4) == 0)
+    instance = coll->colInstance;
+    if (!instance)
         return 0;
-    v13 = v9->zoneNum;
-    a4ab = v9->colSet->zoneIDs[a3];
-    if (a4ab > v13 - 1)
+    if (!instance->colSet)
         return 0;
-    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(v9, a4ab))
+    zoneSlot = instance->colSet->zoneIDs[id]; // byte assign
+    if (zoneSlot >= instance->zoneNum)
         return 0;
-    v14 = v9->selectedInstElemPtrs[a4ab];
-    if ((v14->colFlags & 4) == 0)
+    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(instance, zoneSlot))
         return 0;
-    switch (v14->elemType + 16 * v12->elemType)
+    elem = instance->selectedInstElemPtrs[zoneSlot];
+    if ((elem->colFlags & 4) == 0)
+        return 0;
+    if (elem->elemType == 1)
+    {
+        box = (tColBox*)elem->elemShapePtr;
+        if (box->pos2.x != box->pos1.x && box->pos2.y != box->pos1.y && box->pos2.z != box->pos1.z)
+        {
+            OBJ_BV_ComputeCenter(otherGao, &bvCentre);
+            if ((OBJ_pst_GetAbsoluteMatrix(zoneGao)->mtxflag & 8) == 0 || (elem->colFlags & 8) != 0)
+            {
+                MATH_InvertMatrix(&inverse, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+            }
+            else
+            {
+                MATH_CopyMatrix(&noScale, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+                noScale.mtxflag &= ~8u;
+                noScale._m14 = 0.0;
+                noScale._m24 = 0.0;
+                noScale._m34 = 0.0;
+                MATH_InvertMatrix(&inverse, &noScale);
+            }
+            MATH_TransformVertex(&local, &inverse, &bvCentre);
+            if (local.x > (double)box->pos2.x
+                && local.x < (double)box->pos1.x
+                && local.y >(double)box->pos2.y
+                && local.y < (double)box->pos1.y
+                && local.z >(double)box->pos2.z
+                && local.z < (double)box->pos1.z)
+            {
+                return 1;
+            }
+        }
+    }
+    else if (elem->elemType == 2 && ((tColSphere*)(elem->elemShapePtr))->radius != 0.0)
+    {
+        OBJ_BV_ComputeCenter(otherGao, &bvCentre);
+        if ((OBJ_pst_GetAbsoluteMatrix(zoneGao)->mtxflag & 8) == 0 || (elem->colFlags & 8) != 0)
+        {
+            mtx = OBJ_pst_GetAbsoluteMatrix(zoneGao);
+            MATH_TransformVertexNoScale(&sphereCentre, mtx, &(((tColSphere*)(elem->elemShapePtr))->center));
+            radius = ((tColSphere*)(elem->elemShapePtr))->radius;
+        }
+        else
+        {
+            MATH_GetScale(&scale, OBJ_pst_GetAbsoluteMatrix(zoneGao));
+            mtx = OBJ_pst_GetAbsoluteMatrix(zoneGao);
+            MATH_TransformVertex(&sphereCentre, mtx, &(((tColSphere*)(elem->elemShapePtr))->center));
+            radius = MATH_f_MaxOf3(scale.x, scale.y, scale.z)
+                * ((tColSphere*)(elem->elemShapePtr))->radius;
+        }
+        radiusf = (float)radius;
+        local.x = bvCentre.x - sphereCentre.x;
+        local.y = bvCentre.y - sphereCentre.y;
+        local.z = bvCentre.z - sphereCentre.z;
+        if (radiusf * radiusf > MATH_VecLenSquared(&local))
+            return 1;
+    }
+    return 0;
+}
+
+BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* gao1, uint8_t id1, uint8_t id2, struct sGameObjectMain* gao2)
+{
+    tGameObjectExtended* extended1;
+    tGameObjectCollMain* coll1;
+    tColInstance* instance1;
+    tGameObjectExtended* extended2;
+    tGameObjectCollMain* coll2;
+    tColInstance* instance2;
+    tColInstanceElem* elem1;
+    tColInstanceElem* elem2;
+    BOOL result;
+    BOOL unscaled;
+    tColBox* box1;
+    tColBox* box2;
+    Mtx4x4* mtx;
+    Vec3* sphereCentre;
+    float radius1;
+    float radius2;
+    uint8_t zoneSlot;
+    Vec3 min1;
+    Vec3 max1;
+    Vec3 delta;
+    Vec3 worldCentre2;
+    Vec3 centre2;
+    Vec3 centre1;
+    Mtx4x4 work;
+    Vec3 scale;
+    Mtx4x4 rel;
+    Mtx4x4 inverse1;
+    Vec3 radiusVec1;
+    Vec3 radiusVec2;
+
+    if (!gao1)
+        return 0;
+    if (!gao2)
+        return 0;
+    if ((gao1->flags2 & 1) == 0)
+        return 0;
+    if ((gao2->flags2 & 1) == 0)
+        return 0;
+    if ((gao1->flags & 0x600) == 0)
+        return 0;
+    extended1 = gao1->extended;
+    if (!extended1)
+        return 0;
+    coll1 = extended1->coll;
+    if (!coll1)
+        return 0;
+    instance1 = coll1->colInstance;
+    if (!instance1)
+        return 0;
+    if ((gao2->flags & 0x600) == 0)
+        return 0;
+    extended2 = gao2->extended;
+    if (!extended2)
+        return 0;
+    coll2 = extended2->coll;
+    if (!coll2)
+        return 0;
+    instance2 = coll2->colInstance;
+    if (!instance2)
+        return 0;
+    if (!instance1->colSet)
+        return 0;
+    zoneSlot = instance1->colSet->zoneIDs[id1];
+    if (zoneSlot >= instance1->zoneNum)
+        return 0;
+    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(instance1, zoneSlot))
+        return 0;
+    elem1 = instance1->selectedInstElemPtrs[zoneSlot];
+    if ((elem1->colFlags & 4) == 0)
+        return 0;
+    zoneSlot = instance2->colSet->zoneIDs[id2];
+    if (zoneSlot > instance2->zoneNum - 1)
+        return 0;
+    if (!COL_get_activation_flag_for_id__max_16_sub_4132C0(instance2, zoneSlot))
+        return 0;
+    elem2 = instance2->selectedInstElemPtrs[zoneSlot];
+    if ((elem2->colFlags & 4) == 0)
+        return 0;
+    switch (elem2->elemType + 16 * elem1->elemType)
     {
     case 17:
-        if ((OBJ_pst_GetAbsoluteMatrix(a1)->mtxflag & 8) != 0)
+        if ((OBJ_pst_GetAbsoluteMatrix(gao1)->mtxflag & 8) != 0)
         {
-            v34 = OBJ_pst_GetAbsoluteMatrix(a1);
-            MATH_CopyMatrix(&v55, v34);
-            v55._m14 = 0.0;
-            v55._m24 = 0.0;
-            v55._m34 = 0.0;
-            v55.mtxflag &= ~8u;
-            MATH_InvertMatrix(&v58, &v55);
+            MATH_CopyMatrix(&work, OBJ_pst_GetAbsoluteMatrix(gao1));
+            work._m14 = 0.0;
+            work._m24 = 0.0;
+            work._m34 = 0.0;
+            work.mtxflag &= ~8u;
+            MATH_InvertMatrix(&inverse1, &work);
         }
         else
         {
-            v35 = OBJ_pst_GetAbsoluteMatrix(a1);
-            MATH_InvertMatrix(&v58, v35);
+            MATH_InvertMatrix(&inverse1, OBJ_pst_GetAbsoluteMatrix(gao1));
         }
-        v36 = OBJ_pst_GetAbsoluteMatrix(a4);
-        v36 = OBJ_pst_GetAbsoluteMatrix(a4);
-        MATH_MulMatrixMatrix(&a5, v36, &v58);
-        v37 = (tColBox*)v12->elemShapePtr;
-        v38 = (tColBox*)v14->elemShapePtr;
-        MATH_VecAddVec(&v49, &v37->pos1, &v37->pos2);
-        v49.x = (float)(v49.x * 0.5);
-        v49.y = (float)(v49.y * 0.5);
-        v49.z = (float)(v49.z * 0.5);
-        v39 = OBJ_pst_GetAbsoluteMatrix(a1);
-        MATH_TransformVertex(&a3a, v39, &v49);
-        MATH_VecAddVec(&v50, &v38->pos1, &v38->pos2);
-        v50.x = (float)(v50.x * 0.5);
-        v50.y = (float)(v50.y * 0.5);
-        v50.z = (float)(v50.z * 0.5);
-        v40 = OBJ_pst_GetAbsoluteMatrix(a4);
-        MATH_TransformVertex(&dest, v40, &v50);
-        v52.x = dest.x - a3a.x;
-        v52.y = dest.y - a3a.y;
-        v52.z = dest.z - a3a.z;
-        MATH_TransformVector(&v51, &v58, &v52);
-        a5.Pos = v51;
-        v41 = OBJ_pst_GetAbsoluteMatrix(a1);
-        MATH_GetScale(&a6, v41);
-        result = INT_HighLevel_OBBoxOBBox(&v37->pos2, &v37->pos1, &v38->pos2, &v38->pos1, &a5, &a6);
+        MATH_MulMatrixMatrix(&rel, OBJ_pst_GetAbsoluteMatrix(gao2), &inverse1);
+        box1 = (tColBox*)elem1->elemShapePtr;
+        box2 = (tColBox*)elem2->elemShapePtr;
+        MATH_VecAddVec(&min1, &box1->pos1, &box1->pos2);
+        min1.x = (float)(min1.x * 0.5);
+        min1.y = (float)(min1.y * 0.5);
+        min1.z = (float)(min1.z * 0.5);
+        MATH_TransformVertex(&centre1, OBJ_pst_GetAbsoluteMatrix(gao1), &min1);
+        MATH_VecAddVec(&max1, &box2->pos1, &box2->pos2);
+        max1.x = (float)(max1.x * 0.5);
+        max1.y = (float)(max1.y * 0.5);
+        max1.z = (float)(max1.z * 0.5);
+        MATH_TransformVertex(&worldCentre2, OBJ_pst_GetAbsoluteMatrix(gao2), &max1);
+        centre2.x = worldCentre2.x - centre1.x;
+        centre2.y = worldCentre2.y - centre1.y;
+        centre2.z = worldCentre2.z - centre1.z;
+        MATH_TransformVector(&delta, &inverse1, &centre2);
+        rel.Pos = delta;
+        MATH_GetScale(&scale, OBJ_pst_GetAbsoluteMatrix(gao1));
+        result = INT_HighLevel_OBBoxOBBox(&box1->pos2, &box1->pos1, &box2->pos2, &box2->pos1, &rel, &scale);
         break;
     case 18: // v12 = 1, //v14 = 2
-        if ((OBJ_pst_GetAbsoluteMatrix(a1)->mtxflag & 8) != 0)
+        if ((OBJ_pst_GetAbsoluteMatrix(gao1)->mtxflag & 8) != 0)
         {
-            v16 = (v12->colFlags & 8) == 0;
-            v26 = (tColBox*)v12->elemShapePtr;
-            v48 = v26;
-            if (v16)
+            unscaled = (elem1->colFlags & 8) == 0;
+            box1 = (tColBox*)elem1->elemShapePtr;
+            if (unscaled)
             {
-                v27 = OBJ_pst_GetAbsoluteMatrix(a1);
-                MATH_GetScale(&v51, v27);
-                v49.x = v51.x * v48->pos2.x;
-                v49.y = v51.y * v48->pos2.y;
-                v49.z = v51.z * v48->pos2.z;
-                v50.x = v51.x * v48->pos1.x;
-                v50.y = v51.y * v48->pos1.y;
-                v50.z = v51.z * v48->pos1.z;
+                MATH_GetScale(&delta, OBJ_pst_GetAbsoluteMatrix(gao1));
+                min1.x = delta.x * box1->pos2.x;
+                min1.y = delta.y * box1->pos2.y;
+                min1.z = delta.z * box1->pos2.z;
+                max1.x = delta.x * box1->pos1.x;
+                max1.y = delta.y * box1->pos1.y;
+                max1.z = delta.z * box1->pos1.z;
             }
             else
             {
-                v49 = v26->pos2;
-                v50 = v26->pos1;
+                min1 = box1->pos2;
+                max1 = box1->pos1;
             }
-            v28 = OBJ_pst_GetAbsoluteMatrix(a1);
-            MATH_Transp33MatrixWithoutBuffer(&v55, v28);
-            v55.mtxflag = v28->mtxflag;
-            v55._m14 = (float)(1.0 / v28->_m14);
-            v55._m24 = (float)(1.0 / v28->_m24);
-            v55._m34 = (float)(1.0 / v28->_m34);
-            MATH_VecInvert(&v55.Pos, &v28->Pos);
-            MATH_TransformVectorNoScale(&v55.Pos, &v55, &v55.Pos);
-            v44 = (Vec3*)v14->elemShapePtr;
-            if ((v14->colFlags & 8) != 0)
-            {
-                v30 = OBJ_pst_GetAbsoluteMatrix(a4);
-                MATH_TransformVertexNoScale(&v52, v30, v44);
-            }
+            mtx = OBJ_pst_GetAbsoluteMatrix(gao1);
+            MATH_Transp33MatrixWithoutBuffer(&work, mtx);
+            work.mtxflag = mtx->mtxflag;
+            work._m14 = (float)(1.0 / mtx->_m14);
+            work._m24 = (float)(1.0 / mtx->_m24);
+            work._m34 = (float)(1.0 / mtx->_m34);
+            MATH_VecInvert(&work.Pos, &mtx->Pos);
+            MATH_TransformVectorNoScale(&work.Pos, &work, &work.Pos);
+            sphereCentre = (Vec3*)elem2->elemShapePtr;
+            if ((elem2->colFlags & 8) != 0)
+                MATH_TransformVertexNoScale(&centre2, OBJ_pst_GetAbsoluteMatrix(gao2), sphereCentre);
             else
+                MATH_TransformVertex(&centre2, OBJ_pst_GetAbsoluteMatrix(gao2), sphereCentre);
+            MATH_TransformVertexNoScale(&centre1, &work, &centre2);
+            unscaled = (elem2->colFlags & 8) == 0;
+            radius2 = ((tColSphere*)(elem2->elemShapePtr))->radius;
+            if (unscaled)
             {
-                v29 = OBJ_pst_GetAbsoluteMatrix(a4);
-                MATH_TransformVertex(&v52, v29, v44);
+                MATH_GetScale(&worldCentre2, OBJ_pst_GetAbsoluteMatrix(gao2));
+                radius2 = MATH_f_MaxOf3(worldCentre2.x, worldCentre2.y, worldCentre2.z) * radius2;
             }
-            MATH_TransformVertexNoScale(&a3a, &v55, &v52);
-            v16 = (v14->colFlags & 8) == 0;
-            v47 = ((tColSphere*)(v14->elemShapePtr))->radius;
-            if (v16)
-            {
-                v31 = OBJ_pst_GetAbsoluteMatrix(a4);
-                MATH_GetScale(&dest, v31);
-                v47 = MATH_f_MaxOf3(dest.x, dest.y, dest.z) * v47;
-            }
-            result = INT_SphereOBBox(&a3a, v47, &v49, &v50, 0);
+            result = INT_SphereOBBox(&centre1, radius2, &min1, &max1, 0);
         }
         else
         {
-            v32 = OBJ_pst_GetAbsoluteMatrix(a1);
-            MATH_InvertMatrix(&v55, v32);
-            v45 = &(((tColSphere*)(v14->elemShapePtr))->center);
-            v33 = OBJ_pst_GetAbsoluteMatrix(a4);
-            MATH_TransformVertex(&v52, v33, v45);
-            MATH_TransformVertex(&a3a, &v55, &v52); // v12 = 1, //v14 = 2
+            MATH_InvertMatrix(&work, OBJ_pst_GetAbsoluteMatrix(gao1));
+            MATH_TransformVertex(&centre2, OBJ_pst_GetAbsoluteMatrix(gao2), &(((tColSphere*)(elem2->elemShapePtr))->center));
+            MATH_TransformVertex(&centre1, &work, &centre2); // v12 = 1, //v14 = 2
             result = INT_SphereOBBox(
-                &a3a,
-                ((tColSphere*)(v14->elemShapePtr))->radius,
-                &(((tColBox*)(v12->elemShapePtr))->pos2),
-                &(((tColBox*)(v12->elemShapePtr))->pos1),
+                &centre1,
+                ((tColSphere*)(elem2->elemShapePtr))->radius,
+                &(((tColBox*)(elem1->elemShapePtr))->pos2),
+                &(((tColBox*)(elem1->elemShapePtr))->pos1),
                 0);
         }
         break;
     case 33: // v12 = 2, //v14 = 1
-        if ((OBJ_pst_GetAbsoluteMatrix(a4)->mtxflag & 8) != 0)
+        if ((OBJ_pst_GetAbsoluteMatrix(gao2)->mtxflag & 8) != 0)
         {
-            v16 = (v14->colFlags & 8) == 0;
-            v17 = (tColBox*)v14->elemShapePtr;
-            v48 = v17;
-            if (v16)
+            unscaled = (elem2->colFlags & 8) == 0;
+            box2 = (tColBox*)elem2->elemShapePtr;
+            if (unscaled)
             {
-                v18 = OBJ_pst_GetAbsoluteMatrix(a4);
-                MATH_GetScale(&v50, v18);
-                v51.x = v50.x * v48->pos2.x;
-                v51.y = v50.y * v48->pos2.y;
-                v51.z = v50.z * v48->pos2.z;
-                v49.x = v50.x * v48->pos1.x;
-                v49.y = v50.y * v48->pos1.y;
-                v49.z = v50.z * v48->pos1.z;
+                MATH_GetScale(&max1, OBJ_pst_GetAbsoluteMatrix(gao2));
+                delta.x = max1.x * box2->pos2.x;
+                delta.y = max1.y * box2->pos2.y;
+                delta.z = max1.z * box2->pos2.z;
+                min1.x = max1.x * box2->pos1.x;
+                min1.y = max1.y * box2->pos1.y;
+                min1.z = max1.z * box2->pos1.z;
             }
             else
             {
-                v51 = v17->pos2;
-                v49 = v17->pos1;
+                delta = box2->pos2;
+                min1 = box2->pos1;
             }
-            v19 = OBJ_pst_GetAbsoluteMatrix(a4);
-            MATH_Transp33MatrixWithoutBuffer(&v55, v19);
-            v55.mtxflag = v19->mtxflag;
-            v55._m14 = (float)(1.0 / v19->_m14);
-            v55._m24 = (float)(1.0 / v19->_m24);
-            v55._m34 = (float)(1.0 / v19->_m34);
-            MATH_VecInvert(&v55.Pos, &v19->Pos);
-            MATH_TransformVectorNoScale(&v55.Pos, &v55, &v55.Pos);
-            v42 = &(((tColSphere*)(v12->elemShapePtr))->center); // v12 = 2, //v14 = 1
-            if ((v12->colFlags & 8) != 0)
-            {
-                v21 = OBJ_pst_GetAbsoluteMatrix(a1);
-                MATH_TransformVertexNoScale(&v52, v21, v42);
-            }
+            mtx = OBJ_pst_GetAbsoluteMatrix(gao2);
+            MATH_Transp33MatrixWithoutBuffer(&work, mtx);
+            work.mtxflag = mtx->mtxflag;
+            work._m14 = (float)(1.0 / mtx->_m14);
+            work._m24 = (float)(1.0 / mtx->_m24);
+            work._m34 = (float)(1.0 / mtx->_m34);
+            MATH_VecInvert(&work.Pos, &mtx->Pos);
+            MATH_TransformVectorNoScale(&work.Pos, &work, &work.Pos);
+            sphereCentre = &(((tColSphere*)(elem1->elemShapePtr))->center); // v12 = 2, //v14 = 1
+            if ((elem1->colFlags & 8) != 0)
+                MATH_TransformVertexNoScale(&centre2, OBJ_pst_GetAbsoluteMatrix(gao1), sphereCentre);
             else
+                MATH_TransformVertex(&centre2, OBJ_pst_GetAbsoluteMatrix(gao1), sphereCentre);
+            MATH_TransformVertexNoScale(&worldCentre2, &work, &centre2);
+            unscaled = (elem1->colFlags & 8) == 0;
+            radius1 = ((tColSphere*)(elem1->elemShapePtr))->radius;
+            if (unscaled)
             {
-                v20 = OBJ_pst_GetAbsoluteMatrix(a1);
-                MATH_TransformVertex(&v52, v20, v42);
+                MATH_GetScale(&centre1, OBJ_pst_GetAbsoluteMatrix(gao1));
+                radius1 = MATH_f_MaxOf3(centre1.x, centre1.y, centre1.z) * radius1;
             }
-            MATH_TransformVertexNoScale(&dest, &v55, &v52);
-            v16 = (v12->colFlags & 8) == 0;
-            a4a = ((tColSphere*)(v12->elemShapePtr))->radius;
-            if (v16)
-            {
-                v22 = OBJ_pst_GetAbsoluteMatrix(a1);
-                MATH_GetScale(&a3a, v22);
-                a4a = MATH_f_MaxOf3(a3a.x, a3a.y, a3a.z) * a4a;
-            }
-            result = INT_SphereOBBox(&dest, a4a, &v51, &v49, 0);
+            result = INT_SphereOBBox(&worldCentre2, radius1, &delta, &min1, 0);
         }
         else
         {
-            v23 = OBJ_pst_GetAbsoluteMatrix(a4);
-            MATH_InvertMatrix(&v55, v23);
-            v43 = &(((tColSphere*)(v12->elemShapePtr))->center);
-            if ((v12->colFlags & 8) != 0)
-            {
-                v25 = OBJ_pst_GetAbsoluteMatrix(a1);
-                MATH_TransformVertexNoScale(&v52, v25, v43);
-            }
+            MATH_InvertMatrix(&work, OBJ_pst_GetAbsoluteMatrix(gao2));
+            sphereCentre = &(((tColSphere*)(elem1->elemShapePtr))->center);
+            if ((elem1->colFlags & 8) != 0)
+                MATH_TransformVertexNoScale(&centre2, OBJ_pst_GetAbsoluteMatrix(gao1), sphereCentre);
             else
-            {
-                v24 = OBJ_pst_GetAbsoluteMatrix(a1);
-                MATH_TransformVertex(&v52, v24, v43);
-            }
-            MATH_TransformVertex(&dest, &v55, &v52);
+                MATH_TransformVertex(&centre2, OBJ_pst_GetAbsoluteMatrix(gao1), sphereCentre);
+            MATH_TransformVertex(&worldCentre2, &work, &centre2);
             result = INT_SphereOBBox(
-                &dest,
-                ((tColSphere*)(v12->elemShapePtr))->radius, // v12 = 2, //v14 = 1
-                &(((tColBox*)(v14->elemShapePtr))->pos2),
-                &(((tColBox*)(v14->elemShapePtr))->pos1),
+                &worldCentre2,
+                ((tColSphere*)(elem1->elemShapePtr))->radius, // v12 = 2, //v14 = 1
+                &(((tColBox*)(elem2->elemShapePtr))->pos2),
+                &(((tColBox*)(elem2->elemShapePtr))->pos1),
                 0);
         }
         break;
     case 34:
-        COL_Zone_Transform(v12, a1, &a3a, &a4aa);
-        COL_Zone_Transform(v14, a4, &dest, &v48a);
-        result = INT_SphereSphere(&a3a, a4aa.x, &dest, v48a.x);
+        COL_Zone_Transform(elem1, gao1, &centre1, &radiusVec1);
+        COL_Zone_Transform(elem2, gao2, &worldCentre2, &radiusVec2);
+        result = INT_SphereSphere(&centre1, radiusVec1.x, &worldCentre2, radiusVec2.x);
         break;
     default:
         return 0;
@@ -13404,838 +12688,687 @@ BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* a1, uint8_t a2, uint8_t a3, stru
     return result;
 }
 
-int COL_ListCreate(struct sGameObjectMain* a1, int flagMustHave, int flagMustNothave, int whatToTest, char id, struct sWorld* a6, struct sGameObjectMain** a7, char a3)
+int COL_ListCreate(struct sGameObjectMain* gao, int flagMustHave, int flagMustNothave, int whatToTest, char id, struct sWorld* world, struct sGameObjectMain** outList, char mode)
 {
-    uint8_t v10;
-    tableElemStructPF* v11;
-    tableElemStructPF* v12;
-    tGameObjectMain* v13;
-    int v14;
-    int v15;
-    int v16;
-    tableElemStructPF* v17;
-    tableElemStructPF* a1a;
+    uint8_t count;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* other;
+    int hit;
 
-    if (!a1)
+    if (!gao)
         return 0;
-    v10 = 0;
-    if (a3 == -1 || a3 == -2 || a3 == -3 || a3 == -4 || a3 == -5 || a3 == -6 || a3 == -17 || a3 == -18)
+    count = 0;
+    if (mode == -1 || mode == -2 || mode == -3 || mode == -4 || mode == -5 || mode == -6 || mode == -17 || mode == -18)
     {
-        v11 = a6->activatedObjectsTable4PF.nextElemPtr;
-        a1a = a6->activatedObjectsTable4PF.firstElemPtr;
+        last = ((tableElemStructPF*)(world->activatedObjectsTable4PF.nextElemPtr)) - 1;
+        elem = world->activatedObjectsTable4PF.firstElemPtr;
     }
     else
     {
-        if ((a1->flags & 0x400) == 0)
+        if ((gao->flags & 0x400) == 0)
             return 0;
-        v11 = a6->eot.collInstanceZDEGameObjectsPF.nextElemPtr;
-        a1a = a6->eot.collInstanceZDEGameObjectsPF.firstElemPtr;
+        last = ((tableElemStructPF*)(world->eot.collInstanceZDEGameObjectsPF.nextElemPtr)) - 1;
+        elem = world->eot.collInstanceZDEGameObjectsPF.firstElemPtr;
     }
-    v17 = v11 - 1;
-    v12 = a1a;
-    if (a1a <= v17)
+    for (; elem <= last; ++elem)
     {
-        while (1)
+        other = (tGameObjectMain*)elem->objectPtr;
+        if (!elem->objectPtr
+            || ((uint8_t)other & 3) == 1
+            || !OBJ_b_test_flag(other, flagMustHave, flagMustNothave, whatToTest)
+            || other == gao)
         {
-            v13 = (tGameObjectMain*)v12->objectPtr;
-            if (!v12->objectPtr
-                || ((uint8_t)v13 & 3) == 1
-                || !OBJ_b_test_flag(v13, flagMustHave, flagMustNothave, whatToTest)
-                || v13 == a1)
-            {
-                goto LABEL_44;
+            continue;
+        }
+        switch (mode)
+        {
+        case -1:
+            hit = COL_ZDE_BVCollide(gao, id, other, 0);
+            break;
+        case -2:
+            hit = COL_ZDE_BVCollide(gao, id, other, 1);
+            break;
+        case -3:
+            hit = COL_BV_PivotCollide(gao, other, FALSE);
+            break;
+        case -4:
+            hit = COL_BV_PivotCollide(gao, other, TRUE);
+            break;
+        case -5:
+            hit = COL_ZDE_PivotCollide(gao, id, other, 0);
+            break;
+        case -6:
+            hit = COL_ZDE_PivotCollide(gao, id, other, 1);
+            break;
+        case -17:
+            hit = COL_ZDE_BVCenterCollide(gao, id, other, 0);
+            break;
+        case -18:
+            hit = COL_ZDE_BVCenterCollide(gao, id, other, 1);
+            break;
+        default:
+            hit = COL_ZDE_ZDECollide(gao, id, mode, other);
+            break;
+        }
+        if (hit)
+        {
+            outList[count] = other;
+            ++count;
+        }
+    }
+    return count;
+}
+
+struct sGameObjectMain* COL_GetFirstObjectInRange(struct sWorld* world, Vec3* pos, float range, int flagMustHave, int flagMustNothave, int whatToTest)
+{
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    float dx, dy, dz;
+
+    if (!world)
+        return 0;
+    last = ((tableElemStructPF*)(world->activatedObjectsTable4PF.nextElemPtr)) - 1;
+    for (elem = world->activatedObjectsTable4PF.firstElemPtr; elem <= last; ++elem)
+    {
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (elem->objectPtr)
+        {
+            if (((uint8_t)gao & 3) != 1 && OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest)) {
+                dx = pos->x - gao->matrices->Pos.x;
+                dy = pos->y - gao->matrices->Pos.y;
+                dz = pos->z - gao->matrices->Pos.z;
+                if ((dx * dx + dy * dy + dz * dz) < (range * range)) return gao;
             }
-            if (a3 == -5)
-                break;
-            if (a3 == -6)
+        }
+    }
+    return 0;
+}
+int INT_FullTriangleTriangle(Vec3* t1a, Vec3* t1b, Vec3* t1c, Vec3* t2a, Vec3* t2b, Vec3* t2c, Vec3* outHit)
+{
+    double e1x;
+    double e1y;
+    double e1z;
+    double e2z;
+    double normalZ;
+    int mask;
+    double rayX;
+    double rayY;
+    double rayZ;
+    double invLength;
+    Vec3 dir;
+    float e2x;
+    float e2y;
+    float side1;
+    float side2;
+    float side3;
+    float length1;
+    float length2;
+    float length3;
+    float edgeY;
+    float edgeZ;
+    float invLength1;
+    float invLength2;
+    float hitDistance;
+
+    e1x = t1b->x - t1a->x;
+    e1y = t1b->y - t1a->y;
+    e1z = t1b->z - t1a->z;
+    e2x = t1c->x - t1a->x;
+    e2y = t1c->y - t1a->y;
+    e2z = t1c->z - t1a->z;
+    dir.x = (float)(e2z * e1y - e2y * e1z);
+    dir.y = (float)(e1z * e2x - e2z * e1x);
+    normalZ = e1x * e2y - e1y * e2x;
+    side1 = (float)((t2a->z - t1a->z) * normalZ + (t2a->y - t1a->y) * dir.y + (t2a->x - t1a->x) * dir.x);
+    mask = 1 << (side1 >= 0.0);
+    side2 = (float)((t2b->z - t1a->z) * normalZ + (t2b->y - t1a->y) * dir.y + (t2b->x - t1a->x) * dir.x);
+    mask = mask << (side2 >= 0.0);
+    side3 = (float)((t2c->z - t1a->z) * normalZ + (t2c->y - t1a->y) * dir.y + (t2c->x - t1a->x) * dir.x);
+    if (((mask << (side3 >= 0.0)) & 0xE) == 0)
+        return 0;
+    e1x = t2b->x - t2a->x;
+    e1y = t2b->y - t2a->y;
+    edgeY = (float)e1y;
+    e1z = t2b->z - t2a->z;
+    edgeZ = (float)e1z;
+    e2x = t2c->x - t2a->x;
+    e2y = t2c->y - t2a->y;
+    e2z = t2c->z - t2a->z;
+    dir.x = (float)(e2z * e1y - e2y * e1z);
+    dir.y = (float)(e1z * e2x - e2z * e1x);
+    normalZ = e1x * e2y - e1y * e2x;
+    side1 = (float)((t1a->z - t2a->z) * normalZ + (t1a->y - t2a->y) * dir.y + (t1a->x - t2a->x) * dir.x);
+    mask = 1 << (side1 >= 0.0);
+    side2 = (float)((t1b->z - t2a->z) * normalZ + (t1b->y - t2a->y) * dir.y + (t1b->x - t2a->x) * dir.x);
+    mask = mask << (side2 >= 0.0);
+    side3 = (float)((t1c->z - t2a->z) * normalZ + (t1c->y - t2a->y) * dir.y + (t1c->x - t2a->x) * dir.x);
+    if (((mask << (side3 >= 0.0)) & 0xE) == 0)
+        return 0;
+    rayY = edgeY;
+    length1 = (float)sqrt(edgeZ * edgeZ + rayY * rayY + e1x * e1x);
+    invLength = 1.0 / length1;
+    invLength1 = (float)invLength;
+    dir.x = (float)(invLength * e1x);
+    dir.y = (float)(rayY * invLength1);
+    dir.z = edgeZ * invLength1;
+    if (INT_FullRayTriangle(t2a, &dir, t1a, t1b, t1c, &hitDistance, outHit))
+    {
+        if (hitDistance < (double)length1)
+            return 1;
+    }
+    rayX = t2c->x - t2b->x;
+    rayY = t2c->y - t2b->y;
+    rayZ = t2c->z - t2b->z;
+    dir.z = (float)rayZ;
+    length2 = (float)sqrt(rayZ * dir.z + rayY * rayY + rayX * rayX);
+    invLength = 1.0 / length2;
+    invLength2 = (float)invLength;
+    dir.x = (float)(invLength * rayX);
+    dir.y = (float)(rayY * invLength2);
+    dir.z = dir.z * invLength2;
+    if (INT_FullRayTriangle(t2b, &dir, t1a, t1b, t1c, &hitDistance, outHit))
+    {
+        if (hitDistance < (double)length2)
+            return 1;
+    }
+    rayX = t2c->x - t2a->x;
+    rayY = t2c->y - t2a->y;
+    rayZ = t2c->z - t2a->z;
+    dir.z = (float)rayZ;
+    length3 = (float)sqrt(rayZ * dir.z + rayY * rayY + rayX * rayX);
+    invLength = 1.0 / length3;
+    invLength2 = (float)invLength;
+    dir.x = (float)(invLength * rayX);
+    dir.y = (float)(rayY * invLength2);
+    dir.z = dir.z * invLength2;
+    if (!INT_FullRayTriangle(t2a, &dir, t1a, t1b, t1c, &hitDistance, outHit))
+        return 0;
+    if (hitDistance < (double)length3)
+        return 1;
+    return 0;
+}
+
+int COL_TriangleCollision(Vec3* corner1, Vec3* corner2, Vec3* corner3, Vec3* outPoint, struct sWorld* world, int flagMustHave, int flagMustNothave, int whatToTest)
+{
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    Mtx4x4* mtx;
+    tGameObjectBV* bv;
+    double worldMinX;
+    tColMap* colMap;
+    tColCollisionObject** cob;
+    tColCollisionObject** cobEnd;
+    tCobMeshObjectMesh* mesh;
+    tCobMeshChunkElem* chunk;
+    tCobMeshChunkElem* chunkEnd;
+    tCobGameMaterialElems* gameMaterial;
+    tCobMeshTriangleElem* tri;
+    tCobMeshTriangleElem* triEnd;
+    double hitX;
+    double hitY;
+    double hitZ;
+    long double invLength;
+    double facing;
+    int found;
+    float invLengthf;
+    float bestFacing;
+    Vec3 local1;
+    Vec3 direction;
+    float boundsMinX;
+    float boundsMinY;
+    float boundsMinZ;
+    float hitZf;
+    float hitXf;
+    float worldMaxX;
+    float worldMaxY;
+    float worldMaxZ;
+    float boundsMaxX;
+    float boundsMaxY;
+    float boundsMaxZ;
+    float worldMinY;
+    float worldMinZ;
+    Vec3 local2;
+    Vec3 hit;
+    Vec3 local3;
+    Mtx4x4 inverse;
+
+    if (outPoint)
+    {
+        outPoint->x = 0.0;
+        outPoint->y = 0.0;
+        outPoint->z = 0.0;
+    }
+    found = 0;
+    bestFacing = -100000.0f;
+    boundsMinX = MATH_f_MinOf3(corner1->x, corner2->x, corner3->x);
+    boundsMinY = MATH_f_MinOf3(corner1->y, corner2->y, corner3->y);
+    boundsMinZ = MATH_f_MinOf3(corner1->z, corner2->z, corner3->z);
+    boundsMaxX = MATH_f_MaxOf3(corner1->x, corner2->x, corner3->x);
+    boundsMaxY = MATH_f_MaxOf3(corner1->y, corner2->y, corner3->y);
+    boundsMaxZ = MATH_f_MaxOf3(corner1->z, corner2->z, corner3->z);
+    last = ((tableElemStructPF*)(world->eot.collMapObjectsTablePF.nextElemPtr)) - 1;
+    for (elem = world->eot.collMapObjectsTablePF.firstElemPtr; elem <= last; ++elem)
+    {
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (!OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
+            continue;
+        if ((gao->flags2 & 1) == 0)
+            continue;
+        mtx = gao->matrices;
+        bv = gao->boundingVolume;
+        worldMinX = mtx->Pos.x + bv->BVMin.x;
+        worldMinY = mtx->Pos.y + bv->BVMin.y;
+        worldMinZ = mtx->Pos.z + bv->BVMin.z;
+        worldMaxX = mtx->Pos.x + bv->BVMax.x;
+        worldMaxY = mtx->Pos.y + bv->BVMax.y;
+        worldMaxZ = mtx->Pos.z + bv->BVMax.z;
+        if (!(worldMinX <= boundsMaxX
+            && worldMaxX >= (double)boundsMinX
+            && worldMinY <= (double)boundsMaxY
+            && worldMaxY >= (double)boundsMinY
+            && worldMinZ <= (double)boundsMaxZ
+            && worldMaxZ >= (double)boundsMinZ))
+        {
+            continue;
+        }
+        MATH_InvertMatrix(&inverse, mtx);
+        MATH_TransformVertexNoScale(&local1, &inverse, corner1);
+        MATH_TransformVertexNoScale(&local2, &inverse, corner2);
+        MATH_TransformVertexNoScale(&local3, &inverse, corner3);
+        direction.x = local2.x - local1.x;
+        direction.y = local2.y - local1.y;
+        direction.z = local2.z - local1.z;
+        MATH_NormalizeEqualVector(&direction);
+        colMap = gao->extended->coll->colMap;
+        cob = colMap->collisionObjectPtr;
+        cobEnd = &cob[colMap->colObjectID];
+        for (; cob < cobEnd; ++cob)
+        {
+            if ((*cob)->objectType != 5)
+                continue;
+            mesh = (tCobMeshObjectMesh*)(*cob)->objectPtrByType;
+            chunk = mesh->meshChunkElems;
+            chunkEnd = &chunk[mesh->meshChunkElemNum];
+            for (; chunk < chunkEnd; ++chunk)
             {
-                v15 = COL_ZDE_PivotCollide(a1, id, v13, 1);
-                goto LABEL_41;
-            }
-            if (a3 == -1)
-            {
-                v16 = COL_ZDE_BVCollide(a1, id, v13, 0);
-            }
-            else
-            {
-                if (a3 == -2)
+                gameMaterial = COL_pst_GMat_Get(*cob, chunk);
+                if (gameMaterial && (gameMaterial->flags & 0x201000) != 0)
+                    continue;
+                tri = chunk->triangleElems;
+                triEnd = &tri[chunk->elemNum];
+                for (; tri < triEnd; ++tri)
                 {
-                    v14 = COL_ZDE_BVCollide(a1, id, v13, 1);
-                LABEL_36:
-                    if (v14)
+                    if (INT_FullTriangleTriangle(
+                        &local1,
+                        &local2,
+                        &local3,
+                        &mesh->vertices[tri->v1],
+                        &mesh->vertices[tri->v2],
+                        &mesh->vertices[tri->v3],
+                        &hit))
                     {
-                        a7[v10] = v13;
-                        goto LABEL_43;
-                    }
-                    goto LABEL_44;
-                }
-                if (a3 == -3)
-                {
-                    v15 = COL_BV_PivotCollide(a1, v13, FALSE);
-                    goto LABEL_41;
-                }
-                if (a3 != -4)
-                {
-                    if (a3 != -17)
-                    {
-                        if (a3 == -18)
-                            v15 = COL_ZDE_BVCenterCollide(a1, id, v13, 1);
-                        else
-                            v15 = COL_ZDE_ZDECollide(a1, id, a3, v13);
-                    LABEL_41:
-                        if (v15)
+                        hitX = hit.x - local1.x;
+                        hitY = hit.y - local1.y;
+                        hitZ = hit.z - local1.z;
+                        hitZf = (float)hitZ;
+                        invLength = 1.0 / sqrt(hitZ * hitZf + hitY * hitY + hitX * hitX);
+                        invLengthf = (float)invLength;
+                        hitXf = (float)(invLength * hitX);
+                        facing = hitZf * invLengthf * direction.z + hitY * invLengthf * direction.y + hitXf * direction.x;
+                        if (facing > bestFacing)
                         {
-                            a7[v10] = v13;
-                            goto LABEL_43;
+                            bestFacing = (float)facing;
+                            found = 1;
+                            if (outPoint)
+                                MATH_TransformVertexNoScale(outPoint, gao->matrices, &hit);
                         }
-                        goto LABEL_44;
-                    }
-                    v14 = COL_ZDE_BVCenterCollide(a1, id, v13, 0);
-                    goto LABEL_36;
-                }
-                v16 = COL_BV_PivotCollide(a1, v13, TRUE);
-            }
-            if (v16)
-            {
-                a7[v10] = v13;
-            LABEL_43:
-                ++v10;
-            }
-        LABEL_44:
-            v12 = ++a1a;
-            if (a1a > v17)
-                return v10;
-        }
-        v14 = COL_ZDE_PivotCollide(a1, id, v13, 0);
-        goto LABEL_36;
-    }
-    return v10;
-}
-
-struct sGameObjectMain* COL_GetFirstObjectInRange(struct sWorld* a1, Vec3* a2, float a3, int a4, int a5, int a6)
-{
-    tGameObjectMain* result;
-    tableElemStructPF* v7; 
-    tableElemStructPF* v8;
-    tGameObjectMain* v9;
-    float f1, f2, f3;
-
-    result = (tGameObjectMain*)a1;
-    if (a1)
-    {
-        v7 = a1->activatedObjectsTable4PF.firstElemPtr;
-        v8 = ((tableElemStructPF*)(a1->activatedObjectsTable4PF.nextElemPtr)) - 1;
-        if (v7 > v8)
-        {
-        LABEL_8:
-            result = 0;
-        }
-        else
-        {
-            while (1)
-            {
-                v9 = (tGameObjectMain*)v7->objectPtr;
-                if (v7->objectPtr)
-                {
-                    if (((uint8_t)v9 & 3) != 1 && OBJ_b_test_flag(v9, a4, a5, a6)) {
-                        f1 = a2->x - v9->matrices->Pos.x;
-                        f2 = a2->y - v9->matrices->Pos.y;
-                        f3 = a2->z - v9->matrices->Pos.z;
-                        if ((f1 * f1 + f2 * f2 + f3 * f3) < (a3 * a3)) break;                        
                     }
                 }
-                if (++v7 > v8)
-                    goto LABEL_8;
             }
-            result = v9;
         }
     }
-    return result;
+    return found;
 }
 
-int INT_FullTriangleTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, Vec3* a6, Vec3* a7)
+void COL_SwapToSpecific(struct sGameObjectMain* gao, uint8_t id)
 {
-    double v8;
-    Vec3* v9; 
-    Vec3* v10;
-    double v11;
-    double v12;
-    double v13;
-    double v14;
-    int v15; 
-    Vec3* v16; 
-    int v17; 
-    double v18;
-    double v19;
-    double v20;
-    double v21;
-    double v22;
-    int v23; 
-    int v24; 
-    int result;
-    double v26;
-    double v27;
-    double v28;
-    double v29;
-    double v30;
-    double v31;
-    double v32;
-    double v33;
-    double v34;
-    double v35;
-    Vec3 a2a; 
-    float v37;
-    float v38;
-    float a3d;
-    float a3e;
-    float a3f;
-    float a3g;
-    float a3h;
-    float a3i;
-    float a3a;
-    float a3b;
-    float a3c;
-    float a4a;
-    float a5a;
+    tGameObjectExtended* extended;
+    tGameObjectCollMain* coll;
+    tColInstance* instance;
+    uint8_t zoneSlot;
+    tColInstanceElem* shared;
+    uint8_t ownElemNum;
+    tColInstanceElem* oldElems;
+    tColInstanceElem* newElems;
+    int zoneNum;
+    tColInstanceElem** slot;
+    tColInstanceElem** slotEnd;
+    char index;
+    tColInstanceElem* own;
+    void* shape;
+    uint8_t design;
+    int moved;
 
-    v8 = a2->x - a1->x;
-    v9 = a4;
-    v10 = a5;
-    v11 = a2->y - a1->y;
-    v12 = a2->z - a1->z;
-    v37 = a3->x - a1->x;
-    v38 = a3->y - a1->y;
-    v13 = a3->z - a1->z;
-    a2a.x = (float)(v13 * v11 - v38 * v12);
-    a2a.y = (float)(v12 * v37 - v13 * v8);
-    v14 = v8 * v38 - v11 * v37;
-    a3d = (float)((a4->z - a1->z) * v14 + (a4->y - a1->y) * a2a.y + (a4->x - a1->x) * a2a.x);
-    v15 = 1 << (a3d >= 0.0);
-    v16 = a6;
-    a3e = (float)((a5->z - a1->z) * v14 + (a5->y - a1->y) * a2a.y + (a5->x - a1->x) * a2a.x);
-    v17 = v15 << (a3e >= 0.0);
-    a3f = (float)((a6->z - a1->z) * v14 + (a6->y - a1->y) * a2a.y + (a6->x - a1->x) * a2a.x);
-    if (((v17 << (a3f >= 0.0)) & 0xE) == 0)
-        goto LABEL_3;
-    v18 = a5->x - a4->x;
-    v19 = a5->y - a4->y;
-    a4a = (float)v19;
-    v20 = a5->z - v9->z;
-    a5a = (float)v20;
-    v37 = a6->x - v9->x;
-    v38 = a6->y - v9->y;
-    v21 = a6->z - v9->z;
-    a2a.x = (float)(v21 * v19 - v38 * v20);
-    a2a.y = (float)(v20 * v37 - v21 * v18);
-    v22 = v18 * v38 - v19 * v37;
-    a3g = (float)((a1->z - v9->z) * v22 + (a1->y - v9->y) * a2a.y + (a1->x - v9->x) * a2a.x);
-    v23 = 1 << (a3g >= 0.0);
-    a3h = (float)((a2->z - v9->z) * v22 + (a2->y - v9->y) * a2a.y + (a2->x - v9->x) * a2a.x);
-    v24 = v23 << (a3h >= 0.0);
-    a3i = (float)((a3->z - v9->z) * v22 + (a3->y - v9->y) * a2a.y + (a3->x - v9->x) * a2a.x);
-    if (((v24 << (a3i >= 0.0)) & 0xE) == 0)
-        goto LABEL_3;
-    v26 = a4a;
-    a3a = (float)sqrt(a5a * a5a + v26 * v26 + v18 * v18);
-    v27 = 1.0 / a3a;
-    a4a = (float)v27;
-    a2a.x = (float)(v27 * v18);
-    a2a.y = (float)(v26 * a4a);
-    a2a.z = a5a * a4a;
-    if (INT_FullRayTriangle(v9, &a2a, a1, a2, a3, &a4a, a7))
+    if (id == 0xFF)
+        return;
+    if (!gao)
+        return;
+    extended = gao->extended;
+    if (!extended)
+        return;
+    coll = extended->coll;
+    if (!coll)
+        return;
+    instance = coll->colInstance;
+    if (!instance)
+        return;
+    if (!instance->colSet)
+        return;
+    zoneSlot = instance->colSet->zoneIDs[id];
+    // preserved: the bound admits a slot one past the end of selectedInstElemPtrs
+    if (zoneSlot > instance->zoneNum)
+        return;
+    if (((1 << zoneSlot) & instance->instElemBitmask) != 0)
+        return;
+    shared = instance->selectedInstElemPtrs[zoneSlot];
+    ownElemNum = instance->instElemNum;
+    if (ownElemNum)
     {
-        if (a4a < (double)a3a)
-            goto LABEL_10;
+        oldElems = instance->colInstElems;
+        newElems = (tColInstanceElem*)MEM_p_Realloc(oldElems, sizeof(tColInstanceElem) * (ownElemNum + 1));
+        zoneNum = instance->zoneNum;
+        instance->colInstElems = newElems;
+        moved = (char*)newElems - (char*)oldElems;
+        slot = instance->selectedInstElemPtrs;
+        slotEnd = &slot[zoneNum];
+        for (index = 0; slot < slotEnd; ++index)
+        {
+            if (((1 << index) & instance->instElemBitmask) != 0)
+                *slot = (tColInstanceElem*)((char*)*slot + moved); // TODO FIXME: ez egy igen nagy tárgya, hogy a régi + új offset különbsége alapjkán frissíti a selectedInstElemPtrs-t, megoldani másképp
+            ++slot;
+        }
     }
-    v28 = v16->x - v10->x;
-    v29 = v16->y - v10->y;
-    v30 = v16->z - v10->z;
-    a2a.z = (float)v30;
-    a3b = (float)sqrt(v30 * a2a.z + v29 * v29 + v28 * v28);
-    v31 = 1.0 / a3b;
-    a5a = (float)v31;
-    a2a.x = (float)(v31 * v28);
-    a2a.y = (float)(v29 * a5a);
-    a2a.z = a2a.z * a5a;
-    if (INT_FullRayTriangle(v10, &a2a, a1, a2, a3, &a4a, a7))
-    {
-        if (a4a < (double)a3b)
-            goto LABEL_10;
-    }
-    v32 = v16->x - v9->x;
-    v33 = v16->y - v9->y;
-    v34 = v16->z - v9->z;
-    a2a.z = (float)v34;
-    a3c = (float)sqrt(v34 * a2a.z + v33 * v33 + v32 * v32);
-    v35 = 1.0 / a3c;
-    a5a = (float)v35;
-    a2a.x = (float)(v35 * v32);
-    a2a.y = (float)(v33 * a5a);
-    a2a.z = a2a.z * a5a;
-    if (!INT_FullRayTriangle(v9, &a2a, a1, a2, a3, &a4a, a7))
-        goto LABEL_3;
-    if (a4a < (double)a3c)
-        LABEL_10:
-    result = 1;
     else
-        LABEL_3:
-    result = 0;
-    return result;
+    {
+        instance->colInstElems = (tColInstanceElem*)MEM_p_Alloc(sizeof(tColInstanceElem));
+    }
+    own = &instance->colInstElems[instance->instElemNum];
+    *own = *shared;
+    if (shared->elemType == 1)      // aabbox
+    {
+        shape = MEM_p_Alloc(sizeof(tColBox));
+        own->elemShapePtr = shape;
+        memcpy(shape, shared->elemShapePtr, sizeof(tColBox));
+        own->elemType = shared->elemType;
+        own->colFlags = shared->colFlags;
+        own->unk1 = shared->unk1;
+        design = shared->design;
+        own->design = design;
+    }
+    else if (shared->elemType == 2)
+    {
+        shape = MEM_p_Alloc(sizeof(tColSphere));     // sphere
+        own->elemShapePtr = shape;
+        memcpy(shape, shared->elemShapePtr, sizeof(tColSphere));
+        own->elemType = shared->elemType;
+        own->colFlags = shared->colFlags;
+        own->unk1 = shared->unk1;
+        design = shared->design;
+        own->design = design;
+    }
+    instance->instElemBitmask |= 1 << zoneSlot;
+    own->colFlags |= 0x40u;
+    instance->selectedInstElemPtrs[zoneSlot] = own;
+    instance->sharedZoneNum = instance->sharedZoneNum - 1;
+    ++instance->instElemNum;
 }
 
-int COL_TriangleCollision(Vec3* a1, Vec3* src, Vec3* a3, Vec3* a4, struct sWorld* a5, int flagMustHave, int flagMustNothave, int whatToTest)
+int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest, struct sWorld* world, struct sGameObjectMain** outList, Vec3* pos, float range, char maxCount)
 {
-    Vec3* v8;
-    Vec3* v9;
-    tableElemStructPF* v10;
-    tGameObjectMain* v11;
-    Mtx4x4* v12;
-    tGameObjectBV* v13;
-    double v14; 
-    tColMap* v15; 
-    tColCollisionObject** v16;
-    tColCollisionObject** v17;
-    tCobMeshObjectMesh* v18; 
-    tCobMeshChunkElem* v19; 
-    tCobGameMaterialElems* v20;
-    tCobMeshTriangleElem* v21;
-    double v22; 
-    double v23; 
-    double v24; 
-    long double v25; 
-    double v26; 
-    int v28; 
-    tableElemStructPF* v29;
-    float v30;
-    tColCollisionObject** v31;
-    float v32;
-    tCobMeshChunkElem* v33;
-    Vec3 dest;
-    Vec3 v;
-    tableElemStructPF* v36;
-    float v37;
-    float v38;
-    float v39;
-    tColCollisionObject** v40;
-    float v41;
-    float v42;
-    tCobMeshTriangleElem* v43;
-    float v44;
-    float v45;
-    float v46;
-    tGameObjectMain* v47;
-    float v48;
-    float v49;
-    float v50;
-    tCobMeshChunkElem* v51;
-    Vec3 a2a; 
-    Vec3 a7; 
-    float v54; 
-    float v55; 
-    Vec3 v56; 
-    Mtx4x4 a1a; 
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    uint8_t count;
+    tGameObjectMain* gao;
+    float dx, dy, dz;
 
-    if (a4)
+    last = ((tableElemStructPF*)(world->activatedObjectsTable4PF.nextElemPtr)) - 1;
+    for (count = 0, elem = world->activatedObjectsTable4PF.firstElemPtr; elem <= last; ++elem)
     {
-        a4->x = 0.0;
-        a4->y = 0.0;
-        a4->z = 0.0;
-    }
-    v8 = a3;
-    v9 = src;
-    v28 = 0;
-    v32 = -100000.0f;
-    v37 = MATH_f_MinOf3(a1->x, src->x, a3->x);
-    v38 = MATH_f_MinOf3(a1->y, src->y, a3->y);
-    v39 = MATH_f_MinOf3(a1->z, src->z, a3->z);
-    v48 = MATH_f_MaxOf3(a1->x, src->x, a3->x);
-    v49 = MATH_f_MaxOf3(a1->y, src->y, a3->y);
-    v50 = MATH_f_MaxOf3(a1->z, src->z, a3->z);
-    v10 = a5->eot.collMapObjectsTablePF.firstElemPtr;
-    v29 = v10;
-    v36 = ((tableElemStructPF*)(a5->eot.collMapObjectsTablePF.nextElemPtr)) - 1;
-    if (v10 <= v36)
-    {
-        while (1)
+        gao = (tGameObjectMain*)elem->objectPtr;
+        if (elem->objectPtr)
         {
-            v11 = (tGameObjectMain*)v10->objectPtr;
-            v47 = v11;
-            if (OBJ_b_test_flag(v11, flagMustHave, flagMustNothave, whatToTest))
+            if (((uint8_t)gao & 3) != 1)
             {
-                if ((v11->flags2 & 1) != 0)
+                if (OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
                 {
-                    v12 = v11->matrices;
-                    v13 = v11->boundingVolume;
-                    v14 = v12->Pos.x + v13->BVMin.x;
-                    v54 = v12->Pos.y + v13->BVMin.y;
-                    v55 = v12->Pos.z + v13->BVMin.z;
-                    v44 = v12->Pos.x + v13->BVMax.x;
-                    v45 = v12->Pos.y + v13->BVMax.y;
-                    v46 = v12->Pos.z + v13->BVMax.z;
-                    if (v14 <= v48
-                        && v44 >= (double)v37
-                        && v54 <= (double)v49
-                        && v45 >= (double)v38
-                        && v55 <= (double)v50
-                        && v46 >= (double)v39)
+                    dx = pos->x - gao->matrices->Pos.x;
+                    dy = pos->y - gao->matrices->Pos.y;
+                    dz = pos->z - gao->matrices->Pos.z;
+
+                    if ((dx * dx + dy * dy + dz * dz) < (range * range))
                     {
-                        MATH_InvertMatrix(&a1a, v12);
-                        MATH_TransformVertexNoScale(&dest, &a1a, a1);
-                        MATH_TransformVertexNoScale(&a2a, &a1a, v9);
-                        MATH_TransformVertexNoScale(&v56, &a1a, v8);
-                        v.x = a2a.x - dest.x;
-                        v.y = a2a.y - dest.y;
-                        v.z = a2a.z - dest.z;
-                        MATH_NormalizeEqualVector(&v);
-                        v15 = v11->extended->coll->colMap;
-                        v16 = v15->collisionObjectPtr;
-                        v17 = &v16[v15->colObjectID];
-                        v31 = v16;
-                        v40 = v17;
-                        if (v16 < v17)
-                        {
-                            do
-                            {
-                                if ((*v16)->objectType == 5)
-                                {
-                                    v18 = (tCobMeshObjectMesh*)(*v16)->objectPtrByType;
-                                    v19 = v18->meshChunkElems;
-                                    v33 = v19;
-                                    v51 = &v19[v18->meshChunkElemNum];
-                                    if (v19 < v51)
-                                    {
-                                        do
-                                        {
-                                            v20 = COL_pst_GMat_Get(*v16, v19);
-                                            if (!v20 || (v20->flags & 0x201000) == 0)
-                                            {
-                                                v21 = v19->triangleElems;
-                                                v43 = &v21[v19->elemNum];
-                                                if (v21 < v43)
-                                                {
-                                                    do
-                                                    {
-                                                        if (INT_FullTriangleTriangle(
-                                                            &dest,
-                                                            &a2a,
-                                                            &v56,
-                                                            &v18->vertices[v21->v1],
-                                                            &v18->vertices[v21->v2],
-                                                            &v18->vertices[v21->v3],
-                                                            &a7))
-                                                        {
-                                                            v22 = a7.x - dest.x;
-                                                            v23 = a7.y - dest.y;
-                                                            v24 = a7.z - dest.z;
-                                                            v42 = (float)v24;
-                                                            v25 = 1.0 / sqrt(v24 * v42 + v23 * v23 + v22 * v22);
-                                                            v30 = (float)v25;
-                                                            v41 = (float)(v25 * v22);
-                                                            v26 = v42 * v30 * v.z + v23 * v30 * v.y + v41 * v.x;
-                                                            if (v26 > v32)
-                                                            {
-                                                                v32 = (float)v26;
-                                                                v28 = 1;
-                                                                if (a4)
-                                                                    MATH_TransformVertexNoScale(a4, v47->matrices, &a7);
-                                                            }
-                                                        }
-                                                        ++v21;
-                                                    } while (v21 < v43);
-                                                    v19 = v33;
-                                                }
-                                                v16 = v31;
-                                            }
-                                            v33 = ++v19;
-                                        } while (v19 < v51);
-                                        v17 = v40;
-                                    }
-                                }
-                                v31 = ++v16;
-                            } while (v16 < v17);
-                            v9 = src;
-                            v8 = a3;
-                        }
-                    }
-                }
-            }
-            if (++v29 > v36)
-                break;
-            v10 = v29;
-        }
-    }
-    return v28;
-}
-
-void COL_SwapToSpecific(struct sGameObjectMain* a1, uint8_t a2)
-{
-    tGameObjectExtended* v2;
-    tGameObjectCollMain* v3;
-    tColInstance* v4;
-    uint8_t v5;
-    int v6;
-    tColInstanceElem* v7;
-    uint8_t v8;
-    tColInstanceElem* instElemOrigPtr;
-    tColInstanceElem* instElemNewPtr;
-    int v11;
-    tColInstanceElem** v12;
-    tColInstanceElem** v13;
-    char i; 
-    tColInstanceElem* v15;
-    void* v16;
-    uint8_t v18;
-    void* v19;
-    uint8_t v20;
-    tColInstanceElem* v21;
-    int v22;
-    int origNewDistance;
-
-    if (a2 != 0xFF)
-    {
-        if (a1)
-        {
-            v2 = a1->extended;
-            if (v2)
-            {
-                v3 = v2->coll;
-                if (v3)
-                {
-                    v4 = v3->colInstance;
-                    if (v4)
-                    {
-                        if (v4->colSet)
-                        {
-                            v5 = v4->colSet->zoneIDs[a2];
-                            if (v5 <= v4->zoneNum)
-                            {
-                                v6 = v5;
-                                v22 = v5;
-                                if (((1 << v5) & v4->instElemBitmask) == 0)
-                                {
-                                    v7 = v4->selectedInstElemPtrs[v5];
-                                    v8 = v4->instElemNum;
-                                    v21 = v4->selectedInstElemPtrs[v6];
-                                    if (v8)
-                                    {
-                                        instElemOrigPtr = v4->colInstElems;
-                                        instElemNewPtr = (tColInstanceElem*)MEM_p_Realloc(instElemOrigPtr, sizeof(tColInstanceElem) * (v8 + 1));
-                                        v11 = v4->zoneNum;
-                                        v4->colInstElems = instElemNewPtr;
-                                        origNewDistance = (char*)instElemNewPtr - (char*)instElemOrigPtr;
-                                        v12 = v4->selectedInstElemPtrs;
-                                        v13 = &v12[v11];
-                                        for (i = 0; v12 < v13; ++i)
-                                        {
-                                            if (((1 << i) & v4->instElemBitmask) != 0)
-                                                *v12 = (tColInstanceElem*)((char*)*v12 + origNewDistance); // TODO FIXME: ez egy igen nagy tárgya, hogy a régi + új offset különbsége alapjkán frissíti a selectedInstElemPtrs-t, megoldani másképp
-                                            ++v12;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        v4->colInstElems = (tColInstanceElem*)MEM_p_Alloc(sizeof(tColInstanceElem));
-                                    }
-                                    v15 = &v4->colInstElems[v4->instElemNum];
-                                    *v15 = *v7;
-                                    if (v7->elemType == 1)      // aabbox
-                                    {
-                                        v19 = MEM_p_Alloc(sizeof(tColBox));
-                                        v15->elemShapePtr = v19;
-                                        memcpy(v19, v7->elemShapePtr, sizeof(tColBox));
-                                        v15->elemType = v21->elemType;
-                                        v15->colFlags = v21->colFlags;
-                                        v15->unk1 = v21->unk1;
-                                        v18 = v21->design;
-                                    }
-                                    else
-                                    {
-                                        if (v7->elemType != 2)
-                                        {
-                                        LABEL_20:
-                                            v4->instElemBitmask |= 1 << v22;
-                                            v15->colFlags |= 0x40u;
-                                            v4->selectedInstElemPtrs[v22] = v15;
-                                            v20 = v4->sharedZoneNum - 1;
-                                            ++v4->instElemNum;
-                                            v4->sharedZoneNum = v20;
-                                            return;
-                                        }
-                                        v16 = MEM_p_Alloc(sizeof(tColSphere));     // sphere
-                                        v15->elemShapePtr = v16;
-                                        memcpy(v16, v7->elemShapePtr, sizeof(tColSphere));
-                                        v15->elemType = v7->elemType;
-                                        v15->colFlags = v7->colFlags;
-                                        v15->unk1 = v7->unk1;
-                                        v18 = v7->design;
-                                    }
-                                    v15->design = v18;
-                                    goto LABEL_20;
-                                }
-                            }
-                        }
+                        outList[count] = gao;
+                        ++count;
+                        if (count >= (uint8_t)maxCount)
+                            count = maxCount - 1;
                     }
                 }
             }
         }
     }
+    return count;
 }
 
-int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest, struct sWorld* a4, struct sGameObjectMain** a5, Vec3* a6, float a7, char a8)
+void COL_ZDx_SpecificPosSet(struct sGameObjectMain* gao, uint8_t id, Vec3* pos)
 {
-    tableElemStructPF* v8;
-    tableElemStructPF* v9;
-    uint8_t i;
-    tGameObjectMain* v11;
-    int v15;
-    float f1, f2, f3;
+    tColInstance* instance;
+    int zoneSlot;
+    tColInstanceElem* elem;
+    tColBox* box;
+    double shiftX;
+    float halfX;
+    float centreX;
+    float centreY;
+    float shiftY;
+    float extentZ;
+    float shiftZ;
 
-    v8 = a4->activatedObjectsTable4PF.firstElemPtr;
-    v9 = ((tableElemStructPF*)(a4->activatedObjectsTable4PF.nextElemPtr)) - 1;
-    for (i = 0; v8 <= v9; ++v8)
+    if ((gao->flags & 0x600) == 0)
+        return;
+    instance = gao->extended->coll->colInstance;
+    zoneSlot = instance->colSet->zoneIDs[id];
+    if ((instance->instElemBitmask & (1 << zoneSlot)) == 0)
+        return;
+    elem = instance->selectedInstElemPtrs[zoneSlot];
+    if (elem->elemType == 1)
     {
-        v11 = (tGameObjectMain*)v8->objectPtr;
-        if (v8->objectPtr)
-        {
-            if (((uint8_t)v11 & 3) != 1)
-            {
-                if (OBJ_b_test_flag(v11, flagMustHave, flagMustNothave, whatToTest))
-                {
-                    f1 = a6->x - v11->matrices->Pos.x;
-                    f2 = a6->y - v11->matrices->Pos.y;
-                    f3 = a6->z - v11->matrices->Pos.z;
-                    
-                    if ((f1 * f1 + f2 * f2 + f3 * f3) < (a7 * a7))       
-                    {      
-                        v15 = i++;
-                        a5[v15] = v11;
-                        if (i >= (uint8_t)a8)
-                            i = a8 - 1;
-                    }
-                }
-            }
-        }
+        box = (tColBox*)elem->elemShapePtr;
+        extentZ = box->pos1.z - box->pos2.z;
+        halfX = (float)((box->pos1.x - box->pos2.x) * 0.5);
+        centreX = halfX + box->pos2.x;
+        centreY = (float)((box->pos1.y - box->pos2.y) * 0.5 + box->pos2.y);
+        shiftX = pos->x - centreX;
+        shiftY = pos->y - centreY;
+        shiftZ = (float)(pos->z - (extentZ * 0.5 + box->pos2.z));
+        box->pos1.x = (float)(shiftX + box->pos1.x);
+        box->pos1.y = shiftY + box->pos1.y;
+        box->pos1.z = shiftZ + box->pos1.z;
+        box->pos2.x = (float)(shiftX + box->pos2.x);
+        box->pos2.y = shiftY + box->pos2.y;
+        box->pos2.z = shiftZ + box->pos2.z;
     }
-    return i;
-}
-
-void COL_ZDx_SpecificPosSet(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3)
-{
-    tColInstance* v3;
-    int v4;
-    tColInstanceElem* v5; 
-    tColBox* v6;
-    double v7; 
-    float v8; 
-    float v9; 
-    float v10;
-    float v11;
-    float v12;
-    float v13;
-
-    if ((a1->flags & 0x600) != 0)
+    else if (elem->elemType == 2)
     {
-        v3 = a1->extended->coll->colInstance;
-        v4 = v3->colSet->zoneIDs[a2];
-        if ((v3->instElemBitmask & (1 << v4)) != 0)
-        {
-            v5 = v3->selectedInstElemPtrs[v4];
-            if (v5->elemType == 1)
-            {
-                v6 = (tColBox*)v5->elemShapePtr;
-                v12 = v6->pos1.z - v6->pos2.z;
-                v8 = (float)((v6->pos1.x - v6->pos2.x) * 0.5);
-                v9 = v8 + v6->pos2.x;
-                v10 = (float)((v6->pos1.y - v6->pos2.y) * 0.5 + v6->pos2.y);
-                v7 = a3->x - v9;
-                v11 = a3->y - v10;
-                v13 = (float)(a3->z - (v12 * 0.5 + v6->pos2.z));
-                v6->pos1.x = (float)(v7 + v6->pos1.x);
-                v6->pos1.y = v11 + v6->pos1.y;
-                v6->pos1.z = v13 + v6->pos1.z;
-                v6->pos2.x = (float)(v7 + v6->pos2.x);
-                v6->pos2.y = v11 + v6->pos2.y;
-                v6->pos2.z = v13 + v6->pos2.z;
-            }
-            else if (v5->elemType == 2)
-            {
-                ((tColSphere*)v5->elemShapePtr)->center = *a3;
-            }
-        }
+        ((tColSphere*)elem->elemShapePtr)->center = *pos;
     }
 }
 
-void COL_ZDx_SpecificSizeSet(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3)
+void COL_ZDx_SpecificSizeSet(struct sGameObjectMain* gao, uint8_t id, Vec3* size)
 {
-    tColInstance* v3;
-    int v4;
-    tColInstanceElem* v5;
-    tColBox* v6;
-    double v7;
-    float v8; 
-    float v9; 
-    float v10;
-    float v11;
+    tColInstance* instance;
+    int zoneSlot;
+    tColInstanceElem* elem;
+    tColBox* box;
+    double centreZ;
+    float halfX;
+    float centreX;
+    float centreY;
+    float extentZ;
 
-    if ((a1->flags & 0x600) != 0)
+    if ((gao->flags & 0x600) == 0)
+        return;
+    instance = gao->extended->coll->colInstance;
+    zoneSlot = instance->colSet->zoneIDs[id];
+    if ((instance->instElemBitmask & (1 << zoneSlot)) == 0)
+        return;
+    elem = instance->selectedInstElemPtrs[zoneSlot];
+    if (elem->elemType == 1)
     {
-        v3 = a1->extended->coll->colInstance;
-        v4 = v3->colSet->zoneIDs[a2];
-        if ((v3->instElemBitmask & (1 << v4)) != 0)
-        {
-            v5 = v3->selectedInstElemPtrs[v4];
-            if (v5->elemType == 1)
-            {
-                v6 = (tColBox*)v5->elemShapePtr;
-                v11 = v6->pos1.z - v6->pos2.z;
-                v8 = (float)((v6->pos1.x - v6->pos2.x) * 0.5);
-                v9 = v8 + v6->pos2.x;
-                v10 = (float)((v6->pos1.y - v6->pos2.y) * 0.5 + v6->pos2.y);
-                v7 = v11 * 0.5 + v6->pos2.z;
-                v6->pos2.x = (float)(v9 - a3->x * 0.5);
-                v6->pos2.y = (float)(v10 - a3->y * 0.5);
-                v6->pos2.z = (float)(v7 - a3->z * 0.5);
-                v6->pos1.x = (float)(a3->x * 0.5 + v9);
-                v6->pos1.y = (float)(a3->y * 0.5 + v10);
-                v6->pos1.z = (float)(a3->z * 0.5 + v7);
-            }
-            else if (v5->elemType == 2)
-            {
-                ((tColSphere*)(v5->elemShapePtr))->radius = a3->x;
-            }
-        }
+        box = (tColBox*)elem->elemShapePtr;
+        extentZ = box->pos1.z - box->pos2.z;
+        halfX = (float)((box->pos1.x - box->pos2.x) * 0.5);
+        centreX = halfX + box->pos2.x;
+        centreY = (float)((box->pos1.y - box->pos2.y) * 0.5 + box->pos2.y);
+        centreZ = extentZ * 0.5 + box->pos2.z;
+        box->pos2.x = (float)(centreX - size->x * 0.5);
+        box->pos2.y = (float)(centreY - size->y * 0.5);
+        box->pos2.z = (float)(centreZ - size->z * 0.5);
+        box->pos1.x = (float)(size->x * 0.5 + centreX);
+        box->pos1.y = (float)(size->y * 0.5 + centreY);
+        box->pos1.z = (float)(size->z * 0.5 + centreZ);
+    }
+    else if (elem->elemType == 2)
+    {
+        ((tColSphere*)(elem->elemShapePtr))->radius = size->x;
     }
 }
 
-float COL_ZDx_SizeGet(struct sGameObjectMain* a1, uint8_t a2)
+float COL_ZDx_SizeGet(struct sGameObjectMain* gao, uint8_t id)
 {
-    double result;
-    tColInstance* v3;
-    uint8_t v4; 
-    tColInstanceElem* v5;
-    tColBox* v6;
-    float a1a;
-    float a2a;
-    float a3; 
+    double size;
+    tColInstance* instance;
+    uint8_t zoneSlot;
+    tColInstanceElem* elem;
+    tColBox* box;
+    float extentX;
+    float extentY;
+    float extentZ;
 
-    result = 0.0;
-    if ((a1->flags & 0x600) == 0)
+    size = 0.0;
+    if ((gao->flags & 0x600) == 0)
         return 0.0;
-    v3 = a1->extended->coll->colInstance;
-    v4 = v3->colSet->zoneIDs[a2];
-    if (v4 == 0xFF)
+    instance = gao->extended->coll->colInstance;
+    zoneSlot = instance->colSet->zoneIDs[id];
+    if (zoneSlot == 0xFF)
         return 0.0;
-    v5 = v3->selectedInstElemPtrs[v4];
-    if (v5->elemType == 1)
+    elem = instance->selectedInstElemPtrs[zoneSlot];
+    if (elem->elemType == 1)
     {
-        v6 = (tColBox*)v5->elemShapePtr;
-        a3 = v6->pos1.z - v6->pos2.z;
-        a2a = v6->pos1.y - v6->pos2.y;
-        a1a = v6->pos1.x - v6->pos2.x;
-        result = MATH_f_MaxOf3(a1a, a2a, a3);
+        box = (tColBox*)elem->elemShapePtr;
+        extentZ = box->pos1.z - box->pos2.z;
+        extentY = box->pos1.y - box->pos2.y;
+        extentX = box->pos1.x - box->pos2.x;
+        size = MATH_f_MaxOf3(extentX, extentY, extentZ);
     }
-    else if (v5->elemType == 2)
+    else if (elem->elemType == 2)
     {
-        result = ((tColSphere*)(v5->elemShapePtr))->radius;
+        size = ((tColSphere*)(elem->elemShapePtr))->radius;
     }
-    return (float)result;
+    return (float)size;
 }
 
-void COL_ZDx_PosGet(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3)
+void COL_ZDx_PosGet(struct sGameObjectMain* gao, uint8_t id, Vec3* outPos)
 {
-    tColInstance* v3;
-    uint8_t v4;
-    tColInstanceElem* v5;
-    tColBox* v6;
+    tColInstance* instance;
+    uint8_t zoneSlot;
+    tColInstanceElem* elem;
+    tColBox* box;
 
-    if ((a1->flags & 0x600) != 0)
+    if ((gao->flags & 0x600) == 0)
+        return;
+    instance = gao->extended->coll->colInstance;
+    zoneSlot = instance->colSet->zoneIDs[id];
+    // preserved: the unset-zone arm zeroes the result and then falls through into the lookup
+    if (zoneSlot == 0xFF)
     {
-        v3 = a1->extended->coll->colInstance;
-        v4 = v3->colSet->zoneIDs[a2];
-        if (v4 == 0xFF)
-        {
-            a3->x = 0.0;
-            a3->y = 0.0;
-            a3->z = 0.0;
-        }
-        v5 = v3->selectedInstElemPtrs[v4];
-        if (v5->elemType == 1)
-        {
-            v6 = (tColBox*)v5->elemShapePtr;
-            a3->x = v6->pos1.x + v6->pos2.x;
-            a3->y = v6->pos1.y + v6->pos2.y;
-            a3->z = v6->pos1.z + v6->pos2.z;
-            a3->x = (float)(a3->x * 0.5);
-            a3->y = (float)(a3->y * 0.5);
-            a3->z = (float)(a3->z * 0.5);
-        }
-        else
-        {
-            if (v5->elemType != 2)
-                return;
-            *a3 = ((tColSphere*)(v5->elemShapePtr))->center;
-        }
-        if ((v5->colFlags & 8) != 0)
-            MATH_TransformVertexNoScale(a3, a1->matrices, a3);
-        else
-            MATH_TransformVertex(a3, a1->matrices, a3);
+        outPos->x = 0.0;
+        outPos->y = 0.0;
+        outPos->z = 0.0;
     }
+    elem = instance->selectedInstElemPtrs[zoneSlot];
+    if (elem->elemType == 1)
+    {
+        box = (tColBox*)elem->elemShapePtr;
+        outPos->x = box->pos1.x + box->pos2.x;
+        outPos->y = box->pos1.y + box->pos2.y;
+        outPos->z = box->pos1.z + box->pos2.z;
+        outPos->x = (float)(outPos->x * 0.5);
+        outPos->y = (float)(outPos->y * 0.5);
+        outPos->z = (float)(outPos->z * 0.5);
+    }
+    else
+    {
+        if (elem->elemType != 2)
+            return;
+        *outPos = ((tColSphere*)(elem->elemShapePtr))->center;
+    }
+    if ((elem->colFlags & 8) != 0)
+        MATH_TransformVertexNoScale(outPos, gao->matrices, outPos);
+    else
+        MATH_TransformVertex(outPos, gao->matrices, outPos);
 }
 
-void COL_GeoColMap_PosSet(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3)
+void COL_GeoColMap_PosSet(struct sGameObjectMain* gao, uint8_t cobIndex, Vec3* pos)
 {
-    tColMap* v3;
-    tColCollisionObject* v4;
-    Vec3* v5;
+    tColMap* colMap;
+    tColCollisionObject* cob;
+    Vec3* centre;
 
-    if (a1)
+    if (!gao)
+        return;
+    if ((gao->flags & 0x100) == 0)
+        return;
+    colMap = gao->extended->coll->colMap;
+    if (colMap->colObjectID <= cobIndex)
+        return;
+    cob = colMap->collisionObjectPtr[cobIndex];
+    if (cob->objectType == 2)
     {
-        if ((a1->flags & 0x100) != 0)
-        {
-            v3 = a1->extended->coll->colMap;
-            if (v3->colObjectID > a2)
-            {
-                v4 = v3->collisionObjectPtr[a2];
-                if (v4->objectType == 2)
-                {                    
-                    v5 = &(((tColSphere*)(((tCobNormalObjectGeneric*)(v4->objectPtrByType))->enclosurePtr))->center);
-                }
-                else
-                {
-                    if (v4->objectType != 3)
-                        return;
-                    v5 = &(((tColCylinder*)(((tCobNormalObjectGeneric*)(v4->objectPtrByType))->enclosurePtr))->center);
-                }
-                *v5 = *a3;
-            }
-        }
+        centre = &(((tColSphere*)(((tCobNormalObjectGeneric*)(cob->objectPtrByType))->enclosurePtr))->center);
     }
+    else
+    {
+        if (cob->objectType != 3)
+            return;
+        centre = &(((tColCylinder*)(((tCobNormalObjectGeneric*)(cob->objectPtrByType))->enclosurePtr))->center);
+    }
+    *centre = *pos;
 }
 
-int COL_Report_ul_GMatReportGet(struct sGameObjectMain* a1, struct sWorld* a2, int a3)
+int COL_Report_ul_GMatReportGet(struct sGameObjectMain* gao, struct sWorld* world, int gameMaterialMask)
 {
-    int v3;
-    int result;
-    tRecordElem* i;
-    tCobGameMaterialElems* v6;
+    int recordCount;
+    int rank;
+    tRecordElem* rec;
+    tCobGameMaterialElems* gameMaterial;
 
-    v3 = a2->recordCount;
-    result = 0;
-    if (!v3)
+    recordCount = world->recordCount;
+    if (!recordCount)
         return -1;
-    for (i = a2->records; ; ++i)
+    rec = world->records;
+    for (rank = 0; rank < recordCount; ++rank)
     {
-        if ((i->flags & 0x40000) == 0 && (i->collisionInstanceGameObject == a1 || i->collisionMapGameObject == a1))
+        if ((rec->flags & 0x40000) == 0
+            && (rec->collisionInstanceGameObject == gao || rec->collisionMapGameObject == gao))
         {
-            v6 = i->gameMaterial;
-            if (v6)
-            {
-                if ((a3 & v6->flags) != 0)
-                    break;
-            }
+            gameMaterial = rec->gameMaterial;
+            if (gameMaterial && (gameMaterialMask & gameMaterial->flags) != 0)
+                return rank;
         }
-        if (++result >= v3)
-            return -1;
+        ++rec;
     }
-    return result;
+    return -1;
 }
