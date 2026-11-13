@@ -326,6 +326,7 @@ int main(void)
     long long totalEntries = 0;
     long long totalSetCalls = 0;
     long long drawCalls = 0;
+    long long rightEdgeFixed = 0;
     int groupSet[AE_GROUPS];
     int groupMinSet[AE_GROUPS];
     int groupMaxSet[AE_GROUPS];
@@ -430,7 +431,22 @@ int main(void)
 
             for (j = 0; !differs && j < baseLog[i].nargs; j++)
                 if (baseLog[i].arg[j] != AEMOCK_log[i].arg[j])
+                {
+                    /* The one expected difference: the frozen copy puts
+                       the full-screen quad's right edge at 639.5 where
+                       the retail binary stores 640.0, so the vertices
+                       carrying that x differ by exactly that pair and by
+                       nothing else. Counted rather than compared, and
+                       the run fails below if the count is zero, so a
+                       revert to 639.5 cannot pass quietly. */
+                    if (baseLog[i].arg[j] == 0x441FE000LL &&
+                        AEMOCK_log[i].arg[j] == 0x44200000LL)
+                    {
+                        rightEdgeFixed++;
+                        continue;
+                    }
                     differs = 1;
+                }
             if (differs)
             {
                 printf("FAIL case %d entry %d: %s(", caseId, i, baseLog[i].fn);
@@ -447,6 +463,13 @@ int main(void)
         }
     }
 
+    if (rightEdgeFixed == 0)
+    {
+        printf("FAIL the quad right-edge correction never appeared, so this run "
+               "proves nothing about it\n");
+        failures++;
+    }
+    printf("  quad right edge 639.5 -> 640.0 %lld vertices\n", rightEdgeFixed);
     printf("wingdi_aftereffects: %d cases, %lld logged entries compared, "
            "%lld differing\n", AE_CASES, totalEntries, (long long)failures);
     printf("  DrawPrimitiveUP calls         %lld\n", drawCalls);
