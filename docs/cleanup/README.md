@@ -63,11 +63,31 @@ brace, a changed signature. It does not prove behaviour, and it is not
 the real toolchain: every batch should still be built under MSVC before
 it is merged.
 
-`-Werror=implicit-function-declaration` is part of the check and earns
-its place: a first draft of `gfx/gfxdesintegrate.c` called a
-`MATH_SetNullVector` that did not exist, and without that flag it
-parsed clean. The corpus has no other implicit declaration, so the flag
-costs nothing and catches every invented call.
+**`-Werror=implicit-function-declaration` was in that command and was
+not doing anything,** which is worth saying plainly because this file
+claimed otherwise for several batches. On gcc 13 the `-w` beside it
+disables it, whichever order the two are given in; confirmed with a
+one-line file that calls an undeclared function and compiles with exit
+0 under either ordering, and errors only once `-w` is dropped.
+
+What the parse sweep measures is unaffected -- a file that does not
+parse still fails it, and the 132 of 137 stands -- but the
+implicit-declaration half of it had never fired, and the claim that
+"the corpus has no other implicit declaration" was never tested. It has
+66, across ten files.
+
+`tests/implicitcheck.sh` runs that half on its own, without `-w`,
+reading the one diagnostic out of the noise. All but one of the 66 are
+in files that have not had their pass yet; the exception is
+`strings.c`'s `isdigit`, which wants `<ctype.h>` and is left alone
+because adding the include turns the call into a macro, which the
+frozen copy in the differential test would not get. The script fails on
+a count that rises and on a file that appears and is not listed, and it
+was checked against both by injecting a call.
+
+The flag still earns its place where it does fire: a first draft of
+`gfx/gfxdesintegrate.c` called a `MATH_SetNullVector` that did not
+exist, which is exactly the class of mistake it catches.
 
 **Differential tests** (`tests/`) compile the old and the new copy of a
 file into one binary, run both over identical state, and compare the
@@ -518,13 +538,15 @@ Two things found in those files are worth the space:
 
 **In progress.** Per-file record in [root.md](root.md).
 
-46 files, 72,963 lines, 658 `goto`s — the engine proper, and the largest
+46 files, 72,692 lines, 635 `goto`s — the engine proper, and the largest
 thing left. Twelve of the 46 were already source.
 
-**Three files so far.** `grid.c`, **2,064 lines to 1,700** with all
-**23** `goto`s gone, came first because `ai/ai_gridfunctions.c` was
-waiting on it to learn what the grid functions' arguments mean. `math.c`
-and `dynamics.c` followed, and four more are in progress.
+**Fifteen of the 46 are rewritten now**, and twelve were already
+source, which leaves eighteen. `grid.c`, **2,064 lines to 1,700**
+with all **23** `goto`s gone, came first because `ai/ai_gridfunctions.c`
+was waiting on it to learn what the grid functions' arguments mean.
+`math.c` and `dynamics.c` followed, then `ai_common.c` and six small
+files, then the five large ones below.
 
 **`math.c`** (2,132 to 2,130, 113 functions) was done by hand rather
 than forked, because every other file's inlined arithmetic is checked
@@ -539,6 +561,51 @@ decay: the integer part of the exponent is rounded off and then never
 applied, because the original scaled by it with `FSCALE` and the
 decompilation kept only the `F2XM1` of the fraction. It happens at three
 sites and the user's own `TODO FIXME` sits on two of them.
+
+**Five large files, four of them in parallel.** `sprites.c` (341 to
+336), `textures.c` (**3,326 to 2,598**, 23 `goto`s gone),
+`animation.c` (**3,067 to 2,097**, sixteen gone), `events.c` (**2,723
+to 2,347**, nine gone) and `strings.c` (**3,359 to 2,823**, **44**
+gone). Residue across the five goes from 7,004 lines to two, and both
+of those are inside comments of the user's own quoting the Hex-Rays
+line they correct.
+
+Four of them came back with a differential test, and those tests are as
+much the output as the rewrites are: 470,352 cases for `events.c`,
+27,407 for `strings.c`, 2,418 for `textures.c`, and 1,196,489 values
+compared for `animation.c`. None differing. Each was mutation-checked
+twice --
+once by the pass that wrote it, and once afterwards with a defect
+chosen independently of it, which is the only check that says a
+no-difference result means anything.
+
+Two of those second mutations paid for the practice. One in `events.c`
+was initially missed and located a real coverage hole, now closed by a
+new case. One in `strings.c` was not caught at all: every key-map
+fixture set indices by parity and the six call sites pair indices two
+apart, so a sentinel test on either of two keys read the same at every
+site. A fourth mapping keyed on `i % 3` separates them, and the
+mutation now produces eight differing cases.
+
+Four findings from the five are worth naming here. `textures.c`'s BMP
+loader steps its header pointer by `sizeof(header)` rather than by one,
+so the pixels are read 2,862 bytes past the end of it -- measured, by
+compiling the struct standalone. `animation.c` compares a blend clock
+as `double` and divides by the `float` it was narrowed into, and the
+pass found the triple that straddles the boundary, so moving the
+comparison onto the float now fails a test instead of passing silently.
+`events.c` has the same shape as `grid.c`'s dead comparison: a
+`uint16_t` type tested `== -1` by five callers that hold it in an
+`int`, where the four that hold it in an `int16_t` do fire. And
+`strings.c` guards a `[24]` array with `(uint8_t)idx < 24u` while
+indexing it with the full `int`.
+
+Two names in `ai/` were corrected from the definitions rather than the
+other way round: `STR_SetStringExt`'s third argument is a bitfield and
+not a first-character index, and `STR_Init3DString*`'s last is a cap on
+the letter count and not a flag word. `ai_gameobjecttextfunctions.c`'s
+four locals follow, and `tests/popcheck.py` still matches on all 1,660
+`ai/` functions.
 
 What it holds: a per-world array of capability bytes with a small live
 window sliding over it, the window run-length encoded in the big file,
