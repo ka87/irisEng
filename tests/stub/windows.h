@@ -252,6 +252,33 @@ SHORT   GetKeyState(int nVirtKey);
 BOOL    SwapMouseButton(BOOL fSwap);
 void    keybd_event(BYTE bVk, BYTE bScan, DWORD dwFlags, UINT_PTR dwExtraInfo);
 double  _hypot(double x, double y);
+/* Handles, threads, files and COM init, for win/winsound.c. These are
+   the documented Win32 signatures; the differential test mocks what it
+   needs. */
+typedef INT_PTR (WINAPI *FARPROC)(void);
+typedef DWORD (WINAPI *LPTHREAD_START_ROUTINE)(LPVOID);
+BOOL     CloseHandle(HANDLE object);
+BOOL     ResetEvent(HANDLE event);
+DWORD    WaitForMultipleObjects(DWORD count, const HANDLE* handles,
+                                BOOL waitAll, DWORD milliseconds);
+HANDLE   CreateThread(void* attributes, SIZE_T stackSize,
+                      LPTHREAD_START_ROUTINE start, LPVOID parameter,
+                      DWORD creationFlags, LPDWORD threadId);
+void     ExitThread(DWORD exitCode);
+HMODULE  LoadLibraryA(LPCSTR fileName);
+FARPROC  GetProcAddress(HMODULE module, LPCSTR procName);
+HANDLE   CreateFileA(LPCSTR fileName, DWORD desiredAccess, DWORD shareMode,
+                     void* securityAttributes, DWORD creationDisposition,
+                     DWORD flagsAndAttributes, HANDLE templateFile);
+BOOL     ReadFile(HANDLE file, LPVOID buffer, DWORD bytesToRead,
+                  LPDWORD bytesRead, void* overlapped);
+DWORD    SetFilePointer(HANDLE file, LONG distanceToMove,
+                        LONG* distanceToMoveHigh, DWORD moveMethod);
+DWORD    FormatMessageA(DWORD flags, const void* source, DWORD messageId,
+                        DWORD languageId, LPSTR buffer, DWORD size,
+                        va_list* arguments);
+HRESULT  CoInitialize(LPVOID reserved);
+void     CoUninitialize(void);
 
 /* CreateProcessA and friends, for the win/ relauncher. */
 typedef struct _PROCESS_INFORMATION {

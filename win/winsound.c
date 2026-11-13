@@ -39,71 +39,73 @@ int gpcSNDVolumeAdjustmentArr[] = {
         0xFFFFF9A2, 0xFFFFF8F8, 0xFFFFF7CC, 0xFFFFDCB0
 };
 
-int pcSND_GetFXSettingsFromRegistry_sub_49FD00(LPBYTE lpData)
+static int pcSND_ReadFXSettingFromRegistry(LPBYTE dest)
 {
-    DWORD cbData;
-    HKEY phkResult;
-    DWORD Type;
+    DWORD size;
+    HKEY key;
+    DWORD type;
 
     if (RegOpenKeyExA(
         HKEY_CURRENT_USER,
         "Software\\IRISEng\\Sound",
         0,
         0x20019u,
-        &phkResult))
+        &key))
     {
         return 1;
     }
-    cbData = 4;
-    if (RegQueryValueExA(phkResult, "Sound FX", 0, &Type, lpData, &cbData) || cbData != 4 || Type != 4)
+    size = 4;
+    // preserved: the key is left open when the value cannot be read
+    if (RegQueryValueExA(key, "Sound FX", 0, &type, dest, &size) || size != 4 || type != 4)
         return 1;
-    RegCloseKey(phkResult);
+    RegCloseKey(key);
     return 0;
 }
 
-int pcSND_checkAudioBoardGuid_sub_49FD80(LPBYTE lpData)
+static int pcSND_ReadAudioBoardGuid(LPBYTE dest)
 {
-    DWORD v1;
-    HKEY phkResult;
-    DWORD cbData;
-    DWORD Type;
-    CHAR Buffer[1000];
+    DWORD status;
+    HKEY key;
+    DWORD size;
+    DWORD type;
+    CHAR message[1000];
 
     if (!RegOpenKeyExA(
         HKEY_CURRENT_USER,
         "Software\\IRISEng\\Sound",
         0,
         1u,
-        &phkResult))
+        &key))
     {
-        cbData = 16;
-        v1 = RegQueryValueExA(phkResult, "Audio board GUID", 0, &Type, lpData, &cbData);
-        if (v1)
+        size = 16;
+        status = RegQueryValueExA(key, "Audio board GUID", 0, &type, dest, &size);
+        if (status)
         {
             GetLastError();
-            FormatMessageA(0x1000u, 0, v1, 0, Buffer, 1000u, 0);
+            FormatMessageA(0x1000u, 0, status, 0, message, 1000u, 0);
         }
-        else if (cbData == 16 && Type == 3)
+        else if (size == 16 && type == 3)
         {
-            RegCloseKey(phkResult);
+            RegCloseKey(key);
             return 0;
         }
     }
+    // preserved: the key is left open on every failing path
     return 1;
 }
 
-HRESULT pcSND_EAXDSoundCreate_sub_49FE30(GUID* guid, LPDIRECTSOUND8* dsoundptr, IUnknown* ptr)
+static HRESULT pcSND_EAXDirectSoundCreate(GUID* driverGuid, LPDIRECTSOUND8* dsound, IUnknown* outer)
 {
     snd_eaxDLLHandle = LoadLibraryA("eax.dll");
     pEAXDirectSoundCreate8 = (PEAXDirectSoundCreate8)GetProcAddress(snd_eaxDLLHandle, "EAXDirectSoundCreate8");
-    return pEAXDirectSoundCreate8(guid, dsoundptr, ptr);
+    return pEAXDirectSoundCreate8(driverGuid, dsound, outer);
 }
 
-int pcSND_probablyDecompressADPCM_sub_4A0130(char* snddata, int16_t* destPtr, int blockNum, int channelNum)
+static int pcSND_DecodeADPCMBlocks(char* src, int16_t* dest, int blockNum, int channelNum)
 {
     pcSND_ADPCMToPCM_Convert(
-        (uint8_t*)snddata,
-        destPtr,
+        (uint8_t*)src,
+        dest,
         60 * blockNum,
         channelNum,
         channelNum != 1 ? 72 : 36,
@@ -111,230 +113,205 @@ int pcSND_probablyDecompressADPCM_sub_4A0130(char* snddata, int16_t* destPtr, in
     return 1;
 }
 
-void pcSND_AddSoundToThePlayList(BOOL a1)
+void pcSND_AddSoundToThePlayList(BOOL notifyThread)
 {
-    int i;
-    size_t v2;
-    HANDLE* v3;
+    int slot;
+    size_t bytes;
+    HANDLE* handles;
 
-    for (i = 0; i < sndEventsNum; ++i)
+    for (slot = 0; slot < sndEventsNum; ++slot)
     {
-        if (!sndPlayList[i].playListElemInUse)
+        if (!sndPlayList[slot].playListElemInUse)
             break;
     }
-    if (i >= sndEventsNum)
+    if (slot >= sndEventsNum)
     {
-        v2 = 8 * (sndEventsNum + 200);
+        bytes = 8 * (sndEventsNum + 200);
         if (sndEventsNum)
         {
-            sndPlayList = (tPcSndEventRelated*)MEM_p_Realloc(sndPlayList, v2);
-            v3 = (HANDLE*)MEM_p_Realloc(sndPlayList, v2);
+            sndPlayList = (tPcSndEventRelated*)MEM_p_Realloc(sndPlayList, bytes);
+            // preserved: the handle array is grown from sndPlayList, not from sndEventHandles
+            handles = (HANDLE*)MEM_p_Realloc(sndPlayList, bytes);
         }
         else
         {
-            sndPlayList = (tPcSndEventRelated*)MEM_p_Alloc(v2);
-            v3 = (HANDLE*)MEM_p_Alloc(v2);
+            sndPlayList = (tPcSndEventRelated*)MEM_p_Alloc(bytes);
+            handles = (HANDLE*)MEM_p_Alloc(bytes);
         }
-        sndEventHandles = v3;
+        sndEventHandles = handles;
         memset(&sndPlayList[sndEventsNum], 0, sizeof(tPcSndEventRelated) * 200);
         memset(&sndEventHandles[2 * sndEventsNum], 0, 3200u); //TODO ez hogy jön ki? 2x4x200 az csak 1600
-        i = sndEventsNum;
+        slot = sndEventsNum;
         sndEventsNum += 200;
     }
-    sndPlayList[i].playListElemInUse = 1;
-    sndPlayList[i].soundElem = sndCurrSoundBufferElem;
-    sndEventHandles[2 * i] = sndCurrSoundBufferElem->miscData->eventHandle1;
-    sndEventHandles[2 * i + 1] = sndCurrSoundBufferElem->miscData->eventHandle2;
+    sndPlayList[slot].playListElemInUse = 1;
+    sndPlayList[slot].soundElem = sndCurrSoundBufferElem;
+    sndEventHandles[2 * slot] = sndCurrSoundBufferElem->miscData->eventHandle1;
+    sndEventHandles[2 * slot + 1] = sndCurrSoundBufferElem->miscData->eventHandle2;
     sndEventHandleNum += 2;
-    if (a1)
+    if (notifyThread)
         SetEvent(dsndEvents[5]);
 }
 
-void pcSND_RemoveSoundFromPlayList(tSndSoundBufferElem* a1, int fireEvent)
+void pcSND_RemoveSoundFromPlayList(tSndSoundBufferElem* sbe, int fireEvent)
 {
-    int v2;
-    int v3;
+    int slot;
+    int next;
+    int count;
 
-    if (a1 == (tSndSoundBufferElem*)-1)
+    if (sbe == (tSndSoundBufferElem*)-1)
     {
         sndEventHandleNum = 0;
-        if (!fireEvent)
-            return;
-        goto LABEL_13;
+        if (fireEvent)
+            SetEvent(dsndEvents[5]);
+        return;
     }
-    v2 = 0;
     if ((sndEventHandleNum & 0xFFFFFFFE) != 0)
     {
-        while (sndPlayList[v2].soundElem != a1)
+        count = sndEventHandleNum >> 1;
+        for (slot = 0; slot < count; ++slot)
         {
-            if (++v2 >= sndEventHandleNum >> 1)
-                goto LABEL_12;
+            if (sndPlayList[slot].soundElem == sbe)
+                break;
         }
-        v3 = v2 + 1;
-        if (v2 != -1)
+        if (slot < count)
         {
-            for (; v3 < sndEventHandleNum >> 1; ++v3)
+            for (next = slot + 1; next < count; ++next)
             {
-                sndPlayList[v2].soundElem = sndPlayList[v3].soundElem;
-                sndEventHandles[2 * v2] = sndEventHandles[2 * v3];
-                sndEventHandles[2 * v2++ + 1] = sndEventHandles[2 * v3 + 1];
+                sndPlayList[slot].soundElem = sndPlayList[next].soundElem;
+                sndEventHandles[2 * slot] = sndEventHandles[2 * next];
+                sndEventHandles[2 * slot + 1] = sndEventHandles[2 * next + 1];
+                ++slot;
             }
-            sndPlayList[v2].soundElem = 0;
-            sndPlayList[v2].playListElemInUse = 0;
-            sndEventHandles[2 * v2] = 0;
-            sndEventHandles[2 * v2 + 1] = 0;
+            sndPlayList[slot].soundElem = 0;
+            sndPlayList[slot].playListElemInUse = 0;
+            sndEventHandles[2 * slot] = 0;
+            sndEventHandles[2 * slot + 1] = 0;
             sndEventHandleNum -= 2;
         }
     }
-LABEL_12:
-    ResetEvent(a1->miscData->eventHandle1);
-    a1->miscData->eventHandle1 = 0;
-    ResetEvent(a1->miscData->eventHandle2);
-    a1->miscData->eventHandle2 = 0;
+    ResetEvent(sbe->miscData->eventHandle1);
+    sbe->miscData->eventHandle1 = 0;
+    ResetEvent(sbe->miscData->eventHandle2);
+    sbe->miscData->eventHandle2 = 0;
     if (fireEvent)
-        LABEL_13:
-    SetEvent(dsndEvents[5]);
+        SetEvent(dsndEvents[5]);
 }
 
-void pcSND_StopSoundAndRemoveFromThePlayList(tSndSoundBufferElem* a1, int a2)
+void pcSND_StopSoundAndRemoveFromThePlayList(tSndSoundBufferElem* sbe, int fireEvent)
 {
-    a1->dsndSBIF->lpVtbl->Stop(a1->dsndSBIF);
-    pcSND_RemoveSoundFromPlayList(a1, a2);
+    sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
+    pcSND_RemoveSoundFromPlayList(sbe, fireEvent);
 }
 
-void pcSND_updateCurrentPlayPositionAndSize(tSndSoundBufferElem* a1)
+void pcSND_updateCurrentPlayPositionAndSize(tSndSoundBufferElem* sbe)
 {
-    tSndSoundBufferElem* v1;
-    tSbeMiscData* v2;
-    int v3;
-    int v4;
-    int a1a;
+    tSbeMiscData* misc;
+    int advanced;
+    int playPos;
 
-    v1 = a1;
-    a1->dsndSBIF->lpVtbl->GetCurrentPosition(a1->dsndSBIF, &a1a, 0);
-    v2 = v1->miscData;
-    v3 = v2->currentPlayPosition;
-    if (a1a >= v3)
-        v4 = a1a - v3;
+    sbe->dsndSBIF->lpVtbl->GetCurrentPosition(sbe->dsndSBIF, &playPos, 0);
+    misc = sbe->miscData;
+    if (playPos >= misc->currentPlayPosition)
+        advanced = playPos - misc->currentPlayPosition;
     else
-        v4 = a1a + v2->soundBufferSize - v3;
-    v2->currSize += v4;
-    v2->currentPlayPosition = a1a;
+        advanced = playPos + misc->soundBufferSize - misc->currentPlayPosition;
+    misc->currSize += advanced;
+    misc->currentPlayPosition = playPos;
 }
 
-unsigned int pcSND_CalcSizeToReadByFormat(unsigned int a1, unsigned int a2)
+unsigned int pcSND_CalcSizeToReadByFormat(unsigned int byteCount, unsigned int channels)
 {
-    unsigned int v2;
-    unsigned int result;
+    unsigned int frames;
 
-    v2 = (a1 >> 1) / a2;
-    if (a2 == 1)
-        result = 36 * (v2 / 60);
-    else
-        result = 72 * (v2 / 60);
-    return result;
+    frames = (byteCount >> 1) / channels;
+    if (channels == 1)
+        return 36 * (frames / 60);
+    return 72 * (frames / 60);
 }
 
 unsigned int pcSND_calcBlockNumForDecompress(int size, int channels)
 {
-    unsigned int ret;
-
     if (channels == 1)
-        ret = size / 36;
-    else
-        ret = size / 72;
-    return ret;
+        return size / 36;
+    return size / 72;
 }
 
 unsigned int pcSND_calcMemoryNeededForTheSound(unsigned int fullsoundlen, int channels)
 {
-    unsigned int result;
-
     if (channels == 1)
-        result = 120 * (fullsoundlen / 36);
-    else
-        result = 120 * channels * (fullsoundlen / 72);
-    return result;
+        return 120 * (fullsoundlen / 36);
+    return 120 * channels * (fullsoundlen / 72);
 }
 
-void pcSND_ReadAndDecompressSoundData(unsigned int a1, tSndSoundBufferElem* sbe, int TmpBufferToSelect, uint32_t* totalSizeAfterDecompress, int16_t* destRaw)
+void pcSND_ReadAndDecompressSoundData(unsigned int wanted, tSndSoundBufferElem* sbe, int useFirstBuffer, uint32_t* decodedSize, int16_t* dest)
 {
-    tSbeMiscData* v6;
-    unsigned int v7;
+    tSbeMiscData* misc;
+    unsigned int readSize;
     int blockNum;
-    DWORD v9;
-    int16_t* v10;
-    int16_t* v11;
-    DWORD i;
-    int v13;
-    int v14;
-    unsigned int v15;
-    uint16_t* v16;
-    int v17;
-    void* lpBuffer;
+    DWORD decoded;
+    int16_t* src;
+    int16_t* mixDest;
+    DWORD done;
+    int left;
+    int right;
+    unsigned int mixed;
+    int channels;
+    void* buffer;
 
-    if (TmpBufferToSelect)
-        lpBuffer = dsndReadBuffer1;
+    if (useFirstBuffer)
+        buffer = dsndReadBuffer1;
     else
-        lpBuffer = dsndReadBuffer2;
-    v6 = sbe->miscData;
-    if (v6->fullSize - v6->sumSize < a1)
-        a1 = v6->fullSize - v6->sumSize;
-    v7 = pcSND_CalcSizeToReadByFormat(a1, sbe->format);
-    memset(lpBuffer, 0, 307200u);
-    ReadFile(sbe->miscData->fileHandle, lpBuffer, v7, totalSizeAfterDecompress, 0);
-    v17 = sbe->format;
-    blockNum = pcSND_calcBlockNumForDecompress(v7, v17);
-    pcSND_probablyDecompressADPCM_sub_4A0130((char*)lpBuffer, destRaw, blockNum, v17);
-    v9 = pcSND_calcMemoryNeededForTheSound(*totalSizeAfterDecompress, sbe->format);
-    *totalSizeAfterDecompress = v9;
-    sbe->miscData->sumSize += v9;
+        buffer = dsndReadBuffer2;
+    misc = sbe->miscData;
+    if (misc->fullSize - misc->sumSize < wanted)
+        wanted = misc->fullSize - misc->sumSize;
+    readSize = pcSND_CalcSizeToReadByFormat(wanted, sbe->format);
+    memset(buffer, 0, 307200u);
+    ReadFile(sbe->miscData->fileHandle, buffer, readSize, decodedSize, 0);
+    channels = sbe->format;
+    blockNum = pcSND_calcBlockNumForDecompress(readSize, channels);
+    pcSND_DecodeADPCMBlocks((char*)buffer, dest, blockNum, channels);
+    decoded = pcSND_calcMemoryNeededForTheSound(*decodedSize, sbe->format);
+    *decodedSize = decoded;
+    sbe->miscData->sumSize += decoded;
     if (sbe->format == 2 && SND_gst_Params.soundRenderMode == 1)// mono-ra alakítás?
     {
-        v10 = destRaw;
-        v11 = destRaw;
-        for (i = 0; i < *totalSizeAfterDecompress; v11 = v16 + 1)
+        src = dest;
+        mixDest = dest;
+        for (done = 0; done < *decodedSize; done += 4)
         {
-            v13 = *v10;
-            v14 = v10[1];
-            v10 += 2;
-            v15 = (unsigned int)(((double)v13 + (double)v14) * 0.5);
-            *v11 = v15;
-            v16 = v11 + 1;
-            *v16 = v15;
-            i += 4;
+            left = *src;
+            right = src[1];
+            src += 2;
+            mixed = (unsigned int)(((double)left + (double)right) * 0.5);
+            *mixDest = mixed;
+            mixDest[1] = mixed;
+            mixDest += 2;
         }
     }
 }
 
-int WINAPI pcSND_SoundThread(LPVOID lpThreadParameter)
+int WINAPI pcSND_SoundThread(LPVOID parameter)
 {
-    DWORD v1;
-    char v2;
+    DWORD signalled;
     tSndSoundBufferElem* sbe;
-    tSbeMiscData* v4;
-    IDirectSoundBuffer* dsndsbif;
-    DWORD v6;
-    unsigned int v7;
-    unsigned int v8;
-    char* v9;
-    unsigned int v10;
-    int16_t* v11;
+    tSbeMiscData* misc;
+    IDirectSoundBuffer* buffer;
+    DWORD produced;
     unsigned int audioBytes1;
     char* audioPtr1;
     DWORD totalSizeAfterDecompress;
-    LONG DistanceToMoveHigh;
+    LONG distanceToMoveHigh;
 
-    DistanceToMoveHigh = 0;
+    distanceToMoveHigh = 0;
     while (1)
     {
         do
-        {
-            v1 = WaitForMultipleObjects(sndEventHandleNum, sndEventHandles, 0, 0xFFFFFFFF);
-            v2 = (char)v1;
-        } while (v1 == -1);
+            signalled = WaitForMultipleObjects(sndEventHandleNum, sndEventHandles, 0, 0xFFFFFFFF);
+        while (signalled == -1);
 
-        switch (v1)
+        switch (signalled)
         {
         case 0u:
             pcSND_AddSoundToThePlayList(1);
@@ -349,62 +326,54 @@ int WINAPI pcSND_SoundThread(LPVOID lpThreadParameter)
             pcSND_StopSoundAndRemoveFromThePlayList(sndCurrSoundBufferElem, 1);
             break;
         default:
-            sbe = sndPlayList[v1 >> 1].soundElem;
-            v4 = sbe->miscData;
-            if (v4->Stopped_SetIN49e270 != 1)
+            sbe = sndPlayList[signalled >> 1].soundElem;
+            misc = sbe->miscData;
+            if (misc->Stopped_SetIN49e270 != 1)
             {
-                pcSND_updateCurrentPlayPositionAndSize(sndPlayList[v1 >> 1].soundElem);
-                if (v4->RemoveAfterPlayFinished && v4->currSize >= v4->fullSize)
-                    v4->shouldBeRemovedFromPlayList = 1;
-                if (v4->shouldBeRemovedFromPlayList == 1 || (v2 & 1) != 0)
+                pcSND_updateCurrentPlayPositionAndSize(sndPlayList[signalled >> 1].soundElem);
+                if (misc->RemoveAfterPlayFinished && misc->currSize >= misc->fullSize)
+                    misc->shouldBeRemovedFromPlayList = 1;
+                if (misc->shouldBeRemovedFromPlayList == 1 || (signalled & 1) != 0)
                 {
                     pcSND_StopSoundAndRemoveFromThePlayList(sbe, 0);
                 }
+                else if (misc->RemoveAfterPlayFinished)
+                {
+                    buffer = sbe->dsndSBIF;
+                    buffer->lpVtbl->Lock(buffer, misc->currOffset, misc->sizeToUpload, &audioPtr1, &audioBytes1, 0, 0, 0);
+                    memset(audioPtr1, 0, audioBytes1);
+                    sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, audioPtr1, audioBytes1, 0, 0);
+                }
                 else
                 {
-                    dsndsbif = sbe->dsndSBIF;
-                    if (v4->RemoveAfterPlayFinished)
+                    buffer = sbe->dsndSBIF;
+                    buffer->lpVtbl->Lock(buffer, misc->currOffset, misc->sizeToUpload, &audioPtr1, &audioBytes1, 0, 0, 0);
+                    totalSizeAfterDecompress = 0;
+                    pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 1, &totalSizeAfterDecompress, (int16_t*)audioPtr1);
+                    produced = totalSizeAfterDecompress;
+                    if (totalSizeAfterDecompress < audioBytes1)
                     {
-                        dsndsbif->lpVtbl->Lock(dsndsbif, v4->currOffset, v4->sizeToUpload, &audioPtr1, &audioBytes1, 0, 0, 0);
-                        memset(audioPtr1, 0, audioBytes1);
-                        sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, audioPtr1, audioBytes1, 0, 0);
-                    }
-                    else
-                    {
-                        dsndsbif->lpVtbl->Lock(dsndsbif, v4->currOffset, v4->sizeToUpload, &audioPtr1, &audioBytes1, 0, 0, 0);
-                        totalSizeAfterDecompress = 0;
-                        pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 1, &totalSizeAfterDecompress, (int16_t*)audioPtr1);
-                        v6 = totalSizeAfterDecompress;
-                        v7 = audioBytes1;
-                        if (totalSizeAfterDecompress < audioBytes1)
+                        if (misc->readThroughWithMultipleLoop)
                         {
-                            if (v4->readThroughWithMultipleLoop)
+                            do
                             {
-                                do
-                                {
-                                    SetFilePointer(v4->fileHandle, v4->distanceToMove, &DistanceToMoveHigh, 0);
-                                    v11 = (int16_t*)&audioPtr1[v6];
-                                    v8 = audioBytes1 - v6;
-                                    v4->sumSize = 0;
-                                    pcSND_ReadAndDecompressSoundData(v8, sbe, 1, &totalSizeAfterDecompress, v11);
-                                    v6 += totalSizeAfterDecompress;
-                                    v7 = audioBytes1;
-                                } while (v6 < audioBytes1);
-                            }
-                            else
-                            {
-                                v9 = &audioPtr1[totalSizeAfterDecompress];
-                                v10 = audioBytes1 - totalSizeAfterDecompress;
-                                v4->RemoveAfterPlayFinished = 1;
-                                memset(v9, 0, v10);
-                                v7 = audioBytes1;
-                            }
+                                SetFilePointer(misc->fileHandle, misc->distanceToMove, &distanceToMoveHigh, 0);
+                                misc->sumSize = 0;
+                                pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 1, &totalSizeAfterDecompress,
+                                                                 (int16_t*)&audioPtr1[produced]);
+                                produced += totalSizeAfterDecompress;
+                            } while (produced < audioBytes1);
                         }
-                        sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, audioPtr1, v7, 0, 0);
-                        v4->currOffset += audioBytes1;
-                        if (v4->currOffset >= v4->soundBufferSize)
-                            v4->currOffset -= v4->soundBufferSize;
+                        else
+                        {
+                            misc->RemoveAfterPlayFinished = 1;
+                            memset(&audioPtr1[totalSizeAfterDecompress], 0, audioBytes1 - totalSizeAfterDecompress);
+                        }
                     }
+                    sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, audioPtr1, audioBytes1, 0, 0);
+                    misc->currOffset += audioBytes1;
+                    if (misc->currOffset >= misc->soundBufferSize)
+                        misc->currOffset -= misc->soundBufferSize;
                 }
             }
             break;
@@ -413,9 +382,8 @@ int WINAPI pcSND_SoundThread(LPVOID lpThreadParameter)
     return 0;
 }
 
-void pcSND_StartThread_sub_49EDA0()
+static void pcSND_StartSoundThread(void)
 {
-    HANDLE* v0;
     unsigned int i;
 
     if (!SND_gc_NoSound)
@@ -426,479 +394,396 @@ void pcSND_StartThread_sub_49EDA0()
         trackEventsArrayNextIdx = 0;
         dsndReadBuffer1 = malloc(307200u);
         dsndReadBuffer2 = malloc(307200u);
-        v0 = dsndEvents;
-        do
-            *v0++ = CreateEventA(NULL, FALSE, FALSE, NULL);
-        while (v0 <= &dsndEvents[22]);
+        for (i = 0; i < 23; ++i)
+            dsndEvents[i] = CreateEventA(NULL, FALSE, FALSE, NULL);
         sndEventsNum = 23;
         sndPlayList = (tPcSndEventRelated*)MEM_p_Alloc(sizeof(tPcSndEventRelated) * 23);
         memset(sndPlayList, 0, 8 * sndEventsNum);
         sndEventHandles = (HANDLE*)MEM_p_Alloc(8 * sndEventsNum);
         memset(sndEventHandles, 0, 8 * sndEventsNum);
         sndEventHandleNum = 4;
-        for (i = 0; i < 16; i += 8)
+        for (i = 0; i < 2; ++i)
         {
-            sndEventHandles[i / 4] = dsndEvents[i / 4];
-            sndEventHandles[i / 4 + 1] = dsndEvents[i / 4 + 1];
-            sndPlayList[i / 8].playListElemInUse = 1;
-            sndPlayList[i / 8].soundElem = 0;
+            sndEventHandles[2 * i] = dsndEvents[2 * i];
+            sndEventHandles[2 * i + 1] = dsndEvents[2 * i + 1];
+            sndPlayList[i].playListElemInUse = 1;
+            sndPlayList[i].soundElem = 0;
         }
         pcSNDhObject = CreateThread(0, 0, pcSND_SoundThread, 0, 0, &pcSNDThreadId);
     }
 }
 
-int pcSND_CreateSoundBuffer(IDirectSoundBuffer *a1, IDirectSound8* dsndif)
+int pcSND_CreateSoundBuffer(IDirectSoundBuffer* primary, IDirectSound8* dsndif)
 {
-    IDirectSound8* v2;
-    WAVEFORMATEX v4;
-    DSBUFFERDESC v5;
-    ULONG a1a;
+    WAVEFORMATEX format;
+    DSBUFFERDESC desc;
+    ULONG support;
 
-    a1->lpVtbl->QueryInterface(a1, &IID_IDirectSound3DListener, &dsndIDisectSound3DListenerIF);
-    v4.wFormatTag = 0;
-    v4.nChannels = 0;
-    v4.nBlockAlign = 0;
-    v4.wBitsPerSample = 0;
-    memset(&v5, 0, sizeof(v5));
-    v4.cbSize = 0;
-    v5.guid3DAlgorithm.Data1 = 0;
-    v5.lpwfxFormat = &v4;
-    v4.nAvgBytesPerSec = 10000;
-    v4.nSamplesPerSec = 10000;
-    v5.dwBufferBytes = 10000;
-    memset(v5.guid3DAlgorithm.Data4, 0, sizeof(v5.guid3DAlgorithm.Data4));
-    v5.guid3DAlgorithm.Data2 = 0;
-    v5.guid3DAlgorithm.Data3 = 0;
-    v2 = dsndif;
-    v4.nBlockAlign = 1;
-    v4.nChannels = 1;
-    v4.wBitsPerSample = 8;
-    v4.wFormatTag = 1;
-    v5.dwSize = 36;
-    v5.dwFlags = 0x90;
-    v2->lpVtbl->CreateSoundBuffer(dsndif, &v5, &d3dSndBuffer, 0);
+    primary->lpVtbl->QueryInterface(primary, &IID_IDirectSound3DListener, &dsndIDisectSound3DListenerIF);
+    memset(&desc, 0, sizeof(desc));
+    format.wFormatTag = 1;
+    format.nChannels = 1;
+    format.nSamplesPerSec = 10000;
+    format.nAvgBytesPerSec = 10000;
+    format.nBlockAlign = 1;
+    format.wBitsPerSample = 8;
+    format.cbSize = 0;
+    desc.dwSize = 36;
+    desc.dwFlags = 0x90;
+    desc.dwBufferBytes = 10000;
+    desc.lpwfxFormat = &format;
+    desc.guid3DAlgorithm.Data1 = 0;
+    desc.guid3DAlgorithm.Data2 = 0;
+    desc.guid3DAlgorithm.Data3 = 0;
+    memset(desc.guid3DAlgorithm.Data4, 0, sizeof(desc.guid3DAlgorithm.Data4));
+    dsndif->lpVtbl->CreateSoundBuffer(dsndif, &desc, &d3dSndBuffer, 0);
     d3dSndBuffer->lpVtbl->QueryInterface(d3dSndBuffer, &IID_IDirectSound3DBuffer, &ppdsndDSND3DBuffer);
     d3dSndBuffer->lpVtbl->QueryInterface(d3dSndBuffer, &IID_IKsPropertySet, &ppdsndIKSPropertySet);
-    if (ppdsndIKSPropertySet->lpVtbl->QuerySupport(ppdsndIKSPropertySet,  &DSPROPSETID_EAX30_ListenerProperties, 1, &a1a) < 0
-        || (pcSNDEAXLisenerPropertiesSetIsOk = 1, ((uint8_t)a1a & 3) != 3))
+    if (ppdsndIKSPropertySet->lpVtbl->QuerySupport(ppdsndIKSPropertySet, &DSPROPSETID_EAX30_ListenerProperties, 1, &support) < 0)
     {
         pcSNDEAXLisenerPropertiesSetIsOk = 0;
+    }
+    else
+    {
+        pcSNDEAXLisenerPropertiesSetIsOk = 1;
+        if (((uint8_t)support & 3) != 3)
+            pcSNDEAXLisenerPropertiesSetIsOk = 0;
     }
     return 0;
 }
 
-BOOL pcSND_CreateSoundBufferAndPlayTest(tSndHandles* a1)
+BOOL pcSND_CreateSoundBufferAndPlayTest(tSndHandles* handles)
 {
-    IDirectSoundBuffer** v1;
     IDirectSound8* dsndif;
-    BOOL result;
-    IDirectSoundBuffer* v4;
-    WAVEFORMATEX v5;
-    DSBUFFERDESC v6;
+    IDirectSoundBuffer* primary;
+    WAVEFORMATEX format;
+    DSBUFFERDESC desc;
 
-    memset(&v6, 0, sizeof(v6));
-    v6.guid3DAlgorithm.Data1 = 0;
-    memset(v6.guid3DAlgorithm.Data4, 0, sizeof(v6.guid3DAlgorithm.Data4));
-    v1 = &a1->SoundBuffer;
-    dsndif = a1->dsndif;
-    v6.dwSize = 36;
-    v6.dwFlags = 17;
-    v6.dwBufferBytes = 0;
-    v6.lpwfxFormat = 0;
-    v6.guid3DAlgorithm.Data2 = 0;
-    if (dsndif->lpVtbl->CreateSoundBuffer(dsndif, &v6, &(a1->SoundBuffer), 0) < 0)
-        goto LABEL_2;
-    v5.wFormatTag = 0;
-    v5.nChannels = 0;
-    v5.nSamplesPerSec = 0;
-    v5.nAvgBytesPerSec = 0;
-    v5.nBlockAlign = 0;
-    v5.wBitsPerSample = 0;
-    v5.cbSize = 0;
-    v4 = *v1;
-    v5.nSamplesPerSec = 48000;
-    v5.wBitsPerSample = 16;
-    v5.nChannels = 2;
-    v5.nBlockAlign = 4;
-    v5.nAvgBytesPerSec = 192000;
-    v5.cbSize = 0;
-    v5.wFormatTag = 1;
-    if (v4->lpVtbl->SetFormat(v4, &v5) != S_OK || pcSND_CreateSoundBuffer(*v1, a1->dsndif))
-    {
-    LABEL_2:
-        result = 0;
-    }
-    else
-    {
-        result = (*v1)->lpVtbl->Play(*v1, 0, 0, 1) == 0;
-    }
-    return result;
+    memset(&desc, 0, sizeof(desc));
+    dsndif = handles->dsndif;
+    desc.dwSize = 36;
+    desc.dwFlags = 17;
+    desc.dwBufferBytes = 0;
+    desc.lpwfxFormat = 0;
+    desc.guid3DAlgorithm.Data1 = 0;
+    desc.guid3DAlgorithm.Data2 = 0;
+    memset(desc.guid3DAlgorithm.Data4, 0, sizeof(desc.guid3DAlgorithm.Data4));
+    if (dsndif->lpVtbl->CreateSoundBuffer(dsndif, &desc, &handles->SoundBuffer, 0) < 0)
+        return 0;
+    primary = handles->SoundBuffer;
+    format.wFormatTag = 1;
+    format.nChannels = 2;
+    format.nSamplesPerSec = 48000;
+    format.nAvgBytesPerSec = 192000;
+    format.nBlockAlign = 4;
+    format.wBitsPerSample = 16;
+    format.cbSize = 0;
+    if (primary->lpVtbl->SetFormat(primary, &format) != S_OK || pcSND_CreateSoundBuffer(handles->SoundBuffer, handles->dsndif))
+        return 0;
+    return handles->SoundBuffer->lpVtbl->Play(handles->SoundBuffer, 0, 0, 1) == 0;
 }
 
 int pcSND_l_Init(tSndHandles* sndh)
 {
-    IDirectSound8** dnsif;
-    BYTE Data[4];
-    BYTE v4[16];
+    BYTE fxSetting[4];
+    BYTE driverGuid[16];
 
     BAS_binit(&dsndSBList, 48);
     memset(&gDoSoundGlobal, 0, sizeof(gDoSoundGlobal));
     pcSNDhObject = NULL;
     gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0 = 0;
     sndh->MainWindowHandle = MAI_gh_MainWindow;
-    if (CoInitialize(NULL) != S_OK || pcSND_GetFXSettingsFromRegistry_sub_49FD00(Data) || pcSND_checkAudioBoardGuid_sub_49FD80(v4))
+    if (CoInitialize(NULL) != S_OK || pcSND_ReadFXSettingFromRegistry(fxSetting) || pcSND_ReadAudioBoardGuid(driverGuid))
         return 0;
-    dnsif = &sndh->dsndif;
-    if (pcSND_EAXDSoundCreate_sub_49FE30((GUID*)v4, &sndh->dsndif, 0) != S_OK)
+    if (pcSND_EAXDirectSoundCreate((GUID*)driverGuid, &sndh->dsndif, 0) != S_OK)
         return 0;
     gDoSoundGlobal.dsndCaps.dwSize = 96;
-    (*dnsif)->lpVtbl->GetCaps(*dnsif, &(gDoSoundGlobal.dsndCaps));
-    (*dnsif)->lpVtbl->SetCooperativeLevel(*dnsif, sndh->MainWindowHandle, 3);
+    sndh->dsndif->lpVtbl->GetCaps(sndh->dsndif, &(gDoSoundGlobal.dsndCaps));
+    sndh->dsndif->lpVtbl->SetCooperativeLevel(sndh->dsndif, sndh->MainWindowHandle, 3);
     if (!pcSND_CreateSoundBufferAndPlayTest(sndh))
         return 0;
-    pcSND_StartThread_sub_49EDA0();
+    pcSND_StartSoundThread();
     return 1;
 }
 
-int pcSND_i_ChangeRenderMode(int vol)
+int pcSND_i_ChangeRenderMode(int mode)
 {
     int i;
-    tSndSoundBufferElem* v2;
-    int v3;
-    int v4;
+    tSndSoundBufferElem* sbe;
+    int balance;
+    int vol;
+    int plain;
+    int level;
     int pan;
-    int v6;
-    int v7;
-    int v8;
-    unsigned int v9;
 
-    SND_gst_Params.soundRenderMode = vol;
+    SND_gst_Params.soundRenderMode = mode;
     for (i = 0; i < dsndSBList.actElemNum; ++i)
     {
-        v2 = (tSndSoundBufferElem*)dsndSBList.keyValPtr[i].key;
-        if (v2 != (tSndSoundBufferElem*)-1)
+        sbe = (tSndSoundBufferElem*)dsndSBList.keyValPtr[i].key;
+        if (sbe != (tSndSoundBufferElem*)-1)
         {
-            v2->dsndSBIF->lpVtbl->GetVolume(v2->dsndSBIF, &vol);
-            v3 = v2->unk2SetTo64InCreate;
+            sbe->dsndSBIF->lpVtbl->GetVolume(sbe->dsndSBIF, &vol);
+            balance = sbe->unk2SetTo64InCreate;
             if (SND_gst_Params.soundRenderMode == 1)
             {
-                if (v3 <= 64)
-                {
-                    if (v3 >= 64)
-                        v6 = vol - gpcSNDVolumeAdjustmentArr[64];
-                    else
-                        v6 = vol - gpcSNDVolumeAdjustmentArr[v3];
-                    pan = 0;
-                    vol = gpcSNDVolumeAdjustmentArr[64] + v6;
-                }
+                if (balance <= 64)
+                    plain = vol - gpcSNDVolumeAdjustmentArr[balance];
                 else
-                {
-                    v4 = vol - gpcSNDVolumeAdjustmentArr[127 - v3];
-                    pan = 0;
-                    vol = gpcSNDVolumeAdjustmentArr[64] + v4;
-                }
+                    plain = vol - gpcSNDVolumeAdjustmentArr[127 - balance];
+                pan = 0;
+                vol = gpcSNDVolumeAdjustmentArr[64] + plain;
             }
             else
             {
-                v7 = gpcSNDVolumeAdjustmentArr[64];
                 vol -= gpcSNDVolumeAdjustmentArr[64];
-                if (v3 <= 64)
+                if (balance < 64)
                 {
-                    if (v3 >= 64)
-                    {
-                        pan = 0;
-                    }
-                    else
-                    {
-                        v9 = 4 * v3;
-                        v7 = gpcSNDVolumeAdjustmentArr[v9 / 4];
-                        pan = gpcSNDVolumeAdjustmentArr[127 - (v9 / 4)] - v7;
-                    }
-                    vol += v7;
+                    level = gpcSNDVolumeAdjustmentArr[balance];
+                    pan = gpcSNDVolumeAdjustmentArr[127 - balance] - level;
+                }
+                else if (balance == 64)
+                {
+                    level = gpcSNDVolumeAdjustmentArr[64];
+                    pan = 0;
                 }
                 else
                 {
-                    v8 = gpcSNDVolumeAdjustmentArr[127 - v3];
-                    pan = v8 - gpcSNDVolumeAdjustmentArr[v3];
-                    vol += v8;
+                    level = gpcSNDVolumeAdjustmentArr[127 - balance];
+                    pan = level - gpcSNDVolumeAdjustmentArr[balance];
                 }
+                vol += level;
             }
-            v2->dsndSBIF->lpVtbl->SetPan(v2->dsndSBIF, pan);
-            v2->dsndSBIF->lpVtbl->SetVolume(v2->dsndSBIF, vol);
+            sbe->dsndSBIF->lpVtbl->SetPan(sbe->dsndSBIF, pan);
+            sbe->dsndSBIF->lpVtbl->SetVolume(sbe->dsndSBIF, vol);
         }
     }
     return 0;
 }
 
-int pcSND_SetDefaultSoundPositionAndDistance(tSndSoundBufferElem* a1)
+int pcSND_SetDefaultSoundPositionAndDistance(tSndSoundBufferElem* sbe)
 {
-    IDirectSound3DBuffer** v1;
-    void** v1b;
+    IDirectSound3DBuffer** buffer3d;
+    void** failed;
 
-    v1 = &a1->dsnd3dbufferIF;
-    v1b = v1; // TODO FIXME: ezek így biztosan jók?
-    if (SUCCEEDED(a1->dsndSBIF->lpVtbl->QueryInterface(a1->dsndSBIF, &IID_IDirectSound3DBuffer, &a1->dsnd3dbufferIF)))
+    buffer3d = &sbe->dsnd3dbufferIF;
+    failed = buffer3d; // TODO FIXME: ezek így biztosan jók?
+    if (SUCCEEDED(sbe->dsndSBIF->lpVtbl->QueryInterface(sbe->dsndSBIF, &IID_IDirectSound3DBuffer, &sbe->dsnd3dbufferIF)))
     {
-        (*v1)->lpVtbl->SetMinDistance(*v1, 0x40000000, 0);
-        (*v1)->lpVtbl->SetMaxDistance(*v1, 0x40400000, 0);
-        (*v1)->lpVtbl->SetPosition(*v1, 0, 0, 0x3F800000, 0);
-        v1b = &a1->dsndIKPropertySetIF;
-        if (SUCCEEDED(a1->dsndSBIF->lpVtbl->QueryInterface(a1->dsndSBIF, &IID_IKsPropertySet, &a1->dsndIKPropertySetIF)))
+        // preserved: the distances and the position are float bit patterns passed as integers
+        (*buffer3d)->lpVtbl->SetMinDistance(*buffer3d, 0x40000000, 0);
+        (*buffer3d)->lpVtbl->SetMaxDistance(*buffer3d, 0x40400000, 0);
+        (*buffer3d)->lpVtbl->SetPosition(*buffer3d, 0, 0, 0x3F800000, 0);
+        failed = &sbe->dsndIKPropertySetIF;
+        if (SUCCEEDED(sbe->dsndSBIF->lpVtbl->QueryInterface(sbe->dsndSBIF, &IID_IKsPropertySet, &sbe->dsndIKPropertySetIF)))
             return 0;
     }
-    *v1b = NULL;
+    *failed = NULL;
     return -1;
 }
 
-int pcSND_SNDPropertySetRoomReverb(tSndSoundBufferElem* a1, int a2)
+int pcSND_SNDPropertySetRoomReverb(tSndSoundBufferElem* sbe, int enable)
 {
-    IKsPropertySet** v2;
-    int result;
+    IKsPropertySet** propertySet;
+    int room;
 
-    a2 = a2 != 0 ? 0 : -10000;
-    v2 = &(a1->dsndIKPropertySetIF);
-    if (v2 && ((*v2)->lpVtbl->Set(*v2, &DSPROPSETID_EAX30_BufferProperties, DSPROPERTY_EAXBUFFER_ROOM, 0, 0, (LPVOID*)&a2, 4) != S_OK))
-        result = -1;
-    else
-        result = 0;
-    return result;
+    room = enable != 0 ? 0 : -10000;
+    propertySet = &sbe->dsndIKPropertySetIF;
+    // preserved: the guard tests the address of the field, not the interface in it
+    if (propertySet && ((*propertySet)->lpVtbl->Set(*propertySet, &DSPROPSETID_EAX30_BufferProperties, DSPROPERTY_EAXBUFFER_ROOM, 0, 0, (LPVOID*)&room, 4) != S_OK))
+        return -1;
+    return 0;
 }
 
-void pcSND_DisableReverbAndRestartPlaying(tSoundFxParams* a1, tSndSoundBufferElem* a2)
+void pcSND_DisableReverbAndRestartPlaying(tSoundFxParams* params, tSndSoundBufferElem* sbe)
 {
-    IDirectSoundBuffer* v3;
-    unsigned int v4;
+    IDirectSoundBuffer* buffer;
+    unsigned int status;
 
     if (pcSNDFXEnabled_dword_B30400)
     {
-        a2->dsndSBIF->lpVtbl->GetStatus(a2->dsndSBIF, &v4);
-        if ((v4 & 1) != 0)
-            a2->dsndSBIF->lpVtbl->Stop(a2->dsndSBIF);
-        pcSND_SNDPropertySetRoomReverb(a2, 0);
-        if ((v4 & 1) != 0)
+        sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, &status);
+        if ((status & 1) != 0)
+            sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
+        pcSND_SNDPropertySetRoomReverb(sbe, 0);
+        if ((status & 1) != 0)
         {
-            v3 = a2->dsndSBIF;
-            v4 = (v4 >> 2) & 1;
-            v3->lpVtbl->Play(v3, 0, 0, v4);
+            buffer = sbe->dsndSBIF;
+            buffer->lpVtbl->Play(buffer, 0, 0, (status >> 2) & 1);
         }
     }
 }
 
-int pcSND_DisableReverbIf_i7_not_match_with_idx(tSoundFxParams* a1, tSndSoundBufferElem* a2)
+int pcSND_DisableReverbIf_i7_not_match_with_idx(tSoundFxParams* params, tSndSoundBufferElem* sbe)
 {
-    int v2;
-    int v3;
-    tSndSoundBufferElem** v4;
+    int count;
+    int idx;
 
-    v2 = a1->i7;
-    v3 = 0;
-    if (v2 > 0)
+    count = params->i7;
+    for (idx = 0; idx < count; ++idx)
     {
-        v4 = a1->i8;
-        do
-        {
-            if (*v4 == a2)
-                break;
-            ++v3;
-            ++v4;
-        } while (v3 < v2);
+        if (params->i8[idx] == sbe)
+            break;
     }
-    if (v3 != v2)
+    if (idx != count)
     {
-        pcSND_DisableReverbAndRestartPlaying(a1, a2);
-        a1->i8[v3] = NULL;
+        pcSND_DisableReverbAndRestartPlaying(params, sbe);
+        params->i8[idx] = NULL;
     }
     return 0;
 }
 
-void pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(tSndSoundBufferElem* a1)
+void pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(tSndSoundBufferElem* sbe)
 {
-    if (a1->miscData->eventHandle2 != (HANDLE)-1)
+    if (sbe->miscData->eventHandle2 != (HANDLE)-1)
     {
-        sndCurrSoundBufferElem = a1;
+        sndCurrSoundBufferElem = sbe;
         SetEvent(dsndEvents[3]);
         WaitForSingleObject(dsndEvents[5], 5000u);
     }
 }
 
-void pcSND_SB_Stop(tSndSoundBufferElem* a1)
+void pcSND_SB_Stop(tSndSoundBufferElem* sbe)
 {
-    tSndSoundBufferElem* v1;
+    int wasListed;
 
-    v1 = a1;
-    if (a1)
+    if (sbe)
     {
-        BAS_bdeletegetval((int)a1, &dsndSBList, (int *)&a1);
-        if (v1->miscData)
+        BAS_bdeletegetval((int)sbe, &dsndSBList, &wasListed);
+        if (sbe->miscData)
         {
-            if (a1)
-                gDoSoundGlobal.dword_B303C0 -= v1->format;
-            pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(v1);
+            if (wasListed)
+                gDoSoundGlobal.dword_B303C0 -= sbe->format;
+            pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(sbe);
         }
         else
         {
-            if (a1)
-                gDoSoundGlobal.sndConcurrentlyPlayedNum -= v1->format;
-            pcSND_DisableReverbIf_i7_not_match_with_idx(&SND_gst_FxDefaultParam, v1);
-            v1->dsndSBIF->lpVtbl->Stop(v1->dsndSBIF);
+            if (wasListed)
+                gDoSoundGlobal.sndConcurrentlyPlayedNum -= sbe->format;
+            pcSND_DisableReverbIf_i7_not_match_with_idx(&SND_gst_FxDefaultParam, sbe);
+            sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
         }
     }
 }
 
-void pcSND_stopSoundIfReadFinished(tSndSoundBufferElem* a1)
+void pcSND_stopSoundIfReadFinished(tSndSoundBufferElem* sbe)
 {
-    tSbeMiscData* v1;
+    tSbeMiscData* misc;
 
-    v1 = a1->miscData;
-    if (v1 && !v1->readThroughWithMultipleLoop && v1->currSize >= v1->fullSize)
-        pcSND_SB_Stop(a1);
+    misc = sbe->miscData;
+    if (misc && !misc->readThroughWithMultipleLoop && misc->currSize >= misc->fullSize)
+        pcSND_SB_Stop(sbe);
 }
 
-int pcSND_SB_GetStatus(tSndSoundBufferElem* a1, int* a2)
+int pcSND_SB_GetStatus(tSndSoundBufferElem* sbe, int* status)
 {
     int result;
 
-    if (!a1)
+    if (!sbe)
         return 0;
-    if (a1->miscData)
-        pcSND_stopSoundIfReadFinished(a1);
-    result = a1->dsndSBIF->lpVtbl->GetStatus(a1->dsndSBIF, a2);
-    if (a1->miscData)
-    {
-        if ((*a2 & 1) != 0)
-            *a2 |= 0x10u;
-    }
+    if (sbe->miscData)
+        pcSND_stopSoundIfReadFinished(sbe);
+    result = sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, status);
+    if (sbe->miscData && (*status & 1) != 0)
+        *status |= 0x10u;
     return result;
 }
 
-int pcSND_SB_Play(tSndSoundBufferElem* a1, int a2)
+int pcSND_SB_Play(tSndSoundBufferElem* sbe, int flags)
 {
-    int v2;
+    int playing;
 
-    if (!a1)
+    if (!sbe)
         return -1;
-    if (a1->miscData)
+    if (sbe->miscData)
         return -1;
-    v2 = gDoSoundGlobal.sndConcurrentlyPlayedNum + a1->format;
-    if (v2 > 44)
+    playing = gDoSoundGlobal.sndConcurrentlyPlayedNum + sbe->format;
+    if (playing > 44)
         return -1;
-    gDoSoundGlobal.sndConcurrentlyPlayedNum += a1->format;
-    if (v2 > gDoSoundGlobal.sndConcurrentlyPlayedPeakNum)
-        gDoSoundGlobal.sndConcurrentlyPlayedPeakNum = v2;
-    if ((a1->dsndSBIF->lpVtbl->Play(a1->dsndSBIF, 0, 0, a2 & 1)) != S_OK)
+    gDoSoundGlobal.sndConcurrentlyPlayedNum += sbe->format;
+    if (playing > gDoSoundGlobal.sndConcurrentlyPlayedPeakNum)
+        gDoSoundGlobal.sndConcurrentlyPlayedPeakNum = playing;
+    if ((sbe->dsndSBIF->lpVtbl->Play(sbe->dsndSBIF, 0, 0, flags & 1)) != S_OK)
         OutputDebugStringA("Voice not allocated in hardware");
     else
         OutputDebugStringA("HARDWARE voice\n");
-    BAS_binsert((unsigned int)a1, (int)a1, &dsndSBList);
+    BAS_binsert((unsigned int)sbe, (int)sbe, &dsndSBList);
     return 0;
 }
 
-int sub_49CEF0()
+static int pcSND_RasterBudgetLeft(void)
 {
     return 6000000 - sndRasterStat.i7;
 }
 
-void pcSND_AddToSNDRaster(IDirectSoundBuffer* a1, int a2)
+void pcSND_AddToSNDRaster(IDirectSoundBuffer* buffer, int bytes)
 {
-    BOOL v2;
+    int fileId;
 
     if (SND_gst_Params.soundEnabled)
     {
-        BAS_binsert((unsigned int)a1, a2, &rasterbas1);
-        BAS_binsert((unsigned int)a1, SND_gi_RasterCurrentFileId, &rasterbas2);
-        if (SND_gi_RasterCurrentFileId > 0x4000)
-        {
-            v2 = SND_gi_RasterCurrentFileId == 0x80000;
-        }
+        BAS_binsert((unsigned int)buffer, bytes, &rasterbas1);
+        BAS_binsert((unsigned int)buffer, SND_gi_RasterCurrentFileId, &rasterbas2);
+        fileId = SND_gi_RasterCurrentFileId;
+        if (fileId == 0x2000 || fileId == 0x4000 || fileId == 0x80000)
+            sndRasterStat.i1 += bytes;
+        else if (fileId == 8)
+            sndRasterStat.i3 += bytes;
         else
-        {
-            if (SND_gi_RasterCurrentFileId == 0x4000)
-                goto LABEL_10;
-            if (SND_gi_RasterCurrentFileId == 8)
-            {
-                sndRasterStat.i3 += a2;
-            LABEL_11:
-                sndRasterStat.i7 += a2;
-                sndRasterStat.i8 = sub_49CEF0();
-                return;
-            }
-            v2 = SND_gi_RasterCurrentFileId == 0x2000;
-        }
-        if (!v2)
-        {
-            sndRasterStat.i5 += a2;
-            goto LABEL_11;
-        }
-    LABEL_10:
-        sndRasterStat.i1 += a2;
-        goto LABEL_11;
+            sndRasterStat.i5 += bytes;
+        sndRasterStat.i7 += bytes;
+        sndRasterStat.i8 = pcSND_RasterBudgetLeft();
     }
 }
 
-tSndSoundBufferElem* pcSND_pst_SB_Create(tSndHandles* a2, tSndWavHdrStruct* sndHdr, int sndStartPos)
+tSndSoundBufferElem* pcSND_pst_SB_Create(tSndHandles* handles, tSndWavHdrStruct* sndHdr, int sndStartPos)
 {
     char* sndData;
-    char* v5;
-    int v6;
-    unsigned int v7;
+    char* cursor;
     char* uncompressedSnd;
-    unsigned int v9;
-    DWORD v10;
+    unsigned int uncompressedSize;
+    int packedSize;
+    unsigned int decodedSize;
+    unsigned int blockAlign;
+    DWORD samplesPerSec;
     tSndSoundBufferElem* sndSNDBuf;
     IDirectSound8* dsndIf;
     IDirectSoundBuffer* dsndSBIF;
-    int v14;
-    char* offset;
-    int v16;
-    char* v17;
-    unsigned int v18;
-    char* v19;
-    int v20;
+    char* audioPtr1;
+    char* audioPtr2;
+    unsigned int audioBytes1;
+    int audioBytes2;
     DSBUFFERDESC dsBufferDesc;
 
-    if (!a2->dsndif)
+    if (!handles->dsndif)
         return 0;
-    sndData = 0;
     if (sndHdr->wfex.wFormatTag != 2)
         return 0;
-    if (!LOA_gb_SpeedMode)
+    sndData = 0;
+    if (sndStartPos)
     {
-        if (!sndStartPos)
-            goto LABEL_14;
         sndData = (char*)MEM_p_Alloc(sndHdr->fullSoundSize);
-        if (sndData)
-            goto LABEL_13;
-        return 0;
+        if (!sndData)
+            return 0;
+        if (!LOA_gb_SpeedMode || !isSpeedModeAndBinFile())
+        {
+            BIG_ReadNoSeek(sndStartPos, sndData, sndHdr->fullSoundSize);
+        }
+        else if (sndHdr->wfex.nChannels == 1)
+        {
+            cursor = LOA_FetchBuffer(sndHdr->fullSoundSize);
+            LOA_ReadCharArray(&cursor, sndData, sndHdr->fullSoundSize, 1);
+        }
+        else
+        {
+            packedSize = sndHdr->fullSoundSize;
+            sndHdr->wfex.cbSize >>= 1;
+            sndHdr->fullSoundSize = packedSize >> 1;
+            cursor = LOA_FetchBuffer(packedSize >> 1);
+            LOA_ReadCharArray(&cursor, sndData, sndHdr->fullSoundSize, 1);
+            cursor = LOA_FetchBuffer(sndHdr->fullSoundSize);
+            LOA_ReadCharArray(&cursor, &sndData[sndHdr->fullSoundSize], sndHdr->fullSoundSize, 1);
+        }
     }
-    if (!sndStartPos)
-        goto LABEL_14;
-    sndData = (char*)MEM_p_Alloc(sndHdr->fullSoundSize);
-    if (!sndData)
-        return 0;
-    if (!isSpeedModeAndBinFile())
-    {
-    LABEL_13:
-        BIG_ReadNoSeek(sndStartPos, sndData, sndHdr->fullSoundSize);
-        goto LABEL_14;
-    }
-    if (sndHdr->wfex.nChannels == 1)
-    {
-        v5 = LOA_FetchBuffer(sndHdr->fullSoundSize);
-        v14 = sndHdr->fullSoundSize;
-        offset = v5;
-        LOA_ReadCharArray(&offset, sndData, v14, 1);
-    }
-    else
-    {
-        v6 = sndHdr->fullSoundSize;
-        sndHdr->wfex.cbSize >>= 1;
-        sndHdr->fullSoundSize = v6 >> 1;
-        offset = LOA_FetchBuffer(v6 >> 1);
-        LOA_ReadCharArray(&offset, sndData, sndHdr->fullSoundSize, 1);
-        offset = LOA_FetchBuffer(sndHdr->fullSoundSize);
-        LOA_ReadCharArray(&offset, &sndData[sndHdr->fullSoundSize], sndHdr->fullSoundSize, 1);
-    }
-LABEL_14:
     if (sndHdr->wfex.wFormatTag != 2)
     {
         if (sndData)
@@ -907,37 +792,35 @@ LABEL_14:
     }
     if (sndStartPos)
     {
-        v7 = pcSND_calcMemoryNeededForTheSound(sndHdr->fullSoundSize, sndHdr->wfex.nChannels);
-        uncompressedSnd = (char*)MEM_p_Alloc(v7);
-        memset(uncompressedSnd, 0, v7);
-        pcSND_probablyDecompressADPCM_sub_4A0130(sndData, (int16_t*)uncompressedSnd, sndHdr->fullSoundSize / sndHdr->wfex.nBlockAlign, sndHdr->wfex.nChannels);
+        uncompressedSize = pcSND_calcMemoryNeededForTheSound(sndHdr->fullSoundSize, sndHdr->wfex.nChannels);
+        uncompressedSnd = (char*)MEM_p_Alloc(uncompressedSize);
+        memset(uncompressedSnd, 0, uncompressedSize);
+        pcSND_DecodeADPCMBlocks(sndData, (int16_t*)uncompressedSnd, sndHdr->fullSoundSize / sndHdr->wfex.nBlockAlign, sndHdr->wfex.nChannels);
         MEM_Free(sndData);
         sndData = uncompressedSnd;
     }
-    v9 = pcSND_calcMemoryNeededForTheSound(sndHdr->fullSoundSize, sndHdr->wfex.nChannels);
-    v10 = sndHdr->wfex.nSamplesPerSec;
-    sndHdr->fullSoundSize = v9;
-    v9 = 2 * sndHdr->wfex.nChannels;
-    sndHdr->wfex.nBlockAlign = v9;
+    decodedSize = pcSND_calcMemoryNeededForTheSound(sndHdr->fullSoundSize, sndHdr->wfex.nChannels);
+    samplesPerSec = sndHdr->wfex.nSamplesPerSec;
+    sndHdr->fullSoundSize = decodedSize;
+    blockAlign = 2 * sndHdr->wfex.nChannels;
+    sndHdr->wfex.nBlockAlign = blockAlign;
     sndHdr->wfex.wBitsPerSample = 16;
     sndHdr->wfex.wFormatTag = 1;
     sndHdr->wfex.cbSize = 0;
-    sndHdr->wfex.nAvgBytesPerSec = (uint16_t)v9 * v10;
-    v18 = 0;
-    v16 = 0;
+    sndHdr->wfex.nAvgBytesPerSec = (uint16_t)blockAlign * samplesPerSec;
     sndSNDBuf = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
     memset(sndSNDBuf, 0, sizeof(tSndSoundBufferElem));
     sndSNDBuf->unk2SetTo64InCreate = 64;
     memset(&dsBufferDesc, 0, sizeof(dsBufferDesc));
+    dsBufferDesc.dwSize = 36;
+    dsBufferDesc.dwFlags = 0x400B0;
     dsBufferDesc.dwBufferBytes = sndHdr->fullSoundSize;
     dsBufferDesc.lpwfxFormat = &sndHdr->wfex;
+    dsBufferDesc.guid3DAlgorithm.Data1 = 0;
     dsBufferDesc.guid3DAlgorithm.Data2 = 0;
     dsBufferDesc.guid3DAlgorithm.Data3 = 0;
     memset(dsBufferDesc.guid3DAlgorithm.Data4, 0, sizeof(dsBufferDesc.guid3DAlgorithm.Data4));
-    dsndIf = a2->dsndif;
-    dsBufferDesc.guid3DAlgorithm.Data1 = 0;
-    dsBufferDesc.dwSize = 36;
-    dsBufferDesc.dwFlags = 0x400B0;
+    dsndIf = handles->dsndif;
     if ((dsndIf->lpVtbl->CreateSoundBuffer(dsndIf, &dsBufferDesc, &(sndSNDBuf->dsndSBIF), 0)) != S_OK)
     {
         if (sndData)
@@ -950,22 +833,17 @@ LABEL_14:
     pcSND_AddToSNDRaster(dsndSBIF, dsBufferDesc.dwBufferBytes);
     if (!sndData)
         return sndSNDBuf;
-    if ((sndSNDBuf->dsndSBIF->lpVtbl->Lock(sndSNDBuf->dsndSBIF, 0, sndHdr->fullSoundSize, &v19, &v18, &v17, &v20, 0)) != S_OK)
+    if ((sndSNDBuf->dsndSBIF->lpVtbl->Lock(sndSNDBuf->dsndSBIF, 0, sndHdr->fullSoundSize, &audioPtr1, &audioBytes1, &audioPtr2, &audioBytes2, 0)) != S_OK)
     {
         sndSNDBuf->dsndSBIF->lpVtbl->Release(sndSNDBuf->dsndSBIF);
         MEM_Free(sndSNDBuf);
-        sndSNDBuf = NULL;
         MEM_Free(sndData);
-        return sndSNDBuf;
+        return NULL;
     }
-    memcpy(v19, sndData, v18);
-    v14 = v20;
-    if (v20)
-    {
-        memcpy(v17, &sndData[v18], (unsigned int)v20);
-        v14 = v20;
-    }
-    sndSNDBuf->dsndSBIF->lpVtbl->Unlock(sndSNDBuf->dsndSBIF, v19, v18, v17, v14);
+    memcpy(audioPtr1, sndData, audioBytes1);
+    if (audioBytes2)
+        memcpy(audioPtr2, &sndData[audioBytes1], (unsigned int)audioBytes2);
+    sndSNDBuf->dsndSBIF->lpVtbl->Unlock(sndSNDBuf->dsndSBIF, audioPtr1, audioBytes1, audioPtr2, audioBytes2);
     pcSND_SetDefaultSoundPositionAndDistance(sndSNDBuf);
     MEM_Free(sndData);
     return sndSNDBuf;
@@ -981,7 +859,7 @@ int pcSND_DSoundBuffersRelease()
 
 void pcSND_Cleanup()
 {
-    HANDLE* v0;
+    int i;
 
     if (!SND_gc_NoSound)
     {
@@ -1002,13 +880,12 @@ void pcSND_Cleanup()
         sndEventHandleNum = 0;
         sndEventsNum = 0;
         trackEventsArrayNextIdx = 0;
-        v0 = dsndEvents;
-        do
+        for (i = 0; i < 23; ++i)
         {
-            if (*v0)
-                CloseHandle(*v0);
-            *v0++ = 0;
-        } while (v0 <= &dsndEvents[22]);
+            if (dsndEvents[i])
+                CloseHandle(dsndEvents[i]);
+            dsndEvents[i] = 0;
+        }
         if (dsndReadBuffer1)
             free(dsndReadBuffer1);
         dsndReadBuffer1 = NULL;
@@ -1018,350 +895,273 @@ void pcSND_Cleanup()
     }
 }
 
-void pcSND_Close(tSndHandles* a1)
+void pcSND_Close(tSndHandles* handles)
 {
     pcSND_Cleanup();
     BAS_bfree(&dsndSBList);
     pcSND_DSoundBuffersRelease();
-    a1->dsndif->lpVtbl->Release(a1->dsndif);
+    handles->dsndif->lpVtbl->Release(handles->dsndif);
     CoUninitialize();
 }
 
-void pcSND_SB_Duplicate(tSndHandles* a1, tSndSoundBufferElem* a2, tSndSoundBufferElem** a3)
+void pcSND_SB_Duplicate(tSndHandles* handles, tSndSoundBufferElem* src, tSndSoundBufferElem** dest)
 {
-    tSndSoundBufferElem* v3;
+    tSndSoundBufferElem* copy;
 
-    *a3 = NULL;
-    if (!a2->miscData)
+    *dest = NULL;
+    if (!src->miscData)
     {
-        v3 = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
-        *a3 = v3;
-        if (v3)
+        copy = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
+        *dest = copy;
+        if (copy)
         {
-            memset(v3, 0, sizeof(tSndSoundBufferElem));
-            a1->dsndif->lpVtbl->DuplicateSoundBuffer(a1->dsndif, a2->dsndSBIF, &((*a3)->dsndSBIF));
-            (*a3)->format = a2->format;
-            (*a3)->unk2SetTo64InCreate = 64;
-            pcSND_SetDefaultSoundPositionAndDistance(*a3);
+            memset(copy, 0, sizeof(tSndSoundBufferElem));
+            handles->dsndif->lpVtbl->DuplicateSoundBuffer(handles->dsndif, src->dsndSBIF, &((*dest)->dsndSBIF));
+            (*dest)->format = src->format;
+            (*dest)->unk2SetTo64InCreate = 64;
+            pcSND_SetDefaultSoundPositionAndDistance(*dest);
         }
     }
 }
 
-void pcSND_SB_GetFrequency(tSndSoundBufferElem* a1, int* a2)
+void pcSND_SB_GetFrequency(tSndSoundBufferElem* sbe, int* freq)
 {
-    if (a1)
-        a1->dsndSBIF->lpVtbl->GetFrequency(a1->dsndSBIF, a2);
+    if (sbe)
+        sbe->dsndSBIF->lpVtbl->GetFrequency(sbe->dsndSBIF, freq);
 }
 
-void pcSND_SB_GetPan(tSndSoundBufferElem* a1, int* a2, int* a3)
+void pcSND_SB_GetPan(tSndSoundBufferElem* sbe, int* pan, int* front)
 {
-    int v3;
-    float a1a;
-    float a1b;
+    int balance;
+    float level;
 
-    if (a1)
+    if (sbe)
     {
-        *a3 = 0;
-        *a2 = 0;
+        *front = 0;
+        *pan = 0;
         if (SND_gst_Params.soundRenderMode == 2)
         {
-            v3 = a1->unk2SetTo64InCreate;
-            if (v3 <= 64)
+            balance = sbe->unk2SetTo64InCreate;
+            if (balance < 64)
             {
-                if (v3 >= 64)
-                {
-                    *a2 = 0;
-                }
-                else
-                {
-                    a1b = (float)((double)v3 * 0.015625);
-                    *a2 = SND_l_GetAttFromVol(a1b);
-                }
+                level = (float)((double)balance * 0.015625);
+                *pan = SND_l_GetAttFromVol(level);
+            }
+            else if (balance > 64)
+            {
+                level = (float)((127.0 - (double)balance) * 0.015873017);
+                *pan = SND_l_GetAttFromVol(level);
             }
             else
             {
-                a1a = (float)((127.0 - (double)v3) * 0.015873017);
-                *a2 = SND_l_GetAttFromVol(a1a);
+                *pan = 0;
             }
         }
     }
 }
 
-int pcSND_3DSoundBufferSetPos(tSndSoundBufferElem* a1, int a2)
+int pcSND_3DSoundBufferSetPos(tSndSoundBufferElem* sbe, int pan)
 {
-    IDirectSound3DBuffer* v2; 
-    long double v3;
-    float v5;
-    float v6;
+    IDirectSound3DBuffer* buffer3d;
+    long double angle;
+    float x;
+    float y;
 
-    v2 = a1->dsnd3dbufferIF;
-    if (v2)
+    buffer3d = sbe->dsnd3dbufferIF;
+    if (buffer3d)
     {
-        v3 = (10000.0 - (double)a2) * 0.0089999996 * 0.017453292;
-        v6 = (float)sin(v3);
-        v5 = (float)cos(v3);
-        v2->lpVtbl->SetPosition(v2, v5, v6, 0.0f, 0);
+        angle = (10000.0 - (double)pan) * 0.0089999996 * 0.017453292;
+        y = (float)sin(angle);
+        x = (float)cos(angle);
+        buffer3d->lpVtbl->SetPosition(buffer3d, x, y, 0.0f, 0);
     }
     return 0;
 }
 
-void pcSND_SB_SetPan(tSndSoundBufferElem* arg1, int a1, int a2) // ehhez nagyon hasonló ez: pcSND_UnknownSoundPanAndVolumeSetByUnknown
+void pcSND_SB_SetPan(tSndSoundBufferElem* sbe, int pan, int front) // ehhez nagyon hasonló ez: pcSND_UnknownSoundPanAndVolumeSetByUnknown
 {
-    tSndSoundBufferElem* v2;
-    int v3;
-    int v4;
-    int v5;
-    unsigned int v6;
+    int balance;
+    int stripped;
+    int vol;
+    unsigned int scaled;
     //int v6a;
-    int v7;
-    int v8;
-    unsigned int v9;
-    unsigned int v10;
-    int v11;
-    int arg0;
+    int level;
+    int side;
 
-    v2 = arg1;
-    if (!arg1)
+    if (!sbe)
         return;
-    arg1->dsndSBIF->lpVtbl->GetVolume(arg1->dsndSBIF, &arg0);
-    v3 = v2->unk2SetTo64InCreate;
-    if (v3 > 64)
+    sbe->dsndSBIF->lpVtbl->GetVolume(sbe->dsndSBIF, &vol);
+    balance = sbe->unk2SetTo64InCreate;
+    if (balance <= 64)
+        stripped = vol - gpcSNDVolumeAdjustmentArr[balance];
+    else
+        stripped = vol - gpcSNDVolumeAdjustmentArr[127 - balance];
+    if (pan == 0)
     {
-        v4 = gpcSNDVolumeAdjustmentArr[127 - v3];
-    LABEL_7:
-        v5 = arg0 - v4;
-        goto LABEL_8;
+        sbe->unk2SetTo64InCreate = 64;
+        level = gpcSNDVolumeAdjustmentArr[64];
+        side = 0;
     }
-    if (v3 >= 64)
+    else if (pan < 0)
     {
-        v4 = gpcSNDVolumeAdjustmentArr[64];
-        goto LABEL_7;
-    }
-    v5 = arg0 - gpcSNDVolumeAdjustmentArr[v3];
-LABEL_8:
-    arg0 = v5;
-    if (a1 <= 0)
-    {
-        if (a1 >= 0)
+        scaled = (unsigned int)(SND_f_GetVolFromAtt(pan) * 64.0);
+        if ((scaled & 0x80000000) == 0)
         {
-            v2->unk2SetTo64InCreate = 64;
-            v7 = gpcSNDVolumeAdjustmentArr[64];
-            v8 = 0;
+            if (scaled > 127)
+                scaled = 127;
         }
         else
         {
-            v9 = (unsigned int)(SND_f_GetVolFromAtt(a1) * 64.0);
-            if ((v9 & 0x80000000) == 0)
-            {
-                if (v9 > 127)
-                    v9 = 127;
-            }
-            else
-            {
-                v9 = 0;
-            }
-            v2->unk2SetTo64InCreate = v9;
-            v10 = 4 * v9;
-            v7 = gpcSNDVolumeAdjustmentArr[v10 / 4];
-            v5 = arg0;
-            v8 = gpcSNDVolumeAdjustmentArr[127 - (v10 / 4)] - v7;
+            scaled = 0;
         }
+        sbe->unk2SetTo64InCreate = scaled;
+        level = gpcSNDVolumeAdjustmentArr[scaled];
+        side = gpcSNDVolumeAdjustmentArr[127 - scaled] - level;
     }
     else
     {
-        v6 = (unsigned int)(127.0 - SND_f_GetVolFromAtt(-a1) * 63.0);
-        if ((v6 & 0x80000000) == 0)
+        scaled = (unsigned int)(127.0 - SND_f_GetVolFromAtt(-pan) * 63.0);
+        if ((scaled & 0x80000000) == 0)
         {
-            if (v6 > 127)
-                v6 = 127;
+            if (scaled > 127)
+                scaled = 127;
         }
         else
         {
-            v6 = 0;
+            scaled = 0;
         }
-        v2->unk2SetTo64InCreate = v6;
+        sbe->unk2SetTo64InCreate = scaled;
         // TODO FIXME!!!!!!!!!
-        v7 = gpcSNDVolumeAdjustmentArr[127 - v6]; // v6a = gpcSNDVolumeAdjustmentArr[127 - v6]
-        v5 = arg0;
-        v8 = v7 - gpcSNDVolumeAdjustmentArr[v6]; //v8 = v6a - gpcSNDVolumeAdjustmentArr[v6];
+        level = gpcSNDVolumeAdjustmentArr[127 - scaled]; // v6a = gpcSNDVolumeAdjustmentArr[127 - v6]
+        side = level - gpcSNDVolumeAdjustmentArr[scaled]; //v8 = v6a - gpcSNDVolumeAdjustmentArr[v6];
     }
-    v11 = v5 + v7;
-    arg0 = v11;
+    vol = stripped + level;
     if (SND_gst_Params.soundRenderMode == 1)
     {
-        v2->dsndSBIF->lpVtbl->SetPan(v2->dsndSBIF, 0);
+        sbe->dsndSBIF->lpVtbl->SetPan(sbe->dsndSBIF, 0);
     }
     else
     {
-        if (v11 <= 0)
-        {
-            if (v11 < -10000)
-                arg0 = -10000;
-        }
-        else
-        {
-            arg0 = 0;
-        }
-        if (v8 <= 10000)
-        {
-            if (v8 < -10000)
-                v8 = -10000;
-        }
-        else
-        {
-            v8 = 10000;
-        }
-        pcSND_3DSoundBufferSetPos(v2, v8);
-        if (v2->unknownFiledinsub49db40ToSetVolume != arg0)
-            v2->dsndSBIF->lpVtbl->SetVolume(v2->dsndSBIF, arg0);
+        if (vol > 0)
+            vol = 0;
+        else if (vol < -10000)
+            vol = -10000;
+        if (side > 10000)
+            side = 10000;
+        else if (side < -10000)
+            side = -10000;
+        pcSND_3DSoundBufferSetPos(sbe, side);
+        if (sbe->unknownFiledinsub49db40ToSetVolume != vol)
+            sbe->dsndSBIF->lpVtbl->SetVolume(sbe->dsndSBIF, vol);
     }
 }
 
-void pcSND_SB_SetCurrPos(tSndSoundBufferElem* a1, int a2)
+void pcSND_SB_SetCurrPos(tSndSoundBufferElem* sbe, int pos)
 {
-    if (a1)
-        a1->dsndSBIF->lpVtbl->SetCurrentPosition(a1->dsndSBIF, a2);
+    if (sbe)
+        sbe->dsndSBIF->lpVtbl->SetCurrentPosition(sbe->dsndSBIF, pos);
 }
 
-void pcSND_SB_SetVolume(tSndSoundBufferElem* a1, int a2)
+void pcSND_SB_SetVolume(tSndSoundBufferElem* sbe, int att)
 {
-    int v2;
-    int v3;
-    int v4;
-    int v5;
-    IDirectSoundBuffer* v6;
+    int base;
+    int balance;
+    int vol;
+    IDirectSoundBuffer* buffer;
 
-    if (!a1)
+    if (!sbe)
         return;
-    v2 = gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0 + a2;
+    base = gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0 + att;
+    balance = sbe->unk2SetTo64InCreate;
     if (SND_gst_Params.soundRenderMode != 2)
-        goto LABEL_7;
-    v3 = a1->unk2SetTo64InCreate;
-    if (v3 > 64)
-    {
-        v4 = gpcSNDVolumeAdjustmentArr[127 - v3];
-    LABEL_8:
-        v5 = v4 + v2;
-        goto LABEL_9;
-    }
-    if (v3 >= 64)
-    {
-    LABEL_7:
-        v4 = gpcSNDVolumeAdjustmentArr[64];
-        goto LABEL_8;
-    }
-    v5 = gpcSNDVolumeAdjustmentArr[v3] + v2;
-LABEL_9:
-    if (v5 <= 0)
-    {
-        if (v5 < -10000)
-            v5 = -10000;
-    }
+        vol = gpcSNDVolumeAdjustmentArr[64] + base;
+    else if (balance > 64)
+        vol = gpcSNDVolumeAdjustmentArr[127 - balance] + base;
     else
+        vol = gpcSNDVolumeAdjustmentArr[balance] + base;
+    if (vol > 0)
+        vol = 0;
+    else if (vol < -10000)
+        vol = -10000;
+    if (sbe->unknownFiledinsub49db40ToSetVolume != vol)
     {
-        v5 = 0;
-    }
-    if (a1->unknownFiledinsub49db40ToSetVolume != v5)
-    {
-        v6 = a1->dsndSBIF;
-        a1->unknownFiledinsub49db40ToSetVolume = v5;
-        v6->lpVtbl->SetVolume(v6, v5);
+        buffer = sbe->dsndSBIF;
+        sbe->unknownFiledinsub49db40ToSetVolume = vol;
+        buffer->lpVtbl->SetVolume(buffer, vol);
     }
 }
 
-void pcSND_SNDRasterRelease(IDirectSoundBuffer* a1)
+void pcSND_SNDRasterRelease(IDirectSoundBuffer* buffer)
 {
-    BOOL v1;
-    int a3;
-    int v3;
+    int fileId;
+    int bytes;
 
     if (SND_gst_Params.soundEnabled)
     {
-        BAS_bdeletegetval((int)a1, &rasterbas2, &a3);
-        BAS_bdeletegetval((int)a1, &rasterbas1, &v3);
-        if (a3 != -1 && v3 != -1)
+        BAS_bdeletegetval((int)buffer, &rasterbas2, &fileId);
+        BAS_bdeletegetval((int)buffer, &rasterbas1, &bytes);
+        if (fileId != -1 && bytes != -1)
         {
-            if (a3 > 0x4000)
-            {
-                v1 = a3 == 0x80000;
-            }
+            if (fileId == 0x2000 || fileId == 0x4000 || fileId == 0x80000)
+                sndRasterStat.i1 -= bytes;
+            else if (fileId == 8)
+                sndRasterStat.i3 -= bytes;
             else
-            {
-                if (a3 == 0x4000)
-                    goto LABEL_12;
-                if (a3 == 8)
-                {
-                    sndRasterStat.i3 -= v3;
-                LABEL_13:
-                    sndRasterStat.i7 -= v3;
-                    sndRasterStat.i8 = sub_49CEF0();
-                    return;
-                }
-                v1 = a3 == 0x2000;
-            }
-            if (!v1)
-            {
-                sndRasterStat.i5 -= v3;
-                goto LABEL_13;
-            }
-        LABEL_12:
-            sndRasterStat.i1 -= v3;
-            goto LABEL_13;
+                sndRasterStat.i5 -= bytes;
+            sndRasterStat.i7 -= bytes;
+            sndRasterStat.i8 = pcSND_RasterBudgetLeft();
         }
     }
 }
 
-void pcSND_MiscDataRelease(tSndSoundBufferElem* a1)
+void pcSND_MiscDataRelease(tSndSoundBufferElem* sbe)
 {
-    tSbeMiscData* v1;
-    IDirectSoundNotify* v2;
-    BOOL v3;
+    tSbeMiscData* misc;
+    IDirectSoundNotify* notify;
 
-    if (a1)
+    if (sbe)
     {
-        v1 = a1->miscData;
-        if (v1)
+        misc = sbe->miscData;
+        if (misc)
         {
-            pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(a1);
-            if (v1->fileHandle != (HANDLE)-1)
-                CloseHandle(v1->fileHandle);
-            v2 = v1->vmilenEventHandlptr_Sub49e950;
-            v3 = v1->vmilenEventHandlptr_Sub49e950 == 0;
-            v1->fileHandle = (HANDLE)-1;
-            if (!v3)
-                v2->lpVtbl->Release(v2);
-            v1->vmilenEventHandlptr_Sub49e950 = 0;
-            if (a1->dsndSBIF)
+            pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(sbe);
+            if (misc->fileHandle != (HANDLE)-1)
+                CloseHandle(misc->fileHandle);
+            notify = misc->vmilenEventHandlptr_Sub49e950;
+            misc->fileHandle = (HANDLE)-1;
+            if (notify)
+                notify->lpVtbl->Release(notify);
+            misc->vmilenEventHandlptr_Sub49e950 = 0;
+            if (sbe->dsndSBIF)
             {
-                pcSND_SNDRasterRelease(a1->dsndSBIF);
-                a1->dsndSBIF->lpVtbl->Release(a1->dsndSBIF);
+                pcSND_SNDRasterRelease(sbe->dsndSBIF);
+                sbe->dsndSBIF->lpVtbl->Release(sbe->dsndSBIF);
             }
-            a1->dsndSBIF = 0;
-            MEM_Free(a1->miscData);
-            a1->miscData = 0;
+            sbe->dsndSBIF = 0;
+            MEM_Free(sbe->miscData);
+            sbe->miscData = 0;
         }
     }
 }
 
-void pcSND_ReleaseSoundBuffer(tSndSoundBufferElem* a1)
+void pcSND_ReleaseSoundBuffer(tSndSoundBufferElem* sbe)
 {
-    tSndSoundBufferElem* v1;
+    int wasListed;
 
-    v1 = a1;
-    if (a1)
+    if (sbe)
     {
-        BAS_bdeletegetval((int)a1, &dsndSBList, (int *)&a1);
-        if (v1->miscData)
+        BAS_bdeletegetval((int)sbe, &dsndSBList, &wasListed);
+        if (sbe->miscData)
         {
-            if (a1)
-                gDoSoundGlobal.dword_B303C0 -= v1->format;
-            pcSND_MiscDataRelease(v1);
-            MEM_Free(v1);
+            if (wasListed)
+                gDoSoundGlobal.dword_B303C0 -= sbe->format;
+            pcSND_MiscDataRelease(sbe);
+            MEM_Free(sbe);
         }
         else
         {
-            if (a1)
-                gDoSoundGlobal.sndConcurrentlyPlayedNum -= v1->format;
+            if (wasListed)
+                gDoSoundGlobal.sndConcurrentlyPlayedNum -= sbe->format;
             /*
             // TODO FIXME: ez lehet megint valami bent felejtett kód, mivel 0x54 nincs is a tSndSoundBufferElem struktúrában, és  gap1, gap sem állítódik
             if (*(_DWORD*)v1->gap1)
@@ -1373,9 +1173,9 @@ void pcSND_ReleaseSoundBuffer(tSndSoundBufferElem* a1)
             if (*(_DWORD*)v1->gap)
                 MEM_Free(*(void**)v1->gap);
             */
-            pcSND_SNDRasterRelease(v1->dsndSBIF);
-            v1->dsndSBIF->lpVtbl->Release(v1->dsndSBIF);
-            MEM_Free(v1);
+            pcSND_SNDRasterRelease(sbe->dsndSBIF);
+            sbe->dsndSBIF->lpVtbl->Release(sbe->dsndSBIF);
+            MEM_Free(sbe);
         }
     }
 }
@@ -1385,426 +1185,361 @@ int pcSND_Return160()
     return 160;
 }
 
-tSndSoundBufferElem* pcSND_SoundReloadToDSound(tSndHandles* a2, tSndWavHdrStruct* a3, int Offset)
+tSndSoundBufferElem* pcSND_SoundReloadToDSound(tSndHandles* handles, tSndWavHdrStruct* wavHdr, int offset)
 {
-    char* v4;
-    char* v5;
-    int v6;
-    unsigned int v7;
-    char* v8;
-    unsigned int v9;
-    DWORD v10;
-    tSndSoundBufferElem* v11;
-    IDirectSound8* v12;
-    IDirectSoundBuffer* v13;
-    int v14;
-    unsigned int v15;
-    char* offset;
-    char* v17;
-    unsigned int v18;
-    char* v19;
-    int v20;
-    DSBUFFERDESC v21;
+    char* sndData;
+    char* cursor;
+    char* uncompressedSnd;
+    unsigned int uncompressedSize;
+    int packedSize;
+    unsigned int decodedSize;
+    unsigned int blockAlign;
+    DWORD samplesPerSec;
+    tSndSoundBufferElem* sndSNDBuf;
+    IDirectSound8* dsndIf;
+    IDirectSoundBuffer* dsndSBIF;
+    char* audioPtr1;
+    char* audioPtr2;
+    unsigned int audioBytes1;
+    int audioBytes2;
+    DSBUFFERDESC dsBufferDesc;
 
-    if (!a2->dsndif)
+    if (!handles->dsndif)
         return 0;
-    v4 = 0;
-    if (a3->wfex.wFormatTag != 2)
+    if (wavHdr->wfex.wFormatTag != 2)
         return 0;
-    if (!LOA_gb_SpeedMode)
+    sndData = 0;
+    if (offset)
     {
-        if (!Offset)
-            goto LABEL_14;
-        v4 = (char*)MEM_p_Alloc(a3->fullSoundSize);
-        if (v4)
-            goto LABEL_13;
-        return 0;
+        sndData = (char*)MEM_p_Alloc(wavHdr->fullSoundSize);
+        if (!sndData)
+            return 0;
+        if (!LOA_gb_SpeedMode || !isSpeedModeAndBinFile())
+        {
+            BIG_ReadNoSeek(offset, sndData, wavHdr->fullSoundSize);
+        }
+        else if (wavHdr->wfex.nChannels == 1)
+        {
+            cursor = LOA_FetchBuffer(wavHdr->fullSoundSize);
+            LOA_ReadCharArray(&cursor, sndData, wavHdr->fullSoundSize, 1);
+        }
+        else
+        {
+            packedSize = wavHdr->fullSoundSize;
+            wavHdr->wfex.cbSize >>= 1;
+            wavHdr->fullSoundSize = packedSize >> 1;
+            cursor = LOA_FetchBuffer(packedSize >> 1);
+            LOA_ReadCharArray(&cursor, sndData, wavHdr->fullSoundSize, 1);
+            cursor = LOA_FetchBuffer(wavHdr->fullSoundSize);
+            LOA_ReadCharArray(&cursor, &sndData[wavHdr->fullSoundSize], wavHdr->fullSoundSize, 1);
+        }
     }
-    if (!Offset)
-        goto LABEL_14;
-    v4 = (char*)MEM_p_Alloc(a3->fullSoundSize);
-    if (!v4)
-        return 0;
-    if (!isSpeedModeAndBinFile())
+    if (wavHdr->wfex.wFormatTag != 2)
     {
-    LABEL_13:
-        BIG_ReadNoSeek(Offset, v4, a3->fullSoundSize);
-        goto LABEL_14;
-    }
-    if (a3->wfex.nChannels == 1)
-    {
-        v5 = LOA_FetchBuffer(a3->fullSoundSize);
-        v15 = a3->fullSoundSize;
-        offset = v5;
-        LOA_ReadCharArray(&offset, v4, v15, 1);
-    }
-    else
-    {
-        v6 = a3->fullSoundSize;
-        a3->wfex.cbSize >>= 1;
-        a3->fullSoundSize = v6 >> 1;
-        offset = LOA_FetchBuffer(v6 >> 1);
-        LOA_ReadCharArray(&offset, v4, a3->fullSoundSize, 1);
-        offset = LOA_FetchBuffer(a3->fullSoundSize);
-        LOA_ReadCharArray(&offset, &v4[a3->fullSoundSize], a3->fullSoundSize, 1);
-    }
-LABEL_14:
-    if (a3->wfex.wFormatTag != 2)
-    {
-        if (v4)
-            MEM_Free(v4);
+        if (sndData)
+            MEM_Free(sndData);
         return 0;
     }
-    if (Offset)                                 // itt mvi fv van ami nem látszik sub_4A0590, 
-                                                  // kioptimalizálja az ida, mert vna egy vizsgálat != 2-re ami return 0-val zárul ellenkezõ esetben ellenõrzõdik 
-                                                  // hogy == 0x69-el ami nyilván nem teljesül.
-                                                  //  Az a kódrész akkor futna le.
+    if (offset)                                 // itt mvi fv van ami nem látszik sub_4A0590, 
+// kioptimalizálja az ida, mert vna egy vizsgálat != 2-re ami return 0-val zárul ellenkezõ esetben ellenõrzõdik 
+// hogy == 0x69-el ami nyilván nem teljesül.
+//  Az a kódrész akkor futna le.
     {
-        v7 = pcSND_calcMemoryNeededForTheSound(a3->fullSoundSize, a3->wfex.nChannels);
-        v8 = (char*)MEM_p_Alloc(v7);
-        memset(v8, 0, v7);
-        pcSND_probablyDecompressADPCM_sub_4A0130(v4, (int16_t*)v8, a3->fullSoundSize / (int)a3->wfex.nBlockAlign, a3->wfex.nChannels);
-        MEM_Free(v4);
-        v4 = v8;
+        uncompressedSize = pcSND_calcMemoryNeededForTheSound(wavHdr->fullSoundSize, wavHdr->wfex.nChannels);
+        uncompressedSnd = (char*)MEM_p_Alloc(uncompressedSize);
+        memset(uncompressedSnd, 0, uncompressedSize);
+        pcSND_DecodeADPCMBlocks(sndData, (int16_t*)uncompressedSnd, wavHdr->fullSoundSize / (int)wavHdr->wfex.nBlockAlign, wavHdr->wfex.nChannels);
+        MEM_Free(sndData);
+        sndData = uncompressedSnd;
     }
-    v9 = pcSND_calcMemoryNeededForTheSound(a3->fullSoundSize, a3->wfex.nChannels);
-    v10 = a3->wfex.nSamplesPerSec;
-    a3->fullSoundSize = v9;
-    v9 = 2 * a3->wfex.nChannels;
-    a3->wfex.nBlockAlign = v9;
-    a3->wfex.wBitsPerSample = 16;
-    a3->wfex.wFormatTag = 1;
-    a3->wfex.cbSize = 0;
-    a3->wfex.nAvgBytesPerSec = (uint16_t)v9 * v10;
-    v19 = 0;
-    v17 = 0;
-    v11 = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
-    memset(v11, 0, sizeof(tSndSoundBufferElem));
-    v11->unk2SetTo64InCreate = 64;
-    memset(&v21, 0, sizeof(v21));
-    v21.dwSize = 36;
-    v21.dwFlags = pcSND_Return160();
-    v21.dwBufferBytes = a3->fullSoundSize;
-    v21.lpwfxFormat = &a3->wfex;
-    v21.guid3DAlgorithm.Data2 = 0;
-    v21.guid3DAlgorithm.Data3 = 0;
-    memset(v21.guid3DAlgorithm.Data4, 0, sizeof(v21.guid3DAlgorithm.Data4));
-    v12 = a2->dsndif;
-    v21.guid3DAlgorithm.Data1 = 0;
-    if (v12->lpVtbl->CreateSoundBuffer(v12, &v21, &(v11->dsndSBIF), 0) != S_OK)
+    decodedSize = pcSND_calcMemoryNeededForTheSound(wavHdr->fullSoundSize, wavHdr->wfex.nChannels);
+    samplesPerSec = wavHdr->wfex.nSamplesPerSec;
+    wavHdr->fullSoundSize = decodedSize;
+    blockAlign = 2 * wavHdr->wfex.nChannels;
+    wavHdr->wfex.nBlockAlign = blockAlign;
+    wavHdr->wfex.wBitsPerSample = 16;
+    wavHdr->wfex.wFormatTag = 1;
+    wavHdr->wfex.cbSize = 0;
+    wavHdr->wfex.nAvgBytesPerSec = (uint16_t)blockAlign * samplesPerSec;
+    sndSNDBuf = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
+    memset(sndSNDBuf, 0, sizeof(tSndSoundBufferElem));
+    sndSNDBuf->unk2SetTo64InCreate = 64;
+    memset(&dsBufferDesc, 0, sizeof(dsBufferDesc));
+    dsBufferDesc.dwSize = 36;
+    dsBufferDesc.dwFlags = pcSND_Return160();
+    dsBufferDesc.dwBufferBytes = wavHdr->fullSoundSize;
+    dsBufferDesc.lpwfxFormat = &wavHdr->wfex;
+    dsBufferDesc.guid3DAlgorithm.Data1 = 0;
+    dsBufferDesc.guid3DAlgorithm.Data2 = 0;
+    dsBufferDesc.guid3DAlgorithm.Data3 = 0;
+    memset(dsBufferDesc.guid3DAlgorithm.Data4, 0, sizeof(dsBufferDesc.guid3DAlgorithm.Data4));
+    dsndIf = handles->dsndif;
+    if (dsndIf->lpVtbl->CreateSoundBuffer(dsndIf, &dsBufferDesc, &(sndSNDBuf->dsndSBIF), 0) != S_OK)
     {
-        if (v4)
-            MEM_Free(v4);
-        MEM_Free(v11);
+        if (sndData)
+            MEM_Free(sndData);
+        MEM_Free(sndSNDBuf);
         return 0;
     }
-    v13 = v11->dsndSBIF;
-    v11->format = v21.lpwfxFormat->nChannels;
-    pcSND_AddToSNDRaster(v13, v21.dwBufferBytes);
-    if (!v4)
-        return v11;
-    if (v11->dsndSBIF->lpVtbl->Lock(v11->dsndSBIF, 0, a3->fullSoundSize, &v19, &v18, &v17, &v20, 0) != S_OK)
+    dsndSBIF = sndSNDBuf->dsndSBIF;
+    sndSNDBuf->format = dsBufferDesc.lpwfxFormat->nChannels;
+    pcSND_AddToSNDRaster(dsndSBIF, dsBufferDesc.dwBufferBytes);
+    if (!sndData)
+        return sndSNDBuf;
+    if (sndSNDBuf->dsndSBIF->lpVtbl->Lock(sndSNDBuf->dsndSBIF, 0, wavHdr->fullSoundSize, &audioPtr1, &audioBytes1, &audioPtr2, &audioBytes2, 0) != S_OK)
     {
-        v11->dsndSBIF->lpVtbl->Release(v11->dsndSBIF);
-        MEM_Free(v11);
-        v11 = 0;
-        MEM_Free(v4);
-        return v11;
+        sndSNDBuf->dsndSBIF->lpVtbl->Release(sndSNDBuf->dsndSBIF);
+        MEM_Free(sndSNDBuf);
+        MEM_Free(sndData);
+        return NULL;
     }
-    memcpy(v19, v4, v18);
-    v14 = v20;
-    if (v20)
-    {
-        memcpy(v17, &v4[v18], v20);
-        v14 = v20;
-    }
-    v11->dsndSBIF->lpVtbl->Unlock(v11->dsndSBIF, v19, v18, v17, v14);
-    MEM_Free(v4);
-    return v11;
+    memcpy(audioPtr1, sndData, audioBytes1);
+    if (audioBytes2)
+        memcpy(audioPtr2, &sndData[audioBytes1], audioBytes2);
+    sndSNDBuf->dsndSBIF->lpVtbl->Unlock(sndSNDBuf->dsndSBIF, audioPtr1, audioBytes1, audioPtr2, audioBytes2);
+    MEM_Free(sndData);
+    return sndSNDBuf;
 }
 
-tSndSoundBufferElem* pcSND_SB_Reload(tSndHandles* a2, tSndSoundBufferElem* a1, tSndWavHdrStruct* a4, int Offset)
+tSndSoundBufferElem* pcSND_SB_Reload(tSndHandles* handles, tSndSoundBufferElem* sndBufferElem, tSndWavHdrStruct* wavHdr, int offset)
 {
-    tSndSoundBufferElem* v4; // esi
+    tSndSoundBufferElem* created; // esi
 
-    v4 = pcSND_SoundReloadToDSound(a2, a4, Offset);
-    if (v4)
-        pcSND_ReleaseSoundBuffer(a1);
-    return v4;
+    created = pcSND_SoundReloadToDSound(handles, wavHdr, offset);
+    if (created)
+        pcSND_ReleaseSoundBuffer(sndBufferElem);
+    return created;
 }
 
-void pcSND_StreamPrefetchArray(int* a1, int* a2) //// @SND_StreamResolveSyncPrefetch
+void pcSND_StreamPrefetchArray(int* positions, int* sizes) //// @SND_StreamResolveSyncPrefetch
 {
-    if (a1)
-        memset(a1, 0, 32u);
+    if (positions)
+        memset(positions, 0, 32u);
 }
 
-void pcSND_setCurrentSoundBuffElemAndSetAnEvent(tSndSoundBufferElem* this)
+void pcSND_setCurrentSoundBuffElemAndSetAnEvent(tSndSoundBufferElem* sbe)
 {
-    tSbeMiscData* v1;
+    tSbeMiscData* misc;
 
-    v1 = this->miscData;
-    if ((v1->eventHandle1 == (HANDLE)-1 || !v1->eventHandle1) && (v1->eventHandle2 == (HANDLE)-1 || !v1->eventHandle2))
+    misc = sbe->miscData;
+    if ((misc->eventHandle1 == (HANDLE)-1 || !misc->eventHandle1) && (misc->eventHandle2 == (HANDLE)-1 || !misc->eventHandle2))
     {
-        v1->eventHandle1 = dsndEvents[v1->dsndEventsArrayIdx + 6];
-        this->miscData->eventHandle2 = dsndEvents[this->miscData->dsndEventsArrayIdx + 15];
-        sndCurrSoundBufferElem = this;
+        misc->eventHandle1 = dsndEvents[misc->dsndEventsArrayIdx + 6];
+        sbe->miscData->eventHandle2 = dsndEvents[sbe->miscData->dsndEventsArrayIdx + 15];
+        sndCurrSoundBufferElem = sbe;
         SetEvent(dsndEvents[0]);
         WaitForSingleObject(dsndEvents[5], 5000);
     }
 }
 
-void pcSND_SetPositionNotify(tSndSoundBufferElem* this)
+void pcSND_SetPositionNotify(tSndSoundBufferElem* sbe)
 {
-    tSbeMiscData* v1;
-    DWORD v2; 
+    tSbeMiscData* misc;
+    DWORD step;
     int i;
-    DSBPOSITIONNOTIFY v4[5];
+    DSBPOSITIONNOTIFY notify[5];
 
-    v1 = this->miscData;
-    v2 = v1->sizeToUpload;
-    pcSND_setCurrentSoundBuffElemAndSetAnEvent(this);
-    v4[0].dwOffset = v2;
-    v4[0].hEventNotify = v1->eventHandle1;
+    misc = sbe->miscData;
+    step = misc->sizeToUpload;
+    pcSND_setCurrentSoundBuffElemAndSetAnEvent(sbe);
+    notify[0].dwOffset = step;
+    notify[0].hEventNotify = misc->eventHandle1;
     for (i = 1; i < 4; ++i)
     {
-        v4[i].dwOffset = v2 + v4[i - 1].dwOffset;
-        v4[i].hEventNotify = v1->eventHandle1;
+        notify[i].dwOffset = step + notify[i - 1].dwOffset;
+        notify[i].hEventNotify = misc->eventHandle1;
     }
-    --v4[i - 1].dwOffset;
-    v4[i].dwOffset = -1;
-    v4[i].hEventNotify = v1->eventHandle2;
-    v1->vmilenEventHandlptr_Sub49e950->lpVtbl->SetNotificationPositions(v1->vmilenEventHandlptr_Sub49e950, 5, v4);
+    --notify[3].dwOffset;
+    notify[4].dwOffset = -1;
+    notify[4].hEventNotify = misc->eventHandle2;
+    misc->vmilenEventHandlptr_Sub49e950->lpVtbl->SetNotificationPositions(misc->vmilenEventHandlptr_Sub49e950, 5, notify);
 }
 
-void pcSND_fillSoundBuffer(int a1, tSbeMiscData* a2, tSndSoundBufferElem* a3)
+void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferElem* sbe)
 {
-    tSndSoundBufferElem* sbe;
-    tSbeMiscData* v4;
-    int v5;
-    int v6;
-    int v7;
-    char *v8;
-    DWORD totalSizeAfterDecompress;
-    int audioBytes;
-    char *DistanceToMoveHigh;
-    int a3a;
+    tSbeMiscData* misc;
+    int skipSize;
+    int produced;
+    int decoded;
+    char* audioPtr1;
+    char* audioPtr2;
+    int audioBytes1;
+    int audioBytes2;
+    DWORD distanceToMoveHigh;
 
-    sbe = a3;
-    v4 = a3->miscData;
-    totalSizeAfterDecompress = 0;
-    if (v4)
+    misc = sbe->miscData;
+    distanceToMoveHigh = 0;
+    if (misc)
     {
-        a3->dsndSBIF->lpVtbl->Lock(a3->dsndSBIF, 0, v4->soundBufferSize, &v8, &a3a, &DistanceToMoveHigh, &audioBytes, 2);
-        v5 = pcSND_CalcSizeToReadByFormat(v4->unk6, sbe->format);
-        SetFilePointer(v4->fileHandle, v4->distanceToMove + v5, &totalSizeAfterDecompress, 0);
-        v4->sumSize = v4->unk6;
-        pcSND_ReadAndDecompressSoundData(a3a, sbe, 0, &v7, (int16_t*)v8);
-        v6 = v7;
-        if (v7 < a3a)
+        sbe->dsndSBIF->lpVtbl->Lock(sbe->dsndSBIF, 0, misc->soundBufferSize, &audioPtr1, &audioBytes1, &audioPtr2, &audioBytes2, 2);
+        skipSize = pcSND_CalcSizeToReadByFormat(misc->unk6, sbe->format);
+        SetFilePointer(misc->fileHandle, misc->distanceToMove + skipSize, &distanceToMoveHigh, 0);
+        misc->sumSize = misc->unk6;
+        pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 0, &decoded, (int16_t*)audioPtr1);
+        produced = decoded;
+        if (decoded < audioBytes1)
         {
-            if (v4->readThroughWithMultipleLoop)
+            if (misc->readThroughWithMultipleLoop)
             {
                 do
                 {
-                    SetFilePointer(v4->fileHandle, v4->distanceToMove, &totalSizeAfterDecompress, 0);
-                    v4->sumSize = 0;
-                    pcSND_ReadAndDecompressSoundData(a3a - v6, sbe, 0, &v7, (int16_t*)(&v8[v6]));
-                    v6 += v7;
-                } while (v6 < a3a);
+                    SetFilePointer(misc->fileHandle, misc->distanceToMove, &distanceToMoveHigh, 0);
+                    misc->sumSize = 0;
+                    pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 0, &decoded, (int16_t*)(&audioPtr1[produced]));
+                    produced += decoded;
+                } while (produced < audioBytes1);
             }
             else
             {
-                if (v7 < v4->sizeToUpload)
+                if (decoded < misc->sizeToUpload)
                 {
-                    v4->RemoveAfterPlayFinished = 1;
-                    v6 = v7;
+                    misc->RemoveAfterPlayFinished = 1;
+                    produced = decoded;
                 }
-                memset(&v8[v6], 0, a3a - v6);
+                memset(&audioPtr1[produced], 0, audioBytes1 - produced);
             }
         }
-        sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, v8, a3a, 0, 0);
-        v4->currOffset += a3a;
-        if (v4->currOffset >= v4->soundBufferSize)
-            v4->currOffset -= v4->soundBufferSize;
-        v4->currSize = v4->unk6;
-        v4->currentPlayPosition = 0;
+        sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, audioPtr1, audioBytes1, 0, 0);
+        misc->currOffset += audioBytes1;
+        if (misc->currOffset >= misc->soundBufferSize)
+            misc->currOffset -= misc->soundBufferSize;
+        misc->currSize = misc->unk6;
+        misc->currentPlayPosition = 0;
     }
 }
 
-void pcSND_SB_SetFrequency(tSndSoundBufferElem* a1, int a2)
+void pcSND_SB_SetFrequency(tSndSoundBufferElem* sbe, int freq)
 {
-    int v2;
-
-    if (a1)
+    if (sbe)
     {
-        v2 = a2;
-        if (a2 <= 200000)
-        {
-            if (a2 < 100)
-                v2 = 100;
-            a1->dsndSBIF->lpVtbl->SetFrequency(a1->dsndSBIF, v2);
-        }
-        else
-        {
-            a1->dsndSBIF->lpVtbl->SetFrequency(a1->dsndSBIF, 200000);
-        }
+        if (freq > 200000)
+            freq = 200000;
+        else if (freq < 100)
+            freq = 100;
+        sbe->dsndSBIF->lpVtbl->SetFrequency(sbe->dsndSBIF, freq);
     }
 }
 
-void pcSND_UnknownSoundPanAndVolumeSetByUnknown(tSndSoundBufferElem* a1a, int a2)
+void pcSND_UnknownSoundPanAndVolumeSetByUnknown(tSndSoundBufferElem* sbe, int pan)
 {
-    tSndSoundBufferElem* v2;
-    int v3;
-    int v4;
-    int v5;
-    unsigned int v6a;
+    int balance;
+    int stripped;
+    int vol;
+    unsigned int scaled;
     //unsigned int v6b;
-    int v7;
-    LONG v8;
-    unsigned int v9;
-    unsigned int v10;
-    int v11;
-    int a1;
+    int level;
+    LONG side;
 
-    v2 = a1a;
-    if (!a1a)
+    if (!sbe)
         return;
-    a1a->dsndSBIF->lpVtbl->GetVolume(a1a->dsndSBIF, &a1);
-    v3 = v2->unk2SetTo64InCreate;
-    if (v3 > 64)
+    sbe->dsndSBIF->lpVtbl->GetVolume(sbe->dsndSBIF, &vol);
+    balance = sbe->unk2SetTo64InCreate;
+    if (balance <= 64)
+        stripped = vol - gpcSNDVolumeAdjustmentArr[balance];
+    else
+        stripped = vol - gpcSNDVolumeAdjustmentArr[-balance + 127];
+    if (pan == 0)
     {
-        v4 = gpcSNDVolumeAdjustmentArr[-v3 + 127];
-    LABEL_7:
-        v5 = a1 - v4;
-        goto LABEL_8;
+        sbe->unk2SetTo64InCreate = 64;
+        level = gpcSNDVolumeAdjustmentArr[64];
+        side = 0;
     }
-    if (v3 >= 64)
+    else if (pan < 0)
     {
-        v4 = gpcSNDVolumeAdjustmentArr[64];
-        goto LABEL_7;
-    }
-    v5 = a1 - gpcSNDVolumeAdjustmentArr[v3];
-LABEL_8:
-    a1 = v5;
-    if (a2 <= 0)
-    {
-        if (a2 >= 0)
+        scaled = (unsigned int)(SND_f_GetVolFromAtt(pan) * 64.0);
+        if ((scaled & 0x80000000) == 0)
         {
-            v2->unk2SetTo64InCreate = 64;
-            v7 = gpcSNDVolumeAdjustmentArr[64];
-            v8 = 0;
+            if (scaled > 127)
+                scaled = 127;
         }
         else
         {
-            v9 = (unsigned int)(SND_f_GetVolFromAtt(a2) * 64.0);
-            if ((v9 & 0x80000000) == 0)
-            {
-                if (v9 > 127)
-                    v9 = 127;
-            }
-            else
-            {
-                v9 = 0;
-            }
-            v2->unk2SetTo64InCreate = v9;
-            v10 = 4 * v9;
-            v7 = gpcSNDVolumeAdjustmentArr[v10 / 4];
-            v5 = a1;
-            v8 = gpcSNDVolumeAdjustmentArr[127 - (v10 / 4)] - v7;
+            scaled = 0;
         }
+        sbe->unk2SetTo64InCreate = scaled;
+        level = gpcSNDVolumeAdjustmentArr[scaled];
+        side = gpcSNDVolumeAdjustmentArr[127 - scaled] - level;
     }
     else
     {
-        v6a = (unsigned int)(127.0 - SND_f_GetVolFromAtt(-a2) * 63.0);
-        if ((v6a & 0x80000000) == 0)
+        scaled = (unsigned int)(127.0 - SND_f_GetVolFromAtt(-pan) * 63.0);
+        if ((scaled & 0x80000000) == 0)
         {
-            if (v6a > 127)
-                v6a = 127;
+            if (scaled > 127)
+                scaled = 127;
         }
         else
         {
-            v6a = 0;
+            scaled = 0;
         }
-        v2->unk2SetTo64InCreate = v6a;
+        sbe->unk2SetTo64InCreate = scaled;
         // TODO FIXME!!!!!!!!!
-        v7 = gpcSNDVolumeAdjustmentArr[127 - v6a]; // v6b = gpcSNDVolumeAdjustmentArr[127 - v6a]
-        v5 = a1;
-        v8 = v7 - gpcSNDVolumeAdjustmentArr[v6a]; //v8 = v6b - gpcSNDVolumeAdjustmentArr[v6a];
+        level = gpcSNDVolumeAdjustmentArr[127 - scaled]; // v6b = gpcSNDVolumeAdjustmentArr[127 - v6a]
+        side = level - gpcSNDVolumeAdjustmentArr[scaled]; //v8 = v6b - gpcSNDVolumeAdjustmentArr[v6a];
     }
-    v11 = v5 + v7;
-    a1 = v11;
+    vol = stripped + level;
     if (SND_gst_Params.soundRenderMode == 1)
     {
-        v2->dsndSBIF->lpVtbl->SetPan(v2->dsndSBIF, 0);
+        sbe->dsndSBIF->lpVtbl->SetPan(sbe->dsndSBIF, 0);
     }
     else
     {
-        if (v11 <= 0)
-        {
-            if (v11 < -10000)
-                a1 = -10000;
-        }
-        else
-        {
-            a1 = 0;
-        }
-        if (v8 <= 10000)
-        {
-            if (v8 < -10000)
-                v8 = -10000;
-        }
-        else
-        {
-            v8 = 10000;
-        }
-        v2->dsndSBIF->lpVtbl->SetPan(v2->dsndSBIF, v8);
-        if (v2->unknownFiledinsub49db40ToSetVolume != a1)
-            v2->dsndSBIF->lpVtbl->SetVolume(v2->dsndSBIF, a1);
+        if (vol > 0)
+            vol = 0;
+        else if (vol < -10000)
+            vol = -10000;
+        if (side > 10000)
+            side = 10000;
+        else if (side < -10000)
+            side = -10000;
+        sbe->dsndSBIF->lpVtbl->SetPan(sbe->dsndSBIF, side);
+        if (sbe->unknownFiledinsub49db40ToSetVolume != vol)
+            sbe->dsndSBIF->lpVtbl->SetVolume(sbe->dsndSBIF, vol);
     }
 }
 
-void pcSND_StreamReinitAndPlay(tSndSoundBufferElem* sbe, int fullsoundlen, int a3, int a4, int a5, char a6, int a2, int a8, int a9)
+void pcSND_StreamReinitAndPlay(tSndSoundBufferElem* sbe, int len, int startPos, int from, int to, char flags, int freq, int pan, int att)
 {
-    tSbeMiscData* v9;
-    int v10;
-    int v11;
-    int v12;
-    int v13;
-    int fullsoundlena;
+    tSbeMiscData* misc;
+    int readSize;
+    int startSize;
+    int channels;
+    int streaming;
+    int fullSize;
 
     if (sbe)
     {
-        v9 = sbe->miscData;
-        fullsoundlena = pcSND_calcMemoryNeededForTheSound(fullsoundlen, sbe->format);
+        misc = sbe->miscData;
+        fullSize = pcSND_calcMemoryNeededForTheSound(len, sbe->format);
         pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(sbe);
-        v10 = pcSND_CalcSizeToReadByFormat(a4, sbe->format);
-        v11 = pcSND_calcMemoryNeededForTheSound(sizeof(tSndSoundBufferElem) * sbe->format * (v10 / (sizeof(tSndSoundBufferElem) * sbe->format)), sbe->format);
-        if (v11 < 0 || v11 > fullsoundlena)
-            v11 = 0;
-        v9->RemoveAfterPlayFinished = 0;
-        v9->shouldBeRemovedFromPlayList = 0;
-        v9->Stopped_SetIN49e270 = 0;
-        v9->readThroughWithMultipleLoop = a6 & 1;
-        v9->currOffset = 0;
-        v9->currentPlayPosition = 0;
-        v9->currSize = 0;
-        v9->unk6 = v11;
-        v9->fullSize = fullsoundlena;
-        v9->distanceToMove = a3;
-        v9->sumSize = 0;
-        v12 = sbe->format;
-        v13 = gDoSoundGlobal.dword_B303C0 + v12;
-        if (gDoSoundGlobal.dword_B303C0 + v12 <= 4)
+        readSize = pcSND_CalcSizeToReadByFormat(from, sbe->format);
+        // preserved: this is the ADPCM block stride, which equals the struct size only in a 32-bit build
+        startSize = pcSND_calcMemoryNeededForTheSound(sizeof(tSndSoundBufferElem) * sbe->format * (readSize / (sizeof(tSndSoundBufferElem) * sbe->format)), sbe->format);
+        if (startSize < 0 || startSize > fullSize)
+            startSize = 0;
+        misc->RemoveAfterPlayFinished = 0;
+        misc->shouldBeRemovedFromPlayList = 0;
+        misc->Stopped_SetIN49e270 = 0;
+        misc->readThroughWithMultipleLoop = flags & 1;
+        misc->currOffset = 0;
+        misc->currentPlayPosition = 0;
+        misc->currSize = 0;
+        misc->unk6 = startSize;
+        misc->fullSize = fullSize;
+        misc->distanceToMove = startPos;
+        misc->sumSize = 0;
+        channels = sbe->format;
+        streaming = gDoSoundGlobal.dword_B303C0 + channels;
+        if (streaming <= 4)
         {
-            gDoSoundGlobal.dword_B303C0 += v12;
-            if (v13 > gDoSoundGlobal.dword_B303C4)
-                gDoSoundGlobal.dword_B303C4 = v13;
+            gDoSoundGlobal.dword_B303C0 += channels;
+            if (streaming > gDoSoundGlobal.dword_B303C4)
+                gDoSoundGlobal.dword_B303C4 = streaming;
             BAS_binsert((unsigned int)sbe, (int)sbe, &dsndSBList);
-            pcSND_fillSoundBuffer(0, v9, sbe);
-            pcSND_SB_SetFrequency(sbe, a2);
-            pcSND_UnknownSoundPanAndVolumeSetByUnknown(sbe, a8);
-            pcSND_SB_SetVolume(sbe, a9);
+            pcSND_fillSoundBuffer(0, misc, sbe);
+            pcSND_SB_SetFrequency(sbe, freq);
+            pcSND_UnknownSoundPanAndVolumeSetByUnknown(sbe, pan);
+            pcSND_SB_SetVolume(sbe, att);
             pcSND_SetPositionNotify(sbe);
             sbe->dsndSBIF->lpVtbl->SetCurrentPosition(sbe->dsndSBIF, 0);
             sbe->dsndSBIF->lpVtbl->Play(sbe->dsndSBIF, 0, 0, 1);
@@ -1812,108 +1547,97 @@ void pcSND_StreamReinitAndPlay(tSndSoundBufferElem* sbe, int fullsoundlen, int a
     }
 }
 
-tSndSoundBufferElem* pcSND_CreateTrack(tSndHandles* sndHandles, tSndWavHdrStruct* a2)
+tSndSoundBufferElem* pcSND_CreateTrack(tSndHandles* handles, tSndWavHdrStruct* wavHdr)
 {
-    tSndSoundBufferElem* v4;
-    tSbeMiscData* v5;
-    IDirectSound8* v6;
-    int v7;
-    DSBUFFERDESC v8;
-    WAVEFORMATEX* v9;
+    tSndSoundBufferElem* track;
+    tSbeMiscData* misc;
+    IDirectSound8* dsndif;
+    DSBUFFERDESC desc;
 
-    a2->wfex.wFormatTag = 1;
-    v9 = &a2->wfex;
-    if (!sndHandles->dsndif)
+    wavHdr->wfex.wFormatTag = 1;
+    if (!handles->dsndif)
         return 0;
-    v4 = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
-    memset(v4, 0, sizeof(tSndSoundBufferElem));
-    v5 = (tSbeMiscData*)MEM_p_Alloc(sizeof(tSbeMiscData));
-    memset(v5, 0, sizeof(tSbeMiscData));
-    v5->sizeToUpload = 307200 / a2->wfex.nBlockAlign / 4;
-    v5->sizeToUpload *= a2->wfex.nBlockAlign;
-    v5->soundBufferSize = 4 * v5->sizeToUpload;
-    memset(&v8, 0, sizeof(v8));
-    v8.dwSize = 36;
-    v8.dwBufferBytes = v5->soundBufferSize;
-    v8.lpwfxFormat = v9;
-    v8.guid3DAlgorithm.Data2 = 0;
-    v8.guid3DAlgorithm.Data3 = 0;
-    memset(v8.guid3DAlgorithm.Data4, 0, sizeof(v8.guid3DAlgorithm.Data4));
-    v6 = sndHandles->dsndif;
-    v8.guid3DAlgorithm.Data1 = 0;
-    v8.dwFlags = 0x101E8;
-    if (v6->lpVtbl->CreateSoundBuffer(v6, &v8, &(v4->dsndSBIF), 0) != S_OK
-        || v4->dsndSBIF->lpVtbl->QueryInterface(v4->dsndSBIF, &IID_IDirectSoundNotify, &(v5->vmilenEventHandlptr_Sub49e950)) != S_OK)
+    track = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
+    memset(track, 0, sizeof(tSndSoundBufferElem));
+    misc = (tSbeMiscData*)MEM_p_Alloc(sizeof(tSbeMiscData));
+    memset(misc, 0, sizeof(tSbeMiscData));
+    misc->sizeToUpload = 307200 / wavHdr->wfex.nBlockAlign / 4;
+    misc->sizeToUpload *= wavHdr->wfex.nBlockAlign;
+    misc->soundBufferSize = 4 * misc->sizeToUpload;
+    memset(&desc, 0, sizeof(desc));
+    desc.dwSize = 36;
+    desc.dwFlags = 0x101E8;
+    desc.dwBufferBytes = misc->soundBufferSize;
+    desc.lpwfxFormat = &wavHdr->wfex;
+    desc.guid3DAlgorithm.Data1 = 0;
+    desc.guid3DAlgorithm.Data2 = 0;
+    desc.guid3DAlgorithm.Data3 = 0;
+    memset(desc.guid3DAlgorithm.Data4, 0, sizeof(desc.guid3DAlgorithm.Data4));
+    dsndif = handles->dsndif;
+    // preserved: both allocations leak when either call fails
+    if (dsndif->lpVtbl->CreateSoundBuffer(dsndif, &desc, &(track->dsndSBIF), 0) != S_OK
+        || track->dsndSBIF->lpVtbl->QueryInterface(track->dsndSBIF, &IID_IDirectSoundNotify, &(misc->vmilenEventHandlptr_Sub49e950)) != S_OK)
     {
         return 0;
     }
-    pcSND_AddToSNDRaster(v4->dsndSBIF, v5->soundBufferSize);
-    v4->format = v8.lpwfxFormat->nChannels;
-    v4->unk2SetTo64InCreate = 64;
-    v4->miscData = v5;
-    v5->eventHandle1 = (HANDLE)-1;
-    v5->eventHandle2 = (HANDLE)-1;
-    v7 = trackEventsArrayNextIdx;
-    v5->dsndEventsArrayIdx = trackEventsArrayNextIdx;
-    trackEventsArrayNextIdx = v7 + 1;
-    v5->fileHandle = CreateFileA(BIG_gst.filePath, 0x80000000, 3u, 0, 3u, 0x10000080u, 0);
-    return v4;
+    pcSND_AddToSNDRaster(track->dsndSBIF, misc->soundBufferSize);
+    track->format = desc.lpwfxFormat->nChannels;
+    track->unk2SetTo64InCreate = 64;
+    track->miscData = misc;
+    misc->eventHandle1 = (HANDLE)-1;
+    misc->eventHandle2 = (HANDLE)-1;
+    misc->dsndEventsArrayIdx = trackEventsArrayNextIdx;
+    trackEventsArrayNextIdx = misc->dsndEventsArrayIdx + 1;
+    misc->fileHandle = CreateFileA(BIG_gst.filePath, 0x80000000, 3u, 0, 3u, 0x10000080u, 0);
+    return track;
 }
 
-void pcSND_CreateTrackSB(tSndSoundBufferElem** a1, tSndSoundBufferElem** a2)
+void pcSND_CreateTrackSB(tSndSoundBufferElem** oneChannelTrack, tSndSoundBufferElem** twoChannelTrack)
 {
-    tSndSoundBufferElem* v2;
-    tSndSoundBufferElem* v3;
-    tSndWavHdrStruct v4;
+    tSndSoundBufferElem* mono;
+    tSndSoundBufferElem* stereo;
+    tSndWavHdrStruct wavHdr;
 
-    v4.fullSoundSize = 0;
-    v4.dataStartPos = 0;
-    v4.wfex.cbSize = 0;
-    v4.wfex.nChannels = 1;
-    v4.wfex.wFormatTag = 1;
-    v4.wfex.wBitsPerSample = 16;
-    v4.wfex.nSamplesPerSec = 48000;
-    v4.wfex.nBlockAlign = 2;
-    v4.wfex.nAvgBytesPerSec = 96000;
-    v2 = pcSND_CreateTrack(SND_gst_Params.handles, &v4);
-    v4.wfex.nBlockAlign *= 2;
-    *a1 = v2;
-    v4.wfex.nAvgBytesPerSec *= 2;
-    v4.wfex.nChannels = 2;
-    v3 = pcSND_CreateTrack(SND_gst_Params.handles, &v4);
-    *a2 = v3;
-    pcSND_SNDRasterRelease(v3->dsndSBIF);
+    wavHdr.fullSoundSize = 0;
+    wavHdr.dataStartPos = 0;
+    wavHdr.wfex.cbSize = 0;
+    wavHdr.wfex.nChannels = 1;
+    wavHdr.wfex.wFormatTag = 1;
+    wavHdr.wfex.wBitsPerSample = 16;
+    wavHdr.wfex.nSamplesPerSec = 48000;
+    wavHdr.wfex.nBlockAlign = 2;
+    wavHdr.wfex.nAvgBytesPerSec = 96000;
+    mono = pcSND_CreateTrack(SND_gst_Params.handles, &wavHdr);
+    wavHdr.wfex.nBlockAlign *= 2;
+    *oneChannelTrack = mono;
+    wavHdr.wfex.nAvgBytesPerSec *= 2;
+    wavHdr.wfex.nChannels = 2;
+    stereo = pcSND_CreateTrack(SND_gst_Params.handles, &wavHdr);
+    *twoChannelTrack = stereo;
+    pcSND_SNDRasterRelease(stereo->dsndSBIF);
 }
 
-void pcSND_ReleaseTrackSB(tSndSoundBufferElem* a1, tSndSoundBufferElem* a2)
+void pcSND_ReleaseTrackSB(tSndSoundBufferElem* oneChannelTrack, tSndSoundBufferElem* twoChannelTrack)
 {
-    pcSND_ReleaseSoundBuffer(a1);
-    pcSND_ReleaseSoundBuffer(a2);
+    pcSND_ReleaseSoundBuffer(oneChannelTrack);
+    pcSND_ReleaseSoundBuffer(twoChannelTrack);
 }
 
 void pcSND_ShutDownStreams()
 {
-    int v0;
-    int v1;
-    tSoundInstanceElem* v2;
-    int v3;
+    int i;
+    tSoundInstanceElem* inst;
+    int flags;
 
-    v0 = 0;
-    if (SND_gst_Params.soundInstanceNum > 0)
+    for (i = 0; i < SND_gst_Params.soundInstanceNum; ++i)
     {
-        v1 = 0;
-        do
+        inst = &SND_gst_Params.soundInstances[i];
+        flags = inst->flags;
+        if ((flags & 0x400) != 0 && (flags & 0x86000) != 0)
         {
-            v2 = &SND_gst_Params.soundInstances[v1];
-            v3 = SND_gst_Params.soundInstances[v1].flags;
-            if ((v3 & 0x400) != 0 && (v3 & 0x86000) != 0)
-            {
-                if (SND_i_IsPlaying(v0))
-                    v2->soundIntf->Stop(v2->soundBufElemFromModel);
-            }
-            ++v0;
-            ++v1;
-        } while (v0 < SND_gst_Params.soundInstanceNum);
+            if (SND_i_IsPlaying(i))
+                inst->soundIntf->Stop(inst->soundBufElemFromModel);
+        }
     }
 }
 
@@ -1922,103 +1646,88 @@ int pcSND_l_GetGlobalVol()
     return gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0;
 }
 
-void pcSND_SetGlobalVol(int a1)
+void pcSND_SetGlobalVol(int att)
 {
-    int v1;
-    int v2;
-    int v3;
+    int clamped;
+    int i;
 
-    v1 = a1;
-    if (gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0 != a1)
+    clamped = att;
+    if (gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0 != att)
     {
-        if (a1 >= -10000)
+        if (att < -10000)
+            clamped = -10000;
+        else if (att > 0)
+            clamped = 0;
+        gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0 = clamped;
+        for (i = 0; i < SND_gst_Params.soundInstanceNum; ++i)
         {
-            if (a1 > 0)
-                v1 = 0;
-        }
-        else
-        {
-            v1 = -10000;
-        }
-        gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0 = v1;
-        v2 = 0;
-        if (SND_gst_Params.soundInstanceNum > 0)
-        {
-            v3 = 0;
-            do
-            {
-                if ((SND_gst_Params.soundInstances[v3].flags & 0x400) != 0)
-                    SND_SetInstVolume(&SND_gst_Params.soundInstances[v3]);
-                ++v2;
-                ++v3;
-            } while (v2 < SND_gst_Params.soundInstanceNum);
+            if ((SND_gst_Params.soundInstances[i].flags & 0x400) != 0)
+                SND_SetInstVolume(&SND_gst_Params.soundInstances[i]);
         }
     }
 }
 
-void SND_ComputeDoppler(Vec3* distance, Vec3* position, tSoundInstanceElem* sie)
+void SND_ComputeDoppler(Vec3* listenerSpeed, Vec3* listenerPos, tSoundInstanceElem* sie)
 {
-    tGameObjectMain* v4;
-    tGameObjectExtended* v5;
-    tGameObjectMain* v6;
-    tGameObjectExtended* v7;
-    double v8;
-    tDyn* v9;
-    double v12;
-    double v13;
-    double v14;
-    double v15;
-    long double v16;
-    double v17;
-    double v18;
-    tSndSoundBufferElem* v19;
-    tSndInterfaceStruct* v20;
-    double v21;
-    Vec3 dest;
-    Vec3 a2;
-    float siea;
-    float sieb;
+    tGameObjectMain* gao;
+    tGameObjectExtended* extended;
+    double gaoLen;
+    tDyn* dyn;
+    double dx;
+    double dy;
+    double invDt;
+    double dz;
+    long double posLen;
+    double closing;
+    double ratio;
+    tSndSoundBufferElem* buffer;
+    tSndInterfaceStruct* intf;
+    double freqRounded;
+    Vec3 toSource;
+    Vec3 sourceSpeed;
+    float distLen;
+    float invDtF;
 
     if (!sie->sndPosMtxSetInSetPos)
     {
-        v4 = sie->gao;
-        if (v4)
+        gao = sie->gao;
+        if (gao)
         {
-            if ((v4->flags & 0x8000000) == 0)
+            if ((gao->flags & 0x8000000) == 0)
                 return;
-            v5 = v4->extended;
-            if (!v5 || !v5->snd)
+            extended = gao->extended;
+            if (!extended || !extended->snd)
                 return;
-            sie->sndPosMtxSetInSetPos = v4->matrices;
+            sie->sndPosMtxSetInSetPos = gao->matrices;
         }
     }
     if (sie->sndPosMtxSetInSetPos)
     {
-        v6 = sie->gao;
-        if (!v6)
+        gao = sie->gao;
+        if (!gao)
             return;
-        if ((v6->flags & 0x8000000) == 0)
+        if ((gao->flags & 0x8000000) == 0)
             return;
-        v7 = v6->extended;
-        if (!v7)
+        extended = gao->extended;
+        if (!extended)
             return;
-        if (!v7->snd)
+        if (!extended->snd)
             return;
-        MATH_SubstractVec(&dest, &v6->matrices->Pos, position);
-        v8 = MATH_VecLen(&dest);
-        siea = (float)v8;
-        if (v8 < 0.0000099999997)
+        MATH_SubstractVec(&toSource, &gao->matrices->Pos, listenerPos);
+        gaoLen = MATH_VecLen(&toSource);
+        distLen = (float)gaoLen;
+        if (gaoLen < 0.0000099999997)
             return;
-        if (OBJ_pst_GetDynaStruct(v6))
+        if (OBJ_pst_GetDynaStruct(gao))
         {
-            v9 = OBJ_pst_GetDynaStruct(v6);
-            DYN_SpeedGetVector(v9, &a2);
+            dyn = OBJ_pst_GetDynaStruct(gao);
+            DYN_SpeedGetVector(dyn, &sourceSpeed);
         }
         else
         {
-            a2.x = 0.0;
-            a2.y = 0.0;
-            a2.z = 0.0;
+            sourceSpeed.x = 0.0;
+            sourceSpeed.y = 0.0;
+            sourceSpeed.z = 0.0;
         }
     }
     else
@@ -2026,239 +1735,217 @@ void SND_ComputeDoppler(Vec3* distance, Vec3* position, tSoundInstanceElem* sie)
         if (sie->sndPositionSetInSetPosPtr != &sie->sndInstPosVec)
             return;
 
-        v12 = sie->sndInstPosVec.x - sie->sndInstPosVecPrevious.x;
-        v13 = sie->sndInstPosVec.y - sie->sndInstPosVecPrevious.y;
-        a2.z = sie->sndInstPosVec.z - sie->sndInstPosVecPrevious.z;
-        v14 = 1.0 / TIM_gf_dt;
+        dx = sie->sndInstPosVec.x - sie->sndInstPosVecPrevious.x;
+        dy = sie->sndInstPosVec.y - sie->sndInstPosVecPrevious.y;
+        sourceSpeed.z = sie->sndInstPosVec.z - sie->sndInstPosVecPrevious.z;
+        invDt = 1.0 / TIM_gf_dt;
         sie->sndInstPosVecPrevious.x = sie->sndInstPosVec.x;
         sie->sndInstPosVecPrevious.y = sie->sndInstPosVec.y;
         sie->sndInstPosVecPrevious.z = sie->sndInstPosVec.z;
-        sieb = (float)v14;
-        a2.x = (float)(v12 * sieb);
-        a2.y = (float)(v13 * sieb);
-        a2.z = a2.z * sieb;
-        dest.x = sie->sndInstPosVec.x - position->x;
-        dest.y = sie->sndInstPosVec.y - position->y;
-        v15 = sie->sndInstPosVec.z - position->z;
-        dest.z = (float)v15;
-        v16 = sqrt(v15 * dest.z + dest.y * dest.y + dest.x * dest.x);
-        siea = (float)v16;
-        if (v16 < 0.0000099999997)
+        invDtF = (float)invDt;
+        sourceSpeed.x = (float)(dx * invDtF);
+        sourceSpeed.y = (float)(dy * invDtF);
+        sourceSpeed.z = sourceSpeed.z * invDtF;
+        toSource.x = sie->sndInstPosVec.x - listenerPos->x;
+        toSource.y = sie->sndInstPosVec.y - listenerPos->y;
+        dz = sie->sndInstPosVec.z - listenerPos->z;
+        toSource.z = (float)dz;
+        posLen = sqrt(dz * toSource.z + toSource.y * toSource.y + toSource.x * toSource.x);
+        distLen = (float)posLen;
+        if (posLen < 0.0000099999997)
             return;
     }
-    v17 = SND_gst_Params.fx_DopplerSpeed * siea - (dest.y * distance->y + dest.x * distance->x + dest.z * distance->z);
-    if (v17 != 0.0f)
+    closing = SND_gst_Params.fx_DopplerSpeed * distLen
+              - (toSource.y * listenerSpeed->y + toSource.x * listenerSpeed->x + toSource.z * listenerSpeed->z);
+    if (closing != 0.0f)
     {
-        v18 = ((distance->z - a2.z) * dest.z + (distance->y - a2.y) * dest.y + (distance->x - a2.x) * dest.x) / v17 * SND_gst_Params.fx_doppler;
-        if (v18 >= -1.0)
+        ratio = ((listenerSpeed->z - sourceSpeed.z) * toSource.z
+                 + (listenerSpeed->y - sourceSpeed.y) * toSource.y
+                 + (listenerSpeed->x - sourceSpeed.x) * toSource.x) / closing * SND_gst_Params.fx_doppler;
+        if (ratio >= -1.0)
         {
-            if (v18 > 1000.0)
-                v18 = 1000.0;
+            if (ratio > 1000.0)
+                ratio = 1000.0;
         }
         else
         {
-            v18 = -0.99900001;
+            ratio = -0.99900001;
         }
-        v19 = sie->soundBufElemFromModel;
-        v20 = sie->soundIntf;
-        v21 = (double)sie->freq * (v18 + 1.0) + MATH_gd_magicDoubleForRound;
+        buffer = sie->soundBufElemFromModel;
+        intf = sie->soundIntf;
+        freqRounded = (double)sie->freq * (ratio + 1.0) + MATH_gd_magicDoubleForRound;
         //*(double*)&dest.x = v21;
-        v20->SetFrequency(v19, (*(int32_t *)&v21));
+        intf->SetFrequency(buffer, (*(int32_t *)&freqRounded));
     }
 }
 
-float SND_f_Compute3DVol(tSoundInstanceElem* arg0) // @SND_f_GetInstVolume
+float SND_f_Compute3DVol(tSoundInstanceElem* inst) // @SND_f_GetInstVolume
 {
-    int v2;
-    BOOL v3;
+    int flags;
+    int playRequested;
     int i;
-    int* v5;
-    char v6;
-    char v7;
-    int v8; 
-    Mtx4x4* v9;
-    Vec3* v10; 
-    double v11;
-    int v12;
-    int v13;
-    double v14;
-    double v15;
-    double v16;
-    double v17;
-    double v18;
-    float v19[3];
-    int a1[3];
-    Vec3 a1a;
-    float a3; 
-    float v22;
-    int a3a;
+    Mtx4x4* mtx;
+    Vec3* sourcePos;
+    double dz;
+    int pan;
+    int front;
+    double side;
+    double sideLow;
+    double depth;
+    double depth2;
+    double depthLow;
+    float axisFactor[3];
+    int masks[3];
+    Vec3 dir;
+    float vol;
+    float factor;
+    float t;
+    int stopPlayFlags;
 
     if (!SND_gst_Params.sndMatrixRef)
-        return arg0->volume;
-    if (!arg0->sndPositionSetInSetPosPtr)
-        return arg0->volume;
-    v2 = arg0->flags;
-    if ((v2 & 0x1F000000) == 0)
-        return arg0->volume;
-    if ((v2 & 0x10000000) != 0)
+        return inst->volume;
+    if (!inst->sndPositionSetInSetPosPtr)
+        return inst->volume;
+    flags = inst->flags;
+    if ((flags & 0x1F000000) == 0)
+        return inst->volume;
+    if ((flags & 0x10000000) != 0)
     {
-        v22 = SND_f_SphericComputing(&SND_gst_Params.sndMatrixRef->Pos, arg0, &a3a);
-        if ((a3a & 1) != 0)
-            SND_AutoStop(arg0);
-        v3 = (a3a & 2) == 0;
+        factor = SND_f_SphericComputing(&SND_gst_Params.sndMatrixRef->Pos, inst, &stopPlayFlags);
+        if ((stopPlayFlags & 1) != 0)
+            SND_AutoStop(inst);
+        playRequested = (stopPlayFlags & 2) != 0;
     }
     else
     {
-        a1[0] = 0x1000000;
-        a1[1] = 0x2000000;
-        a1[2] = 0x4000000;
+        masks[0] = 0x1000000;
+        masks[1] = 0x2000000;
+        masks[2] = 0x4000000;
         for (i = 0; i < 3; ++i)
         {
-            v5 = &a1[i];
-            if ((*v5 & arg0->flags) != 0)
+            if ((masks[i] & inst->flags) != 0)
             {
-                v19[i] = SND_f_AxisComputing(&SND_gst_Params.sndMatrixRef->Pos, arg0, v5, i);
+                axisFactor[i] = SND_f_AxisComputing(&SND_gst_Params.sndMatrixRef->Pos, inst, &masks[i], i);
             }
             else
             {
-                v19[i] = 1.0;
-                *v5 = 2;
+                axisFactor[i] = 1.0;
+                masks[i] = 2;
             }
         }
-        v6 = a1[2];
-        v7 = a1[1];
-        v22 = v19[2] * v19[1] * v19[0];
-        if ((((a1[0] & 0xff) | (uint8_t)((a1[1] & 0xff) | (a1[2] & 0xff))) & 1) != 0)
-            SND_AutoStop(arg0);
-        v3 = (a1[0] & (uint8_t)(v7 & v6) & 2) == 0;
+        factor = axisFactor[2] * axisFactor[1] * axisFactor[0];
+        if (((masks[0] | masks[1] | masks[2]) & 1) != 0)
+            SND_AutoStop(inst);
+        playRequested = (masks[0] & masks[1] & masks[2] & 2) != 0;
     }
-    if (!v3)
-        SND_AutoPlay(arg0);
-    v8 = arg0->flags;
-    a3 = v22 * arg0->volume;
-    if ((v8 & 0x8000000) != 0)
+    if (playRequested)
+        SND_AutoPlay(inst);
+    vol = factor * inst->volume;
+    if ((inst->flags & 0x8000000) == 0)
+        return vol;
+    pan = 0;
+    front = 0;
+    mtx = SND_gst_Params.microPosMtxPtr;
+    if (mtx)
     {
-        v9 = SND_gst_Params.microPosMtxPtr;
-        if (!SND_gst_Params.microPosMtxPtr)
+        sourcePos = inst->sndPositionSetInSetPosPtr;
+        dir.x = sourcePos->x - SND_gst_Params.microPosMtxPtr->Pos.x;
+        dir.y = sourcePos->y - SND_gst_Params.microPosMtxPtr->Pos.y;
+        dz = sourcePos->z - SND_gst_Params.microPosMtxPtr->Pos.z;
+        dir.z = (float)dz;
+        if (sqrt(dz * dir.z + dir.y * dir.y + dir.x * dir.x) != 0.0)
         {
-            v13 = 0;
-            v12 = 0;
-            goto LABEL_59;
-        }
-        v10 = arg0->sndPositionSetInSetPosPtr;
-        a1a.x = v10->x - SND_gst_Params.microPosMtxPtr->Pos.x;
-        a1a.y = v10->y - SND_gst_Params.microPosMtxPtr->Pos.y;
-        v11 = v10->z - SND_gst_Params.microPosMtxPtr->Pos.z;
-        a1a.z = (float)v11;
-        if (sqrt(v11 * a1a.z + a1a.y * a1a.y + a1a.x * a1a.x) == 0.0)
-        {
-            v12 = 0;
-        LABEL_24:
-            v13 = 0;
-        LABEL_59:
-            arg0->soundIntf->SetPan(arg0->soundBufElemFromModel, v12, v13);
-            arg0->pan = v12;
-            arg0->front = v13;
-            return a3;
-        }
-        MATH_NormalizeVector(&a1a, &a1a);
-        v14 = (v9->v1.z * a1a.z + v9->v1.y * a1a.y + a1a.x * v9->v1.x) * SND_gst_Params.f_surround;
-        if (v14 > 1.0)
-        {
-            v14 = 1.0;
-        LABEL_30:
-            v22 = (float)(1.0 - v14 + arg0->minPan);
-            if (v22 >= 0.0000001)
+            MATH_NormalizeVector(&dir, &dir);
+            side = (mtx->v1.z * dir.z + mtx->v1.y * dir.y + dir.x * mtx->v1.x) * SND_gst_Params.f_surround;
+            if (side > 1.0)
+                side = 1.0;
+            else if (!(side >= -1.0))
+                side = -1.0;
+            if (side > 0.0)
             {
-                if (v22 > 1.0)
-                    v22 = 1.0;
-            }
-            else
-            {
-                v22 = 0.0;
-            }
-            v12 = -SND_l_GetAttFromVol(v22);
-            goto LABEL_42;
-        }
-        if (v14 >= -1.0)
-        {
-            if (v14 > 0.0)
-                goto LABEL_30;
-            if (v14 >= 0.0)
-            {
-                v12 = 0;
-                goto LABEL_42;
-            }
-        }
-        else
-        {
-            v14 = -1.0;
-        }
-        v15 = v14 + arg0->minPan + 1.0;
-        v22 = (float)v15;
-        if (v15 >= 0.0000001)
-        {
-            if (v22 > 1.0)
-                v22 = 1.0;
-            v12 = SND_l_GetAttFromVol(v22);
-        }
-        else
-        {
-            v22 = 0.0;
-            v12 = SND_l_GetAttFromVol(0.0);
-        }
-    LABEL_42:
-        if (SND_gst_Params.soundRenderMode == 8 || SND_gst_Params.soundRenderMode == 16 || SND_gst_Params.soundRenderMode == 32)
-        {
-            v16 = v9->v3.z * a1a.z + v9->v3.y * a1a.y + a1a.x * v9->v3.x;
-            v17 = v16 + v16;
-            if (v17 <= 0.0)
-            {
-                if (v17 >= 0.0)
+                t = (float)(1.0 - side + inst->minPan);
+                if (t >= 0.0000001)
                 {
-                    v13 = 0;
+                    if (t > 1.0)
+                        t = 1.0;
                 }
                 else
                 {
-                    v18 = v17 + arg0->minPan + 1.0;
-                    v22 = (float)v18;
-                    if (v18 >= 0.0000001)
+                    t = 0.0;
+                }
+                pan = -SND_l_GetAttFromVol(t);
+            }
+            else if (side >= 0.0)
+            {
+                pan = 0;
+            }
+            else
+            {
+                sideLow = side + inst->minPan + 1.0;
+                t = (float)sideLow;
+                if (sideLow >= 0.0000001)
+                {
+                    if (t > 1.0)
+                        t = 1.0;
+                    pan = SND_l_GetAttFromVol(t);
+                }
+                else
+                {
+                    pan = SND_l_GetAttFromVol(0.0);
+                }
+            }
+            if (SND_gst_Params.soundRenderMode == 8 || SND_gst_Params.soundRenderMode == 16 || SND_gst_Params.soundRenderMode == 32)
+            {
+                depth = mtx->v3.z * dir.z + mtx->v3.y * dir.y + dir.x * mtx->v3.x;
+                depth2 = depth + depth;
+                if (depth2 <= 0.0)
+                {
+                    if (depth2 >= 0.0)
                     {
-                        if (v22 > 1.0)
-                            v22 = 1.0;
-                        v13 = SND_l_GetAttFromVol(v22);
+                        front = 0;
                     }
                     else
                     {
-                        v22 = 0.0;
-                        v13 = SND_l_GetAttFromVol(0.0);
+                        depthLow = depth2 + inst->minPan + 1.0;
+                        t = (float)depthLow;
+                        if (depthLow >= 0.0000001)
+                        {
+                            if (t > 1.0)
+                                t = 1.0;
+                            front = SND_l_GetAttFromVol(t);
+                        }
+                        else
+                        {
+                            front = SND_l_GetAttFromVol(0.0);
+                        }
                     }
-                }
-            }
-            else
-            {
-                v22 = (float)(1.0 - v17 + arg0->minPan);
-                if (v22 >= 0.0000001)
-                {
-                    if (v22 > 1.0)
-                        v22 = 1.0;
                 }
                 else
                 {
-                    v22 = 0.0;
+                    t = (float)(1.0 - depth2 + inst->minPan);
+                    if (t >= 0.0000001)
+                    {
+                        if (t > 1.0)
+                            t = 1.0;
+                    }
+                    else
+                    {
+                        t = 0.0;
+                    }
+                    front = -SND_l_GetAttFromVol(t);
                 }
-                v13 = -SND_l_GetAttFromVol(v22);
             }
-            goto LABEL_59;
         }
-        goto LABEL_24;
     }
-    return a3;
+    inst->soundIntf->SetPan(inst->soundBufElemFromModel, pan, front);
+    inst->pan = pan;
+    inst->front = front;
+    return vol;
 }
 
 int pcSND_i_FxInit()
 {
-    BYTE Data[4];
+    BYTE fxSetting[4];
 
     SND_gst_FxParam.i7 = 16;
     SND_gst_FxDefaultParam.i7 = 16;
@@ -2267,10 +1954,10 @@ int pcSND_i_FxInit()
     memset(SND_gst_FxParam.i8, 0, 4 * SND_gst_FxParam.i7);
     fxWetVol = 0.0;
     memset(&gFXGlobal, 0, sizeof(gFXGlobal));
-    if (pcSND_GetFXSettingsFromRegistry_sub_49FD00(Data))
+    if (pcSND_ReadFXSettingFromRegistry(fxSetting))
         gFXGlobal.fxEnabled = 0;
     else
-        gFXGlobal.fxEnabled = *(uint32_t*)Data != 1;
+        gFXGlobal.fxEnabled = *(uint32_t*)fxSetting != 1;
     return 0;
 }
 
@@ -2284,336 +1971,261 @@ void pcSND_FxClose()
     SND_gst_FxDefaultParam.i8 = 0;
 }
 
-void pcSND_fxStructSet(EAXLISTENERPROPERTIES* a1, int a2)
+void pcSND_fxStructSet(EAXLISTENERPROPERTIES* dest, int preset)
 {
-    EAXLISTENERPROPERTIES v2;
+    EAXLISTENERPROPERTIES props;
 
-    switch (a2)
+    if (preset < 0 || preset > 11)
+        return;
+
+    props.flEnvironmentSize = 7.5f;
+    props.flReverbDelay = 0.011f;
+    props.flReflectionsDelay = 0.0070000002f;
+    props.flDecayTime = 1.49f;
+    props.lRoom = -1000;
+    props.flEchoDepth = 0.0;
+    props.ulFlags = 63;
+    props.flDecayLFRatio = 1.0;
+    props.flHFReference = 5000.0f;
+    props.flLFReference = 250.0f;
+    props.flModulationDepth = 0.0;
+    props.flModulationTime = 0.25f;
+    props.flEchoTime = 0.25f;
+    props.flAirAbsorptionHF = -5.0f;
+    props.flRoomRolloffFactor = 0.0;
+    props.vReverbPan.x = 0.0;
+    props.vReverbPan.y = 0.0;
+    props.vReverbPan.z = 0.0;
+    props.vReflectionsPan.x = 0.0;
+    props.vReflectionsPan.y = 0.0;
+    props.vReflectionsPan.z = 0.0;
+
+    switch (preset)
     {
     case 0:
-        v2.ulEnvironment = 0;
-        v2.flEnvironmentDiffusion = 1.0;
-        v2.lRoomHF = -100;
-        v2.lRoomLF = 0;
-        v2.flDecayHFRatio = 0.82999998f;
-        v2.lReflections = -2602;
-        v2.lReverb = 200;
-        goto LABEL_14;
-    case 1:
-        v2.ulEnvironment = 2;
-        v2.flEnvironmentSize = 1.9f;
-        v2.flEnvironmentDiffusion = 1.0;
-        v2.lRoomHF = -454;
-        v2.lRoomLF = 0;
-        v2.flDecayTime = 0.40000001f;
-        v2.flDecayHFRatio = 0.82999998f;
-        v2.lReflections = -1646;
-        v2.flReflectionsDelay = 0.0020000001f;
-        v2.lReverb = 53;
-        v2.flReverbDelay = 0.003f;
-        goto LABEL_16;
-    case 2:
-        v2.ulEnvironment = 3;
-        v2.flEnvironmentSize = 1.4f;
-        v2.flEnvironmentDiffusion = 1.0;
-        v2.lRoomHF = -1200;
-        v2.lRoomLF = 0;
-        v2.flDecayHFRatio = 0.54000002f;
-        v2.lReflections = -370;
-        v2.lReverb = 1030;
-        goto LABEL_15;
-    case 3:
-        v2.ulEnvironment = 4;
-        v2.flEnvironmentSize = 2.5f;
-        v2.flEnvironmentDiffusion = 1.0;
-        v2.lRoomHF = -6000;
-        v2.lRoomLF = 0;
-        v2.flDecayTime = 0.5f;
-        v2.flDecayHFRatio = 0.1f;
-        v2.lReflections = -1376;
-        v2.flReflectionsDelay = 0.003f;
-        v2.lReverb = -1104;
-        v2.flReverbDelay = 0.0040000002f;
-        goto LABEL_16;
-    case 4:
-        v2.ulEnvironment = 5;
-        v2.flEnvironmentSize = 11.6f;
-        v2.flEnvironmentDiffusion = 1.0;
-        v2.lRoomHF = -300;
-        v2.lRoomLF = 0;
-        v2.flDecayTime = 2.3099999f;
-        v2.flDecayHFRatio = 0.63999999f;
-        v2.lReflections = -711;
-        v2.flReflectionsDelay = 0.012f;
-        v2.lReverb = 83;
-        v2.flReverbDelay = 0.017000001f;
-        goto LABEL_16;
-    case 5:
-        v2.ulEnvironment = 7;
-        v2.flEnvironmentSize = 19.6f;
-        v2.flEnvironmentDiffusion = 1.0;
-        v2.lRoomHF = -500;
-        v2.lRoomLF = 0;
-        v2.flDecayTime = 3.9200001f;
-        v2.flDecayHFRatio = 0.69999999f;
-        v2.lReflections = -1230;
-        v2.flReflectionsDelay = 0.02f;
-        v2.lReverb = -2;
-        v2.flReverbDelay = 0.028999999f;
-        goto LABEL_16;
-    case 6:
-        v2.ulEnvironment = 26;
-        v2.flEnvironmentSize = 1.9f;
-        v2.flEnvironmentDiffusion = 0.87f;
-        v2.lRoom = -1000;
-        v2.lRoomHF = -400;
-        v2.lRoomLF = -100;
-        v2.flDecayTime = 7.1100001f;
-        v2.flDecayHFRatio = 0.38f;
-        v2.flDecayLFRatio = 0.61000001f;
-        v2.lReflections = -1500;
-        v2.flReflectionsDelay = 0.1f;
-        v2.lReverb = -1000;
-        v2.flReverbDelay = 0.046999998f;
-        v2.flEchoDepth = 0.25f;
-        v2.flHFReference = 3316.1001f;
-        v2.flLFReference = 458.20001f;
-        v2.ulFlags = 32;
-        goto LABEL_19;
-    case 7:
-        v2.ulEnvironment = 24;
-        v2.flEnvironmentSize = 1.8f;
-        v2.flEnvironmentDiffusion = 0.60000002f;
-        v2.lRoom = -1000;
-        v2.lRoomHF = -400;
-        v2.lRoomLF = 0;
-        v2.flDecayTime = 17.23f;
-        v2.flDecayHFRatio = 0.56f;
-        v2.flDecayLFRatio = 1.0;
-        v2.lReflections = -1713;
-        v2.flReflectionsDelay = 0.02f;
-        v2.lReverb = -613;
-        v2.flReverbDelay = 0.029999999f;
-        v2.flEchoDepth = 1.0;
-        v2.flModulationTime = 0.81f;
-        v2.flModulationDepth = 0.31f;
-        v2.flHFReference = 5000.0f;
-        v2.flLFReference = 250.0f;
-        v2.ulFlags = 31;
-        goto LABEL_20;
-    case 8:
-        v2.ulEnvironment = 26;
-        v2.flEnvironmentSize = 2.9000001f;
-        v2.flEnvironmentDiffusion = 0.75999999f;
-        v2.lRoom = -1000;
-        v2.lRoomHF = -700;
-        v2.lRoomLF = -500;
-        v2.flDecayTime = 5.4899998f;
-        v2.flDecayHFRatio = 1.53f;
-        v2.flDecayLFRatio = 0.38f;
-        v2.lReflections = -1900;
-        v2.flReflectionsDelay = 0.054000001f;
-        v2.lReverb = -1400;
-        v2.flReverbDelay = 0.052000001f;
-        v2.flEchoTime = 0.226f;
-        v2.flEchoDepth = 0.11f;
-        v2.flModulationTime = 0.25f;
-        v2.flModulationDepth = 0.0;
-        v2.flAirAbsorptionHF = 0.0;
-        v2.flHFReference = 12428.5f;
-        v2.flLFReference = 99.599998f;
-        v2.ulFlags = 32;
-        goto LABEL_21;
-    case 9:
-        v2.ulEnvironment = 21;
-        v2.flEnvironmentSize = 1.7f;
-        v2.flEnvironmentDiffusion = 0.80000001f;
-        v2.lRoom = -1000;
-        v2.lRoomHF = -1000;
-        v2.lRoomLF = 0;
-        v2.flDecayTime = 2.8099999f;
-        v2.flDecayHFRatio = 0.14f;
-        v2.lReflections = 429;
-        v2.flReflectionsDelay = 0.014f;
-        v2.lReverb = 1023;
-        v2.flReverbDelay = 0.021f;
-        goto LABEL_17;
-    case 10:
-        v2.ulEnvironment = 17;
-        v2.flEnvironmentSize = 100.0f;
-        v2.flEnvironmentDiffusion = 0.27000001f;
-        v2.lRoom = -1000;
-        v2.lRoomHF = -2500;
-        v2.lRoomLF = 0;
-        v2.flDecayTime = 1.49f;
-        v2.flDecayHFRatio = 0.20999999f;
-        v2.lReflections = -2780;
-        v2.flReflectionsDelay = 0.30000001f;
-        v2.lReverb = -1434;
-        v2.flReverbDelay = 0.1f;
-        v2.flEchoDepth = 1.0f;
-        v2.ulFlags = 31;
-        goto LABEL_18;
-    case 11:
-        v2.ulEnvironment = 16;
-        v2.flEnvironmentDiffusion = 0.5f;
-        v2.lRoomHF = -800;
-        v2.lRoomLF = 0;
-        v2.flDecayHFRatio = 0.67000002f;
-        v2.lReflections = -2273;
-        v2.lReverb = -1691;
-    LABEL_14:
-        v2.flEnvironmentSize = 7.5f;
-    LABEL_15:
-        v2.flReverbDelay = 0.011f;
-        v2.flReflectionsDelay = 0.0070000002f;
-        v2.flDecayTime = 1.49f;
-    LABEL_16:
-        v2.lRoom = -1000;
-    LABEL_17:
-        v2.flEchoDepth = 0.0;
-        v2.ulFlags = 63;
-    LABEL_18:
-        v2.flDecayLFRatio = 1.0;
-        v2.flHFReference = 5000.0f;
-        v2.flLFReference = 250.0f;
-    LABEL_19:
-        v2.flModulationDepth = 0.0;
-        v2.flModulationTime = 0.25f;
-    LABEL_20:
-        v2.flEchoTime = 0.25f;
-        v2.flAirAbsorptionHF = -5.0f;
-    LABEL_21:
-        v2.flRoomRolloffFactor = 0.0;
-        v2.vReverbPan.z = 0.0;
-        v2.vReverbPan.y = 0.0;
-        v2.vReverbPan.x = 0.0;
-        v2.vReflectionsPan.z = 0.0;
-        v2.vReflectionsPan.y = 0.0;
-        v2.vReflectionsPan.x = 0.0;
-        memcpy(a1, &v2, sizeof(EAXLISTENERPROPERTIES));
+        props.ulEnvironment = 0;
+        props.flEnvironmentDiffusion = 1.0;
+        props.lRoomHF = -100;
+        props.lRoomLF = 0;
+        props.flDecayHFRatio = 0.82999998f;
+        props.lReflections = -2602;
+        props.lReverb = 200;
         break;
-    default:
-        return;
+    case 1:
+        props.ulEnvironment = 2;
+        props.flEnvironmentSize = 1.9f;
+        props.flEnvironmentDiffusion = 1.0;
+        props.lRoomHF = -454;
+        props.lRoomLF = 0;
+        props.flDecayTime = 0.40000001f;
+        props.flDecayHFRatio = 0.82999998f;
+        props.lReflections = -1646;
+        props.flReflectionsDelay = 0.0020000001f;
+        props.lReverb = 53;
+        props.flReverbDelay = 0.003f;
+        break;
+    case 2:
+        props.ulEnvironment = 3;
+        props.flEnvironmentSize = 1.4f;
+        props.flEnvironmentDiffusion = 1.0;
+        props.lRoomHF = -1200;
+        props.lRoomLF = 0;
+        props.flDecayHFRatio = 0.54000002f;
+        props.lReflections = -370;
+        props.lReverb = 1030;
+        break;
+    case 3:
+        props.ulEnvironment = 4;
+        props.flEnvironmentSize = 2.5f;
+        props.flEnvironmentDiffusion = 1.0;
+        props.lRoomHF = -6000;
+        props.lRoomLF = 0;
+        props.flDecayTime = 0.5f;
+        props.flDecayHFRatio = 0.1f;
+        props.lReflections = -1376;
+        props.flReflectionsDelay = 0.003f;
+        props.lReverb = -1104;
+        props.flReverbDelay = 0.0040000002f;
+        break;
+    case 4:
+        props.ulEnvironment = 5;
+        props.flEnvironmentSize = 11.6f;
+        props.flEnvironmentDiffusion = 1.0;
+        props.lRoomHF = -300;
+        props.lRoomLF = 0;
+        props.flDecayTime = 2.3099999f;
+        props.flDecayHFRatio = 0.63999999f;
+        props.lReflections = -711;
+        props.flReflectionsDelay = 0.012f;
+        props.lReverb = 83;
+        props.flReverbDelay = 0.017000001f;
+        break;
+    case 5:
+        props.ulEnvironment = 7;
+        props.flEnvironmentSize = 19.6f;
+        props.flEnvironmentDiffusion = 1.0;
+        props.lRoomHF = -500;
+        props.lRoomLF = 0;
+        props.flDecayTime = 3.9200001f;
+        props.flDecayHFRatio = 0.69999999f;
+        props.lReflections = -1230;
+        props.flReflectionsDelay = 0.02f;
+        props.lReverb = -2;
+        props.flReverbDelay = 0.028999999f;
+        break;
+    case 6:
+        props.ulEnvironment = 26;
+        props.flEnvironmentSize = 1.9f;
+        props.flEnvironmentDiffusion = 0.87f;
+        props.lRoom = -1000;
+        props.lRoomHF = -400;
+        props.lRoomLF = -100;
+        props.flDecayTime = 7.1100001f;
+        props.flDecayHFRatio = 0.38f;
+        props.flDecayLFRatio = 0.61000001f;
+        props.lReflections = -1500;
+        props.flReflectionsDelay = 0.1f;
+        props.lReverb = -1000;
+        props.flReverbDelay = 0.046999998f;
+        props.flEchoDepth = 0.25f;
+        props.flHFReference = 3316.1001f;
+        props.flLFReference = 458.20001f;
+        props.ulFlags = 32;
+        break;
+    case 7:
+        props.ulEnvironment = 24;
+        props.flEnvironmentSize = 1.8f;
+        props.flEnvironmentDiffusion = 0.60000002f;
+        props.lRoom = -1000;
+        props.lRoomHF = -400;
+        props.lRoomLF = 0;
+        props.flDecayTime = 17.23f;
+        props.flDecayHFRatio = 0.56f;
+        props.flDecayLFRatio = 1.0;
+        props.lReflections = -1713;
+        props.flReflectionsDelay = 0.02f;
+        props.lReverb = -613;
+        props.flReverbDelay = 0.029999999f;
+        props.flEchoDepth = 1.0;
+        props.flModulationTime = 0.81f;
+        props.flModulationDepth = 0.31f;
+        props.flHFReference = 5000.0f;
+        props.flLFReference = 250.0f;
+        props.ulFlags = 31;
+        break;
+    case 8:
+        props.ulEnvironment = 26;
+        props.flEnvironmentSize = 2.9000001f;
+        props.flEnvironmentDiffusion = 0.75999999f;
+        props.lRoom = -1000;
+        props.lRoomHF = -700;
+        props.lRoomLF = -500;
+        props.flDecayTime = 5.4899998f;
+        props.flDecayHFRatio = 1.53f;
+        props.flDecayLFRatio = 0.38f;
+        props.lReflections = -1900;
+        props.flReflectionsDelay = 0.054000001f;
+        props.lReverb = -1400;
+        props.flReverbDelay = 0.052000001f;
+        props.flEchoTime = 0.226f;
+        props.flEchoDepth = 0.11f;
+        props.flModulationTime = 0.25f;
+        props.flModulationDepth = 0.0;
+        props.flAirAbsorptionHF = 0.0;
+        props.flHFReference = 12428.5f;
+        props.flLFReference = 99.599998f;
+        props.ulFlags = 32;
+        break;
+    case 9:
+        props.ulEnvironment = 21;
+        props.flEnvironmentSize = 1.7f;
+        props.flEnvironmentDiffusion = 0.80000001f;
+        props.lRoom = -1000;
+        props.lRoomHF = -1000;
+        props.lRoomLF = 0;
+        props.flDecayTime = 2.8099999f;
+        props.flDecayHFRatio = 0.14f;
+        props.lReflections = 429;
+        props.flReflectionsDelay = 0.014f;
+        props.lReverb = 1023;
+        props.flReverbDelay = 0.021f;
+        break;
+    case 10:
+        props.ulEnvironment = 17;
+        props.flEnvironmentSize = 100.0f;
+        props.flEnvironmentDiffusion = 0.27000001f;
+        props.lRoom = -1000;
+        props.lRoomHF = -2500;
+        props.lRoomLF = 0;
+        props.flDecayTime = 1.49f;
+        props.flDecayHFRatio = 0.20999999f;
+        props.lReflections = -2780;
+        props.flReflectionsDelay = 0.30000001f;
+        props.lReverb = -1434;
+        props.flReverbDelay = 0.1f;
+        props.flEchoDepth = 1.0f;
+        props.ulFlags = 31;
+        break;
+    case 11:
+        props.ulEnvironment = 16;
+        props.flEnvironmentDiffusion = 0.5f;
+        props.lRoomHF = -800;
+        props.lRoomLF = 0;
+        props.flDecayHFRatio = 0.67000002f;
+        props.lReflections = -2273;
+        props.lReverb = -1691;
+        break;
     }
+    memcpy(dest, &props, sizeof(EAXLISTENERPROPERTIES));
 }
 
-int pcSND_EAXListenerPropertiesSet(int a2)
+int pcSND_EAXListenerPropertiesSet(int preset)
 {
-    EAXLISTENERPROPERTIES a1;
+    EAXLISTENERPROPERTIES props;
 
-    pcSND_fxStructSet(&a1, a2);
-    ppdsndIKSPropertySet->lpVtbl->Set(ppdsndIKSPropertySet, &DSPROPSETID_EAX30_ListenerProperties, 1, 0, 0, (LPVOID*)&a1, sizeof(EAXLISTENERPROPERTIES));
+    pcSND_fxStructSet(&props, preset);
+    ppdsndIKSPropertySet->lpVtbl->Set(ppdsndIKSPropertySet, &DSPROPSETID_EAX30_ListenerProperties, 1, 0, 0, (LPVOID*)&props, sizeof(EAXLISTENERPROPERTIES));
     return 0;
 }
 
-void pcSND_DummyFXFunc(tSoundFxParams* a1)
+void pcSND_DummyFXFunc(tSoundFxParams* params)
 {
-    tSndSoundBufferElem** v1;
-    int v2;
+    int count;
+    int i;
 
-    if (gFXGlobal.fxEnabled && (a1->flags & 1) != 0 && a1->i7 > 0)
+    if (gFXGlobal.fxEnabled && (params->flags & 1) != 0 && params->i7 > 0)
     {
-        v1 = a1->i8;
-        v2 = a1->i7;
-        do
+        count = params->i7;
+        for (i = 0; i < count; ++i)
         {
-            if (*v1) {
+            if (params->i8[i]) {
                 //nullsub_32();
             }
-            ++v1;
-            --v2;
-        } while (v2);
+        }
     }
 }
 
-int pcSND_i_FxSetMode(tSoundFxParams* a1, int a2)
+int pcSND_i_FxSetMode(tSoundFxParams* params, int mode)
 {
     if (gFXGlobal.fxEnabled)
     {
-        pcSND_EAXListenerPropertiesSet(a2);
-        gFXGlobal.mode = a1->mode;
-        pcSND_DummyFXFunc(a1);
+        pcSND_EAXListenerPropertiesSet(mode);
+        gFXGlobal.mode = params->mode;
+        pcSND_DummyFXFunc(params);
     }
     return 0;
 }
 
-int pcSND_i_FxGetMode(tSoundFxParams* a1)
+int pcSND_i_FxGetMode(tSoundFxParams* params)
 {
-    return a1->mode;
+    return params->mode;
 }
 
-int pcSND_i_FxSetFeedback(tSoundFxParams* a1, int x)
+int pcSND_i_FxSetFeedback(tSoundFxParams* params, int feedback)
 {
-    int v1;
-
     if (gFXGlobal.fxEnabled)
     {
-        v1 = a1->mode;
-        if (v1 > 12)
-        {
-            switch (v1)
-            {
-            case 65537:
-            case 65538:
-            case 65541:
-            case 65542:
-            case 65543:
-            case 65544:
-                return 0;
-            default:
-            LABEL_6:
-                a1->mode = 0;
-                pcSND_DummyFXFunc(a1);
-                break;
-            }
-        }
-        else if (v1 != 12)
-        {
-            switch (v1)
-            {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 9:
-                return 0;
-            default:
-                goto LABEL_6;
-            }
-        }
-    }
-    return 0;
-}
-
-int pcSND_i_FxGetFeedback(tSoundFxParams* a1)
-{
-    int v1;
-
-    v1 = a1->mode;
-    if (v1 > 12)
-    {
-        switch (v1)
-        {
-        case 65537:
-        case 65538:
-        case 65541:
-        case 65542:
-        case 65543:
-        case 65544:
-            return 0;
-        default:
-        LABEL_5:
-            a1->mode = 0;
-            break;
-        }
-    }
-    else if (v1 != 12)
-    {
-        switch (v1)
+        switch (params->mode)
         {
         case 0:
         case 1:
@@ -2623,51 +2235,65 @@ int pcSND_i_FxGetFeedback(tSoundFxParams* a1)
         case 5:
         case 6:
         case 9:
-            return 0;
+        case 12:
+        case 65537:
+        case 65538:
+        case 65541:
+        case 65542:
+        case 65543:
+        case 65544:
+            break;
         default:
-            goto LABEL_5;
+            params->mode = 0;
+            pcSND_DummyFXFunc(params);
+            break;
         }
     }
     return 0;
 }
 
-int pcSND_i_FxSetDelay(tSoundFxParams* a1, int x)
+int pcSND_i_FxGetFeedback(tSoundFxParams* params)
 {
-    int v1;
-    int result;
+    switch (params->mode)
+    {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 9:
+    case 12:
+    case 65537:
+    case 65538:
+    case 65541:
+    case 65542:
+    case 65543:
+    case 65544:
+        break;
+    default:
+        params->mode = 0;
+        break;
+    }
+    return 0;
+}
 
+int pcSND_i_FxSetDelay(tSoundFxParams* params, int delay)
+{
     if (!gFXGlobal.fxEnabled)
         return 0;
-    v1 = a1->mode;
-    if (v1 <= 12)
+    switch (params->mode)
     {
-        if (v1 != 12)
-        {
-            switch (v1)
-            {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 9:
-                return 0;
-            case 8:
-                goto LABEL_6;
-            default:
-                goto LABEL_8;
-            }
-        }
-        return 0;
-    }
-    switch (v1)
-    {
-    case 65536:
-    LABEL_6:
-        pcSND_DummyFXFunc(a1);
-        return 0;
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 9:
+    case 12:
     case 65537:
     case 65538:
     case 65540:
@@ -2676,20 +2302,21 @@ int pcSND_i_FxSetDelay(tSoundFxParams* a1, int x)
     case 65543:
     case 65544:
         return 0;
+    case 8:
+    case 65536:
+        pcSND_DummyFXFunc(params);
+        return 0;
     default:
-    LABEL_8:
-        a1->mode = 0;
-        result = -1;
-        break;
+        params->mode = 0;
+        return -1;
     }
-    return result;
 }
 
-int pcSND_i_FxGetDelay(tSoundFxParams* a1)
+int pcSND_i_FxGetDelay(tSoundFxParams* params)
 {
     int result;
 
-    switch (a1->mode)
+    switch (params->mode)
     {
     case 0:
         result = 0;
@@ -2704,576 +2331,496 @@ int pcSND_i_FxGetDelay(tSoundFxParams* a1)
     case 8:
     case 9:
     case 0xC:
-        result = (int)a1; // TODO FIXME: ezt nem gondolnám, hogy jó megnézni. mi hívja ezt?
+        result = (int)params; // TODO FIXME: ezt nem gondolnám, hogy jó megnézni. mi hívja ezt?
         break;
     default:
-        a1->mode = 0;
+        params->mode = 0;
         result = -1;
         break;
     }
     return result;
 }
 
-int pcSND_i_FxSetWetVolume(tSoundFxParams* arg0, int a1)
+int pcSND_i_FxSetWetVolume(tSoundFxParams* params, int att)
 {
     if (gFXGlobal.fxEnabled)
     {
         SND_f_GetGlobalVol();
-        fxWetVol = SND_f_GetVolFromAtt(a1);
-        if (arg0->mode)
-            pcSND_DummyFXFunc(arg0);
+        fxWetVol = SND_f_GetVolFromAtt(att);
+        if (params->mode)
+            pcSND_DummyFXFunc(params);
     }
     return 0;
 }
 
-int pcSND_i_FxGetWetVolume(tSoundFxParams* a1)
+int pcSND_i_FxGetWetVolume(tSoundFxParams* params)
 {
-    int v1;
-    int v2;
-    int v3;
-    float v5;
-    float a1a = 0;
+    int mode;
+    float globalVol;
+    float wet = 0;
 
-    v5 = SND_f_GetGlobalVol();
-    v1 = a1->mode;
-    if (v1 > 9)
-    {
-        v2 = v1 - 12;
-        if (v2)
-        {
-            v3 = v2 - 65531;
-            if (v3)
-            {
-                if (v3 != 1)
-                    LABEL_8:
-                a1a = v5;
-            }
-        }
-    }
-    else if (v1 < 8)
-    {
-        switch (v1)
-        {
-        case 0:
-            a1a = 0;
-            break;
-        case 1:
-        case 2:
-        case 3:
-        case 4:
-        case 5:
-        case 6:
-        case 7:
-            break;
-        default:
-            goto LABEL_8;
-        }
-    }
-    fxWetVol = a1a;
-    return SND_l_GetAttFromVol(a1a);
+    globalVol = SND_f_GetGlobalVol();
+    mode = params->mode;
+    if (mode < 0 || (mode > 9 && mode != 12 && mode != 65543 && mode != 65544))
+        wet = globalVol;
+    fxWetVol = wet;
+    return SND_l_GetAttFromVol(wet);
 }
 
-int pcSND_i_FxSetWetPan(tSoundFxParams* a1, int a2)
+int pcSND_i_FxSetWetPan(tSoundFxParams* params, int pan)
 {
-    a1->wetPan = a2;
+    params->wetPan = pan;
     return 0;
 }
 
-int pcSND_i_FxGetWetPan(tSoundFxParams* a1)
+int pcSND_i_FxGetWetPan(tSoundFxParams* params)
 {
-    return a1->wetPan;
+    return params->wetPan;
 }
 
-void pcSND_SNDPropertyEnableRoomReverb(tSoundFxParams* xx, tSndSoundBufferElem* a1)
+void pcSND_SNDPropertyEnableRoomReverb(tSoundFxParams* params, tSndSoundBufferElem* sbe)
 {
     if (gFXGlobal.fxEnabled)
-        pcSND_SNDPropertySetRoomReverb(a1, 1);
+        pcSND_SNDPropertySetRoomReverb(sbe, 1);
 }
 
-int pcSND_i_FxEnable(tSoundFxParams* xx)
+int pcSND_i_FxEnable(tSoundFxParams* params)
 {
-    int v1;
-    int v2;
-    tSndSoundBufferElem* v3;
+    int i;
+    tSndSoundBufferElem* sbe;
 
     if (gFXGlobal.fxEnabled)
     {
-        v1 = xx->i7;
-        v2 = 0;
-        xx->flags |= 1u;
-        if (v1 > 0)
+        params->flags |= 1u;
+        for (i = 0; i < params->i7; ++i)
         {
-            do
-            {
-                v3 = xx->i8[v2];
-                if (v3)
-                    pcSND_SNDPropertyEnableRoomReverb(xx, v3);
-                ++v2;
-            } while (v2 < xx->i7);
+            sbe = params->i8[i];
+            if (sbe)
+                pcSND_SNDPropertyEnableRoomReverb(params, sbe);
         }
     }
     return 0;
 }
 
-int pcSND_i_FxDisable(tSoundFxParams* a1)
+int pcSND_i_FxDisable(tSoundFxParams* params)
 {
-    int v1;
-    int v2;
+    int i;
 
     if (gFXGlobal.fxEnabled)
     {
-        v1 = a1->i7;
-        v2 = 0;
-        a1->flags &= ~1u;
-        if (v1 > 0)
+        params->flags &= ~1u;
+        for (i = 0; i < params->i7; ++i)
         {
-            do
-            {
-                if (a1->i8[v2])
-                    pcSND_DisableReverbAndRestartPlaying(a1, a1->i8[v2]);
-                ++v2;
-            } while (v2 < a1->i7);
+            if (params->i8[i])
+                pcSND_DisableReverbAndRestartPlaying(params, params->i8[i]);
         }
     }
     return 0;
 }
 
-int pcSND_Stream_GetStatus(tSndSoundBufferElem* a1a, int* a2)
+int pcSND_Stream_GetStatus(tSndSoundBufferElem* sndBufferElem, int* status)
 {
-    int result;
-    int a1 = (int)a1a;
+    int handle = (int)sndBufferElem;
 
-    *a2 = 0;
-    if (a1 > 0)
-        result = (a1 <= SND_gi_StreamListSize) - 1;
-    else
-        result = -1;
-    return result;
+    *status = 0;
+    if (handle > 0)
+        return (handle <= SND_gi_StreamListSize) - 1;
+    return -1;
 }
 
-int pcSND_Stream_Play(tSndSoundBufferElem* a1a, int flags)
+int pcSND_Stream_Play(tSndSoundBufferElem* sndBufferElem, int flags)
 {
-    int result; 
-    int a1 = (int)a1a;
+    int handle = (int)sndBufferElem;
 
-    if (a1 > 0)
-        result = (a1 <= SND_gi_StreamListSize) - 1;
-    else
-        result = -1;
-    return result;
+    if (handle > 0)
+        return (handle <= SND_gi_StreamListSize) - 1;
+    return -1;
 }
 
-void pcSND_Stream_Duplicate(tSndHandles* a1a, tSndSoundBufferElem* a2a, tSndSoundBufferElem** a3a)
+void pcSND_Stream_Duplicate(tSndHandles* handles, tSndSoundBufferElem* src, tSndSoundBufferElem** dest)
 {
-    tSndStreamList* v3;
-    int v4;
-    tSndStreamList* v5;
-    
-    int* a3 = (int*)a3a;
-    int a2 = (int)a2a;
+    tSndStreamList* from;
+    tSndStreamList* to;
+    int newHandle;
 
-    *a3 = 0;
-    if (a2 > 0 && a2 <= SND_gi_StreamListSize)
+    int* destHandle = (int*)dest;
+    int srcHandle = (int)src;
+
+    *destHandle = 0;
+    if (srcHandle > 0 && srcHandle <= SND_gi_StreamListSize)
     {
-        v3 = &SND_gast_StreamList[a2 - 1];
-        v4 = SND_i_StreamAlloc();
-        *a3 = v4;
-        if (v4 > 0 && v4 <= SND_gi_StreamListSize)
+        from = &SND_gast_StreamList[srcHandle - 1];
+        newHandle = SND_i_StreamAlloc();
+        *destHandle = newHandle;
+        if (newHandle > 0 && newHandle <= SND_gi_StreamListSize)
         {
-            v5 = &SND_gast_StreamList[v4 - 1];
-            v5->freq = v3->freq;
-            v5->pan2 = v3->pan2;
-            v5->pan1 = v3->pan1;
-            v5->currPos = 0;
-            v5->vol = v3->vol;
+            to = &SND_gast_StreamList[newHandle - 1];
+            to->freq = from->freq;
+            to->pan2 = from->pan2;
+            to->pan1 = from->pan1;
+            to->currPos = 0;
+            to->vol = from->vol;
         }
     }
 }
 
-void pcSND_Stream_GetFrequency(tSndSoundBufferElem* a1a, int* a2)
+void pcSND_Stream_GetFrequency(tSndSoundBufferElem* sndBufferElem, int* freq)
 {
-    int a1 = (int)a1a;
+    int handle = (int)sndBufferElem;
 
-    if (a1 > 0 && a1 <= SND_gi_StreamListSize)
-        *a2 = SND_gast_StreamList[a1 - 1].freq;
+    if (handle > 0 && handle <= SND_gi_StreamListSize)
+        *freq = SND_gast_StreamList[handle - 1].freq;
 }
 
-void pcSND_Stream_GetPan(tSndSoundBufferElem* a1a, int* a2, int* a3)
+void pcSND_Stream_GetPan(tSndSoundBufferElem* sndBufferElem, int* pan, int* front)
 {
-    tSndStreamList* v3;
-    int a1 = (int)a1a;
+    tSndStreamList* stream;
+    int handle = (int)sndBufferElem;
 
-    if (a1 > 0 && a1 <= SND_gi_StreamListSize)
+    if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
-        v3 = &SND_gast_StreamList[a1 - 1];
-        *a2 = SND_gast_StreamList[a1 - 1].pan1;
-        *a3 = v3->pan2;
+        stream = &SND_gast_StreamList[handle - 1];
+        *pan = stream->pan1;
+        *front = stream->pan2;
     }
 }
 
-void pcSND_Stream_GetCurrPos(tSndSoundBufferElem* a1a, int* a2, int* a3)
+void pcSND_Stream_GetCurrPos(tSndSoundBufferElem* sndBufferElem, int* currPos, int* writePos)
 {
-    int a1 = (int)a1a;
+    int handle = (int)sndBufferElem;
 
-    if (a1 > 0 && a1 <= SND_gi_StreamListSize)
+    if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
-        *a2 = SND_gast_StreamList[a1 - 1].currPos;
-        *a3 = 0;
+        *currPos = SND_gast_StreamList[handle - 1].currPos;
+        *writePos = 0;
     }
 }
 
-void pcSND_Stream_SetVolume(tSndSoundBufferElem* a1a, int a2)
+void pcSND_Stream_SetVolume(tSndSoundBufferElem* sndBufferElem, int att)
 {
-    int a1 = (int)a1a;
+    int handle = (int)sndBufferElem;
 
-    if (a1 > 0 && a1 <= SND_gi_StreamListSize)
-        SND_gast_StreamList[a1 - 1].vol = a2;
+    if (handle > 0 && handle <= SND_gi_StreamListSize)
+        SND_gast_StreamList[handle - 1].vol = att;
 }
 
-int pcSND_iTrack_GetStatus(tSndSoundBufferElem* a1, int *a2)
+int pcSND_iTrack_GetStatus(tSndSoundBufferElem* key, int* status)
 {
-    int result;
+    int trackIdx;
 
-    result = BAS_bsearch((int)a1, &SND_gst_TrackLookUpTable);
-    if (result != -1)
-        result = SND_gpst_Interface.win.GetStatus(SND_gax_TrackPlayingList[result].sndBufferElem, a2);
-    return result;
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
+        trackIdx = SND_gpst_Interface.win.GetStatus(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, status);
+    return trackIdx;
 }
 
-int pcSND_iTrack_Play(tSndSoundBufferElem* a1, int a2)
+int pcSND_iTrack_Play(tSndSoundBufferElem* key, int flags)
 {
-    int result;
+    int trackIdx;
 
-    result = BAS_bsearch((int)a1, &SND_gst_TrackLookUpTable);
-    if (result != -1)
-        result = SND_gpst_Interface.win.Play(SND_gax_TrackPlayingList[result].sndBufferElem, a2);
-    return result;
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
+        trackIdx = SND_gpst_Interface.win.Play(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, flags);
+    return trackIdx;
 }
 
-void pcSND_Track_GetFrequency(tSndSoundBufferElem* key, int *a2)
+void pcSND_Track_GetFrequency(tSndSoundBufferElem* key, int* freq)
 {
-    int result;
+    int trackIdx;
 
-    result = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
-    if (result != -1)
-        SND_gpst_Interface.win.GetFrequency(SND_gax_TrackPlayingList[result].sndBufferElem, a2);
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
+        SND_gpst_Interface.win.GetFrequency(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, freq);
 }
 
-void pcSND_Track_GetPan(tSndSoundBufferElem* key, int *a2, int *a3)
+void pcSND_Track_GetPan(tSndSoundBufferElem* key, int* pan, int* front)
 {
-    int result; 
+    int trackIdx;
 
-    result = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
-    if (result != -1)
-        SND_gpst_Interface.win.GetPan(SND_gax_TrackPlayingList[result].sndBufferElem, a2, a3);
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
+        SND_gpst_Interface.win.GetPan(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, pan, front);
 }
 
-void pcSND_Track_GetCurrPos(tSndSoundBufferElem* key, int *a2, int *a3)
+void pcSND_Track_GetCurrPos(tSndSoundBufferElem* key, int* currPos, int* writePos)
 {
-    int result;
+    int trackIdx;
 
-    result = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
-    if (result != -1)
-        SND_gpst_Interface.win.GetCurrPos(SND_gax_TrackPlayingList[result].sndBufferElem, a2, a3);
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
+        SND_gpst_Interface.win.GetCurrPos(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, currPos, writePos);
 }
 
-void pcSND_Track_Pause(tSndSoundBufferElem* a1)
+void pcSND_Track_Pause(tSndSoundBufferElem* key)
 {
-    int v1;
-    tTrackListElem* v2;
-    int v3;
-    int v4;
-    int v5;
-    tSoundInstanceElem* v6;
+    int trackIdx;
+    tTrackListElem* track;
+    int instIdx;
+    tSoundInstanceElem* inst;
 
-    v1 = BAS_bsearch((int)a1, &SND_gst_TrackLookUpTable);
-    if (v1 != -1)
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
     {
-        v2 = &SND_gax_TrackPlayingList[v1];
-        SND_gpst_Interface.win.Pause(v2->sndBufferElem);
-        v3 = v2->trackID;
-        if (v3 >= 0 && v3 < SND_gst_Params.soundInstanceNum)
+        track = &SND_gax_TrackPlayingList[trackIdx];
+        SND_gpst_Interface.win.Pause(track->sndBufferElem);
+        instIdx = track->trackID;
+        if (instIdx >= 0 && instIdx < SND_gst_Params.soundInstanceNum)
         {
-            v4 = v3;
-            v5 = SND_gst_Params.soundInstances[v4].flags;
-            v6 = &SND_gst_Params.soundInstances[v4];
-            if ((v5 & 0x400) != 0)
-                v6->flags = v5 & ~0x10u;
+            inst = &SND_gst_Params.soundInstances[instIdx];
+            if ((inst->flags & 0x400) != 0)
+                inst->flags &= ~0x10u;
         }
     }
 }
 
-void pcSND_Track_Release(tSndSoundBufferElem* a1)
+void pcSND_Track_Release(tSndSoundBufferElem* key)
 {
-    int v1;
-    tTrackListElem* v2;
+    int trackIdx;
+    tTrackListElem* track;
 
-    v1 = BAS_bsearch((int)a1, &SND_gst_TrackLookUpTable);
-    if (v1 != -1)
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
     {
-        v2 = &SND_gax_TrackPlayingList[v1];
-        SND_gpst_Interface.win.Stop(v2->sndBufferElem);
-        SND_TrackDeleteInstanceFromList(v2->trackID);
+        track = &SND_gax_TrackPlayingList[trackIdx];
+        SND_gpst_Interface.win.Stop(track->sndBufferElem);
+        SND_TrackDeleteInstanceFromList(track->trackID);
     }
 }
 
-void pcSND_Track_SetFrequency(tSndSoundBufferElem* key, int a2)
+void pcSND_Track_SetFrequency(tSndSoundBufferElem* key, int freq)
 {
-    int v2;
+    int trackIdx;
 
-    v2 = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
-    if (v2 != -1)
-        SND_gpst_Interface.win.SetFrequency(SND_gax_TrackPlayingList[v2].sndBufferElem, a2);
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
+        SND_gpst_Interface.win.SetFrequency(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, freq);
 }
 
-void pcSND_Track_SetPan(tSndSoundBufferElem* a1, int a2, int a3)
+void pcSND_Track_SetPan(tSndSoundBufferElem* key, int pan, int front)
 {
-    int v3;
+    int trackIdx;
 
-    v3 = BAS_bsearch((int)a1, &SND_gst_TrackLookUpTable);
-    if (v3 != -1)
-        SND_gpst_Interface.win.SetPan(SND_gax_TrackPlayingList[v3].sndBufferElem, a2, a3);
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
+        SND_gpst_Interface.win.SetPan(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, pan, front);
 }
 
-void pcSND_Track_SetCurrPos(tSndSoundBufferElem* key, int a2)
+void pcSND_Track_SetCurrPos(tSndSoundBufferElem* key, int pos)
 {
-    int result;
+    int trackIdx;
 
-    result = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
-    if (result != -1)
-        SND_gpst_Interface.win.SetCurrPos(SND_gax_TrackPlayingList[result].sndBufferElem, a2);
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
+        SND_gpst_Interface.win.SetCurrPos(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, pos);
 }
 
-void pcSND_Track_SetVolume(tSndSoundBufferElem* arg0, int a1)
+void pcSND_Track_SetVolume(tSndSoundBufferElem* key, int att)
 {
-    int v2;
-    tTrackListElem* v3;
-    int v4;
-    float v5;
+    int trackIdx;
+    tTrackListElem* track;
+    int scaledAtt;
+    float vol;
 
-    v2 = BAS_bsearch((int)arg0, &SND_gst_TrackLookUpTable);
-    if (v2 != -1)
+    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    if (trackIdx != -1)
     {
-        v3 = &SND_gax_TrackPlayingList[v2];
-        if (v3->unk1)
+        track = &SND_gax_TrackPlayingList[trackIdx];
+        if (track->unk1)
         {
-            v5 = SND_f_GetVolFromAtt(a1) * v3->f1;
-            v4 = SND_l_GetAttFromVol(v5);
-            SND_gpst_Interface.win.Setvolume(v3->sndBufferElem, v4);
+            vol = SND_f_GetVolFromAtt(att) * track->f1;
+            scaledAtt = SND_l_GetAttFromVol(vol);
+            SND_gpst_Interface.win.Setvolume(track->sndBufferElem, scaledAtt);
         }
         else
         {
-            SND_gpst_Interface.win.Setvolume(v3->sndBufferElem, a1);
+            SND_gpst_Interface.win.Setvolume(track->sndBufferElem, att);
         }
     }
 }
 
-void pcSND_Track_Stop(tSndSoundBufferElem* a1)
+void pcSND_Track_Stop(tSndSoundBufferElem* key)
 {
-    int v1;
-    tTrackListElem* v2;
-    int v3;
-    int v4;
-    int v5;
-    tSoundInstanceElem* v6;
+    int trackIdx;
+    tTrackListElem* track;
+    int instIdx;
+    tSoundInstanceElem* inst;
 
-    if (a1)
+    if (key)
     {
-        v1 = BAS_bsearch((int)a1, &SND_gst_TrackLookUpTable);
-        if (v1 != -1)
+        trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+        if (trackIdx != -1)
         {
-            v2 = &SND_gax_TrackPlayingList[v1];
-            SND_gpst_Interface.win.Stop(v2->sndBufferElem);
-            v3 = v2->trackID;
-            if (v3 >= 0 && v3 < SND_gst_Params.soundInstanceNum)
+            track = &SND_gax_TrackPlayingList[trackIdx];
+            SND_gpst_Interface.win.Stop(track->sndBufferElem);
+            instIdx = track->trackID;
+            if (instIdx >= 0 && instIdx < SND_gst_Params.soundInstanceNum)
             {
-                v4 = v3;
-                v5 = SND_gst_Params.soundInstances[v4].flags;
-                v6 = &SND_gst_Params.soundInstances[v4];
-                if ((v5 & 0x400) != 0)
-                    v6->flags = v5 & ~0x10u;
+                inst = &SND_gst_Params.soundInstances[instIdx];
+                if ((inst->flags & 0x400) != 0)
+                    inst->flags &= ~0x10u;
             }
         }
     }
 }
 
-void pcSND_SB_GetCurrPos(tSndSoundBufferElem* a1, int* a2, int* a3)
+void pcSND_SB_GetCurrPos(tSndSoundBufferElem* sbe, int* currPos, int* writePos)
 {
-    tSbeMiscData* v3;
-    int v4;
-    int a3a;
+    tSbeMiscData* misc;
+    int playPos;
 
-    if (a1->miscData)
+    if (sbe->miscData)
     {
-        *a3 = 0;
-        *a2 = 0;
-        if (a1)
-        {
-            v3 = a1->miscData;
-            if (v3)
-            {
-                a1->dsndSBIF->lpVtbl->GetCurrentPosition(a1->dsndSBIF, &a3a, 0); // !!!!!!!!!!!!!!!!!!!!!!!!a3a
-                v4 = v3->currentPlayPosition;
-                if (a3a >= v4)
-                    *a2 = a3a + v3->currSize - v4;
-                else
-                    *a2 = a3a + v3->soundBufferSize - v4 + v3->currSize; 
-            }
-        }
+        *writePos = 0;
+        *currPos = 0;
+        misc = sbe->miscData;
+        sbe->dsndSBIF->lpVtbl->GetCurrentPosition(sbe->dsndSBIF, &playPos, 0); // !!!!!!!!!!!!!!!!!!!!!!!!a3a
+        if (playPos >= misc->currentPlayPosition)
+            *currPos = playPos + misc->currSize - misc->currentPlayPosition;
+        else
+            *currPos = playPos + misc->soundBufferSize - misc->currentPlayPosition + misc->currSize;
     }
     else
     {
-        a1->dsndSBIF->lpVtbl->GetCurrentPosition(a1->dsndSBIF, a2, a3);
+        sbe->dsndSBIF->lpVtbl->GetCurrentPosition(sbe->dsndSBIF, currPos, writePos);
     }
 }
 
-void pcSND_flipPlayStopState(tSndSoundBufferElem* a1)
+void pcSND_flipPlayStopState(tSndSoundBufferElem* sbe)
 {
-    tSndSoundBufferElem* v1;
-    int a1a;
+    int status;
 
-    v1 = a1;
-    a1->dsndSBIF->lpVtbl->GetStatus(a1->dsndSBIF, &a1a);
-    if ((a1a & 1) != 0)
+    sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, &status);
+    if ((status & 1) != 0)
     {
-        v1->miscData->Stopped_SetIN49e270 = 1;
-        v1->dsndSBIF->lpVtbl->Stop(v1->dsndSBIF);
+        sbe->miscData->Stopped_SetIN49e270 = 1;
+        sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
         do
-            v1->dsndSBIF->lpVtbl->GetStatus(v1->dsndSBIF, &a1a);
-        while ((a1a & 1) != 0);
+            sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, &status);
+        while ((status & 1) != 0);
     }
     else
     {
-        v1->miscData->Stopped_SetIN49e270 = 0;
-        v1->dsndSBIF->lpVtbl->Play(v1->dsndSBIF, 0, 0, 1);
+        sbe->miscData->Stopped_SetIN49e270 = 0;
+        sbe->dsndSBIF->lpVtbl->Play(sbe->dsndSBIF, 0, 0, 1);
     }
 }
 
-void pcSND_SB_Pause(tSndSoundBufferElem* i)
+void pcSND_SB_Pause(tSndSoundBufferElem* sbe)
 {
-    tSndSoundBufferElem* v1;
-    int v3;
-    IDirectSoundBuffer* v4;
-    int ia;
+    int idx;
+    IDirectSoundBuffer* buffer;
+    int status;
 
-    v1 = i;
-    if (i->miscData) {
-        pcSND_flipPlayStopState(i);
+    if (sbe->miscData) {
+        pcSND_flipPlayStopState(sbe);
         return;
     }
-    i->dsndSBIF->lpVtbl->GetStatus(i->dsndSBIF, &ia);
-    if ((ia & 1) != 0) {
-        v1->dsndSBIF->lpVtbl->Stop(v1->dsndSBIF);
+    sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, &status);
+    if ((status & 1) != 0) {
+        sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
         return;
     }
-    v3 = 0;
-    for (ia = 0; v3 < SND_gst_Params.soundInstanceNum; ia = ++v3)
+    for (idx = 0; idx < SND_gst_Params.soundInstanceNum; ++idx)
     {
-        if (SND_gst_Params.soundInstances[v3].soundBufElemFromModel == v1)
+        if (SND_gst_Params.soundInstances[idx].soundBufElemFromModel == sbe)
             break;
     }
-    v4 = v1->dsndSBIF;
-    ia = (SND_gst_Params.soundInstances[v3].flags >> 23) & 1;
-    v4->lpVtbl->Play(v4, 0, 0, ia);
+    buffer = sbe->dsndSBIF;
+    // preserved: with no matching instance the index is one past the array
+    buffer->lpVtbl->Play(buffer, 0, 0, (SND_gst_Params.soundInstances[idx].flags >> 23) & 1);
 }
 
-void pcSND_D3DSoundBufAAndIKPopertySetRelease(tSndSoundBufferElem* a1)
+void pcSND_D3DSoundBufAAndIKPopertySetRelease(tSndSoundBufferElem* sbe)
 {
-    IDirectSound3DBuffer* v1;
-    IKsPropertySet* v2;
+    IDirectSound3DBuffer* buffer3d;
+    IKsPropertySet* propertySet;
 
-    v1 = a1->dsnd3dbufferIF;
-    if (v1)
+    buffer3d = sbe->dsnd3dbufferIF;
+    if (buffer3d)
     {
-        v1->lpVtbl->Release(a1->dsnd3dbufferIF);
-        v2 = a1->dsndIKPropertySetIF;
-        if (v2)
-            v2->lpVtbl->Release(a1->dsndIKPropertySetIF);
+        buffer3d->lpVtbl->Release(sbe->dsnd3dbufferIF);
+        propertySet = sbe->dsndIKPropertySetIF;
+        if (propertySet)
+            propertySet->lpVtbl->Release(sbe->dsndIKPropertySetIF);
     }
 }
 
-void pcSND_SB_Release(tSndSoundBufferElem* a1)
+void pcSND_SB_Release(tSndSoundBufferElem* sbe)
 {
-    tSndSoundBufferElem* v1;
-    int a1a;
+    int wasListed;
 
-    v1 = a1;
-    if (a1)
+    if (sbe)
     {
-        BAS_bdeletegetval((int)a1, &dsndSBList, &a1a);
-        if (v1->miscData)
+        BAS_bdeletegetval((int)sbe, &dsndSBList, &wasListed);
+        if (sbe->miscData)
         {
-            if (a1a)
-                gDoSoundGlobal.dword_B303C0 -= v1->format;
-            pcSND_MiscDataRelease(v1);
-            MEM_Free(v1);
+            if (wasListed)
+                gDoSoundGlobal.dword_B303C0 -= sbe->format;
+            pcSND_MiscDataRelease(sbe);
+            MEM_Free(sbe);
         }
         else
         {
-            if (a1a)
-                gDoSoundGlobal.sndConcurrentlyPlayedNum -= v1->format;
-            pcSND_D3DSoundBufAAndIKPopertySetRelease(v1);
-            pcSND_SNDRasterRelease(v1->dsndSBIF);
-            v1->dsndSBIF->lpVtbl->Release(v1->dsndSBIF);
-            MEM_Free(v1);
+            if (wasListed)
+                gDoSoundGlobal.sndConcurrentlyPlayedNum -= sbe->format;
+            pcSND_D3DSoundBufAAndIKPopertySetRelease(sbe);
+            pcSND_SNDRasterRelease(sbe->dsndSBIF);
+            sbe->dsndSBIF->lpVtbl->Release(sbe->dsndSBIF);
+            MEM_Free(sbe);
         }
     }
 }
 
-int pcSND_Stream_Release(tSndSoundBufferElem* a1a)
+int pcSND_Stream_Release(tSndSoundBufferElem* sndBufferElem)
 {
-    int result;
-    int a1 = (int)a1a;
+    int handle = (int)sndBufferElem;
 
-    result = a1;
-    if (a1 > 0 && a1 <= SND_gi_StreamListSize)
+    if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
-        result = 0;
-        memset(&SND_gast_StreamList[a1 - 1], 0, sizeof(tSndStreamList));
+        memset(&SND_gast_StreamList[handle - 1], 0, sizeof(tSndStreamList));
+        return 0;
     }
-    return result;
+    return handle;
 }
 
-int pcSND_Stream_SetFrequency(tSndSoundBufferElem* a1a, int a2)
+int pcSND_Stream_SetFrequency(tSndSoundBufferElem* sndBufferElem, int freq)
 {
-    int result;
-    int a1 = (int)a1a;
+    int handle = (int)sndBufferElem;
 
-    result = a1;
-    if (a1 > 0 && a1 <= SND_gi_StreamListSize)
+    if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
-        result = 3 * a1;
-        SND_gast_StreamList[a1 - 1].freq = a2;
+        SND_gast_StreamList[handle - 1].freq = freq;
+        return 3 * handle;
     }
-    return result;
+    return handle;
 }
 
-void pcSND_Stream_SetPan(tSndSoundBufferElem* a1a, int a2, int a3)
+void pcSND_Stream_SetPan(tSndSoundBufferElem* sndBufferElem, int pan, int front)
 {
-    tSndStreamList* v3;
-    int a1 = (int)a1a;
+    tSndStreamList* stream;
+    int handle = (int)sndBufferElem;
 
-    if (a1 > 0 && a1 <= SND_gi_StreamListSize)
+    if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
-        v3 = &SND_gast_StreamList[a1 - 1];
-        v3->pan1 = a2;
-        v3->pan2 = a3;
+        stream = &SND_gast_StreamList[handle - 1];
+        stream->pan1 = pan;
+        stream->pan2 = front;
     }
 }
 
-void pcSND_Stream_SetCurrPos(tSndSoundBufferElem* a1a, int a2)
+void pcSND_Stream_SetCurrPos(tSndSoundBufferElem* sndBufferElem, int pos)
 {
-    int a1 = (int)a1a;
+    int handle = (int)sndBufferElem;
 
-    if (a1 > 0 && a1 <= SND_gi_StreamListSize)
-        SND_gast_StreamList[a1 - 1].currPos = a2;
+    if (handle > 0 && handle <= SND_gi_StreamListSize)
+        SND_gast_StreamList[handle - 1].currPos = pos;
 }
 
 int pcSND_l_GetGlobalPan() {
     return 0;
 }
 
-void pcSND_SetGlobalPan(int a1) {
+void pcSND_SetGlobalPan(int pan) {
 }
 
 void pcSND_Null(Vec3* v) {
@@ -3285,16 +2832,16 @@ void pcSND_StreamPrefetch() {
 void pcSND_StreamFlush() {
 }
 
-void pcSND_StreamGetMonoToStereo(tSndSoundBufferElem** a1, tSndSoundBufferElem** a2) {
+void pcSND_StreamGetMonoToStereo(tSndSoundBufferElem** track, tSndSoundBufferElem** resource) {
 }
 
 void pcSND_StreamGetStereoToMono() {
 }
 
-void pcSND_Stream_Pause(tSndSoundBufferElem* x) {
+void pcSND_Stream_Pause(tSndSoundBufferElem* sndBufferElem) {
 }
 
-void pcSND_Stream_Stop(tSndSoundBufferElem* x) {
+void pcSND_Stream_Stop(tSndSoundBufferElem* sndBufferElem) {
 }
 
 int SND_i_SoftInit()

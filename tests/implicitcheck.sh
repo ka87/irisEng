@@ -25,10 +25,19 @@
 # Its pass added them to tests/stub/windows.h, which also took
 # win/wininputoutput.c from 10 to 9.
 #
+# win/winsound.c was here with 13, all of them handle, thread, file and
+# COM calls. Its pass added them to tests/stub/windows.h, which took
+# engine.c from 2 to 1 and win/wingdi.c from 13 to 11 as well.
+#
 # win/wingdi.c went from 25 to 13 when the D3D9, D3DX and message-loop
 # declarations went into the stubs; that work also took the parse
 # sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
-# which are the fpos_t question.
+# which are the fpos_t question.#
+# win/winsound.c and win/wininputoutput.c are both off the list now,
+# and win/wingdi.c is at 10 rather than the 11 or 12 either pass
+# measured alone: the two sets of Win32 declarations they added to
+# tests/stub/windows.h resolve more together than either does by
+# itself. engine.c dropped from 2 to 1 the same way.
 #
 # win/wininputoutput.c was here with 9: SetFocus, SetWindowTextA,
 # SendMessageA, GetDlgItemTextA, EndDialog, GetKeyState,
@@ -44,12 +53,11 @@ CC=${CC:-gcc}
 CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
 
 BASELINE="bigfiles.c 2
-engine.c 2
+engine.c 1
 sideload.c 1
 sound.c 1
 strings.c 1
-win/wingdi.c 13
-win/winsound.c 13"
+win/wingdi.c 10"
 
 files=$(python3 - <<'EOF'
 import re
