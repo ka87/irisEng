@@ -14,6 +14,7 @@ int SNPMOCK_logOverflow;
 
 unsigned char SNPMOCK_arena[SNPMOCK_ARENA];
 size_t SNPMOCK_arenaUsed;
+static size_t SNPMOCK_arenaHigh;   /* the most any case has used */
 
 tSnpScene SNPMOCK_scene;
 tSnpScratch SNPMOCK_scratch;
@@ -84,6 +85,8 @@ void* MEM_p_Alloc(unsigned int size)
     }
     p = &SNPMOCK_arena[off];
     SNPMOCK_arenaUsed = off + size + SNPMOCK_GUARD;
+    if (SNPMOCK_arenaUsed > SNPMOCK_arenaHigh)
+        SNPMOCK_arenaHigh = SNPMOCK_arenaUsed;
     SNPMOCK_Record("MEM_p_Alloc", 2, 0, (int)size, (int)off);
     return p;
 }
@@ -203,8 +206,11 @@ void SNPMOCK_Init(void)
 
 void SNPMOCK_Reset(void)
 {
-    memset(SNPMOCK_arena, 0, SNPMOCK_arenaUsed + 256 < SNPMOCK_ARENA
-                                 ? SNPMOCK_arenaUsed + 256 : SNPMOCK_ARENA);
+    /* the whole of what any case has ever used, not just the last
+       one: clearing only this side's high-water mark leaves an earlier,
+       larger case's bytes above it for one side and not the other */
+    memset(SNPMOCK_arena, 0, SNPMOCK_arenaHigh + 256 < SNPMOCK_ARENA
+                                 ? SNPMOCK_arenaHigh + 256 : SNPMOCK_ARENA);
     SNPMOCK_arenaUsed = 0;
     SNPMOCK_logLen = 0;
     SNPMOCK_logOverflow = 0;
