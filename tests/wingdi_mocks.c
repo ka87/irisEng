@@ -801,7 +801,14 @@ void WGM_Reset(void)
     WGM_ticks = 0;
     WGM_qpc = 0;
     memset(WGM_lockMem, 0, sizeof(WGM_lockMem));
-    memset(WGM_surfMem, 0, sizeof(WGM_surfMem));
+    /* a pattern, not zeroes: a copy loop that reads the wrong stride
+       out of a locked surface produces the same bytes as the right one
+       when every byte is zero. */
+    {
+        unsigned int i;
+        for (i = 0; i < sizeof(WGM_surfMem); i++)
+            WGM_surfMem[i] = (unsigned char)(i * 37u + (i >> 5) + 1u);
+    }
 }
 
 unsigned long long WGM_HashState(void)
@@ -1032,7 +1039,27 @@ void GDI_DetachDisplay(struct sGdi_DisplayData* d) { L1("GDI_DetachDisplay", WGM
 void GDI_DestroyDisplayData(struct sGdi_DisplayData* d) { L1("GDI_DestroyDisplayData", WGM_Index(d)); }
 void GDI_fnl_InitInterface(struct sGdi_DisplayData* d) { L1("GDI_fnl_InitInterface", WGM_Index(d)); }
 BOOL GDI_AttachDisplayAndReadaptDisplay(struct sGdi_DisplayData* d, HWND h) { (void)h; L1("GDI_Attach", WGM_Index(d)); return 1; }
-tGdi_DisplayData* GDI_fnpst_CreateDisplayData(void) { L0("GDI_fnpst_CreateDisplayData"); return NULL; }
+static tGdi_DisplayData WGM_createdDisplay;
+static profilerRasterStructElem WGM_createdRasters[64];
+static struct sGdi_D3DRenderParams* WGM_DisplayCreateDevice(void)
+{
+    L0("DisplayData::CreateDevice");
+    return NULL;
+}
+static void WGM_DisplayDestroyDevice(struct sGdi_D3DRenderParams* p)
+{
+    L1("DisplayData::DestroyDevice", WGM_Index(p));
+}
+tGdi_DisplayData* GDI_fnpst_CreateDisplayData(void)
+{
+    L0("GDI_fnpst_CreateDisplayData");
+    memset(&WGM_createdDisplay, 0, sizeof(WGM_createdDisplay));
+    WGM_createdDisplay.CreateDevice = WGM_DisplayCreateDevice;
+    WGM_createdDisplay.DestroyDevice = WGM_DisplayDestroyDevice;
+    memset(WGM_createdRasters, 0, sizeof(WGM_createdRasters));
+    WGM_createdDisplay.rasters = WGM_createdRasters;
+    return &WGM_createdDisplay;
+}
 
 /* ---------- Win32 ---------- */
 

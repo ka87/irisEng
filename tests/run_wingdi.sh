@@ -19,6 +19,10 @@ cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
 CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# both sides see the real SDK's window-message numbers: the stub's are
+# sequential, which inverts their order and makes most of the two
+# message handlers unreachable.  See tests/wingdi_msg_sdk.h.
+CFLAGS="$CFLAGS -include tests/wingdi_msg_sdk.h"
 OUT=tests/build
 mkdir -p "$OUT"
 

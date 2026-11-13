@@ -352,6 +352,8 @@ typedef struct sWgFixture
     tGEOSTATICLOD otherLod;
     tGroIntf lodIntf;
     tGroIntf otherIntf;
+    tGeoUVElem otherUvs[MAXV];
+    tD3dStreamInfoElem streamInfo[2];
     tGfxSunD3DSpecificData sun[16];
     tD3dRenderStateConfigStruct rsIn;
     tD3dSamplerConfigStruct smIn[8];
@@ -404,6 +406,7 @@ typedef struct sShot
     tGeoWholeTriangleStripBlock blocks[MAXCHUNK];
     tGeoTriangleStrip strips[MAXCHUNK][MAXSTRIP];
     unsigned long long lockHash;
+    unsigned long long snapHash;
     int isSingleStream, isDLBF, argb;
     int ret;
     float fret;
@@ -453,6 +456,16 @@ static void Snapshot(const tSide* s, tShot* o, int ret, float fret)
     memcpy(o->blocks, W.blocks, sizeof(o->blocks));
     memcpy(o->strips, W.strips, sizeof(o->strips));
     o->lockHash = WGM_HashState();
+    {
+        unsigned long long h = 1469598103934665603ULL;
+        unsigned int i;
+        for (i = 0; i < sizeof(W.snapData); i++)
+        {
+            h ^= (unsigned char)W.snapData[i];
+            h *= 1099511628211ULL;
+        }
+        o->snapHash = h;
+    }
     o->isSingleStream = ENG_IsSingleStream;
     o->isDLBF = ENG_IsDLBFEnabled;
     o->argb = D3DRenderParams.argbIsSupportedForTextures;
@@ -794,6 +807,11 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     W.geogro.normals = W.normals;
     W.geogro.uvNum = ((seed >> 13) & 1) ? 16u : 0u;
     W.geogro.UVs = W.uvs;
+    for (i = 0; i < MAXV; i++)
+    {
+        W.otherUvs[i].u = rf(&r, 0.0f, 1.0f);
+        W.otherUvs[i].v = rf(&r, 0.0f, 1.0f);
+    }
     W.geogro.triangleChunkCount = (unsigned int)MAXCHUNK;
     W.geogro.triangleChunks = W.chunks;
     W.geogro.d3dvb = ((seed >> 14) & 1) ? &WGM_vb[30] : NULL;
@@ -984,6 +1002,8 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     W.snap.cutSizeFromTopAndBottom = (int)(seed % 3u);
     W.snap.cutSizeFromSides = (int)(seed % 2u);
     W.snap.srcData = W.snapData;
+    for (i = 0; i < (int)sizeof(W.snapData); i++)
+        W.snapData[i] = (char)(0xA5u ^ (unsigned)i);
     Guard(22, "snapshot taken", (W.snap.flags & 0xFF) == 0 && ((W.snap.flags >> 8) & 0xFF) != 2);
     W.upload.idx = (uint16_t)(seed % 4u);
     W.upload.dataPtr = W.uploadData;
@@ -1120,8 +1140,23 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         s->RequestSetFogParams(&W.fog);
         break;
     case C_STRIDE:
+    {
+        /* every arm of the position switch, every two-bit texture size
+           and the no-sizes arm, which a random FVF reaches only once
+           in 65,536 */
+        static const unsigned int base[] = { 0, 2, 4, 6, 8, 0xA, 0xC, 0xE, 0x4000, 0x400E };
+        static const unsigned int extra[] = { 0, 0x10, 0x20, 0x40, 0x80, 0xF0 };
+        static const unsigned int sizes[] = { 0, 1, 2, 3, 0x1B, 0xE4, 0xFFFF };
+        unsigned int b, e, z, n;
         ret = s->CalculateStride(seed * 2654435761u);
+        for (b = 0; b < sizeof(base) / sizeof(base[0]); b++)
+            for (e = 0; e < sizeof(extra) / sizeof(extra[0]); e++)
+                for (z = 0; z < sizeof(sizes) / sizeof(sizes[0]); z++)
+                    for (n = 0; n <= 4; n++)
+                        ret = ret * 31 + s->CalculateStride(
+                            base[b] | extra[e] | (n << 8) | (sizes[z] << 16));
         break;
+    }
     case C_SELECTFORMAT:
         ret = s->SelectSupportedDeviceFormat((int)(seed % 5u));
         break;
@@ -1160,6 +1195,50 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         break;
     case C_PROJECTION:
         s->SetProjectionMatrix(&W.dd.ct.cam);
+        /* a square window with a fit ratio of exactly one, so the two
+           fit-to-window tests are driven at the boundary where the
+           fitted size equals the window's -- a random ratio never
+           lands there, and a >= for a > scores clean without it */
+        *s->wide = 0;
+        W.dd.ddcs2.selectedScreenRatio = -1;
+        W.dd.ddcs2.manualScreenRatio = 1.0f;
+        W.dd.ddcs2.pixelYoverX = 1.0f;
+        W.dd.ct.cam.YoverX = 1.0f;
+        W.dd.ddcs2.flags2 = (int)(seed & 7u);
+        D3DRenderParams.Rect.left = 0;
+        D3DRenderParams.Rect.top = 0;
+        D3DRenderParams.Rect.right = 512;
+        D3DRenderParams.Rect.bottom = 512;
+        s->SetProjectionMatrix(&W.dd.ct.cam);
+        /* and one pixel either side of it */
+        D3DRenderParams.Rect.bottom = 511;
+        s->SetProjectionMatrix(&W.dd.ct.cam);
+        D3DRenderParams.Rect.bottom = 513;
+        s->SetProjectionMatrix(&W.dd.ct.cam);
+        /* a ratio that is not 1, so that the arm which refits recomputes
+           the other axis to a different number: at a square window with
+           ratio 1 the refit is the identity and the boundary test is
+           invisible however exactly it is hit */
+        W.dd.ddcs2.pixelYoverX = 0.977f;
+        D3DRenderParams.Rect.bottom = 500;
+        for (extra = 0; extra < 14; extra++)
+        {
+            D3DRenderParams.Rect.right = 505 + extra;
+            W.dd.ddcs2.flags2 = 4 | 1;
+            s->SetProjectionMatrix(&W.dd.ct.cam);
+            W.dd.ddcs2.flags2 = 4 | 2;
+            s->SetProjectionMatrix(&W.dd.ct.cam);
+        }
+        D3DRenderParams.Rect.right = 500;
+        for (extra = 0; extra < 14; extra++)
+        {
+            D3DRenderParams.Rect.bottom = 481 + extra;
+            W.dd.ddcs2.flags2 = 1;
+            s->SetProjectionMatrix(&W.dd.ct.cam);
+            W.dd.ddcs2.flags2 = 2;
+            s->SetProjectionMatrix(&W.dd.ct.cam);
+        }
+        extra = 0;
         break;
     case C_ASPECT:
         *fret = s->RealYoverX();
@@ -1258,6 +1337,89 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         ret = s->DrawElementIndexedTriangles(&W.chunks[0], W.verts,
                                              ((seed >> 13) & 1) ? W.uvs : NULL,
                                              (int)W.geogro.vertexNum);
+        /* the immediate-mode vertex loop has six arms, and the one that
+           takes UVs, a colour array, a second colour array and the
+           vertex-UV flag together needs four seed bits to agree before a
+           random seed reaches it.  Drive all eight on purpose: without
+           this the index-by-four site is never executed and moving it
+           scores clean. */
+        W.dd.GROGEO = NULL;
+        D3DRenderParams.textureUVMode = 1;
+        for (extra = 0; extra < 8; extra++)
+        {
+            W.bb.vertexColorArray = (extra & 1) ? W.colorsA : NULL;
+            W.bb.vertexColorArraySecond = (extra & 1) ? W.colorsB : NULL;
+            if (extra & 4)
+                W.dd.flags |= 2;
+            else
+                W.dd.flags &= ~2;
+            ret = ret * 3 + s->DrawElementIndexedTriangles(
+                &W.chunks[0], W.verts, (extra & 2) ? W.uvs : NULL,
+                (int)W.geogro.vertexNum);
+        }
+        /* and the same with only the second array, which the arms with
+           no colour array skip */
+        W.bb.vertexColorArray = W.colorsA;
+        W.bb.vertexColorArraySecond = NULL;
+        W.dd.flags |= 2;
+        ret = ret * 3 + s->DrawElementIndexedTriangles(
+            &W.chunks[0], W.verts, W.uvs, (int)W.geogro.vertexNum);
+        /* both ways of raising the mismatch flag with an index buffer and
+           a strip block in place, which is the only shape where the flag
+           decides anything */
+        W.dd.GROGEO = &W.geogro;
+        W.geogro.d3dIndexBuf = &WGM_ib[2];
+        W.chunks[0].triangleStripBlock = &W.blocks[0];
+        for (extra = 0; extra < 4; extra++)
+        {
+            D3DRenderParams.textureUVMode = (extra & 1) ? 2 : 1;
+            if (extra & 2)
+                W.dd.flags |= 0x400;
+            else
+                W.dd.flags &= ~0x400;
+            ret = ret * 11 + s->DrawElementIndexedTriangles(
+                &W.chunks[0], W.geogro.vertices, W.otherUvs,
+                (int)W.geogro.vertexNum);
+            ret = ret * 11 + s->DrawElementIndexedTriangles(
+                &W.chunks[0], W.geogro.vertices, W.uvs,
+                (int)W.geogro.vertexNum);
+        }
+        extra = 0;
+        /* the indexed path, with the three vertex-buffer ring cursors
+           set either side of the wrap limits.  The sweep's geometry has
+           twenty vertices and the cursors start at zero, so a random
+           case never comes near them. */
+        W.dd.GROGEO = &W.geogro;
+        W.geogro.d3dIndexBuf = &WGM_ib[2];
+        W.chunks[0].triangleStripBlock = &W.blocks[0];
+        W.blocks[0].streamsNum = 1 + (seed % 2u);
+        W.blocks[0].d3dStreamInfoElems = W.streamInfo;
+        W.streamInfo[0].startIndex = 0;
+        W.streamInfo[0].primitiveCount = 6;
+        W.streamInfo[0].vbIdx = 0;
+        W.streamInfo[1].startIndex = 6;
+        W.streamInfo[1].primitiveCount = 6;
+        W.streamInfo[1].vbIdx = 1;
+        W.dd.flags &= ~0x400;
+        W.bb.vertexColorArray = ((seed >> 18) & 1) ? W.colorsA : NULL;
+        for (extra = 0; extra < 4; extra++)
+        {
+            static const unsigned int near2[] = { 0xFFF0u, 0x10000u, 0xFFF0u, 0u };
+            static const unsigned int near1[] = { 0x3FFE0u, 0x40000u, 0u, 0x3FFF0u };
+            D3DRenderParams.prevVertexElemIdx2 = (int)near2[extra];
+            D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle = (int)near2[extra];
+            D3DRenderParams.prevVertexElemIdx = (int)near1[extra];
+            D3DRenderParams.currTargetGao = NULL;
+            D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle = NULL;
+            D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 = NULL;
+            D3DRenderParams.textureUVMode = (extra & 1) ? 2 : 1;
+            ret = ret * 5 + s->DrawElementIndexedTriangles(
+                &W.chunks[0], W.verts, W.uvs, (int)W.geogro.vertexNum);
+            ret = ret * 5 + D3DRenderParams.startVertexElemIdx
+                + D3DRenderParams.startVertexElemIdx2
+                + D3DRenderParams.currVertexStartOffset;
+        }
+        extra = 0;
         break;
     case C_CREATEBUFFERS:
         *s->multiStreamWorld = (tWorld*)(size_t)1;
@@ -1333,6 +1495,19 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         ret = s->WndOpenClose((HWND)0x100,
                               (seed & 2) ? &W.handles : NULL,
                               (unsigned int)(seed % 0x210u));
+        {
+            static const unsigned int wmsgs[] = {
+                (unsigned int)WM_CREATE, (unsigned int)WM_CLOSE,
+                (unsigned int)WM_CREATE, (unsigned int)WM_DESTROY,
+                (unsigned int)WM_CLOSE - 1u, (unsigned int)WM_CLOSE + 1u
+            };
+            W.handles.displayData = NULL;
+            for (extra = 0; extra < 6; extra++)
+                ret = ret * 7 + s->WndOpenClose((HWND)0x100, &W.handles,
+                                                wmsgs[extra]);
+            W.handles.displayData = NULL;
+        }
+        extra = 0;
         *s->multiStreamWorld = NULL;
         break;
     case C_SETUVMATRIX:

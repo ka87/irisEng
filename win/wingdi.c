@@ -4196,7 +4196,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
                 if (colors)
                 {
                     secondIdx = idx;
-                    // preserved: this one of eight second-colour lookups scales its index by four
+                    // preserved: this one of nine second-colour lookups scales its index by four
                     if (UVs && useVertexUv && k == 1)
                         secondIdx = idx * 4;
                     out->color = D3D_VertexColor(colors, second, mask, alpha, idx, secondIdx);
@@ -4331,7 +4331,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
                 lockedColors[i] = packed & 0xFF00FF00 | ((uint8_t)packed << 16) | ((packed >> 16) & 0xff);
             }
         }
-        else
+        else if (geogro->vertexNum)
         {
             for (i = 0; i < (((4 * geogro->vertexNum - 1) >> 2) + 1); i++)
             {
