@@ -713,6 +713,7 @@ static void runPoundCases(void)
 static void runTargetedCases(void)
 {
     int side;
+    int i;
     long ret;
     tGraph g;
 
@@ -765,6 +766,67 @@ static void runTargetedCases(void)
         capture(side ? &s_new : &s_base, 0, side);
     }
     compare("PoundSummationOrder", 0);
+
+    /* The three ways the recursion stops before it walks any links: a
+       NULL object, one with no extended block or no way table, and one
+       whose way table has no element for this network. The sweeps
+       always hand it a fully built waypoint. */
+    for (i = 0; i < 4; ++i)
+    {
+        for (side = 0; side < 2; ++side)
+        {
+            tWayNetwork stranger;
+            tGameObjectMain* start;
+            WMOCK_Reset();
+            sceneReset();
+            buildGraph(&g, 3, 0, 0, 903 + i);
+            memset(&stranger, 0, sizeof(stranger));
+            start = g.gao[0];
+            if (i == 0)
+                start = 0;
+            else if (i == 1)
+                start->extended = 0;
+            else if (i == 2)
+                start->extended->way = 0;
+            if (side)
+            {
+                NEW_WAY_gst_Seen.actElemNum = 0;
+                NEW_WAY_ComputePoundNetworksRec(i == 3 ? &stranger : g.net[0], start, 0);
+            }
+            else
+            {
+                BASE_WAY_gst_Seen.actElemNum = 0;
+                BASE_WAY_ComputePoundNetworksRec(i == 3 ? &stranger : g.net[0], start, 0);
+            }
+            capture(side ? &s_new : &s_base, 0, side);
+        }
+        compare("PoundRecStops", i);
+    }
+
+    /* And the module's own close, which hands the seen set back. */
+    for (side = 0; side < 2; ++side)
+    {
+        WMOCK_Reset();
+        sceneReset();
+        /* Re-made from scratch on this side's own rewound arena, so
+           the two sets sit at the same offset; the ones main built sit
+           one after the other and would compare as a difference that
+           is the harness's and not the file's. */
+        if (side)
+        {
+            NEW_WAY_InitModule();
+            NEW_WAY_CloseModule();
+            NEW_WAY_InitModule();
+        }
+        else
+        {
+            BASE_WAY_InitModule();
+            BASE_WAY_CloseModule();
+            BASE_WAY_InitModule();
+        }
+        capture(side ? &s_new : &s_base, 0, side);
+    }
+    compare("CloseModule", 0);
 }
 
 int main(void)
