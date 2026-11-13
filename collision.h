@@ -265,17 +265,17 @@ int ColMapPoints;
 
 extern int COL_ul_SnP_RefreshType;
 
-void COL_AllocDetectionList(struct sGameObjectMain* a1);
-void COL_FreeDetectionList(struct sGameObjectCollMain* a1);
+void COL_AllocDetectionList(struct sGameObjectMain* gao);
+void COL_FreeDetectionList(struct sGameObjectCollMain* coll);
 BOOL COL_BV_PivotCollide(struct sGameObjectMain* gao1, struct sGameObjectMain* gao2, BOOL reverse);
-void COL_Free(struct sGameObjectMain* a1);
-int COL_AllocColMap(struct sGameObjectMain* a1);
-void COL_FreeColMap(struct sGameObjectCollMain* a1);
-void COL_FreeInstance(struct sGameObjectCollMain* a1);
-void COL_DuplicateInstance(struct sGameObjectMain* a1, struct sGameObjectMain* a2);
-void COL_DuplicateColMap(struct sGameObjectMain* a1, struct sGameObjectMain* a2);
-void COL_ResolveRefs(struct sGameObjectMain* a1);
-void COL_Reinit(struct sGameObjectMain* a1);
+void COL_Free(struct sGameObjectMain* gao);
+int COL_AllocColMap(struct sGameObjectMain* gao);
+void COL_FreeColMap(struct sGameObjectCollMain* coll);
+void COL_FreeInstance(struct sGameObjectCollMain* coll);
+void COL_DuplicateInstance(struct sGameObjectMain* dest, struct sGameObjectMain* src);
+void COL_DuplicateColMap(struct sGameObjectMain* dest, struct sGameObjectMain* src);
+void COL_ResolveRefs(struct sGameObjectMain* gao);
+void COL_Reinit(struct sGameObjectMain* gao);
 void COL_MainCall(struct sWorld* a1);
 void COL_OneCall(struct sGameObjectMain* a1, int a2);
 BOOL COL_b_BVIn(struct sGameObjectMain* a1, struct sGameObjectMain* a2);
@@ -284,7 +284,7 @@ void COL_InitModule();
 struct sColInstance* COL_ul_CallBackLoadInstance(uint32_t Offset);
 struct sColMap* COL_ul_CallBackLoadColMap(uint32_t Offset);
 struct sGameObjectMain* COL_RayBV(struct tableDescStruct* a1, Vec3* a2, Vec3* a3, float a4, int a5, int a6, int whatToTest, int a8);
-struct sGameObjectMain* COL_Visual_RayCast(struct sWorld* a1, struct sGameObjectMain* a2, Vec3* a3, Vec3* a4, float a5, int flagMustHave, int flagMustNothave, int whatToTest, int* a9, int a10);
+struct sGameObjectMain* COL_Visual_RayCast(struct sWorld* world, struct sGameObjectMain* skipGao, Vec3* source, Vec3* direction, float maxDist, int flagMustHave, int flagMustNothave, int whatToTest, int* ignoreResult, int skipRayCast);
 struct sGameObjectMain* COL_ColMap_RayCast(struct sWorld* a1, struct sGameObjectMain* a2, Vec3* a3, Vec3* a4, float a5, int a6, int a7, int a8, int* a9, int a10, int a11, int a12, int a13, int a14);
 int COL_Report_CollideType(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
 void COL_Report_GetNormal(struct sGameObjectMain* a1, struct sWorld* a2, Vec3* a3, int a4);
@@ -295,7 +295,7 @@ float COL_GameMaterial_GetRebound(struct sGameObjectMain* a1, struct sWorld* a2,
 uint8_t COL_GameMaterial_GetSound(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
 void COL_ComputeJumpPoint(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a5);
 int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* a1, struct sWorld* a2, struct sGameObjectMain** a3, Vec3* a4, int a5);
-void COL_RayCompute(Vec3* a1, struct sWorld* a2, struct sGameObjectMain* a3, Vec3* a4, Vec3* a5, int a6, int a7, int a8, int a9, unsigned int* a10);
+void COL_RayCompute(Vec3* offsetOut, struct sWorld* world, struct sGameObjectMain* gao, Vec3* source, Vec3* direction, int flagMustHave, int flagMustNothave, int whatToTest, int skipRayCast, unsigned int* resultFlags);
 struct sGameObjectMain* COL_Report_GetBestWallGOInDirection(struct sGameObjectMain* a1, struct sWorld* a2, Vec3* a3, float a4, int* a5);
 Vec3* COL_Report_GetCollidedPoint(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
 Vec3* COL_Report_GMat_GetCollidedPoint(struct sGameObjectMain* a1, struct sWorld* a2, int a3, int* a4);
@@ -328,7 +328,7 @@ void COL_GeoColMap_PosSet(struct sGameObjectMain* a1, uint8_t a2, Vec3* a3);
 int COL_Report_ul_GMatReportGet(struct sGameObjectMain* a1, struct sWorld* a2, int a3);
 float col_sqrlen_sub_409560(Vec3* a1, Vec3* a2);
 
-int INT_PointInTriangle(Vec3* a1, Vec3* a2, Vec3* a3, Vec3* a4, Vec3* a5, uint8_t* a6);
+int INT_PointInTriangle(Vec3* point, Vec3* p1, Vec3* p2, Vec3* p3, Vec3* normal, uint8_t* edgeOut);
 BOOL INT_SphereAABBox(Vec3* a1, float a2, Vec3* a3, Vec3* a4);
 
 void COL_OK3_Build(void* aa, int type, int a3);
