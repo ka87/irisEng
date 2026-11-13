@@ -76,59 +76,44 @@ static void AE_SetSamplerState(int sampler, int* cached, DWORD state, int value)
 
 void D3D_SaveAEParams()
 {
-    double v0;
-    double v1;
-    double v2;
-    double v3;
+    double minNear;
+    double minType0;
+    double minType1;
+    double minFar;
 
     if (D3DRenderParams.tweak_zonalpha)
-    {
         depthblur_Type = 0;
-        goto LABEL_13;
-    }
-    if ((PC_AE_MASTER & 8) != 0 && (PC_AE_MASTER & 0x1000) != 0)// depthblur, depthblurnear
-    {
+    else if ((PC_AE_MASTER & 8) != 0 && (PC_AE_MASTER & 0x1000) != 0)// depthblur, depthblurnear
         depthblur_Type = 3;
-        goto LABEL_13;
-    }
-    if ((PC_AE_MASTER & 8) != 0)
-    {
-        if ((PC_AE_MASTER & 0x1000) == 0)
-        {
-            depthblur_Type = 1;
-            goto LABEL_13;
-        }
-        if ((PC_AE_MASTER & 8) != 0)
-            goto LABEL_12;
-    }
-    if ((PC_AE_MASTER & 0x1000) == 0)
-        LABEL_12:
-    depthblur_Type = D3DRenderParams.sunEffectIsOn != 0 ? 4 : 0;
-    else
+    else if ((PC_AE_MASTER & 8) != 0)
+        depthblur_Type = 1;
+    else if ((PC_AE_MASTER & 0x1000) != 0)
         depthblur_Type = 2;
-LABEL_13:
+    else
+        depthblur_Type = D3DRenderParams.sunEffectIsOn != 0 ? 4 : 0;
+
     if (gpst_DX_stDD->ct.cam.nearPlane <= 1.1754944e-38)
         camUnkf1Save = 1.1754944e-38f;
     else
         camUnkf1Save = gpst_DX_stDD->ct.cam.nearPlane;
-    v0 = camUnkf1Save + 0.0099999998;
-    if (depthBlurNear1 <= v0)
-        deptBlurNear1Save = (float)v0;
+    minNear = camUnkf1Save + 0.0099999998;
+    if (depthBlurNear1 <= minNear)
+        deptBlurNear1Save = (float)minNear;
     else
         deptBlurNear1Save = depthBlurNear1;
-    v1 = deptBlurNear1Save + 0.0099999998;
-    if (depthBlurType0 <= v1)
-        deptBlurType0Save = (float)v1;
+    minType0 = deptBlurNear1Save + 0.0099999998;
+    if (depthBlurType0 <= minType0)
+        deptBlurType0Save = (float)minType0;
     else
         deptBlurType0Save = depthBlurType0;
-    v2 = deptBlurType0Save + 0.0099999998;
-    if (depthBlurType1 <= v2)
-        deptBlur1TypeSave = (float)v2;
+    minType1 = deptBlurType0Save + 0.0099999998;
+    if (depthBlurType1 <= minType1)
+        deptBlur1TypeSave = (float)minType1;
     else
         deptBlur1TypeSave = depthBlurType1;
-    v3 = deptBlur1TypeSave + 0.0099999998;
-    if (v3 >= gpst_DX_stDD->ct.cam.farPlane)
-        depthBlur1TypeOrcamUnkf2Save = (float)v3;
+    minFar = deptBlur1TypeSave + 0.0099999998;
+    if (minFar >= gpst_DX_stDD->ct.cam.farPlane)
+        depthBlur1TypeOrcamUnkf2Save = (float)minFar;
     else
         depthBlur1TypeOrcamUnkf2Save = gpst_DX_stDD->ct.cam.farPlane;
 }
@@ -139,7 +124,8 @@ void D3D_SetGlobalBlurParams()
     switch (depthblur_Type)
     {
     case 0:
-        goto LABEL_5;
+        D3DRenderParams.textureUVIsProjected = 0;
+        break;
     case 1:
         D3DRenderParams.textureUVIsProjected = 1;
         D3DRenderParams.transformationMatrix.f41 = deptBlurType0Save;
@@ -153,7 +139,6 @@ void D3D_SetGlobalBlurParams()
         break;
     case 4:
         D3DRenderParams.transformationMatrix.f31 = (float)(1.0 / depthBlur1TypeOrcamUnkf2Save);
-    LABEL_5:
         D3DRenderParams.textureUVIsProjected = 0;
         break;
     default:
@@ -161,102 +146,88 @@ void D3D_SetGlobalBlurParams()
     }
 }
 
-float D3D_DepthBlurBlurFuncCalc1(int a1)
+float D3D_DepthBlurBlurFuncCalc1(int step)
 {
-    double result;
+    double depth;
 
-    result = 0.0;
+    depth = 0.0;
     if (depthblur_Type == 4)
-        result = (double)a1 * depthBlur1TypeOrcamUnkf2Save * 0.00390625;
-    return (float)result;
+        depth = (double)step * depthBlur1TypeOrcamUnkf2Save * 0.00390625;
+    return (float)depth;
 }
 
-uint32_t  D3D_DepthBlurBlurFuncCalc2(float a1)
+uint32_t  D3D_DepthBlurBlurFuncCalc2(float depth)
 {
-    double v1;
-
-    v1 = 0.0;
     if (depthblur_Type == 4)
     {
-        if (a1 < 0.0)
-            return (uint32_t)255.0;
-        if (a1 <= (double)depthBlur1TypeOrcamUnkf2Save)
-            return (uint32_t)((1.0 - a1 / depthBlur1TypeOrcamUnkf2Save) * 255.0);
-        v1 = 0.0;
+        if (depth < 0.0)
+            return 255;
+        if (depth <= (double)depthBlur1TypeOrcamUnkf2Save)
+            return (uint32_t)((1.0 - depth / depthBlur1TypeOrcamUnkf2Save) * 255.0);
     }
-    return (uint32_t)v1;
+    return 0;
 }
 
-void D3D_DepthBlurBlurFunc(int* a1)
+void D3D_DepthBlurBlurFunc(int* table)
 {
-    int v1;
-    int v2;
-    int v3;
-    int v4;
-    int v5;
-    int v6;
-    int v7;
+    int clearEnd;
+    int rampEnd;
+    int idx;
+    int step;
     int i;
-    float v9;
-    int v10;
-    int v11;
-    int j;
+    float depth;
 
     switch (depthblur_Type)
     {
     case 0:
-        for (j = 0; j < 256; j++) a1[j] = 0xFF000000;
+        for (i = 0; i < 256; i++) table[i] = 0xFF000000;
         break;
     case 1:
-        v5 = (unsigned int)(deptBlurType0Save / deptBlur1TypeSave * 256.0);
-        v6 = 0;
-        if (v5 <= 0 || (memset(a1, 0, 4 * v5), v6 = v5, v5 < 256))
+        clearEnd = (unsigned int)(deptBlurType0Save / deptBlur1TypeSave * 256.0);
+        idx = 0;
+        if (clearEnd > 0)
         {
-            v7 = v6 - v5;
-            v11 = v6 - v5;
-            do
-            {
-                a1[v6++] = (unsigned int)((double)v11 * (255.0 / (double)(256 - v5))) << 24;
-                v11 = ++v7;
-            } while (v6 < 256);
+            memset(table, 0, 4 * clearEnd);
+            idx = clearEnd;
         }
-        a1[255] = 0xFF000000;
+        if (clearEnd < 256)
+        {
+            for (step = idx - clearEnd; idx < 256; idx++, step++)
+                table[idx] = (unsigned int)((double)step * (255.0 / (double)(256 - clearEnd))) << 24;
+        }
+        table[255] = 0xFF000000;
         break;
     case 2:
-        for (j = 0; j < 255; j++) a1[j] = 0xFF000000;
-        a1[255] = 0;
+        for (i = 0; i < 255; i++) table[i] = 0xFF000000;
+        table[255] = 0;
         break;
     case 3:
-        v1 = (unsigned int)(deptBlurNear1Save / deptBlur1TypeSave * 256.0);
-        v2 = (unsigned int)(deptBlurNear1Save / deptBlurType0Save * 256.0);
-        v3 = 0;
-        if (v1 > 0)
+        clearEnd = (unsigned int)(deptBlurNear1Save / deptBlur1TypeSave * 256.0);
+        rampEnd = (unsigned int)(deptBlurNear1Save / deptBlurType0Save * 256.0);
+        idx = 0;
+        if (clearEnd > 0)
         {
-            memset(a1, 0, 4 * v1);
-            v3 = v1;
+            memset(table, 0, 4 * clearEnd);
+            idx = clearEnd;
         }
-        if (v3 < v2)
+        if (idx < rampEnd)
         {
-            v4 = v3 - v1;
-            v10 = v3 - v1;
-            do
-            {
-                a1[v3++] = (unsigned int)((double)v10 * (255.0 / (double)(v2 - v1))) << 24;
-                v10 = ++v4;
-            } while (v3 < v2);
+            for (step = idx - clearEnd; idx < rampEnd; idx++, step++)
+                table[idx] = (unsigned int)((double)step * (255.0 / (double)(rampEnd - clearEnd))) << 24;
         }
-        if (v3 < 255) {
-            for (j = v3; j <= (255 - v3); j++) a1[j] = 0xFF000000;
+        if (idx < 255) {
+            // preserved: a count used where the other arms use an index, so this stops short of 254
+            for (i = idx; i <= (255 - idx); i++) table[i] = 0xFF000000;
         }
-        a1[255] = 0;
+        table[255] = 0;
         break;
     case 4:
         for (i = 0; i < 256; ++i)
         {
-            v9 = D3D_DepthBlurBlurFuncCalc1(i);
-            a1[i] = (uint8_t)D3D_DepthBlurBlurFuncCalc2(v9) << 24;
+            depth = D3D_DepthBlurBlurFuncCalc1(i);
+            table[i] = (uint8_t)D3D_DepthBlurBlurFuncCalc2(depth) << 24;
         }
-        a1[255] = 0;
+        table[255] = 0;
         break;
     default:
         return;
@@ -265,26 +236,25 @@ void D3D_DepthBlurBlurFunc(int* a1)
 
 int D3D_UpdateBlurTexture()
 {
-    IDirect3DSurface9* v1;
-    D3DLOCKED_RECT v2;
+    IDirect3DSurface9* surface;
+    D3DLOCKED_RECT locked;
 
     D3D_SaveAEParams();
     D3DRenderParams.isDepthBlurOn = depthblur_Type != 0;
     D3D_SetGlobalBlurParams();
-    D3DRenderParams.pSourceTexture->lpVtbl->GetSurfaceLevel(D3DRenderParams.pSourceTexture, 0, &v1);
-    v1->lpVtbl->LockRect(v1, &v2, NULL, 0);
-    D3D_DepthBlurBlurFunc((int *)(v2.pBits));
-    v1->lpVtbl->UnlockRect(v1);
+    D3DRenderParams.pSourceTexture->lpVtbl->GetSurfaceLevel(D3DRenderParams.pSourceTexture, 0, &surface);
+    surface->lpVtbl->LockRect(surface, &locked, NULL, 0);
+    D3D_DepthBlurBlurFunc((int *)(locked.pBits));
+    surface->lpVtbl->UnlockRect(surface);
     D3DRenderParams.d3dDev->lpVtbl->UpdateTexture(D3DRenderParams.d3dDev, (IDirect3DBaseTexture9*)(D3DRenderParams.pSourceTexture), (IDirect3DBaseTexture9*)(D3DRenderParams.pDestTexture));
-    return v1->lpVtbl->Release(v1);
+    return surface->lpVtbl->Release(surface);
 }
 
 void D3D_CreateBlurTextures()
 {
-    int v0;
-    int v1;
+    int hr;
 
-    v0 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+    hr = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
         256,
         1,
         1,
@@ -293,8 +263,8 @@ void D3D_CreateBlurTextures()
         D3DPOOL_DEFAULT,
         &D3DRenderParams.pDestTexture,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v0);
-    v1 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(hr);
+    hr = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
         256,
         1,
         1,
@@ -303,7 +273,7 @@ void D3D_CreateBlurTextures()
         D3DPOOL_SYSTEMMEM,
         &D3DRenderParams.pSourceTexture,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v1);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(hr);
     PC_AE_MASTER &= ~0x1008u;
     depthBlurType0 = 0.0;
     depthBlurType1 = 0.0;
@@ -311,12 +281,12 @@ void D3D_CreateBlurTextures()
     D3D_UpdateBlurTexture();
 }
 
-void D3D_CreateTextureAndBlankIt(IDirect3DTexture9 **a3)
+void D3D_CreateTextureAndBlankIt(IDirect3DTexture9 **texture)
 {
-    int v2;
-    IDirect3DSurface9* v3;
+    int hr;
+    IDirect3DSurface9* surface;
 
-    v2 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(
+    hr = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(
         D3DRenderParams.d3dDev,
         D3DRenderParams.presentParams.BackBufferWidth,
         D3DRenderParams.presentParams.BackBufferHeight,
@@ -324,12 +294,12 @@ void D3D_CreateTextureAndBlankIt(IDirect3DTexture9 **a3)
         D3DUSAGE_RENDERTARGET,
         D3DRenderParams.presentParams.BackBufferFormat,
         D3DPOOL_DEFAULT,
-        a3,
+        texture,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v2);
-    (*a3)->lpVtbl->GetSurfaceLevel(*a3, 0, &v3);
-    D3DRenderParams.d3dDev->lpVtbl->ColorFill(D3DRenderParams.d3dDev, v3, NULL, 0);
-    v3->lpVtbl->Release(v3);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(hr);
+    (*texture)->lpVtbl->GetSurfaceLevel(*texture, 0, &surface);
+    D3DRenderParams.d3dDev->lpVtbl->ColorFill(D3DRenderParams.d3dDev, surface, NULL, 0);
+    surface->lpVtbl->Release(surface);
 }
 
 void D3D_AETexturesInit()
@@ -344,19 +314,8 @@ void D3D_AETexturesInit()
 
 void D3D_SetD3DStatesDefaultForAE()
 {
-    int v0;
-    int v1;
-    int v2;
-    IDirect3DDevice9* v3;
-    IDirect3DDevice9* v4;
-    IDirect3DDevice9* v5;
-    IDirect3DDevice9* v6;
-    IDirect3DDevice9* v7;
-    IDirect3DDevice9* v8;
-    IDirect3DDevice9* v9;
-    IDirect3DDevice9* v10;
+    int stage;
 
-    v0 = 0;
     AE_SetRenderState(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, D3DZB_FALSE);
     AE_SetRenderState(&renderStateConfig.d3d_zFunc, D3DRS_ZFUNC, D3DCMP_ALWAYS);
     AE_SetRenderState(&renderStateConfig.d3d_zWriteEnable, D3DRS_ZWRITEENABLE, FALSE);
@@ -372,200 +331,160 @@ void D3D_SetD3DStatesDefaultForAE()
     AE_SetRenderState(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
     AE_SetRenderState(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ZERO);
     AE_SetRenderState(&renderStateConfig.d3d_Lighting, D3DRS_LIGHTING, FALSE);
-    v1 = 0;
-    v2 = 0;
-    do
+    for (stage = 0; stage < 4; stage++)
     {
-        AE_SetStageState(v1, &textureStageTypeConfig[v0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
-        AE_SetStageState(v1, &textureStageTypeConfig[v0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-        AE_SetStageState(v1, &textureStageTypeConfig[v0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, v1);
-        AE_SetStageState(v1, &textureStageTypeConfig[v0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
-        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, v1, NULL);
-        AE_SetSamplerState(v1, &samplerConfig[v2].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-        AE_SetSamplerState(v1, &samplerConfig[v2].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
-        AE_SetSamplerState(v1, &samplerConfig[v2].d3d_addressu, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-        AE_SetSamplerState(v1, &samplerConfig[v2].d3d_addressv, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-        ++v0;
-        ++v1;
-        ++v2;
-    } while (v0 < 4);
+        AE_SetStageState(stage, &textureStageTypeConfig[stage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(stage, &textureStageTypeConfig[stage].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        AE_SetStageState(stage, &textureStageTypeConfig[stage].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, stage);
+        AE_SetStageState(stage, &textureStageTypeConfig[stage].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, stage, NULL);
+        AE_SetSamplerState(stage, &samplerConfig[stage].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+        AE_SetSamplerState(stage, &samplerConfig[stage].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+        AE_SetSamplerState(stage, &samplerConfig[stage].d3d_addressu, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+        AE_SetSamplerState(stage, &samplerConfig[stage].d3d_addressv, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    }
 }
 
-void D3D_DrawASurface(void* a1, unsigned int a2)
+void D3D_DrawASurface(void* vertices, unsigned int fvf)
 {
-    IDirect3DDevice9* v2;
-    int v3;
+    int stride;
 
     D3D_SetVertexShader(NULL);
     renderStateConfig.vertexShader = NULL;
-    renderStateConfig.fvf = a2;
+    renderStateConfig.fvf = fvf;
     D3DRenderParams.d3dDev->lpVtbl->SetVertexShader(D3DRenderParams.d3dDev, NULL);
     D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, renderStateConfig.fvf);
-    v2 = D3DRenderParams.d3dDev;
-    v3 = D3D_CalculateStride(a2);
-    v2->lpVtbl->DrawPrimitiveUP(D3DRenderParams.d3dDev, D3DPT_TRIANGLESTRIP, 2,  a1, v3);
+    stride = D3D_CalculateStride(fvf);
+    D3DRenderParams.d3dDev->lpVtbl->DrawPrimitiveUP(D3DRenderParams.d3dDev, D3DPT_TRIANGLESTRIP, 2,  vertices, stride);
 }
 
-void D3D_DepthBlurSD(IDirect3DTexture9* a5, float a6, float a7)
+void D3D_DepthBlurSD(IDirect3DTexture9* texture, float uStep, float vStep)
 {
-    tVertex_type_204* v3;
-    int v4;
-    int v5;
     int i;
-    IDirect3DDevice9* v7;
-    IDirect3DDevice9* v8;
-    int v9;
-    int v10;
-    int v11;
-    IDirect3DDevice9* v12;
-    IDirect3DDevice9* v13;
-    IDirect3DDevice9* v14;
-    IDirect3DDevice9* v15;
-    float v16;
-    float v17;
-    float v18;
-    float v19;
-    float v20;
-    float v21;
-    float v22;
-    tVertex_type_204 v23[4];
+    float width;
+    float uSet1Right;
+    float vSet2Top;
+    float uSet2Right;
+    float vSet1Top;
+    float height;
+    float topY;
+    tVertex_type_204 quad[4];
 
-    v16 = (float)D3DRenderParams.presentParams.BackBufferWidth;
-    v21 = (float)D3DRenderParams.presentParams.BackBufferHeight;
-    v23[0].uvSet1.v = bandsVal4;
-    v23[0].uvSet2.v = bandsVal4;
-    v23[0].v1.y = bandsVal4 * v21 - 0.5f;
-    v23[1].uvSet1.v = bandsVal3;
-    v23[0].uvSet2.u = a6;
-    v23[0].uvSet1.u = -a6;
-    v23[1].uvSet2.u = a6;
-    v23[1].uvSet2.v = bandsVal3;
-    v23[2].uvSet1.v = bandsVal4;
-    v23[2].uvSet2.v = bandsVal4;
-    v22 = bandsVal3 * v21;
-    v23[1].v1.y = v22;
-    v23[3].v1.y = v22;
-    v23[1].uvSet1.u = v23[0].uvSet1.u;
-    v23[3].uvSet1.v = bandsVal3;
-    v23[0].v1.x = 0.0;
-    v23[1].v1.x = 0.0;
-    v23[2].v1.x = v16 - 0.5f;
-    v23[2].v1.y = v23[0].v1.y;
-    v17 = 1.0f - a6;
-    v23[2].uvSet1.u = v17;
-    v23[3].uvSet1.u = v17;
-    v23[3].uvSet2.v = bandsVal3;
-    v3 = &v23[0];
-    v19 = a6 + 1.0f;
-    v23[2].uvSet2.u = v19;
-    v23[3].uvSet2.u = v19;
-    v23[3].v1.x = v23[2].v1.x;
-    v4 = 4;
-    do
+    width = (float)D3DRenderParams.presentParams.BackBufferWidth;
+    height = (float)D3DRenderParams.presentParams.BackBufferHeight;
+    quad[0].uvSet1.v = bandsVal4;
+    quad[0].uvSet2.v = bandsVal4;
+    quad[0].v1.y = bandsVal4 * height - 0.5f;
+    quad[1].uvSet1.v = bandsVal3;
+    quad[0].uvSet2.u = uStep;
+    quad[0].uvSet1.u = -uStep;
+    quad[1].uvSet2.u = uStep;
+    quad[1].uvSet2.v = bandsVal3;
+    quad[2].uvSet1.v = bandsVal4;
+    quad[2].uvSet2.v = bandsVal4;
+    topY = bandsVal3 * height;
+    quad[1].v1.y = topY;
+    quad[3].v1.y = topY;
+    quad[1].uvSet1.u = quad[0].uvSet1.u;
+    quad[3].uvSet1.v = bandsVal3;
+    quad[0].v1.x = 0.0;
+    quad[1].v1.x = 0.0;
+    quad[2].v1.x = width - 0.5f;
+    quad[2].v1.y = quad[0].v1.y;
+    uSet1Right = 1.0f - uStep;
+    quad[2].uvSet1.u = uSet1Right;
+    quad[3].uvSet1.u = uSet1Right;
+    quad[3].uvSet2.v = bandsVal3;
+    uSet2Right = uStep + 1.0f;
+    quad[2].uvSet2.u = uSet2Right;
+    quad[3].uvSet2.u = uSet2Right;
+    quad[3].v1.x = quad[2].v1.x;
+    for (i = 0; i < 4; i++)
     {
-        v3->v1.z = 0.0;
-        v3->hw = 1.0;
-        v3++;
-        --v4;
-    } while (v4);
-    v5 = 0;
+        quad[i].v1.z = 0.0;
+        quad[i].hw = 1.0;
+    }
     for (i = 0; i < 2; ++i)
     {
-        AE_SetSamplerState(v5, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-        AE_SetSamplerState(v5, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-        ++v5;
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     }
     AE_SetRenderState(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, 0x80FFFFFF);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)a5);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)a5);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
-    D3D_DrawASurface(v23, (D3DFVF_TEX2 | D3DFVF_XYZRHW));
-    v23[0].uvSet1.v = bandsVal4 - a7;
-    v23[0].uvSet1.u = 0.0;
-    v23[0].uvSet2.u = 0.0;
-    v23[1].uvSet1.u = 0.0;
-    v23[1].uvSet2.u = 0.0;
-    v23[2].uvSet1.u = 1.0;
-    v23[0].uvSet2.v = bandsVal4 + a7;
-    v23[2].uvSet2.u = 1.0;
-    v23[3].uvSet1.u = 1.0;
-    v23[3].uvSet2.u = 1.0;
-    v20 = bandsVal3 - a7;
-    v23[1].uvSet1.v = v20;
-    v23[3].uvSet1.v = v20;
-    v18 = bandsVal3 + a7;
-    v23[1].uvSet2.v = v18;
-    v23[3].uvSet2.v = v18;
-    v23[2].uvSet1.v = v23[0].uvSet1.v;
-    v23[2].uvSet2.v = v23[0].uvSet2.v;
+    D3D_DrawASurface(quad, (D3DFVF_TEX2 | D3DFVF_XYZRHW));
+    quad[0].uvSet1.v = bandsVal4 - vStep;
+    quad[0].uvSet1.u = 0.0;
+    quad[0].uvSet2.u = 0.0;
+    quad[1].uvSet1.u = 0.0;
+    quad[1].uvSet2.u = 0.0;
+    quad[2].uvSet1.u = 1.0;
+    quad[0].uvSet2.v = bandsVal4 + vStep;
+    quad[2].uvSet2.u = 1.0;
+    quad[3].uvSet1.u = 1.0;
+    quad[3].uvSet2.u = 1.0;
+    vSet1Top = bandsVal3 - vStep;
+    quad[1].uvSet1.v = vSet1Top;
+    quad[3].uvSet1.v = vSet1Top;
+    vSet2Top = bandsVal3 + vStep;
+    quad[1].uvSet2.v = vSet2Top;
+    quad[3].uvSet2.v = vSet2Top;
+    quad[2].uvSet1.v = quad[0].uvSet1.v;
+    quad[2].uvSet2.v = quad[0].uvSet2.v;
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)a5);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)a5);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
     AE_SetRenderState(&renderStateConfig.d3d_BlendOp, D3DRS_BLENDOP, D3DBLENDOP_ADD);
     AE_SetRenderState(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     AE_SetRenderState(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_SRCALPHA);
-    D3D_DrawASurface(v23, (D3DFVF_TEX2 | D3DFVF_XYZRHW));
-    v9 = 0;
-    v10 = 0;
-    v11 = 0;
-    do
+    D3D_DrawASurface(quad, (D3DFVF_TEX2 | D3DFVF_XYZRHW));
+    for (i = 0; i < 2; i++)
     {
-        AE_SetSamplerState(v9, &samplerConfig[v10].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-        AE_SetSamplerState(v9, &samplerConfig[v10].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
-        AE_SetStageState(v9, &textureStageTypeConfig[v11].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
-        AE_SetStageState(v9, &textureStageTypeConfig[v11].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, v9, NULL);
-        ++v10;
-        ++v9;
-        ++v11;
-    } while (v10 < 2);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, i, NULL);
+    }
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
 }
 
-void D3D_DepthBlurHD(IDirect3DTexture9* a5, float a6, float a7)
+void D3D_DepthBlurHD(IDirect3DTexture9* texture, float uStep, float vStep)
 {
-    int v3;
-    tVertex_type_404* v4;
-    int v5;
-    int v6;
     int i;
-    IDirect3DDevice9* v8;
-    IDirect3DDevice9* v9;
-    IDirect3DDevice9* v10;
-    IDirect3DDevice9* v11;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    float v16;
-    float v17;
-    float v18;
-    tVertex_type_404 a1[4];
+    float height;
+    float topY;
+    float width;
+    float uSet2Right;
+    float vSet4Top;
+    float vSet3Bottom;
+    float vSet4Bottom;
+    tVertex_type_404 quad[4];
 
-    AE_SetRenderState(&renderStateConfig.d3dTextureFactor, 60, 0x80FFFFFF);
-    v3 = 0;
+    AE_SetRenderState(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, 0x80FFFFFF);
     AE_SetSamplerState(0, &samplerConfig[0].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
     AE_SetSamplerState(0, &samplerConfig[0].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
@@ -573,7 +492,7 @@ void D3D_DepthBlurHD(IDirect3DTexture9* a5, float a6, float a7)
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)a5);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)texture);
     AE_SetSamplerState(1, &samplerConfig[1].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
     AE_SetSamplerState(1, &samplerConfig[1].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
@@ -581,7 +500,7 @@ void D3D_DepthBlurHD(IDirect3DTexture9* a5, float a6, float a7)
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)a5);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)texture);
     AE_SetSamplerState(2, &samplerConfig[2].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
     AE_SetSamplerState(2, &samplerConfig[2].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
@@ -589,7 +508,7 @@ void D3D_DepthBlurHD(IDirect3DTexture9* a5, float a6, float a7)
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 2, (IDirect3DBaseTexture9*)a5);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 2, (IDirect3DBaseTexture9*)texture);
     AE_SetSamplerState(3, &samplerConfig[3].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
     AE_SetSamplerState(3, &samplerConfig[3].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
@@ -597,152 +516,113 @@ void D3D_DepthBlurHD(IDirect3DTexture9* a5, float a6, float a7)
     AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(3, &textureStageTypeConfig[3].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(3, &textureStageTypeConfig[3].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 3, (IDirect3DBaseTexture9*)a5);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 3, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(4, &textureStageTypeConfig[4].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
     AE_SetStageState(4, &textureStageTypeConfig[4].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-    v14 = (float)D3DRenderParams.presentParams.BackBufferWidth;
-    v12 = (float)D3DRenderParams.presentParams.BackBufferHeight;
-    a1[0].uvSet1.v = bandsVal4;
-    a1[0].uvSet2.v = bandsVal4;
-    a1[0].v1.y = bandsVal4 * v12 - 0.5f;
-    a1[1].uvSet1.v = bandsVal3;
-    a1[0].uvSet2.u = a6;
-    a1[0].uvSet1.u = -a6;
-    a1[1].uvSet2.u = a6;
-    a1[1].uvSet2.v = bandsVal3;
-    a1[2].uvSet1.v = bandsVal4;
-    a1[2].uvSet2.v = bandsVal4;
-    v17 = bandsVal4 - a7;
-    a1[0].v1.x = 0.0;
-    a1[0].uvSet3.v = v17;
-    a1[2].uvSet3.v = v17;
-    a1[0].uvSet3.u = 0.0;
-    a1[0].uvSet4.u = 0.0;
-    v18 = bandsVal4 + a7;
-    a1[1].v1.x = 0.0;
-    a1[0].uvSet4.v = v18;
-    a1[2].uvSet4.v = v18;
-    a1[1].uvSet3.u = 0.0;
-    a1[1].uvSet4.u = 0.0;
-    a1[2].uvSet3.u = 1.0;
-    v13 = bandsVal3 * v12;
-    a1[2].uvSet4.u = 1.0;
-    a1[1].v1.y = v13;
-    a1[3].v1.y = v13;
-    a1[1].uvSet1.u = a1[0].uvSet1.u;
-    a1[3].uvSet1.v = bandsVal3;
-    a1[3].uvSet2.v = bandsVal3;
-    a1[3].uvSet3.u = 1.0;
-    a1[1].uvSet3.v = bandsVal3 - a7;
-    v16 = bandsVal3 + a7;
-    a1[1].uvSet4.v = v16;
-    a1[2].v1.x = v14 - 0.5f;
-    a1[2].v1.y = a1[0].v1.y;
-    a1[2].uvSet1.u = 1.0f - a6;
-    v15 = a6 + 1.0f;
-    a1[2].uvSet2.u = v15;
-    a1[3].uvSet2.u = v15;
-    a1[3].v1.x = a1[2].v1.x;
-    a1[3].uvSet1.u = a1[2].uvSet1.u;
-    a1[3].uvSet3.v = a1[1].uvSet3.v;
-    a1[3].uvSet4.v = v16;
-    a1[3].uvSet4.u = 1.0;
-    v4 = &a1[0];
-    v5 = 4;
-    do
+    width = (float)D3DRenderParams.presentParams.BackBufferWidth;
+    height = (float)D3DRenderParams.presentParams.BackBufferHeight;
+    quad[0].uvSet1.v = bandsVal4;
+    quad[0].uvSet2.v = bandsVal4;
+    quad[0].v1.y = bandsVal4 * height - 0.5f;
+    quad[1].uvSet1.v = bandsVal3;
+    quad[0].uvSet2.u = uStep;
+    quad[0].uvSet1.u = -uStep;
+    quad[1].uvSet2.u = uStep;
+    quad[1].uvSet2.v = bandsVal3;
+    quad[2].uvSet1.v = bandsVal4;
+    quad[2].uvSet2.v = bandsVal4;
+    vSet3Bottom = bandsVal4 - vStep;
+    quad[0].v1.x = 0.0;
+    quad[0].uvSet3.v = vSet3Bottom;
+    quad[2].uvSet3.v = vSet3Bottom;
+    quad[0].uvSet3.u = 0.0;
+    quad[0].uvSet4.u = 0.0;
+    vSet4Bottom = bandsVal4 + vStep;
+    quad[1].v1.x = 0.0;
+    quad[0].uvSet4.v = vSet4Bottom;
+    quad[2].uvSet4.v = vSet4Bottom;
+    quad[1].uvSet3.u = 0.0;
+    quad[1].uvSet4.u = 0.0;
+    quad[2].uvSet3.u = 1.0;
+    topY = bandsVal3 * height;
+    quad[2].uvSet4.u = 1.0;
+    quad[1].v1.y = topY;
+    quad[3].v1.y = topY;
+    quad[1].uvSet1.u = quad[0].uvSet1.u;
+    quad[3].uvSet1.v = bandsVal3;
+    quad[3].uvSet2.v = bandsVal3;
+    quad[3].uvSet3.u = 1.0;
+    quad[1].uvSet3.v = bandsVal3 - vStep;
+    vSet4Top = bandsVal3 + vStep;
+    quad[1].uvSet4.v = vSet4Top;
+    quad[2].v1.x = width - 0.5f;
+    quad[2].v1.y = quad[0].v1.y;
+    quad[2].uvSet1.u = 1.0f - uStep;
+    uSet2Right = uStep + 1.0f;
+    quad[2].uvSet2.u = uSet2Right;
+    quad[3].uvSet2.u = uSet2Right;
+    quad[3].v1.x = quad[2].v1.x;
+    quad[3].uvSet1.u = quad[2].uvSet1.u;
+    quad[3].uvSet3.v = quad[1].uvSet3.v;
+    quad[3].uvSet4.v = vSet4Top;
+    quad[3].uvSet4.u = 1.0;
+    for (i = 0; i < 4; i++)
     {
-        v4->v1.z = 0.0f;
-        v4->hw = 1.0f;        
-        v4++;
-        --v5;
-    } while (v5);
-    D3D_DrawASurface(a1, (D3DFVF_TEX4 | D3DFVF_XYZRHW));
-    v6 = 0;
+        quad[i].v1.z = 0.0f;
+        quad[i].hw = 1.0f;
+    }
+    D3D_DrawASurface(quad, (D3DFVF_TEX4 | D3DFVF_XYZRHW));
     for (i = 0; i < 4; ++i)
     {
-        AE_SetSamplerState(v6, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-        AE_SetSamplerState(v6, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
-        AE_SetStageState(v6, &textureStageTypeConfig[v3].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
-        AE_SetStageState(v6, &textureStageTypeConfig[v3].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, v6++, NULL);
-        ++v3;
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, i, NULL);
     }
 }
 
-void D3D_SetRenderTargetFromTexture(IDirect3DTexture9* a1)
+void D3D_SetRenderTargetFromTexture(IDirect3DTexture9* texture)
 {
     IDirect3DSurface9* surf;
-    a1->lpVtbl->GetSurfaceLevel(a1, 0, &surf);
+    texture->lpVtbl->GetSurfaceLevel(texture, 0, &surf);
     D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, surf);
     D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, NULL);
     surf->lpVtbl->Release(surf);
 }
 
-void D3D_DepthBlur(IDirect3DTexture9* texture, IDirect3DTexture9* renderTarget, float blurFactor, float a7)
+void D3D_DepthBlur(IDirect3DTexture9* texture, IDirect3DTexture9* renderTarget, float uStep, float vStep)
 {
     D3D_SetRenderTargetFromTexture(renderTarget);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
     if (gMaxSimultaneousTextures < 2 || gMaxSimultaneousTextures > 3)
-        D3D_DepthBlurHD(texture, blurFactor, a7);
+        D3D_DepthBlurHD(texture, uStep, vStep);
     else
-        D3D_DepthBlurSD(texture, blurFactor, a7);
+        D3D_DepthBlurSD(texture, uStep, vStep);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
 }
 
-void D3D_Blur(IDirect3DTexture9* texture, IDirect3DTexture9* renderTarget, float a3)
+void D3D_Blur(IDirect3DTexture9* texture, IDirect3DTexture9* renderTarget, float strength)
 {
-    double v3;
-    double v4;
-    double v5;
-    double v6;
-    double v7;
-    double v8;
-    double v9;
-    float blurFactor;
-    float blurFactora;
-    float blurFactorb;
-    float blurFactorc;
-    float blurFactord;
-    float blurFactore;
-    float blurFactorf;
-    float a7;
-    float a7a;
-    float a7b;
-    float a7c;
-    float a7d;
-    float a7e;
-    float a7f;
-    float v24;
+    double scaled;
+    float step;
+    int pass;
 
-    v3 = a3 * 0.039999999;
-    v24 = (float)v3;
-    a7 = (float)(v3 * 0.0020833334);
-    blurFactor = (float)(v24 * 0.0015625);
-    D3D_DepthBlur(texture, renderTarget, blurFactor, a7);
-    v4 = v24 + v24;
-    a7a = (float)(0.0020833334 * v4);
-    blurFactora = (float)(v4 * 0.0015625);
-    D3D_DepthBlur(renderTarget, D3DRenderParams.blurRenderTarget, blurFactora, a7a);
-    v5 = v24 * 3.0;
-    a7b = (float)(0.0020833334 * v5);
-    blurFactorb = (float)(v5 * 0.0015625);
-    D3D_DepthBlur(D3DRenderParams.blurRenderTarget, renderTarget, blurFactorb, a7b);
-    v6 = v24 * 4.0;
-    a7c = (float)(0.0020833334 * v6);
-    blurFactorc = (float)(v6 * 0.0015625);
-    D3D_DepthBlur(renderTarget, D3DRenderParams.blurRenderTarget, blurFactorc, a7c);
-    v7 = v24 * 5.0;
-    a7d = (float)(0.0020833334 * v7);
-    blurFactord = (float)(v7 * 0.0015625);
-    D3D_DepthBlur(D3DRenderParams.blurRenderTarget, renderTarget, blurFactord, a7d);
-    v8 = v24 * 6.0;
-    a7e = (float)(0.0020833334 * v8);
-    blurFactore = (float)(v8 * 0.0015625);
-    D3D_DepthBlur(renderTarget, D3DRenderParams.blurRenderTarget, blurFactore, a7e);
-    v9 = v24 * 7.0;
-    a7f = (float)(0.0020833334 * v9);
-    blurFactorf = (float)(v9 * 0.0015625);
-    D3D_DepthBlur(D3DRenderParams.blurRenderTarget, renderTarget, blurFactorf, a7f);
+    scaled = strength * 0.039999999;
+    step = (float)scaled;
+    // preserved: the first pass takes its vertical offset from the unnarrowed
+    // product, every later one from the narrowed step
+    D3D_DepthBlur(texture, renderTarget, (float)(step * 0.0015625),
+                  (float)(scaled * 0.0020833334));
+    for (pass = 2; pass <= 7; pass++)
+    {
+        double span = (double)step * pass;
+        IDirect3DTexture9* from = (pass & 1) ? D3DRenderParams.blurRenderTarget : renderTarget;
+        IDirect3DTexture9* to = (pass & 1) ? renderTarget : D3DRenderParams.blurRenderTarget;
+
+        D3D_DepthBlur(from, to, (float)(span * 0.0015625),
+                      (float)(0.0020833334 * span));
+    }
 }
 
 void D3D_Unknown_AE_Func1(IDirect3DTexture9* a1)
