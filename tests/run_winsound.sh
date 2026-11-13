@@ -4,10 +4,9 @@
 #   ./tests/run_winsound.sh            run the sweep
 #   ./tests/run_winsound.sh --guards   print the seed-bit distribution
 #
-# It is separate from run.sh only because other files were being rewritten
-# in parallel and run.sh is where that work would collide; the body below
-# is the same shape as run.sh's run_* functions and is meant to be folded
-# in.
+# tests/run.sh calls this script, so there is no second copy of the
+# symbol list; running it on its own is the quick way to work on it, and
+# --guards is only useful from here.
 #
 # winsound.c sits in win/, so the frozen copy's four include paths are
 # rewritten to reach the same headers from tests/. winsound.h and sound.h

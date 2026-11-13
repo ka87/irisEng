@@ -3,8 +3,8 @@
 #
 #   ./tests/run_wingdi.sh
 #
-# Standalone on purpose: tests/run.sh is where several passes would
-# collide, so this script is the one to run until it is folded in.
+# tests/run.sh calls this script, so there is no second copy of the
+# symbol list; running it on its own is the quick way to work on it.
 #
 # The frozen copy and the rewrite go into one binary with BASE_/NEW_
 # prefixes on every function the file defines and on the eleven globals

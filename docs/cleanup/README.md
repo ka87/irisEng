@@ -51,14 +51,15 @@ which are available where this work is done, so "it still compiles" is
 not free. Two things stand in for it.
 
 **A stub include set** (`tests/stub/`) is enough for a native `gcc
--fsyntax-only -Werror=implicit-function-declaration` to parse **132 of
+-fsyntax-only -Werror=implicit-function-declaration` to parse **135 of
 the 137** first-party sources: `windows.h`, `d3d9.h`, `dsound.h` and
 `dinput.h` with the types, interfaces and vtable methods the engine
-actually names, and a few empty headers. The five left are the Direct3D enum and
-device-vtable set the two `win/wingdi` files want, the Bink constants
-`proceduraltextures.c` wants, and `bigfiles.c` and `loading.c`, which
-fail on the `fpos_t` arithmetic described below -- an open question
-rather than a stub gap. It catches what a compiler catches — a mistyped name, a lost
+actually names, and a few empty headers. The two left are `bigfiles.c`
+and `loading.c`, which fail on the `fpos_t` arithmetic described below
+-- an open question rather than a stub gap. The Direct3D enum and
+device-vtable set the two `win/wingdi` files want, and the Bink
+constants `proceduraltextures.c` wants, were the other three, and the
+`win/` pass closed all of them. It catches what a compiler catches — a mistyped name, a lost
 brace, a changed signature. It does not prove behaviour, and it is not
 the real toolchain: every batch should still be built under MSVC before
 it is merged.
@@ -792,3 +793,91 @@ it changes what the loader reads.
 Eight other oddities are preserved with a line each, the sharpest being
 that the closed list is bounded at 2000 where `GRID_gast_Explored` holds
 1000, and that both lists are written before their bound is checked.
+
+### 8. `win/` — done
+
+**Done.** Per-file record in [win.md](win.md).
+
+Five files, 18,088 lines, 96 `goto`s — the platform layer, and the
+only code in the tree that talks to Windows and to Direct3D directly.
+They were left for last because they hold the densest residue in the
+tree and because the stub include set had to be finished before any of
+them would parse.
+
+`win/wingdi.c` (**7,085 to 5,029**, 31 `goto`s gone),
+`win/wingdi_aftereffects.c` (**5,780 to 3,180**, 14),
+`win/winsound.c` (**3,395 to 2,943**, **46** — the densest single file
+in the tree), `win/wininputoutput.c` (1,617 to 1,518, 5) and
+`win/adpcm.c` (211 to 136). Residue across the five goes from **7,114
+lines to 37**, every one of the thirty-seven inside a comment of the
+user's own. Nine helpers were added in `wingdi.c` and seven more
+across the rest; no function was removed anywhere.
+
+All five came back with a differential test, and all five are called
+from `tests/run.sh`: 5,152 cases and 150,984 engine calls for
+`wingdi.c`, 2,326,786 for `adpcm.c`, 77,891 for `wininputoutput.c`,
+1,344 cases and 2.3 MB of state for `winsound.c`, and 576 cases and
+293,356 logged entries for `wingdi_aftereffects.c`. None differing,
+and each mutation-checked twice.
+
+**Finishing the stubs was half the work and paid for itself.**
+`tests/stub/` grew by about 480 lines — the Direct3D interfaces and
+vtables the renderer calls through, the `D3DX` font and surface entry
+points, and the Win32 window, thread, file, COM, dialog and keyboard
+calls. Implicit function declarations across the whole tree went from
+**16 over six files to 6 over five**, and all three `win/` files that
+were on that list are off it.
+
+**Two stub faults were hiding real defects, and both generalise.**
+Seven `D3D*` constants were defined as `0`, so no differential test
+could tell them apart — swapping `D3DTSS_TEXCOORDINDEX` for
+`D3DTSS_TEXTURETRANSFORMFLAGS` scored clean. And the stub numbered the
+`WM_*` messages in declaration order, which is the reverse of Win32's,
+so the range test that opens both of `wingdi.c`'s message handlers
+made every other arm of both unreachable. Fixing the first did **not**
+close the matdraw blind spot by itself: that fixture's own guards for
+the two fields were derived from seed bits that are zero for every
+seed it sweeps, and a dead guard and a collapsed constant have to be
+fixed together.
+
+**One real defect, found by reading rather than by the sweep.**
+`D3D_l_DrawElementIndexedTriangles`' solid-fill arm had lost its
+`vertexNum > 0` guard, and the loop bound underneath is about 2³⁰ at
+`vertexNum == 0`. The fixture never generates a zero-vertex mesh —
+which is the shape of defect a differential test is worst at.
+Eighteen further oddities are preserved with a line each.
+
+**Four `_sub_<address>` names and eleven `v1` struct fields are left**,
+all blocked on the same question: a frozen `tests/baseline_*.c` calls
+the old name, so either the mock files carry both spellings or the
+baselines are regenerated. It is the same question as the five
+deferred field renames in `gameobject.h`, `particlegenerator.h`,
+`collision.h` and `sound.h`.
+
+## Where the tree stands
+
+With `win/` done, every directory in scope has been through the pass.
+What is left of the decompiler's naming, measured with the grep in the
+section above over all 137 first-party sources and their headers, is
+**343 lines over 43 files**, and it breaks down into four groups, none
+of which is unfinished work:
+
+- **126 lines in `ai/ai_inofunctions.c` and its header** — all of them
+  `AI_EvalFunc_SAVEDataGet_C`, left byte-for-byte on purpose because
+  two of its arrays are indexed outside their bounds and renaming its
+  locals would change what it does. Section 6 has the detail.
+- **22 lines in `main.c`**, the harness, and **11 in
+  `ai_compiledscripts.c`**, the user's own hand-written hook file.
+  Neither is decompiler output.
+- **81 lines in 23 headers** — struct **fields**, not locals: the `v1`
+  of a vertex or a `Vec3`, the `a1` of a profiler record. Renaming a
+  field in a shared header stops every frozen `tests/baseline_*.c` that
+  includes it from compiling, so all of them wait on the same decision
+  about regenerating the baselines.
+- **103 lines in 16 sources** — every one of them inside a comment of
+  the user's own: a disabled debug dump, a `TODO FIXME` quoting the
+  Hex-Rays line it corrects, a note about a buffer. The code around
+  them is rewritten.
+
+`goto LABEL_n` is gone from every file in scope. 635 in the root
+directory, 204 in `collision.c` alone, 96 across `win/` — none left.

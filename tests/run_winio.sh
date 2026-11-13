@@ -3,8 +3,8 @@
 #
 #   ./tests/run_winio.sh
 #
-# Standalone on purpose: tests/run.sh is where several passes would
-# collide, so this script is the one to run until it is folded in.
+# tests/run.sh calls this script, so there is no second copy of the
+# symbol list; running it on its own is the quick way to work on it.
 #
 # Every function the file defines, and every global it defines with an
 # initialiser, is prefixed BASE_/NEW_: the two copies both define
