@@ -1364,39 +1364,31 @@ void D3D_ColorBalance(IDirect3DTexture9* dest, IDirect3DTexture9* src, float bal
         D3D_ColorBalanceMoreThanZeroPointHalf(dest, src, balance);
 }
 
-void D3D_WaterBlurHD(tUnkWaterBlurStruct* a1, IDirect3DTexture9* a2, tUnkWaterBlurStruct* a3, float a4, float a5, float a6)
+void D3D_WaterBlurHD(tUnkWaterBlurStruct* src, IDirect3DTexture9* texture, tUnkWaterBlurStruct* dst, float uStep, float vStep, float overscan)
 {
-    double v7; // st7
-    double v8; // st6
-    double v9; // st5
-    int v10; // ecx
-    double v11; // st4
-    double v12; // st5
-    tVertex_type_404* v13; // eax
-    int v14; // ecx
-    int v15; // esi
-    int v16; // edi
-    int v17; // ebx
-    IDirect3DDevice9* v18; // eax
-    IDirect3DDevice9* v19; // eax
-    IDirect3DDevice9* v20; // eax
-    IDirect3DDevice9* v21; // eax
-    float v22; // [esp+21Ch] [ebp-E4h]
-    float v23; // [esp+21Ch] [ebp-E4h]
-    float v24; // [esp+21Ch] [ebp-E4h]
-    float v25; // [esp+220h] [ebp-E0h]
-    float v26; // [esp+224h] [ebp-DCh]
-    int v27; // [esp+228h] [ebp-D8h]
-    float v28; // [esp+228h] [ebp-D8h]
-    int v29; // [esp+22Ch] [ebp-D4h]
-    float v30; // [esp+22Ch] [ebp-D4h]
-    int v31; // [esp+230h] [ebp-D0h]
-    float v32; // [esp+230h] [ebp-D0h]
-    int v33; // [esp+234h] [ebp-CCh]
-    float v34; // [esp+234h] [ebp-CCh]
-    float v35; // [esp+238h] [ebp-C8h]
-    float v36; // [esp+23Ch] [ebp-C4h]
-    tVertex_type_404 a1a[4]; // [esp+240h] [ebp-C0h] BYREF
+    double uSrcLeft; // st7
+    double uSrcRight; // st6
+    double vScale; // st5
+    int dstTop; // ecx
+    double srcBottom; // st4
+    double halfOverscan; // st5
+    int i;
+    float uScale; // [esp+21Ch] [ebp-E4h]
+    float vSrcBottom; // [esp+21Ch] [ebp-E4h]
+    float vSet4Bottom; // [esp+21Ch] [ebp-E4h]
+    float vSrcTop; // [esp+220h] [ebp-E0h]
+    float yExpand; // [esp+224h] [ebp-DCh]
+    int dstWidth; // [esp+228h] [ebp-D8h]
+    float xExpand; // [esp+228h] [ebp-D8h]
+    int dstLeft; // [esp+22Ch] [ebp-D4h]
+    float vSet2Bottom; // [esp+22Ch] [ebp-D4h]
+    int dstRight; // [esp+230h] [ebp-D0h]
+    float rightX; // [esp+230h] [ebp-D0h]
+    int dstBottom; // [esp+234h] [ebp-CCh]
+    float vSet1Bottom; // [esp+234h] [ebp-CCh]
+    float vSet3Bottom; // [esp+238h] [ebp-C8h]
+    float topY; // [esp+23Ch] [ebp-C4h]
+    tVertex_type_404 quad[4]; // [esp+240h] [ebp-C0h] BYREF
 
     AE_SetRenderState(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, 0x80FFFFFF);
     AE_SetSamplerState(0, &samplerConfig[0].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
@@ -1406,7 +1398,7 @@ void D3D_WaterBlurHD(tUnkWaterBlurStruct* a1, IDirect3DTexture9* a2, tUnkWaterBl
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)a2);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)texture);
     AE_SetSamplerState(1, &samplerConfig[1].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
     AE_SetSamplerState(1, &samplerConfig[1].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
@@ -1414,7 +1406,7 @@ void D3D_WaterBlurHD(tUnkWaterBlurStruct* a1, IDirect3DTexture9* a2, tUnkWaterBl
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)a2);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)texture);
     AE_SetSamplerState(2, &samplerConfig[2].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
     AE_SetSamplerState(2, &samplerConfig[2].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
@@ -1422,7 +1414,7 @@ void D3D_WaterBlurHD(tUnkWaterBlurStruct* a1, IDirect3DTexture9* a2, tUnkWaterBl
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 2, (IDirect3DBaseTexture9*)a2);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 2, (IDirect3DBaseTexture9*)texture);
     AE_SetSamplerState(3, &samplerConfig[3].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
     AE_SetSamplerState(3, &samplerConfig[3].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
@@ -1430,281 +1422,236 @@ void D3D_WaterBlurHD(tUnkWaterBlurStruct* a1, IDirect3DTexture9* a2, tUnkWaterBl
     AE_SetStageState(3, &textureStageTypeConfig[3].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(3, &textureStageTypeConfig[3].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(3, &textureStageTypeConfig[3].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 3, (IDirect3DBaseTexture9*)a2);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 3, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(4, &textureStageTypeConfig[4].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
     AE_SetStageState(4, &textureStageTypeConfig[4].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-    v22 = (float)(unsigned int)(a1->i5 - 1);
-    v7 = (double)a1->i1 / v22;
-    v8 = (double)a1->i3 / v22;
-    v9 = (double)(unsigned int)(a1->i6 - 1);
-    v31 = a3->i3;
-    v27 = v31 - a3->i1;
-    v29 = a3->i1;
-    v10 = a3->i2;
-    v33 = a3->i4;
-    v25 = (float)((double)a1->i2 / v9);
-    v11 = (double)a1->i4;
-    a1a[1].uvSet1.v = v25;
-    a1a[1].uvSet2.v = v25;
-    v23 = (float)(v11 / v9);
-    v12 = (a6 - 1.0) * 0.5;
-    v28 = (float)((double)v27 * v12);
-    v26 = (float)((double)(v33 - v10) * v12);
-    a1a[0].v1.x = (float)((double)v29 - v28);
-    a1a[0].v1.y = (float)((double)v33 + v26);
-    a1a[0].uvSet1.u = (float)v7;
-    v34 = (float)(a5 * 0.0 + v23);
-    a1a[0].uvSet1.v = v34;
-    a1a[0].uvSet2.u = (float)(v7 - a4);
-    v30 = v23 + a5;
-    a1a[0].uvSet2.v = v30;
-    a1a[0].uvSet3.u = (float)(v7 + a4);
-    v35 = a5 + a5 + v23;
-    a1a[0].uvSet3.v = v35;
-    a1a[0].uvSet4.u = (float)v7;
-    v24 = (float)(a5 * 3.0 + v23);
-    a1a[0].uvSet4.v = v24;
-    a1a[1].v1.x = a1a[0].v1.x;
-    v36 = (float)((double)v10 - v26);
-    a1a[1].v1.y = v36;
-    a1a[1].uvSet1.u = (float)v7;
-    a1a[1].uvSet2.u = a1a[0].uvSet2.u;
-    a1a[1].uvSet3.u = a1a[0].uvSet3.u;
-    a1a[1].uvSet4.u = (float)v7;
-    a1a[1].uvSet3.v = v25;
-    a1a[1].uvSet4.v = v25;
-    a1a[2].uvSet1.v = v34;
-    v32 = (float)((double)v31 + v28);
-    a1a[2].uvSet2.v = v30;
-    a1a[2].v1.x = v32;
-    a1a[2].uvSet3.v = v35;
-    a1a[2].v1.y = a1a[0].v1.y;
-    a1a[2].uvSet4.v = v24;
-    a1a[2].uvSet1.u = (float)v8;
-    a1a[3].v1.x = v32;
-    a1a[3].v1.y = v36;
-    a1a[2].uvSet2.u = (float)(v8 - a4);
-    a1a[3].uvSet1.v = v25;
-    a1a[3].uvSet2.v = v25;
-    a1a[3].uvSet4.v = v25;
-    a1a[3].uvSet3.v = v25;
-    v13 = &a1a[0];
-    a1a[2].uvSet3.u = (float)(v8 + a4);
-    v14 = 4;
-    a1a[2].uvSet4.u = (float)v8;
-    a1a[3].uvSet1.u = a1a[2].uvSet4.u;
-    a1a[3].uvSet2.u = a1a[2].uvSet2.u;
-    a1a[3].uvSet3.u = a1a[2].uvSet3.u;
-    a1a[3].uvSet4.u = a1a[2].uvSet4.u;
-    do
+    uScale = (float)(unsigned int)(src->i5 - 1);
+    uSrcLeft = (double)src->i1 / uScale;
+    uSrcRight = (double)src->i3 / uScale;
+    vScale = (double)(unsigned int)(src->i6 - 1);
+    dstRight = dst->i3;
+    dstWidth = dstRight - dst->i1;
+    dstLeft = dst->i1;
+    dstTop = dst->i2;
+    dstBottom = dst->i4;
+    vSrcTop = (float)((double)src->i2 / vScale);
+    srcBottom = (double)src->i4;
+    quad[1].uvSet1.v = vSrcTop;
+    quad[1].uvSet2.v = vSrcTop;
+    vSrcBottom = (float)(srcBottom / vScale);
+    halfOverscan = (overscan - 1.0) * 0.5;
+    xExpand = (float)((double)dstWidth * halfOverscan);
+    yExpand = (float)((double)(dstBottom - dstTop) * halfOverscan);
+    quad[0].v1.x = (float)((double)dstLeft - xExpand);
+    quad[0].v1.y = (float)((double)dstBottom + yExpand);
+    quad[0].uvSet1.u = (float)uSrcLeft;
+    vSet1Bottom = (float)(vStep * 0.0 + vSrcBottom);
+    quad[0].uvSet1.v = vSet1Bottom;
+    quad[0].uvSet2.u = (float)(uSrcLeft - uStep);
+    vSet2Bottom = vSrcBottom + vStep;
+    quad[0].uvSet2.v = vSet2Bottom;
+    quad[0].uvSet3.u = (float)(uSrcLeft + uStep);
+    vSet3Bottom = vStep + vStep + vSrcBottom;
+    quad[0].uvSet3.v = vSet3Bottom;
+    quad[0].uvSet4.u = (float)uSrcLeft;
+    vSet4Bottom = (float)(vStep * 3.0 + vSrcBottom);
+    quad[0].uvSet4.v = vSet4Bottom;
+    quad[1].v1.x = quad[0].v1.x;
+    topY = (float)((double)dstTop - yExpand);
+    quad[1].v1.y = topY;
+    quad[1].uvSet1.u = (float)uSrcLeft;
+    quad[1].uvSet2.u = quad[0].uvSet2.u;
+    quad[1].uvSet3.u = quad[0].uvSet3.u;
+    quad[1].uvSet4.u = (float)uSrcLeft;
+    quad[1].uvSet3.v = vSrcTop;
+    quad[1].uvSet4.v = vSrcTop;
+    quad[2].uvSet1.v = vSet1Bottom;
+    rightX = (float)((double)dstRight + xExpand);
+    quad[2].uvSet2.v = vSet2Bottom;
+    quad[2].v1.x = rightX;
+    quad[2].uvSet3.v = vSet3Bottom;
+    quad[2].v1.y = quad[0].v1.y;
+    quad[2].uvSet4.v = vSet4Bottom;
+    quad[2].uvSet1.u = (float)uSrcRight;
+    quad[3].v1.x = rightX;
+    quad[3].v1.y = topY;
+    quad[2].uvSet2.u = (float)(uSrcRight - uStep);
+    quad[3].uvSet1.v = vSrcTop;
+    quad[3].uvSet2.v = vSrcTop;
+    quad[3].uvSet4.v = vSrcTop;
+    quad[3].uvSet3.v = vSrcTop;
+    quad[2].uvSet3.u = (float)(uSrcRight + uStep);
+    quad[2].uvSet4.u = (float)uSrcRight;
+    quad[3].uvSet1.u = quad[2].uvSet4.u;
+    quad[3].uvSet2.u = quad[2].uvSet2.u;
+    quad[3].uvSet3.u = quad[2].uvSet3.u;
+    quad[3].uvSet4.u = quad[2].uvSet4.u;
+    for (i = 0; i < 4; i++)
     {
-        v13->v1.z = 0.0f;
-        v13->hw = 1.0f;
-        v13++;
-        --v14;
-    } while (v14);
-    D3D_DrawASurface(a1a, D3DFVF_TEX4 | D3DFVF_XYZRHW);
-    v15 = 0;
-    v16 = 0;
-    v17 = 0;
-    do
+        quad[i].v1.z = 0.0f;
+        quad[i].hw = 1.0f;
+    }
+    D3D_DrawASurface(quad, D3DFVF_TEX4 | D3DFVF_XYZRHW);
+    for (i = 0; i < 4; i++)
     {
-        AE_SetSamplerState(v15, &samplerConfig[v16].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-        AE_SetSamplerState(v15, &samplerConfig[v16].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
-        AE_SetStageState(v15, &textureStageTypeConfig[v17].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
-        AE_SetStageState(v15, &textureStageTypeConfig[v17].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, v15, NULL);
-        ++v16;
-        ++v15;
-        ++v17;
-    } while (v16 < 4);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, i, NULL);
+    }
 }
 
-void D3D_WaterBlurSD(IDirect3DTexture9* tex0, tUnkWaterBlurStruct* a6, tUnkWaterBlurStruct* a7, float tex1_2, float tex1)
+void D3D_WaterBlurSD(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, tUnkWaterBlurStruct* dst, float uStep, float vStep)
 {
-    tVertex_type_204* v5; // eax
-    int v6; // ecx
-    int v7; // edi
-    int i; // esi
-    IDirect3DDevice9* v9; // eax
-    IDirect3DDevice9* v10; // eax
-    int v11; // esi
-    int v12; // edi
-    int v13; // ebx
-    IDirect3DDevice9* v14; // eax
-    IDirect3DDevice9* v15; // eax
-    IDirect3DDevice9* v16; // eax
-    IDirect3DDevice9* v17; // eax
-    float v18; // [esp+1ECh] [ebp-8Ch]
-    float v19; // [esp+1ECh] [ebp-8Ch]
-    float v20; // [esp+1ECh] [ebp-8Ch]
-    float v21; // [esp+1F0h] [ebp-88h]
-    float v22; // [esp+1F0h] [ebp-88h]
-    float v23; // [esp+1F4h] [ebp-84h]
-    float v24; // [esp+1F4h] [ebp-84h]
-    tVertex_type_204 a1[4]; // [esp+1F8h] [ebp-80h] BYREF
+    int i;
+    float width; // [esp+1ECh] [ebp-8Ch]
+    float uSet1Right; // [esp+1ECh] [ebp-8Ch]
+    float vSet2Top; // [esp+1ECh] [ebp-8Ch]
+    float uSet2Right; // [esp+1F0h] [ebp-88h]
+    float vSet1Top; // [esp+1F0h] [ebp-88h]
+    float height; // [esp+1F4h] [ebp-84h]
+    float topY; // [esp+1F4h] [ebp-84h]
+    tVertex_type_204 quad[4]; // [esp+1F8h] [ebp-80h] BYREF
 
-    v18 = (float)D3DRenderParams.presentParams.BackBufferWidth;
-    v23 = (float)D3DRenderParams.presentParams.BackBufferHeight;
-    a1[0].uvSet1.v = bandsVal4;
-    a1[0].uvSet2.v = bandsVal4;
-    a1[0].v1.y = bandsVal4 * v23 - 0.5f;
-    a1[1].uvSet1.v = bandsVal3;
-    a1[0].uvSet2.u = tex1_2;
-    a1[0].uvSet1.u = -tex1_2;
-    a1[1].uvSet2.u = tex1_2;
-    a1[1].uvSet2.v = bandsVal3;
-    a1[2].uvSet1.v = bandsVal4;
-    a1[2].uvSet2.v = bandsVal4;
-    v24 = bandsVal3 * v23;
-    a1[1].v1.y = v24;
-    a1[3].v1.y = v24;
-    a1[1].uvSet1.u = a1[0].uvSet1.u;
-    a1[3].uvSet1.v = bandsVal3;
-    a1[0].v1.x = 0.0;
-    a1[1].v1.x = 0.0;
-    a1[2].v1.x = v18 - 0.5f;
-    a1[2].v1.y = a1[0].v1.y;
-    v19 = 1.0f - tex1_2;
-    a1[2].uvSet1.u = v19;
-    a1[3].uvSet1.u = v19;
-    a1[3].uvSet2.v = bandsVal3;
-    v5 = &a1[0];
-    v21 = tex1_2 + 1.0f;
-    a1[2].uvSet2.u = v21;
-    a1[3].uvSet2.u = v21;
-    a1[3].v1.x = a1[2].v1.x;
-    v6 = 4;
-    do
+    width = (float)D3DRenderParams.presentParams.BackBufferWidth;
+    height = (float)D3DRenderParams.presentParams.BackBufferHeight;
+    quad[0].uvSet1.v = bandsVal4;
+    quad[0].uvSet2.v = bandsVal4;
+    quad[0].v1.y = bandsVal4 * height - 0.5f;
+    quad[1].uvSet1.v = bandsVal3;
+    quad[0].uvSet2.u = uStep;
+    quad[0].uvSet1.u = -uStep;
+    quad[1].uvSet2.u = uStep;
+    quad[1].uvSet2.v = bandsVal3;
+    quad[2].uvSet1.v = bandsVal4;
+    quad[2].uvSet2.v = bandsVal4;
+    topY = bandsVal3 * height;
+    quad[1].v1.y = topY;
+    quad[3].v1.y = topY;
+    quad[1].uvSet1.u = quad[0].uvSet1.u;
+    quad[3].uvSet1.v = bandsVal3;
+    quad[0].v1.x = 0.0;
+    quad[1].v1.x = 0.0;
+    quad[2].v1.x = width - 0.5f;
+    quad[2].v1.y = quad[0].v1.y;
+    uSet1Right = 1.0f - uStep;
+    quad[2].uvSet1.u = uSet1Right;
+    quad[3].uvSet1.u = uSet1Right;
+    quad[3].uvSet2.v = bandsVal3;
+    uSet2Right = uStep + 1.0f;
+    quad[2].uvSet2.u = uSet2Right;
+    quad[3].uvSet2.u = uSet2Right;
+    quad[3].v1.x = quad[2].v1.x;
+    for (i = 0; i < 4; i++)
     {
-        v5->v1.z = 0.0f;
-        v5->hw = 1.0f;
-        v5++;
-        --v6;
-    } while (v6);
-    v7 = 0;
+        quad[i].v1.z = 0.0f;
+        quad[i].hw = 1.0f;
+    }
     for (i = 0; i < 2; ++i)
     {
-        AE_SetSamplerState(v7, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-        AE_SetSamplerState(v7, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-        ++v7;
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     }
     AE_SetRenderState(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, 0x80FFFFFF);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)tex0);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)tex0);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
-    D3D_DrawASurface(a1, D3DFVF_TEX2 | D3DFVF_XYZRHW);
-    a1[0].uvSet1.v = bandsVal4 - tex1;
-    a1[0].uvSet1.u = 0.0;
-    a1[0].uvSet2.u = 0.0;
-    a1[1].uvSet1.u = 0.0;
-    a1[1].uvSet2.u = 0.0;
-    a1[2].uvSet1.u = 1.0;
-    a1[0].uvSet2.v = bandsVal4 + tex1;
-    a1[2].uvSet2.u = 1.0;
-    a1[3].uvSet1.u = 1.0;
-    a1[3].uvSet2.u = 1.0;
-    v22 = bandsVal3 - tex1;
-    a1[1].uvSet1.v = v22;
-    a1[3].uvSet1.v = v22;
-    v20 = bandsVal3 + tex1;
-    a1[1].uvSet2.v = v20;
-    a1[3].uvSet2.v = v20;
-    a1[2].uvSet1.v = a1[0].uvSet1.v;
-    a1[2].uvSet2.v = a1[0].uvSet2.v;
+    D3D_DrawASurface(quad, D3DFVF_TEX2 | D3DFVF_XYZRHW);
+    quad[0].uvSet1.v = bandsVal4 - vStep;
+    quad[0].uvSet1.u = 0.0;
+    quad[0].uvSet2.u = 0.0;
+    quad[1].uvSet1.u = 0.0;
+    quad[1].uvSet2.u = 0.0;
+    quad[2].uvSet1.u = 1.0;
+    quad[0].uvSet2.v = bandsVal4 + vStep;
+    quad[2].uvSet2.u = 1.0;
+    quad[3].uvSet1.u = 1.0;
+    quad[3].uvSet2.u = 1.0;
+    vSet1Top = bandsVal3 - vStep;
+    quad[1].uvSet1.v = vSet1Top;
+    quad[3].uvSet1.v = vSet1Top;
+    vSet2Top = bandsVal3 + vStep;
+    quad[1].uvSet2.v = vSet2Top;
+    quad[3].uvSet2.v = vSet2Top;
+    quad[2].uvSet1.v = quad[0].uvSet1.v;
+    quad[2].uvSet2.v = quad[0].uvSet2.v;
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)tex0);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)tex0);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)texture);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
     AE_SetStageState(2, &textureStageTypeConfig[2].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
     AE_SetRenderState(&renderStateConfig.d3d_BlendOp, D3DRS_BLENDOP, D3DBLENDOP_ADD);
     AE_SetRenderState(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     AE_SetRenderState(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_SRCALPHA);
-    D3D_DrawASurface(a1, D3DFVF_TEX2 | D3DFVF_XYZRHW);
-    v11 = 0;
-    v12 = 0;
-    v13 = 0;
-    do
+    D3D_DrawASurface(quad, D3DFVF_TEX2 | D3DFVF_XYZRHW);
+    for (i = 0; i < 2; i++)
     {
-        AE_SetSamplerState(v11, &samplerConfig[v12].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-        AE_SetSamplerState(v11, &samplerConfig[v12].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
-        AE_SetStageState(v11, &textureStageTypeConfig[v13].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
-        AE_SetStageState(v11, &textureStageTypeConfig[v13].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, v11, NULL);
-        ++v12;
-        ++v11;
-        ++v13;
-    } while (v12 < 2);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, i, NULL);
+    }
     AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
 }
 
-void __cdecl D3D_WaterBlur(IDirect3DTexture9* tex0, tUnkWaterBlurStruct* a5, IDirect3DTexture9* a6, tUnkWaterBlurStruct* a7, float a8, float tex1, float a10)
+void __cdecl D3D_WaterBlur(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, IDirect3DTexture9* renderTarget, tUnkWaterBlurStruct* dst, float smoothX, float smoothY, float overscan)
 {
-    int v7; // esi
-    double v8; // st7
-    IDirect3DDevice9* v9; // ecx
-    int v10; // edi
-    int v11; // ebx
-    IDirect3DDevice9* v12; // eax
-    IDirect3DDevice9* v13; // eax
-    IDirect3DDevice9* v14; // eax
-    IDirect3DDevice9* v15; // eax
-    IDirect3DDevice9* v16; // eax
-    IDirect3DDevice9* v17; // eax
-    IDirect3DDevice9* v18; // eax
-    IDirect3DDevice9* v19; // eax
-    IDirect3DSurface9* a11; // [esp+19Ch] [ebp-28h] BYREF
-    IDirect3DSurface9* a12; // [esp+1A0h] [ebp-24h] BYREF
-    float tex1_2; // [esp+1A4h] [ebp-20h]
-    int v23; // [esp+1A8h] [ebp-1Ch]
-    D3DVIEWPORT9 v24;
-    int v25; // [esp+1D0h] [ebp+Ch]
-    int v26; // [esp+1D8h] [ebp+14h] FORCED
-    int a8a;
-    IDirect3DSurface9* a8b;
+    int i;
+    double uSpread;
+    IDirect3DSurface9* savedRenderTarget;
+    IDirect3DSurface9* savedDepthStencil;
+    IDirect3DSurface9* targetSurface;
+    float uStep;
+    float vStep;
+    int srcLastColumn;
+    int srcLastRow;
+    int savedZEnable;
+    D3DVIEWPORT9 savedViewport;
+    int savedFogEnable;
+    int savedFogMode;
 
-    v7 = 0;
-    v23 = a5->i5 - 1;
-    a11 = NULL;
-    a12 = NULL;
-    v8 = a8 / (double)(unsigned int)v23;
-    a8a = a5->i6 - 1;
-    tex1_2 = (float)v8;
-    v9 = D3DRenderParams.d3dDev;
-    tex1 = (float)(tex1 / (double)a8a);
-    v9->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &a11);
-    D3DRenderParams.d3dDev->lpVtbl->GetViewport(D3DRenderParams.d3dDev, &v24);
-    a6->lpVtbl->GetSurfaceLevel(a6, 0, &a8b);
-    D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, a8b);
-    a8b->lpVtbl->Release(a8b);
-    D3DRenderParams.d3dDev->lpVtbl->GetDepthStencilSurface(D3DRenderParams.d3dDev, &a12);
+    srcLastColumn = src->i5 - 1;
+    savedRenderTarget = NULL;
+    savedDepthStencil = NULL;
+    uSpread = smoothX / (double)(unsigned int)srcLastColumn;
+    srcLastRow = src->i6 - 1;
+    uStep = (float)uSpread;
+    vStep = (float)(smoothY / (double)srcLastRow);
+    D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &savedRenderTarget);
+    D3DRenderParams.d3dDev->lpVtbl->GetViewport(D3DRenderParams.d3dDev, &savedViewport);
+    renderTarget->lpVtbl->GetSurfaceLevel(renderTarget, 0, &targetSurface);
+    D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, targetSurface);
+    targetSurface->lpVtbl->Release(targetSurface);
+    D3DRenderParams.d3dDev->lpVtbl->GetDepthStencilSurface(D3DRenderParams.d3dDev, &savedDepthStencil);
     D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, NULL);
-    v23 = renderStateConfig.d3d_zEnable;
+    savedZEnable = renderStateConfig.d3d_zEnable;
     AE_SetRenderState(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, D3DZB_FALSE);
     AE_SetRenderState(&renderStateConfig.d3d_zWriteEnable, D3DRS_ZWRITEENABLE, FALSE);
-    v26 = D3DRenderParams.d3dFogModeProbably;
+    savedFogMode = D3DRenderParams.d3dFogModeProbably;
     D3DRenderParams.d3dFogModeProbably = 0;
-    v25 = renderStateConfig.d3dFogEnable;
+    savedFogEnable = renderStateConfig.d3dFogEnable;
     AE_SetRenderState(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, FALSE);
     AE_SetRenderState(&renderStateConfig.d3dFillMode, D3DRS_FILLMODE, D3DFILL_SOLID);
     AE_SetRenderState(&renderStateConfig.d3dCullMode, D3DRS_CULLMODE, D3DCULL_NONE);
@@ -1715,85 +1662,80 @@ void __cdecl D3D_WaterBlur(IDirect3DTexture9* tex0, tUnkWaterBlurStruct* a5, IDi
     AE_SetRenderState(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ZERO);
     AE_SetRenderState(&renderStateConfig.d3d_Lighting, D3DRS_LIGHTING, FALSE);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
-    v10 = 0;
-    v11 = 0;
-    do
+    for (i = 0; i < 4; i++)
     {
-        AE_SetStageState(v7, &textureStageTypeConfig[v10].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
-        AE_SetStageState(v7, &textureStageTypeConfig[v10].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-        AE_SetStageState(v7, &textureStageTypeConfig[v10].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, v7);
-        AE_SetStageState(v7, &textureStageTypeConfig[v10].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
-        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, v7, NULL);
-        AE_SetSamplerState(v7, &samplerConfig[v11].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-        AE_SetSamplerState(v7, &samplerConfig[v11].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
-        AE_SetSamplerState(v7, &samplerConfig[v11].d3d_addressu, D3DSAMP_ADDRESSU, D3DTADDRESS_MIRROR);
-        AE_SetSamplerState(v7, &samplerConfig[v11].d3d_addressv, D3DSAMP_ADDRESSV, D3DTADDRESS_MIRROR);
-        ++v10;
-        ++v7;
-        ++v11;
-    } while (v10 < 4);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, i);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, i, NULL);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_addressu, D3DSAMP_ADDRESSU, D3DTADDRESS_MIRROR);
+        AE_SetSamplerState(i, &samplerConfig[i].d3d_addressv, D3DSAMP_ADDRESSV, D3DTADDRESS_MIRROR);
+    }
     if (gMaxSimultaneousTextures < 2 || gMaxSimultaneousTextures > 3)
-        D3D_WaterBlurHD(a5, tex0, a7, tex1_2, tex1, a10);
+        D3D_WaterBlurHD(src, texture, dst, uStep, vStep, overscan);
     else
-        D3D_WaterBlurSD(tex0, a5, a7, tex1_2, tex1);
-    D3DRenderParams.d3dFogModeProbably = v26;
-    AE_SetRenderState(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, v25);
-    AE_SetRenderState(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, v23);
+        D3D_WaterBlurSD(texture, src, dst, uStep, vStep);
+    D3DRenderParams.d3dFogModeProbably = savedFogMode;
+    AE_SetRenderState(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, savedFogEnable);
+    AE_SetRenderState(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, savedZEnable);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
-    D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, a11);
-    D3DRenderParams.d3dDev->lpVtbl->SetViewport(D3DRenderParams.d3dDev, &v24);
-    D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, a12);
-    a11->lpVtbl->Release(a11);
-    a12->lpVtbl->Release(a12);
+    D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, savedRenderTarget);
+    D3DRenderParams.d3dDev->lpVtbl->SetViewport(D3DRenderParams.d3dDev, &savedViewport);
+    D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, savedDepthStencil);
+    savedRenderTarget->lpVtbl->Release(savedRenderTarget);
+    savedDepthStencil->lpVtbl->Release(savedDepthStencil);
 }
 
 void D3D_DoBlurWaterTexture()
 {
-    int v0; // ecx
-    int v1; // edx
-    IDirect3DSurface9* v2; // [esp+20h] [ebp-58h] BYREF
-    IDirect3DSurface9* v3; // [esp+24h] [ebp-54h] BYREF
-    tUnkWaterBlurStruct a7; // [esp+28h] [ebp-50h] BYREF
-    tUnkWaterBlurStruct a5; // [esp+40h] [ebp-38h] BYREF
-    D3DSURFACE_DESC v6; // [esp+58h] [ebp-20h] BYREF
+    int right;
+    int bottom;
+    IDirect3DSurface9* targetSurface;
+    IDirect3DSurface9* waterSurface;
+    tUnkWaterBlurStruct target;
+    tUnkWaterBlurStruct water;
+    D3DSURFACE_DESC desc;
 
-    D3DRenderParams.blurRenderTarget->lpVtbl->GetSurfaceLevel(D3DRenderParams.blurRenderTarget, 0, &v2);
-    waterTexture->lpVtbl->GetSurfaceLevel(waterTexture, 0, &v3);
-    a5.i3 = 511;
-    a5.i4 = 511;
-    a5.i1 = 0;
-    a5.i2 = 0;
-    a5.i5 = 512;
-    a5.i6 = 512;
-    v2->lpVtbl->GetDesc(v2, &v6);
-    if (v6.Width <= 0x200)
+    D3DRenderParams.blurRenderTarget->lpVtbl->GetSurfaceLevel(D3DRenderParams.blurRenderTarget, 0, &targetSurface);
+    waterTexture->lpVtbl->GetSurfaceLevel(waterTexture, 0, &waterSurface);
+    water.i3 = 511;
+    water.i4 = 511;
+    water.i1 = 0;
+    water.i2 = 0;
+    water.i5 = 512;
+    water.i6 = 512;
+    targetSurface->lpVtbl->GetDesc(targetSurface, &desc);
+    if (desc.Width <= 0x200)
     {
-        a7.i1 = 0;
-        v0 = v6.Width - 1;
+        target.i1 = 0;
+        right = desc.Width - 1;
     }
     else
     {
-        a7.i1 = (v6.Width - 512) >> 1;
-        v0 = a7.i1 + 511;
+        target.i1 = (desc.Width - 512) >> 1;
+        right = target.i1 + 511;
     }
-    a7.i3 = v0;
-    if (v6.Height <= 512)
+    target.i3 = right;
+    if (desc.Height <= 512)
     {
-        a7.i2 = 0;
-        v1 = v6.Height - 1;
+        target.i2 = 0;
+        bottom = desc.Height - 1;
     }
     else
     {
-        a7.i2 = (v6.Height - 512) >> 1;
-        v1 = a7.i2 + 511;
+        target.i2 = (desc.Height - 512) >> 1;
+        bottom = target.i2 + 511;
     }
-    a7.i5 = v6.Width;
-    a7.i6 = v6.Height;
-    a7.i4 = v1;
-    D3D_WaterBlur(waterTexture, &a5, D3DRenderParams.blurRenderTarget, &a7, tweak_water_smoothx, tweak_water_smoothy, 1.0f);
-    D3D_WaterBlur(D3DRenderParams.blurRenderTarget, &a7, waterTexture, &a5, tweak_water_smoothx, tweak_water_smoothy, 1.0f);
-    v2->lpVtbl->Release(v2);
-    v3->lpVtbl->Release(v3);
+    target.i5 = desc.Width;
+    target.i6 = desc.Height;
+    target.i4 = bottom;
+    D3D_WaterBlur(waterTexture, &water, D3DRenderParams.blurRenderTarget, &target, tweak_water_smoothx, tweak_water_smoothy, 1.0f);
+    D3D_WaterBlur(D3DRenderParams.blurRenderTarget, &target, waterTexture, &water, tweak_water_smoothx, tweak_water_smoothy, 1.0f);
+    targetSurface->lpVtbl->Release(targetSurface);
+    waterSurface->lpVtbl->Release(waterSurface);
 }
 
 void D3D_ZoomSmooth(IDirect3DTexture9* a1, IDirect3DTexture9* a2, float a3)
