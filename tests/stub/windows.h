@@ -306,3 +306,17 @@ BOOL  PeekMessageA(MSG*, HWND, UINT, UINT, UINT);
 BOOL  TranslateMessage(const MSG*);
 LRESULT DispatchMessageA(const MSG*);
 DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD);
+
+/* The window, cursor, icon and directory calls win/wingdi.c makes.
+   Real signatures; these were the last implicit declarations in that
+   file.  FARPROC, LoadLibraryA, GetProcAddress and SetWindowTextA are
+   its too, and are declared with the other passes' above. */
+HICON    LoadIconA(HINSTANCE, LPCSTR);
+#define  MAKEINTRESOURCEA(i) ((LPSTR)((UINT_PTR)((WORD)(i))))
+HCURSOR  SetCursor(HCURSOR);
+BOOL     AdjustWindowRect(RECT*, DWORD, BOOL);
+BOOL     InvalidateRect(HWND, const RECT*, BOOL);
+UINT     RegisterWindowMessageA(LPCSTR);
+BOOL     CreateDirectoryA(LPCSTR, void*);
+BOOL     QueryPerformanceFrequency(LARGE_INTEGER*);
+DWORD    MsgWaitForMultipleObjectsEx(DWORD, const HANDLE*, DWORD, DWORD, DWORD);

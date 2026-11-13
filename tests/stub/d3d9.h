@@ -405,8 +405,10 @@ typedef IDirect3DIndexBuffer9*   LPDIRECT3DINDEXBUFFER9;
 #define D3DX_DEFAULT                       0x5001
 #define D3DX_FILTER_LINEAR                 0x5002
 
-/* ---- added for the win/wingdi_aftereffects pass --------------------
-   One block, kept together so it is easy to see what this pass added.
-   Values distinct from every other name in their own family, as the
-   comment above requires. */
+/* ---- added for the win/wingdi passes -------------------------------
+   One block, kept together so it is easy to see what these passes
+   added.  Values distinct from every other name in their own family,
+   as the comment above requires. */
 #define D3DTADDRESS_MIRROR                 4199
+
+IDirect3D9* Direct3DCreate9(UINT SDKVersion);

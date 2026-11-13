@@ -90,11 +90,73 @@ long long qword_990B48; // rasters
 
 tWorld* worldPtrIfMultiStream = NULL; // TODO FIXME game doesn't set it explicitly to NULL
 
-void PC_SetUVMatrix(Mtx4x4* dest, Vec3* v1, Vec3* v2, Vec3* v3, Vec3* pos, Vec3* scale, int unused, int flags)
+static void D3D_RenderStateSet(int* current, DWORD state, int value)
 {
-    dest->v1 = *v1;
-    dest->v2 = *v2;
-    dest->v3 = *v3;
+    if (*current != value)
+    {
+        *current = value;
+        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, state, (DWORD)(unsigned int)value);
+    }
+}
+
+static void D3D_RenderStateSetF(float* current, DWORD state, float value)
+{
+    if (*current != value)
+    {
+        *current = value;
+        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, state, *(DWORD*)current);
+    }
+}
+
+static void D3D_StageStateSet(int stage, int* current, DWORD state, int value)
+{
+    if (*current != value)
+    {
+        *current = value;
+        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, state, (DWORD)(unsigned int)value);
+    }
+}
+
+static void D3D_StageStateSetF(int stage, float* current, DWORD state, float value)
+{
+    if (*current != value)
+    {
+        *current = value;
+        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, state, *(DWORD*)current);
+    }
+}
+
+static void D3D_SamplerStateSet(int sampler, int* current, DWORD state, int value)
+{
+    if (*current != value)
+    {
+        *current = value;
+        D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, sampler, state, (DWORD)(unsigned int)value);
+    }
+}
+
+static void D3D_SamplerStateSetF(int sampler, float* current, DWORD state, float value)
+{
+    if (*current != value)
+    {
+        *current = value;
+        D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, sampler, state, *(DWORD*)current);
+    }
+}
+
+static void D3D_SetFixedFunctionFVF(int fvf)
+{
+    renderStateConfig.vertexShader = NULL;
+    renderStateConfig.fvf = fvf;
+    D3DRenderParams.d3dDev->lpVtbl->SetVertexShader(D3DRenderParams.d3dDev, NULL);
+    D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, renderStateConfig.fvf);
+}
+
+void PC_SetUVMatrix(Mtx4x4* dest, Vec3* axisU, Vec3* axisV, Vec3* axisW, Vec3* pos, Vec3* scale, int unused, int flags)
+{
+    dest->v1 = *axisU;
+    dest->v2 = *axisV;
+    dest->v3 = *axisW;
     dest->_m14 = scale->x;
     dest->_m24 = scale->y;
     dest->_m34 = scale->z;
@@ -103,199 +165,149 @@ void PC_SetUVMatrix(Mtx4x4* dest, Vec3* v1, Vec3* v2, Vec3* v3, Vec3* pos, Vec3*
     dest->mtxflag = flags;
 }
 
-void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* a2, tMultiTextureElemStruct* a3)
+void MAT_ComputeUV_sub_4521A0(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem)
 {
-    profilerRasterStructElem* v3;
-    int v4;
-    unsigned int v5;
-    int v6;
-    profilerRasterStructElem* v7;
-    int16_t v8;
-    int16_t v9;
-    tMatDecompressedStruct a2a;
-    Vec3 v11;
-    Vec3 v12;
-    Vec3 v13;
-    Vec3 v14;
-    Mtx4x4 a1;
-    Mtx4x4 a3a;
-    Vec3 a2a2; 
+    int planarParam;
+    unsigned int uvFunc;
+    int transform1;
+    tMatDecompressedStruct decompressed;
+    Vec3 axisV;
+    Vec3 axisU;
+    Vec3 axisW;
+    Vec3 speed;
+    Mtx4x4 oglMtx;
+    Mtx4x4 uvMtx;
+    Vec3 scale;
 
-    v3 = &gpst_DX_stDD->rasters[38];
-    if (!gpst_DX_stDD->rasters[38].insideCounter)
-        v3->startTick = TIM_GetTicksAsInt32();
-    ++v3->insideCounter;
-    v4 = a3->phongOrPlanarParam;
-    v5 = (a3->subTextureFlags >> 20) & 0xF;
+    PRO_PerfCounterStartBlock(&gpst_DX_stDD->rasters[38]);
+    planarParam = texElem->phongOrPlanarParam;
+    uvFunc = (texElem->subTextureFlags >> 20) & 0xF;
     D3DRenderParams.textureUVMode = 0;
-    if (textureStageTypeConfig[0].d3dTexCoordIndex)
-    {
-        textureStageTypeConfig[0].d3dTexCoordIndex = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, 0);
-    }
-    if (textureStageTypeConfig[0].d3dTextureTransformFlags)
-    {
-        textureStageTypeConfig[0].d3dTextureTransformFlags = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
-    }
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
     gpst_DX_stDD->flags &= ~0x10u;
-    MAT_FuncTable[v5](gpst_DX_stDD, geogro, a2, v4);
+    MAT_FuncTable[uvFunc](gpst_DX_stDD, geogro, chunks, planarParam);
     if (!gpst_DX_stDD->bigBuffer->UVData)
     {
         if (D3DRenderParams.textureUVMode)
         {
-            MATH_MakeOGLMatrix(&a1, &GLOBAL_UVTransformMatrix);
-            memcpy(d3dTransformationMatrix, &a1, sizeof(Mtx4x4WithoutAdditionalData));
-            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX *)&a1);
+            MATH_MakeOGLMatrix(&oglMtx, &GLOBAL_UVTransformMatrix);
+            memcpy(d3dTransformationMatrix, &oglMtx, sizeof(Mtx4x4WithoutAdditionalData));
+            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX *)&oglMtx);
         }
+        // preserved: this return skips the matching end block, so raster 38 stays entered
         return;
     }
-    v6 = a3->transform1;
-    if (v6 == 0x3F800000 && a3->transform2 == 0x3F800000 || !v6 || !a3->transform2) // TODO: MAT_VUIsIdentity inline
+    transform1 = texElem->transform1;
+    if (transform1 == 0x3F800000 && texElem->transform2 == 0x3F800000 || !transform1 || !texElem->transform2) // TODO: MAT_VUIsIdentity inline
     {
         if (!D3DRenderParams.textureUVMode)
         {
             D3DRenderParams.textureUVMode = 0;
-            if (textureStageTypeConfig[0].d3dTexCoordIndex)
-            {
-                textureStageTypeConfig[0].d3dTexCoordIndex = 0;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, 0);
-            }
-            if (textureStageTypeConfig[0].d3dTextureTransformFlags)
-            {
-                textureStageTypeConfig[0].d3dTextureTransformFlags = 0;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
-            }
-            goto LABEL_28;
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
+            PRO_PerfCounterEndBlock(&gpst_DX_stDD->rasters[38]);
+            return;
         }
-        MATH_MakeOGLMatrix(&a1, &GLOBAL_UVTransformMatrix);
+        MATH_MakeOGLMatrix(&oglMtx, &GLOBAL_UVTransformMatrix);
     }
     else
     {
-        MAT_UVDecompress(a3, &a2a);
-        v12.x = a2a.f1;
-        v12.y = a2a.f2;
-        v11.x = a2a.f3;
-        v11.y = a2a.f4;
-        v14.x = a2a.speedU;
-        v14.y = a2a.speedV;
-        v12.z = 0.0;
-        v11.z = 0.0;
-        v13.x = 0.0;
-        v13.y = 0.0;
-        v13.z = 1.0;
-        v14.z = 0.0;
-        a2a2.x = 1.0;
-        a2a2.y = 1.0;
-        a2a2.z = 1.0;
-        PC_SetUVMatrix(&a3a, &v12, &v11, &v13, &v14, &a2a2, 0, 6);
+        MAT_UVDecompress(texElem, &decompressed);
+        axisV.x = decompressed.f1;
+        axisV.y = decompressed.f2;
+        axisU.x = decompressed.f3;
+        axisU.y = decompressed.f4;
+        speed.x = decompressed.speedU;
+        speed.y = decompressed.speedV;
+        axisV.z = 0.0;
+        axisU.z = 0.0;
+        axisW.x = 0.0;
+        axisW.y = 0.0;
+        axisW.z = 1.0;
+        speed.z = 0.0;
+        scale.x = 1.0;
+        scale.y = 1.0;
+        scale.z = 1.0;
+        PC_SetUVMatrix(&uvMtx, &axisV, &axisU, &axisW, &speed, &scale, 0, 6);
         if (D3DRenderParams.textureUVMode)
         {
-            MATH_MulMatrixMatrix(&a1, &GLOBAL_UVTransformMatrix, &a3a);
-            MATH_MakeOGLMatrix(&a1, &a1);
+            MATH_MulMatrixMatrix(&oglMtx, &GLOBAL_UVTransformMatrix, &uvMtx);
+            MATH_MakeOGLMatrix(&oglMtx, &oglMtx);
         }
         else
         {
             D3DRenderParams.textureUVMode = 3;
-            if (textureStageTypeConfig[0].d3dTexCoordIndex)
-            {
-                textureStageTypeConfig[0].d3dTexCoordIndex = 0;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, 0);
-            }
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
             if (textureStageTypeConfig[0].d3dTextureTransformFlags != 2)
             {
                 textureStageTypeConfig[0].d3dTextureTransformFlags = 2;
                 D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
             }
-            MATH_MakeOGLMatrix(&a1, &a3a);
-            a1.v3.x = a1.Pos.x;
-            a1.v3.y = a1.Pos.y;
+            MATH_MakeOGLMatrix(&oglMtx, &uvMtx);
+            oglMtx.v3.x = oglMtx.Pos.x;
+            oglMtx.v3.y = oglMtx.Pos.y;
         }
     }
-    memcpy(d3dTransformationMatrix, &a1, sizeof(Mtx4x4WithoutAdditionalData));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&a1);
-LABEL_28:
-    v7 = &gpst_DX_stDD->rasters[38];
-    v8 = gpst_DX_stDD->rasters[38].insideCounter;
-    if (v8)
-    {
-        v9 = v8 - 1;
-        gpst_DX_stDD->rasters[38].insideCounter = v9;
-        if (!v9)
-            v7->sumTime += TIM_GetTicksAsInt32() - v7->startTick;
-    }
+    memcpy(d3dTransformationMatrix, &oglMtx, sizeof(Mtx4x4WithoutAdditionalData));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&oglMtx);
+    PRO_PerfCounterEndBlock(&gpst_DX_stDD->rasters[38]);
 }
 
-void MAT_UV_Compute_Chrome(tGdi_DisplayData* a1, tGEOGRO* a21, tGeoTriangleChunks* a31, unsigned int a41)
+void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type)
 {
-    int v1;
-    Vec3 a3;
-    Vec3 a4;
-    Vec3 a5;
-    Vec3 a6;
-    Vec3 a2;
+    int drawMask;
+    Vec3 axisV;
+    Vec3 axisW;
+    Vec3 pos;
+    Vec3 scale;
+    Vec3 axisU;
 
     D3DRenderParams.textureUVMode = 2;
-    if (textureStageTypeConfig[0].d3dTexCoordIndex != D3DTSS_TCI_CAMERASPACENORMAL)
-    {
-        textureStageTypeConfig[0].d3dTexCoordIndex = D3DTSS_TCI_CAMERASPACENORMAL;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
-    }
-    if (textureStageTypeConfig[0].d3dTextureTransformFlags != D3DTTFF_COUNT2)
-    {
-        textureStageTypeConfig[0].d3dTextureTransformFlags = D3DTTFF_COUNT2;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-    }
-    v1 = a1->drawMaskAllowedStuffCurrent;
-    a2.z = 0.0;
-    a2.y = 0.0;
-    a2.x = 0.5;
-    if ((v1 & 0x8000) != 0)
-        a2.x = -0.5;
-    a3.x = 0.0;
-    a3.y = -0.5;
-    a3.z = 0.0;
-    a4.x = 0.0;
-    a4.y = 0.0;
-    a4.z = -0.5;
-    a5.x = 0.5;
-    a5.y = 0.5;
-    a5.z = 0.0;
-    a6.x = 1.0;
-    a6.y = 1.0;
-    a6.z = 1.0;
-    PC_SetUVMatrix(&GLOBAL_UVTransformMatrix, &a2, &a3, &a4, &a5, &a6, 0, 4);
-    a1->bigBuffer->UVData = a1->bigBuffer->data7;
-    a1->flags |= 2u;
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+    drawMask = dd->drawMaskAllowedStuffCurrent;
+    axisU.z = 0.0;
+    axisU.y = 0.0;
+    axisU.x = 0.5;
+    if ((drawMask & 0x8000) != 0)
+        axisU.x = -0.5;
+    axisV.x = 0.0;
+    axisV.y = -0.5;
+    axisV.z = 0.0;
+    axisW.x = 0.0;
+    axisW.y = 0.0;
+    axisW.z = -0.5;
+    pos.x = 0.5;
+    pos.y = 0.5;
+    pos.z = 0.0;
+    scale.x = 1.0;
+    scale.y = 1.0;
+    scale.z = 1.0;
+    PC_SetUVMatrix(&GLOBAL_UVTransformMatrix, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
+    dd->bigBuffer->UVData = dd->bigBuffer->data7;
+    dd->flags |= 2u;
 }
 
-void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeoTriangleChunks* a3, unsigned int type)
+void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type)
 {
     int elemIdx;
     tMultiPartGameObjectLinks* link;
     Mtx4x4* multiPartMtx;
     //double v14; 
     Mtx4x4* viewMtx;
-    Vec3 v1, v2, v3, pos, scale; 
+    Vec3 axisU, axisV, axisW, pos, scale;
     Mtx4x4 multiPartMtxLocal = {0};
     Mtx4x4 viewMtxStd;
     Mtx4x4 viewMtxStdInv;
     Mtx4x4 modelViewMtx;
 
-    a1->bigBuffer->UVData = a1->bigBuffer->data7;
-    a1->flags |= 0x2;
+    dd->bigBuffer->UVData = dd->bigBuffer->data7;
+    dd->flags |= 0x2;
     D3DRenderParams.textureUVMode = 1;
-    if (textureStageTypeConfig[0].d3dTexCoordIndex != D3DTSS_TCI_CAMERASPACEPOSITION)
-    {
-        textureStageTypeConfig[0].d3dTexCoordIndex = D3DTSS_TCI_CAMERASPACEPOSITION;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
-    }
-    if (textureStageTypeConfig[0].d3dTextureTransformFlags != D3DTTFF_COUNT2)
-    {
-        textureStageTypeConfig[0].d3dTextureTransformFlags = D3DTTFF_COUNT2;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-    }
-    viewMtx = a1->ct.cam.viewMtxPtr_setInGRORender;
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+    viewMtx = dd->ct.cam.viewMtxPtr_setInGRORender;
     if ((viewMtx->mtxflag & 8) != 0)
     {
         MATH_MakeOGLMatrix(&viewMtxStd, viewMtx);
@@ -312,15 +324,15 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
         switch ((type >> 4) & 3)
         {
         case 0:
-            v1.x = 1.0f;
-            v1.y = 1.0f;
-            v1.z = 1.0f;
-            v2.x = 0.0f;
-            v2.y = 0.0f;
-            v2.z = 0.0f;
-            v3.x = 0.0f;
-            v3.y = 1.0f;
-            v3.z = 0.0f;
+            axisU.x = 1.0f;
+            axisU.y = 1.0f;
+            axisU.z = 1.0f;
+            axisV.x = 0.0f;
+            axisV.y = 0.0f;
+            axisV.z = 0.0f;
+            axisW.x = 0.0f;
+            axisW.y = 1.0f;
+            axisW.z = 0.0f;
             pos.x = 1.0f;
             pos.y = 0.0f;
             pos.z = 0.0f;
@@ -328,48 +340,48 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
             scale.y = 0.0f;
             scale.z = 1.0f;
 
-            PC_SetUVMatrix(&viewMtxStd, &scale, &pos, &v3, &v2, &v1, 0, 4);
+            PC_SetUVMatrix(&viewMtxStd, &scale, &pos, &axisW, &axisV, &axisU, 0, 4);
             MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
             break;
         case 1:
-            v1.x = 1.0f;
-            v1.y = 0.0f;
-            v1.z = 0.0f;
-            v2.x = 0.0f;
-            v2.y = 0.0f;
-            v2.z = 1.0f;
-            v3.x = 0.0f;
-            v3.y = 1.0f;
-            v3.z = 0.0f;
+            axisU.x = 1.0f;
+            axisU.y = 0.0f;
+            axisU.z = 0.0f;
+            axisV.x = 0.0f;
+            axisV.y = 0.0f;
+            axisV.z = 1.0f;
+            axisW.x = 0.0f;
+            axisW.y = 1.0f;
+            axisW.z = 0.0f;
             pos.x = 0.0f;
             pos.y = 0.0f;
             pos.z = 0.0f;
             scale.x = 1.0f;
             scale.y = 1.0f;
             scale.z = 1.0f;
-            PC_SetUVMatrix(&viewMtxStd, &v1, &v2, &v3, &pos, &scale, 0, 4);
+            PC_SetUVMatrix(&viewMtxStd, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
             MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
             break;
         case 2:
             memcpy(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, sizeof(GLOBAL_UVTransformMatrix));
             break;
         case 3:
-            v1.x = 0.70710677f;
-            v1.y = -0.57735026f;
-            v1.z = 0.40799999f;
-            v2.x = -0.70710677f;
-            v2.y = -0.57735026f;
-            v2.z = 0.40799999f;
-            v3.x = 0.0f;
-            v3.y = 0.57735026f;
-            v3.z = 0.81599998f;
+            axisU.x = 0.70710677f;
+            axisU.y = -0.57735026f;
+            axisU.z = 0.40799999f;
+            axisV.x = -0.70710677f;
+            axisV.y = -0.57735026f;
+            axisV.z = 0.40799999f;
+            axisW.x = 0.0f;
+            axisW.y = 0.57735026f;
+            axisW.z = 0.81599998f;
             pos.x = 0.0f;
             pos.y = 0.0f;
             pos.z = 0.0f;
             scale.x = 1.0f;
             scale.y = 1.0f;
             scale.z = 1.0f;
-            PC_SetUVMatrix(&viewMtxStd, &v1, &v2, &v3, &pos, &scale, 0, 0x4);
+            PC_SetUVMatrix(&viewMtxStd, &axisU, &axisV, &axisW, &pos, &scale, 0, 0x4);
             MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
             break;
         default:
@@ -380,28 +392,28 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
 
     elemIdx = (type >> 8) & 7;
 
-    if (((uint8_t)type >> 6) != 3 || (a1->currTargetGao->flags & 0x200000) == 0)
+    if (((uint8_t)type >> 6) != 3 || (dd->currTargetGao->flags & 0x200000) == 0)
     {
         if (((uint8_t)type >> 6) == 2)
         {
-            MATH_MakeOGLMatrix(&multiPartMtxLocal, a1->matrixStack.actMatrixElem);
-            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v1, (a1->ct.cam.factorX / a1->ct.cam.centerX));
-            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v2, (a1->ct.cam.factorX / a1->ct.cam.centerX));
-            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v3, (a1->ct.cam.factorX / a1->ct.cam.centerX));            
+            MATH_MakeOGLMatrix(&multiPartMtxLocal, dd->matrixStack.actMatrixElem);
+            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v1, (dd->ct.cam.factorX / dd->ct.cam.centerX));
+            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v2, (dd->ct.cam.factorX / dd->ct.cam.centerX));
+            MATH_VecMultScalarWithoutBuffer(&multiPartMtxLocal.v3, (dd->ct.cam.factorX / dd->ct.cam.centerX));            
         }
         else
         {
-            MATH_MakeOGLMatrix(&multiPartMtxLocal, a1->currTargetGao->matrices);
+            MATH_MakeOGLMatrix(&multiPartMtxLocal, dd->currTargetGao->matrices);
         }
-    } else if (a1->currTargetGao->basic->multiPartData->elemNum <= elemIdx)
+    } else if (dd->currTargetGao->basic->multiPartData->elemNum <= elemIdx)
     {
-        MATH_MakeOGLMatrix(&multiPartMtxLocal, a1->currTargetGao->matrices);
-    } else if ((a1->currTargetGao->flags & 0x1000000) == 0)
+        MATH_MakeOGLMatrix(&multiPartMtxLocal, dd->currTargetGao->matrices);
+    } else if ((dd->currTargetGao->flags & 0x1000000) == 0)
     {
-        multiPartMtx = ((Mtx4x4*)(a1->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices));
+        multiPartMtx = ((Mtx4x4*)(dd->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices));
         MATH_InvertMatrix(&multiPartMtxLocal, &multiPartMtx[elemIdx]);
         MATH_MakeOGLMatrix(&multiPartMtxLocal, &multiPartMtxLocal);
-    } else if (link = ((tMultiPartGameObjectLinks*)a1->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices), link[elemIdx].gao != NULL)
+    } else if (link = ((tMultiPartGameObjectLinks*)dd->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices), link[elemIdx].gao != NULL)
     {
         if ((link[elemIdx].gao->flags & 0x200000) != 0 && (link[elemIdx].gao->flags & 0x1000000) == 0)
         {
@@ -416,8 +428,8 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
             MATH_MakeOGLMatrix(&multiPartMtxLocal, &multiPartMtxLocal);
         }
         else {
-            MATH_InvertMatrix(&multiPartMtxLocal, ((tMultiPartGameObjectLinks*)(a1->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao->matrices);
-            MATH_MulMatrixMatrix(&viewMtxStd, a1->currTargetGao->matrices, &multiPartMtxLocal);
+            MATH_InvertMatrix(&multiPartMtxLocal, ((tMultiPartGameObjectLinks*)(dd->currTargetGao->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao->matrices);
+            MATH_MulMatrixMatrix(&viewMtxStd, dd->currTargetGao->matrices, &multiPartMtxLocal);
             MATH_MakeOGLMatrix(&multiPartMtxLocal, &viewMtxStd);
         }
     }
@@ -430,42 +442,42 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
     switch ((type >> 4) & 3)
     {
     case 0:
-        v1.x = 0.0f;
-        v1.y = 0.0f;
-        v1.z = 1.0f;
-        v2.x = 1.0f;
-        v2.y = 0.0f;
-        v2.z = 0.0f;
-        v3.x = 0.0f;
-        v3.y = 1.0f;
-        v3.z = 0.0f;
+        axisU.x = 0.0f;
+        axisU.y = 0.0f;
+        axisU.z = 1.0f;
+        axisV.x = 1.0f;
+        axisV.y = 0.0f;
+        axisV.z = 0.0f;
+        axisW.x = 0.0f;
+        axisW.y = 1.0f;
+        axisW.z = 0.0f;
         pos.x = 0.0f;
         pos.y = 0.0f;
         pos.z = 0.0f;
         scale.x = 1.0f;
         scale.y = 1.0f;
         scale.z = 1.0f;
-        PC_SetUVMatrix(&viewMtxStd, &v1, &v2, &v3, &pos, &scale, 0, 0x4);
+        PC_SetUVMatrix(&viewMtxStd, &axisU, &axisV, &axisW, &pos, &scale, 0, 0x4);
         MATH_MulMatrixMatrix(&modelViewMtx, &multiPartMtxLocal, &viewMtxStd);
         MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &modelViewMtx);
         break;
     case 1:
-        v1.x = 1.0f;
-        v1.y = 0.0f;
-        v1.z = 0.0f;
-        v2.x = 0.0f;
-        v2.y = 0.0f;
-        v2.z = 1.0f;
-        v3.x = 0.0f;
-        v3.y = 1.0f;
-        v3.z = 0.0f;
+        axisU.x = 1.0f;
+        axisU.y = 0.0f;
+        axisU.z = 0.0f;
+        axisV.x = 0.0f;
+        axisV.y = 0.0f;
+        axisV.z = 1.0f;
+        axisW.x = 0.0f;
+        axisW.y = 1.0f;
+        axisW.z = 0.0f;
         pos.x = 0.0f;
         pos.y = 0.0f;
         pos.z = 0.0f;
         scale.x = 1.0f;
         scale.y = 1.0f;
         scale.z = 1.0f;
-        PC_SetUVMatrix(&modelViewMtx, &v1, &v2, &v3, &pos, &scale, 0, 4);
+        PC_SetUVMatrix(&modelViewMtx, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
         MATH_MulMatrixMatrix(&viewMtxStd, &multiPartMtxLocal, &modelViewMtx);
         MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
         break;
@@ -474,79 +486,80 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* a1, tGEOGRO* a2, tGeo
         break;
     case 3:
         MATH_TranspEq33Matrix(&multiPartMtxLocal);
-        v1.x = 0.70710677f;
-        v1.y = -0.57735026f;
-        v1.z = 0.40799999f;
-        v2.x = -0.70710677f;
-        v2.y = -0.57735026f;
-        v2.z = 0.40799999f;
-        v3.x = 0.0;
-        v3.y = 0.57735026f;
-        v3.z = 0.81599998f;
+        axisU.x = 0.70710677f;
+        axisU.y = -0.57735026f;
+        axisU.z = 0.40799999f;
+        axisV.x = -0.70710677f;
+        axisV.y = -0.57735026f;
+        axisV.z = 0.40799999f;
+        axisW.x = 0.0;
+        axisW.y = 0.57735026f;
+        axisW.z = 0.81599998f;
         pos.x = 0.0;
         pos.y = 0.0;
         pos.z = 0.0;
         scale.x = 1.0;
         scale.y = 1.0;
         scale.z = 1.0;
-        PC_SetUVMatrix(&modelViewMtx, &v1, &v2, &v3, &pos, &scale, 0, 4);
+        PC_SetUVMatrix(&modelViewMtx, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
         MATH_MulMatrixMatrix(&viewMtxStd, &multiPartMtxLocal, &modelViewMtx);
         MATH_MulMatrixMatrix(&GLOBAL_UVTransformMatrix, &viewMtxStdInv, &viewMtxStd);
         break;
     default:
         break;
     }
-    a1->bigBuffer->UVData = a1->bigBuffer->data7;
-    a1->flags |= 0x2;
+    dd->bigBuffer->UVData = dd->bigBuffer->data7;
+    dd->flags |= 0x2;
 }
 
-void D3D_CalcAndSetProjection(float a1, float a2, float a3, float a4, float a5, float a6)
+void D3D_CalcAndSetProjection(float left, float right, float bottom, float top,
+                              float near, float far)
 {
-    double v6;
-    double v7;
-    float v8; 
-    D3DMATRIX v9;
+    double width;
+    double height;
+    float depth;
+    D3DMATRIX mtx;
 
-    v6 = a2 - a1;
-    memset(&v9, 0, sizeof(v9));
-    v9._44 = 1.0;
-    v9._11 = (float)(2.0 / v6);
-    v7 = a4 - a3;
-    v9._22 = (float)(2.0 / v7);
-    v8 = a6 - a5;
-    v9._33 = (float)(-4.0 / v8);
-    v9._14 = (float)(-((a1 + a2) / v6));
-    v9._24 = (float)(-((a3 + a4) / v7));
-    v9._34 = (float)(-((a5 + a6) / v8));
-    memcpy(&d3dProjectionMtx, &v9, sizeof(D3DMATRIX));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &v9);
+    width = right - left;
+    memset(&mtx, 0, sizeof(mtx));
+    mtx._44 = 1.0;
+    mtx._11 = (float)(2.0 / width);
+    height = top - bottom;
+    mtx._22 = (float)(2.0 / height);
+    depth = far - near;
+    mtx._33 = (float)(-4.0 / depth);
+    mtx._14 = (float)(-((left + right) / width));
+    mtx._24 = (float)(-((bottom + top) / height));
+    mtx._34 = (float)(-((near + far) / depth));
+    memcpy(&d3dProjectionMtx, &mtx, sizeof(D3DMATRIX));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &mtx);
 }
 
-void D3D_SetViewPort(int a1, int a2, int a3, int a4)
+void D3D_SetViewPort(int x, int y, int w, int h)
 {
-    int v4;
-    int v5;
-    int v6;
-    int v7;
+    int clampedX;
+    int clampedY;
+    int clampedW;
+    int clampedH;
 
     if (D3DRenderParams.d3dDev)
     {
-        v4 = a1;
-        if (a1 < 0)
-            v4 = 0;
-        v5 = a2;
-        if (a2 < 0)
-            v5 = 0;
-        v6 = a3;
-        if (v4 + a3 > (int)D3DRenderParams.presentParams.BackBufferWidth)
-            v6 = D3DRenderParams.presentParams.BackBufferWidth - v4;
-        v7 = a4;
-        if (v5 + a4 > (int)D3DRenderParams.presentParams.BackBufferHeight)
-            v7 = D3DRenderParams.presentParams.BackBufferHeight - v5;
-        D3DRenderParams.d3dViewPort.X = v4;
-        D3DRenderParams.d3dViewPort.Y = v5;
-        D3DRenderParams.d3dViewPort.Width = v6;
-        D3DRenderParams.d3dViewPort.Height = v7;
+        clampedX = x;
+        if (x < 0)
+            clampedX = 0;
+        clampedY = y;
+        if (y < 0)
+            clampedY = 0;
+        clampedW = w;
+        if (clampedX + w > (int)D3DRenderParams.presentParams.BackBufferWidth)
+            clampedW = D3DRenderParams.presentParams.BackBufferWidth - clampedX;
+        clampedH = h;
+        if (clampedY + h > (int)D3DRenderParams.presentParams.BackBufferHeight)
+            clampedH = D3DRenderParams.presentParams.BackBufferHeight - clampedY;
+        D3DRenderParams.d3dViewPort.X = clampedX;
+        D3DRenderParams.d3dViewPort.Y = clampedY;
+        D3DRenderParams.d3dViewPort.Width = clampedW;
+        D3DRenderParams.d3dViewPort.Height = clampedH;
         D3DRenderParams.d3dViewPort.MinZ = 0.0;
         D3DRenderParams.d3dViewPort.MaxZ = 1.0;
         D3DRenderParams.d3dDev->lpVtbl->SetViewport(D3DRenderParams.d3dDev, (&D3DRenderParams.d3dViewPort));
@@ -648,285 +661,225 @@ void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int vie
             gpst_DX_stDD->ct.cam.height / 480.0f);
 }
 
-void D3D_SetProjectionMatrix(tDDCamStruct* a1)
+void D3D_SetProjectionMatrix(tDDCamStruct* cam)
 {
-    int v1;
-    int v2;
-    int v3;
-    int v4;
-    int v5;
-    double v6;
-    double v7;
-    int v8;
-    int v9;
-    int v10;
-    int v11;
-    BOOL v12; 
-    double v13;
-    double v14;
-    double v16;
-    double v19;
-    double v20;
-    double v22;
-    float v25;
-    float v26;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    float v32;
-    float v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    int v43; 
-    float v44; 
-    int v45;
-    float v46;
-    float v47;
-    int a3; 
-    int v49;
-    int v50;
-    int v51;
-    D3DMATRIX v52;
-    D3DMATRIX v53;
+    int ratioIdx;
+    int rectW;
+    int rectH;
+    int fitW;
+    int fitH;
+    int viewX;
+    int viewY;
+    int viewW;
+    int viewH;
+    int flags2;
+    float screenRatio;
+    float fitRatio;
+    float cotFov;
+    float isoSize;
+    double negCot;
+    double isoRatio;
+    double invRatio;
+    double negFar;
+    double isoLeft;
+    float orthoW;
+    float orthoH;
+    float halfTexel;
+    D3DMATRIX offsetMtx;
+    D3DMATRIX orthoMtx;
 
-    D3DRenderParams.projectionMatrix = &a1->projectionMtx;
-    v1 = gpst_DX_stDD->ddcs2.selectedScreenRatio;
-    if (v1 <= 0 || v1 >= 4)
-        v46 = gpst_DX_stDD->ddcs2.manualScreenRatio;
+    D3DRenderParams.projectionMatrix = &cam->projectionMtx;
+    ratioIdx = gpst_DX_stDD->ddcs2.selectedScreenRatio;
+    if (ratioIdx <= 0 || ratioIdx >= 4)
+        screenRatio = gpst_DX_stDD->ddcs2.manualScreenRatio;
     else
-        v46 = GDI_gaf_ScreenRatio[v1];
+        screenRatio = GDI_gaf_ScreenRatio[ratioIdx];
     if (D3D_gi_Widescreen)
-        v46 = D3D_RealYoverX();
-    v2 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-    v3 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-    v40 = gpst_DX_stDD->ddcs2.pixelYoverX * a1->YoverX * v46;
-    v43 = gpst_DX_stDD->ddcs2.flags2;
-    a3 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-    v50 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-    if ((v43 & 4) != 0)
+        screenRatio = D3D_RealYoverX();
+    rectW = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
+    rectH = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
+    fitRatio = gpst_DX_stDD->ddcs2.pixelYoverX * cam->YoverX * screenRatio;
+    flags2 = gpst_DX_stDD->ddcs2.flags2;
+    if ((flags2 & 4) != 0)
     {
-        v4 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-        v51 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-        v5 = (uint32_t)((double)v50 / v40);
-        v45 = v5;
-        if ((v43 & 1) != 0 && v5 > v2 || (v43 & 2) != 0 && v5 < v2)
+        fitH = rectH;
+        fitW = (uint32_t)((double)rectH / fitRatio);
+        if ((flags2 & 1) != 0 && fitW > rectW || (flags2 & 2) != 0 && fitW < rectW)
         {
-            v4 = (uint32_t)((double)a3 * v40);
-            v5 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-        LABEL_16:
-            v45 = v5;
-            v51 = v4;
-            goto LABEL_17;
+            fitH = (uint32_t)((double)rectW * fitRatio);
+            fitW = rectW;
         }
     }
     else
     {
-        v4 = (uint32_t)((double)a3 * v40);
-        v5 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-        v51 = v4;
-        v45 = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-        if ((v43 & 1) != 0 && v4 > v3 || (v43 & 2) != 0 && v4 < v3)
+        fitH = (uint32_t)((double)rectW * fitRatio);
+        fitW = rectW;
+        if ((flags2 & 1) != 0 && fitH > rectH || (flags2 & 2) != 0 && fitH < rectH)
         {
-            v5 = (uint32_t)((double)v50 / v40);
-            v4 = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-            goto LABEL_16;
+            fitW = (uint32_t)((double)rectH / fitRatio);
+            fitH = rectH;
         }
     }
-LABEL_17:
-    if (a1->viewPortSizeWidth == 0.0)
+    if (cam->viewPortSizeWidth == 0.0)
     {
-        a1->viewPortSizeWidth = 1.0;
-        a1->viewPortSizeHeight = 1.0;
-        a1->viewPortPosX = 0.0;
-        a1->viewPortPosY = 0.0;
+        cam->viewPortSizeWidth = 1.0;
+        cam->viewPortSizeHeight = 1.0;
+        cam->viewPortPosX = 0.0;
+        cam->viewPortPosY = 0.0;
     }
-    v6 = (double)v45;
-    v7 = (double)v51;
-    v8 = (int32_t)((double)((v2 - v5) / 2) + v6 * a1->viewPortPosX);
-    v9 = (int32_t)((double)((v3 - v4) / 2) + v7 * a1->viewPortPosY);
-    v10 = (uint32_t)(v7 * a1->viewPortSizeHeight);
-    v49 = (uint32_t)(v6 * a1->viewPortSizeWidth);
-    v11 = a1->flags;
-    v12 = (a1->flags & 0x400) == 0;
-    a1->viewPortRealPosX = v8;
-    a1->viewPortRealPosY = v9;
-    if (!v12)
+    viewX = (int32_t)((double)((rectW - fitW) / 2) + (double)fitW * cam->viewPortPosX);
+    viewY = (int32_t)((double)((rectH - fitH) / 2) + (double)fitH * cam->viewPortPosY);
+    viewH = (uint32_t)((double)fitH * cam->viewPortSizeHeight);
+    viewW = (uint32_t)((double)fitW * cam->viewPortSizeWidth);
+    cam->viewPortRealPosX = viewX;
+    cam->viewPortRealPosY = viewY;
+    if ((cam->flags & 0x400) != 0)
     {
-        v44 = (float)v49;
-        v47 = (float)(0.5 / v44);
-        D3DXMatrixTranslation(&v52, v47, v47, 0.0);
-        v31 = (float)v10;
-        D3DXMatrixOrthoOffCenterRH(&v53, 0.0, v44, 0.0, v31, 0.0, 1.0);
-        D3DXMatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &v53, &v52);
+        orthoW = (float)viewW;
+        halfTexel = (float)(0.5 / orthoW);
+        D3DXMatrixTranslation(&offsetMtx, halfTexel, halfTexel, 0.0);
+        orthoH = (float)viewH;
+        D3DXMatrixOrthoOffCenterRH(&orthoMtx, 0.0, orthoW, 0.0, orthoH, 0.0, 1.0);
+        D3DXMatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &orthoMtx, &offsetMtx);
         memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
         D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
         return;
     }
-    if ((v11 & 1) != 0)
+    if ((cam->flags & 1) != 0)
     {
-        v41 = (float)(1.0 / tan(a1->focale * 0.5));
+        cotFov = (float)(1.0 / tan(cam->focale * 0.5));
         MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
         if (D3D_gi_Widescreen)
         {
             // the authored vertical half angle, kept whatever the
             // window shape is; the horizontal one follows v46
             float cotY = ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
-                             ? v41
-                             : (float)(v41 / D3D_gf_RefYoverX);
+                             ? cotFov
+                             : (float)(cotFov / D3D_gf_RefYoverX);
 
-            D3DRenderParams.projectionMatrix->v1.x = (float)(cotY * v46);
-            v13 = -cotY;
+            D3DRenderParams.projectionMatrix->v1.x = (float)(cotY * screenRatio);
+            negCot = -cotY;
         }
         else if ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
         {
-            D3DRenderParams.projectionMatrix->v1.x = v41 * v46;
-            v13 = -v41;
+            D3DRenderParams.projectionMatrix->v1.x = cotFov * screenRatio;
+            negCot = -cotFov;
         }
         else
         {
-            D3DRenderParams.projectionMatrix->v1.x = v41;
-            v13 = -(v41 / v46);
+            D3DRenderParams.projectionMatrix->v1.x = cotFov;
+            negCot = -(cotFov / screenRatio);
         }
-        D3DRenderParams.projectionMatrix->v2.y = (float)v13;
-        D3DRenderParams.projectionMatrix->v3.z = (a1->nearPlane + a1->farPlane) / (a1->farPlane - a1->nearPlane);
+        D3DRenderParams.projectionMatrix->v2.y = (float)negCot;
+        D3DRenderParams.projectionMatrix->v3.z = (cam->nearPlane + cam->farPlane) / (cam->farPlane - cam->nearPlane);
         D3DRenderParams.projectionMatrix->_m34 = 1.0;
         D3DRenderParams.projectionMatrix->Pos.z = -0.050000001f;
         D3DRenderParams.projectionMatrix->w = 0.0;
         memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
         D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
-        goto LABEL_34;
     }
-    MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
-    v42 = a1->isoZoom * a1->isoFactor;
-    if ((gpst_DX_stDD->ddcs2.flags2 & 4) == 0)
+    else
     {
-        v20 = D3D_gi_Widescreen ? D3D_RealYoverX()
-                                : gpst_DX_stDD->ddcs2.manualScreenRatio;
-        v22 = -a1->farPlane;
-        if (a1->isoFactor == 0.0) 
+        MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
+        isoSize = cam->isoZoom * cam->isoFactor;
+        negFar = -cam->farPlane;
+        if ((gpst_DX_stDD->ddcs2.flags2 & 4) == 0)
         {
-            v39 = (float)v22;
-            v36 = -a1->nearPlane;
-            v33 = (float)((v20 + 1.0) * 0.5);
-            v30 = (float)((1.0 - v20) * 0.5);
-            D3D_CalcAndSetProjection(0.0, 1.0, v30, v33, v36, v39);
-            goto LABEL_34;
+            isoRatio = D3D_gi_Widescreen ? D3D_RealYoverX()
+                                         : gpst_DX_stDD->ddcs2.manualScreenRatio;
+            if (cam->isoFactor == 0.0)
+            {
+                D3D_CalcAndSetProjection(0.0, 1.0,
+                                         (float)((1.0 - isoRatio) * 0.5),
+                                         (float)((isoRatio + 1.0) * 0.5),
+                                         -cam->nearPlane, (float)negFar);
+            }
+            else
+            {
+                isoLeft = isoSize * -1.0;
+                D3D_CalcAndSetProjection((float)isoLeft,
+                                         cam->isoZoom * cam->isoFactor,
+                                         (float)(isoSize * isoRatio),
+                                         (float)(-isoRatio * isoSize),
+                                         cam->farPlane, (float)negFar);
+            }
         }
-        v38 = (float)v22;
-        v35 = a1->farPlane;
-        v32 = (float)(-v20 * v42);
-        v29 = (float)(v42 * v20);
-        v28 = a1->isoZoom * a1->isoFactor;
-        v19 = v42 * -1.0;
-    LABEL_33:
-        v26 = (float)v19;
-        D3D_CalcAndSetProjection(v26, v28, v29, v32, v35, v38);
-        goto LABEL_34;
+        else
+        {
+            invRatio = 1.0 / (D3D_gi_Widescreen ? D3D_RealYoverX()
+                                                : gpst_DX_stDD->ddcs2.manualScreenRatio);
+            if (cam->isoFactor != 0.0)
+            {
+                isoLeft = -invRatio * isoSize;
+                D3D_CalcAndSetProjection((float)isoLeft,
+                                         (float)(isoSize * invRatio),
+                                         (float)(isoSize * -1.0),
+                                         cam->isoZoom * cam->isoFactor,
+                                         cam->farPlane, (float)negFar);
+            }
+            else
+            {
+                D3D_CalcAndSetProjection((float)((1.0 - invRatio) * 0.5),
+                                         (float)((invRatio + 1.0) * 0.5),
+                                         0.0, 1.0,
+                                         -cam->nearPlane, (float)negFar);
+            }
+        }
     }
-    v14 = 1.0 / (D3D_gi_Widescreen ? D3D_RealYoverX()
-                                   : gpst_DX_stDD->ddcs2.manualScreenRatio);
-    v16 = -a1->farPlane;
-    if (a1->isoFactor != 0.0)     
-    {
-        v38 = (float)v16;
-        v35 = a1->farPlane;
-        v32 = a1->isoZoom * a1->isoFactor;
-        v29 = (float)(v42 * -1.0);
-        v28 = (float)(v42 * v14);
-        v19 = -v14 * v42;
-        goto LABEL_33;
-    }
-    v37 = (float)v16;
-    v34 = -a1->nearPlane;
-    v27 = (float)((v14 + 1.0) * 0.5);
-    v25 = (float)((1.0 - v14) * 0.5);
-    D3D_CalcAndSetProjection(v25, v27, 0.0, 1.0, v34, v37);
-LABEL_34:
-    D3D_SetViewPort(v8, v9, v49, v10);
-    D3D_AspectTrace("proj", v8, v9, v49, v10);
+    D3D_SetViewPort(viewX, viewY, viewW, viewH);
+    D3D_AspectTrace("proj", viewX, viewY, viewW, viewH);
 }
 
 
-void D3D_GetSnapShot(tD3dRequestSnapshot* a2)
+void D3D_GetSnapShot(tD3dRequestSnapshot* req)
 {
-    tD3dRequestSnapshot* v1;
-    int v2;
-    int v3;
-    int v4;
-    char* v5;
-    char* v6;
-    int v7;
-    int v8;
-    int v9;
-    char* i;
-    char v11;
-    char* v12;
-    char* v13;
-    IDirect3DSurface9* v14;
-    IDirect3DSurface9* a2a;
-    D3DLOCKED_RECT v15;
-    RECT v16;
-    D3DSURFACE_DESC v17;
+    unsigned char* rowStart;
+    unsigned char* src;
+    unsigned char* dest;
+    int row;
+    int col;
+    IDirect3DSurface9* target;
+    IDirect3DSurface9* copy;
+    D3DLOCKED_RECT locked;
+    RECT area;
+    D3DSURFACE_DESC desc;
 
-    v1 = a2;
-    if ((a2->flags & 0xff) == 0 && ((a2->flags >> 8) & 0xff) != 2)
+    if ((req->flags & 0xff) == 0 && ((req->flags >> 8) & 0xff) != 2)
     {
-        v2 = a2->height;
-        v3 = a2->cutSizeFromTopAndBottom + a2->width;
-        v16.left = a2->cutSizeFromTopAndBottom;
-        v4 = a2->cutSizeFromSides + v2;
-        v16.top = a2->cutSizeFromSides;
-        v16.right = v3;
-        v16.bottom = v4;
+        area.left = req->cutSizeFromTopAndBottom;
+        area.top = req->cutSizeFromSides;
+        area.right = req->cutSizeFromTopAndBottom + req->width;
+        area.bottom = req->cutSizeFromSides + req->height;
         if (D3DRenderParams.d3dNeedToCallEndScene)
         {
             D3DRenderParams.d3dDev->lpVtbl->EndScene(D3DRenderParams.d3dDev);
             D3DRenderParams.d3dNeedToCallEndScene = 0;
         }
-        D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &v14);
-        v14->lpVtbl->GetDesc(v14, &v17);
-        
-        D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(D3DRenderParams.d3dDev, v17.Width, v17.Height, v17.Format, D3DPOOL_SYSTEMMEM, &a2a, 0);
+        D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &target);
+        target->lpVtbl->GetDesc(target, &desc);
 
-        D3DRenderParams.d3dDev->lpVtbl->GetRenderTargetData(D3DRenderParams.d3dDev, v14, a2a);
-        a2a->lpVtbl->LockRect(a2a, &v15, &v16, 0);
-        v5 = (char*)v15.pBits;
-        v6 = v1->srcData;
-        if (v1->height)
+        D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(D3DRenderParams.d3dDev, desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &copy, 0);
+
+        D3DRenderParams.d3dDev->lpVtbl->GetRenderTargetData(D3DRenderParams.d3dDev, target, copy);
+        copy->lpVtbl->LockRect(copy, &locked, &area, 0);
+        rowStart = (unsigned char*)locked.pBits;
+        dest = (unsigned char*)req->srcData;
+        for (row = 0; row < req->height; row++)
         {
-            v7 = v1->width;
-            v8 = v1->height;
-            do
+            src = rowStart;
+            for (col = 0; col < req->width; col++)
             {
-                v9 = 0;
-                for (i = v5; v9 < v7; ++v9)
-                {
-                    *v6 = *i;
-                    v11 = i[1];
-                    v12 = v6 + 1;
-                    v13 = i + 1;
-                    *v12++ = v11;
-                    *v12 = v13[1];
-                    v7 = v1->width;
-                    v6 = v12 + 1;
-                    i = v13 + 3;
-                }
-                v5 += v15.Pitch;
-                --v8;
-            } while (v8);
+                dest[0] = src[0];
+                dest[1] = src[1];
+                dest[2] = src[2];
+                dest += 3;
+                src += 4;
+            }
+            rowStart += locked.Pitch;
         }
-        a2a->lpVtbl->UnlockRect(a2a);
-        a2a->lpVtbl->Release(a2a);
-        v14->lpVtbl->Release(v14);
+        copy->lpVtbl->UnlockRect(copy);
+        copy->lpVtbl->Release(copy);
+        target->lpVtbl->Release(target);
         if (!D3DRenderParams.d3dNeedToCallEndScene)
         {
             D3DRenderParams.d3dDev->lpVtbl->BeginScene(D3DRenderParams.d3dDev);
@@ -942,106 +895,75 @@ struct sGdi_D3DRenderParams* D3D_pst_CreateDevice()
     return &D3DRenderParams;
 }
 
-void D3D_DestroyDevice(struct sGdi_D3DRenderParams* a1)
+void D3D_DestroyDevice(struct sGdi_D3DRenderParams* renderParams)
 {
-    if (a1 == &D3DRenderParams)
+    if (renderParams == &D3DRenderParams)
     {
         D3DRenderParams.d3d_if->lpVtbl->Release(D3DRenderParams.d3d_if);
         memset(&D3DRenderParams, 0, sizeof(D3DRenderParams));
     }
 }
 
-int D3D_SetViewMatrix(Mtx4x4* a1)
+int D3D_SetViewMatrix(Mtx4x4* mtx)
 {
-    Mtx4x4 a1a;
+    Mtx4x4 oglMtx;
 
-    MATH_MakeOGLMatrix(&a1a, a1);
-    memcpy(&d3dTransformMatrix, &a1a, sizeof(d3dTransformMatrix));
-    return D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, (D3DMATRIX*)&a1a);
+    MATH_MakeOGLMatrix(&oglMtx, mtx);
+    memcpy(&d3dTransformMatrix, &oglMtx, sizeof(d3dTransformMatrix));
+    return D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, (D3DMATRIX*)&oglMtx);
 }
 
-void D3D_TextureStore(tTexUploadRequest* a1)
+void D3D_TextureStore(tTexUploadRequest* req)
 {
-    tTexUploadRequest* v1;
-    int v2;
-    tEngTexListElemStruct* v3;
-    IDirect3DTexture9* v4;
-    int v5;
+    int idx;
+    tEngTexListElemStruct* texElem;
+    IDirect3DTexture9* texture;
     IDirect3DSurface9* surface;
-    RECT v7;
-    IDirect3DTexture9* a1a;
+    RECT area;
 
-
-    v1 = a1;
-    v2 = a1->idx;
-    v3 = &TEX_gst_GlobalList.texElems[v2];
-    v4 = D3DRenderParams.d3dTextures[v2];
-    if (v4)
-    {
-        a1a = v4;
-    }
-    else
-    {
-        D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, v3->normalData.width, v3->normalData.height, 1, 0, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &a1a, 0);
-        v4 = a1a;
-    }
-    v5 = (int)v1->dataPtr;
-    v4->lpVtbl->GetSurfaceLevel(v4, 0, &surface);
-    v7.top = 0;
-    v7.left = 0;
-    v7.right = v3->normalData.width;
-    v7.bottom = v3->normalData.height;
-    D3DXLoadSurfaceFromMemory(surface, NULL, NULL, (void*)v5, D3DFMT_A8R8G8B8, 4 * v3->normalData.width, NULL, &v7, D3DX_FILTER_POINT, 0);
-    D3DXFilterTexture((IDirect3DBaseTexture9*)a1a, NULL, 0, D3DX_FILTER_LINEAR);
+    idx = req->idx;
+    texElem = &TEX_gst_GlobalList.texElems[idx];
+    texture = D3DRenderParams.d3dTextures[idx];
+    if (!texture)
+        D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, texElem->normalData.width, texElem->normalData.height, 1, 0, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &texture, 0);
+    texture->lpVtbl->GetSurfaceLevel(texture, 0, &surface);
+    area.top = 0;
+    area.left = 0;
+    area.right = texElem->normalData.width;
+    area.bottom = texElem->normalData.height;
+    D3DXLoadSurfaceFromMemory(surface, NULL, NULL, req->dataPtr, D3DFMT_A8R8G8B8, 4 * texElem->normalData.width, NULL, &area, D3DX_FILTER_POINT, 0);
+    D3DXFilterTexture((IDirect3DBaseTexture9*)texture, NULL, 0, D3DX_FILTER_LINEAR);
     surface->lpVtbl->Release(surface);
-    D3DRenderParams.d3dTextures[v1->idx] = a1a;
+    D3DRenderParams.d3dTextures[req->idx] = texture;
 }
 
-void D3D_ReleaseTextures(struct sGdi_DisplayData* a1)
+void D3D_ReleaseTextures(struct sGdi_DisplayData* dd)
 {
-    IDirect3DTexture9** v0;
-    IDirect3DTexture9** v1;
-    IDirect3DTexture9** v2;
-    IDirect3DTexture9** v3;
-    IDirect3DTexture9** v4;
+    int i;
 
-    v0 = D3DRenderParams.d3dTextures;
     if (D3DRenderParams.d3dTextures)
     {
-        v1 = D3DRenderParams.d3dTextures;
-        v2 = &D3DRenderParams.d3dTextures[D3DRenderParams.d3dTextureNum];
-        if (D3DRenderParams.d3dTextures < v2)
+        for (i = 0; i < D3DRenderParams.d3dTextureNum; i++)
         {
-            do
+            if (D3DRenderParams.d3dTextures[i])
             {
-                if (*v1)
-                {
-                    (*v1)->lpVtbl->Release(*v1);
-                    *v1 = NULL;
-                }
-                ++v1;
-            } while (v1 < v2);
-            v0 = D3DRenderParams.d3dTextures;
+                D3DRenderParams.d3dTextures[i]->lpVtbl->Release(D3DRenderParams.d3dTextures[i]);
+                D3DRenderParams.d3dTextures[i] = NULL;
+            }
         }
     }
-    v3 = D3DRenderParams.d3dSourceTextures;
-    v4 = &D3DRenderParams.d3dSourceTextures[D3DRenderParams.d3dTextureNum];
-    if (D3DRenderParams.d3dSourceTextures < v4)
+    // preserved: the source array is walked with no null test, unlike the one above
+    for (i = 0; i < D3DRenderParams.d3dTextureNum; i++)
     {
-        do
+        if (D3DRenderParams.d3dSourceTextures[i])
         {
-            if (*v3)
-            {
-                (*v3)->lpVtbl->Release(*v3);
-                *v3 = 0;
-            }
-            ++v3;
-        } while (v3 < v4);
-        v0 = D3DRenderParams.d3dTextures;
+            D3DRenderParams.d3dSourceTextures[i]->lpVtbl->Release(D3DRenderParams.d3dSourceTextures[i]);
+            D3DRenderParams.d3dSourceTextures[i] = NULL;
+        }
     }
-    if (v0)
+    if (D3DRenderParams.d3dTextures)
     {
-        MEM_Free(v0);
+        MEM_Free(D3DRenderParams.d3dTextures);
         D3DRenderParams.d3dTextures = NULL;
     }
     if (D3DRenderParams.d3dSourceTextures)
@@ -1054,20 +976,16 @@ void D3D_ReleaseTextures(struct sGdi_DisplayData* a1)
 
 void D3D_ReleaseShadowTextures()
 {
-    IDirect3DTexture9** v0;
-    IDirect3DTexture9** v1;
+    int i;
 
-    v0 = &D3DRenderParams.d3dShadowTextures[8];
-    do
+    for (i = 7; i >= 0; i--)
     {
-        v1 = v0 - 1;
-        --v0;
-        if (*v1)
+        if (D3DRenderParams.d3dShadowTextures[i])
         {
-            (*v1)->lpVtbl->Release(*v1);
-            (*v1) = NULL;
+            D3DRenderParams.d3dShadowTextures[i]->lpVtbl->Release(D3DRenderParams.d3dShadowTextures[i]);
+            D3DRenderParams.d3dShadowTextures[i] = NULL;
         }
-    } while (v0 != D3DRenderParams.d3dShadowTextures);
+    }
 }
 
 void D3D_RelaseBlurRenderTargetsAndOthers()
@@ -1101,18 +1019,15 @@ void D3D_RelaseBlurRenderTargetsAndOthers()
 
 void D3D_ReleaseBackBufferAndDSSurace1()
 {
-    IDirect3DSurface9** v0;
+    int i;
 
     if (D3DRenderParams.pBackBuffers[0])
     {
-        v0 = D3DRenderParams.pBackBuffers;
-        do
+        for (i = 0; i < 2; i++)
         {
-            (*v0)->lpVtbl->Release(*v0);
-            *v0 = NULL;
-            v0++;
-        } while (v0 <= &D3DRenderParams.pBackBuffers[1]);
-
+            D3DRenderParams.pBackBuffers[i]->lpVtbl->Release(D3DRenderParams.pBackBuffers[i]);
+            D3DRenderParams.pBackBuffers[i] = NULL;
+        }
         D3DRenderParams.pDepthStencilSurface->lpVtbl->Release(D3DRenderParams.pDepthStencilSurface);
         D3DRenderParams.pDepthStencilSurface = NULL;
     }
@@ -1235,12 +1150,12 @@ int D3D_l_Close()
     return 0;
 }
 
-void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int a2)
+void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int result)
 {
     PROCESS_INFORMATION ProcessInformation;
     STARTUPINFOA StartupInfo;
 
-    if (a2 < 0)
+    if (result < 0)
     {
         memset(&StartupInfo, 0, sizeof(StartupInfo));
         ProcessInformation.hProcess = 0;
@@ -1256,11 +1171,11 @@ void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int a2)
     }
 }
 
-void D3D_SetVertexShader(IDirect3DVertexShader9* a1)
+void D3D_SetVertexShader(IDirect3DVertexShader9* shader)
 {
-    if (renderStateConfig.vertexShader != a1)
+    if (renderStateConfig.vertexShader != shader)
     {
-        renderStateConfig.vertexShader = a1;
+        renderStateConfig.vertexShader = shader;
         renderStateConfig.fvf = 0;
         D3DRenderParams.d3dDev->lpVtbl->SetVertexShader(D3DRenderParams.d3dDev, NULL);
         D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, renderStateConfig.fvf);
@@ -1271,31 +1186,11 @@ void D3D_SetVertexShader(IDirect3DVertexShader9* a1)
 void D3D_SetInitialRenderStates()
 {
     memset(&renderStateConfig, 0, sizeof(renderStateConfig));
-    if (renderStateConfig.d3d_zEnable != D3DZB_TRUE)
-    {
-        renderStateConfig.d3d_zEnable = D3DZB_TRUE;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZENABLE, D3DZB_TRUE);
-    }
-    if (renderStateConfig.d3d_zFunc != D3DCMP_LESSEQUAL)
-    {
-        renderStateConfig.d3d_zFunc = D3DCMP_LESSEQUAL;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
-    }
-    if (renderStateConfig.d3d_zWriteEnable != TRUE)
-    {
-        renderStateConfig.d3d_zWriteEnable = TRUE;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZWRITEENABLE, TRUE);
-    }
-    if (renderStateConfig.d3dFogEnable)
-    {
-        renderStateConfig.d3dFogEnable = FALSE;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, FALSE);
-    }
-    if (renderStateConfig.d3dFogColor)
-    {
-        renderStateConfig.d3dFogColor = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGCOLOR, 0);
-    }
+    D3D_RenderStateSet(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, D3DZB_TRUE);
+    D3D_RenderStateSet(&renderStateConfig.d3d_zFunc, D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+    D3D_RenderStateSet(&renderStateConfig.d3d_zWriteEnable, D3DRS_ZWRITEENABLE, TRUE);
+    D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, FALSE);
+    D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, 0);
     if (renderStateConfig.d3dFogTableMode)
     {
         renderStateConfig.d3dFogTableMode = D3DFOG_NONE;
@@ -1306,91 +1201,23 @@ void D3D_SetInitialRenderStates()
         renderStateConfig.d3dFogVertexMode = D3DFOG_NONE;
         D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGVERTEXMODE, D3DFOG_NONE);
     }
-    if (renderStateConfig.d3dFogDensity != 1.0f)
-    {
-        renderStateConfig.d3dFogDensity = 1.0f;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGDENSITY, *(DWORD*)(&(renderStateConfig.d3dFogDensity)));
-    }
-    if (renderStateConfig.d3dFogStart)
-    {
-        renderStateConfig.d3dFogStart = 0.0f;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGSTART, *(DWORD*)(&(renderStateConfig.d3dFogStart)));
-    }
-    if (renderStateConfig.d3dFogEnd != 1.0f)
-    {
-        renderStateConfig.d3dFogEnd = 1.0f;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGEND, *(DWORD*)(&(renderStateConfig.d3dFogEnd)));
-    }
-    if (renderStateConfig.d3dFillMode != D3DFILL_SOLID)
-    {
-        renderStateConfig.d3dFillMode = D3DFILL_SOLID;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FILLMODE, D3DFILL_SOLID);
-    }
-    if (renderStateConfig.d3dCullMode != D3DCULL_CCW)
-    {
-        renderStateConfig.d3dCullMode = D3DCULL_CCW;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_CULLMODE, D3DCULL_CCW);
-    }
-    if (renderStateConfig.d3dColorWriteEnable != 0xf)
-    {
-        renderStateConfig.d3dColorWriteEnable = 0xf;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_COLORWRITEENABLE, 0xf);
-    }
-    if (renderStateConfig.d3dAlphaTest)
-    {
-        renderStateConfig.d3dAlphaTest = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHATESTENABLE, 0);
-    }
-    if (renderStateConfig.d3dAlphaFunc != D3DCMP_ALWAYS)
-    {
-        renderStateConfig.d3dAlphaFunc = D3DCMP_ALWAYS;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
-    }
-    if (renderStateConfig.d3dAlphaRef)
-    {
-        renderStateConfig.d3dAlphaRef = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAREF, 0);
-    }
-    if (renderStateConfig.d3dAlphaBlendEnable)
-    {
-        renderStateConfig.d3dAlphaBlendEnable = FALSE;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, FALSE);
-    }
-    if (renderStateConfig.d3d_BlendOp != D3DBLENDOP_ADD)
-    {
-        renderStateConfig.d3d_BlendOp = D3DBLENDOP_ADD;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_BLENDOP, D3DBLENDOP_ADD);
-    }
-    if (renderStateConfig.d3dSrcBlend != D3DBLEND_ONE)
-    {
-        renderStateConfig.d3dSrcBlend = D3DBLEND_ONE;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_ONE);
-    }
-    if (renderStateConfig.d3dDestBlend != D3DBLEND_ZERO)
-    {
-        renderStateConfig.d3dDestBlend = D3DBLEND_ZERO;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, D3DBLEND_ZERO);
-    }
-    if (renderStateConfig.d3d_Lighting != TRUE)
-    {
-        renderStateConfig.d3d_Lighting = TRUE;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_LIGHTING, TRUE);
-    }
-    if (renderStateConfig.d3d_normalizeNormals)
-    {
-        renderStateConfig.d3d_normalizeNormals = FALSE;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_NORMALIZENORMALS, FALSE);
-    }
-    if (renderStateConfig.d3dTextureFactor != 0xffffffff)
-    {
-        renderStateConfig.d3dTextureFactor = 0xffffffff;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_TEXTUREFACTOR, 0xffffffff);
-    }
-    if (renderStateConfig.d3dClipPlaneEnable)
-    {
-        renderStateConfig.d3dClipPlaneEnable = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_CLIPPLANEENABLE, 0);
-    }
+    D3D_RenderStateSetF(&renderStateConfig.d3dFogDensity, D3DRS_FOGDENSITY, 1.0f);
+    D3D_RenderStateSetF(&renderStateConfig.d3dFogStart, D3DRS_FOGSTART, 0.0f);
+    D3D_RenderStateSetF(&renderStateConfig.d3dFogEnd, D3DRS_FOGEND, 1.0f);
+    D3D_RenderStateSet(&renderStateConfig.d3dFillMode, D3DRS_FILLMODE, D3DFILL_SOLID);
+    D3D_RenderStateSet(&renderStateConfig.d3dCullMode, D3DRS_CULLMODE, D3DCULL_CCW);
+    D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, 0xf);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaTest, D3DRS_ALPHATESTENABLE, 0);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaFunc, D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaRef, D3DRS_ALPHAREF, 0);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
+    D3D_RenderStateSet(&renderStateConfig.d3d_BlendOp, D3DRS_BLENDOP, D3DBLENDOP_ADD);
+    D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
+    D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ZERO);
+    D3D_RenderStateSet(&renderStateConfig.d3d_Lighting, D3DRS_LIGHTING, TRUE);
+    D3D_RenderStateSet(&renderStateConfig.d3d_normalizeNormals, D3DRS_NORMALIZENORMALS, FALSE);
+    D3D_RenderStateSet(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, 0xffffffff);
+    D3D_RenderStateSet(&renderStateConfig.d3dClipPlaneEnable, D3DRS_CLIPPLANEENABLE, 0);
     if (renderStateConfig.fvf)
     {
         renderStateConfig.fvf = 0;
@@ -1405,243 +1232,88 @@ void D3D_SetInitialRenderStates()
 
 void D3D_SetInitialSamplerStates()
 {
-    unsigned int v0;
-    int v1; 
-    IDirect3DDevice9* v2;
-    IDirect3DDevice9* v3;
-    IDirect3DDevice9* v4;
-    IDirect3DDevice9* v5;
-    IDirect3DDevice9* v6;
-    IDirect3DDevice9* v7;
+    unsigned int stage;
 
-    v0 = 0;
-    if (D3DRenderParams.d3dcaps.MaxTextureBlendStages)
+    for (stage = 0; stage < D3DRenderParams.d3dcaps.MaxTextureBlendStages; stage++)
     {
-        v1 = 0;
-        do
-        {
-            if (samplerConfig[v1].d3d_addressu != D3DTADDRESS_WRAP)
+            D3D_SamplerStateSet(stage, &samplerConfig[stage].d3d_addressu, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+            D3D_SamplerStateSet(stage, &samplerConfig[stage].d3d_addressv, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
+            if (samplerConfig[stage].d3d_minfilter)
             {
-                v2 = D3DRenderParams.d3dDev;
-                samplerConfig[v1].d3d_addressu = D3DTADDRESS_WRAP;
-                v2->lpVtbl->SetSamplerState(v2, v0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+                samplerConfig[stage].d3d_minfilter = D3DTEXF_NONE;
+                D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, stage, D3DSAMP_MINFILTER, D3DTEXF_NONE);
             }
-            if (samplerConfig[v1].d3d_addressv != D3DTADDRESS_WRAP)
+            if (samplerConfig[stage].d3d_magfilter)
             {
-                v3 = D3DRenderParams.d3dDev;
-                samplerConfig[v1].d3d_addressv = D3DTADDRESS_WRAP;
-                v3->lpVtbl->SetSamplerState(v3, v0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
+                samplerConfig[stage].d3d_magfilter = D3DTEXF_NONE;
+                D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, stage, D3DSAMP_MAGFILTER, D3DTEXF_NONE);
             }
-            if (samplerConfig[v1].d3d_minfilter)
+            if (samplerConfig[stage].d3d_mipfilter)
             {
-                v4 = D3DRenderParams.d3dDev;
-                samplerConfig[v1].d3d_minfilter = D3DTEXF_NONE;
-                v4->lpVtbl->SetSamplerState(v4, v0, D3DSAMP_MINFILTER, D3DTEXF_NONE);
+                samplerConfig[stage].d3d_mipfilter = D3DTEXF_NONE;
+                D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, stage, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
             }
-            if (samplerConfig[v1].d3d_magfilter)
-            {
-                v5 = D3DRenderParams.d3dDev;
-                samplerConfig[v1].d3d_magfilter = D3DTEXF_NONE;
-                v5->lpVtbl->SetSamplerState(v5, v0, D3DSAMP_MAGFILTER, D3DTEXF_NONE);
-            }
-            if (samplerConfig[v1].d3d_mipfilter)
-            {
-                v6 = D3DRenderParams.d3dDev;
-                samplerConfig[v1].d3d_mipfilter = D3DTEXF_NONE;
-                v6->lpVtbl->SetSamplerState(v6, v0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
-            }
-            if (samplerConfig[v1].d3d_mipmaplodbias != 0.0f)
-            {
-                v7 = D3DRenderParams.d3dDev;
-                samplerConfig[v1].d3d_mipmaplodbias = 0.0f;
-                v7->lpVtbl->SetSamplerState(v7, v0, D3DSAMP_MIPMAPLODBIAS, *(DWORD*)&(samplerConfig[v1].d3d_mipmaplodbias));
-            }
-            ++v0;
-            ++v1;
-        } while (v0 < D3DRenderParams.d3dcaps.MaxTextureBlendStages);
+        D3D_SamplerStateSetF(stage, &samplerConfig[stage].d3d_mipmaplodbias, D3DSAMP_MIPMAPLODBIAS, 0.0f);
     }
 }
 
 void D3D_SetInitialTextureStageStates()
 {
-    unsigned int v0;
-    int v1;
-    BOOL v2;
-    IDirect3DDevice9* v3; 
-    IDirect3DDevice9* v4; 
-    IDirect3DDevice9* v5; 
-    IDirect3DDevice9* v6; 
-    IDirect3DDevice9* v7; 
-    IDirect3DDevice9* v8; 
-    IDirect3DDevice9* v9; 
-    IDirect3DDevice9* v10;
-    IDirect3DDevice9* v11;
-    IDirect3DDevice9* v12;
-    IDirect3DDevice9* v13;
-    IDirect3DDevice9* v14;
-    IDirect3DDevice9* v15;
-    IDirect3DDevice9* v16;
-    IDirect3DDevice9* v17;
-    IDirect3DDevice9* v18;
-    IDirect3DDevice9* v19;
-    IDirect3DDevice9* v20;
+    unsigned int stage;
 
-    v0 = 0;
-    if (D3DRenderParams.d3dcaps.MaxTextureBlendStages)
+    for (stage = 0; stage < D3DRenderParams.d3dcaps.MaxTextureBlendStages; stage++)
     {
-        v1 = 0;
-        do
-        {
-            v2 = textureStageTypeConfig[v1].d3d_colorOp == D3DTOP_DISABLE;
-            textureStageTypeConfig[v1].d3dTextureID = -1;
-            if (!v2)
-            {
-                v3 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_colorOp = D3DTOP_DISABLE;
-                v3->lpVtbl->SetTextureStageState(v3, v0, D3DTSS_COLOROP, D3DTOP_DISABLE);
-            }
-            if (textureStageTypeConfig[v1].d3d_colorarg1 != D3DTA_CURRENT)
-            {
-                v4 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_colorarg1 = D3DTA_CURRENT;
-                v4->lpVtbl->SetTextureStageState(v4, v0, D3DTSS_COLORARG1, D3DTA_CURRENT);
-            }
-            if (textureStageTypeConfig[v1].d3d_colorarg2 != D3DTA_CURRENT)
-            {
-                v5 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_colorarg2 = D3DTA_CURRENT;
-                v5->lpVtbl->SetTextureStageState(v5, v0, D3DTSS_COLORARG2, D3DTA_CURRENT);
-            }
-            if (textureStageTypeConfig[v1].d3d_alphaOp != D3DTOP_DISABLE)
-            {
-                v6 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_alphaOp = D3DTOP_DISABLE;
-                v6->lpVtbl->SetTextureStageState(v6, v0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-            }
-            if (textureStageTypeConfig[v1].d3d_alphaArg1 != D3DTA_CURRENT)
-            {
-                v7 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_alphaArg1 = D3DTA_CURRENT;
-                v7->lpVtbl->SetTextureStageState(v7, v0, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-            }
-            if (textureStageTypeConfig[v1].d3d_alphaArg2 != D3DTA_CURRENT)
-            {
-                v8 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_alphaArg2 = D3DTA_CURRENT;
-                v8->lpVtbl->SetTextureStageState(v8, v0, D3DTSS_ALPHAARG2, D3DTA_CURRENT);
-            }
-            if (textureStageTypeConfig[v1].d3d_bumpenvmat00 != 0.0f)
-            {
-                v9 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_bumpenvmat00 = 0.0f;
-                v9->lpVtbl->SetTextureStageState(v9, v0, D3DTSS_BUMPENVMAT00, *(DWORD*)&(textureStageTypeConfig[v1].d3d_bumpenvmat00));
-            }
-            if (textureStageTypeConfig[v1].d3d_bumpenvmat01 != 0.0f)
-            {
-                v10 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_bumpenvmat01 = 0.0f;
-                v10->lpVtbl->SetTextureStageState(v10, v0, D3DTSS_BUMPENVMAT01, *(DWORD*)&(textureStageTypeConfig[v1].d3d_bumpenvmat01));
-            }
-            if (textureStageTypeConfig[v1].d3d_bumpenvmat10 != 0.0f)
-            {
-                v11 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_bumpenvmat10 = 0.0f;
-                v11->lpVtbl->SetTextureStageState(v11, v0, D3DTSS_BUMPENVMAT10, *(DWORD*)&(textureStageTypeConfig[v1].d3d_bumpenvmat10));
-            }
-            if (textureStageTypeConfig[v1].d3d_bumpenvmat11 != 0.0f)
-            {
-                v12 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_bumpenvmat11 = 0.0f;
-                v12->lpVtbl->SetTextureStageState(v12, v0, D3DTSS_BUMPENVMAT11, *(DWORD*)&(textureStageTypeConfig[v1].d3d_bumpenvmat11));
-            }
-            if (textureStageTypeConfig[v1].d3dTexCoordIndex != v0)
-            {
-                v13 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3dTexCoordIndex = v0;
-                v13->lpVtbl->SetTextureStageState(v13, v0, D3DTSS_TEXCOORDINDEX, v0);
-            }
-            if (textureStageTypeConfig[v1].d3d_bumpEnvLScale != 0.0)
-            {
-                v14 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_bumpEnvLScale = 0.0f;
-                v14->lpVtbl->SetTextureStageState(v14, v0, D3DTSS_BUMPENVLSCALE, *(DWORD*)&(textureStageTypeConfig[v1].d3d_bumpEnvLScale));
-            }
-            if (textureStageTypeConfig[v1].d3d_bumpEnvLOffset != 0.0)
-            {
-                v15 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_bumpEnvLOffset = 0.0f;
-                v15->lpVtbl->SetTextureStageState(v15, v0, D3DTSS_BUMPENVLOFFSET, *(DWORD*)&(textureStageTypeConfig[v1].d3d_bumpEnvLOffset));
-            }
-            if (textureStageTypeConfig[v1].d3dTextureTransformFlags)
-            {
-                v16 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3dTextureTransformFlags = 0;
-                v16->lpVtbl->SetTextureStageState(v16, v0, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
-            }
-            if (textureStageTypeConfig[v1].d3d_colorArg0 != D3DTA_CURRENT)
-            {
-                v17 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_colorArg0 = D3DTA_CURRENT;
-                v17->lpVtbl->SetTextureStageState(v17, v0, D3DTSS_COLORARG0, D3DTA_CURRENT);
-            }
-            if (textureStageTypeConfig[v1].d3d_alphaArg0 != D3DTA_CURRENT)
-            {
-                v18 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_alphaArg0 = D3DTA_CURRENT;
-                v18->lpVtbl->SetTextureStageState(v18, v0, D3DTSS_ALPHAARG0, D3DTA_CURRENT);
-            }
-            if (textureStageTypeConfig[v1].d3d_resultArg0 != D3DTA_CURRENT)
-            {
-                v19 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_resultArg0 = D3DTA_CURRENT;
-                v19->lpVtbl->SetTextureStageState(v19, v0, D3DTSS_RESULTARG, D3DTA_CURRENT);
-            }
-            if (textureStageTypeConfig[v1].d3d_constant)
-            {
-                v20 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[v1].d3d_constant = 0;
-                v20->lpVtbl->SetTextureStageState(v20, v0, D3DTSS_CONSTANT, 0);
-            }
-            ++v0;
-            ++v1;
-        } while (v0 < D3DRenderParams.d3dcaps.MaxTextureBlendStages);
+        textureStageTypeConfig[stage].d3dTextureID = -1;
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_CURRENT);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_CURRENT);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaArg2, D3DTSS_ALPHAARG2, D3DTA_CURRENT);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpenvmat00, D3DTSS_BUMPENVMAT00, 0.0f);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpenvmat01, D3DTSS_BUMPENVMAT01, 0.0f);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpenvmat10, D3DTSS_BUMPENVMAT10, 0.0f);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpenvmat11, D3DTSS_BUMPENVMAT11, 0.0f);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, stage);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpEnvLScale, D3DTSS_BUMPENVLSCALE, 0.0f);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpEnvLOffset, D3DTSS_BUMPENVLOFFSET, 0.0f);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorArg0, D3DTSS_COLORARG0, D3DTA_CURRENT);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaArg0, D3DTSS_ALPHAARG0, D3DTA_CURRENT);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_resultArg0, D3DTSS_RESULTARG, D3DTA_CURRENT);
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_constant, D3DTSS_CONSTANT, 0);
     }
 }
 
 void D3D_RastersCreateFont()
 {
-    D3DXFONT_DESCA v0;
+    D3DXFONT_DESCA desc;
 
-    v0.Width = 0;
-    v0.Italic = 0;
-    v0.CharSet = 0;
-    v0.OutputPrecision = 0;
-    v0.Quality = 0;
-    v0.PitchAndFamily = 0;
-    memset(v0.FaceName, 0, sizeof(v0.FaceName));
-    strcpy(v0.FaceName, "Arial");
-    v0.Height = 10;
-    v0.Weight = 400;
-    v0.MipLevels = 1;
-    D3DXCreateFontIndirectA(D3DRenderParams.d3dDev, &v0, &d3dxfontIF);
+    desc.Width = 0;
+    desc.Italic = 0;
+    desc.CharSet = 0;
+    desc.OutputPrecision = 0;
+    desc.Quality = 0;
+    desc.PitchAndFamily = 0;
+    memset(desc.FaceName, 0, sizeof(desc.FaceName));
+    strcpy(desc.FaceName, "Arial");
+    desc.Height = 10;
+    desc.Weight = 400;
+    desc.MipLevels = 1;
+    D3DXCreateFontIndirectA(D3DRenderParams.d3dDev, &desc, &d3dxfontIF);
 }
 
-void D3D_RastersDrawText(char* a1, int a2, int a3, D3DCOLOR a4)
+void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color)
 {
-    ID3DXFont* v4;
-    RECT v5;
+    RECT area;
 
-    v5.left = a2;
-    v5.right = 10000;
-    v5.bottom = 10000;
-    v4 = d3dxfontIF;
-    v5.top = a3;
+    area.left = x;
+    area.right = 10000;
+    area.bottom = 10000;
+    area.top = y;
     if (!d3dxfontIF)
-    {
         D3D_RastersCreateFont();
-        v4 = d3dxfontIF;
-    }
-    v4->lpVtbl->DrawTextA(v4, NULL, a1, -1, &v5, 0, a4);
+    d3dxfontIF->lpVtbl->DrawTextA(d3dxfontIF, NULL, text, -1, &area, 0, color);
 }
 
 void D3D_RastersDrawUPStream()
@@ -1653,169 +1325,68 @@ void D3D_RastersDrawUPStream()
     rastersDrawPrimitiveUPDataEnd = rastersDrawPrimitiveUPDataStart;
 }
 
-void D3D_SaveSamplerState(tD3dSamplerConfigStruct* a1)
+void D3D_SaveSamplerState(tD3dSamplerConfigStruct* dest)
 {
-    memcpy(a1, samplerConfig, sizeof(samplerConfig));
+    memcpy(dest, samplerConfig, sizeof(samplerConfig));
 }
 
-void D3D_SaveTextureStage(tD3dTextureStageTypeStruct* a1)
+void D3D_SaveTextureStage(tD3dTextureStageTypeStruct* dest)
 {
-    memcpy(a1, textureStageTypeConfig, sizeof(textureStageTypeConfig));
+    memcpy(dest, textureStageTypeConfig, sizeof(textureStageTypeConfig));
 }
 
-void D3D_SaveRenderState(tD3dRenderStateConfigStruct *a1)
+void D3D_SaveRenderState(tD3dRenderStateConfigStruct *dest)
 {
-    memcpy(a1, &renderStateConfig, sizeof(tD3dRenderStateConfigStruct));
+    memcpy(dest, &renderStateConfig, sizeof(tD3dRenderStateConfigStruct));
 }
 
-void D3D_SaveEverythingToBackup(int a1)
+void D3D_SaveEverythingToBackup(int saveType)
 {
-    if (a1 != 3)
+    if (saveType != 3)
     {
         D3D_SaveSamplerState(samplerStateBackup);
         D3D_SaveTextureStage(texturestageBackup);
     }
-    if (a1 != 2)
+    if (saveType != 2)
         D3D_SaveRenderState(&renderstateBackup);
-    d3dparamsSaveType = a1;
+    d3dparamsSaveType = saveType;
 }
 
-void D3D_RenderStateRestore(tD3dRenderStateConfigStruct* a1)
+void D3D_RenderStateRestore(tD3dRenderStateConfigStruct* cfg)
 {
-    int v1;
-
-    if (renderStateConfig.d3d_zEnable != a1->d3d_zEnable)
+    D3D_RenderStateSet(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, cfg->d3d_zEnable);
+    D3D_RenderStateSet(&renderStateConfig.d3d_zFunc, D3DRS_ZFUNC, cfg->d3d_zFunc);
+    D3D_RenderStateSet(&renderStateConfig.d3d_zWriteEnable, D3DRS_ZWRITEENABLE, cfg->d3d_zWriteEnable);
+    D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, cfg->d3dFogEnable);
+    D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, cfg->d3dFogColor);
+    D3D_RenderStateSet(&renderStateConfig.d3dFogTableMode, D3DRS_FOGTABLEMODE, cfg->d3dFogTableMode);
+    D3D_RenderStateSet(&renderStateConfig.d3dFogVertexMode, D3DRS_FOGVERTEXMODE, cfg->d3dFogVertexMode);
+    D3D_RenderStateSetF(&renderStateConfig.d3dFogDensity, D3DRS_FOGDENSITY, cfg->d3dFogDensity);
+    D3D_RenderStateSetF(&renderStateConfig.d3dFogStart, D3DRS_FOGSTART, cfg->d3dFogStart);
+    D3D_RenderStateSetF(&renderStateConfig.d3dFogEnd, D3DRS_FOGEND, cfg->d3dFogEnd);
+    D3D_RenderStateSet(&renderStateConfig.d3dFillMode, D3DRS_FILLMODE, cfg->d3dFillMode);
+    D3D_RenderStateSet(&renderStateConfig.d3dCullMode, D3DRS_CULLMODE, cfg->d3dCullMode);
+    D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, cfg->d3dColorWriteEnable);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaTest, D3DRS_ALPHATESTENABLE, cfg->d3dAlphaTest);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaFunc, D3DRS_ALPHAFUNC, cfg->d3dAlphaFunc);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaRef, D3DRS_ALPHAREF, cfg->d3dAlphaRef);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, cfg->d3dAlphaBlendEnable);
+    D3D_RenderStateSet(&renderStateConfig.d3d_BlendOp, D3DRS_BLENDOP, cfg->d3d_BlendOp);
+    D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, cfg->d3dSrcBlend);
+    D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, cfg->d3dDestBlend);
+    D3D_RenderStateSet(&renderStateConfig.d3d_Lighting, D3DRS_LIGHTING, cfg->d3d_Lighting);
+    D3D_RenderStateSet(&renderStateConfig.d3d_normalizeNormals, D3DRS_NORMALIZENORMALS, cfg->d3d_normalizeNormals);
+    D3D_RenderStateSet(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, cfg->d3dTextureFactor);
+    D3D_RenderStateSet(&renderStateConfig.d3dClipPlaneEnable, D3DRS_CLIPPLANEENABLE, cfg->d3dClipPlaneEnable);
+    if (cfg->vertexShader)
     {
-        renderStateConfig.d3d_zEnable = a1->d3d_zEnable;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZENABLE, renderStateConfig.d3d_zEnable);
-    }
-    if (renderStateConfig.d3d_zFunc != a1->d3d_zFunc)
-    {
-        renderStateConfig.d3d_zFunc = a1->d3d_zFunc;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZFUNC, renderStateConfig.d3d_zFunc);
-    }
-    if (renderStateConfig.d3d_zWriteEnable != a1->d3d_zWriteEnable)
-    {
-        renderStateConfig.d3d_zWriteEnable = a1->d3d_zWriteEnable;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZWRITEENABLE, renderStateConfig.d3d_zWriteEnable);
-    }
-    if (renderStateConfig.d3dFogEnable != a1->d3dFogEnable)
-    {
-        renderStateConfig.d3dFogEnable = a1->d3dFogEnable;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, renderStateConfig.d3dFogEnable);
-    }
-    if (renderStateConfig.d3dFogColor != a1->d3dFogColor)
-    {
-        renderStateConfig.d3dFogColor = a1->d3dFogColor;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGCOLOR, renderStateConfig.d3dFogColor);
-    }
-    if (renderStateConfig.d3dFogTableMode != a1->d3dFogTableMode)
-    {
-        renderStateConfig.d3dFogTableMode = a1->d3dFogTableMode;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGTABLEMODE, renderStateConfig.d3dFogTableMode);
-    }
-    if (renderStateConfig.d3dFogVertexMode != a1->d3dFogVertexMode)
-    {
-        renderStateConfig.d3dFogVertexMode = a1->d3dFogVertexMode;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGVERTEXMODE, renderStateConfig.d3dFogVertexMode);
-    }
-    if (renderStateConfig.d3dFogDensity != a1->d3dFogDensity)
-    {
-        renderStateConfig.d3dFogDensity = a1->d3dFogDensity;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGDENSITY, *(DWORD*)&(renderStateConfig.d3dFogDensity));
-    }
-    if (renderStateConfig.d3dFogStart != a1->d3dFogStart)
-    {
-        renderStateConfig.d3dFogStart = a1->d3dFogStart;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGSTART, *(DWORD*)&(renderStateConfig.d3dFogStart));
-    }
-    if (renderStateConfig.d3dFogEnd != a1->d3dFogEnd)
-    {
-        renderStateConfig.d3dFogEnd = a1->d3dFogEnd;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGEND, *(DWORD*)&(renderStateConfig.d3dFogEnd));
-    }
-    if (renderStateConfig.d3dFillMode != a1->d3dFillMode)
-    {
-        renderStateConfig.d3dFillMode = a1->d3dFillMode;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FILLMODE, renderStateConfig.d3dFillMode);
-    }
-    if (renderStateConfig.d3dCullMode != a1->d3dCullMode)
-    {
-        renderStateConfig.d3dCullMode = a1->d3dCullMode;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_CULLMODE, renderStateConfig.d3dCullMode);
-    }
-    if (renderStateConfig.d3dColorWriteEnable != a1->d3dColorWriteEnable)
-    {
-        renderStateConfig.d3dColorWriteEnable = a1->d3dColorWriteEnable;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_COLORWRITEENABLE, renderStateConfig.d3dColorWriteEnable);
-    }
-    if (renderStateConfig.d3dAlphaTest != a1->d3dAlphaTest)
-    {
-        renderStateConfig.d3dAlphaTest = a1->d3dAlphaTest;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHATESTENABLE, renderStateConfig.d3dAlphaTest);
-    }
-    if (renderStateConfig.d3dAlphaFunc != a1->d3dAlphaFunc)
-    {
-        renderStateConfig.d3dAlphaFunc = a1->d3dAlphaFunc;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAFUNC, renderStateConfig.d3dAlphaFunc);
-    }
-    if (renderStateConfig.d3dAlphaRef != a1->d3dAlphaRef)
-    {
-        renderStateConfig.d3dAlphaRef = a1->d3dAlphaRef;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAREF, renderStateConfig.d3dAlphaRef);
-    }
-    if (renderStateConfig.d3dAlphaBlendEnable != a1->d3dAlphaBlendEnable)
-    {
-        renderStateConfig.d3dAlphaBlendEnable = a1->d3dAlphaBlendEnable;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, renderStateConfig.d3dAlphaBlendEnable);
-    }
-    if (renderStateConfig.d3d_BlendOp != a1->d3d_BlendOp)
-    {
-        renderStateConfig.d3d_BlendOp = a1->d3d_BlendOp;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_BLENDOP, renderStateConfig.d3d_BlendOp);
-    }
-    if (renderStateConfig.d3dSrcBlend != a1->d3dSrcBlend)
-    {
-        renderStateConfig.d3dSrcBlend = a1->d3dSrcBlend;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, renderStateConfig.d3dSrcBlend);
-    }
-    if (renderStateConfig.d3dDestBlend != a1->d3dDestBlend)
-    {
-        renderStateConfig.d3dDestBlend = a1->d3dDestBlend;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, renderStateConfig.d3dDestBlend);
-    }
-    if (renderStateConfig.d3d_Lighting != a1->d3d_Lighting)
-    {
-        renderStateConfig.d3d_Lighting = a1->d3d_Lighting;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_LIGHTING, renderStateConfig.d3d_Lighting);
-    }
-    if (renderStateConfig.d3d_normalizeNormals != a1->d3d_normalizeNormals)
-    {
-        renderStateConfig.d3d_normalizeNormals = a1->d3d_normalizeNormals;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_NORMALIZENORMALS, renderStateConfig.d3d_normalizeNormals);
-    }
-    if (renderStateConfig.d3dTextureFactor != a1->d3dTextureFactor)
-    {
-        renderStateConfig.d3dTextureFactor = a1->d3dTextureFactor;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_TEXTUREFACTOR, renderStateConfig.d3dTextureFactor);
-    }
-    if (renderStateConfig.d3dClipPlaneEnable != a1->d3dClipPlaneEnable)
-    {
-        renderStateConfig.d3dClipPlaneEnable = a1->d3dClipPlaneEnable;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_CLIPPLANEENABLE, renderStateConfig.d3dClipPlaneEnable);
-    }
-    if (a1->vertexShader)
-    {
-        renderStateConfig.vertexShader = NULL;
-        renderStateConfig.fvf = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetVertexShader(D3DRenderParams.d3dDev, NULL);
-        D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, renderStateConfig.fvf);
-        if (renderStateConfig.fvf != a1->fvf)
+        D3D_SetFixedFunctionFVF(0);
+        if (renderStateConfig.fvf != cfg->fvf)
         {
-            renderStateConfig.fvf = a1->fvf;
+            renderStateConfig.fvf = cfg->fvf;
             D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(D3DRenderParams.d3dDev, (IDirect3DVertexDeclaration9 *)(renderStateConfig.fvf)); // TODO FIXME: ez micsoda gányolás de az IDA ezt mutatja, játékban ez van
         }
-        D3D_SetVertexShader(a1->vertexShader);
+        D3D_SetVertexShader(cfg->vertexShader);
     }
     else
     {
@@ -1825,91 +1396,28 @@ void D3D_RenderStateRestore(tD3dRenderStateConfigStruct* a1)
             D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(D3DRenderParams.d3dDev, NULL);
         }
         D3D_SetVertexShader(0);
-        v1 = a1->fvf;
-        renderStateConfig.vertexShader = NULL;
-        renderStateConfig.fvf = v1;
-        D3DRenderParams.d3dDev->lpVtbl->SetVertexShader(D3DRenderParams.d3dDev, NULL);
-        D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, renderStateConfig.fvf);
+        D3D_SetFixedFunctionFVF(cfg->fvf);
     }
 }
 
-void D3D_SamplerStateRestore(tD3dSamplerConfigStruct* a1)
+void D3D_SamplerStateRestore(tD3dSamplerConfigStruct* cfg)
 {
-    unsigned int v1;
-    tD3dSamplerConfigStruct* v3;
-    int v4;
-    int v5;
-    IDirect3DDevice9* v6;
-    int v7;
-    IDirect3DDevice9* v8;
-    int v9;
-    int v10;
-    IDirect3DDevice9* v11;
-    int v12;
-    int v13;
-    int v14;
-    int v15;
-    int v16;
+    unsigned int stage;
 
-    v1 = 0;
-    if (D3DRenderParams.d3dcaps.MaxTextureBlendStages)
+    for (stage = 0; stage < D3DRenderParams.d3dcaps.MaxTextureBlendStages; stage++)
     {
-        v3 = a1;
-        v4 = 0;
-        do
-        {
-            v5 = v3->d3d_addressu;
-            if (samplerConfig[v4].d3d_addressu != v5)
-            {
-                v6 = D3DRenderParams.d3dDev;
-                v12 = v3->d3d_addressu;
-                samplerConfig[v4].d3d_addressu = v5;
-                v6->lpVtbl->SetSamplerState(v6, v1, D3DSAMP_ADDRESSU, v12);
-            }
-            v7 = v3->d3d_addressv;
-            if (samplerConfig[v4].d3d_addressv != v7)
-            {
-                v8 = D3DRenderParams.d3dDev;
-                v13 =v3->d3d_addressv;
-                samplerConfig[v4].d3d_addressv = v7;
-                v8->lpVtbl->SetSamplerState(v8, v1, D3DSAMP_ADDRESSV, v13);
-            }
-            if (samplerConfig[v4].d3d_minfilter != v3->d3d_minfilter)
-            {
-                v14 = v3->d3d_minfilter;
-                samplerConfig[v4].d3d_minfilter = v3->d3d_minfilter;
-                D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, v1, D3DSAMP_MINFILTER, v14);
-            }
-            v9 = v3->d3d_magfilter;
-            if (samplerConfig[v4].d3d_magfilter != v9)
-            {
-                v15 = v3->d3d_magfilter;
-                samplerConfig[v4].d3d_magfilter = v9;
-                D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, v1, D3DSAMP_MAGFILTER, v15);
-            }
-            v10 = v3->d3d_mipfilter;
-            if (samplerConfig[v4].d3d_mipfilter != v10)
-            {
-                v16 = v3->d3d_mipfilter;
-                samplerConfig[v4].d3d_mipfilter = v10;
-                D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, v1, D3DSAMP_MIPFILTER, v16);
-            }
-            if (v3->d3d_mipmaplodbias != samplerConfig[v4].d3d_mipmaplodbias)
-            {
-                v11 = D3DRenderParams.d3dDev;
-                samplerConfig[v4].d3d_mipmaplodbias = v3->d3d_mipmaplodbias;
-                v11->lpVtbl->SetSamplerState(v11, v1, D3DSAMP_MIPMAPLODBIAS, *(DWORD*)&(samplerConfig[v4].d3d_mipmaplodbias));
-            }
-            ++v1;
-            ++v4;
-            ++v3;
-        } while (v1 < D3DRenderParams.d3dcaps.MaxTextureBlendStages);
+        D3D_SamplerStateSet(stage, &samplerConfig[stage].d3d_addressu, D3DSAMP_ADDRESSU, cfg[stage].d3d_addressu);
+        D3D_SamplerStateSet(stage, &samplerConfig[stage].d3d_addressv, D3DSAMP_ADDRESSV, cfg[stage].d3d_addressv);
+        D3D_SamplerStateSet(stage, &samplerConfig[stage].d3d_minfilter, D3DSAMP_MINFILTER, cfg[stage].d3d_minfilter);
+        D3D_SamplerStateSet(stage, &samplerConfig[stage].d3d_magfilter, D3DSAMP_MAGFILTER, cfg[stage].d3d_magfilter);
+        D3D_SamplerStateSet(stage, &samplerConfig[stage].d3d_mipfilter, D3DSAMP_MIPFILTER, cfg[stage].d3d_mipfilter);
+        D3D_SamplerStateSetF(stage, &samplerConfig[stage].d3d_mipmaplodbias, D3DSAMP_MIPMAPLODBIAS, cfg[stage].d3d_mipmaplodbias);
     }
 }
 
 void D3D_SetTexture(int textureState, int textureID)
 {
-    IDirect3DTexture9* d3dTexturePtr;
+    IDirect3DTexture9* texture;
 
     if (textureID == -2)
     {
@@ -1923,124 +1431,44 @@ void D3D_SetTexture(int textureState, int textureID)
             if (textureID != -1 && textureID != -2)
             {
                 if (textureID >= 0) {
-                    d3dTexturePtr = D3DRenderParams.d3dTextures[textureID];
+                    texture = D3DRenderParams.d3dTextures[textureID];
                 } 
                 else {
-                    d3dTexturePtr = D3DRenderParams.d3dShadowTextures[(textureID & ~0x80000000)];
+                    texture = D3DRenderParams.d3dShadowTextures[(textureID & ~0x80000000)];
                 }
-                D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, textureState, (IDirect3DBaseTexture9*)d3dTexturePtr);
+                D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, textureState, (IDirect3DBaseTexture9*)texture);
             }
             textureStageTypeConfig[textureState].d3dTextureID = textureID;
         }
     }
 }
 
-void D3D_TextureStageStateRestore(tD3dTextureStageTypeStruct* a1)
+void D3D_TextureStageStateRestore(tD3dTextureStageTypeStruct* cfg)
 {
-    unsigned int v1;
-    int v4;
-   
-    v1 = 0;
-    if (D3DRenderParams.d3dcaps.MaxTextureBlendStages)
+    unsigned int stage;
+
+    for (stage = 0; stage < D3DRenderParams.d3dcaps.MaxTextureBlendStages; stage++)
     {
-        v4 = 0;
-        do
-        {
-            textureStageTypeConfig[v4].d3dTextureID = a1[v4].d3dTextureID;
-            D3D_SetTexture(v1, a1[v4].d3dTextureID);
-            if (textureStageTypeConfig[v4].d3d_colorOp != a1[v4].d3d_colorOp)
-            {
-                textureStageTypeConfig[v4].d3d_colorOp = a1[v4].d3d_colorOp;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, 1, a1[v4].d3d_colorOp);
-            }
-            if (textureStageTypeConfig[v4].d3d_colorarg1 != a1[v4].d3d_colorarg1)
-            {
-                textureStageTypeConfig[v4].d3d_colorarg1 = a1[v4].d3d_colorarg1;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_COLORARG1, a1[v4].d3d_colorarg1);
-            }
-            if (textureStageTypeConfig[v4].d3d_colorarg2 != a1[v4].d3d_colorarg2)
-            {
-                textureStageTypeConfig[v4].d3d_colorarg2 = a1[v4].d3d_colorarg2;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_COLORARG2, a1[v4].d3d_colorarg2);
-            }
-            if (textureStageTypeConfig[v4].d3d_alphaOp != a1[v4].d3d_alphaOp)
-            {
-                textureStageTypeConfig[v4].d3d_alphaOp = a1[v4].d3d_alphaOp;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_ALPHAOP, a1[v4].d3d_alphaOp);
-            }
-            if (textureStageTypeConfig[v4].d3d_alphaArg1 != a1[v4].d3d_alphaArg1)
-            {
-                textureStageTypeConfig[v4].d3d_alphaArg1 = a1[v4].d3d_alphaArg1;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_ALPHAARG1, a1[v4].d3d_alphaArg1);
-            }
-            if (textureStageTypeConfig[v4].d3d_alphaArg2 != a1[v4].d3d_alphaArg2)
-            {
-                textureStageTypeConfig[v4].d3d_alphaArg2 = a1[v4].d3d_alphaArg2;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_ALPHAARG2, a1[v4].d3d_alphaArg2);
-            }
-            if (textureStageTypeConfig[v4].d3d_bumpenvmat00 != a1[v4].d3d_bumpenvmat00)
-            {
-                textureStageTypeConfig[v4].d3d_bumpenvmat00 = a1[v4].d3d_bumpenvmat00;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_BUMPENVMAT00, *(DWORD*)&(a1[v4].d3d_bumpenvmat00));
-            }
-            if (textureStageTypeConfig[v4].d3d_bumpenvmat01 != a1[v4].d3d_bumpenvmat01)
-            {
-                textureStageTypeConfig[v4].d3d_bumpenvmat01 = a1[v4].d3d_bumpenvmat01;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_BUMPENVMAT01, *(DWORD*)&(a1[v4].d3d_bumpenvmat01));
-            }
-            if (textureStageTypeConfig[v4].d3d_bumpenvmat10 != a1[v4].d3d_bumpenvmat10)
-            {
-                textureStageTypeConfig[v4].d3d_bumpenvmat10 = a1[v4].d3d_bumpenvmat10;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_BUMPENVMAT10, *(DWORD*)&(a1[v4].d3d_bumpenvmat10));
-            }
-            if (textureStageTypeConfig[v4].d3d_bumpenvmat11 != a1[v4].d3d_bumpenvmat11)
-            {
-                textureStageTypeConfig[v4].d3d_bumpenvmat11 = a1[v4].d3d_bumpenvmat11;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_BUMPENVMAT11, *(DWORD*)&(a1[v4].d3d_bumpenvmat11));
-            }
-            if (textureStageTypeConfig[v4].d3dTexCoordIndex != a1[v4].d3dTexCoordIndex)
-            {
-                textureStageTypeConfig[v4].d3dTexCoordIndex = a1[v4].d3dTexCoordIndex;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_TEXCOORDINDEX, a1[v4].d3dTexCoordIndex);
-            }
-            if (textureStageTypeConfig[v4].d3d_bumpEnvLScale != a1[v4].d3d_bumpEnvLScale)
-            {
-                textureStageTypeConfig[v4].d3d_bumpEnvLScale = a1[v4].d3d_bumpEnvLScale;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_BUMPENVLSCALE, *(DWORD*)&(a1[v4].d3d_bumpEnvLScale));
-            }
-            if (textureStageTypeConfig[v4].d3d_bumpEnvLOffset != a1[v4].d3d_bumpEnvLOffset)
-            {
-                textureStageTypeConfig[v4].d3d_bumpEnvLOffset = a1[v4].d3d_bumpEnvLOffset;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_BUMPENVLOFFSET, *(DWORD*)&(a1[v4].d3d_bumpEnvLOffset));
-            }
-            if (textureStageTypeConfig[v4].d3dTextureTransformFlags != a1[v4].d3dTextureTransformFlags)
-            {
-                textureStageTypeConfig[v4].d3dTextureTransformFlags = a1[v4].d3dTextureTransformFlags;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_TEXTURETRANSFORMFLAGS, a1[v4].d3dTextureTransformFlags);
-            }
-            if (textureStageTypeConfig[v4].d3d_colorArg0 != a1[v4].d3d_colorArg0)
-            {
-                textureStageTypeConfig[v4].d3d_colorArg0 = a1[v4].d3d_colorArg0;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_COLORARG0, a1[v4].d3d_colorArg0);
-            }
-            if (textureStageTypeConfig[v4].d3d_alphaArg0 != a1[v4].d3d_alphaArg0)
-            {
-                textureStageTypeConfig[v4].d3d_alphaArg0 = a1[v4].d3d_alphaArg0;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_ALPHAARG0, a1[v4].d3d_alphaArg0);
-            }
-            if (textureStageTypeConfig[v4].d3d_resultArg0 != a1[v4].d3d_resultArg0)
-            {
-                textureStageTypeConfig[v4].d3d_resultArg0 = a1[v4].d3d_resultArg0;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_RESULTARG, a1[v4].d3d_resultArg0);
-            }
-            if (textureStageTypeConfig[v4].d3d_constant != a1[v4].d3d_constant)
-            {
-                textureStageTypeConfig[v4].d3d_constant = a1[v4].d3d_constant;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, v1, D3DTSS_CONSTANT, a1[v4].d3d_constant);
-            }
-            ++v1;
-            ++v4;
-        } while (v1 < D3DRenderParams.d3dcaps.MaxTextureBlendStages);
+            textureStageTypeConfig[stage].d3dTextureID = cfg[stage].d3dTextureID;
+            D3D_SetTexture(stage, cfg[stage].d3dTextureID);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, 1, cfg[stage].d3d_colorOp);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorarg1, D3DTSS_COLORARG1, cfg[stage].d3d_colorarg1);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorarg2, D3DTSS_COLORARG2, cfg[stage].d3d_colorarg2);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaOp, D3DTSS_ALPHAOP, cfg[stage].d3d_alphaOp);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaArg1, D3DTSS_ALPHAARG1, cfg[stage].d3d_alphaArg1);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaArg2, D3DTSS_ALPHAARG2, cfg[stage].d3d_alphaArg2);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpenvmat00, D3DTSS_BUMPENVMAT00, cfg[stage].d3d_bumpenvmat00);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpenvmat01, D3DTSS_BUMPENVMAT01, cfg[stage].d3d_bumpenvmat01);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpenvmat10, D3DTSS_BUMPENVMAT10, cfg[stage].d3d_bumpenvmat10);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpenvmat11, D3DTSS_BUMPENVMAT11, cfg[stage].d3d_bumpenvmat11);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, cfg[stage].d3dTexCoordIndex);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpEnvLScale, D3DTSS_BUMPENVLSCALE, cfg[stage].d3d_bumpEnvLScale);
+            D3D_StageStateSetF(stage, &textureStageTypeConfig[stage].d3d_bumpEnvLOffset, D3DTSS_BUMPENVLOFFSET, cfg[stage].d3d_bumpEnvLOffset);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, cfg[stage].d3dTextureTransformFlags);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorArg0, D3DTSS_COLORARG0, cfg[stage].d3d_colorArg0);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaArg0, D3DTSS_ALPHAARG0, cfg[stage].d3d_alphaArg0);
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_resultArg0, D3DTSS_RESULTARG, cfg[stage].d3d_resultArg0);
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_constant, D3DTSS_CONSTANT, cfg[stage].d3d_constant);
     }
 }
 
@@ -2055,134 +1483,110 @@ void D3D_RestoreEverythingFromBackup()
         D3D_RenderStateRestore(&renderstateBackup);
 }
 
-void D3D_RastersSetAndDrawAQuad(int a1, float a2, float a3, float a4, float a5, int a6)
+void D3D_RastersSetAndDrawAQuad(int color, float x, float y, float w, float h, int flush)
 {
-    tVertexAndColor* v6;
-    char* v7;
-    double v8;
-    double v9;
+    tVertexAndColor* quad;
+    char* buffer;
+    double right;
+    double bottom;
 
-    v6 = (tVertexAndColor*)rastersDrawPrimitiveUPDataEnd;
+    quad = (tVertexAndColor*)rastersDrawPrimitiveUPDataEnd;
     if (!rastersDrawPrimitiveUPDataEnd)
     {
-        v7 = (char*)MEM_p_Alloc(16384u);
-        memset(v7, 0, 16384u);
-        rastersDrawPrimitiveUPDataStart = v7;
-        v6 = (tVertexAndColor*)v7;
+        buffer = (char*)MEM_p_Alloc(16384u);
+        memset(buffer, 0, 16384u);
+        rastersDrawPrimitiveUPDataStart = buffer;
+        quad = (tVertexAndColor*)buffer;
     }
 
-    v8 = a2 + a4;
-    v9 = a3 + a5;
+    right = x + w;
+    bottom = y + h;
 
-    v6[0].v.x = a2;
-    v6[0].v.y = a3;
-    v6[0].color = a1;
+    quad[0].v.x = x;
+    quad[0].v.y = y;
+    quad[0].color = color;
 
-    v6[1].v.x = (float)v8;
-    v6[1].v.y = a3;
-    v6[1].color = a1;    
+    quad[1].v.x = (float)right;
+    quad[1].v.y = y;
+    quad[1].color = color;    
     
-    v6[2].v.x = a2;
-    v6[2].v.y = (float)v9;
-    v6[2].color = a1;
+    quad[2].v.x = x;
+    quad[2].v.y = (float)bottom;
+    quad[2].color = color;
 
-    v6[3].v.x = a2;
-    v6[3].v.y = (float)v9;
-    v6[3].color = a1;
+    quad[3].v.x = x;
+    quad[3].v.y = (float)bottom;
+    quad[3].color = color;
 
-    v6[4].v.x = (float)v8;
-    v6[4].v.y = a3;
-    v6[4].color = a1;
+    quad[4].v.x = (float)right;
+    quad[4].v.y = y;
+    quad[4].color = color;
 
-    v6[5].v.x = (float)v8;
-    v6[5].v.y = (float)v9;
-    v6[5].color = a1;
+    quad[5].v.x = (float)right;
+    quad[5].v.y = (float)bottom;
+    quad[5].color = color;
     //rastersDrawPrimitiveUPDataEnd += sizeof(tVertexAndColor) * 6;
-    rastersDrawPrimitiveUPDataEnd = (char *)(v6 + 6); // a vége az 6 db tVertexAndColor elemet fog tartalmazni, mivel a v6 az egy tVertexAndColor típusra mutató pointer
-    if (a6)
+    rastersDrawPrimitiveUPDataEnd = (char *)(quad + 6); // a vége az 6 db tVertexAndColor elemet fog tartalmazni, mivel a v6 az egy tVertexAndColor típusra mutató pointer
+    if (flush)
         D3D_RastersDrawUPStream();
 }
 
-void D3D_DrawARaster(int color, char* a1, float a2, float a3, float a4)
+void D3D_DrawARaster(int color, char* name, float value, float y, float width)
 {
-    double v7;
-    float v8;
-    char Buffer[32];
-    float a3a;
-    float a4a;
+    double nextY;
+    float x;
+    char text[32];
+    float barWidth;
+    float segment;
 
-    sprintf(Buffer, "%5.3f", a2);
-    D3D_RastersDrawText(a1, 20, (unsigned int)a3, -1);
-    D3D_RastersDrawText(Buffer, (unsigned int)(a4 - 50.0), (unsigned int)a3, -1);
-    if (a2 > 4.0)
-        a2 = 4.0;
-    v8 = 70.0;
-    for (a4a = (float)((a4 - 140.0) * 0.75294119); a2 > 0.0; a4a = (float)(a4a * 0.25))
+    sprintf(text, "%5.3f", value);
+    D3D_RastersDrawText(name, 20, (unsigned int)y, -1);
+    D3D_RastersDrawText(text, (unsigned int)(width - 50.0), (unsigned int)y, -1);
+    if (value > 4.0)
+        value = 4.0;
+    x = 70.0;
+    for (segment = (float)((width - 140.0) * 0.75294119); value > 0.0; segment = (float)(segment * 0.25))
     {
-        if (a2 >= 1.0)
-            v7 = 1.0;
+        if (value >= 1.0)
+            nextY = 1.0;
         else
-            v7 = a2;
-        a3a = (float)(v7 * a4a);
-        D3D_RastersSetAndDrawAQuad(color, v8, a3, a3a, 10.0, 0);
+            nextY = value;
+        barWidth = (float)(nextY * segment);
+        D3D_RastersSetAndDrawAQuad(color, x, y, barWidth, 10.0, 0);
         color ^= 0xFFFFu;
-        v8 = a3a + v8;
-        a2 = (float)(a2 - 1.0);
+        x = barWidth + x;
+        value = (float)(value - 1.0);
     }
 }
 
 void Rasters_Update()
 {
-    double v1;
+    double elapsed;
     unsigned int i;
     unsigned int j;
-    int v5;
-    int* v6;
-    int v7;
-    unsigned int v8;
-    int v9;
-    int v10;
-    int v11;
-    int v12;
-    int v13;
-    int v14;
-    int v15;
-    int v16;
-    int v17;
-    int v18;
-    int v19;
-    double v20;
-    unsigned int v21;
-    int v22;
-    int v23;
-    int v24;
-    int v25;
-    int v26;
-    int v27;
-    int v28;
-    int v29;
-    int v30;
-    int v31;
-    float v32;
-    int v33;
-    int v34;
-    int v35;
-    int v36;
-    double v37;
-    float v38;
-    float r;
-    float v40;
-    float a3;
-    LARGE_INTEGER b;
-    float a2;
+    int swapped;
+    int shown;
+    int row;
+    int raster;
+    int kind;
+    int barColor;
+    double nextY;
+    float barY;
+    float y;
+    float value;
+    float scale;
+    float viewHeight;
+    float viewWidth;
+    float fps;
+    float barHeight;
+    LARGE_INTEGER after;
     LARGE_INTEGER Frequency;
     LARGE_INTEGER PerformanceCount;
-    D3DMATRIX a1;
-    int v47[54];
-    float width;
+    D3DMATRIX mtx;
+    int order[54];
 
-    width = (float)D3DRenderParams.d3dViewPort.Width;
-    r = (float)D3DRenderParams.d3dViewPort.Height;
+    viewWidth = (float)D3DRenderParams.d3dViewPort.Width;
+    viewHeight = (float)D3DRenderParams.d3dViewPort.Height;
 
     if (tweak_perf)
     {
@@ -2191,79 +1595,52 @@ void Rasters_Update()
         QueryPerformanceCounter(&PerfCounterStruct[47]);
         QueryPerformanceFrequency(&Frequency);
         QueryPerformanceCounter(&PerformanceCount);
-        v1 = (double)(PerformanceCount.QuadPart - qword_990B48);
+        elapsed = (double)(PerformanceCount.QuadPart - qword_990B48);
         qword_990B48 = PerformanceCount.QuadPart;
-        a2 = (float)((double)Frequency.QuadPart / v1);
-        if (tweak_perf != 3 || a2 > (double)tweak_perf_fps_min)
+        fps = (float)((double)Frequency.QuadPart / elapsed);
+        if (tweak_perf != 3 || fps > (double)tweak_perf_fps_min)
         {
             D3D_SaveEverythingToBackup(1);
-            a1._43 = 0.0;
-            a1._42 = 0.0;
-            a1._41 = 0.0;
-            a1._34 = 0.0;
-            a1._32 = 0.0;
-            a1._31 = 0.0;
-            a1._24 = 0.0;
-            a1._23 = 0.0;
-            a1._21 = 0.0;
-            a1._14 = 0.0;
-            a1._13 = 0.0;
-            a1._12 = 0.0;
-            a1._44 = 1.0;
-            a1._33 = 1.0;
-            a1._22 = 1.0;
-            a1._11 = 1.0;
-            memcpy(&d3dTransformMatrix, &a1, sizeof(d3dTransformMatrix));
-            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 2, &a1);
-            D3DXMatrixOrthoOffCenterRH(&a1, 0.0, width, r, 0.0, -1.0, 1.0);
-            memcpy(&d3dProjectionMtx, &a1, sizeof(d3dProjectionMtx));
-            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 3, &a1);
+            mtx._43 = 0.0;
+            mtx._42 = 0.0;
+            mtx._41 = 0.0;
+            mtx._34 = 0.0;
+            mtx._32 = 0.0;
+            mtx._31 = 0.0;
+            mtx._24 = 0.0;
+            mtx._23 = 0.0;
+            mtx._21 = 0.0;
+            mtx._14 = 0.0;
+            mtx._13 = 0.0;
+            mtx._12 = 0.0;
+            mtx._44 = 1.0;
+            mtx._33 = 1.0;
+            mtx._22 = 1.0;
+            mtx._11 = 1.0;
+            memcpy(&d3dTransformMatrix, &mtx, sizeof(d3dTransformMatrix));
+            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 2, &mtx);
+            D3DXMatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
+            memcpy(&d3dProjectionMtx, &mtx, sizeof(d3dProjectionMtx));
+            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 3, &mtx);
             D3D_SetVertexShader(0);
-            renderStateConfig.vertexShader = 0;
-            renderStateConfig.fvf = D3DFVF_DIFFUSE | D3DFVF_XYZ; 
-            D3DRenderParams.d3dDev->lpVtbl->SetVertexShader(D3DRenderParams.d3dDev, NULL);
-            D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, renderStateConfig.fvf);
+            D3D_SetFixedFunctionFVF(D3DFVF_DIFFUSE | D3DFVF_XYZ);
             if (renderStateConfig.d3d_zEnable)
             {
                 renderStateConfig.d3d_zEnable = D3DZB_FALSE;
                 D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZENABLE, D3DZB_FALSE);
             }
-            if (renderStateConfig.d3dCullMode != D3DCULL_NONE)
-            {
-                renderStateConfig.d3dCullMode = D3DCULL_NONE;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_CULLMODE, D3DCULL_NONE);
-            }
-            if (renderStateConfig.d3d_Lighting)
-            {
-                renderStateConfig.d3d_Lighting = FALSE;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_LIGHTING, FALSE);
-            }
-            if (renderStateConfig.d3dColorWriteEnable != 0xf)
-            {
-                renderStateConfig.d3dColorWriteEnable = 0xf;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_COLORWRITEENABLE, 0xf);
-            }
-            if (renderStateConfig.d3dAlphaBlendEnable != TRUE)
-            {
-                renderStateConfig.d3dAlphaBlendEnable = TRUE;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, TRUE);
-            }
-            if (renderStateConfig.d3dSrcBlend != D3DBLEND_SRCALPHA)
-            {
-                renderStateConfig.d3dSrcBlend = D3DBLEND_SRCALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-            }
-            if (renderStateConfig.d3dDestBlend != D3DBLEND_INVSRCALPHA)
-            {
-                renderStateConfig.d3dDestBlend = D3DBLEND_INVSRCALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-            }
+            D3D_RenderStateSet(&renderStateConfig.d3dCullMode, D3DRS_CULLMODE, D3DCULL_NONE);
+            D3D_RenderStateSet(&renderStateConfig.d3d_Lighting, D3DRS_LIGHTING, FALSE);
+            D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, 0xf);
+            D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
+            D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+            D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
             D3D_SetTexture(0, -1);
             D3D_SetTexture(1, -1);
             D3D_SetTexture(2, -1);
             D3D_SetTexture(3, -1);
-            if (a2 > (double)tweak_perf_fps_min)
-                D3D_RastersSetAndDrawAQuad(0xFFFF0000, 0.0, 0.0, width, 40.0, 0);
+            if (fps > (double)tweak_perf_fps_min)
+                D3D_RastersSetAndDrawAQuad(0xFFFF0000, 0.0, 0.0, viewWidth, 40.0, 0);
             if (tweak_perf != 3)
             {
                 for (i = 0; i < (6 * 9); i += 9) // 6 * 9 = 54
@@ -2279,223 +1656,71 @@ void Rasters_Update()
                     rastersUnkTimeFloats_dbl_990B58[i + 8] = (double)PerfCountertimeSumArray[i + 8] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 8] * 0.95;
                 }
                 for (j = 0; j < 54; ++j)
-                    v47[j] = j;
-                v5 = 0;
-                v6 = v47;
-                v7 = 53;
-                do
+                    order[j] = j;
+                for (i = 0; i < 53; i++)
                 {
-                    v8 = v5 + 1;
-                    v9 = v5 + 1;
-                    if (v7 >= 4)
+                    for (j = i + 1; j < 54; j++)
                     {
-                        do
+                        if (rastersUnkTimeFloats_dbl_990B58[order[i]]
+                            < rastersUnkTimeFloats_dbl_990B58[order[j]])
                         {
-                            v10 = *v6;
-                            v11 = v47[v9];
-                            if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v11])
-                            {
-                                *v6 = v11;
-                                v47[v9] = v10;
-                            }
-                            v12 = *v6;
-                            v13 = v47[v9 + 1];
-                            if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v13])
-                            {
-                                *v6 = v13;
-                                v47[v9 + 1] = v12;
-                            }
-                            v14 = *v6;
-                            v15 = v47[v9 + 2];
-                            if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v15])
-                            {
-                                *v6 = v15;
-                                v47[v9 + 2] = v14;
-                            }
-                            v16 = *v6;
-                            v17 = v47[v9 + 3];
-                            if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v17])
-                            {
-                                *v6 = v17;
-                                v47[v9 + 3] = v16;
-                            }
-                            v9 += 4;
-                        } while (v9 < 51);
-                    }
-                    for (; (unsigned int)v9 < 54; ++v9)
-                    {
-                        v18 = *v6;
-                        v19 = v47[v9];
-                        if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v19])
-                        {
-                            *v6 = v19;
-                            v47[v9] = v18;
+                            swapped = order[i];
+                            order[i] = order[j];
+                            order[j] = swapped;
                         }
                     }
-                    ++v5;
-                    --v7;
-                    ++v6;
-                } while (v8 < 53);
-                v20 = 70.0;
-                v21 = 0;
-                v40 = (float)(tweak_perf_fps_target / (double)Frequency.QuadPart);
-                do
+                }
+                barY = 70.0;
+                scale = (float)(tweak_perf_fps_target / (double)Frequency.QuadPart);
+                for (i = 0; i < 54; i++)
                 {
-                    v22 = v47[v21];
-                    if (rasterNames[v22].unk1)
+                    raster = order[i];
+                    if (rasterNames[raster].unk1
+                        && (double)PerfCountertimeSumArray[raster] * scale > 0.01)
                     {
-                        if ((double)PerfCountertimeSumArray[v22] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                                break;
-                        }
-                    }
-                    v23 = v47[v21 + 1];
-                    if (rasterNames[v23].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v23] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                ++v21;
-                                break;
-                            }
-                        }
-                    }
-                    v24 = v47[v21 + 2];
-                    if (rasterNames[v24].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v24] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 2;
-                                break;
-                            }
-                        }
-                    }
-                    v25 = v47[v21 + 3];
-                    if (rasterNames[v25].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v25] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 3;
-                                break;
-                            }
-                        }
-                    }
-                    v26 = v47[v21 + 4];
-                    if (rasterNames[v26].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v26] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 4;
-                                break;
-                            }
-                        }
-                    }
-                    v27 = v47[v21 + 5];
-                    if (rasterNames[v27].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v27] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 5;
-                                break;
-                            }
-                        }
-                    }
-                    v28 = v47[v21 + 6];
-                    if (rasterNames[v28].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v28] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 6;
-                                break;
-                            }
-                        }
-                    }
-                    v29 = v47[v21 + 7];
-                    if (rasterNames[v29].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v29] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 7;
-                                break;
-                            }
-                        }
-                    }
-                    v30 = v47[v21 + 8];
-                    if (rasterNames[v30].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v30] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 8;
-                                break;
-                            }
-                        }
-                    }
-                    v21 += 9;
-                } while (v21 < 54);
-                v31 = 1;
-                if (tweak_perf == 1)
-                    v31 = v21;
-                v32 = width;
-                v38 = (float)((double)v31 * 15.0);
-                D3D_RastersSetAndDrawAQuad(0x80000000, 0.0, 50.0, width, v38, 1);
-                //nullsub_32();
-                v33 = 0;
-                for (a3 = 70.0; v33 < v31; ++v33)
-                {
-                    v34 = v47[v33];
-                    v35 = rasterNames[v34].unk1;
-                    width = (float)((double)PerfCountertimeSumArray[v34] * v40);
-                    if (v35 && width > 0.01)
-                    {
-                        v36 = 0xF0808020;
-                        if ((((uint8_t)v34 - 1) & 1) != 0)
-                            v36 = 0xF0808060;
-                        if ((((uint8_t)v34 + 1) & 2) != 0)
-                            v36 |= 0x4000u;
-                        if ((((uint8_t)v34 + 1) & 4) != 0)
-                            v36 |= 0x400000u;
-                        D3D_DrawARaster(v36, rasterNames[v34].name, width, a3, v32);
-                        v37 = a3 + 15.0;
-                        a3 = (float)v37;
-                        if (v37 > r)
+                        barY = barY + 15.0;
+                        if (barY > viewHeight)
                             break;
                     }
                 }
-                D3D_DrawARaster(0xFFFFFF, "Frame Rate", a2, 50.0, v32);
+                shown = 1;
+                if (tweak_perf == 1)
+                    shown = (int)i;
+                barHeight = (float)((double)shown * 15.0);
+                D3D_RastersSetAndDrawAQuad(0x80000000, 0.0, 50.0, viewWidth, barHeight, 1);
+                //nullsub_32();
+                row = 0;
+                for (y = 70.0; row < shown; ++row)
+                {
+                    raster = order[row];
+                    kind = rasterNames[raster].unk1;
+                    value = (float)((double)PerfCountertimeSumArray[raster] * scale);
+                    if (kind && value > 0.01)
+                    {
+                        barColor = 0xF0808020;
+                        if ((((uint8_t)raster - 1) & 1) != 0)
+                            barColor = 0xF0808060;
+                        if ((((uint8_t)raster + 1) & 2) != 0)
+                            barColor |= 0x4000u;
+                        if ((((uint8_t)raster + 1) & 4) != 0)
+                            barColor |= 0x400000u;
+                        D3D_DrawARaster(barColor, rasterNames[raster].name, value, y, viewWidth);
+                        nextY = y + 15.0;
+                        y = (float)nextY;
+                        if (nextY > viewHeight)
+                            break;
+                    }
+                }
+                D3D_DrawARaster(0xFFFFFF, "Frame Rate", fps, 50.0, viewWidth);
                 //nullsub_32();
             }
             D3D_RastersDrawUPStream();
             D3D_RestoreEverythingFromBackup();
         }
         memset(PerfCountertimeSumArray, 0, sizeof(PerfCountertimeSumArray));
-        QueryPerformanceCounter(&b);
+        QueryPerformanceCounter(&after);
         if (PerfCounterStruct[47].QuadPart)
-            PerfCountertimeSumArray[47] += b.QuadPart - PerfCounterStruct[47].QuadPart;
+            PerfCountertimeSumArray[47] += after.QuadPart - PerfCounterStruct[47].QuadPart;
         PerfCounterStruct[47].QuadPart = 0LL;
         QueryPerformanceCounter(&PerfCounterStruct[19]);
         QueryPerformanceCounter(&PerfCounterStruct[53]);
@@ -2508,27 +1733,20 @@ void D3D_CycleThroughVBOs()
     currentVBOSelected = (currentVBOSelected + 1) % 3u;
 }
 
-void PC_FreeABackCache(struct sGEOGRO* a1)
+void PC_FreeABackCache(struct sGEOGRO* geogro)
 {
-    IDirect3DVertexBuffer9* v1;
-    IDirect3DVertexBuffer9* v2;
     //int v3;
     int i;
-    IDirect3DVertexBuffer9** v5;
-    IDirect3DVertexBuffer9* v6;
-    IDirect3DIndexBuffer9* v7;
 
-    v1 = a1->d3dvb;
-    if (v1)
+    if (geogro->d3dvb)
     {
-        v1->lpVtbl->Release(a1->d3dvb);
-        a1->d3dvb = NULL;
+        geogro->d3dvb->lpVtbl->Release(geogro->d3dvb);
+        geogro->d3dvb = NULL;
     }
-    v2 = a1->d3dvb2;
-    if (v2)
+    if (geogro->d3dvb2)
     {
-        v2->lpVtbl->Release(a1->d3dvb2);
-        a1->d3dvb2 = NULL;
+        geogro->d3dvb2->lpVtbl->Release(geogro->d3dvb2);
+        geogro->d3dvb2 = NULL;
     }
     /* TODO FIXME
     v3 = *(_DWORD*)a1->gap4b;
@@ -2538,117 +1756,88 @@ void PC_FreeABackCache(struct sGEOGRO* a1)
         *(_DWORD*)a1->gap4b = 0;
     }
     */
-    if (a1->d3dUVVB)
+    if (geogro->d3dUVVB)
     {
-        for (i = 0; i < a1->d3dUVVBNum; ++i)
+        for (i = 0; i < geogro->d3dUVVBNum; ++i)
         {
-            v5 = a1->d3dUVVB;
-            v6 = v5[i];
-            if (v6)
+            if (geogro->d3dUVVB[i])
             {
-                v6->lpVtbl->Release(v5[i]);
-                a1->d3dUVVB[i] = NULL;
+                geogro->d3dUVVB[i]->lpVtbl->Release(geogro->d3dUVVB[i]);
+                geogro->d3dUVVB[i] = NULL;
             }
         }
-        MEM_Free(a1->d3dUVVB);
-        a1->d3dUVVB = NULL;
+        MEM_Free(geogro->d3dUVVB);
+        geogro->d3dUVVB = NULL;
     }
-    v7 = a1->d3dIndexBuf;
-    if (v7)
+    if (geogro->d3dIndexBuf)
     {
-        v7->lpVtbl->Release(a1->d3dIndexBuf);
-        a1->d3dIndexBuf = NULL;
+        geogro->d3dIndexBuf->lpVtbl->Release(geogro->d3dIndexBuf);
+        geogro->d3dIndexBuf = NULL;
     }
 }
 
-void D3D_ReleaseMeshSpecificData(tGameObjectMain* result)
+void D3D_ReleaseMeshSpecificData(tGameObjectMain* gao)
 {
-    tGameObjectVisualObject* v1;
-    tGEOGRO* v2;
-    tGEOSTATICLOD* v2b;
-    int v3;
-    tGEOGRO** v4;
-    tGEOGRO* v5;
+    tGameObjectVisualObject* visual;
+    tGEOGRO* geogro;
+    tGEOSTATICLOD* lod;
+    int i;
 
-    if ((result->flags & 0x4000) != 0)
+    if ((gao->flags & 0x4000) != 0)
     {
-        v1 = result->basic->actorObjectOrVisualObject;
-        v2 = (tGEOGRO*)v1->GROGEOOrSomethingElse;
-        v2b = (tGEOSTATICLOD*)v1->GROGEOOrSomethingElse;
-        if (v1->GROGEOOrSomethingElse)
+        visual = gao->basic->actorObjectOrVisualObject;
+        geogro = (tGEOGRO*)visual->GROGEOOrSomethingElse;
+        lod = (tGEOSTATICLOD*)visual->GROGEOOrSomethingElse;
+        if (visual->GROGEOOrSomethingElse)
         {
-            if (v2->intf->id == 1)
+            if (geogro->intf->id == 1)
             {
-                if (v2->triangleChunkCount && v2->triangleChunks && v2->vertexNum)
-                    PC_FreeABackCache((tGEOGRO*)v1->GROGEOOrSomethingElse);
+                if (geogro->triangleChunkCount && geogro->triangleChunks && geogro->vertexNum)
+                    PC_FreeABackCache(geogro);
             }
-            else if (v2b->intf->id == 8)
+            else if (lod->intf->id == 8)
             {
-                v3 = 0;
-                if (v2b->lodNum)
+                for (i = 0; i < lod->lodNum; i++)
                 {
-                    v4 = v2b->geo;
-                    do
-                    {
-                        v5 = *v4;
-                        if ((*v4)->triangleChunkCount && v5->triangleChunks)
-                        {
-                            if (v5->vertexNum)
-                                PC_FreeABackCache(*v4);
-                        }
-                        ++v3;
-                        ++v4;
-                    } while (v3 < v2b->lodNum);
+                    if (lod->geo[i]->triangleChunkCount && lod->geo[i]->triangleChunks
+                        && lod->geo[i]->vertexNum)
+                        PC_FreeABackCache(lod->geo[i]);
                 }
             }
         }
     }
 }
 
-void D3D_ReleaseMeshSpecificDataOfAWorld(tWorld* a1)
+void D3D_ReleaseMeshSpecificDataOfAWorld(tWorld* world)
 {
-    tableElemStructPF* v1;
-    tableElemStructPF* i;
-    tGameObjectMain* v3;
-    tGroup* v4;
-    tableDescStruct* v5;
-    tableElemStructPF* v6;
-    tableElemStructPF* j;
-    tGameObjectMain* v8;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    tGroup* skeleton;
+    tableDescStruct* table;
+    tableElemStructPF* bone;
+    tableElemStructPF* lastBone;
 
-    if (a1)
+    if (world && world->objectTablePF.actElemNum)
     {
-        if (a1->objectTablePF.actElemNum)
+        last = ((tableElemStructPF*)(world->objectTablePF.nextElemPtr)) - 1;
+        for (elem = world->objectTablePF.firstElemPtr; elem <= last; ++elem)
         {
-            v1 = a1->objectTablePF.firstElemPtr;
-            for (i = ((tableElemStructPF*)(a1->objectTablePF.nextElemPtr)) - 1; v1 <= i; ++v1)
+            gao = (tGameObjectMain*)elem->objectPtr;
+            if (!gao || ((uint8_t)(size_t)gao & 3) == 1)
+                continue;
+            D3D_ReleaseMeshSpecificData(gao);
+            if ((gao->flags & 2) == 0)
+                continue;
+            skeleton = ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->skeletonGroup;
+            if (!skeleton)
+                continue;
+            table = skeleton->tablePF;
+            lastBone = ((tableElemStructPF*)(table->nextElemPtr)) - 1;
+            for (bone = table->firstElemPtr; bone <= lastBone; ++bone)
             {
-                v3 = (tGameObjectMain*)v1->objectPtr;
-                if (v1->objectPtr)
-                {
-                    if (((uint8_t)v3 & 3) != 1)
-                    {
-                        D3D_ReleaseMeshSpecificData((tGameObjectMain*)v1->objectPtr);
-                        if ((v3->flags & 2) != 0)
-                        {
-                            v4 = ((tGameObjectActorObject*)(v3->basic->actorObjectOrVisualObject))->skeletonGroup;
-                            if (v4)
-                            {
-                                v5 = v4->tablePF;
-                                v6 = v5->firstElemPtr;
-                                for (j = ((tableElemStructPF*)(v5->nextElemPtr)) - 1; v6 <= j; ++v6)
-                                {
-                                    v8 = (tGameObjectMain*)v6->objectPtr;
-                                    if (v6->objectPtr)
-                                    {
-                                        if (((uint8_t)v8 & 3) != 1)
-                                            D3D_ReleaseMeshSpecificData(v8);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                if (bone->objectPtr && ((uint8_t)(size_t)bone->objectPtr & 3) != 1)
+                    D3D_ReleaseMeshSpecificData((tGameObjectMain*)bone->objectPtr);
             }
         }
     }
@@ -2665,178 +1854,140 @@ void D3D_ReleaseWaterIndices()
     }
 }
 
-void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* a1)
+void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* sun)
 {
-    IDirect3DTexture9* v1;
-
-    if (a1->d3dTexture)
+    if (sun->d3dTexture)
     {
-        a1->d3dRenderTarget->lpVtbl->Release(a1->d3dRenderTarget);
-        v1 = a1->d3dTexture;
-        a1->d3dRenderTarget = NULL;
-        v1->lpVtbl->Release(v1);
-        a1->d3dTexture = NULL;
+        sun->d3dRenderTarget->lpVtbl->Release(sun->d3dRenderTarget);
+        sun->d3dRenderTarget = NULL;
+        sun->d3dTexture->lpVtbl->Release(sun->d3dTexture);
+        sun->d3dTexture = NULL;
     }
 }
 
 void D3D_ReleaseSunSurfaces()
 {
-    tGfxSunD3DSpecificData** v0;
+    int i;
 
-    v0 = gD3dSunSurfaces;
-    do
+    for (i = 0; i < 16; i++)
     {
-        if (*v0)
-            D3D_ReleaseSunRenderTargetAndTexture(*v0);
-        ++v0;
-    } while (v0 <= &(gD3dSunSurfaces[15]));
+        if (gD3dSunSurfaces[i])
+            D3D_ReleaseSunRenderTargetAndTexture(gD3dSunSurfaces[i]);
+    }
 }
 
 void D3D_ReleaseEveryCache()
 {
-    IDirect3DTexture9** v0;
-    IDirect3DTexture9** v1;
+    int i;
 
     D3D_ReleaseWaterIndices();
     D3D_ReleaseSunSurfaces();
     D3D_ReleaseEverything();
     D3D_ReleaseMeshSpecificDataOfAWorld(WOR_gpst_CurrentWorld);
-    v0 = D3DRenderParams.d3dTextures;
     if (D3DRenderParams.d3dTextures)
     {
-        v1 = &D3DRenderParams.d3dTextures[D3DRenderParams.d3dTextureNum];
-        if (D3DRenderParams.d3dTextures < v1)
+        for (i = 0; i < D3DRenderParams.d3dTextureNum; i++)
         {
-            do
-            {
-                if (*v0)
-                    (*v0)->lpVtbl->Release(*v0);
-                ++v0;
-            } while (v0 < v1);
-            v0 = D3DRenderParams.d3dTextures;
+            if (D3DRenderParams.d3dTextures[i])
+                D3DRenderParams.d3dTextures[i]->lpVtbl->Release(D3DRenderParams.d3dTextures[i]);
         }
-        MEM_Free(v0);
+        MEM_Free(D3DRenderParams.d3dTextures);
         D3DRenderParams.d3dTextures = NULL;
     }
 }
 
-int D3D_CalculateStride(unsigned int a1)
+int D3D_CalculateStride(unsigned int fvf)
 {
-    int result;
-    unsigned int v2;
-    unsigned int v3;
-    int v4;
+    int stride;
+    unsigned int texCount;
+    unsigned int texSizes;
 
-    result = 0;
-    switch (a1 & 0x400E)
+    stride = 0;
+    switch (fvf & 0x400E)
     {
     case 2u:
-        v4 = 12;
+        stride = 12;
         break;
     case 4u:
     case 6u:
-        v4 = 16;
+        stride = 16;
         break;
     case 8u:
-        v4 = 20;
+        stride = 20;
         break;
     case 0xAu:
-        v4 = 24;
+        stride = 24;
         break;
     case 0xCu:
-        v4 = 28;
+        stride = 28;
         break;
     case 0xEu:
-        v4 = 32;
+        stride = 32;
         break;
     default:
-        goto LABEL_15;
+        break;
     }
-    result = v4;
-LABEL_15:
-    if ((a1 & 0x10) != 0)
-        result += 12;
-    if ((a1 & 0x20) != 0)
-        result += 4;
-    if ((a1 & 0x40) != 0)
-        result += 4;
-    if ((a1 & 0x80u) != 0)
-        result += 4;
-    v2 = (a1 >> 8) & 0xF;
-    v3 = (a1 >> 16) & 0xffff;
-    if (v3)
+    if ((fvf & 0x10) != 0)
+        stride += 12;
+    if ((fvf & 0x20) != 0)
+        stride += 4;
+    if ((fvf & 0x40) != 0)
+        stride += 4;
+    if ((fvf & 0x80u) != 0)
+        stride += 4;
+    texCount = (fvf >> 8) & 0xF;
+    texSizes = (fvf >> 16) & 0xffff;
+    if (texSizes)
     {
-        for (; v2; --v2)
+        for (; texCount; --texCount)
         {
-            if ((v3 & 3) != 0)
+            switch (texSizes & 3)
             {
-                switch (v3 & 3)
-                {
-                case 1u:
-                    result += 12;
-                    break;
-                case 2u:
-                    result += 16;
-                    break;
-                case 3u:
-                    result += 4;
-                    break;
-                }
+            case 0u:
+                stride += 8;
+                break;
+            case 1u:
+                stride += 12;
+                break;
+            case 2u:
+                stride += 16;
+                break;
+            case 3u:
+                stride += 4;
+                break;
             }
-            else
-            {
-                result += 8;
-            }
-            v3 >>= 2;
+            texSizes >>= 2;
         }
     }
     else
     {
-        result += 8 * v2;
+        stride += 8 * texCount;
     }
-    return result;
+    return stride;
 }
 
 void D3D_CreateThreeVbos()
 {
-    int v0;
-    int v1;
-    int v2;
+    int i;
+    int result;
 
-    v0 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
-        D3DRenderParams.d3dDev,
-        2097152,
-        D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-        D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ,
-        D3DPOOL_DEFAULT,
-        &VBOs[0],
-        NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v0);
-    v1 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
-        D3DRenderParams.d3dDev,
-        2097152,
-        D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-        D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ,
-        D3DPOOL_DEFAULT,
-        &VBOs[1],
-        NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v1);
-    v2 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
-        D3DRenderParams.d3dDev,
-        2097152,
-        D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-        D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ,
-        D3DPOOL_DEFAULT,
-        &VBOs[2],
-        NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v2);
+    for (i = 0; i < 3; i++)
+    {
+        result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+            D3DRenderParams.d3dDev,
+            2097152,
+            D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
+            D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ,
+            D3DPOOL_DEFAULT,
+            &VBOs[i],
+            NULL);
+        D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+    }
 }
 
 void D3D_CreateVBOs()
 {
-    int v0;
-    int v1;
-    int v2;
+    int result;
 
     D3D_CreateThreeVbos();
     D3DRenderParams.prevVertexElemIdx2 = 0;
@@ -2844,7 +1995,7 @@ void D3D_CreateVBOs()
     D3DRenderParams.currTargetGao = 0;
     D3DRenderParams.xyzFVF = D3DFVF_XYZ;
     D3DRenderParams.stride2 = D3D_CalculateStride(D3DFVF_XYZ);
-    v0 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
         D3DRenderParams.d3dDev,
         65535 * D3DRenderParams.stride2,
         D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
@@ -2852,13 +2003,13 @@ void D3D_CreateVBOs()
         D3DPOOL_DEFAULT,
         &D3DRenderParams.d3dXYZVB,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v0);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
     D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle = 0;
     D3DRenderParams.currVertexStartOffset = 0;
     D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle = 0;
     D3DRenderParams.normalsFVF = D3DFVF_NORMAL;
     D3DRenderParams.d3dStride = D3D_CalculateStride(D3DFVF_NORMAL);
-    v1 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
         D3DRenderParams.d3dDev,
         65535 * D3DRenderParams.d3dStride,
         D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
@@ -2866,13 +2017,13 @@ void D3D_CreateVBOs()
         D3DPOOL_DEFAULT,
         &D3DRenderParams.d3dNormalsBuffer,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v1);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
     D3DRenderParams.prevVertexElemIdx = 0;
     D3DRenderParams.startVertexElemIdx = 0;
     D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 = 0;
     D3DRenderParams.colorsFVF = D3DFVF_DIFFUSE;
     D3DRenderParams.stride = D3D_CalculateStride(D3DFVF_DIFFUSE);
-    v2 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
         D3DRenderParams.d3dDev,
         262143 * D3DRenderParams.stride,
         D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
@@ -2880,177 +2031,103 @@ void D3D_CreateVBOs()
         D3DPOOL_DEFAULT,
         &D3DRenderParams.d3dColorsVB,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v2);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
 }
 
-void D3D_SetColorWriteEnable(char a1)
+void D3D_SetColorWriteEnable(char flags)
 {
-    int v1;
+    int mask;
 
-    v1 = 0;
-    if ((a1 & 0x20) == 0)
-        v1 = D3DCOLORWRITEENABLE_ALPHA;
-    if ((a1 & 0x40) == 0)
-        v1 |= (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE);
-    if (renderStateConfig.d3dColorWriteEnable != v1)
-    {
-        renderStateConfig.d3dColorWriteEnable = v1;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_COLORWRITEENABLE, v1);
-    }
+    mask = 0;
+    if ((flags & 0x20) == 0)
+        mask = D3DCOLORWRITEENABLE_ALPHA;
+    if ((flags & 0x40) == 0)
+        mask |= (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE);
+    D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, mask);
 }
 
 void D3D_SetCullingParams()
 {
-    int v0;
-    BOOL v1;
-    int v2;
-    int v3;
+    int drawMask;
+    int cullMode;
 
-    v0 = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
-    if ((v0 & 0x800) != 0)
+    drawMask = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
+    if ((drawMask & 0x800) != 0)
     {
-        v1 = (v0 & 0x2000) == 0;
-        v2 = renderStateConfig.d3dCullMode;
-        if (v1)
-            v3 = D3DCULL_CCW;
+        if ((drawMask & 0x2000) == 0)
+            cullMode = D3DCULL_CCW;
         else
-            v3 = D3DCULL_CW;
+            cullMode = D3DCULL_CW;
     }
     else
     {
-        v2 = renderStateConfig.d3dCullMode;
-        v3 = 1;
+        cullMode = 1;
     }
-    if (v2 != v3)
-    {
-        renderStateConfig.d3dCullMode = v3;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_CULLMODE, v3);
-    }
+    D3D_RenderStateSet(&renderStateConfig.d3dCullMode, D3DRS_CULLMODE, cullMode);
 }
 
-void D3D_SetTextureStageStates(int a1, int a2)
+void D3D_SetTextureStageStates(int stage, int textureID)
 {
-    IDirect3DDevice9* v2;
-    IDirect3DDevice9* v3;
-    IDirect3DDevice9* v4;
-    IDirect3DDevice9* v5;
-    int v6;
-    int v7;
-    IDirect3DDevice9* v8;
-    IDirect3DDevice9* v9;
-    IDirect3DDevice9* v10;
-    IDirect3DDevice9* v11;
-    IDirect3DDevice9* v12;
-    IDirect3DDevice9* v13;
-    IDirect3DDevice9* v14;
-
-    if (a2 == -1)
+    if (textureID == -1)
     {
-        if (textureStageTypeConfig[a1].d3d_colorarg1)
+        if (textureStageTypeConfig[stage].d3d_colorarg1)
         { 
-            v2 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[a1].d3d_colorarg1 = D3DTA_DIFFUSE;
-            v2->lpVtbl->SetTextureStageState(v2, a1, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+            textureStageTypeConfig[stage].d3d_colorarg1 = D3DTA_DIFFUSE;
+            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
         }
-        if (textureStageTypeConfig[a1].d3d_colorOp != D3DTOP_SELECTARG1)
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, 1, D3DTOP_SELECTARG1);
+        if (textureStageTypeConfig[stage].d3d_alphaArg1)
         {
-            v3 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[a1].d3d_colorOp = D3DTOP_SELECTARG1;
-            v3->lpVtbl->SetTextureStageState(v3, a1, 1, D3DTOP_SELECTARG1);
+            textureStageTypeConfig[stage].d3d_alphaArg1 = D3DTA_DIFFUSE;
+            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
         }
-        if (textureStageTypeConfig[a1].d3d_alphaArg1)
-        {
-            v4 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[a1].d3d_alphaArg1 = D3DTA_DIFFUSE;
-            v4->lpVtbl->SetTextureStageState(v4, a1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-        }
-        if (textureStageTypeConfig[a1].d3d_alphaOp != D3DTOP_SELECTARG1)
-        {
-            v5 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[a1].d3d_alphaOp = D3DTOP_SELECTARG1;
-            v5->lpVtbl->SetTextureStageState(v5, a1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-        }
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     }
-    else if (a2 != -2)
+    else if (textureID != -2)
     {
-        if (D3DRenderParams.tweak_ae_d2x && D3DRenderParams.diffuse2x && a2 >= 0)
+        if (D3DRenderParams.tweak_ae_d2x && D3DRenderParams.diffuse2x && textureID >= 0)
         {
-            v6 = a1;
-            v7 = a1;
-            if (textureStageTypeConfig[a1].d3d_colorOp != D3DTOP_MODULATE2X)
-            {
-                v8 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[a1].d3d_colorOp = D3DTOP_MODULATE2X;
-                v8->lpVtbl->SetTextureStageState(v8, a1, D3DTSS_COLOROP, D3DTOP_MODULATE2X);
-            }
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE2X);
         }
         else
         {
-            v6 = a1;
-            v7 = a1;
-            if (textureStageTypeConfig[a1].d3d_colorOp != D3DTOP_MODULATE)
-            {
-                v9 = D3DRenderParams.d3dDev;
-                textureStageTypeConfig[a1].d3d_colorOp = D3DTOP_MODULATE;
-                v9->lpVtbl->SetTextureStageState(v9, a1, D3DTSS_COLOROP, D3DTOP_MODULATE);
-            }
+            D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE);
         }
-        if (textureStageTypeConfig[v7].d3d_alphaOp != D3DTOP_MODULATE)
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+        if (textureStageTypeConfig[stage].d3d_colorarg2)
         {
-            v10 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[v7].d3d_alphaOp = D3DTOP_MODULATE;
-            v10->lpVtbl->SetTextureStageState(v10, v6, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+            textureStageTypeConfig[stage].d3d_colorarg2 = D3DTA_DIFFUSE;
+            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
         }
-        if (textureStageTypeConfig[v7].d3d_colorarg1 != D3DTA_TEXTURE)
+        D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+        if (textureStageTypeConfig[stage].d3d_alphaArg2)
         {
-            v11 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[v7].d3d_colorarg1 = D3DTA_TEXTURE;
-            v11->lpVtbl->SetTextureStageState(v11, v6, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-        }
-        if (textureStageTypeConfig[v7].d3d_colorarg2)
-        {
-            v12 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[v7].d3d_colorarg2 = D3DTA_DIFFUSE;
-            v12->lpVtbl->SetTextureStageState(v12, v6, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-        }
-        if (textureStageTypeConfig[v7].d3d_alphaArg1 != D3DTA_TEXTURE)
-        {
-            v13 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[v7].d3d_alphaArg1 = D3DTA_TEXTURE;
-            v13->lpVtbl->SetTextureStageState(v13, v6, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-        }
-        if (textureStageTypeConfig[v7].d3d_alphaArg2)
-        {
-            v14 = D3DRenderParams.d3dDev;
-            textureStageTypeConfig[v7].d3d_alphaArg2 = D3DTA_DIFFUSE;
-            v14->lpVtbl->SetTextureStageState(v14, v6, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+            textureStageTypeConfig[stage].d3d_alphaArg2 = D3DTA_DIFFUSE;
+            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, stage, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
         }
     }
 }
 
-void D3D_SetAlphaTestParams(unsigned int a1, int16_t a2)
+void D3D_SetAlphaTestParams(unsigned int mask, int16_t flags)
 {
-    int v2;
+    int compare;
 
-    if ((a2 & 0x10) != 0)
+    if ((flags & 0x10) != 0)
     {
         if (renderStateConfig.d3dAlphaTest != 1)
         {
             renderStateConfig.d3dAlphaTest = 1;
             D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHATESTENABLE, TRUE);
         }
-        v2 = D3DCMP_LESS;
-        if ((a2 & 0x80u) == 0)
-            v2 = D3DCMP_GREATER;
-        if (renderStateConfig.d3dAlphaFunc != v2)
+        compare = D3DCMP_LESS;
+        if ((flags & 0x80u) == 0)
+            compare = D3DCMP_GREATER;
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaFunc, D3DRS_ALPHAFUNC, compare);
+        if (renderStateConfig.d3dAlphaRef != ((mask >> 22) & 0xFC))
         {
-            renderStateConfig.d3dAlphaFunc = v2;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAFUNC, v2);
-        }
-        if (renderStateConfig.d3dAlphaRef != ((a1 >> 22) & 0xFC))
-        {
-            renderStateConfig.d3dAlphaRef = (a1 >> 22) & 0xFC;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAREF, (a1 >> 22) & 0xFC);
+            renderStateConfig.d3dAlphaRef = (mask >> 22) & 0xFC;
+            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHAREF, (mask >> 22) & 0xFC);
         }
     }
     else if (renderStateConfig.d3dAlphaTest)
@@ -3058,258 +2135,142 @@ void D3D_SetAlphaTestParams(unsigned int a1, int16_t a2)
         renderStateConfig.d3dAlphaTest = 0;
         D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHATESTENABLE, FALSE);
     }
-    D3DRenderParams.colorMaskAlpha = (a2 & 0x400) != 0 ? 0xFF000000 : 0;
+    D3DRenderParams.colorMaskAlpha = (flags & 0x400) != 0 ? 0xFF000000 : 0;
 }
 
-void D3D_SetAlphaBlendingOptions(unsigned int a1, char a2)
+void D3D_SetAlphaBlendingOptions(unsigned int mask, char flags)
 {
-    int v2;
-    int v3;
+    int destBlend;
 
     d3d_alphablendIsCase3 = 0;
-    switch (((a1 >> 16) & 0xffff) & 0xF)
+    switch (((mask >> 16) & 0xffff) & 0xF)
     {
     case 0:
     case 7:
-        if (renderStateConfig.d3dAlphaBlendEnable)
-        {
-            renderStateConfig.d3dAlphaBlendEnable = FALSE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, FALSE);
-        }
-        if (renderStateConfig.d3dSrcBlend != D3DBLEND_ONE)
-        {
-            renderStateConfig.d3dSrcBlend = D3DBLEND_ONE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_ONE);
-        }
-        if (renderStateConfig.d3dDestBlend != D3DBLEND_ZERO)
-        {
-            renderStateConfig.d3dDestBlend = D3DBLEND_ZERO;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, D3DBLEND_ZERO);
-        }
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
+        D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ZERO);
         return;
     case 1:
-        if (renderStateConfig.d3dAlphaBlendEnable != TRUE)
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
+        if (flags >= 0)
         {
-            renderStateConfig.d3dAlphaBlendEnable = TRUE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, TRUE);
-        }
-        if (a2 >= 0)
-        {
-            if (renderStateConfig.d3dSrcBlend != D3DBLEND_SRCALPHA)
-            {
-                renderStateConfig.d3dSrcBlend = D3DBLEND_SRCALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-            }
-            v2 = 6;
+            D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+            destBlend = 6;
         }
         else
         {
-            if (renderStateConfig.d3dSrcBlend != D3DBLEND_INVSRCALPHA)
-            {
-                renderStateConfig.d3dSrcBlend = D3DBLEND_INVSRCALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_INVSRCALPHA);
-            }
-            v2 = 5;
+            D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_INVSRCALPHA);
+            destBlend = 5;
         }
-        goto LABEL_30;
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, destBlend);
+        return;
     case 2:
-        if (renderStateConfig.d3dAlphaBlendEnable != TRUE)
-        {
-            renderStateConfig.d3dAlphaBlendEnable = TRUE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, TRUE);
-        }
-        if (renderStateConfig.d3dSrcBlend != D3DBLEND_ONE)
-        {
-            renderStateConfig.d3dSrcBlend = D3DBLEND_ONE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_ONE);
-        }
-        v3 = renderStateConfig.d3dDestBlend;
-        if (a2 >= 0)
-            v2 = D3DBLEND_INVSRCALPHA;
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
+        D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
+        if (flags >= 0)
+            destBlend = D3DBLEND_INVSRCALPHA;
         else
-            v2 = D3DBLEND_SRCALPHA;
-        goto LABEL_31;
+            destBlend = D3DBLEND_SRCALPHA;
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, destBlend);
+        return;
     case 3:
         d3d_alphablendIsCase3 = 1;
-        if (renderStateConfig.d3dAlphaBlendEnable != TRUE)
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
+        if (flags >= 0)
         {
-            renderStateConfig.d3dAlphaBlendEnable = TRUE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, TRUE);
-        }
-        if (a2 >= 0)
-        {
-            if (renderStateConfig.d3dSrcBlend != D3DBLEND_DESTALPHA)
-            {
-                renderStateConfig.d3dSrcBlend = D3DBLEND_DESTALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
-            }
-            if (renderStateConfig.d3dDestBlend != D3DBLEND_INVDESTALPHA)
-            {
-                renderStateConfig.d3dDestBlend = D3DBLEND_INVDESTALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA);
-            }
+            D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
+            D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA);
         }
         else
         {
-            if (renderStateConfig.d3dSrcBlend != D3DBLEND_INVDESTALPHA)
-            {
-                renderStateConfig.d3dSrcBlend = D3DBLEND_INVDESTALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_INVDESTALPHA);
-            }
-            v2 = 7;
-        LABEL_30:
-            v3 = renderStateConfig.d3dDestBlend;
-        LABEL_31:
-            if (v3 != v2)
-            {
-                renderStateConfig.d3dDestBlend = v2;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, v2);
-            }
+            D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_INVDESTALPHA);
+            D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, 7);
         }
         return;
     case 4:
-        if (renderStateConfig.d3dAlphaBlendEnable != TRUE)
-        {
-            renderStateConfig.d3dAlphaBlendEnable = TRUE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, TRUE);
-        }
-        if (a2 >= 0)
-        {
-            if (renderStateConfig.d3dSrcBlend != D3DBLEND_DESTALPHA)
-            {
-                renderStateConfig.d3dSrcBlend = D3DBLEND_DESTALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
-            }
-            if (renderStateConfig.d3dDestBlend != D3DBLEND_ONE)
-                goto LABEL_53;
-        }
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
+        if (flags >= 0)
+            D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
         else
-        {
-            if (renderStateConfig.d3dSrcBlend != D3DBLEND_INVDESTALPHA)
-            {
-                renderStateConfig.d3dSrcBlend = D3DBLEND_INVDESTALPHA;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_INVDESTALPHA);
-            }
-            if (renderStateConfig.d3dDestBlend != D3DBLEND_ONE)
-            {
-            LABEL_53:
-                renderStateConfig.d3dDestBlend = D3DBLEND_ONE;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, D3DBLEND_ONE);
-                return;
-            }
-        }
+            D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_INVDESTALPHA);
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ONE);
         return;
     case 5:
-        if (renderStateConfig.d3dAlphaBlendEnable != TRUE)
-        {
-            renderStateConfig.d3dAlphaBlendEnable = TRUE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, TRUE);
-        }
-        if (renderStateConfig.d3dSrcBlend != D3DBLEND_ONE)
-        {
-            renderStateConfig.d3dSrcBlend = D3DBLEND_ONE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_ONE);
-        }
-        if (renderStateConfig.d3dDestBlend != D3DBLEND_ONE)
-            goto LABEL_53;
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
+        D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ONE);
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_ONE);
         return;
     case 6:
     case 8:
-        if (renderStateConfig.d3dAlphaBlendEnable != TRUE)
-        {
-            renderStateConfig.d3dAlphaBlendEnable = TRUE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, TRUE);
-        }
-        if (renderStateConfig.d3dSrcBlend != D3DBLEND_ZERO)
-        {
-            renderStateConfig.d3dSrcBlend = D3DBLEND_ZERO;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_SRCBLEND, D3DBLEND_ZERO);
-        }
-        if (renderStateConfig.d3dDestBlend != D3DBLEND_INVSRCCOLOR)
-        {
-            renderStateConfig.d3dDestBlend = D3DBLEND_INVSRCCOLOR;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
-        }
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
+        D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_ZERO);
+        D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
         return;
     default:
         return;
     }
 }
 
-void D3D_SetFogParams(unsigned int a1)
+void D3D_SetFogParams(unsigned int mask)
 {
-    int v1;
-    int v2;
-    int v3;
+    int mode;
+    int enable;
+    int color;
 
-    v1 = D3DRenderParams.d3dFogModeProbably;
-    v2 = (gpst_DX_stDD->drawMaskAllowedStuffCurrent & 0x4000) != 0 && D3DRenderParams.d3dFogModeProbably;
-    if (renderStateConfig.d3dFogEnable != v2)
+    mode = D3DRenderParams.d3dFogModeProbably;
+    enable = (gpst_DX_stDD->drawMaskAllowedStuffCurrent & 0x4000) != 0 && D3DRenderParams.d3dFogModeProbably;
+    if (renderStateConfig.d3dFogEnable != enable)
     {
-        renderStateConfig.d3dFogEnable = v2;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, v2);
-        v1 = D3DRenderParams.d3dFogModeProbably;
+        renderStateConfig.d3dFogEnable = enable;
+        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, enable);
+        mode = D3DRenderParams.d3dFogModeProbably;
     }
-    if (v1)
+    if (!mode)
+        return;
+    switch (HIWORD(mask) & 0xF)
     {
-        switch (HIWORD(a1) & 0xF)
-        {
-        case 0:
-        case 1:
-        case 3:
-        case 7:
-            if (v1 != 1)
-            {
-                v3 = D3DRenderParams.d3dFogColor;
-                D3DRenderParams.d3dFogModeProbably = 1;
-                goto LABEL_15;
-            }
-            break;
-        case 2:
-        case 4:
-            if (v1 != 5)
-            {
-                v3 = D3DRenderParams.d3dFogColor;
-                D3DRenderParams.d3dFogModeProbably = 5;
-                goto LABEL_15;
-            }
-            break;
-        case 5:
-        case 6:
-            if (v1 != 3)
-            {
-                v3 = D3DRenderParams.d3dFogColor2Case5and6;
-                D3DRenderParams.d3dFogModeProbably = 3;
-            LABEL_15:
-                if (renderStateConfig.d3dFogColor != v3)
-                {
-                    renderStateConfig.d3dFogColor = v3;
-                    D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGCOLOR, v3);
-                }
-            }
-            break;
-        default:
+    case 0:
+    case 1:
+    case 3:
+    case 7:
+        if (mode == 1)
             return;
-        }
+        color = D3DRenderParams.d3dFogColor;
+        D3DRenderParams.d3dFogModeProbably = 1;
+        break;
+    case 2:
+    case 4:
+        if (mode == 5)
+            return;
+        color = D3DRenderParams.d3dFogColor;
+        D3DRenderParams.d3dFogModeProbably = 5;
+        break;
+    case 5:
+    case 6:
+        if (mode == 3)
+            return;
+        color = D3DRenderParams.d3dFogColor2Case5and6;
+        D3DRenderParams.d3dFogModeProbably = 3;
+        break;
+    default:
+        return;
     }
+    D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, color);
 }
 
-void D3D_l_Texture_Init(int a1, int a2, char a3)
+void D3D_l_Texture_Init(int textureID, int flags, char mode)
 {
-    int v3;
+    int filter;
 
-    if ((a3 & 1) != 0)
+    if ((mode & 1) != 0)
     {
         if (D3DRenderParams.textureUVIsProjected)
         {
             D3DRenderParams.textureUVMode = 4;
             memcpy(d3dTransformationMatrix, &D3DRenderParams.transformationMatrix, sizeof(D3DMATRIX));
             D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&D3DRenderParams.transformationMatrix);
-            if (textureStageTypeConfig[0].d3dTexCoordIndex != D3DTSS_TCI_CAMERASPACEPOSITION)
-            {
-                textureStageTypeConfig[0].d3dTexCoordIndex = D3DTSS_TCI_CAMERASPACEPOSITION;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
-            }
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
             if (textureStageTypeConfig[0].d3dTextureTransformFlags != (D3DTTFF_PROJECTED | D3DTTFF_COUNT3))
             {
                 textureStageTypeConfig[0].d3dTextureTransformFlags = D3DTTFF_PROJECTED | D3DTTFF_COUNT3;
@@ -3321,88 +2282,32 @@ void D3D_l_Texture_Init(int a1, int a2, char a3)
             D3DRenderParams.textureUVMode = 5;
             memcpy(d3dTransformationMatrix, &D3DRenderParams.transformationMatrix, sizeof(D3DMATRIX));
             D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&D3DRenderParams.transformationMatrix);
-            if (textureStageTypeConfig[0].d3dTexCoordIndex != D3DTSS_TCI_CAMERASPACEPOSITION)
-            {
-                textureStageTypeConfig[0].d3dTexCoordIndex = D3DTSS_TCI_CAMERASPACEPOSITION;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
-            }
-            if (textureStageTypeConfig[0].d3dTextureTransformFlags != D3DTTFF_COUNT2)
-            {
-                textureStageTypeConfig[0].d3dTextureTransformFlags = D3DTTFF_COUNT2;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-            }
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
         }
-        if (samplerConfig[0].d3d_addressu != D3DTADDRESS_CLAMP)
-        {
-            samplerConfig[0].d3d_addressu = D3DTADDRESS_CLAMP;
-            D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-        }
-        if (samplerConfig[0].d3d_addressv != D3DTADDRESS_CLAMP)
-        {
-            samplerConfig[0].d3d_addressv = D3DTADDRESS_CLAMP;
-            D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-        }
-        if (samplerConfig[0].d3d_minfilter != D3DTEXF_LINEAR)
-        {
-            samplerConfig[0].d3d_minfilter = D3DTEXF_LINEAR;
-            D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-        }
-        if (samplerConfig[0].d3d_magfilter != D3DTEXF_LINEAR)
-        {
-            samplerConfig[0].d3d_magfilter = D3DTEXF_LINEAR;
-            D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-        }
-        if (textureStageTypeConfig[0].d3d_colorOp != D3DTOP_SELECTARG1)
-        {
-            textureStageTypeConfig[0].d3d_colorOp = D3DTOP_SELECTARG1;
-            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-        }
+        D3D_SamplerStateSet(0, &samplerConfig[0].d3d_addressu, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+        D3D_SamplerStateSet(0, &samplerConfig[0].d3d_addressv, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+        D3D_SamplerStateSet(0, &samplerConfig[0].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+        D3D_SamplerStateSet(0, &samplerConfig[0].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+        D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
         if (textureStageTypeConfig[0].d3d_colorarg1)
         {
             textureStageTypeConfig[0].d3d_colorarg1 = D3DTA_DIFFUSE;
             D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
         }
-        if (textureStageTypeConfig[0].d3d_alphaOp != D3DTOP_SELECTARG1)
-        {
-            textureStageTypeConfig[0].d3d_alphaOp = D3DTOP_SELECTARG1;
-            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-        }
-        if (textureStageTypeConfig[0].d3d_alphaArg1 != D3DTA_TEXTURE)
-        {
-            textureStageTypeConfig[0].d3d_alphaArg1 = D3DTA_TEXTURE;
-            D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-        }
+        D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+        D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
         D3D_SetTexture(0, -2);
-        if (renderStateConfig.d3dColorWriteEnable != D3DCOLORWRITEENABLE_ALPHA)
-        {
-            renderStateConfig.d3dColorWriteEnable = D3DCOLORWRITEENABLE_ALPHA;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_ALPHA);
-        }
-        if (renderStateConfig.d3dAlphaTest)
-        {
-            renderStateConfig.d3dAlphaTest = FALSE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHATESTENABLE, FALSE);
-        }
-        if (renderStateConfig.d3d_zWriteEnable)
-        {
-            renderStateConfig.d3d_zWriteEnable = FALSE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZWRITEENABLE, FALSE);
-        }
-        if (renderStateConfig.d3dAlphaBlendEnable)
-        {
-            renderStateConfig.d3dAlphaBlendEnable = FALSE;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ALPHABLENDENABLE, FALSE);
-        }
+        D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_ALPHA);
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaTest, D3DRS_ALPHATESTENABLE, FALSE);
+        D3D_RenderStateSet(&renderStateConfig.d3d_zWriteEnable, D3DRS_ZWRITEENABLE, FALSE);
+        D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
     }
-    else if ((a3 & 2) == 0)
+    else if ((mode & 2) == 0)
     {
         if ((gpst_DX_stDD->drawMaskAllowedStuffCurrent & 0x10) != 0)
         {
-            if (renderStateConfig.d3dFillMode != D3DFILL_SOLID)
-            {
-                renderStateConfig.d3dFillMode = D3DFILL_SOLID;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FILLMODE, D3DFILL_SOLID);
-            }
+            D3D_RenderStateSet(&renderStateConfig.d3dFillMode, D3DRS_FILLMODE, D3DFILL_SOLID);
         }
         else if (renderStateConfig.d3dFillMode != D3DFILL_WIREFRAME)
         {
@@ -3414,67 +2319,55 @@ void D3D_l_Texture_Init(int a1, int a2, char a3)
             renderStateConfig.d3d_zEnable = (gpst_DX_stDD->drawMaskAllowedStuffCurrent & 0x1000000) != 0 ? D3DRenderParams.d3d_defaultZEnable : 0;
             D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZENABLE, renderStateConfig.d3d_zEnable);
         }
-        if (renderStateConfig.d3d_zFunc != 4 - ((a2 & 0x100) != 0))
+        D3D_RenderStateSet(&renderStateConfig.d3d_zFunc, D3DRS_ZFUNC, 4 - ((flags & 0x100) != 0));
+        if (renderStateConfig.d3d_zWriteEnable != ((flags & 0x200) == 0))
         {
-            renderStateConfig.d3d_zFunc = 4 - ((a2 & 0x100) != 0);
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZFUNC, renderStateConfig.d3d_zFunc);
-        }
-        if (renderStateConfig.d3d_zWriteEnable != ((a2 & 0x200) == 0))
-        {
-            renderStateConfig.d3d_zWriteEnable = (a2 & 0x200) == 0;
+            renderStateConfig.d3d_zWriteEnable = (flags & 0x200) == 0;
             D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZWRITEENABLE, renderStateConfig.d3d_zWriteEnable);
         }
         D3D_SetCullingParams();
-        D3D_SetTexture(0, a1);
-        D3D_SetTextureStageStates(0, a1);
-        if (samplerConfig[0].d3d_addressu != (~(2 * (uint8_t)a2) & 2 | 1))
+        D3D_SetTexture(0, textureID);
+        D3D_SetTextureStageStates(0, textureID);
+        if (samplerConfig[0].d3d_addressu != (~(2 * (uint8_t)flags) & 2 | 1))
         {
-            samplerConfig[0].d3d_addressu = ~(2 * (uint8_t)a2) & 2 | 1;
+            samplerConfig[0].d3d_addressu = ~(2 * (uint8_t)flags) & 2 | 1;
             D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_ADDRESSU, samplerConfig[0].d3d_addressu);
         }
-        if (samplerConfig[0].d3d_addressv != (~(uint8_t)a2 & 2 | 1))
+        if (samplerConfig[0].d3d_addressv != (~(uint8_t)flags & 2 | 1))
         {
-            samplerConfig[0].d3d_addressv = ~(uint8_t)a2 & 2 | 1;
+            samplerConfig[0].d3d_addressv = ~(uint8_t)flags & 2 | 1;
             D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_ADDRESSV, samplerConfig[0].d3d_addressv);
         }
-        v3 = ((a2 & 4) != 0) + 1;
-        if (samplerConfig[0].d3d_minfilter != v3)
+        filter = ((flags & 4) != 0) + 1;
+        if (samplerConfig[0].d3d_minfilter != filter)
         {
-            samplerConfig[0].d3d_minfilter = ((a2 & 4) != 0) + 1;
+            samplerConfig[0].d3d_minfilter = ((flags & 4) != 0) + 1;
             D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_MINFILTER, samplerConfig[0].d3d_minfilter);
         }
-        if (samplerConfig[0].d3d_magfilter != v3)
+        if (samplerConfig[0].d3d_magfilter != filter)
         {
-            samplerConfig[0].d3d_magfilter = ((a2 & 4) != 0) + 1;
+            samplerConfig[0].d3d_magfilter = ((flags & 4) != 0) + 1;
             D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_MAGFILTER, samplerConfig[0].d3d_magfilter);
         }
-        if (samplerConfig[0].d3d_mipfilter != ((a2 & 8) != 0) + 1)
-        {
-            samplerConfig[0].d3d_mipfilter = ((a2 & 8) != 0) + 1;
-            D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_MIPFILTER, samplerConfig[0].d3d_mipfilter);
-        }
-        if (samplerConfig[0].d3d_mipmaplodbias != tweak_mipmaplodbias)
-        {
-            samplerConfig[0].d3d_mipmaplodbias = tweak_mipmaplodbias;
-            D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, D3DSAMP_MIPMAPLODBIAS, *(DWORD *)(&tweak_mipmaplodbias));
-        }
-        D3D_SetColorWriteEnable(a2);
-        D3D_SetAlphaTestParams(a2, a2 & 0xFFF);
-        D3D_SetAlphaBlendingOptions(a2, a2);
-        D3D_SetFogParams(a2);
-        gpst_DX_stDD->rasters[2].unk1 = a1; // TODO FIXME, itt nem volt az IDAban unk1, jó ez így?
-        gpst_DX_stDD->rasters[3].unk1 = a2; // TODO FIXME, itt nem volt az IDAban unk1, jó ez így?
+        D3D_SamplerStateSet(0, &samplerConfig[0].d3d_mipfilter, D3DSAMP_MIPFILTER, ((flags & 8) != 0) + 1);
+        D3D_SamplerStateSetF(0, &samplerConfig[0].d3d_mipmaplodbias, D3DSAMP_MIPMAPLODBIAS, tweak_mipmaplodbias);
+        D3D_SetColorWriteEnable(flags);
+        D3D_SetAlphaTestParams(flags, flags & 0xFFF);
+        D3D_SetAlphaBlendingOptions(flags, flags);
+        D3D_SetFogParams(flags);
+        gpst_DX_stDD->rasters[2].unk1 = textureID; // TODO FIXME, itt nem volt az IDAban unk1, jó ez így?
+        gpst_DX_stDD->rasters[3].unk1 = flags; // TODO FIXME, itt nem volt az IDAban unk1, jó ez így?
     }
 }
 
-BOOL D3D_CheckDeviceFormatSupported(int a1, int a2, int a3)
+BOOL D3D_CheckDeviceFormatSupported(int usage, int resourceType, int format)
 {
-    return D3DRenderParams.d3d_if->lpVtbl->CheckDeviceFormat(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, D3DDEVTYPE_HAL, D3DRenderParams.d3d_AdapterFormat, a1, a2, a3) >= 0;
+    return D3DRenderParams.d3d_if->lpVtbl->CheckDeviceFormat(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, D3DDEVTYPE_HAL, D3DRenderParams.d3d_AdapterFormat, usage, resourceType, format) >= 0;
 }
 
-BOOL D3D_CheckDepthStencilMatch(int a1, int a2)
+BOOL D3D_CheckDepthStencilMatch(int renderFormat, int depthFormat)
 {
-    return D3DRenderParams.d3d_if->lpVtbl->CheckDepthStencilMatch(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, D3DDEVTYPE_HAL, D3DRenderParams.d3d_AdapterFormat, a1, a2) >= 0;
+    return D3DRenderParams.d3d_if->lpVtbl->CheckDepthStencilMatch(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, D3DDEVTYPE_HAL, D3DRenderParams.d3d_AdapterFormat, renderFormat, depthFormat) >= 0;
 }
 
 int D3D_SelectSupportedDeviceFormat(int format)
@@ -3492,12 +2385,10 @@ int D3D_SelectSupportedDeviceFormat(int format)
 
 void D3D_CreateWaterTexture()
 {
-    int v0;
-    IDirect3DDevice9* v1;
-    int v2;
-    int v3;
+    int result;
+    int format;
 
-    v0 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
         512,
         512,
         1,
@@ -3506,27 +2397,26 @@ void D3D_CreateWaterTexture()
         D3DPOOL_DEFAULT,
         &waterTexture,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v0);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
     waterTexture->lpVtbl->GetSurfaceLevel(waterTexture, 0, &d3dWaterRTtoSet);
-    v1 = D3DRenderParams.d3dDev;
-    v2 = D3D_SelectSupportedDeviceFormat(D3DFMT_A8R8G8B8);
-    v3 = v1->lpVtbl->CreateDepthStencilSurface(D3DRenderParams.d3dDev,
+    format = D3D_SelectSupportedDeviceFormat(D3DFMT_A8R8G8B8);
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateDepthStencilSurface(D3DRenderParams.d3dDev,
         512,
         512,
-        v2,
+        format,
         D3DMULTISAMPLE_NONE,
         0,
         FALSE,
         &d3dDSSurfaceToSet,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v3);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
 }
 
 void D3D_CreateFullScreenTextureAndGetDepthStencilSurface()
 {
-    int v0;
+    int result;
 
-    v0 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+    result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
         D3DRenderParams.presentParams.BackBufferWidth,
         D3DRenderParams.presentParams.BackBufferHeight,
         1,
@@ -3535,7 +2425,7 @@ void D3D_CreateFullScreenTextureAndGetDepthStencilSurface()
         D3DPOOL_DEFAULT,
         &D3DRenderParams.blurTex,
         NULL);
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v0);
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
     D3DRenderParams.d3dDev->lpVtbl->GetDepthStencilSurface(D3DRenderParams.d3dDev, &D3DRenderParams.newZStencil);
 }
 
@@ -3552,85 +2442,85 @@ void D3D_PresentAndClear()
 
 
 
-void D3D_InitEverything(tGdi_DisplayData* a1)
+void D3D_InitEverything(tGdi_DisplayData* dd)
 {
-    IDirect3DTexture9** v1;
-    int v2;
-    D3DVERTEXELEMENT9 v5[4];
+    int i;
+    int result;
+    D3DVERTEXELEMENT9 decl[4];
     IDirect3DSurface9* surf;
 
     D3D_CreateVBOs();
-    v5[0].Stream = 0;
-    v5[0].Offset = 0;
-    v5[0].Type = 2;
-    v5[0].Method = 0;
-    v5[0].Usage = 0;
-    v5[0].UsageIndex = 0;
-    v5[1].Stream = 1;
-    v5[1].Offset = 0;
-    v5[1].Type = 4;
-    v5[1].Method = 0;
-    v5[1].Usage = 10;
-    v5[1].UsageIndex = 0;
-    v5[2].Stream = 255;
-    v5[2].Offset = 0;
-    v5[2].Type = 17;
-    v5[2].Method = 0;
-    v5[2].Usage = 0;
-    v5[2].UsageIndex = 0;
-    D3DRenderParams.d3dDev->lpVtbl->CreateVertexDeclaration(D3DRenderParams.d3dDev, v5, &D3DRenderParams.vertexDeclarationIFd3dUVVBIsNull);
-    v5[0].Stream = 0;
-    v5[0].Offset = 0;
-    v5[0].Type = 2;
-    v5[0].Method = 0;
-    v5[0].Usage = 0;
-    v5[0].UsageIndex = 0;
-    v5[1].Stream = 1;
-    v5[1].Offset = 0;
-    v5[1].Type = 4;
-    v5[1].Method = 0;
-    v5[1].Usage = 10;
-    v5[1].UsageIndex = 0;
-    v5[2].Stream = 2;
-    v5[2].Offset = 0;
-    v5[2].Type = 2;
-    v5[2].Method = 0;
-    v5[2].Usage = 3;
-    v5[2].UsageIndex = 0;
-    v5[3].Stream = 255;
-    v5[3].Offset = 0;
-    v5[3].Type = 17;
-    v5[3].Method = 0;
-    v5[3].Usage = 0;
-    v5[3].UsageIndex = 0;
-    D3DRenderParams.d3dDev->lpVtbl->CreateVertexDeclaration(D3DRenderParams.d3dDev, v5, &D3DRenderParams.d3dVertexDeclaration);
-    v5[0].Stream = 0;
-    v5[0].Offset = 0;
-    v5[0].Type = 2;
-    v5[0].Method = 0;
-    v5[0].Usage = 0;
-    v5[0].UsageIndex = 0;
-    v5[1].Stream = 1;
-    v5[1].Offset = 0;
-    v5[1].Type = 4;
-    v5[1].Method = 0;
-    v5[1].Usage = 10;
-    v5[1].UsageIndex = 0;
-    v5[2].Stream = 2;
-    v5[2].Offset = 0;
-    v5[2].Type = 1;
-    v5[2].Method = 0;
-    v5[2].Usage = 5;
-    v5[2].UsageIndex = 0;
-    v5[3].Stream = 255;
-    v5[3].Offset = 0;
-    v5[3].Type = 17;
-    v5[3].Method = 0;
-    v5[3].Usage = 0;
-    v5[3].UsageIndex = 0;
-    D3DRenderParams.d3dDev->lpVtbl->CreateVertexDeclaration(D3DRenderParams.d3dDev, v5, &D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
-    gpst_DX_stDD = a1;
-    a1->rasters[3].unk1 = 0; // TODO FIXME ez biztos jó így ???? megnézni. az idaban csak siman a1->rasters[3] = 0 van de az nem jó
+    decl[0].Stream = 0;
+    decl[0].Offset = 0;
+    decl[0].Type = 2;
+    decl[0].Method = 0;
+    decl[0].Usage = 0;
+    decl[0].UsageIndex = 0;
+    decl[1].Stream = 1;
+    decl[1].Offset = 0;
+    decl[1].Type = 4;
+    decl[1].Method = 0;
+    decl[1].Usage = 10;
+    decl[1].UsageIndex = 0;
+    decl[2].Stream = 255;
+    decl[2].Offset = 0;
+    decl[2].Type = 17;
+    decl[2].Method = 0;
+    decl[2].Usage = 0;
+    decl[2].UsageIndex = 0;
+    D3DRenderParams.d3dDev->lpVtbl->CreateVertexDeclaration(D3DRenderParams.d3dDev, decl, &D3DRenderParams.vertexDeclarationIFd3dUVVBIsNull);
+    decl[0].Stream = 0;
+    decl[0].Offset = 0;
+    decl[0].Type = 2;
+    decl[0].Method = 0;
+    decl[0].Usage = 0;
+    decl[0].UsageIndex = 0;
+    decl[1].Stream = 1;
+    decl[1].Offset = 0;
+    decl[1].Type = 4;
+    decl[1].Method = 0;
+    decl[1].Usage = 10;
+    decl[1].UsageIndex = 0;
+    decl[2].Stream = 2;
+    decl[2].Offset = 0;
+    decl[2].Type = 2;
+    decl[2].Method = 0;
+    decl[2].Usage = 3;
+    decl[2].UsageIndex = 0;
+    decl[3].Stream = 255;
+    decl[3].Offset = 0;
+    decl[3].Type = 17;
+    decl[3].Method = 0;
+    decl[3].Usage = 0;
+    decl[3].UsageIndex = 0;
+    D3DRenderParams.d3dDev->lpVtbl->CreateVertexDeclaration(D3DRenderParams.d3dDev, decl, &D3DRenderParams.d3dVertexDeclaration);
+    decl[0].Stream = 0;
+    decl[0].Offset = 0;
+    decl[0].Type = 2;
+    decl[0].Method = 0;
+    decl[0].Usage = 0;
+    decl[0].UsageIndex = 0;
+    decl[1].Stream = 1;
+    decl[1].Offset = 0;
+    decl[1].Type = 4;
+    decl[1].Method = 0;
+    decl[1].Usage = 10;
+    decl[1].UsageIndex = 0;
+    decl[2].Stream = 2;
+    decl[2].Offset = 0;
+    decl[2].Type = 1;
+    decl[2].Method = 0;
+    decl[2].Usage = 5;
+    decl[2].UsageIndex = 0;
+    decl[3].Stream = 255;
+    decl[3].Offset = 0;
+    decl[3].Type = 17;
+    decl[3].Method = 0;
+    decl[3].Usage = 0;
+    decl[3].UsageIndex = 0;
+    D3DRenderParams.d3dDev->lpVtbl->CreateVertexDeclaration(D3DRenderParams.d3dDev, decl, &D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
+    gpst_DX_stDD = dd;
+    dd->rasters[3].unk1 = 0; // TODO FIXME ez biztos jó így ???? megnézni. az idaban csak siman a1->rasters[3] = 0 van de az nem jó
     D3D_SetViewPort(0,
         (D3DRenderParams.Rect.bottom - (D3DRenderParams.Rect.right - D3DRenderParams.Rect.left) - D3DRenderParams.Rect.top) / 2,
         D3DRenderParams.Rect.right - D3DRenderParams.Rect.left, D3DRenderParams.Rect.right - D3DRenderParams.Rect.left);
@@ -3646,13 +2536,9 @@ void D3D_InitEverything(tGdi_DisplayData* a1)
     D3D_SetInitialSamplerStates();
     D3D_SetInitialTextureStageStates();
     D3D_l_Texture_Init(-1, -1, 0);
-    D3D_SetProjectionMatrix(&a1->ct.cam);
+    D3D_SetProjectionMatrix(&dd->ct.cam);
     D3D_CreateWaterTexture();
-    if (renderStateConfig.d3d_zEnable != D3DRenderParams.d3d_defaultZEnable)
-    {
-        renderStateConfig.d3d_zEnable = D3DRenderParams.d3d_defaultZEnable;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZENABLE, D3DRenderParams.d3d_defaultZEnable);
-    }
+    D3D_RenderStateSet(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, D3DRenderParams.d3d_defaultZEnable);
     D3DRenderParams.tweak_ae_d2x = D3DRenderParams.d3dcaps.TextureOpCaps & D3DTEXOPCAPS_MODULATE2X;
     D3DRenderParams.textureUVMode = 0;
     D3DRenderParams.diffuse2x = 0;
@@ -3667,687 +2553,442 @@ void D3D_InitEverything(tGdi_DisplayData* a1)
     D3D_CreateBlurTextures();
     D3D_AETexturesInit();
     //*(_DWORD*)&v5[3].Stream = v4; / ????
-    v1 = &(D3DRenderParams.d3dShadowTextures[8]);
-    do
+    for (i = 7; i >= 0; i--)
     {
-        v2 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, 128, 128, 1, 1, 21, 0, --v1, 0);
-        D3D_CheckReturnAndRunSettingsApplicationIfProblem(v2);
-        (*v1)->lpVtbl->GetSurfaceLevel(*v1, 0, &surf);
+        result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, 128, 128, 1, 1, 21, 0, &D3DRenderParams.d3dShadowTextures[i], 0);
+        D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+        D3DRenderParams.d3dShadowTextures[i]->lpVtbl->GetSurfaceLevel(D3DRenderParams.d3dShadowTextures[i], 0, &surf);
         D3DRenderParams.d3dDev->lpVtbl->ColorFill(D3DRenderParams.d3dDev, surf, NULL, 0xffffffff);
         surf->lpVtbl->Release(surf);
-    } while (v1 != D3DRenderParams.d3dShadowTextures);
+    }
 }
 
 void D3D_CreateAndCopySourceTexturesToThem()
 {
-    unsigned int v0;
-    IDirect3DTexture9** v1;
-    IDirect3DTexture9** v2;
-    int v3;
-    IDirect3DTexture9* v4;
-    int v5;
-    int v6;
-    IDirect3DTexture9* v7;
-    D3DSURFACE_DESC v8;
+    unsigned int bytes;
+    int i;
+    int levels;
+    int result;
+    IDirect3DTexture9* copy;
+    D3DSURFACE_DESC desc;
 
-    v0 = 4 * D3DRenderParams.d3dTextureNum + 4;
-    v7 = 0;
-    D3DRenderParams.d3dTextures = (IDirect3DTexture9**)MEM_p_Alloc(v0);
-    memset(D3DRenderParams.d3dTextures, 0, v0);
-    v1 = (IDirect3DTexture9**)D3DRenderParams.d3dSourceTextures;
-    v2 = (IDirect3DTexture9**)&D3DRenderParams.d3dSourceTextures[D3DRenderParams.d3dTextureNum];
-    if (D3DRenderParams.d3dSourceTextures < v2)
+    bytes = 4 * D3DRenderParams.d3dTextureNum + 4;
+    D3DRenderParams.d3dTextures = (IDirect3DTexture9**)MEM_p_Alloc(bytes);
+    memset(D3DRenderParams.d3dTextures, 0, bytes);
+    for (i = 0; i < D3DRenderParams.d3dTextureNum; i++)
     {
-        v3 = 0;
-        do
+        copy = 0;
+        if (D3DRenderParams.d3dSourceTextures[i])
         {
-            v4 = 0;
-            v7 = 0;
-            if (*v1)
-            {
-                (*v1)->lpVtbl->GetLevelDesc(*v1, 0, &v8);
-                v5 = (*v1)->lpVtbl->GetLevelCount(*v1);
-                v6 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
-                    v8.Width,
-                    v8.Height,
-                    v5,
-                    0,
-                    v8.Format,
-                    D3DPOOL_DEFAULT,
-                    &v7,
-                    NULL);
-                D3D_CheckReturnAndRunSettingsApplicationIfProblem(v6);
-                (*v1)->lpVtbl->AddDirtyRect(*v1, NULL);
-                v4 = v7;
-                if (v7)
-                {
-                    D3DRenderParams.d3dDev->lpVtbl->UpdateTexture(D3DRenderParams.d3dDev, (IDirect3DBaseTexture9*)*v1, (IDirect3DBaseTexture9*)v7);
-                    v4 = v7;
-                }
-            }
-            D3DRenderParams.d3dTextures[v3] = v4;
-            ++v1;
-            ++v3;
-        } while (v1 < v2);
+            D3DRenderParams.d3dSourceTextures[i]->lpVtbl->GetLevelDesc(D3DRenderParams.d3dSourceTextures[i], 0, &desc);
+            levels = D3DRenderParams.d3dSourceTextures[i]->lpVtbl->GetLevelCount(D3DRenderParams.d3dSourceTextures[i]);
+            result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+                desc.Width,
+                desc.Height,
+                levels,
+                0,
+                desc.Format,
+                D3DPOOL_DEFAULT,
+                &copy,
+                NULL);
+            D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+            D3DRenderParams.d3dSourceTextures[i]->lpVtbl->AddDirtyRect(D3DRenderParams.d3dSourceTextures[i], NULL);
+            if (copy)
+                D3DRenderParams.d3dDev->lpVtbl->UpdateTexture(D3DRenderParams.d3dDev, (IDirect3DBaseTexture9*)D3DRenderParams.d3dSourceTextures[i], (IDirect3DBaseTexture9*)copy);
+        }
+        D3DRenderParams.d3dTextures[i] = copy;
     }
 }
 void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGRO* geogro)
 {
-    IDirect3DVertexBuffer9** v3;
-    int v4;
-    int v5;
-    IDirect3DVertexBuffer9** v6;
-    int v7;
-    int v8;
-    int v9;
-    int v10;
-    int v11;
-    tGeoWholeTriangleStripBlock* v12;
-    int v13;
-    tGeoTriangleStrip* v14;
-    int v15;
-    tGeoTriangleStrip* v16;
-    int v17;
-    BOOL v18;
-    tGeoUVElem* v19;
-    tGeoTriangleStripElem* v20;
-    int v21;
-    tGeoUVElem* v22;
-    float v23;
-    float* v24;
-    BOOL v25;
-    tGeoUVElem* v26;
-    int v27;
-    tGeoTriangleStripElem* v28;
-    int v29;
-    tGeoUVElem* v30;
-    unsigned int v31;
-    int v32;
-    IDirect3DVertexBuffer9** v33;
-    int v34;
-    int v35;
-    int v36;
-    int v37;
-    IDirect3DVertexBuffer9* v38;
-    tGeoUVElem* v40;
-    int v41;
-    int v42;
-    tGeoTriangleStripElem* v43;
-    int v44;
-    tGeoUVElem* v45;
-    float v46;
-    tGeoUVElem* v47;
-    BOOL v48; // cc
-    int i; // esi
-    IDirect3DIndexBuffer9* v50;
-    IDirect3DIndexBuffer9** v51;
-    int v52;
-    int v53;
-    tGeoWholeTriangleStripBlock* v54;
-    int v55;
-    unsigned int v56;
-    int v57;
-    tGeoTriangleStrip* v58;
-    int v59;
-    unsigned int v60;
-    int v61;
-    int v62;
-    tGeoWholeTriangleStripBlock* v63;
-    int v64;
-    int v65;
-    int v66;
-    int v67;
-    tGeoTriangleStrip* v68;
-    tD3dStreamInfoElem* v69;
-    int v70;
-    tD3dStreamInfoElem* v71;
-    int v72;
-    IDirect3DVertexBuffer9* v73;
-    unsigned int v74;
-    int v75;
-    unsigned int v76;
-    int v77;
-    unsigned int v78;
-    unsigned int v79;
-    int v80;
-    IDirect3DIndexBuffer9** v81;
-    unsigned int v82;
-    tGeoWholeTriangleStripBlock* v83;
-    int v84;
-    tGeoUVElem* v85;
-    int v86;
-    void* v87;
-    tGeoUVElem* v88[50];
-    tGeoUVElem** v81b;
-    tGeoUVElem* v81c;
-    unsigned short* v75b;
+    int stride;
+    int result;
+    int chunk;
+    int strip;
+    int elem;
+    int i;
+    int buf;
+    int found;
+    int fits;
+    int newBuf;
+    int total;
+    int pos;
+    int streamStart;
+    int streams;
+    unsigned int word;
+    tGeoWholeTriangleStripBlock* block;
+    tGeoTriangleStrip* strips;
+    tGeoTriangleStripElem* elems;
+    tGeoUVElem* uv;
+    tGeoUVElem* src;
+    tD3dStreamInfoElem* info;
+    void* locked;
+    unsigned short* out;
+    tGeoUVElem* uvBufs[50];
 
     if (worldPtrIfMultiStream) // TODO FIXME, Ennek a függvénynek az elsõ hívásánál ez biztos hogy 0 lesz, szóal csak a másodiknál lesznek ezek a pufferek létrehozva.
     {
         GEO_UseNormals(geogro);
         if ((gao->flags & 2) == 0 || !((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->skeletonGroup)
         {
-            v3 = &geogro->d3dvb;
             if (!geogro->d3dvb)
             {
-                v4 = D3D_CalculateStride(D3DFVF_XYZ);
-                v5 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+                stride = D3D_CalculateStride(D3DFVF_XYZ);
+                result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
                     D3DRenderParams.d3dDev,
-                    v4 * geogro->vertexNum,
+                    stride * geogro->vertexNum,
                     D3DUSAGE_WRITEONLY,
                     D3DFVF_XYZ,
                     D3DPOOL_DEFAULT,
                     &geogro->d3dvb,
                     NULL);
-                D3D_CheckReturnAndRunSettingsApplicationIfProblem(v5);
-                (*v3)->lpVtbl->Lock(*v3, 0, 0, &v87, 0);
-                memcpy(v87, geogro->vertices, v4 * geogro->vertexNum);
-                (*v3)->lpVtbl->Unlock(*v3);
+                D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+                geogro->d3dvb->lpVtbl->Lock(geogro->d3dvb, 0, 0, &locked, 0);
+                memcpy(locked, geogro->vertices, stride * geogro->vertexNum);
+                geogro->d3dvb->lpVtbl->Unlock(geogro->d3dvb);
             }
-            v6 = &geogro->d3dvb2;
             if (!geogro->d3dvb2)
             {
-                v7 = D3D_CalculateStride(D3DFVF_NORMAL);
-                v8 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+                stride = D3D_CalculateStride(D3DFVF_NORMAL);
+                result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
                     D3DRenderParams.d3dDev,
-                    v7 * geogro->vertexNum,
+                    stride * geogro->vertexNum,
                     D3DUSAGE_WRITEONLY,
                     D3DFVF_NORMAL,
                     D3DPOOL_DEFAULT,
                     &geogro->d3dvb2,
                     NULL);
-                D3D_CheckReturnAndRunSettingsApplicationIfProblem(v8);
-                (*v6)->lpVtbl->Lock(*v6, 0, 0, &v87, 0);
-                memcpy(v87, geogro->normals, v7 * geogro->vertexNum);
-                (*v6)->lpVtbl->Unlock(*v6);
+                D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+                geogro->d3dvb2->lpVtbl->Lock(geogro->d3dvb2, 0, 0, &locked, 0);
+                memcpy(locked, geogro->normals, stride * geogro->vertexNum);
+                geogro->d3dvb2->lpVtbl->Unlock(geogro->d3dvb2);
             }
         }
         if (!geogro->d3dUVVB && geogro->uvNum)
         {
             geogro->d3dUVVBNum = 1;
             geogro->d3dUVVB = (IDirect3DVertexBuffer9**)MEM_p_Alloc(4u);
-            v9 = D3D_CalculateStride(D3DFVF_TEX1);
-            v10 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+            stride = D3D_CalculateStride(D3DFVF_TEX1);
+            result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
                 D3DRenderParams.d3dDev,
-                v9 * geogro->vertexNum,
+                stride * geogro->vertexNum,
                 D3DUSAGE_WRITEONLY,
                 D3DFVF_TEX1,
                 D3DPOOL_DEFAULT,
                 &(geogro->d3dUVVB[0]),
                 NULL);
-            D3D_CheckReturnAndRunSettingsApplicationIfProblem(v10);
-            
-            geogro->d3dUVVB[0]->lpVtbl->Lock(geogro->d3dUVVB[0], 0, 0, &(v88[0]), 0);
+            D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
 
-            if (v88[0] < &v88[0][geogro->vertexNum]) {
+            geogro->d3dUVVB[0]->lpVtbl->Lock(geogro->d3dUVVB[0], 0, 0, (void**)&uvBufs[0], 0);
+
+            if (geogro->vertexNum)
+            {
                 for (i = 0; i < (int)((sizeof(tGeoUVElem) * geogro->vertexNum - 1) >> 2) + 1; i++) {
-                    ((float*)(v88[0]))[i] = FLT_MAX;
+                    ((float*)uvBufs[0])[i] = FLT_MAX;
      //               *((int*)(&(v88[0][i]))) = 0x7F7FFFFF; // ez FLOAT_MAX, TODO FIXME
                 }
             }
-            v11 = geogro->triangleChunkCount;
-            v79 = 0;
-            if (v11 > 0)
+            for (chunk = 0; chunk < (int)geogro->triangleChunkCount; chunk++)
             {
-                v76 = 0;
-                do
+                block = geogro->triangleChunks[chunk].triangleStripBlock;
+                if (!block)
+                    continue;
+                for (strip = 0; strip < (int)block->triangleStripNum; strip++)
                 {
-                    v83 = geogro->triangleChunks[v76].triangleStripBlock;
-                    v12 = v83;
-                    if (v83)
+                    strips = &block->triangleStrips[strip];
+                    found = -1;
+                    for (buf = 0; buf < geogro->d3dUVVBNum; buf++)
                     {
-                        v13 = v83->triangleStripNum;
-                        v82 = 0;
-                        if (v13)
+                        uv = uvBufs[buf];
+                        if (strips->triangleStripElemNum == 0)
                         {
-                            v75 = 0;
-                            do
+                            found = buf;
+                            break;
+                        }
+                        fits = 1;
+                        for (elem = 0; elem < strips->triangleStripElemNum; elem++)
+                        {
+                            i = strips->triangleStripElems[elem].triangleIdx;
+                            src = &geogro->UVs[strips->triangleStripElems[elem].uvIdx];
+                            if (uv[i].u != FLT_MAX && uv[i].u != src->u)
                             {
-                                v14 = v12->triangleStrips;
-                                v15 = geogro->d3dUVVBNum;
-                                v16 = &(v14[v75]);
-                                v17 = 0;
-                                v78 = 0;
-                                if (v15)
-                                {
-                                    while (1)
-                                    {
-                                        v18 = v16->triangleStripElemNum == 0;
-                                        v19 = v88[v17];
-                                        v80 = 0;
-                                        if (v18)
-                                            break;
-                                        v20 = v16->triangleStripElems;
-                                        while (1)
-                                        {
-                                            v21 = v20->triangleIdx;
-                                            v22 = &geogro->UVs[v20->uvIdx];
-                                            if (v19[v21].u != FLT_MAX && v19[v21].u != v22->u)
-                                                break;
-                                            v23 = v19[v21].v;
-                                            v24 = &v19[v21].v;
-                                            if (v23 != FLT_MAX && *v24 != v22->v)
-                                                break;
-                                            ++v20;
-                                            v25 = ++v80 < v16->triangleStripElemNum;
-                                            if (!v25)
-                                            {
-                                                v17 = v78;
-                                                goto LABEL_26;
-                                            }
-                                        }
-                                        v31 = geogro->d3dUVVBNum;
-                                        v17 = ++v78;
-                                        if (v78 >= v31)
-                                            goto LABEL_31;
-                                    }
-                                LABEL_26:
-                                    v26 = v88[v17];
-                                    v27 = 0;
-                                    if (v16->triangleStripElemNum)
-                                    {
-                                        do
-                                        {
-                                            v28 = v16->triangleStripElems;
-                                            v29 = v28[v27].triangleIdx;
-                                            v30 = &geogro->UVs[v28[v27].uvIdx];
-                                            v26[v29].u = v30->u;
-                                            v26[v29].v = v30->v;
-                                            ++v27;
-                                        } while (v27 < v16->triangleStripElemNum);
-                                        v17 = v78;
-                                    }
-                                    v16->vbIdx = v17;
-                                }
-                                else
-                                {
-                                LABEL_31:
-                                    v32 = geogro->d3dUVVBNum + 1;
-                                    geogro->d3dUVVBNum = v32;
-                                    v33 = (IDirect3DVertexBuffer9**)MEM_p_Realloc(geogro->d3dUVVB, 4 * v32);
-                                    v34 = geogro->d3dUVVBNum;
-                                    geogro->d3dUVVB = v33;
-                                    v35 = v34 - 1;
-                                    v36 = D3D_CalculateStride(D3DFVF_TEX1);
-                                    v37 = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
-                                        D3DRenderParams.d3dDev,
-                                        v36 * geogro->vertexNum,
-                                        D3DUSAGE_WRITEONLY,
-                                        D3DFVF_TEX1,
-                                        D3DPOOL_DEFAULT,
-                                        &geogro->d3dUVVB[v35],
-                                        NULL);
-                                    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v37);
-                                    v38 = geogro->d3dUVVB[v35];
-                                    v81b = &v88[v35];
-                                    v38->lpVtbl->Lock(v38, 0, 0, v81b, 0);
-                                    v40 = *v81b;
-                                    v41 = geogro->vertexNum;
-                                    if (v40 < &v40[v41]) {
-                                        for (i = 0; i < (int)((sizeof(tGeoUVElem) * v41 - 1) >> 2) + 1; i++) {
-                                            ((float*)v40)[i] = FLT_MAX;
-                                            //*((int*)(&(v40[i]))) = 0x7F7FFFFF; // ez FLOAT_MAX, TODO FIXME
-                                        }
-                                    }
-                                    v42 = 0;
-                                    v18 = v16->triangleStripElemNum == 0;
-                                    v81c = *v81b;
-                                    if (!v18)
-                                    {
-                                        do
-                                        {
-                                            v43 = v16->triangleStripElems;
-                                            v44 = v43[v42].triangleIdx;
-                                            v45 = &geogro->UVs[v43[v42].uvIdx];
-                                            v46 = v45->u;
-                                            v85 = v45;
-                                            v47 = v81c;
-                                            v81c[v44].u = v46;
-                                            v47[v44].v = v85->v;
-                                            ++v42;
-                                        } while (v42 < v16->triangleStripElemNum);
-                                    }
-                                    v16->vbIdx = v35; 
-                                }
-                                v12 = v83;
-                                v25 = ++v82 < v83->triangleStripNum;
-                                v75++;
-                            } while (v25);
+                                fits = 0;
+                                break;
+                            }
+                            if (uv[i].v != FLT_MAX && uv[i].v != src->v)
+                            {
+                                fits = 0;
+                                break;
+                            }
+                        }
+                        if (fits)
+                        {
+                            found = buf;
+                            break;
                         }
                     }
-                    v48 = (int)++v79 < geogro->triangleChunkCount;
-                    v76++;
-                } while (v48);
+                    if (found >= 0)
+                    {
+                        uv = uvBufs[found];
+                        for (elem = 0; elem < strips->triangleStripElemNum; elem++)
+                        {
+                            elems = strips->triangleStripElems;
+                            i = elems[elem].triangleIdx;
+                            src = &geogro->UVs[elems[elem].uvIdx];
+                            uv[i].u = src->u;
+                            uv[i].v = src->v;
+                        }
+                        strips->vbIdx = found;
+                        continue;
+                    }
+                    newBuf = geogro->d3dUVVBNum;
+                    geogro->d3dUVVBNum = newBuf + 1;
+                    geogro->d3dUVVB = (IDirect3DVertexBuffer9**)MEM_p_Realloc(geogro->d3dUVVB, 4 * (newBuf + 1));
+                    stride = D3D_CalculateStride(D3DFVF_TEX1);
+                    result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
+                        D3DRenderParams.d3dDev,
+                        stride * geogro->vertexNum,
+                        D3DUSAGE_WRITEONLY,
+                        D3DFVF_TEX1,
+                        D3DPOOL_DEFAULT,
+                        &geogro->d3dUVVB[newBuf],
+                        NULL);
+                    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+                    geogro->d3dUVVB[newBuf]->lpVtbl->Lock(geogro->d3dUVVB[newBuf], 0, 0, (void**)&uvBufs[newBuf], 0);
+                    uv = uvBufs[newBuf];
+                    if (geogro->vertexNum)
+                    {
+                        for (i = 0; i < (int)((sizeof(tGeoUVElem) * geogro->vertexNum - 1) >> 2) + 1; i++) {
+                            ((float*)uv)[i] = FLT_MAX;
+                                            //*((int*)(&(v40[i]))) = 0x7F7FFFFF; // ez FLOAT_MAX, TODO FIXME
+                        }
+                    }
+                    for (elem = 0; elem < strips->triangleStripElemNum; elem++)
+                    {
+                        elems = strips->triangleStripElems;
+                        i = elems[elem].triangleIdx;
+                        src = &geogro->UVs[elems[elem].uvIdx];
+                        uv[i].u = src->u;
+                        uv[i].v = src->v;
+                    }
+                    strips->vbIdx = newBuf;
+                }
             }
             for (i = 0; i < geogro->d3dUVVBNum; ++i)
-            {
-                v73 = geogro->d3dUVVB[i];
-                v73->lpVtbl->Unlock(v73);
-            }
+                geogro->d3dUVVB[i]->lpVtbl->Unlock(geogro->d3dUVVB[i]);
         }
-        v50 = geogro->d3dIndexBuf;
-        v51 = &geogro->d3dIndexBuf;
-        v81 = &geogro->d3dIndexBuf;
-        if (!v50)
+        if (geogro->d3dIndexBuf || (int)geogro->triangleChunkCount <= 0)
+            return;
+        total = 0;
+        for (chunk = 0; chunk < (int)geogro->triangleChunkCount; chunk++)
         {
-            v52 = geogro->triangleChunkCount;
-            v53 = 0;
-            v78 = 0;
-            if (v52 > 0)
+            block = geogro->triangleChunks[chunk].triangleStripBlock;
+            if (!block)
+                continue;
+            streams = 0;
+            for (buf = 0; buf < geogro->d3dUVVBNum; buf++)
             {
-                v75 = 0;
-                do
+                streamStart = total;
+                for (strip = 0; strip < (int)block->triangleStripNum; strip++)
                 {
-                    v54 = geogro->triangleChunks[v75].triangleStripBlock;
-                    if (v54)
+                    strips = &block->triangleStrips[strip];
+                    if (strips->vbIdx != buf)
+                        continue;
+                    if (streamStart != total)
                     {
-                        v55 = geogro->d3dUVVBNum;
-                        v56 = 0;
-                        v77 = 0;
-                        v79 = 0;
-                        if (v55)
-                        {
-                            do
-                            {
-                                v57 = v53;
-                                if (v54->triangleStripNum)
-                                {
-                                    v58 = v54->triangleStrips;
-                                    v59 = v54->triangleStripNum;
-                                    do
-                                    {
-                                        if (v58->vbIdx == v56)
-                                        {
-                                            if (v57 != v53)
-                                            {
-                                                v53 += 2;
-                                                if ((((uint8_t)v53 - (uint8_t)v57) & 1) != 0) // ez nembiztos hogy jó így TODO IFXME
-                                                    ++v53;
-                                            }
-                                            v53 += v58->triangleStripElemNum;
-                                            v56 = v79;
-                                        }
-                                        ++v58;
-                                        --v59;
-                                    } while (v59);
-                                }
-                                if (v53 != v57)
-                                    ++v77;
-                                v60 = geogro->d3dUVVBNum;
-                                v79 = ++v56;
-                            } while (v56 < v60);
-                        }
-                        v51 = v81;
-                        v54->streamsNum = v77;
+                        total += 2;
+                        if ((((uint8_t)total - (uint8_t)streamStart) & 1) != 0) // ez nembiztos hogy jó így TODO IFXME
+                            ++total;
                     }
-                    v48 = (int)++v78 < geogro->triangleChunkCount;
-                    v75++;
-                } while (v48);
-                if (v53)
+                    total += strips->triangleStripElemNum;
+                }
+                if (total != streamStart)
+                    ++streams;
+            }
+            block->streamsNum = streams;
+        }
+        if (!total)
+            return;
+        pos = 0;
+        result = D3DRenderParams.d3dDev->lpVtbl->CreateIndexBuffer(
+            D3DRenderParams.d3dDev,
+            2 * total,
+            D3DUSAGE_WRITEONLY,
+            D3DFMT_INDEX16,
+            D3DPOOL_DEFAULT,
+            &geogro->d3dIndexBuf,
+            NULL);
+        D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+        geogro->d3dIndexBuf->lpVtbl->Lock(geogro->d3dIndexBuf, 0, 0, (void**)&out, 0); // ide uj v75 kéne
+        for (chunk = 0; chunk < (int)geogro->triangleChunkCount; chunk++)
+        {
+            block = geogro->triangleChunks[chunk].triangleStripBlock;
+            if (!block)
+                continue;
+            word = sizeof(tD3dStreamInfoElem) * block->streamsNum;
+            streams = 0;
+            block->d3dStreamInfoElems = (tD3dStreamInfoElem*)MEM_p_Alloc(word);
+            for (buf = 0; buf < geogro->d3dUVVBNum; buf++)
+            {
+                if ((unsigned int)streams >= block->streamsNum)
+                    break;
+                block->d3dStreamInfoElems[streams].startIndex = pos;
+                for (strip = 0; strip < (int)block->triangleStripNum; strip++)
                 {
-                    v61 = 0;
-                    v62 = D3DRenderParams.d3dDev->lpVtbl->CreateIndexBuffer(
-                        D3DRenderParams.d3dDev,
-                        2 * v53,
-                        D3DUSAGE_WRITEONLY,
-                        D3DFMT_INDEX16,
-                        D3DPOOL_DEFAULT,
-                        v51,
-                        NULL);
-                    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v62);
-                    (*v51)->lpVtbl->Lock(*v51, 0, 0, &v75b, 0); // ide uj v75 kéne
-                    v48 = geogro->triangleChunkCount <= 0;
-                    v78 = 0;
-                    if (!v48)
+                    //v68 = v63[v77].triangleStrips;
+                    strips = &block->triangleStrips[strip];
+                    if (strips->vbIdx != buf)
+                        continue;
+                    info = &block->d3dStreamInfoElems[streams];
+                    if (info->startIndex == pos)
                     {
-                        v80 = 0;
-                        do
-                        {
-                            v63 = geogro->triangleChunks[v80].triangleStripBlock;
-                            if (v63)
-                            {
-                                v74 = sizeof(tD3dStreamInfoElem) * v63->streamsNum;
-                                v82 = 0;
-                                v63->d3dStreamInfoElems = (tD3dStreamInfoElem*)MEM_p_Alloc(v74);
-                                v64 = geogro->d3dUVVBNum;
-                                v65 = 0;
-                                v86 = 0;
-                                if (v64)
-                                {
-                                    v66 = 0;
-                                    v84 = 0;
-                                    do
-                                    {
-                                        if (v82 >= v63->streamsNum)
-                                            break;
-                                        v63->d3dStreamInfoElems[v66].startIndex = v61;
-                                        v67 = v63->triangleStripNum;
-                                        v79 = 0;
-                                        if (v67)
-                                        {
-                                            v77 = 0;
-                                            do
-                                            {
-                                                //v68 = v63[v77].triangleStrips;
-                                                v68 = &(v63->triangleStrips[v77]);
-                                                if (v68->vbIdx == v65)
-                                                {
-                                                    v69 = &(v63->d3dStreamInfoElems[v66]);
-                                                    if (v69->startIndex == v61)
-                                                    {
-                                                        v69->vbIdx = v65;
-                                                    }
-                                                    else
-                                                    {
-                                                        *v75b = *(v75b - 1);
-                                                        *++v75b = v68->triangleStripElems->triangleIdx;
-                                                        v61 += 2;
-                                                        ++v75b;
-                                                        if ((((uint8_t)v61 - (uint8_t)v63->d3dStreamInfoElems[v66].startIndex) & 1) != 0)
-                                                        {
-                                                            *v75b++ = v68->triangleStripElems->triangleIdx;
-                                                            ++v61;
-                                                        }
-                                                    }
-                                                    v70 = 0;
-                                                    if (v68->triangleStripElemNum)
-                                                    {
-                                                        do
-                                                            *v75b++ = v68->triangleStripElems[v70++].triangleIdx;
-                                                        while (v70 < v68->triangleStripElemNum);
-                                                        v66 = v84;
-                                                    }
-                                                    v65 = v86;
-                                                    v61 += v68->triangleStripElemNum;
-                                                }
-                                                v77++;
-                                                v25 = ++v79 < v63->triangleStripNum;
-                                            } while (v25);
-                                        }
-                                        v71 = &(v63->d3dStreamInfoElems[v66]);
-                                        if (v61 != v71->startIndex)
-                                        {
-                                            v71->primitiveCount = v61 - v71->startIndex;
-                                            v66++;
-                                            ++v82;
-                                            v84 = v66;
-                                        }
-                                        v72 = geogro->d3dUVVBNum;
-                                        v86 = ++v65;
-                                    } while (v65 < v72);
-                                }
-                            }
-                            v48 = (int)++v78 < geogro->triangleChunkCount;
-                            v80++;
-                        } while (v48);
-                        v51 = v81;
+                        info->vbIdx = buf;
                     }
-                    (*v51)->lpVtbl->Unlock(*v51);
-                }
-            }
-        }
-    }
-}
-
-void D3D_CreateIndexAndVertexBuffForGameObject(tGameObjectMain* a1)
-{
-    tGameObjectMain* v1;
-    tGameObjectVisualObject* v2;
-    tGEOGRO* v3;
-    int v4;
-    tGEOGRO** v5;
-    tGEOGRO* v6;
-    tGEOSTATICLOD* v3a;
-
-    v1 = a1;
-    if ((a1->flags & 0x4000) != 0)
-    {
-        v2 = (tGameObjectVisualObject*)a1->basic->actorObjectOrVisualObject;
-        v3 = (tGEOGRO*)v2->GROGEOOrSomethingElse;
-        v3a = (tGEOSTATICLOD*)v2->GROGEOOrSomethingElse;
-        if (v2->GROGEOOrSomethingElse)
-        {
-            if (v3->intf->id == 1)
-            {
-                if (v3->triangleChunkCount && v3->triangleChunks && v3->vertexNum)
-                    D3D_CreateIndexAndVertexBuffForElemsIfSuitable(a1, (tGEOGRO*)v2->GROGEOOrSomethingElse);
-            }
-            else if (v3a->intf->id == 8)
-            {
-                v4 = 0;
-                if (v3a->lodNum)
-                {
-                    v5 = v3a->geo;
-                    do
+                    else
                     {
-                        v6 = *v5;
-                        if ((*v5)->triangleChunkCount && v6->triangleChunks)
+                        *out = *(out - 1);
+                        *++out = strips->triangleStripElems->triangleIdx;
+                        pos += 2;
+                        ++out;
+                        if ((((uint8_t)pos - (uint8_t)block->d3dStreamInfoElems[streams].startIndex) & 1) != 0)
                         {
-                            if (v6->vertexNum)
-                            {
-                                D3D_CreateIndexAndVertexBuffForElemsIfSuitable(v1, v6);
-                                v1 = a1;
-                            }
+                            *out++ = strips->triangleStripElems->triangleIdx;
+                            ++pos;
                         }
-                        ++v4;
-                        ++v5;
-                    } while (v4 < v3a->lodNum);
+                    }
+                    for (elem = 0; elem < strips->triangleStripElemNum; elem++)
+                        *out++ = strips->triangleStripElems[elem].triangleIdx;
+                    pos += strips->triangleStripElemNum;
                 }
-            }
-        }
-    }
-}
-
-void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* a1)
-{
-    tWorld* v1;
-    tableElemStructPF* v2;
-    tableElemStructPF* v3;
-    tGameObjectMain* v4;
-    tGroup* v5;
-    tableDescStruct* v6;
-    tableElemStructPF* v7;
-    tableElemStructPF* i;
-
-    if (!ENG_IsSingleStream)
-    {
-        v1 = a1;
-        if (a1)
-        {
-            if (a1->objectTablePF.actElemNum)
-            {
-                v2 = a1->objectTablePF.firstElemPtr;
-                v3 = ((tableElemStructPF*)(a1->objectTablePF.nextElemPtr)) - 1;
-                if (v2 <= v3)
+                info = &block->d3dStreamInfoElems[streams];
+                if (pos != info->startIndex)
                 {
-                    do
-                    {
-                        v4 = (tGameObjectMain*)v2->objectPtr;
-                        if (v2->objectPtr)
-                        {
-                            if (((uint8_t)v4 & 3) != 1)
-                            {
-                                D3D_CreateIndexAndVertexBuffForGameObject((tGameObjectMain*)v2->objectPtr);
-                                if ((v4->flags & 2) != 0)
-                                {
-                                    v5 = ((tGameObjectActorObject*)(v4->basic->actorObjectOrVisualObject))->skeletonGroup;
-                                    if (v5)
-                                    {
-                                        v6 = v5->tablePF;
-                                        v7 = v6->firstElemPtr;
-                                        for (i = ((tableElemStructPF*)(v6->nextElemPtr)) - 1; v7 <= i; ++v7)
-                                        {
-                                            if (v7->objectPtr && ((int)v7->objectPtr & 3) != 1)
-                                                D3D_CreateIndexAndVertexBuffForGameObject((tGameObjectMain*)v7->objectPtr);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        ++v2;
-                    } while (v2 <= v3);
-                    v1 = a1;
+                    info->primitiveCount = pos - info->startIndex;
+                    streams++;
                 }
             }
         }
-        if (!worldPtrIfMultiStream)
-            worldPtrIfMultiStream = v1;
+        geogro->d3dIndexBuf->lpVtbl->Unlock(geogro->d3dIndexBuf);
     }
 }
 
-void D3D_CreateSunTextures(tGfxSunD3DSpecificData* a1)
+void D3D_CreateIndexAndVertexBuffForGameObject(tGameObjectMain* gao)
 {
-    int v1;
+    tGameObjectVisualObject* visual;
+    tGEOGRO* geogro;
+    tGEOSTATICLOD* lod;
+    int i;
 
-    if (!a1->d3dTexture)
+    if ((gao->flags & 0x4000) != 0)
     {
-        v1 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
+        visual = (tGameObjectVisualObject*)gao->basic->actorObjectOrVisualObject;
+        geogro = (tGEOGRO*)visual->GROGEOOrSomethingElse;
+        lod = (tGEOSTATICLOD*)visual->GROGEOOrSomethingElse;
+        if (visual->GROGEOOrSomethingElse)
+        {
+            if (geogro->intf->id == 1)
+            {
+                if (geogro->triangleChunkCount && geogro->triangleChunks && geogro->vertexNum)
+                    D3D_CreateIndexAndVertexBuffForElemsIfSuitable(gao, geogro);
+            }
+            else if (lod->intf->id == 8)
+            {
+                for (i = 0; i < lod->lodNum; i++)
+                {
+                    if (lod->geo[i]->triangleChunkCount && lod->geo[i]->triangleChunks
+                        && lod->geo[i]->vertexNum)
+                        D3D_CreateIndexAndVertexBuffForElemsIfSuitable(gao, lod->geo[i]);
+                }
+            }
+        }
+    }
+}
+
+void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* world)
+{
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* gao;
+    tGroup* skeleton;
+    tableDescStruct* table;
+    tableElemStructPF* bone;
+    tableElemStructPF* lastBone;
+
+    if (ENG_IsSingleStream)
+        return;
+    if (world && world->objectTablePF.actElemNum)
+    {
+        last = ((tableElemStructPF*)(world->objectTablePF.nextElemPtr)) - 1;
+        for (elem = world->objectTablePF.firstElemPtr; elem <= last; ++elem)
+        {
+            gao = (tGameObjectMain*)elem->objectPtr;
+            if (!gao || ((uint8_t)(size_t)gao & 3) == 1)
+                continue;
+            D3D_CreateIndexAndVertexBuffForGameObject(gao);
+            if ((gao->flags & 2) == 0)
+                continue;
+            skeleton = ((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->skeletonGroup;
+            if (!skeleton)
+                continue;
+            table = skeleton->tablePF;
+            lastBone = ((tableElemStructPF*)(table->nextElemPtr)) - 1;
+            for (bone = table->firstElemPtr; bone <= lastBone; ++bone)
+            {
+                if (bone->objectPtr && ((int)(size_t)bone->objectPtr & 3) != 1)
+                    D3D_CreateIndexAndVertexBuffForGameObject((tGameObjectMain*)bone->objectPtr);
+            }
+        }
+    }
+    if (!worldPtrIfMultiStream)
+        worldPtrIfMultiStream = world;
+}
+
+void D3D_CreateSunTextures(tGfxSunD3DSpecificData* sun)
+{
+    int result;
+
+    if (!sun->d3dTexture)
+    {
+        result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
             16,
             1,
             1,
             D3DUSAGE_RENDERTARGET,
             D3DFMT_A8R8G8B8,
             D3DPOOL_DEFAULT,
-            &a1->d3dTexture,
+            &sun->d3dTexture,
             NULL);
-        D3D_CheckReturnAndRunSettingsApplicationIfProblem(v1);
-        a1->d3dTexture->lpVtbl->GetSurfaceLevel(a1->d3dTexture, 0, &a1->d3dRenderTarget);
+        D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+        sun->d3dTexture->lpVtbl->GetSurfaceLevel(sun->d3dTexture, 0, &sun->d3dRenderTarget);
     }
 }
 
 void D3D_CreateSunTexturesForSunSurfaces()
 {
-    tGfxSunD3DSpecificData** v0;
+    int i;
 
-    v0 = gD3dSunSurfaces;
-    do
+    for (i = 0; i < 16; i++)
     {
-        if (*v0)
-            D3D_CreateSunTextures(*v0);
-        ++v0;
-    } while (v0 <= &gD3dSunSurfaces[15]);
+        if (gD3dSunSurfaces[i])
+            D3D_CreateSunTextures(gD3dSunSurfaces[i]);
+    }
 }
 
 void D3D_WaterBuffersInit()
 {
-    unsigned int v0;
-    int v1;
-    short* v2;
-    int v3;
-    unsigned int v4;
-    unsigned int v5;
-    short* v6;
-    unsigned int v7;
-    short* v8;
-    unsigned int v9;
-    short* v10;
-    short* v11;
-    int v12;
-    int v13;
-    short* v14;
+    unsigned int columns;
+    int rows;
+    short* idx;
+    int vertex;
+    unsigned int half;
+    unsigned int rest;
+    unsigned int i;
+    int started;
+    int row;
+    short* indices;
 
-    v0 = wtr_NumA;
-    v1 = wtr_NumB;
+    columns = wtr_NumA;
+    rows = wtr_NumB;
     if (wtr_NumA && wtr_NumB && !waterStreamData)
     {
         wtr_primitiveCount = (wtr_NumA + 3) * (2 * wtr_NumB - 2) - 3;
@@ -4365,56 +3006,37 @@ void D3D_WaterBuffersInit()
             D3DPOOL_DEFAULT,
             &waterIndexData,
             NULL);
-        waterIndexData->lpVtbl->Lock(waterIndexData, 0, 0, (void **)&v14, 0);
-        v2 = v14;
-        v3 = 0;
-        v12 = 0;
-        if (v1 != 1)
+        waterIndexData->lpVtbl->Lock(waterIndexData, 0, 0, (void **)&indices, 0);
+        idx = indices;
+        vertex = 0;
+        started = 0;
+        for (row = 0; row < rows - 1; row++)
         {
-            v13 = v1 - 1;
-            do
+            if (started)
+                *idx++ = vertex;
+            else
+                started = 1;
+            half = columns >> 1;
+            for (i = 0; i < half; i++)
             {
-                if (v12)
-                    *v2++ = v3;
-                else
-                    v12 = 1;
-                v4 = 0;
-                if (v0 >> 1)
+                *idx++ = vertex;
+                *idx++ = columns + vertex;
+                ++vertex;
+            }
+            rest = half - 1;
+            --vertex;
+            *idx++ = columns + vertex;
+            if (rest < columns)
+            {
+                for (i = columns - rest; i; i--)
                 {
-                    v5 = v0 >> 1;
-                    v4 = v0 >> 1;
-                    do
-                    {
-                        *v2 = v3;
-                        v6 = v2 + 1;
-                        *v6 = v0 + v3;
-                        v2 = v6 + 1;
-                        ++v3;
-                        --v5;
-                    } while (v5);
+                    *idx++ = columns + vertex;
+                    *idx++ = vertex;
+                    ++vertex;
                 }
-                v7 = v4 - 1;
-                *v2 = v0 + --v3;
-                v8 = v2 + 1;
-                if (v7 < v0)
-                {
-                    v9 = v0 - v7;
-                    do
-                    {
-                        *v8 = v0 + v3;
-                        v10 = v8 + 1;
-                        *v10 = v3;
-                        v8 = v10 + 1;
-                        ++v3;
-                        --v9;
-                    } while (v9);
-                }
-                *v8 = v3 - 1;
-                v11 = v8 + 1;
-                *v11 = v3 - 1;
-                v2 = v11 + 1;
-                --v13;
-            } while (v13);
+            }
+            *idx++ = vertex - 1;
+            *idx++ = vertex - 1;
         }
         waterIndexData->lpVtbl->Unlock(waterIndexData);
     }
@@ -4431,9 +3053,9 @@ void D3D_ReinitD3DAppBackCache()
 
 void D3D_Flip()
 {
-    int v0;
-    int v1;
-    int v2;
+    int result;
+    int status;
+    int resetResult;
     struct tagMSG Msg;
 
     Rasters_Update();
@@ -4442,16 +3064,16 @@ void D3D_Flip()
         D3DRenderParams.d3dDev->lpVtbl->EndScene(D3DRenderParams.d3dDev);
         D3DRenderParams.d3dNeedToCallEndScene = 0;
     }
-    v0 = D3DRenderParams.d3dDev->lpVtbl->Present(D3DRenderParams.d3dDev, NULL, NULL, NULL, NULL); 
-    v1 = v0;
+    result = D3DRenderParams.d3dDev->lpVtbl->Present(D3DRenderParams.d3dDev, NULL, NULL, NULL, NULL); 
+    status = result;
     if (!ENG_gb_ExitApplication && !ENG_gb_ForceEndEngine)
     {
-        if (v0 == D3DERR_DEVICELOST) //0x88760868
+        if (result == D3DERR_DEVICELOST) //0x88760868
         {
             do
             {
                 D3DRenderParams.dword_B317A0 = 1;
-                while (v1 != D3DERR_DEVICENOTRESET) //0x88760869
+                while (status != D3DERR_DEVICENOTRESET) //0x88760869
                 {
                     if (PeekMessageA(&Msg, 0, 0, 0, 1u))
                     {
@@ -4462,14 +3084,14 @@ void D3D_Flip()
                     }
                     else
                     {
-                        v1 = D3DRenderParams.d3dDev->lpVtbl->TestCooperativeLevel(D3DRenderParams.d3dDev);
+                        status = D3DRenderParams.d3dDev->lpVtbl->TestCooperativeLevel(D3DRenderParams.d3dDev);
                     }
                 }
                 D3D_ReleaseEveryCache();
-                v2 = D3DRenderParams.d3dDev->lpVtbl->Reset(D3DRenderParams.d3dDev, &D3DRenderParams.presentParams); 
-                v1 = v2;
-            } while (v2 == D3DERR_DEVICELOST);
-            if (v2 >= 0)
+                resetResult = D3DRenderParams.d3dDev->lpVtbl->Reset(D3DRenderParams.d3dDev, &D3DRenderParams.presentParams); 
+                status = resetResult;
+            } while (resetResult == D3DERR_DEVICELOST);
+            if (resetResult >= 0)
                 D3D_ReinitD3DAppBackCache();
             else
                 ENG_gb_ExitApplication = 1;
@@ -4481,13 +3103,13 @@ void D3D_Flip()
     }
 }
 
-void D3D_Clear(int a1, int color) 
+void D3D_Clear(int flags, int color) 
 {
-    if (a1 == 2)
+    if (flags == 2)
         D3DRenderParams.d3dDev->lpVtbl->Clear(D3DRenderParams.d3dDev, 0, NULL, D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
     else
         D3DRenderParams.d3dDev->lpVtbl->Clear(D3DRenderParams.d3dDev, 0, NULL,
-            (a1 & D3DCLEAR_ZBUFFER) | D3DCLEAR_TARGET,
+            (flags & D3DCLEAR_ZBUFFER) | D3DCLEAR_TARGET,
             color & 0xFF00FF00 | ((uint8_t)color << 16) | ((color >> 16) & 0xff), 1.0f, 0);
 }
 
@@ -4507,60 +3129,35 @@ void D3D_SunSurfacesClear()
 
 void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
 {
-    D3DADAPTER_IDENTIFIER9 v0;
+    D3DADAPTER_IDENTIFIER9 adapter;
+    DWORD device;
 
-    D3DRenderParams.d3d_if->lpVtbl->GetAdapterIdentifier(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, 0, &v0);
-    D3D_OutputDebugString("%d, %d, %d, %d\n", HIWORD(v0.DriverVersion.HighPart), LOWORD(v0.DriverVersion.HighPart), HIWORD(v0.DriverVersion.LowPart), LOWORD(v0.DriverVersion.LowPart));
-    if (v0.VendorId == 0x1002)
+    D3DRenderParams.d3d_if->lpVtbl->GetAdapterIdentifier(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, 0, &adapter);
+    D3D_OutputDebugString("%d, %d, %d, %d\n", HIWORD(adapter.DriverVersion.HighPart), LOWORD(adapter.DriverVersion.HighPart), HIWORD(adapter.DriverVersion.LowPart), LOWORD(adapter.DriverVersion.LowPart));
+    device = adapter.DeviceId;
+    if (adapter.VendorId == 0x1002)
     {
         ENG_IsDLBFEnabled = 1;
-        if (v0.DeviceId > 0x4E45)
+        if (device >= 0x4144 && device <= 0x4146
+            || device == 16740
+            || device >= 0x4E44 && device <= 0x4E45
+            || device >= 0x4E64 && device <= 0x4E65)
         {
-            if (v0.DeviceId > 0x5157)
-            {
-                if (v0.DeviceId < 0x5159 || v0.DeviceId > 0x515A)
-                    goto LABEL_27;
-            }
-            else if (v0.DeviceId != 0x5157)
-            {
-                if (v0.DeviceId > 0x5147)
-                    goto LABEL_27;
-                if (v0.DeviceId < 0x5144)
-                {
-                    if (v0.DeviceId < 0x4E64 || v0.DeviceId > 0x4E65)
-                        goto LABEL_27;
-                    goto LABEL_23;
-                }
-            }
+            D3DRenderParams.argbIsSupportedForTextures = -1;
         }
-        else
+        else if (device == 0x4C57
+                 || device >= 0x4C59 && device <= 0x4C5A
+                 || device >= 0x5144 && device <= 0x5147
+                 || device == 0x5157
+                 || device >= 0x5159 && device <= 0x515A)
         {
-            if (v0.DeviceId >= 0x4E44)
-                goto LABEL_23;
-            if (v0.DeviceId > 0x4C57)
-            {
-                if (v0.DeviceId < 0x4C59 || v0.DeviceId > 0x4C5A)
-                    goto LABEL_27;
-            }
-            else if (v0.DeviceId != 0x4C57)
-            {
-                if (v0.DeviceId < 0x4144 || v0.DeviceId > 0x4146 && v0.DeviceId != 16740)
-                    goto LABEL_27;
-            LABEL_23:
-                D3DRenderParams.argbIsSupportedForTextures = -1;
-                return;
-            }
+            ENG_IsSingleStream = 1;
         }
-    LABEL_26:
-        ENG_IsSingleStream = 1;
-        goto LABEL_27;
-    }
-    if (v0.VendorId != 4318)
-    {
-    LABEL_27:
         return;
     }
-    switch (v0.DeviceId)
+    if (adapter.VendorId != 4318)
+        return;
+    switch (device)
     {
     case 0x110u:
     case 0x111u:
@@ -4571,7 +3168,8 @@ void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
     case 0x176u:
     case 0x179u:
         ENG_IsDLBFEnabled = 1;
-        goto LABEL_26;
+        ENG_IsSingleStream = 1;
+        break;
     case 0x170u:
     case 0x171u:
     case 0x172u:
@@ -4580,7 +3178,7 @@ void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
         ENG_IsSingleStream = 1;
         break;
     default:
-        goto LABEL_27;
+        break;
     }
 }
 
@@ -4704,12 +3302,12 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
 
 void D3D_SetRenderTargetAndDepthStencilSurface()
 {
-    IDirect3DSurface9* v1;
+    IDirect3DSurface9* surface;
 
-    D3DRenderParams.blurTex->lpVtbl->GetSurfaceLevel(D3DRenderParams.blurTex, 0, &v1);
-    D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, v1);
+    D3DRenderParams.blurTex->lpVtbl->GetSurfaceLevel(D3DRenderParams.blurTex, 0, &surface);
+    D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, surface);
     D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, D3DRenderParams.newZStencil);
-    v1->lpVtbl->Release(v1);
+    surface->lpVtbl->Release(surface);
 }
 
 void D3D_BeginSceneCall()
@@ -4723,197 +3321,144 @@ void D3D_BeginSceneCall()
     D3DRenderParams.d3d_defaultZEnable = D3DRenderParams.setsDefaultZEnableAtBeginScene;
 }
 
-void D3D_Request_SetFogParams(tFogParams* a1)
+void D3D_Request_SetFogParams(tFogParams* fog)
 {
     int fogColor;
-    float v2;
 
-    if ((a1->flags & 1) != 0)
+    if ((fog->flags & 1) != 0)
     {
         if ((D3DRenderParams.d3dcaps.RasterCaps & 0x100) != 0)
         {
-            if (renderStateConfig.d3dFogTableMode != engineFogTableModeToD3D[a1->fogVertexMode])
-            {
-                renderStateConfig.d3dFogTableMode = engineFogTableModeToD3D[a1->fogVertexMode];
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGTABLEMODE, renderStateConfig.d3dFogTableMode);
-            }
-        LABEL_8:
-            fogColor = (a1->fogColor & 0xFF00FF00 | ((a1->fogColor >> 16) & 0xff) | ((uint8_t)a1->fogColor << 16));
-            D3DRenderParams.d3dFogColor = fogColor;
-            D3DRenderParams.d3dFogColor2Case5and6 = 0;
-            if (renderStateConfig.d3dFogDensity != a1->density)
-            {
-                renderStateConfig.d3dFogDensity = a1->density;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGDENSITY, *(uint32_t *)&(renderStateConfig.d3dFogDensity));
-                fogColor = D3DRenderParams.d3dFogColor;
-            }
-            D3DRenderParams.d3dFogModeProbably = 1;
-            if (renderStateConfig.d3dFogColor != fogColor)
-            {
-                renderStateConfig.d3dFogColor = fogColor;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGCOLOR, fogColor);
-            }
-            if (renderStateConfig.d3dFogStart != a1->fogStart)
-            {
-                renderStateConfig.d3dFogStart = a1->fogStart;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGSTART, *(uint32_t*)&(renderStateConfig.d3dFogStart));
-            }
-            v2 = a1->fogEnd;
-            if (renderStateConfig.d3dFogEnd != v2)
-            {
-                renderStateConfig.d3dFogEnd = a1->fogEnd;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGEND, *(uint32_t*)&v2);
-            }
-            if (renderStateConfig.d3dFogEnable != TRUE)
-            {
-                renderStateConfig.d3dFogEnable = TRUE;
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, TRUE);
-            }
+            D3D_RenderStateSet(&renderStateConfig.d3dFogTableMode, D3DRS_FOGTABLEMODE, engineFogTableModeToD3D[fog->fogVertexMode]);
+        }
+        else if ((D3DRenderParams.d3dcaps.RasterCaps & 0x80) != 0)
+        {
+            D3D_RenderStateSet(&renderStateConfig.d3dFogVertexMode, D3DRS_FOGVERTEXMODE, engineFogTableModeToD3D[fog->fogVertexMode]);
+        }
+        else
+        {
+            D3DRenderParams.d3dFogModeProbably = 0;
+            D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, FALSE);
             return;
         }
-        if ((D3DRenderParams.d3dcaps.RasterCaps & 0x80) != 0)
-        {
-            if (renderStateConfig.d3dFogVertexMode != engineFogTableModeToD3D[a1->fogVertexMode])
-            {
-                renderStateConfig.d3dFogVertexMode = engineFogTableModeToD3D[a1->fogVertexMode];
-                D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGVERTEXMODE, renderStateConfig.d3dFogVertexMode);
-            }
-            goto LABEL_8;
-        }
+        fogColor = (fog->fogColor & 0xFF00FF00 | ((fog->fogColor >> 16) & 0xff) | ((uint8_t)fog->fogColor << 16));
+        D3DRenderParams.d3dFogColor = fogColor;
+        D3DRenderParams.d3dFogColor2Case5and6 = 0;
+        D3D_RenderStateSetF(&renderStateConfig.d3dFogDensity, D3DRS_FOGDENSITY, fog->density);
+        D3DRenderParams.d3dFogModeProbably = 1;
+        D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, D3DRenderParams.d3dFogColor);
+        D3D_RenderStateSetF(&renderStateConfig.d3dFogStart, D3DRS_FOGSTART, fog->fogStart);
+        D3D_RenderStateSetF(&renderStateConfig.d3dFogEnd, D3DRS_FOGEND, fog->fogEnd);
+        D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, TRUE);
+        return;
     }
     D3DRenderParams.d3dFogModeProbably = 0;
-    if (renderStateConfig.d3dFogEnable)
-    {
-        renderStateConfig.d3dFogEnable = FALSE;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, FALSE);
-    }
+    D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, FALSE);
 }
 
-int D3D_FillWaterStreamData(struct sWaterParamsGlobalStruct* a1)
+int D3D_FillWaterStreamData(struct sWaterParamsGlobalStruct* water)
 {
-    float camPosX;
-    float camPosZ;
-    int v3;
-    struct sWaterParamsGlobalStruct* v4;
-    unsigned int verticalVertexNum;
-    unsigned int v9;
-    double v10;
-    float v11;
-    float v12;
-    double v13;
-    int v14;
-    int v15;
-    uint8_t v16;
-    double v17;
-    tVertex_type_water* v19;
-    unsigned int i;
-    float ccamPosX;
-    float camPosY;
-    float ccamPosZ;
-    float v24;
-    Vec3* v25;
-    tVertex_type_water v26;
+    float camX;
+    float camY;
+    float camZ;
+    int align;
+    unsigned int rows;
+    unsigned int row;
+    double fade;
+    double height;
+    double ripple;
+    int packed;
+    int green;
+    uint8_t blue;
+    float scale;
+    Vec3* pos;
+    int* colors;
+    Vec3* uvVec;
+    Vec3* rowEnd;
+    tVertex_type_water vertex;
+    tVertex_type_water* out;
 
-    camPosX = gpst_DX_stDD->ct.cam.objectMtx.Pos.x;
-    camPosZ = gpst_DX_stDD->ct.cam.objectMtx.Pos.z;
-    camPosY = gpst_DX_stDD->ct.cam.objectMtx.Pos.y;
-    ccamPosZ = camPosZ;
-    ccamPosX = camPosX;
-    waterStreamData->lpVtbl->Lock(waterStreamData, 0, 0, &v19, 0x2000);
-    v3 = (uint8_t)v19 & 0xF;
+    camX = gpst_DX_stDD->ct.cam.objectMtx.Pos.x;
+    camZ = gpst_DX_stDD->ct.cam.objectMtx.Pos.z;
+    camY = gpst_DX_stDD->ct.cam.objectMtx.Pos.y;
+    waterStreamData->lpVtbl->Lock(waterStreamData, 0, 0, (void**)&out, 0x2000);
     // align 16
-    waterOffsetInBytes = 16 - v3;
-    if (v3 != 16) 
-        v19 = (tVertex_type_water*)((uint8_t*)v19 + 16 - v3);
-    v4 = a1;
-    Vec3* _ESI = a1->vertices;
-    int* _EBX = a1->colors;
-    Vec3* _EDI = a1->vecsForUVs;
-    v26.specular = 0;
+    align = (uint8_t)(size_t)out & 0xF;
+    waterOffsetInBytes = 16 - align;
+    // preserved: align is masked to 0..15, so this test can never fail
+    if (align != 16)
+        out = (tVertex_type_water*)((uint8_t*)out + 16 - align);
+    pos = water->vertices;
+    colors = water->colors;
+    uvVec = water->vecsForUVs;
+    vertex.specular = 0;
     if (tweak_water_blur_normal)
+        WTR_WaterBlurNormal(water->vecsForUVs, water->horizontalVertexNum, water->verticallVertexNum);
+    rows = water->verticallVertexNum;
+    for (row = 0; row < rows; row++)
     {
-        WTR_WaterBlurNormal(a1->vecsForUVs, a1->horizontalVertexNum, a1->verticallVertexNum); 
-        v4 = a1;
-    }
-    verticalVertexNum = v4->verticallVertexNum;
-
-    v9 = 0;
-    for (i = 0; v9 < verticalVertexNum; i = v9)
-    {
-        v25 = (Vec3*)verticalVertexNum;
-        v10 = (double)v9 * 1.2 / (double)verticalVertexNum;
-        if (v10 > 1.0)
-            v10 = 1.0;
-        v25 = &_ESI[v4->horizontalVertexNum];
-        v24 = (float)(48.0 - v10 * 45.0);
-        if (_ESI < v25)
+        fade = (double)row * 1.2 / (double)rows;
+        if (fade > 1.0)
+            fade = 1.0;
+        rowEnd = &pos[water->horizontalVertexNum];
+        scale = (float)(48.0 - fade * 45.0);
+        while (pos < rowEnd)
         {
-            do
-            {
-                v11 = _ESI->y;
-                v12 = _ESI->z;
-                v26.v.x = _ESI->x;
-
-                v26.normal.x = v26.v.x - ccamPosX;
-                v26.v.y = v11;
-                v13 = v11;
-                v14 = *((uint8_t*)_EBX + 2);
-                v26.v.z = v12;
-                v15 = *_EBX;
-                v16 = *_EBX;
-                v26.normal.y = (float)(v13 - camPosY);
-                v17 = _EDI->y + _EDI->x;
-                v26.diffuse = v15 & 0xFF00FF00 | v14 | (v16 << 16);
-                ++_ESI;
-                ++_EBX;
-                ++_EDI;
-                v26.normal.z = (float)(v26.v.z - ccamPosZ - fabs(v17 * v24));
-                memcpy(v19, &v26, sizeof(v26));
-                ++v19;
-            } while (_ESI < v25);
-            v9 = i;
-            v4 = a1;
+            vertex.v.x = pos->x;
+            vertex.normal.x = vertex.v.x - camX;
+            vertex.v.y = pos->y;
+            height = pos->y;
+            green = *((uint8_t*)colors + 2);
+            vertex.v.z = pos->z;
+            packed = *colors;
+            blue = *colors;
+            vertex.normal.y = (float)(height - camY);
+            ripple = uvVec->y + uvVec->x;
+            vertex.diffuse = packed & 0xFF00FF00 | green | (blue << 16);
+            ++pos;
+            ++colors;
+            ++uvVec;
+            vertex.normal.z = (float)(vertex.v.z - camZ - fabs(ripple * scale));
+            memcpy(out, &vertex, sizeof(vertex));
+            ++out;
         }
-        verticalVertexNum = v4->verticallVertexNum;
-        ++v9;
+        rows = water->verticallVertexNum;
     }
     return waterStreamData->lpVtbl->Unlock(waterStreamData);
 }
 
-void D3D_SetTransformAndSaveMatrix(IDirect3DTexture9* a1, int mtxnum)
+void D3D_SetTransformAndSaveMatrix(IDirect3DTexture9* texture, int mtxnum)
 {
-    double v2;
-    double v3;
-    IDirect3DDevice9* v4;
-    float v5;
-    IDirect3DSurface9* v6;
-    float v7;
-    D3DMATRIX v8;
-    D3DSURFACE_DESC v9;
-    D3DMATRIX v10;
-    D3DMATRIX v11;
+    double invHeight;
+    double halfHeight;
+    float width;
+    float height;
+    IDirect3DSurface9* surface;
+    D3DMATRIX scaleMtx;
+    D3DSURFACE_DESC desc;
+    D3DMATRIX flipped;
+    D3DMATRIX result;
 
-    memcpy(&v10, &d3dProjectionMtx, sizeof(v10));
-    v10._22 = -v10._22;
-    memset(&v8, 0, sizeof(v8));
-    a1->lpVtbl->GetSurfaceLevel(a1, 0, &v6);
-    v6->lpVtbl->GetDesc(v6, &v9);
-    v7 = (float)v9.Width;
-    v5 = (float)v9.Height;
-    v6->lpVtbl->Release(v6);
-    v8._33 = 1.0;
-    v8._44 = 1.0;
-    v8._43 = 0.0;
-    v8._11 = (float)(512.0 / v7 * 0.5);
-    v2 = 1.0 / v5;
-    v3 = 512.0 * v2 * 0.5;
-    v8._22 = (float)(v3 - v2);
-    v8._41 = v8._11;
-    v8._42 = (float)(v3 + v2);
-    D3DXMatrixMultiply(&v11, &v10, &v8);
-    v4 = D3DRenderParams.d3dDev;
-    memcpy(&d3dTransformationMatrix[mtxnum], &v11, sizeof(Mtx4x4WithoutAdditionalData));
-    v4->lpVtbl->SetTransform(v4, mtxnum + D3DTS_TEXTURE0, &v11);
+    memcpy(&flipped, &d3dProjectionMtx, sizeof(flipped));
+    flipped._22 = -flipped._22;
+    memset(&scaleMtx, 0, sizeof(scaleMtx));
+    texture->lpVtbl->GetSurfaceLevel(texture, 0, &surface);
+    surface->lpVtbl->GetDesc(surface, &desc);
+    width = (float)desc.Width;
+    height = (float)desc.Height;
+    surface->lpVtbl->Release(surface);
+    scaleMtx._33 = 1.0;
+    scaleMtx._44 = 1.0;
+    scaleMtx._43 = 0.0;
+    scaleMtx._11 = (float)(512.0 / width * 0.5);
+    invHeight = 1.0 / height;
+    halfHeight = 512.0 * invHeight * 0.5;
+    scaleMtx._22 = (float)(halfHeight - invHeight);
+    scaleMtx._41 = scaleMtx._11;
+    scaleMtx._42 = (float)(halfHeight + invHeight);
+    D3DXMatrixMultiply(&result, &flipped, &scaleMtx);
+    memcpy(&d3dTransformationMatrix[mtxnum], &result, sizeof(Mtx4x4WithoutAdditionalData));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, mtxnum + D3DTS_TEXTURE0, &result);
 }
 
 IDirect3DTexture9* D3D_GetWaterTexture()
@@ -4925,179 +3470,93 @@ IDirect3DTexture9* D3D_GetWaterTexture()
 }
 
 
-void D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct* a1)
+void D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct* water)
 {
-    unsigned int v1;
-    IDirect3DTexture9* v2;
-    Mtx4x4 a2;
-    Mtx4x4 a1a;
-    Mtx4x4 v5;
-    Mtx4x4 v6;
+    IDirect3DTexture9* texture;
+    Mtx4x4 camMtx;
+    Mtx4x4 invCamMtx;
+    Mtx4x4 viewMtx;
+    Mtx4x4 worldMtx;
 
-    v1 = a1->horizontalVertexNum;
-    wtr_NumB = a1->verticallVertexNum;
-    wtr_NumA = v1;
+    wtr_NumB = water->verticallVertexNum;
+    wtr_NumA = water->horizontalVertexNum;
     D3D_WaterBuffersInit();
-    D3D_FillWaterStreamData(a1);
-    if (&a2 != &gpst_DX_stDD->ct.cam.objectMtx)
-        memcpy(&a2, &gpst_DX_stDD->ct.cam.objectMtx, sizeof(a2));
-    MATH_InvertMatrix(&a1a, &a2);
-    a1a._m34 = 0.0;
-    a1a._m24 = 0.0;
-    a1a._m14 = 0.0;
-    a1a.w = 1.0;
-    MATH_MakeOGLMatrix(&v5, &a1a);
-    a2.v1.x = 1.0;
-    a2.v2.y = 1.0;
-    a2.v3.z = 1.0;
-    a2.w = 1.0;
-    v5.w = 1.0;
-    a2.v1.y = 0.0;
-    a2.v1.z = 0.0;
-    a2._m14 = 0.0;
-    a2.v2.x = 0.0;
-    a2.v2.z = 0.0;
-    a2._m24 = 0.0;
-    a2.v3.x = 0.0;
-    a2.v3.y = 0.0;
-    a2._m34 = 0.0;
-    a2.Pos.x = 0.0;
-    a2.Pos.y = 0.0;
-    a2.Pos.z = 0.0;
-    a2.mtxflag = a2.mtxflag & 2;
-    MATH_MakeOGLMatrix(&v6, &a2);
+    D3D_FillWaterStreamData(water);
+    if (&camMtx != &gpst_DX_stDD->ct.cam.objectMtx)
+        memcpy(&camMtx, &gpst_DX_stDD->ct.cam.objectMtx, sizeof(camMtx));
+    MATH_InvertMatrix(&invCamMtx, &camMtx);
+    invCamMtx._m34 = 0.0;
+    invCamMtx._m24 = 0.0;
+    invCamMtx._m14 = 0.0;
+    invCamMtx.w = 1.0;
+    MATH_MakeOGLMatrix(&viewMtx, &invCamMtx);
+    camMtx.v1.x = 1.0;
+    camMtx.v2.y = 1.0;
+    camMtx.v3.z = 1.0;
+    camMtx.w = 1.0;
+    viewMtx.w = 1.0;
+    camMtx.v1.y = 0.0;
+    camMtx.v1.z = 0.0;
+    camMtx._m14 = 0.0;
+    camMtx.v2.x = 0.0;
+    camMtx.v2.z = 0.0;
+    camMtx._m24 = 0.0;
+    camMtx.v3.x = 0.0;
+    camMtx.v3.y = 0.0;
+    camMtx._m34 = 0.0;
+    camMtx.Pos.x = 0.0;
+    camMtx.Pos.y = 0.0;
+    camMtx.Pos.z = 0.0;
+    camMtx.mtxflag = camMtx.mtxflag & 2;
+    MATH_MakeOGLMatrix(&worldMtx, &camMtx);
     D3D_SaveEverythingToBackup(1);
-    v2 = D3D_GetWaterTexture();
-    memcpy(&d3dTransformMatrix, &v5, sizeof(d3dTransformMatrix));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, (D3DMATRIX*)&v5);
-    memcpy(&d3dTransformMatrix2, &v6, sizeof(d3dTransformMatrix2));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_WORLD, (D3DMATRIX*)&v6);
-    D3D_SetTransformAndSaveMatrix(v2, 0);
-    if (textureStageTypeConfig[0].d3dTexCoordIndex != 0x10000)
-    {
-        textureStageTypeConfig[0].d3dTexCoordIndex = 0x10000;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 11, 0x10000);
-    }
-    if (textureStageTypeConfig[0].d3dTextureTransformFlags != 0x103)
-    {
-        textureStageTypeConfig[0].d3dTextureTransformFlags = 0x103;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 24, 0x103);
-    }
-    if (renderStateConfig.d3d_normalizeNormals)
-    {
-        renderStateConfig.d3d_normalizeNormals = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 143, 0);
-    }
+    texture = D3D_GetWaterTexture();
+    memcpy(&d3dTransformMatrix, &viewMtx, sizeof(d3dTransformMatrix));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, (D3DMATRIX*)&viewMtx);
+    memcpy(&d3dTransformMatrix2, &worldMtx, sizeof(d3dTransformMatrix2));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_WORLD, (D3DMATRIX*)&worldMtx);
+    D3D_SetTransformAndSaveMatrix(texture, 0);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, 11, 0x10000);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, 24, 0x103);
+    D3D_RenderStateSet(&renderStateConfig.d3d_normalizeNormals, 143, 0);
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, waterStreamData, waterOffsetInBytes, 32);
     D3DRenderParams.d3dDev->lpVtbl->SetIndices(D3DRenderParams.d3dDev, waterIndexData);
     D3DRenderParams.d3dDev->lpVtbl->SetVertexShader(D3DRenderParams.d3dDev, NULL);
     D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, 210);
-    if (renderStateConfig.d3dAlphaBlendEnable != 1)
-    {
-        renderStateConfig.d3dAlphaBlendEnable = 1;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 27, 1);
-    }
-    if (renderStateConfig.d3d_Lighting)
-    {
-        renderStateConfig.d3d_Lighting = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 137, 0);
-    }
-    if (textureStageTypeConfig[0].d3d_colorOp != 12)
-    {
-        textureStageTypeConfig[0].d3d_colorOp = 12;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 1, 12);
-    }
-    if (textureStageTypeConfig[0].d3d_colorarg1 != 2)
-    {
-        textureStageTypeConfig[0].d3d_colorarg1 = 2;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 2, 2);
-    }
-    if (textureStageTypeConfig[0].d3d_colorarg2)
-    {
-        textureStageTypeConfig[0].d3d_colorarg2 = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 3, 0);
-    }
-    if (textureStageTypeConfig[0].d3d_alphaOp != 1)
-    {
-        textureStageTypeConfig[0].d3d_alphaOp = 1;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 4, 1);
-    }
-    if (samplerConfig[0].d3d_magfilter != 2)
-    {
-        samplerConfig[0].d3d_magfilter = 2;
-        D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, 5, 2);
-    }
-    if (samplerConfig[0].d3d_minfilter != 2)
-    {
-        samplerConfig[0].d3d_minfilter = 2;
-        D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, 6, 2);
-    }
-    if (samplerConfig[0].d3d_addressu != 3)
-    {
-        samplerConfig[0].d3d_addressu = 3;
-        D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, 1, 3);
-    }
-    if (samplerConfig[0].d3d_addressv != 3)
-    {
-        samplerConfig[0].d3d_addressv = 3;
-        D3DRenderParams.d3dDev->lpVtbl->SetSamplerState(D3DRenderParams.d3dDev, 0, 2, 3);
-    }
-    if (renderStateConfig.d3dSrcBlend != 2)
-    {
-        renderStateConfig.d3dSrcBlend = 2;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 19, 2);
-    }
-    if (renderStateConfig.d3dDestBlend != 1)
-    {
-        renderStateConfig.d3dDestBlend = 1;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 20, 1);
-    }
-    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)v2);
-    if (renderStateConfig.d3dColorWriteEnable != 15)
-    {
-        renderStateConfig.d3dColorWriteEnable = 15;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 168, 15);
-    }
-    if (renderStateConfig.d3dFogEnable != 1)
-    {
-        renderStateConfig.d3dFogEnable = 1;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 28, 1);
-    }
-    if (renderStateConfig.d3d_zWriteEnable)
-    {
-        renderStateConfig.d3d_zWriteEnable = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 14, 0);
-    }
-    if (renderStateConfig.d3d_zFunc != 4)
-    {
-        renderStateConfig.d3d_zFunc = 4;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 23, 4);
-    }
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, 27, 1);
+    D3D_RenderStateSet(&renderStateConfig.d3d_Lighting, 137, 0);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorOp, 1, 12);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1, 2, 2);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2, 3, 0);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_alphaOp, 4, 1);
+    D3D_SamplerStateSet(0, &samplerConfig[0].d3d_magfilter, 5, 2);
+    D3D_SamplerStateSet(0, &samplerConfig[0].d3d_minfilter, 6, 2);
+    D3D_SamplerStateSet(0, &samplerConfig[0].d3d_addressu, 1, 3);
+    D3D_SamplerStateSet(0, &samplerConfig[0].d3d_addressv, 2, 3);
+    D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, 19, 2);
+    D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, 20, 1);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)texture);
+    D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, 168, 15);
+    D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, 28, 1);
+    D3D_RenderStateSet(&renderStateConfig.d3d_zWriteEnable, 14, 0);
+    D3D_RenderStateSet(&renderStateConfig.d3d_zFunc, 23, 4);
     //D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FILLMODE, D3DFILL_WIREFRAME);
     D3DRenderParams.d3dDev->lpVtbl->DrawIndexedPrimitive(D3DRenderParams.d3dDev,
         5,
         0,
         0,
-        a1->verticallVertexNum * a1->horizontalVertexNum,
+        water->verticallVertexNum * water->horizontalVertexNum,
         0,
         wtr_primitiveCount);
     //D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FILLMODE, D3DFILL_SOLID);
     D3D_RestoreEverythingFromBackup();
-    if (renderStateConfig.d3d_zWriteEnable != 1)
-    {
-        renderStateConfig.d3d_zWriteEnable = 1;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 14, 1);
-    }
-    if (renderStateConfig.d3d_zFunc != 4)
-    {
-        renderStateConfig.d3d_zFunc = 4;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 23, 4);
-    }
+    D3D_RenderStateSet(&renderStateConfig.d3d_zWriteEnable, 14, 1);
+    D3D_RenderStateSet(&renderStateConfig.d3d_zFunc, 23, 4);
 }
 
 void D3D_PrepareWaterRendering()
 {
-    float v0[4];
+    float clipPlane[4];
 
     if (pst_GlobalsWaterParams)
     {
@@ -5124,11 +3583,11 @@ void D3D_PrepareWaterRendering()
         MATH_MakeOGLMatrix(&d3dCameraMtx, &gpst_DX_stDD->ct.cam.cameraMtx);
         if (tweak_water_clip)
         {
-            v0[3] = tweak_water_off + waterHeight;
-            v0[0] = 0.0;
-            v0[1] = 0.0;
-            v0[2] = -1.0;
-            D3DRenderParams.d3dDev->lpVtbl->SetClipPlane(D3DRenderParams.d3dDev, 0, v0);
+            clipPlane[3] = tweak_water_off + waterHeight;
+            clipPlane[0] = 0.0;
+            clipPlane[1] = 0.0;
+            clipPlane[2] = -1.0;
+            D3DRenderParams.d3dDev->lpVtbl->SetClipPlane(D3DRenderParams.d3dDev, 0, clipPlane);
         }
         PRO_QPC_RecordTimeDecRef(48);
         water_ClippingHasBeenSet = 1;
@@ -5141,16 +3600,16 @@ void D3D_PrepareWaterRendering()
 
 int D3D_setWaterRenderParamsIfWaterRenderingIsActive()
 {
-    tGameObjectBV* v0;
-    long double v1;
-    Mtx4x4 a1;
+    tGameObjectBV* bv;
+    long double extent;
+    Mtx4x4 worldMtx;
 
     if (!water_ClippingHasBeenSet)
         return 0;
-    v0 = gpst_DX_stDD->currTargetGao->boundingVolume;
-    v1 = OBJ_BV_IsSphere(v0) ? v0->BVMax.x : fabs(v0->BVMax.y - v0->BVMin.y)
-        + fabs(v0->BVMax.x - v0->BVMin.x);
-    if (v1 < tweak_water_min_bv)
+    bv = gpst_DX_stDD->currTargetGao->boundingVolume;
+    extent = OBJ_BV_IsSphere(bv) ? bv->BVMax.x : fabs(bv->BVMax.y - bv->BVMin.y)
+        + fabs(bv->BVMax.x - bv->BVMin.x);
+    if (extent < tweak_water_min_bv)
         return 0;
     QueryPerformanceCounter(&PerfCounterStruct[48]);
     D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &d3dRTToGet);
@@ -5160,36 +3619,23 @@ int D3D_setWaterRenderParamsIfWaterRenderingIsActive()
     D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, d3dDSSurfaceToSet);
     d3dCullModeBackup = renderStateConfig.d3dCullMode;
     if (renderStateConfig.d3dCullMode == 2)
-    {
-        if (renderStateConfig.d3dCullMode != 3)
-        {
-            renderStateConfig.d3dCullMode = 3;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 22, 3);
-        }
-    }
-    else if (renderStateConfig.d3dCullMode == 3 && renderStateConfig.d3dCullMode != 2)
-    {
-        renderStateConfig.d3dCullMode = 2;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 22, 2);
-    }
+        D3D_RenderStateSet(&renderStateConfig.d3dCullMode, 22, 3);
+    else if (renderStateConfig.d3dCullMode == 3)
+        D3D_RenderStateSet(&renderStateConfig.d3dCullMode, 22, 2);
     memcpy(&d3dTransformMatrixBackup, &d3dTransformMatrix, sizeof(d3dTransformMatrix));
     memcpy(&d3dTransformMatrix2Backup, &d3dTransformMatrix2, sizeof(d3dTransformMatrix2));
-    MATH_MakeOGLMatrix(&a1, gpst_DX_stDD->currTargetGao->matrices);
-    a1.v1.z = -a1.v1.z;
-    a1.v2.z = -a1.v2.z;
-    a1.v3.z = -a1.v3.z;
-    a1.Pos.z = a1.Pos.z - (a1.Pos.z - waterHeight + a1.Pos.z - waterHeight);
-    memcpy(&d3dTransformMatrix2, &a1, sizeof(d3dTransformMatrix2));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_WORLD, (D3DMATRIX*)&a1);
+    MATH_MakeOGLMatrix(&worldMtx, gpst_DX_stDD->currTargetGao->matrices);
+    worldMtx.v1.z = -worldMtx.v1.z;
+    worldMtx.v2.z = -worldMtx.v2.z;
+    worldMtx.v3.z = -worldMtx.v3.z;
+    worldMtx.Pos.z = worldMtx.Pos.z - (worldMtx.Pos.z - waterHeight + worldMtx.Pos.z - waterHeight);
+    memcpy(&d3dTransformMatrix2, &worldMtx, sizeof(d3dTransformMatrix2));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_WORLD, (D3DMATRIX*)&worldMtx);
     memcpy(&d3dTransformMatrix, &d3dCameraMtx, sizeof(d3dTransformMatrix));
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, (D3DMATRIX*)&d3dCameraMtx);
     if (tweak_water_clip)
     {
-        if (renderStateConfig.d3dClipPlaneEnable != 1)
-        {
-            renderStateConfig.d3dClipPlaneEnable = 1;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 152, 1);
-        }
+        D3D_RenderStateSet(&renderStateConfig.d3dClipPlaneEnable, 152, 1);
     }
     return 1;
 }
@@ -5205,11 +3651,7 @@ void D3D_RestoreRenderParamsAfterWaterRendering()
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, &d3dTransformMatrixBackup);
     memcpy(&d3dTransformMatrix2, &d3dTransformMatrix2Backup, sizeof(d3dTransformMatrix2));
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_WORLD, &d3dTransformMatrix2Backup);
-    if (renderStateConfig.d3dCullMode != d3dCullModeBackup)
-    {
-        renderStateConfig.d3dCullMode = d3dCullModeBackup;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 22, d3dCullModeBackup);
-    }
+    D3D_RenderStateSet(&renderStateConfig.d3dCullMode, 22, d3dCullModeBackup);
     D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, d3dRTToGet);
     D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, d3dWaterDSSurfaceToGet);
     D3DRenderParams.d3dDev->lpVtbl->SetViewport(D3DRenderParams.d3dDev, &d3dViewPort);
@@ -5226,31 +3668,29 @@ void D3D_RestoreRenderParamsAfterWaterRendering()
     PRO_QPC_RecordTimeDecRef(48);
 }
 
-tVertex_type_142_generic* D3D_LockCurrentVBO(int a1)
+tVertex_type_142_generic* D3D_LockCurrentVBO(int vertexNum)
 {
-    int v1;
-    int v2;
-    int v3;
-    tVertex_type_142_generic* result;
+    int offset;
+    int flags;
+    tVertex_type_142_generic* locked;
 
-    v1 = d3dStreamCurrentOffset;
-    v2 = 24 * a1;
-    v3 = 4096;
-    if ((unsigned int)(d3dStreamCurrentOffset + sizeof(tVertex_type_142_generic) * a1) >= 2097152)
+    offset = d3dStreamCurrentOffset;
+    flags = 4096;
+    if ((unsigned int)(d3dStreamCurrentOffset + sizeof(tVertex_type_142_generic) * vertexNum) >= 2097152)
     {
-        v1 = 0;
+        offset = 0;
         d3dStreamCurrentOffset = 0;
-        v3 = 8192;
+        flags = 8192;
     }
-    VBOs[currentVBOSelected]->lpVtbl->Lock(VBOs[currentVBOSelected], v1, sizeof(tVertex_type_142_generic) * a1, (void **)&result, v3);
-    d3dStreamActDataSize = v2;
-    return result;
+    VBOs[currentVBOSelected]->lpVtbl->Lock(VBOs[currentVBOSelected], offset, sizeof(tVertex_type_142_generic) * vertexNum, (void **)&locked, flags);
+    d3dStreamActDataSize = sizeof(tVertex_type_142_generic) * vertexNum;
+    return locked;
 }
 
-void D3D_FillCurrentVBO(int a1)
+void D3D_FillCurrentVBO(int stream)
 {
     VBOs[currentVBOSelected]->lpVtbl->Unlock(VBOs[currentVBOSelected]);
-    D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, a1, VBOs[currentVBOSelected], d3dStreamCurrentOffset, sizeof(tVertex_type_142_generic));
+    D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, stream, VBOs[currentVBOSelected], d3dStreamCurrentOffset, sizeof(tVertex_type_142_generic));
     D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZ);
     d3dStreamCurrentOffset += d3dStreamActDataSize;
     d3dStreamActDataSize = 0;
@@ -5266,956 +3706,566 @@ void D3D_Request_SpriteDraw()
     }
 }
 
-void D3D_Request_PrepareForDrawing(int a1)
+void D3D_Request_PrepareForDrawing(int spriteNum)
 {
-    if (a1)
+    if (spriteNum)
     {
-        if (renderStateConfig.d3dFillMode != 3)
-        {
-            renderStateConfig.d3dFillMode = 3;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 8, 3);
-        }
-        if (renderStateConfig.d3dCullMode != 2)
-        {
-            renderStateConfig.d3dCullMode = 2;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, 22, 2);
-        }
-        d3dRequestPrimitiveCount = 2 * a1;
-        d3dRequestPrimitiveCount2 = 2 * a1;
-        d3d_requestDrawSelectedVBO = D3D_LockCurrentVBO(6 * a1);
+        D3D_RenderStateSet(&renderStateConfig.d3dFillMode, 8, 3);
+        D3D_RenderStateSet(&renderStateConfig.d3dCullMode, 22, 2);
+        d3dRequestPrimitiveCount = 2 * spriteNum;
+        d3dRequestPrimitiveCount2 = 2 * spriteNum;
+        d3d_requestDrawSelectedVBO = D3D_LockCurrentVBO(6 * spriteNum);
     }
 }
 
-void D3D_FillSelectedVBOWithSprite(tD3dSpriteData* a1)
+void D3D_FillSelectedVBOWithSprite(tD3dSpriteData* sprite)
 {
-    tVertex_type_142_generic* v1;
-    unsigned int v2;
-    tVertex_type_142_generic* v3;
+    tVertex_type_142_generic* out;
+    unsigned int color;
 
-    v1 = d3d_requestDrawSelectedVBO;
-    if (d3d_requestDrawSelectedVBO)
+    out = d3d_requestDrawSelectedVBO;
+    if (d3d_requestDrawSelectedVBO && d3dRequestPrimitiveCount2)
     {
-        if (d3dRequestPrimitiveCount2)
-        {
-            v2 = a1->color & 0xFF00FF00 | ((a1->color >> 16) & 0xff) | ((uint8_t)a1->color << 16);
-            d3d_requestDrawSelectedVBO->v1.x = a1->v1.x;
-            v1->v1.y = a1->v1.y;
-            v1->v1.z = a1->v1.z;
-            v1->color = v2;
-            v1->uvSet1.u = 1.0f;
-            v1->uvSet1.v = 1.0f;
-            v1[1].v1 = a1->v2;
-            v1[1].color = v2;
-            v1[1].uvSet1.u = 0.0f;
-            v1[1].uvSet1.v = 1.0f;
-            v1[2].v1 = a1->v3;
-            v1[2].color = v2;
-            v1[2].uvSet1.u = 0.0f;
-            v1[2].uvSet1.v = 0.0f;
-            v3 = v1 + 3;
-            v3->v1.x = a1->v1.x;
-            v3->v1.y = a1->v1.y;
-            v3->v1.z = a1->v1.z;
-            v3->color = v2;
-            v3->uvSet1.u = 1.0f;
-            v3->uvSet1.v = 1.0f;
-            v3[1].v1 = a1->v3;
-            v3[1].color = v2;
-            v3[1].uvSet1.u = 0.0f;
-            v3[1].uvSet1.v = 0.0f;
-            v3[2].v1 = a1->v4;
-            v3[2].color = v2;
-            v3[2].uvSet1.u = 1.0f;
-            v3[2].uvSet1.v = 0.0f;
-            d3d_requestDrawSelectedVBO = v3 + 3;
-            d3dRequestPrimitiveCount2 -= 2;
-        }
+        color = sprite->color & 0xFF00FF00 | ((sprite->color >> 16) & 0xff) | ((uint8_t)sprite->color << 16);
+        out[0].v1 = sprite->v1;
+        out[0].color = color;
+        out[0].uvSet1.u = 1.0f;
+        out[0].uvSet1.v = 1.0f;
+        out[1].v1 = sprite->v2;
+        out[1].color = color;
+        out[1].uvSet1.u = 0.0f;
+        out[1].uvSet1.v = 1.0f;
+        out[2].v1 = sprite->v3;
+        out[2].color = color;
+        out[2].uvSet1.u = 0.0f;
+        out[2].uvSet1.v = 0.0f;
+        out[3].v1 = sprite->v1;
+        out[3].color = color;
+        out[3].uvSet1.u = 1.0f;
+        out[3].uvSet1.v = 1.0f;
+        out[4].v1 = sprite->v3;
+        out[4].color = color;
+        out[4].uvSet1.u = 0.0f;
+        out[4].uvSet1.v = 0.0f;
+        out[5].v1 = sprite->v4;
+        out[5].color = color;
+        out[5].uvSet1.u = 1.0f;
+        out[5].uvSet1.v = 0.0f;
+        d3d_requestDrawSelectedVBO = out + 6;
+        d3dRequestPrimitiveCount2 -= 2;
     }
 }
 
 int D3D_l_Request(int type, void *param)
 {
-    int result;
-
     switch (type)
     {
     case 1:
         D3D_Request_SetFogParams((tFogParams*)param);
-        result = 0;
         break;
     case 12:
         D3D_TextureStore((tTexUploadRequest*)param);
-        result = 0;
         break;
     case 18:
-        D3D_Request_PrepareForDrawing((int)param);
-        result = 0;
+        D3D_Request_PrepareForDrawing((int)(size_t)param);
         break;
     case 19:
     case 33:
         D3D_FillSelectedVBOWithSprite((tD3dSpriteData*)param);
-        result = 0;
         break;
     case 20:
         D3D_Request_SpriteDraw();
-        result = 0;
         break;
     case 24:
         D3D_GetSnapShot((tD3dRequestSnapshot*)param);
-        result = 0;
         break;
     case 25:
-        if (renderStateConfig.d3dFogEnable != (int)param)
-        {
-            renderStateConfig.d3dFogEnable = (int)param;
-            D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_FOGENABLE, (int)param);
-        }
-        goto LABEL_10;
+        D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, (int)(size_t)param);
+        break;
     default:
-    LABEL_10:
-        result = 0;
         break;
     }
-    return result;
+    return 0;
 }
 
-int D3D_l_Texture_Store(struct sGdi_DisplayData* a1, int a2)
+int D3D_l_Texture_Store(struct sGdi_DisplayData* dd, int textureNum)
 {
-    int v2;
-    unsigned int v3;
+    int count;
+    unsigned int bytes;
 
-    v2 = a2;
-    if (!a2)
-        v2 = 1;
-    v3 = 4 * (v2 + 1);
-    D3DRenderParams.d3dTextureNum = v2;
-    D3DRenderParams.d3dTextures = (IDirect3DTexture9 **)MEM_p_Alloc(v3);
-    memset(D3DRenderParams.d3dTextures, 0, v3);
-    D3DRenderParams.d3dSourceTextures = (IDirect3DTexture9**)MEM_p_Alloc(v3);
-    memset(D3DRenderParams.d3dSourceTextures, 0, v3);
+    count = textureNum;
+    if (!textureNum)
+        count = 1;
+    bytes = 4 * (count + 1);
+    D3DRenderParams.d3dTextureNum = count;
+    D3DRenderParams.d3dTextures = (IDirect3DTexture9 **)MEM_p_Alloc(bytes);
+    memset(D3DRenderParams.d3dTextures, 0, bytes);
+    D3DRenderParams.d3dSourceTextures = (IDirect3DTexture9**)MEM_p_Alloc(bytes);
+    memset(D3DRenderParams.d3dSourceTextures, 0, bytes);
     return 1;
 }
 
-void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* a3, int idx)
+void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* inter, int idx)
 {
-    tEngTexIntermediateStruct* v4;
-    tEngTexListElemStruct* v5;
-    int v6;
-    int v7;
-    int v8;
-    int16_t v9;
-    int v10;
-    int v11;
-    int v12;
-    IDirect3DTexture9* v13;
-    IDirect3DTexture9* v14;
-    char* v15;
-    char* v16;
-    unsigned int v17;
-    int v18;
-    IDirect3DSurface9* v19;
-    char* v20;
-    D3DLOCKED_RECT v21; 
-    IDirect3DTexture9* v22;
-    IDirect3DTexture9* v23;
-    int v20a;
+    int depth;
+    int width;
+    int height;
+    int16_t texFlags;
+    int mipLevels;
+    int result;
+    IDirect3DTexture9* source;
+    IDirect3DTexture9* dest;
+    char* srcRow;
+    char* destRow;
+    unsigned int rowBytes;
+    int row;
+    IDirect3DSurface9* surface;
+    char* pixels;
+    D3DLOCKED_RECT locked;
 
-    v4 = a3;
-    v5 = tle;
-    v6 = a3->colorDepth2;
-    v7 = tle->normalData.width;
-    v20 = a3->imgDataPtr;
-    v8 = tle->normalData.height;
+    depth = inter->colorDepth2;
+    width = tle->normalData.width;
+    pixels = inter->imgDataPtr;
+    height = tle->normalData.height;
     if (!D3DRenderParams.Mipmapping
-        || (v9 = a3->tp.flagsUnkAndProceduralUnkb1, (v9 & 0x40) != 0)
-        || (v9 & 0x200) != 0
-        || a3->tp.type == 5)
+        || (texFlags = inter->tp.flagsUnkAndProceduralUnkb1, (texFlags & 0x40) != 0)
+        || (texFlags & 0x200) != 0
+        || inter->tp.type == 5)
     {
-        a3->bmpUnkb1 &= ~0x10u;
-        v10 = 1;
+        inter->bmpUnkb1 &= ~0x10u;
+        mipLevels = 1;
     }
     else
     {
-        a3->bmpUnkb1 |= 0x10u;
-        v10 = 0;
+        inter->bmpUnkb1 |= 0x10u;
+        mipLevels = 0;
     }
-    v5->texElemFlag = v4->bmpUnkb1;
-    v22 = 0;
-    v23 = 0;
-    if (v6 != 32 && v6 != 24)
+    tle->texElemFlag = inter->bmpUnkb1;
+    source = 0;
+    dest = 0;
+    if (depth != 32 && depth != 24)
     {
-        v11 = idx;
         D3DRenderParams.d3dTextures[idx] = NULL;
-        D3DRenderParams.d3dSourceTextures[v11] = NULL;
+        D3DRenderParams.d3dSourceTextures[idx] = NULL;
         return;
     }
     if (D3DRenderParams.Mipmapping && D3DRenderParams.argbIsSupportedForTextures == 1)
     {
-        D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, v8, v7, 1, 0, 21, 2, &v22, 0);
-        v12 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(
+        D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, height, width, 1, 0, 21, 2, &source, 0);
+        result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(
             D3DRenderParams.d3dDev,
-            v8,
-            v7,
-            v10,
+            height,
+            width,
+            mipLevels,
             0x400,
             21,
             0,
-            &v23,
+            &dest,
             0);
     }
     else
     {
-        D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, v8, v7, v10, 0, 21, 2, &v22, 0);
-        v12 = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(
+        D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev, height, width, mipLevels, 0, 21, 2, &source, 0);
+        result = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(
             D3DRenderParams.d3dDev,
-            v8,
-            v7,
-            v10,
+            height,
+            width,
+            mipLevels,
             0,
             21,
             0,
-            &v23,
+            &dest,
             0);
     }
-    D3D_CheckReturnAndRunSettingsApplicationIfProblem(v12);
-    v13 = v23;
-    if (v23)
+    D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
+    if (dest && source)
     {
-        v14 = v22;
-        if (v22)
+        if (depth == 32)
+            dd->texManager.paletteUsedMemory += 4 * height * width;
+        else
+            dd->texManager.paletteUsedMemory += 3 * height * width;
+        source->lpVtbl->GetSurfaceLevel(source, 0, &surface);
+        surface->lpVtbl->LockRect(surface, &locked, 0, 0);
+        destRow = (char*)locked.pBits;
+        srcRow = pixels;
+        rowBytes = 4 * height;
+        for (row = 0; row < width; row++)
         {
-            if (v6 == 32)
-                dd->texManager.paletteUsedMemory += 4 * v8 * v7;
-            else
-                dd->texManager.paletteUsedMemory += 3 * v8 * v7;
-            v14->lpVtbl->GetSurfaceLevel(v14, 0, &v19);
-            v19->lpVtbl->LockRect(v19, &v21, 0, 0);
-            v15 = (char*)v21.pBits;
-            v16 = v20;
-            if (v7)
-            {
-                v17 = 4 * v8;
-                v20a = v7;
-                do
-                {
-                    memcpy(v15, v16, v17);
-                    v16 += v17;
-                    v15 += v21.Pitch;
-                    --v20a;
-                } while (v20a);
-            }
-            v19->lpVtbl->UnlockRect(v19);
-            v19->lpVtbl->Release(v19);
-            if (D3DRenderParams.Mipmapping)
-            {
-                if (D3DRenderParams.argbIsSupportedForTextures != 1)
-                    D3DXFilterTexture((IDirect3DBaseTexture9*)v22, NULL, D3DX_DEFAULT, D3DX_DEFAULT);
-            }
-            D3DRenderParams.d3dDev->lpVtbl->UpdateTexture(D3DRenderParams.d3dDev, (IDirect3DBaseTexture9*)v22, (IDirect3DBaseTexture9*)v23);
-            goto LABEL_29;
+            memcpy(destRow, srcRow, rowBytes);
+            srcRow += rowBytes;
+            destRow += locked.Pitch;
         }
-        v23->lpVtbl->Release(v23);
-        v13 = NULL;
-        v23 = NULL;
+        surface->lpVtbl->UnlockRect(surface);
+        surface->lpVtbl->Release(surface);
+        if (D3DRenderParams.Mipmapping && D3DRenderParams.argbIsSupportedForTextures != 1)
+            D3DXFilterTexture((IDirect3DBaseTexture9*)source, NULL, D3DX_DEFAULT, D3DX_DEFAULT);
+        D3DRenderParams.d3dDev->lpVtbl->UpdateTexture(D3DRenderParams.d3dDev, (IDirect3DBaseTexture9*)source, (IDirect3DBaseTexture9*)dest);
     }
-    if (v22)
+    else
     {
-        v22->lpVtbl->Release(v22);
-        v22 = NULL;
-    LABEL_29:
-        v13 = v23;
+        if (dest)
+        {
+            dest->lpVtbl->Release(dest);
+            dest = NULL;
+        }
+        if (source)
+        {
+            source->lpVtbl->Release(source);
+            source = NULL;
+        }
     }
-    v18 = idx;
-    D3DRenderParams.d3dTextures[idx] = v13;
-    D3DRenderParams.d3dSourceTextures[v18] = v22;
+    D3DRenderParams.d3dTextures[idx] = dest;
+    D3DRenderParams.d3dSourceTextures[idx] = source;
 }
 
-int D3D_DrawSprites(struct sGeoSprites* a1, void* a2, int x)
+int D3D_DrawSprites(struct sGeoSprites* sprites, void* positions, int num)
 {
-    tBigBufferStruct* v3;
-    int* v4;
-    int* v5;
-    int v6; 
-    int v7; 
-    Mtx4x4* v8;
-    int v9;
-    tGeoSpriteElem* v10;
-    tGeoSpriteElem* v11;
-    int v12;
-    tSpriteC0DEData* v13;
-    int* v14;
-    double v15;
-    int v16;
-    double v17;
-    Vec3* v18;
-    double v20;
-    double v22;
-    float v24;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    int* v32; 
-    tSpriteC0DEData* v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    float v43;
-    float v44;
-    tGdi_DisplayData* v45;
-    float v46;
-    float v47;
-    float v48;
-    float v49;
-    float v50;
-    float v51;
-    float v52;
-    float v53;
-    float v54;
-    float v55;
-    float v56;
-    float v57;
-    float v58;
-    float v59;
-    int v60;
-    int v61;
-    tD3dSpriteData v62;
+    tBigBufferStruct* bb;
+    int* colors;
+    int* second;
+    int mask;
+    int alpha;
+    int color;
+    int idx;
+    Mtx4x4* mtx;
+    tGeoSpriteElem* elem;
+    tGeoSpriteElem* elemEnd;
+    int offset;
+    tSpriteC0DEData* c0de;
+    tSpriteC0DEData* c0deEnd;
+    double size;
+    Vec3* base;
+    double sine;
+    double wobble;
+    float rightX, rightY, rightZ;
+    float upX, upY, upZ;
+    float c1x, c1y, c1z;
+    float c2x, c2y, c2z;
+    float c3x, c3y, c3z;
+    float c4x, c4y, c4z;
+    float wave;
+    tGdi_DisplayData* dd;
+    tD3dSpriteData out;
 
-    v3 = gpst_DX_stDD->bigBuffer;
-    v4 = v3->vertexColorArray;
-    v5 = v3->vertexColorArraySecond;
-    v6 = v3->solidVertexColor;
-    v7 = v3->colorMask;
-    v8 = gpst_DX_stDD->matrixStack.actMatrixElem;
-    v32 = v4;
-    v61 = v7;
-    v9 = v7 ^ (D3DRenderParams.colorMaskAlpha | v6);
-    v45 = gpst_DX_stDD;
-    v60 = D3DRenderParams.colorMaskAlpha;
-    v29 = -(v8->v1.x * a1->globalSize * a1->globalRatio);
-    v30 = -(v8->v2.x * a1->globalSize * a1->globalRatio);
-    v31 = -(v8->v3.x * a1->globalSize * a1->globalRatio);
-    v24 = v8->v1.y * a1->globalSize;
-    v27 = v8->v2.y * a1->globalSize;
-    v28 = v8->v3.y * a1->globalSize;
-    gpst_DX_stDD->Request(18, (void *) a1->num);
-    v10 = a1->spriteElems;
-    v11 = &v10[a1->num];
-    if (v10->idx == 0xC0DE) // see gfxexplode.c GFX_SetNumberOfSprites
+    bb = gpst_DX_stDD->bigBuffer;
+    colors = bb->vertexColorArray;
+    second = bb->vertexColorArraySecond;
+    mask = bb->colorMask;
+    mtx = gpst_DX_stDD->matrixStack.actMatrixElem;
+    alpha = D3DRenderParams.colorMaskAlpha;
+    color = mask ^ (alpha | bb->solidVertexColor);
+    dd = gpst_DX_stDD;
+    rightX = -(mtx->v1.x * sprites->globalSize * sprites->globalRatio);
+    rightY = -(mtx->v2.x * sprites->globalSize * sprites->globalRatio);
+    rightZ = -(mtx->v3.x * sprites->globalSize * sprites->globalRatio);
+    upX = mtx->v1.y * sprites->globalSize;
+    upY = mtx->v2.y * sprites->globalSize;
+    upZ = mtx->v3.y * sprites->globalSize;
+    c1x = -rightX - upX;
+    c1y = -rightY - upY;
+    c1z = -rightZ - upZ;
+    c2x = rightX - upX;
+    c2y = rightY - upY;
+    c2z = rightZ - upZ;
+    c3x = upX + rightX;
+    c3y = upY + rightY;
+    c3z = upZ + rightZ;
+    c4x = upX - rightX;
+    c4y = upY - rightY;
+    c4z = upZ - rightZ;
+    gpst_DX_stDD->Request(18, (void *) (size_t) sprites->num);
+    elem = sprites->spriteElems;
+    elemEnd = &elem[sprites->num];
+    if (elem->idx == 0xC0DE) // see gfxexplode.c GFX_SetNumberOfSprites
     {
-        v12 = v10[1].idx;
-        v13 = &((tSpriteC0DEData *)a2)[v12];
-        v14 = v32;
-        v33 = &v13[a1->num];
-        if (v32)
+        offset = elem[1].idx;
+        c0de = &((tSpriteC0DEData *)positions)[offset];
+        c0deEnd = &c0de[sprites->num];
+        if (colors)
+            colors = &colors[offset];
+        if (second)
+            second += offset;
+        for (; c0de < c0deEnd; c0de++)
         {
-            v14 = &v32[v12];
-            v32 = v14;
-        }
-        if (v5)
-            v5 += v12;
-        if (v13 < &v13[a1->num])
-        {
-            while (1)
+            if (colors)
             {
-                if (v14)
-                {
-                    v9 = v61 ^ (v60 | *v14);
-                    if (v5)
-                        v9 = v5[v10->idx] | v9 & 0xFFFFFF;
-                    v32 = v14 + 1;
-                }
-                else if (v5)
-                {
-                    v9 = v5[v10->idx] | v9 & 0xFFFFFF;
-                }
-                v62.color = v9;
-                v15 = v13->f1;
-                v46 = -v29 - v24;
-                v62.v1.x = (float)(v46 * v15 + v13->v1.x);
-                v41 = -v30 - v27;
-                v62.v1.y = (float)(v41 * v15 + v13->v1.y);
-                v58 = -v31 - v28;
-                v62.v1.z = (float)(v58 * v15 + v13->v1.z);
-                v56 = v29 - v24;
-                v62.v2.x = (float)(v56 * v15 + v13->v1.x);
-                v39 = v30 - v27;
-                v62.v2.y = (float)(v39 * v15 + v13->v1.y);
-                v52 = v31 - v28;
-                v62.v2.z = (float)(v52 * v15 + v13->v1.z);
-                v43 = v24 + v29;
-                v62.v3.x = (float)(v43 * v15 + v13->v1.x);
-                v48 = v27 + v30;
-                v62.v3.y = (float)(v48 * v15 + v13->v1.y);
-                v35 = v28 + v31;
-                v62.v3.z = (float)(v35 * v15 + v13->v1.z);
-                v50 = v24 - v29;
-                v62.v4.x = (float)(v50 * v15 + v13->v1.x);
-                v54 = v27 - v30;
-                v62.v4.y = (float)(v54 * v15 + v13->v1.y);
-                v37 = v28 - v31;
-                v62.v4.z = (float)(v37 * v15 + v13->v1.z);
-                v45->Request(33, &v62);
-                v13++;
-                if (v13 >= v33)
-                    break;
-                v14 = v32;
+                color = mask ^ (alpha | *colors);
+                // preserved: elem still points at the 0xC0DE marker, so this reads second[49374]
+                if (second)
+                    color = second[elem->idx] | color & 0xFFFFFF;
+                colors++;
             }
+            else if (second)
+            {
+                color = second[elem->idx] | color & 0xFFFFFF;
+            }
+            out.color = color;
+            size = c0de->f1;
+            out.v1.x = (float)(c1x * size + c0de->v1.x);
+            out.v1.y = (float)(c1y * size + c0de->v1.y);
+            out.v1.z = (float)(c1z * size + c0de->v1.z);
+            out.v2.x = (float)(c2x * size + c0de->v1.x);
+            out.v2.y = (float)(c2y * size + c0de->v1.y);
+            out.v2.z = (float)(c2z * size + c0de->v1.z);
+            out.v3.x = (float)(c3x * size + c0de->v1.x);
+            out.v3.y = (float)(c3y * size + c0de->v1.y);
+            out.v3.z = (float)(c3z * size + c0de->v1.z);
+            out.v4.x = (float)(c4x * size + c0de->v1.x);
+            out.v4.y = (float)(c4y * size + c0de->v1.y);
+            out.v4.z = (float)(c4z * size + c0de->v1.z);
+            dd->Request(33, &out);
         }
     }
     else
     {
-        v34 = 0.0;
-        if (v10 < v11)
+        wave = 0.0;
+        for (; elem < elemEnd; ++elem)
         {
-            v47 = -v29 - v24;
-            v42 = -v30 - v27;
-            v57 = v29 - v24;
-            v40 = v30 - v27;
-            v44 = v24 + v29;
-            v49 = v27 + v30;
-            v51 = v24 - v29;
-            v55 = v27 - v30;
-            do
+            wave = wave + 1.0f;
+            if (colors)
             {
-                v34 = v34 + 1.0f;
-                if (v32)
-                {
-                    v16 = v10->idx;
-                    v9 = v61 ^ (v60 | v32[v16]);
-                    if (v5)
-                        v9 = v5[v16] | v9 & 0xFFFFFF;
-                }
-                else if (v5)
-                {
-                    v9 = v5[v10->idx] | v9 & 0xFFFFFF;
-                }
-                v62.color = v9;
-                v17 = v10->size;
-                v18 = &(((Vec3*)a2)[v10->idx]);
-                v62.v1.x = (float)(v47 * v17 + v18->x);
-                v62.v1.y = (float)(v42 * v17 + v18->y);
-                v59 = -v31 - v28;
-                v62.v1.z = (float)(v59 * v17 + v18->z);
-                v62.v2.x = (float)(v57 * v17 + v18->x);
-                v62.v2.y = (float)(v40 * v17 + v18->y);
-                v53 = v31 - v28;
-                v62.v2.z = (float)(v53 * v17 + v18->z);
-                v62.v3.x = (float)(v44 * v17 + v18->x);
-                v62.v3.y = (float)(v49 * v17 + v18->y);
-                v36 = v28 + v31;
-                v62.v3.z = (float)(v36 * v17 + v18->z);
-                v62.v4.x = (float)(v51 * v17 + v18->x);
-                v62.v4.y = (float)(v55 * v17 + v18->y);
-                v38 = v28 - v31;
-                v62.v4.z = (float)(v38 * v17 + v18->z);
-                if (GDI_gb_WaveSprite)
-                {
-                    v20 = MATH_GetSin(v34);
-                    v22 = v20 * MATH_GetSin((float)(v20 * TIM_gul_TicksCount * 2.5)) * 0.2;
+                idx = elem->idx;
+                color = mask ^ (alpha | colors[idx]);
+                if (second)
+                    color = second[idx] | color & 0xFFFFFF;
+            }
+            else if (second)
+            {
+                color = second[elem->idx] | color & 0xFFFFFF;
+            }
+            out.color = color;
+            size = elem->size;
+            base = &(((Vec3*)positions)[elem->idx]);
+            out.v1.x = (float)(c1x * size + base->x);
+            out.v1.y = (float)(c1y * size + base->y);
+            out.v1.z = (float)(c1z * size + base->z);
+            out.v2.x = (float)(c2x * size + base->x);
+            out.v2.y = (float)(c2y * size + base->y);
+            out.v2.z = (float)(c2z * size + base->z);
+            out.v3.x = (float)(c3x * size + base->x);
+            out.v3.y = (float)(c3y * size + base->y);
+            out.v3.z = (float)(c3z * size + base->z);
+            out.v4.x = (float)(c4x * size + base->x);
+            out.v4.y = (float)(c4y * size + base->y);
+            out.v4.z = (float)(c4z * size + base->z);
+            if (GDI_gb_WaveSprite)
+            {
+                sine = MATH_GetSin(wave);
+                wobble = sine * MATH_GetSin((float)(sine * TIM_gul_TicksCount * 2.5)) * 0.2;
 
-                    v62.v1.x = (float)(v62.v1.x + v22);
-                    v62.v2.x = (float)(v22 + v62.v2.x);
-                }
-                v45->Request(33, &v62);
-                ++v10;
-            } while (v10 < v11);
+                out.v1.x = (float)(out.v1.x + wobble);
+                out.v2.x = (float)(wobble + out.v2.x);
+            }
+            dd->Request(33, &out);
         }
     }
-    v45->Request(20, 0);
+    dd->Request(20, 0);
     return 0;
+}
+
+static unsigned int D3D_VertexColor(int* colors, int* second, int mask, int alpha,
+                                    int idx, int secondIdx)
+{
+    unsigned int packed;
+
+    packed = mask ^ (alpha | colors[idx]);
+    if (second)
+        packed = second[secondIdx] | packed & 0xFFFFFF;
+    return packed & 0xFF00FF00 | ((uint8_t)packed << 16) | ((packed >> 16) & 0xff);
+}
+
+static void D3D_DrawIndexedStreams(tGEOGRO* geogro, tGeoWholeTriangleStripBlock* block)
+{
+    unsigned int i;
+    tD3dStreamInfoElem* info;
+
+    for (i = 0; i < block->streamsNum; i++)
+    {
+        info = &block->d3dStreamInfoElems[i];
+        if (D3DRenderParams.textureUVMode != 2)
+        {
+            if (geogro->d3dUVVB)
+            {
+                D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, geogro->d3dUVVB[info->vbIdx], 0, 8);
+                D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
+                    D3DRenderParams.d3dDev,
+                    D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
+            }
+            else
+            {
+                D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, 0, 0, 0);
+                D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
+                    D3DRenderParams.d3dDev,
+                    D3DRenderParams.vertexDeclarationIFd3dUVVBIsNull);
+            }
+        }
+        D3DRenderParams.d3dDev->lpVtbl->DrawIndexedPrimitive(
+            D3DRenderParams.d3dDev,
+            5,
+            0,
+            0,
+            geogro->vertexNum,
+            info->startIndex,
+            info->primitiveCount - 2);
+    }
 }
 
 int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks, Vec3* verticesIN, struct sGeoUVElem* UVs, int vertexNum)
 {
-    int v3;
-    tGEOGRO* v4;
-    Vec3* v5;
-    int v6;
-    int v7;
-    tBigBufferStruct* v8;
-    int v9;
-    int* v10;
-    BOOL v11;
-    int v12;
-    tGameObjectMain* v13;
-    unsigned int* v14;
-    int* v15;
-    int* v16;
-    int v17; 
-    int v18;
-    unsigned int v19;
-    tGeoWholeTriangleStripBlock* v20;
-    tD3dStreamInfoElem* v21;
-    IDirect3DVertexBuffer9** v22;
-    IDirect3DDevice9* v23;
-    unsigned int v24;
-    tGeoWholeTriangleStripBlock* v25;
-    tD3dStreamInfoElem* v26;
-    IDirect3DVertexBuffer9** v27;
-    IDirect3DDevice9* v28;
-    tVertex_type_142_generic* v30;
-    tBigBufferStruct* v31;
-    int v33;
-    int* v34;
-    unsigned int v35;
-    tGeoTriangleChunkElem* v36;
-    tGeoTriangleChunkElem* v37;
-    char v38;
-    Vec3* v39;
-    int v40;
-    int v41;
-    unsigned int v42;
-    Vec3* v43;
-    tVertex_type_142_generic* v44;
-    int v45;
-    int v46;
-    unsigned int v47;
-    Vec3* v48;
-    tVertex_type_142_generic* v49;
-    int v50;
-    int v51;
-    unsigned int v52;
-    Vec3* v53;
-    int v54;
-    int v55;
-    unsigned int v56;
-    Vec3* v57;
-    tVertex_type_142_generic* v58;
-    int v59;
-    int v60;
-    unsigned int v61;
-    Vec3* v62;
-    tVertex_type_142_generic* v63;
-    int v64;
-    int v65;
-    unsigned int v66;
-    Vec3* v67;
-    Vec3* v68;
-    tVertex_type_142_generic* v69;
-    Vec3* v70;
-    Vec3* v71;
-    Vec3* v72;
-    tVertex_type_142_generic* v73;
-    Vec3* v74;
-    Vec3* v75;
-    int v76;
-    int v77;
-    unsigned int v78;
-    Vec3* v79;
-    tVertex_type_142_generic* v80;
-    int v81;
-    int v82;
-    unsigned int v83;
-    Vec3* v84;
-    tVertex_type_142_generic* v85;
-    int v86;
-    unsigned int v87;
-    Vec3* v88;
-    Vec3* v89;
-    Vec3* v90;
-    unsigned int v91 = 0;// TODO FIXME ???????? játék nem initeli
-    uint8_t v92;
-    uint8_t v93;
-    uint8_t v94;
-    uint8_t v95;
-    uint8_t v96;
-    uint8_t v97;
-    uint8_t v98;
-    uint8_t v99;
-    uint8_t v100;
-    int* v101;
-    int v102;
-    unsigned int v103;
-    tGeoWholeTriangleStripBlock* v104;
-    unsigned int v105;
-    int v106;
-    int v107;
-    int triangleChunksa;
-    int triangleChunksb;
-    int triangleChunksc;
-    tGeoTriangleChunkElem* triangleChunksd;
-    int* v32a;
-    int* v104a;
-    void* v103a;
-    unsigned int* v102a;
-    int *v105a;
+    tGEOGRO* geogro;
+    tGeoWholeTriangleStripBlock* block;
+    tBigBufferStruct* bb;
+    tGeoTriangleChunkElem* tri;
+    tGeoTriangleChunkElem* triEnd;
+    tVertex_type_142_generic* out;
+    unsigned int triangleNum;
+    int immediate;
+    int mismatch;
+    int useVertexUv;
+    int* colors;
+    int* second;
+    int mask;
+    int alpha;
+    int solid;
+    int savedArg1;
+    int savedArg2;
+    int start;
+    int lockFlags;
+    int idx;
+    int secondIdx;
+    int k;
     unsigned int i;
+    void* locked;
+    unsigned int* lockedColors;
+    unsigned int solidColor = 0;// TODO FIXME ???????? játék nem initeli
 
-    v3 = 0;
-    v105 = triangleChunks->triangleNum;
-    if (!v105)
+    triangleNum = triangleChunks->triangleNum;
+    if (!triangleNum)
         return 0;
-    v4 = gpst_DX_stDD->GROGEO;
-    if (!v4)
-        goto LABEL_66;
-    if (v4->UVs != UVs && D3DRenderParams.textureUVMode != 2)
-        v3 = 1;
-    v5 = v4->vertices;
-    if (verticesIN == v5 && (gpst_DX_stDD->flags & 0x400) != 0)
-        v3 = 1;
-    if (!v4->d3dIndexBuf || (v104 = triangleChunks->triangleStripBlock) == 0 || v3)
+    geogro = gpst_DX_stDD->GROGEO;
+    block = NULL;
+    immediate = 1;
+    if (geogro)
     {
-    LABEL_66:
-        v106 = 0;
-        v107 = 0;
-        v30 = D3D_LockCurrentVBO(3 * v105);
-        v31 = gpst_DX_stDD->bigBuffer;
-        v32a = v31->vertexColorArraySecond;
-        v33 = gpst_DX_stDD->pd3drp->colorMaskAlpha;
-        v103 = v31->colorMask;
-        v34 = v31->vertexColorArray;
-        v101 = v34;
-        v104a = v32a;
-        v102 = v33;
-        if (v34)
+        mismatch = 0;
+        if (geogro->UVs != UVs && D3DRenderParams.textureUVMode != 2)
+            mismatch = 1;
+        if (verticesIN == geogro->vertices && (gpst_DX_stDD->flags & 0x400) != 0)
+            mismatch = 1;
+        block = triangleChunks->triangleStripBlock;
+        immediate = !geogro->d3dIndexBuf || !block || mismatch;
+    }
+    if (immediate)
+    {
+        savedArg1 = 0;
+        savedArg2 = 0;
+        out = D3D_LockCurrentVBO(3 * triangleNum);
+        bb = gpst_DX_stDD->bigBuffer;
+        second = bb->vertexColorArraySecond;
+        alpha = gpst_DX_stDD->pd3drp->colorMaskAlpha;
+        mask = bb->colorMask;
+        colors = bb->vertexColorArray;
+        if (!colors)
         {
-            v35 = v91;
-        }
-        else
-        {
-            v35 = (v103 ^ (v33 | v31->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(v103 ^ (v33 | (v31->solidVertexColor & 0xff))) << 16) | (uint8_t)((v103 ^ (v33 | v31->solidVertexColor)) >> 16);
-            v91 = v35;
+            solidColor = (mask ^ (alpha | bb->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(mask ^ (alpha | (bb->solidVertexColor & 0xff))) << 16) | (uint8_t)((mask ^ (alpha | bb->solidVertexColor)) >> 16);
         }
         if (D3DRenderParams.textureUVMode == 2)
         {
-            v106 = textureStageTypeConfig[0].d3d_colorarg1;
-            v107 = textureStageTypeConfig[0].d3d_colorarg1;
-            if (textureStageTypeConfig[0].d3d_colorarg1)
-            {
-                textureStageTypeConfig[0].d3d_colorarg1 = 0;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 2, 0);
-            }
-            if (textureStageTypeConfig[0].d3d_colorarg2)
-            {
-                textureStageTypeConfig[0].d3d_colorarg2 = 0;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 3, 0);
-            }
-            v35 = 0;
-            v101 = 0;
-            v91 = 0;
+            // preserved: the colour arg 2 backup is taken from arg 1
+            savedArg1 = textureStageTypeConfig[0].d3d_colorarg1;
+            savedArg2 = textureStageTypeConfig[0].d3d_colorarg1;
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1, 2, 0);
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2, 3, 0);
+            colors = 0;
+            solidColor = 0;
         }
-        v36 = triangleChunks->triangleChunkElems;
-        v37 = &v36[v105];
-        triangleChunksd = v37;
-        if (UVs)
+        useVertexUv = (gpst_DX_stDD->flags & 2) != 0;
+        tri = triangleChunks->triangleChunkElems;
+        triEnd = &tri[triangleNum];
+        for (; tri < triEnd; tri++)
         {
-            v38 = gpst_DX_stDD->flags;
-            if (v101)
+            for (k = 0; k < 3; k++)
             {
-                if ((v38 & 2) != 0)
+                if (k == 0)
+                    idx = tri->v1;
+                else if (k == 1)
+                    idx = tri->v2;
+                else
+                    idx = tri->v3;
+                out->v1 = verticesIN[idx];
+                if (colors)
                 {
-                    if (v36 < v37)
-                    {
-                        do
-                        {
-                            v39 = &verticesIN[v36->v1];
-                            v30->v1.x = v39->x;
-                            v30->v1.y = v39->y;
-                            v40 = v102;
-                            v30->v1.z = v39->z;
-                            v41 = v36->v1;
-                            v42 = v103 ^ (v40 | v101[v41]);
-                            v92 = (v42 >> 16) & 0xff;
-                            if (v104a)
-                            {
-                                v42 = v104a[v41] | v42 & 0xFFFFFF;
-                                v92 = (v42 >> 16) & 0xff;
-                            }
-                            v30->color = v42 & 0xFF00FF00 | ((uint8_t)v42 << 16) | v92;
-                            v30->uvSet1 = UVs[v36->v1];
-                            v43 = &verticesIN[v36->v2];
-                            v44 = v30 + 1;
-                            v44->v1.x = v43->x;
-                            v44->v1.y = v43->y;
-                            v45 = v102;
-                            v44->v1.z = v43->z;
-                            v46 = v36->v2;
-                            v47 = v103 ^ (v45 | v101[v46]);
-                            v93 = (v47 >> 16) & 0xff;
-                            if (v104a)
-                            {
-                                v47 = v104a[v46 * 4] | v47 & 0xFFFFFF;
-                                v93 = (v47 >> 16) & 0xff;
-                            }
-                            v44->color = v47 & 0xFF00FF00 | ((uint8_t)v47 << 16) | v93;
-                            v44->uvSet1 = UVs[v36->v2];
-                            v48 = &verticesIN[v36->v3];
-                            v49 = v44 + 1;
-                            v49->v1.x = v48->x;
-                            v49->v1.y = v48->y;
-                            v50 = v102;
-                            v49->v1.z = v48->z;
-                            v51 = v36->v3;
-                            v52 = v103 ^ (v50 | v101[v51]);
-                            v94 = (v52 >> 16) & 0xff;
-                            if (v104a)
-                            {
-                                v52 = v104a[v51] | v52 & 0xFFFFFF;
-                                v94 = (v52 >> 16) & 0xff;
-                            }
-                            v49->color = v52 & 0xFF00FF00 | ((uint8_t)v52 << 16) | v94;
-                            v49->uvSet1 = UVs[v36->v3];
-                            ++v36;
-                            v30 = v49 + 1;
-                        } while (v36 < triangleChunksd);
-                    }
+                    secondIdx = idx;
+                    // preserved: this one of nine second-colour lookups scales its index by four
+                    if (UVs && useVertexUv && k == 1)
+                        secondIdx = idx * 4;
+                    out->color = D3D_VertexColor(colors, second, mask, alpha, idx, secondIdx);
                 }
-                else if (v36 < v37)
+                else
                 {
-                    do
-                    {
-                        v53 = &verticesIN[v36->v1];
-                        v30->v1.x = v53->x;
-                        v30->v1.y = v53->y;
-                        v54 = v102;
-                        v30->v1.z = v53->z;
-                        v55 = v36->v1;
-                        v56 = v103 ^ (v54 | v101[v55]);
-                        v95 = (v56 >> 16) & 0xff;
-                        if (v104a)
-                        {
-                            v56 = v104a[v55] | v56 & 0xFFFFFF;
-                            v95 = (v56 >> 16) & 0xff;
-                        }
-                        v30->color = v56 & 0xFF00FF00 | ((uint8_t)v56 << 16) | v95;
-                        v30->uvSet1 = UVs[v36->uv1];
-                        v57 = &verticesIN[v36->v2];
-                        v58 = v30 + 1;
-                        v58->v1.x = v57->x;
-                        v58->v1.y = v57->y;
-                        v59 = v102;
-                        v58->v1.z = v57->z;
-                        v60 = v36->v2;
-                        v61 = v103 ^ (v59 | v101[v60]);
-                        v96 = (v61 >> 16) & 0xff;
-                        if (v104a)
-                        {
-                            v61 = v104a[v60] | v61 & 0xFFFFFF;
-                            v96 = (v61 >> 16) & 0xff;
-                        }
-                        v58->color = v61 & 0xFF00FF00 | ((uint8_t)v61 << 16) | v96;
-                        v58->uvSet1 = UVs[v36->uv2];
-                        v62 = &verticesIN[v36->v3];
-                        v63 = v58 + 1;
-                        v63->v1.x = v62->x;
-                        v63->v1.y = v62->y;
-                        v64 = v102;
-                        v63->v1.z = v62->z;
-                        v65 = v36->v3;
-                        v66 = v103 ^ (v64 | v101[v65]);
-                        v97 = (v66 >> 16) & 0xff;
-                        if (v104a)
-                        {
-                            v66 = v104a[v65] | v66 & 0xFFFFFF;
-                            v97 = (v66 >> 16) & 0xff;
-                        }
-                        v63->color = v66 & 0xFF00FF00 | ((uint8_t)v66 << 16) | v97;
-                        v63->uvSet1 = UVs[v36->uv3];
-                        ++v36;
-                        v30 = v63 + 1;
-                    } while (v36 < triangleChunksd);
+                    out->color = solidColor;
                 }
-            }
-            else if ((v38 & 2) != 0)
-            {
-                if (v36 < v37)
+                if (UVs)
                 {
-                    do
-                    {
-                        v67 = &verticesIN[v36->v1];
-                        v30->v1.x = v67->x;
-                        v30->v1.y = v67->y;
-                        v30->v1.z = v67->z;
-                        v30->color = v91;
-                        v30->uvSet1 = UVs[v36->v1];
-                        v68 = &verticesIN[v36->v2];
-                        v69 = v30 + 1;
-                        v69->v1.x = v68->x;
-                        v69->v1.y = v68->y;
-                        v69->v1.z = v68->z;
-                        v69->color = v91;
-                        v69->uvSet1 = UVs[v36->v2];
-                        v70 = &verticesIN[v36->v3];
-                        ++v69;
-                        v69->v1.x = v70->x;
-                        v69->v1.y = v70->y;
-                        v69->v1.z = v70->z;
-                        v69->color = v91;
-                        v69->uvSet1 = UVs[v36->v3];
-                        ++v36;
-                        v30 = v69 + 1;
-                    } while (v36 < triangleChunksd);
+                    if (useVertexUv)
+                        out->uvSet1 = UVs[idx];
+                    else if (k == 0)
+                        out->uvSet1 = UVs[tri->uv1];
+                    else if (k == 1)
+                        out->uvSet1 = UVs[tri->uv2];
+                    else
+                        out->uvSet1 = UVs[tri->uv3];
                 }
+                out++;
             }
-            else if (v36 < v37)
-            {
-                do
-                {
-                    v71 = &verticesIN[v36->v1];
-                    v30->v1.x = v71->x;
-                    v30->v1.y = v71->y;
-                    v30->v1.z = v71->z;
-                    v30->color = v91;
-                    v30->uvSet1 = UVs[v36->uv1];
-                    v72 = &verticesIN[v36->v2];
-                    v73 = v30 + 1;
-                    v73->v1.x = v72->x;
-                    v73->v1.y = v72->y;
-                    v73->v1.z = v72->z;
-                    v73->color = v91;
-                    v73->uvSet1 = UVs[v36->uv2];
-                    v74 = &verticesIN[v36->v3];
-                    ++v73;
-                    v73->v1.x = v74->x;
-                    v73->v1.y = v74->y;
-                    v73->v1.z = v74->z;
-                    v73->color = v91;
-                    v73->uvSet1 = UVs[v36->uv3];
-                    ++v36;
-                    v30 = v73 + 1;
-                } while (v36 < triangleChunksd);
-            }
-        }
-        else if (v101)
-        {
-            if (v36 < v37)
-            {
-                do
-                {
-                    v75 = &verticesIN[v36->v1];
-                    v30->v1.x = v75->x;
-                    v30->v1.y = v75->y;
-                    v76 = v102;
-                    v30->v1.z = v75->z;
-                    v77 = v36->v1;
-                    v78 = v103 ^ (v76 | v101[v77]);
-                    v98 = (v78 >> 16) & 0xff;
-                    if (v32a)
-                    {
-                        v78 = v32a[v77] | v78 & 0xFFFFFF;
-                        v98 = (v78 >> 16) & 0xff;
-                    }
-                    v30->color = v78 & 0xFF00FF00 | ((uint8_t)v78 << 16) | v98;
-                    v79 = &verticesIN[v36->v2];
-                    v80 = v30 + 1;
-                    v80->v1.x = v79->x;
-                    v80->v1.y = v79->y;
-                    v81 = v102;
-                    v80->v1.z = v79->z;
-                    v82 = v36->v2;
-                    v83 = v103 ^ (v81 | v101[v82]);
-                    v99 = (v83 >> 16) & 0xff;
-                    if (v32a)
-                    {
-                        v83 = v32a[v82] | v83 & 0xFFFFFF;
-                        v99 = (v83 >> 16) & 0xff;
-                    }
-                    v80->color = v83 & 0xFF00FF00 | ((uint8_t)v83 << 16) | v99;
-                    v84 = &verticesIN[v36->v3];
-                    v85 = v80 + 1;
-                    v85->v1.x = v84->x;
-                    v85->v1.y = v84->y;
-                    v86 = v102;
-                    v85->v1.z = v84->z;
-                    v87 = v103 ^ (v86 | v101[v36->v3]);
-                    v100 = (v87 >> 16) & 0xff;
-                    if (v32a)
-                    {
-                        v87 = v32a[v36->v3] | v87 & 0xFFFFFF;
-                        v100 = (v87 >> 16) & 0xff;
-                    }
-                    v85->color = v87 & 0xFF00FF00 | ((uint8_t)v87 << 16) | v100;
-                    ++v36;
-                    v30 = v85 + 1;
-                } while (v36 < triangleChunksd);
-            }
-        }
-        else if (v36 < v37)
-        {
-            do
-            {
-                v88 = &verticesIN[v36->v1];
-                v30->v1.x = v88->x;
-                v30->v1.y = v88->y;
-                v30->v1.z = v88->z;
-                v30->color = v35;
-                v89 = &verticesIN[v36->v2];
-                v30[1].v1.x = v89->x;
-                v30[1].v1.y = v89->y;
-                v30[1].v1.z = v89->z;
-                v30[1].color = v35;
-                v90 = &verticesIN[v36->v3];
-                v30[2].v1.x = v90->x;
-                v30[2].v1.y = v90->y;
-                v30[2].v1.z = v90->z;
-                v30[2].color = v35;
-                ++v36;
-                v30 += 3;
-            } while (v36 < triangleChunksd);
         }
         D3D_FillCurrentVBO(0);
-        D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, v105);
+        D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, triangleNum);
         if (D3DRenderParams.textureUVMode != 5
             && D3DRenderParams.textureUVMode != 4
             && !D3DRenderParams.renderTargetBackup
             && D3D_setWaterRenderParamsIfWaterRenderingIsActive())
         {
-            D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, v105);
+            D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, triangleNum);
             D3D_RestoreRenderParamsAfterWaterRendering();
         }
         if (D3DRenderParams.textureUVMode == 2)
         {
-            if (textureStageTypeConfig[0].d3d_colorarg1 != v106)
-            {
-                textureStageTypeConfig[0].d3d_colorarg1 = v106;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 2, v106);
-            }
-            if (textureStageTypeConfig[0].d3d_colorarg2 != v107)
-            {
-                textureStageTypeConfig[0].d3d_colorarg2 = v107;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, 3, v107);
-            }
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1, 2, savedArg1);
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2, 3, savedArg2);
         }
         return 0;
     }
-    if (verticesIN == v5)
+    if (verticesIN == geogro->vertices)
     {
-        D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, v4->d3dvb, 0, 12);
+        D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, geogro->d3dvb, 0, 12);
     }
     else
     {
         if (D3DRenderParams.currTargetGao != gpst_DX_stDD->currTargetGao)
         {
-            if ((unsigned int)(D3DRenderParams.prevVertexElemIdx2 + v4->vertexNum) <= 0xFFFF)
+            if ((unsigned int)(D3DRenderParams.prevVertexElemIdx2 + geogro->vertexNum) <= 0xFFFF)
             {
-                v6 = D3DRenderParams.prevVertexElemIdx2;
+                start = D3DRenderParams.prevVertexElemIdx2;
                 D3DRenderParams.startVertexElemIdx2 = D3DRenderParams.prevVertexElemIdx2;
-                D3DRenderParams.prevVertexElemIdx2 += v4->vertexNum;
-                v7 = 4096;
+                D3DRenderParams.prevVertexElemIdx2 += geogro->vertexNum;
+                lockFlags = 4096;
             }
             else
             {
-                v6 = 0;
+                start = 0;
                 D3DRenderParams.startVertexElemIdx2 = 0;
-                D3DRenderParams.prevVertexElemIdx2 = v4->vertexNum;
-                v7 = 0x2000;
+                D3DRenderParams.prevVertexElemIdx2 = geogro->vertexNum;
+                lockFlags = 0x2000;
             }
             D3DRenderParams.currTargetGao = gpst_DX_stDD->currTargetGao;
             D3DRenderParams.d3dXYZVB->lpVtbl->Lock(
                 D3DRenderParams.d3dXYZVB,
-                v6 * D3DRenderParams.stride2,
-                D3DRenderParams.stride2 * v4->vertexNum,
-                &v103a,
-                v7);
-            memcpy(v103a, verticesIN, sizeof(Vec3) * v4->vertexNum);
+                start * D3DRenderParams.stride2,
+                D3DRenderParams.stride2 * geogro->vertexNum,
+                &locked,
+                lockFlags);
+            memcpy(locked, verticesIN, sizeof(Vec3) * geogro->vertexNum);
             D3DRenderParams.d3dXYZVB->lpVtbl->Unlock(D3DRenderParams.d3dXYZVB);
         }
         D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(
@@ -6225,38 +4275,35 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
             D3DRenderParams.startVertexElemIdx2 * D3DRenderParams.stride2,
             D3DRenderParams.stride2);
     }
-    v8 = gpst_DX_stDD->bigBuffer;
-    v9 = v8->colorMask;
-    v10 = v8->vertexColorArray;
-    v105 = v8->solidVertexColor;
-    v11 = D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 == gpst_DX_stDD->currTargetGao;
-    v107 = v9;
-    triangleChunksa = D3DRenderParams.colorMaskAlpha;
-    if (!v11
-        || D3DRenderParams.vertexColorArray != v10
-        || D3DRenderParams.colorMask != v9
+    bb = gpst_DX_stDD->bigBuffer;
+    mask = bb->colorMask;
+    colors = bb->vertexColorArray;
+    solid = bb->solidVertexColor;
+    alpha = D3DRenderParams.colorMaskAlpha;
+    if (D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 != gpst_DX_stDD->currTargetGao
+        || D3DRenderParams.vertexColorArray != colors
+        || D3DRenderParams.colorMask != mask
         || D3DRenderParams.colorMaskAlpha2 != D3DRenderParams.colorMaskAlpha
-        || D3DRenderParams.solidVertexColor != v105)
+        || D3DRenderParams.solidVertexColor != solid)
     {
-        if ((unsigned int)(D3DRenderParams.prevVertexElemIdx + v4->vertexNum) <= 0x3FFFF)
+        if ((unsigned int)(D3DRenderParams.prevVertexElemIdx + geogro->vertexNum) <= 0x3FFFF)
         {
             D3DRenderParams.startVertexElemIdx = D3DRenderParams.prevVertexElemIdx;
-            D3DRenderParams.prevVertexElemIdx += v4->vertexNum;
-            v12 = 4096;
+            D3DRenderParams.prevVertexElemIdx += geogro->vertexNum;
+            lockFlags = 4096;
         }
         else
         {
             D3DRenderParams.startVertexElemIdx = 0;
-            D3DRenderParams.prevVertexElemIdx = v4->vertexNum;
-            v12 = 0x2000;
+            D3DRenderParams.prevVertexElemIdx = geogro->vertexNum;
+            lockFlags = 0x2000;
         }
-        v13 = gpst_DX_stDD->currTargetGao;
         D3DRenderParams.colorMaskAlpha2 = D3DRenderParams.colorMaskAlpha;
-        D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 = v13;
-        D3DRenderParams.vertexColorArray = v10;
-        D3DRenderParams.colorMask = v9;
-        D3DRenderParams.solidVertexColor = v105;
-        D3DRenderParams.d3dColorsVB->lpVtbl->Lock(D3DRenderParams.d3dColorsVB, D3DRenderParams.startVertexElemIdx * D3DRenderParams.stride, D3DRenderParams.stride * v4->vertexNum, &v102a, v12);
+        D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 = gpst_DX_stDD->currTargetGao;
+        D3DRenderParams.vertexColorArray = colors;
+        D3DRenderParams.colorMask = mask;
+        D3DRenderParams.solidVertexColor = solid;
+        D3DRenderParams.d3dColorsVB->lpVtbl->Lock(D3DRenderParams.d3dColorsVB, D3DRenderParams.startVertexElemIdx * D3DRenderParams.stride, D3DRenderParams.stride * geogro->vertexNum, (void**)&lockedColors, lockFlags);
 
         /*
         if (gpst_DX_stDD->currTargetGao == (tGameObjectMain*)AI_ul_RealResolveOneRefObject(0x620031d4)) {
@@ -6276,29 +4323,19 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         }
         */
 
-        if (v10)
+        if (colors)
         {
-            v14 = v102a;
-            v15 = v10;
-            v105a = &v102a[v4->vertexNum];
-            if (v102a < v105a)
+            for (i = 0; i < geogro->vertexNum; i++)
             {
-                while (1)
-                {
-                    v106 = v9 ^ (triangleChunksa | *v15);
-                    v16 = v105a;
-                    *v14++ = v106 & 0xFF00FF00 | ((uint8_t)v106 << 16) | ((v106 >> 16) & 0xff);
-                    ++v15;
-                    if (v14 >= v16)
-                        break;
-                    v9 = v107;
-                }
+                unsigned int packed = mask ^ (alpha | colors[i]);
+                lockedColors[i] = packed & 0xFF00FF00 | ((uint8_t)packed << 16) | ((packed >> 16) & 0xff);
             }
         }
-        else if (v102a < &v102a[v4->vertexNum])
+        else if (geogro->vertexNum)
         {
-            for (i = 0; i < (((4 * v4->vertexNum - 1) >> 2) + 1); i++) {
-                v102a[i] = (v9 ^ (triangleChunksa | gpst_DX_stDD->bigBuffer->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(v9 ^ (triangleChunksa | (gpst_DX_stDD->bigBuffer->solidVertexColor & 0xff))) << 16) | (uint8_t)((v9 ^ ((unsigned int)triangleChunksa | gpst_DX_stDD->bigBuffer->solidVertexColor)) >> 16);
+            for (i = 0; i < (((4 * geogro->vertexNum - 1) >> 2) + 1); i++)
+            {
+                lockedColors[i] = (mask ^ (alpha | gpst_DX_stDD->bigBuffer->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(mask ^ (alpha | (gpst_DX_stDD->bigBuffer->solidVertexColor & 0xff))) << 16) | (uint8_t)((mask ^ ((unsigned int)alpha | gpst_DX_stDD->bigBuffer->solidVertexColor)) >> 16);
             }
         }
         D3DRenderParams.d3dColorsVB->lpVtbl->Unlock(D3DRenderParams.d3dColorsVB);
@@ -6311,31 +4348,31 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         D3DRenderParams.stride);
     if (D3DRenderParams.textureUVMode == 2)
     {
-        if (verticesIN == v4->vertices)
+        if (verticesIN == geogro->vertices)
         {
-            D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, v4->d3dvb2, 0, 12);
+            D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, geogro->d3dvb2, 0, 12);
         }
         else
         {
             if (D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle != gpst_DX_stDD->currTargetGao)
             {
-                if ((unsigned int)(D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle + v4->vertexNum) <= 0xFFFF)
+                if ((unsigned int)(D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle + geogro->vertexNum) <= 0xFFFF)
                 {
-                    v17 = D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle;
+                    start = D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle;
                     D3DRenderParams.currVertexStartOffset = D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle;
-                    D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle += v4->vertexNum;
-                    v18 = 4096;
+                    D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle += geogro->vertexNum;
+                    lockFlags = 4096;
                 }
                 else
                 {
-                    v17 = 0;
+                    start = 0;
                     D3DRenderParams.currVertexStartOffset = 0;
-                    D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle = v4->vertexNum;
-                    v18 = 8192;
+                    D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle = geogro->vertexNum;
+                    lockFlags = 8192;
                 }
                 D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle = gpst_DX_stDD->currTargetGao;
-                D3DRenderParams.d3dNormalsBuffer->lpVtbl->Lock(D3DRenderParams.d3dNormalsBuffer, v17 * D3DRenderParams.d3dStride, D3DRenderParams.d3dStride * v4->vertexNum, &v103a, v18);
-                memcpy(v103a, v4->normals, 12 * v4->vertexNum);
+                D3DRenderParams.d3dNormalsBuffer->lpVtbl->Lock(D3DRenderParams.d3dNormalsBuffer, start * D3DRenderParams.d3dStride, D3DRenderParams.d3dStride * geogro->vertexNum, &locked, lockFlags);
+                memcpy(locked, geogro->normals, 12 * geogro->vertexNum);
                 D3DRenderParams.d3dNormalsBuffer->lpVtbl->Unlock(D3DRenderParams.d3dNormalsBuffer);
             }
             D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(
@@ -6350,96 +4387,14 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
             D3DRenderParams.d3dVertexDeclaration);
     }
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 3, 0, 0, 0);
-    D3DRenderParams.d3dDev->lpVtbl->SetIndices(D3DRenderParams.d3dDev, v4->d3dIndexBuf);
-    v19 = 0;
-    if (v104->streamsNum)
+    D3DRenderParams.d3dDev->lpVtbl->SetIndices(D3DRenderParams.d3dDev, geogro->d3dIndexBuf);
+    D3D_DrawIndexedStreams(geogro, block);
+    if (D3DRenderParams.textureUVMode != 5 && D3DRenderParams.textureUVMode != 4
+        && !D3DRenderParams.renderTargetBackup
+        && D3D_setWaterRenderParamsIfWaterRenderingIsActive())
     {
-        triangleChunksb = 0;
-        v20 = v104;
-        do
-        {
-            v21 = &v20->d3dStreamInfoElems[triangleChunksb];
-            if (D3DRenderParams.textureUVMode != 2)
-            {
-                v22 = v4->d3dUVVB;
-                v23 = D3DRenderParams.d3dDev;
-                if (v22)
-                {
-                    v23->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, v22[v21->vbIdx], 0, 8);
-                    D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
-                        D3DRenderParams.d3dDev,
-                        D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
-                    v20 = v104;
-                }
-                else
-                {
-                    v23->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, 0, 0, 0);
-                    D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
-                        D3DRenderParams.d3dDev,
-                        D3DRenderParams.vertexDeclarationIFd3dUVVBIsNull);
-                }
-            }
-            D3DRenderParams.d3dDev->lpVtbl->DrawIndexedPrimitive(
-                D3DRenderParams.d3dDev,
-                5,
-                0,
-                0,
-                v4->vertexNum,
-                v21->startIndex,
-                v21->primitiveCount - 2);
-            ++v19;
-            ++triangleChunksb;
-        } while (v19 < v20->streamsNum);
-    }
-    if (D3DRenderParams.textureUVMode != 5 && D3DRenderParams.textureUVMode != 4)
-    {
-        v24 = 0;
-        if (!D3DRenderParams.renderTargetBackup)
-        {
-            if (D3D_setWaterRenderParamsIfWaterRenderingIsActive())
-            {
-                v25 = v104;
-                if (v104->streamsNum)
-                {
-                    triangleChunksc = 0;
-                    do
-                    {
-                        v26 = &v25->d3dStreamInfoElems[triangleChunksc];
-                        if (D3DRenderParams.textureUVMode != 2)
-                        {
-                            v27 = v4->d3dUVVB;
-                            v28 = D3DRenderParams.d3dDev;
-                            if (v27)
-                            {
-                                v28->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, v27[v26->vbIdx], 0, 8);
-                                D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
-                                    D3DRenderParams.d3dDev,
-                                    D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
-                                v25 = v104;
-                            }
-                            else
-                            {
-                                v28->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, 0, 0, 0);
-                                D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
-                                    D3DRenderParams.d3dDev,
-                                    D3DRenderParams.vertexDeclarationIFd3dUVVBIsNull);
-                            }
-                        }
-                        D3DRenderParams.d3dDev->lpVtbl->DrawIndexedPrimitive(
-                            D3DRenderParams.d3dDev,
-                            5,
-                            0,
-                            0,
-                            v4->vertexNum,
-                            v26->startIndex,
-                            v26->primitiveCount - 2);
-                        ++v24;
-                        ++triangleChunksc;
-                    } while (v24 < v25->streamsNum);
-                }
-                D3D_RestoreRenderParamsAfterWaterRendering();
-            }
-        }
+        D3D_DrawIndexedStreams(geogro, block);
+        D3D_RestoreRenderParamsAfterWaterRendering();
     }
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, 0, 0, 0);
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 1, 0, 0, 0);
@@ -6505,61 +4460,50 @@ void D3D_SetViewMatrix_SDW(Mtx4x4* mtx, float* unkVals)
     D3D_SetViewMatrix(mtx);
 }
 
-void D3D_Texture_Unload(struct sGdi_DisplayData* a1, struct sEngPaletteElem* a2, int a3) {
+void D3D_Texture_Unload(struct sGdi_DisplayData* dd, struct sEngPaletteElem* palette, int idx) {
 }
 
 int D3D_l_ReadaptDisplay(HWND hwnd, struct sGdi_DisplayData* gdd) {
     return 0;
 }
 
-int  D3D_Set_Texture_Palette(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* a2, struct sEngTexIntermediateStruct* a3, int a4) {
+int  D3D_Set_Texture_Palette(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle, struct sEngTexIntermediateStruct* inter, int idx) {
     return 0;
 }
 
-void D3D_SetTextureTarget(struct sGdi_DisplayData* a1, int a2, int a3, int a4) {
+void D3D_SetTextureTarget(struct sGdi_DisplayData* dd, int target, int width, int height) {
 }
 
-int PC_HandleWindowOpenAndCloseMessages(HWND a1, GLOBAL_MainHandles* mainHandles, unsigned int Msg)
+int PC_HandleWindowOpenAndCloseMessages(HWND hwnd, GLOBAL_MainHandles* mainHandles, unsigned int msg)
 {
-    int result;
-
-    if (Msg > WM_CLOSE)
+    if (msg > WM_CLOSE)
     {
-        if (Msg != WM_MOUSEFIRST)
-            return 0;
-        SetCursor(0);
-        result = 0;
+        if (msg == WM_MOUSEFIRST)
+            SetCursor(0);
+        return 0;
     }
-    else
+    if (msg == WM_CLOSE || msg == WM_DESTROY)
     {
-        if (Msg == WM_CLOSE)
-        {
-        LABEL_8:
-            if (!mainHandles || !mainHandles->displayData)
-                return 0;
-            GDI_DetachDisplay(mainHandles->displayData);
-            mainHandles->displayData->DestroyDevice(mainHandles->displayData->pd3drp);
-            GDI_DestroyDisplayData(mainHandles->displayData);
+        if (!mainHandles || !mainHandles->displayData)
             return 0;
-        }
-        if (Msg != WM_CREATE)
-        {
-            if (Msg != WM_DESTROY)
-                return 0;
-            goto LABEL_8;
-        }
+        GDI_DetachDisplay(mainHandles->displayData);
+        mainHandles->displayData->DestroyDevice(mainHandles->displayData->pd3drp);
+        GDI_DestroyDisplayData(mainHandles->displayData);
+        return 0;
+    }
+    if (msg == WM_CREATE)
+    {
         if (!mainHandles)
             return 0;
-        mainHandles->hwnd = a1;
+        mainHandles->hwnd = hwnd;
         fbss = GDI_fnpst_CreateDisplayData();
         mainHandles->displayData = fbss;
         GDI_fnl_InitInterface(mainHandles->displayData);
         mainHandles->displayData->pd3drp = (tGdi_D3DRenderParams*)mainHandles->displayData->CreateDevice();
         PRO_InitRasters(mainHandles->displayData->rasters, "Display Data");
-        GDI_AttachDisplayAndReadaptDisplay(mainHandles->displayData, a1);
-        result = 0;
+        GDI_AttachDisplayAndReadaptDisplay(mainHandles->displayData, hwnd);
     }
-    return result;
+    return 0;
 }
 
 int PC_HandleWindowCreateAndEraseBackgroundMessages(HWND hwnd, GLOBAL_MainHandles* globalHandles, int msg, int wparam, int lparam, int* plparam)
@@ -6576,7 +4520,7 @@ int PC_HandleWindowCreateAndEraseBackgroundMessages(HWND hwnd, GLOBAL_MainHandle
     return 0;
 }
 
-int PC_WNDMsgHandler(HWND hWnd, int msg, int wParam, int a4, int* ret)
+int PC_WNDMsgHandler(HWND hWnd, int msg, int wParam, int lParam, int* ret)
 {
     CHAR stats[512];
 
@@ -6663,7 +4607,7 @@ LRESULT WINAPI PC_WNDProcHandler(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPar
     }
 }
 
-void ENG_WinGameWindowInit(HINSTANCE a1)
+void ENG_WinGameWindowInit(HINSTANCE instance)
 {
     struct tagRECT rect;
     WNDCLASSA wndClass;
@@ -6676,8 +4620,8 @@ void ENG_WinGameWindowInit(HINSTANCE a1)
     wndClass.lpfnWndProc = PC_WNDProcHandler;
     wndClass.cbClsExtra = 0;
     wndClass.cbWndExtra = 0;
-    wndClass.hInstance = a1;
-    wndClass.hIcon = LoadIconA(a1, MAKEINTRESOURCEA(IDI_MAIN));
+    wndClass.hInstance = instance;
+    wndClass.hIcon = LoadIconA(instance, MAKEINTRESOURCEA(IDI_MAIN));
     wndClass.hCursor = NULL;
     wndClass.hbrBackground = NULL;
     wndClass.lpszMenuName = NULL;
@@ -6711,7 +4655,7 @@ void ENG_WinGameWindowInit(HINSTANCE a1)
         rect.bottom - rect.top,
         NULL,
         NULL,
-        a1,
+        instance,
         NULL);
     MAI_gh_MainWindow = MAI_gst_MainHandles.hwndSetAfterCreateWindow;
     MAI_gst_MainHandles.hwnd = MAI_gst_MainHandles.hwndSetAfterCreateWindow;

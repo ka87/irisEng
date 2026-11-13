@@ -32,19 +32,16 @@
 # win/wingdi.c went from 25 to 13 when the D3D9, D3DX and message-loop
 # declarations went into the stubs; that work also took the parse
 # sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
-# which are the fpos_t question.#
-# win/winsound.c and win/wininputoutput.c are both off the list now,
-# and win/wingdi.c is at 10 rather than the 11 or 12 either pass
-# measured alone: the two sets of Win32 declarations they added to
-# tests/stub/windows.h resolve more together than either does by
-# itself. engine.c dropped from 2 to 1 the same way.
+# which are the fpos_t question.
 #
-# win/wininputoutput.c was here with 9: SetFocus, SetWindowTextA,
-# SendMessageA, GetDlgItemTextA, EndDialog, GetKeyState,
-# SwapMouseButton, keybd_event and the CRT's _hypot. Its pass added
-# all nine to tests/stub/windows.h with their real prototypes, so it
-# is off the list. SetWindowTextA is also one of win/wingdi.c's, which
-# drops that file to 12 -- its own pass carries the baseline change.
+# The four win/ passes between them added every Win32 and Direct3D
+# declaration these files were missing -- the window, cursor, module
+# and directory calls, Direct3DCreate9, QueryPerformanceFrequency,
+# MsgWaitForMultipleObjectsEx, the dialog and keyboard calls and the
+# CRT's _hypot -- so win/wingdi.c, win/wininputoutput.c and
+# win/winsound.c are all off the list. The figures below are measured
+# on the merge, not carried over from any one pass: the four sets of
+# declarations resolve more together than any of them does alone.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -56,8 +53,7 @@ BASELINE="bigfiles.c 2
 engine.c 1
 sideload.c 1
 sound.c 1
-strings.c 1
-win/wingdi.c 10"
+strings.c 1"
 
 files=$(python3 - <<'EOF'
 import re
