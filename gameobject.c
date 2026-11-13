@@ -21,778 +21,699 @@
 
 struct sGameObjectMain** AI_MainActor = AI_MainActorArr;
 
-Mtx4x4* OBJ_pst_GetAbsoluteMatrix(tGameObjectMain* a1)
+Mtx4x4* OBJ_pst_GetAbsoluteMatrix(tGameObjectMain* gao)
 {
-    return a1->matrices;
+    return gao->matrices;
 }
 
-void OBJ_ComputeGlobalWhenHie(struct sGameObjectMain* a1)
+void OBJ_ComputeGlobalWhenHie(struct sGameObjectMain* gao)
 {
-    tGaoMatrix* v1;
-    Mtx4x4* v4;
-    Mtx4x4* v6;
+    tGaoMatrix* local;
+    Mtx4x4* global;
+    Mtx4x4* parent;
 
-    if ((a1->flags & 0x400000) != 0)
+    if ((gao->flags & 0x400000) != 0)
     {
-        v1 = a1->basic->mtx;
-        if (v1->refGao2)
+        local = gao->basic->mtx;
+        if (local->refGao2)
         {
-            v6 = OBJ_pst_GetAbsoluteMatrix(v1->refGao2);
-            v4 = OBJ_pst_GetAbsoluteMatrix(a1);
-            MATH_MulMatrixMatrix(v4, (Mtx4x4*)v1, v6);
+            parent = OBJ_pst_GetAbsoluteMatrix(local->refGao2);
+            global = OBJ_pst_GetAbsoluteMatrix(gao);
+            MATH_MulMatrixMatrix(global, (Mtx4x4*)local, parent);
         }
     }
 }
 
-void OBJ_UpdateStatusFlagRTL(tGameObjectMain* a1)
+void OBJ_UpdateStatusFlagRTL(tGameObjectMain* gao)
 {
-    int v1;
-    int v2;
-    int v3;
+    int flags;
+    int flags2;
+    int newFlags2;
 
-    if (a1)
-        v1 = a1->flags;
+    if (gao)
+        flags = gao->flags;
     else
-        v1 = 0; // LOWORD
-    if ((v1 & 0x4000) != 0 || (v1 & 2) != 0)
+        flags = 0; // LOWORD
+    if ((flags & 0x4000) != 0 || (flags & 2) != 0)
     {
-        if ((v1 & 0x26) != 0 || (v2 = a1->flags2, (v2 & 0x40000) != 0))
-            v3 = a1->flags2 | 8;
+        if ((flags & 0x26) != 0 || (flags2 = gao->flags2, (flags2 & 0x40000) != 0))
+            newFlags2 = gao->flags2 | 8;
         else
-            v3 = v2 & ~8u;
-        a1->flags2 = v3;
-        if ((v3 & 0x80000) != 0)
-            a1->flags2 = v3 & ~8u;
+            newFlags2 = flags2 & ~8u;
+        gao->flags2 = newFlags2;
+        if ((newFlags2 & 0x80000) != 0)
+            gao->flags2 = newFlags2 & ~8u;
     }
     else
     {
-        a1->flags2 &= ~8u;
+        gao->flags2 &= ~8u;
     }
 }
 
-int OBJ_b_HasBeenProcess(tGameObjectMain* a1, char a2, int a3)
+int OBJ_b_HasBeenProcess(tGameObjectMain* gao, char callCount, int mask)
 {
     int result;
 
-    if ((a2 & 1) != 0)
-        result = (a3 & a1->process) == 0;
+    if ((callCount & 1) != 0)
+        result = (mask & gao->process) == 0;
     else
-        result = a3 & a1->process;
+        result = mask & gao->process;
     return result;
 }
 
-void OBJ_ResetProcess(tGameObjectMain* a1, char a2, char a3)
+void OBJ_ResetProcess(tGameObjectMain* gao, char callCount, char mask)
 {
-    if ((a2 & 1) != 0)
-        a1->process |= a3;
+    if ((callCount & 1) != 0)
+        gao->process |= mask;
     else
-        a1->process &= ~a3;
+        gao->process &= ~mask;
 }
 
-BOOL OBJ_BV_IsSphere(tGameObjectBV* a1)
+BOOL OBJ_BV_IsSphere(tGameObjectBV* bv)
 {
-    return (*((uint32_t *)&(a1->BVMax.z))) == 0xffffffff;
+    return (*((uint32_t *)&(bv->BVMax.z))) == 0xffffffff;
 }
 
-BOOL OBJ_BV_IsAABBox(tGameObjectBV* a1)
+BOOL OBJ_BV_IsAABBox(tGameObjectBV* bv)
 {
-    return (*((uint32_t*)&(a1->BVMax.z))) != 0xffffffff;
+    return (*((uint32_t*)&(bv->BVMax.z))) != 0xffffffff;
 }
 
-void OBJ_BV_SetSphereFlag(tGameObjectBV* a1)
+void OBJ_BV_SetSphereFlag(tGameObjectBV* bv)
 {
-    (*((uint32_t*)&(a1->BVMax.z))) = 0xffffffff;
+    (*((uint32_t*)&(bv->BVMax.z))) = 0xffffffff;
 }
 
-BOOL OBJ_HasNoBV(tGameObjectMain* a1)
+BOOL OBJ_HasNoBV(tGameObjectMain* gao)
 {
-    tGameObjectBV* v1;
-    BOOL v2;
-    double v3;
+    tGameObjectBV* bv;
+    BOOL isBox;
+    double extent;
 
-    v1 = a1->boundingVolume;
-    v2 = OBJ_BV_IsAABBox(v1);
-    v3 = v1->BVMax.x;
-    if (v2)
+    bv = gao->boundingVolume;
+    isBox = OBJ_BV_IsAABBox(bv);
+    extent = bv->BVMax.x;
+    if (isBox)
     {
-        if (v3 != 0.0 || v1->BVMax.y != 0.0)
+        if (extent != 0.0 || bv->BVMax.y != 0.0)
             return 0;
-        v3 = v1->BVMax.z;
+        extent = bv->BVMax.z;
     }
-    return v3 == 0.0;
+    return extent == 0.0;
 }
 
-void OBJ_BV_InitAABBox(tGameObjectBV* a1, Mtx4x4* a2, Vec3* a3)
+void OBJ_BV_InitAABBox(tGameObjectBV* bv, Mtx4x4* mtx, Vec3* point)
 {
-    float v3;
-    float v4;
-    float v5;
-    Vec3 a1a;
+    float z;
+    float x;
+    float y;
+    Vec3 p;
 
-    MATH_TransformVector(&a1a, a2, a3);
-    v3 = a1a.z;
-    v4 = a1a.x;
-    v5 = a1a.y;
-    a1->BVMin.z = a1a.z;
-    a1->BVMin.x = v4;
-    a1->BVMin.y = v5;
-    a1->BVMax.z = v3;
-    a1->BVMax.x = v4;
-    a1->BVMax.y = v5;
+    MATH_TransformVector(&p, mtx, point);
+    z = p.z;
+    x = p.x;
+    y = p.y;
+    bv->BVMin.z = p.z;
+    bv->BVMin.x = x;
+    bv->BVMin.y = y;
+    bv->BVMax.z = z;
+    bv->BVMax.x = x;
+    bv->BVMax.y = y;
 }
 
-void OBJ_BV_InitSphereBV(tGameObjectBV* a1, Vec3* a2, float a3, Vec3* a4)
+void OBJ_BV_InitSphereBV(tGameObjectBV* bv, Vec3* center, float radius, Vec3* scale)
 {
-    float v4;
-    float v5;
-    float v6;
+    float z;
+    float x;
+    float y;
 
-    if (a4)
+    if (scale)
     {
-        v5 = a2->x * a4->x;
-        v6 = a2->y * a4->y;
-        v4 = a2->z * a4->z;
-        a1->BVMin.x = v5;
-        a1->BVMin.y = v6;
-        a1->BVMin.z = v4;
+        x = center->x * scale->x;
+        y = center->y * scale->y;
+        z = center->z * scale->z;
+        bv->BVMin.x = x;
+        bv->BVMin.y = y;
+        bv->BVMin.z = z;
     }
     else
     {
-        a1->BVMin = *a2;
+        bv->BVMin = *center;
     }
-    a1->BVMax.x = a3;
-    OBJ_BV_SetSphereFlag(a1);
+    bv->BVMax.x = radius;
+    OBJ_BV_SetSphereFlag(bv);
 }
 
-void OBJ_BV_AddPointToSphereBV(tGameObjectBV* a1, Vec3* a2, Vec3* a3)
+void OBJ_BV_AddPointToSphereBV(tGameObjectBV* bv, Vec3* point, Vec3* scale)
 {
-    tGameObjectBV* v3;
-    float v4;
-    float v5;
-    float v6;
-    float v7;
-    float v8;
-    float v9;
-    float v10;
-    float v11;
-    float v12;
-    float a3a;
+    float dx;
+    float dy;
+    float pz;
+    float dz;
+    float dist;
+    float step;
+    float shift;
+    float radius;
 
-    if (a3)
+    if (scale)
     {
-        v10 = a2->y * a3->y;
-        v3 = a1;
-        v11 = a2->z * a3->z;
-        v4 = a2->x * a3->x - a1->BVMin.x;
-        v7 = v10 - a1->BVMin.y;
-        v5 = v11;
+        dx = point->x * scale->x - bv->BVMin.x;
+        dy = point->y * scale->y - bv->BVMin.y;
+        pz = point->z * scale->z;
     }
     else
     {
-        v3 = a1;
-        v4 = a2->x - a1->BVMin.x;
-        v7 = a2->y - a1->BVMin.y;
-        v5 = a2->z;
+        dx = point->x - bv->BVMin.x;
+        dy = point->y - bv->BVMin.y;
+        pz = point->z;
     }
-    a3a = v3->BVMax.x;
-    v8 = v5 - v3->BVMin.z;
-    v6 = (float)sqrt(v8 * v8 + v4 * v4 + v7 * v7);
-    if (v6 > a3a)
+    radius = bv->BVMax.x;
+    dz = pz - bv->BVMin.z;
+    dist = (float)sqrt(dz * dz + dx * dx + dy * dy);
+    if (dist > radius)
     {
-        v12 = (1.0f - a3a / v6) * 0.5f;
-        v9 = v8 * v12;
-        v3->BVMin.x = v4 * v12 + v3->BVMin.x;
-        v3->BVMin.y = v7 * v12 + v3->BVMin.y;
-        v3->BVMin.z = v9 + v3->BVMin.z;
-        v3->BVMax.x = (a3a + v6) * 0.5f;
+        shift = (1.0f - radius / dist) * 0.5f;
+        step = dz * shift;
+        bv->BVMin.x = dx * shift + bv->BVMin.x;
+        bv->BVMin.y = dy * shift + bv->BVMin.y;
+        bv->BVMin.z = step + bv->BVMin.z;
+        bv->BVMax.x = (radius + dist) * 0.5f;
     }
 }
 
-void OBJ_BV_AddPointToAABBox(tGameObjectBV* a1, Mtx4x4* a2, Vec3* a3, int a4)
+void OBJ_BV_AddPointToAABBox(tGameObjectBV* bv, Mtx4x4* mtx, Vec3* point, int noScale)
 {
-    Vec3 a1a;
+    Vec3 p;
 
-    if (a4)
-        MATH_TransformVectorNoScale(&a1a, a2, a3);
+    if (noScale)
+        MATH_TransformVectorNoScale(&p, mtx, point);
     else
-        MATH_TransformVector(&a1a, a2, a3);
-    if (a1a.x < (double)a1->BVMin.x)
-        a1->BVMin.x = a1a.x;
-    if (a1a.y < (double)a1->BVMin.y)
-        a1->BVMin.y = a1a.y;
-    if (a1a.z < (double)a1->BVMin.z)
-        a1->BVMin.z = a1a.z;
-    if (a1a.x > (double)a1->BVMax.x)
-        a1->BVMax.x = a1a.x;
-    if (a1a.y > (double)a1->BVMax.y)
-        a1->BVMax.y = a1a.y;
-    if (a1a.z > (double)a1->BVMax.z)
-        a1->BVMax.z = a1a.z;
+        MATH_TransformVector(&p, mtx, point);
+    if (p.x < (double)bv->BVMin.x)
+        bv->BVMin.x = p.x;
+    if (p.y < (double)bv->BVMin.y)
+        bv->BVMin.y = p.y;
+    if (p.z < (double)bv->BVMin.z)
+        bv->BVMin.z = p.z;
+    if (p.x > (double)bv->BVMax.x)
+        bv->BVMax.x = p.x;
+    if (p.y > (double)bv->BVMax.y)
+        bv->BVMax.y = p.y;
+    if (p.z > (double)bv->BVMax.z)
+        bv->BVMax.z = p.z;
 }
 
-void OBJ_ComputeCameraBV(tGameObjectMain* a1, int a2)
+void OBJ_ComputeCameraBV(tGameObjectMain* gao, int asSphere)
 {
-    tGameObjectBV* v3;
+    tGameObjectBV* bv;
 
-    v3 = a1->boundingVolume;
-    if (a2)
+    bv = gao->boundingVolume;
+    if (asSphere)
     {
-        v3->BVMin.x = 0.0;
-        v3->BVMin.y = 0.0;
-        v3->BVMin.z = 0.0;
-        v3->BVMax.x = 0.5;
-        OBJ_BV_SetSphereFlag(a1->boundingVolume);
-    }
-    else
-    {
-        v3->BVMin.x = -0.5;
-        v3->BVMin.y = -0.5;
-        v3->BVMin.z = -0.5;
-        v3->BVMax.x = 0.5;
-        v3->BVMax.y = 0.5;
-        v3->BVMax.z = 0.5;
-        a1->boundingVolume->BVMinOriginal = a1->boundingVolume->BVMin;
-        a1->boundingVolume->BVMaxOriginal = a1->boundingVolume->BVMax;
-    }
-    if ((a1->flags & 0x80000) != 0)
-    {
-        v3->BVMinLocal.x = -0.5;
-        v3->BVMinLocal.y = -0.5;
-        v3->BVMinLocal.z = -0.5;
-        v3->BVMaxLocal.x = 0.5;
-        v3->BVMaxLocal.y = 0.5;
-        v3->BVMaxLocal.z = 0.5;
-    }
-}
-
-void OBJ_ComputeWaypointBV(tGameObjectMain* a1, int a2)
-{
-    tGameObjectBV* v2;
-
-    v2 = a1->boundingVolume;
-    if ((a1->flags & 0x80000) != 0)
-    {
-        v2->BVMinLocal.x = -1.0;
-        v2->BVMinLocal.y = -1.0;
-        v2->BVMinLocal.z = -1.0;
-        v2->BVMaxLocal.x = 1.0;
-        v2->BVMaxLocal.y = 1.0;
-        v2->BVMaxLocal.z = 1.0;
-    }
-    else if (a2)
-    {
-        v2->BVMin.x = 0.0;
-        v2->BVMin.y = 0.0;
-        v2->BVMin.z = 0.0;
-        v2->BVMax.x = 1.0;
-        OBJ_BV_SetSphereFlag(a1->boundingVolume);
+        bv->BVMin.x = 0.0;
+        bv->BVMin.y = 0.0;
+        bv->BVMin.z = 0.0;
+        bv->BVMax.x = 0.5;
+        OBJ_BV_SetSphereFlag(gao->boundingVolume);
     }
     else
     {
-        v2->BVMin.y = -1.0;
-        v2->BVMin.x = -1.0;
-        v2->BVMin.z = -1.0;
-        v2->BVMax.x = 1.0;
-        v2->BVMax.y = 1.0;
-        v2->BVMax.z = 1.0;
-        v2->BVMinOriginal.x = v2->BVMin.x;
-        v2->BVMinOriginal.y = v2->BVMin.y;
-        v2->BVMinOriginal.z = v2->BVMin.z;
-        v2->BVMaxOriginal.x = v2->BVMax.x;
-        v2->BVMaxOriginal.y = v2->BVMax.y;
-        v2->BVMaxOriginal.z = v2->BVMax.z;
+        bv->BVMin.x = -0.5;
+        bv->BVMin.y = -0.5;
+        bv->BVMin.z = -0.5;
+        bv->BVMax.x = 0.5;
+        bv->BVMax.y = 0.5;
+        bv->BVMax.z = 0.5;
+        gao->boundingVolume->BVMinOriginal = gao->boundingVolume->BVMin;
+        gao->boundingVolume->BVMaxOriginal = gao->boundingVolume->BVMax;
+    }
+    if ((gao->flags & 0x80000) != 0)
+    {
+        bv->BVMinLocal.x = -0.5;
+        bv->BVMinLocal.y = -0.5;
+        bv->BVMinLocal.z = -0.5;
+        bv->BVMaxLocal.x = 0.5;
+        bv->BVMaxLocal.y = 0.5;
+        bv->BVMaxLocal.z = 0.5;
     }
 }
 
-void OBJ_ComputeLightBV(tGameObjectMain* a1)
+void OBJ_ComputeWaypointBV(tGameObjectMain* gao, int asSphere)
 {
-    tGameObjectBV* v1;
-    tLIGHT* v2;
+    tGameObjectBV* bv;
 
-    v1 = a1->boundingVolume;
-    v2 = (tLIGHT*)(a1->extended->light);
-    if ((v2->flags & 7) != 0)
+    bv = gao->boundingVolume;
+    if ((gao->flags & 0x80000) != 0)
     {
-        if ((v2->flags & 7u) <= 3)
+        bv->BVMinLocal.x = -1.0;
+        bv->BVMinLocal.y = -1.0;
+        bv->BVMinLocal.z = -1.0;
+        bv->BVMaxLocal.x = 1.0;
+        bv->BVMaxLocal.y = 1.0;
+        bv->BVMaxLocal.z = 1.0;
+    }
+    else if (asSphere)
+    {
+        bv->BVMin.x = 0.0;
+        bv->BVMin.y = 0.0;
+        bv->BVMin.z = 0.0;
+        bv->BVMax.x = 1.0;
+        OBJ_BV_SetSphereFlag(gao->boundingVolume);
+    }
+    else
+    {
+        bv->BVMin.y = -1.0;
+        bv->BVMin.x = -1.0;
+        bv->BVMin.z = -1.0;
+        bv->BVMax.x = 1.0;
+        bv->BVMax.y = 1.0;
+        bv->BVMax.z = 1.0;
+        bv->BVMinOriginal.x = bv->BVMin.x;
+        bv->BVMinOriginal.y = bv->BVMin.y;
+        bv->BVMinOriginal.z = bv->BVMin.z;
+        bv->BVMaxOriginal.x = bv->BVMax.x;
+        bv->BVMaxOriginal.y = bv->BVMax.y;
+        bv->BVMaxOriginal.z = bv->BVMax.z;
+    }
+}
+
+void OBJ_ComputeLightBV(tGameObjectMain* gao)
+{
+    tGameObjectBV* bv;
+    tLIGHT* light;
+
+    bv = gao->boundingVolume;
+    light = (tLIGHT*)(gao->extended->light);
+    if ((light->flags & 7) != 0)
+    {
+        if ((light->flags & 7u) <= 3)
         {
-            v1->BVMin.x = 0.0;
-            v1->BVMin.y = 0.0;
-            v1->BVMin.z = 0.0;
-            v1->BVMax.x = 0.0;
-            OBJ_BV_SetSphereFlag(a1->boundingVolume);
+            bv->BVMin.x = 0.0;
+            bv->BVMin.y = 0.0;
+            bv->BVMin.z = 0.0;
+            bv->BVMax.x = 0.0;
+            OBJ_BV_SetSphereFlag(gao->boundingVolume);
         }
     }
     else
     {
-        v1->BVMin.x = 0.0;
-        v1->BVMin.y = 0.0;
-        v1->BVMin.z = 0.0;
-        v1->BVMax.x = v2->ffar;
-        OBJ_BV_SetSphereFlag(a1->boundingVolume);
+        bv->BVMin.x = 0.0;
+        bv->BVMin.y = 0.0;
+        bv->BVMin.z = 0.0;
+        bv->BVMax.x = light->ffar;
+        OBJ_BV_SetSphereFlag(gao->boundingVolume);
     }
 }
 
-void OBJ_ComputeAABBoxFromOBBox(tGameObjectMain* a1)
+void OBJ_ComputeAABBoxFromOBBox(tGameObjectMain* gao)
 {
-    tGameObjectBV* v1;
+    tGameObjectBV* bv;
     unsigned int i;
-    Mtx4x4* v3;
-    Vec3 a1a;
-    Vec3 a3;
+    Mtx4x4* mtx;
+    Vec3 p;
+    Vec3 corner;
 
-    v1 = a1->boundingVolume;
-    v1->BVMin.x = 3.402822e38f;
-    v1->BVMin.y = 3.402822e38f;
-    v1->BVMin.z = 3.402822e38f;
-    v1->BVMax.x = -3.402822e38f;
-    v1->BVMax.y = -3.402822e38f;
-    v1->BVMax.z = -3.402822e38f;
+    bv = gao->boundingVolume;
+    bv->BVMin.x = 3.402822e38f;
+    bv->BVMin.y = 3.402822e38f;
+    bv->BVMin.z = 3.402822e38f;
+    bv->BVMax.x = -3.402822e38f;
+    bv->BVMax.y = -3.402822e38f;
+    bv->BVMax.z = -3.402822e38f;
     for (i = 0; i < 8; ++i)
     {
         if ((i & 1) != 0)
-            a3.x = v1->BVMinLocal.x;
+            corner.x = bv->BVMinLocal.x;
         else
-            a3.x = v1->BVMaxLocal.x;
+            corner.x = bv->BVMaxLocal.x;
         if ((i & 2) != 0)
-            a3.y = v1->BVMinLocal.y;
+            corner.y = bv->BVMinLocal.y;
         else
-            a3.y = v1->BVMaxLocal.y;
+            corner.y = bv->BVMaxLocal.y;
         if ((i & 4) != 0)
-            a3.z = v1->BVMinLocal.z;
+            corner.z = bv->BVMinLocal.z;
         else
-            a3.z = v1->BVMaxLocal.z;
-        v3 = OBJ_pst_GetAbsoluteMatrix(a1);
-        MATH_TransformVectorNoScale(&a1a, v3, &a3);
-        if (a1a.x < (double)v1->BVMin.x)
-            v1->BVMin.x = a1a.x;
-        if (a1a.y < (double)v1->BVMin.y)
-            v1->BVMin.y = a1a.y;
-        if (a1a.z < (double)v1->BVMin.z)
-            v1->BVMin.z = a1a.z;
-        if (a1a.x > (double)v1->BVMax.x)
-            v1->BVMax.x = a1a.x;
-        if (a1a.y > (double)v1->BVMax.y)
-            v1->BVMax.y = a1a.y;
-        if (a1a.z > (double)v1->BVMax.z)
-            v1->BVMax.z = a1a.z;
+            corner.z = bv->BVMaxLocal.z;
+        mtx = OBJ_pst_GetAbsoluteMatrix(gao);
+        MATH_TransformVectorNoScale(&p, mtx, &corner);
+        if (p.x < (double)bv->BVMin.x)
+            bv->BVMin.x = p.x;
+        if (p.y < (double)bv->BVMin.y)
+            bv->BVMin.y = p.y;
+        if (p.z < (double)bv->BVMin.z)
+            bv->BVMin.z = p.z;
+        if (p.x > (double)bv->BVMax.x)
+            bv->BVMax.x = p.x;
+        if (p.y > (double)bv->BVMax.y)
+            bv->BVMax.y = p.y;
+        if (p.z > (double)bv->BVMax.z)
+            bv->BVMax.z = p.z;
     }
 }
 
-void OBJ_DuplicateBV(tGameObjectMain* a1, tGameObjectMain* a2)
+void OBJ_DuplicateBV(tGameObjectMain* src, tGameObjectMain* dest)
 {
-    tGameObjectBV* v2;
+    tGameObjectBV* bv;
 
-    v2 = a1->boundingVolume;
-    if ((a1->flags & 0x80000) != 0)
-        memcpy(a2->boundingVolume, v2, sizeof(tGameObjectBV));
+    bv = src->boundingVolume;
+    if ((src->flags & 0x80000) != 0)
+        memcpy(dest->boundingVolume, bv, sizeof(tGameObjectBV));
     else
-        memcpy(a2->boundingVolume, v2, sizeof(tGameObjectBV) - (2 * sizeof(Vec3))); // kivonjuk belõle a végén lévõ két local méretét
+        memcpy(dest->boundingVolume, bv, sizeof(tGameObjectBV) - (2 * sizeof(Vec3))); // kivonjuk belõle a végén lévõ két local méretét
 }
 
-void OBJ_BV_ComputeCenter(struct sGameObjectMain* a1, Vec3* a2)
+void OBJ_BV_ComputeCenter(struct sGameObjectMain* gao, Vec3* center)
 {
-    tGameObjectBV* v3;
-    float v4;
-    float v5;
-    Mtx4x4* v7;
-    float a1a;
+    tGameObjectBV* bv;
+    float cx;
+    float cy;
+    Mtx4x4* mtx;
+    float cz;
 
-    v3 = a1->boundingVolume;
-    if (OBJ_BV_IsAABBox(v3))
+    bv = gao->boundingVolume;
+    if (OBJ_BV_IsAABBox(bv))
     {
-        a2->x = v3->BVMax.x + v3->BVMin.x;
-        a2->y = v3->BVMax.y + v3->BVMin.y;
-        a2->z = v3->BVMax.z + v3->BVMin.z;
-        v4 = a2->x * 0.5f;
-        a2->x = v4;
-        v5 = a2->y * 0.5f;
-        a2->y = v5;
-        a1a = a2->z * 0.5f;
-        a2->z = a1a;
-        a2->x = v4 + a1->matrices->Pos.x;
-        a2->y = v5 + a1->matrices->Pos.y;
-        a2->z = a1a + a1->matrices->Pos.z;
+        center->x = bv->BVMax.x + bv->BVMin.x;
+        center->y = bv->BVMax.y + bv->BVMin.y;
+        center->z = bv->BVMax.z + bv->BVMin.z;
+        cx = center->x * 0.5f;
+        center->x = cx;
+        cy = center->y * 0.5f;
+        center->y = cy;
+        cz = center->z * 0.5f;
+        center->z = cz;
+        center->x = cx + gao->matrices->Pos.x;
+        center->y = cy + gao->matrices->Pos.y;
+        center->z = cz + gao->matrices->Pos.z;
     }
     else
     {
-        v7 = OBJ_pst_GetAbsoluteMatrix(a1);
-        MATH_TransformVertexNoScale(a2, v7, &v3->BVMin);
+        mtx = OBJ_pst_GetAbsoluteMatrix(gao);
+        MATH_TransformVertexNoScale(center, mtx, &bv->BVMin);
     }
 }
 
-void OBJ_BV_CalcBVForTwoOBJs(tGameObjectMain* a1, tGameObjectMain* a2)
+void OBJ_BV_CalcBVForTwoOBJs(tGameObjectMain* dest, tGameObjectMain* src)
 {
-    Mtx4x4* v2;
-    tGameObjectBV* v3;
-    float v4;
-    float v5;
-    float v6;
-    Mtx4x4* v7;
-    float v8;
-    tGameObjectBV* v9;
-    tGameObjectBV* v10;
-    float v11;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    float v17;
-    float v18;
-    float v19;
-    float v20;
+    Mtx4x4* srcMtx;
+    tGameObjectBV* srcBv;
+    Mtx4x4* destMtx;
+    tGameObjectBV* destBv;
+    float maxX;
+    float maxY;
+    float maxZ;
+    float minX;
+    float minY;
+    float minZ;
 
-    v2 = a2->matrices;
-    v3 = a2->boundingVolume;
-    v4 = v3->BVMax.x + v2->Pos.x;
-    v5 = v3->BVMax.y + v2->Pos.y;
-    v19 = v3->BVMax.z + v2->Pos.z;
-    v11 = v3->BVMin.x + v2->Pos.x;
-    v13 = v2->Pos.y + v3->BVMin.y;
-    v6 = v2->Pos.z + v3->BVMin.z;
-    v7 = a1->matrices;
-    v15 = v6;
-    v17 = v4 - v7->Pos.x;
-    v18 = v5 - v7->Pos.y;
-    v20 = v19 - v7->Pos.z;
-    v12 = v11 - v7->Pos.x;
-    v14 = v13 - v7->Pos.y;
-    v8 = v15 - v7->Pos.z;
-    v9 = a1->boundingVolume;
-    v9->BVMax.x = v17;
-    v9->BVMax.y = v18;
-    v9->BVMax.z = v20;
-    v10 = a1->boundingVolume;
-    v10->BVMin.x = v12;
-    v10->BVMin.y = v14;
-    v10->BVMin.z = v8;
+    srcMtx = src->matrices;
+    srcBv = src->boundingVolume;
+    maxX = srcBv->BVMax.x + srcMtx->Pos.x;
+    maxY = srcBv->BVMax.y + srcMtx->Pos.y;
+    maxZ = srcBv->BVMax.z + srcMtx->Pos.z;
+    minX = srcBv->BVMin.x + srcMtx->Pos.x;
+    minY = srcMtx->Pos.y + srcBv->BVMin.y;
+    minZ = srcMtx->Pos.z + srcBv->BVMin.z;
+    destMtx = dest->matrices;
+    destBv = dest->boundingVolume;
+    destBv->BVMax.x = maxX - destMtx->Pos.x;
+    destBv->BVMax.y = maxY - destMtx->Pos.y;
+    destBv->BVMax.z = maxZ - destMtx->Pos.z;
+    destBv->BVMin.x = minX - destMtx->Pos.x;
+    destBv->BVMin.y = minY - destMtx->Pos.y;
+    destBv->BVMin.z = minZ - destMtx->Pos.z;
 }
 
-void __cdecl OBJ_MergeBVs(tGameObjectMain* a1, tGameObjectMain* a2)
+void __cdecl OBJ_MergeBVs(tGameObjectMain* dest, tGameObjectMain* src)
 {
-    tGameObjectBV* v2;
-    tGameObjectBV* v3;
-    Mtx4x4* v4;
-    float v5;
-    float v6;
-    float v7;
-    Mtx4x4* v8;
-    float v9;
-    float v10;
-    float v11;
-    float v12;
-    float v13;
-    float v14;
-    float v15;
-    float v16;
-    float v17;
-    float v18;
-    float v19;
-    float v20;
-    float v21;
+    tGameObjectBV* destBv;
+    tGameObjectBV* srcBv;
+    Mtx4x4* srcMtx;
+    Mtx4x4* destMtx;
+    float maxX;
+    float maxY;
+    float maxZ;
+    float minX;
+    float minY;
+    float minZ;
+    float relMaxX;
+    float relMaxY;
+    float relMaxZ;
+    float relMinX;
+    float relMinY;
+    float relMinZ;
 
-    v2 = a1->boundingVolume;
-    if (OBJ_BV_IsAABBox(v2))
+    destBv = dest->boundingVolume;
+    if (OBJ_BV_IsAABBox(destBv))
     {
-        v3 = a2->boundingVolume;
-        if (OBJ_BV_IsAABBox(v3))
+        srcBv = src->boundingVolume;
+        if (OBJ_BV_IsAABBox(srcBv))
         {
-            v4 = a2->matrices;
-            v5 = v4->Pos.x + v3->BVMax.x;
-            v6 = v3->BVMax.y + v4->Pos.y;
-            v20 = v3->BVMax.z + v4->Pos.z;
-            v14 = v4->Pos.x + v3->BVMin.x;
-            v15 = v4->Pos.y + v3->BVMin.y;
-            v7 = v4->Pos.z;
-            v8 = a1->matrices;
-            v17 = v7 + v3->BVMin.z;
-            v19 = v5 - v8->Pos.x;
-            v9 = v6 - v8->Pos.y;
-            v21 = v20 - v8->Pos.z;
-            v10 = v14 - v8->Pos.x;
-            v16 = v15 - v8->Pos.y;
-            v18 = v17 - v8->Pos.z;
-            if (v10 >= v2->BVMin.x)
-                v10 = v2->BVMin.x;
-            v2->BVMin.x = v10;
-            if (v16 >= (double)v2->BVMin.y)
-                v11 = v2->BVMin.y;
-            else
-                v11 = v16;
-            v2->BVMin.y = v11;
-            if (v18 >= (double)v2->BVMin.z)
-                v12 = v2->BVMin.z;
-            else
-                v12 = v18;
-            v2->BVMin.z = v12;
-            if (v19 <= (double)v2->BVMax.x)
-                v13 = v2->BVMax.x;
-            else
-                v13 = v19;
-            v2->BVMax.x = v13;
-            if (v9 <= v2->BVMax.y)
-                v9 = v2->BVMax.y;
-            v2->BVMax.y = v9;
-            if (v21 <= (double)v2->BVMax.z)
-                v2->BVMax.z = v2->BVMax.z;
-            else
-                v2->BVMax.z = v21;
+            srcMtx = src->matrices;
+            maxX = srcMtx->Pos.x + srcBv->BVMax.x;
+            maxY = srcBv->BVMax.y + srcMtx->Pos.y;
+            maxZ = srcBv->BVMax.z + srcMtx->Pos.z;
+            minX = srcMtx->Pos.x + srcBv->BVMin.x;
+            minY = srcMtx->Pos.y + srcBv->BVMin.y;
+            minZ = srcMtx->Pos.z + srcBv->BVMin.z;
+            destMtx = dest->matrices;
+            relMaxX = maxX - destMtx->Pos.x;
+            relMaxY = maxY - destMtx->Pos.y;
+            relMaxZ = maxZ - destMtx->Pos.z;
+            relMinX = minX - destMtx->Pos.x;
+            relMinY = minY - destMtx->Pos.y;
+            relMinZ = minZ - destMtx->Pos.z;
+            if (relMinX >= destBv->BVMin.x)
+                relMinX = destBv->BVMin.x;
+            destBv->BVMin.x = relMinX;
+            if (relMinY >= (double)destBv->BVMin.y)
+                relMinY = destBv->BVMin.y;
+            destBv->BVMin.y = relMinY;
+            if (relMinZ >= (double)destBv->BVMin.z)
+                relMinZ = destBv->BVMin.z;
+            destBv->BVMin.z = relMinZ;
+            if (relMaxX <= (double)destBv->BVMax.x)
+                relMaxX = destBv->BVMax.x;
+            destBv->BVMax.x = relMaxX;
+            if (relMaxY <= destBv->BVMax.y)
+                relMaxY = destBv->BVMax.y;
+            destBv->BVMax.y = relMaxY;
+            if (!(relMaxZ <= (double)destBv->BVMax.z))
+                destBv->BVMax.z = relMaxZ;
         }
     }
 }
 
-int GEO_MRM_GetRealNumberOfPoints(tGEOGRO* a1)
+int GEO_MRM_GetRealNumberOfPoints(tGEOGRO* geo)
 {
-    tGeoMRM* v1; // eax
+    tGeoMRM* mrm; // eax
     int result; // eax
 
-    if (a1 && a1->intf->id == 1 && (v1 = a1->mrm) != 0)
-        result = v1->endNum;
+    if (geo && geo->intf->id == 1 && (mrm = geo->mrm) != 0)
+        result = mrm->endNum;
     else
-        result = a1->vertexNum;
+        result = geo->vertexNum;
     return result;
 }
 
-void OBJ_ComputeGeometricObjectBV(tGameObjectMain* a1, int a2)
+void OBJ_ComputeGeometricObjectBV(tGameObjectMain* gao, int asSphere)
 {
-    tGameObjectVisualObject* v3;
-    tGEOGRO* v4;
-    Mtx4x4* v5;
-    Vec3* v6;
-    Vec3* v7;
-    Vec3* v8;
-    Mtx4x4* v9;
-    Mtx4x4* v10; 
-    tColMap* v11;
-    int v12;
-    tColCollisionObject* v13;
-    tCobMeshObjectMesh* v14;
-    unsigned int v15;
-    int v16;
-    Mtx4x4* v17;
-    tGameObjectBV* v18;
-    double v20;
-    double v24;
-    double v28;
-    Vec3* v31;
-    tGEOGRO* v32;
-    tColMap* v33;
-    Vec3 a1a;
-    Mtx4x4* a2a;
-    int a2b;
+    tGameObjectVisualObject* visual;
+    tGEOGRO* geo;
+    Mtx4x4* absMtx;
+    Vec3* first;
+    Vec3* vertex;
+    Vec3* end;
+    tColMap* colMap;
+    tColCollisionObject* colObject;
+    tCobMeshObjectMesh* mesh;
+    unsigned int vertexIdx;
+    int objectIdx;
+    Mtx4x4* mtx;
+    tGameObjectBV* bv;
+    double minX;
+    double minY;
+    double minZ;
+    Vec3 scale;
 
-    v3 = a1->basic->actorObjectOrVisualObject;
-    v4 = (tGEOGRO*)v3->GROGEOOrSomethingElse;
-    v32 = (tGEOGRO*)(v3->GROGEOOrSomethingElse);
-    if (!((tGEOGRO*)(v3->GROGEOOrSomethingElse))->vertices)
+    visual = gao->basic->actorObjectOrVisualObject;
+    geo = (tGEOGRO*)visual->GROGEOOrSomethingElse;
+    if (!geo->vertices)
         return;
-    v5 = OBJ_pst_GetAbsoluteMatrix(a1);
-    v6 = v4->vertices;
-    a2a = v5;
-    v7 = v6 + 1;
-    v8 = &v6[GEO_MRM_GetRealNumberOfPoints(v4)];
-    if (a2 != 1)
+    absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+    first = geo->vertices;
+    vertex = first + 1;
+    end = &first[GEO_MRM_GetRealNumberOfPoints(geo)];
+    if (asSphere != 1)
     {
-        v9 = OBJ_pst_GetAbsoluteMatrix(a1);
-        OBJ_BV_InitAABBox(a1->boundingVolume, v9, v6);
-        for (; v7 < v8; ++v7)
+        mtx = OBJ_pst_GetAbsoluteMatrix(gao);
+        OBJ_BV_InitAABBox(gao->boundingVolume, mtx, first);
+        for (; vertex < end; ++vertex)
         {
-            v10 = OBJ_pst_GetAbsoluteMatrix(a1);
-            OBJ_BV_AddPointToAABBox(a1->boundingVolume, v10, v7, 0);
+            mtx = OBJ_pst_GetAbsoluteMatrix(gao);
+            OBJ_BV_AddPointToAABBox(gao->boundingVolume, mtx, vertex, 0);
         }
-        if ((a1->flags & 0x100) != 0)
+        if ((gao->flags & 0x100) != 0)
         {
-            v11 = a1->extended->coll->colMap;
-            v12 = 0;
-            v33 = v11;
-            a2b = 0;
-            if (v11->colObjectID)
+            colMap = gao->extended->coll->colMap;
+            for (objectIdx = 0; objectIdx < colMap->colObjectID; ++objectIdx)
             {
-                do
+                colObject = colMap->collisionObjectPtr[objectIdx];
+                if (colObject->objectType != 5)
+                    continue;
+                mesh = (tCobMeshObjectMesh*)colObject->objectPtrByType;
+                if (!mesh)
+                    continue;
+                for (vertexIdx = 0; vertexIdx < mesh->vertexCount; ++vertexIdx)
                 {
-                    v13 = v11->collisionObjectPtr[v12];
-                    if (v13->objectType == 5)
-                    {
-                        v14 = (tCobMeshObjectMesh*)v13->objectPtrByType;
-                        v15 = 0;
-                        if (v14)
-                        {
-                            v16 = 0;
-                            while (v15 < v14->vertexCount)
-                            {
-                                v31 = &v14->vertices[v16];
-                                v17 = OBJ_pst_GetAbsoluteMatrix(a1);
-                                OBJ_BV_AddPointToAABBox(a1->boundingVolume, v17, v31, 1);
-                                v11 = v33;
-                                ++v15;
-                                ++v16;
-                            }
-                            v12 = a2b;
-                        }
-                    }
-                    a2b = ++v12;
-                } while (v12 < v11->colObjectID);
+                    mtx = OBJ_pst_GetAbsoluteMatrix(gao);
+                    OBJ_BV_AddPointToAABBox(gao->boundingVolume, mtx, &mesh->vertices[vertexIdx], 1);
+                }
             }
         }
-        v18 = a1->boundingVolume;
-        v20 = v18->BVMin.x;
-        if (v18->BVMin.x == v18->BVMax.x)
-            v20 = v20 - 0.0099999998;
-        v18->BVMin.x = (float)v20;
-        v24 = v18->BVMin.y;
-        if (v18->BVMin.y == v18->BVMax.y)
-            v24 = v24 - 0.0099999998;
-        v18->BVMin.y = (float)v24;
-        v28 = v18->BVMin.z;
-        if (v18->BVMin.z == v18->BVMax.z)
-            v28 = v28 - 0.0099999998;
-        v18->BVMin.z = (float)v28;
-        a1->boundingVolume->BVMinOriginal = a1->boundingVolume->BVMin;
-        a1->boundingVolume->BVMaxOriginal = a1->boundingVolume->BVMax;
-        goto LABEL_28;
+        bv = gao->boundingVolume;
+        minX = bv->BVMin.x;
+        if (bv->BVMin.x == bv->BVMax.x)
+            minX = minX - 0.0099999998;
+        bv->BVMin.x = (float)minX;
+        minY = bv->BVMin.y;
+        if (bv->BVMin.y == bv->BVMax.y)
+            minY = minY - 0.0099999998;
+        bv->BVMin.y = (float)minY;
+        minZ = bv->BVMin.z;
+        if (bv->BVMin.z == bv->BVMax.z)
+            minZ = minZ - 0.0099999998;
+        bv->BVMin.z = (float)minZ;
+        gao->boundingVolume->BVMinOriginal = gao->boundingVolume->BVMin;
+        gao->boundingVolume->BVMaxOriginal = gao->boundingVolume->BVMax;
     }
-    if ((a2a->mtxflag & 8) != 0)
+    else if ((absMtx->mtxflag & 8) != 0)
     {
-        MATH_GetScale(&a1a, a2a);
-        OBJ_BV_InitSphereBV(a1->boundingVolume, v32->vertices, 0.0, &a1a);
-        if (v7 < v8)
-        {
-            do
-                OBJ_BV_AddPointToSphereBV(a1->boundingVolume, v7++, &a1a);
-            while (v7 < v8);
-            v32->bv = a1->boundingVolume;
-            return;
-        }
-    LABEL_28:
-        v32->bv = a1->boundingVolume;
-        return;
+        MATH_GetScale(&scale, absMtx);
+        OBJ_BV_InitSphereBV(gao->boundingVolume, geo->vertices, 0.0, &scale);
+        for (; vertex < end; ++vertex)
+            OBJ_BV_AddPointToSphereBV(gao->boundingVolume, vertex, &scale);
     }
-    OBJ_BV_InitSphereBV(a1->boundingVolume, v6, 0.0, 0);
-    if (v7 >= v8)
-        goto LABEL_28;
-    do
-        OBJ_BV_AddPointToSphereBV(a1->boundingVolume, v7++, 0);
-    while (v7 < v8);
-    v32->bv = a1->boundingVolume;
+    else
+    {
+        OBJ_BV_InitSphereBV(gao->boundingVolume, first, 0.0, 0);
+        for (; vertex < end; ++vertex)
+            OBJ_BV_AddPointToSphereBV(gao->boundingVolume, vertex, 0);
+    }
+    geo->bv = gao->boundingVolume;
 }
 
-void OBJ_ComputeStaticLODObjectBV(tGameObjectMain* a1, int a2)
+void OBJ_ComputeStaticLODObjectBV(tGameObjectMain* gao, int asSphere)
 {
-    tGameObjectVisualObject* v2;
-    tGroGeneric* v3;
-    tGEOGRO* v4;
+    tGameObjectVisualObject* visual;
+    tGroGeneric* staticLod;
+    tGEOGRO* geo;
 
-    v2 = a1->basic->actorObjectOrVisualObject;
-    v3 = v2->GROGEOOrSomethingElse;
-    v4 = ((tGEOSTATICLOD*)(v2->GROGEOOrSomethingElse))->geo[0];
-    if (v4)
+    visual = gao->basic->actorObjectOrVisualObject;
+    staticLod = visual->GROGEOOrSomethingElse;
+    geo = ((tGEOSTATICLOD*)(visual->GROGEOOrSomethingElse))->geo[0];
+    if (geo)
     {
-        v2->GROGEOOrSomethingElse = (tGroGeneric*)v4;
-        OBJ_ComputeGeometricObjectBV(a1, a2);
-        ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse = v3;
+        visual->GROGEOOrSomethingElse = (tGroGeneric*)geo;
+        OBJ_ComputeGeometricObjectBV(gao, asSphere);
+        ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse = staticLod;
     }
 }
 
-void OBJ_ComputeAnimBV(tGameObjectMain* a1)
+void OBJ_ComputeAnimBV(tGameObjectMain* gao)
 {
-    tGameObjectBV* v1;
-    Vec3* v2;
-    tGameObjectBasic* v3;
-    tGameObjectActorObject* v4;
-    tGroup* v5;
-    tableDescStruct* v6;
-    tableElemStructPF* v7;
-    tableElemStructPF* i;
-    tGameObjectMain* v9;
+    tGameObjectBV* bv;
+    Vec3* max;
+    tGameObjectBasic* basic;
+    tGameObjectActorObject* actor;
+    tGroup* skeleton;
+    tableDescStruct* table;
+    tableElemStructPF* elem;
+    tableElemStructPF* last;
+    tGameObjectMain* bone;
 
-    v1 = a1->boundingVolume;
-    v1->BVMin.x = 0.0;
-    v1->BVMin.y = 0.0;
-    v1->BVMin.z = 0.0;
-    v2 = &a1->boundingVolume->BVMax;
-    v2->x = 0.0;
-    v2->y = 0.0;
-    v2->z = 0.0;
-    if ((a1->flags & 2) != 0)
+    bv = gao->boundingVolume;
+    bv->BVMin.x = 0.0;
+    bv->BVMin.y = 0.0;
+    bv->BVMin.z = 0.0;
+    max = &gao->boundingVolume->BVMax;
+    max->x = 0.0;
+    max->y = 0.0;
+    max->z = 0.0;
+    if ((gao->flags & 2) != 0)
     {
-        v3 = a1->basic;
-        if (v3)
+        basic = gao->basic;
+        if (basic)
         {
-            v4 = (tGameObjectActorObject*)(v3->actorObjectOrVisualObject);
-            if (v4)
+            actor = (tGameObjectActorObject*)(basic->actorObjectOrVisualObject);
+            if (actor)
             {
-                v5 = v4->skeletonGroup;
-                if (v5)
+                skeleton = actor->skeletonGroup;
+                if (skeleton)
                 {
-                    v6 = v5->tablePF;
-                    v7 = v6->firstElemPtr;
-                    for (i = ((tableElemStructPF*)(v6->nextElemPtr)) - 1; v7 <= i; ++v7)
+                    table = skeleton->tablePF;
+                    elem = table->firstElemPtr;
+                    for (last = ((tableElemStructPF*)(table->nextElemPtr)) - 1; elem <= last; ++elem)
                     {
-                        v9 = (tGameObjectMain*)v7->objectPtr;
-                        if ((((struct sGameObjectMain*)v7->objectPtr)->flags & 0x80000) != 0 && (v9->flags2 & 0x2000000) == 0)
-                            OBJ_ComputeAABBoxFromOBBox((tGameObjectMain*)(v7->objectPtr));
-                        OBJ_ComputeGlobalWhenHie(v9);
-                        OBJ_MergeBVs(a1, v9);
+                        bone = (tGameObjectMain*)elem->objectPtr;
+                        if ((bone->flags & 0x80000) != 0 && (bone->flags2 & 0x2000000) == 0)
+                            OBJ_ComputeAABBoxFromOBBox(bone);
+                        OBJ_ComputeGlobalWhenHie(bone);
+                        OBJ_MergeBVs(gao, bone);
                     }
-                    a1->boundingVolume->BVMinOriginal = a1->boundingVolume->BVMin;
-                    a1->boundingVolume->BVMaxOriginal = a1->boundingVolume->BVMax;
+                    gao->boundingVolume->BVMinOriginal = gao->boundingVolume->BVMin;
+                    gao->boundingVolume->BVMaxOriginal = gao->boundingVolume->BVMax;
                 }
             }
         }
     }
 }
 
-void OBJ_ComputeBV(tGameObjectMain* a1, int a2)
+void OBJ_ComputeBV(tGameObjectMain* gao, int onlyIfEmpty)
 {
-    tGameObjectExtended* v2;
-    tGroGeneric* v3;
-    tGroIntf* v4;
-    int v5;
-    int v6;
+    tGameObjectExtended* extended;
+    tGroGeneric* gro;
 
-    if (a2 == 1 || (a1->flags2 & 0x2000000) == 0)
+    if (onlyIfEmpty == 1 || (gao->flags2 & 0x2000000) == 0)
     {
-        v2 = a1->extended;
-        if (v2 && v2->light)
+        extended = gao->extended;
+        if (extended && extended->light)
         {
-            if (OBJ_HasNoBV(a1) || !a2)
-                OBJ_ComputeLightBV(a1);
+            if (OBJ_HasNoBV(gao) || !onlyIfEmpty)
+                OBJ_ComputeLightBV(gao);
         }
-        else if ((a1->flags & 2) != 0)
+        else if ((gao->flags & 2) != 0)
         {
-            if (OBJ_HasNoBV(a1) || !a2)
-                OBJ_ComputeAnimBV(a1);
+            if (OBJ_HasNoBV(gao) || !onlyIfEmpty)
+                OBJ_ComputeAnimBV(gao);
         }
         else
         {
-            if ((a1->flags & 0x4000) != 0)
+            if ((gao->flags & 0x4000) != 0)
             {
-                v3 = ((tGameObjectVisualObject*)(a1->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse;
-                if (!v3)
+                gro = ((tGameObjectVisualObject*)(gao->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse;
+                if (!gro)
                     return;
-                v4 = v3->intf;
-                if (!v4)
+                if (!gro->intf)
                     return;
-                v5 = v4->id - 1;
-                if (v5)
+                switch (gro->intf->id)
                 {
-                    v6 = v5 - 5;
-                    if (v6)
-                    {
-                        if (v6 == 2 && (OBJ_HasNoBV(a1) || !a2))
-                            OBJ_ComputeStaticLODObjectBV(a1, 0);
-                    }
-                    else if (OBJ_HasNoBV(a1) || !a2)
-                    {
-                        OBJ_ComputeCameraBV(a1, 0);
-                    }
-                }
-                else if (OBJ_HasNoBV(a1) || !a2)
-                {
-                    OBJ_ComputeGeometricObjectBV(a1, 0);
+                case 1:
+                    if (OBJ_HasNoBV(gao) || !onlyIfEmpty)
+                        OBJ_ComputeGeometricObjectBV(gao, 0);
+                    break;
+                case 6:
+                    if (OBJ_HasNoBV(gao) || !onlyIfEmpty)
+                        OBJ_ComputeCameraBV(gao, 0);
+                    break;
+                case 8:
+                    if (OBJ_HasNoBV(gao) || !onlyIfEmpty)
+                        OBJ_ComputeStaticLODObjectBV(gao, 0);
+                    break;
                 }
             }
-            if ((a1->flags & 0x80) != 0 && (OBJ_HasNoBV(a1) || !a2))
-                OBJ_ComputeWaypointBV(a1, 0);
+            if ((gao->flags & 0x80) != 0 && (OBJ_HasNoBV(gao) || !onlyIfEmpty))
+                OBJ_ComputeWaypointBV(gao, 0);
         }
     }
 }
@@ -1256,7 +1177,7 @@ int OBJ_b_test_flag(struct sGameObjectMain* gao, int flagMustHave, int flagMustN
         v4 = (uint8_t)v4;
         if ((uint8_t)(flagMustHave & v4) == flagMustHave)
         if ((v4 & flagMustNothave) == 0)
-            return 1;    
+            return 1;
         return 0;
     case 12:
         if ((gao->flags & 0x2000) == 0 || (gao->flags & 0x40) == 0)
@@ -1387,7 +1308,7 @@ struct sGameObjectMain* OBJ_GameObject_Create(int flags)
     gaomain->u3 = 16;
     gaomain->flags2 = 0;
     gaomain->designFlags = 0;
-    
+
     if ((flags & 0x10000) != 0)
     {
         if ((flags & 0x4000000) != 0)
@@ -3318,7 +3239,7 @@ void OBJ_EyeFollow(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a
     tGameObjectActorObject* v16;
     int v17;
     tAction* v19;
-    uint8_t v20; 
+    uint8_t v20;
     tActionElem* v21;
     int16_t v22;
     uint8_t v23;
@@ -3381,7 +3302,7 @@ void OBJ_EyeFollow(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a
     float v80;
     float v81;
     float v82;
-    BOOL v83; 
+    BOOL v83;
     float v84;
     tGameObjectMain* v85;
     BOOL v86;
@@ -3418,7 +3339,7 @@ void OBJ_EyeFollow(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a
     Vec3 v117;
     Vec3 v118;
     Vec3 v119;
-    Vec3 a2a; 
+    Vec3 a2a;
     Vec3 v121;
     Vec3 v122;
     Vec3 scale;
@@ -3758,7 +3679,7 @@ void OBJ_EyeFollow(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a
                                     v69 = v108 - v99;
                                     MATH_RotateMatrix_AroundLocalXAxis(v13->matrices, v69);
                                     OBJ_SightGet(v13, &v122);
-                                    OBJ_SightGeneralSet(v13, &v122, &v114); 
+                                    OBJ_SightGeneralSet(v13, &v122, &v114);
                                 }
                                 if (a10)
                                 {
@@ -3888,7 +3809,7 @@ int OBJ_Frame_CullingSphere(Vec3* a1, float a2, struct sDDCamStruct* a3, int a4,
     float v31;
     float v32;
     float v33;
-    Vec3 v34; 
+    Vec3 v34;
     float v35;
     float v36;
     float v37;
@@ -3898,9 +3819,9 @@ int OBJ_Frame_CullingSphere(Vec3* a1, float a2, struct sDDCamStruct* a3, int a4,
     float v41;
     float v42;
     float v43;
-    Vec3 v44; 
+    Vec3 v44;
     float v45;
-    Vec3 a2a; 
+    Vec3 a2a;
     Vec3 a1a;
     Vec3 v48;
     float v49[12];
@@ -4679,7 +4600,7 @@ char OBJ_uc_CalcLODVis(struct sGameObjectMain* a1, struct sViewElem* a2)
                 / v14);
     }
     v15 = (float)v8;
-    
+
     tmp = (MATH_gl_TableRacine[((*((int32_t*)(&v15))) >> 13) & 0x7FF] + (((((*((uint32_t*)(&v15))) & 0x7F800000) + 0x3F800000) >> 1) & 0x7F800000));
     v11 = (*(float *)&tmp) * v2->NormalizedWidthOrHeightMultBy255;
 

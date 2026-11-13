@@ -224,7 +224,7 @@ typedef struct sTransitionElem // volt sTransitionElemInner
 typedef struct sGameObjectActorObject
 {
     uint8_t initedInANIMainCall;
-    uint8_t flagsEgBlendIw2; // 1 = synchronizetracks? (EVE_SynchronizeTracks, ANI_MainCall) 
+    uint8_t flagsEgBlendIw2; // 1 = synchronizetracks? (EVE_SynchronizeTracks, ANI_MainCall)
     int16_t currTime;
     struct sGroup* group;
     struct sGroup* skeletonGroup;
