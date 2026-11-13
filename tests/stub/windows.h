@@ -187,3 +187,136 @@ COLORREF SetTextColor(HDC, COLORREF);
 HBRUSH   CreateSolidBrush(COLORREF);
 BOOL     ExtTextOutA(HDC, int, int, UINT, const RECT*, LPCSTR, UINT, const int*);
 int      DrawTextA(HDC, LPCSTR, int, RECT*, UINT);
+
+/* ---- messages, keys and window/queue flags for the win/ directory.
+   Distinct values, not the SDK's; see tests/stub/d3d9.h. */
+/* QS */
+#define QS_HOTKEY                          0x00000001
+#define QS_KEY                             0x00000002
+#define QS_MOUSE                           0x00000004
+#define QS_PAINT                           0x00000008
+#define QS_POSTMESSAGE                     0x00000010
+#define QS_SENDMESSAGE                     0x00000020
+#define QS_TIMER                           0x00000040
+/* WS */
+#define WS_BORDER                          0x00000001
+#define WS_DLGFRAME                        0x00000002
+#define WS_MAXIMIZEBOX                     0x00000004
+#define WS_MINIMIZEBOX                     0x00000008
+#define WS_SYSMENU                         0x00000010
+#define WS_THICKFRAME                      0x00000020
+/* MB */
+#define MB_ICONERROR                       0x00000001
+#define MB_TASKMODAL                       0x00000002
+/* MWMO */
+#define MWMO_ALERTABLE                     0x00000001
+#define MWMO_INPUTAVAILABLE                0x00000002
+/* PM */
+#define PM_REMOVE                          0x00000001
+/* WM */
+#define WM_ACTIVATEAPP                     16385
+#define WM_CLOSE                           16386
+#define WM_CREATE                          16387
+#define WM_DESTROY                         16388
+#define WM_ERASEBKGND                      16389
+#define WM_MOUSEFIRST                      16390
+#define WM_NCLBUTTONDOWN                   16391
+#define WM_QUIT                            16392
+#define WM_SYSCOMMAND                      16393
+/* VK */
+#define VK_F1                              16394
+#define VK_F2                              16395
+#define VK_F3                              16396
+#define VK_F4                              16397
+#define VK_F5                              16398
+#define VK_F6                              16399
+#define VK_F7                              16400
+#define VK_F10                             16401
+/* SC */
+#define SC_CLOSE                           16402
+/* SW */
+#define SW_SHOW                            16403
+/* MISC */
+#define NORMAL_PRIORITY_CLASS              16404
+#define E_FAIL                             16405
+#define E_INVALIDARG                       16406
+
+/* Dialogs, focus, the keyboard and the mouse-button swap, for the
+   win/ input path. Real prototypes, not invented ones. */
+HWND    SetFocus(HWND hWnd);
+BOOL    SetWindowTextA(HWND hWnd, LPCSTR lpString);
+LRESULT SendMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+UINT    GetDlgItemTextA(HWND hDlg, int nIDDlgItem, LPSTR lpString, int cchMax);
+BOOL    EndDialog(HWND hDlg, INT_PTR nResult);
+SHORT   GetKeyState(int nVirtKey);
+BOOL    SwapMouseButton(BOOL fSwap);
+void    keybd_event(BYTE bVk, BYTE bScan, DWORD dwFlags, UINT_PTR dwExtraInfo);
+double  _hypot(double x, double y);
+/* Handles, threads, files and COM init, for win/winsound.c. These are
+   the documented Win32 signatures; the differential test mocks what it
+   needs. */
+typedef INT_PTR (WINAPI *FARPROC)(void);
+typedef DWORD (WINAPI *LPTHREAD_START_ROUTINE)(LPVOID);
+BOOL     CloseHandle(HANDLE object);
+BOOL     ResetEvent(HANDLE event);
+DWORD    WaitForMultipleObjects(DWORD count, const HANDLE* handles,
+                                BOOL waitAll, DWORD milliseconds);
+HANDLE   CreateThread(void* attributes, SIZE_T stackSize,
+                      LPTHREAD_START_ROUTINE start, LPVOID parameter,
+                      DWORD creationFlags, LPDWORD threadId);
+void     ExitThread(DWORD exitCode);
+HMODULE  LoadLibraryA(LPCSTR fileName);
+FARPROC  GetProcAddress(HMODULE module, LPCSTR procName);
+HANDLE   CreateFileA(LPCSTR fileName, DWORD desiredAccess, DWORD shareMode,
+                     void* securityAttributes, DWORD creationDisposition,
+                     DWORD flagsAndAttributes, HANDLE templateFile);
+BOOL     ReadFile(HANDLE file, LPVOID buffer, DWORD bytesToRead,
+                  LPDWORD bytesRead, void* overlapped);
+DWORD    SetFilePointer(HANDLE file, LONG distanceToMove,
+                        LONG* distanceToMoveHigh, DWORD moveMethod);
+DWORD    FormatMessageA(DWORD flags, const void* source, DWORD messageId,
+                        DWORD languageId, LPSTR buffer, DWORD size,
+                        va_list* arguments);
+HRESULT  CoInitialize(LPVOID reserved);
+void     CoUninitialize(void);
+
+/* CreateProcessA and friends, for the win/ relauncher. */
+typedef struct _PROCESS_INFORMATION {
+    HANDLE hProcess, hThread; DWORD dwProcessId, dwThreadId;
+} PROCESS_INFORMATION;
+typedef struct _STARTUPINFOA {
+    DWORD cb; LPSTR lpReserved, lpDesktop, lpTitle;
+    DWORD dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars;
+    DWORD dwFillAttribute, dwFlags; WORD wShowWindow, cbReserved2;
+    BYTE* lpReserved2; HANDLE hStdInput, hStdOutput, hStdError;
+} STARTUPINFOA;
+BOOL  CreateProcessA(LPCSTR, LPSTR, void*, void*, BOOL, DWORD, void*, LPCSTR,
+                     STARTUPINFOA*, PROCESS_INFORMATION*);
+
+/* The message loop and the clock the win/ directory uses. */
+typedef struct tagMSG {
+    HWND hwnd; UINT message; WPARAM wParam; LPARAM lParam;
+    DWORD time; POINT pt;
+} MSG;
+typedef struct _SYSTEMTIME {
+    WORD wYear, wMonth, wDayOfWeek, wDay, wHour, wMinute, wSecond, wMilliseconds;
+} SYSTEMTIME;
+void  GetLocalTime(SYSTEMTIME*);
+BOOL  PeekMessageA(MSG*, HWND, UINT, UINT, UINT);
+BOOL  TranslateMessage(const MSG*);
+LRESULT DispatchMessageA(const MSG*);
+DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD);
+
+/* The window, cursor, icon and directory calls win/wingdi.c makes.
+   Real signatures; these were the last implicit declarations in that
+   file.  FARPROC, LoadLibraryA, GetProcAddress and SetWindowTextA are
+   its too, and are declared with the other passes' above. */
+HICON    LoadIconA(HINSTANCE, LPCSTR);
+#define  MAKEINTRESOURCEA(i) ((LPSTR)((UINT_PTR)((WORD)(i))))
+HCURSOR  SetCursor(HCURSOR);
+BOOL     AdjustWindowRect(RECT*, DWORD, BOOL);
+BOOL     InvalidateRect(HWND, const RECT*, BOOL);
+UINT     RegisterWindowMessageA(LPCSTR);
+BOOL     CreateDirectoryA(LPCSTR, void*);
+BOOL     QueryPerformanceFrequency(LARGE_INTEGER*);
+DWORD    MsgWaitForMultipleObjectsEx(DWORD, const HANDLE*, DWORD, DWORD, DWORD);

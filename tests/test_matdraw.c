@@ -341,8 +341,14 @@ static void BuildWorld(unsigned int seed)
     D3DRenderParams.isDepthBlurOn = (int)((seed >> 5) & 1);
     D3DRenderParams.tweak_zonalpha = (int)((seed >> 6) & 1);
     D3DRenderParams.tweak_ae_d2x = (int)((seed >> 7) & 1);
-    textureStageTypeConfig[0].d3dTexCoordIndex = (int)((seed >> 9) & 1);
-    textureStageTypeConfig[0].d3dTextureTransformFlags = (int)((seed >> 10) & 1);
+    /* These were (seed >> 9) & 1 and (seed >> 10) & 1, and both are zero
+       for every seed the sweep uses -- 0..95 never reaches bit 9, and
+       0x10000..0x10040 has those bits clear too. So both stage-state
+       blocks below them were dead, and swapping D3DTSS_TEXCOORDINDEX for
+       D3DTSS_TEXTURETRANSFORMFLAGS scored clean. Drive them from the low
+       bits instead, which vary across both ranges. */
+    textureStageTypeConfig[0].d3dTexCoordIndex = (int)(seed % 5) < 2;
+    textureStageTypeConfig[0].d3dTextureTransformFlags = (int)(seed % 7) < 3;
 
     /* game objects for the UV matrix */
     memset(&W.gao, 0, sizeof(W.gao));

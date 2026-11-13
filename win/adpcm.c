@@ -3,210 +3,134 @@
 //https://github.com/videolan/vlc/blob/master/modules/codec/adpcm.c
 //https://wiki.multimedia.cx/index.php/Microsoft_ADPCM
 
-int16_t pcINO_ApplyADPCMAaptation(uint8_t a1, int16_t* a2, int16_t* a3)
+static const int pcSND_adaptationTable[16] = {
+    230, 230, 230, 230, 307, 409, 512, 614,
+    768, 614, 512, 409, 307, 230, 230, 230
+};
+
+static const int16_t pcSND_adaptationCoeffs[14] = {
+    256, 0, 512, -256, 0, 0, 192, 64, 240, 0, 460, -208, 392, -232
+};
+
+static int16_t pcSND_l_ReadLE16(uint8_t** cursor)
 {
-    int v4;
-    int v5;
-    int v6;
-    int16_t v7;
-    int v8;
-    int v9;
-    int v10;
-    int v11;
-    int v12;
-    int v13;
-    int v14;
-    int adaptationTable[16];
+    uint8_t* at;
 
-    adaptationTable[0] = 230;
-    adaptationTable[1] = 230;
-    adaptationTable[2] = 230;
-    adaptationTable[3] = 230;
-    adaptationTable[4] = 307;
-    adaptationTable[5] = 409;
-    adaptationTable[6] = 512;
-    adaptationTable[7] = 614;
-    adaptationTable[8] = 768;
-    adaptationTable[9] = 614;
-    adaptationTable[10] = 512;
-    adaptationTable[11] = 409;
-    adaptationTable[12] = 307;
-    adaptationTable[13] = 230;
-    adaptationTable[14] = 230;
-    adaptationTable[15] = 230;
-
-    v4 = a2[1];
-    v5 = *a2;
-
-    v6 = (int16_t)a3[3] * v4;
-    v7 = a3[2];
-    v8 = (uint16_t)a3[1];
-    v9 = v5 * v7 + v6;
-    v10 = a1;
-    v11 = (a1 & 8) == 0;
-    v12 = a1 - 16;
-    if (v11)
-        v12 = v10;
-    v13 = v8 * v12 + v9 / 256;
-    if (v13 >= -32768)
-    {
-        if (v13 > 0x7FFF)
-            v13 = 0x7FFF;
-    }
-    else
-    {
-        v13 = 0x8000;
-    }
-    v14 = v8 * adaptationTable[v10] / 256;
-    if (v14 < 16)
-        v14 = 16;
-    a3[3] = v7;
-    a3[1] = v14;
-    a3[2] = v13;
-    return v13;
+    at = *cursor;
+    *cursor = at + 2;
+    return (int16_t)((at[1] << 8) | at[0]);
 }
 
-int pcSND_ADPCMToPCM_ConvertOneBlock(int16_t* dest, tADPCMParamStruct* a2, uint8_t* src)
+int16_t pcINO_ApplyADPCMAaptation(uint8_t nibble, int16_t* coeffs, int16_t* state)
 {
-    int channelNum;
-    int isStereo;
-    int16_t* v7;
-    int o;
-    int16_t* v9;
-    char v10;
+    int coeff1;
+    int coeff2;
+    int sample1;
+    int delta;
+    int predicted;
+    int signedNibble;
+    int sample;
+    int newDelta;
+
+    coeff2 = coeffs[1];
+    coeff1 = coeffs[0];
+    sample1 = state[2];
+    delta = (uint16_t)state[1];
+
+    predicted = (coeff1 * sample1 + coeff2 * state[3]) / 256;
+    signedNibble = (nibble & 8) != 0 ? nibble - 16 : nibble;
+    sample = delta * signedNibble + predicted;
+
+    if (sample < -32768)
+        sample = 0x8000;    // preserved: not -32768, but every use of it narrows to int16_t
+    else if (sample > 0x7FFF)
+        sample = 0x7FFF;
+
+    newDelta = delta * pcSND_adaptationTable[nibble] / 256;
+    if (newDelta < 16)
+        newDelta = 16;
+
+    state[3] = sample1;
+    state[1] = newDelta;
+    state[2] = sample;
+    return sample;
+}
+
+int pcSND_ADPCMToPCM_ConvertOneBlock(int16_t* dest, tADPCMParamStruct* params, uint8_t* src)
+{
+    int channels;
+    int outBytes;
+    int pairs;
     int i;
-    int16_t* v12;
-    int16_t v13;
-    int j;
-    int16_t* v15;
-    int16_t v16;
-    int k;
-    int16_t* v18;
-    int16_t v19;
-    int l;
-    int m;
-    int v22;
-    unsigned int v23;
-    int16_t v24;
-    int16_t* v25;
-    int16_t* v26;
-    int v28;
-    tADPCMParamStruct* v29;
-    int16_t* coeff1;
-    int16_t* coeff2;
-    int16_t* v32[2];
-    int16_t v33[4];
-    int16_t v34[4];
+    int16_t* coeffsEven;
+    int16_t* coeffsOdd;
+    int16_t* state[2];
+    int16_t stateEven[4];
+    int16_t stateOdd[4];
 
-    channelNum = a2->channelNum;
-    isStereo = a2->channelNum == 2;
-    v28 = 2 * a2->channelNum * a2->blocksize;
-    v32[0] = v33;
-    v7 = v34;
-    if (!isStereo)
-        v7 = v33;
-    o = 0;
-    for (v32[1] = v7; o < channelNum; a2 = v29)
+    channels = params->channelNum;
+    outBytes = 2 * params->channelNum * params->blocksize;
+    state[0] = stateEven;
+    state[1] = params->channelNum == 2 ? stateOdd : stateEven;
+
+    for (i = 0; i < channels; i++)
     {
-        v9 = v32[o];
-        v29 = a2;
-        v10 = *src++;
-        ++o;
-        *v9 = 0;
-        *(uint8_t*)v9 = v10;
+        state[i][0] = 0;
+        *(uint8_t*)state[i] = *src++;
     }
-    for (i = 0; i < channelNum; i++)
+    for (i = 0; i < channels; i++)
+        state[i][1] = pcSND_l_ReadLE16(&src);
+    for (i = 0; i < channels; i++)
+        state[i][2] = pcSND_l_ReadLE16(&src);
+    for (i = 0; i < channels; i++)
+        state[i][3] = pcSND_l_ReadLE16(&src);
+
+    coeffsEven = &params->adaptationCoeffs[2 * *(uint8_t*)state[0]];
+    coeffsOdd = &params->adaptationCoeffs[2 * *(uint8_t*)state[1]];
+
+    for (i = 0; i < channels; i++)
+        *dest++ = state[i][3];
+    for (i = 0; i < channels; i++)
+        *dest++ = state[i][2];
+
+    pairs = (params->channelNum * (params->blocksize - 2) + 1) / 2;
+    for (i = 0; i < pairs; i++)
     {
-        v12 = v32[i];
-        v13 = 0;
-        v13 |= ((src[1] << 8) & 0xff00);
-        v13 |= (src[0]) & 0xff;
-        v12[1] = v13;
-        src += 2;
+        dest[0] = pcINO_ApplyADPCMAaptation(*src >> 4, coeffsEven, state[0]);
+        dest[1] = pcINO_ApplyADPCMAaptation(*src & 0xF, coeffsOdd, state[1]);
+        dest += 2;
+        src++;
     }
-    for (j = 0; j < channelNum; j++)
-    {
-        v15 = v32[j];
-        v16 = 0;
-        v16 |= ((src[1] << 8) & 0xff00);
-        v16 |= (src[0]) & 0xff;
-        v15[2] = v16;
-        src += 2;
-    }
-    for (k = 0; k < channelNum; k++)
-    {
-        v18 = v32[k];
-        v19 = 0;
-        v19 |= ((src[1] << 8) & 0xff00);
-        v19 |= (src[0]) & 0xff;
-        v18[3] = v19;
-        src += 2;
-    }
-    coeff1 = &a2->adaptationCoeffs[2 * (v33[0] & 0xff)];
-    coeff2 = &a2->adaptationCoeffs[2 * *(uint8_t*)v32[1]];
-    for (l = 0; l < channelNum; ++l)
-        *dest++ = v32[l][3];
-    for (m = 0; m < channelNum; ++m)
-        *dest++ = v32[m][2];
-    v22 = a2->channelNum * (a2->blocksize - 2);
-    if (v22 > 0)
-    {
-        v23 = ((unsigned int)(v22 - 1) >> 1) + 1;
-        do
-        {
-            v24 = pcINO_ApplyADPCMAaptation(*src >> 4, coeff1, v33);
-            v25 = v32[1];
-            *dest = v24;
-            v26 = dest + 1;
-            *v26 = pcINO_ApplyADPCMAaptation(*src & 0xF, coeff2, v25);
-            dest = v26 + 1;
-            ++src;
-            --v23;
-        } while (v23);
-    }
-    return v28;
+    return outBytes;
 }
 
-int pcSND_ADPCMToPCM_Convert(uint8_t* sndData, int16_t* destPtr, unsigned int fullSize, uint16_t a4, uint16_t a5, uint16_t blockSize)
+int pcSND_ADPCMToPCM_Convert(uint8_t* sndData, int16_t* destPtr, unsigned int totalSamples,
+                             uint16_t channels, uint16_t blockBytes, uint16_t samplesPerBlock)
 {
-    int v6;
-    unsigned int v9;
-    int v10;
-    tADPCMParamStruct a2;
+    unsigned int wholeBlocks;
+    unsigned int tail;
+    unsigned int i;
+    int outBytes;
+    tADPCMParamStruct params;
 
-    a2.channelNum = a4;
-    v6 = fullSize % blockSize;
-    a2.adaptationCoeffs[0] = 256;
-    a2.adaptationCoeffs[1] = 0;
-    a2.adaptationCoeffs[2] = 512;
-    a2.adaptationCoeffs[3] = -256;
-    a2.adaptationCoeffs[4] = 0;
-    a2.adaptationCoeffs[5] = 0;
-    a2.adaptationCoeffs[6] = 192;
-    a2.adaptationCoeffs[7] = 64;
-    a2.adaptationCoeffs[8] = 240;
-    a2.adaptationCoeffs[9] = 0;
-    a2.adaptationCoeffs[10] = 460;
-    a2.adaptationCoeffs[11] = -208;
-    a2.adaptationCoeffs[12] = 392;
-    a2.adaptationCoeffs[13] = -232;
-    a2.blocksize = blockSize;
-    if (fullSize / blockSize)
+    params.channelNum = channels;
+    for (i = 0; i < 14; i++)
+        params.adaptationCoeffs[i] = pcSND_adaptationCoeffs[i];
+    params.blocksize = samplesPerBlock;
+
+    wholeBlocks = totalSamples / samplesPerBlock;
+    tail = totalSamples % samplesPerBlock;
+
+    for (i = 0; i < wholeBlocks; i++)
     {
-        v9 = fullSize / blockSize;
-        do
-        {
-            v10 = pcSND_ADPCMToPCM_ConvertOneBlock(destPtr, &a2, sndData);
-            sndData += a5;
-            --v9;
-            destPtr += v10 / 2;
-        } while (v9);
-        v6 = fullSize % blockSize;
+        outBytes = pcSND_ADPCMToPCM_ConvertOneBlock(destPtr, &params, sndData);
+        sndData += blockBytes;
+        destPtr += outBytes / 2;
     }
-    if (v6)
+    if (tail)
     {
-        a2.blocksize = v6;
-        pcSND_ADPCMToPCM_ConvertOneBlock(destPtr, &a2, sndData);
+        params.blocksize = tail;
+        pcSND_ADPCMToPCM_ConvertOneBlock(destPtr, &params, sndData);
     }
     return 0;
 }

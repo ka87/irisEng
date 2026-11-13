@@ -24,6 +24,24 @@
 # profiler.c was here with 9, all of them GDI and system-colour calls.
 # Its pass added them to tests/stub/windows.h, which also took
 # win/wininputoutput.c from 10 to 9.
+#
+# win/winsound.c was here with 13, all of them handle, thread, file and
+# COM calls. Its pass added them to tests/stub/windows.h, which took
+# engine.c from 2 to 1 and win/wingdi.c from 13 to 11 as well.
+#
+# win/wingdi.c went from 25 to 13 when the D3D9, D3DX and message-loop
+# declarations went into the stubs; that work also took the parse
+# sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
+# which are the fpos_t question.
+#
+# The four win/ passes between them added every Win32 and Direct3D
+# declaration these files were missing -- the window, cursor, module
+# and directory calls, Direct3DCreate9, QueryPerformanceFrequency,
+# MsgWaitForMultipleObjectsEx, the dialog and keyboard calls and the
+# CRT's _hypot -- so win/wingdi.c, win/wininputoutput.c and
+# win/winsound.c are all off the list. The figures below are measured
+# on the merge, not carried over from any one pass: the four sets of
+# declarations resolve more together than any of them does alone.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -32,13 +50,10 @@ CC=${CC:-gcc}
 CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
 
 BASELINE="bigfiles.c 2
-engine.c 2
+engine.c 1
 sideload.c 1
 sound.c 1
-strings.c 1
-win/wingdi.c 25
-win/wininputoutput.c 9
-win/winsound.c 13"
+strings.c 1"
 
 files=$(python3 - <<'EOF'
 import re

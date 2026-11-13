@@ -458,7 +458,12 @@ for one in tests/runworld.sh \
            tests/run_snp.sh \
            tests/run_actions.sh \
            tests/run_tables.sh \
-           tests/run_bigfiles.sh
+           tests/run_bigfiles.sh \
+           tests/run_adpcm.sh \
+           tests/run_winio.sh \
+           tests/run_winsound.sh \
+           tests/run_wingdi_ae.sh \
+           tests/run_wingdi.sh
 do
     name=$(basename "$one" .sh)
     [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) continue ;; esac
