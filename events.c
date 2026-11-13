@@ -2099,249 +2099,308 @@ int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* key, tGameObjectEventE
     return cursor - src;
 }
 
-void EVE_LoadListEvents(tGameObjectEventsListElem* track, char* src, uint32_t* readSize, int16_t flags)
+/* BISECT: body restored from 675b6f2 */
+void EVE_LoadListEvents(tGameObjectEventsListElem* a5, char* a2, uint32_t* a3, int16_t a4)
 {
-    tGameObjectEventElem* keys;
-    tGameObjectEventElem* prevKey;
+    uint8_t v4;
+    int v5;
+    int16_t v6;
+    int16_t v7;
+    int v8;
+    int16_t v9;
+    int v10;
+    int16_t v11;
+    tGameObjectEventElem* v12;
+    int v13;
+    int v14;
     uint8_t* dataPtr;
     int dataPtrOffset;
-    char* start;
-    char* peek;
-    int16_t peekType;
-    int16_t keySize;
-    uint16_t dataSize;
-    int16_t keyFlags;
-    int kind;
-    int isLink;
-    int read;
-    int link;
+    int16_t v17;
+    char* v18;
+    char* v19;
+    int v20;
+    int16_t a6;
+    uint16_t v22;
     uint16_t i;
+    tGameObjectEventElem* v24;
+    int v25;
+    tGameObjectEventElem* v26;
+    int16_t a2a;
 
-    read = 0;
+    v20 = 0;
     dataPtrOffset = 0;
-    start = src;
+    v19 = a2;
     dataPtr = 0;
-    keys = 0;
-    track->flags &= ~0x10u;
-    track->elemNum = LOA_ReadLong(&src, 0, 1);
-    track->trackElems = 0;
-    if (track->elemNum)
+    v26 = 0;
+    a5->flags &= ~0x10u;
+    a5->elemNum = LOA_ReadLong(&a2, 0, 1);
+    a5->trackElems = 0;
+    if (a5->elemNum)
     {
-        if (track->size)
+        if (a5->size)
         {
-            if ((flags & 0x2000) != 0)
+            if ((a4 & 0x2000) != 0)
             {
-                peek = src;
-                if ((flags & 0x200) != 0)
-                    LOA_ReadChar(&peek, 0, 4);
+                v18 = a2;
+                if ((a4 & 0x200) != 0)
+                    LOA_ReadChar(&v18, 0, 4);
                 else
-                    LOA_ReadShort(&peek, 0, 4);
-                LOA_ReadShort(&peek, 0, 4);
-                LOA_ReadShort(&peek, &keySize, 4);
-                LOA_ReadShort(&peek, &peekType, 4);
-                if ((peekType & 0x780) != 0)
+                    LOA_ReadShort(&v18, 0, 4);
+                LOA_ReadShort(&v18, 0, 4);
+                LOA_ReadShort(&v18, &a2a, 4);
+                LOA_ReadShort(&v18, &v17, 4);
+                if ((v17 & 0x780) != 0)
                 {
-                    keySize = 16;
+                    a2a = 16;
                 }
-                else if ((peekType & 0xF800) != 0)
+                else if ((v17 & 0xF800) != 0)
                 {
-                    keySize = 12;
+                    a2a = 12;
                 }
-                dataSize = keySize * track->elemNum;
-                track->dataPtr = (uint8_t*)MEM_p_Alloc(dataSize);
-                dataPtr = track->dataPtr;
-                track->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * track->elemNum);
+                v22 = a2a * a5->elemNum;
+                a5->dataPtr = (uint8_t*)MEM_p_Alloc(v22);
+                dataPtr = a5->dataPtr;
+                a5->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * a5->elemNum);
+                v26 = a5->trackElems;
             }
             else
             {
-                track->dataPtr = (uint8_t*)MEM_p_Alloc(track->size);
-                dataPtr = track->dataPtr;
-                track->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * track->elemNum);
+                a5->dataPtr = (uint8_t*)MEM_p_Alloc(a5->size);
+                dataPtr = a5->dataPtr;
+                a5->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * a5->elemNum);
+                v26 = a5->trackElems;
             }
-            LOA_ul_FileTypeSize_31 += track->size;
+            v25 = 1;
+            LOA_ul_FileTypeSize_31 += a5->size;
         }
         else
         {
-            track->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * track->elemNum);
+            v25 = 0;
+            a5->trackElems = (tGameObjectEventElem*)MEM_p_Alloc(sizeof(tGameObjectEventElem) * a5->elemNum);
+            v26 = a5->trackElems;
         }
-        LOA_ul_FileTypeSize_30 += sizeof(tGameObjectEventElem) * track->elemNum;
-        keys = track->trackElems;
-        for (i = 0; i < (int)track->elemNum; ++i)
+        LOA_ul_FileTypeSize_30 += sizeof(tGameObjectEventElem) * a5->elemNum;
+        v24 = v26;
+        for (i = 0; i < (int)a5->elemNum; ++i)
         {
-            isLink = 0;
-            if ((flags & 0x200) != 0)
-                keys[i].duration = LOA_ReadChar(&src, 0, 1);
-            else
-                keys[i].duration = LOA_ReadShort(&src, 0, 1);
-            if ((flags & 0x800) != 0)
+            v14 = 0;
+            if ((a4 & 0x200) != 0)
             {
-                if (i)
-                {
-                    keys[i].flags2 = keys->flags2;
-                    keys[i].flags2 &= ~4u;
-                }
-                else
-                {
-                    keys->flags2 = LOA_ReadShort(&src, 0, 1);
-                }
+                v4 = LOA_ReadChar(&a2, 0, 1);
+                v24[i].duration = v4;
             }
             else
             {
-                keys[i].flags2 = LOA_ReadShort(&src, 0, 1);
+                v5 = i;
+                v6 = LOA_ReadShort(&a2, 0, 1);
+                v24[v5].duration = v6;
             }
-            keys[i].eptrdu.data = NULL;
-            keys[i].flags2 &= ~0x2;
-            if ((keys[i].flags2 & 0x20) != 0)
-            {
-                track->flags |= 0x10u;
-                isLink = 1;
-            }
-            kind = keys[i].flags2 & 0x7C0;
-            if (kind == 0x40)
-            {
-                read = EVE_Event_AIFunction_Load(&keys[i], src, &dataPtr[dataPtrOffset]);
-                src += read;
-                if (read != 4)
-                    dataPtrOffset += read;
-                track->flags |= 0x10u;
-            }
-            else if (kind == 0x80)
+            if ((a4 & 0x800) != 0)
             {
                 if (i)
-                    prevKey = &keys[i - 1];
-                else
-                    prevKey = 0;
-                if (isLink)
                 {
-                    link = LOA_ReadLong(&src, 0, 1);
-                    keys[i].eptrdu.data = (void*)link; // link
+                    v24[i].flags2 = v24->flags2;
+                    v24[i].flags2 &= ~4u;
+                }
+                else
+                {
+                    v7 = LOA_ReadShort(&a2, 0, 1);
+                    v24->flags2 = v7;
+                }
+            }
+            else
+            {
+                v8 = i;
+                v9 = LOA_ReadShort(&a2, 0, 1);
+                v24[v8].flags2 = v9;
+            }
+            v24[i].eptrdu.data = NULL;
+            v24[i].flags2 &= ~0x2;
+            if ((v24[i].flags2 & 0x20) != 0)
+            {
+                a5->flags |= 0x10u;
+                v14 = 1;
+            }
+            v13 = v24[i].flags2 & 0x7C0;
+            if (v13 == 0x40)
+            {
+                v20 = EVE_Event_AIFunction_Load(&v24[i], a2, &dataPtr[dataPtrOffset]);
+                a2 += v20;
+                if (v20 != 4)
+                    dataPtrOffset += v20;
+                a5->flags |= 0x10u;
+            }
+            else if (v13 == 0x80)
+            {
+                if (i)
+                    v12 = &v24[i - 1];
+                else
+                    v12 = 0;
+                if (v14)
+                {
+                    v10 = LOA_ReadLong(&a2, 0, 1);
+                    v24[i].eptrdu.data = (void*)v10; // link
                 }
                 else
                 {
                     if (i)
-                        keyFlags = flags;
+                        v11 = a4;
                     else
-                        keyFlags = 0;
-                    if (!i && (flags & 0x2000) != 0)
-                        keyFlags |= 0x100u;
-                    read = EVE_Event_InterpolationKey_Load(&keys[i], prevKey, src, &dataPtr[dataPtrOffset], track, keyFlags);
-                    src += read;
-                    if ((flags & 0x2000) != 0)
-                        dataPtrOffset = dataPtrOffset + (keys[i].eptrdu.size >> 1) - 4;
+                        v11 = 0;
+                    a6 = v11;
+                    if (!i && (a4 & 0x2000) != 0)
+                        a6 |= 0x100u;
+                    v20 = EVE_Event_InterpolationKey_Load(&v24[i], v12, a2, &dataPtr[dataPtrOffset], a5, a6);
+                    a2 += v20;
+                    if ((a4 & 0x2000) != 0)
+                        dataPtrOffset = dataPtrOffset + (v24[i].eptrdu.size >> 1) - 4;
                     else
-                        dataPtrOffset += *(int16_t*)keys[i].eptrdu.data;
+                        dataPtrOffset += *(int16_t*)v24[i].eptrdu.data;
                 }
             }
         }
     }
-    *readSize = src - start;
+    *a3 = a2 - v19;
 }
 
+/* BISECT: body restored from 675b6f2 */
 struct sGameObjectEventsList* EVE_ul_CallbackLoadListTracks(uint32_t Offset)
 {
-    tGameObjectEventsList* list;
-    char* cursor;
-    int fileSize;
-    int read;
-    int16_t trackFlags;
-    int noGao;
-    BOOL isSpecial;
-    int restoreReadMode;
+    int v1;
+    uint16_t v2;
+    int16_t v3;
+    int16_t v4;
+    uint16_t v5;
+    int v6;
+    tGameObjectMain* v7;
+    int16_t v8;
+    int a3;
+    char* a1;
+    BOOL v12;
+    tGameObjectEventsList* v13;
+    int v14;
+    int16_t a4;
+    int a2;
     unsigned int i;
+    int v18;
 
-    list = (tGameObjectEventsList*)MEM_p_Alloc(sizeof(tGameObjectEventsList));
+    v13 = (tGameObjectEventsList*)MEM_p_Alloc(sizeof(tGameObjectEventsList));
     LOA_ul_FileTypeSize_32 += sizeof(tGameObjectEventsList);
-    isSpecial = LOA_IsSpecial(LOA_ul_GetCurrentKey());
-    if (isSpecial)
-        list->usageCount = 1000000;
+    v1 = LOA_ul_GetCurrentKey();
+    v12 = LOA_IsSpecial(v1);
+    if (v12)
+        v13->usageCount = 1000000;
     else
-        list->usageCount = 0;
-    restoreReadMode = 0;
-    if (BIG_gi_ReadMode == 1 && !BIG_gi_SpecialRead && isSpecial)
+        v13->usageCount = 0;
+    v14 = 0;
+    if (BIG_gi_ReadMode == 1 && !BIG_gi_SpecialRead && v12)
     {
-        restoreReadMode = 1;
+        v14 = 1;
         BIG_gi_ReadMode = 0;
     }
-    cursor = BIG_pc_ReadFileTmp(Offset, &fileSize);
-    list->num = LOA_ReadShort(&cursor, 0, 1);
+    a1 = BIG_pc_ReadFileTmp(Offset, &a2);
+    v2 = LOA_ReadShort(&a1, 0, 1);
+    v13->num = v2;
+    if (!v13->num)
+        v13->num = 0;
     AnimSizeOnDisk += 2;
-    list->flags = LOA_ReadShort(&cursor, 0, 1);
+    v3 = LOA_ReadShort(&a1, 0, 1);
+    v13->flags = v3;
     AnimSizeOnDisk += 2;
-    list->flags &= ~2u;
-    list->flags &= ~0x8000u;
-    list->listElems = 0;
-    if (list->num)
+    v13->flags &= ~2u;
+    v13->flags &= ~0x8000u;
+    v13->listElems = 0;
+    if (v13->num)
     {
-        list->listElems = (tGameObjectEventsListElem*)MEM_p_Alloc(sizeof(tGameObjectEventsListElem) * list->num);
-        LOA_ul_FileTypeSize_33 += sizeof(tGameObjectEventsListElem) * list->num;
-        memset(list->listElems, 0, sizeof(tGameObjectEventsListElem) * list->num);
+        v13->listElems = (tGameObjectEventsListElem*)MEM_p_Alloc(sizeof(tGameObjectEventsListElem) * v13->num);
+        LOA_ul_FileTypeSize_33 += sizeof(tGameObjectEventsListElem) * v13->num;
+        memset(v13->listElems, 0, sizeof(tGameObjectEventsListElem) * v13->num);
     }
-    for (i = 0; i < list->num; ++i)
+    for (i = 0; i < v13->num; ++i)
     {
         ++NumTracks;
-        list->listElems[i].flags = LOA_ReadShort(&cursor, 0, 1);
+        v4 = LOA_ReadShort(&a1, 0, 1);
+        v13->listElems[i].flags = v4;
         AnimSizeOnDisk += 2;
-        trackFlags = list->listElems[i].flags & 0xFF00;
-        trackFlags &= ~0x4000u;
-        trackFlags &= ~0x8000u;
-        noGao = list->listElems[i].flags & 0x8000;
-        list->listElems[i].flags &= ~0x3F00u;
-        list->listElems[i].boneID = LOA_ReadShort(&cursor, 0, 1);
+        a4 = v13->listElems[i].flags & 0xFF00;
+        a4 &= ~0x4000u;
+        a4 &= ~0x8000u;
+        v18 = v13->listElems[i].flags & 0x8000;
+        v13->listElems[i].flags &= ~0x3F00u;
+        v5 = LOA_ReadShort(&a1, 0, 1);
+        v13->listElems[i].boneID = v5;
         AnimSizeOnDisk += 2;
-        list->listElems[i].size = LOA_ReadLong(&cursor, 0, 1);
+        v6 = LOA_ReadLong(&a1, 0, 1);
+        v13->listElems[i].size = v6;
         AnimSizeOnDisk += 4;
-        if (noGao)
+        if (v18)
         {
-            if (!trackFlags)
+            if (!a4)
             {
-                list->listElems[i].s3 = LOA_ReadLong(&cursor, 0, 1);
+                v8 = LOA_ReadLong(&a1, 0, 1);
+                v13->listElems[i].s3 = v8;
                 AnimSizeOnDisk += 4;
             }
         }
         else
         {
-            list->listElems[i].gao = (tGameObjectMain*)LOA_ReadLong(&cursor, 0, 1);
+            v7 = (tGameObjectMain*)LOA_ReadLong(&a1, 0, 1);
+            v13->listElems[i].gao = v7;
             AnimSizeOnDisk += 4;
-            if (list->listElems[i].gao)
-                LOA_MakeFileRef((int)list->listElems[i].gao, &list->listElems[i].gao, OBJ_ul_GameObjectCallback, 1);
-            LOA_ReadString(&cursor, 0, 15, 2);
-            LOA_ReadChar(&cursor, 0, 2);
+            if (v13->listElems[i].gao)
+                LOA_MakeFileRef((int)v13->listElems[i].gao, &v13->listElems[i].gao, OBJ_ul_GameObjectCallback, 1);
+            LOA_ReadString(&a1, 0, 15, 2);
+            LOA_ReadChar(&a1, 0, 2);
             AnimSizeOnDisk += 16;
         }
-        EVE_LoadListEvents(&list->listElems[i], cursor, &read, trackFlags);
-        cursor += read;
-        AnimSizeOnDisk += read;
+        EVE_LoadListEvents(&v13->listElems[i], a1, &a3, a4);
+        a1 += a3;
+        AnimSizeOnDisk += a3;
     }
-    if (restoreReadMode)
+    if (v14)
         BIG_gi_ReadMode = 1;
-    return list;
+    return v13;
 }
 
-void EVE_MainCall(struct sWorld* world)
+/* BISECT: body restored from 675b6f2 */
+void EVE_MainCall(struct sWorld* a1)
 {
-    tableElemStructPF* cursor;
-    tableElemStructPF* last;
-    tGameObjectMain* gao;
+    BOOL v1;
+    Mtx4x4* v2;
+    tGameObjectMain* v3;
+    tableElemStructPF* v4;
+    tableElemStructPF* v5;
 
-    cursor = world->eot.eventGameObjectsTablePF.firstElemPtr;
-    last = ((tableElemStructPF*)(world->eot.eventGameObjectsTablePF.nextElemPtr)) - 1;
-    while (cursor <= last)
+    v4 = a1->eot.eventGameObjectsTablePF.firstElemPtr;
+    v5 = ((tableElemStructPF*)(a1->eot.eventGameObjectsTablePF.nextElemPtr)) - 1;
+    while (v4 <= v5)
     {
-        gao = (tGameObjectMain*)cursor->objectPtr;
-        if (gao
-            && ((uintptr_t)cursor->objectPtr & 3) != 1
-            && gao->extended
-            && gao->extended->eve
-            && ((gao->extended->extraFlag & 4) == 0 || gao->distance)
-            && (gao->flags2 & 0x400000) == 0)
+        v3 = (tGameObjectMain*)v4->objectPtr;
+        v1 = !v4->objectPtr || ((int)v4->objectPtr & 3) == 1;
+        if (!v1
+            && v3->extended
+            && v3->extended->eve
+            && ((v3->extended->extraFlag & 4) == 0 || v3->distance)
+            && (v3->flags2 & 0x400000) == 0)
         {
-            EVE_gpst_OwnerGAO = gao;
-            EVE_gpst_CurrentData = gao->extended->eve;
+            EVE_gpst_OwnerGAO = (tGameObjectMain*)v4->objectPtr;
+            EVE_gpst_CurrentData = v3->extended->eve;
             EVE_gpst_CurrentListTracks = EVE_gpst_CurrentData->eventListStruct;
-            EVE_gpst_CurrentRefMatrix = EVE_l_RefMatrix(gao);
+            if ((v3->flags & 0x4000000) != 0)
+            {
+                if ((v3->flags & 0x10000) != 0)
+                    v2 = v3->matrices + 2;
+                else
+                    v2 = v3->matrices + 1;
+            }
+            else
+            {
+                v2 = 0;
+            }
+            EVE_gpst_CurrentRefMatrix = v2;
             EVE_b_RunAllTracks(EVE_gpst_CurrentData, 0);
         }
-        ++cursor;
+        ++v4;
     }
     EVE_gpst_CurrentTrack = NULL;
 }
