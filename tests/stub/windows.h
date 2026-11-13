@@ -241,6 +241,18 @@ int      DrawTextA(HDC, LPCSTR, int, RECT*, UINT);
 #define E_FAIL                             16405
 #define E_INVALIDARG                       16406
 
+/* Dialogs, focus, the keyboard and the mouse-button swap, for the
+   win/ input path. Real prototypes, not invented ones. */
+HWND    SetFocus(HWND hWnd);
+BOOL    SetWindowTextA(HWND hWnd, LPCSTR lpString);
+LRESULT SendMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+UINT    GetDlgItemTextA(HWND hDlg, int nIDDlgItem, LPSTR lpString, int cchMax);
+BOOL    EndDialog(HWND hDlg, INT_PTR nResult);
+SHORT   GetKeyState(int nVirtKey);
+BOOL    SwapMouseButton(BOOL fSwap);
+void    keybd_event(BYTE bVk, BYTE bScan, DWORD dwFlags, UINT_PTR dwExtraInfo);
+double  _hypot(double x, double y);
+
 /* CreateProcessA and friends, for the win/ relauncher. */
 typedef struct _PROCESS_INFORMATION {
     HANDLE hProcess, hThread; DWORD dwProcessId, dwThreadId;

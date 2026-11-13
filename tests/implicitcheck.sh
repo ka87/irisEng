@@ -29,6 +29,13 @@
 # declarations went into the stubs; that work also took the parse
 # sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
 # which are the fpos_t question.
+#
+# win/wininputoutput.c was here with 9: SetFocus, SetWindowTextA,
+# SendMessageA, GetDlgItemTextA, EndDialog, GetKeyState,
+# SwapMouseButton, keybd_event and the CRT's _hypot. Its pass added
+# all nine to tests/stub/windows.h with their real prototypes, so it
+# is off the list. SetWindowTextA is also one of win/wingdi.c's, which
+# drops that file to 12 -- its own pass carries the baseline change.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -42,7 +49,6 @@ sideload.c 1
 sound.c 1
 strings.c 1
 win/wingdi.c 13
-win/wininputoutput.c 9
 win/winsound.c 13"
 
 files=$(python3 - <<'EOF'
