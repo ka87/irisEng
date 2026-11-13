@@ -1561,56 +1561,32 @@ void D3D_DrawARaster(int color, char* name, float value, float y, float width)
 
 void Rasters_Update()
 {
-    double v1;
+    double elapsed;
     unsigned int i;
     unsigned int j;
-    int v5;
-    int* v6;
-    int v7;
-    unsigned int v8;
-    int v9;
-    int v10;
-    int v11;
-    int v12;
-    int v13;
-    int v14;
-    int v15;
-    int v16;
-    int v17;
-    int v18;
-    int v19;
-    double v20;
-    unsigned int v21;
-    int v22;
-    int v23;
-    int v24;
-    int v25;
-    int v26;
-    int v27;
-    int v28;
-    int v29;
-    int v30;
-    int v31;
-    float v32;
-    int v33;
-    int v34;
-    int v35;
-    int v36;
-    double v37;
-    float v38;
-    float r;
-    float v40;
-    float a3;
-    LARGE_INTEGER b;
-    float a2;
+    int swapped;
+    int shown;
+    int row;
+    int raster;
+    int kind;
+    int barColor;
+    double nextY;
+    float barY;
+    float y;
+    float value;
+    float scale;
+    float viewHeight;
+    float viewWidth;
+    float fps;
+    float barHeight;
+    LARGE_INTEGER after;
     LARGE_INTEGER Frequency;
     LARGE_INTEGER PerformanceCount;
-    D3DMATRIX a1;
-    int v47[54];
-    float width;
+    D3DMATRIX mtx;
+    int order[54];
 
-    width = (float)D3DRenderParams.d3dViewPort.Width;
-    r = (float)D3DRenderParams.d3dViewPort.Height;
+    viewWidth = (float)D3DRenderParams.d3dViewPort.Width;
+    viewHeight = (float)D3DRenderParams.d3dViewPort.Height;
 
     if (tweak_perf)
     {
@@ -1619,38 +1595,35 @@ void Rasters_Update()
         QueryPerformanceCounter(&PerfCounterStruct[47]);
         QueryPerformanceFrequency(&Frequency);
         QueryPerformanceCounter(&PerformanceCount);
-        v1 = (double)(PerformanceCount.QuadPart - qword_990B48);
+        elapsed = (double)(PerformanceCount.QuadPart - qword_990B48);
         qword_990B48 = PerformanceCount.QuadPart;
-        a2 = (float)((double)Frequency.QuadPart / v1);
-        if (tweak_perf != 3 || a2 > (double)tweak_perf_fps_min)
+        fps = (float)((double)Frequency.QuadPart / elapsed);
+        if (tweak_perf != 3 || fps > (double)tweak_perf_fps_min)
         {
             D3D_SaveEverythingToBackup(1);
-            a1._43 = 0.0;
-            a1._42 = 0.0;
-            a1._41 = 0.0;
-            a1._34 = 0.0;
-            a1._32 = 0.0;
-            a1._31 = 0.0;
-            a1._24 = 0.0;
-            a1._23 = 0.0;
-            a1._21 = 0.0;
-            a1._14 = 0.0;
-            a1._13 = 0.0;
-            a1._12 = 0.0;
-            a1._44 = 1.0;
-            a1._33 = 1.0;
-            a1._22 = 1.0;
-            a1._11 = 1.0;
-            memcpy(&d3dTransformMatrix, &a1, sizeof(d3dTransformMatrix));
-            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 2, &a1);
-            D3DXMatrixOrthoOffCenterRH(&a1, 0.0, width, r, 0.0, -1.0, 1.0);
-            memcpy(&d3dProjectionMtx, &a1, sizeof(d3dProjectionMtx));
-            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 3, &a1);
+            mtx._43 = 0.0;
+            mtx._42 = 0.0;
+            mtx._41 = 0.0;
+            mtx._34 = 0.0;
+            mtx._32 = 0.0;
+            mtx._31 = 0.0;
+            mtx._24 = 0.0;
+            mtx._23 = 0.0;
+            mtx._21 = 0.0;
+            mtx._14 = 0.0;
+            mtx._13 = 0.0;
+            mtx._12 = 0.0;
+            mtx._44 = 1.0;
+            mtx._33 = 1.0;
+            mtx._22 = 1.0;
+            mtx._11 = 1.0;
+            memcpy(&d3dTransformMatrix, &mtx, sizeof(d3dTransformMatrix));
+            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 2, &mtx);
+            D3DXMatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
+            memcpy(&d3dProjectionMtx, &mtx, sizeof(d3dProjectionMtx));
+            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 3, &mtx);
             D3D_SetVertexShader(0);
-            renderStateConfig.vertexShader = 0;
-            renderStateConfig.fvf = D3DFVF_DIFFUSE | D3DFVF_XYZ; 
-            D3DRenderParams.d3dDev->lpVtbl->SetVertexShader(D3DRenderParams.d3dDev, NULL);
-            D3DRenderParams.d3dDev->lpVtbl->SetFVF(D3DRenderParams.d3dDev, renderStateConfig.fvf);
+            D3D_SetFixedFunctionFVF(D3DFVF_DIFFUSE | D3DFVF_XYZ);
             if (renderStateConfig.d3d_zEnable)
             {
                 renderStateConfig.d3d_zEnable = D3DZB_FALSE;
@@ -1666,8 +1639,8 @@ void Rasters_Update()
             D3D_SetTexture(1, -1);
             D3D_SetTexture(2, -1);
             D3D_SetTexture(3, -1);
-            if (a2 > (double)tweak_perf_fps_min)
-                D3D_RastersSetAndDrawAQuad(0xFFFF0000, 0.0, 0.0, width, 40.0, 0);
+            if (fps > (double)tweak_perf_fps_min)
+                D3D_RastersSetAndDrawAQuad(0xFFFF0000, 0.0, 0.0, viewWidth, 40.0, 0);
             if (tweak_perf != 3)
             {
                 for (i = 0; i < (6 * 9); i += 9) // 6 * 9 = 54
@@ -1683,223 +1656,71 @@ void Rasters_Update()
                     rastersUnkTimeFloats_dbl_990B58[i + 8] = (double)PerfCountertimeSumArray[i + 8] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 8] * 0.95;
                 }
                 for (j = 0; j < 54; ++j)
-                    v47[j] = j;
-                v5 = 0;
-                v6 = v47;
-                v7 = 53;
-                do
+                    order[j] = j;
+                for (i = 0; i < 53; i++)
                 {
-                    v8 = v5 + 1;
-                    v9 = v5 + 1;
-                    if (v7 >= 4)
+                    for (j = i + 1; j < 54; j++)
                     {
-                        do
+                        if (rastersUnkTimeFloats_dbl_990B58[order[i]]
+                            < rastersUnkTimeFloats_dbl_990B58[order[j]])
                         {
-                            v10 = *v6;
-                            v11 = v47[v9];
-                            if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v11])
-                            {
-                                *v6 = v11;
-                                v47[v9] = v10;
-                            }
-                            v12 = *v6;
-                            v13 = v47[v9 + 1];
-                            if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v13])
-                            {
-                                *v6 = v13;
-                                v47[v9 + 1] = v12;
-                            }
-                            v14 = *v6;
-                            v15 = v47[v9 + 2];
-                            if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v15])
-                            {
-                                *v6 = v15;
-                                v47[v9 + 2] = v14;
-                            }
-                            v16 = *v6;
-                            v17 = v47[v9 + 3];
-                            if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v17])
-                            {
-                                *v6 = v17;
-                                v47[v9 + 3] = v16;
-                            }
-                            v9 += 4;
-                        } while (v9 < 51);
-                    }
-                    for (; (unsigned int)v9 < 54; ++v9)
-                    {
-                        v18 = *v6;
-                        v19 = v47[v9];
-                        if (rastersUnkTimeFloats_dbl_990B58[*v6] < rastersUnkTimeFloats_dbl_990B58[v19])
-                        {
-                            *v6 = v19;
-                            v47[v9] = v18;
+                            swapped = order[i];
+                            order[i] = order[j];
+                            order[j] = swapped;
                         }
                     }
-                    ++v5;
-                    --v7;
-                    ++v6;
-                } while (v8 < 53);
-                v20 = 70.0;
-                v21 = 0;
-                v40 = (float)(tweak_perf_fps_target / (double)Frequency.QuadPart);
-                do
+                }
+                barY = 70.0;
+                scale = (float)(tweak_perf_fps_target / (double)Frequency.QuadPart);
+                for (i = 0; i < 54; i++)
                 {
-                    v22 = v47[v21];
-                    if (rasterNames[v22].unk1)
+                    raster = order[i];
+                    if (rasterNames[raster].unk1
+                        && (double)PerfCountertimeSumArray[raster] * scale > 0.01)
                     {
-                        if ((double)PerfCountertimeSumArray[v22] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                                break;
-                        }
-                    }
-                    v23 = v47[v21 + 1];
-                    if (rasterNames[v23].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v23] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                ++v21;
-                                break;
-                            }
-                        }
-                    }
-                    v24 = v47[v21 + 2];
-                    if (rasterNames[v24].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v24] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 2;
-                                break;
-                            }
-                        }
-                    }
-                    v25 = v47[v21 + 3];
-                    if (rasterNames[v25].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v25] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 3;
-                                break;
-                            }
-                        }
-                    }
-                    v26 = v47[v21 + 4];
-                    if (rasterNames[v26].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v26] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 4;
-                                break;
-                            }
-                        }
-                    }
-                    v27 = v47[v21 + 5];
-                    if (rasterNames[v27].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v27] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 5;
-                                break;
-                            }
-                        }
-                    }
-                    v28 = v47[v21 + 6];
-                    if (rasterNames[v28].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v28] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 6;
-                                break;
-                            }
-                        }
-                    }
-                    v29 = v47[v21 + 7];
-                    if (rasterNames[v29].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v29] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 7;
-                                break;
-                            }
-                        }
-                    }
-                    v30 = v47[v21 + 8];
-                    if (rasterNames[v30].unk1)
-                    {
-                        if ((double)PerfCountertimeSumArray[v30] * v40 > 0.01)
-                        {
-                            v20 = v20 + 15.0;
-                            if (v20 > r)
-                            {
-                                v21 += 8;
-                                break;
-                            }
-                        }
-                    }
-                    v21 += 9;
-                } while (v21 < 54);
-                v31 = 1;
-                if (tweak_perf == 1)
-                    v31 = v21;
-                v32 = width;
-                v38 = (float)((double)v31 * 15.0);
-                D3D_RastersSetAndDrawAQuad(0x80000000, 0.0, 50.0, width, v38, 1);
-                //nullsub_32();
-                v33 = 0;
-                for (a3 = 70.0; v33 < v31; ++v33)
-                {
-                    v34 = v47[v33];
-                    v35 = rasterNames[v34].unk1;
-                    width = (float)((double)PerfCountertimeSumArray[v34] * v40);
-                    if (v35 && width > 0.01)
-                    {
-                        v36 = 0xF0808020;
-                        if ((((uint8_t)v34 - 1) & 1) != 0)
-                            v36 = 0xF0808060;
-                        if ((((uint8_t)v34 + 1) & 2) != 0)
-                            v36 |= 0x4000u;
-                        if ((((uint8_t)v34 + 1) & 4) != 0)
-                            v36 |= 0x400000u;
-                        D3D_DrawARaster(v36, rasterNames[v34].name, width, a3, v32);
-                        v37 = a3 + 15.0;
-                        a3 = (float)v37;
-                        if (v37 > r)
+                        barY = barY + 15.0;
+                        if (barY > viewHeight)
                             break;
                     }
                 }
-                D3D_DrawARaster(0xFFFFFF, "Frame Rate", a2, 50.0, v32);
+                shown = 1;
+                if (tweak_perf == 1)
+                    shown = (int)i;
+                barHeight = (float)((double)shown * 15.0);
+                D3D_RastersSetAndDrawAQuad(0x80000000, 0.0, 50.0, viewWidth, barHeight, 1);
+                //nullsub_32();
+                row = 0;
+                for (y = 70.0; row < shown; ++row)
+                {
+                    raster = order[row];
+                    kind = rasterNames[raster].unk1;
+                    value = (float)((double)PerfCountertimeSumArray[raster] * scale);
+                    if (kind && value > 0.01)
+                    {
+                        barColor = 0xF0808020;
+                        if ((((uint8_t)raster - 1) & 1) != 0)
+                            barColor = 0xF0808060;
+                        if ((((uint8_t)raster + 1) & 2) != 0)
+                            barColor |= 0x4000u;
+                        if ((((uint8_t)raster + 1) & 4) != 0)
+                            barColor |= 0x400000u;
+                        D3D_DrawARaster(barColor, rasterNames[raster].name, value, y, viewWidth);
+                        nextY = y + 15.0;
+                        y = (float)nextY;
+                        if (nextY > viewHeight)
+                            break;
+                    }
+                }
+                D3D_DrawARaster(0xFFFFFF, "Frame Rate", fps, 50.0, viewWidth);
                 //nullsub_32();
             }
             D3D_RastersDrawUPStream();
             D3D_RestoreEverythingFromBackup();
         }
         memset(PerfCountertimeSumArray, 0, sizeof(PerfCountertimeSumArray));
-        QueryPerformanceCounter(&b);
+        QueryPerformanceCounter(&after);
         if (PerfCounterStruct[47].QuadPart)
-            PerfCountertimeSumArray[47] += b.QuadPart - PerfCounterStruct[47].QuadPart;
+            PerfCountertimeSumArray[47] += after.QuadPart - PerfCounterStruct[47].QuadPart;
         PerfCounterStruct[47].QuadPart = 0LL;
         QueryPerformanceCounter(&PerfCounterStruct[19]);
         QueryPerformanceCounter(&PerfCounterStruct[53]);
