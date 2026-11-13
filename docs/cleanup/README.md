@@ -246,6 +246,33 @@ Worth recording, because it is the argument for writing them:
 
 #### The float differences, and why they are accepted
 
+**A tolerance that accepts them is also a tolerance that hides things,
+and one of these was measured rather than assumed.** The particle
+harness accepts its float differences the same way the four below do.
+Injecting one real narrowing into `PAG_l_ScaleToRandomSpeed` -- so it
+divides by the `double` length rather than the `float` it is narrowed
+into -- left all 1,853 cases passing; the only thing that saw it was
+the count, 19,637 becoming 20,216. That count is pinned now, and the
+test fails on any movement. Two full suite runs give byte-identical
+counts, so it is a property of the two copies rather than of the
+machine.
+
+The other tolerance-accepting tests are **not** pinned, and the reason
+is worth stating because it corrects a plausible mistake. The attempt
+to demonstrate the same gap in `gfx/gfxspark.c` dropped a `(float)`
+cast from `elem->i5 = (float)(up.x * acrossUp + elem->i5)` and changed
+nothing at all -- not the count, not the worst absolute, not the worst
+relative. **That is because a cast like it is not a narrowing: the
+assignment to a `float` lvalue converts anyway.** Measured over
+2,000,000 triples with zero differing. So that probe says nothing
+about the harness, and pinning the remaining counts would have been
+done on no evidence. A narrowing only moves a value where the wider
+operand is *used* before the store -- inside a division, a comparison
+or another operand -- which is exactly the shape
+`ANI_PlayGameObjectAnimation` and the particle helper have, and is the
+shape to look for.
+
+
 Restoring an inlined helper to a call rarely reproduces the arithmetic
 bit for bit. The decompiler renders x87's 80-bit registers as `double`
 and `long double` locals, and the real helpers compute in `float`, so
