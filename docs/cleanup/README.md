@@ -864,6 +864,15 @@ anonymous unions in a shipped header, so it waits on the same decision
 as the deferred field renames in `gameobject.h`,
 `particlegenerator.h`, `collision.h` and `sound.h`.
 
+## Every defect found, and what was done with each
+
+[defects.md](defects.md) is the register: **4 corrected against 143
+preserved**, each preserved site carrying a line at the site saying
+what the code does. The rule is that a defect in what the *game* does
+stays, because changing it changes the game, while a defect in what the
+*decompiler* made of a type is corrected, because in each of those four
+cases the frozen copy reads or writes memory the object does not own.
+
 ## Where the tree stands
 
 With `win/` done, every directory in scope has been through the pass.
