@@ -2853,518 +2853,452 @@ struct sGameObjectMain* get_reference_point_gao_2_from_gao_sub_40BEA0(struct sGa
     return result;
 }
 
-void OBJ_EyeFollow(struct sGameObjectMain* a1, Vec3* a2, float a3, int a4, int a5, int a6, int a7, int a8, int a9, int a10)
+void OBJ_EyeFollow(struct sGameObjectMain* gao, Vec3* target, float weight, int preset, int clampToSight, int unlimited, int torsoFollowsHead, int torsoFollowsOwn, int useGlobalLimits, int useThirdBone)
 {
-    tGameObjectActorObject* v10;
-    tGroup* v11;
-    tGameObjectMain* v12;
-    tGameObjectMain* v13;
-    Mtx4x4* v14;
-    tGameObjectBasic* v15;
-    tGameObjectActorObject* v16;
-    int v17;
-    tAction* v19;
-    uint8_t v20;
-    tActionElem* v21;
-    int16_t v22;
-    uint8_t v23;
-    double v24;
-    uint8_t v25;
-    uint8_t v26;
-    Mtx4x4* v27;
-    float v28;
-    Mtx4x4* v29;
-    float v30;
-    float v31;
-    tGameObjectMain* v32;
-    Mtx4x4* v33;
-    float v34;
-    float v35;
-    double v36;
-    double v37;
-    double v38;
-    double v39;
-    BOOL v40;
-    double v41;
-    double v42;
-    double v43;
-    double v44;
-    double v45;
-    double v46;
-    double v47;
-    double v48;
-    double v49;
-    double v50;
-    double v51;
-    double v52;
-    tGameObjectMain* v53;
-    float v54;
-    Vec3* v55;
-    float v56;
-    tGameObjectMain* v57;
-    float v58;
-    Vec3* v59;
-    float v60;
-    tGameObjectMain* v61;
-    tGaoMatrix* v62;
-    tGaoMatrix* v63;
-    tGaoMatrix* v64;
-    float v65;
-    Vec3* v66;
-    float v67;
-    Vec3* v68;
-    float v69;
-    float v70;
-    float v71;
-    float angle;
-    float anglea;
-    float v74;
-    float v75;
-    float v76;
-    float v77;
-    float v78;
-    float v79;
-    float v80;
-    float v81;
-    float v82;
-    BOOL v83;
-    float v84;
-    tGameObjectMain* v85;
-    BOOL v86;
-    tGameObjectMain* v87 = NULL;
-    float v88;
-    float v89;
-    Vec3 dest;
-    float v91;
-    float v92;
-    float v93;
-    Vec3 v1;
-    float v95;
-    Vec3 v2;
-    float v97;
-    float v98;
-    float v99;
-    float v100;
-    float v101;
-    float v102;
-    float v103;
-    float v104;
-    float v105;
-    float v106;
-    float v107;
-    float v108;
-    float v109;
-    float v110;
-    float v111;
-    Vec3 a3a;
-    Vec3 v113;
-    Vec3 v114;
-    Mtx4x4 v115;
-    Vec3 v116;
-    Vec3 v117;
-    Vec3 v118;
-    Vec3 v119;
-    Vec3 a2a;
-    Vec3 v121;
-    Vec3 v122;
-    Vec3 scale;
-    Mtx4x4 v124;
+    tGameObjectActorObject* actor;
+    tGroup* skeleton;
+    tGameObjectMain* head;
+    tGameObjectMain* torso;
+    tGameObjectMain* third = NULL;
+    tGameObjectMain* rootBone;
+    tGameObjectMain* parent;
+    tGameObjectBasic* basic;
+    Mtx4x4* absMtx;
+    Mtx4x4* boneMtx;
+    tGaoMatrix* localMtx;
+    Vec3* bonePos;
+    tAction* action;
+    tActionElem* actionElem;
     tAction** actions;
     tActionElem* actionElems;
     tActionElem* actionElems2;
-    float v85a;
+    uint8_t actionItem;
+    uint8_t customBits;
+    uint8_t ramp;
+    int16_t designFlags;
+    int rampNeeded;
+    int blendFull;
+    BOOL torsoUpright;
+    BOOL compensateRoot;
+    double zTmp;
+    double xTmp;
+    double deltaTmp;
+    double limitTmp;
+    float headZMax;
+    float headZMin;
+    float headXMax;
+    double headXMin;
+    float headXOffset;
+    float headXMaxAbs;
+    float headXMinAbs;
+    float torsoZMax;
+    float torsoZMin;
+    float thirdZMax;
+    float thirdZMin;
+    float headZCurrent;
+    float headXCurrent;
+    float headZTarget;
+    float headXTarget;
+    float torsoZCurrent;
+    float torsoXCurrent;
+    float torsoXFromBlend;
+    float torsoZTarget;
+    float thirdZCurrent;
+    float thirdXCurrent;
+    float thirdXFromBlend;
+    float thirdZTarget;
+    float rootZAngle;
+    float headZDelta;
+    float headXDelta;
+    float torsoZDelta;
+    float thirdZDelta;
+    float headPosX;
+    float headPosY;
+    float headPosZ;
+    float torsoPosX;
+    float torsoPosY;
+    float torsoPosZ;
+    float thirdPosX;
+    float thirdPosY;
+    float thirdPosZ;
+    Vec3 dest;
+    Vec3 gaoSight;
+    Vec3 sightTmp;
+    Vec3 headHorizon;
+    Vec3 thirdHorizon;
+    Vec3 torsoHorizon;
+    Mtx4x4 globalMtx;
+    Vec3 torsoBanking;
+    Vec3 torsoScale;
+    Vec3 thirdScale;
+    Vec3 thirdSight;
+    Vec3 headScale;
+    Vec3 headSight2;
+    Vec3 torsoSight2;
+    Vec3 scale;
+    Mtx4x4 headGlobalMtx;
 
-    if ((a1->flags & 2) != 0)
+    if ((gao->flags & 2) == 0)
+        return;
+    actor = gao->basic->actorObjectOrVisualObject;
+    skeleton = actor->skeletonGroup;
+    if (!skeleton)
+        return;
+    if (!skeleton->tablePF || !actor->actionKit || !actor->actionPtr)
+        return;
+
+    head = ANI_pst_GetObjectByAICanal(gao, 0);
+    torso = ANI_pst_GetObjectByAICanal(gao, 1u);
+    if (useThirdBone)
+        third = ANI_pst_GetObjectByAICanal(gao, 12u);
+    rootBone = (tGameObjectMain*)(((tableElemStructPF*)(((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->skeletonGroup->tablePF->firstElemPtr))->objectPtr);
+    if (!head || !torso || !rootBone)
+        return;
+
+    absMtx = OBJ_pst_GetAbsoluteMatrix(gao);
+    MATH_GetScale(&scale, absMtx);
+    basic = gao->basic;
+    actor = basic->actorObjectOrVisualObject;
+    actionItem = ((tGameObjectActorObject*)(basic->actorObjectOrVisualObject))->actionItem;
+    blendFull = 0;
+    if (((tGameObjectActorObject*)(basic->actorObjectOrVisualObject))->flagsEgBlendIw2 == 1)
     {
-        v10 = a1->basic->actorObjectOrVisualObject;
-        v11 = v10->skeletonGroup;
-        if (v11)
+        action = actor->actionPtr;
+        actionElems = (tActionElem*)(((char*)action) + sizeof(tAction));
+        customBits = actionElems[actionItem].customBits;
+        actionElem = &(actionElems[actionItem]);
+        rampNeeded = (customBits & 4) == 0;
+    }
+    else
+    {
+        action = actor->actionPtr;
+        actionElems = (tActionElem*)(((char*)action) + sizeof(tAction));
+        actionElem = &(actionElems[actionItem]);
+        actions = (tAction**)(((char*)(actor->actionKit)) + sizeof(tActionKit));
+        actionElems2 = (tActionElem*)(((char*)(actions[actor->animPtr[1]->actionForTransition])) + sizeof(tAction));
+        rampNeeded = (actionElem->customBits & 4) == 0
+            || (actionElems2[actor->animPtr[1]->actionElemForTransition].customBits & 4) == 0;
+    }
+
+    if (rampNeeded)
+    {
+        designFlags = actionElem->designFlags;
+        if (designFlags >= 0)
         {
-            if (v11->tablePF && v10->actionKit && v10->actionPtr)
+            if ((designFlags & 0x1000) != 0)
+                return;
+            ramp = actor->unkb >= 6u ? 6 : actor->unkb + 1;
+            actor->unkb = ramp;
+            weight = 0.40000001f;
+            if (ramp >= 6u)
+                return;
+        }
+        else
+        {
+            if (actor->unkb >= 16u)
+                ramp = 16;
+            else
+                ramp = (uint8_t)(actor->unkb + (uint64_t)(TIM_gf_dt * 60.000004 + 0.5));
+            actor->unkb = ramp;
+            weight = (float)((double)ramp * 0.0625);
+            if (ramp >= 16u)
+                return;
+        }
+    }
+    else
+    {
+        actor->unkb = 0;
+    }
+
+    headZMax = 1.5707964f;
+    torsoZMax = 0.78539819f;
+    if (useThirdBone)
+        thirdZMax = 0.78539819f;
+    headZMin = -1.5707964f;
+    torsoZMin = -0.78539819f;
+    if (useThirdBone)
+        thirdZMin = -0.78539819f;
+    headXMin = -0.78539819;
+    headXMax = 0.43633232f;
+    switch (preset)
+    {
+    case 0:
+        headXOffset = 0.0;
+        headZMax = 2.0943952f;
+        headZMin = -2.0943952f;
+        torsoZMax = 1.0471976f;
+        torsoZMin = -1.0471976f;
+        if (useThirdBone)
+        {
+            thirdZMax = 1.0471976f;
+            thirdZMin = -1.0471976f;
+        }
+        break;
+    case 1:
+        headXOffset = 0.52359879f;
+        break;
+    case 2:
+        headXOffset = 0.61086524f;
+        headXMin = -0.78539819;
+        headXMax = 0.12217305f;
+        break;
+    case 3:
+        headXOffset = 0.37088248f;
+        break;
+    default:
+        headXOffset = 0.0;
+        break;
+    }
+    if (useGlobalLimits)
+    {
+        if (OBJ_gf_EYEFOLLOW_HeadZMax != 1000.0)
+            headZMax = OBJ_gf_EYEFOLLOW_HeadZMax;
+        if (OBJ_gf_EYEFOLLOW_HeadZMin != 1000.0)
+            headZMin = OBJ_gf_EYEFOLLOW_HeadZMin;
+        if (OBJ_gf_EYEFOLLOW_HeadXMax != 1000.0)
+            headXMax = OBJ_gf_EYEFOLLOW_HeadXMax;
+        if (OBJ_gf_EYEFOLLOW_HeadXMin != 1000.0)
+            headXMin = OBJ_gf_EYEFOLLOW_HeadXMin;
+        if (OBJ_gf_EYEFOLLOW_TorsoZMax != 1000.0)
+            torsoZMax = OBJ_gf_EYEFOLLOW_TorsoZMax;
+        if (OBJ_gf_EYEFOLLOW_TorsoZMin != 1000.0)
+            torsoZMin = OBJ_gf_EYEFOLLOW_TorsoZMin;
+        if (OBJ_gf_EYEFOLLOW_HeadXOffset != 1000.0)
+            headXOffset = OBJ_gf_EYEFOLLOW_HeadXOffset;
+    }
+    headXMaxAbs = headXOffset + headXMax;
+    headXMinAbs = (float)(headXOffset + headXMin);
+    if (unlimited)
+    {
+        headZMax = 3.1415927f;
+        torsoZMax = 3.1415927f;
+        headZMin = -3.1415927f;
+        torsoZMin = -3.1415927f;
+        headXMaxAbs = 3.1415927f;
+        headXMinAbs = -3.1415927f;
+    }
+
+    OBJ_SightGet(gao, &gaoSight);
+    boneMtx = &head->basic->mtx->mtx;
+    headPosX = boneMtx->Pos.x;
+    headPosY = boneMtx->Pos.y;
+    headPosZ = boneMtx->Pos.z;
+    MATH_GetScale(&headScale, boneMtx);
+    MATH_GetScale(&torsoScale, &torso->basic->mtx->mtx);
+    boneMtx = &torso->basic->mtx->mtx;
+    torsoPosX = boneMtx->Pos.x;
+    torsoPosY = boneMtx->Pos.y;
+    torsoPosZ = boneMtx->Pos.z;
+    if (useThirdBone)
+    {
+        MATH_GetScale(&thirdScale, &third->basic->mtx->mtx);
+        boneMtx = &third->basic->mtx->mtx;
+        thirdPosX = boneMtx->Pos.x;
+        thirdPosY = boneMtx->Pos.y;
+        thirdPosZ = boneMtx->Pos.z;
+    }
+
+    OBJ_SightGet(rootBone, &dest);
+    OBJ_ComputeGlobalWithLocal(rootBone, &globalMtx, 1);
+    MATH_VecInvert(&sightTmp, &globalMtx.v2);
+    rootZAngle = MATH_f_ZAngle(&dest, &sightTmp);
+    OBJ_ComputeGlobalWithLocal(head, &globalMtx, 1);
+    MATH_VecInvert(&sightTmp, &globalMtx.v2);
+    headHorizon = globalMtx.v3;
+    OBJ_SightGet(head, &dest);
+    headZCurrent = MATH_f_ZAngle(&gaoSight, &dest);
+    headXCurrent = MATH_f_XAngle(&gaoSight, &dest);
+    if (rampNeeded || target->x == 0.0 && target->y == 0.0 && target->z == 0.0)
+    {
+        dest = sightTmp;
+        headZTarget = MATH_f_ZAngle(&gaoSight, &dest);
+        headXTarget = MATH_f_XAngle(&gaoSight, &dest);
+        blendFull = 1;
+    }
+    else
+    {
+        OBJ_ComputeGlobalWithLocal(head, &headGlobalMtx, 1);
+        MATH_SubstractVec(&dest, target, &headGlobalMtx.Pos);
+        MATH_NormalizeEqualVector(&dest);
+        headZTarget = MATH_f_ZAngle(&gaoSight, &dest);
+        headXTarget = MATH_f_XAngle(&gaoSight, &dest);
+        if (!clampToSight || headZMax + 0.17453294 >= headZTarget && headZMin - 0.17453294 <= headZTarget)
+        {
+            headXTarget = (float)(headXTarget + headXOffset);
+        }
+        else
+        {
+            headZTarget = MATH_f_ZAngle(&gaoSight, &sightTmp);
+            headXTarget = MATH_f_XAngle(&gaoSight, &sightTmp);
+            blendFull = 1;
+        }
+    }
+
+    OBJ_ComputeGlobalWithLocal(torso, &globalMtx, 1);
+    MATH_VecInvert(&dest, &globalMtx.v2);
+    torsoHorizon = globalMtx.v3;
+    OBJ_SightGet(torso, &sightTmp);
+    OBJ_BankingGet(torso, &torsoBanking);
+    torsoUpright = fabs(torsoBanking.z) < 0.050000001;
+    torsoZCurrent = MATH_f_ZAngle(&gaoSight, &sightTmp);
+    torsoXCurrent = MATH_f_XAngle(&gaoSight, &sightTmp);
+    torsoXFromBlend = MATH_f_XAngle(&gaoSight, &dest);
+    if (blendFull)
+        torsoZTarget = MATH_f_ZAngle(&gaoSight, &dest);
+    else if (torsoFollowsHead)
+        torsoZTarget = headZTarget;
+    else if (!torsoFollowsOwn)
+        torsoZTarget = (float)(headZTarget * 0.33333334);
+    else
+        torsoZTarget = torsoZCurrent;
+
+    if (useThirdBone)
+    {
+        OBJ_ComputeGlobalWithLocal(third, &globalMtx, 1);
+        MATH_VecInvert(&dest, &globalMtx.v2);
+        thirdHorizon = globalMtx.v3;
+        OBJ_SightGet(third, &sightTmp);
+        thirdZCurrent = MATH_f_ZAngle(&gaoSight, &sightTmp);
+        thirdXCurrent = MATH_f_XAngle(&gaoSight, &sightTmp);
+        thirdXFromBlend = MATH_f_XAngle(&gaoSight, &dest);
+        if (!blendFull)
+            zTmp = headZTarget * 0.2;
+        else
+            zTmp = MATH_f_ZAngle(&gaoSight, &dest);
+        thirdZTarget = (float)zTmp;
+    }
+
+    compensateRoot = weight != 1.0
+        && (rootZAngle == 0.0 || (headZTarget <= (double)headZCurrent || rootZAngle >= 0.0) && (headZTarget >= (double)headZCurrent || rootZAngle <= 0.0));
+    if (clampToSight
+        || (fabs(headZCurrent - headZMax) >= 0.001 || headZTarget >= (double)headZMin)
+        && (fabs(headZCurrent - headZMin) >= 0.001 || headZTarget <= (double)headZMax))
+    {
+        if ((headZTarget <= 0.0 || headZCurrent >= (double)headZTarget || headZCurrent + rootZAngle <= headZTarget)
+            && (headZTarget >= 0.0 || headZCurrent <= (double)headZTarget || headZCurrent + rootZAngle >= headZTarget))
+        {
+            if (compensateRoot)
+                deltaTmp = rootZAngle;
+            else
+                deltaTmp = 0.0;
+            headZDelta = (float)((headZTarget - headZCurrent) * weight + deltaTmp);
+            limitTmp = headZDelta + headZCurrent;
+            if (limitTmp > headZMax || limitTmp < headZMin)
             {
-                v12 = ANI_pst_GetObjectByAICanal(a1, 0);
-                v13 = ANI_pst_GetObjectByAICanal(a1, 1u);
-                if (a10)
-                    v87 = ANI_pst_GetObjectByAICanal(a1, 12u);
-                v85 = (tGameObjectMain*)(((tableElemStructPF*)(((tGameObjectActorObject*)(a1->basic->actorObjectOrVisualObject))->skeletonGroup->tablePF->firstElemPtr))->objectPtr);
-                if (v12)
-                {
-                    if (v13 && v85)
-                    {
-                        v14 = OBJ_pst_GetAbsoluteMatrix(a1);
-                        MATH_GetScale(&scale, v14);
-                        v15 = a1->basic;
-                        v16 = v15->actorObjectOrVisualObject;
-                        v17 = ((tGameObjectActorObject*)(v15->actorObjectOrVisualObject))->actionItem;
-                        v89 = 0.0;
-                        if (((tGameObjectActorObject*)(v15->actorObjectOrVisualObject))->flagsEgBlendIw2 == 1)
-                        {
-                            v19 = v16->actionPtr;
-                            actionElems = (tActionElem*)(((char*)v19) + sizeof(tAction));
-                            v20 = actionElems[v17].customBits;
-                            v21 = &(actionElems[v17]);
-                            v83 = (v20 & 4) == 0;
-                            if ((v20 & 4) == 0)
-                                goto LABEL_13;
-                        }
-                        else
-                        {
-                            v19 = v16->actionPtr;
-                            actionElems = (tActionElem*)(((char*)v19) + sizeof(tAction));
-                            v21 = &(actionElems[v17]);
-                            actions = (tAction**)(((char*)(v16->actionKit)) + sizeof(tActionKit));
-                            actionElems2 = (tActionElem*)(((char*)(actions[v16->animPtr[1]->actionForTransition])) + sizeof(tAction));
-                            if ((v21->customBits & 4) == 0
-                                || (actionElems2[v16->animPtr[1]->actionElemForTransition].customBits & 4) == 0)
-                            {
-                                v83 = 1;
-                            LABEL_13:
-                                v22 = v21->designFlags;
-                                if (v22 >= 0)
-                                {
-                                    if ((v22 & 0x1000) != 0)
-                                        return;
-                                    v25 = v16->unkb;
-                                    v26 = v25 >= 6u ? 6 : v25 + 1;
-                                    v16->unkb = v26;
-                                    a3 = 0.40000001f;
-                                    if (v26 >= 6u)
-                                        return;
-                                }
-                                else
-                                {
-                                    if (v16->unkb >= 16u)
-                                        v23 = 16;
-                                    else
-                                        v23 = (uint8_t)(v16->unkb + (uint64_t)(TIM_gf_dt * 60.000004 + 0.5));
-                                    v16->unkb = v23;
-                                    a3 = (float)((double)v23 * 0.0625);
-                                    if (v23 >= 16u)
-                                        return;
-                                }
-                            LABEL_20:
-                                v81 = 1.5707964f;
-                                v80 = 0.78539819f;
-                                if (a10)
-                                    v95 = 0.78539819f;
-                                v74 = -1.5707964f;
-                                v92 = -0.78539819f;
-                                if (a10)
-                                    v98 = -0.78539819f;
-                                v24 = -0.78539819;
-                                v76 = 0.43633232f;
-                                switch (a4)
-                                {
-                                case 0:
-                                    angle = 0.0;
-                                    v81 = 2.0943952f;
-                                    v74 = -2.0943952f;
-                                    v80 = 1.0471976f;
-                                    v92 = -1.0471976f;
-                                    if (a10)
-                                    {
-                                        v95 = 1.0471976f;
-                                        v98 = -1.0471976f;
-                                    }
-                                    break;
-                                case 1:
-                                    angle = 0.52359879f;
-                                    break;
-                                case 2:
-                                    angle = 0.61086524f;
-                                    v24 = -0.78539819;
-                                    v76 = 0.12217305f;
-                                    break;
-                                case 3:
-                                    angle = 0.37088248f;
-                                    break;
-                                default:
-                                    angle = 0.0;
-                                    break;
-                                }
-                                if (a9)
-                                {
-                                    if (OBJ_gf_EYEFOLLOW_HeadZMax != 1000.0)
-                                        v81 = OBJ_gf_EYEFOLLOW_HeadZMax;
-                                    if (OBJ_gf_EYEFOLLOW_HeadZMin != 1000.0)
-                                        v74 = OBJ_gf_EYEFOLLOW_HeadZMin;
-                                    if (OBJ_gf_EYEFOLLOW_HeadXMax != 1000.0)
-                                        v76 = OBJ_gf_EYEFOLLOW_HeadXMax;
-                                    if (OBJ_gf_EYEFOLLOW_HeadXMin != 1000.0)
-                                        v24 = OBJ_gf_EYEFOLLOW_HeadXMin;
-                                    if (OBJ_gf_EYEFOLLOW_TorsoZMax != 1000.0)
-                                        v80 = OBJ_gf_EYEFOLLOW_TorsoZMax;
-                                    if (OBJ_gf_EYEFOLLOW_TorsoZMin != 1000.0)
-                                        v92 = OBJ_gf_EYEFOLLOW_TorsoZMin;
-                                    if (OBJ_gf_EYEFOLLOW_HeadXOffset != 1000.0)
-                                        angle = OBJ_gf_EYEFOLLOW_HeadXOffset;
-                                }
-                                v77 = angle + v76;
-                                v97 = (float)(angle + v24);
-                                if (a6)
-                                {
-                                    v81 = 3.1415927f;
-                                    v80 = 3.1415927f;
-                                    v74 = -3.1415927f;
-                                    v92 = -3.1415927f;
-                                    v77 = 3.1415927f;
-                                    v97 = -3.1415927f;
-                                }
-                                OBJ_SightGet(a1, &v1);
-                                v27 = &v12->basic->mtx->mtx;
-                                v28 = v27->Pos.x;
-                                v104 = v27->Pos.y;
-                                v103 = v28;
-                                v105 = v27->Pos.z;
-                                MATH_GetScale(&a2a, v27);
-                                MATH_GetScale(&v117, &v13->basic->mtx->mtx);
-                                v29 = &v13->basic->mtx->mtx;
-                                v30 = v29->Pos.x;
-                                v31 = v29->Pos.y;
-                                v32 = v87;
-                                v102 = v29->Pos.z;
-                                v100 = v30;
-                                v101 = v31;
-                                if (a10)
-                                {
-                                    MATH_GetScale(&v118, &v87->basic->mtx->mtx);
-                                    v33 = &v87->basic->mtx->mtx;
-                                    v34 = v33->Pos.y;
-                                    v109 = v33->Pos.x;
-                                    v35 = v33->Pos.z;
-                                    v110 = v34;
-                                    v111 = v35;
-                                }
-                                OBJ_SightGet(v85, &dest);
-                                OBJ_ComputeGlobalWithLocal(v85, &v115, 1);
-                                MATH_VecInvert(&v2, &v115.v2);
-                                v82 = MATH_f_ZAngle(&dest, &v2);
-                                OBJ_ComputeGlobalWithLocal(v12, &v115, 1);
-                                MATH_VecInvert(&v2, &v115.v2);
-                                a3a = v115.v3;
-                                OBJ_SightGet(v12, &dest);
-                                v79 = MATH_f_ZAngle(&v1, &dest);
-                                v88 = MATH_f_XAngle(&v1, &dest);
-                                if (v83 || a2->x == 0.0 && a2->y == 0.0 && a2->z == 0.0)
-                                {
-                                    dest = v2;
-                                    v36 = MATH_f_ZAngle(&v1, &dest);
-                                    v68 = &dest;
-                                }
-                                else
-                                {
-                                    OBJ_ComputeGlobalWithLocal(v12, &v124, 1);
-                                    MATH_SubstractVec(&dest, a2, &v124.Pos);
-                                    MATH_NormalizeEqualVector(&dest);
-                                    v71 = MATH_f_ZAngle(&v1, &dest);
-                                    v93 = MATH_f_XAngle(&v1, &dest);
-                                    if (!a5 || v81 + 0.17453294 >= v71 && v74 - 0.17453294 <= v71)
-                                    {
-                                        v37 = v93 + angle;
-                                        goto LABEL_71;
-                                    }
-                                    v36 = MATH_f_ZAngle(&v1, &v2);
-                                    v68 = &v2;
-                                }
-                                v71 = (float)v36;
-                                v37 = MATH_f_XAngle(&v1, v68);
-                                v89 = 1;
-                            LABEL_71:
-                                v93 = (float)v37;
-                                OBJ_ComputeGlobalWithLocal(v13, &v115, 1);
-                                MATH_VecInvert(&dest, &v115.v2);
-                                v114 = v115.v3;
-                                OBJ_SightGet(v13, &v2);
-                                OBJ_BankingGet(v13, &v116);
-                                v86 = fabs(v116.z) < 0.050000001;
-                                v91 = MATH_f_ZAngle(&v1, &v2);
-                                v99 = MATH_f_XAngle(&v1, &v2);
-                                v108 = MATH_f_XAngle(&v1, &dest);
-                                if (v89 != 0.0)
-                                {
-                                    v38 = MATH_f_ZAngle(&v1, &dest);
-                                LABEL_78:
-                                    v84 = (float)v38;
-                                    goto LABEL_79;
-                                }
-                                if (a7)
-                                {
-                                    v84 = v71;
-                                }
-                                else
-                                {
-                                    if (!a8)
-                                    {
-                                        v38 = v71 * 0.33333334;
-                                        goto LABEL_78;
-                                    }
-                                    v84 = v91;
-                                }
-                            LABEL_79:
-                                if (a10)
-                                {
-                                    OBJ_ComputeGlobalWithLocal(v32, &v115, 1);
-                                    MATH_VecInvert(&dest, &v115.v2);
-                                    v113 = v115.v3;
-                                    OBJ_SightGet(v32, &v2);
-                                    v85a = MATH_f_ZAngle(&v1, &v2);
-                                    v107 = MATH_f_XAngle(&v1, &v2);
-                                    v106 = MATH_f_XAngle(&v1, &dest);
-                                    if (v89 == 0.0)
-                                        v39 = v71 * 0.2;
-                                    else
-                                        v39 = MATH_f_ZAngle(&v1, &dest);
-                                    v89 = (float)v39;
-                                }
-                                v40 = a3 != 1.0
-                                    && (v82 == 0.0 || (v71 <= (double)v79 || v82 >= 0.0) && (v71 >= (double)v79 || v82 <= 0.0));
-                                if (a5
-                                    || (fabs(v79 - v81) >= 0.001 || v71 >= (double)v74)
-                                    && (fabs(v79 - v74) >= 0.001 || v71 <= (double)v81))
-                                {
-                                    if ((v71 <= 0.0 || v79 >= (double)v71 || v79 + v82 <= v71)
-                                        && (v71 >= 0.0 || v79 <= (double)v71 || v79 + v82 >= v71))
-                                    {
-                                        if (v40)
-                                            v41 = v82;
-                                        else
-                                            v41 = 0.0;
-                                        anglea = (float)((v71 - v79) * a3 + v41);
-                                        v42 = anglea + v79;
-                                        if (v42 > v81 || v42 < v74)
-                                        {
-                                            if (v42 <= v81)
-                                                v43 = v74 - v79;
-                                            else
-                                                v43 = v81 - v79;
-                                            anglea = (float)v43;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        anglea = v71 - v79;
-                                    }
-                                    v44 = (v93 - v88) * a3;
-                                    v75 = (float)v44;
-                                    v45 = v44 + v88;
-                                    if (v45 > v77 || v45 < v97)
-                                    {
-                                        if (v45 <= v77)
-                                            v46 = v97 - v88;
-                                        else
-                                            v46 = v77 - v88;
-                                        v75 = (float)v46;
-                                    }
-                                    if (v40)
-                                        v47 = v82;
-                                    else
-                                        v47 = 0.0;
-                                    v78 = (v84 - v91) * a3 + (float)v47;
-                                    v48 = v78 + v91;
-                                    if (v48 > v80 || v48 < v92)
-                                    {
-                                        if (v48 <= v80)
-                                            v49 = v92 - v91;
-                                        else
-                                            v49 = v80 - v91;
-                                        v78 = (float)v49;
-                                    }
-                                    if (a10)
-                                    {
-                                        v50 = v40 ? v82 : 0.0;
-                                        v80 = (float)((v89 - v85a) * a3 + v50);
-                                        v51 = v80 + v85a;
-                                        if (v51 > v95 || v51 < v98)
-                                        {
-                                            if (v51 <= v95)
-                                                v52 = v98 - v85a;
-                                            else
-                                                v52 = v95 - v85a;
-                                            v80 = (float)v52;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    anglea = 0.0;
-                                    v75 = 0.0;
-                                    v78 = 0.0;
-                                    v80 = 0.0;
-                                }
-                                if (fabs(anglea) >= 0.0000099999997)
-                                    MATH_RotateMatrix_AroundGlobalZAxis(v12->matrices, anglea);
-                                if (fabs(v75) >= 0.0000099999997)
-                                    MATH_RotateMatrix_AroundLocalXAxis(v12->matrices, v75);
-                                OBJ_SightGet(v12, &v121);
-                                OBJ_SightGeneralSet(v12, &v121, &a3a);
-                                if (!v86)
-                                {
-                                    if (fabs(v78) >= 0.0000099999997)
-                                        MATH_RotateMatrix_AroundGlobalZAxis(v13->matrices, v78);
-                                    v69 = v108 - v99;
-                                    MATH_RotateMatrix_AroundLocalXAxis(v13->matrices, v69);
-                                    OBJ_SightGet(v13, &v122);
-                                    OBJ_SightGeneralSet(v13, &v122, &v114);
-                                }
-                                if (a10)
-                                {
-                                    if (fabs(v80) >= 0.0000099999997)
-                                        MATH_RotateMatrix_AroundGlobalZAxis(v32->matrices, v80);
-                                    v70 = v106 - v107;
-                                    MATH_RotateMatrix_AroundLocalXAxis(v32->matrices, v70);
-                                    OBJ_SightGet(v32, &v119);
-                                    OBJ_SightGeneralSet(v32, &v119, &v113);
-                                    v53 = get_reference_point_gao_2_from_gao_sub_40BEA0(v32);
-                                    OBJ_ComputeGlobalWithLocal(v53, v53->matrices, 1);
-                                    OBJ_ComputeLocalWhenHie(v32);
-                                    v54 = v110;
-                                    v55 = &v32->basic->mtx->mtx.Pos;
-                                    v55->x = v109;
-                                    v56 = v111;
-                                    v55->y = v54;
-                                    v55->z = v56;
-                                }
-                                v57 = get_reference_point_gao_2_from_gao_sub_40BEA0(v13);
-                                OBJ_ComputeGlobalWithLocal(v57, v57->matrices, 1);
-                                if (v86)
-                                    OBJ_ComputeGlobalWhenHie(v13);
-                                else
-                                    OBJ_ComputeLocalWhenHie(v13);
-                                v58 = v101;
-                                v59 = &v13->basic->mtx->mtx.Pos;
-                                v59->x = v100;
-                                v60 = v102;
-                                v59->y = v58;
-                                v59->z = v60;
-                                v61 = get_reference_point_gao_2_from_gao_sub_40BEA0(v12);
-                                OBJ_ComputeGlobalWithLocal(v61, v61->matrices, 1);
-                                OBJ_ComputeLocalWhenHie(v12);
-                                v62 = OBJ_pst_GetLocalMatrix(v12);
-                                MATH_SetScale(&v62->mtx, &a2a);
-                                v63 = OBJ_pst_GetLocalMatrix(v13);
-                                MATH_SetScale(&v63->mtx, &v117);
-                                if (a10)
-                                {
-                                    v64 = OBJ_pst_GetLocalMatrix(v32);
-                                    MATH_SetScale(&v64->mtx, &v118);
-                                }
-                                v65 = v104;
-                                v66 = &v12->basic->mtx->mtx.Pos;
-                                v66->x = v103;
-                                v67 = v105;
-                                v66->y = v65;
-                                v66->z = v67;
-                                return;
-                            }
-                            v83 = 0;
-                        }
-                        v16->unkb = 0;
-                        goto LABEL_20;
-                    }
-                }
+                if (limitTmp <= headZMax)
+                    deltaTmp = headZMin - headZCurrent;
+                else
+                    deltaTmp = headZMax - headZCurrent;
+                headZDelta = (float)deltaTmp;
+            }
+        }
+        else
+        {
+            headZDelta = headZTarget - headZCurrent;
+        }
+        xTmp = (headXTarget - headXCurrent) * weight;
+        headXDelta = (float)xTmp;
+        limitTmp = xTmp + headXCurrent;
+        if (limitTmp > headXMaxAbs || limitTmp < headXMinAbs)
+        {
+            if (limitTmp <= headXMaxAbs)
+                deltaTmp = headXMinAbs - headXCurrent;
+            else
+                deltaTmp = headXMaxAbs - headXCurrent;
+            headXDelta = (float)deltaTmp;
+        }
+        if (compensateRoot)
+            deltaTmp = rootZAngle;
+        else
+            deltaTmp = 0.0;
+        torsoZDelta = (torsoZTarget - torsoZCurrent) * weight + (float)deltaTmp;
+        limitTmp = torsoZDelta + torsoZCurrent;
+        if (limitTmp > torsoZMax || limitTmp < torsoZMin)
+        {
+            if (limitTmp <= torsoZMax)
+                deltaTmp = torsoZMin - torsoZCurrent;
+            else
+                deltaTmp = torsoZMax - torsoZCurrent;
+            torsoZDelta = (float)deltaTmp;
+        }
+        if (useThirdBone)
+        {
+            deltaTmp = compensateRoot ? rootZAngle : 0.0;
+            thirdZDelta = (float)((thirdZTarget - thirdZCurrent) * weight + deltaTmp);
+            limitTmp = thirdZDelta + thirdZCurrent;
+            if (limitTmp > thirdZMax || limitTmp < thirdZMin)
+            {
+                if (limitTmp <= thirdZMax)
+                    deltaTmp = thirdZMin - thirdZCurrent;
+                else
+                    deltaTmp = thirdZMax - thirdZCurrent;
+                thirdZDelta = (float)deltaTmp;
             }
         }
     }
+    else
+    {
+        headZDelta = 0.0;
+        headXDelta = 0.0;
+        torsoZDelta = 0.0;
+        thirdZDelta = 0.0;
+    }
+
+    if (fabs(headZDelta) >= 0.0000099999997)
+        MATH_RotateMatrix_AroundGlobalZAxis(head->matrices, headZDelta);
+    if (fabs(headXDelta) >= 0.0000099999997)
+        MATH_RotateMatrix_AroundLocalXAxis(head->matrices, headXDelta);
+    OBJ_SightGet(head, &headSight2);
+    OBJ_SightGeneralSet(head, &headSight2, &headHorizon);
+    if (!torsoUpright)
+    {
+        if (fabs(torsoZDelta) >= 0.0000099999997)
+            MATH_RotateMatrix_AroundGlobalZAxis(torso->matrices, torsoZDelta);
+        MATH_RotateMatrix_AroundLocalXAxis(torso->matrices, torsoXFromBlend - torsoXCurrent);
+        OBJ_SightGet(torso, &torsoSight2);
+        OBJ_SightGeneralSet(torso, &torsoSight2, &torsoHorizon);
+    }
+    if (useThirdBone)
+    {
+        if (fabs(thirdZDelta) >= 0.0000099999997)
+            MATH_RotateMatrix_AroundGlobalZAxis(third->matrices, thirdZDelta);
+        MATH_RotateMatrix_AroundLocalXAxis(third->matrices, thirdXFromBlend - thirdXCurrent);
+        OBJ_SightGet(third, &thirdSight);
+        OBJ_SightGeneralSet(third, &thirdSight, &thirdHorizon);
+        parent = get_reference_point_gao_2_from_gao_sub_40BEA0(third);
+        OBJ_ComputeGlobalWithLocal(parent, parent->matrices, 1);
+        OBJ_ComputeLocalWhenHie(third);
+        bonePos = &third->basic->mtx->mtx.Pos;
+        bonePos->x = thirdPosX;
+        bonePos->y = thirdPosY;
+        bonePos->z = thirdPosZ;
+    }
+    parent = get_reference_point_gao_2_from_gao_sub_40BEA0(torso);
+    OBJ_ComputeGlobalWithLocal(parent, parent->matrices, 1);
+    if (torsoUpright)
+        OBJ_ComputeGlobalWhenHie(torso);
+    else
+        OBJ_ComputeLocalWhenHie(torso);
+    bonePos = &torso->basic->mtx->mtx.Pos;
+    bonePos->x = torsoPosX;
+    bonePos->y = torsoPosY;
+    bonePos->z = torsoPosZ;
+    parent = get_reference_point_gao_2_from_gao_sub_40BEA0(head);
+    OBJ_ComputeGlobalWithLocal(parent, parent->matrices, 1);
+    OBJ_ComputeLocalWhenHie(head);
+    localMtx = OBJ_pst_GetLocalMatrix(head);
+    MATH_SetScale(&localMtx->mtx, &headScale);
+    localMtx = OBJ_pst_GetLocalMatrix(torso);
+    MATH_SetScale(&localMtx->mtx, &torsoScale);
+    if (useThirdBone)
+    {
+        localMtx = OBJ_pst_GetLocalMatrix(third);
+        MATH_SetScale(&localMtx->mtx, &thirdScale);
+    }
+    bonePos = &head->basic->mtx->mtx.Pos;
+    bonePos->x = headPosX;
+    bonePos->y = headPosY;
+    bonePos->z = headPosZ;
 }
 
 void OBJ_FreezeModifier_C(struct sGameObjectMain* gao, int mdfId, int setOrReset)
