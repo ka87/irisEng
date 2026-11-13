@@ -512,8 +512,10 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, 
     dd->flags |= 0x2;
 }
 
+// nearZ and farZ, not near and far: windef.h defines both of those as
+// empty macros, so a parameter of either name vanishes
 void D3D_CalcAndSetProjection(float left, float right, float bottom, float top,
-                              float near, float far)
+                              float nearZ, float farZ)
 {
     double width;
     double height;
@@ -526,11 +528,11 @@ void D3D_CalcAndSetProjection(float left, float right, float bottom, float top,
     mtx._11 = (float)(2.0 / width);
     height = top - bottom;
     mtx._22 = (float)(2.0 / height);
-    depth = far - near;
+    depth = farZ - nearZ;
     mtx._33 = (float)(-4.0 / depth);
     mtx._14 = (float)(-((left + right) / width));
     mtx._24 = (float)(-((bottom + top) / height));
-    mtx._34 = (float)(-((near + far) / depth));
+    mtx._34 = (float)(-((nearZ + farZ) / depth));
     memcpy(&d3dProjectionMtx, &mtx, sizeof(D3DMATRIX));
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &mtx);
 }
