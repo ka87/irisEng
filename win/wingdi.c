@@ -3920,674 +3920,355 @@ void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct*
     D3DRenderParams.d3dSourceTextures[idx] = source;
 }
 
-int D3D_DrawSprites(struct sGeoSprites* a1, void* a2, int x)
+int D3D_DrawSprites(struct sGeoSprites* sprites, void* positions, int num)
 {
-    tBigBufferStruct* v3;
-    int* v4;
-    int* v5;
-    int v6; 
-    int v7; 
-    Mtx4x4* v8;
-    int v9;
-    tGeoSpriteElem* v10;
-    tGeoSpriteElem* v11;
-    int v12;
-    tSpriteC0DEData* v13;
-    int* v14;
-    double v15;
-    int v16;
-    double v17;
-    Vec3* v18;
-    double v20;
-    double v22;
-    float v24;
-    float v27;
-    float v28;
-    float v29;
-    float v30;
-    float v31;
-    int* v32; 
-    tSpriteC0DEData* v33;
-    float v34;
-    float v35;
-    float v36;
-    float v37;
-    float v38;
-    float v39;
-    float v40;
-    float v41;
-    float v42;
-    float v43;
-    float v44;
-    tGdi_DisplayData* v45;
-    float v46;
-    float v47;
-    float v48;
-    float v49;
-    float v50;
-    float v51;
-    float v52;
-    float v53;
-    float v54;
-    float v55;
-    float v56;
-    float v57;
-    float v58;
-    float v59;
-    int v60;
-    int v61;
-    tD3dSpriteData v62;
+    tBigBufferStruct* bb;
+    int* colors;
+    int* second;
+    int mask;
+    int alpha;
+    int color;
+    int idx;
+    Mtx4x4* mtx;
+    tGeoSpriteElem* elem;
+    tGeoSpriteElem* elemEnd;
+    int offset;
+    tSpriteC0DEData* c0de;
+    tSpriteC0DEData* c0deEnd;
+    double size;
+    Vec3* base;
+    double sine;
+    double wobble;
+    float rightX, rightY, rightZ;
+    float upX, upY, upZ;
+    float c1x, c1y, c1z;
+    float c2x, c2y, c2z;
+    float c3x, c3y, c3z;
+    float c4x, c4y, c4z;
+    float wave;
+    tGdi_DisplayData* dd;
+    tD3dSpriteData out;
 
-    v3 = gpst_DX_stDD->bigBuffer;
-    v4 = v3->vertexColorArray;
-    v5 = v3->vertexColorArraySecond;
-    v6 = v3->solidVertexColor;
-    v7 = v3->colorMask;
-    v8 = gpst_DX_stDD->matrixStack.actMatrixElem;
-    v32 = v4;
-    v61 = v7;
-    v9 = v7 ^ (D3DRenderParams.colorMaskAlpha | v6);
-    v45 = gpst_DX_stDD;
-    v60 = D3DRenderParams.colorMaskAlpha;
-    v29 = -(v8->v1.x * a1->globalSize * a1->globalRatio);
-    v30 = -(v8->v2.x * a1->globalSize * a1->globalRatio);
-    v31 = -(v8->v3.x * a1->globalSize * a1->globalRatio);
-    v24 = v8->v1.y * a1->globalSize;
-    v27 = v8->v2.y * a1->globalSize;
-    v28 = v8->v3.y * a1->globalSize;
-    gpst_DX_stDD->Request(18, (void *) a1->num);
-    v10 = a1->spriteElems;
-    v11 = &v10[a1->num];
-    if (v10->idx == 0xC0DE) // see gfxexplode.c GFX_SetNumberOfSprites
+    bb = gpst_DX_stDD->bigBuffer;
+    colors = bb->vertexColorArray;
+    second = bb->vertexColorArraySecond;
+    mask = bb->colorMask;
+    mtx = gpst_DX_stDD->matrixStack.actMatrixElem;
+    alpha = D3DRenderParams.colorMaskAlpha;
+    color = mask ^ (alpha | bb->solidVertexColor);
+    dd = gpst_DX_stDD;
+    rightX = -(mtx->v1.x * sprites->globalSize * sprites->globalRatio);
+    rightY = -(mtx->v2.x * sprites->globalSize * sprites->globalRatio);
+    rightZ = -(mtx->v3.x * sprites->globalSize * sprites->globalRatio);
+    upX = mtx->v1.y * sprites->globalSize;
+    upY = mtx->v2.y * sprites->globalSize;
+    upZ = mtx->v3.y * sprites->globalSize;
+    c1x = -rightX - upX;
+    c1y = -rightY - upY;
+    c1z = -rightZ - upZ;
+    c2x = rightX - upX;
+    c2y = rightY - upY;
+    c2z = rightZ - upZ;
+    c3x = upX + rightX;
+    c3y = upY + rightY;
+    c3z = upZ + rightZ;
+    c4x = upX - rightX;
+    c4y = upY - rightY;
+    c4z = upZ - rightZ;
+    gpst_DX_stDD->Request(18, (void *) (size_t) sprites->num);
+    elem = sprites->spriteElems;
+    elemEnd = &elem[sprites->num];
+    if (elem->idx == 0xC0DE) // see gfxexplode.c GFX_SetNumberOfSprites
     {
-        v12 = v10[1].idx;
-        v13 = &((tSpriteC0DEData *)a2)[v12];
-        v14 = v32;
-        v33 = &v13[a1->num];
-        if (v32)
+        offset = elem[1].idx;
+        c0de = &((tSpriteC0DEData *)positions)[offset];
+        c0deEnd = &c0de[sprites->num];
+        if (colors)
+            colors = &colors[offset];
+        if (second)
+            second += offset;
+        for (; c0de < c0deEnd; c0de++)
         {
-            v14 = &v32[v12];
-            v32 = v14;
-        }
-        if (v5)
-            v5 += v12;
-        if (v13 < &v13[a1->num])
-        {
-            while (1)
+            if (colors)
             {
-                if (v14)
-                {
-                    v9 = v61 ^ (v60 | *v14);
-                    if (v5)
-                        v9 = v5[v10->idx] | v9 & 0xFFFFFF;
-                    v32 = v14 + 1;
-                }
-                else if (v5)
-                {
-                    v9 = v5[v10->idx] | v9 & 0xFFFFFF;
-                }
-                v62.color = v9;
-                v15 = v13->f1;
-                v46 = -v29 - v24;
-                v62.v1.x = (float)(v46 * v15 + v13->v1.x);
-                v41 = -v30 - v27;
-                v62.v1.y = (float)(v41 * v15 + v13->v1.y);
-                v58 = -v31 - v28;
-                v62.v1.z = (float)(v58 * v15 + v13->v1.z);
-                v56 = v29 - v24;
-                v62.v2.x = (float)(v56 * v15 + v13->v1.x);
-                v39 = v30 - v27;
-                v62.v2.y = (float)(v39 * v15 + v13->v1.y);
-                v52 = v31 - v28;
-                v62.v2.z = (float)(v52 * v15 + v13->v1.z);
-                v43 = v24 + v29;
-                v62.v3.x = (float)(v43 * v15 + v13->v1.x);
-                v48 = v27 + v30;
-                v62.v3.y = (float)(v48 * v15 + v13->v1.y);
-                v35 = v28 + v31;
-                v62.v3.z = (float)(v35 * v15 + v13->v1.z);
-                v50 = v24 - v29;
-                v62.v4.x = (float)(v50 * v15 + v13->v1.x);
-                v54 = v27 - v30;
-                v62.v4.y = (float)(v54 * v15 + v13->v1.y);
-                v37 = v28 - v31;
-                v62.v4.z = (float)(v37 * v15 + v13->v1.z);
-                v45->Request(33, &v62);
-                v13++;
-                if (v13 >= v33)
-                    break;
-                v14 = v32;
+                color = mask ^ (alpha | *colors);
+                // preserved: elem still points at the 0xC0DE marker, so this reads second[49374]
+                if (second)
+                    color = second[elem->idx] | color & 0xFFFFFF;
+                colors++;
             }
+            else if (second)
+            {
+                color = second[elem->idx] | color & 0xFFFFFF;
+            }
+            out.color = color;
+            size = c0de->f1;
+            out.v1.x = (float)(c1x * size + c0de->v1.x);
+            out.v1.y = (float)(c1y * size + c0de->v1.y);
+            out.v1.z = (float)(c1z * size + c0de->v1.z);
+            out.v2.x = (float)(c2x * size + c0de->v1.x);
+            out.v2.y = (float)(c2y * size + c0de->v1.y);
+            out.v2.z = (float)(c2z * size + c0de->v1.z);
+            out.v3.x = (float)(c3x * size + c0de->v1.x);
+            out.v3.y = (float)(c3y * size + c0de->v1.y);
+            out.v3.z = (float)(c3z * size + c0de->v1.z);
+            out.v4.x = (float)(c4x * size + c0de->v1.x);
+            out.v4.y = (float)(c4y * size + c0de->v1.y);
+            out.v4.z = (float)(c4z * size + c0de->v1.z);
+            dd->Request(33, &out);
         }
     }
     else
     {
-        v34 = 0.0;
-        if (v10 < v11)
+        wave = 0.0;
+        for (; elem < elemEnd; ++elem)
         {
-            v47 = -v29 - v24;
-            v42 = -v30 - v27;
-            v57 = v29 - v24;
-            v40 = v30 - v27;
-            v44 = v24 + v29;
-            v49 = v27 + v30;
-            v51 = v24 - v29;
-            v55 = v27 - v30;
-            do
+            wave = wave + 1.0f;
+            if (colors)
             {
-                v34 = v34 + 1.0f;
-                if (v32)
-                {
-                    v16 = v10->idx;
-                    v9 = v61 ^ (v60 | v32[v16]);
-                    if (v5)
-                        v9 = v5[v16] | v9 & 0xFFFFFF;
-                }
-                else if (v5)
-                {
-                    v9 = v5[v10->idx] | v9 & 0xFFFFFF;
-                }
-                v62.color = v9;
-                v17 = v10->size;
-                v18 = &(((Vec3*)a2)[v10->idx]);
-                v62.v1.x = (float)(v47 * v17 + v18->x);
-                v62.v1.y = (float)(v42 * v17 + v18->y);
-                v59 = -v31 - v28;
-                v62.v1.z = (float)(v59 * v17 + v18->z);
-                v62.v2.x = (float)(v57 * v17 + v18->x);
-                v62.v2.y = (float)(v40 * v17 + v18->y);
-                v53 = v31 - v28;
-                v62.v2.z = (float)(v53 * v17 + v18->z);
-                v62.v3.x = (float)(v44 * v17 + v18->x);
-                v62.v3.y = (float)(v49 * v17 + v18->y);
-                v36 = v28 + v31;
-                v62.v3.z = (float)(v36 * v17 + v18->z);
-                v62.v4.x = (float)(v51 * v17 + v18->x);
-                v62.v4.y = (float)(v55 * v17 + v18->y);
-                v38 = v28 - v31;
-                v62.v4.z = (float)(v38 * v17 + v18->z);
-                if (GDI_gb_WaveSprite)
-                {
-                    v20 = MATH_GetSin(v34);
-                    v22 = v20 * MATH_GetSin((float)(v20 * TIM_gul_TicksCount * 2.5)) * 0.2;
+                idx = elem->idx;
+                color = mask ^ (alpha | colors[idx]);
+                if (second)
+                    color = second[idx] | color & 0xFFFFFF;
+            }
+            else if (second)
+            {
+                color = second[elem->idx] | color & 0xFFFFFF;
+            }
+            out.color = color;
+            size = elem->size;
+            base = &(((Vec3*)positions)[elem->idx]);
+            out.v1.x = (float)(c1x * size + base->x);
+            out.v1.y = (float)(c1y * size + base->y);
+            out.v1.z = (float)(c1z * size + base->z);
+            out.v2.x = (float)(c2x * size + base->x);
+            out.v2.y = (float)(c2y * size + base->y);
+            out.v2.z = (float)(c2z * size + base->z);
+            out.v3.x = (float)(c3x * size + base->x);
+            out.v3.y = (float)(c3y * size + base->y);
+            out.v3.z = (float)(c3z * size + base->z);
+            out.v4.x = (float)(c4x * size + base->x);
+            out.v4.y = (float)(c4y * size + base->y);
+            out.v4.z = (float)(c4z * size + base->z);
+            if (GDI_gb_WaveSprite)
+            {
+                sine = MATH_GetSin(wave);
+                wobble = sine * MATH_GetSin((float)(sine * TIM_gul_TicksCount * 2.5)) * 0.2;
 
-                    v62.v1.x = (float)(v62.v1.x + v22);
-                    v62.v2.x = (float)(v22 + v62.v2.x);
-                }
-                v45->Request(33, &v62);
-                ++v10;
-            } while (v10 < v11);
+                out.v1.x = (float)(out.v1.x + wobble);
+                out.v2.x = (float)(wobble + out.v2.x);
+            }
+            dd->Request(33, &out);
         }
     }
-    v45->Request(20, 0);
+    dd->Request(20, 0);
     return 0;
+}
+
+static unsigned int D3D_VertexColor(int* colors, int* second, int mask, int alpha,
+                                    int idx, int secondIdx)
+{
+    unsigned int packed;
+
+    packed = mask ^ (alpha | colors[idx]);
+    if (second)
+        packed = second[secondIdx] | packed & 0xFFFFFF;
+    return packed & 0xFF00FF00 | ((uint8_t)packed << 16) | ((packed >> 16) & 0xff);
+}
+
+static void D3D_DrawIndexedStreams(tGEOGRO* geogro, tGeoWholeTriangleStripBlock* block)
+{
+    unsigned int i;
+    tD3dStreamInfoElem* info;
+
+    for (i = 0; i < block->streamsNum; i++)
+    {
+        info = &block->d3dStreamInfoElems[i];
+        if (D3DRenderParams.textureUVMode != 2)
+        {
+            if (geogro->d3dUVVB)
+            {
+                D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, geogro->d3dUVVB[info->vbIdx], 0, 8);
+                D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
+                    D3DRenderParams.d3dDev,
+                    D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
+            }
+            else
+            {
+                D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, 0, 0, 0);
+                D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
+                    D3DRenderParams.d3dDev,
+                    D3DRenderParams.vertexDeclarationIFd3dUVVBIsNull);
+            }
+        }
+        D3DRenderParams.d3dDev->lpVtbl->DrawIndexedPrimitive(
+            D3DRenderParams.d3dDev,
+            5,
+            0,
+            0,
+            geogro->vertexNum,
+            info->startIndex,
+            info->primitiveCount - 2);
+    }
 }
 
 int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks, Vec3* verticesIN, struct sGeoUVElem* UVs, int vertexNum)
 {
-    int v3;
-    tGEOGRO* v4;
-    Vec3* v5;
-    int v6;
-    int v7;
-    tBigBufferStruct* v8;
-    int v9;
-    int* v10;
-    BOOL v11;
-    int v12;
-    tGameObjectMain* v13;
-    unsigned int* v14;
-    int* v15;
-    int* v16;
-    int v17; 
-    int v18;
-    unsigned int v19;
-    tGeoWholeTriangleStripBlock* v20;
-    tD3dStreamInfoElem* v21;
-    IDirect3DVertexBuffer9** v22;
-    unsigned int v24;
-    tGeoWholeTriangleStripBlock* v25;
-    tD3dStreamInfoElem* v26;
-    IDirect3DVertexBuffer9** v27;
-    tVertex_type_142_generic* v30;
-    tBigBufferStruct* v31;
-    int v33;
-    int* v34;
-    unsigned int v35;
-    tGeoTriangleChunkElem* v36;
-    tGeoTriangleChunkElem* v37;
-    char v38;
-    Vec3* v39;
-    int v40;
-    int v41;
-    unsigned int v42;
-    Vec3* v43;
-    tVertex_type_142_generic* v44;
-    int v45;
-    int v46;
-    unsigned int v47;
-    Vec3* v48;
-    tVertex_type_142_generic* v49;
-    int v50;
-    int v51;
-    unsigned int v52;
-    Vec3* v53;
-    int v54;
-    int v55;
-    unsigned int v56;
-    Vec3* v57;
-    tVertex_type_142_generic* v58;
-    int v59;
-    int v60;
-    unsigned int v61;
-    Vec3* v62;
-    tVertex_type_142_generic* v63;
-    int v64;
-    int v65;
-    unsigned int v66;
-    Vec3* v67;
-    Vec3* v68;
-    tVertex_type_142_generic* v69;
-    Vec3* v70;
-    Vec3* v71;
-    Vec3* v72;
-    tVertex_type_142_generic* v73;
-    Vec3* v74;
-    Vec3* v75;
-    int v76;
-    int v77;
-    unsigned int v78;
-    Vec3* v79;
-    tVertex_type_142_generic* v80;
-    int v81;
-    int v82;
-    unsigned int v83;
-    Vec3* v84;
-    tVertex_type_142_generic* v85;
-    int v86;
-    unsigned int v87;
-    Vec3* v88;
-    Vec3* v89;
-    Vec3* v90;
-    unsigned int v91 = 0;// TODO FIXME ???????? játék nem initeli
-    uint8_t v92;
-    uint8_t v93;
-    uint8_t v94;
-    uint8_t v95;
-    uint8_t v96;
-    uint8_t v97;
-    uint8_t v98;
-    uint8_t v99;
-    uint8_t v100;
-    int* v101;
-    int v102;
-    unsigned int v103;
-    tGeoWholeTriangleStripBlock* v104;
-    unsigned int v105;
-    int v106;
-    int v107;
-    int triangleChunksa;
-    int triangleChunksb;
-    int triangleChunksc;
-    tGeoTriangleChunkElem* triangleChunksd;
-    int* v32a;
-    int* v104a;
-    void* v103a;
-    unsigned int* v102a;
-    int *v105a;
+    tGEOGRO* geogro;
+    tGeoWholeTriangleStripBlock* block;
+    tBigBufferStruct* bb;
+    tGeoTriangleChunkElem* tri;
+    tGeoTriangleChunkElem* triEnd;
+    tVertex_type_142_generic* out;
+    unsigned int triangleNum;
+    int immediate;
+    int mismatch;
+    int useVertexUv;
+    int* colors;
+    int* second;
+    int mask;
+    int alpha;
+    int solid;
+    int savedArg1;
+    int savedArg2;
+    int start;
+    int lockFlags;
+    int idx;
+    int secondIdx;
+    int k;
     unsigned int i;
+    void* locked;
+    unsigned int* lockedColors;
+    unsigned int v91 = 0;// TODO FIXME ???????? játék nem initeli
 
-    v3 = 0;
-    v105 = triangleChunks->triangleNum;
-    if (!v105)
+    triangleNum = triangleChunks->triangleNum;
+    if (!triangleNum)
         return 0;
-    v4 = gpst_DX_stDD->GROGEO;
-    if (!v4)
-        goto LABEL_66;
-    if (v4->UVs != UVs && D3DRenderParams.textureUVMode != 2)
-        v3 = 1;
-    v5 = v4->vertices;
-    if (verticesIN == v5 && (gpst_DX_stDD->flags & 0x400) != 0)
-        v3 = 1;
-    if (!v4->d3dIndexBuf || (v104 = triangleChunks->triangleStripBlock) == 0 || v3)
+    geogro = gpst_DX_stDD->GROGEO;
+    block = NULL;
+    immediate = 1;
+    if (geogro)
     {
-    LABEL_66:
-        v106 = 0;
-        v107 = 0;
-        v30 = D3D_LockCurrentVBO(3 * v105);
-        v31 = gpst_DX_stDD->bigBuffer;
-        v32a = v31->vertexColorArraySecond;
-        v33 = gpst_DX_stDD->pd3drp->colorMaskAlpha;
-        v103 = v31->colorMask;
-        v34 = v31->vertexColorArray;
-        v101 = v34;
-        v104a = v32a;
-        v102 = v33;
-        if (v34)
+        mismatch = 0;
+        if (geogro->UVs != UVs && D3DRenderParams.textureUVMode != 2)
+            mismatch = 1;
+        if (verticesIN == geogro->vertices && (gpst_DX_stDD->flags & 0x400) != 0)
+            mismatch = 1;
+        block = triangleChunks->triangleStripBlock;
+        immediate = !geogro->d3dIndexBuf || !block || mismatch;
+    }
+    if (immediate)
+    {
+        savedArg1 = 0;
+        savedArg2 = 0;
+        out = D3D_LockCurrentVBO(3 * triangleNum);
+        bb = gpst_DX_stDD->bigBuffer;
+        second = bb->vertexColorArraySecond;
+        alpha = gpst_DX_stDD->pd3drp->colorMaskAlpha;
+        mask = bb->colorMask;
+        colors = bb->vertexColorArray;
+        if (!colors)
         {
-            v35 = v91;
-        }
-        else
-        {
-            v35 = (v103 ^ (v33 | v31->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(v103 ^ (v33 | (v31->solidVertexColor & 0xff))) << 16) | (uint8_t)((v103 ^ (v33 | v31->solidVertexColor)) >> 16);
-            v91 = v35;
+            v91 = (mask ^ (alpha | bb->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(mask ^ (alpha | (bb->solidVertexColor & 0xff))) << 16) | (uint8_t)((mask ^ (alpha | bb->solidVertexColor)) >> 16);
         }
         if (D3DRenderParams.textureUVMode == 2)
         {
-            v106 = textureStageTypeConfig[0].d3d_colorarg1;
-            v107 = textureStageTypeConfig[0].d3d_colorarg1;
+            // preserved: the colour arg 2 backup is taken from arg 1
+            savedArg1 = textureStageTypeConfig[0].d3d_colorarg1;
+            savedArg2 = textureStageTypeConfig[0].d3d_colorarg1;
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1, 2, 0);
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2, 3, 0);
-            v35 = 0;
-            v101 = 0;
+            colors = 0;
             v91 = 0;
         }
-        v36 = triangleChunks->triangleChunkElems;
-        v37 = &v36[v105];
-        triangleChunksd = v37;
-        if (UVs)
+        useVertexUv = (gpst_DX_stDD->flags & 2) != 0;
+        tri = triangleChunks->triangleChunkElems;
+        triEnd = &tri[triangleNum];
+        for (; tri < triEnd; tri++)
         {
-            v38 = gpst_DX_stDD->flags;
-            if (v101)
+            for (k = 0; k < 3; k++)
             {
-                if ((v38 & 2) != 0)
+                if (k == 0)
+                    idx = tri->v1;
+                else if (k == 1)
+                    idx = tri->v2;
+                else
+                    idx = tri->v3;
+                out->v1 = verticesIN[idx];
+                if (colors)
                 {
-                    if (v36 < v37)
-                    {
-                        do
-                        {
-                            v39 = &verticesIN[v36->v1];
-                            v30->v1.x = v39->x;
-                            v30->v1.y = v39->y;
-                            v40 = v102;
-                            v30->v1.z = v39->z;
-                            v41 = v36->v1;
-                            v42 = v103 ^ (v40 | v101[v41]);
-                            v92 = (v42 >> 16) & 0xff;
-                            if (v104a)
-                            {
-                                v42 = v104a[v41] | v42 & 0xFFFFFF;
-                                v92 = (v42 >> 16) & 0xff;
-                            }
-                            v30->color = v42 & 0xFF00FF00 | ((uint8_t)v42 << 16) | v92;
-                            v30->uvSet1 = UVs[v36->v1];
-                            v43 = &verticesIN[v36->v2];
-                            v44 = v30 + 1;
-                            v44->v1.x = v43->x;
-                            v44->v1.y = v43->y;
-                            v45 = v102;
-                            v44->v1.z = v43->z;
-                            v46 = v36->v2;
-                            v47 = v103 ^ (v45 | v101[v46]);
-                            v93 = (v47 >> 16) & 0xff;
-                            if (v104a)
-                            {
-                                v47 = v104a[v46 * 4] | v47 & 0xFFFFFF;
-                                v93 = (v47 >> 16) & 0xff;
-                            }
-                            v44->color = v47 & 0xFF00FF00 | ((uint8_t)v47 << 16) | v93;
-                            v44->uvSet1 = UVs[v36->v2];
-                            v48 = &verticesIN[v36->v3];
-                            v49 = v44 + 1;
-                            v49->v1.x = v48->x;
-                            v49->v1.y = v48->y;
-                            v50 = v102;
-                            v49->v1.z = v48->z;
-                            v51 = v36->v3;
-                            v52 = v103 ^ (v50 | v101[v51]);
-                            v94 = (v52 >> 16) & 0xff;
-                            if (v104a)
-                            {
-                                v52 = v104a[v51] | v52 & 0xFFFFFF;
-                                v94 = (v52 >> 16) & 0xff;
-                            }
-                            v49->color = v52 & 0xFF00FF00 | ((uint8_t)v52 << 16) | v94;
-                            v49->uvSet1 = UVs[v36->v3];
-                            ++v36;
-                            v30 = v49 + 1;
-                        } while (v36 < triangleChunksd);
-                    }
+                    secondIdx = idx;
+                    // preserved: this one site scales the second colour
+                    // array's index by four, where the other seven do not
+                    if (UVs && useVertexUv && k == 1)
+                        secondIdx = idx * 4;
+                    out->color = D3D_VertexColor(colors, second, mask, alpha, idx, secondIdx);
                 }
-                else if (v36 < v37)
+                else
                 {
-                    do
-                    {
-                        v53 = &verticesIN[v36->v1];
-                        v30->v1.x = v53->x;
-                        v30->v1.y = v53->y;
-                        v54 = v102;
-                        v30->v1.z = v53->z;
-                        v55 = v36->v1;
-                        v56 = v103 ^ (v54 | v101[v55]);
-                        v95 = (v56 >> 16) & 0xff;
-                        if (v104a)
-                        {
-                            v56 = v104a[v55] | v56 & 0xFFFFFF;
-                            v95 = (v56 >> 16) & 0xff;
-                        }
-                        v30->color = v56 & 0xFF00FF00 | ((uint8_t)v56 << 16) | v95;
-                        v30->uvSet1 = UVs[v36->uv1];
-                        v57 = &verticesIN[v36->v2];
-                        v58 = v30 + 1;
-                        v58->v1.x = v57->x;
-                        v58->v1.y = v57->y;
-                        v59 = v102;
-                        v58->v1.z = v57->z;
-                        v60 = v36->v2;
-                        v61 = v103 ^ (v59 | v101[v60]);
-                        v96 = (v61 >> 16) & 0xff;
-                        if (v104a)
-                        {
-                            v61 = v104a[v60] | v61 & 0xFFFFFF;
-                            v96 = (v61 >> 16) & 0xff;
-                        }
-                        v58->color = v61 & 0xFF00FF00 | ((uint8_t)v61 << 16) | v96;
-                        v58->uvSet1 = UVs[v36->uv2];
-                        v62 = &verticesIN[v36->v3];
-                        v63 = v58 + 1;
-                        v63->v1.x = v62->x;
-                        v63->v1.y = v62->y;
-                        v64 = v102;
-                        v63->v1.z = v62->z;
-                        v65 = v36->v3;
-                        v66 = v103 ^ (v64 | v101[v65]);
-                        v97 = (v66 >> 16) & 0xff;
-                        if (v104a)
-                        {
-                            v66 = v104a[v65] | v66 & 0xFFFFFF;
-                            v97 = (v66 >> 16) & 0xff;
-                        }
-                        v63->color = v66 & 0xFF00FF00 | ((uint8_t)v66 << 16) | v97;
-                        v63->uvSet1 = UVs[v36->uv3];
-                        ++v36;
-                        v30 = v63 + 1;
-                    } while (v36 < triangleChunksd);
+                    out->color = v91;
                 }
-            }
-            else if ((v38 & 2) != 0)
-            {
-                if (v36 < v37)
+                if (UVs)
                 {
-                    do
-                    {
-                        v67 = &verticesIN[v36->v1];
-                        v30->v1.x = v67->x;
-                        v30->v1.y = v67->y;
-                        v30->v1.z = v67->z;
-                        v30->color = v91;
-                        v30->uvSet1 = UVs[v36->v1];
-                        v68 = &verticesIN[v36->v2];
-                        v69 = v30 + 1;
-                        v69->v1.x = v68->x;
-                        v69->v1.y = v68->y;
-                        v69->v1.z = v68->z;
-                        v69->color = v91;
-                        v69->uvSet1 = UVs[v36->v2];
-                        v70 = &verticesIN[v36->v3];
-                        ++v69;
-                        v69->v1.x = v70->x;
-                        v69->v1.y = v70->y;
-                        v69->v1.z = v70->z;
-                        v69->color = v91;
-                        v69->uvSet1 = UVs[v36->v3];
-                        ++v36;
-                        v30 = v69 + 1;
-                    } while (v36 < triangleChunksd);
+                    if (useVertexUv)
+                        out->uvSet1 = UVs[idx];
+                    else if (k == 0)
+                        out->uvSet1 = UVs[tri->uv1];
+                    else if (k == 1)
+                        out->uvSet1 = UVs[tri->uv2];
+                    else
+                        out->uvSet1 = UVs[tri->uv3];
                 }
+                out++;
             }
-            else if (v36 < v37)
-            {
-                do
-                {
-                    v71 = &verticesIN[v36->v1];
-                    v30->v1.x = v71->x;
-                    v30->v1.y = v71->y;
-                    v30->v1.z = v71->z;
-                    v30->color = v91;
-                    v30->uvSet1 = UVs[v36->uv1];
-                    v72 = &verticesIN[v36->v2];
-                    v73 = v30 + 1;
-                    v73->v1.x = v72->x;
-                    v73->v1.y = v72->y;
-                    v73->v1.z = v72->z;
-                    v73->color = v91;
-                    v73->uvSet1 = UVs[v36->uv2];
-                    v74 = &verticesIN[v36->v3];
-                    ++v73;
-                    v73->v1.x = v74->x;
-                    v73->v1.y = v74->y;
-                    v73->v1.z = v74->z;
-                    v73->color = v91;
-                    v73->uvSet1 = UVs[v36->uv3];
-                    ++v36;
-                    v30 = v73 + 1;
-                } while (v36 < triangleChunksd);
-            }
-        }
-        else if (v101)
-        {
-            if (v36 < v37)
-            {
-                do
-                {
-                    v75 = &verticesIN[v36->v1];
-                    v30->v1.x = v75->x;
-                    v30->v1.y = v75->y;
-                    v76 = v102;
-                    v30->v1.z = v75->z;
-                    v77 = v36->v1;
-                    v78 = v103 ^ (v76 | v101[v77]);
-                    v98 = (v78 >> 16) & 0xff;
-                    if (v32a)
-                    {
-                        v78 = v32a[v77] | v78 & 0xFFFFFF;
-                        v98 = (v78 >> 16) & 0xff;
-                    }
-                    v30->color = v78 & 0xFF00FF00 | ((uint8_t)v78 << 16) | v98;
-                    v79 = &verticesIN[v36->v2];
-                    v80 = v30 + 1;
-                    v80->v1.x = v79->x;
-                    v80->v1.y = v79->y;
-                    v81 = v102;
-                    v80->v1.z = v79->z;
-                    v82 = v36->v2;
-                    v83 = v103 ^ (v81 | v101[v82]);
-                    v99 = (v83 >> 16) & 0xff;
-                    if (v32a)
-                    {
-                        v83 = v32a[v82] | v83 & 0xFFFFFF;
-                        v99 = (v83 >> 16) & 0xff;
-                    }
-                    v80->color = v83 & 0xFF00FF00 | ((uint8_t)v83 << 16) | v99;
-                    v84 = &verticesIN[v36->v3];
-                    v85 = v80 + 1;
-                    v85->v1.x = v84->x;
-                    v85->v1.y = v84->y;
-                    v86 = v102;
-                    v85->v1.z = v84->z;
-                    v87 = v103 ^ (v86 | v101[v36->v3]);
-                    v100 = (v87 >> 16) & 0xff;
-                    if (v32a)
-                    {
-                        v87 = v32a[v36->v3] | v87 & 0xFFFFFF;
-                        v100 = (v87 >> 16) & 0xff;
-                    }
-                    v85->color = v87 & 0xFF00FF00 | ((uint8_t)v87 << 16) | v100;
-                    ++v36;
-                    v30 = v85 + 1;
-                } while (v36 < triangleChunksd);
-            }
-        }
-        else if (v36 < v37)
-        {
-            do
-            {
-                v88 = &verticesIN[v36->v1];
-                v30->v1.x = v88->x;
-                v30->v1.y = v88->y;
-                v30->v1.z = v88->z;
-                v30->color = v35;
-                v89 = &verticesIN[v36->v2];
-                v30[1].v1.x = v89->x;
-                v30[1].v1.y = v89->y;
-                v30[1].v1.z = v89->z;
-                v30[1].color = v35;
-                v90 = &verticesIN[v36->v3];
-                v30[2].v1.x = v90->x;
-                v30[2].v1.y = v90->y;
-                v30[2].v1.z = v90->z;
-                v30[2].color = v35;
-                ++v36;
-                v30 += 3;
-            } while (v36 < triangleChunksd);
         }
         D3D_FillCurrentVBO(0);
-        D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, v105);
+        D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, triangleNum);
         if (D3DRenderParams.textureUVMode != 5
             && D3DRenderParams.textureUVMode != 4
             && !D3DRenderParams.renderTargetBackup
             && D3D_setWaterRenderParamsIfWaterRenderingIsActive())
         {
-            D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, v105);
+            D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, triangleNum);
             D3D_RestoreRenderParamsAfterWaterRendering();
         }
         if (D3DRenderParams.textureUVMode == 2)
         {
-            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1, 2, v106);
-            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2, 3, v107);
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1, 2, savedArg1);
+            D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2, 3, savedArg2);
         }
         return 0;
     }
-    if (verticesIN == v5)
+    if (verticesIN == geogro->vertices)
     {
-        D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, v4->d3dvb, 0, 12);
+        D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, geogro->d3dvb, 0, 12);
     }
     else
     {
         if (D3DRenderParams.currTargetGao != gpst_DX_stDD->currTargetGao)
         {
-            if ((unsigned int)(D3DRenderParams.prevVertexElemIdx2 + v4->vertexNum) <= 0xFFFF)
+            if ((unsigned int)(D3DRenderParams.prevVertexElemIdx2 + geogro->vertexNum) <= 0xFFFF)
             {
-                v6 = D3DRenderParams.prevVertexElemIdx2;
+                start = D3DRenderParams.prevVertexElemIdx2;
                 D3DRenderParams.startVertexElemIdx2 = D3DRenderParams.prevVertexElemIdx2;
-                D3DRenderParams.prevVertexElemIdx2 += v4->vertexNum;
-                v7 = 4096;
+                D3DRenderParams.prevVertexElemIdx2 += geogro->vertexNum;
+                lockFlags = 4096;
             }
             else
             {
-                v6 = 0;
+                start = 0;
                 D3DRenderParams.startVertexElemIdx2 = 0;
-                D3DRenderParams.prevVertexElemIdx2 = v4->vertexNum;
-                v7 = 0x2000;
+                D3DRenderParams.prevVertexElemIdx2 = geogro->vertexNum;
+                lockFlags = 0x2000;
             }
             D3DRenderParams.currTargetGao = gpst_DX_stDD->currTargetGao;
             D3DRenderParams.d3dXYZVB->lpVtbl->Lock(
                 D3DRenderParams.d3dXYZVB,
-                v6 * D3DRenderParams.stride2,
-                D3DRenderParams.stride2 * v4->vertexNum,
-                &v103a,
-                v7);
-            memcpy(v103a, verticesIN, sizeof(Vec3) * v4->vertexNum);
+                start * D3DRenderParams.stride2,
+                D3DRenderParams.stride2 * geogro->vertexNum,
+                &locked,
+                lockFlags);
+            memcpy(locked, verticesIN, sizeof(Vec3) * geogro->vertexNum);
             D3DRenderParams.d3dXYZVB->lpVtbl->Unlock(D3DRenderParams.d3dXYZVB);
         }
         D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(
@@ -4597,38 +4278,35 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
             D3DRenderParams.startVertexElemIdx2 * D3DRenderParams.stride2,
             D3DRenderParams.stride2);
     }
-    v8 = gpst_DX_stDD->bigBuffer;
-    v9 = v8->colorMask;
-    v10 = v8->vertexColorArray;
-    v105 = v8->solidVertexColor;
-    v11 = D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 == gpst_DX_stDD->currTargetGao;
-    v107 = v9;
-    triangleChunksa = D3DRenderParams.colorMaskAlpha;
-    if (!v11
-        || D3DRenderParams.vertexColorArray != v10
-        || D3DRenderParams.colorMask != v9
+    bb = gpst_DX_stDD->bigBuffer;
+    mask = bb->colorMask;
+    colors = bb->vertexColorArray;
+    solid = bb->solidVertexColor;
+    alpha = D3DRenderParams.colorMaskAlpha;
+    if (D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 != gpst_DX_stDD->currTargetGao
+        || D3DRenderParams.vertexColorArray != colors
+        || D3DRenderParams.colorMask != mask
         || D3DRenderParams.colorMaskAlpha2 != D3DRenderParams.colorMaskAlpha
-        || D3DRenderParams.solidVertexColor != v105)
+        || D3DRenderParams.solidVertexColor != solid)
     {
-        if ((unsigned int)(D3DRenderParams.prevVertexElemIdx + v4->vertexNum) <= 0x3FFFF)
+        if ((unsigned int)(D3DRenderParams.prevVertexElemIdx + geogro->vertexNum) <= 0x3FFFF)
         {
             D3DRenderParams.startVertexElemIdx = D3DRenderParams.prevVertexElemIdx;
-            D3DRenderParams.prevVertexElemIdx += v4->vertexNum;
-            v12 = 4096;
+            D3DRenderParams.prevVertexElemIdx += geogro->vertexNum;
+            lockFlags = 4096;
         }
         else
         {
             D3DRenderParams.startVertexElemIdx = 0;
-            D3DRenderParams.prevVertexElemIdx = v4->vertexNum;
-            v12 = 0x2000;
+            D3DRenderParams.prevVertexElemIdx = geogro->vertexNum;
+            lockFlags = 0x2000;
         }
-        v13 = gpst_DX_stDD->currTargetGao;
         D3DRenderParams.colorMaskAlpha2 = D3DRenderParams.colorMaskAlpha;
-        D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 = v13;
-        D3DRenderParams.vertexColorArray = v10;
-        D3DRenderParams.colorMask = v9;
-        D3DRenderParams.solidVertexColor = v105;
-        D3DRenderParams.d3dColorsVB->lpVtbl->Lock(D3DRenderParams.d3dColorsVB, D3DRenderParams.startVertexElemIdx * D3DRenderParams.stride, D3DRenderParams.stride * v4->vertexNum, &v102a, v12);
+        D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 = gpst_DX_stDD->currTargetGao;
+        D3DRenderParams.vertexColorArray = colors;
+        D3DRenderParams.colorMask = mask;
+        D3DRenderParams.solidVertexColor = solid;
+        D3DRenderParams.d3dColorsVB->lpVtbl->Lock(D3DRenderParams.d3dColorsVB, D3DRenderParams.startVertexElemIdx * D3DRenderParams.stride, D3DRenderParams.stride * geogro->vertexNum, (void**)&lockedColors, lockFlags);
 
         /*
         if (gpst_DX_stDD->currTargetGao == (tGameObjectMain*)AI_ul_RealResolveOneRefObject(0x620031d4)) {
@@ -4648,29 +4326,19 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         }
         */
 
-        if (v10)
+        if (colors)
         {
-            v14 = v102a;
-            v15 = v10;
-            v105a = &v102a[v4->vertexNum];
-            if (v102a < v105a)
+            for (i = 0; i < geogro->vertexNum; i++)
             {
-                while (1)
-                {
-                    v106 = v9 ^ (triangleChunksa | *v15);
-                    v16 = v105a;
-                    *v14++ = v106 & 0xFF00FF00 | ((uint8_t)v106 << 16) | ((v106 >> 16) & 0xff);
-                    ++v15;
-                    if (v14 >= v16)
-                        break;
-                    v9 = v107;
-                }
+                unsigned int packed = mask ^ (alpha | colors[i]);
+                lockedColors[i] = packed & 0xFF00FF00 | ((uint8_t)packed << 16) | ((packed >> 16) & 0xff);
             }
         }
-        else if (v102a < &v102a[v4->vertexNum])
+        else
         {
-            for (i = 0; i < (((4 * v4->vertexNum - 1) >> 2) + 1); i++) {
-                v102a[i] = (v9 ^ (triangleChunksa | gpst_DX_stDD->bigBuffer->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(v9 ^ (triangleChunksa | (gpst_DX_stDD->bigBuffer->solidVertexColor & 0xff))) << 16) | (uint8_t)((v9 ^ ((unsigned int)triangleChunksa | gpst_DX_stDD->bigBuffer->solidVertexColor)) >> 16);
+            for (i = 0; i < (((4 * geogro->vertexNum - 1) >> 2) + 1); i++)
+            {
+                lockedColors[i] = (mask ^ (alpha | gpst_DX_stDD->bigBuffer->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(mask ^ (alpha | (gpst_DX_stDD->bigBuffer->solidVertexColor & 0xff))) << 16) | (uint8_t)((mask ^ ((unsigned int)alpha | gpst_DX_stDD->bigBuffer->solidVertexColor)) >> 16);
             }
         }
         D3DRenderParams.d3dColorsVB->lpVtbl->Unlock(D3DRenderParams.d3dColorsVB);
@@ -4683,31 +4351,31 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         D3DRenderParams.stride);
     if (D3DRenderParams.textureUVMode == 2)
     {
-        if (verticesIN == v4->vertices)
+        if (verticesIN == geogro->vertices)
         {
-            D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, v4->d3dvb2, 0, 12);
+            D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, geogro->d3dvb2, 0, 12);
         }
         else
         {
             if (D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle != gpst_DX_stDD->currTargetGao)
             {
-                if ((unsigned int)(D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle + v4->vertexNum) <= 0xFFFF)
+                if ((unsigned int)(D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle + geogro->vertexNum) <= 0xFFFF)
                 {
-                    v17 = D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle;
+                    start = D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle;
                     D3DRenderParams.currVertexStartOffset = D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle;
-                    D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle += v4->vertexNum;
-                    v18 = 4096;
+                    D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle += geogro->vertexNum;
+                    lockFlags = 4096;
                 }
                 else
                 {
-                    v17 = 0;
+                    start = 0;
                     D3DRenderParams.currVertexStartOffset = 0;
-                    D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle = v4->vertexNum;
-                    v18 = 8192;
+                    D3DRenderParams.sumVertexNumInDrawElementIndexedTriangle = geogro->vertexNum;
+                    lockFlags = 8192;
                 }
                 D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle = gpst_DX_stDD->currTargetGao;
-                D3DRenderParams.d3dNormalsBuffer->lpVtbl->Lock(D3DRenderParams.d3dNormalsBuffer, v17 * D3DRenderParams.d3dStride, D3DRenderParams.d3dStride * v4->vertexNum, &v103a, v18);
-                memcpy(v103a, v4->normals, 12 * v4->vertexNum);
+                D3DRenderParams.d3dNormalsBuffer->lpVtbl->Lock(D3DRenderParams.d3dNormalsBuffer, start * D3DRenderParams.d3dStride, D3DRenderParams.d3dStride * geogro->vertexNum, &locked, lockFlags);
+                memcpy(locked, geogro->normals, 12 * geogro->vertexNum);
                 D3DRenderParams.d3dNormalsBuffer->lpVtbl->Unlock(D3DRenderParams.d3dNormalsBuffer);
             }
             D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(
@@ -4722,94 +4390,14 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
             D3DRenderParams.d3dVertexDeclaration);
     }
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 3, 0, 0, 0);
-    D3DRenderParams.d3dDev->lpVtbl->SetIndices(D3DRenderParams.d3dDev, v4->d3dIndexBuf);
-    v19 = 0;
-    if (v104->streamsNum)
+    D3DRenderParams.d3dDev->lpVtbl->SetIndices(D3DRenderParams.d3dDev, geogro->d3dIndexBuf);
+    D3D_DrawIndexedStreams(geogro, block);
+    if (D3DRenderParams.textureUVMode != 5 && D3DRenderParams.textureUVMode != 4
+        && !D3DRenderParams.renderTargetBackup
+        && D3D_setWaterRenderParamsIfWaterRenderingIsActive())
     {
-        triangleChunksb = 0;
-        v20 = v104;
-        do
-        {
-            v21 = &v20->d3dStreamInfoElems[triangleChunksb];
-            if (D3DRenderParams.textureUVMode != 2)
-            {
-                v22 = v4->d3dUVVB;
-                if (v22)
-                {
-                    D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, v22[v21->vbIdx], 0, 8);
-                    D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
-                        D3DRenderParams.d3dDev,
-                        D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
-                    v20 = v104;
-                }
-                else
-                {
-                    D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, 0, 0, 0);
-                    D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
-                        D3DRenderParams.d3dDev,
-                        D3DRenderParams.vertexDeclarationIFd3dUVVBIsNull);
-                }
-            }
-            D3DRenderParams.d3dDev->lpVtbl->DrawIndexedPrimitive(
-                D3DRenderParams.d3dDev,
-                5,
-                0,
-                0,
-                v4->vertexNum,
-                v21->startIndex,
-                v21->primitiveCount - 2);
-            ++v19;
-            ++triangleChunksb;
-        } while (v19 < v20->streamsNum);
-    }
-    if (D3DRenderParams.textureUVMode != 5 && D3DRenderParams.textureUVMode != 4)
-    {
-        v24 = 0;
-        if (!D3DRenderParams.renderTargetBackup)
-        {
-            if (D3D_setWaterRenderParamsIfWaterRenderingIsActive())
-            {
-                v25 = v104;
-                if (v104->streamsNum)
-                {
-                    triangleChunksc = 0;
-                    do
-                    {
-                        v26 = &v25->d3dStreamInfoElems[triangleChunksc];
-                        if (D3DRenderParams.textureUVMode != 2)
-                        {
-                            v27 = v4->d3dUVVB;
-                            if (v27)
-                            {
-                                D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, v27[v26->vbIdx], 0, 8);
-                                D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
-                                    D3DRenderParams.d3dDev,
-                                    D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
-                                v25 = v104;
-                            }
-                            else
-                            {
-                                D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, 0, 0, 0);
-                                D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
-                                    D3DRenderParams.d3dDev,
-                                    D3DRenderParams.vertexDeclarationIFd3dUVVBIsNull);
-                            }
-                        }
-                        D3DRenderParams.d3dDev->lpVtbl->DrawIndexedPrimitive(
-                            D3DRenderParams.d3dDev,
-                            5,
-                            0,
-                            0,
-                            v4->vertexNum,
-                            v26->startIndex,
-                            v26->primitiveCount - 2);
-                        ++v24;
-                        ++triangleChunksc;
-                    } while (v24 < v25->streamsNum);
-                }
-                D3D_RestoreRenderParamsAfterWaterRendering();
-            }
-        }
+        D3D_DrawIndexedStreams(geogro, block);
+        D3D_RestoreRenderParamsAfterWaterRendering();
     }
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, 0, 0, 0);
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 1, 0, 0, 0);
