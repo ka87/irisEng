@@ -299,6 +299,26 @@ static void Rec(int v)
         gRet[gRetN++] = v;
 }
 
+/* Every live element's own state, recorded directly rather than left
+   to show up in the allocator's bytes: a freed block is scrubbed, so
+   a field that is only ever read back out of a dead element would go
+   unchecked. */
+static void RecList(tGfxElem* head)
+{
+    tGfxElem* e;
+    int n = 0;
+    for (e = head; e && n < 12; e = e->prevGfxElem, ++n)
+    {
+        unsigned int life;
+        memcpy(&life, &e->lifeTime, 4);
+        Rec(e->id);
+        Rec(e->type);
+        Rec(e->gfxFlags);
+        Rec((int)life);
+    }
+    Rec(n);
+}
+
 static void RecF(float f)
 {
     unsigned int bits;
@@ -406,6 +426,7 @@ static void caseList(const tApi* a, int c)
     Rec(a->AddSorted(&gList, (char)type, 1024, 0));
     Rec(a->AddSorted(&gList, (char)type, (uint16_t)(shape * 50), 0));
 
+    RecList(gList);
     a->SetCurrent(gList, (int16_t)id1);
     Rec((int)(GFX_gpst_Current != 0));
     a->SetCurrent(gList, 31337);
@@ -537,6 +558,7 @@ static void caseRender(const tApi* a, int c)
         e->lifeTime = (mode & 1) ? 0.0f : 2.0f;
     }
 
+    RecList(gList);
     TIM_gf_dt = 0.5f;
     GFXC_renderResult = (mode & 2) ? 1 : 0;
     a->Render(&gList, mode & 1);

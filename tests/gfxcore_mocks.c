@@ -159,14 +159,28 @@ void* MEM_p_ReallocAligned(void* old, unsigned int size, int align)
     return p;
 }
 
+/* A freed block is scrubbed rather than left readable.  Nothing is
+   handed back -- both sides have to see the same addresses -- but a
+   read through a pointer that has just been freed has to be visible,
+   or a loop that captures its successor one statement too late reads
+   the right answer and the test says nothing. */
+static void Scrub(void* p)
+{
+    unsigned int size = GFXC_SizeOf(p);
+    if (p && size)
+        memset(p, 0xDE, size);
+}
+
 void MEM_Free(void* p)
 {
     GFXC_Call("MEM_Free", 1, GFXC_P(p));
+    Scrub(p);
 }
 
 void MEM_FreeAlign(void* p)
 {
     GFXC_Call("MEM_FreeAlign", 1, GFXC_P(p));
+    Scrub(p);
 }
 
 /* ---- the geometry object ---- */
