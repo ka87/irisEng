@@ -334,6 +334,44 @@ void INO_CloseModule()
     INO_SavCloseModule();
 }
 
+/* While the input is suspended the game is kept away from everything
+   that reads a pad or a key. The joystick half needs no new mechanism:
+   clearing the mask is what the engine already does for controls it
+   wants ignored, so INO_Joystick_Move returns nothing and the pad
+   array is zeroed where it is read. The keyboard half is the early
+   return in INO_Keyboard_Update below.
+
+   Deliberately not covered: INO_v_MemoryCardManager, which INO_Update
+   calls separately, so saving and loading carry on. Nor the control
+   mode or submode, which stay as the game set them and stay visible
+   to everything that reads them. */
+static int ino_inputSuspended;
+static int ino_savedJoystickMask;
+
+void INO_SuspendInput(int suspend)
+{
+    if (suspend)
+    {
+        if (ino_inputSuspended)
+            return;
+        ino_savedJoystickMask = INO_l_JoystickMask;
+        INO_l_JoystickMask = 0;
+        ino_inputSuspended = 1;
+    }
+    else
+    {
+        if (!ino_inputSuspended)
+            return;
+        INO_l_JoystickMask = ino_savedJoystickMask;
+        ino_inputSuspended = 0;
+    }
+}
+
+int INO_b_InputSuspended(void)
+{
+    return ino_inputSuspended;
+}
+
 void INO_Keyboard_Update()
 {
     uint8_t* keys;
@@ -343,6 +381,8 @@ void INO_Keyboard_Update()
     INO_Keys_Prev = INO_Keys;
     memset(keys, 0, 256u);
     INO_Keys = keys;
+    if (ino_inputSuspended)
+        return;        /* the array stays as the memset left it */
     if (pcINO_keyboardDataBackup[157])
     {
         for (i = 0; i < 10; ++i)

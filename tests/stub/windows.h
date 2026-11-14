@@ -243,6 +243,7 @@ int      DrawTextA(HDC, LPCSTR, int, RECT*, UINT);
 #define VK_F5                              16398
 #define VK_F6                              16399
 #define VK_F7                              16400
+#define VK_F8                              16402
 #define VK_F10                             16401
 /* SC */
 #define SC_CLOSE                           16402

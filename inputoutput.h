@@ -149,6 +149,12 @@ void INO_PafSet(int intensity, int duration);
 int INO_i_PifPafEnable(int enable);
 int INO_i_GetDiscError();
 void INO_SetControlMode(int mode);
+/* Keeps the game's own input away from the pad and the keyboard
+   without touching the control mode, and without touching the memory
+   card manager, so saving and loading still work. Nests: a second
+   suspend does nothing and one release ends it. */
+void INO_SuspendInput(int suspend);
+int  INO_b_InputSuspended(void);
 void INO_SetMouseSensitivity(float sensitivity);
 void INO_SetControlSubmode(int submode);
 int INO_i_IsMouseBeingUsed();
