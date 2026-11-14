@@ -335,6 +335,7 @@
     <ClCompile Include="win\wingdi.c" />
     <ClCompile Include="win\wingdi_aftereffects.c" />
     <ClCompile Include="win\wininputoutput.c" />
+    <ClCompile Include="win\overlay.c" />
     <ClCompile Include="win\winsound.c" />
     <ClCompile Include="world.c" />
   </ItemGroup>
@@ -482,6 +483,7 @@
     <ClInclude Include="win\eax\eax.h" />
     <ClInclude Include="win\wingdi.h" />
     <ClInclude Include="win\wininputoutput.h" />
+    <ClInclude Include="win\overlay.h" />
     <ClInclude Include="win\winsound.h" />
     <ClInclude Include="world.h" />
   </ItemGroup>

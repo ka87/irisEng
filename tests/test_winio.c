@@ -497,6 +497,8 @@ static long cases, diffs;
 static const char* group = "?";
 static long opRan[OP_NUM];
 
+static long f12Skipped = 0;
+static void f12FieldCase(void);
 static long wheelScrollSkipped;
 static char baseLog[WINIO_LOGMAX][WINIO_LINEMAX];
 static int baseLogCount;
@@ -741,6 +743,22 @@ static void runCase(const Case* c, const State* start, long key)
     b = *start;
     runOp(&newSide, c, &b);
     captureState(&newSide, &b);
+
+    /* An F12 edge is deliberately not compared at all. The frozen copy
+       puts up the Win32 tweak dialog, which runs a whole dialog
+       procedure: it applies a tweak, fills the dialog buffer and
+       takes the devices in and out. The rewrite instead releases
+       DirectInput and raises the overlay's command field, so the calls
+       and everything they touch differ by design, and the two cannot
+       be lined up field by field. f12FieldCase below checks the new
+       path on its own, and every case that is not an F12 edge is
+       still compared in full. */
+    if (c->op == OP_UPDATE && start->haveKeyb
+        && winioScript.keybData[88] && !start->keybBackup[88])
+    {
+        f12Skipped++;
+        return;
+    }
 
     if (WINIO_LogCount() != baseLogCount)
     {
@@ -1365,6 +1383,96 @@ static void wheelNotchCase(void)
            (unsigned)(sizeof(wcases) / sizeof(wcases[0])), baseWrong);
 }
 
+/* The F12 path on its own, since runCase cannot compare it against the
+   frozen copy. The edge has to release both DirectInput devices and
+   raise the overlay's command field, and it has to do nothing at all
+   when the tweak keys are disabled or the key was already down. */
+static void f12FieldCase(void)
+{
+    static const struct { int down, wasDown, disabled, wantShow; } fcases[] = {
+        { 0x80, 0, 0, 1 },   /* the edge */
+        { 0x80, 0x80, 0, 0 },/* already held, so no edge */
+        { 0,    0, 0, 0 },   /* not pressed */
+        { 0x80, 0, 1, 0 },   /* tweak keys disabled */
+    };
+    unsigned i;
+    State st;
+    long baseWrong = 0;
+
+    group = "f12";
+    rngState = 0xF12Fu;
+    for (i = 0; i < sizeof(fcases) / sizeof(fcases[0]); ++i)
+    {
+        int shown;
+        int unacq;
+        int j;
+
+        randomState(&st);
+        randomScript();
+        st.haveMouse = 1;
+        st.haveKeyb = 1;
+        winioScript.mouseStateResult[0] = 0;
+        winioScript.keybStateResult[0] = 0;
+        memset(winioScript.mouseData, 0, sizeof(winioScript.mouseData));
+        memset(winioScript.keybData, 0, sizeof(winioScript.keybData));
+        memset(st.keybBackup, 0, sizeof(st.keybBackup));
+        winioScript.keybData[88] = (unsigned char)fcases[i].down;
+        st.keybBackup[88] = (unsigned char)fcases[i].wasDown;
+        winioScript.overlayCommandActive = 0;
+
+        dirtyStack();
+        WINIO_ResetMocks();
+        installState(&newSide, &st);
+        tweakFlagsDisabled = fcases[i].disabled;
+        newSide.joyUpdate(&st.pad);
+        tweakFlagsDisabled = 0;
+
+        shown = 0;
+        unacq = 0;
+        for (j = 0; j < WINIO_LogCount(); j++)
+        {
+            if (strcmp(WINIO_LogLine(j), "OVL_CommandShow") == 0)
+                shown = 1;
+            if (strncmp(WINIO_LogLine(j), "Unacquire(", 10) == 0)
+                unacq++;
+        }
+        if (shown != fcases[i].wantShow)
+        {
+            printf("  DIFF f12              down=%d wasDown=%d disabled=%d"
+                   " wantShow=%d got=%d\n", fcases[i].down, fcases[i].wasDown,
+                   fcases[i].disabled, fcases[i].wantShow, shown);
+            diffs++;
+        }
+        if (fcases[i].wantShow && unacq < 2)
+        {
+            printf("  DIFF f12              the field went up with %d device(s)"
+                   " released, wanted 2\n", unacq);
+            diffs++;
+        }
+
+        /* the frozen copy has no overlay at all, so it must never show
+           the field -- that is what gives this check its teeth */
+        dirtyStack();
+        WINIO_ResetMocks();
+        installState(&baseSide, &st);
+        tweakFlagsDisabled = fcases[i].disabled;
+        baseSide.joyUpdate(&st.pad);
+        tweakFlagsDisabled = 0;
+        for (j = 0; j < WINIO_LogCount(); j++)
+            if (strcmp(WINIO_LogLine(j), "OVL_CommandShow") == 0)
+                baseWrong++;
+        cases += 2;
+    }
+    if (baseWrong != 0)
+    {
+        printf("  DIFF f12              the frozen copy raised the field %ld"
+               " time(s), so the mock is leaking\n", baseWrong);
+        diffs++;
+    }
+    printf("  f12 field: %u cases; %ld log comparison(s) skipped on the edge\n",
+           (unsigned)(sizeof(fcases) / sizeof(fcases[0])), f12Skipped);
+}
+
 static void sweepDevices(void)
 {
     Case c;
@@ -1396,6 +1504,7 @@ static void sweepDevices(void)
     }
 
     wheelNotchCase();
+    f12FieldCase();
 
     group = "init/close";
     rngState = 0xAAAAu;

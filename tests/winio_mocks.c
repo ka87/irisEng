@@ -364,3 +364,21 @@ void WINIO_ResetMocks(void)
     dinputObj = &diObj;
     WINIO_DIObject = (IDirectInput8A*)&diObj;
 }
+
+/* the overlay's command field */
+int OVL_b_CommandActive(void)
+{
+    return winioScript.overlayCommandActive;
+}
+
+void OVL_CommandShow(void)
+{
+    WINIO_Log("OVL_CommandShow");
+    winioScript.overlayCommandActive = 1;
+}
+
+void OVL_CommandHide(void)
+{
+    WINIO_Log("OVL_CommandHide");
+    winioScript.overlayCommandActive = 0;
+}

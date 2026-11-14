@@ -764,7 +764,10 @@ void s_OneTrame()
         PRO_RasterGroup.unkRaster1.startTick = TIM_GetTicksAsInt32();
     ++PRO_RasterGroup.unkRaster1.insideCounter;
 
-    PRO_ProfilerWindowHandler();
+    // The rasters window is drawn by the in-game overlay now, on the
+    // left of the screen. PRO_ProfilerWindowHandler still builds the
+    // Win32 one and is left in place, unused.
+    // PRO_ProfilerWindowHandler();
     
     if (PRO_RasterGroup.unkRaster1.insideCounter)
     {

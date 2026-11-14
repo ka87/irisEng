@@ -1,4 +1,5 @@
 #include "wininputoutput.h"
+#include "overlay.h"
 #include "../inputoutput.h"
 #include "../math.h"
 #include "../time.h"
@@ -1105,29 +1106,39 @@ void pcINO_dinput_mouse_and_keyb_unacquire()
         pcINO_keybDevice->lpVtbl->Unacquire(pcINO_keybDevice);
 }
 
-void pcINO_HandleTweakFlags(HWND hWndParent)
+// One command line: a tweak name and a value. Split out of the old
+// dialog path so the overlay's command field runs the same thing.
+void pcINO_RunTweakCommand(const char* line)
 {
     tTweakElem* tweak;
-    float value = 0.0; // game doesn't initialize it, but it helps with sscanf fail.
+    float value = 0.0;
     char Key[32];
 
+    if (!line || !line[0])
+        return;
+    Key[0] = 0;
+    sscanf(line, "%31s %f", Key, &value);
+    if (!Key[0])
+        return;
+    tweak = (tTweakElem*)bsearch(Key, &tweaks, 17u, sizeof(tTweakElem), strcmp);
+    if (tweak)
+    {
+        if (tweak->type == 0)
+            *((int32_t*)(tweak->ptr)) = (uint64_t)value;
+        else if (tweak->type == 1)
+            *((float*)(tweak->ptr)) = value;
+        else if (tweak->type == 2)
+            ((void(*)(float))tweak->ptr)(value);
+    }
+}
+
+void pcINO_HandleTweakFlags(HWND hWndParent)
+{
     if (!tweakFlagsDisabled)
     {
         // TODO FIXME: megcsinalni azt a dialogot rendesen, nem csak egy karaktertömböt átadni!!!
         if (DialogBoxIndirectParamA(0, (LPCDLGTEMPLATEA)commandWindowDlgTemplate, hWndParent, DbgDialogFunc, 0) == 1)
-        {
-            sscanf(dbgDialogBuff, "%s %f", Key, &value);
-            tweak = (tTweakElem*)bsearch(Key, &tweaks, 17u, sizeof(tTweakElem), strcmp);
-            if (tweak)
-            {
-                if (tweak->type == 0)
-                    *((int32_t*)(tweak->ptr)) = (uint64_t)value;
-                else if (tweak->type == 1)
-                    *((float*)(tweak->ptr)) = value;
-                else if (tweak->type == 2)
-                    ((void(*)(float))tweak->ptr)(value);
-            }
-        }
+            pcINO_RunTweakCommand(dbgDialogBuff);
         pcINO_dinput_mouse_and_keyb_acquire();
     }
 }
@@ -1227,11 +1238,17 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
         keybd_event(0x73u, 0, 3u, 0);
         keybd_event(0xA4u, 0, 3u, 0);
     }
-    if (keyboardData[88] && !pcINO_keyboardDataBackup[88])
+    if (keyboardData[88] && !pcINO_keyboardDataBackup[88] && !OVL_b_CommandActive())
     {
-        pcINO_keybDevice->lpVtbl->Unacquire(pcINO_keybDevice);
-        pcINO_HandleTweakFlags(pcINO_Hwnd);
-        pcINO_keybDevice->lpVtbl->Acquire(pcINO_keybDevice);
+        // F12 raises the overlay's command field. DirectInput holds the
+        // keyboard and mouse exclusively, so both are released while the
+        // field is up and the characters arrive as window messages; Enter
+        // in the field runs the line and takes them back.
+        if (!tweakFlagsDisabled)
+        {
+            pcINO_dinput_mouse_and_keyb_unacquire();
+            OVL_CommandShow();
+        }
     }
     memcpy(pcINO_keyboardDataBackup, keyboardData, sizeof(pcINO_keyboardDataBackup));
 }

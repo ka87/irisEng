@@ -76,6 +76,7 @@ void pcINO_Joystick_Update(struct sInoPad* padData);
 void pcINO_SetMouseSensitivity(float t);
 float pcINO_case4MouseAmountCalc(float* accum, float* deadline, float limit);
 int  pcINO_case64StateMachineHandler(int pressed, int* state, float* deadline, float delay);
+void pcINO_RunTweakCommand(const char* line);
 void pcINO_dinput_mouse_and_keyb_acquire();
 void pcINO_dinput_mouse_and_keyb_unacquire();
 char* pcINO_GetFourKeyNamesCattedTogether(int action1, int action2, int action3, int action4);

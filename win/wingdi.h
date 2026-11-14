@@ -256,6 +256,12 @@ Vec3 AE_MS_PrevVec;
 void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem);
 void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
 void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
+// the overlay's screen-space pass, used by win/overlay.c
+void D3D_OverlayBegin(void);
+void D3D_OverlayDrawQuads(void* verts, int triangleCount);
+void D3D_OverlayEnd(void);
+void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color);
+
 void D3D_SetProjectionMatrix(tDDCamStruct* cam);
 void D3D_BeginSceneCall();
 void D3D_SetVertexShader(IDirect3DVertexShader9* shader);

@@ -1624,6 +1624,96 @@ static void RunCase(int kind, unsigned int seed)
     CompareLogs(kind, seed, savedLog, na);
 }
 
+/* The overlay's screen-space pass exists only on the new side, so it
+   has no frozen copy to be compared against. What matters about it is
+   that it leaves the renderer exactly as it found it: a render state
+   or a texture stage left behind would show up as corruption in the
+   next frame's geometry, not in the overlay. This drives the pass over
+   the device and requires the state hash to come back unchanged, and
+   it requires the hash to move inside the pass, so the check cannot
+   pass by the pass doing nothing. */
+void NEW_D3D_OverlayBegin(void);
+void NEW_D3D_OverlayDrawQuads(void* verts, int triangleCount);
+void NEW_D3D_OverlayEnd(void);
+
+/* the renderer's cached state, which the save/restore pair manages */
+static unsigned long long hashRenderStateConfig(void)
+{
+    unsigned long long h = 1469598103934665603ULL;
+    const unsigned char* p = (const unsigned char*)&renderStateConfig;
+    unsigned int i;
+
+    for (i = 0; i < sizeof(renderStateConfig); i++)
+    {
+        h ^= p[i];
+        h *= 1099511628211ULL;
+    }
+    return h;
+}
+
+static void reportStateDelta(const tD3dRenderStateConfigStruct* want)
+{
+    const unsigned char* a = (const unsigned char*)want;
+    const unsigned char* b = (const unsigned char*)&renderStateConfig;
+    unsigned int i;
+
+    for (i = 0; i < sizeof(renderStateConfig); i++)
+        if (a[i] != b[i])
+            printf("    byte %u of %u: want %02x got %02x\n",
+                   i, (unsigned)sizeof(renderStateConfig), a[i], b[i]);
+}
+
+static void overlayPassCase(void)
+{
+    tD3dRenderStateConfigStruct snapshot;
+    unsigned long long before;
+    unsigned long long inside;
+    unsigned long long after;
+    tVertexAndColor verts[6];
+    int i;
+
+    memset(verts, 0, sizeof(verts));
+    for (i = 0; i < 6; i++)
+    {
+        verts[i].v.x = (float)i;
+        verts[i].color = -1;
+    }
+
+    snapshot = renderStateConfig;
+    before = hashRenderStateConfig();
+    NEW_D3D_OverlayBegin();
+    inside = hashRenderStateConfig();
+    NEW_D3D_OverlayDrawQuads(verts, 2);
+    NEW_D3D_OverlayEnd();
+    after = hashRenderStateConfig();
+
+    casesRun++;
+    if (inside == before)
+    {
+        printf("  DIFF overlay pass     the pass changed no renderer state, so"
+               " this check has no teeth\n");
+        diffs++;
+    }
+    if (after != before)
+    {
+        printf("  DIFF overlay pass     renderer state not restored\n");
+        diffs++;
+    }
+
+    /* and again over state the first pass left, so a second one in the
+       same frame cannot drift */
+    NEW_D3D_OverlayBegin();
+    NEW_D3D_OverlayDrawQuads(verts, 2);
+    NEW_D3D_OverlayEnd();
+    casesRun++;
+    if (hashRenderStateConfig() != before)
+    {
+        printf("  DIFF overlay pass     renderer state drifted over two passes\n");
+        reportStateDelta(&snapshot);
+        diffs++;
+    }
+}
+
 int main(void)
 {
     int kind;
@@ -1642,6 +1732,8 @@ int main(void)
         for (seed = 0; seed < 16; seed++)
             RunCase(kind, 0xFFFF0000u + seed * 65537u);
     }
+
+    overlayPassCase();
 
     printf("  %d cases, %lld engine calls compared\n", casesRun, callsCompared);
     printf("  guard distribution:\n");

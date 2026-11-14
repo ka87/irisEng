@@ -87,3 +87,6 @@ extern int WGM_formatCall;
 
 void WGM_InstallDevice(void);
 unsigned long long WGM_HashState(void);
+
+/* how many times D3D_Flip reached the overlay. */
+extern int WGM_overlayDraws;

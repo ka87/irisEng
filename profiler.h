@@ -69,6 +69,7 @@ extern profilerRasterStructElem* PRO_FirstRasterPtr;
 extern profilerRasterStructElem* pointsToUnkRaster_dword_98F944;
 extern profilerRasterStructElem* PRO_CurrRaster;
 extern HWND PRO_rasterHWND;
+extern float gfDBGRasterSetTo60;
 
 void PRO_RasterAdd(profilerRasterStructElem* raster, char* group, char* subgroup, char* module, int kind, float value);
 void PRO_RecordTimeDecRef(profilerRasterStructElem* raster);

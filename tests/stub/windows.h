@@ -332,3 +332,14 @@ UINT     RegisterWindowMessageA(LPCSTR);
 BOOL     CreateDirectoryA(LPCSTR, void*);
 BOOL     QueryPerformanceFrequency(LARGE_INTEGER*);
 DWORD    MsgWaitForMultipleObjectsEx(DWORD, const HANDLE*, DWORD, DWORD, DWORD);
+
+/* The window messages the overlay's command field consumes, with the
+   values the real SDK gives them. The names above this point are
+   numbered sequentially on purpose -- see the banner -- but these four
+   are compared against each other and against PC_WNDMsgHandler's
+   range test, so a made-up ordering would change what the handler
+   does. */
+#define WM_KEYDOWN   0x0100
+#define WM_KEYUP     0x0101
+#define WM_CHAR      0x0102
+#define WM_SYSCHAR   0x0106
