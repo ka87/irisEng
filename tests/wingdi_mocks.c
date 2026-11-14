@@ -1129,3 +1129,14 @@ int _stricmp(const char* a, const char* b)
     }
     return (unsigned char)*a - (unsigned char)*b;
 }
+
+/* win/overlay.c is a translation unit of its own, so the overlay's two
+   entry points are mocked. The command field is never active here, so
+   the message hook consumes nothing and PC_WNDMsgHandler runs as it
+   did; OVL_Draw is counted so D3D_Flip's call to it is visible. */
+int WGM_overlayDraws = 0;
+
+void OVL_Draw(void) { WGM_overlayDraws++; }
+
+int OVL_b_CommandMessage(unsigned int msg, unsigned int wParam)
+{ (void)msg; (void)wParam; return 0; }

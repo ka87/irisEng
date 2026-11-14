@@ -48,6 +48,9 @@ typedef struct
     unsigned int diskFreeLow;
     unsigned int diskFreeHigh;
 
+    /* the overlay's command field */
+    int overlayCommandActive;
+
     /* the tweak dialog */
     int dialogResult;
     char dialogText[128];
@@ -82,3 +85,9 @@ void WINIO_TweakCallback(float value);
 extern float WINIO_tweakInt;
 extern float WINIO_tweakFloat;
 extern int32_t WINIO_tweakIntTarget;
+
+/* win/overlay.c is a translation unit of its own; the command field is
+   mocked so the F12 path is observable in the log. */
+int  OVL_b_CommandActive(void);
+void OVL_CommandShow(void);
+void OVL_CommandHide(void);

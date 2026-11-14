@@ -35,5 +35,16 @@
 #undef  WM_MOUSEFIRST
 #define WM_MOUSEFIRST             0x0200
 
+/* the four the overlay's command field consumes, so PC_WNDMsgHandler's
+   range test sees them where Win32 puts them */
+#undef  WM_KEYDOWN
+#define WM_KEYDOWN                0x0100
+#undef  WM_KEYUP
+#define WM_KEYUP                  0x0101
+#undef  WM_CHAR
+#define WM_CHAR                   0x0102
+#undef  WM_SYSCHAR
+#define WM_SYSCHAR                0x0106
+
 #undef  SC_CLOSE
 #define SC_CLOSE                  0xF060

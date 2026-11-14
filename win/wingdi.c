@@ -10,6 +10,7 @@
 #include "wininputoutput.h"
 #include "../resource.h"
 #include "wingdi.h"
+#include "overlay.h"
 #include "../profiler.h"
 
 D3DMATRIX d3dProjectionMtx = { 1.4616959f, 0.0, 0.0, 0.0,
@@ -1483,6 +1484,62 @@ void D3D_RestoreEverythingFromBackup()
     }
     if (d3dparamsSaveType != 2)
         D3D_RenderStateRestore(&renderstateBackup);
+}
+
+// The overlay's screen-space pass. The render states live here
+// because two of the setters are file-local; the overlay itself only
+// builds geometry and strings.
+void D3D_OverlayBegin(void)
+{
+    D3DMATRIX mtx;
+    float viewWidth;
+    float viewHeight;
+
+    viewWidth = (float)D3DRenderParams.d3dViewPort.Width;
+    viewHeight = (float)D3DRenderParams.d3dViewPort.Height;
+
+    D3D_SaveEverythingToBackup(1);
+
+    memset(&mtx, 0, sizeof(mtx));
+    mtx._11 = 1.0f;
+    mtx._22 = 1.0f;
+    mtx._33 = 1.0f;
+    mtx._44 = 1.0f;
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, &mtx);
+    D3DXMatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &mtx);
+
+    D3D_SetVertexShader(0);
+    D3D_SetFixedFunctionFVF(D3DFVF_DIFFUSE | D3DFVF_XYZ);
+    if (renderStateConfig.d3d_zEnable)
+    {
+        renderStateConfig.d3d_zEnable = D3DZB_FALSE;
+        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZENABLE, D3DZB_FALSE);
+    }
+    D3D_RenderStateSet(&renderStateConfig.d3dCullMode, D3DRS_CULLMODE, D3DCULL_NONE);
+    D3D_RenderStateSet(&renderStateConfig.d3d_Lighting, D3DRS_LIGHTING, FALSE);
+    D3D_RenderStateSet(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, 0xf);
+    D3D_RenderStateSet(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, TRUE);
+    D3D_RenderStateSet(&renderStateConfig.d3dSrcBlend, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    D3D_RenderStateSet(&renderStateConfig.d3dDestBlend, D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    D3D_SetTexture(0, -1);
+    D3D_SetTexture(1, -1);
+    D3D_SetTexture(2, -1);
+    D3D_SetTexture(3, -1);
+}
+
+void D3D_OverlayDrawQuads(void* verts, int triangleCount)
+{
+    if (triangleCount <= 0)
+        return;
+    D3DRenderParams.d3dDev->lpVtbl->DrawPrimitiveUP(
+        D3DRenderParams.d3dDev, D3DPT_TRIANGLELIST, triangleCount,
+        verts, sizeof(tVertexAndColor));
+}
+
+void D3D_OverlayEnd(void)
+{
+    D3D_RestoreEverythingFromBackup();
 }
 
 void D3D_RastersSetAndDrawAQuad(int color, float x, float y, float w, float h, int flush)
@@ -3061,6 +3118,7 @@ void D3D_Flip()
     struct tagMSG Msg;
 
     Rasters_Update();
+    OVL_Draw();           // the overlay goes last, on top of everything
     if (D3DRenderParams.d3dNeedToCallEndScene)
     {
         D3DRenderParams.d3dDev->lpVtbl->EndScene(D3DRenderParams.d3dDev);
@@ -4525,6 +4583,14 @@ int PC_HandleWindowCreateAndEraseBackgroundMessages(HWND hwnd, GLOBAL_MainHandle
 int PC_WNDMsgHandler(HWND hWnd, int msg, int wParam, int lParam, int* ret)
 {
     CHAR stats[512];
+
+    // While the overlay's command field has the keyboard, DirectInput
+    // is released and the characters arrive here instead.
+    if (OVL_b_CommandMessage((unsigned int)msg, (unsigned int)wParam))
+    {
+        *ret = 0;
+        return 1;
+    }
 
     if ((unsigned int)msg > WM_ACTIVATEAPP)
     {

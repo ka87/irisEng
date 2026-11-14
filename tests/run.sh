@@ -463,7 +463,8 @@ for one in tests/runworld.sh \
            tests/run_winio.sh \
            tests/run_winsound.sh \
            tests/run_wingdi_ae.sh \
-           tests/run_wingdi.sh
+           tests/run_wingdi.sh \
+           tests/run_overlay.sh
 do
     name=$(basename "$one" .sh)
     [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) continue ;; esac
