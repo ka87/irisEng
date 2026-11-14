@@ -125,6 +125,18 @@ void MATH_RotateMatrix_AroundLocalXAxis(Mtx4x4* mtx, float angle)
     ecm_rotateAbout(&mtx->v3, &axis, angle);
 }
 
+/* The game camera's object matrix, which the sync reads through the
+   same call WOR_View_FollowFather uses. */
+static Mtx4x4 ecm_gaoMtx;
+static int ecm_absMatrixCalls;
+
+void OBJ_MakeAbsoluteMatrix(tGameObjectMain* gao, Mtx4x4* dest)
+{
+    (void)gao;
+    ecm_absMatrixCalls++;
+    memcpy(dest, &ecm_gaoMtx, sizeof(*dest));
+}
+
 /* the device, below the gate */
 char pcINO_keyboardDataBackup[266];
 static Vec3 ecm_stick[2];
@@ -217,6 +229,8 @@ static void worldReset(void)
     ecm_suspended = 0;
     ecm_setViewPointCalls = 0;
     ecm_gameFollowCalls = 0;
+    ecm_absMatrixCalls = 0;
+    MATH_SetIdentityMatrixLocal(&ecm_gaoMtx);
 }
 
 /* ------------------------------------------------------------- the checks */
@@ -550,6 +564,153 @@ static void turningAndLooking(void)
     ECAM_Toggle();
 }
 
+/* Pitch the identity about its own X axis, the way a camera looking
+   up or down is pitched. */
+static void ecm_pitchedMatrix(Mtx4x4* mtx, float angle)
+{
+    Vec3 axis;
+
+    MATH_SetIdentityMatrixLocal(mtx);
+    axis.x = 1.0f;
+    axis.y = 0.0f;
+    axis.z = 0.0f;
+    ecm_rotateAbout(&mtx->v2, &axis, angle);
+    ecm_rotateAbout(&mtx->v3, &axis, angle);
+}
+
+/* The world pitch of whatever the camera is looking along, which is
+   what the limit is really about. Read off the matrix rather than off
+   the module's own counter, so a counter that disagrees with the
+   matrix cannot hide. */
+static float ecm_lookPitch(void)
+{
+    float sine = ecam_mtx.v2.z;
+
+    if (sine > 1.0f)
+        sine = 1.0f;
+    if (sine < -1.0f)
+        sine = -1.0f;
+    return asinf(sine);
+}
+
+static void syncToGameCamera(void)
+{
+    /* position, sight and banking in one go */
+    worldReset();
+    ECAM_Toggle();
+
+    MATH_SetIdentityMatrixLocal(&ecm_gaoMtx);
+    ecm_gaoMtx.Pos.x = -4.0f;
+    ecm_gaoMtx.Pos.y = 55.0f;
+    ecm_gaoMtx.Pos.z = 7.5f;
+    /* a banked camera: rolled about its own forward axis, so the
+       lateral and vertical rows tilt and the forward row does not */
+    {
+        Vec3 roll;
+        roll.x = 0.0f;
+        roll.y = 1.0f;
+        roll.z = 0.0f;
+        ecm_rotateAbout(&ecm_gaoMtx.v1, &roll, 0.4f);
+        ecm_rotateAbout(&ecm_gaoMtx.v3, &roll, 0.4f);
+    }
+
+    ECAM_SyncToGameCamera();
+    okEq(ecm_absMatrixCalls, 1, "the sync reads the assigned object once");
+    okNear(ecam_mtx.Pos.x, -4.0f, 0.0001f, "it takes the game camera's x");
+    okNear(ecam_mtx.Pos.y, 55.0f, 0.0001f, "and y");
+    okNear(ecam_mtx.Pos.z, 7.5f, 0.0001f, "and z");
+    okNear(ecam_mtx.v2.x, ecm_gaoMtx.v2.x, 0.0001f, "and the sight");
+    okNear(ecam_mtx.v2.y, ecm_gaoMtx.v2.y, 0.0001f, "all of it");
+    okNear(ecam_mtx.v2.z, ecm_gaoMtx.v2.z, 0.0001f, "all of it");
+    okNear(ecam_mtx.v1.z, ecm_gaoMtx.v1.z, 0.0001f, "and the banking");
+    okNear(ecam_mtx.v3.z, ecm_gaoMtx.v3.z, 0.0001f, "all of that too");
+    ok(ecam_mtx.v1.z != 0.0f, "the banked fixture really is banked");
+
+    /* and the view gets it */
+    ecm_views[1].viewFunctionPtr(&ecm_views[1]);
+    okNear(ecm_lastViewPoint.Pos.y, 55.0f, 0.0001f, "and the view is given it");
+
+    /* once, and not every frame: the object moving afterwards does
+       not drag the camera along with it */
+    ecm_gaoMtx.Pos.y = 999.0f;
+    TIM_gf_dt = 1.0f / 60.0f;
+    ECAM_Update();
+    ECAM_Update();
+    okNear(ecam_mtx.Pos.y, 55.0f, 0.0001f, "the sync does not keep following");
+    okEq(ecm_absMatrixCalls, 1, "and does not read the object again");
+    ECAM_Toggle();
+}
+
+static void syncWhenThereIsNothingToSyncTo(void)
+{
+    /* Off: nothing happens, and nothing is read.
+    
+       Note that the !ecam_active half of the guard in
+       ECAM_SyncToGameCamera is not what this proves: releasing the
+       camera clears ecam_view as well, so the !ecam_view half catches
+       this on its own and removing the other one changes nothing
+       observable. The module never reaches a state where one is set
+       and the other is not, so the term is defence rather than a live
+       requirement, and no test here can see it. */
+    worldReset();
+    ECAM_SyncToGameCamera();
+    okEq(ecm_absMatrixCalls, 0, "a sync with the camera off reads nothing");
+    okEq(ECAM_b_Active(), 0, "and does not turn it on");
+
+    /* on, but the view has no object: the camera stays where it is */
+    worldReset();
+    ECAM_Toggle();
+    ecm_views[1].assignedGao = NULL;
+    ecm_gaoMtx.Pos.y = 123.0f;
+    ECAM_SyncToGameCamera();
+    okEq(ecm_absMatrixCalls, 0, "a view with no object is not read");
+    okNear(ecam_mtx.Pos.y, 20.0f, 0.0001f, "and the camera does not move");
+    ECAM_Toggle();
+}
+
+/* The look limit is about the world's horizon, so syncing to a camera
+   that is already pitched must not buy a further limit's worth of
+   pitch on top of it. This measures the matrix, not the module's
+   counter, so it holds whichever way round the engine's rotation
+   turns. */
+static void theLimitSurvivesASync(void)
+{
+    int i;
+
+    worldReset();
+    ECAM_Toggle();
+    ecm_pitchedMatrix(&ecm_gaoMtx, 1.0f);      /* well past half the limit */
+    ECAM_SyncToGameCamera();
+    okNear(ecm_lookPitch(), 1.0f, 0.01f, "the synced camera is pitched as the game's was");
+
+    ecm_stick[1].y = 1.0f;
+    TIM_gf_dt = 0.5f;
+    for (i = 0; i < 100; i++)
+        ECAM_Update();
+    okNear(fabsf(ecm_lookPitch()), ECAM_PITCHLIMIT, 0.01f,
+           "looking up from a synced pitch still stops at the limit");
+
+    ecm_stick[1].y = -1.0f;
+    for (i = 0; i < 100; i++)
+        ECAM_Update();
+    okNear(fabsf(ecm_lookPitch()), ECAM_PITCHLIMIT, 0.01f,
+           "and so does looking down");
+    ECAM_Toggle();
+
+    /* the other way round, from a camera pitched the other way */
+    worldReset();
+    ECAM_Toggle();
+    ecm_pitchedMatrix(&ecm_gaoMtx, -1.0f);
+    ECAM_SyncToGameCamera();
+    ecm_stick[1].y = 1.0f;
+    TIM_gf_dt = 0.5f;
+    for (i = 0; i < 100; i++)
+        ECAM_Update();
+    okNear(fabsf(ecm_lookPitch()), ECAM_PITCHLIMIT, 0.01f,
+           "a sync the other way round holds the limit too");
+    ECAM_Toggle();
+}
+
 int main(void)
 {
     printf("=== editor camera unit test ===\n");
@@ -564,6 +725,9 @@ int main(void)
     speedModifiers();
     movesWithTheClock();
     turningAndLooking();
+    syncToGameCamera();
+    syncWhenThereIsNothingToSyncTo();
+    theLimitSurvivesASync();
 
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
     if (fails)

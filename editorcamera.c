@@ -1,5 +1,6 @@
 #include "editorcamera.h"
 
+#include "gameobject.h"
 #include "inputoutput.h"
 #include "math.h"
 #include "time.h"
@@ -142,6 +143,43 @@ void ECAM_Toggle(void)
     ecam_active = 1;
 
     INO_SuspendInput(1);
+}
+
+/* Takes the game camera's position and orientation once, so the free
+   camera carries on from where the game is looking -- its sight and
+   its banking included, which is why the whole matrix is adopted
+   rather than an angle pair read out of it.
+   
+   The matrix comes from the assigned object, which is the same place
+   WOR_View_FollowFather reads it from, so what is adopted is exactly
+   what the game's camera would be this frame. Calling the saved
+   follow function instead would also work and would be shorter, but
+   it writes the view and its previous viewpoint on the way past, and
+   this has to be a read. */
+void ECAM_SyncToGameCamera(void)
+{
+    float sine;
+
+    if (!ecam_active || !ecam_view || !ecam_view->assignedGao)
+        return;
+
+    OBJ_MakeAbsoluteMatrix(ecam_view->assignedGao, &ecam_mtx);
+
+    /* The look limit is measured from the world's horizon, so the
+       pitch is read back out of the matrix just adopted rather than
+       reset to zero. Reset, a sync to an already-pitched camera could
+       then be pitched a further whole limit on top of it.
+       
+       Forward is -v2 and the up axis is the world's Z, so the sine of
+       the pitch is v2.z. */
+    sine = ecam_mtx.v2.z;
+    if (sine > 1.0f)
+        sine = 1.0f;
+    if (sine < -1.0f)
+        sine = -1.0f;
+    ecam_pitch = (float)asin((double)sine);
+
+    ecam_mtx.mtxflag |= 0x2;
 }
 
 void ECAM_Update(void)

@@ -1153,3 +1153,7 @@ void OVL_RastersCycleView(void) { WGM_overlayCycles++; }
 int WGM_editorCameraToggles = 0;
 
 void ECAM_Toggle(void) { WGM_editorCameraToggles++; }
+
+int WGM_editorCameraSyncs = 0;
+
+void ECAM_SyncToGameCamera(void) { WGM_editorCameraSyncs++; }

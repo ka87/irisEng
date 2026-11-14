@@ -50,6 +50,11 @@
 void ECAM_Toggle(void);
 int  ECAM_b_Active(void);
 
+/* Takes the game camera's position, sight and banking, once. Does
+   nothing when the camera is off, or when the view it took has no
+   object assigned to it. */
+void ECAM_SyncToGameCamera(void);
+
 /* Once a frame, before the views are updated: reads the device and
    moves the camera. Cheap and safe to call when inactive. */
 void ECAM_Update(void);

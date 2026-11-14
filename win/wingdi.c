@@ -5099,6 +5099,14 @@ void PC_EngineCheatFinal()
         ECAM_Toggle();
         while (GetAsyncKeyState(VK_F8) < 0);
     }
+
+    if (GetAsyncKeyState(VK_F9) < 0)
+    {
+        // Puts the free camera where the game's camera is looking,
+        // once per press.
+        ECAM_SyncToGameCamera();
+        while (GetAsyncKeyState(VK_F9) < 0);
+    }
     if (GetAsyncKeyState(VK_F2) < 0)
     {
         if (MAI_gst_MainHandles.currentWorld)

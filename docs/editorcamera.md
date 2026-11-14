@@ -112,16 +112,45 @@ axis has no lateral axis left to turn around.
 | `E` / `Q` | up, down |
 | `Left Shift` | five times faster |
 | `Left Ctrl` | a fifth of the speed |
+| **F9** | take the game camera's position, sight and banking, once |
 
 Speeds and rates are the constants at the top of `editorcamera.c`.
 A key counts as a full stick deflection, which the test checks, so the
 two can be mixed.
 
-## Why F8
+## Snapping to the game's camera
+
+**F9** puts the free camera where the game's camera is looking, once
+per press: its position, its sight and its banking. The whole matrix
+is adopted rather than an angle pair read out of it, which is what
+carries the banking across.
+
+The matrix comes from the view's assigned object, through the same
+`OBJ_MakeAbsoluteMatrix` call `WOR_View_FollowFather` makes, so what
+is adopted is exactly what the game's camera would be this frame.
+Calling the saved follow function instead would also work and would
+be shorter, but it writes the view and its previous viewpoint on the
+way past, and this has to be a read.
+
+**The pitch is read back out of the adopted matrix**, not reset. Reset
+to zero, a sync to a camera already pitched down by a radian could
+then be pitched a further whole limit on top of it, and the look limit
+is about the world's horizon rather than about wherever the last sync
+happened. Forward is `-v2` and the up axis is the world's Z, so the
+sine of the pitch is `v2.z`.
+
+That last step is the one place in this file where a sign could be
+wrong without anything complaining, so the test does not check the
+module's own pitch counter. It pitches a synced camera hard against
+the limit and then measures **the matrix** -- a wrong sign sends the
+camera a whole radian past vertical while leaving the counter looking
+tidy, and the two injected sign defects are caught that way.
+
+## Why F8 and F9
 
 F1 to F7 and F10 are taken by `PC_EngineCheatFinal`, F12 by the
 overlay's command field, and Alt+F4 quits. **F8, F9 and F11** were
-unbound; F8 is the first of them.
+unbound; F8 toggles and F9 syncs, leaving F11.
 
 ## Standing down safely
 
@@ -142,7 +171,7 @@ written to.
 
 ## The tests
 
-`tests/run_editorcamera.sh`, 51 checks. It includes `editorcamera.c`
+`tests/run_editorcamera.sh`, 72 checks. It includes `editorcamera.c`
 so it can read back which view was taken and where the camera is, and
 it stands in for the engine around it.
 
@@ -151,14 +180,26 @@ did nothing would leave every check about which axis the camera moves
 along passing on code that moved along the wrong one, which is the
 mistake most worth catching in a file like this.
 
-Fourteen defects were injected one at a time and every one was caught:
+Twenty-one defects were injected one at a time and twenty were
+caught:
 the follow not substituted, the follow cleared instead of restored,
 the input not taken, the input not given back, not starting from the
 game's camera, the world-change guard dropped, forward as `+v2`,
 strafe along the vertical axis, the pitch limit dropped, yaw around
 the local axis instead of the world's, the clock ignored, the speed
 modifiers dropped, a view that is not being drawn taken, and a removed
-view taken.
+view taken. Then, for the sync: the pitch not read back, the pitch
+sign flipped, only the position adopted, only the orientation
+adopted, a sync with no object assigned, and a sync left running
+every frame instead of once.
+
+**The twenty-first is not observable, and the reason is the point.**
+Removing the `!ecam_active` half of the sync's guard changes nothing:
+releasing the camera clears `ecam_view` too, so the other half catches
+it alone, and the module never reaches a state where one is set and
+the other is not. The term is defence rather than a live requirement.
+It is noted in the test beside the case that looks like it covers it,
+so the next reader does not take that case for proof.
 
 The gate has its own cases in `tests/run_io.sh` — the harness that
 owns `inputoutput.c` — because that is where the real
