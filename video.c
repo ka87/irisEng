@@ -518,6 +518,15 @@ void VID_NextFrame(tVideoStream* video)
     video->frameTime += video->frameSeconds;
 }
 
+int VID_b_NextAlsoDue(tVideoStream* video)
+{
+    if (!video || video->ended || !video->haveFrame)
+        return 0;
+    if (!video->wallStart)
+        return 0;
+    return VID_d_Clock(video) >= video->frameTime + video->frameSeconds;
+}
+
 int VID_b_Waiting(tVideoStream* video)
 {
     if (!video || video->ended)

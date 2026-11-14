@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "bink.h"
+#include "video.h"
 
 typedef struct sJpegLibIntf
 {
@@ -305,28 +305,22 @@ typedef struct sTexProcPhoto
 } tTexProcPhoto;
 
 
-// Bink
-typedef struct sBinkUnkStruct
+// A video texture, streamed out of the .bf.
+//
+// The block list, slot mask and busy flags that used to be here were
+// there to satisfy a decoder that wanted its input pushed to it in
+// fixed-size pieces. libav pulls instead, through one callback, so
+// what is left is where to read from and how much is left to read.
+typedef struct sVideoStreamBF
 {
-    char* blockDataStartPtr;
-    int stateMachine2MeansBusy;
-    struct sBinkUnkStruct* nextDataBlock;
-    int actSlotID;
-} tBinkUnkStruct;
-
-typedef struct sBinkIFPtr
-{
-    HBINK binkHandle;
-    int binkVideoKey;
+    tVideoStream* video;
+    int videoKey;
     struct sTexProceduralStruct* proceduralStructPtr;
-    int filePosInBF;
-    int size;
-    int dataBlockStartCurrOffset;
-    int videofilesize;
-    struct sBinkUnkStruct* linkedListStart;
-    struct sBinkUnkStruct* actualElemInLinkedList;
-    char* dataAndLinkedList;
-} tBinkIFPtr;
+    int filePosInBF;      // where the next read comes from
+    int remaining;        // bytes left in the .bf member
+    int startPosInBF;     // where the member began, for a restart
+    int startSize;
+} tVideoStreamBF;
 
 typedef struct stTexProcMpegSub
 {
@@ -342,8 +336,8 @@ typedef struct stTexProcMpegSub
     int ii1;
     int ii2;
     int ii3;
-    int binkKey;
-    tBinkIFPtr* binkIFPtr;
+    int videoKey;
+    tVideoStreamBF* videoStream;
     int ii5;
 } tTexProcMpegSub;
 
@@ -384,8 +378,6 @@ tEngTexListStruct TEX_gst_GlobalList;
 tMatSpriteList* MAT_SPRT_AllSprt;
 tBumpMapList MAT_gst_BumpMapList;
 
-// Bink
-tBinkIFPtr* BINK_IF_PTR_GLOBAL;
 tTexProcMpeg* TEXPRO_pst_CurrentMpeg;
 
 int TEXPRO_Cos[256];
@@ -440,7 +432,7 @@ void TEX_Manager_Reinit(struct sTexManagerStruct* mgr);
 void TEX_File_DevelopParams(tEngTexIntermediateStruct* tex);
 void TEX_File_LoadPalette(tEngPaletteElem* pal, int swapRB);
 int TEX_l_File_GetInfo(int key, tEngTexIntermediateStruct* tex, int paramsOnly);
-void PC_VideoStreamCreate_Bink(tBinkIFPtr* binkIFPtr, int videoKey);
+void PC_VideoStreamCreate(tVideoStreamBF* stream, int videoKey);
 void TEX_File_FreeDescription(struct sEngTexIntermediateStruct* tex);
 void TEX_l_ConvertSize_24To32(struct sEngTexIntermediateStruct* src, struct sEngTexIntermediateStruct* dest);
 int TEX_l_ConvertPF(struct sEngTexIntermediateStruct* src, struct sEngTexIntermediateStruct* dest);

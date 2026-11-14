@@ -28,6 +28,9 @@
 #include "../loading.h"
 #include "../bigfiles.h"
 #include "../textures.h"
+/* the Bink types and entry points the frozen copy still uses; the
+   engine itself decodes through libav now */
+#include "bink.h"
 #include "../time.h"
 #include "../gdi.h"
 #include "../soft.h"
@@ -167,6 +170,19 @@ static void checkInt(const char* what, const char* detail, int a, int b)
     ++valuesCompared;
     if (a != b)
         fail(what, detail, a, b);
+}
+
+/* The cases below the differential ones drive one side only, so
+   base/new is the wrong label for what they compare. */
+static void checkIs(const char* what, const char* detail, int got, int want)
+{
+    ++valuesCompared;
+    if (got != want)
+    {
+        if (failures < 20)
+            printf("  FAIL %-34s %s  got=%d want=%d\n", what, detail, got, want);
+        ++failures;
+    }
 }
 
 static void compareSides(const char* what)
@@ -872,533 +888,236 @@ static void tableCases(void)
 static tBinkIFPtr stream[2];
 static char readBuf[2][16384];
 
-static void slotCases(void)
+/* The video half of this file used to be checked here: the slot
+   mask, the block ring, the six Bink I/O callbacks and the MPEG state
+   machine driving them. All of that apparatus is gone -- libav pulls
+   its input through one callback -- so there is nothing on the
+   rewrite's side for those cases to be compared against, and they
+   have been removed rather than left comparing a frozen copy with
+   itself.
+   
+   What replaces them is below: the new path driven directly, which
+   is the same treatment the overlay's F12 edge got when it stopped
+   being comparable. The reader is the part worth checking here --
+   where it reads from, how much, and that it stops at the end of the
+   .bf member rather than running on into whatever follows. The
+   decoding beyond it is tests/test_video.c's job.
+   
+   PC_VideoStreamCreate hands the reader to libav, which will not
+   recognise a mocked .bf as a video and returns NULL; that is the
+   case the engine already handles, and it is the one reachable here
+   without a real video in the archive. */
+
+extern int NEW_TEXPRO_i_ReadFromBF(void* user, uint8_t* buf, int size);
+extern void NEW_PC_VideoStreamCreate(tVideoStreamBF* stream, int videoKey);
+extern void NEW_PC_VideoStreamClose(tVideoStreamBF* stream);
+extern void NEW_PC_VideoStreamSync(tVideoStreamBF* stream);
+extern void NEW_PC_VideoStreamRestart(tVideoStreamBF* stream);
+
+static void videoReaderCases(void)
 {
-    int mask, s;
-    char name[80];
+    /* these drive the rewrite only, so the mocks' side is fixed */
+    MOCKP_SetSide(0);
+    tVideoStreamBF st;
+    uint8_t buf[64];
+    int got;
 
-    for (mask = 0; mask < 64; ++mask)
-    {
-        int got[2];
-        tBinkUnkStruct blk[2];
+    /* a plain read advances the position and shrinks what is left */
+    memset(&st, 0, sizeof(st));
+    st.filePosInBF = 1000;
+    st.remaining = 100;
+    MOCKP_Reset();
+    got = NEW_TEXPRO_i_ReadFromBF(&st, buf, 32);
+    checkIs("reader", "a read returns what was asked", got, 32);
+    checkIs("reader", "the position advances", st.filePosInBF, 1032);
+    checkIs("reader", "what is left shrinks", st.remaining, 68);
+    cases++;
 
-        MOCKP_Reset();
-        for (s = 0; s < 2; ++s)
-        {
-            MOCKP_SetSide(s);
-            *(s ? &NEW_gBinkReadUsedSlots : &BASE_gBinkReadUsedSlots) = mask;
-            got[s] = s ? NEW_TEXPRO_Bink_GetNextFreeSlotID()
-                       : BASE_TEXPRO_Bink_GetNextFreeSlotID();
-            memset(&blk[s], 0, sizeof(blk[s]));
-            blk[s].actSlotID = mask & 7;
-            if (s)
-                NEW_TEXPRO_Bink_RemoveActSlotIDFromUsedSlots(&blk[s]);
-            else
-                BASE_TEXPRO_Bink_RemoveActSlotIDFromUsedSlots(&blk[s]);
-        }
-        sprintf(name, "slot mask %d", mask);
-        checkInt(name, "next free", got[0], got[1]);
-        checkInt(name, "used slots", BASE_gBinkReadUsedSlots, NEW_gBinkReadUsedSlots);
-        checkInt(name, "block state", blk[0].stateMachine2MeansBusy, blk[1].stateMachine2MeansBusy);
-        checkInt(name, "block slot", blk[0].actSlotID, blk[1].actSlotID);
-        ++cases;
-    }
+    /* a read that still fits is not clamped */
+    got = NEW_TEXPRO_i_ReadFromBF(&st, buf, 64);
+    checkIs("reader", "a read that fits is whole", got, 64);
+    checkIs("reader", "and leaves the remainder", st.remaining, 4);
+    cases++;
+
+    /* one that does not fit is cut to the end of the member, rather
+       than reading on into whatever follows it in the archive */
+    got = NEW_TEXPRO_i_ReadFromBF(&st, buf, 16);
+    checkIs("reader", "a read past the end is clamped", got, 4);
+    checkIs("reader", "the member is then spent", st.remaining, 0);
+    checkIs("reader", "and the position is at its end", st.filePosInBF, 1100);
+    cases++;
+
+    /* and a spent member reports the end for ever after */
+    got = NEW_TEXPRO_i_ReadFromBF(&st, buf, 16);
+    checkIs("reader", "a spent member reads nothing", got, 0);
+    checkIs("reader", "and does not move", st.filePosInBF, 1100);
+    cases++;
+
+    /* a zero-length read asks the archive for nothing */
+    memset(&st, 0, sizeof(st));
+    st.filePosInBF = 7;
+    st.remaining = 10;
+    got = NEW_TEXPRO_i_ReadFromBF(&st, buf, 0);
+    checkIs("reader", "nothing asked for is nothing read", got, 0);
+    checkIs("reader", "and nothing moves", st.filePosInBF, 7);
+    cases++;
 }
 
-static int streamFields(int s, long* out)
+static void videoStreamCases(void)
 {
-    tBinkIFPtr* b = &stream[s];
+    /* these drive the rewrite only, so the mocks' side is fixed */
+    MOCKP_SetSide(0);
+    tVideoStreamBF st;
+
+    /* a key the archive does not have leaves no stream */
+    memset(&st, 0, sizeof(st));
+    MOCKP_Reset();
+    MOCKP_SetBigFile(-1, 0);
+    NEW_PC_VideoStreamCreate(&st, 0x1234);
+    checkIs("stream", "a missing key opens nothing", st.video != NULL, 0);
+    checkIs("stream", "and leaves no position", st.filePosInBF, 0);
+    checkIs("stream", "and nothing to restart from", st.startPosInBF, 0);
+    cases++;
+
+    /* the empty member the archive uses for a video that was never
+       built: a length of 8 and nothing after it */
+    memset(&st, 0, sizeof(st));
+    MOCKP_Reset();
+    MOCKP_SetBigFile(2048, 0);
+    MOCKP_PushWord(8);           /* the member's length word */
+    NEW_PC_VideoStreamCreate(&st, 0x1234);
+    checkIs("stream", "an empty member opens nothing", st.video != NULL, 0);
+    checkIs("stream", "and is marked as having no position", st.filePosInBF, 0);
+    cases++;
+
+    /* a member with a length: the video starts four bytes in, and
+       that is what a restart has to come back to */
+    memset(&st, 0, sizeof(st));
+    MOCKP_Reset();
+    MOCKP_SetBigFile(4096, 0);
+    MOCKP_PushWord(50000);       /* the member's length word */
+    NEW_PC_VideoStreamCreate(&st, 0x1234);
+    checkIs("stream", "the video starts past the length word",
+             st.startPosInBF, 4100);
+    checkIs("stream", "the whole member is available", st.startSize, 50000);
+    checkIs("stream", "the key is kept for a restart", st.videoKey, 0x1234);
+    cases++;
+
+    /* closing is safe whether or not anything opened, and twice */
+    NEW_PC_VideoStreamClose(&st);
+    checkIs("stream", "closing clears the position", st.filePosInBF, 0);
+    NEW_PC_VideoStreamClose(&st);
+    checkIs("stream", "closing twice is safe", st.video != NULL, 0);
+    cases++;
+
+    /* and a sync with nothing open does nothing rather than crashing,
+       which is the state a texture naming a missing video sits in */
+    memset(&st, 0, sizeof(st));
+    NEW_PC_VideoStreamSync(&st);
+    NEW_PC_VideoStreamRestart(&st);
+    checkIs("stream", "a stream that never opened is inert", st.video != NULL, 0);
+    cases++;
+}
+
+/* The frame pacing: what used to be a Bink wait, three decodes and a
+   copy. A texture that is up to date shows nothing new; one that has
+   fallen behind decodes on without copying, up to three frames; and
+   one that runs off the end starts the video again, which is what
+   makes a video texture loop. */
+static int countRecorded(const char* fn)
+{
+    int i;
     int n = 0;
 
-    out[n++] = b->binkVideoKey;
-    out[n++] = b->filePosInBF;
-    out[n++] = b->size;
-    out[n++] = b->dataBlockStartCurrOffset;
-    out[n++] = b->videofilesize;
-    out[n++] = b->dataAndLinkedList ? 1 : 0;
-    out[n++] = b->linkedListStart && b->dataAndLinkedList
-               ? (long)((char*)b->linkedListStart - b->dataAndLinkedList) : -1;
-    out[n++] = b->actualElemInLinkedList && b->dataAndLinkedList
-               ? (long)((char*)b->actualElemInLinkedList - b->dataAndLinkedList) : -1;
+    for (i = 0; i < MOCKP_logLen[0]; i++)
+        if (strcmp(MOCKP_log[0][i].fn, fn) == 0)
+            n++;
     return n;
 }
 
-static void compareStream(const char* what)
+/* the third argument of the first call to fn, or -1 */
+static long recordedArg3(const char* fn)
 {
-    long a[16], b[16];
-    int n = streamFields(0, a);
     int i;
 
-    streamFields(1, b);
-    for (i = 0; i < n; ++i)
-    {
-        ++valuesCompared;
-        if (a[i] != b[i])
-            fail(what, "stream field differs", (int)a[i], (int)b[i]);
-    }
+    for (i = 0; i < MOCKP_logLen[0]; i++)
+        if (strcmp(MOCKP_log[0][i].fn, fn) == 0)
+            return MOCKP_log[0][i].c;
+    return -1;
 }
 
-static void binkRingCases(void)
+static void videoPacingCases(void)
 {
-    static const int videoSizes[] = { 0, 1, 4095, 4096, 4097, 12000, 40000 };
-    unsigned i;
-    int s, round;
-    char name[80];
+    /* these drive the rewrite only, so the mocks' side is fixed */
+    MOCKP_SetSide(0);
+    tVideoStreamBF st;
+    tTexProceduralStruct holderOne;
 
-    for (i = 0; i < sizeof(videoSizes) / sizeof(videoSizes[0]); ++i)
-    {
-        int vs = videoSizes[i];
+    memset(&holderOne, 0, sizeof(holderOne));
+    holderOne.width = 64;
+    holderOne.height = 48;
 
-        MOCKP_Reset();
-        for (s = 0; s < 2; ++s)
-        {
-            MOCKP_SetSide(s);
-            *(s ? &NEW_gBinkReadUsedSlots : &BASE_gBinkReadUsedSlots) = 0;
-            memset(&stream[s], 0, sizeof(stream[s]));
-            stream[s].filePosInBF = 1000;
-            stream[s].size = vs;
-            if (s)
-                NEW_BINK_AllocLinkedList(&stream[s], vs);
-            else
-                BASE_BINK_AllocLinkedList(&stream[s], vs);
-            for (round = 0; round < 3; ++round)
-            {
-                if (s)
-                    NEW_TEXPRO_BINK_ReadActBlockAndAdvance(&stream[s]);
-                else
-                    BASE_TEXPRO_BINK_ReadActBlockAndAdvance(&stream[s]);
-            }
-        }
-        sprintf(name, "bink ring %d", vs);
-        compareSides(name);
-        compareStream(name);
-        checkInt(name, "used slots", BASE_gBinkReadUsedSlots, NEW_gBinkReadUsedSlots);
+    /* up to date: nothing is decoded and nothing is shown */
+    MOCKP_Reset();
+    MOCKP_SetVideo(0, 100, 1, 0, 0);     /* Waiting says yes */
+    MOCKP_SetBigFile(4096, 0);
+    MOCKP_PushWord(50000);
+    memset(&st, 0, sizeof(st));
+    st.proceduralStructPtr = &holderOne;
+    NEW_PC_VideoStreamCreate(&st, 0x1234);
+    checkIs("pacing", "the stream opened", st.video != NULL, 1);
+    MOCKP_Reset();
+    NEW_PC_VideoStreamSync(&st);
+    checkIs("pacing", "a stream that is up to date decodes nothing",
+            countRecorded("VID_b_DecodeFrame"), 0);
+    checkIs("pacing", "and copies nothing", countRecorded("VID_CopyToBuffer"), 0);
+    cases++;
 
-        /* read it back out through the copy path */
-        {
-            int want;
+    /* one frame behind: decode it, show it, advance once */
+    MOCKP_Reset();
+    MOCKP_SetVideo(0, 100, 0, 0, 0);     /* due, and the next is not */
+    NEW_PC_VideoStreamSync(&st);
+    checkIs("pacing", "a frame behind decodes once",
+            countRecorded("VID_b_DecodeFrame"), 1);
+    checkIs("pacing", "and shows it", countRecorded("VID_CopyToBuffer"), 1);
+    checkIs("pacing", "and advances once", countRecorded("VID_NextFrame"), 1);
+    cases++;
 
-            for (want = 1; want <= 9000; want = want * 7 + 13)
-            {
-                int rc[2];
+    /* a long way behind: catching up stops at three decodes, and only
+       the last of them is shown */
+    MOCKP_Reset();
+    MOCKP_SetVideo(0, 100, 0, ~0, 0);    /* every next frame also due */
+    NEW_PC_VideoStreamSync(&st);
+    checkIs("pacing", "catching up stops at three frames",
+            countRecorded("VID_b_DecodeFrame"), 3);
+    checkIs("pacing", "and only the last is shown",
+            countRecorded("VID_CopyToBuffer"), 1);
+    checkIs("pacing", "and every one is advanced past",
+            countRecorded("VID_NextFrame"), 3);
+    cases++;
 
-                for (s = 0; s < 2; ++s)
-                {
-                    MOCKP_SetSide(s);
-                    memset(readBuf[s], 0, sizeof(readBuf[s]));
-                    rc[s] = s ? NEW_TEXPRO_Bink_ReadAndCopyNextBlockToReadBuffer(&stream[s], readBuf[s], want)
-                              : BASE_TEXPRO_Bink_ReadAndCopyNextBlockToReadBuffer(&stream[s], readBuf[s], want);
-                }
-                sprintf(name, "bink read %d of %d", want, vs);
-                checkInt(name, "return", rc[0], rc[1]);
-                if (memcmp(readBuf[0], readBuf[1], sizeof(readBuf[0])) != 0)
-                    fail(name, "read buffer differs", 0, 0);
-                ++valuesCompared;
-                compareStream(name);
-                ++cases;
-            }
-        }
+    /* The end of the video: the stream is reopened, which is the
+       loop. The reader is wound forward first, so that coming back
+       to the start of the member is something the check can see. */
+    MOCKP_Reset();
+    MOCKP_SetVideo(0, 0, 0, 0, 0);       /* no frames left */
+    MOCKP_SetBigFile(4096, 0);
+    st.filePosInBF = 4100 + 12345;
+    st.remaining = 50000 - 12345;
+    NEW_PC_VideoStreamSync(&st);
+    checkIs("pacing", "running out closes the stream",
+            countRecorded("VID_Close"), 1);
+    checkIs("pacing", "and opens it again",
+            countRecorded("VID_pst_OpenReader"), 1);
+    checkIs("pacing", "from the start of the member", st.filePosInBF, 4100);
+    checkIs("pacing", "with the whole member to read", st.remaining, 50000);
+    cases++;
 
-        for (s = 0; s < 2; ++s)
-        {
-            MOCKP_SetSide(s);
-            if (s)
-            {
-                NEW_TEXPRO_Bink_GetAlreadyProcessedFileSize(&stream[s]);
-                NEW_BINK_releaseLinkedList(&stream[s]);
-                NEW_TEXPRO_BINK_Close(&stream[s]);
-            }
-            else
-            {
-                BASE_TEXPRO_Bink_GetAlreadyProcessedFileSize(&stream[s]);
-                BASE_BINK_releaseLinkedList(&stream[s]);
-                BASE_TEXPRO_BINK_Close(&stream[s]);
-            }
-        }
-        sprintf(name, "bink close %d", vs);
-        compareSides(name);
-        compareStream(name);
-    }
-
-    /* The same ring with slots already taken, so the block reader's
-       slot-id ceiling is reached rather than always coming out zero. */
-    {
-        static const int masks[] = { 0x1, 0x1FF, 0x3FF, 0x7FF };
-        unsigned k;
-
-        for (k = 0; k < sizeof(masks) / sizeof(masks[0]); ++k)
-        {
-            MOCKP_Reset();
-            for (s = 0; s < 2; ++s)
-            {
-                MOCKP_SetSide(s);
-                memset(&stream[s], 0, sizeof(stream[s]));
-                stream[s].filePosInBF = 1000;
-                stream[s].size = 12000;
-                *(s ? &NEW_gBinkReadUsedSlots : &BASE_gBinkReadUsedSlots) = masks[k];
-                if (s)
-                {
-                    NEW_BINK_AllocLinkedList(&stream[s], 12000);
-                    NEW_TEXPRO_BINK_ReadActBlockAndAdvance(&stream[s]);
-                    NEW_TEXPRO_Bink_ReadActBlock(&stream[s]);
-                }
-                else
-                {
-                    BASE_BINK_AllocLinkedList(&stream[s], 12000);
-                    BASE_TEXPRO_BINK_ReadActBlockAndAdvance(&stream[s]);
-                    BASE_TEXPRO_Bink_ReadActBlock(&stream[s]);
-                }
-            }
-            sprintf(name, "bink slots taken %x", masks[k]);
-            compareSides(name);
-            compareStream(name);
-            checkInt(name, "used slots", BASE_gBinkReadUsedSlots, NEW_gBinkReadUsedSlots);
-        }
-    }
-
-    /* GetAlreadyProcessedFileSize over hand-built ring states */
-    {
-        int states, offset;
-
-        for (states = 0; states < 16; ++states)
-            for (offset = 0; offset <= 4096; offset += 1024)
-            {
-                int got[2];
-                static tBinkUnkStruct ring[2][4];
-                int k;
-
-                MOCKP_Reset();
-                for (s = 0; s < 2; ++s)
-                {
-                    MOCKP_SetSide(s);
-                    memset(&stream[s], 0, sizeof(stream[s]));
-                    for (k = 0; k < 4; ++k)
-                    {
-                        ring[s][k].stateMachine2MeansBusy = (states >> k) & 1;
-                        ring[s][k].nextDataBlock = &ring[s][(k + 1) & 3];
-                    }
-                    stream[s].dataAndLinkedList = (char*)ring[s];
-                    stream[s].linkedListStart = &ring[s][0];
-                    stream[s].actualElemInLinkedList = &ring[s][0];
-                    stream[s].size = 1;
-                    stream[s].dataBlockStartCurrOffset = offset;
-                    got[s] = s ? NEW_TEXPRO_Bink_GetAlreadyProcessedFileSize(&stream[s])
-                               : BASE_TEXPRO_Bink_GetAlreadyProcessedFileSize(&stream[s]);
-                }
-                sprintf(name, "processed size states %d offset %d", states, offset);
-                checkInt(name, "size", got[0], got[1]);
-                ++cases;
-            }
-    }
-}
-
-/* ---- group 8: the MPEG header reader ---- */
-
-static unsigned char mpegStream[256];
-
-static void mpegCases(void)
-{
-    static const int sizes[] = { 0, 4, 8, 32, 48, 52, 56 };
-    static const int positions[] = { -1, 0, 64, 4096 };
-    /* 2048 and its two neighbours, because the reader caps its chunk
-       there and sets a flag on the short side of the test */
-    static const unsigned int lengths[] = { 777, 2047, 2048, 2049, 6000 };
-    unsigned i, p, L;
-    int s;
-    char name[80];
-
-    for (L = 0; L < sizeof(lengths) / sizeof(lengths[0]); ++L)
-    for (i = 0; i < sizeof(sizes) / sizeof(sizes[0]); ++i)
-        for (p = 0; p < sizeof(positions) / sizeof(positions[0]); ++p)
-        {
-            tTexProcMpeg* mpeg[2];
-            int k;
-
-            for (k = 0; k < (int)sizeof(mpegStream); ++k)
-                mpegStream[k] = (unsigned char)(k * 11 + 5);
-            mpegStream[0] = (unsigned char)sizes[i];
-            mpegStream[1] = 0; mpegStream[2] = 0; mpegStream[3] = 0;
-
-            MOCKP_Reset();
-            MOCKP_SetStream(mpegStream, sizeof(mpegStream));
-            MOCKP_SetBigFile(positions[p], lengths[L]);
-            LOA_gb_SpeedMode = (int)(i & 1);
-            BIG_gi_ReadMode = (int)(p & 3);
-            for (s = 0; s < 2; ++s)
-            {
-                MOCKP_SetSide(s);
-                mpeg[s] = s ? NEW_TEXPRO_pv_MpegLoad((char*)mpegStream, sizes[i], 64, 64)
-                            : BASE_TEXPRO_pv_MpegLoad((char*)mpegStream, sizes[i], 64, 64);
-                if (s)
-                {
-                    NEW_TEXPRO_pst_CurrentMpeg = mpeg[s];
-                    NEW_TEXPRO_MPEG_Start();
-                    NEW_TEXPRO_MPEG_ReadNext(readBuf[s]);
-                    NEW_TEXPRO_MPEG_ReadNext(readBuf[s]);
-                    NEW_TEXPRO_MPEG_Start();
-                    NEW_TEXPRO_MPEG_ReadNext(readBuf[s]);
-                }
-                else
-                {
-                    BASE_TEXPRO_pst_CurrentMpeg = mpeg[s];
-                    BASE_TEXPRO_MPEG_Start();
-                    BASE_TEXPRO_MPEG_ReadNext(readBuf[s]);
-                    BASE_TEXPRO_MPEG_ReadNext(readBuf[s]);
-                    BASE_TEXPRO_MPEG_Start();
-                    BASE_TEXPRO_MPEG_ReadNext(readBuf[s]);
-                }
-            }
-            sprintf(name, "mpeg size %d pos %d len %u", sizes[i], positions[p], lengths[L]);
-            compareSides(name);
-            if (memcmp(readBuf[0], readBuf[1], 8192) != 0)
-                fail(name, "mpeg read buffer differs", 0, 0);
-            ++valuesCompared;
-
-            /* and a longer read run, to walk startOffset up to endOffset */
-            for (k = 0; k < 6; ++k)
-            {
-                int rc[2];
-
-                for (s = 0; s < 2; ++s)
-                {
-                    MOCKP_SetSide(s);
-                    if (s)
-                    {
-                        NEW_TEXPRO_pst_CurrentMpeg = mpeg[s];
-                        rc[s] = NEW_TEXPRO_MPEG_ReadNext(readBuf[s]);
-                    }
-                    else
-                    {
-                        BASE_TEXPRO_pst_CurrentMpeg = mpeg[s];
-                        rc[s] = BASE_TEXPRO_MPEG_ReadNext(readBuf[s]);
-                    }
-                }
-                checkInt(name, "mpeg read return", rc[0], rc[1]);
-            }
-            compareSides(name);
-        }
-}
-
-/* The mpeg reader caps its chunk at 2048 and sets a flag on the short
-   side of that test. A second read sets the same flag whatever the
-   first did, so the difference is only visible after exactly one. */
-static void mpegBoundaryCases(void)
-{
-    static const unsigned int lengths[] = { 2047, 2048, 2049 };
-    unsigned L;
-    int s, k;
-    char name[80];
-
-    for (L = 0; L < sizeof(lengths) / sizeof(lengths[0]); ++L)
-    {
-        int flagsAfter[2];
-        int ret[2];
-        int startAfter[2];
-
-        for (k = 0; k < (int)sizeof(mpegStream); ++k)
-            mpegStream[k] = (unsigned char)(k * 11 + 5);
-        mpegStream[0] = 32; mpegStream[1] = 0; mpegStream[2] = 0; mpegStream[3] = 0;
-
-        MOCKP_Reset();
-        MOCKP_SetStream(mpegStream, sizeof(mpegStream));
-        MOCKP_SetBigFile(64, lengths[L]);
-        LOA_gb_SpeedMode = 0;
-        BIG_gi_ReadMode = 0;
-        for (s = 0; s < 2; ++s)
-        {
-            tTexProcMpeg* m;
-
-            MOCKP_SetSide(s);
-            m = s ? NEW_TEXPRO_pv_MpegLoad((char*)mpegStream, 32, 64, 64)
-                  : BASE_TEXPRO_pv_MpegLoad((char*)mpegStream, 32, 64, 64);
-            if (s)
-            {
-                NEW_TEXPRO_pst_CurrentMpeg = m;
-                NEW_TEXPRO_MPEG_Start();
-                ret[s] = NEW_TEXPRO_MPEG_ReadNext(readBuf[s]);
-            }
-            else
-            {
-                BASE_TEXPRO_pst_CurrentMpeg = m;
-                BASE_TEXPRO_MPEG_Start();
-                ret[s] = BASE_TEXPRO_MPEG_ReadNext(readBuf[s]);
-            }
-            flagsAfter[s] = m->flags;
-            startAfter[s] = m->startOffset;
-        }
-        sprintf(name, "mpeg one read len %u", lengths[L]);
-        compareSides(name);
-        checkInt(name, "return", ret[0], ret[1]);
-        checkInt(name, "flags after one read", flagsAfter[0], flagsAfter[1]);
-        checkInt(name, "startOffset", startAfter[0], startAfter[1]);
-    }
-}
-
-/* ---- group 9: what reaches the Bink SDK ---- */
-
-static BINKIO binkIO[2];
-
-static void binkSdkCases(void)
-{
-    static const int chunkCases[] = { 0, 8, 100, 9000 };
-    unsigned c;
-    int s, waits;
-    char name[80];
-
-    /* BINK_IO_FUNC, which installs the six callbacks */
-    for (c = 0; c < sizeof(chunkCases) / sizeof(chunkCases[0]); ++c)
-    {
-        S32 rc[2];
-
-        MOCKP_Reset();
-        MOCKP_SetBigFile(chunkCases[c] ? 2048 : -1, 0);
-        MOCKP_PushWord(chunkCases[c]);
-        MOCKP_PushWord(chunkCases[c] * 3);
-        for (s = 0; s < 2; ++s)
-        {
-            MOCKP_SetSide(s);
-            memset(&stream[s], 0, sizeof(stream[s]));
-            memset(&binkIO[s], 0, sizeof(binkIO[s]));
-            stream[s].binkVideoKey = 0x1234;
-            if (s)
-            {
-                NEW_BINK_IF_PTR_GLOBAL = &stream[s];
-                rc[s] = NEW_BINK_IO_FUNC(&binkIO[s], "x", 0);
-            }
-            else
-            {
-                BASE_BINK_IF_PTR_GLOBAL = &stream[s];
-                rc[s] = BASE_BINK_IO_FUNC(&binkIO[s], "x", 0);
-            }
-        }
-        sprintf(name, "bink io func %d", chunkCases[c]);
-        compareSides(name);
-        compareStream(name);
-        checkInt(name, "return", (int)rc[0], (int)rc[1]);
-        checkInt(name, "callbacks installed",
-                 binkIO[0].ReadHeader != 0, binkIO[1].ReadHeader != 0);
-
-        /* the six callbacks themselves */
-        for (s = 0; s < 2; ++s)
-        {
-            MOCKP_SetSide(s);
-            if (s)
-            {
-                NEW_BINK_IF_PTR_GLOBAL = &stream[s];
-                NEW_BINK_GetBufferSize(&binkIO[s], 1);
-                NEW_BINK_SetInfo(&binkIO[s], readBuf[s], 1, 2, 3);
-                NEW_BINK_Idle(&binkIO[s]);
-                NEW_BINK_ReadHeader(&binkIO[s], 0, readBuf[s], 64);
-                NEW_BINK_ReadFrame(&binkIO[s], 1, 0, readBuf[s], 64);
-                NEW_TEXPRO_BINK_ReadNumBytes(&binkIO[s], readBuf[s], 32);
-                NEW_BINK_Close(&binkIO[s]);
-            }
-            else
-            {
-                BASE_BINK_IF_PTR_GLOBAL = &stream[s];
-                BASE_BINK_GetBufferSize(&binkIO[s], 1);
-                BASE_BINK_SetInfo(&binkIO[s], readBuf[s], 1, 2, 3);
-                BASE_BINK_Idle(&binkIO[s]);
-                BASE_BINK_ReadHeader(&binkIO[s], 0, readBuf[s], 64);
-                BASE_BINK_ReadFrame(&binkIO[s], 1, 0, readBuf[s], 64);
-                BASE_TEXPRO_BINK_ReadNumBytes(&binkIO[s], readBuf[s], 32);
-                BASE_BINK_Close(&binkIO[s]);
-            }
-        }
-        sprintf(name, "bink callbacks %d", chunkCases[c]);
-        compareSides(name);
-        compareStream(name);
-        checkInt(name, "bytes read", (int)binkIO[0].BytesRead, (int)binkIO[1].BytesRead);
-        if (memcmp(readBuf[0], readBuf[1], 8192) != 0)
-            fail(name, "callback buffer differs", 0, 0);
-        ++valuesCompared;
-    }
-
-    /* Create / Sync / Restart / CloseAll against the logging stubs */
-    for (waits = 0; waits < 8; ++waits)
-    {
-        int frames;
-
-        for (frames = 0; frames <= 6; frames += 3)
-        {
-            MOCKP_Reset();
-            MOCKP_SetBigFile(2048, 0);
-            MOCKP_PushWord(9000);
-            MOCKP_PushWord(12000);
-            setupHolder(64, 32, (uint32_t)(waits * 3 + frames));
-            for (s = 0; s < 2; ++s)
-            {
-                MOCKP_SetSide(s);
-                memset(&stream[s], 0, sizeof(stream[s]));
-                stream[s].proceduralStructPtr = &holder[s].st;
-                stream[s].videofilesize = frames ? 1 : 1000000;
-                MOCKP_SetBink(s, (unsigned)frames + 1, 0, waits);
-                if (s)
-                {
-                    NEW_PC_VideoStreamCreate_Bink(&stream[s], 0x99);
-                    stream[s].binkHandle = MOCKP_BinkHandle(s);
-                    NEW_PC_VideoStreamSync_Bink(&stream[s]);
-                    NEW_PC_VideoStreamRestart_Bink(&stream[s]);
-                    NEW_BINK_CloseAll(&stream[s]);
-                }
-                else
-                {
-                    BASE_PC_VideoStreamCreate_Bink(&stream[s], 0x99);
-                    stream[s].binkHandle = MOCKP_BinkHandle(s);
-                    BASE_PC_VideoStreamSync_Bink(&stream[s]);
-                    BASE_PC_VideoStreamRestart_Bink(&stream[s]);
-                    BASE_BINK_CloseAll(&stream[s]);
-                }
-            }
-            sprintf(name, "bink stream waits %d frames %d", waits, frames);
-            compareSides(name);
-            compareStream(name);
-        }
-    }
-
-    /* the MPEG update state machine over its flag byte */
-    {
-        int flags;
-
-        for (flags = 0; flags < 8; ++flags)
-        {
-            int state;
-
-            for (state = 0; state < 3; ++state)
-            {
-                int rc[2];
-
-                MOCKP_Reset();
-                MOCKP_SetBigFile(2048, 0);
-                MOCKP_PushWord(9000);
-                MOCKP_PushWord(12000);
-                setupHolder(32, 16, (uint32_t)(flags * 5 + state));
-                for (s = 0; s < 2; ++s)
-                {
-                    tTexProcMpeg* m;
-
-                    MOCKP_SetSide(s);
-                    MOCKP_SetBink(s, 3, 0, 0x55);
-                    m = (tTexProcMpeg*)MEM_p_Alloc(sizeof(tTexProcMpeg));
-                    memset(m, 0, sizeof(*m));
-                    m->sub.binkKey = (flags & 4) ? -1 : 0x77;
-                    m->flags = ((flags & 1) ? 0x100 : 0) | ((flags & 2) ? 2 : 0)
-                             | (state << 16);
-                    holder[s].st.proceduralTexPtr = m;
-                    rc[s] = s ? NEW_TEXPRO_l_MpegUpdate(&holder[s].st)
-                              : BASE_TEXPRO_l_MpegUpdate(&holder[s].st);
-                    if (s)
-                        NEW_TEXPRO_MpegFree(&holder[s].st);
-                    else
-                        BASE_TEXPRO_MpegFree(&holder[s].st);
-                }
-                sprintf(name, "mpeg update flags %d state %d", flags, state);
-                compareSides(name);
-                checkInt(name, "return", rc[0], rc[1]);
-                comparePic(name, 32 * 16);
-            }
-        }
-    }
+    /* the sound is not asked for: a video texture is silent, as the
+       Bink path's BinkSetSoundTrack(0, 0) said */
+    checkIs("pacing", "a video texture asks for no sound",
+            (int)recordedArg3("VID_pst_OpenReader"), 0);
+    cases++;
 }
 
 int main(void)
@@ -1408,9 +1127,6 @@ int main(void)
     MOCKP_AddRange(BASE_TEX_gast_ProceduralInterface, NEW_TEX_gast_ProceduralInterface,
                    sizeof(BASE_TEX_gast_ProceduralInterface));
     MOCKP_AddRange(&holder[0], &holder[1], sizeof(holder[0]));
-    MOCKP_AddRange(MOCKP_BinkHandle(0), MOCKP_BinkHandle(1), sizeof(BINK));
-    MOCKP_AddRange(&stream[0], &stream[1], sizeof(stream[0]));
-    MOCKP_AddRange(&binkIO[0], &binkIO[1], sizeof(binkIO[0]));
 
     printf("proceduraltextures.c: frozen copy against the rewrite\n");
     waterCases();
@@ -1420,11 +1136,9 @@ int main(void)
     photoCases();
     setMapGaoCases();
     tableCases();
-    slotCases();
-    binkRingCases();
-    mpegCases();
-    mpegBoundaryCases();
-    binkSdkCases();
+    videoReaderCases();
+    videoStreamCases();
+    videoPacingCases();
 
     printf("  %d cases, %d values compared, %d failures\n",
            cases, valuesCompared, failures);

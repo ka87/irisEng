@@ -2,13 +2,12 @@
 #include "loading.h"
 #include "time.h"
 #include "bigfiles.h"
-#include "bink.h"
+#include "video.h"
 #include "inputoutput.h"
 #include "textures.h"
 
 tProceduralIntf TEX_gast_ProceduralInterface[6] = { 0 };
 int TexPro_WaterDistruptCounter = 0; // game doesn't sets to 0
-int gBinkReadUsedSlots = 0; // --||--
 float KX_442[2];
 float KY_443[2];
 float ALPHA_441[2];
@@ -265,325 +264,115 @@ void TEX_Procedural_Add(int16_t elemIdx, int interfaceIdx, int16_t flags, void* 
     }
 }
 
-static void PTR4* RADLINK BINK_pv_MemAlloc(U32 bytes)
+// libav pulls its input through this one callback, in order, from
+// wherever the .bf member has got to. What stood here before -- an
+// allocator pair, a linked list of 4 KB blocks, a ten-slot bitmask,
+// a busy flag per block and a spin-wait on it -- existed because the
+// Bink SDK pushed its reads instead, in fixed-size pieces, through
+// six callbacks that carried no pointer of their own.
+int TEXPRO_i_ReadFromBF(void* user, uint8_t* buf, int size)
 {
-    return (void PTR4*)MEM_p_Alloc(bytes);
-}
+    tVideoStreamBF* stream;
 
-static void RADLINK BINK_MemFree(void PTR4* ptr)
-{
-    MEM_Free((void*)ptr);
-}
-
-void TEXPRO_Bink_RemoveActSlotIDFromUsedSlots(tBinkUnkStruct* block)
-{
-    int mask;
-
-    mask = 1 << block->actSlotID;
-    block->stateMachine2MeansBusy = 1;
-    block->actSlotID = -1;
-    gBinkReadUsedSlots &= ~mask;
-}
-
-int TEXPRO_Bink_GetNextFreeSlotID()
-{
-    int slot;
-
-    for (slot = 0; (gBinkReadUsedSlots & (1 << slot)) != 0; ++slot)
-        ;
-    return slot;
-}
-
-int TEXPRO_Bink_ReadActBlock(tBinkIFPtr* stream)
-{
-    tBinkUnkStruct* block;
-    int chunk;
-
-    block = stream->actualElemInLinkedList;
-    block->actSlotID = TEXPRO_Bink_GetNextFreeSlotID();
-    if ((unsigned int)block->actSlotID >= 10u)
+    stream = (tVideoStreamBF*)user;
+    if (size > stream->remaining)
+        size = stream->remaining;
+    if (size <= 0)
         return 0;
-    if (!stream->size)
-        return 0;
-    chunk = stream->size;
-    if (chunk >= 4096)
-        chunk = 4096;
-    BINK_SeekAndReadFromBF(stream->filePosInBF, block->blockDataStartPtr, chunk);
-    gBinkReadUsedSlots |= 1 << block->actSlotID;
-    stream->filePosInBF += chunk;
-    stream->size -= chunk;
-    block->stateMachine2MeansBusy = 2;
-    TEXPRO_Bink_RemoveActSlotIDFromUsedSlots(stream->actualElemInLinkedList);
-    return 1;
+    BINK_SeekAndReadFromBF(stream->filePosInBF, buf, (unsigned int)size);
+    stream->filePosInBF += size;
+    stream->remaining -= size;
+    return size;
 }
 
-void TEXPRO_BINK_ReadActBlockAndAdvance(tBinkIFPtr* stream)
+
+void PC_VideoStreamRestart(tVideoStreamBF* stream)
 {
-    while (stream->dataAndLinkedList
-           && !stream->actualElemInLinkedList->stateMachine2MeansBusy)
-    {
-        if (!TEXPRO_Bink_ReadActBlock(stream))
-            break;
-        stream->actualElemInLinkedList = stream->actualElemInLinkedList->nextDataBlock;
-    }
+    if (!stream->startPosInBF)
+        return;
+    VID_Close(stream->video);
+    stream->video = NULL;
+    stream->filePosInBF = stream->startPosInBF;
+    stream->remaining = stream->startSize;
+    stream->video = VID_pst_OpenReader(TEXPRO_i_ReadFromBF, stream, 0);
 }
 
-int TEXPRO_Bink_GetAlreadyProcessedFileSize(tBinkIFPtr* stream)
-{
-    int total;
-    int offset;
-    tBinkUnkStruct* block;
-
-    if (!stream->dataAndLinkedList || !stream->size)
-        return -1;
-    offset = stream->dataBlockStartCurrOffset;
-    block = stream->linkedListStart;
-    total = 0;
-    while (block->stateMachine2MeansBusy == 1)
-    {
-        block = block->nextDataBlock;
-        total += 4096 - offset;
-        offset = 0;
-        if (block == stream->linkedListStart)
-            break;
-    }
-    return total;
-}
-
-void BINK_releaseLinkedList(tBinkIFPtr* stream)
-{
-    tBinkUnkStruct* last;
-    tBinkUnkStruct* block;
-
-    if (stream->dataAndLinkedList)
-    {
-        last = stream->actualElemInLinkedList;
-        block = last;
-        do
-        {
-            block = block->nextDataBlock;
-            while (block->stateMachine2MeansBusy == 2)
-                ;
-            block->stateMachine2MeansBusy = 0;
-        } while (block != last);
-        stream->linkedListStart = last;
-        stream->actualElemInLinkedList = last;
-        stream->dataBlockStartCurrOffset = 0;
-    }
-}
-
-void PC_VideoStreamRestart_Bink(tBinkIFPtr* stream)
-{
-    BINK_IF_PTR_GLOBAL = stream;
-    if (stream->filePosInBF)
-    {
-        BinkClose(stream->binkHandle);
-        BINK_releaseLinkedList(stream);
-        PC_VideoStreamCreate_Bink(stream, stream->binkVideoKey);
-    }
-}
-
-void PC_VideoStreamSync_Bink(tBinkIFPtr* stream)
+// One frame of a video texture. A caller that has fallen behind
+// decodes on without showing what it has, up to three frames of
+// catching up, and then writes the one it stopped at into the
+// texture. Running off the end restarts the video, which is what
+// makes it loop.
+void PC_VideoStreamSync(tVideoStreamBF* stream)
 {
     int frames;
 
-    BINK_IF_PTR_GLOBAL = stream;
-    if (!stream->filePosInBF)
+    if (!stream->video)
         return;
-    if (stream->videofilesize < TEXPRO_Bink_GetAlreadyProcessedFileSize(stream)
-        && !BinkWait(stream->binkHandle))
+    if (VID_b_Waiting(stream->video))
+        return;
+
+    frames = 0;
+    for (;;)
     {
-        frames = 0;
-        while (1)
+        if (!VID_b_DecodeFrame(stream->video))
         {
-            BinkDoFrame(stream->binkHandle);
-            if (stream->binkHandle->FrameNum >= stream->binkHandle->Frames)
-            {
-                PC_VideoStreamRestart_Bink(stream);
-                return;
-            }
-            BinkNextFrame(stream->binkHandle);
-            ++frames;
-            if (BinkWait(stream->binkHandle) || frames >= 3)
-            {
-                BinkCopyToBuffer(stream->binkHandle, stream->proceduralStructPtr->proceduralPicData, 4 * stream->proceduralStructPtr->width, stream->proceduralStructPtr->height, 0, 0, BINKSURFACE32 | BINKCOPYALL);
-                break;
-            }
+            PC_VideoStreamRestart(stream);
+            return;
         }
-    }
-    TEXPRO_BINK_ReadActBlockAndAdvance(stream);
-}
-
-
-U32 RADLINK BINK_GetBufferSize(BINKIO* binkIO, U32 size)
-{
-    return 2048;
-}
-
-int TEXPRO_Bink_ReadAndCopyNextBlockToReadBuffer(tBinkIFPtr* stream, char* dest, signed int remaining)
-{
-    tBinkUnkStruct* block;
-    signed int chunk;
-    int offset;
-
-    if (!stream->dataAndLinkedList)
-        return -1;
-    while (remaining)
-    {
-        block = stream->linkedListStart;
-        if (block->stateMachine2MeansBusy != 1)
+        ++frames;
+        if (frames >= 3 || !VID_b_NextAlsoDue(stream->video))
         {
-            stream->dataBlockStartCurrOffset = 0;
-            if (!block->stateMachine2MeansBusy)
-                TEXPRO_BINK_ReadActBlockAndAdvance(stream);
-            block = stream->linkedListStart;
-            while (block->stateMachine2MeansBusy == 2)
-                ;
-            if (block->stateMachine2MeansBusy != 1)
-                return -1;
+            VID_CopyToBuffer(stream->video,
+                             stream->proceduralStructPtr->proceduralPicData,
+                             4 * stream->proceduralStructPtr->width,
+                             stream->proceduralStructPtr->height, 0);
+            VID_NextFrame(stream->video);
+            return;
         }
-        chunk = 4096 - stream->dataBlockStartCurrOffset;
-        if (remaining <= chunk)
-            chunk = remaining;
-        memcpy(dest, &block->blockDataStartPtr[stream->dataBlockStartCurrOffset], chunk);
-        offset = chunk + stream->dataBlockStartCurrOffset;
-        dest += chunk;
-        stream->dataBlockStartCurrOffset = offset;
-        if (offset == 4096)
-        {
-            stream->linkedListStart->stateMachine2MeansBusy = 0;
-            stream->linkedListStart = stream->linkedListStart->nextDataBlock;
-            stream->dataBlockStartCurrOffset = 0;
-        }
-        remaining -= chunk;
+        VID_NextFrame(stream->video);
     }
-    return 0;
 }
 
-int TEXPRO_BINK_ReadNumBytes(BINKIO* binkIO, void* DstBuf, unsigned int MaxCharCount)
+void PC_VideoStreamClose(tVideoStreamBF* stream)
 {
-    if (TEXPRO_Bink_ReadAndCopyNextBlockToReadBuffer(BINK_IF_PTR_GLOBAL, (char*)DstBuf, MaxCharCount))
+    if (stream->video)
     {
-        BINK_SeekAndReadFromBF(BINK_IF_PTR_GLOBAL->filePosInBF, DstBuf, MaxCharCount);
-        BINK_IF_PTR_GLOBAL->filePosInBF += MaxCharCount;
+        VID_Close(stream->video);
+        stream->video = NULL;
     }
-    binkIO->BytesRead = MaxCharCount;
-    return 0;
+    stream->filePosInBF = 0;
+    stream->remaining = 0;
 }
 
-U32 RADLINK BINK_ReadHeader(BINKIO* binkIO, S32 offset, void PTR4* DstBuf, U32 MaxCharCount)
-{
-    return TEXPRO_BINK_ReadNumBytes(binkIO, DstBuf, MaxCharCount);
-}
-
-U32 RADLINK BINK_ReadFrame(BINKIO* binkIO, U32 frameNum, S32 offset, void* DstBuf, U32 MaxCharCount)
-{
-    return TEXPRO_BINK_ReadNumBytes(binkIO, DstBuf, MaxCharCount);
-}
-
-void RADLINK BINK_SetInfo(struct BINKIO PTR4* Bnkio, void PTR4* Buf, U32 Size, U32 FileSize, U32 simulate) {
-}
-
-U32 RADLINK BINK_Idle(struct BINKIO PTR4* Bnkio) {
-    return 0;
-}
-
-void TEXPRO_BINK_Close(tBinkIFPtr* stream)
-{
-    if (stream->dataAndLinkedList)
-    {
-        BINK_releaseLinkedList(stream);
-        MEM_Free(stream->dataAndLinkedList);
-        stream->dataBlockStartCurrOffset = 0;
-        stream->actualElemInLinkedList = 0;
-        stream->linkedListStart = 0;
-        stream->dataAndLinkedList = 0;
-    }
-}
-
-void RADLINK BINK_Close(struct BINKIO PTR4* Bnkio)
-{
-    BINK_IF_PTR_GLOBAL->filePosInBF = 0;
-    TEXPRO_BINK_Close(BINK_IF_PTR_GLOBAL);
-}
-
-void BINK_AllocLinkedList(tBinkIFPtr* binkIFPtr, int videosize)
-{
-    unsigned int bufferBytes;
-    unsigned int blockCount;
-    unsigned int total;
-    char* blockData;
-    tBinkUnkStruct* block;
-
-    binkIFPtr->videofilesize = videosize;
-    bufferBytes = 2 * (videosize & 0xFFFFF000) + 0x2000;
-    blockCount = bufferBytes >> 12;// >> 12 => / 4096
-    total = 16 * blockCount + bufferBytes;
-    blockData = (char*)MEM_p_Alloc(total);
-    binkIFPtr->dataAndLinkedList = blockData;
-    memset(blockData, 0, total);
-    block = (tBinkUnkStruct*)&blockData[bufferBytes];
-    binkIFPtr->linkedListStart = block;
-    binkIFPtr->actualElemInLinkedList = block;
-    while (blockCount)
-    {
-        block->blockDataStartPtr = blockData;
-        blockData += 4096;
-        --blockCount;
-        block->stateMachine2MeansBusy = 0;
-        block->nextDataBlock = block + 1;
-        ++block;
-    }
-    block[-1].nextDataBlock = (tBinkUnkStruct*)&binkIFPtr->dataAndLinkedList[bufferBytes];// ez csinálja meg a loopot, gondolom ha a végére ér az elejére ugorjon
-    binkIFPtr->dataBlockStartCurrOffset = 0;
-}
-
-S32 RADLINK BINK_IO_FUNC(BINKIO* binkIOPtr, const char PTR4* name, U32 flags)
+// A video member of the .bf opens with its own length, and the video
+// itself starts four bytes in. A length of 8 is the empty member the
+// archive uses where a texture names a video that was never built.
+void PC_VideoStreamCreate(tVideoStreamBF* stream, int videoKey)
 {
     int chunkSize;
-    int videoSize;
 
-    BINK_IF_PTR_GLOBAL->filePosInBF = BIG_ul_SearchKeyToPos(BINK_IF_PTR_GLOBAL->binkVideoKey);
+    stream->videoKey = videoKey;
+    stream->video = NULL;
+    stream->startPosInBF = 0;
+    stream->filePosInBF = BIG_ul_SearchKeyToPos(videoKey);
 
-    if (BINK_IF_PTR_GLOBAL->filePosInBF == -1)
-        BINK_IF_PTR_GLOBAL->filePosInBF = 0;
+    if (stream->filePosInBF == -1)
+        stream->filePosInBF = 0;
+    if (!stream->filePosInBF)
+        return;
 
-    if (!BINK_IF_PTR_GLOBAL->filePosInBF)
-        return 0;
-
-    BINK_SeekAndReadFromBF(BINK_IF_PTR_GLOBAL->filePosInBF, &chunkSize, 4);
-
+    BINK_SeekAndReadFromBF(stream->filePosInBF, &chunkSize, 4);
     if (chunkSize == 8)
     {
-        BINK_IF_PTR_GLOBAL->filePosInBF = 0;
-        return 0;
+        stream->filePosInBF = 0;
+        return;
     }
+    stream->filePosInBF += 4;
+    stream->remaining = chunkSize;
+    stream->startPosInBF = stream->filePosInBF;
+    stream->startSize = chunkSize;
 
-    BINK_IF_PTR_GLOBAL->size = chunkSize;
-    BINK_IF_PTR_GLOBAL->filePosInBF += 4;
-
-    BINK_SeekAndReadFromBF(BINK_IF_PTR_GLOBAL->filePosInBF + 12, &videoSize, 4);
-    BINK_AllocLinkedList(BINK_IF_PTR_GLOBAL, videoSize);
-
-    binkIOPtr->GetBufferSize = BINK_GetBufferSize;
-    binkIOPtr->ReadHeader = BINK_ReadHeader;
-    binkIOPtr->ReadFrame = BINK_ReadFrame;
-    binkIOPtr->SetInfo = BINK_SetInfo;
-    binkIOPtr->Idle = BINK_Idle;
-    binkIOPtr->Close = BINK_Close;
-
-    return -1;
-}
-
-void PC_VideoStreamCreate_Bink(tBinkIFPtr* binkIFPtr, int videoKey)
-{
-    BINK_IF_PTR_GLOBAL = binkIFPtr;
-    binkIFPtr->binkVideoKey = videoKey;
-    BinkSetSoundTrack(0, 0);
-    BinkSetMemory(BINK_pv_MemAlloc, BINK_MemFree);
-    BinkSetIOSize(2048);
-    BinkSetIO(BINK_IO_FUNC);
-    binkIFPtr->binkHandle = BinkOpen((char*)binkIFPtr, BINKNOTHREADEDIO | BINKIOPROCESSOR | BINKIOSIZE | BINKSNDTRACK);
+    stream->video = VID_pst_OpenReader(TEXPRO_i_ReadFromBF, stream, 0);
 }
 
 void TEXPRO_MPEG_Start()
@@ -630,7 +419,7 @@ tTexProcMpeg* TEXPRO_pv_MpegLoad(char* readptr, int size, int width, int height)
     {
         mpeg->key = -1;
         mpeg->i6 = -1;
-        mpeg->sub.binkKey = -1;
+        mpeg->sub.videoKey = -1;
         mpeg->pos = -1;
     }
     else
@@ -639,7 +428,7 @@ tTexProcMpeg* TEXPRO_pv_MpegLoad(char* readptr, int size, int width, int height)
         if (size == 8)
         {
             mpeg->i6 = -1;
-            mpeg->sub.binkKey = -1;
+            mpeg->sub.videoKey = -1;
             mpeg->sub.ii5 = -1;
             mpeg->i8 = 0;
             mpeg->i9 = 0;
@@ -655,7 +444,7 @@ tTexProcMpeg* TEXPRO_pv_MpegLoad(char* readptr, int size, int width, int height)
             mpeg->i11 = LOA_ReadLong(&readptr, 0, 1);
             mpeg->i9 = LOA_ReadLong(&readptr, 0, 1);
             mpeg->i8 = LOA_ReadLong(&readptr, 0, 1);
-            mpeg->sub.binkKey = -1;
+            mpeg->sub.videoKey = -1;
             mpeg->sub.ii3 = 0;
             mpeg->sub.ii1 = 0;
             mpeg->sub.ii2 = 0;
@@ -669,7 +458,7 @@ tTexProcMpeg* TEXPRO_pv_MpegLoad(char* readptr, int size, int width, int height)
             mpeg->i11 = LOA_ReadLong(&readptr, 0, 1);
             mpeg->i9 = LOA_ReadLong(&readptr, 0, 1);
             mpeg->i8 = LOA_ReadLong(&readptr, 0, 1);
-            mpeg->sub.binkKey = LOA_ReadLong(&readptr, 0, 1);
+            mpeg->sub.videoKey = LOA_ReadLong(&readptr, 0, 1);
             mpeg->sub.ii1 = LOA_ReadLong(&readptr, 0, 1);
             mpeg->sub.ii2 = LOA_ReadLong(&readptr, 0, 1);
             mpeg->sub.ii3 = LOA_ReadLong(&readptr, 0, 1);
@@ -699,20 +488,20 @@ tTexProcMpeg* TEXPRO_pv_MpegLoad(char* readptr, int size, int width, int height)
 int TEXPRO_l_MpegUpdate(tTexProceduralStruct* procedural)
 {
     tTexProcMpeg* mpeg;
-    tBinkIFPtr* stream;
+    tVideoStreamBF* stream;
     char state;
 
     mpeg = (tTexProcMpeg*)procedural->proceduralTexPtr;
     TEXPRO_pst_CurrentMpeg = mpeg;
-    if (mpeg->sub.binkKey != -1)
+    if (mpeg->sub.videoKey != -1)
     {
-        if (!mpeg->sub.binkIFPtr)
+        if (!mpeg->sub.videoStream)
         {
-            stream = (tBinkIFPtr*)MEM_p_Alloc(sizeof(tBinkIFPtr));
-            mpeg->sub.binkIFPtr = stream;
-            memset(stream, 0, sizeof(tBinkIFPtr));
-            mpeg->sub.binkIFPtr->proceduralStructPtr = procedural;
-            PC_VideoStreamCreate_Bink(mpeg->sub.binkIFPtr, mpeg->sub.binkKey);
+            stream = (tVideoStreamBF*)MEM_p_Alloc(sizeof(tVideoStreamBF));
+            mpeg->sub.videoStream = stream;
+            memset(stream, 0, sizeof(tVideoStreamBF));
+            mpeg->sub.videoStream->proceduralStructPtr = procedural;
+            PC_VideoStreamCreate(mpeg->sub.videoStream, mpeg->sub.videoKey);
         }
         if ((mpeg->flags & 0x100) != 0 && (mpeg->flags & 2) != 0 && ((mpeg->flags >> 16) & 0xff) != 2) // ...BYTE2(v2->flags) != 2
         {
@@ -732,25 +521,20 @@ int TEXPRO_l_MpegUpdate(tTexProceduralStruct* procedural)
             if (state == 2)
             {
                 mpeg->flags &= ~1u;
-                PC_VideoStreamRestart_Bink(mpeg->sub.binkIFPtr);
+                PC_VideoStreamRestart(mpeg->sub.videoStream);
             }
             mpeg->flags &= 0xff00ffff; //BYTE2(v2->flags) = 0;
         }
         if ((mpeg->flags & 1) != 0)
             return 0;
-        PC_VideoStreamSync_Bink(mpeg->sub.binkIFPtr);
+        PC_VideoStreamSync(mpeg->sub.videoStream);
     }
     return 1;
 }
 
-void BINK_CloseAll(tBinkIFPtr* stream)
+void PC_VideoStreamCloseAll(tVideoStreamBF* stream)
 {
-    BINK_IF_PTR_GLOBAL = stream;
-    if (stream->filePosInBF)
-    {
-        BinkClose(stream->binkHandle);
-        TEXPRO_BINK_Close(stream);
-    }
+    PC_VideoStreamClose(stream);
 }
 
 void TEXPRO_MpegFree(tTexProceduralStruct* procedural)
@@ -758,11 +542,11 @@ void TEXPRO_MpegFree(tTexProceduralStruct* procedural)
     tTexProcMpeg* mpeg;
 
     mpeg = (tTexProcMpeg*)procedural->proceduralTexPtr;
-    if (mpeg->sub.binkKey != -1 && mpeg->sub.binkIFPtr)
+    if (mpeg->sub.videoKey != -1 && mpeg->sub.videoStream)
     {
-        BINK_CloseAll(mpeg->sub.binkIFPtr);
-        MEM_Free(mpeg->sub.binkIFPtr);
-        mpeg->sub.binkIFPtr = 0;
+        PC_VideoStreamCloseAll(mpeg->sub.videoStream);
+        MEM_Free(mpeg->sub.videoStream);
+        mpeg->sub.videoStream = 0;
     }
     MEM_Free(mpeg);
 }

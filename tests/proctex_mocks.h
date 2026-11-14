@@ -62,3 +62,9 @@ void MOCKP_AddRange(const void* base, const void* new_, size_t size);
    so BINK_IO_FUNC reads a chunk size and a video size rather than the
    filler pattern. */
 void MOCKP_PushWord(int v);
+
+/* video.c's answers: how many frames are left, a bit per call for
+   VID_b_Waiting and for VID_b_NextAlsoDue, and whether opening
+   fails. */
+void MOCKP_SetVideo(int s, int frames, int waitScript, int dueScript, int openFails);
+int  MOCKP_VideoOpened(int s);

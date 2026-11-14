@@ -25,6 +25,9 @@
 #include "../loading.h"
 #include "../bigfiles.h"
 #include "../textures.h"
+/* the Bink types and entry points the frozen copy still uses; the
+   engine itself decodes through libav now */
+#include "bink.h"
 #include "../time.h"
 #include "../gdi.h"
 #include "../soft.h"
@@ -399,6 +402,103 @@ void SOFT_TransformAndProject(Vec3* dstVecs, Vec3* srcVecs, int verticesNum, tDD
         dstVecs[i].z = MTX(m, 0, 2) * wx + MTX(m, 1, 2) * wy + MTX(m, 2, 2) * wz + MTX(m, 3, 2);
     }
 }
+
+/* ---- video.c, logged rather than run ----
+
+   The rewrite decodes through libav. Linking it here would drag the
+   real library into a test about this file's logic, so the module is
+   mocked the same way the Bink SDK below it is: a handle that is not
+   dereferenced, and a script of answers for the three questions the
+   frame pacing asks. */
+
+static int   vidOpened[2];
+static int   vidWaitScript[2];
+static int   vidWaitPos[2];
+static int   vidDueScript[2];
+static int   vidDuePos[2];
+static int   vidFrames[2];      /* frames left before the stream ends */
+static int   vidOpenFails[2];
+
+void MOCKP_SetVideo(int s, int frames, int waitScript, int dueScript, int openFails)
+{
+    vidFrames[s] = frames;
+    vidWaitScript[s] = waitScript;
+    vidWaitPos[s] = 0;
+    vidDueScript[s] = dueScript;
+    vidDuePos[s] = 0;
+    vidOpenFails[s] = openFails;
+    vidOpened[s] = 0;
+}
+
+int MOCKP_VideoOpened(int s) { return vidOpened[s]; }
+
+/* a handle the file only ever tests and passes back */
+static int vidHandle[2];
+
+tVideoStream* VID_pst_OpenReader(tVideoReadFunc read, void* user, int wantSound)
+{
+    MOCKP_Record("VID_pst_OpenReader", read ? 1 : 0, user ? 1 : 0, wantSound);
+    if (vidOpenFails[side])
+        return NULL;
+    vidOpened[side] = 1;
+    return (tVideoStream*)&vidHandle[side];
+}
+
+tVideoStream* VID_pst_OpenFile(const char* path, int wantSound)
+{
+    MOCKP_Record("VID_pst_OpenFile", path ? 1 : 0, wantSound, 0);
+    return NULL;
+}
+
+void VID_Close(tVideoStream* video)
+{
+    MOCKP_Record("VID_Close", video ? 1 : 0, 0, 0);
+    if (video)
+        vidOpened[side] = 0;
+}
+
+int VID_b_Waiting(tVideoStream* video)
+{
+    int bit = (vidWaitScript[side] >> (vidWaitPos[side] & 31)) & 1;
+
+    ++vidWaitPos[side];
+    MOCKP_Record("VID_b_Waiting", bit, 0, 0);
+    return bit;
+}
+
+int VID_b_DecodeFrame(tVideoStream* video)
+{
+    int got = vidFrames[side] > 0;
+
+    if (got)
+        --vidFrames[side];
+    MOCKP_Record("VID_b_DecodeFrame", got, vidFrames[side], 0);
+    return got;
+}
+
+int VID_b_NextAlsoDue(tVideoStream* video)
+{
+    int bit = (vidDueScript[side] >> (vidDuePos[side] & 31)) & 1;
+
+    ++vidDuePos[side];
+    MOCKP_Record("VID_b_NextAlsoDue", bit, 0, 0);
+    return bit;
+}
+
+void VID_NextFrame(tVideoStream* video)
+{
+    MOCKP_Record("VID_NextFrame", 0, 0, 0);
+}
+
+void VID_CopyToBuffer(tVideoStream* video, void* dest, int pitch,
+                      int destHeight, int withAlpha)
+{
+    MOCKP_Record("VID_CopyToBuffer", pitch, destHeight, withAlpha);
+}
+
+int VID_i_Width(const tVideoStream* video) { (void)video; return 64; }
+int VID_i_Height(const tVideoStream* video) { (void)video; return 48; }
+int VID_b_Ended(const tVideoStream* video) { return video ? 0 : 1; }
 
 /* ---- the Bink SDK, logged rather than run ---- */
 

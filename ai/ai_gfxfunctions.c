@@ -7,7 +7,8 @@
 #include "ai_gfxfunctions.h"
 #include "../sound.h"
 #include "../win/wingdi.h"
-#include "bink.h"
+#include "../video.h"
+#include "../win/winvideosound.h"
 
 // An effect's id says which of the world's two lists holds it: the ids
 // below 1024 live in the list the engine draws after the animation
@@ -430,7 +431,8 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* node)
     return node + 1;
 }
 
-HBINK GFX_gpv_FS_Video = 0;
+tVideoStream* GFX_gpv_FS_Video = 0;
+static tVideoSound* GFX_gpst_FS_VideoSound = 0;
 int GFX_gl_FS_VideoPlaying = 0;
 IDirect3DSurface9* GFX_gpst_FS_VideoSurface = 0;
 int GFX_gl_FS_VideoScreenH = 0;
@@ -441,19 +443,19 @@ static IDirect3DSurface9* GFX_gpst_FS_VideoStage = 0;
 
 int GFX_gl_FS_VideoScaleMode = 0;
 
-static void GFX_FS_VideoDecode(HBINK bink)
+static void GFX_FS_VideoDecode(tVideoStream* video)
 {
     D3DLOCKED_RECT lr;
 
-    BinkDoFrame(bink);
+    if (!VID_b_DecodeFrame(video))
+        return;
     GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, NULL,
                                                D3DLOCK_NOSYSLOCK);
-    BinkCopyToBuffer(bink, lr.pBits, lr.Pitch, GFX_gl_FS_VideoScreenH, 0, 0,
-                     BINKSURFACE32A | BINKCOPYALL);
+    VID_CopyToBuffer(video, lr.pBits, lr.Pitch, GFX_gl_FS_VideoScreenH, 1);
     GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
 }
 
-static void GFX_FS_VideoBlit(HBINK bink)
+static void GFX_FS_VideoBlit(tVideoStream* video)
 {
     IDirect3DSurface9* back;
     RECT src;
@@ -473,12 +475,12 @@ static void GFX_FS_VideoBlit(HBINK bink)
 
     if (GFX_gl_FS_VideoScaleMode & 0x2000000)
     {
-        scale = (float)GFX_gl_FS_VideoScreenW / (float)bink->Width;
+        scale = (float)GFX_gl_FS_VideoScreenW / (float)VID_i_Width(video);
         filter = D3DTEXF_LINEAR;
     }
     else if (GFX_gl_FS_VideoScaleMode & 0x1000000)
     {
-        scale = (float)GFX_gl_FS_VideoScreenW / (float)bink->Width;
+        scale = (float)GFX_gl_FS_VideoScreenW / (float)VID_i_Width(video);
         filter = D3DTEXF_POINT;
     }
     else
@@ -489,12 +491,12 @@ static void GFX_FS_VideoBlit(HBINK bink)
 
     src.left = 0;
     src.top = 0;
-    src.right = bink->Width;
-    src.bottom = bink->Height;
+    src.right = VID_i_Width(video);
+    src.bottom = VID_i_Height(video);
 
-    scaledW = (unsigned int)((float)bink->Width * scale);
+    scaledW = (unsigned int)((float)VID_i_Width(video) * scale);
     left = (GFX_gl_FS_VideoScreenW - scaledW) / 2;
-    scaledH = (unsigned int)((float)bink->Height * scale);
+    scaledH = (unsigned int)((float)VID_i_Height(video) * scale);
     top = (GFX_gl_FS_VideoScreenH - scaledH) / 2;
     dst.left = left;
     dst.top = top;
@@ -518,10 +520,14 @@ void GFX_FS_VideoStart(int unused)
 
     (void)unused;
 
-    BinkSetSoundSystem(BinkOpenDirectSound, (unsigned long)SND_gst_Params.handles->dsndif);
-    GFX_gpv_FS_Video = BinkOpen("BGEMakingOf.bik", 0);
+    GFX_gpv_FS_Video = VID_pst_OpenFile("BGEMakingOf.bik", 1);
     if (!GFX_gpv_FS_Video)
         return;
+    // The sound is ours to play now: libav decodes it and nothing
+    // more. A video with no sound track, or a device that will not
+    // give up a buffer, leaves the picture to the wall clock.
+    GFX_gpst_FS_VideoSound = WVS_pst_Open(SND_gst_Params.handles->dsndif,
+                                          GFX_gpv_FS_Video);
 
     D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0,
                                                   D3DBACKBUFFER_TYPE_MONO, &back);
@@ -532,24 +538,26 @@ void GFX_FS_VideoStart(int unused)
 
     D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(
         D3DRenderParams.d3dDev,
-        GFX_gpv_FS_Video->Width, GFX_gpv_FS_Video->Height,
+        VID_i_Width(GFX_gpv_FS_Video), VID_i_Height(GFX_gpv_FS_Video),
         desc.Format, D3DPOOL_SYSTEMMEM, &GFX_gpst_FS_VideoSurface, 0);
 
     GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, 0,
                                                D3DLOCK_NOSYSLOCK);
     memset(lr.pBits, 0,
-           4 * GFX_gpv_FS_Video->Width * GFX_gpv_FS_Video->Height);
+           4 * VID_i_Width(GFX_gpv_FS_Video) * VID_i_Height(GFX_gpv_FS_Video));
     GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
 
     hr = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
-        GFX_gpv_FS_Video->Width, GFX_gpv_FS_Video->Height, 1,
+        VID_i_Width(GFX_gpv_FS_Video), VID_i_Height(GFX_gpv_FS_Video), 1,
         D3DUSAGE_RENDERTARGET, desc.Format, D3DPOOL_DEFAULT,
         &GFX_gpst_FS_VideoStageTex, NULL);
     if (FAILED(hr))
     {
         GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
         GFX_gpst_FS_VideoSurface = 0;
-        BinkClose(GFX_gpv_FS_Video);
+        WVS_Close(GFX_gpst_FS_VideoSound);
+        GFX_gpst_FS_VideoSound = 0;
+        VID_Close(GFX_gpv_FS_Video);
         GFX_gpv_FS_Video = 0;
         return;
     }
@@ -575,7 +583,9 @@ void GFX_FS_VideoStop()
         GFX_gpst_FS_VideoStageTex = 0;
         GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
         GFX_gpst_FS_VideoSurface = 0;
-        BinkClose(GFX_gpv_FS_Video);
+        WVS_Close(GFX_gpst_FS_VideoSound);
+        GFX_gpst_FS_VideoSound = 0;
+        VID_Close(GFX_gpv_FS_Video);
         GFX_gpv_FS_Video = 0;
     }
     GFX_gl_FS_VideoPlaying = 0;
@@ -590,7 +600,7 @@ tAINode* AI_EvalFunc_GFX_FS_VideoStop(tAINode* node)
 int GFX_FS_VideoFinish() {
     if (!GFX_gpv_FS_Video)
         return 1;
-    return GFX_gpv_FS_Video->FrameNum >= GFX_gpv_FS_Video->Frames;
+    return VID_b_Ended(GFX_gpv_FS_Video);
 }
 
 tAINode* AI_EvalFunc_GFX_FS_VideoFinish(tAINode* node)
@@ -604,7 +614,12 @@ void GFX_FS_VideoUpdate()
     if (!GFX_gpv_FS_Video)
         return;
 
-    if (BinkWait(GFX_gpv_FS_Video))
+    // Topping the sound buffer up is also what sets the clock the
+    // frame below is paced by, so it comes first and happens even on
+    // the frames where nothing is decoded.
+    WVS_Update(GFX_gpst_FS_VideoSound, GFX_gpv_FS_Video);
+
+    if (VID_b_Waiting(GFX_gpv_FS_Video))
     {
         GFX_FS_VideoBlit(GFX_gpv_FS_Video);
         return;
@@ -612,8 +627,7 @@ void GFX_FS_VideoUpdate()
 
     GFX_FS_VideoDecode(GFX_gpv_FS_Video);
     GFX_FS_VideoBlit(GFX_gpv_FS_Video);
-    if (GFX_gpv_FS_Video->FrameNum < GFX_gpv_FS_Video->Frames)
-        BinkNextFrame(GFX_gpv_FS_Video);
+    VID_NextFrame(GFX_gpv_FS_Video);
 }
 
 // The explosion takes its material from the visual of the object the

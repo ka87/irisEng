@@ -610,6 +610,15 @@ static void clock(const char* path)
     /* and it goes back to waiting when the sound is behind again */
     VID_SoundPlayed(v, 0);
     okEq(VID_b_Waiting(v), 1, "the clock follows the sink both ways");
+
+    /* VID_b_NextAlsoDue answers the same question one frame further
+       on, without having to release the frame in hand to ask it */
+    ok(VID_b_DecodeFrame(v), "a frame is in hand for the look-ahead");
+    VID_SoundPlayed(v, 0);
+    okEq(VID_b_NextAlsoDue(v), 0, "with the sound behind, the one after is not due");
+    VID_SoundPlayed(v, (int64_t)VID_i_SoundRate(v) * 3600);
+    okEq(VID_b_NextAlsoDue(v), 1, "with the sound run on, the one after is due too");
+    okEq(VID_b_NextAlsoDue(NULL), 0, "and nothing is never due");
     VID_Close(v);
 }
 

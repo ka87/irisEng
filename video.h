@@ -56,6 +56,12 @@ int  VID_b_Waiting(tVideoStream* video);
 int  VID_b_DecodeFrame(tVideoStream* video);
 /* Releases the current frame so the next decode reads the one after. */
 void VID_NextFrame(tVideoStream* video);
+/* Non-zero when the frame after the one in hand is already due as
+   well, which is how a caller that has fallen behind knows to decode
+   on without stopping to show what it has. Asking after advancing
+   would mean releasing the frame first, and then there is nothing
+   left to show if the answer is no. */
+int  VID_b_NextAlsoDue(tVideoStream* video);
 /* The frame in hand, as 32-bit BGRA rows of `pitch` bytes. At most
    `destHeight` rows are written. withAlpha keeps the file's alpha
    plane where it has one; without it every pixel is opaque. */
