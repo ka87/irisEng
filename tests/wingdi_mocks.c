@@ -1146,3 +1146,10 @@ int OVL_b_CommandMessage(unsigned int msg, unsigned int wParam)
 int WGM_overlayCycles = 0;
 
 void OVL_RastersCycleView(void) { WGM_overlayCycles++; }
+
+/* The free camera is a translation unit of its own, so its toggle is
+   counted here and the key handler's call to it is visible. The
+   camera's own test drives the real one. */
+int WGM_editorCameraToggles = 0;
+
+void ECAM_Toggle(void) { WGM_editorCameraToggles++; }

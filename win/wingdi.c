@@ -11,6 +11,7 @@
 #include "../resource.h"
 #include "wingdi.h"
 #include "overlay.h"
+#include "../editorcamera.h"
 #include "../profiler.h"
 
 D3DMATRIX d3dProjectionMtx = { 1.4616959f, 0.0, 0.0, 0.0,
@@ -5089,6 +5090,14 @@ void PC_EngineCheatFinal()
 
         if (PRO_rasterHWND)
             InvalidateRect(PRO_rasterHWND, NULL, TRUE);
+    }
+
+    if (GetAsyncKeyState(VK_F8) < 0)
+    {
+        // The free camera takes the view's follow parameter and the
+        // input, and gives both back on the second press.
+        ECAM_Toggle();
+        while (GetAsyncKeyState(VK_F8) < 0);
     }
     if (GetAsyncKeyState(VK_F2) < 0)
     {

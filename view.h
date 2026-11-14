@@ -23,3 +23,8 @@ typedef struct sViewElem
 unsigned int WOR_View_Create(struct sWorld* world);
 void WOR_View_Close(struct sViewElem *ve);
 void WOR_View_SetViewport(struct sViewElem* view, float viewPortPosX, float viewPortPosY, float viewPortSizeWidth, float viewPortSizeHeight);
+
+/* Sets a view's camera matrix, keeping the previous one. What
+   WOR_View_FollowFather calls with the assigned object's absolute
+   matrix, and what anything else driving a view calls instead. */
+void WOR_View_SetViewPoint(struct sViewElem* view, Mtx4x4* viewPointMatrix, Vec3* unkVec, int unkInt, int onlyPositionSet);
