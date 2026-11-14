@@ -52,7 +52,8 @@ not free. Two things stand in for it.
 
 **A stub include set** (`tests/stub/`) is enough for a native `gcc
 -fsyntax-only -Werror=implicit-function-declaration` to parse **135 of
-the 137** first-party sources: `windows.h`, `d3d9.h`, `dsound.h` and
+the 137** first-party sources (136 of 138 since `win/overlay.c` was
+added, which is not part of this pass -- see `docs/overlay.md`): `windows.h`, `d3d9.h`, `dsound.h` and
 `dinput.h` with the types, interfaces and vtable methods the engine
 actually names, and a few empty headers. The two left are `bigfiles.c`
 and `loading.c`, which fail on the `fpos_t` arithmetic described below

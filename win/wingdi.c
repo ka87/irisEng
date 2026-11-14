@@ -1306,6 +1306,84 @@ void D3D_RastersCreateFont()
     D3DXCreateFontIndirectA(D3DRenderParams.d3dDev, &desc, &d3dxfontIF);
 }
 
+// The overlay's own font. The rasters one is Arial at ten pixels,
+// which was right for a small window and is unreadable as a command
+// line, so this is a monospaced face scaled to the viewport. The
+// height is recomputed each time it is used and the font rebuilt when
+// it changes, which is what carries it across a resolution change.
+static int D3D_OverlayFontWantedHeight()
+{
+    int height;
+
+    height = (int)D3DRenderParams.d3dViewPort.Height / 30;
+    if (height < 14)
+        height = 14;
+    if (height > 44)
+        height = 44;
+    return height;
+}
+
+static void D3D_OverlayFontReady()
+{
+    D3DXFONT_DESCA desc;
+    int height;
+
+    height = D3D_OverlayFontWantedHeight();
+    if (d3dxOverlayFontIF && d3dOverlayFontHeight == height)
+        return;
+    if (d3dxOverlayFontIF)
+    {
+        d3dxOverlayFontIF->lpVtbl->Release(d3dxOverlayFontIF);
+        d3dxOverlayFontIF = NULL;
+    }
+    memset(&desc, 0, sizeof(desc));
+    strcpy(desc.FaceName, "Courier New");
+    desc.Height = height;
+    desc.Weight = 400;
+    desc.MipLevels = 1;
+    D3DXCreateFontIndirectA(D3DRenderParams.d3dDev, &desc, &d3dxOverlayFontIF);
+    d3dOverlayFontHeight = height;
+}
+
+int D3D_OverlayFontHeight()
+{
+    D3D_OverlayFontReady();
+    return d3dOverlayFontHeight;
+}
+
+void D3D_OverlayDrawText(char* text, int x, int y, D3DCOLOR color)
+{
+    RECT area;
+
+    D3D_OverlayFontReady();
+    if (!d3dxOverlayFontIF)
+        return;
+    area.left = x;
+    area.top = y;
+    area.right = 10000;
+    area.bottom = 10000;
+    d3dxOverlayFontIF->lpVtbl->DrawTextA(d3dxOverlayFontIF, NULL, text, -1, &area, 0, color);
+}
+
+// The width the string will occupy, measured rather than guessed: the
+// caret sits at the end of the line, and a per-character estimate
+// drifts further from the text with every character typed.
+int D3D_OverlayTextWidth(char* text)
+{
+    RECT area;
+
+    D3D_OverlayFontReady();
+    if (!d3dxOverlayFontIF)
+        return 0;
+    area.left = 0;
+    area.top = 0;
+    area.right = 0;
+    area.bottom = 0;
+    d3dxOverlayFontIF->lpVtbl->DrawTextA(d3dxOverlayFontIF, NULL, text, -1, &area,
+                                         DT_CALCRECT, 0);
+    return area.right - area.left;
+}
+
 void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color)
 {
     RECT area;

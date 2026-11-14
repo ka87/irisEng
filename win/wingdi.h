@@ -237,6 +237,8 @@ int currentVBOSelected;
 int d3d_alphablendIsCase3;
 
 ID3DXFont* d3dxfontIF;
+ID3DXFont* d3dxOverlayFontIF;
+int d3dOverlayFontHeight;
 char* rastersDrawPrimitiveUPDataStart;
 char* rastersDrawPrimitiveUPDataEnd;
 
@@ -261,6 +263,9 @@ void D3D_OverlayBegin(void);
 void D3D_OverlayDrawQuads(void* verts, int triangleCount);
 void D3D_OverlayEnd(void);
 void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color);
+int  D3D_OverlayFontHeight();
+void D3D_OverlayDrawText(char* text, int x, int y, D3DCOLOR color);
+int  D3D_OverlayTextWidth(char* text);
 
 void D3D_SetProjectionMatrix(tDDCamStruct* cam);
 void D3D_BeginSceneCall();

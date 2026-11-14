@@ -51,11 +51,11 @@ void D3D_OverlayDrawQuads(void* verts, int triangleCount)
 static char ovt_seen[OVT_MAXSEEN][96];
 static int  ovt_seenX[OVT_MAXSEEN];
 static int  ovt_seenY[OVT_MAXSEEN];
+static int  ovt_seenBig[OVT_MAXSEEN];
 static int  ovt_seenCount;
 
-void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color)
+static void ovt_record(const char* text, int x, int y, int big)
 {
-    (void)color;
     if (ovt_quadCalls == 0)
         ovt_textAfterQuads = 0;
     if (ovt_seenCount < OVT_MAXSEEN)
@@ -64,8 +64,48 @@ void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color)
         ovt_seen[ovt_seenCount][95] = 0;
         ovt_seenX[ovt_seenCount] = x;
         ovt_seenY[ovt_seenCount] = y;
+        ovt_seenBig[ovt_seenCount] = big;
         ovt_seenCount++;
     }
+}
+
+/* The overlay's own font. It is deliberately **proportional** here,
+   with four different glyph widths, so a caret placed by a
+   per-character estimate cannot pass the checks below: that is the
+   defect this stand-in exists to expose. */
+static int ovt_fontHeight = 20;
+
+static int ovt_glyphWidth(char c)
+{
+    if (c == 'i' || c == 'l' || c == '.')
+        return 4;
+    if (c == 'm' || c == 'w' || c == 'W')
+        return 17;
+    if (c == ' ')
+        return 6;
+    return 10;
+}
+
+int D3D_OverlayFontHeight(void) { return ovt_fontHeight; }
+
+int D3D_OverlayTextWidth(char* text)
+{
+    int w = 0;
+    while (*text)
+        w += ovt_glyphWidth(*text++);
+    return w;
+}
+
+void D3D_OverlayDrawText(char* text, int x, int y, D3DCOLOR color)
+{
+    (void)color;
+    ovt_record(text, x, y, 1);
+}
+
+void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color)
+{
+    (void)color;
+    ovt_record(text, x, y, 0);
 }
 
 /* the profiler's own state, which the panel walks */
@@ -508,6 +548,120 @@ static void panel(void)
     okEq(ovt_seenCount, 0, "an empty detail page prints nothing");
 }
 
+/* ------------------------------------------------------------ the caret */
+
+/* The caret sits at the end of the line, which means where the text
+   actually ends and not where a per-character estimate puts it. With
+   a proportional face the two diverge further with every character,
+   so these drive several lines of equal length but different widths
+   and require the caret to track the measured width exactly. */
+static void caret(void)
+{
+    static const char* lines[] = {
+        "", "i", "iiiiiiii", "mmmmmmmm", "map 12", "wwwwwwwwwwww", "il.il.il."
+    };
+    unsigned k;
+    int firstGap = -1;
+    int gapsEqual = 1;
+    int seenPositions[7];
+
+    for (k = 0; k < sizeof(lines) / sizeof(lines[0]); ++k)
+    {
+        char want[OVL_CMDMAX + 4];
+        int textX;
+        int caretLeft;
+        int caretRight;
+        int caretTop;
+        int caretBottom;
+        int wantLeft;
+        int n;
+
+        resetAll();
+        OVL_CommandShow();
+        type(lines[k]);
+        OVL_l_CommandField();
+
+        /* the caret is the last quad of the batch */
+        ok(ovl_vertCount >= 6, "the caret is drawn on the first frame");
+        if (ovl_vertCount < 6)
+            continue;
+        n = ovl_vertCount - 6;
+        caretLeft = (int)ovl_verts[n].v.x;
+        caretTop = (int)ovl_verts[n].v.y;
+        caretRight = (int)ovl_verts[n + 5].v.x;
+        caretBottom = (int)ovl_verts[n + 5].v.y;
+
+        sprintf(want, "> %s", lines[k]);
+        textX = (int)OVL_FIELDTOP + 8;
+        wantLeft = textX + D3D_OverlayTextWidth(want) + 1;
+
+        okEq(caretLeft, wantLeft, "the caret is at the end of the measured text");
+        okEq(caretBottom - caretTop, ovt_fontHeight, "the caret is as tall as the font");
+        ok(caretRight - caretLeft > 0 && caretRight - caretLeft <= 4,
+           "the caret is a thin bar");
+
+        /* the gap between where the text ends and the caret begins is
+           the same for every line, however wide its characters are */
+        if (firstGap < 0)
+            firstGap = caretLeft - (textX + D3D_OverlayTextWidth(want));
+        else if (caretLeft - (textX + D3D_OverlayTextWidth(want)) != firstGap)
+            gapsEqual = 0;
+
+        seenPositions[k] = caretLeft;
+    }
+    ok(gapsEqual, "the gap to the caret does not grow with the line");
+
+    /* eight narrow characters and eight wide ones are the same length
+       and must not put the caret in the same place */
+    ok(seenPositions[2] != seenPositions[3],
+       "the caret follows the glyphs, not the character count");
+    ok(seenPositions[2] < seenPositions[3],
+       "a narrow line puts the caret further left than a wide one");
+
+    /* and the line itself goes out in the overlay's own font, not the
+       panel's small one */
+    resetAll();
+    OVL_CommandShow();
+    type("hi");
+    OVL_Draw();
+    {
+        int i;
+        int bigLines = 0;
+        for (i = 0; i < ovt_seenCount; i++)
+            if (strcmp(ovt_seen[i], "> hi") == 0 && ovt_seenBig[i])
+                bigLines++;
+        okEq(bigLines, 1, "the command line uses the overlay font");
+    }
+
+    /* the box follows the font: a taller font gives a taller box */
+    {
+        float smallH;
+        float bigH;
+        int i;
+
+        resetAll();
+        ovt_fontHeight = 14;
+        OVL_CommandShow();
+        OVL_l_CommandField();
+        smallH = 0.0f;
+        for (i = 0; i < ovl_vertCount; i++)
+            if (ovl_verts[i].v.y > smallH)
+                smallH = ovl_verts[i].v.y;
+
+        resetAll();
+        ovt_fontHeight = 40;
+        OVL_CommandShow();
+        OVL_l_CommandField();
+        bigH = 0.0f;
+        for (i = 0; i < ovl_vertCount; i++)
+            if (ovl_verts[i].v.y > bigH)
+                bigH = ovl_verts[i].v.y;
+
+        ok(bigH > smallH + 20.0f, "the field grows with the font");
+        ovt_fontHeight = 20;
+    }
+}
+
 /* --------------------------------------------------------------- the pass */
 
 static void pass(void)
@@ -615,6 +769,7 @@ int main(void)
     printf("=== overlay unit test ===\n");
     fieldStateMachine();
     shapes();
+    caret();
     panel();
     pass();
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
