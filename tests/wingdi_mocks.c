@@ -1140,3 +1140,9 @@ void OVL_Draw(void) { WGM_overlayDraws++; }
 
 int OVL_b_CommandMessage(unsigned int msg, unsigned int wParam)
 { (void)msg; (void)wParam; return 0; }
+
+/* F1's state cycle, counted so the key handler's call to it is
+   visible. The overlay's own test drives the real one. */
+int WGM_overlayCycles = 0;
+
+void OVL_RastersCycleView(void) { WGM_overlayCycles++; }

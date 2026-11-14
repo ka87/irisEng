@@ -90,3 +90,6 @@ unsigned long long WGM_HashState(void);
 
 /* how many times D3D_Flip reached the overlay. */
 extern int WGM_overlayDraws;
+
+/* how many times the key handler stepped the rasters panel. */
+extern int WGM_overlayCycles;
