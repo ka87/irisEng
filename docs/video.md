@@ -10,17 +10,21 @@ nothing rewired yet.** The call sites still use Bink. Wiring them up,
 and the DirectSound sink that the full-screen video needs, follow
 separately — see "What is not here yet".
 
-## Does this work on 32-bit x86?
+## 32-bit x86
 
-Yes, and it is the mainline case rather than an afterthought: the
-project's primary platform is `Win32`, and i686 is a first-class
-FFmpeg target with hand-written MMX and SSE paths. Two things are
-worth knowing before the build is set up.
+It is the mainline case rather than an afterthought: the project's
+primary platform is `Win32`, and i686 is a first-class FFmpeg target
+with hand-written MMX and SSE paths.
 
-**Prebuilt 32-bit Windows binaries are no longer common.** The
-best-known builders ship x64 only. `defisym/FFmpeg-Builds-Win32`
-auto-builds win32 in GPL and LGPL, static and shared, and is current;
-MSYS2's mingw32 toolchain builds it from source. Either works.
+**The build is in the repository**, under `thirdparty/ffmpeg`:
+headers, MSVC import libraries and the five runtime DLLs of
+`ffmpeg-n9.0.2-48-gd4070a14ce-win32-lgpl-shared-9.0`. The two `Win32`
+configurations link it and copy the DLLs next to the exe after a
+build; `video.c` is excluded from the two `x64` configurations,
+because a 32-bit import library has nothing for an x64 link to
+resolve against. `thirdparty/ffmpeg/README.md` has the details,
+including the LGPL position and how to put a much smaller build in
+its place.
 
 **Bink 1 only.** libav's `bink` demuxer and its `binkvideo`,
 `binkaudio_dct` and `binkaudio_rdft` decoders were reverse-engineered
@@ -115,6 +119,17 @@ libav development files or the `ffmpeg` command line are missing, the
 test says so and is skipped rather than failing — FFmpeg is not part
 of the engine's own toolchain.
 
+Before any of that it does a **compile-only pass against the headers
+in `thirdparty/ffmpeg`**, which are what the engine builds against
+and are usually a different version from whatever shared libraries
+the machine running the test has. They cannot be linked here -- a
+version mismatch shows up as every open failing rather than as a link
+error -- but compiling against them catches the thing worth catching,
+which is a call that is right for one version of libav and not the
+other. It found one: `av_gettime_relative` needs
+`<libavutil/time.h>`, which 6.1 pulled in transitively and 9.0 does
+not.
+
 69 checks over opening, both input paths, the pixel format, pitch and
 clipping, the end of the stream, broken input, the sound track and the
 frame clock. The fixtures are built by `ffmpeg` from `lavfi`, so they
@@ -192,10 +207,7 @@ lines it would be guarding.
   for call, the same way the overlay's F12 edge could not. It will
   need the same treatment: carve out what genuinely changed, and
   check the new path directly.
-- **Build configuration.** Nothing in `irisEng.vcxproj` links libav
-  yet. It will want the five import libraries and the DLLs beside the
-  exe, or a static LGPL build; a `--disable-everything` build with
-  just the bink demuxer and decoders is a few hundred KB rather than
-  the several MB a default build is.
-- **Licensing.** LGPL shared linking leaves the engine's position as
-  it is. A GPL static build would not.
+- **A smaller libav.** The build committed here is 90 MB of DLLs
+  because a default FFmpeg carries every codec; one configured for
+  Bink alone is a few hundred KB. The configure line is in
+  `thirdparty/ffmpeg/README.md`; it needs an MSYS2 toolchain.

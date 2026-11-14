@@ -28,12 +28,37 @@ mkdir -p "$OUT"
 
 echo "=== video ==="
 
+# A compile-only pass against the headers that ship in thirdparty/,
+# which are what the engine itself builds against. They cannot be
+# linked here -- they belong to a Windows build and would be a
+# version mismatch for whatever shared libraries this machine has,
+# which shows up as every open failing rather than as a link error.
+# Compiling against them still catches the thing worth catching: an
+# API call that is right for one version of libav and not the other.
+if [ -d thirdparty/ffmpeg/include ]; then
+    # no -w here: on gcc 13 it disables the implicit-declaration
+    # error beside it, and a call declared in a header that one
+    # version pulls in transitively and the other does not is
+    # exactly what this pass is for
+    if $CC -fsyntax-only -std=gnu11 -fcommon -fms-extensions \
+        -Werror=implicit-function-declaration \
+        -Itests/stub -Ithirdparty/ffmpeg/include video.c 2>"$OUT/video.hdr.log"; then
+        echo "  compiles against the headers in thirdparty/ffmpeg"
+    else
+        echo "  does NOT compile against the headers in thirdparty/ffmpeg:"
+        grep -E 'error' "$OUT/video.hdr.log" | head -5
+        exit 1
+    fi
+fi
+
 if [ -z "$VIDEO_CFLAGS" ] && [ -z "$VIDEO_LIBS" ]; then
     if pkg-config --exists libavformat libavcodec libavutil libswscale libswresample 2>/dev/null; then
-        VIDEO_CFLAGS=$(pkg-config --cflags libavformat libavcodec libavutil libswscale libswresample)
-        VIDEO_LIBS=$(pkg-config --libs libavformat libavcodec libavutil libswscale libswresample)
+        VIDEO_CFLAGS=$(pkg-config --cflags \
+            libavformat libavcodec libavutil libswscale libswresample)
+        VIDEO_LIBS=$(pkg-config --libs \
+            libavformat libavcodec libavutil libswscale libswresample)
     else
-        echo "  skipped: no libav development files (pkg-config found no libavformat)"
+        echo "  skipped: no libav to link against (pkg-config found no libavformat)"
         exit 0
     fi
 fi

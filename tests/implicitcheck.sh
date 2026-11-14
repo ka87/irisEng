@@ -47,7 +47,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
+CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub -Ithirdparty/ffmpeg/include"
 
 BASELINE="bigfiles.c 2
 engine.c 1

@@ -1,0 +1,5 @@
+# The libav binaries. Git detects these as binary on its own, but
+# saying so keeps any future line-ending rule from reaching them.
+*.dll    binary
+*.lib    binary
+*.dll.a  binary
