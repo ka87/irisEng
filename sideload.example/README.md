@@ -1,9 +1,9 @@
 # Sideloading a recovered script
 
-Copy this folder next to the built exe and rename it `sideload`:
+Copy this folder next to the built exe and rename it `data`:
 
     <build output>\irisEng.exe
-    <build output>\sideload\5E006324.ofc
+    <build output>\data\5E006324.ofc
     ...
 
 On startup `SIDE_InitModule` lists the folder and notes every file whose
@@ -13,7 +13,7 @@ interpreter even where the behaviour has been transcribed into C. The
 debug output says what it picked up:
 
     SIDE: 0x5e006324 <- 5E006324.ofc
-    SIDE: 60 key(s) overridden from ...\sideload\
+    SIDE: 60 key(s) overridden from ...\data\
 
 With no folder there, nothing changes: the engine behaves exactly as it
 did before.
