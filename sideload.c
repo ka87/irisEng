@@ -169,9 +169,9 @@ void SIDE_InitModule(void)
     /* Keep the separator, so everything below can just append. An
        exe sitting deep enough that the folder name does not fit is
        not a case worth handling beyond declining to look. */
-    if ((size_t)(cut + 1 - SIDE_gs_Dir) + sizeof("sideload\\") > MAX_PATH)
+    if ((size_t)(cut + 1 - SIDE_gs_Dir) + sizeof("data\\") > MAX_PATH)
         return;
-    strcpy(cut + 1, "sideload\\");
+    strcpy(cut + 1, "data\\");
 
     attrs = GetFileAttributesA(SIDE_gs_Dir);
     if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY))

@@ -11,7 +11,7 @@
     watched, without rebuilding the archive and without touching
     AI2C_gat_fctdefs.
 
-        <exe dir>\sideload\
+        <exe dir>\data\
             5E006324.ofc        a behaviour, by key
             5E006325.ova        a variable file, by key
             5E006326.omd        a model, by key
