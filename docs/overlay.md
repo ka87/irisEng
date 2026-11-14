@@ -20,7 +20,7 @@ font the rasters code already creates.
 | `win/overlay.h` | `OVL_Draw`, and the command field's four entry points |
 | `win/wingdi.c` | `D3D_OverlayBegin` / `DrawQuads` / `End`, the pass itself |
 | `win/wininputoutput.c` | F12, and `pcINO_RunTweakCommand` |
-| `tests/test_overlay.c` | the unit test, 100 checks |
+| `tests/test_overlay.c` | the unit test, 133 checks |
 
 ### Where the pass sits
 
@@ -107,9 +107,28 @@ the profiler's numbers wrong.
 
 ## The command field
 
-Full width at the top of the screen, `y = 10`, 26 high, a rounded green
-2-pixel outline over a translucent backdrop, `> ` and the line in white,
-and a caret that blinks every 20 frames. No assets.
+Full width at the top of the screen, `y = 10`, a rounded green 2-pixel
+outline over a translucent backdrop, `> ` and the line in white, and a
+caret that blinks every 20 frames. No assets.
+
+**The field has a font of its own.** The rasters font is Arial at ten
+pixels, which was right for a small GDI window and is unreadable as a
+command line, so the overlay creates a second one: Courier New, at
+`viewport height / 30` clamped to 14..44, rebuilt whenever that height
+changes, which is what carries it across a resolution change. The box
+is then as tall as the line it holds --- `font height + 2 x 6` ---
+rather than the font having to fit a box fixed at 26. The panel keeps
+the small font, because its column positions were laid out for it.
+
+**The caret is placed by measuring, not by counting.** `ID3DXFont`
+measures a string with `DT_CALCRECT`, and the caret goes one pixel
+past where it says the text ends. The first version multiplied the
+character count by an assumed 7-pixel cell, which was wrong in two
+ways at once: the cell was too narrow, and the face is proportional,
+so the error compounded with every character and the caret drifted
+further from the text the more was typed. One measuring call per
+frame is the cost, and it is the only thing that is right for an
+arbitrary face.
 
 ### What F12 does now
 
@@ -162,14 +181,20 @@ after a draw. The stub `windows.h` and
 consumes their **real** SDK values, rather than the sequential ones the
 stub uses elsewhere: `PC_WNDMsgHandler` opens with a range test on the
 message number, so a made-up ordering would change what the handler
-does. 100 checks over the command field's state machine, the
-three shape primitives, the panel's five value forms and the walk, and
-the pass itself.
+does. 133 checks over the command field's state machine, the three
+shape primitives, the caret, the panel's five value forms and the
+walk, and the pass itself.
+
+The font the test stands in is **deliberately proportional**, with
+four different glyph widths, because that is the only way the caret
+checks can see the defect they exist for: eight narrow characters and
+eight wide ones are the same length, and a caret placed by character
+count puts both in the same place.
 
 It is a unit test rather than a differential one, because there is no
 earlier copy of this file to compare against. That makes the
-mutation check the only evidence it has teeth, so twelve independent
-defects were injected into `win/overlay.c` one at a time and every one
+mutation check the only evidence it has teeth, so seventeen
+independent defects were injected into `win/overlay.c` one at a time and every one
 of them was caught:
 
 | mutation | check that fired |
@@ -186,6 +211,11 @@ of them was caught:
 | a drawn raster not marked | a drawn raster is marked |
 | the subgroup heading never takes a row | a subgroup heading takes a row of its own |
 | `OVL_Draw` with no widget up still draws | an idle overlay does not touch the device |
+| the caret placed by character count | the caret is at the end of the measured text |
+| the caret measured without the prompt | the caret is at the end of the measured text |
+| the line drawn in the panel's small font | the command line uses the overlay font |
+| the box height fixed again | the field grows with the font |
+| the caret height fixed again | the caret is as tall as the font |
 
 **One of those mutations was missed on the first attempt, and the
 reason is worth keeping.** The cap check used to fill the batch to four
@@ -236,10 +266,13 @@ suite is at 0 differences.
 - The panel's width is fixed at 320, which is enough for the column
   positions the window used but will clip a long module name. The
   window clipped it too, at a different place.
-- The caret's position assumes a 7-pixel character cell. The debug font
-  is whatever `D3DXCreateFont` gives back, so this is right for the
-  default and approximate for anything else; `ID3DXFont` can measure a
-  string, which would fix it at the cost of a call per frame.
+- Courier New is assumed to be installed. It is on every Windows since
+  3.1, and GDI substitutes a default face if it ever is not, so the
+  field degrades to a different-looking font rather than to nothing.
+- The overlay font is never released on a device reset. Neither is the
+  rasters font, which is the existing practice here; the height check
+  rebuilds it after a resolution change, which is the case that
+  matters.
 - The command field has no history and no completion. The dialog had
   neither either.
 - `PRO_ProfilerWindowHandler` is still in `profiler.c` and still

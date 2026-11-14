@@ -19,8 +19,8 @@
 #define OVL_PANELY     60.0f
 #define OVL_PANELW     320.0f
 
-#define OVL_FIELDH     26.0f
 #define OVL_FIELDTOP   10.0f
+#define OVL_FIELDPAD   6.0f     /* above and below the line of text */
 #define OVL_RADIUS     8.0f
 #define OVL_BORDER     2.0f
 #define OVL_CORNERSEG  5
@@ -38,7 +38,7 @@ static int ovl_vertCount = 0;
 // flushes. The strings are queued here and emitted after it.
 #define OVL_MAXTEXT  192
 #define OVL_TEXTLEN  96
-typedef struct { int x, y; unsigned int color; char s[OVL_TEXTLEN]; } tOvlText;
+typedef struct { int x, y; unsigned int color; int big; char s[OVL_TEXTLEN]; } tOvlText;
 static tOvlText ovl_text[OVL_MAXTEXT];
 static int ovl_textCount = 0;
 
@@ -121,7 +121,10 @@ static void OVL_l_RoundRectOutline(unsigned int color, unsigned int inner,
                         r - t > 1.0f ? r - t : 1.0f);
 }
 
-static void OVL_l_Text(const char* s, int x, int y, unsigned int color)
+// The panel keeps the small rasters font, which is what its column
+// positions were laid out for; the command line takes the overlay's
+// own, which is larger and scaled to the viewport.
+static void OVL_l_QueueText(const char* s, int x, int y, unsigned int color, int big)
 {
     tOvlText* t;
 
@@ -131,8 +134,19 @@ static void OVL_l_Text(const char* s, int x, int y, unsigned int color)
     t->x = x;
     t->y = y;
     t->color = color;
+    t->big = big;
     strncpy(t->s, s, OVL_TEXTLEN - 1);
     t->s[OVL_TEXTLEN - 1] = 0;
+}
+
+static void OVL_l_Text(const char* s, int x, int y, unsigned int color)
+{
+    OVL_l_QueueText(s, x, y, color, 0);
+}
+
+static void OVL_l_BigText(const char* s, int x, int y, unsigned int color)
+{
+    OVL_l_QueueText(s, x, y, color, 1);
 }
 
 static void OVL_l_FlushText(void)
@@ -140,8 +154,14 @@ static void OVL_l_FlushText(void)
     int i;
 
     for (i = 0; i < ovl_textCount; i++)
-        D3D_RastersDrawText(ovl_text[i].s, ovl_text[i].x, ovl_text[i].y,
-                            (D3DCOLOR)ovl_text[i].color);
+    {
+        if (ovl_text[i].big)
+            D3D_OverlayDrawText(ovl_text[i].s, ovl_text[i].x, ovl_text[i].y,
+                                (D3DCOLOR)ovl_text[i].color);
+        else
+            D3D_RastersDrawText(ovl_text[i].s, ovl_text[i].x, ovl_text[i].y,
+                                (D3DCOLOR)ovl_text[i].color);
+    }
     ovl_textCount = 0;
 }
 
@@ -357,26 +377,39 @@ static void OVL_l_CommandField(void)
     float viewWidth;
     float x;
     float w;
+    float fieldH;
+    float textTop;
+    int fontH;
+    int caretX;
     char line[OVL_CMDMAX + 4];
 
     viewWidth = (float)D3DRenderParams.d3dViewPort.Width;
     w = viewWidth - 2.0f * OVL_FIELDTOP;
     x = OVL_FIELDTOP;
 
+    // The box is as tall as the line of text it holds, so it follows
+    // the font rather than the font having to fit a fixed box.
+    fontH = D3D_OverlayFontHeight();
+    fieldH = (float)fontH + 2.0f * OVL_FIELDPAD;
+    textTop = OVL_FIELDTOP + OVL_FIELDPAD;
+
     OVL_l_RoundRectOutline(OVL_GREEN, OVL_BACKDROP, x, OVL_FIELDTOP, w,
-                           OVL_FIELDH, OVL_RADIUS, OVL_BORDER);
+                           fieldH, OVL_RADIUS, OVL_BORDER);
 
     sprintf(line, "> %s", ovl_cmdText);
-    OVL_l_Text(line, (int)x + 8, (int)OVL_FIELDTOP + 5, OVL_TEXT);
+    OVL_l_BigText(line, (int)x + 8, (int)textTop, OVL_TEXT);
 
-    // A caret that blinks, drawn as a quad after the text so it sits
-    // on top of it.
+    // The caret goes where the text actually ends. Measuring the
+    // string is the only way to put it there: an estimate per
+    // character drifts further from the text with every one typed,
+    // and the face is proportional, so no single width is right.
+    caretX = (int)x + 8 + D3D_OverlayTextWidth(line);
+
     ovl_caretTick++;
     if (((ovl_caretTick / 20) & 1) == 0)
     {
-        OVL_l_Quad(OVL_CARET,
-                   x + 8.0f + 7.0f * (float)(ovl_cmdLen + 2),
-                   OVL_FIELDTOP + 6.0f, 1.5f, OVL_FIELDH - 12.0f);
+        OVL_l_Quad(OVL_CARET, (float)caretX + 1.0f, textTop,
+                   2.0f, (float)fontH);
     }
 }
 

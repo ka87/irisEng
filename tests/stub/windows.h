@@ -343,3 +343,4 @@ DWORD    MsgWaitForMultipleObjectsEx(DWORD, const HANDLE*, DWORD, DWORD, DWORD);
 #define WM_KEYUP     0x0101
 #define WM_CHAR      0x0102
 #define WM_SYSCHAR   0x0106
+#define DT_CALCRECT  0x0400
