@@ -40,11 +40,22 @@ static int ovt_textAfterQuads;   /* strings issued before any quad flush */
 void D3D_OverlayBegin(void) { ovt_beginCalls++; }
 void D3D_OverlayEnd(void) { ovt_endCalls++; }
 
+/* OVL_Draw empties the batch once it has handed it over, so the mock
+   keeps a copy for the placement checks to measure. */
+#define OVT_MAXFLUSHED 4096
+static float ovt_flushedX[OVT_MAXFLUSHED];
+static int   ovt_flushedCount;
+
 void D3D_OverlayDrawQuads(void* verts, int triangleCount)
 {
-    (void)verts;
+    const tVertexAndColor* v = (const tVertexAndColor*)verts;
+    int n = triangleCount * 3;
+    int i;
+
     ovt_quadCalls++;
     ovt_trianglesDrawn += triangleCount;
+    for (i = 0; i < n && ovt_flushedCount < OVT_MAXFLUSHED; i++)
+        ovt_flushedX[ovt_flushedCount++] = v[i].v.x;
 }
 
 #define OVT_MAXSEEN 512
@@ -177,6 +188,7 @@ static void resetAll(void)
     ovt_endCalls = 0;
     ovt_quadCalls = 0;
     ovt_trianglesDrawn = 0;
+    ovt_flushedCount = 0;
     ovt_textAfterQuads = 1;
     ovt_seenCount = 0;
     ovt_runCalls = 0;
@@ -662,6 +674,146 @@ static void caret(void)
     }
 }
 
+/* ------------------------------------------------- placement and F1 */
+
+/* the right-hand edge of everything the batch holds */
+static float rightmost(void)
+{
+    float r = 0.0f;
+    int i;
+    for (i = 0; i < ovt_flushedCount; i++)
+        if (ovt_flushedX[i] > r)
+            r = ovt_flushedX[i];
+    return r;
+}
+
+static float leftmost(void)
+{
+    float l = 1.0e9f;
+    int i;
+    for (i = 0; i < ovt_flushedCount; i++)
+        if (ovt_flushedX[i] < l)
+            l = ovt_flushedX[i];
+    return l;
+}
+
+static void placement(void)
+{
+    static const int widths[] = { 640, 800, 1280, 1920 };
+    unsigned k;
+    float narrowLeft;
+    float wideLeft;
+
+    /* the panel hangs off the right edge, at every width */
+    for (k = 0; k < sizeof(widths) / sizeof(widths[0]); ++k)
+    {
+        resetAll();
+        D3DRenderParams.d3dViewPort.Width = widths[k];
+        PRO_rasterWindowIsOn = 1;
+        OVL_Draw();
+
+        okEq((long)rightmost(), widths[k] - (long)OVL_PANELMARGIN,
+             "the panel's right edge is one margin in from the viewport");
+        okEq((long)leftmost(), widths[k] - (long)OVL_PANELW - (long)OVL_PANELMARGIN,
+             "the panel is its own width wide");
+    }
+
+    /* and it moves when the viewport does */
+    resetAll();
+    D3DRenderParams.d3dViewPort.Width = 640;
+    PRO_rasterWindowIsOn = 1;
+    OVL_Draw();
+    narrowLeft = leftmost();
+    resetAll();
+    D3DRenderParams.d3dViewPort.Width = 1920;
+    PRO_rasterWindowIsOn = 1;
+    OVL_Draw();
+    wideLeft = leftmost();
+    ok(wideLeft > narrowLeft + 1000.0f, "the panel follows the right edge");
+
+    /* its text goes with it */
+    resetAll();
+    D3DRenderParams.d3dViewPort.Width = 1280;
+    PRO_rasterWindowIsOn = 1;
+    OVL_Draw();
+    {
+        int i;
+        int outside = 0;
+        for (i = 0; i < ovt_seenCount; i++)
+            if (ovt_seenX[i] < 1280 - (int)OVL_PANELW - (int)OVL_PANELMARGIN
+                || ovt_seenX[i] > 1280)
+            {
+                outside++;
+            }
+        okEq(outside, 0, "the panel's strings move with the panel");
+    }
+
+    /* a viewport narrower than the panel keeps it on screen */
+    resetAll();
+    D3DRenderParams.d3dViewPort.Width = 200;
+    PRO_rasterWindowIsOn = 1;
+    OVL_Draw();
+    okEq((long)leftmost(), (long)OVL_PANELMARGIN,
+         "a narrow viewport puts the panel at the left edge, not off it");
+
+    /* the command field is still full width and not right-aligned */
+    resetAll();
+    D3DRenderParams.d3dViewPort.Width = 1280;
+    OVL_CommandShow();
+    OVL_Draw();
+    okEq((long)leftmost(), 10, "the field still starts at the left margin");
+    okEq((long)rightmost(), 1270, "the field still runs to the right margin");
+}
+
+/* F1 steps the panel on, to the detail page, and off again. The old
+   cycle alternated between the two pages for ever once it was up. */
+static void f1Cycle(void)
+{
+    profilerRasterStructElem walked;
+
+    resetAll();
+    okEq(PRO_rasterWindowIsOn, 0, "the panel starts off");
+    okEq(PRO_rasterDetailPage, 0, "the panel starts on no page");
+
+    OVL_RastersCycleView();
+    okEq(PRO_rasterWindowIsOn, 1, "one press shows the summary");
+    okEq(PRO_rasterDetailPage, 0, "one press is not the detail page");
+
+    OVL_RastersCycleView();
+    okEq(PRO_rasterWindowIsOn, 1, "two presses stay up");
+    okEq(PRO_rasterDetailPage, 1, "two presses reach the detail page");
+
+    OVL_RastersCycleView();
+    okEq(PRO_rasterWindowIsOn, 0, "three presses hide the panel");
+    okEq(PRO_rasterDetailPage, 0, "three presses leave no page set");
+
+    OVL_RastersCycleView();
+    okEq(PRO_rasterWindowIsOn, 1, "four presses are back at the summary");
+    okEq(PRO_rasterDetailPage, 0, "four presses are back at the first page");
+
+    /* and nothing is drawn in the hidden state */
+    resetAll();
+    OVL_RastersCycleView();
+    OVL_RastersCycleView();
+    OVL_RastersCycleView();
+    OVL_Draw();
+    okEq(ovt_beginCalls, 0, "a hidden panel draws nothing");
+
+    /* every step restarts the walk, so a drilled-into raster does not
+       survive the change */
+    resetAll();
+    memset(&walked, 0, sizeof(walked));
+    DBG_profiler_first_raster = &walked;
+    PRO_CurrRaster = &walked;
+    pointsToUnkRaster_dword_98F944 = &walked;
+    PRO_FirstRasterPtr = NULL;
+    OVL_RastersCycleView();
+    ok(PRO_CurrRaster == NULL, "a step clears the drilled-into raster");
+    ok(pointsToUnkRaster_dword_98F944 == NULL, "a step clears the subgroup filter");
+    ok(PRO_FirstRasterPtr == &walked, "a step restarts the walk");
+    DBG_profiler_first_raster = NULL;
+}
+
 /* --------------------------------------------------------------- the pass */
 
 static void pass(void)
@@ -770,6 +922,8 @@ int main(void)
     fieldStateMachine();
     shapes();
     caret();
+    placement();
+    f1Cycle();
     panel();
     pass();
     printf("  %ld checks, %ld failure(s)\n", checks, fails);

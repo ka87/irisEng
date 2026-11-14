@@ -20,7 +20,7 @@ font the rasters code already creates.
 | `win/overlay.h` | `OVL_Draw`, and the command field's four entry points |
 | `win/wingdi.c` | `D3D_OverlayBegin` / `DrawQuads` / `End`, the pass itself |
 | `win/wininputoutput.c` | F12, and `pcINO_RunTweakCommand` |
-| `tests/test_overlay.c` | the unit test, 133 checks |
+| `tests/test_overlay.c` | the unit test, 160 checks |
 
 ### Where the pass sits
 
@@ -79,13 +79,25 @@ Getting this backwards is one of the mutations the test catches.
 
 ## The rasters panel
 
-Left-hand side, `x = 8`, `y = 60`, 320 wide, with a rounded translucent
-backdrop and a green **Rasters** title. The backdrop is emitted *after*
-the rows, so it can be sized to what the walk actually produced, and it
-is clipped to the viewport.
+Against the **right** edge, `y = 60`, 320 wide, with a rounded
+translucent backdrop and a green **Rasters** title. Its left is a
+runtime value, `viewport width - 320 - 8`, so it follows the edge at
+any resolution; a viewport narrower than the panel puts it at the left
+margin rather than off-screen. The backdrop is emitted *after* the
+rows, so it can be sized to what the walk actually produced, and it is
+clipped to the viewport.
 
-The two pages the window had are both here, chosen by the same two
-flags F1 drives:
+The two pages the window had are both here, and **F1 now steps through
+them and off again**: nothing, the summary, the detail page, nothing.
+The original alternated between the two pages for ever once it was up,
+with no way back to nothing short of restarting the game. The cycle is
+`OVL_RastersCycleView`, which `win/wingdi.c`'s F1 block calls; it is
+in the overlay rather than in the key handler because the key handler
+spins on `GetAsyncKeyState` and cannot be driven from a test, and the
+state machine is the part worth testing. Every step restarts the walk,
+so a raster that was drilled into does not survive the change.
+
+The two pages, as the two flags select them:
 
 - `PRO_rasterWindowIsOn` alone is the **summary**: the frame time and
   the tick delta, both scaled by `gfDBGRasterSetTo60`, exactly as
@@ -181,9 +193,9 @@ after a draw. The stub `windows.h` and
 consumes their **real** SDK values, rather than the sequential ones the
 stub uses elsewhere: `PC_WNDMsgHandler` opens with a range test on the
 message number, so a made-up ordering would change what the handler
-does. 133 checks over the command field's state machine, the three
-shape primitives, the caret, the panel's five value forms and the
-walk, and the pass itself.
+does. 160 checks over the command field's state machine, the three shape
+primitives, the caret, the panel's placement and F1 cycle, its five
+value forms and the walk, and the pass itself.
 
 The font the test stands in is **deliberately proportional**, with
 four different glyph widths, because that is the only way the caret
@@ -193,7 +205,7 @@ count puts both in the same place.
 
 It is a unit test rather than a differential one, because there is no
 earlier copy of this file to compare against. That makes the
-mutation check the only evidence it has teeth, so seventeen
+mutation check the only evidence it has teeth, so twenty-four
 independent defects were injected into `win/overlay.c` one at a time and every one
 of them was caught:
 
@@ -216,6 +228,13 @@ of them was caught:
 | the line drawn in the panel's small font | the command line uses the overlay font |
 | the box height fixed again | the field grows with the font |
 | the caret height fixed again | the caret is as tall as the font |
+| the panel back on the left | the panel's right edge is one margin in from the viewport |
+| the narrow-viewport clamp dropped | a narrow viewport puts the panel at the left edge |
+| the backdrop left at a fixed x | the panel's right edge is one margin in from the viewport |
+| the panel's text not moved with it | the panel's strings move with the panel |
+| F1 never hides it (the old cycle) | three presses hide the panel |
+| F1 skips the detail page | two presses reach the detail page |
+| a step does not restart the walk | a step clears the drilled-into raster |
 
 **One of those mutations was missed on the first attempt, and the
 reason is worth keeping.** The cap check used to fill the batch to four
@@ -265,7 +284,9 @@ suite is at 0 differences.
 
 - The panel's width is fixed at 320, which is enough for the column
   positions the window used but will clip a long module name. The
-  window clipped it too, at a different place.
+  window clipped it too, at a different place. Now that the panel is
+  right-aligned, a wider panel would grow leftwards, so the width
+  could be made to follow the viewport if it ever needs to.
 - Courier New is assumed to be installed. It is on every Windows since
   3.1, and GDI substitutes a default face if it ever is not, so the
   field degrades to a different-looking font rather than to nothing.

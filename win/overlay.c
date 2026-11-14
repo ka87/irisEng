@@ -15,7 +15,7 @@
 #define OVL_CMDMAX     128
 
 #define OVL_ROWHEIGHT  13
-#define OVL_PANELX     8.0f
+#define OVL_PANELMARGIN 8.0f
 #define OVL_PANELY     60.0f
 #define OVL_PANELW     320.0f
 
@@ -167,11 +167,24 @@ static void OVL_l_FlushText(void)
 
 // ------------------------------------------------------------ the panel
 
+// The panel sits against the right edge, so its left is a runtime
+// value rather than a constant; at a viewport narrower than the panel
+// it falls back to the left edge rather than going off-screen.
+static float OVL_l_PanelX(void)
+{
+    float x;
+
+    x = (float)D3DRenderParams.d3dViewPort.Width - OVL_PANELW - OVL_PANELMARGIN;
+    if (x < OVL_PANELMARGIN)
+        x = OVL_PANELMARGIN;
+    return x;
+}
+
 // Panel-local coordinates, so the rows below keep the column positions
 // the rasters window used.
 static void OVL_l_PanelText(const char* s, int x, int y, unsigned int color)
 {
-    OVL_l_Text(s, (int)OVL_PANELX + x, (int)OVL_PANELY + y, color);
+    OVL_l_Text(s, (int)OVL_l_PanelX() + x, (int)OVL_PANELY + y, color);
 }
 
 // One raster, drawn the way the window drew it: a subgroup heading when
@@ -310,6 +323,32 @@ static int OVL_l_RastersSummary(void)
     return 60;
 }
 
+// F1 steps the panel through its states and then off again: nothing,
+// the summary, the detail page, nothing. It used to alternate between
+// the two pages once it was up, with no way back to nothing short of
+// restarting. The walk is restarted at every step, so a raster that
+// was drilled into does not survive the change.
+void OVL_RastersCycleView(void)
+{
+    if (!PRO_rasterWindowIsOn)
+    {
+        PRO_rasterWindowIsOn = 1;
+        PRO_rasterDetailPage = 0;
+    }
+    else if (!PRO_rasterDetailPage)
+    {
+        PRO_rasterDetailPage = 1;
+    }
+    else
+    {
+        PRO_rasterWindowIsOn = 0;
+        PRO_rasterDetailPage = 0;
+    }
+    PRO_FirstRasterPtr = DBG_profiler_first_raster;
+    pointsToUnkRaster_dword_98F944 = NULL;
+    PRO_CurrRaster = NULL;
+}
+
 // ------------------------------------------------------- command field
 
 int OVL_b_CommandActive(void)
@@ -441,7 +480,7 @@ void OVL_Draw(void)
         height = (float)bottom + 8.0f;
         if (OVL_PANELY + height > (float)D3DRenderParams.d3dViewPort.Height - 8.0f)
             height = (float)D3DRenderParams.d3dViewPort.Height - 8.0f - OVL_PANELY;
-        OVL_l_RoundRectFill(OVL_BACKDROP, OVL_PANELX, OVL_PANELY, OVL_PANELW,
+        OVL_l_RoundRectFill(OVL_BACKDROP, OVL_l_PanelX(), OVL_PANELY, OVL_PANELW,
                             height, OVL_RADIUS);
     }
     if (ovl_cmdActive)

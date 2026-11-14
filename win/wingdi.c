@@ -5083,25 +5083,12 @@ void PC_EngineCheatFinal()
     }
     if (GetAsyncKeyState(VK_F1) < 0)
     {
-        if (PRO_rasterWindowIsOn)
-        {
-            PRO_rasterDetailPage = PRO_rasterDetailPage == 0;
-            if (PRO_rasterDetailPage != 0)
-                PRO_rasterWindowIsOn = PRO_rasterDetailPage;
-            while (GetAsyncKeyState(VK_F1) < 0);
+        // on, to the detail page, and off again
+        OVL_RastersCycleView();
+        while (GetAsyncKeyState(VK_F1) < 0);
 
-            PRO_FirstRasterPtr = DBG_profiler_first_raster;
-            pointsToUnkRaster_dword_98F944 = NULL;
-            PRO_CurrRaster = NULL;
-            
-            if (PRO_rasterHWND)
-                InvalidateRect(PRO_rasterHWND, NULL, TRUE);
-        }
-        else
-        {
-            PRO_rasterWindowIsOn = 1;
-            while (GetAsyncKeyState(VK_F1) < 0);
-        }
+        if (PRO_rasterHWND)
+            InvalidateRect(PRO_rasterHWND, NULL, TRUE);
     }
     if (GetAsyncKeyState(VK_F2) < 0)
     {

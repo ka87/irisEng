@@ -10,6 +10,9 @@
 // Drawn once per frame from D3D_Flip, after the profiler bars.
 void OVL_Draw(void);
 
+// F1: nothing -> the summary -> the detail page -> nothing.
+void OVL_RastersCycleView(void);
+
 // The command field at the top of the screen. While it is up,
 // DirectInput is released and the keyboard arrives as window
 // messages instead.
