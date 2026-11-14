@@ -15,6 +15,9 @@
 #define DSSCL_EXCLUSIVE      3
 #define DSSCL_WRITEPRIMARY   4
 #define DSBPLAY_LOOPING      0x00000001
+
+/* from mmreg.h, which the real windows.h pulls in */
+#define WAVE_FORMAT_PCM      1
 #define DSBSTATUS_PLAYING    0x00000001
 #define DSBSTATUS_BUFFERLOST 0x00000002
 #define DSBSTATUS_LOOPING    0x00000004

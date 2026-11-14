@@ -100,7 +100,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;d3dx9.lib;binkw32.lib;eaxguid.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;d3dx9.lib;eaxguid.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\bin\*.dll" "$(OutDir)"</Command>
@@ -139,7 +139,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;d3dx9.lib;binkw32.lib;eaxguid.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;d3dx9.lib;eaxguid.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\bin\*.dll" "$(OutDir)"</Command>
@@ -348,6 +348,9 @@
     <ClCompile Include="win\wingdi_aftereffects.c" />
     <ClCompile Include="win\wininputoutput.c" />
     <ClCompile Include="win\overlay.c" />
+    <ClCompile Include="win\winvideosound.c">
+      <ExcludedFromBuild Condition="'$(Platform)'=='x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="video.c">
       <ExcludedFromBuild Condition="'$(Platform)'=='x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -500,6 +503,7 @@
     <ClInclude Include="win\wininputoutput.h" />
     <ClInclude Include="win\overlay.h" />
     <ClInclude Include="video.h" />
+    <ClInclude Include="win\winvideosound.h" />
     <ClInclude Include="win\winsound.h" />
     <ClInclude Include="world.h" />
   </ItemGroup>

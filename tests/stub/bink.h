@@ -1,6 +1,12 @@
 #pragma once
 #include <windows.h>
 
+/* This header exists only so the frozen pre-rewrite copies in tests/
+   still compile. The engine itself no longer uses Bink: video.c
+   decodes through libav, and the two structs below went out of
+   textures.h with the block list they described. Nothing outside
+   tests/ includes this. */
+
 typedef struct BINK
 {
     uint32_t Width;
@@ -88,3 +94,32 @@ void  BinkSetIO(BINKIOOPEN io);
 void  BinkSetIOSize(U32 iosize);
 void  BinkSetMemory(BINKMEMALLOC alloc, BINKMEMFREE free);
 int   BinkSetSoundTrack(U32 total_tracks, U32 PTR4* tracks);
+
+/* The procedural video texture as the frozen copy knows it: a Bink
+   handle, and the linked list of 4 KB blocks its I/O hooks were fed
+   from. */
+typedef struct sBinkUnkStruct
+{
+    char* blockDataStartPtr;
+    int stateMachine2MeansBusy;
+    struct sBinkUnkStruct* nextDataBlock;
+    int actSlotID;
+} tBinkUnkStruct;
+
+typedef struct sBinkIFPtr
+{
+    HBINK binkHandle;
+    int binkVideoKey;
+    struct sTexProceduralStruct* proceduralStructPtr;
+    int filePosInBF;
+    int size;
+    int dataBlockStartCurrOffset;
+    int videofilesize;
+    struct sBinkUnkStruct* linkedListStart;
+    struct sBinkUnkStruct* actualElemInLinkedList;
+    char* dataAndLinkedList;
+} tBinkIFPtr;
+
+/* the global the six I/O callbacks reached the stream through, since
+   they carried no pointer of their own */
+tBinkIFPtr* BINK_IF_PTR_GLOBAL;

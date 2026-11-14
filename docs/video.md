@@ -191,22 +191,117 @@ policy, not the clamp. Telling the two apart needs the queue to track
 where each byte came from, which is more machinery than the forty
 lines it would be guarding.
 
+## The sound: win/winvideosound.c
+
+Bink owned an audio device — the engine handed it an `IDirectSound8`
+through `BinkSetSoundSystem` and Bink ran the buffer, the mixing and
+the clock. libav decodes and nothing else, so a streaming secondary
+buffer lives here, fed once a frame from the stream's PCM queue.
+
+It is also where the picture's clock comes from. Every `WVS_Update`
+reads the play cursor and tells the stream how much has been heard,
+and the frame pacing then follows the sound rather than the wall,
+which is what Bink did internally.
+
+Three things in it are worth knowing, because each was a defect
+first:
+
+**A full ring and an empty one look identical** from the two
+positions alone — write and play are equal in both cases — so the
+amount free is taken from a cumulative count of bytes written against
+bytes played instead. The first draft derived it from the positions
+and never primed the buffer at all: the first update computed zero
+free and returned.
+
+**The clock is not how far the cursor has run.** Some of what it ran
+over is silence: poured in to cover a gap, or left over from the
+clear at open. Counting that puts the clock ahead of the picture by
+the length of the gap. Since the buffer plays in the order it was
+written, the sound heard is the smaller of what has been played and
+what real sound went in. The first draft discounted only the silence
+it had written itself, and was wrong by however much of the opening
+clear the cursor had crossed.
+
+**A gap is filled with silence rather than left alone.** Stalling the
+buffer would freeze the picture too, since the picture's clock is the
+cursor; leaving the bytes alone would replay the previous lap, which
+is heard as a stutter.
+
+It cannot be run anywhere but Windows, so `tests/test_videosound.c`
+drives it against a mock device whose play cursor the test moves
+itself, and a stub video stream handing over a counted ramp. 96
+checks, and eight injected defects each caught — including the two
+above and the one that mattered most, a write position slipped off a
+sample-frame boundary by an unaligned cursor, which would swap the
+channels for the rest of the stream.
+
+## The two call sites
+
+**`ai/ai_gfxfunctions.c`**, the full-screen video, is the smaller
+change: `VID_pst_OpenFile` in place of `BinkOpen`, the accessors in
+place of the `HBINK` struct fields, and `WVS_Update` once a frame
+before the pacing, so the clock is set even on the frames where
+nothing is decoded.
+
+**`proceduraltextures.c`** is where the apparatus goes. What stood
+there to satisfy Bink's push-style I/O — a linked list of 4 KB
+blocks, a ten-slot bitmask, a busy flag per block, a spin-wait on it,
+an allocator pair installed through `BinkSetMemory`, six I/O
+callbacks and the file-scope `BINK_IF_PTR_GLOBAL` they reached the
+stream through, because the callbacks carried no pointer of their own
+— is replaced by one function:
+
+```c
+int TEXPRO_i_ReadFromBF(void* user, uint8_t* buf, int size)
+```
+
+`tBinkIFPtr` loses six of its ten fields with it, and
+`tBinkUnkStruct` goes entirely.
+
+The frame pacing keeps the shape it had: a texture that is up to date
+shows nothing new, one that has fallen behind decodes on without
+showing what it has, up to three frames, and one that runs off the
+end reopens the stream, which is what makes a video texture loop.
+`VID_b_NextAlsoDue` exists for that middle case — Bink could be asked
+whether the next frame was due *after* advancing, and here advancing
+releases the picture, so the question has to be asked before.
+
+### What it cost the procedural path's differential test
+
+Its frozen copy calls Bink, so the video cases could not be carried
+over: there is nothing on the rewrite's side to compare a slot mask
+or a block ring against. `slotCases`, `binkRingCases`, `binkSdkCases`
+and the two MPEG groups are **removed** rather than left comparing a
+frozen copy with itself, and the new path is driven directly instead
+— the same treatment the overlay's F12 edge got.
+
+What replaces them: the reader (where it reads, how much, and that it
+stops at the end of the `.bf` member rather than running on into
+whatever follows), opening (a missing key, the empty 8-byte member
+the archive uses for a video that was never built, and a real one),
+and the pacing, with libav mocked the way the Bink SDK was. 136 cases
+in that harness, eight injected defects each caught.
+
+`tests/stub/bink.h` stays, and now says why: it exists only so the
+frozen copies still compile. `tBinkIFPtr` and `tBinkUnkStruct` moved
+into it from `textures.h`, and the two fields the frozen copy names
+differently are mapped with `-D` rather than edited, which is the
+rule the other harnesses already follow.
+
+## What is not here yet
 ## What is not here yet
 
-- **The DirectSound sink.** `GFX_FS_VideoStart` currently hands Bink
-  the engine's `IDirectSound8` and Bink runs the buffer. A streaming
-  buffer fed from `VID_i_SoundRead`, reporting back through
-  `VID_SoundPlayed`, has to be written before the full-screen video
-  can move off Bink.
-- **The two call sites.** `proceduraltextures.c` and
-  `ai/ai_gfxfunctions.c` still call Bink, and `binkw32.dll` is still
-  needed. Rewiring them is where the block-list apparatus above gets
-  deleted.
-- **The procedural path's differential test.** Its frozen copy calls
-  Bink, so when the rewrite lands those cases cannot be compared call
-  for call, the same way the overlay's F12 edge could not. It will
-  need the same treatment: carve out what genuinely changed, and
-  check the new path directly.
+- **A real Bink file has not been decoded end to end.** Everything
+  here is checked against fixtures `ffmpeg` builds and against
+  mocks; the one thing no test can stand in for is the game's own
+  `.bik` files going through libav's Bink decoder on Windows. That is
+  what the first build is for.
+- **`BINK_SeekAndReadFromBF` keeps its name** in `bigfiles.c`,
+  although nothing Bink is left. It is a plain seek-and-read on the
+  archive; renaming it means touching a frozen baseline's symbol
+  list, which is not worth bundling into this change.
+- **The making-of video's sound has not been heard.** The sink is
+  checked arithmetically and nothing more.
 - **A smaller libav.** The build committed here is 90 MB of DLLs
   because a default FFmpeg carries every codec; one configured for
   Bink alone is a few hundred KB. The configure line is in
