@@ -13,11 +13,22 @@
     which WOR_View_FollowFather fills from the object's absolute
     matrix. Turning this on swaps that one pointer for a function that
     fills the view from the free camera's own matrix instead, and
-    turning it off puts the original back. Nothing else about the view
-    changes: assignedGao, the focale, the viewport and the display
-    data are left exactly as the game set them, so every subsystem
-    that asks the view what camera it has -- AI_EvalFunc_VIEWGetObject
-    among them -- gets the same answer it would have got.
+    turning it off puts the original back.
+
+    That function is also where the game is kept from setting the
+    camera's position, sight and field of view. The engine calls it
+    from the view loop just before WOR_SetCam hands the view to the
+    device, so what it leaves behind is what is drawn. Position and
+    sight reach a view only through WOR_View_SetViewPoint, whose only
+    other caller is the follow function this one displaced. The focale
+    is a plain field the game writes directly, so it is noted and
+    replaced: the camera imposes the one it took, and standing down
+    gives back whatever the game last asked for.
+
+    assignedGao, the viewport and the display data are left exactly as
+    the game set them, so every subsystem that asks the view what
+    camera it has -- AI_EvalFunc_VIEWGetObject among them -- gets the
+    same answer it would have got.
 
     Note that the pointer is replaced and not cleared. Clearing it is
     how the engine marks a view as removed, and two callers in
@@ -50,8 +61,8 @@
     not suppress the camera.
 
     The controls are W A S D to move, Q and E for down and up, and the
-    mouse to look while the right button is held. Looking is guarded by
-    the button so the pointer can still be moved on its own.
+    mouse, which looks on its own and moves the camera along the same
+    two axes as W A S D while the right button is held.
 
     Movement is a matrix and a clock, so there is nothing to turn off
     to fly: no collision is consulted, no dynamics run, and no sector

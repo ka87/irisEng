@@ -17,12 +17,14 @@ object's absolute matrix. That pointer *is* the follow parameter.
 
 Turning the camera on swaps it for a function that fills the view from
 the free camera's own matrix, and turning it off puts the original
-back. Nothing else about the view is touched: `assignedGao`, the
-focale, the viewport, the flags and the display data are left exactly
-as the game set them. So everything that asks the view what camera it
-has — `AI_EvalFunc_VIEWGetObject` among them — gets the same answer it
-would have got, and the game's own camera logic carries on running
-against the object it always had.
+back. `assignedGao`, the viewport, the flags and the display data are
+left exactly as the game set them. So everything that asks the view
+what camera it has — `AI_EvalFunc_VIEWGetObject` among them — gets the
+same answer it would have got, and the game's own camera logic carries
+on running against the object it always had.
+
+That function is also where the game is kept out of the camera's
+position, sight and field of view, which is the next section.
 
 ### Why the pointer is replaced and not cleared
 
@@ -46,6 +48,54 @@ A happy consequence: those AI-driven direct calls now *refresh* the
 free camera rather than fighting it. Calling a view's follow function
 three times in one frame gives the same matrix three times, which the
 test checks.
+
+## Keeping the game out of the camera
+
+`WOR_SetCam` is the one place a view's matrix, focale and viewport
+reach the device, and it rebuilds the projection matrix from them. The
+engine calls every view's follow function from the view loop in
+`engine.c` and `WOR_SetCam` during the render that follows, so **what
+the follow function leaves behind is what gets drawn**. That makes it
+the place to enforce all three, and it is already ours.
+
+**Position and sight** need only the matrix imposed, which the follow
+function was doing anyway. They reach a view through exactly one
+function — `WOR_View_SetViewPoint` — and it has exactly two callers in
+the tree: `WOR_View_FollowFather`, which the camera displaced, and the
+camera's own follow. `WOR_View_Init` is the only other writer and it
+runs when a view is created. So there is no third path to close, and
+the test's check is the one that matters: the follow puts the
+camera's matrix back over whatever the view held a moment before.
+
+**The field of view is different**, and it was the real gap. `focale`
+is a plain field on the view that the game writes directly:
+`AI_EvalFunc_VIEWFocaleSet_C` sets it and *then* calls the view's
+follow function, which is to say ours. So the follow notes what was
+asked for and puts the camera's own value back:
+
+```c
+if (view->focale != ecam_focale)
+    ecam_gameFocale = view->focale;
+view->focale = ecam_focale;
+```
+
+`AI_EvalFunc_VIEWFocaleSet_C` goes on to push the game's value into
+`displayData->ct.cam.focale` and rebuild the projection — and that
+does not matter, because `WOR_SetCam` overwrites both from
+`view->focale` before anything is drawn. `WOR_View_SetFocale` writes
+the field without calling the follow at all, and the next frame's
+follow catches it before the render.
+
+**Standing down gives back what the game last asked for**, not what
+it had when the camera took the view. The same reasoning as the
+after-effects: the camera withholds the change while it is up rather
+than cancelling it, so a cinematic that narrowed the field of view
+while the camera was flying gets its narrow field when the camera
+hands back. With nothing asked for meanwhile, the value it took comes
+back unchanged. Both are checked.
+
+The camera's own field of view is the one it took and does not change;
+**F9 still syncs position, sight and banking only.**
 
 ## The input gate
 
@@ -222,24 +272,31 @@ against `math.c` term by term, which is what lets the test assert a
 |---|---|
 | `W` `A` `S` `D` | forward, back, strafe |
 | `E` / `Q` | up, down |
-| mouse, **right button held** | look |
+| mouse | look |
+| mouse, **right button held** | move, along the same axes as `W A S D` |
 | `Left Shift` | five times faster |
 | `Left Ctrl` | a fifth of the speed |
 | **F8** | on and off |
 | **F9** | take the game camera's position, sight and banking, once |
 
-Speeds are in units a second and are scaled by the frame time.
-**Looking is not**: a mouse count is a displacement and not a rate, so
-the same sweep of the hand turns the camera by the same amount at any
-frame rate, which the test checks by driving one movement at two very
-different frame times.
+The mouse does one of the two, never both at once: on its own it
+turns the camera, and with the right button held it moves it —
+across with the pointer's x, as `A`/`D` do, and forward as the
+pointer goes away from you, as `W`/`S` do. Each of those is checked
+against the key that ought to agree with it rather than against a
+remembered sign.
 
-Looking is guarded by the right button so the pointer stays usable on
-its own. Nothing is read from the mouse while the button is up,
-however far it moves.
+**Keys are a rate and the mouse is a displacement.** A key is scaled
+by the frame time, so `ECAM_SPEED` is units a second; neither looking
+nor panning is, so the same sweep of the hand does the same thing at
+any frame rate. Both are checked by driving one movement at two very
+different frame times. The speed modifiers scale all of it.
 
-The constants are at the top of `editorcamera.c`:
-`ECAM_LOOKSCALE` is radians per mouse count.
+A key and the mouse at once add up rather than one of them winning,
+which is also checked.
+
+The constants are at the top of `editorcamera.c`: `ECAM_LOOKSCALE` is
+radians per mouse count and `ECAM_PANSCALE` is units per mouse count.
 
 ## Snapping to the game's camera
 
@@ -294,7 +351,7 @@ written to.
 
 ## The tests
 
-`tests/run_editorcamera.sh`, 88 checks. It includes `editorcamera.c`
+`tests/run_editorcamera.sh`, 106 checks. It includes `editorcamera.c`
 so it can read back which view was taken and where the camera is, and
 it stands in for the engine around it.
 
@@ -318,6 +375,19 @@ constant moved the test with it and every look case went on passing.
 A check that the constant is 259 and a case that presses the *left*
 button and expects no look between them pin it down, and 258, 260 and
 257 are all caught now.
+
+### The field of view, and the pan
+
+Thirteen more defects injected, all thirteen caught. For the field of
+view: the focale not imposed at all, the game's value noted but not
+replaced, the game's wish never noted, the camera's own value left
+behind on release, and a fixed value imposed instead of the one the
+camera took.
+
+For the pan: each of its two axes inverted, look and pan swapped
+round, each of its two terms dropped, the pan scaled by the frame
+time, the modifier dropped from the pan, and the clock dropped from
+the lift.
 
 ### The engine around it
 
@@ -398,11 +468,18 @@ Every case now starts from off.
 
 ## Open ends
 
-- **The pointer is not captured or hidden.** Looking reads the delta
+- **The pointer is not captured or hidden.** The mouse reads the delta
   the platform layer already publishes, so the cursor goes on moving
   about the screen while the view turns and can reach the edge of it.
   Capturing it would mean taking a decision about the cursor that
   nothing has asked for yet.
+- **The left mouse button does nothing.** Looking needs no button
+  held, so the left one is free.
+- **The viewport is not held** the way the position, sight and field
+  of view are. `WOR_SetCam` takes it from the view alongside them and
+  `AI_EvalFunc_VIEWViewportPosSet_C` and `...SizeSet_C` write it, so
+  the game can still reframe the camera while it is flying. Nothing
+  has asked for that to stop.
 - **`CAM_2Dto3D` disagrees with its two neighbours about the sign of
   screen Y.** `CAM_2Dto3DCamera` and `CAM_2Dto3DCamera2` both
   unproject with `centerY - y`, and `CAM_2Dto3D` uses `y - centerY`.

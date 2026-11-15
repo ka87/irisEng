@@ -14,6 +14,11 @@
 #define ECAM_FASTFACTOR  5.0f
 #define ECAM_SLOWFACTOR  0.2f
 
+/* Units of travel per unit of mouse movement, for panning with the
+   right button held. Like looking, this is not scaled by the frame
+   time. */
+#define ECAM_PANSCALE    0.04f
+
 /* Radians per unit of mouse travel. The mouse reports counts rather
    than a rate, so this is not scaled by the frame time: a given sweep
    of the hand turns the camera by the same amount however fast the
@@ -51,6 +56,8 @@ static tWorld*      ecam_world;
 static void (*ecam_savedFollow)(tViewElem* view);
 static Mtx4x4       ecam_mtx;
 static float        ecam_pitch;        /* kept, so the limit can be held */
+static float        ecam_focale;       /* the field of view we impose */
+static float        ecam_gameFocale;   /* the last one the game asked for */
 
 /* The view's matrix is not laid out the way the camera device's is.
    CAM_SetObjectMatrixFromCam fills the device's rows from the view's
@@ -66,12 +73,29 @@ static void ECAM_l_Axes(Vec3* forward, Vec3* lateral, Vec3* vertical)
     MATH_VecInvert(vertical, &ecam_mtx.v3);
 }
 
-/* The follow function the view gets while the camera has it. The
-   engine calls this once a frame, and ai/ai_viewfunctions.c calls it
-   again when a script sets the focale or tests culling; all of them
-   get the same matrix, so none of them can pull the camera back. */
+/* The follow function the view gets while the camera has it, and the
+   one place that decides what the view holds. The engine calls it
+   once a frame from the view loop, before WOR_SetCam hands the view
+   to the device, and ai/ai_viewfunctions.c calls it again when a
+   script sets the focale or tests culling. All of them get the same
+   answer, so none of them can pull the camera back.
+
+   Position and sight reach the view only through
+   WOR_View_SetViewPoint, and its only other caller is the follow
+   function this one displaced, so imposing the matrix here is the
+   whole of it.
+
+   The focale -- the field of view -- is different: it is a plain
+   field that the game writes directly, and
+   AI_EvalFunc_VIEWFocaleSet_C writes it and then calls this very
+   function. So whatever it asked for is noted, to be given back when
+   the camera stands down, and ours is put in its place. */
 static void ECAM_l_Follow(tViewElem* view)
 {
+    if (view->focale != ecam_focale)
+        ecam_gameFocale = view->focale;
+    view->focale = ecam_focale;
+
     WOR_View_SetViewPoint(view, &ecam_mtx, &MATH_gst_NulVector, 1, 0);
 }
 
@@ -134,7 +158,12 @@ void ECAM_Release(void)
     /* The view may already have been closed under us, in which case
        its follow pointer is no longer ours and must not be written. */
     if (ecam_view && ecam_view->viewFunctionPtr == ECAM_l_Follow)
+    {
         ecam_view->viewFunctionPtr = ecam_savedFollow;
+        /* the field of view the game last asked for and was not
+           given while the camera held the view */
+        ecam_view->focale = ecam_gameFocale;
+    }
     ECAM_l_Forget();
 }
 
@@ -156,6 +185,8 @@ void ECAM_Toggle(void)
        move the picture. */
     memcpy(&ecam_mtx, &view->cameraMtx, sizeof(ecam_mtx));
     ecam_pitch = 0.0f;
+    ecam_focale = view->focale;
+    ecam_gameFocale = view->focale;
 
     ecam_view = view;
     ecam_world = WOR_gpst_CurrentWorld;
@@ -216,6 +247,9 @@ void ECAM_Update(void)
     float lift;
     float yaw;
     float pitch;
+    float panX;
+    float panY;
+    float modifier;
 
     if (!ecam_active)
         return;
@@ -246,21 +280,39 @@ void ECAM_Update(void)
     strafe = ECAM_l_Pair(ECAM_KEY_A, ECAM_KEY_D);
     lift = ECAM_l_Pair(ECAM_KEY_Q, ECAM_KEY_E);
 
-    /* Looking is the mouse, and only while the right button is held,
-       so the pointer can be moved without dragging the view with it. */
+    /* The mouse does one of two things. On its own it looks; with the
+       right button held it moves the camera instead, along the same
+       two axes W A S D move it along -- across with the pointer's x
+       and forward with the pointer going away from you. */
     yaw = 0.0f;
     pitch = 0.0f;
+    panX = 0.0f;
+    panY = 0.0f;
     if (ECAM_l_b_KeyDown(ECAM_MOUSE_RIGHT))
+    {
+        panX = (float)pcINO_mouseDeltaX;
+        panY = -(float)pcINO_mouseDeltaY;
+    }
+    else
     {
         yaw = (float)pcINO_mouseDeltaX;
         pitch = (float)pcINO_mouseDeltaY;
     }
 
-    speed = ECAM_SPEED;
+    /* The modifiers scale both ways of moving. A key is a rate, so it
+       is scaled by the frame time as well; a mouse movement is a
+       displacement and is not. */
+    modifier = 1.0f;
     if (ECAM_l_b_KeyDown(ECAM_KEY_LSHIFT))
-        speed *= ECAM_FASTFACTOR;
+        modifier *= ECAM_FASTFACTOR;
     if (ECAM_l_b_KeyDown(ECAM_KEY_LCTRL))
-        speed *= ECAM_SLOWFACTOR;
+        modifier *= ECAM_SLOWFACTOR;
+    speed = ECAM_SPEED * modifier;
+
+    /* so the two sources add up into one step along each axis */
+    move = move * speed * dt + panY * ECAM_PANSCALE * modifier;
+    strafe = strafe * speed * dt + panX * ECAM_PANSCALE * modifier;
+    lift = lift * speed * dt;
 
     /* Turning is around the world's up axis, so the horizon stays
        level however far the camera has been flown; looking up and
@@ -296,21 +348,21 @@ void ECAM_Update(void)
 
     if (move != 0.0f)
     {
-        ecam_mtx.Pos.x += forward.x * move * speed * dt;
-        ecam_mtx.Pos.y += forward.y * move * speed * dt;
-        ecam_mtx.Pos.z += forward.z * move * speed * dt;
+        ecam_mtx.Pos.x += forward.x * move;
+        ecam_mtx.Pos.y += forward.y * move;
+        ecam_mtx.Pos.z += forward.z * move;
     }
     if (strafe != 0.0f)
     {
-        ecam_mtx.Pos.x += lateral.x * strafe * speed * dt;
-        ecam_mtx.Pos.y += lateral.y * strafe * speed * dt;
-        ecam_mtx.Pos.z += lateral.z * strafe * speed * dt;
+        ecam_mtx.Pos.x += lateral.x * strafe;
+        ecam_mtx.Pos.y += lateral.y * strafe;
+        ecam_mtx.Pos.z += lateral.z * strafe;
     }
     if (lift != 0.0f)
     {
-        ecam_mtx.Pos.x += vertical.x * lift * speed * dt;
-        ecam_mtx.Pos.y += vertical.y * lift * speed * dt;
-        ecam_mtx.Pos.z += vertical.z * lift * speed * dt;
+        ecam_mtx.Pos.x += vertical.x * lift;
+        ecam_mtx.Pos.y += vertical.y * lift;
+        ecam_mtx.Pos.z += vertical.z * lift;
     }
 
     /* The matrix has been turned and moved, so whatever the engine
