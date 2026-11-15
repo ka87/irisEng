@@ -264,6 +264,22 @@ BOOL GDI_gb_WaveSprite;
 char asz_PrevWorldName[100];
 
 extern float GDI_gaf_ScreenRatio[4];
+
+/* Aspect handling, and settings rather than renderer state: with
+   GDI_gi_Widescreen set, a projection is built from the shape of the
+   window instead of a fixed ratio -- the vertical field of view stays
+   as authored and the horizontal one grows with the window, so
+   nothing is stretched and a wider screen simply shows more at the
+   sides.
+
+   GDI_gf_RefYoverX is the height over width the scenes were laid out
+   for.
+
+   They were named after Direct3D and defined inside it, which was
+   only ever where they happened to live: cameraengine.c reads them,
+   and every renderer's projection depends on them. */
+extern int   GDI_gi_Widescreen;
+extern float GDI_gf_RefYoverX;
 extern void(*MAT_FuncTable[16])(tGdi_DisplayData*, tGEOGRO*, tGeoTriangleChunks*, unsigned int);
 extern float MAT_C_f_8Bits;
 

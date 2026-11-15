@@ -23,6 +23,13 @@
 #include "wingdi_mocks.h"
 /* for the frozen copy's font pointer, which the engine no longer has */
 #include <d3dx9math.h>
+
+/* The widescreen setting and the authored aspect ratio are shared
+   rather than per-side: they moved out of the renderer into gdi.c,
+   because cameraengine.c reads them too and a second renderer's
+   projection depends on them. Both sides point at the one copy, which
+   is what the engine does, and the frozen copy reaches it through a
+   -D mapping of its old name. */
 #include "../math.h"
 #include "../cameraengine.h"
 #include "../soft.h"
@@ -127,10 +134,8 @@
     extern D3DMATRIX p##d3dProjectionMtx; \
     extern D3DMATRIX p##d3dTransformMatrix; \
     extern D3DMATRIX p##d3dTransformMatrix2; \
-    extern int p##D3D_gi_Widescreen; \
     extern int p##D3D_gi_FlatLayerBox; \
     extern int p##D3D_gi_AspectTrace; \
-    extern float p##D3D_gf_RefYoverX; \
     extern float p##D3D_gf_CutsceneBand;
 
 DECL(BASE_)
@@ -281,8 +286,8 @@ typedef struct sSide
     p##PC_HandleWindowCreateAndEraseBackgroundMessages, p##PC_SetUVMatrix, \
     &p##worldPtrIfMultiStream, \
     &p##d3dProjectionMtx, &p##d3dTransformMatrix, &p##d3dTransformMatrix2, \
-    &p##D3D_gi_Widescreen, &p##D3D_gi_FlatLayerBox, &p##D3D_gi_AspectTrace, \
-    &p##D3D_gf_RefYoverX, &p##D3D_gf_CutsceneBand }
+    &GDI_gi_Widescreen, &p##D3D_gi_FlatLayerBox, &p##D3D_gi_AspectTrace, \
+    &GDI_gf_RefYoverX, &p##D3D_gf_CutsceneBand }
 
 static tSide sides[2] = { SIDE("base", BASE_), SIDE("new", NEW_) };
 

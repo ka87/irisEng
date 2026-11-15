@@ -1,9 +1,15 @@
 #include "wingl.h"
 #include "glload.h"
 #include "glshader.h"
+#include "wingdimath.h"
+#include "../projection.h"
+#include "../geovertex.h"
+#include "../cameraengine.h"
+#include "../soft.h"
 #include "../dbg.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* ---------------------------------------------------- what WGL adds */
@@ -37,6 +43,8 @@ static tGlRenderState gl_state;
 /* Defined with the rest of the 2D pass, at the bottom; GL_Close has
    to call it while the context is still current. */
 static void GL_l_ForgetPass(void);
+static void GL_l_ForgetGeometry(void);
+static Mtx4x4 gl_viewProjMtx;
 static int            gl_available = -1;   /* -1 until asked */
 static int            gl_saidOnce;
 
@@ -322,8 +330,30 @@ int GL_Init(HWND hwnd, struct sGdi_DisplayData* dd)
     GL_l_SayWhatThisIs();
     GL_l_SizeFromWindow(hwnd);
     GLFN_glViewport(0, 0, gl_state.width, gl_state.height);
+
+    /* The engine's projections put z in 0..1, which is Direct3D's
+       range and not OpenGL's -1..1. Core 4.5 can be told to use it,
+       which is a large part of why this renderer asks for 4.5: the
+       engine's matrices then need no adjusting, and projection.c can
+       be shared between the two renderers rather than having a
+       variant for each.
+
+       The origin stays at the lower left, OpenGL's own. Both
+       conventions put clip y = +1 at the top of the screen -- one
+       measures the window from the bottom and negates on the way, the
+       other does not -- so nothing is upside down, and the overlay's
+       pixel mapping is unaffected. */
+    GLFN_glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+
     GLFN_glEnable(GL_DEPTH_TEST);
+    GLFN_glDepthFunc(GL_LEQUAL);
     GLFN_glDepthMask(GL_TRUE);
+
+    /* Culling off. Which winding the engine's geometry has is a
+       question to answer by looking at the result rather than by
+       reasoning here, and drawing both faces is the reading that
+       cannot hide anything. */
+    GLFN_glDisable(GL_CULL_FACE);
     return 1;
 }
 
@@ -332,6 +362,7 @@ int GL_Close(void)
     if (gl_state.context)
     {
         GL_l_ForgetPass();
+        GL_l_ForgetGeometry();
         wglMakeCurrent(gl_state.dc, NULL);
         wglDeleteContext(gl_state.context);
         gl_state.context = NULL;
@@ -490,26 +521,221 @@ void GL_DiscardGeometryCache(struct sGEOGRO* gro)
    nothing created, nothing to read.
    ================================================================ */
 
-/* no geometry is drawn yet, so a view matrix has nowhere to go */
+/* ================================================== world geometry
+
+   The engine hands over a view matrix, a camera to build a projection
+   from, and then chunks of triangles with its positions, colours and
+   texture coordinates in separate arrays. None of the working out is
+   this renderer's: projection.c fits the camera to the surface and
+   geovertex.c builds the interleaved vertices. What is here is the
+   matrix the shader gets, the buffer the vertices go in, and the
+   draw.
+
+   Untextured so far. The vertices carry their texture coordinate and
+   the shader carries it through, so the layout is the one textures
+   will need; nothing samples it yet. */
+
+static Mtx4x4     gl_viewMtx;
+static Mtx4x4     gl_projMtx;
+static tGlProgram gl_geoProgram;
+static GLint      gl_geoViewProj = -1;
+static GLuint     gl_geoVao;
+static GLuint     gl_geoBuffer;
+static int        gl_geoTried;
+static int        gl_geoReady;
+
+/* The staging buffer the vertices are built in before being uploaded.
+   It grows to the largest chunk seen and is never shrunk: the engine
+   draws the same geometry every frame, so this settles within the
+   first one. */
+static tGdi_TexturedVertex* gl_geoVerts;
+static int                  gl_geoVertMax;
+
+static int GL_l_b_GeometryReady(void)
+{
+    if (gl_geoTried)
+        return gl_geoReady;
+    gl_geoTried = 1;
+    if (!gl_state.context)
+        return 0;
+
+    if (!GL_b_ProgramLoad(&gl_geoProgram, "geometry.vert", "geometry.frag"))
+        return 0;
+    gl_geoViewProj = GL_i_ProgramUniform(&gl_geoProgram, "uViewProj");
+
+    GLFN_glGenBuffers(1, &gl_geoBuffer);
+    GLFN_glGenVertexArrays(1, &gl_geoVao);
+    if (!gl_geoBuffer || !gl_geoVao)
+    {
+        DBG_OutputDebugString("GL: no buffer or vertex array for geometry\n");
+        GL_ProgramFree(&gl_geoProgram);
+        return 0;
+    }
+
+    /* The same layout the glyph quads use, because the engine's
+       geometry vertex and the interface's textured one are the same
+       shape -- position, packed colour, one texture coordinate. */
+    GLFN_glBindVertexArray(gl_geoVao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoBuffer);
+    GLFN_glEnableVertexAttribArray(0);
+    GLFN_glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                               (GLsizei)sizeof(tGdi_TexturedVertex),
+                               (const void*)(size_t)0);
+    GLFN_glEnableVertexAttribArray(1);
+    GLFN_glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+                               (GLsizei)sizeof(tGdi_TexturedVertex),
+                               (const void*)(size_t)12);
+    GLFN_glEnableVertexAttribArray(2);
+    GLFN_glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
+                               (GLsizei)sizeof(tGdi_TexturedVertex),
+                               (const void*)(size_t)16);
+    GLFN_glBindVertexArray(0);
+
+    gl_geoReady = 1;
+    return 1;
+}
+
+static void GL_l_ForgetGeometry(void)
+{
+    if (gl_geoReady && gl_state.context)
+    {
+        GL_ProgramFree(&gl_geoProgram);
+        if (gl_geoBuffer)
+            GLFN_glDeleteBuffers(1, &gl_geoBuffer);
+        if (gl_geoVao)
+            GLFN_glDeleteVertexArrays(1, &gl_geoVao);
+    }
+    gl_geoBuffer = 0;
+    gl_geoVao = 0;
+    gl_geoViewProj = -1;
+    gl_geoTried = 0;
+    gl_geoReady = 0;
+    free(gl_geoVerts);
+    gl_geoVerts = NULL;
+    gl_geoVertMax = 0;
+}
+
+/* view * projection, in the engine's own order, kept ready for the
+   next draw rather than rebuilt per chunk. */
+static void GL_l_CombineMatrices(void)
+{
+    D3D_MatrixMultiply((D3DMATRIX*)&gl_viewProjMtx, (const D3DMATRIX*)&gl_viewMtx,
+                       (const D3DMATRIX*)&gl_projMtx);
+}
+
 int GL_SetViewMatrix(Mtx4x4* mtxptr)
 {
-    (void)mtxptr;
+    if (!mtxptr)
+        return 0;
+
+    /* The same conversion the other renderer makes: a matrix carrying
+       separate scale factors is flattened into a plain affine one. */
+    MATH_MakeOGLMatrix(&gl_viewMtx, mtxptr);
+    GL_l_CombineMatrices();
     return 0;
 }
 
-/* as above */
-void GL_SetProjectionMatrix(tDDCamStruct* a1)
+void GL_SetProjectionMatrix(tDDCamStruct* cam)
 {
-    (void)a1;
+    tPrj_Input  in;
+    tPrj_Output out;
+
+    if (!cam || !gpst_DX_stDD)
+        return;
+
+    in.surfaceWidth = gl_state.width;
+    in.surfaceHeight = gl_state.height;
+    in.selectedScreenRatio = gpst_DX_stDD->ddcs2.selectedScreenRatio;
+    in.manualScreenRatio = gpst_DX_stDD->ddcs2.manualScreenRatio;
+    in.pixelYoverX = gpst_DX_stDD->ddcs2.pixelYoverX;
+    in.flags2 = gpst_DX_stDD->ddcs2.flags2;
+    in.widescreen = GDI_gi_Widescreen;
+    in.realYoverX = (gl_state.width > 0 && gl_state.height > 0)
+                        ? (float)gl_state.height / (float)gl_state.width
+                        : GDI_gf_RefYoverX;
+    in.refYoverX = GDI_gf_RefYoverX;
+
+    PRJ_Compute(cam, &in, &out);
+    memcpy(&gl_projMtx, &out.matrix, sizeof(Mtx4x4WithoutAdditionalData));
+    GL_l_CombineMatrices();
+
+    if (out.setViewport && gl_state.context)
+    {
+        /* The rectangle is in the engine's window coordinates, whose
+           origin is the top left. OpenGL's viewport origin is the
+           bottom left, so the y has to be measured from the other
+           end. Getting this wrong puts the picture in the right place
+           on a full-height viewport and the wrong one on every
+           letterboxed camera, which is the sort of thing that looks
+           like a projection bug. */
+        GLFN_glViewport(out.viewX,
+                        gl_state.height - (out.viewY + out.viewHeight),
+                        out.viewWidth, out.viewHeight);
+    }
 }
 
-/* geometry waits on the shader stage */
-int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* a1, Vec3* a2, struct sGeoUVElem* a3, int a4)
+int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
+                                   Vec3* vertices, struct sGeoUVElem* uvs,
+                                   int vertexNum)
 {
-    (void)a1;
-    (void)a2;
-    (void)a3;
-    (void)a4;
+    tGvx_Source       src;
+    tBigBufferStruct* bb;
+    int               triangleNum;
+    int               needed;
+
+    (void)vertexNum;
+
+    if (!chunks || !vertices || !gpst_DX_stDD)
+        return 0;
+    triangleNum = (int)chunks->triangleNum;
+    if (triangleNum <= 0)
+        return 0;
+    if (!GL_l_b_GeometryReady())
+        return 0;
+
+    needed = triangleNum * 3;
+    if (needed > gl_geoVertMax)
+    {
+        tGdi_TexturedVertex* grown;
+
+        grown = (tGdi_TexturedVertex*)realloc(gl_geoVerts,
+                                              sizeof(*grown) * (size_t)needed);
+        if (!grown)
+            return 0;
+        gl_geoVerts = grown;
+        gl_geoVertMax = needed;
+    }
+
+    bb = gpst_DX_stDD->bigBuffer;
+    src.vertices = vertices;
+    src.uvs = uvs;
+    src.colors = bb ? bb->vertexColorArray : NULL;
+    src.second = bb ? bb->vertexColorArraySecond : NULL;
+    src.mask = bb ? bb->colorMask : 0;
+
+    /* The other renderer reads this out of its own state, where it is
+       the alpha the colour mask is combined with. This renderer has
+       no equivalent yet, so it contributes nothing. */
+    src.alpha = 0;
+    src.solidColor = src.colors
+                         ? 0
+                         : GVX_ui_SolidColor(src.mask, src.alpha,
+                                             bb ? bb->solidVertexColor : 0);
+    src.useVertexUv = (gpst_DX_stDD->flags & 2) != 0;
+
+    GVX_BuildTriangles(gl_geoVerts, chunks, &src);
+
+    GLFN_glUseProgram(gl_geoProgram.program);
+    if (gl_geoViewProj >= 0)
+        GLFN_glUniformMatrix4fv(gl_geoViewProj, 1, GL_FALSE,
+                                (const GLfloat*)&gl_viewProjMtx);
+    GLFN_glBindVertexArray(gl_geoVao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoBuffer);
+    GLFN_glBufferData(GL_ARRAY_BUFFER,
+                      (GLsizei)(sizeof(tGdi_TexturedVertex) * (size_t)needed),
+                      gl_geoVerts, GL_STREAM_DRAW);
+    GLFN_glDrawArrays(GL_TRIANGLES, 0, (GLsizei)needed);
+    GLFN_glBindVertexArray(0);
     return 0;
 }
 

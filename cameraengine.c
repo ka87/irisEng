@@ -124,7 +124,7 @@ void CAM_AssignCameraToDevice(tDDContainerStruct2ForIDA* srcdd, tDDContainerStru
 
     // take the shape of the window, so the view worked out here is
     // the one that is actually drawn
-    if (D3D_gi_Widescreen && winWidth > 0 && winHeight > 0)
+    if (GDI_gi_Widescreen && winWidth > 0 && winHeight > 0)
         screenRatio = (float)winHeight / (float)winWidth;
 
     factor = srcdd->pixelYoverX * dstdd->cam.YoverX * screenRatio;
@@ -177,12 +177,12 @@ void CAM_AssignCameraToDevice(tDDContainerStruct2ForIDA* srcdd, tDDContainerStru
     {
         tmp = (float)tan(dstdd->cam.focale * 0.5f);
 
-        if (D3D_gi_Widescreen && D3D_gf_RefYoverX > 0.0f)
+        if (GDI_gi_Widescreen && GDI_gf_RefYoverX > 0.0f)
         {
             // down the screen the angle is the one the scenes were
             // laid out for, and across it the same scale, which is
             // what gets drawn whatever the window shape
-            dstdd->cam.factorY = (float)(finalHalfHeight / (tmp * D3D_gf_RefYoverX));
+            dstdd->cam.factorY = (float)(finalHalfHeight / (tmp * GDI_gf_RefYoverX));
             dstdd->cam.factorX = dstdd->cam.factorY;
         }
         else

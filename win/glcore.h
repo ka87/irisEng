@@ -80,6 +80,15 @@ typedef char           GLchar;
 #define GL_UNPACK_ALIGNMENT               0x0CF5
 #define GL_UNPACK_ROW_LENGTH              0x0CF2
 
+#define GL_CLIP_ORIGIN                    0x935C
+#define GL_CLIP_DEPTH_MODE                0x935D
+#define GL_NEGATIVE_ONE_TO_ONE            0x935E
+#define GL_ZERO_TO_ONE                    0x935F
+#define GL_LOWER_LEFT                     0x8CA1
+#define GL_UPPER_LEFT                     0x8CA2
+
+#define GL_LEQUAL                         0x0203
+
 #define GL_SRC_ALPHA                      0x0302
 #define GL_ONE_MINUS_SRC_ALPHA            0x0303
 #define GL_ONE                            1
@@ -156,6 +165,13 @@ typedef void (*GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint id,
     X(void,  glUniform1i,            (GLint loc, GLint v), (loc, v))          \
     X(void,  glUniform4f,            (GLint loc, GLfloat a, GLfloat b,         \
                                       GLfloat c, GLfloat d), (loc, a, b, c, d)) \
+    X(void,  glUniformMatrix4fv,     (GLint loc, GLsizei count,                \
+                                      GLboolean transpose,                      \
+                                      const GLfloat* value),                    \
+                                     (loc, count, transpose, value))           \
+    X(void,  glClipControl,          (GLenum origin, GLenum depth),             \
+                                     (origin, depth))                          \
+    X(void,  glDepthFunc,            (GLenum func), (func))                    \
                                                                               \
     X(void,  glGenBuffers,           (GLsizei n, GLuint* out), (n, out))      \
     X(void,  glDeleteBuffers,        (GLsizei n, const GLuint* in), (n, in))  \

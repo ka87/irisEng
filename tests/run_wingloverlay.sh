@@ -30,6 +30,16 @@ $CC $CFLAGS -fsanitize=address -c tests/test_wingloverlay.c -o "$OUT/wgo.drv.o"
 $CC $CFLAGS -fsanitize=address -c win/glload.c -o "$OUT/wgo.load.o"
 $CC $CFLAGS -fsanitize=address -c win/glshader.c -o "$OUT/wgo.shader.o"
 $CC $CFLAGS -fsanitize=address -c datapath.c -o "$OUT/wgo.datapath.o"
+# The real camera fitting, vertex building and matrix helpers, which
+# are arithmetic with nothing to stand in for. math.c comes with them
+# for MATH_MakeOGLMatrix, and gdi.c holds the two display settings the
+# projection depends on -- but gdi.c would pull in the whole engine,
+# so those two are defined by the driver instead.
+$CC $CFLAGS -fsanitize=address -c projection.c -o "$OUT/wgo.proj.o"
+$CC $CFLAGS -fsanitize=address -c geovertex.c -o "$OUT/wgo.gvx.o"
+$CC $CFLAGS -fsanitize=address -c win/wingdimath.c -o "$OUT/wgo.wgmath.o"
+$CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
-    "$OUT/wgo.datapath.o" -o "$OUT/wgo"
+    "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \
+    "$OUT/wgo.wgmath.o" "$OUT/wgo.math.o" -o "$OUT/wgo" -lm
 "$OUT/wgo"

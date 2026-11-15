@@ -1394,6 +1394,104 @@ genuinely about buffers belonging to a device. The immediate path is
 the one a second renderer needs first, because it is the fallback
 whenever the cache does not apply.
 
+## OpenGL draws the world
+
+Untextured, vertex-coloured, but the world. Three more entries are
+real — the view matrix, the projection, and the indexed triangle draw
+— and almost none of what they do is new code: `projection.c` fits the
+camera and `geovertex.c` builds the vertices, both shared with the
+Direct3D renderer. What is here is the matrix the shader gets, the
+buffer the vertices go in, and the draw.
+
+### glClipControl is most of why this renderer asks for 4.5
+
+The engine's projections put clip-space z in **0 to 1**, which is
+Direct3D's range and not OpenGL's −1 to 1. Core 4.5 can be told to use
+it:
+
+```c
+GLFN_glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+```
+
+So the engine's matrices need no adjusting and `projection.c` can be
+shared between both renderers rather than having a variant for each.
+The origin stays at the **lower left**, OpenGL's own: both conventions
+put clip y = +1 at the top of the screen, one measuring the window
+from the bottom and the other from the top, so nothing is upside down
+and the overlay's pixel mapping is untouched.
+
+### The matrix reaches the shader without being transposed
+
+The engine's matrices are row-vector — a point is transformed as
+`v * M` — and stored row-major. Uploaded with `transpose` false,
+OpenGL reads that storage as column-major, which hands GLSL the
+transpose; and the transpose times a column vector is the row vector
+times the original. So `uViewProj * vec4(aPos, 1.0)` in the shader is
+the engine's own arithmetic, not a rearrangement of it, and no bytes
+are moved on the way.
+
+### The viewport's y is measured from the other end
+
+`PRJ_Compute` gives a rectangle in the engine's window coordinates,
+whose origin is the top left. OpenGL's viewport origin is the bottom
+left, so
+
+```c
+GLFN_glViewport(out.viewX, gl_state.height - (out.viewY + out.viewHeight),
+                out.viewWidth, out.viewHeight);
+```
+
+**A centred viewport cannot see that flip**, which is worth knowing.
+Letterboxing alone produces a rectangle `(height - fit) / 2` from the
+top and the same from the bottom, so the flipped y and the unflipped
+one are the same number. The first version of the test used a
+letterboxed camera and passed with the flip removed. It uses a camera
+with an off-centre, half-height viewport now — an inset or a split
+screen — which is the only shape that tells them apart, and is exactly
+the case that would have shipped broken.
+
+### Two settings stopped being Direct3D's
+
+`D3D_gi_Widescreen` and `D3D_gf_RefYoverX` were defined in the
+Direct3D renderer and named after it, and `cameraengine.c` read them
+anyway. They are `GDI_gi_Widescreen` and `GDI_gf_RefYoverX` in
+`gdi.c` now, because every renderer's projection depends on them, and
+the alternative was the OpenGL renderer declaring a Direct3D symbol.
+The frozen copy reaches them through a `-D` mapping of the old names;
+the differential harness drives them as one shared pair rather than
+one per side, which is what the engine does. No differences.
+
+### What the harness checks
+
+`tests/run_wingloverlay.sh` grew from 103 checks to **136**, still
+with no driver anywhere. The geometry cases drive the real
+`GVX_BuildTriangles` and the real `PRJ_Compute`, so what the mocks see
+is what a driver would be handed.
+
+8 of 8 mutations caught, and **two of them only after the test was
+fixed**:
+
+| mutation | why it passed at first |
+|---|---|
+| view and projection multiplied the other way round | nothing checked the combined matrix's *value*, only that a matrix was uploaded |
+| the "leave the viewport alone" flag ignored | every case used a camera whose flag was the other way |
+
+The first is now compared against a product worked out in the test
+itself rather than by the helper the renderer uses — the order is the
+whole question, and two matrices multiplied the wrong way round is a
+picture that looks plausible and is wrong. Writing that case also
+turned up that `MATH_MakeOGLMatrix` sets `w` to 1, which changes the
+four products of that row; the expected value takes the conversion as
+given and checks the order.
+
+### What is still inert
+
+Textures, the video display, the sun's occlusion test, sprites, and
+the cached geometry path. Culling is off: which winding the engine's
+geometry has is a question to answer by looking at the result rather
+than by reasoning here, and drawing both faces is the reading that
+cannot hide anything.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

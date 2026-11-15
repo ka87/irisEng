@@ -433,17 +433,11 @@ void ENG_WinGameWindowInit(HINSTANCE instance);
 void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value);
 void PC_CIN_CutsceneMode(int on);
 
-// Aspect handling. With D3D_gi_Widescreen set, the projection is
-// built from the shape of the window instead of a fixed ratio: the
-// vertical field of view stays as authored and the horizontal one
-// grows with the window, so nothing is stretched and a wider screen
-// simply shows more at the sides.
-//
-// D3D_gf_RefYoverX is the height over width the scenes were laid
-// out for. The cutscene bands keep the size they always had.
-extern int   D3D_gi_Widescreen;
+// Aspect handling. The two settings every renderer needs are in
+// gdi.h, because cameraengine.c reads them as well and a second
+// renderer's projection depends on them; this one is about the flat
+// layer box, which only this renderer draws.
 extern int   D3D_gi_FlatLayerBox;
-extern float D3D_gf_RefYoverX;
 
 // How much of the height each cutscene band covers.
 extern float D3D_gf_CutsceneBand;

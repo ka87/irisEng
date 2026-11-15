@@ -655,10 +655,8 @@ void D3D_SetViewPort(int x, int y, int w, int h)
     }
 }
 
-int   D3D_gi_Widescreen = 1;
 int   D3D_gi_FlatLayerBox = 1;
 int   D3D_gi_AspectTrace = 0;
-float D3D_gf_RefYoverX = 0.75f;
 float D3D_gf_CutsceneBand = 0.10416666f;
 
 float D3D_RealYoverX(void)
@@ -674,7 +672,7 @@ float D3D_RealYoverX(void)
         h = (float)D3DRenderParams.presentParams.BackBufferHeight;
     }
     if (w <= 0.0f || h <= 0.0f)
-        return D3D_gf_RefYoverX;
+        return GDI_gf_RefYoverX;
     return h / w;
 }
 
@@ -682,10 +680,10 @@ int D3D_FlatLayerWidth(int w, int h)
 {
     int boxW;
 
-    if (!D3D_gi_FlatLayerBox || !D3D_gi_Widescreen
-        || D3D_gf_RefYoverX <= 0.0f || h <= 0)
+    if (!D3D_gi_FlatLayerBox || !GDI_gi_Widescreen
+        || GDI_gf_RefYoverX <= 0.0f || h <= 0)
         return w;
-    boxW = (int)((float)h / D3D_gf_RefYoverX);
+    boxW = (int)((float)h / GDI_gf_RefYoverX);
     return boxW < w ? boxW : w;
 }
 
@@ -763,9 +761,9 @@ void D3D_SetProjectionMatrix(tDDCamStruct* cam)
     in.manualScreenRatio = gpst_DX_stDD->ddcs2.manualScreenRatio;
     in.pixelYoverX = gpst_DX_stDD->ddcs2.pixelYoverX;
     in.flags2 = gpst_DX_stDD->ddcs2.flags2;
-    in.widescreen = D3D_gi_Widescreen;
+    in.widescreen = GDI_gi_Widescreen;
     in.realYoverX = D3D_RealYoverX();
-    in.refYoverX = D3D_gf_RefYoverX;
+    in.refYoverX = GDI_gf_RefYoverX;
 
     /* This writes the camera's own matrix as well, which is where the
        renderer built it. */
