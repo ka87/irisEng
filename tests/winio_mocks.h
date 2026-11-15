@@ -67,6 +67,11 @@ typedef struct
 extern WinioScript winioScript;
 
 void WINIO_ResetMocks(void);
+
+/* Non-zero while the input is taken from the game, as the free
+   camera takes it. WINIO_ResetMocks does not clear it, so the one
+   case that sets it also clears it. */
+extern int WINIO_inputSuspended;
 int  WINIO_LogCount(void);
 const char* WINIO_LogLine(int i);
 void WINIO_Log(const char* fmt, ...);

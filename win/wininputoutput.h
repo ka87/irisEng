@@ -22,6 +22,13 @@ IDirectInput8A* dinput_if;
 IDirectInputDevice8A* pcINO_mouseDevice;
 IDirectInputDevice8A* pcINO_keybDevice;
 int mouseGranularity;
+
+/* What the mouse reported this frame, before any control mode has had
+   it: counts, not pixels, and not scaled by the sensitivity. The
+   buttons are not here -- they go into pcINO_keyboardDataBackup at
+   258 and up, the right one at 259. */
+int pcINO_mouseDeltaX;
+int pcINO_mouseDeltaY;
 /* Retail 0x00B6569C, .data, default 0.5f. Not a constant: the
    options screen drives it through pcINO_SetMouseSensitivity. */
 float pcINO_mouseSensitivity;

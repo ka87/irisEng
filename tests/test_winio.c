@@ -499,6 +499,7 @@ static long opRan[OP_NUM];
 
 static long f12Skipped = 0;
 static void f12FieldCase(void);
+static void suspendedInputCase(void);
 static long wheelScrollSkipped;
 static char baseLog[WINIO_LOGMAX][WINIO_LINEMAX];
 static int baseLogCount;
@@ -1473,6 +1474,206 @@ static void f12FieldCase(void)
            (unsigned)(sizeof(fcases) / sizeof(fcases[0])), f12Skipped);
 }
 
+/* The gate the free camera closes, which is new behaviour and so has
+   no frozen copy to be compared against: these cases drive the
+   rewrite alone.
+
+   Suppressing the game cannot be done by clearing the pad after the
+   control mode has run, because two of the handlers accumulate --
+   the wheel's notches and case 4's pointer travel -- and the whole
+   lot would arrive in the game in one burst the moment the input was
+   given back. So the handler is not called at all, and the pad is
+   zeroed instead.
+   
+   Three things have to survive the gate: the keyboard backup, which
+   is what the camera reads its own keys from; the published mouse
+   delta, which is what it looks with; and F12, which raises the
+   command field. */
+static void suspendedInputCase(void)
+{
+    State st;
+    int suspended;
+    int i;
+    int h;
+
+    group = "suspend";
+    rngState = 0x5057u;
+
+    for (suspended = 0; suspended <= 1; suspended++)
+    {
+        int allZero = 1;
+        int backupKept;
+
+        randomState(&st);
+        randomScript();
+        st.haveMouse = 1;
+        st.haveKeyb = 1;
+        st.handlerIdx = 0;
+        st.case2Scroll = 3.0f;
+        st.case4X = 5.0f;
+        st.case4Y = 7.0f;
+        winioScript.mouseStateResult[0] = 0;
+        winioScript.keybStateResult[0] = 0;
+        memset(winioScript.mouseData, 0, sizeof(winioScript.mouseData));
+        memset(winioScript.keybData, 0, sizeof(winioScript.keybData));
+        memset(st.keybBackup, 0, sizeof(st.keybBackup));
+
+        /* a mouse movement to publish, and the two keys whose pad
+           overrides sit beside the handler call */
+        winioScript.mouseData[0] = 37;
+        winioScript.mouseData[1] = -11;
+        for (i = 28; i < 32; i++)
+            st.keybLink[i] = (uint16_t)(40 + i - 28);
+        winioScript.keybData[40] = 0x80;         /* link 28 */
+        winioScript.keybData[42] = 0x80;         /* link 30 */
+        winioScript.keybData[88] = 0x80;         /* F12, which must stay live */
+
+        memset(&st.pad, 0xAA, sizeof(st.pad));
+
+        /* a sentinel, so a publish that is skipped cannot be passed
+           off by the value the previous case left behind */
+        pcINO_mouseDeltaX = -999;
+        pcINO_mouseDeltaY = -999;
+
+        dirtyStack();
+        WINIO_ResetMocks();
+        installState(&newSide, &st);
+        WINIO_inputSuspended = suspended;
+        newSide.joyUpdate(&st.pad);
+        WINIO_inputSuspended = 0;
+
+        for (i = 0; i < (int)sizeof(st.pad.padData); i++)
+            if (st.pad.padData[i] != 0)
+                allZero = 0;
+
+        if (suspended)
+        {
+            if (!allZero)
+            {
+                printf("  DIFF suspend          the pad was not cleared\n");
+                diffs++;
+            }
+        }
+        else
+        {
+            if ((unsigned char)st.pad.padData[8] != 0xFF
+                || (unsigned char)st.pad.padData[9] != 0xFF)
+            {
+                printf("  DIFF suspend          the pad overrides did not run"
+                       " with the gate open: [8]=%02x [9]=%02x\n",
+                       (unsigned char)st.pad.padData[8],
+                       (unsigned char)st.pad.padData[9]);
+                diffs++;
+            }
+        }
+
+        /* the keyboard backup is the camera's own key source, so it
+           is filled either way */
+        backupKept = pcINO_keyboardDataBackup[40] != 0
+                     && pcINO_keyboardDataBackup[42] != 0;
+        if (!backupKept)
+        {
+            printf("  DIFF suspend          the keyboard backup was not kept"
+                   " (suspended=%d)\n", suspended);
+            diffs++;
+        }
+
+        /* and so is the mouse delta it looks with */
+        if (pcINO_mouseDeltaX != 37 || pcINO_mouseDeltaY != -11)
+        {
+            printf("  DIFF suspend          the mouse delta was not published"
+                   " (suspended=%d): %d,%d\n", suspended,
+                   pcINO_mouseDeltaX, pcINO_mouseDeltaY);
+            diffs++;
+        }
+
+        /* F12 still raises the command field */
+        {
+            int shown = 0;
+            for (i = 0; i < WINIO_LogCount(); i++)
+                if (strcmp(WINIO_LogLine(i), "OVL_CommandShow") == 0)
+                    shown = 1;
+            if (!shown)
+            {
+                printf("  DIFF suspend          F12 did not raise the field"
+                       " (suspended=%d)\n", suspended);
+                diffs++;
+            }
+        }
+        cases++;
+    }
+
+    /* Clearing the pad after the control mode had run would pass
+       every check above, and would still be wrong: the handlers that
+       accumulate keep their running total and would hand it to the
+       game in one lump on release. So every handler is driven with
+       the gate closed and the three accumulators have to come back
+       untouched -- and then once with it open, which is what shows
+       the check has teeth. */
+    {
+        int anyMovedWithTheGateOpen = 0;
+
+        for (h = 0; h < NHANDLER * 2; h++)
+        {
+            int closed = h < NHANDLER;
+            int moved;
+
+            randomState(&st);
+            randomScript();
+            st.haveMouse = 1;
+            st.haveKeyb = 1;
+            st.handlerIdx = h % NHANDLER;
+            st.mouseSensitivity = 1.0f;
+            st.granularity = 1;
+            winioScript.mouseStateResult[0] = 0;
+            winioScript.keybStateResult[0] = 0;
+            memset(winioScript.keybData, 0, sizeof(winioScript.keybData));
+            memset(st.keybBackup, 0, sizeof(st.keybBackup));
+            memset(winioScript.mouseData, 0, sizeof(winioScript.mouseData));
+            winioScript.mouseData[0] = 60;
+            winioScript.mouseData[1] = 60;
+            winioScript.mouseData[2] = 120;      /* a wheel notch */
+            st.case2Scroll = 3.0f;
+            st.case4X = 5.0f;
+            st.case4Y = 7.0f;
+
+            dirtyStack();
+            WINIO_ResetMocks();
+            installState(&newSide, &st);
+            WINIO_inputSuspended = closed;
+            newSide.joyUpdate(&st.pad);
+            WINIO_inputSuspended = 0;
+
+            moved = pcINO_case2_mouseScroll != 3.0f
+                    || pcINO_case4_mouseMoveX != 5.0f
+                    || pcINO_case4_mouseMoveY != 7.0f;
+
+            if (closed && moved)
+            {
+                printf("  DIFF suspend          handler %d accumulated behind"
+                       " the gate: %f %f %f\n", h,
+                       (double)pcINO_case2_mouseScroll,
+                       (double)pcINO_case4_mouseMoveX,
+                       (double)pcINO_case4_mouseMoveY);
+                diffs++;
+            }
+            if (!closed && moved)
+                anyMovedWithTheGateOpen = 1;
+            cases++;
+        }
+
+        if (!anyMovedWithTheGateOpen)
+        {
+            printf("  DIFF suspend          no handler accumulated with the"
+                   " gate open, so the gate check has no teeth\n");
+            diffs++;
+        }
+    }
+
+    printf("  suspended input: %d cases, the gate open and closed\n",
+           2 + NHANDLER * 2);
+}
+
 static void sweepDevices(void)
 {
     Case c;
@@ -1505,6 +1706,7 @@ static void sweepDevices(void)
 
     wheelNotchCase();
     f12FieldCase();
+    suspendedInputCase();
 
     group = "init/close";
     rngState = 0xAAAAu;

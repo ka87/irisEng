@@ -1225,11 +1225,26 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
     mouseScaled[1] = (float)mouseData[1] * pcINO_mouseSensitivity;
     ((int*)mouseScaled)[2] = mouseData[2] / (mouseGranularity ? mouseGranularity : 1);
 
-    sJoystickHandlerFunction(padData, mouseScaled, keyboardData);
-    if (keyboardData[pcINO_IntKeybDataLink[30]] || keyboardData[pcINO_IntKeybDataLink[31]])
-        padData->padData[9] = -1;
-    if (keyboardData[pcINO_IntKeybDataLink[28]] || keyboardData[pcINO_IntKeybDataLink[29]])
-        padData->padData[8] = -1;
+    // What the mouse did this frame, for anything that wants the
+    // device rather than a control mode's reading of it.
+    pcINO_mouseDeltaX = mouseData[0];
+    pcINO_mouseDeltaY = mouseData[1];
+
+    // No control mode runs while the input is taken from the game.
+    // Clearing the pad after letting one run would not do instead:
+    // the handlers accumulate -- the wheel's notches, case 4's
+    // pointer travel -- and the whole running total would arrive in
+    // one lump the moment the input was given back. The pad itself
+    // needs nothing here; the memset at the top of the function has
+    // already cleared it, which is what the game then reads.
+    if (!INO_b_InputSuspended())
+    {
+        sJoystickHandlerFunction(padData, mouseScaled, keyboardData);
+        if (keyboardData[pcINO_IntKeybDataLink[30]] || keyboardData[pcINO_IntKeybDataLink[31]])
+            padData->padData[9] = -1;
+        if (keyboardData[pcINO_IntKeybDataLink[28]] || keyboardData[pcINO_IntKeybDataLink[29]])
+            padData->padData[8] = -1;
+    }
     if ((keyboardData[56] || keyboardData[184]) && keyboardData[62])
     {
         pcINO_keybDevice->lpVtbl->Unacquire(pcINO_keybDevice);

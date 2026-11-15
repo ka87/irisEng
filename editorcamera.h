@@ -26,18 +26,32 @@
     would dereference NULL. A view that follows something else is
     still a view that follows.
 
-    The input gate. While the camera has the input, the game's own
-    suppression is used to keep it away from everything that reads a
-    pad: INO_SuspendInput clears the joystick mask, which is what the
-    engine already does for controls it wants ignored. The memory card
-    manager is outside that and keeps running, so saving and loading
-    are unaffected. The camera itself reads the device below the gate,
-    through the platform layer, which is why suppressing the game does
+    The input gate. While the camera has the input, the game sees
+    none of it, and that is stopped in two places because the game
+    reads it in two.
+
+    INO_SuspendInput clears the joystick mask, which is what the
+    engine already does for controls it wants ignored, and gates the
+    keyboard poll; that covers everything reading through INO. In the
+    platform layer, pcINO_Joystick_Update stops calling the selected
+    control mode's handler at all, so the pad the game reads stays as
+    its own memset left it. Clearing the pad after letting a handler
+    run would not do instead: two of the handlers accumulate, and the
+    running total would arrive in one lump on release.
+
+    The memory card manager is outside both, so saving and loading
+    carry on while the camera is up.
+
+    The control mode and submode are neither read nor written. Whatever
+    the game selected stays selected and stays visible to everything
+    that reads it, and the camera's own controls do not change when it
+    changes -- they are the keys and the mouse as the platform layer
+    read them, below both gates, which is why suppressing the game does
     not suppress the camera.
 
-    The control mode and submode are not touched at all. Whatever the
-    game selected stays selected and stays visible to everything that
-    reads it.
+    The controls are W A S D to move, Q and E for down and up, and the
+    mouse to look while the right button is held. Looking is guarded by
+    the button so the pointer can still be moved on its own.
 
     Movement is a matrix and a clock, so there is nothing to turn off
     to fly: no collision is consulted, no dynamics run, and no sector

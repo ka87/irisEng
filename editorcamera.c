@@ -14,8 +14,11 @@
 #define ECAM_FASTFACTOR  5.0f
 #define ECAM_SLOWFACTOR  0.2f
 
-/* Radians a second at full stick, and per second of key held. */
-#define ECAM_TURNRATE    1.8f
+/* Radians per unit of mouse travel. The mouse reports counts rather
+   than a rate, so this is not scaled by the frame time: a given sweep
+   of the hand turns the camera by the same amount however fast the
+   frame rate is. */
+#define ECAM_LOOKSCALE   0.0035f
 
 /* As far as the camera may look up or down, just short of straight,
    because a camera pointing exactly along the world's up axis has no
@@ -31,10 +34,10 @@
 #define ECAM_KEY_E       0x12
 #define ECAM_KEY_LSHIFT  0x2A
 #define ECAM_KEY_LCTRL   0x1D
-#define ECAM_KEY_UP      0xC8
-#define ECAM_KEY_DOWN    0xD0
-#define ECAM_KEY_LEFT    0xCB
-#define ECAM_KEY_RIGHT   0xCD
+
+/* The mouse buttons live above the keys in the same platform array;
+   the right one is the look button. */
+#define ECAM_MOUSE_RIGHT 259
 
 /* Set only here, and read by the after-effects pass so it can be
    skipped while the camera is up. It is a second flag rather than the
@@ -49,16 +52,18 @@ static void (*ecam_savedFollow)(tViewElem* view);
 static Mtx4x4       ecam_mtx;
 static float        ecam_pitch;        /* kept, so the limit can be held */
 
-/* The view's matrix is not laid out the way the camera device's is:
-   CAM_SetObjectMatrixFromCam puts the device's sight vector at
-   objectMtx.v3 and fills it from the view's -v2. So the view matrix's
-   forward is -v2, and the other two rows are the lateral and vertical
-   axes. */
+/* The view's matrix is not laid out the way the camera device's is.
+   CAM_SetObjectMatrixFromCam fills the device's rows from the view's
+   as (v1, v2, v3) = (-view.v1, -view.v3, -view.v2), and the device's
+   v3 is the sight. So all three of the camera's axes are the view
+   rows negated: forward is -v2, right is -v1 and up is -v3. All three
+   signs are read out of that mapping; none of them is a convention
+   picked here. */
 static void ECAM_l_Axes(Vec3* forward, Vec3* lateral, Vec3* vertical)
 {
     MATH_VecInvert(forward, &ecam_mtx.v2);
-    *lateral = ecam_mtx.v1;
-    *vertical = ecam_mtx.v3;
+    MATH_VecInvert(lateral, &ecam_mtx.v1);
+    MATH_VecInvert(vertical, &ecam_mtx.v3);
 }
 
 /* The follow function the view gets while the camera has it. The
@@ -204,8 +209,6 @@ void ECAM_Update(void)
     Vec3 forward;
     Vec3 lateral;
     Vec3 vertical;
-    Vec3 leftStick;
-    Vec3 rightStick;
     float dt;
     float speed;
     float move;
@@ -234,17 +237,24 @@ void ECAM_Update(void)
     if (dt <= 0.0f)
         return;
 
-    /* Read below the gate: these are the platform's own, so the
-       suppression that keeps the pad away from the game does not
-       keep it away from here. */
-    pcINO_Joystick_Move(&leftStick, 0);
-    pcINO_Joystick_Move(&rightStick, 1);
-
-    move = leftStick.y + ECAM_l_Pair(ECAM_KEY_S, ECAM_KEY_W);
-    strafe = leftStick.x + ECAM_l_Pair(ECAM_KEY_A, ECAM_KEY_D);
+    /* The device as the platform layer read it, below the gate that
+       keeps it away from the game: the keys and the mouse, and not a
+       control mode's reading of either. Nothing here asks what mode
+       the game has selected, so nothing here changes when it
+       changes. */
+    move = ECAM_l_Pair(ECAM_KEY_S, ECAM_KEY_W);
+    strafe = ECAM_l_Pair(ECAM_KEY_A, ECAM_KEY_D);
     lift = ECAM_l_Pair(ECAM_KEY_Q, ECAM_KEY_E);
-    yaw = rightStick.x + ECAM_l_Pair(ECAM_KEY_LEFT, ECAM_KEY_RIGHT);
-    pitch = rightStick.y + ECAM_l_Pair(ECAM_KEY_DOWN, ECAM_KEY_UP);
+
+    /* Looking is the mouse, and only while the right button is held,
+       so the pointer can be moved without dragging the view with it. */
+    yaw = 0.0f;
+    pitch = 0.0f;
+    if (ECAM_l_b_KeyDown(ECAM_MOUSE_RIGHT))
+    {
+        yaw = (float)pcINO_mouseDeltaX;
+        pitch = (float)pcINO_mouseDeltaY;
+    }
 
     speed = ECAM_SPEED;
     if (ECAM_l_b_KeyDown(ECAM_KEY_LSHIFT))
@@ -254,13 +264,22 @@ void ECAM_Update(void)
 
     /* Turning is around the world's up axis, so the horizon stays
        level however far the camera has been flown; looking up and
-       down is around the camera's own lateral axis. */
+       down is around the camera's own lateral axis.
+
+       Both signs follow from math.c rather than from taste. The
+       global-Z rotation is counter-clockwise about +Z, so turning
+       right -- which is what the mouse going right should do -- is a
+       negative angle. The local-X rotation puts sin(angle) in v2.z,
+       and the pitch counter below is asin of the same component, so a
+       positive angle both looks down and raises the counter; the
+       mouse going down is a positive delta, which is the
+       non-inverted sense. */
     if (yaw != 0.0f)
-        MATH_RotateMatrix_AroundGlobalZAxis(&ecam_mtx, -yaw * ECAM_TURNRATE * dt);
+        MATH_RotateMatrix_AroundGlobalZAxis(&ecam_mtx, -yaw * ECAM_LOOKSCALE);
 
     if (pitch != 0.0f)
     {
-        float wanted = ecam_pitch + pitch * ECAM_TURNRATE * dt;
+        float wanted = ecam_pitch + pitch * ECAM_LOOKSCALE;
 
         if (wanted > ECAM_PITCHLIMIT)
             wanted = ECAM_PITCHLIMIT;
