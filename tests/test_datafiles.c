@@ -125,6 +125,7 @@ static void theShippedFile(void)
     okStr(DAT_pc_BigFile(), "sally_clean.bf",
           "the shipped ini names the big file");
     okInt(DAT_b_Binarized(), 1, "and asks for binarized world files");
+    okStr(DAT_pc_Backend(), "d3d", "and names the renderer the game shipped on");
     okStr(DAT_pc_Video((int)0x490294C0u), "BGEMakingOf.bik",
           "and has the video under the id the trailer launcher asks for");
     okInt(dmLogLen, 0, "and the reader finds nothing to complain about");
@@ -263,6 +264,34 @@ static void idsAreThirtyTwoBitKeys(void)
     ok(loggedAbout("is not an id"), "nor a decimal past the negative end");
 }
 
+/* [render] carries the renderer's name across. Which names mean
+   what is gdi.c's business, so this module only has to not lose the
+   string and not invent one. */
+static void theRenderer(void)
+{
+    load("[render]\nbackend = gl\n");
+    okStr(DAT_pc_Backend(), "gl", "the renderer's name is carried across");
+
+    load("[render]\nBACKEND = D3D9\n");
+    okStr(DAT_pc_Backend(), "D3D9",
+          "the key ignores case but the value is passed as written");
+
+    load("[data]\nbigfile = x.bf\n");
+    okStr(DAT_pc_Backend(), NULL, "no [render] means no renderer asked for");
+
+    load("[render]\nbackend =\n");
+    okStr(DAT_pc_Backend(), NULL, "and nor does an empty one");
+
+    load("[render]\nbakend = gl\n");
+    okStr(DAT_pc_Backend(), NULL, "a misspelt setting asks for nothing");
+    ok(loggedAbout("bakend"), "and is named in the log");
+
+    /* it must not leak across a re-read, like everything else */
+    load("[render]\nbackend = gl\n");
+    load("[data]\nbigfile = y.bf\n");
+    okStr(DAT_pc_Backend(), NULL, "a second read clears it");
+}
+
 static void mistakesAreReported(void)
 {
     load("[data]\nbigfle = typo.bf\n");
@@ -385,6 +414,7 @@ int main(void)
     theFlag();
     videoIds();
     idsAreThirtyTwoBitKeys();
+    theRenderer();
     mistakesAreReported();
     theLimits();
     readingAgainStartsClean();

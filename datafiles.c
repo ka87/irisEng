@@ -15,7 +15,8 @@
    a very long setting. */
 #define DAT_LINEMAX   512
 
-enum { DAT_SECTION_NONE, DAT_SECTION_DATA, DAT_SECTION_VIDEO };
+enum { DAT_SECTION_NONE, DAT_SECTION_DATA, DAT_SECTION_VIDEO,
+       DAT_SECTION_RENDER };
 
 typedef struct sDatVideo
 {
@@ -24,6 +25,7 @@ typedef struct sDatVideo
 } tDatVideo;
 
 static char      dat_bigFile[DAT_NAMEMAX];
+static char      dat_backend[DAT_NAMEMAX];
 static int       dat_binarized;
 static tDatVideo dat_videos[DAT_MAXVIDEOS];
 static int       dat_videoNum;
@@ -191,6 +193,15 @@ static void DAT_l_Setting(int section, char* key, char* value)
                                   DAT_INIFILE, key);
         return;
     }
+    if (section == DAT_SECTION_RENDER)
+    {
+        if (DAT_l_b_SameWord(key, "backend"))
+            DAT_l_CopyName(dat_backend, value);
+        else
+            DBG_OutputDebugString("%s: [render] has no setting \"%s\"\n",
+                                  DAT_INIFILE, key);
+        return;
+    }
     if (section == DAT_SECTION_VIDEO)
     {
         if (DAT_l_b_Id(key, &id))
@@ -211,6 +222,7 @@ static void DAT_l_Read(const char* path)
     int section = DAT_SECTION_NONE;
 
     dat_bigFile[0] = '\0';
+    dat_backend[0] = '\0';
     dat_binarized = 0;
     dat_videoNum = 0;
 
@@ -253,6 +265,8 @@ static void DAT_l_Read(const char* path)
                 section = DAT_SECTION_DATA;
             else if (DAT_l_b_SameWord(s, "video"))
                 section = DAT_SECTION_VIDEO;
+            else if (DAT_l_b_SameWord(s, "render"))
+                section = DAT_SECTION_RENDER;
             else
             {
                 section = DAT_SECTION_NONE;
@@ -285,6 +299,11 @@ void DAT_InitModule(void)
 const char* DAT_pc_BigFile(void)
 {
     return dat_bigFile[0] ? dat_bigFile : NULL;
+}
+
+const char* DAT_pc_Backend(void)
+{
+    return dat_backend[0] ? dat_backend : NULL;
 }
 
 int DAT_b_Binarized(void)

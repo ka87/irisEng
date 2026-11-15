@@ -156,6 +156,9 @@
     <ClCompile Include="photo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="renderers.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="datafiles.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -723,6 +726,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="photo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="renderers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="datafiles.h">

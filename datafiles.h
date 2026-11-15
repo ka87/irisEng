@@ -44,6 +44,11 @@ const char* DAT_pc_BigFile(void);
 /* Non-zero when the ini asked for binarized world files. */
 int DAT_b_Binarized(void);
 
+/* The renderer the ini asked for, by name, or NULL if it named none.
+   What the names are is the renderer's business, not this module's:
+   it carries the string across and gdi.c decides what it means. */
+const char* DAT_pc_Backend(void);
+
 /* The video file for an id, or NULL when the ini has no entry for
    it. The caller decides what to do about that; this module does not
    treat it as an error. */
