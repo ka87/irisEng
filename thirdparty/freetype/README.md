@@ -27,7 +27,10 @@ warning for each of them an error. These sources are upstream's and
 include none of the engine's headers, so they cannot pick the
 definition up the way the engine's own files did -- it is defined for
 every configuration in `irisEng.vcxproj`, and the per-file settings
-here inherit it through `%(PreprocessorDefinitions)`.
+here inherit it through `%(PreprocessorDefinitions)`. That project
+setting is the *only* definition: a second one in a header is a
+redefinition MSVC reports in every file that includes it, because the
+command line makes the macro `1` and a bare `#define` makes it empty.
 
 `iriseng/ftmodule.h` is the one file here that is ours. It lists the
 modules the build contains, which is what `FT_CONFIG_MODULES_H` exists

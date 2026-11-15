@@ -1,7 +1,10 @@
 /* jconfig.vc --- jconfig.h for Microsoft Visual C++ on Windows 95 or NT. */
 /* see jconfig.doc for explanations */
 
-#define _CRT_SECURE_NO_WARNINGS
+/* _CRT_SECURE_NO_WARNINGS was defined here too, and is now in
+   irisEng.vcxproj for every configuration. Leaving it would be the
+   same redefinition as in common.h, once for each of the 46 jpeg
+   sources that include this. */
 
 #define HAVE_PROTOTYPES
 #define HAVE_UNSIGNED_CHAR
