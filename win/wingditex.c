@@ -2,21 +2,86 @@
 
 #include <string.h>
 
+/* Loading a surface from a block of 32-bit pixels.
+ *
+ * What this replaced took a source rectangle and no destination
+ * rectangle, which means the whole of the destination surface -- so
+ * when the two differ in size it stretches the source to fill it,
+ * point sampled. It is not a row copy, and the difference is not
+ * academic: the one caller hands over a rectangle of width by height
+ * and the surface it hands over may have been created the other way
+ * round, because the engine stores a texture's width in its height
+ * field and the two creation paths undo that differently.
+ *
+ * Written as a plain row copy, that wrote width pixels into rows only
+ * height pixels wide and ran off the end of every one of them. On a
+ * square texture it was right; on anything else it was not, which is
+ * why the in-game video screens broke and the fullscreen ones, which
+ * do not come through here, did not.
+ *
+ * The equal-size case is kept as the straight copy it was, so where
+ * this was already right it is unchanged. The stretch uses the
+ * half-pixel-centre mapping, which is the conventional one; the exact
+ * rounding of the original's point filter is not documented and is
+ * not something this can check, so a destination pixel that lands on
+ * a source boundary may pick the other neighbour. Nothing here
+ * depends on which.
+ */
 int D3D_b_SurfaceLoadFromMemory(IDirect3DSurface9* surface, const void* src,
                                 int srcPitch, int width, int height)
 {
-    D3DLOCKED_RECT locked;
-    int            row;
+    D3DSURFACE_DESC desc;
+    D3DLOCKED_RECT  locked;
+    int             dstW;
+    int             dstH;
+    int             x;
+    int             y;
 
     if (!surface || !src || width <= 0 || height <= 0)
         return 0;
+    if (FAILED(surface->lpVtbl->GetDesc(surface, &desc)))
+        return 0;
+
+    dstW = (int)desc.Width;
+    dstH = (int)desc.Height;
+    if (dstW <= 0 || dstH <= 0)
+        return 0;
+
     if (FAILED(surface->lpVtbl->LockRect(surface, &locked, NULL, 0)))
         return 0;
 
-    for (row = 0; row < height; row++)
-        memcpy((char*)locked.pBits + (size_t)row * locked.Pitch,
-               (const char*)src + (size_t)row * srcPitch,
-               (size_t)width * 4);
+    if (dstW == width && dstH == height)
+    {
+        for (y = 0; y < height; y++)
+            memcpy((char*)locked.pBits + (size_t)y * locked.Pitch,
+                   (const char*)src + (size_t)y * srcPitch,
+                   (size_t)width * 4);
+    }
+    else
+    {
+        for (y = 0; y < dstH; y++)
+        {
+            const char* srow;
+            char*       drow;
+            int         sy;
+
+            sy = ((y * 2 + 1) * height) / (dstH * 2);
+            if (sy >= height)
+                sy = height - 1;
+            srow = (const char*)src + (size_t)sy * srcPitch;
+            drow = (char*)locked.pBits + (size_t)y * locked.Pitch;
+
+            for (x = 0; x < dstW; x++)
+            {
+                int sx;
+
+                sx = ((x * 2 + 1) * width) / (dstW * 2);
+                if (sx >= width)
+                    sx = width - 1;
+                memcpy(drow + (size_t)x * 4, srow + (size_t)sx * 4, 4);
+            }
+        }
+    }
 
     surface->lpVtbl->UnlockRect(surface);
     return 1;

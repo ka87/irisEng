@@ -1,3 +1,28 @@
+/* The two functions that replaced this renderer's last uses of D3DX.
+ *
+ * These are the one part of the renderer the differential comparison
+ * cannot check. It works by running the frozen pre-rewrite copy beside
+ * the rewrite over identical state; the frozen copy calls
+ * D3DXLoadSurfaceFromMemory and D3DXFilterTexture, which are the
+ * things being replaced and are not available here, so
+ * tests/wingdi_mocks.c stands both sides in with the same recorded
+ * stub. The two sides therefore agree by construction and say nothing
+ * about whether the replacement behaves like the original.
+ *
+ * So this file is the only thing standing behind them, and it is only
+ * as good as the reading of what D3DX did. That is not hypothetical:
+ * the surface load was written as a row copy, which is right only when
+ * the destination surface is the same size as the rectangle handed
+ * over. D3DXLoadSurfaceFromMemory with no destination rectangle
+ * stretches to fill the surface, the engine does hand it a surface of
+ * a different shape, and the in-game video screens broke. The cases
+ * below did not catch it because the surface mock reported a zeroed
+ * descriptor, so the destination had no size to disagree with.
+ *
+ * When adding to this file, prefer a case where the inputs disagree
+ * with each other over one where they match.
+ */
+
 /* A unit test for win/wingditex.c.
  *
  * New code replacing two D3DX calls, and a direct check rather than a
@@ -193,17 +218,38 @@ typedef struct sWtSurface
     IDirect3DSurface9Vtbl* lpVtbl;
     unsigned char*         bits;
     int                    pitch;
+    /* The size the surface says it is, which is the thing the load
+       has to fit itself to. The mock used to report a zeroed
+       descriptor, so a load that ignored the destination size looked
+       correct here -- and ignoring it is exactly how the in-game
+       video screens broke. */
+    int                    width;
+    int                    height;
     int                    lockCalls;
     int                    unlockCalls;
     int                    failLock;
+    int                    failDesc;
 } tWtSurface;
 
 static ULONG WsRelease(IDirect3DSurface9* s) { (void)s; return 0; }
 
 static HRESULT WsGetDesc(IDirect3DSurface9* s, D3DSURFACE_DESC* d)
 {
-    (void)s;
+    tWtSurface* surf = (tWtSurface*)s;
+
+    /* Rubbish rather than zeroes when it fails, which is what a
+       caller that ignores the return value would then act on. Zeroing
+       it made ignoring the return value harmless and therefore
+       untestable. */
     memset(d, 0, sizeof(*d));
+    if (surf->failDesc)
+    {
+        memset(d, 0x7F, sizeof(*d));
+        return -1;
+    }
+    d->Width = (UINT)surf->width;
+    d->Height = (UINT)surf->height;
+    d->Format = D3DFMT_X8R8G8B8;
     return 0;
 }
 
@@ -237,6 +283,157 @@ static IDirect3DSurface9Vtbl wsVtbl = {
 
 /* ---------------------------------------------------------- the cases */
 
+/* A surface whose size differs from the rectangle handed over.
+ *
+ * This is the case the game hits and the one that was missing: the
+ * engine keeps a texture's width in its height field, the two
+ * creation paths undo that differently, and so the one caller can
+ * hand a width-by-height rectangle to a surface that was made
+ * height-by-width. The original stretched to fit. A row copy writes
+ * past the end of every row.
+ */
+static void caseSurfaceLoadStretch(void)
+{
+    /* 4 wide, 2 tall, each pixel's red channel saying which column it
+       is and its green which row, so where a pixel came from is
+       readable off the result. */
+    unsigned char src[4 * 2 * 4];
+    unsigned char dest[64 * 64 * 4 + 256];
+    tWtSurface    surf;
+    int           x, y;
+    int           bad;
+
+    printf("-- a surface that is not the size of the rectangle\n");
+
+    for (y = 0; y < 2; y++)
+        for (x = 0; x < 4; x++)
+        {
+            unsigned char* p = &src[(y * 4 + x) * 4];
+
+            p[0] = 0;                        /* blue */
+            p[1] = (unsigned char)(y + 1);   /* green: the row */
+            p[2] = (unsigned char)(x + 1);   /* red: the column */
+            p[3] = 0xFF;
+        }
+
+    /* The transposed case: a 4 by 2 rectangle into a 2 by 4 surface.
+       Nothing may be written past the end of a row, and nothing past
+       the end of the surface -- the sentinel after it says so. */
+    memset(dest, 0xCD, sizeof(dest));
+    memset(&surf, 0, sizeof(surf));
+    surf.lpVtbl = &wsVtbl;
+    surf.bits = dest;
+    surf.width = 2;
+    surf.height = 4;
+    surf.pitch = 2 * 4;          /* tight, so an overrun lands in the next row */
+
+    ok(D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 2),
+       "a transposed surface still loads");
+
+    /* Which source pixel each destination pixel came from, not merely
+       that it came from somewhere: a stretch that took its rows from
+       the width and its columns from the height would land inside the
+       source everywhere and be wrong everywhere. */
+    bad = 0;
+    for (y = 0; y < 4; y++)
+        for (x = 0; x < 2; x++)
+        {
+            const unsigned char* p = &dest[(y * 2 + x) * 4];
+            int wantCol = ((x * 2 + 1) * 4) / (2 * 2) + 1;
+            int wantRow = ((y * 2 + 1) * 2) / (4 * 2) + 1;
+
+            if (p[2] != wantCol || p[1] != wantRow || p[3] != 0xFF)
+                bad++;
+        }
+    okEq(bad, 0, "and each pixel comes from the source pixel it should");
+
+    bad = 0;
+    for (x = 2 * 4 * 4; x < (int)sizeof(dest); x++)
+        if (dest[x] != 0xCD)
+            bad++;
+    okEq(bad, 0, "with nothing written past the end of the surface");
+
+    /* Scaled up: a 4 by 2 rectangle into an 8 by 4 surface, which
+       doubles each pixel. Point sampled, so the corners are the
+       source's corners exactly. */
+    memset(dest, 0xCD, sizeof(dest));
+    surf.width = 8;
+    surf.height = 4;
+    surf.pitch = 8 * 4;
+    ok(D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 2),
+       "a larger surface loads");
+    okEq(dest[0 * 4 + 2], 1, "the top left is the source's first column");
+    okEq(dest[0 * 4 + 1], 1, "and its first row");
+    okEq(dest[7 * 4 + 2], 4, "the top right is the source's last column");
+    okEq(dest[(3 * 8 + 7) * 4 + 1], 2,
+         "and the bottom right is its last row");
+    /* doubled rather than smeared: the second destination column is
+       still the first source column */
+    okEq(dest[1 * 4 + 2], 1, "each source pixel covers two across");
+    okEq(dest[2 * 4 + 2], 2, "before the next one starts");
+
+    /* Scaled down: a 4 by 2 rectangle into a 2 by 1 surface. */
+    memset(dest, 0xCD, sizeof(dest));
+    surf.width = 2;
+    surf.height = 1;
+    surf.pitch = 2 * 4;
+    ok(D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 2),
+       "a smaller surface loads");
+    bad = 0;
+    for (x = 0; x < 2; x++)
+        if (dest[x * 4 + 2] < 1 || dest[x * 4 + 2] > 4)
+            bad++;
+    okEq(bad, 0, "and takes its pixels from inside the source");
+    okEq(dest[2 * 4], 0xCD, "writing no more than the surface holds");
+
+    /* A surface that will not say how big it is cannot be loaded into
+       at all, which is better than guessing. */
+    memset(&surf, 0, sizeof(surf));
+    surf.lpVtbl = &wsVtbl;
+    surf.bits = dest;
+    surf.width = 4;
+    surf.height = 2;
+    surf.pitch = 4 * 4;
+    surf.failDesc = 1;
+    ok(!D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 16, 4, 2),
+       "a surface with no description is refused");
+    okEq(surf.lockCalls, 0, "and is not even locked");
+
+    /* A surface that says it has no size is refused too, rather than
+       loaded with nothing and reported as a success. */
+    memset(&surf, 0, sizeof(surf));
+    surf.lpVtbl = &wsVtbl;
+    surf.bits = dest;
+    surf.pitch = 4 * 4;
+    ok(!D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 16, 4, 2),
+       "a surface of no size is refused");
+    okEq(surf.lockCalls, 0, "and is not locked either");
+
+    /* And the mapping stays inside the source for every shape, which
+       is the property the two clamps in there are a backstop for.
+       They cannot fire with this mapping -- the arithmetic says so,
+       and removing either one changes nothing -- so the property is
+       asserted here rather than left to a branch no test can reach. */
+    {
+        int dw, dh, sw, sh;
+
+        bad = 0;
+        for (sw = 1; sw <= 9; sw++)
+            for (sh = 1; sh <= 9; sh++)
+                for (dw = 1; dw <= 9; dw++)
+                    for (dh = 1; dh <= 9; dh++)
+                    {
+                        int sx = ((dw - 1) * 2 + 1) * sw / (dw * 2);
+                        int sy = ((dh - 1) * 2 + 1) * sh / (dh * 2);
+
+                        if (sx < 0 || sx >= sw || sy < 0 || sy >= sh)
+                            bad++;
+                    }
+        okEq(bad, 0, "the stretch's last pixel is inside the source for"
+                     " every shape up to nine by nine");
+    }
+}
+
 static void caseSurfaceLoad(void)
 {
     tWtSurface     surf;
@@ -257,6 +454,8 @@ static void caseSurfaceLoad(void)
     surf.lpVtbl = &wsVtbl;
     surf.bits = dest;
     surf.pitch = 4 * 4 + 20;     /* padded, so a pitch-blind copy shows */
+    surf.width = 4;
+    surf.height = 3;
 
     ok(D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 3),
        "it reports success");
@@ -557,6 +756,7 @@ int main(void)
 {
     printf("=== renderer texture unit test ===\n");
     caseSurfaceLoad();
+    caseSurfaceLoadStretch();
     caseUniform();
     caseAverages();
     casePosition();
