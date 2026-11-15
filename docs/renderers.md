@@ -771,6 +771,46 @@ had to come from somewhere other than D3DX. Routing the rest of the
 overlay pass through the interface is the next step and a change of its
 own.
 
+## _CRT_SECURE_NO_WARNINGS, and why common.h was not enough
+
+The engine builds with SDL checks on, which turns MSVC's deprecation
+warning for `strcpy`, `sprintf`, `strcat` and their relatives into an
+error. `common.h` has defined `_CRT_SECURE_NO_WARNINGS` at its third
+line for as long as it has existed, and every engine source reaches it,
+so the decompiled code full of those calls has always compiled.
+
+Two things broke that, and the definition moved to
+`irisEng.vcxproj` -- all four configurations -- where include order
+cannot defeat it.
+
+**FreeType never sees `common.h`.** It is upstream source and includes
+only its own headers, and it reaches `strcat`, `strcpy`, `strncpy`,
+`sprintf`, `fopen` and `getenv` through the `ft_*` aliases in
+`ftstdlib.h`. Its per-file settings inherit the project definition
+through `%(PreprocessorDefinitions)`, so nothing had to be added to
+the thirteen entries themselves.
+
+**`font.c` could not pick it up either, and the reason is worth
+knowing.** Its first include is `font.h`, whose first line is
+`#include <stdint.h>`. On MSVC that pulls in the CRT's own
+configuration headers, which read `_CRT_SECURE_NO_WARNINGS` **once**
+to decide whether the deprecation attributes get attached. By the time
+`gdi.h` reaches `common.h` and defines it, that decision has been
+taken. So a new file whose first header includes anything from the CRT
+before `common.h` is unprotected, and the symptom is a compile error
+in the new file while every file around it builds -- which reads like
+a problem with the new code rather than with its include order.
+
+Defining it in the project file removes the trap for any file added
+later. `common.h` keeps its definition, which is harmless and still
+covers anything built outside the project file.
+
+The three calls in `font.c` that reported the error were replaced by
+one bounded `snprintf` rather than being silenced, because that was
+the better code anyway -- it reports truncation instead of quietly
+producing a short path. The definition is for FreeType and for
+whatever is added next.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

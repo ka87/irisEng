@@ -17,6 +17,17 @@ what makes updating it a copy rather than a merge:
 | `FT2_BUILD_LIBRARY` | defined when compiling these sources |
 | `FT_CONFIG_MODULES_H=<ftmodule.h>` | points at `iriseng/ftmodule.h` below |
 | `-I iriseng -I include` | in that order |
+| `_CRT_SECURE_NO_WARNINGS` | project-wide, and these sources need it |
+
+That last one is not optional on MSVC. FreeType reaches `strcat`,
+`strcpy`, `strncpy`, `sprintf`, `fopen` and `getenv` through the
+`ft_*` aliases in `include/freetype/config/ftstdlib.h`, and this
+project builds with SDL checks on, which makes the deprecation
+warning for each of them an error. These sources are upstream's and
+include none of the engine's headers, so they cannot pick the
+definition up the way the engine's own files did -- it is defined for
+every configuration in `irisEng.vcxproj`, and the per-file settings
+here inherit it through `%(PreprocessorDefinitions)`.
 
 `iriseng/ftmodule.h` is the one file here that is ours. It lists the
 modules the build contains, which is what `FT_CONFIG_MODULES_H` exists
