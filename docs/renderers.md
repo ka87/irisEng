@@ -810,6 +810,139 @@ one bounded `snprintf` rather than being silenced, because that was
 the better code anyway -- it reports truncation instead of quietly
 producing a short path. The definition is for FreeType and for
 whatever is added next.
+## No D3DX at all
+
+The two fonts were the visible part of the D3DX dependency. Six more
+calls were left after them, all in `win/wingdi.c`, and the engine now
+has its own:
+
+| was | is | where |
+|---|---|---|
+| `D3DXMatrixMultiply` | `D3D_MatrixMultiply` | `win/wingdimath.c` |
+| `D3DXMatrixTranslation` | `D3D_MatrixTranslation` | " |
+| `D3DXMatrixOrthoOffCenterRH` | `D3D_MatrixOrthoOffCenterRH` | " |
+| `D3DXMatrixInverse` | `D3D_p_MatrixInverse` | " |
+| `D3DXLoadSurfaceFromMemory` | `D3D_b_SurfaceLoadFromMemory` | `win/wingditex.c` |
+| `D3DXFilterTexture` | `D3D_b_TextureBuildMipLevels` | " |
+
+`win/wingdi.h` includes no D3DX header, `d3dx9.lib` is gone from both
+Win32 configurations, and the only places the engine says "D3DX" are
+comments saying what a function replaced. The two frozen-copy font
+pointers and the overlay's old height moved into
+`tests/stub/d3dx9math.h`, where the frozen copy that still refers to
+them lives.
+
+### The matrices
+
+Direct3D's conventions, not the engine's: row-major, row vectors,
+translation in the fourth row, and a projection whose clip-space z
+runs 0 to 1. They are in `win/` for that reason — `math.c` works in
+the engine's own `Mtx4x4`, and a second renderer will want its own
+projection with its own clip space.
+
+Three of the four are the documented formulas. The inverse is the
+general one, by the adjugate over the determinant, because the one
+caller reaches it exactly when the matrix may carry scale or shear —
+the branch beside it uses the engine's own rigid inverse from
+`math.c`, and that is the case this one is not.
+
+`D3D_p_MatrixInverse` keeps D3DX's contract: it returns `NULL` and
+writes nothing when the matrix is singular, and fills in the
+determinant when asked. A caller that ignores the result must not be
+handed noise.
+
+### The textures
+
+`D3DXLoadSurfaceFromMemory` was called once, with the same dimensions
+at both ends, a 32-bit source and a point filter — which together
+mean a copy and nothing else, so that is what replaced it. The
+destination is `X8R8G8B8` and the source `A8R8G8B8`: D3DX dropped the
+alpha, and copying it into the byte `X8R8G8B8` ignores comes to the
+same thing when the surface is sampled.
+
+`D3DXFilterTexture` built the mip chain. The replacement averages
+each (up to) 2x2 block per channel, **rounding rather than
+truncating**, and an odd dimension halves to the floor with the last
+row or column averaged against itself rather than dropped. Bit-exact
+agreement with D3DX is not something this repository can verify — the
+library is not here to compare against — so the claim is that the
+filtering is equivalent in kind, and the rounding is a deliberate
+choice recorded rather than an accident.
+
+One of the two call sites filters a texture created with a single
+level, where both the old call and the new one do nothing. The call
+is kept because the texture there may be one that already existed and
+carries levels.
+
+### What the tests check, and what they stopped checking
+
+Two new harnesses, both direct rather than differential, because
+there is no earlier copy of this arithmetic to compare against.
+
+`tests/run_wingdimath.sh` — **385 checks**. The reference inverses and
+the reference product were computed outside the test in exact
+rational arithmetic and pasted in; an expected value worked out with
+the formulas under test would only prove they agree with themselves.
+Each inverse is then checked the other way too, by multiplying it
+back and asking for the identity, which depends on neither. The
+projection is checked by where it sends the corners of its box rather
+than by comparing sixteen numbers against the same formula.
+
+**Every one of the sixteen adjugate signs was flipped in turn, and all
+sixteen were caught** — but only after a fifth test matrix was added.
+Four matrices with zeros in them missed a sign error on one term,
+because that term was multiplied by zero in all of them; the fifth
+has no zero entries anywhere.
+
+The projection case also got the handedness wrong at first, and
+failed against correct code: in a right-handed projection the near
+plane sits at view z = **-zn**, while `zn` and `zf` are given as
+positive distances. That is written into the test, because it is the
+kind of thing that reads as a bug in the implementation.
+
+`tests/run_wingditex.sh` — **44 checks**, under AddressSanitizer, with
+textures and surfaces that have real buffers behind them and pitches
+deliberately wider than their rows. 17 mutations, 17 caught. Two
+needed the harness sharpened:
+
+| mutation | what it took |
+| --- | --- |
+| the clamp on x removed | a **1-pixel-wide** texture. With floor-halved dimensions a column never lacks a partner *unless* the width is already 1 while the height is still halving, so a 3x1 case scored clean |
+| truncating instead of rounding | a block averaging to exactly .5 |
+
+**The renderer's own differential harness checks less than it did, in
+two places, and more in a third.**
+
+Less: `D3DXMatrixInverse`'s mock was knowingly an approximation —
+"transpose the 3x3 and negate the translation", which is not a
+general inverse and not even a correct rigid one. No correct
+implementation can match it, and two different correct algorithms
+would not match each other in the last bits either, which an exact
+comparison cannot tolerate. So that mock now delegates to the
+implementation, and the differential harness says nothing about the
+inverse; `run_wingdimath.sh` is what checks it.
+
+Less: the two texture functions are **stood in for** rather than
+linked. `win/wingditex.c` really walks the chain, locking each level
+and averaging it into the next, and the textures in
+`tests/wingdi_mocks.c` are not that — every level hands out one
+shared buffer and reports the same dimensions, so a real box filter
+would read far past it. Both sides now log the same line, so what
+stays compared is the call: which object, what pitch, what size. The
+old D3DX mocks moved no pixels either, so nothing that used to be
+compared has been lost — only the level and filter arguments, which
+the replacements do not take.
+
+More: `SetTransform` recorded **the diagonal** of every matrix, and
+the diagonal cannot see the fourth row — which is exactly where a
+translation and a projection's offsets live. It now records a hash of
+all sixteen floats as well. That turns the comparison into a real
+bit-for-bit check of three of the four matrix functions against the
+reference formulas in the mock, for every matrix that reaches the
+device. Four mutations confirm it: dropping the projection's x offset
+or its depth offset, dropping the translation entirely, and shifting
+every product by one part in ten million are all caught, and none of
+them would have been before.
 
 ## What the ini does not decide
 

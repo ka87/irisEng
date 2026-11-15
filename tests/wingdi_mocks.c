@@ -10,6 +10,12 @@
  * The real math.c and profiler.c are linked rather than mocked.
  */
 #include "wingdi_mocks.h"
+/* The engine no longer includes a D3DX header; this file still
+   defines the handful of D3DX entry points the frozen copy calls,
+   so it includes the stub itself. */
+#include <d3dx9math.h>
+#include "../win/wingdimath.h"
+#include "../win/wingditex.h"
 #include "../math.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -290,10 +296,22 @@ static HRESULT Vt_SetTextureStageState(IDirect3DDevice9* d, DWORD stage,
 
 static HRESULT Vt_SetTransform(IDirect3DDevice9* d, DWORD which, const D3DMATRIX* m)
 {
-    const float* f = (const float*)m;
+    const float*  f = (const float*)m;
+    const unsigned char* p = (const unsigned char*)m;
+    unsigned int  h = 2166136261u;
+    int           i;
+
     (void)d;
-    WGM_Record("SetTransform", 5, (long long)which, fbits(f[0]), fbits(f[5]),
-               fbits(f[10]), fbits(f[15]));
+    /* The diagonal, and then a hash of all sixteen floats. The
+       diagonal alone was what this recorded, and it cannot see the
+       fourth row -- which is where a translation and an orthographic
+       projection's offsets live, and where the matrix code that
+       replaced D3DX could go wrong without the comparison noticing.
+       The hash is over the bytes, so it is exact. */
+    for (i = 0; i < 64; i++)
+        h = (h ^ p[i]) * 16777619u;
+    WGM_Record("SetTransform", 6, (long long)which, fbits(f[0]), fbits(f[5]),
+               fbits(f[10]), fbits(f[15]), (long long)h);
     return 0;
 }
 
@@ -849,7 +867,10 @@ D3DXMATRIX* D3DXMatrixMultiply(D3DXMATRIX* out, const D3DXMATRIX* a, const D3DXM
             fr[i * 4 + j] = s;
         }
     *out = r;
-    L0("D3DXMatrixMultiply");
+    /* Not recorded. The live side computes this itself now, in
+       win/wingdimath.c, so it is not a call either side makes to
+       anything -- and what the arithmetic produced still reaches
+       SetTransform, which records the whole matrix. */
     return out;
 }
 
@@ -860,7 +881,7 @@ D3DXMATRIX* D3DXMatrixTranslation(D3DXMATRIX* out, float x, float y, float z)
     for (i = 0; i < 16; i++)
         f[i] = (i % 5) == 0 ? 1.0f : 0.0f;
     f[12] = x; f[13] = y; f[14] = z;
-    L3("D3DXMatrixTranslation", fbits(x), fbits(y), fbits(z));
+    /* not recorded, as above */
     return out;
 }
 
@@ -878,44 +899,80 @@ D3DXMATRIX* D3DXMatrixOrthoOffCenterRH(D3DXMATRIX* out, float l, float r, float 
     f[13] = (t + b) / (b - t);
     f[14] = zn / (zn - zf);
     f[15] = 1.0f;
-    WGM_Record("D3DXMatrixOrthoOffCenterRH", 6, fbits(l), fbits(r), fbits(b),
-               fbits(t), fbits(zn), fbits(zf));
+    /* not recorded, as above */
     return out;
 }
 
+/* This one delegates to the implementation that replaced it, and that
+   needs saying out loud: it means the differential harness no longer
+   checks the inverse at all.
+
+   It used to be an approximation -- "transpose the 3x3 and negate the
+   translation" -- which was not a general inverse and was not even a
+   correct rigid one. A correct implementation cannot agree with it,
+   and two different correct algorithms would not agree in the last
+   bits either, which an exact comparison cannot tolerate. So the
+   frozen side is given the same answer as the live side, and
+   tests/run_wingdimath.sh is what actually checks it: against
+   inverses computed in exact arithmetic outside the test, and by
+   multiplying each one back to the identity. */
 D3DXMATRIX* D3DXMatrixInverse(D3DXMATRIX* out, float* det, const D3DXMATRIX* in)
 {
-    /* enough of an inverse for the test: transpose the 3x3 and negate
-       the translation, which is what the renderer's matrices are */
-    const float* f = (const float*)in;
-    float* o = (float*)out;
-    int i, j;
-
-    (void)det;
-    for (i = 0; i < 3; i++)
-        for (j = 0; j < 3; j++)
-            o[i * 4 + j] = f[j * 4 + i];
-    o[3] = o[7] = o[11] = 0.0f;
-    o[12] = -f[12]; o[13] = -f[13]; o[14] = -f[14];
-    o[15] = 1.0f;
-    L0("D3DXMatrixInverse");
-    return out;
+    return (D3DXMATRIX*)D3D_p_MatrixInverse((D3DMATRIX*)out, det,
+                                            (const D3DMATRIX*)in);
 }
 
 HRESULT D3DXLoadSurfaceFromMemory(IDirect3DSurface9* s, const PALETTEENTRY* pal, const RECT* dr,
     const void* src, D3DFORMAT f, UINT pitch, const PALETTEENTRY* spal, const RECT* sr,
     DWORD filter, D3DCOLOR key)
 {
-    (void)pal; (void)dr; (void)src; (void)spal; (void)sr; (void)key;
-    L4("D3DXLoadSurfaceFromMemory", WGM_Index(s), f, pitch, filter);
+    /* Logged as "texload", with the payload the replacement's
+       stand-in below uses, so the two sides are comparable: which
+       surface, what pitch, and how big. The source format and the
+       filter are gone from the comparison because the function that
+       replaced this takes neither -- it copies 32-bit pixels, which
+       is all this call site ever asked for. */
+    (void)pal; (void)dr; (void)src; (void)spal; (void)key; (void)f; (void)filter;
+    L4("texload", WGM_Index(s), pitch, sr ? sr->right : 0, sr ? sr->bottom : 0);
     return 0;
 }
 
 HRESULT D3DXFilterTexture(IDirect3DBaseTexture9* t, const PALETTEENTRY* pal, UINT lv, DWORD f)
 {
-    (void)pal;
-    L3("D3DXFilterTexture", WGM_Index(t), lv, f);
+    /* "texmip", to match the stand-in below. The level and filter
+       arguments leave the comparison with them: the replacement
+       filters the whole chain with a box filter and takes neither. */
+    (void)pal; (void)lv; (void)f;
+    L1("texmip", WGM_Index(t));
     return 0;
+}
+
+/* ---- the two functions that replaced the pair above ----
+
+   Stood in for rather than linked. win/wingditex.c really does walk
+   the mip chain, locking each level and averaging it into the next,
+   and the textures in this file are not that: every level hands out
+   one shared buffer and reports the same dimensions, so a real box
+   filter would read far past it. Teaching these mocks to be a proper
+   mip pyramid would be rebuilding tests/run_wingditex.sh inside a
+   harness built for comparing call sequences.
+
+   So what is compared here is the call -- which object, what pitch,
+   what size -- and the pixels are checked in that other harness,
+   against buffers it owns. The D3DX mocks above never moved a pixel
+   either, so nothing that used to be compared has been lost. */
+int D3D_b_SurfaceLoadFromMemory(IDirect3DSurface9* surface, const void* src,
+                                int srcPitch, int width, int height)
+{
+    (void)src;
+    L4("texload", WGM_Index(surface), srcPitch, width, height);
+    return 1;
+}
+
+int D3D_b_TextureBuildMipLevels(IDirect3DTexture9* texture)
+{
+    L1("texmip", WGM_Index(texture));
+    return 1;
 }
 
 static int Vt_FontDrawTextA(ID3DXFont* f, void* spr, LPCSTR text, int count,

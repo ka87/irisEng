@@ -2,7 +2,6 @@
 #include "../common.h"
 #include "../gdi.h"
 #include "../gfx/gfxsun.h"
-#include <d3dx9math.h>
 #include "wingdisun.h"
 
 /* The Direct3D renderer's own private state. The engine holds this
@@ -326,13 +325,6 @@ int ENG_WIN_AutoPlaySupressorRegistered;
 int currentVBOSelected;
 int d3d_alphablendIsCase3;
 
-/* The two D3DX fonts and the overlay's height used to live here.
-   Text is FreeType's now and font.c owns it; these three are kept
-   only so the frozen copy in tests/ still compiles, and nothing
-   live reads them. */
-ID3DXFont* d3dxfontIF;
-ID3DXFont* d3dxOverlayFontIF;
-int d3dOverlayFontHeight;
 char* rastersDrawPrimitiveUPDataStart;
 char* rastersDrawPrimitiveUPDataEnd;
 

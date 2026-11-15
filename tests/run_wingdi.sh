@@ -54,7 +54,14 @@ echo "=== wingdi ==="
 $CC $CFLAGS -c win/wingdi.c -o "$OUT/wingdi.new.o" $(defs NEW_ $syms)
 # the frozen copy still spells one function the way the decompiler named
 # it; map it onto the same per-side symbol the rewrite's new name takes
-$CC $CFLAGS -DMAT_ComputeUV_sub_4521A0=BASE_MAT_UV_ComputeAndSetTransform \
+# Only the frozen copy sees a D3DX header: the engine stopped
+# including one when the four matrix calls and the two texture calls
+# were reimplemented, and the baseline still refers to all of them.
+# Forcing it in here rather than for both sides is what keeps that
+# independence honest -- if the live file still needed D3DX, it would
+# not compile.
+$CC $CFLAGS -include tests/stub/d3dx9math.h \
+    -DMAT_ComputeUV_sub_4521A0=BASE_MAT_UV_ComputeAndSetTransform \
     -DD3D_OutputDebugString=GDI_OutputDebugString \
     -Dpd3drp=rendererState \
     -Dd3dvb2=vertexBuffer2 -Dd3dvb=vertexBuffer \
@@ -64,10 +71,15 @@ $CC $CFLAGS -DMAT_ComputeUV_sub_4521A0=BASE_MAT_UV_ComputeAndSetTransform \
     -DsD3dRequestSnapshot=sGdi_SnapshotRequest \
     -c tests/baseline_wingdi.c -o "$OUT/wingdi.base.o" $(defs BASE_ $syms)
 $CC $CFLAGS -c math.c -o "$OUT/wingdi.math.o"
+# The real matrix module, linked rather than mocked: it is pure
+# arithmetic with nothing to stand in for. win/wingditex.c is not
+# linked -- see the stand-ins in tests/wingdi_mocks.c for why.
+$CC $CFLAGS -c win/wingdimath.c -o "$OUT/wingdi.wgmath.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"
 $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
 $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
+    "$OUT/wingdi.wgmath.o" \
     "$OUT/wingdi.profiler.o" "$OUT/wingdi.mocks.o" "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm
 "$OUT/wingdi"

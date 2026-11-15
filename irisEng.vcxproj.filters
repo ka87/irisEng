@@ -170,6 +170,12 @@
     <ClCompile Include="font.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="win\wingdimath.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win\wingditex.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="thirdparty\freetype\src\base\ftsystem.c">
       <Filter>FreeType</Filter>
     </ClCompile>
@@ -788,6 +794,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win\wingdimath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win\wingditex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inputoutput.h">

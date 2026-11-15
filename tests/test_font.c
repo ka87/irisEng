@@ -92,6 +92,7 @@ static int FM_i_Logged(const char* needle)
 static char fm_exePath[512];
 static int  fm_moduleCalls;
 static int  fm_moduleFails;
+static int  fm_moduleOk;
 
 DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD n)
 {
@@ -102,6 +103,7 @@ DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD n)
     if (fm_moduleFails || len + 1 > n)
         return 0;
     memcpy(out, fm_exePath, len + 1);
+    fm_moduleOk++;
     return (DWORD)len;
 }
 
@@ -185,6 +187,7 @@ static void FM_Reset(void)
     fmLogLen = 0;
     fm_moduleCalls = 0;
     fm_moduleFails = 0;
+    fm_moduleOk = 0;
     fm_createCalls = 0;
     fm_destroyCalls = 0;
     fm_createFails = 0;
@@ -203,6 +206,7 @@ static void FM_Reset(void)
     fmLogLen = 0;
     fm_destroyCalls = 0;
     fm_moduleCalls = 0;
+    fm_moduleOk = 0;
 }
 
 /* How many inked bytes a glyph's cell holds in the coverage map. */
@@ -524,6 +528,35 @@ static void FM_CaseNoPath(void)
     okEq(fm_drawCalls, 0, "nothing drawn");
 }
 
+static void FM_CaseLongPath(void)
+{
+    int i;
+
+    printf("-- a path too long to hold\n");
+    FM_Reset();
+
+    /* An executable deep enough that its own path fits but the path
+       plus data/fonts and the file name does not. Not a case worth
+       handling beyond declining to look -- but it has to decline,
+       rather than build a truncated path and report success.
+
+       The directory has to land in a window: short enough that the
+       mock will hand it over at all, long enough that appending
+       data/fonts and a 26-character file name overruns MAX_PATH.
+       Getting that wrong is how the first version of this case
+       failed inside the mock instead, where it proved nothing, so
+       the case asserts that the mock answered. */
+    for (i = 0; i < 229; i++)
+        fm_exePath[i] = 'd';
+    fm_exePath[229] = '/';
+    strcpy(fm_exePath + 230, "e.exe");
+
+    okEq(FNT_i_Height(FNT_RASTERS), 0, "no height");
+    okEq(fm_moduleOk, 1, "and the path of the executable itself did arrive");
+    okEq(fm_createCalls, 0, "no atlas");
+    okEq(FM_i_Logged("where"), 1, "and it said it could not place the file");
+}
+
 static void FM_CaseRendererRefuses(void)
 {
     printf("-- the renderer will not take the atlas\n");
@@ -584,6 +617,7 @@ int main(void)
     FM_CaseCoverage();
     FM_CaseNoFont();
     FM_CaseNoPath();
+    FM_CaseLongPath();
     FM_CaseRendererRefuses();
     FM_CaseNoRenderer();
     FM_CaseClose();

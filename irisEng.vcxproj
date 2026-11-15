@@ -100,7 +100,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;d3dx9.lib;eaxguid.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;eaxguid.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\bin\*.dll" "$(OutDir)"</Command>
@@ -140,7 +140,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;d3dx9.lib;eaxguid.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;dxguid.lib;dinput8.lib;d3d9.lib;eaxguid.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\bin\*.dll" "$(OutDir)"</Command>
@@ -215,6 +215,8 @@
     <ClCompile Include="gameobject.c" />
     <ClCompile Include="gdi.c" />
     <ClCompile Include="font.c" />
+    <ClCompile Include="win\wingdimath.c" />
+    <ClCompile Include="win\wingditex.c" />
     <ClCompile Include="gfx.c" />
     <ClCompile Include="gfx\gfxanotherflare.c" />
     <ClCompile Include="gfx\gfxborderfade.c" />
@@ -511,6 +513,8 @@
     <ClInclude Include="renderers.h" />
     <ClInclude Include="datafiles.h" />
     <ClInclude Include="font.h" />
+    <ClInclude Include="win\wingdimath.h" />
+    <ClInclude Include="win\wingditex.h" />
     <ClInclude Include="inputoutput.h" />
     <ClInclude Include="jpeg-6b\cderror.h" />
     <ClInclude Include="jpeg-6b\cdjpeg.h" />
