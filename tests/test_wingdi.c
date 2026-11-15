@@ -840,13 +840,13 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     }
     W.geogro.triangleChunkCount = (unsigned int)MAXCHUNK;
     W.geogro.triangleChunks = W.chunks;
-    W.geogro.d3dvb = ((seed >> 14) & 1) ? &WGM_vb[30] : NULL;
-    W.geogro.d3dvb2 = ((seed >> 15) & 1) ? &WGM_vb[31] : NULL;
-    W.geogro.d3dUVVB = ((seed >> 16) & 1) ? W.uvvbs : NULL;
-    W.geogro.d3dUVVBNum = ((seed >> 16) & 1) ? 2 : 0;
+    W.geogro.vertexBuffer = ((seed >> 14) & 1) ? &WGM_vb[30] : NULL;
+    W.geogro.vertexBuffer2 = ((seed >> 15) & 1) ? &WGM_vb[31] : NULL;
+    W.geogro.uvBuffers = ((seed >> 16) & 1) ? (void**)W.uvvbs : NULL;
+    W.geogro.uvBufferNum = ((seed >> 16) & 1) ? 2 : 0;
     W.uvvbs[0] = &WGM_vb[32];
     W.uvvbs[1] = &WGM_vb[33];
-    W.geogro.d3dIndexBuf = ((seed >> 17) & 1) ? &WGM_ib[2] : NULL;
+    W.geogro.indexBuffer = ((seed >> 17) & 1) ? &WGM_ib[2] : NULL;
     Guard(5, "uv count", (int)((seed >> 13) & 1));
     Guard(6, "uv vertex buffers", (int)((seed >> 16) & 1));
     Guard(7, "index buffer", (int)((seed >> 17) & 1));
@@ -1395,7 +1395,7 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
            a strip block in place, which is the only shape where the flag
            decides anything */
         W.dd.GROGEO = &W.geogro;
-        W.geogro.d3dIndexBuf = &WGM_ib[2];
+        W.geogro.indexBuffer = &WGM_ib[2];
         W.chunks[0].triangleStripBlock = &W.blocks[0];
         for (extra = 0; extra < 4; extra++)
         {
@@ -1418,7 +1418,7 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
            twenty vertices and the cursors start at zero, so a random
            case never comes near them. */
         W.dd.GROGEO = &W.geogro;
-        W.geogro.d3dIndexBuf = &WGM_ib[2];
+        W.geogro.indexBuffer = &WGM_ib[2];
         W.chunks[0].triangleStripBlock = &W.blocks[0];
         W.blocks[0].streamsNum = 1 + (seed % 2u);
         W.blocks[0].d3dStreamInfoElems = W.streamInfo;

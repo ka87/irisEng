@@ -128,6 +128,13 @@ static char g_case[192];
 static int STRMOCK_SetIdentity(Mtx4x4* m) { return 0; }
 static void STRMOCK_SetProj(tDDCamStruct* c) { }
 
+/* Whether the renderer is holding geometry buffers for the string's
+   geometry. Every case runs both ways: with it always clear, the
+   guard in STR_Init3DStringExtExt is the only thing exercised and the
+   call it guards is never reached -- dropping that call scored clean
+   until this was added. */
+static int g_hasGeometryCache;
+
 static void worldInit(void)
 {
     int i;
@@ -313,7 +320,14 @@ static void worldInit(void)
     STRW_groBuf.uvNum = QUADS * 4;
     STRW_groBuf.UVs = STRW_uvs;
     STRW_groBuf.triangleChunks = &STRW_chunks;
-    STRW_groBuf.d3dIndexBuf = 0;
+    /* Whether the renderer has buffers cached for this geometry. Set
+       for some cases, because with it always clear the guard in
+       STR_Init3DStringExtExt is the only thing exercised and dropping
+       the call it guards scores clean -- which it did, until this was
+       added. */
+    STRW_groBuf.indexBuffer = g_hasGeometryCache
+                              ? (struct IDirect3DIndexBuffer9*)&STRW_groBuf
+                              : NULL;
     STRMOCK_gro = (struct sGroGeneric*)&STRW_groBuf;
 
     /* the display */
@@ -322,6 +336,8 @@ static void worldInit(void)
     STRW_dd.ct.cam.height = 480.0f;
     STRW_dd.SetViewMatrix = STRMOCK_SetIdentity;
     STRW_dd.SetProjectionMatrix = STRMOCK_SetProj;
+    STRW_dd.b_GeometryHasCache = STRMOCK_b_GeometryHasCache;
+    STRW_dd.DiscardGeometryCache = STRMOCK_DiscardGeometryCache;
     gpst_DX_stDD = &STRW_dd;
 
     /* the character table and the global string slots */
@@ -488,8 +504,8 @@ static void compareCapture(void)
 
 static int g_keyVariant;
 
-static void runCase(const char* name, int op, int a, int b, int c, int d, int e,
-                    float f, const char* s)
+static void runCaseOnce(const char* name, int op, int a, int b, int c, int d,
+                        int e, float f, const char* s)
 {
     snprintf(g_case, sizeof(g_case), "%s", name);
     g_cases++;
@@ -505,6 +521,23 @@ static void runCase(const char* name, int op, int a, int b, int c, int d, int e,
     capture(&g_new);
 
     compareCapture();
+}
+
+/* Each case twice: once with the renderer holding nothing for the
+   geometry and once with it holding buffers, which is what reaches
+   the call that drops them. */
+static void runCase(const char* name, int op, int a, int b, int c, int d, int e,
+                    float f, const char* s)
+{
+    char named[192];
+
+    g_hasGeometryCache = 0;
+    runCaseOnce(name, op, a, b, c, d, e, f, s);
+
+    g_hasGeometryCache = 1;
+    snprintf(named, sizeof(named), "%s/cached", name);
+    runCaseOnce(named, op, a, b, c, d, e, f, s);
+    g_hasGeometryCache = 0;
 }
 
 /* The index and count arguments every text call takes, including the

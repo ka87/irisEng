@@ -422,7 +422,11 @@ void GEO_FreeContent(tGEOGRO* geo)
         MEM_Free(geo->collisionPtr);
     }
 
-    PC_FreeABackCache(geo);
+    /* the call this replaced went straight to the renderer and so
+       ran before a display existed; only a renderer can have made
+       a cache, so there is nothing to drop in that window */
+    if (gpst_DX_stDD)
+        gpst_DX_stDD->DiscardGeometryCache(geo);
     
     if (geo->triangleChunkCount)
     {

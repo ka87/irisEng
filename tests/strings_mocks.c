@@ -79,6 +79,20 @@ int D3D_FlatLayerWidth(int w, int h)
     return h * 4 / 3;
 }
 
+/* The renderer's geometry cache, as the rewrite now asks about it.
+   The frozen copy tests the index buffer itself and calls
+   PC_FreeABackCache directly, so these do the same and record under
+   the same name: what is compared is the call, not the spelling. */
+int STRMOCK_b_GeometryHasCache(struct sGEOGRO* gro)
+{
+    return gro && gro->indexBuffer != NULL;
+}
+
+void STRMOCK_DiscardGeometryCache(struct sGEOGRO* gro)
+{
+    PC_FreeABackCache(gro);
+}
+
 void PC_FreeABackCache(struct sGEOGRO* gro)
 {
     STRMOCK_Record("PC_FreeABackCache");
