@@ -1268,6 +1268,59 @@ static void groupSuspend(void)
     INO_SuspendInput(0);
     checkIs("a spare release leaves the mask alone", INO_l_JoystickMask, 0x4321);
 
+    /* The mask is not just set by the game, it is saved and
+       restored: a script freezes some controls, keeps what was in
+       force, and puts that back later. So while the input is
+       suspended the game has to read and write its own copy, or it
+       picks the suspension up as its own state and hands it back
+       afterwards.
+
+       These two cases are the sequence AI_EvalFunc_IoJoyFreeze_C
+       performs -- it is those two accessors and nothing else -- with
+       the camera's suspension around it. */
+    INO_l_JoystickMask = 0x0FFF;          /* the game's controls, live */
+    INO_SuspendInput(1);
+    checkIs("the live mask is the suspension's", INO_l_JoystickMask, 0);
+    checkIs("but the game still reads its own",
+            INO_i_GameJoystickMask(), 0x0FFF);
+
+    /* the game freezes everything and keeps what it had */
+    i = ~INO_i_GameJoystickMask();        /* what IoJoyFreeze returns */
+    INO_GameJoystickMaskSet(~(-1));
+    checkIs("the game's freeze does not open the live mask",
+            INO_l_JoystickMask, 0);
+    checkIs("and the game sees its own freeze",
+            INO_i_GameJoystickMask(), 0);
+
+    /* and then puts back what it kept, still while suspended */
+    INO_GameJoystickMaskSet(~i);
+    checkIs("restoring does not open the live mask either",
+            INO_l_JoystickMask, 0);
+    INO_SuspendInput(0);
+    checkIs("and what comes back is what the game had, not the suspension",
+            INO_l_JoystickMask, 0x0FFF);
+
+    /* The other way round: the game changes its mind while the input
+       is suspended, and that change is what it gets back -- the
+       suspension withholds it rather than cancelling it. */
+    INO_l_JoystickMask = 0x0FFF;
+    INO_SuspendInput(1);
+    INO_GameJoystickMaskSet(0x00F0);
+    checkIs("a change made while suspended stays off the live mask",
+            INO_l_JoystickMask, 0);
+    checkIs("and the game reads it back", INO_i_GameJoystickMask(), 0x00F0);
+    INO_SuspendInput(0);
+    checkIs("and gets it on release", INO_l_JoystickMask, 0x00F0);
+
+    /* With nothing suspended both accessors are the live mask, which
+       is what keeps every existing caller unchanged. */
+    INO_l_JoystickMask = 0x5A5A;
+    checkIs("not suspended, the game's mask is the live one",
+            INO_i_GameJoystickMask(), 0x5A5A);
+    INO_GameJoystickMaskSet(0x1111);
+    checkIs("not suspended, setting it writes the live one",
+            INO_l_JoystickMask, 0x1111);
+
     /* The keyboard: the modifier plus a function key normally reaches
        INO_Keys, and must not while suspended. */
     for (i = 0; i < 2; ++i)

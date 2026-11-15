@@ -146,12 +146,17 @@ tAINode* AI_EvalFunc_IoButtonJustReleased(tAINode* node)
 // The engine keeps the inverse of what the script asks for, so both the
 // argument and the result are inverted. Returns the mask that was in
 // force, so a script can put it back.
+//
+// Through the game's own mask rather than the live one: while the
+// input is suspended the live mask is not the game's to read or
+// write, and a script that saved it would put the suspension back
+// later as though it had chosen it.
 int AI_EvalFunc_IoJoyFreeze_C(int allowed)
 {
     int previous;
 
-    previous = ~INO_l_JoystickMask;
-    INO_l_JoystickMask = ~allowed;
+    previous = ~INO_i_GameJoystickMask();
+    INO_GameJoystickMaskSet(~allowed);
     return previous;
 }
 

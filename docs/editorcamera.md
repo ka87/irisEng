@@ -105,11 +105,43 @@ game reads input in two places, so it is stopped in two.
 **Through INO**, the engine already has the mechanism:
 `INO_l_JoystickMask` is what it clears for controls it wants ignored,
 and `INO_Joystick_Move` returns nothing and the pad array is zeroed
-for anything outside it. So `INO_SuspendInput(1)` saves that mask and
-clears it, and `INO_SuspendInput(0)` puts back **exactly what it
-took** rather than the `-1` that would look close enough. A second
-suspend does nothing and a spare release does nothing, so the saved
-mask cannot be overwritten with the cleared one and lost.
+for anything outside it. So `INO_SuspendInput(1)` takes that mask and
+clears it, and `INO_SuspendInput(0)` puts back what it took rather
+than the `-1` that would look close enough. A second suspend does
+nothing and a spare release does nothing, so the mask it took cannot
+be overwritten with the cleared one and lost.
+
+**But the mask is not only set by the game, it is saved and
+restored**, and a snapshot is not enough because of it.
+`AI_EvalFunc_IoJoyFreeze_C` *returns* the mask in force so that a
+script can freeze some controls and put back what it found. Taken
+from the live mask while the camera holds it, what the script finds
+is the suspension — and it then restores that later as though the
+game had chosen it, which leaves the controls frozen after the camera
+has handed back. The write is the same fault the other way round: a
+script re-enabling its controls would open the mask the suspension is
+holding shut, and the input would leak to the game mid-flight.
+
+So the game reads and writes **its own copy** while the input is
+suspended, through `INO_i_GameJoystickMask` and
+`INO_GameJoystickMaskSet`:
+
+```c
+int INO_i_GameJoystickMask(void)
+{
+    return ino_inputSuspended ? ino_gameJoystickMask : INO_l_JoystickMask;
+}
+```
+
+It gets back exactly what it last set, the suspension stays whole in
+between, and release hands over **the game's latest intent** rather
+than the value from when the camera took the input. The same shape as
+the after-effects and the field of view: the change is withheld, not
+cancelled. With nothing suspended both accessors are the live mask, so
+every existing caller is unchanged.
+
+`AI_EvalFunc_IoJoyFreeze_C` is those two accessors and nothing else,
+and `INO_Reinit` uses the setter for the same reason.
 
 The keyboard needed one line of its own: `INO_Keyboard_Update` returns
 early while suspended, leaving `INO_Keys` as the `memset` at the top
@@ -430,11 +462,24 @@ toggle, and the flag never cleared on standing down.
 The gate has its own cases in `tests/run_io.sh` — the harness that
 owns `inputoutput.c` — because that is where the real
 `INO_SuspendInput` is linked, rather than the mock the camera's test
-uses. Five more defects there, each caught: the mask restored as `-1`
+uses. Five defects there, each caught: the mask restored as `-1`
 instead of as it was, the mask not cleared, no guard against a second
 suspend, no guard against a spare release, and the keyboard gate
 dropped. The file's differential test is unaffected, since nothing in
-it suspends input: 2418 cases, 0 differing.
+it suspends input: 2429 cases, 0 differing.
+
+The game's own mask has five more, all caught: the getter always
+reading the live mask and the setter always writing it — the two
+halves of the bug this fixed — the getter always reading the game's
+copy and the setter always writing it, and release opening everything
+instead of restoring.
+
+**What those cases drive is the accessor pair, not
+`AI_EvalFunc_IoJoyFreeze_C` itself**, in the sequence that function
+performs: read, invert, set the complement. That function is those
+two lines and no harness owns `ai/ai_inofunctions.c`, so it is
+covered by inspection and not by a test. Worth knowing rather than
+assuming.
 
 ### The platform layer's half of the gate
 
@@ -475,6 +520,12 @@ Every case now starts from off.
   nothing has asked for yet.
 - **The left mouse button does nothing.** Looking needs no button
   held, so the left one is free.
+- **`INO_l_JoystickDir` is not shadowed** the way the mask is.
+  `AI_EvalFunc_IoJoyDir_C` saves and restores it in the same style, so
+  it has the same shape of problem in principle; the suspension does
+  not touch it, so nothing is being withheld from the game and there
+  is nothing to put back. It would only matter if the suspension grew
+  to cover it.
 - **The viewport is not held** the way the position, sight and field
   of view are. `WOR_SetCam` takes it from the view alongside them and
   `AI_EvalFunc_VIEWViewportPosSet_C` and `...SizeSet_C` write it, so
