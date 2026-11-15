@@ -273,6 +273,11 @@ void D3D_BeginSceneCall();
 void D3D_SetVertexShader(IDirect3DVertexShader9* shader);
 
 /* The engine's drawing-state interface, filled into tGdi_DisplayData. */
+void D3D_GetDrawingSize(int* width, int* height);
+int  D3D_b_CanDiffuse2x(void);
+int  D3D_b_WantsNoFlare(void);
+int  D3D_b_NoZonAlpha(void);
+int  D3D_b_DepthBlurOn(void);
 void D3D_SetZEnable(int on);
 int  D3D_i_ZEnable(void);
 void D3D_SetZWriteEnable(int on);

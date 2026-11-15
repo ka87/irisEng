@@ -983,7 +983,15 @@ static void WGM_MatFunc(tGdi_DisplayData* dd, tGEOGRO* gro, tGeoTriangleChunks* 
     if (dd && dd->bigBuffer && (WGM_matFuncIdx & 1))
         dd->bigBuffer->UVData = dd->bigBuffer->data7;
     if (WGM_matFuncIdx & 2)
+    {
+        /* This mock stands in for a third party that perturbs the UV
+           mode, so it has to write both spellings: the frozen copy
+           reads the struct member and the rewrite reads the
+           renderer-neutral global. Writing one would leave the two
+           sides looking at different worlds. */
         D3DRenderParams.textureUVMode = 3;
+        GDI_gi_TextureUVMode = 3;
+    }
 }
 
 void WGM_SetMatFunc(int idx)

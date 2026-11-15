@@ -420,6 +420,18 @@ static void Snapshot(const tSide* s, tShot* o, int ret, float fret)
 {
     memset(o, 0, sizeof(*o));
     o->rp = D3DRenderParams;
+
+    /* Two pieces of drawing state moved out of the Direct3D params
+       into renderer-neutral globals, because the engine writes them
+       as well as reading them. The rewrite keeps them there and the
+       frozen copy still keeps them in the struct, so each side's
+       snapshot carries the one it actually uses -- otherwise this
+       would be comparing the move rather than the code. */
+    if (s == &sides[1])
+    {
+        o->rp.textureUVMode = GDI_gi_TextureUVMode;
+        o->rp.diffuse2x = GDI_gi_Diffuse2x;
+    }
     o->rs = renderStateConfig;
     memcpy(o->sm, samplerConfig, sizeof(o->sm));
     memcpy(o->ts, textureStageTypeConfig, sizeof(o->ts));
@@ -520,6 +532,14 @@ static const char* caseName[C_COUNT] = {
 static void ResetShared(void)
 {
     memset(&D3DRenderParams, 0, sizeof(D3DRenderParams));
+    /* Two pieces of drawing state live outside the params now, so
+       they have to be cleared here with everything else. Without
+       this the rewrite starts each case holding what the previous
+       one left, while the frozen copy starts from the zeroed
+       struct -- and the difference looks like a defect in the
+       rewrite. */
+    GDI_gi_TextureUVMode = 0;
+    GDI_gi_Diffuse2x = 0;
     memset(&renderStateConfig, 0, sizeof(renderStateConfig));
     memset(samplerConfig, 0, sizeof(samplerConfig));
     memset(textureStageTypeConfig, 0, sizeof(textureStageTypeConfig));
@@ -610,9 +630,15 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     D3DRenderParams.Rect.bottom = (int)(seed % 5u) * 100 + 150;
     D3DRenderParams.d3d_defaultZEnable = (int)((seed >> 2) & 1);
     D3DRenderParams.setsDefaultZEnableAtBeginScene = (int)((seed >> 3) & 1);
+    /* Both spellings, because the rewrite reads the renderer-neutral
+       global and the frozen copy still reads the struct member. Each
+       side has to see the same value or the comparison is measuring
+       the move rather than the code. */
     D3DRenderParams.textureUVMode = (int)(seed % 6u);
+    GDI_gi_TextureUVMode = (int)(seed % 6u);
     D3DRenderParams.textureUVIsProjected = (int)((seed >> 4) & 1);
     D3DRenderParams.diffuse2x = (int)((seed >> 5) & 1);
+    GDI_gi_Diffuse2x = (int)((seed >> 5) & 1);
     D3DRenderParams.tweak_ae_d2x = (int)((seed >> 6) & 1);
     D3DRenderParams.Mipmapping = (int)((seed >> 7) & 1);
     D3DRenderParams.argbIsSupportedForTextures = (int)(seed % 3u) - 1;
@@ -1345,6 +1371,7 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
            scores clean. */
         W.dd.GROGEO = NULL;
         D3DRenderParams.textureUVMode = 1;
+        GDI_gi_TextureUVMode = 1;
         for (extra = 0; extra < 8; extra++)
         {
             W.bb.vertexColorArray = (extra & 1) ? W.colorsA : NULL;
@@ -1373,6 +1400,7 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         for (extra = 0; extra < 4; extra++)
         {
             D3DRenderParams.textureUVMode = (extra & 1) ? 2 : 1;
+            GDI_gi_TextureUVMode = (extra & 1) ? 2 : 1;
             if (extra & 2)
                 W.dd.flags |= 0x400;
             else
@@ -1413,6 +1441,7 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
             D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle = NULL;
             D3DRenderParams.currTargetGaoInDrawElementIndexedTriangle2 = NULL;
             D3DRenderParams.textureUVMode = (extra & 1) ? 2 : 1;
+            GDI_gi_TextureUVMode = (extra & 1) ? 2 : 1;
             ret = ret * 5 + s->DrawElementIndexedTriangles(
                 &W.chunks[0], W.verts, W.uvs, (int)W.geogro.vertexNum);
             ret = ret * 5 + D3DRenderParams.startVertexElemIdx

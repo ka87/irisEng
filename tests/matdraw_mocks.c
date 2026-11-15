@@ -199,6 +199,14 @@ tZListElem* SOFT_pst_ZList_AddNode(float z, int num, int kind)
    directly and the rewrite goes through these, so an identical
    recorded call sequence and identical cache state is the proof that
    routing them through the interface changed nothing. */
+/* What the renderer can do, as the rewrite now asks it. These read
+   the same Direct3D params the frozen copy reads directly, which is
+   what keeps the two sides comparable: the question moved, the answer
+   did not. */
+int MDMOCK_b_CanDiffuse2x(void)  { return D3DRenderParams.tweak_ae_d2x != 0; }
+int MDMOCK_b_NoZonAlpha(void)    { return D3DRenderParams.tweak_zonalpha != 0; }
+int MDMOCK_b_DepthBlurOn(void)   { return D3DRenderParams.isDepthBlurOn != 0; }
+
 void MDMOCK_SetTexCoordIndex(int stage, int index)
 {
     if (textureStageTypeConfig[stage].d3dTexCoordIndex != index)
