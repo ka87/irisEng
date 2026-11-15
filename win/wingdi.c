@@ -158,6 +158,25 @@ static void D3D_SamplerStateSetF(int sampler, float* current, DWORD state, float
 /* The size the renderer is actually drawing at, taken from the rect
    it set up rather than from the window, because a device does not
    always get the size it asked for. */
+/* The tweak console's way in: the same three flags, written. They
+   are worked out from the device at startup and these let that be
+   overridden from the console, which is the whole reason they are
+   tweaks at all. */
+void D3D_SetCanDiffuse2x(int on)
+{
+    D3DRenderParams.tweak_ae_d2x = on;
+}
+
+void D3D_SetWantsNoFlare(int on)
+{
+    D3DRenderParams.tweak_ae_noflare = on;
+}
+
+void D3D_SetNoZonAlpha(int on)
+{
+    D3DRenderParams.tweak_zonalpha = on;
+}
+
 void D3D_GetDrawingSize(int* width, int* height)
 {
     if (width)

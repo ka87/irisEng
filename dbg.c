@@ -16,11 +16,39 @@ float tweak_water_smoothx;
 float tweak_water_smoothy;
 float tweak_water_min_bv;
 
+/* Three of the tweaks are not variables of this module's: they are
+   capability flags the renderer works out from the hardware when it
+   starts, and the console exists so they can be forced. So these go
+   through the drawing interface like everything else that belongs to
+   a renderer, which is what keeps this file from naming one.
+
+   They are the table's type 2, the setter kind, which the console
+   already knew how to call and nothing had used. A renderer that has
+   not been chosen yet simply swallows the write. */
+static void DBG_l_TweakCanDiffuse2x(float value)
+{
+    if (gpst_DX_stDD && gpst_DX_stDD->SetCanDiffuse2x)
+        gpst_DX_stDD->SetCanDiffuse2x((int)value);
+}
+
+static void DBG_l_TweakWantsNoFlare(float value)
+{
+    if (gpst_DX_stDD && gpst_DX_stDD->SetWantsNoFlare)
+        gpst_DX_stDD->SetWantsNoFlare((int)value);
+}
+
+static void DBG_l_TweakNoZonAlpha(float value)
+{
+    if (gpst_DX_stDD && gpst_DX_stDD->SetNoZonAlpha)
+        gpst_DX_stDD->SetNoZonAlpha((int)value);
+}
+
+/* Sorted by name: the console finds an entry with bsearch. */
 struct sTweakElem tweaks[17] = {
-    {"ae_d2x", 0, &D3DRenderParams.tweak_ae_d2x},
+    {"ae_d2x", 2, (void*)DBG_l_TweakCanDiffuse2x},
     {"ae_no", 0, &tweak_ae_no},
     {"ae_nobands", 0, &tweak_ae_nobands},
-    {"ae_noflare", 0, &D3DRenderParams.tweak_ae_noflare},
+    {"ae_noflare", 2, (void*)DBG_l_TweakWantsNoFlare},
     {"mipmaplodbias", 1, &tweak_mipmaplodbias},
     {"perf", 0, &tweak_perf},
     {"perf_fps", 0, &tweak_perf_fps},    
@@ -33,7 +61,7 @@ struct sTweakElem tweaks[17] = {
     {"water_smooth", 0, &tweak_water_smooth},
     {"water_smoothx", 1, &tweak_water_smoothx},
     {"water_smoothy", 1, &tweak_water_smoothy},
-    {"zonalpha_no", 0, &D3DRenderParams.tweak_zonalpha}
+    {"zonalpha_no", 2, (void*)DBG_l_TweakNoZonAlpha}
     
 };
 
@@ -98,13 +126,23 @@ void DBG_OutputDebugString(char* Format, ...)
     DBG_l_Log(OutputString);
 }
 
+/* The renderer's logger, which is this file's own with one bug: it
+   handed _vsnprintf the whole buffer, and that does not promise a
+   terminator when it truncates, so a message of 256 characters or
+   more was passed on unterminated. Reachable -- the screenshot path
+   is logged through here. Terminated the same way as the one above
+   now.
+
+   The two are otherwise identical, and the D3D_ name is a leftover
+   rather than anything renderer-specific. */
 void D3D_OutputDebugString(char* Format, ...)
 {
     CHAR OutputString[256];
     va_list ArgList;
 
     va_start(ArgList, Format);
-    _vsnprintf(OutputString, 256, Format, ArgList);
+    _vsnprintf(OutputString, sizeof(OutputString) - 1, Format, ArgList);
+    OutputString[sizeof(OutputString) - 1] = 0;
     va_end(ArgList);
     OutputDebugStringA(OutputString);
     DBG_l_Log(OutputString);

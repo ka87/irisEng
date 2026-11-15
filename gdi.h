@@ -211,6 +211,13 @@ typedef struct sGdi_DisplayData
        knows -- the window it was asked for and what it ended up with
        are not always the same thing. */
     void(* GetDrawingSize)(int* width, int* height);
+
+    /* The same capabilities the other way round, for the tweak
+       console: it exists so a flag the renderer worked out can be
+       forced. Nothing in the engine's drawing path writes these. */
+    void(* SetCanDiffuse2x)(int on);
+    void(* SetWantsNoFlare)(int on);
+    void(* SetNoZonAlpha)(int on);
     uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;

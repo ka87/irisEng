@@ -858,6 +858,9 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->b_NoZonAlpha = D3D_b_NoZonAlpha;
     dd->b_DepthBlurOn = D3D_b_DepthBlurOn;
     dd->GetDrawingSize = D3D_GetDrawingSize;
+    dd->SetCanDiffuse2x = D3D_SetCanDiffuse2x;
+    dd->SetWantsNoFlare = D3D_SetWantsNoFlare;
+    dd->SetNoZonAlpha = D3D_SetNoZonAlpha;
 }
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)

@@ -1,6 +1,6 @@
 #pragma once
 #include "common.h"
-#include "win/wingdi.h"
+#include "gdi.h"
 
 typedef struct sTweakElem
 {
