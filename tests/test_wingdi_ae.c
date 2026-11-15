@@ -409,6 +409,60 @@ static int editorCameraSuppressionCases(void)
     return failures;
 }
 
+/* ---------------------------- the after-effects with no device
+ *
+ * The engine calls two of these directly rather than through the
+ * interface in tGdi_DisplayData: the per-frame pass from the world's
+ * render, and the blur table whenever an AI script changes a
+ * depth-blur setting. Both therefore run whichever renderer is in
+ * force, so under another renderer they run here with no device, and
+ * both have to do nothing rather than reach through a null pointer.
+ *
+ * The per-frame one is the one that matters: a renderer that is not
+ * this one could not survive a frame without it.
+ */
+static int NoDeviceCase(void)
+{
+    IDirect3DDevice9* saved = D3DRenderParams.d3dDev;
+    int bad = 0;
+
+    AE_ResetShared();
+    AEMOCK_Reset();
+    NEW_ResetSide();
+
+    /* As this renderer is when another one was chosen. */
+    D3DRenderParams.d3dDev = NULL;
+    AEMOCK_logLen = 0;
+
+    NEW_D3D_PC_AE(NULL);
+    NEW_D3D_SetD3DStatesDefaultForAE();
+    NEW_D3D_UpdateBlurTexture();
+
+    /* The AI scripts' way in, which is what reaches the blur table.
+       Effect nought is the depth blur, and the map manager drives it
+       in ordinary play. */
+    NEW_PC_AE_MASTER_CTRL(0, 1, 0, 0.25f);
+    NEW_PC_AE_MASTER_CTRL(0, 1, 0, 0.75f);
+
+    if (AEMOCK_logLen != 0)
+    {
+        int k;
+
+        printf("FAIL no device: %d call(s) made with no device\n",
+               AEMOCK_logLen);
+        for (k = 0; k < AEMOCK_logLen && k < 8; k++)
+            printf("       %s\n", AEMOCK_log[k].fn);
+        bad = 1;
+    }
+    else
+    {
+        printf("  the after-effects touch nothing with no device\n");
+    }
+
+    D3DRenderParams.d3dDev = saved;
+    return bad;
+}
+
 int main(void)
 {
     int caseId, i, j;
@@ -623,6 +677,8 @@ int main(void)
             failures++;
         }
     failures += editorCameraSuppressionCases();
+
+    failures += NoDeviceCase();
 
     if (failures)
     {

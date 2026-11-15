@@ -240,6 +240,13 @@ int D3D_UpdateBlurTexture()
     IDirect3DSurface9* surface;
     D3DLOCKED_RECT locked;
 
+    /* Without a device this renderer was not the one chosen. The
+       engine calls in here directly rather than through the
+       interface, so this runs whichever renderer is in force, and
+       the only right answer is to do nothing. */
+    if (!D3DRenderParams.d3dDev)
+        return 0;
+
     D3D_SaveAEParams();
     D3DRenderParams.isDepthBlurOn = depthblur_Type != 0;
     D3D_SetGlobalBlurParams();
@@ -316,6 +323,13 @@ void D3D_AETexturesInit()
 void D3D_SetD3DStatesDefaultForAE()
 {
     int stage;
+
+    /* Without a device this renderer was not the one chosen. The
+       engine calls in here directly rather than through the
+       interface, so this runs whichever renderer is in force, and
+       the only right answer is to do nothing. */
+    if (!D3DRenderParams.d3dDev)
+        return;
 
     AE_SetRenderState(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, D3DZB_FALSE);
     AE_SetRenderState(&renderStateConfig.d3d_zFunc, D3DRS_ZFUNC, D3DCMP_ALWAYS);
@@ -2808,6 +2822,13 @@ void D3D_PC_AE(tWorld* param1)
     float fadeStep;
     RECT wholeScreen;
     int aeMasterOnEntry;
+
+    /* Without a device this renderer was not the one chosen. The
+       engine calls in here directly rather than through the
+       interface, so this runs whichever renderer is in force, and
+       the only right answer is to do nothing. */
+    if (!D3DRenderParams.d3dDev)
+        return;
 
     D3D_SetD3DStatesDefaultForAE();
     if (tweak_ae_nobands || !CIN_Bands)
