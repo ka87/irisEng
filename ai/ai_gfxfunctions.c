@@ -436,81 +436,38 @@ tAINode* AI_EvalFunc_GFXCarteObject(tAINode* node)
 tVideoStream* GFX_gpv_FS_Video = 0;
 static tVideoSound* GFX_gpst_FS_VideoSound = 0;
 int GFX_gl_FS_VideoPlaying = 0;
-IDirect3DSurface9* GFX_gpst_FS_VideoSurface = 0;
-int GFX_gl_FS_VideoScreenH = 0;
-int GFX_gl_FS_VideoScreenW = 0;
-
-static IDirect3DTexture9* GFX_gpst_FS_VideoStageTex = 0;
-static IDirect3DSurface9* GFX_gpst_FS_VideoStage = 0;
-
 int GFX_gl_FS_VideoScaleMode = 0;
+
+// Which of the renderer's fits the scale mode asks for.
+static int GFX_l_i_VideoFit(void)
+{
+    if (GFX_gl_FS_VideoScaleMode & 0x2000000)
+        return GDI_VIDEOFIT_SMOOTH;
+    if (GFX_gl_FS_VideoScaleMode & 0x1000000)
+        return GDI_VIDEOFIT_SHARP;
+    return GDI_VIDEOFIT_ACTUALSIZE;
+}
 
 static void GFX_FS_VideoDecode(tVideoStream* video)
 {
-    D3DLOCKED_RECT lr;
+    void* bits;
+    int pitch;
+    int height;
 
     if (!VID_b_DecodeFrame(video))
         return;
-    GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, NULL,
-                                               D3DLOCK_NOSYSLOCK);
-    VID_CopyToBuffer(video, lr.pBits, lr.Pitch, GFX_gl_FS_VideoScreenH, 1);
-    GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
+    // The picture reports its own height, so the frame is clamped to
+    // what it is being written into rather than to anything else.
+    if (!gpst_DX_stDD->b_VideoFrameLock(&bits, &pitch, &height))
+        return;
+    VID_CopyToBuffer(video, bits, pitch, height, 1);
+    gpst_DX_stDD->VideoFrameUnlock();
 }
 
 static void GFX_FS_VideoBlit(tVideoStream* video)
 {
-    IDirect3DSurface9* back;
-    RECT src;
-    RECT dst;
-    unsigned int scaledW;
-    unsigned int scaledH;
-    unsigned int left;
-    unsigned int top;
-    float scale;
-    D3DTEXTUREFILTERTYPE filter;
-
-    D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0,
-                                                  D3DBACKBUFFER_TYPE_MONO, &back);
-    D3DRenderParams.d3dDev->lpVtbl->UpdateSurface(D3DRenderParams.d3dDev,
-                                                  GFX_gpst_FS_VideoSurface, NULL,
-                                                  GFX_gpst_FS_VideoStage, NULL);
-
-    if (GFX_gl_FS_VideoScaleMode & 0x2000000)
-    {
-        scale = (float)GFX_gl_FS_VideoScreenW / (float)VID_i_Width(video);
-        filter = D3DTEXF_LINEAR;
-    }
-    else if (GFX_gl_FS_VideoScaleMode & 0x1000000)
-    {
-        scale = (float)GFX_gl_FS_VideoScreenW / (float)VID_i_Width(video);
-        filter = D3DTEXF_POINT;
-    }
-    else
-    {
-        scale = 1.0f;
-        filter = D3DTEXF_NONE;
-    }
-
-    src.left = 0;
-    src.top = 0;
-    src.right = VID_i_Width(video);
-    src.bottom = VID_i_Height(video);
-
-    scaledW = (unsigned int)((float)VID_i_Width(video) * scale);
-    left = (GFX_gl_FS_VideoScreenW - scaledW) / 2;
-    scaledH = (unsigned int)((float)VID_i_Height(video) * scale);
-    top = (GFX_gl_FS_VideoScreenH - scaledH) / 2;
-    dst.left = left;
-    dst.top = top;
-    dst.right = left + scaledW;
-    dst.bottom = top + scaledH;
-
-    D3DRenderParams.d3dDev->lpVtbl->Clear(D3DRenderParams.d3dDev, 0, NULL,
-                                          D3DCLEAR_TARGET, 0, 0.0f, 0);
-    D3DRenderParams.d3dDev->lpVtbl->StretchRect(D3DRenderParams.d3dDev,
-                                                GFX_gpst_FS_VideoStage, &src,
-                                                back, &dst, filter);
-    back->lpVtbl->Release(back);
+    gpst_DX_stDD->VideoFramePresent(VID_i_Width(video), VID_i_Height(video),
+                                    GFX_l_i_VideoFit());
 }
 
 // The id picks the file out of datafiles.ini. Nothing to play is not
@@ -518,10 +475,6 @@ static void GFX_FS_VideoBlit(tVideoStream* video)
 // leaves everything as it was.
 void GFX_FS_VideoStart(int videoId)
 {
-    IDirect3DSurface9* back;
-    D3DSURFACE_DESC desc;
-    D3DLOCKED_RECT lr;
-    HRESULT hr;
     const char* file;
 
     file = DAT_pc_Video(videoId);
@@ -546,40 +499,17 @@ void GFX_FS_VideoStart(int videoId)
     GFX_gpst_FS_VideoSound = WVS_pst_Open(SND_gst_Params.handles->dsndif,
                                           GFX_gpv_FS_Video);
 
-    D3DRenderParams.d3dDev->lpVtbl->GetBackBuffer(D3DRenderParams.d3dDev, 0, 0,
-                                                  D3DBACKBUFFER_TYPE_MONO, &back);
-    back->lpVtbl->GetDesc(back, &desc);
-    back->lpVtbl->Release(back);
-    GFX_gl_FS_VideoScreenH = desc.Height;
-    GFX_gl_FS_VideoScreenW = desc.Width;
-
-    D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(
-        D3DRenderParams.d3dDev,
-        VID_i_Width(GFX_gpv_FS_Video), VID_i_Height(GFX_gpv_FS_Video),
-        desc.Format, D3DPOOL_SYSTEMMEM, &GFX_gpst_FS_VideoSurface, 0);
-
-    GFX_gpst_FS_VideoSurface->lpVtbl->LockRect(GFX_gpst_FS_VideoSurface, &lr, 0,
-                                               D3DLOCK_NOSYSLOCK);
-    memset(lr.pBits, 0,
-           4 * VID_i_Width(GFX_gpv_FS_Video) * VID_i_Height(GFX_gpv_FS_Video));
-    GFX_gpst_FS_VideoSurface->lpVtbl->UnlockRect(GFX_gpst_FS_VideoSurface);
-
-    hr = D3DRenderParams.d3dDev->lpVtbl->CreateTexture(D3DRenderParams.d3dDev,
-        VID_i_Width(GFX_gpv_FS_Video), VID_i_Height(GFX_gpv_FS_Video), 1,
-        D3DUSAGE_RENDERTARGET, desc.Format, D3DPOOL_DEFAULT,
-        &GFX_gpst_FS_VideoStageTex, NULL);
-    if (FAILED(hr))
+    if (!gpst_DX_stDD->b_VideoDisplayCreate(VID_i_Width(GFX_gpv_FS_Video),
+                                            VID_i_Height(GFX_gpv_FS_Video)))
     {
-        GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
-        GFX_gpst_FS_VideoSurface = 0;
+        DBG_OutputDebugString("GFX_FS_VideoStart: the renderer gave no picture"
+                              " for \"%s\"\n", file);
         WVS_Close(GFX_gpst_FS_VideoSound);
         GFX_gpst_FS_VideoSound = 0;
         VID_Close(GFX_gpv_FS_Video);
         GFX_gpv_FS_Video = 0;
         return;
     }
-    GFX_gpst_FS_VideoStageTex->lpVtbl->GetSurfaceLevel(GFX_gpst_FS_VideoStageTex, 0,
-                                                       &GFX_gpst_FS_VideoStage);
 
     GFX_gl_FS_VideoPlaying = 1;
 }
@@ -594,12 +524,7 @@ void GFX_FS_VideoStop()
 {
     if (GFX_gpv_FS_Video)
     {
-        GFX_gpst_FS_VideoStage->lpVtbl->Release(GFX_gpst_FS_VideoStage);
-        GFX_gpst_FS_VideoStage = 0;
-        GFX_gpst_FS_VideoStageTex->lpVtbl->Release(GFX_gpst_FS_VideoStageTex);
-        GFX_gpst_FS_VideoStageTex = 0;
-        GFX_gpst_FS_VideoSurface->lpVtbl->Release(GFX_gpst_FS_VideoSurface);
-        GFX_gpst_FS_VideoSurface = 0;
+        gpst_DX_stDD->VideoDisplayClose();
         WVS_Close(GFX_gpst_FS_VideoSound);
         GFX_gpst_FS_VideoSound = 0;
         VID_Close(GFX_gpv_FS_Video);
