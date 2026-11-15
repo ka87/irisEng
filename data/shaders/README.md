@@ -53,6 +53,40 @@ how much of the vertex colour there is, and a frame's texture is the
 picture. Sharing the stage means the pixel mapping is written and
 tested once.
 
+## The depth blur
+
+`depthblur.vert` and `depthblur.frag` are the pass that writes the
+frame's alpha. The world is drawn a second time through a 256 by 1 ramp
+of blur-amount-per-depth, with the ramp's coordinate taken from the
+camera-space position -- so the coordinate is the depth -- and the
+colour write narrowed to alpha. What it leaves behind is a per-pixel
+blur amount the after-effects read, and the sun's occlusion test with
+them.
+
+Alpha runs the other way from what the name suggests: 255 means no blur
+and 0 means full. The ramp is solid 255 when no blur is in force, which
+is what says so.
+
+The coordinate has two forms and the blur mode decides which. The
+projected one is `uTranslateU / (z * uScaleW)`, a reciprocal: it reaches
+the end of the ramp at a depth of `uTranslateU` and falls towards the
+start as the depth grows, so blur rises with distance. The other is
+`z * uScaleUfromZ + uTranslateU`, linear, which the sun's mode uses with
+the scale at one over the far plane -- so the coordinate is the depth as
+a fraction of the frustum.
+
+The camera-space position is passed across rather than the finished
+coordinate, because one form divides and a divided value interpolates
+to something else. The transform is affine in that position and the
+interpolation is perspective-correct, so transforming in the vertex
+stage and interpolating is the same as interpolating and transforming
+in the fragment stage -- which is the order used, so that the divide
+happens per pixel, as it does in the other renderer.
+
+`depthblur.c` decides which blur is in force and builds the table. The
+renderer turns it into the texture and sets these uniforms; nothing
+about the numbers is decided here.
+
 ## Two programs rather than one with a branch
 
 Their vertex layouts differ -- the textured one carries a UV -- and a

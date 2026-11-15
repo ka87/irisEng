@@ -328,6 +328,17 @@ extern const struct sGdi_Renderer* GDI_gpst_Renderer;
 int GDI_gi_TextureUVMode;
 int GDI_gi_Diffuse2x;
 
+/* The after-effects state the AI scripts move, declared here because
+   both renderers read it and neither owns it. The scripts' way in is
+   PC_AE_MASTER_CTRL, which sets these before it reaches a device and
+   so keeps them whichever renderer is in force; the definitions still
+   sit with the one renderer that has an after-effects pass. The depth
+   blur's decision is built from them -- see depthblur.h. */
+int   PC_AE_MASTER;
+float depthBlurNear1;
+float depthBlurType0;
+float depthBlurType1;
+
 void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd);
 struct sGdi_DisplayData* GDI_fnpst_CreateDisplayData();
 BOOL GDI_AttachDisplayAndReadaptDisplay(struct sGdi_DisplayData* gdd, HWND hwnd);

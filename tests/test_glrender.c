@@ -245,8 +245,17 @@ static void glr_Reset(void)
 {
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();
+    GL_l_ForgetBlur();
     GL_ReleaseTextures(NULL);
     GL_l_ForgetTargets();
+
+    /* The after-effects state the blur's decision is read from. It is
+       the engine's, set by the AI scripts, so a case that wants a
+       particular blur sets it and every other case starts with none. */
+    PC_AE_MASTER = 0;
+    depthBlurNear1 = 0.0f;
+    depthBlurType0 = 0.0f;
+    depthBlurType1 = 0.0f;
 
     memset(&glr_dd, 0, sizeof(glr_dd));
     memset(&glr_bb, 0, sizeof(glr_bb));
@@ -972,6 +981,389 @@ static void caseShadowTarget(void)
     okNear(glr_R(GLR_W / 2, GLR_H / 2), 0xFF, "and an untouched target samples white");
 }
 
+/* ===================================================== the depth blur
+ *
+ * The pass draws the world a second time through a 256 by 1 ramp of
+ * blur-amount-per-depth and writes the frame's alpha and nothing else.
+ * Alpha runs the other way from what the name suggests: 255 is no blur
+ * and 0 is full.
+ *
+ * What is checked here is the arithmetic only a real driver can run --
+ * the coordinate the shader makes from the camera-space position, in
+ * both of its forms, and the ramp entry it lands in. A mocked harness
+ * sees the uniforms being set and nothing about what they produce.
+ */
+
+/* The quad, flat at one depth, so the whole of it samples the ramp at
+   one coordinate and the alpha read back is that one entry. The
+   identity projection clips to -1..1 in z, so the depths below sit
+   inside that and the far plane is small to suit. */
+static void glr_QuadAtDepth(float z)
+{
+    int i;
+
+    glr_BuildQuad();
+    for (i = 0; i < 4; i++)
+        glr_pos[i].z = z;
+}
+
+/* What the ramp holds at a coordinate, read out of the table rather
+   than worked out again -- so a wrong table and a wrong coordinate are
+   separate failures. The sampler is linear, so a coordinate between
+   two entries is between their values, with the texel centres at
+   (i + 0.5) / 256. */
+static double glr_RampAt(const tDpb_State* st, double u)
+{
+    int    table[256];
+    double at;
+    int    i0;
+    int    i1;
+    double f;
+
+    DPB_BuildRamp(st, table);
+    if (u < 0.0) u = 0.0;
+    if (u > 1.0) u = 1.0;
+
+    at = u * 256.0 - 0.5;
+    if (at < 0.0) at = 0.0;
+    if (at > 255.0) at = 255.0;
+    i0 = (int)at;
+    i1 = i0 + 1 > 255 ? 255 : i0 + 1;
+    f = at - (double)i0;
+
+    return (1.0 - f) * (double)(((unsigned int)table[i0] >> 24) & 0xFF)
+           + f * (double)(((unsigned int)table[i1] >> 24) & 0xFF);
+}
+
+/* An identity view and a projection that is not identity, so the two
+   matrices the pass is given are different ones.
+ *
+ * This matters more than it looks. The coordinate comes from the
+ * camera-space position, which is the view matrix's output, and the
+ * obvious wrong uniform to hand the shader is the combined one -- so
+ * with both matrices identity the pass would read clip space, compute
+ * the same answer, and the case would pass. It did: handing the shader
+ * the combined matrix was the one mutation of this pass that no case
+ * noticed.
+ *
+ * Only z is scaled, so the square still lands where the other cases
+ * put it and the depth below is still the camera-space depth. */
+static void glr_BlurMatrices(void)
+{
+    Mtx4x4 id;
+
+    MATH_SetIdentityMatrix(&id);
+    GL_SetViewMatrix(&id);
+    MATH_SetIdentityMatrix(&gl_projMtx);
+    gl_projMtx.v3.z = 0.5f;
+    GL_l_CombineMatrices();
+}
+
+/* The blur the sun's test reads, set up and drawn. */
+static void glr_DrawSunBlur(float z, int r, int g, int b, int a)
+{
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+    gl_state.sunEffectOn = 1;
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+    glr_QuadAtDepth(z);
+    glr_BlurMatrices();
+    glr_SolidColour(r, g, b, a);
+
+    GL_TextureInit(-1, 0, 1);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+}
+
+static void caseDepthBlurOff(void)
+{
+    printf("-- whether the engine is asked for the pass at all\n");
+    glr_Reset();
+
+    /* Nothing asked for it: no master bits, no sun. */
+    ok(!GL_b_DepthBlurOn(), "no blur, so no pass");
+
+    /* A sun on its own turns it on, and the tweak beats a sun. */
+    gl_state.sunEffectOn = 1;
+    ok(GL_b_DepthBlurOn(), "a sun that wants its test turns it on");
+    gl_state.noZonAlpha = 1;
+    ok(!GL_b_DepthBlurOn(), "and the tweak turns it off again");
+    gl_state.noZonAlpha = 0;
+
+    /* Without a context there is nothing to answer with, whatever the
+       engine's state says -- this renderer may not be the one in
+       force. */
+    gl_state.context = NULL;
+    ok(!GL_b_DepthBlurOn(), "and with no context the answer is no");
+}
+
+static void caseDepthBlurSun(void)
+{
+    static const float depths[] = { -0.75f, -0.25f, 0.0f, 0.25f, 0.75f };
+    int                i;
+
+    printf("-- the sun's ramp: the coordinate is the depth over the"
+           " frustum\n");
+
+    for (i = 0; i < (int)(sizeof(depths) / sizeof(depths[0])); i++)
+    {
+        tDpb_State st;
+        double     want;
+
+        glr_DrawSunBlur(depths[i], 0x20, 0x40, 0x60, 0x10);
+        GL_l_ReadBlurState(&st);
+        want = glr_RampAt(&st, (double)depths[i] * (double)st.scaleUfromZ);
+
+        /* Two counts of slack for the sampler's rounding and the byte
+           it is read back as. The five answers are about 223, 191,
+           127, 63 and 0, so a coordinate scaled wrongly, signed
+           wrongly, or run through the projected form instead misses by
+           far more than two. */
+        okNear(glr_A(GLR_W / 2, GLR_H / 2), (int)(want + 0.5),
+               "the alpha is the ramp at this depth");
+    }
+
+    /* Nearer is less blurred, which is the direction of the whole
+       thing and the one a sign error reverses while every value above
+       stays in range. */
+    {
+        int nearer;
+        int farther;
+
+        glr_DrawSunBlur(-0.9f, 0, 0, 0, 0);
+        nearer = glr_A(GLR_W / 2, GLR_H / 2);
+        glr_DrawSunBlur(0.9f, 0, 0, 0, 0);
+        farther = glr_A(GLR_W / 2, GLR_H / 2);
+        ok(nearer > farther,
+           "a nearer surface is left less blurred than a farther one");
+    }
+}
+
+static void caseDepthBlurProjected(void)
+{
+    tDpb_State st;
+    double     viaReciprocal;
+    double     viaLinear;
+
+    printf("-- the far blur's ramp: the coordinate is a reciprocal\n");
+
+    /* The far blur, whose coordinate is the blur distance over the
+       depth rather than the depth over the frustum. */
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+    PC_AE_MASTER = 8;
+    depthBlurType0 = 0.5f;
+    depthBlurType1 = 1.0f;
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+    GL_l_ReadBlurState(&st);
+    okEq(st.kind, DPB_FAR, "the far blur is in force");
+    okEq(st.b_projected, 1, "and its coordinate is projected");
+
+    viaReciprocal = glr_RampAt(&st, (double)st.translateU
+                                    / (0.75 * (double)st.scaleW));
+    viaLinear = glr_RampAt(&st, 0.75 * (double)st.scaleUfromZ
+                                + (double)st.translateU);
+
+    /* The two forms have to disagree here, or the check below would
+       pass whichever one the shader used. */
+    ok(fabs(viaReciprocal - viaLinear) > 8.0,
+       "the linear form lands somewhere else, so this tells them apart");
+
+    glr_QuadAtDepth(0.75f);
+    glr_IdentityMatrices();
+    glr_SolidColour(0, 0, 0, 0);
+    ok(GL_b_DepthBlurOn(), "the pass is asked for");
+    GL_TextureInit(-1, 0, 1);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    okNear(glr_A(GLR_W / 2, GLR_H / 2), (int)(viaReciprocal + 0.5),
+           "the alpha is the ramp at the reciprocal coordinate");
+}
+
+/* The ramp is rebuilt when the decision changes, and not once a frame.
+ *
+ * Every other case starts from a reset, which forgets the ramp -- so
+ * the rebuild always happened on the first draw and never because
+ * something changed. Leaving the ramp and the uniforms at whatever the
+ * first draw set them to was the second mutation no case noticed. */
+static void caseDepthBlurFollowsTheState(void)
+{
+    tDpb_State st;
+    int        asSun;
+    double     wantFar;
+
+    printf("-- the ramp follows a decision that changes under it\n");
+
+    glr_DrawSunBlur(0.25f, 0, 0, 0, 0);
+    asSun = glr_A(GLR_W / 2, GLR_H / 2);
+
+    /* Now the far blur instead, with no reset in between: the same
+       context, the same program, a different decision. */
+    gl_state.sunEffectOn = 0;
+    PC_AE_MASTER = 8;
+    depthBlurType0 = 0.5f;
+    depthBlurType1 = 1.0f;
+
+    GL_l_ReadBlurState(&st);
+    okEq(st.kind, DPB_FAR, "the decision has changed");
+
+    GL_TextureInit(-1, 0, 1);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    wantFar = glr_RampAt(&st, (double)st.translateU
+                              / (0.25 * (double)st.scaleW));
+    okNear(glr_A(GLR_W / 2, GLR_H / 2), (int)(wantFar + 0.5),
+           "and the alpha is the new ramp, not the one already uploaded");
+    ok(fabs((double)asSun - wantFar) > 8.0,
+       "which is a different answer from the old ramp's, so the check"
+       " above means something");
+}
+
+/* The ramp is sampled with a linear filter, as the other renderer's
+   sampler asks for.
+ *
+ * The sun's ramp falls off smoothly, so nearest and linear differ
+ * there by about one count and no tolerance can see it. The near
+ * blur's ramp is a cliff -- solid to the second-to-last entry and zero
+ * at the last -- so a coordinate landing between those two is halfway
+ * under a linear filter and at the top under a nearest one. That is a
+ * difference of about 127, which is the only way this is testable. */
+static void caseDepthBlurFilter(void)
+{
+    tDpb_State st;
+    float      depth;
+
+    printf("-- the ramp is sampled with a linear filter\n");
+
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+    PC_AE_MASTER = 0x1000;
+    depthBlurNear1 = 0.5f;
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+    GL_l_ReadBlurState(&st);
+    okEq(st.kind, DPB_NEAR, "the near blur, whose ramp has a cliff in it");
+
+    /* Halfway between the last two entries: u = 255/256, and this
+       blur's coordinate is the near distance over the depth. */
+    depth = (float)((double)st.translateU / (255.0 / 256.0)
+                    / (double)st.scaleW);
+    glr_QuadAtDepth(depth);
+    glr_BlurMatrices();
+    glr_SolidColour(0, 0, 0, 0);
+
+    ok(GL_b_DepthBlurOn(), "the pass is asked for");
+    GL_TextureInit(-1, 0, 1);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    /* Blended, so about half of full. A nearest filter gives the
+       entry below the cliff, which is full. */
+    okNear(glr_A(GLR_W / 2, GLR_H / 2), 128,
+           "the two sides of the cliff are blended, not snapped to one");
+}
+
+/* The sprites are not the blur pass, whatever ran before them.
+ *
+ * They share the one draw with the world's geometry, so which program
+ * that draw uses had better not be ambient state -- a sprite drawn
+ * through the blur program writes alpha and no colour, which is a
+ * sprite that is not there. The engine does call TextureInit between
+ * the two in ordinary play; this is the case that says the sprites do
+ * not depend on it. */
+static void caseDepthBlurLeavesSpritesAlone(void)
+{
+    printf("-- the sprites are drawn in colour after a blur pass\n");
+
+    glr_DrawSunBlur(0.25f, 0, 0, 0, 0);
+    ok(gl_material.b_depthBlur, "the blur pass is the last thing configured");
+
+    /* And now a sprite, with no TextureInit in between. One at the
+       origin, sized as the sprite case sizes it: the element is a
+       union whose whole word read as a float is the size, so index
+       nought with a high half of 0x3F00 is a half. */
+    {
+        tGeoSpriteElem elems[1];
+        Vec3           pos[1];
+        tGeoSprites    sprites;
+        Mtx4x4         stack;
+
+        elems[0].idx = 0;
+        elems[0].dummy = 0x3F00;
+        pos[0].x = 0.0f;
+        pos[0].y = 0.0f;
+        pos[0].z = 0.0f;
+        memset(&sprites, 0, sizeof(sprites));
+        sprites.num = 1;
+        sprites.spriteElems = elems;
+        sprites.globalSize = 1.0f;
+        sprites.globalRatio = 1.0f;
+        MATH_SetIdentityMatrix(&stack);
+        glr_dd.matrixStack.actMatrixElem = &stack;
+
+        glr_Begin();
+        glr_SolidColour(0xFF, 0x20, 0x40, 0xFF);
+        GL_DrawSprites(&sprites, pos, 1);
+        glr_Read();
+
+        okNear(glr_R(GLR_W / 2, GLR_H / 2), 0xFF,
+               "the sprite is drawn in its own colour, not as alpha alone");
+        okNear(glr_G(GLR_W / 2, GLR_H / 2), 0x20, "green too");
+        okNear(glr_B(GLR_W / 2, GLR_H / 2), 0x40, "and blue");
+    }
+}
+
+static void caseDepthBlurWritesAlphaOnly(void)
+{
+    int red;
+    int green;
+    int blue;
+    int alphaBefore;
+
+    printf("-- the pass writes the alpha and leaves the colour alone\n");
+
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+    gl_state.sunEffectOn = 1;
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+    /* The world, drawn first: the frame the pass has to leave alone. */
+    glr_QuadAtDepth(0.5f);
+    glr_IdentityMatrices();
+    glr_OneTexel(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_SolidColour(0x80, 0x40, 0xC0, 0x10);
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+    red = glr_R(GLR_W / 2, GLR_H / 2);
+    green = glr_G(GLR_W / 2, GLR_H / 2);
+    blue = glr_B(GLR_W / 2, GLR_H / 2);
+    alphaBefore = glr_A(GLR_W / 2, GLR_H / 2);
+    okNear(alphaBefore, 0x10, "the first pass left its own alpha");
+
+    /* And the blur over it, at the same depth, so only the write mask
+       separates the two outcomes. */
+    GL_TextureInit(-1, 0, 1);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    okEq(glr_R(GLR_W / 2, GLR_H / 2), red, "red is untouched");
+    okEq(glr_G(GLR_W / 2, GLR_H / 2), green, "green too");
+    okEq(glr_B(GLR_W / 2, GLR_H / 2), blue, "and blue");
+    ok(glr_A(GLR_W / 2, GLR_H / 2) != alphaBefore,
+       "and the alpha is the pass's, not the material's");
+
+    okNear(glr_R(2, 2), GLR_BG, "nothing outside the square either");
+}
+
 static void caseShadersCompile(void)
 {
     printf("-- every shipped shader compiles on a real driver\n");
@@ -1050,6 +1442,13 @@ int main(void)
     }
 
     caseContext();
+    caseDepthBlurOff();
+    caseDepthBlurSun();
+    caseDepthBlurProjected();
+    caseDepthBlurFollowsTheState();
+    caseDepthBlurFilter();
+    caseDepthBlurLeavesSpritesAlone();
+    caseDepthBlurWritesAlphaOnly();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();
@@ -1066,6 +1465,7 @@ int main(void)
 
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();
+    GL_l_ForgetBlur();
     GL_ReleaseTextures(NULL);
     GL_l_ForgetTargets();
     EGLH_Close();

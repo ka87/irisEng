@@ -72,6 +72,12 @@ typedef struct sGlRenderState
     int   canDiffuse2x;
     int   wantsNoFlare;
     int   noZonAlpha;
+    /* Whether any sun wants its occlusion test, which is the one thing
+       that turns the depth blur on when nothing else asked for it.
+       There is no sampler in this renderer yet, so the engine has
+       nothing to switch it on with and it stays off -- but the blur
+       reads it, so it is recorded rather than dropped. */
+    int   sunEffectOn;
 } tGlRenderState;
 
 void* GL_p_CreateDevice(void);
