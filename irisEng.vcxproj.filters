@@ -1,6 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="FreeType">
+      <UniqueIdentifier>{8f1d5c0a-1b2e-4d7a-9c3f-0e5a7b6d4c21}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -161,6 +166,48 @@
     </ClCompile>
     <ClCompile Include="datafiles.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="font.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftsystem.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftinit.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftdebug.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftbase.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftbitmap.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftglyph.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftmm.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\truetype\truetype.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\sfnt\sfnt.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\smooth\smooth.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\autofit\autofit.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\psnames\psnames.c">
+      <Filter>FreeType</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\gzip\ftgzip.c">
+      <Filter>FreeType</Filter>
     </ClCompile>
     <ClCompile Include="inputoutput.c">
       <Filter>Source Files</Filter>
@@ -738,6 +785,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="datafiles.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="font.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inputoutput.h">

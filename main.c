@@ -9,6 +9,7 @@
 #include "world.h"
 #include "sideload.h"
 #include "datafiles.h"
+#include "font.h"
 #include "loading.h"
 
 
@@ -37,11 +38,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		ENG_ParseCommandLine(cmdLine);
 		BIG_Open(MAI_gst_BIGFileName);
 		SIDE_InitModule();
+		FNT_InitModule();
 		ENG_bgeModuleHandle = hInstance;
 		ENG_WinGameWindowInit(hInstance);
 		ENG_InitEngine();
 		ENG_Loop();
 		WOR_Universe_Close();
+		// before the engine closes, while the renderer's device is
+		// still there to hand the glyph atlases back to
+		FNT_CloseModule();
 		ENG_CloseEngine();
 		DestroyWindow(MAI_gh_MainWindow);
 		BIG_Close();

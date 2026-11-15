@@ -864,6 +864,9 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->SetCanDiffuse2x = D3D_SetCanDiffuse2x;
     dd->SetWantsNoFlare = D3D_SetWantsNoFlare;
     dd->SetNoZonAlpha = D3D_SetNoZonAlpha;
+    dd->p_CreateAlphaTexture = D3D_p_CreateAlphaTexture;
+    dd->DestroyAlphaTexture = D3D_DestroyAlphaTexture;
+    dd->OverlayDrawTexturedQuads = D3D_OverlayDrawTexturedQuads;
     dd->b_GeometryHasCache = D3D_b_GeometryHasCache;
     dd->DiscardGeometryCache = D3D_DiscardGeometryCache;
 }

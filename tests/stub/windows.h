@@ -177,6 +177,7 @@ typedef struct WNDCLASSA {
 } WNDCLASSA;
 
 DWORD  GetFileAttributesA(LPCSTR);
+DWORD  GetModuleFileNameA(HMODULE, LPSTR, DWORD);
 HANDLE FindFirstFileA(LPCSTR, WIN32_FIND_DATAA*);
 BOOL   FindNextFileA(HANDLE, WIN32_FIND_DATAA*);
 BOOL   FindClose(HANDLE);

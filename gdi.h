@@ -57,6 +57,19 @@ typedef struct sFogParams
 } tFogParams;
 
 
+/* A vertex of textured 2D geometry: pixel-space position, a colour
+   the texture is modulated by, and one texture coordinate. This is
+   the untextured overlay vertex with a UV added, and both are laid
+   out so a fixed-function renderer can describe them without
+   reordering anything. */
+typedef struct sGdi_TexturedVertex
+{
+    Vec3     pos;
+    uint32_t color;
+    float    u;
+    float    v;
+} tGdi_TexturedVertex;
+
 typedef struct sGdi_DisplayData
 {
     void*(* CreateDevice)(void);
@@ -142,6 +155,21 @@ typedef struct sGdi_DisplayData
        under it, and never looks at it. */
     int (* b_GeometryHasCache)(struct sGEOGRO* gro);
     void(* DiscardGeometryCache)(struct sGEOGRO* gro);
+
+    /* A glyph atlas, and the quads that read from it. The engine
+       rasterizes text itself and hands over 8-bit coverage -- one
+       byte per pixel, row after row, no padding -- leaving the
+       renderer to pick whatever texture format it can modulate by a
+       vertex colour. The handle is the renderer's and opaque.
+
+       The quads are tGdi_TexturedVertex triangles in the same
+       pixel-space coordinates as the untextured overlay pass, and
+       expect to be drawn inside it: it is what sets up the
+       projection and the alpha blending. */
+    void*(* p_CreateAlphaTexture)(int width, int height, const uint8_t* coverage);
+    void(* DestroyAlphaTexture)(void* texture);
+    void(* OverlayDrawTexturedQuads)(void* texture, const void* vertices,
+                                     int triangleCount);
     uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;

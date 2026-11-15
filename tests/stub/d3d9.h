@@ -55,6 +55,7 @@ typedef struct _D3DCAPS9 {
     DWORD pad[256];
 } D3DCAPS9;
 #define D3DPOOL_DEFAULT        0
+#define D3DPOOL_MANAGED        1
 #define D3DPOOL_SYSTEMMEM      2
 #define D3DUSAGE_RENDERTARGET              0x00000800
 #define D3DCLEAR_TARGET        1
@@ -161,6 +162,10 @@ struct IDirect3DDevice9Vtbl
     HRESULT (*SetViewport)(IDirect3DDevice9*, const D3DVIEWPORT9*);
 };
 
+/* Order matters here beyond the usual: some mocks fill these with a
+   positional initialiser, so a member inserted rather than appended
+   silently moves every pointer after it and the wrong function is
+   called through the right name. Append. */
 struct IDirect3DTexture9Vtbl
 {
     ULONG   (*Release)(IDirect3DTexture9*);
@@ -168,6 +173,8 @@ struct IDirect3DTexture9Vtbl
     HRESULT (*AddDirtyRect)(IDirect3DTexture9*, const RECT*);
     DWORD   (*GetLevelCount)(IDirect3DTexture9*);
     HRESULT (*GetLevelDesc)(IDirect3DTexture9*, UINT, D3DSURFACE_DESC*);
+    HRESULT (*LockRect)(IDirect3DTexture9*, UINT, D3DLOCKED_RECT*, const RECT*, DWORD);
+    HRESULT (*UnlockRect)(IDirect3DTexture9*, UINT);
 };
 
 struct IDirect3DSurface9Vtbl
