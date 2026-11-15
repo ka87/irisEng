@@ -1252,6 +1252,68 @@ is the next one, and it is the one that needs the fixed-function
 pipeline emulating rather than replacing — texture stages, fog, alpha
 test — which is a larger piece of work than anything here.
 
+## Fitting a camera to a surface is not Direct3D's job
+
+`D3D_SetProjectionMatrix` was 169 lines, and almost none of it was
+Direct3D. It worked out the viewport a camera occupies — the aspect
+ratio the game was authored for, the letterboxing rules, the pixel
+aspect — and then built one of three projections: a 2D one for drawing
+into a target, a perspective one, and an isometric one. Only the last
+three lines handed anything to a device.
+
+A second renderer needs exactly those answers, and a second copy of a
+hundred and twenty lines of it would drift. It is `projection.c` now.
+`PRJ_Compute` reads a camera and a description of the surface and
+fills in a matrix and a rectangle; the renderer hands the matrix over
+and sets the viewport.
+
+**The extraction is bit-for-bit.** 5,154 cases and 147,601 engine
+calls compared against the frozen copy, no differences — which is
+what the full-matrix hash added to `SetTransform` in the D3DX work was
+for. 11 of 11 mutations in the extracted code are caught by that
+comparison alone.
+
+### Three things it would have been easy to get wrong
+
+**`MATH_SetIdentityMatrix` masks the matrix's flag word rather than
+clearing it** — `mtxflag &= 0x2`. So *which* matrix it is handed is
+not a detail. The first version of this built into a local and copied
+sixteen floats to the camera afterwards; the camera's flag then kept
+its old value instead of being masked, and the harness reported a
+state difference at a fixed offset in every projection case. The
+computation writes the camera's matrix in place now, because that is
+what the renderer did.
+
+**All three branches touch the camera's matrix, and only two leave the
+projection in it.** The isometric branch sets the camera's matrix to
+the identity and then builds its projection somewhere else entirely —
+so the camera is left holding an identity that is *not* the
+projection. Something reads that. It is preserved, and the header says
+so.
+
+**The 2D branch returns without setting the viewport.** It is used for
+drawing into a target whose viewport was already chosen. The output
+carries that as a flag rather than the caller guessing.
+
+### What was not tidied
+
+`PRJ_OffCentre` writes its offsets into the **fourth column**, which is
+the transpose of the convention the perspective projection next to it
+is written in, and its depth scale is `-4/(far - near)` where a
+textbook orthographic projection has `-2`. Both are as the game
+shipped. The comment says they are odd; the code leaves them alone.
+
+The renderer still exposes `D3D_CalcAndSetProjection` under its own
+name because the engine calls it directly, but it is two lines over
+`PRJ_OffCentre` now, so the arithmetic has one home.
+
+### What this is for
+
+The OpenGL renderer can have the same projection without a second copy
+of any of it. That is the prerequisite for drawing geometry through it,
+which is the next piece and a larger one: the geometry path is where
+the fixed-function pipeline has to be emulated rather than replaced.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

@@ -75,11 +75,16 @@ $CC $CFLAGS -c math.c -o "$OUT/wingdi.math.o"
 # arithmetic with nothing to stand in for. win/wingditex.c is not
 # linked -- see the stand-ins in tests/wingdi_mocks.c for why.
 $CC $CFLAGS -c win/wingdimath.c -o "$OUT/wingdi.wgmath.o"
+# The camera fitting and the projections came out of win/wingdi.c into
+# projection.c, which is arithmetic with nothing to stand in for, so it
+# is linked. The frozen copy still has its own inline copy, which is
+# what makes this comparison worth running.
+$CC $CFLAGS -c projection.c -o "$OUT/wingdi.proj.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"
 $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
 $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
-    "$OUT/wingdi.wgmath.o" \
+    "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" \
     "$OUT/wingdi.profiler.o" "$OUT/wingdi.mocks.o" "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm
 "$OUT/wingdi"

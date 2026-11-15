@@ -216,6 +216,7 @@
     <ClCompile Include="gdi.c" />
     <ClCompile Include="font.c" />
     <ClCompile Include="datapath.c" />
+    <ClCompile Include="projection.c" />
     <ClCompile Include="win\wingdimath.c" />
     <ClCompile Include="win\wingditex.c" />
     <ClCompile Include="win\glload.c" />
@@ -518,6 +519,7 @@
     <ClInclude Include="datafiles.h" />
     <ClInclude Include="font.h" />
     <ClInclude Include="datapath.h" />
+    <ClInclude Include="projection.h" />
     <ClInclude Include="win\wingdimath.h" />
     <ClInclude Include="win\wingditex.h" />
     <ClInclude Include="win\glcore.h" />
