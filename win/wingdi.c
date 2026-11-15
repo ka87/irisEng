@@ -98,8 +98,15 @@ long long qword_990B48; // rasters
 
 tWorld* worldPtrIfMultiStream = NULL; // TODO FIXME game doesn't set it explicitly to NULL
 
+/* Each of these six is the file's one way of setting a piece of
+   device state, so the check for a device belongs here rather than
+   at every call site. It can only ever fire when this renderer was
+   not the one chosen -- with a device the behaviour is unchanged,
+   which is why the differential comparison cannot see it. */
 static void D3D_RenderStateSet(int* current, DWORD state, int value)
 {
+    if (!D3DRenderParams.d3dDev)
+        return;
     if (*current != value)
     {
         *current = value;
@@ -109,6 +116,8 @@ static void D3D_RenderStateSet(int* current, DWORD state, int value)
 
 static void D3D_RenderStateSetF(float* current, DWORD state, float value)
 {
+    if (!D3DRenderParams.d3dDev)
+        return;
     if (*current != value)
     {
         *current = value;
@@ -118,6 +127,8 @@ static void D3D_RenderStateSetF(float* current, DWORD state, float value)
 
 static void D3D_StageStateSet(int stage, int* current, DWORD state, int value)
 {
+    if (!D3DRenderParams.d3dDev)
+        return;
     if (*current != value)
     {
         *current = value;
@@ -127,6 +138,8 @@ static void D3D_StageStateSet(int stage, int* current, DWORD state, int value)
 
 static void D3D_StageStateSetF(int stage, float* current, DWORD state, float value)
 {
+    if (!D3DRenderParams.d3dDev)
+        return;
     if (*current != value)
     {
         *current = value;
@@ -136,6 +149,8 @@ static void D3D_StageStateSetF(int stage, float* current, DWORD state, float val
 
 static void D3D_SamplerStateSet(int sampler, int* current, DWORD state, int value)
 {
+    if (!D3DRenderParams.d3dDev)
+        return;
     if (*current != value)
     {
         *current = value;
@@ -145,6 +160,8 @@ static void D3D_SamplerStateSet(int sampler, int* current, DWORD state, int valu
 
 static void D3D_SamplerStateSetF(int sampler, float* current, DWORD state, float value)
 {
+    if (!D3DRenderParams.d3dDev)
+        return;
     if (*current != value)
     {
         *current = value;
@@ -289,7 +306,12 @@ void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, 
         {
             MATH_MakeOGLMatrix(&oglMtx, &GLOBAL_UVTransformMatrix);
             memcpy(d3dTransformationMatrix, &oglMtx, sizeof(Mtx4x4WithoutAdditionalData));
-            D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX *)&oglMtx);
+            /* The matrix above is the engine's, and something outside
+               this renderer reads it, so it is computed whether or not
+               there is a device to hand it to. Only the handing over
+               is guarded. */
+            if (D3DRenderParams.d3dDev)
+                D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX *)&oglMtx);
         }
         // preserved: this return skips the matching end block, so raster 38 stays entered
         return;
@@ -338,7 +360,8 @@ void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, 
             if (textureStageTypeConfig[0].d3dTextureTransformFlags != 2)
             {
                 textureStageTypeConfig[0].d3dTextureTransformFlags = 2;
-                D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+                if (D3DRenderParams.d3dDev)
+                    D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
             }
             MATH_MakeOGLMatrix(&oglMtx, &uvMtx);
             oglMtx.v3.x = oglMtx.Pos.x;
@@ -346,7 +369,10 @@ void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, 
         }
     }
     memcpy(d3dTransformationMatrix, &oglMtx, sizeof(Mtx4x4WithoutAdditionalData));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&oglMtx);
+    /* As above: the matrix is the engine's and is computed either
+       way; only handing it to a device is guarded. */
+    if (D3DRenderParams.d3dDev)
+        D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&oglMtx);
     PRO_PerfCounterEndBlock(&gpst_DX_stDD->rasters[38]);
 }
 
@@ -3009,6 +3035,13 @@ void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* world)
     tableElemStructPF* bone;
     tableElemStructPF* lastBone;
 
+    /* Without a device this renderer was not the one chosen. The
+       engine calls in here directly rather than through the
+       interface, so this runs whichever renderer is in force, and
+       the only right answer is to do nothing. */
+    if (!D3DRenderParams.d3dDev)
+        return;
+
     if (ENG_IsSingleStream)
         return;
     if (world && world->objectTablePF.actElemNum)
@@ -3400,6 +3433,13 @@ void D3D_SetRenderTargetAndDepthStencilSurface()
 {
     IDirect3DSurface9* surface;
 
+    /* Without a device this renderer was not the one chosen. The
+       engine calls in here directly rather than through the
+       interface, so this runs whichever renderer is in force, and
+       the only right answer is to do nothing. */
+    if (!D3DRenderParams.d3dDev)
+        return;
+
     D3DRenderParams.blurTex->lpVtbl->GetSurfaceLevel(D3DRenderParams.blurTex, 0, &surface);
     D3DRenderParams.d3dDev->lpVtbl->SetRenderTarget(D3DRenderParams.d3dDev, 0, surface);
     D3DRenderParams.d3dDev->lpVtbl->SetDepthStencilSurface(D3DRenderParams.d3dDev, D3DRenderParams.newZStencil);
@@ -3408,6 +3448,13 @@ void D3D_SetRenderTargetAndDepthStencilSurface()
 
 void D3D_BeginSceneCall()
 {
+    /* Without a device this renderer was not the one chosen. The
+       engine calls in here directly rather than through the
+       interface, so this runs whichever renderer is in force, and
+       the only right answer is to do nothing. */
+    if (!D3DRenderParams.d3dDev)
+        return;
+
     D3D_SetRenderTargetAndDepthStencilSurface();
     if (!D3DRenderParams.d3dNeedToCallEndScene)
     {
@@ -3574,6 +3621,13 @@ void D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct* water)
     Mtx4x4 viewMtx;
     Mtx4x4 worldMtx;
 
+    /* Without a device this renderer was not the one chosen. The
+       engine calls in here directly rather than through the
+       interface, so this runs whichever renderer is in force, and
+       the only right answer is to do nothing. */
+    if (!D3DRenderParams.d3dDev)
+        return;
+
     wtr_NumB = water->verticallVertexNum;
     wtr_NumA = water->horizontalVertexNum;
     D3D_WaterBuffersInit();
@@ -3653,6 +3707,13 @@ void D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct* water)
 void D3D_PrepareWaterRendering()
 {
     float clipPlane[4];
+
+    /* Without a device this renderer was not the one chosen. The
+       engine calls in here directly rather than through the
+       interface, so this runs whichever renderer is in force, and
+       the only right answer is to do nothing. */
+    if (!D3DRenderParams.d3dDev)
+        return;
 
     if (pst_GlobalsWaterParams)
     {

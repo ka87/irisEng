@@ -2048,6 +2048,139 @@ static void rasterStateCase(void)
     }
 }
 
+/* ------------------------------ the renderer with no device of its own
+ *
+ * The engine calls a handful of this renderer's functions directly
+ * rather than through the interface in tGdi_DisplayData -- the scene
+ * hook every frame, the water, the per-object buffers when a world
+ * loads, the material's UV transform, the screenshot. Those calls
+ * happen whichever renderer is in force, so when another renderer was
+ * chosen they run here with no device at all.
+ *
+ * Every one of them has to do nothing rather than reach through a null
+ * pointer. Three of them were on the unconditional per-frame path, so
+ * the OpenGL renderer could not survive its first frame; this is what
+ * says they are safe, and an unguarded one crashes the test rather
+ * than the game.
+ */
+static void noDeviceCase(void)
+{
+    IDirect3DDevice9* saved = D3DRenderParams.d3dDev;
+    int before;
+
+    printf("-- the engine's direct calls, with no device\n");
+
+    /* Each of these has to get past its own early exits before it
+       would reach a device, or removing its guard changes nothing and
+       this case has no teeth. Two of them did exactly that at first:
+       the water preparation does nothing without water, and the
+       per-object buffers do nothing on a single-stream world or a
+       world with no objects. */
+    pst_GlobalsWaterParams = &W.water;
+    ENG_IsSingleStream = 0;
+    /* A world with objects the walk will actually visit. Set here
+       rather than left to whatever the last seed happened to leave:
+       half the seeds give the table no elements at all, and on one of
+       those this case cannot see the guard. */
+    /* The buffers are only made on a multi-stream world, and the
+       pointer that says so is what the innermost gate tests. */
+    NEW_worldPtrIfMultiStream = &W.world;
+    W.geogro.vertexBuffer = NULL;
+    W.world.objectTablePF.actElemNum = 4u;
+    W.world.objectTablePF.firstElemPtr = W.worldElems;
+    W.world.objectTablePF.nextElemPtr = &W.worldElems[4];
+    {
+        int w;
+
+        for (w = 0; w < 4; w++)
+        {
+            W.worldElems[w].objectPtr = &W.gaos[w];
+            /* The walk only looks inside an object that says it has a
+               visual, and only reaches a device through a geometry
+               object with chunks in it. Both are seed-dependent in
+               the fixture above, so they are pinned here. */
+            /* 0x4000 says it has a visual; bit 2 with a skeleton
+               sends the walk down the skinned path instead, which
+               does not make buffers, so bit 2 stays clear here. */
+            W.gaos[w].flags = 0x4000;
+            W.basics[w].actorObjectOrVisualObject =
+                (struct sGameObjectVisualObject*)&W.actors[w];
+            ((tGameObjectVisualObject*)&W.actors[w])->GROGEOOrSomethingElse =
+                (struct sGroGeneric*)&W.geogro;
+            W.actors[w].skeletonGroup = NULL;
+        }
+    }
+
+    /* As the renderer is when another one was chosen: the device
+       pointer is the thing that says so. */
+    D3DRenderParams.d3dDev = NULL;
+    WGM_logLen = 0;
+    WGM_overflow = 0;
+    before = WGM_logLen;
+
+    NEW_D3D_BeginSceneCall();
+    NEW_D3D_SetRenderTargetAndDepthStencilSurface();
+    NEW_D3D_PrepareWaterRendering();
+    NEW_D3D_DrawWater_DrawVertexTable(&W.water);
+    NEW_D3D_CreateGameObjectsD3DStuffForMultiStream(&W.world);
+    NEW_MAT_UV_ComputeAndSetTransform(&W.geogro, &W.chunks[0], &W.texElem);
+    NEW_D3D_SaveScreenshot();
+
+    /* What may be recorded and what may not. The UV transform keeps
+       doing its engine-side work -- the function table dispatch and
+       the decompression -- because the matrix it computes is the
+       engine's and something outside this renderer reads it. What
+       none of these may do is reach a device, so anything recorded
+       that is not on this list is a failure. */
+    {
+        static const char* allowed[] = {
+            "MAT_FuncTable", "MAT_UVDecompress", NULL
+        };
+        int k;
+        int bad = 0;
+
+        for (k = before; k < WGM_logLen; k++)
+        {
+            int ok = 0;
+            int a;
+
+            for (a = 0; allowed[a]; a++)
+                if (strcmp(WGM_log[k].fn, allowed[a]) == 0)
+                    ok = 1;
+            if (!ok)
+            {
+                if (bad < 8)
+                    printf("  DIFF no device        %s reached a device"
+                           " that was not there\n", WGM_log[k].fn);
+                bad++;
+            }
+        }
+        casesRun++;
+        if (bad)
+            diffs++;
+    }
+
+    /* The six cached setters are this file's one way of setting a
+       piece of device state, and they are guarded too -- the UV
+       transform above reaches two of them, which is why. They are
+       static, so they cannot be called from here directly, and the
+       entry points that would reach the other four are all interface
+       entries: under another renderer the interface points at that
+       renderer, so those are safe without a guard and are not part of
+       the invariant this case states.
+
+       Which is worth saying plainly, because the first draft of this
+       case did call one of them -- D3D_l_Texture_Init -- and it
+       crashed. That function writes some of its render state without
+       going through the cached setters, so it is not safe without a
+       device. It does not have to be: the engine only ever reaches it
+       through the interface. Guarding it would be guarding something
+       that cannot happen, and testing it was testing something
+       stricter than the truth. */
+
+    D3DRenderParams.d3dDev = saved;
+}
+
 int main(void)
 {
     /* The overlay's shape batch moved from win/wingdi.h's own vertex
@@ -2102,6 +2235,7 @@ int main(void)
 
     overlayPassCase();
     rasterStateCase();
+    noDeviceCase();
 
     printf("  %d cases, %lld engine calls compared\n", casesRun, callsCompared);
     printf("  guard distribution:\n");
