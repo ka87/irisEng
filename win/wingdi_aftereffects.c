@@ -1,4 +1,5 @@
 #include "../dbg.h"
+#include "../editorcamera.h"
 #include "wingdi.h"
 
 float depthBlurNear1 = 0.0f;
@@ -2797,6 +2798,7 @@ void D3D_PC_AE(tWorld* param1)
     float motionY;
     float fadeStep;
     RECT wholeScreen;
+    int aeMasterOnEntry;
 
     D3D_SetD3DStatesDefaultForAE();
     if (tweak_ae_nobands || !CIN_Bands)
@@ -2822,7 +2824,8 @@ void D3D_PC_AE(tWorld* param1)
     }
     current = D3DRenderParams.blurTex;
     spare = D3DRenderParams.blurRenderTarget2;
-    if (tweak_ae_no)
+    aeMasterOnEntry = PC_AE_MASTER;
+    if (tweak_ae_no || ECAM_gi_NoAfterEffects)
     {
         PC_AE_MASTER = 0;
         colorBalanceParam1 = 0.5f;
@@ -2940,6 +2943,16 @@ void D3D_PC_AE(tWorld* param1)
     D3D_AE_CopyToScreen(current);
     D3D_SetD3DStatesDefaultForAE();
     D3DRenderParams.d3d_defaultZEnable = 1;
+
+    // The free camera suppresses the effects for the length of this
+    // pass only: the game chose the after-effect state it is in and
+    // goes on being told it, through PC_AE_MASTER_GET_ONOFF and the
+    // rest. Nothing above can have changed it meanwhile, because
+    // every write to it in here sits inside a test on it and it has
+    // been zero throughout. The ae_no tweak is left as it was: it
+    // clears the state for good, which is what a tweak is for.
+    if (ECAM_gi_NoAfterEffects && !tweak_ae_no)
+        PC_AE_MASTER = aeMasterOnEntry;
 }
 
 void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)

@@ -36,6 +36,12 @@
 #define ECAM_KEY_LEFT    0xCB
 #define ECAM_KEY_RIGHT   0xCD
 
+/* Set only here, and read by the after-effects pass so it can be
+   skipped while the camera is up. It is a second flag rather than the
+   tweak's own ae_no, which has to go on holding whatever the tweak
+   was set to. */
+int ECAM_gi_NoAfterEffects;
+
 static int          ecam_active;
 static tViewElem*   ecam_view;
 static tWorld*      ecam_world;
@@ -102,6 +108,20 @@ int ECAM_b_Active(void)
     return ecam_active;
 }
 
+/* Everything about standing down except the view, which the two
+   callers disagree about: one gives it back, the other must not touch
+   it. Shared so that neither can forget a part of it -- the
+   after-effects flag above being the easiest to leave set. */
+static void ECAM_l_Forget(void)
+{
+    ecam_view = NULL;
+    ecam_world = NULL;
+    ecam_savedFollow = NULL;
+    ecam_active = 0;
+    ECAM_gi_NoAfterEffects = 0;
+    INO_SuspendInput(0);
+}
+
 void ECAM_Release(void)
 {
     if (!ecam_active)
@@ -110,11 +130,7 @@ void ECAM_Release(void)
        its follow pointer is no longer ours and must not be written. */
     if (ecam_view && ecam_view->viewFunctionPtr == ECAM_l_Follow)
         ecam_view->viewFunctionPtr = ecam_savedFollow;
-    ecam_view = NULL;
-    ecam_world = NULL;
-    ecam_savedFollow = NULL;
-    ecam_active = 0;
-    INO_SuspendInput(0);
+    ECAM_l_Forget();
 }
 
 void ECAM_Toggle(void)
@@ -141,6 +157,7 @@ void ECAM_Toggle(void)
     ecam_savedFollow = view->viewFunctionPtr;
     view->viewFunctionPtr = ECAM_l_Follow;
     ecam_active = 1;
+    ECAM_gi_NoAfterEffects = 1;
 
     INO_SuspendInput(1);
 }
@@ -209,11 +226,7 @@ void ECAM_Update(void)
         || !ecam_view
         || ecam_view->viewFunctionPtr != ECAM_l_Follow)
     {
-        ecam_view = NULL;
-        ecam_world = NULL;
-        ecam_savedFollow = NULL;
-        ecam_active = 0;
-        INO_SuspendInput(0);
+        ECAM_l_Forget();
         return;
     }
 

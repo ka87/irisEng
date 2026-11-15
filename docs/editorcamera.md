@@ -79,6 +79,47 @@ game does not suppress the camera, and it is a layering fact rather
 than a trick: the gate sits between the platform and the game, and the
 camera is on the platform side of it.
 
+## The after-effects
+
+The game's after-effects are drawn for the camera the game is looking
+through, so while the free camera is up they are skipped.
+
+**Through a flag of its own, not the `ae_no` tweak.** The tweak has to
+go on holding whatever it was set to; borrowing it would mean the
+camera trampling a setting the player chose and then guessing what to
+put back. `ECAM_gi_NoAfterEffects` is written only by `ECAM_Toggle`
+and by the stand-down path, and it sits beside the tweak in the same
+test in `D3D_PC_AE`:
+
+```c
+if (tweak_ae_no || ECAM_gi_NoAfterEffects)
+```
+
+**And the game goes on being told the state it chose.** That test's
+body sets `PC_AE_MASTER` to zero, which is not only a local decision:
+the game reads it back through `AI_EvalFunc`'s
+`PC_AE_MASTER_GET_ONOFF` and `PC_AE_MASTER_GET_P1`, so leaving it at
+zero would tell every script its effects had been turned off behind
+its back. So the camera's suppression lasts for the length of the
+pass and the value is put back at the end of it.
+
+The tweak is left exactly as it was: it clears the state for good,
+which is what a tweak is for, and when both are on the tweak decides.
+
+Putting the value back cannot lose anything the pass did meanwhile.
+`D3D_PC_AE` writes `PC_AE_MASTER` in one other place --
+`PC_AE_MASTER &= ~0x40000u`, when a fade finishes -- and that sits
+inside `if ((PC_AE_MASTER & 0x40000) != 0)`, which cannot be entered
+while the value is zero. Every other write in the file is in a
+function the pass does not call.
+
+One consequence worth knowing: that fade is a one-shot, and while the
+camera suppresses the pass it is never consumed. A fade in progress
+when the camera goes up resumes when the camera comes down, rather
+than having quietly finished in the meantime. That follows from
+reporting the game its own state rather than a suppressed one, and it
+is the behaviour to want.
+
 ## Flying
 
 There is nothing to switch off. No collision is consulted, no dynamics
@@ -171,7 +212,7 @@ written to.
 
 ## The tests
 
-`tests/run_editorcamera.sh`, 72 checks. It includes `editorcamera.c`
+`tests/run_editorcamera.sh`, 76 checks. It includes `editorcamera.c`
 so it can read back which view was taken and where the camera is, and
 it stands in for the engine around it.
 
@@ -180,7 +221,7 @@ did nothing would leave every check about which axis the camera moves
 along passing on code that moved along the wrong one, which is the
 mistake most worth catching in a file like this.
 
-Twenty-one defects were injected one at a time and twenty were
+Twenty-seven defects were injected one at a time and twenty-six were
 caught:
 the follow not substituted, the follow cleared instead of restored,
 the input not taken, the input not given back, not starting from the
@@ -200,6 +241,21 @@ it alone, and the module never reaches a state where one is set and
 the other is not. The term is defence rather than a live requirement.
 It is noted in the test beside the case that looks like it covers it,
 so the next reader does not take that case for proof.
+
+### The after-effects suppression
+
+Its own cases live in `tests/run_wingdi_ae.sh`, the harness that owns
+`wingdi_aftereffects.c`, because that is where `D3D_PC_AE` is linked.
+Four situations: the pass as it runs normally, the camera's flag, the
+tweak, and both at once. Two things are checked each time -- that the
+effects really are skipped, measured as device writes (738 down to
+59), and that `PC_AE_MASTER` comes back exactly as it went in for the
+camera and stays cleared for the tweak.
+
+Six more injected defects, all caught: the flag left out of the test,
+the state never put back, put back even when the tweak had cleared
+it, put back as zero rather than as it was, the flag never set on the
+toggle, and the flag never cleared on standing down.
 
 The gate has its own cases in `tests/run_io.sh` — the harness that
 owns `inputoutput.c` — because that is where the real
@@ -227,6 +283,10 @@ Every case now starts from off.
 - **Nothing is drawn.** There is no indicator that the camera is
   detached and no read-out of where it is. The overlay could carry
   both.
+- **Only the after-effects are suppressed.** Anything else drawn for
+  the game's own camera rather than for the view -- a HUD, a
+  cinematic letterbox -- is untouched, because nothing has asked for
+  it yet.
 - **The camera does not survive a level change.** It stands down
   rather than following into the new world, which is the safe
   behaviour and not necessarily the wanted one.

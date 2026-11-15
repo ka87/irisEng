@@ -146,6 +146,9 @@ void pcINO_Joystick_Move(Vec3* move, int stickID)
     *move = ecm_stick[stickID & 1];
 }
 
+/* the after-effects pass reads this; the suppression it does with
+   it is checked in the after-effects harness */
+
 /* the gate, mocked: the real one is checked in the input harness */
 static int ecm_suspendCalls;
 static int ecm_suspended;
@@ -247,6 +250,7 @@ static void takingAndGivingBack(void)
     okEq(ECAM_b_Active(), 1, "one press turns it on");
     ok(ecm_views[1].viewFunctionPtr != before, "it takes the follow parameter");
     okEq(ecm_suspended, 1, "and the input");
+    okEq(ECAM_gi_NoAfterEffects, 1, "and asks for the after-effects to be skipped");
 
     /* and nothing else about the view moved */
     ok(ecm_views[1].assignedGao == &ecm_gao, "the assigned object is untouched");
@@ -264,6 +268,7 @@ static void takingAndGivingBack(void)
     okEq(ECAM_b_Active(), 0, "a second press turns it off");
     ok(ecm_views[1].viewFunctionPtr == before, "it gives the same follow back");
     okEq(ecm_suspended, 0, "and the input back");
+    okEq(ECAM_gi_NoAfterEffects, 0, "and lets the after-effects run again");
 
     /* The game's own follow runs again afterwards. Tested for before
        being called: giving the view back by *clearing* the pointer
@@ -357,6 +362,7 @@ static void survivesTheWorldGoingAway(void)
     ECAM_Update();
     okEq(ECAM_b_Active(), 0, "a new world stands the camera down");
     okEq(ecm_suspended, 0, "and gives the input back");
+    okEq(ECAM_gi_NoAfterEffects, 0, "and lets the after-effects run again");
     okEq(ecm_setViewPointCalls, 0, "and writes to no view on the way out");
 
     /* the view it had keeps whatever the engine put there */
@@ -365,6 +371,7 @@ static void survivesTheWorldGoingAway(void)
     ecm_views[1].viewFunctionPtr = NULL;      /* the engine closed it */
     ECAM_Update();
     okEq(ECAM_b_Active(), 0, "a closed view stands the camera down");
+    okEq(ECAM_gi_NoAfterEffects, 0, "and that path clears the flag as well");
     ok(ecm_views[1].viewFunctionPtr == NULL,
        "and the closed view is left closed, not written to");
 

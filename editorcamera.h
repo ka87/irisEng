@@ -45,6 +45,17 @@
     rest of the game keeps running while the camera moves.
 */
 
+/* Non-zero while the camera is up, and read by the after-effects
+   pass, which skips itself rather than drawing the game's effects
+   over a camera the game is not looking through.
+
+   This is a second flag beside the ae_no tweak and not the tweak
+   itself: the tweak has to go on holding whatever it was set to, and
+   the game has to go on being told the after-effect state it
+   actually chose. Only ECAM_Toggle and the stand-down path write
+   this. */
+extern int ECAM_gi_NoAfterEffects;
+
 /* The toggle. Does nothing where there is no world or no view to
    take, which is the state during a load. */
 void ECAM_Toggle(void);
