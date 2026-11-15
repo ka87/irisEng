@@ -34,8 +34,8 @@ for m in re.finditer(r'^[A-Za-z_][\w \*]*?[\w\*]\s+\**(\w+)\s*\(', src, re.M):
     names.append(m.group(1))
 names += ['d3dProjectionMtx', 'd3dTransformMatrix', 'd3dTransformMatrix2',
           'engineFogTableModeToD3D', 'rasterNames', 'worldPtrIfMultiStream',
-          'D3D_gi_Widescreen', 'D3D_gi_FlatLayerBox', 'D3D_gi_AspectTrace',
-          'D3D_gf_RefYoverX', 'D3D_gf_CutsceneBand']
+          'D3D_gi_FlatLayerBox', 'D3D_gi_AspectTrace',
+          'D3D_gf_CutsceneBand']
 seen = []
 for n in names:
     if n not in seen and n not in ('if', 'for', 'while', 'switch', 'return', 'sizeof'):
@@ -67,6 +67,8 @@ $CC $CFLAGS -include tests/stub/d3dx9math.h \
     -Dd3dvb2=vertexBuffer2 -Dd3dvb=vertexBuffer \
     -Dd3dUVVBNum=uvBufferNum -Dd3dUVVB=uvBuffers \
     -Dd3dIndexBuf=indexBuffer \
+    -DD3D_gi_Widescreen=GDI_gi_Widescreen \
+    -DD3D_gf_RefYoverX=GDI_gf_RefYoverX \
     -DtD3dRequestSnapshot=tGdi_SnapshotRequest \
     -DsD3dRequestSnapshot=sGdi_SnapshotRequest \
     -c tests/baseline_wingdi.c -o "$OUT/wingdi.base.o" $(defs BASE_ $syms)

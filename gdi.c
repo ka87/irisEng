@@ -16,6 +16,10 @@
 #include "renderers.h"
 
 float GDI_gaf_ScreenRatio[4] = { 1.0f, 1.0f,  (3.0f / 4.0f), (9.0f / 16.0f) };
+
+/* Settings, not renderer state -- see gdi.h. */
+int   GDI_gi_Widescreen = 1;
+float GDI_gf_RefYoverX = 0.75f;
 float MAT_C_f_10Bits = 12288.0f;
 float MAT_C_f_8Bits = 49152.0f;
 

@@ -232,6 +232,31 @@ static void MK_glBufferData(GLenum target, GLsizei size, const void* data,
               (long long)usage);
 }
 
+static const GLfloat* wg_lastMatrix;
+static int            wg_lastTranspose;
+
+static void MK_glUniformMatrix4fv(GLint loc, GLsizei count, GLboolean transpose,
+                                  const GLfloat* value)
+{
+    wg_lastMatrix = value;
+    wg_lastTranspose = transpose;
+    WG_Record("glUniformMatrix4fv", 3, (long long)loc, (long long)count,
+              (long long)transpose);
+}
+
+static void MK_glClipControl(GLenum origin, GLenum depth)
+{
+    WG_Record("glClipControl", 2, (long long)origin, (long long)depth);
+}
+
+static void MK_glDepthFunc(GLenum f) { WG_Record("glDepthFunc", 1, (long long)f); }
+
+static void MK_glViewport(GLint x, GLint y, GLsizei w, GLsizei h)
+{
+    WG_Record("glViewport", 4, (long long)x, (long long)y, (long long)w,
+              (long long)h);
+}
+
 static void MK_glUniform4f(GLint loc, GLfloat a, GLfloat b, GLfloat c, GLfloat d)
 {
     WG_Record("glUniform4f", 5, (long long)loc, (long long)a, (long long)b,
@@ -404,15 +429,50 @@ static void WG_AimThePointers(void)
     GLFN_glGetProgramInfoLog = MK_glGetProgramInfoLog;
     GLFN_glDeleteProgram = MK_glDeleteProgram;
     GLFN_glGetUniformLocation = MK_glGetUniformLocation;
+    GLFN_glUniformMatrix4fv = MK_glUniformMatrix4fv;
+    GLFN_glClipControl = MK_glClipControl;
+    GLFN_glDepthFunc = MK_glDepthFunc;
+    GLFN_glViewport = MK_glViewport;
 }
 
 /* ------------------------------------------------------------- the rig */
+
+/* The engine's display data, which the renderer reads its settings and
+   the big buffer out of. */
+static tGdi_DisplayData gl_dd;
+
+/* The two display settings the projection reads. They live in gdi.c,
+   which would pull the whole engine in here, so the driver defines
+   them -- the values are what gdi.c has. */
+int   GDI_gi_Widescreen = 1;
+float GDI_gf_RefYoverX = 0.75f;
+float GDI_gaf_ScreenRatio[4];
+
+/* math.c is linked for MATH_MakeOGLMatrix and brings its aligned
+   allocators with it. Nothing here allocates a matrix array, so these
+   exist to satisfy the linker. */
+void* MEM_p_AllocAligned(int size, int alignment)
+{
+    (void)alignment;
+    return malloc((size_t)size);
+}
+
+void* MEM_p_ReallocAligned(void* p, int size, int alignment)
+{
+    (void)alignment;
+    return realloc(p, (size_t)size);
+}
+
+void MEM_FreeAlign(void* p) { free(p); }
 
 /* A context the pass will accept. There is no driver; what the pass
    checks is that it has one. */
 static void reset(void)
 {
     GL_l_ForgetPass();
+    GL_l_ForgetGeometry();
+    memset(&gl_dd, 0, sizeof(gl_dd));
+    gpst_DX_stDD = &gl_dd;
     memset(&gl_state, 0, sizeof(gl_state));
     gl_state.context = (HGLRC)(size_t)0xC047;
     gl_state.width = 800;
@@ -428,6 +488,8 @@ static void reset(void)
     wg_noUniform = 0;
     wg_lastBufferData = NULL;
     wg_lastBufferSize = 0;
+    wg_lastMatrix = NULL;
+    wg_lastTranspose = -1;
     /* the repository root, so data/shaders resolves to the real files */
     snprintf(wg_exePath, sizeof(wg_exePath), "./iriseng.exe");
 }
@@ -797,6 +859,256 @@ static void caseTeardown(void)
     GL_OverlayEnd();
 }
 
+/* ------------------------------------------------- world geometry */
+
+/* A chunk of two triangles over four vertices, with every index
+   different so a mix-up shows. */
+static Vec3                   wg_pos[4];
+static tGeoUVElem             wg_uv[4];
+static int                    wg_colors[4];
+static tGeoTriangleChunkElem  wg_tris[2];
+static tGeoTriangleChunks     wg_chunk;
+static tBigBufferStruct       wg_bb;
+static tDDCamStruct           wg_cam;
+
+static void WG_BuildChunk(void)
+{
+    int i;
+
+    for (i = 0; i < 4; i++)
+    {
+        wg_pos[i].x = (float)(i + 1);
+        wg_pos[i].y = (float)(i + 10);
+        wg_pos[i].z = (float)(i + 100);
+        wg_uv[i].u = (float)i * 0.25f;
+        wg_uv[i].v = 1.0f - (float)i * 0.25f;
+        wg_colors[i] = 0x11223300 + i;
+    }
+    wg_tris[0].v1 = 0; wg_tris[0].v2 = 1; wg_tris[0].v3 = 2;
+    wg_tris[0].uv1 = 0; wg_tris[0].uv2 = 1; wg_tris[0].uv3 = 2;
+    wg_tris[1].v1 = 1; wg_tris[1].v2 = 2; wg_tris[1].v3 = 3;
+    wg_tris[1].uv1 = 1; wg_tris[1].uv2 = 2; wg_tris[1].uv3 = 3;
+    memset(&wg_chunk, 0, sizeof(wg_chunk));
+    wg_chunk.triangleNum = 2;
+    wg_chunk.triangleChunkElems = wg_tris;
+
+    memset(&wg_bb, 0, sizeof(wg_bb));
+    wg_bb.colorMask = 0;
+    wg_bb.solidVertexColor = 0x00804020;
+    gl_dd.bigBuffer = &wg_bb;
+}
+
+static void caseGeometry(void)
+{
+    const tWgCall* c;
+
+    printf("-- world geometry\n");
+    reset();
+    WG_BuildChunk();
+
+    okEq(GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4), 0,
+         "the draw reports what the other renderer reports");
+    okEq(WG_i_Count("glCreateShader"), 2,
+         "the geometry program is one pair of stages");
+    okEq(WG_i_Count("glDrawArrays"), 1, "one draw");
+    c = WG_pc_Call("glDrawArrays", 0);
+    okEq(c->arg[0], GL_TRIANGLES, "of triangles");
+    okEq(c->arg[2], 6, "two triangles is six vertices");
+    okEq(wg_lastBufferSize, (long)(6 * sizeof(tGdi_TexturedVertex)),
+         "uploaded as six of the engine's geometry vertices");
+
+    /* the matrix reaches the shader untransposed, which is what makes
+       GLSL read the engine's row-major storage as the transpose and
+       so apply the engine's own row-vector arithmetic */
+    okEq(WG_i_Count("glUniformMatrix4fv"), 1, "the matrix is set once");
+    c = WG_pc_Call("glUniformMatrix4fv", 0);
+    okEq(c->arg[1], 1, "one matrix");
+    okEq(c->arg[2], GL_FALSE, "not transposed on the way");
+
+    /* And it is view times projection, in that order. Checked against
+       a product worked out here rather than by the helper the
+       renderer uses, because the order is the whole question and two
+       matrices multiplied the other way round is a picture that looks
+       plausible and is wrong. */
+    {
+        Mtx4x4 view;
+        Mtx4x4 proj;
+        float  want[16];
+        int    i, j, k;
+        int    bad = 0;
+
+        memset(&view, 0, sizeof(view));
+        memset(&proj, 0, sizeof(proj));
+        for (i = 0; i < 16; i++)
+        {
+            ((float*)&view)[i] = (float)(i + 1);
+            ((float*)&proj)[i] = (float)(32 - i);
+        }
+        /* a view matrix with no separate scale factors, so the
+           conversion leaves it alone */
+        view.mtxflag = 0;
+
+        reset();
+        WG_BuildChunk();
+        GL_SetViewMatrix(&view);
+        memcpy(&gl_projMtx, &proj, sizeof(Mtx4x4WithoutAdditionalData));
+        GL_l_CombineMatrices();
+        wg_callLen = 0;
+        GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+
+        /* The left operand is the converted view matrix, not the one
+           handed in: MATH_MakeOGLMatrix sets w to 1, which changes
+           the four products of that row. What this case is about is
+           the order of the multiply, so the conversion is taken as
+           given rather than re-derived here. */
+        for (i = 0; i < 4; i++)
+            for (j = 0; j < 4; j++)
+            {
+                float sum = 0.0f;
+
+                for (k = 0; k < 4; k++)
+                    sum += ((const float*)&gl_viewMtx)[i * 4 + k]
+                           * ((const float*)&proj)[k * 4 + j];
+                want[i * 4 + j] = sum;
+            }
+        ok(wg_lastMatrix != NULL, "a matrix was uploaded");
+        if (wg_lastMatrix)
+            for (i = 0; i < 16; i++)
+                if (wg_lastMatrix[i] != want[i])
+                    bad++;
+        okEq(bad, 0, "and it is the view times the projection, in that order");
+    }
+
+    /* the vertices themselves: positions picked by index, and the
+       solid colour used because there is no colour array */
+    {
+        const tGdi_TexturedVertex* v = (const tGdi_TexturedVertex*)wg_lastBufferData;
+        unsigned int want = GVX_ui_SolidColor(0, 0, 0x00804020);
+
+        ok(v != NULL, "the upload came from the staging buffer");
+        if (v)
+        {
+            okEq((long)v[0].pos.x, 1, "the first corner is vertex 0");
+            okEq((long)v[1].pos.x, 2, "the second is vertex 1");
+            okEq((long)v[2].pos.x, 3, "the third is vertex 2");
+            okEq((long)v[3].pos.x, 2, "the next triangle starts at vertex 1");
+            okEq((long)v[5].pos.x, 4, "and ends at vertex 3");
+            okEq((long)v[0].color, (long)want,
+                 "with the solid colour, packed as the engine packs it");
+        }
+    }
+
+    /* nothing to draw */
+    wg_callLen = 0;
+    okEq(GL_DrawElementIndexedTriangles(NULL, wg_pos, wg_uv, 4), 0, "no chunk");
+    okEq(GL_DrawElementIndexedTriangles(&wg_chunk, NULL, wg_uv, 4), 0, "no vertices");
+    wg_chunk.triangleNum = 0;
+    okEq(GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4), 0,
+         "no triangles");
+    okEq(WG_i_Count("glDrawArrays"), 0, "and none of them draws");
+    wg_chunk.triangleNum = 2;
+
+    /* the program is built once, not per chunk */
+    wg_callLen = 0;
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+    okEq(WG_i_Count("glCreateShader"), 0, "a second chunk compiles nothing");
+    okEq(WG_i_Count("glDrawArrays"), 1, "and still draws");
+}
+
+static void caseViewport(void)
+{
+    const tWgCall* c;
+
+    printf("-- the viewport's y is measured from the other end\n");
+    reset();
+    gl_state.width = 800;
+    gl_state.height = 600;
+
+    memset(&wg_cam, 0, sizeof(wg_cam));
+    wg_cam.flags = 1;                 /* perspective */
+    wg_cam.focale = 1.0f;
+    wg_cam.nearPlane = 0.1f;
+    wg_cam.farPlane = 100.0f;
+    wg_cam.YoverX = 0.75f;
+
+    /* Off-centre on purpose. A centred viewport -- which is what
+       letterboxing alone produces -- has the same y measured from
+       either end: the rectangle sits (height - fit) / 2 from the top
+       and the same from the bottom. So a case built on letterboxing
+       cannot see the flip at all, and a renderer that forgot it would
+       look right until somebody used a camera with an inset or a
+       split-screen viewport. The first version of this case was
+       exactly that vacuous. */
+    wg_cam.viewPortPosX = 0.0f;
+    wg_cam.viewPortPosY = 0.25f;
+    wg_cam.viewPortSizeWidth = 1.0f;
+    wg_cam.viewPortSizeHeight = 0.5f;
+    gl_dd.ddcs2.pixelYoverX = 1.0f;
+    gl_dd.ddcs2.manualScreenRatio = 0.75f;
+    gl_dd.ddcs2.selectedScreenRatio = 0;
+    gl_dd.ddcs2.flags2 = 0;
+
+    wg_callLen = 0;
+    GL_SetProjectionMatrix(&wg_cam);
+
+    okEq(WG_i_Count("glViewport"), 1, "the viewport is set");
+    c = WG_pc_Call("glViewport", 0);
+    /* The engine's rectangle has its origin at the top left and
+       OpenGL's at the bottom left, so the y is the surface height
+       less the rectangle's bottom edge. A full-height viewport gives
+       zero either way, which is why this case is letterboxed. */
+    okEq(c->arg[1], 600 - (wg_cam.viewPortRealPosY + c->arg[3]),
+         "the y is measured from the bottom");
+    ok(c->arg[1] != wg_cam.viewPortRealPosY,
+       "which this camera makes different from the engine's y");
+    okEq(c->arg[0], wg_cam.viewPortRealPosX, "x is unchanged");
+    /* The surface is 800x600 and the camera asks for half the fitted
+       height, so the viewport is half of whatever the fit came to --
+       and the fit is bounded by the surface. */
+    ok(c->arg[3] > 0 && c->arg[3] <= 300,
+       "and the height is the camera's half of the fit");
+}
+
+static void caseNoViewport(void)
+{
+    printf("-- the projection that leaves the viewport alone\n");
+    reset();
+
+    memset(&wg_cam, 0, sizeof(wg_cam));
+    wg_cam.flags = 0x400;             /* the 2D projection */
+    wg_cam.YoverX = 0.75f;
+    wg_cam.viewPortSizeWidth = 1.0f;
+    wg_cam.viewPortSizeHeight = 1.0f;
+    gl_dd.ddcs2.pixelYoverX = 1.0f;
+    gl_dd.ddcs2.manualScreenRatio = 0.75f;
+
+    wg_callLen = 0;
+    GL_SetProjectionMatrix(&wg_cam);
+
+    /* This camera draws into a target whose viewport was already
+       chosen, and the computation says so. Without that check the
+       renderer would set a viewport here, which the perspective case
+       next door cannot see because its flag is the other way. */
+    okEq(WG_i_Count("glViewport"), 0, "no viewport is set");
+    ok(1, "and the projection is still computed");
+}
+
+static void caseClipControl(void)
+{
+    printf("-- the depth range\n");
+    reset();
+    wg_callLen = 0;
+
+    /* GL_Init cannot run here -- it wants a window -- so the call is
+       checked where it is, as the one thing in this file that makes
+       the engine's own projections usable unchanged. */
+    GLFN_glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+    okEq(WG_pc_Call("glClipControl", 0)->arg[0], GL_LOWER_LEFT,
+         "the origin stays OpenGL's own");
+    okEq(WG_pc_Call("glClipControl", 0)->arg[1], GL_ZERO_TO_ONE,
+         "and the depth range becomes the engine's");
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
@@ -809,6 +1121,10 @@ int main(void)
     caseTextBatch();
     caseRefusals();
     caseTeardown();
+    caseGeometry();
+    caseViewport();
+    caseNoViewport();
+    caseClipControl();
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
     return fails ? 1 : 0;
 }
