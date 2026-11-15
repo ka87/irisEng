@@ -242,10 +242,28 @@ static void MK_glVertexAttribPointer(GLuint index, GLint size, GLenum type,
               (long long)(size_t)offset);
 }
 
+/* A copy of what was uploaded, as well as the pointer.
+
+   The pointer alone is not safe to read later: the video present
+   builds its six vertices on the stack, so by the time a case looks
+   at them the frame is gone. ASan said so the moment that case was
+   written. One case checks the pointer's identity -- that the flat
+   overlay batch is handed over without being copied -- so both are
+   kept, and anything reading contents reads the copy. */
+#define WG_BUFCOPY (64 * 1024)
+static unsigned char wg_bufferCopy[WG_BUFCOPY];
+static long          wg_bufferCopyLen;
+
 static void MK_glBufferData(GLenum target, GLsizei size, const void* data,
                             GLenum usage)
 {
     wg_lastBufferData = (void*)data;
+    wg_bufferCopyLen = 0;
+    if (data && size > 0 && size <= (GLsizei)sizeof(wg_bufferCopy))
+    {
+        memcpy(wg_bufferCopy, data, (size_t)size);
+        wg_bufferCopyLen = (long)size;
+    }
     wg_lastBufferSize = (long)size;
     WG_Record("glBufferData", 3, (long long)target, (long long)size,
               (long long)usage);
@@ -765,6 +783,7 @@ static void reset(void)
     GL_l_ForgetGeometry();
     GL_ReleaseTextures(NULL);
     GL_l_ForgetTargets();
+    GL_l_ForgetVideo();
     memset(&gl_material, 0, sizeof(gl_material));
     gl_colorMaskAlpha = 0;
     gl_mipmapping = 1;
@@ -784,6 +803,7 @@ static void reset(void)
     wg_genFails = 0;
     wg_noUniform = 0;
     wg_lastBufferData = NULL;
+    wg_bufferCopyLen = 0;
     wg_lastBufferSize = 0;
     wg_lastMatrix = NULL;
     wg_lastTranspose = -1;
@@ -1288,7 +1308,8 @@ static void caseGeometry(void)
     /* the vertices themselves: positions picked by index, and the
        solid colour used because there is no colour array */
     {
-        const tGdi_TexturedVertex* v = (const tGdi_TexturedVertex*)wg_lastBufferData;
+        const tGdi_TexturedVertex* v
+            = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy : NULL);
         unsigned int want = GVX_ui_SolidColor(0, 0, 0x00804020);
 
         ok(v != NULL, "the upload came from the staging buffer");
@@ -1591,9 +1612,39 @@ static long WG_l_Uniform1i(int location)
     return v;
 }
 
-/* Whether a capability was last enabled (1), last disabled (0), or
-   never mentioned (-1). The renderer states these rather than leaving
-   them, so "never mentioned" is itself worth failing on. */
+/* Whether a capability was enabled (1), disabled (0), or never
+   mentioned (-1) as of the nth call of `before` -- or of the whole
+   log when `before` is NULL. The cutoff matters: a pass that turns
+   something off to draw and puts it back afterwards reads as "on" if
+   only the last mention counts, and what is being asked is what was
+   in force at the draw. */
+static int WG_i_b_CapabilityAt(GLenum cap, const char* before)
+{
+    int limit = wg_callLen;
+    int i;
+    int state = -1;
+
+    if (before)
+    {
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, before) == 0)
+            {
+                limit = i;
+                break;
+            }
+    }
+    for (i = 0; i < limit; i++)
+    {
+        if (wg_calls[i].arg[0] != (long long)cap)
+            continue;
+        if (strcmp(wg_calls[i].name, "glEnable") == 0)
+            state = 1;
+        else if (strcmp(wg_calls[i].name, "glDisable") == 0)
+            state = 0;
+    }
+    return state;
+}
+
 static int WG_i_b_Capability(GLenum cap)
 {
     int i;
@@ -1760,7 +1811,8 @@ static void caseMaterialState(void)
         WG_BuildChunk();
         wg_callLen = 0;
         GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
-        v = (const tGdi_TexturedVertex*)wg_lastBufferData;
+        v = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                          : NULL);
         ok(v != NULL, "a draw after that material uploaded vertices");
         if (v)
         {
@@ -2347,7 +2399,8 @@ static void caseSprites(void)
        way up it is on the quad. */
     {
         const tGdi_TexturedVertex* v
-            = (const tGdi_TexturedVertex*)wg_lastBufferData;
+            = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                            : NULL);
 
         ok(v != NULL, "the upload came from the staging buffer");
         if (v)
@@ -2426,7 +2479,8 @@ static void caseSprites(void)
     GL_DrawSprites(&wg_sprites, wg_sprPos, 4);
     {
         const tGdi_TexturedVertex* v
-            = (const tGdi_TexturedVertex*)wg_lastBufferData;
+            = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                            : NULL);
 
         ok(v != NULL, "a sprite was staged");
         if (v)
@@ -2443,13 +2497,15 @@ static void caseSprites(void)
     GL_DrawSprites(&wg_sprites, wg_sprPos, 4);
     {
         const tGdi_TexturedVertex* v
-            = (const tGdi_TexturedVertex*)wg_lastBufferData;
+            = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                            : NULL);
         float still = v ? v[0].pos.x : 0.0f;
 
         TIM_gul_TicksCount = 12.0f;
         GDI_gb_WaveSprite = 1;
         GL_DrawSprites(&wg_sprites, wg_sprPos, 4);
-        v = (const tGdi_TexturedVertex*)wg_lastBufferData;
+        v = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                          : NULL);
         ok(v != NULL && v[0].pos.x != still,
            "the wobble setting reaches the sprites");
         GDI_gb_WaveSprite = 0;
@@ -2485,6 +2541,202 @@ static void caseDeviceColour(void)
             bad++;
     }
     okEq(bad, 0, "over twenty thousand colours");
+}
+
+/* -------------------------------------------------- the video display */
+
+static void caseVideo(void)
+{
+    void* bits = NULL;
+    int   pitch = 0;
+    int   height = 0;
+
+    printf("-- the video display\n");
+    reset();
+    wg_callLen = 0;
+
+    okEq(GL_b_VideoDisplayCreate(32, 16), 1, "a display is made");
+    okEq(WG_i_Count("glTexImage2D"), 1, "one texture for the picture");
+    okEq(WG_l_Arg("glTexImage2D", 0, 3), 32, "the movie's width");
+    okEq(WG_l_Arg("glTexImage2D", 0, 4), 16, "and its height");
+    okEq(WG_l_Arg("glTexImage2D", 0, 6), GL_BGRA,
+         "read in the order the engine's words are in memory");
+    okEq(WG_l_TexParam(GL_TEXTURE_MAX_LEVEL), 0,
+         "with no levels, so a filter cannot ask for one");
+
+    /* The picture starts black, so a frame that does not fill it --
+       or a movie whose first frame has not arrived -- shows black
+       rather than whatever the memory held. Checked on what was
+       handed to OpenGL rather than on what the allocator returned,
+       which is the only way to check it without depending on the
+       allocator. */
+    {
+        int i;
+        int nonzero = 0;
+
+        okEq(wg_pixelBytes, 32 * 16 * 4, "the whole picture was uploaded");
+        for (i = 0; i < wg_pixelBytes && i < (int)sizeof(wg_pixels); i++)
+            if (wg_pixels[i])
+                nonzero++;
+        okEq(nonzero, 0, "and every byte of it was black");
+    }
+
+    /* Locking hands out the picture, not the screen. */
+    okEq(GL_b_VideoFrameLock(&bits, &pitch, &height), 1, "it locks");
+    ok(bits != NULL, "and gives somewhere to write");
+    okEq(pitch, 32 * 4, "four bytes a pixel, packed");
+    okEq(height, 16,
+         "the picture's own height -- the screen's is how the bottom of"
+         " a frame goes missing");
+
+    /* Unlocking is where the frame reaches the card. */
+    wg_callLen = 0;
+    GL_VideoFrameUnlock();
+    okEq(WG_i_Count("glTexSubImage2D"), 1, "unlocking uploads the frame");
+    okEq(WG_l_Arg("glTexSubImage2D", 0, 4), 32, "all of it");
+    okEq(WG_l_Arg("glTexSubImage2D", 0, 5), 16, "in both axes");
+
+    /* Nothing works before a display exists, and nothing crashes. */
+    reset();
+    okEq(GL_b_VideoFrameLock(&bits, &pitch, &height), 0,
+         "no display means no lock");
+    wg_callLen = 0;
+    GL_VideoFrameUnlock();
+    GL_VideoFramePresent(320, 200, GDI_VIDEOFIT_SMOOTH);
+    okEq(wg_callLen, 0, "and nothing to unlock or present");
+    okEq(GL_b_VideoDisplayCreate(0, 200), 0, "nor a display of no width");
+    okEq(GL_b_VideoDisplayCreate(320, -1), 0, "nor of a negative height");
+}
+
+static void caseVideoFit(void)
+{
+    printf("-- how a frame is fitted to the screen\n");
+
+    /* The surface is 800 by 600 in this harness, so a 320 by 200
+       movie scaled to the width is 800 by 500, leaving fifty pixels
+       of black above and below. */
+    reset();
+    GL_b_VideoDisplayCreate(320, 200);
+    wg_callLen = 0;
+    GL_VideoFramePresent(320, 200, GDI_VIDEOFIT_SMOOTH);
+
+    okEq(WG_i_Count("glClear"), 1, "the screen is cleared first");
+    okEq(WG_l_Arg("glClearColor", 0, 0), 0, "to black");
+    okEq(WG_i_b_CapabilityAt(GL_BLEND, "glDrawArrays"), 0,
+         "and the frame is not blended");
+    okEq(WG_i_b_CapabilityAt(GL_DEPTH_TEST, "glDrawArrays"), 0,
+         "nor depth tested -- the frame goes over whatever the last"
+         " scene left in the depth buffer");
+    okEq(WG_i_b_CapabilityAt(GL_CULL_FACE, "glDrawArrays"), 0, "nor culled");
+    okEq(WG_l_TexParam(GL_TEXTURE_MAG_FILTER), GL_LINEAR, "smoothed");
+    okEq(WG_i_Count("glDrawArrays"), 1, "and drawn once");
+    okEq(WG_l_Arg("glDrawArrays", 0, 2), 6, "as two triangles");
+
+    {
+        const tGdi_TexturedVertex* v
+            = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                            : NULL);
+
+        ok(v != NULL, "from the staging buffer");
+        if (v)
+        {
+            okEq((long)v[0].pos.x, 0, "the left edge is at the screen's");
+            okEq((long)v[0].pos.y, 50, "and the top is inset by the bars");
+            okEq((long)v[1].pos.x, 800, "the right edge is the screen's");
+            okEq((long)v[2].pos.y, 550, "and the bottom is inset to match");
+            /* The frame fills the picture here, so the coordinates run
+               the whole way. */
+            okEq((long)(v[1].u * 16), 16, "the texture is read to its edge");
+            okEq((long)(v[2].v * 16), 16, "in both axes");
+        }
+    }
+
+    /* Unsmoothed takes the same rectangle and a different filter --
+       the one thing that separates the two. */
+    reset();
+    GL_b_VideoDisplayCreate(320, 200);
+    wg_callLen = 0;
+    GL_VideoFramePresent(320, 200, GDI_VIDEOFIT_SHARP);
+    okEq(WG_l_TexParam(GL_TEXTURE_MAG_FILTER), GL_NEAREST, "unsmoothed");
+    {
+        const tGdi_TexturedVertex* v
+            = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                            : NULL);
+
+        if (v)
+            okEq((long)v[1].pos.x, 800, "and the same rectangle");
+    }
+
+    /* A pixel for a pixel, centred: 320 by 200 in the middle of 800
+       by 600. */
+    reset();
+    GL_b_VideoDisplayCreate(320, 200);
+    wg_callLen = 0;
+    GL_VideoFramePresent(320, 200, GDI_VIDEOFIT_ACTUALSIZE);
+    {
+        const tGdi_TexturedVertex* v
+            = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                            : NULL);
+
+        ok(v != NULL, "a frame at its own size is drawn");
+        if (v)
+        {
+            okEq((long)v[0].pos.x, (800 - 320) / 2, "centred across");
+            okEq((long)v[0].pos.y, (600 - 200) / 2, "and down");
+            okEq((long)v[1].pos.x, (800 - 320) / 2 + 320,
+                 "at the movie's own width");
+        }
+    }
+
+    /* A frame smaller than the picture it was written into: the other
+       renderer blits a sub-rectangle, so the coordinates have to stop
+       short rather than stretch the whole picture over it.
+
+       The two fractions are deliberately different -- half the width
+       and all of the height -- because a frame that is the same
+       fraction of both cannot see the two coordinates swapped. */
+    reset();
+    GL_b_VideoDisplayCreate(320, 200);
+    wg_callLen = 0;
+    GL_VideoFramePresent(160, 200, GDI_VIDEOFIT_ACTUALSIZE);
+    {
+        const tGdi_TexturedVertex* v
+            = (const tGdi_TexturedVertex*)(wg_bufferCopyLen ? wg_bufferCopy
+                                                            : NULL);
+
+        ok(v != NULL, "a part-filled picture is drawn");
+        if (v)
+        {
+            okEq((long)(v[1].u * 16), 8,
+                 "the texture is read to half its width");
+            okEq((long)(v[2].v * 16), 16, "and all of its height");
+            okEq((long)v[1].pos.x, (800 - 160) / 2 + 160,
+                 "over the frame's own size on the screen");
+        }
+    }
+}
+
+static void caseVideoTeardown(void)
+{
+    printf("-- giving the video display back\n");
+    reset();
+    GL_b_VideoDisplayCreate(320, 200);
+    wg_callLen = 0;
+
+    GL_VideoDisplayClose();
+    okEq(WG_i_Count("glDeleteTextures"), 1, "the picture's texture is deleted");
+    wg_callLen = 0;
+    GL_VideoDisplayClose();
+    okEq(WG_i_Count("glDeleteTextures"), 0, "a second close deletes nothing");
+
+    /* And a second display replaces the first rather than leaking
+       it, which is what happens between two movies. */
+    reset();
+    GL_b_VideoDisplayCreate(320, 200);
+    wg_callLen = 0;
+    okEq(GL_b_VideoDisplayCreate(640, 480), 1, "a second display is made");
+    okEq(WG_i_Count("glDeleteTextures"), 1, "and gives the first one back");
+    okEq(WG_l_Arg("glTexImage2D", 0, 3), 640, "at the new size");
 }
 
 int main(void)
@@ -2526,6 +2778,9 @@ int main(void)
     caseShadowSequence();
     caseSprites();
     caseDeviceColour();
+    caseVideo();
+    caseVideoFit();
+    caseVideoTeardown();
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
     return fails ? 1 : 0;
 }

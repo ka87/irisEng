@@ -13,6 +13,7 @@ driver for. They are not used by the Direct3D renderer at all.
 | `overlay.vert` / `.frag` | the debug overlay's flat quads |
 | `overlaytext.vert` / `.frag` | glyphs, sampling the font atlas |
 | `geometry.vert` / `.frag` | the world, textured and modulated |
+| `video.frag` | a movie frame, on the glyphs' vertex stage |
 
 ## What the world's fragment shader is doing that the pipeline cannot
 
@@ -31,10 +32,26 @@ test, and the engine uses both. So `geometry.frag` does them:
   so that the depth write is suppressed too. The two modes are the two
   senses the material's flags select between.
 
-A uniform renamed here and not in `win/wingl.c` is a failing test
-rather than a black world: `tests/run_wingloverlay.sh` loads these
-real files and checks the names the renderer asks for. What that test
-cannot see is the arithmetic, because it has no GL to run it on.
+Two tests stand behind these files, and they see different things.
+`tests/run_wingloverlay.sh` mocks OpenGL outright: it loads these real
+files and checks the uniform names the renderer asks for, so a uniform
+renamed here and not in `win/wingl.c` is a failing test rather than a
+black world. What it cannot see is the arithmetic.
+`tests/run_glrender.sh` can: it brings up a real 4.5 core context with
+no window, draws through the renderer's own entry points and reads the
+pixels back. Every line of every shader here is covered by it. That
+test is allowed to be unavailable, and says so and passes when it is,
+so the first one is still what runs everywhere.
+
+## One vertex stage, two fragment stages
+
+`video.frag` has no vertex shader of its own: it is paired with
+`overlaytext.vert`, which already maps pixel coordinates to clip space
+and carries a texture coordinate. That is the whole difference between
+a glyph and a movie frame -- a glyph's texture is coverage and decides
+how much of the vertex colour there is, and a frame's texture is the
+picture. Sharing the stage means the pixel mapping is written and
+tested once.
 
 ## Two programs rather than one with a branch
 
