@@ -137,14 +137,11 @@ void OBJ_MakeAbsoluteMatrix(tGameObjectMain* gao, Mtx4x4* dest)
     memcpy(dest, &ecm_gaoMtx, sizeof(*dest));
 }
 
-/* the device, below the gate */
+/* The device, below the gate: the keys and the mouse as the platform
+   layer read them, with no control mode in between. pcINO_mouseDeltaX
+   and Y come from win/wininputoutput.h, which editorcamera.c
+   includes. */
 char pcINO_keyboardDataBackup[266];
-static Vec3 ecm_stick[2];
-
-void pcINO_Joystick_Move(Vec3* move, int stickID)
-{
-    *move = ecm_stick[stickID & 1];
-}
 
 /* the after-effects pass reads this; the suppression it does with
    it is checked in the after-effects harness */
@@ -227,13 +224,29 @@ static void worldReset(void)
     WOR_gpst_CurrentWorld = &ecm_world;
     TIM_gf_dt = 1.0f / 60.0f;
     memset(pcINO_keyboardDataBackup, 0, sizeof(pcINO_keyboardDataBackup));
-    memset(ecm_stick, 0, sizeof(ecm_stick));
+    pcINO_mouseDeltaX = 0;
+    pcINO_mouseDeltaY = 0;
     ecm_suspendCalls = 0;
     ecm_suspended = 0;
     ecm_setViewPointCalls = 0;
     ecm_gameFollowCalls = 0;
     ecm_absMatrixCalls = 0;
     MATH_SetIdentityMatrixLocal(&ecm_gaoMtx);
+}
+
+/* Presses a key, and the look button, the way the platform layer
+   leaves them. */
+static void ecm_hold(int code)
+{
+    pcINO_keyboardDataBackup[code] = (char)0x80;
+}
+
+/* A mouse movement in counts, with the look button held. */
+static void ecm_look(int dx, int dy)
+{
+    ecm_hold(ECAM_MOUSE_RIGHT);
+    pcINO_mouseDeltaX = dx;
+    pcINO_mouseDeltaY = dy;
 }
 
 /* ------------------------------------------------------------- the checks */
@@ -308,7 +321,7 @@ static void repeatedFollowIsStable(void)
 
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].y = 1.0f;
+    ecm_hold(ECAM_KEY_W);
     ECAM_Update();
 
     ecm_views[1].viewFunctionPtr(&ecm_views[1]);
@@ -389,65 +402,94 @@ static void inactiveDoesNothing(void)
     okEq(ecm_suspendCalls, 0, "and no input");
 }
 
-/* Forward is the view matrix's -v2, which is what the camera device
-   takes its sight vector from. */
+/* All three of the camera's axes are a view matrix row negated:
+   CAM_SetObjectMatrixFromCam builds the camera device's own matrix as
+   (-v1, -v3, -v2), and in that matrix +x is right, +y is up and +z is
+   the sight. Each of the three is checked on its own, and then the
+   triad is checked for consistency, which is what catches a single
+   sign going astray. */
 static void movesAlongItsAxes(void)
 {
     worldReset();
     ECAM_Toggle();
 
-    /* an identity matrix, so -v2 is -Y */
-    ecm_stick[0].y = 1.0f;          /* forward */
+    /* an identity matrix, so forward is -v2, which is -Y */
+    ecm_hold(ECAM_KEY_W);
     TIM_gf_dt = 0.5f;
     ECAM_Update();
     okNear(ecam_mtx.Pos.y, 20.0f - ECAM_SPEED * 0.5f, 0.01f,
-           "forward is the matrix's -v2");
+           "W goes along -v2");
     okNear(ecam_mtx.Pos.x, 10.0f, 0.001f, "and nothing sideways");
     okNear(ecam_mtx.Pos.z, 30.0f, 0.001f, "and nothing vertical");
 
-    /* strafe is v1 */
+    /* right is -v1, which is -X */
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].x = 1.0f;
+    ecm_hold(ECAM_KEY_D);
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    okNear(ecam_mtx.Pos.x, 10.0f - ECAM_SPEED * 0.5f, 0.01f,
+           "D goes along -v1");
+    okNear(ecam_mtx.Pos.y, 20.0f, 0.001f, "and nothing forward");
+
+    /* up is -v3, which is -Z */
+    worldReset();
+    ECAM_Toggle();
+    ecm_hold(ECAM_KEY_E);
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    okNear(ecam_mtx.Pos.z, 30.0f - ECAM_SPEED * 0.5f, 0.01f,
+           "E goes along -v3");
+    ECAM_Toggle();
+
+    /* A is the other way from D, S the other way from W, and holding
+       both of a pair is holding neither. */
+    worldReset();
+    ECAM_Toggle();
+    ecm_hold(ECAM_KEY_A);
     TIM_gf_dt = 0.5f;
     ECAM_Update();
     okNear(ecam_mtx.Pos.x, 10.0f + ECAM_SPEED * 0.5f, 0.01f,
-           "strafe is the matrix's v1");
-    okNear(ecam_mtx.Pos.y, 20.0f, 0.001f, "and nothing forward");
-
-    /* lift is v3, on a key rather than a stick */
-    worldReset();
-    ECAM_Toggle();
-    pcINO_keyboardDataBackup[ECAM_KEY_E] = (char)0x80;
-    TIM_gf_dt = 0.5f;
+           "A is the other way from D");
+    ecm_hold(ECAM_KEY_D);
     ECAM_Update();
-    okNear(ecam_mtx.Pos.z, 30.0f + ECAM_SPEED * 0.5f, 0.01f,
-           "lift is the matrix's v3");
+    okNear(ecam_mtx.Pos.x, 10.0f + ECAM_SPEED * 0.5f, 0.01f,
+           "and both at once cancel");
     ECAM_Toggle();
 }
 
-static void keysAndSticksAgree(void)
+/* The three axes have to be a consistent triad, and in this engine
+   right x up is the sight rather than the other way round. A single
+   sign flipped anywhere in ECAM_l_Axes breaks this, which is what
+   makes it worth a check of its own: each axis on its own looks
+   plausible inverted. */
+static void theAxesAreAConsistentTriad(void)
 {
-    float byStick;
-    float byKey;
+    Vec3 forward;
+    Vec3 right;
+    Vec3 up;
+    Vec3 cross;
+    int i;
 
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].y = 1.0f;
-    TIM_gf_dt = 0.5f;
-    ECAM_Update();
-    byStick = ecam_mtx.Pos.y;
-    ECAM_Toggle();
 
-    worldReset();
-    ECAM_Toggle();
-    pcINO_keyboardDataBackup[ECAM_KEY_W] = (char)0x80;
+    /* not from the identity: turned and pitched, so the check is
+       about the triad and not about which way the axes happen to lie */
+    ecm_look(120, -40);
     TIM_gf_dt = 0.5f;
-    ECAM_Update();
-    byKey = ecam_mtx.Pos.y;
-    ECAM_Toggle();
+    for (i = 0; i < 3; i++)
+        ECAM_Update();
 
-    okNear(byKey, byStick, 0.001f, "a key moves as far as a full stick");
+    ECAM_l_Axes(&forward, &right, &up);
+    cross.x = right.y * up.z - right.z * up.y;
+    cross.y = right.z * up.x - right.x * up.z;
+    cross.z = right.x * up.y - right.y * up.x;
+
+    okNear(cross.x, forward.x, 0.01f, "right x up is the sight, in x");
+    okNear(cross.y, forward.y, 0.01f, "and in y");
+    okNear(cross.z, forward.z, 0.01f, "and in z");
+    ECAM_Toggle();
 }
 
 static void speedModifiers(void)
@@ -458,7 +500,7 @@ static void speedModifiers(void)
 
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].y = 1.0f;
+    ecm_hold(ECAM_KEY_W);
     TIM_gf_dt = 0.5f;
     ECAM_Update();
     plain = 20.0f - ecam_mtx.Pos.y;
@@ -466,8 +508,8 @@ static void speedModifiers(void)
 
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].y = 1.0f;
-    pcINO_keyboardDataBackup[ECAM_KEY_LSHIFT] = (char)0x80;
+    ecm_hold(ECAM_KEY_W);
+    ecm_hold(ECAM_KEY_LSHIFT);
     TIM_gf_dt = 0.5f;
     ECAM_Update();
     fast = 20.0f - ecam_mtx.Pos.y;
@@ -475,8 +517,8 @@ static void speedModifiers(void)
 
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].y = 1.0f;
-    pcINO_keyboardDataBackup[ECAM_KEY_LCTRL] = (char)0x80;
+    ecm_hold(ECAM_KEY_W);
+    ecm_hold(ECAM_KEY_LCTRL);
     TIM_gf_dt = 0.5f;
     ECAM_Update();
     slow = 20.0f - ecam_mtx.Pos.y;
@@ -493,7 +535,7 @@ static void movesWithTheClock(void)
 
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].y = 1.0f;
+    ecm_hold(ECAM_KEY_W);
     TIM_gf_dt = 0.1f;
     ECAM_Update();
     shortStep = 20.0f - ecam_mtx.Pos.y;
@@ -501,7 +543,7 @@ static void movesWithTheClock(void)
 
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].y = 1.0f;
+    ecm_hold(ECAM_KEY_W);
     TIM_gf_dt = 0.4f;
     ECAM_Update();
     longStep = 20.0f - ecam_mtx.Pos.y;
@@ -513,7 +555,7 @@ static void movesWithTheClock(void)
        by it somewhere */
     worldReset();
     ECAM_Toggle();
-    ecm_stick[0].y = 1.0f;
+    ecm_hold(ECAM_KEY_W);
     TIM_gf_dt = 0.0f;
     ECAM_Update();
     okNear(ecam_mtx.Pos.y, 20.0f, 0.0001f, "a frame of no time moves nothing");
@@ -525,31 +567,109 @@ static void turningAndLooking(void)
     int i;
     float startY;
 
-    /* yawing a quarter turn should swing forward from -Y to -X or +X */
+    /* The mouse going right turns the camera right. From an identity
+       matrix the sight starts along -Y and right is -X, so a quarter
+       turn right puts the sight where right was: v2 onto +X. A
+       flipped yaw sign lands on -X and would pass any check written
+       on the magnitude, which is what the old one was. */
     worldReset();
     ECAM_Toggle();
-    ecm_stick[1].x = 1.0f;
-    TIM_gf_dt = (3.14159265f / 2.0f) / ECAM_TURNRATE;
+    ecm_look((int)((3.14159265f / 2.0f) / ECAM_LOOKSCALE), 0);
     ECAM_Update();
-    okNear(ecam_mtx.v2.y, 0.0f, 0.01f, "a quarter turn swings the forward axis off Y");
-    okNear(fabsf(ecam_mtx.v2.x), 1.0f, 0.01f, "and onto X");
+    okNear(ecam_mtx.v2.y, 0.0f, 0.01f, "a quarter turn swings the sight off Y");
+    okNear(ecam_mtx.v2.x, 1.0f, 0.01f, "and onto where right was");
     okNear(ecam_mtx.v1.z, 0.0f, 0.01f, "and the horizon stays level");
     ECAM_Toggle();
 
-    /* looking up is limited, however long it is held */
+    /* The mouse going up looks up, which is the sight's Z rising.
+       The mouse reports Y growing downwards, so this is the
+       non-inverted sense. */
     worldReset();
     ECAM_Toggle();
-    ecm_stick[1].y = 1.0f;
+    ecm_look(0, -100);
+    ECAM_Update();
+    ok(-ecam_mtx.v2.z > 0.01f, "the mouse going up looks up");
+    ECAM_Toggle();
+
+    worldReset();
+    ECAM_Toggle();
+    ecm_look(0, 100);
+    ECAM_Update();
+    ok(-ecam_mtx.v2.z < -0.01f, "and going down looks down");
+    ECAM_Toggle();
+
+    /* Nothing looks while the button is up, however far the mouse
+       travels: the pointer has to be usable without dragging the
+       view along with it. */
+    worldReset();
+    ECAM_Toggle();
+    pcINO_mouseDeltaX = 400;
+    pcINO_mouseDeltaY = 400;
+    ECAM_Update();
+    okNear(ecam_mtx.v2.x, 0.0f, 0.0001f,
+           "the mouse does not look with the button up");
+    okNear(ecam_mtx.v2.y, 1.0f, 0.0001f, "the sight is where it started");
+    ECAM_Toggle();
+
+    /* The look button is the right one and not another. The helper
+       above presses whatever the module's own constant says, so
+       without these two checks that constant could be any index at
+       all and every look check here would still pass. 259 is where
+       the platform layer puts the right button: the mouse buttons
+       follow the 256 keys, with the wheel at 256 and 257. */
+    okEq(ECAM_MOUSE_RIGHT, 259, "the look button is the right one");
+
+    worldReset();
+    ECAM_Toggle();
+    pcINO_keyboardDataBackup[258] = (char)0x80;      /* the left one */
+    pcINO_mouseDeltaX = 400;
+    ECAM_Update();
+    okNear(ecam_mtx.v2.x, 0.0f, 0.0001f, "the left button does not look");
+    ECAM_Toggle();
+
+    /* Looking is not scaled by the frame time. A mouse count is a
+       displacement and not a rate, so the same sweep of the hand has
+       to turn the camera by the same amount at any frame rate. */
+    {
+        float atShortFrame;
+        float atLongFrame;
+
+        worldReset();
+        ECAM_Toggle();
+        ecm_look(200, 0);
+        TIM_gf_dt = 0.01f;
+        ECAM_Update();
+        atShortFrame = ecam_mtx.v2.x;
+        ECAM_Toggle();
+
+        worldReset();
+        ECAM_Toggle();
+        ecm_look(200, 0);
+        TIM_gf_dt = 0.4f;
+        ECAM_Update();
+        atLongFrame = ecam_mtx.v2.x;
+        ECAM_Toggle();
+
+        okNear(atLongFrame, atShortFrame, 0.0001f,
+               "looking does not depend on the frame time");
+        ok(atShortFrame > 0.01f, "and it did turn, so that check has teeth");
+    }
+
+    /* looking up is limited, however long it is held. Up is the
+       negative pitch, the sight rising above the horizon. */
+    worldReset();
+    ECAM_Toggle();
+    ecm_look(0, -200);
     TIM_gf_dt = 0.5f;
     for (i = 0; i < 100; i++)
         ECAM_Update();
-    okNear(ecam_pitch, ECAM_PITCHLIMIT, 0.0001f, "looking up stops at the limit");
+    okNear(ecam_pitch, -ECAM_PITCHLIMIT, 0.0001f, "looking up stops at the limit");
 
     /* and down */
-    ecm_stick[1].y = -1.0f;
+    ecm_look(0, 200);
     for (i = 0; i < 100; i++)
         ECAM_Update();
-    okNear(ecam_pitch, -ECAM_PITCHLIMIT, 0.0001f, "looking down stops at the limit");
+    okNear(ecam_pitch, ECAM_PITCHLIMIT, 0.0001f, "looking down stops at the limit");
 
     /* the limit is on the angle, not on the matrix drifting: the
        forward axis must still be a unit vector after all that */
@@ -562,8 +682,8 @@ static void turningAndLooking(void)
 
     /* a camera pointing far up still flies where it points */
     startY = ecam_mtx.Pos.y;
-    ecm_stick[1].y = 0.0f;
-    ecm_stick[0].y = 1.0f;
+    pcINO_keyboardDataBackup[ECAM_MOUSE_RIGHT] = 0;
+    ecm_hold(ECAM_KEY_W);
     TIM_gf_dt = 0.5f;
     ECAM_Update();
     ok(ecam_mtx.Pos.y != startY || ecam_mtx.Pos.z != 30.0f,
@@ -690,14 +810,14 @@ static void theLimitSurvivesASync(void)
     ECAM_SyncToGameCamera();
     okNear(ecm_lookPitch(), 1.0f, 0.01f, "the synced camera is pitched as the game's was");
 
-    ecm_stick[1].y = 1.0f;
+    ecm_look(0, -200);
     TIM_gf_dt = 0.5f;
     for (i = 0; i < 100; i++)
         ECAM_Update();
     okNear(fabsf(ecm_lookPitch()), ECAM_PITCHLIMIT, 0.01f,
            "looking up from a synced pitch still stops at the limit");
 
-    ecm_stick[1].y = -1.0f;
+    ecm_look(0, 200);
     for (i = 0; i < 100; i++)
         ECAM_Update();
     okNear(fabsf(ecm_lookPitch()), ECAM_PITCHLIMIT, 0.01f,
@@ -709,7 +829,7 @@ static void theLimitSurvivesASync(void)
     ECAM_Toggle();
     ecm_pitchedMatrix(&ecm_gaoMtx, -1.0f);
     ECAM_SyncToGameCamera();
-    ecm_stick[1].y = 1.0f;
+    ecm_look(0, -200);
     TIM_gf_dt = 0.5f;
     for (i = 0; i < 100; i++)
         ECAM_Update();
@@ -728,7 +848,7 @@ int main(void)
     survivesTheWorldGoingAway();
     inactiveDoesNothing();
     movesAlongItsAxes();
-    keysAndSticksAgree();
+    theAxesAreAConsistentTriad();
     speedModifiers();
     movesWithTheClock();
     turningAndLooking();

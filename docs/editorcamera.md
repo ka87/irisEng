@@ -49,35 +49,68 @@ test checks.
 
 ## The input gate
 
-While the camera has the input, the game must not see any. The engine
-already has the mechanism: `INO_l_JoystickMask` is what it clears for
-controls it wants ignored, and `INO_Joystick_Move` returns nothing and
-the pad array is zeroed for anything outside it.
+While the camera has the input, the game must not see any — and the
+game reads input in two places, so it is stopped in two.
 
-So `INO_SuspendInput(1)` saves that mask and clears it, and
-`INO_SuspendInput(0)` puts back **exactly what it took** rather than
-the `-1` that would look close enough. A second suspend does nothing
-and a spare release does nothing, so the saved mask cannot be
-overwritten with the cleared one and lost.
+**Through INO**, the engine already has the mechanism:
+`INO_l_JoystickMask` is what it clears for controls it wants ignored,
+and `INO_Joystick_Move` returns nothing and the pad array is zeroed
+for anything outside it. So `INO_SuspendInput(1)` saves that mask and
+clears it, and `INO_SuspendInput(0)` puts back **exactly what it
+took** rather than the `-1` that would look close enough. A second
+suspend does nothing and a spare release does nothing, so the saved
+mask cannot be overwritten with the cleared one and lost.
 
 The keyboard needed one line of its own: `INO_Keyboard_Update` returns
 early while suspended, leaving `INO_Keys` as the `memset` at the top
 of it already left it.
 
+**In the platform layer**, `pcINO_Joystick_Update` stops calling the
+selected control mode's handler at all while the input is taken, so
+the pad the game goes on to read stays as that function's own opening
+`memset` left it.
+
+Zeroing the pad *after* letting a handler run would look equivalent
+and is not. Two of the handlers **accumulate** — the wheel's notches
+in `pcINO_case2_mouseScroll`, the pointer's travel in
+`pcINO_case4_mouseMoveX/Y` — so the running total would sit there
+through the whole time the camera was up and arrive in the game in one
+lump the moment the input was given back. The test drives every one of
+the eight handlers with the gate closed and checks all three
+accumulators come back untouched, and then drives them with it open to
+show that at least one of them really does move.
+
+The two `pcINO_IntKeybDataLink` pad overrides that sit beside the
+handler call are inside the same gate, for the same reason.
+
 **Not covered, deliberately:**
 
 - `INO_v_MemoryCardManager`, which `INO_Update` calls separately, so
   **saving and loading carry on** while the camera is up.
-- the control mode and submode, which stay as the game set them and
-  stay visible to everything that reads them. The gate calls nothing
-  in the platform layer at all, which is what the input harness
-  checks.
+- Alt+F4 and F12, which are read in the same function above the gate:
+  quitting and the command field keep working.
+- the control mode and submode, which are neither read nor written.
+  They stay as the game set them and stay visible to everything that
+  reads them, and nothing about the camera's own controls changes when
+  the game changes them.
 
-The camera reads the device through `pcINO_Joystick_Move` and the
-platform keyboard array — below the gate. That is why suppressing the
-game does not suppress the camera, and it is a layering fact rather
-than a trick: the gate sits between the platform and the game, and the
-camera is on the platform side of it.
+The camera reads the keyboard backup array and the published mouse
+delta — below both gates. That is why suppressing the game does not
+suppress the camera, and it is a layering fact rather than a trick:
+the gates sit between the platform and the game, and the camera is on
+the platform side of them.
+
+### The mouse delta
+
+The control modes read the mouse as `mouseScaled`, which is the raw
+counts times the sensitivity and then interpreted by whichever mode is
+selected. The camera cannot use that — it is exactly the
+control-mode dependency this was meant to drop — so the platform layer
+publishes the raw counts as `pcINO_mouseDeltaX/Y` beside where it
+computes `mouseScaled`. They are counts and not pixels, and the
+buttons are not among them: those go into `pcINO_keyboardDataBackup`
+above the 256 keys, with the wheel at 256 and 257 and the right button
+at **259**.
 
 ## The after-effects
 
@@ -127,16 +160,42 @@ run and no sector or portal is tested, because none of them are on the
 path between the input and the matrix — the camera is a matrix and a
 clock. Everything else in the level keeps updating meanwhile.
 
-### Which way is forward
+### Which way is forward, and which way is right
 
-Not a guess. `CAM_SetObjectMatrixFromCam` fills the camera device's
-`objectMtx` from the view's matrix with the rows permuted and negated,
-and `gameobject.c` takes the camera's sight vector from `objectMtx.v3`.
-Following that through, the view matrix's forward direction is
-**`-v2`**. The other two rows are the lateral and vertical axes, and
-their *signs* are the one thing here that a first run settles rather
-than the code: if strafing or rising comes out inverted, it is a minus
-in `ECAM_l_Axes`.
+**All three axes are derived, none assumed.** The view's matrix is a
+camera-to-world placement — `WOR_View_FollowFather` fills it from the
+object's absolute matrix, and `CAM_Inverse` is what later produces the
+world-to-camera one — so its three rows are the camera's own axes in
+world space. Which row is which comes from
+`CAM_SetObjectMatrixFromCam`, which builds the camera device's matrix
+as
+
+```
+objectMtx = ( -view.v1, -view.v3, -view.v2 )
+```
+
+and in that matrix `+x` is right, `+y` is up and `+z` is the sight:
+`CAM_2Dto3D` unprojects a screen point into exactly that frame, and
+`gameobject.c` takes the sight from `objectMtx.v3`. So
+
+| | |
+|---|---|
+| forward | `-v2` |
+| right | `-v1` |
+| up | `-v3` |
+
+All three negated — which is **not** what the first version of this
+file did. It had forward right and the other two positive, so
+**strafing and Q/E were both inverted**, and because the pitch input
+was inverted as well the camera was unpleasant to fly in three
+independent ways at once.
+
+A single wrong sign is hard to see one axis at a time, since an
+inverted axis still moves along the right line. What catches it is the
+triad: in this engine `right × up` is the sight, and flipping any one
+of the three breaks that identity. The test checks it on a camera that
+has been turned and pitched first, so it is a check on the triad and
+not on where the axes happen to start.
 
 Turning is around the world's up axis, so the horizon stays level
 however far the camera has been flown. Looking up and down is around
@@ -144,20 +203,43 @@ the camera's own lateral axis and is limited to a little under a
 quarter turn, because a camera pointing exactly along the world's up
 axis has no lateral axis left to turn around.
 
+Both rotation senses come out of `math.c` rather than from taste.
+`MATH_RotateMatrix_AroundGlobalZAxis` is `(x cos − y sin, x sin + y
+cos)`, counter-clockwise about `+Z`, so turning **right** is a
+**negative** angle. `MATH_RotateMatrix_AroundLocalXAxis` puts
+`sin(angle)` into `v2.z`, and the pitch counter is `asin` of that same
+component, so a positive angle both **looks down** and raises the
+counter. The mouse reports Y growing downwards, which makes the
+non-inverted sense the plain `+delta`.
+
+The driver implements both rotations for real and they were checked
+against `math.c` term by term, which is what lets the test assert a
+*direction* rather than a magnitude.
+
 ### The controls
 
 | | |
 |---|---|
-| left stick, `W` `A` `S` `D` | forward, back, strafe |
-| right stick, arrow keys | look |
+| `W` `A` `S` `D` | forward, back, strafe |
 | `E` / `Q` | up, down |
+| mouse, **right button held** | look |
 | `Left Shift` | five times faster |
 | `Left Ctrl` | a fifth of the speed |
+| **F8** | on and off |
 | **F9** | take the game camera's position, sight and banking, once |
 
-Speeds and rates are the constants at the top of `editorcamera.c`.
-A key counts as a full stick deflection, which the test checks, so the
-two can be mixed.
+Speeds are in units a second and are scaled by the frame time.
+**Looking is not**: a mouse count is a displacement and not a rate, so
+the same sweep of the hand turns the camera by the same amount at any
+frame rate, which the test checks by driving one movement at two very
+different frame times.
+
+Looking is guarded by the right button so the pointer stays usable on
+its own. Nothing is read from the mouse while the button is up,
+however far it moves.
+
+The constants are at the top of `editorcamera.c`:
+`ECAM_LOOKSCALE` is radians per mouse count.
 
 ## Snapping to the game's camera
 
@@ -212,7 +294,7 @@ written to.
 
 ## The tests
 
-`tests/run_editorcamera.sh`, 76 checks. It includes `editorcamera.c`
+`tests/run_editorcamera.sh`, 88 checks. It includes `editorcamera.c`
 so it can read back which view was taken and where the camera is, and
 it stands in for the engine around it.
 
@@ -221,15 +303,33 @@ did nothing would leave every check about which axis the camera moves
 along passing on code that moved along the wrong one, which is the
 mistake most worth catching in a file like this.
 
+### The controls
+
+Twelve defects were injected into the reworked controls and all twelve
+were caught: the lateral axis as `+v1` and the vertical as `+v3` —
+the two that shipped — forward as `+v2`, the yaw sign flipped, the
+pitch sign flipped, the look not guarded by the right button, the look
+scaled by the frame time, the two mouse axes swapped, and each of the
+three key pairs swapped.
+
+**The button index needed two checks of its own.** The driver's look
+helper presses whatever `ECAM_MOUSE_RIGHT` says, so changing that
+constant moved the test with it and every look case went on passing.
+A check that the constant is 259 and a case that presses the *left*
+button and expects no look between them pin it down, and 258, 260 and
+257 are all caught now.
+
+### The engine around it
+
 Twenty-seven defects were injected one at a time and twenty-six were
 caught:
 the follow not substituted, the follow cleared instead of restored,
 the input not taken, the input not given back, not starting from the
-game's camera, the world-change guard dropped, forward as `+v2`,
-strafe along the vertical axis, the pitch limit dropped, yaw around
-the local axis instead of the world's, the clock ignored, the speed
-modifiers dropped, a view that is not being drawn taken, and a removed
-view taken. Then, for the sync: the pitch not read back, the pitch
+game's camera, the world-change guard dropped, strafe along the
+vertical axis, the pitch limit dropped, yaw around the local axis
+instead of the world's, the clock ignored, the speed modifiers
+dropped, a view that is not being drawn taken, and a removed view
+taken. Then, for the sync: the pitch not read back, the pitch
 sign flipped, only the position adopted, only the orientation
 adopted, a sync with no object assigned, and a sync left running
 every frame instead of once.
@@ -266,6 +366,30 @@ suspend, no guard against a spare release, and the keyboard gate
 dropped. The file's differential test is unaffected, since nothing in
 it suspends input: 2418 cases, 0 differing.
 
+### The platform layer's half of the gate
+
+`tests/run_winio.sh` is a differential harness, and the gate is new
+behaviour with no frozen copy to be compared against — so it is
+mocked open for the 77,000-odd differential cases, which are
+unaffected, and `suspendedInputCase` drives the rewrite alone with it
+closed.
+
+Eighteen cases: two on the gate itself, and the eight handlers twice
+over for the accumulators. Seven injected defects, all caught — the
+gate dropped, the gate inverted, the mouse delta gated along with the
+rest, the two published axes swapped, one of the two pad overrides
+left outside the gate, the pad never cleared at all, and the keyboard
+backup gated too.
+
+**One mutation found a redundant line rather than a missing check.**
+Removing the `memset` the first draft put in the suspended branch
+changed nothing, because `pcINO_Joystick_Update` already clears the
+pad in its first statement and nothing on the suspended path writes to
+it. The line was dropped; the gate alone is the behaviour. The check
+that the pad comes back clear is still worth its place — it is what
+catches a pad override being left outside the gate, and that mutation
+is caught.
+
 **The test found one defect of its own making worth recording.** The
 module's state outlives a case, so a case that left the camera on
 turned it *off* with its first toggle and then measured nothing — the
@@ -274,12 +398,17 @@ Every case now starts from off.
 
 ## Open ends
 
-- **The lateral and vertical signs**, as above: forward is derived,
-  the other two are conventional and a first run settles them.
-- **No mouse look.** The look axis is the right stick or the arrow
-  keys. The mouse is read by the platform layer for the game's own
-  purposes and taking it here would mean deciding what happens to the
-  cursor; the arrow keys were the smaller change.
+- **The pointer is not captured or hidden.** Looking reads the delta
+  the platform layer already publishes, so the cursor goes on moving
+  about the screen while the view turns and can reach the edge of it.
+  Capturing it would mean taking a decision about the cursor that
+  nothing has asked for yet.
+- **`CAM_2Dto3D` disagrees with its two neighbours about the sign of
+  screen Y.** `CAM_2Dto3DCamera` and `CAM_2Dto3DCamera2` both
+  unproject with `centerY - y`, and `CAM_2Dto3D` uses `y - centerY`.
+  The camera's axes here follow the two that agree, and the triad
+  check above is consistent with them. It is worth a look on its own
+  account, but it is not this camera's to fix.
 - **Nothing is drawn.** There is no indicator that the camera is
   detached and no read-out of where it is. The overlay could carry
   both.

@@ -382,3 +382,13 @@ void OVL_CommandHide(void)
     WINIO_Log("OVL_CommandHide");
     winioScript.overlayCommandActive = 0;
 }
+
+/* The gate the free camera closes. The differential cases leave it
+   open, so the frozen copy and the rewrite see the same world; the
+   suspended case in the driver turns it on for the rewrite alone. */
+int WINIO_inputSuspended;
+
+int INO_b_InputSuspended(void)
+{
+    return WINIO_inputSuspended;
+}
