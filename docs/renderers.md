@@ -1153,6 +1153,105 @@ compiled: the pass never begun, never ended, drawing with no renderer,
 the drawing size never asked for, and a vertex layout that no longer
 matches.
 
+## OpenGL draws the overlay
+
+The first thing this renderer draws. Six of its entries are real now —
+the three that make up the 2D pass, and the three that put a glyph
+atlas on screen — so asking for `backend = gl` and pressing the
+overlay's key draws the panel, the raster readouts and their text.
+Everything else is still inert.
+
+The overlay was chosen deliberately: it is 2D, it needs no matrices
+from the engine, and it exercises shaders, vertex buffers, vertex
+arrays and textures end to end. If it draws, the pieces the geometry
+path will need are working.
+
+### The shaders are files
+
+`data/shaders` holds four of them, read at run time:
+
+| | |
+|---|---|
+| `overlay.vert` / `.frag` | flat quads |
+| `overlaytext.vert` / `.frag` | glyphs, sampling the atlas |
+
+Read rather than compiled in, because a shader is the part of a
+renderer most likely to need changing on somebody else's machine, and
+a file that can be edited with the game restarted is worth more than
+one that needs a rebuild. A missing or broken one is reported **with
+the driver's own log**, which is the only thing that names a line, and
+then the pass draws nothing rather than drawing wrongly.
+
+Two programs rather than one with a branch, because their vertex
+layouts differ and a vertex array object describes one layout. A
+branch would still need two of those.
+
+**No projection matrix.** Positions arrive in pixels with the origin
+at the top left, which is what the engine's 2D code has always worked
+in; mapping that to clip space is two lines and the viewport size, so
+the viewport is the only thing passed in.
+
+**`vColor = aColor.bgra` is not a mistake.** The engine's colours are
+packed A8R8G8B8 words, and on a little-endian machine the bytes of one
+are blue, green, red, alpha in that order. Read as four normalised
+bytes that is what the attribute holds, and the swizzle puts them
+back.
+
+### The path rule is shared now
+
+`font.c` resolved `data\fonts` itself. The shader loader wants
+`data\shaders` by the same rule, and two copies of a path rule drift
+in opposite directions — this repository has the scars. It is
+`datapath.c` now, one function, and `font.c` calls it.
+
+### The handle that is not a pointer
+
+A GL texture is a name, an integer, and the interface hands atlases
+back as `void*`. They travel **offset by one**, because zero is "no
+texture" to GL and NULL to everyone else, and an atlas that failed to
+create has to be distinguishable from atlas number zero.
+
+### Why all of this is testable
+
+**Every GL call in the renderer goes through a function pointer**, so
+the pointers can be aimed at mocks and the whole pass driven with no
+driver anywhere. That is worth more than it sounds: a case can say
+"this stage will not compile", "the link fails", "the driver will not
+give a buffer name" — and then check what was *cleaned up*, which on a
+real machine stays invisible until something runs out of objects.
+
+`tests/run_glshader.sh` — **63 checks** under AddressSanitizer, 15 of
+15 mutations caught. Both stages compiled as the right kinds, the
+bytes on disk reaching the driver unchanged, the driver's log printed,
+and every refusal path freeing what it had made.
+
+`tests/run_wingloverlay.sh` — **103 checks** under AddressSanitizer,
+24 of 24 mutations caught. It reads **the real shipped shaders**, so a
+uniform renamed in a `.frag` and not in `wingl.c` is a failing test
+rather than a black overlay on somebody's machine. And the vertex
+layouts are checked against `offsetof` on the actual structs rather
+than against the numbers written in `wingl.c` — an offset written by
+hand and a struct that moved would otherwise agree with each other and
+with nothing else.
+
+Four mutations needed the harnesses sharpened first, and all four were
+the tests being vacuous rather than the code being right:
+
+| mutation | why it passed |
+|---|---|
+| the text batch bound the flat vertex array | nothing checked *which* array a draw bound |
+| width and height swapped in the atlas upload | the test atlas was square |
+| an empty program resolving uniforms | the mock's answer happened to be -1 either way |
+| the shader source left unterminated | the test searched the source for a substring instead of comparing it |
+
+### What is still inert
+
+The geometry, the textures the world is drawn with, the video display
+and the sun's occlusion test. 25 of the 55 entries. The geometry path
+is the next one, and it is the one that needs the fixed-function
+pipeline emulating rather than replacing — texture stages, fog, alpha
+test — which is a larger piece of work than anything here.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

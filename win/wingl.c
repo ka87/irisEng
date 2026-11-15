@@ -1,5 +1,6 @@
 #include "wingl.h"
 #include "glload.h"
+#include "glshader.h"
 #include "../dbg.h"
 
 #include <stdio.h>
@@ -32,6 +33,10 @@ static GL_pfn_CreateContextAttribs gl_createContextAttribs;
 static HMODULE gl_module;
 
 static tGlRenderState gl_state;
+
+/* Defined with the rest of the 2D pass, at the bottom; GL_Close has
+   to call it while the context is still current. */
+static void GL_l_ForgetPass(void);
 static int            gl_available = -1;   /* -1 until asked */
 static int            gl_saidOnce;
 
@@ -326,6 +331,7 @@ int GL_Close(void)
 {
     if (gl_state.context)
     {
+        GL_l_ForgetPass();
         wglMakeCurrent(gl_state.dc, NULL);
         wglDeleteContext(gl_state.context);
         gl_state.context = NULL;
@@ -700,45 +706,246 @@ void GL_SunEffectOnOff(void* sampler, int on)
     (void)on;
 }
 
-/* glyph atlases wait on the texture stage. NULL makes font.c log
-   once and draw no text */
-void* GL_p_CreateAlphaTexture(int width, int height, const uint8_t* coverage)
+/* ===================================================== the 2D pass
+
+   What the overlay draws inside, and the first thing this renderer
+   draws at all. Flat quads and glyphs, in pixels, with no matrix: the
+   vertex shaders take the viewport size and do the mapping in two
+   lines.
+
+   The programs and the buffers are made on first use rather than at
+   startup, so a renderer that is selected and never shows an overlay
+   costs nothing, and a shader that will not compile is reported when
+   somebody asks for the overlay rather than during the load. */
+
+static tGlProgram gl_flatProgram;
+static tGlProgram gl_textProgram;
+static GLint      gl_flatViewport = -1;
+static GLint      gl_textViewport = -1;
+static GLint      gl_textAtlas = -1;
+static GLuint     gl_flatVao;
+static GLuint     gl_textVao;
+static GLuint     gl_quadBuffer;
+static int        gl_passTried;     /* loaded, or tried and failed */
+static int        gl_passReady;
+static int        gl_inPass;
+
+/* The two vertex layouts, described once each. The offsets are
+   written out rather than taken with offsetof so that the shader's
+   attribute numbers and the bytes they read sit on adjacent lines;
+   the test checks them against the structs. */
+static void GL_l_DescribeFlat(void)
 {
-    (void)width;
-    (void)height;
-    (void)coverage;
-    return NULL;
+    GLFN_glBindVertexArray(gl_flatVao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_quadBuffer);
+    GLFN_glEnableVertexAttribArray(0);
+    GLFN_glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                               (GLsizei)sizeof(tGdi_Vertex),
+                               (const void*)(size_t)0);
+    GLFN_glEnableVertexAttribArray(1);
+    GLFN_glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+                               (GLsizei)sizeof(tGdi_Vertex),
+                               (const void*)(size_t)12);
 }
 
-/* nothing was created */
-void GL_DestroyAlphaTexture(void* texture)
+static void GL_l_DescribeText(void)
 {
-    (void)texture;
+    GLFN_glBindVertexArray(gl_textVao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_quadBuffer);
+    GLFN_glEnableVertexAttribArray(0);
+    GLFN_glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                               (GLsizei)sizeof(tGdi_TexturedVertex),
+                               (const void*)(size_t)0);
+    GLFN_glEnableVertexAttribArray(1);
+    GLFN_glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+                               (GLsizei)sizeof(tGdi_TexturedVertex),
+                               (const void*)(size_t)12);
+    GLFN_glEnableVertexAttribArray(2);
+    GLFN_glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
+                               (GLsizei)sizeof(tGdi_TexturedVertex),
+                               (const void*)(size_t)16);
 }
 
-/* The 2D pass. Begin and End have nothing to save or restore while
-   nothing is drawn, and the quads need a shader and a vertex buffer.
-   The overlay calls all three every frame it is visible, so they have
-   to exist; what they do is nothing, and the screen stays as the
-   clear left it. */
+static int GL_l_b_PassReady(void)
+{
+    if (gl_passTried)
+        return gl_passReady;
+    gl_passTried = 1;
+    if (!gl_state.context)
+        return 0;
+
+    if (!GL_b_ProgramLoad(&gl_flatProgram, "overlay.vert", "overlay.frag"))
+        return 0;
+    if (!GL_b_ProgramLoad(&gl_textProgram, "overlaytext.vert", "overlaytext.frag"))
+    {
+        GL_ProgramFree(&gl_flatProgram);
+        return 0;
+    }
+    gl_flatViewport = GL_i_ProgramUniform(&gl_flatProgram, "uViewport");
+    gl_textViewport = GL_i_ProgramUniform(&gl_textProgram, "uViewport");
+    gl_textAtlas = GL_i_ProgramUniform(&gl_textProgram, "uAtlas");
+
+    GLFN_glGenBuffers(1, &gl_quadBuffer);
+    GLFN_glGenVertexArrays(1, &gl_flatVao);
+    GLFN_glGenVertexArrays(1, &gl_textVao);
+    if (!gl_quadBuffer || !gl_flatVao || !gl_textVao)
+    {
+        DBG_OutputDebugString("GL: no buffer or vertex array for the overlay\n");
+        GL_ProgramFree(&gl_flatProgram);
+        GL_ProgramFree(&gl_textProgram);
+        return 0;
+    }
+    GL_l_DescribeFlat();
+    GL_l_DescribeText();
+    GLFN_glBindVertexArray(0);
+
+    gl_passReady = 1;
+    return 1;
+}
+
+/* Gives the pass's programs, buffers and vertex arrays back. A GL
+   name outlives nothing, and the context is about to go. */
+static void GL_l_ForgetPass(void)
+{
+    if (gl_passReady && gl_state.context)
+    {
+        GL_ProgramFree(&gl_flatProgram);
+        GL_ProgramFree(&gl_textProgram);
+        if (gl_quadBuffer)
+            GLFN_glDeleteBuffers(1, &gl_quadBuffer);
+        if (gl_flatVao)
+            GLFN_glDeleteVertexArrays(1, &gl_flatVao);
+        if (gl_textVao)
+            GLFN_glDeleteVertexArrays(1, &gl_textVao);
+    }
+    gl_quadBuffer = 0;
+    gl_flatVao = 0;
+    gl_textVao = 0;
+    gl_flatViewport = -1;
+    gl_textViewport = -1;
+    gl_textAtlas = -1;
+    gl_passTried = 0;
+    gl_passReady = 0;
+    gl_inPass = 0;
+}
+
 void GL_OverlayBegin(void)
 {
+    if (!GL_l_b_PassReady())
+        return;
+
+    /* Flat and over the top of everything: no depth test, no culling,
+       and the usual alpha blend. The depth state is this renderer's
+       own to put back, which End does. */
+    GLFN_glDisable(GL_DEPTH_TEST);
+    GLFN_glDisable(GL_CULL_FACE);
+    GLFN_glEnable(GL_BLEND);
+    GLFN_glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    gl_inPass = 1;
+}
+
+/* One upload and one draw. The overlay hands over its whole batch at
+   once, which is what makes a single stream buffer enough. */
+static void GL_l_DrawBatch(GLuint vao, const void* vertices, int triangleCount,
+                           size_t vertexSize)
+{
+    GLsizei count = (GLsizei)(triangleCount * 3);
+
+    GLFN_glBindVertexArray(vao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_quadBuffer);
+    GLFN_glBufferData(GL_ARRAY_BUFFER, (GLsizei)(vertexSize * (size_t)count),
+                      vertices, GL_STREAM_DRAW);
+    GLFN_glDrawArrays(GL_TRIANGLES, 0, count);
+    GLFN_glBindVertexArray(0);
 }
 
 void GL_OverlayDrawQuads(const void* vertices, int triangleCount)
 {
-    (void)vertices;
-    (void)triangleCount;
+    if (!gl_inPass || !vertices || triangleCount <= 0)
+        return;
+
+    GLFN_glUseProgram(gl_flatProgram.program);
+    if (gl_flatViewport >= 0)
+        GLFN_glUniform4f(gl_flatViewport, (GLfloat)gl_state.width,
+                         (GLfloat)gl_state.height, 0.0f, 0.0f);
+    GL_l_DrawBatch(gl_flatVao, vertices, triangleCount, sizeof(tGdi_Vertex));
 }
 
 void GL_OverlayEnd(void)
 {
+    if (!gl_inPass)
+        return;
+    gl_inPass = 0;
+
+    GLFN_glUseProgram(0);
+    GLFN_glDisable(GL_BLEND);
+
+    /* Back to what the engine asked for, which this renderer tracks
+       because the engine sets it through SetZEnable. */
+    if (gl_state.zEnable)
+        GLFN_glEnable(GL_DEPTH_TEST);
 }
 
-/* needs a shader and an atlas */
-void GL_OverlayDrawTexturedQuads(void* texture, const void* vertices, int triangleCount)
+/* ------------------------------------------------- the glyph atlas
+
+   One byte of coverage per pixel, so a single-channel texture and no
+   conversion. The handle is a GL name, which is an integer rather
+   than a pointer, so it travels as one -- offset by one, because zero
+   is "no texture" to GL and NULL to everyone else. */
+
+void* GL_p_CreateAlphaTexture(int width, int height, const uint8_t* coverage)
 {
-    (void)texture;
-    (void)vertices;
-    (void)triangleCount;
+    GLuint tex = 0;
+
+    if (!gl_state.context || width <= 0 || height <= 0 || !coverage)
+        return NULL;
+
+    GLFN_glGenTextures(1, &tex);
+    if (!tex)
+        return NULL;
+    GLFN_glBindTexture(GL_TEXTURE_2D, tex);
+
+    /* The rows are packed with no padding, which is not the default. */
+    GLFN_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0,
+                      GL_RED, GL_UNSIGNED_BYTE, coverage);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    return (void*)(size_t)(tex + 1);
+}
+
+void GL_DestroyAlphaTexture(void* texture)
+{
+    GLuint tex = (GLuint)((size_t)texture);
+
+    if (!tex || !gl_state.context)
+        return;
+    tex--;
+    GLFN_glDeleteTextures(1, &tex);
+}
+
+void GL_OverlayDrawTexturedQuads(void* texture, const void* vertices,
+                                 int triangleCount)
+{
+    GLuint tex = (GLuint)((size_t)texture);
+
+    if (!gl_inPass || !tex || !vertices || triangleCount <= 0)
+        return;
+    tex--;
+
+    GLFN_glUseProgram(gl_textProgram.program);
+    if (gl_textViewport >= 0)
+        GLFN_glUniform4f(gl_textViewport, (GLfloat)gl_state.width,
+                         (GLfloat)gl_state.height, 0.0f, 0.0f);
+    if (gl_textAtlas >= 0)
+        GLFN_glUniform1i(gl_textAtlas, 0);
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, tex);
+
+    GL_l_DrawBatch(gl_textVao, vertices, triangleCount,
+                   sizeof(tGdi_TexturedVertex));
 }

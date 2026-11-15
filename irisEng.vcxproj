@@ -215,9 +215,11 @@
     <ClCompile Include="gameobject.c" />
     <ClCompile Include="gdi.c" />
     <ClCompile Include="font.c" />
+    <ClCompile Include="datapath.c" />
     <ClCompile Include="win\wingdimath.c" />
     <ClCompile Include="win\wingditex.c" />
     <ClCompile Include="win\glload.c" />
+    <ClCompile Include="win\glshader.c" />
     <ClCompile Include="win\wingl.c" />
     <ClCompile Include="gfx.c" />
     <ClCompile Include="gfx\gfxanotherflare.c" />
@@ -515,10 +517,12 @@
     <ClInclude Include="renderers.h" />
     <ClInclude Include="datafiles.h" />
     <ClInclude Include="font.h" />
+    <ClInclude Include="datapath.h" />
     <ClInclude Include="win\wingdimath.h" />
     <ClInclude Include="win\wingditex.h" />
     <ClInclude Include="win\glcore.h" />
     <ClInclude Include="win\glload.h" />
+    <ClInclude Include="win\glshader.h" />
     <ClInclude Include="win\wingl.h" />
     <ClInclude Include="inputoutput.h" />
     <ClInclude Include="jpeg-6b\cderror.h" />

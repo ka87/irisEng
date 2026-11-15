@@ -1,5 +1,6 @@
 #include "font.h"
 #include "gdi.h"
+#include "datapath.h"
 #include "dbg.h"
 
 #include <stdio.h>
@@ -51,43 +52,6 @@ static tFntFace   fnt_faces[FNT_COUNT];
    meets. */
 #define FNT_MAXQUADS 512
 static tGdi_TexturedVertex fnt_verts[FNT_MAXQUADS * 6];
-
-/* ------------------------------------------------------------ paths */
-
-/* The faces sit next to the executable, under data\fonts, which is
-   where the sideload folder is too -- not the working directory. A
-   game started from a shortcut has a working directory of whatever
-   the shortcut says, and the fonts are part of the install. */
-static int FNT_l_b_Path(const char* name, char* out, size_t n)
-{
-    char  exe[MAX_PATH];
-    char* cut;
-    char  sep;
-    int   len;
-
-    if (!GetModuleFileNameA(NULL, exe, (DWORD)sizeof(exe)))
-        return 0;
-    cut = strrchr(exe, '\\');
-    if (!cut)
-        cut = strrchr(exe, '/');
-    if (!cut)
-        return 0;
-
-    /* Whatever separated the executable's own path separates this
-       one. Windows accepts either, and taking it from what came back
-       rather than assuming a backslash is what lets a test drive this
-       on a host that has only the other. */
-    sep = *cut;
-    *(cut + 1) = 0;
-
-    /* One bounded call rather than a strcat chain: this project
-       builds with the deprecated-call check on, which rejects
-       sprintf and strcat outright, and a single snprintf is the
-       better answer anyway -- it reports truncation instead of
-       quietly producing a short path. */
-    len = snprintf(out, n, "%sdata%cfonts%c%s", exe, sep, sep, name);
-    return len > 0 && (size_t)len < n;
-}
 
 /* ------------------------------------------------------- the library */
 
@@ -265,7 +229,7 @@ static tFntFace* FNT_l_p_Ready(int which)
 
     if (!f->ft)
     {
-        if (!FNT_l_b_Path(f->file, path, sizeof(path)))
+        if (!DPT_b_DataPath("fonts", f->file, path, sizeof(path)))
         {
             f->failed = 1;
             DBG_OutputDebugString("FNT: cannot work out where %s should be\n",

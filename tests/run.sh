@@ -480,6 +480,8 @@ for one in tests/runworld.sh \
            tests/run_wingdimath.sh \
            tests/run_wingditex.sh \
            tests/run_glload.sh \
+           tests/run_glshader.sh \
+           tests/run_wingloverlay.sh \
            tests/ifacecheck.sh
 do
     name=$(basename "$one" .sh)
