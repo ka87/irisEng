@@ -414,8 +414,11 @@ run_strings() {
     # shellcheck disable=SC2086
     $CC $CFLAGS -c strings.c -o "$OUT/strings.new.o" $(defs NEW_ $strings_syms)
     # shellcheck disable=SC2086
+    # The frozen copy still spells the geometry's index buffer the way
+    # geo.h did when it was taken; -D maps the member name rather than
+    # editing a baseline.
     $CC $CFLAGS -c tests/baseline_strings.c -o "$OUT/strings.base.o" \
-        $(defs BASE_ $strings_syms)
+        -Dd3dIndexBuf=indexBuffer $(defs BASE_ $strings_syms)
     $CC $CFLAGS -c tests/strings_mocks.c -o "$OUT/strings.mocks.o"
     # shellcheck disable=SC2086
     $CC $CFLAGS -c tests/strings_runner.c -o "$OUT/strings.rb.o" \

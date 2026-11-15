@@ -2776,8 +2776,10 @@ void STR_Init3DStringExtExt(struct sGameObjectMain* gao, char* str, int maxLette
         uv->u = 0.0;
         uv->v = 0.0;
     }
-    if (gro->d3dIndexBuf)
-        PC_FreeABackCache(gro);
+    // the letters moved, so whatever the renderer cached for this
+    // geometry is stale
+    if (gpst_DX_stDD->b_GeometryHasCache(gro))
+        gpst_DX_stDD->DiscardGeometryCache(gro);
 }
 
 void STR_Init3DString(struct sGameObjectMain* gao, char* str)

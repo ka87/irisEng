@@ -3877,7 +3877,15 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                 NULL);
             D3D_CheckReturnAndRunSettingsApplicationIfProblem(v10);
             
-            geogro->d3dUVVB[0]->lpVtbl->Lock(geogro->d3dUVVB[0], 0, 0, &(v88[0]), 0);
+            /* EDITED, and the only edit in this file for the geometry
+               buffers going opaque in geo.h: every other site here
+               either assigns the handle to a typed local or passes
+               it to a typed parameter, which C converts from void*
+               on its own, so -D carries them. This one subscripts
+               the array and dereferences the result, and a cast
+               cannot be expressed as a member rename. Both copies
+               still read the same object through the same type. */
+            D3D_GEO_UVVB(geogro)[0]->lpVtbl->Lock(D3D_GEO_UVVB(geogro)[0], 0, 0, &(v88[0]), 0);
 
             if (v88[0] < &v88[0][geogro->vertexNum]) {
                 for (i = 0; i < (int)((sizeof(tGeoUVElem) * geogro->vertexNum - 1) >> 2) + 1; i++) {

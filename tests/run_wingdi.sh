@@ -57,6 +57,9 @@ $CC $CFLAGS -c win/wingdi.c -o "$OUT/wingdi.new.o" $(defs NEW_ $syms)
 $CC $CFLAGS -DMAT_ComputeUV_sub_4521A0=BASE_MAT_UV_ComputeAndSetTransform \
     -DD3D_OutputDebugString=GDI_OutputDebugString \
     -Dpd3drp=rendererState \
+    -Dd3dvb2=vertexBuffer2 -Dd3dvb=vertexBuffer \
+    -Dd3dUVVBNum=uvBufferNum -Dd3dUVVB=uvBuffers \
+    -Dd3dIndexBuf=indexBuffer \
     -DtD3dRequestSnapshot=tGdi_SnapshotRequest \
     -DsD3dRequestSnapshot=sGdi_SnapshotRequest \
     -c tests/baseline_wingdi.c -o "$OUT/wingdi.base.o" $(defs BASE_ $syms)

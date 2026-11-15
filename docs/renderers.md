@@ -498,6 +498,126 @@ through the same renderer's type, which is a different situation from
 the edit the sun split needed, where the two sides genuinely stopped
 doing the same thing.
 
+## A geometry's buffers belong to the renderer
+
+`graphicsobjects/geo.h` is included by most of the engine, and it
+opened with `#include <d3d9.h>` for the sake of five members at the
+bottom of `tGEOGRO`: two vertex buffers, an array of UV buffers and
+an index buffer. Those are whatever the renderer that made them says
+they are, and nothing in the engine does anything with them except
+hand them back to be freed.
+
+They are `void*` now — one opaque handle per buffer — so the header
+names no renderer's types and pulls in no renderer's API. They lost
+their Direct3D names with it:
+
+| was | is |
+| --- | --- |
+| `d3dvb` | `vertexBuffer` |
+| `d3dvb2` | `vertexBuffer2` |
+| `d3dUVVBNum` | `uvBufferNum` |
+| `d3dUVVB` | `uvBuffers` |
+| `d3dIndexBuf` | `indexBuffer` |
+
+The renderer's view of its own buffers lives in `win/wingdi.h`, where
+it belongs:
+
+```c
+#define D3D_GEO_VB(g)     ((IDirect3DVertexBuffer9*)(g)->vertexBuffer)
+#define D3D_GEO_VB2(g)    ((IDirect3DVertexBuffer9*)(g)->vertexBuffer2)
+#define D3D_GEO_UVVB(g)   ((IDirect3DVertexBuffer9**)(g)->uvBuffers)
+#define D3D_GEO_IB(g)     ((IDirect3DIndexBuffer9*)(g)->indexBuffer)
+```
+
+Thirteen sites in `win/wingdi.c` dereference a buffer and go through
+those. Three more hand `&geogro->vertexBuffer` and its siblings to
+`CreateVertexBuffer` as out-parameters, which the renderer casts at
+the call, because the address of a cast is not an lvalue. Everywhere
+else a handle is only tested for null, freed, or passed to a Direct3D
+entry point that declares its own parameter type — and C converts
+`void*` to an object pointer on its own, so those needed nothing.
+
+After the change, no translation unit that includes `geo.h` sees
+`d3d9.h` any more — `gcc -H gameobject.c | grep -c d3d9.h` is `0` —
+and `geo.h` itself mentions Direct3D nowhere at all.
+
+### Two entries, because two callers reached past the interface
+
+`strings.c` and `graphicsobjects/geo.c` both called
+`PC_FreeABackCache` directly, which is Direct3D code, and one of them
+first read `gro->d3dIndexBuf` to decide whether to bother. Both now
+ask the interface:
+
+```c
+if (gpst_DX_stDD->b_GeometryHasCache(gro))
+    gpst_DX_stDD->DiscardGeometryCache(gro);
+```
+
+`b_GeometryHasCache` is a question because the caller in `strings.c`
+asked it, not because the engine has any use for the answer beyond
+this.
+
+**The guard is narrower than what it guards.** It tests the index
+buffer alone, exactly as the old code did, while
+`PC_FreeABackCache` checks each of the five buffers for itself and
+frees whichever are there. A geometry holding vertex or UV buffers
+but no index buffer would therefore keep them. That is the existing
+behaviour and it is preserved rather than quietly fixed; the note
+sits beside the implementation in `win/wingdi.c` as well.
+
+**The call in `GEO_FreeContent` gained a null check.** It used to go
+straight to the renderer's function, so it ran whether or not a
+display existed; through the interface it needs `gpst_DX_stDD`. Only
+a renderer can have created a cache, so there is nothing to drop in
+that window, and `geo.c` guards that pointer the same way in three
+other places. `strings.c` needed no such guard: the function it sits
+in already dereferences `gpst_DX_stDD` a few lines above.
+
+### The tests, and the harness that was already there
+
+`run_wingdi.sh` carries the five member renames as `-D` and reports
+no differences across its 5,154 cases and 150,984 compared engine
+calls.
+
+**One line of `tests/baseline_wingdi.c` is edited**, and it is the
+only one the opaque handles cost. `-D` renames a member but cannot
+introduce a cast, and the implicit `void*` conversion covers every
+site in that copy but one: `geogro->d3dUVVB[0]->lpVtbl->Lock(...)`
+subscripts the array and dereferences the result. That line now uses
+`D3D_GEO_UVVB`, with the reason written beside it. The comparison is
+not weakened — both copies read the same object through the same
+renderer's type — which is the same argument as the `pd3drp` edit
+above, and a different situation from the sun split, where the two
+sides genuinely stopped doing the same thing.
+
+The interesting one is `strings.c`, and the first thing to say about
+it is that it was **not** an orphan: `tests/run.sh` builds and drives
+that harness inline, at `run_strings()`, rather than through a
+`tests/run_strings.sh` of its own — as it does for `animation.c` too.
+A standalone script written for it was a duplicate of a live harness,
+which is the drift this repository has been bitten by before, so it
+was deleted and `run.sh`'s own copy got the `-D` mapping it needed.
+The full suite failing on `'tGEOGRO' has no member named
+'d3dIndexBuf'` is what said so.
+
+Driving the new path needed the harness changed, because the old
+guard read a field that every case left null:
+
+- `tests/strings_mocks.c` records both entries, under the old name,
+  so a case's expectations read the same as before.
+- `tests/test_strings.c` sets the cache state per case and runs every
+  case in both, which took it from 27,407 cases to **54,814**.
+
+Without that, dropping the `DiscardGeometryCache` call entirely
+scored clean — the call was never reached. With it, three mutations
+are caught:
+
+| mutation | caught by |
+| --- | --- |
+| the guard dropped | cases with no cache now free one |
+| the call dropped | cases with a cache now keep it |
+| the guard inverted | both halves disagree |
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

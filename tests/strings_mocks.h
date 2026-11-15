@@ -24,3 +24,6 @@ extern int g_matVariant;
 extern int STRCASE_ri[8];
 extern float STRCASE_rf[8];
 extern char STRCASE_rs[1024];
+
+int  STRMOCK_b_GeometryHasCache(struct sGEOGRO* gro);
+void STRMOCK_DiscardGeometryCache(struct sGEOGRO* gro);

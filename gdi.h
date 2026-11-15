@@ -135,6 +135,13 @@ typedef struct sGdi_DisplayData
     void(* SetCanDiffuse2x)(int on);
     void(* SetWantsNoFlare)(int on);
     void(* SetNoZonAlpha)(int on);
+
+    /* What a renderer has cached for a piece of geometry -- vertex
+       and index buffers, whatever they are for that renderer. The
+       engine asks for it to be dropped when the geometry changes
+       under it, and never looks at it. */
+    int (* b_GeometryHasCache)(struct sGEOGRO* gro);
+    void(* DiscardGeometryCache)(struct sGEOGRO* gro);
     uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;

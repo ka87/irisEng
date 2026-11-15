@@ -1959,20 +1959,38 @@ void D3D_CycleThroughVBOs()
     currentVBOSelected = (currentVBOSelected + 1) % 3u;
 }
 
+/* Whether this renderer has anything cached for a piece of geometry.
+   The test is the index buffer alone, which is what the one caller
+   that asks has always tested -- and is narrower than what gets
+   freed: PC_FreeABackCache below also releases the vertex buffers and
+   the UV buffer array. A geometry holding those but no index buffer
+   would therefore be left holding them. Kept as it was; see
+   docs/renderers.md. */
+int D3D_b_GeometryHasCache(struct sGEOGRO* gro)
+{
+    return gro && gro->indexBuffer != NULL;
+}
+
+void D3D_DiscardGeometryCache(struct sGEOGRO* gro)
+{
+    if (gro)
+        PC_FreeABackCache(gro);
+}
+
 void PC_FreeABackCache(struct sGEOGRO* geogro)
 {
     //int v3;
     int i;
 
-    if (geogro->d3dvb)
+    if (geogro->vertexBuffer)
     {
-        geogro->d3dvb->lpVtbl->Release(geogro->d3dvb);
-        geogro->d3dvb = NULL;
+        D3D_GEO_VB(geogro)->lpVtbl->Release(D3D_GEO_VB(geogro));
+        geogro->vertexBuffer = NULL;
     }
-    if (geogro->d3dvb2)
+    if (geogro->vertexBuffer2)
     {
-        geogro->d3dvb2->lpVtbl->Release(geogro->d3dvb2);
-        geogro->d3dvb2 = NULL;
+        D3D_GEO_VB2(geogro)->lpVtbl->Release(D3D_GEO_VB2(geogro));
+        geogro->vertexBuffer2 = NULL;
     }
     /* TODO FIXME
     v3 = *(_DWORD*)a1->gap4b;
@@ -1982,23 +2000,23 @@ void PC_FreeABackCache(struct sGEOGRO* geogro)
         *(_DWORD*)a1->gap4b = 0;
     }
     */
-    if (geogro->d3dUVVB)
+    if (geogro->uvBuffers)
     {
-        for (i = 0; i < geogro->d3dUVVBNum; ++i)
+        for (i = 0; i < geogro->uvBufferNum; ++i)
         {
-            if (geogro->d3dUVVB[i])
+            if (geogro->uvBuffers[i])
             {
-                geogro->d3dUVVB[i]->lpVtbl->Release(geogro->d3dUVVB[i]);
-                geogro->d3dUVVB[i] = NULL;
+                D3D_GEO_UVVB(geogro)[i]->lpVtbl->Release(D3D_GEO_UVVB(geogro)[i]);
+                geogro->uvBuffers[i] = NULL;
             }
         }
-        MEM_Free(geogro->d3dUVVB);
-        geogro->d3dUVVB = NULL;
+        MEM_Free(geogro->uvBuffers);
+        geogro->uvBuffers = NULL;
     }
-    if (geogro->d3dIndexBuf)
+    if (geogro->indexBuffer)
     {
-        geogro->d3dIndexBuf->lpVtbl->Release(geogro->d3dIndexBuf);
-        geogro->d3dIndexBuf = NULL;
+        D3D_GEO_IB(geogro)->lpVtbl->Release(D3D_GEO_IB(geogro));
+        geogro->indexBuffer = NULL;
     }
 }
 
@@ -2857,7 +2875,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
         GEO_UseNormals(geogro);
         if ((gao->flags & 2) == 0 || !((tGameObjectActorObject*)(gao->basic->actorObjectOrVisualObject))->skeletonGroup)
         {
-            if (!geogro->d3dvb)
+            if (!geogro->vertexBuffer)
             {
                 stride = D3D_CalculateStride(D3DFVF_XYZ);
                 result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
@@ -2866,14 +2884,14 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                     D3DUSAGE_WRITEONLY,
                     D3DFVF_XYZ,
                     D3DPOOL_DEFAULT,
-                    &geogro->d3dvb,
+                    (IDirect3DVertexBuffer9**)&geogro->vertexBuffer,
                     NULL);
                 D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
-                geogro->d3dvb->lpVtbl->Lock(geogro->d3dvb, 0, 0, &locked, 0);
+                D3D_GEO_VB(geogro)->lpVtbl->Lock(D3D_GEO_VB(geogro), 0, 0, &locked, 0);
                 memcpy(locked, geogro->vertices, stride * geogro->vertexNum);
-                geogro->d3dvb->lpVtbl->Unlock(geogro->d3dvb);
+                D3D_GEO_VB(geogro)->lpVtbl->Unlock(D3D_GEO_VB(geogro));
             }
-            if (!geogro->d3dvb2)
+            if (!geogro->vertexBuffer2)
             {
                 stride = D3D_CalculateStride(D3DFVF_NORMAL);
                 result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
@@ -2882,18 +2900,18 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                     D3DUSAGE_WRITEONLY,
                     D3DFVF_NORMAL,
                     D3DPOOL_DEFAULT,
-                    &geogro->d3dvb2,
+                    (IDirect3DVertexBuffer9**)&geogro->vertexBuffer2,
                     NULL);
                 D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
-                geogro->d3dvb2->lpVtbl->Lock(geogro->d3dvb2, 0, 0, &locked, 0);
+                D3D_GEO_VB2(geogro)->lpVtbl->Lock(D3D_GEO_VB2(geogro), 0, 0, &locked, 0);
                 memcpy(locked, geogro->normals, stride * geogro->vertexNum);
-                geogro->d3dvb2->lpVtbl->Unlock(geogro->d3dvb2);
+                D3D_GEO_VB2(geogro)->lpVtbl->Unlock(D3D_GEO_VB2(geogro));
             }
         }
-        if (!geogro->d3dUVVB && geogro->uvNum)
+        if (!geogro->uvBuffers && geogro->uvNum)
         {
-            geogro->d3dUVVBNum = 1;
-            geogro->d3dUVVB = (IDirect3DVertexBuffer9**)MEM_p_Alloc(4u);
+            geogro->uvBufferNum = 1;
+            geogro->uvBuffers = (void**)MEM_p_Alloc(4u);
             stride = D3D_CalculateStride(D3DFVF_TEX1);
             result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
                 D3DRenderParams.d3dDev,
@@ -2901,11 +2919,11 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                 D3DUSAGE_WRITEONLY,
                 D3DFVF_TEX1,
                 D3DPOOL_DEFAULT,
-                &(geogro->d3dUVVB[0]),
+                &(D3D_GEO_UVVB(geogro)[0]),
                 NULL);
             D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
 
-            geogro->d3dUVVB[0]->lpVtbl->Lock(geogro->d3dUVVB[0], 0, 0, (void**)&uvBufs[0], 0);
+            D3D_GEO_UVVB(geogro)[0]->lpVtbl->Lock(D3D_GEO_UVVB(geogro)[0], 0, 0, (void**)&uvBufs[0], 0);
 
             if (geogro->vertexNum)
             {
@@ -2923,7 +2941,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                 {
                     strips = &block->triangleStrips[strip];
                     found = -1;
-                    for (buf = 0; buf < geogro->d3dUVVBNum; buf++)
+                    for (buf = 0; buf < geogro->uvBufferNum; buf++)
                     {
                         uv = uvBufs[buf];
                         if (strips->triangleStripElemNum == 0)
@@ -2967,9 +2985,9 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                         strips->vbIdx = found;
                         continue;
                     }
-                    newBuf = geogro->d3dUVVBNum;
-                    geogro->d3dUVVBNum = newBuf + 1;
-                    geogro->d3dUVVB = (IDirect3DVertexBuffer9**)MEM_p_Realloc(geogro->d3dUVVB, 4 * (newBuf + 1));
+                    newBuf = geogro->uvBufferNum;
+                    geogro->uvBufferNum = newBuf + 1;
+                    geogro->uvBuffers = (void**)MEM_p_Realloc(geogro->uvBuffers, 4 * (newBuf + 1));
                     stride = D3D_CalculateStride(D3DFVF_TEX1);
                     result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
                         D3DRenderParams.d3dDev,
@@ -2977,10 +2995,10 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                         D3DUSAGE_WRITEONLY,
                         D3DFVF_TEX1,
                         D3DPOOL_DEFAULT,
-                        &geogro->d3dUVVB[newBuf],
+                        &D3D_GEO_UVVB(geogro)[newBuf],
                         NULL);
                     D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
-                    geogro->d3dUVVB[newBuf]->lpVtbl->Lock(geogro->d3dUVVB[newBuf], 0, 0, (void**)&uvBufs[newBuf], 0);
+                    D3D_GEO_UVVB(geogro)[newBuf]->lpVtbl->Lock(D3D_GEO_UVVB(geogro)[newBuf], 0, 0, (void**)&uvBufs[newBuf], 0);
                     uv = uvBufs[newBuf];
                     if (geogro->vertexNum)
                     {
@@ -3000,10 +3018,10 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                     strips->vbIdx = newBuf;
                 }
             }
-            for (i = 0; i < geogro->d3dUVVBNum; ++i)
-                geogro->d3dUVVB[i]->lpVtbl->Unlock(geogro->d3dUVVB[i]);
+            for (i = 0; i < geogro->uvBufferNum; ++i)
+                D3D_GEO_UVVB(geogro)[i]->lpVtbl->Unlock(D3D_GEO_UVVB(geogro)[i]);
         }
-        if (geogro->d3dIndexBuf || (int)geogro->triangleChunkCount <= 0)
+        if (geogro->indexBuffer || (int)geogro->triangleChunkCount <= 0)
             return;
         total = 0;
         for (chunk = 0; chunk < (int)geogro->triangleChunkCount; chunk++)
@@ -3012,7 +3030,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
             if (!block)
                 continue;
             streams = 0;
-            for (buf = 0; buf < geogro->d3dUVVBNum; buf++)
+            for (buf = 0; buf < geogro->uvBufferNum; buf++)
             {
                 streamStart = total;
                 for (strip = 0; strip < (int)block->triangleStripNum; strip++)
@@ -3042,10 +3060,10 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
             D3DUSAGE_WRITEONLY,
             D3DFMT_INDEX16,
             D3DPOOL_DEFAULT,
-            &geogro->d3dIndexBuf,
+            (IDirect3DIndexBuffer9**)&geogro->indexBuffer,
             NULL);
         D3D_CheckReturnAndRunSettingsApplicationIfProblem(result);
-        geogro->d3dIndexBuf->lpVtbl->Lock(geogro->d3dIndexBuf, 0, 0, (void**)&out, 0); // ide uj v75 kéne
+        D3D_GEO_IB(geogro)->lpVtbl->Lock(D3D_GEO_IB(geogro), 0, 0, (void**)&out, 0); // ide uj v75 kéne
         for (chunk = 0; chunk < (int)geogro->triangleChunkCount; chunk++)
         {
             block = geogro->triangleChunks[chunk].triangleStripBlock;
@@ -3054,7 +3072,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
             word = sizeof(tD3dStreamInfoElem) * block->streamsNum;
             streams = 0;
             block->d3dStreamInfoElems = (tD3dStreamInfoElem*)MEM_p_Alloc(word);
-            for (buf = 0; buf < geogro->d3dUVVBNum; buf++)
+            for (buf = 0; buf < geogro->uvBufferNum; buf++)
             {
                 if ((unsigned int)streams >= block->streamsNum)
                     break;
@@ -3094,7 +3112,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                 }
             }
         }
-        geogro->d3dIndexBuf->lpVtbl->Unlock(geogro->d3dIndexBuf);
+        D3D_GEO_IB(geogro)->lpVtbl->Unlock(D3D_GEO_IB(geogro));
     }
 }
 
@@ -4311,9 +4329,9 @@ static void D3D_DrawIndexedStreams(tGEOGRO* geogro, tGeoWholeTriangleStripBlock*
         info = &block->d3dStreamInfoElems[i];
         if (GDI_gi_TextureUVMode != 2)
         {
-            if (geogro->d3dUVVB)
+            if (geogro->uvBuffers)
             {
-                D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, geogro->d3dUVVB[info->vbIdx], 0, 8);
+                D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, geogro->uvBuffers[info->vbIdx], 0, 8);
                 D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(
                     D3DRenderParams.d3dDev,
                     D3DRenderParams.vertexDeclarationIFd3dUVVBISnotNull);
@@ -4380,7 +4398,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         if (verticesIN == geogro->vertices && (gpst_DX_stDD->flags & 0x400) != 0)
             mismatch = 1;
         block = triangleChunks->triangleStripBlock;
-        immediate = !geogro->d3dIndexBuf || !block || mismatch;
+        immediate = !geogro->indexBuffer || !block || mismatch;
     }
     if (immediate)
     {
@@ -4467,7 +4485,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
     }
     if (verticesIN == geogro->vertices)
     {
-        D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, geogro->d3dvb, 0, 12);
+        D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 0, geogro->vertexBuffer, 0, 12);
     }
     else
     {
@@ -4579,7 +4597,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
     {
         if (verticesIN == geogro->vertices)
         {
-            D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, geogro->d3dvb2, 0, 12);
+            D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 2, geogro->vertexBuffer2, 0, 12);
         }
         else
         {
@@ -4616,7 +4634,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
             D3DRenderParams.d3dVertexDeclaration);
     }
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 3, 0, 0, 0);
-    D3DRenderParams.d3dDev->lpVtbl->SetIndices(D3DRenderParams.d3dDev, geogro->d3dIndexBuf);
+    D3DRenderParams.d3dDev->lpVtbl->SetIndices(D3DRenderParams.d3dDev, geogro->indexBuffer);
     D3D_DrawIndexedStreams(geogro, block);
     if (GDI_gi_TextureUVMode != 5 && GDI_gi_TextureUVMode != 4
         && !D3DRenderParams.renderTargetBackup

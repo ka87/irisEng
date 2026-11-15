@@ -1,7 +1,14 @@
 #pragma once
-#include <d3d9.h>
 #include "gro_common.h"
 #include "../common.h"
+
+/* The renderer's buffers for a piece of geometry live in tGEOGRO
+   below. They belong to whichever renderer made them, they mean
+   nothing to anyone else, and nothing in the engine does anything
+   with them but hand them back -- so they are opaque handles here,
+   and this header, which most of the engine includes, names no
+   renderer's types and needs no renderer's API. Each renderer casts
+   them to its own. */
 
 typedef struct sGeoTriangleStripElem
 {
@@ -153,12 +160,13 @@ typedef struct sGEOGRO
     unsigned int spritesNum;
     struct sGeoSprites* spritesPtr;
     struct sCobOK3* collisionPtr; /* struct sGeoCollisionMain */
-    IDirect3DVertexBuffer9* d3dvb;
-    IDirect3DVertexBuffer9* d3dvb2;
+    /* the renderer's own, opaque to everything outside it */
+    void* vertexBuffer;
+    void* vertexBuffer2;
     uint8_t gap4b[4]; // ez mi??? a PC_FreeABackCache-nél ez a release ki van kommentezve mert nemtudom mi TODO FIXME
-    int d3dUVVBNum;
-    IDirect3DVertexBuffer9** d3dUVVB;
-    IDirect3DIndexBuffer9* d3dIndexBuf;
+    int uvBufferNum;
+    void** uvBuffers;
+    void* indexBuffer;
 } tGEOGRO;
 
 void GEO_MRM_SetNumberOfPoints_Percent(struct sGEOGRO* geo, float quality);

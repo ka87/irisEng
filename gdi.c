@@ -864,6 +864,8 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->SetCanDiffuse2x = D3D_SetCanDiffuse2x;
     dd->SetWantsNoFlare = D3D_SetWantsNoFlare;
     dd->SetNoZonAlpha = D3D_SetNoZonAlpha;
+    dd->b_GeometryHasCache = D3D_b_GeometryHasCache;
+    dd->DiscardGeometryCache = D3D_DiscardGeometryCache;
 }
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)

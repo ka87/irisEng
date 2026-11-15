@@ -415,6 +415,16 @@ uint32_t  D3D_DepthBlurBlurFuncCalc2(float depth);
 void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* sun);
 void D3D_PrepareWaterRendering();
 void D3D_PC_AE(tWorld* param1);
+/* A geometry's buffers are opaque handles in geo.h, because they
+   belong to whichever renderer made them. These are this
+   renderer's view of its own. */
+#define D3D_GEO_VB(g)     ((IDirect3DVertexBuffer9*)(g)->vertexBuffer)
+#define D3D_GEO_VB2(g)    ((IDirect3DVertexBuffer9*)(g)->vertexBuffer2)
+#define D3D_GEO_UVVB(g)   ((IDirect3DVertexBuffer9**)(g)->uvBuffers)
+#define D3D_GEO_IB(g)     ((IDirect3DIndexBuffer9*)(g)->indexBuffer)
+
+int  D3D_b_GeometryHasCache(struct sGEOGRO* gro);
+void D3D_DiscardGeometryCache(struct sGEOGRO* gro);
 void PC_FreeABackCache(struct sGEOGRO* geogro);
 void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* world);
 
