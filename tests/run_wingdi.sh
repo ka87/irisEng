@@ -87,11 +87,18 @@ $CC $CFLAGS -c projection.c -o "$OUT/wingdi.proj.o"
 # nothing to stand in for. The frozen copy still has its own inline
 # copy of both.
 $CC $CFLAGS -c geovertex.c -o "$OUT/wingdi.gvx.o"
+# rasterstate.c states the per-draw flags word's meaning once, for
+# both renderers. Unlike projection.c and geovertex.c it is not a move:
+# this renderer still reads the bits itself, and the driver's
+# rasterStateCase compares the two readings over every combination of
+# them. Linked for that check, which is why it is pure.
+$CC $CFLAGS -c rasterstate.c -o "$OUT/wingdi.rst.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"
 $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
 $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
     "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" "$OUT/wingdi.gvx.o" \
-    "$OUT/wingdi.profiler.o" "$OUT/wingdi.mocks.o" "$OUT/wingdi.drv.o" \
+    "$OUT/wingdi.rst.o" "$OUT/wingdi.profiler.o" "$OUT/wingdi.mocks.o" \
+    "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm
 "$OUT/wingdi"

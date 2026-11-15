@@ -37,9 +37,14 @@ $CC $CFLAGS -fsanitize=address -c datapath.c -o "$OUT/wgo.datapath.o"
 # so those two are defined by the driver instead.
 $CC $CFLAGS -fsanitize=address -c projection.c -o "$OUT/wgo.proj.o"
 $CC $CFLAGS -fsanitize=address -c geovertex.c -o "$OUT/wgo.gvx.o"
+# rasterstate.c reads the material flags the renderer acts on. Pure,
+# so linked rather than mocked; tests/run_wingdi.sh is where that
+# reading is checked against the other renderer.
+$CC $CFLAGS -fsanitize=address -c rasterstate.c -o "$OUT/wgo.rst.o"
 $CC $CFLAGS -fsanitize=address -c win/wingdimath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \
+    "$OUT/wgo.rst.o" \
     "$OUT/wgo.wgmath.o" "$OUT/wgo.math.o" -o "$OUT/wgo" -lm
 "$OUT/wgo"

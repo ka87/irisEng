@@ -12,6 +12,29 @@ driver for. They are not used by the Direct3D renderer at all.
 |---|---|
 | `overlay.vert` / `.frag` | the debug overlay's flat quads |
 | `overlaytext.vert` / `.frag` | glyphs, sampling the font atlas |
+| `geometry.vert` / `.frag` | the world, textured and modulated |
+
+## What the world's fragment shader is doing that the pipeline cannot
+
+Core OpenGL dropped the fixed-function texture stage and the alpha
+test, and the engine uses both. So `geometry.frag` does them:
+
+* the texture is **modulated** by the vertex colour -- all four
+  channels, which is what the other renderer's stage computes -- and
+  `uDiffuse2x` doubles the colour but not the alpha, as that renderer's
+  `MODULATE2X` does;
+* `uTextured` says whether there is a texture at all. A material can
+  ask for none, and then the vertex colour is the colour. The engine
+  says so by handing the renderer an index of `-1`, not by binding
+  nothing;
+* `uAlphaMode` and `uAlphaRef` are the alpha test, done with `discard`
+  so that the depth write is suppressed too. The two modes are the two
+  senses the material's flags select between.
+
+A uniform renamed here and not in `win/wingl.c` is a failing test
+rather than a black world: `tests/run_wingloverlay.sh` loads these
+real files and checks the names the renderer asks for. What that test
+cannot see is the arithmetic, because it has no GL to run it on.
 
 ## Two programs rather than one with a branch
 
