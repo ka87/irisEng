@@ -1,6 +1,6 @@
 #include "overlay.h"
 #include "../font.h"
-#include "wingdi.h"
+#include "../gdi.h"
 #include "../profiler.h"
 #include "../time.h"
 #include "../dbg.h"
@@ -31,7 +31,7 @@
 #define OVL_TEXT       0xFFFFFFFF
 #define OVL_CARET      0xFF40FF40
 
-static tVertexAndColor ovl_verts[OVL_MAXQUADS * 6];
+static tGdi_Vertex ovl_verts[OVL_MAXQUADS * 6];
 static int ovl_vertCount = 0;
 
 // The font draws straight through its own sprite, so a string issued
@@ -52,7 +52,7 @@ static int  ovl_caretTick = 0;
 
 static void OVL_l_Quad(unsigned int color, float x, float y, float w, float h)
 {
-    tVertexAndColor* q;
+    tGdi_Vertex* q;
     float right;
     float bottom;
     int i;
@@ -64,15 +64,15 @@ static void OVL_l_Quad(unsigned int color, float x, float y, float w, float h)
     right = x + w;
     bottom = y + h;
 
-    q[0].v.x = x;      q[0].v.y = y;
-    q[1].v.x = right;  q[1].v.y = y;
-    q[2].v.x = x;      q[2].v.y = bottom;
-    q[3].v.x = x;      q[3].v.y = bottom;
-    q[4].v.x = right;  q[4].v.y = y;
-    q[5].v.x = right;  q[5].v.y = bottom;
+    q[0].pos.x = x;      q[0].pos.y = y;
+    q[1].pos.x = right;  q[1].pos.y = y;
+    q[2].pos.x = x;      q[2].pos.y = bottom;
+    q[3].pos.x = x;      q[3].pos.y = bottom;
+    q[4].pos.x = right;  q[4].pos.y = y;
+    q[5].pos.x = right;  q[5].pos.y = bottom;
     for (i = 0; i < 6; i++)
     {
-        q[i].v.z = 0.0f;
+        q[i].pos.z = 0.0f;
         q[i].color = (int)color;
     }
     ovl_vertCount += 6;
@@ -174,8 +174,11 @@ static void OVL_l_FlushText(void)
 static float OVL_l_PanelX(void)
 {
     float x;
+    int   w = 0;
+    int   h = 0;
 
-    x = (float)D3DRenderParams.d3dViewPort.Width - OVL_PANELW - OVL_PANELMARGIN;
+    gpst_DX_stDD->GetDrawingSize(&w, &h);
+    x = (float)w - OVL_PANELW - OVL_PANELMARGIN;
     if (x < OVL_PANELMARGIN)
         x = OVL_PANELMARGIN;
     return x;
@@ -421,9 +424,12 @@ static void OVL_l_CommandField(void)
     float textTop;
     int fontH;
     int caretX;
+    int drawW = 0;
+    int drawH = 0;
     char line[OVL_CMDMAX + 4];
 
-    viewWidth = (float)D3DRenderParams.d3dViewPort.Width;
+    gpst_DX_stDD->GetDrawingSize(&drawW, &drawH);
+    viewWidth = (float)drawW;
     w = viewWidth - 2.0f * OVL_FIELDTOP;
     x = OVL_FIELDTOP;
 
@@ -460,17 +466,20 @@ void OVL_Draw(void)
     float height;
     int rastersOn;
     int bottom;
+    int drawW = 0;
+    int drawH = 0;
 
-    if (!D3DRenderParams.d3dDev)
+    if (!gpst_DX_stDD || !gpst_DX_stDD->b_Ready())
         return;
     rastersOn = PRO_rasterDetailPage || PRO_rasterWindowIsOn;
     if (!rastersOn && !ovl_cmdActive)
         return;
 
+    gpst_DX_stDD->GetDrawingSize(&drawW, &drawH);
     ovl_vertCount = 0;
     ovl_textCount = 0;
 
-    D3D_OverlayBegin();
+    gpst_DX_stDD->OverlayBegin();
 
     if (rastersOn)
     {
@@ -479,8 +488,8 @@ void OVL_Draw(void)
         bottom = PRO_rasterDetailPage ? OVL_l_RastersDetail() : OVL_l_RastersSummary();
         OVL_l_PanelText("Rasters", 10, 6, OVL_GREEN);
         height = (float)bottom + 8.0f;
-        if (OVL_PANELY + height > (float)D3DRenderParams.d3dViewPort.Height - 8.0f)
-            height = (float)D3DRenderParams.d3dViewPort.Height - 8.0f - OVL_PANELY;
+        if (OVL_PANELY + height > (float)drawH - 8.0f)
+            height = (float)drawH - 8.0f - OVL_PANELY;
         OVL_l_RoundRectFill(OVL_BACKDROP, OVL_l_PanelX(), OVL_PANELY, OVL_PANELW,
                             height, OVL_RADIUS);
     }
@@ -488,9 +497,9 @@ void OVL_Draw(void)
         OVL_l_CommandField();
 
     // Shapes as one batch, then the strings on top of them.
-    D3D_OverlayDrawQuads(ovl_verts, ovl_vertCount / 3);
+    gpst_DX_stDD->OverlayDrawQuads(ovl_verts, ovl_vertCount / 3);
     ovl_vertCount = 0;
     OVL_l_FlushText();
 
-    D3D_OverlayEnd();
+    gpst_DX_stDD->OverlayEnd();
 }

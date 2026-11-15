@@ -1682,13 +1682,21 @@ void D3D_OverlayDrawTexturedQuads(void* texture, const void* vertices,
     textureStageTypeConfig[0].d3dTextureID = -1;
 }
 
-void D3D_OverlayDrawQuads(void* verts, int triangleCount)
+void D3D_OverlayDrawQuads(const void* verts, int triangleCount)
 {
     if (triangleCount <= 0)
         return;
     D3DRenderParams.d3dDev->lpVtbl->DrawPrimitiveUP(
         D3DRenderParams.d3dDev, D3DPT_TRIANGLELIST, triangleCount,
-        verts, sizeof(tVertexAndColor));
+        verts, sizeof(tGdi_Vertex));
+}
+
+/* Whether this renderer has a device to draw through. The overlay
+   runs from the message loop and can be asked to draw before one
+   exists or after one has gone. */
+int D3D_b_Ready(void)
+{
+    return D3DRenderParams.d3dDev != NULL;
 }
 
 void D3D_OverlayEnd(void)

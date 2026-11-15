@@ -873,6 +873,10 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->SetCanDiffuse2x = D3D_SetCanDiffuse2x;
     dd->SetWantsNoFlare = D3D_SetWantsNoFlare;
     dd->SetNoZonAlpha = D3D_SetNoZonAlpha;
+    dd->b_Ready = D3D_b_Ready;
+    dd->OverlayBegin = D3D_OverlayBegin;
+    dd->OverlayDrawQuads = D3D_OverlayDrawQuads;
+    dd->OverlayEnd = D3D_OverlayEnd;
     dd->p_CreateAlphaTexture = D3D_p_CreateAlphaTexture;
     dd->DestroyAlphaTexture = D3D_DestroyAlphaTexture;
     dd->OverlayDrawTexturedQuads = D3D_OverlayDrawTexturedQuads;
@@ -933,6 +937,10 @@ static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
     dd->SetNoZonAlpha = GL_SetNoZonAlpha;
     dd->b_GeometryHasCache = GL_b_GeometryHasCache;
     dd->DiscardGeometryCache = GL_DiscardGeometryCache;
+    dd->b_Ready = GL_b_Ready;
+    dd->OverlayBegin = GL_OverlayBegin;
+    dd->OverlayDrawQuads = GL_OverlayDrawQuads;
+    dd->OverlayEnd = GL_OverlayEnd;
     dd->p_CreateAlphaTexture = GL_p_CreateAlphaTexture;
     dd->DestroyAlphaTexture = GL_DestroyAlphaTexture;
     dd->OverlayDrawTexturedQuads = GL_OverlayDrawTexturedQuads;
