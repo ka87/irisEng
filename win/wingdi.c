@@ -10,6 +10,7 @@
 #include "wininputoutput.h"
 #include "../resource.h"
 #include "wingdi.h"
+#include "../font.h"
 #include "overlay.h"
 #include "../editorcamera.h"
 #include "../profiler.h"
@@ -1377,115 +1378,6 @@ void D3D_SetInitialTextureStageStates()
     }
 }
 
-void D3D_RastersCreateFont()
-{
-    D3DXFONT_DESCA desc;
-
-    desc.Width = 0;
-    desc.Italic = 0;
-    desc.CharSet = 0;
-    desc.OutputPrecision = 0;
-    desc.Quality = 0;
-    desc.PitchAndFamily = 0;
-    memset(desc.FaceName, 0, sizeof(desc.FaceName));
-    strcpy(desc.FaceName, "Arial");
-    desc.Height = 10;
-    desc.Weight = 400;
-    desc.MipLevels = 1;
-    D3DXCreateFontIndirectA(D3DRenderParams.d3dDev, &desc, &d3dxfontIF);
-}
-
-// The overlay's own font. The rasters one is Arial at ten pixels,
-// which was right for a small window and is unreadable as a command
-// line, so this is a monospaced face scaled to the viewport. The
-// height is recomputed each time it is used and the font rebuilt when
-// it changes, which is what carries it across a resolution change.
-static int D3D_OverlayFontWantedHeight()
-{
-    int height;
-
-    height = (int)D3DRenderParams.d3dViewPort.Height / 30;
-    if (height < 14)
-        height = 14;
-    if (height > 44)
-        height = 44;
-    return height;
-}
-
-static void D3D_OverlayFontReady()
-{
-    D3DXFONT_DESCA desc;
-    int height;
-
-    height = D3D_OverlayFontWantedHeight();
-    if (d3dxOverlayFontIF && d3dOverlayFontHeight == height)
-        return;
-    if (d3dxOverlayFontIF)
-    {
-        d3dxOverlayFontIF->lpVtbl->Release(d3dxOverlayFontIF);
-        d3dxOverlayFontIF = NULL;
-    }
-    memset(&desc, 0, sizeof(desc));
-    strcpy(desc.FaceName, "Courier New");
-    desc.Height = height;
-    desc.Weight = 400;
-    desc.MipLevels = 1;
-    D3DXCreateFontIndirectA(D3DRenderParams.d3dDev, &desc, &d3dxOverlayFontIF);
-    d3dOverlayFontHeight = height;
-}
-
-int D3D_OverlayFontHeight()
-{
-    D3D_OverlayFontReady();
-    return d3dOverlayFontHeight;
-}
-
-void D3D_OverlayDrawText(char* text, int x, int y, D3DCOLOR color)
-{
-    RECT area;
-
-    D3D_OverlayFontReady();
-    if (!d3dxOverlayFontIF)
-        return;
-    area.left = x;
-    area.top = y;
-    area.right = 10000;
-    area.bottom = 10000;
-    d3dxOverlayFontIF->lpVtbl->DrawTextA(d3dxOverlayFontIF, NULL, text, -1, &area, 0, color);
-}
-
-// The width the string will occupy, measured rather than guessed: the
-// caret sits at the end of the line, and a per-character estimate
-// drifts further from the text with every character typed.
-int D3D_OverlayTextWidth(char* text)
-{
-    RECT area;
-
-    D3D_OverlayFontReady();
-    if (!d3dxOverlayFontIF)
-        return 0;
-    area.left = 0;
-    area.top = 0;
-    area.right = 0;
-    area.bottom = 0;
-    d3dxOverlayFontIF->lpVtbl->DrawTextA(d3dxOverlayFontIF, NULL, text, -1, &area,
-                                         DT_CALCRECT, 0);
-    return area.right - area.left;
-}
-
-void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color)
-{
-    RECT area;
-
-    area.left = x;
-    area.right = 10000;
-    area.bottom = 10000;
-    area.top = y;
-    if (!d3dxfontIF)
-        D3D_RastersCreateFont();
-    d3dxfontIF->lpVtbl->DrawTextA(d3dxfontIF, NULL, text, -1, &area, 0, color);
-}
-
 void D3D_RastersDrawUPStream()
 {
     D3DRenderParams.d3dDev->lpVtbl->DrawPrimitiveUP(D3DRenderParams.d3dDev, D3DPT_TRIANGLELIST,
@@ -1695,6 +1587,92 @@ void D3D_OverlayBegin(void)
     D3D_SetTexture(3, -1);
 }
 
+/* A glyph atlas. The coverage arrives as one byte per pixel; this
+   becomes an A8R8G8B8 texture with white where the glyph is and the
+   coverage in alpha, so a MODULATE stage takes the colour from the
+   vertex and the shape from here. A8 would be half the memory and is
+   a format a card may decline, which is not worth finding out about
+   on somebody else's machine. */
+void* D3D_p_CreateAlphaTexture(int width, int height, const uint8_t* coverage)
+{
+    IDirect3DTexture9* tex = NULL;
+    D3DLOCKED_RECT     locked;
+    int                row, col;
+
+    if (!D3DRenderParams.d3dDev || width <= 0 || height <= 0 || !coverage)
+        return NULL;
+    if (FAILED(D3DRenderParams.d3dDev->lpVtbl->CreateTexture(
+            D3DRenderParams.d3dDev, (UINT)width, (UINT)height, 1, 0,
+            D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex, NULL)))
+        return NULL;
+    if (FAILED(tex->lpVtbl->LockRect(tex, 0, &locked, NULL, 0)))
+    {
+        tex->lpVtbl->Release(tex);
+        return NULL;
+    }
+    for (row = 0; row < height; row++)
+    {
+        uint32_t*      out = (uint32_t*)((char*)locked.pBits + (size_t)row * locked.Pitch);
+        const uint8_t* in  = coverage + (size_t)row * width;
+
+        for (col = 0; col < width; col++)
+            out[col] = ((uint32_t)in[col] << 24) | 0x00FFFFFF;
+    }
+    tex->lpVtbl->UnlockRect(tex, 0);
+    return tex;
+}
+
+void D3D_DestroyAlphaTexture(void* texture)
+{
+    IDirect3DTexture9* tex = (IDirect3DTexture9*)texture;
+
+    if (tex)
+        tex->lpVtbl->Release(tex);
+}
+
+/* Textured quads inside the overlay pass. The atlas is not one of the
+   engine's textures, so it is bound straight to stage 0 and the cached
+   id is left saying nothing is bound -- which is true when this
+   returns, and is what makes the next D3D_SetTexture bind again
+   rather than trusting the cache. */
+void D3D_OverlayDrawTexturedQuads(void* texture, const void* vertices,
+                                  int triangleCount)
+{
+    IDirect3DTexture9* tex = (IDirect3DTexture9*)texture;
+
+    if (!tex || !vertices || triangleCount <= 0)
+        return;
+
+    D3D_SetFixedFunctionFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0,
+                                               (IDirect3DBaseTexture9*)tex);
+
+    /* Colour from the vertex, shape from the atlas: the texture is
+       white, so modulating leaves the colour alone, and the alphas
+       multiply so a translucent request stays translucent. */
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorOp,
+                      D3DTSS_COLOROP, D3DTOP_MODULATE);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1,
+                      D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2,
+                      D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_alphaOp,
+                      D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_alphaArg1,
+                      D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_alphaArg2,
+                      D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+    D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags,
+                      D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+
+    D3DRenderParams.d3dDev->lpVtbl->DrawPrimitiveUP(
+        D3DRenderParams.d3dDev, D3DPT_TRIANGLELIST, triangleCount,
+        vertices, sizeof(tGdi_TexturedVertex));
+
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, NULL);
+    textureStageTypeConfig[0].d3dTextureID = -1;
+}
+
 void D3D_OverlayDrawQuads(void* verts, int triangleCount)
 {
     if (triangleCount <= 0)
@@ -1766,8 +1744,9 @@ void D3D_DrawARaster(int color, char* name, float value, float y, float width)
     float segment;
 
     sprintf(text, "%5.3f", value);
-    D3D_RastersDrawText(name, 20, (unsigned int)y, -1);
-    D3D_RastersDrawText(text, (unsigned int)(width - 50.0), (unsigned int)y, -1);
+    FNT_DrawText(FNT_RASTERS, name, 20, (unsigned int)y, 0xFFFFFFFF);
+    FNT_DrawText(FNT_RASTERS, text, (unsigned int)(width - 50.0),
+                 (unsigned int)y, 0xFFFFFFFF);
     if (value > 4.0)
         value = 4.0;
     x = 70.0;

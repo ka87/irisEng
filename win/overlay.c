@@ -1,4 +1,5 @@
 #include "overlay.h"
+#include "../font.h"
 #include "wingdi.h"
 #include "../profiler.h"
 #include "../time.h"
@@ -156,11 +157,11 @@ static void OVL_l_FlushText(void)
     for (i = 0; i < ovl_textCount; i++)
     {
         if (ovl_text[i].big)
-            D3D_OverlayDrawText(ovl_text[i].s, ovl_text[i].x, ovl_text[i].y,
-                                (D3DCOLOR)ovl_text[i].color);
+            FNT_DrawText(FNT_OVERLAY, ovl_text[i].s, ovl_text[i].x,
+                         ovl_text[i].y, ovl_text[i].color);
         else
-            D3D_RastersDrawText(ovl_text[i].s, ovl_text[i].x, ovl_text[i].y,
-                                (D3DCOLOR)ovl_text[i].color);
+            FNT_DrawText(FNT_RASTERS, ovl_text[i].s, ovl_text[i].x,
+                         ovl_text[i].y, ovl_text[i].color);
     }
     ovl_textCount = 0;
 }
@@ -428,7 +429,7 @@ static void OVL_l_CommandField(void)
 
     // The box is as tall as the line of text it holds, so it follows
     // the font rather than the font having to fit a fixed box.
-    fontH = D3D_OverlayFontHeight();
+    fontH = FNT_i_Height(FNT_OVERLAY);
     fieldH = (float)fontH + 2.0f * OVL_FIELDPAD;
     textTop = OVL_FIELDTOP + OVL_FIELDPAD;
 
@@ -442,7 +443,7 @@ static void OVL_l_CommandField(void)
     // string is the only way to put it there: an estimate per
     // character drifts further from the text with every one typed,
     // and the face is proportional, so no single width is right.
-    caretX = (int)x + 8 + D3D_OverlayTextWidth(line);
+    caretX = (int)x + 8 + FNT_i_TextWidth(FNT_OVERLAY, line);
 
     ovl_caretTick++;
     if (((ovl_caretTick / 20) & 1) == 0)

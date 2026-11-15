@@ -26,6 +26,7 @@
 /* overlay.c reads the viewport out of this and calls the three D3D
    entry points; everything here stands in for win/wingdi.c. */
 #include "../win/wingdi.h"
+#include "../font.h"
 
 /* wingdi.h declares D3DRenderParams without extern, so including it
    is the definition. */
@@ -86,6 +87,9 @@ static void ovt_record(const char* text, int x, int y, int big)
    defect this stand-in exists to expose. */
 static int ovt_fontHeight = 20;
 
+static int ovt_lastHeightFace = -1;
+static int ovt_lastWidthFace = -1;
+
 static int ovt_glyphWidth(char c)
 {
     if (c == 'i' || c == 'l' || c == '.')
@@ -97,26 +101,37 @@ static int ovt_glyphWidth(char c)
     return 10;
 }
 
-int D3D_OverlayFontHeight(void) { return ovt_fontHeight; }
+/* The font module, mocked. The overlay asks it for a height and a
+   width and hands it strings to draw; the glyph widths above stand in
+   for a real face, so a layout case can state what it expects without
+   depending on what Liberation measures. The face the overlay chose
+   is what ovt_record's last argument carries. */
+/* The first face asked for since the counters were cleared, not the
+   last: a case that measures a string itself, to work out what it
+   expected, would otherwise overwrite what the overlay asked for and
+   the check would pass whatever the overlay did. */
+int FNT_i_Height(int face)
+{
+    if (ovt_lastHeightFace < 0)
+        ovt_lastHeightFace = face;
+    return ovt_fontHeight;
+}
 
-int D3D_OverlayTextWidth(char* text)
+int FNT_i_TextWidth(int face, const char* text)
 {
     int w = 0;
+
+    if (ovt_lastWidthFace < 0)
+        ovt_lastWidthFace = face;
     while (*text)
         w += ovt_glyphWidth(*text++);
     return w;
 }
 
-void D3D_OverlayDrawText(char* text, int x, int y, D3DCOLOR color)
+void FNT_DrawText(int face, const char* text, int x, int y, uint32_t color)
 {
     (void)color;
-    ovt_record(text, x, y, 1);
-}
-
-void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color)
-{
-    (void)color;
-    ovt_record(text, x, y, 0);
+    ovt_record((char*)text, x, y, face == FNT_OVERLAY ? 1 : 0);
 }
 
 /* the profiler's own state, which the panel walks */
@@ -577,6 +592,13 @@ static void caret(void)
     int gapsEqual = 1;
     int seenPositions[7];
 
+    /* The command field is monospaced, and both the height it lays
+       itself out by and the width it measures the caret with have to
+       come from that face. The mock answers either face with the same
+       numbers, so nothing else here would notice the wrong one. */
+    ovt_lastHeightFace = -1;
+    ovt_lastWidthFace = -1;
+
     for (k = 0; k < sizeof(lines) / sizeof(lines[0]); ++k)
     {
         char want[OVL_CMDMAX + 4];
@@ -605,7 +627,7 @@ static void caret(void)
 
         sprintf(want, "> %s", lines[k]);
         textX = (int)OVL_FIELDTOP + 8;
-        wantLeft = textX + D3D_OverlayTextWidth(want) + 1;
+        wantLeft = textX + FNT_i_TextWidth(FNT_OVERLAY, want) + 1;
 
         okEq(caretLeft, wantLeft, "the caret is at the end of the measured text");
         okEq(caretBottom - caretTop, ovt_fontHeight, "the caret is as tall as the font");
@@ -615,13 +637,17 @@ static void caret(void)
         /* the gap between where the text ends and the caret begins is
            the same for every line, however wide its characters are */
         if (firstGap < 0)
-            firstGap = caretLeft - (textX + D3D_OverlayTextWidth(want));
-        else if (caretLeft - (textX + D3D_OverlayTextWidth(want)) != firstGap)
+            firstGap = caretLeft - (textX + FNT_i_TextWidth(FNT_OVERLAY, want));
+        else if (caretLeft - (textX + FNT_i_TextWidth(FNT_OVERLAY, want)) != firstGap)
             gapsEqual = 0;
 
         seenPositions[k] = caretLeft;
     }
     ok(gapsEqual, "the gap to the caret does not grow with the line");
+    ok(ovt_lastHeightFace == FNT_OVERLAY,
+       "the field took its height from the monospaced face");
+    ok(ovt_lastWidthFace == FNT_OVERLAY,
+       "and measured the caret with it too");
 
     /* eight narrow characters and eight wide ones are the same length
        and must not put the caret in the same place */

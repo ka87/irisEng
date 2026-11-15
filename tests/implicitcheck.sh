@@ -29,6 +29,10 @@
 # COM calls. Its pass added them to tests/stub/windows.h, which took
 # engine.c from 2 to 1 and win/wingdi.c from 13 to 11 as well.
 #
+# sideload.c was here with 1, GetModuleFileNameA. font.c wanted the
+# same call and declared it in tests/stub/windows.h, which took
+# sideload.c to zero with it.
+#
 # win/wingdi.c went from 25 to 13 when the D3D9, D3DX and message-loop
 # declarations went into the stubs; that work also took the parse
 # sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
@@ -51,7 +55,6 @@ CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub -Ithirdparty/ffmpe
 
 BASELINE="bigfiles.c 2
 engine.c 1
-sideload.c 1
 sound.c 1
 strings.c 1"
 

@@ -13,6 +13,7 @@
 #include "../math.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
 
@@ -928,8 +929,48 @@ static int Vt_FontDrawTextA(ID3DXFont* f, void* spr, LPCSTR text, int count,
         h = (h ^ *p) * 16777619u;
         p++;
     }
-    L5("Font::DrawTextA", h, r->left, r->top, col, r->right);
+    /* Logged as "text" rather than under D3DX's name, with the same
+       payload the font module's mock uses: the frozen copy draws
+       raster text through D3DX and the live one through font.c, so
+       the two sequences are only comparable if both say "this string
+       at this place in this colour" in the same words. Everything
+       else D3D_DrawARaster does -- the bars, the quads -- stays
+       compared as it was. */
+    /* the colour narrowed to 32 bits deliberately: D3DCOLOR is
+       DWORD, which this stub makes 64-bit wide on the host, so -1
+       would log as -1 here and as 4294967295 on the live side while
+       both carry the same colour */
+    L4("text", h, r->left, r->top, (unsigned int)col);
     return 0;
+}
+
+/* The font module, mocked for this harness. It is the live side's
+   half of the pair above. */
+unsigned int WGM_FntTextHash(const char* text)
+{
+    unsigned int h = 2166136261u;
+    const unsigned char* p = (const unsigned char*)text;
+
+    while (p && *p)
+    {
+        h = (h ^ *p) * 16777619u;
+        p++;
+    }
+    return h;
+}
+
+int FNT_i_Height(int face) { (void)face; return 10; }
+
+int FNT_i_TextWidth(int face, const char* text)
+{
+    (void)face;
+    return text ? (int)strlen(text) * 6 : 0;
+}
+
+void FNT_DrawText(int face, const char* text, int x, int y, uint32_t color)
+{
+    (void)face;
+    L4("text", WGM_FntTextHash(text), x, y, (unsigned int)color);
 }
 
 static ULONG Vt_FontRelease(ID3DXFont* f) { (void)f; L0("Font::Release"); return 0; }
@@ -940,7 +981,13 @@ HRESULT D3DXCreateFontIndirectA(IDirect3DDevice9* d, const D3DXFONT_DESCA* desc,
     static ID3DXFont font;
     static ID3DXFontVtbl vtbl;
     (void)d;
-    L2("D3DXCreateFontIndirectA", desc->Height, desc->Weight);
+    /* Deliberately not recorded. The frozen copy creates its font
+       lazily on the first string it draws, and the live one has no
+       such call: making a face is FreeType's job now and not the
+       renderer's. Recording it would make every rasters case differ
+       by exactly this one call and hide anything else that moved.
+       What replaced it is checked by tests/run_font.sh. */
+    (void)desc;
     vtbl.DrawTextA = Vt_FontDrawTextA;
     vtbl.Release = Vt_FontRelease;
     font.lpVtbl = &vtbl;

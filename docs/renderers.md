@@ -618,6 +618,159 @@ are caught:
 | the call dropped | cases with a cache now keep it |
 | the guard inverted | both halves disagree |
 
+## Text is FreeType's, and the renderer only draws quads
+
+The engine drew debug text with **D3DX**: two `ID3DXFont` objects, one
+Arial at ten pixels for the raster readouts and one Courier New sized
+to the viewport for the command overlay. `DrawTextA` did the layout,
+the measuring and the drawing, which meant a renderer with no D3DX had
+no text at all.
+
+Text now belongs to `font.c`, which is renderer-neutral, and FreeType
+rasterizes it. The vendored library is in `thirdparty/freetype` and
+that folder's README says exactly what is there and how the file set
+was derived.
+
+### What moved where
+
+| | |
+|---|---|
+| `font.c` | the faces, the glyph atlas, measuring, and where each glyph goes |
+| the renderer | an alpha texture, and textured quads inside the overlay pass |
+
+Three interface entries, and nothing more:
+
+```c
+void*(* p_CreateAlphaTexture)(int width, int height, const uint8_t* coverage);
+void(* DestroyAlphaTexture)(void* texture);
+void(* OverlayDrawTexturedQuads)(void* texture, const void* vertices,
+                                 int triangleCount);
+```
+
+The coverage is 8-bit, one byte per pixel with no padding, and the
+renderer picks its own format: the Direct3D one makes an A8R8G8B8
+texture, white with the coverage in alpha, because `D3DFMT_A8` is half
+the memory and a format a card may decline — not something to discover
+on somebody else's machine. A `MODULATE` stage then takes the colour
+from the vertex and the shape from the atlas, and the two alphas
+multiply so a translucent request stays translucent.
+
+The quads are `tGdi_TexturedVertex` triangles in the overlay pass's own
+pixel coordinates. They are drawn *inside* that pass, which is where
+the text was drawn before: the ortho projection, the alpha blending and
+the disabled Z are already in effect, so this adds a texture and a UV
+and nothing else. The atlas is not one of the engine's textures, so it
+is bound straight to stage 0 and the cached id is left reading "nothing
+bound" — which is true when the call returns, and is what stops the
+next `D3D_SetTexture` from trusting a stale cache.
+
+### The two faces, and why Liberation
+
+`data/fonts` holds `LiberationSans-Regular.ttf` and
+`LiberationMono-Regular.ttf`, which stand in for the Arial and Courier
+New the engine asked for. Liberation exists to be metric-compatible
+with those two, so text occupies the space it used to and a caret
+measured by summing advances lands where it landed. `data/fonts/README.md`
+has the numbers and the licence.
+
+They are looked for beside the executable, under `data\fonts\`, not in
+the working directory — the same place the sideload folder is, because
+they are part of an install and not of wherever a shortcut points. The
+separator is taken from whatever `GetModuleFileNameA` came back with
+rather than assumed, which is also what lets the test drive this on a
+host that has only the other one.
+
+A missing face is logged **once** and then nothing draws: `FNT_i_Height`
+and `FNT_i_TextWidth` answer zero and `FNT_DrawText` returns. Nothing
+else in the engine changes behaviour, and the log does not repeat every
+frame.
+
+### What the atlas does
+
+One texture per face, holding printable ASCII in a grid of equal cells,
+on the smallest power-of-two square that fits. Equal cells waste a
+little area and make the placement arithmetic checkable by eye. Each
+glyph is loaded twice -- once to find the largest bitmap, once to copy
+it in -- because FreeType keeps one glyph slot and the atlas cannot be
+sized until the first pass has finished. That happens when the size
+changes, not per frame.
+
+The overlay's size still follows the viewport, a thirtieth of its
+height clamped to 14..44, and asking for the height is what rebuilds
+the atlas after a resize -- so the command field measures itself
+against the size it is about to be drawn at. The raster face stays at
+ten pixels, because the layout around it assumes that.
+
+A character the atlas does not hold is drawn **and measured** as `?`.
+Measuring and drawing agreeing matters more than the substitution being
+pretty: the caret is placed from the measurement.
+
+### The tests
+
+`tests/run_font.sh` compiles the vendored FreeType and the real
+`font.c`, points the module's idea of the executable at the repository,
+and lets it read the committed faces. So glyph metrics come from the
+same files the game reads rather than from a mock that would only check
+the module's arithmetic against itself. 219 checks.
+
+The renderer is mocked, which is what lets a case inspect the coverage
+map and every vertex. **21 mutations, 21 caught**, and two of them only
+after the harness was sharpened:
+
+| mutation | what it took to catch |
+| --- | --- |
+| the left bearing dropped | a glyph chosen *because* its bearing is non-zero -- `A`'s is zero at this size, so the obvious check was vacuous |
+| the minimum height off by one | a viewport at exactly `(14 - 1) * 30`, the only ratio where `<` against `<=` is visible |
+
+The rest were caught as written: the baseline losing the ascender, the
+glyph hanging the wrong way, UVs that stop short, a pen that does not
+advance, the atlas never rebuilt, the old atlas not released, a missing
+face retried every frame, a blank glyph emitting a quad, the colour on
+only the first vertex, the grid filled down instead of across, the
+triangle count halved, and the three refusal paths.
+
+### Three things the change turned up
+
+**`D3D_DrawARaster` still drew text.** Two calls in `win/wingdi.c` that
+the first sweep missed, and they linked because the harness compiles
+with `-w`, which also disables the error on an implicit declaration.
+`tests/implicitcheck.sh` is what said so -- it exists for exactly this
+-- and the calls now go through the font module. `sideload.c` was
+carrying an implicit `GetModuleFileNameA` of its own; declaring that
+call in the stub for `font.c` took it to zero, so it is off the
+baseline list.
+
+**The frozen copy and the live one draw raster text by different
+machinery**, so the mocks were made to log it in the same words --
+string hash, x, y, colour -- and the D3DX font's *creation* is no
+longer recorded at all, because making a face is not a renderer call
+any more. Everything else `D3D_DrawARaster` does stays compared, and
+three mutations confirm it: dropping a string, moving it a pixel, and
+changing its colour are all still caught. The colour is narrowed to 32
+bits in both mocks on purpose: `D3DCOLOR` is `DWORD`, which the test
+stub makes 64-bit wide on the host, so `-1` logged as `-1` on one side
+and `4294967295` on the other while both carried the same colour.
+
+**A positional initialiser in a mock's vtable.** Adding `LockRect` and
+`UnlockRect` to the stub's `IDirect3DTexture9Vtbl` -- in the middle,
+where they belong -- shifted every pointer after them in
+`tests/wingdi_ae_mocks.c`, which filled that table by position. The
+after-effects harness segfaulted. The members are appended now, the
+stub says why order matters there, and the two Direct3D tables in that
+file are filled **by name**: inserting a member mid-struct afterwards
+leaves the harness passing, which is the check that the trap is really
+gone.
+
+### What this does not do yet
+
+`win/overlay.c` still calls `D3D_OverlayBegin`, `D3D_OverlayDrawQuads`
+and `D3D_OverlayEnd` directly, and reads the viewport out of the
+renderer's own state. Those were bypasses before this change and still
+are; the text calls are the ones that had to move, because the glyphs
+had to come from somewhere other than D3DX. Routing the rest of the
+overlay pass through the interface is the next step and a change of its
+own.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

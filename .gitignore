@@ -5,7 +5,13 @@
 /.vs/irisEng
 /Debug
 /Release
-/data
+# The sideload folder, which is the user's and not the repository's --
+# except data/fonts, which ships with the engine and font.c reads at
+# runtime. Written as /data/* and a negation rather than /data, because
+# git does not look inside a directory it has already excluded, so
+# !/data/fonts would never be reached.
+/data/*
+!/data/fonts/
 /x64/Debug
 /jade.spe
 /sally.idx

@@ -326,6 +326,10 @@ int ENG_WIN_AutoPlaySupressorRegistered;
 int currentVBOSelected;
 int d3d_alphablendIsCase3;
 
+/* The two D3DX fonts and the overlay's height used to live here.
+   Text is FreeType's now and font.c owns it; these three are kept
+   only so the frozen copy in tests/ still compiles, and nothing
+   live reads them. */
 ID3DXFont* d3dxfontIF;
 ID3DXFont* d3dxOverlayFontIF;
 int d3dOverlayFontHeight;
@@ -352,10 +356,6 @@ void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleCh
 void D3D_OverlayBegin(void);
 void D3D_OverlayDrawQuads(void* verts, int triangleCount);
 void D3D_OverlayEnd(void);
-void D3D_RastersDrawText(char* text, int x, int y, D3DCOLOR color);
-int  D3D_OverlayFontHeight();
-void D3D_OverlayDrawText(char* text, int x, int y, D3DCOLOR color);
-int  D3D_OverlayTextWidth(char* text);
 
 void D3D_SetProjectionMatrix(tDDCamStruct* cam);
 void D3D_BeginSceneCall();
@@ -423,6 +423,10 @@ void D3D_PC_AE(tWorld* param1);
 #define D3D_GEO_UVVB(g)   ((IDirect3DVertexBuffer9**)(g)->uvBuffers)
 #define D3D_GEO_IB(g)     ((IDirect3DIndexBuffer9*)(g)->indexBuffer)
 
+void* D3D_p_CreateAlphaTexture(int width, int height, const uint8_t* coverage);
+void D3D_DestroyAlphaTexture(void* texture);
+void D3D_OverlayDrawTexturedQuads(void* texture, const void* vertices,
+                                  int triangleCount);
 int  D3D_b_GeometryHasCache(struct sGEOGRO* gro);
 void D3D_DiscardGeometryCache(struct sGEOGRO* gro);
 void PC_FreeABackCache(struct sGEOGRO* geogro);

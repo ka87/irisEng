@@ -94,7 +94,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\ffmpeg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\ffmpeg\include;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -115,6 +115,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,7 +132,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\ffmpeg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\ffmpeg\include;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -156,6 +157,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -212,6 +214,7 @@
     <ClCompile Include="events.c" />
     <ClCompile Include="gameobject.c" />
     <ClCompile Include="gdi.c" />
+    <ClCompile Include="font.c" />
     <ClCompile Include="gfx.c" />
     <ClCompile Include="gfx\gfxanotherflare.c" />
     <ClCompile Include="gfx\gfxborderfade.c" />
@@ -361,6 +364,75 @@
     </ClCompile>
     <ClCompile Include="win\winsound.c" />
     <ClCompile Include="world.c" />
+    <!-- FreeType, vendored in thirdparty/freetype. Each of these is an
+         amalgamation that includes its own siblings, so these thirteen
+         are the whole library at this configuration. See that folder's
+         README.md for how the set was derived. -->
+    <ClCompile Include="thirdparty\freetype\src\base\ftsystem.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftinit.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftdebug.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftbase.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftbitmap.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftglyph.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\base\ftmm.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\truetype\truetype.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\sfnt\sfnt.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\smooth\smooth.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\autofit\autofit.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\psnames\psnames.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\freetype\src\gzip\ftgzip.c">
+      <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ai.h" />
@@ -438,6 +510,7 @@
     <ClInclude Include="groups.h" />
     <ClInclude Include="renderers.h" />
     <ClInclude Include="datafiles.h" />
+    <ClInclude Include="font.h" />
     <ClInclude Include="inputoutput.h" />
     <ClInclude Include="jpeg-6b\cderror.h" />
     <ClInclude Include="jpeg-6b\cdjpeg.h" />

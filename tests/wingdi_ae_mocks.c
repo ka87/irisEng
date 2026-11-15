@@ -117,8 +117,15 @@ static HRESULT SurfUnlockRect(IDirect3DSurface9* s)
     return 0;
 }
 
+/* By name, not by position: a member added to the stub's vtbl would
+   otherwise shift every pointer after the insertion point and call
+   the wrong function through the right name, which costs an afternoon
+   to find. */
 static IDirect3DSurface9Vtbl surfVtbl = {
-    SurfRelease, SurfGetDesc, SurfLockRect, SurfUnlockRect
+    .Release = SurfRelease,
+    .GetDesc = SurfGetDesc,
+    .LockRect = SurfLockRect,
+    .UnlockRect = SurfUnlockRect
 };
 
 /* ---- the texture ---- */
@@ -150,7 +157,11 @@ static DWORD   TexGetLevelCount(IDirect3DTexture9* t) { return 1; }
 static HRESULT TexGetLevelDesc(IDirect3DTexture9* t, UINT l, D3DSURFACE_DESC* d) { return 0; }
 
 static IDirect3DTexture9Vtbl texVtbl = {
-    TexRelease, TexGetSurfaceLevel, TexAddDirtyRect, TexGetLevelCount, TexGetLevelDesc
+    .Release = TexRelease,
+    .GetSurfaceLevel = TexGetSurfaceLevel,
+    .AddDirtyRect = TexAddDirtyRect,
+    .GetLevelCount = TexGetLevelCount,
+    .GetLevelDesc = TexGetLevelDesc
 };
 
 /* ---- the device ---- */
