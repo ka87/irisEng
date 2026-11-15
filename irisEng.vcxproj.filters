@@ -179,6 +179,12 @@
     <ClCompile Include="geovertex.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="geosprite.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rasterstate.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="win\wingdimath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
