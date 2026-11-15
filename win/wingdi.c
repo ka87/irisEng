@@ -13,6 +13,7 @@
 #include "../font.h"
 #include "wingdimath.h"
 #include "wingditex.h"
+#include "../projection.h"
 #include "overlay.h"
 #include "../editorcamera.h"
 #include "../profiler.h"
@@ -608,27 +609,18 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, 
 
 // nearZ and farZ, not near and far: windef.h defines both of those as
 // empty macros, so a parameter of either name vanishes
+/* The arithmetic lives in projection.c now, shared with the camera
+   fitting that uses the same projection; this is the renderer's half
+   of it. */
 void D3D_CalcAndSetProjection(float left, float right, float bottom, float top,
                               float nearZ, float farZ)
 {
-    double width;
-    double height;
-    float depth;
-    D3DMATRIX mtx;
+    Mtx4x4 mtx;
 
-    width = right - left;
-    memset(&mtx, 0, sizeof(mtx));
-    mtx._44 = 1.0;
-    mtx._11 = (float)(2.0 / width);
-    height = top - bottom;
-    mtx._22 = (float)(2.0 / height);
-    depth = farZ - nearZ;
-    mtx._33 = (float)(-4.0 / depth);
-    mtx._14 = (float)(-((left + right) / width));
-    mtx._24 = (float)(-((bottom + top) / height));
-    mtx._34 = (float)(-((nearZ + farZ) / depth));
+    PRJ_OffCentre(&mtx, left, right, bottom, top, nearZ, farZ);
     memcpy(&d3dProjectionMtx, &mtx, sizeof(D3DMATRIX));
-    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &mtx);
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev,
+        D3DTS_PROJECTION, (D3DMATRIX*)&mtx);
 }
 
 void D3D_SetViewPort(int x, int y, int w, int h)
@@ -759,172 +751,35 @@ void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int vie
 
 void D3D_SetProjectionMatrix(tDDCamStruct* cam)
 {
-    int ratioIdx;
-    int rectW;
-    int rectH;
-    int fitW;
-    int fitH;
-    int viewX;
-    int viewY;
-    int viewW;
-    int viewH;
-    int flags2;
-    float screenRatio;
-    float fitRatio;
-    float cotFov;
-    float isoSize;
-    double negCot;
-    double isoRatio;
-    double invRatio;
-    double negFar;
-    double isoLeft;
-    float orthoW;
-    float orthoH;
-    float halfTexel;
-    D3DMATRIX offsetMtx;
-    D3DMATRIX orthoMtx;
+    tPrj_Input  in;
+    tPrj_Output out;
 
     D3DRenderParams.projectionMatrix = &cam->projectionMtx;
-    ratioIdx = gpst_DX_stDD->ddcs2.selectedScreenRatio;
-    if (ratioIdx <= 0 || ratioIdx >= 4)
-        screenRatio = gpst_DX_stDD->ddcs2.manualScreenRatio;
-    else
-        screenRatio = GDI_gaf_ScreenRatio[ratioIdx];
-    if (D3D_gi_Widescreen)
-        screenRatio = D3D_RealYoverX();
-    rectW = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-    rectH = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
-    fitRatio = gpst_DX_stDD->ddcs2.pixelYoverX * cam->YoverX * screenRatio;
-    flags2 = gpst_DX_stDD->ddcs2.flags2;
-    if ((flags2 & 4) != 0)
-    {
-        fitH = rectH;
-        fitW = (uint32_t)((double)rectH / fitRatio);
-        if ((flags2 & 1) != 0 && fitW > rectW || (flags2 & 2) != 0 && fitW < rectW)
-        {
-            fitH = (uint32_t)((double)rectW * fitRatio);
-            fitW = rectW;
-        }
-    }
-    else
-    {
-        fitH = (uint32_t)((double)rectW * fitRatio);
-        fitW = rectW;
-        if ((flags2 & 1) != 0 && fitH > rectH || (flags2 & 2) != 0 && fitH < rectH)
-        {
-            fitW = (uint32_t)((double)rectH / fitRatio);
-            fitH = rectH;
-        }
-    }
-    if (cam->viewPortSizeWidth == 0.0)
-    {
-        cam->viewPortSizeWidth = 1.0;
-        cam->viewPortSizeHeight = 1.0;
-        cam->viewPortPosX = 0.0;
-        cam->viewPortPosY = 0.0;
-    }
-    viewX = (int32_t)((double)((rectW - fitW) / 2) + (double)fitW * cam->viewPortPosX);
-    viewY = (int32_t)((double)((rectH - fitH) / 2) + (double)fitH * cam->viewPortPosY);
-    viewH = (uint32_t)((double)fitH * cam->viewPortSizeHeight);
-    viewW = (uint32_t)((double)fitW * cam->viewPortSizeWidth);
-    cam->viewPortRealPosX = viewX;
-    cam->viewPortRealPosY = viewY;
-    if ((cam->flags & 0x400) != 0)
-    {
-        orthoW = (float)viewW;
-        halfTexel = (float)(0.5 / orthoW);
-        D3D_MatrixTranslation(&offsetMtx, halfTexel, halfTexel, 0.0);
-        orthoH = (float)viewH;
-        D3D_MatrixOrthoOffCenterRH(&orthoMtx, 0.0, orthoW, 0.0, orthoH, 0.0, 1.0);
-        D3D_MatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &orthoMtx,
-                           &offsetMtx);
-        memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
-        D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
-        return;
-    }
-    if ((cam->flags & 1) != 0)
-    {
-        cotFov = (float)(1.0 / tan(cam->focale * 0.5));
-        MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
-        if (D3D_gi_Widescreen)
-        {
-            // the authored vertical half angle, kept whatever the
-            // window shape is; the horizontal one follows v46
-            float cotY = ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
-                             ? cotFov
-                             : (float)(cotFov / D3D_gf_RefYoverX);
 
-            D3DRenderParams.projectionMatrix->v1.x = (float)(cotY * screenRatio);
-            negCot = -cotY;
-        }
-        else if ((gpst_DX_stDD->ddcs2.flags2 & 4) != 0)
-        {
-            D3DRenderParams.projectionMatrix->v1.x = cotFov * screenRatio;
-            negCot = -cotFov;
-        }
-        else
-        {
-            D3DRenderParams.projectionMatrix->v1.x = cotFov;
-            negCot = -(cotFov / screenRatio);
-        }
-        D3DRenderParams.projectionMatrix->v2.y = (float)negCot;
-        D3DRenderParams.projectionMatrix->v3.z = (cam->nearPlane + cam->farPlane) / (cam->farPlane - cam->nearPlane);
-        D3DRenderParams.projectionMatrix->_m34 = 1.0;
-        D3DRenderParams.projectionMatrix->Pos.z = -0.050000001f;
-        D3DRenderParams.projectionMatrix->w = 0.0;
-        memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
-        D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
-    }
-    else
+    in.surfaceWidth = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
+    in.surfaceHeight = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
+    in.selectedScreenRatio = gpst_DX_stDD->ddcs2.selectedScreenRatio;
+    in.manualScreenRatio = gpst_DX_stDD->ddcs2.manualScreenRatio;
+    in.pixelYoverX = gpst_DX_stDD->ddcs2.pixelYoverX;
+    in.flags2 = gpst_DX_stDD->ddcs2.flags2;
+    in.widescreen = D3D_gi_Widescreen;
+    in.realYoverX = D3D_RealYoverX();
+    in.refYoverX = D3D_gf_RefYoverX;
+
+    /* This writes the camera's own matrix as well, which is where the
+       renderer built it. */
+    PRJ_Compute(cam, &in, &out);
+
+    memcpy(&d3dProjectionMtx, &out.matrix, sizeof(D3DMATRIX));
+    D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev,
+        D3DTS_PROJECTION, (D3DMATRIX*)&out.matrix);
+
+    if (out.setViewport)
     {
-        MATH_SetIdentityMatrix(D3DRenderParams.projectionMatrix);
-        isoSize = cam->isoZoom * cam->isoFactor;
-        negFar = -cam->farPlane;
-        if ((gpst_DX_stDD->ddcs2.flags2 & 4) == 0)
-        {
-            isoRatio = D3D_gi_Widescreen ? D3D_RealYoverX()
-                                         : gpst_DX_stDD->ddcs2.manualScreenRatio;
-            if (cam->isoFactor == 0.0)
-            {
-                D3D_CalcAndSetProjection(0.0, 1.0,
-                                         (float)((1.0 - isoRatio) * 0.5),
-                                         (float)((isoRatio + 1.0) * 0.5),
-                                         -cam->nearPlane, (float)negFar);
-            }
-            else
-            {
-                isoLeft = isoSize * -1.0;
-                D3D_CalcAndSetProjection((float)isoLeft,
-                                         cam->isoZoom * cam->isoFactor,
-                                         (float)(isoSize * isoRatio),
-                                         (float)(-isoRatio * isoSize),
-                                         cam->farPlane, (float)negFar);
-            }
-        }
-        else
-        {
-            invRatio = 1.0 / (D3D_gi_Widescreen ? D3D_RealYoverX()
-                                                : gpst_DX_stDD->ddcs2.manualScreenRatio);
-            if (cam->isoFactor != 0.0)
-            {
-                isoLeft = -invRatio * isoSize;
-                D3D_CalcAndSetProjection((float)isoLeft,
-                                         (float)(isoSize * invRatio),
-                                         (float)(isoSize * -1.0),
-                                         cam->isoZoom * cam->isoFactor,
-                                         cam->farPlane, (float)negFar);
-            }
-            else
-            {
-                D3D_CalcAndSetProjection((float)((1.0 - invRatio) * 0.5),
-                                         (float)((invRatio + 1.0) * 0.5),
-                                         0.0, 1.0,
-                                         -cam->nearPlane, (float)negFar);
-            }
-        }
+        D3D_SetViewPort(out.viewX, out.viewY, out.viewWidth, out.viewHeight);
+        D3D_AspectTrace("proj", out.viewX, out.viewY, out.viewWidth,
+                        out.viewHeight);
     }
-    D3D_SetViewPort(viewX, viewY, viewW, viewH);
-    D3D_AspectTrace("proj", viewX, viewY, viewW, viewH);
 }
 
 
