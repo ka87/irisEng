@@ -14,6 +14,7 @@
 #include "wingdimath.h"
 #include "wingditex.h"
 #include "../projection.h"
+#include "../geovertex.h"
 #include "overlay.h"
 #include "../editorcamera.h"
 #include "../profiler.h"
@@ -4159,15 +4160,13 @@ int D3D_DrawSprites(struct sGeoSprites* sprites, void* positions, int num)
     return 0;
 }
 
+/* The packing lives in geovertex.c now, shared with the vertex
+   building that uses it; the other callers in this file reach it
+   through here. */
 static unsigned int D3D_VertexColor(int* colors, int* second, int mask, int alpha,
                                     int idx, int secondIdx)
 {
-    unsigned int packed;
-
-    packed = mask ^ (alpha | colors[idx]);
-    if (second)
-        packed = second[secondIdx] | packed & 0xFFFFFF;
-    return packed & 0xFF00FF00 | ((uint8_t)packed << 16) | ((packed >> 16) & 0xff);
+    return GVX_ui_Color(colors, second, mask, alpha, idx, secondIdx);
 }
 
 static void D3D_DrawIndexedStreams(tGEOGRO* geogro, tGeoWholeTriangleStripBlock* block)
@@ -4253,6 +4252,8 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
     }
     if (immediate)
     {
+        tGvx_Source src;
+
         savedArg1 = 0;
         savedArg2 = 0;
         out = D3D_LockCurrentVBO(3 * triangleNum);
@@ -4264,9 +4265,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         mask = bb->colorMask;
         colors = bb->vertexColorArray;
         if (!colors)
-        {
-            solidColor = (mask ^ (alpha | bb->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(mask ^ (alpha | (bb->solidVertexColor & 0xff))) << 16) | (uint8_t)((mask ^ (alpha | bb->solidVertexColor)) >> 16);
-        }
+            solidColor = GVX_ui_SolidColor(mask, alpha, bb->solidVertexColor);
         if (GDI_gi_TextureUVMode == 2)
         {
             // preserved: the colour arg 2 backup is taken from arg 1
@@ -4278,45 +4277,21 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
             solidColor = 0;
         }
         useVertexUv = (gpst_DX_stDD->flags & 2) != 0;
-        tri = triangleChunks->triangleChunkElems;
-        triEnd = &tri[triangleNum];
-        for (; tri < triEnd; tri++)
-        {
-            for (k = 0; k < 3; k++)
-            {
-                if (k == 0)
-                    idx = tri->v1;
-                else if (k == 1)
-                    idx = tri->v2;
-                else
-                    idx = tri->v3;
-                out->v1 = verticesIN[idx];
-                if (colors)
-                {
-                    secondIdx = idx;
-                    // preserved: this one of nine second-colour lookups scales its index by four
-                    if (UVs && useVertexUv && k == 1)
-                        secondIdx = idx * 4;
-                    out->color = D3D_VertexColor(colors, second, mask, alpha, idx, secondIdx);
-                }
-                else
-                {
-                    out->color = solidColor;
-                }
-                if (UVs)
-                {
-                    if (useVertexUv)
-                        out->uvSet1 = UVs[idx];
-                    else if (k == 0)
-                        out->uvSet1 = UVs[tri->uv1];
-                    else if (k == 1)
-                        out->uvSet1 = UVs[tri->uv2];
-                    else
-                        out->uvSet1 = UVs[tri->uv3];
-                }
-                out++;
-            }
-        }
+
+        /* The vertex building is geovertex.c's, because none of it is
+           this renderer's: the engine's arrays are separate and the
+           vertices interleaved, and the colour packing is not
+           something to write twice. */
+        src.vertices = verticesIN;
+        src.uvs = UVs;
+        src.colors = colors;
+        src.second = second;
+        src.mask = mask;
+        src.alpha = alpha;
+        src.solidColor = solidColor;
+        src.useVertexUv = useVertexUv;
+        GVX_BuildTriangles((tGdi_TexturedVertex*)out, triangleChunks, &src);
+
         D3D_FillCurrentVBO(0);
         D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, triangleNum);
         if (GDI_gi_TextureUVMode != 5

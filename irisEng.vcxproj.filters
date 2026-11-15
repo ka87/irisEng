@@ -176,6 +176,9 @@
     <ClCompile Include="projection.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="geovertex.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="win\wingdimath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -815,6 +818,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="projection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="geovertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="win\wingdimath.h">
