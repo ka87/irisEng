@@ -909,9 +909,14 @@ void D3D_TextureStore(tTexUploadRequest* req)
     area.left = 0;
     area.right = texElem->normalData.width;
     area.bottom = texElem->normalData.height;
-    D3D_b_SurfaceLoadFromMemory(surface, req->dataPtr,
-                                4 * texElem->normalData.width,
-                                area.right, area.bottom);
+    /* Reported rather than discarded: a failure here leaves the
+       texture showing whatever was in it, which on a video screen
+       looks like the video simply not playing. */
+    if (!D3D_b_SurfaceLoadFromMemory(surface, req->dataPtr,
+                                     4 * texElem->normalData.width,
+                                     area.right, area.bottom))
+        GDI_OutputDebugString("texture %d: %dx%d upload refused\n", idx,
+                              area.right, area.bottom);
     /* Kept because the texture may be one that already existed and
        carries levels; the one created just above has a single level,
        where this does nothing, exactly as the call it replaces did. */

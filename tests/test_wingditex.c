@@ -10,17 +10,32 @@
  * about whether the replacement behaves like the original.
  *
  * So this file is the only thing standing behind them, and it is only
- * as good as the reading of what D3DX did. That is not hypothetical:
- * the surface load was written as a row copy, which is right only when
- * the destination surface is the same size as the rectangle handed
- * over. D3DXLoadSurfaceFromMemory with no destination rectangle
- * stretches to fill the surface, the engine does hand it a surface of
- * a different shape, and the in-game video screens broke. The cases
- * below did not catch it because the surface mock reported a zeroed
- * descriptor, so the destination had no size to disagree with.
+ * as good as the reading of what D3DX did. That is not hypothetical;
+ * it has been wrong twice, and both times the in-game video screens
+ * were what showed it.
+ *
+ * The first was the shape. The load was written as a row copy, which
+ * is right only when the destination surface is the same size as the
+ * rectangle handed over; D3DXLoadSurfaceFromMemory with no
+ * destination rectangle stretches to fill the surface, and the engine
+ * does hand it a surface of a different shape. The cases below did
+ * not catch it because the surface mock reported a zeroed descriptor,
+ * so the destination had no size to disagree with.
+ *
+ * The second was the pool, and it was the whole of the bug rather
+ * than a corner of it. The load was written as a LockRect, and the
+ * destination the one caller hands over is a texture in the default
+ * pool, which refuses LockRect outright -- so the load wrote nothing
+ * at all, every frame, and the shape fix above changed nothing
+ * because the copy was never reached. The cases did not catch it
+ * because a mock surface locks whenever it is asked to, and the one
+ * case that made a lock fail asserted the failure rather than asking
+ * what the real destination does. A mock that cannot refuse the way
+ * the real thing refuses is a fixture that agrees with anything.
  *
  * When adding to this file, prefer a case where the inputs disagree
- * with each other over one where they match.
+ * with each other over one where they match, and make a mock refuse
+ * the things the real object refuses.
  */
 
 /* A unit test for win/wingditex.c.
@@ -227,11 +242,23 @@ typedef struct sWtSurface
     int                    height;
     int                    lockCalls;
     int                    unlockCalls;
+    int                    releaseCalls;
     int                    failLock;
     int                    failDesc;
+    /* The device this surface says it belongs to, which is how the
+       load reaches one when it cannot lock the surface itself.
+       NULL stands for a surface that will not name its device. */
+    struct sWtDevice*      dev;
+    int                    failGetDevice;
 } tWtSurface;
 
-static ULONG WsRelease(IDirect3DSurface9* s) { (void)s; return 0; }
+struct sWtDevice;
+
+static ULONG WsRelease(IDirect3DSurface9* s)
+{
+    ((tWtSurface*)s)->releaseCalls++;
+    return 0;
+}
 
 static HRESULT WsGetDesc(IDirect3DSurface9* s, D3DSURFACE_DESC* d)
 {
@@ -274,11 +301,135 @@ static HRESULT WsUnlockRect(IDirect3DSurface9* s)
     return 0;
 }
 
+static HRESULT WsGetDevice(IDirect3DSurface9* s, IDirect3DDevice9** out);
+
 static IDirect3DSurface9Vtbl wsVtbl = {
     .Release = WsRelease,
     .GetDesc = WsGetDesc,
     .LockRect = WsLockRect,
-    .UnlockRect = WsUnlockRect
+    .UnlockRect = WsUnlockRect,
+    .GetDevice = WsGetDevice
+};
+
+/* --------------------------------------------- a device, for real
+ *
+ * Only the two entry points the staging route uses. The staging
+ * surface it hands out has a buffer behind it and its UpdateSurface
+ * really copies, so a case can read the pixels out of the destination
+ * and see that they travelled the whole way -- which is the only
+ * thing that distinguishes the fallback working from it being called.
+ */
+typedef struct sWtDevice
+{
+    IDirect3DDevice9Vtbl* lpVtbl;
+    int                   createCalls;
+    int                   updateCalls;
+    int                   releaseCalls;
+    int                   failCreate;
+    int                   failUpdate;
+    /* what the staging surface was asked to be */
+    UINT                  reqW;
+    UINT                  reqH;
+    D3DFORMAT             reqFmt;
+    D3DPOOL               reqPool;
+    /* and what UpdateSurface was given */
+    IDirect3DSurface9*    updSrc;
+    IDirect3DSurface9*    updDst;
+    const RECT*           updSrcRect;
+    const POINT*          updDstPoint;
+    tWtSurface            staging;
+    unsigned char         stagingBits[16 * 16 * 4 + 64];
+} tWtDevice;
+
+static HRESULT WsGetDevice(IDirect3DSurface9* s, IDirect3DDevice9** out)
+{
+    tWtSurface* surf = (tWtSurface*)s;
+
+    if (surf->failGetDevice)
+    {
+        /* Rubbish rather than NULL, so a caller that ignores the
+           return value is caught rather than quietly saved. */
+        *out = (IDirect3DDevice9*)(size_t)0xF0F0F0F0u;
+        return -1;
+    }
+    *out = (IDirect3DDevice9*)surf->dev;
+    return 0;
+}
+
+static ULONG WdRelease(IDirect3DDevice9* d)
+{
+    ((tWtDevice*)d)->releaseCalls++;
+    return 0;
+}
+
+static HRESULT WdCreateOffscreenPlainSurface(IDirect3DDevice9* d, UINT w, UINT h,
+                                             D3DFORMAT fmt, D3DPOOL pool,
+                                             IDirect3DSurface9** out, HANDLE* shared)
+{
+    tWtDevice* dev = (tWtDevice*)d;
+
+    (void)shared;
+    dev->createCalls++;
+    dev->reqW = w;
+    dev->reqH = h;
+    dev->reqFmt = fmt;
+    dev->reqPool = pool;
+    if (dev->failCreate)
+    {
+        *out = (IDirect3DSurface9*)(size_t)0xF0F0F0F0u;
+        return -1;
+    }
+    if (w * h * 4 > sizeof(dev->stagingBits))
+        return -1;
+
+    memset(&dev->staging, 0, sizeof(dev->staging));
+    memset(dev->stagingBits, 0xAB, sizeof(dev->stagingBits));
+    dev->staging.lpVtbl = &wsVtbl;
+    dev->staging.bits = dev->stagingBits;
+    dev->staging.width = (int)w;
+    dev->staging.height = (int)h;
+    /* Padded, so a staging copy that ignores the pitch shows up. */
+    dev->staging.pitch = (int)w * 4 + 8;
+    if ((size_t)dev->staging.pitch * h > sizeof(dev->stagingBits))
+        dev->staging.pitch = (int)w * 4;
+    dev->staging.dev = dev;
+    *out = (IDirect3DSurface9*)&dev->staging;
+    return 0;
+}
+
+/* The device-side copy, performed for real so the destination can be
+   read back. Whole surface to whole surface, which is what the caller
+   asks for; anything else is a case this does not need. */
+static HRESULT WdUpdateSurface(IDirect3DDevice9* d, IDirect3DSurface9* src,
+                               const RECT* srcRect, IDirect3DSurface9* dst,
+                               const POINT* dstPoint)
+{
+    tWtDevice*  dev = (tWtDevice*)d;
+    tWtSurface* s = (tWtSurface*)src;
+    tWtSurface* t = (tWtSurface*)dst;
+    int         y;
+
+    dev->updateCalls++;
+    dev->updSrc = src;
+    dev->updDst = dst;
+    dev->updSrcRect = srcRect;
+    dev->updDstPoint = dstPoint;
+    if (dev->failUpdate)
+        return -1;
+    if (s->width != t->width || s->height != t->height)
+        return -1;
+
+    for (y = 0; y < s->height; y++)
+        memcpy(t->bits + (size_t)y * t->pitch,
+               s->bits + (size_t)y * s->pitch,
+               (size_t)s->width * 4);
+    return 0;
+}
+
+static IDirect3DDevice9Vtbl wdVtbl = {
+    .CreateOffscreenPlainSurface = WdCreateOffscreenPlainSurface,
+    .UpdateSurface = WdUpdateSurface,
+    .Release = WdRelease
 };
 
 /* ---------------------------------------------------------- the cases */
@@ -477,17 +628,197 @@ static void caseSurfaceLoad(void)
                 bad++;
     okEq(bad, 0, "and the pitch padding is left alone");
 
-    /* refusals */
+    /* refusals. A surface that will not lock is no longer a failure on
+       its own -- it is the normal case, and goes through the device --
+       so the refusal here is a surface that will not lock and names no
+       device to go through either. */
     surf.failLock = 1;
+    surf.dev = NULL;
     ok(!D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 16, 4, 3),
-       "a surface that will not lock is a failure");
-    okEq(surf.unlockCalls, 1, "and is not unlocked");
+       "a surface that will neither lock nor name a device is a failure");
+    okEq(surf.unlockCalls, 1, "and is not unlocked a second time");
     surf.failLock = 0;
     ok(!D3D_b_SurfaceLoadFromMemory(NULL, src, 16, 4, 3), "no surface, no copy");
     ok(!D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, NULL, 16, 4, 3),
        "no source, no copy");
     ok(!D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 16, 0, 3),
        "nothing to copy is not a copy");
+}
+
+/* The destination the game actually hands over: a texture in the
+ * default pool, which refuses LockRect outright.
+ *
+ * This is the whole of the in-game video upload. The palette loader
+ * fills a texture slot with a default-pool texture, and every
+ * procedural frame is written over that same texture -- so the
+ * surface handed to the load is one that cannot be locked, every
+ * time. Written as a lock and nothing else, the load wrote no pixels
+ * at all and reported failure, which is why the video screens showed
+ * their placeholder and never changed. Nothing in the differential
+ * comparison can see that: the frozen copy calls D3DX and D3DX is
+ * mocked on both sides.
+ *
+ * So what is asserted here is that the pixels arrive in the
+ * destination, not that the fallback was entered.
+ */
+static void caseSurfaceLoadStaging(void)
+{
+    unsigned char src[4 * 2 * 4];
+    unsigned char dest[16 * 16 * 4 + 64];
+    tWtDevice     dev;
+    tWtSurface    surf;
+    int           x, y;
+    int           bad;
+
+    printf("-- a destination that cannot be locked\n");
+
+    for (y = 0; y < 2; y++)
+        for (x = 0; x < 4; x++)
+        {
+            unsigned char* p = &src[(y * 4 + x) * 4];
+
+            p[0] = 0x10;                     /* blue, a constant to spot */
+            p[1] = (unsigned char)(y + 1);   /* green: the row */
+            p[2] = (unsigned char)(x + 1);   /* red: the column */
+            p[3] = 0xFF;
+        }
+
+    /* Equal sizes first, so the straight copy is checked through the
+       staging route as well as through a direct lock. The
+       destination's pitch is padded and the staging surface's is
+       padded differently, so a copy that is blind to either shows. */
+    memset(dest, 0xCD, sizeof(dest));
+    memset(&dev, 0, sizeof(dev));
+    memset(&surf, 0, sizeof(surf));
+    dev.lpVtbl = &wdVtbl;
+    surf.lpVtbl = &wsVtbl;
+    surf.bits = dest;
+    surf.width = 4;
+    surf.height = 2;
+    surf.pitch = 4 * 4 + 12;
+    surf.failLock = 1;           /* a default-pool texture, in effect */
+    surf.dev = &dev;
+
+    ok(D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 2),
+       "a destination that will not lock still loads");
+    okEq(surf.lockCalls, 1, "the destination is tried once");
+    okEq(surf.unlockCalls, 0, "and never unlocked, having never locked");
+    okEq(dev.createCalls, 1, "one staging surface is made");
+    okEq(dev.updateCalls, 1, "and one device copy is asked for");
+
+    /* The staging surface has to be the destination's size and
+       format, or the device copy cannot be a copy. */
+    okEq((long)dev.reqW, 4, "the staging surface is the destination's width");
+    okEq((long)dev.reqH, 2, "and its height");
+    okEq((long)dev.reqFmt, (long)D3DFMT_X8R8G8B8, "and its format");
+    okEq((long)dev.reqPool, (long)D3DPOOL_SYSTEMMEM,
+         "and lives in system memory, which is what the copy requires");
+    ok(dev.updSrc == (IDirect3DSurface9*)&dev.staging,
+       "the copy reads the staging surface");
+    ok(dev.updDst == (IDirect3DSurface9*)&surf,
+       "and writes the destination");
+    ok(dev.updSrcRect == NULL && dev.updDstPoint == NULL,
+       "whole surface to whole surface, so neither rectangle is given");
+    okEq(dev.staging.releaseCalls, 1, "the staging surface is released");
+    okEq(dev.releaseCalls, 1, "and so is the device reference");
+
+    bad = 0;
+    for (y = 0; y < 2; y++)
+        for (x = 0; x < 4; x++)
+        {
+            const unsigned char* got = &dest[y * surf.pitch + x * 4];
+            const unsigned char* want = &src[(y * 4 + x) * 4];
+
+            if (got[0] != want[0] || got[1] != want[1]
+                || got[2] != want[2] || got[3] != want[3])
+                bad++;
+        }
+    okEq(bad, 0, "and every pixel arrived in the destination");
+
+    bad = 0;
+    for (y = 0; y < 2; y++)
+        for (x = 4 * 4; x < surf.pitch; x++)
+            if (dest[y * surf.pitch + x] != 0xCD)
+                bad++;
+    okEq(bad, 0, "with the destination's pitch padding left alone");
+
+    /* And the stretch, through the same route: a 4 by 2 rectangle into
+       a 2 by 4 surface, which is the shape the engine's transposed
+       dimensions produce. */
+    memset(dest, 0xCD, sizeof(dest));
+    memset(&dev, 0, sizeof(dev));
+    memset(&surf, 0, sizeof(surf));
+    dev.lpVtbl = &wdVtbl;
+    surf.lpVtbl = &wsVtbl;
+    surf.bits = dest;
+    surf.width = 2;
+    surf.height = 4;
+    surf.pitch = 2 * 4 + 4;
+    surf.failLock = 1;
+    surf.dev = &dev;
+
+    ok(D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 2),
+       "a transposed destination that will not lock loads too");
+
+    bad = 0;
+    for (y = 0; y < 4; y++)
+        for (x = 0; x < 2; x++)
+        {
+            const unsigned char* got = &dest[y * surf.pitch + x * 4];
+            int                  sx = ((x * 2 + 1) * 4) / (2 * 2);
+            int                  sy = ((y * 2 + 1) * 2) / (4 * 2);
+
+            if (got[1] != (unsigned char)(sy + 1)
+                || got[2] != (unsigned char)(sx + 1))
+                bad++;
+        }
+    okEq(bad, 0, "and the stretch picks the same source pixels as a"
+                 " direct lock would");
+
+    /* Every step of the route is a place it can fail, and a failure
+       there has to be reported rather than returned as a success with
+       nothing written. */
+    memset(dest, 0xCD, sizeof(dest));
+    memset(&dev, 0, sizeof(dev));
+    memset(&surf, 0, sizeof(surf));
+    dev.lpVtbl = &wdVtbl;
+    surf.lpVtbl = &wsVtbl;
+    surf.bits = dest;
+    surf.width = 4;
+    surf.height = 2;
+    surf.pitch = 4 * 4;
+    surf.failLock = 1;
+    surf.dev = &dev;
+
+    surf.failGetDevice = 1;
+    ok(!D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 2),
+       "a surface that will not name its device is a failure");
+    okEq(dev.createCalls, 0, "and nothing is made for it");
+    surf.failGetDevice = 0;
+
+    dev.failCreate = 1;
+    ok(!D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 2),
+       "a staging surface that cannot be made is a failure");
+    okEq(dev.updateCalls, 0, "and no copy is asked for");
+    okEq(dev.releaseCalls, 1, "the device reference is still given back");
+    dev.failCreate = 0;
+
+    dev.releaseCalls = 0;
+    dev.failUpdate = 1;
+    ok(!D3D_b_SurfaceLoadFromMemory((IDirect3DSurface9*)&surf, src, 4 * 4, 4, 2),
+       "a device copy that fails is a failure");
+    okEq(dev.staging.releaseCalls, 1, "the staging surface is released anyway");
+    okEq(dev.releaseCalls, 1, "and so is the device reference");
+    dev.failUpdate = 0;
+
+    dev.releaseCalls = 0;
+    dev.staging.failLock = 0;
+    bad = 0;
+    for (y = 0; y < 2; y++)
+        for (x = 0; x < 4 * 4; x++)
+            if (dest[y * surf.pitch + x] != 0xCD)
+                bad++;
+    okEq(bad, 0, "and nothing was written to the destination by any of them");
 }
 
 static void caseUniform(void)
@@ -757,6 +1088,7 @@ int main(void)
     printf("=== renderer texture unit test ===\n");
     caseSurfaceLoad();
     caseSurfaceLoadStretch();
+    caseSurfaceLoadStaging();
     caseUniform();
     caseAverages();
     casePosition();
