@@ -346,7 +346,7 @@ void INO_CloseModule()
    mode or submode, which stay as the game set them and stay visible
    to everything that reads them. */
 static int ino_inputSuspended;
-static int ino_savedJoystickMask;
+static int ino_gameJoystickMask;
 
 void INO_SuspendInput(int suspend)
 {
@@ -354,7 +354,7 @@ void INO_SuspendInput(int suspend)
     {
         if (ino_inputSuspended)
             return;
-        ino_savedJoystickMask = INO_l_JoystickMask;
+        ino_gameJoystickMask = INO_l_JoystickMask;
         INO_l_JoystickMask = 0;
         ino_inputSuspended = 1;
     }
@@ -362,9 +362,37 @@ void INO_SuspendInput(int suspend)
     {
         if (!ino_inputSuspended)
             return;
-        INO_l_JoystickMask = ino_savedJoystickMask;
+        INO_l_JoystickMask = ino_gameJoystickMask;
         ino_inputSuspended = 0;
     }
+}
+
+/* The mask as the game sees it, which is not the live one while the
+   input is suspended.
+
+   This matters because the game does not just set the mask, it saves
+   and restores it: a script freezes some controls and keeps what was
+   in force so it can put it back. Reading the live mask while the
+   input is suspended hands it the suspension instead of its own
+   state, and it then restores that later as though the game had
+   chosen it -- which leaves the controls frozen once the input has
+   been given back. Writing the live mask is the same thing the other
+   way round: a script re-enabling its controls would open the mask
+   the suspension is holding shut.
+
+   So the game reads and writes its own copy, gets back exactly what
+   it last set, and the suspension stays whole in between. */
+int INO_i_GameJoystickMask(void)
+{
+    return ino_inputSuspended ? ino_gameJoystickMask : INO_l_JoystickMask;
+}
+
+void INO_GameJoystickMaskSet(int mask)
+{
+    if (ino_inputSuspended)
+        ino_gameJoystickMask = mask;
+    else
+        INO_l_JoystickMask = mask;
 }
 
 int INO_b_InputSuspended(void)
@@ -399,7 +427,7 @@ void INO_Keyboard_Update()
 void INO_Reinit()
 {
     INO_gi_DiscError = 0;
-    INO_l_JoystickMask = -1;
+    INO_GameJoystickMaskSet(-1);
     INO_l_JoystickDir = 0;
     INO_SimulateReset();
     INO_PifSet(0);

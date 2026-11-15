@@ -155,6 +155,15 @@ void INO_SetControlMode(int mode);
    suspend does nothing and one release ends it. */
 void INO_SuspendInput(int suspend);
 int  INO_b_InputSuspended(void);
+
+/* The joystick mask as the game sees it. While the input is
+   suspended the live mask belongs to whatever took it, and these go
+   to the copy the game will get back -- so a script that saves the
+   mask, freezes something and puts the mask back finds what it left
+   rather than the suspension. Anything acting for the game uses
+   these rather than INO_l_JoystickMask. */
+int  INO_i_GameJoystickMask(void);
+void INO_GameJoystickMaskSet(int mask);
 void INO_SetMouseSensitivity(float sensitivity);
 void INO_SetControlSubmode(int submode);
 int INO_i_IsMouseBeingUsed();
