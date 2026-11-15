@@ -222,7 +222,7 @@ static void RUN(int caseId)
         rc.left = 0; rc.top = k; rc.right = 640 - k; rc.bottom = 480;
         X(D3D_StretchRect)(AEMOCK_tex[2], &rc);
         X(D3D_MotionBlur)(AEMOCK_tex[0], AEMOCK_tex[1], AE_Factor(k, 2));
-        X(D3D_Unkown_AE_Func_Flag_1)(AEMOCK_tex[3], AEMOCK_tex[4]);
+        X(D3D_Grayscale)(AEMOCK_tex[3], AEMOCK_tex[4]);
         X(D3D_Unkown_AE_Func_2)(AEMOCK_tex[3], AEMOCK_tex[4], AE_Factor(k, 3));
         break;
     }

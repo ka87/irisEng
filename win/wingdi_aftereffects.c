@@ -1043,7 +1043,16 @@ void D3D_AE_CopyToScreen(IDirect3DTexture9* d3dtex)
     }
 }
 
-void D3D_Unkown_AE_Func_Flag_1(IDirect3DTexture9* dest, IDirect3DTexture9* src)
+// Grey, over the picture between the cinematic bands.
+//
+// Stage 0 biases the source to 0.5 + 0.5*src, which is exactly what
+// stage 1's DOTPRODUCT3 undoes when it remaps its arguments from
+// [0,1] to [-1,1]. The texture factor carries the weights: 0x9A,
+// 0xDA, 0x88 remap the same way to about 0.21, 0.71, 0.07, which is
+// the usual cheap luma. DOTPRODUCT3 writes its one scalar to all
+// three channels, so what lands is grey rather than tinted, and
+// alpha is masked out of the write and left as it was.
+void D3D_Grayscale(IDirect3DTexture9* dest, IDirect3DTexture9* src)
 {
     int i;
     float height;
@@ -2937,7 +2946,7 @@ void D3D_PC_AE(tWorld* param1)
         CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, current);
     }
     if ((PC_AE_MASTER & 1) != 0) {
-        D3D_Unkown_AE_Func_Flag_1(D3DRenderParams.tmpRenderTarget, current);
+        D3D_Grayscale(D3DRenderParams.tmpRenderTarget, current);
         CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, current);
     }
     D3D_AE_CopyToScreen(current);

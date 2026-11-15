@@ -68,7 +68,7 @@ extern int ECAM_gi_NoAfterEffects;
     void  P##_D3D_StretchRect(IDirect3DTexture9* t, RECT* r); \
     void  P##_D3D_MotionBlur(IDirect3DTexture9* s, IDirect3DTexture9* d, float f); \
     void  P##_D3D_AE_CopyToScreen(IDirect3DTexture9* t); \
-    void  P##_D3D_Unkown_AE_Func_Flag_1(IDirect3DTexture9* d, IDirect3DTexture9* s); \
+    void  P##_D3D_Grayscale(IDirect3DTexture9* d, IDirect3DTexture9* s); \
     void  P##_D3D_Unkown_AE_Func_2(IDirect3DTexture9* d, IDirect3DTexture9* s, float f); \
     void  P##_D3D_ColorBalanceLessThanZeroPointHalf(IDirect3DTexture9* d, \
                                                     IDirect3DTexture9* s, float f); \

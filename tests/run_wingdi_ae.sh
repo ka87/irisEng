@@ -35,7 +35,7 @@ D3D_AETexturesInit D3D_SetD3DStatesDefaultForAE D3D_DrawASurface \
 D3D_DepthBlurSD D3D_DepthBlurHD D3D_SetRenderTargetFromTexture D3D_DepthBlur \
 D3D_Blur D3D_Unknown_AE_Func1 D3D_CalcTextureFactor D3D_Unkown_AE_Func_Flag_4 \
 D3D_Fade D3D_StretchRect D3D_MotionBlur D3D_AE_CopyToScreen \
-D3D_Unkown_AE_Func_Flag_1 D3D_Unkown_AE_Func_2 \
+D3D_Grayscale D3D_Unkown_AE_Func_2 \
 D3D_ColorBalanceLessThanZeroPointHalf D3D_ColorBalanceMoreThanZeroPointHalfSD \
 D3D_ColorBalanceMoreThanZeroPointHalfHD D3D_ColorBalanceMoreThanZeroPointHalf \
 D3D_ColorBalance D3D_WaterBlurHD D3D_WaterBlurSD D3D_WaterBlur \
@@ -60,10 +60,13 @@ defs() {
 echo "=== wingdi_aftereffects ==="
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c win/wingdi_aftereffects.c \
     -o "$OUT/wingdi_ae.new.o" $(defs NEW_ $fns $globals)
-# the frozen copy still spells one function the way the decompiler named
-# it; map it onto the same per-side symbol the rewrite's new name takes
+# The frozen copy still spells two functions the way the decompiler
+# named them; each is mapped onto the same per-side symbol the
+# rewrite's new name takes, rather than the baseline being edited to
+# follow a rename.
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h \
     -DPC_AE_MASTER_GET_ONOFF_sub_4A37D0=BASE_PC_AE_MASTER_GET_ONOFF \
+    -DD3D_Unkown_AE_Func_Flag_1=BASE_D3D_Grayscale \
     -c tests/baseline_wingdi_ae.c \
     -o "$OUT/wingdi_ae.base.o" $(defs BASE_ $fns $globals)
 $CC $CFLAGS -c math.c -o "$OUT/wingdi_ae.math.o"
