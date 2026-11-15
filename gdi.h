@@ -50,6 +50,12 @@ typedef struct sGdi_D3DRenderParams
     IDirect3DTexture9* pDestTexture; // blorolt textura (lasd D3D_UpdateBlurTexture)
     IDirect3DTexture9* pSourceTexture; // orig textura
     int d3dNeedToCallEndScene;
+    /* Dead in the live build: the two below are GDI_gi_TextureUVMode
+       and GDI_gi_Diffuse2x now, because the engine writes them as
+       well as reading them and they are no renderer's to own. They
+       stay here because the frozen copies in tests/ still name them,
+       and a struct member cannot be mapped the way a renamed symbol
+       can. Nothing live should read or write either. */
     int textureUVMode;
     Mtx4x4WithoutAdditionalData transformationMatrix;
     int textureUVIsProjected;
@@ -190,6 +196,21 @@ typedef struct sGdi_DisplayData
                             int pointMask, float cameraZ);
     int  (* b_SunSampleRead)(void* sampler, int* outPassed);
     void (* SunEffectOnOff)(void* sampler, int on);
+
+    /* What this renderer can do, as the engine needs to know it. Each
+       is worked out by the renderer when it starts -- from the
+       device's own capabilities, in Direct3D's case -- and each can
+       be forced from the tweak console, so these are read every time
+       rather than cached by the caller. */
+    int (* b_CanDiffuse2x)(void);     /* can modulate colour by two */
+    int (* b_WantsNoFlare)(void);     /* too few texture units for the flare */
+    int (* b_NoZonAlpha)(void);
+    int (* b_DepthBlurOn)(void);      /* the depth blur is running */
+
+    /* How big the renderer's drawing surface came out, which only it
+       knows -- the window it was asked for and what it ended up with
+       are not always the same thing. */
+    void(* GetDrawingSize)(int* width, int* height);
     uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;
@@ -287,6 +308,13 @@ void MAT_UV_Compute_Default(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleC
    the picking live in renderers.h. */
 struct sGdi_Renderer;
 extern const struct sGdi_Renderer* GDI_gpst_Renderer;
+
+/* Drawing state that both the engine and the renderer write, so it
+   belongs to neither of them. The renderer clears them when it starts
+   and reads them while it draws; the engine sets them as it decides
+   what a material needs. */
+int GDI_gi_TextureUVMode;
+int GDI_gi_Diffuse2x;
 
 void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd);
 struct sGdi_DisplayData* GDI_fnpst_CreateDisplayData();

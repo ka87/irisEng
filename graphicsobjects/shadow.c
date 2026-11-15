@@ -278,7 +278,7 @@ void SDW_Display1ShadowOn1Object(tGEOGRO* geogro, tShadowElemStruct* sdes)
     tmpTCO.triangleNum = 0;
     tmpTCO.triangleChunkElems = triangleChunkElemsTmp;
     //tmpTCO.materialNum = 0;
-    D3DRenderParams.textureUVMode = 0;
+    GDI_gi_TextureUVMode = 0;
     // the first stage's own, untransformed UVs; the renderer knows
     // whether that is already in force
     gpst_DX_stDD->SetTexCoordIndex(0, 0);

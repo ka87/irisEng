@@ -227,7 +227,7 @@ void MAT_DrawIndexedTriangle_MT(tGdi_DisplayData* dxdd, tGEOGRO* geogro, tGEOMAT
                         bigBuff->vertexColorArray = dxdd->RLIPtr;
                         break;
                     case 6:
-                        D3DRenderParams.diffuse2x = 1;
+                        GDI_gi_Diffuse2x = 1;
                         bigBuff->vertexColorArray = (int*)bigBuff->data3FinalColorWithShadow;
                         break;
                     default:
@@ -242,7 +242,7 @@ void MAT_DrawIndexedTriangle_MT(tGdi_DisplayData* dxdd, tGEOGRO* geogro, tGEOMAT
                     MAT_UV_ComputeAndSetTransform(geogro, triangleChunks, texElem);
                     gpst_DX_stDD->rasters[9].unk2 += triangleChunks->triangleNum;
                     dxdd->DrawElementIndexedTriangles(triangleChunks, dxdd->verticesCurrent, (tGeoUVElem*)(bigBuff->UVData), geogro->vertexNum);
-                    if (D3DRenderParams.diffuse2x && !D3DRenderParams.tweak_ae_d2x)
+                    if (GDI_gi_Diffuse2x && !dxdd->b_CanDiffuse2x())
                     {
                         blurFlags = (texElem->subTextureFlags & ~0xA0000u) | 0x50000;
                         if (!materialsHaveAlphaBlending)
@@ -251,10 +251,10 @@ void MAT_DrawIndexedTriangle_MT(tGdi_DisplayData* dxdd, tGEOGRO* geogro, tGEOMAT
                         gpst_DX_stDD->rasters[9].unk2 += triangleChunks->triangleNum;
                         dxdd->DrawElementIndexedTriangles(triangleChunks, dxdd->verticesCurrent, (tGeoUVElem*)(bigBuff->UVData), geogro->vertexNum);
                     }
-                    D3DRenderParams.diffuse2x = 0;
+                    GDI_gi_Diffuse2x = 0;
                 }
-                if (D3DRenderParams.isDepthBlurOn
-                    && !D3DRenderParams.tweak_zonalpha
+                if (dxdd->b_DepthBlurOn()
+                    && !dxdd->b_NoZonAlpha()
                     && MAT_IsLastElemInMultiTexture(dxdd, texElem)
                     && (materialsHaveAlphaBlending || transparentObject))
                 {
@@ -552,7 +552,7 @@ void MAT_DrawIndexedSprites_MT(tGdi_DisplayData* dxdd, tGEOGRO* geogro, tGEOMAT*
                 flags = texElem->subTextureFlags;
                 if (!materialsHaveAlphaBelnding)
                     flags |= 0x20;
-                D3DRenderParams.textureUVMode = 0;
+                GDI_gi_TextureUVMode = 0;
                 // the first stage's own, untransformed UVs; the
                 // renderer knows whether that is already in force
                 dxdd->SetTexCoordIndex(0, 0);
@@ -562,8 +562,8 @@ void MAT_DrawIndexedSprites_MT(tGdi_DisplayData* dxdd, tGEOGRO* geogro, tGEOMAT*
                     dxdd->bigBuffer->colorMask = (dxdd->bigBuffer->colorMask | ((texElem->phongOrPlanarParam & 0xFF00) << 16)) ^ 0xFF000000;
                 dxdd->DrawSprites(spr, dxdd->verticesCurrent, geogro->vertexNum);
             }
-            if (D3DRenderParams.isDepthBlurOn
-                && !D3DRenderParams.tweak_zonalpha
+            if (dxdd->b_DepthBlurOn()
+                && !dxdd->b_NoZonAlpha()
                 && MAT_IsLastElemInMultiTexture(dxdd, texElem)
                 && (materialsHaveAlphaBelnding || isTransparent))
             {

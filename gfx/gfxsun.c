@@ -187,10 +187,10 @@ int GFX_Sun_UpdateRayLum_inner_sub_4A8A40(void* sampler, tGdi_DisplayData* dd,
     Vec3 screen;
     int passed;
 
-    // TODO: tweak_ae_noflare still lives inside the Direct3D render
-    // params rather than beside the other tweaks in dbg.c, which is
-    // the one renderer-shaped thing left in this file.
-    if (D3DRenderParams.tweak_ae_noflare)
+    // A renderer with too few texture units draws no flare, and the
+    // tweak console can force the same. Either way it is the
+    // renderer that answers.
+    if (dd->b_WantsNoFlare())
         return GFX_l_SunHidden(sampler, dd, sun);
 
     if (!dd->b_SunSamplerReady(sampler))

@@ -46,6 +46,9 @@ int MDMOCK_Index(const void* p);
 void MDMOCK_RegisterPtr(const void* p);
 
 /* Display-device entry points, installed into the mock tGdi_DisplayData. */
+int  MDMOCK_b_CanDiffuse2x(void);
+int  MDMOCK_b_NoZonAlpha(void);
+int  MDMOCK_b_DepthBlurOn(void);
 void MDMOCK_SetTexCoordIndex(int stage, int index);
 void MDMOCK_SetTextureTransformFlags(int stage, int flags);
 void MDMOCK_TextureInit(int texIdx, int flags, char param);

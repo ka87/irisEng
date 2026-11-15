@@ -165,6 +165,9 @@ static int Fake_SampleRead(void* s, int* outPassed)
     return 1;
 }
 
+static int noFlare;
+static int Fake_WantsNoFlare(void) { return noFlare; }
+
 static void Fake_EffectOnOff(void* s, int on)
 {
     (void)s;
@@ -183,6 +186,7 @@ static void Reset(void)
 {
     memset(&r, 0, sizeof(r));
     memset(&dd, 0, sizeof(dd));
+    noFlare = 0;
     ringCalls = 0;
     sunUnkCnt = 0;
 
@@ -193,6 +197,7 @@ static void Reset(void)
     dd.SunSampleQueue = Fake_SampleQueue;
     dd.b_SunSampleRead = Fake_SampleRead;
     dd.SunEffectOnOff = Fake_EffectOnOff;
+    dd.b_WantsNoFlare = Fake_WantsNoFlare;
 
     /* a viewport the whole ring lands inside unless a case says
        otherwise */
@@ -278,7 +283,7 @@ static void whenTheSunIsHidden(void)
     sun = MakeSun();
     sun->alphaThresholdFlags = 0;
     sun->flags = 0;
-    D3DRenderParams.tweak_ae_noflare = 1;
+    noFlare = 1;
     Update(sun);
     okEq(sun->alphaThresholdFlags & 0x1FF, 0x1FF, "all nine count as blocked");
     ok((sun->flags & 0x1000000u) != 0, "and the sun is marked hidden");

@@ -323,6 +323,9 @@ static void BuildWorld(unsigned int seed)
     W.dd.drawMaskAllowedStuffCurrent = (int)(seed & 0xFF) | (int)((seed & 0x100) ? 1 : 0);
     W.dd.flags = (int)((seed >> 4) & 0xF) | (int)((seed & 0x20) ? 0x8000 : 0);
     W.dd.RLIPtr = (int*)bb->data1LightColors;
+    W.dd.b_CanDiffuse2x = MDMOCK_b_CanDiffuse2x;
+    W.dd.b_NoZonAlpha = MDMOCK_b_NoZonAlpha;
+    W.dd.b_DepthBlurOn = MDMOCK_b_DepthBlurOn;
     W.dd.SetTexCoordIndex = MDMOCK_SetTexCoordIndex;
     W.dd.SetTextureTransformFlags = MDMOCK_SetTextureTransformFlags;
     W.dd.TextureInit = MDMOCK_TextureInit;
@@ -342,6 +345,10 @@ static void BuildWorld(unsigned int seed)
     W.vtbl.SetTextureStageState = Vt_SetTextureStageState;
     D3DRenderParams.isDepthBlurOn = (int)((seed >> 5) & 1);
     D3DRenderParams.tweak_zonalpha = (int)((seed >> 6) & 1);
+    /* both spellings of the two that moved, so each side sees the
+       same starting value */
+    GDI_gi_Diffuse2x = D3DRenderParams.diffuse2x;
+    GDI_gi_TextureUVMode = D3DRenderParams.textureUVMode;
     D3DRenderParams.tweak_ae_d2x = (int)((seed >> 7) & 1);
     /* These were (seed >> 9) & 1 and (seed >> 10) & 1, and both are zero
        for every seed the sweep uses -- 0..95 never reaches bit 9, and
@@ -432,7 +439,12 @@ static tShot shot[2];
 static tMdMockCall logCopy[2][MDMOCK_LOG_MAX];
 static int logLen[2];
 
-static void TakeShot(tShot* s)
+/* `side` is 0 for the frozen copy and 1 for the rewrite. It is
+   needed because two pieces of drawing state moved out of the
+   Direct3D params into renderer-neutral globals: each side is read
+   where it actually keeps them, which is what makes this a
+   comparison of the code rather than of the move. */
+static void TakeShot(tShot* s, int side)
 {
     int i;
 
@@ -477,8 +489,8 @@ static void TakeShot(tShot* s)
     }
     for (i = 0; i < MAXTEX; i++)
         s->tex[i].nextTextureKey = NULL;
-    s->diffuse2x = D3DRenderParams.diffuse2x;
-    s->texUVMode = D3DRenderParams.textureUVMode;
+    s->diffuse2x = side ? GDI_gi_Diffuse2x : D3DRenderParams.diffuse2x;
+    s->texUVMode = side ? GDI_gi_TextureUVMode : D3DRenderParams.textureUVMode;
     s->texCoordIdx = textureStageTypeConfig[0].d3dTexCoordIndex;
     s->texTransformFlags = textureStageTypeConfig[0].d3dTextureTransformFlags;
     s->outMtx = W.outMtx;
@@ -884,7 +896,7 @@ static void Run(const char* label, fnCase fn, unsigned int seed)
         BuildWorld(seed);
         MDMOCK_Reset();
         fn(&sides[side], &shot[side], seed);
-        TakeShot(&shot[side]);
+        TakeShot(&shot[side], side);
         memcpy(logCopy[side], MDMOCK_log, sizeof(MDMOCK_log));
         logLen[side] = MDMOCK_logLen;
     }

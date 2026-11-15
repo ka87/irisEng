@@ -151,6 +151,41 @@ static void D3D_SamplerStateSetF(int sampler, float* current, DWORD state, float
    rest of this file already uses, so a value that is already in
    force costs nothing and the device sees exactly the calls it saw
    when these were written out at the call sites. */
+/* What this renderer can do. All four are worked out at device
+   creation from d3dcaps and can be forced from the tweak console, so
+   they are read out of the params each time rather than answered
+   from anything cached here. */
+/* The size the renderer is actually drawing at, taken from the rect
+   it set up rather than from the window, because a device does not
+   always get the size it asked for. */
+void D3D_GetDrawingSize(int* width, int* height)
+{
+    if (width)
+        *width = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
+    if (height)
+        *height = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
+}
+
+int D3D_b_CanDiffuse2x(void)
+{
+    return D3DRenderParams.tweak_ae_d2x != 0;
+}
+
+int D3D_b_WantsNoFlare(void)
+{
+    return D3DRenderParams.tweak_ae_noflare != 0;
+}
+
+int D3D_b_NoZonAlpha(void)
+{
+    return D3DRenderParams.tweak_zonalpha != 0;
+}
+
+int D3D_b_DepthBlurOn(void)
+{
+    return D3DRenderParams.isDepthBlurOn != 0;
+}
+
 void D3D_SetZEnable(int on)
 {
     D3D_RenderStateSet(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, on);
@@ -218,14 +253,14 @@ void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, 
     PRO_PerfCounterStartBlock(&gpst_DX_stDD->rasters[38]);
     planarParam = texElem->phongOrPlanarParam;
     uvFunc = (texElem->subTextureFlags >> 20) & 0xF;
-    D3DRenderParams.textureUVMode = 0;
+    GDI_gi_TextureUVMode = 0;
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
     gpst_DX_stDD->flags &= ~0x10u;
     MAT_FuncTable[uvFunc](gpst_DX_stDD, geogro, chunks, planarParam);
     if (!gpst_DX_stDD->bigBuffer->UVData)
     {
-        if (D3DRenderParams.textureUVMode)
+        if (GDI_gi_TextureUVMode)
         {
             MATH_MakeOGLMatrix(&oglMtx, &GLOBAL_UVTransformMatrix);
             memcpy(d3dTransformationMatrix, &oglMtx, sizeof(Mtx4x4WithoutAdditionalData));
@@ -237,9 +272,9 @@ void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, 
     transform1 = texElem->transform1;
     if (transform1 == 0x3F800000 && texElem->transform2 == 0x3F800000 || !transform1 || !texElem->transform2) // TODO: MAT_VUIsIdentity inline
     {
-        if (!D3DRenderParams.textureUVMode)
+        if (!GDI_gi_TextureUVMode)
         {
-            D3DRenderParams.textureUVMode = 0;
+            GDI_gi_TextureUVMode = 0;
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
             PRO_PerfCounterEndBlock(&gpst_DX_stDD->rasters[38]);
@@ -266,14 +301,14 @@ void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, 
         scale.y = 1.0;
         scale.z = 1.0;
         PC_SetUVMatrix(&uvMtx, &axisV, &axisU, &axisW, &speed, &scale, 0, 6);
-        if (D3DRenderParams.textureUVMode)
+        if (GDI_gi_TextureUVMode)
         {
             MATH_MulMatrixMatrix(&oglMtx, &GLOBAL_UVTransformMatrix, &uvMtx);
             MATH_MakeOGLMatrix(&oglMtx, &oglMtx);
         }
         else
         {
-            D3DRenderParams.textureUVMode = 3;
+            GDI_gi_TextureUVMode = 3;
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
             if (textureStageTypeConfig[0].d3dTextureTransformFlags != 2)
             {
@@ -299,7 +334,7 @@ void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleCh
     Vec3 scale;
     Vec3 axisU;
 
-    D3DRenderParams.textureUVMode = 2;
+    GDI_gi_TextureUVMode = 2;
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
     drawMask = dd->drawMaskAllowedStuffCurrent;
@@ -340,7 +375,7 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, 
 
     dd->bigBuffer->UVData = dd->bigBuffer->data7;
     dd->flags |= 0x2;
-    D3DRenderParams.textureUVMode = 1;
+    GDI_gi_TextureUVMode = 1;
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
     viewMtx = dd->ct.cam.viewMtxPtr_setInGRORender;
@@ -2257,7 +2292,7 @@ void D3D_SetTextureStageStates(int stage, int textureID)
     }
     else if (textureID != -2)
     {
-        if (D3DRenderParams.tweak_ae_d2x && D3DRenderParams.diffuse2x && textureID >= 0)
+        if (D3DRenderParams.tweak_ae_d2x && GDI_gi_Diffuse2x && textureID >= 0)
         {
             D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE2X);
         }
@@ -2439,7 +2474,7 @@ void D3D_l_Texture_Init(int textureID, int flags, char mode)
     {
         if (D3DRenderParams.textureUVIsProjected)
         {
-            D3DRenderParams.textureUVMode = 4;
+            GDI_gi_TextureUVMode = 4;
             memcpy(d3dTransformationMatrix, &D3DRenderParams.transformationMatrix, sizeof(D3DMATRIX));
             D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&D3DRenderParams.transformationMatrix);
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
@@ -2451,7 +2486,7 @@ void D3D_l_Texture_Init(int textureID, int flags, char mode)
         }
         else
         {
-            D3DRenderParams.textureUVMode = 5;
+            GDI_gi_TextureUVMode = 5;
             memcpy(d3dTransformationMatrix, &D3DRenderParams.transformationMatrix, sizeof(D3DMATRIX));
             D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_TEXTURE0, (D3DMATRIX*)&D3DRenderParams.transformationMatrix);
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEPOSITION);
@@ -2712,8 +2747,8 @@ void D3D_InitEverything(tGdi_DisplayData* dd)
     D3D_CreateWaterTexture();
     D3D_RenderStateSet(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, D3DRenderParams.d3d_defaultZEnable);
     D3DRenderParams.tweak_ae_d2x = D3DRenderParams.d3dcaps.TextureOpCaps & D3DTEXOPCAPS_MODULATE2X;
-    D3DRenderParams.textureUVMode = 0;
-    D3DRenderParams.diffuse2x = 0;
+    GDI_gi_TextureUVMode = 0;
+    GDI_gi_Diffuse2x = 0;
     memset(&D3DRenderParams.transformationMatrix, 0, 64u);
     D3DRenderParams.textureUVIsProjected = 1;
     D3DRenderParams.isDepthBlurOn = 0;
@@ -4255,7 +4290,7 @@ static void D3D_DrawIndexedStreams(tGEOGRO* geogro, tGeoWholeTriangleStripBlock*
     for (i = 0; i < block->streamsNum; i++)
     {
         info = &block->d3dStreamInfoElems[i];
-        if (D3DRenderParams.textureUVMode != 2)
+        if (GDI_gi_TextureUVMode != 2)
         {
             if (geogro->d3dUVVB)
             {
@@ -4321,7 +4356,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
     if (geogro)
     {
         mismatch = 0;
-        if (geogro->UVs != UVs && D3DRenderParams.textureUVMode != 2)
+        if (geogro->UVs != UVs && GDI_gi_TextureUVMode != 2)
             mismatch = 1;
         if (verticesIN == geogro->vertices && (gpst_DX_stDD->flags & 0x400) != 0)
             mismatch = 1;
@@ -4342,7 +4377,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         {
             solidColor = (mask ^ (alpha | bb->solidVertexColor)) & 0xFF00FF00 | ((uint8_t)(mask ^ (alpha | (bb->solidVertexColor & 0xff))) << 16) | (uint8_t)((mask ^ (alpha | bb->solidVertexColor)) >> 16);
         }
-        if (D3DRenderParams.textureUVMode == 2)
+        if (GDI_gi_TextureUVMode == 2)
         {
             // preserved: the colour arg 2 backup is taken from arg 1
             savedArg1 = textureStageTypeConfig[0].d3d_colorarg1;
@@ -4394,15 +4429,15 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         }
         D3D_FillCurrentVBO(0);
         D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, triangleNum);
-        if (D3DRenderParams.textureUVMode != 5
-            && D3DRenderParams.textureUVMode != 4
+        if (GDI_gi_TextureUVMode != 5
+            && GDI_gi_TextureUVMode != 4
             && !D3DRenderParams.renderTargetBackup
             && D3D_setWaterRenderParamsIfWaterRenderingIsActive())
         {
             D3DRenderParams.d3dDev->lpVtbl->DrawPrimitive(D3DRenderParams.d3dDev, 4, 0, triangleNum);
             D3D_RestoreRenderParamsAfterWaterRendering();
         }
-        if (D3DRenderParams.textureUVMode == 2)
+        if (GDI_gi_TextureUVMode == 2)
         {
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg1, 2, savedArg1);
             D3D_StageStateSet(0, &textureStageTypeConfig[0].d3d_colorarg2, 3, savedArg2);
@@ -4519,7 +4554,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         D3DRenderParams.d3dColorsVB,
         D3DRenderParams.startVertexElemIdx * D3DRenderParams.stride,
         D3DRenderParams.stride);
-    if (D3DRenderParams.textureUVMode == 2)
+    if (GDI_gi_TextureUVMode == 2)
     {
         if (verticesIN == geogro->vertices)
         {
@@ -4562,7 +4597,7 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
     D3DRenderParams.d3dDev->lpVtbl->SetStreamSource(D3DRenderParams.d3dDev, 3, 0, 0, 0);
     D3DRenderParams.d3dDev->lpVtbl->SetIndices(D3DRenderParams.d3dDev, geogro->d3dIndexBuf);
     D3D_DrawIndexedStreams(geogro, block);
-    if (D3DRenderParams.textureUVMode != 5 && D3DRenderParams.textureUVMode != 4
+    if (GDI_gi_TextureUVMode != 5 && GDI_gi_TextureUVMode != 4
         && !D3DRenderParams.renderTargetBackup
         && D3D_setWaterRenderParamsIfWaterRenderingIsActive())
     {

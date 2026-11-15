@@ -338,6 +338,99 @@ longer compared against the rewrite.** Everything else in the same
 function still is, and `gfx.c`'s harness runs 2482 cases with 0
 differing.
 
+## What the renderer knows, and what is simply shared
+
+With the operations behind the interface, what was left was **data**:
+engine files reading and writing fields of `D3DRenderParams`. Sorting
+it out needed the fields separated into two kinds, and the first
+guess about them was wrong.
+
+### Capabilities, which the renderer answers
+
+`tweak_ae_d2x`, `tweak_ae_noflare` and `tweak_zonalpha` look like
+debug tweaks that ended up in the wrong struct. They are not.
+`win/wingdi.c` computes all three from the device's own capabilities
+when it starts:
+
+```c
+D3DRenderParams.tweak_ae_d2x    = d3dcaps.TextureOpCaps & D3DTEXOPCAPS_MODULATE2X;
+D3DRenderParams.tweak_ae_noflare = d3dcaps.MaxSimultaneousTextures < 4u;
+D3DRenderParams.tweak_zonalpha  = 0;
+```
+
+They are **renderer capability flags**, exposed in the tweak console
+so they can be forced. Moving them to `dbg.c` beside the other
+fourteen tweaks would have separated them from the thing that works
+them out, and a GL renderer would compute its own values anyway.
+
+So they stay where they are computed, and the engine asks:
+
+```c
+int (* b_CanDiffuse2x)(void);
+int (* b_WantsNoFlare)(void);
+int (* b_NoZonAlpha)(void);
+int (* b_DepthBlurOn)(void);
+void(* GetDrawingSize)(int* width, int* height);
+```
+
+`b_DepthBlurOn` joins them because `isDepthBlurOn` is the same shape:
+written only by the renderer, read by the engine. `GetDrawingSize`
+too — `gdi.c` was working the window size out of the renderer's own
+rect, and a device does not always get the size it asked for, so only
+the renderer knows.
+
+Each is read through the interface every time rather than cached,
+because the tweak console can change the answer at any point.
+
+### State both sides write, which belongs to neither
+
+`diffuse2x` and `textureUVMode` are different: the engine writes them
+as well as reading them, and so does the renderer. They are
+`GDI_gi_Diffuse2x` and `GDI_gi_TextureUVMode` now, in `gdi.h`, named
+directly by both sides.
+
+`sunEffectIsOn` turned out to need nothing: after the sun split,
+nothing outside `win/` touches it.
+
+### The upshot
+
+`materialanddraw.c`, `graphicsobjects/shadow.c`, `gfx/gfxsun.c`,
+`ai/ai_gfxfunctions.c` and `gdi.c` now contain **no reference to
+`D3DRenderParams` at all**. What is left is three lines of `dbg.c`,
+and those are deliberate: the tweak console's table points at where
+the renderer keeps its capability flags, which is exactly its job.
+
+### How the move was kept honest
+
+Two pieces of state changing where they live cannot be expressed with
+`-D` the way a renamed function can, so the frozen copies still read
+the struct while the rewrite reads the globals. The harnesses were
+taught to **drive both spellings**, and three separate places needed
+it — each found by the comparison failing, not by reading the code:
+
+1. **Installing the state.** `Setup` sets the struct member and the
+   global to the same value.
+2. **Clearing it.** `ResetShared` zeroes every shared global before
+   each side runs, and the two new ones had to join the list.
+   Without that the rewrite began each case holding what the
+   previous one left, while the frozen copy began from the zeroed
+   struct — 481 differences that looked like a defect in the
+   rewrite and were a gap in the harness.
+3. **Third parties that perturb it.** `wingdi_mocks.c` stands in for
+   the UV compute functions and deliberately pokes the UV mode. It
+   writes both spellings now; writing one left the two sides looking
+   at different worlds.
+
+And where the state is **compared**, each side is read where it
+actually keeps it: `test_matdraw.c`'s snapshot takes a side
+parameter, and `test_wingdi.c`'s overwrites the two members of its
+copied struct for the rewrite's side. Reading one spelling for both
+would have compared the move instead of the code.
+
+All of which is the argument for doing this against frozen copies
+rather than by inspection: every one of those three gaps would have
+shipped silently.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

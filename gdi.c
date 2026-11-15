@@ -853,6 +853,11 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->SunSampleQueue = D3D_SunSampleQueue;
     dd->b_SunSampleRead = D3D_b_SunSampleRead;
     dd->SunEffectOnOff = D3D_SunEffectOnOff;
+    dd->b_CanDiffuse2x = D3D_b_CanDiffuse2x;
+    dd->b_WantsNoFlare = D3D_b_WantsNoFlare;
+    dd->b_NoZonAlpha = D3D_b_NoZonAlpha;
+    dd->b_DepthBlurOn = D3D_b_DepthBlurOn;
+    dd->GetDrawingSize = D3D_GetDrawingSize;
 }
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)
@@ -880,8 +885,7 @@ void GDI_AttachDisplay(tGdi_DisplayData* dd, HWND hwnd)
     
     dd->hwnd = hwnd;
     dd->Init(dd->hwnd, dd);
-    dd->winWidth = D3DRenderParams.Rect.right - D3DRenderParams.Rect.left;
-    dd->winHeight = D3DRenderParams.Rect.bottom - D3DRenderParams.Rect.top;
+    dd->GetDrawingSize(&dd->winWidth, &dd->winHeight);
 
     if (dd->winWidth <= dd->winHeight)
         biggerDimension = (float)dd->winHeight;
