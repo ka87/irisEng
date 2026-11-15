@@ -245,6 +245,7 @@
     <ClCompile Include="graphicsobjects\way.c" />
     <ClCompile Include="grid.c" />
     <ClCompile Include="groups.c" />
+    <ClCompile Include="datafiles.c" />
     <ClCompile Include="inputoutput.c" />
     <ClCompile Include="jpeg-6b\jcapimin.c" />
     <ClCompile Include="jpeg-6b\jcapistd.c" />
@@ -432,6 +433,7 @@
     <ClInclude Include="graphicsobjects\way.h" />
     <ClInclude Include="grid.h" />
     <ClInclude Include="groups.h" />
+    <ClInclude Include="datafiles.h" />
     <ClInclude Include="inputoutput.h" />
     <ClInclude Include="jpeg-6b\cderror.h" />
     <ClInclude Include="jpeg-6b\cdjpeg.h" />

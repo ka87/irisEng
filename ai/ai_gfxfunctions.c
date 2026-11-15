@@ -9,6 +9,8 @@
 #include "../win/wingdi.h"
 #include "../video.h"
 #include "../win/winvideosound.h"
+#include "../datafiles.h"
+#include "../dbg.h"
 
 // An effect's id says which of the world's two lists holds it: the ids
 // below 1024 live in the list the engine draws after the animation
@@ -511,18 +513,32 @@ static void GFX_FS_VideoBlit(tVideoStream* video)
     back->lpVtbl->Release(back);
 }
 
-void GFX_FS_VideoStart(int unused)
+// The id picks the file out of datafiles.ini. Nothing to play is not
+// an error -- it is logged and the video simply does not start, which
+// leaves everything as it was.
+void GFX_FS_VideoStart(int videoId)
 {
     IDirect3DSurface9* back;
     D3DSURFACE_DESC desc;
     D3DLOCKED_RECT lr;
     HRESULT hr;
+    const char* file;
 
-    (void)unused;
-
-    GFX_gpv_FS_Video = VID_pst_OpenFile("BGEMakingOf.bik", 1);
-    if (!GFX_gpv_FS_Video)
+    file = DAT_pc_Video(videoId);
+    if (!file)
+    {
+        DBG_OutputDebugString("GFX_FS_VideoStart: no video for id %d in %s\n",
+                              videoId, DAT_INIFILE);
         return;
+    }
+
+    GFX_gpv_FS_Video = VID_pst_OpenFile(file, 1);
+    if (!GFX_gpv_FS_Video)
+    {
+        DBG_OutputDebugString("GFX_FS_VideoStart: cannot open \"%s\" for id %d\n",
+                              file, videoId);
+        return;
+    }
     // The sound is ours to play now: libav decodes it and nothing
     // more. A video with no sound track, or a device that will not
     // give up a buffer, leaves the picture to the wall clock.
