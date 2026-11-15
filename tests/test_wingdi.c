@@ -1369,6 +1369,40 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         ret = s->DrawSprites(&W.sprites,
                              ((seed >> 26) & 1) ? (void*)W.c0de : (void*)W.spritePos,
                              (int)(seed % 3u));
+        /* Two of the three arms were reached by about one seed in a
+           hundred and the third by none at all: the sentinel layout
+           and the wobble are driven by bits 26 and 27, and those are
+           set together or not at all in every seed this harness
+           uses -- so the wobble, which is in the arm the sentinel
+           does not take, never ran. Seven deliberate breakages of the
+           two scored clean because of it.
+
+           So drive all four combinations on purpose, with the colour
+           arrays in place both ways round, which is what makes the
+           sentinel arm's offsetting of them visible. */
+        for (extra = 0; extra < 16; extra++)
+        {
+            GDI_gb_WaveSprite = (extra & 1);
+            W.bb.vertexColorArray = (extra & 2) ? W.colorsA : NULL;
+            W.bb.vertexColorArraySecond = (extra & 4) ? W.colorsB : NULL;
+            if (extra & 8)
+            {
+                /* the sentinel, with an offset that is never nought:
+                   an offset of nought cannot see the offsetting
+                   dropped */
+                W.spriteElems[0].idx = 0xC0DE;
+                W.spriteElems[1].idx = (uint16_t)(1u + (extra % 3u));
+            }
+            else
+            {
+                W.spriteElems[0].idx = (uint16_t)(seed % 5u);
+                W.spriteElems[1].idx = (uint16_t)((seed + 1u) % 5u);
+            }
+            ret = ret * 3 + s->DrawSprites(
+                &W.sprites,
+                (extra & 8) ? (void*)W.c0de : (void*)W.spritePos,
+                (int)(seed % 3u));
+        }
         break;
     case C_DRAWTRIS:
         ret = s->DrawElementIndexedTriangles(&W.chunks[0], W.verts,

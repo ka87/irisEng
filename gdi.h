@@ -80,6 +80,18 @@ typedef struct sGdi_TexturedVertex
     float    v;
 } tGdi_TexturedVertex;
 
+/* One sprite, as four corners and a colour. The corners are in world
+   space and in the order the renderer expands them: the first and the
+   third are opposite, which is what lets two triangles share them. */
+typedef struct sGdi_SpriteQuad
+{
+    Vec3 v1;
+    Vec3 v2;
+    Vec3 v3;
+    Vec3 v4;
+    int  color;
+} tGdi_SpriteQuad;
+
 typedef struct sGdi_DisplayData
 {
     void*(* CreateDevice)(void);

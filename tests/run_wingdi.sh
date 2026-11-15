@@ -87,6 +87,11 @@ $CC $CFLAGS -c projection.c -o "$OUT/wingdi.proj.o"
 # nothing to stand in for. The frozen copy still has its own inline
 # copy of both.
 $CC $CFLAGS -c geovertex.c -o "$OUT/wingdi.gvx.o"
+# The sprite quad building came out of win/wingdi.c into geosprite.c,
+# and is linked for the same reason: walking the engine's arrays with
+# nothing to stand in for. The frozen copy still has its own inline
+# copy.
+$CC $CFLAGS -c geosprite.c -o "$OUT/wingdi.gsp.o"
 # rasterstate.c states the per-draw flags word's meaning once, for
 # both renderers. Unlike projection.c and geovertex.c it is not a move:
 # this renderer still reads the bits itself, and the driver's
@@ -98,7 +103,8 @@ $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
 $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
     "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" "$OUT/wingdi.gvx.o" \
-    "$OUT/wingdi.rst.o" "$OUT/wingdi.profiler.o" "$OUT/wingdi.mocks.o" \
+    "$OUT/wingdi.rst.o" "$OUT/wingdi.gsp.o" "$OUT/wingdi.profiler.o" \
+    "$OUT/wingdi.mocks.o" \
     "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm
 "$OUT/wingdi"

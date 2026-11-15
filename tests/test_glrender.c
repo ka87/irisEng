@@ -773,6 +773,67 @@ static void caseOverlayText(void)
     GL_DestroyAlphaTexture(atlas);
 }
 
+static void caseSprites(void)
+{
+    tGeoSpriteElem elems[2];
+    Vec3           pos[2];
+    tGeoSprites    sprites;
+    Mtx4x4         stack;
+
+    printf("-- a sprite lands where the matrix points it\n");
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_SolidColour(0xFF, 0x20, 0x40, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+    /* One sprite at the origin. The matrix stack's first two columns
+       are the axes the corners are built along, so an identity gives a
+       square in the x/y plane.
+
+       The element is a union: the low half is the index into the
+       positions and the whole of it, read as a float, is the sprite's
+       size. So the two have to be chosen together -- index nought and
+       a high half of 0x3F00 is the float 0.5, which with an identity
+       matrix puts the corners at plus and minus a half. Leaving the
+       high half at nought makes the float nought too, and the quad
+       collapses to a point; which is what the first draft of this
+       case did, and it drew nothing. */
+    elems[0].idx = 0;
+    elems[0].dummy = 0x3F00;
+    pos[0].x = 0.0f;
+    pos[0].y = 0.0f;
+    pos[0].z = 0.0f;
+    memset(&sprites, 0, sizeof(sprites));
+    sprites.num = 1;
+    sprites.spriteElems = elems;
+    sprites.globalSize = 1.0f;
+    sprites.globalRatio = 1.0f;
+
+    MATH_SetIdentityMatrix(&stack);
+    glr_dd.matrixStack.actMatrixElem = &stack;
+
+    GL_TextureInit(-1, 0, 0);
+    GL_DrawSprites(&sprites, pos, 1);
+    glr_Read();
+
+    okNear(glr_R(GLR_W / 2, GLR_H / 2), 0xFF,
+           "the sprite is drawn in the middle");
+    okNear(glr_R(2, 2), GLR_BG, "and the corners are where the size says");
+    okNear(glr_G(GLR_W / 2, GLR_H / 2), 0x20,
+           "in the colour the engine asked for");
+    okNear(glr_B(GLR_W / 2, GLR_H / 2), 0x40,
+           "with red and blue the way round the engine packs them");
+
+    /* The batch's own size scales every corner, so taking it away
+       takes the sprite away. */
+    glr_Begin();
+    sprites.globalSize = 0.0f;
+    GL_DrawSprites(&sprites, pos, 1);
+    glr_Read();
+    okNear(glr_R(GLR_W / 2, GLR_H / 2), GLR_BG,
+           "and a batch with no size draws nothing at all");
+}
+
 static void caseShadowTarget(void)
 {
     printf("-- a shadow drawn into a target and sampled back\n");
@@ -855,6 +916,10 @@ int main(void)
        files. */
     snprintf(glr_exePath, sizeof(glr_exePath), "./iriseng.exe");
 
+    /* The sine table, which the sprite wobble reads through
+       MATH_GetSin. */
+    MATH_InitModule();
+
     if (!EGLH_b_Open())
     {
         printf("  skipped: %s\n", EGLH_why);
@@ -907,6 +972,7 @@ int main(void)
     caseGeometryMatrix();
     caseOverlayQuads();
     caseOverlayText();
+    caseSprites();
     caseShadowTarget();
 
     GL_l_ForgetPass();

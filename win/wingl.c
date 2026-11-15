@@ -4,6 +4,7 @@
 #include "wingdimath.h"
 #include "../projection.h"
 #include "../geovertex.h"
+#include "../geosprite.h"
 #include "../rasterstate.h"
 #include "../textures.h"
 #include "../cameraengine.h"
@@ -68,6 +69,12 @@ typedef struct sGlMaterial
 } tGlMaterial;
 
 static tGlMaterial gl_material;
+
+/* The sprite quads' vertices on their way to the card. Grown rather
+   than allocated per batch, like the world's. */
+static tGdi_TexturedVertex* gl_sprVerts;
+static int                  gl_sprVertMax;
+static int                  gl_sprVertNum;
 
 #define GL_SHADOW_TARGETS 8
 #define GL_SHADOW_SIZE    128
@@ -349,10 +356,10 @@ static void GL_l_SayWhatThisIs(void)
         (const char*)GLFN_glGetString(GL_RENDERER),
         (const char*)GLFN_glGetString(GL_SHADING_LANGUAGE_VERSION));
     DBG_OutputDebugString("GL: this renderer draws the overlay, its text, "
-                          "the textured world and its shadows; video, "
-                          "sprites, the sun's occlusion test and the "
-                          "projected-texture pass are not drawn through it "
-                          "yet, and culling is off\n");
+                          "the textured world, its shadows and its "
+                          "sprites; video, the sun's occlusion test and "
+                          "the depth blur are not drawn through it yet, "
+                          "and culling is off\n");
 }
 
 static void GL_l_SizeFromWindow(HWND hwnd)
@@ -693,6 +700,10 @@ static void GL_l_ForgetGeometry(void)
     free(gl_geoVerts);
     gl_geoVerts = NULL;
     gl_geoVertMax = 0;
+    free(gl_sprVerts);
+    gl_sprVerts = NULL;
+    gl_sprVertMax = 0;
+    gl_sprVertNum = 0;
 }
 
 /* view * projection, in the engine's own order, kept ready for the
@@ -754,6 +765,43 @@ void GL_SetProjectionMatrix(tDDCamStruct* cam)
     }
 }
 
+/* The one place vertices reach the card: the world's triangles and
+   the sprites' quads are the same vertex and the same program, so
+   they are the same draw with a different staging buffer behind
+   them. */
+static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count)
+{
+    if (!verts || count <= 0)
+        return;
+
+    GLFN_glUseProgram(gl_geoProgram.program);
+    if (gl_geoViewProj >= 0)
+        GLFN_glUniformMatrix4fv(gl_geoViewProj, 1, GL_FALSE,
+                                (const GLfloat*)&gl_viewProjMtx);
+    /* The material, as the last GL_TextureInit left it. The texture
+       itself is already bound to unit zero there; what the shader
+       cannot be told through the pipeline goes here. */
+    if (gl_geoTextured >= 0)
+        GLFN_glUniform1i(gl_geoTextured, gl_material.textured);
+    if (gl_geoAlphaMode >= 0)
+        GLFN_glUniform1i(gl_geoAlphaMode, gl_material.alphaMode);
+    if (gl_geoAlphaRef >= 0)
+        GLFN_glUniform1f(gl_geoAlphaRef, gl_material.alphaRef);
+    if (gl_geoTex >= 0)
+        GLFN_glUniform1i(gl_geoTex, 0);
+    /* A display setting, read at the draw rather than kept with the
+       material, because the engine can change it between the two. */
+    if (gl_geoDiffuse2x >= 0)
+        GLFN_glUniform1i(gl_geoDiffuse2x, GDI_gi_Diffuse2x ? 1 : 0);
+    GLFN_glBindVertexArray(gl_geoVao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoBuffer);
+    GLFN_glBufferData(GL_ARRAY_BUFFER,
+                      (GLsizei)(sizeof(tGdi_TexturedVertex) * (size_t)count),
+                      verts, GL_STREAM_DRAW);
+    GLFN_glDrawArrays(GL_TRIANGLES, 0, (GLsizei)count);
+    GLFN_glBindVertexArray(0);
+}
+
 int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
                                    Vec3* vertices, struct sGeoUVElem* uvs,
                                    int vertexNum)
@@ -804,32 +852,7 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
 
     GVX_BuildTriangles(gl_geoVerts, chunks, &src);
 
-    GLFN_glUseProgram(gl_geoProgram.program);
-    if (gl_geoViewProj >= 0)
-        GLFN_glUniformMatrix4fv(gl_geoViewProj, 1, GL_FALSE,
-                                (const GLfloat*)&gl_viewProjMtx);
-    /* The material, as the last GL_TextureInit left it. The texture
-       itself is already bound to unit zero there; what the shader
-       cannot be told through the pipeline goes here. */
-    if (gl_geoTextured >= 0)
-        GLFN_glUniform1i(gl_geoTextured, gl_material.textured);
-    if (gl_geoAlphaMode >= 0)
-        GLFN_glUniform1i(gl_geoAlphaMode, gl_material.alphaMode);
-    if (gl_geoAlphaRef >= 0)
-        GLFN_glUniform1f(gl_geoAlphaRef, gl_material.alphaRef);
-    if (gl_geoTex >= 0)
-        GLFN_glUniform1i(gl_geoTex, 0);
-    /* A display setting, read at the draw rather than kept with the
-       material, because the engine can change it between the two. */
-    if (gl_geoDiffuse2x >= 0)
-        GLFN_glUniform1i(gl_geoDiffuse2x, GDI_gi_Diffuse2x ? 1 : 0);
-    GLFN_glBindVertexArray(gl_geoVao);
-    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoBuffer);
-    GLFN_glBufferData(GL_ARRAY_BUFFER,
-                      (GLsizei)(sizeof(tGdi_TexturedVertex) * (size_t)needed),
-                      gl_geoVerts, GL_STREAM_DRAW);
-    GLFN_glDrawArrays(GL_TRIANGLES, 0, (GLsizei)needed);
-    GLFN_glBindVertexArray(0);
+    GL_l_DrawStaged(gl_geoVerts, needed);
     return 0;
 }
 
@@ -841,10 +864,10 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
  * the whole mapping, one OpenGL name per entry.
  *
  * Two indices are not indices. -1 means "no texture, use the vertex
- * colour alone" and -2 means the renderer's own copy of what it has
- * already drawn, which this renderer has no render targets for yet. A
- * negative index with the top bit set is a shadow texture, which
- * waits on the same thing.
+ * colour alone", and -2 means the depth-blur ramp -- a 256 by 1 table
+ * the other renderer looks a blur amount up in, which waits on the
+ * depth-blur pass. A negative index with the top bit set is a shadow
+ * target, which is a texture this renderer does have.
  */
 
 /* Standing in for a shadow target when one is sampled as a texture.
@@ -1157,13 +1180,21 @@ void GL_TextureInit(int textureID, int flags, char mode)
 
     if ((mode & 1) != 0)
     {
-        /* The projected-texture pass: a shadow or a reflection drawn
-           through a camera-space texture transform, sampling what the
-           renderer has already drawn. It waits on render targets,
-           which this renderer has none of yet, and the texture-UV
-           mode the other renderer sets here is read only by that
-           renderer -- so setting it from here would be bookkeeping
-           for a pass that does not run. */
+        /* The depth-blur pass, and it is not what its shape suggests.
+           The texture it samples is not a picture of anything: it is a
+           256 by 1 ramp the after-effects fill with a blur amount per
+           depth. The world's geometry is drawn through it with texture
+           coordinates taken from the camera-space position and divided
+           through, so the coordinate is the depth, and the colour write
+           is narrowed to the alpha channel -- so what the pass leaves
+           behind is a per-pixel blur amount in the frame's alpha, for
+           the after-effects to read.
+
+           What it waits on is the ramp and the camera-space coordinate
+           generation, not a render target. The texture-UV mode the
+           other renderer sets here is read only by that renderer, so
+           setting it from here would be bookkeeping for a pass that
+           does not run. */
         return;
     }
     if ((mode & 2) != 0)
@@ -1234,12 +1265,94 @@ void GL_TextureInit(int textureID, int flags, char mode)
     gl_colorMaskAlpha = (int)st.colorMaskAlpha;
 }
 
-/* sprites are geometry too */
-int GL_DrawSprites(tGeoSprites* a1, Vec3* a2, int num)
+/* ---------------------------------------------------------- sprites
+ *
+ * A sprite is a position, a size and an index into the colour arrays;
+ * what has to be drawn is four corners facing the camera. None of
+ * that working out is this renderer's -- geosprite.c walks the batch
+ * and hands over one quad at a time -- and what is here is turning
+ * each quad into the two triangles the world's own program draws.
+ *
+ * The same program, because a sprite's vertex is the same vertex: a
+ * position, a packed colour and one texture coordinate. The material
+ * was set by the GL_TextureInit that came before, exactly as it was
+ * for the world's triangles.
+ */
+
+/* Six vertices a quad, in the order and with the corner coordinates
+   the other renderer writes: two triangles sharing the first and
+   third corners. */
+static void GL_l_EmitSprite(void* user, const tGdi_SpriteQuad* quad)
 {
-    (void)a1;
-    (void)a2;
+    tGdi_TexturedVertex* v;
+    unsigned int         color;
+    int                  i;
+
+    (void)user;
+
+    if (gl_sprVertNum + 6 > gl_sprVertMax)
+        return;
+    v = &gl_sprVerts[gl_sprVertNum];
+    gl_sprVertNum += 6;
+
+    /* The engine's colour word turned round for the device, which is
+       what the other renderer does at this same point. */
+    color = GVX_ui_DeviceColor((unsigned int)quad->color);
+
+    v[0].pos = quad->v1; v[0].u = 1.0f; v[0].v = 1.0f;
+    v[1].pos = quad->v2; v[1].u = 0.0f; v[1].v = 1.0f;
+    v[2].pos = quad->v3; v[2].u = 0.0f; v[2].v = 0.0f;
+    v[3].pos = quad->v1; v[3].u = 1.0f; v[3].v = 1.0f;
+    v[4].pos = quad->v3; v[4].u = 0.0f; v[4].v = 0.0f;
+    v[5].pos = quad->v4; v[5].u = 1.0f; v[5].v = 0.0f;
+    for (i = 0; i < 6; i++)
+        v[i].color = color;
+}
+
+int GL_DrawSprites(tGeoSprites* sprites, Vec3* positions, int num)
+{
+    tBigBufferStruct* bb;
+    tGsp_Source       src;
+    int               count;
+    int               needed;
+
     (void)num;
+
+    if (!sprites || !positions || !gpst_DX_stDD)
+        return 0;
+    count = GSP_i_QuadCount(sprites);
+    if (count <= 0)
+        return 0;
+    if (!GL_l_b_GeometryReady())
+        return 0;
+
+    needed = count * 6;
+    if (needed > gl_sprVertMax)
+    {
+        tGdi_TexturedVertex* grown;
+
+        grown = (tGdi_TexturedVertex*)realloc(gl_sprVerts,
+                                              sizeof(*grown) * (size_t)needed);
+        if (!grown)
+            return 0;
+        gl_sprVerts = grown;
+        gl_sprVertMax = needed;
+    }
+    gl_sprVertNum = 0;
+
+    bb = gpst_DX_stDD->bigBuffer;
+    src.positions = positions;
+    src.colors = bb ? bb->vertexColorArray : NULL;
+    src.second = bb ? bb->vertexColorArraySecond : NULL;
+    src.mask = bb ? bb->colorMask : 0;
+    src.alpha = gl_colorMaskAlpha;
+    src.solidColor = bb ? (unsigned int)bb->solidVertexColor : 0u;
+    src.matrix = gpst_DX_stDD->matrixStack.actMatrixElem;
+    src.waveSprite = GDI_gb_WaveSprite;
+
+    GSP_Walk(sprites, &src, GL_l_EmitSprite, NULL);
+
+    GL_l_DrawStaged(gl_sprVerts, gl_sprVertNum);
     return 0;
 }
 

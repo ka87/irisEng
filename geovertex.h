@@ -33,6 +33,17 @@ typedef struct sGvx_Source
     int                      useVertexUv;   /* one coordinate per vertex */
 } tGvx_Source;
 
+/* The engine's colour word, in the order a device wants it.
+
+   The engine keeps a colour as alpha, blue, green, red -- red in the
+   lowest byte -- and every device this engine has met wants alpha,
+   red, green, blue. So the two middle channels stay and the outer two
+   change places. Both of the packing functions below do this as part
+   of a larger expression; this is the same operation on its own, for
+   the paths that have a colour already made and only need it turned
+   round. */
+unsigned int GVX_ui_DeviceColor(unsigned int engineColor);
+
 /* The colour one vertex gets. Public because the solid case needs the
    same packing and a renderer may want it directly. */
 unsigned int GVX_ui_Color(const int* colors, const int* second, int mask,
