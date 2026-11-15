@@ -6,11 +6,18 @@
    ever handed them: the upload path rejects anything that is not 24
    or 32 bits deep before it gets this far. */
 
-/* Copies a 32-bit image into a surface, row by row, honouring the
-   surface's own pitch. This stands in for D3DXLoadSurfaceFromMemory
-   at the one place it was called: same dimensions, same 32-bit
-   layout, point filter -- which together mean a copy and nothing
-   else.
+/* Copies a 32-bit image into a surface, honouring the surface's own
+   pitch, and stretching it point-sampled where the surface is a
+   different size from the rectangle given. This stands in for
+   D3DXLoadSurfaceFromMemory at the one place it was called, which
+   passed a source rectangle and no destination rectangle -- so the
+   destination is the whole surface, whatever size it is.
+
+   A destination that will not lock, which is any texture in the
+   default pool without dynamic usage, is loaded through a
+   system-memory surface and a device-side copy instead. The caller is
+   handed exactly that, so this is the normal path rather than a
+   corner: without it the procedural uploads write nothing at all.
 
    The destination there is X8R8G8B8 and the source A8R8G8B8. D3DX
    would have dropped the alpha; copying it into the byte that

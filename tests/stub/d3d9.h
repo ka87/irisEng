@@ -183,6 +183,7 @@ struct IDirect3DSurface9Vtbl
     HRESULT (*GetDesc)(IDirect3DSurface9*, D3DSURFACE_DESC*);
     HRESULT (*LockRect)(IDirect3DSurface9*, D3DLOCKED_RECT*, const RECT*, DWORD);
     HRESULT (*UnlockRect)(IDirect3DSurface9*);
+    HRESULT (*GetDevice)(IDirect3DSurface9*, IDirect3DDevice9**);
 };
 
 typedef struct IDirect3DVertexBuffer9Vtbl      IDirect3DVertexBuffer9Vtbl;

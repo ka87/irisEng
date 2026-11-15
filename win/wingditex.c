@@ -2,31 +2,104 @@
 
 #include <string.h>
 
-/* Loading a surface from a block of 32-bit pixels.
+/* The copy itself, into a surface somebody else has locked.
  *
- * What this replaced took a source rectangle and no destination
- * rectangle, which means the whole of the destination surface -- so
- * when the two differ in size it stretches the source to fill it,
- * point sampled. It is not a row copy, and the difference is not
- * academic: the one caller hands over a rectangle of width by height
- * and the surface it hands over may have been created the other way
- * round, because the engine stores a texture's width in its height
- * field and the two creation paths undo that differently.
- *
- * Written as a plain row copy, that wrote width pixels into rows only
- * height pixels wide and ran off the end of every one of them. On a
- * square texture it was right; on anything else it was not, which is
- * why the in-game video screens broke and the fullscreen ones, which
- * do not come through here, did not.
- *
- * The equal-size case is kept as the straight copy it was, so where
- * this was already right it is unchanged. The stretch uses the
- * half-pixel-centre mapping, which is the conventional one; the exact
- * rounding of the original's point filter is not documented and is
- * not something this can check, so a destination pixel that lands on
- * a source boundary may pick the other neighbour. Nothing here
- * depends on which.
+ * Equal sizes is the straight row copy. Where they differ the source
+ * is stretched to fill the destination, point sampled on the
+ * half-pixel-centre mapping: what this replaced was handed a source
+ * rectangle and no destination rectangle, which means the whole of
+ * the destination surface, and the one caller does hand over a
+ * rectangle the surface disagrees with. The exact rounding of the
+ * original's point filter is not something this can check, so a
+ * destination pixel landing on a source boundary may pick the other
+ * neighbour; nothing here depends on which.
  */
+static void D3D_l_CopyIntoLocked(const D3DLOCKED_RECT* locked, int dstW, int dstH,
+                                 const void* src, int srcPitch,
+                                 int width, int height)
+{
+    int x;
+    int y;
+
+    if (dstW == width && dstH == height)
+    {
+        for (y = 0; y < height; y++)
+            memcpy((char*)locked->pBits + (size_t)y * locked->Pitch,
+                   (const char*)src + (size_t)y * srcPitch,
+                   (size_t)width * 4);
+        return;
+    }
+
+    for (y = 0; y < dstH; y++)
+    {
+        const char* srow;
+        char*       drow;
+        int         sy;
+
+        sy = ((y * 2 + 1) * height) / (dstH * 2);
+        if (sy >= height)
+            sy = height - 1;
+        srow = (const char*)src + (size_t)sy * srcPitch;
+        drow = (char*)locked->pBits + (size_t)y * locked->Pitch;
+
+        for (x = 0; x < dstW; x++)
+        {
+            int sx;
+
+            sx = ((x * 2 + 1) * width) / (dstW * 2);
+            if (sx >= width)
+                sx = width - 1;
+            memcpy(drow + (size_t)x * 4, srow + (size_t)sx * 4, 4);
+        }
+    }
+}
+
+/* The same copy, for a destination that cannot be locked.
+ *
+ * A texture in the default pool with no dynamic usage refuses
+ * LockRect outright, and that is what the one caller is usually
+ * handed: a texture slot the palette loader filled is a default-pool
+ * texture, and the procedural upload writes over it every frame. So
+ * the pixels go into a system-memory surface of the destination's own
+ * size and format and the device copies that across, which is the
+ * route that works for a destination in any pool.
+ */
+static int D3D_l_b_LoadThroughStaging(IDirect3DSurface9* surface,
+                                      const D3DSURFACE_DESC* desc,
+                                      const void* src, int srcPitch,
+                                      int width, int height)
+{
+    IDirect3DDevice9*  dev = NULL;
+    IDirect3DSurface9* staging = NULL;
+    D3DLOCKED_RECT     locked;
+    int                ok = 0;
+
+    if (FAILED(surface->lpVtbl->GetDevice(surface, &dev)) || !dev)
+        return 0;
+
+    if (SUCCEEDED(dev->lpVtbl->CreateOffscreenPlainSurface(
+                      dev, desc->Width, desc->Height, desc->Format,
+                      D3DPOOL_SYSTEMMEM, &staging, NULL))
+        && staging)
+    {
+        if (SUCCEEDED(staging->lpVtbl->LockRect(staging, &locked, NULL, 0)))
+        {
+            D3D_l_CopyIntoLocked(&locked, (int)desc->Width, (int)desc->Height,
+                                 src, srcPitch, width, height);
+            staging->lpVtbl->UnlockRect(staging);
+            /* Whole surface to whole surface, so neither rectangle is
+               given and the sizes agree by construction. */
+            ok = SUCCEEDED(dev->lpVtbl->UpdateSurface(dev, staging, NULL,
+                                                      surface, NULL));
+        }
+        staging->lpVtbl->Release(staging);
+    }
+
+    dev->lpVtbl->Release(dev);
+    return ok;
+}
+
+/* Loading a surface from a block of 32-bit pixels. */
 int D3D_b_SurfaceLoadFromMemory(IDirect3DSurface9* surface, const void* src,
                                 int srcPitch, int width, int height)
 {
@@ -34,8 +107,6 @@ int D3D_b_SurfaceLoadFromMemory(IDirect3DSurface9* surface, const void* src,
     D3DLOCKED_RECT  locked;
     int             dstW;
     int             dstH;
-    int             x;
-    int             y;
 
     if (!surface || !src || width <= 0 || height <= 0)
         return 0;
@@ -48,41 +119,10 @@ int D3D_b_SurfaceLoadFromMemory(IDirect3DSurface9* surface, const void* src,
         return 0;
 
     if (FAILED(surface->lpVtbl->LockRect(surface, &locked, NULL, 0)))
-        return 0;
+        return D3D_l_b_LoadThroughStaging(surface, &desc, src, srcPitch,
+                                          width, height);
 
-    if (dstW == width && dstH == height)
-    {
-        for (y = 0; y < height; y++)
-            memcpy((char*)locked.pBits + (size_t)y * locked.Pitch,
-                   (const char*)src + (size_t)y * srcPitch,
-                   (size_t)width * 4);
-    }
-    else
-    {
-        for (y = 0; y < dstH; y++)
-        {
-            const char* srow;
-            char*       drow;
-            int         sy;
-
-            sy = ((y * 2 + 1) * height) / (dstH * 2);
-            if (sy >= height)
-                sy = height - 1;
-            srow = (const char*)src + (size_t)sy * srcPitch;
-            drow = (char*)locked.pBits + (size_t)y * locked.Pitch;
-
-            for (x = 0; x < dstW; x++)
-            {
-                int sx;
-
-                sx = ((x * 2 + 1) * width) / (dstW * 2);
-                if (sx >= width)
-                    sx = width - 1;
-                memcpy(drow + (size_t)x * 4, srow + (size_t)sx * 4, 4);
-            }
-        }
-    }
-
+    D3D_l_CopyIntoLocked(&locked, dstW, dstH, src, srcPitch, width, height);
     surface->lpVtbl->UnlockRect(surface);
     return 1;
 }
