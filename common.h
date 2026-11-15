@@ -1,6 +1,12 @@
 #pragma once
 
-#define _CRT_SECURE_NO_WARNINGS
+/* _CRT_SECURE_NO_WARNINGS was defined here. It is defined for every
+   configuration in irisEng.vcxproj instead -- the project file is
+   the only place immune to include order, and FreeType's sources
+   never reach this header at all. Defining it in both places is a
+   redefinition: the command line makes it 1 and a bare #define
+   makes it empty, so the two replacement lists differ and every
+   translation unit says so. */
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -802,8 +802,16 @@ in the new file while every file around it builds -- which reads like
 a problem with the new code rather than with its include order.
 
 Defining it in the project file removes the trap for any file added
-later. `common.h` keeps its definition, which is harmless and still
-covers anything built outside the project file.
+later.
+
+**And it has to be the only definition.** `common.h` kept its own at
+first, on the grounds that it was harmless. It is not: the command
+line makes the macro `1` and a bare `#define` makes it empty, so the
+two replacement lists differ and MSVC reports a redefinition in every
+translation unit that includes the header -- which is all of them.
+`jpeg-6b/jconfig.h` had the same definition and the same effect, once
+for each of the 46 jpeg sources. Both are gone, each leaving a comment
+saying where the definition went.
 
 The three calls in `font.c` that reported the error were replaced by
 one bounded `snprintf` rather than being silenced, because that was
