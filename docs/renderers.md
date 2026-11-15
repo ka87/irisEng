@@ -431,6 +431,73 @@ All of which is the argument for doing this against frozen copies
 rather than by inspection: every one of those three gaps would have
 shipped silently.
 
+## Nothing neutral is named after Direct3D any more
+
+`gdi.h` is the engine's drawing header, and it used to `#include
+<d3d9.h>` and define the whole Direct3D renderer's private state —
+`IDirect3D9*`, `D3DCAPS9`, `LPDIRECT3DDEVICE9` and ninety-odd other
+fields — in the middle of the interface every renderer has to fill.
+
+That was a question of **where things live** more than what they are
+called. `tGdi_DisplayData` itself turned out to contain no Direct3D
+type at all beyond three references to that struct, so once those
+three were dealt with the include could go.
+
+- The state struct moved to `win/wingdi.h`, where it belongs. It
+  keeps its Direct3D name, because it *is* Direct3D's.
+- `CreateDevice` and `DestroyDevice` deal in `void*`: the engine
+  holds a renderer's private state opaquely and never looks inside.
+  The one place that does look is inside the renderer, which casts
+  to its own type.
+- `pd3drp` became `rendererState`.
+- `D3D_ReleaseTextures` and
+  `D3D_SetRenderTargetAndBackupPreviousSDW` lost their prefixes —
+  they are interface entries, and an interface entry named after one
+  renderer is a contradiction. The *functions* that implement them
+  keep their `D3D_` names, which are correct.
+- `tD3dRequestSnapshot` became `tGdi_SnapshotRequest`. It holds a
+  flags word and some sizes and never held anything of Direct3D's;
+  the name was the only thing renderer-specific about it.
+- `D3D_OutputDebugString` became `GDI_OutputDebugString`. It is
+  `dbg.c`'s own logger, byte for byte the one above it, with a
+  leftover name.
+
+`gdi.h` now contains no Direct3D include, no Direct3D type and no
+Direct3D-named member. Only two comments mention it, to explain the
+arrangement.
+
+### The tweak console
+
+Three of the seventeen tweaks were pointers into the renderer's
+state. They go through the interface now, as the tweak table's **type
+2** — the setter kind the console already knew how to call and
+nothing had ever used:
+
+```c
+{"ae_d2x", 2, (void*)DBG_l_TweakCanDiffuse2x},
+```
+
+So `dbg.h` includes `gdi.h` rather than `win/wingdi.h`, and nothing
+in `dbg` depends on Direct3D.
+
+### How the frozen copies were kept
+
+Type and function renames are what `-D` is for, and three went that
+way: `D3D_OutputDebugString`, `tD3dRequestSnapshot` and
+`sD3dRequestSnapshot`.
+
+**A member rename can go that way too**, which was not obvious:
+`-Dpd3drp=rendererState` rewrites the token after the `->` just as
+well as a symbol, and it carried two of the three sites.
+
+The third dereferenced it, and the member's type is opaque now, so a
+rename alone was not enough there. That one line of
+`tests/baseline_wingdi.c` is edited, with the reason beside it. The
+comparison is **not** weakened by it: both sides read the same object
+through the same renderer's type, which is a different situation from
+the edit the sun split needed, where the two sides genuinely stopped
+doing the same thing.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

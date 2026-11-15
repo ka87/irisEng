@@ -951,7 +951,10 @@ HRESULT D3DXCreateFontIndirectA(IDirect3DDevice9* d, const D3DXFONT_DESCA* desc,
 
 /* ---------- engine mocks ---------- */
 
-void D3D_OutputDebugString(char* fmt, ...) { (void)fmt; L0("D3D_OutputDebugString"); }
+/* The log line keeps its old text on purpose: the frozen copy and the
+   rewrite both reach this through the same name after -D, and what is
+   recorded is the call, not the spelling. */
+void GDI_OutputDebugString(char* fmt, ...) { (void)fmt; L0("D3D_OutputDebugString"); }
 
 void D3D_AETexturesInit(void) { L0("D3D_AETexturesInit"); }
 void D3D_CreateBlurTextures(void) { L0("D3D_CreateBlurTextures"); }

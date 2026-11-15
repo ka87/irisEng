@@ -5869,7 +5869,13 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         v30 = D3D_LockCurrentVBO(3 * v105);
         v31 = gpst_DX_stDD->bigBuffer;
         v32a = v31->vertexColorArraySecond;
-        v33 = gpst_DX_stDD->pd3drp->colorMaskAlpha;
+        /* EDITED, and the only edit in this frozen copy: the engine
+           holds the renderer's state opaquely now, so this reads it
+           through the renderer's own type. The member rename itself is
+           carried by -Dpd3drp=rendererState; this line needs more than
+           a rename because it dereferences, and the same object is
+           read either way, so the comparison is unaffected. */
+        v33 = ((tGdi_D3DRenderParams*)gpst_DX_stDD->rendererState)->colorMaskAlpha;
         v103 = v31->colorMask;
         v34 = v31->vertexColorArray;
         v101 = v34;

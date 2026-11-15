@@ -387,7 +387,7 @@ void SDW_RenderShadow(tGdi_DisplayData* gdd, tGEOGRO* geogro, tShadowElemStruct*
 
     gdd->SetViewMatrixSDW(&viewMtx, unusedShiftParams);
     gdd->TextureInit(-1, 0x2260, 0);
-    gdd->D3D_SetRenderTargetAndBackupPreviousSDW(ses->sdwTexElemNum, clearFlag);
+    gdd->SetRenderTargetAndBackupPreviousSDW(ses->sdwTexElemNum, clearFlag);
     gdd->bigBuffer->vertexColorArray = NULL;
     gdd->bigBuffer->colorMask = 0x00000000;
     gdd->bigBuffer->solidVertexColor = 0xffffffff;
@@ -404,7 +404,7 @@ void SDW_RenderShadow(tGdi_DisplayData* gdd, tGEOGRO* geogro, tShadowElemStruct*
     }
 
     gdd->SetZEnable(zEnableBackup);
-    gdd->D3D_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    gdd->SetRenderTargetAndBackupPreviousSDW(-1, 0);
     gdd->bigBuffer->solidVertexColor = 0x00000000;
     gdd->bigBuffer->vertexColorArray = (int*)gdd->bigBuffer->data3FinalColorWithShadow;
     gdd->SetViewMatrix(gdd->ct.cam.viewMtxPtr_setInGRORender);

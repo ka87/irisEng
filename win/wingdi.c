@@ -158,6 +158,25 @@ static void D3D_SamplerStateSetF(int sampler, float* current, DWORD state, float
 /* The size the renderer is actually drawing at, taken from the rect
    it set up rather than from the window, because a device does not
    always get the size it asked for. */
+/* The tweak console's way in: the same three flags, written. They
+   are worked out from the device at startup and these let that be
+   overridden from the console, which is the whole reason they are
+   tweaks at all. */
+void D3D_SetCanDiffuse2x(int on)
+{
+    D3DRenderParams.tweak_ae_d2x = on;
+}
+
+void D3D_SetWantsNoFlare(int on)
+{
+    D3DRenderParams.tweak_ae_noflare = on;
+}
+
+void D3D_SetNoZonAlpha(int on)
+{
+    D3DRenderParams.tweak_zonalpha = on;
+}
+
 void D3D_GetDrawingSize(int* width, int* height)
 {
     if (width)
@@ -710,7 +729,7 @@ void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int vie
     if (!D3D_gi_AspectTrace)
         return;
     D3D_GetBandFractions(&t, &b);
-    D3D_OutputDebugString(
+    GDI_OutputDebugString(
         "[aspect] %s back %dx%d rect %dx%d view %d,%d %dx%d "
         "YoverX %.4f bands t%.4f b%.4f cin %d\n",
         where,
@@ -721,7 +740,7 @@ void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int vie
         viewX, viewY, viewW, viewH,
         D3D_RealYoverX(), t, b, CIN_Bands);
     if (gpst_DX_stDD)
-        D3D_OutputDebugString(
+        GDI_OutputDebugString(
             "[aspect] %s cam %.1fx%.1f centre %.1f,%.1f factor %.2f,%.2f "
             "flat %d glyphscale x%.4f y%.4f\n",
             where,
@@ -904,7 +923,7 @@ void D3D_SetProjectionMatrix(tDDCamStruct* cam)
 }
 
 
-void D3D_GetSnapShot(tD3dRequestSnapshot* req)
+void D3D_GetSnapShot(tGdi_SnapshotRequest* req)
 {
     unsigned char* rowStart;
     unsigned char* src;
@@ -3341,7 +3360,7 @@ void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
     DWORD device;
 
     D3DRenderParams.d3d_if->lpVtbl->GetAdapterIdentifier(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, 0, &adapter);
-    D3D_OutputDebugString("%d, %d, %d, %d\n", HIWORD(adapter.DriverVersion.HighPart), LOWORD(adapter.DriverVersion.HighPart), HIWORD(adapter.DriverVersion.LowPart), LOWORD(adapter.DriverVersion.LowPart));
+    GDI_OutputDebugString("%d, %d, %d, %d\n", HIWORD(adapter.DriverVersion.HighPart), LOWORD(adapter.DriverVersion.HighPart), HIWORD(adapter.DriverVersion.LowPart), LOWORD(adapter.DriverVersion.LowPart));
     device = adapter.DeviceId;
     if (adapter.VendorId == 0x1002)
     {
@@ -3985,7 +4004,7 @@ int D3D_l_Request(int type, void *param)
         D3D_Request_SpriteDraw();
         break;
     case 24:
-        D3D_GetSnapShot((tD3dRequestSnapshot*)param);
+        D3D_GetSnapShot((tGdi_SnapshotRequest*)param);
         break;
     case 25:
         D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, (int)(size_t)param);
@@ -4370,7 +4389,9 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         out = D3D_LockCurrentVBO(3 * triangleNum);
         bb = gpst_DX_stDD->bigBuffer;
         second = bb->vertexColorArraySecond;
-        alpha = gpst_DX_stDD->pd3drp->colorMaskAlpha;
+        /* the engine holds the renderer's state opaquely; inside the
+           renderer it is this renderer's own struct */
+        alpha = ((tGdi_D3DRenderParams*)gpst_DX_stDD->rendererState)->colorMaskAlpha;
         mask = bb->colorMask;
         colors = bb->vertexColorArray;
         if (!colors)
@@ -4695,7 +4716,7 @@ int PC_HandleWindowOpenAndCloseMessages(HWND hwnd, GLOBAL_MainHandles* mainHandl
         if (!mainHandles || !mainHandles->displayData)
             return 0;
         GDI_DetachDisplay(mainHandles->displayData);
-        mainHandles->displayData->DestroyDevice(mainHandles->displayData->pd3drp);
+        mainHandles->displayData->DestroyDevice(mainHandles->displayData->rendererState);
         GDI_DestroyDisplayData(mainHandles->displayData);
         return 0;
     }
@@ -4707,7 +4728,7 @@ int PC_HandleWindowOpenAndCloseMessages(HWND hwnd, GLOBAL_MainHandles* mainHandl
         fbss = GDI_fnpst_CreateDisplayData();
         mainHandles->displayData = fbss;
         GDI_fnl_InitInterface(mainHandles->displayData);
-        mainHandles->displayData->pd3drp = (tGdi_D3DRenderParams*)mainHandles->displayData->CreateDevice();
+        mainHandles->displayData->rendererState = mainHandles->displayData->CreateDevice();
         PRO_InitRasters(mainHandles->displayData->rasters, "Display Data");
         GDI_AttachDisplayAndReadaptDisplay(mainHandles->displayData, hwnd);
     }
@@ -5087,7 +5108,7 @@ void D3D_SaveScreenshot(void)
     target->lpVtbl->GetDesc(target, &desc);
     if (desc.Format != D3DFMT_A8R8G8B8 && desc.Format != D3DFMT_X8R8G8B8)
     {
-        D3D_OutputDebugString("screenshot: back buffer format %d is not 32 bit\n", (int)desc.Format);
+        GDI_OutputDebugString("screenshot: back buffer format %d is not 32 bit\n", (int)desc.Format);
         target->lpVtbl->Release(target);
         return;
     }
@@ -5101,7 +5122,7 @@ void D3D_SaveScreenshot(void)
     if (D3DRenderParams.d3dDev->lpVtbl->GetRenderTargetData(D3DRenderParams.d3dDev, target, copy) < 0
         || copy->lpVtbl->LockRect(copy, &locked, NULL, D3DLOCK_READONLY) < 0)
     {
-        D3D_OutputDebugString("screenshot: could not read the back buffer\n");
+        GDI_OutputDebugString("screenshot: could not read the back buffer\n");
         copy->lpVtbl->Release(copy);
         target->lpVtbl->Release(target);
         return;
@@ -5113,9 +5134,9 @@ void D3D_SaveScreenshot(void)
             now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
     if (PNG_WriteBgra(path, (const unsigned char*)locked.pBits, locked.Pitch,
                       (int)desc.Width, (int)desc.Height))
-        D3D_OutputDebugString("screenshot: %s\n", path);
+        GDI_OutputDebugString("screenshot: %s\n", path);
     else
-        D3D_OutputDebugString("screenshot: could not write %s\n", path);
+        GDI_OutputDebugString("screenshot: could not write %s\n", path);
     copy->lpVtbl->UnlockRect(copy);
     copy->lpVtbl->Release(copy);
     target->lpVtbl->Release(target);
