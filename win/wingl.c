@@ -113,6 +113,7 @@ static Mtx4x4 gl_savedProjMtx;
 static void GL_l_ForgetPass(void);
 static void GL_l_ForgetGeometry(void);
 static void GL_l_ForgetTargets(void);
+static void GL_l_ForgetVideo(void);
 static Mtx4x4 gl_viewProjMtx;
 static int            gl_available = -1;   /* -1 until asked */
 static int            gl_saidOnce;
@@ -356,10 +357,10 @@ static void GL_l_SayWhatThisIs(void)
         (const char*)GLFN_glGetString(GL_RENDERER),
         (const char*)GLFN_glGetString(GL_SHADING_LANGUAGE_VERSION));
     DBG_OutputDebugString("GL: this renderer draws the overlay, its text, "
-                          "the textured world, its shadows and its "
-                          "sprites; video, the sun's occlusion test and "
-                          "the depth blur are not drawn through it yet, "
-                          "and culling is off\n");
+                          "the textured world, its shadows, its sprites "
+                          "and fullscreen video; the sun's occlusion test "
+                          "and the depth blur are not drawn through it "
+                          "yet, and culling is off\n");
 }
 
 static void GL_l_SizeFromWindow(HWND hwnd)
@@ -435,6 +436,7 @@ int GL_Close(void)
         GL_l_ForgetPass();
         GL_l_ForgetGeometry();
         GL_l_ForgetTargets();
+        GL_l_ForgetVideo();
         wglMakeCurrent(gl_state.dc, NULL);
         wglDeleteContext(gl_state.context);
         gl_state.context = NULL;
@@ -560,9 +562,10 @@ void GL_SetNoZonAlpha(int on)   { gl_state.noZonAlpha = on ? 1 : 0; }
 
 /* ------------------------------------------------- geometry caching
 
-   Nothing is cached because nothing is drawn. Answering no means the
-   engine never asks for a cache to be dropped, and dropping one is
-   then nothing to do rather than something to get wrong. */
+   Nothing is cached. Answering no is not a gap: it sends the engine
+   down the immediate path, which this renderer draws, and it means
+   the engine never asks for a cache to be dropped -- so dropping one
+   is nothing to do rather than something to get wrong. */
 
 /* Whether there is a context to draw through. Real, because the
    overlay asks before it starts a pass and the answer is knowable
@@ -1604,42 +1607,6 @@ void GL_SetTextureTransformFlags(int stage, int flags)
     (void)flags;
 }
 
-/* no video display. The engine logs that and plays nothing,
-   which is what it already does when a file is missing */
-int GL_b_VideoDisplayCreate(int width, int height)
-{
-    (void)width;
-    (void)height;
-    return 0;
-}
-
-/* nothing was created */
-void GL_VideoDisplayClose(void)
-{
-}
-
-/* no display to lock */
-int GL_b_VideoFrameLock(void** bits, int* pitch, int* height)
-{
-    (void)bits;
-    (void)pitch;
-    (void)height;
-    return 0;
-}
-
-/* nothing was locked */
-void GL_VideoFrameUnlock(void)
-{
-}
-
-/* nothing to present */
-void GL_VideoFramePresent(int width, int height, int fit)
-{
-    (void)width;
-    (void)height;
-    (void)fit;
-}
-
 /* the occlusion test is an asynchronous readback and waits on the
    framebuffer stage. NULL is a sampler the engine does without */
 void* GL_p_SunSamplerCreate(void)
@@ -1936,4 +1903,253 @@ void GL_OverlayDrawTexturedQuads(void* texture, const void* vertices,
 
     GL_l_DrawBatch(gl_textVao, vertices, triangleCount,
                    sizeof(tGdi_TexturedVertex));
+}
+
+/* ---------------------------------------------- the video display
+ *
+ * A movie-sized picture the engine writes decoded frames into, and
+ * the renderer fits it to the screen. The engine knows about files,
+ * decoding and the clock; it does not know what a surface is.
+ *
+ * The other renderer keeps its picture in system memory so the
+ * decoder can lock it, copies that into a render-target texture and
+ * blits the texture to the back buffer with a stretch. Here the
+ * picture is plain memory, the copy is an upload, and the stretch is
+ * a textured quad -- which is the same three steps with the parts
+ * OpenGL names differently.
+ */
+
+static unsigned char* gl_videoPixels;
+static GLuint         gl_videoTex;
+static int            gl_videoWidth;
+static int            gl_videoHeight;
+
+/* The screen as it was when the display was made, which is what the
+   fit is computed against. The other renderer takes it from the back
+   buffer at the same moment and for the same reason: a frame is
+   fitted to the screen the movie started on. */
+static int            gl_videoScreenW;
+static int            gl_videoScreenH;
+
+static tGlProgram     gl_videoProgram;
+static GLint          gl_videoViewport = -1;
+static GLint          gl_videoSampler = -1;
+static int            gl_videoTried;
+static int            gl_videoReady;
+
+void GL_VideoDisplayClose(void)
+{
+    if (gl_videoTex && gl_state.context)
+        GLFN_glDeleteTextures(1, &gl_videoTex);
+    gl_videoTex = 0;
+    free(gl_videoPixels);
+    gl_videoPixels = NULL;
+    gl_videoWidth = 0;
+    gl_videoHeight = 0;
+}
+
+static void GL_l_ForgetVideo(void)
+{
+    GL_VideoDisplayClose();
+    if (gl_videoReady && gl_state.context)
+        GL_ProgramFree(&gl_videoProgram);
+    gl_videoViewport = -1;
+    gl_videoSampler = -1;
+    gl_videoTried = 0;
+    gl_videoReady = 0;
+}
+
+static int GL_l_b_VideoProgramReady(void)
+{
+    if (gl_videoTried)
+        return gl_videoReady;
+    gl_videoTried = 1;
+    if (!gl_state.context)
+        return 0;
+
+    /* The 2D pass first, because what is borrowed from it is not only
+       the vertex stage: the vertex array that describes this layout
+       and the buffer the vertices are staged in are the pass's, and
+       without them the draw is a draw of nothing. Asking for them
+       here rather than assuming them is the difference between a
+       movie and a black screen. */
+    if (!GL_l_b_PassReady())
+        return 0;
+
+    /* The glyphs' vertex stage, which already maps pixel coordinates
+       to clip space and carries a texture coordinate. Only the
+       fragment stage differs. */
+    if (!GL_b_ProgramLoad(&gl_videoProgram, "overlaytext.vert", "video.frag"))
+        return 0;
+    gl_videoViewport = GL_i_ProgramUniform(&gl_videoProgram, "uViewport");
+    gl_videoSampler = GL_i_ProgramUniform(&gl_videoProgram, "uAtlas");
+    gl_videoReady = 1;
+    return 1;
+}
+
+int GL_b_VideoDisplayCreate(int width, int height)
+{
+    size_t bytes;
+
+    GL_VideoDisplayClose();
+
+    if (!gl_state.context || width <= 0 || height <= 0)
+        return 0;
+    if (!GL_l_b_VideoProgramReady())
+        return 0;
+
+    bytes = (size_t)width * (size_t)height * 4u;
+    gl_videoPixels = (unsigned char*)calloc(1, bytes);
+    if (!gl_videoPixels)
+        return 0;
+
+    GLFN_glGenTextures(1, &gl_videoTex);
+    if (!gl_videoTex)
+    {
+        GL_VideoDisplayClose();
+        return 0;
+    }
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_videoTex);
+    GLFN_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    GLFN_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    /* The engine's decoder writes the same thirty-two-bit words a
+       texture is made of, so the upload reads them the same way. */
+    GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
+                      GL_BGRA, GL_UNSIGNED_BYTE, gl_videoPixels);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    gl_videoWidth = width;
+    gl_videoHeight = height;
+    gl_videoScreenW = gl_state.width;
+    gl_videoScreenH = gl_state.height;
+    return 1;
+}
+
+int GL_b_VideoFrameLock(void** bits, int* pitch, int* height)
+{
+    if (!gl_videoPixels)
+        return 0;
+
+    if (bits)
+        *bits = gl_videoPixels;
+    if (pitch)
+        *pitch = gl_videoWidth * 4;
+    /* The picture's own height, not the screen's. Whatever fills it
+       clamps to what it is told, so telling it anything else is how
+       the bottom of a frame goes missing. */
+    if (height)
+        *height = gl_videoHeight;
+    return 1;
+}
+
+void GL_VideoFrameUnlock(void)
+{
+    /* Where the other renderer's unlock gives the surface back to the
+       driver, this is where the frame reaches the card. */
+    if (!gl_videoPixels || !gl_videoTex || !gl_state.context)
+        return;
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_videoTex);
+    GLFN_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    GLFN_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gl_videoWidth,
+                         gl_videoHeight, GL_BGRA, GL_UNSIGNED_BYTE,
+                         gl_videoPixels);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void GL_VideoFramePresent(int width, int height, int fit)
+{
+    tGdi_TexturedVertex v[6];
+    float               scale;
+    GLint               filter;
+    int                 scaledW, scaledH;
+    int                 left, top;
+    float               u, vmax;
+    int                 i;
+
+    if (!gl_videoPixels || !gl_videoTex || !gl_state.context)
+        return;
+    if (width <= 0 || height <= 0)
+        return;
+    if (!GL_l_b_VideoProgramReady() || !gl_quadBuffer)
+        return;
+
+    switch (fit)
+    {
+    case GDI_VIDEOFIT_SMOOTH:
+        scale = (float)gl_videoScreenW / (float)width;
+        filter = GL_LINEAR;
+        break;
+    case GDI_VIDEOFIT_SHARP:
+        scale = (float)gl_videoScreenW / (float)width;
+        filter = GL_NEAREST;
+        break;
+    default:
+        /* A pixel for a pixel, centred. */
+        scale = 1.0f;
+        filter = GL_NEAREST;
+        break;
+    }
+
+    /* The same truncation the other renderer does, and the same
+       integer division for the centring -- so the picture lands on
+       the same pixel. */
+    scaledW = (int)((float)width * scale);
+    scaledH = (int)((float)height * scale);
+    left = (gl_videoScreenW - scaledW) / 2;
+    top = (gl_videoScreenH - scaledH) / 2;
+
+    /* The frame may be smaller than the picture it was written into,
+       and the other renderer takes a sub-rectangle for exactly that.
+       Here that is the texture coordinate's upper bound rather than
+       the whole of it. */
+    u = (float)width / (float)gl_videoWidth;
+    vmax = (float)height / (float)gl_videoHeight;
+
+    memset(v, 0, sizeof(v));
+    for (i = 0; i < 6; i++)
+        v[i].color = 0xFFFFFFFFu;
+    v[0].pos.x = (float)left;            v[0].pos.y = (float)top;
+    v[0].u = 0.0f;                       v[0].v = 0.0f;
+    v[1].pos.x = (float)(left + scaledW); v[1].pos.y = (float)top;
+    v[1].u = u;                          v[1].v = 0.0f;
+    v[2].pos.x = (float)(left + scaledW); v[2].pos.y = (float)(top + scaledH);
+    v[2].u = u;                          v[2].v = vmax;
+    v[3].pos.x = (float)left;            v[3].pos.y = (float)top;
+    v[3].u = 0.0f;                       v[3].v = 0.0f;
+    v[4].pos.x = (float)(left + scaledW); v[4].pos.y = (float)(top + scaledH);
+    v[4].u = u;                          v[4].v = vmax;
+    v[5].pos.x = (float)left;            v[5].pos.y = (float)(top + scaledH);
+    v[5].u = 0.0f;                       v[5].v = vmax;
+
+    /* Black first, because a frame that does not fill the screen
+       leaves the rest of it showing, and what is left showing has to
+       be black rather than the last thing drawn. */
+    GLFN_glDisable(GL_DEPTH_TEST);
+    GLFN_glDisable(GL_CULL_FACE);
+    GLFN_glDisable(GL_BLEND);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GLFN_glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    GLFN_glClear(GL_COLOR_BUFFER_BIT);
+
+    GLFN_glUseProgram(gl_videoProgram.program);
+    if (gl_videoViewport >= 0)
+        GLFN_glUniform4f(gl_videoViewport, (GLfloat)gl_state.width,
+                         (GLfloat)gl_state.height, 0.0f, 0.0f);
+    if (gl_videoSampler >= 0)
+        GLFN_glUniform1i(gl_videoSampler, 0);
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_videoTex);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+
+    GL_l_DrawBatch(gl_textVao, v, 2, sizeof(tGdi_TexturedVertex));
+
+    GLFN_glUseProgram(0);
+    /* Back to what the engine asked for, as the overlay pass does. */
+    if (gl_state.zEnable)
+        GLFN_glEnable(GL_DEPTH_TEST);
 }

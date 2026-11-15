@@ -834,6 +834,94 @@ static void caseSprites(void)
            "and a batch with no size draws nothing at all");
 }
 
+static void caseVideo(void)
+{
+    void*          bits = NULL;
+    int            pitch = 0;
+    int            height = 0;
+    unsigned char* px;
+
+    printf("-- a movie frame fitted to the screen\n");
+    glr_Reset();
+
+    /* A four-by-two picture, written the way the engine's decoder
+       writes one: thirty-two-bit words, blue first. Each pixel a
+       different colour, so a frame turned over or read with the
+       channels swapped is visible. */
+    ok(GL_b_VideoDisplayCreate(4, 2) == 1, "a display is made");
+    ok(GL_b_VideoFrameLock(&bits, &pitch, &height) == 1, "and locks");
+    okEq(pitch, 16, "four pixels of four bytes");
+    okEq(height, 2, "two rows");
+
+    px = (unsigned char*)bits;
+    if (px)
+    {
+        int i;
+
+        for (i = 0; i < 8; i++)
+        {
+            /* top row red, bottom row blue, so which way up it lands
+               is the thing this says */
+            int top = (i < 4);
+
+            px[i * 4 + 0] = (unsigned char)(top ? 0x00 : 0xFF);  /* blue */
+            px[i * 4 + 1] = 0x00;                                /* green */
+            px[i * 4 + 2] = (unsigned char)(top ? 0xFF : 0x00);  /* red */
+            /* Nothing in the fourth byte. The engine's decoder writes
+               into a surface whose fourth channel is padding, so a
+               frame drawn with the texture's own alpha comes out
+               invisible -- which is what the shader forcing it to one
+               is for. */
+            px[i * 4 + 3] = 0x00;
+        }
+    }
+    GL_VideoFrameUnlock();
+
+    /* A pixel for a pixel, centred, so the picture is four by two in
+       the middle of the surface. */
+    GL_VideoFramePresent(4, 2, GDI_VIDEOFIT_ACTUALSIZE);
+    glr_Read();
+
+    {
+        int left = (GLR_W - 4) / 2;
+        int top = (GLR_H - 2) / 2;
+
+        okNear(glr_R(left + 1, top), 0xFF,
+               "the top row of the frame is at the top of the picture");
+        okNear(glr_B(left + 1, top), 0x00, "and is red, not blue");
+        okNear(glr_B(left + 1, top + 1), 0xFF,
+               "the bottom row is below it");
+        okNear(glr_R(left + 1, top + 1), 0x00, "and is blue");
+        okNear(glr_A(left + 1, top), 0xFF,
+               "drawn opaque whatever the frame's fourth channel says");
+
+        /* And black everywhere else, because the present clears. */
+        okNear(glr_R(2, 2), 0, "the rest of the screen is black");
+        okNear(glr_R(left + 1, top - 3), 0,
+               "including just above the frame");
+    }
+
+    /* Scaled to the width: four pixels across becomes the whole
+       surface, and the two rows become half its height centred. */
+    glr_Begin();
+    GL_VideoFramePresent(4, 2, GDI_VIDEOFIT_SMOOTH);
+    glr_Read();
+    /* Four pixels across becomes the whole surface, so the two rows
+       become twenty pixels each, centred: the frame spans y 4 to 44.
+       Sampled at ten, which is inside the top row and clear of the
+       seam at twenty-four -- the smoothing blends across that seam,
+       and a sample near it reads a red-blue mixture rather than
+       either. Which is what the first draft of this did. */
+    okNear(glr_R(2, 10), 0xFF,
+           "scaled up, the frame reaches the left edge");
+    okNear(glr_R(GLR_W - 3, 10), 0xFF, "and the right");
+    okNear(glr_B(GLR_W / 2, 38), 0xFF, "with the bottom row below the seam");
+    okNear(glr_R(GLR_W / 2, 1), 0,
+           "and black bars above, because the shapes do not match");
+
+    GL_VideoDisplayClose();
+}
+
 static void caseShadowTarget(void)
 {
     printf("-- a shadow drawn into a target and sampled back\n");
@@ -973,6 +1061,7 @@ int main(void)
     caseOverlayQuads();
     caseOverlayText();
     caseSprites();
+    caseVideo();
     caseShadowTarget();
 
     GL_l_ForgetPass();

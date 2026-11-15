@@ -30,10 +30,12 @@ struct sGlRenderState;
    debug overlay and its text; draws the world's geometry with its
    textures, its sampler and blend state, and its alpha test; and
    draws each caster's shadow into a target of its own and samples
-   it back; and draws the engine's sprites. What it does not do yet
-   is the video display, the sun's occlusion test and the depth-blur
-   pass. The geometry cache is answered rather than implemented: the
-   engine is told there is none, so it always takes the immediate
+   it back; draws the engine's sprites; and plays fullscreen video.
+   What it does not do yet is the sun's occlusion test and the
+   depth-blur pass -- and those two are one piece of work, because
+   the alpha the occlusion test reads is what the depth-blur pass
+   writes. The geometry cache is answered rather than implemented:
+   the engine is told there is none, so it always takes the immediate
    path, which this renderer draws. Those interface entries are present and
    inert, because an entry left NULL is a crash rather than a
    missing feature; each carries a comment saying what it waits on,
