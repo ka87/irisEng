@@ -4,7 +4,7 @@
 #include <string.h>
 
 /* The pointers themselves, one per entry in the list. */
-#define GL_DEFINE(ret, name, params, args) ret (*GLFN_##name) params;
+#define GL_DEFINE(ret, name, params, args) ret (GL_APIENTRY *GLFN_##name) params;
 GL_FUNCTION_LIST(GL_DEFINE)
 #undef GL_DEFINE
 
@@ -43,7 +43,8 @@ int GL_i_LoadFunctions(GL_pfn_GetProc fromContext, GL_pfn_GetProc fromModule,
         missing[0] = 0;
 
 #define GL_LOAD(ret, name, params, args)                                      \
-    GLFN_##name = (ret(*) params)GL_p_Resolve(#name, fromContext, fromModule); \
+    GLFN_##name = (ret(GL_APIENTRY *) params)GL_p_Resolve(#name, fromContext,  \
+                                                         fromModule);         \
     if (!GLFN_##name)                                                         \
     {                                                                         \
         absent++;                                                             \

@@ -484,7 +484,8 @@ for one in tests/runworld.sh \
            tests/run_wingloverlay.sh \
            tests/run_glrender.sh \
            tests/ifacecheck.sh \
-           tests/projcheck.sh
+           tests/projcheck.sh \
+           tests/glconvcheck.sh
 do
     name=$(basename "$one" .sh)
     [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) continue ;; esac

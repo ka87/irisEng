@@ -31,7 +31,7 @@
 #define WGL_CONTEXT_DEBUG_BIT_ARB           0x00000001
 #define WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB 0x00000002
 
-typedef HGLRC (*GL_pfn_CreateContextAttribs)(HDC, HGLRC, const int*);
+typedef HGLRC (GL_APIENTRY *GL_pfn_CreateContextAttribs)(HDC, HGLRC, const int*);
 
 static GL_pfn_CreateContextAttribs gl_createContextAttribs;
 
