@@ -158,7 +158,7 @@ static GLenum gs_typeFor(GLuint shader)
     return 0;
 }
 
-static GLuint MockCreateShader(GLenum type)
+static GLuint GL_APIENTRY MockCreateShader(GLenum type)
 {
     GLuint name;
 
@@ -175,7 +175,7 @@ static GLuint MockCreateShader(GLenum type)
     return name;
 }
 
-static void MockShaderSource(GLuint shader, GLsizei count,
+static void GL_APIENTRY MockShaderSource(GLuint shader, GLsizei count,
                              const GLchar* const* strings, const GLint* lengths)
 {
     (void)lengths;
@@ -187,9 +187,9 @@ static void MockShaderSource(GLuint shader, GLsizei count,
     }
 }
 
-static void MockCompileShader(GLuint shader) { (void)shader; }
+static void GL_APIENTRY MockCompileShader(GLuint shader) { (void)shader; }
 
-static void MockGetShaderiv(GLuint shader, GLenum pname, GLint* out)
+static void GL_APIENTRY MockGetShaderiv(GLuint shader, GLenum pname, GLint* out)
 {
     if (pname != GL_COMPILE_STATUS)
     {
@@ -205,7 +205,7 @@ static void MockGetShaderiv(GLuint shader, GLenum pname, GLint* out)
         *out = GL_TRUE;
 }
 
-static void MockGetShaderInfoLog(GLuint shader, GLsizei max, GLsizei* len,
+static void GL_APIENTRY MockGetShaderInfoLog(GLuint shader, GLsizei max, GLsizei* len,
                                  GLchar* log)
 {
     const char* text = "0(3) : error C0000: syntax error";
@@ -220,12 +220,12 @@ static void MockGetShaderInfoLog(GLuint shader, GLsizei max, GLsizei* len,
         *len = n;
 }
 
-static void MockDeleteShader(GLuint shader)
+static void GL_APIENTRY MockDeleteShader(GLuint shader)
 {
     gs_forget(gs_shadersAlive, &gs_shadersAliveLen, shader);
 }
 
-static GLuint MockCreateProgram(void)
+static GLuint GL_APIENTRY MockCreateProgram(void)
 {
     GLuint name;
 
@@ -236,17 +236,17 @@ static GLuint MockCreateProgram(void)
     return name;
 }
 
-static void MockAttachShader(GLuint p, GLuint s) { (void)p; (void)s; gs_attachCount++; }
-static void MockDetachShader(GLuint p, GLuint s) { (void)p; (void)s; gs_detachCount++; }
-static void MockLinkProgram(GLuint p) { (void)p; gs_linkCount++; }
+static void GL_APIENTRY MockAttachShader(GLuint p, GLuint s) { (void)p; (void)s; gs_attachCount++; }
+static void GL_APIENTRY MockDetachShader(GLuint p, GLuint s) { (void)p; (void)s; gs_detachCount++; }
+static void GL_APIENTRY MockLinkProgram(GLuint p) { (void)p; gs_linkCount++; }
 
-static void MockGetProgramiv(GLuint p, GLenum pname, GLint* out)
+static void GL_APIENTRY MockGetProgramiv(GLuint p, GLenum pname, GLint* out)
 {
     (void)p;
     *out = (pname == GL_LINK_STATUS && !gs_linkFails) ? GL_TRUE : GL_FALSE;
 }
 
-static void MockGetProgramInfoLog(GLuint p, GLsizei max, GLsizei* len, GLchar* log)
+static void GL_APIENTRY MockGetProgramInfoLog(GLuint p, GLsizei max, GLsizei* len, GLchar* log)
 {
     const char* text = "Link error: no fragment output";
     GLsizei     n = (GLsizei)strlen(text);
@@ -260,12 +260,12 @@ static void MockGetProgramInfoLog(GLuint p, GLsizei max, GLsizei* len, GLchar* l
         *len = n;
 }
 
-static void MockDeleteProgram(GLuint p)
+static void GL_APIENTRY MockDeleteProgram(GLuint p)
 {
     gs_forget(gs_programsAlive, &gs_programsAliveLen, p);
 }
 
-static GLint MockGetUniformLocation(GLuint p, const GLchar* name)
+static GLint GL_APIENTRY MockGetUniformLocation(GLuint p, const GLchar* name)
 {
     (void)p;
     (void)name;

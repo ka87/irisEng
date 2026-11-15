@@ -13,6 +13,20 @@
    happens not to export it that is a renderer that refuses to start
    over a function it would never have called. */
 
+/* Every GL and WGL entry point on Windows is __stdcall, and so is a
+   callback the driver invokes. A pointer declared without it is
+   called as though the caller cleans up a stack the callee has
+   already cleaned, which corrupts the stack on every single call.
+   MSVC's run-time checks catch the first one -- "the value of ESP was
+   not properly saved across a function call" -- and nothing catches
+   the rest. Elsewhere the platform default is the right convention
+   and this is empty. */
+#if defined(_WIN32)
+#define GL_APIENTRY __stdcall
+#else
+#define GL_APIENTRY
+#endif
+
 typedef unsigned int   GLenum;
 typedef unsigned int   GLbitfield;
 typedef unsigned int   GLuint;
@@ -136,7 +150,7 @@ typedef char           GLchar;
 #define GL_DEBUG_SEVERITY_NOTIFICATION    0x826B
 #define GL_DONT_CARE                      0x1100
 
-typedef void (*GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint id,
+typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint id,
                                  GLenum severity, GLsizei length,
                                  const GLchar* message, const void* user);
 
@@ -280,7 +294,8 @@ typedef void (*GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint id,
 
 /* One function-pointer variable per entry point, named after it with
    a prefix, plus a macro so call sites can write the GL name. */
-#define GL_DECLARE(ret, name, params, args) extern ret (*GLFN_##name) params;
+#define GL_DECLARE(ret, name, params, args) \
+    extern ret (GL_APIENTRY *GLFN_##name) params;
 GL_FUNCTION_LIST(GL_DECLARE)
 #undef GL_DECLARE
 

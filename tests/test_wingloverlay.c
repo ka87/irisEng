@@ -161,10 +161,10 @@ static int   wg_genFails;
 static void* wg_lastBufferData;
 static long  wg_lastBufferSize;
 
-#define WGM0(fn)                 static void MK_##fn(void) { WG_Record(#fn, 0); }
-#define WGM1(fn, T1)             static void MK_##fn(T1 a) { WG_Record(#fn, 1, (long long)a); }
-#define WGM2(fn, T1, T2)         static void MK_##fn(T1 a, T2 b) { WG_Record(#fn, 2, (long long)a, (long long)b); }
-#define WGM3(fn, T1, T2, T3)     static void MK_##fn(T1 a, T2 b, T3 c) { WG_Record(#fn, 3, (long long)a, (long long)b, (long long)c); }
+#define WGM0(fn)                 static void GL_APIENTRY MK_##fn(void) { WG_Record(#fn, 0); }
+#define WGM1(fn, T1)             static void GL_APIENTRY MK_##fn(T1 a) { WG_Record(#fn, 1, (long long)a); }
+#define WGM2(fn, T1, T2)         static void GL_APIENTRY MK_##fn(T1 a, T2 b) { WG_Record(#fn, 2, (long long)a, (long long)b); }
+#define WGM3(fn, T1, T2, T3)     static void GL_APIENTRY MK_##fn(T1 a, T2 b, T3 c) { WG_Record(#fn, 3, (long long)a, (long long)b, (long long)c); }
 
 WGM1(glEnable, GLenum)
 WGM1(glDisable, GLenum)
@@ -197,34 +197,34 @@ WGM1(glClearStencil, GLint)
 WGM0(glFinish)
 WGM0(glFlush)
 
-static void MK_glClearColor(GLclampf r, GLclampf g, GLclampf b, GLclampf a)
+static void GL_APIENTRY MK_glClearColor(GLclampf r, GLclampf g, GLclampf b, GLclampf a)
 {
     WG_Record("glClearColor", 4, (long long)r, (long long)g, (long long)b,
               (long long)a);
 }
 
-static void MK_glScissor(GLint x, GLint y, GLsizei w, GLsizei h)
+static void GL_APIENTRY MK_glScissor(GLint x, GLint y, GLsizei w, GLsizei h)
 {
     WG_Record("glScissor", 4, (long long)x, (long long)y, (long long)w,
               (long long)h);
 }
 
-static GLenum MK_glGetError(void) { WG_Record("glGetError", 0); return GL_NO_ERROR; }
+static GLenum GL_APIENTRY MK_glGetError(void) { WG_Record("glGetError", 0); return GL_NO_ERROR; }
 
-static const GLubyte* MK_glGetString(GLenum name)
+static const GLubyte* GL_APIENTRY MK_glGetString(GLenum name)
 {
     WG_Record("glGetString", 1, (long long)name);
     return (const GLubyte*)"mock";
 }
 
-static void MK_glDebugMessageCallback(GL_pfn_DebugProc proc, const void* user)
+static void GL_APIENTRY MK_glDebugMessageCallback(GL_pfn_DebugProc proc, const void* user)
 {
     (void)proc;
     (void)user;
     WG_Record("glDebugMessageCallback", 0);
 }
 
-static void MK_glDebugMessageControl(GLenum source, GLenum type,
+static void GL_APIENTRY MK_glDebugMessageControl(GLenum source, GLenum type,
                                      GLenum severity, GLsizei count,
                                      const GLuint* ids, GLboolean enabled)
 {
@@ -233,7 +233,7 @@ static void MK_glDebugMessageControl(GLenum source, GLenum type,
               (long long)severity, (long long)count, (long long)enabled);
 }
 
-static void MK_glVertexAttribPointer(GLuint index, GLint size, GLenum type,
+static void GL_APIENTRY MK_glVertexAttribPointer(GLuint index, GLint size, GLenum type,
                                      GLboolean normalized, GLsizei stride,
                                      const void* offset)
 {
@@ -254,7 +254,7 @@ static void MK_glVertexAttribPointer(GLuint index, GLint size, GLenum type,
 static unsigned char wg_bufferCopy[WG_BUFCOPY];
 static long          wg_bufferCopyLen;
 
-static void MK_glBufferData(GLenum target, GLsizei size, const void* data,
+static void GL_APIENTRY MK_glBufferData(GLenum target, GLsizei size, const void* data,
                             GLenum usage)
 {
     wg_lastBufferData = (void*)data;
@@ -272,7 +272,7 @@ static void MK_glBufferData(GLenum target, GLsizei size, const void* data,
 static const GLfloat* wg_lastMatrix;
 static int            wg_lastTranspose;
 
-static void MK_glUniformMatrix4fv(GLint loc, GLsizei count, GLboolean transpose,
+static void GL_APIENTRY MK_glUniformMatrix4fv(GLint loc, GLsizei count, GLboolean transpose,
                                   const GLfloat* value)
 {
     wg_lastMatrix = value;
@@ -281,18 +281,18 @@ static void MK_glUniformMatrix4fv(GLint loc, GLsizei count, GLboolean transpose,
               (long long)transpose);
 }
 
-static void MK_glClipControl(GLenum origin, GLenum depth)
+static void GL_APIENTRY MK_glClipControl(GLenum origin, GLenum depth)
 {
     WG_Record("glClipControl", 2, (long long)origin, (long long)depth);
 }
 
-static void MK_glDepthFunc(GLenum f) { WG_Record("glDepthFunc", 1, (long long)f); }
+static void GL_APIENTRY MK_glDepthFunc(GLenum f) { WG_Record("glDepthFunc", 1, (long long)f); }
 
 /* Declared with the framebuffer mocks, which answer glGetIntegerv out
    of what this last set. */
 static GLint wg_viewport[4];
 
-static void MK_glViewport(GLint x, GLint y, GLsizei w, GLsizei h)
+static void GL_APIENTRY MK_glViewport(GLint x, GLint y, GLsizei w, GLsizei h)
 {
     wg_viewport[0] = x;
     wg_viewport[1] = y;
@@ -302,13 +302,13 @@ static void MK_glViewport(GLint x, GLint y, GLsizei w, GLsizei h)
               (long long)h);
 }
 
-static void MK_glUniform4f(GLint loc, GLfloat a, GLfloat b, GLfloat c, GLfloat d)
+static void GL_APIENTRY MK_glUniform4f(GLint loc, GLfloat a, GLfloat b, GLfloat c, GLfloat d)
 {
     WG_Record("glUniform4f", 5, (long long)loc, (long long)a, (long long)b,
               (long long)c, (long long)d);
 }
 
-static void MK_glUniform1f(GLint loc, GLfloat v)
+static void GL_APIENTRY MK_glUniform1f(GLint loc, GLfloat v)
 {
     /* The reference is a byte scaled into 0..1; recorded multiplied
        back up so a case can compare whole numbers. */
@@ -316,23 +316,23 @@ static void MK_glUniform1f(GLint loc, GLfloat v)
               (long long)(v * 255.0f + 0.5f));
 }
 
-static void MK_glPolygonMode(GLenum face, GLenum mode)
+static void GL_APIENTRY MK_glPolygonMode(GLenum face, GLenum mode)
 {
     WG_Record("glPolygonMode", 2, (long long)face, (long long)mode);
 }
 
-static void MK_glDepthMask(GLboolean on)
+static void GL_APIENTRY MK_glDepthMask(GLboolean on)
 {
     WG_Record("glDepthMask", 1, (long long)on);
 }
 
-static void MK_glColorMask(GLboolean r, GLboolean g, GLboolean b, GLboolean a)
+static void GL_APIENTRY MK_glColorMask(GLboolean r, GLboolean g, GLboolean b, GLboolean a)
 {
     WG_Record("glColorMask", 4, (long long)r, (long long)g, (long long)b,
               (long long)a);
 }
 
-static void MK_glGenerateMipmap(GLenum target)
+static void GL_APIENTRY MK_glGenerateMipmap(GLenum target)
 {
     WG_Record("glGenerateMipmap", 1, (long long)target);
 }
@@ -361,7 +361,7 @@ static int WG_i_PixelBytes(GLenum format)
     return format == GL_RED ? 1 : 4;
 }
 
-static void MK_glTexImage2D(GLenum target, GLint level, GLint internalFormat,
+static void GL_APIENTRY MK_glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                             GLsizei w, GLsizei h, GLint border, GLenum format,
                             GLenum type, const void* pixels)
 {
@@ -371,7 +371,7 @@ static void MK_glTexImage2D(GLenum target, GLint level, GLint internalFormat,
               (long long)border, (long long)format, (long long)type);
 }
 
-static void MK_glTexSubImage2D(GLenum target, GLint level, GLint x, GLint y,
+static void GL_APIENTRY MK_glTexSubImage2D(GLenum target, GLint level, GLint x, GLint y,
                                GLsizei w, GLsizei h, GLenum format,
                                GLenum type, const void* pixels)
 {
@@ -381,7 +381,7 @@ static void MK_glTexSubImage2D(GLenum target, GLint level, GLint x, GLint y,
               (long long)format, (long long)type);
 }
 
-static void MK_glTexParameterf(GLenum target, GLenum pname, GLfloat v)
+static void GL_APIENTRY MK_glTexParameterf(GLenum target, GLenum pname, GLfloat v)
 {
     WG_Record("glTexParameterf", 3, (long long)target, (long long)pname,
               (long long)(v * 1000.0f));
@@ -401,7 +401,7 @@ static GLuint wg_fboDepth[64];
 /* Made incomplete on demand, to drive the arm that gives up. */
 static int    wg_fboIncomplete;
 
-static void MK_glGenFramebuffers(GLsizei n, GLuint* out)
+static void GL_APIENTRY MK_glGenFramebuffers(GLsizei n, GLuint* out)
 {
     GLsizei i;
 
@@ -410,18 +410,18 @@ static void MK_glGenFramebuffers(GLsizei n, GLuint* out)
     WG_Record("glGenFramebuffers", 1, (long long)n);
 }
 
-static void MK_glDeleteFramebuffers(GLsizei n, const GLuint* in)
+static void GL_APIENTRY MK_glDeleteFramebuffers(GLsizei n, const GLuint* in)
 {
     WG_Record("glDeleteFramebuffers", 2, (long long)n, (long long)in[0]);
 }
 
-static void MK_glBindFramebuffer(GLenum target, GLuint fb)
+static void GL_APIENTRY MK_glBindFramebuffer(GLenum target, GLuint fb)
 {
     wg_boundFbo = fb;
     WG_Record("glBindFramebuffer", 2, (long long)target, (long long)fb);
 }
 
-static void MK_glFramebufferTexture2D(GLenum target, GLenum attachment,
+static void GL_APIENTRY MK_glFramebufferTexture2D(GLenum target, GLenum attachment,
                                       GLenum texTarget, GLuint texture,
                                       GLint level)
 {
@@ -432,13 +432,13 @@ static void MK_glFramebufferTexture2D(GLenum target, GLenum attachment,
               (long long)texture, (long long)level);
 }
 
-static GLenum MK_glCheckFramebufferStatus(GLenum target)
+static GLenum GL_APIENTRY MK_glCheckFramebufferStatus(GLenum target)
 {
     WG_Record("glCheckFramebufferStatus", 1, (long long)target);
     return wg_fboIncomplete ? 0 : GL_FRAMEBUFFER_COMPLETE;
 }
 
-static void MK_glGenRenderbuffers(GLsizei n, GLuint* out)
+static void GL_APIENTRY MK_glGenRenderbuffers(GLsizei n, GLuint* out)
 {
     GLsizei i;
 
@@ -447,25 +447,25 @@ static void MK_glGenRenderbuffers(GLsizei n, GLuint* out)
     WG_Record("glGenRenderbuffers", 1, (long long)n);
 }
 
-static void MK_glDeleteRenderbuffers(GLsizei n, const GLuint* in)
+static void GL_APIENTRY MK_glDeleteRenderbuffers(GLsizei n, const GLuint* in)
 {
     WG_Record("glDeleteRenderbuffers", 2, (long long)n, (long long)in[0]);
 }
 
-static void MK_glBindRenderbuffer(GLenum target, GLuint rb)
+static void GL_APIENTRY MK_glBindRenderbuffer(GLenum target, GLuint rb)
 {
     wg_boundRbo = rb;
     WG_Record("glBindRenderbuffer", 2, (long long)target, (long long)rb);
 }
 
-static void MK_glRenderbufferStorage(GLenum target, GLenum format,
+static void GL_APIENTRY MK_glRenderbufferStorage(GLenum target, GLenum format,
                                      GLsizei w, GLsizei h)
 {
     WG_Record("glRenderbufferStorage", 4, (long long)target,
               (long long)format, (long long)w, (long long)h);
 }
 
-static void MK_glFramebufferRenderbuffer(GLenum target, GLenum attachment,
+static void GL_APIENTRY MK_glFramebufferRenderbuffer(GLenum target, GLenum attachment,
                                          GLenum rbTarget, GLuint rb)
 {
     if (wg_boundFbo < 64)
@@ -477,7 +477,7 @@ static void MK_glFramebufferRenderbuffer(GLenum target, GLenum attachment,
 /* The viewport the renderer asks for back. Answered from whatever the
    last glViewport set, so a save and restore is a real round trip
    rather than a constant the test also writes. */
-static void MK_glGetIntegerv(GLenum pname, GLint* data)
+static void GL_APIENTRY MK_glGetIntegerv(GLenum pname, GLint* data)
 {
     int i;
 
@@ -488,64 +488,64 @@ static void MK_glGetIntegerv(GLenum pname, GLint* data)
         data[i] = wg_viewport[i];
 }
 
-static void MK_glGenBuffers(GLsizei n, GLuint* out)
+static void GL_APIENTRY MK_glGenBuffers(GLsizei n, GLuint* out)
 {
     (void)n;
     *out = wg_genFails ? 0 : (GLuint)wg_nextName++;
     WG_Record("glGenBuffers", 1, (long long)*out);
 }
 
-static void MK_glGenVertexArrays(GLsizei n, GLuint* out)
+static void GL_APIENTRY MK_glGenVertexArrays(GLsizei n, GLuint* out)
 {
     (void)n;
     *out = wg_genFails ? 0 : (GLuint)wg_nextName++;
     WG_Record("glGenVertexArrays", 1, (long long)*out);
 }
 
-static void MK_glGenTextures(GLsizei n, GLuint* out)
+static void GL_APIENTRY MK_glGenTextures(GLsizei n, GLuint* out)
 {
     (void)n;
     *out = wg_genFails ? 0 : (GLuint)wg_nextName++;
     WG_Record("glGenTextures", 1, (long long)*out);
 }
 
-static void MK_glDeleteBuffers(GLsizei n, const GLuint* in)
+static void GL_APIENTRY MK_glDeleteBuffers(GLsizei n, const GLuint* in)
 {
     (void)n;
     WG_Record("glDeleteBuffers", 1, (long long)*in);
 }
 
-static void MK_glDeleteVertexArrays(GLsizei n, const GLuint* in)
+static void GL_APIENTRY MK_glDeleteVertexArrays(GLsizei n, const GLuint* in)
 {
     (void)n;
     WG_Record("glDeleteVertexArrays", 1, (long long)*in);
 }
 
-static void MK_glDeleteTextures(GLsizei n, const GLuint* in)
+static void GL_APIENTRY MK_glDeleteTextures(GLsizei n, const GLuint* in)
 {
     (void)n;
     WG_Record("glDeleteTextures", 1, (long long)*in);
 }
 
 /* the shader half, enough for the loader to succeed */
-static GLuint MK_glCreateShader(GLenum type)
+static GLuint GL_APIENTRY MK_glCreateShader(GLenum type)
 {
     WG_Record("glCreateShader", 1, (long long)type);
     return (GLuint)wg_nextName++;
 }
-static void MK_glShaderSource(GLuint s, GLsizei n, const GLchar* const* v,
+static void GL_APIENTRY MK_glShaderSource(GLuint s, GLsizei n, const GLchar* const* v,
                               const GLint* l)
 {
     (void)v; (void)l;
     WG_Record("glShaderSource", 2, (long long)s, (long long)n);
 }
-static void MK_glCompileShader(GLuint s) { WG_Record("glCompileShader", 1, (long long)s); }
-static void MK_glGetShaderiv(GLuint s, GLenum p, GLint* out)
+static void GL_APIENTRY MK_glCompileShader(GLuint s) { WG_Record("glCompileShader", 1, (long long)s); }
+static void GL_APIENTRY MK_glGetShaderiv(GLuint s, GLenum p, GLint* out)
 {
     (void)s; (void)p;
     *out = wg_compileFails ? GL_FALSE : GL_TRUE;
 }
-static void MK_glGetShaderInfoLog(GLuint s, GLsizei m, GLsizei* l, GLchar* log)
+static void GL_APIENTRY MK_glGetShaderInfoLog(GLuint s, GLsizei m, GLsizei* l, GLchar* log)
 {
     (void)s;
     (void)m;
@@ -553,29 +553,29 @@ static void MK_glGetShaderInfoLog(GLuint s, GLsizei m, GLsizei* l, GLchar* log)
     if (l)
         *l = 0;
 }
-static void MK_glDeleteShader(GLuint s) { WG_Record("glDeleteShader", 1, (long long)s); }
-static GLuint MK_glCreateProgram(void)
+static void GL_APIENTRY MK_glDeleteShader(GLuint s) { WG_Record("glDeleteShader", 1, (long long)s); }
+static GLuint GL_APIENTRY MK_glCreateProgram(void)
 {
     GLuint p = (GLuint)wg_nextName++;
 
     WG_Record("glCreateProgram", 1, (long long)p);
     return p;
 }
-static void MK_glAttachShader(GLuint p, GLuint s)
+static void GL_APIENTRY MK_glAttachShader(GLuint p, GLuint s)
 {
     WG_Record("glAttachShader", 2, (long long)p, (long long)s);
 }
-static void MK_glDetachShader(GLuint p, GLuint s)
+static void GL_APIENTRY MK_glDetachShader(GLuint p, GLuint s)
 {
     WG_Record("glDetachShader", 2, (long long)p, (long long)s);
 }
-static void MK_glLinkProgram(GLuint p) { WG_Record("glLinkProgram", 1, (long long)p); }
-static void MK_glGetProgramiv(GLuint p, GLenum pn, GLint* out)
+static void GL_APIENTRY MK_glLinkProgram(GLuint p) { WG_Record("glLinkProgram", 1, (long long)p); }
+static void GL_APIENTRY MK_glGetProgramiv(GLuint p, GLenum pn, GLint* out)
 {
     (void)p; (void)pn;
     *out = GL_TRUE;
 }
-static void MK_glGetProgramInfoLog(GLuint p, GLsizei m, GLsizei* l, GLchar* log)
+static void GL_APIENTRY MK_glGetProgramInfoLog(GLuint p, GLsizei m, GLsizei* l, GLchar* log)
 {
     (void)p;
     (void)m;
@@ -583,12 +583,12 @@ static void MK_glGetProgramInfoLog(GLuint p, GLsizei m, GLsizei* l, GLchar* log)
     if (l)
         *l = 0;
 }
-static void MK_glDeleteProgram(GLuint p) { WG_Record("glDeleteProgram", 1, (long long)p); }
+static void GL_APIENTRY MK_glDeleteProgram(GLuint p) { WG_Record("glDeleteProgram", 1, (long long)p); }
 
 /* Uniform locations, by name, so a case can tell them apart and so a
    missing one can be arranged. */
 static int wg_noUniform;
-static GLint MK_glGetUniformLocation(GLuint p, const GLchar* name)
+static GLint GL_APIENTRY MK_glGetUniformLocation(GLuint p, const GLchar* name)
 {
     (void)p;
     WG_Record("glGetUniformLocation", 0);
