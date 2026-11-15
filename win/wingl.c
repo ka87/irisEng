@@ -455,6 +455,14 @@ void GL_SetNoZonAlpha(int on)   { gl_state.noZonAlpha = on ? 1 : 0; }
    engine never asks for a cache to be dropped, and dropping one is
    then nothing to do rather than something to get wrong. */
 
+/* Whether there is a context to draw through. Real, because the
+   overlay asks before it starts a pass and the answer is knowable
+   whether or not anything can yet be drawn. */
+int GL_b_Ready(void)
+{
+    return gl_state.context != NULL;
+}
+
 int GL_b_GeometryHasCache(struct sGEOGRO* gro)
 {
     (void)gro;
@@ -706,6 +714,25 @@ void* GL_p_CreateAlphaTexture(int width, int height, const uint8_t* coverage)
 void GL_DestroyAlphaTexture(void* texture)
 {
     (void)texture;
+}
+
+/* The 2D pass. Begin and End have nothing to save or restore while
+   nothing is drawn, and the quads need a shader and a vertex buffer.
+   The overlay calls all three every frame it is visible, so they have
+   to exist; what they do is nothing, and the screen stays as the
+   clear left it. */
+void GL_OverlayBegin(void)
+{
+}
+
+void GL_OverlayDrawQuads(const void* vertices, int triangleCount)
+{
+    (void)vertices;
+    (void)triangleCount;
+}
+
+void GL_OverlayEnd(void)
+{
 }
 
 /* needs a shader and an atlas */

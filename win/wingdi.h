@@ -346,7 +346,8 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, 
 void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
 // the overlay's screen-space pass, used by win/overlay.c
 void D3D_OverlayBegin(void);
-void D3D_OverlayDrawQuads(void* verts, int triangleCount);
+void D3D_OverlayDrawQuads(const void* verts, int triangleCount);
+int  D3D_b_Ready(void);
 void D3D_OverlayEnd(void);
 
 void D3D_SetProjectionMatrix(tDDCamStruct* cam);

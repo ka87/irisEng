@@ -761,15 +761,14 @@ file are filled **by name**: inserting a member mid-struct afterwards
 leaves the harness passing, which is the check that the trap is really
 gone.
 
-### What this does not do yet
+### What this did not do, and what did
 
-`win/overlay.c` still calls `D3D_OverlayBegin`, `D3D_OverlayDrawQuads`
-and `D3D_OverlayEnd` directly, and reads the viewport out of the
-renderer's own state. Those were bypasses before this change and still
-are; the text calls are the ones that had to move, because the glyphs
-had to come from somewhere other than D3DX. Routing the rest of the
-overlay pass through the interface is the next step and a change of its
-own.
+At the time, `win/overlay.c` still called `D3D_OverlayBegin`,
+`D3D_OverlayDrawQuads` and `D3D_OverlayEnd` directly and read the
+viewport out of the renderer's own state. Only the text calls had to
+move then, because the glyphs had to come from somewhere other than
+D3DX. The rest of that pass is routed now -- see **The overlay draws
+through the interface** below.
 
 ## _CRT_SECURE_NO_WARNINGS, and why common.h was not enough
 
@@ -1094,6 +1093,65 @@ The sweep no longer walks `thirdparty/`, for the same reason it never
 walked `jpeg-6b`: upstream source is not ours to tidy, and FreeType's
 needs defines this sweep does not pass, so it was failing for other
 reasons and counting zero.
+
+## The overlay draws through the interface
+
+`win/overlay.c` was the last thing in the engine talking to Direct3D
+by name. Seven bypasses: three reads of the viewport out of
+`D3DRenderParams`, a null check on the device, and the three calls
+that make up the 2D pass. A renderer that is not Direct3D could not
+satisfy any of them, so the debug overlay was Direct3D-only by
+construction.
+
+Four entries, and the viewport now comes from `GetDrawingSize`, which
+was already there:
+
+```c
+int (* b_Ready)(void);
+void(* OverlayBegin)(void);
+void(* OverlayDrawQuads)(const void* vertices, int triangleCount);
+void(* OverlayEnd)(void);
+```
+
+`b_Ready` is the device check made renderer-neutral. The overlay runs
+from the message loop and can be asked to draw before a device exists
+or after one has gone, so the question is real and not Direct3D's
+alone — the OpenGL row answers it from whether it has a context.
+
+### The vertex type
+
+The shape batch used `tVertexAndColor` from `win/wingdi.h`. It is
+`tGdi_Vertex` in `gdi.h` now, and the renderer passes
+`sizeof(tGdi_Vertex)` to `DrawPrimitiveUP` as the stride.
+
+The two are the same shape, which is why adopting it moved nothing —
+**and that is asserted rather than assumed**, in the one harness where
+both types are visible: same size, colour at the same offset. The
+frozen copy still uses the old type, so a mismatch would show up as a
+comparison difference rather than as a crash, and a mutation
+confirms it does.
+
+### What it changed for OpenGL, which is nothing yet
+
+The three pass entries are present and inert there, like the rest. The
+overlay calls all three every frame it is visible, so they have to
+exist; what they do is nothing, and the screen stays as the clear left
+it. They are the next thing to become real, because the overlay is the
+smallest thing worth drawing: 2D, no matrices from the engine, and
+visible the moment it works.
+
+### The tests
+
+The overlay's harness stood in for `win/wingdi.c` — it included that
+header, defined `D3DRenderParams` because the header declares it
+without `extern`, and drove the viewport through it. It stands in for
+the interface now, which is both smaller and the right shape: a
+`tGdi_DisplayData` with five entries filled. 162 checks, unchanged.
+
+Five mutations confirm the routing is watched rather than merely
+compiled: the pass never begun, never ended, drawing with no renderer,
+the drawing size never asked for, and a vertex layout that no longer
+matches.
 
 ## What the ini does not decide
 

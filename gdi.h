@@ -57,6 +57,16 @@ typedef struct sFogParams
 } tFogParams;
 
 
+/* A vertex of flat 2D geometry: pixel-space position and a colour.
+   Laid out to match what the Direct3D renderer already drew the
+   overlay's shapes with, so adopting it moved no bytes -- the test
+   checks the size rather than trusting that. */
+typedef struct sGdi_Vertex
+{
+    Vec3     pos;
+    uint32_t color;
+} tGdi_Vertex;
+
 /* A vertex of textured 2D geometry: pixel-space position, a colour
    the texture is modulated by, and one texture coordinate. This is
    the untextured overlay vertex with a UV added, and both are laid
@@ -166,6 +176,20 @@ typedef struct sGdi_DisplayData
        pixel-space coordinates as the untextured overlay pass, and
        expect to be drawn inside it: it is what sets up the
        projection and the alpha blending. */
+    /* Whether there is anything to draw through yet. The overlay asks
+       before it starts a pass: it runs from the message loop and can
+       be asked to draw before a device exists or after one has gone. */
+    int (* b_Ready)(void);
+
+    /* The 2D pass the debug overlay draws inside. Begin sets up a
+       pixel-space projection, alpha blending and no depth test, and
+       saves whatever the engine had set; End puts it back. The quads
+       between them are tGdi_Vertex triangles, and the textured ones
+       above go in the same pass. */
+    void(* OverlayBegin)(void);
+    void(* OverlayDrawQuads)(const void* vertices, int triangleCount);
+    void(* OverlayEnd)(void);
+
     void*(* p_CreateAlphaTexture)(int width, int height, const uint8_t* coverage);
     void(* DestroyAlphaTexture)(void* texture);
     void(* OverlayDrawTexturedQuads)(void* texture, const void* vertices,

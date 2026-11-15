@@ -26,6 +26,7 @@
 #include "../math.h"
 #include "../cameraengine.h"
 #include "../soft.h"
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1749,6 +1750,25 @@ static void overlayPassCase(void)
 
 int main(void)
 {
+    /* The overlay's shape batch moved from win/wingdi.h's own vertex
+       type to the interface's. The renderer passes sizeof(tGdi_Vertex)
+       to DrawPrimitiveUP as the stride, so the two have to be the
+       same shape or every overlay quad is read at the wrong offset --
+       and the frozen copy still uses the old type, so a mismatch
+       would be a difference rather than a crash. Asserted rather than
+       assumed. */
+    if (sizeof(tGdi_Vertex) != sizeof(tVertexAndColor))
+    {
+        printf("  FAIL tGdi_Vertex is %u bytes, tVertexAndColor is %u\n",
+               (unsigned)sizeof(tGdi_Vertex), (unsigned)sizeof(tVertexAndColor));
+        return 1;
+    }
+    if (offsetof(tGdi_Vertex, color) != offsetof(tVertexAndColor, color))
+    {
+        printf("  FAIL the colour sits at a different offset in each\n");
+        return 1;
+    }
+
     int kind;
     unsigned int seed;
     int i;

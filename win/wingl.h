@@ -81,10 +81,14 @@ void  GL_SetCanDiffuse2x(int on);
 void  GL_SetWantsNoFlare(int on);
 void  GL_SetNoZonAlpha(int on);
 
+int   GL_b_Ready(void);
 int   GL_b_GeometryHasCache(struct sGEOGRO* gro);
 void  GL_DiscardGeometryCache(struct sGEOGRO* gro);
 
 /* ---- present but inert, each for the reason in wingl.c ---- */
+void  GL_OverlayBegin(void);
+void  GL_OverlayDrawQuads(const void* vertices, int triangleCount);
+void  GL_OverlayEnd(void);
 int GL_SetViewMatrix(Mtx4x4* mtxptr);
 void GL_SetProjectionMatrix(tDDCamStruct* a1);
 int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* a1, Vec3* a2, struct sGeoUVElem* a3, int a4);

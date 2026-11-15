@@ -23,23 +23,35 @@
 
 /* ------------------------------------------------------------- the engine */
 
-/* overlay.c reads the viewport out of this and calls the three D3D
-   entry points; everything here stands in for win/wingdi.c. */
-#include "../win/wingdi.h"
+/* overlay.c talks to the renderer interface and to nothing else now,
+   so this stands in for the interface rather than for win/wingdi.c.
+   It used to include that header and define D3DRenderParams, which is
+   what the overlay read its viewport out of. */
+#include "../gdi.h"
 #include "../font.h"
-
-/* wingdi.h declares D3DRenderParams without extern, so including it
-   is the definition. */
-IDirect3DDevice9 OVT_device;
 
 static int ovt_beginCalls;
 static int ovt_endCalls;
 static int ovt_quadCalls;
 static int ovt_trianglesDrawn;
 static int ovt_textAfterQuads;   /* strings issued before any quad flush */
+static int ovt_ready = 1;
+static int ovt_drawWidth = 640;
+static int ovt_drawHeight = 480;
+static int ovt_sizeCalls;
 
-void D3D_OverlayBegin(void) { ovt_beginCalls++; }
-void D3D_OverlayEnd(void) { ovt_endCalls++; }
+static int  OVT_b_Ready(void) { return ovt_ready; }
+static void OVT_OverlayBegin(void) { ovt_beginCalls++; }
+static void OVT_OverlayEnd(void) { ovt_endCalls++; }
+
+static void OVT_GetDrawingSize(int* w, int* h)
+{
+    ovt_sizeCalls++;
+    if (w)
+        *w = ovt_drawWidth;
+    if (h)
+        *h = ovt_drawHeight;
+}
 
 /* OVL_Draw empties the batch once it has handed it over, so the mock
    keeps a copy for the placement checks to measure. */
@@ -47,17 +59,19 @@ void D3D_OverlayEnd(void) { ovt_endCalls++; }
 static float ovt_flushedX[OVT_MAXFLUSHED];
 static int   ovt_flushedCount;
 
-void D3D_OverlayDrawQuads(void* verts, int triangleCount)
+static void OVT_OverlayDrawQuads(const void* verts, int triangleCount)
 {
-    const tVertexAndColor* v = (const tVertexAndColor*)verts;
+    const tGdi_Vertex* v = (const tGdi_Vertex*)verts;
     int n = triangleCount * 3;
     int i;
 
     ovt_quadCalls++;
     ovt_trianglesDrawn += triangleCount;
     for (i = 0; i < n && ovt_flushedCount < OVT_MAXFLUSHED; i++)
-        ovt_flushedX[ovt_flushedCount++] = v[i].v.x;
+        ovt_flushedX[ovt_flushedCount++] = v[i].pos.x;
 }
+
+static tGdi_DisplayData ovt_dd;
 
 #define OVT_MAXSEEN 512
 static char ovt_seen[OVT_MAXSEEN][96];
@@ -220,9 +234,18 @@ static void resetAll(void)
     PRO_FirstRasterPtr = NULL;
     pointsToUnkRaster_dword_98F944 = NULL;
     PRO_CurrRaster = NULL;
-    D3DRenderParams.d3dDev = &OVT_device;
-    D3DRenderParams.d3dViewPort.Width = 640;
-    D3DRenderParams.d3dViewPort.Height = 480;
+    ovt_ready = 1;
+    ovt_drawWidth = 640;
+    ovt_drawHeight = 480;
+    ovt_sizeCalls = 0;
+
+    memset(&ovt_dd, 0, sizeof(ovt_dd));
+    ovt_dd.b_Ready = OVT_b_Ready;
+    ovt_dd.GetDrawingSize = OVT_GetDrawingSize;
+    ovt_dd.OverlayBegin = OVT_OverlayBegin;
+    ovt_dd.OverlayDrawQuads = OVT_OverlayDrawQuads;
+    ovt_dd.OverlayEnd = OVT_OverlayEnd;
+    gpst_DX_stDD = &ovt_dd;
 }
 
 static void type(const char* s)
@@ -322,8 +345,8 @@ static void boxCheck(float x, float y, float w, float h, const char* what)
 
     for (i = 0; i < ovl_vertCount; i++)
     {
-        if (ovl_verts[i].v.x < x - 0.01f || ovl_verts[i].v.x > x + w + 0.01f
-            || ovl_verts[i].v.y < y - 0.01f || ovl_verts[i].v.y > y + h + 0.01f)
+        if (ovl_verts[i].pos.x < x - 0.01f || ovl_verts[i].pos.x > x + w + 0.01f
+            || ovl_verts[i].pos.y < y - 0.01f || ovl_verts[i].pos.y > y + h + 0.01f)
         {
             outside++;
         }
@@ -339,10 +362,10 @@ static int colorAt(float px, float py, unsigned int* out)
 
     for (i = 0; i + 5 < ovl_vertCount; i += 6)
     {
-        float left = ovl_verts[i].v.x;
-        float top = ovl_verts[i].v.y;
-        float right = ovl_verts[i + 5].v.x;
-        float bottom = ovl_verts[i + 5].v.y;
+        float left = ovl_verts[i].pos.x;
+        float top = ovl_verts[i].pos.y;
+        float right = ovl_verts[i + 5].pos.x;
+        float bottom = ovl_verts[i + 5].pos.y;
 
         if (px >= left && px <= right && py >= top && py <= bottom)
         {
@@ -365,7 +388,7 @@ static void shapes(void)
     boxCheck(10.0f, 20.0f, 30.0f, 40.0f, "the quad stays in its box");
     ok(colorAt(25.0f, 40.0f, &c) && c == 0xFF112233u, "the quad carries its colour");
     for (i = 0; i < 6; i++)
-        okEq((long)ovl_verts[i].v.z, 0, "the quad is flat");
+        okEq((long)ovl_verts[i].pos.z, 0, "the quad is flat");
 
     /* a degenerate quad is not emitted at all */
     resetAll();
@@ -620,10 +643,10 @@ static void caret(void)
         if (ovl_vertCount < 6)
             continue;
         n = ovl_vertCount - 6;
-        caretLeft = (int)ovl_verts[n].v.x;
-        caretTop = (int)ovl_verts[n].v.y;
-        caretRight = (int)ovl_verts[n + 5].v.x;
-        caretBottom = (int)ovl_verts[n + 5].v.y;
+        caretLeft = (int)ovl_verts[n].pos.x;
+        caretTop = (int)ovl_verts[n].pos.y;
+        caretRight = (int)ovl_verts[n + 5].pos.x;
+        caretBottom = (int)ovl_verts[n + 5].pos.y;
 
         sprintf(want, "> %s", lines[k]);
         textX = (int)OVL_FIELDTOP + 8;
@@ -683,8 +706,8 @@ static void caret(void)
         OVL_l_CommandField();
         smallH = 0.0f;
         for (i = 0; i < ovl_vertCount; i++)
-            if (ovl_verts[i].v.y > smallH)
-                smallH = ovl_verts[i].v.y;
+            if (ovl_verts[i].pos.y > smallH)
+                smallH = ovl_verts[i].pos.y;
 
         resetAll();
         ovt_fontHeight = 40;
@@ -692,8 +715,8 @@ static void caret(void)
         OVL_l_CommandField();
         bigH = 0.0f;
         for (i = 0; i < ovl_vertCount; i++)
-            if (ovl_verts[i].v.y > bigH)
-                bigH = ovl_verts[i].v.y;
+            if (ovl_verts[i].pos.y > bigH)
+                bigH = ovl_verts[i].pos.y;
 
         ok(bigH > smallH + 20.0f, "the field grows with the font");
         ovt_fontHeight = 20;
@@ -734,7 +757,7 @@ static void placement(void)
     for (k = 0; k < sizeof(widths) / sizeof(widths[0]); ++k)
     {
         resetAll();
-        D3DRenderParams.d3dViewPort.Width = widths[k];
+        ovt_drawWidth = widths[k];
         PRO_rasterWindowIsOn = 1;
         OVL_Draw();
 
@@ -746,12 +769,12 @@ static void placement(void)
 
     /* and it moves when the viewport does */
     resetAll();
-    D3DRenderParams.d3dViewPort.Width = 640;
+    ovt_drawWidth = 640;
     PRO_rasterWindowIsOn = 1;
     OVL_Draw();
     narrowLeft = leftmost();
     resetAll();
-    D3DRenderParams.d3dViewPort.Width = 1920;
+    ovt_drawWidth = 1920;
     PRO_rasterWindowIsOn = 1;
     OVL_Draw();
     wideLeft = leftmost();
@@ -759,7 +782,7 @@ static void placement(void)
 
     /* its text goes with it */
     resetAll();
-    D3DRenderParams.d3dViewPort.Width = 1280;
+    ovt_drawWidth = 1280;
     PRO_rasterWindowIsOn = 1;
     OVL_Draw();
     {
@@ -776,7 +799,7 @@ static void placement(void)
 
     /* a viewport narrower than the panel keeps it on screen */
     resetAll();
-    D3DRenderParams.d3dViewPort.Width = 200;
+    ovt_drawWidth = 200;
     PRO_rasterWindowIsOn = 1;
     OVL_Draw();
     okEq((long)leftmost(), (long)OVL_PANELMARGIN,
@@ -784,7 +807,7 @@ static void placement(void)
 
     /* the command field is still full width and not right-aligned */
     resetAll();
-    D3DRenderParams.d3dViewPort.Width = 1280;
+    ovt_drawWidth = 1280;
     OVL_CommandShow();
     OVL_Draw();
     okEq((long)leftmost(), 10, "the field still starts at the left margin");
@@ -852,7 +875,7 @@ static void pass(void)
 
     /* no device: nothing, even with a widget up */
     resetAll();
-    D3DRenderParams.d3dDev = NULL;
+    ovt_ready = 0;
     ovl_cmdActive = 1;
     OVL_Draw();
     okEq(ovt_beginCalls, 0, "the overlay waits for a device");
@@ -898,13 +921,13 @@ static void pass(void)
     /* a long page cannot grow the backdrop past the viewport */
     resetAll();
     PRO_rasterWindowIsOn = 1;
-    D3DRenderParams.d3dViewPort.Height = 80;
+    ovt_drawHeight = 80;
     OVL_Draw();
     {
         int i;
         int below = 0;
         for (i = 0; i < ovl_vertCount; i++)
-            if (ovl_verts[i].v.y > 80.0f)
+            if (ovl_verts[i].pos.y > 80.0f)
                 below++;
         okEq(below, 0, "the panel is clipped to the viewport");
     }
