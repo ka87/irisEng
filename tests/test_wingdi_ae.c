@@ -25,6 +25,7 @@ void MATH_InitModule(void);
 
 extern int tweak_ae_no;
 extern int tweak_ae_nobands;
+extern int ECAM_gi_NoAfterEffects;
 
 #define AE_GROUPS           12
 #define AE_CASES_PER_GROUP  48
@@ -296,6 +297,7 @@ static void AE_ResetShared(void)
     ENG_ifSingleStreamThenEq2Otherwise8 = 8;
     tweak_ae_no = 0;
     tweak_ae_nobands = 0;
+    ECAM_gi_NoAfterEffects = 0;
     PC_AE_MASTER = 0;
     depthblur_Type = 0;
     camUnkf1Save = 0.0f;
@@ -317,6 +319,94 @@ static int IsSetCall(const tAeMockCall* c)
     return strcmp(c->fn, "SetRenderState") == 0 ||
            strcmp(c->fn, "SetTextureStageState") == 0 ||
            strcmp(c->fn, "SetSamplerState") == 0;
+}
+
+/* The free camera's after-effects flag exists only on the rewrite's
+   side, so it is driven directly rather than compared. The two things
+   it has to do are opposite in kind: skip the effects, and leave the
+   state the game reads alone.
+   
+   That second one is the point of the flag being separate from the
+   ae_no tweak. The tweak clears PC_AE_MASTER for good, which is what
+   a tweak is for; the camera must not, because the game goes on
+   reading it back through PC_AE_MASTER_GET_ONOFF and would be told
+   its effects had been turned off behind its back. */
+static int editorCameraSuppressionCases(void)
+{
+    const int master = 0x8 | 0x4 | 0x10 | 0x80;   /* several effects on */
+    int failures = 0;
+    int plainLen;
+    int suppressedLen;
+
+    /* the pass as it runs normally */
+    AE_ResetShared();
+    AEMOCK_Reset();
+    PC_AE_MASTER = master;
+    NEW_D3D_PC_AE(NULL);
+    plainLen = AEMOCK_logLen;
+    if (PC_AE_MASTER != master)
+    {
+        printf("FAIL: ae: the pass changed PC_AE_MASTER with nothing set"
+               " (%d, wanted %d)\n", PC_AE_MASTER, master);
+        failures++;
+    }
+
+    /* with the camera's flag: fewer device writes, and the state the
+       game reads comes back exactly as it was */
+    AE_ResetShared();
+    AEMOCK_Reset();
+    PC_AE_MASTER = master;
+    ECAM_gi_NoAfterEffects = 1;
+    NEW_D3D_PC_AE(NULL);
+    suppressedLen = AEMOCK_logLen;
+    if (PC_AE_MASTER != master)
+    {
+        printf("FAIL: ae: the free camera left PC_AE_MASTER at %d,"
+               " wanted %d\n", PC_AE_MASTER, master);
+        failures++;
+    }
+    if (suppressedLen >= plainLen)
+    {
+        printf("FAIL: ae: the free camera drew as much as ever"
+               " (%d writes against %d)\n", suppressedLen, plainLen);
+        failures++;
+    }
+    ECAM_gi_NoAfterEffects = 0;
+
+    /* the tweak on its own keeps the behaviour it always had: the
+       state is cleared and stays cleared */
+    AE_ResetShared();
+    AEMOCK_Reset();
+    PC_AE_MASTER = master;
+    tweak_ae_no = 1;
+    NEW_D3D_PC_AE(NULL);
+    if (PC_AE_MASTER != 0)
+    {
+        printf("FAIL: ae: the tweak no longer clears PC_AE_MASTER (%d)\n",
+               PC_AE_MASTER);
+        failures++;
+    }
+
+    /* and with both, the tweak decides, because it is the one that
+       means it for good */
+    AE_ResetShared();
+    AEMOCK_Reset();
+    PC_AE_MASTER = master;
+    tweak_ae_no = 1;
+    ECAM_gi_NoAfterEffects = 1;
+    NEW_D3D_PC_AE(NULL);
+    if (PC_AE_MASTER != 0)
+    {
+        printf("FAIL: ae: the camera put back what the tweak cleared (%d)\n",
+               PC_AE_MASTER);
+        failures++;
+    }
+    tweak_ae_no = 0;
+    ECAM_gi_NoAfterEffects = 0;
+
+    printf("  free camera: %d device writes suppressed to %d\n",
+           plainLen, suppressedLen);
+    return failures;
 }
 
 int main(void)
@@ -532,6 +622,8 @@ int main(void)
                    i, groupMinSet[i]);
             failures++;
         }
+    failures += editorCameraSuppressionCases();
+
     if (failures)
     {
         printf("FAILED\n");

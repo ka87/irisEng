@@ -333,6 +333,10 @@ IDirect3DTexture9* AEMOCK_tex[AEMOCK_TEXTURES];
 int ENG_ifSingleStreamThenEq2Otherwise8 = 8;
 int tweak_ae_no;
 int tweak_ae_nobands;
+
+/* the free camera's own after-effects flag, which only the rewrite
+   has: the frozen copy predates it */
+int ECAM_gi_NoAfterEffects;
 float tweak_water_smoothx = 1.25f;
 float tweak_water_smoothy = 0.75f;
 
