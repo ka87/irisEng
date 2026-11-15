@@ -276,15 +276,23 @@ void D3D_SunSampleQueue(void* sampler, const int* x, const int* y, int num,
                                                         slot->d3dppSurface);
 }
 
-/* The alpha at each sampled position, against what counts as
-   occluded for the slot. A position that was outside the viewport
-   was never sampled and counts as not occluded. */
+/* The alpha at each sampled position, against what counts as blocked
+   for the slot.
+ *
+ * A set bit means blocked, not visible, and an earlier version of this
+ * comment had it the other way round. The engine settles it:
+ * GFX_l_SunHidden sets all nine when the sun is hidden outright, and
+ * GFX_Sun_Render lights each octant with
+ * `self = (flags & (1 << k)) ? 0.0 : 2.0` -- a set bit contributes
+ * nothing. So a position outside the viewport, whose bit is set here
+ * without being sampled, counts as blocked, which is right: an
+ * off-screen point cannot light anything. */
 static int D3D_l_i_SlotResolve(tGfxSunD3DSpecificDataInner* slot)
 {
     D3DLOCKED_RECT locked;
     D3DSURFACE_DESC desc;
     const uint32_t* pixels;
-    int passed = 0;
+    int blocked = 0;
     int sampled = 0;
     int i;
 
@@ -303,22 +311,22 @@ static int D3D_l_i_SlotResolve(tGfxSunD3DSpecificDataInner* slot)
 
         if ((slot->bitMask & (1 << i)) == 0)
         {
-            passed |= 1 << i;      /* never sampled, never occluded */
+            blocked |= 1 << i;     /* off screen, so it lights nothing */
             continue;
         }
 
         pixel = pixels[d3d_sunDestPos[sampled].x
                        + desc.Width * d3d_sunDestPos[sampled].y];
         if ((double)((pixel >> 24) & 0xff) > slot->alphaThreshold)
-            passed |= 1 << i;
+            blocked |= 1 << i;
         sampled++;
     }
 
     slot->d3dppSurface->lpVtbl->UnlockRect(slot->d3dppSurface);
-    return passed;
+    return blocked;
 }
 
-int D3D_b_SunSampleRead(void* sampler, int* outPassed)
+int D3D_b_SunSampleRead(void* sampler, int* outBlocked)
 {
     tGfxSunD3DSpecificData* s = (tGfxSunD3DSpecificData*)sampler;
     tGfxSunD3DSpecificDataInner* walk;
@@ -353,8 +361,8 @@ int D3D_b_SunSampleRead(void* sampler, int* outPassed)
     if (!ready)
         return 0;
 
-    if (outPassed)
-        *outPassed = D3D_l_i_SlotResolve(ready);
+    if (outBlocked)
+        *outBlocked = D3D_l_i_SlotResolve(ready);
     D3D_l_SlotsDone(s, ready);
     return 1;
 }

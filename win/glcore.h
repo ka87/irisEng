@@ -44,6 +44,12 @@ typedef double         GLdouble;
 typedef double         GLclampd;
 typedef void           GLvoid;
 typedef char           GLchar;
+/* Pointer-width and 64-bit types, for the buffer mapping and the fences
+   the sun's readback uses. GLsync is an opaque handle, not an id. */
+typedef ptrdiff_t      GLsizeiptr;
+typedef ptrdiff_t      GLintptr;
+typedef unsigned long long GLuint64;
+typedef struct __GLsync* GLsync;
 
 #define GL_FALSE                          0
 #define GL_TRUE                           1
@@ -67,6 +73,18 @@ typedef char           GLchar;
 #define GL_CONTEXT_PROFILE_MASK           0x9126
 #define GL_CONTEXT_CORE_PROFILE_BIT       0x00000001
 
+/* The sun's occlusion test reads nine pixels back out of the frame,
+   and does it without stalling: the reads go into a buffer and a fence
+   says when the card has finished with them. */
+#define GL_PIXEL_PACK_BUFFER              0x88EB
+#define GL_STREAM_READ                    0x88E1
+#define GL_MAP_READ_BIT                   0x0001
+#define GL_SYNC_GPU_COMMANDS_COMPLETE     0x9117
+#define GL_ALREADY_SIGNALED               0x911A
+#define GL_TIMEOUT_EXPIRED                0x911B
+#define GL_CONDITION_SATISFIED            0x911C
+#define GL_WAIT_FAILED                    0x911D
+
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_STREAM_DRAW                    0x88E0
 #define GL_DYNAMIC_DRAW                   0x88E8
@@ -84,6 +102,7 @@ typedef char           GLchar;
 #define GL_TEXTURE0                       0x84C0
 #define GL_R8                             0x8229
 #define GL_RED                            0x1903
+#define GL_RGBA                           0x1908
 #define GL_RGBA8                          0x8058
 /* The engine's textures are A8R8G8B8 words, which on a little-endian
    machine is blue, green, red, alpha in memory. */
@@ -103,6 +122,7 @@ typedef char           GLchar;
 #define GL_TEXTURE_LOD_BIAS               0x8501
 #define GL_TEXTURE_MAX_LEVEL              0x813D
 #define GL_UNPACK_ALIGNMENT               0x0CF5
+#define GL_PACK_ALIGNMENT                 0x0D05
 #define GL_UNPACK_ROW_LENGTH              0x0CF2
 
 /* Framebuffer objects: a renderer draws into one of these instead of
@@ -230,6 +250,20 @@ typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint 
     X(void,  glBufferData,           (GLenum target, GLsizei size,            \
                                       const void* data, GLenum usage),         \
                                      (target, size, data, usage))             \
+    X(void*, glMapBufferRange,       (GLenum target, GLintptr offset,         \
+                                      GLsizeiptr length, GLbitfield access),  \
+                                     (target, offset, length, access))        \
+    X(GLboolean, glUnmapBuffer,      (GLenum target), (target))               \
+    X(void,  glReadPixels,           (GLint x, GLint y, GLsizei w, GLsizei h,  \
+                                      GLenum format, GLenum type,             \
+                                      void* data),                            \
+                                     (x, y, w, h, format, type, data))        \
+    X(GLsync, glFenceSync,           (GLenum condition, GLbitfield flags),     \
+                                     (condition, flags))                      \
+    X(GLenum, glClientWaitSync,      (GLsync sync, GLbitfield flags,           \
+                                      GLuint64 timeout),                      \
+                                     (sync, flags, timeout))                  \
+    X(void,  glDeleteSync,           (GLsync sync), (sync))                   \
     X(void,  glGenVertexArrays,      (GLsizei n, GLuint* out), (n, out))      \
     X(void,  glDeleteVertexArrays,   (GLsizei n, const GLuint* in), (n, in))  \
     X(void,  glBindVertexArray,      (GLuint array), (array))                 \

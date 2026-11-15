@@ -1847,62 +1847,368 @@ void GL_SetTextureTransformFlags(int stage, int flags)
     (void)flags;
 }
 
-/* the occlusion test is an asynchronous readback and waits on the
-   framebuffer stage. NULL is a sampler the engine does without */
+/* ================================================= the sun's occlusion test
+ *
+ * The sun's flare is lit octant by octant, and each octant is dark if
+ * the sample that belongs to it was blocked. So what the engine wants
+ * from a renderer is nine bits: which of nine points around the sun
+ * have something in front of them.
+ *
+ * The answer is read out of the frame's alpha, which the depth-blur
+ * pass wrote -- that is the whole reason the two are one piece of work.
+ * Alpha there is 255 at the camera and falls to 0 at the far plane, so
+ * a pixel's alpha says how near whatever was drawn there is, and a
+ * pixel whose alpha is greater than the sun's own is nearer than the
+ * sun and blocks it.
+ *
+ * **A set bit means blocked, not visible.** The other renderer calls
+ * the word "passed" and comments that an unsampled point is "never
+ * occluded", and both of those read the wrong way round: the engine
+ * sets all nine when the sun is hidden outright
+ * (GFX_l_SunHidden), and in the render a set bit contributes zero
+ * luminance (`self = (flags & (1 << k)) ? 0.0 : 2.0`). So a point
+ * outside the viewport, whose bit is set without being sampled, counts
+ * as blocked -- which is what it should be, since an off-screen point
+ * cannot light anything.
+ *
+ * Reading pixels back is a stall if it is done the obvious way, and
+ * this happens every frame. So the reads go into a buffer, a fence
+ * records where the card had got to, and the answer is collected a
+ * frame or more later: three buffers in a ring, the newest finished
+ * one is the one read, and a frame that finds the ring full goes
+ * unsampled. The other renderer does the same with three
+ * system-memory surfaces and a lock that refuses to wait; this is that
+ * design in OpenGL's terms, and the engine already tolerates "no
+ * answer yet" because that renderer can say it too.
+ */
+
+/* The engine's allocator, declared rather than included: memory.h
+   collides with the mocks in more than one harness, and these two are
+   all the sun needs. The signatures are memory.h's own. */
+void* MEM_p_Alloc(unsigned int size);
+void  MEM_Free(void* ptr);
+
+#define GL_SUN_POINTS 9
+#define GL_SUN_SLOTS  3
+#define GL_SUN_SUNS   16
+
+typedef struct sGlSunSlot
+{
+    GLuint pbo;
+    GLsync fence;
+    int    b_inFlight;
+    int    mask;        /* which of the nine were sampled */
+    int    sampled;     /* how many, which is how many pixels were read */
+    double threshold;   /* the blur amount at the sun's own depth */
+} tGlSunSlot;
+
+typedef struct sGlSun
+{
+    tGlSunSlot slots[GL_SUN_SLOTS];
+    int        next;     /* where the next sample goes */
+    int        oldest;   /* the oldest unread */
+    int        inFlight;
+    int        b_ready;
+} tGlSun;
+
+/* Which suns exist and which of them want the test, as parallel tables
+   walked by index -- the same shape the other renderer keeps, because
+   the blur's mode depends on whether *any* sun wants it and not on
+   this one. */
+static tGlSun* gl_suns[GL_SUN_SUNS];
+static int     gl_sunWants[GL_SUN_SUNS];
+
+static void GL_l_SunRegister(tGlSun* sun)
+{
+    int i;
+
+    for (i = 0; i < GL_SUN_SUNS; i++)
+    {
+        if (!gl_suns[i])
+        {
+            gl_suns[i] = sun;
+            gl_sunWants[i] = 0;
+            return;
+        }
+    }
+}
+
+static void GL_l_SunForget(tGlSun* sun)
+{
+    int i;
+
+    for (i = 0; i < GL_SUN_SUNS; i++)
+    {
+        if (gl_suns[i] == sun)
+        {
+            gl_suns[i] = NULL;
+            gl_sunWants[i] = 0;
+            return;
+        }
+    }
+}
+
 void* GL_p_SunSamplerCreate(void)
 {
-    return NULL;
+    tGlSun* sun;
+    int     i;
+
+    if (!gl_state.context)
+        return NULL;
+
+    sun = (tGlSun*)MEM_p_Alloc(sizeof(*sun));
+    if (!sun)
+        return NULL;
+    memset(sun, 0, sizeof(*sun));
+
+    for (i = 0; i < GL_SUN_SLOTS; i++)
+    {
+        GLFN_glGenBuffers(1, &sun->slots[i].pbo);
+        if (!sun->slots[i].pbo)
+            break;
+        /* Nine pixels of four bytes, which is what one sample is.
+           STREAM_READ says what it is for: written by the card once
+           and read by us once. */
+        GLFN_glBindBuffer(GL_PIXEL_PACK_BUFFER, sun->slots[i].pbo);
+        GLFN_glBufferData(GL_PIXEL_PACK_BUFFER,
+                          (GLsizei)(GL_SUN_POINTS * 4), NULL, GL_STREAM_READ);
+    }
+    GLFN_glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+    if (i != GL_SUN_SLOTS)
+    {
+        DBG_OutputDebugString("GL: no buffers for the sun's readback\n");
+        for (i = 0; i < GL_SUN_SLOTS; i++)
+            if (sun->slots[i].pbo)
+                GLFN_glDeleteBuffers(1, &sun->slots[i].pbo);
+        MEM_Free(sun);
+        return NULL;
+    }
+
+    sun->b_ready = 1;
+    GL_l_SunRegister(sun);
+    return sun;
 }
 
-/* nothing was created */
+/* A slot's reads are abandoned: the fence goes and the slot is free
+   again. The buffer stays, because it is reused. */
+static void GL_l_SunSlotRetire(tGlSunSlot* slot)
+{
+    if (slot->fence)
+    {
+        GLFN_glDeleteSync(slot->fence);
+        slot->fence = NULL;
+    }
+    slot->b_inFlight = 0;
+    slot->mask = 0;
+    slot->sampled = 0;
+}
+
 void GL_SunSamplerDestroy(void* sampler)
 {
-    (void)sampler;
+    tGlSun* sun = (tGlSun*)sampler;
+    int     i;
+
+    if (!sun)
+        return;
+
+    GL_SunEffectOnOff(sun, 0);
+    GL_l_SunForget(sun);
+    for (i = 0; i < GL_SUN_SLOTS; i++)
+    {
+        GL_l_SunSlotRetire(&sun->slots[i]);
+        if (sun->slots[i].pbo && gl_state.context)
+            GLFN_glDeleteBuffers(1, &sun->slots[i].pbo);
+        sun->slots[i].pbo = 0;
+    }
+    MEM_Free(sun);
 }
 
-/* never ready, so nothing is ever queued */
 int GL_b_SunSamplerReady(void* sampler)
 {
-    (void)sampler;
-    return 0;
+    tGlSun* sun = (tGlSun*)sampler;
+
+    return sun && sun->b_ready && gl_state.context != NULL;
 }
 
-/* nothing is in flight */
 int GL_b_SunSamplingNow(void* sampler)
 {
+    tDpb_State st;
+
     (void)sampler;
-    return 0;
+    /* The depth blur writes the alpha this test reads, so there is
+       only one of its modes in which there is anything to read. */
+    if (!gl_state.context)
+        return 0;
+    GL_l_ReadBlurState(&st);
+    return st.kind == DPB_SUN;
 }
 
-/* nothing to queue into */
-void GL_SunSampleQueue(void* sampler, const int* x, const int* y, int num, int pointMask, float cameraZ)
+void GL_SunSampleQueue(void* sampler, const int* x, const int* y, int num,
+                       int pointMask, float cameraZ)
 {
-    (void)sampler;
-    (void)x;
-    (void)y;
-    (void)num;
-    (void)pointMask;
-    (void)cameraZ;
+    tGlSun*     sun = (tGlSun*)sampler;
+    tGlSunSlot* slot;
+    tDpb_State  st;
+    int         i;
+
+    if (!GL_b_SunSamplerReady(sampler) || !x || !y)
+        return;
+    if (num < 0 || num > GL_SUN_POINTS)
+        return;
+    /* The ring has caught up with its own oldest unread sample, so
+       this frame goes unsampled rather than throwing an answer away. */
+    if (sun->inFlight >= GL_SUN_SLOTS)
+        return;
+
+    slot = &sun->slots[sun->next];
+    slot->mask = pointMask;
+    slot->sampled = num;
+    GL_l_ReadBlurState(&st);
+    /* What counts as blocked: the blur amount at the sun's own depth,
+       taken through the same byte the frame's alpha is. */
+    slot->threshold = (double)(unsigned char)DPB_i_BlurAtDepth(&st, cameraZ);
+
+    GLFN_glBindBuffer(GL_PIXEL_PACK_BUFFER, slot->pbo);
+    GLFN_glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    for (i = 0; i < num; i++)
+    {
+        /* One pixel each, packed into the buffer in the order they
+           were given -- so the nth pixel read is the nth bit set in
+           the mask, which is how the resolve walks them. The offset is
+           passed where a pointer would be, which is how a read into a
+           buffer says where in it to write. */
+        GLFN_glReadPixels(x[i], y[i], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE,
+                          (void*)(size_t)(i * 4));
+    }
+    GLFN_glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+    if (slot->fence)
+        GLFN_glDeleteSync(slot->fence);
+    slot->fence = GLFN_glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    slot->b_inFlight = 1;
+    sun->next = (sun->next + 1) % GL_SUN_SLOTS;
+    sun->inFlight++;
 }
 
-/* no answer ever arrives, which the engine already tolerates --
-   it is the same as a sample still in flight */
-int GL_b_SunSampleRead(void* sampler, int* outPassed)
+/* Has the card finished with this slot? A wait of no time at all, so
+   this asks rather than blocks -- which is the whole point of there
+   being three of them.
+ *
+ * With a timeout of zero the only answer that means yes is
+ * ALREADY_SIGNALED: CONDITION_SATISFIED is what comes back when a wait
+ * blocked and the fence was signalled while it waited, and a wait of
+ * no time cannot block. An earlier version accepted both, which read
+ * as thorough and was a branch nothing could ever reach. */
+static int GL_l_b_SunSlotDone(const tGlSunSlot* slot)
 {
-    (void)sampler;
-    (void)outPassed;
-    return 0;
+    if (!slot->b_inFlight || !slot->fence)
+        return 0;
+    return GLFN_glClientWaitSync(slot->fence, 0, 0) == GL_ALREADY_SIGNALED;
 }
 
-/* There is no sampler to switch, but whether a sun wants its test is
-   what puts the depth blur into the mode whose ramp that test reads --
-   so it is recorded. With p_SunSamplerCreate answering nothing the
-   engine has no sampler to ask about, so in practice this stays off
-   until the sampler follows. */
+/* The nine bits, from the nine bytes of alpha.
+ *
+ * A point the engine did not sample -- one outside the viewport -- is
+ * blocked without being looked at, because an off-screen point cannot
+ * light an octant. The ones that were sampled are packed, so the nth
+ * pixel belongs to the nth set bit and not to bit n. */
+static int GL_l_i_SunResolve(const tGlSunSlot* slot,
+                             const unsigned char* pixels)
+{
+    int blocked = 0;
+    int taken = 0;
+    int i;
+
+    for (i = 0; i < GL_SUN_POINTS; i++)
+    {
+        if ((slot->mask & (1 << i)) == 0)
+        {
+            blocked |= 1 << i;
+            continue;
+        }
+        if (taken < slot->sampled
+            && (double)pixels[taken * 4 + 3] > slot->threshold)
+            blocked |= 1 << i;
+        taken++;
+    }
+    return blocked;
+}
+
+int GL_b_SunSampleRead(void* sampler, int* outBlocked)
+{
+    tGlSun*              sun = (tGlSun*)sampler;
+    const unsigned char* pixels;
+    int                  found = -1;
+    int                  i;
+    int                  at;
+
+    if (!GL_b_SunSamplerReady(sampler) || sun->inFlight <= 0)
+        return 0;
+
+    /* The newest the card has finished with, walking back from the one
+       queued last towards the oldest unread: a newer answer is a
+       better answer, and the ones behind it are dropped rather than
+       being read out of order. */
+    for (i = 0; i < sun->inFlight; i++)
+    {
+        at = (sun->next - 1 - i + 2 * GL_SUN_SLOTS) % GL_SUN_SLOTS;
+        if (GL_l_b_SunSlotDone(&sun->slots[at]))
+        {
+            found = at;
+            break;
+        }
+    }
+    if (found < 0)
+        return 0;
+
+    GLFN_glBindBuffer(GL_PIXEL_PACK_BUFFER, sun->slots[found].pbo);
+    pixels = (const unsigned char*)GLFN_glMapBufferRange(
+        GL_PIXEL_PACK_BUFFER, 0, (GLsizeiptr)(GL_SUN_POINTS * 4),
+        GL_MAP_READ_BIT);
+    if (!pixels)
+    {
+        GLFN_glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+        return 0;
+    }
+    if (outBlocked)
+        *outBlocked = GL_l_i_SunResolve(&sun->slots[found], pixels);
+    GLFN_glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+    GLFN_glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+    /* Everything up to and including the one just read is finished
+       with, whether or not the card had got to it: an older answer is
+       of no use once a newer one has been given. */
+    while (sun->inFlight > 0)
+    {
+        int oldest = sun->oldest;
+
+        GL_l_SunSlotRetire(&sun->slots[oldest]);
+        sun->oldest = (oldest + 1) % GL_SUN_SLOTS;
+        sun->inFlight--;
+        if (oldest == found)
+            break;
+    }
+    return 1;
+}
+
+/* Whether a sun wants its test is what puts the depth blur into the
+   mode whose ramp that test reads, so the aggregate over every sun is
+   what the blur asks about -- not this one's own answer. */
 void GL_SunEffectOnOff(void* sampler, int on)
 {
-    (void)sampler;
-    gl_state.sunEffectOn = on ? 1 : 0;
+    tGlSun* sun = (tGlSun*)sampler;
+    int     anyOn = 0;
+    int     i;
+
+    for (i = 0; i < GL_SUN_SUNS; i++)
+    {
+        if (gl_suns[i] == sun && sun)
+            gl_sunWants[i] = on ? 1 : 0;
+        if (gl_suns[i])
+            anyOn |= gl_sunWants[i];
+    }
+    gl_state.sunEffectOn = anyOn;
 }
 
 /* ===================================================== the 2D pass

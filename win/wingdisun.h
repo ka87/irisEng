@@ -77,10 +77,11 @@ void D3D_SunSampleQueue(void* sampler, const int* x, const int* y, int num,
 
 /* The newest queued sample the renderer has finished with, if any.
    Non-zero when one was ready, with a nine-bit mask of the positions
-   that are not occluded in *outPassed -- positions that were outside
-   the viewport count as not occluded, as they always did. Call after
+   that are blocked in *outBlocked -- a set bit means something is in
+   front of that position, and a position outside the viewport counts
+   as blocked because it cannot light anything. Call after
    queueing: the search starts from what was pending before. */
-int D3D_b_SunSampleRead(void* sampler, int* outPassed);
+int D3D_b_SunSampleRead(void* sampler, int* outBlocked);
 
 /* The sun effect on or off for this sampler. The renderer keeps the
    tally across every sun and rebuilds what it needs to when the
