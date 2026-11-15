@@ -189,6 +189,36 @@ tZListElem* SOFT_pst_ZList_AddNode(float z, int num, int kind)
 
 /* ---- display device ---- */
 
+/* The drawing-state entries the engine now asks through, as the
+   renderer implements them: a cache of what is in force, and the
+   device told only when it changes.
+
+   These are written out here rather than calling the renderer's own,
+   which is not linked into this harness. That makes the differential
+   check a check on the call sites: the frozen copy pokes the device
+   directly and the rewrite goes through these, so an identical
+   recorded call sequence and identical cache state is the proof that
+   routing them through the interface changed nothing. */
+void MDMOCK_SetTexCoordIndex(int stage, int index)
+{
+    if (textureStageTypeConfig[stage].d3dTexCoordIndex != index)
+    {
+        textureStageTypeConfig[stage].d3dTexCoordIndex = index;
+        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(
+            D3DRenderParams.d3dDev, stage, D3DTSS_TEXCOORDINDEX, index);
+    }
+}
+
+void MDMOCK_SetTextureTransformFlags(int stage, int flags)
+{
+    if (textureStageTypeConfig[stage].d3dTextureTransformFlags != flags)
+    {
+        textureStageTypeConfig[stage].d3dTextureTransformFlags = flags;
+        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(
+            D3DRenderParams.d3dDev, stage, D3DTSS_TEXTURETRANSFORMFLAGS, flags);
+    }
+}
+
 void MDMOCK_TextureInit(int texIdx, int flags, char param)
 {
     MDMOCK_Record("TextureInit", 3, (long long)texIdx, (long long)(unsigned int)flags,

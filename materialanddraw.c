@@ -553,16 +553,10 @@ void MAT_DrawIndexedSprites_MT(tGdi_DisplayData* dxdd, tGEOGRO* geogro, tGEOMAT*
                 if (!materialsHaveAlphaBelnding)
                     flags |= 0x20;
                 D3DRenderParams.textureUVMode = 0;
-                if (textureStageTypeConfig[0].d3dTexCoordIndex)
-                {
-                    textureStageTypeConfig[0].d3dTexCoordIndex = 0;
-                    D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, 0);
-                }
-                if (textureStageTypeConfig[0].d3dTextureTransformFlags)
-                {
-                    textureStageTypeConfig[0].d3dTextureTransformFlags = 0;
-                    D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
-                }
+                // the first stage's own, untransformed UVs; the
+                // renderer knows whether that is already in force
+                dxdd->SetTexCoordIndex(0, 0);
+                dxdd->SetTextureTransformFlags(0, 0);
                 dxdd->TextureInit(texElem->texElemIdx, flags, 0);
                 if ((texElem->subTextureFlags & 0x400) != 0)
                     dxdd->bigBuffer->colorMask = (dxdd->bigBuffer->colorMask | ((texElem->phongOrPlanarParam & 0xFF00) << 16)) ^ 0xFF000000;

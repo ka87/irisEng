@@ -279,16 +279,10 @@ void SDW_Display1ShadowOn1Object(tGEOGRO* geogro, tShadowElemStruct* sdes)
     tmpTCO.triangleChunkElems = triangleChunkElemsTmp;
     //tmpTCO.materialNum = 0;
     D3DRenderParams.textureUVMode = 0;
-    if (textureStageTypeConfig[0].d3dTexCoordIndex)
-    {
-        textureStageTypeConfig[0].d3dTexCoordIndex = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXCOORDINDEX, 0);
-    }
-    if (textureStageTypeConfig[0].d3dTextureTransformFlags)
-    {
-        textureStageTypeConfig[0].d3dTextureTransformFlags = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
-    }
+    // the first stage's own, untransformed UVs; the renderer knows
+    // whether that is already in force
+    gpst_DX_stDD->SetTexCoordIndex(0, 0);
+    gpst_DX_stDD->SetTextureTransformFlags(0, 0);
 
     MATH_VecInvert(&ZVect, &ZVect);
 
@@ -400,28 +394,16 @@ void SDW_RenderShadow(tGdi_DisplayData* gdd, tGEOGRO* geogro, tShadowElemStruct*
     gpst_DX_stDD->bigBuffer->vertexColorArraySecond = NULL;
     gdd->TextureInit(-1, 0, 0);
     
-    zEnableBackup = renderStateConfig.d3d_zEnable;
+    zEnableBackup = gdd->i_ZEnable();
 
-    if (renderStateConfig.d3d_zEnable)
-    {
-        renderStateConfig.d3d_zEnable = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZENABLE, 0);
-    }
-    if (renderStateConfig.d3d_zWriteEnable)
-    {
-        renderStateConfig.d3d_zWriteEnable = 0;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZWRITEENABLE, 0);
-    }
+    gdd->SetZEnable(0);
+    gdd->SetZWriteEnable(0);
 
     for (i = 0; i < geogro->triangleChunkCount; i++) {
         gdd->DrawElementIndexedTriangles(&geogro->triangleChunks[i], gdd->verticesCurrent, NULL, geogro->vertexNum);
     }
 
-    if (renderStateConfig.d3d_zEnable != zEnableBackup)
-    {
-        renderStateConfig.d3d_zEnable = zEnableBackup;
-        D3DRenderParams.d3dDev->lpVtbl->SetRenderState(D3DRenderParams.d3dDev, D3DRS_ZENABLE, zEnableBackup);
-    }
+    gdd->SetZEnable(zEnableBackup);
     gdd->D3D_SetRenderTargetAndBackupPreviousSDW(-1, 0);
     gdd->bigBuffer->solidVertexColor = 0x00000000;
     gdd->bigBuffer->vertexColorArray = (int*)gdd->bigBuffer->data3FinalColorWithShadow;

@@ -46,6 +46,8 @@ int MDMOCK_Index(const void* p);
 void MDMOCK_RegisterPtr(const void* p);
 
 /* Display-device entry points, installed into the mock tGdi_DisplayData. */
+void MDMOCK_SetTexCoordIndex(int stage, int index);
+void MDMOCK_SetTextureTransformFlags(int stage, int flags);
 void MDMOCK_TextureInit(int texIdx, int flags, char param);
 int MDMOCK_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks, Vec3* verts,
                                        struct sGeoUVElem* uvs, int vertexNum);

@@ -157,6 +157,16 @@ typedef struct sGdi_DisplayData
     void(* D3D_ReleaseTextures)(struct sGdi_DisplayData* a1);
     void(* D3D_SetRenderTargetAndBackupPreviousSDW)(int, int);
     void(* SetViewMatrixSDW)(Mtx4x4* mtxptr, float* unused);
+
+    /* Drawing state the engine asks for by what it means, not by any
+       renderer's own names for it. A renderer is free to keep its own
+       cache of what is already in force -- the engine does not, and
+       does not need to know whether one exists. */
+    void(* SetZEnable)(int on);
+    int (* i_ZEnable)(void);
+    void(* SetZWriteEnable)(int on);
+    void(* SetTexCoordIndex)(int stage, int index);
+    void(* SetTextureTransformFlags)(int stage, int flags);
     uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;

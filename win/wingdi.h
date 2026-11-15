@@ -271,6 +271,13 @@ void D3D_SetProjectionMatrix(tDDCamStruct* cam);
 void D3D_BeginSceneCall();
 void D3D_SetVertexShader(IDirect3DVertexShader9* shader);
 
+/* The engine's drawing-state interface, filled into tGdi_DisplayData. */
+void D3D_SetZEnable(int on);
+int  D3D_i_ZEnable(void);
+void D3D_SetZWriteEnable(int on);
+void D3D_SetTexCoordIndex(int stage, int index);
+void D3D_SetTextureTransformFlags(int stage, int flags);
+
 void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int result);
 
 // temp

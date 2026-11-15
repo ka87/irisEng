@@ -323,6 +323,8 @@ static void BuildWorld(unsigned int seed)
     W.dd.drawMaskAllowedStuffCurrent = (int)(seed & 0xFF) | (int)((seed & 0x100) ? 1 : 0);
     W.dd.flags = (int)((seed >> 4) & 0xF) | (int)((seed & 0x20) ? 0x8000 : 0);
     W.dd.RLIPtr = (int*)bb->data1LightColors;
+    W.dd.SetTexCoordIndex = MDMOCK_SetTexCoordIndex;
+    W.dd.SetTextureTransformFlags = MDMOCK_SetTextureTransformFlags;
     W.dd.TextureInit = MDMOCK_TextureInit;
     W.dd.DrawElementIndexedTriangles = MDMOCK_DrawElementIndexedTriangles;
     W.dd.DrawSprites = MDMOCK_DrawSprites;

@@ -834,6 +834,11 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->D3D_ReleaseTextures = D3D_ReleaseTextures;
     dd->D3D_SetRenderTargetAndBackupPreviousSDW = D3D_SetRenderTargetAndBackupPreviousSDW;
     dd->SetViewMatrixSDW = D3D_SetViewMatrix_SDW;
+    dd->SetZEnable = D3D_SetZEnable;
+    dd->i_ZEnable = D3D_i_ZEnable;
+    dd->SetZWriteEnable = D3D_SetZWriteEnable;
+    dd->SetTexCoordIndex = D3D_SetTexCoordIndex;
+    dd->SetTextureTransformFlags = D3D_SetTextureTransformFlags;
 }
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)
