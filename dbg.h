@@ -29,7 +29,7 @@ extern int tweak_ae_no;
 
 void DBG_assert(int isError, char* sourceCodeInfo, int lineNo, char* sourceCodeLine, const char* error, const char* extra, int showMsgBox);
 void DBG_OutputDebugString(char* Format, ...);
-void D3D_OutputDebugString(char* Format, ...);
+void GDI_OutputDebugString(char* Format, ...);
 void DBG_DumpMatrix(Mtx4x4* mtx);
 void DBG_DumpVec(Vec3* vec);
 void DBG_DumpVecNoNL(Vec3* vec);

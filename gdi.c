@@ -47,7 +47,7 @@ BOOL GDI_l_DetachWorld(struct sGdi_DisplayData* dd)
     if (!dd->CurrentWorld) return TRUE;
 
     gpst_DX_stDD = dd;
-    dd->D3D_ReleaseTextures(dd);
+    dd->ReleaseTextures(dd);
     TEX_Procedural_Reinit(dd);
     TEX_Anim_Reinit();
     dd->CurrentWorld = NULL;
@@ -815,8 +815,11 @@ void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd)
 
 static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
 {
-    dd->CreateDevice = D3D_pst_CreateDevice;
-    dd->DestroyDevice = D3D_DestroyDevice;
+    /* The interface holds the renderer's state opaquely, so the one
+       function that hands it out is cast here rather than every
+       caller learning the real type. */
+    dd->CreateDevice = (void*(*)(void))D3D_pst_CreateDevice;
+    dd->DestroyDevice = (void(*)(void*))D3D_DestroyDevice;
     dd->Init = D3D_l_Init;
     dd->Close = D3D_l_Close;
     dd->ReadaptDisplay = D3D_l_ReadaptDisplay;
@@ -833,8 +836,8 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->SetTexturePalette = D3D_Set_Texture_Palette;
     dd->TextureUnload = D3D_Texture_Unload;
     dd->SetTextureTarget = D3D_SetTextureTarget;
-    dd->D3D_ReleaseTextures = D3D_ReleaseTextures;
-    dd->D3D_SetRenderTargetAndBackupPreviousSDW = D3D_SetRenderTargetAndBackupPreviousSDW;
+    dd->ReleaseTextures = D3D_ReleaseTextures;
+    dd->SetRenderTargetAndBackupPreviousSDW = D3D_SetRenderTargetAndBackupPreviousSDW;
     dd->SetViewMatrixSDW = D3D_SetViewMatrix_SDW;
     dd->SetZEnable = D3D_SetZEnable;
     dd->i_ZEnable = D3D_i_ZEnable;

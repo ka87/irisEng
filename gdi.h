@@ -16,95 +16,12 @@
 #include "soft.h"
 #include "graphicsobjects/geostr.h"
 #include "sprites.h"
-#include <d3d9.h>
 
 
-typedef struct sGdi_D3DRenderParams
-{
-    int d3d_Adapter;
-    int d3d_AdapterFormat;
-    int ZBufferDepth;
-    int hwnd2_dword_B3162C;
-    IDirect3D9* d3d_if;
-    D3DPRESENT_PARAMETERS presentParams;
-    LPDIRECT3DDEVICE9 d3dDev;
-    D3DCAPS9 d3dcaps;
-    int dword_B317A0;
-    int setsDefaultZEnableAtBeginScene;
-    int d3d_defaultZEnable;
-    Mtx4x4* projectionMatrix;
-    struct tagRECT Rect;
-    D3DVIEWPORT9 d3dViewPort;
-    D3DMATRIX projectionMatrixBackup;
-    IDirect3DSurface9* renderTargetBackup;
-    uint8_t d3dUnkTextures[4]; // ez a joegtudja mi, a jatke nem csinal vele semmit, legalábbis futtatáskor
-    IDirect3DTexture9* d3dShadowTextures[8];
-    D3DVIEWPORT9 pViewPort;
-    IDirect3DTexture9* blurTex;
-    IDirect3DSurface9* newZStencil;
-    IDirect3DSurface9* pBackBuffers[2];
-    IDirect3DSurface9* pDepthStencilSurface;
-    IDirect3DTexture9** d3dTextures;
-    IDirect3DTexture9** d3dSourceTextures;
-    int d3dTextureNum;
-    IDirect3DTexture9* pDestTexture; // blorolt textura (lasd D3D_UpdateBlurTexture)
-    IDirect3DTexture9* pSourceTexture; // orig textura
-    int d3dNeedToCallEndScene;
-    /* Dead in the live build: the two below are GDI_gi_TextureUVMode
-       and GDI_gi_Diffuse2x now, because the engine writes them as
-       well as reading them and they are no renderer's to own. They
-       stay here because the frozen copies in tests/ still name them,
-       and a struct member cannot be mapped the way a renamed symbol
-       can. Nothing live should read or write either. */
-    int textureUVMode;
-    Mtx4x4WithoutAdditionalData transformationMatrix;
-    int textureUVIsProjected;
-    int isDepthBlurOn;
-    int tweak_zonalpha;
-    int sunEffectIsOn;
-    int tweak_ae_noflare;
-    int diffuse2x;
-    int tweak_ae_d2x;
-    int Mipmapping;
-    int argbIsSupportedForTextures;
-    int d3dFogModeProbably;
-    int d3dFogColor;
-    int d3dFogColor2Case5and6;
-    IDirect3DVertexBuffer9* d3dXYZVB;
-    int stride2;
-    int xyzFVF;
-    int prevVertexElemIdx2;
-    int startVertexElemIdx2;
-    struct sGameObjectMain* currTargetGao;
-    uint8_t gap16[16];
-    IDirect3DVertexBuffer9* d3dNormalsBuffer;
-    int d3dStride;
-    int normalsFVF;
-    int sumVertexNumInDrawElementIndexedTriangle;
-    int currVertexStartOffset;
-    struct sGameObjectMain* currTargetGaoInDrawElementIndexedTriangle;
-    uint8_t gap17[16];
-    IDirect3DVertexBuffer9* d3dColorsVB;
-    int stride;
-    int colorsFVF;
-    int prevVertexElemIdx;
-    int startVertexElemIdx;
-    struct sGameObjectMain* currTargetGaoInDrawElementIndexedTriangle2;
-    int *vertexColorArray;
-    int colorMask;
-    int colorMaskAlpha2;
-    int solidVertexColor;
-    IDirect3DVertexDeclaration9* vertexDeclarationIFd3dUVVBIsNull;
-    IDirect3DVertexDeclaration9* vertexDeclarationIFd3dUVVBISnotNull;
-    IDirect3DVertexDeclaration9* d3dVertexDeclaration;
-    int colorMaskAlpha;
-    IDirect3DTexture9* blurRenderTarget2;
-    IDirect3DTexture9* blurRenderTarget;
-    IDirect3DTexture9* unktex1_dword_B31988;
-    IDirect3DTexture9* unktex2_dword_B3198C;
-    IDirect3DTexture9* tmpRenderTarget;
-    int opacity;
-} tGdi_D3DRenderParams;
+/* The renderer's own private state, whatever renderer that is. The
+   engine holds it as an opaque pointer and never looks inside: the
+   Direct3D one is tGdi_D3DRenderParams in win/wingdi.h, which is
+   where it belongs and where it used to not be. */
 
 typedef struct sTexManagerStruct
 {
@@ -142,8 +59,8 @@ typedef struct sFogParams
 
 typedef struct sGdi_DisplayData
 {
-    struct sGdi_D3DRenderParams* (* CreateDevice)();
-    void(* DestroyDevice)(struct sGdi_D3DRenderParams* x);
+    void*(* CreateDevice)(void);
+    void (* DestroyDevice)(void* rendererState);
     int(* Init)(HWND hWnd, struct sGdi_DisplayData* a6);
     int(* Close)();
     int(* ReadaptDisplay)(HWND hwnd, struct sGdi_DisplayData* gdd);
@@ -160,8 +77,8 @@ typedef struct sGdi_DisplayData
     int(* SetTexturePalette)(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* a2, struct sEngTexIntermediateStruct* a3, int a4);
     void(* TextureUnload)(struct sGdi_DisplayData* a1, struct sEngPaletteElem *a2, int a3);
     void(* SetTextureTarget)(struct sGdi_DisplayData* a1, int a2, int a3, int a4);
-    void(* D3D_ReleaseTextures)(struct sGdi_DisplayData* a1);
-    void(* D3D_SetRenderTargetAndBackupPreviousSDW)(int, int);
+    void(* ReleaseTextures)(struct sGdi_DisplayData* dd);
+    void(* SetRenderTargetAndBackupPreviousSDW)(int textureID, int clear);
     void(* SetViewMatrixSDW)(Mtx4x4* mtxptr, float* unused);
 
     /* Drawing state the engine asks for by what it means, not by any
@@ -248,13 +165,14 @@ typedef struct sGdi_DisplayData
     struct sFogParams fog;
     struct sTexManagerStruct texManager;
     int32_t presentationFlags;
-    struct sGdi_D3DRenderParams* pd3drp;
+    /* The renderer's private state, from its own CreateDevice. */
+    void* rendererState;
     struct sWorld* CurrentWorld;
     struct sShadowStruct* shadowStruct;
     struct profilerRasterStructElem* rasters;
 } tGdi_DisplayData;
 
-typedef struct sD3dRequestSnapshot
+typedef struct sGdi_SnapshotRequest
 {
     int16_t flags;
     uint8_t gap[2];
@@ -263,7 +181,7 @@ typedef struct sD3dRequestSnapshot
     int width;
     int height;
     char* srcData;
-} tD3dRequestSnapshot;
+} tGdi_SnapshotRequest;
 
 typedef struct sMatDecompressedStruct
 {

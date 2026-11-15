@@ -135,7 +135,7 @@ void DBG_OutputDebugString(char* Format, ...)
 
    The two are otherwise identical, and the D3D_ name is a leftover
    rather than anything renderer-specific. */
-void D3D_OutputDebugString(char* Format, ...)
+void GDI_OutputDebugString(char* Format, ...)
 {
     CHAR OutputString[256];
     va_list ArgList;

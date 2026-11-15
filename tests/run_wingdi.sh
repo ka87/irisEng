@@ -55,6 +55,10 @@ $CC $CFLAGS -c win/wingdi.c -o "$OUT/wingdi.new.o" $(defs NEW_ $syms)
 # the frozen copy still spells one function the way the decompiler named
 # it; map it onto the same per-side symbol the rewrite's new name takes
 $CC $CFLAGS -DMAT_ComputeUV_sub_4521A0=BASE_MAT_UV_ComputeAndSetTransform \
+    -DD3D_OutputDebugString=GDI_OutputDebugString \
+    -Dpd3drp=rendererState \
+    -DtD3dRequestSnapshot=tGdi_SnapshotRequest \
+    -DsD3dRequestSnapshot=sGdi_SnapshotRequest \
     -c tests/baseline_wingdi.c -o "$OUT/wingdi.base.o" $(defs BASE_ $syms)
 $CC $CFLAGS -c math.c -o "$OUT/wingdi.math.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"

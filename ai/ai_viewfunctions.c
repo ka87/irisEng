@@ -14,7 +14,7 @@ int VIEWSNAP_Slot = -1;
 void AI_EvalFunc_VIEWSnapshot_DoIt()
 {
     tJpegLibIntf jpgIntf;
-    tD3dRequestSnapshot rs;
+    tGdi_SnapshotRequest rs;
     int snapSlotBackup, quality;
     void* srcData;
 

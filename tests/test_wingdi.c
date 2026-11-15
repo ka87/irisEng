@@ -116,7 +116,7 @@
     int  p##D3D_l_Texture_Store(struct sGdi_DisplayData*, int); \
     void p##D3D_Palette_Load(struct sGdi_DisplayData*, struct sEngTexListElemStruct*, struct sEngTexIntermediateStruct*, int); \
     void p##D3D_TextureStore(tTexUploadRequest*); \
-    void p##D3D_GetSnapShot(tD3dRequestSnapshot*); \
+    void p##D3D_GetSnapShot(tGdi_SnapshotRequest*); \
     int  p##PC_WNDMsgHandler(HWND, int, int, int, int*); \
     int  p##PC_HandleWindowCreateAndEraseBackgroundMessages(HWND, GLOBAL_MainHandles*, int, int, int, int*); \
     void p##PC_SetUVMatrix(Mtx4x4*, Vec3*, Vec3*, Vec3*, Vec3*, Vec3*, int, int); \
@@ -221,7 +221,7 @@ typedef struct sSide
     int (*TextureStoreInit)(struct sGdi_DisplayData*, int);
     void (*PaletteLoad)(struct sGdi_DisplayData*, struct sEngTexListElemStruct*, struct sEngTexIntermediateStruct*, int);
     void (*TextureStore)(tTexUploadRequest*);
-    void (*GetSnapShot)(tD3dRequestSnapshot*);
+    void (*GetSnapShot)(tGdi_SnapshotRequest*);
     int (*WndMsg)(HWND, int, int, int, int*);
     int (*WndCreate)(HWND, GLOBAL_MainHandles*, int, int, int, int*);
     void (*SetUVMatrix)(Mtx4x4*, Vec3*, Vec3*, Vec3*, Vec3*, Vec3*, int, int);
@@ -332,7 +332,7 @@ typedef struct sWgFixture
     Vec3 waterUvVecs[WTR_W * WTR_H];
     int waterColors[WTR_W * WTR_H];
     tD3dSpriteData spriteData;
-    tD3dRequestSnapshot snap;
+    tGdi_SnapshotRequest snap;
     char snapData[4096];
     tTexUploadRequest upload;
     unsigned int uploadData[256];
@@ -869,7 +869,7 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     W.dd.GROGEO = ((seed >> 21) & 1) ? &W.geogro : NULL;
     W.dd.currTargetGao = &W.gao;
     W.dd.matrixStack.actMatrixElem = &W.gaoMtx;
-    W.dd.pd3drp = &D3DRenderParams;
+    W.dd.rendererState = &D3DRenderParams;
     W.dd.Request = s->Request;
     W.dd.texManager.paletteUsedMemory = 0;
     Guard(11, "geogro attached", (int)((seed >> 21) & 1));
