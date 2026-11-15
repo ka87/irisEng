@@ -91,6 +91,17 @@ typedef char           GLchar;
 #define GL_UNPACK_ALIGNMENT               0x0CF5
 #define GL_UNPACK_ROW_LENGTH              0x0CF2
 
+/* Framebuffer objects: a renderer draws into one of these instead of
+   the window when it needs the result as a texture. */
+#define GL_FRAMEBUFFER                    0x8D40
+#define GL_FRAMEBUFFER_BINDING            0x8CA6
+#define GL_RENDERBUFFER                   0x8D41
+#define GL_COLOR_ATTACHMENT0              0x8CE0
+#define GL_DEPTH_ATTACHMENT               0x8D00
+#define GL_DEPTH_COMPONENT24              0x81A6
+#define GL_FRAMEBUFFER_COMPLETE           0x8CD5
+#define GL_VIEWPORT                       0x0BA2
+
 #define GL_FILL                           0x1B02
 #define GL_LINE                           0x1B01
 #define GL_FRONT                          0x0404
@@ -238,6 +249,27 @@ typedef void (*GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint id,
                                      (target, level, x, y, w, h, format,       \
                                       type, pixels))                          \
     X(void,  glGenerateMipmap,       (GLenum target), (target))               \
+                                                                              \
+    X(void,  glGenFramebuffers,      (GLsizei n, GLuint* out), (n, out))      \
+    X(void,  glDeleteFramebuffers,   (GLsizei n, const GLuint* in), (n, in))  \
+    X(void,  glBindFramebuffer,      (GLenum target, GLuint fb),               \
+                                     (target, fb))                           \
+    X(void,  glFramebufferTexture2D, (GLenum target, GLenum attachment,        \
+                                      GLenum texTarget, GLuint texture,        \
+                                      GLint level),                            \
+                                     (target, attachment, texTarget, texture,  \
+                                      level))                                 \
+    X(GLenum, glCheckFramebufferStatus, (GLenum target), (target))            \
+    X(void,  glGenRenderbuffers,     (GLsizei n, GLuint* out), (n, out))      \
+    X(void,  glDeleteRenderbuffers,  (GLsizei n, const GLuint* in), (n, in))  \
+    X(void,  glBindRenderbuffer,     (GLenum target, GLuint rb),               \
+                                     (target, rb))                           \
+    X(void,  glRenderbufferStorage,  (GLenum target, GLenum format,            \
+                                      GLsizei w, GLsizei h),                   \
+                                     (target, format, w, h))                  \
+    X(void,  glFramebufferRenderbuffer, (GLenum target, GLenum attachment,     \
+                                      GLenum rbTarget, GLuint rb),             \
+                                     (target, attachment, rbTarget, rb))      \
                                                                               \
     X(void,  glDebugMessageCallback, (GL_pfn_DebugProc proc, const void* user), \
                                      (proc, user))                            \

@@ -72,7 +72,10 @@ static int modCalls;
 
 /* what the context lookup should do for each name */
 enum { ANSWER, REFUSE_NULL, REFUSE_ONE, REFUSE_TWO, REFUSE_THREE, REFUSE_MINUSONE };
-static int ctxMode[64];
+/* One per name, sized from the list itself. It was a literal 64, and
+   an entry point added to glcore.h's list walked straight off the end
+   of it -- the list is the one place that knows how many there are. */
+static int ctxMode[GLNAMECOUNT];
 static int modAnswers;          /* does the module lookup answer at all */
 static int modRefusesIndex;     /* one name the module also refuses, or -1 */
 

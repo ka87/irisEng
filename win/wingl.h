@@ -27,14 +27,15 @@ struct sGlRenderState;
        backend = gl
 
    What it does so far: comes up, clears and presents; draws the
-   debug overlay and its text; and draws the world's geometry with
-   its textures, its sampler and blend state, and its alpha test.
-   What it does not do yet is the video display, the sun's occlusion
-   test, sprites, the cached geometry path and the projected-texture
-   pass -- all of which need a render target. Those interface entries
-   are present and inert, because an entry left NULL is a crash
-   rather than a missing feature; each carries a comment saying what
-   it waits on, and the log says it once at startup.
+   debug overlay and its text; draws the world's geometry with its
+   textures, its sampler and blend state, and its alpha test; and
+   draws each caster's shadow into a target of its own and samples
+   it back. What it does not do yet is the video display, the sun's
+   occlusion test, sprites, the cached geometry path and the
+   projected-texture pass. Those interface entries are present and
+   inert, because an entry left NULL is a crash rather than a
+   missing feature; each carries a comment saying what it waits on,
+   and the log says it once at startup.
 
    Culling is decoded from the draw mask and deliberately not applied,
    so everything is drawn: which winding the engine calls front
