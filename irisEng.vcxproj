@@ -208,6 +208,7 @@
     <ClCompile Include="collision.c" />
     <ClCompile Include="common.c" />
     <ClCompile Include="dbg.c" />
+    <ClCompile Include="depthblur.c" />
     <ClCompile Include="dynamics.c" />
     <ClCompile Include="engine.c" />
     <ClCompile Include="editorcamera.c" />
@@ -479,6 +480,7 @@
     <ClInclude Include="collision.h" />
     <ClInclude Include="common.h" />
     <ClInclude Include="dbg.h" />
+    <ClInclude Include="depthblur.h" />
     <ClInclude Include="dynamics.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="editorcamera.h" />

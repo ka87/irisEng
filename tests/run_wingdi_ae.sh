@@ -70,10 +70,15 @@ $CC $CFLAGS -include tests/wingdi_ae_sdk.h \
     -c tests/baseline_wingdi_ae.c \
     -o "$OUT/wingdi_ae.base.o" $(defs BASE_ $fns $globals)
 $CC $CFLAGS -c math.c -o "$OUT/wingdi_ae.math.o"
+# The blur's arithmetic, which both sides reach: the rewrite calls it
+# and the frozen copy carries its own inlined version, so one copy
+# linked in serves the rewrite and the frozen copy is unaffected.
+$CC $CFLAGS -c depthblur.c -o "$OUT/wingdi_ae.dpb.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/wingdi_ae_mocks.c \
     -o "$OUT/wingdi_ae.mocks.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/test_wingdi_ae.c \
     -o "$OUT/wingdi_ae.drv.o"
 $CC "$OUT/wingdi_ae.new.o" "$OUT/wingdi_ae.base.o" "$OUT/wingdi_ae.math.o" \
-    "$OUT/wingdi_ae.mocks.o" "$OUT/wingdi_ae.drv.o" -o "$OUT/wingdi_ae" -lm
+    "$OUT/wingdi_ae.dpb.o" "$OUT/wingdi_ae.mocks.o" "$OUT/wingdi_ae.drv.o" \
+    -o "$OUT/wingdi_ae" -lm
 "$OUT/wingdi_ae"

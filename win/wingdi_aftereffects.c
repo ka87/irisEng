@@ -1,6 +1,7 @@
 #include "../dbg.h"
 #include "../editorcamera.h"
 #include "wingdi.h"
+#include "../depthblur.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -75,164 +76,65 @@ static void AE_SetSamplerState(int sampler, int* cached, DWORD state, int value)
     }
 }
 
+/* The blur's decision, as depthblur.c made it. Kept so the four
+   functions below each answer from the same reading rather than
+   deciding again; D3D_SaveAEParams is what refreshes it, which is the
+   order the engine already calls them in. */
+static tDpb_State d3d_blur;
+
 void D3D_SaveAEParams()
 {
-    double minNear;
-    double minType0;
-    double minType1;
-    double minFar;
+    tDpb_Source src;
 
-    if (D3DRenderParams.tweak_zonalpha)
-        depthblur_Type = 0;
-    else if ((PC_AE_MASTER & 8) != 0 && (PC_AE_MASTER & 0x1000) != 0)// depthblur, depthblurnear
-        depthblur_Type = 3;
-    else if ((PC_AE_MASTER & 8) != 0)
-        depthblur_Type = 1;
-    else if ((PC_AE_MASTER & 0x1000) != 0)
-        depthblur_Type = 2;
-    else
-        depthblur_Type = D3DRenderParams.sunEffectIsOn != 0 ? 4 : 0;
+    src.b_zonAlphaTweak = D3DRenderParams.tweak_zonalpha;
+    src.aeMaster = (unsigned int)PC_AE_MASTER;
+    src.b_sunEffectOn = D3DRenderParams.sunEffectIsOn != 0;
+    src.nearPlane = gpst_DX_stDD->ct.cam.nearPlane;
+    src.farPlane = gpst_DX_stDD->ct.cam.farPlane;
+    src.depthBlurNear1 = depthBlurNear1;
+    src.depthBlurType0 = depthBlurType0;
+    src.depthBlurType1 = depthBlurType1;
 
-    if (gpst_DX_stDD->ct.cam.nearPlane <= 1.1754944e-38)
-        camUnkf1Save = 1.1754944e-38f;
-    else
-        camUnkf1Save = gpst_DX_stDD->ct.cam.nearPlane;
-    minNear = camUnkf1Save + 0.0099999998;
-    if (depthBlurNear1 <= minNear)
-        deptBlurNear1Save = (float)minNear;
-    else
-        deptBlurNear1Save = depthBlurNear1;
-    minType0 = deptBlurNear1Save + 0.0099999998;
-    if (depthBlurType0 <= minType0)
-        deptBlurType0Save = (float)minType0;
-    else
-        deptBlurType0Save = depthBlurType0;
-    minType1 = deptBlurType0Save + 0.0099999998;
-    if (depthBlurType1 <= minType1)
-        deptBlur1TypeSave = (float)minType1;
-    else
-        deptBlur1TypeSave = depthBlurType1;
-    minFar = deptBlur1TypeSave + 0.0099999998;
-    if (minFar >= gpst_DX_stDD->ct.cam.farPlane)
-        depthBlur1TypeOrcamUnkf2Save = (float)minFar;
-    else
-        depthBlur1TypeOrcamUnkf2Save = gpst_DX_stDD->ct.cam.farPlane;
+    DPB_Decode(&src, &d3d_blur);
+
+    /* Written out because the rest of the renderer reads them, and
+       because the sun's test reads the mode directly. */
+    depthblur_Type = d3d_blur.kind;
+    camUnkf1Save = d3d_blur.nearClamped;
+    deptBlurNear1Save = d3d_blur.near1;
+    deptBlurType0Save = d3d_blur.type0;
+    deptBlur1TypeSave = d3d_blur.type1;
+    depthBlur1TypeOrcamUnkf2Save = d3d_blur.farUsed;
 }
 
+/* The coordinate generation, as a Direct3D texture transform. The
+   distances and whether it is projected are the decision's; where each
+   one lands in the matrix is this renderer's. */
 void D3D_SetGlobalBlurParams()
 {
-    memset(&D3DRenderParams.transformationMatrix, 0, sizeof(D3DRenderParams.transformationMatrix));
-    switch (depthblur_Type)
-    {
-    case 0:
-        D3DRenderParams.textureUVIsProjected = 0;
-        break;
-    case 1:
-        D3DRenderParams.textureUVIsProjected = 1;
-        D3DRenderParams.transformationMatrix.f41 = deptBlurType0Save;
-        D3DRenderParams.transformationMatrix.f33 = 1.0;
-        break;
-    case 2:
-    case 3:
-        D3DRenderParams.textureUVIsProjected = 1;
-        D3DRenderParams.transformationMatrix.f41 = deptBlurNear1Save;
-        D3DRenderParams.transformationMatrix.f33 = 1.0;
-        break;
-    case 4:
-        D3DRenderParams.transformationMatrix.f31 = (float)(1.0 / depthBlur1TypeOrcamUnkf2Save);
-        D3DRenderParams.textureUVIsProjected = 0;
-        break;
-    default:
+    memset(&D3DRenderParams.transformationMatrix, 0,
+           sizeof(D3DRenderParams.transformationMatrix));
+    if (d3d_blur.kind < DPB_OFF || d3d_blur.kind > DPB_SUN)
         return;
-    }
+    D3DRenderParams.textureUVIsProjected = d3d_blur.b_projected;
+    D3DRenderParams.transformationMatrix.f41 = d3d_blur.translateU;
+    D3DRenderParams.transformationMatrix.f33 = d3d_blur.scaleW;
+    D3DRenderParams.transformationMatrix.f31 = d3d_blur.scaleUfromZ;
 }
 
 float D3D_DepthBlurBlurFuncCalc1(int step)
 {
-    double depth;
-
-    depth = 0.0;
-    if (depthblur_Type == 4)
-        depth = (double)step * depthBlur1TypeOrcamUnkf2Save * 0.00390625;
-    return (float)depth;
+    return DPB_f_DepthAtStep(&d3d_blur, step);
 }
 
-uint32_t  D3D_DepthBlurBlurFuncCalc2(float depth)
+uint32_t D3D_DepthBlurBlurFuncCalc2(float depth)
 {
-    if (depthblur_Type == 4)
-    {
-        if (depth < 0.0)
-            return 255;
-        if (depth <= (double)depthBlur1TypeOrcamUnkf2Save)
-            return (uint32_t)((1.0 - depth / depthBlur1TypeOrcamUnkf2Save) * 255.0);
-    }
-    return 0;
+    return DPB_i_BlurAtDepth(&d3d_blur, depth);
 }
 
 void D3D_DepthBlurBlurFunc(int* table)
 {
-    int clearEnd;
-    int rampEnd;
-    int idx;
-    int step;
-    int i;
-    float depth;
-
-    switch (depthblur_Type)
-    {
-    case 0:
-        for (i = 0; i < 256; i++) table[i] = 0xFF000000;
-        break;
-    case 1:
-        clearEnd = (unsigned int)(deptBlurType0Save / deptBlur1TypeSave * 256.0);
-        idx = 0;
-        if (clearEnd > 0)
-        {
-            memset(table, 0, 4 * clearEnd);
-            idx = clearEnd;
-        }
-        if (clearEnd < 256)
-        {
-            for (step = idx - clearEnd; idx < 256; idx++, step++)
-                table[idx] = (unsigned int)((double)step * (255.0 / (double)(256 - clearEnd))) << 24;
-        }
-        table[255] = 0xFF000000;
-        break;
-    case 2:
-        for (i = 0; i < 255; i++) table[i] = 0xFF000000;
-        table[255] = 0;
-        break;
-    case 3:
-        clearEnd = (unsigned int)(deptBlurNear1Save / deptBlur1TypeSave * 256.0);
-        rampEnd = (unsigned int)(deptBlurNear1Save / deptBlurType0Save * 256.0);
-        idx = 0;
-        if (clearEnd > 0)
-        {
-            memset(table, 0, 4 * clearEnd);
-            idx = clearEnd;
-        }
-        if (idx < rampEnd)
-        {
-            for (step = idx - clearEnd; idx < rampEnd; idx++, step++)
-                table[idx] = (unsigned int)((double)step * (255.0 / (double)(rampEnd - clearEnd))) << 24;
-        }
-        if (idx < 255) {
-            // preserved: a count used where the other arms use an index, so this stops short of 254
-            for (i = idx; i <= (255 - idx); i++) table[i] = 0xFF000000;
-        }
-        table[255] = 0;
-        break;
-    case 4:
-        for (i = 0; i < 256; ++i)
-        {
-            depth = D3D_DepthBlurBlurFuncCalc1(i);
-            table[i] = (uint8_t)D3D_DepthBlurBlurFuncCalc2(depth) << 24;
-        }
-        table[255] = 0;
-        break;
-    default:
-        return;
-    }
+    DPB_BuildRamp(&d3d_blur, table);
 }
 
 int D3D_UpdateBlurTexture()
