@@ -69,11 +69,43 @@ typedef struct sGlMaterial
 
 static tGlMaterial gl_material;
 
+#define GL_SHADOW_TARGETS 8
+#define GL_SHADOW_SIZE    128
+
+/* The border the engine leaves untouched around a shadow target. The
+   texture is sampled with clamped addressing, so the edge pixels are
+   what spreads outwards past the shadow -- they have to stay as the
+   clear left them, which means the viewport is inset by one. */
+#define GL_SHADOW_BORDER  1
+
+typedef struct sGlTarget
+{
+    GLuint fbo;
+    GLuint color;      /* the texture a later draw samples */
+    int    width;
+    int    height;
+} tGlTarget;
+
+static tGlTarget gl_shadowTargets[GL_SHADOW_TARGETS];
+static GLuint    gl_shadowDepth;
+static int       gl_shadowTried;
+static int       gl_shadowReady;
+
+/* What was in force before a target was bound, so it can be put back.
+   The projection is saved by GL_SetViewMatrixSDW and the viewport
+   here, which is where the other renderer saves each of them -- the
+   engine calls the two in that order. */
+static int    gl_targetInForce;
+static GLint  gl_savedViewport[4];
+static Mtx4x4 gl_savedProjMtx;
+
+
 
 /* Defined with the rest of the 2D pass, at the bottom; GL_Close has
    to call it while the context is still current. */
 static void GL_l_ForgetPass(void);
 static void GL_l_ForgetGeometry(void);
+static void GL_l_ForgetTargets(void);
 static Mtx4x4 gl_viewProjMtx;
 static int            gl_available = -1;   /* -1 until asked */
 static int            gl_saidOnce;
@@ -316,11 +348,11 @@ static void GL_l_SayWhatThisIs(void)
         (const char*)GLFN_glGetString(GL_VENDOR),
         (const char*)GLFN_glGetString(GL_RENDERER),
         (const char*)GLFN_glGetString(GL_SHADING_LANGUAGE_VERSION));
-    DBG_OutputDebugString("GL: this renderer draws the overlay, its text "
-                          "and the textured world; video, sprites, the "
-                          "sun's occlusion test and the render-target "
-                          "passes are not drawn through it yet, and "
-                          "culling is off\n");
+    DBG_OutputDebugString("GL: this renderer draws the overlay, its text, "
+                          "the textured world and its shadows; video, "
+                          "sprites, the sun's occlusion test and the "
+                          "projected-texture pass are not drawn through it "
+                          "yet, and culling is off\n");
 }
 
 static void GL_l_SizeFromWindow(HWND hwnd)
@@ -395,6 +427,7 @@ int GL_Close(void)
     {
         GL_l_ForgetPass();
         GL_l_ForgetGeometry();
+        GL_l_ForgetTargets();
         wglMakeCurrent(gl_state.dc, NULL);
         wglDeleteContext(gl_state.context);
         gl_state.context = NULL;
@@ -814,8 +847,31 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
  * waits on the same thing.
  */
 
+/* Standing in for a shadow target when one is sampled as a texture.
+   Filled on demand because the target's name is not known until the
+   targets are built. */
+static tGlTexture gl_shadowAsTexture;
+
 static tGlTexture* GL_l_p_Texture(int textureID)
 {
+    /* A negative index is a shadow target with the top bit set, which
+       is what the other renderer masks off before indexing its own
+       array of them. It does not then check the range, so -1 and -2
+       -- which mean "no texture" and "the renderer's own copy" --
+       reach it as indices a billion entries past the end. Checked
+       here, so those two land as no texture at all. */
+    if (textureID < 0)
+    {
+        int idx = (int)((unsigned int)textureID & ~0x80000000u);
+
+        if (idx >= GL_SHADOW_TARGETS || !gl_shadowReady)
+            return NULL;
+        if (!gl_shadowTargets[idx].color)
+            return NULL;
+        gl_shadowAsTexture.name = gl_shadowTargets[idx].color;
+        gl_shadowAsTexture.hasLevels = 0;
+        return &gl_shadowAsTexture;
+    }
     if (!gl_textures || textureID < 0 || textureID >= gl_textureNum)
         return NULL;
     if (!gl_textures[textureID].name)
@@ -1118,12 +1174,16 @@ void GL_TextureInit(int textureID, int flags, char mode)
 
     GLFN_glPolygonMode(GL_FRONT_AND_BACK, st.solidFill ? GL_FILL : GL_LINE);
 
-    if (st.depthTest)
-        GLFN_glEnable(GL_DEPTH_TEST);
-    else
-        GLFN_glDisable(GL_DEPTH_TEST);
+    /* Through the setters, not straight at OpenGL. A material decides
+       the depth state and so does the engine, through SetZEnable and
+       SetZWriteEnable, and the engine reads it back with i_ZEnable --
+       the shadow pass saves it, turns it off and puts it back. Setting
+       the state here without recording it leaves that read answering
+       with whatever the last SetZEnable said, so the restore puts back
+       a value that was never in force. */
+    GL_SetZEnable(st.depthTest);
     GLFN_glDepthFunc(st.depthCompare == RST_DEPTH_EQUAL ? GL_EQUAL : GL_LEQUAL);
-    GLFN_glDepthMask(st.depthWrite ? GL_TRUE : GL_FALSE);
+    GL_SetZWriteEnable(st.depthWrite);
 
     /* Culling is decoded and deliberately not applied. Which winding
        the engine calls front depends on the projection as well as on
@@ -1215,18 +1275,206 @@ void GL_SetTextureTarget(struct sGdi_DisplayData* a1, int a2, int a3, int a4)
     (void)a4;
 }
 
-/* shadow targets wait on the framebuffer stage */
-void GL_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear)
+/* ------------------------------------------------- render targets
+ *
+ * Drawing into a texture rather than into the window. The engine does
+ * this for the shadow each caster projects: eight small targets, one
+ * per shadow in force, drawn into once and then sampled by every
+ * object the shadow falls on.
+ *
+ * In Direct3D a render target is a surface handed to the device, and
+ * the depth buffer the window already has stays attached -- it only
+ * has to be at least as big, which a back-buffer-sized one is. OpenGL
+ * has no such arrangement: a framebuffer object owns its attachments,
+ * so these need a depth buffer of their own. One is enough, shared
+ * between them, because only one target is ever bound at a time.
+ *
+ * Nesting is refused rather than stacked, as the other renderer
+ * refuses it: a second request while one is in force does nothing,
+ * and so does a release with none in force.
+ */
+
+static void GL_l_ForgetTargets(void)
 {
-    (void)textureID;
-    (void)clear;
+    int i;
+
+    if (gl_state.context)
+    {
+        for (i = 0; i < GL_SHADOW_TARGETS; i++)
+        {
+            if (gl_shadowTargets[i].fbo)
+                GLFN_glDeleteFramebuffers(1, &gl_shadowTargets[i].fbo);
+            if (gl_shadowTargets[i].color)
+                GLFN_glDeleteTextures(1, &gl_shadowTargets[i].color);
+        }
+        if (gl_shadowDepth)
+            GLFN_glDeleteRenderbuffers(1, &gl_shadowDepth);
+    }
+    memset(gl_shadowTargets, 0, sizeof(gl_shadowTargets));
+    gl_shadowDepth = 0;
+    gl_shadowTried = 0;
+    gl_shadowReady = 0;
+    gl_targetInForce = 0;
 }
 
-/* as above */
+/* Builds one target: a colour texture to sample later, and the shared
+   depth buffer. Returns whether the framebuffer came out usable --
+   an incomplete one draws nothing and reports nothing, so it is
+   checked here rather than discovered as an empty shadow. */
+static int GL_l_b_MakeTarget(tGlTarget* t, int width, int height)
+{
+    t->width = width;
+    t->height = height;
+
+    GLFN_glGenTextures(1, &t->color);
+    if (!t->color)
+        return 0;
+    GLFN_glBindTexture(GL_TEXTURE_2D, t->color);
+    GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
+                      GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+    /* No chain, and a sampler that wants none: a material can ask for
+       mip filtering and these have one level, which would make the
+       texture incomplete. */
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLFN_glGenFramebuffers(1, &t->fbo);
+    if (!t->fbo)
+        return 0;
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, t->fbo);
+    GLFN_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                GL_TEXTURE_2D, t->color, 0);
+    GLFN_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                   GL_RENDERBUFFER, gl_shadowDepth);
+    if (GLFN_glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        return 0;
+    }
+
+    /* White, as the other renderer fills them: a shadow target is
+       sampled as how much light reaches a point, so untouched means
+       unshadowed. Left at the zero a fresh texture has, every object
+       would be in shadow until something drew into it. */
+    GLFN_glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    GLFN_glClear(GL_COLOR_BUFFER_BIT);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    return 1;
+}
+
+static int GL_l_b_TargetsReady(void)
+{
+    int i;
+
+    if (gl_shadowTried)
+        return gl_shadowReady;
+    gl_shadowTried = 1;
+    if (!gl_state.context)
+        return 0;
+
+    GLFN_glGenRenderbuffers(1, &gl_shadowDepth);
+    if (!gl_shadowDepth)
+    {
+        DBG_OutputDebugString("GL: no depth buffer for the shadow targets\n");
+        return 0;
+    }
+    GLFN_glBindRenderbuffer(GL_RENDERBUFFER, gl_shadowDepth);
+    GLFN_glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
+                               GL_SHADOW_SIZE, GL_SHADOW_SIZE);
+    GLFN_glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    for (i = 0; i < GL_SHADOW_TARGETS; i++)
+        if (!GL_l_b_MakeTarget(&gl_shadowTargets[i], GL_SHADOW_SIZE,
+                               GL_SHADOW_SIZE))
+        {
+            DBG_OutputDebugString("GL: shadow target %d would not build\n", i);
+            GL_l_ForgetTargets();
+            gl_shadowTried = 1;   /* asked and answered; do not ask again */
+            return 0;
+        }
+
+    gl_shadowReady = 1;
+    return 1;
+}
+
+void GL_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear)
+{
+    tGlTarget* t;
+
+    if (!gl_state.context)
+        return;
+
+    if (textureID == -1)
+    {
+        if (!gl_targetInForce)
+            return;
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        GLFN_glViewport(gl_savedViewport[0], gl_savedViewport[1],
+                        gl_savedViewport[2], gl_savedViewport[3]);
+        /* Only the projection, because the caller puts the view back
+           itself -- which is what the other renderer relies on too. */
+        gl_projMtx = gl_savedProjMtx;
+        GL_l_CombineMatrices();
+        gl_targetInForce = 0;
+        return;
+    }
+
+    if (gl_targetInForce)
+        return;
+    if (textureID < 0 || textureID >= GL_SHADOW_TARGETS)
+        return;
+    if (!GL_l_b_TargetsReady())
+        return;
+
+    t = &gl_shadowTargets[textureID];
+    GLFN_glGetIntegerv(GL_VIEWPORT, gl_savedViewport);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, t->fbo);
+    gl_targetInForce = 1;
+
+    if (clear)
+    {
+        /* Colour only, and to black: the shadow is drawn in white and
+           what it does not cover stays unshadowed through the border.
+           The other renderer clears the same one buffer. */
+        GLFN_glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        GLFN_glClear(GL_COLOR_BUFFER_BIT);
+    }
+
+    /* The inset border, measured from the bottom because that is where
+       OpenGL's viewport origin is. It comes out symmetric on a square
+       target with an even border, but writing it as the subtraction is
+       what keeps it right if either stops being true. */
+    GLFN_glViewport(GL_SHADOW_BORDER,
+                    t->height - (GL_SHADOW_BORDER
+                                 + (t->height - 2 * GL_SHADOW_BORDER)),
+                    t->width - 2 * GL_SHADOW_BORDER,
+                    t->height - 2 * GL_SHADOW_BORDER);
+}
+
 void GL_SetViewMatrixSDW(Mtx4x4* mtxptr, float* unused)
 {
-    (void)mtxptr;
     (void)unused;
+
+    if (!mtxptr)
+        return;
+
+    /* Saved here rather than where the target is bound, because that
+       is where the other renderer saves it and the engine calls this
+       one first. */
+    gl_savedProjMtx = gl_projMtx;
+
+    /* The shadow is drawn with the projection out of the way: the view
+       matrix the engine builds for it already maps the caster into the
+       target's own square. The other renderer also resets its world
+       transform here, which this renderer does not have -- vertices
+       arrive in world space and only the view and the projection are
+       ever multiplied. */
+    MATH_SetIdentityMatrix(&gl_projMtx);
+    GL_SetViewMatrix(mtxptr);
 }
 
 /* a fixed-function texture stage this renderer does not have */

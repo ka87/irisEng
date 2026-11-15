@@ -214,6 +214,58 @@ WGM3(glTexParameteri, GLenum, GLenum, GLint)
 WGM2(glUniform1i, GLint, GLint)
 WGM1(glViewport_unused, GLenum)
 
+/* The rest of glcore.h's list: the frame's edges, the version query
+   and the debug callback. Nothing in these cases looks at them, but
+   every pointer has to go somewhere -- an entry point left aimed at
+   nothing is a call through a null pointer, and that lands as a
+   segmentation fault in whichever case reaches it first. An earlier
+   version of WG_CheckThePointers kept a list of the ones deliberately
+   left out, which went stale the moment the shadow targets started
+   clearing: the list was a promise about what the cases do not reach,
+   and it was wrong. So there is no list now, and no pointer is left
+   null. */
+WGM1(glClear, GLbitfield)
+WGM1(glClearDepth, GLclampd)
+WGM1(glClearStencil, GLint)
+WGM0(glFinish)
+WGM0(glFlush)
+
+static void MK_glClearColor(GLclampf r, GLclampf g, GLclampf b, GLclampf a)
+{
+    WG_Record("glClearColor", 4, (long long)r, (long long)g, (long long)b,
+              (long long)a);
+}
+
+static void MK_glScissor(GLint x, GLint y, GLsizei w, GLsizei h)
+{
+    WG_Record("glScissor", 4, (long long)x, (long long)y, (long long)w,
+              (long long)h);
+}
+
+static GLenum MK_glGetError(void) { WG_Record("glGetError", 0); return GL_NO_ERROR; }
+
+static const GLubyte* MK_glGetString(GLenum name)
+{
+    WG_Record("glGetString", 1, (long long)name);
+    return (const GLubyte*)"mock";
+}
+
+static void MK_glDebugMessageCallback(GL_pfn_DebugProc proc, const void* user)
+{
+    (void)proc;
+    (void)user;
+    WG_Record("glDebugMessageCallback", 0);
+}
+
+static void MK_glDebugMessageControl(GLenum source, GLenum type,
+                                     GLenum severity, GLsizei count,
+                                     const GLuint* ids, GLboolean enabled)
+{
+    (void)ids;
+    WG_Record("glDebugMessageControl", 5, (long long)source, (long long)type,
+              (long long)severity, (long long)count, (long long)enabled);
+}
+
 static void MK_glVertexAttribPointer(GLuint index, GLint size, GLenum type,
                                      GLboolean normalized, GLsizei stride,
                                      const void* offset)
@@ -251,8 +303,16 @@ static void MK_glClipControl(GLenum origin, GLenum depth)
 
 static void MK_glDepthFunc(GLenum f) { WG_Record("glDepthFunc", 1, (long long)f); }
 
+/* Declared with the framebuffer mocks, which answer glGetIntegerv out
+   of what this last set. */
+static GLint wg_viewport[4];
+
 static void MK_glViewport(GLint x, GLint y, GLsizei w, GLsizei h)
 {
+    wg_viewport[0] = x;
+    wg_viewport[1] = y;
+    wg_viewport[2] = (GLint)w;
+    wg_viewport[3] = (GLint)h;
     WG_Record("glViewport", 4, (long long)x, (long long)y, (long long)w,
               (long long)h);
 }
@@ -340,6 +400,107 @@ static void MK_glTexParameterf(GLenum target, GLenum pname, GLfloat v)
 {
     WG_Record("glTexParameterf", 3, (long long)target, (long long)pname,
               (long long)(v * 1000.0f));
+}
+
+/* ----------------------------------------- framebuffers, mocked
+
+   Names come from the same counter as everything else, so a case can
+   say which framebuffer was bound and not merely that one was. */
+
+static GLuint wg_boundFbo;
+static GLuint wg_boundRbo;
+/* Which framebuffer each colour attachment went to, so a case can
+   check that a target samples the texture it was drawn into. */
+static GLuint wg_fboColor[64];
+static GLuint wg_fboDepth[64];
+/* Made incomplete on demand, to drive the arm that gives up. */
+static int    wg_fboIncomplete;
+
+static void MK_glGenFramebuffers(GLsizei n, GLuint* out)
+{
+    GLsizei i;
+
+    for (i = 0; i < n; i++)
+        out[i] = wg_genFails ? 0 : (GLuint)wg_nextName++;
+    WG_Record("glGenFramebuffers", 1, (long long)n);
+}
+
+static void MK_glDeleteFramebuffers(GLsizei n, const GLuint* in)
+{
+    WG_Record("glDeleteFramebuffers", 2, (long long)n, (long long)in[0]);
+}
+
+static void MK_glBindFramebuffer(GLenum target, GLuint fb)
+{
+    wg_boundFbo = fb;
+    WG_Record("glBindFramebuffer", 2, (long long)target, (long long)fb);
+}
+
+static void MK_glFramebufferTexture2D(GLenum target, GLenum attachment,
+                                      GLenum texTarget, GLuint texture,
+                                      GLint level)
+{
+    if (wg_boundFbo < 64)
+        wg_fboColor[wg_boundFbo] = texture;
+    WG_Record("glFramebufferTexture2D", 5, (long long)target,
+              (long long)attachment, (long long)texTarget,
+              (long long)texture, (long long)level);
+}
+
+static GLenum MK_glCheckFramebufferStatus(GLenum target)
+{
+    WG_Record("glCheckFramebufferStatus", 1, (long long)target);
+    return wg_fboIncomplete ? 0 : GL_FRAMEBUFFER_COMPLETE;
+}
+
+static void MK_glGenRenderbuffers(GLsizei n, GLuint* out)
+{
+    GLsizei i;
+
+    for (i = 0; i < n; i++)
+        out[i] = wg_genFails ? 0 : (GLuint)wg_nextName++;
+    WG_Record("glGenRenderbuffers", 1, (long long)n);
+}
+
+static void MK_glDeleteRenderbuffers(GLsizei n, const GLuint* in)
+{
+    WG_Record("glDeleteRenderbuffers", 2, (long long)n, (long long)in[0]);
+}
+
+static void MK_glBindRenderbuffer(GLenum target, GLuint rb)
+{
+    wg_boundRbo = rb;
+    WG_Record("glBindRenderbuffer", 2, (long long)target, (long long)rb);
+}
+
+static void MK_glRenderbufferStorage(GLenum target, GLenum format,
+                                     GLsizei w, GLsizei h)
+{
+    WG_Record("glRenderbufferStorage", 4, (long long)target,
+              (long long)format, (long long)w, (long long)h);
+}
+
+static void MK_glFramebufferRenderbuffer(GLenum target, GLenum attachment,
+                                         GLenum rbTarget, GLuint rb)
+{
+    if (wg_boundFbo < 64)
+        wg_fboDepth[wg_boundFbo] = rb;
+    WG_Record("glFramebufferRenderbuffer", 4, (long long)target,
+              (long long)attachment, (long long)rbTarget, (long long)rb);
+}
+
+/* The viewport the renderer asks for back. Answered from whatever the
+   last glViewport set, so a save and restore is a real round trip
+   rather than a constant the test also writes. */
+static void MK_glGetIntegerv(GLenum pname, GLint* data)
+{
+    int i;
+
+    WG_Record("glGetIntegerv", 1, (long long)pname);
+    if (pname != GL_VIEWPORT || !data)
+        return;
+    for (i = 0; i < 4; i++)
+        data[i] = wg_viewport[i];
 }
 
 static void MK_glGenBuffers(GLsizei n, GLuint* out)
@@ -530,42 +691,46 @@ static void WG_AimThePointers(void)
     GLFN_glClipControl = MK_glClipControl;
     GLFN_glDepthFunc = MK_glDepthFunc;
     GLFN_glViewport = MK_glViewport;
+    GLFN_glGetIntegerv = MK_glGetIntegerv;
+
+    GLFN_glGenFramebuffers = MK_glGenFramebuffers;
+    GLFN_glDeleteFramebuffers = MK_glDeleteFramebuffers;
+    GLFN_glBindFramebuffer = MK_glBindFramebuffer;
+    GLFN_glFramebufferTexture2D = MK_glFramebufferTexture2D;
+    GLFN_glCheckFramebufferStatus = MK_glCheckFramebufferStatus;
+    GLFN_glGenRenderbuffers = MK_glGenRenderbuffers;
+    GLFN_glDeleteRenderbuffers = MK_glDeleteRenderbuffers;
+    GLFN_glBindRenderbuffer = MK_glBindRenderbuffer;
+    GLFN_glRenderbufferStorage = MK_glRenderbufferStorage;
+    GLFN_glFramebufferRenderbuffer = MK_glFramebufferRenderbuffer;
+
+    GLFN_glClear = MK_glClear;
+    GLFN_glClearColor = MK_glClearColor;
+    GLFN_glClearDepth = MK_glClearDepth;
+    GLFN_glClearStencil = MK_glClearStencil;
+    GLFN_glScissor = MK_glScissor;
+    GLFN_glFinish = MK_glFinish;
+    GLFN_glFlush = MK_glFlush;
+    GLFN_glGetError = MK_glGetError;
+    GLFN_glGetString = MK_glGetString;
+    GLFN_glDebugMessageCallback = MK_glDebugMessageCallback;
+    GLFN_glDebugMessageControl = MK_glDebugMessageControl;
 }
 
 /* Every pointer the renderer could reach has to be aimed somewhere.
    An entry point added to glcore.h's list, used in win/wingl.c and
-   missed here is a call through a null pointer, which lands as a
+   missed above is a call through a null pointer, which lands as a
    segmentation fault in whichever case happened to reach it first and
    says nothing about why. Walking the same list that generated the
    pointers turns that into a named failure.
 
-   Not every one of them has to be mocked -- some entries belong to
-   code these cases do not drive -- so the ones deliberately left out
-   are listed, and a name in neither place fails. */
-static int WG_b_Aimed(const char* name)
-{
-    static const char* notDriven[] = {
-        /* context creation, the version check and the debug callback:
-           all of them run before there is anything to draw */
-        "glGetString", "glGetIntegerv", "glGetError",
-        "glDebugMessageCallback", "glDebugMessageControl",
-        /* the frame's edges, which the pass cases do not reach */
-        "glClear", "glClearColor", "glClearDepth", "glClearStencil",
-        "glScissor", "glFinish", "glFlush",
-        NULL
-    };
-    int i;
-
-    for (i = 0; notDriven[i]; i++)
-        if (strcmp(notDriven[i], name) == 0)
-            return 1;
-    return 0;
-}
-
+   There is deliberately no list of exemptions: one existed, and it
+   went stale as soon as a case reached something on it. Every entry
+   gets a mock, even the ones nothing here looks at. */
 static void WG_CheckThePointers(void)
 {
 #define WG_CHECK(ret, name, params, args)                                     \
-    if (!GLFN_##name && !WG_b_Aimed(#name))                                   \
+    if (!GLFN_##name)                                                         \
     {                                                                         \
         printf("  FAIL %s is in glcore.h's list and aimed at nothing\n",      \
                #name);                                                        \
@@ -624,6 +789,7 @@ static void reset(void)
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();
     GL_ReleaseTextures(NULL);
+    GL_l_ForgetTargets();
     memset(&gl_material, 0, sizeof(gl_material));
     gl_colorMaskAlpha = 0;
     gl_mipmapping = 1;
@@ -646,6 +812,15 @@ static void reset(void)
     wg_lastBufferSize = 0;
     wg_lastMatrix = NULL;
     wg_lastTranspose = -1;
+    wg_boundFbo = 0;
+    wg_boundRbo = 0;
+    wg_fboIncomplete = 0;
+    memset(wg_fboColor, 0, sizeof(wg_fboColor));
+    memset(wg_fboDepth, 0, sizeof(wg_fboDepth));
+    wg_viewport[0] = 0;
+    wg_viewport[1] = 0;
+    wg_viewport[2] = 800;
+    wg_viewport[3] = 600;
     /* the repository root, so data/shaders resolves to the real files */
     snprintf(wg_exePath, sizeof(wg_exePath), "./iriseng.exe");
 }
@@ -1783,6 +1958,360 @@ static void caseTextureTeardown(void)
          "a new table gives the old one's textures back");
 }
 
+/* -------------------------------------------------- render targets */
+
+/* The value a named call's nth argument had, or -1. */
+static long WG_l_Arg(const char* name, int nth, int arg)
+{
+    const tWgCall* c = WG_pc_Call(name, nth);
+
+    return c ? (long)c->arg[arg] : -1;
+}
+
+static void caseTargetsBuild(void)
+{
+    printf("-- the shadow targets are built once\n");
+    reset();
+    wg_callLen = 0;
+
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+
+    okEq(WG_i_Count("glGenRenderbuffers"), 1,
+         "one depth buffer for all of them, because one is bound at a time");
+    okEq(WG_l_Arg("glRenderbufferStorage", 0, 1), GL_DEPTH_COMPONENT24,
+         "with depth in it");
+    okEq(WG_l_Arg("glRenderbufferStorage", 0, 2), 128, "a hundred and twenty");
+    okEq(WG_l_Arg("glRenderbufferStorage", 0, 3), 128, "eight square");
+
+    okEq(WG_i_Count("glGenFramebuffers"), 8, "eight targets");
+    okEq(WG_i_Count("glFramebufferTexture2D"), 8, "each with a colour texture");
+    okEq(WG_i_Count("glFramebufferRenderbuffer"), 8,
+         "and each sharing the one depth buffer");
+    okEq(WG_l_Arg("glFramebufferTexture2D", 0, 1), GL_COLOR_ATTACHMENT0,
+         "the texture is the colour attachment");
+    okEq(WG_l_Arg("glFramebufferRenderbuffer", 0, 1), GL_DEPTH_ATTACHMENT,
+         "and the buffer the depth one");
+    okEq(WG_i_Count("glCheckFramebufferStatus"), 8,
+         "each is checked, because an incomplete one draws nothing quietly");
+
+    /* The colour textures: the size the other renderer gives them, and
+       a sampler that does not ask for levels they do not have. */
+    okEq(WG_l_Arg("glTexImage2D", 0, 3), 128, "the colour texture is square");
+    okEq(WG_l_Arg("glTexImage2D", 0, 4), 128, "at a hundred and twenty eight");
+    okEq(WG_l_Arg("glTexImage2D", 0, 2), GL_RGBA8, "eight bits a channel");
+    okEq(WG_l_TexParam(GL_TEXTURE_MIN_FILTER), GL_LINEAR,
+         "and a sampler that wants no mip chain");
+    okEq(WG_l_TexParam(GL_TEXTURE_WRAP_S), GL_CLAMP_TO_EDGE,
+         "clamped, which is what makes the border matter");
+
+    /* White, not black: a shadow target says how much light reaches a
+       point, so an untouched one has to mean unshadowed. */
+    okEq(WG_i_Count("glClearColor"), 8,
+         "one white fill each, and no clear because none was asked for");
+    okEq(WG_l_Arg("glClearColor", 0, 0), 1, "the fill is white");
+    okEq(WG_l_Arg("glClearColor", 0, 3), 1, "opaque");
+
+    /* And not again on the next bind. */
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    GL_SetRenderTargetAndBackupPreviousSDW(1, 0);
+    okEq(WG_i_Count("glGenFramebuffers"), 0, "a second bind builds nothing");
+    okEq(WG_i_Count("glGenRenderbuffers"), 0, "and no second depth buffer");
+}
+
+static void caseTargetsBind(void)
+{
+    printf("-- binding one, and putting back what was there\n");
+    reset();
+    /* a viewport that is not the whole window and not square, so a
+       restore that rebuilds it from the window size rather than
+       remembering it comes out wrong */
+    GLFN_glViewport(37, 11, 500, 250);
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);   /* build them */
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    GLFN_glViewport(37, 11, 500, 250);
+    wg_callLen = 0;
+
+    GL_SetRenderTargetAndBackupPreviousSDW(3, 0);
+    okEq(WG_i_Count("glBindFramebuffer"), 1, "one framebuffer is bound");
+    ok(WG_l_Arg("glBindFramebuffer", 0, 1) == (long)gl_shadowTargets[3].fbo,
+       "the one the engine asked for");
+    okEq(WG_i_Count("glGetIntegerv"), 1, "the viewport is read back");
+    okEq(WG_l_Arg("glGetIntegerv", 0, 0), GL_VIEWPORT, "and it is the viewport");
+    okEq(WG_i_Count("glClear"), 0, "nothing is cleared without being asked");
+
+    /* The border: inset by one on every side, so the edge pixels keep
+       what the fill put there and the clamped sampler spreads that
+       outwards instead of spreading the shadow. */
+    okEq(WG_l_Arg("glViewport", 0, 0), 1, "the viewport is inset in x");
+    okEq(WG_l_Arg("glViewport", 0, 1), 1, "and in y");
+    okEq(WG_l_Arg("glViewport", 0, 2), 126, "leaving a one-pixel border");
+    okEq(WG_l_Arg("glViewport", 0, 3), 126, "on all four sides");
+
+    /* And back. */
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    okEq(WG_l_Arg("glBindFramebuffer", 0, 1), 0, "the window is bound again");
+    okEq(WG_l_Arg("glViewport", 0, 0), 37, "and the viewport comes back");
+    okEq(WG_l_Arg("glViewport", 0, 1), 11, "exactly");
+    okEq(WG_l_Arg("glViewport", 0, 2), 500, "as it was");
+    okEq(WG_l_Arg("glViewport", 0, 3), 250, "in all four numbers");
+
+    /* Asked to clear. */
+    reset();
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(2, 1);
+    okEq(WG_i_Count("glClear"), 1, "a clear is asked for");
+    okEq(WG_l_Arg("glClear", 0, 0), GL_COLOR_BUFFER_BIT,
+         "of the colour only, as the other renderer clears");
+    okEq(WG_l_Arg("glClearColor", 0, 0), 0, "to black");
+}
+
+static void caseTargetsRefusals(void)
+{
+    printf("-- the binds that do nothing\n");
+
+    /* Nesting. The other renderer refuses a second request while one
+       is in force, and so does this -- otherwise the saved viewport
+       and projection would be the shadow pass's own. */
+    reset();
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(1, 1);
+    okEq(wg_callLen, 0, "a second target while one is in force does nothing");
+
+    /* Releasing with none in force. */
+    reset();
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    okEq(wg_callLen, 0, "and so does a second release");
+
+    /* An index past the eight. */
+    reset();
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(8, 0);
+    okEq(WG_i_Count("glBindFramebuffer"), 0, "an index past the eight binds none");
+    GL_SetRenderTargetAndBackupPreviousSDW(-2, 0);
+    okEq(WG_i_Count("glBindFramebuffer"), 0, "and nor does a negative one");
+
+    /* A framebuffer the driver will not complete. Giving up has to
+       leave nothing bound and nothing to put back, and it must not be
+       retried on every shadow of every frame. */
+    reset();
+    wg_fboIncomplete = 1;
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    okEq(WG_l_Arg("glBindFramebuffer", WG_i_Count("glBindFramebuffer") - 1, 1), 0,
+         "an incomplete framebuffer leaves the window bound");
+    okEq(WG_i_Count("glViewport"), 0, "and no viewport is set");
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    okEq(wg_callLen, 0, "and it is not tried again");
+    /* and the release that the engine makes anyway is harmless */
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    okEq(wg_callLen, 0, "nor is the release that follows it");
+}
+
+static void caseTargetsMatrices(void)
+{
+    Mtx4x4 view;
+    int    i;
+
+    printf("-- the matrices the shadow pass puts in and takes out\n");
+    reset();
+
+    /* A projection that is plainly not an identity, so the save and
+       the restore are both visible. */
+    memset(&gl_projMtx, 0, sizeof(gl_projMtx));
+    for (i = 0; i < 4; i++)
+        ((float*)&gl_projMtx)[i * 4 + i] = (float)(i + 2);
+
+    memset(&view, 0, sizeof(view));
+    view.v1.x = 1.0f;
+    view.v2.y = 1.0f;
+    view.v3.z = 1.0f;
+    view.w = 1.0f;
+    view.Pos.x = 5.0f;
+
+    GL_SetViewMatrixSDW(&view, NULL);
+    okEq((long)((float*)&gl_projMtx)[0], 1,
+         "the projection becomes an identity for the shadow");
+    okEq((long)((float*)&gl_projMtx)[5], 1, "on the diagonal");
+    okEq((long)((float*)&gl_projMtx)[1], 0, "and nothing off it");
+    okEq((long)((float*)&gl_viewProjMtx)[12], 5,
+         "so the combined matrix is the view alone");
+
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    okEq((long)((float*)&gl_projMtx)[0], 2, "and the projection comes back");
+    okEq((long)((float*)&gl_projMtx)[5], 3, "every term of it");
+    okEq((long)((float*)&gl_projMtx)[10], 4, "including the depth row");
+
+    /* The view is deliberately not restored: the engine sets it again
+       itself once the target is released, and the other renderer
+       relies on that too. */
+    okEq((long)((float*)&gl_viewProjMtx)[12], 10,
+         "the view is left as the shadow pass set it, times the"
+         " projection that came back");
+
+    GL_SetViewMatrixSDW(NULL, NULL);
+    ok(1, "a null matrix is refused rather than crashing");
+}
+
+static void caseShadowAsTexture(void)
+{
+    printf("-- a shadow target sampled as a texture\n");
+    reset();
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    wg_callLen = 0;
+
+    /* This is how the engine asks for one: the index with the top bit
+       set, which is what the other renderer masks off. */
+    GL_TextureInit((int)(0x80000000u | 3u), 0, 0);
+    okEq(gl_material.textured, 1, "it is a texture");
+    ok(WG_l_Arg("glBindTexture", 0, 1) == (long)gl_shadowTargets[3].color,
+       "and it is the one that target was drawn into");
+
+    /* The two negative indices that are not shadow targets. The other
+       renderer masks the top bit off these too and indexes a billion
+       entries past its array; this one checks the range, so they come
+       out as no texture. */
+    wg_callLen = 0;
+    GL_TextureInit(-1, 0, 0);
+    okEq(gl_material.textured, 0, "no texture is still no texture");
+    GL_TextureInit(-2, 0, 0);
+    okEq(gl_material.textured, 0, "and so is the renderer's own copy");
+    GL_TextureInit((int)(0x80000000u | 8u), 0, 0);
+    okEq(gl_material.textured, 0, "and a shadow index past the eight");
+
+    /* A target has one level, so a material asking for mip filtering
+       must not get it: a mip-filtered sampler on a single-level
+       texture makes it incomplete, and an incomplete texture samples
+       black -- which on a shadow target means everything it falls on
+       goes dark. */
+    wg_callLen = 0;
+    GL_TextureInit((int)(0x80000000u | 3u), 12, 0);   /* both filter bits */
+    okEq(WG_l_TexParam(GL_TEXTURE_MIN_FILTER), GL_LINEAR,
+         "a shadow target gets a sampler that asks for no levels");
+}
+
+static void caseDepthReadBack(void)
+{
+    printf("-- what the engine reads back about depth\n");
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+
+    /* The shadow pass saves the depth state, turns it off and puts it
+       back. A material sets that state too, so if the material's
+       setting does not go through the same place the engine reads, the
+       restore puts back a value that was never in force. */
+    gl_dd.drawMaskAllowedStuffCurrent = 0x1000000;
+    GL_TextureInit(1, 0, 0);
+    okEq(GL_i_ZEnable(), 1, "a pass that allows depth leaves it on");
+    gl_dd.drawMaskAllowedStuffCurrent = 0;
+    GL_TextureInit(1, 0, 0);
+    okEq(GL_i_ZEnable(), 0, "and one that does not, off");
+
+    /* the round trip the shadow pass makes */
+    gl_dd.drawMaskAllowedStuffCurrent = 0x1000000;
+    GL_TextureInit(1, 0, 0);
+    {
+        int saved = GL_i_ZEnable();
+
+        GL_SetZEnable(0);
+        okEq(GL_i_ZEnable(), 0, "turned off for the shadow");
+        GL_SetZEnable(saved);
+        okEq(GL_i_ZEnable(), 1, "and put back as it was");
+    }
+
+    /* The depth write is not read back through the interface, but the
+       renderer reads it itself: clearing the depth buffer has to turn
+       the mask on to do it and then put it back, and "back" is
+       whatever was last asked for. A material that set the mask
+       straight at OpenGL would leave that putting back the wrong
+       value, so depth would start being written again after the next
+       clear. */
+    GL_TextureInit(1, 0x200, 0);        /* a material that writes no depth */
+    wg_callLen = 0;
+    GL_Clear(1 | 2, 0);     /* the engine's own colour and depth bits */
+    okEq(WG_l_Arg("glDepthMask", WG_i_Count("glDepthMask") - 1, 0), GL_FALSE,
+         "after a depth clear the mask goes back to what the material"
+         " asked for");
+}
+
+static void caseTargetsTeardown(void)
+{
+    printf("-- giving the targets back\n");
+    reset();
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    wg_callLen = 0;
+
+    GL_l_ForgetTargets();
+    okEq(WG_i_Count("glDeleteFramebuffers"), 8, "all eight are deleted");
+    okEq(WG_i_Count("glDeleteRenderbuffers"), 1, "and the depth buffer once");
+    okEq(WG_i_Count("glDeleteTextures"), 8, "with their colour textures");
+
+    wg_callLen = 0;
+    GL_l_ForgetTargets();
+    okEq(wg_callLen, 0, "a second teardown deletes nothing");
+
+    /* And they can be built again, which is what a display change
+       does. */
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    okEq(WG_i_Count("glGenFramebuffers"), 8, "and built again after it");
+}
+
+static void caseShadowSequence(void)
+{
+    Mtx4x4 view;
+
+    printf("-- the sequence the shadow pass actually makes\n");
+    reset();
+    WG_BuildChunk();
+    GLFN_glViewport(0, 0, 800, 600);
+
+    memset(&gl_projMtx, 0, sizeof(gl_projMtx));
+    ((float*)&gl_projMtx)[0] = 7.0f;
+    memset(&view, 0, sizeof(view));
+    view.v1.x = 1.0f;
+    view.v2.y = 1.0f;
+    view.v3.z = 1.0f;
+    view.w = 1.0f;
+    wg_callLen = 0;
+
+    /* What graphicsobjects/shadow.c does, in its order. */
+    GL_SetViewMatrixSDW(&view, NULL);
+    GL_TextureInit(-1, 0x2260, 0);
+    GL_SetRenderTargetAndBackupPreviousSDW(5, 1);
+    GL_TextureInit(-1, 0, 0);
+    GL_SetZEnable(0);
+    GL_SetZWriteEnable(0);
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+
+    okEq(WG_i_Count("glDrawArrays"), 1, "the caster is drawn");
+    ok(WG_i_At("glDrawArrays") > WG_i_At("glBindFramebuffer"),
+       "after a target was bound");
+    okEq(gl_material.textured, 0, "untextured, as the pass asks");
+
+    /* And the window is back, with its viewport, before anything else
+       is drawn. */
+    okEq(WG_l_Arg("glBindFramebuffer", WG_i_Count("glBindFramebuffer") - 1, 1),
+         0, "and the window is bound again at the end");
+    okEq((long)((float*)&gl_projMtx)[0], 7, "with the projection restored");
+    ok(wg_viewport[2] == 800 && wg_viewport[3] == 600,
+       "and the viewport back to the window's");
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
@@ -1808,6 +2337,14 @@ int main(void)
     caseUntextured();
     caseProceduralUpload();
     caseTextureTeardown();
+    caseTargetsBuild();
+    caseTargetsBind();
+    caseTargetsRefusals();
+    caseTargetsMatrices();
+    caseShadowAsTexture();
+    caseDepthReadBack();
+    caseTargetsTeardown();
+    caseShadowSequence();
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
     return fails ? 1 : 0;
 }
