@@ -178,6 +178,46 @@ typedef struct WNDCLASSA {
 
 DWORD  GetFileAttributesA(LPCSTR);
 DWORD  GetModuleFileNameA(HMODULE, LPSTR, DWORD);
+BOOL   FreeLibrary(HMODULE);
+BOOL   UnregisterClassA(LPCSTR, HINSTANCE);
+
+/* ---- the pixel format and WGL, for win/wingl.c ----
+
+   Enough of wingdi.h and wgl.h to compile the OpenGL renderer here.
+   It cannot run on this host -- there is no driver behind these -- but
+   compiling it is the only build check that file gets, since it is
+   Windows-only, and the renderer's interface row is checked for
+   completeness through it. */
+typedef void* HGLRC;
+
+typedef struct tagPIXELFORMATDESCRIPTOR
+{
+    WORD  nSize, nVersion;
+    DWORD dwFlags;
+    BYTE  iPixelType, cColorBits, cRedBits, cRedShift, cGreenBits, cGreenShift;
+    BYTE  cBlueBits, cBlueShift, cAlphaBits, cAlphaShift, cAccumBits;
+    BYTE  cAccumRedBits, cAccumGreenBits, cAccumBlueBits, cAccumAlphaBits;
+    BYTE  cDepthBits, cStencilBits, cAuxBuffers, iLayerType, bReserved;
+    DWORD dwLayerMask, dwVisibleMask, dwDamageMask;
+} PIXELFORMATDESCRIPTOR;
+
+#define PFD_DRAW_TO_WINDOW   0x00000004
+#define PFD_SUPPORT_OPENGL   0x00000020
+#define PFD_DOUBLEBUFFER     0x00000001
+#define PFD_TYPE_RGBA        0
+#define PFD_MAIN_PLANE       0
+
+int    ChoosePixelFormat(HDC, const PIXELFORMATDESCRIPTOR*);
+BOOL   SetPixelFormat(HDC, int, const PIXELFORMATDESCRIPTOR*);
+BOOL   SwapBuffers(HDC);
+
+HGLRC  wglCreateContext(HDC);
+BOOL   wglMakeCurrent(HDC, HGLRC);
+BOOL   wglDeleteContext(HGLRC);
+/* the real header returns PROC; void* here, because this stub
+   declares INT_PTR further down the file and the loader casts
+   whatever it gets anyway */
+void*  wglGetProcAddress(LPCSTR);
 HANDLE FindFirstFileA(LPCSTR, WIN32_FIND_DATAA*);
 BOOL   FindNextFileA(HANDLE, WIN32_FIND_DATAA*);
 BOOL   FindClose(HANDLE);

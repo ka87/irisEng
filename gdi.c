@@ -3,6 +3,7 @@
 #include "textures.h"
 #include "time.h"
 #include "win/wingdi.h"
+#include "win/wingl.h"
 #include "win/wingdivideo.h"
 #include "win/wingdisun.h"
 #include "materialanddraw.h"
@@ -785,9 +786,17 @@ static int GDI_l_b_D3DAvailable(void)
     return 1;      /* the renderer the game shipped on */
 }
 
+static void GDI_l_FillGL(struct sGdi_DisplayData* dd);
+
 static const tGdi_Renderer gdi_renderers[] = {
     { "d3d", "Direct3D 9", GDI_l_FillD3D, GDI_l_b_D3DAvailable },
+    { "gl", "OpenGL 4.5 core", GDI_l_FillGL, GL_b_Available },
 };
+
+/* Direct3D is first, so it is what the fallback lands on and what the
+   game gets when the ini asks for nothing. The OpenGL row is reached
+   by asking for it, and declines itself on a machine that cannot give
+   a 4.5 core context. */
 
 #define GDI_RENDERERNUM ((int)(sizeof(gdi_renderers) / sizeof(gdi_renderers[0])))
 
@@ -869,6 +878,64 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->OverlayDrawTexturedQuads = D3D_OverlayDrawTexturedQuads;
     dd->b_GeometryHasCache = D3D_b_GeometryHasCache;
     dd->DiscardGeometryCache = D3D_DiscardGeometryCache;
+}
+
+static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
+{
+    /* Every entry, in the order the interface declares them. A row
+       that leaves one NULL is a crash rather than a missing feature,
+       and tests/run_renderers.sh checks that neither row does. */
+    dd->CreateDevice = (void*(*)(void))GL_p_CreateDevice;
+    dd->DestroyDevice = (void(*)(void*))GL_DestroyDevice;
+    dd->Init = GL_Init;
+    dd->Close = GL_Close;
+    dd->ReadaptDisplay = GL_ReadaptDisplay;
+    dd->Clear = GL_Clear;
+    dd->Flip = GL_Flip;
+    dd->SetViewMatrix = GL_SetViewMatrix;
+    dd->SetProjectionMatrix = GL_SetProjectionMatrix;
+    dd->DrawElementIndexedTriangles = GL_DrawElementIndexedTriangles;
+    dd->Request = GL_Request;
+    dd->TextureInit = GL_TextureInit;
+    dd->DrawSprites = GL_DrawSprites;
+    dd->TextureStore = GL_TextureStore;
+    dd->PaletteLoad = GL_PaletteLoad;
+    dd->SetTexturePalette = GL_SetTexturePalette;
+    dd->TextureUnload = GL_TextureUnload;
+    dd->SetTextureTarget = GL_SetTextureTarget;
+    dd->ReleaseTextures = GL_ReleaseTextures;
+    dd->SetRenderTargetAndBackupPreviousSDW = GL_SetRenderTargetAndBackupPreviousSDW;
+    dd->SetViewMatrixSDW = GL_SetViewMatrixSDW;
+    dd->SetZEnable = GL_SetZEnable;
+    dd->i_ZEnable = GL_i_ZEnable;
+    dd->SetZWriteEnable = GL_SetZWriteEnable;
+    dd->SetTexCoordIndex = GL_SetTexCoordIndex;
+    dd->SetTextureTransformFlags = GL_SetTextureTransformFlags;
+    dd->b_VideoDisplayCreate = GL_b_VideoDisplayCreate;
+    dd->VideoDisplayClose = GL_VideoDisplayClose;
+    dd->b_VideoFrameLock = GL_b_VideoFrameLock;
+    dd->VideoFrameUnlock = GL_VideoFrameUnlock;
+    dd->VideoFramePresent = GL_VideoFramePresent;
+    dd->p_SunSamplerCreate = GL_p_SunSamplerCreate;
+    dd->SunSamplerDestroy = GL_SunSamplerDestroy;
+    dd->b_SunSamplerReady = GL_b_SunSamplerReady;
+    dd->b_SunSamplingNow = GL_b_SunSamplingNow;
+    dd->SunSampleQueue = GL_SunSampleQueue;
+    dd->b_SunSampleRead = GL_b_SunSampleRead;
+    dd->SunEffectOnOff = GL_SunEffectOnOff;
+    dd->b_CanDiffuse2x = GL_b_CanDiffuse2x;
+    dd->b_WantsNoFlare = GL_b_WantsNoFlare;
+    dd->b_NoZonAlpha = GL_b_NoZonAlpha;
+    dd->b_DepthBlurOn = GL_b_DepthBlurOn;
+    dd->GetDrawingSize = GL_GetDrawingSize;
+    dd->SetCanDiffuse2x = GL_SetCanDiffuse2x;
+    dd->SetWantsNoFlare = GL_SetWantsNoFlare;
+    dd->SetNoZonAlpha = GL_SetNoZonAlpha;
+    dd->b_GeometryHasCache = GL_b_GeometryHasCache;
+    dd->DiscardGeometryCache = GL_DiscardGeometryCache;
+    dd->p_CreateAlphaTexture = GL_p_CreateAlphaTexture;
+    dd->DestroyAlphaTexture = GL_DestroyAlphaTexture;
+    dd->OverlayDrawTexturedQuads = GL_OverlayDrawTexturedQuads;
 }
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)

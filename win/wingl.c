@@ -1,0 +1,717 @@
+#include "wingl.h"
+#include "glload.h"
+#include "../dbg.h"
+
+#include <stdio.h>
+#include <string.h>
+
+/* ---------------------------------------------------- what WGL adds */
+
+/* Two extension entry points, which is the awkwardness at the heart
+   of getting a modern context on Windows: the function that creates
+   one can only be found through a context that already exists. So a
+   throwaway window gets a throwaway 1.1 context, that context answers
+   for these two, and then the real context is made with them. */
+
+#define WGL_CONTEXT_MAJOR_VERSION_ARB       0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB       0x2092
+#define WGL_CONTEXT_FLAGS_ARB               0x2094
+#define WGL_CONTEXT_PROFILE_MASK_ARB        0x9126
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB    0x00000001
+#define WGL_CONTEXT_DEBUG_BIT_ARB           0x00000001
+#define WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB 0x00000002
+
+typedef HGLRC (*GL_pfn_CreateContextAttribs)(HDC, HGLRC, const int*);
+
+static GL_pfn_CreateContextAttribs gl_createContextAttribs;
+
+/* The module opengl32.dll, kept for the second half of a name
+   lookup: wglGetProcAddress answers for what a context added past
+   OpenGL 1.1 and is entitled to refuse the 1.1 entry points, which
+   the module exports itself. */
+static HMODULE gl_module;
+
+static tGlRenderState gl_state;
+static int            gl_available = -1;   /* -1 until asked */
+static int            gl_saidOnce;
+
+/* -------------------------------------------------- name resolution */
+
+static void* GL_l_p_FromContext(const char* name)
+{
+    return (void*)wglGetProcAddress(name);
+}
+
+static void* GL_l_p_FromModule(const char* name)
+{
+    return gl_module ? (void*)GetProcAddress(gl_module, name) : NULL;
+}
+
+/* ------------------------------------------------- the pixel format */
+
+static int GL_l_i_SetPixelFormat(HDC dc)
+{
+    PIXELFORMATDESCRIPTOR want;
+    int                   chosen;
+
+    memset(&want, 0, sizeof(want));
+    want.nSize = sizeof(want);
+    want.nVersion = 1;
+    want.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    want.iPixelType = PFD_TYPE_RGBA;
+    want.cColorBits = 32;
+    want.cDepthBits = 24;
+    want.cStencilBits = 8;
+    want.iLayerType = PFD_MAIN_PLANE;
+
+    chosen = ChoosePixelFormat(dc, &want);
+    if (!chosen)
+        return 0;
+    if (!SetPixelFormat(dc, chosen, &want))
+        return 0;
+    return chosen;
+}
+
+/* ------------------------------------------------ the first context
+
+   A 1.1 context on a window of its own, for the sole purpose of
+   finding wglCreateContextAttribsARB. It is current only for as long
+   as that takes.
+
+   It has to be a separate window, not the game's: a window's pixel
+   format can be set once and only once, and the format that suits a
+   1.1 context is not necessarily the one the real context wants. */
+
+static int GL_l_b_FindContextCreator(void)
+{
+    WNDCLASSA cls;
+    HWND      wnd;
+    HDC       dc;
+    HGLRC     ctx;
+    int       ok = 0;
+
+    if (gl_createContextAttribs)
+        return 1;
+
+    memset(&cls, 0, sizeof(cls));
+    cls.lpfnWndProc = DefWindowProcA;
+    cls.hInstance = GetModuleHandleA(NULL);
+    cls.lpszClassName = "irisEngGLProbe";
+    if (!RegisterClassA(&cls))
+        return 0;
+
+    wnd = CreateWindowExA(0, cls.lpszClassName, "", 0, 0, 0, 1, 1,
+                          NULL, NULL, cls.hInstance, NULL);
+    if (!wnd)
+    {
+        UnregisterClassA(cls.lpszClassName, cls.hInstance);
+        return 0;
+    }
+
+    dc = GetDC(wnd);
+    if (dc && GL_l_i_SetPixelFormat(dc))
+    {
+        ctx = wglCreateContext(dc);
+        if (ctx && wglMakeCurrent(dc, ctx))
+        {
+            gl_createContextAttribs = (GL_pfn_CreateContextAttribs)
+                GL_p_Resolve("wglCreateContextAttribsARB",
+                             GL_l_p_FromContext, GL_l_p_FromModule);
+            ok = gl_createContextAttribs != NULL;
+            wglMakeCurrent(dc, NULL);
+        }
+        if (ctx)
+            wglDeleteContext(ctx);
+    }
+    if (dc)
+        ReleaseDC(wnd, dc);
+    DestroyWindow(wnd);
+    UnregisterClassA(cls.lpszClassName, cls.hInstance);
+
+    if (!ok)
+        DBG_OutputDebugString("GL: no wglCreateContextAttribsARB; "
+                              "this driver cannot make a modern context\n");
+    return ok;
+}
+
+/* ------------------------------------------------- the real context */
+
+/* Makes a 4.5 core context current on dc and loads the entry points.
+   Leaves nothing current and nothing allocated if it cannot. */
+static HGLRC GL_l_p_MakeContext(HDC dc)
+{
+    static const int attribs[] = {
+        WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
+        WGL_CONTEXT_MINOR_VERSION_ARB, 5,
+        WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0
+    };
+    HGLRC ctx;
+    char  missing[64];
+    int   absent;
+
+    if (!gl_createContextAttribs)
+        return NULL;
+
+    ctx = gl_createContextAttribs(dc, NULL, attribs);
+    if (!ctx)
+    {
+        DBG_OutputDebugString("GL: no 4.5 core context here\n");
+        return NULL;
+    }
+    if (!wglMakeCurrent(dc, ctx))
+    {
+        wglDeleteContext(ctx);
+        DBG_OutputDebugString("GL: the 4.5 context would not become current\n");
+        return NULL;
+    }
+
+    absent = GL_i_LoadFunctions(GL_l_p_FromContext, GL_l_p_FromModule,
+                                missing, sizeof(missing));
+    if (absent)
+    {
+        DBG_OutputDebugString("GL: %d entry point(s) missing, first is %s\n",
+                              absent, missing);
+        GL_ForgetFunctions();
+        wglMakeCurrent(dc, NULL);
+        wglDeleteContext(ctx);
+        return NULL;
+    }
+    return ctx;
+}
+
+/* ------------------------------------------------------- is it here */
+
+int GL_b_Available(void)
+{
+    WNDCLASSA cls;
+    HWND      wnd;
+    HDC       dc;
+    HGLRC     ctx;
+
+    if (gl_available >= 0)
+        return gl_available;
+    gl_available = 0;
+
+    if (!gl_module)
+        gl_module = LoadLibraryA("opengl32.dll");
+    if (!gl_module)
+    {
+        DBG_OutputDebugString("GL: no opengl32.dll\n");
+        return 0;
+    }
+    if (!GL_l_b_FindContextCreator())
+        return 0;
+
+    /* A context of its own on a window of its own, made and thrown
+       away. Asking the driver is the only way to know, and asking it
+       on the game's window would spend that window's one chance to
+       have a pixel format set. */
+    memset(&cls, 0, sizeof(cls));
+    cls.lpfnWndProc = DefWindowProcA;
+    cls.hInstance = GetModuleHandleA(NULL);
+    cls.lpszClassName = "irisEngGLTry";
+    if (!RegisterClassA(&cls))
+        return 0;
+    wnd = CreateWindowExA(0, cls.lpszClassName, "", 0, 0, 0, 1, 1,
+                          NULL, NULL, cls.hInstance, NULL);
+    if (!wnd)
+    {
+        UnregisterClassA(cls.lpszClassName, cls.hInstance);
+        return 0;
+    }
+
+    dc = GetDC(wnd);
+    if (dc && GL_l_i_SetPixelFormat(dc))
+    {
+        ctx = GL_l_p_MakeContext(dc);
+        if (ctx)
+        {
+            const GLubyte* version = GLFN_glGetString(GL_VERSION);
+
+            gl_available = GL_b_VersionAtLeast((const char*)version, 4, 5);
+            if (!gl_available)
+                DBG_OutputDebugString("GL: context reports \"%s\", "
+                                      "which is not 4.5\n",
+                                      version ? (const char*)version : "?");
+            wglMakeCurrent(dc, NULL);
+            wglDeleteContext(ctx);
+            GL_ForgetFunctions();
+        }
+    }
+    if (dc)
+        ReleaseDC(wnd, dc);
+    DestroyWindow(wnd);
+    UnregisterClassA(cls.lpszClassName, cls.hInstance);
+    return gl_available;
+}
+
+/* ------------------------------------------------------ the device */
+
+void* GL_p_CreateDevice(void)
+{
+    memset(&gl_state, 0, sizeof(gl_state));
+    gl_state.zEnable = 1;
+    gl_state.zWrite = 1;
+    return &gl_state;
+}
+
+void GL_DestroyDevice(void* rendererState)
+{
+    (void)rendererState;
+    GL_Close();
+}
+
+/* What the driver says it is. Logged once, because the first question
+   about a renderer that draws nothing is which driver answered. */
+static void GL_l_SayWhatThisIs(void)
+{
+    if (gl_saidOnce)
+        return;
+    gl_saidOnce = 1;
+    DBG_OutputDebugString("GL: %s, %s, GLSL %s\n",
+        (const char*)GLFN_glGetString(GL_VENDOR),
+        (const char*)GLFN_glGetString(GL_RENDERER),
+        (const char*)GLFN_glGetString(GL_SHADING_LANGUAGE_VERSION));
+    DBG_OutputDebugString("GL: this renderer clears and presents; "
+                          "geometry, textures, video and text are not "
+                          "drawn through it yet\n");
+}
+
+static void GL_l_SizeFromWindow(HWND hwnd)
+{
+    RECT r;
+
+    gl_state.width = 0;
+    gl_state.height = 0;
+    if (hwnd && GetClientRect(hwnd, &r))
+    {
+        gl_state.width = r.right - r.left;
+        gl_state.height = r.bottom - r.top;
+    }
+}
+
+int GL_Init(HWND hwnd, struct sGdi_DisplayData* dd)
+{
+    (void)dd;
+
+    if (!GL_b_Available())
+        return 0;
+
+    gl_state.hwnd = hwnd;
+    gl_state.dc = GetDC(hwnd);
+    if (!gl_state.dc)
+    {
+        DBG_OutputDebugString("GL: the window has no device context\n");
+        return 0;
+    }
+    if (!GL_l_i_SetPixelFormat(gl_state.dc))
+    {
+        DBG_OutputDebugString("GL: no pixel format on this window\n");
+        return 0;
+    }
+    gl_state.context = GL_l_p_MakeContext(gl_state.dc);
+    if (!gl_state.context)
+        return 0;
+
+    GL_l_SayWhatThisIs();
+    GL_l_SizeFromWindow(hwnd);
+    GLFN_glViewport(0, 0, gl_state.width, gl_state.height);
+    GLFN_glEnable(GL_DEPTH_TEST);
+    GLFN_glDepthMask(GL_TRUE);
+    return 1;
+}
+
+int GL_Close(void)
+{
+    if (gl_state.context)
+    {
+        wglMakeCurrent(gl_state.dc, NULL);
+        wglDeleteContext(gl_state.context);
+        gl_state.context = NULL;
+        GL_ForgetFunctions();
+    }
+    if (gl_state.dc)
+    {
+        ReleaseDC(gl_state.hwnd, gl_state.dc);
+        gl_state.dc = NULL;
+    }
+    gl_state.hwnd = NULL;
+    return 1;
+}
+
+int GL_ReadaptDisplay(HWND hwnd, struct sGdi_DisplayData* dd)
+{
+    (void)dd;
+
+    /* The context survives a resize; the viewport does not. */
+    GL_l_SizeFromWindow(hwnd ? hwnd : gl_state.hwnd);
+    if (gl_state.context)
+        GLFN_glViewport(0, 0, gl_state.width, gl_state.height);
+    return 1;
+}
+
+/* --------------------------------------------------- clear and flip */
+
+/* The engine asks for its clear in the same terms Direct3D took: a
+   mask of what to clear and a packed colour. */
+void GL_Clear(int which, int color)
+{
+    GLbitfield mask = 0;
+
+    if (!gl_state.context)
+        return;
+
+    if (which & 1)
+        mask |= GL_COLOR_BUFFER_BIT;
+    if (which & 2)
+        mask |= GL_DEPTH_BUFFER_BIT;
+    if (which & 4)
+        mask |= GL_STENCIL_BUFFER_BIT;
+    if (!mask)
+        return;
+
+    if (mask & GL_COLOR_BUFFER_BIT)
+        GLFN_glClearColor((GLclampf)((color >> 16) & 0xFF) / 255.0f,
+                          (GLclampf)((color >> 8) & 0xFF) / 255.0f,
+                          (GLclampf)(color & 0xFF) / 255.0f,
+                          (GLclampf)((color >> 24) & 0xFF) / 255.0f);
+    if (mask & GL_DEPTH_BUFFER_BIT)
+    {
+        /* Depth is only written by a clear if writing is on, which is
+           a piece of GL state the engine sets for drawing. */
+        GLFN_glDepthMask(GL_TRUE);
+        GLFN_glClearDepth(1.0);
+    }
+    if (mask & GL_STENCIL_BUFFER_BIT)
+        GLFN_glClearStencil(0);
+
+    GLFN_glClear(mask);
+
+    if ((mask & GL_DEPTH_BUFFER_BIT) && !gl_state.zWrite)
+        GLFN_glDepthMask(GL_FALSE);
+}
+
+void GL_Flip(void)
+{
+    if (gl_state.dc)
+        SwapBuffers(gl_state.dc);
+}
+
+void GL_GetDrawingSize(int* width, int* height)
+{
+    if (width)
+        *width = gl_state.width;
+    if (height)
+        *height = gl_state.height;
+}
+
+/* ------------------------------------------------------- depth state */
+
+void GL_SetZEnable(int on)
+{
+    gl_state.zEnable = on ? 1 : 0;
+    if (!gl_state.context)
+        return;
+    if (gl_state.zEnable)
+        GLFN_glEnable(GL_DEPTH_TEST);
+    else
+        GLFN_glDisable(GL_DEPTH_TEST);
+}
+
+int GL_i_ZEnable(void)
+{
+    return gl_state.zEnable;
+}
+
+void GL_SetZWriteEnable(int on)
+{
+    gl_state.zWrite = on ? 1 : 0;
+    if (gl_state.context)
+        GLFN_glDepthMask(gl_state.zWrite ? GL_TRUE : GL_FALSE);
+}
+
+/* ------------------------------------------------------ capabilities
+
+   Direct3D answers these from what the card reported. This renderer
+   requires 4.5 core, where all three are a given: two texture stages
+   with a doubled modulate, a colour buffer with alpha, and the
+   precision the depth blur wants are not optional features of a 4.5
+   implementation. The depth blur is off because nothing is drawn
+   yet. */
+
+int GL_b_CanDiffuse2x(void) { return gl_state.canDiffuse2x; }
+int GL_b_WantsNoFlare(void) { return gl_state.wantsNoFlare; }
+int GL_b_NoZonAlpha(void)   { return gl_state.noZonAlpha; }
+int GL_b_DepthBlurOn(void)  { return 0; }
+
+void GL_SetCanDiffuse2x(int on) { gl_state.canDiffuse2x = on ? 1 : 0; }
+void GL_SetWantsNoFlare(int on) { gl_state.wantsNoFlare = on ? 1 : 0; }
+void GL_SetNoZonAlpha(int on)   { gl_state.noZonAlpha = on ? 1 : 0; }
+
+/* ------------------------------------------------- geometry caching
+
+   Nothing is cached because nothing is drawn. Answering no means the
+   engine never asks for a cache to be dropped, and dropping one is
+   then nothing to do rather than something to get wrong. */
+
+int GL_b_GeometryHasCache(struct sGEOGRO* gro)
+{
+    (void)gro;
+    return 0;
+}
+
+void GL_DiscardGeometryCache(struct sGEOGRO* gro)
+{
+    (void)gro;
+}
+
+/* ================================================================
+   Present and inert.
+
+   Every one of these is an interface entry the engine will call, and
+   an entry left NULL is a crash rather than a missing feature. Each
+   says what it is waiting for. The values they answer with are the
+   ones that make the engine carry on rather than wait: nothing ready,
+   nothing created, nothing to read.
+   ================================================================ */
+
+/* no geometry is drawn yet, so a view matrix has nowhere to go */
+int GL_SetViewMatrix(Mtx4x4* mtxptr)
+{
+    (void)mtxptr;
+    return 0;
+}
+
+/* as above */
+void GL_SetProjectionMatrix(tDDCamStruct* a1)
+{
+    (void)a1;
+}
+
+/* geometry waits on the shader stage */
+int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* a1, Vec3* a2, struct sGeoUVElem* a3, int a4)
+{
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    (void)a4;
+    return 0;
+}
+
+/* the upload queue waits on textures */
+int GL_Request(int type, void* param)
+{
+    (void)type;
+    (void)param;
+    return 0;
+}
+
+/* textures wait on the texture stage */
+void GL_TextureInit(int a1, int a2, char a3)
+{
+    (void)a1;
+    (void)a2;
+    (void)a3;
+}
+
+/* sprites are geometry too */
+int GL_DrawSprites(tGeoSprites* a1, Vec3* a2, int num)
+{
+    (void)a1;
+    (void)a2;
+    (void)num;
+    return 0;
+}
+
+/* textures wait on the texture stage */
+int GL_TextureStore(struct sGdi_DisplayData* a1, int a2)
+{
+    (void)a1;
+    (void)a2;
+    return 0;
+}
+
+/* palettes wait on textures */
+void GL_PaletteLoad(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* a2, struct sEngTexIntermediateStruct* a3, int a4)
+{
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    (void)a4;
+}
+
+/* palettes wait on textures */
+int GL_SetTexturePalette(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* a2, struct sEngTexIntermediateStruct* a3, int a4)
+{
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    (void)a4;
+    return 0;
+}
+
+/* nothing was loaded, so nothing is unloaded */
+void GL_TextureUnload(struct sGdi_DisplayData* a1, struct sEngPaletteElem *a2, int a3)
+{
+    (void)a1;
+    (void)a2;
+    (void)a3;
+}
+
+/* render targets wait on the framebuffer stage */
+void GL_SetTextureTarget(struct sGdi_DisplayData* a1, int a2, int a3, int a4)
+{
+    (void)a1;
+    (void)a2;
+    (void)a3;
+    (void)a4;
+}
+
+/* nothing was loaded */
+void GL_ReleaseTextures(struct sGdi_DisplayData* dd)
+{
+    (void)dd;
+}
+
+/* shadow targets wait on the framebuffer stage */
+void GL_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear)
+{
+    (void)textureID;
+    (void)clear;
+}
+
+/* as above */
+void GL_SetViewMatrixSDW(Mtx4x4* mtxptr, float* unused)
+{
+    (void)mtxptr;
+    (void)unused;
+}
+
+/* a fixed-function texture stage this renderer does not have */
+void GL_SetTexCoordIndex(int stage, int index)
+{
+    (void)stage;
+    (void)index;
+}
+
+/* as above */
+void GL_SetTextureTransformFlags(int stage, int flags)
+{
+    (void)stage;
+    (void)flags;
+}
+
+/* no video display. The engine logs that and plays nothing,
+   which is what it already does when a file is missing */
+int GL_b_VideoDisplayCreate(int width, int height)
+{
+    (void)width;
+    (void)height;
+    return 0;
+}
+
+/* nothing was created */
+void GL_VideoDisplayClose(void)
+{
+}
+
+/* no display to lock */
+int GL_b_VideoFrameLock(void** bits, int* pitch, int* height)
+{
+    (void)bits;
+    (void)pitch;
+    (void)height;
+    return 0;
+}
+
+/* nothing was locked */
+void GL_VideoFrameUnlock(void)
+{
+}
+
+/* nothing to present */
+void GL_VideoFramePresent(int width, int height, int fit)
+{
+    (void)width;
+    (void)height;
+    (void)fit;
+}
+
+/* the occlusion test is an asynchronous readback and waits on the
+   framebuffer stage. NULL is a sampler the engine does without */
+void* GL_p_SunSamplerCreate(void)
+{
+    return NULL;
+}
+
+/* nothing was created */
+void GL_SunSamplerDestroy(void* sampler)
+{
+    (void)sampler;
+}
+
+/* never ready, so nothing is ever queued */
+int GL_b_SunSamplerReady(void* sampler)
+{
+    (void)sampler;
+    return 0;
+}
+
+/* nothing is in flight */
+int GL_b_SunSamplingNow(void* sampler)
+{
+    (void)sampler;
+    return 0;
+}
+
+/* nothing to queue into */
+void GL_SunSampleQueue(void* sampler, const int* x, const int* y, int num, int pointMask, float cameraZ)
+{
+    (void)sampler;
+    (void)x;
+    (void)y;
+    (void)num;
+    (void)pointMask;
+    (void)cameraZ;
+}
+
+/* no answer ever arrives, which the engine already tolerates --
+   it is the same as a sample still in flight */
+int GL_b_SunSampleRead(void* sampler, int* outPassed)
+{
+    (void)sampler;
+    (void)outPassed;
+    return 0;
+}
+
+/* nothing to switch */
+void GL_SunEffectOnOff(void* sampler, int on)
+{
+    (void)sampler;
+    (void)on;
+}
+
+/* glyph atlases wait on the texture stage. NULL makes font.c log
+   once and draw no text */
+void* GL_p_CreateAlphaTexture(int width, int height, const uint8_t* coverage)
+{
+    (void)width;
+    (void)height;
+    (void)coverage;
+    return NULL;
+}
+
+/* nothing was created */
+void GL_DestroyAlphaTexture(void* texture)
+{
+    (void)texture;
+}
+
+/* needs a shader and an atlas */
+void GL_OverlayDrawTexturedQuads(void* texture, const void* vertices, int triangleCount)
+{
+    (void)texture;
+    (void)vertices;
+    (void)triangleCount;
+}

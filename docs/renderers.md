@@ -952,6 +952,149 @@ or its depth offset, dropping the translation entirely, and shifting
 every product by one part in ten million are all caught, and none of
 them would have been before.
 
+## The OpenGL renderer, as far as it goes
+
+A second row in the table:
+
+```c
+{ "gl", "OpenGL 4.5 core", GDI_l_FillGL, GL_b_Available },
+```
+
+**Direct3D is still first**, which is what makes it the fallback and
+what the game gets when the ini asks for nothing. OpenGL is reached by
+asking for it, and declines itself on a machine that cannot give a 4.5
+core context.
+
+What it does so far: comes up, clears, presents. Nothing is drawn
+through it. 31 of the 51 interface entries are present and **inert**,
+because an entry left NULL is a crash rather than a missing feature,
+and each one carries a comment saying what it waits on. They answer
+with the values that make the engine carry on rather than wait:
+nothing ready, nothing created, nothing to read. The log says this
+once at startup, next to the driver's vendor and renderer strings —
+because the first question about a renderer that draws nothing is
+which driver answered.
+
+A few of those inert answers land on paths that already existed for
+other reasons, which is why they are safe:
+`b_VideoDisplayCreate` returning 0 is what the engine already does
+with a missing video file; `p_CreateAlphaTexture` returning NULL makes
+`font.c` log once and draw no text; `b_SunSampleRead` returning 0 is
+indistinguishable from a sample still in flight, which the sun's ring
+was built to tolerate.
+
+### 4.5 core, and no fallback below it
+
+There is no compatibility profile and no lower version. The point of
+the rewrite is the modern API, and a renderer that quietly came up on
+3.3 would fail later and further from the cause. A machine that cannot
+give 4.5 core makes the row unavailable and the picker falls back to
+Direct3D, which is the behaviour the picker was built for.
+
+### The loader
+
+Windows ships headers for OpenGL 1.1 and nothing else, so everything
+past that is a function pointer the driver hands over at run time.
+`win/glcore.h` is the part of the GL headers the renderer uses,
+written out as one X-macro list — which is what the declarations, the
+loader and the test are all generated from, so an entry point cannot
+be added to one and missed in the others. The list holds what is used
+and nothing more: an entry point declared but never called is a name
+that has to resolve for no reason, and on a driver that happens not to
+export it that is a renderer refusing to start over a function it
+would never have called.
+
+`win/glload.c` fills the pointers, and **nothing in it calls
+Windows**. The two ways of resolving a name are passed in, which is
+the whole reason it can be tested: a driver's `wglGetProcAddress` is
+not something a test can arrange.
+
+Two things it gets right that are easy to get wrong:
+
+**Both lookups are needed and neither is enough.** A driver's
+`wglGetProcAddress` answers for everything its context added past
+OpenGL 1.1 and is entitled to refuse the 1.1 entry points, which
+`opengl32.dll` exports itself. Asking the module alone gets those and
+nothing newer.
+
+**A failed lookup is not always NULL.** `wglGetProcAddress` is
+documented to be allowed to return 1, 2, 3 or -1 as well, and those
+have been seen in the wild. Taken at face value each is a function
+pointer that crashes on its first call, a long way from the loader.
+All four are screened.
+
+### Getting the first context
+
+The awkwardness at the heart of this: the function that creates a
+modern context can only be found through a context that already
+exists. So a throwaway window gets a throwaway 1.1 context, that
+context answers for `wglCreateContextAttribsARB`, and the real context
+is made with it.
+
+It has to be a **separate** window, not the game's. A window's pixel
+format can be set once and only once, and the format that suits a 1.1
+context is not necessarily the one the real context wants.
+`GL_b_Available` spends a third throwaway window for the same reason:
+asking the driver whether it can give 4.5 core is the only answer that
+is not a guess, and asking it on the game's window would spend that
+window's one chance.
+
+### What is tested, and what cannot be
+
+`tests/run_glload.sh` — **55 checks**, under AddressSanitizer. Which
+lookup answers, each of the four sentinels, every pointer landing in
+its own variable (a loader that shifted them all by one would
+otherwise score), which name is reported when one is missing, buffer
+truncation, and seventeen version strings including real ones from
+NVIDIA, Mesa and AMD. 16 mutations, 16 caught.
+
+Two of those mutations started as misses, and both were **the code's
+fault rather than the test's**: a special case rejecting OpenGL ES
+strings could not fire, because an ES string does not begin with a
+digit and the guard below already rejected it. It is gone, and the
+comment on the guard that does the work says so. The other was the
+same shape, and that guard stayed with a test pinning the contract it
+rests on.
+
+**The context creation itself is not tested here** and cannot be:
+there is no driver behind the stub. What the harness does give it is a
+compile — `win/wingl.c` is Windows-only, so building it in the test is
+the only check it gets — and the file logs generously at every step, so
+the first run on a real machine says where it got to rather than
+needing to be reasoned about from here.
+
+`tests/ifacecheck.sh` is new and applies to both renderers: it reads
+the entry names out of `gdi.h` and checks every fill function in
+`gdi.c` assigns all of them. A renderer is a row plus a fill function,
+and an entry that function leaves alone is a NULL the engine will
+call; nothing about that is enforced by the compiler. It is a text
+check on purpose, since the fill functions are static and driving them
+would mean linking the engine. Three mutations confirm it: an entry
+dropped from either row, and an entry added to the interface that
+neither row fills.
+
+### A blind spot in implicitcheck.sh
+
+Adding `font.c` to the build should have put it in that sweep, and did
+not. The sweep counts lines matching one phrase, so a file that stops
+with a *different* error produces none of it and scores a clean zero —
+`font.c` was missing FreeType's include path and had never been
+checked at all.
+
+It now reports any file it cannot compile, separately from the count,
+and carries a short list of the ones that genuinely cannot be built on
+this host. There is one: `loading.c` casts `call_fgetpos()`'s result to
+`unsigned int`, and `fpos_t` is an integer on MSVC and a struct in
+glibc, so the cast is right where the engine is built and impossible
+here. It is listed rather than fixed — changing engine code to suit
+the test host is the wrong way round — and the check also fails if a
+listed file starts compiling, so the list cannot go stale.
+
+The sweep no longer walks `thirdparty/`, for the same reason it never
+walked `jpeg-6b`: upstream source is not ours to tidy, and FreeType's
+needs defines this sweep does not pass, so it was failing for other
+reasons and counting zero.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the
