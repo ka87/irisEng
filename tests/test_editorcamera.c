@@ -241,8 +241,17 @@ static void ecm_hold(int code)
     pcINO_keyboardDataBackup[code] = (char)0x80;
 }
 
-/* A mouse movement in counts, with the look button held. */
+/* A mouse movement in counts, with no button held: the mouse looks. */
 static void ecm_look(int dx, int dy)
+{
+    pcINO_keyboardDataBackup[ECAM_MOUSE_RIGHT] = 0;
+    pcINO_mouseDeltaX = dx;
+    pcINO_mouseDeltaY = dy;
+}
+
+/* The same movement with the right button held, which moves the
+   camera instead of turning it. */
+static void ecm_pan(int dx, int dy)
 {
     ecm_hold(ECAM_MOUSE_RIGHT);
     pcINO_mouseDeltaX = dx;
@@ -598,16 +607,15 @@ static void turningAndLooking(void)
     ok(-ecam_mtx.v2.z < -0.01f, "and going down looks down");
     ECAM_Toggle();
 
-    /* Nothing looks while the button is up, however far the mouse
-       travels: the pointer has to be usable without dragging the
-       view along with it. */
+    /* Nothing turns while the right button is held, however far the
+       mouse travels: that is the pan, and the two must not both
+       happen at once. */
     worldReset();
     ECAM_Toggle();
-    pcINO_mouseDeltaX = 400;
-    pcINO_mouseDeltaY = 400;
+    ecm_pan(400, 400);
     ECAM_Update();
     okNear(ecam_mtx.v2.x, 0.0f, 0.0001f,
-           "the mouse does not look with the button up");
+           "the mouse does not look while the right button pans");
     okNear(ecam_mtx.v2.y, 1.0f, 0.0001f, "the sight is where it started");
     ECAM_Toggle();
 
@@ -617,14 +625,16 @@ static void turningAndLooking(void)
        all and every look check here would still pass. 259 is where
        the platform layer puts the right button: the mouse buttons
        follow the 256 keys, with the wheel at 256 and 257. */
-    okEq(ECAM_MOUSE_RIGHT, 259, "the look button is the right one");
+    okEq(ECAM_MOUSE_RIGHT, 259, "the pan button is the right one");
 
     worldReset();
     ECAM_Toggle();
     pcINO_keyboardDataBackup[258] = (char)0x80;      /* the left one */
     pcINO_mouseDeltaX = 400;
+    pcINO_mouseDeltaY = 0;
     ECAM_Update();
-    okNear(ecam_mtx.v2.x, 0.0f, 0.0001f, "the left button does not look");
+    ok(fabsf(ecam_mtx.v2.x) > 0.01f, "the left button does not pan, so it looks");
+    okNear(ecam_mtx.Pos.x, 10.0f, 0.0001f, "and the camera has not moved");
     ECAM_Toggle();
 
     /* Looking is not scaled by the frame time. A mouse count is a
@@ -682,12 +692,197 @@ static void turningAndLooking(void)
 
     /* a camera pointing far up still flies where it points */
     startY = ecam_mtx.Pos.y;
-    pcINO_keyboardDataBackup[ECAM_MOUSE_RIGHT] = 0;
+    ecm_look(0, 0);
     ecm_hold(ECAM_KEY_W);
     TIM_gf_dt = 0.5f;
     ECAM_Update();
     ok(ecam_mtx.Pos.y != startY || ecam_mtx.Pos.z != 30.0f,
        "a camera that has been turned still flies");
+    ECAM_Toggle();
+}
+
+/* With the right button held the mouse moves the camera along the
+   same two axes W A S D move it along, so each is checked against
+   the key that ought to agree with it. */
+static void panningWithTheRightButton(void)
+{
+    float byKey;
+
+    /* the pointer going right moves the camera the way D does */
+    worldReset();
+    ECAM_Toggle();
+    ecm_hold(ECAM_KEY_D);
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    byKey = ecam_mtx.Pos.x - 10.0f;
+    ECAM_Toggle();
+
+    worldReset();
+    ECAM_Toggle();
+    ecm_pan(100, 0);
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    ok(byKey < 0.0f, "D moves along -v1, so the sign to match is negative");
+    ok((ecam_mtx.Pos.x - 10.0f) * byKey > 0.0f,
+       "the pointer going right moves the camera the way D does");
+    okNear(ecam_mtx.Pos.x - 10.0f, -100.0f * ECAM_PANSCALE, 0.001f,
+           "by the pan scale, and not by the frame time");
+    okNear(ecam_mtx.Pos.z, 30.0f, 0.001f, "and nothing vertical");
+    ECAM_Toggle();
+
+    /* the pointer going away moves the camera the way W does */
+    worldReset();
+    ECAM_Toggle();
+    ecm_pan(0, -100);
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    okNear(ecam_mtx.Pos.y, 20.0f - 100.0f * ECAM_PANSCALE, 0.001f,
+           "the pointer going away moves the camera forward, as W does");
+    ECAM_Toggle();
+
+    /* and the pointer coming back is the other way, as S is */
+    worldReset();
+    ECAM_Toggle();
+    ecm_pan(0, 100);
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    okNear(ecam_mtx.Pos.y, 20.0f + 100.0f * ECAM_PANSCALE, 0.001f,
+           "and coming back moves it back, as S does");
+    ECAM_Toggle();
+
+    /* the pan is a displacement, so the frame time does not scale it */
+    {
+        float atShortFrame;
+        float atLongFrame;
+
+        worldReset();
+        ECAM_Toggle();
+        ecm_pan(100, 0);
+        TIM_gf_dt = 0.01f;
+        ECAM_Update();
+        atShortFrame = ecam_mtx.Pos.x;
+        ECAM_Toggle();
+
+        worldReset();
+        ECAM_Toggle();
+        ecm_pan(100, 0);
+        TIM_gf_dt = 0.4f;
+        ECAM_Update();
+        atLongFrame = ecam_mtx.Pos.x;
+        ECAM_Toggle();
+
+        okNear(atLongFrame, atShortFrame, 0.0001f,
+               "panning does not depend on the frame time");
+        ok(fabsf(atShortFrame - 10.0f) > 0.1f,
+           "and it did move, so that check has teeth");
+    }
+
+    /* the speed modifiers scale the pan as they scale the keys */
+    {
+        float plain;
+        float fast;
+
+        worldReset();
+        ECAM_Toggle();
+        ecm_pan(100, 0);
+        TIM_gf_dt = 0.5f;
+        ECAM_Update();
+        plain = ecam_mtx.Pos.x - 10.0f;
+        ECAM_Toggle();
+
+        worldReset();
+        ECAM_Toggle();
+        ecm_pan(100, 0);
+        ecm_hold(ECAM_KEY_LSHIFT);
+        TIM_gf_dt = 0.5f;
+        ECAM_Update();
+        fast = ecam_mtx.Pos.x - 10.0f;
+        ECAM_Toggle();
+
+        okNear(fast, plain * ECAM_FASTFACTOR, 0.001f,
+               "the modifier scales the pan too");
+    }
+
+    /* a key and the pointer at once add up rather than one winning */
+    worldReset();
+    ECAM_Toggle();
+    ecm_pan(0, -100);
+    ecm_hold(ECAM_KEY_W);
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    okNear(ecam_mtx.Pos.y,
+           20.0f - 100.0f * ECAM_PANSCALE - ECAM_SPEED * 0.5f, 0.01f,
+           "a key and the pointer add up");
+    ECAM_Toggle();
+}
+
+/* The game must not be able to set the camera's field of view while
+   the camera is up -- and it writes it as a plain field on the view,
+   which is why this needs holding rather than just not being asked
+   for. The focale is what WOR_SetCam hands the device, so the check
+   is on the view's own field. */
+static void theGameCannotSetTheFieldOfView(void)
+{
+    worldReset();
+    ecm_views[1].focale = 1.25f;
+    ECAM_Toggle();
+    okNear(ecm_views[1].focale, 1.25f, 0.0001f,
+           "the camera starts from the game's field of view");
+
+    /* the game sets it, the way AI_EvalFunc_VIEWFocaleSet_C does:
+       write the field, then call the view's follow function */
+    ecm_views[1].focale = 0.4f;
+    ecm_views[1].viewFunctionPtr(&ecm_views[1]);
+    okNear(ecm_views[1].focale, 1.25f, 0.0001f,
+           "the game's field of view does not stick while the camera is up");
+
+    /* and it does not creep in over a frame either */
+    ecm_views[1].focale = 0.4f;
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    ecm_views[1].viewFunctionPtr(&ecm_views[1]);
+    okNear(ecm_views[1].focale, 1.25f, 0.0001f, "nor across a frame");
+
+    /* standing down gives back what the game last asked for, rather
+       than what it had when the camera took the view */
+    ECAM_Toggle();
+    okNear(ecm_views[1].focale, 0.4f, 0.0001f,
+           "and standing down gives back what the game last asked for");
+
+    /* with the game asking for nothing, the one it had comes back */
+    worldReset();
+    ecm_views[1].focale = 0.9f;
+    ECAM_Toggle();
+    ECAM_Update();
+    ECAM_Toggle();
+    okNear(ecm_views[1].focale, 0.9f, 0.0001f,
+           "and the one it had, when it asked for nothing");
+}
+
+/* Position and sight reach the view only through
+   WOR_View_SetViewPoint, so what has to hold is that every call of
+   the follow function puts the camera's own matrix back -- whatever
+   the view held a moment before. */
+static void theGameCannotSetPositionOrSight(void)
+{
+    Mtx4x4 ours;
+
+    worldReset();
+    ECAM_Toggle();
+    ecm_look(150, -50);
+    TIM_gf_dt = 0.5f;
+    ECAM_Update();
+    memcpy(&ours, &ecam_mtx, sizeof(ours));
+
+    /* the game writes the view's matrix behind the camera's back */
+    MATH_SetIdentityMatrixLocal(&ecm_views[1].cameraMtx);
+    ecm_views[1].cameraMtx.Pos.x = -77.0f;
+
+    ecm_views[1].viewFunctionPtr(&ecm_views[1]);
+    ok(memcmp(&ecm_views[1].cameraMtx, &ours, sizeof(ours)) == 0,
+       "the follow puts the camera's own matrix back over the game's");
+    okNear(ecam_mtx.Pos.x, ours.Pos.x, 0.0001f,
+           "and the camera itself is unmoved by it");
     ECAM_Toggle();
 }
 
@@ -852,6 +1047,9 @@ int main(void)
     speedModifiers();
     movesWithTheClock();
     turningAndLooking();
+    panningWithTheRightButton();
+    theGameCannotSetTheFieldOfView();
+    theGameCannotSetPositionOrSight();
     syncToGameCamera();
     syncWhenThereIsNothingToSyncTo();
     theLimitSurvivesASync();
