@@ -80,6 +80,9 @@
     <ClCompile Include="dbg.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="depthblur.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="bigfiles.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -719,6 +722,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="dbg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="depthblur.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="bigfiles.h">

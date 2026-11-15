@@ -73,9 +73,13 @@ static void XCAT(SIDE, Snap)(void)
                   (long long)AE_Bits(deptBlurType0Save),
                   (long long)AE_Bits(deptBlur1TypeSave),
                   (long long)AE_Bits(depthBlur1TypeOrcamUnkf2Save));
-    AEMOCK_Record("snap.proj", 3, (long long)D3DRenderParams.textureUVIsProjected,
+    /* f33 is in here because it was not, and two of the five modes are
+       the only ones that set it -- so a change that dropped it was
+       invisible to every one of these cases. */
+    AEMOCK_Record("snap.proj", 4, (long long)D3DRenderParams.textureUVIsProjected,
                   (long long)AE_Bits(D3DRenderParams.transformationMatrix.f41),
-                  (long long)AE_Bits(D3DRenderParams.transformationMatrix.f31));
+                  (long long)AE_Bits(D3DRenderParams.transformationMatrix.f31),
+                  (long long)AE_Bits(D3DRenderParams.transformationMatrix.f33));
     for (i = 0; i < AEMOCK_RAMP; i++)
         if (AEMOCK_ramp[i])
             AEMOCK_Record("snap.ramp", 2, (long long)i, (long long)AEMOCK_ramp[i]);
