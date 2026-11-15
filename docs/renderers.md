@@ -229,6 +229,115 @@ gives the D3D constants deliberately arbitrary values, so those
 checks would have passed whatever constant the code used. They are
 built from the SDK's own names now.
 
+## The sun's occlusion test
+
+`gfx/gfxsun.c` was not engine code with a few leaks. About twenty of
+its functions were already named `D3D_*`, and `gfxsun.h` put
+`IDirect3DSurface9` inside the engine's own sun struct. The Direct3D
+half is `win/wingdisun.c` now, behind seven entries, and the engine's
+struct holds an opaque handle:
+
+```c
+void*(* p_SunSamplerCreate)(void);
+void (* SunSamplerDestroy)(void* sampler);
+int  (* b_SunSamplerReady)(void* sampler);
+int  (* b_SunSamplingNow)(void* sampler);
+void (* SunSampleQueue)(void* sampler, const int* x, const int* y, int num,
+                        int pointMask, float cameraZ);
+int  (* b_SunSampleRead)(void* sampler, int* outPassed);
+void (* SunEffectOnOff)(void* sampler, int on);
+```
+
+### What is actually renderer-specific here
+
+The question the engine wants answered is whether the sun can be seen
+at nine positions. In Direct3D 9 the answer is an **asynchronous read
+of the frame just drawn**: the alpha at each position is stretched
+into a 16x1 render target, copied into a lockable surface, and picked
+up a frame or two later when the hardware has finished with it. Three
+of those surfaces sit in a ring so a sample can be queued every frame
+without ever waiting on one.
+
+That latency is the part worth hiding. The engine projects the sun,
+clips the ring of positions to the viewport, queues a sample and takes
+an answer **whenever one turns up** — which is a frame or more later,
+and sometimes not at all. None of that needs a surface in the engine's
+vocabulary, and a renderer with real occlusion queries would answer
+the same question a completely different way.
+
+### Why there are two readiness questions
+
+`b_SunSamplerReady` and `b_SunSamplingNow` look redundant and are not.
+The first is whether the sampler has its target yet; the second is
+whether the renderer is in a mode where anything writes the alpha this
+test reads. The engine does **different things** about them — the
+first returns before the sun's effect is touched at all, the second
+after it has been turned on — so collapsing them would change
+behaviour.
+
+### The engine's half, and why its bookkeeping is the risky part
+
+`alphaThresholdFlags` carries this frame's nine answers in its low
+bits and the previous frame's in its high half, so a frame with no
+fresh answer can show the last one. Getting a shift or a mask wrong
+there makes the sun flicker rather than crash, which is exactly the
+kind of thing worth pinning down with cases.
+
+### Two defects found on the way
+
+A second `GFX_Sun_Destroy` used to release the same surfaces twice —
+it dereferenced the embedded struct unconditionally. The destroy is
+idempotent now, and a case checks it.
+
+And `GFX_Sun_Destroy` originally took the address of the embedded
+Direct3D struct, which is what made the frozen `tests/baseline_gfx.c`
+stop compiling. See below.
+
+### The tests, and what is measured against what
+
+Two new harnesses, both direct checks:
+
+- **`tests/run_wingdisun.sh`, 61 checks.** The device can be told,
+  per surface, whether the hardware has finished with it, so the ring
+  is driven through orders the real thing would produce. The cases
+  check that a sample is never waited for, that the newest finished
+  one is read, that the ring stops taking samples when nothing has
+  been read and starts again when one has, and that a position
+  outside the viewport counts as not occluded. Twelve injected
+  defects, all caught.
+
+  **Two of those twelve needed better cases first.** Every slot
+  carried the same alpha, so reading the packed pixels by the wrong
+  index was invisible — there is now a case giving each position its
+  own alpha. And nothing read the ring down to empty, so the one
+  branch that resets it was never taken; a case now fills the ring,
+  reads its newest, and checks that samples are accepted again.
+
+- **`tests/run_gfxsun.sh`, 41 checks.** The engine's half, with the
+  projection mocked so the clipping can be driven, and the real
+  `math.c` linked. Twelve injected defects, all caught, including
+  every shift and mask in the flag bookkeeping.
+
+**`tests/baseline_gfxsun.c` is a frozen copy of `gfxsun.c` that
+nothing has ever driven** — it was added alongside the grid-effects
+tests and never wired to a harness. It was frozen before this split,
+so it cannot be compared across it; the new direct checks stand in
+its place. Worth knowing it is there and that it is not a witness to
+anything.
+
+### The one edit to a frozen copy
+
+`tests/baseline_gfx.c` called
+`GFX_Sun_Destroy(&(...)->d3dStuff)`. With the renderer owning that
+state there is no such member, and `-D` cannot map a struct member the
+way it maps a renamed symbol. That one line was changed, with the
+reason written beside it in the file.
+
+The cost is stated rather than hidden: **that one destroy call is no
+longer compared against the rewrite.** Everything else in the same
+function still is, and `gfx.c`'s harness runs 2482 cases with 0
+differing.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

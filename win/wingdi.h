@@ -3,6 +3,7 @@
 #include "../gdi.h"
 #include "../gfx/gfxsun.h"
 #include <d3dx9math.h>
+#include "wingdisun.h"
 
 struct sWaterParamsGlobalStruct;
 tGdi_D3DRenderParams D3DRenderParams;

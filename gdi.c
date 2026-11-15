@@ -4,6 +4,7 @@
 #include "time.h"
 #include "win/wingdi.h"
 #include "win/wingdivideo.h"
+#include "win/wingdisun.h"
 #include "materialanddraw.h"
 #include "gdi.h"
 #include "water.h"
@@ -845,6 +846,13 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->b_VideoFrameLock = D3D_b_VideoFrameLock;
     dd->VideoFrameUnlock = D3D_VideoFrameUnlock;
     dd->VideoFramePresent = D3D_VideoFramePresent;
+    dd->p_SunSamplerCreate = D3D_p_SunSamplerCreate;
+    dd->SunSamplerDestroy = D3D_SunSamplerDestroy;
+    dd->b_SunSamplerReady = D3D_b_SunSamplerReady;
+    dd->b_SunSamplingNow = D3D_b_SunSamplingNow;
+    dd->SunSampleQueue = D3D_SunSampleQueue;
+    dd->b_SunSampleRead = D3D_b_SunSampleRead;
+    dd->SunEffectOnOff = D3D_SunEffectOnOff;
 }
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)

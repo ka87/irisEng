@@ -177,6 +177,19 @@ typedef struct sGdi_DisplayData
     int (* b_VideoFrameLock)(void** bits, int* pitch, int* height);
     void(* VideoFrameUnlock)(void);
     void(* VideoFramePresent)(int width, int height, int fit);
+
+    /* The sun's occlusion test. The engine projects the sun, clips
+       the positions it wants looked at, and takes an answer whenever
+       one is ready; how the looking is done, and how long it takes,
+       is the renderer's own business. */
+    void*(* p_SunSamplerCreate)(void);
+    void (* SunSamplerDestroy)(void* sampler);
+    int  (* b_SunSamplerReady)(void* sampler);
+    int  (* b_SunSamplingNow)(void* sampler);
+    void (* SunSampleQueue)(void* sampler, const int* x, const int* y, int num,
+                            int pointMask, float cameraZ);
+    int  (* b_SunSampleRead)(void* sampler, int* outPassed);
+    void (* SunEffectOnOff)(void* sampler, int on);
     uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;

@@ -603,6 +603,9 @@
     <ClCompile Include="win\wingdi_aftereffects.c">
       <Filter>Source Files\win</Filter>
     </ClCompile>
+    <ClCompile Include="win\wingdisun.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="win\wingdivideo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -1054,6 +1057,9 @@
     </ClInclude>
     <ClInclude Include="win\wininputoutput.h">
       <Filter>Header Files\win</Filter>
+    </ClInclude>
+    <ClInclude Include="win\wingdisun.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="win\wingdivideo.h">
       <Filter>Header Files</Filter>
