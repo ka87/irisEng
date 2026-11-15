@@ -527,16 +527,17 @@ void GFX_FS_VideoStart(int videoId)
     file = DAT_pc_Video(videoId);
     if (!file)
     {
-        DBG_OutputDebugString("GFX_FS_VideoStart: no video for id %d in %s\n",
-                              videoId, DAT_INIFILE);
+        DBG_OutputDebugString("GFX_FS_VideoStart: no video for id 0x%08X (%d)"
+                              " in %s\n",
+                              (unsigned)videoId, videoId, DAT_INIFILE);
         return;
     }
 
     GFX_gpv_FS_Video = VID_pst_OpenFile(file, 1);
     if (!GFX_gpv_FS_Video)
     {
-        DBG_OutputDebugString("GFX_FS_VideoStart: cannot open \"%s\" for id %d\n",
-                              file, videoId);
+        DBG_OutputDebugString("GFX_FS_VideoStart: cannot open \"%s\""
+                              " for id 0x%08X\n", file, (unsigned)videoId);
         return;
     }
     // The sound is ours to play now: libav decodes it and nothing

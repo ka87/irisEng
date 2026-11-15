@@ -10,8 +10,7 @@ bigfile   = sally_clean.bf
 binarized = 1
 
 [video]
-0x3001978F = BGEMakingOf.bik
-0x610127BE = BGEMakingOf.bik
+0x490294C0 = BGEMakingOf.bik
 ```
 
 A copy ships in the repository root. It belongs next to the
@@ -58,20 +57,31 @@ with the top bit set — which arrives as a negative `int` — matches
 the key as written. `0x9E006771`, `2650826609` and `-1644140687` are
 the same id and all three find the same entry.
 
-The making of is launched under **one of two** ids, chosen by a
-global the script tests, so both are in the shipped file and both
-name the same file. Other callers pass a key held in a variable, so
-the id they ask for comes from world data and cannot be known from
-the scripts alone — which is why the log names the id that was
-wanted. Run it, read the line, add that key.
+The trailer launcher asks for `0x490294C0`, **confirmed from the
+running game** rather than inferred. It chooses between two ids on a
+global it tests and only this one has been seen, so if the other
+branch is ever taken the log will name what it wanted. Some callers
+pass a key held in a variable, so the id they ask for comes from
+world data rather than from the script at all — which is the other
+reason the log names the id. Run it, read the line, add that key.
+
+**The log gives the id in hex as well as decimal**, because hex is
+what gets pasted back into the file:
+
+```
+GFX_FS_VideoStart: no video for id 0x490294C0 (1224905920) in datafiles.ini
+```
+
+The first version printed only the decimal, which left whoever read
+it doing the conversion by hand before they could use it.
 
 An id with no entry, or an entry naming a file that will not open,
 **plays nothing**. Both are written to the debug output and the video
 simply does not start:
 
 ```
-GFX_FS_VideoStart: no video for id 3 in datafiles.ini
-GFX_FS_VideoStart: cannot open "missing.bik" for id 0
+GFX_FS_VideoStart: no video for id 0x490294C0 (1224905920) in datafiles.ini
+GFX_FS_VideoStart: cannot open "missing.bik" for id 0x490294C0
 ```
 
 Returning without starting was already a supported path — the open
@@ -99,7 +109,7 @@ a negated hex id, and hex with anything after it.
 
 ## The tests
 
-`tests/run_datafiles.sh`, 83 checks. New code with no earlier copy,
+`tests/run_datafiles.sh`, 82 checks. New code with no earlier copy,
 so it is a direct check. The driver includes `datafiles.c` so it can
 point the reader at files it writes itself, and **one case reads the
 shipped `datafiles.ini`** — so a typo in that file fails here rather

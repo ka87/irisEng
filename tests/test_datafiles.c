@@ -125,10 +125,8 @@ static void theShippedFile(void)
     okStr(DAT_pc_BigFile(), "sally_clean.bf",
           "the shipped ini names the big file");
     okInt(DAT_b_Binarized(), 1, "and asks for binarized world files");
-    okStr(DAT_pc_Video((int)0x3001978Fu), "BGEMakingOf.bik",
-          "and has the video under the first id the launcher uses");
-    okStr(DAT_pc_Video((int)0x610127BEu), "BGEMakingOf.bik",
-          "and under the second");
+    okStr(DAT_pc_Video((int)0x490294C0u), "BGEMakingOf.bik",
+          "and has the video under the id the trailer launcher asks for");
     okInt(dmLogLen, 0, "and the reader finds nothing to complain about");
 }
 
