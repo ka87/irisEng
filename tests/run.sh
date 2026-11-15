@@ -482,6 +482,7 @@ for one in tests/runworld.sh \
            tests/run_glload.sh \
            tests/run_glshader.sh \
            tests/run_wingloverlay.sh \
+           tests/run_glrender.sh \
            tests/ifacecheck.sh
 do
     name=$(basename "$one" .sh)

@@ -1,0 +1,54 @@
+#!/bin/sh
+# What the shipped shaders actually compute.
+#
+#   ./tests/run_glrender.sh
+#
+# Unlike every other test of the OpenGL renderer, this one does not
+# mock OpenGL. It brings up a real 4.5 core context with no window --
+# Mesa's software renderer answers for it -- aims win/glcore.h's
+# function pointers at that, draws through win/wingl.c's own entry
+# points and reads the pixels back. So it covers the renderer and the
+# shaders together: a mock harness can say which call was made, and
+# only this can say what came out.
+#
+# It is allowed to be unavailable. A machine with no libEGL, no
+# software renderer or no 4.5 core profile prints why and passes --
+# which is the whole point of keeping it separate from
+# tests/run_wingloverlay.sh, whose cases run anywhere.
+#
+# No AddressSanitizer here: it would be instrumenting the graphics
+# driver rather than the code under test, and llvmpipe allocates and
+# frees in ways that are its business.
+
+set -e
+cd "$(dirname "$0")/.."
+
+CC=${CC:-gcc}
+CFLAGS="-std=gnu11 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+OUT=tests/build
+mkdir -p "$OUT"
+
+$CC $CFLAGS -c tests/test_glrender.c -o "$OUT/glr.drv.o"
+$CC $CFLAGS -c tests/eglheadless.c -o "$OUT/glr.egl.o"
+$CC $CFLAGS -c win/glload.c -o "$OUT/glr.load.o"
+$CC $CFLAGS -c win/glshader.c -o "$OUT/glr.shader.o"
+$CC $CFLAGS -c datapath.c -o "$OUT/glr.datapath.o"
+# The same real arithmetic the other GL harness links: the camera
+# fitting, the vertex building, the flags decode and the matrix
+# helpers, with math.c for MATH_MakeOGLMatrix. gdi.c would pull the
+# whole engine in, so the two display settings it holds are defined by
+# the driver.
+$CC $CFLAGS -c projection.c -o "$OUT/glr.proj.o"
+$CC $CFLAGS -c geovertex.c -o "$OUT/glr.gvx.o"
+$CC $CFLAGS -c rasterstate.c -o "$OUT/glr.rst.o"
+$CC $CFLAGS -c win/wingdimath.c -o "$OUT/glr.wgmath.o"
+$CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
+# -ldl for the EGL lookup: the library is opened by name because there
+# are no EGL headers to link against.
+$CC "$OUT/glr.drv.o" "$OUT/glr.egl.o" "$OUT/glr.load.o" \
+    "$OUT/glr.shader.o" "$OUT/glr.datapath.o" "$OUT/glr.proj.o" \
+    "$OUT/glr.gvx.o" "$OUT/glr.rst.o" "$OUT/glr.wgmath.o" \
+    "$OUT/glr.math.o" -o "$OUT/glr" -lm -ldl
+# Software rendering, so the answer does not depend on whose card the
+# machine has.
+LIBGL_ALWAYS_SOFTWARE=1 "$OUT/glr"
