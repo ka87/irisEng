@@ -70,15 +70,34 @@ typedef char           GLchar;
 #define GL_TEXTURE0                       0x84C0
 #define GL_R8                             0x8229
 #define GL_RED                            0x1903
+#define GL_RGBA8                          0x8058
+/* The engine's textures are A8R8G8B8 words, which on a little-endian
+   machine is blue, green, red, alpha in memory. */
+#define GL_BGRA                           0x80E1
 #define GL_LINEAR                         0x2601
 #define GL_NEAREST                        0x2600
+#define GL_NEAREST_MIPMAP_NEAREST         0x2700
+#define GL_LINEAR_MIPMAP_NEAREST          0x2701
+#define GL_NEAREST_MIPMAP_LINEAR          0x2702
+#define GL_LINEAR_MIPMAP_LINEAR           0x2703
 #define GL_CLAMP_TO_EDGE                  0x812F
+#define GL_REPEAT                         0x2901
 #define GL_TEXTURE_MIN_FILTER             0x2801
 #define GL_TEXTURE_MAG_FILTER             0x2800
 #define GL_TEXTURE_WRAP_S                 0x2802
 #define GL_TEXTURE_WRAP_T                 0x2803
+#define GL_TEXTURE_LOD_BIAS               0x8501
+#define GL_TEXTURE_MAX_LEVEL              0x813D
 #define GL_UNPACK_ALIGNMENT               0x0CF5
 #define GL_UNPACK_ROW_LENGTH              0x0CF2
+
+#define GL_FILL                           0x1B02
+#define GL_LINE                           0x1B01
+#define GL_FRONT                          0x0404
+#define GL_BACK                           0x0405
+#define GL_FRONT_AND_BACK                 0x0408
+#define GL_CW                             0x0900
+#define GL_CCW                            0x0901
 
 #define GL_CLIP_ORIGIN                    0x935C
 #define GL_CLIP_DEPTH_MODE                0x935D
@@ -88,9 +107,13 @@ typedef char           GLchar;
 #define GL_UPPER_LEFT                     0x8CA2
 
 #define GL_LEQUAL                         0x0203
+#define GL_EQUAL                          0x0202
 
+#define GL_ONE_MINUS_SRC_COLOR            0x0301
 #define GL_SRC_ALPHA                      0x0302
 #define GL_ONE_MINUS_SRC_ALPHA            0x0303
+#define GL_DST_ALPHA                      0x0304
+#define GL_ONE_MINUS_DST_ALPHA            0x0305
 #define GL_ONE                            1
 #define GL_ZERO                           0
 
@@ -134,6 +157,7 @@ typedef void (*GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint id,
     X(void,  glFlush,                (void), ())                              \
     X(void,  glBlendFunc,            (GLenum src, GLenum dst), (src, dst))    \
     X(void,  glPixelStorei,          (GLenum pname, GLint param), (pname, param)) \
+    X(void,  glPolygonMode,          (GLenum face, GLenum mode), (face, mode)) \
                                                                               \
     X(GLuint, glCreateShader,        (GLenum type), (type))                   \
     X(void,  glShaderSource,         (GLuint shader, GLsizei count,           \
@@ -163,6 +187,7 @@ typedef void (*GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint id,
     X(GLint, glGetUniformLocation,   (GLuint program, const GLchar* name),     \
                                      (program, name))                         \
     X(void,  glUniform1i,            (GLint loc, GLint v), (loc, v))          \
+    X(void,  glUniform1f,            (GLint loc, GLfloat v), (loc, v))        \
     X(void,  glUniform4f,            (GLint loc, GLfloat a, GLfloat b,         \
                                       GLfloat c, GLfloat d), (loc, a, b, c, d)) \
     X(void,  glUniformMatrix4fv,     (GLint loc, GLsizei count,                \
@@ -204,6 +229,15 @@ typedef void (*GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint id,
                                       border, format, type, pixels))          \
     X(void,  glTexParameteri,        (GLenum target, GLenum pname, GLint v),   \
                                      (target, pname, v))                      \
+    X(void,  glTexParameterf,        (GLenum target, GLenum pname, GLfloat v), \
+                                     (target, pname, v))                      \
+    X(void,  glTexSubImage2D,        (GLenum target, GLint level, GLint x,     \
+                                      GLint y, GLsizei w, GLsizei h,          \
+                                      GLenum format, GLenum type,             \
+                                      const void* pixels),                    \
+                                     (target, level, x, y, w, h, format,       \
+                                      type, pixels))                          \
+    X(void,  glGenerateMipmap,       (GLenum target), (target))               \
                                                                               \
     X(void,  glDebugMessageCallback, (GL_pfn_DebugProc proc, const void* user), \
                                      (proc, user))                            \

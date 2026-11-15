@@ -263,14 +263,83 @@ static void MK_glUniform4f(GLint loc, GLfloat a, GLfloat b, GLfloat c, GLfloat d
               (long long)c, (long long)d);
 }
 
+static void MK_glUniform1f(GLint loc, GLfloat v)
+{
+    /* The reference is a byte scaled into 0..1; recorded multiplied
+       back up so a case can compare whole numbers. */
+    WG_Record("glUniform1f", 2, (long long)loc,
+              (long long)(v * 255.0f + 0.5f));
+}
+
+static void MK_glPolygonMode(GLenum face, GLenum mode)
+{
+    WG_Record("glPolygonMode", 2, (long long)face, (long long)mode);
+}
+
+static void MK_glDepthMask(GLboolean on)
+{
+    WG_Record("glDepthMask", 1, (long long)on);
+}
+
+static void MK_glColorMask(GLboolean r, GLboolean g, GLboolean b, GLboolean a)
+{
+    WG_Record("glColorMask", 4, (long long)r, (long long)g, (long long)b,
+              (long long)a);
+}
+
+static void MK_glGenerateMipmap(GLenum target)
+{
+    WG_Record("glGenerateMipmap", 1, (long long)target);
+}
+
+/* The last pixels any upload was handed, so a case can check that the
+   rows arrived in the right order rather than only that a call
+   happened. */
+static unsigned char wg_pixels[64 * 64 * 4];
+static int           wg_pixelBytes;
+
+static void WG_KeepPixels(const void* pixels, int bytes)
+{
+    wg_pixelBytes = 0;
+    if (!pixels || bytes <= 0 || bytes > (int)sizeof(wg_pixels))
+        return;
+    memcpy(wg_pixels, pixels, (size_t)bytes);
+    wg_pixelBytes = bytes;
+}
+
+/* How wide a pixel is in the format the renderer handed over. The
+   glyph atlas uploads one byte a pixel and a texture four, so taking
+   four either way walks off the end of the atlas's coverage array --
+   which is how this was first written. */
+static int WG_i_PixelBytes(GLenum format)
+{
+    return format == GL_RED ? 1 : 4;
+}
+
 static void MK_glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                             GLsizei w, GLsizei h, GLint border, GLenum format,
                             GLenum type, const void* pixels)
 {
-    (void)pixels;
+    WG_KeepPixels(pixels, WG_i_PixelBytes(format) * w * h);
     WG_Record("glTexImage2D", 8, (long long)target, (long long)level,
               (long long)internalFormat, (long long)w, (long long)h,
               (long long)border, (long long)format, (long long)type);
+}
+
+static void MK_glTexSubImage2D(GLenum target, GLint level, GLint x, GLint y,
+                               GLsizei w, GLsizei h, GLenum format,
+                               GLenum type, const void* pixels)
+{
+    WG_KeepPixels(pixels, WG_i_PixelBytes(format) * w * h);
+    WG_Record("glTexSubImage2D", 8, (long long)target, (long long)level,
+              (long long)x, (long long)y, (long long)w, (long long)h,
+              (long long)format, (long long)type);
+}
+
+static void MK_glTexParameterf(GLenum target, GLenum pname, GLfloat v)
+{
+    WG_Record("glTexParameterf", 3, (long long)target, (long long)pname,
+              (long long)(v * 1000.0f));
 }
 
 static void MK_glGenBuffers(GLsizei n, GLuint* out)
@@ -383,8 +452,29 @@ static GLint MK_glGetUniformLocation(GLuint p, const GLchar* name)
         return 1;
     if (strcmp(name, "uAtlas") == 0)
         return 2;
-    return 3;
+    if (strcmp(name, "uViewProj") == 0)
+        return 3;
+    if (strcmp(name, "uTex") == 0)
+        return 4;
+    if (strcmp(name, "uTextured") == 0)
+        return 5;
+    if (strcmp(name, "uAlphaMode") == 0)
+        return 6;
+    if (strcmp(name, "uAlphaRef") == 0)
+        return 7;
+    if (strcmp(name, "uDiffuse2x") == 0)
+        return 8;
+    return 9;
 }
+
+/* A location for each name the renderer asks for, so that a case can
+   say which uniform was set and not merely that one was. */
+#define WG_U_VIEWPROJ  3
+#define WG_U_TEX       4
+#define WG_U_TEXTURED  5
+#define WG_U_ALPHAMODE 6
+#define WG_U_ALPHAREF  7
+#define WG_U_DIFFUSE2X 8
 
 /* The module under test. */
 #include "../win/wingl.c"
@@ -411,9 +501,16 @@ static void WG_AimThePointers(void)
     GLFN_glActiveTexture = MK_glActiveTexture;
     GLFN_glPixelStorei = MK_glPixelStorei;
     GLFN_glTexImage2D = MK_glTexImage2D;
+    GLFN_glTexSubImage2D = MK_glTexSubImage2D;
     GLFN_glTexParameteri = MK_glTexParameteri;
+    GLFN_glTexParameterf = MK_glTexParameterf;
+    GLFN_glGenerateMipmap = MK_glGenerateMipmap;
     GLFN_glUniform1i = MK_glUniform1i;
+    GLFN_glUniform1f = MK_glUniform1f;
     GLFN_glUniform4f = MK_glUniform4f;
+    GLFN_glPolygonMode = MK_glPolygonMode;
+    GLFN_glDepthMask = MK_glDepthMask;
+    GLFN_glColorMask = MK_glColorMask;
 
     GLFN_glCreateShader = MK_glCreateShader;
     GLFN_glShaderSource = MK_glShaderSource;
@@ -435,6 +532,50 @@ static void WG_AimThePointers(void)
     GLFN_glViewport = MK_glViewport;
 }
 
+/* Every pointer the renderer could reach has to be aimed somewhere.
+   An entry point added to glcore.h's list, used in win/wingl.c and
+   missed here is a call through a null pointer, which lands as a
+   segmentation fault in whichever case happened to reach it first and
+   says nothing about why. Walking the same list that generated the
+   pointers turns that into a named failure.
+
+   Not every one of them has to be mocked -- some entries belong to
+   code these cases do not drive -- so the ones deliberately left out
+   are listed, and a name in neither place fails. */
+static int WG_b_Aimed(const char* name)
+{
+    static const char* notDriven[] = {
+        /* context creation, the version check and the debug callback:
+           all of them run before there is anything to draw */
+        "glGetString", "glGetIntegerv", "glGetError",
+        "glDebugMessageCallback", "glDebugMessageControl",
+        /* the frame's edges, which the pass cases do not reach */
+        "glClear", "glClearColor", "glClearDepth", "glClearStencil",
+        "glScissor", "glFinish", "glFlush",
+        NULL
+    };
+    int i;
+
+    for (i = 0; notDriven[i]; i++)
+        if (strcmp(notDriven[i], name) == 0)
+            return 1;
+    return 0;
+}
+
+static void WG_CheckThePointers(void)
+{
+#define WG_CHECK(ret, name, params, args)                                     \
+    if (!GLFN_##name && !WG_b_Aimed(#name))                                   \
+    {                                                                         \
+        printf("  FAIL %s is in glcore.h's list and aimed at nothing\n",      \
+               #name);                                                        \
+        fails++;                                                              \
+    }                                                                         \
+    checks++;
+    GL_FUNCTION_LIST(WG_CHECK)
+#undef WG_CHECK
+}
+
 /* ------------------------------------------------------------- the rig */
 
 /* The engine's display data, which the renderer reads its settings and
@@ -447,6 +588,17 @@ static tGdi_DisplayData gl_dd;
 int   GDI_gi_Widescreen = 1;
 float GDI_gf_RefYoverX = 0.75f;
 float GDI_gaf_ScreenRatio[4];
+
+/* The mip-map level-of-detail bias, a debug tweak the renderer puts
+   on every texture it binds. It lives in dbg.c, which would pull the
+   whole engine in here, so the driver defines it -- the value is the
+   one dbg.c has. */
+float tweak_mipmaplodbias = -0.60000002f;
+
+/* The engine's texture list, which the renderer indexes to find a
+   texture's size. textures.c would bring the engine with it, so the
+   driver owns it here and a case fills in the entries it needs. */
+tEngTexListStruct TEX_gst_GlobalList;
 
 /* math.c is linked for MATH_MakeOGLMatrix and brings its aligned
    allocators with it. Nothing here allocates a matrix array, so these
@@ -471,6 +623,10 @@ static void reset(void)
 {
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();
+    GL_ReleaseTextures(NULL);
+    memset(&gl_material, 0, sizeof(gl_material));
+    gl_colorMaskAlpha = 0;
+    gl_mipmapping = 1;
     memset(&gl_dd, 0, sizeof(gl_dd));
     gpst_DX_stDD = &gl_dd;
     memset(&gl_state, 0, sizeof(gl_state));
@@ -1109,10 +1265,529 @@ static void caseClipControl(void)
          "and the depth range becomes the engine's");
 }
 
+/* ------------------------------------------------------- textures */
+
+/* One texture's worth of fixture: the engine's list entry, the
+   intermediate description the loader hands over, and the pixels. */
+static tEngTexListElemStruct  wg_texElems[4];
+static tEngTexIntermediateStruct wg_inter;
+static unsigned char          wg_src[8 * 4 * 4];   /* 8 wide, 4 tall */
+
+#define WG_TEX_W 8
+#define WG_TEX_H 4
+
+/* A picture whose every pixel is different, so a row order, a stride
+   or a transpose that went wrong is visible rather than plausible. */
+static void WG_BuildTexture(int depth, int texFlags, int type)
+{
+    int i;
+
+    for (i = 0; i < WG_TEX_W * WG_TEX_H * 4; i++)
+        wg_src[i] = (unsigned char)(i * 7u + 1u);
+
+    memset(wg_texElems, 0, sizeof(wg_texElems));
+    /* The engine stores these the other way round -- the element's
+       width field holds the picture's height. Written here the way
+       textures.c writes it, so a renderer that reads it straight
+       fails. */
+    wg_texElems[1].normalData.width = (int16_t)WG_TEX_H;
+    wg_texElems[1].normalData.height = (int16_t)WG_TEX_W;
+    TEX_gst_GlobalList.texElems = wg_texElems;
+    TEX_gst_GlobalList.maxTexNum = 4;
+
+    memset(&wg_inter, 0, sizeof(wg_inter));
+    wg_inter.colorDepth2 = (uint8_t)depth;
+    wg_inter.imgDataPtr = (char*)wg_src;
+    wg_inter.tp.flagsUnkAndProceduralUnkb1 = (int16_t)texFlags;
+    wg_inter.tp.type = (uint8_t)type;
+}
+
+static void caseTextureUpload(void)
+{
+    const tWgCall* c;
+
+    printf("-- a texture reaches the card\n");
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    okEq(GL_TextureStore(&gl_dd, 3), 1, "the table is made");
+    wg_callLen = 0;
+
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+
+    okEq(WG_i_Count("glTexImage2D"), 1, "one upload");
+    c = WG_pc_Call("glTexImage2D", 0);
+    okEq(c->arg[0], GL_TEXTURE_2D, "of a 2D texture");
+    okEq(c->arg[1], 0, "at the full level");
+    okEq(c->arg[2], GL_RGBA8, "stored as eight bits a channel");
+    okEq(c->arg[3], WG_TEX_W, "as wide as the picture");
+    okEq(c->arg[4], WG_TEX_H, "and as tall");
+    okEq(c->arg[6], GL_BGRA,
+         "read in the order the engine's words are in memory");
+    okEq(c->arg[7], GL_UNSIGNED_BYTE, "a byte a channel");
+    okEq(wg_pixelBytes, WG_TEX_W * WG_TEX_H * 4, "the whole picture");
+    okEq(memcmp(wg_pixels, wg_src, (size_t)wg_pixelBytes), 0,
+         "byte for byte as the engine built it");
+
+    /* Rows are packed and four bytes to a pixel, which is not what a
+       fresh context assumes for either setting. */
+    okEq(WG_i_Count("glPixelStorei"), 2, "both pack settings are stated");
+
+    okEq(gl_dd.texManager.paletteUsedMemory, 4 * WG_TEX_W * WG_TEX_H,
+         "and the engine is told what it cost");
+
+    /* A 24-bit source has already been widened to 32-bit words by the
+       engine, so it uploads the same way and only the accounting
+       differs. */
+    reset();
+    WG_BuildTexture(24, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    wg_callLen = 0;
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    okEq(WG_i_Count("glTexImage2D"), 1, "a 24-bit source uploads too");
+    okEq(WG_pc_Call("glTexImage2D", 0)->arg[6], GL_BGRA, "the same way");
+    okEq(gl_dd.texManager.paletteUsedMemory, 3 * WG_TEX_W * WG_TEX_H,
+         "and is accounted at three bytes a pixel");
+
+    /* Anything else the engine has not converted, and the other
+       renderer leaves the slot empty rather than uploading rubbish. */
+    reset();
+    WG_BuildTexture(16, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    wg_callLen = 0;
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    okEq(WG_i_Count("glTexImage2D"), 0,
+         "a depth the engine does not convert is not uploaded");
+    ok(GL_l_p_Texture(1) == NULL, "and leaves no texture behind");
+}
+
+static void caseTextureLevels(void)
+{
+    printf("-- mip levels, and the engine's record of them\n");
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    wg_callLen = 0;
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+
+    okEq(WG_i_Count("glGenerateMipmap"), 1, "a chain is generated");
+    /* 8 by 4 is four levels: 8x4, 4x2, 2x1, 1x1. */
+    okEq(WG_pc_Call("glTexParameteri", 0)->arg[1], GL_TEXTURE_MAX_LEVEL,
+         "the top level is stated first");
+    okEq(WG_pc_Call("glTexParameteri", 0)->arg[2], 3,
+         "eight by four is four levels");
+    ok(GL_l_p_Texture(1)->hasLevels != 0, "and the slot remembers");
+    okEq(wg_inter.bmpUnkb1 & 0x10, 0x10, "the engine is told it has them");
+    okEq(wg_texElems[1].texElemFlag & 0x10, 0x10, "through the list entry too");
+
+    /* Three separate reasons a texture gets no chain, and each one has
+       to reach the engine's own record as well as the card. */
+    {
+        static const struct { const char* why; int flags; int type; } no[] = {
+            { "the texture asks for none",          0x40, 0 },
+            { "it carries its own palette",        0x200, 0 },
+            { "it is the kind that is never built",    0, 5 },
+        };
+        unsigned int i;
+
+        for (i = 0; i < sizeof(no) / sizeof(no[0]); i++)
+        {
+            reset();
+            WG_BuildTexture(32, no[i].flags, no[i].type);
+            GL_TextureStore(&gl_dd, 3);
+            wg_callLen = 0;
+            GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+            okEq(WG_i_Count("glGenerateMipmap"), 0, no[i].why);
+            okEq(WG_pc_Call("glTexParameteri", 0)->arg[2], 0,
+                 "and the top level is the only one");
+            okEq(wg_inter.bmpUnkb1 & 0x10, 0, "the engine is told so");
+            okEq(wg_texElems[1].texElemFlag & 0x10, 0, "through the entry");
+        }
+    }
+
+    /* And the renderer's own switch, which is the fourth reason. */
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    gl_mipmapping = 0;
+    wg_callLen = 0;
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    okEq(WG_i_Count("glGenerateMipmap"), 0,
+         "the renderer can refuse chains outright");
+}
+
+/* Binds texture 1 after a material with these flags, and leaves the
+   call log holding what that did. */
+static void WG_Material(unsigned int flags, int drawMask, int textureID)
+{
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    gl_dd.drawMaskAllowedStuffCurrent = drawMask;
+    wg_callLen = 0;
+    GL_TextureInit(textureID, (int)flags, 0);
+}
+
+/* What a glUniform1i aimed at this location last set, or -1. */
+static long WG_l_Uniform1i(int location)
+{
+    int i;
+    long v = -1;
+
+    for (i = 0; i < wg_callLen; i++)
+        if (strcmp(wg_calls[i].name, "glUniform1i") == 0
+            && wg_calls[i].arg[0] == (long long)location)
+            v = (long)wg_calls[i].arg[1];
+    return v;
+}
+
+/* Whether a capability was last enabled (1), last disabled (0), or
+   never mentioned (-1). The renderer states these rather than leaving
+   them, so "never mentioned" is itself worth failing on. */
+static int WG_i_b_Capability(GLenum cap)
+{
+    int i;
+    int state = -1;
+
+    for (i = 0; i < wg_callLen; i++)
+    {
+        if (wg_calls[i].arg[0] != (long long)cap)
+            continue;
+        if (strcmp(wg_calls[i].name, "glEnable") == 0)
+            state = 1;
+        else if (strcmp(wg_calls[i].name, "glDisable") == 0)
+            state = 0;
+    }
+    return state;
+}
+
+/* The value a glTexParameteri of this name was given, or -1. */
+static long WG_l_TexParam(GLenum pname)
+{
+    int i;
+
+    for (i = 0; i < wg_callLen; i++)
+        if (strcmp(wg_calls[i].name, "glTexParameteri") == 0
+            && wg_calls[i].arg[1] == (long long)pname)
+            return (long)wg_calls[i].arg[2];
+    return -1;
+}
+
+static void caseSampler(void)
+{
+    printf("-- the sampler a material asks for\n");
+
+    /* Both addressing bits clear is clamp on both axes, and each bit
+       belongs to one axis -- which is the pair most easily swapped. */
+    WG_Material(0, 0, 1);
+    okEq(WG_l_TexParam(GL_TEXTURE_WRAP_S), GL_CLAMP_TO_EDGE, "u clamps");
+    okEq(WG_l_TexParam(GL_TEXTURE_WRAP_T), GL_CLAMP_TO_EDGE, "v clamps");
+    WG_Material(1, 0, 1);
+    okEq(WG_l_TexParam(GL_TEXTURE_WRAP_S), GL_REPEAT, "the first bit is u");
+    okEq(WG_l_TexParam(GL_TEXTURE_WRAP_T), GL_CLAMP_TO_EDGE, "and not v");
+    WG_Material(2, 0, 1);
+    okEq(WG_l_TexParam(GL_TEXTURE_WRAP_S), GL_CLAMP_TO_EDGE, "the second is v");
+    okEq(WG_l_TexParam(GL_TEXTURE_WRAP_T), GL_REPEAT, "and not u");
+
+    /* The filter and the mip filter are two bits and four min filters,
+       and the mag filter only ever sees the first of them. */
+    WG_Material(0, 0, 1);
+    okEq(WG_l_TexParam(GL_TEXTURE_MIN_FILTER), GL_NEAREST_MIPMAP_NEAREST,
+         "neither bit is nearest throughout");
+    okEq(WG_l_TexParam(GL_TEXTURE_MAG_FILTER), GL_NEAREST, "magnified too");
+    WG_Material(4, 0, 1);
+    okEq(WG_l_TexParam(GL_TEXTURE_MIN_FILTER), GL_LINEAR_MIPMAP_NEAREST,
+         "the first bit is the filter within a level");
+    okEq(WG_l_TexParam(GL_TEXTURE_MAG_FILTER), GL_LINEAR, "which magnifies too");
+    WG_Material(8, 0, 1);
+    okEq(WG_l_TexParam(GL_TEXTURE_MIN_FILTER), GL_NEAREST_MIPMAP_LINEAR,
+         "the second is the filter between levels");
+    okEq(WG_l_TexParam(GL_TEXTURE_MAG_FILTER), GL_NEAREST,
+         "which magnification cannot see");
+    WG_Material(12, 0, 1);
+    okEq(WG_l_TexParam(GL_TEXTURE_MIN_FILTER), GL_LINEAR_MIPMAP_LINEAR,
+         "both bits is linear throughout");
+
+    /* The trap: a mip-filtered sampler on a texture with only the full
+       level makes it incomplete, and an incomplete texture samples as
+       black rather than failing. So the mip part is dropped when the
+       chain was never built. */
+    reset();
+    WG_BuildTexture(32, 0x40, 0);     /* a texture that gets no chain */
+    GL_TextureStore(&gl_dd, 3);
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    wg_callLen = 0;
+    GL_TextureInit(1, 12, 0);         /* both filter bits set */
+    okEq(WG_l_TexParam(GL_TEXTURE_MIN_FILTER), GL_LINEAR,
+         "a texture with no chain gets a sampler that wants none");
+
+    /* The debug tweak goes on every texture the renderer binds. */
+    WG_Material(0, 0, 1);
+    okEq(WG_i_Count("glTexParameterf"), 1, "and the level-of-detail bias");
+    okEq(WG_pc_Call("glTexParameterf", 0)->arg[1], GL_TEXTURE_LOD_BIAS,
+         "is what it sets");
+    okEq(WG_pc_Call("glTexParameterf", 0)->arg[2], -600,
+         "at the value the debug module holds");
+}
+
+static void caseMaterialState(void)
+{
+    printf("-- the pipeline state a material asks for\n");
+
+    /* Depth: the comparison, the write, and whether it tests at all --
+       the last of which comes from the draw mask and not the flags. */
+    WG_Material(0, 0, 1);
+    okEq(WG_pc_Call("glDepthFunc", 0)->arg[0], GL_LEQUAL, "nearer wins");
+    okEq(WG_pc_Call("glDepthMask", 0)->arg[0], GL_TRUE, "and depth is written");
+    okEq(WG_i_b_Capability(GL_DEPTH_TEST), 0,
+         "a pass that does not allow depth does not test it");
+    WG_Material(0, 0x1000000, 1);
+    okEq(WG_i_b_Capability(GL_DEPTH_TEST), 1, "and one that does, does");
+    WG_Material(0x100, 0, 1);
+    okEq(WG_pc_Call("glDepthFunc", 0)->arg[0], GL_EQUAL,
+         "or only what is already at that depth");
+    WG_Material(0x200, 0, 1);
+    okEq(WG_pc_Call("glDepthMask", 0)->arg[0], GL_FALSE,
+         "and a material can draw without writing depth");
+
+    /* Colour write, which is two bits and both of them inverted. */
+    WG_Material(0, 0, 1);
+    okEq(WG_pc_Call("glColorMask", 0)->arg[0], GL_TRUE, "colour is written");
+    okEq(WG_pc_Call("glColorMask", 0)->arg[3], GL_TRUE, "and alpha with it");
+    WG_Material(0x20, 0, 1);
+    okEq(WG_pc_Call("glColorMask", 0)->arg[0], GL_TRUE, "one bit stops alpha");
+    okEq(WG_pc_Call("glColorMask", 0)->arg[3], GL_FALSE, "and only alpha");
+    WG_Material(0x40, 0, 1);
+    okEq(WG_pc_Call("glColorMask", 0)->arg[0], GL_FALSE, "the other stops colour");
+    okEq(WG_pc_Call("glColorMask", 0)->arg[3], GL_TRUE, "and only colour");
+
+    /* The fill mode, which the pass allows rather than the material. */
+    WG_Material(0, 0, 1);
+    okEq(WG_pc_Call("glPolygonMode", 0)->arg[1], GL_LINE,
+         "a pass that does not allow solid fill draws edges");
+    WG_Material(0, 0x10, 1);
+    okEq(WG_pc_Call("glPolygonMode", 0)->arg[1], GL_FILL, "and otherwise faces");
+
+    /* The blend equations the mode selects, and the one bit that
+       reverses four of them. */
+    WG_Material(0u << 16, 0, 1);
+    okEq(WG_i_Count("glBlendFunc"), 1, "mode zero states a blend");
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[0], GL_ONE, "of source only");
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[1], GL_ZERO, "over nothing");
+    WG_Material(1u << 16, 0, 1);
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[0], GL_SRC_ALPHA,
+         "mode one blends on the source's alpha");
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[1], GL_ONE_MINUS_SRC_ALPHA,
+         "against its complement");
+    WG_Material((1u << 16) | 0x80, 0, 1);
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[0], GL_ONE_MINUS_SRC_ALPHA,
+         "and the one reversing bit turns it around");
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[1], GL_SRC_ALPHA, "both ways");
+    WG_Material(5u << 16, 0, 1);
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[0], GL_ONE, "mode five adds");
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[1], GL_ONE, "both unchanged");
+    WG_Material(6u << 16, 0, 1);
+    okEq(WG_pc_Call("glBlendFunc", 0)->arg[1], GL_ONE_MINUS_SRC_COLOR,
+         "mode six multiplies by the complement of the source");
+    WG_Material(9u << 16, 0, 1);
+    okEq(WG_i_Count("glBlendFunc"), 0,
+         "and a mode that names no equation leaves the last one standing");
+
+    /* The alpha the vertex colours are combined with. */
+    WG_Material(0, 0, 1);
+    okEq(gl_colorMaskAlpha, 0, "no masked alpha by default");
+    WG_Material(0x400, 0, 1);
+    okEq((long)(unsigned int)gl_colorMaskAlpha, 0xFF000000L,
+         "and one bit makes it opaque");
+
+    /* And it has to reach the vertices, which is a step further than
+       holding it: the builder combines it into every colour it packs,
+       and a renderer that keeps it and then hands the builder a zero
+       looks right in every state check. */
+    {
+        const tGdi_TexturedVertex* v;
+
+        WG_BuildChunk();
+        wg_callLen = 0;
+        GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+        v = (const tGdi_TexturedVertex*)wg_lastBufferData;
+        ok(v != NULL, "a draw after that material uploaded vertices");
+        if (v)
+        {
+            okEq((long)v[0].color,
+                 (long)GVX_ui_SolidColor(0, 0xFF000000, 0x00804020),
+                 "whose colour carries the material's alpha");
+            /* and plainly not the colour it would have without it */
+            ok(v[0].color != GVX_ui_SolidColor(0, 0, 0x00804020),
+               "which is not the colour it would have had otherwise");
+        }
+    }
+}
+
+static void caseAlphaTest(void)
+{
+    const tWgCall* c;
+
+    printf("-- the alpha test, which the shader does\n");
+
+    /* Off, and then each of the two senses, with a reference value
+       that is not a round number. 0x2A in bits 24..29 of the word. */
+    WG_Material(0, 0, 1);
+    okEq(gl_material.alphaMode, 0, "no test by default");
+    WG_Material(0x10 | (0x2Au << 24), 0, 1);
+    okEq(gl_material.alphaMode, 1, "one bit turns it on, keeping what is above");
+    okEq((long)(gl_material.alphaRef * 255.0f + 0.5f), 0xA8,
+         "at the reference the top bits hold, less its lowest two");
+    WG_Material(0x10 | 0x80 | (0x2Au << 24), 0, 1);
+    okEq(gl_material.alphaMode, 2, "and the reversing bit keeps what is below");
+
+    /* And it has to reach the shader, which only happens at the draw. */
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    WG_BuildChunk();
+    gl_dd.drawMaskAllowedStuffCurrent = 0x10;
+    GL_TextureInit(1, 0x10 | (0x2Au << 24), 0);
+    wg_callLen = 0;
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+
+    c = WG_pc_Call("glUniform1f", 0);
+    ok(c != NULL, "the reference is uploaded");
+    if (c)
+    {
+        okEq(c->arg[0], WG_U_ALPHAREF, "to the uniform that holds it");
+        okEq(c->arg[1], 0xA8, "normalised from the engine's byte");
+    }
+    okEq(WG_l_Uniform1i(WG_U_ALPHAMODE), 1, "and the sense with it");
+    okEq(WG_l_Uniform1i(WG_U_TEXTURED), 1, "and that there is a texture");
+    okEq(WG_l_Uniform1i(WG_U_TEX), 0, "bound to unit zero");
+    okEq(WG_l_Uniform1i(WG_U_DIFFUSE2X), 0, "and that the colour is not doubled");
+
+    /* The doubling is a display setting the engine can change between
+       two draws, so it is read at the draw and not with the material. */
+    GDI_gi_Diffuse2x = 1;
+    wg_callLen = 0;
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+    okEq(WG_l_Uniform1i(WG_U_DIFFUSE2X), 1,
+         "and the setting reaches the next draw with no new material");
+    GDI_gi_Diffuse2x = 0;
+}
+
+static void caseUntextured(void)
+{
+    printf("-- a material with no texture\n");
+
+    /* -1 is what the engine passes when the colour is the vertex's
+       alone. The two other out-of-range indices are the renderer's own
+       render target and a shadow map, neither of which this renderer
+       has yet -- so all three have to leave it untextured rather than
+       index the table. */
+    WG_Material(0, 0, -1);
+    okEq(WG_i_Count("glBindTexture"), 0, "nothing is bound");
+    okEq(gl_material.textured, 0, "and the shader is told so");
+    WG_Material(0, 0, -2);
+    okEq(gl_material.textured, 0, "nor for the renderer's own copy");
+    WG_Material(0, 0, (int)0x80000001u);
+    okEq(gl_material.textured, 0, "nor for a shadow map");
+    /* An index inside the table but never loaded is the same case, and
+       the one most likely to be let through. */
+    WG_Material(0, 0, 2);
+    okEq(gl_material.textured, 0, "nor an index with no texture in it");
+    WG_Material(0, 0, 99);
+    okEq(gl_material.textured, 0, "nor one past the end of the table");
+}
+
+static void caseProceduralUpload(void)
+{
+    tTexUploadRequest req;
+
+    printf("-- a procedural texture re-uploaded\n");
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+
+    req.idx = 1;
+    req.dataPtr = (uint32_t*)wg_src;
+    wg_callLen = 0;
+    okEq(GL_Request(12, &req), 0, "the request is answered");
+
+    okEq(WG_i_Count("glTexImage2D"), 0,
+         "an existing texture is not made again");
+    okEq(WG_i_Count("glTexSubImage2D"), 1, "its pixels are replaced");
+    okEq(WG_pc_Call("glTexSubImage2D", 0)->arg[4], WG_TEX_W, "at full width");
+    okEq(WG_pc_Call("glTexSubImage2D", 0)->arg[5], WG_TEX_H, "and height");
+    okEq(WG_pc_Call("glTexSubImage2D", 0)->arg[6], GL_BGRA, "in the same order");
+    okEq(memcmp(wg_pixels, wg_src, WG_TEX_W * WG_TEX_H * 4), 0,
+         "byte for byte");
+    okEq(WG_i_Count("glGenerateMipmap"), 1,
+         "and the chain is rebuilt, because the pixels changed under it");
+
+    /* A slot the engine never loaded gets a texture of its own rather
+       than a replacement into nothing. */
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    req.idx = 1;
+    req.dataPtr = (uint32_t*)wg_src;
+    wg_callLen = 0;
+    GL_Request(12, &req);
+    okEq(WG_i_Count("glTexImage2D"), 1, "an empty slot is filled");
+    okEq(WG_i_Count("glTexSubImage2D"), 0, "not replaced");
+
+    /* An index the table does not have must not be written through. */
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    req.idx = 99;
+    wg_callLen = 0;
+    GL_Request(12, &req);
+    okEq(WG_i_Count("glTexImage2D") + WG_i_Count("glTexSubImage2D"), 0,
+         "an index past the table is refused");
+
+    /* And a request type this renderer does not handle is harmless. */
+    wg_callLen = 0;
+    okEq(GL_Request(25, (void*)(size_t)1), 0, "an unhandled request answers");
+    okEq(wg_callLen, 0, "and does nothing");
+}
+
+static void caseTextureTeardown(void)
+{
+    printf("-- giving the textures back\n");
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    wg_callLen = 0;
+
+    GL_ReleaseTextures(&gl_dd);
+    okEq(WG_i_Count("glDeleteTextures"), 1, "the one texture is deleted");
+    ok(gl_textures == NULL, "and the table with it");
+
+    /* Twice in a row, which happens because the display teardown and a
+       world change both do it. */
+    wg_callLen = 0;
+    GL_ReleaseTextures(&gl_dd);
+    okEq(WG_i_Count("glDeleteTextures"), 0, "a second release deletes nothing");
+
+    /* And making the table again releases what was there, so a world
+       change does not leak the previous world's textures. */
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    wg_callLen = 0;
+    GL_TextureStore(&gl_dd, 3);
+    okEq(WG_i_Count("glDeleteTextures"), 1,
+         "a new table gives the old one's textures back");
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
     WG_AimThePointers();
+    WG_CheckThePointers();
     caseLoadsTheRealShaders();
     caseState();
     caseLayouts();
@@ -1125,6 +1800,14 @@ int main(void)
     caseViewport();
     caseNoViewport();
     caseClipControl();
+    caseTextureUpload();
+    caseTextureLevels();
+    caseSampler();
+    caseMaterialState();
+    caseAlphaTest();
+    caseUntextured();
+    caseProceduralUpload();
+    caseTextureTeardown();
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
     return fails ? 1 : 0;
 }

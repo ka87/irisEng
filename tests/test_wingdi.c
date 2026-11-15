@@ -33,6 +33,7 @@
 #include "../math.h"
 #include "../cameraengine.h"
 #include "../soft.h"
+#include "../rasterstate.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1753,6 +1754,266 @@ static void overlayPassCase(void)
     }
 }
 
+/* ---- the raster-state decode, against the renderer that acts on it ----
+ *
+ * rasterstate.c is the one reading of the material's flags word and of
+ * the draw mask, written so that a second renderer does not have to
+ * read the same bits a second time. This is what says the reading is
+ * right: the live Direct3D renderer is driven over every meaningful
+ * combination of those bits, and the state it ends up in is compared
+ * against what the decode said it should be.
+ *
+ * The expected values below are what the renderer writes, and that is
+ * a mixture: a D3D name at some sites and the plain number that name
+ * has in the real SDK at others -- the destination factors 5, 6 and 7,
+ * the addressing modes 1 and 3, the filters 1 and 2, the depth
+ * comparisons 3 and 4. tests/stub/d3d9.h gives the names deliberately
+ * arbitrary values, so a name is compared with the name and a number
+ * with the number -- which also means the stub cannot catch a mix-up
+ * at one of those five sites. Replacing them with their names is a
+ * change worth making on its own, with the stub given the real values
+ * at the same time, and not in passing here.
+ */
+static int rsDiffs;
+
+static void rsWant(const char* what, unsigned int flags, int drawMask,
+                   int got, int want)
+{
+    if (got == want)
+        return;
+    if (rsDiffs < 20)
+        printf("  DIFF raster state    %-14s flags %08x mask %08x:"
+               " want %d got %d\n", what, flags, (unsigned)drawMask, want, got);
+    rsDiffs++;
+}
+
+/* the five draw-mask bits this path reads */
+static const int rsDmBits[] = { 0x10, 0x800, 0x2000, 0x4000, 0x1000000 };
+
+static int rsDrawMask(unsigned int sel)
+{
+    int drawMask = 0;
+    int i;
+
+    for (i = 0; i < 5; i++)
+        if (sel & (1u << i))
+            drawMask |= rsDmBits[i];
+    return drawMask;
+}
+
+static int rsCombos;
+
+static void rsOne(unsigned int flags, int drawMask)
+{
+    tRst_State st;
+    int wantColorWrite;
+    int wantBlendOn, wantSrc, wantDst;
+
+    rsCombos++;
+
+    RST_Decode(flags, drawMask, &st);
+
+    /* Sentinels, so a state the renderer chose not to write
+       is told apart from one it wrote to the wanted value.
+       The fog colour keeps a third value for the same
+       reason. */
+    renderStateConfig.d3dFogEnable = 0x5A5A5A5A;
+    renderStateConfig.d3dFogColor = 0x5A5A5A5A;
+    D3DRenderParams.d3dFogModeProbably = 7;
+    renderStateConfig.d3dAlphaRef = 0x5A5A5A5A;
+    renderStateConfig.d3dAlphaBlendEnable = 0x5A5A5A5A;
+    renderStateConfig.d3dSrcBlend = 0x5A5A5A5A;
+    renderStateConfig.d3dDestBlend = 0x5A5A5A5A;
+
+    gpst_DX_stDD->drawMaskAllowedStuffCurrent = drawMask;
+    WGM_logLen = 0;
+    WGM_overflow = 0;
+    NEW_D3D_l_Texture_Init(0, (int)flags, 0);
+
+    /* texture addressing and sampling */
+    rsWant("address u", flags, drawMask,
+           samplerConfig[0].d3d_addressu,
+           st.addressU == RST_WRAP ? 1 : 3);
+    rsWant("address v", flags, drawMask,
+           samplerConfig[0].d3d_addressv,
+           st.addressV == RST_WRAP ? 1 : 3);
+    rsWant("min filter", flags, drawMask,
+           samplerConfig[0].d3d_minfilter,
+           st.filter == RST_LINEAR ? 2 : 1);
+    rsWant("mag filter", flags, drawMask,
+           samplerConfig[0].d3d_magfilter,
+           st.filter == RST_LINEAR ? 2 : 1);
+    rsWant("mip filter", flags, drawMask,
+           samplerConfig[0].d3d_mipfilter,
+           st.mipFilter == RST_LINEAR ? 2 : 1);
+
+    /* depth */
+    rsWant("depth cmp", flags, drawMask,
+           renderStateConfig.d3d_zFunc,
+           st.depthCompare == RST_DEPTH_EQUAL ? 3 : 4);
+    rsWant("depth write", flags, drawMask,
+           renderStateConfig.d3d_zWriteEnable, st.depthWrite);
+    rsWant("depth test", flags, drawMask,
+           renderStateConfig.d3d_zEnable,
+           st.depthTest ? D3DRenderParams.d3d_defaultZEnable : 0);
+
+    /* the pass as a whole */
+    rsWant("fill", flags, drawMask, renderStateConfig.d3dFillMode,
+           st.solidFill ? D3DFILL_SOLID : D3DFILL_WIREFRAME);
+    rsWant("cull", flags, drawMask, renderStateConfig.d3dCullMode,
+           st.cull == RST_CULL_NONE ? 1
+               : (st.cull == RST_CULL_CW ? D3DCULL_CW : D3DCULL_CCW));
+
+    /* colour write */
+    wantColorWrite = 0;
+    if (st.writeAlpha)
+        wantColorWrite |= D3DCOLORWRITEENABLE_ALPHA;
+    if (st.writeRGB)
+        wantColorWrite |= D3DCOLORWRITEENABLE_RED
+                        | D3DCOLORWRITEENABLE_GREEN
+                        | D3DCOLORWRITEENABLE_BLUE;
+    rsWant("colour write", flags, drawMask,
+           renderStateConfig.d3dColorWriteEnable, wantColorWrite);
+
+    /* the alpha test */
+    rsWant("alpha test", flags, drawMask,
+           renderStateConfig.d3dAlphaTest, st.alphaTest);
+    if (st.alphaTest)
+    {
+        rsWant("alpha cmp", flags, drawMask,
+               renderStateConfig.d3dAlphaFunc,
+               st.alphaCompare == RST_ALPHA_LESS ? D3DCMP_LESS
+                                                 : D3DCMP_GREATER);
+        rsWant("alpha ref", flags, drawMask,
+               renderStateConfig.d3dAlphaRef, st.alphaRef);
+    }
+    else
+    {
+        rsWant("alpha ref kept", flags, drawMask,
+               renderStateConfig.d3dAlphaRef, 0x5A5A5A5A);
+    }
+    rsWant("mask alpha", flags, drawMask,
+           (int)D3DRenderParams.colorMaskAlpha,
+           (int)st.colorMaskAlpha);
+
+    /* blending. KEEP means the renderer wrote nothing, so
+       the three sentinels have to survive. */
+    wantBlendOn = 1;
+    wantSrc = 0x5A5A5A5A;
+    wantDst = 0x5A5A5A5A;
+    switch (st.blend)
+    {
+    case RST_BLEND_KEEP:
+        wantBlendOn = 0x5A5A5A5A;
+        break;
+    case RST_BLEND_OFF:
+        wantBlendOn = 0;
+        wantSrc = D3DBLEND_ONE;
+        wantDst = D3DBLEND_ZERO;
+        break;
+    case RST_BLEND_SRC_ALPHA:
+        wantSrc = st.blendInverted ? D3DBLEND_INVSRCALPHA
+                                   : D3DBLEND_SRCALPHA;
+        wantDst = st.blendInverted ? 5 : 6;
+        break;
+    case RST_BLEND_PREMULTIPLIED:
+        wantSrc = D3DBLEND_ONE;
+        wantDst = st.blendInverted ? D3DBLEND_SRCALPHA
+                                   : D3DBLEND_INVSRCALPHA;
+        break;
+    case RST_BLEND_DEST_ALPHA:
+        wantSrc = st.blendInverted ? D3DBLEND_INVDESTALPHA
+                                   : D3DBLEND_DESTALPHA;
+        wantDst = st.blendInverted ? 7 : D3DBLEND_INVDESTALPHA;
+        break;
+    case RST_BLEND_DEST_ALPHA_ADD:
+        wantSrc = st.blendInverted ? D3DBLEND_INVDESTALPHA
+                                   : D3DBLEND_DESTALPHA;
+        wantDst = D3DBLEND_ONE;
+        break;
+    case RST_BLEND_ADD:
+        wantSrc = D3DBLEND_ONE;
+        wantDst = D3DBLEND_ONE;
+        break;
+    case RST_BLEND_INV_SRC_COLOR:
+        wantSrc = D3DBLEND_ZERO;
+        wantDst = D3DBLEND_INVSRCCOLOR;
+        break;
+    }
+    rsWant("blend on", flags, drawMask,
+           renderStateConfig.d3dAlphaBlendEnable, wantBlendOn);
+    rsWant("src blend", flags, drawMask,
+           renderStateConfig.d3dSrcBlend, wantSrc);
+    rsWant("dst blend", flags, drawMask,
+           renderStateConfig.d3dDestBlend, wantDst);
+    /* the renderer's own flag for one of the eight */
+    rsWant("blend case 3", flags, drawMask, d3d_alphablendIsCase3,
+           st.blend == RST_BLEND_DEST_ALPHA);
+
+    /* fog */
+    rsWant("fog allowed", flags, drawMask,
+           renderStateConfig.d3dFogEnable, st.fogAllowed);
+    rsWant("fog variant", flags, drawMask,
+           D3DRenderParams.d3dFogModeProbably,
+           st.fogVariant == RST_FOG_KEEP ? 7 : st.fogVariant);
+    rsWant("fog colour", flags, drawMask,
+           renderStateConfig.d3dFogColor,
+           st.fogVariant == RST_FOG_KEEP ? 0x5A5A5A5A
+               : (st.fogUsesSecondColor
+                      ? D3DRenderParams.d3dFogColor2Case5and6
+                      : D3DRenderParams.d3dFogColor));
+}
+
+static void rasterStateCase(void)
+{
+    unsigned int low;
+    unsigned int mode;
+    unsigned int dmSel;
+
+
+    /* Two distinct fog colours, so which one the pass chose is visible,
+       and a fog variant that is none of the three the modes select, so
+       the renderer never takes its "already in that variant" early
+       return and every mode is actually exercised. */
+    D3DRenderParams.d3dFogColor = 0x11223344;
+    D3DRenderParams.d3dFogColor2Case5and6 = 0x55667788;
+    D3DRenderParams.d3d_defaultZEnable = 1;
+
+    /* Every combination of the eleven low bits, the sixteen modes and
+       the five draw-mask bits: a million and a bit, which costs about
+       a second and leaves nothing to argue about. Exhaustive rather
+       than sampled because the interactions are what is subtle here --
+       one bit reverses both the alpha comparison and the blend
+       equation the mode selected, two of the modes name a blend
+       equation and no fog variant, and the draw mask can forbid what a
+       flag asks for. The alpha reference rotates through all
+       sixty-four of its values alongside, and bits 22 and 23 rotate
+       with it -- those two sit inside the shift the reference is taken
+       from and are then masked away, so a sweep that leaves them clear
+       cannot see a reference that keeps eight bits instead of six.
+       This one did not, and the mutation went through. */
+    for (low = 0; low < 0x800u; low++)
+        for (mode = 0; mode < 16u; mode++)
+            for (dmSel = 0; dmSel < 32u; dmSel++)
+                rsOne(low | (mode << 16)
+                          | ((unsigned int)(rsCombos & 0x3F) << 24)
+                          | ((unsigned int)(rsCombos & 0xC0) << 16),
+                      rsDrawMask(dmSel));
+
+    casesRun += rsCombos;
+    if (rsDiffs)
+    {
+        printf("  %d raster-state difference(s) over %d combinations\n",
+               rsDiffs, rsCombos);
+        diffs++;
+    }
+    else
+    {
+        printf("  the raster-state decode agrees with the renderer over"
+               " %d combinations\n", rsCombos);
+    }
+}
+
 int main(void)
 {
     /* The overlay's shape batch moved from win/wingdi.h's own vertex
@@ -1806,6 +2067,7 @@ int main(void)
     }
 
     overlayPassCase();
+    rasterStateCase();
 
     printf("  %d cases, %lld engine calls compared\n", casesRun, callsCompared);
     printf("  guard distribution:\n");

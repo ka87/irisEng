@@ -4,6 +4,8 @@
 #include "wingdimath.h"
 #include "../projection.h"
 #include "../geovertex.h"
+#include "../rasterstate.h"
+#include "../textures.h"
 #include "../cameraengine.h"
 #include "../soft.h"
 #include "../dbg.h"
@@ -39,6 +41,34 @@ static GL_pfn_CreateContextAttribs gl_createContextAttribs;
 static HMODULE gl_module;
 
 static tGlRenderState gl_state;
+
+typedef struct sGlTexture
+{
+    GLuint name;
+    int    hasLevels;   /* a mip chain was generated for it */
+} tGlTexture;
+
+static tGlTexture* gl_textures;
+static int         gl_textureNum;
+
+/* Whether this renderer generates mip chains at all. The other
+   renderer reads a device capability for this; here it is simply on,
+   kept as a variable so that the one place that decides is visible. */
+static int gl_mipmapping = 1;
+
+/* The alpha the vertex colours are combined with, as the last
+   material asked for it. */
+static int gl_colorMaskAlpha;
+
+typedef struct sGlMaterial
+{
+    int   textured;
+    int   alphaMode;    /* 0 none, 1 keep above the reference, 2 below */
+    float alphaRef;     /* 0..1 */
+} tGlMaterial;
+
+static tGlMaterial gl_material;
+
 
 /* Defined with the rest of the 2D pass, at the bottom; GL_Close has
    to call it while the context is still current. */
@@ -286,9 +316,11 @@ static void GL_l_SayWhatThisIs(void)
         (const char*)GLFN_glGetString(GL_VENDOR),
         (const char*)GLFN_glGetString(GL_RENDERER),
         (const char*)GLFN_glGetString(GL_SHADING_LANGUAGE_VERSION));
-    DBG_OutputDebugString("GL: this renderer clears and presents; "
-                          "geometry, textures, video and text are not "
-                          "drawn through it yet\n");
+    DBG_OutputDebugString("GL: this renderer draws the overlay, its text "
+                          "and the textured world; video, sprites, the "
+                          "sun's occlusion test and the render-target "
+                          "passes are not drawn through it yet, and "
+                          "culling is off\n");
 }
 
 static void GL_l_SizeFromWindow(HWND hwnd)
@@ -539,6 +571,11 @@ static Mtx4x4     gl_viewMtx;
 static Mtx4x4     gl_projMtx;
 static tGlProgram gl_geoProgram;
 static GLint      gl_geoViewProj = -1;
+static GLint      gl_geoTex = -1;
+static GLint      gl_geoTextured = -1;
+static GLint      gl_geoAlphaMode = -1;
+static GLint      gl_geoAlphaRef = -1;
+static GLint      gl_geoDiffuse2x = -1;
 static GLuint     gl_geoVao;
 static GLuint     gl_geoBuffer;
 static int        gl_geoTried;
@@ -562,6 +599,11 @@ static int GL_l_b_GeometryReady(void)
     if (!GL_b_ProgramLoad(&gl_geoProgram, "geometry.vert", "geometry.frag"))
         return 0;
     gl_geoViewProj = GL_i_ProgramUniform(&gl_geoProgram, "uViewProj");
+    gl_geoTex = GL_i_ProgramUniform(&gl_geoProgram, "uTex");
+    gl_geoTextured = GL_i_ProgramUniform(&gl_geoProgram, "uTextured");
+    gl_geoAlphaMode = GL_i_ProgramUniform(&gl_geoProgram, "uAlphaMode");
+    gl_geoAlphaRef = GL_i_ProgramUniform(&gl_geoProgram, "uAlphaRef");
+    gl_geoDiffuse2x = GL_i_ProgramUniform(&gl_geoProgram, "uDiffuse2x");
 
     GLFN_glGenBuffers(1, &gl_geoBuffer);
     GLFN_glGenVertexArrays(1, &gl_geoVao);
@@ -608,6 +650,11 @@ static void GL_l_ForgetGeometry(void)
     gl_geoBuffer = 0;
     gl_geoVao = 0;
     gl_geoViewProj = -1;
+    gl_geoTex = -1;
+    gl_geoTextured = -1;
+    gl_geoAlphaMode = -1;
+    gl_geoAlphaRef = -1;
+    gl_geoDiffuse2x = -1;
     gl_geoTried = 0;
     gl_geoReady = 0;
     free(gl_geoVerts);
@@ -713,10 +760,9 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
     src.second = bb ? bb->vertexColorArraySecond : NULL;
     src.mask = bb ? bb->colorMask : 0;
 
-    /* The other renderer reads this out of its own state, where it is
-       the alpha the colour mask is combined with. This renderer has
-       no equivalent yet, so it contributes nothing. */
-    src.alpha = 0;
+    /* The alpha the material asked for, which the other renderer also
+       keeps in its own state and reads here. */
+    src.alpha = gl_colorMaskAlpha;
     src.solidColor = src.colors
                          ? 0
                          : GVX_ui_SolidColor(src.mask, src.alpha,
@@ -729,6 +775,21 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
     if (gl_geoViewProj >= 0)
         GLFN_glUniformMatrix4fv(gl_geoViewProj, 1, GL_FALSE,
                                 (const GLfloat*)&gl_viewProjMtx);
+    /* The material, as the last GL_TextureInit left it. The texture
+       itself is already bound to unit zero there; what the shader
+       cannot be told through the pipeline goes here. */
+    if (gl_geoTextured >= 0)
+        GLFN_glUniform1i(gl_geoTextured, gl_material.textured);
+    if (gl_geoAlphaMode >= 0)
+        GLFN_glUniform1i(gl_geoAlphaMode, gl_material.alphaMode);
+    if (gl_geoAlphaRef >= 0)
+        GLFN_glUniform1f(gl_geoAlphaRef, gl_material.alphaRef);
+    if (gl_geoTex >= 0)
+        GLFN_glUniform1i(gl_geoTex, 0);
+    /* A display setting, read at the draw rather than kept with the
+       material, because the engine can change it between the two. */
+    if (gl_geoDiffuse2x >= 0)
+        GLFN_glUniform1i(gl_geoDiffuse2x, GDI_gi_Diffuse2x ? 1 : 0);
     GLFN_glBindVertexArray(gl_geoVao);
     GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoBuffer);
     GLFN_glBufferData(GL_ARRAY_BUFFER,
@@ -739,20 +800,378 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
     return 0;
 }
 
-/* the upload queue waits on textures */
+/* ------------------------------------------------------- textures
+ *
+ * The engine refers to a texture by its index into TEX_gst_GlobalList,
+ * and by nothing else: that index is what arrives in an upload
+ * request and what arrives with every material. So the table below is
+ * the whole mapping, one OpenGL name per entry.
+ *
+ * Two indices are not indices. -1 means "no texture, use the vertex
+ * colour alone" and -2 means the renderer's own copy of what it has
+ * already drawn, which this renderer has no render targets for yet. A
+ * negative index with the top bit set is a shadow texture, which
+ * waits on the same thing.
+ */
+
+static tGlTexture* GL_l_p_Texture(int textureID)
+{
+    if (!gl_textures || textureID < 0 || textureID >= gl_textureNum)
+        return NULL;
+    if (!gl_textures[textureID].name)
+        return NULL;
+    return &gl_textures[textureID];
+}
+
+int GL_TextureStore(struct sGdi_DisplayData* dd, int textureNum)
+{
+    int count;
+
+    (void)dd;
+
+    /* One more entry than the engine asked for, and at least two: the
+       other renderer sizes its array the same way, and the engine
+       does index the extra one. */
+    count = textureNum ? textureNum : 1;
+    GL_ReleaseTextures(dd);
+    gl_textures = (tGlTexture*)calloc((size_t)count + 1, sizeof(tGlTexture));
+    if (!gl_textures)
+        return 0;
+    gl_textureNum = count + 1;
+    return 1;
+}
+
+void GL_ReleaseTextures(struct sGdi_DisplayData* dd)
+{
+    int i;
+
+    (void)dd;
+
+    if (!gl_textures)
+        return;
+    if (gl_state.context)
+        for (i = 0; i < gl_textureNum; i++)
+            if (gl_textures[i].name)
+                GLFN_glDeleteTextures(1, &gl_textures[i].name);
+    free(gl_textures);
+    gl_textures = NULL;
+    gl_textureNum = 0;
+}
+
+/* How many mip levels a texture of this size has, counting the full
+   one. OpenGL wants the number; the other renderer passes zero and
+   lets the device work it out. */
+static int GL_l_i_LevelCount(int width, int height)
+{
+    int longest = width > height ? width : height;
+    int levels = 1;
+
+    while (longest > 1)
+    {
+        longest >>= 1;
+        levels++;
+    }
+    return levels;
+}
+
+/* The one place a texture's pixels reach the card. The engine has
+   already converted whatever was in the file into 32-bit words in the
+   order the renderer wants, so there is nothing to unpack here: the
+   rows are tightly packed and four bytes to a pixel. */
+static int GL_l_b_Upload(tGlTexture* slot, int width, int height,
+                         const void* pixels, int wantLevels)
+{
+    GLuint name = 0;
+
+    if (!gl_state.context || width <= 0 || height <= 0 || !pixels)
+        return 0;
+
+    GLFN_glGenTextures(1, &name);
+    if (!name)
+        return 0;
+    GLFN_glBindTexture(GL_TEXTURE_2D, name);
+    GLFN_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    GLFN_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
+                      GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+
+    slot->hasLevels = 0;
+    if (wantLevels)
+    {
+        /* The levels have to exist before a sampler is allowed to ask
+           for them: a mip-filtered sampler on a texture with only the
+           full level is incomplete, and an incomplete texture samples
+           as black rather than failing. That is why the slot
+           remembers, and why GL_l_TextureSampler reads it. */
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL,
+                             GL_l_i_LevelCount(width, height) - 1);
+        GLFN_glGenerateMipmap(GL_TEXTURE_2D);
+        slot->hasLevels = 1;
+    }
+    else
+    {
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    }
+
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    slot->name = name;
+    return 1;
+}
+
+void GL_PaletteLoad(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* tle,
+                    struct sEngTexIntermediateStruct* inter, int idx)
+{
+    int     depth;
+    int     width;
+    int     height;
+    int16_t texFlags;
+    int     wantLevels;
+
+    if (!dd || !tle || !inter)
+        return;
+
+    depth = inter->colorDepth2;
+
+    /* Preserved from the other renderer, and the other way round than
+       it reads: the element's width field holds the height of the
+       picture and its height field holds the width. textures.c fills
+       them that way and both renderers have to undo it the same way
+       or every texture arrives transposed. */
+    width = tle->normalData.height;
+    height = tle->normalData.width;
+
+    /* Whether this texture gets a mip chain, and the engine's own
+       record of it: tle->texElemFlag is read outside the renderer, so
+       it is set here exactly as the other renderer sets it. */
+    texFlags = inter->tp.flagsUnkAndProceduralUnkb1;
+    if (!gl_mipmapping || (texFlags & 0x40) != 0 || (texFlags & 0x200) != 0
+        || inter->tp.type == 5)
+    {
+        inter->bmpUnkb1 &= ~0x10u;
+        wantLevels = 0;
+    }
+    else
+    {
+        inter->bmpUnkb1 |= 0x10u;
+        wantLevels = 1;
+    }
+    tle->texElemFlag = inter->bmpUnkb1;
+
+    if (idx < 0 || idx >= gl_textureNum)
+        return;
+    if (depth != 32 && depth != 24)
+    {
+        /* The engine converts both of those to 32-bit words before
+           handing them over; anything else it does not convert, and
+           the other renderer leaves the slot empty too. */
+        gl_textures[idx].name = 0;
+        gl_textures[idx].hasLevels = 0;
+        return;
+    }
+
+    if (GL_l_b_Upload(&gl_textures[idx], width, height, inter->imgDataPtr,
+                      wantLevels))
+        dd->texManager.paletteUsedMemory += (depth == 32 ? 4 : 3)
+                                            * width * height;
+}
+
+/* The engine's procedural textures hand their pixels over this way,
+   once a frame each. */
+static void GL_l_TextureStoreRequest(tTexUploadRequest* req)
+{
+    tEngTexListElemStruct* tle;
+    tGlTexture*            slot;
+    int                    width;
+    int                    height;
+
+    if (!req || !req->dataPtr || !TEX_gst_GlobalList.texElems)
+        return;
+    if ((int)req->idx < 0 || (int)req->idx >= gl_textureNum)
+        return;
+
+    tle = &TEX_gst_GlobalList.texElems[req->idx];
+    width = tle->normalData.height;   /* as in GL_PaletteLoad */
+    height = tle->normalData.width;
+    slot = &gl_textures[req->idx];
+
+    /* An existing name is replaced in place rather than recreated: a
+       procedural texture is re-uploaded every frame it changes, and
+       the sampler state set on it would be lost with it. */
+    if (slot->name && gl_state.context)
+    {
+        GLFN_glBindTexture(GL_TEXTURE_2D, slot->name);
+        GLFN_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        GLFN_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
+                             GL_BGRA, GL_UNSIGNED_BYTE, req->dataPtr);
+        if (slot->hasLevels)
+            GLFN_glGenerateMipmap(GL_TEXTURE_2D);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+        return;
+    }
+    GL_l_b_Upload(slot, width, height, req->dataPtr, 0);
+}
+
 int GL_Request(int type, void* param)
 {
-    (void)type;
-    (void)param;
+    switch (type)
+    {
+    case 12:
+        GL_l_TextureStoreRequest((tTexUploadRequest*)param);
+        break;
+    default:
+        /* Fog parameters, sprites, snapshots and the rest still wait
+           on the passes that use them. */
+        break;
+    }
     return 0;
 }
 
-/* textures wait on the texture stage */
-void GL_TextureInit(int a1, int a2, char a3)
+/* --------------------------------------------- the per-draw state */
+
+/* What the fragment shader needs that the pipeline cannot hold: core
+   OpenGL has no alpha test, so the comparison is done there. */
+/* The min filter is the two filters together, and which combinations
+   are allowed depends on the texture: see the comment in
+   GL_l_b_Upload. */
+static GLenum GL_l_e_MinFilter(const tRst_State* st, int hasLevels)
 {
-    (void)a1;
-    (void)a2;
-    (void)a3;
+    if (!hasLevels)
+        return st->filter == RST_LINEAR ? GL_LINEAR : GL_NEAREST;
+    if (st->filter == RST_LINEAR)
+        return st->mipFilter == RST_LINEAR ? GL_LINEAR_MIPMAP_LINEAR
+                                           : GL_LINEAR_MIPMAP_NEAREST;
+    return st->mipFilter == RST_LINEAR ? GL_NEAREST_MIPMAP_LINEAR
+                                       : GL_NEAREST_MIPMAP_NEAREST;
+}
+
+static void GL_l_Blend(const tRst_State* st)
+{
+    GLenum src;
+    GLenum dst;
+
+    switch (st->blend)
+    {
+    case RST_BLEND_KEEP:
+        /* The material names no equation, so the last one stands.
+           The other renderer does the same. */
+        return;
+    case RST_BLEND_OFF:
+        GLFN_glDisable(GL_BLEND);
+        GLFN_glBlendFunc(GL_ONE, GL_ZERO);
+        return;
+    case RST_BLEND_SRC_ALPHA:
+        src = st->blendInverted ? GL_ONE_MINUS_SRC_ALPHA : GL_SRC_ALPHA;
+        dst = st->blendInverted ? GL_SRC_ALPHA : GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case RST_BLEND_PREMULTIPLIED:
+        src = GL_ONE;
+        dst = st->blendInverted ? GL_SRC_ALPHA : GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case RST_BLEND_DEST_ALPHA:
+        src = st->blendInverted ? GL_ONE_MINUS_DST_ALPHA : GL_DST_ALPHA;
+        dst = st->blendInverted ? GL_DST_ALPHA : GL_ONE_MINUS_DST_ALPHA;
+        break;
+    case RST_BLEND_DEST_ALPHA_ADD:
+        src = st->blendInverted ? GL_ONE_MINUS_DST_ALPHA : GL_DST_ALPHA;
+        dst = GL_ONE;
+        break;
+    case RST_BLEND_ADD:
+        src = GL_ONE;
+        dst = GL_ONE;
+        break;
+    case RST_BLEND_INV_SRC_COLOR:
+        src = GL_ZERO;
+        dst = GL_ONE_MINUS_SRC_COLOR;
+        break;
+    default:
+        return;
+    }
+    GLFN_glEnable(GL_BLEND);
+    GLFN_glBlendFunc(src, dst);
+}
+
+void GL_TextureInit(int textureID, int flags, char mode)
+{
+    tRst_State  st;
+    tGlTexture* slot;
+
+    if (!gl_state.context || !gpst_DX_stDD)
+        return;
+
+    if ((mode & 1) != 0)
+    {
+        /* The projected-texture pass: a shadow or a reflection drawn
+           through a camera-space texture transform, sampling what the
+           renderer has already drawn. It waits on render targets,
+           which this renderer has none of yet, and the texture-UV
+           mode the other renderer sets here is read only by that
+           renderer -- so setting it from here would be bookkeeping
+           for a pass that does not run. */
+        return;
+    }
+    if ((mode & 2) != 0)
+        return;
+
+    RST_Decode((unsigned int)flags,
+               gpst_DX_stDD->drawMaskAllowedStuffCurrent, &st);
+
+    GLFN_glPolygonMode(GL_FRONT_AND_BACK, st.solidFill ? GL_FILL : GL_LINE);
+
+    if (st.depthTest)
+        GLFN_glEnable(GL_DEPTH_TEST);
+    else
+        GLFN_glDisable(GL_DEPTH_TEST);
+    GLFN_glDepthFunc(st.depthCompare == RST_DEPTH_EQUAL ? GL_EQUAL : GL_LEQUAL);
+    GLFN_glDepthMask(st.depthWrite ? GL_TRUE : GL_FALSE);
+
+    /* Culling is decoded and deliberately not applied. Which winding
+       the engine calls front depends on the projection as well as on
+       the geometry, and a wrong guess here takes holes out of the
+       world that look exactly like a texture or a projection fault.
+       It is one constant to turn on once there is real output to look
+       at; until then everything is drawn. */
+    GLFN_glDisable(GL_CULL_FACE);
+
+    GLFN_glColorMask(st.writeRGB ? GL_TRUE : GL_FALSE,
+                     st.writeRGB ? GL_TRUE : GL_FALSE,
+                     st.writeRGB ? GL_TRUE : GL_FALSE,
+                     st.writeAlpha ? GL_TRUE : GL_FALSE);
+
+    GL_l_Blend(&st);
+
+    /* Core OpenGL dropped the alpha test, so the shader does it. The
+       reference is a byte on the engine's side and a normalised float
+       in the shader. */
+    gl_material.alphaMode = st.alphaTest
+                                ? (st.alphaCompare == RST_ALPHA_LESS ? 2 : 1)
+                                : 0;
+    gl_material.alphaRef = (float)st.alphaRef / 255.0f;
+
+    slot = GL_l_p_Texture(textureID);
+    gl_material.textured = slot != NULL;
+    if (slot)
+    {
+        GLFN_glActiveTexture(GL_TEXTURE0);
+        GLFN_glBindTexture(GL_TEXTURE_2D, slot->name);
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+                             st.addressU == RST_WRAP ? GL_REPEAT
+                                                     : GL_CLAMP_TO_EDGE);
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+                             st.addressV == RST_WRAP ? GL_REPEAT
+                                                     : GL_CLAMP_TO_EDGE);
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                             (GLint)GL_l_e_MinFilter(&st, slot->hasLevels));
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                             st.filter == RST_LINEAR ? GL_LINEAR : GL_NEAREST);
+        GLFN_glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS,
+                             tweak_mipmaplodbias);
+    }
+
+    /* The alpha the vertex colours are combined with. The other
+       renderer keeps it in its own parameters too; the vertex builder
+       is handed it at draw time. */
+    gl_colorMaskAlpha = (int)st.colorMaskAlpha;
 }
 
 /* sprites are geometry too */
@@ -764,24 +1183,10 @@ int GL_DrawSprites(tGeoSprites* a1, Vec3* a2, int num)
     return 0;
 }
 
-/* textures wait on the texture stage */
-int GL_TextureStore(struct sGdi_DisplayData* a1, int a2)
-{
-    (void)a1;
-    (void)a2;
-    return 0;
-}
-
-/* palettes wait on textures */
-void GL_PaletteLoad(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* a2, struct sEngTexIntermediateStruct* a3, int a4)
-{
-    (void)a1;
-    (void)a2;
-    (void)a3;
-    (void)a4;
-}
-
-/* palettes wait on textures */
+/* The engine offers a renderer the chance to upload a texture with
+   its palette left on the card, and only asks when a display setting
+   is on that is off by default. Answering no sends it down
+   GL_PaletteLoad, which is where this renderer does the work. */
 int GL_SetTexturePalette(struct sGdi_DisplayData* a1, struct sEngTexListElemStruct* a2, struct sEngTexIntermediateStruct* a3, int a4)
 {
     (void)a1;
@@ -791,7 +1196,9 @@ int GL_SetTexturePalette(struct sGdi_DisplayData* a1, struct sEngTexListElemStru
     return 0;
 }
 
-/* nothing was loaded, so nothing is unloaded */
+/* Dropping one palette, which this renderer does not keep separately
+   -- a texture's colours are in the texture. The other renderer's
+   entry is empty too. */
 void GL_TextureUnload(struct sGdi_DisplayData* a1, struct sEngPaletteElem *a2, int a3)
 {
     (void)a1;
@@ -806,12 +1213,6 @@ void GL_SetTextureTarget(struct sGdi_DisplayData* a1, int a2, int a3, int a4)
     (void)a2;
     (void)a3;
     (void)a4;
-}
-
-/* nothing was loaded */
-void GL_ReleaseTextures(struct sGdi_DisplayData* dd)
-{
-    (void)dd;
 }
 
 /* shadow targets wait on the framebuffer stage */

@@ -26,12 +26,21 @@ struct sGlRenderState;
        [render]
        backend = gl
 
-   What it does so far is come up, clear and present. Nothing is drawn
-   through it yet: the entries for geometry, textures, video and the
-   sun's occlusion test are present and inert, because an interface
-   entry left NULL is a crash rather than a missing feature. Each one
-   carries a comment saying what it waits on, and the log says it once
-   at startup.
+   What it does so far: comes up, clears and presents; draws the
+   debug overlay and its text; and draws the world's geometry with
+   its textures, its sampler and blend state, and its alpha test.
+   What it does not do yet is the video display, the sun's occlusion
+   test, sprites, the cached geometry path and the projected-texture
+   pass -- all of which need a render target. Those interface entries
+   are present and inert, because an entry left NULL is a crash
+   rather than a missing feature; each carries a comment saying what
+   it waits on, and the log says it once at startup.
+
+   Culling is decoded from the draw mask and deliberately not applied,
+   so everything is drawn: which winding the engine calls front
+   depends on the projection as well as on the geometry, and a wrong
+   guess takes holes out of the world that look like a texture or a
+   projection fault.
 
    The context is 4.5 core. There is no fallback to a lower version
    and no compatibility profile: the point of the rewrite is the
