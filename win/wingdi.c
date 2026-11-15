@@ -146,6 +146,40 @@ static void D3D_SamplerStateSetF(int sampler, float* current, DWORD state, float
     }
 }
 
+/* The drawing state the engine asks for by meaning, as the interface
+   in tGdi_DisplayData carries it. Each one is the cached setter the
+   rest of this file already uses, so a value that is already in
+   force costs nothing and the device sees exactly the calls it saw
+   when these were written out at the call sites. */
+void D3D_SetZEnable(int on)
+{
+    D3D_RenderStateSet(&renderStateConfig.d3d_zEnable, D3DRS_ZENABLE, on);
+}
+
+int D3D_i_ZEnable(void)
+{
+    return renderStateConfig.d3d_zEnable;
+}
+
+void D3D_SetZWriteEnable(int on)
+{
+    D3D_RenderStateSet(&renderStateConfig.d3d_zWriteEnable, D3DRS_ZWRITEENABLE,
+                       on);
+}
+
+void D3D_SetTexCoordIndex(int stage, int index)
+{
+    D3D_StageStateSet(stage, &textureStageTypeConfig[stage].d3dTexCoordIndex,
+                      D3DTSS_TEXCOORDINDEX, index);
+}
+
+void D3D_SetTextureTransformFlags(int stage, int flags)
+{
+    D3D_StageStateSet(stage,
+                      &textureStageTypeConfig[stage].d3dTextureTransformFlags,
+                      D3DTSS_TEXTURETRANSFORMFLAGS, flags);
+}
+
 static void D3D_SetFixedFunctionFVF(int fvf)
 {
     renderStateConfig.vertexShader = NULL;

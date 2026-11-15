@@ -101,6 +101,61 @@ The picker returns a row and does not draw through it — the caller
 does that. That is what keeps it testable without a display, and
 there is a check that it stays true.
 
+## Drawing state the engine asks for by meaning
+
+A renderer cannot be swapped while the engine reaches past the
+interface into the one it happens to have. Five of those reaches were
+render-state pokes, written out at the call site in
+`graphicsobjects/shadow.c` and `materialanddraw.c` — each one a check
+against Direct3D's own state cache, a write to it, and a device call
+with a `D3DRS_` or `D3DTSS_` name.
+
+They are interface entries now:
+
+```c
+void(* SetZEnable)(int on);
+int (* i_ZEnable)(void);
+void(* SetZWriteEnable)(int on);
+void(* SetTexCoordIndex)(int stage, int index);
+void(* SetTextureTransformFlags)(int stage, int flags);
+```
+
+The engine asks for what it wants and stops knowing that a cache
+exists at all. Keeping one is the renderer's own business: the D3D
+implementations are the cached setters the rest of `wingdi.c` already
+used, so a value already in force still costs nothing and the device
+sees exactly the calls it saw before.
+
+`i_ZEnable` is there because `SDW_RenderShadow` saves the depth state,
+draws, and puts it back. That read has to go somewhere, and a getter
+is honest about it — the alternative, a save/restore pair inside the
+renderer, would have been a second thing to get right.
+
+### How this was shown not to change anything
+
+`materialanddraw.c` has a frozen differential harness, and it is the
+right instrument for exactly this: the frozen copy pokes the mocked
+device directly, the rewrite goes through the interface, and both are
+driven over identical state with the device's calls recorded in
+order. 1280 cases, 0 differing — including the state caches, which
+the harness randomises and compares.
+
+The mocks for the two new entries are **written out in the harness
+rather than calling the renderer's own**, which is not linked there.
+That is what makes the comparison a check on the call sites. Four
+defects injected into them were all caught: either call dropped, the
+wrong index passed, and the two calls swapped round. Dropping the
+cache check inside the mock is caught too, which is what makes those
+four mean anything — without it the recorded sequence would not
+depend on the cache.
+
+**`graphicsobjects/shadow.c` has no harness**, so its two sites rest
+on the equivalence being exact rather than measured:
+`if (cache != v) { cache = v; device(v); }` written out is precisely
+what `D3D_RenderStateSet` does, and the restore site's
+`if (cache != backup)` is the same call with `backup` for `v`. Worth
+knowing which of the two files is measured and which is read.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the
