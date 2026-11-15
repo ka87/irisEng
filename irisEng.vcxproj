@@ -349,6 +349,7 @@
     <ClCompile Include="win\adpcm.c" />
     <ClCompile Include="win\wingdi.c" />
     <ClCompile Include="win\wingdi_aftereffects.c" />
+    <ClCompile Include="win\wingdisun.c" />
     <ClCompile Include="win\wingdivideo.c" />
     <ClCompile Include="win\wininputoutput.c" />
     <ClCompile Include="win\overlay.c" />
@@ -506,6 +507,7 @@
     <ClInclude Include="ways.h" />
     <ClInclude Include="win\adpcm.h" />
     <ClInclude Include="win\eax\eax.h" />
+    <ClInclude Include="win\wingdisun.h" />
     <ClInclude Include="win\wingdivideo.h" />
     <ClInclude Include="win\wingdi.h" />
     <ClInclude Include="win\wininputoutput.h" />

@@ -525,7 +525,13 @@ void GFX_FreeOne(tGfxElem* a1)
             GFX_Ripple_Destroy((tGfxRippleData*)(a1->privateData));
             break;
         case 18:
-            GFX_Sun_Destroy(&(((tGfxSunData*)(a1->privateData))->d3dStuff));
+            /* EDITED, and the only edit in this frozen copy: the sun's
+               renderer state became an opaque handle the renderer owns,
+               so this call takes the sun rather than the address of a
+               Direct3D struct that no longer exists. The consequence is
+               that this one call is no longer compared against the
+               rewrite -- everything else in this function still is. */
+            GFX_Sun_Destroy((tGfxSunData*)a1->privateData);
             break;
         }
     }

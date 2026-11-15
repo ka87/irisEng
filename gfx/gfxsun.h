@@ -1,26 +1,6 @@
 #pragma once
-#include <d3d9.h>
 #include "../gameobject.h"
 #include "../gfx.h"
-
-typedef struct sGfxSunD3DSpecificDataInner
-{
-    IDirect3DSurface9* d3dppSurface;
-    int bitMask;
-    float alphaThreshold;
-} tGfxSunD3DSpecificDataInner;
-
-typedef struct sGfxSunD3DSpecificData
-{
-    int ptrElemSize;
-    int maxElemNum;
-    tGfxSunD3DSpecificDataInner* currPtrInner;
-    tGfxSunD3DSpecificDataInner* firstPtrInner;
-    tGfxSunD3DSpecificDataInner* ptr;
-    tGfxSunD3DSpecificDataInner elems[3];
-    IDirect3DTexture9* d3dTexture;
-    IDirect3DSurface9* d3dRenderTarget;
-} tGfxSunD3DSpecificData;
 
 typedef struct sGfxSunDataInner
 {
@@ -63,25 +43,22 @@ typedef struct sGfxSunData
     float rayLums[8];
     int alphaThresholdFlags;
     Vec3 v2;
-    tGfxSunD3DSpecificData d3dStuff;
+    /* The renderer's own state for this sun's occlusion test: it
+       made it, it owns it, and nothing here looks inside. */
+    void* sampler;
 } tGfxSunData;
 
-typedef struct sD3dStrectRectUnkStruct
-{
-    int x;
-    int y;
-} tD3dStrectRectUnkStruct;
-
-typedef struct sD3dStrectRectUnkStructFloats
+/* One of the ring of offsets the occlusion test looks at, around the
+   sun and scaled by its multiplier. */
+typedef struct sGfxSunRingOffset
 {
     float x;
     float y;
-} tD3dStrectRectUnkStructFloats;
+} tGfxSunRingOffset;
 
-int gSunEffectOnOffArray[16];
 int sunUnkCnt;
 
 struct sGfxSunData* GFX_Sun_Create(void);
-void GFX_Sun_Destroy(struct sGfxSunD3DSpecificData* sun3d);
+void GFX_Sun_Destroy(struct sGfxSunData* sun);
 void GFX_Sun_Render(struct sGfxSunData* sun);
 void GFX_Sun_Seti(struct sGfxSunData* sun, int id);

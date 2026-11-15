@@ -492,7 +492,7 @@ void GFX_FreeOne(tGfxElem* elem)
         GFX_Gao_Destroy((tGfxGaoData*)(elem->privateData));
         break;
     case 18:
-        GFX_Sun_Destroy(&(((tGfxSunData*)(elem->privateData))->d3dStuff));
+        GFX_Sun_Destroy((tGfxSunData*)elem->privateData);
         break;
     case 19:
         GFX_Str_Destroy((tGfxStrData*)(elem->privateData));

@@ -3,7 +3,7 @@
 #include "../win/wingdi.h"
 #include "gfxsun.h"
 
-tD3dStrectRectUnkStructFloats gSunStru_951A40[] = {
+tGfxSunRingOffset gSunStru_951A40[] = {
     {.x = 1.0f, .y = 0.0f },
     {.x = -0.30000001f, .y = 0.69999999f },
     {.x = -0.69999999f, .y = 0.30000001f  },
@@ -13,18 +13,6 @@ tD3dStrectRectUnkStructFloats gSunStru_951A40[] = {
     {.x = 0.69999999f, .y = -0.30000001f  },
     {.x = 0.69999999f, .y = 0.30000001f  },
     {.x = 0.0f, .y = 0.0f }
-};
-
-tD3dStrectRectUnkStruct gSunDestPos[] = {
-     {.x = 0, .y = 0 },
-     {.x = 1, .y = 0 },
-     {.x = 2, .y = 0 },
-     {.x = 3, .y = 0 },
-     {.x = 4, .y = 0 },
-     {.x = 5, .y = 0 },
-     {.x = 6, .y = 0 },
-     {.x = 7, .y = 0 },
-     {.x = 8, .y = 0 }
 };
 
 // one ray: a direction, a length and a half-width, plus the two colour
@@ -84,69 +72,6 @@ void GFX_Sun_InitRayLum(tGfxSunData* sun)
         sun->rayLums[i] = lum;
 }
 
-void D3D_InitSunD3DStruct(tGfxSunD3DSpecificData* sun3d, tGfxSunD3DSpecificDataInner* elems,
-                          unsigned int bytes, unsigned int count)
-{
-    sun3d->ptr = elems;
-    sun3d->maxElemNum = count;
-    sun3d->ptrElemSize = bytes / count;
-    sun3d->currPtrInner = NULL;
-    sun3d->firstPtrInner = NULL;
-}
-
-void D3D_RegisterSunSurface(tGfxSunD3DSpecificData* sun3d)
-{
-    int i;
-
-    for (i = 0; i < 16; i++)
-    {
-        if (!gD3dSunSurfaces[i])
-        {
-            gD3dSunSurfaces[i] = sun3d;
-            return;
-        }
-    }
-}
-
-void D3D_SetSunEffectOnOff(tGfxSunD3DSpecificData* sun3d, int on)
-{
-    int anyOn;
-    int i;
-
-    // gD3dSunSurfaces and gSunEffectOnOffArray are parallel sixteen-entry
-    // tables, so both are walked by index
-    anyOn = 0;
-    for (i = 0; i < 16; i++)
-    {
-        if (gD3dSunSurfaces[i] == sun3d)
-            gSunEffectOnOffArray[i] = on;
-        if (gD3dSunSurfaces[i])
-            anyOn |= gSunEffectOnOffArray[i];
-    }
-
-    if ((anyOn != 0) == (D3DRenderParams.sunEffectIsOn != 0))
-        return;
-
-    D3DRenderParams.sunEffectIsOn = anyOn;
-    D3D_UpdateBlurTexture();
-}
-
-void D3D_CreateSunD3DStuff(tGfxSunD3DSpecificData* sun3d)
-{
-    int i;
-
-    D3D_InitSunD3DStruct(sun3d, sun3d->elems, sizeof(sun3d->elems), 3u);
-    for (i = 0; i < 3; i++)
-    {
-        sun3d->elems[i].bitMask = 0;
-        D3DRenderParams.d3dDev->lpVtbl->CreateOffscreenPlainSurface(
-            D3DRenderParams.d3dDev, 16, 1, 21, 2, &sun3d->elems[i].d3dppSurface, 0);
-    }
-    D3D_RegisterSunSurface(sun3d);
-    D3D_CreateSunTextures(sun3d);
-    D3D_SetSunEffectOnOff(sun3d, 0);
-}
-
 struct sGfxSunData* GFX_Sun_Create(void)
 {
     tGfxSunData* sun;
@@ -176,103 +101,20 @@ struct sGfxSunData* GFX_Sun_Create(void)
     sun->b2 = 1;
     GFX_Sun_ComputeRay(sun);
     GFX_Sun_InitRayLum(sun);
-    D3D_CreateSunD3DStuff(&sun->d3dStuff);
+    sun->sampler = gpst_DX_stDD->p_SunSamplerCreate();
     sun->alphaThresholdFlags = -1;
     return sun;
 }
 
-tGfxSunD3DSpecificDataInner* D3D_GetGFXSunI3Param(tGfxSunD3DSpecificData* sun3d)
+/* Where on the screen to look for the sun, and which of the nine
+   positions are on it at all. The positions walk out from the sun in
+   a ring; the renderer is given the ones inside the viewport, packed,
+   and told by mask which of the nine they were. */
+static void GFX_l_SunQueueSample(void* sampler, tGdi_DisplayData* dd,
+                                 tGfxSunData* sunData)
 {
-    return sun3d->currPtrInner;
-}
-
-tGfxSunD3DSpecificDataInner* D3D_GetGFXSunI4Param(tGfxSunD3DSpecificData* sun3d)
-{
-    return sun3d->firstPtrInner;
-}
-
-tGfxSunD3DSpecificDataInner* D3D_SelectNextPtrInnerFromPtr(tGfxSunD3DSpecificData* sun3d,
-                                                           tGfxSunD3DSpecificDataInner* elem)
-{
-    unsigned int index;
-
-    index = (unsigned int)((char*)elem - (char*)sun3d->ptr) / sun3d->ptrElemSize;
-    return (tGfxSunD3DSpecificDataInner*)
-           ((char*)sun3d->ptr + sun3d->ptrElemSize * ((index + 1) % sun3d->maxElemNum));
-}
-
-tGfxSunD3DSpecificDataInner* D3D_SelectPrevPtrInnerFromPtr(tGfxSunD3DSpecificData* sun3d,
-                                                           tGfxSunD3DSpecificDataInner* elem)
-{
-    unsigned int index;
-
-    index = (unsigned int)((char*)elem - (char*)sun3d->ptr) / sun3d->ptrElemSize;
-    return (tGfxSunD3DSpecificDataInner*)
-           ((char*)sun3d->ptr + sun3d->ptrElemSize * ((index - 1) % sun3d->maxElemNum));
-}
-
-tGfxSunD3DSpecificDataInner* D3D_SelectAndSetNextPtrInnerFromPtr(tGfxSunD3DSpecificData* sun3d)
-{
-    tGfxSunD3DSpecificDataInner* next;
-
-    if (!sun3d->currPtrInner)
-    {
-        sun3d->firstPtrInner = sun3d->ptr;
-        sun3d->currPtrInner = sun3d->ptr;
-        return sun3d->ptr;
-    }
-
-    next = D3D_SelectNextPtrInnerFromPtr(sun3d, sun3d->currPtrInner);
-    if (next == sun3d->firstPtrInner)
-        return 0;
-
-    sun3d->currPtrInner = next;
-    return next;
-}
-
-int D3D_StretchRectNoFilter(IDirect3DSurface9* src, int srcX, int srcY,
-                            IDirect3DSurface9* dest, int destX, int destY)
-{
-    RECT srcRect;
-    RECT destRect;
-
-    srcRect.left = srcX;
-    srcRect.top = srcY;
-    srcRect.right = srcX + 1;
-    srcRect.bottom = srcY + 1;
-    destRect.left = destX;
-    destRect.top = destY;
-    destRect.right = destX + 1;
-    destRect.bottom = destY + 1;
-    return D3DRenderParams.d3dDev->lpVtbl->StretchRect(D3DRenderParams.d3dDev, src, &srcRect,
-                                                       dest, &destRect, 0);
-}
-
-void D3D_MultipleStretchWithArray(IDirect3DSurface9* src, tD3dStrectRectUnkStruct* srcPos,
-                                  IDirect3DSurface9* dest, tD3dStrectRectUnkStruct* destPos,
-                                  int num)
-{
-    int i;
-
-    for (i = 0; i < num; i++)
-    {
-        // itt eredetileg distance alapján ment: v6 - srcPos + destPos
-        D3D_StretchRectNoFilter(src, srcPos[i].x, srcPos[i].y,
-                                dest, destPos[i].x, destPos[i].y);
-    }
-}
-
-void D3d_GetRenderTargetData(IDirect3DSurface9* rendertarget, IDirect3DSurface9* surface)
-{
-    D3DRenderParams.d3dDev->lpVtbl->GetRenderTargetData(D3DRenderParams.d3dDev,
-                                                        rendertarget, surface);
-}
-
-void GFX_SunUnknownFunc(tGfxSunD3DSpecificData* sun3d, tGfxSunD3DSpecificDataInner* slot,
-                        tGdi_DisplayData* dd, tGfxSunData* sunData)
-{
-    tD3dStrectRectUnkStruct srcPos[9];
-    IDirect3DSurface9* renderTarget;
+    int srcX[9];
+    int srcY[9];
     Vec3 screen;
     Vec3 walk;
     float left;
@@ -280,6 +122,7 @@ void GFX_SunUnknownFunc(tGfxSunD3DSpecificData* sun3d, tGfxSunD3DSpecificDataInn
     float top;
     float bottom;
     int clip;
+    int pointMask;
     int sampled;
     int i;
 
@@ -300,9 +143,7 @@ void GFX_SunUnknownFunc(tGfxSunD3DSpecificData* sun3d, tGfxSunD3DSpecificDataInn
     SOFT_TransformAndProject(&screen, &sunData->v1, 1, &dd->ct.cam);
     MATH_TransformVertex(&walk, dd->ct.cam.viewMtxPtr_setInGRORender, &sunData->v1);
 
-    slot->bitMask = 0;
-    slot->alphaThreshold = (float)(uint8_t)D3D_DepthBlurBlurFuncCalc2(walk.z);
-
+    pointMask = 0;
     sampled = 0;
     for (i = 0; i < 9; i++)
     {
@@ -311,186 +152,81 @@ void GFX_SunUnknownFunc(tGfxSunD3DSpecificData* sun3d, tGfxSunD3DSpecificDataInn
         SOFT_Project(&screen, &walk, 1, &dd->ct);
         if (screen.x < (double)left || screen.x > (double)right
             || screen.y < (double)top || screen.y > (double)bottom)
-        {
-            slot->bitMask &= ~(1 << i);
-        }
-        else
-        {
-            slot->bitMask |= 1 << i;
-            srcPos[sampled].x = (unsigned int)screen.x;
-            srcPos[sampled].y = (unsigned int)screen.y;
-            sampled++;
-        }
-    }
-
-    D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &renderTarget);
-    D3D_MultipleStretchWithArray(renderTarget, srcPos, sun3d->d3dRenderTarget,
-                                 gSunDestPos, sampled);
-    renderTarget->lpVtbl->Release(renderTarget);
-    D3d_GetRenderTargetData(sun3d->d3dRenderTarget, slot->d3dppSurface);
-}
-
-int D3D_SunGetPixelsFromSurface(IDirect3DSurface9* surface, tD3dStrectRectUnkStruct* pos,
-                                int num, int* out)
-{
-    D3DLOCKED_RECT locked;
-    D3DSURFACE_DESC desc;
-    uint32_t* pixels;
-    int i;
-
-    surface->lpVtbl->GetDesc(surface, &desc);
-    if (surface->lpVtbl->LockRect(surface, &locked, 0, 0xC010) == D3DERR_WASSTILLDRAWING)
-        return 0;
-
-    pixels = locked.pBits;
-    for (i = 0; i < num; i++)
-        out[i] = pixels[pos[i].x + desc.Width * pos[i].y];
-
-    surface->lpVtbl->UnlockRect(surface);
-    return 1;
-}
-
-void D3D_SunSetAlphaThresholdFlagBySurface(tGfxSunData* sun, tGfxSunD3DSpecificDataInner* slot)
-{
-    int pixels[9];
-    int sampled;
-    int i;
-
-    D3D_SunGetPixelsFromSurface(slot->d3dppSurface, gSunDestPos, 9, pixels);
-
-    sampled = 0;
-    for (i = 0; i < 9; i++)
-    {
-        if ((slot->bitMask & (1 << i)) == 0)
-        {
-            sun->alphaThresholdFlags |= 1 << i;
             continue;
-        }
 
-        if ((double)((pixels[sampled] >> 24) & 0xff) <= slot->alphaThreshold)
-            sun->alphaThresholdFlags &= ~(1 << i);
-        else
-            sun->alphaThresholdFlags |= 1 << i;
+        pointMask |= 1 << i;
+        srcX[sampled] = (unsigned int)screen.x;
+        srcY[sampled] = (unsigned int)screen.y;
         sampled++;
     }
+
+    /* walk.z is the sun's depth in camera space, which is what the
+       renderer needs to know what counts as occluded. */
+    dd->SunSampleQueue(sampler, srcX, srcY, sampled, pointMask, walk.z);
 }
 
-void  D3D_SelectAndSetFirstPtrInnerFromPtr(tGfxSunD3DSpecificData* sun3d,
-                                           tGfxSunD3DSpecificDataInner* elem)
-{
-    if (elem == sun3d->currPtrInner)
-    {
-        sun3d->currPtrInner = NULL;
-        sun3d->firstPtrInner = NULL;
-    }
-    else
-    {
-        sun3d->firstPtrInner = D3D_SelectNextPtrInnerFromPtr(sun3d, elem);
-    }
-}
-
-void D3D_GfxSunDataI21ShortSwap(tGfxSunData* sun)
+/* No fresh answer this frame, so last frame's is used again: the
+   high half holds it and is copied back down. */
+static void GFX_l_SunFlagsReuse(tGfxSunData* sun)
 {
     sun->alphaThresholdFlags = sun->alphaThresholdFlags & 0xFFFF0000
                              | ((int)(sun->alphaThresholdFlags & 0xFFFF0000) >> 16);
 }
 
-int D3D_GetDepthBlurType(void)
-{
-    return depthblur_Type;
-}
-
-int D3D_SurfaceTestLockRect(IDirect3DSurface9* surface)
-{
-    D3DLOCKED_RECT locked;
-
-    if (surface->lpVtbl->LockRect(surface, &locked, 0, 0xC010) == D3DERR_WASSTILLDRAWING)
-        return 0;
-    surface->lpVtbl->UnlockRect(surface);
-    return 1;
-}
-
-int calls_D3D_SurfaceTestLockRect(tGfxSunD3DSpecificDataInner* slot)
-{
-    return D3D_SurfaceTestLockRect(slot->d3dppSurface);
-}
-
-static int GFX_l_SunHidden(tGfxSunD3DSpecificData* sun3d, tGfxSunData* sun)
+static int GFX_l_SunHidden(void* sampler, tGdi_DisplayData* dd, tGfxSunData* sun)
 {
     sun->flags |= 0x1000000u;
     sun->alphaThresholdFlags |= 0x1FF;
-    D3D_SetSunEffectOnOff(sun3d, 0);
+    dd->SunEffectOnOff(sampler, 0);
     return ++sunUnkCnt;
 }
 
-int GFX_Sun_UpdateRayLum_inner_sub_4A8A40(tGfxSunD3DSpecificData* sun3d, tGdi_DisplayData* dd,
+int GFX_Sun_UpdateRayLum_inner_sub_4A8A40(void* sampler, tGdi_DisplayData* dd,
                                           tGfxSunData* sun)
 {
-    tGfxSunD3DSpecificDataInner* pending;
-    tGfxSunD3DSpecificDataInner* ready;
     Vec3 screen;
+    int passed;
 
+    // TODO: tweak_ae_noflare still lives inside the Direct3D render
+    // params rather than beside the other tweaks in dbg.c, which is
+    // the one renderer-shaped thing left in this file.
     if (D3DRenderParams.tweak_ae_noflare)
-        return GFX_l_SunHidden(sun3d, sun);
+        return GFX_l_SunHidden(sampler, dd, sun);
 
-    if (!sun3d->d3dRenderTarget)
+    if (!dd->b_SunSamplerReady(sampler))
     {
-        D3D_GfxSunDataI21ShortSwap(sun);
+        GFX_l_SunFlagsReuse(sun);
         return ++sunUnkCnt;
     }
 
+    // this frame's nine bits are made from scratch, with last
+    // frame's kept in the high half in case none can be
     sun->alphaThresholdFlags <<= 16;
     SOFT_TransformAndProject(&screen, &sun->v1, 1, &dd->ct.cam);
     if (screen.z < 0.0 || sun->b1)
-        return GFX_l_SunHidden(sun3d, sun);
+        return GFX_l_SunHidden(sampler, dd, sun);
 
-    D3D_SetSunEffectOnOff(sun3d, 1);
+    dd->SunEffectOnOff(sampler, 1);
     sun->flags &= ~0x1000000u;
 
-    if (D3D_GetDepthBlurType() == 4)
+    if (dd->b_SunSamplingNow(sampler))
     {
-        pending = D3D_GetGFXSunI3Param(sun3d);
-        if (D3D_SelectAndSetNextPtrInnerFromPtr(sun3d))
-            GFX_SunUnknownFunc(sun3d, D3D_GetGFXSunI3Param(sun3d), dd, sun);
-
-        // the newest surface the hardware has finished with, walking back
-        // from the one just queued
-        ready = 0;
-        if (pending)
+        GFX_l_SunQueueSample(sampler, dd, sun);
+        if (dd->b_SunSampleRead(sampler, &passed))
         {
-            if (calls_D3D_SurfaceTestLockRect(pending))
-            {
-                ready = pending;
-            }
-            else
-            {
-                while (pending != D3D_GetGFXSunI4Param(sun3d))
-                {
-                    pending = D3D_SelectPrevPtrInnerFromPtr(sun3d, pending);
-                    if (calls_D3D_SurfaceTestLockRect(pending))
-                    {
-                        ready = pending;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (ready)
-        {
-            D3D_SunSetAlphaThresholdFlagBySurface(sun, ready);
-            D3D_SelectAndSetFirstPtrInnerFromPtr(sun3d, ready);
+            sun->alphaThresholdFlags = (sun->alphaThresholdFlags & ~0x1FF)
+                                     | (passed & 0x1FF);
             return ++sunUnkCnt;
         }
     }
 
-    D3D_GfxSunDataI21ShortSwap(sun);
+    GFX_l_SunFlagsReuse(sun);
     return ++sunUnkCnt;
 }
 
 int GFX_Sun_UpdateRayLum(tGfxSunData* sun)
 {
-    return GFX_Sun_UpdateRayLum_inner_sub_4A8A40(&sun->d3dStuff, gpst_DX_stDD, sun);
+    return GFX_Sun_UpdateRayLum_inner_sub_4A8A40(sun->sampler, gpst_DX_stDD, sun);
 }
 
 void GFX_Sun_Render(struct sGfxSunData* sun)
@@ -655,27 +391,13 @@ void GFX_Sun_Seti(struct sGfxSunData* sun, int id)
         GFX_Sun_ComputeRay(sun);
 }
 
-void D3D_UnsetSunSurface(tGfxSunD3DSpecificData* sun3d)
+void GFX_Sun_Destroy(struct sGfxSunData* sun)
 {
-    int i;
-
-    for (i = 0; i < 16; i++)
-    {
-        if (gD3dSunSurfaces[i] == sun3d)
-        {
-            gD3dSunSurfaces[i] = NULL;
-            return;
-        }
-    }
-}
-
-void GFX_Sun_Destroy(struct sGfxSunD3DSpecificData* sun3d)
-{
-    int i;
-
-    D3D_SetSunEffectOnOff(sun3d, 0);
-    D3D_ReleaseSunRenderTargetAndTexture(sun3d);
-    D3D_UnsetSunSurface(sun3d);
-    for (i = 0; i < 3; i++)
-        sun3d->elems[i].d3dppSurface->lpVtbl->Release(sun3d->elems[i].d3dppSurface);
+    // A sun that has already been destroyed has nothing to hand
+    // back. Worth the guard: before the renderer owned the surfaces,
+    // a second destroy released them a second time.
+    if (!sun || !sun->sampler)
+        return;
+    gpst_DX_stDD->SunSamplerDestroy(sun->sampler);
+    sun->sampler = NULL;
 }
