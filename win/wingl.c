@@ -6,6 +6,7 @@
 #include "../geovertex.h"
 #include "../geosprite.h"
 #include "../rasterstate.h"
+#include "../depthblur.h"
 #include "../textures.h"
 #include "../cameraengine.h"
 #include "../soft.h"
@@ -66,6 +67,10 @@ typedef struct sGlMaterial
     int   textured;
     int   alphaMode;    /* 0 none, 1 keep above the reference, 2 below */
     float alphaRef;     /* 0..1 */
+    /* The depth-blur pass draws the same vertices through a different
+       program, so which program the next draw uses is part of what the
+       material says. */
+    int   b_depthBlur;
 } tGlMaterial;
 
 static tGlMaterial gl_material;
@@ -112,6 +117,9 @@ static Mtx4x4 gl_savedProjMtx;
    to call it while the context is still current. */
 static void GL_l_ForgetPass(void);
 static void GL_l_ForgetGeometry(void);
+static void GL_l_ReadBlurState(tDpb_State* out);
+static int  GL_l_b_BlurReady(void);
+static void GL_l_ForgetBlur(void);
 static void GL_l_ForgetTargets(void);
 static void GL_l_ForgetVideo(void);
 static Mtx4x4 gl_viewProjMtx;
@@ -435,6 +443,7 @@ int GL_Close(void)
     {
         GL_l_ForgetPass();
         GL_l_ForgetGeometry();
+        GL_l_ForgetBlur();
         GL_l_ForgetTargets();
         GL_l_ForgetVideo();
         wglMakeCurrent(gl_state.dc, NULL);
@@ -554,7 +563,21 @@ void GL_SetZWriteEnable(int on)
 int GL_b_CanDiffuse2x(void) { return gl_state.canDiffuse2x; }
 int GL_b_WantsNoFlare(void) { return gl_state.wantsNoFlare; }
 int GL_b_NoZonAlpha(void)   { return gl_state.noZonAlpha; }
-int GL_b_DepthBlurOn(void)  { return 0; }
+/* Whether the engine should ask for the depth-blur pass at all. The
+   material path calls this before every one, so answering no is how
+   the pass stays out of the frame; it is the honest answer whenever
+   there is no blur in force or no program to draw it with. */
+int GL_b_DepthBlurOn(void)
+{
+    tDpb_State want;
+
+    if (!gl_state.context)
+        return 0;
+    GL_l_ReadBlurState(&want);
+    if (want.kind == DPB_OFF)
+        return 0;
+    return GL_l_b_BlurReady();
+}
 
 void GL_SetCanDiffuse2x(int on) { gl_state.canDiffuse2x = on ? 1 : 0; }
 void GL_SetWantsNoFlare(int on) { gl_state.wantsNoFlare = on ? 1 : 0; }
@@ -619,6 +642,43 @@ static GLint      gl_geoTextured = -1;
 static GLint      gl_geoAlphaMode = -1;
 static GLint      gl_geoAlphaRef = -1;
 static GLint      gl_geoDiffuse2x = -1;
+
+/* ------------------------------------------------- the depth blur
+ *
+ * The same vertices, a second time, through a 256 by 1 ramp of
+ * blur-amount-per-depth, writing the frame's alpha and nothing else.
+ * The ramp's coordinate comes from the camera-space position, so the
+ * coordinate is the depth; alpha 255 means no blur and 0 means full,
+ * which is why the ramp is solid when no blur is in force.
+ *
+ * depthblur.c decides which blur and builds the table. What is here is
+ * the texture it becomes, the coordinate the shader is told to make,
+ * and the narrowed write.
+ *
+ * Nothing in this renderer reads the alpha yet -- the after-effects
+ * are the other renderer's -- so this writes the channel the sun's
+ * occlusion test will read when that follows. b_DepthBlurOn is what
+ * asks the engine for the pass at all, so until the write is right it
+ * is better for that to say no than for the pass to run and put
+ * something arbitrary in the frame's alpha.
+ */
+static tGlProgram gl_blurProgram;
+static GLint      gl_blurViewProj = -1;
+static GLint      gl_blurView = -1;
+static GLint      gl_blurRamp = -1;
+static GLint      gl_blurProjected = -1;
+static GLint      gl_blurTranslateU = -1;
+static GLint      gl_blurScaleW = -1;
+static GLint      gl_blurScaleUfromZ = -1;
+static GLuint     gl_blurTex;
+static int        gl_blurTried;
+static int        gl_blurReady;
+
+/* The decision the ramp was last built for, so the table is rebuilt
+   when it changes and not once a frame. */
+static tDpb_State gl_blurState;
+static int        gl_blurHaveState;
+
 static GLuint     gl_geoVao;
 static GLuint     gl_geoBuffer;
 static int        gl_geoTried;
@@ -678,6 +738,110 @@ static int GL_l_b_GeometryReady(void)
 
     gl_geoReady = 1;
     return 1;
+}
+
+/* What the engine's state says the blur should be, right now. The
+   four values it is built from are declared in gdi.h: they are the
+   after-effects state the AI scripts move, kept whichever renderer is
+   in force, so reading them here is reading live state and not the
+   other renderer's leftovers. */
+static void GL_l_ReadBlurState(tDpb_State* out)
+{
+    tDpb_Source src;
+
+    memset(&src, 0, sizeof(src));
+    /* noZonAlpha is this renderer's name for the tweak that turns the
+       blur off; the engine sets it through the interface. */
+    src.b_zonAlphaTweak = gl_state.noZonAlpha;
+    src.aeMaster = (unsigned int)PC_AE_MASTER;
+    src.b_sunEffectOn = gl_state.sunEffectOn;
+    if (gpst_DX_stDD)
+    {
+        src.nearPlane = gpst_DX_stDD->ct.cam.nearPlane;
+        src.farPlane = gpst_DX_stDD->ct.cam.farPlane;
+    }
+    src.depthBlurNear1 = depthBlurNear1;
+    src.depthBlurType0 = depthBlurType0;
+    src.depthBlurType1 = depthBlurType1;
+
+    DPB_Decode(&src, out);
+}
+
+/* The ramp as a texture: 256 by 1, one byte each, which is all the
+   table carries -- the engine builds it as words with the amount in
+   the top byte and nothing in the other three. Linear and clamped,
+   which is what the other renderer's sampler asks for. */
+static void GL_l_UploadRamp(const tDpb_State* st)
+{
+    int           table[256];
+    unsigned char bytes[256];
+    int           i;
+
+    DPB_BuildRamp(st, table);
+    for (i = 0; i < 256; i++)
+        bytes[i] = (unsigned char)(((unsigned int)table[i] >> 24) & 0xFF);
+
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_blurTex);
+    GLFN_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 256, 1, 0, GL_RED,
+                      GL_UNSIGNED_BYTE, bytes);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
+static int GL_l_b_BlurReady(void)
+{
+    if (gl_blurTried)
+        return gl_blurReady;
+    gl_blurTried = 1;
+    if (!gl_state.context)
+        return 0;
+
+    if (!GL_b_ProgramLoad(&gl_blurProgram, "depthblur.vert", "depthblur.frag"))
+        return 0;
+    gl_blurViewProj = GL_i_ProgramUniform(&gl_blurProgram, "uViewProj");
+    gl_blurView = GL_i_ProgramUniform(&gl_blurProgram, "uView");
+    gl_blurRamp = GL_i_ProgramUniform(&gl_blurProgram, "uRamp");
+    gl_blurProjected = GL_i_ProgramUniform(&gl_blurProgram, "uProjected");
+    gl_blurTranslateU = GL_i_ProgramUniform(&gl_blurProgram, "uTranslateU");
+    gl_blurScaleW = GL_i_ProgramUniform(&gl_blurProgram, "uScaleW");
+    gl_blurScaleUfromZ = GL_i_ProgramUniform(&gl_blurProgram, "uScaleUfromZ");
+
+    GLFN_glGenTextures(1, &gl_blurTex);
+    if (!gl_blurTex)
+    {
+        DBG_OutputDebugString("GL: no texture for the blur ramp\n");
+        GL_ProgramFree(&gl_blurProgram);
+        return 0;
+    }
+
+    gl_blurReady = 1;
+    gl_blurHaveState = 0;
+    return 1;
+}
+
+static void GL_l_ForgetBlur(void)
+{
+    if (gl_blurReady && gl_state.context)
+    {
+        GL_ProgramFree(&gl_blurProgram);
+        if (gl_blurTex)
+            GLFN_glDeleteTextures(1, &gl_blurTex);
+    }
+    gl_blurTex = 0;
+    gl_blurViewProj = -1;
+    gl_blurView = -1;
+    gl_blurRamp = -1;
+    gl_blurProjected = -1;
+    gl_blurTranslateU = -1;
+    gl_blurScaleW = -1;
+    gl_blurScaleUfromZ = -1;
+    gl_blurTried = 0;
+    gl_blurReady = 0;
+    gl_blurHaveState = 0;
 }
 
 static void GL_l_ForgetGeometry(void)
@@ -772,10 +936,54 @@ void GL_SetProjectionMatrix(tDDCamStruct* cam)
    the sprites' quads are the same vertex and the same program, so
    they are the same draw with a different staging buffer behind
    them. */
-static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count)
+static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
+                            int b_depthBlur)
 {
     if (!verts || count <= 0)
         return;
+
+    /* The depth-blur pass is the same vertices through a different
+       program, so this is where the two part company. Everything below
+       belongs to the world's program and would be set on the wrong one
+       otherwise.
+
+       Which pass this is comes in as an argument rather than being read
+       off the material, because the sprites share this draw and the
+       blur never applies to them. Read from the material it would have
+       depended on the engine happening to call TextureInit between a
+       blur pass and the sprites -- and a sprite drawn through the blur
+       program is a sprite that writes alpha and no colour, which is a
+       sprite that is not there. */
+    if (b_depthBlur)
+    {
+        GLFN_glUseProgram(gl_blurProgram.program);
+        if (gl_blurViewProj >= 0)
+            GLFN_glUniformMatrix4fv(gl_blurViewProj, 1, GL_FALSE,
+                                    (const GLfloat*)&gl_viewProjMtx);
+        if (gl_blurView >= 0)
+            GLFN_glUniformMatrix4fv(gl_blurView, 1, GL_FALSE,
+                                    (const GLfloat*)&gl_viewMtx);
+        if (gl_blurRamp >= 0)
+            GLFN_glUniform1i(gl_blurRamp, 0);
+        if (gl_blurProjected >= 0)
+            GLFN_glUniform1i(gl_blurProjected, gl_blurState.b_projected);
+        if (gl_blurTranslateU >= 0)
+            GLFN_glUniform1f(gl_blurTranslateU, gl_blurState.translateU);
+        if (gl_blurScaleW >= 0)
+            GLFN_glUniform1f(gl_blurScaleW, gl_blurState.scaleW);
+        if (gl_blurScaleUfromZ >= 0)
+            GLFN_glUniform1f(gl_blurScaleUfromZ, gl_blurState.scaleUfromZ);
+
+        GLFN_glBindVertexArray(gl_geoVao);
+        GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoBuffer);
+        GLFN_glBufferData(GL_ARRAY_BUFFER,
+                          (GLsizei)(sizeof(tGdi_TexturedVertex)
+                                    * (size_t)count),
+                          verts, GL_STREAM_DRAW);
+        GLFN_glDrawArrays(GL_TRIANGLES, 0, (GLsizei)count);
+        GLFN_glBindVertexArray(0);
+        return;
+    }
 
     GLFN_glUseProgram(gl_geoProgram.program);
     if (gl_geoViewProj >= 0)
@@ -855,7 +1063,7 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
 
     GVX_BuildTriangles(gl_geoVerts, chunks, &src);
 
-    GL_l_DrawStaged(gl_geoVerts, needed);
+    GL_l_DrawStaged(gl_geoVerts, needed, gl_material.b_depthBlur);
     return 0;
 }
 
@@ -1193,13 +1401,44 @@ void GL_TextureInit(int textureID, int flags, char mode)
            behind is a per-pixel blur amount in the frame's alpha, for
            the after-effects to read.
 
-           What it waits on is the ramp and the camera-space coordinate
-           generation, not a render target. The texture-UV mode the
-           other renderer sets here is read only by that renderer, so
-           setting it from here would be bookkeeping for a pass that
-           does not run. */
+           The engine asks for this pass only when b_DepthBlurOn says
+           yes, so reaching here means there is a blur and a program
+           for it. The ramp is rebuilt when the decision changes rather
+           than once a frame.
+
+           The texture-UV mode the other renderer sets here is read
+           only by that renderer, so it is not set from here. */
+        tDpb_State want;
+
+        if (!GL_l_b_BlurReady())
+            return;
+
+        GL_l_ReadBlurState(&want);
+        if (!gl_blurHaveState
+            || memcmp(&want, &gl_blurState, sizeof(want)) != 0)
+        {
+            gl_blurState = want;
+            gl_blurHaveState = 1;
+            GL_l_UploadRamp(&gl_blurState);
+        }
+        else
+        {
+            GLFN_glActiveTexture(GL_TEXTURE0);
+            GLFN_glBindTexture(GL_TEXTURE_2D, gl_blurTex);
+        }
+
+        /* Alpha and nothing else, which is the whole point of the
+           pass. Depth testing stays on so the nearest surface is the
+           one whose blur amount lands, and depth writing goes off so
+           the pass does not disturb the buffer the first pass left. */
+        GLFN_glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+        GL_SetZWriteEnable(0);
+        GLFN_glDisable(GL_BLEND);
+        gl_material.alphaMode = 0;
+        gl_material.b_depthBlur = 1;
         return;
     }
+    gl_material.b_depthBlur = 0;
     if ((mode & 2) != 0)
         return;
 
@@ -1355,7 +1594,8 @@ int GL_DrawSprites(tGeoSprites* sprites, Vec3* positions, int num)
 
     GSP_Walk(sprites, &src, GL_l_EmitSprite, NULL);
 
-    GL_l_DrawStaged(gl_sprVerts, gl_sprVertNum);
+    /* Never the blur pass: it is the world's geometry only. */
+    GL_l_DrawStaged(gl_sprVerts, gl_sprVertNum, 0);
     return 0;
 }
 
@@ -1654,11 +1894,15 @@ int GL_b_SunSampleRead(void* sampler, int* outPassed)
     return 0;
 }
 
-/* nothing to switch */
+/* There is no sampler to switch, but whether a sun wants its test is
+   what puts the depth blur into the mode whose ramp that test reads --
+   so it is recorded. With p_SunSamplerCreate answering nothing the
+   engine has no sampler to ask about, so in practice this stays off
+   until the sampler follows. */
 void GL_SunEffectOnOff(void* sampler, int on)
 {
     (void)sampler;
-    (void)on;
+    gl_state.sunEffectOn = on ? 1 : 0;
 }
 
 /* ===================================================== the 2D pass

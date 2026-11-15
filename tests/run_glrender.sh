@@ -41,6 +41,7 @@ $CC $CFLAGS -c datapath.c -o "$OUT/glr.datapath.o"
 $CC $CFLAGS -c projection.c -o "$OUT/glr.proj.o"
 $CC $CFLAGS -c geovertex.c -o "$OUT/glr.gvx.o"
 $CC $CFLAGS -c rasterstate.c -o "$OUT/glr.rst.o"
+$CC $CFLAGS -c depthblur.c -o "$OUT/glr.dpb.o"
 $CC $CFLAGS -c geosprite.c -o "$OUT/glr.gsp.o"
 $CC $CFLAGS -c win/wingdimath.c -o "$OUT/glr.wgmath.o"
 $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
@@ -48,7 +49,7 @@ $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
 # are no EGL headers to link against.
 $CC "$OUT/glr.drv.o" "$OUT/glr.egl.o" "$OUT/glr.load.o" \
     "$OUT/glr.shader.o" "$OUT/glr.datapath.o" "$OUT/glr.proj.o" \
-    "$OUT/glr.gvx.o" "$OUT/glr.rst.o" "$OUT/glr.gsp.o" \
+    "$OUT/glr.gvx.o" "$OUT/glr.rst.o" "$OUT/glr.dpb.o" "$OUT/glr.gsp.o" \
     "$OUT/glr.wgmath.o" \
     "$OUT/glr.math.o" -o "$OUT/glr" -lm -ldl
 # Software rendering, so the answer does not depend on whose card the
