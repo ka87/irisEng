@@ -47,6 +47,43 @@ because the originals sit one level below the repo root and their
 original's own directory is added with `-I` so its local header is
 found.
 
+## Not all of them are differential
+
+A file with no pre-refactor copy has nothing to compare against, so a
+handful of these are ordinary unit tests: they say what the code should
+do and check it does. The OpenGL renderer is all of that kind, because
+there was no OpenGL renderer before.
+
+Two of its tests are worth telling apart, because they answer different
+questions about the same code:
+
+- `run_wingloverlay.sh` **mocks OpenGL**. Every GL call in
+  `win/wingl.c` goes through a function pointer, so the pointers are
+  aimed at recording stand-ins and a case can say exactly which call
+  was made with which argument. It runs anywhere and it is fast. What
+  it cannot say is what came out: a shader file is loaded and its
+  uniform names checked, and the arithmetic inside it is invisible.
+- `run_glrender.sh` **asks a real driver**. It brings up an OpenGL 4.5
+  core context with no window -- Mesa's software renderer answers for
+  it -- aims the same pointers at that, draws through the renderer's
+  own entry points and reads the pixels back. It is the only test here
+  that covers the renderer and the shaders together.
+
+  It is allowed to be unavailable: a machine with no `libEGL`, no
+  software renderer or no 4.5 core profile prints why and passes. So
+  it is a second opinion rather than the thing standing between a
+  change and a merge, and the first test is still what has to be
+  green.
+
+  There are no EGL headers on the machines this is built on, so
+  `eglheadless.c` declares the dozen entry points it needs and looks
+  them up out of `libEGL.so.1` -- the same thing `win/glload.c` does
+  for OpenGL itself.
+
+Both include `win/wingl.c` rather than linking it, because the
+renderer's state is static to it, and both take their Windows
+stand-ins from `winstubs.h` -- one copy, because two of them drifted.
+
 ## Floats
 
 Equality is bitwise first. Where it fails the test reports the absolute
