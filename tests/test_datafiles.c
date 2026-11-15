@@ -125,7 +125,10 @@ static void theShippedFile(void)
     okStr(DAT_pc_BigFile(), "sally_clean.bf",
           "the shipped ini names the big file");
     okInt(DAT_b_Binarized(), 1, "and asks for binarized world files");
-    okStr(DAT_pc_Video(0), "BGEMakingOf.bik", "and has the video under id 0");
+    okStr(DAT_pc_Video((int)0x3001978Fu), "BGEMakingOf.bik",
+          "and has the video under the first id the launcher uses");
+    okStr(DAT_pc_Video((int)0x610127BEu), "BGEMakingOf.bik",
+          "and under the second");
     okInt(dmLogLen, 0, "and the reader finds nothing to complain about");
 }
 
@@ -207,6 +210,61 @@ static void videoIds(void)
     okInt(dat_videoNum, 1, "and does not take a second slot");
 }
 
+/* What the scripts push is a 32-bit resource key, not a small index,
+   so the whole range has to be reachable and hex has to be
+   writable -- a key with the top bit set does not fit a positive
+   int and nobody writes one in decimal. */
+static void idsAreThirtyTwoBitKeys(void)
+{
+    load("[video]\n0x3001978F = a.bik\n0x610127be = b.bik\n0XFF = c.bik\n");
+    okStr(DAT_pc_Video((int)0x3001978Fu), "a.bik", "a hex id");
+    okStr(DAT_pc_Video((int)0x610127BEu), "b.bik", "in lower case too");
+    okStr(DAT_pc_Video(255), "c.bik", "and with an upper-case prefix");
+    okInt(dmLogLen, 0, "none of which is worth a word");
+
+    /* the top bit set: the id arrives as a negative int, and has to
+       match the key as it is written in the file */
+    load("[video]\n0x9E006771 = top.bik\n");
+    okStr(DAT_pc_Video((int)0x9E006771u), "top.bik",
+          "a key with the top bit set matches");
+    ok((int)0x9E006771u < 0, "and that key really is negative as an int");
+
+    /* the same key written as a decimal is the same call */
+    load("[video]\n2650826609 = dec.bik\n");
+    okStr(DAT_pc_Video((int)0x9E006771u), "dec.bik",
+          "the same key in decimal matches the same call");
+
+    /* and as a negative decimal, which is how it would be written if
+       it were read back out of an int */
+    load("[video]\n-1644140687 = neg.bik\n");
+    okStr(DAT_pc_Video((int)0x9E006771u), "neg.bik",
+          "and as the negative decimal of the same bits");
+
+    load("[video]\n-1 = minusone.bik\n");
+    okStr(DAT_pc_Video(-1), "minusone.bik", "-1 is still -1");
+    okStr(DAT_pc_Video((int)0xFFFFFFFFu), "minusone.bik", "which is 0xFFFFFFFF");
+
+    /* past the range, and malformed, are reported rather than folded
+       into something that happens to parse */
+    load("[video]\n4294967296 = over.bik\n");
+    ok(loggedAbout("is not an id"), "a decimal past 32 bits is reported");
+
+    load("[video]\n0x100000000 = over.bik\n");
+    ok(loggedAbout("is not an id"), "and so is a hex one");
+
+    load("[video]\n0x = empty.bik\n");
+    ok(loggedAbout("is not an id"), "a bare 0x is not an id");
+
+    load("[video]\n-0x10 = neghex.bik\n");
+    ok(loggedAbout("is not an id"), "nor is a negated hex id");
+
+    load("[video]\n0x12zz = junk.bik\n");
+    ok(loggedAbout("is not an id"), "nor hex with something after it");
+
+    load("[video]\n-2147483649 = under.bik\n");
+    ok(loggedAbout("is not an id"), "nor a decimal past the negative end");
+}
+
 static void mistakesAreReported(void)
 {
     load("[data]\nbigfle = typo.bf\n");
@@ -236,6 +294,7 @@ static void mistakesAreReported(void)
 
     load("[video]\n12x = x.bik\n");
     okStr(DAT_pc_Video(12), NULL, "nor does a key that only starts with digits");
+    ok(loggedAbout("is not an id"), "and that is reported too");
 }
 
 static void theLimits(void)
@@ -327,6 +386,7 @@ int main(void)
     quoting();
     theFlag();
     videoIds();
+    idsAreThirtyTwoBitKeys();
     mistakesAreReported();
     theLimits();
     readingAgainStartsClean();
