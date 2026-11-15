@@ -242,6 +242,12 @@ void MAT_UV_Compute_FACE_MAP(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangle
 void MAT_UV_Compute_FOGZZ(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
 void MAT_UV_Compute_Default(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
 
+/* The renderer in force, set by GDI_fnl_InitInterface. NULL before
+   it has run, and NULL if no renderer could run at all. The type and
+   the picking live in renderers.h. */
+struct sGdi_Renderer;
+extern const struct sGdi_Renderer* GDI_gpst_Renderer;
+
 void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd);
 struct sGdi_DisplayData* GDI_fnpst_CreateDisplayData();
 BOOL GDI_AttachDisplayAndReadaptDisplay(struct sGdi_DisplayData* gdd, HWND hwnd);

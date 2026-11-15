@@ -8,6 +8,9 @@
 #include "water.h"
 #include "strings.h"
 #include "engine.h"
+#include "datafiles.h"
+#include "dbg.h"
+#include "renderers.h"
 
 float GDI_gaf_ScreenRatio[4] = { 1.0f, 1.0f,  (3.0f / 4.0f), (9.0f / 16.0f) };
 float MAT_C_f_10Bits = 12288.0f;
@@ -763,7 +766,52 @@ void GDI_BeforeDisplay(tGdi_DisplayData* dxdd)
     PRO_PerfCounterEndBlock(&dxdd->rasters[15]);    
 }
 
+/* The renderers, in the order they are preferred when nothing has
+   asked for one by name. Adding a renderer is a row here and a fill
+   function of its own; nothing else in the engine learns about it,
+   because everything the engine draws through is the interface the
+   fill function writes into.
+
+   A renderer says for itself whether it can run on this machine, so
+   asking for one that cannot is not a failure: the ini is a
+   preference, and the first renderer that can run is what the game
+   gets. */
+static void GDI_l_FillD3D(struct sGdi_DisplayData* dd);
+
+static int GDI_l_b_D3DAvailable(void)
+{
+    return 1;      /* the renderer the game shipped on */
+}
+
+static const tGdi_Renderer gdi_renderers[] = {
+    { "d3d", "Direct3D 9", GDI_l_FillD3D, GDI_l_b_D3DAvailable },
+};
+
+#define GDI_RENDERERNUM ((int)(sizeof(gdi_renderers) / sizeof(gdi_renderers[0])))
+
+const tGdi_Renderer* GDI_gpst_Renderer;
+
 void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd)
+{
+    const tGdi_Renderer* r = GDI_pst_PickRenderer(gdi_renderers,
+                                                 GDI_RENDERERNUM,
+                                                 DAT_pc_Backend());
+
+    if (!r)
+    {
+        /* cannot happen while a renderer that always runs is in the
+           table, and worth saying rather than drawing through a table
+           of null pointers if it ever does */
+        DBG_OutputDebugString("GDI: no renderer can run here\n");
+        return;
+    }
+
+    GDI_gpst_Renderer = r;
+    DBG_OutputDebugString("GDI: renderer is %s\n", r->description);
+    r->FillInterface(dd);
+}
+
+static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
 {
     dd->CreateDevice = D3D_pst_CreateDevice;
     dd->DestroyDevice = D3D_DestroyDevice;
