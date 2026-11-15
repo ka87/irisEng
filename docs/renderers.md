@@ -156,6 +156,79 @@ what `D3D_RenderStateSet` does, and the restore site's
 `if (cache != backup)` is the same call with `backup` for `v`. Worth
 knowing which of the two files is measured and which is read.
 
+## The fullscreen video display
+
+The engine's half of the video knows about files, decoding and the
+clock. It did not stop there: it also held three Direct3D objects,
+locked one of them, computed a letterbox rectangle and called
+`StretchRect`. All of that is `win/wingdivideo.c` now, behind five
+entries:
+
+```c
+int (* b_VideoDisplayCreate)(int width, int height);
+void(* VideoDisplayClose)(void);
+int (* b_VideoFrameLock)(void** bits, int* pitch, int* height);
+void(* VideoFrameUnlock)(void);
+void(* VideoFramePresent)(int width, int height, int fit);
+```
+
+`ai/ai_gfxfunctions.c` has **no Direct3D references left at all** —
+it opens the file, locks the picture, decodes into it, and asks for
+it to be shown.
+
+`fit` is the engine's vocabulary, not a renderer's:
+`GDI_VIDEOFIT_ACTUALSIZE`, `..._SHARP`, `..._SMOOTH`. The engine maps
+the scale mode's bits onto those and the renderer maps them onto its
+own filters, so `D3DTEXF_LINEAR` stays inside `win/`.
+
+### The split found a bug
+
+`VID_CopyToBuffer` clamps to the height it is handed. The picture is
+the **movie's** size, and what used to be handed over was the
+**screen's** height — so a window shorter than the movie left the
+bottom of every frame unwritten, showing the black the picture was
+created with. It only ever looked right because a window is usually
+taller than the movie.
+
+`b_VideoFrameLock` reports the picture's own height, so there is no
+longer a size to pass in wrongly. The test makes the two deliberately
+differ, and reporting the screen's height again is one of the injected
+defects.
+
+Two smaller things came out of the same move. The original checked
+only one of its five device calls for failure and would have gone on
+to dereference a surface it never got; each is checked now, and each
+part-way failure gives back what it had already made. And the initial
+clear used `4 * width * height` where the surface's pitch can exceed
+`width * 4`, which could leave a strip uncleared; it uses the pitch
+the lock reports.
+
+### The tests
+
+`tests/run_wingdivideo.sh`, 61 checks. The device is mocked and
+records what it was asked for **in order**, so the checks are on the
+sequence as much as the result — which is what the failure paths need,
+since what they have to get right is giving back what they had
+already made. Creations are counted against releases rather than the
+code being eyeballed for tidiness.
+
+Twelve defects injected, all twelve caught: the screen's height
+reported instead of the picture's, the picture leaked when the
+texture fails, the texture and picture leaked when the surface level
+fails, a second display leaking the first, the back buffer leaked on
+create and on present, the clear dropped, smooth and sharp given the
+same filter, actual size scaled anyway, the picture not centred, and
+locking or unlocking with no display.
+
+**Two mistakes in the test itself are worth recording.** The mock
+first reported a pitch its own buffer could not back, so the code
+overran it — the mock was lying, not the code, and the pitch now
+follows the size the picture was asked for. And four expectations
+were written with numbers copied out of a run; `tests/stub/d3d9.h`
+gives the D3D constants deliberately arbitrary values, so those
+checks would have passed whatever constant the code used. They are
+built from the SDK's own names now.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the

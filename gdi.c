@@ -3,6 +3,7 @@
 #include "textures.h"
 #include "time.h"
 #include "win/wingdi.h"
+#include "win/wingdivideo.h"
 #include "materialanddraw.h"
 #include "gdi.h"
 #include "water.h"
@@ -839,6 +840,11 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->SetZWriteEnable = D3D_SetZWriteEnable;
     dd->SetTexCoordIndex = D3D_SetTexCoordIndex;
     dd->SetTextureTransformFlags = D3D_SetTextureTransformFlags;
+    dd->b_VideoDisplayCreate = D3D_b_VideoDisplayCreate;
+    dd->VideoDisplayClose = D3D_VideoDisplayClose;
+    dd->b_VideoFrameLock = D3D_b_VideoFrameLock;
+    dd->VideoFrameUnlock = D3D_VideoFrameUnlock;
+    dd->VideoFramePresent = D3D_VideoFramePresent;
 }
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)

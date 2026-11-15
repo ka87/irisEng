@@ -167,6 +167,16 @@ typedef struct sGdi_DisplayData
     void(* SetZWriteEnable)(int on);
     void(* SetTexCoordIndex)(int stage, int index);
     void(* SetTextureTransformFlags)(int stage, int flags);
+
+    /* The fullscreen video display: a movie-sized picture the engine
+       writes decoded frames into, which the renderer fits to the
+       screen. The engine knows about files, decoding and the clock
+       and does not know what a surface is. */
+    int (* b_VideoDisplayCreate)(int width, int height);
+    void(* VideoDisplayClose)(void);
+    int (* b_VideoFrameLock)(void** bits, int* pitch, int* height);
+    void(* VideoFrameUnlock)(void);
+    void(* VideoFramePresent)(int width, int height, int fit);
     uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;
@@ -251,6 +261,13 @@ void MAT_UV_Compute_Previous(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangle
 void MAT_UV_Compute_FACE_MAP(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
 void MAT_UV_Compute_FOGZZ(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
 void MAT_UV_Compute_Default(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
+
+/* How a video frame is fitted to the screen. The engine says which
+   it wants in these terms; what a renderer does about it, and what
+   it calls its filters, is the renderer's business. */
+#define GDI_VIDEOFIT_ACTUALSIZE  0      /* centred, a pixel for a pixel */
+#define GDI_VIDEOFIT_SHARP       1      /* scaled to the screen, unsmoothed */
+#define GDI_VIDEOFIT_SMOOTH      2      /* scaled to the screen, smoothed */
 
 /* The renderer in force, set by GDI_fnl_InitInterface. NULL before
    it has run, and NULL if no renderer could run at all. The type and
