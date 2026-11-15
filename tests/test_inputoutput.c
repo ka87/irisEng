@@ -1223,6 +1223,90 @@ static void groupTargeted(void)
     }
 }
 
+/* The input gate, which exists only on the rewrite's side and so is
+   driven directly rather than compared. What it has to do: keep the
+   game away from the pad and the keyboard, leave the control mode
+   alone, and give back exactly what it took. */
+static void checkIs(const char* what, long got, long want)
+{
+    ++s_cases;
+    if (got != want)
+    {
+        printf("  suspend: %s  got=%ld want=%ld\n", what, got, want);
+        ++s_fails;
+    }
+}
+
+static void groupSuspend(void)
+{
+    int i;
+
+    s_group = "suspend";
+
+    /* The joystick mask is the engine's own suppression, and it has
+       to come back exactly as it was rather than as -1. */
+    INO_l_JoystickMask = 0x0A5A;
+    checkIs("not suspended to begin with", INO_b_InputSuspended(), 0);
+    INO_SuspendInput(1);
+    checkIs("suspended", INO_b_InputSuspended(), 1);
+    checkIs("the mask is cleared", INO_l_JoystickMask, 0);
+    INO_SuspendInput(0);
+    checkIs("released", INO_b_InputSuspended(), 0);
+    checkIs("the mask comes back as it was", INO_l_JoystickMask, 0x0A5A);
+
+    /* A second suspend changes nothing, so the saved mask is not
+       overwritten with the cleared one and lost. */
+    INO_l_JoystickMask = 0x1234;
+    INO_SuspendInput(1);
+    INO_SuspendInput(1);
+    checkIs("a second suspend leaves the mask clear", INO_l_JoystickMask, 0);
+    INO_SuspendInput(0);
+    checkIs("and one release gives the original back", INO_l_JoystickMask, 0x1234);
+
+    /* A release with nothing suspended must not write the mask. */
+    INO_l_JoystickMask = 0x4321;
+    INO_SuspendInput(0);
+    checkIs("a spare release leaves the mask alone", INO_l_JoystickMask, 0x4321);
+
+    /* The keyboard: the modifier plus a function key normally reaches
+       INO_Keys, and must not while suspended. */
+    for (i = 0; i < 2; ++i)
+    {
+        ioSetup(1, 2200u + i, 0);
+        pcINO_keyboardDataBackup[157] = (char)0x80;
+        pcINO_keyboardDataBackup[59] = (char)0x80;
+        if (i)
+            INO_SuspendInput(1);
+        NEW_INO_Keyboard_Update();
+        if (i)
+        {
+            checkIs("suspended, the modifier key does not arrive", INO_Keys[164], 0);
+            checkIs("suspended, the function key does not arrive", INO_Keys[96], 0);
+            INO_SuspendInput(0);
+        }
+        else
+        {
+            checkIs("not suspended, the modifier key arrives", INO_Keys[164], 0x80);
+            checkIs("not suspended, the function key arrives", INO_Keys[96], 0x80);
+        }
+    }
+
+    /* And the control mode is no part of this. The platform layer is
+       mocked here, so rather than reading the selected mode back the
+       check is that the gate reaches the platform at all -- it logs
+       every call, and the mode and submode setters are among them, so
+       an empty log says nothing was touched. */
+    ioSetup(1, 2300u, 0);
+    NEW_INO_SetControlMode(3);
+    NEW_INO_SetControlSubmode(7);
+    i = IOMOCK_logLen;
+    INO_SuspendInput(1);
+    checkIs("suspending calls nothing in the platform layer",
+            IOMOCK_logLen, i);
+    INO_SuspendInput(0);
+    checkIs("and releasing calls nothing either", IOMOCK_logLen, i);
+}
+
 int main(void)
 {
     s_baseArena = (unsigned char*)malloc(IOMOCK_ARENA_SIZE);
@@ -1239,6 +1323,8 @@ int main(void)
     groupCardManager();
     groupPhotos();
     groupTargeted();
+
+    groupSuspend();
 
     printf("\n%d cases, %d differing\n", s_cases, s_fails);
     if (s_fails)

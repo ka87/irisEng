@@ -93,3 +93,9 @@ extern int WGM_overlayDraws;
 
 /* how many times the key handler stepped the rasters panel. */
 extern int WGM_overlayCycles;
+
+/* how many times the key handler toggled the free camera. */
+extern int WGM_editorCameraToggles;
+
+/* how many times the key handler synced it to the game's camera. */
+extern int WGM_editorCameraSyncs;

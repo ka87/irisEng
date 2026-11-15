@@ -208,6 +208,7 @@
     <ClCompile Include="dbg.c" />
     <ClCompile Include="dynamics.c" />
     <ClCompile Include="engine.c" />
+    <ClCompile Include="editorcamera.c" />
     <ClCompile Include="events.c" />
     <ClCompile Include="gameobject.c" />
     <ClCompile Include="gdi.c" />
@@ -394,6 +395,7 @@
     <ClInclude Include="dbg.h" />
     <ClInclude Include="dynamics.h" />
     <ClInclude Include="engine.h" />
+    <ClInclude Include="editorcamera.h" />
     <ClInclude Include="events.h" />
     <ClInclude Include="gameobject.h" />
     <ClInclude Include="gdi.h" />

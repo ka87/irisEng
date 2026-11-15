@@ -18,6 +18,7 @@
 #include "strings.h"
 #include "bigfiles.h"
 #include "win/wingdi.h"
+#include "editorcamera.h"
 #include "win/wininputoutput.h"
 #include "textget.h"
 #include "loading.h"
@@ -310,6 +311,10 @@ void ENG_OneWorldEngineCall(struct sWorld* world)
     PRO_QPC_RecordTimeDecRef(33);
     QueryPerformanceCounter(&PerfCounterStruct[35]);
     
+    // The free camera moves before the views are filled, so the
+    // matrix the loop below picks up is this frame's.
+    ECAM_Update();
+
     for (currView = world->viewPtr; currView < &world->viewPtr[world->viewNum]; currView++)
     {
         if (currView->displayData && currView->viewFunctionPtr)
@@ -380,6 +385,11 @@ void ENG_ReinitOneWorld(struct sWorld* world, int reinitType)
         
         world->recordCount = 0;
         world->colCrossObjectNumber = 0;
+
+        // Whatever view the free camera took is about to be closed or
+        // reset, so it hands it back first rather than holding a
+        // pointer into a view the world has let go of.
+        ECAM_Release();
 
         if (world->viewNum > 1)
         {
