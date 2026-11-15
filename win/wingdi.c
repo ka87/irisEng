@@ -15,6 +15,7 @@
 #include "wingditex.h"
 #include "../projection.h"
 #include "../geovertex.h"
+#include "../geosprite.h"
 #include "overlay.h"
 #include "../editorcamera.h"
 #include "../profiler.h"
@@ -4013,148 +4014,35 @@ void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct*
     D3DRenderParams.d3dSourceTextures[idx] = source;
 }
 
+/* Each quad goes straight into the buffer the device has locked, as
+   the walk finishes it. */
+static void D3D_l_EmitSprite(void* user, const tGdi_SpriteQuad* quad)
+{
+    tGdi_DisplayData* dd = (tGdi_DisplayData*)user;
+
+    dd->Request(33, (void*)quad);
+}
+
 int D3D_DrawSprites(struct sGeoSprites* sprites, void* positions, int num)
 {
     tBigBufferStruct* bb;
-    int* colors;
-    int* second;
-    int mask;
-    int alpha;
-    int color;
-    int idx;
-    Mtx4x4* mtx;
-    tGeoSpriteElem* elem;
-    tGeoSpriteElem* elemEnd;
-    int offset;
-    tSpriteC0DEData* c0de;
-    tSpriteC0DEData* c0deEnd;
-    double size;
-    Vec3* base;
-    double sine;
-    double wobble;
-    float rightX, rightY, rightZ;
-    float upX, upY, upZ;
-    float c1x, c1y, c1z;
-    float c2x, c2y, c2z;
-    float c3x, c3y, c3z;
-    float c4x, c4y, c4z;
-    float wave;
-    tGdi_DisplayData* dd;
-    tD3dSpriteData out;
+    tGsp_Source       src;
+
+    (void)num;
 
     bb = gpst_DX_stDD->bigBuffer;
-    colors = bb->vertexColorArray;
-    second = bb->vertexColorArraySecond;
-    mask = bb->colorMask;
-    mtx = gpst_DX_stDD->matrixStack.actMatrixElem;
-    alpha = D3DRenderParams.colorMaskAlpha;
-    color = mask ^ (alpha | bb->solidVertexColor);
-    dd = gpst_DX_stDD;
-    rightX = -(mtx->v1.x * sprites->globalSize * sprites->globalRatio);
-    rightY = -(mtx->v2.x * sprites->globalSize * sprites->globalRatio);
-    rightZ = -(mtx->v3.x * sprites->globalSize * sprites->globalRatio);
-    upX = mtx->v1.y * sprites->globalSize;
-    upY = mtx->v2.y * sprites->globalSize;
-    upZ = mtx->v3.y * sprites->globalSize;
-    c1x = -rightX - upX;
-    c1y = -rightY - upY;
-    c1z = -rightZ - upZ;
-    c2x = rightX - upX;
-    c2y = rightY - upY;
-    c2z = rightZ - upZ;
-    c3x = upX + rightX;
-    c3y = upY + rightY;
-    c3z = upZ + rightZ;
-    c4x = upX - rightX;
-    c4y = upY - rightY;
-    c4z = upZ - rightZ;
-    gpst_DX_stDD->Request(18, (void *) (size_t) sprites->num);
-    elem = sprites->spriteElems;
-    elemEnd = &elem[sprites->num];
-    if (elem->idx == 0xC0DE) // see gfxexplode.c GFX_SetNumberOfSprites
-    {
-        offset = elem[1].idx;
-        c0de = &((tSpriteC0DEData *)positions)[offset];
-        c0deEnd = &c0de[sprites->num];
-        if (colors)
-            colors = &colors[offset];
-        if (second)
-            second += offset;
-        for (; c0de < c0deEnd; c0de++)
-        {
-            if (colors)
-            {
-                color = mask ^ (alpha | *colors);
-                // preserved: elem still points at the 0xC0DE marker, so this reads second[49374]
-                if (second)
-                    color = second[elem->idx] | color & 0xFFFFFF;
-                colors++;
-            }
-            else if (second)
-            {
-                color = second[elem->idx] | color & 0xFFFFFF;
-            }
-            out.color = color;
-            size = c0de->f1;
-            out.v1.x = (float)(c1x * size + c0de->v1.x);
-            out.v1.y = (float)(c1y * size + c0de->v1.y);
-            out.v1.z = (float)(c1z * size + c0de->v1.z);
-            out.v2.x = (float)(c2x * size + c0de->v1.x);
-            out.v2.y = (float)(c2y * size + c0de->v1.y);
-            out.v2.z = (float)(c2z * size + c0de->v1.z);
-            out.v3.x = (float)(c3x * size + c0de->v1.x);
-            out.v3.y = (float)(c3y * size + c0de->v1.y);
-            out.v3.z = (float)(c3z * size + c0de->v1.z);
-            out.v4.x = (float)(c4x * size + c0de->v1.x);
-            out.v4.y = (float)(c4y * size + c0de->v1.y);
-            out.v4.z = (float)(c4z * size + c0de->v1.z);
-            dd->Request(33, &out);
-        }
-    }
-    else
-    {
-        wave = 0.0;
-        for (; elem < elemEnd; ++elem)
-        {
-            wave = wave + 1.0f;
-            if (colors)
-            {
-                idx = elem->idx;
-                color = mask ^ (alpha | colors[idx]);
-                if (second)
-                    color = second[idx] | color & 0xFFFFFF;
-            }
-            else if (second)
-            {
-                color = second[elem->idx] | color & 0xFFFFFF;
-            }
-            out.color = color;
-            size = elem->size;
-            base = &(((Vec3*)positions)[elem->idx]);
-            out.v1.x = (float)(c1x * size + base->x);
-            out.v1.y = (float)(c1y * size + base->y);
-            out.v1.z = (float)(c1z * size + base->z);
-            out.v2.x = (float)(c2x * size + base->x);
-            out.v2.y = (float)(c2y * size + base->y);
-            out.v2.z = (float)(c2z * size + base->z);
-            out.v3.x = (float)(c3x * size + base->x);
-            out.v3.y = (float)(c3y * size + base->y);
-            out.v3.z = (float)(c3z * size + base->z);
-            out.v4.x = (float)(c4x * size + base->x);
-            out.v4.y = (float)(c4y * size + base->y);
-            out.v4.z = (float)(c4z * size + base->z);
-            if (GDI_gb_WaveSprite)
-            {
-                sine = MATH_GetSin(wave);
-                wobble = sine * MATH_GetSin((float)(sine * TIM_gul_TicksCount * 2.5)) * 0.2;
+    src.positions = positions;
+    src.colors = bb->vertexColorArray;
+    src.second = bb->vertexColorArraySecond;
+    src.mask = bb->colorMask;
+    src.alpha = D3DRenderParams.colorMaskAlpha;
+    src.solidColor = (unsigned int)bb->solidVertexColor;
+    src.matrix = gpst_DX_stDD->matrixStack.actMatrixElem;
+    src.waveSprite = GDI_gb_WaveSprite;
 
-                out.v1.x = (float)(out.v1.x + wobble);
-                out.v2.x = (float)(wobble + out.v2.x);
-            }
-            dd->Request(33, &out);
-        }
-    }
-    dd->Request(20, 0);
+    gpst_DX_stDD->Request(18, (void*)(size_t)sprites->num);
+    GSP_Walk(sprites, &src, D3D_l_EmitSprite, gpst_DX_stDD);
+    gpst_DX_stDD->Request(20, 0);
     return 0;
 }
 

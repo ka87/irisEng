@@ -5,6 +5,13 @@
 /* The packing is a byte swizzle: red and blue change places on the
    way out, which is what the engine's colour words want and the one
    piece of this that is easy to get subtly wrong. */
+unsigned int GVX_ui_DeviceColor(unsigned int engineColor)
+{
+    return engineColor & 0xFF00FF00u
+           | ((engineColor >> 16) & 0xFFu)
+           | ((engineColor & 0xFFu) << 16);
+}
+
 unsigned int GVX_ui_Color(const int* colors, const int* second, int mask,
                           int alpha, int idx, int secondIdx)
 {

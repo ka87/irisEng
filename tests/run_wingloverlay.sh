@@ -41,10 +41,11 @@ $CC $CFLAGS -fsanitize=address -c geovertex.c -o "$OUT/wgo.gvx.o"
 # so linked rather than mocked; tests/run_wingdi.sh is where that
 # reading is checked against the other renderer.
 $CC $CFLAGS -fsanitize=address -c rasterstate.c -o "$OUT/wgo.rst.o"
+$CC $CFLAGS -fsanitize=address -c geosprite.c -o "$OUT/wgo.gsp.o"
 $CC $CFLAGS -fsanitize=address -c win/wingdimath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \
-    "$OUT/wgo.rst.o" \
+    "$OUT/wgo.rst.o" "$OUT/wgo.gsp.o" \
     "$OUT/wgo.wgmath.o" "$OUT/wgo.math.o" -o "$OUT/wgo" -lm
 "$OUT/wgo"

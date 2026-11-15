@@ -732,6 +732,14 @@ float tweak_mipmaplodbias = -0.60000002f;
    driver owns it here and a case fills in the entries it needs. */
 tEngTexListStruct TEX_gst_GlobalList;
 
+/* The top of the engine's matrix stack, which is what makes a sprite
+   face the camera. */
+static Mtx4x4 wg_sprMtx;
+
+/* The clock the sprite wobble reads. time.c would bring the engine
+   with it, so the driver owns it. */
+float TIM_gul_TicksCount;
+
 /* math.c is linked for MATH_MakeOGLMatrix and brings its aligned
    allocators with it. Nothing here allocates a matrix array, so these
    exist to satisfy the linker. */
@@ -2279,9 +2287,213 @@ static void caseShadowSequence(void)
        "and the viewport back to the window's");
 }
 
+/* ------------------------------------------------------- sprites */
+
+static tGeoSpriteElem wg_sprElems[4];
+static Vec3           wg_sprPos[4];
+static tGeoSprites    wg_sprites;
+
+static void WG_BuildSprites(int num)
+{
+    int i;
+
+    for (i = 0; i < 4; i++)
+    {
+        /* The element is a union: its low half is the index into the
+           positions and the whole of it, read as a float, is the
+           sprite's size. So the two are chosen together -- a high
+           half of 0x3F00 makes the float about a half.
+
+           Leaving the high half at nought, which the first draft did,
+           makes the float nought: every corner then collapses onto
+           the sprite's position, the quad has no area, and any two of
+           the six vertices can be swapped without a test noticing. */
+        wg_sprElems[i].idx = (uint16_t)i;
+        wg_sprElems[i].dummy = 0x3F00;
+        wg_sprPos[i].x = (float)(i + 1);
+        wg_sprPos[i].y = (float)(2 * i);
+        wg_sprPos[i].z = (float)(-i);
+    }
+    memset(&wg_sprites, 0, sizeof(wg_sprites));
+    wg_sprites.num = (uint32_t)num;
+    wg_sprites.spriteElems = wg_sprElems;
+    wg_sprites.globalSize = 1.0f;
+    wg_sprites.globalRatio = 1.0f;
+
+    memset(&wg_bb, 0, sizeof(wg_bb));
+    wg_bb.colorMask = 0;
+    wg_bb.solidVertexColor = 0x00402010;
+    gl_dd.bigBuffer = &wg_bb;
+    MATH_SetIdentityMatrix(&wg_sprMtx);
+    gl_dd.matrixStack.actMatrixElem = &wg_sprMtx;
+}
+
+static void caseSprites(void)
+{
+    printf("-- sprites, as two triangles each\n");
+    reset();
+    WG_BuildSprites(3);
+    wg_callLen = 0;
+
+    okEq(GL_DrawSprites(&wg_sprites, wg_sprPos, 4), 0,
+         "the draw reports what the other renderer reports");
+    okEq(WG_i_Count("glDrawArrays"), 1, "one draw for the batch");
+    okEq(WG_l_Arg("glDrawArrays", 0, 2), 3 * 6,
+         "six vertices a sprite, two triangles sharing two corners");
+    okEq(wg_lastBufferSize, (long)(3 * 6 * sizeof(tGdi_TexturedVertex)),
+         "uploaded as the same vertex the world's triangles use");
+
+    /* The corner coordinates, which are what tells the texture which
+       way up it is on the quad. */
+    {
+        const tGdi_TexturedVertex* v
+            = (const tGdi_TexturedVertex*)wg_lastBufferData;
+
+        ok(v != NULL, "the upload came from the staging buffer");
+        if (v)
+        {
+            okEq((long)(v[0].u * 2), 2, "the first corner is at u = 1");
+            okEq((long)(v[0].v * 2), 2, "and v = 1");
+            okEq((long)(v[1].u * 2), 0, "the second at u = 0");
+            okEq((long)(v[2].v * 2), 0, "the third at v = 0");
+            /* And which corner each vertex actually holds, against
+               the quad the builder produced for the same batch. The
+               texture coordinates alone cannot see two positions
+               swapped while their coordinates stay, which is a swap
+               of two lines. */
+            {
+                tGdi_SpriteQuad q[4];
+                tGsp_Source     src;
+                int             bad = 0;
+                int             k;
+                static const int want[6] = { 1, 2, 3, 1, 3, 4 };
+
+                src.positions = wg_sprPos;
+                src.colors = NULL;
+                src.second = NULL;
+                src.mask = 0;
+                src.alpha = gl_colorMaskAlpha;
+                src.solidColor = (unsigned int)wg_bb.solidVertexColor;
+                src.matrix = &wg_sprMtx;
+                src.waveSprite = GDI_gb_WaveSprite;
+                GSP_BuildQuads(q, &wg_sprites, &src);
+
+                for (k = 0; k < 6; k++)
+                {
+                    const Vec3* c = (want[k] == 1) ? &q[0].v1
+                                  : (want[k] == 2) ? &q[0].v2
+                                  : (want[k] == 3) ? &q[0].v3
+                                                   : &q[0].v4;
+
+                    if (v[k].pos.x != c->x || v[k].pos.y != c->y
+                        || v[k].pos.z != c->z)
+                        bad++;
+                }
+                okEq(bad, 0,
+                     "each vertex holds the corner it should: one, two,"
+                     " three, then one, three, four");
+            }
+
+            /* The colour is turned round for the device exactly as the
+               world's vertices are, so that one shader puts both
+               back. */
+            okEq((long)v[0].color,
+                 (long)GVX_ui_DeviceColor(0x00402010u),
+                 "with the colour in the device's order");
+            okEq((long)v[5].color, (long)v[0].color,
+                 "the same on every corner");
+        }
+    }
+
+    /* Nothing to draw. */
+    wg_callLen = 0;
+    okEq(GL_DrawSprites(NULL, wg_sprPos, 4), 0, "no batch");
+    okEq(GL_DrawSprites(&wg_sprites, NULL, 4), 0, "no positions");
+    wg_sprites.num = 0;
+    okEq(GL_DrawSprites(&wg_sprites, wg_sprPos, 4), 0, "no sprites");
+    okEq(WG_i_Count("glDrawArrays"), 0, "and none of them draws");
+
+    /* The alpha a material asked for has to reach the sprites too,
+       through the same builder the world's vertices go through. */
+    reset();
+    WG_BuildTexture(32, 0, 0);
+    GL_TextureStore(&gl_dd, 3);
+    GL_PaletteLoad(&gl_dd, &wg_texElems[1], &wg_inter, 1);
+    WG_BuildSprites(1);
+    gl_dd.drawMaskAllowedStuffCurrent = 0;
+    GL_TextureInit(1, 0x400, 0);         /* the bit that makes it opaque */
+    wg_callLen = 0;
+    GL_DrawSprites(&wg_sprites, wg_sprPos, 4);
+    {
+        const tGdi_TexturedVertex* v
+            = (const tGdi_TexturedVertex*)wg_lastBufferData;
+
+        ok(v != NULL, "a sprite was staged");
+        if (v)
+            okEq((long)v[0].color,
+                 (long)GVX_ui_DeviceColor(0xFF000000u | 0x00402010u),
+                 "whose colour carries the material's alpha");
+    }
+
+    /* And so does the wobble, which is a display setting rather than
+       a material's. */
+    reset();
+    WG_BuildSprites(1);
+    GDI_gb_WaveSprite = 0;
+    GL_DrawSprites(&wg_sprites, wg_sprPos, 4);
+    {
+        const tGdi_TexturedVertex* v
+            = (const tGdi_TexturedVertex*)wg_lastBufferData;
+        float still = v ? v[0].pos.x : 0.0f;
+
+        TIM_gul_TicksCount = 12.0f;
+        GDI_gb_WaveSprite = 1;
+        GL_DrawSprites(&wg_sprites, wg_sprPos, 4);
+        v = (const tGdi_TexturedVertex*)wg_lastBufferData;
+        ok(v != NULL && v[0].pos.x != still,
+           "the wobble setting reaches the sprites");
+        GDI_gb_WaveSprite = 0;
+    }
+
+    /* A second batch reuses the staging buffer rather than growing
+       it again. */
+    reset();
+    WG_BuildSprites(2);
+    GL_DrawSprites(&wg_sprites, wg_sprPos, 4);
+    wg_callLen = 0;
+    GL_DrawSprites(&wg_sprites, wg_sprPos, 4);
+    okEq(WG_i_Count("glDrawArrays"), 1, "a second batch still draws");
+    okEq(WG_i_Count("glCreateShader"), 0, "and compiles nothing");
+}
+
+/* The same colour conversion appears in two places -- geovertex.c
+   fuses it into the packing of a vertex colour, and the sprite path
+   has a colour already made and only needs it turned round. They have
+   to agree, and nothing else would notice if they stopped. */
+static void caseDeviceColour(void)
+{
+    unsigned int seed;
+    int          bad = 0;
+
+    printf("-- the two spellings of the colour conversion agree\n");
+    for (seed = 0; seed < 20000u; seed++)
+    {
+        unsigned int c = seed * 2654435761u;
+        int          one = (int)c;
+
+        if (GVX_ui_DeviceColor(c) != GVX_ui_Color(&one, NULL, 0, 0, 0, 0))
+            bad++;
+    }
+    okEq(bad, 0, "over twenty thousand colours");
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
+    /* The sine table, which the sprite wobble reads through
+       MATH_GetSin. Without it every sine is nought and the wobble is
+       a no-op that nothing can see. */
+    MATH_InitModule();
     WG_AimThePointers();
     WG_CheckThePointers();
     caseLoadsTheRealShaders();
@@ -2312,6 +2524,8 @@ int main(void)
     caseDepthReadBack();
     caseTargetsTeardown();
     caseShadowSequence();
+    caseSprites();
+    caseDeviceColour();
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
     return fails ? 1 : 0;
 }
