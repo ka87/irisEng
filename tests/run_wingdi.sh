@@ -80,11 +80,16 @@ $CC $CFLAGS -c win/wingdimath.c -o "$OUT/wingdi.wgmath.o"
 # is linked. The frozen copy still has its own inline copy, which is
 # what makes this comparison worth running.
 $CC $CFLAGS -c projection.c -o "$OUT/wingdi.proj.o"
+# The vertex building came out of win/wingdi.c into geovertex.c, and is
+# linked for the same reason: array walking and colour packing with
+# nothing to stand in for. The frozen copy still has its own inline
+# copy of both.
+$CC $CFLAGS -c geovertex.c -o "$OUT/wingdi.gvx.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"
 $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
 $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
-    "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" \
+    "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" "$OUT/wingdi.gvx.o" \
     "$OUT/wingdi.profiler.o" "$OUT/wingdi.mocks.o" "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm
 "$OUT/wingdi"

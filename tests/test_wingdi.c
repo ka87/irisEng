@@ -1769,6 +1769,20 @@ int main(void)
         return 1;
     }
 
+    /* The geometry vertex and the interface's textured one are the
+       same shape, and the renderer casts between them when it hands
+       the builder its buffer. Asserted, because a field added to
+       either would make that cast write the wrong bytes with nothing
+       to say so. */
+    if (sizeof(tGdi_TexturedVertex) != sizeof(tVertex_type_142_generic)
+        || offsetof(tGdi_TexturedVertex, pos) != offsetof(tVertex_type_142_generic, v1)
+        || offsetof(tGdi_TexturedVertex, color) != offsetof(tVertex_type_142_generic, color)
+        || offsetof(tGdi_TexturedVertex, u) != offsetof(tVertex_type_142_generic, uvSet1))
+    {
+        printf("  FAIL the geometry vertex and the textured one differ in shape\n");
+        return 1;
+    }
+
     int kind;
     unsigned int seed;
     int i;

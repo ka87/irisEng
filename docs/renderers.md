@@ -1314,6 +1314,86 @@ of any of it. That is the prerequisite for drawing geometry through it,
 which is the next piece and a larger one: the geometry path is where
 the fixed-function pipeline has to be emulated rather than replaced.
 
+## Building the geometry's vertices is not Direct3D's job either
+
+The engine keeps a mesh as separate arrays — positions here, texture
+coordinates there, two colour arrays somewhere else — and a renderer
+wants interleaved vertices. The immediate-mode half of
+`D3D_l_DrawElementIndexedTriangles` walked a chunk of triangles,
+picked each corner out of those arrays and packed the result.
+
+None of that is Direct3D's. It is `geovertex.c` now: `GVX_BuildTriangles`
+takes the arrays and a description of how to read them and fills in a
+buffer. What stays with a renderer is where the buffer comes from and
+how it is drawn.
+
+**Bit-for-bit again**, over the same 5,154 cases, and **11 of 11
+mutations caught** before the run was cut short by its own length — the
+red/blue swizzle dropped, the second colour set ignored or masked
+wrongly, the mask applied with `|` instead of `^`, the index-by-four
+quirk dropped or moved to the wrong corner, two corners swapped, UVs
+read per-vertex when they are per-corner and the other way round, the
+UV corners swapped, and `u` and `v` swapped.
+
+### The colour packing is a swizzle
+
+`GVX_ui_Color` ends with
+
+```c
+packed & 0xFF00FF00 | ((uint8_t)packed << 16) | ((packed >> 16) & 0xff)
+```
+
+which exchanges the first and third bytes. There is a second copy of
+that shape for the single-colour case, `GVX_ui_SolidColor`, written
+differently: one of its three terms masks the colour's low byte before
+the exclusive-or and the other two do not.
+
+**That mask turns out to be redundant.** The term is truncated to a
+byte afterwards, so `(uint8_t)(mask ^ (alpha | (c & 0xff)))` and
+`(uint8_t)(mask ^ (alpha | c))` are the same value for every input —
+which is why removing it is a mutation the harness cannot catch. It is
+kept anyway, because it is what shipped and the point of these
+extractions is to move code rather than improve it. Both expressions
+are now in one file where they can be compared, instead of one of them
+being inline in a hundred-line function.
+
+### The quirk that is kept
+
+One of the second-colour lookups multiplies its index by four, and
+only on the middle corner of a triangle, and only when the geometry has
+per-vertex texture coordinates:
+
+```c
+if (src->uvs && src->useVertexUv && k == 1)
+    secondIdx = idx * 4;
+```
+
+It reads like a bug and it may well be one. It is preserved, with the
+comment it had, because the game shipped with it and the difference
+would be visible.
+
+### The vertex types line up
+
+`tVertex_type_142_generic` — the renderer's geometry vertex — and
+`tGdi_TexturedVertex` — the interface's textured one — are the same
+shape: position, packed colour, one texture coordinate. So the builder
+writes the interface's type and the renderer casts its buffer to it,
+and the OpenGL renderer can feed geometry through the vertex layout it
+already describes for text.
+
+That cast is **asserted** in the wingdi harness, both sizes and all
+three offsets. A field added to either type would otherwise make it
+write the wrong bytes with nothing to say so.
+
+### What is still in the renderer
+
+The cached path. When the geometry has an index buffer and a triangle
+strip block and nothing has changed under it, the renderer draws from
+what it cached rather than rebuilding anything — and that half is
+genuinely about buffers belonging to a device. The immediate path is
+the one a second renderer needs first, because it is the fallback
+whenever the cache does not apply.
+
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the
