@@ -8,6 +8,8 @@
 #include "win/wingdi.h"
 #include "world.h"
 #include "sideload.h"
+#include "datafiles.h"
+#include "loading.h"
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
@@ -19,9 +21,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	else
 	{
 		ENG_InitApplication();
+
+		// datafiles.ini, if there is one, then the command line over
+		// the top of it: ENG_ParseCommandLine only ever sets the
+		// flags it finds and only writes the big file name when the
+		// line actually carries one, so whatever is given there wins
+		// and whatever is not falls back to the ini.
+		DAT_InitModule();
+		if (DAT_b_Binarized())
+			LOA_gb_SpeedMode = 1;
+		if (DAT_pc_BigFile())
+			strcpy(MAI_gst_BIGFileName, DAT_pc_BigFile());
+
 		strcpy(cmdLine, lpCmdLine);
-		strcat(cmdLine, " /B sally_clean.bf");
-		//strcat(cmdLine, " /SINGLESTREAM /NOSOUND /B sally_clean.bf");
 		ENG_ParseCommandLine(cmdLine);
 		BIG_Open(MAI_gst_BIGFileName);
 		SIDE_InitModule();
