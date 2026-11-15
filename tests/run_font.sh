@@ -46,8 +46,13 @@ do
     ftobjs="$ftobjs $obj"
 done
 
+# The path rule lives in datapath.c now, shared with the shader loader,
+# so it is compiled in rather than being part of font.c. The cases that
+# drive it -- a missing file, no path at all, a path too long -- still
+# drive it through font.c, which is where it is used.
+$CC $CFLAGS -c datapath.c -o "$OUT/font.datapath.o"
 # shellcheck disable=SC2086
 $CC $CFLAGS $FTFLAGS -c tests/test_font.c -o "$OUT/font.drv.o"
 # shellcheck disable=SC2086
-$CC "$OUT/font.drv.o" $ftobjs -o "$OUT/font" -lm
+$CC "$OUT/font.drv.o" "$OUT/font.datapath.o" $ftobjs -o "$OUT/font" -lm
 "$OUT/font"

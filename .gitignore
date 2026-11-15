@@ -6,12 +6,13 @@
 /Debug
 /Release
 # The sideload folder, which is the user's and not the repository's --
-# except data/fonts, which ships with the engine and font.c reads at
-# runtime. Written as /data/* and a negation rather than /data, because
-# git does not look inside a directory it has already excluded, so
-# !/data/fonts would never be reached.
+# except data/fonts and data/shaders, which ship with the engine and
+# are read at runtime. Written as /data/* and negations rather than
+# /data, because git does not look inside a directory it has already
+# excluded, so the negations would never be reached.
 /data/*
 !/data/fonts/
+!/data/shaders/
 /x64/Debug
 /jade.spe
 /sally.idx

@@ -101,7 +101,23 @@ DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD n)
     (void)mod;
     fm_moduleCalls++;
     if (fm_moduleFails || len + 1 > n)
+    {
+        /* Windows leaves the buffer in an unspecified state when this
+           fails, and a caller that uses it anyway has to be visible.
+           Writing a plausible path here rather than leaving stack
+           garbage is what makes that so: ignoring the failure then
+           produces a path that resolves and opens nothing, which logs
+           a different line, instead of depending on whether the
+           garbage happened to contain a separator. */
+        if (n > 1)
+        {
+            size_t fake = strlen("/plausible/iriseng.exe");
+
+            if (fake + 1 <= n)
+                memcpy(out, "/plausible/iriseng.exe", fake + 1);
+        }
         return 0;
+    }
     memcpy(out, fm_exePath, len + 1);
     fm_moduleOk++;
     return (DWORD)len;
