@@ -60,15 +60,16 @@ static tGdi_TexturedVertex fnt_verts[FNT_MAXQUADS * 6];
    the shortcut says, and the fonts are part of the install. */
 static int FNT_l_b_Path(const char* name, char* out, size_t n)
 {
-    char  sub[sizeof("data/fonts/")];
+    char  exe[MAX_PATH];
     char* cut;
     char  sep;
+    int   len;
 
-    if (!GetModuleFileNameA(NULL, out, (DWORD)n))
+    if (!GetModuleFileNameA(NULL, exe, (DWORD)sizeof(exe)))
         return 0;
-    cut = strrchr(out, '\\');
+    cut = strrchr(exe, '\\');
     if (!cut)
-        cut = strrchr(out, '/');
+        cut = strrchr(exe, '/');
     if (!cut)
         return 0;
 
@@ -78,13 +79,14 @@ static int FNT_l_b_Path(const char* name, char* out, size_t n)
        on a host that has only the other. */
     sep = *cut;
     *(cut + 1) = 0;
-    sprintf(sub, "data%cfonts%c", sep, sep);
 
-    if (strlen(out) + strlen(sub) + strlen(name) + 1 > n)
-        return 0;
-    strcat(out, sub);
-    strcat(out, name);
-    return 1;
+    /* One bounded call rather than a strcat chain: this project
+       builds with the deprecated-call check on, which rejects
+       sprintf and strcat outright, and a single snprintf is the
+       better answer anyway -- it reports truncation instead of
+       quietly producing a short path. */
+    len = snprintf(out, n, "%sdata%cfonts%c%s", exe, sep, sep, name);
+    return len > 0 && (size_t)len < n;
 }
 
 /* ------------------------------------------------------- the library */
