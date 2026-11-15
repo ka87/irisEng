@@ -51,20 +51,40 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub -Ithirdparty/ffmpeg/include"
+CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
+CFLAGS="$CFLAGS -Ithirdparty/ffmpeg/include"
+# font.c needs these to parse at all, and a file that does not parse
+# reports no implicit declarations -- see UNSWEEPABLE below
+CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
 
 BASELINE="bigfiles.c 2
 engine.c 1
 sound.c 1
 strings.c 1"
 
+# Files this host cannot compile at all, for reasons that are not
+# implicit declarations. They matter because the count below is a grep
+# for one phrase: a file that stops with a different error produces
+# none of it and scores a clean zero, so it drops out of the sweep
+# silently. That is how font.c went unswept until this list existed --
+# it was missing an include path and counted zero.
+#
+# loading.c casts call_fgetpos()'s return to unsigned int. fpos_t is an
+# integer on MSVC and a struct in glibc, so the cast is correct where
+# the engine is built and impossible here. It is listed, not fixed:
+# changing engine code to suit this host is the wrong way round.
+UNSWEEPABLE="loading.c"
+
 files=$(python3 - <<'EOF'
 import re
 s = open('irisEng.vcxproj', encoding='latin-1').read()
 for m in re.finditer(r'ClCompile Include="([^"]+\.c)"', s):
     p = m.group(1).replace('\\', '/')
-    if 'jpeg-6b' in p or 'minilzo' in p:
-        continue
+    if 'jpeg-6b' in p or 'minilzo' in p or p.startswith('thirdparty/'):
+        continue   # upstream source, not ours to tidy -- and FreeType's
+                   # needs defines and include paths this sweep does not
+                   # pass, so it was failing for other reasons and
+                   # counting zero
     print(p)
 EOF
 )
@@ -77,12 +97,41 @@ done
 true
 )
 
+# Which files could not be compiled at all. Checked separately from the
+# count, because the count cannot tell "clean" from "never parsed".
+unswept=$(
+for f in $files; do
+    out=$($CC $CFLAGS "$f" 2>&1 || true)
+    case "$out" in
+        *'implicit declaration of function'*) continue ;;
+    esac
+    if ! $CC $CFLAGS "$f" >/dev/null 2>&1; then
+        printf '%s\n' "$f"
+    fi
+done
+true
+)
+
 if [ "$1" = "--list" ]; then
     echo "$current"
     exit 0
 fi
 
 bad=0
+for f in $unswept; do
+    case " $UNSWEEPABLE " in
+        *" $f "*) printf 'skip  %-28s cannot be compiled here, known\n' "$f" ;;
+        *) printf 'UNSWEPT %-26s cannot be compiled here, so its count means nothing\n' "$f"
+           bad=$((bad + 1)) ;;
+    esac
+done
+for f in $UNSWEEPABLE; do
+    case " $unswept " in
+        *" $f "*) ;;
+        *) printf 'FIXED %-28s compiles now -- take it off UNSWEEPABLE\n' "$f"
+           bad=$((bad + 1)) ;;
+    esac
+done
 for line in $(echo "$current" | tr ' ' ':'); do
     [ -z "$line" ] && continue
     f=${line%%:*}

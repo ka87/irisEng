@@ -176,6 +176,12 @@
     <ClCompile Include="win\wingditex.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="win\glload.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win\wingl.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="thirdparty\freetype\src\base\ftsystem.c">
       <Filter>FreeType</Filter>
     </ClCompile>
@@ -800,6 +806,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="win\wingditex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win\glcore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win\glload.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win\wingl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inputoutput.h">
