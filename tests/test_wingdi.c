@@ -21,6 +21,8 @@
  */
 
 #include "wingdi_mocks.h"
+/* for the frozen copy's font pointer, which the engine no longer has */
+#include <d3dx9math.h>
 #include "../math.h"
 #include "../cameraengine.h"
 #include "../soft.h"
@@ -569,6 +571,8 @@ static void ResetShared(void)
     d3dRequestPrimitiveCount2 = 0;
     d3dCullModeBackup = 0;
     d3d_requestDrawSelectedVBO = NULL;
+    /* only the frozen copy has a D3DX font left; it is reset so the
+       copy starts each case the way it started the first one */
     d3dxfontIF = NULL;
     rastersDrawPrimitiveUPDataStart = NULL;
     rastersDrawPrimitiveUPDataEnd = NULL;

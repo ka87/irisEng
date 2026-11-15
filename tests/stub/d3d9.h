@@ -373,6 +373,7 @@ typedef IDirect3DIndexBuffer9*   LPDIRECT3DINDEXBUFFER9;
 #define D3DFMT_INDEX16                     4172
 #define D3DFMT_UNKNOWN                     4173
 #define D3DFMT_X8R8G8B8                    4174
+#define D3DFMT_R5G6B5                      4175
 /* D3DFOG */
 #define D3DFOG_NONE                        4175
 /* D3DPT */

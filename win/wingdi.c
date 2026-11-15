@@ -11,6 +11,8 @@
 #include "../resource.h"
 #include "wingdi.h"
 #include "../font.h"
+#include "wingdimath.h"
+#include "wingditex.h"
 #include "overlay.h"
 #include "../editorcamera.h"
 #include "../profiler.h"
@@ -403,7 +405,8 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, 
     {
         MATH_MakeOGLMatrix(&viewMtxStd, viewMtx);
         viewMtxStdInv.mtxflag = 0x4;
-        D3DXMatrixInverse((D3DXMATRIX*)&viewMtxStdInv, NULL, (D3DXMATRIX*)&viewMtxStd);
+        D3D_p_MatrixInverse((D3DMATRIX*)&viewMtxStdInv, NULL,
+                            (const D3DMATRIX*)&viewMtxStd);
     }
     else
     {
@@ -830,10 +833,11 @@ void D3D_SetProjectionMatrix(tDDCamStruct* cam)
     {
         orthoW = (float)viewW;
         halfTexel = (float)(0.5 / orthoW);
-        D3DXMatrixTranslation(&offsetMtx, halfTexel, halfTexel, 0.0);
+        D3D_MatrixTranslation(&offsetMtx, halfTexel, halfTexel, 0.0);
         orthoH = (float)viewH;
-        D3DXMatrixOrthoOffCenterRH(&orthoMtx, 0.0, orthoW, 0.0, orthoH, 0.0, 1.0);
-        D3DXMatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &orthoMtx, &offsetMtx);
+        D3D_MatrixOrthoOffCenterRH(&orthoMtx, 0.0, orthoW, 0.0, orthoH, 0.0, 1.0);
+        D3D_MatrixMultiply((D3DMATRIX*)D3DRenderParams.projectionMatrix, &orthoMtx,
+                           &offsetMtx);
         memcpy(&d3dProjectionMtx, D3DRenderParams.projectionMatrix, sizeof(D3DMATRIX));
         D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, (D3DMATRIX*)(D3DRenderParams.projectionMatrix));
         return;
@@ -1024,8 +1028,13 @@ void D3D_TextureStore(tTexUploadRequest* req)
     area.left = 0;
     area.right = texElem->normalData.width;
     area.bottom = texElem->normalData.height;
-    D3DXLoadSurfaceFromMemory(surface, NULL, NULL, req->dataPtr, D3DFMT_A8R8G8B8, 4 * texElem->normalData.width, NULL, &area, D3DX_FILTER_POINT, 0);
-    D3DXFilterTexture((IDirect3DBaseTexture9*)texture, NULL, 0, D3DX_FILTER_LINEAR);
+    D3D_b_SurfaceLoadFromMemory(surface, req->dataPtr,
+                                4 * texElem->normalData.width,
+                                area.right, area.bottom);
+    /* Kept because the texture may be one that already existed and
+       carries levels; the one created just above has a single level,
+       where this does nothing, exactly as the call it replaces did. */
+    D3D_b_TextureBuildMipLevels(texture);
     surface->lpVtbl->Release(surface);
     D3DRenderParams.d3dTextures[req->idx] = texture;
 }
@@ -1565,7 +1574,7 @@ void D3D_OverlayBegin(void)
     mtx._33 = 1.0f;
     mtx._44 = 1.0f;
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, &mtx);
-    D3DXMatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
+    D3D_MatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &mtx);
 
     D3D_SetVertexShader(0);
@@ -1824,7 +1833,7 @@ void Rasters_Update()
             mtx._11 = 1.0;
             memcpy(&d3dTransformMatrix, &mtx, sizeof(d3dTransformMatrix));
             D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 2, &mtx);
-            D3DXMatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
+            D3D_MatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
             memcpy(&d3dProjectionMtx, &mtx, sizeof(d3dProjectionMtx));
             D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 3, &mtx);
             D3D_SetVertexShader(0);
@@ -3680,7 +3689,7 @@ void D3D_SetTransformAndSaveMatrix(IDirect3DTexture9* texture, int mtxnum)
     scaleMtx._22 = (float)(halfHeight - invHeight);
     scaleMtx._41 = scaleMtx._11;
     scaleMtx._42 = (float)(halfHeight + invHeight);
-    D3DXMatrixMultiply(&result, &flipped, &scaleMtx);
+    D3D_MatrixMultiply(&result, &flipped, &scaleMtx);
     memcpy(&d3dTransformationMatrix[mtxnum], &result, sizeof(Mtx4x4WithoutAdditionalData));
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, mtxnum + D3DTS_TEXTURE0, &result);
 }
@@ -4122,7 +4131,7 @@ void D3D_Palette_Load(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct*
         surface->lpVtbl->UnlockRect(surface);
         surface->lpVtbl->Release(surface);
         if (D3DRenderParams.Mipmapping && D3DRenderParams.argbIsSupportedForTextures != 1)
-            D3DXFilterTexture((IDirect3DBaseTexture9*)source, NULL, D3DX_DEFAULT, D3DX_DEFAULT);
+            D3D_b_TextureBuildMipLevels(source);
         D3DRenderParams.d3dDev->lpVtbl->UpdateTexture(D3DRenderParams.d3dDev, (IDirect3DBaseTexture9*)source, (IDirect3DBaseTexture9*)dest);
     }
     else

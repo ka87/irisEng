@@ -476,7 +476,9 @@ for one in tests/runworld.sh \
            tests/run_wingdivideo.sh \
            tests/run_wingdisun.sh \
            tests/run_gfxsun.sh \
-           tests/run_font.sh
+           tests/run_font.sh \
+           tests/run_wingdimath.sh \
+           tests/run_wingditex.sh
 do
     name=$(basename "$one" .sh)
     [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) continue ;; esac
