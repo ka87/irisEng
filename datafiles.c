@@ -1,6 +1,7 @@
 #include "datafiles.h"
 #include "dbg.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +19,7 @@ enum { DAT_SECTION_NONE, DAT_SECTION_DATA, DAT_SECTION_VIDEO };
 
 typedef struct sDatVideo
 {
-    int id;
+    unsigned id;
     char file[DAT_NAMEMAX];
 } tDatVideo;
 
@@ -100,28 +101,57 @@ static void DAT_l_CopyName(char* dest, const char* src)
     dest[n] = '\0';
 }
 
-/* The key under [video] is the id, so it has to be a number and
-   nothing else -- a mistyped key is worth saying so about rather
-   than silently becoming id 0, which atoi alone would do. */
-static int DAT_l_b_Number(const char* s, int* out)
+/* The key under [video] is the id the script passes, and the whole
+   32-bit range of it is in use -- what gets pushed is a resource key,
+   not a small index, so 0x3001978F is the natural way to write one
+   and a key with the top bit set does not fit a positive int. So this
+   takes hex with a 0x prefix as well as decimal, reads it as unsigned
+   32-bit, and insists the whole key is a number and nothing else: a
+   mistyped key is worth saying so about rather than silently becoming
+   id 0, which atoi alone would do. */
+static int DAT_l_b_Id(const char* s, unsigned* out)
 {
     const char* p = s;
-    int any = 0;
+    char* end;
+    unsigned long v;
+    int base = 10;
+    int negate = 0;
 
-    if (*p == '-' || *p == '+')
-        p++;
-    while (*p >= '0' && *p <= '9')
+    if (*p == '-')
     {
-        any = 1;
+        negate = 1;
         p++;
     }
-    if (!any || *p)
+    else if (*p == '+')
+    {
+        p++;
+    }
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
+    {
+        base = 16;
+        p += 2;
+        if (negate)
+            return 0;      /* -0x... is not a spelling anyone means */
+    }
+    if (!*p)
         return 0;
-    *out = atoi(s);
+
+    errno = 0;
+    v = strtoul(p, &end, base);
+    if (*end || errno == ERANGE)
+        return 0;
+
+    /* The range is the key's 32 bits, whichever base it was written
+       in. strtoul is 64-bit wide here, so without this a hex id with
+       nine digits would quietly keep only the low eight. */
+    if (v > (negate ? 0x80000000ul : 0xFFFFFFFFul))
+        return 0;
+
+    *out = negate ? (unsigned)(0u - (unsigned)v) : (unsigned)v;
     return 1;
 }
 
-static void DAT_l_AddVideo(int id, const char* file)
+static void DAT_l_AddVideo(unsigned id, const char* file)
 {
     int i;
 
@@ -137,7 +167,7 @@ static void DAT_l_AddVideo(int id, const char* file)
     }
     if (dat_videoNum >= DAT_MAXVIDEOS)
     {
-        DBG_OutputDebugString("%s: more than %d videos, id %d dropped\n",
+        DBG_OutputDebugString("%s: more than %d videos, id 0x%08X dropped\n",
                               DAT_INIFILE, DAT_MAXVIDEOS, id);
         return;
     }
@@ -148,7 +178,7 @@ static void DAT_l_AddVideo(int id, const char* file)
 
 static void DAT_l_Setting(int section, char* key, char* value)
 {
-    int id;
+    unsigned id;
 
     if (section == DAT_SECTION_DATA)
     {
@@ -163,7 +193,7 @@ static void DAT_l_Setting(int section, char* key, char* value)
     }
     if (section == DAT_SECTION_VIDEO)
     {
-        if (DAT_l_b_Number(key, &id))
+        if (DAT_l_b_Id(key, &id))
             DAT_l_AddVideo(id, value);
         else
             DBG_OutputDebugString("%s: [video] key \"%s\" is not an id\n",
@@ -266,9 +296,12 @@ const char* DAT_pc_Video(int id)
 {
     int i;
 
+    /* compared as the 32 bits that were pushed, so a key written in
+       the file as hex and one written as a decimal match the same
+       call whichever way round they are spelled */
     for (i = 0; i < dat_videoNum; i++)
     {
-        if (dat_videos[i].id == id)
+        if (dat_videos[i].id == (unsigned)id)
             return dat_videos[i].file[0] ? dat_videos[i].file : NULL;
     }
     return NULL;

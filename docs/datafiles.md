@@ -10,7 +10,8 @@ bigfile   = sally_clean.bf
 binarized = 1
 
 [video]
-0 = BGEMakingOf.bik
+0x3001978F = BGEMakingOf.bik
+0x610127BE = BGEMakingOf.bik
 ```
 
 A copy ships in the repository root. It belongs next to the
@@ -49,11 +50,20 @@ the script passes to the fullscreen video function —
 `AI_EvalFunc_GFX_FS_VideoStart` already took an int off the stack and
 passed it on, where it had been ignored.
 
-**Which id each video is wanted under is decided by the scripts, and
-nothing in this tree says what they are.** No behaviour in
-`ai/ai_bge` calls that function, so the shipped file puts the one
-known video under `0` as a starting point. That is why the log names
-the id it wanted: run it, read the line, move the entry to that key.
+**The id is a 32-bit resource key, not a small index.** That is worth
+being plain about because it decides how the file is written and what
+the reader has to accept: an id may be given in hex with a `0x`
+prefix or in decimal, the whole 32-bit range is matched, and a key
+with the top bit set — which arrives as a negative `int` — matches
+the key as written. `0x9E006771`, `2650826609` and `-1644140687` are
+the same id and all three find the same entry.
+
+The making of is launched under **one of two** ids, chosen by a
+global the script tests, so both are in the shipped file and both
+name the same file. Other callers pass a key held in a variable, so
+the id they ask for comes from world data and cannot be known from
+the scripts alone — which is why the log names the id that was
+wanted. Run it, read the line, add that key.
 
 An id with no entry, or an entry naming a file that will not open,
 **plays nothing**. Both are written to the debug output and the video
@@ -81,20 +91,38 @@ anything else is off.
 A repeated video id takes the last value given. A setting with no
 value counts as not set.
 
-A `[video]` key that is not a number is reported rather than taken as
-id 0, which is what `atoi` alone would have done — `making_of =
+A `[video]` key that is not a valid id is reported rather than taken
+as id 0, which is what `atoi` alone would have done — `making_of =
 ...` silently becoming id 0 is exactly the sort of thing that looks
-like it works.
+like it works. So are an id past 32 bits in either base, a bare `0x`,
+a negated hex id, and hex with anything after it.
 
 ## The tests
 
-`tests/run_datafiles.sh`, 65 checks. New code with no earlier copy,
+`tests/run_datafiles.sh`, 83 checks. New code with no earlier copy,
 so it is a direct check. The driver includes `datafiles.c` so it can
 point the reader at files it writes itself, and **one case reads the
 shipped `datafiles.ini`** — so a typo in that file fails here rather
 than in game.
 
-Fifteen defects were injected one at a time and all fifteen caught: a
+Twenty-two defects were injected one at a time and twenty-one were
+caught. For the ids: the 32-bit range unchecked, a `0x` prefix read
+as decimal, hex not accepted at all, only the low half of the key
+compared, a negative id not negated, a negated hex id accepted, and a
+bare `0x` accepted.
+
+**The range check for hex was a real gap found this way**, not just a
+mutation: `strtoul` is 64 bits wide here, so the first version — which
+only range-checked decimal — kept the low eight digits of a nine-digit
+hex id and said nothing. The check now covers both bases.
+
+**The twenty-second is not observable.** Narrowing the local the id is
+parsed into from `unsigned` back to `int` changes nothing: the bit
+pattern is the same and so is the comparison. It is a type-tidiness
+point rather than a defect, and gcc does not warn about it here
+either, so it is recorded rather than tested.
+
+For the rest of the reader: a
 missing file reported, a second read not starting clean, a key that
 only starts with digits taken as an id, any key at all taken as an
 id, the video table overrun, an over-long name not truncated, the

@@ -18,11 +18,14 @@
         binarized = 1
 
         [video]
-        0 = BGEMakingOf.bik
+        0x3001978F = BGEMakingOf.bik
 
     Under [video] the key is the id the script passes to the
-    fullscreen video function and the value is the file to play. An id
-    with no entry plays nothing.
+    fullscreen video function and the value is the file to play. What
+    is pushed is a 32-bit resource key rather than a small index, so
+    an id may be written in hex with a 0x prefix or in decimal, and
+    the whole 32-bit range is matched. An id with no entry plays
+    nothing.
 */
 
 #define DAT_INIFILE   "datafiles.ini"
