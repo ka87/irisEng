@@ -1164,6 +1164,11 @@ static void reset(void)
        so a case that left a depth behind would tint the next one. */
     unknownAEFlag4GlobalVar = 0.0f;
     texFactorManual = 0.0f;
+    /* And the motion smooth's watched direction. The renderer itself
+       deliberately does not clear this when the targets go -- see the
+       note beside it -- so a case that left the camera somewhere would
+       hand the next case a movement it never made. */
+    memset(&gl_aeMotionPrev, 0, sizeof(gl_aeMotionPrev));
     memset(&gl_material, 0, sizeof(gl_material));
     gl_colorMaskAlpha = 0;
     gl_mipmapping = 1;
@@ -4559,6 +4564,300 @@ static void caseAeZoomUniforms(void)
  * what it leaves alone.
  */
 
+/* --------------------------------------------- the motion smooth
+ *
+ * A smear along the way the camera just moved. The threshold, the four
+ * taps and the weight are aemotion.c's, and the differential against
+ * the other renderer drives the threshold from both sides. These ask
+ * this renderer's part, and the first of them is the one that matters:
+ * the watched direction has to be written down on every frame the effect
+ * runs, including the frames it does not smear on.
+ */
+
+/* Move the watched direction by a known amount on each axis.
+ *
+ * By **rotating** the camera and not translating it: the transform
+ * that carries the watched direction applies the matrix's rotation and
+ * scale and not its translation, so a camera that only travels moves
+ * the direction not at all and there would be nothing to test. A first
+ * draft of these cases set a translation and every one of them read
+ * "did not smear".
+ *
+ * Leaning the first basis vector by t moves the carried direction's x
+ * by exactly t and leaves the other two alone, which is the smallest
+ * handle on it that stays exact. */
+static void wg_MotionCameraAt(float tx, float ty, float tz)
+{
+    MATH_SetIdentityMatrix(&gl_dd.ct.cam.cameraMtx);
+    gl_dd.ct.cam.cameraMtx.v1.x = 1.0f + tx;
+    gl_dd.ct.cam.cameraMtx.v2.y = 1.0f + ty;
+    gl_dd.ct.cam.cameraMtx.v3.z = 1.0f + tz;
+}
+
+static void caseAeMotionSmoothAccumulation(void)
+{
+    int i;
+
+    printf("-- the watched direction is written down even when nothing"
+           " smears\n");
+
+    /* A camera drifting by less than the threshold every frame must
+       never smear, however long it drifts. That only holds if the
+       point is written down on the frames that do not smear -- leave
+       that line inside the branch and the movement accumulates until
+       it crosses, and then the frame smears by everything the camera
+       has drifted since it started. Which looks like a fault in the
+       camera, not in here.
+
+       Twenty frames of a thousandth each: twenty times the threshold
+       in total, and never once over it in a frame. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AMO_BIT;
+    wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
+    GL_Flip();                              /* settles the point */
+
+    for (i = 1; i <= 20; i++)
+    {
+        wg_MotionCameraAt((float)i * 0.001f, 0.0f, 0.0f);
+        wg_callLen = 0;
+        GL_Flip();
+        okEq(WG_i_Count("glDrawArrays"), 0, "a thousandth a frame never"
+                                            " smears");
+    }
+
+    /* And one frame of the whole distance does smear, so the twenty
+       readings above are not simply the effect being switched off. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AMO_BIT;
+    wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
+    GL_Flip();
+    wg_MotionCameraAt(0.02f, 0.0f, 0.0f);
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "the same distance in one frame"
+                                        " does");
+}
+
+static void caseAeMotionSmoothGates(void)
+{
+    printf("-- what has to be true before it smears\n");
+
+    /* The bit off: nothing, however far the camera moved. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0;
+    wg_MotionCameraAt(5.0f, 0.0f, 0.0f);
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "without the bit, nothing");
+
+    /* And the bit off while **another effect runs**, which is the only
+       way to see this effect's own gate at all: with nothing else on,
+       the whole chain is skipped and the effect is never reached, so a
+       missing gate here looks exactly like a working one. A sweep
+       mutant deleting the gate survived until this case existed.
+     *
+       The motion blur is the neighbour used, and it does not mask the
+       alpha write -- so a masked draw in the log is this effect
+       running when it should not. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x10;
+    motionBlurFactor = 0.5f;
+    wg_MotionCameraAt(5.0f, 0.0f, 0.0f);
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "the neighbour draws on its own");
+    {
+        int i;
+        int masked = 0;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0
+                && wg_calls[i].arg[3] == GL_FALSE)
+                masked = 1;
+        okEq((long)masked, 0L, "and the motion smooth does not run beside"
+                               " it");
+    }
+    motionBlurFactor = 0.0f;
+
+    /* The bit on and the camera still: no draw. The effect runs, and
+       what it does is record where the camera is. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AMO_BIT;
+    wg_MotionCameraAt(1.0f, 2.0f, 3.0f);
+    GL_Flip();
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "a still camera does not smear");
+
+    /* Moving straight along the line of sight crosses the threshold --
+       the test is in three dimensions -- and then smears by nothing,
+       because the smear is in two. So the draw happens and the taps
+       are all at nought. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AMO_BIT;
+    wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
+    GL_Flip();
+    wg_MotionCameraAt(0.0f, 0.0f, 1.0f);
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "moving away still draws");
+    okEq(WG_l_Arg("glUniform4f.scaled", 0, 1), 0L,
+         "with the first tap at nothing across");
+    okEq(WG_l_Arg("glUniform4f.scaled", 1, 1), 0L, "and nothing down");
+}
+
+static void caseAeMotionSmoothTaps(void)
+{
+    float u[AMO_TAPS];
+    float v[AMO_TAPS];
+    float dx = 0.0f;
+    float dy = 0.0f;
+    float now[3];
+    float before[3];
+    int   i;
+
+    printf("-- the four taps, and which way the vertical runs\n");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AMO_BIT;
+    wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
+    GL_Flip();
+    wg_MotionCameraAt(0.03f, 0.07f, 0.0f);
+    wg_callLen = 0;
+    GL_Flip();
+
+    /* What the shared code says the taps are, from the same movement
+       the renderer just saw. The watched direction is the unit corner
+       leaned by the basis above, so it lands at one plus the lean. */
+    now[0] = 1.0f + 0.03f;
+    now[1] = 1.0f + 0.07f;
+    now[2] = 1.0f;          /* the third axis is left alone */
+    before[0] = 1.0f;
+    before[1] = 1.0f;
+    before[2] = 1.0f;
+    okEq((long)AMO_b_Decide(&dx, &dy, now, before), 1L,
+         "the harness and the renderer agree that it moved");
+    AMO_Taps(u, v, dx, dy);
+
+    for (i = 0; i < AMO_TAPS; i++)
+    {
+        okEq(WG_l_Arg("glUniform4f.scaled", 0, 1 + i), wg_l_Scaled(u[i]),
+             "the tap across is the shared code's");
+        /* Negated, because this renderer's texture runs up the picture
+           and the other one's runs down it. Getting this wrong smears
+           the right distance the wrong way, which looks like a smear
+           either way -- so it is pinned as the negation here and the
+           driver harness reads the direction out of a picture. */
+        okEq(WG_l_Arg("glUniform4f.scaled", 1, 1 + i), wg_l_Scaled(-v[i]),
+             "and the tap down is its negation");
+    }
+
+    /* The two are not the same set, or the negation above would be
+       vacuous. */
+    ok(wg_l_Scaled(v[0]) != wg_l_Scaled(-v[0]),
+       "with the vertical taps not symmetric about nothing");
+
+    /* And the weight, which is not a quarter. */
+    okEq(WG_l_Arg("glUniform1f.scaled", 0, 1), wg_l_Scaled(AMO_f_Weight()),
+         "each sample weighs 63 of 255");
+}
+
+static void caseAeMotionSmoothDraw(void)
+{
+    tCbd_Bands bands;
+
+    printf("-- where it draws, and what it leaves alone\n");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 1;
+    tweak_ae_nobands = 0;
+    D3D_gf_CutsceneBand = 0.25f;
+    PC_AE_MASTER = (int)AMO_BIT;
+    wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
+    GL_Flip();
+    wg_MotionCameraAt(0.03f, 0.07f, 0.0f);
+    wg_callLen = 0;
+    GL_Flip();
+
+    CBD_Decide(&bands);
+    okEq(WG_l_Arg("glBufferData", 0, 4),
+         wg_l_Scaled(1.0f - 2.0f * bands.bottom),
+         "the quad starts at the bottom of the band");
+    okEq(WG_l_Arg("glBufferData", 0, 6),
+         wg_l_Scaled(1.0f - 2.0f * bands.top), "and ends at its top");
+
+    /* The alpha write is masked off for the draw, as the other
+       renderer narrows its colour write. */
+    {
+        int draw = wg_i_CallAt("glDrawArrays", 0);
+        int i;
+        int masked = 0;
+
+        for (i = 0; i < draw; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0)
+                masked = (wg_calls[i].arg[3] == GL_FALSE);
+        ok(masked, "with the alpha write masked off");
+    }
+
+    CIN_Bands = 0;
+    D3D_gf_CutsceneBand = 0.10416666f;
+}
+
+static void caseAeMotionSmoothOrder(void)
+{
+    printf("-- the motion smooth runs after the motion blur\n");
+
+    /* Both on. The motion blur reads the target it writes, so what
+       runs before it decides which target that is -- and this effect
+       exchanges, so its place in the chain is not decoration. The
+       motion blur's draw does not mask the alpha write and this one's
+       does, which is what tells the two apart. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AMO_BIT | 0x10;
+    motionBlurFactor = 0.5f;
+    wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
+    GL_Flip();
+    wg_MotionCameraAt(0.03f, 0.07f, 0.0f);
+    wg_callLen = 0;
+    GL_Flip();
+
+    okEq(WG_i_Count("glDrawArrays"), 2, "two effects, two draws");
+    {
+        int first = wg_i_CallAt("glDrawArrays", 0);
+        int second = wg_i_CallAt("glDrawArrays", 1);
+        int i;
+        int maskedBeforeFirst = 0;
+        int maskedBeforeSecond = 0;
+
+        for (i = 0; i < first; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0)
+                maskedBeforeFirst = (wg_calls[i].arg[3] == GL_FALSE);
+        for (i = 0; i < second; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0)
+                maskedBeforeSecond = (wg_calls[i].arg[3] == GL_FALSE);
+        okEq((long)maskedBeforeFirst, 0L, "the motion blur draws first");
+        okEq((long)maskedBeforeSecond, 1L, "and the motion smooth after it");
+    }
+    motionBlurFactor = 0.0f;
+}
+
 static void caseAeHueGates(void)
 {
     printf("-- the hue sweep runs on its bit, with no depth needed\n");
@@ -6374,6 +6673,11 @@ int main(void)
     caseAeRemanenceChain();
     caseAeRemanenceAfterDepthBlur();
     caseAeZoomUniforms();
+    caseAeMotionSmoothAccumulation();
+    caseAeMotionSmoothGates();
+    caseAeMotionSmoothTaps();
+    caseAeMotionSmoothDraw();
+    caseAeMotionSmoothOrder();
     caseAeHueGates();
     caseAeHueSubtract();
     caseAeHueDraw();

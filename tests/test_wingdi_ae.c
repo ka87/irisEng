@@ -27,7 +27,7 @@ extern int tweak_ae_no;
 extern int tweak_ae_nobands;
 extern int ECAM_gi_NoAfterEffects;
 
-#define AE_GROUPS           13
+#define AE_GROUPS           14
 #define AE_CASES_PER_GROUP  48
 #define AE_CASES            (AE_GROUPS * AE_CASES_PER_GROUP)
 
@@ -200,6 +200,24 @@ static float AE_HuePhase(int k)
         0.0f, 0.2f, 0.3f, 0.5f, 1.5f, -0.25f
     };
     return table[(k / 8) % 6];
+}
+
+/* How far the watched point moves between two frames, for the motion
+   smooth's group.
+ *
+   Eight amounts, straddling the threshold on both sides and at it:
+   the test is strictly greater than, so the amount equal to the
+   threshold must *not* smear and the one a hair above must. The two
+   large ones are there because the smear they ask for is far wider
+   than the picture, which is a perfectly ordinary thing for a camera
+   cut to produce. */
+static float AE_MotionDelta(int k)
+{
+    static const float table[8] = {
+        0.0f, 0.001f, 0.0049f, 0.0049999999f, 0.005f, 0.0050000001f,
+        0.02f, 1.0f
+    };
+    return table[k % 8];
 }
 
 static int AE_MasterBits(int k)

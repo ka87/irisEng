@@ -407,6 +407,11 @@ static void glr_Reset(void)
     glr_fadeOpacity = 0;
     unknownAEFlag4GlobalVar = 0.0f;
     texFactorManual = 0.0f;
+    /* The motion smooth's watched direction. The renderer does not
+       clear this with the targets on purpose -- see the note beside it
+       -- so the harness must, or a case inherits a camera turn that
+       never happened. */
+    memset(&gl_aeMotionPrev, 0, sizeof(gl_aeMotionPrev));
 
     memset(&glr_dd, 0, sizeof(glr_dd));
     memset(&glr_bb, 0, sizeof(glr_bb));
@@ -4042,6 +4047,130 @@ static void caseAeMotionBlur(void)
  * against the shared code's own packed colour rather than against each
  * other.
  */
+/* The motion smooth, and the one thing only a picture can say: which
+ * way the smear goes.
+ *
+ * The four taps are at minus three, plus two, minus one and nothing
+ * times the step -- a **lopsided** set, three steps one way and two
+ * the other. That asymmetry is what makes the direction testable: a
+ * smear flipped vertically reaches three steps the wrong way and two
+ * the other, which is still a smear of the right length and looks
+ * entirely convincing. Reading only the amount of blur would pass.
+ *
+ * So the frame is black with one bright row in it, the camera is
+ * turned about one axis only, and what is asserted is the rows the
+ * trail lands on -- including the two rows it must *not* reach.
+ */
+static void caseAeMotionSmooth(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    x = GLR_AE_W / 2;
+    int    row = GLR_AE_H / 2;
+    int    step;
+    int    i;
+
+    printf("-- the motion smooth smears along the camera's turn\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    scene = glr_AeScene(glr_aeAlphaNone, glr_aeAlphaNone);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* Black but for one bright row. */
+    for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+    {
+        glr_aePattern[i * 4 + 0] = 0;
+        glr_aePattern[i * 4 + 1] = 0;
+        glr_aePattern[i * 4 + 2] = 0;
+        glr_aePattern[i * 4 + 3] = 0;
+    }
+    for (i = 0; i < GLR_AE_W; i++)
+        glr_aePattern[(row * GLR_AE_W + i) * 4 + 0] = 255;
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    PC_AE_MASTER = (int)AMO_BIT;
+
+    /* The camera still, to settle the watched direction. Rotating and
+       not translating: the transform that carries the direction has no
+       translation term, so a camera that only travels moves nothing. */
+    MATH_SetIdentityMatrix(&glr_dd.ct.cam.cameraMtx);
+    GL_l_i_RunAfterEffects();
+
+    /* Then a turn about the vertical only. A lean of 0.16 gives a
+       movement of 0.16, a smear of eight, and a step of exactly eight
+       rows -- the vertical scale is a four-hundred-and-eightieth and
+       the frame is 480 rows, so one unit of smear is one row. */
+    MATH_SetIdentityMatrix(&glr_dd.ct.cam.cameraMtx);
+    glr_dd.ct.cam.cameraMtx.v2.y = 1.0f + 0.16f;
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+    step = 8;
+
+    /* Each tap that lands on the bright row contributes its own
+       weight of it and nothing else does, so each of the four rows of
+       the trail reads the weight times full brightness. */
+    {
+        double lit = 255.0 * (double)AMO_f_Weight();
+
+        okWithin((double)glr_AeRed(shown, x, row), lit, 2.0,
+                 "the row itself is lit by the tap at nothing");
+        okWithin((double)glr_AeRed(shown, x, row - 3 * step), lit, 2.0,
+                 "and three steps one way");
+        okWithin((double)glr_AeRed(shown, x, row - 1 * step), lit, 2.0,
+                 "and one step the same way");
+        okWithin((double)glr_AeRed(shown, x, row + 2 * step), lit, 2.0,
+                 "and two steps the other");
+
+        /* The two that say it is the right way up. A vertical flip
+           puts the three-step reach on the other side and the
+           two-step reach on this one -- same trail, same length,
+           mirrored. These are the only readings that can tell. */
+        okEq((long)glr_AeRed(shown, x, row + 3 * step), 0L,
+             "three steps the other way is dark");
+        okEq((long)glr_AeRed(shown, x, row - 2 * step), 0L,
+             "and two steps this way is dark");
+
+        /* And the trail really is lopsided, or the pair above would
+           hold for a symmetric smear read carelessly. */
+        ok(3 * step != 2 * step, "with the trail lopsided by design");
+    }
+
+    /* A turn about the line of sight crosses the threshold and smears
+       by nothing, so the picture comes back as four copies of itself
+       in the same place -- the weight times four, which is a shade
+       under the original.
+     *
+       Settled first, with a frame at the identity. Without it the
+       movement would be measured from where the turn above left the
+       watched direction, which is a movement on two axes and not the
+       one this is about -- and that is how this assertion first went
+       in wrong, reading a vertical smear and calling it none. */
+    MATH_SetIdentityMatrix(&glr_dd.ct.cam.cameraMtx);
+    GL_l_i_RunAfterEffects();
+    MATH_SetIdentityMatrix(&glr_dd.ct.cam.cameraMtx);
+    glr_dd.ct.cam.cameraMtx.v3.z = 1.0f + 0.5f;
+    shown = GL_l_i_RunAfterEffects();
+    okWithin((double)glr_AeRed(shown, x, row),
+             255.0 * (double)AMO_f_Weight() * 4.0, 2.0,
+             "turning away smears by nothing and dims by three parts"
+             " in 255");
+    okEq((long)glr_AeRed(shown, x, row - 3 * step), 0L,
+         "with no trail at all");
+
+    PC_AE_MASTER = 0;
+    MATH_SetIdentityMatrix(&glr_dd.ct.cam.cameraMtx);
+    CIN_Bands = 1;
+}
+
 static void caseAeHue(void)
 {
     GLuint       scene;
@@ -5403,6 +5532,7 @@ int main(void)
     caseAeColorOrder();
     caseAeRemanence();
     caseAeMotionBlur();
+    caseAeMotionSmooth();
     caseAeHue();
     caseAeFade();
     caseAeZoomSmooth();

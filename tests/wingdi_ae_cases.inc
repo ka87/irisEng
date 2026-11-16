@@ -460,7 +460,7 @@ static void RUN(int caseId)
        arithmetic. Group 9 leaves the depth and the phase to a seed and
        cannot say it reaches that; here both are driven, with the
        pairing counted. */
-    default:
+    case 12:
     {
         int k = caseId % AE_CASES_PER_GROUP;
 
@@ -482,6 +482,60 @@ static void RUN(int caseId)
                           AE_HuePhase(k) - 0.33333331f + 1.0f)),
                       (long long)AE_Bits(X(D3D_CalcTextureFactor)(
                           AE_HuePhase(k) - 0.66666663f + 1.0f)));
+        break;
+    }
+
+    /* --- group 13: the motion smooth's movement test ---------------
+       The smear is gated on how far one point moved since last frame,
+       and three things about that are out of reach of a seed: the
+       threshold, which is not a round number; the axis, because the
+       test is in three dimensions and the smear is in two, so a camera
+       moving towards what it is looking at crosses the threshold and
+       then smears by nothing; and the fact that last frame's point is
+       replaced whether or not the smear ran, which is what stops a
+       slow camera accumulating its way over the line.
+
+       The movement is put in rather than computed: one call makes last
+       frame's point equal to this frame's, and then a known amount is
+       taken off one axis of it, so the second call sees exactly that
+       amount. Eight amounts against three axes, each pair twice over
+       the group's 48 cases -- counted. */
+    default:
+    {
+        int   k = caseId % AE_CASES_PER_GROUP;
+        float d = AE_MotionDelta(k);
+        int   axis = (k / 8) % 3;
+
+        gMaxSimultaneousTextures = AE_Stages(k);
+        PC_AE_MASTER = 0x80;
+        AE_SeedCaches(&seed);
+
+        /* Settles last frame's point on this frame's, whatever the
+           camera matrix happens to put it at. */
+        X(D3D_PC_AE)(NULL);
+        AEMOCK_Record("motion.settled", 3,
+                      (long long)AE_Bits(AE_MS_PrevVec.x),
+                      (long long)AE_Bits(AE_MS_PrevVec.y),
+                      (long long)AE_Bits(AE_MS_PrevVec.z));
+
+        if (axis == 0)
+            AE_MS_PrevVec.x = AE_MS_PrevVec.x - d;
+        else if (axis == 1)
+            AE_MS_PrevVec.y = AE_MS_PrevVec.y - d;
+        else
+            AE_MS_PrevVec.z = AE_MS_PrevVec.z - d;
+
+        X(D3D_PC_AE)(NULL);
+        AEMOCK_Record("motion.moved", 4, (long long)axis,
+                      (long long)AE_Bits(AE_MS_PrevVec.x),
+                      (long long)AE_Bits(AE_MS_PrevVec.y),
+                      (long long)AE_Bits(AE_MS_PrevVec.z));
+
+        /* And a third frame with nothing moved, which must not smear
+           -- the frame after a smear is where an effect that kept its
+           own idea of last frame's point would go wrong. */
+        X(D3D_PC_AE)(NULL);
+        AEMOCK_Record("motion.still", 1, (long long)AE_Bits(AE_MS_PrevVec.x));
         break;
     }
     }

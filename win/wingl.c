@@ -15,6 +15,7 @@
 #include "../watersmooth.h"
 #include "../aefade.h"
 #include "../aehue.h"
+#include "../aemotion.h"
 #include "../water.h"
 #include "../fog.h"
 #include "../textures.h"
@@ -3049,6 +3050,28 @@ static GLint      gl_aeFadeShare = -1;
 static tGlProgram gl_aeHueProgram;
 static GLint      gl_aeHueSrc = -1;
 static GLint      gl_aeHueSubtract = -1;
+static tGlProgram gl_aeMotionProgram;
+static GLint      gl_aeMotionSrc = -1;
+static GLint      gl_aeMotionTapU = -1;
+static GLint      gl_aeMotionTapV = -1;
+static GLint      gl_aeMotionWeight = -1;
+
+/* Last frame's watched direction, which is the motion smooth's whole
+ * input.
+ *
+ * Deliberately **not** cleared when the after-effect targets are
+ * forgotten. Rebuilding the targets happens when the window changes
+ * size, and the camera has not jumped just because the window has --
+ * zeroing this there would put the watched direction at the origin and
+ * smear the next frame by the whole distance back to it. The other
+ * renderer keeps its own copy of the same thing and does not clear it
+ * either.
+ *
+ * One copy per renderer rather than one shared, which is the opposite
+ * of the fade's timer and for a good reason: nothing outside this
+ * effect ever writes it, so a renderer that is not running simply has
+ * a stale point, and only the renderer in force reads its own. */
+static Vec3       gl_aeMotionPrev;
 static tGlProgram gl_aeZoomProgram;
 static GLint      gl_aeZoomSrc = -1;
 static GLint      gl_aeZoomBandLo = -1;
@@ -3081,6 +3104,7 @@ static void GL_l_ForgetAe(void)
         GL_ProgramFree(&gl_aeBlendProgram);
         GL_ProgramFree(&gl_aeFadeProgram);
         GL_ProgramFree(&gl_aeHueProgram);
+        GL_ProgramFree(&gl_aeMotionProgram);
         GL_ProgramFree(&gl_aeZoomProgram);
         for (i = 0; i < GL_AE_TARGETS; i++)
         {
@@ -3118,6 +3142,10 @@ static void GL_l_ForgetAe(void)
     gl_aeFadeShare = -1;
     gl_aeHueSrc = -1;
     gl_aeHueSubtract = -1;
+    gl_aeMotionSrc = -1;
+    gl_aeMotionTapU = -1;
+    gl_aeMotionTapV = -1;
+    gl_aeMotionWeight = -1;
     gl_aeZoomSrc = -1;
     gl_aeZoomBandLo = -1;
     gl_aeZoomBandHi = -1;
@@ -3179,9 +3207,11 @@ static int GL_l_b_AeReady(void)
         || !GL_b_ProgramLoad(&gl_aeBlendProgram, "aepass.vert", "aeblend.frag")
         || !GL_b_ProgramLoad(&gl_aeFadeProgram, "aepass.vert", "aefade.frag")
         || !GL_b_ProgramLoad(&gl_aeHueProgram, "aepass.vert", "aehue.frag")
+        || !GL_b_ProgramLoad(&gl_aeMotionProgram, "aepass.vert",
+                             "aemotion.frag")
         || !GL_b_ProgramLoad(&gl_aeZoomProgram, "aepass.vert", "aezoom.frag"))
     {
-        /* Whichever of the five got as far as loading is freed with
+        /* Whichever of the six got as far as loading is freed with
            the rest; freeing one that did not does nothing. */
         GL_ProgramFree(&gl_aeBlurProgram);
         GL_ProgramFree(&gl_aeMixProgram);
@@ -3190,6 +3220,7 @@ static int GL_l_b_AeReady(void)
         GL_ProgramFree(&gl_aeBlendProgram);
         GL_ProgramFree(&gl_aeFadeProgram);
         GL_ProgramFree(&gl_aeHueProgram);
+        GL_ProgramFree(&gl_aeMotionProgram);
         GL_ProgramFree(&gl_aeZoomProgram);
         return 0;
     }
@@ -3215,6 +3246,10 @@ static int GL_l_b_AeReady(void)
     gl_aeFadeShare = GL_i_ProgramUniform(&gl_aeFadeProgram, "uFrozenShare");
     gl_aeHueSrc = GL_i_ProgramUniform(&gl_aeHueProgram, "uSrc");
     gl_aeHueSubtract = GL_i_ProgramUniform(&gl_aeHueProgram, "uSubtract");
+    gl_aeMotionSrc = GL_i_ProgramUniform(&gl_aeMotionProgram, "uSrc");
+    gl_aeMotionTapU = GL_i_ProgramUniform(&gl_aeMotionProgram, "uTapU");
+    gl_aeMotionTapV = GL_i_ProgramUniform(&gl_aeMotionProgram, "uTapV");
+    gl_aeMotionWeight = GL_i_ProgramUniform(&gl_aeMotionProgram, "uWeight");
     gl_aeZoomSrc = GL_i_ProgramUniform(&gl_aeZoomProgram, "uSrc");
     gl_aeZoomBandLo = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandLo");
     gl_aeZoomBandHi = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandHi");
@@ -3820,6 +3855,76 @@ static int GL_l_b_AeMotionBlur(const tCbd_Bands* bands, int from, int spare)
  * about the centre of the band, so a pixel smears along the line from
  * the centre through it.
  */
+/* The motion smooth: a smear along the way the camera just moved.
+ *
+ * The arithmetic -- what is watched, how far it has to move, where the
+ * four samples sit and what they weigh -- is aemotion.c's, and the
+ * differential against the other renderer drives the threshold from
+ * both sides. What is here is the renderer's share, and three parts of
+ * it are worth saying.
+ *
+ * **Last frame's point is replaced whether or not the smear ran**, and
+ * that is the line most easily left out. Leave it inside the branch
+ * and a slow camera accumulates its way over the threshold and then
+ * smears by everything it has drifted since it started -- which looks
+ * like a bug in the camera rather than in here.
+ *
+ * **The chain has to run for that to happen at all.** So the gate asks
+ * for this effect's bit even though the bit alone may not smear, for
+ * the same reason the fade is asked: a frame where the chain was
+ * skipped is a frame where the point was not updated.
+ *
+ * **The vertical offsets are negated on the way to the shader.** The
+ * other renderer measures its texture's vertical from the top of the
+ * picture and this one measures it from the bottom, so an offset that
+ * reaches up there reaches down here. Nothing in the arithmetic knows
+ * that; it is this renderer's own business, and there is a case that
+ * puts a bright row in the frame and reads which way it smeared rather
+ * than taking it on trust.
+ */
+static int GL_l_b_AeMotionSmooth(const tCbd_Bands* bands, int from, int spare)
+{
+    Vec3  now;
+    float u[AMO_TAPS];
+    float v[AMO_TAPS];
+    float dx = 0.0f;
+    float dy = 0.0f;
+    int   smear;
+
+    if (!AMO_b_On((unsigned int)PC_AE_MASTER))
+        return 0;
+
+    AMO_Probe(&now.x);
+    MATH_TransformVector(&now, &gpst_DX_stDD->ct.cam.cameraMtx, &now);
+    smear = AMO_b_Decide(&dx, &dy, &now.x, &gl_aeMotionPrev.x);
+
+    /* Before the early return, not after it -- see the note above. */
+    gl_aeMotionPrev = now;
+    if (!smear)
+        return 0;
+
+    AMO_Taps(u, v, dx, dy);
+
+    GLFN_glUseProgram(gl_aeMotionProgram.program);
+    if (gl_aeMotionSrc >= 0)
+        GLFN_glUniform1i(gl_aeMotionSrc, 0);
+    if (gl_aeMotionTapU >= 0)
+        GLFN_glUniform4f(gl_aeMotionTapU, u[0], u[1], u[2], u[3]);
+    /* Negated, because this renderer's vertical runs the other way. */
+    if (gl_aeMotionTapV >= 0)
+        GLFN_glUniform4f(gl_aeMotionTapV, -v[0], -v[1], -v[2], -v[3]);
+    if (gl_aeMotionWeight >= 0)
+        GLFN_glUniform1f(gl_aeMotionWeight, AMO_f_Weight());
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(spare));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
+
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    GL_l_AeDrawBand(bands->top, bands->bottom);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    return 1;
+}
+
 static int GL_l_b_AeZoomSmooth(const tCbd_Bands* bands, int from, int spare)
 {
     tAef_Source  src;
@@ -3951,6 +4056,11 @@ static int GL_l_b_AeWanted(void)
        a draw. */
     if (AHU_b_On((unsigned int)PC_AE_MASTER))
         return 1;
+    /* And the motion smooth, which has to run even on a frame it will
+       not smear on: that is the frame it records where the camera is,
+       and without it the movement accumulates. */
+    if (AMO_b_On((unsigned int)PC_AE_MASTER))
+        return 1;
 
     src.aeMaster = (unsigned int)PC_AE_MASTER;
     src.brightness = unkAEFunc2Param;
@@ -4051,6 +4161,8 @@ static GLuint GL_l_i_RunAfterEffects(void)
     if (GL_l_b_AeFade(cur, spr))
         GL_l_AeExchange(&cur, &spr);
     if (GL_l_b_AeMotionBlur(&bands, cur, spr))
+        GL_l_AeExchange(&cur, &spr);
+    if (GL_l_b_AeMotionSmooth(&bands, cur, spr))
         GL_l_AeExchange(&cur, &spr);
     if (GL_l_b_AeZoomSmooth(&bands, cur, spr))
         GL_l_AeExchange(&cur, &spr);
