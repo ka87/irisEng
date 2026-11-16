@@ -2733,6 +2733,12 @@ void D3D_PC_AE(tWorld* param1)
         return;
 
     D3D_SetD3DStatesDefaultForAE();
+    /* The same decision cinebands.c makes for the other renderer, left
+       spelled out here. Calling it instead removes a call this file's
+       differential test records -- D3D_GetBandFractions is a pure
+       getter, so nothing observable changes, but the comparison counts
+       it and a behaviour-neutral change is not worth overriding that
+       for. Any change to the letterbox has to be made in both. */
     if (tweak_ae_nobands || !CIN_Bands)
     {
         bandsVal1 = 0.0f;

@@ -10,6 +10,7 @@
 #include "../depthblur.h"
 #include "../fog.h"
 #include "../textures.h"
+#include "../cinebands.h"
 #include "../cameraengine.h"
 #include "../soft.h"
 #include "../dbg.h"
@@ -123,6 +124,9 @@ static Mtx4x4 gl_savedProjMtx;
    to call it while the context is still current. */
 static void GL_l_ForgetPass(void);
 static void GL_l_ForgetGeometry(void);
+static void GL_l_ForgetScene(void);
+static void GL_l_BindScene(void);
+static void GL_l_CopySceneToScreen(void);
 static void GL_l_ReadBlurState(tDpb_State* out);
 static int  GL_l_b_BlurReady(void);
 static void GL_l_ForgetBlur(void);
@@ -435,6 +439,13 @@ int GL_Init(HWND hwnd, struct sGdi_DisplayData* dd)
     GLFN_glDepthFunc(GL_LEQUAL);
     GLFN_glDepthMask(GL_TRUE);
 
+    /* The scene target, made and bound before anything draws. The
+       copy at the end of a frame reads what the frame drew, so a
+       target that only came into being at the end of the first frame
+       would have the first frame copy nothing -- which it did, until
+       this. */
+    GL_l_BindScene();
+
     /* Culling off. Which winding the engine's geometry has is a
        question to answer by looking at the result rather than by
        reasoning here, and drawing both faces is the reading that
@@ -450,6 +461,7 @@ int GL_Close(void)
         GL_l_ForgetPass();
         GL_l_ForgetGeometry();
         GL_l_ForgetBlur();
+        GL_l_ForgetScene();
         GL_l_ForgetTargets();
         GL_l_ForgetVideo();
         wglMakeCurrent(gl_state.dc, NULL);
@@ -530,10 +542,32 @@ void GL_Flip(void)
        has to be drawn after that or it shows the frame before's
        numbers. Without this call the overlay was never drawn at all
        under this renderer. */
+    /* The scene first, letterboxed if a cutscene asked for it. */
+    GL_l_CopySceneToScreen();
+
+    /* Then the debug overlay, on the screen rather than in the scene
+       target: it goes on top of everything, outside the letterbox,
+       which is where the other renderer puts it too -- after its own
+       copy to the screen.
+     *
+       This is engine work rather than a renderer's, and the other
+       renderer does it at the same point for the same reason: the one
+       neutral caller of Flip cannot do it instead, because the other
+       renderer updates the rasters inside its own Flip and the overlay
+       has to be drawn after that or it shows the frame before's
+       numbers. Without this call the overlay was never drawn at all
+       under this renderer. */
     OVL_Draw();
 
     if (gl_state.dc)
         SwapBuffers(gl_state.dc);
+
+    /* And back to the scene target for the next frame, so that
+       nothing has to remember to switch it on. This is also where a
+       target of the wrong size is rebuilt: at the end of a frame,
+       so the next one draws into the right one -- rebuilding inside
+       the copy would throw away the frame it was about to copy. */
+    GL_l_BindScene();
 }
 
 void GL_GetDrawingSize(int* width, int* height)
@@ -1927,6 +1961,181 @@ void GL_SetTextureTarget(struct sGdi_DisplayData* a1, int a2, int a3, int a4)
  * and so does a release with none in force.
  */
 
+/* ================================================ the scene target
+ *
+ * The world is drawn into a target of its own and copied to the screen
+ * at the end of the frame, rather than drawn straight to the back
+ * buffer.
+ *
+ * That is what the cutscene letterbox needs, and the letterbox is why
+ * this exists now: the bands are not drawn anywhere. The other
+ * renderer's after-effects copy their finished frame back to the
+ * screen and, when the letterbox is on, copy only the strip down the
+ * middle -- so the bands are whatever the screen already held, which
+ * is black. Drawing straight to the back buffer leaves nothing
+ * uncopied and so can have no bands at all.
+ *
+ * It is also where the after-effects will go. None of them are here
+ * yet; what is here is the target, and the copy that is the last step
+ * of that pass in the other renderer.
+ *
+ * The target is the default binding rather than something switched on
+ * at the start of a frame. A frame that did not switch it on would
+ * draw to the back buffer and then have the copy land on top of it,
+ * and there is no one place every frame passes through to be sure of
+ * it -- so instead everything that unbinds puts this back, and the
+ * screen itself is bound only for the copy.
+ */
+static GLuint gl_sceneFbo;
+static GLuint gl_sceneColour;
+static GLuint gl_sceneDepth;
+static int    gl_sceneW;
+static int    gl_sceneH;
+static int    gl_sceneTried;
+static int    gl_sceneReady;
+
+static void GL_l_ForgetScene(void)
+{
+    if (gl_state.context)
+    {
+        if (gl_sceneFbo)
+            GLFN_glDeleteFramebuffers(1, &gl_sceneFbo);
+        if (gl_sceneColour)
+            GLFN_glDeleteTextures(1, &gl_sceneColour);
+        if (gl_sceneDepth)
+            GLFN_glDeleteRenderbuffers(1, &gl_sceneDepth);
+    }
+    gl_sceneFbo = 0;
+    gl_sceneColour = 0;
+    gl_sceneDepth = 0;
+    gl_sceneW = 0;
+    gl_sceneH = 0;
+    gl_sceneTried = 0;
+    gl_sceneReady = 0;
+}
+
+static int GL_l_b_SceneReady(void)
+{
+    /* Rebuilt when the window changes size, because a target of the
+       old size would be copied to the new screen stretched. */
+    if (gl_sceneTried
+        && (gl_sceneW != gl_state.width || gl_sceneH != gl_state.height))
+        GL_l_ForgetScene();
+
+    if (gl_sceneTried)
+        return gl_sceneReady;
+    gl_sceneTried = 1;
+    if (!gl_state.context || gl_state.width <= 0 || gl_state.height <= 0)
+        return 0;
+
+    gl_sceneW = gl_state.width;
+    gl_sceneH = gl_state.height;
+
+    GLFN_glGenFramebuffers(1, &gl_sceneFbo);
+    GLFN_glGenTextures(1, &gl_sceneColour);
+    GLFN_glGenRenderbuffers(1, &gl_sceneDepth);
+    if (!gl_sceneFbo || !gl_sceneColour || !gl_sceneDepth)
+    {
+        DBG_OutputDebugString("GL: no scene target; drawing to the screen\n");
+        GL_l_ForgetScene();
+        gl_sceneTried = 1;
+        return 0;
+    }
+
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+    GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, gl_sceneW, gl_sceneH, 0,
+                      GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLFN_glBindRenderbuffer(GL_RENDERBUFFER, gl_sceneDepth);
+    GLFN_glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
+                               gl_sceneW, gl_sceneH);
+    GLFN_glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, gl_sceneFbo);
+    GLFN_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                GL_TEXTURE_2D, gl_sceneColour, 0);
+    GLFN_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                   GL_RENDERBUFFER, gl_sceneDepth);
+    if (GLFN_glCheckFramebufferStatus(GL_FRAMEBUFFER)
+        != GL_FRAMEBUFFER_COMPLETE)
+    {
+        DBG_OutputDebugString("GL: the scene target is not complete;"
+                              " drawing to the screen\n");
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        GL_l_ForgetScene();
+        gl_sceneTried = 1;
+        return 0;
+    }
+
+    gl_sceneReady = 1;
+    return 1;
+}
+
+/* The framebuffer the world draws into: the scene target when there is
+   one, and the screen when there is not -- a driver that cannot give
+   us a target should still show the game, without the letterbox. */
+static GLuint GL_l_i_SceneFbo(void)
+{
+    return GL_l_b_SceneReady() ? gl_sceneFbo : 0;
+}
+
+/* Puts the scene target back as the current framebuffer, which is what
+   every path that bound something else has to end with. */
+static void GL_l_BindScene(void)
+{
+    if (!gl_state.context)
+        return;
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_SceneFbo());
+}
+
+/* The scene on the screen, letterboxed if a cutscene asked for it.
+ *
+ * A stretch blit of one strip, which is what the other renderer's copy
+ * is too. The screen is cleared first and only the strip is copied, so
+ * the bands are the cleared black rather than anything drawn. */
+static void GL_l_CopySceneToScreen(void)
+{
+    tCbd_Bands bands;
+    int        top;
+    int        bottom;
+
+    if (!gl_sceneReady || !gl_state.context)
+        return;
+
+    CBD_Decide(&bands);
+
+    /* Measured from the bottom, because that is where OpenGL's window
+       origin is and the fractions are from the top. */
+    top = (int)((1.0f - bands.bottom) * (float)gl_sceneH);
+    bottom = (int)((1.0f - bands.top) * (float)gl_sceneH);
+    if (top < 0)
+        top = 0;
+    if (bottom > gl_sceneH)
+        bottom = gl_sceneH;
+    if (bottom <= top)
+        return;
+
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (bands.b_on)
+    {
+        /* Only when there are bands: clearing a screen that is about
+           to be covered entirely is work for nothing. */
+        GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        GLFN_glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLFN_glClear(GL_COLOR_BUFFER_BIT);
+    }
+
+    GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_sceneFbo);
+    GLFN_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    GLFN_glBlitFramebuffer(0, top, gl_sceneW, bottom,
+                           0, top, gl_sceneW, bottom,
+                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 static void GL_l_ForgetTargets(void)
 {
     int i;
@@ -2045,7 +2254,10 @@ void GL_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear)
     {
         if (!gl_targetInForce)
             return;
-        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        /* Back to the scene target, which is what the world draws
+           into -- not to the screen, which is only bound for the copy
+           at the end of the frame. */
+        GL_l_BindScene();
         GLFN_glViewport(gl_savedViewport[0], gl_savedViewport[1],
                         gl_savedViewport[2], gl_savedViewport[3]);
         /* Only the projection, because the caller puts the view back

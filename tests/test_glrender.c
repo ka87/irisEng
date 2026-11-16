@@ -141,6 +141,12 @@ void MEM_FreeAlign(void* p) { free(p); }
    behaviour is the engine's and is the same for both renderers; what
    matters here is only that it links. The mock harness is where the
    call itself is checked. */
+/* The cutscene letterbox's engine state, which cinebands.c reads.
+   CIN_Bands is the engine's switch; the game starts it on. */
+int   CIN_Bands = 1;
+int   tweak_ae_nobands = 0;
+float D3D_gf_CutsceneBand = 0.10416666f;
+
 void OVL_Draw(void) { }
 
 void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
