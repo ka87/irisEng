@@ -54,11 +54,15 @@ $CC $CFLAGS -fsanitize=address -c watermesh.c -o "$OUT/wgo.wms.o"
 # transform, the size threshold and the clip plane. Also a move out
 # of win/wingdi.c, so the frozen copy still has all three inline.
 $CC $CFLAGS -fsanitize=address -c waterreflect.c -o "$OUT/wgo.wrf.o"
+# watersmooth.c holds the surface smoothing's rectangles, steps and
+# taps for both renderers; tests/run_wingdi_ae.sh is where it is
+# compared against the other renderer.
+$CC $CFLAGS -fsanitize=address -c watersmooth.c -o "$OUT/wgo.wsm.o"
 $CC $CFLAGS -fsanitize=address -c geosprite.c -o "$OUT/wgo.gsp.o"
 $CC $CFLAGS -fsanitize=address -c win/wingdimath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \
-    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.cbd.o" "$OUT/wgo.aec.o" "$OUT/wgo.aef.o" "$OUT/wgo.wms.o" "$OUT/wgo.wrf.o" "$OUT/wgo.gsp.o" \
+    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.cbd.o" "$OUT/wgo.aec.o" "$OUT/wgo.aef.o" "$OUT/wgo.wms.o" "$OUT/wgo.wrf.o" "$OUT/wgo.wsm.o" "$OUT/wgo.gsp.o" \
     "$OUT/wgo.wgmath.o" "$OUT/wgo.math.o" -o "$OUT/wgo" -lm
 "$OUT/wgo"

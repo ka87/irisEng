@@ -2,6 +2,7 @@
 #include "../editorcamera.h"
 #include "wingdi.h"
 #include "../depthblur.h"
+#include "../watersmooth.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -1544,26 +1545,22 @@ void D3D_WaterBlurSD(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, tUnkW
 void D3D_WaterBlur(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, IDirect3DTexture9* renderTarget, tUnkWaterBlurStruct* dst, float smoothX, float smoothY, float overscan)
 {
     int i;
-    double uSpread;
     IDirect3DSurface9* savedRenderTarget;
     IDirect3DSurface9* savedDepthStencil;
     IDirect3DSurface9* targetSurface;
     float uStep;
     float vStep;
-    int srcLastColumn;
-    int srcLastRow;
     int savedZEnable;
     D3DVIEWPORT9 savedViewport;
     int savedFogEnable;
     int savedFogMode;
 
-    srcLastColumn = src->i5 - 1;
     savedRenderTarget = NULL;
     savedDepthStencil = NULL;
-    uSpread = smoothX / (double)(unsigned int)srcLastColumn;
-    srcLastRow = src->i6 - 1;
-    uStep = (float)uSpread;
-    vStep = (float)(smoothY / (double)srcLastRow);
+    /* Shared: a tap step is the amount over the rectangle's last
+       index, and that divisor is the other renderer's too. */
+    uStep = WSM_f_Step(smoothX, src->i5 - 1);
+    vStep = WSM_f_Step(smoothY, src->i6 - 1);
     D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &savedRenderTarget);
     D3DRenderParams.d3dDev->lpVtbl->GetViewport(D3DRenderParams.d3dDev, &savedViewport);
     renderTarget->lpVtbl->GetSurfaceLevel(renderTarget, 0, &targetSurface);
@@ -1614,51 +1611,50 @@ void D3D_WaterBlur(IDirect3DTexture9* texture, tUnkWaterBlurStruct* src, IDirect
     savedDepthStencil->lpVtbl->Release(savedDepthStencil);
 }
 
+/* The shared rectangle in the spelling this renderer's blur takes. The
+   two differ only in the order of their fields and in naming a last
+   index rather than a span. */
+static void AE_WsmRect(tUnkWaterBlurStruct* out, const tWsm_Rect* in)
+{
+    out->i1 = in->firstColumn;
+    out->i2 = in->firstRow;
+    out->i3 = in->lastColumn;
+    out->i4 = in->lastRow;
+    out->i5 = in->width;
+    out->i6 = in->height;
+}
+
 void D3D_DoBlurWaterTexture()
 {
-    int right;
-    int bottom;
     IDirect3DSurface9* targetSurface;
     IDirect3DSurface9* waterSurface;
-    tUnkWaterBlurStruct target;
-    tUnkWaterBlurStruct water;
+    tUnkWaterBlurStruct pass1From;
+    tUnkWaterBlurStruct pass1To;
+    tUnkWaterBlurStruct pass2From;
+    tUnkWaterBlurStruct pass2To;
+    tWsm_Pass passes[2];
     D3DSURFACE_DESC desc;
 
     D3DRenderParams.blurRenderTarget->lpVtbl->GetSurfaceLevel(D3DRenderParams.blurRenderTarget, 0, &targetSurface);
     waterTexture->lpVtbl->GetSurfaceLevel(waterTexture, 0, &waterSurface);
-    water.i3 = 511;
-    water.i4 = 511;
-    water.i1 = 0;
-    water.i2 = 0;
-    water.i5 = 512;
-    water.i6 = 512;
     targetSurface->lpVtbl->GetDesc(targetSurface, &desc);
-    if (desc.Width <= 0x200)
-    {
-        target.i1 = 0;
-        right = desc.Width - 1;
-    }
-    else
-    {
-        target.i1 = (desc.Width - 512) >> 1;
-        right = target.i1 + 511;
-    }
-    target.i3 = right;
-    if (desc.Height <= 512)
-    {
-        target.i2 = 0;
-        bottom = desc.Height - 1;
-    }
-    else
-    {
-        target.i2 = (desc.Height - 512) >> 1;
-        bottom = target.i2 + 511;
-    }
-    target.i5 = desc.Width;
-    target.i6 = desc.Height;
-    target.i4 = bottom;
-    D3D_WaterBlur(waterTexture, &water, D3DRenderParams.blurRenderTarget, &target, tweak_water_smoothx, tweak_water_smoothy, 1.0f);
-    D3D_WaterBlur(D3DRenderParams.blurRenderTarget, &target, waterTexture, &water, tweak_water_smoothx, tweak_water_smoothy, 1.0f);
+    /* Both rectangles come from the shared smoothing code, which the
+       other renderer reads too -- there is no device in deciding where
+       a rectangle sits. */
+    WSM_Passes(passes, 512, (int)desc.Width, (int)desc.Height);
+    AE_WsmRect(&pass1From, &passes[0].from);
+    AE_WsmRect(&pass1To, &passes[0].to);
+    AE_WsmRect(&pass2From, &passes[1].from);
+    AE_WsmRect(&pass2To, &passes[1].to);
+
+    /* Out and back, and **which way round each pass goes is the shared
+       code's answer too**, not this function's. It used to be spelled
+       here, by handing the same two rectangles to the second call the
+       other way about -- which left the shared code's own ordering
+       unused and therefore unchecked: a breakage that swapped it
+       scored clean. */
+    D3D_WaterBlur(waterTexture, &pass1From, D3DRenderParams.blurRenderTarget, &pass1To, tweak_water_smoothx, tweak_water_smoothy, 1.0f);
+    D3D_WaterBlur(D3DRenderParams.blurRenderTarget, &pass2From, waterTexture, &pass2To, tweak_water_smoothx, tweak_water_smoothy, 1.0f);
     targetSurface->lpVtbl->Release(targetSurface);
     waterSurface->lpVtbl->Release(waterSurface);
 }

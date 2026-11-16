@@ -12,6 +12,7 @@
 #include "../aeframe.h"
 #include "../watermesh.h"
 #include "../waterreflect.h"
+#include "../watersmooth.h"
 #include "../water.h"
 #include "../fog.h"
 #include "../textures.h"
@@ -141,6 +142,8 @@ static void GL_l_ForgetVideo(void);
 static GLuint GL_l_i_RunAfterEffects(void);
 static void GL_l_ForgetAe(void);
 static void GL_l_ForgetWater(void);
+static void GL_l_ForgetWaterSmooth(void);
+static void GL_l_SmoothWater(void);
 static int  GL_l_b_WantsReflection(void);
 static void GL_l_ReflectStaged(int count);
 static Mtx4x4 gl_viewProjMtx;
@@ -487,6 +490,7 @@ int GL_Close(void)
         GL_l_ForgetScene();
         GL_l_ForgetTargets();
         GL_l_ForgetWater();
+        GL_l_ForgetWaterSmooth();
         GL_l_ForgetVideo();
         wglMakeCurrent(gl_state.dc, NULL);
         wglDeleteContext(gl_state.context);
@@ -4327,6 +4331,19 @@ void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
                             (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
                             GL_WATER_SIZE, GL_WATER_SIZE);
 
+    /* The reflection is blurred before it is sampled, which is where
+       the other renderer does it too -- in the function that hands the
+       reflection over to this draw. It writes back into the reflection
+       itself, so there is nothing to pass along.
+     *
+     * Before this draw's program is made current, and that order is
+     * forced: the blur binds a program of its own, and a uniform set
+     * while one program is current belongs to that program. Called
+     * after the uniforms below, it replaced the program they had just
+     * been set on and the surface drew with the blur's -- which is
+     * nothing at all. */
+    GL_l_SmoothWater();
+
     GLFN_glUseProgram(gl_waterProgram.program);
     if (gl_waterViewProj >= 0)
         GLFN_glUniformMatrix4fv(gl_waterViewProj, 1, GL_FALSE,
@@ -4588,6 +4605,319 @@ static void GL_l_ReflectStaged(int count)
     GLFN_glDrawArrays(GL_TRIANGLES, 0, (GLsizei)count);
     GLFN_glBindVertexArray(0);
     GL_l_LeaveReflection();
+}
+
+/* ------------------------------------------ the surface smoothing
+ *
+ * The third and last of the water's pieces: before the surface samples
+ * the reflection, the reflection is blurred -- out into a scratch
+ * target and back again, so the result ends up where it started and
+ * the surface needs to know nothing about it.
+ *
+ * Three things about it, all read out of the other renderer rather
+ * than chosen here, and all in watersmooth.h at more length:
+ *
+ *   - it is **off** unless somebody turns it on, because the two
+ *     amounts are debug tweaks that start at nought and then every tap
+ *     lands in the same place;
+ *   - the other renderer's two-texture-unit arm **cannot run**, since
+ *     the only thing that calls the blur requires four units first, so
+ *     only the four-tap arithmetic is here;
+ *   - the vertical tap offsets are nought at the top of the rectangle
+ *     and three steps at the bottom, interpolated between, so the blur
+ *     opens out towards the near edge of the water. That is why the
+ *     taps are computed per vertex -- see watersmooth.vert.
+ */
+
+static GLuint     gl_wsmFbo;
+static GLuint     gl_wsmColour;
+static int        gl_wsmTried;
+static int        gl_wsmReady;
+
+static tGlProgram gl_wsmProgram;
+static GLint      gl_wsmSrcU = -1;
+static GLint      gl_wsmSrcV = -1;
+static GLint      gl_wsmUStep = -1;
+static GLint      gl_wsmVStep = -1;
+static GLint      gl_wsmSampler = -1;
+static GLint      gl_wsmWeights = -1;
+static GLuint     gl_wsmVao;
+static GLuint     gl_wsmVbo;
+
+static void GL_l_ForgetWaterSmooth(void)
+{
+    if (gl_state.context)
+    {
+        if (gl_wsmFbo)
+            GLFN_glDeleteFramebuffers(1, &gl_wsmFbo);
+        if (gl_wsmColour)
+            GLFN_glDeleteTextures(1, &gl_wsmColour);
+        if (gl_wsmVbo)
+            GLFN_glDeleteBuffers(1, &gl_wsmVbo);
+        if (gl_wsmVao)
+            GLFN_glDeleteVertexArrays(1, &gl_wsmVao);
+        GL_ProgramFree(&gl_wsmProgram);
+    }
+    gl_wsmFbo = 0;
+    gl_wsmColour = 0;
+    gl_wsmVbo = 0;
+    gl_wsmVao = 0;
+    gl_wsmSrcU = -1;
+    gl_wsmSrcV = -1;
+    gl_wsmUStep = -1;
+    gl_wsmVStep = -1;
+    gl_wsmSampler = -1;
+    gl_wsmWeights = -1;
+    gl_wsmTried = 0;
+    gl_wsmReady = 0;
+}
+
+static int GL_l_b_WaterSmoothReady(void)
+{
+    if (gl_wsmTried)
+        return gl_wsmReady;
+    gl_wsmTried = 1;
+    if (!gl_state.context)
+        return 0;
+
+    /* The scratch is the reflection's size rather than the screen's.
+       The other renderer borrows a screen-sized target it already has
+       and so writes into a 512-square window centred in it; the region
+       sampled is the same either way, and the shared code works out
+       the rectangle for whichever size it is given. Square is simply
+       the smaller allocation. */
+    GLFN_glGenTextures(1, &gl_wsmColour);
+    GLFN_glGenFramebuffers(1, &gl_wsmFbo);
+    if (!gl_wsmColour || !gl_wsmFbo)
+    {
+        DBG_OutputDebugString("GL: no scratch target for the water smoothing\n");
+        GL_l_ForgetWaterSmooth();
+        gl_wsmTried = 1;
+        return 0;
+    }
+
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_wsmColour);
+    GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, GL_WATER_SIZE,
+                      GL_WATER_SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    /* Mirrored, which is what the other renderer sets for the blur's
+       own samplers -- a tap that steps off the edge comes back inside
+       rather than smearing the edge pixel. The surface draw wants
+       clamping instead, so the reflection's own wrap mode is moved
+       back and forth around the blur below. */
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, gl_wsmFbo);
+    GLFN_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                GL_TEXTURE_2D, gl_wsmColour, 0);
+    if (GLFN_glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        DBG_OutputDebugString("GL: the water's scratch target would not build\n");
+        GL_l_ForgetWaterSmooth();
+        gl_wsmTried = 1;
+        return 0;
+    }
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (!GL_b_ProgramLoad(&gl_wsmProgram, "watersmooth.vert",
+                          "watersmooth.frag"))
+    {
+        GL_l_ForgetWaterSmooth();
+        gl_wsmTried = 1;
+        return 0;
+    }
+    gl_wsmSrcU = GL_i_ProgramUniform(&gl_wsmProgram, "uSrcU");
+    gl_wsmSrcV = GL_i_ProgramUniform(&gl_wsmProgram, "uSrcV");
+    gl_wsmUStep = GL_i_ProgramUniform(&gl_wsmProgram, "uStep");
+    gl_wsmVStep = GL_i_ProgramUniform(&gl_wsmProgram, "vStep");
+    gl_wsmSampler = GL_i_ProgramUniform(&gl_wsmProgram, "uSrc");
+    gl_wsmWeights = GL_i_ProgramUniform(&gl_wsmProgram, "uWeights");
+
+    GLFN_glGenVertexArrays(1, &gl_wsmVao);
+    GLFN_glGenBuffers(1, &gl_wsmVbo);
+    if (!gl_wsmVao || !gl_wsmVbo)
+    {
+        DBG_OutputDebugString("GL: no buffers for the water smoothing\n");
+        GL_l_ForgetWaterSmooth();
+        gl_wsmTried = 1;
+        return 0;
+    }
+
+    /* The quad, once: a clip-space rectangle with each corner saying
+       where it is in the rectangle -- x nought at the left and one at
+       the right, y nought at the top and one at the bottom. The corner
+       is what the vertical ramp is a function of, and it never
+       changes, so the whole thing is uploaded here and not per pass. */
+    {
+        static const GLfloat quad[] = {
+            /*  x      y     cornerX cornerY */
+            -1.0f, -1.0f,   0.0f, 1.0f,   /* bottom left  */
+             1.0f, -1.0f,   1.0f, 1.0f,   /* bottom right */
+            -1.0f,  1.0f,   0.0f, 0.0f,   /* top left     */
+             1.0f,  1.0f,   1.0f, 0.0f    /* top right    */
+        };
+
+        GLFN_glBindVertexArray(gl_wsmVao);
+        GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_wsmVbo);
+        GLFN_glBufferData(GL_ARRAY_BUFFER, (GLsizei)sizeof(quad), quad,
+                          GL_STATIC_DRAW);
+        GLFN_glEnableVertexAttribArray(0);
+        GLFN_glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+                                   (GLsizei)(4 * sizeof(GLfloat)),
+                                   (const void*)(size_t)0);
+        GLFN_glEnableVertexAttribArray(1);
+        GLFN_glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
+                                   (GLsizei)(4 * sizeof(GLfloat)),
+                                   (const void*)(size_t)(2 * sizeof(GLfloat)));
+        GLFN_glBindVertexArray(0);
+    }
+
+    gl_wsmReady = 1;
+    return 1;
+}
+
+/* One pass: everything in `from` read, everything in `to` written. */
+static void GL_l_WaterSmoothPass(const tWsm_Rect* from, GLuint srcTex,
+                                 GLuint dstFbo, const tWsm_Rect* to,
+                                 const tWsm_Tap* taps, float uStep,
+                                 float vStep)
+{
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, dstFbo);
+    GLFN_glViewport(to->firstColumn, to->firstRow,
+                    to->lastColumn - to->firstColumn + 1,
+                    to->lastRow - to->firstRow + 1);
+
+    GLFN_glUseProgram(gl_wsmProgram.program);
+    if (gl_wsmSrcU >= 0)
+        GLFN_glUniform2f(gl_wsmSrcU,
+                         (GLfloat)from->firstColumn / (GLfloat)(from->width - 1),
+                         (GLfloat)from->lastColumn / (GLfloat)(from->width - 1));
+    /* The quad's top edge first, then its bottom -- and in this
+       interface a target's first row is the bottom of the picture, so
+       the quad's bottom is the rectangle's **first** row. Passed the
+       other way round, each pass wrote a vertically mirrored copy;
+       two passes cancelled it, so the finished picture looked right
+       and only the vertical ramp was at the wrong end. */
+    if (gl_wsmSrcV >= 0)
+        GLFN_glUniform2f(gl_wsmSrcV,
+                         (GLfloat)from->lastRow / (GLfloat)(from->height - 1),
+                         (GLfloat)from->firstRow / (GLfloat)(from->height - 1));
+    if (gl_wsmUStep >= 0)
+        GLFN_glUniform1f(gl_wsmUStep, uStep);
+    if (gl_wsmVStep >= 0)
+        GLFN_glUniform1f(gl_wsmVStep, vStep);
+    if (gl_wsmSampler >= 0)
+        GLFN_glUniform1i(gl_wsmSampler, 0);
+    if (gl_wsmWeights >= 0)
+        GLFN_glUniform4f(gl_wsmWeights, taps[0].weight, taps[1].weight,
+                         taps[2].weight, taps[3].weight);
+
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, srcTex);
+
+    GLFN_glDisable(GL_DEPTH_TEST);
+    GLFN_glDepthMask(GL_FALSE);
+    GLFN_glDisable(GL_BLEND);
+    GLFN_glDisable(GL_CULL_FACE);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    GLFN_glBindVertexArray(gl_wsmVao);
+    GLFN_glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    GLFN_glBindVertexArray(0);
+}
+
+/* Blurs the reflection in place, by going out to the scratch and back.
+ *
+ * Called before the surface samples the reflection, which is where the
+ * other renderer does it too -- from the same function that hands the
+ * reflection over. */
+static void GL_l_SmoothWater(void)
+{
+    tWsm_Pass passes[2];
+    tWsm_Tap  taps[WSM_TAPS];
+    float     uStep;
+    float     vStep;
+    GLint     wasFbo = 0;
+    GLint     wasViewport[4];
+
+    /* The reflection check is belt and braces: the one caller has
+       already returned if the reflection is not there, so breaking
+       this half of the test changes nothing and a sweep cannot kill
+       it. Kept because the function should not assume its caller, and
+       noted so that the surviving mutant is not mistaken for a gap. */
+    if (!tweak_water_smooth || !gl_waterReady)
+        return;
+
+    /* Asked for rather than worked out, unlike the reflection's.
+     *
+     * The reflection runs inside the per-object draw, where the
+     * renderer knows what is bound because it bound it; this runs
+     * where the engine calls in to draw the surface, and the only
+     * honest answer to "what was bound" is the driver's. It is one
+     * query a frame rather than one an object, which is what makes
+     * that affordable -- and the alternative was wrong: the first
+     * version put the frame back by assuming, and the surface drew
+     * itself into the reflection at the reflection's size. */
+    GLFN_glGetIntegerv(GL_FRAMEBUFFER_BINDING, &wasFbo);
+    wasViewport[0] = 0;
+    wasViewport[1] = 0;
+    wasViewport[2] = gl_state.width;
+    wasViewport[3] = gl_state.height;
+    GLFN_glGetIntegerv(GL_VIEWPORT, wasViewport);
+
+    /* **Inside** the saving, not before it. The targets and the
+       program are built on first use, and that build binds a
+       framebuffer of its own and leaves the default one bound when it
+       is done -- so asking what was bound afterwards gets nought, and
+       the frame is "restored" to the window. The surface then drew
+       into the window instead of the frame and vanished, on the first
+       frame only, which is the kind of thing that looks like a driver
+       problem. */
+    if (!GL_l_b_WaterSmoothReady())
+    {
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)wasFbo);
+        GLFN_glViewport(wasViewport[0], wasViewport[1], wasViewport[2],
+                        wasViewport[3]);
+        return;
+    }
+
+    WSM_Passes(passes, GL_WATER_SIZE, GL_WATER_SIZE, GL_WATER_SIZE);
+
+    /* A step each way, from the amounts the console holds. Both start
+       at nought, and then every tap lands in the same place and the
+       two passes below are two copies -- which is the default, and is
+       why turning the smoothing on changes nothing until the amounts
+       are set as well. */
+    uStep = WSM_f_Step(tweak_water_smoothx, passes[0].from.width - 1);
+    vStep = WSM_f_Step(tweak_water_smoothy, passes[0].from.height - 1);
+    WSM_Taps(taps, uStep, vStep);
+
+    /* The reflection is sampled mirrored for the blur and clamped for
+       the surface, so its wrap mode moves either side of the two
+       passes. */
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_waterColour);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+
+    GL_l_WaterSmoothPass(&passes[0].from, gl_waterColour, gl_wsmFbo,
+                         &passes[0].to, taps, uStep, vStep);
+    GL_l_WaterSmoothPass(&passes[1].from, gl_wsmColour, gl_waterFbo,
+                         &passes[1].to, taps, uStep, vStep);
+
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_waterColour);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    /* And the frame back, exactly as it was found. */
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)wasFbo);
+    GLFN_glViewport(wasViewport[0], wasViewport[1], wasViewport[2],
+                    wasViewport[3]);
 }
 
 /* ---------------------------------------------- the video display

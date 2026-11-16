@@ -109,6 +109,14 @@ $CC $CFLAGS -c watermesh.c -o "$OUT/wingdi.wms.o"
 # transform, the size threshold and the clip plane. Also a move out
 # of win/wingdi.c, so the frozen copy still has all three inline.
 $CC $CFLAGS -c waterreflect.c -o "$OUT/wingdi.wrf.o"
+# watersmooth.c holds the surface smoothing's rectangles, steps and
+# taps for both renderers; tests/run_wingdi_ae.sh is where it is
+# compared against the other renderer.
+$CC $CFLAGS -c watersmooth.c -o "$OUT/wingdi.wsm.o"
+# depthblur.c comes with it: the smoothing's weights are the same
+# chain the depth blur's taps are weighed by, so it asks that file
+# for them rather than carrying a second copy.
+$CC $CFLAGS -c depthblur.c -o "$OUT/wingdi.dpb.o"
 $CC $CFLAGS -c fog.c -o "$OUT/wingdi.fog.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"
 $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
@@ -116,7 +124,7 @@ $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
     "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" "$OUT/wingdi.gvx.o" \
     "$OUT/wingdi.rst.o" "$OUT/wingdi.fog.o" "$OUT/wingdi.gsp.o" "$OUT/wingdi.profiler.o" \
-    "$OUT/wingdi.wms.o" "$OUT/wingdi.wrf.o" \
+    "$OUT/wingdi.wms.o" "$OUT/wingdi.wrf.o" "$OUT/wingdi.wsm.o" "$OUT/wingdi.dpb.o" \
     "$OUT/wingdi.mocks.o" \
     "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm

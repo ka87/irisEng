@@ -272,6 +272,9 @@
     <ClCompile Include="waterreflect.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="watersmooth.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="jpeg-6b\jcapimin.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
@@ -896,6 +899,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="waterreflect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="watersmooth.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="jpeg-6b\cderror.h">
