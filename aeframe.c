@@ -2,8 +2,9 @@
 
 #include <string.h>
 
-/* The bits that ask for each of the three. */
+/* The bits that ask for each of the four. */
 #define AEF_BIT_MOTIONBLUR  0x10u
+#define AEF_BIT_SCREENBLUR  0x20u
 #define AEF_BIT_REMANENCE   0x800u
 #define AEF_BIT_ZOOMSMOOTH  0x400u
 
@@ -164,6 +165,70 @@ int AEF_i_ZoomTaps(const tAef_Source* src, tAef_ZoomTap* out, int max)
     {
         out[i].insetU = (float)(uStep * (double)i);
         out[i].insetV = (float)(vStep * (double)i);
+    }
+    return n;
+}
+
+/* ----------------------------------------------------- screen blur */
+
+/* What the parameter is multiplied by to become a step. About a
+   twenty-fifth, and read as written. */
+#define AEF_SCREEN_SCALE    0.039999999
+
+/* One pixel of a 640 by 480 picture, as doubles.
+ *
+ * Deliberately not the family's AEF_STEP_U and AEF_STEP_V, which are
+ * floats: the horizontal one is a power of two and comes to the same
+ * number either way, but the vertical float is 0.00208333344 where
+ * this double is 0.0020833334, and taking it from the float would move
+ * every reach this effect computes. */
+#define AEF_SCREEN_U        0.0015625
+#define AEF_SCREEN_V        0.0020833334
+
+int AEF_b_ScreenBlur(const tAef_Source* src)
+{
+    /* Not a floor, unlike the remanence: anything that is not exactly
+       nought runs, negative values included. */
+    return src && (src->aeMaster & AEF_BIT_SCREENBLUR) != 0
+           && src->screenBlur != 0.0f;
+}
+
+int AEF_i_ScreenBlurReaches(float* uSteps, float* vSteps, int max,
+                            float strength)
+{
+    double scaled;
+    float  step;
+    int    i;
+    int    n;
+
+    n = max < AEF_SCREENBLUR_PASSES ? max : AEF_SCREENBLUR_PASSES;
+    if (n <= 0 || (!uSteps && !vSteps))
+        return 0;
+
+    /* The product, and then the product narrowed. Both are used, and
+       which one each reach comes from is the whole of the oddity this
+       function reproduces -- see the header. */
+    scaled = (double)strength * AEF_SCREEN_SCALE;
+    step = (float)scaled;
+
+    for (i = 0; i < n; i++)
+    {
+        /* The reach goes up one step a pass: one, two, three and so on
+           to seven, rather than the remanence's odd numbers. */
+        double span = (double)step * (double)(i + 1);
+
+        if (uSteps)
+            uSteps[i] = (float)(span * AEF_SCREEN_U);
+        if (vSteps)
+        {
+            /* The first pass alone takes its vertical reach from the
+               unnarrowed product. One rounding's difference, kept
+               because it is what the other renderer computes. */
+            if (i == 0)
+                vSteps[i] = (float)(scaled * AEF_SCREEN_V);
+            else
+                vSteps[i] = (float)(AEF_SCREEN_V * span);
+        }
     }
     return n;
 }

@@ -373,12 +373,143 @@ static void caseZoomSmooth(void)
     okEq(AEF_i_ZoomTaps(&s, t, 3), 3, "as many as there is room for");
 }
 
+/* ----------------------------------------------------- screen blur */
+
+static void caseScreenBlur(void)
+{
+    tAef_Source s;
+    float       u[AEF_SCREENBLUR_PASSES];
+    float       v[AEF_SCREENBLUR_PASSES];
+    int         n;
+    int         i;
+
+    printf("-- the screen blur: seven reaches, and a parameter that is"
+           " a distance\n");
+
+    memset(&s, 0, sizeof(s));
+
+    /* The gate is a comparison against nought and not a floor, which
+       is what separates it from the remanence beside it. Anything that
+       is not exactly nought runs -- including a negative, which steps
+       the taps the other way and is a legal, different blur. */
+    s.aeMaster = 0x20u;
+    s.screenBlur = 0.0f;
+    okEq((long)AEF_b_ScreenBlur(&s), 0L, "nought does not run");
+    s.screenBlur = 0.0001f;
+    okEq((long)AEF_b_ScreenBlur(&s), 1L, "a thousandth of a pixel does");
+    s.screenBlur = -10.0f;
+    okEq((long)AEF_b_ScreenBlur(&s), 1L, "and so does a negative reach");
+    s.aeMaster = 0u;
+    okEq((long)AEF_b_ScreenBlur(&s), 0L, "but not without the bit");
+    okEq((long)AEF_b_ScreenBlur(NULL), 0L, "and not from nothing");
+
+    /* The seven reaches at a parameter of 25, which is the value that
+       makes a step exactly one pixel of a 640 by 480 picture -- so the
+       passes land one, two, three and on to seven pixels out. Every
+       figure below was taken from the other renderer's own
+       expressions. */
+    n = AEF_i_ScreenBlurReaches(u, v, AEF_SCREENBLUR_PASSES, 25.0f);
+    okEq((long)n, (long)AEF_SCREENBLUR_PASSES, "seven passes");
+    {
+        static const double wantU[7] = {
+            0.0015625000232830644, 0.0031250000465661287,
+            0.0046875001862645149, 0.0062500000931322575,
+            0.0078125,             0.0093750003725290298,
+            0.010937499813735485
+        };
+        static const double wantV[7] = {
+            0.0020833334419876337, 0.0041666668839752674,
+            0.0062500000931322575, 0.0083333337679505348,
+            0.010416666977107525,  0.012500000186264515,
+            0.014583333395421505
+        };
+
+        for (i = 0; i < 7; i++)
+        {
+            okNear((double)u[i], wantU[i], 1e-12, "the reach across");
+            okNear((double)v[i], wantV[i], 1e-12, "and down");
+        }
+
+        /* And the reaches really do grow by one step a pass, rather
+           than by the remanence's odd numbers. Checked as a ratio so
+           that a schedule of the wrong shape shows even where each
+           figure looks plausible. */
+        for (i = 1; i < 7; i++)
+            okNear((double)u[i] / (double)u[0], (double)(i + 1), 1e-5,
+                   "each pass reaches one step further than the first");
+    }
+
+    /* The first pass's vertical reach comes from the unnarrowed
+     * product where the other six come from the narrowed step, and at
+     * a *negative* parameter the two part company. At 25 and at 1 they
+     * agree to the bit, so a test with only positive parameters cannot
+     * see the difference at all -- which is why this case exists and
+     * why it uses a negative.
+     *
+     * -0.00083333335351198912 is what the unnarrowed product gives;
+     * the narrowed step would give -0.00083333329530432820, six parts
+     * in a hundred thousand million away. */
+    n = AEF_i_ScreenBlurReaches(u, v, AEF_SCREENBLUR_PASSES, -10.0f);
+    okEq((long)n, 7L, "a negative parameter still gives seven passes");
+    okNear((double)v[0], -0.00083333335351198912, 1e-15,
+           "the first pass's vertical reach is the unnarrowed one");
+    ok((double)v[0] != -0.00083333329530432820,
+       "and not the narrowed one, which is a different number here");
+    okNear((double)u[0], -0.00062499998603016138, 1e-15,
+           "with the horizontal reach from the narrowed step");
+    /* The rest step the other way, evenly. */
+    for (i = 0; i < 7; i++)
+    {
+        ok(u[i] < 0.0f, "every reach is backwards");
+        ok(v[i] < 0.0f, "in both directions");
+    }
+
+    /* A caller with room for fewer gets fewer, and is told. */
+    okEq((long)AEF_i_ScreenBlurReaches(u, v, 3, 25.0f), 3L,
+         "three asked for, three given");
+    okEq((long)AEF_i_ScreenBlurReaches(u, v, 0, 25.0f), 0L,
+         "none asked for, none given");
+    okEq((long)AEF_i_ScreenBlurReaches(NULL, NULL, 7, 25.0f), 0L,
+         "and nowhere to put them is none");
+    okEq((long)AEF_i_ScreenBlurReaches(u, NULL, 7, 25.0f), 7L,
+         "while one of the two is enough");
+
+    /* And the parameter's own scale is the written 0.039999999 and
+     * not a round twenty-fifth.
+     *
+     * The two are different doubles, but the step is narrowed to a
+     * float and at most strengths the two products round to the same
+     * one -- so most values hide the difference. A strength of two and
+     * a half does not: the last pass's reach across comes out
+     * 0.001093749888241291 with the written constant and
+     * 0.0010937500046566129 with a round one, a part in ten million
+     * apart. Found by search, after a sweep mutant tidying the
+     * constant survived.
+     */
+    AEF_i_ScreenBlurReaches(u, v, AEF_SCREENBLUR_PASSES, 2.5f);
+    okNear((double)u[6], 0.001093749888241291, 1e-16,
+           "the parameter's scale is the written one, not a tidy"
+           " twenty-fifth");
+
+    /* The parameter is a distance and not a fraction, which is worth
+       one assertion because it is the thing that surprises: a
+       parameter of one puts the last pass a third of a pixel out, so
+       the effect runs and does nothing anyone could see. */
+    AEF_i_ScreenBlurReaches(u, v, AEF_SCREENBLUR_PASSES, 1.0f);
+    ok((double)u[6] * 640.0 < 0.3,
+       "a parameter of one reaches under a third of a pixel");
+    AEF_i_ScreenBlurReaches(u, v, AEF_SCREENBLUR_PASSES, 25.0f);
+    okNear((double)u[6] * 640.0, 7.0, 0.01,
+           "and a parameter of 25 reaches seven of them");
+}
+
 int main(void)
 {
     caseGates();
     caseMotionBlur();
     caseRemanence();
     caseZoomSmooth();
+    caseScreenBlur();
 
     printf("\n  %ld checks, %ld failure(s)\n", checks, fails);
     return fails ? 1 : 0;

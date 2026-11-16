@@ -412,6 +412,7 @@ static void glr_Reset(void)
        -- so the harness must, or a case inherits a camera turn that
        never happened. */
     memset(&gl_aeMotionPrev, 0, sizeof(gl_aeMotionPrev));
+    blurFactor = 0.0f;
 
     memset(&glr_dd, 0, sizeof(glr_dd));
     memset(&glr_bb, 0, sizeof(glr_bb));
@@ -4061,6 +4062,183 @@ static void caseAeMotionBlur(void)
  * turned about one axis only, and what is asserted is the rows the
  * trail lands on -- including the two rows it must *not* reach.
  */
+/* The screen blur, against a modelled profile.
+ *
+ * Seven passes of a four-tap cross, each reaching one step further
+ * than the last. What a real driver can say that the other harnesses
+ * cannot is what the composition actually comes to -- so this models
+ * all seven passes and compares the profile row by row, rather than
+ * asserting that a bright row got wider.
+ *
+ * The model quantises after each pass, as the eight-bit target does.
+ * Modelling it in floats and comparing loosely would hide a wrong
+ * weight; modelling one pass instead of seven would hide a wrong
+ * count, which is the mistake the water's smoothing shipped with.
+ */
+#define GLR_SB_ROWS 160
+
+static void glr_ScreenBlurModel(double* out, int rows, int centre,
+                                float strength)
+{
+    float  uSteps[AEF_SCREENBLUR_PASSES];
+    float  vSteps[AEF_SCREENBLUR_PASSES];
+    float  weights[DPB_BLUR_TAPS];
+    double cur[GLR_SB_ROWS];
+    double next[GLR_SB_ROWS];
+    int    n;
+    int    p;
+    int    i;
+
+    n = AEF_i_ScreenBlurReaches(uSteps, vSteps, AEF_SCREENBLUR_PASSES,
+                                strength);
+    DPB_ChainWeights(weights);
+
+    for (i = 0; i < rows; i++)
+        cur[i] = 0.0;
+    cur[centre] = 255.0;
+
+    for (p = 0; p < n; p++)
+    {
+        /* The vertical reach in rows. The two taps across land on the
+           same row as the pixel, so in a vertical profile they only
+           add their weight to the middle. */
+        int step = (int)((double)vSteps[p] * (double)GLR_AE_H + 0.5);
+        double mid = (double)weights[0] + (double)weights[1];
+
+        for (i = 0; i < rows; i++)
+        {
+            double v = mid * cur[i];
+
+            /* The heavier of the two vertical taps samples the row
+               *above* in this renderer's rows, because the renderer
+               negates the schedule's vertical offsets on their way to
+               the shader. Model them the other way round and the
+               profile comes out mirrored -- which is what a first
+               draft of this did, and the mirror is plainly visible
+               because the two weights are far from equal. */
+            if (i + step < rows)
+                v += (double)weights[2] * cur[i + step];
+            if (i - step >= 0)
+                v += (double)weights[3] * cur[i - step];
+            /* Rounded to a byte, as writing it to the target does. */
+            next[i] = (double)(int)(v + 0.5);
+            if (next[i] > 255.0)
+                next[i] = 255.0;
+        }
+        for (i = 0; i < rows; i++)
+            cur[i] = next[i];
+    }
+    for (i = 0; i < rows; i++)
+        out[i] = cur[i];
+}
+
+static void caseAeScreenBlur(void)
+{
+    GLuint scene;
+    GLuint shown;
+    double want[GLR_SB_ROWS];
+    int    x = GLR_AE_W / 2;
+    int    centre = GLR_AE_H / 2;
+    int    base = centre - GLR_SB_ROWS / 2;
+    int    i;
+
+    printf("-- the screen blur, seven passes against a modelled"
+           " profile\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    scene = glr_AeScene(glr_aeAlphaNone, glr_aeAlphaNone);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* Black but for one bright row. */
+    for (i = 0; i < GLR_AE_W * GLR_AE_H * 4; i++)
+        glr_aePattern[i] = 0;
+    for (i = 0; i < GLR_AE_W; i++)
+        glr_aePattern[(centre * GLR_AE_W + i) * 4 + 0] = 255;
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    /* A reach of 25, which makes a step exactly one pixel of a 640 by
+       480 picture -- so the seven passes reach one to seven rows and
+       the steps are whole rows, with no bilinear blending to model. */
+    PC_AE_MASTER = 0x20;
+    blurFactor = 25.0f;
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+
+    glr_ScreenBlurModel(want, GLR_SB_ROWS, GLR_SB_ROWS / 2, 25.0f);
+
+    /* Row by row over the modelled window. Two levels of slack, for
+       the rounding the model and the card need not agree on exactly. */
+    {
+        int differing = 0;
+
+        for (i = 0; i < GLR_SB_ROWS; i++)
+        {
+            double got = (double)glr_AeRed(shown, x, base + i);
+
+            if (!(got >= want[i] - 2.0 && got <= want[i] + 2.0))
+                differing++;
+        }
+        okEq((long)differing, 0L, "every row of the profile matches the"
+                                  " seven-pass model");
+    }
+
+    /* And the shape, said separately so that a model and a renderer
+       agreeing on nothing cannot pass.
+     *
+       The spread is **not** symmetric, and that is the depth blur's
+       own doing rather than this effect's: its two vertical taps are
+       weighted differently, so the blur leans one way. Asserting
+       symmetry here is wrong -- a first draft did, and failed, which
+       is how the lean got checked rather than assumed. */
+    ok(glr_AeRed(shown, x, centre) < 200,
+       "the bright row has spread rather than stayed");
+    {
+        int above = 0;
+        int below = 0;
+
+        for (i = 1; i <= 7; i++)
+        {
+            above += glr_AeRed(shown, x, centre + i);
+            below += glr_AeRed(shown, x, centre - i);
+        }
+        ok(above != below, "the spread leans, as the blur's weights do");
+        ok(above > below, "and it leans the way the heavier tap points");
+    }
+
+    /* A reach of one does nothing anyone could see, which is what
+       makes the parameter a distance rather than a fraction: the seven
+       passes land under a third of a pixel out, so every tap falls on
+       the pixel it started from. */
+    /* A reach under a pixel moves nothing and still costs brightness,
+       which is the property worth a case of its own. Every tap lands
+       on the pixel it started from, so nothing spreads -- but each tap
+       is interpolated a fraction of a pixel out, bringing back a
+       mixture with its dark neighbour, and seven passes of that
+       compound to about half.
+     *
+       A first draft asserted the row came back untouched. It does not,
+       and the reading is what said so. */
+    blurFactor = 1.0f;
+    shown = GL_l_i_RunAfterEffects();
+    ok(glr_AeRed(shown, x, centre + 4) <= 2,
+       "a reach of one spreads nothing");
+    ok(glr_AeRed(shown, x, centre) > 100 && glr_AeRed(shown, x, centre) < 150,
+       "and yet costs about half the brightness");
+
+    PC_AE_MASTER = 0;
+    blurFactor = 0.0f;
+    CIN_Bands = 1;
+}
+
 static void caseAeMotionSmooth(void)
 {
     GLuint scene;
@@ -5532,6 +5710,7 @@ int main(void)
     caseAeColorOrder();
     caseAeRemanence();
     caseAeMotionBlur();
+    caseAeScreenBlur();
     caseAeMotionSmooth();
     caseAeHue();
     caseAeFade();

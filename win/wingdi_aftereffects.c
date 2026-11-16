@@ -6,6 +6,7 @@
 #include "../aefade.h"
 #include "../aehue.h"
 #include "../aemotion.h"
+#include "../aeframe.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -525,23 +526,35 @@ void D3D_DepthBlur(IDirect3DTexture9* texture, IDirect3DTexture9* renderTarget, 
 
 void D3D_Blur(IDirect3DTexture9* texture, IDirect3DTexture9* renderTarget, float strength)
 {
-    double scaled;
-    float step;
-    int pass;
+    float uSteps[AEF_SCREENBLUR_PASSES];
+    float vSteps[AEF_SCREENBLUR_PASSES];
+    int   passes;
+    int   i;
 
-    scaled = strength * 0.039999999;
-    step = (float)scaled;
-    // preserved: the first pass's vertical offset comes from the unnarrowed product, the rest from the narrowed step
-    D3D_DepthBlur(texture, renderTarget, (float)(step * 0.0015625),
-                  (float)(scaled * 0.0020833334));
-    for (pass = 2; pass <= 7; pass++)
+    passes = AEF_i_ScreenBlurReaches(uSteps, vSteps, AEF_SCREENBLUR_PASSES,
+                                     strength);
+
+    for (i = 0; i < passes; i++)
     {
-        double span = (double)step * pass;
-        IDirect3DTexture9* from = (pass & 1) ? D3DRenderParams.blurRenderTarget : renderTarget;
-        IDirect3DTexture9* to = (pass & 1) ? renderTarget : D3DRenderParams.blurRenderTarget;
+        int pass = i + 1;
+        IDirect3DTexture9* from;
+        IDirect3DTexture9* to;
 
-        D3D_DepthBlur(from, to, (float)(span * 0.0015625),
-                      (float)(0.0020833334 * span));
+        /* The first pass reads the frame it was handed; the six after
+           it alternate between the two targets, which leaves the
+           result back in the one the caller passed. */
+        if (pass == 1)
+        {
+            from = texture;
+            to = renderTarget;
+        }
+        else
+        {
+            from = (pass & 1) ? D3DRenderParams.blurRenderTarget : renderTarget;
+            to = (pass & 1) ? renderTarget : D3DRenderParams.blurRenderTarget;
+        }
+
+        D3D_DepthBlur(from, to, uSteps[i], vSteps[i]);
     }
 }
 
@@ -2702,6 +2715,7 @@ void D3D_PC_AE(tWorld* param1)
     float fadeStep;
     RECT wholeScreen;
     int aeMasterOnEntry;
+    tAef_Source aefSrc;
 
     /* Without a device this renderer was not the one chosen. The
        engine calls in here directly rather than through the
@@ -2818,7 +2832,12 @@ void D3D_PC_AE(tWorld* param1)
         spare = current;
         current = swap;
     }
-    if ((PC_AE_MASTER & 0x20) != 0 && blurFactor != 0.0)
+    /* Only the two fields this effect's gate reads; the rest of the
+       chain here does not go through this struct. */
+    memset(&aefSrc, 0, sizeof(aefSrc));
+    aefSrc.aeMaster = (unsigned int)PC_AE_MASTER;
+    aefSrc.screenBlur = blurFactor;
+    if (AEF_b_ScreenBlur(&aefSrc))
     {
         swap = spare;
         D3D_Blur(current, spare, blurFactor);

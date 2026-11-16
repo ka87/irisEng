@@ -1169,6 +1169,7 @@ static void reset(void)
        note beside it -- so a case that left the camera somewhere would
        hand the next case a movement it never made. */
     memset(&gl_aeMotionPrev, 0, sizeof(gl_aeMotionPrev));
+    blurFactor = 0.0f;
     memset(&gl_material, 0, sizeof(gl_material));
     gl_colorMaskAlpha = 0;
     gl_mipmapping = 1;
@@ -4594,6 +4595,168 @@ static void wg_MotionCameraAt(float tx, float ty, float tz)
     gl_dd.ct.cam.cameraMtx.v3.z = 1.0f + tz;
 }
 
+/* ----------------------------------------------- the screen blur
+ *
+ * Seven passes of the same four-tap blur the depth blur uses, each
+ * reaching one step further. The reaches are aeframe.c's and the
+ * differential compares them against the other renderer; these ask
+ * this renderer's part, which is almost entirely *where the seven
+ * passes go*.
+ */
+
+static void caseAeScreenBlurGates(void)
+{
+    printf("-- seven passes, and only with a reach to blur by\n");
+
+    /* The bit alone is not enough: unlike the fade and the hue sweep,
+       this one needs a reach as well, and nought is where it starts. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x20;
+    blurFactor = 0.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "no reach, no passes");
+
+    /* And with a reach, seven passes exactly -- not six, not eight. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x20;
+    blurFactor = 25.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), AEF_SCREENBLUR_PASSES,
+         "seven passes with a reach");
+
+    /* A negative reach runs too, which the gate being a comparison
+       against nought rather than a floor is what allows. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x20;
+    blurFactor = -25.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), AEF_SCREENBLUR_PASSES,
+         "and a backwards reach runs as well");
+
+    /* Without the bit, nothing, however large the reach. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0;
+    blurFactor = 25.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "and without the bit, nothing");
+    blurFactor = 0.0f;
+}
+
+static void caseAeScreenBlurPasses(void)
+{
+    float uSteps[AEF_SCREENBLUR_PASSES];
+    float vSteps[AEF_SCREENBLUR_PASSES];
+    int   i;
+
+    printf("-- where the seven passes read from and write to\n");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x20;
+    blurFactor = 25.0f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    okEq((long)AEF_i_ScreenBlurReaches(uSteps, vSteps,
+                                       AEF_SCREENBLUR_PASSES, 25.0f),
+         (long)AEF_SCREENBLUR_PASSES, "the harness has the same reaches");
+
+    /* Each pass is handed its own reach, in order, and the vertical is
+       negated on the way -- this renderer's texture runs up the
+       picture. The offsets the shader sees are the blur's taps built
+       from that reach, so what is asserted is the whole chain of
+       hand-offs rather than one number. */
+    for (i = 0; i < AEF_SCREENBLUR_PASSES; i++)
+    {
+        tDpb_BlurPass pass;
+        float         offsets[2 * DPB_BLUR_TAPS];
+        float         weights[DPB_BLUR_TAPS];
+
+        pass.fromSlot = 0;
+        pass.toSlot = 1;
+        pass.uStep = uSteps[i];
+        pass.vStep = vSteps[i];
+        DPB_BlurTaps(&pass, offsets, weights);
+
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 0, 1),
+             wg_l_Scaled(offsets[0]), "the pass's first tap across");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 0, 2),
+             wg_l_Scaled(-offsets[1]), "and its first tap down, negated");
+    }
+
+    /* The reaches grow, which is the whole shape of the effect: pass
+       seven must reach further than pass one or it is seven copies of
+       one blur. */
+    ok(WG_l_Arg("glUniform4f.scaled", 6 * 3 + 0, 1)
+       != WG_l_Arg("glUniform4f.scaled", 0, 1),
+       "with the last pass reaching further than the first");
+
+    /* And the seven land back on the chain's spare, not the scratch.
+       An even count would leave the blur in the scratch and the
+       exchange after it would hand on the unblurred frame -- which
+       looks like the effect being switched off, not like a bug. */
+    {
+        int last = wg_i_CallAt("glDrawArrays", AEF_SCREENBLUR_PASSES - 1);
+
+        okEq(wg_l_DrawTarget(AEF_SCREENBLUR_PASSES - 1),
+             (long)gl_aeFbo[GL_AE_SLOT_SPARE - DPB_SLOT_A],
+             "the last pass writes the chain's spare");
+        ok(wg_l_FboBefore(GL_FRAMEBUFFER, last)
+           != (long)gl_aeFbo[GL_AE_SLOT_SCRATCH - DPB_SLOT_A],
+           "and not the scratch");
+    }
+    blurFactor = 0.0f;
+}
+
+static void caseAeScreenBlurOrder(void)
+{
+    printf("-- the screen blur runs after the zoom smooth\n");
+
+    /* Both on. The zoom smooth draws once and this draws seven times,
+       so the counts alone place them -- but what is asserted is the
+       order, because every effect that exchanges moves the spare
+       along. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x20 | 0x400;
+    zoomSmoothFactor = 0.5f;
+    blurFactor = 25.0f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    okEq(WG_i_Count("glDrawArrays"), AEF_SCREENBLUR_PASSES + 1,
+         "eight draws for the two effects");
+    /* The zoom's program is not the blur's, so which program was
+       current at the first draw says which effect went first. */
+    {
+        int first = wg_i_CallAt("glDrawArrays", 0);
+        int i;
+        long prog = -1;
+
+        for (i = 0; i < first; i++)
+            if (strcmp(wg_calls[i].name, "glUseProgram") == 0)
+                prog = (long)wg_calls[i].arg[0];
+        okEq(prog, (long)gl_aeZoomProgram.program,
+             "the zoom smooth draws first");
+    }
+    zoomSmoothFactor = 0.0f;
+    blurFactor = 0.0f;
+}
+
 static void caseAeMotionSmoothAccumulation(void)
 {
     int i;
@@ -6673,6 +6836,9 @@ int main(void)
     caseAeRemanenceChain();
     caseAeRemanenceAfterDepthBlur();
     caseAeZoomUniforms();
+    caseAeScreenBlurGates();
+    caseAeScreenBlurPasses();
+    caseAeScreenBlurOrder();
     caseAeMotionSmoothAccumulation();
     caseAeMotionSmoothGates();
     caseAeMotionSmoothTaps();

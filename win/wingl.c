@@ -3419,6 +3419,7 @@ static void GL_l_AeReadSource(tAef_Source* out, const tCbd_Bands* bands)
     out->motionBlur = motionBlurFactor;
     out->remanence = remenanceFactor;
     out->zoomSmooth = zoomSmoothFactor;
+    out->screenBlur = blurFactor;
     out->bandBottom = bands ? bands->bottom : 1.0f;
 }
 
@@ -3992,6 +3993,41 @@ static int GL_l_b_AeZoomSmooth(const tCbd_Bands* bands, int from, int spare)
    between them to come out the same, and would still differ by the
    rounding -- so the drawing is left as it is and the arithmetic is
    the only thing shared. */
+/* The screen blur: the frame blurred seven times over, each pass
+ * reaching one step further than the last.
+ *
+ * The least work of any effect in this chain, and the reason is worth
+ * stating: every pass is the **same four-tap blur the depth blur is
+ * built from**, so there is no shader here and no arithmetic -- only a
+ * schedule, and the schedule is aeframe.c's. What is left is handing
+ * seven reaches to the chain driver the remanence already uses.
+ *
+ * Seven passes alternating from the chain's spare end back **on** the
+ * spare, which is where the exchange after this call looks for them.
+ * An even count would end on the scratch and the blur would be thrown
+ * away, so the odd count is load-bearing rather than incidental.
+ */
+static int GL_l_b_AeScreenBlur(const tCbd_Bands* bands, int from, int spare)
+{
+    tAef_Source src;
+    float       uSteps[AEF_SCREENBLUR_PASSES];
+    float       vSteps[AEF_SCREENBLUR_PASSES];
+    int         n;
+
+    GL_l_AeReadSource(&src, bands);
+    if (!AEF_b_ScreenBlur(&src))
+        return 0;
+
+    n = AEF_i_ScreenBlurReaches(uSteps, vSteps, AEF_SCREENBLUR_PASSES,
+                                src.screenBlur);
+    if (n <= 0)
+        return 0;
+
+    GL_l_i_AeBlurChain(bands, uSteps, vSteps, n, from, spare,
+                       GL_AE_SLOT_SCRATCH);
+    return 1;
+}
+
 static int GL_l_i_AeColor(const tCbd_Bands* bands, int from)
 {
     tAec_Source   src;
@@ -4076,7 +4112,7 @@ static int GL_l_b_AeWanted(void)
            anything wants to run. */
         GL_l_AeReadSource(&fsrc, NULL);
         if (AEF_b_Remanence(&fsrc) || AEF_b_MotionBlur(&fsrc)
-            || AEF_b_ZoomSmooth(&fsrc))
+            || AEF_b_ZoomSmooth(&fsrc) || AEF_b_ScreenBlur(&fsrc))
             return 1;
     }
     return 0;
@@ -4165,6 +4201,8 @@ static GLuint GL_l_i_RunAfterEffects(void)
     if (GL_l_b_AeMotionSmooth(&bands, cur, spr))
         GL_l_AeExchange(&cur, &spr);
     if (GL_l_b_AeZoomSmooth(&bands, cur, spr))
+        GL_l_AeExchange(&cur, &spr);
+    if (GL_l_b_AeScreenBlur(&bands, cur, spr))
         GL_l_AeExchange(&cur, &spr);
     /* The colour effects are last and nothing reads a target after
        them, so they keep their own simpler arrangement: each writes
