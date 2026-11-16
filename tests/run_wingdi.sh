@@ -98,12 +98,13 @@ $CC $CFLAGS -c geosprite.c -o "$OUT/wingdi.gsp.o"
 # rasterStateCase compares the two readings over every combination of
 # them. Linked for that check, which is why it is pure.
 $CC $CFLAGS -c rasterstate.c -o "$OUT/wingdi.rst.o"
+$CC $CFLAGS -c fog.c -o "$OUT/wingdi.fog.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"
 $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
 $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
     "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" "$OUT/wingdi.gvx.o" \
-    "$OUT/wingdi.rst.o" "$OUT/wingdi.gsp.o" "$OUT/wingdi.profiler.o" \
+    "$OUT/wingdi.rst.o" "$OUT/wingdi.fog.o" "$OUT/wingdi.gsp.o" "$OUT/wingdi.profiler.o" \
     "$OUT/wingdi.mocks.o" \
     "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm

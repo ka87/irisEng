@@ -87,6 +87,29 @@ happens per pixel, as it does in the other renderer.
 renderer turns it into the texture and sets these uniforms; nothing
 about the numbers is decided here.
 
+## Fog
+
+`geometry.vert` passes the camera-space depth across and
+`geometry.frag` fogs by it. Three curves -- linear, exponential, and
+exponential squared -- with the range, the density and the colour
+coming from the engine through `fog.c`, and the curve number chosen per
+material.
+
+The depth is **not** negated. The engine's camera space has z growing
+away from the camera, and the authority on that is the depth-blur pass:
+its coordinate is the depth over the far plane and it multiplies z by
+one over the far plane, with no sign change. The two read the same
+depth, so they agree or one of them is wrong. A first draft negated it
+and fogged nothing at all, because every factor clamped to one.
+
+Fog is applied after the alpha test and to the colour only. The
+hardware's own fog leaves alpha alone, and here that matters twice
+over: the depth-blur pass reads the frame's alpha, and the sun's
+occlusion test reads what the blur wrote.
+
+The factor runs the same way as the hardware's: 1 is no fog, so the
+colour is `mix(fogColor, pixel, factor)`.
+
 ## Two programs rather than one with a branch
 
 Their vertex layouts differ -- the textured one carries a UV -- and a

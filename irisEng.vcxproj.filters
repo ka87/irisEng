@@ -173,6 +173,9 @@
     <ClCompile Include="font.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="fog.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="datapath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -824,6 +827,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="datapath.h">

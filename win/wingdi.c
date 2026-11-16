@@ -13,6 +13,7 @@
 #include "../font.h"
 #include "wingdimath.h"
 #include "wingditex.h"
+#include "../fog.h"
 #include "../projection.h"
 #include "../geovertex.h"
 #include "../geosprite.h"
@@ -3471,7 +3472,15 @@ void D3D_BeginSceneCall()
 
 void D3D_Request_SetFogParams(tFogParams* fog)
 {
-    int fogColor;
+    tFog_Source fogSrc;
+    tFog_State  fogState;
+
+    fogSrc.b_enabled = (fog->flags & 1) != 0;
+    fogSrc.engineCurve = fog->fogVertexMode;
+    fogSrc.start = fog->fogStart;
+    fogSrc.end = fog->fogEnd;
+    fogSrc.density = fog->density;
+    fogSrc.engineColor = (unsigned int)fog->fogColor;
 
     if ((fog->flags & 1) != 0)
     {
@@ -3489,9 +3498,13 @@ void D3D_Request_SetFogParams(tFogParams* fog)
             D3D_RenderStateSet(&renderStateConfig.d3dFogEnable, D3DRS_FOGENABLE, FALSE);
             return;
         }
-        fogColor = (fog->fogColor & 0xFF00FF00 | ((fog->fogColor >> 16) & 0xff) | ((uint8_t)fog->fogColor << 16));
-        D3DRenderParams.d3dFogColor = fogColor;
-        D3DRenderParams.d3dFogColor2Case5and6 = 0;
+        /* The curve and the colour come from fog.c, so the engine's
+           numbering and its byte order are read in one place rather
+           than once per renderer. Which device constant the curve
+           becomes is still this renderer's own table. */
+        FOG_Decode(&fogSrc, &fogState);
+        D3DRenderParams.d3dFogColor = fogState.color;
+        D3DRenderParams.d3dFogColor2Case5and6 = fogState.color2;
         D3D_RenderStateSetF(&renderStateConfig.d3dFogDensity, D3DRS_FOGDENSITY, fog->density);
         D3DRenderParams.d3dFogModeProbably = 1;
         D3D_RenderStateSet(&renderStateConfig.d3dFogColor, D3DRS_FOGCOLOR, D3DRenderParams.d3dFogColor);

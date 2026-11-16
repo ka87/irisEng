@@ -257,6 +257,9 @@ static void glr_Reset(void)
        the engine's, set by the AI scripts, so a case that wants a
        particular blur sets it and every other case starts with none. */
     PC_AE_MASTER = 0;
+    memset(&gl_fog, 0, sizeof(gl_fog));
+    gl_fogSecondColor = 0;
+    gl_fogSaidNoVertex = 0;
     depthBlurNear1 = 0.0f;
     depthBlurType0 = 0.0f;
     depthBlurType1 = 0.0f;
@@ -1762,6 +1765,272 @@ static void caseSunRefusals(void)
     ok(GL_p_SunSamplerCreate() == NULL, "no context, no sampler");
 }
 
+/* ============================================================== fog
+ *
+ * The engine hands over a curve, a range, a density and a colour once,
+ * and then each material says whether fog applies to it and which of
+ * two colours it uses. The other renderer turns that into
+ * fixed-function state; this one has to do the arithmetic, so the
+ * arithmetic is what these cases are about and only a real driver can
+ * run it.
+ *
+ * The draw-mask bit 0x4000 is what permits fog on a pass, and the
+ * material's flag word carries the variant in bits 16 to 19.
+ */
+
+#define GLR_D_FOG   0x00004000
+#define GLR_D_SOLID 0x00000010
+
+/* The engine's fog request, which is the only way these settings get
+   in -- so the cases go through it rather than writing the state. */
+static void glr_FogRequest(int engineCurve, float start, float end,
+                           float density, unsigned int engineColor)
+{
+    tFogParams fog;
+
+    memset(&fog, 0, sizeof(fog));
+    fog.flags = 1;
+    fog.fogVertexMode = (char)engineCurve;
+    fog.fogStart = start;
+    fog.fogEnd = end;
+    fog.density = density;
+    fog.fogColor = (int)engineColor;
+    GL_Request(1, &fog);
+}
+
+/* A lit quad at a known depth with fog permitted, so the colour read
+   back is the fogged one. The material's flag word carries the fog
+   variant in bits 16 to 19; `mode` is that field. */
+static void glr_DrawFogged(float depth, int mode, int b_fogAllowed)
+{
+    /* Cleared first. Without this a second draw lands on top of the
+       first, and with an additive blend that reads as saturated white
+       whatever the fog did -- which is how the variant case first
+       failed. */
+    glr_Begin();
+    glr_BuildQuad();
+    glr_pos[0].z = depth;
+    glr_pos[1].z = depth;
+    glr_pos[2].z = depth;
+    glr_pos[3].z = depth;
+    glr_BlurMatrices();
+    /* White, so the fog colour is all of what is read back -- and an
+       alpha that is not full, so that fog reaching the alpha would
+       move it. With the alpha at full it would not: the fog colour's
+       own alpha is full too, and mixing one with the other is the
+       value either way. */
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0x40);
+    glr_dd.drawMaskAllowedStuffCurrent =
+        GLR_D_SOLID | (b_fogAllowed ? GLR_D_FOG : 0);
+
+    GL_TextureInit(-1, (mode & 0xF) << 16, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+}
+
+/* What the shader should have produced: the fog colour and the pixel
+   mixed by the factor, worked out from fog.c rather than here. */
+static int glr_FoggedChannel(int pixel, int fogChannel, float depth)
+{
+    double f = (double)FOG_f_Factor(&gl_fog, depth);
+
+    return (int)((1.0 - f) * (double)fogChannel + f * (double)pixel + 0.5);
+}
+
+static void caseFogCurves(void)
+{
+    /* The engine's own numbering: 0 linear, 1 exponential, 2 squared,
+       3 the one that takes its factor off the vertices. */
+    static const int   curves[3] = { 0, 1, 2 };
+    static const float depths[3] = { 0.1f, 0.4f, 0.8f };
+    int                ci;
+    int                di;
+
+    printf("-- the three distance curves\n");
+
+    for (ci = 0; ci < 3; ci++)
+        for (di = 0; di < 3; di++)
+        {
+            int want;
+
+            glr_Reset();
+            glr_dd.ct.cam.nearPlane = 0.01f;
+            glr_dd.ct.cam.farPlane = 1.0f;
+            /* A fog colour whose channels are all different, and in
+               the engine's byte order -- so a renderer that forgot the
+               red-and-blue swap reads one of them in another's place. */
+            glr_FogRequest(curves[ci], 0.0f, 1.0f, 2.0f, 0x00204060u);
+
+            glr_DrawFogged(depths[di], 0, 1);
+
+            /* Red is the engine word's lowest byte, because the engine
+               keeps its colours the other way round from the device.
+               0x204060 is therefore red 0x60, green 0x40, blue 0x20. */
+            want = glr_FoggedChannel(0xFF, 0x60, depths[di]);
+            okNear(glr_R(GLR_W / 2, GLR_H / 2), want,
+                   "red is the pixel and the fog colour mixed by the"
+                   " curve");
+            want = glr_FoggedChannel(0xFF, 0x40, depths[di]);
+            okNear(glr_G(GLR_W / 2, GLR_H / 2), want, "green likewise");
+            want = glr_FoggedChannel(0xFF, 0x20, depths[di]);
+            okNear(glr_B(GLR_W / 2, GLR_H / 2), want,
+                   "and blue, which is the engine's lowest byte and not"
+                   " its highest");
+        }
+
+    /* And the three curves really do differ at one of those depths, or
+       the loop above would pass whichever one the shader ran. */
+    {
+        tFog_Source src;
+        tFog_State  a;
+        tFog_State  b;
+        tFog_State  c;
+
+        src.b_enabled = 1;
+        src.start = 0.0f;
+        src.end = 1.0f;
+        src.density = 2.0f;
+        src.engineColor = 0;
+        src.engineCurve = 0;  FOG_Decode(&src, &a);
+        src.engineCurve = 1;  FOG_Decode(&src, &b);
+        src.engineCurve = 2;  FOG_Decode(&src, &c);
+        ok(fabs((double)FOG_f_Factor(&a, 0.4f) - FOG_f_Factor(&b, 0.4f)) > 0.05
+           && fabs((double)FOG_f_Factor(&b, 0.4f)
+                   - FOG_f_Factor(&c, 0.4f)) > 0.05,
+           "the three curves give three different factors at that depth");
+    }
+}
+
+static void caseFogAlphaAndPermission(void)
+{
+    int fogged;
+    int plain;
+
+    printf("-- what fog does not touch\n");
+
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+    /* A dark fog against a white quad. White fog on a white quad is
+       invisible however much of it there is, which is what the first
+       draft of this case asked about. */
+    glr_FogRequest(0, 0.0f, 1.0f, 1.0f, 0x00102030u);
+
+    /* Alpha is not fogged: the hardware's fog leaves it alone, and the
+       depth-blur pass reads that alpha afterwards. */
+    glr_DrawFogged(0.9f, 0, 1);
+    okNear(glr_A(GLR_W / 2, GLR_H / 2), 0x40, "the alpha is not fogged");
+    fogged = glr_R(GLR_W / 2, GLR_H / 2);
+    ok(fogged < 0x80, "and the colour is heavily fogged at that depth");
+
+    /* A pass whose draw mask does not permit fog is not fogged, even
+       with fog set up. */
+    glr_DrawFogged(0.9f, 0, 0);
+    plain = glr_R(GLR_W / 2, GLR_H / 2);
+    okNear(plain, 0xFF, "a pass that does not permit fog is not fogged");
+    ok(fogged != plain, "and the permitted one was, so this means"
+                        " something");
+
+    /* No fog asked for at all: the request's flag clear. */
+    {
+        tFogParams off;
+
+        memset(&off, 0, sizeof(off));
+        off.flags = 0;
+        GL_Request(1, &off);
+        okEq(gl_fog.b_on, 0, "the request can turn fog off");
+        glr_DrawFogged(0.9f, 0, 1);
+        okNear(glr_R(GLR_W / 2, GLR_H / 2), 0xFF, "and then nothing is fogged");
+    }
+}
+
+/* Which of the two colours a variant fogs to.
+ *
+ * Checked as state rather than on screen, and on purpose: the flag
+ * word's mode field picks the blend equation as well as the fog
+ * variant, and only two of the sixteen modes have blending off --
+ * both of them the first variant. So no pair of modes isolates the
+ * variant on screen, and a first draft that compared two drawn
+ * colours was really comparing two blends.
+ *
+ * The shader's use of whichever colour is selected is checked once, on
+ * screen, in caseFogCurves, which draws with a mode whose blend is
+ * off. What is left to check here is the selection, and that is C.
+ */
+static void caseFogVariants(void)
+{
+    printf("-- which of the two colours a variant fogs to\n");
+
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+    glr_FogRequest(0, 0.0f, 1.0f, 1.0f, 0x00204060u);
+
+    /* The second colour is black, and not by chance: the renderer that
+       has fog writes zero into it every time fog parameters arrive and
+       never writes anything else. */
+    okEq((long)(FOG_i_Color(&gl_fog, 0) & 0xFFFFFF), 0x604020,
+         "the first colour is the engine's, in the device's order");
+    okEq((long)FOG_i_Color(&gl_fog, 1), 0,
+         "and the second is black");
+
+    /* Modes 0, 1, 3 and 7 are the first variant, 2 and 4 the third --
+       which also uses the first colour -- and 5 and 6 the one that
+       uses the second. */
+    glr_DrawFogged(0.9f, 1, 1);
+    okEq(gl_fogSecondColor, 0, "mode 1 names the first colour");
+    glr_DrawFogged(0.9f, 5, 1);
+    okEq(gl_fogSecondColor, 1, "mode 5 names the second");
+    glr_DrawFogged(0.9f, 2, 1);
+    okEq(gl_fogSecondColor, 0, "mode 2 names the first again");
+    glr_DrawFogged(0.9f, 6, 1);
+    okEq(gl_fogSecondColor, 1, "and mode 6 the second");
+
+    /* Mode 8 names no variant and means keep the one in force, which a
+       renderer that re-decided from every material would get wrong in
+       both directions -- so it is checked from each side. */
+    glr_DrawFogged(0.9f, 8, 1);
+    okEq(gl_fogSecondColor, 1, "mode 8 keeps the second");
+    glr_DrawFogged(0.9f, 1, 1);
+    glr_DrawFogged(0.9f, 8, 1);
+    okEq(gl_fogSecondColor, 0, "and keeps the first just as readily");
+
+    /* New parameters start the variant over, as they do in the other
+       renderer. */
+    glr_DrawFogged(0.9f, 5, 1);
+    okEq(gl_fogSecondColor, 1, "the second is in force");
+    glr_FogRequest(0, 0.0f, 1.0f, 1.0f, 0x00204060u);
+    okEq(gl_fogSecondColor, 0, "and a fresh request starts from the first");
+}
+
+static void caseFogVertexCurve(void)
+{
+    printf("-- the curve this renderer has no source for\n");
+
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+
+    /* The engine's fourth curve number takes its factor off the
+       vertices, and this renderer's vertex carries no such thing. Fog
+       stays on in the state -- the other renderer leaves it on too --
+       but no distance curve is drawn, and the renderer says so once.
+
+       What must not happen is the colour being lost: the first draft of
+       fog.c treated this number as fog off and zeroed the colour, and
+       the other renderer's differential test reported 44 differences
+       for it. */
+    glr_FogRequest(3, 0.0f, 1.0f, 1.0f, 0x00204060u);
+    okEq(gl_fog.b_on, 1, "fog is still on");
+    okEq(gl_fog.curve, FOG_OFF, "with no distance curve");
+    okEq((long)(gl_fog.color & 0xFFFFFF), 0x604020,
+         "and the colour is kept, swapped into the device's order");
+
+    glr_DrawFogged(0.9f, 0, 1);
+    okNear(glr_R(GLR_W / 2, GLR_H / 2), 0xFF,
+           "nothing is fogged, rather than something arbitrary being");
+}
+
 static void caseShadersCompile(void)
 {
     printf("-- every shipped shader compiles on a real driver\n");
@@ -1853,6 +2122,10 @@ int main(void)
     caseSunRing();
     caseSunWaitsForTheCard();
     caseSunRefusals();
+    caseFogCurves();
+    caseFogAlphaAndPermission();
+    caseFogVariants();
+    caseFogVertexCurve();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();

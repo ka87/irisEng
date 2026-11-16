@@ -271,12 +271,22 @@ static void GL_APIENTRY MK_glBufferData(GLenum target, GLsizei size, const void*
 
 static const GLfloat* wg_lastMatrix;
 static int            wg_lastTranspose;
+/* Each matrix uploaded, kept in order and not just the last: a draw
+   sets two of them now -- the combined one for the position and the
+   view on its own for the fog -- and keeping only the last would read
+   the second where the first was meant, which is how this case first
+   failed. */
+#define WG_MATRICES 8
+static const GLfloat* wg_matrix[WG_MATRICES];
+static int            wg_matrixNum;
 
 static void GL_APIENTRY MK_glUniformMatrix4fv(GLint loc, GLsizei count, GLboolean transpose,
                                   const GLfloat* value)
 {
     wg_lastMatrix = value;
     wg_lastTranspose = transpose;
+    if (wg_matrixNum < WG_MATRICES)
+        wg_matrix[wg_matrixNum++] = value;
     WG_Record("glUniformMatrix4fv", 3, (long long)loc, (long long)count,
               (long long)transpose);
 }
@@ -579,6 +589,13 @@ static GLboolean GL_APIENTRY MK_glUnmapBuffer(GLenum target)
     return GL_TRUE;
 }
 
+static void GL_APIENTRY MK_glUniform3f(GLint loc, GLfloat a, GLfloat b,
+                                      GLfloat c)
+{
+    WG_Record("glUniform3f", 4, (long long)loc, (long long)(a * 255.0f + 0.5f),
+              (long long)(b * 255.0f + 0.5f), (long long)(c * 255.0f + 0.5f));
+}
+
 static GLuint GL_APIENTRY MK_glCreateShader(GLenum type)
 {
     WG_Record("glCreateShader", 1, (long long)type);
@@ -689,6 +706,7 @@ static void WG_AimThePointers(void)
     GLFN_glDrawArrays = MK_glDrawArrays;
     GLFN_glBufferData = MK_glBufferData;
     GLFN_glGenBuffers = MK_glGenBuffers;
+    GLFN_glUniform3f = MK_glUniform3f;
     GLFN_glReadPixels = MK_glReadPixels;
     GLFN_glFenceSync = MK_glFenceSync;
     GLFN_glClientWaitSync = MK_glClientWaitSync;
@@ -867,6 +885,8 @@ static void reset(void)
     wg_bufferCopyLen = 0;
     wg_lastBufferSize = 0;
     wg_lastMatrix = NULL;
+    memset(wg_matrix, 0, sizeof(wg_matrix));
+    wg_matrixNum = 0;
     wg_lastTranspose = -1;
     wg_boundFbo = 0;
     wg_boundRbo = 0;
@@ -1307,10 +1327,19 @@ static void caseGeometry(void)
     /* the matrix reaches the shader untransposed, which is what makes
        GLSL read the engine's row-major storage as the transpose and
        so apply the engine's own row-vector arithmetic */
-    okEq(WG_i_Count("glUniformMatrix4fv"), 1, "the matrix is set once");
+    /* Two matrices now: the combined one for the position and the
+       view on its own, because the fog is a function of the distance
+       from the camera and that is what the combined one has thrown
+       away. The combined one goes first, which is what the check below
+       reads. */
+    okEq(WG_i_Count("glUniformMatrix4fv"), 2,
+         "the combined matrix and the view are both set");
     c = WG_pc_Call("glUniformMatrix4fv", 0);
-    okEq(c->arg[1], 1, "one matrix");
+    okEq(c->arg[1], 1, "one matrix at a time");
     okEq(c->arg[2], GL_FALSE, "not transposed on the way");
+    c = WG_pc_Call("glUniformMatrix4fv", 1);
+    okEq(c->arg[2], GL_FALSE, "and the second is not transposed either");
+    c = WG_pc_Call("glUniformMatrix4fv", 0);
 
     /* And it is view times projection, in that order. Checked against
        a product worked out here rather than by the helper the
@@ -1358,12 +1387,30 @@ static void caseGeometry(void)
                            * ((const float*)&proj)[k * 4 + j];
                 want[i * 4 + j] = sum;
             }
-        ok(wg_lastMatrix != NULL, "a matrix was uploaded");
-        if (wg_lastMatrix)
+        okEq(wg_matrixNum, 2, "two matrices were uploaded");
+        ok(wg_matrix[0] != NULL, "the first is there");
+        if (wg_matrix[0])
             for (i = 0; i < 16; i++)
-                if (wg_lastMatrix[i] != want[i])
+                if (wg_matrix[0][i] != want[i])
                     bad++;
         okEq(bad, 0, "and it is the view times the projection, in that order");
+
+        /* And the second is the view on its own, which is what the fog
+           needs: handing it the product instead would compute the fog
+           from the clip-space depth, and that is a mistake no picture
+           of a lit room would obviously show. */
+        bad = 0;
+        if (wg_matrix[1])
+        {
+            for (i = 0; i < 16; i++)
+                if (wg_matrix[1][i] != ((const float*)&gl_viewMtx)[i])
+                    bad++;
+        }
+        else
+        {
+            bad = 1;
+        }
+        okEq(bad, 0, "and the second is the view on its own");
     }
 
     /* the vertices themselves: positions picked by index, and the
