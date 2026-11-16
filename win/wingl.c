@@ -4631,6 +4631,9 @@ void GL_PrepareWaterRendering(void)
 void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
 {
     Mtx4x4WithoutAdditionalData texMtx;
+    Mtx4x4                      camInv;
+    Mtx4x4                      camView;
+    Mtx4x4                      camViewProj;
     tWms_Source                 src;
     int                         indices;
     int                         verts;
@@ -4683,6 +4686,41 @@ void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
                             (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
                             GL_WATER_SIZE, GL_WATER_SIZE);
 
+    /* The camera's own view, built here rather than taken from the
+     * engine -- and this is the whole of why the water used to be
+     * somewhere else.
+     *
+     * While the world is drawn, what the engine calls the view matrix
+     * is the top of its matrix stack: the camera with the object being
+     * drawn folded into it. It sets that per object and nothing puts
+     * the camera back before the water, so taking the engine's view
+     * here draws the surface through whatever object happened to be
+     * drawn last -- usually off the screen entirely, and when it does
+     * land, turned.
+     *
+     * The other renderer sets both transforms itself for this draw:
+     * the view from the inverse of the camera's own matrix, the world
+     * to identity. This is that, and the three things the shader
+     * builds from these matrices -- the position, the reflection's
+     * texture coordinate and the fog depth -- are all wrong together
+     * when it is not done.
+     *
+     * The inverse is taken here rather than read from the camera's
+     * kept one, because that is what the other renderer does; the two
+     * agree, and taking it is cheap once a frame. */
+    camInv = gpst_DX_stDD->ct.cam.objectMtx;
+    MATH_InvertMatrix(&camInv, &gpst_DX_stDD->ct.cam.objectMtx);
+    /* The scale flags, cleared as that renderer clears them before
+       handing the matrix over. */
+    camInv._m14 = 0.0f;
+    camInv._m24 = 0.0f;
+    camInv._m34 = 0.0f;
+    camInv.w = 1.0f;
+    MATH_MakeOGLMatrix(&camView, &camInv);
+    D3D_MatrixMultiply((D3DMATRIX*)&camViewProj,
+                       (const D3DMATRIX*)&camView,
+                       (const D3DMATRIX*)&gl_projMtx);
+
     /* The reflection is blurred before it is sampled, which is where
        the other renderer does it too -- in the function that hands the
        reflection over to this draw. It writes back into the reflection
@@ -4699,10 +4737,10 @@ void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
     GLFN_glUseProgram(gl_waterProgram.program);
     if (gl_waterViewProj >= 0)
         GLFN_glUniformMatrix4fv(gl_waterViewProj, 1, GL_FALSE,
-                                (const GLfloat*)&gl_viewProjMtx);
+                                (const GLfloat*)&camViewProj);
     if (gl_waterView >= 0)
         GLFN_glUniformMatrix4fv(gl_waterView, 1, GL_FALSE,
-                                (const GLfloat*)&gl_viewMtx);
+                                (const GLfloat*)&camView);
     if (gl_waterTexMtx >= 0)
         GLFN_glUniformMatrix4fv(gl_waterTexMtx, 1, GL_FALSE,
                                 (const GLfloat*)&texMtx);

@@ -4727,9 +4727,14 @@ static void glr_WaterFixture(int r, int g, int b, int a, int bottom, float z)
     glr_water.waterEngine.bottomColor = bottom;
     pst_GlobalsWaterParams = &glr_water;
 
-    glr_dd.ct.cam.objectMtx.Pos.x = 0.0f;
-    glr_dd.ct.cam.objectMtx.Pos.y = 0.0f;
-    glr_dd.ct.cam.objectMtx.Pos.z = 0.0f;
+    /* A real camera, at the origin looking along the axes. The water
+       draw builds its own view by inverting this -- the engine's view
+       matrix is the matrix stack's top and has the last object folded
+       into it -- so a fixture that left this a block of nought would
+       hand the draw a matrix with no inverse, and every case here
+       would be reading whatever that produced. */
+    MATH_SetIdentityMatrix(&glr_dd.ct.cam.objectMtx);
+    MATH_SetIdentityMatrix(&glr_dd.ct.cam.cameraMtx);
 }
 
 /* Prepares the frame, then takes the target back: prepare leaves the
@@ -4824,6 +4829,60 @@ static void caseWaterBlend(void)
        the after-effects downstream read the frame's alpha for. */
     okNear(glr_A(GLR_W / 2, GLR_H / 2), 128, "and the alpha written is the"
                                              " water's own");
+}
+
+static void caseWaterIgnoresTheEngineView(void)
+{
+    Mtx4x4 elsewhere;
+
+    printf("-- the surface is drawn by the camera, not by the last"
+           " object\n");
+
+    /* While the world is drawn, what the engine calls the view matrix
+       is the top of its matrix stack -- the camera with the object
+       being drawn folded into it -- and nothing puts the camera back
+       before the water. So the water draw has to build its own view
+       from the camera, as the other renderer does, and a stray
+       transform left in the engine's must not reach it.
+
+       The camera stays at the origin, so the surface belongs exactly
+       where the cases above find it. The engine's view is then moved
+       far to one side, which is what a object drawn somewhere else
+       leaves behind: if that reached the draw, the surface would be
+       off the screen and the middle pixel would read background. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_Begin();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0x00, 0x0000FFFF, 0.0f);
+
+    MATH_SetIdentityMatrix(&elsewhere);
+    elsewhere.Pos.x = 40.0f;
+    elsewhere.Pos.y = 25.0f;
+    GL_SetViewMatrix(&elsewhere);
+
+    glr_WaterDraw();
+    okEq(glr_R(GLR_W / 2, GLR_H / 2), 0x20,
+         "the surface is still where the camera put it");
+    okEq(glr_G(GLR_W / 2, GLR_H / 2), 0x40, "with its own green");
+    okEq(glr_B(GLR_W / 2, GLR_H / 2), 0x80, "and its own blue");
+
+    /* And the texture coordinate is built from the same view, so a
+       stray transform would misplace the reflection even where the
+       surface still covered the pixel. Full alpha, so the pixel is
+       the reflection alone: the target is cleared to a cyan nothing
+       else here produces. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_Begin();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x0000FFFF, 0.0f);
+    MATH_SetIdentityMatrix(&elsewhere);
+    elsewhere.Pos.x = 40.0f;
+    elsewhere.Pos.y = 25.0f;
+    GL_SetViewMatrix(&elsewhere);
+    glr_WaterDraw();
+    okEq(glr_G(GLR_W / 2, GLR_H / 2), 0xFF,
+         "and the reflection is sampled where the camera says");
+    okEq(glr_B(GLR_W / 2, GLR_H / 2), 0xFF, "in both channels of it");
 }
 
 static void caseWaterNotBlended(void)
@@ -4993,17 +5052,23 @@ static void caseWaterDirectionIsADirection(void)
        With the view at the identity the two spellings are the same
        thing -- a mutant that gave the direction a one in its fourth
        component survived every case above, because there was no
-       translation for it to pick up. */
+       translation for it to pick up.
+
+       The translation comes from the **camera**, because that is
+       where the water's view comes from: the draw inverts the
+       camera's own matrix rather than taking the engine's view, which
+       during the world has the last object folded into it. A camera a
+       unit behind the origin is a view that translates a unit
+       forward, which is the matrix this case used to set by hand. */
     glr_Reset();
     glr_IdentityMatrices();
-    MATH_SetIdentityMatrix(&view);
-    view.Pos.z = 1.0f;
-    GL_SetViewMatrix(&view);
+    (void)view;
 
     /* The grid sits where the translation puts it back inside the clip
        volume: at minus a half it lands at a half once the view has
        moved it. */
     glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x00000000, -0.5f);
+    glr_dd.ct.cam.objectMtx.Pos.z = -1.0f;
     GL_PrepareWaterRendering();
     glr_WaterPatternIntoReflection();
     GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
@@ -5013,11 +5078,12 @@ static void caseWaterDirectionIsADirection(void)
     glr_Read();
 
     /* The direction's depth component is the grid's own minus the
-       camera's, with no view translation in it. Taking the translation
-       as well would make it the other number, and the two land in
-       different halves of the pattern. */
-    vNoTranslation = glr_f_WaterV(0.5f, -0.5f);
-    vWithIt = glr_f_WaterV(0.5f, 0.5f);
+       camera's -- minus a half less minus one, so a half -- with no
+       view translation in it. Taking the translation as well would add
+       the view's own unit and make it one and a half, and the two land
+       in different halves of the pattern. */
+    vNoTranslation = glr_f_WaterV(0.5f, 0.5f);
+    vWithIt = glr_f_WaterV(0.5f, 1.5f);
     ok((vNoTranslation < 0.5f) != (vWithIt < 0.5f),
        "the two readings fall in different halves, so there is"
        " something to measure");
@@ -5675,6 +5741,7 @@ int main(void)
     caseCulling();
     caseWaterReflectionCleared();
     caseWaterBlend();
+    caseWaterIgnoresTheEngineView();
     caseWaterNotBlended();
     caseWaterDepth();
     caseWaterSampling();
