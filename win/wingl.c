@@ -12,6 +12,7 @@
 #include "../textures.h"
 #include "../cinebands.h"
 #include "../cameraengine.h"
+#include "../editorcamera.h"
 #include "../soft.h"
 #include "../dbg.h"
 
@@ -126,12 +127,14 @@ static void GL_l_ForgetPass(void);
 static void GL_l_ForgetGeometry(void);
 static void GL_l_ForgetScene(void);
 static void GL_l_BindScene(void);
-static void GL_l_CopySceneToScreen(void);
+static void GL_l_CopyToScreen(GLuint fromFbo);
 static void GL_l_ReadBlurState(tDpb_State* out);
 static int  GL_l_b_BlurReady(void);
 static void GL_l_ForgetBlur(void);
 static void GL_l_ForgetTargets(void);
 static void GL_l_ForgetVideo(void);
+static GLuint GL_l_i_RunAfterEffects(void);
+static void GL_l_ForgetAe(void);
 static Mtx4x4 gl_viewProjMtx;
 static int            gl_available = -1;   /* -1 until asked */
 static int            gl_saidOnce;
@@ -461,6 +464,8 @@ int GL_Close(void)
         GL_l_ForgetPass();
         GL_l_ForgetGeometry();
         GL_l_ForgetBlur();
+        /* Before the scene target, which the spares are sized from. */
+        GL_l_ForgetAe();
         GL_l_ForgetScene();
         GL_l_ForgetTargets();
         GL_l_ForgetVideo();
@@ -532,18 +537,15 @@ void GL_Clear(int which, int color)
 
 void GL_Flip(void)
 {
-    /* The debug overlay goes last, on top of everything -- the rasters
-       panel and the command field are both in it.
-     *
-       This is engine work rather than a renderer's, and the other
-       renderer does it at the same point for the same reason: the one
-       neutral caller of Flip cannot do it instead, because the other
-       renderer updates the rasters inside its own Flip and the overlay
-       has to be drawn after that or it shows the frame before's
-       numbers. Without this call the overlay was never drawn at all
-       under this renderer. */
-    /* The scene first, letterboxed if a cutscene asked for it. */
-    GL_l_CopySceneToScreen();
+    /* The after-effects first, over the frame in the scene target.
+       They run as a chain of passes between spare targets, so what
+       comes back is whichever target the last one wrote -- the scene
+       target itself when none of them ran. */
+    GLuint shown = GL_l_i_RunAfterEffects();
+
+    /* Then that on the screen, letterboxed if a cutscene asked for
+       it. */
+    GL_l_CopyToScreen(shown);
 
     /* Then the debug overlay, on the screen rather than in the scene
        target: it goes on top of everything, outside the letterbox,
@@ -2047,6 +2049,13 @@ static int GL_l_b_SceneReady(void)
                       GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    /* Clamped, which a fresh texture is not: the after-effects sample
+       this one with offsets, and with no letterbox the strip they
+       cover is the whole picture -- so a tap on the top row steps past
+       the end of it. Left repeating, that tap lands on the bottom of
+       the picture and the sky picks up the ground. */
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     GLFN_glBindTexture(GL_TEXTURE_2D, 0);
 
     GLFN_glBindRenderbuffer(GL_RENDERBUFFER, gl_sceneDepth);
@@ -2091,12 +2100,19 @@ static void GL_l_BindScene(void)
     GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_SceneFbo());
 }
 
-/* The scene on the screen, letterboxed if a cutscene asked for it.
+/* The finished frame on the screen, letterboxed if a cutscene asked
+ * for it.
  *
  * A stretch blit of one strip, which is what the other renderer's copy
  * is too. The screen is cleared first and only the strip is copied, so
- * the bands are the cleared black rather than anything drawn. */
-static void GL_l_CopySceneToScreen(void)
+ * the bands are the cleared black rather than anything drawn.
+ *
+ * Which framebuffer the frame is in is an argument rather than always
+ * the scene target, because the after-effects leave it in one of their
+ * own: an effect cannot read and write one target in the same pass, so
+ * each one writes somewhere else and the last one to run decides where
+ * the frame ended up. */
+static void GL_l_CopyToScreen(GLuint fromFbo)
 {
     tCbd_Bands bands;
     int        top;
@@ -2128,7 +2144,7 @@ static void GL_l_CopySceneToScreen(void)
         GLFN_glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_sceneFbo);
+    GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, fromFbo);
     GLFN_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     GLFN_glBlitFramebuffer(0, top, gl_sceneW, bottom,
                            0, top, gl_sceneW, bottom,
@@ -2851,6 +2867,367 @@ static void GL_l_DrawBatch(GLuint vao, const void* vertices, int triangleCount,
                       vertices, GL_STREAM_DRAW);
     GLFN_glDrawArrays(GL_TRIANGLES, 0, count);
     GLFN_glBindVertexArray(0);
+}
+
+/* ------------------------------------------------- the after-effects
+ *
+ * Everything from here to GL_l_i_RunAfterEffects is the chain that
+ * runs over the finished frame, between the world's last draw and the
+ * copy to the screen.
+ *
+ * The shape is a ping-pong. An effect reads one target and writes
+ * another, because no pass may read the target it is writing -- so
+ * there are two spares beside the scene target and each pass names
+ * which it reads and which it writes. What the chain hands back is
+ * whichever target the last pass wrote, and the copy to the screen
+ * takes that rather than always the scene.
+ *
+ * One effect lives here so far: the depth blur, which is the one whose
+ * input the world already writes. The frame's alpha holds a blur
+ * amount per pixel, three widening passes blur the colour, and a last
+ * pass mixes sharp and blurred by that alpha.
+ */
+#define GL_AE_TARGETS 2
+
+static GLuint     gl_aeFbo[GL_AE_TARGETS];
+static GLuint     gl_aeColour[GL_AE_TARGETS];
+static int        gl_aeW;
+static int        gl_aeH;
+static int        gl_aeTried;
+static int        gl_aeReady;
+static GLuint     gl_aeVao;
+static tGlProgram gl_aeBlurProgram;
+static tGlProgram gl_aeMixProgram;
+static GLint      gl_aeBlurSrc = -1;
+static GLint      gl_aeBlurOff01 = -1;
+static GLint      gl_aeBlurOff23 = -1;
+static GLint      gl_aeBlurWeights = -1;
+static GLint      gl_aeMixSharp = -1;
+static GLint      gl_aeMixBlurred = -1;
+
+static void GL_l_ForgetAe(void)
+{
+    int i;
+
+    /* On the context alone, and not on the ready flag as well: this is
+       also the failure path out of the middle of building, where the
+       flag is still clear and some of the names below already exist.
+       Every one of them is checked, and freeing a program that was
+       never loaded does nothing. */
+    if (gl_state.context)
+    {
+        GL_ProgramFree(&gl_aeBlurProgram);
+        GL_ProgramFree(&gl_aeMixProgram);
+        for (i = 0; i < GL_AE_TARGETS; i++)
+        {
+            if (gl_aeFbo[i])
+                GLFN_glDeleteFramebuffers(1, &gl_aeFbo[i]);
+            if (gl_aeColour[i])
+                GLFN_glDeleteTextures(1, &gl_aeColour[i]);
+        }
+        if (gl_aeVao)
+            GLFN_glDeleteVertexArrays(1, &gl_aeVao);
+    }
+    memset(gl_aeFbo, 0, sizeof(gl_aeFbo));
+    memset(gl_aeColour, 0, sizeof(gl_aeColour));
+    gl_aeVao = 0;
+    gl_aeW = 0;
+    gl_aeH = 0;
+    gl_aeBlurSrc = -1;
+    gl_aeBlurOff01 = -1;
+    gl_aeBlurOff23 = -1;
+    gl_aeBlurWeights = -1;
+    gl_aeMixSharp = -1;
+    gl_aeMixBlurred = -1;
+    gl_aeTried = 0;
+    gl_aeReady = 0;
+}
+
+/* The spare targets, the two programs and the quad's vertex array.
+ *
+ * Colour only: an effect never tests or writes depth, and the frame it
+ * reads has its depth behind it in the scene target where the world
+ * left it. */
+static int GL_l_b_AeReady(void)
+{
+    int i;
+
+    /* Rebuilt with the scene target, for the same reason: a spare of
+       the old size would hold the frame stretched. */
+    if (gl_aeTried && (gl_aeW != gl_sceneW || gl_aeH != gl_sceneH))
+        GL_l_ForgetAe();
+
+    if (gl_aeTried)
+        return gl_aeReady;
+    gl_aeTried = 1;
+    if (!gl_state.context || gl_sceneW <= 0 || gl_sceneH <= 0)
+        return 0;
+
+    /* Recorded before anything is built, not after: the size is half
+       of what says this has already been asked and answered, and a
+       failure that left it at zero would look like a size change on
+       the next frame and start the whole build again -- recompiling
+       the shaders every frame for as long as the game ran. */
+    gl_aeW = gl_sceneW;
+    gl_aeH = gl_sceneH;
+
+    /* The quad goes through the 2D pass's buffer, so that has to be
+       built -- the overlay normally gets there first, but a frame in
+       which nothing drew an overlay would not have. */
+    if (!GL_l_b_PassReady())
+        return 0;
+
+    if (!GL_b_ProgramLoad(&gl_aeBlurProgram, "aepass.vert", "aeblur.frag"))
+        return 0;
+    if (!GL_b_ProgramLoad(&gl_aeMixProgram, "aepass.vert", "aedepthmix.frag"))
+    {
+        GL_ProgramFree(&gl_aeBlurProgram);
+        return 0;
+    }
+    gl_aeBlurSrc = GL_i_ProgramUniform(&gl_aeBlurProgram, "uSrc");
+    gl_aeBlurOff01 = GL_i_ProgramUniform(&gl_aeBlurProgram, "uOffsets01");
+    gl_aeBlurOff23 = GL_i_ProgramUniform(&gl_aeBlurProgram, "uOffsets23");
+    gl_aeBlurWeights = GL_i_ProgramUniform(&gl_aeBlurProgram, "uWeights");
+    gl_aeMixSharp = GL_i_ProgramUniform(&gl_aeMixProgram, "uSharp");
+    gl_aeMixBlurred = GL_i_ProgramUniform(&gl_aeMixProgram, "uBlurred");
+
+    for (i = 0; i < GL_AE_TARGETS; i++)
+    {
+        GLFN_glGenTextures(1, &gl_aeColour[i]);
+        GLFN_glGenFramebuffers(1, &gl_aeFbo[i]);
+        if (!gl_aeColour[i] || !gl_aeFbo[i])
+        {
+            DBG_OutputDebugString("GL: no spare target %d for the"
+                                  " after-effects\n", i);
+            GL_l_ForgetAe();
+            gl_aeTried = 1;
+            return 0;
+        }
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_aeColour[i]);
+        GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, gl_aeW, gl_aeH, 0,
+                          GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        /* Clamped, because every pass steps outside the quad it is
+           drawing: a tap at the edge has to take the edge pixel
+           rather than wrapping round to the other side of the
+           picture. */
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+                             GL_CLAMP_TO_EDGE);
+        GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+                             GL_CLAMP_TO_EDGE);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, gl_aeFbo[i]);
+        GLFN_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                    GL_TEXTURE_2D, gl_aeColour[i], 0);
+        if (GLFN_glCheckFramebufferStatus(GL_FRAMEBUFFER)
+            != GL_FRAMEBUFFER_COMPLETE)
+        {
+            DBG_OutputDebugString("GL: spare target %d is not complete;"
+                                  " no after-effects\n", i);
+            GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            GL_l_ForgetAe();
+            gl_aeTried = 1;
+            return 0;
+        }
+
+        /* Cleared, because a fresh texture's contents are undefined
+           and every pass steps outside the strip it draws: a tap over
+           the edge has to land on something known. Black, so that a
+           pass reading past what the one before wrote darkens rather
+           than inventing colour. */
+        GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        GLFN_glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        GLFN_glClear(GL_COLOR_BUFFER_BIT);
+    }
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    GLFN_glGenVertexArrays(1, &gl_aeVao);
+    if (!gl_aeVao)
+    {
+        DBG_OutputDebugString("GL: no vertex array for the after-effects\n");
+        GL_l_ForgetAe();
+        gl_aeTried = 1;
+        return 0;
+    }
+    GLFN_glBindVertexArray(gl_aeVao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_quadBuffer);
+    GLFN_glEnableVertexAttribArray(0);
+    GLFN_glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE,
+                               (GLsizei)(2 * sizeof(GLfloat)),
+                               (const void*)(size_t)0);
+    GLFN_glBindVertexArray(0);
+
+    gl_aeReady = 1;
+    return 1;
+}
+
+/* The scene target and the two spares, by the slot numbers the
+   schedule names them with. */
+static GLuint GL_l_i_AeSlotFbo(int slot)
+{
+    if (slot == DPB_SLOT_FRAME)
+        return gl_sceneFbo;
+    if (slot >= DPB_SLOT_A && slot < DPB_SLOT_A + GL_AE_TARGETS)
+        return gl_aeFbo[slot - DPB_SLOT_A];
+    return 0;
+}
+
+static GLuint GL_l_i_AeSlotTexture(int slot)
+{
+    if (slot == DPB_SLOT_FRAME)
+        return gl_sceneColour;
+    if (slot >= DPB_SLOT_A && slot < DPB_SLOT_A + GL_AE_TARGETS)
+        return gl_aeColour[slot - DPB_SLOT_A];
+    return 0;
+}
+
+/* One pass's quad, covering the strip between two fractions measured
+   from the top of the picture.
+ *
+ * Clip coordinates, so plus one is the top -- the renderer's depth
+ * range is set up to keep OpenGL's own origin, and the world is drawn
+ * with the top of the screen at plus one, so the frame in the target
+ * has its first row at the bottom. That is also why the vertex stage
+ * can work the texture coordinate out from the position. */
+static void GL_l_AeDrawBand(float topFraction, float bottomFraction)
+{
+    GLfloat v[12];
+    GLfloat yTop = 1.0f - 2.0f * topFraction;
+    GLfloat yBottom = 1.0f - 2.0f * bottomFraction;
+
+    v[0] = -1.0f; v[1] = yBottom;
+    v[2] = -1.0f; v[3] = yTop;
+    v[4] =  1.0f; v[5] = yBottom;
+
+    v[6] =  1.0f; v[7] = yBottom;
+    v[8] = -1.0f; v[9] = yTop;
+    v[10] =  1.0f; v[11] = yTop;
+
+    GL_l_DrawBatch(gl_aeVao, v, 2, 2 * sizeof(GLfloat));
+}
+
+/* The depth blur, over the frame in the scene target. Returns the
+   framebuffer the finished frame ended up in. */
+static GLuint GL_l_i_AeDepthBlur(const tCbd_Bands* bands)
+{
+    tDpb_BlurPass passes[DPB_BLUR_PASSES];
+    int           n;
+    int           i;
+    int           mixInto;
+
+    n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
+    if (n <= 0)
+        return gl_sceneFbo;
+
+    /* The three blurs, each over the widened reach rather than the
+       band itself: the mix samples the blurred copy right up to the
+       band's edge, and a tap there reaches past it. */
+    GLFN_glUseProgram(gl_aeBlurProgram.program);
+    if (gl_aeBlurSrc >= 0)
+        GLFN_glUniform1i(gl_aeBlurSrc, 0);
+    GLFN_glActiveTexture(GL_TEXTURE0);
+
+    for (i = 0; i < n; i++)
+    {
+        float offsets[2 * DPB_BLUR_TAPS];
+        float weights[DPB_BLUR_TAPS];
+
+        DPB_BlurTaps(&passes[i], offsets, weights);
+
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER,
+                               GL_l_i_AeSlotFbo(passes[i].toSlot));
+        GLFN_glBindTexture(GL_TEXTURE_2D,
+                           GL_l_i_AeSlotTexture(passes[i].fromSlot));
+        /* The schedule's vertical offsets are measured down the
+           screen, which is the direction the other renderer's texture
+           coordinates run. This renderer's run the other way, so they
+           are negated here -- and it matters, because the four taps
+           are not weighted alike: the heaviest of them is the one
+           below the pixel, and a missing negation puts the smear
+           above every edge instead of below it. */
+        if (gl_aeBlurOff01 >= 0)
+            GLFN_glUniform4f(gl_aeBlurOff01, offsets[0], -offsets[1],
+                             offsets[2], -offsets[3]);
+        if (gl_aeBlurOff23 >= 0)
+            GLFN_glUniform4f(gl_aeBlurOff23, offsets[4], -offsets[5],
+                             offsets[6], -offsets[7]);
+        if (gl_aeBlurWeights >= 0)
+            GLFN_glUniform4f(gl_aeBlurWeights, weights[0], weights[1],
+                             weights[2], weights[3]);
+
+        GL_l_AeDrawBand(bands->reachTop, bands->reachBottom);
+    }
+
+    /* And the mix, over the band itself. It reads the frame, so it
+       cannot write to it: it goes into whichever spare the blur did
+       not end in, and that spare is what the screen is copied from. */
+    mixInto = DPB_i_BlurResultSlot() == DPB_SLOT_A ? DPB_SLOT_B : DPB_SLOT_A;
+
+    GLFN_glUseProgram(gl_aeMixProgram.program);
+    if (gl_aeMixSharp >= 0)
+        GLFN_glUniform1i(gl_aeMixSharp, 0);
+    if (gl_aeMixBlurred >= 0)
+        GLFN_glUniform1i(gl_aeMixBlurred, 1);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(mixInto));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(DPB_SLOT_FRAME));
+    GLFN_glActiveTexture(GL_TEXTURE1);
+    GLFN_glBindTexture(GL_TEXTURE_2D,
+                       GL_l_i_AeSlotTexture(DPB_i_BlurResultSlot()));
+
+    GL_l_AeDrawBand(bands->top, bands->bottom);
+
+    GLFN_glActiveTexture(GL_TEXTURE1);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    return GL_l_i_AeSlotFbo(mixInto);
+}
+
+static GLuint GL_l_i_RunAfterEffects(void)
+{
+    tCbd_Bands bands;
+    GLuint     shown;
+
+    /* Where the world drew. Without a scene target it drew straight to
+       the screen, and there is nothing here that can run over it. */
+    shown = GL_l_i_SceneFbo();
+    if (!gl_sceneReady || !gl_state.context)
+        return shown;
+
+    /* The two switches that turn the whole chain off. The other
+       renderer spells this as zeroing the master word for the length
+       of its own pass and putting it back after; nothing else here
+       reads the word, so the gate is the same thing said once. */
+    if (tweak_ae_no || ECAM_gi_NoAfterEffects)
+        return shown;
+    if (!DPB_b_AfterEffect((unsigned int)PC_AE_MASTER))
+        return shown;
+    if (!GL_l_b_AeReady())
+        return shown;
+
+    CBD_Decide(&bands);
+
+    /* No depth, no culling, no blending and the whole colour written:
+       a pass is one quad over the frame and every one of those would
+       change what it leaves behind. */
+    GLFN_glDisable(GL_DEPTH_TEST);
+    GLFN_glDisable(GL_CULL_FACE);
+    GLFN_glDisable(GL_BLEND);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GLFN_glViewport(0, 0, gl_aeW, gl_aeH);
+
+    shown = GL_l_i_AeDepthBlur(&bands);
+
+    GLFN_glUseProgram(0);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    /* Back to what the engine asked for, as the overlay and video
+       passes do. */
+    if (gl_state.zEnable)
+        GLFN_glEnable(GL_DEPTH_TEST);
+    return shown;
 }
 
 void GL_OverlayDrawQuads(const void* vertices, int triangleCount)

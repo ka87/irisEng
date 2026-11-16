@@ -480,6 +480,153 @@ static void caseRefusals(void)
     okEq(bad, 0, "a mode it does not know leaves the table untouched");
 }
 
+/* ------------------------------------------------- the after-effect
+ *
+ * The schedule's whole job is the ping-pong, and a wrong ping-pong
+ * still produces a blurred picture -- so it is stated here as the
+ * three properties that make it a chain rather than three draws: no
+ * pass reads what it writes, each pass reads what the one before
+ * wrote, and the slot named as the result is the one the last pass
+ * wrote. Each of those fails on a different way of getting it wrong.
+ */
+static void caseSchedule(void)
+{
+    tDpb_BlurPass p[DPB_BLUR_PASSES + 2];
+    int           n;
+    int           i;
+
+    printf("-- the after-effect's three passes and their ping-pong\n");
+    okEq(DPB_i_BlurSchedule(p, DPB_BLUR_PASSES + 2), DPB_BLUR_PASSES,
+         "three passes, however much room there is");
+    n = DPB_i_BlurSchedule(p, DPB_BLUR_PASSES);
+    okEq(n, DPB_BLUR_PASSES, "three passes");
+
+    okEq(p[0].fromSlot, DPB_SLOT_FRAME, "the first pass reads the frame");
+    for (i = 0; i < n; i++)
+    {
+        ok(p[i].fromSlot != p[i].toSlot,
+           "a pass does not read the target it writes");
+        if (i > 0)
+            okEq(p[i].fromSlot, p[i - 1].toSlot,
+                 "a pass reads what the one before wrote");
+        ok(p[i].toSlot != DPB_SLOT_FRAME,
+           "no pass writes over the frame, which the mix still needs");
+    }
+    okEq(DPB_i_BlurResultSlot(), p[n - 1].toSlot,
+         "the result is where the last pass wrote");
+    /* Three passes alternating between two targets have to come back
+       to the first, and this is the arithmetic that says so rather
+       than the list being read back to itself. */
+    okEq(DPB_i_BlurResultSlot(), DPB_SLOT_A, "which is the first spare");
+
+    /* Each pass reaches further than the one before, in both axes, and
+       the last reaches three times the first. A schedule that passed
+       the same step three times would blur, and would satisfy every
+       check above. */
+    for (i = 1; i < n; i++)
+    {
+        ok(p[i].uStep > p[i - 1].uStep, "each pass reaches further across");
+        ok(p[i].vStep > p[i - 1].vStep, "each pass reaches further down");
+    }
+    ok(fabs(p[2].uStep - 3.0f * p[0].uStep) < 1e-9,
+       "the last pass reaches three times the first across");
+    ok(fabs(p[2].vStep - 3.0f * p[0].vStep) < 1e-9,
+       "the last pass reaches three times the first down");
+    /* A pixel of a 640 by 480 picture, which is what the step is in
+       the renderer that has this today. Stated as the ratio rather
+       than the decimal, so the two literals cannot drift apart. */
+    ok(fabs(p[0].uStep * 640.0f - 1.0f) < 1e-4, "one step is one pixel across");
+    ok(fabs(p[0].vStep * 480.0f - 1.0f) < 1e-4, "one step is one pixel down");
+
+    /* Refusals. */
+    okEq(DPB_i_BlurSchedule(NULL, DPB_BLUR_PASSES), 0, "nowhere to write");
+    okEq(DPB_i_BlurSchedule(p, 0), 0, "no room");
+    okEq(DPB_i_BlurSchedule(p, -1), 0, "less than no room");
+    okEq(DPB_i_BlurSchedule(p, 2), 2, "as many as there is room for");
+}
+
+static void caseTaps(void)
+{
+    tDpb_BlurPass p[DPB_BLUR_PASSES];
+    float         off[2 * DPB_BLUR_TAPS];
+    float         w[DPB_BLUR_TAPS];
+    float         sum;
+    int           i;
+
+    printf("-- where one pass's four taps sit, and what each weighs\n");
+    DPB_i_BlurSchedule(p, DPB_BLUR_PASSES);
+
+    memset(off, 0, sizeof(off));
+    memset(w, 0, sizeof(w));
+    DPB_BlurTaps(&p[1], off, w);
+
+    /* Two taps across and two down, at the pass's own reach. The pass
+       used is the middle one, so a reach taken from the wrong pass
+       shows up rather than matching by being the only one. */
+    ok(off[0] == -p[1].uStep && off[1] == 0.0f, "the first tap steps left");
+    ok(off[2] == p[1].uStep && off[3] == 0.0f, "the second steps right");
+    ok(off[4] == 0.0f && off[5] == -p[1].vStep, "the third steps up");
+    ok(off[6] == 0.0f && off[7] == p[1].vStep, "the fourth steps down");
+
+    /* The weights, and the thing about them that matters: they are
+       not equal. A symmetric blur is the obvious thing to write and
+       the picture would not say otherwise, so each weight is checked
+       against what the hardware's mixing actually leaves. */
+    ok(fabs(w[3] - 0.5019608f) < 1e-6, "the last tap keeps about half");
+    ok(fabs(w[2] - 0.2499962f) < 1e-6, "the third about a quarter");
+    ok(fabs(w[1] - 0.1245078f) < 1e-6, "the second about an eighth");
+    ok(fabs(w[0] - 0.1235352f) < 1e-6, "the first about an eighth");
+    /* None of them is the tidy fraction it is near, and that is the
+       mixing factor being 128 of 255 rather than an exact half. A
+       hand-written half, quarter, eighth, eighth fails all four. */
+    ok(w[3] != 0.5f && w[2] != 0.25f && w[1] != 0.125f && w[0] != 0.125f,
+       "and none of them is the round fraction it is near");
+
+    ok(w[3] > w[2] && w[2] > w[1] && w[1] > w[0],
+       "the weights fall from the last tap to the first");
+    /* The two that step across weigh nearly the same but not quite,
+       and the difference is which of them the mixing reached first.
+       Written as a strict comparison so a tidied-up pair of equal
+       weights fails here. */
+    ok(w[1] != w[0], "the two taps across do not weigh the same");
+    ok(fabs(w[1] - w[0]) < 0.002f, "but they are within a thousandth or two");
+    /* The heaviest tap is the one *below* the pixel, not above. The
+       mix is asymmetric and so is the direction; getting the sign
+       wrong moves the smear to the wrong side of every edge. */
+    ok(off[7] > 0.0f, "the heaviest tap is the one below");
+
+    sum = 0.0f;
+    for (i = 0; i < DPB_BLUR_TAPS; i++)
+        sum += w[i];
+    /* One, exactly -- every step of the mix is a lerp, so whatever the
+       factor is the four weights come to all of it. This is the check
+       that caught the arithmetic the first draft of the comment above
+       was built on, which had them falling short. */
+    ok(fabs(sum - 1.0f) < 1e-6, "the weights come to one");
+
+    DPB_BlurTaps(&p[0], off, NULL);
+    ok(off[0] == -p[0].uStep, "offsets alone");
+    memset(w, 0, sizeof(w));
+    DPB_BlurTaps(&p[0], NULL, w);
+    ok(w[3] > 0.5f, "weights alone");
+    DPB_BlurTaps(NULL, off, w);
+    ok(w[3] > 0.5f, "the weights do not depend on a pass");
+}
+
+static void caseAeGate(void)
+{
+    printf("-- which bits ask for the after-effect\n");
+    okEq(DPB_b_AfterEffect(0), 0, "no bits, no blur");
+    okEq(DPB_b_AfterEffect(0x8) != 0, 1, "the first bit asks for it");
+    okEq(DPB_b_AfterEffect(0x1000) != 0, 1, "the second bit asks for it");
+    okEq(DPB_b_AfterEffect(0x1008) != 0, 1, "both bits still ask for it");
+    /* Every other bit in the word is some other effect, and one of
+       them asking must not turn this one on. 4 is the one next door. */
+    okEq(DPB_b_AfterEffect(0x4), 0, "the effect next door is not this one");
+    okEq(DPB_b_AfterEffect(0xFFFFEFF7u), 0,
+         "every bit but these two is not this one");
+}
+
 int main(void)
 {
     caseKind();
@@ -487,6 +634,9 @@ int main(void)
     caseRampBounds();
     caseSunRamp();
     caseRefusals();
+    caseSchedule();
+    caseTaps();
+    caseAeGate();
 
     printf("\n  %ld checks, %ld failure(s)\n", checks, fails);
     return fails ? 1 : 0;

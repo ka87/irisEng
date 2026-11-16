@@ -100,6 +100,7 @@ typedef struct __GLsync* GLsync;
 
 #define GL_TEXTURE_2D                     0x0DE1
 #define GL_TEXTURE0                       0x84C0
+#define GL_TEXTURE1                       0x84C1
 #define GL_R8                             0x8229
 #define GL_RED                            0x1903
 #define GL_RGBA                           0x1908

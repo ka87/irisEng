@@ -100,3 +100,77 @@ unsigned int DPB_i_BlurAtDepth(const tDpb_State* st, float depth);
    nothing in the other three, which is the layout the texture wants.
    `table` must have room for 256. */
 void DPB_BuildRamp(const tDpb_State* st, int* table);
+
+
+/* ------------------------------------------------------------------
+ * The after-effect that consumes the alpha the pass above wrote.
+ *
+ * Three widening blurs of the frame, ping-ponged between two spare
+ * targets, and then one draw that mixes the sharp frame with the
+ * blurred one using the sharp frame's own alpha as the mix. Alpha 255
+ * takes the sharp pixel and 0 the blurred one, which is why the ramp
+ * is solid 255 when no blur is in force.
+ *
+ * The schedule is the part worth stating away from a renderer: which
+ * target each pass reads and writes, and how far it reaches. Getting
+ * the ping-pong wrong gives a blurred picture either way, so nothing
+ * about the look of it would say so.
+ */
+
+/* The slots a pass names. Three are enough because no pass reads and
+   writes the same one. */
+#define DPB_SLOT_FRAME  0   /* the frame as drawn, alpha and all */
+#define DPB_SLOT_A      1
+#define DPB_SLOT_B      2
+
+#define DPB_BLUR_PASSES 3
+#define DPB_BLUR_TAPS   4
+
+typedef struct sDpb_BlurPass
+{
+    int   fromSlot;
+    int   toSlot;
+    float uStep;   /* in texture space, so a fraction of the width */
+    float vStep;
+} tDpb_BlurPass;
+
+/* Does the after-effect run? Two bits ask for it and either will do.
+   The master word is already zero when the effects are switched off
+   wholesale, so that gate is not repeated here. */
+int DPB_b_AfterEffect(unsigned int aeMaster);
+
+/* The three passes, in order. Returns how many were written, so a
+   caller that sized its array from DPB_BLUR_PASSES gets told rather
+   than assuming. */
+int DPB_i_BlurSchedule(tDpb_BlurPass* out, int max);
+
+/* Which slot the last pass left the blurred frame in -- the one the
+   final mix samples beside the frame. Derived from the schedule rather
+   than written down twice. */
+int DPB_i_BlurResultSlot(void);
+
+/* Where one pass's four taps sit, relative to the pixel being written,
+   and how much of each lands in the result.
+ *
+ * The offsets are in screen terms: du to the right, dv *down*, which
+ * is the engine's own direction for a texture coordinate. A renderer
+ * whose textures run the other way up has to flip dv, and it matters
+ * -- the weights are not symmetric.
+ *
+ * They are not symmetric because of how the four taps are combined on
+ * the hardware this was written for: each tap is mixed half-and-half
+ * with everything accumulated so far, so the last tap keeps half the
+ * result, the one before a quarter, and the first two split what is
+ * left. They come to one, because every step of that is a mix rather
+ * than an addition -- but they are only near a half, a quarter and
+ * two eighths, because the factor the hardware mixes with is 128 of
+ * 255 and not an exact half. That is also the whole reason the two
+ * taps across weigh differently from each other: nothing separates
+ * them but which one the mixing reached first.
+ *
+ * The weights are worked out from the mix rather than listed, so the
+ * near-halves stay wherever that arithmetic puts them.
+ *
+ * `offsets` takes 2 * DPB_BLUR_TAPS floats and `weights` takes
+ * DPB_BLUR_TAPS; either may be null. */
+void DPB_BlurTaps(const tDpb_BlurPass* pass, float* offsets, float* weights);

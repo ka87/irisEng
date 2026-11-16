@@ -233,3 +233,101 @@ void DPB_BuildRamp(const tDpb_State* st, int* table)
         break;
     }
 }
+
+
+/* ------------------------------------------------------------------
+ * The after-effect.
+ */
+
+/* The two bits that ask for it. */
+#define DPB_AE_BIT       0x8u
+#define DPB_AE_BIT_ALT   0x1000u
+
+int DPB_b_AfterEffect(unsigned int aeMaster)
+{
+    return (aeMaster & DPB_AE_BIT) != 0 || (aeMaster & DPB_AE_BIT_ALT) != 0;
+}
+
+/* One step is one pixel of a 640 by 480 picture, and the steps stay in
+   those terms whatever the window is: the offsets are a fraction of
+   the texture, so the reach grows with the resolution rather than
+   staying a fixed number of pixels. Written as the engine writes them
+   -- the decimals are the engine's, not a division worked out here. */
+#define DPB_STEP_U   0.0015625f
+#define DPB_STEP_V   0.0020833334f
+
+int DPB_i_BlurSchedule(tDpb_BlurPass* out, int max)
+{
+    static const int from[DPB_BLUR_PASSES] =
+        { DPB_SLOT_FRAME, DPB_SLOT_A, DPB_SLOT_B };
+    static const int to[DPB_BLUR_PASSES] =
+        { DPB_SLOT_A, DPB_SLOT_B, DPB_SLOT_A };
+    int i;
+    int n;
+
+    n = max < DPB_BLUR_PASSES ? max : DPB_BLUR_PASSES;
+    if (!out || n <= 0)
+        return 0;
+
+    for (i = 0; i < n; i++)
+    {
+        out[i].fromSlot = from[i];
+        out[i].toSlot = to[i];
+        /* Each pass reaches one pixel further than the one before, so
+           three of them widen to three. The engine spells each of the
+           three products out rather than multiplying, and the third
+           is not exactly three times the first in float -- so they
+           are multiplied here and the difference is below what an
+           eight-bit channel can hold. */
+        out[i].uStep = DPB_STEP_U * (float)(i + 1);
+        out[i].vStep = DPB_STEP_V * (float)(i + 1);
+    }
+    return n;
+}
+
+int DPB_i_BlurResultSlot(void)
+{
+    tDpb_BlurPass passes[DPB_BLUR_PASSES];
+    int           n;
+
+    n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
+    return n > 0 ? passes[n - 1].toSlot : DPB_SLOT_FRAME;
+}
+
+void DPB_BlurTaps(const tDpb_BlurPass* pass, float* offsets, float* weights)
+{
+    /* Half and half, as the hardware's own mixing factor spells it:
+       128 of 255 rather than an exact half. Carried through because it
+       is the only thing that separates the two taps across from each
+       other -- with an exact half they would weigh the same, and the
+       four weights would be a tidy half, quarter, eighth, eighth. */
+    const double f = 128.0 / 255.0;
+    double       keep;
+    int          i;
+
+    if (offsets && pass)
+    {
+        /* The first two taps step across, the last two down -- that
+           order is what the weights below are for. */
+        offsets[0] = -pass->uStep; offsets[1] = 0.0f;
+        offsets[2] =  pass->uStep; offsets[3] = 0.0f;
+        offsets[4] = 0.0f;         offsets[5] = -pass->vStep;
+        offsets[6] = 0.0f;         offsets[7] =  pass->vStep;
+    }
+
+    if (!weights)
+        return;
+
+    /* Walked backwards from the last tap, because that is the order
+       the mixing happens in: the last tap keeps f of the result, and
+       everything before it is left with 1 - f of what it had. The
+       first two taps end on the same power of 1 - f, which is why
+       they weigh the same. */
+    keep = 1.0;
+    for (i = DPB_BLUR_TAPS - 1; i >= 1; i--)
+    {
+        weights[i] = (float)(keep * f);
+        keep *= 1.0 - f;
+    }
+    weights[0] = (float)keep;
+}
