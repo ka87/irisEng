@@ -351,6 +351,9 @@ struct sTweakElem tweaks[17] = {
     { "qqq_int",   0, &WINIO_tweakIntTarget }
 };
 
+/* This harness's own table, and its own count beside it. */
+const int tweaksNum = (int)(sizeof(tweaks) / sizeof(tweaks[0]));
+
 void WINIO_ResetMocks(void)
 {
     logCount = 0;
