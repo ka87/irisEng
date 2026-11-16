@@ -305,7 +305,12 @@ extern float TIM_SpentTimeWithHandlingWinMessages;
 #define MAXSTRIPELEM 6
 #define RASTERS 54
 #define WTR_W 6
-#define WTR_H 5
+/* Eight rows, not five, and the number matters. The ripple's fall-off
+   is the row's fraction of the grid stretched by a fifth and then
+   clamped at one, so the clamp only ever fires once the grid is more
+   than six rows deep -- at five it was dead code, and a build with the
+   clamp taken out scored clean. */
+#define WTR_H 8
 
 typedef struct sWgFixture
 {

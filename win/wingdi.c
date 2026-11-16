@@ -6,6 +6,7 @@
 #include "../graphicsobjects/geo.h"
 #include "../graphicsobjects/staticlod.h"
 #include "../water.h"
+#include "../watermesh.h"
 #include "../engine.h"
 #include "wininputoutput.h"
 #include "../resource.h"
@@ -3110,22 +3111,12 @@ void D3D_CreateSunTexturesForSunSurfaces()
 
 void D3D_WaterBuffersInit()
 {
-    unsigned int columns;
-    int rows;
-    short* idx;
-    int vertex;
-    unsigned int half;
-    unsigned int rest;
-    unsigned int i;
-    int started;
-    int row;
     short* indices;
 
-    columns = wtr_NumA;
-    rows = wtr_NumB;
     if (wtr_NumA && wtr_NumB && !waterStreamData)
     {
-        wtr_primitiveCount = (wtr_NumA + 3) * (2 * wtr_NumB - 2) - 3;
+        wtr_primitiveCount = WMS_i_PrimitiveCount((unsigned int)wtr_NumA,
+                                                  wtr_NumB);
         D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(D3DRenderParams.d3dDev,
             32 * wtr_NumA * wtr_NumB + 16,
             D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
@@ -3141,37 +3132,11 @@ void D3D_WaterBuffersInit()
             &waterIndexData,
             NULL);
         waterIndexData->lpVtbl->Lock(waterIndexData, 0, 0, (void **)&indices, 0);
-        idx = indices;
-        vertex = 0;
-        started = 0;
-        for (row = 0; row < rows - 1; row++)
-        {
-            if (started)
-                *idx++ = vertex;
-            else
-                started = 1;
-            half = columns >> 1;
-            for (i = 0; i < half; i++)
-            {
-                *idx++ = vertex;
-                *idx++ = columns + vertex;
-                ++vertex;
-            }
-            rest = half - 1;
-            --vertex;
-            *idx++ = columns + vertex;
-            if (rest < columns)
-            {
-                for (i = columns - rest; i; i--)
-                {
-                    *idx++ = columns + vertex;
-                    *idx++ = vertex;
-                    ++vertex;
-                }
-            }
-            *idx++ = vertex - 1;
-            *idx++ = vertex - 1;
-        }
+        /* The strip itself has no device in it, so it is built by the
+           shared mesh code that the other renderer also draws from. */
+        WMS_i_StripIndices((unsigned int)wtr_NumA, wtr_NumB,
+                           (unsigned short*)indices,
+                           WMS_i_IndexCount((unsigned int)wtr_NumA, wtr_NumB));
         waterIndexData->lpVtbl->Unlock(waterIndexData);
     }
 }
@@ -3519,29 +3484,10 @@ void D3D_Request_SetFogParams(tFogParams* fog)
 
 int D3D_FillWaterStreamData(struct sWaterParamsGlobalStruct* water)
 {
-    float camX;
-    float camY;
-    float camZ;
     int align;
-    unsigned int rows;
-    unsigned int row;
-    double fade;
-    double height;
-    double ripple;
-    int packed;
-    int green;
-    uint8_t blue;
-    float scale;
-    Vec3* pos;
-    int* colors;
-    Vec3* uvVec;
-    Vec3* rowEnd;
-    tVertex_type_water vertex;
+    tWms_Source src;
     tVertex_type_water* out;
 
-    camX = gpst_DX_stDD->ct.cam.objectMtx.Pos.x;
-    camZ = gpst_DX_stDD->ct.cam.objectMtx.Pos.z;
-    camY = gpst_DX_stDD->ct.cam.objectMtx.Pos.y;
     waterStreamData->lpVtbl->Lock(waterStreamData, 0, 0, (void**)&out, 0x2000);
     // align 16
     align = (uint8_t)(size_t)out & 0xF;
@@ -3549,75 +3495,39 @@ int D3D_FillWaterStreamData(struct sWaterParamsGlobalStruct* water)
     // preserved: align is masked to 0..15, so this test can never fail
     if (align != 16)
         out = (tVertex_type_water*)((uint8_t*)out + 16 - align);
-    pos = water->vertices;
-    colors = water->colors;
-    uvVec = water->vecsForUVs;
-    vertex.specular = 0;
+
+    /* The blur runs over the wave array before anything reads it, so
+       it stays ahead of the fill rather than inside the shared code,
+       which takes the array as it finds it. */
     if (tweak_water_blur_normal)
         WTR_WaterBlurNormal(water->vecsForUVs, water->horizontalVertexNum, water->verticallVertexNum);
-    rows = water->verticallVertexNum;
-    for (row = 0; row < rows; row++)
-    {
-        fade = (double)row * 1.2 / (double)rows;
-        if (fade > 1.0)
-            fade = 1.0;
-        rowEnd = &pos[water->horizontalVertexNum];
-        scale = (float)(48.0 - fade * 45.0);
-        while (pos < rowEnd)
-        {
-            vertex.v.x = pos->x;
-            vertex.normal.x = vertex.v.x - camX;
-            vertex.v.y = pos->y;
-            height = pos->y;
-            green = *((uint8_t*)colors + 2);
-            vertex.v.z = pos->z;
-            packed = *colors;
-            blue = *colors;
-            vertex.normal.y = (float)(height - camY);
-            ripple = uvVec->y + uvVec->x;
-            vertex.diffuse = packed & 0xFF00FF00 | green | (blue << 16);
-            ++pos;
-            ++colors;
-            ++uvVec;
-            vertex.normal.z = (float)(vertex.v.z - camZ - fabs(ripple * scale));
-            memcpy(out, &vertex, sizeof(vertex));
-            ++out;
-        }
-        rows = water->verticallVertexNum;
-    }
+
+    src.positions = water->vertices;
+    src.waves = water->vecsForUVs;
+    src.colors = water->colors;
+    src.columns = water->horizontalVertexNum;
+    src.rows = water->verticallVertexNum;
+    src.camera = gpst_DX_stDD->ct.cam.objectMtx.Pos;
+    WMS_i_Vertices(&src, (tWms_Vertex*)out,
+                   (int)water->horizontalVertexNum * water->verticallVertexNum);
+
     return waterStreamData->lpVtbl->Unlock(waterStreamData);
 }
 
 void D3D_SetTransformAndSaveMatrix(IDirect3DTexture9* texture, int mtxnum)
 {
-    double invHeight;
-    double halfHeight;
-    float width;
-    float height;
     IDirect3DSurface9* surface;
-    D3DMATRIX scaleMtx;
     D3DSURFACE_DESC desc;
-    D3DMATRIX flipped;
     D3DMATRIX result;
 
-    memcpy(&flipped, &d3dProjectionMtx, sizeof(flipped));
-    flipped._22 = -flipped._22;
-    memset(&scaleMtx, 0, sizeof(scaleMtx));
     texture->lpVtbl->GetSurfaceLevel(texture, 0, &surface);
     surface->lpVtbl->GetDesc(surface, &desc);
-    width = (float)desc.Width;
-    height = (float)desc.Height;
     surface->lpVtbl->Release(surface);
-    scaleMtx._33 = 1.0;
-    scaleMtx._44 = 1.0;
-    scaleMtx._43 = 0.0;
-    scaleMtx._11 = (float)(512.0 / width * 0.5);
-    invHeight = 1.0 / height;
-    halfHeight = 512.0 * invHeight * 0.5;
-    scaleMtx._22 = (float)(halfHeight - invHeight);
-    scaleMtx._41 = scaleMtx._11;
-    scaleMtx._42 = (float)(halfHeight + invHeight);
-    D3D_MatrixMultiply(&result, &flipped, &scaleMtx);
+    /* The remap has no device in it either, so the other renderer
+       projects its reflection through the same arithmetic. */
+    WMS_ProjectionToTexture((Mtx4x4WithoutAdditionalData*)&result,
+                            (const Mtx4x4WithoutAdditionalData*)&d3dProjectionMtx,
+                            (int)desc.Width, (int)desc.Height);
     memcpy(&d3dTransformationMatrix[mtxnum], &result, sizeof(Mtx4x4WithoutAdditionalData));
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, mtxnum + D3DTS_TEXTURE0, &result);
 }

@@ -2089,7 +2089,7 @@ void WOR_Render(struct sWorld* world, struct sGdi_DisplayData* dxdd)
                 }
                 dxdd->rasters[4].unk2 = (float) dxdd->lightList.actualLightNum; // FIXME: ennek mi a típusa? float?
                 WOR_SetCam(view);
-                D3D_PrepareWaterRendering();
+                dxdd->PrepareWaterRendering();
                 SDW_UpdatePositions();
                 PROTEX_BeforeDraw();
                 WOR_BVMaskPreComputeAll(world, &dxdd->ct);

@@ -1,4 +1,6 @@
 #pragma once
+
+struct sWaterParamsGlobalStruct;
 #include <windows.h>
 
 #include "../gdi.h"
@@ -140,3 +142,10 @@ void GL_SunEffectOnOff(void* sampler, int on);
 void* GL_p_CreateAlphaTexture(int width, int height, const uint8_t* coverage);
 void GL_DestroyAlphaTexture(void* texture);
 void GL_OverlayDrawTexturedQuads(void* texture, const void* vertices, int triangleCount);
+
+/* The water: the reflection target cleared and kept, before the world
+   is drawn, and the surface drawn after it. See the comment at the
+   water section of win/wingl.c -- the reflection itself is not drawn
+   yet, so the surface mirrors a flat colour. */
+void GL_PrepareWaterRendering(void);
+void GL_DrawWater(struct sWaterParamsGlobalStruct* water);

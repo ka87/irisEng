@@ -41,6 +41,7 @@
 #include "../win/glshader.h"
 #include "../gdi.h"
 #include "../textures.h"
+#include "../water.h"
 
 static long checks;
 static long fails;
@@ -171,6 +172,33 @@ int   tweak_ae_no = 0;
    mapping in force -- which is what every case here is written
    against. */
 int   tweak_gl_cull = 0;
+
+/* ---- the water's engine side ----
+ *
+ * The simulation lives in water.c, which would bring the engine with
+ * it, so the driver owns the few things the renderer reads from it. A
+ * case fills the grid in; the blur is counted rather than done,
+ * because the renderer's contract with it is only that it runs over
+ * the wave array before anything reads that array. */
+/* pst_GlobalsWaterParams is not defined here: water.h already leaves
+   a tentative definition of it, which is how the engine shares it
+   between the simulation and the renderers. */
+int   tweak_water_blur_normal = 0;
+static int   wg_waterBlurCalls;
+static void* wg_waterBlurArg;
+
+void WTR_WaterBlurNormal(Vec3* normals, int rowLength, int rowCount)
+{
+    wg_waterBlurCalls++;
+    wg_waterBlurArg = normals;
+    (void)rowLength;
+    (void)rowCount;
+}
+
+/* The water's own flip override, at the nought that leaves the
+   renderer's choice in force. */
+int   tweak_gl_water_flip = 0;
+
 int   ECAM_gi_NoAfterEffects = 0;
 
 /* The two colour parameters, at the neutral the game starts them at.
@@ -298,6 +326,10 @@ static void glr_Reset(void)
     GL_l_ForgetAe();
     GL_ReleaseTextures(NULL);
     GL_l_ForgetTargets();
+    GL_l_ForgetWater();
+    pst_GlobalsWaterParams = NULL;
+    tweak_gl_water_flip = 0;
+    tweak_water_blur_normal = 0;
 
     /* The two switches that turn the whole after-effects chain off,
        both back to the off the game starts them at. */
@@ -4059,6 +4091,460 @@ static void caseAeZoomSmooth(void)
     gl_state.height = GLR_H;
 }
 
+/* ------------------------------------------------------- the water
+ *
+ * Drawn on a real driver and read back, which is the only way to see
+ * what the surface actually comes out as. The mock harness checks the
+ * calls and tests/run_wingdi.sh checks the shared mesh against the
+ * other renderer; what is left for here is the picture.
+ *
+ * The reflection target is cleared to one flat colour, so the
+ * projection does not come into these: wherever a pixel samples, it
+ * gets the same answer. That is deliberate -- it leaves the blend to
+ * be measured on its own, and the blend is the part a shader can get
+ * wrong silently.
+ */
+
+#define GLR_WTR_COLS 5
+#define GLR_WTR_ROWS 5
+#define GLR_WTR_NUM  (GLR_WTR_COLS * GLR_WTR_ROWS)
+
+static tWaterParamsGlobalStruct glr_water;
+static Vec3         glr_waterPos[GLR_WTR_NUM];
+static Vec3         glr_waterWave[GLR_WTR_NUM];
+static unsigned int glr_waterCol[GLR_WTR_NUM];
+
+/* A grid over the whole of clip space, flat at the depth asked for,
+   with one colour and one alpha throughout. `bottom` is what the
+   reflection is cleared to.
+ *
+ * The four channels are separate arguments rather than one word, for
+ * the reason glr_SolidColour gives above it: the engine keeps a colour
+ * with red in the lowest byte, so a hex literal in that order reads
+ * like a mistake and the first draft of these cases had every red and
+ * blue the wrong way round.
+ *
+ * `bottom` is a word, and a differently ordered one: the renderer this
+ * came from hands it straight to a clear that reads it as alpha, red,
+ * green, blue, so that is what it means here too. Whether the engine
+ * fills it in that order is the engine's business and the same
+ * question for both renderers. */
+static void glr_WaterFixture(int r, int g, int b, int a, int bottom, float z)
+{
+    int row;
+    int col;
+    int i = 0;
+
+    memset(&glr_water, 0, sizeof(glr_water));
+    for (row = 0; row < GLR_WTR_ROWS; row++)
+        for (col = 0; col < GLR_WTR_COLS; col++)
+        {
+            /* Past the edges on purpose: the strip covers all but the
+               last row, so a grid that stopped at the edge would
+               leave a band of the surface undrawn and the pixel a
+               case reads could be background. */
+            glr_waterPos[i].x = -1.5f + 3.0f * (float)col
+                                        / (float)(GLR_WTR_COLS - 1);
+            glr_waterPos[i].y = -1.5f + 3.0f * (float)row
+                                        / (float)(GLR_WTR_ROWS - 1);
+            glr_waterPos[i].z = z;
+            /* No wave at all, so the direction is the bare one from
+               the camera and nothing in the picture depends on the
+               fall-off. The ripple has its own checks elsewhere. */
+            glr_waterWave[i].x = 0.0f;
+            glr_waterWave[i].y = 0.0f;
+            glr_waterWave[i].z = 0.0f;
+            glr_waterCol[i] = ((unsigned int)a << 24)
+                              | ((unsigned int)b << 16)
+                              | ((unsigned int)g << 8)
+                              | (unsigned int)r;
+            i++;
+        }
+    glr_water.vertices = glr_waterPos;
+    glr_water.vecsForUVs = glr_waterWave;
+    glr_water.colors = glr_waterCol;
+    glr_water.horizontalVertexNum = GLR_WTR_COLS;
+    glr_water.verticallVertexNum = GLR_WTR_ROWS;
+    glr_water.waterEngine.bottomColor = bottom;
+    pst_GlobalsWaterParams = &glr_water;
+
+    glr_dd.ct.cam.objectMtx.Pos.x = 0.0f;
+    glr_dd.ct.cam.objectMtx.Pos.y = 0.0f;
+    glr_dd.ct.cam.objectMtx.Pos.z = 0.0f;
+}
+
+/* Prepares the frame, then takes the target back: prepare leaves the
+   scene target bound, and these cases want the surface in a buffer
+   they can read a pixel out of. */
+static void glr_WaterDraw(void)
+{
+    GL_PrepareWaterRendering();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    GL_DrawWater(&glr_water);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    glr_Read();
+}
+
+static void caseWaterReflectionCleared(void)
+{
+    int rgba[4];
+
+    printf("-- the reflection target holds the colour the water looks into\n");
+
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_Begin();
+    /* 0x20406080: alpha 0x20, red 0x40, green 0x60, blue 0x80. All
+       four different, so the word cannot be read the wrong way round
+       and still pass. */
+    glr_WaterFixture(0x20, 0x40, 0x60, 0xFF, 0x20406080, 0.0f);
+    GL_PrepareWaterRendering();
+
+    glr_AeAt(gl_waterFbo, 8, 8, rgba);
+    okEq(rgba[0], 0x40, "red is the second byte down");
+    okEq(rgba[1], 0x60, "green the third");
+    okEq(rgba[2], 0x80, "blue the lowest");
+    okEq(rgba[3], 0x20, "and alpha the top");
+
+    /* The whole of it, not just the corner the sampler would reach
+       first: a clear that only took in part of the target would leave
+       the rest holding the last frame's reflection. */
+    glr_AeAt(gl_waterFbo, 500, 500, rgba);
+    okEq(rgba[0], 0x40, "and the far corner is cleared too");
+}
+
+static void caseWaterBlend(void)
+{
+    printf("-- the surface mixes its own colour with the reflection\n");
+
+    /* Alpha at nought: none of the reflection, all of the water's own
+       colour. The reflection is cleared to a cyan nothing else here produces so
+       that a mix the wrong way round cannot be mistaken for a pass. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_Begin();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0x00, 0x0000FFFF, 0.0f);
+    glr_WaterDraw();
+    okEq(glr_R(GLR_W / 2, GLR_H / 2), 0x20, "with no alpha the pixel is the"
+                                            " water's own red");
+    okEq(glr_G(GLR_W / 2, GLR_H / 2), 0x40, "its own green");
+    okEq(glr_B(GLR_W / 2, GLR_H / 2), 0x80, "and its own blue");
+
+    /* And the surface really covered the pixel rather than the case
+       reading the background and agreeing with itself. */
+    ok(glr_R(GLR_W / 2, GLR_H / 2) != GLR_BG
+       || glr_G(GLR_W / 2, GLR_H / 2) != GLR_BG,
+       "and the surface did cover the pixel");
+
+    /* Alpha full: all of the reflection and none of the water. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_Begin();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x0000FFFF, 0.0f);
+    glr_WaterDraw();
+    okEq(glr_R(GLR_W / 2, GLR_H / 2), 0x00, "with full alpha the pixel is"
+                                            " the reflection's red");
+    okEq(glr_G(GLR_W / 2, GLR_H / 2), 0xFF, "its green");
+    okEq(glr_B(GLR_W / 2, GLR_H / 2), 0xFF, "and its blue");
+
+    /* And in between, the mix. Half of nought and 0xFF is where a mix
+       written the other way round still differs, because the two ends
+       are not symmetric about it. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_Begin();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0x80, 0x0000FFFF, 0.0f);
+    glr_WaterDraw();
+    okNear(glr_R(GLR_W / 2, GLR_H / 2), 0x10, "halfway, red is half the"
+                                              " water's");
+    okNear(glr_G(GLR_W / 2, GLR_H / 2), 0xA0, "green is between the two");
+    okNear(glr_B(GLR_W / 2, GLR_H / 2), 0xC0, "and so is blue");
+
+    /* The alpha written out is the water's, not the mix's: it is what
+       the after-effects downstream read the frame's alpha for. */
+    okNear(glr_A(GLR_W / 2, GLR_H / 2), 128, "and the alpha written is the"
+                                             " water's own");
+}
+
+static void caseWaterNotBlended(void)
+{
+    printf("-- the surface replaces the pixel rather than blending with it\n");
+
+    /* The background is a flat grey and the water is opaque in its own
+       colour with no alpha. If the surface were blended into the
+       target the grey would show through; it must not. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_Begin();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0x00, 0x0000FFFF, 0.0f);
+    glr_WaterDraw();
+    okEq(glr_R(4, 4), 0x20, "a corner pixel is the water's colour exactly");
+
+    /* Twice over, which is where a blend would show even if the first
+       draw happened to land on the right number. */
+    glr_WaterDraw();
+    okEq(glr_R(4, 4), 0x20, "and drawing it again does not darken it");
+    okEq(glr_B(4, 4), 0x80, "in any channel");
+}
+
+/* The reflection target with a pattern in it rather than one flat
+ * colour: red over its lower half in texture terms, green over the
+ * upper. Everything above this draws against a flat reflection, which
+ * leaves the sampling unmeasured -- a flip, a view translation or a
+ * dropped divide all sample a different place and get the same answer
+ * back. Two mutants survived the lot.
+ *
+ * Uploaded straight into the target's texture, which is quicker than
+ * drawing into it and does not disturb any state the renderer is
+ * holding. */
+static unsigned char* glr_waterPattern;
+
+#define GLR_WTR_LOW_R  0xC0
+#define GLR_WTR_LOW_G  0x00
+#define GLR_WTR_HIGH_R 0x00
+#define GLR_WTR_HIGH_G 0xC0
+
+static void glr_WaterPatternIntoReflection(void)
+{
+    int row;
+    int x;
+
+    if (!glr_waterPattern)
+        glr_waterPattern = (unsigned char*)malloc(512 * 512 * 4);
+    for (row = 0; row < 512; row++)
+        for (x = 0; x < 512; x++)
+        {
+            unsigned char* p = &glr_waterPattern[(row * 512 + x) * 4];
+
+            /* Row nought is v = 0 in OpenGL, so the first half of the
+               rows is the first half of v. */
+            p[0] = (unsigned char)(row < 256 ? GLR_WTR_LOW_R : GLR_WTR_HIGH_R);
+            p[1] = (unsigned char)(row < 256 ? GLR_WTR_LOW_G : GLR_WTR_HIGH_G);
+            p[2] = 0;
+            p[3] = 0xFF;
+        }
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_waterColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_waterPattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+/* Where the shared remap says a grid point's reflection coordinate
+ * lands, so a case can state which half of the pattern a pixel must
+ * read rather than discovering it.
+ *
+ * The remap is watermesh.c's and run_wingdi.sh has already compared it
+ * against the other renderer, so this is not the renderer's own
+ * arithmetic restated -- it is the question of whether this renderer
+ * samples where that arithmetic says. */
+static float glr_f_WaterV(float worldY, float dirZ)
+{
+    Mtx4x4WithoutAdditionalData remap;
+    const float*                m;
+    float                       v;
+    float                       w;
+
+    WMS_ProjectionToTexture(&remap,
+                            (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
+                            512, 512);
+    m = (const float*)&remap;
+    /* Row-vector, with the direction's three components and a one:
+       the second column for v, the third for the divide. */
+    v = worldY * m[4 + 1] + dirZ * m[8 + 1] + m[12 + 1];
+    w = worldY * m[4 + 2] + dirZ * m[8 + 2] + m[12 + 2];
+    return w != 0.0f ? v / w : 0.0f;
+}
+
+static void caseWaterSampling(void)
+{
+    float vTop;
+    float vBottom;
+
+    printf("-- where on the reflection the surface samples\n");
+
+    /* The grid's depth is chosen, not convenient. The coordinate is
+       projective, so the divide by the direction's depth is what
+       decides which half of the pattern a row lands in: at a half the
+       divide doubles both rows past the boundary and they read the
+       same half, which is what the precondition below is there to
+       catch -- and did. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x00000000, 0.9f);
+    GL_PrepareWaterRendering();
+    glr_WaterPatternIntoReflection();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    GL_DrawWater(&glr_water);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    glr_Read();
+
+    /* A quarter of the way down the surface is world y = +0.5, three
+       quarters is -0.5 -- the clip space this leaves world
+       coordinates in, with y up and the rows counted from the top. */
+    vTop = glr_f_WaterV(0.5f, 0.9f);
+    vBottom = glr_f_WaterV(-0.5f, 0.9f);
+    ok((vTop < 0.5f) != (vBottom < 0.5f),
+       "the two rows read opposite halves of the pattern, so there is"
+       " something to measure");
+
+    okNear(glr_R(GLR_W / 2, GLR_H / 4),
+           vTop < 0.5f ? GLR_WTR_LOW_R : GLR_WTR_HIGH_R,
+           "the upper row reads the half the shared remap points at");
+    okNear(glr_G(GLR_W / 2, GLR_H / 4),
+           vTop < 0.5f ? GLR_WTR_LOW_G : GLR_WTR_HIGH_G,
+           "in green as well as red");
+    okNear(glr_R(GLR_W / 2, 3 * GLR_H / 4),
+           vBottom < 0.5f ? GLR_WTR_LOW_R : GLR_WTR_HIGH_R,
+           "and the lower row reads the other half");
+
+    /* The console's flip turns that over, and only that. Which way
+       round the default should be is a measurement on a real scene and
+       is not asserted anywhere -- that is what the tweak is for. What
+       is asserted is that nought means "where the shared arithmetic
+       says", which is what the other renderer does, and that one means
+       the other way. */
+    tweak_gl_water_flip = 1;
+    GL_PrepareWaterRendering();
+    glr_WaterPatternIntoReflection();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    GL_DrawWater(&glr_water);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    glr_Read();
+    okNear(glr_R(GLR_W / 2, GLR_H / 4),
+           vTop < 0.5f ? GLR_WTR_HIGH_R : GLR_WTR_LOW_R,
+           "with the flip on, the upper row reads the other half");
+    okNear(glr_R(GLR_W / 2, 3 * GLR_H / 4),
+           vBottom < 0.5f ? GLR_WTR_HIGH_R : GLR_WTR_LOW_R,
+           "and so does the lower");
+    tweak_gl_water_flip = 0;
+}
+
+static void caseWaterDirectionIsADirection(void)
+{
+    Mtx4x4 view;
+    float  vNoTranslation;
+    float  vWithIt;
+
+    printf("-- the camera-to-vertex vector is a direction, not a point\n");
+
+    /* The view gets a translation, which a direction must not pick up.
+       With the view at the identity the two spellings are the same
+       thing -- a mutant that gave the direction a one in its fourth
+       component survived every case above, because there was no
+       translation for it to pick up. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    MATH_SetIdentityMatrix(&view);
+    view.Pos.z = 1.0f;
+    GL_SetViewMatrix(&view);
+
+    /* The grid sits where the translation puts it back inside the clip
+       volume: at minus a half it lands at a half once the view has
+       moved it. */
+    glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x00000000, -0.5f);
+    GL_PrepareWaterRendering();
+    glr_WaterPatternIntoReflection();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    GL_DrawWater(&glr_water);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    glr_Read();
+
+    /* The direction's depth component is the grid's own minus the
+       camera's, with no view translation in it. Taking the translation
+       as well would make it the other number, and the two land in
+       different halves of the pattern. */
+    vNoTranslation = glr_f_WaterV(0.5f, -0.5f);
+    vWithIt = glr_f_WaterV(0.5f, 0.5f);
+    ok((vNoTranslation < 0.5f) != (vWithIt < 0.5f),
+       "the two readings fall in different halves, so there is"
+       " something to measure");
+    okNear(glr_R(GLR_W / 2, GLR_H / 4),
+           vNoTranslation < 0.5f ? GLR_WTR_LOW_R : GLR_WTR_HIGH_R,
+           "and the surface reads the half with no translation in it");
+}
+
+/* A quad of a known colour at a known depth, drawn through the
+ * geometry path, to put something in front of or behind the water.
+ *
+ * The depth state is set *after* GL_TextureInit, and that is the whole
+ * reason this is a function. TextureInit is the renderer's per-material
+ * state call and it owns the depth state, so a case that sets its own
+ * beforehand has it quietly replaced -- two draws then both land
+ * whatever their depths, and a water surface behind a wall reads as the
+ * water ignoring depth. It did, for a while. */
+static void glr_WaterWall(int r, int g, int b, float z)
+{
+    glr_OneTexel(0, 0, 0, 0xFF);     /* ignored; the material has none */
+    glr_SolidColour(r, g, b, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_pos[0].z = glr_pos[1].z = glr_pos[2].z = glr_pos[3].z = z;
+    GL_TextureInit(-1, 0, 0);
+    /* OpenGL writes no depth at all while the test is off, whatever the
+       depth mask says, so this has to switch the test on and not only
+       the mask. */
+    GLFN_glEnable(GL_DEPTH_TEST);
+    GLFN_glDepthFunc(GL_LEQUAL);
+    GLFN_glDepthMask(GL_TRUE);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+}
+
+static void caseWaterDepth(void)
+{
+    printf("-- the surface is depth tested and does not write depth\n");
+
+    /* Nearer is a *smaller* z here. This renderer sets the clip volume
+       to nought-to-one rather than the minus-one-to-one OpenGL starts
+       with, so a depth is the clip z straight through and a negative z
+       is outside the volume entirely -- not drawn far away, not drawn
+       at all. */
+    glr_Reset();
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+    glr_WaterWall(0x33, 0x22, 0x11, 0.2f);
+
+    glr_WaterFixture(0x20, 0x40, 0x80, 0x00, 0x0000FFFF, 0.6f);
+    glr_WaterDraw();
+    okEq(glr_R(GLR_W / 2, GLR_H / 2), 0x33, "where something nearer was"
+                                            " drawn, the water does not"
+                                            " show");
+    /* And outside the quad it does: otherwise the check above would
+       pass on a surface that drew nowhere at all. */
+    okEq(glr_R(2, 2), 0x20, "and outside it, it does");
+
+    /* The other way round, so the check above is about depth and not
+       about the quad being drawn first. */
+    glr_Reset();
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+    glr_WaterWall(0x33, 0x22, 0x11, 0.8f);
+    glr_WaterFixture(0x20, 0x40, 0x80, 0x00, 0x0000FFFF, 0.4f);
+    glr_WaterDraw();
+    okEq(glr_R(GLR_W / 2, GLR_H / 2), 0x20, "and where the water is the"
+                                            " nearer, it covers what was"
+                                            " behind it");
+
+    /* Depth not written, which takes a second surface *behind* the
+       first to show. The draw sets less-or-equal itself, so two
+       surfaces at the same depth both pass whether or not depth was
+       written and prove nothing; put the second one further off
+       instead, where it comes through only if the buffer still holds
+       the clear. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0x00, 0x0000FFFF, 0.3f);
+    glr_WaterDraw();
+    okEq(glr_R(GLR_W / 2, GLR_H / 2), 0x20, "the first surface draws");
+    glr_WaterFixture(0x80, 0x00, 0x00, 0x00, 0x0000FFFF, 0.7f);
+    glr_WaterDraw();
+    okEq(glr_R(GLR_W / 2, GLR_H / 2), 0x80, "and a second one behind it"
+                                            " still draws, so the first"
+                                            " wrote no depth");
+}
+
 int main(void)
 {
     void* p;
@@ -4142,6 +4628,12 @@ int main(void)
     caseUVNormalMissing();
     caseUVNormalLeavesSpritesAlone();
     caseCulling();
+    caseWaterReflectionCleared();
+    caseWaterBlend();
+    caseWaterNotBlended();
+    caseWaterDepth();
+    caseWaterSampling();
+    caseWaterDirectionIsADirection();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();

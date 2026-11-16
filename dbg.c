@@ -3,6 +3,7 @@
 
 int tweak_ae_no;
 int tweak_gl_cull;
+int tweak_gl_water_flip;
 int tweak_ae_nobands = 0;
 float tweak_mipmaplodbias = -0.60000002f;
 int tweak_perf;
@@ -45,7 +46,9 @@ static void DBG_l_TweakNoZonAlpha(float value)
 }
 
 /* Sorted by name: the console finds an entry with bsearch. */
-struct sTweakElem tweaks[18] = {
+/* No size: the count below is taken from the initialiser, so the
+   two cannot drift apart. */
+struct sTweakElem tweaks[] = {
     {"ae_d2x", 2, (void*)DBG_l_TweakCanDiffuse2x},
     {"ae_no", 0, &tweak_ae_no},
     {"ae_nobands", 0, &tweak_ae_nobands},
@@ -56,15 +59,28 @@ struct sTweakElem tweaks[18] = {
        rather than derived, so the next card that disagrees wants this
        to hand. */
     {"gl_cull", 0, &tweak_gl_cull},
+    /* Which way up the OpenGL renderer samples the water's
+       reflection: 0 as it decides, 1 the other way. Here for the same
+       reason as the line above -- the answer is a measurement on a
+       real scene, not something to be worked out from two APIs'
+       conventions. */
+    {"gl_water_flip", 0, &tweak_gl_water_flip},
     {"mipmaplodbias", 1, &tweak_mipmaplodbias},
     {"perf", 0, &tweak_perf},
     {"perf_fps", 0, &tweak_perf_fps},    
     {"perf_fps_min", 1, &tweak_perf_fps_min},
     {"perf_fps_target", 1, &tweak_perf_fps_target},
-    {"water_min_bv", 1, &tweak_water_min_bv},
+    /* Sorted, and not by taste: the console finds a tweak by
+       bsearching this table, so a name out of place is a tweak that
+       cannot be set. water_min_bv sat above water_blur_normal and was
+       one -- typing it did nothing, with no message to say why.
+       tests/tweakcheck.sh is what stops that happening again; the
+       console's own differential test cannot see it, because the
+       table it drives is a sorted fixture of its own. */
     {"water_blur_normal", 0, &tweak_water_blur_normal},
     {"water_clip", 0, &tweak_water_clip},
     {"water_clip_off", 1, &tweak_water_off}, // water clip offset
+    {"water_min_bv", 1, &tweak_water_min_bv},
     {"water_smooth", 0, &tweak_water_smooth},
     {"water_smoothx", 1, &tweak_water_smoothx},
     {"water_smoothy", 1, &tweak_water_smoothy},

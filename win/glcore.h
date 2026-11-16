@@ -87,10 +87,14 @@ typedef struct __GLsync* GLsync;
 
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_STREAM_DRAW                    0x88E0
+#define GL_STATIC_DRAW                    0x88E4
 #define GL_DYNAMIC_DRAW                   0x88E8
 #define GL_FLOAT                          0x1406
 #define GL_UNSIGNED_BYTE                  0x1401
 #define GL_TRIANGLES                      0x0004
+#define GL_TRIANGLE_STRIP                 0x0005
+#define GL_ELEMENT_ARRAY_BUFFER           0x8893
+#define GL_UNSIGNED_SHORT                 0x1403
 
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_FRAGMENT_SHADER                0x8B30
@@ -286,6 +290,9 @@ typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint 
                                      (index, size, type, normalized, stride, offset)) \
     X(void,  glDrawArrays,           (GLenum mode, GLint first, GLsizei count), \
                                      (mode, first, count))                    \
+    X(void,  glDrawElements,         (GLenum mode, GLsizei count, GLenum type, \
+                                      const void* offset),                     \
+                                     (mode, count, type, offset))             \
                                                                               \
     X(void,  glGenTextures,          (GLsizei n, GLuint* out), (n, out))      \
     X(void,  glDeleteTextures,       (GLsizei n, const GLuint* in), (n, in))  \

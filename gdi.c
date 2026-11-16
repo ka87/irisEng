@@ -886,6 +886,8 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->OverlayDrawTexturedQuads = D3D_OverlayDrawTexturedQuads;
     dd->b_GeometryHasCache = D3D_b_GeometryHasCache;
     dd->DiscardGeometryCache = D3D_DiscardGeometryCache;
+    dd->PrepareWaterRendering = D3D_PrepareWaterRendering;
+    dd->DrawWater = D3D_DrawWater_DrawVertexTable;
 }
 
 static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
@@ -948,6 +950,8 @@ static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
     dd->p_CreateAlphaTexture = GL_p_CreateAlphaTexture;
     dd->DestroyAlphaTexture = GL_DestroyAlphaTexture;
     dd->OverlayDrawTexturedQuads = GL_OverlayDrawTexturedQuads;
+    dd->PrepareWaterRendering = GL_PrepareWaterRendering;
+    dd->DrawWater = GL_DrawWater;
 }
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)

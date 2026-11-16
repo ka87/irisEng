@@ -41,6 +41,7 @@ extern int tweak_ae_no;
 /* Which winding the OpenGL renderer culls: 0 as it decides, 1 none at
    all, 2 the facing reversed. See the table in dbg.c. */
 extern int tweak_gl_cull;
+extern int tweak_gl_water_flip;
 
 void DBG_assert(int isError, char* sourceCodeInfo, int lineNo, char* sourceCodeLine, const char* error, const char* extra, int showMsgBox);
 void DBG_OutputDebugString(char* Format, ...);

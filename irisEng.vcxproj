@@ -363,6 +363,7 @@
     <ClCompile Include="time.c" />
     <ClCompile Include="view.c" />
     <ClCompile Include="water.c" />
+    <ClCompile Include="watermesh.c" />
     <ClCompile Include="ways.c" />
     <ClCompile Include="win\adpcm.c" />
     <ClCompile Include="win\wingdi.c" />
@@ -608,6 +609,7 @@
     <ClInclude Include="time.h" />
     <ClInclude Include="view.h" />
     <ClInclude Include="water.h" />
+    <ClInclude Include="watermesh.h" />
     <ClInclude Include="ways.h" />
     <ClInclude Include="win\adpcm.h" />
     <ClInclude Include="win\eax\eax.h" />

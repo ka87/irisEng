@@ -10,6 +10,8 @@
 #include "../depthblur.h"
 #include "../aecolor.h"
 #include "../aeframe.h"
+#include "../watermesh.h"
+#include "../water.h"
 #include "../fog.h"
 #include "../textures.h"
 #include "../cinebands.h"
@@ -137,6 +139,7 @@ static void GL_l_ForgetTargets(void);
 static void GL_l_ForgetVideo(void);
 static GLuint GL_l_i_RunAfterEffects(void);
 static void GL_l_ForgetAe(void);
+static void GL_l_ForgetWater(void);
 static Mtx4x4 gl_viewProjMtx;
 static int            gl_available = -1;   /* -1 until asked */
 static int            gl_saidOnce;
@@ -389,8 +392,11 @@ static void GL_l_SayWhatThisIs(void)
                           "shadows, its sprites, fullscreen video, the "
                           "depth blur and the sun's occlusion test, and "
                           "the after-effects for the depth blur, the "
-                          "brightness, the contrast and the grayscale; "
-                          "the water is not drawn through it at all\n");
+                          "brightness, the contrast and the grayscale, "
+                          "the remanence, the motion blur and the zoom "
+                          "smooth; the water's surface is drawn but its "
+                          "reflection is not, so the water mirrors a "
+                          "flat colour\n");
 }
 
 static void GL_l_SizeFromWindow(HWND hwnd)
@@ -477,6 +483,7 @@ int GL_Close(void)
         GL_l_ForgetAe();
         GL_l_ForgetScene();
         GL_l_ForgetTargets();
+        GL_l_ForgetWater();
         GL_l_ForgetVideo();
         wglMakeCurrent(gl_state.dc, NULL);
         wglDeleteContext(gl_state.context);
@@ -3914,6 +3921,439 @@ void GL_OverlayDrawTexturedQuads(void* texture, const void* vertices,
 
     GL_l_DrawBatch(gl_textVao, vertices, triangleCount,
                    sizeof(tGdi_TexturedVertex));
+}
+
+/* ======================================================= the water
+ *
+ * Two passes in one place, and only the second of them is here yet.
+ *
+ * The first is a reflection: the world drawn a second time into an
+ * off-screen target with each object mirrored in the water plane. That
+ * is a change inside the per-object draw path and is not done here, so
+ * the target this clears stays the colour it was cleared to and the
+ * surface below reflects a flat colour rather than the world. The
+ * surface is in the right place, the right shape, the right tint and
+ * rippling correctly; what it mirrors is missing.
+ *
+ * The second is the surface: a grid the simulation has already built,
+ * drawn once after the world with the reflection projected onto it
+ * through the rippled direction from the camera to each grid point.
+ * The grid, that direction and the projection are in watermesh.c,
+ * shared with the other renderer and compared against it byte for byte
+ * -- so what is left here is the drawing, which is the part that
+ * differs between the two.
+ *
+ * Until lately the engine called straight into the other renderer for
+ * both, so a machine running this one got no water at all. That is
+ * what the two interface entries at the bottom are for.
+ */
+
+/* The reflection target, square and the size the other renderer makes
+   it. The size is not arbitrary: the projection remap in watermesh.c
+   is written against a nominal size, and a target of a different size
+   is scaled by the ratio rather than being wrong -- but matching it
+   keeps the ratio at one, which is what the original computes. */
+#define GL_WATER_SIZE   512
+
+static GLuint     gl_waterFbo;
+static GLuint     gl_waterColour;
+static GLuint     gl_waterDepth;
+static int        gl_waterTried;
+static int        gl_waterReady;
+
+/* Whether there is water this frame. The engine's own answer is
+   whether it has water parameters at all, asked once before the world
+   is drawn; everything after reads this rather than asking again, so a
+   frame cannot half have water. */
+static int        gl_waterOn;
+
+static tGlProgram gl_waterProgram;
+static GLint      gl_waterViewProj = -1;
+static GLint      gl_waterView = -1;
+static GLint      gl_waterTexMtx = -1;
+static GLint      gl_waterSampler = -1;
+static GLint      gl_waterFlipV = -1;
+static GLint      gl_waterFogCurve = -1;
+static GLint      gl_waterFogStart = -1;
+static GLint      gl_waterFogEnd = -1;
+static GLint      gl_waterFogDensity = -1;
+static GLint      gl_waterFogColor = -1;
+static GLuint     gl_waterVao;
+static GLuint     gl_waterVbo;
+static GLuint     gl_waterIbo;
+
+/* The grid the index strip was last built for. The strip depends on
+   nothing but the two counts, and those change when the world does
+   rather than when the water moves, so it is rebuilt when they move
+   and left alone otherwise. */
+static unsigned int gl_waterCols;
+static int          gl_waterRows;
+static int          gl_waterIndices;
+
+/* The vertex scratch, grown rather than reallocated per frame. */
+static tWms_Vertex* gl_waterVerts;
+static int          gl_waterVertMax;
+
+static void GL_l_ForgetWater(void)
+{
+    if (gl_state.context)
+    {
+        if (gl_waterFbo)
+            GLFN_glDeleteFramebuffers(1, &gl_waterFbo);
+        if (gl_waterColour)
+            GLFN_glDeleteTextures(1, &gl_waterColour);
+        if (gl_waterDepth)
+            GLFN_glDeleteRenderbuffers(1, &gl_waterDepth);
+        if (gl_waterVbo)
+            GLFN_glDeleteBuffers(1, &gl_waterVbo);
+        if (gl_waterIbo)
+            GLFN_glDeleteBuffers(1, &gl_waterIbo);
+        if (gl_waterVao)
+            GLFN_glDeleteVertexArrays(1, &gl_waterVao);
+        GL_ProgramFree(&gl_waterProgram);
+    }
+    gl_waterFbo = 0;
+    gl_waterColour = 0;
+    gl_waterDepth = 0;
+    gl_waterVbo = 0;
+    gl_waterIbo = 0;
+    gl_waterVao = 0;
+    gl_waterViewProj = -1;
+    gl_waterView = -1;
+    gl_waterTexMtx = -1;
+    gl_waterSampler = -1;
+    gl_waterFlipV = -1;
+    gl_waterFogCurve = -1;
+    gl_waterFogStart = -1;
+    gl_waterFogEnd = -1;
+    gl_waterFogDensity = -1;
+    gl_waterFogColor = -1;
+    gl_waterTried = 0;
+    gl_waterReady = 0;
+    gl_waterOn = 0;
+    gl_waterCols = 0;
+    gl_waterRows = 0;
+    gl_waterIndices = 0;
+    free(gl_waterVerts);
+    gl_waterVerts = NULL;
+    gl_waterVertMax = 0;
+}
+
+/* Builds the reflection target, the program and the buffers, once.
+   Asked and answered: a machine that cannot give one of them is not
+   asked again, and gets no water rather than a failed draw a frame. */
+static int GL_l_b_WaterReady(void)
+{
+    if (gl_waterTried)
+        return gl_waterReady;
+    gl_waterTried = 1;
+    if (!gl_state.context)
+        return 0;
+
+    GLFN_glGenTextures(1, &gl_waterColour);
+    GLFN_glGenRenderbuffers(1, &gl_waterDepth);
+    GLFN_glGenFramebuffers(1, &gl_waterFbo);
+    if (!gl_waterColour || !gl_waterDepth || !gl_waterFbo)
+    {
+        DBG_OutputDebugString("GL: no reflection target for the water\n");
+        GL_l_ForgetWater();
+        gl_waterTried = 1;
+        return 0;
+    }
+
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_waterColour);
+    GLFN_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, GL_WATER_SIZE,
+                      GL_WATER_SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+    /* One level, and a sampler that wants no more: the other renderer
+       makes this with a single level too, and asking for mip filtering
+       on it would make the texture incomplete. Linear and clamped on
+       both axes is what that renderer sets by hand for this draw. */
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GLFN_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLFN_glBindRenderbuffer(GL_RENDERBUFFER, gl_waterDepth);
+    GLFN_glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
+                               GL_WATER_SIZE, GL_WATER_SIZE);
+    GLFN_glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, gl_waterFbo);
+    GLFN_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                GL_TEXTURE_2D, gl_waterColour, 0);
+    GLFN_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                   GL_RENDERBUFFER, gl_waterDepth);
+    if (GLFN_glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        DBG_OutputDebugString("GL: the water's reflection target would not build\n");
+        GL_l_ForgetWater();
+        gl_waterTried = 1;
+        return 0;
+    }
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (!GL_b_ProgramLoad(&gl_waterProgram, "water.vert", "water.frag"))
+    {
+        GL_l_ForgetWater();
+        gl_waterTried = 1;
+        return 0;
+    }
+    gl_waterViewProj = GL_i_ProgramUniform(&gl_waterProgram, "uViewProj");
+    gl_waterView = GL_i_ProgramUniform(&gl_waterProgram, "uView");
+    gl_waterTexMtx = GL_i_ProgramUniform(&gl_waterProgram, "uTexMtx");
+    gl_waterSampler = GL_i_ProgramUniform(&gl_waterProgram, "uReflection");
+    gl_waterFlipV = GL_i_ProgramUniform(&gl_waterProgram, "uFlipV");
+    gl_waterFogCurve = GL_i_ProgramUniform(&gl_waterProgram, "uFogCurve");
+    gl_waterFogStart = GL_i_ProgramUniform(&gl_waterProgram, "uFogStart");
+    gl_waterFogEnd = GL_i_ProgramUniform(&gl_waterProgram, "uFogEnd");
+    gl_waterFogDensity = GL_i_ProgramUniform(&gl_waterProgram, "uFogDensity");
+    gl_waterFogColor = GL_i_ProgramUniform(&gl_waterProgram, "uFogColor");
+
+    GLFN_glGenVertexArrays(1, &gl_waterVao);
+    GLFN_glGenBuffers(1, &gl_waterVbo);
+    GLFN_glGenBuffers(1, &gl_waterIbo);
+    if (!gl_waterVao || !gl_waterVbo || !gl_waterIbo)
+    {
+        DBG_OutputDebugString("GL: no buffers for the water surface\n");
+        GL_l_ForgetWater();
+        gl_waterTried = 1;
+        return 0;
+    }
+
+    GLFN_glBindVertexArray(gl_waterVao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_waterVbo);
+    GLFN_glEnableVertexAttribArray(0);
+    GLFN_glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                               (GLsizei)sizeof(tWms_Vertex),
+                               (const void*)(size_t)0);
+    GLFN_glEnableVertexAttribArray(1);
+    GLFN_glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
+                               (GLsizei)sizeof(tWms_Vertex),
+                               (const void*)(size_t)12);
+    GLFN_glEnableVertexAttribArray(2);
+    GLFN_glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+                               (GLsizei)sizeof(tWms_Vertex),
+                               (const void*)(size_t)24);
+    /* The index buffer is part of the vertex array's state, so it is
+       bound here once rather than per draw. */
+    GLFN_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_waterIbo);
+    GLFN_glBindVertexArray(0);
+
+    gl_waterReady = 1;
+    return 1;
+}
+
+/* The index strip, rebuilt when the grid changes size and otherwise
+   left where it is. Returns how many indices it holds. */
+static int GL_l_i_WaterStrip(unsigned int columns, int rows)
+{
+    unsigned short* strip;
+    int             want;
+
+    if (columns == gl_waterCols && rows == gl_waterRows)
+        return gl_waterIndices;
+
+    gl_waterCols = columns;
+    gl_waterRows = rows;
+    gl_waterIndices = 0;
+
+    want = WMS_i_IndexCount(columns, rows);
+    if (want <= 0)
+        return 0;
+
+    strip = (unsigned short*)malloc((size_t)want * sizeof(*strip));
+    if (!strip)
+        return 0;
+    if (WMS_i_StripIndices(columns, rows, strip, want) != want)
+    {
+        /* Below two columns the strip writes fewer indices than the
+           count claims -- watermesh.h says so, and the simulation
+           builds no grid that small. Drawing the difference would be
+           drawing whatever the buffer held. */
+        free(strip);
+        return 0;
+    }
+
+    GLFN_glBindVertexArray(gl_waterVao);
+    GLFN_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_waterIbo);
+    GLFN_glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                      (GLsizei)((size_t)want * sizeof(*strip)), strip,
+                      GL_STATIC_DRAW);
+    GLFN_glBindVertexArray(0);
+    free(strip);
+
+    gl_waterIndices = want;
+    return want;
+}
+
+void GL_PrepareWaterRendering(void)
+{
+    unsigned int bottom;
+
+    /* Asked once a frame, and the answer is what the rest of the
+       frame goes by. Cleared first so a frame that gets no further
+       than here has no water rather than the last frame's. */
+    gl_waterOn = 0;
+    if (!gl_state.context || !pst_GlobalsWaterParams)
+        return;
+    if (!GL_l_b_WaterReady())
+        return;
+
+    bottom = (unsigned int)pst_GlobalsWaterParams->waterEngine.bottomColor;
+
+    /* The colour the water is looking down into. The reflection is
+       drawn over this where there is anything to reflect, and until
+       that pass exists this is the whole of what the surface samples.
+       A8R8G8B8, so red is the second byte down. */
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, gl_waterFbo);
+    GLFN_glViewport(0, 0, GL_WATER_SIZE, GL_WATER_SIZE);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GLFN_glDepthMask(GL_TRUE);
+    GLFN_glClearColor((GLfloat)((bottom >> 16) & 0xFF) / 255.0f,
+                      (GLfloat)((bottom >> 8) & 0xFF) / 255.0f,
+                      (GLfloat)(bottom & 0xFF) / 255.0f,
+                      (GLfloat)((bottom >> 24) & 0xFF) / 255.0f);
+    GLFN_glClearDepth(1.0);
+    GLFN_glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    /* Back where the world is drawn. The scene target is bound rather
+       than the window, because that is what the frame is being built
+       in -- the after-effects read it afterwards. */
+    GL_l_BindScene();
+    gl_waterOn = 1;
+}
+
+void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
+{
+    Mtx4x4WithoutAdditionalData texMtx;
+    tWms_Source                 src;
+    int                         indices;
+    int                         verts;
+    int                         want;
+
+    if (!gl_state.context || !water || !gl_waterOn)
+        return;
+    if (!gl_waterReady)
+        return;
+
+    want = (int)water->horizontalVertexNum * water->verticallVertexNum;
+    if (want <= 0)
+        return;
+
+    indices = GL_l_i_WaterStrip(water->horizontalVertexNum,
+                                water->verticallVertexNum);
+    if (indices <= 0)
+        return;
+
+    if (want > gl_waterVertMax)
+    {
+        tWms_Vertex* grown = (tWms_Vertex*)realloc(gl_waterVerts,
+                                                   (size_t)want * sizeof(*grown));
+
+        if (!grown)
+            return;
+        gl_waterVerts = grown;
+        gl_waterVertMax = want;
+    }
+
+    /* The blur over the wave array runs before anything reads it, the
+       way the other renderer runs it: it rewrites the array in place,
+       so it cannot be folded into the shared vertex build, which takes
+       the array as it finds it. */
+    if (tweak_water_blur_normal)
+        WTR_WaterBlurNormal(water->vecsForUVs, water->horizontalVertexNum,
+                            water->verticallVertexNum);
+
+    src.positions = water->vertices;
+    src.waves = water->vecsForUVs;
+    src.colors = water->colors;
+    src.columns = water->horizontalVertexNum;
+    src.rows = water->verticallVertexNum;
+    src.camera = gpst_DX_stDD->ct.cam.objectMtx.Pos;
+    verts = WMS_i_Vertices(&src, gl_waterVerts, gl_waterVertMax);
+    if (verts <= 0)
+        return;
+
+    WMS_ProjectionToTexture(&texMtx,
+                            (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
+                            GL_WATER_SIZE, GL_WATER_SIZE);
+
+    GLFN_glUseProgram(gl_waterProgram.program);
+    if (gl_waterViewProj >= 0)
+        GLFN_glUniformMatrix4fv(gl_waterViewProj, 1, GL_FALSE,
+                                (const GLfloat*)&gl_viewProjMtx);
+    if (gl_waterView >= 0)
+        GLFN_glUniformMatrix4fv(gl_waterView, 1, GL_FALSE,
+                                (const GLfloat*)&gl_viewMtx);
+    if (gl_waterTexMtx >= 0)
+        GLFN_glUniformMatrix4fv(gl_waterTexMtx, 1, GL_FALSE,
+                                (const GLfloat*)&texMtx);
+    if (gl_waterSampler >= 0)
+        GLFN_glUniform1i(gl_waterSampler, 0);
+    if (gl_waterFlipV >= 0)
+        GLFN_glUniform1i(gl_waterFlipV, tweak_gl_water_flip ? 1 : 0);
+
+    /* Fogged, as that renderer turns fog on for this draw by hand. */
+    if (gl_waterFogCurve >= 0)
+        GLFN_glUniform1i(gl_waterFogCurve, gl_fog.curve);
+    if (gl_fog.curve != FOG_OFF)
+    {
+        unsigned int c = FOG_i_Color(&gl_fog, gl_fogSecondColor);
+
+        if (gl_waterFogStart >= 0)
+            GLFN_glUniform1f(gl_waterFogStart, gl_fog.start);
+        if (gl_waterFogEnd >= 0)
+            GLFN_glUniform1f(gl_waterFogEnd, gl_fog.end);
+        if (gl_waterFogDensity >= 0)
+            GLFN_glUniform1f(gl_waterFogDensity, gl_fog.density);
+        if (gl_waterFogColor >= 0)
+            GLFN_glUniform3f(gl_waterFogColor,
+                             (GLfloat)((c >> 16) & 0xFF) / 255.0f,
+                             (GLfloat)((c >> 8) & 0xFF) / 255.0f,
+                             (GLfloat)(c & 0xFF) / 255.0f);
+    }
+
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_waterColour);
+
+    /* Tested against the world's depth and not written into it, which
+       is what lets the surface be hidden by what is in front of it
+       without hiding the rest of itself. */
+    GLFN_glEnable(GL_DEPTH_TEST);
+    GLFN_glDepthFunc(GL_LEQUAL);
+    GLFN_glDepthMask(GL_FALSE);
+
+    /* Not blended. The mixing is the shader's, and the result replaces
+       the pixel -- see water.frag. */
+    GLFN_glDisable(GL_BLEND);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    /* Both sides.
+     *
+     * The other renderer sets no culling for this draw at all: it
+     * inherits whatever the last object drawn left in force, which is
+     * not a specification of anything. Drawing the surface from both
+     * sides is the one reading that comes out the same whatever was
+     * inherited, and it is the safe way round -- the wrong guess at a
+     * facing is an invisible surface, which is the defect this
+     * renderer has already shipped once. */
+    GLFN_glDisable(GL_CULL_FACE);
+
+    GLFN_glBindVertexArray(gl_waterVao);
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_waterVbo);
+    GLFN_glBufferData(GL_ARRAY_BUFFER,
+                      (GLsizei)((size_t)verts * sizeof(tWms_Vertex)),
+                      gl_waterVerts, GL_STREAM_DRAW);
+    GLFN_glDrawElements(GL_TRIANGLE_STRIP, (GLsizei)indices,
+                        GL_UNSIGNED_SHORT, (const void*)(size_t)0);
+    GLFN_glBindVertexArray(0);
+
+    /* Depth writing back on: everything after this draw expects it,
+       and the other renderer puts it back here too. */
+    GLFN_glDepthMask(GL_TRUE);
 }
 
 /* ---------------------------------------------- the video display

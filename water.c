@@ -2730,7 +2730,7 @@ int WTR_Mesh_Do(tWaterParamsGlobalStruct* water)
     WTR_Compute4Points(corners, &centre, cameraPosition, sight,
                        (float)(water->waterHeight - 100.0), 18000.0, projectionScale, 1.0, 0.0, 0.0);
 
-    D3D_DrawWater_DrawVertexTable(water);
+    gpst_DX_stDD->DrawWater(water);
 
     water->waterEngine.timeElapsed = TIM_gf_dt * water->speed + water->waterEngine.timeElapsed;
     WATERFFT_Turn_Spectre(&water->waterEngine, water->spaceMap, water->spaceMapDX, water->spaceMapDY,
