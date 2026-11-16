@@ -335,6 +335,14 @@ int GDI_gi_Diffuse2x;
    sit with the one renderer that has an after-effects pass. The depth
    blur's decision is built from them -- see depthblur.h. */
 int   PC_AE_MASTER;
+/* The texture-coordinate transform the material path computes, one per
+   stage, with stage nought the one the world's geometry uses. Declared
+   here because both renderers read it and neither owns it: it is
+   written by MAT_UV_ComputeAndSetTransform from the engine's own
+   GLOBAL_UVTransformMatrix, whether or not there is a device to hand
+   it to. The name is the one it has always had and says d3d for no
+   good reason. */
+Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8];
 float depthBlurNear1;
 float depthBlurType0;
 float depthBlurType1;

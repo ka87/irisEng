@@ -16,6 +16,9 @@ uniform mat4 uView;
 out vec4  vColor;
 out vec2  vUV;
 out float vDepth;
+// The camera-space position, for the generated texture coordinates:
+// one of the material's projections takes its coordinate from it.
+out vec3  vCam;
 
 void main()
 {
@@ -32,6 +35,8 @@ void main()
     vColor = aColor.bgra;
     vUV = aUV;
 
+    vCam = (uView * vec4(aPos, 1.0)).xyz;
+
     // The camera-space depth, interpolated perspective-correctly, as
     // the hardware's own fog does.
     //
@@ -42,5 +47,5 @@ void main()
     // the same depth, so they agree or one of them is wrong. A first
     // draft negated this and fogged nothing at all, because every
     // factor clamped to one.
-    vDepth = (uView * vec4(aPos, 1.0)).z;
+    vDepth = vCam.z;
 }

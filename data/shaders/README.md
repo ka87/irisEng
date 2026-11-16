@@ -87,6 +87,29 @@ happens per pixel, as it does in the other renderer.
 renderer turns it into the texture and sets these uniforms; nothing
 about the numbers is decided here.
 
+## The material's texture-coordinate projection
+
+A material's texture coordinate is not always the one stored in the
+geometry. The engine computes a transform and says which source it
+applies to, and `geometry.frag` reads both: mode 0 is the stored
+coordinate untouched, mode 1 the camera-space position transformed,
+mode 3 the stored coordinate transformed. Modes 4 and 5 belong to the
+depth-blur pass, which has its own program.
+
+The two transformed modes disagree about the shape of the input, and
+that is the engine's doing rather than a guess. A generated coordinate
+is a point, so its fourth component is one and the transform's last row
+is its translation. A stored coordinate is two numbers, so the engine
+moves the translation up into the third row before handing the matrix
+over -- which is only necessary if the fourth component is zero there.
+One is `(x, y, z, 1)` and the other `(u, v, 1, 0)`.
+
+Mode 2 takes the camera-space normal, which is how chrome mapping
+works. It is not here: the engine keeps normals in a vertex stream of
+their own, this renderer builds one interleaved vertex without them,
+and inventing a normal would be drawing something arbitrary. The
+renderer says so once and draws the stored coordinates.
+
 ## Fog
 
 `geometry.vert` passes the camera-space depth across and
