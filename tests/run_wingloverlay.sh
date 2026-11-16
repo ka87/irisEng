@@ -42,11 +42,12 @@ $CC $CFLAGS -fsanitize=address -c geovertex.c -o "$OUT/wgo.gvx.o"
 # reading is checked against the other renderer.
 $CC $CFLAGS -fsanitize=address -c rasterstate.c -o "$OUT/wgo.rst.o"
 $CC $CFLAGS -fsanitize=address -c depthblur.c -o "$OUT/wgo.dpb.o"
+$CC $CFLAGS -fsanitize=address -c fog.c -o "$OUT/wgo.fog.o"
 $CC $CFLAGS -fsanitize=address -c geosprite.c -o "$OUT/wgo.gsp.o"
 $CC $CFLAGS -fsanitize=address -c win/wingdimath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \
-    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.gsp.o" \
+    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.gsp.o" \
     "$OUT/wgo.wgmath.o" "$OUT/wgo.math.o" -o "$OUT/wgo" -lm
 "$OUT/wgo"

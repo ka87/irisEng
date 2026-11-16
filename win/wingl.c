@@ -7,6 +7,7 @@
 #include "../geosprite.h"
 #include "../rasterstate.h"
 #include "../depthblur.h"
+#include "../fog.h"
 #include "../textures.h"
 #include "../cameraengine.h"
 #include "../soft.h"
@@ -67,6 +68,10 @@ typedef struct sGlMaterial
     int   textured;
     int   alphaMode;    /* 0 none, 1 keep above the reference, 2 below */
     float alphaRef;     /* 0..1 */
+    /* Which fog curve this material's pass draws with, FOG_OFF for
+       none. The variant it names is in gl_fogSecondColor, because it
+       stands until another material names a different one. */
+    int   fogCurve;
     /* The depth-blur pass draws the same vertices through a different
        program, so which program the next draw uses is part of what the
        material says. */
@@ -642,6 +647,27 @@ static GLint      gl_geoTextured = -1;
 static GLint      gl_geoAlphaMode = -1;
 static GLint      gl_geoAlphaRef = -1;
 static GLint      gl_geoDiffuse2x = -1;
+static GLint      gl_geoView = -1;
+static GLint      gl_geoFogCurve = -1;
+static GLint      gl_geoFogStart = -1;
+static GLint      gl_geoFogEnd = -1;
+static GLint      gl_geoFogDensity = -1;
+static GLint      gl_geoFogColor = -1;
+
+/* ------------------------------------------------------------- fog
+ *
+ * The engine hands over a curve, a range, a density and a colour once,
+ * and then each material says whether fog applies to it and which of
+ * two colours it uses. fog.c reads that; what is here is the uniforms
+ * and the one piece of state the material flags cannot carry.
+ *
+ * That piece is the variant. Three of the four the flags can name pick
+ * a colour and the fourth means keep the one already in force, so the
+ * current variant has to be remembered between materials -- exactly as
+ * the other renderer remembers its own. */
+static tFog_State gl_fog;
+static int        gl_fogSecondColor;   /* the variant last named */
+static int        gl_fogSaidNoVertex;  /* the one-off complaint below */
 
 /* ------------------------------------------------- the depth blur
  *
@@ -707,6 +733,12 @@ static int GL_l_b_GeometryReady(void)
     gl_geoAlphaMode = GL_i_ProgramUniform(&gl_geoProgram, "uAlphaMode");
     gl_geoAlphaRef = GL_i_ProgramUniform(&gl_geoProgram, "uAlphaRef");
     gl_geoDiffuse2x = GL_i_ProgramUniform(&gl_geoProgram, "uDiffuse2x");
+    gl_geoView = GL_i_ProgramUniform(&gl_geoProgram, "uView");
+    gl_geoFogCurve = GL_i_ProgramUniform(&gl_geoProgram, "uFogCurve");
+    gl_geoFogStart = GL_i_ProgramUniform(&gl_geoProgram, "uFogStart");
+    gl_geoFogEnd = GL_i_ProgramUniform(&gl_geoProgram, "uFogEnd");
+    gl_geoFogDensity = GL_i_ProgramUniform(&gl_geoProgram, "uFogDensity");
+    gl_geoFogColor = GL_i_ProgramUniform(&gl_geoProgram, "uFogColor");
 
     GLFN_glGenBuffers(1, &gl_geoBuffer);
     GLFN_glGenVertexArrays(1, &gl_geoVao);
@@ -862,6 +894,12 @@ static void GL_l_ForgetGeometry(void)
     gl_geoAlphaMode = -1;
     gl_geoAlphaRef = -1;
     gl_geoDiffuse2x = -1;
+    gl_geoView = -1;
+    gl_geoFogCurve = -1;
+    gl_geoFogStart = -1;
+    gl_geoFogEnd = -1;
+    gl_geoFogDensity = -1;
+    gl_geoFogColor = -1;
     gl_geoTried = 0;
     gl_geoReady = 0;
     free(gl_geoVerts);
@@ -1004,6 +1042,32 @@ static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
        material, because the engine can change it between the two. */
     if (gl_geoDiffuse2x >= 0)
         GLFN_glUniform1i(gl_geoDiffuse2x, GDI_gi_Diffuse2x ? 1 : 0);
+
+    /* Fog. The view matrix goes with it, because the depth the curve
+       is a function of is the one thing the combined matrix has thrown
+       away. */
+    if (gl_geoView >= 0)
+        GLFN_glUniformMatrix4fv(gl_geoView, 1, GL_FALSE,
+                                (const GLfloat*)&gl_viewMtx);
+    if (gl_geoFogCurve >= 0)
+        GLFN_glUniform1i(gl_geoFogCurve, gl_material.fogCurve);
+    if (gl_material.fogCurve != FOG_OFF)
+    {
+        unsigned int c = FOG_i_Color(&gl_fog, gl_fogSecondColor);
+
+        if (gl_geoFogStart >= 0)
+            GLFN_glUniform1f(gl_geoFogStart, gl_fog.start);
+        if (gl_geoFogEnd >= 0)
+            GLFN_glUniform1f(gl_geoFogEnd, gl_fog.end);
+        if (gl_geoFogDensity >= 0)
+            GLFN_glUniform1f(gl_geoFogDensity, gl_fog.density);
+        /* A8R8G8B8, so red is the second byte down. */
+        if (gl_geoFogColor >= 0)
+            GLFN_glUniform3f(gl_geoFogColor,
+                             (GLfloat)((c >> 16) & 0xFF) / 255.0f,
+                             (GLfloat)((c >> 8) & 0xFF) / 255.0f,
+                             (GLfloat)(c & 0xFF) / 255.0f);
+    }
     GLFN_glBindVertexArray(gl_geoVao);
     GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoBuffer);
     GLFN_glBufferData(GL_ARRAY_BUFFER,
@@ -1267,6 +1331,42 @@ void GL_PaletteLoad(struct sGdi_DisplayData* dd, struct sEngTexListElemStruct* t
 
 /* The engine's procedural textures hand their pixels over this way,
    once a frame each. */
+/* The engine's fog parameters, which arrive once and then stand until
+   they are replaced. */
+static void GL_l_FogRequest(tFogParams* fog)
+{
+    tFog_Source src;
+
+    if (!fog)
+        return;
+
+    src.b_enabled = (fog->flags & 1) != 0;
+    src.engineCurve = fog->fogVertexMode;
+    src.start = fog->fogStart;
+    src.end = fog->fogEnd;
+    src.density = fog->density;
+    src.engineColor = (unsigned int)fog->fogColor;
+
+    FOG_Decode(&src, &gl_fog);
+    /* New parameters, so the variant starts from the first colour --
+       which is where the other renderer starts it too. */
+    gl_fogSecondColor = 0;
+
+    /* The engine's fourth curve takes its factor off the vertices
+       rather than off the distance, and this renderer has no
+       per-vertex fog to take it from: the engine's vertex carries a
+       position, a colour and a texture coordinate and nothing else.
+       So that case draws no fog, and says so once rather than being
+       silently wrong. */
+    if (gl_fog.b_on && gl_fog.curve == FOG_OFF && !gl_fogSaidNoVertex)
+    {
+        gl_fogSaidNoVertex = 1;
+        DBG_OutputDebugString("GL: the world asked for per-vertex fog,"
+                              " which this renderer has no source for;"
+                              " drawing none\n");
+    }
+}
+
 static void GL_l_TextureStoreRequest(tTexUploadRequest* req)
 {
     tEngTexListElemStruct* tle;
@@ -1306,12 +1406,15 @@ int GL_Request(int type, void* param)
 {
     switch (type)
     {
+    case 1:
+        GL_l_FogRequest((tFogParams*)param);
+        break;
     case 12:
         GL_l_TextureStoreRequest((tTexUploadRequest*)param);
         break;
     default:
-        /* Fog parameters, sprites, snapshots and the rest still wait
-           on the passes that use them. */
+        /* Sprites, snapshots and the rest still wait on the passes
+           that use them. */
         break;
     }
     return 0;
@@ -1480,6 +1583,15 @@ void GL_TextureInit(int textureID, int flags, char mode)
                                 ? (st.alphaCompare == RST_ALPHA_LESS ? 2 : 1)
                                 : 0;
     gl_material.alphaRef = (float)st.alphaRef / 255.0f;
+
+    /* Fog. The variant a material names stands until another names a
+       different one, and the fourth thing the flags can say is
+       exactly that -- keep the one in force -- so only a named
+       variant moves it. */
+    if (st.fogVariant != RST_FOG_KEEP)
+        gl_fogSecondColor = st.fogUsesSecondColor;
+    gl_material.fogCurve = FOG_b_Applies(&gl_fog, st.fogAllowed)
+                               ? gl_fog.curve : FOG_OFF;
 
     slot = GL_l_p_Texture(textureID);
     gl_material.textured = slot != NULL;

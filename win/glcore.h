@@ -233,6 +233,8 @@ typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint 
                                      (program, name))                         \
     X(void,  glUniform1i,            (GLint loc, GLint v), (loc, v))          \
     X(void,  glUniform1f,            (GLint loc, GLfloat v), (loc, v))        \
+    X(void,  glUniform3f,            (GLint loc, GLfloat a, GLfloat b,        \
+                                      GLfloat c), (loc, a, b, c))             \
     X(void,  glUniform4f,            (GLint loc, GLfloat a, GLfloat b,         \
                                       GLfloat c, GLfloat d), (loc, a, b, c, d)) \
     X(void,  glUniformMatrix4fv,     (GLint loc, GLsizei count,                \
