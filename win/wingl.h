@@ -71,6 +71,15 @@ typedef struct sGlRenderState
     int   height;
     int   zEnable;
     int   zWrite;
+    /* Which colour channels the renderer last turned *off*, one entry
+       a channel. Kept because a clear has to put the mask out of the
+       way and then put it back -- see the setter.
+     *
+       Written as what is off rather than what is on so that nothing
+       has to initialise it: a device starts as a block of nought, and
+       nought here says every channel is written, which is OpenGL's
+       own default. */
+    int   colorWriteOff[4];
     int   canDiffuse2x;
     int   wantsNoFlare;
     int   noZonAlpha;

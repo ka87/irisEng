@@ -522,6 +522,54 @@ int GL_ReadaptDisplay(HWND hwnd, struct sGdi_DisplayData* dd)
 
 /* --------------------------------------------------- clear and flip */
 
+/* The colour write mask, through a setter for the same reason the
+ * depth state goes through one: something else has to be able to put
+ * it back.
+ *
+ * That something is the clear below. **OpenGL's clear is masked by the
+ * colour write mask and the other renderer's is not**, and the engine
+ * leans on the difference without knowing it: before a shadow target
+ * is cleared it sets a material whose flags turn the colour write off
+ * entirely -- 0x2260, which asks for sampler state and no drawing --
+ * so a clear made straight through OpenGL writes nothing at all. The
+ * target then keeps whatever was in it, which on a fresh texture is
+ * undefined memory and afterwards is the last caster's silhouette. A
+ * shadow is sampled as `dst * (1 - src)`, so a target full of bright
+ * rubbish darkens everything it is sampled onto: a black rectangle
+ * where a shadow should be.
+ *
+ * Three of the clears in this file already forced the mask on first
+ * and four did not, which is the shape of a rule that has to live in
+ * one place rather than be remembered at each site.
+ */
+static void GL_l_SetColorMask(int r, int g, int b, int a)
+{
+    gl_state.colorWriteOff[0] = r ? 0 : 1;
+    gl_state.colorWriteOff[1] = g ? 0 : 1;
+    gl_state.colorWriteOff[2] = b ? 0 : 1;
+    gl_state.colorWriteOff[3] = a ? 0 : 1;
+    GLFN_glColorMask(r ? GL_TRUE : GL_FALSE, g ? GL_TRUE : GL_FALSE,
+                     b ? GL_TRUE : GL_FALSE, a ? GL_TRUE : GL_FALSE);
+}
+
+/* Clears the colour buffer whatever the mask says, and leaves the mask
+   as it found it. Every colour clear in this file goes through here. */
+static void GL_l_ClearColour(float r, float g, float b, float a, int more)
+{
+    int masked = gl_state.colorWriteOff[0] || gl_state.colorWriteOff[1]
+                 || gl_state.colorWriteOff[2] || gl_state.colorWriteOff[3];
+
+    if (masked)
+        GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GLFN_glClearColor((GLfloat)r, (GLfloat)g, (GLfloat)b, (GLfloat)a);
+    GLFN_glClear((GLbitfield)(GL_COLOR_BUFFER_BIT | more));
+    if (masked)
+        GLFN_glColorMask(gl_state.colorWriteOff[0] ? GL_FALSE : GL_TRUE,
+                         gl_state.colorWriteOff[1] ? GL_FALSE : GL_TRUE,
+                         gl_state.colorWriteOff[2] ? GL_FALSE : GL_TRUE,
+                         gl_state.colorWriteOff[3] ? GL_FALSE : GL_TRUE);
+}
+
 /* The engine asks for its clear in the same terms Direct3D took: a
    mask of what to clear and a packed colour. */
 void GL_Clear(int which, int color)
@@ -540,11 +588,6 @@ void GL_Clear(int which, int color)
     if (!mask)
         return;
 
-    if (mask & GL_COLOR_BUFFER_BIT)
-        GLFN_glClearColor((GLclampf)((color >> 16) & 0xFF) / 255.0f,
-                          (GLclampf)((color >> 8) & 0xFF) / 255.0f,
-                          (GLclampf)(color & 0xFF) / 255.0f,
-                          (GLclampf)((color >> 24) & 0xFF) / 255.0f);
     if (mask & GL_DEPTH_BUFFER_BIT)
     {
         /* Depth is only written by a clear if writing is on, which is
@@ -555,7 +598,14 @@ void GL_Clear(int which, int color)
     if (mask & GL_STENCIL_BUFFER_BIT)
         GLFN_glClearStencil(0);
 
-    GLFN_glClear(mask);
+    if (mask & GL_COLOR_BUFFER_BIT)
+        GL_l_ClearColour((GLfloat)((color >> 16) & 0xFF) / 255.0f,
+                         (GLfloat)((color >> 8) & 0xFF) / 255.0f,
+                         (GLfloat)(color & 0xFF) / 255.0f,
+                         (GLfloat)((color >> 24) & 0xFF) / 255.0f,
+                         (int)(mask & ~(GLbitfield)GL_COLOR_BUFFER_BIT));
+    else
+        GLFN_glClear(mask);
 
     if ((mask & GL_DEPTH_BUFFER_BIT) && !gl_state.zWrite)
         GLFN_glDepthMask(GL_FALSE);
@@ -1760,7 +1810,7 @@ void GL_TextureInit(int textureID, int flags, char mode)
            pass. Depth testing stays on so the nearest surface is the
            one whose blur amount lands, and depth writing goes off so
            the pass does not disturb the buffer the first pass left. */
-        GLFN_glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+        GL_l_SetColorMask(0, 0, 0, 1);
         GL_SetZWriteEnable(0);
         GLFN_glDisable(GL_BLEND);
         gl_material.alphaMode = 0;
@@ -1838,10 +1888,8 @@ void GL_TextureInit(int textureID, int flags, char mode)
         gl_cullOn = 1;
     }
 
-    GLFN_glColorMask(st.writeRGB ? GL_TRUE : GL_FALSE,
-                     st.writeRGB ? GL_TRUE : GL_FALSE,
-                     st.writeRGB ? GL_TRUE : GL_FALSE,
-                     st.writeAlpha ? GL_TRUE : GL_FALSE);
+    GL_l_SetColorMask(st.writeRGB, st.writeRGB, st.writeRGB,
+                      st.writeAlpha);
 
     GL_l_Blend(&st);
 
@@ -2208,9 +2256,8 @@ static void GL_l_CopyToScreen(GLuint fromFbo)
     {
         /* Only when there are bands: clearing a screen that is about
            to be covered entirely is work for nothing. */
-        GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        GLFN_glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLFN_glClear(GL_COLOR_BUFFER_BIT);
+        GL_l_SetColorMask(1, 1, 1, 1);
+        GL_l_ClearColour(0.0f, 0.0f, 0.0f, 1.0f, 0);
     }
 
     GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, fromFbo);
@@ -2287,8 +2334,7 @@ static int GL_l_b_MakeTarget(tGlTarget* t, int width, int height)
        sampled as how much light reaches a point, so untouched means
        unshadowed. Left at the zero a fresh texture has, every object
        would be in shadow until something drew into it. */
-    GLFN_glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    GLFN_glClear(GL_COLOR_BUFFER_BIT);
+    GL_l_ClearColour(1.0f, 1.0f, 1.0f, 1.0f, 0);
     GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
     return 1;
 }
@@ -2370,8 +2416,7 @@ void GL_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear)
         /* Colour only, and to black: the shadow is drawn in white and
            what it does not cover stays unshadowed through the border.
            The other renderer clears the same one buffer. */
-        GLFN_glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        GLFN_glClear(GL_COLOR_BUFFER_BIT);
+        GL_l_ClearColour(0.0f, 0.0f, 0.0f, 0.0f, 0);
     }
 
     /* The inset border, measured from the bottom because that is where
@@ -3304,9 +3349,8 @@ static int GL_l_b_AeReady(void)
            the edge has to land on something known. Black, so that a
            pass reading past what the one before wrote darkens rather
            than inventing colour. */
-        GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        GLFN_glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        GLFN_glClear(GL_COLOR_BUFFER_BIT);
+        GL_l_SetColorMask(1, 1, 1, 1);
+        GL_l_ClearColour(0.0f, 0.0f, 0.0f, 0.0f, 0);
     }
     GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -3446,9 +3490,9 @@ static void GL_l_AeCopyColour(const tCbd_Bands* bands, int from, int to)
     GLFN_glActiveTexture(GL_TEXTURE0);
     GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
 
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    GL_l_SetColorMask(1, 1, 1, 0);
     GL_l_AeDrawBand(bands->top, bands->bottom);
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GL_l_SetColorMask(1, 1, 1, 1);
 }
 
 /* The exchange the chain does after an effect that wrote the spare:
@@ -3706,9 +3750,9 @@ static int GL_l_b_AeHue(const tCbd_Bands* bands, int from, int spare)
     GLFN_glActiveTexture(GL_TEXTURE0);
     GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
 
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    GL_l_SetColorMask(1, 1, 1, 0);
     GL_l_AeDrawBand(bands->top, bands->bottom);
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GL_l_SetColorMask(1, 1, 1, 1);
     return 1;
 }
 
@@ -3920,9 +3964,9 @@ static int GL_l_b_AeMotionSmooth(const tCbd_Bands* bands, int from, int spare)
     GLFN_glActiveTexture(GL_TEXTURE0);
     GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
 
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    GL_l_SetColorMask(1, 1, 1, 0);
     GL_l_AeDrawBand(bands->top, bands->bottom);
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GL_l_SetColorMask(1, 1, 1, 1);
     return 1;
 }
 
@@ -4153,7 +4197,7 @@ static GLuint GL_l_i_RunAfterEffects(void)
     GLFN_glDisable(GL_DEPTH_TEST);
     GLFN_glDisable(GL_CULL_FACE);
     GLFN_glDisable(GL_BLEND);
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GL_l_SetColorMask(1, 1, 1, 1);
     GLFN_glViewport(0, 0, gl_aeW, gl_aeH);
 
     /* The chain, in the order the other renderer runs it. Each effect
@@ -4606,14 +4650,14 @@ void GL_PrepareWaterRendering(void)
        A8R8G8B8, so red is the second byte down. */
     GLFN_glBindFramebuffer(GL_FRAMEBUFFER, gl_waterFbo);
     GLFN_glViewport(0, 0, GL_WATER_SIZE, GL_WATER_SIZE);
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GL_l_SetColorMask(1, 1, 1, 1);
     GLFN_glDepthMask(GL_TRUE);
-    GLFN_glClearColor((GLfloat)((bottom >> 16) & 0xFF) / 255.0f,
-                      (GLfloat)((bottom >> 8) & 0xFF) / 255.0f,
-                      (GLfloat)(bottom & 0xFF) / 255.0f,
-                      (GLfloat)((bottom >> 24) & 0xFF) / 255.0f);
     GLFN_glClearDepth(1.0);
-    GLFN_glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    GL_l_ClearColour((GLfloat)((bottom >> 16) & 0xFF) / 255.0f,
+                     (GLfloat)((bottom >> 8) & 0xFF) / 255.0f,
+                     (GLfloat)(bottom & 0xFF) / 255.0f,
+                     (GLfloat)((bottom >> 24) & 0xFF) / 255.0f,
+                     GL_DEPTH_BUFFER_BIT);
 
     /* The camera as it stands now, which every mirrored object this
        frame is measured against. Kept here rather than read per
@@ -4744,7 +4788,7 @@ void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
     /* Not blended. The mixing is the shader's, and the result replaces
        the pixel -- see water.frag. */
     GLFN_glDisable(GL_BLEND);
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GL_l_SetColorMask(1, 1, 1, 1);
 
     /* Both sides.
      *
@@ -5176,7 +5220,7 @@ static void GL_l_WaterSmoothPass(const tWsm_Rect* from, GLuint srcTex,
     GLFN_glDepthMask(GL_FALSE);
     GLFN_glDisable(GL_BLEND);
     GLFN_glDisable(GL_CULL_FACE);
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GL_l_SetColorMask(1, 1, 1, 1);
 
     GLFN_glBindVertexArray(gl_wsmVao);
     GLFN_glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -5498,9 +5542,8 @@ void GL_VideoFramePresent(int width, int height, int fit)
     GLFN_glDisable(GL_DEPTH_TEST);
     GLFN_glDisable(GL_CULL_FACE);
     GLFN_glDisable(GL_BLEND);
-    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    GLFN_glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    GLFN_glClear(GL_COLOR_BUFFER_BIT);
+    GL_l_SetColorMask(1, 1, 1, 1);
+    GL_l_ClearColour(0.0f, 0.0f, 0.0f, 0.0f, 0);
 
     GLFN_glUseProgram(gl_videoProgram.program);
     if (gl_videoViewport >= 0)
