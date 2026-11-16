@@ -16,6 +16,7 @@
 #include "../aefade.h"
 #include "../aehue.h"
 #include "../aemotion.h"
+#include "../aezoom2.h"
 #include "../water.h"
 #include "../fog.h"
 #include "../textures.h"
@@ -3050,6 +3051,12 @@ static GLint      gl_aeFadeShare = -1;
 static tGlProgram gl_aeHueProgram;
 static GLint      gl_aeHueSrc = -1;
 static GLint      gl_aeHueSubtract = -1;
+static tGlProgram gl_aeZoom2Program;
+static GLint      gl_aeZoom2Src = -1;
+static GLint      gl_aeZoom2TapsA = -1;
+static GLint      gl_aeZoom2TapsB = -1;
+static GLint      gl_aeZoom2Count = -1;
+static GLint      gl_aeZoom2Weight = -1;
 static tGlProgram gl_aeMotionProgram;
 static GLint      gl_aeMotionSrc = -1;
 static GLint      gl_aeMotionTapU = -1;
@@ -3105,6 +3112,7 @@ static void GL_l_ForgetAe(void)
         GL_ProgramFree(&gl_aeFadeProgram);
         GL_ProgramFree(&gl_aeHueProgram);
         GL_ProgramFree(&gl_aeMotionProgram);
+        GL_ProgramFree(&gl_aeZoom2Program);
         GL_ProgramFree(&gl_aeZoomProgram);
         for (i = 0; i < GL_AE_TARGETS; i++)
         {
@@ -3146,6 +3154,11 @@ static void GL_l_ForgetAe(void)
     gl_aeMotionTapU = -1;
     gl_aeMotionTapV = -1;
     gl_aeMotionWeight = -1;
+    gl_aeZoom2Src = -1;
+    gl_aeZoom2TapsA = -1;
+    gl_aeZoom2TapsB = -1;
+    gl_aeZoom2Count = -1;
+    gl_aeZoom2Weight = -1;
     gl_aeZoomSrc = -1;
     gl_aeZoomBandLo = -1;
     gl_aeZoomBandHi = -1;
@@ -3209,9 +3222,11 @@ static int GL_l_b_AeReady(void)
         || !GL_b_ProgramLoad(&gl_aeHueProgram, "aepass.vert", "aehue.frag")
         || !GL_b_ProgramLoad(&gl_aeMotionProgram, "aepass.vert",
                              "aemotion.frag")
+        || !GL_b_ProgramLoad(&gl_aeZoom2Program, "aepass.vert",
+                             "aezoom2.frag")
         || !GL_b_ProgramLoad(&gl_aeZoomProgram, "aepass.vert", "aezoom.frag"))
     {
-        /* Whichever of the six got as far as loading is freed with
+        /* Whichever of the seven got as far as loading is freed with
            the rest; freeing one that did not does nothing. */
         GL_ProgramFree(&gl_aeBlurProgram);
         GL_ProgramFree(&gl_aeMixProgram);
@@ -3221,6 +3236,7 @@ static int GL_l_b_AeReady(void)
         GL_ProgramFree(&gl_aeFadeProgram);
         GL_ProgramFree(&gl_aeHueProgram);
         GL_ProgramFree(&gl_aeMotionProgram);
+        GL_ProgramFree(&gl_aeZoom2Program);
         GL_ProgramFree(&gl_aeZoomProgram);
         return 0;
     }
@@ -3250,6 +3266,11 @@ static int GL_l_b_AeReady(void)
     gl_aeMotionTapU = GL_i_ProgramUniform(&gl_aeMotionProgram, "uTapU");
     gl_aeMotionTapV = GL_i_ProgramUniform(&gl_aeMotionProgram, "uTapV");
     gl_aeMotionWeight = GL_i_ProgramUniform(&gl_aeMotionProgram, "uWeight");
+    gl_aeZoom2Src = GL_i_ProgramUniform(&gl_aeZoom2Program, "uSrc");
+    gl_aeZoom2TapsA = GL_i_ProgramUniform(&gl_aeZoom2Program, "uTapsA");
+    gl_aeZoom2TapsB = GL_i_ProgramUniform(&gl_aeZoom2Program, "uTapsB");
+    gl_aeZoom2Count = GL_i_ProgramUniform(&gl_aeZoom2Program, "uTapCount");
+    gl_aeZoom2Weight = GL_i_ProgramUniform(&gl_aeZoom2Program, "uWeight");
     gl_aeZoomSrc = GL_i_ProgramUniform(&gl_aeZoomProgram, "uSrc");
     gl_aeZoomBandLo = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandLo");
     gl_aeZoomBandHi = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandHi");
@@ -4028,6 +4049,79 @@ static int GL_l_b_AeScreenBlur(const tCbd_Bands* bands, int from, int spare)
     return 1;
 }
 
+/* The second zoom smooth: eight samples of the frame, each turned
+ * about the middle of the picture, summed.
+ *
+ * All of it is aezoom2.c's, and this is the thinnest renderer-side
+ * piece of any effect here -- eight transforms, a count and a weight,
+ * handed to one draw. Three notes.
+ *
+ * **The eight transforms go over as matrices, not angles.** Rebuilding
+ * them in the shader from an angle would put the effect's one real
+ * finding -- that the transform is written as a rotation and is not
+ * one -- in a place no differential can reach. They are computed where
+ * the other renderer's copy is compared against them.
+ *
+ * **Two four-by-four uniforms hold them.** Eight taps of four entries
+ * is thirty-two floats, which is exactly two of those, one tap per
+ * column. This renderer has no vector-array uniform entry point and
+ * needs none for it.
+ *
+ * **The other renderer takes all eight in one draw only when the card
+ * has eight stages, which no card has.** It splits them across stages
+ * and draws instead, and the split changes the angles' last bits, so
+ * the split is asked for rather than assumed -- see AZ2_i_Stages. Four
+ * is what this renderer reports, which is what a modern card reports
+ * there too.
+ */
+static int GL_l_b_AeZoomSmooth2(const tCbd_Bands* bands, int from,
+                                int spare)
+{
+    float angles[AZ2_TAPS];
+    float taps[2][16];
+    int   stages;
+    int   samples;
+    int   n;
+    int   i;
+
+    if (!AZ2_b_On((unsigned int)PC_AE_MASTER, zoomSmoothFactor2))
+        return 0;
+
+    stages = AZ2_i_Stages(4, ENG_ifSingleStreamThenEq2Otherwise8);
+    samples = AZ2_i_Samples(stages);
+    n = AZ2_i_SampledAngles(angles, AZ2_TAPS, zoomSmoothFactor2, stages);
+    if (n <= 0)
+        return 0;
+
+    /* One tap to a column, four to a matrix, and the columns past the
+       count left at nothing -- the shader stops at the count, so what
+       is in them does not reach the picture. */
+    for (i = 0; i < 32; i++)
+        taps[i / 16][i % 16] = 0.0f;
+    for (i = 0; i < n && i < AZ2_TAPS; i++)
+        AZ2_Tap(&taps[i / 4][(i % 4) * 4], angles[i]);
+
+    GLFN_glUseProgram(gl_aeZoom2Program.program);
+    if (gl_aeZoom2Src >= 0)
+        GLFN_glUniform1i(gl_aeZoom2Src, 0);
+    if (gl_aeZoom2TapsA >= 0)
+        GLFN_glUniformMatrix4fv(gl_aeZoom2TapsA, 1, GL_FALSE, taps[0]);
+    if (gl_aeZoom2TapsB >= 0)
+        GLFN_glUniformMatrix4fv(gl_aeZoom2TapsB, 1, GL_FALSE, taps[1]);
+    if (gl_aeZoom2Count >= 0)
+        GLFN_glUniform1i(gl_aeZoom2Count, n);
+    if (gl_aeZoom2Weight >= 0)
+        GLFN_glUniform1f(gl_aeZoom2Weight, AZ2_f_Weight(samples));
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(spare));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
+
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    GL_l_AeDrawBand(bands->top, bands->bottom);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    return 1;
+}
+
 static int GL_l_i_AeColor(const tCbd_Bands* bands, int from)
 {
     tAec_Source   src;
@@ -4096,6 +4190,8 @@ static int GL_l_b_AeWanted(void)
        not smear on: that is the frame it records where the camera is,
        and without it the movement accumulates. */
     if (AMO_b_On((unsigned int)PC_AE_MASTER))
+        return 1;
+    if (AZ2_b_On((unsigned int)PC_AE_MASTER, zoomSmoothFactor2))
         return 1;
 
     src.aeMaster = (unsigned int)PC_AE_MASTER;
@@ -4203,6 +4299,12 @@ static GLuint GL_l_i_RunAfterEffects(void)
     if (GL_l_b_AeZoomSmooth(&bands, cur, spr))
         GL_l_AeExchange(&cur, &spr);
     if (GL_l_b_AeScreenBlur(&bands, cur, spr))
+        GL_l_AeExchange(&cur, &spr);
+    /* The last of the chain before the colour pass. The other renderer
+       takes the spare as the frame here without putting the old frame
+       back in the spare -- it is the last effect, so nothing looks --
+       and exchanging does the same thing and leaves the pair tidy. */
+    if (GL_l_b_AeZoomSmooth2(&bands, cur, spr))
         GL_l_AeExchange(&cur, &spr);
     /* The colour effects are last and nothing reads a target after
        them, so they keep their own simpler arrangement: each writes

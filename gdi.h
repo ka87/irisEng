@@ -381,12 +381,19 @@ float colorBalanceParam1;
    effects built from them are in aeframe.h.
 
    The last one is the odd one: it scales how far the blur *reaches*
-   rather than how much of it is mixed in, which is why a small value
-   there does nothing visible rather than a little. */
+   rather than how much of it is mixed in, so a value under a pixel
+   spreads nothing -- and still costs brightness, because the taps are
+   interpolated. aeframe.h has what that comes to. */
 float motionBlurFactor;
 float remenanceFactor;
 float zoomSmoothFactor;
 float blurFactor;
+/* And the second zoom smooth's, which is a fifth of that family rather
+   than a member of it: the effect it scales is a *rotational* smear
+   about the middle of the picture, not a sum of scaled samples, and it
+   is built in aezoom2.h. Neutral is nought here too, and a negative
+   value is legal -- it turns the samples the other way. */
+float zoomSmoothFactor2;
 /* The texture-coordinate transform the material path computes, one per
    stage, with stage nought the one the world's geometry uses. Declared
    here because both renderers read it and neither owns it: it is

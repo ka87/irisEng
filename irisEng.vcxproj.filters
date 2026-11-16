@@ -281,6 +281,9 @@
     <ClCompile Include="aemotion.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="aezoom2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="watersmooth.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -917,6 +920,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="aemotion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="aezoom2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="watersmooth.h">

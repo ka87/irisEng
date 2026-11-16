@@ -7,6 +7,7 @@
 #include "../aehue.h"
 #include "../aemotion.h"
 #include "../aeframe.h"
+#include "../aezoom2.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -1890,13 +1891,14 @@ void D3D_ZoomSmooth(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom)
 
 void D3D_ZoomSmooth2(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom)
 {
-    int clampedStages;
     int lastStage;
     int disableStage;
     int i;
-    double stagesD;
     int pass;
     int tapColour;
+    int tapWeight;
+    float tapAngles[AZ2_TAPS * AZ2_ANGLE_SLOTS];
+    int tapAngleCount;
     long double cos0;
     long double sin0;
     long double cos1;
@@ -1919,35 +1921,20 @@ void D3D_ZoomSmooth2(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom
     float top480;
     float bottom480;
     int stages;
-    float angle;
-    float angleStep;
-    float angleAdvance;
     int passes;
-    float angleStep2;
     float height;
     float width;
-    float angleStep3;
     double sin2;
     double sin3;
     double cos3;
     tVertex_type_444 quad[4];
 
-    clampedStages = gMaxSimultaneousTextures;
-    if (gMaxSimultaneousTextures >= 4)
-        clampedStages = 4;
-    if (clampedStages >= ENG_ifSingleStreamThenEq2Otherwise8)
-    {
-        stages = ENG_ifSingleStreamThenEq2Otherwise8;
-    }
-    else if (gMaxSimultaneousTextures >= 4)
-    {
-        stages = 4;
-    }
-    else
-    {
-        stages = gMaxSimultaneousTextures;
-    }
-    passes = 8 / stages;
+    /* The split between texture stages and draws, and the pass count
+       that follows from it -- both from aezoom2.c, which the other
+       renderer takes them from too. */
+    stages = AZ2_i_Stages(gMaxSimultaneousTextures,
+                          ENG_ifSingleStreamThenEq2Otherwise8);
+    passes = AZ2_i_Passes(stages);
     D3D_SetRenderTargetFromTexture(dest);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE);
@@ -1990,18 +1977,28 @@ void D3D_ZoomSmooth2(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom
     height = (float)D3DRenderParams.presentParams.BackBufferHeight;
     bottom480 = (float)(bandsVal2 * 480.0);
     top480 = (float)(bandsVal1 * 480.0);
-    angleStep = (float)(zoom * 0.039999999);
-    stagesD = (double)stages;
     pass = 0;
-    angle = (float)((double)passes * stagesD * angleStep * -0.5);
-    samples = stages * (8 / stages);
-    tapColour = ((((((256 / samples - 1) << 8) | (256 / samples - 1)) << 16) | ((256 / samples - 1) << 8) | (256 / samples - 1)) << 24) | ((((256 / samples - 1) << 8) | (256 / samples - 1)) << 16) | ((256 / samples - 1) << 8) | (256 / samples - 1);
+    samples = AZ2_i_Samples(stages);
+    /* Every sample carries the same weight and it travels as a colour,
+       so the one byte goes into all four channels. The byte is the
+       weight in 255ths, which is what AZ2_f_Weight gives. */
+    tapWeight = (int)(AZ2_f_Weight(samples) * 255.0f + 0.5f);
+    tapColour = (tapWeight << 24) | (tapWeight << 16) | (tapWeight << 8)
+                | tapWeight;
+    /* The whole walk of angles at once -- four to a draw, including the
+       slots a draw with fewer stages computes and never samples. Taken
+       from aezoom2.c rather than recomputed, because the walk is a
+       float re-accumulated once per draw and the last bits of these
+       angles depend on the split. */
+    tapAngleCount = AZ2_i_Angles(tapAngles, AZ2_TAPS * AZ2_ANGLE_SLOTS,
+                                 zoom, stages);
     if (passes > 0)
     {
-        angleAdvance = (float)(stagesD * angleStep);
         for (pass = 0; pass < passes; pass++)
         {
-            cos0 = cos(angle);
+            if (pass * AZ2_ANGLE_SLOTS + 3 >= tapAngleCount)
+                break;
+            cos0 = cos(tapAngles[pass * AZ2_ANGLE_SLOTS + 0]);
             quad[0].v1.y = (float)(bottom480 - 0.5);
             quad[0].uvSet2.v = bottom480;
             quad[0].uvSet1.v = bottom480;
@@ -2042,16 +2039,14 @@ void D3D_ZoomSmooth2(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom
             quad[3].uvSet3.u = 640.0;
             quad[3].uvSet4.u = 640.0;
             quad[3].uvSet4.v = top480;
-            sin0 = sin(angle);
-            angle1 = angle + angleStep;
+            sin0 = sin(tapAngles[pass * AZ2_ANGLE_SLOTS + 0]);
+            angle1 = tapAngles[pass * AZ2_ANGLE_SLOTS + 1];
             cos1 = cos(angle1);
             sin1 = sin(angle1);
-            angleStep2 = angleStep + angleStep;
-            angle2 = angleStep2 + angle;
+            angle2 = tapAngles[pass * AZ2_ANGLE_SLOTS + 2];
             cos2 = cos(angle2);
             sin2 = sin(angle2);
-            angleStep3 = (float)(angleStep * 3.0);
-            angle3 = angleStep3 + angle;
+            angle3 = tapAngles[pass * AZ2_ANGLE_SLOTS + 3];
             cos3 = cos(angle3);
             sin3 = sin(angle3);
             for (i = 0; i < 4; i++)
@@ -2112,7 +2107,6 @@ void D3D_ZoomSmooth2(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom
                 AE_SetRenderState(&renderStateConfig.d3dAlphaBlendEnable, D3DRS_ALPHABLENDENABLE, FALSE);
             }
             D3D_DrawASurface(quad, D3DFVF_TEX4 | D3DFVF_DIFFUSE | D3DFVF_XYZRHW);
-            angle = angleAdvance + angle;
         }
     }
     for (i = 0; i < stages; i++)

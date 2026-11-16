@@ -30,6 +30,7 @@
    win/wingl.c brings these in too, and is included further down. */
 #include "../win/glcore.h"
 #include "../win/glshader.h"
+#include "../aezoom2.h"
 #include "../gdi.h"
 
 static long checks;
@@ -1043,6 +1044,13 @@ static int wg_ovlDrawn;
 /* The cutscene letterbox's engine state, which cinebands.c reads.
    CIN_Bands is the engine's switch; the game starts it on. */
 int   CIN_Bands = 1;
+
+/* How many texture stages the engine asks the effects to use -- two
+   for a single-stream card, eight otherwise. The second zoom smooth
+   divides its eight samples by it, and that division changes the
+   angles' last bits, so a case can move this and see the walk change.
+   Eight is what the engine starts it at. */
+int   ENG_ifSingleStreamThenEq2Otherwise8 = 8;
 int   tweak_ae_nobands = 0;
 float D3D_gf_CutsceneBand = 0.10416666f;
 
@@ -5522,6 +5530,336 @@ static void caseAeFadeTimer(void)
     okEq(PC_AE_MASTER, 0x40000, "and never finishes");
 }
 
+/* ------------------------------------------- the second zoom smooth */
+
+/* What the eight transforms should be, computed from the module the
+   pass itself uses -- so this is not a second implementation of the
+   arithmetic, only a second route to it. The point of asserting it at
+   all is the *route*: that the matrices which reach the shader are the
+   ones aezoom2.c built, one tap to a column, and not a rotation the
+   renderer rebuilt from an angle on the way. */
+static int WG_i_Zoom2Want(float zoom, int stages, float* out32)
+{
+    float angles[AZ2_TAPS];
+    int   n;
+    int   i;
+
+    for (i = 0; i < 32; i++)
+        out32[i] = 0.0f;
+    n = AZ2_i_SampledAngles(angles, AZ2_TAPS, zoom, stages);
+    for (i = 0; i < n && i < AZ2_TAPS; i++)
+        AZ2_Tap(&out32[(i / 4) * 16 + (i % 4) * 4], angles[i]);
+    return n;
+}
+
+static void caseAeZoom2Gates(void)
+{
+    printf("-- what turns the second zoom smooth on\n");
+
+    /* The bit's value, stated once here as the literal a script sets.
+       Everything below drives the effect through AZ2_BIT, so without
+       this line a change of the define would move the whole case along
+       with it and nothing would notice. */
+    okEq((long)AZ2_BIT, 0x8000L, "it is the bit the scripts set");
+
+    /* The bit without a parameter, which is the state a script leaves
+       behind when it stops the effect by setting the parameter rather
+       than clearing the bit. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AZ2_BIT;
+    zoomSmoothFactor2 = 0.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glUniformMatrix4fv"), 0,
+         "the bit alone draws nothing");
+
+    /* A parameter without the bit. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0;
+    zoomSmoothFactor2 = 0.75f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glUniformMatrix4fv"), 0,
+         "the parameter alone draws nothing");
+
+    /* And a **negative** parameter with the bit, which is legal and
+       turns the samples the other way -- the gate is a comparison
+       against nought and not a floor, so this must run. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AZ2_BIT;
+    zoomSmoothFactor2 = -0.75f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glUniformMatrix4fv"), 2,
+         "a negative parameter runs it");
+    {
+        float want[32];
+        int   bad = 0;
+        int   i;
+
+        WG_i_Zoom2Want(-0.75f, AZ2_i_Stages(4, 8), want);
+        for (i = 0; i < 16; i++)
+            if (wg_matrixData[0][i] != want[i])
+                bad++;
+        okEq(bad, 0, "and turns them the other way");
+    }
+    zoomSmoothFactor2 = 0.0f;
+}
+
+static void caseAeZoom2Taps(void)
+{
+    float want[32];
+    int   n;
+    int   bad = 0;
+    int   i;
+
+    printf("-- eight transforms reach the shader, one to a column\n");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AZ2_BIT;
+    zoomSmoothFactor2 = 0.75f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    n = WG_i_Zoom2Want(0.75f, AZ2_i_Stages(4, 8), want);
+    okEq(n, AZ2_TAPS, "eight of them with four stages");
+    okEq(WG_i_Count("glUniformMatrix4fv"), 2, "two matrices carry them");
+    okEq(wg_matrixNum, 2, "and both were recorded");
+
+    for (i = 0; i < 16; i++)
+        if (wg_matrixData[0][i] != want[i])
+            bad++;
+    okEq(bad, 0, "the first four taps are the module's");
+    bad = 0;
+    for (i = 0; i < 16; i++)
+        if (wg_matrixData[1][i] != want[16 + i])
+            bad++;
+    okEq(bad, 0, "and so are the last four");
+
+    /* Neither matrix is uploaded transposed: a column is a tap, and
+       transposing would mix the four taps into each other -- which
+       would still draw, and would draw nonsense. */
+    okEq(WG_l_Arg("glUniformMatrix4fv", 0, 2), (long)GL_FALSE,
+         "the first is not transposed");
+    okEq(WG_l_Arg("glUniformMatrix4fv", 1, 2), (long)GL_FALSE,
+         "nor the second");
+
+    /* The count and the weight. Eight samples, so the weight is
+       31/255 -- not an eighth, which is the deliberate undershoot the
+       module records. */
+    ok(WG_i_Count("glUniform1f.scaled") >= 1, "a weight was set");
+    okEq(WG_l_Arg("glUniform1f.scaled", 0, 1),
+         (long)(AZ2_f_Weight(AZ2_TAPS) * 1000000.0f + 0.5f),
+         "and it is the module's weight");
+    ok(AZ2_f_Weight(AZ2_TAPS) < 0.125f, "which is under an eighth");
+
+    /* Not a rotation: the determinant of the first tap is cos squared,
+       and the test asks the module for it rather than assuming one. */
+    {
+        float angles[AZ2_TAPS];
+        double det;
+
+        AZ2_i_SampledAngles(angles, AZ2_TAPS, 0.75f, AZ2_i_Stages(4, 8));
+        det = (double)wg_matrixData[0][0] * (double)wg_matrixData[0][3]
+              - (double)wg_matrixData[0][1] * (double)wg_matrixData[0][2];
+        /* The aspect conjugation cancels out of a determinant, and the
+           vertical flip negates both off-diagonal terms, so what is
+           left is the bare determinant of the written map. */
+        ok(fabs(det - (double)AZ2_f_TapScale(angles[0])) < 1e-5,
+           "the first tap shrinks by cos squared");
+        ok(fabs(det - 1.0) > 1e-7, "so it is not a rotation");
+    }
+    zoomSmoothFactor2 = 0.0f;
+}
+
+static void caseAeZoom2Draw(void)
+{
+    printf("-- it draws once, into the band, with the alpha kept\n");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 1;
+    tweak_ae_nobands = 0;
+    D3D_gf_CutsceneBand = 0.25f;
+    PC_AE_MASTER = (int)AZ2_BIT;
+    zoomSmoothFactor2 = 0.75f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    /* One draw for the whole effect -- all eight samples are summed in
+       the shader, where the other renderer needs two or four draws
+       because it has four texture stages to put them through. */
+    okEq(WG_i_Count("glDrawArrays"), 1, "one draw");
+
+    /* And the quad is the **band's** and not the picture's. The fade
+       is the one effect here that spans the target; this one draws
+       between the letterbox bars, as the other renderer's does, and a
+       full-picture quad would smear the bars into the picture. */
+    {
+        tCbd_Bands bands;
+
+        CBD_Decide(&bands);
+        okEq(WG_l_Arg("glBufferData", 0, 4),
+             wg_l_Scaled(1.0f - 2.0f * bands.bottom),
+             "the quad starts at the bottom of the band");
+        okEq(WG_l_Arg("glBufferData", 0, 6),
+             wg_l_Scaled(1.0f - 2.0f * bands.top),
+             "and ends at the top of it");
+        /* With the band really inside the picture, or the two above
+           would hold for a full-picture quad too. */
+        ok(wg_l_Scaled(1.0f - 2.0f * bands.bottom) != wg_l_Scaled(-1.0f)
+           && wg_l_Scaled(1.0f - 2.0f * bands.top) != wg_l_Scaled(1.0f),
+           "and the band is not the whole picture");
+    }
+
+    /* The alpha write is masked off for it. The picture's alpha is the
+       depth blur's mix and the colour step's business; a smear of it
+       would mix the two effects together. */
+    {
+        int draw = wg_i_CallAt("glDrawArrays", 0);
+        int i;
+        long a = -1;
+
+        for (i = 0; i < draw; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0)
+                a = (long)wg_calls[i].arg[3];
+        okEq(a, (long)GL_FALSE, "with the alpha write off");
+    }
+    /* And put back afterwards, asserted before the colour step's own
+       draw rather than by searching the frame for anyone restoring
+       it -- the colour step runs after this and would be wrong with a
+       narrowed mask. */
+    {
+        int draw = wg_i_CallAt("glDrawArrays", 0);
+        int i;
+        long a = -1;
+
+        for (i = draw + 1; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0)
+            {
+                a = (long)wg_calls[i].arg[3];
+                break;
+            }
+        okEq(a, (long)GL_TRUE, "and put back straight after");
+    }
+    zoomSmoothFactor2 = 0.0f;
+    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_Bands = 0;
+}
+
+static void caseAeZoom2Order(void)
+{
+    printf("-- the second zoom smooth runs after the screen blur\n");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AZ2_BIT | 0x20;    /* and the screen blur */
+    blurFactor = 25.0f;
+    zoomSmoothFactor2 = 0.75f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    okEq(WG_i_Count("glDrawArrays"), AEF_SCREENBLUR_PASSES + 1,
+         "eight draws for the two effects");
+    {
+        /* Which program was current at the *last* draw says which
+           effect went last. */
+        int last = wg_i_CallAt("glDrawArrays", AEF_SCREENBLUR_PASSES);
+        int i;
+        long prog = -1;
+
+        for (i = 0; i < last; i++)
+            if (strcmp(wg_calls[i].name, "glUseProgram") == 0)
+                prog = (long)wg_calls[i].arg[0];
+        okEq(prog, (long)gl_aeZoom2Program.program,
+             "and the zoom smooth is the last of them");
+    }
+    blurFactor = 0.0f;
+    zoomSmoothFactor2 = 0.0f;
+}
+
+static void caseAeZoom2Split(void)
+{
+    printf("-- the stage split decides the angles, not just the"
+           " drawing\n");
+
+    /* The engine's own setting chooses the split, and the split
+       changes the **last bits** of the angles: the angle is a float
+       advanced once per draw, so four stages in two draws and two
+       stages in four draws round the same eight angles differently.
+       Most parameters give two bit-identical walks; 0.75 is one that
+       separates them, at the fourth tap.
+
+       Nothing but this case drives the setting away from eight, and
+       until it did, two mutations of the split survived the whole
+       suite. */
+    {
+        float want2[32];
+        float want4[32];
+        int   bad = 0;
+        int   i;
+
+        reset();
+        wg_SceneReady();
+        CIN_Bands = 0;
+        PC_AE_MASTER = (int)AZ2_BIT;
+        ENG_ifSingleStreamThenEq2Otherwise8 = 2;
+        zoomSmoothFactor2 = 0.75f;
+        wg_callLen = 0;
+        GL_Flip();
+
+        okEq(AZ2_i_Stages(4, 2), 2, "two stages were asked for");
+        WG_i_Zoom2Want(0.75f, 2, want2);
+        WG_i_Zoom2Want(0.75f, 4, want4);
+
+        /* The fourth tap is where the two walks part. */
+        for (i = 12; i < 16; i++)
+            if (wg_matrixData[0][i] != want2[i])
+                bad++;
+        okEq(bad, 0, "the fourth tap is the two-stage walk's");
+        bad = 0;
+        for (i = 12; i < 16; i++)
+            if (want2[i] != want4[i])
+                bad++;
+        ok(bad > 0, "which is not the four-stage walk's");
+    }
+
+    /* Three stages is the one count that does not divide eight: it
+       takes six samples rather than eight, and the weight goes up with
+       the share. */
+    {
+        reset();
+        wg_SceneReady();
+        CIN_Bands = 0;
+        PC_AE_MASTER = (int)AZ2_BIT;
+        ENG_ifSingleStreamThenEq2Otherwise8 = 3;
+        zoomSmoothFactor2 = 2.0f;
+        wg_callLen = 0;
+        GL_Flip();
+
+        okEq(AZ2_i_Stages(4, 3), 3, "three stages were asked for");
+        okEq(AZ2_i_Samples(3), 6, "which is six samples");
+        okEq(WG_l_Arg("glUniform1i", 1, 1), 6,
+             "and six is the count the shader is given");
+        okEq(WG_l_Arg("glUniform1f.scaled", 0, 1),
+             (long)(AZ2_f_Weight(6) * 1000000.0f + 0.5f),
+             "with the weight of six and not of eight");
+        ok(AZ2_f_Weight(6) > AZ2_f_Weight(8),
+           "which is the larger share");
+    }
+    ENG_ifSingleStreamThenEq2Otherwise8 = 8;
+    zoomSmoothFactor2 = 0.0f;
+}
+
 static void caseAeFrameGates(void)
 {
     printf("-- what each of the three needs before it runs\n");
@@ -6854,6 +7192,11 @@ int main(void)
     caseAeFadeWholePicture();
     caseAeFadeOrder();
     caseAeFadeTimer();
+    caseAeZoom2Gates();
+    caseAeZoom2Taps();
+    caseAeZoom2Draw();
+    caseAeZoom2Order();
+    caseAeZoom2Split();
     caseAeFrameGates();
     caseFlipDrawsOverlay();
     caseGeometry();
