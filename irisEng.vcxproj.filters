@@ -182,6 +182,9 @@
     <ClCompile Include="aecolor.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="aeframe.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="datapath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -842,6 +845,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="aecolor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="aeframe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="datapath.h">

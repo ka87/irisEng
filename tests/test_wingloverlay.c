@@ -625,6 +625,18 @@ static GLboolean GL_APIENTRY MK_glUnmapBuffer(GLenum target)
     return GL_TRUE;
 }
 
+static void GL_APIENTRY MK_glUniform2f(GLint loc, GLfloat a, GLfloat b)
+{
+    WG_Record("glUniform2f", 3, (long long)loc,
+              (long long)(a * 255.0f + 0.5f),
+              (long long)(b * 255.0f + 0.5f));
+    /* And at a million, for the zoom's crop step, which is a small
+       fraction of the texture and would record as nought as a byte. */
+    WG_Record("glUniform2f.scaled", 3, (long long)loc,
+              (long long)(a * 1000000.0f + (a < 0.0f ? -0.5f : 0.5f)),
+              (long long)(b * 1000000.0f + (b < 0.0f ? -0.5f : 0.5f)));
+}
+
 static void GL_APIENTRY MK_glUniform3f(GLint loc, GLfloat a, GLfloat b,
                                       GLfloat c)
 {
@@ -772,6 +784,7 @@ static void WG_AimThePointers(void)
     GLFN_glCullFace = MK_glCullFace;
     GLFN_glFrontFace = MK_glFrontFace;
     GLFN_glDisableVertexAttribArray = MK_glDisableVertexAttribArray;
+    GLFN_glUniform2f = MK_glUniform2f;
     GLFN_glUniform3f = MK_glUniform3f;
     GLFN_glReadPixels = MK_glReadPixels;
     GLFN_glFenceSync = MK_glFenceSync;
@@ -3376,8 +3389,9 @@ static void caseAeDepthBlurChain(void)
     GL_Flip();
 
     n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
-    okEq(WG_i_Count("glDrawArrays"), n + 1,
-         "one draw per blur pass, and one more for the mix");
+    okEq(WG_i_Count("glDrawArrays"), n + 2,
+         "one draw per blur pass, one for the mix, and one to copy the"
+         " mix back over the frame");
 
     /* The state a pass needs, switched off before the first of them.
      *
@@ -3445,15 +3459,35 @@ static void caseAeDepthBlurChain(void)
     ok(mixFbo != (long)GL_l_i_AeSlotFbo(DPB_i_BlurResultSlot()),
        "nor the blurred copy it read");
 
-    /* The copy to the screen reads where the mix wrote, not the scene
-       target. Nothing in the picture says which: the scene target
-       still holds a perfectly good unblurred frame, so copying that
-       instead gives a frame with the effect quietly missing. */
+    /* And then the mix is copied back over the frame, colour only --
+       so the frame keeps the alpha the world gave it, which is what
+       the renderer this follows achieves by narrowing its write. */
+    {
+        int copyAt = wg_i_CallAt("glDrawArrays", n + 1);
+        int i;
+        int masked = 0;
+
+        ok(copyAt >= 0, "the copy back was drawn");
+        okEq(wg_l_FboBefore(GL_FRAMEBUFFER, copyAt), (long)gl_sceneFbo,
+             "into the frame");
+        okEq(wg_l_TextureBefore(GL_TEXTURE0, copyAt), 
+             (long)GL_l_i_AeSlotTexture(GL_AE_SLOT_MIXTMP),
+             "from where the mix wrote");
+        for (i = 0; i < copyAt; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0
+                && wg_calls[i].arg[3] == GL_FALSE)
+                masked = 1;
+        ok(masked, "with the alpha write masked off");
+    }
+
+    /* The copy to the screen then reads the frame, which is where the
+       chain left it. */
     blitAt = wg_i_CallAt("glBlitFramebuffer", 0);
     ok(blitAt >= 0, "the frame was copied to the screen");
     if (blitAt >= 0)
-        okEq(wg_l_FboBefore(GL_READ_FRAMEBUFFER, blitAt), mixFbo,
-             "and copied from where the mix wrote");
+        okEq(wg_l_FboBefore(GL_READ_FRAMEBUFFER, blitAt), (long)gl_sceneFbo,
+             "from the frame, where the chain left it");
+    (void)mixFbo;
 
     PC_AE_MASTER = 0;
 }
@@ -3762,6 +3796,9 @@ static void caseAeColorChain(void)
     PC_AE_MASTER = 0;
     unkAEFunc2Param = 0.5f;
     colorBalanceParam1 = 0.5f;
+    motionBlurFactor = 0.0f;
+    remenanceFactor = 0.0f;
+    zoomSmoothFactor = 0.0f;
 }
 
 static void caseAeColorBand(void)
@@ -3854,6 +3891,513 @@ static void caseAeColorGate(void)
     unkAEFunc2Param = 0.5f;
 }
 
+
+/* ------------------------- the effects that sum whole frames: calls
+
+   The real-driver harness reads the pictures these produce. What it
+   cannot see is which target each one writes, and for the motion blur
+   that is the whole effect: it reads what it wrote last frame, so the
+   target has to be the same target next time round and has to be one
+   nothing else has drawn into since.
+ */
+
+/* How many draws went into a framebuffer this frame. */
+static int wg_i_DrawsInto(long fbo)
+{
+    int i;
+    int n = 0;
+
+    for (i = 0; i < wg_callLen; i++)
+        if (strcmp(wg_calls[i].name, "glDrawArrays") == 0
+            && wg_l_FboBefore(GL_FRAMEBUFFER, i) == fbo)
+            n++;
+    return n;
+}
+
+/* The framebuffer the nth draw went into. */
+static long wg_l_DrawTarget(int nth)
+{
+    int at = wg_i_CallAt("glDrawArrays", nth);
+
+    return at < 0 ? -1 : wg_l_FboBefore(GL_FRAMEBUFFER, at);
+}
+
+static void caseAeMotionBlurHistory(void)
+{
+    long alone;
+
+    printf("-- the motion blur writes the chain's spare, wherever it is\n");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x10;
+    motionBlurFactor = 0.5f;
+
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "one draw, it being the only effect");
+    alone = wg_l_DrawTarget(0);
+    okEq(alone, (long)GL_l_i_AeSlotFbo(GL_AE_SLOT_SPARE),
+         "and it goes to the chain's spare");
+    ok(alone != (long)gl_sceneFbo, "which is not the frame it read");
+
+    /* The same target next frame, and the frame after. That is what
+       makes the history readable: what it finds there is its own
+       output from last time round. A target chosen by anything that
+       varied frame to frame would read a stranger's leftovers and the
+       picture would still look like a motion blur. */
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(wg_l_DrawTarget(0), alone, "the second frame writes the same one");
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(wg_l_DrawTarget(0), alone, "and so does the third");
+    okEq(wg_i_DrawsInto(alone), 1,
+         "with nothing else drawing into it, so what it read was its own");
+
+    /* It blends, and it is the only effect that does -- so it turns
+       blending on for itself and off again rather than leaving it on
+       for whatever runs next. */
+    {
+        int draw = wg_i_CallAt("glDrawArrays", 0);
+        int i;
+        int onBefore = 0;
+        int offAfter = 0;
+
+        for (i = 0; i < draw; i++)
+            if (strcmp(wg_calls[i].name, "glEnable") == 0
+                && wg_calls[i].arg[0] == GL_BLEND)
+                onBefore = 1;
+        for (i = draw + 1; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glDisable") == 0
+                && wg_calls[i].arg[0] == GL_BLEND)
+                offAfter = 1;
+        ok(onBefore, "blending is on for its draw");
+        ok(offAfter, "and off again after it");
+        ok(WG_i_Count("glBlendFunc") >= 1, "with a blend function set");
+    }
+
+    /* And now the case that is deliberately broken, because the
+       renderer this follows breaks it.
+     *
+       The remanence exchanges the current frame for the spare when it
+       finishes, so by the time the motion blur runs the spare *is* the
+       frame -- and what is in the frame is the world as it was drawn
+       this frame, not the motion blur's output from last frame. The
+       trail silently stops being a trail.
+     *
+       An earlier arrangement here kept a note of which targets had
+       been written and picked one that still held last frame's
+       picture, which worked better and differed. This matches
+       instead, by request, and the assertion below is what pins it:
+       the motion blur writes the frame, and the frame is something
+       this frame already drew into. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x10 | 0x800;
+    motionBlurFactor = 0.5f;
+    remenanceFactor = 0.5f;
+
+    wg_callLen = 0;
+    GL_Flip();
+    {
+        int  motion = AEF_REMANENCE_PASSES + 1;
+        long target;
+
+        okEq(WG_i_Count("glDrawArrays"), motion + 1,
+             "four blurs, a sum and the motion blur");
+        target = wg_l_DrawTarget(motion);
+        okEq(target, (long)gl_sceneFbo,
+             "the motion blur writes the frame, the exchange having put"
+             " the spare there");
+        ok(target != alone,
+           "which is a different target from when it ran by itself");
+    }
+
+    PC_AE_MASTER = 0;
+    motionBlurFactor = 0.0f;
+    remenanceFactor = 0.0f;
+}
+
+static void caseAeRemanenceChain(void)
+{
+    float u[AEF_REMANENCE_PASSES];
+    float v[AEF_REMANENCE_PASSES];
+    int   n;
+    int   i;
+    long  from;
+    long  blurred;
+    long  into;
+
+    printf("-- the remanence's four blurs and where its sum goes\n");
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x800;
+    remenanceFactor = 0.5f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    n = AEF_i_RemanenceReaches(u, v, AEF_REMANENCE_PASSES);
+    okEq(n, 4, "four reaches");
+    okEq(WG_i_Count("glDrawArrays"), n + 1, "four blurs and one sum");
+
+    /* The blurs chain: the first reads the frame, each after reads
+       what the one before wrote, and none writes the frame. */
+    from = (long)gl_sceneColour;
+    for (i = 0; i < n; i++)
+    {
+        int at = wg_i_CallAt("glDrawArrays", i);
+
+        okEq(wg_l_TextureBefore(GL_TEXTURE0, at), from,
+             "the blur reads what the one before wrote");
+        ok(wg_l_FboBefore(GL_FRAMEBUFFER, at) != (long)gl_sceneFbo,
+           "and does not write the frame");
+        /* The texture that goes with the framebuffer it wrote, so the
+           next pass can be checked against it. */
+        {
+            long fbo = wg_l_FboBefore(GL_FRAMEBUFFER, at);
+            int  slot;
+
+            from = -1;
+            for (slot = DPB_SLOT_A; slot < DPB_SLOT_A + GL_AE_TARGETS; slot++)
+                if ((long)GL_l_i_AeSlotFbo(slot) == fbo)
+                    from = (long)GL_l_i_AeSlotTexture(slot);
+            ok(from > 0, "which is one of the spares");
+        }
+    }
+    blurred = from;
+
+    /* The sum reads the frame and the blurred copy and writes
+       neither. With two spares there would be nowhere left; this is
+       the check that says the third one is being used. */
+    {
+        int at = wg_i_CallAt("glDrawArrays", n);
+
+        okEq(wg_l_TextureBefore(GL_TEXTURE0, at), (long)gl_sceneColour,
+             "the sum reads the frame on the first unit");
+        okEq(wg_l_TextureBefore(GL_TEXTURE1, at), blurred,
+             "and the blurred copy on the second");
+        into = wg_l_FboBefore(GL_FRAMEBUFFER, at);
+        ok(into != (long)gl_sceneFbo, "it writes neither the frame");
+        {
+            int slot;
+
+            for (slot = DPB_SLOT_A; slot < DPB_SLOT_A + GL_AE_TARGETS; slot++)
+                if ((long)GL_l_i_AeSlotTexture(slot) == blurred)
+                    ok(into != (long)GL_l_i_AeSlotFbo(slot),
+                       "nor the blurred copy");
+        }
+        /* And the screen is copied from there. */
+        {
+            int blit = wg_i_CallAt("glBlitFramebuffer", 0);
+
+            okEq(wg_l_FboBefore(GL_READ_FRAMEBUFFER, blit), into,
+                 "and the screen is copied from where the sum wrote");
+        }
+    }
+
+    /* The weight it asked for, compared against what aeframe.c says
+       rather than against a constant. */
+    {
+        tAef_Source fs;
+
+        fs.aeMaster = 0x800;
+        fs.motionBlur = 0.0f;
+        fs.remanence = 0.5f;
+        fs.zoomSmooth = 0.0f;
+        fs.bandBottom = 1.0f;
+        /* Three uniforms per blur pass, then the sum's two samplers
+           and its weight -- so the weight is the first scaled float
+           after the blurs' own. */
+        ok(WG_i_Count("glUniform1f.scaled") >= 1, "a weight was set");
+        okEq(WG_l_Arg("glUniform1f.scaled",
+                      WG_i_Count("glUniform1f.scaled") - 1, 1),
+             wg_l_Scaled(AEF_f_RemanenceWeight(&fs)),
+             "and it is twice the opacity");
+    }
+
+    PC_AE_MASTER = 0;
+    remenanceFactor = 0.0f;
+}
+
+static void caseAeRemanenceAfterDepthBlur(void)
+{
+    float u[AEF_REMANENCE_PASSES];
+    int   n;
+    int   i;
+
+    printf("-- the remanence behind the depth blur, and where each lands\n");
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x8 | 0x800;
+    depthBlurNear1 = 10.0f;
+    depthBlurType0 = 20.0f;
+    depthBlurType1 = 30.0f;
+    remenanceFactor = 0.5f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    n = AEF_i_RemanenceReaches(u, NULL, AEF_REMANENCE_PASSES);
+    /* Three blurs, a mix and a copy back for the depth blur; then four
+       blurs and a sum for the remanence. */
+    okEq(WG_i_Count("glDrawArrays"), DPB_BLUR_PASSES + 2 + n + 1,
+         "both effects' draws");
+
+    /* The remanence reads the frame, and so it should: the depth blur
+       copied its result back there, which is the arrangement the
+       renderer this follows has. An earlier version of this case
+       asserted the opposite -- that reading the frame would mean the
+       depth blur had been skipped -- which was true of an earlier
+       arrangement here and is not true of this one.
+     *
+       It also cannot be otherwise. The remanence is the first effect
+       in the chain that exchanges the current frame for the spare, so
+       whatever runs before it leaves the frame current. The
+       distinction only arises for an effect with one of these in
+       front of it, and there is not one yet. */
+    {
+        int firstRem = wg_i_CallAt("glDrawArrays", DPB_BLUR_PASSES + 2);
+
+        ok(firstRem >= 0, "the remanence ran");
+        okEq(wg_l_TextureBefore(GL_TEXTURE0, firstRem), (long)gl_sceneColour,
+             "and its first blur reads the frame, where the depth blur"
+             " left its result");
+    }
+
+    /* Its four blurs alternate between the chain's spare and the
+       scratch, starting on the spare -- the other way round from the
+       depth blur, which starts on the scratch. Both orders end on the
+       scratch, which is where each one's last reader looks. */
+    for (i = 0; i < n; i++)
+    {
+        int at = wg_i_CallAt("glDrawArrays", DPB_BLUR_PASSES + 2 + i);
+        int want = (i % 2 == 0) ? GL_AE_SLOT_SPARE : GL_AE_SLOT_SCRATCH;
+
+        okEq(wg_l_FboBefore(GL_FRAMEBUFFER, at),
+             (long)GL_l_i_AeSlotFbo(want),
+             "the blur writes the slot the alternation calls for");
+    }
+
+    /* And the sum reads the frame and the scratch and writes the
+       spare, which the exchange after it makes current. */
+    {
+        int at = wg_i_CallAt("glDrawArrays", DPB_BLUR_PASSES + 2 + n);
+
+        okEq(wg_l_TextureBefore(GL_TEXTURE0, at), (long)gl_sceneColour,
+             "the sum reads the frame on the first unit");
+        okEq(wg_l_TextureBefore(GL_TEXTURE1, at),
+             (long)GL_l_i_AeSlotTexture(GL_AE_SLOT_SCRATCH),
+             "and the blurred copy off the scratch on the second");
+        okEq(wg_l_FboBefore(GL_FRAMEBUFFER, at),
+             (long)GL_l_i_AeSlotFbo(GL_AE_SLOT_SPARE),
+             "and writes the spare");
+        {
+            int blit = wg_i_CallAt("glBlitFramebuffer", 0);
+
+            okEq(wg_l_FboBefore(GL_READ_FRAMEBUFFER, blit),
+                 (long)GL_l_i_AeSlotFbo(GL_AE_SLOT_SPARE),
+                 "which is what the screen is copied from");
+        }
+    }
+
+    PC_AE_MASTER = 0;
+    remenanceFactor = 0.0f;
+    depthBlurNear1 = 0.0f;
+    depthBlurType0 = 0.0f;
+    depthBlurType1 = 0.0f;
+}
+
+static void caseAeZoomUniforms(void)
+{
+    tAef_Source  fs;
+    tAef_ZoomTap taps[AEF_ZOOM_TAPS];
+    tCbd_Bands   bands;
+
+    printf("-- the zoom's band, its crop step and its weight\n");
+    reset();
+    wg_SceneReady();
+    /* With a letterbox, so that the band it zooms about is not just
+       the whole picture -- which is the case where a band read wrong
+       shows. */
+    CIN_Bands = 1;
+    tweak_ae_nobands = 0;
+    D3D_gf_CutsceneBand = 0.25f;
+    PC_AE_MASTER = 0x400;
+    zoomSmoothFactor = 1.0f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    okEq(WG_i_Count("glDrawArrays"), 1, "eight taps in one draw");
+
+    CBD_Decide(&bands);
+    fs.aeMaster = 0x400;
+    fs.motionBlur = 0.0f;
+    fs.remanence = 0.0f;
+    fs.zoomSmooth = 1.0f;
+    fs.bandBottom = bands.bottom;
+    AEF_i_ZoomTaps(&fs, taps, AEF_ZOOM_TAPS);
+
+    /* The band's corners, in texture space: the fractions run from
+       the top of the picture and this renderer's textures run up it,
+       so the band's top is the larger coordinate. Getting that the
+       wrong way round zooms about the wrong place, and with a
+       symmetric band it would still look like a zoom. */
+    okEq(WG_l_Arg("glUniform2f.scaled", 0, 1), 0L,
+         "the band starts at the left edge");
+    okEq(WG_l_Arg("glUniform2f.scaled", 0, 2),
+         wg_l_Scaled(1.0f - bands.bottom),
+         "and at the band's bottom measured from below");
+    okEq(WG_l_Arg("glUniform2f.scaled", 1, 1), wg_l_Scaled(1.0f),
+         "and ends at the right edge");
+    okEq(WG_l_Arg("glUniform2f.scaled", 1, 2),
+         wg_l_Scaled(1.0f - bands.top),
+         "and at the band's top");
+    ok(WG_l_Arg("glUniform2f.scaled", 1, 2)
+       > WG_l_Arg("glUniform2f.scaled", 0, 2),
+       "with the top above the bottom, textures running upwards");
+
+    /* One tap's worth of crop, which is what places all eight. */
+    okEq(WG_l_Arg("glUniform2f.scaled", 2, 1), wg_l_Scaled(taps[1].insetU),
+         "the crop step across");
+    okEq(WG_l_Arg("glUniform2f.scaled", 2, 2), wg_l_Scaled(taps[1].insetV),
+         "and down");
+    /* And with a band they differ, because only the horizontal one
+       divides by it. */
+    ok(WG_l_Arg("glUniform2f.scaled", 2, 1)
+       > WG_l_Arg("glUniform2f.scaled", 2, 2),
+       "the letterboxed crop tightens faster across than down");
+
+    okEq(WG_l_Arg("glUniform1i", WG_i_Count("glUniform1i") - 1, 1),
+         AEF_ZOOM_TAPS, "eight taps asked for");
+    okEq(WG_l_Arg("glUniform1f.scaled", 0, 1),
+         wg_l_Scaled(AEF_f_ZoomWeight()), "and the weight every tap carries");
+
+    PC_AE_MASTER = 0;
+    zoomSmoothFactor = 0.0f;
+    CIN_Bands = 0;
+    D3D_gf_CutsceneBand = 0.10416666f;
+}
+
+static void caseAeFrameGates(void)
+{
+    printf("-- what each of the three needs before it runs\n");
+
+    /* A bit with no parameter does nothing, and a parameter with no
+       bit does nothing. Checked for each of the three, because one
+       gate reading another's parameter would pass a test that only
+       turned them all on together. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x10 | 0x800 | 0x400;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "every bit but no parameters: nothing");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0;
+    motionBlurFactor = 1.0f;
+    remenanceFactor = 1.0f;
+    zoomSmoothFactor = 1.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "every parameter but no bits: nothing");
+
+    /* Each on its own, with the draw counts that tell them apart:
+       the remanence takes five draws and the other two one each. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x10;
+    motionBlurFactor = 1.0f;
+    remenanceFactor = 1.0f;
+    zoomSmoothFactor = 1.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "the motion blur alone is one draw");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x800;
+    motionBlurFactor = 1.0f;
+    remenanceFactor = 1.0f;
+    zoomSmoothFactor = 1.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), AEF_REMANENCE_PASSES + 1,
+         "the remanence alone is four blurs and a sum");
+
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x400;
+    motionBlurFactor = 1.0f;
+    remenanceFactor = 1.0f;
+    zoomSmoothFactor = 1.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "the zoom alone is one draw");
+
+    /* And the two switches that stop the whole chain take all three
+       with them. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x10 | 0x800 | 0x400;
+    motionBlurFactor = 1.0f;
+    remenanceFactor = 1.0f;
+    zoomSmoothFactor = 1.0f;
+    tweak_ae_no = 1;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "the tweak stops all three");
+    tweak_ae_no = 0;
+    ECAM_gi_NoAfterEffects = 1;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "and so does the editor camera");
+    ECAM_gi_NoAfterEffects = 0;
+
+    /* All three together, in the engine's own order: the remanence
+       first, then the motion blur, then the zoom. */
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), AEF_REMANENCE_PASSES + 3,
+         "all three together");
+    {
+        /* The motion blur is the only one that blends, so where
+           blending is switched on says where in the order it ran. */
+        int blend = WG_i_At("glEnable");
+        int i;
+        int before = 0;
+        int after = 0;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glDrawArrays") == 0)
+            {
+                if (i < blend)
+                    before++;
+                else
+                    after++;
+            }
+        okEq(before, AEF_REMANENCE_PASSES + 1,
+             "the remanence's five draws come before the motion blur");
+        okEq(after, 2, "and the zoom's one comes after it");
+    }
+
+    PC_AE_MASTER = 0;
+    motionBlurFactor = 0.0f;
+    remenanceFactor = 0.0f;
+    zoomSmoothFactor = 0.0f;
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
@@ -3879,6 +4423,11 @@ int main(void)
     caseAeColorChain();
     caseAeColorBand();
     caseAeColorGate();
+    caseAeMotionBlurHistory();
+    caseAeRemanenceChain();
+    caseAeRemanenceAfterDepthBlur();
+    caseAeZoomUniforms();
+    caseAeFrameGates();
     caseFlipDrawsOverlay();
     caseGeometry();
     caseGeometryNormals();

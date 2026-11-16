@@ -2848,14 +2848,13 @@ static void caseAeDepthBlurMix(void)
     PC_AE_MASTER = 0x8;
     shown = GL_l_i_RunAfterEffects();
     ok(shown != 0, "the chain says where the frame is");
-    ok(shown != scene,
-       "and it is not the scene target, which the mix had to read");
-    /* Nor the spare holding the blurred copy, which the mix had to
-       read as well. No pass may write a target it is reading, and
-       this is the one place that invariant can be stated about the
-       pass that reads two of them. */
-    ok(shown != GL_l_i_AeSlotFbo(DPB_i_BlurResultSlot()),
-       "nor the spare holding the blurred copy, which it also read");
+    /* And it is the scene target. The mix cannot read and write one
+       texture, so it lands in a spare of its own and is copied back
+       over the frame -- which is where the renderer this follows
+       leaves it, and what every effect after it is placed relative
+       to. The copy is colour only, so the frame keeps the alpha the
+       world gave it; the readings further down check that. */
+    okEq((long)(shown == scene), 1, "and it is the frame itself");
 
     /* Where the frame said no blur, the step is still a step: the two
        pixels either side of it are the values that went in. A mix
@@ -2946,9 +2945,10 @@ static void caseAeDepthBlurDirection(void)
 
     PC_AE_MASTER = 0x8;
     shown = GL_l_i_RunAfterEffects();
-    if (!shown || shown == scene)
+    okEq((long)(shown == scene), 1,
+         "the chain ran, leaving the frame where it began");
+    if (!shown)
     {
-        ok(0, "the chain ran");
         return;
     }
 
@@ -2980,6 +2980,8 @@ static void caseAeDepthBlurDirection(void)
 static void caseAeDepthBlurGates(void)
 {
     GLuint scene;
+    int    mid = GLR_AE_W / 2;
+    int    row = GLR_AE_H / 2;
 
     printf("-- what turns the after-effects off\n");
     glr_Reset();
@@ -2988,31 +2990,49 @@ static void caseAeDepthBlurGates(void)
     if (!scene)
         return;
 
-    PC_AE_MASTER = 0;
-    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
-         "no bits set, so the frame is left in the scene target");
+    /* Read off the picture rather than off which framebuffer comes
+       back. The depth blur's result is copied into the frame now, so
+       every one of these answers with the frame whether it ran or
+       not -- and the only thing that says is whether the step across
+       the middle came out blurred.
+     *
+       Which means the pattern has to go back in before each one: the
+       chain writes the frame, so a second run would blur what the
+       first already blurred. In the game the world redraws it every
+       frame and the question does not arise. */
+    {
+        int i;
 
-    /* The two bits that ask for it, and a third that does not. */
-    PC_AE_MASTER = 0x8;
-    ok(GL_l_i_RunAfterEffects() != scene, "the first bit runs it");
-    PC_AE_MASTER = 0x1000;
-    ok(GL_l_i_RunAfterEffects() != scene, "the second bit runs it");
-    PC_AE_MASTER = 0x4;
-    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
-         "the effect next door does not");
+        for (i = 0; i < 7; i++)
+        {
+            static const unsigned int master[7] =
+                { 0, 0x8, 0x1000, 0x4, 0x8, 0x8, 0x8 };
+            static const int wantBlur[7] = { 0, 1, 1, 0, 0, 0, 1 };
+            static const char* const what[7] = {
+                "no bits set, so the step stays sharp",
+                "the first bit blurs it",
+                "and so does the second",
+                "the effect next door does not",
+                "nor does it with the tweak that switches the effects off",
+                "nor with the editor camera's own switch",
+                "and with both back off it blurs again"
+            };
 
-    /* And the two switches that turn the whole chain off whatever the
-       bits say. */
-    PC_AE_MASTER = 0x8;
-    tweak_ae_no = 1;
-    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
-         "the tweak that switches the effects off");
-    tweak_ae_no = 0;
-    ECAM_gi_NoAfterEffects = 1;
-    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
-         "and the editor camera's own switch");
-    ECAM_gi_NoAfterEffects = 0;
-    ok(GL_l_i_RunAfterEffects() != scene, "both back off, and it runs again");
+            /* The pattern back in, fresh each time. */
+            glr_AeScene(glr_aeStepAcross, glr_aeAlphaNone);
+            PC_AE_MASTER = master[i];
+            tweak_ae_no = (i == 4);
+            ECAM_gi_NoAfterEffects = (i == 5);
+            {
+                GLuint shown = GL_l_i_RunAfterEffects();
+                int    bled = glr_AeRed(shown, mid - 1, row) > 0;
+
+                okEq((long)bled, (long)wantBlur[i], what[i]);
+            }
+        }
+        tweak_ae_no = 0;
+        ECAM_gi_NoAfterEffects = 0;
+    }
 
     /* Put the rig back the way the rest of the file wants it. */
     PC_AE_MASTER = 0;
@@ -3021,7 +3041,6 @@ static void caseAeDepthBlurGates(void)
     gl_state.width = GLR_W;
     gl_state.height = GLR_H;
 }
-
 
 static int glr_aeFlat(int x, int row)
 {
@@ -3079,9 +3098,10 @@ static void caseAeDepthBlurBands(void)
         return;
     PC_AE_MASTER = 0x8;
     shown = GL_l_i_RunAfterEffects();
-    if (!shown || shown == scene)
+    okEq((long)(shown == scene), 1,
+         "the chain ran, leaving the frame where it began");
+    if (!shown)
     {
-        ok(0, "the chain ran");
         return;
     }
     okEq(glr_AeRed(shown, mid, bandTopRow), 240,
@@ -3101,15 +3121,23 @@ static void caseAeDepthBlurBands(void)
         return;
     }
     shown = GL_l_i_RunAfterEffects();
-    if (!shown || shown == scene)
+    okEq((long)(shown == scene), 1,
+         "the chain ran, leaving the frame where it began");
+    if (!shown)
     {
-        ok(0, "the chain ran again");
         return;
     }
     okEq(glr_AeRed(shown, mid - 1, (bandTopRow + bandBottomRow) / 2), 0,
          "inside the band the step is sharp");
-    ok(glr_AeRed(shown, mid - 1, marginRow) > 0,
-       "in the margin above it the mix never drew, so the step is blurred");
+    /* And the margin above the band is the frame as the world drew it:
+       the mix covers the band and nothing copies the rest back, so
+       what is there is the original and not a blur of it. That is
+       what the renderer this follows leaves there too -- its mix
+       writes the band of the frame and leaves the rest alone. An
+       earlier arrangement here left a blur intermediate in those
+       rows, which was a divergence rather than a feature. */
+    okEq(glr_AeRed(shown, mid - 1, marginRow), 0,
+         "and the margin above it is the frame as it was drawn");
 
     PC_AE_MASTER = 0;
     GL_l_ForgetAe();
@@ -3144,9 +3172,10 @@ static void caseAeDepthBlurEdges(void)
     }
     PC_AE_MASTER = 0x8;
     shown = GL_l_i_RunAfterEffects();
-    if (!shown || shown == scene)
+    okEq((long)(shown == scene), 1,
+         "the chain ran, leaving the frame where it began");
+    if (!shown)
     {
-        ok(0, "the chain ran");
         CIN_Bands = saved;
         return;
     }
@@ -3605,6 +3634,403 @@ static void caseAeColorOrder(void)
     PC_AE_MASTER = 0;
     unkAEFunc2Param = 0.5f;
     colorBalanceParam1 = 0.5f;
+    motionBlurFactor = 0.0f;
+    remenanceFactor = 0.0f;
+    zoomSmoothFactor = 0.0f;
+    CIN_Bands = 1;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
+
+/* ------------------------------- the effects that sum whole frames
+
+   Remanence, motion blur and zoom smooth. Each is a sum, so a frame of
+   one flat colour gives an exact answer the weights can be read off:
+   every tap or term reads the same value, and what comes back is that
+   value times what the effect adds up to. Frames with an edge in them
+   then say where the sum reaches.
+ */
+static int glr_aeFlatMid(int x, int row)
+{
+    (void)x; (void)row;
+    return 100;
+}
+
+static int glr_aeBlack(int x, int row)
+{
+    (void)x; (void)row;
+    return 0;
+}
+
+static int glr_aeWhite(int x, int row)
+{
+    (void)x; (void)row;
+    return 255;
+}
+
+static void caseAeRemanence(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    row = GLR_AE_H / 2;
+    int    x = GLR_AE_W / 2;
+    int    rgba[4];
+
+    printf("-- the remanence adds a blur of the frame back on top of it\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    /* One flat colour, so the blur of it is the same colour and the
+       whole effect is a multiply by one plus the weight. That makes
+       the weight readable off a single pixel. */
+    scene = glr_AeScene(glr_aeFlatMid, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    PC_AE_MASTER = 0x800;
+    remenanceFactor = 0.25f;
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+    {
+        tAef_Source fs;
+        double      want;
+
+        fs.aeMaster = 0x800;
+        fs.motionBlur = 0.0f;
+        fs.remanence = 0.25f;
+        fs.zoomSmooth = 0.0f;
+        fs.bandBottom = 1.0f;
+        want = 100.0 * (1.0 + (double)AEF_f_RemanenceWeight(&fs));
+        okWithin((double)glr_AeRed(shown, x, row), want, 1.5,
+                 "a flat frame comes back brighter by the weight");
+        /* Which is brighter than it went in -- a bloom that did not
+           brighten would be a no-op, and a weight read as a mix
+           rather than an addition would leave it unchanged. */
+        ok(glr_AeRed(shown, x, row) > 100, "and it is brighter, not a mix");
+    }
+
+    /* The alpha travels on: the effects after this one are mixed by
+       it. */
+    glr_AeAt(shown, x, row, rgba);
+    okEq(rgba[3], 0x5A, "with the frame's alpha carried through");
+
+    /* It saturates. At the top setting the weight is two, so anything
+       above a third of white comes back white -- that is what makes a
+       bloom bloom rather than haze. */
+    remenanceFactor = 1.0f;
+    shown = GL_l_i_RunAfterEffects();
+    okEq(glr_AeRed(shown, x, row), 255,
+         "at the top setting a middling frame blooms to white");
+
+    /* And the bloom spreads: a single bright patch on black lights
+       the black around it, which is the blur being what is added
+       rather than the frame itself. */
+    {
+        int i;
+
+        for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+        {
+            unsigned char* p = &glr_aePattern[i * 4];
+            int            px = i % GLR_AE_W;
+            int            py = i / GLR_AE_W;
+            int            on = px > GLR_AE_W / 2 - 3 && px < GLR_AE_W / 2 + 3
+                                && py > row - 3 && py < row + 3;
+
+            p[0] = (unsigned char)(on ? 255 : 0);
+            p[1] = 0;
+            p[2] = 0;
+            p[3] = 0x5A;
+        }
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+        remenanceFactor = 1.0f;
+        shown = GL_l_i_RunAfterEffects();
+        ok(glr_AeRed(shown, x + 6, row) > 0,
+           "black just outside a bright patch is lit by the bloom");
+        okEq(glr_AeRed(shown, x + 120, row), 0,
+             "and black far from it is not");
+        ok(glr_AeRed(shown, x + 6, row) > glr_AeRed(shown, x + 14, row),
+           "with the light falling off further out");
+    }
+
+    PC_AE_MASTER = 0;
+    remenanceFactor = 0.0f;
+    CIN_Bands = 1;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
+static void caseAeMotionBlur(void)
+{
+    GLuint scene;
+    GLuint first;
+    GLuint second;
+    int    row = GLR_AE_H / 2;
+    int    x = GLR_AE_W / 2;
+
+    printf("-- the motion blur mixes this frame with the one before\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    /* Two frames, run one after the other with nothing forgotten in
+       between -- which is the only way to see an effect whose other
+       input is what it wrote last time.
+     *
+       White first, over a target the chain cleared to black when it
+       built it, at a half: so the first frame comes back at half
+       white. Then black, which keeps half of that: a quarter. Those
+       two numbers together say the mixing is with the target's own
+       previous contents and that the share is the right way round. */
+    scene = glr_AeScene(glr_aeWhite, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    PC_AE_MASTER = 0x10;
+    motionBlurFactor = 0.5f;
+    first = GL_l_i_RunAfterEffects();
+    ok(first != scene, "it ran");
+    {
+        /* The share kept is a byte's complement, so halfway keeps 128
+           of 255 rather than exactly half -- the unit test pins that
+           and this follows it rather than assuming a half. */
+        tAef_Source fs;
+        double      keep;
+
+        fs.aeMaster = 0x10;
+        fs.motionBlur = 0.5f;
+        fs.remanence = 0.0f;
+        fs.zoomSmooth = 0.0f;
+        fs.bandBottom = 1.0f;
+        keep = (double)AEF_f_MotionBlurKeep(&fs);
+
+        okWithin((double)glr_AeRed(first, x, row), 255.0 * (1.0 - keep), 1.5,
+                 "the first frame over a cleared target is its own share"
+                 " of white");
+
+        /* Now a black frame. What comes back is the share kept of
+           what the first frame left, and nothing of the black. */
+        {
+            int i;
+
+            for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+            {
+                unsigned char* p = &glr_aePattern[i * 4];
+
+                p[0] = p[1] = p[2] = 0;
+                p[3] = 0x5A;
+            }
+            GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+            GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                                 GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+            GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+        }
+        second = GL_l_i_RunAfterEffects();
+        okEq((long)(second == first), 1,
+             "the second frame lands in the same target as the first,"
+             " which is what makes the history readable");
+        okWithin((double)glr_AeRed(second, x, row),
+                 255.0 * (1.0 - keep) * keep, 2.0,
+                 "and is the share kept of what the frame before left");
+        /* Not black, which is what a motion blur reading a cleared or
+           a freshly-drawn target would give. */
+        ok(glr_AeRed(second, x, row) > 0,
+           "so a black frame after a white one is not black");
+    }
+
+    /* A lopsided setting, because a half is the one place the two
+       shares are nearly equal: at a half the new frame takes 127 of
+       255 and the old keeps 128, so reading the wrong one of the two
+       is a single step and invisible. At a quarter they are 191 and
+       64, and the reading below tells them apart. */
+    motionBlurFactor = 0.25f;
+    GL_l_ForgetAe();
+    {
+        tAef_Source fs;
+        double      keep;
+        int         i;
+
+        /* A white frame again, over spares the chain clears when it
+           rebuilds them -- which GL_l_ForgetAe above arranged, so
+           this starts from a known history rather than the trail left
+           by the readings before. */
+        for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+        {
+            unsigned char* p = &glr_aePattern[i * 4];
+
+            p[0] = p[1] = p[2] = 255;
+            p[3] = 0x5A;
+        }
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+        fs.aeMaster = 0x10;
+        fs.motionBlur = 0.25f;
+        fs.remanence = 0.0f;
+        fs.zoomSmooth = 0.0f;
+        fs.bandBottom = 1.0f;
+        keep = (double)AEF_f_MotionBlurKeep(&fs);
+        ok(keep < 0.3, "a quarter keeps about a quarter of the old frame");
+
+        okWithin((double)glr_AeRed(GL_l_i_RunAfterEffects(), x, row),
+                 255.0 * (1.0 - keep), 2.0,
+                 "so three quarters of the white frame comes through on"
+                 " the first frame");
+    }
+
+    /* At nought nothing of the frame before survives, so the result
+       is the frame itself -- which is also the setting at which the
+       effect is skipped, so this is the boundary either side of it. */
+    motionBlurFactor = 0.0f;
+    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
+         "at nought the effect is skipped altogether");
+
+    PC_AE_MASTER = 0;
+    motionBlurFactor = 0.0f;
+    CIN_Bands = 1;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
+static void caseAeZoomSmooth(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    row = GLR_AE_H / 2;
+    int    x = GLR_AE_W / 2;
+    int    rgba[4];
+
+    printf("-- the zoom smears a pixel along the line from the centre\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    /* One flat colour again: all eight taps read the same value, so
+       what comes back is that value times the eight weights. They
+       come to 248 of 255, so a flat frame comes back a shade dark --
+       which is the whole of what the weight can be read from. */
+    scene = glr_AeScene(glr_aeFlatMid, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    PC_AE_MASTER = 0x400;
+    zoomSmoothFactor = 1.0f;
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+    okWithin((double)glr_AeRed(shown, x, row),
+             100.0 * (double)AEF_f_ZoomWeight() * AEF_ZOOM_TAPS, 1.5,
+             "a flat frame comes back at the eight weights' sum");
+    ok(glr_AeRed(shown, x, row) < 100,
+       "which is a shade under what went in");
+    glr_AeAt(shown, x, row, rgba);
+    okEq(rgba[3], 0x5A, "with the frame's alpha carried through");
+
+    /* And the direction, which is the thing a smeared picture cannot
+       tell you and which I had backwards first time.
+     *
+       Every tap after the first crops inwards, which *magnifies*: the
+       tap shows a zoomed-in frame. So a pixel reads positions nearer
+       the centre than itself, and light therefore appears at
+       positions further out than where it was -- the smear trails
+       **away** from the centre, not towards it. A crop that went the
+       other way would smear inwards and the picture would look just
+       as smeared, which is why this is checked on both sides of the
+       line rather than by there being a smear at all. */
+    {
+        int i;
+        int ringX = GLR_AE_W / 2 + 160;
+
+        for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+        {
+            unsigned char* p = &glr_aePattern[i * 4];
+            int            px = i % GLR_AE_W;
+
+            p[0] = (unsigned char)(px >= ringX && px < ringX + 2 ? 255 : 0);
+            p[1] = 0;
+            p[2] = 0;
+            p[3] = 0x5A;
+        }
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+        shown = GL_l_i_RunAfterEffects();
+
+        /* Read over a span rather than at a pixel. Eight taps of a
+           two-pixel line are eight discrete copies of it, about eight
+           pixels apart at this distance from the centre -- not a
+           continuous streak -- so a single reading between two copies
+           is dark whichever way the smear runs. Two earlier drafts of
+           this case asserted single pixels and failed for that reason
+           rather than because the direction was wrong. The claim is
+           about which side the copies are on, so that is what is
+           measured. */
+        {
+            int k;
+            int outward = 0;
+            int inward = 0;
+
+            for (k = 4; k <= 36; k++)
+            {
+                int out = glr_AeRed(shown, ringX + k, row);
+                int in = glr_AeRed(shown, ringX - k, row);
+
+                if (out > outward)
+                    outward = out;
+                if (in > inward)
+                    inward = in;
+            }
+            ok(outward > 0, "there is light outside the line, away from the"
+                            " centre");
+            okEq(inward, 0, "and none inside it, towards the centre");
+            ok(outward > inward, "so the smear trails away from the centre");
+        }
+
+        /* And it runs out. "Far enough out" is further than it looks:
+           how far a pixel reaches back grows with its own distance
+           from the centre, because the crop is proportional -- so the
+           copies stretch to about seventy pixels here rather than the
+           forty the span above covers. Measured, not reasoned: a
+           draft of this checked from sixty and found a copy at
+           sixty-eight. */
+        {
+            int k;
+            /* Not `far`: the Windows stubs define that as a macro,
+               and a local by that name vanishes into nothing. */
+            int reach = 0;
+
+            for (k = 80; k <= 200; k++)
+                if (glr_AeRed(shown, ringX + k, row) > reach)
+                    reach = glr_AeRed(shown, ringX + k, row);
+            okEq(reach, 0, "far enough out the smear has run out");
+        }
+    }
+
+    PC_AE_MASTER = 0;
+    zoomSmoothFactor = 0.0f;
     CIN_Bands = 1;
     GL_l_ForgetAe();
     GL_l_ForgetScene();
@@ -3717,6 +4143,9 @@ int main(void)
     caseAeContrast();
     caseAeGrayscale();
     caseAeColorOrder();
+    caseAeRemanence();
+    caseAeMotionBlur();
+    caseAeZoomSmooth();
 
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();

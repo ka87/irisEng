@@ -19,6 +19,9 @@ driver for. They are not used by the Direct3D renderer at all.
 | `aeblur.frag` | one widening pass of the depth blur's blur |
 | `aedepthmix.frag` | sharp and blurred, mixed by the frame's own alpha |
 | `aecolor.frag` | one step of the brightness, contrast or grayscale |
+| `aeremanence.frag` | the frame with a wide blur of it added on top |
+| `aeblend.frag` | the frame over the frame before, for the motion blur |
+| `aezoom.frag` | the frame summed at eight tightening crops |
 
 ## What the world's fragment shader is doing that the pipeline cannot
 
@@ -171,6 +174,70 @@ brightening.
 `aecolor.c` decides which steps apply and what each one's numbers are,
 reproducing the byte truncation the other renderer's texture factors
 do. Nothing about the numbers is decided here.
+
+## The after-effects that sum whole frames
+
+Three more, and they are a group because each one's output is a sum of
+frames rather than a function of a pixel. `aeframe.c` has the schedules
+and the weights.
+
+**`aeremanence.frag`** is the remanence, which is a **bloom** whatever
+its name suggests -- nothing in it reads the frame before. Four blurs
+of the frame, reaching one, three, five and seven pixels, and then the
+blurred copy added to the sharp frame at twice the effect's own
+parameter. Twice because the renderer this was read from adds it in two
+successive stages with the same weight and the same coordinates: one
+addition said twice, not two samples. The weight can exceed one and the
+sum saturates, which is what makes a bloom rather than a haze.
+
+**`aeblend.frag`** is the motion blur, and it is the only after-effect
+that reads across frames. There is no history buffer: the target is
+never cleared, so the frame before is still in it. The mixing is the
+framebuffer's own blend, because what is being mixed with is the
+destination and a shader cannot read that -- so all the shader does is
+hand the blend an alpha, which is the new frame's share.
+
+That makes the *choice of target* the substance of the effect, and the
+choice is not this effect's to make. `win/wingl.c` carries a *current*
+and a *spare* through the chain and exchanges them after every effect
+that writes the spare, which is how the other renderer carries its
+frame; the motion blur writes the spare, wherever the exchanges have
+got it to.
+
+So what it reads as "the frame before" depends on what ran before it.
+Run on its own, the spare has not moved and holds its own output from
+last frame: the trail works. Run behind the remanence, one exchange has
+happened and the spare is the frame itself -- whose contents are the
+world as it was drawn this frame -- so the trail silently stops being a
+trail. That is what the other renderer does, and matching it is
+deliberate rather than an oversight.
+
+There are three spare targets rather than two for a different reason:
+the depth blur's mix cannot read and write one texture here, so it
+writes a third spare and is copied back over the frame, which is where
+the other renderer leaves it in place. The two renderers then agree
+about what every later target holds -- which is exactly what the motion
+blur depends on.
+
+**`aezoom.frag`** is the zoom smooth: the frame added to itself at
+eight tightening crops about the centre of the band, so a pixel smears
+along the line from the centre through it. Eight taps in one pass here;
+the renderer this was read from takes four at a time over two passes,
+and the sum is the same because every tap only adds.
+
+Two things about it that a smeared picture cannot tell you. The crops
+tighten **inwards**, which magnifies -- so a pixel reads positions
+nearer the centre than itself and light appears further out than it
+was. The smear trails **away** from the centre. And the crop is square
+in texture space rather than in pixels, so on a 640 by 480 frame a
+pixel smears thirteen and a third pixels sideways for every ten
+vertically -- with a letterbox tilting it further still, because only
+the horizontal step divides by the band's height.
+
+Every tap weighs the same and the weight is just under an eighth, so
+the eight together come to 248 of 255 and a flat frame comes back a
+shade dark. The same flavour of deliberate undershoot as the
+grayscale's weights.
 
 ## The material's texture-coordinate projection
 
