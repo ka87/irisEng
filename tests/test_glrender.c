@@ -1171,6 +1171,81 @@ static void caseShadowTarget(void)
  * memory, and on some drivers that is zero, which looks like a clear
  * that worked.
  */
+/* Which way up a target this renderer renders and later samples is.
+ *
+ * The engine's texture coordinates are the other renderer's: on a
+ * render target there, the top of the picture is v nought. OpenGL
+ * stores a framebuffer the other way up -- clip y plus one is the
+ * *last* texel row, not the first -- so a target rendered here and
+ * sampled with those coordinates comes back mirrored unless the
+ * renderer puts the vertical the other way round on its way in.
+ *
+ * This reads the target's own rows rather than a picture made from it,
+ * so it says which way up the storage is and nothing else. glReadPixels
+ * counts rows from the bottom, which is the same direction v counts, so
+ * a caster drawn in the *upper* half of the shadow view has to come back
+ * in the *low* rows.
+ */
+static void caseTargetsAreTheOtherWayUp(void)
+{
+    Mtx4x4 id;
+    int    i;
+    int    lowLit = 0;
+    int    highLit = 0;
+
+    printf("-- a sampled target holds its picture the other renderer's"
+           " way up\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    /* A caster in the upper half of the shadow view: clip y from a
+       little above the middle to well past the top. */
+    glr_BuildQuad();
+    for (i = 0; i < 4; i++)
+    {
+        glr_pos[i].x *= 4.0f;
+        glr_pos[i].y = glr_pos[i].y > 0.0f ? 4.0f : 0.25f;
+    }
+    MATH_SetIdentityMatrix(&id);
+    MATH_SetIdentityMatrix(&gl_projMtx);
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+    GL_SetViewMatrixSDW(&id, NULL);
+    GL_TextureInit(-1, 0x2260, 0);
+    GL_SetRenderTargetAndBackupPreviousSDW(4, 1);
+    GL_TextureInit(-1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+
+    /* Straight out of the target, while it is still bound. */
+    {
+        unsigned char* rows = (unsigned char*)malloc(
+            (size_t)GL_SHADOW_SIZE * (size_t)GL_SHADOW_SIZE * 4);
+
+        if (rows)
+        {
+            GLFN_glReadPixels(0, 0, GL_SHADOW_SIZE, GL_SHADOW_SIZE,
+                              GL_RGBA, GL_UNSIGNED_BYTE, rows);
+            for (i = 2; i < GL_SHADOW_SIZE / 2 - 2; i++)
+                if (rows[((size_t)i * GL_SHADOW_SIZE
+                          + GL_SHADOW_SIZE / 2) * 4] > 0x80)
+                    lowLit++;
+            for (i = GL_SHADOW_SIZE / 2 + 2; i < GL_SHADOW_SIZE - 2; i++)
+                if (rows[((size_t)i * GL_SHADOW_SIZE
+                          + GL_SHADOW_SIZE / 2) * 4] > 0x80)
+                    highLit++;
+            free(rows);
+        }
+    }
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+
+    ok(lowLit + highLit > 0, "the caster reached the target at all");
+    ok(lowLit > highLit * 4,
+       "and a caster above the middle is in the target's low rows,"
+       " which is where v nought is");
+    CIN_Bands = 1;
+}
+
 static void caseShadowComposite(void)
 {
     int i;
@@ -5578,6 +5653,53 @@ static void caseWaterReflectionDraws(void)
                                               " well");
 }
 
+static void caseWaterReflectionWayUp(void)
+{
+    int rgba[4];
+
+    printf("-- and it is stored the way the surface's remap reads it\n");
+
+    /* The companion to the shadow target's orientation case, for the
+       other target this renderer renders and then samples.
+     *
+       The surface's texture coordinates come from the shared remap,
+       which is built for a target held the other renderer's way up:
+       the top of the picture at v nought. OpenGL stores a framebuffer
+       the other way up, so the reflection draw turns its vertical
+       over. Get that wrong and the reflection is upside down on the
+       water, which is seen as it sliding the wrong way -- and about
+       twice as far -- when the camera moves.
+     *
+       The quad is put in the **upper** half of the view, so it has to
+       come back in the target's **low** rows. glr_AeAt counts rows
+       from the bottom, the direction v counts. */
+    glr_Reset();
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+    glr_ReflectionFixture();
+
+    /* The upper half only, and narrow enough that the two halves are
+       plainly different. */
+    glr_pos[0].y = glr_pos[1].y = 0.2f;
+    glr_pos[2].y = glr_pos[3].y = 0.9f;
+
+    GL_PrepareWaterRendering();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    glr_ReflectAt(0.8f, 0x40, 0x80, 0xC0);
+
+    /* A quarter of the way up the target: the low rows. */
+    glr_AeAt(gl_waterFbo, 256, GL_WATER_SIZE / 4, rgba);
+    okEq(rgba[0], 0x40, "a quad above the middle is in the target's low"
+                        " rows");
+    okEq(rgba[2], 0xC0, "in blue as well");
+
+    /* And not in the high ones, where it would be if the vertical had
+       been left alone. */
+    glr_AeAt(gl_waterFbo, 256, GL_WATER_SIZE - GL_WATER_SIZE / 4, rgba);
+    okEq(rgba[1], 0xFF, "and the high rows still hold the clear colour");
+}
+
 static void caseWaterReflectionClipped(void)
 {
     int rgba[4];
@@ -6047,6 +6169,7 @@ int main(void)
     caseWaterSampling();
     caseWaterDirectionIsADirection();
     caseWaterReflectionDraws();
+    caseWaterReflectionWayUp();
     caseWaterReflectionClipped();
     caseWaterReflectionMirrored();
     caseWaterSmoothDoesNothingByDefault();
@@ -6066,6 +6189,7 @@ int main(void)
     caseSprites();
     caseVideo();
     caseShadowTarget();
+    caseTargetsAreTheOtherWayUp();
     caseShadowComposite();
     caseAeDepthBlurMix();
     caseAeDepthBlurDirection();

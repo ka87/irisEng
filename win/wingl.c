@@ -2455,6 +2455,40 @@ void GL_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear)
                     t->height - 2 * GL_SHADOW_BORDER);
 }
 
+/* The same projection with the vertical turned over.
+ *
+ * OpenGL stores a framebuffer with its bottom row first and the other
+ * renderer stores a render target with its top row first, so the two
+ * disagree about which way up a target is the moment it is sampled
+ * rather than shown. The engine's texture coordinates are that
+ * renderer's -- the top of a shadow is v nought, and the water's remap
+ * is built for a target held the same way -- so a target this renderer
+ * renders and later samples has to be **drawn with its vertical
+ * reversed**, which puts the picture in the storage the other way up
+ * and leaves every coordinate downstream alone.
+ *
+ * Done here rather than by flipping at the sampling end on purpose: a
+ * target that holds what the other renderer's target holds needs
+ * nothing further to know about it, and the engine's own coordinates
+ * and the shared remap both apply unchanged.
+ *
+ * The whole column that produces clip y is negated and not just its
+ * diagonal, so this is right for a projection with shear in it too.
+ *
+ * It reverses the apparent winding of every triangle, which matters
+ * wherever culling is on -- see the reflection, where it cancels the
+ * reversal the mirror itself causes. The shadow's caster is drawn with
+ * culling off, so nothing there depends on it.
+ */
+static void GL_l_FlipVertical(Mtx4x4* out, const Mtx4x4* in)
+{
+    *out = *in;
+    out->v1.y = -in->v1.y;
+    out->v2.y = -in->v2.y;
+    out->v3.y = -in->v3.y;
+    out->Pos.y = -in->Pos.y;
+}
+
 void GL_SetViewMatrixSDW(Mtx4x4* mtxptr, float* unused)
 {
     (void)unused;
@@ -2472,8 +2506,15 @@ void GL_SetViewMatrixSDW(Mtx4x4* mtxptr, float* unused)
        target's own square. The other renderer also resets its world
        transform here, which this renderer does not have -- vertices
        arrive in world space and only the view and the projection are
-       ever multiplied. */
+       ever multiplied.
+     *
+       Out of the way, but not identity: the vertical is turned over,
+       because the target is sampled afterwards with the engine's own
+       coordinates and those count v from the top of the picture. See
+       GL_l_FlipVertical. Without it the shadow on an object is its own
+       silhouette upside down. */
     MATH_SetIdentityMatrix(&gl_projMtx);
+    GL_l_FlipVertical(&gl_projMtx, &gl_projMtx);
     GL_SetViewMatrix(mtxptr);
 }
 
@@ -5061,6 +5102,7 @@ static void GL_l_AimAtReflection(void)
     Mtx4x4 mirrored;
     Mtx4x4 view;
     Mtx4x4 viewProj;
+    Mtx4x4 flippedProj;
 
     gl_waterBackToFbo = (GLuint)GL_l_i_SceneFbo();
     gl_waterBackToViewport[0] = 0;
@@ -5077,8 +5119,14 @@ static void GL_l_AimAtReflection(void)
        object's transform twice -- once unmirrored. */
     D3D_MatrixMultiply((D3DMATRIX*)&view, (const D3DMATRIX*)&mirrored,
                        (const D3DMATRIX*)&gl_waterCamMtx);
+    /* The vertical turned over, because the surface samples this
+       target with the engine's own remap and that counts v from the
+       top of the picture -- see GL_l_FlipVertical. Without it the
+       reflection is upside down on the water, which reads as it
+       sliding the wrong way when the camera moves. */
+    GL_l_FlipVertical(&flippedProj, &gl_projMtx);
     D3D_MatrixMultiply((D3DMATRIX*)&viewProj, (const D3DMATRIX*)&view,
-                       (const D3DMATRIX*)&gl_projMtx);
+                       (const D3DMATRIX*)&flippedProj);
 
     /* The target is square and the screen is not, and the projection
        is the screen's -- so the reflection is drawn with the wrong
@@ -5116,13 +5164,19 @@ static void GL_l_AimAtReflection(void)
         GLFN_glEnable(GL_CLIP_DISTANCE0);
     }
 
-    /* Mirroring turns every triangle over, so the facing has to turn
-       with it or the reflection shows the insides of things. Reversed
-       rather than switched off: the other renderer swaps its two cull
-       modes here, and leaving culling off instead would draw back faces
-       the original never draws. */
-    if (gl_waterWasCulling)
-        GLFN_glFrontFace(gl_frontFace == GL_CCW ? GL_CW : GL_CCW);
+    /* The winding is left alone, and that is not the same as nothing
+       happening to it.
+     *
+       Two things reverse it here and they cancel. Mirroring turns every
+       triangle over -- which is why the other renderer swaps its two
+       cull modes for this draw -- and the vertical flip above turns
+       every triangle over again, because it mirrors the projected
+       triangle about the horizontal. Both together leave the facing
+       where the ordinary draw has it, so swapping as well would show
+       the insides of things.
+     *
+       The saved winding is still put back afterwards, so nothing here
+       depends on this draw having left it untouched. */
 }
 
 /* And puts all four back. */
