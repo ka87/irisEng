@@ -196,6 +196,8 @@ typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint 
     X(void,  glEnable,               (GLenum cap), (cap))                     \
     X(void,  glDisable,              (GLenum cap), (cap))                     \
     X(void,  glDepthMask,            (GLboolean on), (on))                    \
+    X(void,  glCullFace,             (GLenum face), (face))                   \
+    X(void,  glFrontFace,            (GLenum winding), (winding))             \
     X(void,  glColorMask,            (GLboolean r, GLboolean g, GLboolean b,  \
                                       GLboolean a), (r, g, b, a))             \
     X(void,  glFinish,               (void), ())                              \

@@ -1685,13 +1685,40 @@ void GL_TextureInit(int textureID, int flags, char mode)
     GLFN_glDepthFunc(st.depthCompare == RST_DEPTH_EQUAL ? GL_EQUAL : GL_LEQUAL);
     GL_SetZWriteEnable(st.depthWrite);
 
-    /* Culling is decoded and deliberately not applied. Which winding
-       the engine calls front depends on the projection as well as on
-       the geometry, and a wrong guess here takes holes out of the
-       world that look exactly like a texture or a projection fault.
-       It is one constant to turn on once there is real output to look
-       at; until then everything is drawn. */
-    GLFN_glDisable(GL_CULL_FACE);
+    /* Culling.
+     *
+     * The engine says which winding to cull, in the terms the other
+     * renderer's device uses: that device decides facing from the
+     * vertex order in a window whose y runs *downward*, and OpenGL
+     * decides it in a window whose y runs upward. The clip space is
+     * the same in both -- clip y = +1 is the top of the screen either
+     * way, and glClipControl above leaves the origin at OpenGL's own
+     * lower left -- so the two differ by a y flip, and a y flip
+     * reverses a triangle's orientation.
+     *
+     * The two APIs also name opposite things: the engine names the
+     * winding to *cull* and OpenGL names the winding that is *front*.
+     * Those two reversals cancel, so the winding OpenGL is told is
+     * front carries the same name the engine gave for culling. Without
+     * the y flip it would be the other one, which is the answer that
+     * looks right.
+     *
+     * None of that is measurable from here -- the other renderer's
+     * device is not present -- so it is a reading of the two
+     * conventions and not a measurement. What is measured is the
+     * OpenGL half: that a triangle wound one way survives each setting
+     * and the other is culled. If the world turns inside out, this is
+     * the one line to swap. */
+    if (st.cull == RST_CULL_NONE)
+    {
+        GLFN_glDisable(GL_CULL_FACE);
+    }
+    else
+    {
+        GLFN_glEnable(GL_CULL_FACE);
+        GLFN_glCullFace(GL_BACK);
+        GLFN_glFrontFace(st.cull == RST_CULL_CW ? GL_CW : GL_CCW);
+    }
 
     GLFN_glColorMask(st.writeRGB ? GL_TRUE : GL_FALSE,
                      st.writeRGB ? GL_TRUE : GL_FALSE,

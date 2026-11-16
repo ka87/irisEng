@@ -166,6 +166,8 @@ static long  wg_lastBufferSize;
 #define WGM2(fn, T1, T2)         static void GL_APIENTRY MK_##fn(T1 a, T2 b) { WG_Record(#fn, 2, (long long)a, (long long)b); }
 #define WGM3(fn, T1, T2, T3)     static void GL_APIENTRY MK_##fn(T1 a, T2 b, T3 c) { WG_Record(#fn, 3, (long long)a, (long long)b, (long long)c); }
 
+WGM1(glCullFace, GLenum)
+WGM1(glFrontFace, GLenum)
 WGM1(glEnable, GLenum)
 WGM1(glDisable, GLenum)
 WGM2(glBlendFunc, GLenum, GLenum)
@@ -711,6 +713,8 @@ static void WG_AimThePointers(void)
     GLFN_glDrawArrays = MK_glDrawArrays;
     GLFN_glBufferData = MK_glBufferData;
     GLFN_glGenBuffers = MK_glGenBuffers;
+    GLFN_glCullFace = MK_glCullFace;
+    GLFN_glFrontFace = MK_glFrontFace;
     GLFN_glDisableVertexAttribArray = MK_glDisableVertexAttribArray;
     GLFN_glUniform3f = MK_glUniform3f;
     GLFN_glReadPixels = MK_glReadPixels;
@@ -1401,6 +1405,88 @@ static void caseGeometryNormals(void)
          "with only the vertices uploaded");
 
     gl_dd.GROGEO = NULL;
+}
+
+/* Which winding the renderer tells OpenGL is front, for each of the
+ * three things the engine can ask for.
+ *
+ * The mapping is the surprising part of the culling and it is a
+ * reading of two conventions rather than a measurement -- the other
+ * renderer's device is not here to compare against. So the reading is
+ * written down as a table and checked as one: the engine names the
+ * winding to cull, OpenGL names the winding that is front, and the
+ * clip-to-window y flip between the two APIs reverses orientation, so
+ * the two reversals cancel and the name carries over unchanged.
+ *
+ * If this ever has to be swapped, this case is where it says so.
+ */
+static void caseGeometryCulling(void)
+{
+    /* The draw mask's two culling bits, and what each should produce.
+       0x800 off is no culling at all; with it on, 0x2000 chooses. */
+    static const struct
+    {
+        int         mask;
+        int         b_enabled;
+        long        front;
+        const char* what;
+    } cases[3] = {
+        { 0x10,                 0, 0,      "no culling bit, no culling" },
+        { 0x10 | 0x800,         1, GL_CCW, "the engine's counter-clockwise" },
+        { 0x10 | 0x800 | 0x2000, 1, GL_CW, "the engine's clockwise" }
+    };
+    int i;
+
+    printf("-- the winding the renderer calls front\n");
+
+    for (i = 0; i < 3; i++)
+    {
+        reset();
+        wg_callLen = 0;
+        gl_dd.drawMaskAllowedStuffCurrent = cases[i].mask;
+        GL_TextureInit(-1, 0, 0);
+
+        /* Whether culling was switched on or off, by argument and not
+           by call count: both names take many arguments in a draw.
+           Checked as well as the winding, because a renderer that set
+           the winding and never enabled culling passed the winding
+           half of this table on its own. */
+        {
+            int j;
+            int on = 0;
+            int off = 0;
+
+            for (j = 0; j < wg_callLen; j++)
+            {
+                if (strcmp(wg_calls[j].name, "glEnable") == 0
+                    && wg_calls[j].arg[0] == GL_CULL_FACE)
+                    on = 1;
+                if (strcmp(wg_calls[j].name, "glDisable") == 0
+                    && wg_calls[j].arg[0] == GL_CULL_FACE)
+                    off = 1;
+            }
+
+            if (!cases[i].b_enabled)
+            {
+                okEq(WG_i_Count("glFrontFace"), 0, cases[i].what);
+                okEq(WG_i_Count("glCullFace"), 0, "and no face is chosen");
+                ok(off && !on, "and culling is turned off");
+            }
+            else
+            {
+                okEq(WG_i_Count("glFrontFace"), 1, cases[i].what);
+                okEq(WG_l_Arg("glFrontFace", 0, 0), cases[i].front,
+                     "is the winding OpenGL is told is front");
+                okEq(WG_l_Arg("glCullFace", 0, 0), GL_BACK,
+                     "and the back is what goes");
+                ok(on && !off, "with culling turned on");
+            }
+        }
+    }
+
+    /* The two settings really are different, or the table above would
+       hold for a renderer that ignored the bit. */
+    ok(GL_CW != GL_CCW, "the two windings are two");
 }
 
 static void caseGeometry(void)
@@ -2964,6 +3050,7 @@ int main(void)
     caseTeardown();
     caseGeometry();
     caseGeometryNormals();
+    caseGeometryCulling();
     caseViewport();
     caseNoViewport();
     caseClipControl();
