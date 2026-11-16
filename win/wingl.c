@@ -8,6 +8,7 @@
 #include "../geosprite.h"
 #include "../rasterstate.h"
 #include "../depthblur.h"
+#include "../aecolor.h"
 #include "../fog.h"
 #include "../textures.h"
 #include "../cinebands.h"
@@ -2904,6 +2905,12 @@ static GLint      gl_aeBlurOff23 = -1;
 static GLint      gl_aeBlurWeights = -1;
 static GLint      gl_aeMixSharp = -1;
 static GLint      gl_aeMixBlurred = -1;
+static tGlProgram gl_aeColorProgram;
+static GLint      gl_aeColorSrc = -1;
+static GLint      gl_aeColorGain = -1;
+static GLint      gl_aeColorBias = -1;
+static GLint      gl_aeColorGrayscale = -1;
+static GLint      gl_aeColorWeights = -1;
 
 static void GL_l_ForgetAe(void)
 {
@@ -2918,6 +2925,7 @@ static void GL_l_ForgetAe(void)
     {
         GL_ProgramFree(&gl_aeBlurProgram);
         GL_ProgramFree(&gl_aeMixProgram);
+        GL_ProgramFree(&gl_aeColorProgram);
         for (i = 0; i < GL_AE_TARGETS; i++)
         {
             if (gl_aeFbo[i])
@@ -2939,6 +2947,11 @@ static void GL_l_ForgetAe(void)
     gl_aeBlurWeights = -1;
     gl_aeMixSharp = -1;
     gl_aeMixBlurred = -1;
+    gl_aeColorSrc = -1;
+    gl_aeColorGain = -1;
+    gl_aeColorBias = -1;
+    gl_aeColorGrayscale = -1;
+    gl_aeColorWeights = -1;
     gl_aeTried = 0;
     gl_aeReady = 0;
 }
@@ -2984,12 +2997,24 @@ static int GL_l_b_AeReady(void)
         GL_ProgramFree(&gl_aeBlurProgram);
         return 0;
     }
+    if (!GL_b_ProgramLoad(&gl_aeColorProgram, "aepass.vert", "aecolor.frag"))
+    {
+        GL_ProgramFree(&gl_aeBlurProgram);
+        GL_ProgramFree(&gl_aeMixProgram);
+        return 0;
+    }
     gl_aeBlurSrc = GL_i_ProgramUniform(&gl_aeBlurProgram, "uSrc");
     gl_aeBlurOff01 = GL_i_ProgramUniform(&gl_aeBlurProgram, "uOffsets01");
     gl_aeBlurOff23 = GL_i_ProgramUniform(&gl_aeBlurProgram, "uOffsets23");
     gl_aeBlurWeights = GL_i_ProgramUniform(&gl_aeBlurProgram, "uWeights");
     gl_aeMixSharp = GL_i_ProgramUniform(&gl_aeMixProgram, "uSharp");
     gl_aeMixBlurred = GL_i_ProgramUniform(&gl_aeMixProgram, "uBlurred");
+    gl_aeColorSrc = GL_i_ProgramUniform(&gl_aeColorProgram, "uSrc");
+    gl_aeColorGain = GL_i_ProgramUniform(&gl_aeColorProgram, "uGain");
+    gl_aeColorBias = GL_i_ProgramUniform(&gl_aeColorProgram, "uBias");
+    gl_aeColorGrayscale = GL_i_ProgramUniform(&gl_aeColorProgram,
+                                              "uGrayscale");
+    gl_aeColorWeights = GL_i_ProgramUniform(&gl_aeColorProgram, "uWeights");
 
     for (i = 0; i < GL_AE_TARGETS; i++)
     {
@@ -3084,6 +3109,16 @@ static GLuint GL_l_i_AeSlotTexture(int slot)
     return 0;
 }
 
+/* Somewhere to write that is not what is being read. An effect with
+   one source wants this; the depth blur, which reads two, picks its
+   own. The frame is never the answer, because an effect that has not
+   run yet may still want it -- and because the frame's alpha is the
+   depth blur's input and nothing here may overwrite it. */
+static int GL_l_i_AeOtherSlot(int slot)
+{
+    return slot == DPB_SLOT_A ? DPB_SLOT_B : DPB_SLOT_A;
+}
+
 /* One pass's quad, covering the strip between two fractions measured
    from the top of the picture.
  *
@@ -3109,9 +3144,14 @@ static void GL_l_AeDrawBand(float topFraction, float bottomFraction)
     GL_l_DrawBatch(gl_aeVao, v, 2, 2 * sizeof(GLfloat));
 }
 
-/* The depth blur, over the frame in the scene target. Returns the
-   framebuffer the finished frame ended up in. */
-static GLuint GL_l_i_AeDepthBlur(const tCbd_Bands* bands)
+/* The depth blur, over the frame. Returns the slot the finished frame
+   ended up in.
+ *
+   It reads the frame itself and not whatever the chain is currently
+   holding, because the alpha it mixes by belongs to the frame as the
+   world drew it -- so this is the first effect in the chain or it is
+   mixing by an alpha something else has been through. */
+static int GL_l_i_AeDepthBlur(const tCbd_Bands* bands)
 {
     tDpb_BlurPass passes[DPB_BLUR_PASSES];
     int           n;
@@ -3120,7 +3160,7 @@ static GLuint GL_l_i_AeDepthBlur(const tCbd_Bands* bands)
 
     n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
     if (n <= 0)
-        return gl_sceneFbo;
+        return DPB_SLOT_FRAME;
 
     /* The three blurs, each over the widened reach rather than the
        band itself: the mix samples the blurred copy right up to the
@@ -3183,13 +3223,85 @@ static GLuint GL_l_i_AeDepthBlur(const tCbd_Bands* bands)
     GLFN_glActiveTexture(GL_TEXTURE1);
     GLFN_glBindTexture(GL_TEXTURE_2D, 0);
     GLFN_glActiveTexture(GL_TEXTURE0);
-    return GL_l_i_AeSlotFbo(mixInto);
+    return mixInto;
+}
+
+/* The three colour effects, over the band. Returns the slot the frame
+   ended up in, which is the one it started in when none of them
+   apply.
+ *
+   A draw each rather than one pass doing all three: that is how the
+   renderer with these runs them, and each draw lands in an eight-bit
+   target, so a channel one step pushed past white is white before the
+   next step sees it. Folded into one pass they would need a clamp
+   between them to come out the same, and would still differ by the
+   rounding -- so the drawing is left as it is and the arithmetic is
+   the only thing shared. */
+static int GL_l_i_AeColor(const tCbd_Bands* bands, int from)
+{
+    tAec_Source   src;
+    tAec_Step     steps[AEC_MAX_STEPS];
+    int           n;
+    int           i;
+
+    src.aeMaster = (unsigned int)PC_AE_MASTER;
+    src.brightness = unkAEFunc2Param;
+    src.contrast = colorBalanceParam1;
+    n = AEC_i_Steps(&src, steps, AEC_MAX_STEPS);
+    if (n <= 0)
+        return from;
+
+    GLFN_glUseProgram(gl_aeColorProgram.program);
+    if (gl_aeColorSrc >= 0)
+        GLFN_glUniform1i(gl_aeColorSrc, 0);
+    GLFN_glActiveTexture(GL_TEXTURE0);
+
+    for (i = 0; i < n; i++)
+    {
+        int to = GL_l_i_AeOtherSlot(from);
+
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(to));
+        GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
+        if (gl_aeColorGain >= 0)
+            GLFN_glUniform1f(gl_aeColorGain, steps[i].gain);
+        if (gl_aeColorBias >= 0)
+            GLFN_glUniform1f(gl_aeColorBias, steps[i].bias);
+        /* The weights are only a grayscale's, and the flag is what
+           says to use them. Both are set every step so that a step
+           cannot inherit the one before's. */
+        if (gl_aeColorGrayscale >= 0)
+            GLFN_glUniform1f(gl_aeColorGrayscale,
+                             steps[i].kind == AEC_GRAYSCALE ? 1.0f : 0.0f);
+        if (gl_aeColorWeights >= 0)
+            GLFN_glUniform3f(gl_aeColorWeights, steps[i].weights[0],
+                             steps[i].weights[1], steps[i].weights[2]);
+
+        GL_l_AeDrawBand(bands->top, bands->bottom);
+        from = to;
+    }
+    return from;
+}
+
+/* Whether any effect in the chain has something to do this frame. */
+static int GL_l_b_AeWanted(void)
+{
+    tAec_Source src;
+    tAec_Step   steps[AEC_MAX_STEPS];
+
+    if (DPB_b_AfterEffect((unsigned int)PC_AE_MASTER))
+        return 1;
+
+    src.aeMaster = (unsigned int)PC_AE_MASTER;
+    src.brightness = unkAEFunc2Param;
+    src.contrast = colorBalanceParam1;
+    return AEC_i_Steps(&src, steps, AEC_MAX_STEPS) > 0;
 }
 
 static GLuint GL_l_i_RunAfterEffects(void)
 {
     tCbd_Bands bands;
     GLuint     shown;
+    int        slot;
 
     /* Where the world drew. Without a scene target it drew straight to
        the screen, and there is nothing here that can run over it. */
@@ -3203,7 +3315,10 @@ static GLuint GL_l_i_RunAfterEffects(void)
        reads the word, so the gate is the same thing said once. */
     if (tweak_ae_no || ECAM_gi_NoAfterEffects)
         return shown;
-    if (!DPB_b_AfterEffect((unsigned int)PC_AE_MASTER))
+    /* Is there anything to do at all? Asked of every effect in the
+       chain rather than of one of them, so that nothing is built or
+       bound for a frame that wants none of it. */
+    if (!GL_l_b_AeWanted())
         return shown;
     if (!GL_l_b_AeReady())
         return shown;
@@ -3219,7 +3334,15 @@ static GLuint GL_l_i_RunAfterEffects(void)
     GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     GLFN_glViewport(0, 0, gl_aeW, gl_aeH);
 
-    shown = GL_l_i_AeDepthBlur(&bands);
+    /* The chain, in the order the other renderer runs it. Each effect
+       is handed the slot the frame is in and says where it left it,
+       so adding one is adding a line here -- and an effect that has
+       nothing to do hands the slot straight back. */
+    slot = DPB_SLOT_FRAME;
+    if (DPB_b_AfterEffect((unsigned int)PC_AE_MASTER))
+        slot = GL_l_i_AeDepthBlur(&bands);
+    slot = GL_l_i_AeColor(&bands, slot);
+    shown = GL_l_i_AeSlotFbo(slot);
 
     GLFN_glUseProgram(0);
     GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);

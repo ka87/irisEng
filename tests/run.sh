@@ -481,6 +481,7 @@ for one in tests/runworld.sh \
            tests/run_wingditex.sh \
            tests/run_depthblur.sh \
            tests/run_cinebands.sh \
+           tests/run_aecolor.sh \
            tests/run_glload.sh \
            tests/run_glshader.sh \
            tests/run_wingloverlay.sh \

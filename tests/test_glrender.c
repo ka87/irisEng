@@ -79,6 +79,23 @@ static void okNear(int got, int want, const char* what)
     }
 }
 
+/* And a tighter one, for a reading whose expected value was worked
+   out rather than chosen. okNear's two bytes of room is right for a
+   channel that went through the rasteriser; it is too much for a
+   number this file derives from aecolor.c, where the whole difference
+   being looked for can be a step or two. The tolerance is the
+   caller's, and the caller has to say why it is what it is. */
+static void okWithin(double got, double want, double tol, const char* what)
+{
+    checks++;
+    if (!(fabs(got - want) <= tol))
+    {
+        printf("  FAIL %s: got %.3f want %.3f (+-%.3f)\n", what, got, want,
+               tol);
+        fails++;
+    }
+}
+
 /* ------------------------------------------------------------ the log */
 
 static char glrLog[64][512];
@@ -151,6 +168,13 @@ float D3D_gf_CutsceneBand = 0.10416666f;
    Both start off, as the game does. */
 int   tweak_ae_no = 0;
 int   ECAM_gi_NoAfterEffects = 0;
+
+/* The two colour parameters, at the neutral the game starts them at.
+   Neutral is a half and not nought: left at the nought a tentative
+   definition gives, every frame would come back flattened to mid
+   grey and half darkened. */
+float unkAEFunc2Param = 0.5f;
+float colorBalanceParam1 = 0.5f;
 
 void OVL_Draw(void) { }
 
@@ -275,6 +299,8 @@ static void glr_Reset(void)
        both back to the off the game starts them at. */
     tweak_ae_no = 0;
     ECAM_gi_NoAfterEffects = 0;
+    unkAEFunc2Param = 0.5f;
+    colorBalanceParam1 = 0.5f;
 
     /* The after-effects state the blur's decision is read from. It is
        the engine's, set by the AI scripts, so a case that wants a
@@ -3146,6 +3172,446 @@ static void caseAeDepthBlurEdges(void)
     gl_state.height = GLR_H;
 }
 
+
+/* -------------------------------------- the colour after-effects
+
+   Brightness, contrast and grayscale, over a frame whose pixels are
+   put there by hand -- so each case names an input colour and reads
+   the output, which is the only way to tell a gain from a bias or a
+   grayscale from a desaturation.
+ */
+static int glr_aeRamp(int x, int row)
+{
+    (void)row;
+    /* A ramp across, so one frame carries every input value: a case
+       can pick the pixel whose answer it wants to state. */
+    return x * 255 / (GLR_AE_W - 1);
+}
+
+static int glr_aeAlphaMark(int x, int row)
+{
+    (void)x; (void)row;
+    /* Something that is neither 0 nor 255, so that an effect writing
+       the alpha shows up rather than matching by luck. */
+    return 0x5A;
+}
+
+/* The ramp's value at a column, which is what the effects are applied
+   to. Worked out the same way the pattern writes it. */
+static int glr_aeRampAt(int x)
+{
+    return x * 255 / (GLR_AE_W - 1);
+}
+
+static void caseAeBrightness(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    row = GLR_AE_H / 2;
+    int    rgba[4];
+
+    printf("-- the brightness adds a grey, or takes one off\n");
+    glr_Reset();
+    CIN_Bands = 0;
+    scene = glr_AeScene(glr_aeRamp, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* A quarter of the way above neutral: a quarter of a channel
+       added, everywhere, with no change of gain. */
+    unkAEFunc2Param = 0.75f;
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+    {
+        int add = (int)(0.25f * 255.0f);   /* truncated, as it is there */
+        int mid = GLR_AE_W / 2;
+        int lo = GLR_AE_W / 8;
+
+        okEq(glr_AeRed(shown, mid, row), glr_aeRampAt(mid) + add,
+             "a mid pixel is that much brighter");
+        okEq(glr_AeRed(shown, lo, row), glr_aeRampAt(lo) + add,
+             "and a dark one by exactly the same amount, not in"
+             " proportion");
+        /* The top end clamps rather than wrapping round to black,
+           which is what an unclamped add would do in eight bits. */
+        okEq(glr_AeRed(shown, GLR_AE_W - 1, row), 255,
+             "and the brightest clamps at white");
+    }
+
+    /* The same distance below neutral takes the same amount off. */
+    unkAEFunc2Param = 0.25f;
+    shown = GL_l_i_RunAfterEffects();
+    {
+        int sub = (int)(0.25f * 255.0f);
+        int mid = GLR_AE_W / 2;
+
+        okEq(glr_AeRed(shown, mid, row), glr_aeRampAt(mid) - sub,
+             "below neutral it takes the same amount off");
+        okEq(glr_AeRed(shown, 0, row), 0, "and the darkest clamps at black");
+    }
+
+    /* The alpha is not the brightness's business. */
+    glr_AeAt(shown, GLR_AE_W / 2, row, rgba);
+    okEq(rgba[3], 0x5A, "the frame's alpha is left alone");
+
+    /* And green and blue move with red: it is a grey being added, not
+       a tint. */
+    {
+        int mid = GLR_AE_W / 2;
+
+        glr_AeAt(shown, mid, row, rgba);
+        okEq(rgba[1], 0, "green had none and still has none");
+        okEq(rgba[2], 0, "nor blue");
+    }
+
+    unkAEFunc2Param = 0.5f;
+    CIN_Bands = 1;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
+static void caseAeContrast(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    row = GLR_AE_H / 2;
+    int    mid;
+    int    i;
+
+    printf("-- the contrast is a gain about mid grey\n");
+    glr_Reset();
+    CIN_Bands = 0;
+    scene = glr_AeScene(glr_aeRamp, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* The column whose value is nearest mid grey, which is the pivot
+       everything below is stated about. */
+    mid = 0;
+    for (i = 0; i < GLR_AE_W; i++)
+        if (glr_aeRampAt(i) == 128)
+        {
+            mid = i;
+            break;
+        }
+    okEq(glr_aeRampAt(mid), 128, "the ramp has a mid-grey column");
+
+    /* All the way down: the frame is thrown away and replaced by a
+       flat mid grey. Read at three columns, so a gain that merely
+       went small rather than to nothing fails. */
+    colorBalanceParam1 = 0.0f;
+    shown = GL_l_i_RunAfterEffects();
+    okEq(glr_AeRed(shown, 0, row), 128, "at nought the darkest is mid grey");
+    okEq(glr_AeRed(shown, mid, row), 128, "the middle too");
+    okEq(glr_AeRed(shown, GLR_AE_W - 1, row), 128, "and the brightest");
+
+    /* All the way up: twice the gain about the pivot, so the pivot
+       stays put and everything else runs to an end. */
+    colorBalanceParam1 = 1.0f;
+    shown = GL_l_i_RunAfterEffects();
+    {
+        int atMid = glr_AeRed(shown, mid, row);
+
+        ok(atMid >= 126 && atMid <= 130, "at one, mid grey stays mid grey");
+        ok(glr_AeRed(shown, mid + (GLR_AE_W - mid) / 4, row)
+           > glr_aeRampAt(mid + (GLR_AE_W - mid) / 4),
+           "a pixel above the pivot is pushed up");
+        ok(glr_AeRed(shown, mid / 2, row) < glr_aeRampAt(mid / 2),
+           "and one below it down");
+        okEq(glr_AeRed(shown, GLR_AE_W - 1, row), 255, "white stays white");
+        okEq(glr_AeRed(shown, 0, row), 0, "and black black");
+    }
+
+    /* Halfway down: every pixel moves towards the pivot, and none
+       past it -- a gain applied about nought instead of about mid
+       grey would darken the bright half instead of pulling it in. */
+    colorBalanceParam1 = 0.25f;
+    shown = GL_l_i_RunAfterEffects();
+    for (i = 4; i < GLR_AE_W; i += 64)
+    {
+        int was = glr_aeRampAt(i);
+        int now = glr_AeRed(shown, i, row);
+
+        if (was < 120)
+            ok(now > was && now <= 130,
+               "a dark pixel comes up towards the pivot, not past it");
+        else if (was > 136)
+            ok(now < was && now >= 126,
+               "and a bright one comes down to it");
+    }
+
+    colorBalanceParam1 = 0.5f;
+    CIN_Bands = 1;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
+/* A frame of one colour per row band, so one pass gives the grayscale
+   of pure red, pure green and pure blue. */
+static int glr_aeChannels(int x, int row)
+{
+    (void)x;
+    /* Red only in the bottom third. The green and blue thirds are
+       written by the two helpers below, because the pattern writer
+       takes a red function and an alpha function. */
+    return row < GLR_AE_H / 3 ? 255 : 0;
+}
+
+static void caseAeGrayscale(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    row = GLR_AE_H / 2;
+    int    rgba[4];
+    int    i;
+    int    pureRed;
+    int    pureGreen;
+    int    pureBlue;
+
+    printf("-- the grayscale, and its green-heavy weights\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    /* Three solid colours written straight into the frame, one per
+       column band, so that one draw gives all three weights. The
+       pattern helper writes red and alpha, so this one goes in by
+       hand. */
+    scene = glr_AeScene(glr_aeChannels, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+    for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+    {
+        unsigned char* p = &glr_aePattern[i * 4];
+        int            x = i % GLR_AE_W;
+
+        p[0] = (unsigned char)(x < GLR_AE_W / 3 ? 255 : 0);
+        p[1] = (unsigned char)(x >= GLR_AE_W / 3
+                               && x < 2 * GLR_AE_W / 3 ? 255 : 0);
+        p[2] = (unsigned char)(x >= 2 * GLR_AE_W / 3 ? 255 : 0);
+        p[3] = 0x5A;
+    }
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+    PC_AE_MASTER = 0x1;
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+
+    /* All three channels come out the same, which is what makes it a
+       grayscale rather than a channel mixer. */
+    glr_AeAt(shown, GLR_AE_W / 6, row, rgba);
+    pureRed = rgba[0];
+    okEq(rgba[1], pureRed, "pure red comes out grey, green matching red");
+    okEq(rgba[2], pureRed, "and blue matching too");
+    okEq(rgba[3], 0x5A, "with the frame's alpha carried through");
+
+    glr_AeAt(shown, GLR_AE_W / 2, row, rgba);
+    pureGreen = rgba[0];
+    okEq(rgba[1], pureGreen, "and pure green comes out grey");
+    glr_AeAt(shown, 5 * GLR_AE_W / 6, row, rgba);
+    pureBlue = rgba[0];
+    okEq(rgba[2], pureBlue, "and pure blue");
+
+    /* The weights, as the only thing a picture can say about them:
+       their order, and how far apart they are. Green carries most of
+       it by a long way and blue almost none -- an even split, or the
+       usual broadcast luminance, fails both of these. */
+    ok(pureGreen > pureRed, "green weighs more than red");
+    ok(pureRed > pureBlue, "and red more than blue");
+    ok(pureGreen > 3 * pureRed, "green by more than three times red");
+    ok(pureBlue < 20, "and blue barely counts at all");
+
+    /* And each of the three at the value the step's own numbers give,
+       so the shader is checked against aecolor.c rather than against
+       an ordering that several wrong weightings would also satisfy. */
+    {
+        tAec_Source gsrc;
+        tAec_Step   gstep[AEC_MAX_STEPS];
+        int         got[3];
+        int         c;
+
+        gsrc.aeMaster = 0x1;
+        gsrc.brightness = 0.5f;
+        gsrc.contrast = 0.5f;
+        AEC_i_Steps(&gsrc, gstep, AEC_MAX_STEPS);
+        got[0] = pureRed;
+        got[1] = pureGreen;
+        got[2] = pureBlue;
+        for (c = 0; c < 3; c++)
+        {
+            double want = (double)gstep[0].weights[c] * gstep[0].gain
+                          + gstep[0].bias;
+
+            if (want < 0.0)
+                want = 0.0;
+            okWithin((double)got[c], want * 255.0, 1.0,
+                     "a pure channel comes back at its own weight");
+        }
+    }
+
+    /* And the weights not coming to one, which is visible: white does
+       not come back white. */
+    for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+    {
+        unsigned char* p = &glr_aePattern[i * 4];
+
+        p[0] = p[1] = p[2] = 255;
+        p[3] = 0x5A;
+    }
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    shown = GL_l_i_RunAfterEffects();
+    {
+        int         white = glr_AeRed(shown, GLR_AE_W / 2, row);
+        tAec_Source gsrc;
+        tAec_Step   gstep[AEC_MAX_STEPS];
+        double      want;
+
+        ok(white < 255, "white does not come back white");
+
+        /* And exactly how far short, worked out from what aecolor.c
+           says the step is rather than left as a range.
+         *
+           A range is what this was, and it was too loose to see the
+           shader dropping the grayscale's gain and bias: without
+           them white comes back at the weights' bare sum, which is
+           two steps away in eight bits -- inside the range and
+           outside this. The gain and the bias are each under a
+           hundredth, so nothing coarser than an exact reading will
+           do. */
+        gsrc.aeMaster = 0x1;
+        gsrc.brightness = 0.5f;
+        gsrc.contrast = 0.5f;
+        AEC_i_Steps(&gsrc, gstep, AEC_MAX_STEPS);
+        want = ((double)gstep[0].weights[0] + gstep[0].weights[1]
+                + gstep[0].weights[2]) * gstep[0].gain + gstep[0].bias;
+        okWithin((double)white, want * 255.0, 1.0,
+                 "white comes back at exactly what the weights, the gain"
+                 " and the bias say");
+
+        /* Which is not the weights' sum on its own -- so the reading
+           above is telling the gain and the bias apart from nothing
+           rather than merely agreeing with the weights. */
+        ok(fabs(want * 255.0
+                - ((double)gstep[0].weights[0] + gstep[0].weights[1]
+                   + gstep[0].weights[2]) * 255.0) > 1.5,
+           "and that is more than a step away from the bare sum");
+    }
+
+    PC_AE_MASTER = 0;
+    CIN_Bands = 1;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
+static void caseAeColorOrder(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    row = GLR_AE_H / 2;
+    int    x = GLR_AE_W / 4;
+    int    both;
+    int    brightOnly;
+
+    printf("-- the three run in order, clamped between\n");
+    glr_Reset();
+    CIN_Bands = 0;
+    scene = glr_AeScene(glr_aeRamp, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* Brightness all the way up, then contrast all the way up. The
+       brightness pushes most of the ramp past white and the clamp
+       catches it, so the contrast sees white rather than the number
+       the arithmetic would have carried -- and the result is white.
+       Composed without the clamp between them, it would be white
+       too; what the clamp changes is everything below that, which
+       the next reading is for. */
+    unkAEFunc2Param = 1.0f;
+    colorBalanceParam1 = 1.0f;
+    shown = GL_l_i_RunAfterEffects();
+    both = glr_AeRed(shown, x, row);
+
+    unkAEFunc2Param = 1.0f;
+    colorBalanceParam1 = 0.5f;
+    shown = GL_l_i_RunAfterEffects();
+    brightOnly = glr_AeRed(shown, x, row);
+
+    /* The brightness alone already takes this pixel over the pivot,
+       so the contrast afterwards pushes it further up rather than
+       down -- which is the order mattering: contrast first would
+       have pushed the original dark pixel down to black and the
+       brightness would then have lifted it only to the half. */
+    ok(brightOnly > 128, "the brightness alone lifts it above the pivot");
+    ok(both > brightOnly, "and the contrast afterwards lifts it further");
+
+    /* The other order, done by hand, to show the two differ: a dark
+       pixel stretched first and brightened after. */
+    {
+        double mid = 128.0 / 255.0;
+        double v = (double)glr_aeRampAt(x) / 255.0;
+        double stretchedFirst = (v - mid) * 2.0 + mid;
+        double thenBright;
+
+        if (stretchedFirst < 0.0)
+            stretchedFirst = 0.0;
+        thenBright = stretchedFirst + 0.5;
+        if (thenBright > 1.0)
+            thenBright = 1.0;
+        ok(fabs(thenBright * 255.0 - (double)both) > 8.0,
+           "the other order gives a visibly different answer");
+    }
+
+    /* And with all three on, the grayscale is last: the output is
+       grey whatever the other two did. */
+    PC_AE_MASTER = 0x1;
+    unkAEFunc2Param = 0.7f;
+    colorBalanceParam1 = 0.3f;
+    shown = GL_l_i_RunAfterEffects();
+    {
+        int rgba[4];
+
+        glr_AeAt(shown, x, row, rgba);
+        okEq(rgba[1], rgba[0], "with all three on the answer is grey");
+        okEq(rgba[2], rgba[0], "in every channel");
+    }
+
+    PC_AE_MASTER = 0;
+    unkAEFunc2Param = 0.5f;
+    colorBalanceParam1 = 0.5f;
+    CIN_Bands = 1;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
 int main(void)
 {
     void* p;
@@ -3247,6 +3713,10 @@ int main(void)
     caseAeDepthBlurGates();
     caseAeDepthBlurBands();
     caseAeDepthBlurEdges();
+    caseAeBrightness();
+    caseAeContrast();
+    caseAeGrayscale();
+    caseAeColorOrder();
 
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();

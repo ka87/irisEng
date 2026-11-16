@@ -335,6 +335,22 @@ int GDI_gi_Diffuse2x;
    sit with the one renderer that has an after-effects pass. The depth
    blur's decision is built from them -- see depthblur.h. */
 int   PC_AE_MASTER;
+/* The two after-effect parameters that have no bit in the word above:
+   they run whenever they are off neutral, which for both of them is a
+   half. The scripts move them the same way and the engine puts them
+   back to a half itself when the effects are switched off. The colour
+   effects built from them are in aecolor.h.
+ *
+   Note that nought is **not** neutral for either of them, unlike the
+   word above. A tentative definition cannot carry an initialiser, so
+   the half comes from the definitions that sit with the renderer
+   whose pass has always owned them -- which is linked whichever
+   renderer is in force. Were it ever not, these would start at
+   nought, and nought means a frame flattened to mid grey on the
+   contrast and darkened by half on the brightness. Anything that
+   links one renderer alone has to set them. */
+float unkAEFunc2Param;
+float colorBalanceParam1;
 /* The texture-coordinate transform the material path computes, one per
    stage, with stage nought the one the world's geometry uses. Declared
    here because both renderers read it and neither owns it: it is
