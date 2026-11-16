@@ -3,7 +3,7 @@
 /* The after-effects that build a frame out of several samples of one,
  * with no renderer in them.
  *
- * Three of them, and what makes them a group is that each one's output
+ * Four of them, and what makes them a group is that each one's output
  * is a sum of frames rather than a function of a pixel:
  *
  *   motion blur   the frame now and the frame before, mixed
@@ -11,6 +11,8 @@
  *                 whatever its name suggests
  *   zoom smooth   the frame sampled at eight scales about the centre,
  *                 added
+ *   screen blur   the frame blurred seven times over, each pass
+ *                 reaching further than the last
  *
  * They are not one effect and they do not share a shader. What they
  * share is that the thing to get right is a schedule and a set of
@@ -18,9 +20,9 @@
  * is a slightly different smear and a wrong schedule is a smear of
  * the wrong thing.
  *
- * All three are switched on by a bit and scaled by a parameter, and
- * for all three the parameter's neutral is nought -- unlike the
- * colour effects, whose neutral is a half.
+ * All four are switched on by a bit and scaled by a parameter, and for
+ * all four the parameter's neutral is nought -- unlike the colour
+ * effects, whose neutral is a half.
  */
 
 /* What the decision is made from. Every field is a value the engine
@@ -31,6 +33,7 @@ typedef struct sAef_Source
     float        motionBlur;
     float        remanence;
     float        zoomSmooth;
+    float        screenBlur;
 
     /* The bottom of the letterbox band, as a fraction from the top.
        Only the zoom reads it, and only because its horizontal step
@@ -136,3 +139,64 @@ int   AEF_i_ZoomTaps(const tAef_Source* src, tAef_ZoomTap* out, int max);
 
 /* The weight every tap carries. */
 float AEF_f_ZoomWeight(void);
+
+/* ------------------------------------------------------ screen blur
+ *
+ * The frame blurred seven times over, each pass reaching one step
+ * further than the last, every pass being the same four-tap blur the
+ * depth blur is built from. So the result is a wide, even blur of the
+ * whole picture -- and it is the only one of the four whose parameter
+ * scales the *reach* rather than a weight.
+ *
+ * Two things are worth knowing before reading the reaches.
+ *
+ * **The parameter is a reach and not a fraction.** A step is the
+ * parameter times about a twenty-fifth, and a pass's reach is that
+ * times the pass number, in pixels of a 640 by 480 picture. So a
+ * parameter of 25 puts the last pass seven pixels out, and a parameter
+ * of one puts it under a third of a pixel out.
+ *
+ * **A reach under a pixel still costs brightness**, which is the part
+ * that surprises. The passes do not move anything anywhere -- every
+ * tap lands on the pixel it started from -- but a tap a fraction of a
+ * pixel out is *interpolated*, so it brings back a mixture of its
+ * pixel and the next one, and seven passes of that compound. At a
+ * reach of one a lone bright row comes back at about half its
+ * brightness without having spread at all. So "too small to see" is
+ * not the same as "no effect", and the gate below does not stop a
+ * reach that small being asked for.
+ *
+ * **The gate is a comparison against nought and not a floor.** Unlike
+ * the remanence, which skips anything under a hundredth, this runs for
+ * any value that is not exactly nought -- including a **negative**
+ * one, which steps the taps the other way. The blur's four taps are
+ * not symmetric, so a negative reach is not the same picture as a
+ * positive one; it is a different blur, and a legal one.
+ */
+int   AEF_b_ScreenBlur(const tAef_Source* src);
+
+#define AEF_SCREENBLUR_PASSES 7
+
+/* The seven reaches, in order, for a parameter of `strength`. Returns
+ * how many were written. Either array may be null.
+ *
+ * Reaches and not a schedule, for the reason AEF_i_RemanenceReaches
+ * gives: which target a pass reads and writes is the renderer's to
+ * decide.
+ *
+ * **The first pass's vertical reach is computed differently from the
+ * other six**, and that is not a slip in the reading. The step is a
+ * double that is then narrowed to a float; the first pass's horizontal
+ * reach comes from the narrowed step and its vertical reach from the
+ * **unnarrowed** product, while all six that follow take both from the
+ * narrowed one. The difference is a single rounding and no picture
+ * could show it, so it is here because it is what the other renderer
+ * computes and for no other reason.
+ *
+ * The two scales are this effect's own doubles and **not** the family's
+ * AEF_STEP_U and AEF_STEP_V, which are floats. The horizontal one is a
+ * power of two and comes to the same number either way; the vertical
+ * one does not, and taking it from the float would move every reach
+ * here. */
+int   AEF_i_ScreenBlurReaches(float* uSteps, float* vSteps, int max,
+                              float strength);

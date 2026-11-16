@@ -94,11 +94,15 @@ $CC $CFLAGS -c aehue.c -o "$OUT/wingdi_ae.ahu.o"
 # are neither symmetric nor sorted, so both are compared against the
 # frozen copy rather than reasoned about.
 $CC $CFLAGS -c aemotion.c -o "$OUT/wingdi_ae.amo.o"
+# aeframe.c holds the four sum-of-samples effects' schedules; the
+# screen blur's seven reaches moved there out of this file, so the
+# cases compare them against the frozen copy.
+$CC $CFLAGS -c aeframe.c -o "$OUT/wingdi_ae.aef.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/wingdi_ae_mocks.c \
     -o "$OUT/wingdi_ae.mocks.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/test_wingdi_ae.c \
     -o "$OUT/wingdi_ae.drv.o"
 $CC "$OUT/wingdi_ae.new.o" "$OUT/wingdi_ae.base.o" "$OUT/wingdi_ae.math.o" \
-    "$OUT/wingdi_ae.dpb.o" "$OUT/wingdi_ae.wsm.o" "$OUT/wingdi_ae.afd.o" "$OUT/wingdi_ae.ahu.o" "$OUT/wingdi_ae.amo.o" "$OUT/wingdi_ae.mocks.o" "$OUT/wingdi_ae.drv.o" \
+    "$OUT/wingdi_ae.dpb.o" "$OUT/wingdi_ae.wsm.o" "$OUT/wingdi_ae.afd.o" "$OUT/wingdi_ae.ahu.o" "$OUT/wingdi_ae.amo.o" "$OUT/wingdi_ae.aef.o" "$OUT/wingdi_ae.mocks.o" "$OUT/wingdi_ae.drv.o" \
     -o "$OUT/wingdi_ae" -lm
 "$OUT/wingdi_ae"

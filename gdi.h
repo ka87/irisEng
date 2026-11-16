@@ -375,13 +375,18 @@ int   PC_AE_MASTER;
    links one renderer alone has to set them. */
 float unkAEFunc2Param;
 float colorBalanceParam1;
-/* And the three that scale the effects building a frame out of several
-   samples of one. Neutral for all three is nought, so unlike the two
+/* And the four that scale the effects building a frame out of several
+   samples of one. Neutral for all four is nought, so unlike the two
    above a tentative definition left to itself is the right value. The
-   effects built from them are in aeframe.h. */
+   effects built from them are in aeframe.h.
+
+   The last one is the odd one: it scales how far the blur *reaches*
+   rather than how much of it is mixed in, which is why a small value
+   there does nothing visible rather than a little. */
 float motionBlurFactor;
 float remenanceFactor;
 float zoomSmoothFactor;
+float blurFactor;
 /* The texture-coordinate transform the material path computes, one per
    stage, with stage nought the one the world's geometry uses. Declared
    here because both renderers read it and neither owns it: it is
