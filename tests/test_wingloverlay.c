@@ -1183,12 +1183,16 @@ static void reset(void)
     gl_mipmapping = 1;
     memset(&gl_dd, 0, sizeof(gl_dd));
     gpst_DX_stDD = &gl_dd;
-    memset(&gl_state, 0, sizeof(gl_state));
+    /* Through the renderer's own device setup rather than built by
+       hand here. This used to be a memset and the three fields that
+       followed it, which is the same thing until the renderer sets a
+       fourth -- and when it did, the harness kept handing the cases a
+       device the renderer never makes. Only what belongs to the
+       harness is set afterwards. */
+    GL_p_CreateDevice();
     gl_state.context = (HGLRC)(size_t)0xC047;
     gl_state.width = 800;
     gl_state.height = 600;
-    gl_state.zEnable = 1;
-    gl_state.zWrite = 1;
 
     wgLogLen = 0;
     wg_callLen = 0;
@@ -2588,6 +2592,65 @@ static void caseMaterialState(void)
             ok(v[0].color != GVX_ui_SolidColor(0, 0, 0x00804020),
                "which is not the colour it would have had otherwise");
         }
+    }
+}
+
+static void caseGeoDiffuse2x(void)
+{
+    printf("-- the doubled modulate, and the two switches it needs\n");
+
+    /* **The renderer has to say it can double.** The material path's
+       fallback for one that cannot is to draw the geometry a second
+       time additively, and this shader doubles whatever it is given --
+       so a renderer that answered no while still doubling produced the
+       lit, shadowed geometry at four times its brightness. That is one
+       assignment in GL_p_CreateDevice and nothing in a picture names
+       it, so it is asserted here. */
+    reset();
+    okEq(GL_b_CanDiffuse2x(), 1, "the renderer can double");
+
+    /* The other two answers are *lacks*, and nought is the right
+       answer for both -- the same as the other renderer's defaults.
+       They are here so that a future memset-and-set-everything does
+       not quietly invert them. */
+    okEq(GL_b_WantsNoFlare(), 0, "the flare is not refused");
+    okEq(GL_b_NoZonAlpha(), 0, "nor is depth on alpha");
+
+    /* And the uniform follows **both** switches, as the other
+       renderer's stage needs both. Location 8 is uDiffuse2x. */
+    {
+        struct { int want; int can; long expect; const char* what; } t[4] = {
+            { 0, 1, 0L, "no doubling asked for" },
+            { 1, 1, 1L, "asked for, and available" },
+            { 1, 0, 0L, "asked for, but the renderer cannot" },
+            { 0, 0, 0L, "neither" }
+        };
+        int i;
+
+        WG_BuildChunk();
+        for (i = 0; i < 4; i++)
+        {
+            int j;
+            long got = -1;
+
+            reset();
+            WG_BuildChunk();
+            GDI_gi_TextureUVMode = 0;
+            GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+
+            GL_SetCanDiffuse2x(t[i].can);
+            GDI_gi_Diffuse2x = t[i].want;
+            wg_callLen = 0;
+            GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+
+            for (j = 0; j < wg_callLen; j++)
+                if (strcmp(wg_calls[j].name, "glUniform1i") == 0
+                    && wg_calls[j].arg[0] == 8)
+                    got = (long)wg_calls[j].arg[1];
+            okEq(got, t[i].expect, t[i].what);
+        }
+        GDI_gi_Diffuse2x = 0;
+        GL_SetCanDiffuse2x(1);
     }
 }
 
@@ -7223,6 +7286,7 @@ int main(void)
     caseTextureLevels();
     caseSampler();
     caseMaterialState();
+    caseGeoDiffuse2x();
     caseAlphaTest();
     caseUntextured();
     caseProceduralUpload();

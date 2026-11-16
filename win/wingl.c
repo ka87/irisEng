@@ -372,6 +372,18 @@ void* GL_p_CreateDevice(void)
     memset(&gl_state, 0, sizeof(gl_state));
     gl_state.zEnable = 1;
     gl_state.zWrite = 1;
+    /* The doubled modulate, which this renderer really does have: the
+       world shader multiplies by two and that is the whole of it.
+     *
+       Answering no here is not a harmless understatement, which is why
+       it is set rather than left at the memset's nought. The material
+       path's own fallback for a renderer that cannot double is to
+       **draw the geometry a second time additively** -- and the shader
+       would double each of those passes, so the lit, shadowed geometry
+       came out at four times the brightness it should be. The actors
+       are where that shows, because theirs is the material kind that
+       asks for the doubling. */
+    gl_state.canDiffuse2x = 1;
     return &gl_state;
 }
 
@@ -1176,9 +1188,21 @@ static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
     if (gl_geoTex >= 0)
         GLFN_glUniform1i(gl_geoTex, 0);
     /* A display setting, read at the draw rather than kept with the
-       material, because the engine can change it between the two. */
+       material, because the engine can change it between the two.
+     *
+       **Both switches, as the other renderer's stage needs both.** It
+       asks for the doubled modulate only when the engine wants the
+       doubling *and* the renderer says it can, and takes the plain
+       modulate otherwise -- because when it cannot, the material path
+       draws the geometry a second time additively to double it, and a
+       shader that doubled as well would double that too. The
+       capability is true here, so this is normally just the engine's
+       setting; the tweak console can turn it off, and then this
+       renderer has to behave like a card without the op. */
     if (gl_geoDiffuse2x >= 0)
-        GLFN_glUniform1i(gl_geoDiffuse2x, GDI_gi_Diffuse2x ? 1 : 0);
+        GLFN_glUniform1i(gl_geoDiffuse2x,
+                         (GDI_gi_Diffuse2x && gl_state.canDiffuse2x)
+                         ? 1 : 0);
 
     /* The material's texture-coordinate projection, read at the draw
        rather than kept with the material: the engine computes it after
