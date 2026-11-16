@@ -2550,6 +2550,103 @@ static void caseUVNormalLeavesSpritesAlone(void)
            "the sprite is drawn in its own colour");
 }
 
+/* ========================================================= culling
+ *
+ * What is checked here is the OpenGL half of the culling: that a
+ * triangle wound one way in clip space survives one of the two
+ * settings and is dropped by the other. The mapping from the engine's
+ * request to those settings is a reading of two conventions rather
+ * than a measurement -- the other renderer's device is not here -- and
+ * is checked as a table in the mock harness instead.
+ *
+ * The triangle is given its winding by hand, in clip space with an
+ * identity projection, so nothing between here and the rasteriser can
+ * turn it round without this noticing.
+ */
+static void glr_WoundTriangle(int b_counterClockwise)
+{
+    /* Three corners around the middle of the surface. Counter-
+       clockwise with x right and y up is the first order; the other is
+       the same three with two of them swapped. */
+    glr_pos[0].x =  0.0f; glr_pos[0].y =  0.5f; glr_pos[0].z = 0.0f;
+    if (b_counterClockwise)
+    {
+        glr_pos[1].x = -0.5f; glr_pos[1].y = -0.5f; glr_pos[1].z = 0.0f;
+        glr_pos[2].x =  0.5f; glr_pos[2].y = -0.5f; glr_pos[2].z = 0.0f;
+    }
+    else
+    {
+        glr_pos[1].x =  0.5f; glr_pos[1].y = -0.5f; glr_pos[1].z = 0.0f;
+        glr_pos[2].x = -0.5f; glr_pos[2].y = -0.5f; glr_pos[2].z = 0.0f;
+    }
+    glr_pos[3] = glr_pos[0];
+
+    glr_uv[0].u = 0.5f; glr_uv[0].v = 0.0f;
+    glr_uv[1].u = 0.0f; glr_uv[1].v = 1.0f;
+    glr_uv[2].u = 1.0f; glr_uv[2].v = 1.0f;
+    glr_uv[3] = glr_uv[0];
+
+    /* One triangle, not two: a quad's second triangle has the
+       opposite winding under some orderings and would always leave
+       something on the screen. */
+    glr_tris[0].v1 = 0;
+    glr_tris[0].v2 = 1;
+    glr_tris[0].v3 = 2;
+    memset(&glr_chunk, 0, sizeof(glr_chunk));
+    glr_chunk.triangleChunkElems = glr_tris;
+    glr_chunk.triangleNum = 1;
+}
+
+static int glr_i_DrawWound(int b_counterClockwise, int mask)
+{
+    glr_Reset();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_WoundTriangle(b_counterClockwise);
+    glr_IdentityMatrices();
+    glr_dd.drawMaskAllowedStuffCurrent = mask;
+
+    GL_TextureInit(-1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    /* A point inside the triangle whichever way it is wound. */
+    return glr_R(GLR_W / 2, GLR_H / 2);
+}
+
+static void caseCulling(void)
+{
+    int ccwNone;
+    int cwNone;
+    int ccwCullCcw;
+    int cwCullCcw;
+    int ccwCullCw;
+    int cwCullCw;
+
+    printf("-- a triangle survives one setting and not the other\n");
+
+    /* With culling off, both windings are drawn -- so the two
+       triangles are both really there and the differences below are
+       the culling and not the geometry. */
+    ccwNone = glr_i_DrawWound(1, 0x10);
+    cwNone = glr_i_DrawWound(0, 0x10);
+    okNear(ccwNone, 0xFF, "with culling off the first winding is drawn");
+    okNear(cwNone, 0xFF, "and so is the second");
+
+    /* The engine's counter-clockwise request: OpenGL is told
+       counter-clockwise is front, so the clockwise triangle goes. */
+    ccwCullCcw = glr_i_DrawWound(1, 0x10 | 0x800);
+    cwCullCcw = glr_i_DrawWound(0, 0x10 | 0x800);
+    okNear(ccwCullCcw, 0xFF, "front-facing survives the first setting");
+    okNear(cwCullCcw, GLR_BG, "and the other winding is culled");
+
+    /* And the other request culls the other one, which is the whole
+       point of there being two. */
+    ccwCullCw = glr_i_DrawWound(1, 0x10 | 0x800 | 0x2000);
+    cwCullCw = glr_i_DrawWound(0, 0x10 | 0x800 | 0x2000);
+    okNear(ccwCullCw, GLR_BG, "the second setting culls the other one");
+    okNear(cwCullCw, 0xFF, "and keeps the one the first setting dropped");
+}
+
 static void caseShadersCompile(void)
 {
     printf("-- every shipped shader compiles on a real driver\n");
@@ -2652,6 +2749,7 @@ int main(void)
     caseUVFromNormal();
     caseUVNormalMissing();
     caseUVNormalLeavesSpritesAlone();
+    caseCulling();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();
