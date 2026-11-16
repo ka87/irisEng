@@ -1,4 +1,12 @@
 #include "dbg.h"
+#include "version.h"
+/* For the log's timestamp. Asked for by name rather than left to
+   arrive through windows.h: the engine has a time.h of its own, and
+   that one is the engine's clock, not the C library's. The angle
+   brackets are what separates them -- the project's directory is not
+   on the compiler's include path, only thirdparty's, so this is the C
+   library's header and the engine's is "time.h". */
+#include <time.h>
 //#include "animation.h" //tmp
 
 int tweak_ae_no;
@@ -139,13 +147,86 @@ static void DBG_l_Log(const char* text)
     }
 }
 
+/* The timestamp the two loggers below put in front of a message, as
+ * "[hh:mm:ss.mmm] ", and how many characters it came to.
+ *
+ * In front of the *message* and not in front of every write to the
+ * log: DBG_DumpVecNoNL exists to write part of a line, and
+ * DBG_DumpMatrix writes four rows in one go, so stamping the sink
+ * would cut a stamp into the middle of a line and put four on a
+ * matrix. Those three go on writing what they wrote.
+ *
+ * The clock is the time of day, because the date is in the banner at
+ * the top of the file and the file holds one run.
+ *
+ * The room for it is 32 characters, which the two callers reserve on
+ * top of what a message may say -- so adding the stamp did not
+ * shorten any message.
+ */
+static int DBG_l_i_Stamp(char* out, int size)
+{
+    time_t     secs;
+    struct tm* local;
+
+    if (!out || size < 2)
+        return 0;
+    out[0] = 0;
+
+    /* time() and localtime() and nothing else: both are C89, both are
+       already used elsewhere in the engine, and neither brings a
+       platform header in. The second is as fine as the standard C
+       clock goes -- a millisecond would need C11's timespec_get, which
+       is not promised by every compiler this has to build with, and
+       within a second the order of the lines already says which came
+       first. */
+    secs = time(NULL);
+    local = localtime(&secs);
+    if (!local)
+        return 0;
+
+    _snprintf(out, (size_t)size - 1, "[%02d:%02d:%02d] ",
+              local->tm_hour, local->tm_min, local->tm_sec);
+    out[size - 1] = 0;
+    /* _snprintf answers with what it wanted to write, and a negative
+       number when it could not, so the length is taken from the string
+       that is really there. */
+    return (int)strlen(out);
+}
+
+/* What the log opens with: the engine, its version, when it was built
+ * and what for, between two rules so the start of a run can be found
+ * at a glance.
+ *
+ * The build stamp is this file's compile time -- see version.h -- so
+ * it is exact after a full build and older than the run after a
+ * partial one.
+ */
+void DBG_LogBanner(void)
+{
+    DBG_OutputDebugString("%s\n", IRISENG_BANNER_RULE);
+    DBG_OutputDebugString("%s\n", IRISENG_BANNER_LINE);
+    DBG_OutputDebugString("%s\n", IRISENG_BANNER_RULE);
+}
+
+/* And what it closes with. A log that ends without this line is a run
+   that did not reach the end of WinMain. */
+void DBG_LogExit(void)
+{
+    DBG_OutputDebugString("IRISEng exiting\n");
+}
+
 void DBG_OutputDebugString(char* Format, ...)
 {
-    CHAR OutputString[256];
+    /* The stamp's room is on top of the message's, so what a message
+       may say is what it could say before. */
+    CHAR OutputString[256 + 32];
     va_list va;
+    int at;
 
+    at = DBG_l_i_Stamp(OutputString, 32);
     va_start(va, Format);
-    _vsnprintf(OutputString, sizeof(OutputString) - 1, Format, va);
+    _vsnprintf(OutputString + at, sizeof(OutputString) - (size_t)at - 1,
+               Format, va);
     OutputString[sizeof(OutputString) - 1] = 0;
     va_end(va);
     OutputDebugStringA(OutputString);
@@ -163,11 +244,14 @@ void DBG_OutputDebugString(char* Format, ...)
    rather than anything renderer-specific. */
 void GDI_OutputDebugString(char* Format, ...)
 {
-    CHAR OutputString[256];
+    CHAR OutputString[256 + 32];
     va_list ArgList;
+    int at;
 
+    at = DBG_l_i_Stamp(OutputString, 32);
     va_start(ArgList, Format);
-    _vsnprintf(OutputString, sizeof(OutputString) - 1, Format, ArgList);
+    _vsnprintf(OutputString + at, sizeof(OutputString) - (size_t)at - 1,
+               Format, ArgList);
     OutputString[sizeof(OutputString) - 1] = 0;
     va_end(ArgList);
     OutputDebugStringA(OutputString);

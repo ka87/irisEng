@@ -925,6 +925,9 @@
     <ClInclude Include="aezoom2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="version.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="watersmooth.h">
       <Filter>Header Files</Filter>
     </ClInclude>
