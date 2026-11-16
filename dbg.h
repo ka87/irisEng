@@ -45,6 +45,11 @@ extern int tweak_gl_water_flip;
 
 void DBG_assert(int isError, char* sourceCodeInfo, int lineNo, char* sourceCodeLine, const char* error, const char* extra, int showMsgBox);
 void DBG_OutputDebugString(char* Format, ...);
+/* The log's first items and its last: the engine, its version, when it
+   was built and what for, between two rules; and one line at the end,
+   whose absence says the run did not reach the end of WinMain. */
+void DBG_LogBanner(void);
+void DBG_LogExit(void);
 void GDI_OutputDebugString(char* Format, ...);
 void DBG_DumpMatrix(Mtx4x4* mtx);
 void DBG_DumpVec(Vec3* vec);

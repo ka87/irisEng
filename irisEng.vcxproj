@@ -621,6 +621,7 @@
     <ClInclude Include="aehue.h" />
     <ClInclude Include="aemotion.h" />
     <ClInclude Include="aezoom2.h" />
+    <ClInclude Include="version.h" />
     <ClInclude Include="watersmooth.h" />
     <ClInclude Include="ways.h" />
     <ClInclude Include="win\adpcm.h" />

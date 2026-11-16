@@ -11,6 +11,7 @@
 #include "datafiles.h"
 #include "font.h"
 #include "loading.h"
+#include "dbg.h"
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
@@ -21,6 +22,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 	else
 	{
+		/* First thing into the log, so a run can be told from the one
+		   before it and the version is never a question. */
+		DBG_LogBanner();
+
 		ENG_InitApplication();
 
 		// datafiles.ini, if there is one, then the command line over
@@ -52,6 +57,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		BIG_Close();
 		SIDE_CloseModule();
 		ENG_CloseApplication();
+
+		/* And the last. A log without this line stopped somewhere
+		   else. */
+		DBG_LogExit();
 	}
 	return 0;
 };

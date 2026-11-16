@@ -151,6 +151,7 @@ short    GetAsyncKeyState(int key);
 int      _strcmpi(const char* a, const char* b);
 int      _stricmp(const char* a, const char* b);
 int      _vsnprintf(char* buf, size_t count, const char* format, va_list args);
+int      _snprintf(char* buf, size_t count, const char* format, ...);
 
 unsigned long long __rdtsc(void);
 DWORD    timeGetTime(void);
