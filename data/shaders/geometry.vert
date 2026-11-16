@@ -6,6 +6,13 @@
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec4 aColor;
 layout(location = 2) in vec2 aUV;
+// The engine's normal, for the one projection that takes its
+// coordinate from it. The engine keeps normals in an array of their
+// own, so this is a buffer of its own too, and the attribute is
+// enabled only for a draw that has them -- with the array disabled it
+// reads the generic value, which is what the other modes want and
+// never look at.
+layout(location = 3) in vec3 aNormal;
 
 uniform mat4 uViewProj;
 // To camera space, for the fog: fog is a function of the distance from
@@ -19,6 +26,7 @@ out float vDepth;
 // The camera-space position, for the generated texture coordinates:
 // one of the material's projections takes its coordinate from it.
 out vec3  vCam;
+out vec3  vNrm;
 
 void main()
 {
@@ -36,6 +44,9 @@ void main()
     vUV = aUV;
 
     vCam = (uView * vec4(aPos, 1.0)).xyz;
+    // A direction, so the fourth component is zero and the view
+    // matrix's translation does not reach it.
+    vNrm = (uView * vec4(aNormal, 0.0)).xyz;
 
     // The camera-space depth, interpolated perspective-correctly, as
     // the hardware's own fog does.

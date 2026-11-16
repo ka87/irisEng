@@ -30,6 +30,37 @@ unsigned int GVX_ui_SolidColor(int mask, int alpha, unsigned int solidVertexColo
            | (uint8_t)((mask ^ (alpha | solidVertexColor)) >> 16);
 }
 
+void GVX_BuildNormals(Vec3* out,
+                      const struct sGeoTriangleChunks* chunks,
+                      const Vec3* normals)
+{
+    const tGeoTriangleChunkElem* tri;
+    const tGeoTriangleChunkElem* triEnd;
+    int                          k;
+
+    if (!out || !chunks || !normals)
+        return;
+
+    tri = chunks->triangleChunkElems;
+    triEnd = &tri[chunks->triangleNum];
+    for (; tri < triEnd; tri++)
+    {
+        for (k = 0; k < 3; k++)
+        {
+            int idx;
+
+            if (k == 0)
+                idx = tri->v1;
+            else if (k == 1)
+                idx = tri->v2;
+            else
+                idx = tri->v3;
+
+            *out++ = normals[idx];
+        }
+    }
+}
+
 void GVX_BuildTriangles(tGdi_TexturedVertex* out,
                         const struct sGeoTriangleChunks* chunks,
                         const tGvx_Source* src)
