@@ -61,6 +61,7 @@ $CC $CFLAGS -c win/wingdi.c -o "$OUT/wingdi.new.o" $(defs NEW_ $syms)
 # independence honest -- if the live file still needed D3DX, it would
 # not compile.
 $CC $CFLAGS -include tests/stub/d3dx9math.h \
+    -include tests/wingdi_baseline_compat.h \
     -DMAT_ComputeUV_sub_4521A0=BASE_MAT_UV_ComputeAndSetTransform \
     -DD3D_OutputDebugString=GDI_OutputDebugString \
     -Dpd3drp=rendererState \

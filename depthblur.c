@@ -296,15 +296,6 @@ int DPB_i_BlurResultSlot(void)
 
 void DPB_BlurTaps(const tDpb_BlurPass* pass, float* offsets, float* weights)
 {
-    /* Half and half, as the hardware's own mixing factor spells it:
-       128 of 255 rather than an exact half. Carried through because it
-       is the only thing that separates the two taps across from each
-       other -- with an exact half they would weigh the same, and the
-       four weights would be a tidy half, quarter, eighth, eighth. */
-    const double f = 128.0 / 255.0;
-    double       keep;
-    int          i;
-
     if (offsets && pass)
     {
         /* The first two taps step across, the last two down -- that

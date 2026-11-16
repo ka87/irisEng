@@ -30,8 +30,6 @@ typedef void (*fnVoid)(void);
 typedef void (*fnRaster)(profilerRasterStructElem*);
 typedef void (*fnInt)(int);
 typedef void (*fnInitRasters)(profilerRasterStructElem*, char*);
-typedef int  (*fnDisplayTexts)(HWND, HDC, int, profilerRasterStructElem*, int);
-typedef void (*fnDisplayHandler)(HWND, HDC, int);
 
 typedef struct sSide
 {
@@ -47,15 +45,12 @@ typedef struct sSide
     fnRaster ClearOne;
     fnRaster ClearAll;
     fnInitRasters InitRasters;
-    fnDisplayTexts DisplayTexts;
-    fnDisplayHandler DisplayHandler;
     fnVoid WindowHandler;
     int* rasterWindowIsOn;
     int* rasterDetailPage;
     profilerRasterStructElem** firstRasterPtr;
     profilerRasterStructElem** unkRasterPtr;
     profilerRasterStructElem** currRaster;
-    HWND* rasterHWND;
     float* dbgRasterSetTo60;
 } tSide;
 
@@ -71,15 +66,11 @@ typedef struct sSide
     void p##PRO_ClearOneRaster(profilerRasterStructElem*); \
     void p##PRO_ClearAllRasters(profilerRasterStructElem*); \
     void p##PRO_InitRasters(profilerRasterStructElem*, char*); \
-    int  p##PRO_DisplayTextsOnRasterWindow(HWND, HDC, int, profilerRasterStructElem*, int); \
-    void p##PRO_ProfilerDisplayHandler(HWND, HDC, int); \
-    void p##PRO_ProfilerWindowHandler(void); \
     extern int p##PRO_rasterWindowIsOn; \
     extern int p##PRO_rasterDetailPage; \
     extern profilerRasterStructElem* p##PRO_FirstRasterPtr; \
     extern profilerRasterStructElem* p##pointsToUnkRaster_dword_98F944; \
     extern profilerRasterStructElem* p##PRO_CurrRaster; \
-    extern HWND p##PRO_rasterHWND; \
     extern float p##gfDBGRasterSetTo60;
 
 DECL(BASE_)
@@ -89,10 +80,9 @@ DECL(NEW_)
     p##PRO_RasterAdd, p##PRO_InitModule, p##profiler_dbg_init, p##ENG_ForceStartRasters, \
     p##PRO_RecordTimeDecRef, p##PRO_PerfCounterStartBlock, p##PRO_PerfCounterEndBlock, \
     p##PRO_QPC_RecordTimeDecRef, p##PRO_ClearOneRaster, p##PRO_ClearAllRasters, \
-    p##PRO_InitRasters, p##PRO_DisplayTextsOnRasterWindow, p##PRO_ProfilerDisplayHandler, \
-    p##PRO_ProfilerWindowHandler, \
+    p##PRO_InitRasters, \
     &p##PRO_rasterWindowIsOn, &p##PRO_rasterDetailPage, &p##PRO_FirstRasterPtr, \
-    &p##pointsToUnkRaster_dword_98F944, &p##PRO_CurrRaster, &p##PRO_rasterHWND, \
+    &p##pointsToUnkRaster_dword_98F944, &p##PRO_CurrRaster, \
     &p##gfDBGRasterSetTo60 }
 
 static tSide sides[2] = { SIDE("base", BASE_), SIDE("new", NEW_) };
@@ -464,138 +454,12 @@ static void Case_Qpc(const tSide* s, tShot* out)
         s->QpcDec(i);
 }
 
-static const int kindList[6] = { 0, 1, 2, 3, 4, 5 };
-
-static void Case_DisplayTexts(const tSide* s, tShot* out)
-{
-    int ki, sub, unk, cur, sum;
-
-    out->nret = 0;
-    for (ki = 0; ki < 6; ki++)
-    for (sub = 0; sub < 2; sub++)
-    for (unk = 0; unk < 2; unk++)
-    for (cur = 0; cur < 2; cur++)
-    for (sum = 0; sum < 2; sum++)
-    {
-        profilerRasterStructElem* r = &POOL_rasters[0];
-        profilerRasterStructElem* other = &POOL_rasters[1];
-        float v = 1.25f;
-
-        memset(r, 0, sizeof(*r));
-        memset(other, 0, sizeof(*other));
-        r->unk1 = kindList[ki];
-        r->group = "Grp";
-        r->subgroup = "Sub";
-        r->module = "Mod";
-        if (r->unk1 == 2)
-            memcpy(&r->unk2, "abc", 4);
-        else if (r->unk1 == 1)
-        {
-            int n = 4242;
-            memcpy(&r->unk2, &n, 4);
-        }
-        else
-            r->unk2 = v;
-        r->sumTime = sum ? 123456 : 0;
-        r->unk10 = 654321;
-        r->unk7 = 1;
-        other->group = "Grp";
-        other->subgroup = "Sub";
-        other->module = "Mod";
-        *s->unkRasterPtr = unk ? other : NULL;
-        *s->currRaster = cur ? other : NULL;
-        out->ret[out->nret++] = s->DisplayTexts((HWND)1, (HDC)2, 7 + ki, r, sub);
-        out->ret[out->nret++] = r->unk7;
-        out->ret[out->nret++] = r->sumTime;
-        out->ret[out->nret++] = r->unk10;
-    }
-    *s->unkRasterPtr = NULL;
-    *s->currRaster = NULL;
-}
-
-static void Case_DisplayHandler(const tSide* s, tShot* out, int variant)
-{
-    profilerRasterStructElem* r;
-    int i;
-
-    out->nret = 0;
-    s->InitModule();
-    if (variant < 5)
-        s->DbgInit();
-    else
-        s->InitRasters(POOL_rasters, "Display Data");
-
-    /* a raster is displayed only while its unk7 is set: PRO_RasterAdd
-       clears it and only the handler's own walk sets it again, so a
-       freshly built list displays nothing at all */
-    for (i = 0; i < TOTAL; i++)
-        RasterAt(i)->unk7 = 1;
-
-    *s->firstRasterPtr = NULL;
-    *s->currRaster = NULL;
-    *s->unkRasterPtr = NULL;
-    switch (variant)
-    {
-    case 0:
-        break;
-    case 1:
-        *s->firstRasterPtr = &PRO_EngineDt;
-        break;
-    case 2:
-        *s->firstRasterPtr = &PRO_Synchro;
-        break;
-    case 3:
-        *s->firstRasterPtr = &PRO_Synchro;
-        *s->currRaster = &PRO_Animation;
-        break;
-    case 4:
-        *s->firstRasterPtr = &PRO_Synchro;
-        *s->unkRasterPtr = &PRO_RasterGroup.PRO_UserProfilerRasters[0];
-        break;
-    case 5:
-        *s->firstRasterPtr = &POOL_rasters[9];
-        break;
-    case 6:
-        *s->firstRasterPtr = &POOL_rasters[41];
-        *s->currRaster = &POOL_rasters[31];
-        break;
-    case 7:
-        *s->firstRasterPtr = &POOL_rasters[41];
-        *s->unkRasterPtr = &POOL_rasters[38];
-        break;
-    }
-    s->DisplayHandler((HWND)1, (HDC)2, 0);
-    /* and again, over the state the first pass left */
-    s->DisplayHandler((HWND)1, (HDC)2, 100);
-    for (i = 0; i < TOTAL; i++)
-    {
-        r = RasterAt(i);
-        if (r->unk7 == 0)
-            out->ret[out->nret++] = i;
-    }
-    *s->firstRasterPtr = NULL;
-    *s->currRaster = NULL;
-    *s->unkRasterPtr = NULL;
-}
-
-static void Case_WindowHandler(const tSide* s, tShot* out, int variant)
-{
-    out->nret = 0;
-    *s->rasterHWND = (variant & 1) ? (HWND)0x1234 : NULL;
-    *s->rasterDetailPage = (variant >> 1) & 1;
-    *s->rasterWindowIsOn = (variant >> 2) & 1;
-    TIM_gf_dt = (variant & 8) ? 0.05f : 0.001f;
-    TIM_dtTicks = 0.002f;
-    s->InitModule();
-    s->DbgInit();
-    *s->firstRasterPtr = &PRO_EngineDt;
-    s->WindowHandler();
-    out->ret[out->nret++] = (*s->rasterHWND != NULL);
-    *s->rasterHWND = NULL;
-    *s->rasterDetailPage = 0;
-    *s->rasterWindowIsOn = 0;
-    *s->firstRasterPtr = NULL;
-}
+/* The call log compares nothing now, and that is the assertion: the
+   three Win32 raster-window functions are gone from profiler.c, so the
+   live side makes no GDI calls at all and the summary below says "0
+   GDI calls compared". A GDI call reappearing on one side alone is
+   what the log would catch. tests/profiler_mocks.c stays because the
+   frozen copy still has those functions and has to link. */
 
 /* ---------- driver ---------- */
 
@@ -617,9 +481,6 @@ static void W1(const tSide* s, tShot* o, int v) { Case_InitAndClearRasters(s, o)
 static void W2(const tSide* s, tShot* o, int v) { Case_ClearOne(s, o); }
 static void W3(const tSide* s, tShot* o, int v) { Case_Counters(s, o); }
 static void W4(const tSide* s, tShot* o, int v) { Case_Qpc(s, o); }
-static void W5(const tSide* s, tShot* o, int v) { Case_DisplayTexts(s, o); }
-static void W6(const tSide* s, tShot* o, int v) { Case_DisplayHandler(s, o, v); }
-static void W7(const tSide* s, tShot* o, int v) { Case_WindowHandler(s, o, v); }
 
 int main(void)
 {
@@ -633,17 +494,6 @@ int main(void)
     Run("clear_one_raster", W2, 0);
     Run("perf_counters", W3, 0);
     Run("qpc_decref", W4, 0);
-    Run("display_texts", W5, 0);
-    for (v = 0; v < 8; v++)
-    {
-        sprintf(buf, "display_handler/%d", v);
-        Run(buf, W6, v);
-    }
-    for (v = 0; v < 16; v++)
-    {
-        sprintf(buf, "window_handler/%d", v);
-        Run(buf, W7, v);
-    }
 
     printf("profiler: %d cases, %d raster fields, %d GDI calls compared, %d differing\n",
            cases, rasterFieldsCompared, callsCompared, failures);

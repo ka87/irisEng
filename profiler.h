@@ -68,7 +68,6 @@ extern int PRO_rasterDetailPage;
 extern profilerRasterStructElem* PRO_FirstRasterPtr;
 extern profilerRasterStructElem* pointsToUnkRaster_dword_98F944;
 extern profilerRasterStructElem* PRO_CurrRaster;
-extern HWND PRO_rasterHWND;
 extern float gfDBGRasterSetTo60;
 
 void PRO_RasterAdd(profilerRasterStructElem* raster, char* group, char* subgroup, char* module, int kind, float value);
@@ -81,6 +80,3 @@ void PRO_InitRasters(profilerRasterStructElem* rasters, char* subgroup);
 void ENG_ForceStartRasters();
 void profiler_dbg_init();
 void PRO_InitModule();
-
-// windows specific
-void PRO_ProfilerWindowHandler();

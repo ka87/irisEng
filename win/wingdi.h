@@ -406,7 +406,7 @@ int D3D_UpdateBlurTexture();
 void D3D_CreateSunTextures(tGfxSunD3DSpecificData* sun);
 uint32_t  D3D_DepthBlurBlurFuncCalc2(float depth);
 void D3D_ReleaseSunRenderTargetAndTexture(struct sGfxSunD3DSpecificData* sun);
-void D3D_PrepareWaterRendering();
+void D3D_PrepareWaterRendering(void);
 void D3D_PC_AE(tWorld* param1);
 /* A geometry's buffers are opaque handles in geo.h, because they
    belong to whichever renderer made them. These are this
