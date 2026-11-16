@@ -135,7 +135,7 @@ void GL_SunSamplerDestroy(void* sampler);
 int GL_b_SunSamplerReady(void* sampler);
 int GL_b_SunSamplingNow(void* sampler);
 void GL_SunSampleQueue(void* sampler, const int* x, const int* y, int num, int pointMask, float cameraZ);
-int GL_b_SunSampleRead(void* sampler, int* outPassed);
+int GL_b_SunSampleRead(void* sampler, int* outBlocked);
 void GL_SunEffectOnOff(void* sampler, int on);
 void* GL_p_CreateAlphaTexture(int width, int height, const uint8_t* coverage);
 void GL_DestroyAlphaTexture(void* texture);

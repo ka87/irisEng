@@ -528,6 +528,57 @@ static void GL_APIENTRY MK_glDeleteTextures(GLsizei n, const GLuint* in)
 }
 
 /* the shader half, enough for the loader to succeed */
+/* The sun's readback. Not driven here -- the sun has its own cases in
+   the render harness, where a real driver can actually finish a read --
+   but every entry in glcore.h's list has to be aimed at something, and
+   a null pointer is a crash rather than a missing feature. */
+static void GL_APIENTRY MK_glReadPixels(GLint x, GLint y, GLsizei w, GLsizei h,
+                                        GLenum format, GLenum type, void* data)
+{
+    (void)format;
+    (void)type;
+    (void)data;
+    WG_Record("glReadPixels", 4, (long long)x, (long long)y,
+              (long long)w, (long long)h);
+}
+
+static GLsync GL_APIENTRY MK_glFenceSync(GLenum condition, GLbitfield flags)
+{
+    WG_Record("glFenceSync", 2, (long long)condition, (long long)flags);
+    return (GLsync)(size_t)0xF0;
+}
+
+static GLenum GL_APIENTRY MK_glClientWaitSync(GLsync sync, GLbitfield flags,
+                                              GLuint64 timeout)
+{
+    (void)sync;
+    (void)timeout;
+    WG_Record("glClientWaitSync", 1, (long long)flags);
+    return GL_TIMEOUT_EXPIRED;
+}
+
+static void GL_APIENTRY MK_glDeleteSync(GLsync sync)
+{
+    (void)sync;
+    WG_Record("glDeleteSync", 0);
+}
+
+static void* GL_APIENTRY MK_glMapBufferRange(GLenum target, GLintptr offset,
+                                             GLsizeiptr length,
+                                             GLbitfield access)
+{
+    (void)offset;
+    (void)length;
+    WG_Record("glMapBufferRange", 2, (long long)target, (long long)access);
+    return NULL;
+}
+
+static GLboolean GL_APIENTRY MK_glUnmapBuffer(GLenum target)
+{
+    WG_Record("glUnmapBuffer", 1, (long long)target);
+    return GL_TRUE;
+}
+
 static GLuint GL_APIENTRY MK_glCreateShader(GLenum type)
 {
     WG_Record("glCreateShader", 1, (long long)type);
@@ -638,6 +689,12 @@ static void WG_AimThePointers(void)
     GLFN_glDrawArrays = MK_glDrawArrays;
     GLFN_glBufferData = MK_glBufferData;
     GLFN_glGenBuffers = MK_glGenBuffers;
+    GLFN_glReadPixels = MK_glReadPixels;
+    GLFN_glFenceSync = MK_glFenceSync;
+    GLFN_glClientWaitSync = MK_glClientWaitSync;
+    GLFN_glDeleteSync = MK_glDeleteSync;
+    GLFN_glMapBufferRange = MK_glMapBufferRange;
+    GLFN_glUnmapBuffer = MK_glUnmapBuffer;
     GLFN_glGenVertexArrays = MK_glGenVertexArrays;
     GLFN_glDeleteBuffers = MK_glDeleteBuffers;
     GLFN_glDeleteVertexArrays = MK_glDeleteVertexArrays;
@@ -774,6 +831,10 @@ void* MEM_p_ReallocAligned(void* p, int size, int alignment)
 }
 
 void MEM_FreeAlign(void* p) { free(p); }
+
+/* The sun's sampler is one plain allocation. */
+void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
+void  MEM_Free(void* p) { free(p); }
 
 /* A context the pass will accept. There is no driver; what the pass
    checks is that it has one. */

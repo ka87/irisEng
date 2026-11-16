@@ -203,10 +203,23 @@ for path in harness:
         checked += 1
         hand = re.findall(r'^[ \t]*static\s+[\w ]*?\**[\w ]*?\b%s\s*\(' % nm,
                           body_all, re.M)
+        # A harness may also aim a GLFN_ pointer at a saved copy of
+        # itself, to put the real one back after a case has stood in
+        # for it. That copy is a pointer variable rather than a
+        # function, and it has to carry the convention for the same
+        # reason -- so its declaration is read the same way.
+        saved = re.findall(r'^[ \t]*static\s+[^;\n]*?\(\s*([A-Za-z_]\w*\s+)?'
+                           r'\*\s*%s\s*\)\s*\(' % nm, body_all, re.M)
+        savedDecl = re.findall(r'^[ \t]*static\s+[^;\n]*?\*\s*%s\s*\)\s*\('
+                               % nm, body_all, re.M)
         if hand:
             if not any('GL_APIENTRY' in d for d in hand):
                 fails.append("%s: the mock %s is assigned into a GLFN_ pointer"
                              " and is not GL_APIENTRY" % (path, nm))
+        elif savedDecl:
+            if not any('GL_APIENTRY' in d for d in savedDecl):
+                fails.append("%s: %s holds a GL entry point and its"
+                             " declaration is not GL_APIENTRY" % (path, nm))
         elif nm in generated:
             line, macro, text = generated[nm]
             if 'GL_APIENTRY' not in text:

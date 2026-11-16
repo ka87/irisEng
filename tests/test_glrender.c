@@ -136,6 +136,10 @@ void* MEM_p_ReallocAligned(void* p, int size, int alignment)
 
 void MEM_FreeAlign(void* p) { free(p); }
 
+/* The sun's sampler is one plain allocation. */
+void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
+void  MEM_Free(void* p) { free(p); }
+
 /* The module under test, included because its state is static to it
    and because this has to drive the same entry points the engine
    does. */
@@ -1364,6 +1368,400 @@ static void caseDepthBlurWritesAlphaOnly(void)
     okNear(glr_R(2, 2), GLR_BG, "nothing outside the square either");
 }
 
+/* ================================================ the sun's occlusion test
+ *
+ * Nine points around the sun, nine bits back: which of them have
+ * something in front of them. The answer comes out of the frame's
+ * alpha, which the depth-blur pass above wrote -- so these cases draw
+ * a blur pass first and then ask about it, which is how the two pieces
+ * meet.
+ *
+ * A set bit means blocked. That is not what the other renderer's
+ * comments say, and it is worth being able to point at why: the engine
+ * sets all nine when the sun is hidden outright, and in the flare's
+ * render a set bit contributes zero luminance. Both are in gfx/gfxsun.c.
+ */
+
+/* The readback is asynchronous on purpose, so a read straight after a
+   queue is allowed to answer "not yet". The engine tolerates that --
+   it reuses last frame's bits -- but a test cannot, so it waits for
+   the card first. glFinish is the blunt instrument that makes the
+   asynchrony stop mattering for the duration of one check. */
+static void glr_FinishGPU(void)
+{
+    if (GLFN_glFinish)
+        GLFN_glFinish();
+}
+
+/* One blur pass over a rectangle at a given depth, so a frame can be
+   built out of more than one depth and a point's alpha depends on
+   where it is. */
+static void glr_BlurRect(float x0, float x1, float z)
+{
+    glr_BuildQuad();
+    glr_pos[0].x = x0; glr_pos[0].z = z;
+    glr_pos[1].x = x1; glr_pos[1].z = z;
+    glr_pos[2].x = x1; glr_pos[2].z = z;
+    glr_pos[3].x = x0; glr_pos[3].z = z;
+
+    GL_TextureInit(-1, 0, 1);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+}
+
+/* A frame whose alpha is the sun's depth ramp, with the quad at a
+   known depth -- so every pixel of the square carries a known alpha
+   and a point sampled inside it has a known answer. */
+static void glr_SunFrame(float quadDepth)
+{
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+    gl_state.sunEffectOn = 1;
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+    glr_QuadAtDepth(quadDepth);
+    glr_BlurMatrices();
+    glr_SolidColour(0, 0, 0, 0);
+
+    GL_TextureInit(-1, 0, 1);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+}
+
+/* The camera-space depth at which the sun's own blur amount is `want`,
+   so a case can put the threshold between two alphas it has measured
+   rather than hoping one lands on the right side of it. */
+static float glr_SunDepthForThreshold(const tDpb_State* st, int want)
+{
+    return (float)((1.0 - (double)want / 255.0) * (double)st->farUsed);
+}
+
+static void caseSunSampler(void)
+{
+    void* sampler;
+
+    printf("-- the sun's sampler is made and says it is ready\n");
+
+    glr_Reset();
+    sampler = GL_p_SunSamplerCreate();
+    ok(sampler != NULL, "a sampler is made");
+    ok(GL_b_SunSamplerReady(sampler), "and says so");
+    ok(!GL_b_SunSamplerReady(NULL), "nothing is not a sampler");
+
+    /* Whether a sun wants its test is the aggregate over every sun,
+       because that is what the blur's mode depends on. */
+    GL_SunEffectOnOff(sampler, 1);
+    okEq(gl_state.sunEffectOn, 1, "a sun that asks turns the effect on");
+    GL_SunEffectOnOff(sampler, 0);
+    okEq(gl_state.sunEffectOn, 0, "and the last one to stop turns it off");
+
+    /* Two suns, so the aggregate is doing something. */
+    {
+        void* other = GL_p_SunSamplerCreate();
+
+        ok(other != NULL, "a second sampler is made");
+        GL_SunEffectOnOff(sampler, 1);
+        GL_SunEffectOnOff(other, 0);
+        okEq(gl_state.sunEffectOn, 1,
+             "one sun still wanting it keeps it on");
+        GL_SunEffectOnOff(sampler, 0);
+        okEq(gl_state.sunEffectOn, 0, "and with neither it goes off");
+        GL_SunSamplerDestroy(other);
+    }
+
+    /* Sampling only happens in the blur mode whose ramp carries the
+       depth, which is the sun's own. */
+    gl_state.sunEffectOn = 1;
+    ok(GL_b_SunSamplingNow(sampler),
+       "with the sun's blur in force there is something to read");
+    PC_AE_MASTER = 8;
+    depthBlurType0 = 0.5f;
+    depthBlurType1 = 1.0f;
+    ok(!GL_b_SunSamplingNow(sampler),
+       "and with another blur in force there is not");
+
+    GL_SunSamplerDestroy(sampler);
+    ok(!GL_b_SunSamplerReady(NULL), "and a destroyed sampler is not asked");
+}
+
+static void caseSunReadsTheBlurAlpha(void)
+{
+    void*  sampler;
+    int    x[9];
+    int    y[9];
+    int    blocked = 0;
+    int    i;
+    double alphaInSquare;
+
+    printf("-- the nine bits come out of the alpha the blur wrote\n");
+
+    glr_SunFrame(0.5f);
+    sampler = GL_p_SunSamplerCreate();
+    ok(sampler != NULL, "a sampler for the frame just drawn");
+
+    /* What the square's alpha is, so the expectations below are
+       computed from the frame rather than assumed. */
+    glr_Read();
+    alphaInSquare = (double)glr_A(GLR_W / 2, GLR_H / 2);
+    ok(alphaInSquare > 0.0 && alphaInSquare < 255.0,
+       "the square carries a middling alpha, so either comparison is"
+       " reachable");
+
+    /* All nine points inside the square, and a threshold below its
+       alpha: every one is nearer than the sun, so every one blocks. */
+    for (i = 0; i < 9; i++)
+    {
+        x[i] = GLR_W / 2;
+        y[i] = GLR_H / 2;
+    }
+
+    /* The threshold comes from the sun's own depth, so a sun behind
+       the far plane has a threshold of nothing and everything drawn
+       blocks it. */
+    GL_SunSampleQueue(sampler, x, y, 9, 0x1FF, 2.0f);
+    glr_FinishGPU();
+    ok(GL_b_SunSampleRead(sampler, &blocked), "an answer arrives");
+    okEq(blocked, 0x1FF, "and every point is blocked by what was drawn");
+
+    /* And a sun in front of everything: its own alpha is the highest
+       there is, so nothing blocks it. */
+    blocked = 0;
+    GL_SunSampleQueue(sampler, x, y, 9, 0x1FF, -1.0f);
+    glr_FinishGPU();
+    ok(GL_b_SunSampleRead(sampler, &blocked), "a second answer arrives");
+    okEq(blocked, 0, "and nothing blocks a sun in front of the frame");
+
+    GL_SunSamplerDestroy(sampler);
+}
+
+static void caseSunMaskAndPacking(void)
+{
+    void* sampler;
+    int   x[9];
+    int   y[9];
+    int   blocked = 0;
+
+    tDpb_State st;
+    int        alphaNear;
+    int        alphaFar;
+    float      sunZ;
+
+    printf("-- a point outside the viewport is blocked without being"
+           " looked at\n");
+
+    /* A frame of two depths: the whole square far away, and a strip
+       down the middle of it close up. So a point on the strip is
+       nearer than a point beside it, and a threshold between the two
+       gives the sampled points different answers -- which is what it
+       takes to tell a resolve that walks the pixels in order from one
+       that indexes them by bit.
+     *
+     * The background is no use for this. It is never drawn, so it
+     * keeps the cleared alpha, and this harness clears it to 255 --
+     * the nearest value there is, so the background blocks everything.
+     * The first draft of this case assumed the opposite and failed. */
+    glr_Reset();
+    glr_dd.ct.cam.nearPlane = 0.01f;
+    glr_dd.ct.cam.farPlane = 1.0f;
+    gl_state.sunEffectOn = 1;
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BlurMatrices();
+    glr_SolidColour(0, 0, 0, 0);
+    glr_BlurRect(-0.5f, 0.5f, 0.8f);      /* far, the whole square */
+    glr_BlurRect(-0.2f, 0.2f, 0.1f);      /* near, a strip of it */
+
+    glr_Read();
+    alphaNear = glr_A(GLR_W / 2, GLR_H / 2);           /* on the strip */
+    alphaFar = glr_A((int)(GLR_W * 0.7), GLR_H / 2);   /* beside it */
+    ok(alphaNear > alphaFar + 8,
+       "the strip reads nearer than the square around it");
+
+    GL_l_ReadBlurState(&st);
+    sunZ = glr_SunDepthForThreshold(&st, (alphaNear + alphaFar) / 2);
+
+    sampler = GL_p_SunSamplerCreate();
+
+    /* Three of the nine were on screen -- bits 0, 4 and 8 -- and the
+       engine hands their pixels over packed into the first three
+       places. Bits 0 and 4 are on the strip and block; bit 8 is beside
+       it and does not. A resolve that indexed the pixels by bit rather
+       than by order would read the third pixel for bit 8, which is the
+       right one, and nothing at all for bits 0 and 4 -- so the two
+       mistakes point opposite ways and all three are checked. */
+    x[0] = GLR_W / 2;             y[0] = GLR_H / 2;
+    x[1] = GLR_W / 2;             y[1] = GLR_H / 2 + 2;
+    x[2] = (int)(GLR_W * 0.7);    y[2] = GLR_H / 2;
+
+    GL_SunSampleQueue(sampler, x, y, 3, (1 << 0) | (1 << 4) | (1 << 8),
+                      sunZ);
+    glr_FinishGPU();
+    ok(GL_b_SunSampleRead(sampler, &blocked), "an answer arrives");
+
+    okEq(blocked & ((1 << 0) | (1 << 4)), (1 << 0) | (1 << 4),
+         "the two points on the near strip are blocked");
+    okEq(blocked & (1 << 8), 0,
+         "the one beside it, farther than the sun, is not");
+    okEq(blocked & ~((1 << 0) | (1 << 4) | (1 << 8)),
+         0x1FF & ~((1 << 0) | (1 << 4) | (1 << 8)),
+         "and the six that were never sampled are all blocked");
+
+    GL_SunSamplerDestroy(sampler);
+}
+
+static void caseSunRing(void)
+{
+    void* sampler;
+    int   x[9];
+    int   y[9];
+    int   blocked = 0;
+    int   i;
+
+    printf("-- three samples in flight, and the fourth frame goes"
+           " unsampled\n");
+
+    glr_SunFrame(0.5f);
+    sampler = GL_p_SunSamplerCreate();
+
+    for (i = 0; i < 9; i++)
+    {
+        x[i] = GLR_W / 2;
+        y[i] = GLR_H / 2;
+    }
+
+    /* Nothing read, so the ring fills. The fourth queue has nowhere to
+       go and is dropped rather than overwriting an answer that has not
+       been collected. */
+    for (i = 0; i < 4; i++)
+        GL_SunSampleQueue(sampler, x, y, 9, 0x1FF, 2.0f);
+    okEq(((tGlSun*)sampler)->inFlight, 3, "three, and no more, are in flight");
+
+    /* One read empties the whole ring, because an older answer is of
+       no use once a newer one has been given. */
+    glr_FinishGPU();
+    ok(GL_b_SunSampleRead(sampler, &blocked), "a read answers");
+    okEq(((tGlSun*)sampler)->inFlight, 0,
+         "and retires everything up to the one it read");
+    ok(!GL_b_SunSampleRead(sampler, &blocked),
+       "so a second read has nothing to give");
+
+    /* And the ring takes samples again afterwards, which is the thing
+       an off-by-one in the retirement breaks. */
+    for (i = 0; i < 3; i++)
+        GL_SunSampleQueue(sampler, x, y, 9, 0x1FF, 2.0f);
+    okEq(((tGlSun*)sampler)->inFlight, 3, "the ring fills again");
+    glr_FinishGPU();
+    ok(GL_b_SunSampleRead(sampler, &blocked), "and answers again");
+
+    GL_SunSamplerDestroy(sampler);
+}
+
+/* The fence is consulted, and a sample the card has not finished with
+ * is not read.
+ *
+ * Every case above calls glFinish first, which is what makes them
+ * deterministic -- and it also means the fence is always signalled, so
+ * a sampler that ignored it entirely passed all of them. This is the
+ * one place the asynchrony itself is checked, and it is checked by
+ * aiming that one entry point at a mock that says "not yet": every GL
+ * call goes through a function pointer, which is what makes that
+ * possible.
+ */
+static GLenum (GL_APIENTRY *glr_realWaitSync)(GLsync, GLbitfield, GLuint64);
+
+static GLenum GL_APIENTRY glr_WaitSyncNotYet(GLsync sync, GLbitfield flags,
+                                             GLuint64 timeout)
+{
+    (void)sync;
+    (void)flags;
+    (void)timeout;
+    return GL_TIMEOUT_EXPIRED;
+}
+
+static void caseSunWaitsForTheCard(void)
+{
+    void* sampler;
+    int   x[9];
+    int   y[9];
+    int   blocked = 0x5A5A;
+    int   i;
+
+    printf("-- a sample the card has not finished with is not read\n");
+
+    glr_SunFrame(0.5f);
+    sampler = GL_p_SunSamplerCreate();
+    for (i = 0; i < 9; i++)
+    {
+        x[i] = GLR_W / 2;
+        y[i] = GLR_H / 2;
+    }
+
+    GL_SunSampleQueue(sampler, x, y, 9, 0x1FF, 2.0f);
+    glr_FinishGPU();          /* so the only thing saying "not yet" is the mock */
+
+    glr_realWaitSync = GLFN_glClientWaitSync;
+    GLFN_glClientWaitSync = glr_WaitSyncNotYet;
+    ok(!GL_b_SunSampleRead(sampler, &blocked),
+       "the read answers no while the fence says not yet");
+    okEq(blocked, 0x5A5A, "and leaves the caller's word alone");
+    okEq(((tGlSun*)sampler)->inFlight, 1,
+         "and the sample is still in flight, not thrown away");
+
+    GLFN_glClientWaitSync = glr_realWaitSync;
+    ok(GL_b_SunSampleRead(sampler, &blocked),
+       "and once the fence says so, the same sample is read");
+    okEq(blocked, 0x1FF, "with the answer it was holding all along");
+
+    GL_SunSamplerDestroy(sampler);
+}
+
+static void caseSunRefusals(void)
+{
+    void* sampler;
+    int   x[9];
+    int   y[9];
+    int   blocked = 0x5A5A;
+    int   i;
+
+    printf("-- what the sampler declines to do\n");
+
+    glr_SunFrame(0.5f);
+    sampler = GL_p_SunSamplerCreate();
+    for (i = 0; i < 9; i++)
+    {
+        x[i] = GLR_W / 2;
+        y[i] = GLR_H / 2;
+    }
+
+    /* Nothing queued, so nothing to read -- and the caller's value is
+       left alone rather than being written with a made-up answer. */
+    ok(!GL_b_SunSampleRead(sampler, &blocked), "an empty ring answers no");
+    okEq(blocked, 0x5A5A, "and leaves the caller's word alone");
+
+    /* A sampler that is not one, and counts that are not counts. */
+    GL_SunSampleQueue(NULL, x, y, 9, 0x1FF, 1.0f);
+    GL_SunSampleQueue(sampler, NULL, y, 9, 0x1FF, 1.0f);
+    GL_SunSampleQueue(sampler, x, NULL, 9, 0x1FF, 1.0f);
+    GL_SunSampleQueue(sampler, x, y, -1, 0x1FF, 1.0f);
+    GL_SunSampleQueue(sampler, x, y, 10, 0x1FF, 1.0f);
+    okEq(((tGlSun*)sampler)->inFlight, 0, "none of those queued anything");
+    ok(!GL_b_SunSampleRead(NULL, &blocked), "and nothing is not a sampler");
+
+    /* A read that is asked for no answer still retires the slot, so a
+       caller that does not want the bits does not wedge the ring. */
+    GL_SunSampleQueue(sampler, x, y, 9, 0x1FF, 2.0f);
+    glr_FinishGPU();
+    ok(GL_b_SunSampleRead(sampler, NULL), "a read with nowhere to put it"
+                                          " still answers");
+    okEq(((tGlSun*)sampler)->inFlight, 0, "and still retires the slot");
+
+    GL_SunSamplerDestroy(sampler);
+    GL_SunSamplerDestroy(NULL);     /* and destroying nothing is nothing */
+
+    /* With no context there is no sampler to make: this renderer may
+       not be the one in force. */
+    gl_state.context = NULL;
+    ok(GL_p_SunSamplerCreate() == NULL, "no context, no sampler");
+}
+
 static void caseShadersCompile(void)
 {
     printf("-- every shipped shader compiles on a real driver\n");
@@ -1449,6 +1847,12 @@ int main(void)
     caseDepthBlurFilter();
     caseDepthBlurLeavesSpritesAlone();
     caseDepthBlurWritesAlphaOnly();
+    caseSunSampler();
+    caseSunReadsTheBlurAlpha();
+    caseSunMaskAndPacking();
+    caseSunRing();
+    caseSunWaitsForTheCard();
+    caseSunRefusals();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();

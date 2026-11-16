@@ -146,7 +146,7 @@ typedef struct sGdi_DisplayData
     int  (* b_SunSamplingNow)(void* sampler);
     void (* SunSampleQueue)(void* sampler, const int* x, const int* y, int num,
                             int pointMask, float cameraZ);
-    int  (* b_SunSampleRead)(void* sampler, int* outPassed);
+    int  (* b_SunSampleRead)(void* sampler, int* outBlocked);
     void (* SunEffectOnOff)(void* sampler, int on);
 
     /* What this renderer can do, as the engine needs to know it. Each
