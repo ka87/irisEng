@@ -431,7 +431,7 @@ static void RUN(int caseId)
     }
 
     /* --- group 11: the script-facing control and getters ----------- */
-    default:
+    case 11:
     {
         int k = caseId % AE_CASES_PER_GROUP;
 
@@ -448,6 +448,40 @@ static void RUN(int caseId)
                 AEMOCK_Record("onoff", 2, (long long)i,
                               (long long)X(PC_AE_MASTER_GET_ONOFF)(i));
             }
+        break;
+    }
+
+    /* --- group 12: the hue sweep's own depth and phase -------------
+       Its three channel amounts are one wave sampled a third of a
+       cycle apart, and they are packed into one colour by OR-ing three
+       bytes into a word whose upper bytes start as ones. Above a depth
+       of one the bytes overflow, and they do not all overflow the same
+       way -- so the packing has to be compared and not just the
+       arithmetic. Group 9 leaves the depth and the phase to a seed and
+       cannot say it reaches that; here both are driven, with the
+       pairing counted. */
+    default:
+    {
+        int k = caseId % AE_CASES_PER_GROUP;
+
+        gMaxSimultaneousTextures = AE_Stages(k);
+        PC_AE_MASTER = 4;
+        X(unknownAEFlag4GlobalVar) = AE_HueDepth(k);
+        X(texFactorManual) = AE_HuePhase(k);
+        AE_SeedCaches(&seed);
+        X(D3D_PC_AE)(NULL);
+        AEMOCK_Record("hue.factor", 2,
+                      (long long)AE_Bits(X(unknownAEFlag4GlobalVar)),
+                      (long long)AE_Bits(X(texFactorManual)));
+        /* And the wave on its own at the same phase, which pins the
+           three channel amounts separately from the colour they are
+           packed into. */
+        AEMOCK_Record("hue.wave", 3,
+                      (long long)AE_Bits(X(D3D_CalcTextureFactor)(AE_HuePhase(k))),
+                      (long long)AE_Bits(X(D3D_CalcTextureFactor)(
+                          AE_HuePhase(k) - 0.33333331f + 1.0f)),
+                      (long long)AE_Bits(X(D3D_CalcTextureFactor)(
+                          AE_HuePhase(k) - 0.66666663f + 1.0f)));
         break;
     }
     }

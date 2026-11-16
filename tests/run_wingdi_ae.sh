@@ -83,11 +83,17 @@ $CC $CFLAGS -c watersmooth.c -o "$OUT/wingdi_ae.wsm.o"
 # copy still steps the opacity inline and the fade cases compare the
 # two.
 $CC $CFLAGS -c aefade.c -o "$OUT/wingdi_ae.afd.o"
+# aehue.c holds the hue sweep's wave and, more to the point, the way
+# its three channels are packed into one colour -- which is where a
+# depth above one stops being a clamp question. A move out of this
+# file, so the frozen copy still packs them inline and the cases
+# compare the two.
+$CC $CFLAGS -c aehue.c -o "$OUT/wingdi_ae.ahu.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/wingdi_ae_mocks.c \
     -o "$OUT/wingdi_ae.mocks.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/test_wingdi_ae.c \
     -o "$OUT/wingdi_ae.drv.o"
 $CC "$OUT/wingdi_ae.new.o" "$OUT/wingdi_ae.base.o" "$OUT/wingdi_ae.math.o" \
-    "$OUT/wingdi_ae.dpb.o" "$OUT/wingdi_ae.wsm.o" "$OUT/wingdi_ae.afd.o" "$OUT/wingdi_ae.mocks.o" "$OUT/wingdi_ae.drv.o" \
+    "$OUT/wingdi_ae.dpb.o" "$OUT/wingdi_ae.wsm.o" "$OUT/wingdi_ae.afd.o" "$OUT/wingdi_ae.ahu.o" "$OUT/wingdi_ae.mocks.o" "$OUT/wingdi_ae.drv.o" \
     -o "$OUT/wingdi_ae" -lm
 "$OUT/wingdi_ae"

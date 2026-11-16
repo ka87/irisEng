@@ -4,6 +4,7 @@
 #include "../depthblur.h"
 #include "../watersmooth.h"
 #include "../aefade.h"
+#include "../aehue.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -634,29 +635,14 @@ void D3D_Unknown_AE_Func1(IDirect3DTexture9* texture)
 
 float D3D_CalcTextureFactor(float phase)
 {
-    double wrapped;
-
-    wrapped = phase;
-    if (phase > 1.0)
-        wrapped = wrapped - 1.0;
-    if (wrapped > 0.5)
-        wrapped = 1.0 - wrapped;
-    if (wrapped < 0.1666666)
-        return 1.0;
-    if (wrapped <= 0.33333331)
-        return (float)(1.0 - (wrapped - 0.16666667) * 6.0);
-    return 0.0;
+    return AHU_f_Wave(phase);
 }
 
 // TODO FIXME Ez lehet nem jó, mert az IDA-ban rossz a stack, ha nem mûködik megnézni!!!
 void D3D_Unkown_AE_Func_Flag_4(IDirect3DTexture9* src, IDirect3DTexture9* dest, float amount, float phase)
 {
-    int green;
-    unsigned int highChannels;
     int textureFactor;
     int i;
-    float greenPhase;
-    float bluePhase;
     tVertex_type_104 quad[4];
     float width;
     float height;
@@ -669,11 +655,7 @@ void D3D_Unkown_AE_Func_Flag_4(IDirect3DTexture9* src, IDirect3DTexture9* dest, 
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
     D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)src);
-    greenPhase = phase - 0.33333331f + 1.0f;
-    green = (unsigned int)((1.0 - D3D_CalcTextureFactor(greenPhase)) * amount * 0.5 * 510.0);
-    highChannels = ((((unsigned int)((1.0 - D3D_CalcTextureFactor(phase)) * amount * 0.5 * 510.0) | 0xFFFFFF00) << 8) | green) << 8;
-    bluePhase = phase - 0.66666663f + 1.0f;
-    textureFactor = (unsigned int)((1.0 - D3D_CalcTextureFactor(bluePhase)) * amount * 0.5 * 510.0) | highChannels;
+    textureFactor = (int)AHU_u_Subtract(amount, phase);
     AE_SetRenderState(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, textureFactor);
     width = (float)D3DRenderParams.presentParams.BackBufferWidth;
     height = (float)D3DRenderParams.presentParams.BackBufferHeight;
@@ -2772,7 +2754,7 @@ void D3D_PC_AE(tWorld* param1)
         D3D_DepthBlur(spare, D3DRenderParams.blurRenderTarget, 0.0046875002f, 0.0062500001f);
         D3D_Unknown_AE_FuncDepthBlur(current);
     }
-    if ((PC_AE_MASTER & 4) != 0)
+    if (AHU_b_On((unsigned int)PC_AE_MASTER))
     {
         swap = spare;
         D3D_Unkown_AE_Func_Flag_4(current, spare, unknownAEFlag4GlobalVar, texFactorManual);
@@ -2972,10 +2954,10 @@ void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)
             texFactorManual = value;
         else if (slot == 2)
             texFactorProbablyUnunsedType2 = value;
-        cleared = PC_AE_MASTER & ~4u;
+        cleared = (int)(PC_AE_MASTER & ~AHU_BIT);
         PC_AE_MASTER = cleared;
         if (onOff)
-            PC_AE_MASTER = cleared | 4;
+            PC_AE_MASTER = cleared | (int)AHU_BIT;
         return;
     case 14:
         toggled = (onOff != 0) != ((PC_AE_MASTER & 0x1000) != 0);

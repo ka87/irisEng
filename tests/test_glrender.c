@@ -405,6 +405,8 @@ static void glr_Reset(void)
        one a picture frozen somewhere it never asked for. */
     gAEOpacity = 0.0f;
     glr_fadeOpacity = 0;
+    unknownAEFlag4GlobalVar = 0.0f;
+    texFactorManual = 0.0f;
 
     memset(&glr_dd, 0, sizeof(glr_dd));
     memset(&glr_bb, 0, sizeof(glr_bb));
@@ -4027,6 +4029,112 @@ static void caseAeMotionBlur(void)
  * wrong halves -- which a flat picture, or one split left and right,
  * cannot see at all.
  */
+/* The hue sweep.
+ *
+ * The one case that matters is that the three channels come off by
+ * three *different* amounts. A shader subtracting one number would
+ * darken the picture convincingly and be a brightness; the whole
+ * effect is that it is not one number.
+ *
+ * So the picture is grey -- equal in all three channels -- and what is
+ * read back is three unequal channels. Nothing about a tinted picture
+ * says which channel got which amount, so the three are checked
+ * against the shared code's own packed colour rather than against each
+ * other.
+ */
+static void caseAeHue(void)
+{
+    GLuint       scene;
+    GLuint       shown;
+    int          x = GLR_AE_W / 2;
+    int          row = GLR_AE_H / 2;
+    int          rgba[4];
+    unsigned int packed;
+    float        sub[AHU_CHANNELS];
+    const int    grey = 200;
+
+    printf("-- the hue sweep takes a different amount from each channel\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    scene = glr_AeScene(glr_aeWhite, glr_aeAlphaNone);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* Grey in all three channels. glr_AeScene writes red alone, which
+       is the input every other case here wants, so this one paints its
+       own -- a tint of a grey is the only picture that shows three
+       different amounts as three different levels. */
+    {
+        int i;
+
+        for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+        {
+            glr_aePattern[i * 4 + 0] = (unsigned char)grey;
+            glr_aePattern[i * 4 + 1] = (unsigned char)grey;
+            glr_aePattern[i * 4 + 2] = (unsigned char)grey;
+            glr_aePattern[i * 4 + 3] = 0x5A;
+        }
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    /* A depth and a phase whose three amounts are all different and
+       all inside the grey, so nothing is clipped at black and every
+       channel is readable. */
+    PC_AE_MASTER = (int)AHU_BIT;
+    unknownAEFlag4GlobalVar = 0.5f;
+    texFactorManual = 0.2f;
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+
+    packed = AHU_u_Subtract(0.5f, 0.2f);
+    AHU_Channels(sub, packed);
+    glr_AeAt(shown, x, row, rgba);
+
+    okWithin((double)rgba[0], (double)grey - (double)sub[0] * 255.0, 1.5,
+             "red came off by red's amount");
+    okWithin((double)rgba[1], (double)grey - (double)sub[1] * 255.0, 1.5,
+             "green by green's");
+    okWithin((double)rgba[2], (double)grey - (double)sub[2] * 255.0, 1.5,
+             "and blue by blue's");
+
+    /* And the three really are different, or the three readings above
+       would hold for a shader subtracting one number. */
+    ok(rgba[0] != rgba[1] && rgba[1] != rgba[2] && rgba[0] != rgba[2],
+       "with the three channels left at three different levels");
+
+    /* The one channel the wave leaves alone is untouched, which is what
+       makes this a tint rather than a darkening: at this phase green's
+       own amount is nothing. */
+    okEq((long)(sub[1] * 255.0f + 0.5f), 0L, "green's amount is nothing"
+                                             " at this phase");
+    okWithin((double)rgba[1], (double)grey, 1.5,
+             "so green comes through untouched");
+
+    /* Saturating at black and not wrapping: a depth deep enough to
+       take more than the picture has leaves black, not a bright
+       channel. A wrap here would be the brightest possible mistake. */
+    unknownAEFlag4GlobalVar = 1.0f;
+    texFactorManual = 0.5f;
+    shown = GL_l_i_RunAfterEffects();
+    AHU_Channels(sub, AHU_u_Subtract(1.0f, 0.5f));
+    ok(sub[0] * 255.0f > (float)grey, "more red is asked for than there is");
+    glr_AeAt(shown, x, row, rgba);
+    okEq((long)rgba[0], 0L, "and red saturates at black");
+
+    PC_AE_MASTER = 0;
+    unknownAEFlag4GlobalVar = 0.0f;
+    texFactorManual = 0.0f;
+    CIN_Bands = 1;
+}
+
 static void caseAeFade(void)
 {
     GLuint scene;
@@ -5295,6 +5403,7 @@ int main(void)
     caseAeColorOrder();
     caseAeRemanence();
     caseAeMotionBlur();
+    caseAeHue();
     caseAeFade();
     caseAeZoomSmooth();
 
