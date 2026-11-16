@@ -355,6 +355,11 @@ static void GL_APIENTRY MK_glUniform1f(GLint loc, GLfloat v)
        back up so a case can compare whole numbers. */
     WG_Record("glUniform1f", 2, (long long)loc,
               (long long)(v * 255.0f + 0.5f));
+    /* And again at a million, for the values that are not a byte --
+       a gain and a bias are arbitrary numbers and the record above
+       would round them to the nearest two hundred and fifty-fifth. */
+    WG_Record("glUniform1f.scaled", 2, (long long)loc,
+              (long long)(v * 1000000.0f + (v < 0.0f ? -0.5f : 0.5f)));
 }
 
 static void GL_APIENTRY MK_glPolygonMode(GLenum face, GLenum mode)
@@ -625,6 +630,12 @@ static void GL_APIENTRY MK_glUniform3f(GLint loc, GLfloat a, GLfloat b,
 {
     WG_Record("glUniform3f", 4, (long long)loc, (long long)(a * 255.0f + 0.5f),
               (long long)(b * 255.0f + 0.5f), (long long)(c * 255.0f + 0.5f));
+    /* And at a million, for values that are not a byte: the
+       grayscale's weights are signed and go to five places. */
+    WG_Record("glUniform3f.scaled", 4, (long long)loc,
+              (long long)(a * 1000000.0f + (a < 0.0f ? -0.5f : 0.5f)),
+              (long long)(b * 1000000.0f + (b < 0.0f ? -0.5f : 0.5f)),
+              (long long)(c * 1000000.0f + (c < 0.0f ? -0.5f : 0.5f)));
 }
 
 static void GL_APIENTRY MK_glDisableVertexAttribArray(GLuint index)
@@ -926,6 +937,13 @@ float D3D_gf_CutsceneBand = 0.10416666f;
 int   tweak_ae_no = 0;
 int   ECAM_gi_NoAfterEffects = 0;
 
+/* The two colour parameters, at the neutral the game starts them at.
+   Neutral is a half and not nought: left at the nought a tentative
+   definition gives, every frame would come back flattened to mid
+   grey and half darkened. */
+float unkAEFunc2Param = 0.5f;
+float colorBalanceParam1 = 0.5f;
+
 void OVL_Draw(void)
 {
     wg_ovlDrawn++;
@@ -951,6 +969,10 @@ static void reset(void)
        same size every time, and rebuilding it would move the name and
        call counts every case above is written against. */
     GL_l_ForgetAe();
+    /* And the two colour parameters back to neutral, which is a half
+       for both of them. */
+    unkAEFunc2Param = 0.5f;
+    colorBalanceParam1 = 0.5f;
     memset(&gl_material, 0, sizeof(gl_material));
     gl_colorMaskAlpha = 0;
     gl_mipmapping = 1;
@@ -3614,6 +3636,224 @@ static void caseAeDepthBlurQuads(void)
     D3D_gf_CutsceneBand = 0.10416666f;
 }
 
+
+/* ----------------------------------- the colour after-effects' calls
+
+   What the picture cannot say: which target each of the three steps
+   reads and writes, that they are three separate draws rather than one
+   pass, which uniform each sets, and that the quad is the band.
+ */
+static void caseAeColorChain(void)
+{
+    tAec_Source src;
+    tAec_Step   steps[AEC_MAX_STEPS];
+    int         n;
+    int         i;
+    int         from;
+    long        lastFbo = -1;
+
+    printf("-- the colour steps, a draw each, and what each reads\n");
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    /* All three on, so the order and the chaining are both visible. */
+    PC_AE_MASTER = 0x1;
+    unkAEFunc2Param = 0.8f;
+    colorBalanceParam1 = 0.2f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    src.aeMaster = 0x1;
+    src.brightness = 0.8f;
+    src.contrast = 0.2f;
+    n = AEC_i_Steps(&src, steps, AEC_MAX_STEPS);
+    okEq(n, 3, "three steps to do");
+    okEq(WG_i_Count("glDrawArrays"), n,
+         "and a draw each, not one pass doing all three");
+
+    /* Each step reads what the one before wrote, starting from the
+       frame -- and none of them writes the frame, whose alpha the
+       depth blur needs and which an effect not yet run may want.
+     *
+       The slots are written out here rather than worked out with
+       GL_l_i_AeOtherSlot, which is the function being checked: asking
+       it where the step should have gone and then comparing that with
+       where it went moves both sides of the comparison together, and
+       a version of this did exactly that -- a mutant that always
+       answered the first spare passed, because every step then both
+       read and wrote it and the expectation agreed.
+     *
+       Three steps alternating between two spares from the frame is
+       the first, the second, the first; that is the whole sequence
+       and it is short enough to state. */
+    {
+        static const int wantSlot[3] = { DPB_SLOT_A, DPB_SLOT_B,
+                                         DPB_SLOT_A };
+
+        from = DPB_SLOT_FRAME;
+        for (i = 0; i < n && i < 3; i++)
+        {
+            int at = wg_i_CallAt("glDrawArrays", i);
+
+            if (at < 0)
+            {
+                ok(0, "the step was drawn");
+                continue;
+            }
+            okEq(wg_l_TextureBefore(GL_TEXTURE0, at),
+                 (long)GL_l_i_AeSlotTexture(from),
+                 "the step reads where the one before left the frame");
+            lastFbo = wg_l_FboBefore(GL_FRAMEBUFFER, at);
+            okEq(lastFbo, (long)GL_l_i_AeSlotFbo(wantSlot[i]),
+                 "and writes the spare the alternation calls for");
+            /* And the two are not the same place, compared as slots:
+               an earlier version compared a framebuffer's name with a
+               texture's, which are different numbers for different
+               things and never equal whatever the code does. */
+            ok(wantSlot[i] != from, "which is not the one it is reading");
+            ok(lastFbo != (long)gl_sceneFbo, "nor the frame itself");
+            from = wantSlot[i];
+        }
+    }
+
+    /* And the screen is copied from where the last step wrote. */
+    {
+        int blit = wg_i_CallAt("glBlitFramebuffer", 0);
+
+        ok(blit >= 0, "the frame was copied");
+        if (blit >= 0)
+            okEq(wg_l_FboBefore(GL_READ_FRAMEBUFFER, blit), lastFbo,
+                 "from where the last step wrote");
+    }
+
+    /* The gain and the bias each step asked for, in order. Compared
+       against what aecolor.c says rather than against three
+       constants, so the two cannot drift apart -- and scaled, because
+       a gain is not a byte. */
+    for (i = 0; i < n; i++)
+    {
+        okEq(WG_l_Arg("glUniform1f.scaled", i * 3, 1),
+             wg_l_Scaled(steps[i].gain), "the step's gain");
+        okEq(WG_l_Arg("glUniform1f.scaled", i * 3 + 1, 1),
+             wg_l_Scaled(steps[i].bias), "and its bias");
+        /* The grayscale flag, which is what picks between summing the
+           channels and taking each on its own. Set every step, so a
+           step cannot inherit the one before's -- which would turn
+           the step after a grayscale into a second grayscale. */
+        okEq(WG_l_Arg("glUniform1f.scaled", i * 3 + 2, 1),
+             steps[i].kind == AEC_GRAYSCALE ? 1000000L : 0L,
+             "and whether it is the grayscale");
+        okEq(WG_l_Arg("glUniform3f.scaled", i, 1),
+             wg_l_Scaled(steps[i].weights[0]), "the first weight");
+        okEq(WG_l_Arg("glUniform3f.scaled", i, 2),
+             wg_l_Scaled(steps[i].weights[1]), "the second");
+        okEq(WG_l_Arg("glUniform3f.scaled", i, 3),
+             wg_l_Scaled(steps[i].weights[2]), "the third");
+    }
+    /* Exactly one of the three is the grayscale, and it is the last
+       one. A flag set for all of them, or for none, fails here as
+       well as above. */
+    okEq(WG_l_Arg("glUniform1f.scaled", 2, 1), 0L,
+         "the first step is not the grayscale");
+    okEq(WG_l_Arg("glUniform1f.scaled", 5, 1), 0L, "nor the second");
+    okEq(WG_l_Arg("glUniform1f.scaled", 8, 1), 1000000L,
+         "and the third is");
+
+    PC_AE_MASTER = 0;
+    unkAEFunc2Param = 0.5f;
+    colorBalanceParam1 = 0.5f;
+}
+
+static void caseAeColorBand(void)
+{
+    tCbd_Bands bands;
+    long       bandTopY;
+    long       bandBottomY;
+
+    printf("-- the colour steps cover the band\n");
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 1;
+    tweak_ae_nobands = 0;
+    D3D_gf_CutsceneBand = 0.25f;
+    PC_AE_MASTER = 0x1;
+    wg_callLen = 0;
+    GL_Flip();
+
+    CBD_Decide(&bands);
+    bandTopY = wg_l_Scaled(1.0f - 2.0f * bands.top);
+    bandBottomY = wg_l_Scaled(1.0f - 2.0f * bands.bottom);
+
+    okEq(WG_i_Count("glDrawArrays"), 1, "one step, one draw");
+    okEq(WG_l_Arg("glBufferData", 0, 4), bandBottomY,
+         "the quad starts at the bottom of the band");
+    okEq(WG_l_Arg("glBufferData", 0, 6), bandTopY, "and ends at its top");
+    /* Not the blur's wider reach: these steps sample one pixel each,
+       so there is nothing for a margin to be for, and a step drawn
+       over the margin would put picture into the letterbox. */
+    ok(bandTopY != wg_l_Scaled(1.0f - 2.0f * bands.reachTop),
+       "which is not the same strip the blur covers");
+
+    PC_AE_MASTER = 0;
+    CIN_Bands = 0;
+    D3D_gf_CutsceneBand = 0.10416666f;
+}
+
+static void caseAeColorGate(void)
+{
+    printf("-- when the colour steps do nothing\n");
+
+    /* Both parameters neutral and the bit clear: nothing is built,
+       nothing is drawn, and the frame goes out of the scene target. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "nothing drawn");
+    okEq(WG_i_Count("glCreateShader"), 0,
+         "and nothing even built for it");
+    {
+        int blit = wg_i_CallAt("glBlitFramebuffer", 0);
+
+        okEq(wg_l_FboBefore(GL_READ_FRAMEBUFFER, blit), (long)gl_sceneFbo,
+             "the frame is copied straight from the scene target");
+    }
+
+    /* A parameter a hair off neutral still counts: the engine sets
+       these exactly, so there is no tolerance to apply. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    colorBalanceParam1 = 0.5001f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "a hair off neutral runs a step");
+    colorBalanceParam1 = 0.5f;
+
+    /* And the two switches that turn the chain off take these with
+       them, even though neither has a bit in the master word. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x1;
+    unkAEFunc2Param = 0.9f;
+    tweak_ae_no = 1;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "the tweak stops them");
+    tweak_ae_no = 0;
+    ECAM_gi_NoAfterEffects = 1;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "and so does the editor camera");
+    ECAM_gi_NoAfterEffects = 0;
+
+    PC_AE_MASTER = 0;
+    unkAEFunc2Param = 0.5f;
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
@@ -3636,6 +3876,9 @@ int main(void)
     caseAeDepthBlurRefusals();
     caseAeDepthBlurUniforms();
     caseAeDepthBlurQuads();
+    caseAeColorChain();
+    caseAeColorBand();
+    caseAeColorGate();
     caseFlipDrawsOverlay();
     caseGeometry();
     caseGeometryNormals();

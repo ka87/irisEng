@@ -18,6 +18,7 @@ driver for. They are not used by the Direct3D renderer at all.
 | `aepass.vert` | one quad over the finished frame, shared by every after-effect |
 | `aeblur.frag` | one widening pass of the depth blur's blur |
 | `aedepthmix.frag` | sharp and blurred, mixed by the frame's own alpha |
+| `aecolor.frag` | one step of the brightness, contrast or grayscale |
 
 ## What the world's fragment shader is doing that the pipeline cannot
 
@@ -133,6 +134,43 @@ cover the letterbox band **widened** by a margin either side; the mix
 covers the band itself, which is also what the screen is copied from. A
 tap at the band's own edge has to land on blurred pixels, which is what
 the margin is for.
+
+## The colour after-effects
+
+`aecolor.frag` is brightness, contrast and grayscale, which are three
+effects sharing one shader because all three are a gain and a bias:
+
+* **brightness** adds a grey to every channel, or takes one off. Gain
+  of one throughout -- scaling as well would change the contrast,
+  which is the next effect's job;
+* **contrast** is a gain about mid grey, which is `128/255` and not a
+  half. The shade matters: pivoting on a half would move every pixel
+  of a frame the effect is meant to leave alone;
+* **grayscale** applies the same gain and bias to a weighted sum of
+  the three channels instead of to each one. `uGrayscale` picks
+  between the two, written as a number and a `mix` rather than a
+  branch -- so the shader carries no step numbering of its own to keep
+  in step with the engine's.
+
+The grayscale's weights are green-heavy, blue-light, and they **do not
+come to one**, so white does not come back white. That is the other
+renderer's arithmetic, not an oversight: it arrives there through a dot
+product that reads both sides as signed, and `aecolor.c` has the
+working.
+
+**One draw per step, not one pass doing all three.** The other
+renderer runs each as its own draw into an eight-bit target, so a
+channel one step pushes past white is white before the next step sees
+it. One pass would need a clamp between the steps to come out the same
+and would still differ by the rounding; a draw each matches outright
+and costs a pass nobody will measure. It also means the step order is
+the chain's rather than the shader's, and the order is part of the
+answer -- brightening then stretching is not stretching then
+brightening.
+
+`aecolor.c` decides which steps apply and what each one's numbers are,
+reproducing the byte truncation the other renderer's texture factors
+do. Nothing about the numbers is decided here.
 
 ## The material's texture-coordinate projection
 
