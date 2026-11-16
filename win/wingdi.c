@@ -3633,7 +3633,7 @@ void D3D_DrawWater_DrawVertexTable(struct sWaterParamsGlobalStruct* water)
     D3D_RenderStateSet(&renderStateConfig.d3d_zFunc, 23, 4);
 }
 
-void D3D_PrepareWaterRendering()
+void D3D_PrepareWaterRendering(void)
 {
     float clipPlane[4];
 
@@ -4082,8 +4082,6 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
     tGEOGRO* geogro;
     tGeoWholeTriangleStripBlock* block;
     tBigBufferStruct* bb;
-    tGeoTriangleChunkElem* tri;
-    tGeoTriangleChunkElem* triEnd;
     tVertex_type_142_generic* out;
     unsigned int triangleNum;
     int immediate;
@@ -4098,9 +4096,6 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
     int savedArg2;
     int start;
     int lockFlags;
-    int idx;
-    int secondIdx;
-    int k;
     unsigned int i;
     void* locked;
     unsigned int* lockedColors;
@@ -4893,9 +4888,6 @@ void PC_EngineCheatFinal()
         // on, to the detail page, and off again
         OVL_RastersCycleView();
         while (GetAsyncKeyState(VK_F1) < 0);
-
-        if (PRO_rasterHWND)
-            InvalidateRect(PRO_rasterHWND, NULL, TRUE);
     }
 
     if (GetAsyncKeyState(VK_F8) < 0)
@@ -4979,8 +4971,5 @@ void PC_EngineCheatFinal()
             PRO_CurrRaster = currRaster;
         }
         while (GetAsyncKeyState(VK_F4) < 0);
-
-        if (PRO_rasterHWND)
-            InvalidateRect(PRO_rasterHWND, 0, 1);
     }
 }

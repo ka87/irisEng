@@ -154,7 +154,6 @@ int PRO_rasterDetailPage;
 profilerRasterStructElem* PRO_FirstRasterPtr;
 profilerRasterStructElem* pointsToUnkRaster_dword_98F944;
 profilerRasterStructElem* PRO_CurrRaster;
-HWND PRO_rasterHWND;
 float gfDBGRasterSetTo60 = 60.0f;
 
 int _stricmp(const char* a, const char* b)
