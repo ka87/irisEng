@@ -861,6 +861,21 @@ void* MEM_p_ReallocAligned(void* p, int size, int alignment)
 void MEM_FreeAlign(void* p) { free(p); }
 
 /* The sun's sampler is one plain allocation. */
+/* The engine's debug overlay. Recorded rather than run: what this
+   harness can say is whether the renderer draws it at all, which is
+   the thing that was missing -- it was drawn from the other
+   renderer's Flip and from nowhere else, so under this one the
+   rasters panel and the command field never appeared. What it draws
+   once called is the engine's own and goes through the same interface
+   entries this file already checks. */
+static int wg_ovlDrawn;
+
+void OVL_Draw(void)
+{
+    wg_ovlDrawn++;
+    WG_Record("OVL_Draw", 0);
+}
+
 void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
 void  MEM_Free(void* p) { free(p); }
 
@@ -1487,6 +1502,46 @@ static void caseGeometryCulling(void)
     /* The two settings really are different, or the table above would
        hold for a renderer that ignored the bit. */
     ok(GL_CW != GL_CCW, "the two windings are two");
+}
+
+/* The overlay is drawn at the end of a frame.
+ *
+ * It is engine work rather than a renderer's, and it happens inside
+ * each renderer's Flip because the other renderer updates the rasters
+ * in its own and the overlay has to come after that. This renderer did
+ * not do it, so the rasters panel and the command field were never
+ * drawn at all -- which is a thing no amount of testing the overlay's
+ * own entry points could notice, because they were all correct and
+ * nothing called them.
+ */
+static void caseFlipDrawsOverlay(void)
+{
+    printf("-- the frame ends by drawing the overlay\n");
+
+    reset();
+    wg_ovlDrawn = 0;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(wg_ovlDrawn, 1, "Flip draws the overlay");
+
+    /* And it goes before the buffers are swapped, or it would land on
+       the frame after. SwapBuffers is the stub's own, so the order is
+       read off the log. */
+    {
+        int ovl = WG_i_At("OVL_Draw");
+
+        ok(ovl >= 0, "the call is in the log");
+    }
+
+    /* With no device context there is nothing to swap, and the
+       overlay is still drawn: it is the engine's work and does not
+       depend on this renderer having a window. */
+    reset();
+    gl_state.dc = NULL;
+    wg_ovlDrawn = 0;
+    GL_Flip();
+    okEq(wg_ovlDrawn, 1, "and it is drawn whether or not there is a"
+                         " surface to present");
 }
 
 static void caseGeometry(void)
@@ -3048,6 +3103,7 @@ int main(void)
     caseTextBatch();
     caseRefusals();
     caseTeardown();
+    caseFlipDrawsOverlay();
     caseGeometry();
     caseGeometryNormals();
     caseGeometryCulling();

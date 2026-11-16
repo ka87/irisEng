@@ -2,6 +2,7 @@
 #include "glload.h"
 #include "glshader.h"
 #include "wingdimath.h"
+#include "overlay.h"
 #include "../projection.h"
 #include "../geovertex.h"
 #include "../geosprite.h"
@@ -519,6 +520,18 @@ void GL_Clear(int which, int color)
 
 void GL_Flip(void)
 {
+    /* The debug overlay goes last, on top of everything -- the rasters
+       panel and the command field are both in it.
+     *
+       This is engine work rather than a renderer's, and the other
+       renderer does it at the same point for the same reason: the one
+       neutral caller of Flip cannot do it instead, because the other
+       renderer updates the rasters inside its own Flip and the overlay
+       has to be drawn after that or it shows the frame before's
+       numbers. Without this call the overlay was never drawn at all
+       under this renderer. */
+    OVL_Draw();
+
     if (gl_state.dc)
         SwapBuffers(gl_state.dc);
 }
