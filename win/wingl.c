@@ -3,6 +3,7 @@
 #include "glshader.h"
 #include "wingdimath.h"
 #include "overlay.h"
+#include "perfdisplay.h"
 #include "../projection.h"
 #include "../geovertex.h"
 #include "../geosprite.h"
@@ -648,6 +649,9 @@ void GL_Flip(void)
        has to be drawn after that or it shows the frame before's
        numbers. Without this call the overlay was never drawn at all
        under this renderer. */
+    /* The performance display, then the overlay on top of it, which
+       is the order the other renderer's flip has. */
+    PFD_Draw();
     OVL_Draw();
 
     if (gl_state.dc)

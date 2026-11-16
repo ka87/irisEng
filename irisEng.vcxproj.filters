@@ -284,6 +284,12 @@
     <ClCompile Include="aezoom2.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="perfbars.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win\perfdisplay.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="watersmooth.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -926,6 +932,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="version.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="perfbars.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win\perfdisplay.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="watersmooth.h">

@@ -176,11 +176,9 @@ typedef struct sD3dRenderStateConfigStruct
 	int fvf;
 } tD3dRenderStateConfigStruct;
 
-typedef struct sRasterNames
-{
-	char name[32];
-	int unk1;
-} tRasterNames;
+/* tRasterNames and the table itself are in profiler.h now: they name
+   the profiler's rasters, and both renderers' performance displays
+   read them. */
 
 typedef struct sVertexAndColor {
 	Vec3 v;

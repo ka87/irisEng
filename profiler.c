@@ -138,6 +138,35 @@ void PRO_QPC_RecordTimeDecRef(int id)
     PerfCounterStruct[id].QuadPart = 0;
 }
 
+void PRO_QPC_StartTime(int id)
+{
+    LARGE_INTEGER pc;
+
+    QueryPerformanceCounter(&pc);
+    PerfCounterStruct[id].QuadPart = pc.QuadPart;
+}
+
+void PRO_QPC_ResetSums(void)
+{
+    memset(PerfCountertimeSumArray, 0, sizeof(PerfCountertimeSumArray));
+}
+
+int64_t PRO_i64_QPC(void)
+{
+    LARGE_INTEGER pc;
+
+    QueryPerformanceCounter(&pc);
+    return pc.QuadPart;
+}
+
+int64_t PRO_i64_QPCFrequency(void)
+{
+    LARGE_INTEGER freq;
+
+    QueryPerformanceFrequency(&freq);
+    return freq.QuadPart;
+}
+
 void PRO_ClearOneRaster(profilerRasterStructElem* raster)
 {
     if (raster->next)

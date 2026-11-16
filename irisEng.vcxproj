@@ -369,6 +369,8 @@
     <ClCompile Include="aehue.c" />
     <ClCompile Include="aemotion.c" />
     <ClCompile Include="aezoom2.c" />
+    <ClCompile Include="perfbars.c" />
+    <ClCompile Include="win\perfdisplay.c" />
     <ClCompile Include="watersmooth.c" />
     <ClCompile Include="ways.c" />
     <ClCompile Include="win\adpcm.c" />
@@ -622,6 +624,8 @@
     <ClInclude Include="aemotion.h" />
     <ClInclude Include="aezoom2.h" />
     <ClInclude Include="version.h" />
+    <ClInclude Include="perfbars.h" />
+    <ClInclude Include="win\perfdisplay.h" />
     <ClInclude Include="watersmooth.h" />
     <ClInclude Include="ways.h" />
     <ClInclude Include="win\adpcm.h" />

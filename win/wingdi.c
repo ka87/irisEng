@@ -1,4 +1,5 @@
 #include "../profiler.h"
+#include "../perfbars.h"
 #include "../time.h"
 #include "../memory.h"
 #include "../textures.h"
@@ -1643,31 +1644,22 @@ void D3D_RastersSetAndDrawAQuad(int color, float x, float y, float w, float h, i
 
 void D3D_DrawARaster(int color, char* name, float value, float y, float width)
 {
-    double nextY;
-    float x;
     char text[32];
-    float barWidth;
-    float segment;
+
+    tPfb_Quad quads[8];
+    int       n;
+    int       i;
 
     sprintf(text, "%5.3f", value);
     FNT_DrawText(FNT_RASTERS, name, 20, (unsigned int)y, 0xFFFFFFFF);
     FNT_DrawText(FNT_RASTERS, text, (unsigned int)(width - 50.0),
                  (unsigned int)y, 0xFFFFFFFF);
-    if (value > 4.0)
-        value = 4.0;
-    x = 70.0;
-    for (segment = (float)((width - 140.0) * 0.75294119); value > 0.0; segment = (float)(segment * 0.25))
-    {
-        if (value >= 1.0)
-            nextY = 1.0;
-        else
-            nextY = value;
-        barWidth = (float)(nextY * segment);
-        D3D_RastersSetAndDrawAQuad(color, x, y, barWidth, 10.0, 0);
-        color ^= 0xFFFFu;
-        x = barWidth + x;
-        value = (float)(value - 1.0);
-    }
+    /* The segments from perfbars.c, which the other renderer's display
+       takes them from too. */
+    n = PFB_i_BarQuads(quads, 8, (unsigned int)color, value, y, width);
+    for (i = 0; i < n; i++)
+        D3D_RastersSetAndDrawAQuad((int)quads[i].color, quads[i].x,
+                                   quads[i].y, quads[i].w, quads[i].h, 0);
 }
 
 void Rasters_Update()
@@ -1708,8 +1700,8 @@ void Rasters_Update()
         QueryPerformanceCounter(&PerformanceCount);
         elapsed = (double)(PerformanceCount.QuadPart - qword_990B48);
         qword_990B48 = PerformanceCount.QuadPart;
-        fps = (float)((double)Frequency.QuadPart / elapsed);
-        if (tweak_perf != 3 || fps > (double)tweak_perf_fps_min)
+        fps = PFB_f_Fps((int64_t)elapsed, Frequency.QuadPart);
+        if (PFB_b_On(tweak_perf, fps, tweak_perf_fps_min))
         {
             D3D_SaveEverythingToBackup(1);
             mtx._43 = 0.0;
@@ -1750,79 +1742,45 @@ void Rasters_Update()
             D3D_SetTexture(1, -1);
             D3D_SetTexture(2, -1);
             D3D_SetTexture(3, -1);
-            if (fps > (double)tweak_perf_fps_min)
-                D3D_RastersSetAndDrawAQuad(0xFFFF0000, 0.0, 0.0, viewWidth, 40.0, 0);
-            if (tweak_perf != 3)
+            if (PFB_b_Band(fps, tweak_perf_fps_min))
+                D3D_RastersSetAndDrawAQuad(0xFFFF0000, 0.0, 0.0, viewWidth,
+                                           PFB_BAND_H, 0);
+            if (PFB_b_Rows(tweak_perf))
             {
-                for (i = 0; i < (6 * 9); i += 9) // 6 * 9 = 54
-                {
-                    rastersUnkTimeFloats_dbl_990B58[i] = (double)PerfCountertimeSumArray[i] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i] * 0.95;
-                    rastersUnkTimeFloats_dbl_990B58[i + 1] = (double)PerfCountertimeSumArray[i + 1] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 1] * 0.95;
-                    rastersUnkTimeFloats_dbl_990B58[i + 2] = (double)PerfCountertimeSumArray[i + 2] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 2] * 0.95;
-                    rastersUnkTimeFloats_dbl_990B58[i + 3] = (double)PerfCountertimeSumArray[i + 3] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 3] * 0.95;
-                    rastersUnkTimeFloats_dbl_990B58[i + 4] = (double)PerfCountertimeSumArray[i + 4] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 4] * 0.95;
-                    rastersUnkTimeFloats_dbl_990B58[i + 5] = (double)PerfCountertimeSumArray[i + 5] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 5] * 0.95;
-                    rastersUnkTimeFloats_dbl_990B58[i + 6] = (double)PerfCountertimeSumArray[i + 6] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 6] * 0.95;
-                    rastersUnkTimeFloats_dbl_990B58[i + 7] = (double)PerfCountertimeSumArray[i + 7] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 7] * 0.95;
-                    rastersUnkTimeFloats_dbl_990B58[i + 8] = (double)PerfCountertimeSumArray[i + 8] * 0.05 + rastersUnkTimeFloats_dbl_990B58[i + 8] * 0.95;
-                }
-                for (j = 0; j < 54; ++j)
-                    order[j] = j;
-                for (i = 0; i < 53; i++)
-                {
-                    for (j = i + 1; j < 54; j++)
-                    {
-                        if (rastersUnkTimeFloats_dbl_990B58[order[i]]
-                            < rastersUnkTimeFloats_dbl_990B58[order[j]])
-                        {
-                            swapped = order[i];
-                            order[i] = order[j];
-                            order[j] = swapped;
-                        }
-                    }
-                }
-                barY = 70.0;
-                scale = (float)(tweak_perf_fps_target / (double)Frequency.QuadPart);
-                for (i = 0; i < 54; i++)
-                {
-                    raster = order[i];
-                    if (rasterNames[raster].unk1
-                        && (double)PerfCountertimeSumArray[raster] * scale > 0.01)
-                    {
-                        barY = (float)(barY + 15.0);
-                        if (barY > viewHeight)
-                            break;
-                    }
-                }
-                shown = 1;
-                if (tweak_perf == 1)
-                    shown = (int)i;
-                barHeight = (float)((double)shown * 15.0);
-                D3D_RastersSetAndDrawAQuad(0x80000000, 0.0, 50.0, viewWidth, barHeight, 1);
+                PFB_Smooth(rastersUnkTimeFloats_dbl_990B58,
+                           PerfCountertimeSumArray, PFB_RASTERS);
+                PFB_Order(order, rastersUnkTimeFloats_dbl_990B58,
+                          PFB_RASTERS);
+                scale = PFB_d_Scale(tweak_perf_fps_target,
+                                    Frequency.QuadPart);
+                shown = PFB_i_Rows(tweak_perf,
+                                   PFB_i_Fitting(PerfCountertimeSumArray,
+                                                 rasterNames, order,
+                                                 PFB_RASTERS, scale,
+                                                 viewHeight));
+                barHeight = (float)((double)shown * (double)PFB_ROW_H);
+                D3D_RastersSetAndDrawAQuad(0x80000000, 0.0, PFB_FPS_Y,
+                                           viewWidth, barHeight, 1);
                 //nullsub_32();
                 row = 0;
-                for (y = 70.0; row < shown; ++row)
+                for (y = PFB_FIRST_Y; row < shown; ++row)
                 {
                     raster = order[row];
                     kind = rasterNames[raster].unk1;
-                    value = (float)((double)PerfCountertimeSumArray[raster] * scale);
+                    value = PFB_f_Value(PerfCountertimeSumArray[raster],
+                                        scale);
                     if (kind && value > 0.01)
                     {
-                        barColor = 0xF0808020;
-                        if ((((uint8_t)raster - 1) & 1) != 0)
-                            barColor = 0xF0808060;
-                        if ((((uint8_t)raster + 1) & 2) != 0)
-                            barColor |= 0x4000u;
-                        if ((((uint8_t)raster + 1) & 4) != 0)
-                            barColor |= 0x400000u;
+                        barColor = (int)PFB_u_RowColour(raster);
                         D3D_DrawARaster(barColor, rasterNames[raster].name, value, y, viewWidth);
-                        nextY = y + 15.0;
+                        nextY = y + (double)PFB_ROW_H;
                         y = (float)nextY;
                         if (nextY > viewHeight)
                             break;
                     }
                 }
-                D3D_DrawARaster(0xFFFFFF, "Frame Rate", fps, 50.0, viewWidth);
+                D3D_DrawARaster(0xFFFFFF, "Frame Rate", fps, PFB_FPS_Y,
+                                viewWidth);
                 //nullsub_32();
             }
             D3D_RastersDrawUPStream();

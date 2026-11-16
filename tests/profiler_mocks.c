@@ -68,6 +68,15 @@ BOOL QueryPerformanceCounter(LARGE_INTEGER* li)
     return 1;
 }
 
+/* A frequency that is a round number of ticks a second, so a case can
+   state a frame time in ticks and read a frame rate back without any
+   rounding of its own. */
+BOOL QueryPerformanceFrequency(LARGE_INTEGER* li)
+{
+    li->QuadPart = 1000000;
+    return 1;
+}
+
 int _stricmp(const char* a, const char* b)
 {
     return strcasecmp(a, b);

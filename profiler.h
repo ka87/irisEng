@@ -62,6 +62,21 @@ tRastersGroupStruct PRO_RasterGroup;
 LARGE_INTEGER PerfCounterStruct[54];
 int64_t PerfCountertimeSumArray[54];
 
+/* What each of those 54 rasters is called on a performance display,
+ * and its kind -- nought for a raster that is not shown at all.
+ *
+ * The table was in the Direct3D renderer's own file, which was its
+ * home only because that renderer's display was the only reader. It
+ * names the profiler's rasters, so it lives here and both displays
+ * read it. The definition is still beside that renderer's display. */
+typedef struct sRasterNames
+{
+    char name[32];
+    int  unk1;
+} tRasterNames;
+
+extern tRasterNames rasterNames[];
+
 // profiler window
 extern int PRO_rasterWindowIsOn;
 extern int PRO_rasterDetailPage;
@@ -75,6 +90,18 @@ void PRO_RecordTimeDecRef(profilerRasterStructElem* raster);
 void PRO_PerfCounterStartBlock(profilerRasterStructElem* raster);
 void PRO_PerfCounterEndBlock(profilerRasterStructElem* raster);
 void PRO_QPC_RecordTimeDecRef(int id);
+/* The other half of the one above: the clock read into a raster's
+   start, so a block's cost can be taken without the caller touching
+   the platform's counter. */
+void PRO_QPC_StartTime(int id);
+/* The per-frame sums, cleared. The performance display does this once
+   it has shown them, which is what makes them a frame's worth rather
+   than a run's. */
+void PRO_QPC_ResetSums(void);
+/* The platform's counter and its frequency, so a display can measure
+   a frame without a platform call of its own. */
+int64_t PRO_i64_QPC(void);
+int64_t PRO_i64_QPCFrequency(void);
 void PRO_ClearAllRasters(profilerRasterStructElem* rasters);
 void PRO_InitRasters(profilerRasterStructElem* rasters, char* subgroup);
 void ENG_ForceStartRasters();

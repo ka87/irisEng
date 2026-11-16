@@ -1260,6 +1260,7 @@ int _stricmp(const char* a, const char* b)
 int WGM_overlayDraws = 0;
 
 void OVL_Draw(void) { WGM_overlayDraws++; }
+void PFD_Draw(void) { }
 
 int OVL_b_CommandMessage(unsigned int msg, unsigned int wParam)
 { (void)msg; (void)wParam; return 0; }
