@@ -3058,7 +3058,13 @@ static void caseTargetsMatrices(void)
     GL_SetViewMatrixSDW(&view, NULL);
     okEq((long)((float*)&gl_projMtx)[0], 1,
          "the projection becomes an identity for the shadow");
-    okEq((long)((float*)&gl_projMtx)[5], 1, "on the diagonal");
+    /* An identity with the **vertical turned over**: the target is
+       sampled afterwards with the engine's own coordinates, which
+       count v from the top of the picture, and OpenGL stores a
+       framebuffer the other way up. A plain identity here is the
+       shadow upside down on the object. */
+    okEq((long)((float*)&gl_projMtx)[5], -1,
+         "with the vertical turned over on the diagonal");
     okEq((long)((float*)&gl_projMtx)[1], 0, "and nothing off it");
     okEq((long)((float*)&gl_viewProjMtx)[12], 5,
          "so the combined matrix is the view alone");
@@ -6848,6 +6854,7 @@ static void caseWaterReflectionAim(void)
     Mtx4x4 mirrored;
     Mtx4x4 view;
     Mtx4x4 want;
+    Mtx4x4 flipped;
     int    drawAt;
     int    i;
     int    bad;
@@ -6885,8 +6892,27 @@ static void caseWaterReflectionAim(void)
     WRF_Mirror(&mirrored, &wg_reflMtx, 3.5f);
     D3D_MatrixMultiply((D3DMATRIX*)&view, (const D3DMATRIX*)&mirrored,
                        (const D3DMATRIX*)&gl_dd.ct.cam.cameraMtx);
+    /* Against the projection with its **vertical turned over**: the
+       surface samples this target with the engine's own remap, which
+       counts v from the top of the picture, and OpenGL stores a
+       framebuffer the other way up. Predicted here the same way the
+       renderer builds it, by negating the column that produces clip
+       y -- so a renderer that flipped the wrong row, or flipped at
+       the sampling end instead, does not match. */
+    flipped = gl_projMtx;
+    flipped.v1.y = -gl_projMtx.v1.y;
+    flipped.v2.y = -gl_projMtx.v2.y;
+    flipped.v3.y = -gl_projMtx.v3.y;
+    flipped.Pos.y = -gl_projMtx.Pos.y;
     D3D_MatrixMultiply((D3DMATRIX*)&want, (const D3DMATRIX*)&view,
-                       (const D3DMATRIX*)&gl_projMtx);
+                       (const D3DMATRIX*)&flipped);
+
+    /* And the flip is really there to be seen: a projection whose
+       vertical column is already nought would make the line above a
+       no-op and this case blind to it. */
+    ok(gl_projMtx.v1.y != 0.0f || gl_projMtx.v2.y != 0.0f
+       || gl_projMtx.v3.y != 0.0f || gl_projMtx.Pos.y != 0.0f,
+       "the projection has a vertical to turn over");
 
     /* The last two matrices uploaded before the second draw are the
        combined one and the view, in that order. */
@@ -6932,27 +6958,25 @@ static void caseWaterReflectionAim(void)
                       " camera");
     }
 
-    /* The winding, turned over for the second draw and put back after
-       it. Mirroring turns every triangle over, so leaving the facing
-       alone shows the insides of things. */
+    /* The winding, left exactly as the ordinary draw has it -- and
+       that is a statement about two reversals cancelling, not about
+       the renderer forgetting.
+     *
+       Mirroring turns every triangle over, which is why this draw used
+       to swap the facing. The vertical flip above turns every triangle
+       over again, because it mirrors the projected triangle about the
+       horizontal. So the facing the ordinary draw set is the right one
+       for this draw, and swapping as well would show the insides of
+       things. */
     {
-        int before = -1;
-        int after = -1;
+        int changed = 0;
 
-        for (i = 0; i < wg_callLen; i++)
-            if (strcmp(wg_calls[i].name, "glFrontFace") == 0)
-            {
-                if (i < drawAt)
-                    before = (int)wg_calls[i].arg[0];
-                else if (after < 0)
-                    after = (int)wg_calls[i].arg[0];
-            }
-        ok(before == GL_CW || before == GL_CCW,
-           "the winding is set for the second draw");
-        ok(after == GL_CW || after == GL_CCW,
-           "and set again after it");
-        ok(before != after, "and the two are opposite, which is what a"
-                            " mirror does to a triangle");
+        for (i = 0; i < drawAt; i++)
+            if (strcmp(wg_calls[i].name, "glFrontFace") == 0
+                && (int)wg_calls[i].arg[0] != gl_frontFace)
+                changed = 1;
+        okEq(changed, 0, "the winding is not turned over for the second"
+                         " draw, because the flip already did it");
     }
 
     /* And the frame is left where it was being built, at the screen's
