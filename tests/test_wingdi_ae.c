@@ -27,7 +27,7 @@ extern int tweak_ae_no;
 extern int tweak_ae_nobands;
 extern int ECAM_gi_NoAfterEffects;
 
-#define AE_GROUPS           12
+#define AE_GROUPS           13
 #define AE_CASES_PER_GROUP  48
 #define AE_CASES            (AE_GROUPS * AE_CASES_PER_GROUP)
 
@@ -173,6 +173,33 @@ static float AE_FadeSpan(int k)
         1.0f, 2.0f, 4.0f, 4.25f, 8.0f, -1.0f
     };
     return table[k % 12];
+}
+
+/* The hue sweep's depth and phase, driven rather than seeded.
+ *
+ * Eight depths and six phases, so k % 8 and (k / 8) % 6 pair every
+ * depth with every phase exactly once over the group's 48 cases --
+ * counted, not hoped for.
+ *
+ * The depths above one are the point: that is where a channel's amount
+ * passes the byte it is packed into. The phases are spread across the
+ * wave's flat top, its ramp and its nothing, and two of them are
+ * outside the cycle -- where the single wrap does not bring them back
+ * in and the three channels disagree about what that means. */
+static float AE_HueDepth(int k)
+{
+    static const float table[8] = {
+        0.0f, 0.25f, 0.5f, 1.0f, 1.0009f, 1.5f, 2.0f, 3.0f
+    };
+    return table[k % 8];
+}
+
+static float AE_HuePhase(int k)
+{
+    static const float table[6] = {
+        0.0f, 0.2f, 0.3f, 0.5f, 1.5f, -0.25f
+    };
+    return table[(k / 8) % 6];
 }
 
 static int AE_MasterBits(int k)

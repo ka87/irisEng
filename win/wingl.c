@@ -14,6 +14,7 @@
 #include "../waterreflect.h"
 #include "../watersmooth.h"
 #include "../aefade.h"
+#include "../aehue.h"
 #include "../water.h"
 #include "../fog.h"
 #include "../textures.h"
@@ -3045,6 +3046,9 @@ static tGlProgram gl_aeFadeProgram;
 static GLint      gl_aeFadeLive = -1;
 static GLint      gl_aeFadeFrozen = -1;
 static GLint      gl_aeFadeShare = -1;
+static tGlProgram gl_aeHueProgram;
+static GLint      gl_aeHueSrc = -1;
+static GLint      gl_aeHueSubtract = -1;
 static tGlProgram gl_aeZoomProgram;
 static GLint      gl_aeZoomSrc = -1;
 static GLint      gl_aeZoomBandLo = -1;
@@ -3076,6 +3080,7 @@ static void GL_l_ForgetAe(void)
         GL_ProgramFree(&gl_aeRemProgram);
         GL_ProgramFree(&gl_aeBlendProgram);
         GL_ProgramFree(&gl_aeFadeProgram);
+        GL_ProgramFree(&gl_aeHueProgram);
         GL_ProgramFree(&gl_aeZoomProgram);
         for (i = 0; i < GL_AE_TARGETS; i++)
         {
@@ -3111,6 +3116,8 @@ static void GL_l_ForgetAe(void)
     gl_aeFadeLive = -1;
     gl_aeFadeFrozen = -1;
     gl_aeFadeShare = -1;
+    gl_aeHueSrc = -1;
+    gl_aeHueSubtract = -1;
     gl_aeZoomSrc = -1;
     gl_aeZoomBandLo = -1;
     gl_aeZoomBandHi = -1;
@@ -3171,9 +3178,10 @@ static int GL_l_b_AeReady(void)
     if (!GL_b_ProgramLoad(&gl_aeRemProgram, "aepass.vert", "aeremanence.frag")
         || !GL_b_ProgramLoad(&gl_aeBlendProgram, "aepass.vert", "aeblend.frag")
         || !GL_b_ProgramLoad(&gl_aeFadeProgram, "aepass.vert", "aefade.frag")
+        || !GL_b_ProgramLoad(&gl_aeHueProgram, "aepass.vert", "aehue.frag")
         || !GL_b_ProgramLoad(&gl_aeZoomProgram, "aepass.vert", "aezoom.frag"))
     {
-        /* Whichever of the four got as far as loading is freed with
+        /* Whichever of the five got as far as loading is freed with
            the rest; freeing one that did not does nothing. */
         GL_ProgramFree(&gl_aeBlurProgram);
         GL_ProgramFree(&gl_aeMixProgram);
@@ -3181,6 +3189,7 @@ static int GL_l_b_AeReady(void)
         GL_ProgramFree(&gl_aeRemProgram);
         GL_ProgramFree(&gl_aeBlendProgram);
         GL_ProgramFree(&gl_aeFadeProgram);
+        GL_ProgramFree(&gl_aeHueProgram);
         GL_ProgramFree(&gl_aeZoomProgram);
         return 0;
     }
@@ -3204,6 +3213,8 @@ static int GL_l_b_AeReady(void)
     gl_aeFadeLive = GL_i_ProgramUniform(&gl_aeFadeProgram, "uLive");
     gl_aeFadeFrozen = GL_i_ProgramUniform(&gl_aeFadeProgram, "uFrozen");
     gl_aeFadeShare = GL_i_ProgramUniform(&gl_aeFadeProgram, "uFrozenShare");
+    gl_aeHueSrc = GL_i_ProgramUniform(&gl_aeHueProgram, "uSrc");
+    gl_aeHueSubtract = GL_i_ProgramUniform(&gl_aeHueProgram, "uSubtract");
     gl_aeZoomSrc = GL_i_ProgramUniform(&gl_aeZoomProgram, "uSrc");
     gl_aeZoomBandLo = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandLo");
     gl_aeZoomBandHi = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandHi");
@@ -3617,6 +3628,54 @@ static int GL_l_b_AeRemanence(const tCbd_Bands* bands, int from, int spare)
     return 1;
 }
 
+/* The hue sweep: a colour taken off the picture, cycling.
+ *
+ * All the arithmetic is aehue.c's and the differential against the
+ * other renderer compares it packed word for packed word. What is
+ * here is the renderer's share, and two parts of it are worth saying.
+ *
+ * **The three amounts come out of a packed colour and not out of three
+ * numbers.** That looks like a detour and is the opposite: at a depth
+ * above one the channels overflow their bytes, and they do not all
+ * overflow the same way -- red's extra is lost and green's and blue's
+ * carry into the channel above. Asking the shared code for the word
+ * and unpacking it reproduces that; asking it for three clamped
+ * fractions would be right about the arithmetic and wrong about the
+ * picture.
+ *
+ * **The alpha write is masked off.** The other renderer narrows its
+ * colour write to the three colour channels for this effect, so the
+ * target keeps whatever alpha it already had. Nothing downstream reads
+ * it -- the one effect whose input is the frame's alpha has already
+ * run by here -- but the write is the write.
+ */
+static int GL_l_b_AeHue(const tCbd_Bands* bands, int from, int spare)
+{
+    float        subtract[AHU_CHANNELS];
+    unsigned int packed;
+
+    if (!AHU_b_On((unsigned int)PC_AE_MASTER))
+        return 0;
+
+    packed = AHU_u_Subtract(unknownAEFlag4GlobalVar, texFactorManual);
+    AHU_Channels(subtract, packed);
+
+    GLFN_glUseProgram(gl_aeHueProgram.program);
+    if (gl_aeHueSrc >= 0)
+        GLFN_glUniform1i(gl_aeHueSrc, 0);
+    if (gl_aeHueSubtract >= 0)
+        GLFN_glUniform3f(gl_aeHueSubtract, subtract[0], subtract[1],
+                         subtract[2]);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(spare));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
+
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    GL_l_AeDrawBand(bands->top, bands->bottom);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    return 1;
+}
+
 /* The fade: a frozen copy of the picture dissolving into the live one.
  *
  * Four things set this effect apart from its neighbours in the chain,
@@ -3887,6 +3946,11 @@ static int GL_l_b_AeWanted(void)
        frame where that cannot happen. */
     if (AFD_b_On((unsigned int)PC_AE_MASTER))
         return 1;
+    /* And the hue sweep, for the same reason the fade is asked here:
+       its bit is the whole of its gate, so a depth of nought is still
+       a draw. */
+    if (AHU_b_On((unsigned int)PC_AE_MASTER))
+        return 1;
 
     src.aeMaster = (unsigned int)PC_AE_MASTER;
     src.brightness = unkAEFunc2Param;
@@ -3980,6 +4044,8 @@ static GLuint GL_l_i_RunAfterEffects(void)
 
     if (DPB_b_AfterEffect((unsigned int)PC_AE_MASTER))
         cur = GL_l_i_AeDepthBlur(&bands, spr);
+    if (GL_l_b_AeHue(&bands, cur, spr))
+        GL_l_AeExchange(&cur, &spr);
     if (GL_l_b_AeRemanence(&bands, cur, spr))
         GL_l_AeExchange(&cur, &spr);
     if (GL_l_b_AeFade(cur, spr))

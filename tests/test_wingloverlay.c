@@ -1160,6 +1160,10 @@ static void reset(void)
        would hand the next case a fade part way through. */
     gAEOpacity = 0.0f;
     wgo_fadeOpacity = 0;
+    /* And the hue sweep's two, which are also gated by a bit alone --
+       so a case that left a depth behind would tint the next one. */
+    unknownAEFlag4GlobalVar = 0.0f;
+    texFactorManual = 0.0f;
     memset(&gl_material, 0, sizeof(gl_material));
     gl_colorMaskAlpha = 0;
     gl_mipmapping = 1;
@@ -4546,6 +4550,217 @@ static void caseAeZoomUniforms(void)
  * told, and that the effect switches itself off.
  */
 
+/* --------------------------------------------------- the hue sweep
+ *
+ * A colour taken off the picture, cycling. The wave, the three phases
+ * and the packing are aehue.c's and tests/run_wingdi_ae.sh compares
+ * them against the other renderer; these ask this renderer's part --
+ * what it is gated by, what the shader is told, where it draws, and
+ * what it leaves alone.
+ */
+
+static void caseAeHueGates(void)
+{
+    printf("-- the hue sweep runs on its bit, with no depth needed\n");
+
+    /* The bit alone, with the depth left at nought. Like the fade and
+       unlike its three neighbours, there is no parameter in the gate
+       -- and nought is the depth it starts life at, so a gate copied
+       from a neighbour would leave it unable to run. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AHU_BIT;
+    unknownAEFlag4GlobalVar = 0.0f;
+    texFactorManual = 0.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "the bit alone runs it");
+
+    /* And without the bit, nothing, however deep the tint is set. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0;
+    unknownAEFlag4GlobalVar = 1.0f;
+    texFactorManual = 0.25f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "and without it nothing runs");
+}
+
+static void caseAeHueSubtract(void)
+{
+    static const struct { float amount; float phase; } driven[4] = {
+        { 0.5f, 0.0f }, { 0.5f, 0.2f }, { 1.0f, 0.3f }, { 1.5f, 0.3f }
+    };
+    int i;
+
+    printf("-- the three amounts the shader is told\n");
+
+    for (i = 0; i < 4; i++)
+    {
+        float        want[AHU_CHANNELS];
+        unsigned int packed;
+
+        reset();
+        wg_SceneReady();
+        CIN_Bands = 0;
+        PC_AE_MASTER = (int)AHU_BIT;
+        unknownAEFlag4GlobalVar = driven[i].amount;
+        texFactorManual = driven[i].phase;
+        wg_callLen = 0;
+        GL_Flip();
+
+        packed = AHU_u_Subtract(driven[i].amount, driven[i].phase);
+        AHU_Channels(want, packed);
+
+        /* Three separate numbers and the exact ones. The same amount
+           in all three channels would be a brightness and not a tint,
+           and a bound would pass for a tint of the wrong colour. */
+        okEq(WG_l_Arg("glUniform3f.scaled", 0, 1), wg_l_Scaled(want[0]),
+             "red comes off by its own amount");
+        okEq(WG_l_Arg("glUniform3f.scaled", 0, 2), wg_l_Scaled(want[1]),
+             "green by its own");
+        okEq(WG_l_Arg("glUniform3f.scaled", 0, 3), wg_l_Scaled(want[2]),
+             "and blue by its own");
+    }
+
+    /* The last of those four is the depth above one, where the packing
+       carries blue's overflow up into green -- so green comes off by
+       a little when its own amount is nothing. Stated here as well as
+       in the unit test, because this is the number that reaches the
+       card. */
+    {
+        float want[AHU_CHANNELS];
+
+        AHU_Channels(want, AHU_u_Subtract(1.5f, 0.3f));
+        ok(want[1] > 0.0f, "a depth above one tints green from blue's"
+                           " overflow");
+        okEq((long)(want[1] * 255.0f + 0.5f), 1L, "by exactly one step");
+    }
+}
+
+static void caseAeHueDraw(void)
+{
+    tCbd_Bands bands;
+
+    printf("-- where it draws, and what it leaves alone\n");
+
+    /* With a letterbox on: this effect draws the band, unlike the fade
+       beside it in the chain which draws the whole picture. The two
+       are easy to copy from one another and the band is the right
+       answer here. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 1;
+    tweak_ae_nobands = 0;
+    D3D_gf_CutsceneBand = 0.25f;
+    PC_AE_MASTER = (int)AHU_BIT;
+    unknownAEFlag4GlobalVar = 1.0f;
+    texFactorManual = 0.25f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    CBD_Decide(&bands);
+    okEq(WG_l_Arg("glBufferData", 0, 4),
+         wg_l_Scaled(1.0f - 2.0f * bands.bottom),
+         "the quad starts at the bottom of the band");
+    okEq(WG_l_Arg("glBufferData", 0, 6),
+         wg_l_Scaled(1.0f - 2.0f * bands.top), "and ends at its top");
+    /* Not the wider reach the blur uses: this effect samples one pixel
+       per pixel, so there is nothing for a margin to be for. */
+    ok(wg_l_Scaled(1.0f - 2.0f * bands.top)
+       != wg_l_Scaled(1.0f - 2.0f * bands.reachTop),
+       "and the band is not the blur's reach");
+
+    /* The alpha write is off for the draw and back on after it. The
+       other renderer narrows its colour write the same way, so the
+       target keeps the alpha it had. */
+    {
+        int draw = wg_i_CallAt("glDrawArrays", 0);
+        int i;
+        int maskedAt = -1;
+        int restoredAt = -1;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0)
+            {
+                if (i < draw && wg_calls[i].arg[3] == GL_FALSE)
+                    maskedAt = i;
+                if (i > draw && wg_calls[i].arg[3] == GL_TRUE
+                    && restoredAt < 0)
+                    restoredAt = i;
+            }
+        ok(maskedAt >= 0, "the alpha write is masked off before the draw");
+        ok(restoredAt > draw, "and put back after it");
+        (void)restoredAt;
+    }
+
+    CIN_Bands = 0;
+    D3D_gf_CutsceneBand = 0.10416666f;
+}
+
+static void caseAeHueOrder(void)
+{
+    printf("-- the hue sweep runs before the remanence\n");
+
+    /* The order is the other renderer's, and it is not decoration:
+       every effect that exchanges moves the spare along, and the
+       motion blur further down reads whatever is in the target it
+       writes. Both on, and what is asserted is which draw is first --
+       the remanence takes five draws and this takes one, so the counts
+       alone would not say. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = (int)AHU_BIT | 0x800;
+    remenanceFactor = 0.5f;
+    unknownAEFlag4GlobalVar = 1.0f;
+    texFactorManual = 0.25f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    ok(WG_i_Count("glDrawArrays") > 1, "both effects drew");
+    /* The hue sweep is the only one of the two that masks the alpha
+       write, so the mask is what tells them apart -- and it has to
+       come before the remanence's first draw. */
+    {
+        int draw = wg_i_CallAt("glDrawArrays", 0);
+        int i;
+        int maskedBeforeFirst = 0;
+
+        for (i = 0; i < draw; i++)
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0
+                && wg_calls[i].arg[3] == GL_FALSE)
+                maskedBeforeFirst = 1;
+        ok(maskedBeforeFirst, "and the hue sweep was the first of them");
+
+        /* And the mask is back on before the *next* effect draws,
+           which is the property that matters and the one a restore
+           inside this effect alone cannot be checked for. Leaving it
+           off would silently stop everything after it writing alpha
+           -- and the motion blur further down the chain drives its
+           blend with the alpha it writes, so it would stop being a
+           trail. Asserted against the second draw rather than against
+           the end of the frame, because something later in the frame
+           puts the mask back for its own reasons and that satisfied an
+           earlier, weaker version of this. */
+        {
+            int second = wg_i_CallAt("glDrawArrays", 1);
+            int alpha = 1;
+
+            ok(second > draw, "there is a second effect's draw to check"
+                              " against");
+            for (i = 0; i < second; i++)
+                if (strcmp(wg_calls[i].name, "glColorMask") == 0)
+                    alpha = (wg_calls[i].arg[3] == GL_TRUE);
+            ok(alpha, "the alpha write is back on before it");
+        }
+    }
+    remenanceFactor = 0.0f;
+}
+
 static void caseAeFadeGates(void)
 {
     printf("-- the one effect with no parameter to switch it on\n");
@@ -6159,6 +6374,10 @@ int main(void)
     caseAeRemanenceChain();
     caseAeRemanenceAfterDepthBlur();
     caseAeZoomUniforms();
+    caseAeHueGates();
+    caseAeHueSubtract();
+    caseAeHueDraw();
+    caseAeHueOrder();
     caseAeFadeGates();
     caseAeFadeFreeze();
     caseAeFadeShare();

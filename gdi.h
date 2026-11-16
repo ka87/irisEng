@@ -398,6 +398,22 @@ float depthBlurType1;
    see aefade.h, where what it comes to is written down. */
 float gAEOpacity;
 
+/* The hue sweep's two, and the third the scripts can set and nothing
+ * reads.
+ *
+ * The names are the ones they have always had and neither says what it
+ * is: the first is how deep the tint goes and the second is where in
+ * the cycle it sits -- a phase, not a texture factor. Neutral for the
+ * depth is nought, which leaves a draw that takes nothing off, because
+ * the effect is gated by its bit alone. See aehue.h.
+ *
+ * The third is set and read back by the scripts' own calls and is
+ * never looked at by anything that draws. It is here so that reading
+ * it back gives what was written. */
+float unknownAEFlag4GlobalVar;
+float texFactorManual;
+float texFactorProbablyUnunsedType2;
+
 /* The fade's remaining opacity: the timer that effect steps itself,
  * from the whole range down to nothing.
  *

@@ -484,6 +484,7 @@ for one in tests/runworld.sh \
            tests/run_aecolor.sh \
            tests/run_aeframe.sh \
            tests/run_aefade.sh \
+           tests/run_aehue.sh \
            tests/run_glload.sh \
            tests/run_glshader.sh \
            tests/run_wingloverlay.sh \
