@@ -57,9 +57,29 @@ Three things in it are worth knowing:
   moves it while somebody looks at a real scene, and the default is
   whichever way round that measurement settled.
 
-The reflection pass itself -- the world drawn a second time, mirrored in
-the water plane -- is not here yet, so the target the surface samples
-holds the flat colour the engine says the water is looking down into.
+## The reflection, which is in `geometry.vert`
+
+The reflection pass has no shader of its own. It is the world's own
+geometry drawn a second time with different matrices, so it goes through
+`geometry.vert` and `geometry.frag` like everything else -- the only
+addition is a clip plane, and three uniforms the reflection sets and
+nothing else touches:
+
+* **`uClipping`** is nought for every other draw, and then the clip
+  distance the shader writes is a positive constant and clips nothing.
+* **`uClipPlane`** is the plane, in world space, that keeps the
+  reflection at or below the water line. Mirrored geometry that lands
+  above the surface is the part of the world that could not be seen in
+  water, and this is what removes it.
+* **`uWorld`** is the mirrored object transform, and it is there only
+  because the plane is in world space and the vertex has to get there.
+  For the ordinary draw the renderer does not have the object's world
+  transform on its own at all -- the engine hands over a view matrix
+  with the object already folded in -- so this is the one draw that
+  can supply it.
+
+The distance is written on every draw, clipping or not: a clip distance
+that is enabled and never written is undefined.
 
 ## What the world's fragment shader is doing that the pipeline cannot
 

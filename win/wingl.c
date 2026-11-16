@@ -11,6 +11,7 @@
 #include "../aecolor.h"
 #include "../aeframe.h"
 #include "../watermesh.h"
+#include "../waterreflect.h"
 #include "../water.h"
 #include "../fog.h"
 #include "../textures.h"
@@ -140,6 +141,8 @@ static void GL_l_ForgetVideo(void);
 static GLuint GL_l_i_RunAfterEffects(void);
 static void GL_l_ForgetAe(void);
 static void GL_l_ForgetWater(void);
+static int  GL_l_b_WantsReflection(void);
+static void GL_l_ReflectStaged(int count);
 static Mtx4x4 gl_viewProjMtx;
 static int            gl_available = -1;   /* -1 until asked */
 static int            gl_saidOnce;
@@ -394,9 +397,9 @@ static void GL_l_SayWhatThisIs(void)
                           "the after-effects for the depth blur, the "
                           "brightness, the contrast and the grayscale, "
                           "the remanence, the motion blur and the zoom "
-                          "smooth; the water's surface is drawn but its "
-                          "reflection is not, so the water mirrors a "
-                          "flat colour\n");
+                          "smooth, and the water with its reflection; "
+                          "the water's clip plane is honoured and its "
+                          "surface smoothing is not\n");
 }
 
 static void GL_l_SizeFromWindow(HWND hwnd)
@@ -705,6 +708,14 @@ void GL_DiscardGeometryCache(struct sGEOGRO* gro)
 
 static Mtx4x4     gl_viewMtx;
 static Mtx4x4     gl_projMtx;
+/* The winding in force and whether culling is on at all, kept because
+   the water's reflection has to draw the same geometry with the facing
+   the other way round and put it back. Reading it out of the driver
+   would be a round trip per object, and the renderer is the only thing
+   that sets it. */
+static GLenum gl_frontFace = GL_CCW;
+static int    gl_cullOn;
+
 static tGlProgram gl_geoProgram;
 static GLint      gl_geoViewProj = -1;
 static GLint      gl_geoTex = -1;
@@ -720,6 +731,10 @@ static GLint      gl_geoFogDensity = -1;
 static GLint      gl_geoFogColor = -1;
 static GLint      gl_geoUVMode = -1;
 static GLint      gl_geoUVMtx = -1;
+/* The water's reflection reads these three and nothing else does. */
+static GLint      gl_geoClipping = -1;
+static GLint      gl_geoClipPlane = -1;
+static GLint      gl_geoWorld = -1;
 
 /* The material's texture-coordinate projection. The engine computes a
    transform into d3dTransformationMatrix and says which source it
@@ -827,6 +842,9 @@ static int GL_l_b_GeometryReady(void)
     gl_geoFogColor = GL_i_ProgramUniform(&gl_geoProgram, "uFogColor");
     gl_geoUVMode = GL_i_ProgramUniform(&gl_geoProgram, "uUVMode");
     gl_geoUVMtx = GL_i_ProgramUniform(&gl_geoProgram, "uUVMtx");
+    gl_geoClipping = GL_i_ProgramUniform(&gl_geoProgram, "uClipping");
+    gl_geoClipPlane = GL_i_ProgramUniform(&gl_geoProgram, "uClipPlane");
+    gl_geoWorld = GL_i_ProgramUniform(&gl_geoProgram, "uWorld");
 
     GLFN_glGenBuffers(1, &gl_geoBuffer);
     GLFN_glGenBuffers(1, &gl_geoNrmBuffer);
@@ -1008,6 +1026,9 @@ static void GL_l_ForgetGeometry(void)
     gl_geoFogColor = -1;
     gl_geoUVMode = -1;
     gl_geoUVMtx = -1;
+    gl_geoClipping = -1;
+    gl_geoClipPlane = -1;
+    gl_geoWorld = -1;
     gl_geoTried = 0;
     gl_geoReady = 0;
     free(gl_geoVerts);
@@ -1317,6 +1338,15 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
 
     GL_l_DrawStaged(gl_geoVerts, needed, gl_material.b_depthBlur,
                     gl_geoNrmWanted);
+
+    /* And again into the water's reflection, mirrored, when this
+       object is worth reflecting. The depth-blur pass is excluded
+       because it is a different program writing a blur amount rather
+       than a picture -- there is nothing in it for the water to
+       mirror, and the uniforms the reflection sets belong to the
+       world's program. */
+    if (!gl_material.b_depthBlur && GL_l_b_WantsReflection())
+        GL_l_ReflectStaged(needed);
     return 0;
 }
 
@@ -1787,15 +1817,18 @@ void GL_TextureInit(int textureID, int flags, char mode)
     if (st.cull == RST_CULL_NONE || tweak_gl_cull == 1)
     {
         GLFN_glDisable(GL_CULL_FACE);
+        gl_cullOn = 0;
     }
     else
     {
         GLFN_glEnable(GL_CULL_FACE);
         GLFN_glCullFace(GL_BACK);
         if (tweak_gl_cull == 2)
-            GLFN_glFrontFace(st.cull == RST_CULL_CW ? GL_CW : GL_CCW);
+            gl_frontFace = st.cull == RST_CULL_CW ? GL_CW : GL_CCW;
         else
-            GLFN_glFrontFace(st.cull == RST_CULL_CW ? GL_CCW : GL_CW);
+            gl_frontFace = st.cull == RST_CULL_CW ? GL_CCW : GL_CW;
+        GLFN_glFrontFace(gl_frontFace);
+        gl_cullOn = 1;
     }
 
     GLFN_glColorMask(st.writeRGB ? GL_TRUE : GL_FALSE,
@@ -3961,6 +3994,12 @@ static GLuint     gl_waterDepth;
 static int        gl_waterTried;
 static int        gl_waterReady;
 
+/* The camera as it stood when the frame was prepared, which is what
+   every mirrored object this frame is measured against. Declared with
+   the rest of the water's state rather than beside the reflection
+   below, because the prepare that fills it comes first in the file. */
+static Mtx4x4     gl_waterCamMtx;
+
 /* Whether there is water this frame. The engine's own answer is
    whether it has water parameters at all, asked once before the world
    is drawn; everything after reads this rather than asking again, so a
@@ -4031,6 +4070,7 @@ static void GL_l_ForgetWater(void)
     gl_waterTried = 0;
     gl_waterReady = 0;
     gl_waterOn = 0;
+    memset(&gl_waterCamMtx, 0, sizeof(gl_waterCamMtx));
     gl_waterCols = 0;
     gl_waterRows = 0;
     gl_waterIndices = 0;
@@ -4219,6 +4259,12 @@ void GL_PrepareWaterRendering(void)
     GLFN_glClearDepth(1.0);
     GLFN_glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    /* The camera as it stands now, which every mirrored object this
+       frame is measured against. Kept here rather than read per
+       object: the engine moves the camera while the world is drawn,
+       and a reflection built against a moving camera smears. */
+    MATH_MakeOGLMatrix(&gl_waterCamMtx, &gpst_DX_stDD->ct.cam.cameraMtx);
+
     /* Back where the world is drawn. The scene target is bound rather
        than the window, because that is what the frame is being built
        in -- the after-effects read it afterwards. */
@@ -4354,6 +4400,194 @@ void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
     /* Depth writing back on: everything after this draw expects it,
        and the other renderer puts it back here too. */
     GLFN_glDepthMask(GL_TRUE);
+}
+
+/* ------------------------------------------------- the reflection
+ *
+ * The water's first pass, and the one that makes the surface mirror
+ * the world rather than a flat colour.
+ *
+ * It is not a pass of its own in the usual sense: there is no loop over
+ * the world anywhere here. Each object, as it is drawn, is drawn a
+ * **second time** into the reflection target with its transform
+ * mirrored in the water plane -- so the pass is a tail on the ordinary
+ * draw, which is where the other renderer puts it too.
+ *
+ * Three things have to change for that second draw and change back
+ * afterwards:
+ *
+ *   the target     the reflection's, at its own size
+ *   the matrices   the mirrored object transform against the camera
+ *                  alone, rather than the combined matrix the engine
+ *                  hands over for the ordinary draw
+ *   the winding    reversed, because mirroring turns every triangle
+ *                  over
+ *
+ * and a clip plane keeps the result under the water line.
+ *
+ * The mirrored transform, the size threshold and the plane are in
+ * waterreflect.c, shared with the other renderer and compared against
+ * it; what is here is the four GL calls that aim the draw.
+ */
+
+/* What the second draw goes back to.
+ *
+ * The first two are **worked out** rather than read back: the target
+ * the world is being drawn into is the scene's and its size is the
+ * screen's, and there is no moment during the world's drawing when
+ * either is anything else -- the one case that binds something else,
+ * a shadow, is refused above. Asking the driver instead would be a
+ * round trip per object for an answer the renderer already knows. The
+ * names say "back to" and not "was" for that reason.
+ *
+ * The winding is genuinely the one that was in force, because the
+ * renderer tracks it. */
+static GLuint gl_waterBackToFbo;
+static GLint  gl_waterBackToViewport[4];
+static int    gl_waterWasCulling;
+static GLenum gl_waterWasFrontFace;
+
+/* Whether the second draw is wanted for the object being drawn now.
+ *
+ * The gates are the other renderer's, in its order. Two of them sit at
+ * its call site rather than in the function, and they are the two most
+ * easily lost: a material whose texture coordinates are generated two
+ * particular ways is skipped, and so is anything already being drawn
+ * into a target of its own -- a shadow, say, which has no business
+ * putting itself in the water. */
+static int GL_l_b_WantsReflection(void)
+{
+    const tGameObjectBV* bv;
+
+    if (!gl_waterOn || !gl_waterReady)
+        return 0;
+    if (GDI_gi_TextureUVMode == 4 || GDI_gi_TextureUVMode == 5)
+        return 0;
+    if (gl_targetInForce)
+        return 0;
+    if (!gpst_DX_stDD || !gpst_DX_stDD->currTargetGao
+        || !gpst_DX_stDD->currTargetGao->matrices)
+        return 0;
+
+    bv = gpst_DX_stDD->currTargetGao->boundingVolume;
+    if (!bv)
+        return 0;
+    return WRF_b_WorthReflecting(bv, OBJ_BV_IsSphere((tGameObjectBV*)bv),
+                                 tweak_water_min_bv);
+}
+
+/* Aims the draw at the reflection, leaving the program bound and the
+   vertex data where it is -- the whole point is to draw the same
+   triangles again. */
+static void GL_l_AimAtReflection(void)
+{
+    Mtx4x4 mirrored;
+    Mtx4x4 view;
+    Mtx4x4 viewProj;
+
+    gl_waterBackToFbo = (GLuint)GL_l_i_SceneFbo();
+    gl_waterBackToViewport[0] = 0;
+    gl_waterBackToViewport[1] = 0;
+    gl_waterBackToViewport[2] = gl_state.width;
+    gl_waterBackToViewport[3] = gl_state.height;
+    gl_waterWasCulling = gl_cullOn;
+    gl_waterWasFrontFace = gl_frontFace;
+
+    WRF_Mirror(&mirrored, gpst_DX_stDD->currTargetGao->matrices,
+               waterHeight);
+    /* The camera alone, not the view the engine set. That matrix has
+       the object folded into it already, so using it would apply the
+       object's transform twice -- once unmirrored. */
+    D3D_MatrixMultiply((D3DMATRIX*)&view, (const D3DMATRIX*)&mirrored,
+                       (const D3DMATRIX*)&gl_waterCamMtx);
+    D3D_MatrixMultiply((D3DMATRIX*)&viewProj, (const D3DMATRIX*)&view,
+                       (const D3DMATRIX*)&gl_projMtx);
+
+    /* The target is square and the screen is not, and the projection
+       is the screen's -- so the reflection is drawn with the wrong
+       aspect ratio and the surface samples it that way. That is the
+       other renderer's behaviour rather than an oversight here: it
+       sets the render target without setting a viewport, and in that
+       interface setting a render target resets the viewport to the
+       whole of it. Reproduced, because the surface's own projection
+       was built against it. */
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, gl_waterFbo);
+    GLFN_glViewport(0, 0, GL_WATER_SIZE, GL_WATER_SIZE);
+
+    if (gl_geoViewProj >= 0)
+        GLFN_glUniformMatrix4fv(gl_geoViewProj, 1, GL_FALSE,
+                                (const GLfloat*)&viewProj);
+    /* The fog goes with it: its depth is measured from the camera, and
+       for this draw that is the mirrored object against the camera. */
+    if (gl_geoView >= 0)
+        GLFN_glUniformMatrix4fv(gl_geoView, 1, GL_FALSE,
+                                (const GLfloat*)&view);
+
+    if (tweak_water_clip)
+    {
+        float plane[4];
+
+        WRF_ClipPlane(plane, waterHeight, tweak_water_off);
+        if (gl_geoWorld >= 0)
+            GLFN_glUniformMatrix4fv(gl_geoWorld, 1, GL_FALSE,
+                                    (const GLfloat*)&mirrored);
+        if (gl_geoClipPlane >= 0)
+            GLFN_glUniform4f(gl_geoClipPlane, plane[0], plane[1],
+                             plane[2], plane[3]);
+        if (gl_geoClipping >= 0)
+            GLFN_glUniform1i(gl_geoClipping, 1);
+        GLFN_glEnable(GL_CLIP_DISTANCE0);
+    }
+
+    /* Mirroring turns every triangle over, so the facing has to turn
+       with it or the reflection shows the insides of things. Reversed
+       rather than switched off: the other renderer swaps its two cull
+       modes here, and leaving culling off instead would draw back faces
+       the original never draws. */
+    if (gl_waterWasCulling)
+        GLFN_glFrontFace(gl_frontFace == GL_CCW ? GL_CW : GL_CCW);
+}
+
+/* And puts all four back. */
+static void GL_l_LeaveReflection(void)
+{
+    if (tweak_water_clip)
+    {
+        GLFN_glDisable(GL_CLIP_DISTANCE0);
+        if (gl_geoClipping >= 0)
+            GLFN_glUniform1i(gl_geoClipping, 0);
+    }
+    if (gl_waterWasCulling)
+        GLFN_glFrontFace(gl_waterWasFrontFace);
+
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, gl_waterBackToFbo);
+    GLFN_glViewport(gl_waterBackToViewport[0], gl_waterBackToViewport[1],
+                    gl_waterBackToViewport[2], gl_waterBackToViewport[3]);
+
+    /* The matrices the ordinary draw was using. They are the
+       renderer's own, so they are put back from it rather than saved
+       and restored. */
+    if (gl_geoViewProj >= 0)
+        GLFN_glUniformMatrix4fv(gl_geoViewProj, 1, GL_FALSE,
+                                (const GLfloat*)&gl_viewProjMtx);
+    if (gl_geoView >= 0)
+        GLFN_glUniformMatrix4fv(gl_geoView, 1, GL_FALSE,
+                                (const GLfloat*)&gl_viewMtx);
+}
+
+/* Draws the triangles already in the buffer a second time, into the
+   reflection. The vertex data is left where it is -- that is the whole
+   point -- so this binds the vertex array again and draws, with
+   nothing uploaded. */
+static void GL_l_ReflectStaged(int count)
+{
+    if (count <= 0)
+        return;
+    GL_l_AimAtReflection();
+    GLFN_glBindVertexArray(gl_geoVao);
+    GLFN_glDrawArrays(GL_TRIANGLES, 0, (GLsizei)count);
+    GLFN_glBindVertexArray(0);
+    GL_l_LeaveReflection();
 }
 
 /* ---------------------------------------------- the video display
