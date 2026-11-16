@@ -1148,6 +1148,112 @@ static void caseShadowTarget(void)
     okNear(glr_R(GLR_W / 2, GLR_H / 2), 0xFF, "and an untouched target samples white");
 }
 
+/* The shadow as the engine actually composites it.
+ *
+ * The case above proves the target round-trips. This one runs the
+ * sequence that puts a shadow on an object, and it is written around
+ * the one thing that sequence does which a renderer can silently drop.
+ *
+ * The engine sets a material whose flags turn the colour write off
+ * entirely -- 0x2260, which asks for sampler state and no drawing --
+ * and *then* asks for the target to be cleared. **OpenGL's clear is
+ * masked by the colour write mask; the other renderer's is not.** So a
+ * clear made straight through OpenGL at that moment writes nothing,
+ * the target keeps what was in it, and since a shadow composites as
+ * `dst * (1 - src)`, a target left full of the last caster's
+ * silhouette darkens everything it is sampled onto.
+ *
+ * The case therefore draws into the target **twice**: once covering
+ * all of it, then again with the real caster. If the second clear is
+ * dropped, the first pass's white is still there and the whole quad
+ * goes dark instead of just the silhouette. Starting from a fresh
+ * target would not test it at all -- a fresh texture is undefined
+ * memory, and on some drivers that is zero, which looks like a clear
+ * that worked.
+ */
+static void caseShadowComposite(void)
+{
+    int i;
+
+    printf("-- a shadow darkens its silhouette and nothing else\n");
+    glr_Reset();
+
+    /* Pass one: the whole target white, which is what the clear in
+       pass two has to get rid of. */
+    {
+        Mtx4x4 id;
+
+        glr_BuildQuad();
+        for (i = 0; i < 4; i++)
+        {
+            glr_pos[i].x *= 4.0f;
+            glr_pos[i].y *= 4.0f;
+        }
+        MATH_SetIdentityMatrix(&id);
+        MATH_SetIdentityMatrix(&gl_projMtx);
+        glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+        glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+        GL_SetViewMatrixSDW(&id, NULL);
+        GL_TextureInit(-1, 0x2260, 0);
+        GL_SetRenderTargetAndBackupPreviousSDW(3, 1);
+        GL_TextureInit(-1, 0, 0);
+        GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+        GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    }
+
+    /* Pass two: the caster, covering the middle quarter, over a target
+       that has to be cleared first. The order is the engine's, down to
+       the material with the colour write off before the bind. */
+    {
+        Mtx4x4 id;
+
+        glr_BuildQuad();
+        for (i = 0; i < 4; i++)
+        {
+            glr_pos[i].x *= 0.5f;
+            glr_pos[i].y *= 0.5f;
+        }
+        MATH_SetIdentityMatrix(&id);
+        MATH_SetIdentityMatrix(&gl_projMtx);
+        glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+        glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+
+        GL_SetViewMatrixSDW(&id, NULL);
+        GL_TextureInit(-1, 0x2260, 0);
+        GL_SetRenderTargetAndBackupPreviousSDW(3, 1);
+        GL_TextureInit(-1, 0, 0);
+        GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+        GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+    }
+
+    /* The object: the whole quad over the background, with the target
+       mapped across it and the flags the engine passes. */
+    glr_Begin();
+    glr_IdentityMatrices();
+    glr_BuildQuad();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFC);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10 | 0x10000;
+    GL_TextureInit((int)(0x80000000u | 3u), 0x80224, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    /* Inside the silhouette: dark. That much holds even if the clear
+       was dropped, which is why it is not the assertion that matters. */
+    ok(glr_R(GLR_W / 2, GLR_H / 2) < GLR_BG / 2,
+       "the silhouette goes dark");
+
+    /* Outside it, inside the quad: the frame untouched. This is the
+       one that fails when the clear is masked away -- the quad covers
+       the middle half of the surface and the caster the middle
+       quarter, so a sixth of the way out is inside one and outside
+       the other. */
+    okNear(glr_R(GLR_W / 2 + GLR_W / 6, GLR_H / 2), GLR_BG,
+           "and outside it the frame is left alone");
+    okNear(glr_R(GLR_W / 2, GLR_H / 2 + GLR_H / 6), GLR_BG,
+           "in both axes");
+}
+
 /* ===================================================== the depth blur
  *
  * The pass draws the world a second time through a 256 by 1 ramp of
@@ -5893,6 +5999,7 @@ int main(void)
     caseSprites();
     caseVideo();
     caseShadowTarget();
+    caseShadowComposite();
     caseAeDepthBlurMix();
     caseAeDepthBlurDirection();
     caseAeDepthBlurGates();

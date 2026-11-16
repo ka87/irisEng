@@ -2833,6 +2833,54 @@ static long WG_l_Arg(const char* name, int nth, int arg)
     return c ? (long)c->arg[arg] : -1;
 }
 
+static void caseClearSurvivesTheMask(void)
+{
+    printf("-- a clear is not stopped by the colour write mask\n");
+
+    /* The engine turns the colour write off and then asks for a
+       shadow target to be cleared -- OpenGL's clear is masked and the
+       other renderer's is not, so the mask has to be put out of the
+       way for the clear and put back after it. The picture half of
+       this is in the real-driver harness; what is checked here is the
+       *restore*, which a picture cannot see: leave the mask open
+       afterwards and every narrowed write that follows is wrong. */
+    reset();
+    wg_SceneReady();
+
+    /* Flags 0x2260 are the engine's own: they ask for sampler state
+       and turn the colour write off entirely. */
+    GL_TextureInit(-1, 0x2260, 0);
+    wg_callLen = 0;
+    GL_SetRenderTargetAndBackupPreviousSDW(3, 1);
+
+    {
+        int i;
+        int opened = 0;
+        int cleared = 0;
+        int restored = 0;
+
+        for (i = 0; i < wg_callLen; i++)
+        {
+            if (strcmp(wg_calls[i].name, "glColorMask") == 0
+                && wg_calls[i].arg[0] && wg_calls[i].arg[1]
+                && wg_calls[i].arg[2] && wg_calls[i].arg[3])
+                opened = 1;
+            if (opened && !cleared
+                && strcmp(wg_calls[i].name, "glClear") == 0)
+                cleared = 1;
+            if (cleared
+                && strcmp(wg_calls[i].name, "glColorMask") == 0
+                && !wg_calls[i].arg[0] && !wg_calls[i].arg[1]
+                && !wg_calls[i].arg[2] && !wg_calls[i].arg[3])
+                restored = 1;
+        }
+        ok(opened, "the mask is opened for the clear");
+        ok(cleared, "the clear happens with it open");
+        ok(restored, "and the material's mask is put back after it");
+    }
+    GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
+}
+
 static void caseTargetsBuild(void)
 {
     printf("-- the shadow targets are built once\n");
@@ -7291,6 +7339,7 @@ int main(void)
     caseUntextured();
     caseProceduralUpload();
     caseTextureTeardown();
+    caseClearSurvivesTheMask();
     caseTargetsBuild();
     caseTargetsBind();
     caseTargetsRefusals();
