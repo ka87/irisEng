@@ -177,6 +177,13 @@ void MEM_FreeAlign(void* p) { free(p); }
 /* The cutscene letterbox's engine state, which cinebands.c reads.
    CIN_Bands is the engine's switch; the game starts it on. */
 int   CIN_Bands = 1;
+
+/* How many texture stages the engine asks the effects to use -- two
+   for a single-stream card, eight otherwise. The second zoom smooth
+   divides its eight samples by it, and that division changes the
+   angles' last bits, so a case can move this and see the walk change.
+   Eight is what the engine starts it at. */
+int   ENG_ifSingleStreamThenEq2Otherwise8 = 8;
 int   tweak_ae_nobands = 0;
 float D3D_gf_CutsceneBand = 0.10416666f;
 
@@ -4650,6 +4657,190 @@ static void caseAeZoomSmooth(void)
     gl_state.height = GLR_H;
 }
 
+/* ------------------------------------------- the second zoom smooth
+ *
+ * Read as eight landing spots rather than as a smear.
+ *
+ * The other cases here read a smeared picture and ask whether it
+ * smeared the right way. That will not do for this effect: it turns
+ * the frame about the middle of the picture by eight different angles,
+ * and a uniform directional smear, a turn about a corner, or a
+ * rotation without the shrink all produce a picture that is just as
+ * smeared. So a bright mark goes in off-centre, each tap's own
+ * transform is **inverted** to work out where that tap must throw it,
+ * and all eight spots are read -- together with the seven gaps between
+ * them, because eight discrete copies and one continuous streak are
+ * different pictures and only the gaps tell them apart.
+ *
+ * The transforms come from aezoom2.c, the same place the pass gets
+ * them, so this is not a second implementation of the arithmetic. What
+ * it tests is that the eight transforms the module built are the eight
+ * the picture was made with -- a claim about the shader, the packing
+ * into two matrices, the column order and the direction the vertical
+ * runs, none of which the mock harness can see.
+ */
+static int glr_aeDark(int x, int row)
+{
+    (void)x; (void)row;
+    return 0;
+}
+
+static void caseAeZoomSmooth2(void)
+{
+    GLuint scene;
+    GLuint shown;
+    float  angles[AZ2_TAPS];
+    int    n;
+    int    stages;
+    int    i;
+    /* Off-centre, and far enough out that a step of angle moves the
+       spot several pixels. */
+    const int markX = GLR_AE_W / 2 + 120;
+    const int markRow = GLR_AE_H / 2 + 60;
+    /* Three pixels across, so a spot survives the bilinear filter as
+       something brighter than a single sample's worth of it. */
+    const int markHalf = 1;
+    double spotX[AZ2_TAPS];
+    double spotRow[AZ2_TAPS];
+
+    printf("-- the second zoom smooth throws eight samples about the"
+           " middle\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    scene = glr_AeScene(glr_aeDark, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* The mark, written straight into the scene texture. */
+    {
+        int x;
+        int row;
+
+        for (row = markRow - markHalf; row <= markRow + markHalf; row++)
+            for (x = markX - markHalf; x <= markX + markHalf; x++)
+                glr_aePattern[(row * GLR_AE_W + x) * 4] = 255;
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    /* A parameter large enough to separate the eight spots: the step
+       is the parameter times about a twenty-fifth of a radian, and at
+       this radius three gives about sixteen pixels between spots --
+       wider than the mark, which is what makes the gaps readable. */
+    PC_AE_MASTER = (int)AZ2_BIT;
+    zoomSmoothFactor2 = 3.0f;
+    stages = AZ2_i_Stages(4, ENG_ifSingleStreamThenEq2Otherwise8);
+    n = AZ2_i_SampledAngles(angles, AZ2_TAPS, zoomSmoothFactor2, stages);
+    okEq(n, AZ2_TAPS, "eight samples to find");
+
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+
+    /* Where each tap throws the mark. The shader samples at
+       `middle + M * d`, so light from the mark appears where
+       `M * d = d_mark`, which is `d = M-inverse * d_mark`. Inverting
+       each tap is the whole of this case: a tap built wrong lands
+       somewhere else and its spot is dark. */
+    {
+        const double du = ((double)markX + 0.5) / GLR_AE_W - 0.5;
+        const double dv = ((double)markRow + 0.5) / GLR_AE_H - 0.5;
+
+        for (i = 0; i < n; i++)
+        {
+            float  t[4];
+            double det;
+
+            AZ2_Tap(t, angles[i]);
+            det = (double)t[0] * (double)t[3]
+                  - (double)t[1] * (double)t[2];
+            ok(fabs(det) > 1e-6, "the tap can be inverted");
+            spotX[i] = (0.5 + ((double)t[3] * du - (double)t[1] * dv)
+                              / det) * GLR_AE_W - 0.5;
+            spotRow[i] = (0.5 + ((double)t[0] * dv - (double)t[2] * du)
+                                / det) * GLR_AE_H - 0.5;
+        }
+
+        /* All eight spots are lit. Read a small neighbourhood: the
+           spots land between pixels and the filter spreads the mark,
+           so a single sample at a rounded position can sit in the dip
+           between two lit ones. */
+        for (i = 0; i < n; i++)
+        {
+            int best = 0;
+            int ox;
+            int oy;
+
+            for (oy = -2; oy <= 2; oy++)
+                for (ox = -2; ox <= 2; ox++)
+                {
+                    int v = glr_AeRed(shown, (int)(spotX[i] + 0.5) + ox,
+                                      (int)(spotRow[i] + 0.5) + oy);
+
+                    if (v > best)
+                        best = v;
+                }
+            ok(best > 8, "the tap's own spot is lit");
+        }
+
+        /* And the gaps between them are not. Halfway between two
+           consecutive spots is where a continuous streak would put
+           light and where eight discrete copies put none. */
+        for (i = 0; i + 1 < n; i++)
+        {
+            int midX = (int)((spotX[i] + spotX[i + 1]) * 0.5 + 0.5);
+            int midRow = (int)((spotRow[i] + spotRow[i + 1]) * 0.5 + 0.5);
+
+            okEq(glr_AeRed(shown, midX, midRow), 0,
+                 "and the gap before the next one is dark");
+        }
+    }
+
+    /* The signature of a turn about the **middle**: a mark at the exact
+       centre is the one point every tap maps to itself, so it comes
+       back whole -- at the eight weights' sum, which is 248 of 255 and
+       a shade under what went in. A turn about a corner, or a
+       directional smear, moves it. */
+    {
+        int x;
+        int row;
+        int centreX = GLR_AE_W / 2;
+        int centreRow = GLR_AE_H / 2;
+
+        for (row = 0; row < GLR_AE_H; row++)
+            for (x = 0; x < GLR_AE_W; x++)
+                glr_aePattern[(row * GLR_AE_W + x) * 4] = 0;
+        for (row = centreRow - 2; row <= centreRow + 2; row++)
+            for (x = centreX - 2; x <= centreX + 2; x++)
+                glr_aePattern[(row * GLR_AE_W + x) * 4] = 240;
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+
+        shown = GL_l_i_RunAfterEffects();
+        okWithin((double)glr_AeRed(shown, centreX, centreRow),
+                 240.0 * (double)AZ2_f_Weight(AZ2_TAPS) * AZ2_TAPS, 4.0,
+                 "a mark at the middle comes back whole");
+        ok(glr_AeRed(shown, centreX, centreRow) < 240,
+           "a shade under what went in, which is the weight");
+    }
+
+    PC_AE_MASTER = 0;
+    zoomSmoothFactor2 = 0.0f;
+    CIN_Bands = 1;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
 /* ------------------------------------------------------- the water
  *
  * Drawn on a real driver and read back, which is the only way to see
@@ -5715,6 +5906,7 @@ int main(void)
     caseAeHue();
     caseAeFade();
     caseAeZoomSmooth();
+    caseAeZoomSmooth2();
 
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();

@@ -70,11 +70,16 @@ $CC $CFLAGS -fsanitize=address -c aehue.c -o "$OUT/wgo.ahu.o"
 # four taps; tests/run_wingdi_ae.sh is where both are compared against
 # the other renderer.
 $CC $CFLAGS -fsanitize=address -c aemotion.c -o "$OUT/wgo.amo.o"
+# aezoom2.c holds the second zoom smooth: the stage split, the walk of
+# eight angles it decides, the weight, and the per-sample transform --
+# which is written as a rotation and is not one. Both renderers take
+# all of that from here.
+$CC $CFLAGS -fsanitize=address -c aezoom2.c -o "$OUT/wgo.az2.o"
 $CC $CFLAGS -fsanitize=address -c geosprite.c -o "$OUT/wgo.gsp.o"
 $CC $CFLAGS -fsanitize=address -c win/wingdimath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \
-    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.cbd.o" "$OUT/wgo.aec.o" "$OUT/wgo.aef.o" "$OUT/wgo.wms.o" "$OUT/wgo.wrf.o" "$OUT/wgo.wsm.o" "$OUT/wgo.afd.o" "$OUT/wgo.ahu.o" "$OUT/wgo.amo.o" "$OUT/wgo.gsp.o" \
+    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.cbd.o" "$OUT/wgo.aec.o" "$OUT/wgo.aef.o" "$OUT/wgo.wms.o" "$OUT/wgo.wrf.o" "$OUT/wgo.wsm.o" "$OUT/wgo.afd.o" "$OUT/wgo.ahu.o" "$OUT/wgo.amo.o" "$OUT/wgo.az2.o" "$OUT/wgo.gsp.o" \
     "$OUT/wgo.wgmath.o" "$OUT/wgo.math.o" -o "$OUT/wgo" -lm
 "$OUT/wgo"

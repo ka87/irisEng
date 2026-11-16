@@ -70,6 +70,11 @@ $CC $CFLAGS -c aehue.c -o "$OUT/glr.ahu.o"
 # four taps; tests/run_wingdi_ae.sh is where both are compared against
 # the other renderer.
 $CC $CFLAGS -c aemotion.c -o "$OUT/glr.amo.o"
+# aezoom2.c holds the second zoom smooth: the stage split, the walk of
+# eight angles it decides, the weight, and the per-sample transform --
+# which is written as a rotation and is not one. Both renderers take
+# all of that from here.
+$CC $CFLAGS -c aezoom2.c -o "$OUT/glr.az2.o"
 $CC $CFLAGS -c geosprite.c -o "$OUT/glr.gsp.o"
 $CC $CFLAGS -c win/wingdimath.c -o "$OUT/glr.wgmath.o"
 $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
@@ -77,7 +82,7 @@ $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
 # are no EGL headers to link against.
 $CC "$OUT/glr.drv.o" "$OUT/glr.egl.o" "$OUT/glr.load.o" \
     "$OUT/glr.shader.o" "$OUT/glr.datapath.o" "$OUT/glr.proj.o" \
-    "$OUT/glr.gvx.o" "$OUT/glr.rst.o" "$OUT/glr.dpb.o" "$OUT/glr.fog.o" "$OUT/glr.cbd.o" "$OUT/glr.aec.o" "$OUT/glr.aef.o" "$OUT/glr.wms.o" "$OUT/glr.wrf.o" "$OUT/glr.wsm.o" "$OUT/glr.afd.o" "$OUT/glr.ahu.o" "$OUT/glr.amo.o" "$OUT/glr.gsp.o" \
+    "$OUT/glr.gvx.o" "$OUT/glr.rst.o" "$OUT/glr.dpb.o" "$OUT/glr.fog.o" "$OUT/glr.cbd.o" "$OUT/glr.aec.o" "$OUT/glr.aef.o" "$OUT/glr.wms.o" "$OUT/glr.wrf.o" "$OUT/glr.wsm.o" "$OUT/glr.afd.o" "$OUT/glr.ahu.o" "$OUT/glr.amo.o" "$OUT/glr.az2.o" "$OUT/glr.gsp.o" \
     "$OUT/glr.wgmath.o" \
     "$OUT/glr.math.o" -o "$OUT/glr" -lm -ldl
 # Software rendering, so the answer does not depend on whose card the
