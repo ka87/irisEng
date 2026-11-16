@@ -1129,6 +1129,16 @@ void OVL_Draw(void)
     WG_Record("OVL_Draw", 0);
 }
 
+/* The performance display, stubbed beside the overlay and recorded the
+   same way: what a case here can see is that the flip draws it, and
+   that it draws it *before* the overlay, so the overlay's panel lands
+   on top. What the display itself puts on the screen is
+   tests/test_perfdisplay.c's business. */
+void PFD_Draw(void)
+{
+    WG_Record("PFD_Draw", 0);
+}
+
 void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
 void  MEM_Free(void* p) { free(p); }
 
@@ -1916,7 +1926,15 @@ static void caseSceneCopy(void)
     {
         int blit = WG_i_At("glBlitFramebuffer");
         int ovl = WG_i_At("OVL_Draw");
+        int pfd = WG_i_At("PFD_Draw");
 
+        /* The performance display goes on the screen too, and before
+           the overlay: `tweak perf` covers the top of the frame and
+           the overlay's panel has to sit on top of it, which is the
+           order the other renderer's flip has. */
+        ok(pfd > blit, "the performance display is drawn on the screen");
+        ok(pfd >= 0 && ovl > pfd,
+           "and before the overlay, so the panel lands on top of it");
         ok(blit >= 0 && ovl > blit,
            "the overlay is drawn after the copy, so it lands on the"
            " screen");

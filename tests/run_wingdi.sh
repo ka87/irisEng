@@ -106,6 +106,13 @@ $CC $CFLAGS -c rasterstate.c -o "$OUT/wingdi.rst.o"
 # writes into the locked index and vertex buffers, which is what proves
 # the shared copy rather than merely exercising it.
 $CC $CFLAGS -c watermesh.c -o "$OUT/wingdi.wms.o"
+# perfbars.c holds what `tweak perf`'s display decides -- the frame
+# rate, the smoothing, the order, which rows are shown, a row's colour
+# and a bar's segments -- for both renderers. A move out of
+# win/wingdi.c, so the frozen copy still has all of it inline and the
+# perf cases below compare the two: the quads this renderer draws and
+# the text it writes are what says the shared copy reproduces it.
+$CC $CFLAGS -c perfbars.c -o "$OUT/wingdi.pfb.o"
 # waterreflect.c is the reflection pass's own share: the mirrored
 # transform, the size threshold and the clip plane. Also a move out
 # of win/wingdi.c, so the frozen copy still has all three inline.
@@ -125,7 +132,7 @@ $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
     "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" "$OUT/wingdi.gvx.o" \
     "$OUT/wingdi.rst.o" "$OUT/wingdi.fog.o" "$OUT/wingdi.gsp.o" "$OUT/wingdi.profiler.o" \
-    "$OUT/wingdi.wms.o" "$OUT/wingdi.wrf.o" "$OUT/wingdi.wsm.o" "$OUT/wingdi.dpb.o" \
+    "$OUT/wingdi.wms.o" "$OUT/wingdi.pfb.o" "$OUT/wingdi.wrf.o" "$OUT/wingdi.wsm.o" "$OUT/wingdi.dpb.o" \
     "$OUT/wingdi.mocks.o" \
     "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm

@@ -106,6 +106,15 @@ BOOL QueryPerformanceCounter(LARGE_INTEGER* li)
     return 1;
 }
 
+/* The counter's frequency, which the profiler reads so a display can
+   measure a frame without a platform call of its own. A round million
+   a second, so a case can state a frame time in ticks. */
+BOOL QueryPerformanceFrequency(LARGE_INTEGER* li)
+{
+    li->QuadPart = 1000000;
+    return 1;
+}
+
 /* ---- the allocator math.c wants ---- */
 
 void* MEM_p_AllocAligned(int size, int align)

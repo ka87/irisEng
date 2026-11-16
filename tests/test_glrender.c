@@ -257,6 +257,8 @@ float unkAEFunc2Param = 0.5f;
 float colorBalanceParam1 = 0.5f;
 
 void OVL_Draw(void) { }
+/* As above: the display has its own harness. */
+void PFD_Draw(void) { }
 
 void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
 void  MEM_Free(void* p) { free(p); }

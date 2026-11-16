@@ -488,6 +488,8 @@ for one in tests/runworld.sh \
            tests/run_aemotion.sh \
            tests/run_aezoom2.sh \
            tests/run_dbglog.sh \
+           tests/run_perfbars.sh \
+           tests/run_perfdisplay.sh \
            tests/run_glload.sh \
            tests/run_glshader.sh \
            tests/run_wingloverlay.sh \
