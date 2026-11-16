@@ -95,7 +95,13 @@ DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD n)
 /* ------------------------------------------------------- GL, recorded */
 
 #define WG_MAXCALLS 512
-#define WG_MAXARGS  8
+/* Ten, because the frame copies record their eight rectangle edges
+   and then the mask and the filter. A record that asks for more than
+   this used to lose the extra values without saying so, and a case
+   reading one of them read whatever was next in memory -- which is
+   how two assertions about the fade's copy came back with nonsense
+   instead of a failure. Both ends now complain instead. */
+#define WG_MAXARGS  10
 
 typedef struct sWgCall
 {
@@ -116,6 +122,12 @@ static void WG_Record(const char* name, int n, ...)
         return;
     wg_calls[wg_callLen].name = name;
     wg_calls[wg_callLen].args = n;
+    if (n > WG_MAXARGS)
+    {
+        printf("  FAIL %s records %d arguments and only %d are kept\n",
+               name, n, WG_MAXARGS);
+        fails++;
+    }
     va_start(ap, n);
     for (i = 0; i < n && i < WG_MAXARGS; i++)
         wg_calls[wg_callLen].arg[i] = va_arg(ap, long long);
@@ -699,19 +711,20 @@ static void GL_APIENTRY MK_glDisableVertexAttribArray(GLuint index)
     WG_Record("glDisableVertexAttribArray", 1, (long long)index);
 }
 
-/* The copy that puts the scene on the screen. Its eight rectangle
-   arguments are the whole of the letterbox, so they are all
-   recorded. */
+/* The copies: the scene onto the screen, and the fade putting a frame
+   aside. The eight rectangle arguments are the whole of the letterbox,
+   so they are all recorded, and the mask and the filter after them
+   because the fade's copy is colour only and unfiltered and neither
+   was visible from a case before. */
 static void GL_APIENTRY MK_glBlitFramebuffer(GLint sx0, GLint sy0, GLint sx1,
                                              GLint sy1, GLint dx0, GLint dy0,
                                              GLint dx1, GLint dy1,
                                              GLbitfield mask, GLenum filter)
 {
-    (void)mask;
-    (void)filter;
-    WG_Record("glBlitFramebuffer", 8, (long long)sx0, (long long)sy0,
+    WG_Record("glBlitFramebuffer", 10, (long long)sx0, (long long)sy0,
               (long long)sx1, (long long)sy1, (long long)dx0, (long long)dy0,
-              (long long)dx1, (long long)dy1);
+              (long long)dx1, (long long)dy1, (long long)mask,
+              (long long)filter);
 }
 
 static GLuint GL_APIENTRY MK_glCreateShader(GLenum type)
@@ -964,6 +977,21 @@ static tGdi_DisplayData gl_dd;
    them -- the values are what gdi.c has. */
 int   GDI_gi_Widescreen = 1;
 float GDI_gf_RefYoverX = 0.75f;
+/* The fade's timer. gdi.c keeps it in the other renderer's parameter
+   block and reaches it with these two; here they are the test's own
+   storage, which is also how a case drives a fade. */
+int  wgo_fadeOpacity;
+
+int GDI_i_AeFadeOpacity(void)
+{
+    return wgo_fadeOpacity;
+}
+
+void GDI_AeFadeOpacitySet(int opacity)
+{
+    wgo_fadeOpacity = opacity;
+}
+
 float GDI_gaf_ScreenRatio[4];
 
 /* The mip-map level-of-detail bias, a debug tweak the renderer puts
@@ -1127,6 +1155,11 @@ static void reset(void)
        for both of them. */
     unkAEFunc2Param = 0.5f;
     colorBalanceParam1 = 0.5f;
+    /* The fade: both its duration and its timer, because the timer is
+       state that outlives a frame and a case that left one running
+       would hand the next case a fade part way through. */
+    gAEOpacity = 0.0f;
+    wgo_fadeOpacity = 0;
     memset(&gl_material, 0, sizeof(gl_material));
     gl_colorMaskAlpha = 0;
     gl_mipmapping = 1;
@@ -2706,6 +2739,16 @@ static long WG_l_Arg(const char* name, int nth, int arg)
 {
     const tWgCall* c = WG_pc_Call(name, nth);
 
+    /* Out of range is a failure and not a value. Reading past the
+       record returned whatever was beside it, which reads like a
+       wrong answer from the code under test. */
+    if (arg < 0 || arg >= WG_MAXARGS)
+    {
+        printf("  FAIL %s argument %d is outside the %d kept\n",
+               name, arg, WG_MAXARGS);
+        fails++;
+        return -1;
+    }
     return c ? (long)c->arg[arg] : -1;
 }
 
@@ -4494,6 +4537,314 @@ static void caseAeZoomUniforms(void)
     D3D_gf_CutsceneBand = 0.10416666f;
 }
 
+/* ------------------------------------------------------- the fade
+ *
+ * A frozen copy of the picture dissolving into the live one. The timer
+ * is aefade.c's and tests/run_wingdi_ae.sh compares it against the
+ * other renderer frame by frame; what these ask is this renderer's
+ * part -- when the copy is taken, where it is kept, what the shader is
+ * told, and that the effect switches itself off.
+ */
+
+static void caseAeFadeGates(void)
+{
+    printf("-- the one effect with no parameter to switch it on\n");
+
+    /* The bit on its own is enough, with the duration left at nought.
+       That is worth a case of its own: every other effect in the chain
+       needs a bit *and* a non-zero parameter, so a gate copied from
+       one of them would leave the fade unable to run at all -- and
+       nought is the duration a fade starts life with. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x40000;
+    gAEOpacity = 0.0f;
+    wgo_fadeOpacity = AFD_FULL;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 1, "the bit alone runs the fade");
+
+    /* And the bit off runs nothing, with a timer part way through a
+       fade and a duration set. Nothing but the bit decides. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0;
+    gAEOpacity = 1.0f;
+    wgo_fadeOpacity = 128;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "and without it nothing runs");
+    okEq(wgo_fadeOpacity, 128, "the timer does not move either");
+}
+
+static void caseAeFadeFreeze(void)
+{
+    int blits;
+
+    printf("-- the picture is put aside once, on the frame it starts\n");
+
+    /* The first frame of a fade: the timer is still at the top of the
+       range, and that is the frame the copy is taken on. One blit more
+       than the frame otherwise does -- the copy to the screen is the
+       other one. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x40000;
+    gAEOpacity = 1.0f;
+    wgo_fadeOpacity = AFD_FULL;
+    wg_callLen = 0;
+    GL_Flip();
+    blits = WG_i_Count("glBlitFramebuffer");
+    okEq(blits, 2, "the freeze and the copy to the screen");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 8), (long long)GL_COLOR_BUFFER_BIT,
+         "colour only, with no depth to copy");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 9), (long long)GL_NEAREST,
+         "and unfiltered: it is a copy, not a resize");
+
+    /* And it is written into a target that is not one of the three
+       spares. A copy into a spare would be painted over by the next
+       effect and the fade would dissolve out of whatever was there. */
+    {
+        int  at = wg_i_CallAt("glBlitFramebuffer", 0);
+        long into = wg_l_FboBefore(GL_DRAW_FRAMEBUFFER, at);
+        long from = wg_l_FboBefore(GL_READ_FRAMEBUFFER, at);
+        int  i;
+
+        okEq(into, (long)gl_aeFbo[GL_AE_SLOT_FREEZE - DPB_SLOT_A],
+             "into the frozen copy's own target");
+        okEq(from, (long)gl_sceneFbo, "out of the frame as the world drew"
+                                      " it");
+        for (i = 0; i < GL_AE_SPARES; i++)
+            ok(into != (long)gl_aeFbo[i], "and not into any of the spares");
+    }
+
+    /* The whole target, corner to corner and at the same size both
+       ends. A copy of part of it leaves the rest of the frozen picture
+       holding whatever was there before the fade, which during a
+       dissolve is a band of some older frame -- and no reading of a
+       single pixel in the middle can see it. */
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 0), 0, "from the left edge");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 1), 0, "and the bottom");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 2), (long long)gl_aeW,
+         "to the right edge");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 3), (long long)gl_aeH,
+         "and the top");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 4), 0, "landing at the left edge");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 5), 0, "and the bottom");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 6), (long long)gl_aeW,
+         "and the same width");
+    okEq(WG_l_Arg("glBlitFramebuffer", 0, 7), (long long)gl_aeH,
+         "and the same height, so nothing is scaled");
+
+    /* Every frame after it leaves the copy alone -- one blit, the one
+       to the screen. A copy taken every frame would turn the fade into
+       no effect at all: the frozen picture and the live one would be
+       the same picture, and the dissolve would show nothing. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x40000;
+    gAEOpacity = 1.0f;
+    wgo_fadeOpacity = AFD_FULL - 1;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glBlitFramebuffer"), 1, "no second copy once the fade"
+                                             " is running");
+    okEq(WG_i_Count("glDrawArrays"), 1, "but the fade still draws");
+}
+
+static void caseAeFadeShare(void)
+{
+    static const int opacities[4] = { AFD_FULL, 192, 64, 0 };
+    int              i;
+
+    printf("-- what share of the frozen copy the shader is given\n");
+
+    for (i = 0; i < 4; i++)
+    {
+        reset();
+        wg_SceneReady();
+        CIN_Bands = 0;
+        PC_AE_MASTER = 0x40000;
+        gAEOpacity = 1.0f;
+        wgo_fadeOpacity = opacities[i];
+        wg_callLen = 0;
+        GL_Flip();
+
+        /* The exact share and not a bound: the timer runs over a byte
+           and a share built from the wrong end, or divided by the
+           wrong number, lands inside any range wide enough to be
+           safe. */
+        okEq(WG_l_Arg("glUniform1f.scaled", 0, 1),
+             wg_l_Scaled(AFD_f_Blend(opacities[i])),
+             "the frozen copy's share is the opacity over the range");
+    }
+
+    /* The two textures, and which unit each is on. Swapping them runs
+       the fade backwards -- out of the live frame and into a frozen
+       one -- which looks like a fade either way round. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x40000;
+    gAEOpacity = 1.0f;
+    wgo_fadeOpacity = 128;
+    wg_callLen = 0;
+    GL_Flip();
+    {
+        int at = wg_i_CallAt("glDrawArrays", 0);
+
+        /* Running alone, the frame the fade reads is the one the world
+           drew, so the first unit is the scene's own texture. */
+        okEq(wg_l_TextureBefore(GL_TEXTURE0, at), (long)gl_sceneColour,
+             "the live frame is on the first unit");
+        okEq(wg_l_TextureBefore(GL_TEXTURE1, at),
+             (long)gl_aeColour[GL_AE_SLOT_FREEZE - DPB_SLOT_A],
+             "and the frozen copy on the second");
+        ok(wg_l_TextureBefore(GL_TEXTURE0, at)
+           != wg_l_TextureBefore(GL_TEXTURE1, at),
+           "and they are not the same target");
+    }
+}
+
+static void caseAeFadeWholePicture(void)
+{
+    tCbd_Bands bands;
+    long long  bandTopY;
+    long long  bandBottomY;
+
+    printf("-- the fade covers the picture and not the letterbox band\n");
+
+    /* With a letterbox on, so the band and the whole picture are
+       different quads. Every other effect here draws between the
+       band's edges; the other renderer's quad for this one spans the
+       target, and a band-sized fade would leave the bars holding a
+       frame from before the fade started. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 1;
+    tweak_ae_nobands = 0;
+    D3D_gf_CutsceneBand = 0.25f;
+    PC_AE_MASTER = 0x40000;
+    gAEOpacity = 1.0f;
+    wgo_fadeOpacity = 128;
+    wg_callLen = 0;
+    GL_Flip();
+
+    CBD_Decide(&bands);
+    bandTopY = wg_l_Scaled(1.0f - 2.0f * bands.top);
+    bandBottomY = wg_l_Scaled(1.0f - 2.0f * bands.bottom);
+
+    okEq(WG_l_Arg("glBufferData", 0, 4), wg_l_Scaled(-1.0f),
+         "the quad starts at the bottom of the picture");
+    okEq(WG_l_Arg("glBufferData", 0, 6), wg_l_Scaled(1.0f),
+         "and ends at the top of it");
+    /* And the band really is somewhere else, or the two assertions
+       above would hold for a band-sized quad as well. */
+    ok(bandBottomY != wg_l_Scaled(-1.0f) && bandTopY != wg_l_Scaled(1.0f),
+       "with the band inside the picture, so the two differ");
+
+    CIN_Bands = 0;
+    D3D_gf_CutsceneBand = 0.10416666f;
+}
+
+static void caseAeFadeOrder(void)
+{
+    printf("-- the fade runs before the motion blur, as it does there\n");
+
+    /* The order is not decoration. The motion blur reads whatever is in
+       the target it writes, so what runs *before* it decides which
+       target that is -- and the fade exchanges, which moves the spare
+       along. With the two swapped the trail reads the wrong frame and
+       looks like a trail either way.
+
+       Both on, and what is asserted is which draw comes first. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x40000 | 0x10;
+    motionBlurFactor = 0.5f;
+    gAEOpacity = 1.0f;
+    wgo_fadeOpacity = 128;
+    wg_callLen = 0;
+    GL_Flip();
+
+    okEq(WG_i_Count("glDrawArrays"), 2, "two effects, two draws");
+    /* The fade's draw is the one with two texture units bound; the
+       motion blur's binds one and leans on the framebuffer's blend. */
+    {
+        int first = wg_i_CallAt("glDrawArrays", 0);
+        int second = wg_i_CallAt("glDrawArrays", 1);
+
+        okEq(wg_l_TextureBefore(GL_TEXTURE1, first),
+             (long)gl_aeColour[GL_AE_SLOT_FREEZE - DPB_SLOT_A],
+             "the fade draws first, with the frozen copy on its second"
+             " unit");
+        ok(wg_l_TextureBefore(GL_TEXTURE1, second)
+           != (long)gl_aeColour[GL_AE_SLOT_FREEZE - DPB_SLOT_A],
+           "and the motion blur after it, with that unit let go");
+    }
+    motionBlurFactor = 0.0f;
+}
+
+static void caseAeFadeTimer(void)
+{
+    printf("-- the timer is stepped after the draw, and ends the fade\n");
+
+    /* Stepped after the draw: the first frame of a fade is drawn at
+       the full share, which is the frame where the frozen copy and the
+       live one are the same picture. Stepping first would skip it and
+       start the dissolve one step in. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x40000;
+    gAEOpacity = 1.0f;              /* sixty frames asked, four a frame */
+    wgo_fadeOpacity = AFD_FULL;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_l_Arg("glUniform1f.scaled", 0, 1), wg_l_Scaled(1.0f),
+         "drawn at the full share on the first frame");
+    okEq(wgo_fadeOpacity, AFD_i_Next(AFD_FULL, AFD_f_Step(1.0f)),
+         "and the timer has moved on by one step afterwards");
+    okEq(PC_AE_MASTER, 0x40000, "with the fade still running");
+
+    /* And the last frame clears the bit, which is what a script
+       watches for. The effect switching itself off is the only write
+       this renderer makes to the after-effects word. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x40000 | 0x10;  /* and a neighbour, to be left alone */
+    motionBlurFactor = 0.0f;
+    gAEOpacity = 1.0f;
+    wgo_fadeOpacity = 2;            /* less than one step */
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(wgo_fadeOpacity, 0, "the timer stops at nothing rather than"
+                             " wrapping");
+    okEq(PC_AE_MASTER, 0x10, "the fade clears its own bit");
+
+    /* A duration that cannot be stepped leaves the timer where it is,
+       and the bit on. That is the other renderer's behaviour rather
+       than a choice here -- see the pick in the notes -- and it is
+       written down as a case so that changing it is a decision and
+       not an accident. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x40000;
+    gAEOpacity = 0.0f;
+    wgo_fadeOpacity = 100;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(wgo_fadeOpacity, 100, "a fade of no length never moves");
+    okEq(PC_AE_MASTER, 0x40000, "and never finishes");
+}
+
 static void caseAeFrameGates(void)
 {
     printf("-- what each of the three needs before it runs\n");
@@ -5808,6 +6159,12 @@ int main(void)
     caseAeRemanenceChain();
     caseAeRemanenceAfterDepthBlur();
     caseAeZoomUniforms();
+    caseAeFadeGates();
+    caseAeFadeFreeze();
+    caseAeFadeShare();
+    caseAeFadeWholePicture();
+    caseAeFadeOrder();
+    caseAeFadeTimer();
     caseAeFrameGates();
     caseFlipDrawsOverlay();
     caseGeometry();

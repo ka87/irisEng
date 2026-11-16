@@ -393,6 +393,28 @@ Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8];
 float depthBlurNear1;
 float depthBlurType0;
 float depthBlurType1;
+/* The fade's duration, in seconds, as a script asks for it. Neutral is
+   nought, and nought is also the one value a fade cannot be given --
+   see aefade.h, where what it comes to is written down. */
+float gAEOpacity;
+
+/* The fade's remaining opacity: the timer that effect steps itself,
+ * from the whole range down to nothing.
+ *
+ * Unlike everything above it, this is not a tentative definition here.
+ * The storage sits in the one renderer's own parameter block, because
+ * that renderer was the only one when the scripts' way in was written
+ * and PC_AE_MASTER_CTRL starts the timer there before any device is
+ * known. These two reach it from either renderer without either one
+ * including the other's header, and gdi.c -- which already knows both
+ * -- is where they are defined.
+ *
+ * It is one number and not one each on purpose. A renderer keeping its
+ * own copy would miss the start of a fade: the only thing that sets
+ * the timer running is that call, and it cannot know which renderer
+ * will come to read it. */
+int  GDI_i_AeFadeOpacity(void);
+void GDI_AeFadeOpacitySet(int opacity);
 
 void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd);
 struct sGdi_DisplayData* GDI_fnpst_CreateDisplayData();

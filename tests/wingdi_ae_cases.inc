@@ -377,27 +377,55 @@ static void RUN(int caseId)
         break;
     }
 
-    /* --- group 10: the fade's own step, driven on purpose ---------
-       The step subtracted from the opacity each frame is 255 over the
-       span, so a small gAEOpacity makes it larger than the opacity
-       itself and the clamp at zero is the only thing that stops it
-       wrapping. Nothing in group 9 reaches that, so it is driven here
-       rather than left to a seed. */
+    /* --- group 10: the fade's own timer, driven on purpose ---------
+       The step taken out of the opacity each frame is the whole range
+       over the span and is then truncated, which puts four separate
+       things out of reach of any seed: a step larger than the opacity,
+       where the clamp at nought is all that stops it wrapping; the
+       clamp at one, without which a long fade would take nothing at
+       all; a span of nought, which cannot be divided by; and a
+       negative span, which runs the fade backwards past the top of the
+       range. AE_FadeSpan drives all four, and the pairing with the two
+       starting opacities is counted rather than hoped for -- two cases
+       each way for every span. */
     case 10:
     {
         int k = caseId % AE_CASES_PER_GROUP;
+        int frames;
+        int capped;
 
         gMaxSimultaneousTextures = AE_Stages(k);
         PC_AE_MASTER = 0x40000;
         D3DRenderParams.opacity = (k < 24) ? 1 + (k % 5) : 255;
-        X(gAEOpacity) = 0.03f + (float)(k % 7) * 0.01f;
+        X(gAEOpacity) = AE_FadeSpan(k);
         AE_SeedCaches(&seed);
-        X(D3D_PC_AE)(NULL);
-        AEMOCK_Record("fade.opacity", 1, (long long)D3DRenderParams.opacity);
-        X(D3D_PC_AE)(NULL);
-        AEMOCK_Record("fade.opacity", 1, (long long)D3DRenderParams.opacity);
-        X(D3D_PC_AE)(NULL);
-        AEMOCK_Record("fade.opacity", 2, (long long)D3DRenderParams.opacity,
+
+        /* Four frames for every span, recorded one by one: that is
+           where a wrong step shows up, and it is enough to carry the
+           backwards case past the top of the range. */
+        for (frames = 0; frames < 4; frames++)
+        {
+            X(D3D_PC_AE)(NULL);
+            AEMOCK_Record("fade.opacity", 2, (long long)frames,
+                          (long long)D3DRenderParams.opacity);
+        }
+
+        /* And then to the end, for the spans that get there cheaply.
+           The cap is the assertion for the three spans that never
+           finish: reaching it is recorded, so a change that made one
+           of them terminate would show up here rather than nowhere. */
+        capped = 1;
+        for (frames = 0; frames < 64; frames++)
+        {
+            if ((PC_AE_MASTER & 0x40000) == 0)
+            {
+                capped = 0;
+                break;
+            }
+            X(D3D_PC_AE)(NULL);
+        }
+        AEMOCK_Record("fade.end", 4, (long long)capped, (long long)frames,
+                      (long long)D3DRenderParams.opacity,
                       (long long)PC_AE_MASTER);
         break;
     }

@@ -17,6 +17,18 @@
 
 float GDI_gaf_ScreenRatio[4] = { 1.0f, 1.0f,  (3.0f / 4.0f), (9.0f / 16.0f) };
 
+/* The fade's timer, reached from either renderer -- see gdi.h for why
+   it lives where it does and why there is only one of it. */
+int GDI_i_AeFadeOpacity(void)
+{
+    return D3DRenderParams.opacity;
+}
+
+void GDI_AeFadeOpacitySet(int opacity)
+{
+    D3DRenderParams.opacity = opacity;
+}
+
 /* Settings, not renderer state -- see gdi.h. */
 int   GDI_gi_Widescreen = 1;
 float GDI_gf_RefYoverX = 0.75f;

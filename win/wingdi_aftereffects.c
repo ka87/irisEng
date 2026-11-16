@@ -3,6 +3,7 @@
 #include "wingdi.h"
 #include "../depthblur.h"
 #include "../watersmooth.h"
+#include "../aefade.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -716,7 +717,7 @@ void D3D_Fade(IDirect3DTexture9* src, IDirect3DTexture9* dest, int opacity)
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_MODULATE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-    AE_SetRenderState(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, (opacity << 24) | 0xFFFFFF);
+    AE_SetRenderState(&renderStateConfig.d3dTextureFactor, D3DRS_TEXTUREFACTOR, (int)AFD_u_TextureFactor(opacity));
     AE_SetSamplerState(1, &samplerConfig[1].d3d_minfilter, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
     AE_SetSamplerState(1, &samplerConfig[1].d3d_magfilter, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
     AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDFACTORALPHA);
@@ -2712,7 +2713,6 @@ void D3D_PC_AE(tWorld* param1)
     IDirect3DTexture9* current;
     IDirect3DTexture9* spare;
     IDirect3DTexture9* swap;
-    double fadeSpan;
     BOOL fadeDone;
     double dx;
     float motionX;
@@ -2786,15 +2786,11 @@ void D3D_PC_AE(tWorld* param1)
         spare = current;
         current = swap;
     }
-    if ((PC_AE_MASTER & 0x40000) != 0)
+    if (AFD_b_On((unsigned int)PC_AE_MASTER))
     {
         swap = spare;
-        fadeSpan = gAEOpacity * 60.0;
-        if (fadeSpan >= 255.0)
-            fadeStep = 1.0;
-        else
-            fadeStep = (float)(255.0 / fadeSpan);
-        if (D3DRenderParams.opacity == 255)
+        fadeStep = AFD_f_Step(gAEOpacity);
+        if (AFD_b_Freeze(D3DRenderParams.opacity))
         {
             wholeScreen.left = 0;
             wholeScreen.top = 0;
@@ -2806,14 +2802,9 @@ void D3D_PC_AE(tWorld* param1)
         D3D_Fade(current, spare, D3DRenderParams.opacity);
         spare = current;
         current = swap;
-        fadeDone = D3DRenderParams.opacity == 0;
-        if (D3DRenderParams.opacity > 0)
-        {
-            D3DRenderParams.opacity = (int)(D3DRenderParams.opacity - (unsigned int)fadeStep) < 0 ? 0 : D3DRenderParams.opacity - (unsigned int)fadeStep;
-            fadeDone = D3DRenderParams.opacity == 0;
-        }
+        fadeDone = AFD_b_Advance(&D3DRenderParams.opacity, fadeStep);
         if (fadeDone)
-            PC_AE_MASTER &= ~0x40000u;
+            PC_AE_MASTER = (int)AFD_u_Cleared((unsigned int)PC_AE_MASTER);
     }
     if ((PC_AE_MASTER & 0x10) != 0 && motionBlurFactor != 0.0)
     {
@@ -2999,13 +2990,16 @@ void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)
         }
         return;
     case 15:
-        cleared = PC_AE_MASTER & ~0x40000u;
+        cleared = (int)AFD_u_Cleared((unsigned int)PC_AE_MASTER);
         PC_AE_MASTER = cleared;
         if (onOff)
         {
-            PC_AE_MASTER = cleared | 0x40000;
+            PC_AE_MASTER = cleared | (int)AFD_BIT;
+            /* Only when one is not already running: switching the fade
+               on again part way through leaves the timer where it is
+               rather than starting over. */
             if (!D3DRenderParams.opacity)
-                D3DRenderParams.opacity = 255;
+                D3DRenderParams.opacity = AFD_FULL;
         }
         gAEOpacity = value;
         return;
