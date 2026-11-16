@@ -269,6 +269,9 @@
     <ClCompile Include="watermesh.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="waterreflect.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="jpeg-6b\jcapimin.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
@@ -890,6 +893,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="watermesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="waterreflect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="jpeg-6b\cderror.h">

@@ -184,6 +184,16 @@ int   tweak_gl_cull = 0;
    a tentative definition of it, which is how the engine shares it
    between the simulation and the renderers. */
 int   tweak_water_blur_normal = 0;
+/* The water's own debug tweaks, which live in dbg.c. The reflection
+   reads three of them: the size an object has to reach to be worth
+   reflecting, whether the clip plane is used, and how far off the water
+   line it sits. Here at the values dbg.c gives them, except the
+   threshold, which starts at nought -- where everything is worth
+   reflecting. */
+float tweak_water_min_bv;
+int   tweak_water_clip = 1;
+float tweak_water_off;
+
 static int   wg_waterBlurCalls;
 static void* wg_waterBlurArg;
 
@@ -198,6 +208,17 @@ void WTR_WaterBlurNormal(Vec3* normals, int rowLength, int rowCount)
 /* The water's own flip override, at the nought that leaves the
    renderer's choice in force. */
 int   tweak_gl_water_flip = 0;
+
+/* The engine's answer about a bounding volume's kind, which the
+   water's size test asks before choosing which number to read. It is a
+   sentinel bit pattern in a field that is a coordinate the rest of the
+   time, and this is the engine's own rule rather than a stand-in -- the
+   reflection only ever asks, so there is nothing else to mock. */
+BOOL OBJ_BV_IsSphere(tGameObjectBV* bv)
+{
+    return bv && (*((uint32_t*)&bv->BVMax.z)) == 0xFFFFFFFFu;
+}
+
 
 int   ECAM_gi_NoAfterEffects = 0;
 
@@ -330,6 +351,10 @@ static void glr_Reset(void)
     pst_GlobalsWaterParams = NULL;
     tweak_gl_water_flip = 0;
     tweak_water_blur_normal = 0;
+    tweak_water_clip = 0;
+    tweak_water_off = 0.0f;
+    tweak_water_min_bv = 0.0f;
+    waterHeight = 0.0f;
 
     /* The two switches that turn the whole after-effects chain off,
        both back to the off the game starts them at. */
@@ -4545,6 +4570,209 @@ static void caseWaterDepth(void)
                                             " wrote no depth");
 }
 
+/* ------------------------------------------- the water's reflection
+ *
+ * Drawn on a real driver and read back out of the reflection target,
+ * which is the only way to see whether the mirrored draw lands where
+ * the arithmetic says. The mock harness checks the calls; this checks
+ * the picture.
+ *
+ * The numbers are chosen around the clip volume rather than for
+ * roundness. This renderer clips z to nought-to-one, so a mirrored
+ * object has to land inside that too: with the water at 0.6, an object
+ * at 0.8 mirrors to 0.4 and is visible, and one at 0.3 mirrors to 0.9,
+ * which is inside the volume but on the far side of the water line --
+ * so it is the clip plane that removes it and not the volume, which is
+ * what makes the clip plane checkable at all.
+ */
+
+static tGameObjectMain glr_reflGao;
+static tGameObjectBV   glr_reflBv;
+static Mtx4x4          glr_reflMtx;
+
+#define GLR_WATER_H 0.6f
+
+static void glr_ReflectionFixture(void)
+{
+    /* The reflection's clear colour is something no material here
+       produces, so a pixel that holds it is a pixel nothing reflected
+       into. The word is alpha, red, green, blue, which is not the
+       order the vertex colours above it use -- this one goes to a
+       clear and those go through the stream. */
+    glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x0000FFFF, 0.5f);
+
+    memset(&glr_reflGao, 0, sizeof(glr_reflGao));
+    memset(&glr_reflBv, 0, sizeof(glr_reflBv));
+    /* The object's transform is the identity, so its vertices are its
+       world positions and the mirror is the only thing moving them. */
+    MATH_SetIdentityMatrix(&glr_reflMtx);
+    glr_reflBv.BVMin.x = -2.0f;
+    glr_reflBv.BVMax.x = 2.0f;
+    glr_reflBv.BVMin.y = -2.0f;
+    glr_reflBv.BVMax.y = 2.0f;
+    glr_reflGao.matrices = &glr_reflMtx;
+    glr_reflGao.boundingVolume = &glr_reflBv;
+    glr_dd.currTargetGao = &glr_reflGao;
+
+    /* The camera the mirrored object is measured against. Left at the
+       zero a reset gives it, every reflected vertex would collapse to
+       the origin. */
+    MATH_SetIdentityMatrix(&glr_dd.ct.cam.cameraMtx);
+
+    waterHeight = GLR_WATER_H;
+    tweak_water_min_bv = 0.0f;
+    tweak_water_clip = 1;
+    GDI_gi_TextureUVMode = 0;
+}
+
+/* The quad through the geometry path at a given depth. Culling is left
+   off -- 0x10 without the cull bit -- so that what this measures is
+   where the reflection draws and not which way its triangles face.
+   The facing has its own check in the mock harness, where it can be
+   read directly rather than inferred from a missing picture. */
+static void glr_ReflectAt(float z, int r, int g, int b)
+{
+    glr_OneTexel(0, 0, 0, 0xFF);
+    glr_SolidColour(r, g, b, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_pos[0].z = glr_pos[1].z = glr_pos[2].z = glr_pos[3].z = z;
+    GL_TextureInit(-1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+}
+
+static void caseWaterReflectionDraws(void)
+{
+    int rgba[4];
+
+    printf("-- the world appears in the reflection, mirrored\n");
+
+    glr_Reset();
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+    glr_ReflectionFixture();
+    GL_PrepareWaterRendering();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+
+    /* Above the water, so it mirrors to the near side of the water
+       line and is kept. */
+    glr_ReflectAt(0.8f, 0x40, 0x80, 0xC0);
+
+    /* The target is 512 square and the quad covers its middle half. */
+    glr_AeAt(gl_waterFbo, 256, 256, rgba);
+    okEq(rgba[0], 0x40, "an object above the water is in the reflection");
+    okEq(rgba[1], 0x80, "in green too");
+    okEq(rgba[2], 0xC0, "and blue");
+
+    /* Outside the quad the target still holds what it was cleared to,
+       which is what says the draw covered a part of it rather than all
+       of it. */
+    glr_AeAt(gl_waterFbo, 20, 20, rgba);
+    okEq(rgba[1], 0xFF, "and away from it the clear colour is untouched");
+
+    /* And the frame itself still has the object drawn into it the
+       ordinary way: the reflection is an extra draw, not a diversion. */
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    glr_Read();
+    okNear(glr_R(GLR_W / 2, GLR_H / 2), 0x40, "and the frame has it as"
+                                              " well");
+}
+
+static void caseWaterReflectionClipped(void)
+{
+    int rgba[4];
+
+    printf("-- and what is under the water does not\n");
+
+    /* Below the water line. Mirrored it lands beyond the surface,
+       where nothing could be seen in water, and the clip plane takes
+       it. Its mirrored depth is inside the clip volume, so the volume
+       cannot be what removes it. */
+    glr_Reset();
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+    glr_ReflectionFixture();
+    GL_PrepareWaterRendering();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    glr_ReflectAt(0.3f, 0x40, 0x80, 0xC0);
+
+    glr_AeAt(gl_waterFbo, 256, 256, rgba);
+    okEq(rgba[1], 0xFF, "an object under the water is clipped out of the"
+                        " reflection");
+
+    /* With the plane switched off it comes back, which is what says the
+       plane removed it rather than the mirror putting it somewhere
+       nothing can see. */
+    glr_Reset();
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+    glr_ReflectionFixture();
+    tweak_water_clip = 0;
+    GL_PrepareWaterRendering();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    glr_ReflectAt(0.3f, 0x40, 0x80, 0xC0);
+
+    glr_AeAt(gl_waterFbo, 256, 256, rgba);
+    okEq(rgba[0], 0x40, "and with the plane off it is drawn after all");
+}
+
+static void caseWaterReflectionMirrored(void)
+{
+    int rgba[4];
+
+    printf("-- the mirror is a mirror, not a move\n");
+
+    /* Two objects the same distance either side of the water line
+       mirror onto each other. So the one above and the one below,
+       drawn with the plane off, have to land on the same place in the
+       target -- and a mirror written as a translation would put them
+       in two different places.
+     *
+     * The water is at 0.6, so 0.8 mirrors to 0.4 and 0.4 mirrors to
+     * 0.8: the pair is its own reflection. The depths differ, so this
+     * is only meaningful with the second object drawn where the first
+     * cannot hide it, which is why they go in separate frames and the
+     * target is read twice. */
+    glr_Reset();
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+    glr_ReflectionFixture();
+    tweak_water_clip = 0;
+    GL_PrepareWaterRendering();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    glr_ReflectAt(0.8f, 0x40, 0x00, 0x00);
+    {
+        int first[4];
+
+        glr_AeAt(gl_waterFbo, 256, 256, first);
+        okEq(first[0], 0x40, "the object above the water reflects");
+
+        /* Now the one below, in its own frame. */
+        glr_Reset();
+        glr_BuildQuad();
+        glr_IdentityMatrices();
+        glr_ReflectionFixture();
+        tweak_water_clip = 0;
+        GL_PrepareWaterRendering();
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+        GLFN_glViewport(0, 0, GLR_W, GLR_H);
+        glr_ReflectAt(0.4f, 0x00, 0x40, 0x00);
+        glr_AeAt(gl_waterFbo, 256, 256, rgba);
+        okEq(rgba[1], 0x40, "and so does the one the same distance below");
+    }
+
+    /* The two land on the same pixels: a mirror swaps the pair, a
+       translation would move both the same way and the second would be
+       somewhere else. Checked at a corner of the quad rather than its
+       middle, where a shifted copy would still overlap. */
+    glr_AeAt(gl_waterFbo, 132, 132, rgba);
+    okEq(rgba[1], 0x40, "at the corner of the quad as well, so the pair"
+                        " maps onto itself rather than being shifted");
+}
+
 int main(void)
 {
     void* p;
@@ -4634,6 +4862,9 @@ int main(void)
     caseWaterDepth();
     caseWaterSampling();
     caseWaterDirectionIsADirection();
+    caseWaterReflectionDraws();
+    caseWaterReflectionClipped();
+    caseWaterReflectionMirrored();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();

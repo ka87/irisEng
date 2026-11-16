@@ -506,7 +506,17 @@ static void Snapshot(const tSide* s, tShot* o, int ret, float fret)
 
 /* ---------- guard-distribution bookkeeping ---------- */
 
-#define GUARDS 30
+/* Guard ids, and the one thing to know about them: **four of them are
+   taken by a loop**, so a new guard numbered by hand inside that block
+   overwrites one and vanishes from the report rather than clashing.
+   Nothing says so -- the row is simply missing. It happened twice
+   while the water's guards were being added, which is why the block is
+   named here rather than left to be rediscovered.
+
+   Add a new guard at GUARD_FREE upwards and raise GUARDS with it. */
+#define GUARD_MESHKIND 26        /* 26..29, assigned in a loop */
+#define GUARD_FREE     30
+#define GUARDS         34
 static int guardHit[GUARDS][2];
 static const char* guardName[GUARDS];
 
@@ -523,7 +533,7 @@ enum {
     C_CULLING, C_STAGESTATES, C_ALPHATEST, C_ALPHABLEND, C_FOG,
     C_TEXTUREINIT, C_REQFOG, C_STRIDE, C_SELECTFORMAT, C_PRESETS,
     C_VIEWPORT, C_PROJECTION, C_ASPECT, C_CLEAR, C_SDW,
-    C_VIEWMATRIX, C_XFORMSAVE, C_WATERPARAMS, C_VBO, C_REQUEST,
+    C_VIEWMATRIX, C_XFORMSAVE, C_WATERPARAMS, C_WATERPREPARE, C_VBO, C_REQUEST,
     C_RASTERS, C_RASTERQUAD, C_WATERBUFFERS, C_WATERSTREAM, C_DRAWWATER,
     C_UVCOMPUTE, C_UVCHROME, C_UVPLANAR, C_SPRITES, C_DRAWTRIS,
     C_CREATEBUFFERS, C_RELEASE, C_RELEASEMESH, C_CREATE, C_PALETTE, C_SNAPSHOT,
@@ -536,7 +546,8 @@ static const char* caseName[C_COUNT] = {
     "colour write", "culling", "stage states", "alpha test", "alpha blend",
     "fog", "texture init", "request fog", "stride", "select format",
     "card presets", "viewport", "projection", "aspect", "clear", "shadow target",
-    "view matrix", "transform save", "water params", "vbo ring", "request",
+    "view matrix", "transform save", "water params", "water prepare",
+    "vbo ring", "request",
     "rasters", "raster quad", "water buffers", "water stream", "draw water",
     "uv compute", "uv chrome", "uv planar", "sprites", "draw triangles",
     "create buffers", "release", "release mesh data", "create", "palette load", "snapshot",
@@ -944,6 +955,56 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     W.bv.BVMin.y = rf(&r, -5.0f, 0.0f);
     W.bv.BVMax.x = rf(&r, 0.0f, 9.0f);
     W.bv.BVMax.y = rf(&r, 0.0f, 9.0f);
+    /* An inverted box on some seeds -- the maximum below the minimum.
+       The renderer takes the absolute value of each span, which says
+       the author expected it possible, and with a box that is always
+       the right way round that absolute value is a no-op and dropping
+       it scores clean. */
+    /* Both spans on their own seeds. Each takes its own absolute
+       value, so inverting one axis leaves the other's removable
+       without a trace -- which it was, for the x one.
+     *
+     * The two conditions are **chosen by counting**, not by taste.
+     * What has to happen together for either absolute value to matter
+     * is: the volume is a box rather than a sphere, the axis is
+     * inverted, and the case has set the flag that lets the size test
+     * run at all -- and that last one is the seed's lowest bit. A
+     * first attempt used `seed %% 7 == 0`, which combined with "is a
+     * box" forces a multiple of fourteen: always even, so the flag was
+     * never set and the intersection was **empty**. Counted over the
+     * hundred and twelve seeds, these two leave thirteen and five
+     * usable cases. */
+    if ((seed % 4u) == 1)
+    {
+        float t = W.bv.BVMin.x;
+
+        W.bv.BVMin.x = W.bv.BVMax.x;
+        W.bv.BVMax.x = t;
+    }
+    if ((seed % 5u) == 0)
+    {
+        float t = W.bv.BVMin.y;
+
+        W.bv.BVMin.y = W.bv.BVMax.y;
+        W.bv.BVMax.y = t;
+    }
+    Guard(GUARD_FREE + 2, "inverted box, x", (int)((seed % 4u) == 1));
+    Guard(GUARD_FREE + 3, "inverted box, y", (int)((seed % 5u) == 0));
+
+    /* A sphere on about half the seeds. The engine says so with a
+       sentinel bit pattern in BVMax.z, and the water's size test reads
+       a different number for each kind -- so without this one of the
+       two arms is dead.
+     *
+     * Divided rather than shifted, and that is not taste: the three
+     * families of seeds below are small counts, a large base plus a
+     * stride, and a high base plus a stride, so a high bit is the same
+     * in nearly all of them. Bit 28 came out true for **one seed of a
+     * hundred and twelve** and the guard reported two arms while one of
+     * them was effectively dead. */
+    if ((seed / 7u) % 2u)
+        *((uint32_t*)&W.bv.BVMax.z) = 0xFFFFFFFFu;
+    Guard(GUARD_FREE + 0, "bounding sphere", (int)((seed / 7u) % 2u));
 
     /* ---- material ---- */
     W.texElem.phongOrPlanarParam = (int)(seed % 9u);
@@ -1001,15 +1062,53 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
         W.waterUvVecs[i].y = rf(&r, -1.0f, 1.0f);
         W.waterColors[i] = (int)rnd(&r);
     }
-    tweak_water_blur_normal = (int)((seed >> 28) & 1);
-    tweak_water_clip = (int)((seed >> 29) & 1);
-    tweak_water_smooth = (int)((seed >> 30) & 1);
-    tweak_water_min_bv = rf(&r, 0.0f, 4.0f);
+    /* Divided rather than shifted, and each by a different number.
+     *
+     * These four were bits 28, 29, 30 and 31, and each of those is set
+     * in **one** of the hundred and twelve seeds this harness uses:
+     * the first family is small counts, the second a base plus a
+     * stride that never reaches the high bits, and the third a high
+     * base plus a stride that wraps and loses them. So the water's
+     * clip plane was never built, its blur never ran, and -- worst --
+     * `pst_GlobalsWaterParams` was almost always null, which is the
+     * engine saying there is no water at all. Four deliberate
+     * breakages of the clip plane scored clean because of it.
+     *
+     * Different divisors so the four vary independently rather than
+     * turning on together. */
+    tweak_water_blur_normal = (int)((seed / 3u) % 2u);
+    tweak_water_clip = (int)((seed / 5u) % 2u);
+    tweak_water_smooth = (int)((seed / 11u) % 2u);
     tweak_water_off = rf(&r, -1.0f, 1.0f);
     tweak_mipmaplodbias = (float)(seed % 5u) * 0.25f;
-    Guard(18, "water clip", (int)((seed >> 29) & 1));
-    pst_GlobalsWaterParams = ((seed >> 31) & 1) ? &W.water : NULL;
-    Guard(19, "water params", (int)((seed >> 31) & 1));
+    Guard(18, "water clip", (int)((seed / 5u) % 2u));
+    pst_GlobalsWaterParams = ((seed / 13u) % 2u) ? &W.water : NULL;
+    Guard(19, "water params", (int)((seed / 13u) % 2u));
+
+    /* The size an object has to reach to be reflected. On a third of
+       seeds it is exactly the object's own extent, because the test
+       the renderer makes is "not less than" and a strictly-greater one
+       differs from it at that single value and nowhere else -- with a
+       random threshold the boundary is never reached and either
+       spelling scores clean.
+     *
+     * The extent is worked out here rather than asked of the shared
+       code, so that a case does not set up its boundary from the
+       arithmetic it is checking. */
+    {
+        float extent;
+
+        if ((*((uint32_t*)&W.bv.BVMax.z)) == 0xFFFFFFFFu)
+            extent = W.bv.BVMax.x;
+        else
+            extent = (float)(fabs((double)W.bv.BVMax.y - W.bv.BVMin.y)
+                             + fabs((double)W.bv.BVMax.x - W.bv.BVMin.x));
+        if ((seed % 3u) == 0)
+            tweak_water_min_bv = extent;
+        else
+            tweak_water_min_bv = rf(&r, 0.0f, 4.0f);
+        Guard(GUARD_FREE + 1, "threshold at the boundary", (int)((seed % 3u) == 0));
+    }
 
     /* ---- rasters ---- */
     tweak_perf = (int)(seed % 4u);
@@ -1106,7 +1205,7 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
                                            "mesh other kind", "mesh none" };
         int k;
         for (k = 0; k < 4; k++)
-            Guard(26 + k, kindName[k], (((int)(seed >> i) + i) % 4) == k);
+            Guard(GUARD_MESHKIND + k, kindName[k], (((int)(seed >> i) + i) % 4) == k);
     }
     W.worldElems[3].objectPtr = (void*)((size_t)&W.gaos[3] | 1u);
     W.world.objectTablePF.actElemNum = (seed & 1) ? 4u : 0u;
@@ -1305,6 +1404,14 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         break;
     case C_XFORMSAVE:
         s->SetTransformAndSaveMatrix(&WGM_tex[3], (int)(seed % 8u));
+        break;
+    case C_WATERPREPARE:
+        /* Nothing drove this with a device until now: the only call to
+           it was in the no-device case, so the clear, the camera it
+           keeps and the clip plane it sets were all untested on both
+           sides. Four deliberate breakages of the plane scored clean
+           because of it. */
+        s->PrepareWaterRendering();
         break;
     case C_WATERPARAMS:
         water_ClippingHasBeenSet = (int)(seed & 1);

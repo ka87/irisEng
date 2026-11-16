@@ -764,6 +764,12 @@ static void GL_APIENTRY MK_glDeleteProgram(GLuint p) { WG_Record("glDeleteProgra
 /* Uniform locations, by name, so a case can tell them apart and so a
    missing one can be arranged. */
 static int wg_noUniform;
+/* The names that have been given a location of their own, in the order
+   they were first asked for. */
+#define WG_LOCS 64
+static char wg_locName[WG_LOCS][48];
+static int  wg_locNum;
+
 static GLint GL_APIENTRY MK_glGetUniformLocation(GLuint p, const GLchar* name)
 {
     (void)p;
@@ -786,7 +792,29 @@ static GLint GL_APIENTRY MK_glGetUniformLocation(GLuint p, const GLchar* name)
         return 7;
     if (strcmp(name, "uDiffuse2x") == 0)
         return 8;
-    return 9;
+    /* Everything else gets a location of its own, handed out on first
+       sight and remembered.
+     *
+     * It used to return nine for all of them, which quietly broke the
+     * promise in the comment below: three of the world program's
+     * uniforms shared a location, so a case asking "which uniform was
+     * this" got the wrong answer and compared a matrix against another
+     * uniform's. Nothing failed -- the case passed on the wrong
+     * matrix until one of them happened to differ. */
+    {
+        int i;
+
+        for (i = 0; i < wg_locNum; i++)
+            if (strcmp(wg_locName[i], name) == 0)
+                return 10 + i;
+        if (wg_locNum < WG_LOCS)
+        {
+            snprintf(wg_locName[wg_locNum], sizeof(wg_locName[0]), "%s",
+                     name);
+            return 10 + wg_locNum++;
+        }
+        return 9;
+    }
 }
 
 /* A location for each name the renderer asks for, so that a case can
@@ -999,6 +1027,16 @@ int   tweak_gl_cull = 0;
    a tentative definition of it, which is how the engine shares it
    between the simulation and the renderers. */
 int   tweak_water_blur_normal = 0;
+/* The water's own debug tweaks, which live in dbg.c. The reflection
+   reads three of them: the size an object has to reach to be worth
+   reflecting, whether the clip plane is used, and how far off the water
+   line it sits. Here at the values dbg.c gives them, except the
+   threshold, which starts at nought -- where everything is worth
+   reflecting. */
+float tweak_water_min_bv;
+int   tweak_water_clip = 1;
+float tweak_water_off;
+
 static int   wg_waterBlurCalls;
 static void* wg_waterBlurArg;
 
@@ -1013,6 +1051,17 @@ void WTR_WaterBlurNormal(Vec3* normals, int rowLength, int rowCount)
 /* The water's own flip override, at the nought that leaves the
    renderer's choice in force. */
 int   tweak_gl_water_flip = 0;
+
+/* The engine's answer about a bounding volume's kind, which the
+   water's size test asks before choosing which number to read. It is a
+   sentinel bit pattern in a field that is a coordinate the rest of the
+   time, and this is the engine's own rule rather than a stand-in -- the
+   reflection only ever asks, so there is nothing else to mock. */
+BOOL OBJ_BV_IsSphere(tGameObjectBV* bv)
+{
+    return bv && (*((uint32_t*)&bv->BVMax.z)) == 0xFFFFFFFFu;
+}
+
 
 int   ECAM_gi_NoAfterEffects = 0;
 
@@ -1051,6 +1100,10 @@ static void reset(void)
     GL_l_ForgetWater();
     pst_GlobalsWaterParams = NULL;
     tweak_gl_water_flip = 0;
+    tweak_water_clip = 0;
+    tweak_water_off = 0.0f;
+    tweak_water_min_bv = 0.0f;
+    waterHeight = 0.0f;
     /* And the two colour parameters back to neutral, which is a half
        for both of them. */
     unkAEFunc2Param = 0.5f;
@@ -1070,6 +1123,9 @@ static void reset(void)
     wgLogLen = 0;
     wg_callLen = 0;
     wg_nextName = 10;
+    /* wg_locName is deliberately not cleared: a uniform's location has
+       to be the same every case, or a case that recorded one and a case
+       that asks for it later disagree. */
     wg_compileFails = 0;
     wg_genFails = 0;
     wg_noUniform = 0;
@@ -5102,6 +5158,435 @@ static void caseWaterUniforms(void)
     }
 }
 
+/* ------------------------------------------- the water's reflection
+ *
+ * The second, mirrored draw of each object into the reflection target.
+ * The mirrored transform, the size threshold and the clip plane are
+ * waterreflect.c's and run_wingdi.sh compares them against the other
+ * renderer; what these ask is the renderer's own part -- which objects
+ * get a second draw, where it goes, what matrices it uses, and whether
+ * everything it moved is put back.
+ */
+
+static tGameObjectMain wg_reflGao;
+static tGameObjectBV   wg_reflBv;
+static Mtx4x4          wg_reflMtx;
+
+/* An object big enough to reflect, at a known place, with the water
+   plane somewhere neither at the origin nor at the object. */
+static void wg_ReflectionFixture(void)
+{
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+
+    memset(&wg_reflGao, 0, sizeof(wg_reflGao));
+    memset(&wg_reflBv, 0, sizeof(wg_reflBv));
+    MATH_SetIdentityMatrix(&wg_reflMtx);
+    /* Off the origin in all three, and a rotation that is not the
+       identity: a mirror written as a negated row rather than a
+       negated column agrees with the right answer on an axis-aligned
+       object. */
+    wg_reflMtx.v1.y = 0.25f;
+    wg_reflMtx.v2.z = 0.5f;
+    wg_reflMtx.v3.x = -0.125f;
+    wg_reflMtx.Pos.x = 11.0f;
+    wg_reflMtx.Pos.y = 13.0f;
+    wg_reflMtx.Pos.z = 17.0f;
+
+    /* A box, two units by three, so the threshold below has something
+       to compare. */
+    wg_reflBv.BVMin.x = -1.0f;
+    wg_reflBv.BVMax.x = 1.0f;
+    wg_reflBv.BVMin.y = -1.5f;
+    wg_reflBv.BVMax.y = 1.5f;
+
+    wg_reflGao.matrices = &wg_reflMtx;
+    wg_reflGao.boundingVolume = &wg_reflBv;
+    gl_dd.currTargetGao = &wg_reflGao;
+
+    waterHeight = 3.5f;
+    tweak_water_min_bv = 0.0f;
+    tweak_water_clip = 0;
+    GDI_gi_TextureUVMode = 0;
+
+    /* The camera, which is what a mirrored object is measured
+       against. Distinct from the view the engine sets below, because
+       the reflection must use the camera alone. */
+    MATH_SetIdentityMatrix(&gl_dd.ct.cam.cameraMtx);
+    gl_dd.ct.cam.cameraMtx.Pos.x = 2.0f;
+    gl_dd.ct.cam.cameraMtx.Pos.z = -5.0f;
+}
+
+/* The geometry fixture the reflection re-draws: whatever the ordinary
+   geometry cases use, so the second draw is a second draw of something
+   real. */
+static void wg_ReflectionDraw(void)
+{
+    WG_BuildChunk();
+    /* 0x800 so culling is on: the reflection reverses the winding, and
+       with culling off there would be no winding to reverse. */
+    gl_dd.drawMaskAllowedStuffCurrent = 0x10 | 0x800;
+    GL_TextureInit(-1, 0, 0);
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+}
+
+static void caseWaterReflectionGates(void)
+{
+    printf("-- which objects get a second draw, and which do not\n");
+
+    /* Everything in place: one ordinary draw and one reflection. */
+    reset();
+    wg_ReflectionFixture();
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    okEq(WG_i_Count("glDrawArrays"), 2,
+         "an object worth reflecting is drawn twice");
+    okEq(wg_i_DrawsInto((long)gl_waterFbo), 1,
+         "and the second one goes into the reflection");
+
+    /* No water this frame, so no second draw -- and the ordinary one
+       must still happen. */
+    reset();
+    wg_ReflectionFixture();
+    pst_GlobalsWaterParams = NULL;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    /* By the count of draws, not by which target they went to: with
+       no water there is no reflection target either, so its name is
+       nought -- and nought is the window, which other draws do go to.
+       An assertion that "no draw went to the reflection" would be
+       asking about the window. */
+    okEq(WG_i_Count("glDrawArrays"), 1, "with no water the object is drawn"
+                                        " once and not reflected");
+
+    /* Too small. The threshold is a tweak and the extent of this box
+       is the two spans added, which is five -- so six refuses it and
+       five takes it, which is the boundary the shared code puts at
+       "not less than". */
+    reset();
+    wg_ReflectionFixture();
+    tweak_water_min_bv = 6.0f;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    okEq(WG_i_Count("glDrawArrays"), 1, "an object under the size"
+                                        " threshold is not reflected");
+    reset();
+    wg_ReflectionFixture();
+    tweak_water_min_bv = 5.0f;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    okEq(WG_i_Count("glDrawArrays"), 2, "and one exactly at it is");
+
+    /* A sphere says its size with one number instead, and this one's
+       is one -- under the threshold the box cleared. */
+    reset();
+    wg_ReflectionFixture();
+    *((uint32_t*)&wg_reflBv.BVMax.z) = 0xFFFFFFFFu;
+    tweak_water_min_bv = 2.0f;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    okEq(WG_i_Count("glDrawArrays"), 1, "a sphere is measured by its own"
+                                        " number, not the box's");
+
+    /* The two generated-coordinate modes the other renderer skips at
+       its call site. These are the gates most easily lost, because
+       nothing about them is near the water. */
+    {
+        int mode;
+
+        for (mode = 4; mode <= 5; mode++)
+        {
+            reset();
+            wg_ReflectionFixture();
+            GL_PrepareWaterRendering();
+            GDI_gi_TextureUVMode = mode;
+            wg_callLen = 0;
+            wg_ReflectionDraw();
+            okEq(WG_i_Count("glDrawArrays"), 1,
+                 mode == 4 ? "a material generating coordinates one way is"
+                             " not reflected"
+                           : "nor the other way");
+        }
+    }
+
+    /* And nothing already drawing into a target of its own: a shadow
+       has no business putting itself in the water. */
+    reset();
+    wg_ReflectionFixture();
+    GL_PrepareWaterRendering();
+    GL_SetRenderTargetAndBackupPreviousSDW(0, 0);
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    okEq(WG_i_Count("glDrawArrays"), 1, "an object being drawn into another"
+                                        " target is not reflected");
+
+    /* No object, or one with no bounding volume, is nothing to measure. */
+    reset();
+    wg_ReflectionFixture();
+    GL_PrepareWaterRendering();
+    wg_reflGao.boundingVolume = NULL;
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    okEq(WG_i_Count("glDrawArrays"), 1, "an object with no bounding volume"
+                                        " is not reflected");
+    reset();
+    wg_ReflectionFixture();
+    GL_PrepareWaterRendering();
+    gl_dd.currTargetGao = NULL;
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    okEq(WG_i_Count("glDrawArrays"), 1, "and nor is no object at all");
+}
+
+static void caseWaterReflectionAim(void)
+{
+    Mtx4x4 mirrored;
+    Mtx4x4 view;
+    Mtx4x4 want;
+    int    drawAt;
+    int    i;
+    int    bad;
+
+    printf("-- where the second draw goes and what it is transformed by\n");
+
+    reset();
+    wg_ReflectionFixture();
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    wg_matrixNum = 0;
+    wg_ReflectionDraw();
+
+    /* The target, at its own size. A reflection drawn at the screen's
+       size fills a corner of the target and the surface samples mostly
+       nothing. */
+    drawAt = wg_i_CallAt("glDrawArrays", 1);
+    ok(drawAt >= 0, "there is a second draw");
+    okEq(wg_l_DrawTarget(1), (long)gl_waterFbo, "into the reflection");
+    {
+        int vp = -1;
+
+        for (i = 0; i < drawAt; i++)
+            if (strcmp(wg_calls[i].name, "glViewport") == 0)
+                vp = i;
+        ok(vp >= 0 && wg_calls[vp].arg[2] == 512
+           && wg_calls[vp].arg[3] == 512,
+           "at the reflection's own size");
+    }
+
+    /* The matrices. Predicted from the shared mirror and the camera,
+       which is the one thing a caller can get wrong here: the engine's
+       view matrix already has the object folded into it, so reusing it
+       would apply the object's transform twice and once unmirrored. */
+    WRF_Mirror(&mirrored, &wg_reflMtx, 3.5f);
+    D3D_MatrixMultiply((D3DMATRIX*)&view, (const D3DMATRIX*)&mirrored,
+                       (const D3DMATRIX*)&gl_dd.ct.cam.cameraMtx);
+    D3D_MatrixMultiply((D3DMATRIX*)&want, (const D3DMATRIX*)&view,
+                       (const D3DMATRIX*)&gl_projMtx);
+
+    /* The last two matrices uploaded before the second draw are the
+       combined one and the view, in that order. */
+    {
+        int seen = 0;
+        int combinedAt = -1;
+        int viewAt = -1;
+
+        for (i = 0; i < drawAt; i++)
+            if (strcmp(wg_calls[i].name, "glUniformMatrix4fv") == 0)
+            {
+                if (wg_calls[i].arg[0] == gl_geoViewProj)
+                    combinedAt = seen;
+                if (wg_calls[i].arg[0] == gl_geoView)
+                    viewAt = seen;
+                seen++;
+            }
+        ok(combinedAt >= 0 && viewAt >= 0,
+           "both matrices are uploaded for it");
+
+        bad = -1;
+        if (combinedAt >= 0)
+            for (i = 0; i < 16; i++)
+                if (wg_l_Scaled(wg_matrixData[combinedAt][i])
+                    != wg_l_Scaled(((const float*)&want)[i]))
+                {
+                    bad = i;
+                    break;
+                }
+        okEq(bad, -1, "the combined matrix is the mirror against the camera"
+                      " and the projection");
+
+        bad = -1;
+        if (viewAt >= 0)
+            for (i = 0; i < 16; i++)
+                if (wg_l_Scaled(wg_matrixData[viewAt][i])
+                    != wg_l_Scaled(((const float*)&view)[i]))
+                {
+                    bad = i;
+                    break;
+                }
+        okEq(bad, -1, "and the view the fog reads is the mirror against the"
+                      " camera");
+    }
+
+    /* The winding, turned over for the second draw and put back after
+       it. Mirroring turns every triangle over, so leaving the facing
+       alone shows the insides of things. */
+    {
+        int before = -1;
+        int after = -1;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glFrontFace") == 0)
+            {
+                if (i < drawAt)
+                    before = (int)wg_calls[i].arg[0];
+                else if (after < 0)
+                    after = (int)wg_calls[i].arg[0];
+            }
+        ok(before == GL_CW || before == GL_CCW,
+           "the winding is set for the second draw");
+        ok(after == GL_CW || after == GL_CCW,
+           "and set again after it");
+        ok(before != after, "and the two are opposite, which is what a"
+                            " mirror does to a triangle");
+    }
+
+    /* And the frame is left where it was being built, at the screen's
+       size: everything drawn after this object would otherwise go into
+       a 512-square texture nobody shows. */
+    {
+        long back = wg_l_FboBefore((long)gl_waterFbo, 0);
+        int  vp = -1;
+
+        for (i = drawAt + 1; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glViewport") == 0)
+            {
+                vp = i;
+                break;
+            }
+        (void)back;
+        ok(vp >= 0 && wg_calls[vp].arg[2] == 800
+           && wg_calls[vp].arg[3] == 600,
+           "the viewport is the screen's again afterwards");
+    }
+    {
+        int i2;
+        long last = -1;
+
+        for (i2 = drawAt + 1; i2 < wg_callLen; i2++)
+            if (strcmp(wg_calls[i2].name, "glBindFramebuffer") == 0)
+                last = (long)wg_calls[i2].arg[1];
+        ok(last >= 0 && last != (long)gl_waterFbo,
+           "and the reflection is not left bound");
+    }
+}
+
+static void caseWaterReflectionClip(void)
+{
+    int i;
+    int on;
+    int off;
+
+    printf("-- the plane that keeps the reflection under the water\n");
+
+    reset();
+    wg_ReflectionFixture();
+    tweak_water_clip = 1;
+    tweak_water_off = 0.75f;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    /* Reset with the log. The matrix contents are recorded in their own
+       array and counting uploads in the trimmed log while indexing an
+       array that was not trimmed reads somebody else's matrix -- which
+       it did, and the case failed on a value from the frame before. */
+    wg_matrixNum = 0;
+    wg_ReflectionDraw();
+
+    on = off = 0;
+    for (i = 0; i < wg_callLen; i++)
+    {
+        if (strcmp(wg_calls[i].name, "glEnable") == 0
+            && wg_calls[i].arg[0] == GL_CLIP_DISTANCE0)
+            on = 1;
+        if (strcmp(wg_calls[i].name, "glDisable") == 0
+            && wg_calls[i].arg[0] == GL_CLIP_DISTANCE0)
+            off = 1;
+    }
+    ok(on, "the clip distance is switched on for the second draw");
+    ok(off, "and off again afterwards");
+
+    /* The plane itself, from the shared code: pointing down, at the
+       water line plus the tweak's nudge. */
+    {
+        float want[4];
+        /* The scaled copy of the record, not the plain one: the plain
+           one truncates to whole numbers, which turns a plane at three
+           and a half into a plane at three. */
+        int   at = wg_i_CallAt("glUniform4f.scaled", 0);
+
+        WRF_ClipPlane(want, 3.5f, 0.75f);
+        ok(at >= 0, "and the plane reaches the program");
+        if (at >= 0)
+        {
+            okEq(wg_calls[at].arg[1], wg_l_Scaled(want[0]), "x");
+            okEq(wg_calls[at].arg[2], wg_l_Scaled(want[1]), "y");
+            okEq(wg_calls[at].arg[3], wg_l_Scaled(want[2]), "z");
+            okEq(wg_calls[at].arg[4], wg_l_Scaled(want[3]), "and the"
+                                                            " distance");
+        }
+    }
+
+    /* The mirrored transform goes with it, because the plane is in
+       world space and the vertex has to get there -- and for this draw
+       the renderer is the only thing that knows the object's world
+       transform on its own. */
+    {
+        Mtx4x4 mirrored;
+        int    worldAt = -1;
+        int    seen = 0;
+        int    bad = -1;
+
+        WRF_Mirror(&mirrored, &wg_reflMtx, 3.5f);
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glUniformMatrix4fv") == 0)
+            {
+                if (wg_calls[i].arg[0] == gl_geoWorld)
+                    worldAt = seen;
+                seen++;
+            }
+        ok(worldAt >= 0, "the mirrored transform is uploaded with it");
+        if (worldAt >= 0)
+            for (i = 0; i < 16; i++)
+                if (wg_l_Scaled(wg_matrixData[worldAt][i])
+                    != wg_l_Scaled(((const float*)&mirrored)[i]))
+                {
+                    bad = i;
+                    break;
+                }
+        okEq(bad, -1, "and it is the mirror, not the object's own");
+    }
+
+    /* With the tweak off there is no plane at all, and nothing is
+       switched on that would have to be switched off again. */
+    reset();
+    wg_ReflectionFixture();
+    tweak_water_clip = 0;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    wg_ReflectionDraw();
+    on = 0;
+    for (i = 0; i < wg_callLen; i++)
+        if (strcmp(wg_calls[i].name, "glEnable") == 0
+            && wg_calls[i].arg[0] == GL_CLIP_DISTANCE0)
+            on = 1;
+    ok(!on, "with the tweak off, no clip distance is switched on");
+    okEq(WG_i_Count("glDrawArrays"), 2, "and the reflection is still"
+                                        " drawn");
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
@@ -5144,6 +5629,9 @@ int main(void)
     caseWaterBlur();
     caseWaterState();
     caseWaterUniforms();
+    caseWaterReflectionGates();
+    caseWaterReflectionAim();
+    caseWaterReflectionClip();
     caseViewport();
     caseNoViewport();
     caseClipControl();

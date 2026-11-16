@@ -15,6 +15,22 @@ layout(location = 2) in vec2 aUV;
 layout(location = 3) in vec3 aNormal;
 
 uniform mat4 uViewProj;
+/* The water's reflection, and nothing else, uses these three.
+ *
+ * The reflection draws the world a second time with each object
+ * mirrored in the water plane, and then has to throw away whatever
+ * ends up above the surface -- the parts of the world that could not
+ * be seen in water. The plane is in world space, so the vertex has to
+ * get there, and for this draw only the renderer knows the object's
+ * world transform separately: the ordinary draw is handed a view
+ * matrix with the object already folded into it. Hence uWorld, which
+ * is the mirrored transform and is read nowhere else.
+ *
+ * uClipping is nought for every other draw, and then the distance
+ * written below is a constant positive and clips nothing. */
+uniform int  uClipping;
+uniform vec4 uClipPlane;
+uniform mat4 uWorld;
 // To camera space, for the fog: fog is a function of the distance from
 // the camera, and that is the one thing the combined matrix has
 // already thrown away.
@@ -37,6 +53,13 @@ void main()
     // vector is the row vector times the original. So this is the
     // engine's own arithmetic, not a rearrangement of it.
     gl_Position = uViewProj * vec4(aPos, 1.0);
+
+    // Written whether or not it is enabled: a clip distance that is
+    // switched on and never written is undefined, and writing a
+    // positive constant is what "no plane" means.
+    gl_ClipDistance[0] = uClipping != 0
+        ? dot(uClipPlane, vec4((uWorld * vec4(aPos, 1.0)).xyz, 1.0))
+        : 1.0;
 
     // As in the overlay: a packed A8R8G8B8 word read as four
     // normalised bytes arrives blue, green, red, alpha.

@@ -7,6 +7,7 @@
 #include "../graphicsobjects/staticlod.h"
 #include "../water.h"
 #include "../watermesh.h"
+#include "../waterreflect.h"
 #include "../engine.h"
 #include "wininputoutput.h"
 #include "../resource.h"
@@ -3668,10 +3669,9 @@ void D3D_PrepareWaterRendering()
         MATH_MakeOGLMatrix(&d3dCameraMtx, &gpst_DX_stDD->ct.cam.cameraMtx);
         if (tweak_water_clip)
         {
-            clipPlane[3] = tweak_water_off + waterHeight;
-            clipPlane[0] = 0.0;
-            clipPlane[1] = 0.0;
-            clipPlane[2] = -1.0;
+            /* Shared with the other renderer: the plane has no device
+               in it either. */
+            WRF_ClipPlane(clipPlane, waterHeight, tweak_water_off);
             D3DRenderParams.d3dDev->lpVtbl->SetClipPlane(D3DRenderParams.d3dDev, 0, clipPlane);
         }
         PRO_QPC_RecordTimeDecRef(48);
@@ -3686,15 +3686,15 @@ void D3D_PrepareWaterRendering()
 int D3D_setWaterRenderParamsIfWaterRenderingIsActive()
 {
     tGameObjectBV* bv;
-    long double extent;
     Mtx4x4 worldMtx;
 
     if (!water_ClippingHasBeenSet)
         return 0;
     bv = gpst_DX_stDD->currTargetGao->boundingVolume;
-    extent = OBJ_BV_IsSphere(bv) ? bv->BVMax.x : fabs(bv->BVMax.y - bv->BVMin.y)
-        + fabs(bv->BVMax.x - bv->BVMin.x);
-    if (extent < tweak_water_min_bv)
+    /* Whether this object earns a second draw has no device in it, so
+       it is the shared reflection code's answer and the other renderer
+       asks the same question the same way. */
+    if (!WRF_b_WorthReflecting(bv, OBJ_BV_IsSphere(bv), tweak_water_min_bv))
         return 0;
     QueryPerformanceCounter(&PerfCounterStruct[48]);
     D3DRenderParams.d3dDev->lpVtbl->GetRenderTarget(D3DRenderParams.d3dDev, 0, &d3dRTToGet);
@@ -3709,11 +3709,8 @@ int D3D_setWaterRenderParamsIfWaterRenderingIsActive()
         D3D_RenderStateSet(&renderStateConfig.d3dCullMode, 22, 2);
     memcpy(&d3dTransformMatrixBackup, &d3dTransformMatrix, sizeof(d3dTransformMatrix));
     memcpy(&d3dTransformMatrix2Backup, &d3dTransformMatrix2, sizeof(d3dTransformMatrix2));
-    MATH_MakeOGLMatrix(&worldMtx, gpst_DX_stDD->currTargetGao->matrices);
-    worldMtx.v1.z = -worldMtx.v1.z;
-    worldMtx.v2.z = -worldMtx.v2.z;
-    worldMtx.v3.z = -worldMtx.v3.z;
-    worldMtx.Pos.z = worldMtx.Pos.z - (worldMtx.Pos.z - waterHeight + worldMtx.Pos.z - waterHeight);
+    /* Shared with the other renderer, for the same reason. */
+    WRF_Mirror(&worldMtx, gpst_DX_stDD->currTargetGao->matrices, waterHeight);
     memcpy(&d3dTransformMatrix2, &worldMtx, sizeof(d3dTransformMatrix2));
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_WORLD, (D3DMATRIX*)&worldMtx);
     memcpy(&d3dTransformMatrix, &d3dCameraMtx, sizeof(d3dTransformMatrix));

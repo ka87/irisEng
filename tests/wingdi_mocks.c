@@ -1066,7 +1066,15 @@ void D3D_DoBlurWaterTexture(void) { L0("D3D_DoBlurWaterTexture"); }
 
 void GEO_UseNormals(tGEOGRO* g) { L1("GEO_UseNormals", WGM_Index(g)); }
 
-BOOL OBJ_BV_IsSphere(tGameObjectBV* bv) { return (BOOL)(WGM_Index(bv) & 1); }
+/* The engine's own rule, which is a sentinel in a field that is a
+   coordinate the rest of the time. It used to answer from the volume's
+   index in the pointer log instead, which is the same answer every
+   seed -- so only one arm of the water's size test was ever reached
+   and a build that took the other one scored clean. */
+BOOL OBJ_BV_IsSphere(tGameObjectBV* bv)
+{
+    return bv && (*((uint32_t*)&bv->BVMax.z)) == 0xFFFFFFFFu;
+}
 
 void WTR_WaterBlurNormal(Vec3* v, int a, int b) { L3("WTR_WaterBlurNormal", WGM_Index(v), a, b); }
 

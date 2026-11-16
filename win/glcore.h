@@ -157,6 +157,7 @@ typedef struct __GLsync* GLsync;
 #define GL_CLIP_DEPTH_MODE                0x935D
 #define GL_NEGATIVE_ONE_TO_ONE            0x935E
 #define GL_ZERO_TO_ONE                    0x935F
+#define GL_CLIP_DISTANCE0                 0x3000
 #define GL_LOWER_LEFT                     0x8CA1
 #define GL_UPPER_LEFT                     0x8CA2
 
