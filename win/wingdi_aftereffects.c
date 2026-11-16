@@ -5,6 +5,7 @@
 #include "../watersmooth.h"
 #include "../aefade.h"
 #include "../aehue.h"
+#include "../aemotion.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -2373,7 +2374,7 @@ void D3D_MotionSmooth(IDirect3DTexture9* unusedA, IDirect3DTexture9* unusedB, ID
 {
     D3D_SetRenderTargetFromTexture(renderTarget);
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
-    if (gMaxSimultaneousTextures < 2 || gMaxSimultaneousTextures > 3)
+    if (AMO_b_OnePass(gMaxSimultaneousTextures))
         D3D_MotionSmoothHD(texture, dx, dy);
     else
         D3D_MotionSmoothSD(unusedA, unusedB, texture, dx, dy);
@@ -2696,7 +2697,6 @@ void D3D_PC_AE(tWorld* param1)
     IDirect3DTexture9* spare;
     IDirect3DTexture9* swap;
     BOOL fadeDone;
-    double dx;
     float motionX;
     float motionY;
     float fadeStep;
@@ -2795,25 +2795,20 @@ void D3D_PC_AE(tWorld* param1)
         spare = current;
         current = swap;
     }
-    if ((PC_AE_MASTER & 0x80u) != 0)
+    if (AMO_b_On((unsigned int)PC_AE_MASTER))
     {
-        AE_MS_CurrVec.x = 1.0;
-        AE_MS_CurrVec.y = 1.0;
-        AE_MS_CurrVec.z = 1.0;
+        AMO_Probe(&AE_MS_CurrVec.x);
         MATH_TransformVector(&AE_MS_CurrVec, &gpst_DX_stDD->ct.cam.cameraMtx, &AE_MS_CurrVec);
-        dx = AE_MS_CurrVec.x - AE_MS_PrevVec.x;
-        if (sqrt(
-            dx * dx
-            + (AE_MS_CurrVec.z - AE_MS_PrevVec.z) * (AE_MS_CurrVec.z - AE_MS_PrevVec.z)
-            + (AE_MS_CurrVec.y - AE_MS_PrevVec.y) * (AE_MS_CurrVec.y - AE_MS_PrevVec.y)) > 0.0049999999)
+        if (AMO_b_Decide(&motionX, &motionY, &AE_MS_CurrVec.x,
+                         &AE_MS_PrevVec.x))
         {
             swap = spare;
-            motionY = (float)((AE_MS_CurrVec.y - AE_MS_PrevVec.y) * 50.0);
-            motionX = (float)(dx * 50.0);
             D3D_MotionSmooth(spare, current, current, spare, motionX, motionY);
             spare = current;
             current = swap;
         }
+        /* Whether it smeared or not -- see aemotion.h, the movement
+           must not accumulate. */
         AE_MS_PrevVec = AE_MS_CurrVec;
     }
     if ((PC_AE_MASTER & 0x400) != 0 && zoomSmoothFactor != 0.0)
@@ -2908,10 +2903,10 @@ void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)
         blurFactor = value;
         return;
     case 4:                                     // motionsmooth
-        cleared = PC_AE_MASTER & ~0x80u;
+        cleared = (int)(PC_AE_MASTER & ~AMO_BIT);
         PC_AE_MASTER = cleared;
         if (onOff)
-            PC_AE_MASTER = cleared | 0x80;
+            PC_AE_MASTER = cleared | (int)AMO_BIT;
         return;
     case 5:
         cleared = PC_AE_MASTER & ~0x400u;
