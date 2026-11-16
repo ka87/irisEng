@@ -57,6 +57,14 @@ uniform float uAlphaRef;
 // A display setting that doubles the modulated colour, which the other
 // renderer asks its texture stage for. Colour only: the alpha is
 // modulated either way.
+//
+// The renderer sets this only when the engine wants the doubling *and*
+// this renderer reports that it can double, because those are the two
+// things the other renderer's stage needs before it asks for the
+// doubled modulate. When a renderer cannot double, the material path
+// draws the geometry a second time additively instead -- so doubling
+// here as well would double that too, and the lit, shadowed geometry
+// would come out four times too bright.
 uniform int uDiffuse2x;
 
 // Fog. uFogCurve is 0 for none, 1 linear, 2 exponential, 3 exponential

@@ -423,15 +423,18 @@ static void glr_Reset(void)
     gl_mipmapping = 1;
     GDI_gi_Diffuse2x = 0;
 
-    /* The renderer is told it has a context. It has one -- EGL's --
-       and the only thing it would use the window for is making one,
+    /* Through the renderer's own device setup, so that what the cases
+       below draw against is the device the renderer really makes --
+       this used to be a memset and the fields that follow, and the two
+       drifted apart as soon as the renderer set one more.
+     *
+       The renderer is then told it has a context. It has one -- EGL's
+       -- and the only thing it would use the window for is making one,
        which this does not ask it to do. */
-    memset(&gl_state, 0, sizeof(gl_state));
+    GL_p_CreateDevice();
     gl_state.context = (HGLRC)(size_t)0xE61;
     gl_state.width = GLR_W;
     gl_state.height = GLR_H;
-    gl_state.zEnable = 1;
-    gl_state.zWrite = 1;
 
     glrLogLen = 0;
     glr_Begin();
