@@ -167,6 +167,10 @@ float D3D_gf_CutsceneBand = 0.10416666f;
 /* The two switches that turn the whole after-effects chain off.
    Both start off, as the game does. */
 int   tweak_ae_no = 0;
+/* The culling override, at the nought that leaves the renderer's own
+   mapping in force -- which is what every case here is written
+   against. */
+int   tweak_gl_cull = 0;
 int   ECAM_gi_NoAfterEffects = 0;
 
 /* The two colour parameters, at the neutral the game starts them at.
@@ -2681,19 +2685,36 @@ static void caseCulling(void)
     okNear(ccwNone, 0xFF, "with culling off the first winding is drawn");
     okNear(cwNone, 0xFF, "and so is the second");
 
-    /* The engine's counter-clockwise request: OpenGL is told
-       counter-clockwise is front, so the clockwise triangle goes. */
+    /* Which winding each request keeps.
+     *
+       These four numbers are **measured**, on a real card in a real
+       scene, by trying every answer. They are not derived, and the
+       distinction matters here more than anywhere else in this file:
+       an earlier version of this case asserted the opposite four, and
+       it passed, because it was written from the same reading of the
+       two APIs' conventions that the renderer was written from. A
+       test that encodes the code's own premise cannot discover that
+       the premise is wrong -- it only makes the wrong answer harder
+       to change.
+     *
+       So what is pinned below is the observed mapping and nothing
+       more. The reasoning that gives the other answer is written out
+       in win/wingl.c so that nobody re-derives it; if these four ever
+       need swapping, it takes a scene and a card to say so, not an
+       argument. */
     ccwCullCcw = glr_i_DrawWound(1, 0x10 | 0x800);
     cwCullCcw = glr_i_DrawWound(0, 0x10 | 0x800);
-    okNear(ccwCullCcw, 0xFF, "front-facing survives the first setting");
-    okNear(cwCullCcw, GLR_BG, "and the other winding is culled");
+    okNear(ccwCullCcw, GLR_BG, "the engine's first request culls the"
+                               " counter-clockwise triangle");
+    okNear(cwCullCcw, 0xFF, "and keeps the clockwise one");
 
     /* And the other request culls the other one, which is the whole
        point of there being two. */
     ccwCullCw = glr_i_DrawWound(1, 0x10 | 0x800 | 0x2000);
     cwCullCw = glr_i_DrawWound(0, 0x10 | 0x800 | 0x2000);
-    okNear(ccwCullCw, GLR_BG, "the second setting culls the other one");
-    okNear(cwCullCw, 0xFF, "and keeps the one the first setting dropped");
+    okNear(ccwCullCw, 0xFF, "the second request keeps the"
+                            " counter-clockwise one");
+    okNear(cwCullCw, GLR_BG, "and culls the clockwise one");
 }
 
 static void caseShadersCompile(void)

@@ -2,6 +2,7 @@
 //#include "animation.h" //tmp
 
 int tweak_ae_no;
+int tweak_gl_cull;
 int tweak_ae_nobands = 0;
 float tweak_mipmaplodbias = -0.60000002f;
 int tweak_perf;
@@ -44,11 +45,17 @@ static void DBG_l_TweakNoZonAlpha(float value)
 }
 
 /* Sorted by name: the console finds an entry with bsearch. */
-struct sTweakElem tweaks[17] = {
+struct sTweakElem tweaks[18] = {
     {"ae_d2x", 2, (void*)DBG_l_TweakCanDiffuse2x},
     {"ae_no", 0, &tweak_ae_no},
     {"ae_nobands", 0, &tweak_ae_nobands},
     {"ae_noflare", 2, (void*)DBG_l_TweakWantsNoFlare},
+    /* Which winding the OpenGL renderer culls: 0 as it decides, 1 no
+       culling at all, 2 the facing reversed. Kept rather than removed
+       with the bug it found -- the mapping it overrides is measured
+       rather than derived, so the next card that disagrees wants this
+       to hand. */
+    {"gl_cull", 0, &tweak_gl_cull},
     {"mipmaplodbias", 1, &tweak_mipmaplodbias},
     {"perf", 0, &tweak_perf},
     {"perf_fps", 0, &tweak_perf_fps},    
@@ -64,6 +71,9 @@ struct sTweakElem tweaks[17] = {
     {"zonalpha_no", 2, (void*)DBG_l_TweakNoZonAlpha}
     
 };
+
+/* Beside the table, so the two are changed together. */
+const int tweaksNum = (int)(sizeof(tweaks) / sizeof(tweaks[0]));
 
 void DBG_assert(int isError, char* sourceCodeInfo, int lineNo, char* sourceCodeLine, const char* error, const char* extra, int showMsgBox)
 {

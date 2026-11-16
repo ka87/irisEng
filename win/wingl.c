@@ -379,11 +379,18 @@ static void GL_l_SayWhatThisIs(void)
         (const char*)GLFN_glGetString(GL_VENDOR),
         (const char*)GLFN_glGetString(GL_RENDERER),
         (const char*)GLFN_glGetString(GL_SHADING_LANGUAGE_VERSION));
+    /* Kept current deliberately. This line was left saying the depth
+       blur and the culling were missing for four changes after both
+       went in, and it sent a search for why the world came out dark
+       looking in the wrong place for an afternoon. A log that lies
+       about what is running is worse than no log. */
     DBG_OutputDebugString("GL: this renderer draws the overlay, its text, "
-                          "the textured world, its shadows, its sprites "
-                          "and fullscreen video; the sun's occlusion test "
-                          "and the depth blur are not drawn through it "
-                          "yet, and culling is off\n");
+                          "the textured world with fog and culling, its "
+                          "shadows, its sprites, fullscreen video, the "
+                          "depth blur and the sun's occlusion test, and "
+                          "the after-effects for the depth blur, the "
+                          "brightness, the contrast and the grayscale; "
+                          "the water is not drawn through it at all\n");
 }
 
 static void GL_l_SizeFromWindow(HWND hwnd)
@@ -1738,29 +1745,39 @@ void GL_TextureInit(int textureID, int flags, char mode)
 
     /* Culling.
      *
-     * The engine says which winding to cull, in the terms the other
-     * renderer's device uses: that device decides facing from the
-     * vertex order in a window whose y runs *downward*, and OpenGL
-     * decides it in a window whose y runs upward. The clip space is
-     * the same in both -- clip y = +1 is the top of the screen either
-     * way, and glClipControl above leaves the origin at OpenGL's own
-     * lower left -- so the two differ by a y flip, and a y flip
-     * reverses a triangle's orientation.
+     * The engine names the winding to *cull*, in the terms the other
+     * renderer's device uses. OpenGL names the winding that is
+     * *front*. The mapping between them is the line below, and it is
+     * **measured, not derived** -- on an RTX 2060, by trying all three
+     * answers in a real scene.
      *
-     * The two APIs also name opposite things: the engine names the
-     * winding to *cull* and OpenGL names the winding that is *front*.
-     * Those two reversals cancel, so the winding OpenGL is told is
-     * front carries the same name the engine gave for culling. Without
-     * the y flip it would be the other one, which is the answer that
-     * looks right.
+     * The derivation is written out here because it gives the opposite
+     * answer and is therefore wrong, and because it is persuasive
+     * enough that someone will reach it again. It goes: the device
+     * decides facing from a window whose y runs downward and OpenGL
+     * from one whose y runs upward; clip y = +1 is the top of the
+     * screen in both, so the two window spaces differ by a y flip,
+     * which reverses a triangle's orientation; and the two APIs name
+     * opposite things, which reverses it back. Two reversals cancel,
+     * so the winding OpenGL is told is front would carry the same
+     * name the engine gave for culling.
      *
-     * None of that is measurable from here -- the other renderer's
-     * device is not present -- so it is a reading of the two
-     * conventions and not a measurement. What is measured is the
-     * OpenGL half: that a triangle wound one way survives each setting
-     * and the other is culled. If the world turns inside out, this is
-     * the one line to swap. */
-    if (st.cull == RST_CULL_NONE)
+     * That is what shipped, and the world came out almost dark with
+     * objects missing -- the front of every surface culled, leaving
+     * unlit interiors. The right answer is the other one.
+     *
+     * What the measurement also settles, and the derivation got wrong,
+     * is that the two renderers' window-space windings **agree**:
+     * there is no net y flip between them. Which step supplies that is
+     * not established, so nothing else should be derived from it --
+     * see the note in retail/notes/engine-gaps.md for what else was
+     * reasoned from the flip and is now suspect. */
+    /* The gl_cull tweak overrides all of this: 1 turns culling off
+       altogether and 2 reverses the facing. It is what found the
+       mapping above, and it is kept because the mapping is measured on
+       one card rather than derived -- so a card that disagrees wants
+       it to hand rather than a rebuild. */
+    if (st.cull == RST_CULL_NONE || tweak_gl_cull == 1)
     {
         GLFN_glDisable(GL_CULL_FACE);
     }
@@ -1768,7 +1785,10 @@ void GL_TextureInit(int textureID, int flags, char mode)
     {
         GLFN_glEnable(GL_CULL_FACE);
         GLFN_glCullFace(GL_BACK);
-        GLFN_glFrontFace(st.cull == RST_CULL_CW ? GL_CW : GL_CCW);
+        if (tweak_gl_cull == 2)
+            GLFN_glFrontFace(st.cull == RST_CULL_CW ? GL_CW : GL_CCW);
+        else
+            GLFN_glFrontFace(st.cull == RST_CULL_CW ? GL_CCW : GL_CW);
     }
 
     GLFN_glColorMask(st.writeRGB ? GL_TRUE : GL_FALSE,

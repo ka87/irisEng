@@ -948,6 +948,10 @@ float D3D_gf_CutsceneBand = 0.10416666f;
 /* The two switches that turn the whole after-effects chain off.
    Both start off, as the game does. */
 int   tweak_ae_no = 0;
+/* The culling override, at the nought that leaves the renderer's own
+   mapping in force -- which is what every case here is written
+   against. */
+int   tweak_gl_cull = 0;
 int   ECAM_gi_NoAfterEffects = 0;
 
 /* The two colour parameters, at the neutral the game starts them at.
@@ -1523,15 +1527,22 @@ static void caseGeometryNormals(void)
 /* Which winding the renderer tells OpenGL is front, for each of the
  * three things the engine can ask for.
  *
- * The mapping is the surprising part of the culling and it is a
- * reading of two conventions rather than a measurement -- the other
- * renderer's device is not here to compare against. So the reading is
- * written down as a table and checked as one: the engine names the
- * winding to cull, OpenGL names the winding that is front, and the
- * clip-to-window y flip between the two APIs reverses orientation, so
- * the two reversals cancel and the name carries over unchanged.
+ * The table below is **measured**, on a real card in a real scene. It
+ * used to be a reading of the two APIs' conventions instead, and the
+ * reading was wrong: the engine's winding name does *not* carry over
+ * unchanged, it inverts. The scene came out almost dark with objects
+ * missing, because the front of every surface was being culled.
  *
- * If this ever has to be swapped, this case is where it says so.
+ * This case asserted the wrong table and passed, which is the part
+ * worth remembering. It was written from the same reading as the
+ * renderer, so the two agreed with each other and neither was
+ * checked against anything. A table copied from the code's own
+ * premise does not test the premise; it only makes it harder to
+ * change.
+ *
+ * So: if this ever has to be swapped again, it takes a card and a
+ * scene to say so. The reasoning that gives the other answer is in
+ * win/wingl.c, written out as the wrong answer it is.
  */
 static void caseGeometryCulling(void)
 {
@@ -1545,8 +1556,8 @@ static void caseGeometryCulling(void)
         const char* what;
     } cases[3] = {
         { 0x10,                 0, 0,      "no culling bit, no culling" },
-        { 0x10 | 0x800,         1, GL_CCW, "the engine's counter-clockwise" },
-        { 0x10 | 0x800 | 0x2000, 1, GL_CW, "the engine's clockwise" }
+        { 0x10 | 0x800,         1, GL_CW,  "the engine's counter-clockwise" },
+        { 0x10 | 0x800 | 0x2000, 1, GL_CCW, "the engine's clockwise" }
     };
     int i;
 
@@ -3371,6 +3382,62 @@ static int wg_i_CallAt(const char* name, int nth)
     return -1;
 }
 
+static void caseGeometryCullingTweak(void)
+{
+    printf("-- the culling override, which is what found the mapping\n");
+
+    /* 1 turns culling off whatever the engine asked for. */
+    reset();
+    wg_callLen = 0;
+    gl_dd.drawMaskAllowedStuffCurrent = 0x10 | 0x800;
+    tweak_gl_cull = 1;
+    GL_TextureInit(-1, 0, 0);
+    okEq(WG_i_Count("glFrontFace"), 0, "with the override at one, no"
+                                       " winding is chosen");
+    {
+        int i;
+        int off = 0;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glDisable") == 0
+                && wg_calls[i].arg[0] == GL_CULL_FACE)
+                off = 1;
+        ok(off, "and culling is switched off");
+    }
+
+    /* 2 keeps culling on with the facing the other way round -- which
+       is the wrong answer now, and was the right one before the
+       mapping was measured. Both settings are checked so that the
+       override cannot quietly stop overriding. */
+    reset();
+    wg_callLen = 0;
+    gl_dd.drawMaskAllowedStuffCurrent = 0x10 | 0x800;
+    tweak_gl_cull = 2;
+    GL_TextureInit(-1, 0, 0);
+    okEq(WG_l_Arg("glFrontFace", 0, 0), GL_CCW,
+         "with the override at two, the engine's counter-clockwise"
+         " reverses");
+    reset();
+    wg_callLen = 0;
+    gl_dd.drawMaskAllowedStuffCurrent = 0x10 | 0x800 | 0x2000;
+    tweak_gl_cull = 2;
+    GL_TextureInit(-1, 0, 0);
+    okEq(WG_l_Arg("glFrontFace", 0, 0), GL_CW,
+         "and its clockwise reverses the other way");
+
+    /* And nought leaves the measured mapping alone, which every other
+       case in this file depends on. */
+    reset();
+    wg_callLen = 0;
+    gl_dd.drawMaskAllowedStuffCurrent = 0x10 | 0x800;
+    tweak_gl_cull = 0;
+    GL_TextureInit(-1, 0, 0);
+    okEq(WG_l_Arg("glFrontFace", 0, 0), GL_CW,
+         "and nought leaves the measured mapping in force");
+
+    tweak_gl_cull = 0;
+}
+
 static void caseAeDepthBlurChain(void)
 {
     tDpb_BlurPass passes[DPB_BLUR_PASSES];
@@ -3796,6 +3863,7 @@ static void caseAeColorChain(void)
     PC_AE_MASTER = 0;
     unkAEFunc2Param = 0.5f;
     colorBalanceParam1 = 0.5f;
+    tweak_gl_cull = 0;
     motionBlurFactor = 0.0f;
     remenanceFactor = 0.0f;
     zoomSmoothFactor = 0.0f;
@@ -4432,6 +4500,7 @@ int main(void)
     caseGeometry();
     caseGeometryNormals();
     caseGeometryCulling();
+    caseGeometryCullingTweak();
     caseViewport();
     caseNoViewport();
     caseClipControl();

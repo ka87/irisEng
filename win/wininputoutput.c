@@ -1120,7 +1120,11 @@ void pcINO_RunTweakCommand(const char* line)
     sscanf(line, "%31s %f", Key, &value);
     if (!Key[0])
         return;
-    tweak = (tTweakElem*)bsearch(Key, &tweaks, 17u, sizeof(tTweakElem), strcmp);
+    /* The count comes from beside the table rather than being written
+       out here. As a literal it was right only while it matched, and
+       the entry it would drop first is the one that sorts last. */
+    tweak = (tTweakElem*)bsearch(Key, &tweaks, (size_t)tweaksNum,
+                                 sizeof(tTweakElem), strcmp);
     if (tweak)
     {
         if (tweak->type == 0)
