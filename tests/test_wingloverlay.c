@@ -603,6 +603,21 @@ static void GL_APIENTRY MK_glDisableVertexAttribArray(GLuint index)
     WG_Record("glDisableVertexAttribArray", 1, (long long)index);
 }
 
+/* The copy that puts the scene on the screen. Its eight rectangle
+   arguments are the whole of the letterbox, so they are all
+   recorded. */
+static void GL_APIENTRY MK_glBlitFramebuffer(GLint sx0, GLint sy0, GLint sx1,
+                                             GLint sy1, GLint dx0, GLint dy0,
+                                             GLint dx1, GLint dy1,
+                                             GLbitfield mask, GLenum filter)
+{
+    (void)mask;
+    (void)filter;
+    WG_Record("glBlitFramebuffer", 8, (long long)sx0, (long long)sy0,
+              (long long)sx1, (long long)sy1, (long long)dx0, (long long)dy0,
+              (long long)dx1, (long long)dy1);
+}
+
 static GLuint GL_APIENTRY MK_glCreateShader(GLenum type)
 {
     WG_Record("glCreateShader", 1, (long long)type);
@@ -713,6 +728,7 @@ static void WG_AimThePointers(void)
     GLFN_glDrawArrays = MK_glDrawArrays;
     GLFN_glBufferData = MK_glBufferData;
     GLFN_glGenBuffers = MK_glGenBuffers;
+    GLFN_glBlitFramebuffer = MK_glBlitFramebuffer;
     GLFN_glCullFace = MK_glCullFace;
     GLFN_glFrontFace = MK_glFrontFace;
     GLFN_glDisableVertexAttribArray = MK_glDisableVertexAttribArray;
@@ -869,6 +885,12 @@ void MEM_FreeAlign(void* p) { free(p); }
    once called is the engine's own and goes through the same interface
    entries this file already checks. */
 static int wg_ovlDrawn;
+
+/* The cutscene letterbox's engine state, which cinebands.c reads.
+   CIN_Bands is the engine's switch; the game starts it on. */
+int   CIN_Bands = 1;
+int   tweak_ae_nobands = 0;
+float D3D_gf_CutsceneBand = 0.10416666f;
 
 void OVL_Draw(void)
 {
@@ -1514,6 +1536,123 @@ static void caseGeometryCulling(void)
  * own entry points could notice, because they were all correct and
  * nothing called them.
  */
+/* The scene target, and the copy that puts it on the screen.
+ *
+ * The world is drawn into a target of its own and copied at the end of
+ * the frame, which is what makes the cutscene letterbox possible: the
+ * bands are not drawn, they are the part of the screen the copy does
+ * not reach. So what matters is the rectangle of the copy and what is
+ * on the screen outside it, and both are call-sequence facts.
+ */
+static long wg_l_BlitArg(int idx)
+{
+    return WG_l_Arg("glBlitFramebuffer", 0, idx);
+}
+
+static int wg_b_ClearedToBlack(void)
+{
+    int i;
+
+    for (i = 0; i < wg_callLen; i++)
+        if (strcmp(wg_calls[i].name, "glClear") == 0)
+            return 1;
+    return 0;
+}
+
+/* The scene target is made by GL_Init, which cannot run here -- it
+   wants a window -- so the case makes it the way Init does. Without
+   it the copy has nothing to read and does nothing, which is what the
+   first frame did before Init made it. */
+static void wg_SceneReady(void)
+{
+    GL_l_BindScene();
+}
+
+static void caseSceneCopy(void)
+{
+    printf("-- the scene is copied to the screen, letterboxed or not\n");
+
+    /* No letterbox: the whole height is copied and the screen is not
+       cleared first, because it is about to be covered entirely. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    wg_callLen = 0;
+    GL_Flip();
+
+    okEq(WG_i_Count("glBlitFramebuffer"), 1, "one copy");
+    okEq(wg_l_BlitArg(1), 0, "from the bottom of the scene");
+    okEq(wg_l_BlitArg(3), gl_state.height, "to the top of it");
+    okEq(wg_l_BlitArg(5), 0, "onto the bottom of the screen");
+    okEq(wg_l_BlitArg(7), gl_state.height, "and the top");
+    okEq(wg_l_BlitArg(2), gl_state.width, "the full width");
+    ok(!wg_b_ClearedToBlack(), "and the screen is not cleared first");
+
+    /* The letterbox: a strip, with the screen cleared so the bands are
+       black rather than the frame before's picture. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 1;
+    tweak_ae_nobands = 0;
+    D3D_gf_CutsceneBand = 0.25f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    okEq(WG_i_Count("glBlitFramebuffer"), 1, "one copy again");
+    ok(wg_b_ClearedToBlack(), "the screen is cleared, so the bands are"
+                              " black");
+    /* A quarter of the screen each way, measured from the bottom
+       because that is where OpenGL's window origin is. */
+    okEq(wg_l_BlitArg(1), gl_state.height / 4, "the strip starts a quarter up");
+    okEq(wg_l_BlitArg(3), gl_state.height - gl_state.height / 4,
+         "and ends a quarter down");
+    okEq(wg_l_BlitArg(5), wg_l_BlitArg(1), "onto the same place on the"
+                                           " screen");
+    okEq(wg_l_BlitArg(7), wg_l_BlitArg(3), "at the same height, so it is"
+                                           " not stretched");
+
+    /* The tweak takes the letterbox away again. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 1;
+    tweak_ae_nobands = 1;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(wg_l_BlitArg(3), gl_state.height,
+         "the tweak gives the whole height back");
+    tweak_ae_nobands = 0;
+    CIN_Bands = 0;
+    D3D_gf_CutsceneBand = 0.10416666f;
+
+    /* The overlay goes on the screen, after the copy -- not into the
+       scene target, where the letterbox would cut it off. */
+    reset();
+    wg_SceneReady();
+    wg_callLen = 0;
+    GL_Flip();
+    {
+        int blit = WG_i_At("glBlitFramebuffer");
+        int ovl = WG_i_At("OVL_Draw");
+
+        ok(blit >= 0 && ovl > blit,
+           "the overlay is drawn after the copy, so it lands on the"
+           " screen");
+    }
+
+    /* And the scene target is bound again at the end, so the next
+       frame draws into it without anything having to switch it on. */
+    {
+        int i;
+        long last = -1;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glBindFramebuffer") == 0)
+                last = (long)wg_calls[i].arg[1];
+        ok(last > 0, "the frame ends with the scene target bound, not the"
+                     " screen");
+    }
+}
+
 static void caseFlipDrawsOverlay(void)
 {
     printf("-- the frame ends by drawing the overlay\n");
@@ -2422,10 +2561,15 @@ static void caseTargetsBind(void)
     okEq(WG_l_Arg("glViewport", 0, 2), 126, "leaving a one-pixel border");
     okEq(WG_l_Arg("glViewport", 0, 3), 126, "on all four sides");
 
-    /* And back. */
+    /* And back -- to the scene target, which is what the world draws
+       into, and not to the screen. The screen is bound only for the
+       copy at the end of a frame, so restoring to it would have the
+       rest of the frame drawn where the copy is about to overwrite
+       it. */
     wg_callLen = 0;
     GL_SetRenderTargetAndBackupPreviousSDW(-1, 0);
-    okEq(WG_l_Arg("glBindFramebuffer", 0, 1), 0, "the window is bound again");
+    ok(WG_l_Arg("glBindFramebuffer", 0, 1) > 0,
+       "the scene target is bound again, not the screen");
     okEq(WG_l_Arg("glViewport", 0, 0), 37, "and the viewport comes back");
     okEq(WG_l_Arg("glViewport", 0, 1), 11, "exactly");
     okEq(WG_l_Arg("glViewport", 0, 2), 500, "as it was");
@@ -2677,10 +2821,10 @@ static void caseShadowSequence(void)
        "after a target was bound");
     okEq(gl_material.textured, 0, "untextured, as the pass asks");
 
-    /* And the window is back, with its viewport, before anything else
-       is drawn. */
-    okEq(WG_l_Arg("glBindFramebuffer", WG_i_Count("glBindFramebuffer") - 1, 1),
-         0, "and the window is bound again at the end");
+    /* And the scene target is back, with its viewport, before anything
+       else is drawn. Not the screen: see the restore case above. */
+    ok(WG_l_Arg("glBindFramebuffer", WG_i_Count("glBindFramebuffer") - 1, 1) > 0,
+       "and the scene target is bound again at the end");
     okEq((long)((float*)&gl_projMtx)[0], 7, "with the projection restored");
     ok(wg_viewport[2] == 800 && wg_viewport[3] == 600,
        "and the viewport back to the window's");
@@ -3103,6 +3247,7 @@ int main(void)
     caseTextBatch();
     caseRefusals();
     caseTeardown();
+    caseSceneCopy();
     caseFlipDrawsOverlay();
     caseGeometry();
     caseGeometryNormals();

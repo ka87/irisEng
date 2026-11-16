@@ -128,6 +128,10 @@ typedef struct __GLsync* GLsync;
 /* Framebuffer objects: a renderer draws into one of these instead of
    the window when it needs the result as a texture. */
 #define GL_FRAMEBUFFER                    0x8D40
+/* The two halves of a framebuffer binding, for the copy that puts the
+   scene on the screen. */
+#define GL_READ_FRAMEBUFFER               0x8CA8
+#define GL_DRAW_FRAMEBUFFER               0x8CA9
 #define GL_FRAMEBUFFER_BINDING            0x8CA6
 #define GL_RENDERBUFFER                   0x8D41
 #define GL_COLOR_ATTACHMENT0              0x8CE0
@@ -313,6 +317,12 @@ typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint 
                                      (target, attachment, texTarget, texture,  \
                                       level))                                 \
     X(GLenum, glCheckFramebufferStatus, (GLenum target), (target))            \
+    X(void,  glBlitFramebuffer,      (GLint sx0, GLint sy0, GLint sx1,         \
+                                      GLint sy1, GLint dx0, GLint dy0,        \
+                                      GLint dx1, GLint dy1,                   \
+                                      GLbitfield mask, GLenum filter),        \
+                                     (sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1, \
+                                      mask, filter))                          \
     X(void,  glGenRenderbuffers,     (GLsizei n, GLuint* out), (n, out))      \
     X(void,  glDeleteRenderbuffers,  (GLsizei n, const GLuint* in), (n, in))  \
     X(void,  glBindRenderbuffer,     (GLenum target, GLuint rb),               \
