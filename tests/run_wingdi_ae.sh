@@ -74,11 +74,15 @@ $CC $CFLAGS -c math.c -o "$OUT/wingdi_ae.math.o"
 # and the frozen copy carries its own inlined version, so one copy
 # linked in serves the rewrite and the frozen copy is unaffected.
 $CC $CFLAGS -c depthblur.c -o "$OUT/wingdi_ae.dpb.o"
+# watersmooth.c holds the water smoothing's rectangles and steps for
+# both renderers. A move out of this file, so the frozen copy still
+# has them inline and the water-blur cases compare the two.
+$CC $CFLAGS -c watersmooth.c -o "$OUT/wingdi_ae.wsm.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/wingdi_ae_mocks.c \
     -o "$OUT/wingdi_ae.mocks.o"
 $CC $CFLAGS -include tests/wingdi_ae_sdk.h -c tests/test_wingdi_ae.c \
     -o "$OUT/wingdi_ae.drv.o"
 $CC "$OUT/wingdi_ae.new.o" "$OUT/wingdi_ae.base.o" "$OUT/wingdi_ae.math.o" \
-    "$OUT/wingdi_ae.dpb.o" "$OUT/wingdi_ae.mocks.o" "$OUT/wingdi_ae.drv.o" \
+    "$OUT/wingdi_ae.dpb.o" "$OUT/wingdi_ae.wsm.o" "$OUT/wingdi_ae.mocks.o" "$OUT/wingdi_ae.drv.o" \
     -o "$OUT/wingdi_ae" -lm
 "$OUT/wingdi_ae"

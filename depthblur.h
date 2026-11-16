@@ -174,3 +174,13 @@ int DPB_i_BlurResultSlot(void);
  * `offsets` takes 2 * DPB_BLUR_TAPS floats and `weights` takes
  * DPB_BLUR_TAPS; either may be null. */
 void DPB_BlurTaps(const tDpb_BlurPass* pass, float* offsets, float* weights);
+
+/* The weights on their own, which is the part that is not about the
+ * depth blur at all.
+ *
+ * They come from a run of hardware stages each mixing its own sample
+ * into what came before by one fixed factor, and the water's surface
+ * smoothing is built the same way out of the same factor -- so it asks
+ * for them here rather than carrying a second copy of the arithmetic.
+ * Takes DPB_BLUR_TAPS floats. */
+void DPB_ChainWeights(float* weights);

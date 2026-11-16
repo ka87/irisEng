@@ -193,6 +193,11 @@ int   tweak_water_blur_normal = 0;
 float tweak_water_min_bv;
 int   tweak_water_clip = 1;
 float tweak_water_off;
+/* The smoothing: on by default, as dbg.c has it, with both amounts at
+   the nought that makes every tap coincide. */
+int   tweak_water_smooth = 1;
+float tweak_water_smoothx;
+float tweak_water_smoothy;
 
 static int   wg_waterBlurCalls;
 static void* wg_waterBlurArg;
@@ -355,6 +360,10 @@ static void glr_Reset(void)
     tweak_water_off = 0.0f;
     tweak_water_min_bv = 0.0f;
     waterHeight = 0.0f;
+    tweak_water_smooth = 1;
+    tweak_water_smoothx = 0.0f;
+    tweak_water_smoothy = 0.0f;
+    GL_l_ForgetWaterSmooth();
 
     /* The two switches that turn the whole after-effects chain off,
        both back to the off the game starts them at. */
@@ -4773,6 +4782,289 @@ static void caseWaterReflectionMirrored(void)
                         " maps onto itself rather than being shifted");
 }
 
+/* ------------------------------------------ the surface smoothing
+ *
+ * Drawn on a real driver and read back. The reflection is given a
+ * pattern, blurred, and read again: a blur that works mixes
+ * neighbouring pixels, and one that does nothing leaves the pattern
+ * exactly as it was.
+ *
+ * The second part is the one worth having, because the amounts start
+ * at nought and nought is the shipping default -- so "the blur runs"
+ * and "the blur changes nothing" both have to be true at once, and a
+ * blur that quietly smeared the reflection by a texel on a default run
+ * would be a defect nobody would think to look for.
+ */
+
+static void glr_SmoothPatternIntoReflection(void)
+{
+    int row;
+    int x;
+
+    if (!glr_waterPattern)
+        glr_waterPattern = (unsigned char*)malloc(512 * 512 * 4);
+    /* Hard vertical edges every 128 pixels, and the width is measured
+       rather than chosen: the blur runs twice, each pass reaching one
+       step either side, and a step of the amount used below is a
+       little over sixteen texels -- so the two passes together reach
+       about thirty-two. Bands of 64 put their own centre inside that
+       reach, which made "the middle of a band is untouched" false; at
+       128 the centre is sixty-four texels clear. */
+    for (row = 0; row < 512; row++)
+        for (x = 0; x < 512; x++)
+        {
+            unsigned char* p = &glr_waterPattern[(row * 512 + x) * 4];
+            int            band = (x / 128) & 1;
+
+            p[0] = (unsigned char)(band ? 0xFF : 0x00);
+            p[1] = (unsigned char)(band ? 0xFF : 0x00);
+            p[2] = (unsigned char)(band ? 0xFF : 0x00);
+            p[3] = 0xFF;
+        }
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_waterColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_waterPattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+static void caseWaterSmoothDoesNothingByDefault(void)
+{
+    int rgba[4];
+
+    printf("-- at the shipping amounts the blur leaves the picture alone\n");
+
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x00000000, 0.9f);
+    /* Both amounts at nought, which is what dbg.c ships. */
+    tweak_water_smooth = 1;
+    tweak_water_smoothx = 0.0f;
+    tweak_water_smoothy = 0.0f;
+    GL_PrepareWaterRendering();
+    glr_SmoothPatternIntoReflection();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    GL_DrawWater(&glr_water);
+
+    /* Every tap lands in the same place, so the four weights sum to
+       one over one sample and the picture comes back as it went in --
+       at an edge as much as in the middle. */
+    glr_AeAt(gl_waterFbo, 64, 100, rgba);
+    okEq(rgba[0], 0x00, "a dark band is still dark");
+    glr_AeAt(gl_waterFbo, 192, 100, rgba);
+    okEq(rgba[0], 0xFF, "a light band is still light");
+    /* The pixel either side of an edge, which is where a blur of even
+       one texel would show. The first edge is at 128. */
+    glr_AeAt(gl_waterFbo, 127, 100, rgba);
+    okEq(rgba[0], 0x00, "and the pixel before an edge is untouched");
+    glr_AeAt(gl_waterFbo, 128, 100, rgba);
+    okEq(rgba[0], 0xFF, "as is the one after it");
+}
+
+static void caseWaterSmoothBlurs(void)
+{
+    int rgba[4];
+    int atEdge;
+    int inMiddle;
+
+    printf("-- and with an amount set it mixes neighbours\n");
+
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x00000000, 0.9f);
+    tweak_water_smooth = 1;
+    /* Wide enough to cross the bands: a step is the amount over 511,
+       so sixteen is about thirty texels of a 512 picture. */
+    tweak_water_smoothx = 16.0f;
+    tweak_water_smoothy = 0.0f;
+    GL_PrepareWaterRendering();
+    glr_SmoothPatternIntoReflection();
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    GL_DrawWater(&glr_water);
+
+    /* Two readings, because "it changed" on its own would also be true
+       of a blur that wrote rubbish. At an edge the result has to be
+       between the two band colours; deep inside a wide band it has to
+       still be that band's colour, because the taps there all land on
+       the same band. */
+    glr_AeAt(gl_waterFbo, 128, 100, rgba);
+    atEdge = rgba[0];
+    glr_AeAt(gl_waterFbo, 64, 100, rgba);
+    inMiddle = rgba[0];
+
+    ok(atEdge > 0x10 && atEdge < 0xF0, "at a band edge the result is"
+                                       " between the two colours");
+    okNear(inMiddle, 0x00, "and the middle of a dark band, sixty-four"
+                           " texels from either edge, is still dark");
+
+    tweak_water_smoothx = 0.0f;
+}
+
+/* A single bright column on black, for measuring where the taps land.
+   A delta is the one pattern whose blurred profile says the offsets and
+   the weights outright: each tap puts a copy of the column at its own
+   offset, scaled by its own weight. */
+static void glr_SmoothColumnIntoReflection(int column)
+{
+    int row;
+    int x;
+
+    if (!glr_waterPattern)
+        glr_waterPattern = (unsigned char*)malloc(512 * 512 * 4);
+    for (row = 0; row < 512; row++)
+        for (x = 0; x < 512; x++)
+        {
+            unsigned char* p = &glr_waterPattern[(row * 512 + x) * 4];
+            int            on = (x == column);
+
+            p[0] = (unsigned char)(on ? 0xFF : 0x00);
+            p[1] = (unsigned char)(on ? 0xFF : 0x00);
+            p[2] = (unsigned char)(on ? 0xFF : 0x00);
+            p[3] = 0xFF;
+        }
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_waterColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_waterPattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+/* Horizontal bands, for the vertical blur. 128 tall, as the vertical
+   ones are wide and for the same measured reason. */
+static void glr_SmoothRowsIntoReflection(void)
+{
+    int row;
+    int x;
+
+    if (!glr_waterPattern)
+        glr_waterPattern = (unsigned char*)malloc(512 * 512 * 4);
+    for (row = 0; row < 512; row++)
+        for (x = 0; x < 512; x++)
+        {
+            unsigned char* p = &glr_waterPattern[(row * 512 + x) * 4];
+            int            band = (row / 128) & 1;
+
+            p[0] = (unsigned char)(band ? 0xFF : 0x00);
+            p[1] = (unsigned char)(band ? 0xFF : 0x00);
+            p[2] = (unsigned char)(band ? 0xFF : 0x00);
+            p[3] = 0xFF;
+        }
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_waterColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_waterPattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+/* An amount whose step is a whole number of texels, so that nothing in
+   these two cases depends on how the sampler interpolates. A step is
+   the amount over the rectangle's last index -- 511 -- and the texture
+   is 512 across, so 511/32 gives exactly a thirty-second, which is
+   sixteen texels. */
+#define GLR_SMOOTH_AMOUNT (511.0f / 32.0f)
+
+static void glr_SmoothSetUp(float amountX, float amountY)
+{
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_WaterFixture(0x20, 0x40, 0x80, 0xFF, 0x00000000, 0.9f);
+    tweak_water_smooth = 1;
+    tweak_water_smoothx = amountX;
+    tweak_water_smoothy = amountY;
+    GL_PrepareWaterRendering();
+}
+
+static void glr_SmoothRun(void)
+{
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, glr_fbo);
+    GLFN_glViewport(0, 0, GLR_W, GLR_H);
+    GL_DrawWater(&glr_water);
+}
+
+static void caseWaterSmoothTapsAcross(void)
+{
+    int left[4];
+    int right[4];
+    int middle[4];
+
+    printf("-- where the across taps land, and that they are not equal\n");
+
+    /* A single bright column, blurred sideways only. Each tap puts a
+       copy of the column sixteen texels from where it started, scaled
+       by its own weight -- so the profile either side of the column
+       says both where the taps are and what they weigh. */
+    glr_SmoothSetUp(GLR_SMOOTH_AMOUNT, 0.0f);
+    glr_SmoothColumnIntoReflection(256);
+    glr_SmoothRun();
+
+    glr_AeAt(gl_waterFbo, 256 - 16, 100, left);
+    glr_AeAt(gl_waterFbo, 256, 100, middle);
+    glr_AeAt(gl_waterFbo, 256 + 16, 100, right);
+
+    /* **Both** sides, which is what says the two offsets have opposite
+       signs. A pair of taps on the same side leaves one side black,
+       and that scored clean while the only assertion here was a range
+       at a band edge. */
+    ok(left[0] > 0, "a copy lands one step to one side");
+    ok(right[0] > 0, "and another one step to the other");
+    ok(middle[0] > 0, "with the column itself still there");
+
+    /* And the two sides differ, which is what says the weights are the
+       mixing chain's and not a quarter each. Equal weights make the
+       profile symmetric, and that also scored clean. */
+    ok(left[0] != right[0], "and the two sides differ, so the weights"
+                            " are not equal");
+    tweak_water_smoothx = 0.0f;
+}
+
+static void caseWaterSmoothRampDown(void)
+{
+    int nearBottom[4];
+    int nearTop[4];
+
+    printf("-- the vertical blur opens out towards the bottom\n");
+
+    /* Horizontal bands, blurred vertically only. Nothing before this
+       case set the vertical amount at all, so every breakage of the
+       ramp scored clean -- and the first version of this case had its
+       two ends the wrong way round and still passed, which is how the
+       shader's mirroring bug came to light.
+     *
+     * The two rows are **taken from a model of both passes**, not
+     * estimated. A step is sixteen rows at the amount below, the
+     * offsets reach three steps scaled by how far down the row is, and
+     * they reach downward -- so a row above a band edge mixes with the
+     * band beneath it. Estimating one pass was not enough twice over:
+     * the second pass roughly doubles the reach, and a distance that
+     * looked clear of it was not.
+     *
+     * Thirty rows above an edge, with everything else equal:
+     *
+     *     near the bottom   row 158   about 31 of 255
+     *     near the top      row 414   255, untouched
+     *
+     * which is the ramp, stated as one distance with two answers. */
+    glr_SmoothSetUp(0.0f, GLR_SMOOTH_AMOUNT);
+    glr_SmoothRowsIntoReflection();
+    glr_SmoothRun();
+
+    /* Stated exactly, not bounded. The model says 31 of 255 and the
+       driver gives 32; a bound of "less than 96" let two breakages
+       through -- one tap stepping the wrong way, and the farthest tap
+       stopping a step short -- because both leave the row darkish
+       without leaving it where it belongs. An exact figure pins every
+       tap's distance and every weight at once, which is what this one
+       line is for. */
+    glr_AeAt(gl_waterFbo, 100, 158, nearBottom);
+    okNear(nearBottom[0], 32, "thirty rows above an edge comes back at"
+                              " the figure the taps and weights give");
+
+    glr_AeAt(gl_waterFbo, 100, 414, nearTop);
+    okNear(nearTop[0], 0xFF, "and the same distance near the top is left"
+                             " alone");
+
+    tweak_water_smoothy = 0.0f;
+}
+
 int main(void)
 {
     void* p;
@@ -4865,6 +5157,10 @@ int main(void)
     caseWaterReflectionDraws();
     caseWaterReflectionClipped();
     caseWaterReflectionMirrored();
+    caseWaterSmoothDoesNothingByDefault();
+    caseWaterSmoothBlurs();
+    caseWaterSmoothTapsAcross();
+    caseWaterSmoothRampDown();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();

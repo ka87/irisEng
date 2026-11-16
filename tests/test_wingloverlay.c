@@ -562,7 +562,17 @@ static void GL_APIENTRY MK_glGetIntegerv(GLenum pname, GLint* data)
     int i;
 
     WG_Record("glGetIntegerv", 1, (long long)pname);
-    if (pname != GL_VIEWPORT || !data)
+    if (!data)
+        return;
+    /* The framebuffer as well as the viewport: the water's smoothing
+       asks for both so that it can put the frame back exactly as it
+       found it, rather than assuming what was bound. */
+    if (pname == GL_FRAMEBUFFER_BINDING)
+    {
+        data[0] = (GLint)wg_boundFbo;
+        return;
+    }
+    if (pname != GL_VIEWPORT)
         return;
     for (i = 0; i < 4; i++)
         data[i] = wg_viewport[i];
@@ -1036,6 +1046,11 @@ int   tweak_water_blur_normal = 0;
 float tweak_water_min_bv;
 int   tweak_water_clip = 1;
 float tweak_water_off;
+/* The smoothing: on by default, as dbg.c has it, with both amounts at
+   the nought that makes every tap coincide. */
+int   tweak_water_smooth = 1;
+float tweak_water_smoothx;
+float tweak_water_smoothy;
 
 static int   wg_waterBlurCalls;
 static void* wg_waterBlurArg;
@@ -1104,6 +1119,10 @@ static void reset(void)
     tweak_water_off = 0.0f;
     tweak_water_min_bv = 0.0f;
     waterHeight = 0.0f;
+    tweak_water_smooth = 1;
+    tweak_water_smoothx = 0.0f;
+    tweak_water_smoothy = 0.0f;
+    GL_l_ForgetWaterSmooth();
     /* And the two colour parameters back to neutral, which is a half
        for both of them. */
     unkAEFunc2Param = 0.5f;
@@ -4796,6 +4815,11 @@ static void caseWaterStrip(void)
 
     reset();
     wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    /* The smoothing off, so that what this counts is the strip's own
+       upload policy. Left on, its quad goes up once as well and the
+       first frame's count is three -- a true number about a different
+       thing, and it belongs to the smoothing's own cases. */
+    tweak_water_smooth = 0;
     GL_PrepareWaterRendering();
 
     wg_callLen = 0;
@@ -5587,6 +5611,174 @@ static void caseWaterReflectionClip(void)
                                         " drawn");
 }
 
+/* ------------------------------------------ the surface smoothing
+ *
+ * The reflection blurred before the surface reads it. The rectangles,
+ * the steps and the taps are watersmooth.c's and tests/run_wingdi_ae.sh
+ * compares them against the other renderer; what these ask is this
+ * renderer's part -- whether the two passes go the right way round,
+ * what they are switched on and off by, and what the shader is told.
+ */
+
+static void caseWaterSmoothGates(void)
+{
+    printf("-- when the reflection is blurred, and when it is not\n");
+
+    /* On by default, so a surface draw blurs first. Two passes, so two
+       draws before the surface's own. */
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    tweak_water_smooth = 1;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    okEq(WG_i_Count("glDrawArrays"), 2, "the blur is two passes");
+    okEq(WG_i_Count("glDrawElements"), 1, "and the surface is still drawn"
+                                          " once");
+
+    /* Off, and then nothing is blurred and the surface still draws. */
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    tweak_water_smooth = 0;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    okEq(WG_i_Count("glDrawArrays"), 0, "with the tweak off there is no"
+                                        " blur");
+    okEq(WG_i_Count("glDrawElements"), 1, "and the surface draws anyway");
+    tweak_water_smooth = 1;
+}
+
+static void caseWaterSmoothPasses(void)
+{
+    int first;
+    int second;
+
+    printf("-- out to the scratch and back again\n");
+
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+
+    first = wg_i_CallAt("glDrawArrays", 0);
+    second = wg_i_CallAt("glDrawArrays", 1);
+    ok(first >= 0 && second > first, "there are two passes in order");
+
+    /* The first writes the scratch and the second writes the
+       reflection back -- which is what leaves the result where the
+       surface will look for it. A blur that wrote the scratch twice,
+       or the reflection twice, would read its own output. */
+    okEq(wg_l_DrawTarget(0), (long)gl_wsmFbo,
+         "the first pass writes the scratch");
+    okEq(wg_l_DrawTarget(1), (long)gl_waterFbo,
+         "and the second writes the reflection back");
+
+    /* And each reads the other one. The texture bound before a pass is
+       what it samples, so a pass reading its own target is a pass
+       sampling what it is writing. */
+    {
+        long firstSrc = wg_l_TextureBefore(GL_TEXTURE0, first);
+        long secondSrc = wg_l_TextureBefore(GL_TEXTURE0, second);
+
+        okEq(firstSrc, (long)gl_waterColour, "the first reads the"
+                                             " reflection");
+        okEq(secondSrc, (long)gl_wsmColour, "and the second reads the"
+                                            " scratch");
+    }
+
+    /* Both at the reflection's size, which is what the shared code
+       says the rectangles are when the scratch is square. */
+    {
+        int at = wg_i_CallAt("glViewport", 0);
+        int i;
+        int passes = 0;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glViewport") == 0
+                && wg_calls[i].arg[2] == 512 && wg_calls[i].arg[3] == 512)
+                passes++;
+        (void)at;
+        ok(passes >= 2, "both passes cover the whole of their target");
+    }
+}
+
+static void caseWaterSmoothUniforms(void)
+{
+    tWsm_Tap taps[WSM_TAPS];
+    int      at;
+
+    printf("-- the steps and the weights the shader is told\n");
+
+    /* Amounts the console can set. Both start at nought, where every
+       tap coincides and the blur is two copies -- so a case that wants
+       to see a step has to set them. */
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    tweak_water_smoothx = 2.0f;
+    tweak_water_smoothy = 5.0f;
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+
+    /* A step is the amount over the rectangle's last index, which for
+       a 512 square is 511 -- asked of the shared code rather than
+       written out, because that is the figure the other renderer was
+       compared against. */
+    at = wg_i_CallAt("glUniform1f", 0);
+    ok(at >= 0, "a step reaches the program");
+    {
+        int i;
+        int sawU = 0;
+        int sawV = 0;
+        long wantU = wg_l_Scaled(WSM_f_Step(2.0f, 511));
+        long wantV = wg_l_Scaled(WSM_f_Step(5.0f, 511));
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glUniform1f.scaled") == 0)
+            {
+                if (wg_calls[i].arg[1] == wantU)
+                    sawU = 1;
+                if (wg_calls[i].arg[1] == wantV)
+                    sawV = 1;
+            }
+        ok(sawU, "the across step is the amount over the last index");
+        ok(sawV, "and the down step likewise, which is a different"
+                 " number");
+    }
+
+    /* The weights, which are not a quarter each. */
+    WSM_Taps(taps, 0.0f, 0.0f);
+    {
+        int  i;
+        int  found = -1;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glUniform4f.scaled") == 0
+                && wg_calls[i].arg[1] == wg_l_Scaled(taps[0].weight))
+            {
+                found = i;
+                break;
+            }
+        ok(found >= 0, "the four weights reach the program");
+        if (found >= 0)
+        {
+            okEq(wg_calls[found].arg[2], wg_l_Scaled(taps[1].weight),
+                 "the second");
+            okEq(wg_calls[found].arg[3], wg_l_Scaled(taps[2].weight),
+                 "the third");
+            okEq(wg_calls[found].arg[4], wg_l_Scaled(taps[3].weight),
+                 "and the fourth");
+            ok(wg_calls[found].arg[1] != wg_calls[found].arg[4],
+               "and they are not all the same, which is what the"
+               " mixing chain makes them");
+        }
+    }
+    tweak_water_smoothx = 0.0f;
+    tweak_water_smoothy = 0.0f;
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
@@ -5632,6 +5824,9 @@ int main(void)
     caseWaterReflectionGates();
     caseWaterReflectionAim();
     caseWaterReflectionClip();
+    caseWaterSmoothGates();
+    caseWaterSmoothPasses();
+    caseWaterSmoothUniforms();
     caseViewport();
     caseNoViewport();
     caseClipControl();

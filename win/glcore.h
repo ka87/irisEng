@@ -120,6 +120,7 @@ typedef struct __GLsync* GLsync;
 #define GL_LINEAR_MIPMAP_LINEAR           0x2703
 #define GL_CLAMP_TO_EDGE                  0x812F
 #define GL_REPEAT                         0x2901
+#define GL_MIRRORED_REPEAT                0x8370
 #define GL_TEXTURE_MIN_FILTER             0x2801
 #define GL_TEXTURE_MAG_FILTER             0x2800
 #define GL_TEXTURE_WRAP_S                 0x2802

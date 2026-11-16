@@ -267,9 +267,17 @@ static void RUN(int caseId)
                            AE_Factor(k, 1) * 0.01f);
         X(D3D_WaterBlur)(AEMOCK_tex[6], &src, AEMOCK_tex[7], &dst,
                          AE_Factor(k, 0), AE_Factor(k, 1), 1.0f + AE_Factor(k, 2));
-        /* both arms of the two size tests inside DoBlurWaterTexture */
-        AEMOCK_descWidth = (k & 1) ? 1024 : 256;
-        AEMOCK_descHeight = (k & 2) ? 768 : 384;
+        /* All three arms of the two size tests inside
+           DoBlurWaterTexture. Two were not enough: the tests are
+           "no larger than 512", so a target of exactly 512 is the only
+           place a strict comparison differs from theirs, and the two
+           values here were 1024 and 256. Both strictness mutants
+           scored clean.
+         *
+           Sixteen cases each way, counted rather than assumed. */
+        AEMOCK_descWidth = (k % 3u) == 0 ? 256 : ((k % 3u) == 1 ? 512 : 1024);
+        AEMOCK_descHeight = ((k >> 2) % 3u) == 0 ? 384
+                            : (((k >> 2) % 3u) == 1 ? 512 : 768);
         waterTexture = AEMOCK_tex[8];
         X(D3D_DoBlurWaterTexture)();
         AEMOCK_descWidth = 640;
