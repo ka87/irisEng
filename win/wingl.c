@@ -664,7 +664,16 @@ static GLint      gl_geoUVMtx = -1;
    the engine keeps normals in a stream of their own that this renderer
    does not upload -- so that mode is reported once and drawn as mode
    nought. */
-static int gl_uvSaidNoNormal;
+static GLuint gl_geoNrmBuffer;
+static Vec3*  gl_geoNrms;
+static int    gl_geoNrmMax;
+/* Whether the normal attribute's array is enabled, so it is switched
+   only when it changes: with the array disabled the shader reads the
+   generic value, which the other modes never look at. */
+static int    gl_geoNrmOn;
+/* Whether this draw has normals to upload, decided before the draw and
+   read inside it. */
+static int    gl_geoNrmWanted;
 
 /* ------------------------------------------------------------- fog
  *
@@ -755,6 +764,7 @@ static int GL_l_b_GeometryReady(void)
     gl_geoUVMtx = GL_i_ProgramUniform(&gl_geoProgram, "uUVMtx");
 
     GLFN_glGenBuffers(1, &gl_geoBuffer);
+    GLFN_glGenBuffers(1, &gl_geoNrmBuffer);
     GLFN_glGenVertexArrays(1, &gl_geoVao);
     if (!gl_geoBuffer || !gl_geoVao)
     {
@@ -780,6 +790,16 @@ static int GL_l_b_GeometryReady(void)
     GLFN_glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,
                                (GLsizei)sizeof(tGdi_TexturedVertex),
                                (const void*)(size_t)16);
+
+    /* The normals, in a buffer of their own because the engine keeps
+       them in an array of their own. Described here and left
+       disabled: only the projection that reads a normal turns it on,
+       and the sprites share this vertex array and have none. */
+    GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoNrmBuffer);
+    GLFN_glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE,
+                               (GLsizei)sizeof(Vec3), (const void*)(size_t)0);
+    GLFN_glDisableVertexAttribArray(3);
+    gl_geoNrmOn = 0;
     GLFN_glBindVertexArray(0);
 
     gl_geoReady = 1;
@@ -897,10 +917,17 @@ static void GL_l_ForgetGeometry(void)
         GL_ProgramFree(&gl_geoProgram);
         if (gl_geoBuffer)
             GLFN_glDeleteBuffers(1, &gl_geoBuffer);
+        if (gl_geoNrmBuffer)
+            GLFN_glDeleteBuffers(1, &gl_geoNrmBuffer);
         if (gl_geoVao)
             GLFN_glDeleteVertexArrays(1, &gl_geoVao);
     }
     gl_geoBuffer = 0;
+    gl_geoNrmBuffer = 0;
+    gl_geoNrmOn = 0;
+    free(gl_geoNrms);
+    gl_geoNrms = NULL;
+    gl_geoNrmMax = 0;
     gl_geoVao = 0;
     gl_geoViewProj = -1;
     gl_geoTex = -1;
@@ -991,7 +1018,7 @@ void GL_SetProjectionMatrix(tDDCamStruct* cam)
    they are the same draw with a different staging buffer behind
    them. */
 static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
-                            int b_depthBlur)
+                            int b_depthBlur, int b_normals)
 {
     if (!verts || count <= 0)
         return;
@@ -1070,24 +1097,20 @@ static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
         /* Modes 4 and 5 belong to the depth-blur pass, which has its
            own program and never reaches here. Mode 2 wants a normal
            there is none of. */
-        if (mode == 2)
-        {
-            if (!gl_uvSaidNoNormal)
-            {
-                gl_uvSaidNoNormal = 1;
-                DBG_OutputDebugString("GL: a material asked for the"
-                                      " camera-space normal projection,"
-                                      " which needs a normal this"
-                                      " renderer does not upload;"
-                                      " drawing the stored"
-                                      " coordinates\n");
-            }
+        /* Mode 2 reads the normal, which only a draw that has one
+           can. Without it the stored coordinate is drawn, which is
+           visibly unprojected rather than a normal invented from
+           nothing.
+
+           Asked of this draw's own answer and not of the attribute's
+           state: that state is switched further down this function, so
+           reading it here answered for the draw before -- which meant
+           the first chrome-mapped material of a frame was always drawn
+           unprojected. */
+        if (mode == 2 && !b_normals)
             mode = 0;
-        }
-        else if (mode != 1 && mode != 3)
-        {
+        else if (mode != 1 && mode != 2 && mode != 3)
             mode = 0;
-        }
         GLFN_glUniform1i(gl_geoUVMode, mode);
         if (mode != 0 && gl_geoUVMtx >= 0)
             GLFN_glUniformMatrix4fv(gl_geoUVMtx, 1, GL_FALSE,
@@ -1120,6 +1143,27 @@ static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
                              (GLfloat)(c & 0xFF) / 255.0f);
     }
     GLFN_glBindVertexArray(gl_geoVao);
+
+    /* The normals, switched rather than set every draw: the sprites
+       share this vertex array and have none, so leaving the attribute
+       enabled would have them read a buffer belonging to the last
+       piece of world geometry. */
+    if (b_normals != gl_geoNrmOn)
+    {
+        if (b_normals)
+            GLFN_glEnableVertexAttribArray(3);
+        else
+            GLFN_glDisableVertexAttribArray(3);
+        gl_geoNrmOn = b_normals;
+    }
+    if (b_normals)
+    {
+        GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoNrmBuffer);
+        GLFN_glBufferData(GL_ARRAY_BUFFER,
+                          (GLsizei)(sizeof(Vec3) * (size_t)count),
+                          gl_geoNrms, GL_STREAM_DRAW);
+    }
+
     GLFN_glBindBuffer(GL_ARRAY_BUFFER, gl_geoBuffer);
     GLFN_glBufferData(GL_ARRAY_BUFFER,
                       (GLsizei)(sizeof(tGdi_TexturedVertex) * (size_t)count),
@@ -1160,6 +1204,34 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
         gl_geoVertMax = needed;
     }
 
+    /* The normals, when the material's projection is the one that
+       reads them. The engine keeps them on the geometry rather than
+       handing them to the draw, which is where the other renderer
+       finds them too. */
+    gl_geoNrmWanted = 0;
+    if (GDI_gi_TextureUVMode == 2 && gpst_DX_stDD->GROGEO
+        && gpst_DX_stDD->GROGEO->normals)
+    {
+        if (needed > gl_geoNrmMax)
+        {
+            Vec3* grownNrm;
+
+            grownNrm = (Vec3*)realloc(gl_geoNrms,
+                                      sizeof(*grownNrm) * (size_t)needed);
+            if (grownNrm)
+            {
+                gl_geoNrms = grownNrm;
+                gl_geoNrmMax = needed;
+            }
+        }
+        if (needed <= gl_geoNrmMax)
+        {
+            GVX_BuildNormals(gl_geoNrms, chunks,
+                             gpst_DX_stDD->GROGEO->normals);
+            gl_geoNrmWanted = 1;
+        }
+    }
+
     bb = gpst_DX_stDD->bigBuffer;
     src.vertices = vertices;
     src.uvs = uvs;
@@ -1178,7 +1250,8 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
 
     GVX_BuildTriangles(gl_geoVerts, chunks, &src);
 
-    GL_l_DrawStaged(gl_geoVerts, needed, gl_material.b_depthBlur);
+    GL_l_DrawStaged(gl_geoVerts, needed, gl_material.b_depthBlur,
+                    gl_geoNrmWanted);
     return 0;
 }
 
@@ -1757,8 +1830,9 @@ int GL_DrawSprites(tGeoSprites* sprites, Vec3* positions, int num)
 
     GSP_Walk(sprites, &src, GL_l_EmitSprite, NULL);
 
-    /* Never the blur pass: it is the world's geometry only. */
-    GL_l_DrawStaged(gl_sprVerts, gl_sprVertNum, 0);
+    /* Never the blur pass, and never normals: both are the world's
+       geometry only. */
+    GL_l_DrawStaged(gl_sprVerts, gl_sprVertNum, 0, 0);
     return 0;
 }
 

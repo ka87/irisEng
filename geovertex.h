@@ -58,3 +58,23 @@ unsigned int GVX_ui_SolidColor(int mask, int alpha, unsigned int solidVertexColo
 void GVX_BuildTriangles(tGdi_TexturedVertex* out,
                         const struct sGeoTriangleChunks* chunks,
                         const tGvx_Source* src);
+
+/* The same walk, over the engine's normals.
+ *
+ * One material projection takes its texture coordinate from the
+ * camera-space normal, and a renderer that expands triangles into
+ * their own vertices needs the normals expanded the same way. The
+ * engine keeps them per vertex, indexed as the positions are, so this
+ * is the corner walk again with nothing else in it.
+ *
+ * It is a second walk rather than a second output of the first,
+ * because adding one would change a signature every caller and the
+ * differential test against the frozen renderer use. The two walks
+ * have to visit the same corners in the same order or the normals
+ * belong to the wrong vertices, and that is a property worth a test of
+ * its own rather than an argument.
+ *
+ * out must hold at least 3 * chunks->triangleNum of them. */
+void GVX_BuildNormals(Vec3* out,
+                      const struct sGeoTriangleChunks* chunks,
+                      const Vec3* normals);

@@ -259,7 +259,7 @@ static void glr_Reset(void)
     PC_AE_MASTER = 0;
     GDI_gi_TextureUVMode = 0;
     memset(&d3dTransformationMatrix[0], 0, sizeof(d3dTransformationMatrix[0]));
-    gl_uvSaidNoNormal = 0;
+    glr_dd.GROGEO = NULL;
     memset(&gl_fog, 0, sizeof(gl_fog));
     gl_fogSecondColor = 0;
     gl_fogSaidNoVertex = 0;
@@ -2257,11 +2257,219 @@ static void caseUVTransformedStored(void)
          "and the last row is not read for a stored coordinate");
 }
 
-static void caseUVNormalMode(void)
+/* The chrome projection: the coordinate comes from the camera-space
+ * normal.
+ *
+ * The engine keeps normals in an array on the geometry rather than
+ * handing them to the draw, which is where the other renderer finds
+ * them too, so a case has to put a geometry with normals in the
+ * display data. The normals are expanded per corner by the same walk
+ * the positions take -- a second walk over the same indices -- and the
+ * one thing that can go wrong there is the two disagreeing, which is
+ * what the first check below is about.
+ */
+static tGEOGRO glr_gro;
+static Vec3    glr_normals[4];
+
+/* Four normals, one per corner of the quad, each pointing a different
+   way -- so a normal that reached the wrong corner lands on a
+   different texel and the picture changes.
+ *
+ * Turned one corner round from the positions, deliberately. The
+ * quad's corners run anticlockwise from the bottom left and so would
+ * these if they matched it, which means a coordinate taken from the
+ * position instead of the normal would land on the same four texels in
+ * the same four places -- and that mutation passed until this. */
+static void glr_QuadNormals(void)
+{
+    memset(&glr_gro, 0, sizeof(glr_gro));
+    glr_normals[0].x =  1.0f; glr_normals[0].y = -1.0f; glr_normals[0].z = 0.0f;
+    glr_normals[1].x =  1.0f; glr_normals[1].y =  1.0f; glr_normals[1].z = 0.0f;
+    glr_normals[2].x = -1.0f; glr_normals[2].y =  1.0f; glr_normals[2].z = 0.0f;
+    glr_normals[3].x = -1.0f; glr_normals[3].y = -1.0f; glr_normals[3].z = 0.0f;
+    glr_gro.normals = glr_normals;
+    glr_gro.vertexNum = 4;
+    glr_dd.GROGEO = &glr_gro;
+}
+
+/* A view matrix that translates, with the quad moved the other way by
+   the same amount -- so the picture is where it would have been and
+   the camera-space positions are what they would have been, but the
+   view matrix now has a translation in it.
+ *
+ * That translation is the only thing that tells a normal transformed
+ * as a direction from one transformed as a point. With an identity
+ * view the two are the same vector, and that mutation passed until
+ * this. */
+static void glr_ChromeMatrices(float tx, float ty)
+{
+    Mtx4x4 view;
+    int    i;
+
+    MATH_SetIdentityMatrix(&view);
+    view.Pos.x = tx;
+    view.Pos.y = ty;
+    GL_SetViewMatrix(&view);
+    MATH_SetIdentityMatrix(&gl_projMtx);
+    GL_l_CombineMatrices();
+
+    for (i = 0; i < 4; i++)
+    {
+        glr_pos[i].x -= tx;
+        glr_pos[i].y -= ty;
+    }
+}
+
+/* The chrome transform as MAT_UV_Compute_Chrome builds it: a normal's
+   -1..1 mapped onto 0..1, with the half in the last row because a
+   generated coordinate's fourth component is one. */
+static void glr_ChromeMatrix(void)
 {
     float m[16];
 
-    printf("-- the projection this renderer has no normal for\n");
+    memset(m, 0, sizeof(m));
+    m[0] = 0.5f;                  /* u from the normal's x */
+    m[5] = -0.5f;                 /* v from its y, the other way up */
+    m[12] = 0.5f; m[13] = 0.5f;   /* the translation, in the last row */
+    glr_SetUVMatrix(m);
+}
+
+static void caseUVNormalWalk(void)
+{
+    tGeoTriangleChunkElem tris[2];
+    tGeoTriangleChunks    chunk;
+    tGdi_TexturedVertex   verts[6];
+    Vec3                  pos[4];
+    Vec3                  nrm[4];
+    Vec3                  out[6];
+    tGvx_Source           src;
+    int                   i;
+    int                   bad = 0;
+
+    printf("-- the normals are walked in the same order as the"
+           " positions\n");
+
+    /* Each position and each normal carries its own index, so the two
+       walks can be compared corner by corner rather than by eye. */
+    for (i = 0; i < 4; i++)
+    {
+        pos[i].x = (float)i; pos[i].y = 0.0f; pos[i].z = 0.0f;
+        nrm[i].x = (float)i; nrm[i].y = 0.0f; nrm[i].z = 0.0f;
+    }
+
+    /* Corners deliberately out of order and reused, so a walk that
+       happened to be sequential would not pass by accident. */
+    tris[0].v1 = 2; tris[0].v2 = 0; tris[0].v3 = 3;
+    tris[1].v1 = 1; tris[1].v2 = 3; tris[1].v3 = 2;
+    memset(&chunk, 0, sizeof(chunk));
+    chunk.triangleChunkElems = tris;
+    chunk.triangleNum = 2;
+
+    memset(&src, 0, sizeof(src));
+    src.vertices = pos;
+    src.solidColor = 0xFFFFFFFFu;
+
+    GVX_BuildTriangles(verts, &chunk, &src);
+    GVX_BuildNormals(out, &chunk, nrm);
+
+    for (i = 0; i < 6; i++)
+        if (verts[i].pos.x != out[i].x)
+            bad++;
+    okEq(bad, 0, "every corner's normal is the one its position came"
+                 " from");
+
+    /* And the walk really is non-trivial, or the check above would
+       pass for a walk that ignored the indices. */
+    ok(verts[0].pos.x == 2.0f && verts[1].pos.x == 0.0f,
+       "the corners are taken in the order the chunk names them");
+
+    /* No normals is a return, not a crash: a geometry can have none. */
+    memset(out, 0, sizeof(out));
+    GVX_BuildNormals(out, &chunk, NULL);
+    okEq((long)out[0].x, 0, "no normals, nothing written");
+    GVX_BuildNormals(NULL, &chunk, nrm);
+}
+
+static void caseUVFromNormal(void)
+{
+    int a;
+    int b;
+    int c;
+    int d;
+
+    printf("-- the chrome projection, from the camera-space normal\n");
+
+    glr_Reset();
+    glr_CornerTexture();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_QuadNormals();
+    /* Big enough to matter: the translation only shows if it moves the
+       sampled coordinate across a texel boundary, and this texture has
+       one boundary in each axis. A translation of a fifth of the
+       texture shifted every sample without any of them crossing, and
+       the mutation that transforms the normal as a point passed. */
+    glr_ChromeMatrices(1.0f, 0.6f);
+    glr_ChromeMatrix();
+
+    /* Flattened, so the only thing that can vary across the quad is a
+       coordinate taken from the normal. */
+    {
+        int i;
+
+        for (i = 0; i < 4; i++)
+        {
+            glr_uv[i].u = 0.0f;
+            glr_uv[i].v = 0.0f;
+        }
+    }
+
+    GDI_gi_TextureUVMode = 2;
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    a = glr_R(GLR_W / 2 - GLR_W / 8, GLR_H / 2 - GLR_H / 8);
+    b = glr_R(GLR_W / 2 + GLR_W / 8, GLR_H / 2 - GLR_H / 8);
+    c = glr_R(GLR_W / 2 - GLR_W / 8, GLR_H / 2 + GLR_H / 8);
+    d = glr_R(GLR_W / 2 + GLR_W / 8, GLR_H / 2 + GLR_H / 8);
+
+    /* The four quarters land on the four texels, one each, and in the
+       order the corner normals name: the texture's reds are 0x20,
+       0x60, 0xA0 and 0xE0, far enough apart that a filtered blend of
+       two is not mistakable for either.
+     *
+     * The exact four rather than "they differ": the stored
+       coordinates are flattened to nought, so a coordinate taken from
+       them would be one colour throughout -- but a normal that
+       reached the wrong corner, or a transform applied with the wrong
+       sign, also gives four different colours. */
+    /* Which quarter gets which texel depends on the texture's row
+       order and on which way up the readback is, so the permutation is
+       pinned from what the driver produces rather than predicted here.
+       What makes it meaningful is that it is a *different* permutation
+       from the one a coordinate taken from the position gives -- the
+       corner normals are turned one place round from the corner
+       positions on purpose, and the mutation that feeds the position
+       instead now fails. */
+    okNear(a, 0xA0, "the first quarter is its own texel");
+    okNear(b, 0x20, "the second");
+    okNear(c, 0xE0, "the third");
+    okNear(d, 0x60, "and the fourth, in the order the normals name");
+
+    /* And the four really are four, so none of the above is two
+       quarters agreeing by accident. */
+    ok(a != b && a != c && a != d && b != c && b != d && c != d,
+       "four quarters, four texels");
+    okEq(gl_geoNrmOn, 1, "with the normal attribute enabled for it");
+}
+
+static void caseUVNormalMissing(void)
+{
+    float m[16];
+
+    printf("-- the chrome projection with no normals to read\n");
 
     glr_Reset();
     glr_OneTexel(0x40, 0x80, 0xC0, 0xFF);
@@ -2270,8 +2478,11 @@ static void caseUVNormalMode(void)
     glr_BuildQuad();
     glr_IdentityMatrices();
 
-    /* A transform that would send every coordinate off the texture, so
-       that applying it to anything at all would show. */
+    /* A geometry with no normals at all, which is what the display
+       data holds for every other case. A transform that would send
+       every coordinate off the texture, so applying it to anything
+       would show. */
+    glr_dd.GROGEO = NULL;
     memset(m, 0, sizeof(m));
     m[12] = 50.0f; m[13] = 50.0f;
     glr_SetUVMatrix(m);
@@ -2281,12 +2492,62 @@ static void caseUVNormalMode(void)
     GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
     glr_Read();
 
-    /* Drawn as the stored coordinate, which with a one-texel texture
-       is that texel -- not the transform applied to a normal that is
-       not there, and not nothing at all. */
+    okEq(gl_geoNrmOn, 0, "the normal attribute is left off");
     okNear(glr_R(GLR_W / 2, GLR_H / 2), 0x40,
-           "it falls back to the stored coordinate");
-    okEq(gl_uvSaidNoNormal, 1, "and says so, once");
+           "and the stored coordinate is drawn rather than a normal"
+           " invented from nothing");
+}
+
+/* The sprites share the geometry's vertex array, so an attribute left
+   enabled by a piece of world geometry would have them reading its
+   normals. */
+static void caseUVNormalLeavesSpritesAlone(void)
+{
+    tGeoSpriteElem elems[1];
+    Vec3           pos[1];
+    tGeoSprites    sprites;
+    Mtx4x4         stack;
+
+    printf("-- the sprites are drawn after a chrome-mapped material\n");
+
+    glr_Reset();
+    glr_CornerTexture();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_QuadNormals();
+    glr_ChromeMatrices(1.0f, 0.6f);
+    glr_ChromeMatrix();
+    GDI_gi_TextureUVMode = 2;
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    okEq(gl_geoNrmOn, 1, "the normals are on");
+
+    elems[0].idx = 0;
+    elems[0].dummy = 0x3F00;
+    pos[0].x = 0.0f; pos[0].y = 0.0f; pos[0].z = 0.0f;
+    memset(&sprites, 0, sizeof(sprites));
+    sprites.num = 1;
+    sprites.spriteElems = elems;
+    sprites.globalSize = 1.0f;
+    sprites.globalRatio = 1.0f;
+    MATH_SetIdentityMatrix(&stack);
+    glr_dd.matrixStack.actMatrixElem = &stack;
+
+    /* The chrome case's view translates, and the sprite is at the
+       world origin rather than being moved to suit -- so the matrices
+       go back to identity first, as they would between one frame's
+       geometry and the next's sprites. */
+    glr_Begin();
+    glr_IdentityMatrices();
+    glr_SolidColour(0xFF, 0x20, 0x40, 0xFF);
+    GL_TextureInit(-1, 0, 0);
+    GL_DrawSprites(&sprites, pos, 1);
+    glr_Read();
+
+    okEq(gl_geoNrmOn, 0, "and the sprites turned them off again");
+    okNear(glr_R(GLR_W / 2, GLR_H / 2), 0xFF,
+           "the sprite is drawn in its own colour");
 }
 
 static void caseShadersCompile(void)
@@ -2387,7 +2648,10 @@ int main(void)
     caseUVStored();
     caseUVFromPosition();
     caseUVTransformedStored();
-    caseUVNormalMode();
+    caseUVNormalWalk();
+    caseUVFromNormal();
+    caseUVNormalMissing();
+    caseUVNormalLeavesSpritesAlone();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();

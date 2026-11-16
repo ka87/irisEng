@@ -6,6 +6,7 @@ in vec4  vColor;
 in vec2  vUV;
 in float vDepth;
 in vec3  vCam;
+in vec3  vNrm;
 out vec4 oColor;
 
 uniform sampler2D uTex;
@@ -15,20 +16,19 @@ uniform sampler2D uTex;
 //
 //   0  the stored coordinate, untransformed
 //   1  the camera-space position, transformed
+//   2  the camera-space normal, transformed -- chrome mapping
 //   3  the stored coordinate, transformed
 //
-// Mode 2 takes the camera-space normal and is not here: this
-// renderer's vertex carries no normal, so the renderer says so and
-// falls back to mode 0 rather than making one up.
-//
-// The two transformed modes do not agree on the input's shape, and
-// that is the engine's doing rather than a guess. A generated
-// coordinate is a point, so its fourth component is one and the
-// transform's last row is its translation. A stored coordinate is two
-// numbers, so the engine moves the translation up into the third row
-// before handing the matrix over -- which is only necessary if the
-// fourth component is zero there. So one is (x, y, z, 1) and the other
-// is (u, v, 1, 0).
+// The modes do not agree on the input's shape, and that is the
+// engine's doing rather than a guess. A generated coordinate is a
+// point or a direction, so its fourth component is one and the
+// transform's last row is its translation -- which the chrome
+// projection relies on, since it maps a normal's -1..1 onto 0..1 with
+// a half in that row. A stored coordinate is two numbers, so the
+// engine moves the translation up into the third row before handing
+// the matrix over, which is only necessary if the fourth component is
+// zero there. So two of them are (x, y, z, 1) and the third is
+// (u, v, 1, 0).
 uniform int  uUVMode;
 uniform mat4 uUVMtx;
 
@@ -36,6 +36,8 @@ vec2 TexCoord(void)
 {
     if (uUVMode == 1)
         return (uUVMtx * vec4(vCam, 1.0)).xy;
+    if (uUVMode == 2)
+        return (uUVMtx * vec4(vNrm, 1.0)).xy;
     if (uUVMode == 3)
         return (uUVMtx * vec4(vUV, 1.0, 0.0)).xy;
     return vUV;

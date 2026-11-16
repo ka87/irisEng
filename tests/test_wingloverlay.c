@@ -596,6 +596,11 @@ static void GL_APIENTRY MK_glUniform3f(GLint loc, GLfloat a, GLfloat b,
               (long long)(b * 255.0f + 0.5f), (long long)(c * 255.0f + 0.5f));
 }
 
+static void GL_APIENTRY MK_glDisableVertexAttribArray(GLuint index)
+{
+    WG_Record("glDisableVertexAttribArray", 1, (long long)index);
+}
+
 static GLuint GL_APIENTRY MK_glCreateShader(GLenum type)
 {
     WG_Record("glCreateShader", 1, (long long)type);
@@ -706,6 +711,7 @@ static void WG_AimThePointers(void)
     GLFN_glDrawArrays = MK_glDrawArrays;
     GLFN_glBufferData = MK_glBufferData;
     GLFN_glGenBuffers = MK_glGenBuffers;
+    GLFN_glDisableVertexAttribArray = MK_glDisableVertexAttribArray;
     GLFN_glUniform3f = MK_glUniform3f;
     GLFN_glReadPixels = MK_glReadPixels;
     GLFN_glFenceSync = MK_glFenceSync;
@@ -1303,6 +1309,98 @@ static void WG_BuildChunk(void)
     wg_bb.colorMask = 0;
     wg_bb.solidVertexColor = 0x00804020;
     gl_dd.bigBuffer = &wg_bb;
+}
+
+/* The normal attribute is switched off again, and the normals are
+ * uploaded only for the projection that reads them.
+ *
+ * Both are call-sequence properties rather than picture ones, which is
+ * why they are here and not in the render harness: a sprite drawn with
+ * the attribute still enabled reads a buffer that belongs to the last
+ * piece of world geometry and may be shorter than the sprite's own
+ * vertices, and nothing about the resulting picture is defined. The
+ * render harness watched the renderer's own bookkeeping instead, which
+ * a mutation that skipped the call alone slipped straight past.
+ */
+static tGEOGRO wg_gro;
+static Vec3    wg_normals[4];
+
+/* WG_l_Arg, further down this file, is the safe way to read a call's
+   argument: it answers -1 when there is no such call. The idiom used
+   around it dereferences what WG_pc_Call returns straight away, which
+   holds only while the count assertion above it passes -- under a
+   mutation that changes the count that is a crash instead of a
+   failure, which is how this case first reported two of them. */
+static long WG_l_Arg(const char* name, int nth, int arg);
+
+static void caseGeometryNormals(void)
+{
+    int i;
+
+    printf("-- the normal attribute is switched, not left on\n");
+
+    reset();
+    WG_BuildChunk();
+
+    /* One draw first, to get the program and its vertex array made:
+       that setup enables the three attributes the vertex has and
+       disables the normal's, and counting those as the draw's own was
+       how the first draft of this case failed. */
+    GDI_gi_TextureUVMode = 0;
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+
+    /* No chrome projection, so no normals: the upload is for the one
+       mode that reads them and not for every draw. */
+    wg_callLen = 0;
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+    okEq(WG_i_Count("glDisableVertexAttribArray"), 0,
+         "nothing to switch off when it was already off");
+    okEq(WG_i_Count("glBufferData"), 1,
+         "and only the vertices are uploaded");
+
+    /* And now with them. */
+    memset(&wg_gro, 0, sizeof(wg_gro));
+    for (i = 0; i < 4; i++)
+    {
+        wg_normals[i].x = (float)i;
+        wg_normals[i].y = 0.0f;
+        wg_normals[i].z = 1.0f;
+    }
+    wg_gro.normals = wg_normals;
+    wg_gro.vertexNum = 4;
+    gl_dd.GROGEO = &wg_gro;
+
+    gl_dd.GROGEO = &wg_gro;
+    GDI_gi_TextureUVMode = 2;
+    wg_callLen = 0;
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+    okEq(WG_i_Count("glEnableVertexAttribArray"), 1,
+         "the normal attribute is turned on for the chrome projection");
+    okEq(WG_l_Arg("glEnableVertexAttribArray", 0, 0), 3,
+         "and it is the normal's one");
+    /* Two uploads: the normals and the vertices. */
+    okEq(WG_i_Count("glBufferData"), 2,
+         "the normals are uploaded as well as the vertices");
+
+    /* A second draw of the same kind does not switch it again. */
+    wg_callLen = 0;
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+    okEq(WG_i_Count("glEnableVertexAttribArray"), 0,
+         "a second such draw does not turn it on again");
+
+    /* And a draw without them turns it off -- the call, not just the
+       bookkeeping. */
+    wg_callLen = 0;
+    GDI_gi_TextureUVMode = 0;
+    GL_DrawElementIndexedTriangles(&wg_chunk, wg_pos, wg_uv, 4);
+    okEq(WG_i_Count("glDisableVertexAttribArray"), 1,
+         "a draw without normals turns the attribute off");
+    okEq(WG_l_Arg("glDisableVertexAttribArray", 0, 0), 3,
+         "and it is the normal's one");
+    okEq(WG_i_Count("glBufferData"), 1,
+         "with only the vertices uploaded");
+
+    gl_dd.GROGEO = NULL;
 }
 
 static void caseGeometry(void)
@@ -2865,6 +2963,7 @@ int main(void)
     caseRefusals();
     caseTeardown();
     caseGeometry();
+    caseGeometryNormals();
     caseViewport();
     caseNoViewport();
     caseClipControl();

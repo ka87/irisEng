@@ -270,6 +270,7 @@ typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint 
     X(void,  glDeleteVertexArrays,   (GLsizei n, const GLuint* in), (n, in))  \
     X(void,  glBindVertexArray,      (GLuint array), (array))                 \
     X(void,  glEnableVertexAttribArray, (GLuint index), (index))              \
+    X(void,  glDisableVertexAttribArray, (GLuint index), (index))             \
     X(void,  glVertexAttribPointer,  (GLuint index, GLint size, GLenum type,   \
                                       GLboolean normalized, GLsizei stride,    \
                                       const void* offset),                     \

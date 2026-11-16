@@ -105,10 +105,19 @@ over -- which is only necessary if the fourth component is zero there.
 One is `(x, y, z, 1)` and the other `(u, v, 1, 0)`.
 
 Mode 2 takes the camera-space normal, which is how chrome mapping
-works. It is not here: the engine keeps normals in a vertex stream of
-their own, this renderer builds one interleaved vertex without them,
-and inventing a normal would be drawing something arbitrary. The
-renderer says so once and draws the stored coordinates.
+works. The engine keeps normals in an array on the geometry rather than
+handing them to the draw, so they come in a buffer of their own and
+`aNormal` is enabled only for a draw that has them -- with the array
+disabled the attribute reads the generic value, which the other modes
+never look at. A material that asks for this projection where the
+geometry has no normals is drawn as mode 0: visibly unprojected rather
+than built on a normal invented from nothing.
+
+The normal is transformed as a **direction**, with a fourth component
+of zero, so the view matrix's translation does not reach it. The
+texture transform then treats the result as a point, with a fourth
+component of one, because the chrome transform maps a normal's -1..1
+onto 0..1 with a half in its last row.
 
 ## Fog
 
