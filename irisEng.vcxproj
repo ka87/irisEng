@@ -365,6 +365,7 @@
     <ClCompile Include="water.c" />
     <ClCompile Include="watermesh.c" />
     <ClCompile Include="waterreflect.c" />
+    <ClCompile Include="aefade.c" />
     <ClCompile Include="watersmooth.c" />
     <ClCompile Include="ways.c" />
     <ClCompile Include="win\adpcm.c" />
@@ -613,6 +614,7 @@
     <ClInclude Include="water.h" />
     <ClInclude Include="watermesh.h" />
     <ClInclude Include="waterreflect.h" />
+    <ClInclude Include="aefade.h" />
     <ClInclude Include="watersmooth.h" />
     <ClInclude Include="ways.h" />
     <ClInclude Include="win\adpcm.h" />

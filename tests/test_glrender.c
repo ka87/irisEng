@@ -136,6 +136,21 @@ DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD size)
    gdi.c itself would bring the whole engine. */
 int   GDI_gi_Widescreen = 1;
 float GDI_gf_RefYoverX = 0.75f;
+/* The fade's timer. gdi.c keeps it in the other renderer's parameter
+   block and reaches it with these two; here they are the test's own
+   storage, which is also how a case drives a fade. */
+int  glr_fadeOpacity;
+
+int GDI_i_AeFadeOpacity(void)
+{
+    return glr_fadeOpacity;
+}
+
+void GDI_AeFadeOpacitySet(int opacity)
+{
+    glr_fadeOpacity = opacity;
+}
+
 float GDI_gaf_ScreenRatio[4];
 float tweak_mipmaplodbias = -0.60000002f;
 tEngTexListStruct TEX_gst_GlobalList;
@@ -385,6 +400,11 @@ static void glr_Reset(void)
     depthBlurNear1 = 0.0f;
     depthBlurType0 = 0.0f;
     depthBlurType1 = 0.0f;
+    /* The fade's duration and its timer. The timer outlives a frame,
+       so a case that left a fade part way through would hand the next
+       one a picture frozen somewhere it never asked for. */
+    gAEOpacity = 0.0f;
+    glr_fadeOpacity = 0;
 
     memset(&glr_dd, 0, sizeof(glr_dd));
     memset(&glr_bb, 0, sizeof(glr_bb));
@@ -3998,6 +4018,96 @@ static void caseAeMotionBlur(void)
     gl_state.height = GLR_H;
 }
 
+/* The fade.
+ *
+ * glr_aeStepDown above is the picture used, and it is used because it
+ * is lopsided *vertically*: the fade copies the frame aside with a
+ * blit and reads it back through a quad, and either of those getting
+ * the vertical the wrong way round returns the same two levels in the
+ * wrong halves -- which a flat picture, or one split left and right,
+ * cannot see at all.
+ */
+static void caseAeFade(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    x = GLR_AE_W / 2;
+    int    bright = GLR_AE_H / 4;               /* the step's lit half */
+    int    dark = GLR_AE_H - GLR_AE_H / 4;
+
+    printf("-- the fade dissolves out of a frame it froze earlier\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    scene = glr_AeScene(glr_aeStepDown, glr_aeAlphaNone);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    PC_AE_MASTER = (int)AFD_BIT;
+    gAEOpacity = 1.0f;                  /* sixty frames asked for */
+    glr_fadeOpacity = AFD_FULL;
+
+    /* The first frame of a fade shows the picture unchanged, because
+       the copy it dissolves out of was taken from that very picture.
+       Both halves, so a copy that lost the vertical shows here. */
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != scene, "it ran");
+    okEq(glr_AeRed(shown, x, bright), 240,
+         "the first frame is the picture itself, lit half");
+    okEq(glr_AeRed(shown, x, dark), 0, "and dark half");
+    okEq(glr_fadeOpacity, AFD_i_Next(AFD_FULL, AFD_f_Step(1.0f)),
+         "with the timer moved on by one step");
+
+    /* Now the world moves: the live frame goes flat black while the
+       fade carries on. What comes back has to be the *frozen* picture
+       at its share -- which is the whole point of the effect, and the
+       one thing a single frame cannot show. */
+    {
+        int i;
+
+        for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+            glr_aePattern[i * 4] = 0;
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    glr_fadeOpacity = 128;
+    shown = GL_l_i_RunAfterEffects();
+
+    okWithin((double)glr_AeRed(shown, x, bright),
+             240.0 * (double)AFD_f_Blend(128), 1.5,
+             "a black world still shows the frozen picture at its share");
+    okEq(glr_AeRed(shown, x, dark), 0,
+         "and the frozen picture's dark half stays dark");
+    /* The right way up, which the two readings above cannot say on
+       their own: swap them and both still land on a level that is
+       somewhere in the picture. */
+    ok(glr_AeRed(shown, x, bright) > glr_AeRed(shown, x, dark) + 50,
+       "with the frozen copy the right way up");
+    /* And not re-frozen: a copy taken every frame would be a copy of
+       the black world, and this would be black. */
+    ok(glr_AeRed(shown, x, bright) > 0,
+       "the copy was taken once and not again");
+
+    /* The end of the fade: almost nothing of the frozen picture is
+       left, and the effect switches itself off. */
+    glr_fadeOpacity = 1;
+    shown = GL_l_i_RunAfterEffects();
+    okWithin((double)glr_AeRed(shown, x, bright), 240.0 / 255.0, 1.5,
+             "the last frame is almost all the live world");
+    okEq(PC_AE_MASTER & (int)AFD_BIT, 0, "and the fade cleared its own bit");
+
+    PC_AE_MASTER = 0;
+    gAEOpacity = 0.0f;
+    glr_fadeOpacity = 0;
+    CIN_Bands = 1;
+}
+
 static void caseAeZoomSmooth(void)
 {
     GLuint scene;
@@ -5185,6 +5295,7 @@ int main(void)
     caseAeColorOrder();
     caseAeRemanence();
     caseAeMotionBlur();
+    caseAeFade();
     caseAeZoomSmooth();
 
     GL_l_ForgetPass();

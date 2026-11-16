@@ -13,6 +13,7 @@
 #include "../watermesh.h"
 #include "../waterreflect.h"
 #include "../watersmooth.h"
+#include "../aefade.h"
 #include "../water.h"
 #include "../fog.h"
 #include "../textures.h"
@@ -2968,7 +2969,11 @@ static void GL_l_DrawBatch(GLuint vao, const void* vertices, int triangleCount,
  * blurs would scribble over the target the motion blur after it keeps
  * its history in. Three leaves one free whatever the chain is holding.
  */
-#define GL_AE_TARGETS 3
+#define GL_AE_SPARES 3
+
+/* The spares plus the fade's frozen copy, which is a target but never
+   a spare -- see GL_AE_SLOT_FREEZE. */
+#define GL_AE_TARGETS (GL_AE_SPARES + 1)
 
 /* The three spares, by the roles the renderer this was read from gives
  * its own three textures.
@@ -2992,6 +2997,28 @@ static void GL_l_DrawBatch(GLuint vao, const void* vertices, int triangleCount,
 #define GL_AE_SLOT_SPARE    (DPB_SLOT_A + 1)
 #define GL_AE_SLOT_MIXTMP   (DPB_SLOT_A + 2)
 
+/* And one more that is not a spare at all: where the fade keeps the
+ * picture it froze.
+ *
+ * It is outside the rotation above for the reason the fade exists --
+ * what is in it has to survive from the frame the fade started to the
+ * frame it ends, which is up to 255 frames of every other effect
+ * writing spares. Handed out as scratch it would be painted over on
+ * the first one, and the fade would dissolve out of whatever happened
+ * to be there. The other renderer keeps the same thing in a texture of
+ * its own, for the same reason and with no comment.
+ *
+ * The spare walk counts to GL_AE_SPARES rather than GL_AE_TARGETS, and
+ * that bound is **defensive and not load-bearing today**: the walk
+ * takes the first slot not among the two it is asked to avoid, and
+ * with three spares and two avoided it stops at the third whatever the
+ * bound says. So no test can tell the two bounds apart, and the sweep
+ * says so rather than this comment claiming a clobber it prevents.
+ * What it does do is make the fourth slot not-a-spare by construction,
+ * so a third thing to avoid -- or a fourth spare -- cannot reach it by
+ * accident. */
+#define GL_AE_SLOT_FREEZE   (DPB_SLOT_A + GL_AE_SPARES)
+
 static GLuint     gl_aeFbo[GL_AE_TARGETS];
 static GLuint     gl_aeColour[GL_AE_TARGETS];
 static int        gl_aeW;
@@ -3014,6 +3041,10 @@ static GLint      gl_aeRemWeight = -1;
 static tGlProgram gl_aeBlendProgram;
 static GLint      gl_aeBlendSrc = -1;
 static GLint      gl_aeBlendAlpha = -1;
+static tGlProgram gl_aeFadeProgram;
+static GLint      gl_aeFadeLive = -1;
+static GLint      gl_aeFadeFrozen = -1;
+static GLint      gl_aeFadeShare = -1;
 static tGlProgram gl_aeZoomProgram;
 static GLint      gl_aeZoomSrc = -1;
 static GLint      gl_aeZoomBandLo = -1;
@@ -3044,6 +3075,7 @@ static void GL_l_ForgetAe(void)
         GL_ProgramFree(&gl_aeColorProgram);
         GL_ProgramFree(&gl_aeRemProgram);
         GL_ProgramFree(&gl_aeBlendProgram);
+        GL_ProgramFree(&gl_aeFadeProgram);
         GL_ProgramFree(&gl_aeZoomProgram);
         for (i = 0; i < GL_AE_TARGETS; i++)
         {
@@ -3076,6 +3108,9 @@ static void GL_l_ForgetAe(void)
     gl_aeRemWeight = -1;
     gl_aeBlendSrc = -1;
     gl_aeBlendAlpha = -1;
+    gl_aeFadeLive = -1;
+    gl_aeFadeFrozen = -1;
+    gl_aeFadeShare = -1;
     gl_aeZoomSrc = -1;
     gl_aeZoomBandLo = -1;
     gl_aeZoomBandHi = -1;
@@ -3135,15 +3170,17 @@ static int GL_l_b_AeReady(void)
     }
     if (!GL_b_ProgramLoad(&gl_aeRemProgram, "aepass.vert", "aeremanence.frag")
         || !GL_b_ProgramLoad(&gl_aeBlendProgram, "aepass.vert", "aeblend.frag")
+        || !GL_b_ProgramLoad(&gl_aeFadeProgram, "aepass.vert", "aefade.frag")
         || !GL_b_ProgramLoad(&gl_aeZoomProgram, "aepass.vert", "aezoom.frag"))
     {
-        /* Whichever of the three got as far as loading is freed with
+        /* Whichever of the four got as far as loading is freed with
            the rest; freeing one that did not does nothing. */
         GL_ProgramFree(&gl_aeBlurProgram);
         GL_ProgramFree(&gl_aeMixProgram);
         GL_ProgramFree(&gl_aeColorProgram);
         GL_ProgramFree(&gl_aeRemProgram);
         GL_ProgramFree(&gl_aeBlendProgram);
+        GL_ProgramFree(&gl_aeFadeProgram);
         GL_ProgramFree(&gl_aeZoomProgram);
         return 0;
     }
@@ -3164,6 +3201,9 @@ static int GL_l_b_AeReady(void)
     gl_aeRemWeight = GL_i_ProgramUniform(&gl_aeRemProgram, "uWeight");
     gl_aeBlendSrc = GL_i_ProgramUniform(&gl_aeBlendProgram, "uSrc");
     gl_aeBlendAlpha = GL_i_ProgramUniform(&gl_aeBlendProgram, "uAlpha");
+    gl_aeFadeLive = GL_i_ProgramUniform(&gl_aeFadeProgram, "uLive");
+    gl_aeFadeFrozen = GL_i_ProgramUniform(&gl_aeFadeProgram, "uFrozen");
+    gl_aeFadeShare = GL_i_ProgramUniform(&gl_aeFadeProgram, "uFrozenShare");
     gl_aeZoomSrc = GL_i_ProgramUniform(&gl_aeZoomProgram, "uSrc");
     gl_aeZoomBandLo = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandLo");
     gl_aeZoomBandHi = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandHi");
@@ -3280,7 +3320,7 @@ static int GL_l_i_AeSpareExcept(int avoid1, int avoid2)
 {
     int i;
 
-    for (i = 0; i < GL_AE_TARGETS; i++)
+    for (i = 0; i < GL_AE_SPARES; i++)
     {
         int slot = DPB_SLOT_A + i;
 
@@ -3577,6 +3617,94 @@ static int GL_l_b_AeRemanence(const tCbd_Bands* bands, int from, int spare)
     return 1;
 }
 
+/* The fade: a frozen copy of the picture dissolving into the live one.
+ *
+ * Four things set this effect apart from its neighbours in the chain,
+ * and three of them are visible right here.
+ *
+ * **It keeps a frame from the past, and not the last one.** The motion
+ * blur reads the frame before, which it gets for free by not clearing
+ * the target it writes. This one reads the frame the fade *started*
+ * on, which may be 255 frames back, so it needs a target nothing else
+ * may touch -- GL_AE_SLOT_FREEZE, and the note there says why it is
+ * outside the spare rotation.
+ *
+ * **It covers the whole picture and not the letterbox band.** Every
+ * other effect here is handed the band and draws between its edges;
+ * the other renderer's quad for this one spans the whole target, and
+ * so does this. Nothing is visible either way -- the bars are painted
+ * over afterwards -- but the draw is the draw.
+ *
+ * **It carries a timer and switches itself off**, which is the one
+ * place in this renderer where an effect writes the after-effects
+ * word. The arithmetic of the timer is aefade.h's; what is here is
+ * when it is stepped, which is *after* the draw. So the first frame of
+ * a fade is shown at the opacity the fade started with, which is why a
+ * fade begins invisibly: the frozen copy is still identical to the
+ * live frame it was taken from.
+ */
+static void GL_l_AeFreeze(int from)
+{
+    /* A copy of the whole target, which is a blit rather than a pass:
+       nothing is being computed, and the other renderer copies
+       surface to surface here as well. The read and draw bindings are
+       left as the frame bindings afterwards, which every caller sets
+       for itself before it draws. */
+    GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, GL_l_i_AeSlotFbo(from));
+    GLFN_glBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                           GL_l_i_AeSlotFbo(GL_AE_SLOT_FREEZE));
+    GLFN_glBlitFramebuffer(0, 0, gl_aeW, gl_aeH, 0, 0, gl_aeW, gl_aeH,
+                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+static int GL_l_b_AeFade(int from, int spare)
+{
+    int   opacity;
+    float step;
+
+    if (!AFD_b_On((unsigned int)PC_AE_MASTER))
+        return 0;
+
+    opacity = GDI_i_AeFadeOpacity();
+    step = AFD_f_Step(gAEOpacity);
+
+    /* The frame the fade starts on: the picture is put aside, and from
+       here to the end of the fade it is that copy being dissolved out
+       of. */
+    if (AFD_b_Freeze(opacity))
+        GL_l_AeFreeze(from);
+
+    GLFN_glUseProgram(gl_aeFadeProgram.program);
+    if (gl_aeFadeLive >= 0)
+        GLFN_glUniform1i(gl_aeFadeLive, 0);
+    if (gl_aeFadeFrozen >= 0)
+        GLFN_glUniform1i(gl_aeFadeFrozen, 1);
+    if (gl_aeFadeShare >= 0)
+        GLFN_glUniform1f(gl_aeFadeShare, AFD_f_Blend(opacity));
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(spare));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
+    GLFN_glActiveTexture(GL_TEXTURE1);
+    GLFN_glBindTexture(GL_TEXTURE_2D,
+                       GL_l_i_AeSlotTexture(GL_AE_SLOT_FREEZE));
+
+    /* The whole picture, not the band -- see the note above. */
+    GL_l_AeDrawBand(0.0f, 1.0f);
+
+    GLFN_glActiveTexture(GL_TEXTURE1);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    GLFN_glActiveTexture(GL_TEXTURE0);
+
+    /* And then the timer, after the draw. A fade that has run out
+       clears its own bit, which is what the scripts watch to know the
+       fade is over. */
+    if (AFD_b_Advance(&opacity, step))
+        PC_AE_MASTER = (int)AFD_u_Cleared((unsigned int)PC_AE_MASTER);
+    GDI_AeFadeOpacitySet(opacity);
+    return 1;
+}
+
 /* The motion blur: this frame over the frame before.
  *
  * The one effect that reads across frames, and it does it without a
@@ -3753,6 +3881,12 @@ static int GL_l_b_AeWanted(void)
 
     if (DPB_b_AfterEffect((unsigned int)PC_AE_MASTER))
         return 1;
+    /* The fade is asked before the rest because it is the one effect
+       that has to run in order to *stop*: it clears its own bit when
+       its timer runs out, and a frame where the chain was skipped is a
+       frame where that cannot happen. */
+    if (AFD_b_On((unsigned int)PC_AE_MASTER))
+        return 1;
 
     src.aeMaster = (unsigned int)PC_AE_MASTER;
     src.brightness = unkAEFunc2Param;
@@ -3847,6 +3981,8 @@ static GLuint GL_l_i_RunAfterEffects(void)
     if (DPB_b_AfterEffect((unsigned int)PC_AE_MASTER))
         cur = GL_l_i_AeDepthBlur(&bands, spr);
     if (GL_l_b_AeRemanence(&bands, cur, spr))
+        GL_l_AeExchange(&cur, &spr);
+    if (GL_l_b_AeFade(cur, spr))
         GL_l_AeExchange(&cur, &spr);
     if (GL_l_b_AeMotionBlur(&bands, cur, spr))
         GL_l_AeExchange(&cur, &spr);

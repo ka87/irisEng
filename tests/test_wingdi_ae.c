@@ -156,6 +156,25 @@ static float AE_BandBottom(int k)
     return table[(k >> 4) & 3];
 }
 
+/* The fade's duration, in the seconds a script asks for. Twelve
+   values, so that k % 12 pairs each one with both starting opacities
+   twice over the group's 48 cases -- counted, not assumed.
+
+   The four corners of the step arithmetic are entries 0 and 1 (a span
+   of nought, and one so small the step will not fit in a whole
+   number), 9 and 10 (the clamp at one, at its boundary and past it)
+   and 11 (a negative span, which runs the fade backwards). The rest
+   are ordinary durations whose steps do and do not divide the range
+   exactly. */
+static float AE_FadeSpan(int k)
+{
+    static const float table[12] = {
+        0.0f, 1.0e-30f, 0.03f, 0.09f, 0.25f, 0.5f,
+        1.0f, 2.0f, 4.0f, 4.25f, 8.0f, -1.0f
+    };
+    return table[k % 12];
+}
+
 static int AE_MasterBits(int k)
 {
     static const int bits[11] = {

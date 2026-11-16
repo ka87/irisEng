@@ -58,6 +58,10 @@ $CC $CFLAGS -c waterreflect.c -o "$OUT/glr.wrf.o"
 # taps for both renderers; tests/run_wingdi_ae.sh is where it is
 # compared against the other renderer.
 $CC $CFLAGS -c watersmooth.c -o "$OUT/glr.wsm.o"
+# aefade.c holds the fade's timer -- the step, the truncation and the
+# finish -- for both renderers; tests/run_wingdi_ae.sh is where it is
+# compared against the other renderer.
+$CC $CFLAGS -c aefade.c -o "$OUT/glr.afd.o"
 $CC $CFLAGS -c geosprite.c -o "$OUT/glr.gsp.o"
 $CC $CFLAGS -c win/wingdimath.c -o "$OUT/glr.wgmath.o"
 $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
@@ -65,7 +69,7 @@ $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
 # are no EGL headers to link against.
 $CC "$OUT/glr.drv.o" "$OUT/glr.egl.o" "$OUT/glr.load.o" \
     "$OUT/glr.shader.o" "$OUT/glr.datapath.o" "$OUT/glr.proj.o" \
-    "$OUT/glr.gvx.o" "$OUT/glr.rst.o" "$OUT/glr.dpb.o" "$OUT/glr.fog.o" "$OUT/glr.cbd.o" "$OUT/glr.aec.o" "$OUT/glr.aef.o" "$OUT/glr.wms.o" "$OUT/glr.wrf.o" "$OUT/glr.wsm.o" "$OUT/glr.gsp.o" \
+    "$OUT/glr.gvx.o" "$OUT/glr.rst.o" "$OUT/glr.dpb.o" "$OUT/glr.fog.o" "$OUT/glr.cbd.o" "$OUT/glr.aec.o" "$OUT/glr.aef.o" "$OUT/glr.wms.o" "$OUT/glr.wrf.o" "$OUT/glr.wsm.o" "$OUT/glr.afd.o" "$OUT/glr.gsp.o" \
     "$OUT/glr.wgmath.o" \
     "$OUT/glr.math.o" -o "$OUT/glr" -lm -ldl
 # Software rendering, so the answer does not depend on whose card the
