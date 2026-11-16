@@ -9,6 +9,7 @@
 #include "../rasterstate.h"
 #include "../depthblur.h"
 #include "../aecolor.h"
+#include "../aeframe.h"
 #include "../fog.h"
 #include "../textures.h"
 #include "../cinebands.h"
@@ -2888,7 +2889,44 @@ static void GL_l_DrawBatch(GLuint vao, const void* vertices, int triangleCount,
  * amount per pixel, three widening passes blur the colour, and a last
  * pass mixes sharp and blurred by that alpha.
  */
-#define GL_AE_TARGETS 2
+/* Three spares beside the frame.
+ *
+ * Two is not enough, and the reason is worth stating. The other
+ * renderer's chain has three targets and uses the frame itself as one
+ * of them -- it writes the finished effect back over the frame and
+ * carries on. This renderer cannot: its depth-blur mix *reads* the
+ * frame while it writes, and the frame's alpha is that effect's whole
+ * input, so the frame has to stay as the world drew it.
+ *
+ * That costs a target. With two spares, an effect that needs a blurred
+ * copy of its input and a place to put the result has nowhere left to
+ * put it -- the remanence wants exactly that, and with two spares its
+ * blurs would scribble over the target the motion blur after it keeps
+ * its history in. Three leaves one free whatever the chain is holding.
+ */
+#define GL_AE_TARGETS 3
+
+/* The three spares, by the roles the renderer this was read from gives
+ * its own three textures.
+ *
+ * That renderer's chain holds two of them at a time -- a *current* and
+ * a *spare* -- and exchanges them after every effect, while a third is
+ * scratch for the blur passes. Its current starts as the frame itself,
+ * which is why it only needs three textures in all.
+ *
+ * Here the frame has to stay as the world drew it for as long as the
+ * depth blur's mix needs its alpha, so the mix cannot write it in
+ * place the way that renderer does. It writes GL_AE_SLOT_MIXTMP and
+ * the result is copied back into the frame, which leaves every target
+ * from that point on holding what it holds there -- and that matters,
+ * because the motion blur reads whatever is in the target it writes.
+ *
+ * So the first two slots line up with that renderer's two non-frame
+ * textures and the third has no counterpart.
+ */
+#define GL_AE_SLOT_SCRATCH  (DPB_SLOT_A)
+#define GL_AE_SLOT_SPARE    (DPB_SLOT_A + 1)
+#define GL_AE_SLOT_MIXTMP   (DPB_SLOT_A + 2)
 
 static GLuint     gl_aeFbo[GL_AE_TARGETS];
 static GLuint     gl_aeColour[GL_AE_TARGETS];
@@ -2905,6 +2943,20 @@ static GLint      gl_aeBlurOff23 = -1;
 static GLint      gl_aeBlurWeights = -1;
 static GLint      gl_aeMixSharp = -1;
 static GLint      gl_aeMixBlurred = -1;
+static tGlProgram gl_aeRemProgram;
+static GLint      gl_aeRemSharp = -1;
+static GLint      gl_aeRemBlurred = -1;
+static GLint      gl_aeRemWeight = -1;
+static tGlProgram gl_aeBlendProgram;
+static GLint      gl_aeBlendSrc = -1;
+static GLint      gl_aeBlendAlpha = -1;
+static tGlProgram gl_aeZoomProgram;
+static GLint      gl_aeZoomSrc = -1;
+static GLint      gl_aeZoomBandLo = -1;
+static GLint      gl_aeZoomBandHi = -1;
+static GLint      gl_aeZoomInset = -1;
+static GLint      gl_aeZoomTaps = -1;
+static GLint      gl_aeZoomWeight = -1;
 static tGlProgram gl_aeColorProgram;
 static GLint      gl_aeColorSrc = -1;
 static GLint      gl_aeColorGain = -1;
@@ -2926,6 +2978,9 @@ static void GL_l_ForgetAe(void)
         GL_ProgramFree(&gl_aeBlurProgram);
         GL_ProgramFree(&gl_aeMixProgram);
         GL_ProgramFree(&gl_aeColorProgram);
+        GL_ProgramFree(&gl_aeRemProgram);
+        GL_ProgramFree(&gl_aeBlendProgram);
+        GL_ProgramFree(&gl_aeZoomProgram);
         for (i = 0; i < GL_AE_TARGETS; i++)
         {
             if (gl_aeFbo[i])
@@ -2952,6 +3007,17 @@ static void GL_l_ForgetAe(void)
     gl_aeColorBias = -1;
     gl_aeColorGrayscale = -1;
     gl_aeColorWeights = -1;
+    gl_aeRemSharp = -1;
+    gl_aeRemBlurred = -1;
+    gl_aeRemWeight = -1;
+    gl_aeBlendSrc = -1;
+    gl_aeBlendAlpha = -1;
+    gl_aeZoomSrc = -1;
+    gl_aeZoomBandLo = -1;
+    gl_aeZoomBandHi = -1;
+    gl_aeZoomInset = -1;
+    gl_aeZoomTaps = -1;
+    gl_aeZoomWeight = -1;
     gl_aeTried = 0;
     gl_aeReady = 0;
 }
@@ -3003,6 +3069,20 @@ static int GL_l_b_AeReady(void)
         GL_ProgramFree(&gl_aeMixProgram);
         return 0;
     }
+    if (!GL_b_ProgramLoad(&gl_aeRemProgram, "aepass.vert", "aeremanence.frag")
+        || !GL_b_ProgramLoad(&gl_aeBlendProgram, "aepass.vert", "aeblend.frag")
+        || !GL_b_ProgramLoad(&gl_aeZoomProgram, "aepass.vert", "aezoom.frag"))
+    {
+        /* Whichever of the three got as far as loading is freed with
+           the rest; freeing one that did not does nothing. */
+        GL_ProgramFree(&gl_aeBlurProgram);
+        GL_ProgramFree(&gl_aeMixProgram);
+        GL_ProgramFree(&gl_aeColorProgram);
+        GL_ProgramFree(&gl_aeRemProgram);
+        GL_ProgramFree(&gl_aeBlendProgram);
+        GL_ProgramFree(&gl_aeZoomProgram);
+        return 0;
+    }
     gl_aeBlurSrc = GL_i_ProgramUniform(&gl_aeBlurProgram, "uSrc");
     gl_aeBlurOff01 = GL_i_ProgramUniform(&gl_aeBlurProgram, "uOffsets01");
     gl_aeBlurOff23 = GL_i_ProgramUniform(&gl_aeBlurProgram, "uOffsets23");
@@ -3015,6 +3095,17 @@ static int GL_l_b_AeReady(void)
     gl_aeColorGrayscale = GL_i_ProgramUniform(&gl_aeColorProgram,
                                               "uGrayscale");
     gl_aeColorWeights = GL_i_ProgramUniform(&gl_aeColorProgram, "uWeights");
+    gl_aeRemSharp = GL_i_ProgramUniform(&gl_aeRemProgram, "uSharp");
+    gl_aeRemBlurred = GL_i_ProgramUniform(&gl_aeRemProgram, "uBlurred");
+    gl_aeRemWeight = GL_i_ProgramUniform(&gl_aeRemProgram, "uWeight");
+    gl_aeBlendSrc = GL_i_ProgramUniform(&gl_aeBlendProgram, "uSrc");
+    gl_aeBlendAlpha = GL_i_ProgramUniform(&gl_aeBlendProgram, "uAlpha");
+    gl_aeZoomSrc = GL_i_ProgramUniform(&gl_aeZoomProgram, "uSrc");
+    gl_aeZoomBandLo = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandLo");
+    gl_aeZoomBandHi = GL_i_ProgramUniform(&gl_aeZoomProgram, "uBandHi");
+    gl_aeZoomInset = GL_i_ProgramUniform(&gl_aeZoomProgram, "uInset");
+    gl_aeZoomTaps = GL_i_ProgramUniform(&gl_aeZoomProgram, "uTaps");
+    gl_aeZoomWeight = GL_i_ProgramUniform(&gl_aeZoomProgram, "uWeight");
 
     for (i = 0; i < GL_AE_TARGETS; i++)
     {
@@ -3109,14 +3200,39 @@ static GLuint GL_l_i_AeSlotTexture(int slot)
     return 0;
 }
 
-/* Somewhere to write that is not what is being read. An effect with
-   one source wants this; the depth blur, which reads two, picks its
-   own. The frame is never the answer, because an effect that has not
-   run yet may still want it -- and because the frame's alpha is the
-   depth blur's input and nothing here may overwrite it. */
+/* Somewhere to write that is none of the slots named.
+ *
+ * The frame is never the answer: its alpha is the depth blur's input
+ * and nothing in the chain may overwrite it.
+ *
+ * The answer has to be the *same* answer next frame for the same
+ * chain, because the motion blur reads what it wrote last time round.
+ * That is why this walks the spares in order and takes the first that
+ * will do, rather than anything that happens to be free -- given the
+ * same set of effects it returns the same slot every frame. Turn
+ * another effect on and the slots shift along, and the motion blur
+ * loses one frame of history; the other renderer does the same. */
+static int GL_l_i_AeSpareExcept(int avoid1, int avoid2)
+{
+    int i;
+
+    for (i = 0; i < GL_AE_TARGETS; i++)
+    {
+        int slot = DPB_SLOT_A + i;
+
+        if (slot != avoid1 && slot != avoid2)
+            return slot;
+    }
+    /* Unreachable with three spares and at most two to avoid; the
+       first spare is a defined answer rather than a wrong one. */
+    return DPB_SLOT_A;
+}
+
+/* Somewhere to write that is not what is being read, for the effects
+   that read one thing. */
 static int GL_l_i_AeOtherSlot(int slot)
 {
-    return slot == DPB_SLOT_A ? DPB_SLOT_B : DPB_SLOT_A;
+    return GL_l_i_AeSpareExcept(slot, slot);
 }
 
 /* One pass's quad, covering the strip between two fractions measured
@@ -3144,43 +3260,103 @@ static void GL_l_AeDrawBand(float topFraction, float bottomFraction)
     GL_l_DrawBatch(gl_aeVao, v, 2, 2 * sizeof(GLfloat));
 }
 
-/* The depth blur, over the frame. Returns the slot the finished frame
-   ended up in.
- *
-   It reads the frame itself and not whatever the chain is currently
-   holding, because the alpha it mixes by belongs to the frame as the
-   world drew it -- so this is the first effect in the chain or it is
-   mixing by an alpha something else has been through. */
-static int GL_l_i_AeDepthBlur(const tCbd_Bands* bands)
+/* The engine's state the three frame-sum effects are decided from.
+   Read in one place because all three want the band's bottom edge as
+   well as their own parameter, and only one of them uses it. */
+static void GL_l_AeReadSource(tAef_Source* out, const tCbd_Bands* bands)
 {
-    tDpb_BlurPass passes[DPB_BLUR_PASSES];
-    int           n;
-    int           i;
-    int           mixInto;
+    out->aeMaster = (unsigned int)PC_AE_MASTER;
+    out->motionBlur = motionBlurFactor;
+    out->remanence = remenanceFactor;
+    out->zoomSmooth = zoomSmoothFactor;
+    out->bandBottom = bands ? bands->bottom : 1.0f;
+}
 
-    n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
-    if (n <= 0)
-        return DPB_SLOT_FRAME;
+/* One target's colour over another's, leaving the destination's alpha
+ * alone.
+ *
+ * The depth blur's mix needs this: the renderer this follows writes
+ * its mix into the frame with the write narrowed to colour, so the
+ * frame keeps the alpha the world gave it. A pass here cannot read and
+ * write one texture, so the mix lands elsewhere and this puts it back.
+ *
+ * The blend program is a plain passthrough of colour with an alpha of
+ * its own, which is exactly what is wanted once the alpha write is
+ * masked off -- so no seventh shader.
+ */
+static void GL_l_AeCopyColour(const tCbd_Bands* bands, int from, int to)
+{
+    GLFN_glUseProgram(gl_aeBlendProgram.program);
+    if (gl_aeBlendSrc >= 0)
+        GLFN_glUniform1i(gl_aeBlendSrc, 0);
+    if (gl_aeBlendAlpha >= 0)
+        GLFN_glUniform1f(gl_aeBlendAlpha, 1.0f);
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(to));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
 
-    /* The three blurs, each over the widened reach rather than the
-       band itself: the mix samples the blurred copy right up to the
-       band's edge, and a tap there reaches past it. */
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    GL_l_AeDrawBand(bands->top, bands->bottom);
+    GLFN_glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+}
+
+/* The exchange the chain does after an effect that wrote the spare:
+   what it wrote becomes the current frame and what was current becomes
+   the spare. Written out because the renderer this follows writes it
+   out, and because which target an effect lands on is decided by how
+   many of these have happened. */
+static void GL_l_AeExchange(int* cur, int* spr)
+{
+    int was = *spr;
+
+    *spr = *cur;
+    *cur = was;
+}
+
+/* A run of blur passes over the frame, each reading what the one
+ * before wrote.
+ *
+ * Shared by the two effects that want one: the depth blur's three
+ * passes at one, two and three pixels, and the remanence's four at
+ * one, three, five and seven. What differs between them is the reach
+ * and the count, which arrive as arguments; what does not is the
+ * ping-pong, the taps and the strip covered.
+ *
+ * Starts from `from`, works alternately in `first` and `second`, and
+ * returns the slot the last pass wrote. The caller's own input is left
+ * alone -- both callers need it afterwards, one as the sharp frame for
+ * a mix and one for a sum.
+ *
+ * Drawn over the widened reach rather than the band, because whatever
+ * samples the result will sample it right up to the band's edge and a
+ * tap there reaches past it.
+ */
+static int GL_l_i_AeBlurChain(const tCbd_Bands* bands, const float* uSteps,
+                              const float* vSteps, int count, int from,
+                              int first, int second)
+{
+    int to = first;
+    int i;
+
     GLFN_glUseProgram(gl_aeBlurProgram.program);
     if (gl_aeBlurSrc >= 0)
         GLFN_glUniform1i(gl_aeBlurSrc, 0);
     GLFN_glActiveTexture(GL_TEXTURE0);
 
-    for (i = 0; i < n; i++)
+    for (i = 0; i < count; i++)
     {
-        float offsets[2 * DPB_BLUR_TAPS];
-        float weights[DPB_BLUR_TAPS];
+        tDpb_BlurPass pass;
+        float         offsets[2 * DPB_BLUR_TAPS];
+        float         weights[DPB_BLUR_TAPS];
 
-        DPB_BlurTaps(&passes[i], offsets, weights);
+        pass.fromSlot = from;
+        pass.toSlot = to;
+        pass.uStep = uSteps[i];
+        pass.vStep = vSteps[i];
+        DPB_BlurTaps(&pass, offsets, weights);
 
-        GLFN_glBindFramebuffer(GL_FRAMEBUFFER,
-                               GL_l_i_AeSlotFbo(passes[i].toSlot));
-        GLFN_glBindTexture(GL_TEXTURE_2D,
-                           GL_l_i_AeSlotTexture(passes[i].fromSlot));
+        GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(to));
+        GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
         /* The schedule's vertical offsets are measured down the
            screen, which is the direction the other renderer's texture
            coordinates run. This renderer's run the other way, so they
@@ -3199,12 +3375,61 @@ static int GL_l_i_AeDepthBlur(const tCbd_Bands* bands)
                              weights[2], weights[3]);
 
         GL_l_AeDrawBand(bands->reachTop, bands->reachBottom);
+
+        /* Back and forth between the two the caller named, leaving its
+           own input alone throughout. Which of the two comes first is
+           the caller's, because the renderer this follows starts the
+           depth blur's run on its scratch texture and the remanence's
+           on the chain's spare -- and both runs have to end where
+           that one ends them, since what reads the result reads it by
+           name. */
+        from = to;
+        to = (to == first) ? second : first;
+    }
+    return from;
+}
+
+/* The depth blur, over the frame. Returns the slot the finished frame
+   ended up in.
+ *
+   It reads the frame itself and not whatever the chain is currently
+   holding, because the alpha it mixes by belongs to the frame as the
+   world drew it -- so this is the first effect in the chain or it is
+   mixing by an alpha something else has been through. */
+static int GL_l_i_AeDepthBlur(const tCbd_Bands* bands, int spare)
+{
+    tDpb_BlurPass passes[DPB_BLUR_PASSES];
+    float         uSteps[DPB_BLUR_PASSES];
+    float         vSteps[DPB_BLUR_PASSES];
+    int           n;
+    int           i;
+    int           blurred;
+    int           mixInto;
+
+    n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
+    if (n <= 0)
+        return DPB_SLOT_FRAME;
+    for (i = 0; i < n; i++)
+    {
+        uSteps[i] = passes[i].uStep;
+        vSteps[i] = passes[i].vStep;
     }
 
-    /* And the mix, over the band itself. It reads the frame, so it
-       cannot write to it: it goes into whichever spare the blur did
-       not end in, and that spare is what the screen is copied from. */
-    mixInto = DPB_i_BlurResultSlot() == DPB_SLOT_A ? DPB_SLOT_B : DPB_SLOT_A;
+    /* Starting on the scratch, which is where the renderer this
+       follows starts it -- so the three passes land scratch, spare,
+       scratch and leave the spare holding the second pass. What is
+       left in the spare is not waste: the motion blur reads whatever
+       is in the target it writes, and with the depth blur in front of
+       it that is this. */
+    blurred = GL_l_i_AeBlurChain(bands, uSteps, vSteps, n, DPB_SLOT_FRAME,
+                                 GL_AE_SLOT_SCRATCH, spare);
+
+    /* And the mix, over the band itself. It reads the frame and the
+       blurred copy, so it writes the third spare -- and is then copied
+       back over the frame, because that is where the renderer this
+       follows leaves it and everything after this one is placed
+       relative to that. */
+    mixInto = GL_AE_SLOT_MIXTMP;
 
     GLFN_glUseProgram(gl_aeMixProgram.program);
     if (gl_aeMixSharp >= 0)
@@ -3215,15 +3440,189 @@ static int GL_l_i_AeDepthBlur(const tCbd_Bands* bands)
     GLFN_glActiveTexture(GL_TEXTURE0);
     GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(DPB_SLOT_FRAME));
     GLFN_glActiveTexture(GL_TEXTURE1);
-    GLFN_glBindTexture(GL_TEXTURE_2D,
-                       GL_l_i_AeSlotTexture(DPB_i_BlurResultSlot()));
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(blurred));
 
     GL_l_AeDrawBand(bands->top, bands->bottom);
 
     GLFN_glActiveTexture(GL_TEXTURE1);
     GLFN_glBindTexture(GL_TEXTURE_2D, 0);
     GLFN_glActiveTexture(GL_TEXTURE0);
-    return mixInto;
+
+    /* Back over the frame, colour only. The renderer this follows
+       writes its mix straight into the frame and narrows the write to
+       colour, so the frame keeps the alpha the world gave it; this is
+       the same thing in two steps because a pass here cannot read and
+       write one texture. */
+    GL_l_AeCopyColour(bands, mixInto, DPB_SLOT_FRAME);
+    return DPB_SLOT_FRAME;
+}
+
+/* The remanence: a wide blur of the frame added back on top of it.
+ *
+ * A bloom rather than a trail, whatever the name says -- nothing here
+ * reads the frame before. Returns the slot the frame ended in, which
+ * is the one it came in on when the effect is not asked for.
+ */
+static int GL_l_b_AeRemanence(const tCbd_Bands* bands, int from, int spare)
+{
+    tAef_Source src;
+    float       uSteps[AEF_REMANENCE_PASSES];
+    float       vSteps[AEF_REMANENCE_PASSES];
+    int         n;
+    int         blurred;
+    int         into;
+
+    GL_l_AeReadSource(&src, bands);
+    if (!AEF_b_Remanence(&src))
+        return 0;
+
+    n = AEF_i_RemanenceReaches(uSteps, vSteps, AEF_REMANENCE_PASSES);
+    if (n <= 0)
+        return 0;
+
+    /* Starting on the chain's spare rather than the scratch, which is
+       the other way round from the depth blur -- and is how the
+       renderer this follows does it. Four passes alternating from
+       there end on the scratch, which is where the sum below looks
+       for them. */
+    blurred = GL_l_i_AeBlurChain(bands, uSteps, vSteps, n, from,
+                                 spare, GL_AE_SLOT_SCRATCH);
+
+    /* The sum goes to the chain's spare, which the exchange after it
+       then makes the current frame. */
+    into = spare;
+
+    GLFN_glUseProgram(gl_aeRemProgram.program);
+    if (gl_aeRemSharp >= 0)
+        GLFN_glUniform1i(gl_aeRemSharp, 0);
+    if (gl_aeRemBlurred >= 0)
+        GLFN_glUniform1i(gl_aeRemBlurred, 1);
+    if (gl_aeRemWeight >= 0)
+        GLFN_glUniform1f(gl_aeRemWeight, AEF_f_RemanenceWeight(&src));
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(into));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
+    GLFN_glActiveTexture(GL_TEXTURE1);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(blurred));
+
+    GL_l_AeDrawBand(bands->top, bands->bottom);
+
+    GLFN_glActiveTexture(GL_TEXTURE1);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    return 1;
+}
+
+/* The motion blur: this frame over the frame before.
+ *
+ * The one effect that reads across frames, and it does it without a
+ * history buffer: the target it writes is never cleared, so what is
+ * already in it is what this effect left there last frame. The mixing
+ * is the framebuffer's blend, because the thing being mixed with is
+ * the destination.
+ *
+ * That makes the *choice* of target the substance of this effect
+ * rather than an implementation detail. It has to come out the same
+ * every frame, or the history read is some other effect's leftovers;
+ * GL_l_i_AeSpareExcept is written to walk the spares in order for that
+ * reason, and this effect is why.
+ */
+static int GL_l_b_AeMotionBlur(const tCbd_Bands* bands, int from, int spare)
+{
+    tAef_Source src;
+    int         into;
+
+    GL_l_AeReadSource(&src, bands);
+    if (!AEF_b_MotionBlur(&src))
+        return 0;
+
+    /* The chain's spare, and that is the whole of the choice. Where
+       the spare happens to be is decided by how many effects have run
+       before this one, and the renderer this follows is the same --
+       which is why running it on its own gives a trail that works and
+       running it behind the remanence does not. See the comment above
+       the chain. */
+    into = spare;
+
+    GLFN_glUseProgram(gl_aeBlendProgram.program);
+    if (gl_aeBlendSrc >= 0)
+        GLFN_glUniform1i(gl_aeBlendSrc, 0);
+    /* The new frame's share. The blend below takes one less it for
+       what is already there, which is the frame before. */
+    if (gl_aeBlendAlpha >= 0)
+        GLFN_glUniform1f(gl_aeBlendAlpha,
+                         1.0f - AEF_f_MotionBlurKeep(&src));
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(into));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
+
+    /* The only effect in the chain that blends, so it turns it on and
+       off around itself rather than leaving it to the chain. */
+    GLFN_glEnable(GL_BLEND);
+    GLFN_glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GL_l_AeDrawBand(bands->top, bands->bottom);
+    GLFN_glDisable(GL_BLEND);
+    return 1;
+}
+
+/* The zoom smooth: the frame added to itself at eight tightening crops
+ * about the centre of the band, so a pixel smears along the line from
+ * the centre through it.
+ */
+static int GL_l_b_AeZoomSmooth(const tCbd_Bands* bands, int from, int spare)
+{
+    tAef_Source  src;
+    tAef_ZoomTap taps[AEF_ZOOM_TAPS];
+    int          n;
+    int          into;
+    float        loV;
+    float        hiV;
+
+    GL_l_AeReadSource(&src, bands);
+    if (!AEF_b_ZoomSmooth(&src))
+        return 0;
+
+    n = AEF_i_ZoomTaps(&src, taps, AEF_ZOOM_TAPS);
+    if (n <= 0)
+        return 0;
+
+    into = spare;
+
+    /* The band's corners in texture space. The fractions are measured
+       from the top of the picture and this renderer's textures run up
+       it, so the band's top is the larger coordinate.
+     *
+       No test can tell this from the un-flipped spelling, and that is
+       not a gap: the band is symmetric by construction -- its bottom
+       is one less its top -- so one less the bottom *is* the top and
+       the two forms agree at every setting. The derivation is written
+       the right way round so that an asymmetric band, if one ever
+       arrives, does not quietly flip the zoom's centre. */
+    loV = 1.0f - bands->bottom;
+    hiV = 1.0f - bands->top;
+
+    GLFN_glUseProgram(gl_aeZoomProgram.program);
+    if (gl_aeZoomSrc >= 0)
+        GLFN_glUniform1i(gl_aeZoomSrc, 0);
+    if (gl_aeZoomBandLo >= 0)
+        GLFN_glUniform2f(gl_aeZoomBandLo, 0.0f, loV);
+    if (gl_aeZoomBandHi >= 0)
+        GLFN_glUniform2f(gl_aeZoomBandHi, 1.0f, hiV);
+    /* One tap's worth of crop. The taps are evenly spaced, so the
+       step is the whole of what the shader needs to place all eight --
+       and the first tap, at no crop at all, is the frame itself. */
+    if (gl_aeZoomInset >= 0)
+        GLFN_glUniform2f(gl_aeZoomInset, taps[1].insetU, taps[1].insetV);
+    if (gl_aeZoomTaps >= 0)
+        GLFN_glUniform1i(gl_aeZoomTaps, n);
+    if (gl_aeZoomWeight >= 0)
+        GLFN_glUniform1f(gl_aeZoomWeight, AEF_f_ZoomWeight());
+    GLFN_glBindFramebuffer(GL_FRAMEBUFFER, GL_l_i_AeSlotFbo(into));
+    GLFN_glActiveTexture(GL_TEXTURE0);
+    GLFN_glBindTexture(GL_TEXTURE_2D, GL_l_i_AeSlotTexture(from));
+
+    GL_l_AeDrawBand(bands->top, bands->bottom);
+    return 1;
 }
 
 /* The three colour effects, over the band. Returns the slot the frame
@@ -3294,14 +3693,29 @@ static int GL_l_b_AeWanted(void)
     src.aeMaster = (unsigned int)PC_AE_MASTER;
     src.brightness = unkAEFunc2Param;
     src.contrast = colorBalanceParam1;
-    return AEC_i_Steps(&src, steps, AEC_MAX_STEPS) > 0;
+    if (AEC_i_Steps(&src, steps, AEC_MAX_STEPS) > 0)
+        return 1;
+
+    {
+        tAef_Source fsrc;
+
+        /* The band is not read by any of the three gates, so a
+           default will do here -- the question is only whether
+           anything wants to run. */
+        GL_l_AeReadSource(&fsrc, NULL);
+        if (AEF_b_Remanence(&fsrc) || AEF_b_MotionBlur(&fsrc)
+            || AEF_b_ZoomSmooth(&fsrc))
+            return 1;
+    }
+    return 0;
 }
 
 static GLuint GL_l_i_RunAfterEffects(void)
 {
     tCbd_Bands bands;
     GLuint     shown;
-    int        slot;
+    int        cur;
+    int        spr;
 
     /* Where the world drew. Without a scene target it drew straight to
        the screen, and there is nothing here that can run over it. */
@@ -3337,12 +3751,50 @@ static GLuint GL_l_i_RunAfterEffects(void)
     /* The chain, in the order the other renderer runs it. Each effect
        is handed the slot the frame is in and says where it left it,
        so adding one is adding a line here -- and an effect that has
-       nothing to do hands the slot straight back. */
-    slot = DPB_SLOT_FRAME;
+       nothing to do hands the slot straight back.
+     *
+       The order is the other renderer's and gaps in it are deliberate:
+       between the ones below sit five more not written yet, and when
+       they arrive they go in their places rather than on the end. The
+       order matters most to the motion blur, which reads the target it
+       wrote last frame -- so what runs before it decides which target
+       that is. */
+    /* A current and a spare, exchanged after every effect that writes
+       the spare -- which is how the renderer this follows carries the
+       frame through its chain, and the reason each effect lands where
+       it does.
+     *
+       The depth blur is the exception at both ends: it writes the
+       frame rather than the spare, and so there is no exchange after
+       it. That is its own doing there as well.
+     *
+       One consequence is worth knowing rather than discovering. The
+       motion blur reads whatever is in the target it writes, which is
+       the spare -- so where the spare has got to decides what it reads
+       as the frame before. Run on its own, the spare has not moved and
+       holds its own output from last frame, and the trail works. Run
+       behind the remanence, one exchange has happened and the spare is
+       the frame, whose contents are the world as it was drawn this
+       frame -- so the trail silently stops being a trail. That is what
+       the renderer this follows does, and matching it is deliberate. */
+    cur = DPB_SLOT_FRAME;
+    spr = GL_AE_SLOT_SPARE;
+
     if (DPB_b_AfterEffect((unsigned int)PC_AE_MASTER))
-        slot = GL_l_i_AeDepthBlur(&bands);
-    slot = GL_l_i_AeColor(&bands, slot);
-    shown = GL_l_i_AeSlotFbo(slot);
+        cur = GL_l_i_AeDepthBlur(&bands, spr);
+    if (GL_l_b_AeRemanence(&bands, cur, spr))
+        GL_l_AeExchange(&cur, &spr);
+    if (GL_l_b_AeMotionBlur(&bands, cur, spr))
+        GL_l_AeExchange(&cur, &spr);
+    if (GL_l_b_AeZoomSmooth(&bands, cur, spr))
+        GL_l_AeExchange(&cur, &spr);
+    /* The colour effects are last and nothing reads a target after
+       them, so they keep their own simpler arrangement: each writes
+       somewhere that is not what it is reading. The renderer this
+       follows writes a temporary and copies back, which is the same
+       picture and one draw more. */
+    cur = GL_l_i_AeColor(&bands, cur);
+    shown = GL_l_i_AeSlotFbo(cur);
 
     GLFN_glUseProgram(0);
     GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);

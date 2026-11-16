@@ -45,11 +45,12 @@ $CC $CFLAGS -fsanitize=address -c depthblur.c -o "$OUT/wgo.dpb.o"
 $CC $CFLAGS -fsanitize=address -c fog.c -o "$OUT/wgo.fog.o"
 $CC $CFLAGS -fsanitize=address -c cinebands.c -o "$OUT/wgo.cbd.o"
 $CC $CFLAGS -fsanitize=address -c aecolor.c -o "$OUT/wgo.aec.o"
+$CC $CFLAGS -fsanitize=address -c aeframe.c -o "$OUT/wgo.aef.o"
 $CC $CFLAGS -fsanitize=address -c geosprite.c -o "$OUT/wgo.gsp.o"
 $CC $CFLAGS -fsanitize=address -c win/wingdimath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \
-    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.cbd.o" "$OUT/wgo.aec.o" "$OUT/wgo.gsp.o" \
+    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.cbd.o" "$OUT/wgo.aec.o" "$OUT/wgo.aef.o" "$OUT/wgo.gsp.o" \
     "$OUT/wgo.wgmath.o" "$OUT/wgo.math.o" -o "$OUT/wgo" -lm
 "$OUT/wgo"

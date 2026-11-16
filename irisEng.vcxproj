@@ -219,6 +219,7 @@
     <ClCompile Include="fog.c" />
     <ClCompile Include="cinebands.c" />
     <ClCompile Include="aecolor.c" />
+    <ClCompile Include="aeframe.c" />
     <ClCompile Include="datapath.c" />
     <ClCompile Include="projection.c" />
     <ClCompile Include="geovertex.c" />
@@ -529,6 +530,7 @@
     <ClInclude Include="fog.h" />
     <ClInclude Include="cinebands.h" />
     <ClInclude Include="aecolor.h" />
+    <ClInclude Include="aeframe.h" />
     <ClInclude Include="datapath.h" />
     <ClInclude Include="projection.h" />
     <ClInclude Include="geovertex.h" />

@@ -351,6 +351,13 @@ int   PC_AE_MASTER;
    links one renderer alone has to set them. */
 float unkAEFunc2Param;
 float colorBalanceParam1;
+/* And the three that scale the effects building a frame out of several
+   samples of one. Neutral for all three is nought, so unlike the two
+   above a tentative definition left to itself is the right value. The
+   effects built from them are in aeframe.h. */
+float motionBlurFactor;
+float remenanceFactor;
+float zoomSmoothFactor;
 /* The texture-coordinate transform the material path computes, one per
    stage, with stage nought the one the world's geometry uses. Declared
    here because both renderers read it and neither owns it: it is
