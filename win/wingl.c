@@ -653,6 +653,18 @@ static GLint      gl_geoFogStart = -1;
 static GLint      gl_geoFogEnd = -1;
 static GLint      gl_geoFogDensity = -1;
 static GLint      gl_geoFogColor = -1;
+static GLint      gl_geoUVMode = -1;
+static GLint      gl_geoUVMtx = -1;
+
+/* The material's texture-coordinate projection. The engine computes a
+   transform into d3dTransformationMatrix and says which source it
+   applies to in GDI_gi_TextureUVMode; both are the engine's and are
+   written whichever renderer is in force. Mode 2 wants the
+   camera-space normal, which this renderer's vertex does not carry --
+   the engine keeps normals in a stream of their own that this renderer
+   does not upload -- so that mode is reported once and drawn as mode
+   nought. */
+static int gl_uvSaidNoNormal;
 
 /* ------------------------------------------------------------- fog
  *
@@ -739,6 +751,8 @@ static int GL_l_b_GeometryReady(void)
     gl_geoFogEnd = GL_i_ProgramUniform(&gl_geoProgram, "uFogEnd");
     gl_geoFogDensity = GL_i_ProgramUniform(&gl_geoProgram, "uFogDensity");
     gl_geoFogColor = GL_i_ProgramUniform(&gl_geoProgram, "uFogColor");
+    gl_geoUVMode = GL_i_ProgramUniform(&gl_geoProgram, "uUVMode");
+    gl_geoUVMtx = GL_i_ProgramUniform(&gl_geoProgram, "uUVMtx");
 
     GLFN_glGenBuffers(1, &gl_geoBuffer);
     GLFN_glGenVertexArrays(1, &gl_geoVao);
@@ -900,6 +914,8 @@ static void GL_l_ForgetGeometry(void)
     gl_geoFogEnd = -1;
     gl_geoFogDensity = -1;
     gl_geoFogColor = -1;
+    gl_geoUVMode = -1;
+    gl_geoUVMtx = -1;
     gl_geoTried = 0;
     gl_geoReady = 0;
     free(gl_geoVerts);
@@ -1042,6 +1058,41 @@ static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
        material, because the engine can change it between the two. */
     if (gl_geoDiffuse2x >= 0)
         GLFN_glUniform1i(gl_geoDiffuse2x, GDI_gi_Diffuse2x ? 1 : 0);
+
+    /* The material's texture-coordinate projection, read at the draw
+       rather than kept with the material: the engine computes it after
+       TextureInit and before the draw, which is the one window in
+       which it is right. */
+    if (gl_geoUVMode >= 0)
+    {
+        int mode = GDI_gi_TextureUVMode;
+
+        /* Modes 4 and 5 belong to the depth-blur pass, which has its
+           own program and never reaches here. Mode 2 wants a normal
+           there is none of. */
+        if (mode == 2)
+        {
+            if (!gl_uvSaidNoNormal)
+            {
+                gl_uvSaidNoNormal = 1;
+                DBG_OutputDebugString("GL: a material asked for the"
+                                      " camera-space normal projection,"
+                                      " which needs a normal this"
+                                      " renderer does not upload;"
+                                      " drawing the stored"
+                                      " coordinates\n");
+            }
+            mode = 0;
+        }
+        else if (mode != 1 && mode != 3)
+        {
+            mode = 0;
+        }
+        GLFN_glUniform1i(gl_geoUVMode, mode);
+        if (mode != 0 && gl_geoUVMtx >= 0)
+            GLFN_glUniformMatrix4fv(gl_geoUVMtx, 1, GL_FALSE,
+                                    (const GLfloat*)&d3dTransformationMatrix[0]);
+    }
 
     /* Fog. The view matrix goes with it, because the depth the curve
        is a function of is the one thing the combined matrix has thrown

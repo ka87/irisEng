@@ -257,6 +257,9 @@ static void glr_Reset(void)
        the engine's, set by the AI scripts, so a case that wants a
        particular blur sets it and every other case starts with none. */
     PC_AE_MASTER = 0;
+    GDI_gi_TextureUVMode = 0;
+    memset(&d3dTransformationMatrix[0], 0, sizeof(d3dTransformationMatrix[0]));
+    gl_uvSaidNoNormal = 0;
     memset(&gl_fog, 0, sizeof(gl_fog));
     gl_fogSecondColor = 0;
     gl_fogSaidNoVertex = 0;
@@ -2031,6 +2034,261 @@ static void caseFogVertexCurve(void)
            "nothing is fogged, rather than something arbitrary being");
 }
 
+/* ======================================= the material's UV projection
+ *
+ * A material's texture coordinate is not always the one stored in the
+ * geometry. The engine computes a transform and says which source it
+ * applies to: the stored coordinate as it is, the stored coordinate
+ * transformed, or the camera-space position transformed. The last of
+ * those is how a planar projection works and the middle one is how a
+ * scrolling texture scrolls.
+ *
+ * The transform is the engine's own -- it is written whichever
+ * renderer is in force -- so what these cases check is that this
+ * renderer reads it and applies it to the right source, with the right
+ * shape of input. The two transformed modes disagree about that shape
+ * and the engine's own fixup is what says so, which makes it exactly
+ * the kind of thing to check rather than assume.
+ */
+
+/* A transform that maps its input somewhere unmistakable, written into
+   the engine's matrix the way the material path writes it. Row-vector
+   and row-major, as every matrix here is. */
+static void glr_SetUVMatrix(const float* m)
+{
+    memcpy(&d3dTransformationMatrix[0], m,
+           sizeof(Mtx4x4WithoutAdditionalData));
+}
+
+/* A two-by-two texture whose four texels are four different reds, so
+   which texel a coordinate landed on is readable off the red channel
+   alone -- and the four values are far apart, so a filtered blend of
+   two of them is still distinguishable from either. */
+static unsigned char glr_quadTexels[2 * 2 * 4];
+
+static void glr_CornerTexture(void)
+{
+    int i;
+    static const int reds[4] = { 0x20, 0x60, 0xA0, 0xE0 };
+
+    /* The engine's own byte order: blue, green, red, alpha. */
+    for (i = 0; i < 4; i++)
+    {
+        glr_quadTexels[i * 4 + 0] = 0;
+        glr_quadTexels[i * 4 + 1] = 0;
+        glr_quadTexels[i * 4 + 2] = (unsigned char)reds[i];
+        glr_quadTexels[i * 4 + 3] = 0xFF;
+    }
+
+    memset(glr_texElems, 0, sizeof(glr_texElems));
+    glr_texElems[1].normalData.width = 2;
+    glr_texElems[1].normalData.height = 2;
+    TEX_gst_GlobalList.texElems = glr_texElems;
+    TEX_gst_GlobalList.maxTexNum = 4;
+
+    memset(&glr_inter, 0, sizeof(glr_inter));
+    glr_inter.colorDepth2 = 32;
+    glr_inter.imgDataPtr = (char*)glr_quadTexels;
+    glr_inter.tp.flagsUnkAndProceduralUnkb1 = 0x40;   /* no mip chain */
+
+    GL_TextureStore(&glr_dd, 3);
+    GL_PaletteLoad(&glr_dd, &glr_texElems[1], &glr_inter, 1);
+}
+
+static void caseUVStored(void)
+{
+    printf("-- mode nought is the stored coordinate, untouched\n");
+
+    glr_Reset();
+    glr_OneTexel(0x40, 0x80, 0xC0, 0xFF);
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+
+    /* A transform that would send everything to one corner, left in
+       place to prove mode nought ignores it. */
+    {
+        float m[16] = { 0.0f, 0.0f, 0.0f, 0.0f,
+                        0.0f, 0.0f, 0.0f, 0.0f,
+                        0.0f, 0.0f, 0.0f, 0.0f,
+                        0.0f, 0.0f, 0.0f, 0.0f };
+        glr_SetUVMatrix(m);
+    }
+    GDI_gi_TextureUVMode = 0;
+
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    okNear(glr_R(GLR_W / 2, GLR_H / 2), 0x40, "the texel's red");
+    okNear(glr_G(GLR_W / 2, GLR_H / 2), 0x80, "its green");
+    okNear(glr_B(GLR_W / 2, GLR_H / 2), 0xC0,
+           "and its blue, so the transform was not applied");
+}
+
+static void caseUVFromPosition(void)
+{
+    float m[16];
+
+    printf("-- mode one takes the coordinate from the camera-space"
+           " position\n");
+
+    glr_Reset();
+    glr_CornerTexture();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+
+    /* The stored coordinates are flattened to one corner, so the only
+       thing that can vary across the quad is a coordinate taken from
+       the position. Left as they were, they span nought to one just as
+       the mapping below does -- so feeding the transform the stored
+       coordinate instead would produce four different texels too, and
+       the check below would pass either way. It did, until this. */
+    {
+        int i;
+
+        for (i = 0; i < 4; i++)
+        {
+            glr_uv[i].u = 0.0f;
+            glr_uv[i].v = 0.0f;
+        }
+    }
+
+    /* u and v from the position's x and y, mapped so that the quad's
+       middle lands in the middle of the texture: the quad spans -0.5
+       to 0.5, so u = x + 0.5. The translation is in the last row,
+       which is where a point's transform puts it -- a generated
+       coordinate's fourth component is one. */
+    memset(m, 0, sizeof(m));
+    m[0] = 1.0f;                 /* u from x */
+    m[5] = 1.0f;                 /* v from y */
+    m[12] = 0.5f; m[13] = 0.5f;  /* the translation, in the last row */
+    glr_SetUVMatrix(m);
+    GDI_gi_TextureUVMode = 1;
+
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    /* The quad's four quarters now sample the texture's four texels,
+       so each quarter is its own colour -- which a coordinate taken
+       from the stored UVs, or a transform applied to the wrong source,
+       would not produce. */
+    {
+        int qx = GLR_W / 2 - GLR_W / 8;
+        int qy = GLR_H / 2 - GLR_H / 8;
+        int rx = GLR_W / 2 + GLR_W / 8;
+        int ry = GLR_H / 2 + GLR_H / 8;
+        int a = glr_R(qx, qy);
+        int b = glr_R(rx, qy);
+        int c = glr_R(qx, ry);
+        int d = glr_R(rx, ry);
+
+        ok(!(a == b && b == c && c == d),
+           "the four quarters do not all sample the same texel");
+        /* And the whole of it is inside the texture rather than
+           clamped to one edge, which is what a translation left in the
+           wrong row would give. */
+        ok(a != 0 || b != 0 || c != 0 || d != 0,
+           "and something was sampled at all");
+    }
+}
+
+static void caseUVTransformedStored(void)
+{
+    float m[16];
+    int   plain;
+    int   shifted;
+
+    printf("-- mode three transforms the stored coordinate\n");
+
+    glr_Reset();
+    glr_CornerTexture();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+
+    GDI_gi_TextureUVMode = 0;
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+    plain = glr_R(GLR_W / 4, GLR_H / 4);
+
+    /* The identity, with the stored coordinate shifted by half. The
+       translation goes in the *third* row, not the last: the engine
+       moves it there itself before handing the matrix over, which is
+       only necessary because a stored coordinate's fourth component is
+       zero. Putting it in the last row here would change nothing, and
+       that is the mistake this case exists to catch. */
+    memset(m, 0, sizeof(m));
+    m[0] = 1.0f;
+    m[5] = 1.0f;
+    m[8] = 0.5f; m[9] = 0.5f;    /* the translation, in the third row */
+    glr_SetUVMatrix(m);
+    GDI_gi_TextureUVMode = 3;
+
+    glr_Begin();
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+    shifted = glr_R(GLR_W / 4, GLR_H / 4);
+
+    ok(plain != shifted,
+       "a transform on the stored coordinate moves what is sampled");
+
+    /* And the translation really is read out of the third row: the
+       same numbers in the last row have to do nothing, because a
+       stored coordinate has no fourth component to multiply them by. */
+    memset(m, 0, sizeof(m));
+    m[0] = 1.0f;
+    m[5] = 1.0f;
+    m[12] = 0.5f; m[13] = 0.5f;  /* the last row, which is not read */
+    glr_SetUVMatrix(m);
+
+    glr_Begin();
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+    okEq(glr_R(GLR_W / 4, GLR_H / 4), plain,
+         "and the last row is not read for a stored coordinate");
+}
+
+static void caseUVNormalMode(void)
+{
+    float m[16];
+
+    printf("-- the projection this renderer has no normal for\n");
+
+    glr_Reset();
+    glr_OneTexel(0x40, 0x80, 0xC0, 0xFF);
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+
+    /* A transform that would send every coordinate off the texture, so
+       that applying it to anything at all would show. */
+    memset(m, 0, sizeof(m));
+    m[12] = 50.0f; m[13] = 50.0f;
+    glr_SetUVMatrix(m);
+    GDI_gi_TextureUVMode = 2;
+
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    /* Drawn as the stored coordinate, which with a one-texel texture
+       is that texel -- not the transform applied to a normal that is
+       not there, and not nothing at all. */
+    okNear(glr_R(GLR_W / 2, GLR_H / 2), 0x40,
+           "it falls back to the stored coordinate");
+    okEq(gl_uvSaidNoNormal, 1, "and says so, once");
+}
+
 static void caseShadersCompile(void)
 {
     printf("-- every shipped shader compiles on a real driver\n");
@@ -2126,6 +2384,10 @@ int main(void)
     caseFogAlphaAndPermission();
     caseFogVariants();
     caseFogVertexCurve();
+    caseUVStored();
+    caseUVFromPosition();
+    caseUVTransformedStored();
+    caseUVNormalMode();
     caseShadersCompile();
     caseGeometryModulates();
     caseGeometryUntextured();

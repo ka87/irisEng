@@ -5,9 +5,41 @@
 in vec4  vColor;
 in vec2  vUV;
 in float vDepth;
+in vec3  vCam;
 out vec4 oColor;
 
 uniform sampler2D uTex;
+
+// The material's texture-coordinate projection. The engine computes a
+// transform and says which source it applies to:
+//
+//   0  the stored coordinate, untransformed
+//   1  the camera-space position, transformed
+//   3  the stored coordinate, transformed
+//
+// Mode 2 takes the camera-space normal and is not here: this
+// renderer's vertex carries no normal, so the renderer says so and
+// falls back to mode 0 rather than making one up.
+//
+// The two transformed modes do not agree on the input's shape, and
+// that is the engine's doing rather than a guess. A generated
+// coordinate is a point, so its fourth component is one and the
+// transform's last row is its translation. A stored coordinate is two
+// numbers, so the engine moves the translation up into the third row
+// before handing the matrix over -- which is only necessary if the
+// fourth component is zero there. So one is (x, y, z, 1) and the other
+// is (u, v, 1, 0).
+uniform int  uUVMode;
+uniform mat4 uUVMtx;
+
+vec2 TexCoord(void)
+{
+    if (uUVMode == 1)
+        return (uUVMtx * vec4(vCam, 1.0)).xy;
+    if (uUVMode == 3)
+        return (uUVMtx * vec4(vUV, 1.0, 0.0)).xy;
+    return vUV;
+}
 
 // Whether there is a texture at all. A material can ask for none, and
 // then the vertex colour is the colour; the engine says so by handing
@@ -67,7 +99,7 @@ void main()
 
     if (uTextured != 0)
     {
-        c *= texture(uTex, vUV);
+        c *= texture(uTex, TexCoord());
         if (uDiffuse2x != 0)
             c.rgb *= 2.0;
     }
