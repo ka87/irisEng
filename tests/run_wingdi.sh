@@ -98,6 +98,13 @@ $CC $CFLAGS -c geosprite.c -o "$OUT/wingdi.gsp.o"
 # rasterStateCase compares the two readings over every combination of
 # them. Linked for that check, which is why it is pure.
 $CC $CFLAGS -c rasterstate.c -o "$OUT/wingdi.rst.o"
+# watermesh.c states the water surface's index strip, vertex stream and
+# reflection remap once, for both renderers. It is a move out of
+# win/wingdi.c, so the frozen copy still has all three inline and the
+# water cases below compare the two -- including the bytes each side
+# writes into the locked index and vertex buffers, which is what proves
+# the shared copy rather than merely exercising it.
+$CC $CFLAGS -c watermesh.c -o "$OUT/wingdi.wms.o"
 $CC $CFLAGS -c fog.c -o "$OUT/wingdi.fog.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/wingdi.profiler.o"
 $CC $CFLAGS -c tests/wingdi_mocks.c -o "$OUT/wingdi.mocks.o"
@@ -105,6 +112,7 @@ $CC $CFLAGS -c tests/test_wingdi.c -o "$OUT/wingdi.drv.o"
 $CC "$OUT/wingdi.new.o" "$OUT/wingdi.base.o" "$OUT/wingdi.math.o" \
     "$OUT/wingdi.wgmath.o" "$OUT/wingdi.proj.o" "$OUT/wingdi.gvx.o" \
     "$OUT/wingdi.rst.o" "$OUT/wingdi.fog.o" "$OUT/wingdi.gsp.o" "$OUT/wingdi.profiler.o" \
+    "$OUT/wingdi.wms.o" \
     "$OUT/wingdi.mocks.o" \
     "$OUT/wingdi.drv.o" \
     -o "$OUT/wingdi" -lm

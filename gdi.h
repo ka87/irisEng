@@ -92,6 +92,8 @@ typedef struct sGdi_SpriteQuad
     int  color;
 } tGdi_SpriteQuad;
 
+struct sWaterParamsGlobalStruct;
+
 typedef struct sGdi_DisplayData
 {
     void*(* CreateDevice)(void);
@@ -206,6 +208,28 @@ typedef struct sGdi_DisplayData
     void(* DestroyAlphaTexture)(void* texture);
     void(* OverlayDrawTexturedQuads)(void* texture, const void* vertices,
                                      int triangleCount);
+
+    /* The water, which is two passes in one place.
+     *
+     * PrepareWaterRendering runs once a frame before the world is
+     * drawn: it clears the reflection target to the colour the water
+     * is looking down into and keeps the camera as it is at that
+     * moment, which is what the mirrored second draw of each object
+     * is measured against. It also decides, by whether the engine has
+     * water parameters at all, whether there is any water this frame
+     * -- everything downstream reads that one answer.
+     *
+     * DrawWater draws the surface, once, after the world: a grid the
+     * simulation has already built, with the reflection projected
+     * onto it and pushed about by the wave. The grid and the
+     * projection are in watermesh.c, shared between renderers,
+     * because neither has a device in it.
+     *
+     * Both were called straight into one renderer until lately, so a
+     * machine running the other one got no water at all. */
+    void(* PrepareWaterRendering)(void);
+    void(* DrawWater)(struct sWaterParamsGlobalStruct* water);
+
     uint8_t gap1_unused[4];
     HWND hwnd;
     int32_t drawMaskAllowedStuff;

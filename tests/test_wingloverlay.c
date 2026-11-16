@@ -176,6 +176,15 @@ WGM1(glBindVertexArray, GLuint)
 WGM2(glBindBuffer, GLenum, GLuint)
 WGM1(glEnableVertexAttribArray, GLuint)
 WGM3(glDrawArrays, GLenum, GLint, GLsizei)
+/* By hand rather than through the macros above: four arguments, and
+   the last is a byte offset into the bound index buffer, which goes on
+   the record as the number it is. */
+static void GL_APIENTRY MK_glDrawElements(GLenum mode, GLsizei count,
+                                          GLenum type, const void* offset)
+{
+    WG_Record("glDrawElements", 4, (long long)mode, (long long)count,
+              (long long)type, (long long)(size_t)offset);
+}
 WGM2(glBindTexture, GLenum, GLuint)
 WGM1(glActiveTexture, GLenum)
 WGM2(glPixelStorei, GLenum, GLint)
@@ -193,16 +202,28 @@ WGM1(glViewport_unused, GLenum)
    clearing: the list was a promise about what the cases do not reach,
    and it was wrong. So there is no list now, and no pointer is left
    null. */
+static long WG_l_Scale(float v)
+{
+    return (long)(v * 1000000.0f + (v < 0.0f ? -0.5f : 0.5f));
+}
+
 WGM1(glClear, GLbitfield)
 WGM1(glClearDepth, GLclampd)
 WGM1(glClearStencil, GLint)
 WGM0(glFinish)
 WGM0(glFlush)
 
+/* Scaled by a million on the way to the record, the way the uniform
+   mocks are. It used to truncate to an integer, and every component of
+   a clear colour is under one, so every colour but white recorded as
+   nought -- "cleared to black" passed for a clear to any colour at
+   all, and the water's clear to the colour the engine asked for could
+   not be checked. */
 static void GL_APIENTRY MK_glClearColor(GLclampf r, GLclampf g, GLclampf b, GLclampf a)
 {
-    WG_Record("glClearColor", 4, (long long)r, (long long)g, (long long)b,
-              (long long)a);
+    WG_Record("glClearColor", 4, (long long)WG_l_Scale(r),
+              (long long)WG_l_Scale(g), (long long)WG_l_Scale(b),
+              (long long)WG_l_Scale(a));
 }
 
 static void GL_APIENTRY MK_glScissor(GLint x, GLint y, GLsizei w, GLsizei h)
@@ -298,6 +319,7 @@ static int            wg_lastTranspose;
    failed. */
 #define WG_MATRICES 8
 static const GLfloat* wg_matrix[WG_MATRICES];
+static GLfloat        wg_matrixData[WG_MATRICES][16];
 static int            wg_matrixNum;
 
 static void GL_APIENTRY MK_glUniformMatrix4fv(GLint loc, GLsizei count, GLboolean transpose,
@@ -306,7 +328,19 @@ static void GL_APIENTRY MK_glUniformMatrix4fv(GLint loc, GLsizei count, GLboolea
     wg_lastMatrix = value;
     wg_lastTranspose = transpose;
     if (wg_matrixNum < WG_MATRICES)
+    {
+        /* The sixteen floats, not only the pointer. A renderer is free
+           to upload a matrix it built on its own stack -- the water's
+           projection remap is one -- and the pointer is dangling by
+           the time a case looks at it. */
+        if (value)
+            memcpy(wg_matrixData[wg_matrixNum], value,
+                   16 * sizeof(GLfloat));
+        else
+            memset(wg_matrixData[wg_matrixNum], 0,
+                   16 * sizeof(GLfloat));
         wg_matrix[wg_matrixNum++] = value;
+    }
     WG_Record("glUniformMatrix4fv", 3, (long long)loc, (long long)count,
               (long long)transpose);
 }
@@ -778,6 +812,7 @@ static void WG_AimThePointers(void)
     GLFN_glEnableVertexAttribArray = MK_glEnableVertexAttribArray;
     GLFN_glVertexAttribPointer = MK_glVertexAttribPointer;
     GLFN_glDrawArrays = MK_glDrawArrays;
+    GLFN_glDrawElements = MK_glDrawElements;
     GLFN_glBufferData = MK_glBufferData;
     GLFN_glGenBuffers = MK_glGenBuffers;
     GLFN_glBlitFramebuffer = MK_glBlitFramebuffer;
@@ -952,6 +987,33 @@ int   tweak_ae_no = 0;
    mapping in force -- which is what every case here is written
    against. */
 int   tweak_gl_cull = 0;
+
+/* ---- the water's engine side ----
+ *
+ * The simulation lives in water.c, which would bring the engine with
+ * it, so the driver owns the few things the renderer reads from it. A
+ * case fills the grid in; the blur is counted rather than done,
+ * because the renderer's contract with it is only that it runs over
+ * the wave array before anything reads that array. */
+/* pst_GlobalsWaterParams is not defined here: water.h already leaves
+   a tentative definition of it, which is how the engine shares it
+   between the simulation and the renderers. */
+int   tweak_water_blur_normal = 0;
+static int   wg_waterBlurCalls;
+static void* wg_waterBlurArg;
+
+void WTR_WaterBlurNormal(Vec3* normals, int rowLength, int rowCount)
+{
+    wg_waterBlurCalls++;
+    wg_waterBlurArg = normals;
+    (void)rowLength;
+    (void)rowCount;
+}
+
+/* The water's own flip override, at the nought that leaves the
+   renderer's choice in force. */
+int   tweak_gl_water_flip = 0;
+
 int   ECAM_gi_NoAfterEffects = 0;
 
 /* The two colour parameters, at the neutral the game starts them at.
@@ -986,6 +1048,9 @@ static void reset(void)
        same size every time, and rebuilding it would move the name and
        call counts every case above is written against. */
     GL_l_ForgetAe();
+    GL_l_ForgetWater();
+    pst_GlobalsWaterParams = NULL;
+    tweak_gl_water_flip = 0;
     /* And the two colour parameters back to neutral, which is a half
        for both of them. */
     unkAEFunc2Param = 0.5f;
@@ -1013,6 +1078,7 @@ static void reset(void)
     wg_lastBufferSize = 0;
     wg_lastMatrix = NULL;
     memset(wg_matrix, 0, sizeof(wg_matrix));
+    memset(wg_matrixData, 0, sizeof(wg_matrixData));
     wg_matrixNum = 0;
     wg_lastTranspose = -1;
     wg_boundFbo = 0;
@@ -2608,8 +2674,8 @@ static void caseTargetsBuild(void)
        point, so an untouched one has to mean unshadowed. */
     okEq(WG_i_Count("glClearColor"), 8,
          "one white fill each, and no clear because none was asked for");
-    okEq(WG_l_Arg("glClearColor", 0, 0), 1, "the fill is white");
-    okEq(WG_l_Arg("glClearColor", 0, 3), 1, "opaque");
+    okEq(WG_l_Arg("glClearColor", 0, 0), 1000000, "the fill is white");
+    okEq(WG_l_Arg("glClearColor", 0, 3), 1000000, "opaque");
 
     /* And not again on the next bind. */
     wg_callLen = 0;
@@ -3366,9 +3432,12 @@ static long wg_l_TextureBefore(long unit, int before)
 /* Scaled and rounded exactly as the two mocks above record a float,
    so that a case's expected value and the recorded one round the same
    way rather than one truncating. */
+/* The same scaling the mocks record with, under the name the cases
+   below it were written against. One implementation, so a case and a
+   mock cannot round differently. */
 static long wg_l_Scaled(float v)
 {
-    return (long)(v * 1000000.0f + (v < 0.0f ? -0.5f : 0.5f));
+    return WG_l_Scale(v);
 }
 
 /* Where the nth call of a name sits in the log. */
@@ -4466,6 +4535,573 @@ static void caseAeFrameGates(void)
     zoomSmoothFactor = 0.0f;
 }
 
+/* ------------------------------------------------------- the water
+ *
+ * What these check is the plumbing, not the arithmetic. The grid, the
+ * rippled direction and the projection remap are watermesh.c's, and
+ * that file is compared against the other renderer byte for byte by
+ * tests/run_wingdi.sh -- including the bytes each side writes into its
+ * locked buffers. Repeating that comparison here would be measuring
+ * the shared code twice and the wiring not at all.
+ *
+ * So these ask the questions that are this renderer's own: whether the
+ * reflection target is cleared to the colour the engine asked for,
+ * whether the index strip is uploaded once rather than every frame,
+ * whether the right arrays and the right camera reach the vertex
+ * build, and what state the surface is drawn with.
+ */
+
+/* A grid, with every array distinct enough that a case can tell which
+   one reached which attribute. */
+#define WG_WTR_COLS 4
+#define WG_WTR_ROWS 3
+#define WG_WTR_NUM  (WG_WTR_COLS * WG_WTR_ROWS)
+
+static tWaterParamsGlobalStruct wg_water;
+static Vec3         wg_waterPos[WG_WTR_NUM];
+static Vec3         wg_waterWave[WG_WTR_NUM];
+static unsigned int wg_waterCol[WG_WTR_NUM];
+
+static void wg_WaterFixture(unsigned int columns, int rows)
+{
+    unsigned int i;
+    unsigned int num = columns * (unsigned int)rows;
+
+    memset(&wg_water, 0, sizeof(wg_water));
+    for (i = 0; i < num && i < WG_WTR_NUM; i++)
+    {
+        /* Nothing symmetric and nothing repeated: a swapped pair of
+           arrays, or a transposed grid, has to show. */
+        wg_waterPos[i].x = 100.0f + (float)i;
+        wg_waterPos[i].y = 200.0f + (float)i * 2.0f;
+        wg_waterPos[i].z = 300.0f + (float)i * 3.0f;
+        /* The wave is the same at every grid point but one. Flat,
+           because the ripple a vertex gets is the wave times a
+           fall-off that depends only on the row, and a wave that grew
+           across the grid would swamp the fall-off and hide whether
+           it is there at all -- which it did, and the check below
+           caught it. The one odd point is what shows the array is
+           read per vertex rather than once. */
+        wg_waterWave[i].x = 0.125f;
+        wg_waterWave[i].y = 0.0625f;
+        wg_waterWave[i].z = 0.0f;
+        /* A8R8G8B8 with all four bytes different, so the swap the
+           stream wants is visible and the alpha is not confusable
+           with a colour channel. */
+        wg_waterCol[i] = 0x40000000u | ((unsigned int)(i + 1) << 16)
+                         | ((unsigned int)(i + 20) << 8)
+                         | (unsigned int)(i + 40);
+    }
+    /* The odd one out, in the middle of the first row so that neither
+       end of the grid is special. */
+    if (num > 1)
+        wg_waterWave[1].x = 4.0f;
+    wg_water.vertices = wg_waterPos;
+    wg_water.vecsForUVs = wg_waterWave;
+    wg_water.colors = wg_waterCol;
+    wg_water.horizontalVertexNum = columns;
+    wg_water.verticallVertexNum = rows;
+    wg_water.waterEngine.bottomColor = 0x20406080;
+    pst_GlobalsWaterParams = &wg_water;
+
+    /* A camera somewhere nothing else is, so that a direction built
+       against the wrong one cannot land on the right answer. */
+    gl_dd.ct.cam.objectMtx.Pos.x = 7.0f;
+    gl_dd.ct.cam.objectMtx.Pos.y = 11.0f;
+    gl_dd.ct.cam.objectMtx.Pos.z = 13.0f;
+}
+
+static void caseWaterRefusals(void)
+{
+    printf("-- what makes a frame have no water\n");
+
+    /* No water parameters at all is the engine saying there is no
+       water this frame, and it is the only thing that says so. */
+    reset();
+    pst_GlobalsWaterParams = NULL;
+    wg_callLen = 0;
+    GL_PrepareWaterRendering();
+    okEq(WG_i_Count("glClear"), 0, "with no water parameters, nothing is"
+                                   " cleared");
+
+    /* And then the surface must not draw either, however complete the
+       grid it is handed. A frame that prepared no reflection and drew
+       a surface anyway would sample whatever the target last held. */
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    pst_GlobalsWaterParams = NULL;
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    okEq(WG_i_Count("glDrawElements"), 0, "and the surface is not drawn");
+
+    /* The same from the other direction: parameters present, but the
+       surface asked for before anything prepared it. */
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    okEq(WG_i_Count("glDrawElements"), 0, "a surface drawn before the frame"
+                                          " was prepared draws nothing");
+
+    /* And the frame going away between one prepare and the next, with
+       the target already built. This is the only check that reaches
+       the "is there water this frame" answer rather than the "is there
+       a target" one: before the first prepare there is no target
+       either, so a draw refused then says nothing about which guard
+       refused it. A mutant that dropped the frame's own answer
+       survived everything above. */
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    GL_PrepareWaterRendering();          /* builds it, and says yes */
+    pst_GlobalsWaterParams = NULL;
+    GL_PrepareWaterRendering();          /* same target, and says no */
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    okEq(WG_i_Count("glDrawElements"), 0, "a frame whose water went away"
+                                          " draws no surface, target or"
+                                          " no target");
+
+    /* No context is no renderer. */
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    gl_state.context = NULL;
+    wg_callLen = 0;
+    GL_PrepareWaterRendering();
+    GL_DrawWater(&wg_water);
+    okEq(wg_callLen, 0, "and without a context neither half calls anything");
+}
+
+static void caseWaterClear(void)
+{
+    int at;
+
+    printf("-- the reflection target, cleared to what the water looks into\n");
+
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    wg_callLen = 0;
+    GL_PrepareWaterRendering();
+
+    ok(WG_i_Count("glClear") >= 1, "the target is cleared");
+
+    /* 0x20406080 as A8R8G8B8: alpha 0x20, red 0x40, green 0x60,
+       blue 0x80. Checked a channel at a time, because the one mistake
+       this cannot afford is reading the word the other way round --
+       and a palindromic colour would hide exactly that. */
+    at = wg_i_CallAt("glClearColor", 0);
+    ok(at >= 0, "and a clear colour is set for it");
+    if (at >= 0)
+    {
+        okEq(wg_calls[at].arg[0], wg_l_Scaled(0x40 / 255.0f),
+             "red comes from the second byte down");
+        okEq(wg_calls[at].arg[1], wg_l_Scaled(0x60 / 255.0f),
+             "green from the third");
+        okEq(wg_calls[at].arg[2], wg_l_Scaled(0x80 / 255.0f),
+             "blue from the lowest");
+        okEq(wg_calls[at].arg[3], wg_l_Scaled(0x20 / 255.0f),
+             "and alpha from the top");
+    }
+
+    /* Square and the size the other renderer makes it, which is also
+       the size the projection remap is written against. */
+    at = wg_i_CallAt("glViewport", 0);
+    ok(at >= 0, "the viewport is set for the target");
+    if (at >= 0)
+    {
+        okEq(wg_calls[at].arg[2], 512, "512 across");
+        okEq(wg_calls[at].arg[3], 512, "and 512 down");
+    }
+
+    /* And the frame is put back where it was being built. Left bound
+       to the reflection target, the whole of the world after this
+       point would go into a 512-square texture nobody shows. */
+    {
+        int clearAt = wg_i_CallAt("glClear", 0);
+        int i;
+        long back = -1;
+
+        for (i = clearAt + 1; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glBindFramebuffer") == 0)
+            {
+                back = (long)wg_calls[i].arg[1];
+                break;
+            }
+        ok(back > 0 && back != (long)wg_fboColor[0],
+           "the scene is bound again afterwards, not the reflection");
+    }
+}
+
+static void caseWaterStrip(void)
+{
+    int first;
+    int second;
+
+    printf("-- the index strip, uploaded when the grid changes and not"
+           " per frame\n");
+
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    GL_PrepareWaterRendering();
+
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    first = WG_i_Count("glBufferData");
+    okEq(WG_i_Count("glDrawElements"), 1, "the surface is drawn once");
+    okEq(first, 2, "the first frame uploads two buffers, the strip and"
+                   " the vertices");
+
+    /* A strip for a four by three grid: the count is the arithmetic
+       watermesh.h sets out, and it is asked of the module rather than
+       written out here, because a figure copied into a test is a
+       second place for it to be wrong. */
+    {
+        int at = wg_i_CallAt("glDrawElements", 0);
+
+        ok(at >= 0, "and through an index buffer");
+        if (at >= 0)
+        {
+            okEq(wg_calls[at].arg[0], GL_TRIANGLE_STRIP,
+                 "as one triangle strip");
+            okEq(wg_calls[at].arg[1],
+                 WMS_i_IndexCount(WG_WTR_COLS, WG_WTR_ROWS),
+                 "with every index the strip holds");
+            okEq(wg_calls[at].arg[2], GL_UNSIGNED_SHORT,
+                 "and sixteen-bit indices");
+            okEq(wg_calls[at].arg[3], 0, "from the start of the buffer");
+        }
+    }
+
+    /* A second frame on the same grid: the strip depends on nothing
+       but the two counts, so re-uploading it every frame would be
+       work for nothing. */
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    second = WG_i_Count("glBufferData");
+    okEq(second, 1, "a second frame on the same grid uploads the vertices"
+                    " only");
+    okEq(WG_i_Count("glDrawElements"), 1, "and still draws");
+
+    /* A grid of a different size, and it has to come back. */
+    wg_WaterFixture(3, 2);
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    okEq(WG_i_Count("glBufferData"), 2, "a grid of another size uploads the"
+                                        " strip again");
+    {
+        int at = wg_i_CallAt("glDrawElements", 0);
+
+        if (at >= 0)
+            okEq(wg_calls[at].arg[1], WMS_i_IndexCount(3, 2),
+                 "and draws the new strip's length");
+    }
+
+    /* A grid too small to strip draws nothing rather than drawing
+       whatever the buffer held. */
+    reset();
+    wg_WaterFixture(1, 2);
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    okEq(WG_i_Count("glDrawElements"), 0, "a grid one column wide draws"
+                                          " nothing");
+}
+
+static void caseWaterWiring(void)
+{
+    const tWms_Vertex* v;
+    int                i;
+
+    printf("-- which arrays and which camera reach the vertex build\n");
+
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+
+    /* The vertices go up last, so the recorded copy is them. */
+    okEq(wg_bufferCopyLen,
+         (long)(WG_WTR_NUM * (int)sizeof(tWms_Vertex)),
+         "the whole grid is uploaded");
+    v = (const tWms_Vertex*)wg_bufferCopy;
+
+    /* The position array. Checked at both ends, because a grid read
+       transposed or offset by a row agrees in the middle. */
+    okEq(wg_l_Scaled(v[0].pos.x), wg_l_Scaled(wg_waterPos[0].x),
+         "the first position is the grid's first point");
+    okEq(wg_l_Scaled(v[0].pos.z), wg_l_Scaled(wg_waterPos[0].z),
+         "in all three components");
+    okEq(wg_l_Scaled(v[WG_WTR_NUM - 1].pos.y),
+         wg_l_Scaled(wg_waterPos[WG_WTR_NUM - 1].y),
+         "and the last is the grid's last");
+
+    /* The camera. The horizontal component of the direction is the
+       one with nothing else in it -- no wave, no fall-off -- so it is
+       where a camera taken from the wrong place shows plainly. */
+    for (i = 0; i < WG_WTR_NUM; i++)
+        if (wg_l_Scaled(v[i].dir.x)
+            != wg_l_Scaled(wg_waterPos[i].x - 7.0f))
+            break;
+    okEq(i, WG_WTR_NUM, "every direction is measured from the engine's"
+                        " camera");
+
+    /* The wave array reaches the depth component and the colour array
+       the colour. Both are checked by what would be there if the
+       array had not arrived: the depth would be the bare difference,
+       and the colour would be nought. */
+    ok(wg_l_Scaled(v[0].dir.z) != wg_l_Scaled(wg_waterPos[0].z - 13.0f),
+       "the wave array reaches the depth component");
+    okEq((long)v[0].diffuse, (long)WMS_u_SwapRedBlue(wg_waterCol[0]),
+         "and the colour array reaches the colour");
+
+    /* Per vertex, not once for the grid: the one point with a bigger
+       wave is pushed further than its neighbours in the same row, and
+       the row is what the fall-off depends on, so within a row the
+       wave is the only thing left that can differ. */
+    ok(fabs((double)v[1].dir.z - (double)(wg_waterPos[1].z - 13.0f))
+       > fabs((double)v[0].dir.z - (double)(wg_waterPos[0].z - 13.0f)),
+       "and is read per vertex, not once for the grid");
+
+    /* The depth component, predicted rather than compared.
+     *
+     * Everything above is a comparison between two vertices, and a
+     * comparison survives a great deal: a wave array swapped for the
+     * position array, or the grid read with its rows and columns the
+     * other way round, both leave every inequality above still true.
+     * Both mutants did.
+     *
+     * So this states what the component must be, from the position,
+     * the camera and the fall-off for that vertex's row -- the
+     * fall-off asked of watermesh.c, which run_wingdi.sh has already
+     * compared against the other renderer, rather than written out
+     * again here. Which row a vertex is in is then part of the claim,
+     * and so is which array the wave came from. */
+    {
+        int bad = -1;
+
+        for (i = 0; i < WG_WTR_NUM; i++)
+        {
+            float scale = WMS_f_RippleScale((unsigned int)(i / WG_WTR_COLS),
+                                            WG_WTR_ROWS);
+            double ripple = wg_waterWave[i].y + wg_waterWave[i].x;
+            float want = (float)((wg_waterPos[i].z - 13.0f)
+                                 - fabs(ripple * scale));
+
+            if (wg_l_Scaled(v[i].dir.z) != wg_l_Scaled(want))
+            {
+                bad = i;
+                break;
+            }
+        }
+        okEq(bad, -1, "every depth component is the wave and the row's"
+                      " own fall-off");
+    }
+
+    /* The grid is read row by row with the near rows first, which is
+       what the fall-off is a function of. Compared down a column, and
+       not across the grid: with the wave flat, the row is the only
+       thing left. A grid read the other way up ripples hardest at the
+       far edge and nothing else here would notice. */
+    ok(fabs((double)v[0].dir.z - (double)(wg_waterPos[0].z - 13.0f))
+       > fabs((double)v[(WG_WTR_ROWS - 1) * WG_WTR_COLS].dir.z
+              - (double)(wg_waterPos[(WG_WTR_ROWS - 1) * WG_WTR_COLS].z
+                         - 13.0f)),
+       "and the first row ripples harder than the last");
+}
+
+static void caseWaterBlur(void)
+{
+    printf("-- the wave blur, which runs before anything reads the array\n");
+
+    /* Off by default, and then it must not run. */
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    tweak_water_blur_normal = 0;
+    wg_waterBlurCalls = 0;
+    GL_PrepareWaterRendering();
+    GL_DrawWater(&wg_water);
+    okEq(wg_waterBlurCalls, 0, "with the tweak off the blur does not run");
+
+    /* On, and it runs over the engine's own wave array -- not over a
+       copy, because it rewrites the array in place and the vertex
+       build reads that array afterwards. */
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    tweak_water_blur_normal = 1;
+    wg_waterBlurCalls = 0;
+    wg_waterBlurArg = NULL;
+    GL_PrepareWaterRendering();
+    GL_DrawWater(&wg_water);
+    okEq(wg_waterBlurCalls, 1, "with it on the blur runs once a frame");
+    ok(wg_waterBlurArg == (void*)wg_waterWave,
+       "over the engine's wave array itself");
+    tweak_water_blur_normal = 0;
+}
+
+static void caseWaterState(void)
+{
+    int i;
+    int depthTest = 0;
+    int blendOff = 0;
+    int cullOff = 0;
+    int maskOff = -1;
+    int maskBackOn = -1;
+
+    printf("-- the state the surface is drawn with\n");
+
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    GL_PrepareWaterRendering();
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+
+    for (i = 0; i < wg_callLen; i++)
+    {
+        const char* n = wg_calls[i].name;
+
+        if (strcmp(n, "glEnable") == 0 && wg_calls[i].arg[0] == GL_DEPTH_TEST)
+            depthTest = 1;
+        if (strcmp(n, "glDisable") == 0 && wg_calls[i].arg[0] == GL_BLEND)
+            blendOff = 1;
+        if (strcmp(n, "glDisable") == 0 && wg_calls[i].arg[0] == GL_CULL_FACE)
+            cullOff = 1;
+        if (strcmp(n, "glDepthMask") == 0)
+        {
+            if (!wg_calls[i].arg[0] && maskOff < 0)
+                maskOff = i;
+            if (wg_calls[i].arg[0] && maskOff >= 0 && i > maskOff)
+                maskBackOn = i;
+        }
+    }
+
+    ok(depthTest, "the depth test is on, so the surface can be hidden");
+    {
+        int at = wg_i_CallAt("glDepthFunc", 0);
+
+        ok(at >= 0 && wg_calls[at].arg[0] == GL_LEQUAL,
+           "and compares less-or-equal, as the other renderer does");
+    }
+
+    /* Not written. The surface is one plane and the after-effects read
+       the depth this frame leaves, so writing it would both fight
+       itself where the strip doubles back and change what they see. */
+    ok(maskOff >= 0, "depth writing is switched off for the draw");
+    {
+        int drawAt = wg_i_CallAt("glDrawElements", 0);
+
+        ok(maskOff >= 0 && drawAt > maskOff, "before the draw");
+        ok(maskBackOn > drawAt, "and back on after it, which everything"
+                                " downstream expects");
+    }
+
+    ok(blendOff, "blending is off -- the mixing is the shader's");
+
+    /* Both sides. The other renderer sets no culling for this draw and
+       inherits whatever was last in force, which specifies nothing;
+       drawing both sides is the reading that is the same whatever was
+       inherited. Asserted as the decision it is, not as a measurement
+       of that renderer. */
+    ok(cullOff, "and culling is off, so the surface draws from either"
+                " side");
+}
+
+static void caseWaterUniforms(void)
+{
+    printf("-- the uniforms, and the flip the console can move\n");
+
+    reset();
+    wg_WaterFixture(WG_WTR_COLS, WG_WTR_ROWS);
+    GL_PrepareWaterRendering();
+
+    /* Three matrices go up: the combined one for the position, the
+       view for the fog and the direction, and the remap for the
+       reflection. */
+    wg_callLen = 0;
+    wg_matrixNum = 0;
+    GL_DrawWater(&wg_water);
+    okEq(WG_i_Count("glUniformMatrix4fv"), 3, "three matrices reach the"
+                                              " program");
+    okEq(wg_lastTranspose, GL_FALSE, "uploaded untransposed, which is what"
+                                     " makes the engine's row-vector"
+                                     " arithmetic come out right");
+
+    /* The third of them is the reflection's remap, and it is built
+       from the projection alone -- not from the projection with the
+       view already in it. With the view left at the identity the two
+       are the same matrix and the difference is invisible, which is
+       how a mutant that read the combined one survived. So the view
+       is given something of its own here first.
+     *
+     * The remap itself is asked of watermesh.c rather than written out
+     * again: run_wingdi.sh has already compared that arithmetic against
+     * the other renderer, and what is in question here is only which
+     * matrix was handed to it. */
+    {
+        Mtx4x4 view;
+        Mtx4x4WithoutAdditionalData want;
+        int    i;
+        int    bad = -1;
+
+        MATH_SetIdentityMatrix(&view);
+        view.Pos.x = 3.0f;
+        view.Pos.z = -7.0f;
+        GL_SetViewMatrix(&view);
+        MATH_SetIdentityMatrix(&gl_projMtx);
+        gl_projMtx.v1.x = 1.75f;
+        gl_projMtx.v2.y = -2.25f;
+        GL_l_CombineMatrices();
+
+        wg_callLen = 0;
+        wg_matrixNum = 0;
+        GL_DrawWater(&wg_water);
+        okEq(wg_matrixNum, 3, "three again, with a view of its own");
+
+        WMS_ProjectionToTexture(&want,
+                                (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
+                                512, 512);
+        for (i = 0; i < 16; i++)
+            if (wg_l_Scaled(wg_matrixData[2][i])
+                != wg_l_Scaled(((const float*)&want)[i]))
+            {
+                bad = i;
+                break;
+            }
+        okEq(bad, -1, "and the remap is the projection's, with no view"
+                      " folded into it");
+    }
+
+    /* The flip, at nought by default and moved by the tweak. It is a
+       tweak rather than a constant because the answer is a
+       measurement: the one time a flip here was derived from the two
+       APIs' conventions instead, it came out backwards and two
+       harnesses agreed with it. */
+    tweak_gl_water_flip = 1;
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    {
+        int i;
+        int sawOne = 0;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glUniform1i") == 0
+                && wg_calls[i].arg[1] == 1)
+                sawOne = 1;
+        ok(sawOne, "the console's flip reaches the program");
+    }
+    tweak_gl_water_flip = 0;
+    wg_callLen = 0;
+    GL_DrawWater(&wg_water);
+    {
+        int i;
+        int sawOne = 0;
+
+        for (i = 0; i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glUniform1i") == 0
+                && wg_calls[i].arg[1] == 1)
+                sawOne = 1;
+        ok(!sawOne, "and with it back at nought, nothing asks for a flip");
+    }
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
@@ -4501,6 +5137,13 @@ int main(void)
     caseGeometryNormals();
     caseGeometryCulling();
     caseGeometryCullingTweak();
+    caseWaterRefusals();
+    caseWaterClear();
+    caseWaterStrip();
+    caseWaterWiring();
+    caseWaterBlur();
+    caseWaterState();
+    caseWaterUniforms();
     caseViewport();
     caseNoViewport();
     caseClipControl();

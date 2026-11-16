@@ -22,6 +22,44 @@ driver for. They are not used by the Direct3D renderer at all.
 | `aeremanence.frag` | the frame with a wide blur of it added on top |
 | `aeblend.frag` | the frame over the frame before, for the motion blur |
 | `aezoom.frag` | the frame summed at eight tightening crops |
+| `water.vert` / `.frag` | the water surface, with the reflection projected onto it |
+
+## The water, and the one thing in it that is not derived
+
+`water.vert` and `water.frag` draw the water's surface: a grid the
+simulation builds, with the reflection target projected onto it through
+the rippled direction from the camera to each grid point. The grid, the
+direction and the projection matrix are not in the shader -- they are in
+`watermesh.c`, shared with the other renderer and compared against it
+byte for byte, so the shader does the drawing and none of the deciding.
+
+Three things in it are worth knowing:
+
+* **`aDir` is not a normal.** It is the vector from the camera to the
+  grid point with its depth pushed about by the wave, and it is a
+  vertex attribute only because the stream it came from declares that
+  slot as a normal. It goes through the view's rotation and then the
+  projection remap, and the pair to sample with is its first two
+  components over its third. Its length is left alone on purpose.
+* **The surface is not blended with the frame.** The water's own colour
+  and the reflection are mixed in the shader by the vertex alpha and
+  the result replaces the pixel. That is right: what shows through
+  water is the reflection, not the world above it. The other renderer
+  says the same thing the long way round, with a texture stage that
+  blends by the diffuse alpha and a blend equation that then keeps only
+  the source.
+* **`uFlipV` is a measurement, not a derivation.** The two renderers'
+  window spaces differ by a vertical flip and the remap carries a flip
+  of its own, and working out what the two come to together is exactly
+  the reasoning that was wrong about the geometry culling -- it came out
+  backwards and two test harnesses agreed with it, because both had been
+  written from the same reading. So the console tweak `gl_water_flip`
+  moves it while somebody looks at a real scene, and the default is
+  whichever way round that measurement settled.
+
+The reflection pass itself -- the world drawn a second time, mirrored in
+the water plane -- is not here yet, so the target the surface samples
+holds the flat colour the engine says the water is looking down into.
 
 ## What the world's fragment shader is doing that the pipeline cannot
 
