@@ -14,6 +14,10 @@ driver for. They are not used by the Direct3D renderer at all.
 | `overlaytext.vert` / `.frag` | glyphs, sampling the font atlas |
 | `geometry.vert` / `.frag` | the world, textured and modulated |
 | `video.frag` | a movie frame, on the glyphs' vertex stage |
+| `depthblur.vert` / `.frag` | the pass that writes the frame's blur amount |
+| `aepass.vert` | one quad over the finished frame, shared by every after-effect |
+| `aeblur.frag` | one widening pass of the depth blur's blur |
+| `aedepthmix.frag` | sharp and blurred, mixed by the frame's own alpha |
 
 ## What the world's fragment shader is doing that the pipeline cannot
 
@@ -86,6 +90,49 @@ happens per pixel, as it does in the other renderer.
 `depthblur.c` decides which blur is in force and builds the table. The
 renderer turns it into the texture and sets these uniforms; nothing
 about the numbers is decided here.
+
+## The depth blur's after-effect
+
+What the pass above writes, something has to read, and that is the
+after-effect: `aeblur.frag` three times over the frame and then
+`aedepthmix.frag` once.
+
+Each blur pass takes **four taps** -- two across, two down -- and they
+are **not weighted alike**. The other renderer accumulates its four
+taps by mixing each one half-and-half with the running result, so the
+last keeps about half of it, the one before a quarter, and the first
+two about an eighth each. "About", because the factor it mixes with is
+128 of 255 rather than an exact half, which is also the only thing that
+separates the two taps across from each other. The weights are worked
+out from that mix in `depthblur.c` and handed over as a uniform, so
+both renderers blur the same way.
+
+The asymmetry has a direction, and the direction is the one thing here
+that a blurred picture cannot show. The heaviest tap is the one
+**below** the pixel on screen. The other renderer's texture
+coordinates run down the screen and this one's run up it, so the
+vertical offsets are negated on the way to the uniform -- get that
+wrong and the smear falls above every edge instead of below it, with
+the picture just as blurred either way.
+
+The three passes reach one, two and three pixels of a 640 by 480
+picture, as a fraction of the texture -- so the reach grows with the
+resolution rather than staying a fixed number of pixels. Each pass
+reads what the one before wrote, so red crosses up to five pixels of a
+hard edge.
+
+`aedepthmix.frag` then mixes the sharp frame with the blurred copy by
+the sharp frame's **own** alpha, which is the blur amount the pass
+above wrote. Alpha one takes the sharp pixel whole. The frame's alpha
+is carried through unchanged: nothing downstream reads it today, but
+the effects still to come are mixed the same way and would be no-ops
+without it.
+
+Three strips are involved and two of them differ. The blur passes
+cover the letterbox band **widened** by a margin either side; the mix
+covers the band itself, which is also what the screen is copied from. A
+tap at the band's own edge has to land on blurred pixels, which is what
+the margin is for.
 
 ## The material's texture-coordinate projection
 

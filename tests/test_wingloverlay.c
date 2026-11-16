@@ -267,8 +267,26 @@ static void GL_APIENTRY MK_glBufferData(GLenum target, GLsizei size, const void*
         wg_bufferCopyLen = (long)size;
     }
     wg_lastBufferSize = (long)size;
-    WG_Record("glBufferData", 3, (long long)target, (long long)size,
-              (long long)usage);
+    /* The first four floats go on the record as well, scaled, so that
+       a case can read the quad each pass uploaded rather than only
+       the last one. For an after-effect's quad those are the first
+       vertex's x and y and the second vertex's x and y, which is
+       where the strip it covers starts and ends. */
+    {
+        long long f[4] = { 0, 0, 0, 0 };
+        int       i;
+
+        if (data && size >= (GLsizei)(4 * sizeof(GLfloat)))
+            for (i = 0; i < 4; i++)
+            {
+                GLfloat v = ((const GLfloat*)data)[i];
+
+                f[i] = (long long)(v * 1000000.0f
+                                   + (v < 0.0f ? -0.5f : 0.5f));
+            }
+        WG_Record("glBufferData", 7, (long long)target, (long long)size,
+                  (long long)usage, f[0], f[1], f[2], f[3]);
+    }
 }
 
 static const GLfloat* wg_lastMatrix;
@@ -318,6 +336,17 @@ static void GL_APIENTRY MK_glUniform4f(GLint loc, GLfloat a, GLfloat b, GLfloat 
 {
     WG_Record("glUniform4f", 5, (long long)loc, (long long)a, (long long)b,
               (long long)c, (long long)d);
+    /* Again, scaled. The record above truncates to whole numbers,
+       which suits the viewport it was written for and loses every
+       digit of a texture-space offset -- one pixel of a 640 wide
+       picture is 0.0015625, and that records as nought. Both are kept
+       rather than one changed, because the cases that read the
+       viewport read it as whole numbers. */
+    WG_Record("glUniform4f.scaled", 5, (long long)loc,
+              (long long)(a * 1000000.0f + (a < 0.0f ? -0.5f : 0.5f)),
+              (long long)(b * 1000000.0f + (b < 0.0f ? -0.5f : 0.5f)),
+              (long long)(c * 1000000.0f + (c < 0.0f ? -0.5f : 0.5f)),
+              (long long)(d * 1000000.0f + (d < 0.0f ? -0.5f : 0.5f)));
 }
 
 static void GL_APIENTRY MK_glUniform1f(GLint loc, GLfloat v)
@@ -892,6 +921,11 @@ int   CIN_Bands = 1;
 int   tweak_ae_nobands = 0;
 float D3D_gf_CutsceneBand = 0.10416666f;
 
+/* The two switches that turn the whole after-effects chain off.
+   Both start off, as the game does. */
+int   tweak_ae_no = 0;
+int   ECAM_gi_NoAfterEffects = 0;
+
 void OVL_Draw(void)
 {
     wg_ovlDrawn++;
@@ -910,6 +944,13 @@ static void reset(void)
     GL_ReleaseTextures(NULL);
     GL_l_ForgetTargets();
     GL_l_ForgetVideo();
+    /* The after-effects too, or a case that makes the driver refuse
+       something finds the chain already built from the case before and
+       never reaches the refusal. The scene target is deliberately left
+       alone: it is sized from gl_state, which reset puts back to the
+       same size every time, and rebuilding it would move the name and
+       call counts every case above is written against. */
+    GL_l_ForgetAe();
     memset(&gl_material, 0, sizeof(gl_material));
     gl_colorMaskAlpha = 0;
     gl_mipmapping = 1;
@@ -3230,6 +3271,349 @@ static void caseVideoTeardown(void)
     okEq(WG_l_Arg("glTexImage2D", 0, 3), 640, "at the new size");
 }
 
+
+/* ------------------------------- the depth blur's after-effect chain
+
+   The real-driver harness reads the picture the chain produces; this
+   one reads the calls it makes. They catch different things: a wrong
+   ping-pong still produces a blurred picture, and a texture-space
+   offset of a fraction of a pixel is arithmetic the picture cannot
+   show at the size that harness draws at.
+ */
+
+/* The framebuffer bound to a target at the point a call was made --
+   the state the pass was actually in, rather than the last bind in the
+   whole frame. */
+static long wg_l_FboBefore(long target, int before)
+{
+    long fb = -1;
+    int  i;
+
+    for (i = 0; i < before && i < wg_callLen; i++)
+        if (strcmp(wg_calls[i].name, "glBindFramebuffer") == 0
+            && (wg_calls[i].arg[0] == target
+                /* A bind to the whole framebuffer sets both of its
+                   halves, so it counts as a bind to either. */
+                || wg_calls[i].arg[0] == GL_FRAMEBUFFER))
+            fb = (long)wg_calls[i].arg[1];
+    return fb;
+}
+
+/* The texture bound to a unit at the point a call was made. */
+static long wg_l_TextureBefore(long unit, int before)
+{
+    long tex = -1;
+    long active = GL_TEXTURE0;
+    int  i;
+
+    for (i = 0; i < before && i < wg_callLen; i++)
+    {
+        if (strcmp(wg_calls[i].name, "glActiveTexture") == 0)
+            active = (long)wg_calls[i].arg[0];
+        else if (strcmp(wg_calls[i].name, "glBindTexture") == 0
+                 && active == unit)
+            tex = (long)wg_calls[i].arg[1];
+    }
+    return tex;
+}
+
+/* Scaled and rounded exactly as the two mocks above record a float,
+   so that a case's expected value and the recorded one round the same
+   way rather than one truncating. */
+static long wg_l_Scaled(float v)
+{
+    return (long)(v * 1000000.0f + (v < 0.0f ? -0.5f : 0.5f));
+}
+
+/* Where the nth call of a name sits in the log. */
+static int wg_i_CallAt(const char* name, int nth)
+{
+    int i, n = 0;
+
+    for (i = 0; i < wg_callLen; i++)
+        if (strcmp(wg_calls[i].name, name) == 0 && n++ == nth)
+            return i;
+    return -1;
+}
+
+static void caseAeDepthBlurChain(void)
+{
+    tDpb_BlurPass passes[DPB_BLUR_PASSES];
+    int           n;
+    int           i;
+    int           mixAt;
+    int           blitAt;
+    long          mixFbo;
+
+    printf("-- the depth blur's passes, in order, and what each reads\n");
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x8;
+    wg_callLen = 0;
+    GL_Flip();
+
+    n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
+    okEq(WG_i_Count("glDrawArrays"), n + 1,
+         "one draw per blur pass, and one more for the mix");
+
+    /* The state a pass needs, switched off before the first of them.
+     *
+       None of these three can be seen in the picture as the chain
+       stands: the spares carry no depth buffer, so a depth test that
+       was left on would pass everything, and nothing before the chain
+       leaves culling or blending on. They are checked here because
+       that is an accident of how the spares are built rather than
+       something the passes may rely on -- the day one of them wants a
+       depth buffer, a depth test left on would throw the frame away
+       and no case above would say why. */
+    {
+        int first = wg_i_CallAt("glDrawArrays", 0);
+        int i;
+        int depth = 0;
+        int cull = 0;
+        int blend = 0;
+
+        for (i = 0; i < first && i >= 0 && i < wg_callLen; i++)
+            if (strcmp(wg_calls[i].name, "glDisable") == 0)
+            {
+                if (wg_calls[i].arg[0] == GL_DEPTH_TEST) depth = 1;
+                if (wg_calls[i].arg[0] == GL_CULL_FACE) cull = 1;
+                if (wg_calls[i].arg[0] == GL_BLEND) blend = 1;
+            }
+        ok(depth, "the depth test is off before the first pass draws");
+        ok(cull, "and culling");
+        ok(blend, "and blending");
+    }
+
+    /* Each blur pass writes the target the schedule names and reads
+       the one before it. Read off the state each draw was made in,
+       which is the only way a wrong ping-pong shows: all four draws
+       look alike otherwise. */
+    for (i = 0; i < n; i++)
+    {
+        int at = wg_i_CallAt("glDrawArrays", i);
+
+        if (at < 0)
+        {
+            ok(0, "the blur pass was drawn");
+            continue;
+        }
+        okEq(wg_l_FboBefore(GL_FRAMEBUFFER, at),
+             (long)GL_l_i_AeSlotFbo(passes[i].toSlot),
+             "the pass writes the target the schedule names");
+        okEq(wg_l_TextureBefore(GL_TEXTURE0, at),
+             (long)GL_l_i_AeSlotTexture(passes[i].fromSlot),
+             "and reads the one it names");
+    }
+
+    /* And the mix: the frame on the first unit, the blurred copy on
+       the second, and written to neither of them. */
+    mixAt = wg_i_CallAt("glDrawArrays", n);
+    ok(mixAt >= 0, "the mix was drawn");
+    if (mixAt < 0)
+        return;
+    mixFbo = wg_l_FboBefore(GL_FRAMEBUFFER, mixAt);
+    okEq(wg_l_TextureBefore(GL_TEXTURE0, mixAt), (long)gl_sceneColour,
+         "the mix reads the frame on the first unit");
+    okEq(wg_l_TextureBefore(GL_TEXTURE1, mixAt),
+         (long)GL_l_i_AeSlotTexture(DPB_i_BlurResultSlot()),
+         "and the blurred copy on the second");
+    ok(mixFbo != (long)gl_sceneFbo, "it does not write the frame it read");
+    ok(mixFbo != (long)GL_l_i_AeSlotFbo(DPB_i_BlurResultSlot()),
+       "nor the blurred copy it read");
+
+    /* The copy to the screen reads where the mix wrote, not the scene
+       target. Nothing in the picture says which: the scene target
+       still holds a perfectly good unblurred frame, so copying that
+       instead gives a frame with the effect quietly missing. */
+    blitAt = wg_i_CallAt("glBlitFramebuffer", 0);
+    ok(blitAt >= 0, "the frame was copied to the screen");
+    if (blitAt >= 0)
+        okEq(wg_l_FboBefore(GL_READ_FRAMEBUFFER, blitAt), mixFbo,
+             "and copied from where the mix wrote");
+
+    PC_AE_MASTER = 0;
+}
+
+static void caseAeDepthBlurRefusals(void)
+{
+    printf("-- the chain when it cannot be built\n");
+
+    /* A shader that will not compile. The frame still has to reach the
+       screen: the effect is missing, which is a worse picture, and the
+       alternative is no picture at all. */
+    reset();
+    wg_SceneReady();
+    /* The 2D pass first, so that the refusal below is the chain's own
+       shaders being refused and not the buffer it borrows from that
+       pass. */
+    ok(GL_l_b_PassReady(), "the 2D pass builds");
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x8;
+    wg_compileFails = 1;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "nothing is drawn");
+    okEq(WG_i_Count("glBlitFramebuffer"), 1, "but the frame is still copied");
+    {
+        int blit = wg_i_CallAt("glBlitFramebuffer", 0);
+
+        okEq(wg_l_FboBefore(GL_READ_FRAMEBUFFER, blit), (long)gl_sceneFbo,
+             "from the scene target, where the world left it");
+    }
+    /* And it is not retried every frame: the ask is remembered. */
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glCreateShader"), 0, "a second frame does not try again");
+    wg_compileFails = 0;
+
+    /* A driver that will not give out names. Same answer. */
+    reset();
+    wg_SceneReady();
+    ok(GL_l_b_PassReady(), "the 2D pass builds again");
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x8;
+    wg_genFails = 1;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0, "nothing is drawn for that either");
+    okEq(WG_i_Count("glBlitFramebuffer"), 1, "and the frame still gets out");
+    wg_genFails = 0;
+
+    PC_AE_MASTER = 0;
+}
+
+static void caseAeDepthBlurUniforms(void)
+{
+    tDpb_BlurPass passes[DPB_BLUR_PASSES];
+    float         offsets[2 * DPB_BLUR_TAPS];
+    float         weights[DPB_BLUR_TAPS];
+    int           n;
+    int           i;
+
+    printf("-- the taps each pass asks for, and which way up\n");
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x1000;
+    wg_callLen = 0;
+    GL_Flip();
+
+    n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
+    for (i = 0; i < n; i++)
+    {
+        DPB_BlurTaps(&passes[i], offsets, weights);
+
+        /* Three uniforms per pass, in the order the renderer sets
+           them: the two taps across, the two down, then the weights.
+           Scaled by a million, because a step is a fraction of a
+           texture and whole numbers would all be nought. */
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3, 1),
+             wg_l_Scaled(offsets[0]),
+             "the first tap steps left by the pass's own reach");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3, 3),
+             wg_l_Scaled(offsets[2]),
+             "and the second right by it");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3, 2), 0,
+             "neither of them moves vertically");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3, 4), 0, "nor the other");
+
+        /* The two down, turned over for this renderer's textures: the
+           schedule measures them down the screen and a texture here
+           runs up it. The heaviest tap is the fourth, so this is the
+           sign that decides which side of an edge the smear lands
+           on. */
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 1, 2),
+             wg_l_Scaled(-offsets[5]),
+             "the third tap is the schedule's, turned over");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 1, 4),
+             wg_l_Scaled(-offsets[7]),
+             "and so is the fourth");
+        ok(WG_l_Arg("glUniform4f.scaled", i * 3 + 1, 4) < 0,
+           "which puts the heaviest tap below the pixel in a texture"
+           " that runs upwards");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 1, 1), 0,
+             "and neither of them moves across");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 1, 3), 0,
+             "nor the other");
+
+        /* The weights, which are not equal and are not the round
+           fractions they sit near. */
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 2, 1),
+             wg_l_Scaled(weights[0]), "the first weight");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 2, 2),
+             wg_l_Scaled(weights[1]), "the second");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 2, 3),
+             wg_l_Scaled(weights[2]), "the third");
+        okEq(WG_l_Arg("glUniform4f.scaled", i * 3 + 2, 4),
+             wg_l_Scaled(weights[3]), "and the fourth");
+    }
+
+    /* A pass's reach grows, so the second pass asks for twice the
+       first and the third three times it. Stated here as well as in
+       the unit test, because this is the side that could set them all
+       from one pass. */
+    ok(WG_l_Arg("glUniform4f.scaled", 3, 3)
+       > WG_l_Arg("glUniform4f.scaled", 0, 3),
+       "the second pass reaches further than the first");
+    ok(WG_l_Arg("glUniform4f.scaled", 6, 3)
+       > WG_l_Arg("glUniform4f.scaled", 3, 3),
+       "and the third further than the second");
+
+    PC_AE_MASTER = 0;
+}
+
+static void caseAeDepthBlurQuads(void)
+{
+    tCbd_Bands bands;
+    long       reachTopY;
+    long       reachBottomY;
+    long       bandTopY;
+    long       bandBottomY;
+    int        i;
+
+    printf("-- the strip each pass covers\n");
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 1;
+    tweak_ae_nobands = 0;
+    D3D_gf_CutsceneBand = 0.25f;
+    PC_AE_MASTER = 0x8;
+    wg_callLen = 0;
+    GL_Flip();
+
+    CBD_Decide(&bands);
+    bandTopY = wg_l_Scaled(1.0f - 2.0f * bands.top);
+    bandBottomY = wg_l_Scaled(1.0f - 2.0f * bands.bottom);
+    reachTopY = wg_l_Scaled(1.0f - 2.0f * bands.reachTop);
+    reachBottomY = wg_l_Scaled(1.0f - 2.0f * bands.reachBottom);
+    ok(reachTopY > bandTopY, "the reach is above the band");
+    ok(reachBottomY < bandBottomY, "and below it");
+
+    /* The quad's first vertex is the bottom-left and the second the
+       top-left, so the two y values on the record are the strip's
+       edges. Each blur pass covers the reach. */
+    for (i = 0; i < DPB_BLUR_PASSES; i++)
+    {
+        okEq(WG_l_Arg("glBufferData", i, 4), reachBottomY,
+             "a blur pass starts at the bottom of the reach");
+        okEq(WG_l_Arg("glBufferData", i, 6), reachTopY,
+             "and ends at the top of it");
+    }
+    /* And the mix covers the band itself: it is what the screen is
+       copied from, and a mix drawn over the reach would put picture
+       into the letterbox. */
+    okEq(WG_l_Arg("glBufferData", DPB_BLUR_PASSES, 4), bandBottomY,
+         "the mix starts at the bottom of the band");
+    okEq(WG_l_Arg("glBufferData", DPB_BLUR_PASSES, 6), bandTopY,
+         "and ends at the top of it");
+
+    PC_AE_MASTER = 0;
+    CIN_Bands = 0;
+    D3D_gf_CutsceneBand = 0.10416666f;
+}
+
 int main(void)
 {
     printf("=== GL overlay pass unit test ===\n");
@@ -3248,6 +3632,10 @@ int main(void)
     caseRefusals();
     caseTeardown();
     caseSceneCopy();
+    caseAeDepthBlurChain();
+    caseAeDepthBlurRefusals();
+    caseAeDepthBlurUniforms();
+    caseAeDepthBlurQuads();
     caseFlipDrawsOverlay();
     caseGeometry();
     caseGeometryNormals();

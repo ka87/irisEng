@@ -147,6 +147,11 @@ int   CIN_Bands = 1;
 int   tweak_ae_nobands = 0;
 float D3D_gf_CutsceneBand = 0.10416666f;
 
+/* The two switches that turn the whole after-effects chain off.
+   Both start off, as the game does. */
+int   tweak_ae_no = 0;
+int   ECAM_gi_NoAfterEffects = 0;
+
 void OVL_Draw(void) { }
 
 void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
@@ -262,8 +267,14 @@ static void glr_Reset(void)
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();
     GL_l_ForgetBlur();
+    GL_l_ForgetAe();
     GL_ReleaseTextures(NULL);
     GL_l_ForgetTargets();
+
+    /* The two switches that turn the whole after-effects chain off,
+       both back to the off the game starts them at. */
+    tweak_ae_no = 0;
+    ECAM_gi_NoAfterEffects = 0;
 
     /* The after-effects state the blur's decision is read from. It is
        the engine's, set by the AI scripts, so a case that wants a
@@ -2679,6 +2690,462 @@ static void caseShadersCompile(void)
     }
 }
 
+
+/* ------------------------------------- the depth blur's after-effect
+
+   These cases run the chain for real: a pattern is put straight into
+   the scene target's texture, the chain is asked to run over it, and
+   the result is read back out of whichever framebuffer it says the
+   frame ended up in.
+
+   The scene is made 640 by 480 for them, because that is the size the
+   blur's steps are stated in -- a step is one pixel of a 640 by 480
+   picture, expressed as a fraction of the texture. At that size each
+   tap lands exactly on a neighbouring texel's centre, so what comes
+   back is arithmetic rather than whatever the sampler made of a
+   fraction of a pixel. At the 80 by 48 the rest of this file uses, one
+   step is an eighth of a pixel and every case below would be reading
+   filter noise.
+ */
+#define GLR_AE_W 640
+#define GLR_AE_H 480
+
+static unsigned char* glr_aePattern;
+
+/* One pixel out of a framebuffer, by texture row -- row 0 is the
+   bottom of the picture, which is the way both the upload below and
+   OpenGL's own read run. The cases are written in those rows rather
+   than in screen rows so that nothing is turned over twice. */
+static void glr_AeAt(GLuint fbo, int x, int row, int* rgba)
+{
+    unsigned char px[4];
+
+    px[0] = px[1] = px[2] = px[3] = 0;
+    GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+    GLFN_glReadPixels(x, row, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    rgba[0] = px[0]; rgba[1] = px[1]; rgba[2] = px[2]; rgba[3] = px[3];
+}
+
+static int glr_AeRed(GLuint fbo, int x, int row)
+{
+    int rgba[4];
+
+    glr_AeAt(fbo, x, row, rgba);
+    return rgba[0];
+}
+
+/* The scene target at the blur's own size, with a pattern in it.
+   `redAt` and `alphaAt` are asked for each pixel, so a case states its
+   picture as the two functions rather than as a buffer. */
+static GLuint glr_AeScene(int (*redAt)(int x, int row),
+                          int (*alphaAt)(int x, int row))
+{
+    int x;
+    int row;
+
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_AE_W;
+    gl_state.height = GLR_AE_H;
+    if (!GL_l_b_SceneReady())
+        return 0;
+
+    if (!glr_aePattern)
+        glr_aePattern = (unsigned char*)malloc(GLR_AE_W * GLR_AE_H * 4);
+    if (!glr_aePattern)
+        return 0;
+
+    for (row = 0; row < GLR_AE_H; row++)
+        for (x = 0; x < GLR_AE_W; x++)
+        {
+            unsigned char* p = &glr_aePattern[(row * GLR_AE_W + x) * 4];
+
+            p[0] = (unsigned char)redAt(x, row);
+            p[1] = 0;
+            p[2] = 0;
+            p[3] = (unsigned char)alphaAt(x, row);
+        }
+
+    /* Straight into the texture the scene target is built on, which
+       is exactly what the world would have left there -- and lets a
+       case name an alpha per pixel, which is the input the whole
+       effect turns on. */
+    GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+    GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                         GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+    GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    return gl_sceneFbo;
+}
+
+/* A step across: dark on the left of the middle column, bright on the
+   right. Blurring it moves red leftwards over the edge, and the
+   unblurred half is where the mix has to leave it alone. */
+static int glr_aeStepAcross(int x, int row)
+{
+    (void)row;
+    return x < GLR_AE_W / 2 ? 0 : 240;
+}
+
+/* Sharp in the bottom half of the texture, fully blurred in the top.
+   255 is no blur and 0 is all of it, which is the way round the ramp
+   writes it. */
+static int glr_aeAlphaSplit(int x, int row)
+{
+    (void)x;
+    return row < GLR_AE_H / 2 ? 255 : 0;
+}
+
+static int glr_aeAlphaNone(int x, int row)
+{
+    (void)x; (void)row;
+    return 0;
+}
+
+static void caseAeDepthBlurMix(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    mid = GLR_AE_W / 2;
+    int    sharpRow = GLR_AE_H / 4;        /* alpha 255 down here */
+    int    blurRow = 3 * GLR_AE_H / 4;     /* alpha 0 up here */
+    int    k;
+    int    last;
+
+    printf("-- the depth blur mixes sharp and blurred by the frame's alpha\n");
+    glr_Reset();
+    scene = glr_AeScene(glr_aeStepAcross, glr_aeAlphaSplit);
+    ok(scene != 0, "the scene target was made at the blur's own size");
+    if (!scene)
+        return;
+
+    PC_AE_MASTER = 0x8;
+    shown = GL_l_i_RunAfterEffects();
+    ok(shown != 0, "the chain says where the frame is");
+    ok(shown != scene,
+       "and it is not the scene target, which the mix had to read");
+    /* Nor the spare holding the blurred copy, which the mix had to
+       read as well. No pass may write a target it is reading, and
+       this is the one place that invariant can be stated about the
+       pass that reads two of them. */
+    ok(shown != GL_l_i_AeSlotFbo(DPB_i_BlurResultSlot()),
+       "nor the spare holding the blurred copy, which it also read");
+
+    /* Where the frame said no blur, the step is still a step: the two
+       pixels either side of it are the values that went in. A mix
+       taking its alpha the other way round blurs this half and
+       leaves the other sharp, so both of these move. */
+    okEq(glr_AeRed(shown, mid - 1, sharpRow), 0,
+         "no blur here, so the dark side is still dark");
+    okEq(glr_AeRed(shown, mid, sharpRow), 240,
+         "and the bright side still bright");
+
+    /* Where it said full blur, red has moved across the edge. */
+    ok(glr_AeRed(shown, mid - 1, blurRow) > 0,
+       "full blur there, so red has crossed to the dark side");
+    ok(glr_AeRed(shown, mid, blurRow) < 240,
+       "and the bright side has given some up");
+
+    /* And it fades with distance rather than being a flat smear --
+       which is what three passes of widening taps produce, and a
+       single pass with one reach would not. */
+    last = 256;
+    for (k = 1; k <= 4; k++)
+    {
+        int here = glr_AeRed(shown, mid - k, blurRow);
+
+        ok(here <= last, "the bleed does not grow further from the edge");
+        last = here;
+    }
+    ok(glr_AeRed(shown, mid - 1, blurRow) > glr_AeRed(shown, mid - 4, blurRow),
+       "the pixel beside the edge has more of it than one four away");
+    okEq(glr_AeRed(shown, 40, blurRow), 0,
+         "and none of it reaches the far side of the picture");
+
+    /* How far it reaches is what says there were three passes and that
+       each read the one before. The steps are one, two and three
+       pixels, so red can cross five pixels of edge but not six -- and
+       only by compounding: a single pass of any one of those steps,
+       or three passes that all read the frame instead of each other,
+       leave nothing this far out. */
+    ok(glr_AeRed(shown, mid - 5, blurRow) > 0,
+       "red crosses five pixels, which only three compounding passes do");
+    okEq(glr_AeRed(shown, mid - 7, blurRow), 0, "and stops before seven");
+
+    /* Away from the edge the four taps all read the same pixel, so a
+       blurred region of one colour has to come back as that colour
+       exactly. That is the four weights coming to one, and it is the
+       check that catches any of them being wrong: it does not care
+       which, and it does not need an edge to see it. */
+    okEq(glr_AeRed(shown, GLR_AE_W - 40, blurRow), 240,
+         "a blurred stretch of one colour comes back as that colour");
+    okEq(glr_AeRed(shown, GLR_AE_W - 40, sharpRow), 240,
+         "and so does the sharp one");
+
+    /* The alpha travels on, because every effect after this one is
+       mixed the same way and would be a no-op without it. */
+    {
+        int rgba[4];
+
+        glr_AeAt(shown, mid - 1, sharpRow, rgba);
+        okEq(rgba[3], 255, "the frame's alpha is carried through, sharp side");
+        glr_AeAt(shown, mid - 1, blurRow, rgba);
+        okEq(rgba[3], 0, "and on the blurred side");
+    }
+}
+
+/* A step down the texture: bright in the rows below the middle, dark
+   above. Which side of it bleeds further is the whole question. */
+static int glr_aeStepDown(int x, int row)
+{
+    (void)x;
+    return row < GLR_AE_H / 2 ? 240 : 0;
+}
+
+static void caseAeDepthBlurDirection(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    x = GLR_AE_W / 2;
+    int    edge = GLR_AE_H / 2;
+    int    into;
+    int    outOf;
+
+    printf("-- the blur's heaviest tap is the one below, not above\n");
+    glr_Reset();
+    scene = glr_AeScene(glr_aeStepDown, glr_aeAlphaNone);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+        return;
+
+    PC_AE_MASTER = 0x8;
+    shown = GL_l_i_RunAfterEffects();
+    if (!shown || shown == scene)
+    {
+        ok(0, "the chain ran");
+        return;
+    }
+
+    /* The four taps are not weighted alike: the one below the pixel
+       keeps about half of the result and the one above about a
+       quarter. So a dark pixel sitting above a bright region picks up
+       roughly twice as much as a bright pixel sitting above a dark one
+       gives away.
+     *
+       This is the check that the vertical offsets were turned the
+       right way round for this renderer's textures. Negating them
+       swaps these two numbers over, and every other check in this file
+       passes either way -- the picture is blurred whichever side the
+       smear falls on. */
+    into = glr_AeRed(shown, x, edge);            /* dark, bright below */
+    outOf = 240 - glr_AeRed(shown, x, edge - 1); /* bright, dark above */
+
+    ok(into > 0, "the dark row above the step picks red up");
+    ok(outOf > 0, "the bright row below it gives red away");
+    ok(into > outOf,
+       "and the row above picks up more than the row below gives away");
+    /* Twice, to within what eight bits and three compounding passes
+       leave of it. A symmetric blur makes these equal, which fails
+       the comparison above; getting the sign wrong makes the ratio
+       the other way up, which fails it too. */
+    ok(into > outOf * 3 / 2, "about half again as much at least");
+}
+
+static void caseAeDepthBlurGates(void)
+{
+    GLuint scene;
+
+    printf("-- what turns the after-effects off\n");
+    glr_Reset();
+    scene = glr_AeScene(glr_aeStepAcross, glr_aeAlphaNone);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+        return;
+
+    PC_AE_MASTER = 0;
+    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
+         "no bits set, so the frame is left in the scene target");
+
+    /* The two bits that ask for it, and a third that does not. */
+    PC_AE_MASTER = 0x8;
+    ok(GL_l_i_RunAfterEffects() != scene, "the first bit runs it");
+    PC_AE_MASTER = 0x1000;
+    ok(GL_l_i_RunAfterEffects() != scene, "the second bit runs it");
+    PC_AE_MASTER = 0x4;
+    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
+         "the effect next door does not");
+
+    /* And the two switches that turn the whole chain off whatever the
+       bits say. */
+    PC_AE_MASTER = 0x8;
+    tweak_ae_no = 1;
+    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
+         "the tweak that switches the effects off");
+    tweak_ae_no = 0;
+    ECAM_gi_NoAfterEffects = 1;
+    okEq((long)(GL_l_i_RunAfterEffects() == scene), 1,
+         "and the editor camera's own switch");
+    ECAM_gi_NoAfterEffects = 0;
+    ok(GL_l_i_RunAfterEffects() != scene, "both back off, and it runs again");
+
+    /* Put the rig back the way the rest of the file wants it. */
+    PC_AE_MASTER = 0;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
+
+static int glr_aeFlat(int x, int row)
+{
+    (void)x; (void)row;
+    return 240;
+}
+
+static int glr_aeAlphaAll(int x, int row)
+{
+    (void)x; (void)row;
+    return 255;
+}
+
+static void caseAeDepthBlurBands(void)
+{
+    GLuint     scene;
+    GLuint     shown;
+    tCbd_Bands bands;
+    int        mid = GLR_AE_W / 2;
+    int        bandTopRow;
+    int        bandBottomRow;
+    int        marginRow;
+
+    printf("-- the blur reaches past the band the mix covers\n");
+    glr_Reset();
+
+    /* A cutscene's letterbox, which is the only time the two strips
+       differ: the mix covers the band and the blur a margin either
+       side of it, so that a tap at the band's own edge has blurred
+       pixels to land on. */
+    CBD_Decide(&bands);
+    okEq((long)(bands.b_on != 0), 1, "the rig has the letterbox on");
+    ok(bands.reachTop < bands.top, "the blur reaches above the band");
+    ok(bands.reachBottom > bands.bottom, "and below it");
+
+    /* In texture rows, which is how the readings below are taken. The
+       fractions are measured from the top of the picture and the rows
+       from the bottom, so one is the other subtracted from the
+       height. */
+    bandTopRow = (int)((1.0f - bands.top) * (float)GLR_AE_H) - 1;
+    bandBottomRow = (int)((1.0f - bands.bottom) * (float)GLR_AE_H) + 1;
+    marginRow = (bandTopRow + (int)((1.0f - bands.reachTop)
+                                    * (float)GLR_AE_H)) / 2;
+
+    /* One colour everywhere and no alpha at all, so every pixel is
+       taken from the blurred copy. Away from an edge the four taps
+       read the same pixel, so the whole band has to come back as the
+       colour that went in -- including its topmost and bottommost
+       rows, which can only be right if the blur was drawn over the
+       wider strip. Narrowed to the band, those rows' taps reach
+       pixels no pass wrote, which are black. */
+    scene = glr_AeScene(glr_aeFlat, glr_aeAlphaNone);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+        return;
+    PC_AE_MASTER = 0x8;
+    shown = GL_l_i_RunAfterEffects();
+    if (!shown || shown == scene)
+    {
+        ok(0, "the chain ran");
+        return;
+    }
+    okEq(glr_AeRed(shown, mid, bandTopRow), 240,
+         "the band's top row is the colour that went in");
+    okEq(glr_AeRed(shown, mid, bandBottomRow), 240,
+         "and its bottom row");
+
+    /* And the other way round: a frame that asks for no blur at all
+       comes back sharp inside the band, and the rows between the band
+       and the blur's reach are not the mix's business -- it never
+       drew there, so what is in them is the last blur rather than the
+       picture. */
+    scene = glr_AeScene(glr_aeStepAcross, glr_aeAlphaAll);
+    if (!scene)
+    {
+        ok(0, "the second scene target was made");
+        return;
+    }
+    shown = GL_l_i_RunAfterEffects();
+    if (!shown || shown == scene)
+    {
+        ok(0, "the chain ran again");
+        return;
+    }
+    okEq(glr_AeRed(shown, mid - 1, (bandTopRow + bandBottomRow) / 2), 0,
+         "inside the band the step is sharp");
+    ok(glr_AeRed(shown, mid - 1, marginRow) > 0,
+       "in the margin above it the mix never drew, so the step is blurred");
+
+    PC_AE_MASTER = 0;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
+
+static void caseAeDepthBlurEdges(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    x = GLR_AE_W / 2;
+    int    saved = CIN_Bands;
+
+    printf("-- a tap past the edge of the picture takes the edge\n");
+    glr_Reset();
+
+    /* No letterbox, so the strip the blur covers is the whole picture
+       and the taps on its first and last rows step off the end of it.
+       The frame is bright along the bottom and dark everywhere else:
+       with the texture left repeating, a tap off the top lands on the
+       bottom and the top row picks the brightness up. */
+    CIN_Bands = 0;
+    scene = glr_AeScene(glr_aeStepDown, glr_aeAlphaNone);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = saved;
+        return;
+    }
+    PC_AE_MASTER = 0x8;
+    shown = GL_l_i_RunAfterEffects();
+    if (!shown || shown == scene)
+    {
+        ok(0, "the chain ran");
+        CIN_Bands = saved;
+        return;
+    }
+
+    /* glr_aeStepDown is bright in the rows below the middle, so the
+       top row is deep inside the dark half and nothing legitimate can
+       reach it: the nearest bright pixel is two hundred rows away and
+       the blur crosses five. */
+    okEq(glr_AeRed(shown, x, GLR_AE_H - 1), 0,
+         "the top row of the picture stays dark");
+    okEq(glr_AeRed(shown, x, GLR_AE_H - 2), 0, "and the row below it");
+    /* And the other end, where the wrap would go the other way: the
+       bottom row is bright and must not be dimmed by the dark rows at
+       the top of the picture. */
+    okEq(glr_AeRed(shown, x, 0), 240, "the bottom row stays bright");
+    okEq(glr_AeRed(shown, x, 1), 240, "and the row above it");
+
+    CIN_Bands = saved;
+    PC_AE_MASTER = 0;
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+}
+
 int main(void)
 {
     void* p;
@@ -2775,12 +3242,20 @@ int main(void)
     caseSprites();
     caseVideo();
     caseShadowTarget();
+    caseAeDepthBlurMix();
+    caseAeDepthBlurDirection();
+    caseAeDepthBlurGates();
+    caseAeDepthBlurBands();
+    caseAeDepthBlurEdges();
 
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();
     GL_l_ForgetBlur();
+    GL_l_ForgetAe();
+    GL_l_ForgetScene();
     GL_ReleaseTextures(NULL);
     GL_l_ForgetTargets();
+    free(glr_aePattern);
     EGLH_Close();
 
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
