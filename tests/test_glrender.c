@@ -3012,6 +3012,22 @@ static void caseUVTransformedStored(void)
  */
 static tGEOGRO glr_gro;
 static Vec3    glr_normals[4];
+/* Whether the renderer asked the engine to build the geometry's
+   normals, and the stand-in that answers.
+
+   The engine builds them on demand and the real builder computes them
+   from the geometry; what matters here is only that the renderer asks
+   and then draws with what comes back, so this hands over the
+   fixture's four -- the same four the chrome case above asserts
+   against. Computing them is geo.c's job and has its own tests. */
+static int     glr_useNormalsCalls;
+
+void GEO_UseNormals(struct sGEOGRO* geo)
+{
+    glr_useNormalsCalls++;
+    if (geo && !geo->normals)
+        geo->normals = glr_normals;
+}
 
 /* Four normals, one per corner of the quad, each pointing a different
    way -- so a normal that reached the wrong corner lands on a
@@ -3238,6 +3254,71 @@ static void caseUVNormalMissing(void)
     okNear(glr_R(GLR_W / 2, GLR_H / 2), 0x40,
            "and the stored coordinate is drawn rather than a normal"
            " invented from nothing");
+}
+
+/* A geometry that has normals to build but has not built them, which
+ * is every geometry this renderer draws: the engine builds them on
+ * demand, and under the other renderer the demand comes from building
+ * that renderer's own vertex buffers. Nothing here does that, so
+ * unless this renderer asks, a chrome material is drawn with the
+ * stored coordinate -- an environment map painted on as a surface
+ * texture.
+ */
+static void caseUVNormalAsksForThem(void)
+{
+    int a;
+    int b;
+    int c;
+    int d;
+
+    printf("-- a chrome material asks for normals the geometry lacks\n");
+
+    glr_Reset();
+    glr_CornerTexture();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_QuadNormals();
+    glr_ChromeMatrices(1.0f, 0.6f);
+    glr_ChromeMatrix();
+    {
+        int i;
+
+        for (i = 0; i < 4; i++)
+        {
+            glr_uv[i].u = 0.0f;
+            glr_uv[i].v = 0.0f;
+        }
+    }
+
+    /* The one difference from the case above: the geometry has none
+       yet. It still has vertices, which is what says there are normals
+       to be had. */
+    glr_gro.normals = NULL;
+    glr_useNormalsCalls = 0;
+
+    GDI_gi_TextureUVMode = 2;
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    ok(glr_useNormalsCalls > 0, "the renderer asked for them");
+
+    a = glr_R(GLR_W / 2 - GLR_W / 8, GLR_H / 2 - GLR_H / 8);
+    b = glr_R(GLR_W / 2 + GLR_W / 8, GLR_H / 2 - GLR_H / 8);
+    c = glr_R(GLR_W / 2 - GLR_W / 8, GLR_H / 2 + GLR_H / 8);
+    d = glr_R(GLR_W / 2 + GLR_W / 8, GLR_H / 2 + GLR_H / 8);
+
+    /* And then drew the same picture as the case above, where the
+       geometry already had them -- which is what says the normals were
+       used and not merely fetched. The stored coordinates are
+       flattened to nought, so the chrome-less reading is one colour
+       throughout. */
+    okNear(a, 0xA0, "and drew the chrome picture: the first quarter");
+    okNear(b, 0x20, "the second");
+    okNear(c, 0xE0, "the third");
+    okNear(d, 0x60, "and the fourth");
+    okEq(gl_geoNrmOn, 1, "with the normal attribute enabled");
 }
 
 /* The sprites share the geometry's vertex array, so an attribute left
@@ -6563,6 +6644,7 @@ int main(void)
     caseUVNormalWalk();
     caseUVFromNormal();
     caseUVNormalMissing();
+    caseUVNormalAsksForThem();
     caseUVNormalLeavesSpritesAlone();
     caseCulling();
     caseWaterReflectionCleared();
