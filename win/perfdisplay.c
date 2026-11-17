@@ -79,7 +79,7 @@ void PFD_Draw(void)
     int     order[PFB_RASTERS];
     int64_t now;
     int64_t freq;
-    double  scale;
+    float   scale;
     float   fps;
     float   width;
     float   height;
@@ -119,7 +119,10 @@ void PFD_Draw(void)
 
         if (PFB_b_Rows(tweak_perf))
         {
-            scale = PFB_d_Scale(tweak_perf_fps_target, freq);
+            /* Narrowed, which is what the other display does with
+               the same number: the bars are measured from it and the
+               two have to measure them from the same one. */
+            scale = (float)PFB_d_Scale(tweak_perf_fps_target, freq);
             PFB_Smooth(pfd_avg, PerfCountertimeSumArray, PFB_RASTERS);
             PFB_Order(order, pfd_avg, PFB_RASTERS);
             shown = PFB_i_Rows(tweak_perf,
