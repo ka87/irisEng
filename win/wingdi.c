@@ -3186,13 +3186,34 @@ void D3D_SunSurfacesClear()
     memset(gD3dSunSurfaces, 0, sizeof(gD3dSunSurfaces));
 }
 
+/* What the driver says it is: the same line the other renderer logs
+   when its context comes up, which is the first question about a
+   renderer that draws nothing.
+ *
+   Once per device, not once per run -- this sits where the card's
+   presets are chosen, which is itself part of making a device, and a
+   device made a second time has a driver worth naming again. The
+   identifier is the caller's, already fetched: asking for it again
+   would be a second call for something it is holding. */
+static void D3D_l_SayWhatThisIs(const D3DADAPTER_IDENTIFIER9* adapter)
+{
+    if (!adapter)
+        return;
+    GDI_OutputDebugString("D3D: %s, %s %d.%d.%d.%d\n",
+                          adapter->Description, adapter->Driver,
+                          HIWORD(adapter->DriverVersion.HighPart),
+                          LOWORD(adapter->DriverVersion.HighPart),
+                          HIWORD(adapter->DriverVersion.LowPart),
+                          LOWORD(adapter->DriverVersion.LowPart));
+}
+
 void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
 {
     D3DADAPTER_IDENTIFIER9 adapter;
     DWORD device;
 
     D3DRenderParams.d3d_if->lpVtbl->GetAdapterIdentifier(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, 0, &adapter);
-    GDI_OutputDebugString("%d, %d, %d, %d\n", HIWORD(adapter.DriverVersion.HighPart), LOWORD(adapter.DriverVersion.HighPart), HIWORD(adapter.DriverVersion.LowPart), LOWORD(adapter.DriverVersion.LowPart));
+    D3D_l_SayWhatThisIs(&adapter);
     device = adapter.DeviceId;
     if (adapter.VendorId == 0x1002)
     {
