@@ -19,6 +19,7 @@
 #define OVL_PANELMARGIN 8.0f
 #define OVL_PANELY     60.0f
 #define OVL_PANELW     320.0f
+#define OVL_PANELW_AE  190.0f
 
 #define OVL_FIELDTOP   10.0f
 #define OVL_FIELDPAD   6.0f     /* above and below the line of text */
@@ -30,6 +31,8 @@
 #define OVL_BACKDROP   0xB0000000
 #define OVL_TEXT       0xFFFFFFFF
 #define OVL_CARET      0xFF40FF40
+/* an effect that is not running: there, but not shouting */
+#define OVL_DIM        0xFF808080
 
 static tGdi_Vertex ovl_verts[OVL_MAXQUADS * 6];
 static int ovl_vertCount = 0;
@@ -171,12 +174,19 @@ static void OVL_l_FlushText(void)
 // The panel sits against the right edge, so its left is a runtime
 // value rather than a constant; at a viewport narrower than the panel
 // it falls back to the left edge rather than going off-screen.
+// Which side the panel being drawn sits on. The rasters have always
+// been on the right; the after-effects go on the left so the two can
+// be up together.
+static int ovl_panelLeft = 0;
+
 static float OVL_l_PanelX(void)
 {
     float x;
     int   w = 0;
     int   h = 0;
 
+    if (ovl_panelLeft)
+        return OVL_PANELMARGIN;
     gpst_DX_stDD->GetDrawingSize(&w, &h);
     x = (float)w - OVL_PANELW - OVL_PANELMARGIN;
     if (x < OVL_PANELMARGIN)
@@ -461,6 +471,92 @@ static void OVL_l_CommandField(void)
 
 // ------------------------------------------------------------- the pass
 
+
+// ---------------------------------------------------------------- the
+// after-effects, and which of them are running
+//
+// The engine keeps them in one word, PC_AE_MASTER, a bit to an effect,
+// and both renderers read that same word -- so this list says what is
+// running whichever renderer is drawing it.
+//
+// The names are what the chain does with each bit rather than what the
+// engine's own getter calls it, and the two disagree once: the getter
+// names bit 0 "colorbalance", and the bit runs the grayscale pass.
+// Colour balance is one of the two effects below that have no bit at
+// all -- they run when their parameter is away from a half -- so
+// naming this one after the getter would have put the same name on two
+// different rows, one of which never runs for that reason.
+
+typedef struct sOvlEffect
+{
+    const char*  name;
+    unsigned int bit;
+} tOvlEffect;
+
+static const tOvlEffect ovl_effects[] = {
+    { "depth blur",      0x0008u },
+    { "depth blur near", 0x1000u },
+    { "motion blur",     0x0010u },
+    { "screen blur",     0x0020u },
+    { "full aa blur",    0x2000u },
+    { "emboss",          0x0040u },
+    { "motion smooth",   0x0080u },
+    { "zoom smooth",     0x0400u },
+    { "zoom smooth 2",   0x8000u },
+    { "remanence",       0x0800u },
+    { "hue",             0x0004u },
+    { "grayscale",       0x0001u },
+    { "fade",            0x40000u }
+};
+
+#define OVL_EFFECTNUM ((int)(sizeof(ovl_effects) / sizeof(ovl_effects[0])))
+
+// The two that are not a bit: each runs whenever its parameter is away
+// from a half, which is the value that means "leave the picture
+// alone". They are read here the same way the chain tests them.
+static int OVL_l_EffectRows(void)
+{
+    int y = 24;
+    int i;
+    int on;
+
+    for (i = 0; i < OVL_EFFECTNUM; i++)
+    {
+        on = (PC_AE_MASTER & (int)ovl_effects[i].bit) != 0;
+        OVL_l_PanelText(ovl_effects[i].name, 10, y, on ? OVL_GREEN : OVL_DIM);
+        OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
+                        on ? OVL_GREEN : OVL_DIM);
+        y += OVL_ROWHEIGHT;
+    }
+
+    on = colorBalanceParam1 != 0.5f;
+    OVL_l_PanelText("colour balance", 10, y, on ? OVL_GREEN : OVL_DIM);
+    OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
+                    on ? OVL_GREEN : OVL_DIM);
+    y += OVL_ROWHEIGHT;
+
+    on = unkAEFunc2Param != 0.5f;
+    OVL_l_PanelText("unknown 2", 10, y, on ? OVL_GREEN : OVL_DIM);
+    OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
+                    on ? OVL_GREEN : OVL_DIM);
+    y += OVL_ROWHEIGHT;
+
+    return y;
+}
+
+// Down the left, so it does not fight the rasters panel on the right.
+static void OVL_l_AfterEffects(void)
+{
+    int bottom;
+
+    ovl_panelLeft = 1;
+    bottom = OVL_l_EffectRows();
+    OVL_l_PanelText("After-effects", 10, 6, OVL_GREEN);
+    OVL_l_RoundRectFill(OVL_BACKDROP, OVL_l_PanelX(), OVL_PANELY,
+                        OVL_PANELW_AE, (float)bottom + 2.0f, OVL_RADIUS);
+    ovl_panelLeft = 0;
+}
+
 void OVL_Draw(void)
 {
     float height;
@@ -472,7 +568,7 @@ void OVL_Draw(void)
     if (!gpst_DX_stDD || !gpst_DX_stDD->b_Ready())
         return;
     rastersOn = PRO_rasterDetailPage || PRO_rasterWindowIsOn;
-    if (!rastersOn && !ovl_cmdActive)
+    if (!rastersOn && !ovl_cmdActive && !tweak_ae_view)
         return;
 
     gpst_DX_stDD->GetDrawingSize(&drawW, &drawH);
@@ -493,6 +589,8 @@ void OVL_Draw(void)
         OVL_l_RoundRectFill(OVL_BACKDROP, OVL_l_PanelX(), OVL_PANELY, OVL_PANELW,
                             height, OVL_RADIUS);
     }
+    if (tweak_ae_view)
+        OVL_l_AfterEffects();
     if (ovl_cmdActive)
         OVL_l_CommandField();
 

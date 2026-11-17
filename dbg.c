@@ -10,6 +10,7 @@
 //#include "animation.h" //tmp
 
 int tweak_ae_no;
+int tweak_ae_view;
 int tweak_gl_cull;
 int tweak_gl_water_flip;
 int tweak_ae_nobands = 0;
@@ -61,6 +62,9 @@ struct sTweakElem tweaks[] = {
     {"ae_no", 0, &tweak_ae_no},
     {"ae_nobands", 0, &tweak_ae_nobands},
     {"ae_noflare", 2, (void*)DBG_l_TweakWantsNoFlare},
+    /* The overlay's list of which after-effects are running: 1 puts it
+       up and leaves it up, 0 takes it down. */
+    {"ae_view", 0, &tweak_ae_view},
     /* Which winding the OpenGL renderer culls: 0 as it decides, 1 no
        culling at all, 2 the facing reversed. Kept rather than removed
        with the bug it found -- the mapping it overrides is measured
