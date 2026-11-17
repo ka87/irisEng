@@ -19,9 +19,13 @@
 #define OVL_PANELMARGIN 8.0f
 #define OVL_PANELY     60.0f
 #define OVL_PANELW     320.0f
+/* The backdrop is drawn in floats, so its width is one. The two
+   columns inside it are pixels and ints, which is what the call that
+   places text takes -- no cast at the call sites, and nothing for the
+   warning sweep to find. */
 #define OVL_PANELW_AE  215.0f
-#define OVL_AE_STATEX  118     /* the on/off column, in pixels */
-#define OVL_AE_VALUEX  146     /* and the parameter beside it */
+#define OVL_AE_STATEX  118
+#define OVL_AE_VALUEX  146
 
 #define OVL_FIELDTOP   10.0f
 #define OVL_FIELDPAD   6.0f     /* above and below the line of text */
@@ -564,6 +568,7 @@ static int OVL_l_EffectRows(void)
         }
         y += OVL_ROWHEIGHT;
     }
+
 
     return y;
 }
