@@ -3360,6 +3360,7 @@ static GLint      gl_aeColorSrc = -1;
 static GLint      gl_aeColorGain = -1;
 static GLint      gl_aeColorBias = -1;
 static GLint      gl_aeColorGrayscale = -1;
+static GLint      gl_aeColorBlend = -1;
 static GLint      gl_aeColorWeights = -1;
 
 static void GL_l_ForgetAe(void)
@@ -3408,6 +3409,7 @@ static void GL_l_ForgetAe(void)
     gl_aeColorGain = -1;
     gl_aeColorBias = -1;
     gl_aeColorGrayscale = -1;
+    gl_aeColorBlend = -1;
     gl_aeColorWeights = -1;
     gl_aeRemSharp = -1;
     gl_aeRemBlurred = -1;
@@ -3520,6 +3522,7 @@ static int GL_l_b_AeReady(void)
     gl_aeColorBias = GL_i_ProgramUniform(&gl_aeColorProgram, "uBias");
     gl_aeColorGrayscale = GL_i_ProgramUniform(&gl_aeColorProgram,
                                               "uGrayscale");
+    gl_aeColorBlend = GL_i_ProgramUniform(&gl_aeColorProgram, "uBlend");
     gl_aeColorWeights = GL_i_ProgramUniform(&gl_aeColorProgram, "uWeights");
     gl_aeRemSharp = GL_i_ProgramUniform(&gl_aeRemProgram, "uSharp");
     gl_aeRemBlurred = GL_i_ProgramUniform(&gl_aeRemProgram, "uBlurred");
@@ -4400,6 +4403,7 @@ static int GL_l_i_AeColor(const tCbd_Bands* bands, int from)
     src.aeMaster = (unsigned int)PC_AE_MASTER;
     src.brightness = brightnessParam;
     src.contrast = colorBalanceParam1;
+    src.grayscale = blackAndWhiteParam1;
     n = AEC_i_Steps(&src, steps, AEC_MAX_STEPS);
     if (n <= 0)
         return from;
@@ -4428,6 +4432,10 @@ static int GL_l_i_AeColor(const tCbd_Bands* bands, int from)
         if (gl_aeColorWeights >= 0)
             GLFN_glUniform3f(gl_aeColorWeights, steps[i].weights[0],
                              steps[i].weights[1], steps[i].weights[2]);
+        /* Set every step for the same reason as the flag above: a
+           step must not inherit the one before's amount. */
+        if (gl_aeColorBlend >= 0)
+            GLFN_glUniform1f(gl_aeColorBlend, steps[i].blend);
 
         GL_l_AeDrawBand(bands->top, bands->bottom);
         from = to;
@@ -4465,6 +4473,7 @@ static int GL_l_b_AeWanted(void)
     src.aeMaster = (unsigned int)PC_AE_MASTER;
     src.brightness = brightnessParam;
     src.contrast = colorBalanceParam1;
+    src.grayscale = blackAndWhiteParam1;
     if (AEC_i_Steps(&src, steps, AEC_MAX_STEPS) > 0)
         return 1;
 

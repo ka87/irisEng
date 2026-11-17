@@ -38,6 +38,11 @@ typedef struct sAec_Source
     unsigned int aeMaster;
     float        brightness;
     float        contrast;
+    /* How much of the grayscale to apply, 0 to 1. Unlike the two
+       above it is neutral at **zero**, and its bit is not the whole
+       of its gate: the bit set and this at nought is no grayscale at
+       all. */
+    float        grayscale;
 } tAec_Source;
 
 /* One step. `gain` and `bias` are a channel's multiply and add; the
@@ -49,6 +54,8 @@ typedef struct sAec_Source
  *     brightness, contrast   out_c = clamp(in_c * gain + bias)
  *     grayscale              out_c = clamp(dot(in, weights) * gain
  *                                          + bias), all channels alike
+ *
+ * and then `blend` mixes that back over what went in.
  */
 typedef struct sAec_Step
 {
@@ -56,6 +63,17 @@ typedef struct sAec_Step
     float gain;
     float bias;
     float weights[3];
+    /* How much of this step's result replaces what went in:
+
+           out_c = in_c * (1 - blend) + step(in)_c * blend
+
+       Only the grayscale has anything but 1 here -- it is the one of
+       the three with an amount of its own, and a half of it is half
+       the colour left in. The renderer that has these spells it as a
+       second pass that mixes the step's target back over its source
+       by a vertex alpha, which is where the quantising below comes
+       from. */
+    float blend;
 } tAec_Step;
 
 /* The steps that apply, in the order they run. Returns how many were

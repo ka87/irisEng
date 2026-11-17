@@ -259,6 +259,9 @@ int   ECAM_gi_NoAfterEffects = 0;
    grey and half darkened. */
 float brightnessParam = 0.5f;
 float colorBalanceParam1 = 0.5f;
+/* The grayscale's amount, neutral at nought: the bit is not the whole
+   of that effect's gate. */
+float blackAndWhiteParam1 = 0.0f;
 
 void OVL_Draw(void) { }
 /* As above: the display has its own harness. */
@@ -418,6 +421,7 @@ static void glr_Reset(void)
     ECAM_gi_NoAfterEffects = 0;
     brightnessParam = 0.5f;
     colorBalanceParam1 = 0.5f;
+    blackAndWhiteParam1 = 0.0f;
 
     /* The after-effects state the blur's decision is read from. It is
        the engine's, set by the AI scripts, so a case that wants a
@@ -4266,6 +4270,89 @@ static int glr_aeChannels(int x, int row)
     return row < GLR_AE_H / 3 ? 255 : 0;
 }
 
+/* The grayscale's amount, in pixels: half of it leaves half the
+   colour, and none of it leaves the frame alone. This is the one
+   check that reads what actually lands rather than what was asked
+   for. */
+static void caseAeGrayscaleAmount(void)
+{
+    GLuint scene;
+    GLuint shown;
+    int    row = GLR_AE_H / 2;
+    int    full[4];
+    int    half[4];
+    int    none[4];
+
+    printf("-- how much of the grayscale lands\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    scene = glr_AeScene(glr_aeChannels, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* Pure red everywhere, which is the channel the three amounts are
+       compared on: it is a long way from its own grey. */
+    {
+        int i;
+
+        for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+        {
+            unsigned char* p = &glr_aePattern[i * 4];
+
+            p[0] = 255;
+            p[1] = 0;
+            p[2] = 0;
+            p[3] = 0x5A;
+        }
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    PC_AE_MASTER = 0x1;
+
+    blackAndWhiteParam1 = 1.0f;
+    shown = GL_l_i_RunAfterEffects();
+    glr_AeAt(shown, GLR_AE_W / 2, row, full);
+
+    blackAndWhiteParam1 = 0.5f;
+    shown = GL_l_i_RunAfterEffects();
+    glr_AeAt(shown, GLR_AE_W / 2, row, half);
+
+    blackAndWhiteParam1 = 0.0f;
+    shown = GL_l_i_RunAfterEffects();
+    glr_AeAt(shown, GLR_AE_W / 2, row, none);
+
+    okEq(none[0], 255, "no amount leaves the red alone");
+    okEq(none[1], 0, "and leaves it red");
+    ok(full[0] < 60, "all of it takes the red down to its grey");
+    okEq(full[1], full[0], "which is grey");
+
+    /* Half of it is between the two, on both the channel that loses
+       and the channel that gains -- and near enough the middle that a
+       renderer quietly doing all of it, or none, fails here. */
+    ok(half[0] < none[0] && half[0] > full[0],
+       "half of it is between the picture and its grey");
+    ok(half[1] > none[1] && half[1] < full[1],
+       "and the green moves part of the way to the grey, not all");
+    {
+        int want = (full[0] + none[0]) / 2;
+
+        ok(half[0] > want - 12 && half[0] < want + 12,
+           "and lands within a step or two of halfway");
+    }
+
+    PC_AE_MASTER = 0;
+    blackAndWhiteParam1 = 0.0f;
+    CIN_Bands = 1;
+}
+
 static void caseAeGrayscale(void)
 {
     GLuint scene;
@@ -4309,6 +4396,7 @@ static void caseAeGrayscale(void)
     GLFN_glBindTexture(GL_TEXTURE_2D, 0);
 
     PC_AE_MASTER = 0x1;
+    blackAndWhiteParam1 = 1.0f;
     shown = GL_l_i_RunAfterEffects();
     ok(shown != scene, "it ran");
 
@@ -4348,6 +4436,7 @@ static void caseAeGrayscale(void)
         gsrc.aeMaster = 0x1;
         gsrc.brightness = 0.5f;
         gsrc.contrast = 0.5f;
+        gsrc.grayscale = 1.0f;
         AEC_i_Steps(&gsrc, gstep, AEC_MAX_STEPS);
         got[0] = pureRed;
         got[1] = pureGreen;
@@ -4399,6 +4488,7 @@ static void caseAeGrayscale(void)
         gsrc.aeMaster = 0x1;
         gsrc.brightness = 0.5f;
         gsrc.contrast = 0.5f;
+        gsrc.grayscale = 1.0f;
         AEC_i_Steps(&gsrc, gstep, AEC_MAX_STEPS);
         want = ((double)gstep[0].weights[0] + gstep[0].weights[1]
                 + gstep[0].weights[2]) * gstep[0].gain + gstep[0].bias;
@@ -4488,6 +4578,7 @@ static void caseAeColorOrder(void)
     /* And with all three on, the grayscale is last: the output is
        grey whatever the other two did. */
     PC_AE_MASTER = 0x1;
+    blackAndWhiteParam1 = 1.0f;
     brightnessParam = 0.7f;
     colorBalanceParam1 = 0.3f;
     shown = GL_l_i_RunAfterEffects();
@@ -6767,6 +6858,7 @@ int main(void)
     caseAeBrightness();
     caseAeContrast();
     caseAeGrayscale();
+    caseAeGrayscaleAmount();
     caseAeColorOrder();
     caseAeRemanence();
     caseAeMotionBlur();

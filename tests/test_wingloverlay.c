@@ -1122,6 +1122,9 @@ int   ECAM_gi_NoAfterEffects = 0;
    grey and half darkened. */
 float brightnessParam = 0.5f;
 float colorBalanceParam1 = 0.5f;
+/* The grayscale's amount, which is neutral at nought rather than at a
+   half: its bit is not the whole of its gate. */
+float blackAndWhiteParam1 = 0.0f;
 
 void OVL_Draw(void)
 {
@@ -1200,6 +1203,7 @@ static void reset(void)
        for both of them. */
     brightnessParam = 0.5f;
     colorBalanceParam1 = 0.5f;
+    blackAndWhiteParam1 = 0.0f;
     /* The fade: both its duration and its timer, because the timer is
        state that outlives a frame and a case that left one running
        would hand the next case a fade part way through. */
@@ -4187,12 +4191,14 @@ static void caseAeColorChain(void)
     PC_AE_MASTER = 0x1;
     brightnessParam = 0.8f;
     colorBalanceParam1 = 0.2f;
+    blackAndWhiteParam1 = 1.0f;
     wg_callLen = 0;
     GL_Flip();
 
     src.aeMaster = 0x1;
     src.brightness = 0.8f;
     src.contrast = 0.2f;
+    src.grayscale = 1.0f;
     n = AEC_i_Steps(&src, steps, AEC_MAX_STEPS);
     okEq(n, 3, "three steps to do");
     okEq(WG_i_Count("glDrawArrays"), n,
@@ -4259,17 +4265,22 @@ static void caseAeColorChain(void)
        a gain is not a byte. */
     for (i = 0; i < n; i++)
     {
-        okEq(WG_l_Arg("glUniform1f.scaled", i * 3, 1),
+        okEq(WG_l_Arg("glUniform1f.scaled", i * 4, 1),
              wg_l_Scaled(steps[i].gain), "the step's gain");
-        okEq(WG_l_Arg("glUniform1f.scaled", i * 3 + 1, 1),
+        okEq(WG_l_Arg("glUniform1f.scaled", i * 4 + 1, 1),
              wg_l_Scaled(steps[i].bias), "and its bias");
         /* The grayscale flag, which is what picks between summing the
            channels and taking each on its own. Set every step, so a
            step cannot inherit the one before's -- which would turn
            the step after a grayscale into a second grayscale. */
-        okEq(WG_l_Arg("glUniform1f.scaled", i * 3 + 2, 1),
+        okEq(WG_l_Arg("glUniform1f.scaled", i * 4 + 2, 1),
              steps[i].kind == AEC_GRAYSCALE ? 1000000L : 0L,
              "and whether it is the grayscale");
+        /* How much of the step to keep, which is the grayscale's own
+           amount and one for the other two. Set every step for the
+           same reason as the flag. */
+        okEq(WG_l_Arg("glUniform1f.scaled", i * 4 + 3, 1),
+             wg_l_Scaled(steps[i].blend), "and how much of it to keep");
         okEq(WG_l_Arg("glUniform3f.scaled", i, 1),
              wg_l_Scaled(steps[i].weights[0]), "the first weight");
         okEq(WG_l_Arg("glUniform3f.scaled", i, 2),
@@ -4282,8 +4293,8 @@ static void caseAeColorChain(void)
        well as above. */
     okEq(WG_l_Arg("glUniform1f.scaled", 2, 1), 0L,
          "the first step is not the grayscale");
-    okEq(WG_l_Arg("glUniform1f.scaled", 5, 1), 0L, "nor the second");
-    okEq(WG_l_Arg("glUniform1f.scaled", 8, 1), 1000000L,
+    okEq(WG_l_Arg("glUniform1f.scaled", 6, 1), 0L, "nor the second");
+    okEq(WG_l_Arg("glUniform1f.scaled", 10, 1), 1000000L,
          "and the third is");
 
     PC_AE_MASTER = 0;
@@ -4293,6 +4304,52 @@ static void caseAeColorChain(void)
     motionBlurFactor = 0.0f;
     remenanceFactor = 0.0f;
     zoomSmoothFactor = 0.0f;
+}
+
+/* The grayscale's amount. Its bit is not the whole of its gate, and
+   a part of it is a part of the colour left in -- so the amount has
+   to reach the shader rather than the flag standing in for it. */
+static void caseAeColorAmount(void)
+{
+    tAec_Source src;
+    tAec_Step   steps[AEC_MAX_STEPS];
+
+    printf("-- how much of the grayscale reaches the shader\n");
+
+    /* the bit on its own draws nothing */
+    reset();
+    wg_SceneReady();
+    PC_AE_MASTER = 0x1;
+    blackAndWhiteParam1 = 0.0f;
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(WG_i_Count("glDrawArrays"), 0,
+         "the bit set and no amount draws no colour step");
+
+    /* and a part of it arrives as that part */
+    reset();
+    wg_SceneReady();
+    PC_AE_MASTER = 0x1;
+    blackAndWhiteParam1 = 0.4f;
+    wg_callLen = 0;
+    GL_Flip();
+
+    memset(&src, 0, sizeof(src));
+    src.aeMaster = 0x1;
+    src.brightness = 0.5f;
+    src.contrast = 0.5f;
+    src.grayscale = 0.4f;
+    okEq(AEC_i_Steps(&src, steps, AEC_MAX_STEPS), 1, "one step to do");
+    okEq(WG_i_Count("glDrawArrays"), 1, "and one draw");
+    okEq(WG_l_Arg("glUniform1f.scaled", 2, 1), 1000000L,
+         "which is the grayscale");
+    okEq(WG_l_Arg("glUniform1f.scaled", 3, 1), wg_l_Scaled(steps[0].blend),
+         "and keeps four tenths of it, not all of it");
+    ok(WG_l_Arg("glUniform1f.scaled", 3, 1) < 1000000L,
+       "which is less than the whole");
+
+    PC_AE_MASTER = 0;
+    blackAndWhiteParam1 = 0.0f;
 }
 
 static void caseAeColorBand(void)
@@ -4308,6 +4365,7 @@ static void caseAeColorBand(void)
     tweak_ae_nobands = 0;
     D3D_gf_CutsceneBand = 0.25f;
     PC_AE_MASTER = 0x1;
+    blackAndWhiteParam1 = 1.0f;
     wg_callLen = 0;
     GL_Flip();
 
@@ -7408,6 +7466,7 @@ int main(void)
     caseAeDepthBlurQuads();
     caseAeColorChain();
     caseAeColorBand();
+    caseAeColorAmount();
     caseAeColorGate();
     caseAeMotionBlurHistory();
     caseAeRemanenceChain();
