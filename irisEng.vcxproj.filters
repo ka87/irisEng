@@ -290,6 +290,9 @@
     <ClCompile Include="win\perfdisplay.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="pngwrite.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="watersmooth.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -929,6 +932,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="aezoom2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pngwrite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="version.h">

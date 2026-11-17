@@ -4,6 +4,7 @@
 #include "wingdimath.h"
 #include "overlay.h"
 #include "perfdisplay.h"
+#include "../pngwrite.h"
 #include "../projection.h"
 #include "../geovertex.h"
 #include "../geosprite.h"
@@ -534,6 +535,142 @@ int GL_ReadaptDisplay(HWND hwnd, struct sGdi_DisplayData* dd)
     return 1;
 }
 
+/* ========================================== reading the frame back
+ *
+ * Two things ask for the finished picture: the savegame photo, which
+ * wants a rectangle of it in memory, and the screenshot key, which
+ * wants a file. The other renderer answers both by copying its render
+ * target into system memory and locking it; here it is glReadPixels,
+ * with two differences that matter and nothing else to it.
+ *
+ * **OpenGL hands a frame back bottom row first.** Every reader has to
+ * turn it over, and the two below do it in different places: the
+ * photo flips as it packs, the screenshot tells the PNG writer which
+ * way up its rows are.
+ *
+ * **The picture is read as BGRA**, which is the order the other
+ * renderer's surface already has -- blue, green, red, then a byte
+ * nobody reads. That makes the photo's three bytes per pixel the same
+ * three bytes, in the same order, as that renderer packs, so the
+ * encoder downstream sees what it has always seen.
+ */
+
+/* The savegame photo's rectangle, 24 bits a pixel, from whatever
+ * target is bound. Mid-frame that is the scene, which is what the
+ * other renderer's own render target holds at the same point.
+ *
+ * The request's two cut fields are named the wrong way round -- the
+ * one called "from top and bottom" is the horizontal offset and the
+ * one called "from sides" is the vertical. They are read here exactly
+ * as the other renderer reads them, so the caller that fills them
+ * does not have to care which name is which.
+ */
+static void GL_l_Snapshot(tGdi_SnapshotRequest* req)
+{
+    unsigned char* rows;
+    unsigned char* dest;
+    int            row;
+    int            col;
+    int            readY;
+
+    if (!req || !req->srcData || req->width <= 0 || req->height <= 0)
+        return;
+    /* The same two flag tests the other renderer makes. */
+    if ((req->flags & 0xff) != 0 || ((req->flags >> 8) & 0xff) == 2)
+        return;
+
+    rows = (unsigned char*)malloc((size_t)req->width
+                                  * (size_t)req->height * 4u);
+    if (!rows)
+        return;
+
+    /* The rectangle's top edge counts down the picture and
+       glReadPixels counts up it, so the row to start at is measured
+       from the other end. */
+    readY = gl_state.height - (req->cutSizeFromSides + req->height);
+    if (readY < 0)
+        readY = 0;
+
+    GLFN_glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    GLFN_glReadPixels(req->cutSizeFromTopAndBottom, readY,
+                      req->width, req->height, GL_BGRA,
+                      GL_UNSIGNED_BYTE, rows);
+
+    dest = (unsigned char*)req->srcData;
+    for (row = 0; row < req->height; row++)
+    {
+        /* Turned over on the way out: the last row read is the top of
+           the picture. */
+        const unsigned char* src =
+            rows + (size_t)(req->height - 1 - row) * (size_t)req->width * 4u;
+
+        for (col = 0; col < req->width; col++)
+        {
+            dest[0] = src[0];
+            dest[1] = src[1];
+            dest[2] = src[2];
+            dest += 3;
+            src += 4;
+        }
+    }
+    free(rows);
+}
+
+/* The screenshot key asks for a file, and the answer is deferred to
+ * the end of the frame rather than taken where the key is read.
+ *
+ * The key is read from the engine's own frame sequence, where what is
+ * bound is whatever the last pass left and the finished picture may
+ * not be in it yet. At the end of the flip there is no such question:
+ * the chain has run, the copy to the screen has been made and the
+ * overlay is on top of it, so what is on the screen is what the person
+ * is looking at. The other renderer reads its back buffer where the
+ * key is read and gets the frame before's picture; this is the same
+ * screenshot a frame later.
+ */
+static int gl_screenshotWanted;
+
+void GL_SaveScreenshot(void)
+{
+    gl_screenshotWanted = 1;
+}
+
+static void GL_l_TakeScreenshot(void)
+{
+    unsigned char* rows;
+    SYSTEMTIME     now;
+    char           path[260];
+    int            w = gl_state.width;
+    int            h = gl_state.height;
+
+    gl_screenshotWanted = 0;
+    if (w <= 0 || h <= 0)
+        return;
+    rows = (unsigned char*)malloc((size_t)w * (size_t)h * 4u);
+    if (!rows)
+        return;
+
+    /* From the screen itself, which is where the finished frame is by
+       now -- not from the scene target, which the chain may have left
+       holding an earlier pass. */
+    GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    GLFN_glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    GLFN_glReadPixels(0, 0, w, h, GL_BGRA, GL_UNSIGNED_BYTE, rows);
+
+    CreateDirectoryA("screenshots", NULL);
+    GetLocalTime(&now);
+    sprintf(path, "screenshots\\%04d%02d%02d_%02d%02d%02d_%03d.png",
+            now.wYear, now.wMonth, now.wDay,
+            now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+    /* Bottom-up: the writer walks the rows backwards rather than this
+       copying them into another buffer first. */
+    if (PNG_i_WriteBgra(path, rows, w * 4, w, h, 1))
+        GDI_OutputDebugString("screenshot: %s\n", path);
+    else
+        GDI_OutputDebugString("screenshot: could not write %s\n", path);
+    free(rows);
+}
+
 /* --------------------------------------------------- clear and flip */
 
 /* The colour write mask, through a setter for the same reason the
@@ -653,6 +790,11 @@ void GL_Flip(void)
        is the order the other renderer's flip has. */
     PFD_Draw();
     OVL_Draw();
+
+    /* Before the swap, while the finished frame is still the back
+       buffer's: after it the contents are the driver's business. */
+    if (gl_screenshotWanted)
+        GL_l_TakeScreenshot();
 
     if (gl_state.dc)
         SwapBuffers(gl_state.dc);
@@ -1717,9 +1859,15 @@ int GL_Request(int type, void* param)
     case 12:
         GL_l_TextureStoreRequest((tTexUploadRequest*)param);
         break;
+    case 24:
+        GL_l_Snapshot((tGdi_SnapshotRequest*)param);
+        break;
+    case 26:
+        GL_SaveScreenshot();
+        break;
     default:
-        /* Sprites, snapshots and the rest still wait on the passes
-           that use them. */
+        /* Sprites and the rest still wait on the passes that use
+           them. */
         break;
     }
     return 0;

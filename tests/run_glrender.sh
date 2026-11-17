@@ -40,6 +40,9 @@ $CC $CFLAGS -c datapath.c -o "$OUT/glr.datapath.o"
 # the driver.
 $CC $CFLAGS -c projection.c -o "$OUT/glr.proj.o"
 $CC $CFLAGS -c geovertex.c -o "$OUT/glr.gvx.o"
+# pngwrite.c is the screenshot's file format, shared with the other
+# renderer. Linked rather than mocked: the case reads the file back.
+$CC $CFLAGS -c pngwrite.c -o "$OUT/glr.png.o"
 $CC $CFLAGS -c rasterstate.c -o "$OUT/glr.rst.o"
 $CC $CFLAGS -c depthblur.c -o "$OUT/glr.dpb.o"
 $CC $CFLAGS -c fog.c -o "$OUT/glr.fog.o"
@@ -82,7 +85,7 @@ $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
 # are no EGL headers to link against.
 $CC "$OUT/glr.drv.o" "$OUT/glr.egl.o" "$OUT/glr.load.o" \
     "$OUT/glr.shader.o" "$OUT/glr.datapath.o" "$OUT/glr.proj.o" \
-    "$OUT/glr.gvx.o" "$OUT/glr.rst.o" "$OUT/glr.dpb.o" "$OUT/glr.fog.o" "$OUT/glr.cbd.o" "$OUT/glr.aec.o" "$OUT/glr.aef.o" "$OUT/glr.wms.o" "$OUT/glr.wrf.o" "$OUT/glr.wsm.o" "$OUT/glr.afd.o" "$OUT/glr.ahu.o" "$OUT/glr.amo.o" "$OUT/glr.az2.o" "$OUT/glr.gsp.o" \
+    "$OUT/glr.gvx.o" "$OUT/glr.png.o" "$OUT/glr.rst.o" "$OUT/glr.dpb.o" "$OUT/glr.fog.o" "$OUT/glr.cbd.o" "$OUT/glr.aec.o" "$OUT/glr.aef.o" "$OUT/glr.wms.o" "$OUT/glr.wrf.o" "$OUT/glr.wsm.o" "$OUT/glr.afd.o" "$OUT/glr.ahu.o" "$OUT/glr.amo.o" "$OUT/glr.az2.o" "$OUT/glr.gsp.o" \
     "$OUT/glr.wgmath.o" \
     "$OUT/glr.math.o" -o "$OUT/glr" -lm -ldl
 # Software rendering, so the answer does not depend on whose card the
