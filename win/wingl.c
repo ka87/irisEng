@@ -1523,6 +1523,23 @@ int GL_DrawElementIndexedTriangles(struct sGeoTriangleChunks* chunks,
        handing them to the draw, which is where the other renderer
        finds them too. */
     gl_geoNrmWanted = 0;
+    /* Asked for, rather than hoped for.
+     *
+       The engine builds a geometry's normals on demand, and under the
+       other renderer the demand comes from building that renderer's
+       own vertex buffers -- so by the time a chrome material is drawn
+       they are always there. Nothing in this renderer's path builds
+       them, so a geometry arrived here with none and the generated
+       coordinate fell back to the stored one: an environment map
+       painted on as a surface texture, which is what a chrome material
+       looked like under this renderer.
+
+       This is the engine's own builder, the one six other callers use,
+       and it is a no-op once a geometry has them -- so this is a
+       request per geometry, not per draw. */
+    if (GDI_gi_TextureUVMode == 2 && gpst_DX_stDD->GROGEO
+        && gpst_DX_stDD->GROGEO->vertexNum)
+        GEO_UseNormals(gpst_DX_stDD->GROGEO);
     if (GDI_gi_TextureUVMode == 2 && gpst_DX_stDD->GROGEO
         && gpst_DX_stDD->GROGEO->normals)
     {

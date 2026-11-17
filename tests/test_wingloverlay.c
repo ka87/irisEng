@@ -1677,6 +1677,18 @@ static void WG_BuildChunk(void)
  * a mutation that skipped the call alone slipped straight past.
  */
 static tGEOGRO wg_gro;
+
+/* The engine's on-demand normal builder, which the renderer asks for
+   when a chrome material is drawn. Recorded rather than implemented:
+   this harness draws no chrome, and a geometry with no normals is the
+   case it does drive. */
+static int     wg_useNormalsCalls;
+
+void GEO_UseNormals(struct sGEOGRO* geo)
+{
+    (void)geo;
+    wg_useNormalsCalls++;
+}
 static Vec3    wg_normals[4];
 
 /* WG_l_Arg, further down this file, is the safe way to read a call's
