@@ -28,7 +28,7 @@ static void XCAT(SIDE, ResetSide)(void)
     X(CIN_NoBands) = 0;
     X(gAEOpacity) = 0.0f;
     X(colorBalanceParam1) = 0.5f;
-    X(unkAEFunc2Param) = 0.5f;
+    X(brightnessParam) = 0.5f;
     X(unknownAEFlag4GlobalVar) = 0.0f;
     X(texFactorManual) = 0.0f;
     X(remenanceFactor) = 0.0f;
@@ -55,7 +55,7 @@ static void XCAT(SIDE, Snap)(void)
                   (long long)AE_Bits(X(depthBlurType2)));
     AEMOCK_Record("snap.param", 6, (long long)AE_Bits(X(gAEOpacity)),
                   (long long)AE_Bits(X(colorBalanceParam1)),
-                  (long long)AE_Bits(X(unkAEFunc2Param)),
+                  (long long)AE_Bits(X(brightnessParam)),
                   (long long)AE_Bits(X(unknownAEFlag4GlobalVar)),
                   (long long)AE_Bits(X(texFactorManual)),
                   (long long)AE_Bits(X(remenanceFactor)));
@@ -227,7 +227,7 @@ static void RUN(int caseId)
         X(D3D_StretchRect)(AEMOCK_tex[2], &rc);
         X(D3D_MotionBlur)(AEMOCK_tex[0], AEMOCK_tex[1], AE_Factor(k, 2));
         X(D3D_Grayscale)(AEMOCK_tex[3], AEMOCK_tex[4]);
-        X(D3D_Unkown_AE_Func_2)(AEMOCK_tex[3], AEMOCK_tex[4], AE_Factor(k, 3));
+        X(D3D_Brightness)(AEMOCK_tex[3], AEMOCK_tex[4], AE_Factor(k, 3));
         break;
     }
 
@@ -362,7 +362,7 @@ static void RUN(int caseId)
         X(zoomSmoothFactor) = (k & 4) ? 1.5f : 0.0f;
         X(blurFactor) = (k & 8) ? 2.0f : 0.0f;
         X(zoomSmoothFactor2) = (k & 16) ? 0.75f : 0.0f;
-        X(unkAEFunc2Param) = (k & 3) ? 0.25f : 0.5f;
+        X(brightnessParam) = (k & 3) ? 0.25f : 0.5f;
         X(colorBalanceParam1) = (k & 5) ? 0.8f : 0.5f;
         X(unknownAEFlag4GlobalVar) = AE_Factor(k, 1);
         X(texFactorManual) = AE_Factor(k, 2) * 2.0f;

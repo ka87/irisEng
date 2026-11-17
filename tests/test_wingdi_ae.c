@@ -37,7 +37,7 @@ extern int ECAM_gi_NoAfterEffects;
     extern float P##_depthBlurNear1, P##_depthBlurType0, P##_depthBlurType1, \
                  P##_depthBlurType2, P##_bandsVal1, P##_bandsVal2, \
                  P##_bandsVal3, P##_bandsVal4, P##_gAEOpacity, \
-                 P##_colorBalanceParam1, P##_unkAEFunc2Param, \
+                 P##_colorBalanceParam1, P##_brightnessParam, \
                  P##_unknownAEFlag4GlobalVar, P##_texFactorManual, \
                  P##_remenanceFactor, P##_motionBlurFactor, \
                  P##_zoomSmoothFactor, P##_blurFactor, P##_zoomSmoothFactor2, \
@@ -69,7 +69,7 @@ extern int ECAM_gi_NoAfterEffects;
     void  P##_D3D_MotionBlur(IDirect3DTexture9* s, IDirect3DTexture9* d, float f); \
     void  P##_D3D_AE_CopyToScreen(IDirect3DTexture9* t); \
     void  P##_D3D_Grayscale(IDirect3DTexture9* d, IDirect3DTexture9* s); \
-    void  P##_D3D_Unkown_AE_Func_2(IDirect3DTexture9* d, IDirect3DTexture9* s, float f); \
+    void  P##_D3D_Brightness(IDirect3DTexture9* d, IDirect3DTexture9* s, float f); \
     void  P##_D3D_ColorBalanceLessThanZeroPointHalf(IDirect3DTexture9* d, \
                                                     IDirect3DTexture9* s, float f); \
     void  P##_D3D_ColorBalanceMoreThanZeroPointHalfSD(int a, int b, IDirect3DTexture9* s); \

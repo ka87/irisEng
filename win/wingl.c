@@ -4393,7 +4393,7 @@ static int GL_l_i_AeColor(const tCbd_Bands* bands, int from)
     int           i;
 
     src.aeMaster = (unsigned int)PC_AE_MASTER;
-    src.brightness = unkAEFunc2Param;
+    src.brightness = brightnessParam;
     src.contrast = colorBalanceParam1;
     n = AEC_i_Steps(&src, steps, AEC_MAX_STEPS);
     if (n <= 0)
@@ -4458,7 +4458,7 @@ static int GL_l_b_AeWanted(void)
         return 1;
 
     src.aeMaster = (unsigned int)PC_AE_MASTER;
-    src.brightness = unkAEFunc2Param;
+    src.brightness = brightnessParam;
     src.contrast = colorBalanceParam1;
     if (AEC_i_Steps(&src, steps, AEC_MAX_STEPS) > 0)
         return 1;

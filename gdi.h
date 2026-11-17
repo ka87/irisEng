@@ -373,7 +373,16 @@ int   PC_AE_MASTER;
    nought, and nought means a frame flattened to mid grey on the
    contrast and darkened by half on the brightness. Anything that
    links one renderer alone has to set them. */
-float unkAEFunc2Param;
+/* The brightness after-effect's parameter: a flat grey added to the
+   picture above a half and subtracted below it, which is what makes
+   the effect brightness and not something else. A half leaves the
+   picture alone and is what being off looks like -- this effect has
+   no bit in PC_AE_MASTER. Its id is 8 for the parameter getters.
+
+   The frozen copies in tests/ still spell it unkAEFunc2Param; the
+   differential maps that spelling onto this one for its side, which
+   is how the two functions renamed before it are handled. */
+float brightnessParam;
 float colorBalanceParam1;
 /* And the four that scale the effects building a frame out of several
    samples of one. Neutral for all four is nought, so unlike the two
