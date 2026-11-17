@@ -4,7 +4,7 @@
 #include "wingdimath.h"
 #include "overlay.h"
 #include "perfdisplay.h"
-#include "../pngwrite.h"
+#include "../pngsave.h"
 #include "../projection.h"
 #include "../geovertex.h"
 #include "../geosprite.h"

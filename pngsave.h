@@ -10,6 +10,10 @@
  * the opposite of how Direct3D does.
  *
  * Returns non-zero when the file was written.
+ *
+ * The file is named apart from libpng's own pngwrite.c, which this is
+ * built on: Visual Studio puts every object in one directory and two
+ * sources of the same name collide there.
  */
 int PNG_i_WriteBgra(const char* path, const unsigned char* pixels,
                     int pitch, int width, int height, int bottomUp);
