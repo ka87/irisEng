@@ -11,6 +11,7 @@
 
 int tweak_ae_no;
 int tweak_gl_cull;
+int tweak_gl_matdump;
 int tweak_gl_water_flip;
 int tweak_ae_nobands = 0;
 float tweak_mipmaplodbias = -0.60000002f;
@@ -67,6 +68,12 @@ struct sTweakElem tweaks[] = {
        rather than derived, so the next card that disagrees wants this
        to hand. */
     {"gl_cull", 0, &tweak_gl_cull},
+    /* Set it to a count and the OpenGL renderer describes that many of
+       the next material draws in the log: what the material asked for,
+       what the renderer decided, and the generated-coordinate matrix.
+       It counts itself down to nought, so one setting is one burst and
+       a frame's worth does not become a run's worth. */
+    {"gl_matdump", 0, &tweak_gl_matdump},
     /* Which way up the OpenGL renderer samples the water's
        reflection: 0 as it decides, 1 the other way. Here for the same
        reason as the line above -- the answer is a measurement on a

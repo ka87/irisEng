@@ -81,6 +81,11 @@ static int gl_colorMaskAlpha;
 typedef struct sGlMaterial
 {
     int   textured;
+    /* What the engine asked for, kept only so the gl_matdump tweak
+       can say what the decisions below were made from. */
+    int   dumpTexture;
+    unsigned int dumpFlags;
+    tRst_State dumpState;
     int   alphaMode;    /* 0 none, 1 keep above the reference, 2 below */
     float alphaRef;     /* 0..1 */
     /* Which fog curve this material's pass draws with, FOG_OFF for
@@ -1319,6 +1324,57 @@ void GL_SetProjectionMatrix(tDDCamStruct* cam)
    the sprites' quads are the same vertex and the same program, so
    they are the same draw with a different staging buffer behind
    them. */
+/* The gl_matdump tweak: what this draw was asked for and what was
+ * decided, for as many draws as the tweak was set to.
+ *
+ * It exists because a material that looks wrong on screen looks right
+ * in the source of both renderers -- the generated texture coordinate
+ * is the same arithmetic either way, so what is left to differ is the
+ * data each renderer reaches for and the decisions each makes from it,
+ * and neither shows up anywhere but a running game. Everything on
+ * these lines is something the two renderers could disagree about.
+ *
+ * The matrix is printed row by row because that is how the engine
+ * stores it and how both renderers multiply by it -- the translation
+ * is in the fourth row for the camera-space sources and in the third
+ * for the stored coordinate.
+ */
+static void GL_l_DumpMaterial(int count, int mode, int b_normals)
+{
+    const tRst_State* st = &gl_material.dumpState;
+    const float*      m;
+
+    if (tweak_gl_matdump <= 0)
+        return;
+    tweak_gl_matdump--;
+
+    DBG_OutputDebugString(
+        "GL mat: tex %d flags %08x tris %d  uv asked %d used %d"
+        " normals %d (gro %p nrm %p)  rgb %d a %d  blend %d%s"
+        "  alpha %d ref %d  depth %s%s  2x %d/%d\n",
+        gl_material.dumpTexture, gl_material.dumpFlags, count / 3,
+        GDI_gi_TextureUVMode, mode, b_normals,
+        (void*)(gpst_DX_stDD ? gpst_DX_stDD->GROGEO : NULL),
+        (void*)(gpst_DX_stDD && gpst_DX_stDD->GROGEO
+                    ? gpst_DX_stDD->GROGEO->normals : NULL),
+        st->writeRGB, st->writeAlpha,
+        (int)st->blend, st->blendInverted ? " inverted" : "",
+        st->alphaTest ? (st->alphaCompare == RST_ALPHA_LESS ? 2 : 1) : 0,
+        st->alphaRef,
+        st->depthCompare == RST_DEPTH_EQUAL ? "equal" : "lessequal",
+        st->depthWrite ? " write" : "",
+        GDI_gi_Diffuse2x, gl_state.canDiffuse2x);
+
+    if (mode == 0)
+        return;
+    m = (const float*)&d3dTransformationMatrix[0];
+    DBG_OutputDebugString(
+        "GL mat: uv mtx [%f %f %f %f] [%f %f %f %f]"
+        " [%f %f %f %f] [%f %f %f %f]\n",
+        m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7],
+        m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]);
+}
+
 static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
                             int b_depthBlur, int b_normals)
 {
@@ -1429,6 +1485,8 @@ static void GL_l_DrawStaged(const tGdi_TexturedVertex* verts, int count,
         if (mode != 0 && gl_geoUVMtx >= 0)
             GLFN_glUniformMatrix4fv(gl_geoUVMtx, 1, GL_FALSE,
                                     (const GLfloat*)&d3dTransformationMatrix[0]);
+
+        GL_l_DumpMaterial(count, mode, b_normals);
     }
 
     /* Fog. The view matrix goes with it, because the depth the curve
@@ -2064,6 +2122,10 @@ void GL_TextureInit(int textureID, int flags, char mode)
         GLFN_glFrontFace(gl_frontFace);
         gl_cullOn = 1;
     }
+
+    gl_material.dumpTexture = textureID;
+    gl_material.dumpFlags = (unsigned int)flags;
+    gl_material.dumpState = st;
 
     GL_l_SetColorMask(st.writeRGB, st.writeRGB, st.writeRGB,
                       st.writeAlpha);

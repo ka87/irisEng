@@ -198,6 +198,8 @@ int   tweak_ae_no = 0;
    mapping in force -- which is what every case here is written
    against. */
 int   tweak_gl_cull = 0;
+/* The material dump, off: a case that wanted it would set it. */
+int   tweak_gl_matdump = 0;
 
 /* ---- the water's engine side ----
  *
@@ -705,6 +707,55 @@ static void caseGeometryUntextured(void)
     okNear(glr_G(GLR_W / 2, GLR_H / 2), 0x40, "green too");
     okNear(glr_B(GLR_W / 2, GLR_H / 2), 0xC0, "and blue");
     okNear(glr_A(GLR_W / 2, GLR_H / 2), 0xFF, "with the alpha untouched by the texture");
+}
+
+static void caseMaterialDump(void)
+{
+    int i;
+    int described = 0;
+    int withMatrix = 0;
+
+    printf("-- the material dump says what a draw was decided from\n");
+
+    /* Two draws asked for, three allowed: the count is what stops it,
+       so a dump that never counted down would describe both and a
+       dump that counted the wrong thing would describe neither. */
+    glr_Reset();
+    glr_IdentityMatrices();
+    glr_OneTexel(0x40, 0x40, 0x40, 0xFF);
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glrLogLen = 0;
+    tweak_gl_matdump = 3;
+
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+
+    for (i = 0; i < glrLogLen; i++)
+    {
+        if (strstr(glrLog[i], "GL mat: tex "))
+            described++;
+        if (strstr(glrLog[i], "GL mat: uv mtx "))
+            withMatrix++;
+    }
+    okEq(described, 2, "both draws were described");
+    okEq(tweak_gl_matdump, 1, "and the count came down by two");
+    /* The matrix line is for a generated coordinate only, and these
+       draws take the stored one. */
+    okEq(withMatrix, 0, "with no matrix line, the coordinate being the"
+                        " stored one");
+
+    /* And with the count spent it says nothing more, which is what
+       makes one setting one burst. */
+    glrLogLen = 0;
+    tweak_gl_matdump = 0;
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    described = 0;
+    for (i = 0; i < glrLogLen; i++)
+        if (strstr(glrLog[i], "GL mat: "))
+            described++;
+    okEq(described, 0, "spent, it describes nothing");
 }
 
 static void caseGeometrySwizzle(void)
@@ -6588,6 +6639,7 @@ int main(void)
     caseGeometryModulates();
     caseGeometryUntextured();
     caseGeometrySwizzle();
+    caseMaterialDump();
     caseGeometryDiffuse2x();
     caseGeometryAlphaTest();
     caseGeometryTexCoords();

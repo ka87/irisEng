@@ -1061,6 +1061,8 @@ int   tweak_ae_no = 0;
    mapping in force -- which is what every case here is written
    against. */
 int   tweak_gl_cull = 0;
+/* The material dump, off: this harness does not read it. */
+int   tweak_gl_matdump = 0;
 
 /* ---- the water's engine side ----
  *
