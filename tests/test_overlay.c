@@ -151,6 +151,12 @@ void FNT_DrawText(int face, const char* text, int x, int y, uint32_t color)
 /* the profiler's own state, which the panel walks */
 int PRO_rasterWindowIsOn;
 int PRO_rasterDetailPage;
+/* The tweak that puts the after-effects list up, and the two
+   parameter-driven effects the list reads straight. */
+int tweak_ae_view;
+int PC_AE_MASTER;
+float unkAEFunc2Param = 0.5f;
+float colorBalanceParam1 = 0.5f;
 profilerRasterStructElem* PRO_FirstRasterPtr;
 profilerRasterStructElem* pointsToUnkRaster_dword_98F944;
 profilerRasterStructElem* PRO_CurrRaster;
@@ -745,6 +751,117 @@ static float leftmost(void)
     return l;
 }
 
+/* ------------------------------------------------ the after-effects
+
+   The tweak is a switch, not a key: set it and the list stays up, clear
+   it and it goes. The list reads the engine's one word, so it says the
+   same thing whichever renderer is drawing. */
+static int ovt_seenAt(const char* s, float* x)
+{
+    int i;
+
+    for (i = 0; i < ovt_seenCount; i++)
+        if (strcmp(ovt_seen[i], s) == 0)
+        {
+            if (x)
+                *x = ovt_seenX[i];
+            return 1;
+        }
+    return 0;
+}
+
+static void afterEffects(void)
+{
+    float heading = 0.0f;
+    float rasters = 0.0f;
+    int   onRows;
+    int   i;
+
+    printf("-- the after-effects list\n");
+
+    /* nothing up: the tweak is what puts it there */
+    resetAll();
+    PC_AE_MASTER = 0x8;
+    OVL_Draw();
+    ok(!sawText("After-effects"), "off, the list is not drawn");
+    okEq(ovt_beginCalls, 0, "and nothing is drawn at all");
+
+    /* set, and it is up -- with a row for every effect */
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0;
+    OVL_Draw();
+    ok(sawText("After-effects"), "set, the list is up");
+    ok(sawText("depth blur"), "with the effects named");
+    ok(sawText("remanence"), "all of them");
+    ok(sawText("fade"), "down to the last");
+    ok(sawText("colour balance"),
+       "including the two that have no bit of their own");
+    ok(sawText("unknown 2"), "both of them");
+
+    /* with none of them running, every row reads as off */
+    onRows = 0;
+    for (i = 0; i < ovt_seenCount; i++)
+        if (strcmp(ovt_seen[i], "on") == 0)
+            onRows++;
+    okEq(onRows, 0, "with the word clear, no row says on");
+
+    /* one bit set, one row on */
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0x800;             /* remanence */
+    OVL_Draw();
+    onRows = 0;
+    for (i = 0; i < ovt_seenCount; i++)
+        if (strcmp(ovt_seen[i], "on") == 0)
+            onRows++;
+    okEq(onRows, 1, "one bit set, one row says on");
+
+    /* two bits, two rows -- so the list is reading the word rather
+       than answering the same way whatever is in it */
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0x800 | 0x8;
+    OVL_Draw();
+    onRows = 0;
+    for (i = 0; i < ovt_seenCount; i++)
+        if (strcmp(ovt_seen[i], "on") == 0)
+            onRows++;
+    okEq(onRows, 2, "two bits set, two rows say on");
+
+    /* the two without a bit: away from a half is running */
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0;
+    colorBalanceParam1 = 0.25f;
+    OVL_Draw();
+    onRows = 0;
+    for (i = 0; i < ovt_seenCount; i++)
+        if (strcmp(ovt_seen[i], "on") == 0)
+            onRows++;
+    okEq(onRows, 1, "a parameter away from a half counts as running");
+    colorBalanceParam1 = 0.5f;
+
+    /* cleared, and it is gone again */
+    resetAll();
+    tweak_ae_view = 0;
+    PC_AE_MASTER = 0x8;
+    OVL_Draw();
+    ok(!sawText("After-effects"), "cleared, the list goes");
+
+    /* down the left, where the rasters panel is not */
+    resetAll();
+    tweak_ae_view = 1;
+    PRO_rasterWindowIsOn = 1;
+    ovt_drawWidth = 1280;
+    OVL_Draw();
+    ok(ovt_seenAt("After-effects", &heading), "both up together");
+    ok(ovt_seenAt("Rasters", &rasters), "the rasters panel as well");
+    ok(heading < rasters - 200.0f,
+       "and the list is down the left, clear of it");
+    tweak_ae_view = 0;
+}
+
 static void placement(void)
 {
     static const int widths[] = { 640, 800, 1280, 1920 };
@@ -971,6 +1088,7 @@ int main(void)
     shapes();
     caret();
     placement();
+    afterEffects();
     f1Cycle();
     panel();
     pass();

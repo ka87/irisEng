@@ -38,6 +38,7 @@ extern int tweak_water_clip;
 extern float tweak_water_off;
 extern float tweak_water_min_bv;
 extern int tweak_ae_no;
+extern int tweak_ae_view;
 /* Which winding the OpenGL renderer culls: 0 as it decides, 1 none at
    all, 2 the facing reversed. See the table in dbg.c. */
 extern int tweak_gl_cull;
