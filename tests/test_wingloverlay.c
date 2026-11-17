@@ -4424,6 +4424,43 @@ static void caseAeWhereItRuns(void)
              (long long)gl_sceneFbo, "and it is the scene, for the display");
     }
 
+    /* An effect that runs and writes no spare, which is the depth blur
+       on its own: it writes the frame rather than a spare and is not
+       exchanged after it, so the chain comes back having run and
+       having left the picture where it already was.
+     *
+       There is nothing to copy on such a frame, and the scene still
+       has to be bound back -- the chain ends by binding the default
+       framebuffer. Left like that, the display is drawn to the window
+       and the copy at the flip paints the frame over it. Which is
+       why this showed as the display blinking: on a frame where the
+       chain did write a spare, the copy bound the scene again by
+       itself. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x8;
+    depthBlurNear1 = 10.0f;
+    depthBlurType0 = 20.0f;
+    depthBlurType1 = 30.0f;
+    wg_callLen = 0;
+    GL_PC_AE(NULL);
+    ok(WG_i_Count("glDrawArrays") > 0, "the blur on its own runs");
+    {
+        int last = WG_i_Count("glBindFramebuffer") - 1;
+
+        okEq(WG_l_Arg("glBindFramebuffer", last, 0),
+             (long long)GL_FRAMEBUFFER,
+             "and the scene is bound back with nothing to copy");
+        okEq(WG_l_Arg("glBindFramebuffer", last, 1),
+             (long long)gl_sceneFbo, "the scene, not the window");
+    }
+    depthBlurNear1 = 0.0f;
+    depthBlurType0 = 0.0f;
+    depthBlurType1 = 0.0f;
+    PC_AE_MASTER = 0x1;
+    blackAndWhiteParam1 = 1.0f;
+
     /* The flip that follows runs no chain of its own: by then the
        display is in the frame, and running it here is what smeared
        the display. */

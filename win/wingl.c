@@ -4678,9 +4678,14 @@ void GL_PC_AE(struct sWorld* world)
     if (!gl_state.context)
         return;
     shown = GL_l_i_RunAfterEffects();
-    if (shown == GL_l_i_SceneFbo())
-        return;
-    if (GL_l_b_PictureRows(&bands, &top, &bottom))
+
+    /* Nothing to copy when the picture is already where the frame is.
+       That happens on more frames than it looks: the depth blur writes
+       the frame rather than a spare and is not exchanged after, so a
+       frame whose only effect is the blur comes back having run and
+       having written nothing anywhere else. */
+    if (shown != GL_l_i_SceneFbo()
+        && GL_l_b_PictureRows(&bands, &top, &bottom))
     {
         GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, shown);
         GLFN_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GL_l_i_SceneFbo());
@@ -4688,6 +4693,15 @@ void GL_PC_AE(struct sWorld* world)
                                0, top, gl_sceneW, bottom,
                                GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
+
+    /* And the scene target goes back **whatever happened above**,
+       because the chain ends by binding the default framebuffer. Left
+       like that, everything the engine draws next -- the heads-up
+       display, the shutter -- goes to the window instead of the
+       frame, and the copy at the flip paints the frame over the top of
+       it. On frames where the chain did write a spare the copy above
+       bound the scene again by itself, which is why that showed up as
+       the display blinking rather than as the display missing. */
     GL_l_BindScene();
 }
 
