@@ -64,6 +64,12 @@ typedef struct sGlTexture
 {
     GLuint name;
     int    hasLevels;   /* a mip chain was generated for it */
+    /* What it was made at. A texture is re-uploaded in place while
+       that still fits it, and an upload of another shape has to make
+       it again -- writing a sub-image larger than the texture updates
+       nothing and leaves the picture before it on screen. */
+    int    w;
+    int    h;
 } tGlTexture;
 
 static tGlTexture* gl_textures;
@@ -1723,6 +1729,8 @@ static int GL_l_b_Upload(tGlTexture* slot, int width, int height,
 
     GLFN_glBindTexture(GL_TEXTURE_2D, 0);
     slot->name = name;
+    slot->w = width;
+    slot->h = height;
     return 1;
 }
 
@@ -1827,6 +1835,7 @@ static void GL_l_TextureStoreRequest(tTexUploadRequest* req)
     tGlTexture*            slot;
     int                    width;
     int                    height;
+    int                    keepLevels = 0;
 
     if (!req || !req->dataPtr || !TEX_gst_GlobalList.texElems)
         return;
@@ -1834,9 +1843,42 @@ static void GL_l_TextureStoreRequest(tTexUploadRequest* req)
         return;
 
     tle = &TEX_gst_GlobalList.texElems[req->idx];
-    width = tle->normalData.height;   /* as in GL_PaletteLoad */
-    height = tle->normalData.width;
+    /* **Not** as in GL_PaletteLoad, and this is the one place the two
+       differ. That function is handed the picture a texture was
+       loaded with, whose rows are as long as the element's height
+       field -- the engine fills the two fields the other way round
+       and the load undoes it.
+
+       This one is handed a procedural picture, which the engine
+       builds itself in a buffer of its own, and it lays that buffer
+       out in rows as long as the element's **width** field. So the
+       two paths read the same two fields the opposite way round
+       because the two pictures are laid out the opposite way round,
+       and taking the load's reading here uploads the picture
+       transposed. It cannot show while a texture is square, which
+       every procedural texture is but one: the photograph. */
+    width = tle->normalData.width;
+    height = tle->normalData.height;
     slot = &gl_textures[req->idx];
+
+    /* A texture made at another shape cannot take this picture as a
+       sub-image -- a larger one updates nothing at all -- so it is
+       made again. The load and this path disagree about which field
+       is which, so a non-square texture that arrives by both routes
+       really does change shape. */
+    if (slot->name && gl_state.context
+        && (slot->w != width || slot->h != height))
+    {
+        /* Whether it had a chain goes with it. A sampler that filters
+           between levels on a texture that has only the full one is
+           incomplete, and an incomplete texture samples as black --
+           so making the texture again without the chain it had would
+           turn the picture black rather than merely unfiltered. */
+        keepLevels = slot->hasLevels;
+        GLFN_glDeleteTextures(1, &slot->name);
+        slot->name = 0;
+        slot->hasLevels = 0;
+    }
 
     /* An existing name is replaced in place rather than recreated: a
        procedural texture is re-uploaded every frame it changes, and
@@ -1853,7 +1895,7 @@ static void GL_l_TextureStoreRequest(tTexUploadRequest* req)
         GLFN_glBindTexture(GL_TEXTURE_2D, 0);
         return;
     }
-    GL_l_b_Upload(slot, width, height, req->dataPtr, 0);
+    GL_l_b_Upload(slot, width, height, req->dataPtr, keepLevels);
 }
 
 int GL_Request(int type, void* param)

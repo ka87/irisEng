@@ -2804,14 +2804,63 @@ static void caseProceduralUpload(void)
     wg_callLen = 0;
     okEq(GL_Request(12, &req), 0, "the request is answered");
 
-    okEq(WG_i_Count("glTexImage2D"), 0,
-         "an existing texture is not made again");
-    okEq(WG_i_Count("glTexSubImage2D"), 1, "its pixels are replaced");
-    okEq(WG_pc_Call("glTexSubImage2D", 0)->arg[4], WG_TEX_W, "at full width");
-    okEq(WG_pc_Call("glTexSubImage2D", 0)->arg[5], WG_TEX_H, "and height");
-    okEq(WG_pc_Call("glTexSubImage2D", 0)->arg[6], GL_BGRA, "in the same order");
+    /* A procedural picture is **not** laid out like a loaded one. The
+       engine builds it in a buffer of its own, in rows as long as the
+       element's width field, where a loaded picture's rows are as long
+       as its height field -- so the store reads the two fields the
+       opposite way round from the load, and uploads the width field as
+       the width.
+
+       The texture this element already has was made by the load, at
+       the other shape, so the store has to make it again: a sub-image
+       larger than the texture updates nothing at all and would leave
+       the picture before it on screen. Every procedural texture in the
+       game is square, where the two shapes are the same and none of
+       this shows -- except the savegame photograph. */
+    okEq(WG_i_Count("glTexImage2D"), 1,
+         "a texture of another shape is made again");
+    okEq(WG_i_Count("glDeleteTextures"), 1, "the one it replaces is given back");
+    okEq(WG_i_Count("glTexSubImage2D"), 0, "and not written into");
+    /* Guarded, because a renderer that took the other reading would
+       have written a sub-image instead and there would be no call
+       here to read -- a missing call must fail this case, not crash
+       it. */
+    if (WG_i_Count("glTexImage2D") == 1)
+    {
+        okEq(WG_pc_Call("glTexImage2D", 0)->arg[3],
+             wg_texElems[1].normalData.width,
+             "at the width the picture's rows are as long as");
+        okEq(WG_pc_Call("glTexImage2D", 0)->arg[4],
+             wg_texElems[1].normalData.height, "and that many rows");
+        okEq(WG_pc_Call("glTexImage2D", 0)->arg[6], GL_BGRA,
+             "in the same order");
+    }
+    else
+    {
+        ok(0, "the shape it was made at cannot be read");
+    }
     okEq(memcmp(wg_pixels, wg_src, WG_TEX_W * WG_TEX_H * 4), 0,
          "byte for byte");
+
+    /* And the one after it goes in place, so a picture that changes
+       every frame is not a texture made every frame -- which is what
+       the comment in the renderer is about: the sampler state set on a
+       texture goes with it. */
+    wg_callLen = 0;
+    GL_Request(12, &req);
+    okEq(WG_i_Count("glTexImage2D"), 0, "the next one is not made again");
+    okEq(WG_i_Count("glTexSubImage2D"), 1, "its pixels are replaced");
+    if (WG_i_Count("glTexSubImage2D") == 1)
+    {
+        okEq(WG_pc_Call("glTexSubImage2D", 0)->arg[4],
+             wg_texElems[1].normalData.width, "at that same width");
+        okEq(WG_pc_Call("glTexSubImage2D", 0)->arg[5],
+             wg_texElems[1].normalData.height, "and height");
+    }
+    else
+    {
+        ok(0, "the shape it was replaced at cannot be read");
+    }
     okEq(WG_i_Count("glGenerateMipmap"), 1,
          "and the chain is rebuilt, because the pixels changed under it");
 

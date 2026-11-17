@@ -639,6 +639,63 @@ static void glr_OneTexel(int r, int g, int b, int a)
     GL_PaletteLoad(&glr_dd, &glr_texElems[1], &glr_inter, 1);
 }
 
+/* A procedural picture that is wider than it is tall, and whose
+   colour varies along the width only: four across, two down, red in
+   the left half and blue in the right.
+
+   Rows four long, which is how the engine lays a procedural buffer
+   out -- as long as the element's width field. A reader that takes
+   the other field for the width sees rows of two instead, and the
+   same bytes then vary down the picture rather than across it, which
+   is what the check below separates. */
+static unsigned char glr_proTex[4 * 2 * 4];
+
+static void glr_WideProcedural(void)
+{
+    tTexUploadRequest req;
+    int               x;
+    int               y;
+
+    for (y = 0; y < 2; y++)
+    {
+        for (x = 0; x < 4; x++)
+        {
+            unsigned char* p = &glr_proTex[(y * 4 + x) * 4];
+
+            /* blue, green, red, alpha */
+            p[0] = (unsigned char)(x < 2 ? 0x00 : 0xFF);
+            p[1] = 0x00;
+            p[2] = (unsigned char)(x < 2 ? 0xFF : 0x00);
+            p[3] = 0xFF;
+        }
+    }
+
+    memset(glr_texElems, 0, sizeof(glr_texElems));
+    glr_texElems[1].normalData.width = 4;    /* the picture's width */
+    glr_texElems[1].normalData.height = 2;   /* and its height */
+    TEX_gst_GlobalList.texElems = glr_texElems;
+    TEX_gst_GlobalList.maxTexNum = 4;
+
+    GL_TextureStore(&glr_dd, 3);
+
+    /* A square texture is made first, through the load, so that the
+       upload below has to remake it at the new shape rather than
+       writing a sub-image into one that cannot hold it. That is the
+       order the game arrives in: the element is loaded with the
+       picture from the world and then replaced by the procedural
+       one. */
+    memset(&glr_inter, 0, sizeof(glr_inter));
+    glr_inter.colorDepth2 = 32;
+    glr_inter.imgDataPtr = (char*)glr_proTex;
+    glr_inter.tp.flagsUnkAndProceduralUnkb1 = 0x40;
+    GL_PaletteLoad(&glr_dd, &glr_texElems[1], &glr_inter, 1);
+
+    memset(&req, 0, sizeof(req));
+    req.idx = 1;
+    req.dataPtr = glr_proTex;
+    GL_Request(12, &req);
+}
+
 /* ------------------------------------------------------- the cases */
 
 static void caseContext(void)
@@ -2839,6 +2896,49 @@ static void glr_CornerTexture(void)
 
     GL_TextureStore(&glr_dd, 3);
     GL_PaletteLoad(&glr_dd, &glr_texElems[1], &glr_inter, 1);
+}
+
+/* A procedural picture that is not square arrives the way round it
+   was built. The photograph is the one of these in the game, which is
+   why a transposed upload went unseen: every other procedural texture
+   is square, and a square one is the same either way. */
+static void caseProceduralWide(void)
+{
+    int leftR, leftB, rightR, rightB, topR, bottomR;
+
+    printf("-- a procedural picture wider than it is tall\n");
+
+    glr_Reset();
+    glr_WideProcedural();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_IdentityMatrices();
+    GDI_gi_TextureUVMode = 0;
+
+    GL_TextureInit(1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    /* Inside the quad, which covers the middle of the viewport and
+       not the whole of it. */
+    leftR  = glr_R(GLR_W / 2 - GLR_W / 8, GLR_H / 2);
+    leftB  = glr_B(GLR_W / 2 - GLR_W / 8, GLR_H / 2);
+    rightR = glr_R(GLR_W / 2 + GLR_W / 8, GLR_H / 2);
+    rightB = glr_B(GLR_W / 2 + GLR_W / 8, GLR_H / 2);
+    topR    = glr_R(GLR_W / 2 - GLR_W / 8, GLR_H / 2 - GLR_H / 8);
+    bottomR = glr_R(GLR_W / 2 - GLR_W / 8, GLR_H / 2 + GLR_H / 8);
+
+    /* The colour varies across the picture, so it must vary across
+       the quad: red on one side, blue on the other. Uploaded the
+       other way round the same bytes vary down it instead, and both
+       of these samples come out the same. */
+    ok(leftR > 200 && leftB < 60, "the left of it is the red half");
+    ok(rightB > 200 && rightR < 60, "and the right is the blue half");
+
+    /* And nothing varies down it, which is the other half of the same
+       statement and fails if the picture arrived turned. */
+    okNear(topR, bottomR, "and it is the same all the way down");
 }
 
 static void caseUVStored(void)
@@ -6806,6 +6906,7 @@ int main(void)
     caseFogAlphaAndPermission();
     caseFogVariants();
     caseFogVertexCurve();
+    caseProceduralWide();
     caseUVStored();
     caseUVFromPosition();
     caseUVTransformedStored();
