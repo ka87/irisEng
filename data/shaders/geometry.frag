@@ -36,8 +36,24 @@ vec2 TexCoord(void)
 {
     if (uUVMode == 1)
         return (uUVMtx * vec4(vCam, 1.0)).xy;
+    // Normalised, because the transform expects a direction of unit
+    // length: the chrome projection maps a normal's -1..1 onto the
+    // texture's 0..1, and a normal that arrives shorter or longer than
+    // one is mapped somewhere else entirely.
+    //
+    // It arrives both. The engine's normals are unit length, but the
+    // matrix that takes them to camera space is the camera's times the
+    // object's, so it carries the object's scale -- and that scale is
+    // not always uniform. One object measured in the game has rows of
+    // length 0.5, 0.8 and 0.8, which shortens the normal and skews its
+    // direction, and drawn without this the environment map came out
+    // small and repeated across the surface.
+    //
+    // Per pixel rather than per vertex, which is where it has to be:
+    // interpolating a direction shortens it, so a normal normalised
+    // before interpolation is no longer unit by the time it is used.
     if (uUVMode == 2)
-        return (uUVMtx * vec4(vNrm, 1.0)).xy;
+        return (uUVMtx * vec4(normalize(vNrm), 1.0)).xy;
     if (uUVMode == 3)
         return (uUVMtx * vec4(vUV, 1.0, 0.0)).xy;
     return vUV;
