@@ -406,21 +406,6 @@ static void GL_l_SayWhatThisIs(void)
         (const char*)GLFN_glGetString(GL_VENDOR),
         (const char*)GLFN_glGetString(GL_RENDERER),
         (const char*)GLFN_glGetString(GL_SHADING_LANGUAGE_VERSION));
-    /* Kept current deliberately. This line was left saying the depth
-       blur and the culling were missing for four changes after both
-       went in, and it sent a search for why the world came out dark
-       looking in the wrong place for an afternoon. A log that lies
-       about what is running is worse than no log. */
-    DBG_OutputDebugString("GL: this renderer draws the overlay, its text, "
-                          "the textured world with fog and culling, its "
-                          "shadows, its sprites, fullscreen video, the "
-                          "depth blur and the sun's occlusion test, and "
-                          "the after-effects for the depth blur, the "
-                          "brightness, the contrast and the grayscale, "
-                          "the remanence, the motion blur and the zoom "
-                          "smooth, and the water with its reflection; "
-                          "the water's clip plane is honoured and its "
-                          "surface smoothing is not\n");
 }
 
 static void GL_l_SizeFromWindow(HWND hwnd)
