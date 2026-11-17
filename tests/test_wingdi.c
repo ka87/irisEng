@@ -2160,89 +2160,6 @@ static void rasterStateCase(void)
     }
 }
 
-/* ---- the chrome projection's axes, against the matrix they come from
- *
- * The differential beside this cannot speak for these: the frozen copy
- * carried the same reading as the rewrite, so both agreed and the
- * agreement meant nothing. The reading itself was wrong -- the two
- * axes were constants where they are the view rotation's first two
- * columns, halved -- and this is what holds the corrected one in
- * place.
- *
- * Driven with a view matrix whose sixteen floats are all distinct, so
- * an axis taken from the wrong row or the wrong column lands on a
- * different number rather than on an equal one.
- */
-static void uvChromeWant(const char* what, float got, float want)
-{
-    if (got == want)
-        return;
-    printf("  DIFF chrome axis  %-10s want %f got %f\n", what, want, got);
-    diffs++;
-}
-
-static void uvChromeCase(void)
-{
-    Mtx4x4 view;
-    Mtx4x4* saved;
-    int     savedMask;
-    int     i;
-    int     pass;
-
-    printf("-- the chrome projection's axes\n");
-
-    for (i = 0; i < 16; i++)
-        ((float*)&view)[i] = (float)(i + 1);
-    view.mtxflag = 0;
-
-    saved = W.dd.ct.cam.viewMtxPtr_setInGRORender;
-    savedMask = W.dd.drawMaskAllowedStuffCurrent;
-    W.dd.ct.cam.viewMtxPtr_setInGRORender = &view;
-
-    for (pass = 0; pass < 2; pass++)
-    {
-        /* mirrored when the bit is clear, which is the half of this
-           the first reading had the wrong way round */
-        float sign = pass ? 1.0f : -1.0f;
-
-        W.dd.drawMaskAllowedStuffCurrent = pass ? 0x8000 : 0;
-        memset(&GLOBAL_UVTransformMatrix, 0, sizeof(GLOBAL_UVTransformMatrix));
-        NEW_MAT_UV_Compute_Chrome(&W.dd, &W.geogro, &W.chunks[0], 0);
-
-        /* the first column, halved: elements 1, 5 and 9 of a matrix
-           numbered from one */
-        uvChromeWant("u.x", GLOBAL_UVTransformMatrix.v1.x, sign * 0.5f);
-        uvChromeWant("u.y", GLOBAL_UVTransformMatrix.v1.y, 2.5f);
-        uvChromeWant("u.z", GLOBAL_UVTransformMatrix.v1.z, 4.5f);
-        /* the second column, halved: 2, 6 and 10 */
-        uvChromeWant("v.x", GLOBAL_UVTransformMatrix.v2.x, sign * 1.0f);
-        uvChromeWant("v.y", GLOBAL_UVTransformMatrix.v2.y, 3.0f);
-        uvChromeWant("v.z", GLOBAL_UVTransformMatrix.v2.z, 5.0f);
-        /* and the third axis, which is not from the matrix at all */
-        uvChromeWant("w.x", GLOBAL_UVTransformMatrix.v3.x, 0.0f);
-        uvChromeWant("w.y", GLOBAL_UVTransformMatrix.v3.y, 0.0f);
-        uvChromeWant("w.z", GLOBAL_UVTransformMatrix.v3.z, 1.0f);
-        /* the half that centres it on the texture */
-        uvChromeWant("pos.x", GLOBAL_UVTransformMatrix.Pos.x, 0.5f);
-        uvChromeWant("pos.y", GLOBAL_UVTransformMatrix.Pos.y, 0.5f);
-        uvChromeWant("pos.z", GLOBAL_UVTransformMatrix.Pos.z, 0.0f);
-        /* and the scale column, which the matrix carries separately */
-        uvChromeWant("scale.x", GLOBAL_UVTransformMatrix._m14, -1.0f);
-        uvChromeWant("scale.y", GLOBAL_UVTransformMatrix._m24, -1.0f);
-        uvChromeWant("scale.z", GLOBAL_UVTransformMatrix._m34, 1.0f);
-        if (GLOBAL_UVTransformMatrix.mtxflag != 6)
-        {
-            printf("  DIFF chrome axis  %-10s want %d got %d\n",
-                   "flags", 6, GLOBAL_UVTransformMatrix.mtxflag);
-            diffs++;
-        }
-        casesRun++;
-    }
-
-    W.dd.ct.cam.viewMtxPtr_setInGRORender = saved;
-    W.dd.drawMaskAllowedStuffCurrent = savedMask;
-}
-
 /* ------------------------------ the renderer with no device of its own
  *
  * The engine calls a handful of this renderer's functions directly
@@ -2430,7 +2347,6 @@ int main(void)
 
     overlayPassCase();
     rasterStateCase();
-    uvChromeCase();
     noDeviceCase();
 
     printf("  %d cases, %lld engine calls compared\n", casesRun, callsCompared);

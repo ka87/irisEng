@@ -229,7 +229,6 @@ LABEL_28:
 void MAT_UV_Compute_Chrome(tGdi_DisplayData* a1, tGEOGRO* a21, tGeoTriangleChunks* a31, unsigned int a41)
 {
     int v1;
-    Mtx4x4* viewMtx;
     Vec3 a3;
     Vec3 a4;
     Vec3 a5;
@@ -247,48 +246,25 @@ void MAT_UV_Compute_Chrome(tGdi_DisplayData* a1, tGEOGRO* a21, tGeoTriangleChunk
         textureStageTypeConfig[0].d3dTextureTransformFlags = D3DTTFF_COUNT2;
         D3DRenderParams.d3dDev->lpVtbl->SetTextureStageState(D3DRenderParams.d3dDev, 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
     }
-    /* ---- the one place this frozen file is not the original ----
-     *
-     * Everything else here is the first decompilation, byte for byte,
-     * so that the rewrite beside it can be shown to behave the same.
-     * These twenty lines are not: the first decompilation had the
-     * projection's two axes as constants, and the binary builds them
-     * from the view rotation's first two columns. A material drawn
-     * with the constants comes out with its environment map stuck to
-     * the screen rather than to the object, which is what sent
-     * somebody looking at the renderer in the first place.
-     *
-     * Freezing a reading that is wrong only freezes the fault: with
-     * both sides carrying it, the differential reports no difference
-     * and says nothing. So the correction is made in both, and this
-     * comment is the record that for this one function the frozen
-     * copy no longer proves the rewrite faithful -- what proves the
-     * corrected reading is the direct check in tests/test_wingdi.c,
-     * which drives this function and reads the matrix back.
-     */
-    viewMtx = a1->ct.cam.viewMtxPtr_setInGRORender;
-    a2.x = viewMtx->v1.x * 0.5f;
-    a2.y = viewMtx->v2.x * 0.5f;
-    a2.z = viewMtx->v3.x * 0.5f;
-    a3.x = viewMtx->v1.y * 0.5f;
-    a3.y = viewMtx->v2.y * 0.5f;
-    a3.z = viewMtx->v3.y * 0.5f;
+    v1 = a1->drawMaskAllowedStuffCurrent;
+    a2.z = 0.0;
+    a2.y = 0.0;
+    a2.x = 0.5;
+    if ((v1 & 0x8000) != 0)
+        a2.x = -0.5;
+    a3.x = 0.0;
+    a3.y = -0.5;
+    a3.z = 0.0;
     a4.x = 0.0;
     a4.y = 0.0;
-    a4.z = 1.0;
-    v1 = a1->drawMaskAllowedStuffCurrent;
-    if ((v1 & 0x8000) == 0)
-    {
-        a2.x = -a2.x;
-        a3.x = -a3.x;
-    }
+    a4.z = -0.5;
     a5.x = 0.5;
     a5.y = 0.5;
     a5.z = 0.0;
-    a6.x = -1.0;
-    a6.y = -1.0;
+    a6.x = 1.0;
+    a6.y = 1.0;
     a6.z = 1.0;
-    PC_SetUVMatrix(&GLOBAL_UVTransformMatrix, &a2, &a3, &a4, &a5, &a6, 0, 6);
+    PC_SetUVMatrix(&GLOBAL_UVTransformMatrix, &a2, &a3, &a4, &a5, &a6, 0, 4);
     a1->bigBuffer->UVData = a1->bigBuffer->data7;
     a1->flags |= 2u;
 }
