@@ -4374,6 +4374,77 @@ static int glr_aeChannels(int x, int row)
    colour, and none of it leaves the frame alone. This is the one
    check that reads what actually lands rather than what was asked
    for. */
+/* The chain's result goes back into the scene target, where the frame
+   is, rather than being left in whichever spare the last pass wrote.
+ *
+   That is what lets the engine draw on top of the effects: it asks for
+   them after the world and before the list it keeps for the heads-up
+   display, and that list is drawn into the scene target. A renderer
+   that left the result in a spare would either show the unprocessed
+   world or smear the display along with the picture. */
+static void caseAeIntoTheScene(void)
+{
+    GLuint scene;
+    int    before[4];
+    int    after[4];
+    int    row = GLR_AE_H / 2;
+    int    col = GLR_AE_W / 2;
+
+    printf("-- the chain's result lands in the scene target\n");
+    glr_Reset();
+    CIN_Bands = 0;
+
+    scene = glr_AeScene(glr_aeChannels, glr_aeAlphaMark);
+    ok(scene != 0, "the scene target was made");
+    if (!scene)
+    {
+        CIN_Bands = 1;
+        return;
+    }
+
+    /* Pure red everywhere, so the grey it turns into is a long way
+       from what went in: a black frame would come out black and the
+       check would pass without the result ever landing. */
+    {
+        int i;
+
+        for (i = 0; i < GLR_AE_W * GLR_AE_H; i++)
+        {
+            unsigned char* p = &glr_aePattern[i * 4];
+
+            p[0] = 255;
+            p[1] = 0;
+            p[2] = 0;
+            p[3] = 0x5A;
+        }
+        GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+        GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_AE_W, GLR_AE_H,
+                             GL_RGBA, GL_UNSIGNED_BYTE, glr_aePattern);
+        GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    glr_AeAt(scene, col, row, before);
+    okEq(before[0], 255, "the frame starts red");
+
+    /* An effect that changes every pixel, so the target either holds
+       the result or it does not. */
+    PC_AE_MASTER = 0x1;
+    blackAndWhiteParam1 = 1.0f;
+    GL_PC_AE(NULL);
+
+    glr_AeAt(scene, col, row, after);
+
+    ok(after[0] != before[0] || after[1] != before[1]
+       || after[2] != before[2],
+       "the scene target holds the effect's result, not the world");
+    okEq(after[1], after[0], "and it is the grey the effect makes");
+    okEq(after[2], after[0], "in all three channels");
+
+    PC_AE_MASTER = 0;
+    blackAndWhiteParam1 = 0.0f;
+    CIN_Bands = 1;
+}
+
 static void caseAeGrayscaleAmount(void)
 {
     GLuint scene;
@@ -6960,6 +7031,7 @@ int main(void)
     caseAeContrast();
     caseAeGrayscale();
     caseAeGrayscaleAmount();
+    caseAeIntoTheScene();
     caseAeColorOrder();
     caseAeRemanence();
     caseAeMotionBlur();

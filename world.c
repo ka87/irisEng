@@ -2097,7 +2097,7 @@ void WOR_Render(struct sWorld* world, struct sGdi_DisplayData* dxdd)
                 GFX_Render(&world->gfxCurrentList, 0);
                 SOFT_ZList_Send();
                 GAO_ModifierLazy_UnapplyAll();
-                D3D_PC_AE(world);
+                dxdd->AfterEffects(world);
                 AI_EvalFunc_VIEWSnapshot_DoIt();
                 if ((dxdd->presentationFlags & 0x4000000) == 0 && world->gfxCurrentListSortedAfterAE)
                 {

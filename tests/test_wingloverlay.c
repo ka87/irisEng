@@ -1174,6 +1174,18 @@ void  MEM_Free(void* p) { free(p); }
 
 /* A context the pass will accept. There is no driver; what the pass
    checks is that it has one. */
+/* A frame the way the engine draws one: it asks for the after-effects
+   after the world and before what it puts on top of them, and flips
+   afterwards. The two were one call while the chain ran inside the
+   flip, and the cases below went through the flip alone; they go
+   through this instead, so the order the renderer is asked in is the
+   order the engine asks in. */
+static void wg_Frame(void)
+{
+    GL_PC_AE(NULL);
+    GL_Flip();
+}
+
 static void reset(void)
 {
     GL_l_ForgetPass();
@@ -1914,7 +1926,7 @@ static void caseSceneCopy(void)
     wg_SceneReady();
     CIN_Bands = 0;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     okEq(WG_i_Count("glBlitFramebuffer"), 1, "one copy");
     okEq(wg_l_BlitArg(1), 0, "from the bottom of the scene");
@@ -1932,7 +1944,7 @@ static void caseSceneCopy(void)
     tweak_ae_nobands = 0;
     D3D_gf_CutsceneBand = 0.25f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     okEq(WG_i_Count("glBlitFramebuffer"), 1, "one copy again");
     ok(wg_b_ClearedToBlack(), "the screen is cleared, so the bands are"
@@ -1953,7 +1965,7 @@ static void caseSceneCopy(void)
     CIN_Bands = 1;
     tweak_ae_nobands = 1;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wg_l_BlitArg(3), gl_state.height,
          "the tweak gives the whole height back");
     tweak_ae_nobands = 0;
@@ -1965,7 +1977,7 @@ static void caseSceneCopy(void)
     reset();
     wg_SceneReady();
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     {
         int blit = WG_i_At("glBlitFramebuffer");
         int ovl = WG_i_At("OVL_Draw");
@@ -2004,7 +2016,7 @@ static void caseFlipDrawsOverlay(void)
     reset();
     wg_ovlDrawn = 0;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wg_ovlDrawn, 1, "Flip draws the overlay");
 
     /* And it goes before the buffers are swapped, or it would land on
@@ -2022,7 +2034,7 @@ static void caseFlipDrawsOverlay(void)
     reset();
     gl_state.dc = NULL;
     wg_ovlDrawn = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wg_ovlDrawn, 1, "and it is drawn whether or not there is a"
                          " surface to present");
 }
@@ -2961,7 +2973,7 @@ static void caseScreenshotDeferred(void)
     okEq(wg_pngWrites, 0, "asking writes nothing by itself");
 
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wg_pngWrites, 1, "the flip writes it");
 
     /* The whole drawing size, and bottom-up, because that is how
@@ -2986,7 +2998,7 @@ static void caseScreenshotDeferred(void)
 
     /* And one ask is one file: the next frame writes nothing. */
     wg_pngWrites = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wg_pngWrites, 0, "the frame after writes nothing");
 }
 
@@ -3932,7 +3944,7 @@ static void caseAeDepthBlurChain(void)
     CIN_Bands = 0;
     PC_AE_MASTER = 0x8;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
     okEq(WG_i_Count("glDrawArrays"), n + 2,
@@ -4055,7 +4067,7 @@ static void caseAeDepthBlurRefusals(void)
     PC_AE_MASTER = 0x8;
     wg_compileFails = 1;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "nothing is drawn");
     okEq(WG_i_Count("glBlitFramebuffer"), 1, "but the frame is still copied");
     {
@@ -4066,7 +4078,7 @@ static void caseAeDepthBlurRefusals(void)
     }
     /* And it is not retried every frame: the ask is remembered. */
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glCreateShader"), 0, "a second frame does not try again");
     wg_compileFails = 0;
 
@@ -4078,7 +4090,7 @@ static void caseAeDepthBlurRefusals(void)
     PC_AE_MASTER = 0x8;
     wg_genFails = 1;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "nothing is drawn for that either");
     okEq(WG_i_Count("glBlitFramebuffer"), 1, "and the frame still gets out");
     wg_genFails = 0;
@@ -4100,7 +4112,7 @@ static void caseAeDepthBlurUniforms(void)
     CIN_Bands = 0;
     PC_AE_MASTER = 0x1000;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     n = DPB_i_BlurSchedule(passes, DPB_BLUR_PASSES);
     for (i = 0; i < n; i++)
@@ -4183,7 +4195,7 @@ static void caseAeDepthBlurQuads(void)
     D3D_gf_CutsceneBand = 0.25f;
     PC_AE_MASTER = 0x8;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     CBD_Decide(&bands);
     bandTopY = wg_l_Scaled(1.0f - 2.0f * bands.top);
@@ -4242,7 +4254,7 @@ static void caseAeColorChain(void)
     colorBalanceParam1 = 0.2f;
     blackAndWhiteParam1 = 1.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     src.aeMaster = 0x1;
     src.brightness = 0.8f;
@@ -4358,6 +4370,72 @@ static void caseAeColorChain(void)
 /* The grayscale's amount. Its bit is not the whole of its gate, and
    a part of it is a part of the colour left in -- so the amount has
    to reach the shader rather than the flag standing in for it. */
+/* Where the chain runs, which is not the flip.
+ *
+   The engine draws the world, asks for the after-effects, and then
+   draws the list it keeps for what goes on top of them -- the heads-up
+   display. A renderer that ran the chain in its flip instead would put
+   the whole frame through it, the display included, and the motion
+   smooth would smear the life bar. */
+static void caseAeWhereItRuns(void)
+{
+    int drawsInAsk;
+    int drawsInFlip;
+    long into;
+    int  at;
+
+    printf("-- the chain runs where the engine asks, not in the flip\n");
+
+    /* An effect that draws, asked for on its own. */
+    reset();
+    wg_SceneReady();
+    CIN_Bands = 0;
+    PC_AE_MASTER = 0x1;
+    blackAndWhiteParam1 = 1.0f;
+    wg_callLen = 0;
+    GL_PC_AE(NULL);
+    drawsInAsk = WG_i_Count("glDrawArrays");
+    ok(drawsInAsk > 0, "asking for them runs them");
+
+    /* Its result goes back into the scene target, so what the engine
+       draws next is drawn on top of the effects rather than into a
+       spare nobody shows. */
+    at = wg_i_CallAt("glBlitFramebuffer", WG_i_Count("glBlitFramebuffer") - 1);
+    if (at >= 0)
+    {
+        into = wg_l_FboBefore(GL_DRAW_FRAMEBUFFER, at);
+        okEq(into, (long)gl_sceneFbo, "the result goes back to the scene");
+    }
+    else
+    {
+        ok(0, "the result was copied somewhere");
+    }
+
+    /* And the scene target is what is left bound -- both halves of it,
+       not just the half the copy above happened to leave pointing
+       there, because a read of the framebuffer after this would
+       otherwise come out of a spare. */
+    {
+        int last = WG_i_Count("glBindFramebuffer") - 1;
+
+        okEq(WG_l_Arg("glBindFramebuffer", last, 0),
+             (long long)GL_FRAMEBUFFER, "the whole framebuffer is bound back");
+        okEq(WG_l_Arg("glBindFramebuffer", last, 1),
+             (long long)gl_sceneFbo, "and it is the scene, for the display");
+    }
+
+    /* The flip that follows runs no chain of its own: by then the
+       display is in the frame, and running it here is what smeared
+       the display. */
+    wg_callLen = 0;
+    GL_Flip();
+    drawsInFlip = WG_i_Count("glDrawArrays");
+    okEq(drawsInFlip, 0, "and the flip runs no chain of its own");
+
+    PC_AE_MASTER = 0;
+    blackAndWhiteParam1 = 0.0f;
+}
+
 static void caseAeColorAmount(void)
 {
     tAec_Source src;
@@ -4371,7 +4449,7 @@ static void caseAeColorAmount(void)
     PC_AE_MASTER = 0x1;
     blackAndWhiteParam1 = 0.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0,
          "the bit set and no amount draws no colour step");
 
@@ -4381,7 +4459,7 @@ static void caseAeColorAmount(void)
     PC_AE_MASTER = 0x1;
     blackAndWhiteParam1 = 0.4f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     memset(&src, 0, sizeof(src));
     src.aeMaster = 0x1;
@@ -4416,7 +4494,7 @@ static void caseAeColorBand(void)
     PC_AE_MASTER = 0x1;
     blackAndWhiteParam1 = 1.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     CBD_Decide(&bands);
     bandTopY = wg_l_Scaled(1.0f - 2.0f * bands.top);
@@ -4448,7 +4526,7 @@ static void caseAeColorGate(void)
     CIN_Bands = 0;
     PC_AE_MASTER = 0;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "nothing drawn");
     okEq(WG_i_Count("glCreateShader"), 0,
          "and nothing even built for it");
@@ -4466,7 +4544,7 @@ static void caseAeColorGate(void)
     CIN_Bands = 0;
     colorBalanceParam1 = 0.5001f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "a hair off neutral runs a step");
     colorBalanceParam1 = 0.5f;
 
@@ -4479,12 +4557,12 @@ static void caseAeColorGate(void)
     brightnessParam = 0.9f;
     tweak_ae_no = 1;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "the tweak stops them");
     tweak_ae_no = 0;
     ECAM_gi_NoAfterEffects = 1;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "and so does the editor camera");
     ECAM_gi_NoAfterEffects = 0;
 
@@ -4536,7 +4614,7 @@ static void caseAeMotionBlurHistory(void)
     motionBlurFactor = 0.5f;
 
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "one draw, it being the only effect");
     alone = wg_l_DrawTarget(0);
     okEq(alone, (long)GL_l_i_AeSlotFbo(GL_AE_SLOT_SPARE),
@@ -4549,10 +4627,10 @@ static void caseAeMotionBlurHistory(void)
        varied frame to frame would read a stranger's leftovers and the
        picture would still look like a motion blur. */
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wg_l_DrawTarget(0), alone, "the second frame writes the same one");
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wg_l_DrawTarget(0), alone, "and so does the third");
     okEq(wg_i_DrawsInto(alone), 1,
          "with nothing else drawing into it, so what it read was its own");
@@ -4602,7 +4680,7 @@ static void caseAeMotionBlurHistory(void)
     remenanceFactor = 0.5f;
 
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     {
         int  motion = AEF_REMANENCE_PASSES + 1;
         long target;
@@ -4639,7 +4717,7 @@ static void caseAeRemanenceChain(void)
     PC_AE_MASTER = 0x800;
     remenanceFactor = 0.5f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     n = AEF_i_RemanenceReaches(u, v, AEF_REMANENCE_PASSES);
     okEq(n, 4, "four reaches");
@@ -4740,7 +4818,7 @@ static void caseAeRemanenceAfterDepthBlur(void)
     depthBlurType1 = 30.0f;
     remenanceFactor = 0.5f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     n = AEF_i_RemanenceReaches(u, NULL, AEF_REMANENCE_PASSES);
     /* Three blurs, a mix and a copy back for the depth blur; then four
@@ -4830,7 +4908,7 @@ static void caseAeZoomUniforms(void)
     PC_AE_MASTER = 0x400;
     zoomSmoothFactor = 1.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     okEq(WG_i_Count("glDrawArrays"), 1, "eight taps in one draw");
 
@@ -4952,7 +5030,7 @@ static void caseAeScreenBlurGates(void)
     PC_AE_MASTER = 0x20;
     blurFactor = 0.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "no reach, no passes");
 
     /* And with a reach, seven passes exactly -- not six, not eight. */
@@ -4962,7 +5040,7 @@ static void caseAeScreenBlurGates(void)
     PC_AE_MASTER = 0x20;
     blurFactor = 25.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), AEF_SCREENBLUR_PASSES,
          "seven passes with a reach");
 
@@ -4974,7 +5052,7 @@ static void caseAeScreenBlurGates(void)
     PC_AE_MASTER = 0x20;
     blurFactor = -25.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), AEF_SCREENBLUR_PASSES,
          "and a backwards reach runs as well");
 
@@ -4985,7 +5063,7 @@ static void caseAeScreenBlurGates(void)
     PC_AE_MASTER = 0;
     blurFactor = 25.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "and without the bit, nothing");
     blurFactor = 0.0f;
 }
@@ -5004,7 +5082,7 @@ static void caseAeScreenBlurPasses(void)
     PC_AE_MASTER = 0x20;
     blurFactor = 25.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     okEq((long)AEF_i_ScreenBlurReaches(uSteps, vSteps,
                                        AEF_SCREENBLUR_PASSES, 25.0f),
@@ -5072,7 +5150,7 @@ static void caseAeScreenBlurOrder(void)
     zoomSmoothFactor = 0.5f;
     blurFactor = 25.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     okEq(WG_i_Count("glDrawArrays"), AEF_SCREENBLUR_PASSES + 1,
          "eight draws for the two effects");
@@ -5115,13 +5193,13 @@ static void caseAeMotionSmoothAccumulation(void)
     CIN_Bands = 0;
     PC_AE_MASTER = (int)AMO_BIT;
     wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
-    GL_Flip();                              /* settles the point */
+    wg_Frame();                              /* settles the point */
 
     for (i = 1; i <= 20; i++)
     {
         wg_MotionCameraAt((float)i * 0.001f, 0.0f, 0.0f);
         wg_callLen = 0;
-        GL_Flip();
+        wg_Frame();
         okEq(WG_i_Count("glDrawArrays"), 0, "a thousandth a frame never"
                                             " smears");
     }
@@ -5133,10 +5211,10 @@ static void caseAeMotionSmoothAccumulation(void)
     CIN_Bands = 0;
     PC_AE_MASTER = (int)AMO_BIT;
     wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
-    GL_Flip();
+    wg_Frame();
     wg_MotionCameraAt(0.02f, 0.0f, 0.0f);
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "the same distance in one frame"
                                         " does");
 }
@@ -5152,7 +5230,7 @@ static void caseAeMotionSmoothGates(void)
     PC_AE_MASTER = 0;
     wg_MotionCameraAt(5.0f, 0.0f, 0.0f);
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "without the bit, nothing");
 
     /* And the bit off while **another effect runs**, which is the only
@@ -5171,7 +5249,7 @@ static void caseAeMotionSmoothGates(void)
     motionBlurFactor = 0.5f;
     wg_MotionCameraAt(5.0f, 0.0f, 0.0f);
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "the neighbour draws on its own");
     {
         int i;
@@ -5193,9 +5271,9 @@ static void caseAeMotionSmoothGates(void)
     CIN_Bands = 0;
     PC_AE_MASTER = (int)AMO_BIT;
     wg_MotionCameraAt(1.0f, 2.0f, 3.0f);
-    GL_Flip();
+    wg_Frame();
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "a still camera does not smear");
 
     /* Moving straight along the line of sight crosses the threshold --
@@ -5207,10 +5285,10 @@ static void caseAeMotionSmoothGates(void)
     CIN_Bands = 0;
     PC_AE_MASTER = (int)AMO_BIT;
     wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
-    GL_Flip();
+    wg_Frame();
     wg_MotionCameraAt(0.0f, 0.0f, 1.0f);
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "moving away still draws");
     okEq(WG_l_Arg("glUniform4f.scaled", 0, 1), 0L,
          "with the first tap at nothing across");
@@ -5234,10 +5312,10 @@ static void caseAeMotionSmoothTaps(void)
     CIN_Bands = 0;
     PC_AE_MASTER = (int)AMO_BIT;
     wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
-    GL_Flip();
+    wg_Frame();
     wg_MotionCameraAt(0.03f, 0.07f, 0.0f);
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     /* What the shared code says the taps are, from the same movement
        the renderer just saw. The watched direction is the unit corner
@@ -5288,10 +5366,10 @@ static void caseAeMotionSmoothDraw(void)
     D3D_gf_CutsceneBand = 0.25f;
     PC_AE_MASTER = (int)AMO_BIT;
     wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
-    GL_Flip();
+    wg_Frame();
     wg_MotionCameraAt(0.03f, 0.07f, 0.0f);
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     CBD_Decide(&bands);
     okEq(WG_l_Arg("glBufferData", 0, 4),
@@ -5332,10 +5410,10 @@ static void caseAeMotionSmoothOrder(void)
     PC_AE_MASTER = (int)AMO_BIT | 0x10;
     motionBlurFactor = 0.5f;
     wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
-    GL_Flip();
+    wg_Frame();
     wg_MotionCameraAt(0.03f, 0.07f, 0.0f);
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     okEq(WG_i_Count("glDrawArrays"), 2, "two effects, two draws");
     {
@@ -5372,7 +5450,7 @@ static void caseAeHueGates(void)
     unknownAEFlag4GlobalVar = 0.0f;
     texFactorManual = 0.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "the bit alone runs it");
 
     /* And without the bit, nothing, however deep the tint is set. */
@@ -5383,7 +5461,7 @@ static void caseAeHueGates(void)
     unknownAEFlag4GlobalVar = 1.0f;
     texFactorManual = 0.25f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "and without it nothing runs");
 }
 
@@ -5408,7 +5486,7 @@ static void caseAeHueSubtract(void)
         unknownAEFlag4GlobalVar = driven[i].amount;
         texFactorManual = driven[i].phase;
         wg_callLen = 0;
-        GL_Flip();
+        wg_Frame();
 
         packed = AHU_u_Subtract(driven[i].amount, driven[i].phase);
         AHU_Channels(want, packed);
@@ -5458,7 +5536,7 @@ static void caseAeHueDraw(void)
     unknownAEFlag4GlobalVar = 1.0f;
     texFactorManual = 0.25f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     CBD_Decide(&bands);
     okEq(WG_l_Arg("glBufferData", 0, 4),
@@ -5517,7 +5595,7 @@ static void caseAeHueOrder(void)
     unknownAEFlag4GlobalVar = 1.0f;
     texFactorManual = 0.25f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     ok(WG_i_Count("glDrawArrays") > 1, "both effects drew");
     /* The hue sweep is the only one of the two that masks the alpha
@@ -5575,7 +5653,7 @@ static void caseAeFadeGates(void)
     gAEOpacity = 0.0f;
     wgo_fadeOpacity = AFD_FULL;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "the bit alone runs the fade");
 
     /* And the bit off runs nothing, with a timer part way through a
@@ -5587,7 +5665,7 @@ static void caseAeFadeGates(void)
     gAEOpacity = 1.0f;
     wgo_fadeOpacity = 128;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "and without it nothing runs");
     okEq(wgo_fadeOpacity, 128, "the timer does not move either");
 }
@@ -5599,9 +5677,11 @@ static void caseAeFadeFreeze(void)
     printf("-- the picture is put aside once, on the frame it starts\n");
 
     /* The first frame of a fade: the timer is still at the top of the
-       range, and that is the frame the copy is taken on. One blit more
-       than the frame otherwise does -- the copy to the screen is the
-       other one. */
+       range, and that is the frame the copy is taken on. Three blits:
+       the freeze, the chain's result back into the scene target, and
+       the scene target to the screen. The middle one is what lets the
+       engine draw the heads-up display on top of the effects instead
+       of inside them. */
     reset();
     wg_SceneReady();
     CIN_Bands = 0;
@@ -5609,9 +5689,9 @@ static void caseAeFadeFreeze(void)
     gAEOpacity = 1.0f;
     wgo_fadeOpacity = AFD_FULL;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     blits = WG_i_Count("glBlitFramebuffer");
-    okEq(blits, 2, "the freeze and the copy to the screen");
+    okEq(blits, 3, "the freeze, the result back, and the copy to the screen");
     okEq(WG_l_Arg("glBlitFramebuffer", 0, 8), (long long)GL_COLOR_BUFFER_BIT,
          "colour only, with no depth to copy");
     okEq(WG_l_Arg("glBlitFramebuffer", 0, 9), (long long)GL_NEAREST,
@@ -5652,10 +5732,12 @@ static void caseAeFadeFreeze(void)
     okEq(WG_l_Arg("glBlitFramebuffer", 0, 7), (long long)gl_aeH,
          "and the same height, so nothing is scaled");
 
-    /* Every frame after it leaves the copy alone -- one blit, the one
-       to the screen. A copy taken every frame would turn the fade into
-       no effect at all: the frozen picture and the live one would be
-       the same picture, and the dissolve would show nothing. */
+    /* Every frame after it leaves the frozen copy alone -- two blits,
+       the chain's result back into the scene target and that to the
+       screen, and no third one. A copy taken every frame would turn
+       the fade into no effect at all: the frozen picture and the live
+       one would be the same picture, and the dissolve would show
+       nothing. */
     reset();
     wg_SceneReady();
     CIN_Bands = 0;
@@ -5663,8 +5745,8 @@ static void caseAeFadeFreeze(void)
     gAEOpacity = 1.0f;
     wgo_fadeOpacity = AFD_FULL - 1;
     wg_callLen = 0;
-    GL_Flip();
-    okEq(WG_i_Count("glBlitFramebuffer"), 1, "no second copy once the fade"
+    wg_Frame();
+    okEq(WG_i_Count("glBlitFramebuffer"), 2, "no third copy once the fade"
                                              " is running");
     okEq(WG_i_Count("glDrawArrays"), 1, "but the fade still draws");
 }
@@ -5685,7 +5767,7 @@ static void caseAeFadeShare(void)
         gAEOpacity = 1.0f;
         wgo_fadeOpacity = opacities[i];
         wg_callLen = 0;
-        GL_Flip();
+        wg_Frame();
 
         /* The exact share and not a bound: the timer runs over a byte
            and a share built from the wrong end, or divided by the
@@ -5706,7 +5788,7 @@ static void caseAeFadeShare(void)
     gAEOpacity = 1.0f;
     wgo_fadeOpacity = 128;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     {
         int at = wg_i_CallAt("glDrawArrays", 0);
 
@@ -5745,7 +5827,7 @@ static void caseAeFadeWholePicture(void)
     gAEOpacity = 1.0f;
     wgo_fadeOpacity = 128;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     CBD_Decide(&bands);
     bandTopY = wg_l_Scaled(1.0f - 2.0f * bands.top);
@@ -5783,7 +5865,7 @@ static void caseAeFadeOrder(void)
     gAEOpacity = 1.0f;
     wgo_fadeOpacity = 128;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     okEq(WG_i_Count("glDrawArrays"), 2, "two effects, two draws");
     /* The fade's draw is the one with two texture units bound; the
@@ -5818,7 +5900,7 @@ static void caseAeFadeTimer(void)
     gAEOpacity = 1.0f;              /* sixty frames asked, four a frame */
     wgo_fadeOpacity = AFD_FULL;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_l_Arg("glUniform1f.scaled", 0, 1), wg_l_Scaled(1.0f),
          "drawn at the full share on the first frame");
     okEq(wgo_fadeOpacity, AFD_i_Next(AFD_FULL, AFD_f_Step(1.0f)),
@@ -5836,7 +5918,7 @@ static void caseAeFadeTimer(void)
     gAEOpacity = 1.0f;
     wgo_fadeOpacity = 2;            /* less than one step */
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wgo_fadeOpacity, 0, "the timer stops at nothing rather than"
                              " wrapping");
     okEq(PC_AE_MASTER, 0x10, "the fade clears its own bit");
@@ -5853,7 +5935,7 @@ static void caseAeFadeTimer(void)
     gAEOpacity = 0.0f;
     wgo_fadeOpacity = 100;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(wgo_fadeOpacity, 100, "a fade of no length never moves");
     okEq(PC_AE_MASTER, 0x40000, "and never finishes");
 }
@@ -5899,7 +5981,7 @@ static void caseAeZoom2Gates(void)
     PC_AE_MASTER = (int)AZ2_BIT;
     zoomSmoothFactor2 = 0.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glUniformMatrix4fv"), 0,
          "the bit alone draws nothing");
 
@@ -5910,7 +5992,7 @@ static void caseAeZoom2Gates(void)
     PC_AE_MASTER = 0;
     zoomSmoothFactor2 = 0.75f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glUniformMatrix4fv"), 0,
          "the parameter alone draws nothing");
 
@@ -5923,7 +6005,7 @@ static void caseAeZoom2Gates(void)
     PC_AE_MASTER = (int)AZ2_BIT;
     zoomSmoothFactor2 = -0.75f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glUniformMatrix4fv"), 2,
          "a negative parameter runs it");
     {
@@ -5955,7 +6037,7 @@ static void caseAeZoom2Taps(void)
     PC_AE_MASTER = (int)AZ2_BIT;
     zoomSmoothFactor2 = 0.75f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     n = WG_i_Zoom2Want(0.75f, AZ2_i_Stages(4, 8), want);
     okEq(n, AZ2_TAPS, "eight of them with four stages");
@@ -6020,7 +6102,7 @@ static void caseAeZoom2Draw(void)
     PC_AE_MASTER = (int)AZ2_BIT;
     zoomSmoothFactor2 = 0.75f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     /* One draw for the whole effect -- all eight samples are summed in
        the shader, where the other renderer needs two or four draws
@@ -6094,7 +6176,7 @@ static void caseAeZoom2Order(void)
     blurFactor = 25.0f;
     zoomSmoothFactor2 = 0.75f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
 
     okEq(WG_i_Count("glDrawArrays"), AEF_SCREENBLUR_PASSES + 1,
          "eight draws for the two effects");
@@ -6143,7 +6225,7 @@ static void caseAeZoom2Split(void)
         ENG_ifSingleStreamThenEq2Otherwise8 = 2;
         zoomSmoothFactor2 = 0.75f;
         wg_callLen = 0;
-        GL_Flip();
+        wg_Frame();
 
         okEq(AZ2_i_Stages(4, 2), 2, "two stages were asked for");
         WG_i_Zoom2Want(0.75f, 2, want2);
@@ -6172,7 +6254,7 @@ static void caseAeZoom2Split(void)
         ENG_ifSingleStreamThenEq2Otherwise8 = 3;
         zoomSmoothFactor2 = 2.0f;
         wg_callLen = 0;
-        GL_Flip();
+        wg_Frame();
 
         okEq(AZ2_i_Stages(4, 3), 3, "three stages were asked for");
         okEq(AZ2_i_Samples(3), 6, "which is six samples");
@@ -6201,7 +6283,7 @@ static void caseAeFrameGates(void)
     CIN_Bands = 0;
     PC_AE_MASTER = 0x10 | 0x800 | 0x400;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "every bit but no parameters: nothing");
 
     reset();
@@ -6212,7 +6294,7 @@ static void caseAeFrameGates(void)
     remenanceFactor = 1.0f;
     zoomSmoothFactor = 1.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "every parameter but no bits: nothing");
 
     /* Each on its own, with the draw counts that tell them apart:
@@ -6225,7 +6307,7 @@ static void caseAeFrameGates(void)
     remenanceFactor = 1.0f;
     zoomSmoothFactor = 1.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "the motion blur alone is one draw");
 
     reset();
@@ -6236,7 +6318,7 @@ static void caseAeFrameGates(void)
     remenanceFactor = 1.0f;
     zoomSmoothFactor = 1.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), AEF_REMANENCE_PASSES + 1,
          "the remanence alone is four blurs and a sum");
 
@@ -6248,7 +6330,7 @@ static void caseAeFrameGates(void)
     remenanceFactor = 1.0f;
     zoomSmoothFactor = 1.0f;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 1, "the zoom alone is one draw");
 
     /* And the two switches that stop the whole chain take all three
@@ -6262,19 +6344,19 @@ static void caseAeFrameGates(void)
     zoomSmoothFactor = 1.0f;
     tweak_ae_no = 1;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "the tweak stops all three");
     tweak_ae_no = 0;
     ECAM_gi_NoAfterEffects = 1;
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), 0, "and so does the editor camera");
     ECAM_gi_NoAfterEffects = 0;
 
     /* All three together, in the engine's own order: the remanence
        first, then the motion blur, then the zoom. */
     wg_callLen = 0;
-    GL_Flip();
+    wg_Frame();
     okEq(WG_i_Count("glDrawArrays"), AEF_REMANENCE_PASSES + 3,
          "all three together");
     {
@@ -7516,6 +7598,7 @@ int main(void)
     caseAeColorChain();
     caseAeColorBand();
     caseAeColorAmount();
+    caseAeWhereItRuns();
     caseAeColorGate();
     caseAeMotionBlurHistory();
     caseAeRemanenceChain();

@@ -98,6 +98,7 @@ int   GL_Close(void);
 int   GL_ReadaptDisplay(HWND hwnd, struct sGdi_DisplayData* dd);
 void  GL_Clear(int which, int color);
 void  GL_Flip(void);
+void  GL_PC_AE(struct sWorld* world);
 void  GL_GetDrawingSize(int* width, int* height);
 
 void  GL_SetZEnable(int on);
