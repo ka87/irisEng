@@ -1,6 +1,6 @@
 # Defects found in the engine, and what was done with each
 
-Every file in `irisEng` outside `jpeg-6b/`, `minilzo/` and `ai/ai_bge/`
+Every file in `irisEng` outside `thirdparty/`, `minilzo/` and `ai/ai_bge/`
 has now been through the decompiler-output pass described in
 [README.md](README.md). This file is the register of what that turned
 up: the defects in the engine's own behaviour, separate from the

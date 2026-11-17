@@ -5,7 +5,7 @@
 #include "../memory.h"
 #include "../inputoutput.h"
 #include "../photo.h"
-#include "../jpeg-6b/jpeglib.h"
+#include "../thirdparty/jpeg-6b/jpeglib.h"
 #include "ai_viewfunctions.h"
 #include "../dbg.h"
 

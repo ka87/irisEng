@@ -80,7 +80,7 @@ import re
 s = open('irisEng.vcxproj', encoding='latin-1').read()
 for m in re.finditer(r'ClCompile Include="([^"]+\.c)"', s):
     p = m.group(1).replace('\\', '/')
-    if 'jpeg-6b' in p or 'minilzo' in p or p.startswith('thirdparty/'):
+    if 'minilzo' in p or p.startswith('thirdparty/'):
         continue   # upstream source, not ours to tidy -- and FreeType's
                    # needs defines and include paths this sweep does not
                    # pass, so it was failing for other reasons and

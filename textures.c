@@ -6,7 +6,7 @@
 #include "gdi.h"
 #include "time.h"
 #include "profiler.h"
-#include "jpeg-6b/jpeglib.h"
+#include "thirdparty/jpeg-6b/jpeglib.h"
 #include "engine.h"
 #include "strings.h"
 #include <setjmp.h>

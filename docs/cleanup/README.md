@@ -10,7 +10,7 @@ by file, and what was decided at each fork.
 
 The 137 first-party files in `irisEng.vcxproj`. Not in scope:
 
-- `jpeg-6b/` and `minilzo/`, which are third-party;
+- `thirdparty/` and `minilzo/`, which are third-party;
 - `ai/ai_bge/`, which is not in the build and which nothing includes. It
   is a reference copy kept for comparison, and its value is being an
   unaltered record.
