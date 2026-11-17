@@ -205,7 +205,6 @@ void SIDE_InitModule(void)
                 entry->path[0] = '\0';
                 continue;
             }
-            DBG_OutputDebugString("SIDE: 0x%08x <- %s\n", key, find.cFileName);
         }
         while (FindNextFileA(handle, &find));
 
