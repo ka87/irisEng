@@ -442,6 +442,12 @@ run_strings
 # build and run exactly as the blocks above do, each sets -e, and each
 # ends with its test binary, so a difference leaves the script's status
 # non-zero and the loop below counts it.
+#
+# The last five are static sweeps over the sources rather than tests of
+# a behaviour, and they belong in this list for the same reason: a
+# sweep nothing runs is a sweep that reports nothing. implicitcheck.sh
+# was written and then left out of it, and the warning it exists to
+# catch reached a build of the game instead.
 for one in tests/runworld.sh \
            tests/run_collision_a.sh \
            tests/run_collision_b.sh \
@@ -499,7 +505,8 @@ for one in tests/runworld.sh \
            tests/projcheck.sh \
            tests/glconvcheck.sh \
            tests/tweakcheck.sh \
-           tests/warncheck.sh
+           tests/warncheck.sh \
+           tests/implicitcheck.sh
 do
     name=$(basename "$one" .sh)
     [ -n "$FILTER" ] && case "$name" in *"$FILTER"*) ;; *) continue ;; esac

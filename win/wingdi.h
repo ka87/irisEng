@@ -464,4 +464,3 @@ void D3D_GetBandFractions(float* top, float* bottom);
 // window.
 float D3D_FlatLayerToLayoutX(float windowFraction, int w, int h);
 float D3D_FlatLayerFromLayoutX(float layoutFraction, int w, int h);
-float PC_AE_MASTER_GET_P1(int effect, int slot);
