@@ -1666,16 +1666,12 @@ void D3D_DrawARaster(int color, char* name, float value, float y, float width)
 void Rasters_Update()
 {
     double elapsed;
-    unsigned int i;
-    unsigned int j;
-    int swapped;
     int shown;
     int row;
     int raster;
     int kind;
     int barColor;
     double nextY;
-    float barY;
     float y;
     float value;
     float scale;
@@ -1752,8 +1748,11 @@ void Rasters_Update()
                            PerfCountertimeSumArray, PFB_RASTERS);
                 PFB_Order(order, rastersUnkTimeFloats_dbl_990B58,
                           PFB_RASTERS);
-                scale = PFB_d_Scale(tweak_perf_fps_target,
-                                    Frequency.QuadPart);
+                /* Narrowed on purpose, and the other display does
+                   the same: the bars are measured from this number and
+                   the two have to measure them from the same one. */
+                scale = (float)PFB_d_Scale(tweak_perf_fps_target,
+                                           Frequency.QuadPart);
                 shown = PFB_i_Rows(tweak_perf,
                                    PFB_i_Fitting(PerfCountertimeSumArray,
                                                  rasterNames, order,
