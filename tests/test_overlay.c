@@ -77,6 +77,13 @@ static tGdi_DisplayData ovt_dd;
 static char ovt_seen[OVT_MAXSEEN][96];
 static int  ovt_seenX[OVT_MAXSEEN];
 static int  ovt_seenY[OVT_MAXSEEN];
+
+/* The renderer the mock claims to be, which the stamp has to print
+   rather than deciding for itself which renderer is drawing. */
+static const char* OVT_sz_Name(void)
+{
+    return "Mock renderer";
+}
 static int  ovt_seenBig[OVT_MAXSEEN];
 static int  ovt_seenCount;
 
@@ -271,6 +278,7 @@ static void resetAll(void)
 
     memset(&ovt_dd, 0, sizeof(ovt_dd));
     ovt_dd.b_Ready = OVT_b_Ready;
+    ovt_dd.sz_Name = OVT_sz_Name;
     ovt_dd.GetDrawingSize = OVT_GetDrawingSize;
     ovt_dd.OverlayBegin = OVT_OverlayBegin;
     ovt_dd.OverlayDrawQuads = OVT_OverlayDrawQuads;
@@ -795,6 +803,93 @@ static int ovt_seenAt(const char* s, float* x)
     return 0;
 }
 
+static int ovt_seenContaining(const char* sub, float* x, float* y)
+{
+    int i;
+
+    for (i = 0; i < ovt_seenCount; i++)
+        if (strstr(ovt_seen[i], sub))
+        {
+            if (x)
+                *x = (float)ovt_seenX[i];
+            if (y)
+                *y = (float)ovt_seenY[i];
+            return 1;
+        }
+    return 0;
+}
+
+/* The corner stamp: what is running, in the bottom right, for as long
+   as the command field is up.
+ *
+   The alignment is checked by arithmetic rather than against a
+   remembered number, because the whole point of measuring the line is
+   that none of its three parts has a fixed width: a stamp placed at a
+   constant would pass a check written the same way and still be in the
+   wrong place at the next version number. */
+static void cornerStamp(void)
+{
+    float x = 0.0f;
+    float y = 0.0f;
+    char  line[128];
+    int   k;
+    static const int widths[]  = { 640, 1280, 1920 };
+    static const int heights[] = { 480, 720, 1080 };
+
+    /* not up with the field down */
+    resetAll();
+    PRO_rasterWindowIsOn = 1;
+    OVL_Draw();
+    ok(!ovt_seenContaining("IRISEng", NULL, NULL),
+       "the stamp stays down while the field is");
+
+    /* up with it, saying all three things */
+    resetAll();
+    OVL_CommandShow();
+    OVL_Draw();
+    ok(ovt_seenContaining("IRISEng", &x, &y), "the stamp comes up with the field");
+    ok(ovt_seenContaining(IRISENG_VERSION_STRING, NULL, NULL),
+       "and it names the version");
+    ok(ovt_seenContaining(IRISENG_ARCH, NULL, NULL), "and the architecture");
+    ok(ovt_seenContaining("Mock renderer", NULL, NULL),
+       "and the renderer, as the renderer names itself");
+
+    /* and against the corner, at every size */
+    sprintf(line, "IRISEng %s  %s  %s", IRISENG_VERSION_STRING,
+            IRISENG_ARCH, "Mock renderer");
+    for (k = 0; k < 3; ++k)
+    {
+        resetAll();
+        ovt_drawWidth = widths[k];
+        ovt_drawHeight = heights[k];
+        OVL_CommandShow();
+        OVL_Draw();
+        if (!ovt_seenContaining("IRISEng", &x, &y))
+        {
+            ok(0, "the stamp is drawn at this viewport");
+            continue;
+        }
+        /* the backdrop is what lines up with the field's edge, and the
+           text sits one pad inside it */
+        okEq((long)(x + (float)FNT_i_TextWidth(FNT_OVERLAY, line)
+                      + OVL_STAMPPAD),
+             widths[k] - (long)OVL_FIELDTOP,
+             "its right edge is one field margin in from the viewport");
+        okEq((long)(y + (float)FNT_i_Height(FNT_OVERLAY) + OVL_STAMPPAD),
+             heights[k] - (long)OVL_FIELDTOP,
+             "and its bottom edge likewise");
+    }
+
+    /* a renderer that does not name itself says so rather than lying */
+    resetAll();
+    ovt_dd.sz_Name = NULL;
+    OVL_CommandShow();
+    OVL_Draw();
+    ok(ovt_seenContaining("unknown renderer", NULL, NULL),
+       "an unnamed renderer is named as unknown");
+    ovt_dd.sz_Name = OVT_sz_Name;
+}
+
 static void afterEffects(void)
 {
     float heading = 0.0f;
@@ -1154,6 +1249,7 @@ int main(void)
     shapes();
     caret();
     placement();
+    cornerStamp();
     afterEffects();
     f1Cycle();
     panel();

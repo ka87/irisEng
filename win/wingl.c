@@ -872,6 +872,11 @@ int GL_b_Ready(void)
     return gl_state.context != NULL;
 }
 
+const char* GL_sz_Name(void)
+{
+    return "OpenGL";
+}
+
 int GL_b_GeometryHasCache(struct sGEOGRO* gro)
 {
     (void)gro;

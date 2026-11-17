@@ -1590,6 +1590,11 @@ int D3D_b_Ready(void)
     return D3DRenderParams.d3dDev != NULL;
 }
 
+const char* D3D_sz_Name(void)
+{
+    return "Direct3D 9";
+}
+
 void D3D_OverlayEnd(void)
 {
     D3D_RestoreEverythingFromBackup();

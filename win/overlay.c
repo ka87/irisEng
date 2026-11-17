@@ -4,6 +4,7 @@
 #include "../profiler.h"
 #include "../time.h"
 #include "../dbg.h"
+#include "../version.h"
 #include "wininputoutput.h"
 #include <stdio.h>
 #include <string.h>
@@ -27,6 +28,7 @@
 #define OVL_AE_STATEX  118
 #define OVL_AE_VALUEX  146
 
+#define OVL_STAMPPAD   6.0f     /* inside the stamp's backdrop */
 #define OVL_FIELDTOP   10.0f
 #define OVL_FIELDPAD   6.0f     /* above and below the line of text */
 #define OVL_RADIUS     8.0f
@@ -586,6 +588,47 @@ static void OVL_l_AfterEffects(void)
     ovl_panelLeft = 0;
 }
 
+// ------------------------------------------------------ the corner stamp
+
+// What is running, in the corner the panels leave alone: the engine's
+// version, the architecture it was built for, and which renderer is
+// drawing. It comes up with the command field and goes away with it.
+//
+// The line is measured and then placed against the bottom right,
+// rather than placed and hoped for, because none of the three parts
+// has a fixed width. It takes the field's font and the field's margin
+// too, so the two sit on the same edge and look like one overlay.
+static void OVL_l_CornerStamp(void)
+{
+    const char* renderer;
+    char  line[OVL_TEXTLEN];
+    float x;
+    float y;
+    int   fontH;
+    int   textW;
+    int   drawW = 0;
+    int   drawH = 0;
+
+    renderer = gpst_DX_stDD->sz_Name ? gpst_DX_stDD->sz_Name()
+                                     : "unknown renderer";
+    sprintf(line, "IRISEng %s  %s  %.32s", IRISENG_VERSION_STRING,
+            IRISENG_ARCH, renderer);
+
+    gpst_DX_stDD->GetDrawingSize(&drawW, &drawH);
+    fontH = FNT_i_Height(FNT_OVERLAY);
+    textW = FNT_i_TextWidth(FNT_OVERLAY, line);
+
+    x = (float)drawW - (float)textW - OVL_FIELDTOP - OVL_STAMPPAD;
+    y = (float)drawH - (float)fontH - OVL_FIELDTOP - OVL_STAMPPAD;
+    if (x < OVL_FIELDTOP + OVL_STAMPPAD)
+        x = OVL_FIELDTOP + OVL_STAMPPAD;
+
+    OVL_l_RoundRectFill(OVL_BACKDROP, x - OVL_STAMPPAD, y - OVL_STAMPPAD,
+                        (float)textW + 2.0f * OVL_STAMPPAD,
+                        (float)fontH + 2.0f * OVL_STAMPPAD, OVL_RADIUS);
+    OVL_l_BigText(line, (int)x, (int)y, OVL_DIM);
+}
+
 void OVL_Draw(void)
 {
     float height;
@@ -621,7 +664,10 @@ void OVL_Draw(void)
     if (tweak_ae_view)
         OVL_l_AfterEffects();
     if (ovl_cmdActive)
+    {
         OVL_l_CommandField();
+        OVL_l_CornerStamp();
+    }
 
     // Shapes as one batch, then the strings on top of them.
     gpst_DX_stDD->OverlayDrawQuads(ovl_verts, ovl_vertCount / 3);
