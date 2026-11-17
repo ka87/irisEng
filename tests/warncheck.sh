@@ -42,6 +42,15 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
+# The float check runs under clang where there is one: gcc is silent
+# when the value converts exactly, and the game's compiler is not.
+# See the note at the top of this file.
+FCC=${FCC:-}
+if [ -z "$FCC" ]; then
+    if command -v clang >/dev/null 2>&1; then FCC="clang"
+    elif command -v clang++ >/dev/null 2>&1; then FCC="clang++ -x c"
+    else FCC="$CC"; fi
+fi
 CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
 CFLAGS="$CFLAGS -Ithirdparty/ffmpeg/include"
 CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
@@ -79,9 +88,19 @@ for f in $files; do
         continue
     fi
     swept=$((swept + 1))
-    out=$($CC $CFLAGS -Wunused-variable -Wfloat-conversion "$f" 2>&1 \
-          | grep -E '\[-Wunused-variable\]|\[-Wfloat-conversion\]' \
-          | grep -v "conversion from 'long double'" || true)
+    out=$($CC $CFLAGS -Wunused-variable "$f" 2>&1 \
+          | grep -E '\[-Wunused-variable\]' || true)
+    # Two kinds are dropped: 'long double', which cannot arise where
+    # the game is built because the type is double there, and _Bool,
+    # which is a float used as a truth value in a condition and is not
+    # a narrowing the game's compiler reports at all. Two in
+    # collision.c are of that second kind.
+    fout=$($FCC $CFLAGS -Wfloat-conversion "$f" 2>&1 \
+           | grep -E '\[-Wfloat-conversion\]' \
+           | grep -v "'long double'" \
+           | grep -v "to '_Bool'" || true)
+    [ -n "$fout" ] && out="$out${out:+
+}$fout"
     if [ -n "$out" ]; then
         echo "$out" | sed 's/^/  FAIL /'
         found=$((found + $(echo "$out" | wc -l)))

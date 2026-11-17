@@ -19,6 +19,8 @@
 #define OVL_PANELMARGIN 8.0f
 #define OVL_PANELY     60.0f
 #define OVL_PANELW     320.0f
+/* A float, because the backdrop is drawn in floats; the rows
+   that place text in it cast, because that column is a pixel. */
 #define OVL_PANELW_AE  190.0f
 
 #define OVL_FIELDTOP   10.0f
@@ -524,20 +526,20 @@ static int OVL_l_EffectRows(void)
     {
         on = (PC_AE_MASTER & (int)ovl_effects[i].bit) != 0;
         OVL_l_PanelText(ovl_effects[i].name, 10, y, on ? OVL_GREEN : OVL_DIM);
-        OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
+        OVL_l_PanelText(on ? "on" : "-", (int)OVL_PANELW_AE - 34, y,
                         on ? OVL_GREEN : OVL_DIM);
         y += OVL_ROWHEIGHT;
     }
 
     on = colorBalanceParam1 != 0.5f;
     OVL_l_PanelText("colour balance", 10, y, on ? OVL_GREEN : OVL_DIM);
-    OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
+    OVL_l_PanelText(on ? "on" : "-", (int)OVL_PANELW_AE - 34, y,
                     on ? OVL_GREEN : OVL_DIM);
     y += OVL_ROWHEIGHT;
 
     on = unkAEFunc2Param != 0.5f;
     OVL_l_PanelText("unknown 2", 10, y, on ? OVL_GREEN : OVL_DIM);
-    OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
+    OVL_l_PanelText(on ? "on" : "-", (int)OVL_PANELW_AE - 34, y,
                     on ? OVL_GREEN : OVL_DIM);
     y += OVL_ROWHEIGHT;
 
