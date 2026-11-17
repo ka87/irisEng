@@ -384,7 +384,6 @@ void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, 
 void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type)
 {
     int drawMask;
-    Mtx4x4* viewMtx;
     Vec3 axisV;
     Vec3 axisW;
     Vec3 pos;
@@ -394,38 +393,25 @@ void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleCh
     GDI_gi_TextureUVMode = 2;
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
     D3D_StageStateSet(0, &textureStageTypeConfig[0].d3dTextureTransformFlags, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-    /* The projection's two axes are the view rotation's first two
-       columns, halved -- that is, the transpose of the rotation, which
-       takes a camera-space normal back into the view's own frame
-       before it is mapped onto the texture. Anchoring it to the view
-       that way is what keeps an environment map still on a turning
-       object; a fixed set of axes only holds for one camera
-       orientation and slides for every other. */
-    viewMtx = dd->ct.cam.viewMtxPtr_setInGRORender;
-    axisU.x = viewMtx->v1.x * 0.5f;
-    axisU.y = viewMtx->v2.x * 0.5f;
-    axisU.z = viewMtx->v3.x * 0.5f;
-    axisV.x = viewMtx->v1.y * 0.5f;
-    axisV.y = viewMtx->v2.y * 0.5f;
-    axisV.z = viewMtx->v3.y * 0.5f;
+    drawMask = dd->drawMaskAllowedStuffCurrent;
+    axisU.z = 0.0;
+    axisU.y = 0.0;
+    axisU.x = 0.5;
+    if ((drawMask & 0x8000) != 0)
+        axisU.x = -0.5;
+    axisV.x = 0.0;
+    axisV.y = -0.5;
+    axisV.z = 0.0;
     axisW.x = 0.0;
     axisW.y = 0.0;
-    axisW.z = 1.0;
-    /* Mirrored when the bit is *clear*, and both axes with it: the
-       flip belongs to the x of the texture, which both axes feed. */
-    drawMask = dd->drawMaskAllowedStuffCurrent;
-    if ((drawMask & 0x8000) == 0)
-    {
-        axisU.x = -axisU.x;
-        axisV.x = -axisV.x;
-    }
+    axisW.z = -0.5;
     pos.x = 0.5;
     pos.y = 0.5;
     pos.z = 0.0;
-    scale.x = -1.0;
-    scale.y = -1.0;
+    scale.x = 1.0;
+    scale.y = 1.0;
     scale.z = 1.0;
-    PC_SetUVMatrix(&GLOBAL_UVTransformMatrix, &axisU, &axisV, &axisW, &pos, &scale, 0, 6);
+    PC_SetUVMatrix(&GLOBAL_UVTransformMatrix, &axisU, &axisV, &axisW, &pos, &scale, 0, 4);
     dd->bigBuffer->UVData = dd->bigBuffer->data7;
     dd->flags |= 2u;
 }
