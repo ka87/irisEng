@@ -113,6 +113,7 @@ void  GL_SetWantsNoFlare(int on);
 void  GL_SetNoZonAlpha(int on);
 
 int   GL_b_Ready(void);
+const char* GL_sz_Name(void);
 int   GL_b_GeometryHasCache(struct sGEOGRO* gro);
 void  GL_DiscardGeometryCache(struct sGEOGRO* gro);
 

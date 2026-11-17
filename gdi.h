@@ -195,6 +195,11 @@ typedef struct sGdi_DisplayData
        be asked to draw before a device exists or after one has gone. */
     int (* b_Ready)(void);
 
+    /* Which renderer this is, for the overlay to say so. A short
+       name, not the device's -- the driver and the card are named in
+       the log where there is room for them. */
+    const char*(* sz_Name)(void);
+
     /* The 2D pass the debug overlay draws inside. Begin sets up a
        pixel-space projection, alpha blending and no depth test, and
        saves whatever the engine had set; End puts it back. The quads

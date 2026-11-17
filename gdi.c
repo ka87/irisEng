@@ -890,6 +890,7 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->SetWantsNoFlare = D3D_SetWantsNoFlare;
     dd->SetNoZonAlpha = D3D_SetNoZonAlpha;
     dd->b_Ready = D3D_b_Ready;
+    dd->sz_Name = D3D_sz_Name;
     dd->OverlayBegin = D3D_OverlayBegin;
     dd->OverlayDrawQuads = D3D_OverlayDrawQuads;
     dd->OverlayEnd = D3D_OverlayEnd;
@@ -956,6 +957,7 @@ static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
     dd->b_GeometryHasCache = GL_b_GeometryHasCache;
     dd->DiscardGeometryCache = GL_DiscardGeometryCache;
     dd->b_Ready = GL_b_Ready;
+    dd->sz_Name = GL_sz_Name;
     dd->OverlayBegin = GL_OverlayBegin;
     dd->OverlayDrawQuads = GL_OverlayDrawQuads;
     dd->OverlayEnd = GL_OverlayEnd;
