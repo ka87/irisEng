@@ -302,142 +302,142 @@
     <ClCompile Include="watersmooth.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcapimin.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcapimin.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcapistd.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcapistd.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jccoefct.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jccoefct.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jccolor.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jccolor.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcdctmgr.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcdctmgr.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jchuff.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jchuff.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcphuff.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcphuff.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcprepct.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcprepct.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jctrans.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jctrans.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcsample.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcsample.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdapimin.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdapimin.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdapistd.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdapistd.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdatadst.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdatadst.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdatasrc.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdatasrc.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdcoefct.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdcoefct.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdcolor.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdcolor.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jddctmgr.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jddctmgr.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdhuff.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdhuff.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdinput.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdinput.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdmainct.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdmainct.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdmarker.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdmarker.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdmaster.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdmaster.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdmerge.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdmerge.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdphuff.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdphuff.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdpostct.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdpostct.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdsample.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdsample.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jdtrans.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jdtrans.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jerror.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jerror.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jfdctflt.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jfdctflt.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jfdctfst.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jfdctfst.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jidctint.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jidctint.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jidctred.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jidctred.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jmemmgr.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jmemmgr.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jquant1.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jquant1.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jquant2.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jquant2.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jutils.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jutils.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcomapi.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcomapi.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jfdctint.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jfdctint.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcmarker.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcmarker.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcparam.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcparam.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcinit.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcinit.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcmaster.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcmaster.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jidctflt.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jidctflt.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jidctfst.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jidctfst.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jcmainct.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jcmainct.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
-    <ClCompile Include="jpeg-6b\jmemjade.c">
+    <ClCompile Include="thirdparty\jpeg-6b\jmemjade.c">
       <Filter>Source Files\jpeg-6b</Filter>
     </ClCompile>
     <ClCompile Include="gfx.c">
@@ -1033,46 +1033,46 @@
     <ClInclude Include="watersmooth.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\cderror.h">
+    <ClInclude Include="thirdparty\jpeg-6b\cderror.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\cdjpeg.h">
+    <ClInclude Include="thirdparty\jpeg-6b\cdjpeg.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jchuff.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jchuff.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jdct.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jdct.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jdhuff.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jdhuff.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jerror.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jerror.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jinclude.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jinclude.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jmemsys.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jmemsys.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jmorecfg.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jmorecfg.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jpegint.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jpegint.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jpeglib.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jpeglib.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jversion.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jversion.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\transupp.h">
+    <ClInclude Include="thirdparty\jpeg-6b\transupp.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
-    <ClInclude Include="jpeg-6b\jconfig.h">
+    <ClInclude Include="thirdparty\jpeg-6b\jconfig.h">
       <Filter>Header Files\jpeg-6b</Filter>
     </ClInclude>
     <ClInclude Include="gfx\gfxcarte.h">

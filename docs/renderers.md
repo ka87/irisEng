@@ -808,9 +808,9 @@ first, on the grounds that it was harmless. It is not: the command
 line makes the macro `1` and a bare `#define` makes it empty, so the
 two replacement lists differ and MSVC reports a redefinition in every
 translation unit that includes the header -- which is all of them.
-`jpeg-6b/jconfig.h` had the same definition and the same effect, once
-for each of the 46 jpeg sources. Both are gone, each leaving a comment
-saying where the definition went.
+`thirdparty/jpeg-6b/jconfig.h` had the same definition and the same
+effect, once for each of the 46 jpeg sources. Both are gone, each
+leaving a comment saying where the definition went.
 
 The three calls in `font.c` that reported the error were replaced by
 one bounded `snprintf` rather than being silenced, because that was
@@ -1089,10 +1089,9 @@ here. It is listed rather than fixed — changing engine code to suit
 the test host is the wrong way round — and the check also fails if a
 listed file starts compiling, so the list cannot go stale.
 
-The sweep no longer walks `thirdparty/`, for the same reason it never
-walked `jpeg-6b`: upstream source is not ours to tidy, and FreeType's
-needs defines this sweep does not pass, so it was failing for other
-reasons and counting zero.
+The sweep walks neither `thirdparty/` nor `minilzo/`: upstream source
+is not ours to tidy, and FreeType's needs defines this sweep does not
+pass, so it was failing for other reasons and counting zero.
 
 ## The overlay draws through the interface
 
