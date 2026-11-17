@@ -384,6 +384,11 @@ int   PC_AE_MASTER;
    is how the two functions renamed before it are handled. */
 float brightnessParam;
 float colorBalanceParam1;
+/* What an effect's first parameter currently is, by the id the comment
+   above uses. Declared here rather than beside the renderer that
+   defines it, because the overlay reads it and cannot see a header
+   that needs the device types. */
+float PC_AE_MASTER_GET_P1(int effect, int slot);
 /* And the four that scale the effects building a frame out of several
    samples of one. Neutral for all four is nought, so unlike the two
    above a tentative definition left to itself is the right value. The
