@@ -257,7 +257,7 @@ int   ECAM_gi_NoAfterEffects = 0;
    Neutral is a half and not nought: left at the nought a tentative
    definition gives, every frame would come back flattened to mid
    grey and half darkened. */
-float unkAEFunc2Param = 0.5f;
+float brightnessParam = 0.5f;
 float colorBalanceParam1 = 0.5f;
 
 void OVL_Draw(void) { }
@@ -416,7 +416,7 @@ static void glr_Reset(void)
        both back to the off the game starts them at. */
     tweak_ae_no = 0;
     ECAM_gi_NoAfterEffects = 0;
-    unkAEFunc2Param = 0.5f;
+    brightnessParam = 0.5f;
     colorBalanceParam1 = 0.5f;
 
     /* The after-effects state the blur's decision is read from. It is
@@ -4120,7 +4120,7 @@ static void caseAeBrightness(void)
 
     /* A quarter of the way above neutral: a quarter of a channel
        added, everywhere, with no change of gain. */
-    unkAEFunc2Param = 0.75f;
+    brightnessParam = 0.75f;
     shown = GL_l_i_RunAfterEffects();
     ok(shown != scene, "it ran");
     {
@@ -4140,7 +4140,7 @@ static void caseAeBrightness(void)
     }
 
     /* The same distance below neutral takes the same amount off. */
-    unkAEFunc2Param = 0.25f;
+    brightnessParam = 0.25f;
     shown = GL_l_i_RunAfterEffects();
     {
         int sub = (int)(0.25f * 255.0f);
@@ -4165,7 +4165,7 @@ static void caseAeBrightness(void)
         okEq(rgba[2], 0, "nor blue");
     }
 
-    unkAEFunc2Param = 0.5f;
+    brightnessParam = 0.5f;
     CIN_Bands = 1;
     GL_l_ForgetAe();
     GL_l_ForgetScene();
@@ -4450,12 +4450,12 @@ static void caseAeColorOrder(void)
        Composed without the clamp between them, it would be white
        too; what the clamp changes is everything below that, which
        the next reading is for. */
-    unkAEFunc2Param = 1.0f;
+    brightnessParam = 1.0f;
     colorBalanceParam1 = 1.0f;
     shown = GL_l_i_RunAfterEffects();
     both = glr_AeRed(shown, x, row);
 
-    unkAEFunc2Param = 1.0f;
+    brightnessParam = 1.0f;
     colorBalanceParam1 = 0.5f;
     shown = GL_l_i_RunAfterEffects();
     brightOnly = glr_AeRed(shown, x, row);
@@ -4488,7 +4488,7 @@ static void caseAeColorOrder(void)
     /* And with all three on, the grayscale is last: the output is
        grey whatever the other two did. */
     PC_AE_MASTER = 0x1;
-    unkAEFunc2Param = 0.7f;
+    brightnessParam = 0.7f;
     colorBalanceParam1 = 0.3f;
     shown = GL_l_i_RunAfterEffects();
     {
@@ -4500,7 +4500,7 @@ static void caseAeColorOrder(void)
     }
 
     PC_AE_MASTER = 0;
-    unkAEFunc2Param = 0.5f;
+    brightnessParam = 0.5f;
     colorBalanceParam1 = 0.5f;
     motionBlurFactor = 0.0f;
     remenanceFactor = 0.0f;

@@ -34,7 +34,7 @@ void PC_CIN_CutsceneMode(int on)
 
 float gAEOpacity = 0.0f;
 float colorBalanceParam1 = 0.5f;
-float unkAEFunc2Param = 0.5f;
+float brightnessParam = 0.5f;
 float unknownAEFlag4GlobalVar = 0.0f;
 float texFactorManual = 0.0f;
 float remenanceFactor = 0.0f;
@@ -1022,7 +1022,7 @@ void D3D_Grayscale(IDirect3DTexture9* dest, IDirect3DTexture9* src)
     AE_SetRenderState(&renderStateConfig.d3dColorWriteEnable, D3DRS_COLORWRITEENABLE, (D3DCOLORWRITEENABLE_ALPHA | D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE));
 }
 
-void D3D_Unkown_AE_Func_2(IDirect3DTexture9* dest, IDirect3DTexture9* src, float balance)
+void D3D_Brightness(IDirect3DTexture9* dest, IDirect3DTexture9* src, float balance)
 {
     double offset;
     int textureFactor;
@@ -2753,7 +2753,7 @@ void D3D_PC_AE(tWorld* param1)
     {
         PC_AE_MASTER = 0;
         colorBalanceParam1 = 0.5f;
-        unkAEFunc2Param = 0.5f;
+        brightnessParam = 0.5f;
     }
     if ((PC_AE_MASTER & 8) != 0 || (PC_AE_MASTER & 0x1000) != 0)// depthblur
     {
@@ -2843,8 +2843,8 @@ void D3D_PC_AE(tWorld* param1)
         D3D_ZoomSmooth2(current, spare, zoomSmoothFactor2);
         current = spare;
     }
-    if (unkAEFunc2Param != 0.5) {
-        D3D_Unkown_AE_Func_2(D3DRenderParams.tmpRenderTarget, current, unkAEFunc2Param);
+    if (brightnessParam != 0.5) {
+        D3D_Brightness(D3DRenderParams.tmpRenderTarget, current, brightnessParam);
         CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, current);
     }
     if (colorBalanceParam1 != 0.5) {
@@ -2943,7 +2943,7 @@ void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)
         remenanceFactor = value;
         return;
     case 8:
-        unkAEFunc2Param = value;
+        brightnessParam = value;
         return;
     case 9:
         colorBalanceParam1 = value;
@@ -3083,7 +3083,7 @@ float PC_AE_MASTER_GET_P1(int effect, int slot)
         result = remenanceFactor;
         break;
     case 8:
-        result = unkAEFunc2Param;
+        result = brightnessParam;
         break;
     case 9:
         result = colorBalanceParam1;

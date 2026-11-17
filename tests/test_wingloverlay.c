@@ -1120,7 +1120,7 @@ int   ECAM_gi_NoAfterEffects = 0;
    Neutral is a half and not nought: left at the nought a tentative
    definition gives, every frame would come back flattened to mid
    grey and half darkened. */
-float unkAEFunc2Param = 0.5f;
+float brightnessParam = 0.5f;
 float colorBalanceParam1 = 0.5f;
 
 void OVL_Draw(void)
@@ -1198,7 +1198,7 @@ static void reset(void)
     GL_l_ForgetWaterSmooth();
     /* And the two colour parameters back to neutral, which is a half
        for both of them. */
-    unkAEFunc2Param = 0.5f;
+    brightnessParam = 0.5f;
     colorBalanceParam1 = 0.5f;
     /* The fade: both its duration and its timer, because the timer is
        state that outlives a frame and a case that left one running
@@ -4185,7 +4185,7 @@ static void caseAeColorChain(void)
     CIN_Bands = 0;
     /* All three on, so the order and the chaining are both visible. */
     PC_AE_MASTER = 0x1;
-    unkAEFunc2Param = 0.8f;
+    brightnessParam = 0.8f;
     colorBalanceParam1 = 0.2f;
     wg_callLen = 0;
     GL_Flip();
@@ -4287,7 +4287,7 @@ static void caseAeColorChain(void)
          "and the third is");
 
     PC_AE_MASTER = 0;
-    unkAEFunc2Param = 0.5f;
+    brightnessParam = 0.5f;
     colorBalanceParam1 = 0.5f;
     tweak_gl_cull = 0;
     motionBlurFactor = 0.0f;
@@ -4369,7 +4369,7 @@ static void caseAeColorGate(void)
     wg_SceneReady();
     CIN_Bands = 0;
     PC_AE_MASTER = 0x1;
-    unkAEFunc2Param = 0.9f;
+    brightnessParam = 0.9f;
     tweak_ae_no = 1;
     wg_callLen = 0;
     GL_Flip();
@@ -4382,7 +4382,7 @@ static void caseAeColorGate(void)
     ECAM_gi_NoAfterEffects = 0;
 
     PC_AE_MASTER = 0;
-    unkAEFunc2Param = 0.5f;
+    brightnessParam = 0.5f;
 }
 
 

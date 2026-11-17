@@ -155,8 +155,33 @@ int PRO_rasterDetailPage;
    parameter-driven effects the list reads straight. */
 int tweak_ae_view;
 int PC_AE_MASTER;
-float unkAEFunc2Param = 0.5f;
+float brightnessParam = 0.5f;
 float colorBalanceParam1 = 0.5f;
+
+/* The engine's value getter, as much of it as the list asks for: the
+   ids the list carries, and nought for anything else, which is what
+   the engine's own default arm gives. The numbers are the harness's,
+   so a row printing the wrong effect's value prints a number that
+   belongs to another row. */
+float PC_AE_MASTER_GET_P1(int effect, int slot)
+{
+    (void)slot;
+    switch (effect)
+    {
+    case 0:  return 0.125f;      /* depth blur */
+    case 1:  return 0.250f;      /* motion blur */
+    case 2:  return 0.375f;      /* screen blur */
+    case 5:  return 0.500f;      /* zoom smooth */
+    case 6:  return 0.625f;      /* zoom smooth 2 */
+    case 7:  return 0.750f;      /* remanence */
+    case 8:  return brightnessParam;
+    case 9:  return colorBalanceParam1;
+    case 11: return 0.875f;      /* grayscale */
+    case 12: return 0.937f;      /* hue */
+    case 14: return 1.125f;      /* depth blur near */
+    default: return 0.0f;
+    }
+}
 profilerRasterStructElem* PRO_FirstRasterPtr;
 profilerRasterStructElem* pointsToUnkRaster_dword_98F944;
 profilerRasterStructElem* PRO_CurrRaster;
@@ -795,9 +820,9 @@ static void afterEffects(void)
     ok(sawText("depth blur"), "with the effects named");
     ok(sawText("remanence"), "all of them");
     ok(sawText("fade"), "down to the last");
-    ok(sawText("colour balance"),
+    ok(sawText("brightness"),
        "including the two that have no bit of their own");
-    ok(sawText("unknown 2"), "both of them");
+    ok(sawText("contrast"), "both of them");
 
     /* with none of them running, every row reads as off */
     onRows = 0;
@@ -841,6 +866,47 @@ static void afterEffects(void)
             onRows++;
     okEq(onRows, 1, "a parameter away from a half counts as running");
     colorBalanceParam1 = 0.5f;
+
+    /* the value beside an effect that is running, and only then */
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0x800;                 /* remanence, id 7 */
+    OVL_Draw();
+    ok(sawText("0.750"), "a running effect shows its value");
+    ok(!sawText("0.250"), "and not another effect's");
+
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0;
+    OVL_Draw();
+    ok(!sawText("0.750"), "an effect that is off shows no value");
+
+    /* the value is fetched by the effect's id, which is not the bit's
+       position -- two rows whose ids the getter answers differently */
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0x1000;                /* depth blur near, id 14 */
+    OVL_Draw();
+    ok(sawText("1.125"), "the value is fetched by the effect's id");
+    ok(!sawText("0.125"), "not by the row's position or its bit");
+
+    /* the rows the getter has no case for print no number at all,
+       rather than the nought it answers with */
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0x0040;                /* emboss, which has no value */
+    OVL_Draw();
+    ok(sawText("on"), "an effect with no value still says it is on");
+    ok(!sawText("0.000"), "and prints no value for it");
+
+    /* the two without a bit read their own parameter */
+    resetAll();
+    tweak_ae_view = 1;
+    PC_AE_MASTER = 0;
+    brightnessParam = 0.375f;
+    OVL_Draw();
+    ok(sawText("0.375"), "brightness shows the parameter it runs from");
+    brightnessParam = 0.5f;
 
     /* cleared, and it is gone again */
     resetAll();

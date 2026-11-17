@@ -19,7 +19,9 @@
 #define OVL_PANELMARGIN 8.0f
 #define OVL_PANELY     60.0f
 #define OVL_PANELW     320.0f
-#define OVL_PANELW_AE  190.0f
+#define OVL_PANELW_AE  215.0f
+#define OVL_AE_STATEX  118     /* the on/off column, in pixels */
+#define OVL_AE_VALUEX  146     /* and the parameter beside it */
 
 #define OVL_FIELDTOP   10.0f
 #define OVL_FIELDPAD   6.0f     /* above and below the line of text */
@@ -490,56 +492,78 @@ static void OVL_l_CommandField(void)
 typedef struct sOvlEffect
 {
     const char*  name;
-    unsigned int bit;
+    unsigned int bit;        /* 0 for the two with no bit of their own */
+    int          id;         /* what the parameter getters call it */
+    int          hasValue;   /* whether the value getter answers for it */
 } tOvlEffect;
 
+/* The id is the effect number the engine's getters take, and it is not
+   the bit's position: PC_AE_MASTER_GET_ONOFF and PC_AE_MASTER_GET_P1
+   are two switches over the same ids, and some ids appear in only one
+   of them. So a row's value comes from the value getter by id, and the
+   rows that getter has no case for are marked as having none rather
+   than printing the zero it returns for anything it does not know.
+
+   The last two have no bit at all: they run when their parameter is
+   away from a half, and their ids are in the value getter only. */
 static const tOvlEffect ovl_effects[] = {
-    { "depth blur",      0x0008u },
-    { "depth blur near", 0x1000u },
-    { "motion blur",     0x0010u },
-    { "screen blur",     0x0020u },
-    { "full aa blur",    0x2000u },
-    { "emboss",          0x0040u },
-    { "motion smooth",   0x0080u },
-    { "zoom smooth",     0x0400u },
-    { "zoom smooth 2",   0x8000u },
-    { "remanence",       0x0800u },
-    { "hue",             0x0004u },
-    { "grayscale",       0x0001u },
-    { "fade",            0x40000u }
+    { "depth blur",      0x0008u,  0, 1 },
+    { "depth blur near", 0x1000u, 14, 1 },
+    { "motion blur",     0x0010u,  1, 1 },
+    { "screen blur",     0x0020u,  2, 1 },
+    { "full aa blur",    0x2000u, 10, 0 },
+    { "emboss",          0x0040u,  3, 0 },
+    { "motion smooth",   0x0080u,  4, 0 },
+    { "zoom smooth",     0x0400u,  5, 1 },
+    { "zoom smooth 2",   0x8000u,  6, 1 },
+    { "remanence",       0x0800u,  7, 1 },
+    { "hue",             0x0004u, 12, 1 },
+    { "grayscale",       0x0001u, 11, 1 },
+    { "fade",            0x40000u, 15, 0 },
+    { "brightness",      0u,       8, 1 },
+    { "contrast",        0u,       9, 1 }
 };
 
 #define OVL_EFFECTNUM ((int)(sizeof(ovl_effects) / sizeof(ovl_effects[0])))
 
-// The two that are not a bit: each runs whenever its parameter is away
-// from a half, which is the value that means "leave the picture
-// alone". They are read here the same way the chain tests them.
+// A row's state: the bit where it has one, and otherwise its parameter
+// being away from the half that means "leave the picture alone", which
+// is how the chain itself tests those two.
+static int OVL_l_b_EffectOn(const tOvlEffect* e)
+{
+    if (e->bit != 0u)
+        return (PC_AE_MASTER & (int)e->bit) != 0;
+    if (e->id == 8)
+        return brightnessParam != 0.5f;
+    if (e->id == 9)
+        return colorBalanceParam1 != 0.5f;
+    return 0;
+}
+
 static int OVL_l_EffectRows(void)
 {
-    int y = 24;
-    int i;
-    int on;
+    char value[32];
+    int  y = 24;
+    int  i;
+    int  on;
 
     for (i = 0; i < OVL_EFFECTNUM; i++)
     {
-        on = (PC_AE_MASTER & (int)ovl_effects[i].bit) != 0;
-        OVL_l_PanelText(ovl_effects[i].name, 10, y, on ? OVL_GREEN : OVL_DIM);
-        OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
+        const tOvlEffect* e = &ovl_effects[i];
+
+        on = OVL_l_b_EffectOn(e);
+        OVL_l_PanelText(e->name, 10, y, on ? OVL_GREEN : OVL_DIM);
+        OVL_l_PanelText(on ? "on" : "-", OVL_AE_STATEX, y,
                         on ? OVL_GREEN : OVL_DIM);
+        // The value only while it is running: off, the parameter is
+        // whatever it was left at and says nothing about the frame.
+        if (on && e->hasValue)
+        {
+            sprintf(value, "%.3f", PC_AE_MASTER_GET_P1(e->id, 0));
+            OVL_l_PanelText(value, OVL_AE_VALUEX, y, OVL_GREEN);
+        }
         y += OVL_ROWHEIGHT;
     }
-
-    on = colorBalanceParam1 != 0.5f;
-    OVL_l_PanelText("colour balance", 10, y, on ? OVL_GREEN : OVL_DIM);
-    OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
-                    on ? OVL_GREEN : OVL_DIM);
-    y += OVL_ROWHEIGHT;
-
-    on = unkAEFunc2Param != 0.5f;
-    OVL_l_PanelText("unknown 2", 10, y, on ? OVL_GREEN : OVL_DIM);
-    OVL_l_PanelText(on ? "on" : "-", OVL_PANELW_AE - 34, y,
-                    on ? OVL_GREEN : OVL_DIM);
-    y += OVL_ROWHEIGHT;
 
     return y;
 }
