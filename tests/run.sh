@@ -448,7 +448,8 @@ run_strings
 # sweep nothing runs is a sweep that reports nothing. implicitcheck.sh
 # was written and then left out of it, and the warning it exists to
 # catch reached a build of the game instead.
-for one in tests/runworld.sh \
+for one in tests/run_sdl3.sh \
+           tests/runworld.sh \
            tests/run_collision_a.sh \
            tests/run_collision_b.sh \
            tests/run_collision_c.sh \
