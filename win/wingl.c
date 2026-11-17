@@ -146,6 +146,7 @@ static void GL_l_ForgetGeometry(void);
 static void GL_l_ForgetScene(void);
 static void GL_l_BindScene(void);
 static void GL_l_CopyToScreen(GLuint fromFbo);
+static GLuint GL_l_i_SceneFbo(void);
 static void GL_l_ReadBlurState(tDpb_State* out);
 static int  GL_l_b_BlurReady(void);
 static void GL_l_ForgetBlur(void);
@@ -755,15 +756,10 @@ void GL_Clear(int which, int color)
 
 void GL_Flip(void)
 {
-    /* The after-effects first, over the frame in the scene target.
-       They run as a chain of passes between spare targets, so what
-       comes back is whichever target the last one wrote -- the scene
-       target itself when none of them ran. */
-    GLuint shown = GL_l_i_RunAfterEffects();
-
-    /* Then that on the screen, letterboxed if a cutscene asked for
-       it. */
-    GL_l_CopyToScreen(shown);
+    /* The picture, letterboxed if a cutscene asked for it. The
+       after-effects have already run over it, where the engine asked
+       -- see GL_PC_AE. */
+    GL_l_CopyToScreen(GL_l_i_SceneFbo());
 
     /* Then the debug overlay, on the screen rather than in the scene
        target: it goes on top of everything, outside the letterbox,
@@ -2455,6 +2451,26 @@ static void GL_l_BindScene(void)
  * own: an effect cannot read and write one target in the same pass, so
  * each one writes somewhere else and the last one to run decides where
  * the frame ended up. */
+/* The rows of the scene target the picture occupies: all of them, or
+   the band between a cutscene's letterbox. Measured from the bottom,
+   because that is where OpenGL's window origin is and the fractions
+   are from the top.
+
+   Said once because two places need the same rows -- what is copied
+   to the screen, and what the after-effects wrote and no more. */
+static int GL_l_b_PictureRows(tCbd_Bands* bands, int* top, int* bottom)
+{
+    CBD_Decide(bands);
+
+    *top = (int)((1.0f - bands->bottom) * (float)gl_sceneH);
+    *bottom = (int)((1.0f - bands->top) * (float)gl_sceneH);
+    if (*top < 0)
+        *top = 0;
+    if (*bottom > gl_sceneH)
+        *bottom = gl_sceneH;
+    return *bottom > *top;
+}
+
 static void GL_l_CopyToScreen(GLuint fromFbo)
 {
     tCbd_Bands bands;
@@ -2464,17 +2480,7 @@ static void GL_l_CopyToScreen(GLuint fromFbo)
     if (!gl_sceneReady || !gl_state.context)
         return;
 
-    CBD_Decide(&bands);
-
-    /* Measured from the bottom, because that is where OpenGL's window
-       origin is and the fractions are from the top. */
-    top = (int)((1.0f - bands.bottom) * (float)gl_sceneH);
-    bottom = (int)((1.0f - bands.top) * (float)gl_sceneH);
-    if (top < 0)
-        top = 0;
-    if (bottom > gl_sceneH)
-        bottom = gl_sceneH;
-    if (bottom <= top)
+    if (!GL_l_b_PictureRows(&bands, &top, &bottom))
         return;
 
     GLFN_glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -4640,6 +4646,49 @@ static GLuint GL_l_i_RunAfterEffects(void)
     if (gl_state.zEnable)
         GLFN_glEnable(GL_DEPTH_TEST);
     return shown;
+}
+
+/* The after-effects, at the point in the frame the engine asks for
+ * them -- which is **not** the end of it.
+ *
+ * The engine draws the world, asks for the effects, and then draws
+ * what it keeps in a list of its own for after them: the heads-up
+ * display, the life bar and the item in hand. So an effect that
+ * smears or blurs the frame must have run before those are in it, or
+ * it smears them too. Running the chain in the flip instead put the
+ * whole frame through it, the display included.
+ *
+ * The chain runs between spare targets and answers with whichever one
+ * the last pass wrote, so the result is put back into the scene
+ * target: what the engine draws next then lands on top of the
+ * effects, and the flip has one picture to copy whether the chain ran
+ * or not. Only the rows the chain wrote are copied back -- the band
+ * between a cutscene's letterbox, or all of them -- because the rows
+ * outside it were never written this frame and hold an older picture.
+ */
+void GL_PC_AE(struct sWorld* world)
+{
+    tCbd_Bands bands;
+    GLuint     shown;
+    int        top;
+    int        bottom;
+
+    (void)world;
+
+    if (!gl_state.context)
+        return;
+    shown = GL_l_i_RunAfterEffects();
+    if (shown == GL_l_i_SceneFbo())
+        return;
+    if (GL_l_b_PictureRows(&bands, &top, &bottom))
+    {
+        GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, shown);
+        GLFN_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GL_l_i_SceneFbo());
+        GLFN_glBlitFramebuffer(0, top, gl_sceneW, bottom,
+                               0, top, gl_sceneW, bottom,
+                               GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+    GL_l_BindScene();
 }
 
 void GL_OverlayDrawQuads(const void* vertices, int triangleCount)

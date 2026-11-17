@@ -200,6 +200,13 @@ typedef struct sGdi_DisplayData
        the log where there is room for them. */
     const char*(* sz_Name)(void);
 
+    /* The after-effects, run where the engine asks for them: after the
+       world and before the list it keeps for what goes on top of them,
+       which is the heads-up display. A renderer that ran them at the
+       end of the frame instead would smear and blur the display along
+       with the picture. */
+    void(* AfterEffects)(struct sWorld* world);
+
     /* The 2D pass the debug overlay draws inside. Begin sets up a
        pixel-space projection, alpha blending and no depth test, and
        saves whatever the engine had set; End puts it back. The quads
