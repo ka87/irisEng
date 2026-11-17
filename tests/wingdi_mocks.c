@@ -1134,6 +1134,7 @@ void MAT_UVDecompress(tMultiTextureElemStruct* e, tMatDecompressedStruct* out)
 int ENG_WindowedMode;
 int CIN_Bands;
 int CIN_NoBands;
+int tweak_d3d_chrome;
 float tweak_mipmaplodbias;
 int tweak_perf;
 float tweak_perf_fps_min;

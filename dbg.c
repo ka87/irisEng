@@ -11,6 +11,7 @@
 
 int tweak_ae_no;
 int tweak_ae_view;
+int tweak_d3d_chrome = 1;
 int tweak_gl_cull;
 int tweak_gl_water_flip;
 int tweak_ae_nobands = 0;
@@ -65,6 +66,11 @@ struct sTweakElem tweaks[] = {
     /* The overlay's list of which after-effects are running: 1 puts it
        up and leaves it up, 0 takes it down. */
     {"ae_view", 0, &tweak_ae_view},
+    /* Whether the Direct3D renderer asks the hardware for a unit
+       normal while it draws a chrome-mapped material: 1 as it should,
+       0 as it was. Here to be turned off against a scene, the way the
+       other renderer's chrome question was settled. */
+    {"d3d_chrome", 0, &tweak_d3d_chrome},
     /* Which winding the OpenGL renderer culls: 0 as it decides, 1 no
        culling at all, 2 the facing reversed. Kept rather than removed
        with the bug it found -- the mapping it overrides is measured

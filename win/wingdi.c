@@ -4099,6 +4099,18 @@ int D3D_l_DrawElementIndexedTriangles(struct sGeoTriangleChunks* triangleChunks,
         block = triangleChunks->triangleStripBlock;
         immediate = !geogro->indexBuffer || !block || mismatch;
     }
+    /* The chrome mapping reads the normal after the matrix that places
+       the object has been applied to it, and that matrix carries the
+       object's scale -- so what arrives is no longer a unit vector,
+       and the mapping is then read off a length as much as off a
+       direction. The hardware renormalises only when it is asked to,
+       and only this mode needs it; the other renderer does the same
+       thing per pixel in its shader. Both ways of drawing generate the
+       coordinate in hardware, so this sits above the branch. */
+    if (tweak_d3d_chrome)
+        D3D_RenderStateSet(&renderStateConfig.d3d_normalizeNormals,
+                           D3DRS_NORMALIZENORMALS,
+                           GDI_gi_TextureUVMode == 2);
     if (immediate)
     {
         tGvx_Source src;
