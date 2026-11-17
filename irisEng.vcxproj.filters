@@ -4,6 +4,12 @@
     <Filter Include="FreeType">
       <UniqueIdentifier>{8f1d5c0a-1b2e-4d7a-9c3f-0e5a7b6d4c21}</UniqueIdentifier>
     </Filter>
+    <Filter Include="zlib">
+      <UniqueIdentifier>{3c7a9e14-5d62-4b08-8f31-6a2b4c9d7e05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libpng">
+      <UniqueIdentifier>{9b4e2f73-08ac-4d15-b6e2-51c3a8f0d492}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
@@ -290,7 +296,7 @@
     <ClCompile Include="win\perfdisplay.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pngwrite.c">
+    <ClCompile Include="pngsave.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="watersmooth.c">
@@ -740,6 +746,84 @@
     <ClCompile Include="win\adpcm.c">
       <Filter>Source Files\win</Filter>
     </ClCompile>
+    <ClCompile Include="thirdparty\zlib\adler32.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\compress.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\crc32.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\deflate.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\infback.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\inffast.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\inflate.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\inftrees.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\trees.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\uncompr.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\zutil.c">
+      <Filter>zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\png.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngerror.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngget.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngmem.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngpread.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngread.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngrio.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngrtran.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngrutil.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngset.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngtrans.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngwio.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngwrite.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngwtran.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngwutil.c">
+      <Filter>libpng</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="math.h">
@@ -934,7 +1018,7 @@
     <ClInclude Include="aezoom2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="pngwrite.h">
+    <ClInclude Include="pngsave.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="version.h">

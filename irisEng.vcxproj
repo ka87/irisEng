@@ -371,7 +371,9 @@
     <ClCompile Include="aezoom2.c" />
     <ClCompile Include="perfbars.c" />
     <ClCompile Include="win\perfdisplay.c" />
-    <ClCompile Include="pngwrite.c" />
+    <ClCompile Include="pngsave.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="watersmooth.c" />
     <ClCompile Include="ways.c" />
     <ClCompile Include="win\adpcm.c" />
@@ -456,6 +458,115 @@
     <ClCompile Include="thirdparty\freetype\src\gzip\ftgzip.c">
       <PreprocessorDefinitions>FT2_BUILD_LIBRARY;FT_CONFIG_MODULES_H=&lt;ftmodule.h&gt;;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\freetype\iriseng;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <!-- zlib and libpng, vendored in thirdparty/zlib and
+         thirdparty/libpng: the screenshot and savegame-photo
+         writer in pngsave.c is built on them. Warnings are off
+         because neither is our code to fix. See each folder's
+         README.md for the version and how the set was derived. -->
+    <ClCompile Include="thirdparty\zlib\adler32.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\compress.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\crc32.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\deflate.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\infback.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\inffast.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\inflate.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\inftrees.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\trees.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\uncompr.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\zlib\zutil.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\png.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngerror.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngget.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngmem.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngpread.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngread.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngrio.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngrtran.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngrutil.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngset.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngtrans.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngwio.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngwrite.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngwtran.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="thirdparty\libpng\pngwutil.c">
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
     </ClCompile>
   </ItemGroup>
@@ -624,7 +735,7 @@
     <ClInclude Include="aehue.h" />
     <ClInclude Include="aemotion.h" />
     <ClInclude Include="aezoom2.h" />
-    <ClInclude Include="pngwrite.h" />
+    <ClInclude Include="pngsave.h" />
     <ClInclude Include="version.h" />
     <ClInclude Include="perfbars.h" />
     <ClInclude Include="win\perfdisplay.h" />

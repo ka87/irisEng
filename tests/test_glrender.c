@@ -36,6 +36,10 @@
 #include <windows.h>
 
 #include "eglheadless.h"
+/* libpng, to decode the screenshot this renderer writes -- the same
+   library it is written with, so a file it cannot read is a file
+   nothing can. */
+#include "png.h"
 #include "../win/glcore.h"
 #include "../win/glload.h"
 #include "../win/glshader.h"
@@ -1559,6 +1563,10 @@ static void caseScreenshotFile(void)
     FILE*         f;
     unsigned char head[8];
     size_t        got;
+    /* Two rows of the picture, far enough in from both edges to be
+       clear of the cutscene letterbox the frame carries by default. */
+    const int     lowRow  = GLR_H / 4;
+    const int     highRow = GLR_H - 1 - GLR_H / 4;
 
     printf("-- the screenshot key writes a file\n");
 
@@ -1569,6 +1577,44 @@ static void caseScreenshotFile(void)
     glr_Begin();
     remove("screenshots\\20261117_000000_000.png");
     remove("screenshots/20261117_000000_000.png");
+
+    /* A ramp up the frame, written straight into the texture the scene
+       target is built on -- the way the after-effect cases seed theirs.
+       Every row of it is a different red, which is what lets the
+       comparison below see which order the rows were stored in: against
+       a flat picture a file held upside down reads the same either way,
+       and the case would pass with the screenshot upside down. */
+    GL_l_ForgetScene();
+    gl_state.width = GLR_W;
+    gl_state.height = GLR_H;
+    if (GL_l_b_SceneReady())
+    {
+        unsigned char* ramp =
+            (unsigned char*)malloc((size_t)GLR_W * GLR_H * 4u);
+
+        if (ramp)
+        {
+            int row;
+            int x;
+
+            for (row = 0; row < GLR_H; row++)
+                for (x = 0; x < GLR_W; x++)
+                {
+                    unsigned char* p = &ramp[((size_t)row * GLR_W + x) * 4];
+
+                    p[0] = (unsigned char)(row * 5);
+                    p[1] = 0x20;
+                    p[2] = 0x40;
+                    p[3] = 0xFF;
+                }
+
+            GLFN_glBindTexture(GL_TEXTURE_2D, gl_sceneColour);
+            GLFN_glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, GLR_W, GLR_H,
+                                 GL_RGBA, GL_UNSIGNED_BYTE, ramp);
+            GLFN_glBindTexture(GL_TEXTURE_2D, 0);
+            free(ramp);
+        }
+    }
 
     GL_Request(26, NULL);
     GL_Flip();
@@ -1587,6 +1633,110 @@ static void caseScreenshotFile(void)
     okEq(head[2], 'N', "N");
     okEq(head[3], 'G', "G");
 
+    /* And the picture in it is what is on the screen. Decoded with
+     * libpng's own reader -- the library the file is written with, so a
+     * file it cannot read is a file nothing can -- and compared against
+     * the screen itself rather than against a constant.
+     *
+     * Down the left edge only, which is where the screen and the frame
+     * overlap: this harness's default framebuffer is a 64 by 64 pbuffer
+     * and the frame is 80 wide, so the right of the picture is outside
+     * it and reads as nothing. Two rows of that edge are enough for
+     * what no other case can see -- that the file holds the *screen's*
+     * pixels, the right way up and with the channels the right way
+     * round, through the whole chain from glReadPixels to the encoder.
+     */
+    {
+        png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING,
+                                                 NULL, NULL, NULL);
+        png_infop   info = png ? png_create_info_struct(png) : NULL;
+
+        f = fopen("screenshots\\20261117_000000_000.png", "rb");
+        if (!f)
+            f = fopen("screenshots/20261117_000000_000.png", "rb");
+        if (png && info && f && !setjmp(png_jmpbuf(png)))
+        {
+            int w;
+            int h;
+
+            png_init_io(png, f);
+            png_read_info(png, info);
+            w = (int)png_get_image_width(png, info);
+            h = (int)png_get_image_height(png, info);
+            okEq(w, GLR_W, "the file is as wide as the frame");
+            okEq(h, GLR_H, "and as tall");
+            okEq((long)png_get_color_type(png, info),
+                 (long)PNG_COLOR_TYPE_RGB, "three channels");
+
+            if (w == GLR_W && h == GLR_H)
+            {
+                unsigned char screen[2][4];
+                png_bytep     row = (png_bytep)malloc((size_t)w * 3u);
+                int           y;
+                int           gotLow = 0;
+                int           gotHigh = 0;
+                unsigned char fileLow[3];
+                unsigned char fileHigh[3];
+
+                GLFN_glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                GLFN_glPixelStorei(GL_PACK_ALIGNMENT, 1);
+                GLFN_glReadPixels(0, lowRow, 1, 1, GL_BGRA,
+                                  GL_UNSIGNED_BYTE, screen[0]);
+                GLFN_glReadPixels(0, highRow, 1, 1, GL_BGRA,
+                                  GL_UNSIGNED_BYTE, screen[1]);
+
+                /* The file counts rows down the picture and the screen
+                   counts up, so the screen's row n is the file's
+                   h - 1 - n. */
+                for (y = 0; y < h && row; y++)
+                {
+                    png_read_row(png, row, NULL);
+                    if (y == h - 1 - lowRow)
+                    {
+                        memcpy(fileLow, row, 3);
+                        gotLow = 1;
+                    }
+                    else if (y == h - 1 - highRow)
+                    {
+                        memcpy(fileHigh, row, 3);
+                        gotHigh = 1;
+                    }
+                }
+                free(row);
+
+                ok(gotLow && gotHigh, "both rows were read");
+                /* The two rows have to differ, or the comparison
+                   below passes on a picture stored either way up. */
+                ok(gotLow && gotHigh && fileLow[0] != fileHigh[0],
+                   "and they are not the same row twice");
+                if (gotLow)
+                {
+                    /* The screen's BGRA against the file's RGB. */
+                    okEq(fileLow[0], screen[0][2],
+                         "low down, the file is the screen in red");
+                    okEq(fileLow[1], screen[0][1], "in green");
+                    okEq(fileLow[2], screen[0][0], "and in blue");
+                }
+                if (gotHigh)
+                {
+                    okEq(fileHigh[0], screen[1][2],
+                         "and high up it is the screen there, not the"
+                         " row the other end of the picture");
+                    okEq(fileHigh[1], screen[1][1], "in green");
+                    okEq(fileHigh[2], screen[1][0], "and in blue");
+                }
+            }
+        }
+        else
+        {
+            ok(0, "the screenshot could not be decoded");
+        }
+        if (f)
+            fclose(f);
+        if (png)
+            png_destroy_read_struct(&png, info ? &info : NULL, NULL);
+    }
+
     /* Asking once writes one file: the flag is cleared, so every
        frame after it does not quietly write another. */
     remove("screenshots\\20261117_000000_000.png");
@@ -1600,23 +1750,6 @@ static void caseScreenshotFile(void)
         fclose(f);
 }
 
-/* ===================================================== the depth blur
- *
- * The pass draws the world a second time through a 256 by 1 ramp of
- * blur-amount-per-depth and writes the frame's alpha and nothing else.
- * Alpha runs the other way from what the name suggests: 255 is no blur
- * and 0 is full.
- *
- * What is checked here is the arithmetic only a real driver can run --
- * the coordinate the shader makes from the camera-space position, in
- * both of its forms, and the ramp entry it lands in. A mocked harness
- * sees the uniforms being set and nothing about what they produce.
- */
-
-/* The quad, flat at one depth, so the whole of it samples the ramp at
-   one coordinate and the alpha read back is that one entry. The
-   identity projection clips to -1..1 in z, so the depths below sit
-   inside that and the far plane is small to suit. */
 static void glr_QuadAtDepth(float z)
 {
     int i;
