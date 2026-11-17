@@ -3321,6 +3321,83 @@ static void caseUVNormalAsksForThem(void)
     okEq(gl_geoNrmOn, 1, "with the normal attribute enabled");
 }
 
+/* A view matrix that scales, which is what the engine hands over for a
+ * scaled object: the matrix a draw is given is the camera's times the
+ * object's, so the object's scale is in it. The normal has to be unit
+ * when the chrome transform is applied -- the transform maps -1..1 onto
+ * the texture's 0..1 -- so the length that scale gives it has to come
+ * back out.
+ *
+ * The numbers are chosen so that the two readings land on *different
+ * texel centres*: a unit normal of (0.5, -0.5) maps to (0.75, 0.75),
+ * and the same normal left three times too long maps to (1.25, 1.25),
+ * which wraps to (0.25, 0.25). Both are centres of a texel of this
+ * two-by-two texture, so neither reading is a blend of two and the
+ * difference between them is the whole of one texel.
+ */
+static void caseUVNormalUnitLength(void)
+{
+    Mtx4x4 view;
+    int    i;
+    int    got;
+
+    printf("-- the chrome projection takes a unit normal\n");
+
+    glr_Reset();
+    glr_CornerTexture();
+    glr_SolidColour(0xFF, 0xFF, 0xFF, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    glr_BuildQuad();
+    glr_QuadNormals();
+
+    /* One normal for the whole quad, so every pixel of it samples the
+       same coordinate and the reading is not an interpolation of
+       several. Unit length, which the engine's own normals are. */
+    for (i = 0; i < 4; i++)
+    {
+        glr_normals[i].x =  0.5f;
+        glr_normals[i].y = -0.5f;
+        glr_normals[i].z =  0.70710678f;
+    }
+
+    /* Scaled by three, uniformly -- a scale is what an object's
+       transform contributes, and a uniform one is the simplest kind
+       that moves the sample a whole texel. */
+    MATH_SetIdentityMatrix(&view);
+    view.v1.x = 3.0f;
+    view.v2.y = 3.0f;
+    view.v3.z = 3.0f;
+    GL_SetViewMatrix(&view);
+    MATH_SetIdentityMatrix(&gl_projMtx);
+    GL_l_CombineMatrices();
+
+    glr_ChromeMatrix();
+    for (i = 0; i < 4; i++)
+    {
+        glr_uv[i].u = 0.0f;
+        glr_uv[i].v = 0.0f;
+    }
+
+    GDI_gi_TextureUVMode = 2;
+    /* Wrapped in both axes, which is what the material flags' two
+       bottom bits ask for -- and necessary here: clamped, the
+       stretched coordinate stops at the edge of the texture and lands
+       in the same texel as the unstretched one, which is how a first
+       draft of this case passed either way round. */
+    GL_TextureInit(1, 3, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+    glr_Read();
+
+    /* Which texel (0.75, 0.75) is depends on the texture's row order
+       and on which way up the readback is, so the value is pinned from
+       what the driver produces rather than predicted here -- as in the
+       case above. What makes it meaningful is that it is a *different*
+       texel from the one the unnormalised reading gives, which is what
+       the mutation that drops the normalisation shows. */
+    got = glr_R(GLR_W / 2, GLR_H / 2);
+    okNear(got, 0xE0, "the unit normal's texel, not the scaled one's");
+}
+
 /* The sprites share the geometry's vertex array, so an attribute left
    enabled by a piece of world geometry would have them reading its
    normals. */
@@ -6645,6 +6722,7 @@ int main(void)
     caseUVFromNormal();
     caseUVNormalMissing();
     caseUVNormalAsksForThem();
+    caseUVNormalUnitLength();
     caseUVNormalLeavesSpritesAlone();
     caseCulling();
     caseWaterReflectionCleared();
