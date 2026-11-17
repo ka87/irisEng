@@ -1139,6 +1139,33 @@ void PFD_Draw(void)
     WG_Record("PFD_Draw", 0);
 }
 
+/* What the screenshot path reaches for. Recorded rather than done:
+   this harness has no driver and no filesystem to write to, and what
+   a case here wants to know is that the flip asked for the file at
+   all. The picture itself is read back in tests/test_glrender.c. */
+static int wg_pngWrites;
+static int wg_pngBottomUp;
+
+int PNG_i_WriteBgra(const char* path, const unsigned char* pixels,
+                    int pitch, int width, int height, int bottomUp)
+{
+    (void)path; (void)pixels; (void)pitch; (void)width; (void)height;
+    wg_pngWrites++;
+    wg_pngBottomUp = bottomUp;
+    WG_Record("PNG_i_WriteBgra", 2, (long long)width, (long long)height);
+    return 1;
+}
+
+BOOL CreateDirectoryA(const char* path, void* attrs)
+{
+    (void)path; (void)attrs;
+    return 1;
+}
+
+void GetLocalTime(SYSTEMTIME* t) { memset(t, 0, sizeof(*t)); }
+
+void GDI_OutputDebugString(char* format, ...) { (void)format; }
+
 void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
 void  MEM_Free(void* p) { free(p); }
 
@@ -2849,6 +2876,53 @@ static long WG_l_Arg(const char* name, int nth, int arg)
         return -1;
     }
     return c ? (long)c->arg[arg] : -1;
+}
+
+static void caseScreenshotDeferred(void)
+{
+    printf("-- the screenshot key is answered at the end of the"
+           " frame\n");
+
+    /* The key is read from the engine's own frame sequence, where what
+       is bound is whatever the last pass left. So asking does not take
+       the picture: it sets a flag, and the flip takes it once the
+       chain has run, the copy to the screen has been made and the
+       overlay is on top -- which is the frame the person is looking
+       at. */
+    reset();
+    wg_SceneReady();
+    wg_pngWrites = 0;
+    GL_Request(26, NULL);
+    okEq(wg_pngWrites, 0, "asking writes nothing by itself");
+
+    wg_callLen = 0;
+    GL_Flip();
+    okEq(wg_pngWrites, 1, "the flip writes it");
+
+    /* The whole drawing size, and bottom-up, because that is how
+       OpenGL hands a frame back -- a writer told otherwise saves the
+       picture upside down. */
+    okEq(WG_l_Arg("PNG_i_WriteBgra", 0, 0), (long)gl_state.width,
+         "at the drawing width");
+    okEq(WG_l_Arg("PNG_i_WriteBgra", 0, 1), (long)gl_state.height,
+         "and height");
+    okEq(wg_pngBottomUp, 1, "with its rows the way round OpenGL gives"
+                            " them");
+
+    /* Before the overlay is... after it, rather: the overlay is part
+       of the frame and has to be in the file. */
+    {
+        int png = WG_i_At("PNG_i_WriteBgra");
+        int ovl = WG_i_At("OVL_Draw");
+
+        ok(ovl >= 0 && png > ovl,
+           "after the overlay, so the overlay is in the picture");
+    }
+
+    /* And one ask is one file: the next frame writes nothing. */
+    wg_pngWrites = 0;
+    GL_Flip();
+    okEq(wg_pngWrites, 0, "the frame after writes nothing");
 }
 
 static void caseClearSurvivesTheMask(void)
@@ -7382,6 +7456,7 @@ int main(void)
     caseProceduralUpload();
     caseTextureTeardown();
     caseClearSurvivesTheMask();
+    caseScreenshotDeferred();
     caseTargetsBuild();
     caseTargetsBind();
     caseTargetsRefusals();

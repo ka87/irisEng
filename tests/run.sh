@@ -487,6 +487,7 @@ for one in tests/runworld.sh \
            tests/run_aehue.sh \
            tests/run_aemotion.sh \
            tests/run_aezoom2.sh \
+           tests/run_pngwrite.sh \
            tests/run_dbglog.sh \
            tests/run_perfbars.sh \
            tests/run_perfdisplay.sh \

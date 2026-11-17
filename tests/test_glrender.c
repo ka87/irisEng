@@ -260,6 +260,25 @@ void OVL_Draw(void) { }
 /* As above: the display has its own harness. */
 void PFD_Draw(void) { }
 
+/* What the screenshot path reaches for. The file is written for real --
+   the case below reads it back -- so the writer is linked rather than
+   mocked; only the platform's directory and clock are stood in for. */
+BOOL CreateDirectoryA(const char* path, void* attrs)
+{
+    (void)path; (void)attrs;
+    return 1;
+}
+
+void GetLocalTime(SYSTEMTIME* t)
+{
+    memset(t, 0, sizeof(*t));
+    t->wYear = 2026;
+    t->wMonth = 11;
+    t->wDay = 17;
+}
+
+void GDI_OutputDebugString(char* format, ...) { (void)format; }
+
 void* MEM_p_Alloc(unsigned int size) { return malloc((size_t)size); }
 void  MEM_Free(void* p) { free(p); }
 
@@ -1329,6 +1348,256 @@ static void caseShadowComposite(void)
            "and outside it the frame is left alone");
     okNear(glr_R(GLR_W / 2, GLR_H / 2 + GLR_H / 6), GLR_BG,
            "in both axes");
+}
+
+/* ===================================================== reading back
+ *
+ * The savegame photo and the screenshot key, which are the same
+ * capability: the finished picture, out of the renderer and into
+ * memory.
+ *
+ * Both were missing here. The photo asks through the interface's
+ * request 24, which this renderer did not answer, so the engine handed
+ * the JPEG encoder the buffer it had just allocated and the photo came
+ * out as noise -- the one failure mode a test of the *calls* could
+ * never see, because there were no calls. So these cases read pixels:
+ * a picture of a known colour goes in, and the bytes that come back
+ * are compared to it.
+ *
+ * What the cases pin beyond "something came back":
+ *
+ *   the byte order. Three bytes a pixel in the order the other
+ *   renderer packs them -- blue, green, red -- so the encoder
+ *   downstream sees what it has always seen. Reading as RGBA instead
+ *   gives a photo with its reds and blues swapped, which is not noise
+ *   and would pass a test that only looked for colour;
+ *
+ *   which way up it is. OpenGL hands a frame back bottom row first, so
+ *   a reader that forgets gives an upside-down photo -- and an
+ *   upside-down photo of an evenly lit scene looks fine;
+ *
+ *   the rectangle. The request's two cut fields are named the wrong
+ *   way round, and a reader that takes them at their names crops the
+ *   wrong part of the frame.
+ */
+static void caseSnapshotColours(void)
+{
+    tGdi_SnapshotRequest req;
+    unsigned char*       out;
+    int                  i;
+
+    printf("-- the photo's bytes are the picture's, in the other"
+           " renderer's order\n");
+    glr_Reset();
+    glr_Begin();
+
+    /* A flat colour with all three channels different, so the order
+       they come back in cannot be mistaken. */
+    glr_IdentityMatrices();
+    glr_BuildQuad();
+    for (i = 0; i < 4; i++)
+    {
+        glr_pos[i].x *= 4.0f;
+        glr_pos[i].y *= 4.0f;
+    }
+    glr_SolidColour(0x20, 0x60, 0xA0, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    GL_TextureInit(-1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+
+    out = (unsigned char*)malloc(16 * 8 * 3);
+    ok(out != NULL, "room for the photo");
+    if (!out)
+        return;
+    memset(out, 0xCD, 16 * 8 * 3);
+
+    memset(&req, 0, sizeof(req));
+    req.flags = 0;
+    req.cutSizeFromTopAndBottom = 4;   /* the horizontal offset */
+    req.cutSizeFromSides = 2;          /* the vertical one */
+    req.width = 16;
+    req.height = 8;
+    req.srcData = (char*)out;
+    GL_Request(24, &req);
+
+    /* Blue, green, red -- the order the other renderer's surface has
+       and the order its own copy leaves in the buffer. */
+    okEq(out[0], 0xA0, "the first byte is the blue");
+    okEq(out[1], 0x60, "then the green");
+    okEq(out[2], 0x20, "then the red");
+
+    /* Every pixel of it, so a reader that filled one row and left the
+       rest, or packed with a stride of four, is caught. */
+    {
+        int wrong = 0;
+
+        for (i = 0; i < 16 * 8; i++)
+            if (out[i * 3 + 0] != 0xA0 || out[i * 3 + 1] != 0x60
+                || out[i * 3 + 2] != 0x20)
+                wrong++;
+        okEq(wrong, 0, "and all of it is the picture rather than the"
+                       " buffer it was handed");
+    }
+    free(out);
+}
+
+static void caseSnapshotWayUpAndRect(void)
+{
+    tGdi_SnapshotRequest req;
+    unsigned char*       out;
+    int                  i;
+
+    printf("-- it is the right way up, and the right part of the"
+           " frame\n");
+    glr_Reset();
+    glr_Begin();
+    glr_IdentityMatrices();
+
+    /* The top half of the picture red, the bottom half blue. In clip
+       space the top is y positive; on the screen it is the low rows
+       that OpenGL hands back first, which is the whole of what this
+       case is about. */
+    glr_BuildQuad();
+    for (i = 0; i < 4; i++)
+        glr_pos[i].x *= 4.0f;
+    glr_pos[0].y = glr_pos[1].y = 0.0f;
+    glr_pos[2].y = glr_pos[3].y = 4.0f;
+    glr_SolidColour(0xFF, 0x00, 0x00, 0xFF);
+    glr_dd.drawMaskAllowedStuffCurrent = 0x10;
+    GL_TextureInit(-1, 0, 0);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+
+    glr_BuildQuad();
+    for (i = 0; i < 4; i++)
+        glr_pos[i].x *= 4.0f;
+    glr_pos[0].y = glr_pos[1].y = -4.0f;
+    glr_pos[2].y = glr_pos[3].y = 0.0f;
+    glr_SolidColour(0x00, 0x00, 0xFF, 0xFF);
+    GL_DrawElementIndexedTriangles(&glr_chunk, glr_pos, glr_uv, 4);
+
+    /* The whole frame, so the two halves are both in the photo. */
+    out = (unsigned char*)malloc((size_t)GLR_W * (size_t)GLR_H * 3);
+    if (!out)
+        return;
+    memset(&req, 0, sizeof(req));
+    req.width = GLR_W;
+    req.height = GLR_H;
+    req.srcData = (char*)out;
+    GL_Request(24, &req);
+
+    /* The photo's first row is the top of the picture, which is the
+       red half: the other renderer's photo counts rows down the
+       picture and the engine's encoder does too. */
+    okEq(out[2], 0xFF, "the photo's first row is the top of the"
+                       " picture");
+    okEq(out[0], 0x00, "which is the red half and not the blue");
+    {
+        const unsigned char* last =
+            out + ((size_t)(GLR_H - 1) * (size_t)GLR_W) * 3;
+
+        okEq(last[0], 0xFF, "and its last row is the bottom");
+        okEq(last[2], 0x00, "which is the blue half");
+    }
+
+    /* And the rectangle: a photo of the bottom half alone, asked for
+       with the vertical offset the request's oddly named field
+       carries, is all blue. */
+    memset(&req, 0, sizeof(req));
+    req.cutSizeFromSides = GLR_H / 2;      /* the vertical offset */
+    req.width = GLR_W;
+    req.height = GLR_H / 2;
+    req.srcData = (char*)out;
+    GL_Request(24, &req);
+    {
+        int reds = 0;
+        int n = GLR_W * (GLR_H / 2);
+
+        for (i = 0; i < n; i++)
+            if (out[i * 3 + 2] > 0x40)
+                reds++;
+        okEq(reds, 0, "the lower half of the frame has none of the top"
+                      " half in it");
+        okEq(out[0], 0xFF, "and is the blue one");
+    }
+    free(out);
+}
+
+static void caseSnapshotRefused(void)
+{
+    tGdi_SnapshotRequest req;
+    unsigned char        out[12];
+
+    printf("-- and the two flags that mean no\n");
+
+    /* The same two tests the other renderer makes: a low byte that is
+       not nought, or a second byte of two, and nothing is written. The
+       buffer keeps what it had, which is what the engine's own caller
+       relies on when it asks and is refused. */
+    glr_Reset();
+    glr_Begin();
+
+    memset(out, 0xCD, sizeof(out));
+    memset(&req, 0, sizeof(req));
+    req.flags = 1;
+    req.width = 2;
+    req.height = 2;
+    req.srcData = (char*)out;
+    GL_Request(24, &req);
+    okEq(out[0], 0xCD, "a low flag byte refuses the photo");
+
+    memset(&req, 0, sizeof(req));
+    req.flags = 2 << 8;
+    req.width = 2;
+    req.height = 2;
+    req.srcData = (char*)out;
+    GL_Request(24, &req);
+    okEq(out[0], 0xCD, "and so does a second byte of two");
+}
+
+static void caseScreenshotFile(void)
+{
+    FILE*         f;
+    unsigned char head[8];
+    size_t        got;
+
+    printf("-- the screenshot key writes a file\n");
+
+    /* The key is answered through the interface, and the file is
+       written at the end of the flip rather than where the key was
+       read -- so asking and then flipping is what produces it. */
+    glr_Reset();
+    glr_Begin();
+    remove("screenshots\\20261117_000000_000.png");
+    remove("screenshots/20261117_000000_000.png");
+
+    GL_Request(26, NULL);
+    GL_Flip();
+
+    f = fopen("screenshots\\20261117_000000_000.png", "rb");
+    if (!f)
+        f = fopen("screenshots/20261117_000000_000.png", "rb");
+    ok(f != NULL, "a file was written");
+    if (!f)
+        return;
+    got = fread(head, 1, sizeof(head), f);
+    fclose(f);
+    okEq((long)got, 8, "with a header in it");
+    okEq(head[0], 0x89, "and it is a PNG");
+    okEq(head[1], 'P', "P");
+    okEq(head[2], 'N', "N");
+    okEq(head[3], 'G', "G");
+
+    /* Asking once writes one file: the flag is cleared, so every
+       frame after it does not quietly write another. */
+    remove("screenshots\\20261117_000000_000.png");
+    remove("screenshots/20261117_000000_000.png");
+    GL_Flip();
+    f = fopen("screenshots\\20261117_000000_000.png", "rb");
+    if (!f)
+        f = fopen("screenshots/20261117_000000_000.png", "rb");
+    okEq(f != NULL, 0, "and the frame after it writes nothing");
+    if (f)
+        fclose(f);
 }
 
 /* ===================================================== the depth blur
@@ -6166,6 +6435,10 @@ int main(void)
     caseWaterReflectionCleared();
     caseWaterBlend();
     caseWaterIgnoresTheEngineView();
+    caseSnapshotColours();
+    caseSnapshotWayUpAndRect();
+    caseSnapshotRefused();
+    caseScreenshotFile();
     caseWaterNotBlended();
     caseWaterDepth();
     caseWaterSampling();
