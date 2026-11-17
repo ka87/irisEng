@@ -384,6 +384,8 @@ int   PC_AE_MASTER;
    is how the two functions renamed before it are handled. */
 float brightnessParam;
 float colorBalanceParam1;
+/* How much of the grayscale, 0 to 1, with 0 meaning none of it. */
+float blackAndWhiteParam1;
 /* What an effect's first parameter currently is, by the id the comment
    above uses. Declared here rather than beside the renderer that
    defines it, because the overlay reads it and cannot see a header

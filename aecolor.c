@@ -58,6 +58,7 @@ static void AEC_l_Brightness(float balance, tAec_Step* out)
 
     out->kind = AEC_BRIGHTNESS;
     out->gain = 1.0f;
+    out->blend = 1.0f;
 
     if (balance >= AEC_NEUTRAL)
     {
@@ -100,6 +101,7 @@ static void AEC_l_Brightness(float balance, tAec_Step* out)
 static void AEC_l_Contrast(float balance, tAec_Step* out)
 {
     out->kind = AEC_CONTRAST;
+    out->blend = 1.0f;
 
     if (balance < AEC_NEUTRAL)
     {
@@ -148,7 +150,7 @@ static void AEC_l_Contrast(float balance, tAec_Step* out)
  * sum. Written out that way the whole effect is one dot product, which
  * is what this fills in -- the two-stage shape is the hardware's, not
  * the effect's. */
-static void AEC_l_Grayscale(tAec_Step* out)
+static void AEC_l_Grayscale(float amount, tAec_Step* out)
 {
     /* The weights as the hardware holds them, before the signed
        reading: 154, 218 and 136 of 255. */
@@ -167,6 +169,12 @@ static void AEC_l_Grayscale(tAec_Step* out)
     }
     out->gain = (float)(2.0 * AEC_GRAY_D);
     out->bias = (float)((2.0 * AEC_GRAY_D - 1.0) * sum);
+
+    /* The amount, quantised the way the renderer that has this
+       quantises it: it carries the amount as a vertex alpha, so a
+       byte, truncated -- the same treatment and the same reason as
+       the two parameters above. */
+    out->blend = (float)AEC_l_f_Byte((double)amount * 255.0);
 }
 
 int AEC_i_Steps(const tAec_Source* src, tAec_Step* out, int max)
@@ -190,10 +198,14 @@ int AEC_i_Steps(const tAec_Source* src, tAec_Step* out, int max)
         AEC_l_Contrast(src->contrast, &out[n]);
         n++;
     }
-    if ((src->aeMaster & AEC_GRAY_BIT) != 0 && n < max)
+    /* The bit is not the whole of this one's gate: the amount is
+       neutral at nought, and the bit set with no amount is no
+       grayscale rather than all of it. */
+    if ((src->aeMaster & AEC_GRAY_BIT) != 0 && src->grayscale != 0.0f
+        && n < max)
     {
         memset(&out[n], 0, sizeof(out[n]));
-        AEC_l_Grayscale(&out[n]);
+        AEC_l_Grayscale(src->grayscale, &out[n]);
         n++;
     }
     return n;

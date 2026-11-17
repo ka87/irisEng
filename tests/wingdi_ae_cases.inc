@@ -37,7 +37,11 @@ static void XCAT(SIDE, ResetSide)(void)
     X(blurFactor) = 0.0f;
     X(zoomSmoothFactor2) = 0.0f;
     X(texFactorProbablyUnunsedType2) = 0.0f;
-    X(blackAndWhiteParam1) = 0.0f;
+    /* All of the grayscale. The frozen copy has no amount -- it is
+       the whole of it or nothing -- so the comparison runs at the one
+       value where the two agree; the amount's own behaviour is
+       checked in tests/test_aecolor.c and the OpenGL overlay test. */
+    X(blackAndWhiteParam1) = 1.0f;
 }
 
 /* ---- the snapshot that goes into the log at the end of a case ----- */

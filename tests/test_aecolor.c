@@ -82,7 +82,79 @@ static tAec_Source src(unsigned int master, float brightness, float contrast)
     s.aeMaster = master;
     s.brightness = brightness;
     s.contrast = contrast;
+    /* The whole of the grayscale, which is what every case below was
+       written against. The amount has a section of its own. */
+    s.grayscale = 1.0f;
     return s;
+}
+
+static tAec_Source srcGray(float amount)
+{
+    tAec_Source s = src(1u, 0.5f, 0.5f);
+
+    s.grayscale = amount;
+    return s;
+}
+
+/* ------------------------------------------------------- the amount */
+
+/* The grayscale is the one of the three with an amount of its own,
+   and its bit is not the whole of its gate. The amount reaches the
+   hardware as a vertex alpha -- a byte, truncated -- so the number
+   here is quantised rather than the float that came in. */
+static void caseGrayAmount(void)
+{
+    tAec_Step   st[AEC_MAX_STEPS];
+    tAec_Source s;
+
+    printf("-- how much of the grayscale\n");
+
+    s = srcGray(0.0f);
+    okEq(AEC_i_Steps(&s, st, AEC_MAX_STEPS), 0,
+         "the bit set and no amount is no grayscale, not all of it");
+
+    s = srcGray(1.0f);
+    okEq(AEC_i_Steps(&s, st, AEC_MAX_STEPS), 1, "all of it is one step");
+    okEq(st[0].kind, AEC_GRAYSCALE, "and it is the grayscale");
+    okNear(st[0].blend, 1.0f, 1e-6, "which replaces the picture outright");
+
+    s = srcGray(0.4f);
+    okEq(AEC_i_Steps(&s, st, AEC_MAX_STEPS), 1, "and so is part of it");
+    okNear(st[0].blend, 102.0f / 255.0f, 1e-6,
+           "four tenths is 102 of 255, the byte the hardware carries");
+
+    /* 0.4009 * 255 is 102.2, which rounds to 102 either way; 0.4019 is
+       102.5 and separates the two. */
+    s = srcGray(0.4019608f);
+    okNear(st[0].blend, 102.0f / 255.0f, 1e-6, "and a half step is truncated, not rounded");
+    okEq(AEC_i_Steps(&s, st, AEC_MAX_STEPS), 1, "still one step");
+    okNear(st[0].blend, 102.0f / 255.0f, 1e-6, "still truncated");
+
+    s = srcGray(2.0f);
+    okEq(AEC_i_Steps(&s, st, AEC_MAX_STEPS), 1, "more than all of it is a step");
+    okNear(st[0].blend, 1.0f, 1e-6, "and is all of it");
+
+    /* The weights do not move with the amount: the amount mixes the
+       result back, it does not weaken the sum. */
+    s = srcGray(0.4f);
+    AEC_i_Steps(&s, st, AEC_MAX_STEPS);
+    {
+        tAec_Step   full[AEC_MAX_STEPS];
+        tAec_Source f = srcGray(1.0f);
+
+        AEC_i_Steps(&f, full, AEC_MAX_STEPS);
+        okNear(st[0].gain, full[0].gain, 1e-6, "the gain is the amount's business, not the sum's");
+        okNear(st[0].weights[1], full[0].weights[1], 1e-6, "nor the weights'");
+    }
+
+    /* The other two have no amount, and say so rather than leaving it
+       at zero -- a step with no blend would draw nothing. */
+    s = src(0u, 0.7f, 0.5f);
+    okEq(AEC_i_Steps(&s, st, AEC_MAX_STEPS), 1, "a brightness on its own");
+    okNear(st[0].blend, 1.0f, 1e-6, "replaces the picture outright");
+    s = src(0u, 0.5f, 0.8f);
+    okEq(AEC_i_Steps(&s, st, AEC_MAX_STEPS), 1, "and a contrast");
+    okNear(st[0].blend, 1.0f, 1e-6, "likewise");
 }
 
 /* ------------------------------------------------------- which apply */
@@ -478,6 +550,7 @@ static void caseClampBetween(void)
 int main(void)
 {
     caseWhichApply();
+    caseGrayAmount();
     caseBrightness();
     caseContrast();
     caseGrayscale();

@@ -43,7 +43,7 @@ float zoomSmoothFactor = 0.0f;
 float blurFactor = 0.0f;
 float zoomSmoothFactor2 = 0.0f;
 float texFactorProbablyUnunsedType2 = 0.0f;
-float blackAndWhiteParam1 = 0.0f; // FIXME: unused ?
+float blackAndWhiteParam1 = 0.0f;
 
 
 /* The chain reaches the device through three mirrors of its state --
@@ -967,6 +967,84 @@ void D3D_AE_CopyToScreen(IDirect3DTexture9* d3dtex)
 // the usual cheap luma. DOTPRODUCT3 writes its one scalar to all
 // three channels, so what lands is grey rather than tinted, and
 // alpha is masked out of the write and left as it was.
+// The grey, mixed back over the picture it came from by the amount
+// the effect was asked for.
+//
+// It is a pass of its own because it cannot be a stage of the one
+// above: that pass needs a vertex alpha of a half, to bias the source
+// for the dot product, and this needs the vertex alpha to be the
+// amount. One diffuse colour per vertex, so one of the two has to go
+// in a draw of its own.
+//
+// Stage 0 selects the grey, stage 1 mixes the picture into it by the
+// diffuse alpha -- grey*a + picture*(1-a) -- so an amount of one is
+// the grey alone and nought is the picture untouched. The amount
+// reaches the hardware as a byte and is truncated, not rounded.
+void D3D_GrayscaleBlend(IDirect3DTexture9* dest, IDirect3DTexture9* grey,
+                        IDirect3DTexture9* src, float amount)
+{
+    int i;
+    int alpha;
+    unsigned int color;
+    float height;
+    float width;
+    tVertex_type_144 quad[4];
+
+    alpha = (int)(amount * 255.0f);
+    if (alpha < 0)
+        alpha = 0;
+    if (alpha > 255)
+        alpha = 255;
+    color = ((unsigned int)alpha << 24) | 0x00FFFFFFu;
+
+    D3D_SetRenderTargetFromTexture(dest);
+    AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+    AE_SetStageState(0, &textureStageTypeConfig[0].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+    AE_SetStageState(0, &textureStageTypeConfig[0].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 0, (IDirect3DBaseTexture9*)grey);
+    // The quad carries one set of coordinates, so the second stage is
+    // told to read that one rather than a set of its own.
+    AE_SetStageState(1, &textureStageTypeConfig[1].d3dTexCoordIndex, D3DTSS_TEXCOORDINDEX, 0);
+    AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_BLENDDIFFUSEALPHA);
+    AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg1, D3DTSS_COLORARG1, D3DTA_CURRENT);
+    AE_SetStageState(1, &textureStageTypeConfig[1].d3d_colorarg2, D3DTSS_COLORARG2, D3DTA_TEXTURE);
+    AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+    AE_SetStageState(1, &textureStageTypeConfig[1].d3d_alphaArg1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
+    D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, 1, (IDirect3DBaseTexture9*)src);
+    width = (float)D3DRenderParams.presentParams.BackBufferWidth;
+    height = (float)D3DRenderParams.presentParams.BackBufferHeight;
+    quad[0].uvSet1.v = bandsVal2;
+    quad[1].uvSet1.v = bandsVal1;
+    quad[2].uvSet1.v = bandsVal2;
+    quad[0].v1.y = bandsVal2 * height - 0.5f;
+    quad[3].uvSet1.v = bandsVal1;
+    quad[0].v1.x = 0.0;
+    quad[0].uvSet1.u = 0.0;
+    quad[1].v1.x = 0.0;
+    quad[1].uvSet1.u = 0.0;
+    quad[1].v1.y = bandsVal1 * height;
+    quad[2].uvSet1.u = 1.0;
+    quad[3].uvSet1.u = 1.0;
+    quad[2].v1.x = width - 0.5f;
+    quad[2].v1.y = quad[0].v1.y;
+    quad[3].v1.x = quad[2].v1.x;
+    quad[3].v1.y = quad[1].v1.y;
+    for (i = 0; i < 4; i++)
+    {
+        quad[i].v1.z = 0.0f;
+        quad[i].hw = 1.0f;
+        quad[i].color = color;
+    }
+    D3D_DrawASurface(quad, D3DFVF_TEX1 | D3DFVF_DIFFUSE | D3DFVF_XYZRHW);
+    for (i = 0; i < 3; ++i)
+    {
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_colorOp, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        AE_SetStageState(i, &textureStageTypeConfig[i].d3d_alphaOp, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+        D3DRenderParams.d3dDev->lpVtbl->SetTexture(D3DRenderParams.d3dDev, i, NULL);
+    }
+}
+
 void D3D_Grayscale(IDirect3DTexture9* dest, IDirect3DTexture9* src)
 {
     int i;
@@ -2851,8 +2929,33 @@ void D3D_PC_AE(tWorld* param1)
         D3D_ColorBalance(D3DRenderParams.tmpRenderTarget, current, colorBalanceParam1);
         CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, current);
     }
-    if ((PC_AE_MASTER & 1) != 0) {
-        D3D_Grayscale(D3DRenderParams.tmpRenderTarget, current);
+    /* The bit is not the whole of this one's gate: the amount is
+       neutral at nought, so the bit set with no amount is no
+       grayscale rather than all of it.
+
+       Two draws, and three textures: the grey cannot be made in the
+       picture's own target, and it cannot be mixed back over a
+       picture it has overwritten. The blur target is the spare here
+       -- the chain swaps between the other two and is done with this
+       one by the time the colour runs. */
+    if ((PC_AE_MASTER & 1) != 0 && blackAndWhiteParam1 != 0.0f) {
+        if (blackAndWhiteParam1 >= 1.0f) {
+            /* All of it: the mix would be the grey and nothing else,
+               so the grey goes straight where the mix would have put
+               it and the second draw is not made. */
+            D3D_Grayscale(D3DRenderParams.tmpRenderTarget, current);
+        } else {
+            /* Part of it: three textures, because the grey cannot be
+               made in the picture's own target and cannot then be
+               mixed back over a picture it has overwritten. The blur
+               target is the spare -- the chain swaps between the
+               other two and is done with this one by the time the
+               colour runs. */
+            D3D_Grayscale(D3DRenderParams.blurRenderTarget, current);
+            D3D_GrayscaleBlend(D3DRenderParams.tmpRenderTarget,
+                               D3DRenderParams.blurRenderTarget, current,
+                               blackAndWhiteParam1);
+        }
         CopyRenderTargetTexture(D3DRenderParams.d3dDev, D3DRenderParams.tmpRenderTarget, current);
     }
     D3D_AE_CopyToScreen(current);

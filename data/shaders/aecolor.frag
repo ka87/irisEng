@@ -34,6 +34,16 @@ uniform float uGrayscale;
 // oversight here.
 uniform vec3 uWeights;
 
+// How much of the step replaces what went in. Only the grayscale is
+// ever anything but one: it is the one of the three with an amount of
+// its own, so half of it leaves half the colour.
+//
+// The other renderer spells this as a second pass, mixing the step's
+// target back over its source, so it quantises to eight bits twice
+// where this quantises once. The step itself is clamped before the
+// mix either way, which is the part that shows.
+uniform float uBlend;
+
 void main()
 {
     vec4 src = texture(uSrc, vUV);
@@ -51,6 +61,7 @@ void main()
     // The alpha travels on. Nothing in this group reads it or writes
     // it -- the renderer that has them narrows the write to colour --
     // and the effects that mix by it still need it.
-    oColor = vec4(clamp(mix(perChannel, summed, uGrayscale), 0.0, 1.0),
-                  src.a);
+    vec3 stepped = clamp(mix(perChannel, summed, uGrayscale), 0.0, 1.0);
+
+    oColor = vec4(mix(src.rgb, stepped, uBlend), src.a);
 }
