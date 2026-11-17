@@ -565,6 +565,12 @@ static void ResetShared(void)
        rewrite. */
     GDI_gi_TextureUVMode = 0;
     GDI_gi_Diffuse2x = 0;
+    /* Off for the comparison, on in the game: the frozen copy knows
+       nothing about the unit normal the chrome mapping needs, so with
+       this on the new side would ask for a render state the frozen one
+       never does and every chrome case would read as a difference.
+       chromeUnitNormalCase below is what tests it instead. */
+    tweak_d3d_chrome = 0;
     memset(&renderStateConfig, 0, sizeof(renderStateConfig));
     memset(samplerConfig, 0, sizeof(samplerConfig));
     memset(textureStageTypeConfig, 0, sizeof(textureStageTypeConfig));
@@ -1810,6 +1816,85 @@ static void RunCase(int kind, unsigned int seed)
     CompareLogs(kind, seed, savedLog, na);
 }
 
+/* Asking the hardware for a unit normal while a chrome material is
+   drawn exists only on the new side, so there is no frozen copy to
+   compare it against. Three things are required of it, and each one
+   fails a different way of getting it wrong: the state goes on for
+   the chrome mode (deleting the line), it stays off for every other
+   mode (dropping the mode test), and the tweak can turn it off
+   (ignoring the tweak). */
+static void chromeUnitNormalCase(void)
+{
+    const tSide* s = &sides[1];
+    unsigned int seed, found = 0u;
+    int chromeOn = 0, otherMode = 0, tweakedOff = 0;
+
+    /* Not every world reaches the buffered draw -- the immediate-mode
+       arms return before it -- so look for one that does rather than
+       trusting a seed to. A check that never reaches the line it is
+       about would pass for the wrong reason, so running out of seeds
+       is itself a failure below. */
+    for (seed = 0u; seed < 256u && !found; seed++)
+    {
+        Setup(s, C_DRAWTRIS, seed);
+        /* the setup randomises the cached state, so each run starts
+           from a known value and the check reads what the draw did,
+           not what the seed left */
+        renderStateConfig.d3d_normalizeNormals = 0;
+        tweak_d3d_chrome = 1;
+        GDI_gi_TextureUVMode = 2;
+        s->DrawElementIndexedTriangles(&W.chunks[0], W.verts, NULL,
+                                       (int)W.geogro.vertexNum);
+        if (renderStateConfig.d3d_normalizeNormals)
+        {
+            chromeOn = 1;
+            found = seed + 1u;
+        }
+    }
+
+    if (found)
+    {
+        seed = found - 1u;
+
+        Setup(s, C_DRAWTRIS, seed);
+        renderStateConfig.d3d_normalizeNormals = 1;
+        tweak_d3d_chrome = 1;
+        GDI_gi_TextureUVMode = 1;
+        s->DrawElementIndexedTriangles(&W.chunks[0], W.verts, NULL,
+                                       (int)W.geogro.vertexNum);
+        otherMode = renderStateConfig.d3d_normalizeNormals;
+
+        Setup(s, C_DRAWTRIS, seed);
+        renderStateConfig.d3d_normalizeNormals = 0;
+        tweak_d3d_chrome = 0;
+        GDI_gi_TextureUVMode = 2;
+        s->DrawElementIndexedTriangles(&W.chunks[0], W.verts, NULL,
+                                       (int)W.geogro.vertexNum);
+        tweakedOff = renderStateConfig.d3d_normalizeNormals;
+    }
+
+    tweak_d3d_chrome = 0;
+
+    casesRun++;
+    if (!chromeOn)
+    {
+        printf("  DIFF chrome normal    the chrome mode draws without asking"
+               " for a unit normal, in any of 256 worlds\n");
+        diffs++;
+    }
+    if (otherMode)
+    {
+        printf("  DIFF chrome normal    a mode that is not chrome leaves it"
+               " asked for\n");
+        diffs++;
+    }
+    if (tweakedOff)
+    {
+        printf("  DIFF chrome normal    the tweak does not turn it off\n");
+        diffs++;
+    }
+}
+
 /* The overlay's screen-space pass exists only on the new side, so it
    has no frozen copy to be compared against. What matters about it is
    that it leaves the renderer exactly as it found it: a render state
@@ -2348,6 +2433,7 @@ int main(void)
     overlayPassCase();
     rasterStateCase();
     noDeviceCase();
+    chromeUnitNormalCase();
 
     printf("  %d cases, %lld engine calls compared\n", casesRun, callsCompared);
     printf("  guard distribution:\n");
