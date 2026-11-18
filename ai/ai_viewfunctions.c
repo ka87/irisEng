@@ -8,6 +8,7 @@
 #include "../thirdparty/jpeg-6b/jpeglib.h"
 #include "ai_viewfunctions.h"
 #include "../dbg.h"
+#include "../datapath.h"
 
 int VIEWSNAP_Slot = -1;
 
@@ -68,7 +69,9 @@ void AI_EvalFunc_VIEWSnapshot_DoIt()
         }
         
         /*
-        FILE* fp1 = fopen("dbg.ppm", "wb");
+        char dbgPath[512];
+        FILE* fp1 = DPT_b_UserPath("dbg.ppm", dbgPath, sizeof(dbgPath))
+                    ? fopen(dbgPath, "wb") : NULL;
         if (fp1) {
             fprintf(fp1, "P6\n%d %d\n255\n", rs.width, rs.height);
             fwrite(rs.srcData, 1, rs.width * rs.height * 3, fp1);
@@ -97,7 +100,9 @@ void AI_EvalFunc_VIEWSnapshot_DoIt()
         } while ((int)lJADE_JPEG_INPOUT_FILE_LENGTH > 4096);
       
         /*
-        FILE* fp2 = fopen("dbg.jpg", "wb");
+        char dbgPath2[512];
+        FILE* fp2 = DPT_b_UserPath("dbg.jpg", dbgPath2, sizeof(dbgPath2))
+                    ? fopen(dbgPath2, "wb") : NULL;
         if (fp2) {
             fwrite(rs.srcData, 1, lJADE_JPEG_INPOUT_FILE_LENGTH, fp2);
             fclose(fp2);
