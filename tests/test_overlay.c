@@ -170,7 +170,7 @@ float colorBalanceParam1 = 0.5f;
    the engine's own default arm gives. The numbers are the harness's,
    so a row printing the wrong effect's value prints a number that
    belongs to another row. */
-float PC_AE_MASTER_GET_P1(int effect, int slot)
+float AEM_f_Param(int effect, int slot)
 {
     (void)slot;
     switch (effect)

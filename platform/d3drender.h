@@ -327,7 +327,6 @@ char* rastersDrawPrimitiveUPDataStart;
 char* rastersDrawPrimitiveUPDataEnd;
 
 //AE
-int PC_AE_MASTER;
 extern int CIN_Bands;
 extern int CIN_NoBands;
 int depthblur_Type;

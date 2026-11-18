@@ -506,7 +506,7 @@ typedef struct sOvlEffect
 } tOvlEffect;
 
 /* The id is the effect number the engine's getters take, and it is not
-   the bit's position: PC_AE_MASTER_GET_ONOFF and PC_AE_MASTER_GET_P1
+   the bit's position: AEM_i_OnOff and AEM_f_Param
    are two switches over the same ids, and some ids appear in only one
    of them. So a row's value comes from the value getter by id, and the
    rows that getter has no case for are marked as having none rather
@@ -567,7 +567,7 @@ static int OVL_l_EffectRows(void)
         // whatever it was left at and says nothing about the frame.
         if (on && e->hasValue)
         {
-            sprintf(value, "%.3f", PC_AE_MASTER_GET_P1(e->id, 0));
+            sprintf(value, "%.3f", AEM_f_Param(e->id, 0));
             OVL_l_PanelText(value, OVL_AE_VALUEX, y, OVL_GREEN);
         }
         y += OVL_ROWHEIGHT;

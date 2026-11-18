@@ -49,6 +49,10 @@ $CC $CFLAGS -fsanitize=address -c rasterstate.c -o "$OUT/wgo.rst.o"
 $CC $CFLAGS -fsanitize=address -c depthblur.c -o "$OUT/wgo.dpb.o"
 $CC $CFLAGS -fsanitize=address -c fog.c -o "$OUT/wgo.fog.o"
 $CC $CFLAGS -fsanitize=address -c cinebands.c -o "$OUT/wgo.cbd.o"
+# aftereffects/aemaster.c holds which effects are running, how hard
+# each one runs, and the two getters that read that back. All of it is
+# the scripts' state and neither renderer's, so one copy serves both.
+$CC $CFLAGS -fsanitize=address -c aftereffects/aemaster.c -o "$OUT/wgo.aem.o"
 $CC $CFLAGS -fsanitize=address -c aftereffects/aecolor.c -o "$OUT/wgo.aec.o"
 $CC $CFLAGS -fsanitize=address -c aftereffects/aeframe.c -o "$OUT/wgo.aef.o"
 # watermesh.c builds the water surface for both renderers. Pure, so
@@ -85,6 +89,6 @@ $CC $CFLAGS -fsanitize=address -c matrixmath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \
-    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.cbd.o" "$OUT/wgo.aec.o" "$OUT/wgo.aef.o" "$OUT/wgo.wms.o" "$OUT/wgo.wrf.o" "$OUT/wgo.wsm.o" "$OUT/wgo.afd.o" "$OUT/wgo.ahu.o" "$OUT/wgo.amo.o" "$OUT/wgo.az2.o" "$OUT/wgo.gsp.o" \
+    "$OUT/wgo.rst.o" "$OUT/wgo.dpb.o" "$OUT/wgo.fog.o" "$OUT/wgo.cbd.o" "$OUT/wgo.aem.o" "$OUT/wgo.aec.o" "$OUT/wgo.aef.o" "$OUT/wgo.wms.o" "$OUT/wgo.wrf.o" "$OUT/wgo.wsm.o" "$OUT/wgo.afd.o" "$OUT/wgo.ahu.o" "$OUT/wgo.amo.o" "$OUT/wgo.az2.o" "$OUT/wgo.gsp.o" \
     "$OUT/wgo.wgmath.o" "$OUT/wgo.math.o" -o "$OUT/wgo" -lm
 "$OUT/wgo"

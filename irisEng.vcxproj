@@ -373,6 +373,7 @@
     <ClCompile Include="waterreflect.c" />
     <ClCompile Include="aftereffects\aefade.c" />
     <ClCompile Include="aftereffects\aehue.c" />
+    <ClCompile Include="aftereffects\aemaster.c" />
     <ClCompile Include="aftereffects\aemotion.c" />
     <ClCompile Include="aftereffects\aezoom2.c" />
     <ClCompile Include="perfbars.c" />
@@ -745,6 +746,7 @@
     <ClInclude Include="waterreflect.h" />
     <ClInclude Include="aftereffects\aefade.h" />
     <ClInclude Include="aftereffects\aehue.h" />
+    <ClInclude Include="aftereffects\aemaster.h" />
     <ClInclude Include="aftereffects\aemotion.h" />
     <ClInclude Include="aftereffects\aezoom2.h" />
     <ClInclude Include="pngsave.h" />

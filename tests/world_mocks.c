@@ -66,6 +66,12 @@
 
 /* globals world.c reads that the engine headers declare extern */
 int ENG_gb_ActiveSectorization;
+/* The after-effects word, which the world's shutdown clears two bits
+   of. It is aftereffects/aemaster.c's now rather than storage every
+   includer of the renderer's header got a copy of, and that module is
+   not linked here: nothing in this differential reads the word back,
+   and both sides clear the same one. */
+int PC_AE_MASTER;
 int GFX_gl_FS_VideoPlaying;
 float AI_gf_Epsilon;
 struct sGameObjectMain** AI_MainActor;

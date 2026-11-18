@@ -290,6 +290,9 @@
     <ClCompile Include="aftereffects\aehue.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="aftereffects\aemaster.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="aftereffects\aemotion.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -1031,6 +1034,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="aftereffects\aehue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="aftereffects\aemaster.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="aftereffects\aemotion.h">
