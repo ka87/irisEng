@@ -158,6 +158,12 @@ int PLT_b_ShiftHeld(void)
     return (SDL_GetModState() & SDL_KMOD_SHIFT) != 0;
 }
 
+int PLT_b_CtrlHeld(void)
+{
+    /* Either control, as with shift. */
+    return (SDL_GetModState() & SDL_KMOD_CTRL) != 0;
+}
+
 int PLT_b_NumLockOn(void)
 {
     /* The lamp, not the key: this is the toggle's state. */
@@ -421,6 +427,40 @@ const char* PLT_sz_KeyName(int dik)
     if (dik < 0 || dik > 255 || plt_scancodeOf[dik] == SDL_SCANCODE_UNKNOWN)
         return "";
     return SDL_GetScancodeName(plt_scancodeOf[dik]);
+}
+
+int PLT_b_KeyHeld(int key)
+{
+    const bool*  state;
+    int          numKeys = 0;
+    SDL_Scancode scan;
+
+    if (key < 0 || key > 255)
+        return 0;
+    PLT_l_KeymapBuild();
+    /* The same table the key names are read through: one map, built
+       once, in both directions. */
+    scan = plt_scancodeOf[key];
+    if (scan == SDL_SCANCODE_UNKNOWN)
+        return 0;
+    state = SDL_GetKeyboardState(&numKeys);
+    if (!state || (int)scan >= numKeys)
+        return 0;
+    return state[scan] ? 1 : 0;
+}
+
+void PLT_WaitKeyRelease(int key)
+{
+    while (PLT_b_KeyHeld(key))
+    {
+        /* The state the question above reads is only as new as the
+           last time events were taken off the system, so the pump has
+           to be in here or the key is held forever. A millisecond
+           between looks rather than none: the call this replaced spun
+           as fast as the processor would go. */
+        SDL_PumpEvents();
+        SDL_Delay(1);
+    }
 }
 
 void PLT_ReadDevices(unsigned char* keys, int* mouse)

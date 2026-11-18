@@ -27,6 +27,7 @@
 #include "dbg.h"
 #include "platform.h"
 #include "platform/syscompat.h"
+#include "debugkeys.h"
 
 int ENG_gb_ActiveSectorization = 1;
 int ENG_gb_NeedToReinit = 0; // game doesn't set it explicitly

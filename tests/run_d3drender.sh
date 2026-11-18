@@ -49,6 +49,11 @@ for m in re.finditer(r'^[A-Za-z_][\w \*]*?[\w\*]\s+\**(\w+)\s*\(', src, re.M):
 # apart at the link.
 names += ['MAT_UV_ComputeAndSetTransform', 'MAT_UV_Compute_Chrome',
           'MAT_UV_Compute_PLANAR_GIZMO_NOSTORE']
+# PC_SetUVMatrix went the same way and for the same reason: it is the
+# matrix those three end up writing, there is nothing of a renderer in
+# it, and its callers are all in materialuv.c. The frozen copy still
+# has it, so both sides need the rename.
+names += ['PC_SetUVMatrix']
 names += ['d3dProjectionMtx', 'd3dTransformMatrix', 'd3dTransformMatrix2',
           'engineFogTableModeToD3D', 'worldPtrIfMultiStream',
           'D3D_gi_FlatLayerBox', 'D3D_gi_AspectTrace',
@@ -69,7 +74,12 @@ EOF
 # links, so the rewrite uses that one and only the frozen copy's
 # definition needs a name of its own -- the same arrangement as the UV
 # projections above, from the other end.
-baseonly="rasterNames"
+# PC_EngineCheatFinal is the engine's debug keys and is in
+# debugkeys.c now, which this harness does not build. The frozen copy
+# still has it and nothing compares it, so only that copy's definition
+# needs a name of its own -- without which it would collide the day
+# anything here does link the new file.
+baseonly="rasterNames PC_EngineCheatFinal"
 
 defs() {
     prefix=$1
