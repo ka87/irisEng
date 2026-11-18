@@ -36,11 +36,12 @@ void PLT_WindowSettings(int* width, int* height, int* windowed)
     if (windowed)
         *windowed = 0;
 
-    /* The settings come out of engine.ini beside the executable,
-       where they used to come out of the registry. A value the ini
-       does not carry leaves the default standing, which is how the
-       registry read behaved too -- a missing value left the default
-       rather than zeroing it. */
+    /* The settings come out of [display] in settings.ini, in the
+       player's own folder beside the saves, where they used to come
+       out of the registry and then out of engine.ini. A value the
+       file does not carry leaves the default standing, which is how
+       the registry read behaved too -- a missing value left the
+       default rather than zeroing it. */
     if (windowed && SET_b_DisplayWindowed(&value) && value)
         *windowed = 1;
     if (width && SET_b_DisplayWidth(&value) && value > 0)

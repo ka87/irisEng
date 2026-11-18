@@ -1,14 +1,17 @@
 # irisEng settings
 
 Writes the display settings the engine reads when it starts into the
-`[display]` section of `engine.ini`. Without them it stops with
+`[display]` section of `settings.ini`, in the player's own folder
+beside the saves. Without them it stops with
 "Application settings not correctly set or invalid" before opening a
 window, and a wrong depth format or display mode shows up later as
 "IDirect3D9_CreateDevice failed".
 
 It used to write these as registry values under
-`HKEY_CURRENT_USER\Software\IRISEng`. Nothing in the engine reads the
-registry any more.
+`HKEY_CURRENT_USER\Software\IRISEng`, and then into `engine.ini`
+beside the game. Nothing in the engine reads the registry any more,
+and `engine.ini` is the install's file rather than the player's -- a
+`[display]` section left in it is ignored.
 
 ## Build
 
@@ -20,11 +23,26 @@ engine will see.
 
 ## Where it writes
 
-`engine.ini`, in the folder this application is in. That is the game's
-folder as well, because the two ship together -- and beside the
-executable is where the engine looks for the file rather than in the
-working directory, since a game started from a shortcut has whatever
-working directory the shortcut says.
+`Documents\irisEng\settings.ini` -- the player's own folder, the same
+one the saves and the screenshots are in, and where the engine looks.
+The folder is created if it is not there yet, which it will not be if
+this is run before the game ever has been; the engine creates it too,
+on its way to the same file, so whichever runs first does it.
+
+Not the folder this application is in. That folder is the install, and
+these settings are not what the install is: they are what this player
+has chosen. Keeping them apart means an install can be replaced or
+copied without taking somebody's resolution with it, and that their
+choices survive one. It also means the file is somewhere that can
+certainly be written -- the game has already had to write there to
+save at all, where an install folder under Program Files is not
+somewhere either program can count on.
+
+The engine asks SDL for the documents folder and puts `irisEng` under
+it; this asks .NET for the same folder and uses the same name. That
+name is the one thing the two have to agree on, and it is a constant
+in `Settings.cs` on this side and `DPT_GAMENAME` in `datapath.c` on
+the other.
 
 ## What it writes
 
@@ -64,10 +82,10 @@ size the window before Direct3D exists.
 
 ## The rest of the file is left alone
 
-`engine.ini` is hand-edited and most of it is none of this
-application's business: its comments, and the `[data]`, `[render]` and
-`[video]` sections. Saving therefore edits the file rather than writing
-it out afresh. Each of the seven keys already in `[display]` has its
+`settings.ini` may be hand-edited, and anything in it that is not one
+of the seven keys is none of this application's business -- its
+comments above all. Saving therefore edits the file rather than
+writing it out afresh. Each of the seven keys already in `[display]` has its
 value replaced where it stands, keeping any comment on the end of that
 line; only the ones that are not there yet are added, at the end of the
 section. Nothing else is touched, down to the file's line endings. A

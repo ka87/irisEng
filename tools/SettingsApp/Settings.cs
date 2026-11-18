@@ -7,14 +7,27 @@ using System.Text;
 namespace IrisEngSettings
 {
     /// The display settings the engine reads at start-up. They used to
-    /// be registry values under Software\IRISEng; they are now the
-    /// [display] section of engine.ini. The first four must be there or
-    /// the renderer stops with a message box before opening a window;
-    /// the other three are optional and the engine falls back to
-    /// fullscreen at 640x480 without them.
+    /// be registry values under Software\IRISEng, then the [display]
+    /// section of engine.ini beside the game; they are now settings.ini
+    /// in the player's own folder, beside the saves. The first four
+    /// must be there or the renderer stops with a message box before
+    /// opening a window; the other three are optional and the engine
+    /// falls back to fullscreen at 640x480 without them.
+    ///
+    /// Beside the saves rather than beside the game because this is a
+    /// file that gets written. The game can certainly write there,
+    /// having already had to in order to save at all, where an install
+    /// folder under Program Files is not somewhere either of us can
+    /// count on -- and a player's choices then survive the install
+    /// being replaced or copied instead of going with it.
     internal static class Settings
     {
-        private const string FileName = "engine.ini";
+        private const string FileName = "settings.ini";
+
+        /// The folder under Documents, which is the engine's own spelling
+        /// of its name: one folder for the saves, the screenshots and
+        /// this.
+        private const string GameFolder = "irisEng";
         private const string DisplaySection = "display";
 
         /// The longest of the seven key names, which is what a setting
@@ -39,14 +52,27 @@ namespace IrisEngSettings
             VideoAdapter, Mode, ZBufferDepth, MipMapping, Windowed, Width, Height
         };
 
-        /// The file belongs beside the *game* executable, which is where
-        /// the engine looks for it rather than in the working directory.
-        /// This application ships in the same folder as the game, so the
-        /// folder the running assembly was loaded from is that folder
-        /// too.
+        /// The player's own folder, which is where the engine looks:
+        /// Documents\irisEng\settings.ini. Not the folder this
+        /// application is in -- that is the install, and the install is
+        /// not what these settings are.
+        ///
+        /// The engine asks SDL for the documents folder and puts its own
+        /// name under it; Environment is the same answer, and the one
+        /// place the two have to agree is spelled in GameFolder above.
+        public static string FolderPath
+        {
+            get
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    GameFolder);
+            }
+        }
+
         public static string FilePath
         {
-            get { return Path.Combine(AppContext.BaseDirectory, FileName); }
+            get { return Path.Combine(FolderPath, FileName); }
         }
 
         /// What the ini says about one [display] setting, or null when
@@ -220,14 +246,15 @@ namespace IrisEngSettings
         /// Writes the seven [display] settings and leaves the rest of
         /// the file exactly as it was.
         ///
-        /// engine.ini is hand-edited and carries a good deal this
-        /// application knows nothing about -- its own comments and the
-        /// [data], [render] and [video] sections -- so it is edited line
-        /// by line rather than written out afresh: each of the seven
-        /// keys already in [display] has its value replaced where it
-        /// stands, any that are missing are added at the end of that
-        /// section, and a file with no [display] section at all gets one
-        /// appended.
+        /// settings.ini may be hand-edited, and anything in it that is
+        /// not one of the seven keys this application knows nothing
+        /// about -- its comments above all -- so it is edited line by
+        /// line rather than written out afresh: each of the seven keys
+        /// already in [display] has its value replaced where it stands,
+        /// any that are missing are added at the end of that section,
+        /// and a file with no [display] section at all gets one
+        /// appended. A file that is not there at all is created, folder
+        /// and all.
         public static void Write(int adapter, int mode, uint zBufferDepth, bool mipMapping,
                                  bool windowed, int width, int height)
         {
@@ -345,6 +372,11 @@ namespace IrisEngSettings
 
             try
             {
+                // The folder may not be there yet: this application can
+                // be run before the game ever has been, and then nothing
+                // has made it. The engine makes it too, on its way to
+                // the same file, so whichever runs first does it.
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
                 // No byte order mark: the engine reads the file a line at
                 // a time and a mark would be part of the first one.
                 File.WriteAllText(path, text, new UTF8Encoding(false));

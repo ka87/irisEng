@@ -19,6 +19,17 @@
 enum { SET_SECTION_NONE, SET_SECTION_DATA, SET_SECTION_VIDEO,
        SET_SECTION_RENDER, SET_SECTION_DISPLAY };
 
+/* Which of the two files is being read. They take different sections
+   and a section in the wrong one is worth saying so about rather than
+   quietly obeying: a display setting left in engine.ini by an older
+   install would otherwise fight the player's own file and win or lose
+   by the order they happen to be read in. */
+enum { SET_FILE_ENGINE, SET_FILE_USER };
+
+/* The file the messages below name, so they name the one the reader
+   is actually in. */
+static const char* set_reading = SET_INIFILE;
+
 /* A display setting, and whether the ini said anything about it. The
    two are kept apart because nought is a real answer to most of these
    -- adapter nought is the first adapter, and windowed nought is
@@ -189,7 +200,7 @@ static void SET_l_AddVideo(unsigned id, const char* file)
     if (set_videoNum >= SET_MAXVIDEOS)
     {
         DBG_OutputDebugString("%s: more than %d videos, id 0x%08X dropped\n",
-                              SET_INIFILE, SET_MAXVIDEOS, id);
+                              set_reading, SET_MAXVIDEOS, id);
         return;
     }
     set_videos[set_videoNum].id = id;
@@ -211,7 +222,7 @@ static void SET_l_Setting(int section, char* key, char* value)
             set_binarized = SET_l_b_Flag(value);
         else
             DBG_OutputDebugString("%s: [data] has no setting \"%s\"\n",
-                                  SET_INIFILE, key);
+                                  set_reading, key);
         return;
     }
     if (section == SET_SECTION_RENDER)
@@ -220,7 +231,7 @@ static void SET_l_Setting(int section, char* key, char* value)
             SET_l_CopyName(set_backend, value);
         else
             DBG_OutputDebugString("%s: [render] has no setting \"%s\"\n",
-                                  SET_INIFILE, key);
+                                  set_reading, key);
         return;
     }
     if (section == SET_SECTION_DISPLAY)
@@ -245,7 +256,7 @@ static void SET_l_Setting(int section, char* key, char* value)
 
                 if (end == value || (end && *end))
                     DBG_OutputDebugString("%s: [display] %s is not a number: \"%s\"\n",
-                                          SET_INIFILE, key, value);
+                                          set_reading, key, value);
                 else
                 {
                     known[i].where->value = (int)v;
@@ -255,7 +266,7 @@ static void SET_l_Setting(int section, char* key, char* value)
             }
         }
         DBG_OutputDebugString("%s: [display] has no setting \"%s\"\n",
-                              SET_INIFILE, key);
+                              set_reading, key);
         return;
     }
     if (section == SET_SECTION_VIDEO)
@@ -264,24 +275,48 @@ static void SET_l_Setting(int section, char* key, char* value)
             SET_l_AddVideo(id, value);
         else
             DBG_OutputDebugString("%s: [video] key \"%s\" is not an id\n",
-                                  SET_INIFILE, key);
+                                  set_reading, key);
         return;
     }
     DBG_OutputDebugString("%s: \"%s\" is outside any section\n",
-                          SET_INIFILE, key);
+                          set_reading, key);
 }
 
-static void SET_l_Read(const char* path)
+/* What a fresh pass over the files starts from. Out here rather than
+   in the reader because the reader runs once per file and the second
+   pass must not throw away the first's answers. */
+static void SET_l_Reset(void)
 {
-    FILE* f;
-    char line[SET_LINEMAX];
-    int section = SET_SECTION_NONE;
+    static tDatSetting* const display[] = {
+        &set_adapter, &set_mode, &set_zbuffer, &set_mipmapping,
+        &set_windowed, &set_width, &set_height
+    };
+    int i;
 
     set_bigFile[0] = '\0';
     set_backend[0] = '\0';
     set_binarized = 0;
     set_videoNum = 0;
+    /* The display settings as well, which nothing used to clear
+       because nothing used to read twice. Leaving them would make a
+       second pass keep what the first found in a file that has since
+       been changed or taken away -- and "not set" is the answer the
+       renderer's own message hangs on, so a stale one is worse than
+       most. */
+    for (i = 0; i < (int)(sizeof(display) / sizeof(display[0])); ++i)
+    {
+        display[i]->said = 0;
+        display[i]->value = 0;
+    }
+}
 
+static void SET_l_Read(const char* path, const char* shown, int which)
+{
+    FILE* f;
+    char line[SET_LINEMAX];
+    int section = SET_SECTION_NONE;
+
+    set_reading = shown;
     f = fopen(path, "r");
     if (!f)
         return;        /* no ini is not a problem; the game has its command line */
@@ -312,24 +347,48 @@ static void SET_l_Read(const char* path)
             if (!close)
             {
                 DBG_OutputDebugString("%s: unclosed section \"%s\"\n",
-                                      SET_INIFILE, s);
+                                      set_reading, s);
                 continue;
             }
             *close = '\0';
             s = SET_l_pc_Trim(s + 1);
-            if (SET_l_b_SameWord(s, "data"))
+            if (SET_l_b_SameWord(s, "display"))
+            {
+                /* The player's, and only there. An install that still
+                   has one of these is told so by name, because the
+                   symptom otherwise is a resolution that went back to
+                   what it was and nothing saying why. */
+                if (which == SET_FILE_USER)
+                    section = SET_SECTION_DISPLAY;
+                else
+                {
+                    section = SET_SECTION_NONE;
+                    DBG_OutputDebugString(
+                        "%s: [display] belongs in %s beside your saves now"
+                        " and is ignored here\n", set_reading, SET_USERFILE);
+                }
+            }
+            else if (which == SET_FILE_USER)
+            {
+                /* And the other way about: the install's sections are
+                   the install's. Taking them from here would let a
+                   file in the player's directory say where the game
+                   reads its data from. */
+                section = SET_SECTION_NONE;
+                DBG_OutputDebugString("%s: [%s] belongs in %s and is ignored"
+                                      " here\n", set_reading, s, SET_INIFILE);
+            }
+            else if (SET_l_b_SameWord(s, "data"))
                 section = SET_SECTION_DATA;
             else if (SET_l_b_SameWord(s, "video"))
                 section = SET_SECTION_VIDEO;
             else if (SET_l_b_SameWord(s, "render"))
                 section = SET_SECTION_RENDER;
-            else if (SET_l_b_SameWord(s, "display"))
-                section = SET_SECTION_DISPLAY;
             else
             {
                 section = SET_SECTION_NONE;
                 DBG_OutputDebugString("%s: unknown section [%s]\n",
-                                      SET_INIFILE, s);
+                                      set_reading, s);
             }
             continue;
         }
@@ -338,7 +397,7 @@ static void SET_l_Read(const char* path)
         if (!eq)
         {
             DBG_OutputDebugString("%s: \"%s\" is not a setting\n",
-                                  SET_INIFILE, s);
+                                  set_reading, s);
             continue;
         }
         *eq = '\0';
@@ -353,13 +412,23 @@ void SET_InitModule(void)
 {
     char path[512];
 
+    SET_l_Reset();
+
     /* Beside the executable, not in the working directory: a game
        started from a shortcut has whatever working directory the
-       shortcut says, and the settings are part of the install. */
+       shortcut says, and the install's settings are part of the
+       install. */
     if (DPT_b_ExePath(SET_INIFILE, path, sizeof(path)))
-        SET_l_Read(path);
+        SET_l_Read(path, SET_INIFILE, SET_FILE_ENGINE);
     else
-        SET_l_Read(SET_INIFILE);
+        SET_l_Read(SET_INIFILE, SET_INIFILE, SET_FILE_ENGINE);
+
+    /* And the player's own, beside the saves. The directory is made on
+       the way if it is not there yet, which is what makes this the
+       file the settings application can write: the game has already
+       had to be able to write there to save at all. */
+    if (DPT_b_UserPath(SET_USERFILE, path, sizeof(path)))
+        SET_l_Read(path, SET_USERFILE, SET_FILE_USER);
 }
 
 const char* SET_pc_SpecialArray(void)
