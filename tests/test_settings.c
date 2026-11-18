@@ -94,6 +94,23 @@ int DPT_b_ExePath(const char* name, char* out, size_t n)
     return len > 0 && (size_t)len < n;
 }
 
+/* And where the player's own file is. The real one answers with a
+   folder under Documents, or the user's data directory, and makes it;
+   this one answers with whatever the case below has put a file in,
+   which is how "beside the saves" is checked without any saves. Empty
+   means there is no such place, which is what the real one reports
+   when it cannot be told. */
+static const char* dmUserDir = "";
+int DPT_b_UserPath(const char* name, char* out, size_t n)
+{
+    int len;
+
+    if (!name || !out || !n || !dmUserDir)
+        return 0;
+    len = snprintf(out, (size_t)n, "%s%s", dmUserDir, name);
+    return len > 0 && (size_t)len < n;
+}
+
 #include "../settings.c"
 
 /* ------------------------------------------------------------ the driver */
@@ -115,7 +132,29 @@ static void load(const char* text)
     fclose(f);
 
     dmLogLen = 0;
-    SET_l_Read(TMP);
+    SET_l_Reset();
+    SET_l_Read(TMP, SET_INIFILE, SET_FILE_ENGINE);
+}
+
+/* The same, read as the player's own file rather than the install's.
+   The two take different sections, so which file a case is writing is
+   part of what it is saying. */
+static void loadUser(const char* text)
+{
+    FILE* f = fopen(TMP, "wb");
+
+    if (!f)
+    {
+        printf("  FAIL cannot write %s\n", TMP);
+        fails++;
+        return;
+    }
+    fwrite(text, 1, strlen(text), f);
+    fclose(f);
+
+    dmLogLen = 0;
+    SET_l_Reset();
+    SET_l_Read(TMP, SET_USERFILE, SET_FILE_USER);
 }
 
 static void missingFileIsNotAProblem(void)
@@ -124,7 +163,9 @@ static void missingFileIsNotAProblem(void)
     okStr(SET_pc_BigFile(), "kept.bf", "a file that is there is read");
 
     dmLogLen = 0;
-    SET_l_Read("tests/build/settings_no_such_file.ini");
+    SET_l_Reset();
+    SET_l_Read("tests/build/settings_no_such_file.ini", SET_INIFILE,
+               SET_FILE_ENGINE);
     okStr(SET_pc_BigFile(), NULL, "a missing file leaves the big file unset");
     okInt(SET_b_Binarized(), 0, "and binarized off");
     okStr(SET_pc_Video(0), NULL, "and no videos");
@@ -136,7 +177,7 @@ static void theDisplaySettings(void)
     int v;
 
     printf("-- the display settings, which the registry used to hold\n");
-    load("[display]\n"
+    loadUser("[display]\n"
          "adapter = 1\n"
          "mode = 7\n"
          "zbuffer = 24\n"
@@ -177,6 +218,11 @@ static void theFileBesideTheExecutable(void)
        under a name the working directory does not have, so finding it
        means the rule was followed rather than the old one. */
     dmExeDir = "tests/build/";
+    /* Nowhere, for this case: SET_InitModule reads the player's file
+       as well now, and the working directory is not where to look for
+       it. Without this the case would pass or fail by whether the
+       tree happens to have a settings.ini in it. */
+    dmUserDir = "tests/build/no_such_dir/";
     snprintf(path, sizeof(path), "tests/build/%s", SET_INIFILE);
     f = fopen(path, "wb");
     if (f)
@@ -190,6 +236,105 @@ static void theFileBesideTheExecutable(void)
           "SET_InitModule reads it from there, not from the working directory");
     remove(path);
     dmExeDir = "";
+    dmUserDir = "";
+}
+
+static void eachSectionBelongsToOneFile(void)
+{
+    int v;
+
+    printf("-- each section belongs to one of the two files\n");
+
+    /* The install's file does not get to set the display. An older
+       install still has this section, so being told by name is the
+       difference between a resolution that went back to what it was
+       for a reason and one that did it for none. */
+    load("[display]\nadapter = 3\nwidth = 1024\n");
+    v = -1;
+    okInt(SET_b_DisplayAdapter(&v), 0,
+          "a [display] in the install's file sets nothing");
+    okInt(dmLogLen > 0, 1, "and is reported rather than passed over");
+    okInt(dmLog[0] && strstr(dmLog[0], SET_USERFILE) != NULL, 1,
+          "by the name of the file it belongs in");
+
+    /* And the other way, which matters more: a file in the player's
+       own directory saying where the game reads its data from would
+       be a setting in the wrong hands. */
+    loadUser("[data]\nbigfile = from_the_user_folder.bf\n");
+    okStr(SET_pc_BigFile(), NULL,
+          "a [data] in the player's file names no big file");
+    okInt(dmLogLen > 0, 1, "and is reported too");
+    okInt(dmLog[0] && strstr(dmLog[0], SET_INIFILE) != NULL, 1,
+          "by the name of the file that section belongs in");
+
+    /* The display settings themselves still arrive, from the file
+       they now live in -- so the two checks above are about which
+       file, and not about the section having stopped working. */
+    loadUser("[display]\nadapter = 3\n");
+    v = -1;
+    okInt(SET_b_DisplayAdapter(&v) && v == 3, 1,
+          "and the player's file does set the display");
+    okInt(dmLogLen, 0, "with nothing to report");
+}
+
+static void bothFilesAreRead(void)
+{
+    char enginePath[512];
+    char userPath[512];
+    FILE* f;
+    int   v;
+
+    printf("-- SET_InitModule reads both files, each from its own place\n");
+
+    dmExeDir  = "tests/build/";
+    dmUserDir = "tests/build/";
+    snprintf(enginePath, sizeof(enginePath), "tests/build/%s", SET_INIFILE);
+    snprintf(userPath, sizeof(userPath), "tests/build/%s", SET_USERFILE);
+
+    f = fopen(enginePath, "wb");
+    if (f)
+    {
+        fputs("[data]\nbigfile = install.bf\n[render]\nbackend = gl\n", f);
+        fclose(f);
+    }
+    f = fopen(userPath, "wb");
+    if (f)
+    {
+        fputs("[display]\nadapter = 2\nheight = 1080\n", f);
+        fclose(f);
+    }
+
+    dmLogLen = 0;
+    SET_InitModule();
+    okStr(SET_pc_BigFile(), "install.bf", "the install's file is read");
+    okStr(SET_pc_Backend(), "gl", "all of it");
+    v = -1; okInt(SET_b_DisplayAdapter(&v) && v == 2, 1,
+                  "and the player's file as well");
+    v = -1; okInt(SET_b_DisplayHeight(&v) && v == 1080, 1, "all of that too");
+    okInt(dmLogLen, 0, "and neither has anything to complain about");
+
+    /* The second read does not undo the first. The reader runs once
+       per file and used to clear the data settings on the way in,
+       which would have left the install's answers behind the player's
+       file. */
+    okStr(SET_pc_BigFile(), "install.bf",
+          "and reading the player's file has not cleared the install's");
+
+    /* The player's file missing is the ordinary first run, and is not
+       an error: the install's settings still arrive and the display's
+       simply are not set, which is what the renderer's own message is
+       for. */
+    remove(userPath);
+    dmLogLen = 0;
+    SET_InitModule();
+    okStr(SET_pc_BigFile(), "install.bf",
+          "with no file of the player's the install's is still read");
+    okInt(SET_b_DisplayAdapter(NULL), 0, "and no display setting is set");
+    okInt(dmLogLen, 0, "and nothing is said about the missing file");
+
+    remove(enginePath);
+    dmExeDir  = "";
+    dmUserDir = "";
 }
 
 static void theShippedFile(void)
@@ -197,7 +342,8 @@ static void theShippedFile(void)
     /* The file in the repository root, read as it ships, so a typo in
        it is a failure here rather than a surprise in game. */
     dmLogLen = 0;
-    SET_l_Read("engine.ini");
+    SET_l_Reset();
+    SET_l_Read("engine.ini", SET_INIFILE, SET_FILE_ENGINE);
     okStr(SET_pc_BigFile(), "sally_clean.bf",
           "the shipped ini names the big file");
     okInt(SET_b_Binarized(), 1, "and asks for binarized world files");
@@ -487,6 +633,8 @@ int main(void)
     theDisplaySettings();
     theSpecialArray();
     theFileBesideTheExecutable();
+    eachSectionBelongsToOneFile();
+    bothFilesAreRead();
     theShippedFile();
     layout();
     quoting();

@@ -2,10 +2,25 @@
 
 /*
     Where the game's data files live and how the display is set up,
-    read from an ini file beside the executable rather than compiled
-    in or kept in the registry.
+    read from ini files rather than compiled in or kept in the
+    registry.
 
-    The file is optional. When it is not there, or cannot be read,
+    **Two files, because they belong to different people.** What the
+    install is is one thing and what this player has chosen is
+    another, and they want keeping apart: an install can be copied or
+    replaced without taking somebody's resolution with it, and a
+    player's choices survive it.
+
+    - **engine.ini**, beside the executable: where the data is and
+      which renderer to ask for. Part of the install, and read-only as
+      far as the game is concerned.
+    - **settings.ini**, in the player's own directory beside the
+      saves: how the display is set up. This is the file the settings
+      application writes, which is why it is where the game can
+      certainly write -- an install folder under Program Files is not
+      that, and the saves are already there.
+
+    Both are optional. When one is not there, or cannot be read,
     nothing is set from it and the game runs on its command line
     alone -- that is not an error and is not reported as one.
 
@@ -19,17 +34,18 @@
         specialarray = jade.spe
         binarized    = 1
 
+        [video]
+        0x3001978F = BGEMakingOf.bik
+
+        ; settings.ini, beside the saves
         [display]
         adapter    = 0
         mode       = 0
-        zbuffer    = 24
+        zbuffer    = 77
         mipmapping = 1
         windowed   = 0
         width      = 640
         height     = 480
-
-        [video]
-        0x3001978F = BGEMakingOf.bik
 
     Under [video] the key is the id the script passes to the
     fullscreen video function and the value is the file to play. What
@@ -40,13 +56,17 @@
 */
 
 #define SET_INIFILE   "engine.ini"
+/* The player's own, beside the saves. Named here so the settings
+   application and this agree on one spelling. */
+#define SET_USERFILE  "settings.ini"
 
 /* Long enough for MAI_gst_BIGFileName, which is the longest thing
    read out of here. */
 #define SET_NAMEMAX   288
 
-/* Reads SET_INIFILE from beside the executable. Safe to call when
-   there is no such file. */
+/* Reads SET_INIFILE from beside the executable and SET_USERFILE from
+   the player's own directory, in that order. Safe to call when either
+   or both are missing. */
 void SET_InitModule(void);
 
 /* The big file the ini names, or NULL if it named none. */

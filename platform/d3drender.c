@@ -2852,11 +2852,14 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
     D3DRenderParams.presentParams.BackBufferFormat = D3DFMT_A8R8G8B8;
 
     /* The four the renderer cannot start without, out of [display]
-       in engine.ini beside the executable. They were four registry
-       values under Software\IRISEng\Basic video, and the message
-       below has always been what the player sees when they are not
-       set -- which is now a missing or incomplete ini rather than a
-       missing registry key. */
+       in settings.ini in the player's own folder beside the saves.
+       They were four registry values under
+       Software\IRISEng\Basic video, then the same section of
+       engine.ini beside the executable; they are the player's choice
+       rather than part of the install, and a file that gets written
+       does not belong in an install folder. The message below has
+       always been what the player sees when they are not set, which
+       is now a missing or incomplete settings.ini. */
     if (!SET_b_DisplayAdapter(&D3DRenderParams.d3d_Adapter)
         || !SET_b_DisplayZBuffer(&D3DRenderParams.ZBufferDepth)
         || !SET_b_DisplayMode(&adapterMode)

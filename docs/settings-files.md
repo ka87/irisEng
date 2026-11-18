@@ -1,21 +1,16 @@
-# engine.ini
+# engine.ini and settings.ini
 
-One file for everything the game is told before it starts. Some of it
-used to be compiled in — the big file name, binarized mode, and the
-one video the fullscreen video function could play. The rest came out
-of the Windows registry, where the settings application put it, which
-is a place only Windows has and only an installer fills.
+Everything the game is told before it starts. Some of it used to be
+compiled in — the big file name, binarized mode, and the one video the
+fullscreen video function could play. The rest came out of the Windows
+registry, where the settings application put it, which is a place only
+Windows has and only an installer fills.
+
+**Two files, because they belong to different people.** What the
+install is is one thing and what this player has chosen is another.
 
 ```ini
-[display]
-adapter    = 0
-mode       = 0
-zbuffer    = 75
-mipmapping = 1
-windowed   = 0
-width      = 640
-height     = 480
-
+; engine.ini, beside the executable
 [data]
 bigfile      = sally_clean.bf
 binarized    = 1
@@ -28,10 +23,46 @@ backend = d3d
 0x490294C0 = BGEMakingOf.bik
 ```
 
-A copy ships in the repository root. **It belongs beside the
-executable**, which is where the game looks for it — not the working
-directory, because a game started from a shortcut has whatever
-working directory the shortcut says, and not the source tree.
+```ini
+; settings.ini, in the player's own folder beside the saves
+[display]
+adapter    = 0
+mode       = 0
+zbuffer    = 75
+mipmapping = 1
+windowed   = 0
+width      = 640
+height     = 480
+```
+
+A copy of `engine.ini` ships in the repository root. **It belongs
+beside the executable**, which is where the game looks for it — not
+the working directory, because a game started from a shortcut has
+whatever working directory the shortcut says, and not the source tree.
+
+`settings.ini` ships nowhere, because it is not the install's to
+ship. It is written by the settings application, into the folder the
+saves are in:
+
+| | |
+| --- | --- |
+| Windows | `Documents\irisEng\settings.ini` |
+| anywhere else | `~/.local/share/irisEng/settings.ini` |
+
+The folder is created if it is not there yet, by whichever of the game
+and the settings application gets there first. Two reasons for it
+being there rather than beside the executable: it is a file that gets
+**written**, and an install folder under Program Files is not somewhere
+either program can count on writing — the game has already had to
+write to the saves folder in order to save at all. And keeping the two
+apart means replacing or copying an install does not take somebody's
+resolution with it, and that their choices survive one.
+
+A `[display]` section left in `engine.ini` by an older install is
+ignored, and the reader says so by name in the debug output rather
+than quietly obeying it. The install's sections in `settings.ini` are
+ignored the same way, and for a sharper reason: a file in the player's
+folder has no business saying where the game reads its data from.
 
 Everything the game only reads is found that way: the big file, the
 special array, this file itself, and `data/<folder>/` for the
@@ -43,7 +74,8 @@ and nothing else does.
 
 ## The display
 
-`[display]` is the one section the game cannot do without. The
+`[display]` lives in `settings.ini` and is the one section the game
+cannot do without. The
 Direct3D renderer needs `adapter`, `mode`, `zbuffer` and
 `mipmapping`, and stops with a message box naming the file if any of
 the four is missing — it has no idea which video card or display mode
@@ -69,13 +101,18 @@ and it is looked for beside the executable like the rest of the
 install. It is named here rather than compiled in so a build of that
 file under another name can be tried without rebuilding the game.
 
-## The file is optional
+## Either file is optional
 
-If it is not there, or cannot be opened, nothing is set from it and
-the game runs on its command line alone. That is not an error and
-nothing is written about it, which is the one case where the reader
-says nothing at all: everything else it cannot make sense of, it
-names in the debug output and carries on past.
+If one is not there, or cannot be opened, nothing is set from it and
+the game runs on what the other and the command line say. That is not
+an error and nothing is written about it, which is the one case where
+the reader says nothing at all: everything else it cannot make sense
+of, it names in the debug output and carries on past.
+
+A missing `settings.ini` does stop the Direct3D renderer, but not as a
+reader error — it is the four settings above being absent, and the
+message the player gets is the one the game has always given when they
+were.
 
 ## The command line wins
 
