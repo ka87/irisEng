@@ -129,3 +129,46 @@ rumble functions. That is behaviour the retail PC build never had.
 - the sound, on `SDL_AudioStream`, replacing `win/winsound.c` and
   `win/winvideosound.c`;
 - `dsound.lib` out of the linker inputs.
+
+### The audio device, and a voice per sound
+
+`sndplatform.c` is the sound's equivalent of `platform.c`, and the
+first part of taking the audio off DirectSound. Nothing in the engine
+calls it yet; `win/winsound.c` is the next piece.
+
+It is not a thin wrapper, because the two models do not meet. A
+DirectSound buffer was **memory the engine wrote into** and then told
+to play, loop, seek, pan and attenuate, and it reported back how far
+it had got. An SDL audio stream is the other way round: a queue the
+device pulls from, with no buffer to seek in and no play position to
+read. So a voice here is the buffer *plus* the cursor over it, and the
+feed is what turns one into the other -- a chunk at a time pushed into
+a stream of its own, with SDL mixing the streams together.
+
+The units stay the engine's, which are DirectSound's: attenuation and
+pan are both hundredths of a decibel, attenuation 0 for untouched and
+-10000 for silence, pan the difference between the two channels.
+
+Three places where the two ways of doing it cannot be reconciled, and
+what was chosen:
+
+- **Attenuation** is applied by SDL as it pulls, so a change is heard
+  almost at once -- which is what the engine's fades expect. The
+  device's attenuation and a voice's add, as two attenuations in
+  decibels do.
+- **Pan** is applied as the chunk is fed, because a stream carries one
+  gain and not two. A change is therefore heard one queue later, which
+  is why the chunk is about 10 ms and no more than four are queued.
+- **Nothing here is spatial.** DirectSound could place a buffer in a
+  room, and the engine never asked it to beyond deriving a position on
+  a unit circle from the pan it had already computed itself. Both of
+  `pcSND_i_ChangeRenderMode`'s modes end in a plain `SetPan` and
+  `SetVolume`. So the pan is what carries the intent, and the pan is
+  what is kept; what goes is DirectSound's own spatialisation.
+
+`tests/run_sndplatform.sh` is 93 checks against the real library on
+SDL's dummy audio driver -- a real device, real streams bound to it,
+real conversion, consumed by nothing. Twenty mutations are each
+caught, including the pan not reaching a channel, the two attenuations
+not adding, a one-shot looping anyway, a pause losing its place, and
+a duplicate not sharing its sound.
