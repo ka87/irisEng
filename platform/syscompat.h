@@ -5,6 +5,11 @@
  *
  * Two different things live here:
  *
+ * - **A single-instance guard.** The game refuses to run twice over,
+ *   which it asked for with a named mutex -- a Windows object with no
+ *   counterpart elsewhere. PLT_b_OnlyInstance is the question without
+ *   the answer's platform in it.
+ *
  * - **A debugger check the engine can ask anywhere.** The renderer
  *   wants to know whether it is being debugged, because taking an
  *   exclusive display mode under a debugger wedges the machine. It
@@ -28,6 +33,17 @@
    which is the safe way to be wrong: it costs an exclusive display
    mode, where the other way costs a wedged machine. */
 int PLT_b_DebuggerAttached(void);
+
+/* Whether this is the only copy of the game running. Asked once, at
+   startup, and the thing that says so -- a named mutex on Windows, a
+   locked file beside the saves elsewhere -- is then held for the life
+   of the process and released by the system when it goes, so a crash
+   does not lock the player out of their own game.
+
+   A guard that cannot be put up at all answers yes. Being unable to
+   ask is not a reason to refuse to start, and the cost of being wrong
+   is two copies running rather than none. */
+int PLT_b_OnlyInstance(void);
 
 /* The C library under its POSIX name.
  *

@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "sdlpath.h"
+
 #include "../platform/syscompat.c"
 
 static int checks;
@@ -31,6 +33,38 @@ static void ok(int cond, const char* what)
         failures++;
     }
 }
+
+#ifndef _WIN32
+static void theInstanceGuard(void)
+{
+    char path[512];
+    int  other;
+
+    printf("-- the single-instance guard\n");
+
+    ok(DPT_b_UserPath("irisEng.lock", path, sizeof(path)) != 0,
+       "the lock has somewhere to live");
+
+    /* Somebody else holding it, which is the case the guard exists
+       for: a second copy of the game already running. Taken on a
+       descriptor of this harness's own rather than by calling the
+       guard twice -- the guard remembers its own answer in a static
+       and the second call would come back from that without ever
+       touching the lock. */
+    other = open(path, O_CREAT | O_RDWR, 0644);
+    ok(other >= 0, "and a lock file can be made");
+    ok(flock(other, LOCK_EX | LOCK_NB) == 0, "and held");
+    ok(PLT_b_OnlyInstance() == 0, "a copy that is not the first is refused");
+
+    /* And when the first one goes, the next one starts. A copy that
+       crashed releases the lock on its way out exactly like this, so
+       this is also what says a crash does not lock the player out. */
+    ok(flock(other, LOCK_UN) == 0, "the lock goes back");
+    close(other);
+    ok(PLT_b_OnlyInstance() == 1, "and then a copy starts");
+    ok(PLT_b_OnlyInstance() == 1, "asking again does not refuse itself");
+}
+#endif
 
 static void theDebuggerCheck(void)
 {
@@ -108,8 +142,21 @@ static void theDebugOutput(void)
 
 int main(void)
 {
+    /* The lock goes in a directory of its own under tests/build: the
+       guard's file name is fixed and a test has no business writing it
+       into the tree, or into the real one a game would use. */
+    const char* dir = getenv("SYSCOMPAT_DIR");
+
+    if (!dir)
+    {
+        printf("  FAIL no scratch directory was named\n");
+        return 1;
+    }
+    snprintf(dpt_prefPath, sizeof(dpt_prefPath), "%s/", dir);
+
     theDebuggerCheck();
 #ifndef _WIN32
+    theInstanceGuard();
     thePerformanceCounter();
     theMillisecondClocks();
     theDebugOutput();

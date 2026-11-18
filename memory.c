@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "ai/ai_debugfunctions.h"
 #include "soft.h"
+#include "platform.h"
 
 uint32_t MEM_gpv_LastFree = 0; // engine doesn't explcitly set it zero, but it could have caused problems later (eg AllocFromEnd)
 
@@ -251,7 +252,10 @@ err:
         MEM_gst_MemoryInfo.totalUsedMemory >> 10,
         holesNum,
         sizeOfHoles >> 10);
-    MessageBoxA(0, "No more memory", "No more memory", 0);
+    /* An error box rather than the plain notice the Windows call was
+       asked for: there is no memory left, the next line exits, and a
+       box with no icon reads like something optional. */
+    PLT_Message("No more memory", "No more memory", 1);
     return 0;
 }
 

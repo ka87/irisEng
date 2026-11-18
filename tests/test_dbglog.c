@@ -51,11 +51,13 @@ void OutputDebugStringA(const char* text)
     mockLastDbgString[sizeof(mockLastDbgString) - 1] = 0;
 }
 
-int MessageBoxA(void* h, const char* text, const char* caption,
-                unsigned int type)
+/* The box an assertion puts up. Silent here, as the Windows call it
+   replaced was: no case reads it, and a real one would leave the
+   harness waiting for somebody to click a dialog nobody is looking
+   at. */
+void PLT_Message(const char* title, const char* text, int error)
 {
-    (void)h; (void)text; (void)caption; (void)type;
-    return 0;
+    (void)title; (void)text; (void)error;
 }
 
 int _snprintf(char* buf, size_t count, const char* format, ...)
