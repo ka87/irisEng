@@ -36,6 +36,14 @@ src = open('platform/d3drender.c', encoding='latin-1').read()
 names = []
 for m in re.finditer(r'^[A-Za-z_][\w \*]*?[\w\*]\s+\**(\w+)\s*\(', src, re.M):
     names.append(m.group(1))
+# The three UV projections came out of platform/d3drender.c into
+# materialuv.c, which is compiled below as a second translation unit of
+# this side. They are named here because the frozen copy has two of
+# them by name -- unlike projection.c and geovertex.c, whose contents
+# it only has inline -- so both sides need the rename to keep them
+# apart at the link.
+names += ['MAT_UV_ComputeAndSetTransform', 'MAT_UV_Compute_Chrome',
+          'MAT_UV_Compute_PLANAR_GIZMO_NOSTORE']
 names += ['d3dProjectionMtx', 'd3dTransformMatrix', 'd3dTransformMatrix2',
           'engineFogTableModeToD3D', 'rasterNames', 'worldPtrIfMultiStream',
           'D3D_gi_FlatLayerBox', 'D3D_gi_AspectTrace',
@@ -56,6 +64,12 @@ defs() {
 
 echo "=== d3drender ==="
 $CC $CFLAGS -c platform/d3drender.c -o "$OUT/d3drender.new.o" $(defs NEW_ $syms)
+# The material's texture-coordinate projections, which used to be in
+# platform/d3drender.c and are shared now: the three of them that told the
+# device as well as the engine. Compiled as a second translation unit
+# of this side rather than linked plain, because the frozen copy has
+# two of them by name and the two must not collide.
+$CC $CFLAGS -c materialuv.c -o "$OUT/d3drender.uv.o" $(defs NEW_ $syms)
 # the frozen copy still spells one function the way the decompiler named
 # it; map it onto the same per-side symbol the rewrite's new name takes
 # Only the frozen copy sees a D3DX header: the engine stopped
@@ -146,7 +160,7 @@ $CC $CFLAGS -c fog.c -o "$OUT/d3drender.fog.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/d3drender.profiler.o"
 $CC $CFLAGS -c tests/d3drender_mocks.c -o "$OUT/d3drender.mocks.o"
 $CC $CFLAGS -c tests/test_d3drender.c -o "$OUT/d3drender.drv.o"
-$CC "$OUT/d3drender.new.o" "$OUT/d3drender.base.o" "$OUT/d3drender.math.o" \
+$CC "$OUT/d3drender.new.o" "$OUT/d3drender.uv.o" "$OUT/d3drender.base.o" "$OUT/d3drender.math.o" \
     "$OUT/d3drender.wgmath.o" "$OUT/d3drender.proj.o" "$OUT/d3drender.gvx.o" \
     "$OUT/d3drender.rst.o" "$OUT/d3drender.fog.o" "$OUT/d3drender.gsp.o" "$OUT/d3drender.profiler.o" \
     "$OUT/d3drender.wms.o" "$OUT/d3drender.pfb.o" "$OUT/d3drender.pngsave.o" "$OUT/libpng.a" \

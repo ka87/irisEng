@@ -2733,10 +2733,18 @@ void GL_SetTexCoordIndex(int stage, int index)
 }
 
 /* as above */
-void GL_SetTextureTransformFlags(int stage, int flags)
+void GL_SetTextureTransformFlags(int stage, int transform)
 {
     (void)stage;
-    (void)flags;
+    (void)transform;
+}
+
+/* as above: this renderer reads the engine's own transform matrix at
+   the draw, which is where it knows the projection is right. */
+void GL_SetTexCoordMatrix(int stage, const Mtx4x4* matrix)
+{
+    (void)stage;
+    (void)matrix;
 }
 
 /* ================================================= the sun's occlusion test

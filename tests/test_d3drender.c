@@ -152,6 +152,14 @@
 DECL(BASE_)
 DECL(NEW_)
 
+/* The three the texture-coordinate projection reaches the device
+   through. Declared apart from DECL because the frozen copy has no
+   counterpart for them: it calls Direct3D inline, which is what the
+   comparison is of. */
+void NEW_D3D_SetTexCoordIndex(int stage, int source);
+void NEW_D3D_SetTextureTransformFlags(int stage, int transform);
+void NEW_D3D_SetTexCoordMatrix(int stage, const Mtx4x4* matrix);
+
 typedef struct sSide
 {
     const char* name;
@@ -910,6 +918,14 @@ static void Setup(const tSide* s, int kind, unsigned int seed)
     W.dd.matrixStack.actMatrixElem = &W.gaoMtx;
     W.dd.rendererState = &D3DRenderParams;
     W.dd.Request = s->Request;
+    /* The texture-coordinate projection reaches the device through the
+       renderer now rather than straight. Only the rewrite goes this
+       way -- the frozen copy still calls Direct3D inline, which is
+       exactly what the comparison is of -- so these are the rewrite's
+       own, on both runs, and the frozen side never reads them. */
+    W.dd.SetTexCoordIndex = NEW_D3D_SetTexCoordIndex;
+    W.dd.SetTextureTransformFlags = NEW_D3D_SetTextureTransformFlags;
+    W.dd.SetTexCoordMatrix = NEW_D3D_SetTexCoordMatrix;
     W.dd.texManager.paletteUsedMemory = 0;
     Guard(11, "geogro attached", (int)((seed >> 21) & 1));
     for (i = 0; i < RASTERS; i++)
