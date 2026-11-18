@@ -335,7 +335,21 @@ void PLT_InputCapture(int on)
 {
     plt_inputHeld = on ? 1 : 0;
     if (plt_window)
+    {
         SDL_SetWindowRelativeMouseMode(plt_window, plt_inputHeld ? true : false);
+        /* Typed text is delivered only to a window that has asked for
+           it, and a window has not asked by default -- so without
+           this the command field saw the keys that arrive as keys,
+           which is why its Enter worked, and none of the characters.
+           The game having the input and the field having it are the
+           same switch, so this is the place for it: while the game is
+           being read the keyboard as game keys there is nothing that
+           wants text, and while it is not, the field does. */
+        if (plt_inputHeld)
+            SDL_StopTextInput(plt_window);
+        else
+            SDL_StartTextInput(plt_window);
+    }
     if (!plt_inputHeld)
         plt_wheel = 0;
 }

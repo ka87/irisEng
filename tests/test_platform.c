@@ -177,6 +177,13 @@ static void closing(void)
     okEq(ENG_gb_ExitApplication, 1, "the window's own close does the same");
 }
 
+/* Note what this case cannot see. It pushes the text event onto SDL's
+   queue itself, and an event already on the queue is delivered whether
+   or not the window ever asked to be sent text -- so these checks
+   passed while the field could not be typed into at all. What catches
+   that is the SDL_TextInputActive check over in devices(), because
+   asking for text is a thing the code has to do rather than a thing
+   an event can stand in for. */
 static void typing(void)
 {
     SDL_Event ev;
@@ -319,6 +326,17 @@ static void devices(void)
     PLT_InputCapture(0);
     ok(SDL_GetWindowRelativeMouseMode(plt_window) == false,
        "and giving it back lets it go");
+
+    /* And it has to turn typed text on, or the command field gets the
+       keys that arrive as keys and none of the characters. A window
+       is not sent text until it has asked. */
+    PLT_InputCapture(0);
+    ok(SDL_TextInputActive(plt_window) != false,
+       "with the input given back, the window is sent typed text");
+    PLT_InputCapture(1);
+    ok(SDL_TextInputActive(plt_window) == false,
+       "and with the game holding it, it is not");
+    PLT_InputCapture(0);
 
     /* A wheel movement while the game does not have the input is not
        saved up for the moment it does: the notches belong to whatever

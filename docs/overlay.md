@@ -168,6 +168,12 @@ a key-down for Enter, backspace and Escape. While the field is up
 that function consumes them; while the field is down it consumes
 nothing, so the pump runs exactly as it did.
 
+Typed text has to be **asked for**: a window is not sent it by
+default. Giving the input back is what asks, and taking it back stops
+it, which is the same switch and so the same call. Without that the
+field got Enter, backspace and Escape -- they arrive as keys -- and
+not one character, which is what it looked like when it was missing.
+
 | key | what happens |
 |---|---|
 | a printable character, 32..126 | appended, up to 127 characters |
