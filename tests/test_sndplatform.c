@@ -194,6 +194,16 @@ static void theEnd(void)
     v = SPL_p_VoiceCreate(1, SPL_RATE, SPL_CHUNK_FRAMES * 2 * 2);
     fillRamp(v, SPL_i_VoiceBytes(v));
 
+    /* The device is stopped across this one. Whether a drained voice
+       still reads as playing depends on there being something of it
+       queued, and a running device may finish with that between the
+       feeding and the asking -- so the assertion passed on its own
+       and failed inside the suite, where everything is slower. That
+       is how a real-time assertion announces itself, and it is the
+       second of them in this file. Stopped, the queue stays where it
+       was put. */
+    SDL_PauseAudioDevice(spl_device);
+
     SPL_VoicePlay(v, 0);
     for (i = 0; i < 20; i++)
         SPL_Feed();
@@ -202,6 +212,7 @@ static void theEnd(void)
 
     /* Still reported as playing while the device has not finished with
        what is queued, which is what GetStatus meant. */
+    ok(SPL_i_VoiceQueued(v) > 0, "with the device stopped, some is still queued");
     ok((SPL_i_VoiceStatus(v) & SPL_PLAYING) != 0,
        "but is still playing while anything of it is queued");
 
@@ -213,6 +224,10 @@ static void theEnd(void)
     ok(v->playing != 0, "and goes on being fed");
     ok((SPL_i_VoiceStatus(v) & SPL_LOOPING) != 0, "and says it is looping");
     SPL_VoiceDestroy(v);
+
+    /* Running again for what follows: the streaming ring below needs
+       the device really consuming to have a cursor that moves. */
+    SDL_ResumeAudioDevice(spl_device);
 }
 
 static void theMix(void)
