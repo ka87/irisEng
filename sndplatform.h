@@ -125,6 +125,24 @@ int  SPL_b_FeedWanted(void);
  * The thread's wait has a timeout because the timeout is its clock:
  * it is what the device's own refill notifications used to be. */
 
+/* The one file the sound reads for itself: the big file, opened once
+   per streaming track and read from wherever that sound lives in it.
+   Everything else the engine loads goes through its own loader.
+   
+   Seeks are absolute from the start, because that is the only kind
+   the sound does -- it knows where each sound begins and reads
+   forward from there. */
+typedef struct sSplFile tSplFile;
+/* What an unopened or closed file reads as. The engine compares
+   against it rather than against nought, which is a real handle. */
+#define SPL_FILE_NONE ((tSplFile*)(size_t)-1)
+
+tSplFile* SPL_p_FileOpen(const char* path);
+/* How many bytes were actually read, which may be short at the end. */
+int  SPL_i_FileRead(tSplFile* file, void* dest, int bytes);
+int  SPL_b_FileSeek(tSplFile* file, long long offset);
+void SPL_FileClose(tSplFile* file);
+
 typedef struct sSplThread tSplThread;
 
 tSplThread* SPL_p_ThreadStart(int (*body)(void*), void* arg, const char* name);
