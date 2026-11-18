@@ -26,6 +26,7 @@
 #include "engine.h"
 #include "dbg.h"
 #include "platform.h"
+#include "platform/syscompat.h"
 
 int ENG_gb_ActiveSectorization = 1;
 int ENG_gb_NeedToReinit = 0; // game doesn't set it explicitly
@@ -871,30 +872,30 @@ void ENG_ParseCommandLine(const char* cmd)
         }
         if (*cmd != '/')
             break;
-        if (!_strnicmp(++cmd, CMD_NOSOUND, strlen(CMD_NOSOUND)))
+        if (!strncasecmp(++cmd, CMD_NOSOUND, strlen(CMD_NOSOUND)))
         {
             SND_gc_NoSound = 1;
             cmd += strlen(CMD_NOSOUND);
         }
         else
         {
-            if (!_strnicmp(cmd, CMD_BIN, strlen(CMD_BIN)))
+            if (!strncasecmp(cmd, CMD_BIN, strlen(CMD_BIN)))
             {
                 LOA_gb_SpeedMode = 1;
                 cmd += strlen(CMD_BIN);
             }
         }
-        if (!_strnicmp(cmd, CMD_DBLBF, strlen(CMD_DBLBF)))
+        if (!strncasecmp(cmd, CMD_DBLBF, strlen(CMD_DBLBF)))
         {
             ENG_IsDLBFEnabled = 1;
             cmd += strlen(CMD_DBLBF);
         }
-        if (!_strnicmp(cmd, CMD_WINDOWED, strlen(CMD_WINDOWED)))
+        if (!strncasecmp(cmd, CMD_WINDOWED, strlen(CMD_WINDOWED)))
         {
             ENG_WindowedMode = 1;
             cmd += strlen(CMD_WINDOWED);
         }
-        if (!_strnicmp(cmd, CMD_SINGLESTREAM, strlen(CMD_SINGLESTREAM)))
+        if (!strncasecmp(cmd, CMD_SINGLESTREAM, strlen(CMD_SINGLESTREAM)))
         {
             ENG_IsSingleStream = 1;
             ENG_ifSingleStreamThenEq2Otherwise8 = 2;
@@ -929,6 +930,5 @@ void ENG_CloseApplication()
     LOA_KillSpecialArray();
     SAV_PhotoLastClose();
     MEM_CloseModule();
-    CloseHandle(memMngEvent);
-    memMngEvent = NULL;
+    MEM_CloseLock();
 }

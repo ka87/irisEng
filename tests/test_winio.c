@@ -67,10 +67,8 @@
     void P##pcINO_Joystick_Move(Vec3*, int); \
     int  P##pcINO_i_IsMouseBeingUsed(void); \
     int  P##pcINO_i_SetCurrentPad(int); \
-    INT_PTR P##DbgDialogFunc(HWND, UINT, WPARAM, LPARAM); \
     void P##pcINO_mouse_and_keyb_acquire(void); \
     void P##pcINO_mouse_and_keyb_unacquire(void); \
-    void P##pcINO_HandleTweakFlags(HWND); \
     void P##pcINO_Joystick_Update(struct sInoPad*); \
     int P##pcINO_SavModuleInit(void); \
     int P##pcINO_SavModuleClose(void); \
@@ -146,10 +144,8 @@ typedef struct
     void (*joyMove)(Vec3*, int);
     int  (*mouseUsed)(void);
     int  (*setPad)(int);
-    INT_PTR (*dlgProc)(HWND, UINT, WPARAM, LPARAM);
     void (*acquire)(void);
     void (*unacquire)(void);
-    void (*tweakFlags)(HWND);
     void (*joyUpdate)(struct sInoPad*);
     int  (*card[NCARD])(void);
     uint8_t* keyMap[NKEYMAP];
@@ -177,10 +173,10 @@ typedef struct
     P##pcINO_SetControlSubmode, \
     P##pcINO_SetControlMode, \
     P##pcINO_Joystick_Init, P##pcINO_Joystick_Close, P##pcINO_Joystick_Move, \
-    P##pcINO_i_IsMouseBeingUsed, P##pcINO_i_SetCurrentPad, P##DbgDialogFunc, \
+    P##pcINO_i_IsMouseBeingUsed, P##pcINO_i_SetCurrentPad, \
     P##pcINO_mouse_and_keyb_acquire, \
     P##pcINO_mouse_and_keyb_unacquire, \
-    P##pcINO_HandleTweakFlags, P##pcINO_Joystick_Update, \
+    P##pcINO_Joystick_Update, \
     { P##pcINO_SavModuleInit, P##pcINO_SavModuleClose, P##pcINO_b_AsyncInProgress, \
       P##pcINO_i_TestPresence, P##pcINO_i_MountCard, P##pcINO_i_UnmountCard, \
       P##pcINO_i_CheckCard, P##pcINO_i_FormatCard, P##pcINO_i_TestFreeSpace, \
@@ -385,7 +381,7 @@ enum {
     OP_SENSITIVITY, OP_MOUSEAMOUNT, OP_STATEMACHINE, OP_ALIGN, OP_HANDLER,
     OP_INITVARS, OP_SETMODE, OP_SETSUBMODE, OP_FOURNAMES, OP_ALLKEYNAMES,
     OP_KEYNAMES, OP_UPDATE, OP_JOYINIT, OP_JOYCLOSE, OP_JOYMOVE, OP_SETPAD,
-    OP_ACQUIRE, OP_UNACQUIRE, OP_DLGPROC, OP_TWEAKFLAGS, OP_CARD,
+    OP_ACQUIRE, OP_UNACQUIRE, OP_TWEAKFLAGS, OP_CARD,
     OP_MOUSEUSED, OP_NUM
 };
 
@@ -402,7 +398,6 @@ typedef struct
 static void runOp(const Side* s, const Case* c, State* st)
 {
     TIM_gf_MainClock = c->clock;
-    WINIO_DlgProc = (void*)s->dlgProc;
     st->retInt = 0;
     st->retFloat = 0.0f;
     st->retStrTag = -9;
@@ -477,11 +472,13 @@ static void runOp(const Side* s, const Case* c, State* st)
     case OP_UNACQUIRE:
         s->unacquire();
         break;
-    case OP_DLGPROC:
-        st->retInt = (int)s->dlgProc((HWND)0x55, (UINT)c->i0, (WPARAM)c->i1, (LPARAM)c->i2);
-        break;
     case OP_TWEAKFLAGS:
-        s->tweakFlags((HWND)0x4242);
+        /* The command itself, not the dialog that used to collect it.
+           One function rather than one per side: the frozen copy never
+           had its own, so both sides always ran this one. What the two
+           are compared on is what it did to the tweak variables, which
+           is the whole of what the dialog was for. */
+        pcINO_RunTweakCommand(winioScript.dialogText);
         break;
     case OP_CARD:
         st->retInt = s->card[c->i0]();
@@ -501,7 +498,9 @@ static const char* group = "?";
 static long opRan[OP_NUM];
 
 static long f11Skipped = 0;
+static long swapSkipped = 0;
 static void f11FieldCase(void);
+static void swapInitCase(void);
 static void altF4Case(void);
 static void suspendedInputCase(void);
 static long wheelScrollSkipped;
@@ -552,28 +551,24 @@ static Cov cov[] = {
     {"card: fopen r+b fails", 0},
     {"card: fopen w+b succeeds", 0},
     {"card: fopen w+b fails", 0},
-    {"tweak: dialog returned 1", 0},          /* 19 */
-    {"tweak: dialog returned other", 0},
     {"tweak: entry type 0", 0},
     {"tweak: entry type 1", 0},
     {"tweak: entry type 2", 0},
     {"tweak: entry type out of range", 0},
     {"tweak: name not in the table", 0},
-    {"init: buttons already swapped", 0},     /* 26 */
-    {"init: buttons not swapped", 0},
-    {"mode: a mode the switch names", 0},     /* 28 */
+    {"mode: a mode the switch names", 0},     /* 24 */
     {"mode: default arm", 0},
     {"mode: already that mode", 0},
-    {"submode: negative", 0},                 /* 31 */
+    {"submode: negative", 0},                 /* 27 */
     {"submode: under control mode 4", 0},
     {"submode: mode 64, submode 4", 0},
     {"submode: mode 64, other submode", 0},
     {"submode: mode 1", 0},
     {"submode: already that submode", 0},
-    {"fournames: returned prefix_p16_2", 0},  /* 37 */
+    {"fournames: returned prefix_p16_2", 0},  /* 33 */
     {"fournames: returned prefixOneSpace", 0},
     {"fournames: returned the catted buffer", 0},
-    {"handler: at least one key down", 0},    /* 40 */
+    {"handler: at least one key down", 0},    /* 36 */
     {"handler: no key down", 0},
 };
 #define NCOV ((int)(sizeof(cov) / sizeof(cov[0])))
@@ -607,7 +602,6 @@ static void countCoverage(const Case* c, const State* st)
         break;
 
     case OP_TWEAKFLAGS:
-        cov[winioScript.dialogResult == 1 ? 19 : 20].n++;
         {
             char key[64];
             int found = 0;
@@ -617,47 +611,43 @@ static void countCoverage(const Case* c, const State* st)
                 {
                     found = 1;
                     if (tweaks[i].type >= 0 && tweaks[i].type <= 2)
-                        cov[21 + tweaks[i].type].n++;
+                        cov[19 + tweaks[i].type].n++;
                     else
-                        cov[24].n++;
+                        cov[22].n++;
                 }
             if (!found)
-                cov[25].n++;
+                cov[23].n++;
         }
-        break;
-
-    case OP_JOYINIT:
-        cov[winioScript.swapMouseButton ? 26 : 27].n++;
         break;
 
     case OP_SETMODE:
         if (st->selMode == c->i0)
-            cov[28].n++;
+            cov[24].n++;
         else if (c->i0 == 1 || c->i0 == 2 || c->i0 == 4 || c->i0 == 8
                  || c->i0 == 32 || c->i0 == 64 || c->i0 == 128 || c->i0 == 129)
-            cov[30].n++;
+            cov[26].n++;
         else
-            cov[29].n++;
+            cov[25].n++;
         break;
 
     case OP_SETSUBMODE:
         if (c->i0 < 0)
-            cov[31].n++;
+            cov[27].n++;
         else if (st->selSubmode == c->i0)
-            cov[36].n++;
-        else if (st->selMode == 4)
             cov[32].n++;
+        else if (st->selMode == 4)
+            cov[28].n++;
         else if (st->selMode == 64)
-            cov[c->i0 == 4 ? 33 : 34].n++;
+            cov[c->i0 == 4 ? 29 : 30].n++;
         else if (st->selMode == 1)
-            cov[35].n++;
+            cov[31].n++;
         break;
 
     case OP_HANDLER:
         any = 0;
         for (i = 0; i < 266; i++)
             any |= c->keyboard[i] != 0;
-        cov[any ? 40 : 41].n++;
+        cov[any ? 36 : 37].n++;
         break;
 
     default:
@@ -754,6 +744,27 @@ static void runCase(const Case* c, const State* start, long key)
         return;
     }
 
+    /* The joystick's init is not compared on its calls either, and
+       for a reason of the same shape.
+
+       The frozen copy asks the system whether the mouse buttons are
+       swapped, and the only way to ask was to swap them and put them
+       back -- two calls, both in the log. The rewrite does not ask:
+       input comes from the window, which delivers the buttons the way
+       the player set them up, so asking again would swap them twice.
+
+       So one side makes two calls the other does not, and the logs
+       cannot line up. Everything else about the init is still
+       compared -- the state it leaves behind, which is where the
+       button codes are -- and swapInitCase below is what says the
+       rewrite's codes are the unswapped ones and that it never asks.
+
+       The call *count* is what this skips, not the state: the button
+       codes are in pcINO_IntKeybDataLink, which is compared field by
+       field like the rest. */
+    if (c->op == OP_JOYINIT)
+        swapSkipped++;
+
     /* A frame with the wheel actually turning, in the one handler
        that reads it, is not compared either -- and this is wider than
        the accumulator the note further down excludes.
@@ -795,20 +806,26 @@ static void runCase(const Case* c, const State* start, long key)
         return;
     }
 
-    if (WINIO_LogCount() != baseLogCount)
+    /* The joystick's init is the one operation whose calls are not
+       compared -- see the note above it -- and only its calls: every
+       field it leaves behind goes through the comparisons below. */
+    if (c->op != OP_JOYINIT)
     {
-        report(key, "engine-call count");
-        return;
-    }
-    for (i = 0; i < n; i++)
-        if (strcmp(baseLog[i], WINIO_LogLine(i)) != 0)
+        if (WINIO_LogCount() != baseLogCount)
         {
-            if (diffs < 25)
-                printf("  DIFF %-16s log[%d] base=%s new=%s case=%ld\n",
-                       group, i, baseLog[i], WINIO_LogLine(i), key);
-            diffs++;
+            report(key, "engine-call count");
             return;
         }
+        for (i = 0; i < n; i++)
+            if (strcmp(baseLog[i], WINIO_LogLine(i)) != 0)
+            {
+                if (diffs < 25)
+                    printf("  DIFF %-16s log[%d] base=%s new=%s case=%ld\n",
+                           group, i, baseLog[i], WINIO_LogLine(i), key);
+                diffs++;
+                return;
+            }
+    }
 
     CMP(joy, "joystickPosition");
     CMP(joyBefore, "joyBeforeSubmodeSet");
@@ -861,7 +878,7 @@ static void runCase(const Case* c, const State* start, long key)
     CMP(retFloat, "float return");
     CMP(retFloatArgs, "mouseAmount accum/deadline");
     if (c->op == OP_FOURNAMES && a.retStrTag >= 1 && a.retStrTag <= 3)
-        cov[36 + a.retStrTag].n++;
+        cov[32 + a.retStrTag].n++;
     CMP(retStrTag, "returned string identity");
     CMP(retStr, "returned string");
     CMP(tweakInt, "tweak int target");
@@ -994,7 +1011,6 @@ static void randomScript(void)
     for (i = 0; i < 266; i++)
         winioScript.keybData[i] = (rnd() & 3u) ? 0 : 0x80;
     strcpy(winioScript.objectName, "KEY");
-    winioScript.swapMouseButton = (int)(rnd() & 1u);
     winioScript.keyState = (short)(rnd() & 1u);
     winioScript.diskFreeOk = (rnd() & 3u) != 0;
     winioScript.diskFreeHigh = (rnd() & 3u) == 0 ? 1 : 0;
@@ -1515,6 +1531,85 @@ static void altF4Case(void)
            (unsigned)(sizeof(acases) / sizeof(acases[0])), altF4Skipped);
 }
 
+/* What the skipped comparison would have covered, from the one side
+   that still has an answer.
+ *
+ * The frozen copy asks the system whether the mouse buttons are
+ * swapped and swaps its own codes to suit; the rewrite does not ask,
+ * because the window already delivers the buttons the player's way.
+ * The call logs therefore cannot line up and the init's calls are not
+ * compared -- so three things are asserted here instead, and printed
+ * only when one of them breaks:
+ *
+ *   - the rewrite never asks. If it does, the double swap is back.
+ *   - the frozen copy does ask. That is what says the mock is live
+ *     and the skip is covering a real difference rather than nothing.
+ *   - the rewrite's codes are the unswapped pair, whatever the
+ *     system would have said.
+ */
+static void swapInitCase(void)
+{
+    State st;
+    int   baseAsked = 0;
+    int   newAsked = 0;
+    long  i;
+
+    printf("-- the buttons the player set up\n");
+
+    randomState(&st);
+    randomScript();
+    /* The frozen copy asks about the swap at the end of a successful
+       init, so the devices it asks for have to be given to it or it
+       never gets there -- which is the second assertion below, and it
+       would otherwise pass for the wrong reason. */
+    winioScript.createMouseResult = 0;
+    winioScript.mouseSetFormat = winioScript.mouseSetCoop = 0;
+    winioScript.createKeybResult = 0;
+    winioScript.keybSetFormat = winioScript.keybSetCoop = 0;
+    winioScript.getPropertyData = 1;
+    winioScript.getPropertyResult = 0;
+    st.haveMouse = 1;
+    st.haveKeyb = 1;
+    st.haveDI = 1;
+
+    dirtyStack();
+    WINIO_ResetMocks();
+    installState(&baseSide, &st);
+    baseSide.joyInit((HWND)0x4242);
+    for (i = 0; i < WINIO_LogCount(); i++)
+        if (strstr(WINIO_LogLine(i), "SwapMouseButton"))
+            baseAsked++;
+
+    dirtyStack();
+    WINIO_ResetMocks();
+    installState(&newSide, &st);
+    newSide.joyInit((HWND)0x4242);
+    for (i = 0; i < WINIO_LogCount(); i++)
+        if (strstr(WINIO_LogLine(i), "SwapMouseButton"))
+            newAsked++;
+
+    cases += 3;
+    if (newAsked != 0)
+    {
+        printf("  DIFF swap init        the rewrite asked the system about the"
+               " swap %d time(s)\n", newAsked);
+        diffs++;
+    }
+    if (baseAsked == 0)
+    {
+        printf("  DIFF swap init        the frozen copy did not ask, so the"
+               " skipped comparison is covering nothing\n");
+        diffs++;
+    }
+    if (newSide.keybLink[0] != 258 || newSide.keybLink[2] != 259)
+    {
+        printf("  DIFF swap init        the rewrite's button codes are %u/%u,"
+               " wanted 258/259\n",
+               (unsigned)newSide.keybLink[0], (unsigned)newSide.keybLink[2]);
+        diffs++;
+    }
+}
+
 static void f11FieldCase(void)
 {
     /* `key` is which code is pressed: 87 is F11, which raises the
@@ -1855,6 +1950,7 @@ static void sweepDevices(void)
 
     wheelNotchCase();
     f11FieldCase();
+    swapInitCase();
     altF4Case();
     suspendedInputCase();
 
@@ -1926,20 +2022,18 @@ static void sweepDevices(void)
         runCase(&c, &st, key++);
     }
 
-    group = "dialog";
-    rngState = 0xDDDDu;
-    for (dev = 0; dev < 6; dev++)
-        for (i = 0; i < 200; i++)
-        {
-            randomState(&st);
-            randomScript();
-            randomCase(&c);
-            c.op = OP_DLGPROC;
-            c.i0 = ((const int[6]){ 272, 273, 0, 16, 274, 273 })[dev];
-            c.i1 = (int)(rnd() % 5u);
-            c.i2 = (int)rnd();
-            runCase(&c, &st, key++);
-        }
+    /* The "dialog" sweep was here, 1200 cases over the tweak dialog's
+       own window procedure. The procedure is gone: the command line it
+       collected is typed into the overlay now, and the function that
+       put the dialog up had no caller left in the engine. The frozen
+       copy still has both and is no longer compared on either, which
+       is the position the getproperty sweep below was left in.
+
+       What the dialog was *for* is still swept: the tweakflags sweep
+       runs the command itself. Nothing replaces the two coverage
+       entries for the dialog's result, because nothing replaces the
+       dialog -- and the two for the mouse-button swap went the same
+       way, the engine having no swap to detect any more. */
 
     /* The "getproperty" sweep was here, 400 cases over
        DINPUT_GetProperty's two results and its four arguments. That
@@ -2065,6 +2159,8 @@ int main(void)
     }
     printf("\n");
 
+    printf("  the joystick's init not compared on its calls in %ld cases\n",
+           swapSkipped);
     printf("  the wheel's own frame not compared side by side in %ld cases\n",
            wheelFrameSkipped);
     printf("  case2_mouseScroll not compared side by side in %ld cases\n",

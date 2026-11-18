@@ -3,6 +3,7 @@
 #ifdef _WIN32
 
 #include <io.h>
+#include <windows.h>
 #include <sys/stat.h>
 
 int FIO_i_Seek(FILE* fp, long long offset, int origin)
@@ -27,9 +28,22 @@ int FIO_b_MakeWritable(const char* path)
     return _chmod(path, _S_IREAD | _S_IWRITE) == 0;
 }
 
+long long FIO_i64_FreeSpace(const char* dir)
+{
+    ULARGE_INTEGER free;
+
+    /* What is free to this user rather than what is free on the
+       volume: a quota makes those different, and the smaller one is
+       what a save has to fit in. */
+    if (!GetDiskFreeSpaceExA(dir, &free, 0, 0))
+        return -1;
+    return (long long)free.QuadPart;
+}
+
 #else /* not Windows */
 
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -64,6 +78,19 @@ int FIO_b_MakeWritable(const char* path)
        to open a file it could not, and reading the mode back to
        modify it is a second way to fail for no gain. */
     return chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) == 0;
+}
+
+long long FIO_i64_FreeSpace(const char* dir)
+{
+    struct statvfs fs;
+
+    if (statvfs(dir, &fs) != 0)
+        return -1;
+    /* f_bavail is what is free to this user, which is the number a
+       save has to fit in: f_bfree counts blocks the file system keeps
+       for itself as well. f_frsize and not f_bsize, because the block
+       count is in fragments. */
+    return (long long)fs.f_bavail * (long long)fs.f_frsize;
 }
 
 #endif

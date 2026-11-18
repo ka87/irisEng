@@ -1,4 +1,17 @@
 #include "math.h"
+
+/* The processor's own cycle counter, which is what every clock in here
+   is built on. Microsoft's compiler has __rdtsc as an intrinsic and
+   declares it in <intrin.h>; gcc and clang have the same intrinsic
+   under the same name in <x86intrin.h>. One name, two headers.
+
+   x86 either way, as the comment on f2iMagic in math.h is: this is a
+   32-bit x86 build. */
+#ifdef _WIN32
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 #include "time.h"
 #include "profiler.h"
 #include "engine.h"

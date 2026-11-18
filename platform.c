@@ -87,10 +87,43 @@ int PLT_b_Open(const char* title, int width, int height)
        still doing it. */
     flags = SDL_WINDOW_RESIZABLE;
 
+    /* A window a GL context can go on, and the format that context
+       will want: eight bits a channel, a 24-bit depth buffer and
+       eight of stencil, which is what both renderers draw against.
+       Asked for here and not in the renderer because a window's
+       format is settled when the window is made, and the renderer is
+       not chosen until afterwards -- it is chosen by asking each one
+       whether it can run, and the OpenGL one answers that by making a
+       context, which needs a window of some kind to exist first.
+
+       Costing the Direct3D path nothing is the reason it is asked for
+       this way round rather than refused: a format good for GL is no
+       worse for a Direct3D device, which does not look at it. But a
+       machine with no GL at all can refuse the window outright, and
+       that must not stop a game that was going to use Direct3D, so a
+       refusal is retried without it. */
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
     plt_window = SDL_CreateWindow(title ? title : "IRISEngine",
                                   width > 0 ? width : 640,
                                   height > 0 ? height : 480,
-                                  flags);
+                                  flags | SDL_WINDOW_OPENGL);
+    if (!plt_window)
+    {
+        DBG_OutputDebugString("PLT: no window that can carry a GL "
+                              "context (%s); trying without\n",
+                              SDL_GetError());
+        plt_window = SDL_CreateWindow(title ? title : "IRISEngine",
+                                      width > 0 ? width : 640,
+                                      height > 0 ? height : 480,
+                                      flags);
+    }
     if (!plt_window)
     {
         DBG_OutputDebugString("PLT: no window: %s\n", SDL_GetError());
@@ -119,6 +152,18 @@ void PLT_Close(void)
     }
 }
 
+int PLT_b_ShiftHeld(void)
+{
+    /* Either shift, which is what the one question about it means. */
+    return (SDL_GetModState() & SDL_KMOD_SHIFT) != 0;
+}
+
+int PLT_b_NumLockOn(void)
+{
+    /* The lamp, not the key: this is the toggle's state. */
+    return (SDL_GetModState() & SDL_KMOD_NUM) != 0;
+}
+
 void PLT_Message(const char* title, const char* text, int error)
 {
     /* The window if there is one, so the box belongs to it. Before it
@@ -130,6 +175,11 @@ void PLT_Message(const char* title, const char* text, int error)
                              title ? title : "IRISEngine",
                              text ? text : "",
                              plt_window);
+}
+
+void* PLT_p_Window(void)
+{
+    return plt_window;
 }
 
 void* PLT_p_NativeWindow(void)

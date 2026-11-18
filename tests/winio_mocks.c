@@ -6,6 +6,7 @@
 
 #include "winio_mocks.h"
 #include "sdlpath.h"
+#include "../fileio.h"
 #include "../dbg.h"
 #include "../time.h"
 
@@ -266,10 +267,20 @@ BOOL SwapMouseButton(BOOL swap)
     return winioScript.swapMouseButton;
 }
 
+/* The one site asks after num lock, and the rewrite asks the platform
+   layer instead of the keyboard. Same event, so the same word in the
+   log -- and the same answer, so the two copies come out of it with
+   the same flag. */
 SHORT GetKeyState(int vk)
 {
-    WINIO_Log("GetKeyState(%d)", vk);
+    WINIO_Log("numlock");
     return winioScript.keyState;
+}
+
+int PLT_b_NumLockOn(void)
+{
+    WINIO_Log("numlock");
+    return winioScript.keyState != 0;
 }
 
 void keybd_event(BYTE vk, BYTE scan, DWORD flags, UINT_PTR extra)
@@ -277,13 +288,26 @@ void keybd_event(BYTE vk, BYTE scan, DWORD flags, UINT_PTR extra)
     WINIO_Log("keybd_event(%u,%u)", (unsigned)vk, (unsigned)flags);
 }
 
+/* How much room is left, asked of Windows by the frozen copy and of
+   the file-system module by the rewrite. The script says what the
+   answer is, in the two halves Windows answers in, and both sides
+   hand back the same number. */
 BOOL GetDiskFreeSpaceExA(LPCSTR dir, ULARGE_INTEGER* freeToCaller,
                          ULARGE_INTEGER* total, ULARGE_INTEGER* free)
 {
-    WINIO_Log("GetDiskFreeSpaceExA");
+    WINIO_Log("freespace");
     freeToCaller->LowPart = winioScript.diskFreeLow;
     freeToCaller->HighPart = winioScript.diskFreeHigh;
     return winioScript.diskFreeOk;
+}
+
+long long FIO_i64_FreeSpace(const char* dir)
+{
+    WINIO_Log("freespace");
+    if (!winioScript.diskFreeOk)
+        return -1;
+    return (long long)(((unsigned long long)winioScript.diskFreeHigh << 32)
+                       | (unsigned long long)winioScript.diskFreeLow);
 }
 
 void* WINIO_DlgProc;

@@ -974,11 +974,10 @@ static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
 
 void GDI_DetachDisplay(struct sGdi_DisplayData* dd)
 {
-    RECT rect;
-
-    if (GDI_gl_ReadaptOperation)
-        GetClientRect(dd->hwnd, &rect);
-
+    /* A readapt used to ask the window for its client rectangle here
+       and put the answer in a local nothing read. The call has no
+       other effect, so it is gone rather than carried over -- it was
+       the last thing in this file that was Windows' own. */
     dd->hwnd = NULL;
 
     if (!GDI_gl_ReadaptOperation)

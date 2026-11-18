@@ -50,7 +50,7 @@ for m in re.finditer(r'^[A-Za-z_][\w \*]*?[\w\*]\s+\**(\w+)\s*\(', src, re.M):
 names += ['MAT_UV_ComputeAndSetTransform', 'MAT_UV_Compute_Chrome',
           'MAT_UV_Compute_PLANAR_GIZMO_NOSTORE']
 names += ['d3dProjectionMtx', 'd3dTransformMatrix', 'd3dTransformMatrix2',
-          'engineFogTableModeToD3D', 'rasterNames', 'worldPtrIfMultiStream',
+          'engineFogTableModeToD3D', 'worldPtrIfMultiStream',
           'D3D_gi_FlatLayerBox', 'D3D_gi_AspectTrace',
           'D3D_gf_CutsceneBand']
 seen = []
@@ -60,6 +60,16 @@ for n in names:
 print(' '.join(seen))
 EOF
 )
+
+# What only the frozen copy has by name.
+#
+# rasterNames is the engine's own list of what it measures, and it had
+# been left in the renderer's file long after its declaration moved to
+# profiler.h. It is in profiler.c now, which this harness already
+# links, so the rewrite uses that one and only the frozen copy's
+# definition needs a name of its own -- the same arrangement as the UV
+# projections above, from the other end.
+baseonly="rasterNames"
 
 defs() {
     prefix=$1
@@ -97,7 +107,8 @@ $CC $CFLAGS -include tests/stub/d3dx9math.h \
     -DsD3dRequestSnapshot=sGdi_SnapshotRequest \
     -DpcINO_dinput_mouse_and_keyb_acquire=pcINO_mouse_and_keyb_acquire \
     -DpcINO_dinput_mouse_and_keyb_unacquire=pcINO_mouse_and_keyb_unacquire \
-    -c tests/baseline_d3drender.c -o "$OUT/d3drender.base.o" $(defs BASE_ $syms)
+    -c tests/baseline_d3drender.c -o "$OUT/d3drender.base.o" \
+    $(defs BASE_ $syms) $(defs BASE_ $baseonly)
 $CC $CFLAGS -c math.c -o "$OUT/d3drender.math.o"
 # The real matrix module, linked rather than mocked: it is pure
 # arithmetic with nothing to stand in for. platform/d3dtex.c is not

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SDL3/SDL_video.h>
+
 struct sWaterParamsGlobalStruct;
 #include <windows.h>
 
@@ -56,17 +58,23 @@ struct sGlRenderState;
    this row unavailable, and the picker falls back to Direct3D. */
 
 /* Whether a 4.5 core context can be had here. Answered by making one
-   on a window of its own and throwing it away, which is the only
-   answer that is not a guess. Remembered, so the cost is paid once. */
+   on a hidden window of its own and throwing both away, which is the
+   only answer that is not a guess -- and on a window of its own
+   because the game's may not exist yet when this is asked, and
+   because a context made to ask a question should not be the one the
+   game then draws through. Remembered, so the cost is paid once. */
 int GL_b_Available(void);
 
 /* What the renderer keeps. Handed out through CreateDevice and opaque
    to everything outside this file. */
 typedef struct sGlRenderState
 {
-    HWND  hwnd;
-    HDC   dc;
-    HGLRC context;
+    /* The window, as the engine passes it and as the library that
+       made it knows it. The first is what the engine's interface
+       carries; the second is what the context is made on. */
+    HWND         hwnd;
+    SDL_Window*  window;
+    SDL_GLContext context;
     int   width;
     int   height;
     int   zEnable;

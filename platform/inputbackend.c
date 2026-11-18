@@ -7,6 +7,7 @@
 #include "../dbg.h"
 #include "../platform.h"
 #include "../datapath.h"
+#include "../fileio.h"
 
 int pcINO_SelectedControlMode = 0xffffffff;
 int pcINO_SelectedControlSubmode = 0xffffffff;
@@ -15,17 +16,6 @@ Vec3 pcINO_joyPositionBeforeControlSubmodeSet = { 1.0f, 0.0f, 0.0f };
 char prefixSpaces[12] = "\\P4\\\x8F     \x90\0";
 char prefixOneSpace[8] = "\\P4\\\x8F \x90\0";
 char prefix_p16_2[7] = "\\p16\\2\0";
-
-unsigned char commandWindowDlgTemplate[88] = {
-    0x80, 0x02, 0x00, 0x90, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0xC8, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x80, 0x00, 0x81, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0xBA, 0x00, 0x0C, 0x00, 0x01, 0x00, 0xFF, 0xFF, 0x81, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x50, 0x00, 0x00, 0x00, 0x00,
-    0xBC, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x0C, 0x00, 0x01, 0x00, 0xFF, 0xFF,
-    0x80, 0x00, 0x4F, 0x00, 0x6B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00
-};
 
 
 // TODO FIXME: ezek mik?? a játék nem 0ázza õket
@@ -965,17 +955,22 @@ void pcINO_Joystick_Init(HWND hwnd)
     mouseGranularity = 1;
     INO_l_Joystick_Enable = 1;
     INO_gi_CurrentPadId = 0;
-    if (SwapMouseButton(0))                   // ha elozoleg swappelve volt, akkor  nem 0-val tér vissza
-    {
-        SwapMouseButton(1);
-        pcINO_IntKeybDataLink[0] = 259;
-        swappedSecondary = 258;
-    }
-    else
-    {
-        pcINO_IntKeybDataLink[0] = 258;
-        swappedSecondary = 259;
-    }
+    /* The primary button is the primary one, with no asking.
+     *
+       The device this used to read went underneath the system and
+       reported the physical buttons, so a player who had swapped them
+       got them the wrong way round unless the engine swapped its own
+       codes back -- and the only way to ask whether they were swapped
+       was to swap them and put them back, which is what the two calls
+       here did.
+
+       Input comes from the window now, and a window is delivered the
+       buttons the way the player set them up: the primary button
+       arrives as the primary one. Asking again would swap them a
+       second time and hand a left-handed player exactly the problem
+       the asking was there to prevent. */
+    pcINO_IntKeybDataLink[0] = 258;
+    swappedSecondary = 259;
     pcINO_IntKeybDataLink[2] = swappedSecondary;
     pcINO_IntKeybDataLink[32] = swappedSecondary;
 
@@ -1014,29 +1009,6 @@ void pcINO_JoystickPifPafEnable(BOOL enable) {
 void pcINO_JoystickPafIntensity(int intensity) {
 }
 
-INT_PTR WINAPI DbgDialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    if (msg == 272)
-    {
-        SetFocus((HWND)wParam);
-        SetWindowTextA((HWND)wParam, dbgDialogBuff);
-        SendMessageA((HWND)wParam, 0xB1u, 0, -1);
-        return 0;
-    }
-    if (msg != 273)
-        return 0;
-    if (wParam == 1)
-    {
-        GetDlgItemTextA(hDlg, 1, dbgDialogBuff, 128);
-    }
-    else if (wParam != 2)
-    {
-        return 0;
-    }
-    EndDialog(hDlg, wParam);
-    return 1;
-}
-
 /* Taking the input and giving it back. It was two devices held
    exclusively; it is the pointer locked to the window, and the game
    being read the keyboard at all. The names stay because the engine
@@ -1044,7 +1016,7 @@ INT_PTR WINAPI DbgDialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 void pcINO_mouse_and_keyb_acquire()
 {
     PLT_InputCapture(1);
-    pcINO_numLockAtAcquire = GetKeyState(144) != 0;
+    pcINO_numLockAtAcquire = PLT_b_NumLockOn();
     memset(pcINO_keyboardDataBackup, 0, sizeof(pcINO_keyboardDataBackup));
 }
 
@@ -1080,17 +1052,6 @@ void pcINO_RunTweakCommand(const char* line)
             *((float*)(tweak->ptr)) = value;
         else if (tweak->type == 2)
             ((void(*)(float))tweak->ptr)(value);
-    }
-}
-
-void pcINO_HandleTweakFlags(HWND hWndParent)
-{
-    if (!tweakFlagsDisabled)
-    {
-        // TODO FIXME: megcsinalni azt a dialogot rendesen, nem csak egy karaktertömböt átadni!!!
-        if (DialogBoxIndirectParamA(0, (LPCDLGTEMPLATEA)commandWindowDlgTemplate, hWndParent, DbgDialogFunc, 0) == 1)
-            pcINO_RunTweakCommand(dbgDialogBuff);
-        pcINO_mouse_and_keyb_acquire();
     }
 }
 
@@ -1316,30 +1277,27 @@ int pcINO_i_FormatCard()
 
 int pcINO_i_TestFreeSpace()
 {
-    ULARGE_INTEGER freeBytes;
-    char           dir[512];
+    long long free;
+    char      dir[512];
 
-    /* Free space on the drive the saves are on, clamped to a positive
-       int. That is the player's own directory rather than the current
-       drive, which is what this used to ask about and is only the
-       same drive by accident; a check against the wrong volume either
-       refuses a save that would fit or starts one that cannot finish.
-       A directory that cannot be named, or a failed query, reports
-       nothing free, which makes the caller refuse the write. */
+    /* Free space where the saves are, clamped to a positive int. The
+       player's own directory rather than the current drive, which is
+       what this used to ask about and is only the same drive by
+       accident; a check against the wrong volume either refuses a
+       save that would fit or starts one that cannot finish. A
+       directory that cannot be named, or a question the file system
+       will not answer, reports nothing free, which makes the caller
+       refuse the write. */
     if (!DPT_b_UserPath("", dir, sizeof(dir)))
         dir[0] = 0;
 
-    if (dir[0] && GetDiskFreeSpaceExA(dir, &freeBytes, 0, 0))
-    {
-        if (freeBytes.HighPart || freeBytes.LowPart > 0x7FFFFFFF)
-            INO_gi_FreeSpace = 0x7FFFFFFF;
-        else
-            INO_gi_FreeSpace = (int)freeBytes.LowPart;
-    }
-    else
-    {
+    free = dir[0] ? FIO_i64_FreeSpace(dir) : -1;
+    if (free < 0)
         INO_gi_FreeSpace = 0;
-    }
+    else if (free > 0x7FFFFFFF)
+        INO_gi_FreeSpace = 0x7FFFFFFF;
+    else
+        INO_gi_FreeSpace = (int)free;
 
     return pcINO_l_TakeNextState();
 }

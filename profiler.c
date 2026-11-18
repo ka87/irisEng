@@ -8,6 +8,69 @@ profilerRasterStructElem* pointsToUnkRaster_dword_98F944 = NULL; // --||--
 profilerRasterStructElem* PRO_CurrRaster = NULL; // --||--
 float gfDBGRasterSetTo60 = 60.0f;
 
+/* What the engine measures, by the short name each measurement shows
+   under. The declaration has been in profiler.h for a while; the table
+   itself was still in the Direct3D renderer's file, which is the last
+   place it belongs -- the names are the engine's own and the other
+   renderer's performance display reads the same table. */
+tRasterNames rasterNames[] = {
+    {.name = "MisEng", .unk1 = 1},
+    {.name = "Lig", .unk1 = 2},
+    {.name = "SKN", .unk1 = 2},
+    {.name = "SDW", .unk1 = 2},
+    {.name = "DRW", .unk1 = 2},
+    {.name = "ANIr", .unk1 = 2},
+    {.name = "SRS", .unk1 = 2},
+    {.name = "GFX", .unk1 = 7},
+    {.name = "CVC", .unk1 = 2},
+    {.name = "CSpec", .unk1 = 2},
+    {.name = "CDAlp", .unk1 = 1},
+    {.name = "ANI", .unk1 = 1},
+    {.name = "MAT D", .unk1 = 2},
+    {.name = "Zlst S", .unk1 = 2},
+    {.name = "AI", .unk1 = 1},
+    {.name = "INO", .unk1 = 1},
+    {.name = "Col", .unk1 = 1},
+    {.name = "Rec", .unk1 = 1},
+    {.name = "Eng", .unk1 = 5},
+    {.name = "Dis", .unk1 = 6},
+    {.name = "TxProc", .unk1 = 2},
+    {.name = "Flip", .unk1 = 2},
+    {.name = "MRM", .unk1 = 2},
+    {.name = "1 - DRW", .unk1 = 2},
+    {.name = "GO - DRW", .unk1 = 2},
+    {.name = "SND", .unk1 = 1},
+    {.name = "TAM", .unk1 = 1},
+    {.name = "EngRei", .unk1 = 1},
+    {.name = "WorAct", .unk1 = 1},
+    {.name = "EOT", .unk1 = 1},
+    {.name = "SnP", .unk1 = 1},
+    {.name = "MdF", .unk1 = 1},
+    {.name = "EVE", .unk1 = 1},
+    {.name = "HIE", .unk1 = 1},
+    {.name = "DYN", .unk1 = 1},
+    {.name = "VIEW", .unk1 = 7},
+    {.name = "Visi", .unk1 = 7},
+    {.name = "Lens F", .unk1 = 2},
+    {.name = "FIFO", .unk1 = 6},
+    {.name = "AI - SND", .unk1 = 1},
+    {.name = "IOP", .unk1 = 1},
+    {.name = "VIDEO", .unk1 = 2},
+    {.name = "SPG", .unk1 = 2},
+    {.name = "BigVB", .unk1 = 2},
+    {.name = "GoodVB", .unk1 = 2},
+    {.name = "IndP", .unk1 = 2},
+    {.name = "Sprite", .unk1 = 2},
+    {.name = "Raster", .unk1 = 4},
+    {.name = "Water", .unk1 = 2},
+    {.name = "?????", .unk1 = 2},
+    {.name = "?????", .unk1 = 2},
+    {.name = "?????", .unk1 = 2},
+    {.name = "Morph", .unk1 = 2},
+    {.name = "Total", .unk1 = 7}
+};
+
+
 void PRO_RasterAdd(profilerRasterStructElem* raster, char* group, char* subgroup, char* module, int kind, float value)
 {
     memset(raster, 0, sizeof(profilerRasterStructElem));

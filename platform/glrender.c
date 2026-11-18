@@ -28,36 +28,13 @@
 #include "../editorcamera.h"
 #include "../soft.h"
 #include "../dbg.h"
+#include "../platform.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* ---------------------------------------------------- what WGL adds */
-
-/* Two extension entry points, which is the awkwardness at the heart
-   of getting a modern context on Windows: the function that creates
-   one can only be found through a context that already exists. So a
-   throwaway window gets a throwaway 1.1 context, that context answers
-   for these two, and then the real context is made with them. */
-
-#define WGL_CONTEXT_MAJOR_VERSION_ARB       0x2091
-#define WGL_CONTEXT_MINOR_VERSION_ARB       0x2092
-#define WGL_CONTEXT_FLAGS_ARB               0x2094
-#define WGL_CONTEXT_PROFILE_MASK_ARB        0x9126
-#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB    0x00000001
-#define WGL_CONTEXT_DEBUG_BIT_ARB           0x00000001
-#define WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB 0x00000002
-
-typedef HGLRC (GL_APIENTRY *GL_pfn_CreateContextAttribs)(HDC, HGLRC, const int*);
-
-static GL_pfn_CreateContextAttribs gl_createContextAttribs;
-
-/* The module opengl32.dll, kept for the second half of a name
-   lookup: wglGetProcAddress answers for what a context added past
-   OpenGL 1.1 and is entitled to refuse the 1.1 entry points, which
-   the module exports itself. */
-static HMODULE gl_module;
+#include <SDL3/SDL_video.h>
 
 static tGlRenderState gl_state;
 
@@ -166,144 +143,80 @@ static int            gl_saidOnce;
 
 /* -------------------------------------------------- name resolution */
 
+/* One lookup, not two.
+ *
+ * This used to be a pair, because Windows needs one: wglGetProcAddress
+ * answers for what a context added past OpenGL 1.1 and is entitled to
+ * refuse the 1.1 entry points, which the library exports itself. The
+ * loader still takes two resolvers for that reason and is handed
+ * nothing for the second -- SDL's lookup tries both in that order
+ * already, on every platform, which is a thing it exists to hide. */
 static void* GL_l_p_FromContext(const char* name)
 {
-    return (void*)wglGetProcAddress(name);
+    return (void*)SDL_GL_GetProcAddress(name);
 }
 
-static void* GL_l_p_FromModule(const char* name)
+/* ---------------------------------------------- the context's shape
+
+   A 4.5 core context, asked for by attribute. On Windows this took a
+   1.1 context on a throwaway window first, because the call that
+   makes a modern context is itself an extension and can only be found
+   through a context that already exists -- and a separate window
+   because a window's pixel format can be set once and only once, and
+   the format that suits a 1.1 context is not the one the real context
+   wants.
+
+   None of that is here any more. SDL does it, and the window's format
+   is settled where the window is made. */
+
+static void GL_l_AskFor45Core(void)
 {
-    return gl_module ? (void*)GetProcAddress(gl_module, name) : NULL;
-}
-
-/* ------------------------------------------------- the pixel format */
-
-static int GL_l_i_SetPixelFormat(HDC dc)
-{
-    PIXELFORMATDESCRIPTOR want;
-    int                   chosen;
-
-    memset(&want, 0, sizeof(want));
-    want.nSize = sizeof(want);
-    want.nVersion = 1;
-    want.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-    want.iPixelType = PFD_TYPE_RGBA;
-    want.cColorBits = 32;
-    want.cDepthBits = 24;
-    want.cStencilBits = 8;
-    want.iLayerType = PFD_MAIN_PLANE;
-
-    chosen = ChoosePixelFormat(dc, &want);
-    if (!chosen)
-        return 0;
-    if (!SetPixelFormat(dc, chosen, &want))
-        return 0;
-    return chosen;
-}
-
-/* ------------------------------------------------ the first context
-
-   A 1.1 context on a window of its own, for the sole purpose of
-   finding wglCreateContextAttribsARB. It is current only for as long
-   as that takes.
-
-   It has to be a separate window, not the game's: a window's pixel
-   format can be set once and only once, and the format that suits a
-   1.1 context is not necessarily the one the real context wants. */
-
-static int GL_l_b_FindContextCreator(void)
-{
-    WNDCLASSA cls;
-    HWND      wnd;
-    HDC       dc;
-    HGLRC     ctx;
-    int       ok = 0;
-
-    if (gl_createContextAttribs)
-        return 1;
-
-    memset(&cls, 0, sizeof(cls));
-    cls.lpfnWndProc = DefWindowProcA;
-    cls.hInstance = GetModuleHandleA(NULL);
-    cls.lpszClassName = "irisEngGLProbe";
-    if (!RegisterClassA(&cls))
-        return 0;
-
-    wnd = CreateWindowExA(0, cls.lpszClassName, "", 0, 0, 0, 1, 1,
-                          NULL, NULL, cls.hInstance, NULL);
-    if (!wnd)
-    {
-        UnregisterClassA(cls.lpszClassName, cls.hInstance);
-        return 0;
-    }
-
-    dc = GetDC(wnd);
-    if (dc && GL_l_i_SetPixelFormat(dc))
-    {
-        ctx = wglCreateContext(dc);
-        if (ctx && wglMakeCurrent(dc, ctx))
-        {
-            gl_createContextAttribs = (GL_pfn_CreateContextAttribs)
-                GL_p_Resolve("wglCreateContextAttribsARB",
-                             GL_l_p_FromContext, GL_l_p_FromModule);
-            ok = gl_createContextAttribs != NULL;
-            wglMakeCurrent(dc, NULL);
-        }
-        if (ctx)
-            wglDeleteContext(ctx);
-    }
-    if (dc)
-        ReleaseDC(wnd, dc);
-    DestroyWindow(wnd);
-    UnregisterClassA(cls.lpszClassName, cls.hInstance);
-
-    if (!ok)
-        DBG_OutputDebugString("GL: no wglCreateContextAttribsARB; "
-                              "this driver cannot make a modern context\n");
-    return ok;
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+                        SDL_GL_CONTEXT_PROFILE_CORE);
 }
 
 /* ------------------------------------------------- the real context */
 
-/* Makes a 4.5 core context current on dc and loads the entry points.
-   Leaves nothing current and nothing allocated if it cannot. */
-static HGLRC GL_l_p_MakeContext(HDC dc)
+/* Makes a 4.5 core context current on a window and loads the entry
+   points. Leaves nothing current and nothing allocated if it cannot.
+
+   The second resolver the loader takes is nothing: see the note on
+   GL_l_p_FromContext. */
+static SDL_GLContext GL_l_p_MakeContext(SDL_Window* window)
 {
-    static const int attribs[] = {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 5,
-        WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-        0
-    };
-    HGLRC ctx;
-    char  missing[64];
-    int   absent;
+    SDL_GLContext ctx;
+    char          missing[64];
+    int           absent;
 
-    if (!gl_createContextAttribs)
-        return NULL;
-
-    ctx = gl_createContextAttribs(dc, NULL, attribs);
+    GL_l_AskFor45Core();
+    ctx = SDL_GL_CreateContext(window);
     if (!ctx)
     {
-        DBG_OutputDebugString("GL: no 4.5 core context here\n");
+        DBG_OutputDebugString("GL: no 4.5 core context here: %s\n",
+                              SDL_GetError());
         return NULL;
     }
-    if (!wglMakeCurrent(dc, ctx))
+    /* Creating one makes it current, but saying so costs nothing and
+       is what the next line depends on. */
+    if (!SDL_GL_MakeCurrent(window, ctx))
     {
-        wglDeleteContext(ctx);
-        DBG_OutputDebugString("GL: the 4.5 context would not become current\n");
+        DBG_OutputDebugString("GL: the 4.5 context would not become "
+                              "current: %s\n", SDL_GetError());
+        SDL_GL_DestroyContext(ctx);
         return NULL;
     }
 
-    absent = GL_i_LoadFunctions(GL_l_p_FromContext, GL_l_p_FromModule,
+    absent = GL_i_LoadFunctions(GL_l_p_FromContext, NULL,
                                 missing, sizeof(missing));
     if (absent)
     {
         DBG_OutputDebugString("GL: %d entry point(s) missing, first is %s\n",
                               absent, missing);
         GL_ForgetFunctions();
-        wglMakeCurrent(dc, NULL);
-        wglDeleteContext(ctx);
+        SDL_GL_MakeCurrent(window, NULL);
+        SDL_GL_DestroyContext(ctx);
         return NULL;
     }
     return ctx;
@@ -313,65 +226,45 @@ static HGLRC GL_l_p_MakeContext(HDC dc)
 
 int GL_b_Available(void)
 {
-    WNDCLASSA cls;
-    HWND      wnd;
-    HDC       dc;
-    HGLRC     ctx;
+    SDL_Window*   probe;
+    SDL_GLContext ctx;
 
     if (gl_available >= 0)
         return gl_available;
     gl_available = 0;
 
-    if (!gl_module)
-        gl_module = LoadLibraryA("opengl32.dll");
-    if (!gl_module)
-    {
-        DBG_OutputDebugString("GL: no opengl32.dll\n");
-        return 0;
-    }
-    if (!GL_l_b_FindContextCreator())
-        return 0;
-
     /* A context of its own on a window of its own, made and thrown
-       away. Asking the driver is the only way to know, and asking it
-       on the game's window would spend that window's one chance to
-       have a pixel format set. */
-    memset(&cls, 0, sizeof(cls));
-    cls.lpfnWndProc = DefWindowProcA;
-    cls.hInstance = GetModuleHandleA(NULL);
-    cls.lpszClassName = "irisEngGLTry";
-    if (!RegisterClassA(&cls))
-        return 0;
-    wnd = CreateWindowExA(0, cls.lpszClassName, "", 0, 0, 0, 1, 1,
-                          NULL, NULL, cls.hInstance, NULL);
-    if (!wnd)
+       away. Asking the driver is the only way to know rather than
+       guess, and the game's window is not available to ask on: this
+       runs while the renderer is being chosen, which is before there
+       is one.
+
+       Hidden, because it is up for a fraction of a second and nobody
+       should see it. */
+    probe = SDL_CreateWindow("", 1, 1,
+                             SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+    if (!probe)
     {
-        UnregisterClassA(cls.lpszClassName, cls.hInstance);
+        DBG_OutputDebugString("GL: no window that can carry a context: %s\n",
+                              SDL_GetError());
         return 0;
     }
 
-    dc = GetDC(wnd);
-    if (dc && GL_l_i_SetPixelFormat(dc))
+    ctx = GL_l_p_MakeContext(probe);
+    if (ctx)
     {
-        ctx = GL_l_p_MakeContext(dc);
-        if (ctx)
-        {
-            const GLubyte* version = GLFN_glGetString(GL_VERSION);
+        const GLubyte* version = GLFN_glGetString(GL_VERSION);
 
-            gl_available = GL_b_VersionAtLeast((const char*)version, 4, 5);
-            if (!gl_available)
-                DBG_OutputDebugString("GL: context reports \"%s\", "
-                                      "which is not 4.5\n",
-                                      version ? (const char*)version : "?");
-            wglMakeCurrent(dc, NULL);
-            wglDeleteContext(ctx);
-            GL_ForgetFunctions();
-        }
+        gl_available = GL_b_VersionAtLeast((const char*)version, 4, 5);
+        if (!gl_available)
+            DBG_OutputDebugString("GL: context reports \"%s\", "
+                                  "which is not 4.5\n",
+                                  version ? (const char*)version : "?");
+        SDL_GL_MakeCurrent(probe, NULL);
+        SDL_GL_DestroyContext(ctx);
+        GL_ForgetFunctions();
     }
-    if (dc)
-        ReleaseDC(wnd, dc);
-    DestroyWindow(wnd);
-    UnregisterClassA(cls.lpszClassName, cls.hInstance);
+    SDL_DestroyWindow(probe);
     return gl_available;
 }
 
@@ -416,16 +309,20 @@ static void GL_l_SayWhatThisIs(void)
         (const char*)GLFN_glGetString(GL_SHADING_LANGUAGE_VERSION));
 }
 
-static void GL_l_SizeFromWindow(HWND hwnd)
+static void GL_l_SizeFromWindow(SDL_Window* window)
 {
-    RECT r;
+    int w = 0;
+    int h = 0;
 
     gl_state.width = 0;
     gl_state.height = 0;
-    if (hwnd && GetClientRect(hwnd, &r))
+    /* In pixels and not in the window's own units: the two differ on
+       a display that scales, and every number this feeds -- the
+       viewport, the targets, a screenshot -- is in pixels. */
+    if (window && SDL_GetWindowSizeInPixels(window, &w, &h))
     {
-        gl_state.width = r.right - r.left;
-        gl_state.height = r.bottom - r.top;
+        gl_state.width = w;
+        gl_state.height = h;
     }
 }
 
@@ -437,23 +334,22 @@ int GL_Init(HWND hwnd, struct sGdi_DisplayData* dd)
         return 0;
 
     gl_state.hwnd = hwnd;
-    gl_state.dc = GetDC(hwnd);
-    if (!gl_state.dc)
+    /* The window the context goes on. The engine's interface carries
+       the system's own handle for it, which is what the other
+       renderer wants; this one needs the handle belonging to whoever
+       made the window. */
+    gl_state.window = (SDL_Window*)PLT_p_Window();
+    if (!gl_state.window)
     {
-        DBG_OutputDebugString("GL: the window has no device context\n");
+        DBG_OutputDebugString("GL: there is no window to draw on\n");
         return 0;
     }
-    if (!GL_l_i_SetPixelFormat(gl_state.dc))
-    {
-        DBG_OutputDebugString("GL: no pixel format on this window\n");
-        return 0;
-    }
-    gl_state.context = GL_l_p_MakeContext(gl_state.dc);
+    gl_state.context = GL_l_p_MakeContext(gl_state.window);
     if (!gl_state.context)
         return 0;
 
     GL_l_SayWhatThisIs();
-    GL_l_SizeFromWindow(hwnd);
+    GL_l_SizeFromWindow(gl_state.window);
     GLFN_glViewport(0, 0, gl_state.width, gl_state.height);
 
     /* The engine's projections put z in 0..1, which is Direct3D's
@@ -503,16 +399,14 @@ int GL_Close(void)
         GL_l_ForgetWater();
         GL_l_ForgetWaterSmooth();
         GL_l_ForgetVideo();
-        wglMakeCurrent(gl_state.dc, NULL);
-        wglDeleteContext(gl_state.context);
+        SDL_GL_MakeCurrent(gl_state.window, NULL);
+        SDL_GL_DestroyContext(gl_state.context);
         gl_state.context = NULL;
         GL_ForgetFunctions();
     }
-    if (gl_state.dc)
-    {
-        ReleaseDC(gl_state.hwnd, gl_state.dc);
-        gl_state.dc = NULL;
-    }
+    /* The window is not ours to give back -- it was made before this
+       renderer was chosen and outlives it. */
+    gl_state.window = NULL;
     gl_state.hwnd = NULL;
     return 1;
 }
@@ -521,8 +415,15 @@ int GL_ReadaptDisplay(HWND hwnd, struct sGdi_DisplayData* dd)
 {
     (void)dd;
 
-    /* The context survives a resize; the viewport does not. */
-    GL_l_SizeFromWindow(hwnd ? hwnd : gl_state.hwnd);
+    /* The context survives a resize; the viewport does not.
+     *
+       The handle the engine passes is the system's and is not what
+       the size is asked of, so it is taken as a question rather than
+       as an answer: a readapt names the window it means, and this
+       renderer only has the one. */
+    if (hwnd)
+        gl_state.hwnd = hwnd;
+    GL_l_SizeFromWindow(gl_state.window);
     if (gl_state.context)
         GLFN_glViewport(0, 0, gl_state.width, gl_state.height);
     return 1;
@@ -787,8 +688,8 @@ void GL_Flip(void)
     if (gl_screenshotWanted)
         GL_l_TakeScreenshot();
 
-    if (gl_state.dc)
-        SwapBuffers(gl_state.dc);
+    if (gl_state.window)
+        SDL_GL_SwapWindow(gl_state.window);
 
     /* And back to the scene target for the next frame, so that
        nothing has to remember to switch it on. This is also where a

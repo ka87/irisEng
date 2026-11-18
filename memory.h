@@ -36,7 +36,10 @@ extern uint32_t MEM_gpv_LastFree;
 uint32_t MEM_gul_RealSize;
 uint32_t MEM_gul_FromEndMaxAllocSize;
 
-HANDLE memMngEvent;
+/* The allocator's lock is memory.c's own. engine.c closes it on the
+   way out, which is the only thing outside that file that touches
+   it, so that is the only thing exposed. */
+void MEM_CloseLock(void);
 
 void MEM_InitModule();
 void* MEM_p_Alloc(unsigned int size);

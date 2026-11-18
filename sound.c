@@ -11,6 +11,7 @@
 #include "time.h"
 #include "sound.h"
 #include "platform/sndbackend.h"
+#include "platform/syscompat.h"
 
 float SND_gf_AutoVolumeOff = 1.0f;
 
@@ -2100,17 +2101,17 @@ tSndBank* SND_ul_CallbackLoadBank(int Offset)
         LOA_ReadCharArray(&cursor, String1, 4u, 1);
         if (!soundKey || soundKey == -1)
             continue;
-        if (!_strnicmp(String1, ".wad", 4u))
+        if (!strncasecmp(String1, ".wad", 4u))
             soundIdx = SND_l_AddDialogNoLoad(soundKey);
-        else if (!_strnicmp(String1, ".wam", 4u))
+        else if (!strncasecmp(String1, ".wam", 4u))
             soundIdx = SND_l_AddMusicNoLoad(soundKey);
-        else if (!_strnicmp(String1, ".waa", 4u))
+        else if (!strncasecmp(String1, ".waa", 4u))
             soundIdx = SND_l_AddAmbienceNoLoad(soundKey);
-        else if (!_strnicmp(String1, ".smd", 4u))
+        else if (!strncasecmp(String1, ".smd", 4u))
             soundIdx = SND_l_AddSModifierNoLoad(soundKey, &cursor);
-        else if (!_strnicmp(String1, ".wac", 4u))
+        else if (!strncasecmp(String1, ".wac", 4u))
             soundIdx = SND_l_AddLoadingSound(soundKey);
-        else if (!_strnicmp(String1, ".wav", 4u))
+        else if (!strncasecmp(String1, ".wav", 4u))
             soundIdx = SND_l_AddSound(soundKey);
         else
         {
@@ -3706,7 +3707,7 @@ struct sSndBank* SND_ul_CallbackLoad(uint32_t Offset)
         offset = LOA_FetchBuffer(4);
         LOA_ReadCharArray(&offset, String1, 4u, 1);
     }
-    if (!_strnicmp(String1, ".snk", 4u))
+    if (!strncasecmp(String1, ".snk", 4u))
         result = SND_ul_CallbackLoadMetaBank(Offset);
     else
         result = SND_ul_CallbackLoadBank(Offset);

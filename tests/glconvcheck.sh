@@ -20,10 +20,9 @@
 # the rules are derived from how a pointer is used rather than listed
 # by name. A pointer needs the convention when the driver is at the
 # other end of it: when it supplies the function, or when it calls
-# ours. That is what picks GL_pfn_DebugProc and
-# GL_pfn_CreateContextAttribs up and leaves GL_pfn_GetProc alone --
-# that one is only ever given our own functions, so there is no
-# exemption list here to go stale.
+# ours. That is what picks GL_pfn_DebugProc
+# up and leaves GL_pfn_GetProc alone -- that one is only ever given
+# our own functions, so there is no exemption list here to go stale.
 #
 # A first version of this check missed three of the eight ways the bug
 # can be written, including the one that was actually shipped: the
@@ -150,11 +149,21 @@ for path in engine:
                          r'GL_p_Resolve\(\s*"(\w+)"', src[path]):
         if re.match(r'w?gl[A-Z]', m.group(2)):
             supplied.add(m.group(1))
+# There is no such cast in the tree at the moment. That is a fact
+# about how the context is made rather than a hole here:
+# wglCreateContextAttribsARB was the only one, and it went when the
+# context started coming from SDL -- which resolves every entry point
+# through GL_FUNCTION_LIST, and section 2 above is what polices that.
+# So an empty set is reported rather than failed, and any cast that
+# appears later is still checked below.
+#
+# This guard did fire when the cast went, which is what it is for: a
+# check that quietly stops seeing what it used to see is worse than no
+# check. It is being answered rather than deleted.
 checked += 1
 if not supplied:
-    fails.append("found no typedef cast onto a resolved entry point;"
-                 " wglCreateContextAttribsARB is one, so this check has"
-                 " stopped looking")
+    print("  no typedef is cast onto a resolved entry point; the one there"
+          " was went with the WGL context")
 for name in sorted(supplied):
     checked += 1
     if name not in typedefs:
