@@ -12,6 +12,26 @@
 #include "winsound.h"
 #include "../sndplatform.h"
 
+/* Tracing the sound thread. Off, and one line to turn on: it prints
+   what the thread is doing once a second, the play list and the state
+   of every stream on it, and a line at each refill, each removal and
+   each stream's beginning and end.
+
+   It sits here, above everything that reads it, and that is the whole
+   reason this comment is long. An identifier that is not defined is
+   nought in a `#if`, so a `#if PCSND_TRACE` written above the define
+   compiles out whichever value the define carries, and says nothing
+   about it. That is how seven of these went silently missing while
+   the two below the define printed -- three runs of the game produced
+   no refill, no removal and no state, and all of it was read as the
+   code not reaching those points.
+
+   The sweep in tests/warncheck.sh fails on an undefined identifier in
+   a `#if` now, so a trace that cannot print is a failed build rather
+   than a quiet lie. */
+#define PCSND_TRACE 0
+
+
 int gpcSNDVolumeAdjustmentArr[] = {
                  0,          0, 0xFFFFFFF6, 0xFFFFFFF6, 0xFFFFFFF6, 
         0xFFFFFFEC, 0xFFFFFFEC, 0xFFFFFFEC, 0xFFFFFFE2, 0xFFFFFFE2, 
@@ -107,6 +127,13 @@ void pcSND_AddSoundToThePlayList(BOOL notifyThread)
     sndEventHandles[2 * slot] = sndCurrSoundBufferElem->miscData->eventHandle1;
     sndEventHandles[2 * slot + 1] = sndCurrSoundBufferElem->miscData->eventHandle2;
     sndEventHandleNum += 2;
+#if PCSND_TRACE
+    DBG_OutputDebugString("SND add: slot %d sbe=%p misc=%p voice=%p handles=%d\n",
+                          slot, (void*)sndCurrSoundBufferElem,
+                          (void*)(sndCurrSoundBufferElem ? sndCurrSoundBufferElem->miscData : 0),
+                          (void*)(sndCurrSoundBufferElem ? sndCurrSoundBufferElem->voice : 0),
+                          sndEventHandleNum);
+#endif
     if (notifyThread)
         SetEvent(dsndEvents[5]);
 }
@@ -148,6 +175,10 @@ void pcSND_RemoveSoundFromPlayList(tSndSoundBufferElem* sbe, int fireEvent)
             sndEventHandleNum -= 2;
         }
     }
+#if PCSND_TRACE
+    DBG_OutputDebugString("SND rm: sbe=%p misc=%p handles=%d\n",
+                          (void*)sbe, (void*)sbe->miscData, sndEventHandleNum);
+#endif
     ResetEvent(sbe->miscData->eventHandle1);
     sbe->miscData->eventHandle1 = 0;
     ResetEvent(sbe->miscData->eventHandle2);
@@ -470,12 +501,6 @@ static void pcSND_l_ServiceStreams(void)
             pcSND_l_ServiceStream(sndPlayList[slot].soundElem);
         }
 }
-
-/* Tracing the sound thread. Off, and one line to turn on: it prints a
-   summary of what the thread is doing once a second, and a line at
-   every refill and every removal, which is what a stream going quiet
-   has to be read out of. */
-#define PCSND_TRACE 0
 
 static unsigned int pcSND_l_feeds;
 static unsigned int pcSND_l_ticks;
@@ -1460,7 +1485,18 @@ void pcSND_SetPositionNotify(tSndSoundBufferElem* sbe)
 {
     pcSND_setCurrentSoundBuffElemAndSetAnEvent(sbe);
     sbe->miscData->lastPlayedBlock = pcSND_l_PlayedBlock(sbe->miscData);
-
+#if PCSND_TRACE
+    /* Where a stream's refilling begins, and the sizes it begins with.
+       A block far larger than a second of sound is a stream the cursor
+       cannot cross a boundary of in any reasonable time, which looks
+       from outside exactly like a refill that never comes. */
+    DBG_OutputDebugString("SND start: sbe=%p misc=%p voice=%p up=%d buf=%d full=%u blk=%d h1=%p h2=%p\n",
+                          (void*)sbe, (void*)sbe->miscData, (void*)sbe->voice,
+                          sbe->miscData->sizeToUpload, sbe->miscData->soundBufferSize,
+                          sbe->miscData->fullSize, sbe->miscData->lastPlayedBlock,
+                          (void*)sbe->miscData->eventHandle1,
+                          (void*)sbe->miscData->eventHandle2);
+#endif
 }
 
 void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferElem* sbe)

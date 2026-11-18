@@ -9,6 +9,26 @@
 #   C4101  unreferenced local variable
 #   C4244  conversion from 'double' to 'float', possible loss of data
 #
+# And one that is not MSVC's, added because it cost three runs of the
+# game to find by hand:
+#
+#   -Wundef  an identifier that is not defined, used in a #if
+#
+# An undefined identifier is nought in a #if, so a `#if FEATURE`
+# written above `#define FEATURE` compiles out whichever value the
+# define carries, and nothing says so. win/winsound.c had seven of
+# them above its trace switch and two below it; the two printed, the
+# seven did not, and the silence was read three times over as the code
+# not reaching those points. A trace that cannot print is worse than
+# no trace, because it is evidence of the wrong thing.
+#
+# Required to be zero like the other two. The only exclusion is by
+# file: minilzo's own headers test a long list of undefined platform
+# macros on purpose, and they are upstream source, which this sweep
+# already leaves alone -- but bigfiles.c includes them, so they are
+# dropped by the path they are reported against rather than by the
+# file being swept.
+#
 # gcc has an equivalent for each -- -Wunused-variable and
 # -Wfloat-conversion -- and both have now been reported by hand more
 # than once, which is what this exists to stop. Four locals in
@@ -91,6 +111,14 @@ for f in $files; do
     swept=$((swept + 1))
     out=$($CC $CFLAGS -Wunused-variable "$f" 2>&1 \
           | grep -E '\[-Wunused-variable\]' || true)
+    # See the note at the top: upstream headers test undefined macros
+    # on purpose, so they go by the path they are reported against.
+    uout=$($CC $CFLAGS -Wundef "$f" 2>&1 \
+           | grep -E '\[-Wundef\]' \
+           | grep -v '^minilzo/' \
+           | grep -v '/minilzo/' || true)
+    [ -n "$uout" ] && out="$out${out:+
+}$uout"
     # Two kinds are dropped: 'long double', which cannot arise where
     # the game is built because the type is double there, and _Bool,
     # which is a float used as a truth value in a condition and is not
@@ -110,9 +138,9 @@ done
 
 if [ "$found" != "0" ] ; then
     echo
-    echo "  $found warning(s) the game's own build will report: an"
-    echo "  unreferenced local to delete, or a narrowing to write out"
+    echo "  $found warning(s): an unreferenced local to delete, a"
+    echo "  narrowing to write out, or a #if above the define it reads"
     exit 1
 fi
-echo "  no unreferenced locals and no implicit double-to-float" \
-     "($swept files)"
+echo "  no unreferenced locals, no implicit double-to-float and no" \
+     "undefined identifier in a #if ($swept files)"
