@@ -126,9 +126,15 @@ defs() {
 }
 
 # shellcheck disable=SC2086
-new_defs="$(defs NEW_ $wsnd_syms) -DSIDE_RUN=NEW_wsnd_side_run -DSIDE_CASES=NEW_wsnd_side_cases -DSIDE_RUN_GUARDS=NEW_wsnd_side_guards"
+new_defs="$(defs NEW_ $wsnd_syms) -DSIDE_RUN=NEW_wsnd_side_run -DSIDE_CASES=NEW_wsnd_side_cases -DSIDE_RUN_GUARDS=NEW_wsnd_side_guards -DWSND_SIDE_NEW=1"
 # shellcheck disable=SC2086
-base_defs="$(defs BASE_ $wsnd_syms) -DSIDE_RUN=BASE_wsnd_side_run -DSIDE_CASES=BASE_wsnd_side_cases -DSIDE_RUN_GUARDS=BASE_wsnd_side_guards"
+base_defs="$(defs BASE_ $wsnd_syms) -DSIDE_RUN=BASE_wsnd_side_run -DSIDE_CASES=BASE_wsnd_side_cases -DSIDE_RUN_GUARDS=BASE_wsnd_side_guards -DWSND_SIDE_NEW=0"
+
+# Which copy this is. One scripted wake-up can mean different things
+# to the two of them -- the device announcing a refill position to the
+# frozen copy, and a tick to the rewrite, which looks for itself -- and
+# the driver has to say which it is for the mock to answer in the right
+# words.
 
 # shellcheck disable=SC2086
 $CC $CFLAGS -c win/winsound.c            -o "$OUT/wsnd.new.o"       $new_defs

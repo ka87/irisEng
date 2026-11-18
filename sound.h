@@ -1,4 +1,12 @@
 #pragma once
+/* Still here, and the last thread of DirectSound left in the tree.
+   Nothing in win/winsound.c calls it any more; what keeps the include
+   is this header itself -- the four fields marked below, which the
+   frozen copy in tests/ still uses, and WAVEFORMATEX, which the wav
+   headers are declared with. WAVEFORMATEX is Win32's rather than
+   DirectSound's, so getting the include out means giving the engine a
+   wave format of its own first, and that reaches sound.c and the
+   loaders. Left as its own piece of work. */
 #include <dsound.h>
 #include "common.h"
 #include "basic_array.h"
@@ -50,14 +58,13 @@ typedef struct sSndSoundBufferElem
     int unk2SetTo64InCreate; // panning, set: pcSND_SB_SetPan
     uint8_t gap[4];
     int unknownFiledinsub49db40ToSetVolume; // set: pcSND_SB_SetPan
-    /* The three interfaces the engine no longer uses: the buffer, the
-       3D buffer parked at a fixed position, and the property set the
-       reverb went through. Nothing in win/winsound.c touches them --
-       the voice above replaced the first and the other two have no
-       successor -- but the frozen copy in tests/ still does, and a
-       baseline is not edited to follow a rewrite. Both copies have to
-       agree on this struct's shape, so they stay until the frozen
-       copy is retired. */
+    /* Three interfaces the engine no longer uses: the buffer, the 3D
+       buffer parked at a fixed position, and the property set the
+       reverb went through. The voice above replaced the first and the
+       other two have no successor -- but the frozen copy in tests/
+       still uses all three, and a baseline is not edited to follow a
+       rewrite. Both copies have to agree on this struct's shape, so
+       the space stays until the frozen copy is retired. */
     IDirectSoundBuffer* dsndSBIF;
     IDirectSound3DBuffer* dsnd3dbufferIF;
     IKsPropertySet* dsndIKPropertySetIF;

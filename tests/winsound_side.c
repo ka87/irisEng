@@ -320,8 +320,10 @@ static void dump_sbe(const char* tag, tSndSoundBufferElem* sbe)
     if (sbe->miscData)
     {
         tSbeMiscData* m = sbe->miscData;
-        d("%s  misc ntf=%d fh=%ld dtm=%d full=%u sum=%d u6=%d size=%d up=%d\n", tag,
-          wsnd_obj_id(m->vmilenEventHandlptr_Sub49e950), (long)(size_t)m->fileHandle,
+        /* The notify interface is not printed: it was what the refill
+           positions were armed on, and the rewrite has none. */
+        d("%s  misc fh=%ld dtm=%d full=%u sum=%d u6=%d size=%d up=%d\n", tag,
+          (long)(size_t)m->fileHandle,
           m->distanceToMove, m->fullSize, m->sumSize, m->unk6, m->soundBufferSize, m->sizeToUpload);
         d("%s  misc e1=%ld e2=%ld off=%d pos=%d cur=%u rem=%d loop=%d rap=%d stop=%d idx=%d\n", tag,
           (long)(size_t)m->eventHandle1, (long)(size_t)m->eventHandle2,
@@ -577,6 +579,13 @@ int SIDE_CASES(void) { return GROUPS * SUBCASES; }
 
 void SIDE_RUN(int c)
 {
+    /* Which copy is running. The mocks are linked once and cannot
+       tell; this is compiled twice and can. A scripted wake-up of 4
+       or more was the device announcing a refill position, and the
+       rewrite is told no positions -- so it is handed the same event
+       as a tick instead. */
+    wsnd_notify_is_tick = WSND_SIDE_NEW;
+
     int group = c / SUBCASES;
     int sub = c % SUBCASES;
     unsigned seed = (unsigned)(c * 2654435761u);
@@ -1039,7 +1048,39 @@ void SIDE_RUN(int c)
         SND_gc_NoSound = (sub & 64) ? 1 : 0;
         wsnd_reg_fail = (sub & 1) ? 1 : ((sub & 2) ? 2 : 0);
         wsnd_eax_support = (sub & 4) ? 1 : 3;
-        d("init=%d\n", pcSND_l_Init(&fx_handles));
+        /* Where the frozen copy's init fails, there is nothing to
+           compare: it fails on a registry read -- the effects setting
+           or the audio board's GUID -- and the rewrite does neither,
+           so it succeeds and the two go on from different states.
+           The knobs are left driving the frozen copy rather than
+           forced off, because forcing them walks it into a loop it
+           has no way out of: a sound read round and round whose
+           re-read decodes nothing. See the note at that loop in
+           win/winsound.c, which is where the rewrite got its way
+           out. */
+        if (wsnd_reg_fail)
+            return;
+        /* Init is the one entry point the two copies cannot be
+           compared call for call. The frozen copy opens a named
+           driver whose GUID it reads out of the registry, makes a
+           primary buffer, queries a 3D listener off it and makes a
+           second buffer for no purpose but asking EAX whether it is
+           there. The rewrite opens a device. The two registry knobs
+           and the EAX knob above drive paths that no longer exist.
+           
+           So what is compared is what init answered and the state it
+           left behind, which is the part that still means the same
+           thing on both sides -- the list, the read buffers, the
+           events, the thread. How it got there is dropped. */
+        {
+            int answered;
+
+            wsnd_init_quiet = 1;
+            answered = pcSND_l_Init(&fx_handles);
+            wsnd_init_quiet = 0;
+            wsnd_log_restart();
+            d("init=%d\n", answered);
+        }
         dump_globals();
 
         sbe = make_sbe(0, 1, 1 + (sub & 1));
@@ -1054,9 +1095,14 @@ void SIDE_RUN(int c)
             sbe->miscData->fullSize = 480;
             sbe->miscData->sumSize = 0;
         }
+        /* Stopped by the main thread for some of them: both copies
+           leave such a sound alone, and nothing else here reaches
+           that guard. */
+        sbe->miscData->Stopped_SetIN49e270 = (sub & 8) ? 1 : 0;
         sndCurrSoundBufferElem = sbe;
         if (sndEventsNum)
         {
+            wsnd_play_pos = 0;
             pcSND_AddSoundToThePlayList(0);
             /* The refill arms first: index 1 and index 3 take the
                sound back out of the play list, and the arm that follows
@@ -1074,6 +1120,9 @@ void SIDE_RUN(int c)
             script[6] = 1;
             script[7] = 3;
             wsnd_thread_script(script, 8);
+            /* One block of the cursor per refill point, which is what
+               the arm stood for -- see the note in winsound_mocks.c. */
+            wsnd_play_pos_step = sbe->miscData->sizeToUpload;
             wsnd_read_bytes = 36 * (1 + (sub % 7));
             wsnd_run_thread(pcSND_SoundThread);
             dump_sbe("thread", sbe);

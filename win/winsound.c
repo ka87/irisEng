@@ -315,6 +315,23 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
                 misc->sumSize = 0;
                 pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 1, &totalSizeAfterDecompress,
                                                  (int16_t*)&audioPtr1[produced]);
+                /* A pass that seeks back to the start and still decodes
+                   nothing will never decode anything, and this loop had
+                   no way out of that: it is the one place the engine
+                   reads a sound round and round rather than to its end.
+                   It could not be reached before because the refill was
+                   gated on locking a stretch of the buffer first, and a
+                   lock that failed left nothing to fill; the voice's
+                   write cannot fail, so the gate has gone and the loop
+                   is reachable. Treated as the end of the sound, which
+                   is what the arm below does when a single read falls
+                   short. */
+                if (totalSizeAfterDecompress == 0)
+                {
+                    misc->RemoveAfterPlayFinished = 1;
+                    memset(&audioPtr1[produced], 0, audioBytes1 - produced);
+                    break;
+                }
                 produced += totalSizeAfterDecompress;
             } while (produced < audioBytes1);
         }
@@ -378,7 +395,15 @@ int WINAPI pcSND_SoundThread(LPVOID parameter)
                               dsndEvents[2], dsndEvents[3] };
 
         signalled = WaitForMultipleObjects(4, control, 0, PCSND_SERVICE_MS);
-        if (signalled == WAIT_TIMEOUT || signalled == (DWORD)-1)
+        /* A wait that failed is waited again and is not a tick, which
+           is what the loop around it used to say. */
+        if (signalled == (DWORD)-1)
+            continue;
+        /* The tick, and the only thing that does the periodic work:
+           every streaming sound looked at, and the device fed. The
+           four events below are asked for by name and do their own
+           thing. */
+        if (signalled == WAIT_TIMEOUT)
         {
             pcSND_l_ServiceStreams();
             SPL_Feed();
@@ -402,10 +427,6 @@ int WINAPI pcSND_SoundThread(LPVOID parameter)
         default:
             break;
         }
-        /* Whatever woke it, the streams still want looking at and the
-           device still wants feeding. */
-        pcSND_l_ServiceStreams();
-        SPL_Feed();
     }
     return 0;
 }
@@ -714,10 +735,6 @@ tSndSoundBufferElem* pcSND_pst_SB_Create(tSndHandles* handles, tSndWavHdrStruct*
     unsigned int blockAlign;
     DWORD samplesPerSec;
     tSndSoundBufferElem* sndSNDBuf;
-    char* audioPtr1;
-    char* audioPtr2;
-    unsigned int audioBytes1;
-    int audioBytes2;
 
     if (!handles->deviceOpen)
         return 0;
@@ -1151,10 +1168,6 @@ tSndSoundBufferElem* pcSND_SoundReloadToDSound(tSndHandles* handles, tSndWavHdrS
     unsigned int blockAlign;
     DWORD samplesPerSec;
     tSndSoundBufferElem* sndSNDBuf;
-    char* audioPtr1;
-    char* audioPtr2;
-    unsigned int audioBytes1;
-    int audioBytes2;
 
     if (!handles->deviceOpen)
         return 0;
@@ -1282,6 +1295,7 @@ void pcSND_SetPositionNotify(tSndSoundBufferElem* sbe)
 {
     pcSND_setCurrentSoundBuffElemAndSetAnEvent(sbe);
     sbe->miscData->lastPlayedBlock = pcSND_l_PlayedBlock(sbe->miscData);
+
 }
 
 void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferElem* sbe)
@@ -1290,10 +1304,8 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
     int skipSize;
     int produced;
     int decoded;
-    char* audioPtr1;
-    char* audioPtr2;
     int audioBytes1;
-    int audioBytes2;
+    char* audioPtr1;
     DWORD distanceToMoveHigh;
 
     misc = sbe->miscData;
@@ -2677,7 +2689,8 @@ void pcSND_SB_Release(tSndSoundBufferElem* sbe)
         {
             if (wasListed)
                 gDoSoundGlobal.sndConcurrentlyPlayedNum -= sbe->format;
-            pcSND_D3DSoundBufAAndIKPopertySetRelease(sbe);
+            /* The 3D buffer and the property set were given back here.
+               Neither is made any more. */
             pcSND_SNDRasterRelease(sbe->voice);
             SPL_VoiceDestroy(sbe->voice);
             MEM_Free(sbe);

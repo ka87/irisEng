@@ -286,7 +286,20 @@ static HRESULT m_QueryInterface(void* self, const GUID* iid, void** out)
     else if (iid == &IID_IDirectSoundNotify) { kind = 4; vtbl = &notify_vtbl; }
     else if (iid == &IID_IKsPropertySet) { kind = 5; vtbl = &propset_vtbl; }
     else { *out = 0; return (HRESULT)0x80004002L; }
-    *out = mock_new(kind, vtbl);
+    /* Unnumbered, all four of them. Querying an interface off a
+       buffer is this interface's own way of reaching a feature -- 3D
+       position, a listener, refill notifications, the reverb property
+       set -- and the rewrite queries nothing, so none of these has a
+       counterpart. Numbering them would put every object made after
+       one of them out of step on the two sides, which is what the
+       notify interface queried per track was doing. The parent is
+       still recorded, because a 3D buffer speaks for its buffer. */
+    {
+        int was = wsnd_init_quiet;
+        wsnd_init_quiet = 1;
+        *out = mock_new(kind, vtbl);
+        wsnd_init_quiet = was;
+    }
     ((tMockObj*)*out)->parent = wsnd_obj_id(self);
     return 0;
 }
@@ -818,6 +831,19 @@ void wsnd_thread_script(const int* indices, int count)
     thread_step = 0;
 }
 
+/* How far the play cursor moves when the device reaches a refill
+   point. Set by the driver to the block size of the sound it is
+   driving; see the note below. */
+int wsnd_play_pos_step;
+
+/* Set by the rewrite's copy of the driver. A wake-up the frozen copy
+   reads as "the device reached a refill position" is, to the rewrite,
+   nothing but a tick: it is told no positions and looks at the cursor
+   instead. So the same scripted event is handed over as the index to
+   one and as a timeout to the other, and the cursor moves either way.
+*/
+int wsnd_notify_is_tick;
+
 DWORD WaitForMultipleObjects(DWORD count, const HANDLE* handles, BOOL all, DWORD ms)
 {
     DWORD r;
@@ -826,7 +852,52 @@ DWORD WaitForMultipleObjects(DWORD count, const HANDLE* handles, BOOL all, DWORD
     else
         r = 2;                   /* the thread's own exit case */
     ++thread_step;
-    wsnd_log("WaitForMultipleObjects(n=%u)=%u\n", count, r);
+
+    /* The count is not logged. The frozen copy waits on four control
+       events and two more for every streaming sound; the rewrite
+       waits on the four and looks at the sounds itself, so the two
+       numbers are the shape of the wait and not an event.
+       
+       A scripted wake-up of 4 or more was the device saying the play
+       cursor had reached a position the refill was armed at. The
+       rewrite is told no such thing -- it compares the block the
+       cursor is in against the block it last refilled for -- so the
+       same event has to be expressed the way it reads it, and that is
+       the cursor having moved a block. Even values were the refill
+       arm and odd ones the stop arm, which is the same split the
+       frozen copy makes on (signalled & 1). */
+    /* As a signed value: the script's own sentinel for a wait that
+       failed is -1, which as an unsigned is larger than every real
+       index and was being read as one. */
+    if ((int)r >= 4)
+    {
+        /* The cursor moves for both copies, because the accounting it
+           feeds -- pcSND_updateCurrentPlayPositionAndSize, and the
+           decision to take a finished sound off the list -- is shared
+           code that both of them run. Moving it for only one makes
+           their bookkeeping drift apart. */
+        if ((r & 1) == 0)
+        {
+            /* A buffer that reached a refill position is playing --
+               that is how it got there -- and the cursor has moved a
+               block, which is the same event said the way the rewrite
+               reads it. */
+            wsnd_status |= 1;
+            wsnd_play_pos += wsnd_play_pos_step;
+        }
+        else
+        {
+            wsnd_status &= ~1;   /* and the other arm is it stopping */
+        }
+        /* The rewrite is handed it as a tick: it is told no refill
+           positions and looks at the cursor instead. */
+        if (wsnd_notify_is_tick)
+        {
+            wsnd_log("wake=%u\n", r);
+            return WAIT_TIMEOUT;
+        }
+    }
+    wsnd_log("wake=%u\n", r);
     return r;
 }
 
@@ -863,16 +934,19 @@ void wsnd_run_thread(int (*body)(void*))
    are still live and still held. */
 void wsnd_log_restart(void)
 {
+    /* The log and nothing else. The call counters are what the
+       failure knobs count against -- every nth create, every nth
+       lock -- so zeroing them here would re-script which calls fail
+       from the middle of a case, which is not what dropping the log
+       is for. */
     log_len = 0;
-    create_calls = 0;
-    lock_calls = 0;
-    qi_calls = 0;
 }
 
 void wsnd_mock_reset(void)
 {
     log_len = 0;
     wsnd_init_quiet = 0;
+    wsnd_play_pos_step = 0;
     quiet_count = 0;
     id_next = 0;
     if (heap_used > heap_high)
@@ -1017,8 +1091,23 @@ int SPL_b_VoiceWrite(tSplVoice* v, int offset, const void* data, int bytes)
 
 int SPL_b_VoiceSilence(tSplVoice* v, int offset, int bytes)
 {
-    static unsigned char zeros[4096];
-    return SPL_b_VoiceWrite(v, offset, zeros, bytes > 4096 ? 4096 : bytes);
+    static const unsigned char zeros[4096];
+    unsigned n;
+
+    /* Not forwarded to the write with a clamped length: that reported
+       a shorter write than was asked for, and a silence that wrote
+       sound instead then looked the same. The length is the length
+       asked for, and the fingerprint is of zeros. */
+    ++lock_calls;
+    if (wsnd_lock_fail_mod && (lock_calls % wsnd_lock_fail_mod) == 0)
+    {
+        wsnd_log("wr(o%d,%u,%u,FAIL)\n", wsnd_voice_id(v), (unsigned)offset, (unsigned)bytes);
+        return 0;
+    }
+    n = (unsigned)bytes > 65536u ? 65536u : (unsigned)bytes;
+    wsnd_ev_write(wsnd_voice_id(v), (unsigned)offset, n,
+                  fingerprint(zeros, (int)(n > 4096 ? 4096 : n)));
+    return 1;
 }
 
 void SPL_VoicePlay(tSplVoice* v, int loop)

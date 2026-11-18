@@ -29,6 +29,8 @@ void wsnd_log(const char* fmt, ...);
 void wsnd_mock_reset(void);
 void wsnd_log_restart(void);
 extern int wsnd_init_quiet;
+extern int wsnd_play_pos_step;
+extern int wsnd_notify_is_tick;
 const char* wsnd_log_text(void);
 int wsnd_log_len(void);
 
