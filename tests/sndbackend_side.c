@@ -567,7 +567,12 @@ static tSndSoundBufferElem* make_sbe(int idx, int withMisc, int format)
         m->sizeToUpload = 2048;
         m->soundBufferSize = 8192;
         m->fullSize = 40000;
-        m->distanceToMove = 128;
+        /* One in nine starts past two gigabytes into the big file,
+           which is where an offset held as an int and widened by its
+           sign stops meaning what SetFilePointer meant by it. Every
+           other case here is a small offset, which is why that went
+           unseen. */
+        m->distanceToMove = (idx % 9) ? 128 : (int)0x80000400;
         m->eventHandle1 = (HANDLE)(size_t)(10 + idx);
         m->eventHandle2 = (HANDLE)(size_t)(20 + idx);
         m->dsndEventsArrayIdx = idx & 3;

@@ -309,6 +309,21 @@ static char* pcSND_l_p_UploadBuffer(int bytes)
     return (char*)dsndUploadBuffer;
 }
 
+/* Where in the big file a sound begins.
+ *
+ * The offset is held as an int and was handed to SetFilePointer as
+ * the low half of a 64-bit distance, with the high half nought --
+ * and in that call the low half is **unsigned**. So an offset past
+ * two gigabytes is a large positive number there and a negative one
+ * to anything that widens the int by its sign, which is what reading
+ * it straight into a 64-bit seek does.
+ *
+ * A negative seek is refused, and a refused seek leaves the file
+ * where it was: the next read takes whatever is under the pointer
+ * and the decoder makes noise of it. Hence the cast, which is the
+ * arithmetic the original did. */
+#define PCSND_FILE_OFFSET(x) ((long long)(unsigned int)(x))
+
 /* Which block of the buffer the cursor is in. The buffer is a whole
    number of sizeToUpload blocks and the device used to fire an event
    as the cursor entered each one. */
@@ -432,7 +447,7 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
         {
             do
             {
-                SPL_b_FileSeek(misc->fileHandle, misc->distanceToMove);
+                SPL_b_FileSeek(misc->fileHandle, PCSND_FILE_OFFSET(misc->distanceToMove));
                 misc->sumSize = 0;
                 pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 1, &totalSizeAfterDecompress,
                                                  (int16_t*)&audioPtr1[produced]);
@@ -1541,7 +1556,7 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
         if (!audioPtr1)
             return;
         skipSize = pcSND_CalcSizeToReadByFormat(misc->unk6, sbe->format);
-        SPL_b_FileSeek(misc->fileHandle, (long long)misc->distanceToMove + skipSize);
+        SPL_b_FileSeek(misc->fileHandle, PCSND_FILE_OFFSET(misc->distanceToMove + skipSize));
         misc->sumSize = misc->unk6;
         pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 0, &decoded, (int16_t*)audioPtr1);
         produced = decoded;
@@ -1551,7 +1566,7 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
             {
                 do
                 {
-                    SPL_b_FileSeek(misc->fileHandle, misc->distanceToMove);
+                    SPL_b_FileSeek(misc->fileHandle, PCSND_FILE_OFFSET(misc->distanceToMove));
                     misc->sumSize = 0;
                     pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 0, &decoded, (int16_t*)(&audioPtr1[produced]));
                     produced += decoded;
