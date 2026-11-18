@@ -393,6 +393,113 @@ static void feedWanted(void)
     SPL_VoiceDestroy(v);
 }
 
+/* The streaming ring, driven the way win/winsound.c drives it.
+ *
+ * A streamed sound is a ring of four blocks played looping, which the
+ * sound thread refills a block behind the cursor. Everything the
+ * engine decides -- when to refill, how far the sound has got, whether
+ * it is still playing -- it works out from SPL_i_VoiceCursor and
+ * nothing else, so that arithmetic has to hold over many passes of the
+ * ring and not just the first.
+ *
+ * This is the loop out of pcSND_l_ServiceStream, with the file and the
+ * decoder taken out: the cursor, the block comparison and the running
+ * total, against a real device. */
+static void theStreamingRing(void)
+{
+    const int block = 8192;                 /* sizeToUpload */
+    const int ring = 4 * block;             /* soundBufferSize */
+    tSplVoice* v;
+    int currentPlayPosition, lastPlayedBlock, currOffset;
+    long long currSize;
+    int tick, refills, biggestAdvance, wentBackwards, everStopped;
+    int16_t* payload;
+
+    printf("-- the streaming ring over several passes\n");
+
+    v = SPL_p_VoiceCreate(1, 22050, ring);
+    ok(v != 0, "a ring of four blocks");
+    if (!v)
+        return;
+    fillRamp(v, ring);
+
+    payload = (int16_t*)malloc((size_t)block);
+    memset(payload, 0x11, (size_t)block);
+
+    SPL_VoicePlay(v, 1);                    /* streams are played looping */
+
+    currentPlayPosition = 0;
+    lastPlayedBlock = SPL_i_VoiceCursor(v) / block;
+    currOffset = 0;
+    currSize = 0;
+    refills = 0;
+    biggestAdvance = 0;
+    wentBackwards = 0;
+    everStopped = 0;
+
+    /* Long enough to go round the ring several times: the ring is
+       16384 bytes of mono 22050, which is a bit under a second, and a
+       tick is the thread's own 5 ms. */
+    for (tick = 0; tick < 500; tick++)
+    {
+        int playPos, advanced, blockNow;
+
+        if ((SPL_i_VoiceStatus(v) & SPL_PLAYING) == 0)
+            everStopped = 1;
+
+        playPos = SPL_i_VoiceCursor(v);
+        if (playPos >= currentPlayPosition)
+            advanced = playPos - currentPlayPosition;
+        else
+        {
+            advanced = playPos + ring - currentPlayPosition;
+            /* A real wrap crosses the end of the ring, so the position
+               before it was near the top and the one after it near the
+               bottom. Anything else is the cursor going backwards, and
+               this arm charges a whole ring for it. */
+            if (!(currentPlayPosition > ring - block && playPos < block))
+                wentBackwards++;
+        }
+        if (advanced > biggestAdvance)
+            biggestAdvance = advanced;
+        currSize += advanced;
+        currentPlayPosition = playPos;
+
+        blockNow = currentPlayPosition / block;
+        if (blockNow != lastPlayedBlock)
+        {
+            lastPlayedBlock = blockNow;
+            SPL_b_VoiceWrite(v, currOffset, payload, block);
+            currOffset += block;
+            if (currOffset >= ring)
+                currOffset -= ring;
+            refills++;
+        }
+
+        SPL_Feed();
+        SDL_Delay(5);
+    }
+
+    ok(everStopped == 0, "a looping ring never reads as stopped");
+    okEq(wentBackwards, 0, "the play cursor never goes backwards");
+    ok(biggestAdvance < block, "no single tick is charged a whole block");
+    /* 500 ticks of 5 ms is about 2.5 s, and the ring is 16384 bytes at
+       44100 bytes a second -- so a bit over six passes, or about 25
+       refills. Generous bounds: the point is that refills keep coming
+       and are not wildly over. */
+    ok(refills >= 8, "the refills keep coming");
+    ok(refills <= 64, "and there is about one per block, not many");
+    /* What the engine reports as progress has to be what was actually
+       consumed, within a tick's worth. */
+    ok(currSize > 4 * (long long)block, "the running total advances");
+    ok(currSize < 40 * (long long)block, "and does not run away");
+    printf("   %d refills, total %lld bytes, largest advance %d of %d\n",
+           refills, currSize, biggestAdvance, block);
+
+    SPL_VoiceDestroy(v);
+    free(payload);
+}
+
 int main(void)
 {
     SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
@@ -405,6 +512,7 @@ int main(void)
     thePanReachesTheAudio();
     theDuplicate();
     feedWanted();
+    theStreamingRing();
 
     SPL_Close();
     ok(SPL_b_IsOpen() == 0, "closing gives the device back");

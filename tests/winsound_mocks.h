@@ -69,5 +69,10 @@ extern int wsnd_loa_speedmode; /* drives isSpeedModeAndBinFile() */
 /* ---- the scripted thread -------------------------------------------- */
 /* WaitForMultipleObjects walks this list and then returns 2, which is the
    thread's own exit case; ExitThread longjmps back out of the loop. */
+/* How many times the device was fed, and how many times the thread
+   waited. One-sided: see the note in winsound_mocks.c. */
+extern int wsnd_feeds;
+extern int wsnd_waits;
+
 void wsnd_thread_script(const int* indices, int count);
 void wsnd_run_thread(int (*body)(void*));

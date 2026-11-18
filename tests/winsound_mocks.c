@@ -810,6 +810,14 @@ DWORD SetFilePointer(HANDLE h, LONG move, LONG* high, DWORD method)
 }
 
 void OutputDebugStringA(LPCSTR s) { wsnd_log("OutputDebugStringA(%s)\n", s); }
+/* Silent, where OutputDebugStringA above is logged. The rewrite says
+   something when the sound thread fails to answer in five seconds, and
+   the frozen copy has no counterpart to say it with -- it waited the
+   same five seconds and said nothing. The wait itself is logged either
+   way, with its handle and its timeout, so the behaviour is compared
+   and only the diagnostic is one-sided. A one-sided diagnostic that
+   logged would be a difference at every site rather than a check. */
+void DBG_OutputDebugString(char* format, ...) { (void)format; }
 HRESULT CoInitialize(LPVOID r) { wsnd_log("CoInitialize\n"); return 0; }
 void CoUninitialize(void) { wsnd_log("CoUninitialize\n"); }
 
@@ -847,6 +855,7 @@ int wsnd_notify_is_tick;
 DWORD WaitForMultipleObjects(DWORD count, const HANDLE* handles, BOOL all, DWORD ms)
 {
     DWORD r;
+    ++wsnd_waits;
     if (thread_step < thread_script_len)
         r = (DWORD)thread_script[thread_step];
     else
@@ -1012,7 +1021,13 @@ static int wsnd_voice_id(const void* v) { return wsnd_obj_id(v); }
 int SPL_b_Open(void) { return !wsnd_open_fails; }
 void SPL_Close(void) { }
 int SPL_b_IsOpen(void) { return !wsnd_open_fails; }
-void SPL_Feed(void) { }
+/* Counted rather than logged. A feed is one-sided -- the frozen copy
+   has a device that pulls from a buffer and never feeds anything -- so
+   it cannot go in the shared log. The count is what the one-sided
+   check in winsound_side.c reads. */
+int wsnd_feeds;
+int wsnd_waits;
+void SPL_Feed(void) { ++wsnd_feeds; }
 int SPL_b_FeedWanted(void) { return 0; }
 void SPL_SetAttenuation(int v) { wsnd_log("devatt(%d)\n", v); }
 int SPL_i_Attenuation(void) { return 0; }
