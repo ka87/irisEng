@@ -3,7 +3,7 @@
 #
 #   ./tests/run_wingloverlay.sh
 #
-# Every GL call in win/wingl.c goes through a function pointer, so this
+# Every GL call in platform/wingl.c goes through a function pointer, so this
 # drives the whole pass with no driver anywhere: the pointers are aimed
 # at mocks that record what was asked for, and a case can then check
 # which program was used, what was uploaded, how the vertex layouts
@@ -14,7 +14,7 @@
 # root -- so a uniform renamed in a shader file and not in wingl.c is a
 # failing test rather than a black overlay on somebody's machine.
 #
-# win/wingl.c is included by the driver rather than linked, because the
+# platform/wingl.c is included by the driver rather than linked, because the
 # pass's state is static to it.
 
 set -e
@@ -27,8 +27,8 @@ mkdir -p "$OUT"
 
 echo "=== GL overlay pass ==="
 $CC $CFLAGS -fsanitize=address -c tests/test_wingloverlay.c -o "$OUT/wgo.drv.o"
-$CC $CFLAGS -fsanitize=address -c win/glload.c -o "$OUT/wgo.load.o"
-$CC $CFLAGS -fsanitize=address -c win/glshader.c -o "$OUT/wgo.shader.o"
+$CC $CFLAGS -fsanitize=address -c platform/glload.c -o "$OUT/wgo.load.o"
+$CC $CFLAGS -fsanitize=address -c platform/glshader.c -o "$OUT/wgo.shader.o"
 $CC $CFLAGS -fsanitize=address -c datapath.c -o "$OUT/wgo.datapath.o"
 # The real camera fitting, vertex building and matrix helpers, which
 # are arithmetic with nothing to stand in for. math.c comes with them
@@ -52,7 +52,7 @@ $CC $CFLAGS -fsanitize=address -c aeframe.c -o "$OUT/wgo.aef.o"
 $CC $CFLAGS -fsanitize=address -c watermesh.c -o "$OUT/wgo.wms.o"
 # waterreflect.c is the reflection pass's own share: the mirrored
 # transform, the size threshold and the clip plane. Also a move out
-# of win/wingdi.c, so the frozen copy still has all three inline.
+# of platform/wingdi.c, so the frozen copy still has all three inline.
 $CC $CFLAGS -fsanitize=address -c waterreflect.c -o "$OUT/wgo.wrf.o"
 # watersmooth.c holds the surface smoothing's rectangles, steps and
 # taps for both renderers; tests/run_wingdi_ae.sh is where it is
@@ -76,7 +76,7 @@ $CC $CFLAGS -fsanitize=address -c aemotion.c -o "$OUT/wgo.amo.o"
 # all of that from here.
 $CC $CFLAGS -fsanitize=address -c aezoom2.c -o "$OUT/wgo.az2.o"
 $CC $CFLAGS -fsanitize=address -c geosprite.c -o "$OUT/wgo.gsp.o"
-$CC $CFLAGS -fsanitize=address -c win/wingdimath.c -o "$OUT/wgo.wgmath.o"
+$CC $CFLAGS -fsanitize=address -c platform/wingdimath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \

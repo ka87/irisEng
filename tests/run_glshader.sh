@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for win/glshader.c.
+# The unit test for platform/glshader.c.
 #
 #   ./tests/run_glshader.sh
 #
@@ -26,8 +26,8 @@ mkdir -p "$OUT"
 
 echo "=== GL shaders ==="
 $CC $CFLAGS -fsanitize=address -c tests/test_glshader.c -o "$OUT/glsh.drv.o"
-$CC $CFLAGS -fsanitize=address -c win/glshader.c -o "$OUT/glsh.o"
-$CC $CFLAGS -fsanitize=address -c win/glload.c -o "$OUT/glsh.load.o"
+$CC $CFLAGS -fsanitize=address -c platform/glshader.c -o "$OUT/glsh.o"
+$CC $CFLAGS -fsanitize=address -c platform/glload.c -o "$OUT/glsh.load.o"
 $CC $CFLAGS -fsanitize=address -c datapath.c -o "$OUT/glsh.datapath.o"
 $CC -fsanitize=address "$OUT/glsh.drv.o" "$OUT/glsh.o" "$OUT/glsh.load.o" \
     "$OUT/glsh.datapath.o" -o "$OUT/glsh"

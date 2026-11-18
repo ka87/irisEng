@@ -1,4 +1,4 @@
-/* A unit test for win/winvideosound.c.
+/* A unit test for platform/winvideosound.c.
  *
  * The sink is new code with no earlier copy. What it does that is
  * worth checking is arithmetic rather than audio -- a play cursor
@@ -20,7 +20,7 @@
  * and the mixing are checked.
  */
 
-#include "../win/winvideosound.h"
+#include "../platform/winvideosound.h"
 #include "../sndplatform.h"
 
 #include <stdio.h>

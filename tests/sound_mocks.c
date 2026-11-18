@@ -13,7 +13,7 @@
 #include "../dbg.h"
 #include "../gameobject.h"
 #include "../modifiers/gensoundmodifier.h"
-#include "../win/winsound.h"
+#include "../platform/winsound.h"
 
 /* ---------------------------------------------------------------- log */
 

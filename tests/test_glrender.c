@@ -12,7 +12,7 @@
  *
  * So this one asks a real driver. tests/eglheadless.c brings up an
  * OpenGL 4.5 core context with no window, the renderer's own pointers
- * are aimed at it, and the drawing goes through win/wingl.c's own
+ * are aimed at it, and the drawing goes through platform/wingl.c's own
  * entry points -- the same ones the engine calls. The result is read
  * back a pixel at a time.
  *
@@ -40,9 +40,9 @@
    library it is written with, so a file it cannot read is a file
    nothing can. */
 #include "png.h"
-#include "../win/glcore.h"
-#include "../win/glload.h"
-#include "../win/glshader.h"
+#include "../platform/glcore.h"
+#include "../platform/glload.h"
+#include "../platform/glshader.h"
 #include "../gdi.h"
 #include "../textures.h"
 #include "../water.h"
@@ -292,7 +292,7 @@ void  MEM_Free(void* p) { free(p); }
 /* The module under test, included because its state is static to it
    and because this has to drive the same entry points the engine
    does. */
-#include "../win/wingl.c"
+#include "../platform/wingl.c"
 
 /* ------------------------------------------- the test's own GL calls
 
@@ -3650,7 +3650,7 @@ static void caseCulling(void)
      *
        So what is pinned below is the observed mapping and nothing
        more. The reasoning that gives the other answer is written out
-       in win/wingl.c so that nobody re-derives it; if these four ever
+       in platform/wingl.c so that nobody re-derives it; if these four ever
        need swapping, it takes a scene and a card to say so, not an
        argument. */
     ccwCullCcw = glr_i_DrawWound(1, 0x10 | 0x800);

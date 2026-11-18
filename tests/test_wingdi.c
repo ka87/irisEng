@@ -1,4 +1,4 @@
-/* Differential test for win/wingdi.c, the Direct3D 9 renderer.
+/* Differential test for platform/wingdi.c, the Direct3D 9 renderer.
  *
  * The frozen pre-pass copy and the rewrite go into one binary with
  * every function they define prefixed BASE_/NEW_, and with the eleven
@@ -2362,7 +2362,7 @@ static void noDeviceCase(void)
 
 int main(void)
 {
-    /* The overlay's shape batch moved from win/wingdi.h's own vertex
+    /* The overlay's shape batch moved from platform/wingdi.h's own vertex
        type to the interface's. The renderer passes sizeof(tGdi_Vertex)
        to DrawPrimitiveUP as the stride, so the two have to be the
        same shape or every overlay quad is read at the wrong offset --

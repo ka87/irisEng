@@ -1,6 +1,6 @@
 #include "../memory.h"
 #include "../time.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "gfxsun.h"
 
 tGfxSunRingOffset gSunStru_951A40[] = {

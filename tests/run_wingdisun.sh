@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for win/wingdisun.c, the Direct3D side of the sun's
+# The unit test for platform/wingdisun.c, the Direct3D side of the sun's
 # occlusion test.
 #
 #   ./tests/run_wingdisun.sh

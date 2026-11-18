@@ -22,7 +22,7 @@
 #include "../math.h"
 #include "../gameobject.h"
 #include "../modifiers/gensoundmodifier.h"
-#include "../win/winsound.h"
+#include "../platform/winsound.h"
 
 /* sound.c defines these and no header declares them; without the
    prototypes the side file would take the pointer-returning ones as

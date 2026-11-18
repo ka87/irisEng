@@ -1,7 +1,7 @@
-/* Frozen pre-rewrite copy of win/wingdi_aftereffects.c for the
+/* Frozen pre-rewrite copy of platform/wingdi_aftereffects.c for the
    differential test. Do not edit. */
 #include "../dbg.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;

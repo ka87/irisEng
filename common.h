@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <math.h>
 /* FLT_MAX and its neighbours, which six files use and none of them
-   include: dynamics.c, grid.c, win/wingdi.c, graphicsobjects/shadow.c
+   include: dynamics.c, grid.c, platform/wingdi.c, graphicsobjects/shadow.c
    and the two ai/ ones. They reached it through a chain that is on its
    way out, so it is asked for here, beside math.h, which they reach
    the same way. */

@@ -1,5 +1,5 @@
 #!/bin/sh
-# The differential test for win/wingdi.c.
+# The differential test for platform/wingdi.c.
 #
 #   ./tests/run_wingdi.sh
 #
@@ -32,7 +32,7 @@ mkdir -p "$OUT"
 
 syms=$(python3 - <<'EOF'
 import re
-src = open('win/wingdi.c', encoding='latin-1').read()
+src = open('platform/wingdi.c', encoding='latin-1').read()
 names = []
 for m in re.finditer(r'^[A-Za-z_][\w \*]*?[\w\*]\s+\**(\w+)\s*\(', src, re.M):
     names.append(m.group(1))
@@ -55,7 +55,7 @@ defs() {
 }
 
 echo "=== wingdi ==="
-$CC $CFLAGS -c win/wingdi.c -o "$OUT/wingdi.new.o" $(defs NEW_ $syms)
+$CC $CFLAGS -c platform/wingdi.c -o "$OUT/wingdi.new.o" $(defs NEW_ $syms)
 # the frozen copy still spells one function the way the decompiler named
 # it; map it onto the same per-side symbol the rewrite's new name takes
 # Only the frozen copy sees a D3DX header: the engine stopped
@@ -81,20 +81,20 @@ $CC $CFLAGS -include tests/stub/d3dx9math.h \
     -c tests/baseline_wingdi.c -o "$OUT/wingdi.base.o" $(defs BASE_ $syms)
 $CC $CFLAGS -c math.c -o "$OUT/wingdi.math.o"
 # The real matrix module, linked rather than mocked: it is pure
-# arithmetic with nothing to stand in for. win/wingditex.c is not
+# arithmetic with nothing to stand in for. platform/wingditex.c is not
 # linked -- see the stand-ins in tests/wingdi_mocks.c for why.
-$CC $CFLAGS -c win/wingdimath.c -o "$OUT/wingdi.wgmath.o"
-# The camera fitting and the projections came out of win/wingdi.c into
+$CC $CFLAGS -c platform/wingdimath.c -o "$OUT/wingdi.wgmath.o"
+# The camera fitting and the projections came out of platform/wingdi.c into
 # projection.c, which is arithmetic with nothing to stand in for, so it
 # is linked. The frozen copy still has its own inline copy, which is
 # what makes this comparison worth running.
 $CC $CFLAGS -c projection.c -o "$OUT/wingdi.proj.o"
-# The vertex building came out of win/wingdi.c into geovertex.c, and is
+# The vertex building came out of platform/wingdi.c into geovertex.c, and is
 # linked for the same reason: array walking and colour packing with
 # nothing to stand in for. The frozen copy still has its own inline
 # copy of both.
 $CC $CFLAGS -c geovertex.c -o "$OUT/wingdi.gvx.o"
-# The sprite quad building came out of win/wingdi.c into geosprite.c,
+# The sprite quad building came out of platform/wingdi.c into geosprite.c,
 # and is linked for the same reason: walking the engine's arrays with
 # nothing to stand in for. The frozen copy still has its own inline
 # copy.
@@ -107,7 +107,7 @@ $CC $CFLAGS -c geosprite.c -o "$OUT/wingdi.gsp.o"
 $CC $CFLAGS -c rasterstate.c -o "$OUT/wingdi.rst.o"
 # watermesh.c states the water surface's index strip, vertex stream and
 # reflection remap once, for both renderers. It is a move out of
-# win/wingdi.c, so the frozen copy still has all three inline and the
+# platform/wingdi.c, so the frozen copy still has all three inline and the
 # water cases below compare the two -- including the bytes each side
 # writes into the locked index and vertex buffers, which is what proves
 # the shared copy rather than merely exercising it.
@@ -115,7 +115,7 @@ $CC $CFLAGS -c watermesh.c -o "$OUT/wingdi.wms.o"
 # perfbars.c holds what `tweak perf`'s display decides -- the frame
 # rate, the smoothing, the order, which rows are shown, a row's colour
 # and a bar's segments -- for both renderers. A move out of
-# win/wingdi.c, so the frozen copy still has all of it inline and the
+# platform/wingdi.c, so the frozen copy still has all of it inline and the
 # perf cases below compare the two: the quads this renderer draws and
 # the text it writes are what says the shared copy reproduces it.
 $CC $CFLAGS -c perfbars.c -o "$OUT/wingdi.pfb.o"
@@ -132,7 +132,7 @@ $CC $CFLAGS -c perfbars.c -o "$OUT/wingdi.pfb.o"
 $CC $CFLAGS -Ithirdparty/zlib -Ithirdparty/libpng -c pngsave.c -o "$OUT/wingdi.pngsave.o"
 # waterreflect.c is the reflection pass's own share: the mirrored
 # transform, the size threshold and the clip plane. Also a move out
-# of win/wingdi.c, so the frozen copy still has all three inline.
+# of platform/wingdi.c, so the frozen copy still has all three inline.
 $CC $CFLAGS -c waterreflect.c -o "$OUT/wingdi.wrf.o"
 # watersmooth.c holds the surface smoothing's rectangles, steps and
 # taps for both renderers; tests/run_wingdi_ae.sh is where it is

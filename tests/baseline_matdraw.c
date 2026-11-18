@@ -12,7 +12,7 @@
 #include "../time.h"
 #include "../textures.h"
 #include "../gdi.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "../soft.h"
 #include "../dbg.h"
 #include "../materialanddraw.h"

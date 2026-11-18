@@ -1,6 +1,6 @@
-/* Mocks for the win/wingdi_aftereffects.c differential test. */
+/* Mocks for the platform/wingdi_aftereffects.c differential test. */
 #pragma once
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 
 #define AEMOCK_LOG_MAX   60000
 #define AEMOCK_ARGS      6

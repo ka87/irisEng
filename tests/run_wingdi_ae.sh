@@ -1,5 +1,5 @@
 #!/bin/sh
-# The differential test for win/wingdi_aftereffects.c.
+# The differential test for platform/wingdi_aftereffects.c.
 #
 #   ./tests/run_wingdi_ae.sh
 #
@@ -58,7 +58,7 @@ defs() {
 }
 
 echo "=== wingdi_aftereffects ==="
-$CC $CFLAGS -include tests/wingdi_ae_sdk.h -c win/wingdi_aftereffects.c \
+$CC $CFLAGS -include tests/wingdi_ae_sdk.h -c platform/wingdi_aftereffects.c \
     -o "$OUT/wingdi_ae.new.o" $(defs NEW_ $fns $globals)
 # The frozen copy still spells three functions and one global the way
 # the decompiler named them; each is mapped onto the same per-side

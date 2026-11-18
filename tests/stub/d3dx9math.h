@@ -23,7 +23,7 @@ typedef struct ID3DXBuffer ID3DXBuffer;
 typedef ID3DXFont* LPD3DXFONT;
 typedef ID3DXSprite* LPD3DXSPRITE;
 
-/* The D3DX surface the win/ directory uses. Declarations only; the
+/* The D3DX surface the platform/ directory uses. Declarations only; the
    values of the filter flags live in d3d9.h with the rest. */
 typedef struct _D3DXFONT_DESCA {
     int Height, Width; UINT Weight, MipLevels; BOOL Italic;
@@ -43,7 +43,7 @@ D3DXMATRIX* D3DXMatrixTranslation(D3DXMATRIX*, float, float, float);
 
 /* The two font objects the frozen renderer copy in tests/ still
    refers to. The engine has no D3DX dependency any more -- text is
-   FreeType's -- so win/wingdi.h no longer declares these and no
+   FreeType's -- so platform/wingdi.h no longer declares these and no
    longer includes this header. They are here because the only code
    left that mentions them is a frozen copy, and a frozen copy is not
    edited to follow a change. */

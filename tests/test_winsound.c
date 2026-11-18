@@ -1,4 +1,4 @@
-/* Differential test for win/winsound.c.
+/* Differential test for platform/winsound.c.
  *
  * Runs the rewrite and the frozen pre-pass copy over identical state, one
  * case at a time, with the mock DirectSound device and the mock allocator

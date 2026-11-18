@@ -1,5 +1,5 @@
 #pragma once
-/* Same include order as win/wingdi.c's own: the engine headers are
+/* Same include order as platform/wingdi.c's own: the engine headers are
    order sensitive. */
 #include "../profiler.h"
 #include "../time.h"
@@ -10,9 +10,9 @@
 #include "../graphicsobjects/staticlod.h"
 #include "../water.h"
 #include "../engine.h"
-#include "../win/wininputoutput.h"
+#include "../platform/wininputoutput.h"
 #include "../resource.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 
 #define WGM_LOG_MAX 262144
 #define WGM_ARGS 8

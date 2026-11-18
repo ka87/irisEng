@@ -1,4 +1,4 @@
-/* The window messages win/wingdi.c dispatches on, with the values the
+/* The window messages platform/wingdi.c dispatches on, with the values the
  * real SDK gives them, forced into both sides of the differential test
  * with -include.
  *

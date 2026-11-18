@@ -1,4 +1,4 @@
-/* A unit test for win/wingdivideo.c.
+/* A unit test for platform/wingdivideo.c.
  *
  * New code with no earlier copy, so this is a direct check rather
  * than a differential one. The device is mocked and records what it
@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../win/wingdivideo.h"
+#include "../platform/wingdivideo.h"
 #include "../gdi.h"
 
 static long checks;

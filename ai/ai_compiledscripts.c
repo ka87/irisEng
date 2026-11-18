@@ -1,7 +1,7 @@
 #include "ai_compiledscripts.h"
 #include "../ai.h"
 #include "../time.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "ai_debugfunctions.h"
 #include "ai_aifunctions.h"
 #include "ai_mathfunctions.h"

@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for win/glload.c.
+# The unit test for platform/glload.c.
 #
 #   ./tests/run_glload.sh
 #
@@ -23,6 +23,6 @@ mkdir -p "$OUT"
 
 echo "=== GL loader ==="
 $CC $CFLAGS -fsanitize=address -c tests/test_glload.c -o "$OUT/glload.drv.o"
-$CC $CFLAGS -fsanitize=address -c win/glload.c -o "$OUT/glload.o"
+$CC $CFLAGS -fsanitize=address -c platform/glload.c -o "$OUT/glload.o"
 $CC -fsanitize=address "$OUT/glload.drv.o" "$OUT/glload.o" -o "$OUT/glload"
 "$OUT/glload"

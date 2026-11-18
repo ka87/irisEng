@@ -1,4 +1,4 @@
-/* Mocks for the win/wininputoutput.c differential test.
+/* Mocks for the platform/wininputoutput.c differential test.
  *
  * Everything either copy reaches outside itself: the Win32 calls, the
  * four stdio entry points the card manager uses, the debug trace, the
@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#include "../win/wininputoutput.h"
+#include "../platform/wininputoutput.h"
 /* DirectInput's types, which left the engine header with the devices
    and are here for the frozen copy and for the mocks that answer it. */
 #include "winio_compat.h"
@@ -96,7 +96,7 @@ extern float WINIO_tweakInt;
 extern float WINIO_tweakFloat;
 extern int32_t WINIO_tweakIntTarget;
 
-/* win/overlay.c is a translation unit of its own; the command field is
+/* platform/overlay.c is a translation unit of its own; the command field is
    mocked so the F11 path is observable in the log. */
 int  OVL_b_CommandActive(void);
 void OVL_CommandShow(void);

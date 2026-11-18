@@ -1,5 +1,5 @@
 #!/bin/sh
-# The differential test for win/adpcm.c.
+# The differential test for platform/adpcm.c.
 #
 #   ./tests/run_adpcm.sh
 #
@@ -29,7 +29,7 @@ defs() {
 }
 
 echo "=== adpcm ==="
-$CC $CFLAGS -c win/adpcm.c            -o "$OUT/adpcm.new.o"  $(defs NEW_ $syms)
+$CC $CFLAGS -c platform/adpcm.c            -o "$OUT/adpcm.new.o"  $(defs NEW_ $syms)
 $CC $CFLAGS -c tests/baseline_adpcm.c -o "$OUT/adpcm.base.o" $(defs BASE_ $syms)
 $CC $CFLAGS -c tests/test_adpcm.c     -o "$OUT/adpcm.drv.o"
 $CC "$OUT/adpcm.new.o" "$OUT/adpcm.base.o" "$OUT/adpcm.drv.o" -o "$OUT/adpcm" -lm

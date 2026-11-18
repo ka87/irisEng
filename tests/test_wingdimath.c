@@ -1,4 +1,4 @@
-/* A unit test for win/wingdimath.c.
+/* A unit test for platform/wingdimath.c.
  *
  * New code replacing four D3DX calls, so this is a direct check and
  * not a differential one: there is no earlier copy of these to
@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../win/wingdimath.h"
+#include "../platform/wingdimath.h"
 
 static long checks;
 static long fails;

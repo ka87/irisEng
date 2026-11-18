@@ -5,7 +5,7 @@
 #include "math.h"
 #include "time.h"
 #include "world.h"
-#include "win/wininputoutput.h"
+#include "platform/wininputoutput.h"
 
 #include <string.h>
 
