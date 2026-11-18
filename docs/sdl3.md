@@ -54,3 +54,53 @@ would only encode what the author assumed the library does.
 that it comes up headless, that the library is the vendored one rather
 than another on the machine, and that the calls the two backends will
 be built out of behave as expected.
+
+## What SDL owns so far
+
+### The window and the events
+
+`platform.c` is the whole of it, and `platform.h` is what the rest of
+the engine sees. SDL creates the window, and `PLT_Pump` is what used
+to be the message loop: a quit or a close request sets the engine's
+exit flag, focus gained and lost pause the engine and take or give
+back the input, typed text and the three editing keys go to the
+overlay's command field, and a wheel movement is accumulated for the
+next time the game asks. The pump is timed the way the message loop
+was, so the profiler still sees it.
+
+The six Win32 window handlers in `win/wingdi.c` are gone. What they
+did for the engine -- creating the display, tearing it down, pausing
+on focus loss -- is done where it belongs now: `main.c` opens and
+closes the display around the window, and `platform.c` says the rest.
+
+`PLT_p_NativeWindow` hands out the `HWND` for as long as Direct3D and
+the Win32 parts of the sound still want one.
+
+### The keyboard and the mouse
+
+`PLT_ReadDevices` answers both in one call: the keyboard as a block
+of what is down now, the mouse as how far it has moved since the last
+frame plus its buttons. `PLT_InputCapture` takes the input and gives
+it back -- relative mouse mode on the window, which is what the
+exclusive DirectInput devices used to do -- and `PLT_sz_KeyName` says
+what a key is called, for the controls screen.
+
+The codes are the important part. The engine indexes a 266-byte block
+with DirectInput's key codes, and so do its per-mode key tables, its
+action map, its controls screen and **every player's saved
+bindings**. So the platform layer translates SDL's scancodes into
+those codes rather than changing anything above it: a 104-entry table
+built once into a forward and a reverse array. Three slots past the
+256 keys are the engine's own mouse bits, filled in the packing the
+device used.
+
+`win/wininputoutput.c` keeps its DirectInput interface for the
+**joystick only**; the mouse and keyboard devices, the input-lost
+path and the wheel-granularity property have gone with them.
+
+## What is left
+
+- the gamepad, on `SDL_Gamepad`, and the last of DirectInput with it;
+- the sound, on `SDL_AudioStream`, replacing `win/winsound.c` and
+  `win/winvideosound.c`;
+- `dsound.lib` and `dinput8.lib` out of the linker inputs.

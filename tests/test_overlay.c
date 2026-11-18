@@ -219,7 +219,7 @@ void pcINO_RunTweakCommand(const char* line)
     ovt_ranCommand[sizeof(ovt_ranCommand) - 1] = 0;
 }
 
-void pcINO_dinput_mouse_and_keyb_acquire(void) { ovt_acquireCalls++; }
+void pcINO_mouse_and_keyb_acquire(void) { ovt_acquireCalls++; }
 
 #include "../win/overlay.c"
 

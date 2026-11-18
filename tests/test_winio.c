@@ -18,6 +18,16 @@
  * No float tolerance anywhere: nothing in the rewrite changed an
  * expression, so every value is expected bit-identical and the
  * comparison is a memcmp of the bits.
+ *
+ * Where the two copies reach the input through different interfaces
+ * -- the frozen copy through two DirectInput devices, the rewrite
+ * through the platform layer -- the mocks log one line an event in
+ * the same words for both, so the comparison is still of where in
+ * the sequence each event happens and with what argument, and not of
+ * which API did it. tests/winio_mocks.c says which mocks those are
+ * and why. Two families are not compared at all and are checked
+ * against the rewrite alone instead, each next to the case that does
+ * it: the F12 edge and the Alt+F4 combination.
  */
 
 #include <stdio.h>
@@ -26,6 +36,7 @@
 #include <math.h>
 
 #include "winio_mocks.h"
+#include "winio_compat.h"
 #include "../inputoutput.h"
 #include "../dbg.h"
 #include "../time.h"
@@ -58,8 +69,8 @@
     int  P##pcINO_i_IsMouseBeingUsed(void); \
     int  P##pcINO_i_SetCurrentPad(int); \
     INT_PTR P##DbgDialogFunc(HWND, UINT, WPARAM, LPARAM); \
-    void P##pcINO_dinput_mouse_and_keyb_acquire(void); \
-    void P##pcINO_dinput_mouse_and_keyb_unacquire(void); \
+    void P##pcINO_mouse_and_keyb_acquire(void); \
+    void P##pcINO_mouse_and_keyb_unacquire(void); \
     void P##pcINO_HandleTweakFlags(HWND); \
     void P##pcINO_Joystick_Update(struct sInoPad*); \
     int P##pcINO_SavModuleInit(void); \
@@ -169,8 +180,8 @@ typedef struct
     P##pcINO_SetControlMode, \
     P##pcINO_Joystick_Init, P##pcINO_Joystick_Close, P##pcINO_Joystick_Move, \
     P##pcINO_i_IsMouseBeingUsed, P##pcINO_i_SetCurrentPad, P##DbgDialogFunc, \
-    P##pcINO_dinput_mouse_and_keyb_acquire, \
-    P##pcINO_dinput_mouse_and_keyb_unacquire, \
+    P##pcINO_mouse_and_keyb_acquire, \
+    P##pcINO_mouse_and_keyb_unacquire, \
     P##pcINO_HandleTweakFlags, P##pcINO_Joystick_Update, \
     { P##pcINO_SavModuleInit, P##pcINO_SavModuleClose, P##pcINO_b_AsyncInProgress, \
       P##pcINO_i_TestPresence, P##pcINO_i_MountCard, P##pcINO_i_UnmountCard, \
@@ -499,8 +510,10 @@ static long opRan[OP_NUM];
 
 static long f12Skipped = 0;
 static void f12FieldCase(void);
+static void altF4Case(void);
 static void suspendedInputCase(void);
 static long wheelScrollSkipped;
+static long altF4Skipped;
 static char baseLog[WINIO_LOGMAX][WINIO_LINEMAX];
 static int baseLogCount;
 
@@ -523,25 +536,11 @@ static void report(long key, const char* what)
 
 typedef struct { const char* name; long n; } Cov;
 static Cov cov[] = {
-    {"update: mouse device present", 0},      /* 0 */
-    {"update: mouse device absent", 0},
-    {"update: keyboard present", 0},
-    {"update: keyboard absent", 0},
-    {"update: mouse state INPUTLOST", 0},     /* 4 */
-    {"update: mouse state ok", 0},
-    {"update: mouse state failed", 0},
-    {"update: mouse re-acquire ok", 0},
-    {"update: mouse re-acquire failed", 0},
-    {"update: keyboard state INPUTLOST", 0},  /* 9 */
-    {"update: keyboard state ok", 0},
-    {"update: keyboard state failed", 0},
-    {"update: keyboard re-acquire ok", 0},
-    {"update: keyboard re-acquire failed", 0},
-    {"update: alt+f4 key combination", 0},    /* 14 */
+    {"update: alt+f4 key combination", 0},    /* 0 */
     {"update: tweak key edge", 0},
     {"update: wheel granularity zero", 0},
     {"update: wheel granularity non-zero", 0},
-    {"card: file handle null", 0},            /* 18 */
+    {"card: file handle null", 0},            /* 4 */
     {"card: file handle set", 0},
     {"card: command 16", 0},
     {"card: command 10", 0},
@@ -550,40 +549,38 @@ static Cov cov[] = {
     {"card: free space at or above it", 0},
     {"card: free space below 1024", 0},
     {"card: free space at or above 1024", 0},
-    {"card: a failure flag set", 0},          /* 27 */
+    {"card: a failure flag set", 0},          /* 13 */
     {"card: every failure flag clear", 0},
     {"card: fopen r+b succeeds", 0},
     {"card: fopen r+b fails", 0},
     {"card: fopen w+b succeeds", 0},
     {"card: fopen w+b fails", 0},
-    {"tweak: dialog returned 1", 0},          /* 33 */
+    {"tweak: dialog returned 1", 0},          /* 19 */
     {"tweak: dialog returned other", 0},
     {"tweak: entry type 0", 0},
     {"tweak: entry type 1", 0},
     {"tweak: entry type 2", 0},
     {"tweak: entry type out of range", 0},
     {"tweak: name not in the table", 0},
-    {"init: DirectInput8Create ok", 0},       /* 40 */
+    {"init: DirectInput8Create ok", 0},       /* 26 */
     {"init: DirectInput8Create failed", 0},
-    {"init: mouse CreateDevice ok", 0},
-    {"init: mouse CreateDevice failed", 0},
     {"init: buttons already swapped", 0},
     {"init: buttons not swapped", 0},
-    {"mode: a mode the switch names", 0},     /* 46 */
+    {"mode: a mode the switch names", 0},     /* 30 */
     {"mode: default arm", 0},
     {"mode: already that mode", 0},
-    {"submode: negative", 0},                 /* 49 */
+    {"submode: negative", 0},                 /* 33 */
     {"submode: under control mode 4", 0},
     {"submode: mode 64, submode 4", 0},
     {"submode: mode 64, other submode", 0},
     {"submode: mode 1", 0},
     {"submode: already that submode", 0},
-    {"fournames: returned prefix_p16_2", 0},  /* 55 */
+    {"fournames: returned prefix_p16_2", 0},  /* 39 */
     {"fournames: returned prefixOneSpace", 0},
     {"fournames: returned the catted buffer", 0},
-    {"getproperty: succeeded", 0},            /* 58 */
+    {"getproperty: succeeded", 0},            /* 42 */
     {"getproperty: failed", 0},
-    {"handler: at least one key down", 0},    /* 60 */
+    {"handler: at least one key down", 0},    /* 44 */
     {"handler: no key down", 0},
 };
 #define NCOV ((int)(sizeof(cov) / sizeof(cov[0])))
@@ -595,51 +592,29 @@ static void countCoverage(const Case* c, const State* st)
     switch (c->op)
     {
     case OP_UPDATE:
-        cov[st->haveMouse ? 0 : 1].n++;
-        cov[st->haveKeyb ? 2 : 3].n++;
-        if (st->haveMouse)
-        {
-            if (winioScript.mouseStateResult[0] == (int)0x8007001E)
-            {
-                cov[4].n++;
-                cov[winioScript.mouseAcquireResult < 0 ? 8 : 7].n++;
-            }
-            else
-                cov[winioScript.mouseStateResult[0] < 0 ? 6 : 5].n++;
-        }
-        if (st->haveKeyb)
-        {
-            if (winioScript.keybStateResult[0] == (int)0x8007001E)
-            {
-                cov[9].n++;
-                cov[winioScript.keybAcquireResult < 0 ? 13 : 12].n++;
-            }
-            else
-                cov[winioScript.keybStateResult[0] < 0 ? 11 : 10].n++;
-            if ((winioScript.keybData[56] || winioScript.keybData[184])
-                && winioScript.keybData[62])
-                cov[14].n++;
-            if (winioScript.keybData[88] && !st->keybBackup[88])
-                cov[15].n++;
-        }
-        cov[st->granularity ? 17 : 16].n++;
+        if ((winioScript.keybData[56] || winioScript.keybData[184])
+            && winioScript.keybData[62])
+            cov[0].n++;
+        if (winioScript.keybData[88] && !st->keybBackup[88])
+            cov[1].n++;
+        cov[st->granularity ? 3 : 2].n++;
         break;
 
     case OP_CARD:
-        cov[st->savFp ? 19 : 18].n++;
-        cov[st->savCommand == 16 ? 20 : st->savCommand == 10 ? 21 : 22].n++;
-        cov[st->freeSpace < SAV_PHOTO_BUFFER_SIZE ? 23 : 24].n++;
-        cov[st->freeSpace < 1024 ? 25 : 26].n++;
+        cov[st->savFp ? 5 : 4].n++;
+        cov[st->savCommand == 16 ? 6 : st->savCommand == 10 ? 7 : 8].n++;
+        cov[st->freeSpace < SAV_PHOTO_BUFFER_SIZE ? 9 : 10].n++;
+        cov[st->freeSpace < 1024 ? 11 : 12].n++;
         any = 0;
         for (i = 0; i < 6; i++)
             any |= st->savFail[i] != 0;
-        cov[any ? 27 : 28].n++;
-        cov[winioScript.fopenReadWriteOk ? 29 : 30].n++;
-        cov[winioScript.fopenCreateOk ? 31 : 32].n++;
+        cov[any ? 13 : 14].n++;
+        cov[winioScript.fopenReadWriteOk ? 15 : 16].n++;
+        cov[winioScript.fopenCreateOk ? 17 : 18].n++;
         break;
 
     case OP_TWEAKFLAGS:
-        cov[winioScript.dialogResult == 1 ? 33 : 34].n++;
+        cov[winioScript.dialogResult == 1 ? 19 : 20].n++;
         {
             char key[64];
             int found = 0;
@@ -649,56 +624,55 @@ static void countCoverage(const Case* c, const State* st)
                 {
                     found = 1;
                     if (tweaks[i].type >= 0 && tweaks[i].type <= 2)
-                        cov[35 + tweaks[i].type].n++;
+                        cov[21 + tweaks[i].type].n++;
                     else
-                        cov[38].n++;
+                        cov[24].n++;
                 }
             if (!found)
-                cov[39].n++;
+                cov[25].n++;
         }
         break;
 
     case OP_JOYINIT:
-        cov[winioScript.diCreateResult < 0 ? 41 : 40].n++;
+        cov[winioScript.diCreateResult < 0 ? 27 : 26].n++;
         if (winioScript.diCreateResult >= 0)
         {
-            cov[winioScript.createMouseResult < 0 ? 43 : 42].n++;
-            cov[winioScript.swapMouseButton ? 44 : 45].n++;
+            cov[winioScript.swapMouseButton ? 28 : 29].n++;
         }
         break;
 
     case OP_SETMODE:
         if (st->selMode == c->i0)
-            cov[48].n++;
+            cov[30].n++;
         else if (c->i0 == 1 || c->i0 == 2 || c->i0 == 4 || c->i0 == 8
                  || c->i0 == 32 || c->i0 == 64 || c->i0 == 128 || c->i0 == 129)
-            cov[46].n++;
+            cov[32].n++;
         else
-            cov[47].n++;
+            cov[31].n++;
         break;
 
     case OP_SETSUBMODE:
         if (c->i0 < 0)
-            cov[49].n++;
+            cov[33].n++;
         else if (st->selSubmode == c->i0)
-            cov[54].n++;
+            cov[38].n++;
         else if (st->selMode == 4)
-            cov[50].n++;
+            cov[34].n++;
         else if (st->selMode == 64)
-            cov[c->i0 == 4 ? 51 : 52].n++;
+            cov[c->i0 == 4 ? 35 : 36].n++;
         else if (st->selMode == 1)
-            cov[53].n++;
+            cov[37].n++;
         break;
 
     case OP_GETPROPERTY:
-        cov[winioScript.getPropertyResult < 0 ? 59 : 58].n++;
+        cov[winioScript.getPropertyResult < 0 ? 43 : 42].n++;
         break;
 
     case OP_HANDLER:
         any = 0;
         for (i = 0; i < 266; i++)
             any |= c->keyboard[i] != 0;
-        cov[any ? 60 : 61].n++;
+        cov[any ? 44 : 45].n++;
         break;
 
     default:
@@ -761,6 +735,21 @@ static void runCase(const Case* c, const State* start, long key)
         return;
     }
 
+    /* Alt+F4 is not compared either. The frozen copy caught the
+       combination, gave the keyboard back and played the four key
+       events to the system by hand, because a keyboard held
+       exclusively never let the combination reach the window. The
+       rewrite does not hold it that way, so the window is sent the
+       close itself and there is nothing here to do -- the two differ
+       by design. altF4Case below checks the rewrite on its own. */
+    if (c->op == OP_UPDATE
+        && (winioScript.keybData[56] || winioScript.keybData[184])
+        && winioScript.keybData[62])
+    {
+        altF4Skipped++;
+        return;
+    }
+
     if (WINIO_LogCount() != baseLogCount)
     {
         report(key, "engine-call count");
@@ -812,8 +801,11 @@ static void runCase(const Case* c, const State* start, long key)
     CMP(savFail, "card failure flags");
     CMP(keyNames, "KeyNamesToRet");
     CMP(numLock, "numLockAtAcquire");
-    CMP(haveMouse, "mouse device");
-    CMP(haveKeyb, "keyboard device");
+    /* haveMouse and haveKeyb are not compared. They are the frozen
+       copy's two device pointers, which the rewrite does not have:
+       the driver still installs them so that the frozen copy's paths
+       run, and whether it nulls them is a fact about it alone. The
+       DirectInput object is still shared, so that one is compared. */
     CMP(haveDI, "dinput object");
     CMP(savFp, "SavFileDesc.fp");
     CMP(savSize, "SavFileDesc.size");
@@ -826,7 +818,7 @@ static void runCase(const Case* c, const State* start, long key)
     CMP(retFloat, "float return");
     CMP(retFloatArgs, "mouseAmount accum/deadline");
     if (c->op == OP_FOURNAMES && a.retStrTag >= 1 && a.retStrTag <= 3)
-        cov[54 + a.retStrTag].n++;
+        cov[38 + a.retStrTag].n++;
     CMP(retStrTag, "returned string identity");
     CMP(retStr, "returned string");
     CMP(tweakInt, "tweak int target");
@@ -1388,6 +1380,92 @@ static void wheelNotchCase(void)
    frozen copy. The edge has to release both DirectInput devices and
    raise the overlay's command field, and it has to do nothing at all
    when the tweak keys are disabled or the key was already down. */
+/* Alt+F4 on its own. There is no frozen copy to compare against --
+   the combination used to be caught and played back, and is not
+   caught at all now -- so what is checked is that it is treated as
+   two ordinary keys: the input is not given back, nothing is sent to
+   the system, and the pad and the backup come out exactly as they do
+   for the same frame with the combination absent. */
+static void altF4Case(void)
+{
+    static const struct { int alt, altgr, f4; } acases[] = {
+        { 0x80, 0,    0x80 },
+        { 0,    0x80, 0x80 },
+        { 0x80, 0x80, 0x80 },
+    };
+    unsigned i;
+
+    group = "altf4";
+    rngState = 0xA1F4u;
+    for (i = 0; i < sizeof(acases) / sizeof(acases[0]); ++i)
+    {
+        State st, with, without;
+        int j, noisy = 0;
+
+        randomState(&st);
+        randomScript();
+        st.haveMouse = 1;
+        st.haveKeyb = 1;
+        winioScript.mouseStateResult[0] = 0;
+        winioScript.keybStateResult[0] = 0;
+        memset(winioScript.mouseData, 0, sizeof(winioScript.mouseData));
+        memset(winioScript.keybData, 0, sizeof(winioScript.keybData));
+        memset(st.keybBackup, 0, sizeof(st.keybBackup));
+
+        /* the same frame without the combination */
+        dirtyStack();
+        WINIO_ResetMocks();
+        installState(&newSide, &st);
+        without = st;
+        newSide.joyUpdate(&without.pad);
+        captureState(&newSide, &without);
+
+        winioScript.keybData[56] = (unsigned char)acases[i].alt;
+        winioScript.keybData[184] = (unsigned char)acases[i].altgr;
+        winioScript.keybData[62] = (unsigned char)acases[i].f4;
+
+        dirtyStack();
+        WINIO_ResetMocks();
+        installState(&newSide, &st);
+        with = st;
+        newSide.joyUpdate(&with.pad);
+        captureState(&newSide, &with);
+
+        for (j = 0; j < WINIO_LogCount(); j++)
+            if (strcmp(WINIO_LogLine(j), "input capture(0)") == 0
+                || strncmp(WINIO_LogLine(j), "keybd_event", 11) == 0)
+                noisy++;
+        if (noisy)
+        {
+            printf("  DIFF altf4            the combination gave the input"
+                   " back or typed at the system %d time(s)\n", noisy);
+            diffs++;
+        }
+        /* the two keys land in the backup, and nothing else moves */
+        if (with.keybBackup[56] != (unsigned char)acases[i].alt
+            || with.keybBackup[184] != (unsigned char)acases[i].altgr
+            || with.keybBackup[62] != (unsigned char)acases[i].f4)
+        {
+            printf("  DIFF altf4            the combination did not reach"
+                   " the backup\n");
+            diffs++;
+        }
+        without.keybBackup[56] = with.keybBackup[56];
+        without.keybBackup[184] = with.keybBackup[184];
+        without.keybBackup[62] = with.keybBackup[62];
+        if (memcmp(&with.keybBackup, &without.keybBackup, sizeof(with.keybBackup)) != 0)
+        {
+            printf("  DIFF altf4            the backup differs away from the"
+                   " two keys\n");
+            diffs++;
+        }
+        cases++;
+    }
+    printf("  alt+f4: %u cases; %ld log comparison(s) skipped on the"
+           " combination\n",
+           (unsigned)(sizeof(acases) / sizeof(acases[0])), altF4Skipped);
+}
+
 static void f12FieldCase(void)
 {
     static const struct { int down, wasDown, disabled, wantShow; } fcases[] = {
@@ -1434,7 +1512,7 @@ static void f12FieldCase(void)
         {
             if (strcmp(WINIO_LogLine(j), "OVL_CommandShow") == 0)
                 shown = 1;
-            if (strncmp(WINIO_LogLine(j), "Unacquire(", 10) == 0)
+            if (strcmp(WINIO_LogLine(j), "input capture(0)") == 0)
                 unacq++;
         }
         if (shown != fcases[i].wantShow)
@@ -1444,10 +1522,10 @@ static void f12FieldCase(void)
                    fcases[i].disabled, fcases[i].wantShow, shown);
             diffs++;
         }
-        if (fcases[i].wantShow && unacq < 2)
+        if (fcases[i].wantShow && unacq != 1)
         {
-            printf("  DIFF f12              the field went up with %d device(s)"
-                   " released, wanted 2\n", unacq);
+            printf("  DIFF f12              the field went up with the input"
+                   " given back %d time(s), wanted 1\n", unacq);
             diffs++;
         }
 
@@ -1689,8 +1767,21 @@ static void sweepDevices(void)
         randomScript();
         randomCase(&c);
         c.op = OP_UPDATE;
-        st.haveMouse = (int)(rnd() % 4u) != 0;
-        st.haveKeyb = (int)(rnd() % 4u) != 0;
+        /* The keyboard and the mouse were two devices that could fail
+           to be made, be lost to another window and be taken again,
+           and this sweep used to drive all of that. None of it exists
+           now: the input arrives from the window and there is nothing
+           to lose, so the sweep installs it as present and readable
+           and goes on driving what is left -- every handler, the key
+           combinations, the wheel. The retired guards were the four
+           "mouse/keyboard device present or absent" coverage entries
+           and the ten about input lost and re-acquired; what replaced
+           them is that the platform layer always answers, which
+           tests/test_platform.c checks on its own. */
+        st.haveMouse = 1;
+        st.haveKeyb = 1;
+        winioScript.mouseStateResult[0] = winioScript.mouseStateResult[1] = 0;
+        winioScript.keybStateResult[0] = winioScript.keybStateResult[1] = 0;
         /* drive the two trailing key combinations deliberately */
         if (st.haveKeyb)
         {
@@ -1706,6 +1797,7 @@ static void sweepDevices(void)
 
     wheelNotchCase();
     f12FieldCase();
+    altF4Case();
     suspendedInputCase();
 
     group = "init/close";
@@ -1715,22 +1807,29 @@ static void sweepDevices(void)
         randomState(&st);
         randomScript();
         randomCase(&c);
-        /* Two unconditional dereferences in pcINO_Joystick_Init are
-           reachable and would crash both copies identically, so the
-           scripts that reach them are kept out: the GetProperty on a
-           mouse device the failure path has just set to NULL, and the
-           key-name walk, which runs whether or not the keyboard
-           device was created. */
+        /* Making the devices is the frozen copy's way of taking the
+           input, and failing to make one is how it ended up with
+           none. The rewrite asks for the input once and is given it,
+           so the failure knobs are turned off here: what the two
+           still share in this entry point -- the DirectInput object
+           itself, the button swap, the mode and submode it sets and
+           the key names it builds -- is what the sweep compares. The
+           "mouse CreateDevice ok/failed" coverage entry went with
+           them. */
         if (winioScript.diCreateResult >= 0)
         {
-            if (winioScript.createMouseResult >= 0)
-                winioScript.mouseSetFormat = winioScript.mouseSetCoop = 0;
+            winioScript.createMouseResult = 0;
+            winioScript.mouseSetFormat = winioScript.mouseSetCoop = 0;
             winioScript.createKeybResult = 0;
             winioScript.keybSetFormat = winioScript.keybSetCoop = 0;
+            /* the granularity the frozen copy reads off the device is
+               the 1 the rewrite writes without asking */
+            winioScript.getPropertyData = 1;
+            winioScript.getPropertyResult = 0;
         }
         c.op = (i & 1) ? OP_JOYCLOSE : OP_JOYINIT;
-        st.haveMouse = (int)(rnd() & 1u);
-        st.haveKeyb = (int)(rnd() & 1u);
+        st.haveMouse = 1;
+        st.haveKeyb = 1;
         st.haveDI = (int)(rnd() & 1u);
         runCase(&c, &st, key++);
     }
@@ -1743,8 +1842,8 @@ static void sweepDevices(void)
         randomScript();
         randomCase(&c);
         c.op = (i & 1) ? OP_ACQUIRE : OP_UNACQUIRE;
-        st.haveMouse = (int)(rnd() & 1u);
-        st.haveKeyb = (int)(rnd() & 1u);
+        st.haveMouse = 1;
+        st.haveKeyb = 1;
         runCase(&c, &st, key++);
     }
 
@@ -1811,8 +1910,8 @@ static void sweepDevices(void)
         randomScript();
         randomCase(&c);
         c.op = OP_TWEAKFLAGS;
-        st.haveMouse = (int)(rnd() & 1u);
-        st.haveKeyb = (int)(rnd() & 1u);
+        st.haveMouse = 1;
+        st.haveKeyb = 1;
         runCase(&c, &st, key++);
     }
 }

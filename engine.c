@@ -817,7 +817,7 @@ void ENG_Loop()
     ENG_gb_ForceEndEngine = 0;
     ENG_gb_ForcePauseEngine = 0;
     ENG_ForceStartRasters();
-    pcINO_dinput_mouse_and_keyb_acquire();
+    pcINO_mouse_and_keyb_acquire();
     while (!sfnb_EndGame())
     {
         s_InitBeforeTrame();

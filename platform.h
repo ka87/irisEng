@@ -39,3 +39,19 @@ void PLT_Pump(void);
    the game has always kept them in. Left in one place so the rest of
    the startup does not have to know where they come from. */
 void PLT_WindowSettings(int* width, int* height, int* windowed);
+
+/* The keyboard and the mouse, as the game's own input code wants them:
+   a 266-byte block indexed by **DirectInput's** key codes, and the
+   five words the mouse device used to answer with. The game's tables,
+   its controls screen and everyone's saved bindings are all written in
+   those codes, so they stay -- see the table in platform.c. */
+void PLT_ReadDevices(unsigned char* keys, int* mouse);
+
+/* Whether the game has the input. Taking it locks the pointer to the
+   window and hides it, which is what the exclusive device did; giving
+   it back is what lets the overlay's command field be typed into. */
+void PLT_InputCapture(int on);
+
+/* What a key is called, for the controls screen. Empty for a code the
+   keyboard has no key for. */
+const char* PLT_sz_KeyName(int dik);

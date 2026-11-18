@@ -1157,8 +1157,8 @@ void SOFT_ZList_Clear(void) { L0("SOFT_ZList_Clear"); }
 void ENG_ReinitOneWorld(tWorld* w, int f) { L2("ENG_ReinitOneWorld", WGM_Index(w), f); }
 void ENG_GetStatsText(char* s) { strcpy(s, "stats"); }
 BOOL TAB_TableElemIsInvalid(void* p) { return (BOOL)(((unsigned long)(size_t)p & 3) == 1); }
-void pcINO_dinput_mouse_and_keyb_acquire(void) { L0("acquire"); }
-void pcINO_dinput_mouse_and_keyb_unacquire(void) { L0("unacquire"); }
+void pcINO_mouse_and_keyb_acquire(void) { L0("acquire"); }
+void pcINO_mouse_and_keyb_unacquire(void) { L0("unacquire"); }
 void GDI_DetachDisplay(struct sGdi_DisplayData* d) { L1("GDI_DetachDisplay", WGM_Index(d)); }
 void GDI_DestroyDisplayData(struct sGdi_DisplayData* d) { L1("GDI_DestroyDisplayData", WGM_Index(d)); }
 void GDI_fnl_InitInterface(struct sGdi_DisplayData* d) { L1("GDI_fnl_InitInterface", WGM_Index(d)); }

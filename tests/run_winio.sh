@@ -65,6 +65,19 @@ new="pcINO_savPresenceFailure pcINO_savMountFailure pcINO_savCheckFailure \
 pcINO_savFormatFailure pcINO_savFreeSpaceFailure pcINO_savCardTestFailure \
 pcINO_SetControlSubmode pcINO_SetControlMode"
 
+# The pair that takes the input and gives it back lost the "dinput"
+# from its name when the devices stopped being DirectInput's. Same
+# function, same place in the table; the frozen copy keeps the old
+# spelling and is mapped onto the new one, as the renames above are.
+old="$old pcINO_dinput_mouse_and_keyb_acquire pcINO_dinput_mouse_and_keyb_unacquire"
+new="$new pcINO_mouse_and_keyb_acquire pcINO_mouse_and_keyb_unacquire"
+
+# The two device pointers the frozen copy still keeps. They left the
+# engine header with the devices themselves; tests/winio_compat.h
+# carries them for the frozen copy and for the driver that installs
+# them, and is put in front of both.
+COMPATH="-include tests/winio_compat.h"
+
 # two globals and one field the pass renamed; the frozen copy keeps the
 # old spelling and is mapped onto the header's new one
 COMPAT="-Dmouse_if_dword_98F248=pcINO_mouseDevice \
@@ -91,10 +104,10 @@ oldfail() {
 echo "=== wininputoutput ==="
 $CC $CFLAGS $STDIO -c win/wininputoutput.c -o "$OUT/winio.new.o" \
     $(defs NEW_ $fns) $(defs NEW_ $glob) $(defs NEW_ $new)
-$CC $CFLAGS $STDIO $COMPAT -c tests/baseline_winio.c -o "$OUT/winio.base.o" \
+$CC $CFLAGS $STDIO $COMPAT $COMPATH -c tests/baseline_winio.c -o "$OUT/winio.base.o" \
     $(defs BASE_ $fns) $(defs BASE_ $glob) $(oldfail BASE_)
 $CC $CFLAGS -c tests/winio_mocks.c -o "$OUT/winio.mocks.o"
-$CC $CFLAGS -c tests/test_winio.c -o "$OUT/winio.drv.o"
+$CC $CFLAGS $COMPATH -c tests/test_winio.c -o "$OUT/winio.drv.o"
 $CC "$OUT/winio.new.o" "$OUT/winio.base.o" "$OUT/winio.mocks.o" "$OUT/winio.drv.o" \
     -o "$OUT/winio" -lm
 "$OUT/winio"

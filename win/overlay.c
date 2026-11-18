@@ -407,11 +407,11 @@ int OVL_b_CommandChar(int ch)
     {
         if (wParam == '\r' || wParam == '\n')
         {
-            // Enter runs the line, puts the field away and hands the
-            // keyboard and mouse back to DirectInput.
+            // Enter runs the line, puts the field away and takes the
+            // keyboard and mouse back for the game.
             pcINO_RunTweakCommand(ovl_cmdText);
             OVL_CommandHide();
-            pcINO_dinput_mouse_and_keyb_acquire();
+            pcINO_mouse_and_keyb_acquire();
             return 1;
         }
         if (wParam == '\b')
@@ -423,7 +423,7 @@ int OVL_b_CommandChar(int ch)
         if (wParam == 27)                       // escape: abandon the line
         {
             OVL_CommandHide();
-            pcINO_dinput_mouse_and_keyb_acquire();
+            pcINO_mouse_and_keyb_acquire();
             return 1;
         }
         if (wParam >= 32 && wParam < 127 && ovl_cmdLen < OVL_CMDMAX - 1)

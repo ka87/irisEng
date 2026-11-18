@@ -76,6 +76,8 @@ $CC $CFLAGS -include tests/stub/d3dx9math.h \
     -DD3D_gf_RefYoverX=GDI_gf_RefYoverX \
     -DtD3dRequestSnapshot=tGdi_SnapshotRequest \
     -DsD3dRequestSnapshot=sGdi_SnapshotRequest \
+    -DpcINO_dinput_mouse_and_keyb_acquire=pcINO_mouse_and_keyb_acquire \
+    -DpcINO_dinput_mouse_and_keyb_unacquire=pcINO_mouse_and_keyb_unacquire \
     -c tests/baseline_wingdi.c -o "$OUT/wingdi.base.o" $(defs BASE_ $syms)
 $CC $CFLAGS -c math.c -o "$OUT/wingdi.math.o"
 # The real matrix module, linked rather than mocked: it is pure
