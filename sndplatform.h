@@ -85,6 +85,11 @@ void SPL_VoiceSetCursor(tSplVoice* voice, int offset);
 int  SPL_i_VoiceCursor(const tSplVoice* voice);
 int  SPL_i_VoiceWriteCursor(const tSplVoice* voice);
 
+/* How much of this voice is queued ahead of the device, in bytes of
+   the stream's own input format. Falling is the device draining it;
+   stuck at the full queue is the device not taking it. */
+int  SPL_i_VoiceQueued(const tSplVoice* voice);
+
 void SPL_VoiceSetAttenuation(tSplVoice* voice, int hundredthsDb);
 int  SPL_i_VoiceAttenuation(const tSplVoice* voice);
 void SPL_VoiceSetPan(tSplVoice* voice, int hundredthsDb);

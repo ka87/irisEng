@@ -381,6 +381,13 @@ int SPL_i_VoiceCursor(const tSplVoice* voice)
     return voice->cursor - behind;
 }
 
+int SPL_i_VoiceQueued(const tSplVoice* voice)
+{
+    if (!voice || !voice->stream)
+        return 0;
+    return SDL_GetAudioStreamQueued(voice->stream);
+}
+
 int SPL_i_VoiceWriteCursor(const tSplVoice* voice)
 {
     if (!voice)
