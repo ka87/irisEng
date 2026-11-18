@@ -453,7 +453,7 @@ static void RUN(int caseId)
         for (i = -1; i <= 17; i++)
             for (j = 0; j <= 3; j++)
             {
-                X(PC_AE_MASTER_CTRL)(i, (k + i + j) & 1, j,
+                X(AEM_Control)(i, (k + i + j) & 1, j,
                                      (float)((k + i * 3 + j) % 6) * 0.5f);
                 AEMOCK_Record("ctrl", 4, (long long)i, (long long)j,
                               (long long)PC_AE_MASTER,

@@ -54,6 +54,7 @@ extern int ECAM_gi_NoAfterEffects;
    the new ones for that side alone. */
 #define BASE_AEM_i_OnOff  BASE_PC_AE_MASTER_GET_ONOFF
 #define BASE_AEM_f_Param  BASE_PC_AE_MASTER_GET_P1
+#define BASE_AEM_Control  BASE_PC_AE_MASTER_CTRL
 
 #define AE_DECLS(P) \
     extern float P##_depthBlurNear1, P##_depthBlurType0, P##_depthBlurType1, \
@@ -122,12 +123,43 @@ extern int ECAM_gi_NoAfterEffects;
     HRESULT P##_CopyRenderTargetTexture(LPDIRECT3DDEVICE9 dev, IDirect3DTexture9* s, \
                                         IDirect3DTexture9* d); \
     void  P##_D3D_PC_AE(tWorld* world); \
-    void  P##_PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value); \
+    void  P##_AEM_Control(int effect, int onOff, int slot, float value); \
     int   P##_AEM_i_OnOff(int effect); \
     float P##_AEM_f_Param(int effect, int slot)
 
 AE_DECLS(BASE);
 AE_DECLS(NEW);
+
+/* ---- the engine's side of the two the control call reaches --------
+ *
+ * The scripts' control call is shared now, so where the frozen copy
+ * rebuilt the ramp and started the fade's timer by naming this
+ * renderer, the rewrite asks the engine and the engine asks whichever
+ * renderer is in force. gdi.c does that through the interface; here
+ * the harness does it by hand, because there is no interface to fill
+ * and only one renderer to reach.
+ *
+ * The ramp hook is per-side -- it is the one that calls a renderer, so
+ * it has to call *this* side's -- while the fade's timer is the one
+ * number both sides share, as it was before the move: the frozen copy
+ * writes the field and the rewrite writes it through these, so a case
+ * that drives a fade drives both the same way.
+ */
+
+void NEW_GDI_DepthBlurRampRebuild(void)
+{
+    NEW_D3D_UpdateBlurTexture();
+}
+
+int GDI_i_AeFadeOpacity(void)
+{
+    return D3DRenderParams.opacity;
+}
+
+void GDI_AeFadeOpacitySet(int opacity)
+{
+    D3DRenderParams.opacity = opacity;
+}
 
 /* ---- helpers the scenarios use ----------------------------------- */
 
@@ -577,11 +609,12 @@ static int NoDeviceCase(void)
     NEW_D3D_SetD3DStatesDefaultForAE();
     NEW_D3D_UpdateBlurTexture();
 
-    /* The AI scripts' way in, which is what reaches the blur table.
-       Effect nought is the depth blur, and the map manager drives it
-       in ordinary play. */
-    NEW_PC_AE_MASTER_CTRL(0, 1, 0, 0.25f);
-    NEW_PC_AE_MASTER_CTRL(0, 1, 0, 0.75f);
+    /* The AI scripts' way in, which is what reaches the blur table --
+       now through the engine and the interface's entry rather than by
+       naming this renderer. Effect nought is the depth blur, and the
+       map manager drives it in ordinary play. */
+    NEW_AEM_Control(0, 1, 0, 0.25f);
+    NEW_AEM_Control(0, 1, 0, 0.75f);
 
     if (AEMOCK_logLen != 0)
     {

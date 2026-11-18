@@ -133,6 +133,12 @@ void  GL_DiscardGeometryCache(struct sGEOGRO* gro);
    call through the interface needs no guard for one renderer. */
 void  GL_BuildGeometryCaches(struct sWorld* world);
 
+/* Told that a depth-blur setting moved. Nothing to do: the blur pass
+   compares the settings against the ones it last uploaded a ramp for
+   and uploads again when they differ, so it finds out by itself.
+   Answered rather than left out, as above. */
+void  GL_RebuildDepthBlurRamp(void);
+
 /* ---- present but inert, each for the reason in glrender.c ---- */
 void  GL_OverlayBegin(void);
 void  GL_OverlayDrawQuads(const void* vertices, int triangleCount);

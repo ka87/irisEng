@@ -124,10 +124,11 @@ int D3D_UpdateBlurTexture()
     IDirect3DSurface9* surface;
     D3DLOCKED_RECT locked;
 
-    /* Without a device this renderer was not the one chosen. The
-       engine calls in here directly rather than through the
-       interface, so this runs whichever renderer is in force, and
-       the only right answer is to do nothing. */
+    /* Without a device there is nothing to lock or copy into. The
+       scripts reach this through the interface now, so it is only
+       called when this renderer is the one running -- but the sun
+       sampler and the texture creation below still call it by name,
+       and the device can be gone by then. */
     if (!D3DRenderParams.d3dDev)
         return 0;
 
@@ -2949,130 +2950,11 @@ void D3D_PC_AE(tWorld* param1)
         PC_AE_MASTER = aeMasterOnEntry;
 }
 
-void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)
+/* The interface's entry: the engine says a depth-blur setting moved
+   and this renderer rebuilds the ramp texture it keeps them in. A
+   thin wrapper because the work below answers with a reference count
+   that nothing reads. */
+void D3D_RebuildDepthBlurRamp(void)
 {
-    int toggled;
-    int changed;
-    unsigned int cleared;
-
-    switch (effect)
-    {
-    case 0:
-        toggled = (onOff != 0) != ((PC_AE_MASTER & 8) != 0);
-        changed = toggled;
-        if (slot == 0)
-            changed = depthBlurType0 != value || toggled;
-        else if (slot == 1)
-            changed = depthBlurType1 != value || toggled;
-        else if (slot == 2)
-            changed = depthBlurType2 != value || toggled;
-        if (!changed)
-            return;
-        cleared = PC_AE_MASTER & ~8u;
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | 8;
-        if (slot == 0)
-            depthBlurType0 = value;
-        else if (slot == 1)
-            depthBlurType1 = value;
-        else if (slot == 2)
-            depthBlurType2 = value;
-        D3D_UpdateBlurTexture();
-        return;
-    case 1:
-        cleared = PC_AE_MASTER & ~0x10u;
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | 0x10;
-        motionBlurFactor = value;
-        return;
-    case 2:
-        cleared = PC_AE_MASTER & ~0x20u;
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | 0x20;
-        blurFactor = value;
-        return;
-    case 4:                                     // motionsmooth
-        cleared = (int)(PC_AE_MASTER & ~AMO_BIT);
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | (int)AMO_BIT;
-        return;
-    case 5:
-        cleared = PC_AE_MASTER & ~0x400u;
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | 0x400;
-        zoomSmoothFactor = value;
-        return;
-    case 6:
-        cleared = PC_AE_MASTER & ~0x8000u;
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | 0x8000;
-        zoomSmoothFactor2 = value;
-        return;
-    case 7:
-        cleared = PC_AE_MASTER & ~0x800u;
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | 0x800;
-        remenanceFactor = value;
-        return;
-    case 8:
-        brightnessParam = value;
-        return;
-    case 9:
-        colorBalanceParam1 = value;
-        return;
-    case 11:
-        cleared = PC_AE_MASTER & ~1u;
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | 1;
-        blackAndWhiteParam1 = value;
-        return;
-    case 12:
-        if (slot == 0)
-            unknownAEFlag4GlobalVar = value;
-        else if (slot == 1)
-            texFactorManual = value;
-        else if (slot == 2)
-            texFactorProbablyUnunsedType2 = value;
-        cleared = (int)(PC_AE_MASTER & ~AHU_BIT);
-        PC_AE_MASTER = cleared;
-        if (onOff)
-            PC_AE_MASTER = cleared | (int)AHU_BIT;
-        return;
-    case 14:
-        toggled = (onOff != 0) != ((PC_AE_MASTER & 0x1000) != 0);
-        if (depthBlurNear1 != value || toggled)
-        {
-            cleared = PC_AE_MASTER & ~0x1000u;
-            PC_AE_MASTER = cleared;
-            if (onOff)
-                PC_AE_MASTER = cleared | 0x1000;
-            depthBlurNear1 = value;
-            D3D_UpdateBlurTexture();
-        }
-        return;
-    case 15:
-        cleared = (int)AFD_u_Cleared((unsigned int)PC_AE_MASTER);
-        PC_AE_MASTER = cleared;
-        if (onOff)
-        {
-            PC_AE_MASTER = cleared | (int)AFD_BIT;
-            /* Only when one is not already running: switching the fade
-               on again part way through leaves the timer where it is
-               rather than starting over. */
-            if (!D3DRenderParams.opacity)
-                D3DRenderParams.opacity = AFD_FULL;
-        }
-        gAEOpacity = value;
-        return;
-    default:
-        return;
-    }
+    D3D_UpdateBlurTexture();
 }

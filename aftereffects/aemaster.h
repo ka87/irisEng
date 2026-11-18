@@ -29,11 +29,12 @@
  * linked whichever renderer is in force, so that hazard is gone rather
  * than documented.
  *
- * The scripts' way *in* is not here. That call reaches a device -- it
- * rebuilds the blur texture when a blur's parameter moves -- so it
- * stays with the renderer and goes through the interface, and the
- * family is split along that line on purpose: what needs a device from
- * what does not.
+ * The scripts' way *in* is here too, and it is the one function of the
+ * three that touches a renderer at all: a depth-blur setting moving
+ * means a renderer may have something to rebuild, and starting a fade
+ * sets a timer that one renderer happens to store. Both go out through
+ * the engine's side of the interface rather than to a renderer by
+ * name, which is what let the call leave the Direct3D file.
  *
  * The parameter names are the ones the scripts have always had, kept
  * as they are because they are the vocabulary six headers already
@@ -124,3 +125,26 @@ int AEM_i_OnOff(int effect);
    ignore it. An unknown effect gives nought, and so does an unknown
    slot -- with one exception, marked where it is. */
 float AEM_f_Param(int effect, int slot);
+
+/* The scripts' way in: switch an effect on or off and set one of its
+   parameters, both in the one call, by the same ids again. An effect
+   whose id this does not know is ignored.
+
+   Two of the arms do more than write the state. A depth-blur setting
+   that actually moves asks for the ramp to be rebuilt, and only then
+   -- the arms test the value first, so setting a parameter to what it
+   already holds costs nothing. Switching the fade on starts its timer,
+   and only if one is not already running: switching it on again part
+   way through leaves the timer where it is rather than starting
+   over. */
+void AEM_Control(int effect, int onOff, int slot, float value);
+
+/* The engine's side of those two, which this module is told rather
+   than reaching for itself. Both are in gdi.c -- the one file that
+   knows both renderers -- and are declared in gdi.h as well; here
+   because this file includes no engine header, which is what keeps it
+   a leaf and keeps the shared renderer header's include of it from
+   being a cycle. */
+void GDI_DepthBlurRampRebuild(void);
+int  GDI_i_AeFadeOpacity(void);
+void GDI_AeFadeOpacitySet(int opacity);

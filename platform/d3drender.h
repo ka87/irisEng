@@ -426,7 +426,9 @@ void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* world);
 
 void D3D_SaveScreenshot(void);
 
-void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value);
+/* Told that a depth-blur setting moved: the ramp this renderer keeps
+   in a texture is rebuilt from the settings as they now stand. */
+void D3D_RebuildDepthBlurRamp(void);
 
 // Aspect handling. The two settings every renderer needs are in
 // gdi.h, because cameraengine.c reads them as well and a second

@@ -797,6 +797,14 @@ void GL_BuildGeometryCaches(struct sWorld* world)
     (void)world;
 }
 
+void GL_RebuildDepthBlurRamp(void)
+{
+    /* See the note in the header: nothing to do. The blur pass reads
+       the settings every frame and uploads the ramp again when they
+       differ from the ones it drew with last, so a change has already
+       been noticed by the time it could matter. */
+}
+
 void GL_DiscardGeometryCache(struct sGEOGRO* gro)
 {
     (void)gro;
