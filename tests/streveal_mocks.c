@@ -27,8 +27,12 @@ int LOA_ReadLong(char** at, unsigned int* out, char mode) { UNREACHABLE("LOA_Rea
 void* MEM_p_Alloc(unsigned int size) { UNREACHABLE("MEM_p_Alloc"); return 0; }
 void MEM_Free(void* ptr) { UNREACHABLE("MEM_Free"); }
 
-int D3D_FlatLayerOffsetX(int w, int h) { UNREACHABLE("D3D_FlatLayerOffsetX"); return 0; }
-int D3D_FlatLayerWidth(int w, int h) { UNREACHABLE("D3D_FlatLayerWidth"); return 0; }
+/* Neither name is reached here; both are defined because the frozen
+   copy asks for one and the rewrite the other. */
+int D3D_FlatLayerOffsetX(int w, int h) { UNREACHABLE("flat layer offsetX"); return 0; }
+int D3D_FlatLayerWidth(int w, int h) { UNREACHABLE("flat layer width"); return 0; }
+int FLY_i_OffsetX(int w, int h) { UNREACHABLE("flat layer offsetX"); return 0; }
+int FLY_i_Width(int w, int h) { UNREACHABLE("flat layer width"); return 0; }
 void GFX_NeedGeomEx(unsigned int a, unsigned int b, unsigned int c,
                     unsigned int d, int e) { UNREACHABLE("GFX_NeedGeomEx"); }
 void GFX_NeedGeomExElem(unsigned int a, unsigned int b) { UNREACHABLE("GFX_NeedGeomExElem"); }

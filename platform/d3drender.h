@@ -434,19 +434,10 @@ void PC_CIN_CutsceneMode(int on);
 // gdi.h, because cameraengine.c reads them as well and a second
 // renderer's projection depends on them; this one is about the flat
 // layer box, which only this renderer draws.
-extern int   D3D_gi_FlatLayerBox;
 
 // How much of the height each cutscene band covers.
 extern float D3D_gf_CutsceneBand;
 
-// The width the flat layer is laid out across, given the size of
-// the window. On a window wider than the scenes were laid out for
-// this is narrower than the window itself.
-int D3D_FlatLayerWidth(int w, int h);
-
-// How far in from the left that width starts, so what is laid out
-// across it lands in the middle of the window.
-int D3D_FlatLayerOffsetX(int w, int h);
 
 // Set to log the framing once a frame through the debug output.
 extern int D3D_gi_AspectTrace;
@@ -458,8 +449,3 @@ float D3D_RealYoverX(void);
 // Where the cutscene bands fall, as fractions of the back buffer.
 void D3D_GetBandFractions(float* top, float* bottom);
 
-// Between a fraction of the window and a fraction of the layout box the
-// flat layer is drawn in. Both are the identity while the box spans the
-// window.
-float D3D_FlatLayerToLayoutX(float windowFraction, int w, int h);
-float D3D_FlatLayerFromLayoutX(float layoutFraction, int w, int h);

@@ -223,6 +223,7 @@
     <ClCompile Include="datapath.c" />
     <ClCompile Include="fileio.c" />
     <ClCompile Include="debugkeys.c" />
+    <ClCompile Include="flatlayer.c" />
     <ClCompile Include="projection.c" />
     <ClCompile Include="geovertex.c" />
     <ClCompile Include="geosprite.c" />
@@ -661,6 +662,7 @@
     <ClInclude Include="datapath.h" />
     <ClInclude Include="fileio.h" />
     <ClInclude Include="debugkeys.h" />
+    <ClInclude Include="flatlayer.h" />
     <ClInclude Include="projection.h" />
     <ClInclude Include="geovertex.h" />
     <ClInclude Include="geosprite.h" />

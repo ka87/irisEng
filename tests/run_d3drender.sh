@@ -79,7 +79,16 @@ EOF
 # still has it and nothing compares it, so only that copy's definition
 # needs a name of its own -- without which it would collide the day
 # anything here does link the new file.
-baseonly="rasterNames PC_EngineCheatFinal"
+# The flat layer's box went the same way as rasterNames: its four
+# answers and the flag that turns them off are arithmetic over the
+# engine's own numbers, they name no renderer, and three other files
+# were asking this one for them. They are in flatlayer.c now, which
+# this harness links -- so the rewrite's side of the comparison is
+# that module and only the frozen copy's definitions need names of
+# their own.
+baseonly="rasterNames PC_EngineCheatFinal \
+D3D_FlatLayerWidth D3D_FlatLayerOffsetX \
+D3D_FlatLayerToLayoutX D3D_FlatLayerFromLayoutX D3D_gi_FlatLayerBox"
 
 defs() {
     prefix=$1
@@ -186,6 +195,7 @@ $CC $CFLAGS -c fog.c -o "$OUT/d3drender.fog.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/d3drender.profiler.o"
 $CC $CFLAGS -c tests/d3drender_mocks.c -o "$OUT/d3drender.mocks.o"
 $CC $CFLAGS -c datapath.c -o "$OUT/d3drender.datapath.o"
+$CC $CFLAGS -c flatlayer.c -o "$OUT/d3drender.flatlayer.o"
 $CC $CFLAGS -c tests/test_d3drender.c -o "$OUT/d3drender.drv.o"
 $CC "$OUT/d3drender.new.o" "$OUT/d3drender.uv.o" "$OUT/d3drender.base.o" "$OUT/d3drender.math.o" \
     "$OUT/d3drender.wgmath.o" "$OUT/d3drender.proj.o" "$OUT/d3drender.gvx.o" \
@@ -193,6 +203,7 @@ $CC "$OUT/d3drender.new.o" "$OUT/d3drender.uv.o" "$OUT/d3drender.base.o" "$OUT/d
     "$OUT/d3drender.wms.o" "$OUT/d3drender.pfb.o" "$OUT/d3drender.pngsave.o" "$OUT/libpng.a" \
     "$OUT/d3drender.wrf.o" "$OUT/d3drender.wsm.o" "$OUT/d3drender.dpb.o" \
     "$OUT/d3drender.mocks.o" "$OUT/d3drender.datapath.o" \
+    "$OUT/d3drender.flatlayer.o" \
     "$OUT/d3drender.drv.o" \
     -o "$OUT/d3drender" -lm
 "$OUT/d3drender"

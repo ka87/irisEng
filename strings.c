@@ -9,6 +9,7 @@
 #include "platform/inputbackend.h"
 #include "platform/d3drender.h"
 #include "strings.h"
+#include "flatlayer.h"
 
 int pcINO_ControlsReadFormatBufferSize;
 char* pcINO_ControlsReadFormatBuffer;
@@ -1164,7 +1165,7 @@ void STR_ParseString(struct sGEOSTRStruct* geostr, int strIdx, struct sGEOSTRLet
 
             letter->flagsAndChar |= page << 12;
             letter->x = (int)((double)(uint16_t)geostr->width * x)
-                      + D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+                      + FLY_i_OffsetX((int)gpst_DX_stDD->ct.cam.width,
                                              (int)gpst_DX_stDD->ct.cam.height);
             letter->y = (int)((double)(uint16_t)geostr->height * y);
             letter->width = (unsigned int)((double)(uint16_t)geostr->width * width);
@@ -1496,7 +1497,7 @@ void STR_SetSize(struct sGameObjectMain* gao, int strIdx, int firstChar, int cha
                 // the glyphs keep their shape
                 letter->width = (unsigned int)(fabs(font->fge[glyph].y - font->fge[glyph].x)
                     * (double)(uint16_t)font->width
-                    * D3D_FlatLayerWidth((int)gpst_DX_stDD->ct.cam.width,
+                    * FLY_i_Width((int)gpst_DX_stDD->ct.cam.width,
                                          (int)gpst_DX_stDD->ct.cam.height)
                     * 0.0015625);
                 h = (unsigned int)(fabs(font->fge[glyph].h - font->fge[glyph].w)
@@ -1935,7 +1936,7 @@ void STR_SetPos(struct sGameObjectMain* gao, int strIdx, int firstChar, int char
     {
         letter = &str->letters[at];
         letter->x = (int)((double)(int16_t)str->width * pos->x)
-                  + D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+                  + FLY_i_OffsetX((int)gpst_DX_stDD->ct.cam.width,
                                          (int)gpst_DX_stDD->ct.cam.height);
         letter->y = (int)((double)(int16_t)str->height * pos->y);
     }

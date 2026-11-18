@@ -47,12 +47,37 @@
 #include "../cameraengine.h"
 #include "../soft.h"
 #include "../rasterstate.h"
+#include "../flatlayer.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* ---------- the two sides ---------- */
+
+/* The flat layer's box.
+ *
+ * Its four answers and the flag are a shared module now, so there is
+ * one copy of them and not one per side. The frozen copy still has
+ * its own, and comparing the two is worth keeping rather than
+ * skipping: it is what says the arithmetic that came out of the
+ * renderer is the arithmetic that was in it.
+ *
+ * So the rewrite's side of the table is the shared module, reached
+ * under the names the table already asks for. */
+int   NEW_D3D_FlatLayerWidth(int w, int h)    { return FLY_i_Width(w, h); }
+int   NEW_D3D_FlatLayerOffsetX(int w, int h)  { return FLY_i_OffsetX(w, h); }
+float NEW_D3D_FlatLayerToLayoutX(float f, int w, int h)
+{
+    return FLY_f_ToLayoutX(f, w, h);
+}
+float NEW_D3D_FlatLayerFromLayoutX(float f, int w, int h)
+{
+    return FLY_f_FromLayoutX(f, w, h);
+}
+/* The flag is a variable and cannot be aliased by a wrapper, so the
+   table's name for it is made to be the module's. */
+#define NEW_D3D_gi_FlatLayerBox FLY_gi_Box
 
 #define DECL(p) \
     void p##D3D_SetInitialRenderStates(void); \

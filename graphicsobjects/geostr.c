@@ -4,6 +4,7 @@
 #include "../strings.h"
 #include "../time.h"
 #include "geostr.h"
+#include "../flatlayer.h"
 
 unsigned int ul_SubMatOrder[] = { 8, 9, 0x0D, 0x10, 0x0A, 0x0B, 0x0C, 0x0E, 0x0F, 0, 1, 2, 3, 4, 5, 6, 7, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17 };
 
@@ -1651,7 +1652,7 @@ void STR_ComputeFrame(tGEOSTRStruct* str, int idx, tGEOSTRStringData* stringData
     {
         if ((stringData->flags & 0x3) == 0x1)
         {
-            STR_w_XFramePivot += D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+            STR_w_XFramePivot += FLY_i_OffsetX((int)gpst_DX_stDD->ct.cam.width,
                                                       (int)gpst_DX_stDD->ct.cam.height)
                                + (stringData->framePosX1 + stringData->framePosX2) / -2;
         }
@@ -1677,7 +1678,7 @@ void STR_ComputeFrame(tGEOSTRStruct* str, int idx, tGEOSTRStringData* stringData
 
         if ((stringData->flags & 0x3) == 0x1)
         {
-            STR_w_XPivot += D3D_FlatLayerOffsetX((int)gpst_DX_stDD->ct.cam.width,
+            STR_w_XPivot += FLY_i_OffsetX((int)gpst_DX_stDD->ct.cam.width,
                                                  (int)gpst_DX_stDD->ct.cam.height)
                           + (int16_t)(unsigned int)(max.x + min.x) / -2;
         }
@@ -1744,7 +1745,7 @@ void STR_Render(tGameObjectMain* gao)
     // the text is laid out across the width the scenes were laid
     // out for; where that sits in the window is added to each
     // letter as it is placed
-    str->width = (unsigned int)D3D_FlatLayerWidth(
+    str->width = (unsigned int)FLY_i_Width(
         (int)gpst_DX_stDD->ct.cam.width, (int)gpst_DX_stDD->ct.cam.height);
     str->height = (unsigned int)gpst_DX_stDD->ct.cam.height;
 

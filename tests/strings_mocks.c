@@ -67,17 +67,29 @@ void MEM_Free(void* ptr)
 
 /* --- the display -------------------------------------------------- */
 
-int D3D_FlatLayerOffsetX(int w, int h)
+/* The flat layer's box. The frozen copy asks the Direct3D renderer
+   for it and the rewrite asks the shared module, so each name is
+   defined and both record the same words: the box is the same box,
+   and recording which name was used would be a difference on every
+   string drawn and would say nothing.
+
+   Both pairs answer identically for the same reason. */
+static int STRMOCK_l_i_FlatOffsetX(int w, int h)
 {
-    STRMOCK_Record("D3D_FlatLayerOffsetX %d %d", w, h);
+    STRMOCK_Record("flat layer offsetX %d %d", w, h);
     return (w - h * 4 / 3) / 2;
 }
 
-int D3D_FlatLayerWidth(int w, int h)
+static int STRMOCK_l_i_FlatWidth(int w, int h)
 {
-    STRMOCK_Record("D3D_FlatLayerWidth %d %d", w, h);
+    STRMOCK_Record("flat layer width %d %d", w, h);
     return h * 4 / 3;
 }
+
+int D3D_FlatLayerOffsetX(int w, int h) { return STRMOCK_l_i_FlatOffsetX(w, h); }
+int D3D_FlatLayerWidth(int w, int h)   { return STRMOCK_l_i_FlatWidth(w, h); }
+int FLY_i_OffsetX(int w, int h)        { return STRMOCK_l_i_FlatOffsetX(w, h); }
+int FLY_i_Width(int w, int h)          { return STRMOCK_l_i_FlatWidth(w, h); }
 
 /* The renderer's geometry cache, as the rewrite now asks about it.
    The frozen copy tests the index buffer itself and calls
