@@ -15,6 +15,7 @@
 #include "../resource.h"
 #include "d3drender.h"
 #include "syscompat.h"
+#include "../platform.h"
 #include "../font.h"
 #include "d3dmath.h"
 #include "d3dtex.h"
@@ -810,18 +811,19 @@ int D3D_l_Close()
 
 void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int result)
 {
-    PROCESS_INFORMATION ProcessInformation;
-    STARTUPINFOA StartupInfo;
-
     if (result < 0)
     {
-        memset(&StartupInfo, 0, sizeof(StartupInfo));
-        ProcessInformation.hProcess = 0;
-        ProcessInformation.hThread = 0;
-        ProcessInformation.dwProcessId = 0;
-        ProcessInformation.dwThreadId = 0;
-        CreateProcessA(NULL, (LPSTR)"SettingsApplication.exe -OUTOFVIDEOMEMORY",
-            NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, ".", &StartupInfo, &ProcessInformation);
+        /* The settings application, told why it was called for. The
+           engine does not wait for it and never read anything back
+           from it: it starts it and goes, which is what the handle
+           pair being dropped on the floor meant. */
+        {
+            static const char* const args[] = {
+                "SettingsApplication.exe", "-OUTOFVIDEOMEMORY", NULL
+            };
+
+            PLT_b_Launch(args);
+        }
         D3D_l_Close();
         D3DRenderParams.d3d_if->lpVtbl->Release(D3DRenderParams.d3d_if);
         DestroyWindow(MAI_gh_MainWindow);
@@ -4253,7 +4255,7 @@ void PC_EngineCheatFinal()
                     currRaster = currRaster->prev;
                     if (!currRaster)
                         currRaster = DBG_profiler_first_raster;
-                    if (currRaster == PRO_CurrRaster || _stricmp(currRaster->module, PRO_CurrRaster->module))
+                    if (currRaster == PRO_CurrRaster || strcasecmp(currRaster->module, PRO_CurrRaster->module))
                         break;
                 }
             }

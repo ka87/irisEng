@@ -18,12 +18,12 @@ static int GDI_l_b_NameIs(const char* name, const char* asked)
 {
     unsigned i;
 
-    if (_stricmp(name, asked) == 0)
+    if (strcasecmp(name, asked) == 0)
         return 1;
     for (i = 0; i < sizeof(gdi_alias) / sizeof(gdi_alias[0]); i++)
     {
-        if (_stricmp(gdi_alias[i].name, name) == 0
-            && _stricmp(gdi_alias[i].also, asked) == 0)
+        if (strcasecmp(gdi_alias[i].name, name) == 0
+            && strcasecmp(gdi_alias[i].also, asked) == 0)
             return 1;
     }
     return 0;

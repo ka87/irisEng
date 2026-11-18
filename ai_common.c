@@ -606,7 +606,7 @@ void AI_ResolveCarDecHiHiEditor(tAI* ai)
         {
 
             for (j = 0; j < ai->varsInstance->varNum; j++) {
-                if (!_stricmp(ai->model->vars->varNames[i].varName, ai->varsInstance->varNames[j].varName)) break;
+                if (!strcasecmp(ai->model->vars->varNames[i].varName, ai->varsInstance->varNames[j].varName)) break;
             }
 
             if (j != ai->varsInstance->varNum)
@@ -1464,7 +1464,7 @@ tAIModel* AI_ul_CallbackLoadModel(uint32_t offset)
         LOA_ReadLong(&currReadPtr, 0, 4);
         LOA_ReadCharArray(&currReadPtr, typeIdentifier, 4, 4);
         typeIdentifier[4] = '\0'; // to be able to use stricmp
-        if (!_stricmp(typeIdentifier, ".ofc"))        
+        if (!strcasecmp(typeIdentifier, ".ofc"))        
             ++funcNum;
     }
     
@@ -1487,11 +1487,11 @@ tAIModel* AI_ul_CallbackLoadModel(uint32_t offset)
         if (key)
         {
             typeIdentifier[4] = '\0';
-            if (!_stricmp(typeIdentifier, ".ova"))
+            if (!strcasecmp(typeIdentifier, ".ova"))
             {
                 LOA_MakeFileRef(key, &(aiModel->vars), AI_ul_CallbackLoadVars, 1);
             }
-            else if (!_stricmp(typeIdentifier, ".ofc"))
+            else if (!strcasecmp(typeIdentifier, ".ofc"))
             {
                 LOA_MakeFileRef(key, &(aiModel->funcs[idx++]), AI_ul_CallbackLoadFunction, 1);
             }
@@ -1666,7 +1666,7 @@ void* AI2C_VarGetFromAI(struct sAI* aiPtr, char* name) {
         return NULL;
 
     for (i = 0; i < aiPtr->model->vars->varNum; i++) {
-        if (!_strcmpi(aiPtr->model->vars->varNames[i].varName, name)) {
+        if (!strcasecmp(aiPtr->model->vars->varNames[i].varName, name)) {
             return (void*)&aiPtr->instanceVarDataCurrent[aiPtr->model->vars->variables[i].varOffset];
         }
     }
@@ -1681,7 +1681,7 @@ void* AI2C_VarArrayGetFromAI(struct sAI* aiPtr, char* name, int idx) {
         return NULL;
 
     for (i = 0; i < aiPtr->model->vars->varNum; i++) {
-        if (!_strcmpi(aiPtr->model->vars->varNames[i].varName, name)) {
+        if (!strcasecmp(aiPtr->model->vars->varNames[i].varName, name)) {
             return (void*)AI_EvalVarArray_C(aiPtr->model->vars->variables[i].variableType, &aiPtr->instanceVarDataCurrent[aiPtr->model->vars->variables[i].varOffset], idx);
         }
     }
@@ -1696,7 +1696,7 @@ void* AI2C_VarArrayC3GetFromAI(struct sAI* aiPtr, char* name, int idx) {
         return NULL;
 
     for (i = 0; i < aiPtr->model->vars->varNum; i++) {
-        if (!_strcmpi(aiPtr->model->vars->varNames[i].varName, name)) {
+        if (!strcasecmp(aiPtr->model->vars->varNames[i].varName, name)) {
             return (void*)AI_EvalVarArray_C3(&aiPtr->instanceVarDataCurrent[aiPtr->model->vars->variables[i].varOffset], idx);
         }
     }
@@ -1806,7 +1806,7 @@ void AI2C_ResolveBufferByName(uint32_t* varPtr, void* gaoOrGaoIdxOrAIPtr, char* 
         return;
 
     for (i = 0; i < aiPtr->model->vars->varNum; i++) {
-        if (!_strcmpi(aiPtr->model->vars->varNames[i].varName, name)) {
+        if (!strcasecmp(aiPtr->model->vars->varNames[i].varName, name)) {
             *varPtr = (uint32_t)&aiPtr->instanceVarDataCurrent[aiPtr->model->vars->variables[i].varOffset];
             return;
         }

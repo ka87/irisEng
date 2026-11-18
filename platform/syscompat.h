@@ -28,3 +28,17 @@
    which is the safe way to be wrong: it costs an exclusive display
    mode, where the other way costs a wedged machine. */
 int PLT_b_DebuggerAttached(void);
+
+/* The C library under its POSIX name.
+ *
+ * Case-insensitive compare has no standard spelling: POSIX calls it
+ * strcasecmp and Microsoft's library has the function under a name of
+ * its own. The engine says the POSIX one, because the rest of what it
+ * says -- snprintf, vsnprintf, hypot -- is standard C that both
+ * libraries have, and one spelling throughout is worth more than
+ * matching whichever library happens to be underneath. */
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#else
+#include <strings.h>
+#endif

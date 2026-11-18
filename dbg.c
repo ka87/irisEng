@@ -194,10 +194,10 @@ static int DBG_l_i_Stamp(char* out, int size)
     if (!local)
         return 0;
 
-    _snprintf(out, (size_t)size - 1, "[%02d:%02d:%02d] ",
+    snprintf(out, (size_t)size - 1, "[%02d:%02d:%02d] ",
               local->tm_hour, local->tm_min, local->tm_sec);
     out[size - 1] = 0;
-    /* _snprintf answers with what it wanted to write, and a negative
+    /* snprintf answers with what it wanted to write, and a negative
        number when it could not, so the length is taken from the string
        that is really there. */
     return (int)strlen(out);
@@ -235,7 +235,7 @@ void DBG_OutputDebugString(char* Format, ...)
 
     at = DBG_l_i_Stamp(OutputString, 32);
     va_start(va, Format);
-    _vsnprintf(OutputString + at, sizeof(OutputString) - (size_t)at - 1,
+    vsnprintf(OutputString + at, sizeof(OutputString) - (size_t)at - 1,
                Format, va);
     OutputString[sizeof(OutputString) - 1] = 0;
     va_end(va);
@@ -244,7 +244,7 @@ void DBG_OutputDebugString(char* Format, ...)
 }
 
 /* The renderer's logger, which is this file's own with one bug: it
-   handed _vsnprintf the whole buffer, and that does not promise a
+   handed vsnprintf the whole buffer, and that does not promise a
    terminator when it truncates, so a message of 256 characters or
    more was passed on unterminated. Reachable -- the screenshot path
    is logged through here. Terminated the same way as the one above
@@ -260,7 +260,7 @@ void GDI_OutputDebugString(char* Format, ...)
 
     at = DBG_l_i_Stamp(OutputString, 32);
     va_start(ArgList, Format);
-    _vsnprintf(OutputString + at, sizeof(OutputString) - (size_t)at - 1,
+    vsnprintf(OutputString + at, sizeof(OutputString) - (size_t)at - 1,
                Format, ArgList);
     OutputString[sizeof(OutputString) - 1] = 0;
     va_end(ArgList);

@@ -19,6 +19,9 @@
    way out, so it is asked for here, beside math.h, which they reach
    the same way. */
 #include <float.h>
+/* The debugger check and the C library's POSIX spellings, which the
+   engine uses everywhere and so are asked for here. */
+#include "platform/syscompat.h"
 
 // Windows
 #include <windows.h>
