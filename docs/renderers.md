@@ -1494,6 +1494,6 @@ cannot hide anything.
 ## What the ini does not decide
 
 Only *which* renderer. Everything about how a renderer behaves is the
-renderer's own business, and `datafiles.c` deliberately knows nothing
+renderer's own business, and `settings.c` deliberately knows nothing
 about what the names mean: it carries the string across and `gdi.c`
 decides.

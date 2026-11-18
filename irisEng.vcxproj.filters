@@ -170,7 +170,7 @@
     <ClCompile Include="renderers.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="datafiles.c">
+    <ClCompile Include="settings.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="font.c">
@@ -949,7 +949,7 @@
     <ClInclude Include="renderers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="datafiles.h">
+    <ClInclude Include="settings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="font.h">

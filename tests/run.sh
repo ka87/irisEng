@@ -481,7 +481,7 @@ for one in tests/run_sdl3.sh \
            tests/run_video.sh \
            tests/run_videosound.sh \
            tests/run_editorcamera.sh \
-           tests/run_datafiles.sh \
+           tests/run_settings.sh \
            tests/run_renderers.sh \
            tests/run_d3dvideo.sh \
            tests/run_d3dsun.sh \

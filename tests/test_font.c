@@ -86,42 +86,10 @@ static int FM_i_Logged(const char* needle)
 
 /* ---------------------------------------------------- the exe, mocked */
 
-/* Where the module will think the executable is; data\fonts resolves
-   against it, so pointing it at the repository root makes the module
-   read the real committed faces. */
-static char fm_exePath[512];
-static int  fm_moduleCalls;
-static int  fm_moduleFails;
-static int  fm_moduleOk;
-
-DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD n)
-{
-    size_t len = strlen(fm_exePath);
-
-    (void)mod;
-    fm_moduleCalls++;
-    if (fm_moduleFails || len + 1 > n)
-    {
-        /* Windows leaves the buffer in an unspecified state when this
-           fails, and a caller that uses it anyway has to be visible.
-           Writing a plausible path here rather than leaving stack
-           garbage is what makes that so: ignoring the failure then
-           produces a path that resolves and opens nothing, which logs
-           a different line, instead of depending on whether the
-           garbage happened to contain a separator. */
-        if (n > 1)
-        {
-            size_t fake = strlen("/plausible/iriseng.exe");
-
-            if (fake + 1 <= n)
-                memcpy(out, "/plausible/iriseng.exe", fake + 1);
-        }
-        return 0;
-    }
-    memcpy(out, fm_exePath, len + 1);
-    fm_moduleOk++;
-    return (DWORD)len;
-}
+/* Where the module will think the executable is; data/fonts
+   resolves against it, so pointing it at the repository root makes
+   the module read the real committed faces. */
+#include "sdlpath.h"
 
 /* --------------------------------------------- the renderer, mocked */
 
@@ -201,9 +169,8 @@ static void FM_Reset(void)
     gpst_DX_stDD = &fm_dd;
 
     fmLogLen = 0;
-    fm_moduleCalls = 0;
-    fm_moduleFails = 0;
-    fm_moduleOk = 0;
+    dpt_baseCalls = 0;
+    dpt_baseOk = 0;
     fm_createCalls = 0;
     fm_destroyCalls = 0;
     fm_createFails = 0;
@@ -215,14 +182,14 @@ static void FM_Reset(void)
     fm_drawTexture = NULL;
     fm_viewW = 1024;
     fm_viewH = 600;
-    strcpy(fm_exePath, "./iriseng.exe");
+    strcpy(dpt_basePath, "./");
 
     FNT_CloseModule();
     FNT_InitModule();
     fmLogLen = 0;
     fm_destroyCalls = 0;
-    fm_moduleCalls = 0;
-    fm_moduleOk = 0;
+    dpt_baseCalls = 0;
+    dpt_baseOk = 0;
 }
 
 /* How many inked bytes a glyph's cell holds in the coverage map. */
@@ -513,7 +480,7 @@ static void FM_CaseNoFont(void)
 {
     printf("-- a missing face\n");
     FM_Reset();
-    strcpy(fm_exePath, "/nowhere/at/all/iriseng.exe");
+    strcpy(dpt_basePath, "/nowhere/at/all/");
 
     okEq(FNT_i_Height(FNT_OVERLAY), 0, "no height without a face");
     okEq(fm_createCalls, 0, "no atlas built");
@@ -528,7 +495,7 @@ static void FM_CaseNoFont(void)
 
     /* the other face is unaffected: one missing file is not all of
        them */
-    strcpy(fm_exePath, "./iriseng.exe");
+    strcpy(dpt_basePath, "./");
     ok(FNT_i_Height(FNT_RASTERS) > 0, "the other face still loads");
 }
 
@@ -536,7 +503,7 @@ static void FM_CaseNoPath(void)
 {
     printf("-- nowhere to look\n");
     FM_Reset();
-    fm_moduleFails = 1;
+    dpt_basePath[0] = 0;
 
     okEq(FNT_i_Height(FNT_RASTERS), 0, "no height without a path");
     okEq(FM_i_Logged("where"), 1, "and it said why");
@@ -563,12 +530,11 @@ static void FM_CaseLongPath(void)
        failed inside the mock instead, where it proved nothing, so
        the case asserts that the mock answered. */
     for (i = 0; i < 229; i++)
-        fm_exePath[i] = 'd';
-    fm_exePath[229] = '/';
-    strcpy(fm_exePath + 230, "e.exe");
+        dpt_basePath[i] = 'd';
+    dpt_basePath[229] = '/';
 
     okEq(FNT_i_Height(FNT_RASTERS), 0, "no height");
-    okEq(fm_moduleOk, 1, "and the path of the executable itself did arrive");
+    okEq(dpt_baseOk, 1, "and the path of the executable itself did arrive");
     okEq(fm_createCalls, 0, "no atlas");
     okEq(FM_i_Logged("where"), 1, "and it said it could not place the file");
 }

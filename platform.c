@@ -1,4 +1,5 @@
 #include "platform.h"
+#include "settings.h"
 #include <SDL3/SDL_process.h>
 
 #include "common.h"
@@ -24,7 +25,10 @@ static int         plt_up;
 
 void PLT_WindowSettings(int* width, int* height, int* windowed)
 {
-    /* The defaults the game has always started from. */
+    int value;
+
+    /* The defaults the game has always started from, kept for
+       anything the settings do not mention. */
     if (width)
         *width = 640;
     if (height)
@@ -32,38 +36,17 @@ void PLT_WindowSettings(int* width, int* height, int* windowed)
     if (windowed)
         *windowed = 0;
 
-#ifdef _WIN32
-    {
-        HKEY  key;
-        DWORD value = 0;
-        DWORD type = 0;
-        DWORD size = sizeof(value);
-
-        /* Still the registry, because that is where the game's
-           settings are and moving them is a separate question from
-           moving the window. The one platform-shaped thing in here. */
-        if (!RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\IRISEng\\Basic video",
-                           0, KEY_READ, &key))
-        {
-            /* Each one a four-byte number or it is not one of ours,
-               which is the same test the renderer's own reader made. */
-#define PLT_REGREAD(name)                                              \
-            (size = sizeof(value),                                     \
-             !RegQueryValueExA(key, (name), 0, &type, (LPBYTE)&value,  \
-                               &size)                                  \
-             && type == REG_DWORD && size == sizeof(value))
-
-            if (windowed && PLT_REGREAD("Windowed") && value)
-                *windowed = 1;
-            if (width && PLT_REGREAD("Width") && (int)value > 0)
-                *width = (int)value;
-            if (height && PLT_REGREAD("Height") && (int)value > 0)
-                *height = (int)value;
-#undef PLT_REGREAD
-            RegCloseKey(key);
-        }
-    }
-#endif
+    /* The settings come out of engine.ini beside the executable,
+       where they used to come out of the registry. A value the ini
+       does not carry leaves the default standing, which is how the
+       registry read behaved too -- a missing value left the default
+       rather than zeroing it. */
+    if (windowed && SET_b_DisplayWindowed(&value) && value)
+        *windowed = 1;
+    if (width && SET_b_DisplayWidth(&value) && value > 0)
+        *width = value;
+    if (height && SET_b_DisplayHeight(&value) && value > 0)
+        *height = value;
 }
 
 int PLT_b_Open(const char* title, int width, int height)

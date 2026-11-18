@@ -23,7 +23,12 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# datapath.c asks SDL where the player's own directory is, and the
+# save machine looks for the file there. Only the headers are
+# wanted: the entry points it uses are defined by the mocks
+# (tests/sdlpath.h), so a case can say there is no such directory.
+SDL3_INC="$PWD/thirdparty/SDL3/include"
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -I"$SDL3_INC" -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
@@ -107,7 +112,9 @@ $CC $CFLAGS $STDIO -c platform/inputbackend.c -o "$OUT/winio.new.o" \
 $CC $CFLAGS $STDIO $COMPAT $COMPATH -c tests/baseline_winio.c -o "$OUT/winio.base.o" \
     $(defs BASE_ $fns) $(defs BASE_ $glob) $(oldfail BASE_)
 $CC $CFLAGS -c tests/winio_mocks.c -o "$OUT/winio.mocks.o"
+$CC $CFLAGS -c datapath.c -o "$OUT/winio.datapath.o"
 $CC $CFLAGS $COMPATH -c tests/test_winio.c -o "$OUT/winio.drv.o"
-$CC "$OUT/winio.new.o" "$OUT/winio.base.o" "$OUT/winio.mocks.o" "$OUT/winio.drv.o" \
+$CC "$OUT/winio.new.o" "$OUT/winio.base.o" "$OUT/winio.mocks.o" \
+    "$OUT/winio.datapath.o" "$OUT/winio.drv.o" \
     -o "$OUT/winio" -lm
 "$OUT/winio"

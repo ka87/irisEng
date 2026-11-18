@@ -86,18 +86,7 @@ static int GS_i_Logged(const char* needle)
 
 /* ---------------------------------------------------- the exe, mocked */
 
-static char gs_exePath[512];
-
-DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD n)
-{
-    size_t len = strlen(gs_exePath);
-
-    (void)mod;
-    if (!gs_exePath[0] || len + 1 > n)
-        return 0;
-    memcpy(out, gs_exePath, len + 1);
-    return (DWORD)len;
-}
+#include "sdlpath.h"
 
 /* ------------------------------------------------------- GL, mocked */
 
@@ -338,7 +327,7 @@ static void reset(void)
     gs_attachCount = 0;
     gs_detachCount = 0;
     gs_linkCount = 0;
-    snprintf(gs_exePath, sizeof(gs_exePath), "%s/iriseng.exe", GS_DIR);
+    snprintf(dpt_basePath, sizeof(dpt_basePath), "%s/", GS_DIR);
 }
 
 static const char* gs_sourceGiven(int which)
@@ -561,7 +550,7 @@ static void caseNoName(void)
 
     /* and no executable to resolve against */
     reset();
-    gs_exePath[0] = 0;
+    dpt_basePath[0] = 0;
     ok(!GL_b_ProgramLoad(&p, "ok.vert", "ok.frag"), "no path declines");
     okEq(GS_i_Logged("where"), 1, "and says why");
 }

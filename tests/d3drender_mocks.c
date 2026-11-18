@@ -1223,6 +1223,30 @@ BOOL CreateProcessA(LPCSTR a, LPSTR b, void* c, void* d, BOOL e, DWORD f, void* 
    frozen copy. Both sides reach it only on a display that could not
    be made, and neither looks at what it said. */
 int PLT_b_Launch(const char* const* args) { (void)args; return 0; }
+
+/* Nor is the path module. The screenshot is the only thing here that
+   wants a path, and the case that exercises it runs with no device at
+   all, so it returns before the name is built -- the picture itself is
+   checked in the OpenGL harness, against a real file. */
+int DPT_b_ScreenshotPath(char* out, size_t n)
+{
+    if (out && n)
+        out[0] = 0;
+    return 0;
+}
+
+/* The settings module is not linked here. Every reader answers "the
+   ini said nothing", which is what the registry mock used to do by
+   failing the open: the caller keeps the default it already had, and
+   that is the behaviour the cases below check. */
+int SET_b_DisplayAdapter(int* o)    { (void)o; return 0; }
+int SET_b_DisplayMode(int* o)       { (void)o; return 0; }
+int SET_b_DisplayZBuffer(int* o)    { (void)o; return 0; }
+int SET_b_DisplayMipMapping(int* o) { (void)o; return 0; }
+int SET_b_DisplayWindowed(int* o)   { (void)o; return 0; }
+int SET_b_DisplayWidth(int* o)      { (void)o; return 0; }
+int SET_b_DisplayHeight(int* o)     { (void)o; return 0; }
+
 BOOL DestroyWindow(HWND h) { (void)h; return 1; }
 BOOL GetClientRect(HWND h, RECT* r) { (void)h; r->left = 0; r->top = 0; r->right = 800; r->bottom = 600; return 1; }
 void GetLocalTime(SYSTEMTIME* t) { memset(t, 0, sizeof(*t)); }

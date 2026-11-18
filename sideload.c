@@ -1,5 +1,6 @@
 #include "sideload.h"
 #include "dbg.h"
+#include "datapath.h"
 
 /*
     The table is built once at startup by listing the directory, so a
@@ -151,27 +152,17 @@ void SIDE_InitModule(void)
     WIN32_FIND_DATAA find;
     HANDLE           handle;
     char             pattern[MAX_PATH];
-    char*            cut;
     DWORD            attrs;
 
     SIDE_gb_Enabled = 0;
     SIDE_gi_Count = 0;
 
-    if (!GetModuleFileNameA(NULL, SIDE_gs_Dir, MAX_PATH))
+    /* The folder keeps its separator, so everything below can just
+       append. An exe sitting deep enough that the folder name does
+       not fit is not a case worth handling beyond declining to
+       look. */
+    if (!DPT_b_ExePath("data/", SIDE_gs_Dir, sizeof(SIDE_gs_Dir)))
         return;
-
-    cut = strrchr(SIDE_gs_Dir, '\\');
-    if (!cut)
-        cut = strrchr(SIDE_gs_Dir, '/');
-    if (!cut)
-        return;
-
-    /* Keep the separator, so everything below can just append. An
-       exe sitting deep enough that the folder name does not fit is
-       not a case worth handling beyond declining to look. */
-    if ((size_t)(cut + 1 - SIDE_gs_Dir) + sizeof("data\\") > MAX_PATH)
-        return;
-    strcpy(cut + 1, "data\\");
 
     attrs = GetFileAttributesA(SIDE_gs_Dir);
     if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY))

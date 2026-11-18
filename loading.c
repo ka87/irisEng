@@ -6,6 +6,8 @@
 #include "dbg.h"
 #include "textget.h"
 #include "loading.h"
+#include "settings.h"
+#include "datapath.h"
 
 int LOA_gb_CompressBin = 1;
 
@@ -390,9 +392,15 @@ void LOA_LoadSpecialArray()
     unsigned int len;
     unsigned int num;
     int key;
+    char spePath[512];
 
     BAS_binit(&LOA_gst_SpecialArray, 4000);
-    fp = fopen("jade.spe", "rb");
+    /* jade.spe unless engine.ini names another, and beside the
+       executable rather than in the working directory -- it is part
+       of the install like the big file. */
+    if (!DPT_b_ExePath(SET_pc_SpecialArray(), spePath, sizeof(spePath)))
+        return;
+    fp = fopen(spePath, "rb");
     if (fp)
     {
         BIG_fseek(fp, 0, 2);

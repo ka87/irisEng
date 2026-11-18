@@ -264,7 +264,7 @@
     <ClCompile Include="grid.c" />
     <ClCompile Include="groups.c" />
     <ClCompile Include="renderers.c" />
-    <ClCompile Include="datafiles.c" />
+    <ClCompile Include="settings.c" />
     <ClCompile Include="inputoutput.c" />
     <ClCompile Include="thirdparty\jpeg-6b\jcapimin.c" />
     <ClCompile Include="thirdparty\jpeg-6b\jcapistd.c" />
@@ -650,7 +650,7 @@
     <ClInclude Include="grid.h" />
     <ClInclude Include="groups.h" />
     <ClInclude Include="renderers.h" />
-    <ClInclude Include="datafiles.h" />
+    <ClInclude Include="settings.h" />
     <ClInclude Include="font.h" />
     <ClInclude Include="fog.h" />
     <ClInclude Include="cinebands.h" />

@@ -1,21 +1,73 @@
-# datafiles.ini
+# engine.ini
 
-Three things used to be compiled in: the big file name, binarized
-mode, and the one video the fullscreen video function could play.
-They now come from `datafiles.ini` in the working directory.
+One file for everything the game is told before it starts. Some of it
+used to be compiled in — the big file name, binarized mode, and the
+one video the fullscreen video function could play. The rest came out
+of the Windows registry, where the settings application put it, which
+is a place only Windows has and only an installer fills.
 
 ```ini
+[display]
+adapter    = 0
+mode       = 0
+zbuffer    = 75
+mipmapping = 1
+windowed   = 0
+width      = 640
+height     = 480
+
 [data]
-bigfile   = sally_clean.bf
-binarized = 1
+bigfile      = sally_clean.bf
+binarized    = 1
+specialarray = jade.spe
+
+[render]
+backend = d3d
 
 [video]
 0x490294C0 = BGEMakingOf.bik
 ```
 
-A copy ships in the repository root. It belongs next to the
-executable — the working directory the game is started from, not the
-source tree.
+A copy ships in the repository root. **It belongs beside the
+executable**, which is where the game looks for it — not the working
+directory, because a game started from a shortcut has whatever
+working directory the shortcut says, and not the source tree.
+
+Everything the game only reads is found that way: the big file, the
+special array, this file itself, and `data/<folder>/` for the
+scripts, the shaders and the fonts. The two things it writes — saves
+and screenshots — go somewhere else, under the player's own
+directory, because the install may be read-only and the saves are
+the player's rather than the game's. `datapath.h` holds both rules
+and nothing else does.
+
+## The display
+
+`[display]` is the one section the game cannot do without. The
+Direct3D renderer needs `adapter`, `mode`, `zbuffer` and
+`mipmapping`, and stops with a message box naming the file if any of
+the four is missing — it has no idea which video card or display mode
+to ask for otherwise. The settings application is what normally
+writes them.
+
+**`zbuffer` is a surface format, not a number of bits.** It is handed
+to the device as the automatic depth-stencil format, so it carries a
+Direct3D `D3DFORMAT` value: 75 is D24S8, 77 is D24X8, 80 is D16, 71
+is D32. A format the card will not give is a device that will not come
+up, which is why the settings application lists only the ones the card
+reports. The shipped file says 75.
+
+`windowed`, `width` and `height` are optional and default to
+fullscreen at 640x480. `windowed` is the engine's own flag rather
+than a property of the window: it is what the renderer reads when it
+decides whether to take an exclusive display mode.
+
+## The special array
+
+`specialarray` names the special array file, `jade.spe` by default,
+and it is looked for beside the executable like the rest of the
+install. It is named here rather than compiled in so a build of that
+file under another name can be tried without rebuilding the game.
 
 ## The file is optional
 
@@ -69,7 +121,7 @@ reason the log names the id. Run it, read the line, add that key.
 what gets pasted back into the file:
 
 ```
-GFX_FS_VideoStart: no video for id 0x490294C0 (1224905920) in datafiles.ini
+GFX_FS_VideoStart: no video for id 0x490294C0 (1224905920) in engine.ini
 ```
 
 The first version printed only the decimal, which left whoever read
@@ -80,7 +132,7 @@ An id with no entry, or an entry naming a file that will not open,
 simply does not start:
 
 ```
-GFX_FS_VideoStart: no video for id 0x490294C0 (1224905920) in datafiles.ini
+GFX_FS_VideoStart: no video for id 0x490294C0 (1224905920) in engine.ini
 GFX_FS_VideoStart: cannot open "missing.bik" for id 0x490294C0
 ```
 
@@ -109,10 +161,10 @@ a negated hex id, and hex with anything after it.
 
 ## The tests
 
-`tests/run_datafiles.sh`, 82 checks. New code with no earlier copy,
-so it is a direct check. The driver includes `datafiles.c` so it can
+`tests/run_settings.sh`, 100 checks. New code with no earlier copy,
+so it is a direct check. The driver includes `settings.c` so it can
 point the reader at files it writes itself, and **one case reads the
-shipped `datafiles.ini`** — so a typo in that file fails here rather
+shipped `engine.ini`** — so a typo in that file fails here rather
 than in game.
 
 Twenty-two defects were injected one at a time and twenty-one were

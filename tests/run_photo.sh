@@ -14,7 +14,11 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# datapath.c asks SDL where the player's own directory is, and the
+# debug log goes there. Only the headers are wanted: the entry
+# points it uses are defined by the mocks (tests/sdlpath.h).
+SDL3_INC="$PWD/thirdparty/SDL3/include"
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -I"$SDL3_INC" -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
@@ -35,7 +39,8 @@ $CC $CFLAGS $FILEDEFS -c photo.c -o "$OUT/photo.new.o" $(defs NEW_ $syms)
 $CC $CFLAGS $FILEDEFS -c tests/baseline_photo.c -o "$OUT/photo.base.o" $(defs BASE_ $syms)
 $CC $CFLAGS -c math.c -o "$OUT/photo.math.o"
 $CC $CFLAGS -c tests/photo_mocks.c -o "$OUT/photo.mocks.o"
+$CC $CFLAGS -c datapath.c -o "$OUT/photo.datapath.o"
 $CC $CFLAGS -c tests/test_photo.c -o "$OUT/photo.drv.o"
 $CC "$OUT/photo.new.o" "$OUT/photo.base.o" "$OUT/photo.math.o" \
-    "$OUT/photo.mocks.o" "$OUT/photo.drv.o" -o "$OUT/photo" -lm
+    "$OUT/photo.mocks.o" "$OUT/photo.datapath.o" "$OUT/photo.drv.o" -o "$OUT/photo" -lm
 "$OUT/photo"

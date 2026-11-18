@@ -8,7 +8,7 @@
     that writes that interface, and nothing else in the engine learns
     which one it got. Adding a renderer is a row and a fill function.
 
-    The name is what datafiles.ini asks for under [render] backend.
+    The name is what engine.ini asks for under [render] backend.
     A renderer that cannot run on the machine in front of it is not an
     error -- the setting is a preference, and the game falls back to
     the first renderer in the table that can run.

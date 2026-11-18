@@ -124,15 +124,7 @@ void DBG_OutputDebugString(char* format, ...)
    would use them, because the context comes from EGL rather than from
    a window. */
 
-static char glr_exePath[512];
-
-DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD size)
-{
-    (void)mod;
-    strncpy(out, glr_exePath, size - 1);
-    out[size - 1] = 0;
-    return (DWORD)strlen(out);
-}
+#include "sdlpath.h"
 
 #include "winstubs.h"
 
@@ -267,22 +259,14 @@ void OVL_Draw(void) { }
 /* As above: the display has its own harness. */
 void PFD_Draw(void) { }
 
-/* What the screenshot path reaches for. The file is written for real --
-   the case below reads it back -- so the writer is linked rather than
-   mocked; only the platform's directory and clock are stood in for. */
-BOOL CreateDirectoryA(const char* path, void* attrs)
-{
-    (void)path; (void)attrs;
-    return 1;
-}
-
-void GetLocalTime(SYSTEMTIME* t)
-{
-    memset(t, 0, sizeof(*t));
-    t->wYear = 2026;
-    t->wMonth = 11;
-    t->wDay = 17;
-}
+/* The file is written for real -- the case below reads it back -- so
+   the writer is linked rather than mocked. Where it goes and what it
+   is called come from the path module, which this harness answers
+   through tests/sdlpath.h: the player's directory is pointed at one
+   the runner makes under tests/build, and the clock is stopped, which
+   is what makes the name below a constant. */
+#define GLR_SHOTDIR "tests/build/player/screenshots/"
+#define GLR_SHOT    GLR_SHOTDIR "20231114_000000_000.png"
 
 void GDI_OutputDebugString(char* format, ...) { (void)format; }
 
@@ -396,6 +380,12 @@ static tBigBufferStruct  glr_bb;
 
 static void glr_Reset(void)
 {
+    /* The directory the runner made, and a stopped clock, so the
+       screenshot's name is the constant above rather than whatever
+       time the test ran at. */
+    strcpy(dpt_prefPath, "tests/build/player/");
+    dpt_now = 0;
+
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();
     GL_l_ForgetBlur();
@@ -1636,8 +1626,7 @@ static void caseScreenshotFile(void)
        read -- so asking and then flipping is what produces it. */
     glr_Reset();
     glr_Begin();
-    remove("screenshots\\20261117_000000_000.png");
-    remove("screenshots/20261117_000000_000.png");
+    remove(GLR_SHOT);
 
     /* A ramp up the frame, written straight into the texture the scene
        target is built on -- the way the after-effect cases seed theirs.
@@ -1680,9 +1669,7 @@ static void caseScreenshotFile(void)
     GL_Request(26, NULL);
     GL_Flip();
 
-    f = fopen("screenshots\\20261117_000000_000.png", "rb");
-    if (!f)
-        f = fopen("screenshots/20261117_000000_000.png", "rb");
+    f = fopen(GLR_SHOT, "rb");
     ok(f != NULL, "a file was written");
     if (!f)
         return;
@@ -1712,9 +1699,7 @@ static void caseScreenshotFile(void)
                                                  NULL, NULL, NULL);
         png_infop   info = png ? png_create_info_struct(png) : NULL;
 
-        f = fopen("screenshots\\20261117_000000_000.png", "rb");
-        if (!f)
-            f = fopen("screenshots/20261117_000000_000.png", "rb");
+        f = fopen(GLR_SHOT, "rb");
         if (png && info && f && !setjmp(png_jmpbuf(png)))
         {
             int w;
@@ -1800,12 +1785,9 @@ static void caseScreenshotFile(void)
 
     /* Asking once writes one file: the flag is cleared, so every
        frame after it does not quietly write another. */
-    remove("screenshots\\20261117_000000_000.png");
-    remove("screenshots/20261117_000000_000.png");
+    remove(GLR_SHOT);
     GL_Flip();
-    f = fopen("screenshots\\20261117_000000_000.png", "rb");
-    if (!f)
-        f = fopen("screenshots/20261117_000000_000.png", "rb");
+    f = fopen(GLR_SHOT, "rb");
     okEq(f != NULL, 0, "and the frame after it writes nothing");
     if (f)
         fclose(f);
@@ -6912,7 +6894,7 @@ int main(void)
 
     /* The repository root, so data/shaders resolves to the real
        files. */
-    snprintf(glr_exePath, sizeof(glr_exePath), "./iriseng.exe");
+    snprintf(dpt_basePath, sizeof(dpt_basePath), "./");
 
     /* The sine table, which the sprite wobble reads through
        MATH_GetSin. */

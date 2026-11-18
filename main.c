@@ -8,13 +8,14 @@
 #include "platform/d3drender.h"
 #include "world.h"
 #include "sideload.h"
-#include "datafiles.h"
+#include "settings.h"
 #include "font.h"
 #include "loading.h"
 #include "dbg.h"
 #include "platform.h"
 #include "profiler.h"
 #include "gdi.h"
+#include "datapath.h"
 
 
 /* The window, the display and the renderer's device.
@@ -84,19 +85,37 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		ENG_InitApplication();
 
-		// datafiles.ini, if there is one, then the command line over
+		// engine.ini, if there is one, then the command line over
 		// the top of it: ENG_ParseCommandLine only ever sets the
 		// flags it finds and only writes the big file name when the
 		// line actually carries one, so whatever is given there wins
 		// and whatever is not falls back to the ini.
-		DAT_InitModule();
-		if (DAT_b_Binarized())
+		SET_InitModule();
+		if (SET_b_Binarized())
 			LOA_gb_SpeedMode = 1;
-		if (DAT_pc_BigFile())
-			strcpy(MAI_gst_BIGFileName, DAT_pc_BigFile());
+		if (SET_pc_BigFile())
+			strcpy(MAI_gst_BIGFileName, SET_pc_BigFile());
 
 		strcpy(cmdLine, lpCmdLine);
 		ENG_ParseCommandLine(cmdLine);
+
+		// The big file is part of the install, so a bare name is looked
+		// for beside the executable rather than in whatever working
+		// directory the game was started from. A name that already
+		// carries a directory or a drive is taken as given: that is
+		// somebody naming a file on the command line, and second-
+		// guessing it would make an absolute path unusable.
+		if (!strchr(MAI_gst_BIGFileName, '\\') && !strchr(MAI_gst_BIGFileName, '/')
+		    && !strchr(MAI_gst_BIGFileName, ':'))
+		{
+			// Sized to the name it goes back into, so a path too
+			// long is reported as a failure here rather than
+			// overrunning on the way back.
+			char bigPath[sizeof(MAI_gst_BIGFileName)];
+
+			if (DPT_b_ExePath(MAI_gst_BIGFileName, bigPath, sizeof(bigPath)))
+				strcpy(MAI_gst_BIGFileName, bigPath);
+		}
 		BIG_Open(MAI_gst_BIGFileName);
 		SIDE_InitModule();
 		FNT_InitModule();
