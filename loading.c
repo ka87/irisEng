@@ -6,6 +6,7 @@
 #include "dbg.h"
 #include "textget.h"
 #include "loading.h"
+#include "fileio.h"
 #include "settings.h"
 #include "datapath.h"
 
@@ -378,12 +379,11 @@ void LOA_Resolve()
     BIG_gb_CanCache = 0;
 }
 
-fpos_t call_fgetpos(FILE* Stream)
+/* Where in the file we are, as a number. fgetpos answers with an
+   opaque token instead, which cannot be turned into one. */
+long long call_fgetpos(FILE* Stream)
 {
-    fpos_t pos;
-
-    fgetpos(Stream, &pos);
-    return pos;
+    return FIO_i64_Tell(Stream);
 }
 
 void LOA_LoadSpecialArray()

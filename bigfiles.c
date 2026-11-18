@@ -2,6 +2,7 @@
 #include "loading.h"
 #include "memory.h"
 #include "bigfiles.h"
+#include "fileio.h"
 #include "textures.h"
 #include "minilzo/minilzo.h"
 #include "ai/ai_debugfunctions.h"
@@ -51,26 +52,18 @@ void BIG_FreeGlobalBuffer()
 
 int BIG_fseek(FILE* fp, int offset, int origin)
 {
-    fpos_t posToSet;
+    /* The offset is taken unsigned for the two origins that count
+       from the start: the big file reaches past where a signed int
+       stops, so the top bit of one of these is part of a position
+       rather than a sign. From the end it is signed, because counting
+       back from the end is what that origin is for. */
+    long long where = (long long)(unsigned int)offset;
 
+    if (origin == 1)
+        return FIO_i_Seek(fp, FIO_i64_Tell(fp) + where, SEEK_SET);
     if (origin)
-    {
-        if (origin == 1)
-        {
-            fgetpos(fp, &posToSet);
-            posToSet += (unsigned int)offset;
-            return fsetpos(fp, &posToSet);
-        }
-        else
-        {
-            return fseek(fp, offset, origin);
-        }
-    }
-    else
-    {
-        posToSet = (unsigned int)offset;
-        return fsetpos(fp, &posToSet);
-    }
+        return FIO_i_Seek(fp, offset, origin);
+    return FIO_i_Seek(fp, where, SEEK_SET);
 }
 
 int BIGcomp_ui_Read32(char* dataPtr)
@@ -704,12 +697,15 @@ void BIG_ReadAllFats()
 void BIG_Open(char* fileName)
 {
     memset(&BIG_gst, 0, sizeof(BIG_gst));
-    BIG_gst.CLibFileHandle = fopen(fileName, "rbS");
+    BIG_gst.CLibFileHandle = fopen(fileName, FIO_READ_SEQUENTIAL);
     if (!BIG_gst.CLibFileHandle)
     {
-        if (_access(fileName, 2)) // 2 = write-only
+        /* The file is there but will not open, so the one thing worth
+           trying is its permissions: make it writable and open it for
+           update. */
+        if (!FIO_b_Writable(fileName))
         {
-            _chmod(fileName, _S_IWRITE);
+            FIO_b_MakeWritable(fileName);
             BIG_gst.CLibFileHandle = fopen(fileName, "r+b");
         }
         if (!BIG_gst.CLibFileHandle)

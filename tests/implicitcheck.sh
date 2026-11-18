@@ -36,7 +36,7 @@
 # platform/d3drender.c went from 25 to 13 when the D3D9, D3DX and message-loop
 # declarations went into the stubs; that work also took the parse
 # sweep from 133 of 137 to 135, leaving only bigfiles.c and loading.c,
-# which are the fpos_t question.
+# which were the fpos_t question and are no longer a question at all.
 #
 # The four platform/ passes between them added every Win32 and Direct3D
 # declaration these files were missing -- the window, cursor, module
@@ -58,8 +58,7 @@ CFLAGS="$CFLAGS -Ithirdparty/SDL3/include"
 # reports no implicit declarations -- see UNSWEEPABLE below
 CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
 
-BASELINE="bigfiles.c 2
-engine.c 1
+BASELINE="engine.c 1
 sound.c 1
 strings.c 1"
 
@@ -70,11 +69,22 @@ strings.c 1"
 # silently. That is how font.c went unswept until this list existed --
 # it was missing an include path and counted zero.
 #
-# loading.c casts call_fgetpos()'s return to unsigned int. fpos_t is an
-# integer on MSVC and a struct in glibc, so the cast is correct where
-# the engine is built and impossible here. It is listed, not fixed:
-# changing engine code to suit this host is the wrong way round.
-UNSWEEPABLE="loading.c"
+# Nothing, now. loading.c was here because it cast call_fgetpos()'s
+# return to unsigned int, and fpos_t is an integer on MSVC and a
+# struct in glibc -- correct where the engine was built and impossible
+# here. The note said it was listed rather than fixed, because
+# changing engine code to suit this host is the wrong way round, and
+# that still holds: what changed is not the host's business but the
+# engine's. The big file is bigger than a long and the file was
+# seeking in it through a type the standard calls opaque, which
+# happened to work on one library. It asks for a wide seek by name
+# now, and each platform answers.
+#
+# bigfiles.c came off the baseline at the same time and for the same
+# change: its two implicit declarations were _access and _chmod, the
+# CRT's own names for asking after a file's permissions, and those are
+# a question of the engine's now too.
+UNSWEEPABLE=""
 
 files=$(python3 - <<'EOF'
 import re

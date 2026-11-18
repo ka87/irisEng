@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bigfiles_compat.h"
+#include "../fileio.h"
 #include "../common.h"
 #include "../basic_array.h"
 #include "../memory.h"
@@ -139,29 +140,79 @@ size_t BIGM_fread(void* buf, size_t size, size_t count, FILE* fp)
     return size ? (size_t)(n / (long long)size) : 0;
 }
 
+/* One vocabulary for the two copies, because they ask different
+   questions to the same end.
+ *
+ * The frozen copy seeks with fgetpos and fsetpos and keeps fseek for
+ * counting back from the end; the rewrite asks the engine's own wide
+ * seek, which the target's library spells one way and this host's
+ * another. Underneath, both do the same three things: say where we
+ * are, go to a position, and go to one measured from the end. Each is
+ * logged under one name with the position it ended on, so the two
+ * logs line up -- logging the call that was made instead would be a
+ * difference on every seek in the file and would hide the ones that
+ * matter. */
+static void BFM_LogTell(long long pos)
+{
+    Log("tell", pos, 0, 0, 0);
+}
+
+static void BFM_LogSeek(long long pos, int origin)
+{
+    Log("seek", pos, origin, 0, 0);
+}
+
+static long long BFM_ll_Move(tBFile* f, long long offset, int origin)
+{
+    long long base = origin == 1 ? f->pos : (origin == 2 ? f->size : 0);
+
+    f->pos = base + offset;
+    return f->pos;
+}
+
 int BIGM_fseek(FILE* fp, long offset, int origin)
 {
     tBFile* f = (tBFile*)fp;
-    long long base = origin == 1 ? f->pos : (origin == 2 ? f->size : 0);
-    f->pos = base + offset;
-    Log("fseek", offset, origin, f->pos, 0);
+
+    BFM_LogSeek(BFM_ll_Move(f, offset, origin), origin);
     return 0;
 }
 
 int BIGM_fgetpos(FILE* fp, BIGM_fpos_t* pos)
 {
     tBFile* f = (tBFile*)fp;
+
     *pos = f->pos;
-    Log("fgetpos", f->pos, 0, 0, 0);
+    BFM_LogTell(f->pos);
     return 0;
 }
 
 int BIGM_fsetpos(FILE* fp, const BIGM_fpos_t* pos)
 {
     tBFile* f = (tBFile*)fp;
+
     f->pos = *pos;
-    Log("fsetpos", *pos, 0, 0, 0);
+    BFM_LogSeek(f->pos, 0);
     return 0;
+}
+
+/* The rewrite's side of the same three events. fileio.c is not linked
+   here: these are what it would have done, against the in-memory
+   file. */
+int FIO_i_Seek(FILE* fp, long long offset, int origin)
+{
+    tBFile* f = (tBFile*)fp;
+
+    BFM_LogSeek(BFM_ll_Move(f, offset, origin), origin);
+    return 0;
+}
+
+long long FIO_i64_Tell(FILE* fp)
+{
+    tBFile* f = (tBFile*)fp;
+
+    BFM_LogTell(f->pos);
+    return f->pos;
 }
 
 FILE* BIGM_fopen(const char* path, const char* mode)
@@ -176,16 +227,40 @@ int BIGM_fclose(FILE* fp)
     return 0;
 }
 
+/* The file's permissions, the same two events from both sides.
+ *
+ * The answers say the file is writable, which is why neither copy ever
+ * reaches the making-it-writable arm: it is behind a file that would
+ * not open, and the in-memory file always opens. The arm is logged
+ * all the same, so the day a case arranges for it the two copies are
+ * still compared on it.
+ *
+ * Note the polarity differs between the calls and is the same event
+ * either way: the frozen copy asks the C library, which answers
+ * nought for "yes, writable", and the rewrite asks a question named
+ * for what it means, which answers one. */
 int _access(const char* path, int mode)
 {
-    Log("_access", mode, 0, 0, 0);
+    Log("writable", 0, 0, 0, 0);
     return 0;
 }
 
 int _chmod(const char* path, int pmode)
 {
-    Log("_chmod", pmode, 0, 0, 0);
+    Log("makewritable", 0, 0, 0, 0);
     return 0;
+}
+
+int FIO_b_Writable(const char* path)
+{
+    Log("writable", 0, 0, 0, 0);
+    return 1;
+}
+
+int FIO_b_MakeWritable(const char* path)
+{
+    Log("makewritable", 0, 0, 0, 0);
+    return 1;
 }
 
 /* ---- the engine ---- */
