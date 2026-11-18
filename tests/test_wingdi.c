@@ -20,6 +20,19 @@
  * tables are the engine's own.
  */
 
+/* One case has been retired rather than kept: the window messages.
+ *
+ * The three handlers it drove were the window's procedure, and the
+ * window is SDL's now -- there is no procedure and no message to hand
+ * them, so the frozen copy of them has nothing to be compared
+ * against. What they did is done by the event translation in
+ * platform.c, and tests/test_platform.c is where it is checked:
+ * against the real SDL, with the events pushed onto its own queue.
+ *
+ * The frozen file keeps its copies, unreferenced. They are what the
+ * renderer's file used to hold and are left where the rest of the
+ * frozen decompilation is.
+ */
 #include "wingdi_mocks.h"
 /* for the frozen copy's font pointer, which the engine no longer has */
 #include <d3dx9math.h>
@@ -116,7 +129,6 @@
     void p##D3D_ReleaseWaterIndices(void); \
     void p##D3D_ReleaseSunSurfaces(void); \
     void p##D3D_CreateSunTexturesForSunSurfaces(void); \
-    int  p##PC_HandleWindowOpenAndCloseMessages(HWND, GLOBAL_MainHandles*, unsigned int); \
     void p##D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld*); \
     void p##D3D_ReleaseTextures(struct sGdi_DisplayData*); \
     void p##D3D_ReleaseShadowTextures(void); \
@@ -128,8 +140,6 @@
     void p##D3D_Palette_Load(struct sGdi_DisplayData*, struct sEngTexListElemStruct*, struct sEngTexIntermediateStruct*, int); \
     void p##D3D_TextureStore(tTexUploadRequest*); \
     void p##D3D_GetSnapShot(tGdi_SnapshotRequest*); \
-    int  p##PC_WNDMsgHandler(HWND, int, int, int, int*); \
-    int  p##PC_HandleWindowCreateAndEraseBackgroundMessages(HWND, GLOBAL_MainHandles*, int, int, int, int*); \
     void p##PC_SetUVMatrix(Mtx4x4*, Vec3*, Vec3*, Vec3*, Vec3*, Vec3*, int, int); \
     extern tWorld* p##worldPtrIfMultiStream; \
     extern D3DMATRIX p##d3dProjectionMtx; \
@@ -220,7 +230,6 @@ typedef struct sSide
     void (*ReleaseWaterIndices)(void);
     void (*ReleaseSunSurfaces)(void);
     void (*CreateSunTextures)(void);
-    int (*WndOpenClose)(HWND, GLOBAL_MainHandles*, unsigned int);
     void (*ReleaseTextures)(struct sGdi_DisplayData*);
     void (*ReleaseShadowTextures)(void);
     void (*ReleaseVBOs)(void);
@@ -231,8 +240,6 @@ typedef struct sSide
     void (*PaletteLoad)(struct sGdi_DisplayData*, struct sEngTexListElemStruct*, struct sEngTexIntermediateStruct*, int);
     void (*TextureStore)(tTexUploadRequest*);
     void (*GetSnapShot)(tGdi_SnapshotRequest*);
-    int (*WndMsg)(HWND, int, int, int, int*);
-    int (*WndCreate)(HWND, GLOBAL_MainHandles*, int, int, int, int*);
     void (*SetUVMatrix)(Mtx4x4*, Vec3*, Vec3*, Vec3*, Vec3*, Vec3*, int, int);
     tWorld** multiStreamWorld;
     D3DMATRIX* projMtx;
@@ -279,12 +286,11 @@ typedef struct sSide
     p##D3D_CycleThroughVBOs, p##D3D_InitEverything, \
     p##D3D_CreateIndexAndVertexBuffForGameObject, p##D3D_l_Close, \
     p##D3D_SunSurfacesClear, p##D3D_ReleaseWaterIndices, p##D3D_ReleaseSunSurfaces, \
-    p##D3D_CreateSunTexturesForSunSurfaces, p##PC_HandleWindowOpenAndCloseMessages, \
+    p##D3D_CreateSunTexturesForSunSurfaces, \
     p##D3D_ReleaseTextures, p##D3D_ReleaseShadowTextures, p##D3D_ReleaseVBOs, \
     p##D3D_ReleaseEverything, p##D3D_CreateVBOs, p##D3D_CreateAndCopySourceTexturesToThem, \
     p##D3D_l_Texture_Store, p##D3D_Palette_Load, p##D3D_TextureStore, \
-    p##D3D_GetSnapShot, p##PC_WNDMsgHandler, \
-    p##PC_HandleWindowCreateAndEraseBackgroundMessages, p##PC_SetUVMatrix, \
+    p##D3D_GetSnapShot, p##PC_SetUVMatrix, \
     &p##worldPtrIfMultiStream, \
     &p##d3dProjectionMtx, &p##d3dTransformMatrix, &p##d3dTransformMatrix2, \
     &GDI_gi_Widescreen, &p##D3D_gi_FlatLayerBox, &p##D3D_gi_AspectTrace, \
@@ -537,7 +543,7 @@ enum {
     C_RASTERS, C_RASTERQUAD, C_WATERBUFFERS, C_WATERSTREAM, C_DRAWWATER,
     C_UVCOMPUTE, C_UVCHROME, C_UVPLANAR, C_SPRITES, C_DRAWTRIS,
     C_CREATEBUFFERS, C_RELEASE, C_RELEASEMESH, C_CREATE, C_PALETTE, C_SNAPSHOT,
-    C_WNDMSG, C_SETUVMATRIX, C_DEVICE, C_SCENE, C_MULTISTREAM,
+    C_SETUVMATRIX, C_DEVICE, C_SCENE, C_MULTISTREAM,
     C_COUNT
 };
 
@@ -551,7 +557,7 @@ static const char* caseName[C_COUNT] = {
     "rasters", "raster quad", "water buffers", "water stream", "draw water",
     "uv compute", "uv chrome", "uv planar", "sprites", "draw triangles",
     "create buffers", "release", "release mesh data", "create", "palette load", "snapshot",
-    "window message", "uv matrix", "device lifecycle", "scene", "multi stream"
+    "uv matrix", "device lifecycle", "scene", "multi stream"
 };
 
 static void ResetShared(void)
@@ -1645,19 +1651,6 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
     case C_SNAPSHOT:
         s->GetSnapShot(&W.snap);
         break;
-    case C_WNDMSG:
-    {
-        static const int msgs[] = { 0x0001, 0x0002, 0x0010, 0x0012, 0x0014,
-                                    0x001C, 0x0112, 0x00A1, 0x0200, 0xC123 };
-        int lp = (int)seed;
-        ret = s->WndMsg((HWND)0x100, msgs[seed % 10u], (int)(seed % 0xF060u),
-                        (int)seed, &lp);
-        ret = ret * 7 + lp;
-        extra = s->WndCreate((HWND)0x100, &W.handles, msgs[(seed + 1u) % 10u],
-                             0, 0, &lp);
-        ret = ret * 7 + extra + lp;
-        break;
-    }
     case C_DEVICE:
         s->SunSurfacesClear();
         for (extra = 0; extra < 16; extra++)
@@ -1684,21 +1677,10 @@ static int RunSide(const tSide* s, int kind, unsigned int seed, float* fret)
         ENG_IsSingleStream = (int)(seed & 1);
         s->CreateGameObjectsD3DStuff(&W.world);
         s->CreateBuffersForGao(&W.gaos[seed % 4u]);
-        ret = s->WndOpenClose((HWND)0x100,
-                              (seed & 2) ? &W.handles : NULL,
-                              (unsigned int)(seed % 0x210u));
-        {
-            static const unsigned int wmsgs[] = {
-                (unsigned int)WM_CREATE, (unsigned int)WM_CLOSE,
-                (unsigned int)WM_CREATE, (unsigned int)WM_DESTROY,
-                (unsigned int)WM_CLOSE - 1u, (unsigned int)WM_CLOSE + 1u
-            };
-            W.handles.displayData = NULL;
-            for (extra = 0; extra < 6; extra++)
-                ret = ret * 7 + s->WndOpenClose((HWND)0x100, &W.handles,
-                                                wmsgs[extra]);
-            W.handles.displayData = NULL;
-        }
+        /* The window's open-and-close messages were driven from here
+           as well. Retired with the rest of them -- see the note at
+           the top of this file. */
+        ret = 0;
         extra = 0;
         *s->multiStreamWorld = NULL;
         break;

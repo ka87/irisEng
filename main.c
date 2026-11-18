@@ -12,7 +12,56 @@
 #include "font.h"
 #include "loading.h"
 #include "dbg.h"
+#include "platform.h"
+#include "profiler.h"
+#include "gdi.h"
 
+
+/* The window, the display and the renderer's device.
+ *
+ * The window's own procedure used to do the second and third of these
+ * on WM_CREATE, which meant the startup order was decided by when
+ * Windows chose to send a message. The window is SDL's now and there
+ * is no such message, so it is said here -- in the order it always
+ * happened in, and in the place that already sequences the startup. */
+static int MAI_l_b_DisplayOpen(void)
+{
+    void* window;
+    int   width = 0;
+    int   height = 0;
+    int   windowed = 0;
+
+    PLT_WindowSettings(&width, &height, &windowed);
+    if (!PLT_b_Open("IRISEngine", width, height, windowed))
+        return 0;
+
+    window = PLT_p_NativeWindow();
+    MAI_gh_MainWindow = (HWND)window;
+    MAI_gst_MainHandles.hwnd = (HWND)window;
+    MAI_gst_MainHandles.hwndSetAfterCreateWindow = (HWND)window;
+
+    fbss = GDI_fnpst_CreateDisplayData();
+    MAI_gst_MainHandles.displayData = fbss;
+    GDI_fnl_InitInterface(fbss);
+    fbss->rendererState = fbss->CreateDevice();
+    PRO_InitRasters(fbss->rasters, "Display Data");
+    GDI_AttachDisplayAndReadaptDisplay(fbss, (HWND)window);
+    return 1;
+}
+
+/* And what it did on the way out, which was WM_CLOSE and WM_DESTROY. */
+static void MAI_l_DisplayClose(void)
+{
+    if (MAI_gst_MainHandles.displayData)
+    {
+        GDI_DetachDisplay(MAI_gst_MainHandles.displayData);
+        MAI_gst_MainHandles.displayData->DestroyDevice(
+            MAI_gst_MainHandles.displayData->rendererState);
+        GDI_DestroyDisplayData(MAI_gst_MainHandles.displayData);
+        MAI_gst_MainHandles.displayData = NULL;
+    }
+    PLT_Close();
+}
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
 	CreateMutexA(NULL, TRUE, "IrisEngGame");
@@ -45,7 +94,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		SIDE_InitModule();
 		FNT_InitModule();
 		ENG_bgeModuleHandle = hInstance;
-		ENG_WinGameWindowInit(hInstance);
+		if (!MAI_l_b_DisplayOpen())
+		{
+			DBG_OutputDebugString("the window would not open; stopping\n");
+			DBG_LogExit();
+			return 0;
+		}
 		ENG_InitEngine();
 		ENG_Loop();
 		WOR_Universe_Close();
@@ -53,7 +107,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// still there to hand the glyph atlases back to
 		FNT_CloseModule();
 		ENG_CloseEngine();
-		DestroyWindow(MAI_gh_MainWindow);
+		MAI_l_DisplayClose();
 		BIG_Close();
 		SIDE_CloseModule();
 		ENG_CloseApplication();

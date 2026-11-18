@@ -21,5 +21,6 @@ void OVL_CommandShow(void);
 void OVL_CommandHide(void);
 
 // Window-message entry points, live only while the field is up.
-// OVL_b_CommandMessage returns non-zero when it consumed the message.
-int  OVL_b_CommandMessage(unsigned int msg, unsigned int wParam);
+// OVL_b_CommandChar returns non-zero when the field consumed the
+// character, which it does whenever it is up.
+int  OVL_b_CommandChar(int ch);

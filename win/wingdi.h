@@ -426,8 +426,6 @@ void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* world);
 
 void PC_EngineCheatFinal();
 void D3D_SaveScreenshot(void);
-void s_HandleWinMessages();
-void ENG_WinGameWindowInit(HINSTANCE instance);
 
 void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value);
 void PC_CIN_CutsceneMode(int on);

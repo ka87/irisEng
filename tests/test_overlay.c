@@ -289,7 +289,7 @@ static void resetAll(void)
 static void type(const char* s)
 {
     while (*s)
-        OVL_b_CommandMessage(WM_CHAR, (unsigned char)*s++);
+        OVL_b_CommandChar((unsigned char)*s++);
 }
 
 /* --------------------------------------------------------- command field */
@@ -301,38 +301,38 @@ static void fieldStateMachine(void)
     /* nothing is consumed while the field is down */
     resetAll();
     okEq(OVL_b_CommandActive(), 0, "field starts down");
-    okEq(OVL_b_CommandMessage(WM_CHAR, 'a'), 0, "WM_CHAR ignored while down");
-    okEq(OVL_b_CommandMessage(WM_KEYDOWN, 0x41), 0, "WM_KEYDOWN ignored while down");
+    okEq(OVL_b_CommandChar('a'), 0, "a character is ignored while down");
 
     /* typing */
     OVL_CommandShow();
     okEq(OVL_b_CommandActive(), 1, "show raises the field");
-    okEq(OVL_b_CommandMessage(WM_CHAR, 'h'), 1, "WM_CHAR consumed while up");
+    okEq(OVL_b_CommandChar('h'), 1, "and consumed while up");
     type("ello world");
     ok(strcmp(ovl_cmdText, "hello world") == 0, "printable characters accumulate");
 
-    /* the key events go nowhere else while the field has the keyboard */
-    okEq(OVL_b_CommandMessage(WM_KEYDOWN, 0x41), 1, "WM_KEYDOWN swallowed");
-    okEq(OVL_b_CommandMessage(WM_KEYUP, 0x41), 1, "WM_KEYUP swallowed");
-    okEq(OVL_b_CommandMessage(WM_SYSCHAR, 0x41), 1, "WM_SYSCHAR swallowed");
-    okEq(OVL_b_CommandMessage(0x0200, 0), 0, "other messages pass through");
+    /* Nothing else sees the keys while the field has the keyboard, and
+       that is not this function's doing: raising the field releases
+       the input devices and putting it away takes them back, which is
+       the two calls either side of the line being run. There are no
+       window messages to swallow any more -- the window is SDL's and
+       its events go only where the platform layer routes them. */
 
     /* backspace, and backspace on an empty line */
-    OVL_b_CommandMessage(WM_CHAR, '\b');
+    OVL_b_CommandChar('\b');
     ok(strcmp(ovl_cmdText, "hello worl") == 0, "backspace drops a character");
     OVL_CommandShow();
-    okEq(OVL_b_CommandMessage(WM_CHAR, '\b'), 1, "backspace on empty consumed");
+    okEq(OVL_b_CommandChar('\b'), 1, "backspace on empty consumed");
     okEq(ovl_cmdLen, 0, "backspace on empty leaves the line empty");
 
     /* control characters outside the printable range are dropped */
-    OVL_b_CommandMessage(WM_CHAR, 7);
-    OVL_b_CommandMessage(WM_CHAR, 127);
-    OVL_b_CommandMessage(WM_CHAR, 200);
+    OVL_b_CommandChar(7);
+    OVL_b_CommandChar(127);
+    OVL_b_CommandChar(200);
     okEq(ovl_cmdLen, 0, "non-printables are not appended");
 
     /* Enter runs the line, puts the field away and takes the devices back */
     type("fps 60");
-    OVL_b_CommandMessage(WM_CHAR, '\r');
+    OVL_b_CommandChar('\r');
     okEq(ovt_runCalls, 1, "enter runs the line once");
     ok(strcmp(ovt_ranCommand, "fps 60") == 0, "enter hands on what was typed");
     okEq(OVL_b_CommandActive(), 0, "enter puts the field away");
@@ -342,7 +342,7 @@ static void fieldStateMachine(void)
     resetAll();
     OVL_CommandShow();
     type("quit");
-    OVL_b_CommandMessage(WM_CHAR, 27);
+    OVL_b_CommandChar(27);
     okEq(ovt_runCalls, 0, "escape runs nothing");
     okEq(OVL_b_CommandActive(), 0, "escape puts the field away");
     okEq(ovt_acquireCalls, 1, "escape re-acquires the devices");
@@ -359,16 +359,16 @@ static void fieldStateMachine(void)
     resetAll();
     OVL_CommandShow();
     for (i = 0; i < OVL_CMDMAX * 3; i++)
-        OVL_b_CommandMessage(WM_CHAR, 'x');
+        OVL_b_CommandChar('x');
     okEq(ovl_cmdLen, OVL_CMDMAX - 1, "the line stops one short of the buffer");
     okEq(ovl_cmdText[OVL_CMDMAX - 1], 0, "the line stays terminated");
-    OVL_b_CommandMessage(WM_CHAR, '\r');
+    OVL_b_CommandChar('\r');
     okEq((long)strlen(ovt_ranCommand), OVL_CMDMAX - 1, "a full line is handed on whole");
 
     /* an empty line still goes through, and the field still closes */
     resetAll();
     OVL_CommandShow();
-    OVL_b_CommandMessage(WM_CHAR, '\n');
+    OVL_b_CommandChar('\n');
     okEq(ovt_runCalls, 1, "a bare newline is still a submit");
     okEq(OVL_b_CommandActive(), 0, "a bare newline closes the field");
 }
