@@ -20,6 +20,10 @@ font the rasters code already creates.
 | `win/overlay.h` | `OVL_Draw`, and the command field's four entry points |
 | `win/wingdi.c` | `D3D_OverlayBegin` / `DrawQuads` / `End`, the pass itself |
 | `win/wininputoutput.c` | F12, and `pcINO_RunTweakCommand` |
+
+F11 puts the engine's statistics in the window's caption. They used
+to arrive by clicking the title bar, which a window SDL owns does not
+pass on; F11 is the one function key the game has nothing else on.
 | `tests/test_overlay.c` | the unit test, 160 checks |
 
 ### Where the pass sits
