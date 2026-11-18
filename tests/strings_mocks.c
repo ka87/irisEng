@@ -14,8 +14,8 @@
 #include "../gameobject.h"
 #include "../textures.h"
 #include "../inputoutput.h"
-#include "../win/wininputoutput.h"
-#include "../win/wingdi.h"
+#include "../platform/wininputoutput.h"
+#include "../platform/wingdi.h"
 #include "../strings.h"
 #include "strings_mocks.h"
 

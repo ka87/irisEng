@@ -1,32 +1,32 @@
-# `win/` — the platform layer
+# `platform/` — the platform layer
 
-The five files under `win/` are the only ones that talk to Windows and
+The five files under `platform/` are the only ones that talk to Windows and
 to Direct3D directly: the renderer, the after-effects chain, the sound
 device, the input devices and the ADPCM decoder. Everything else in
 the engine goes through them.
 
 They were left for last on purpose. Between them they hold the densest
-decompiler residue in the tree — `win/winsound.c` alone had 46 `goto`s
+decompiler residue in the tree — `platform/winsound.c` alone had 46 `goto`s
 — and the stub include set in `tests/stub/` had to be finished before
 any of them would even parse, let alone compile into a differential
 test.
 
 | file | lines | residue | `goto` | functions |
 |---|---|---|---|---|
-| `win/wingdi.c` | 7,085 → **5,029** | 2,948 → **20** | 31 → **0** | 128 → 137 |
-| `win/wingdi_aftereffects.c` | 5,780 → **3,180** | 2,259 → **3** | 14 → **0** | 50 → 53 |
-| `win/winsound.c` | 3,395 → **2,943** | 1,568 → **13** | 46 → **0** | 117 |
-| `win/wininputoutput.c` | 1,617 → **1,518** | 209 → **1** | 5 → **0** | 55 → 58 |
-| `win/adpcm.c` | 211 → **136** | 130 → **0** | 0 | 3 → 4 |
-| `win/wingdi.h` | 351 | 39 → **11** | — | — |
-| `win/wininputoutput.h` | 109 | 6 → **0** | — | — |
-| `win/adpcm.h` | 12 → 14 | 3 → **0** | — | — |
+| `platform/wingdi.c` | 7,085 → **5,029** | 2,948 → **20** | 31 → **0** | 128 → 137 |
+| `platform/wingdi_aftereffects.c` | 5,780 → **3,180** | 2,259 → **3** | 14 → **0** | 50 → 53 |
+| `platform/winsound.c` | 3,395 → **2,943** | 1,568 → **13** | 46 → **0** | 117 |
+| `platform/wininputoutput.c` | 1,617 → **1,518** | 209 → **1** | 5 → **0** | 55 → 58 |
+| `platform/adpcm.c` | 211 → **136** | 130 → **0** | 0 | 3 → 4 |
+| `platform/wingdi.h` | 351 | 39 → **11** | — | — |
+| `platform/wininputoutput.h` | 109 | 6 → **0** | — | — |
+| `platform/adpcm.h` | 12 → 14 | 3 → **0** | — | — |
 
 **Every residue line that is left is inside a comment of the user's.**
-`win/wingdi.c`'s twenty are in four block comments — two disabled
+`platform/wingdi.c`'s twenty are in four block comments — two disabled
 debug dumps, a `TODO FIXME` quoting the Hex-Rays line it corrects, and
-a note about a buffer — and `win/winsound.c`'s thirteen are the same
-kind. The eleven in `win/wingdi.h` are struct **fields**, not locals;
+a note about a buffer — and `platform/winsound.c`'s thirteen are the same
+kind. The eleven in `platform/wingdi.h` are struct **fields**, not locals;
 see "Not renamed" below.
 
 Function counts move only upward: nine helpers added in `wingdi.c`,
@@ -70,7 +70,7 @@ file, COM, dialog and keyboard calls the platform layer makes.
 
 The payoff beyond parsing: **implicit function declarations across the
 tree went from 16 over six files to 6 over five**, and
-`win/wingdi.c`, `win/wininputoutput.c` and `win/winsound.c` are all off
+`platform/wingdi.c`, `platform/wininputoutput.c` and `platform/winsound.c` are all off
 the list entirely. The four passes' sets of declarations resolve more
 together than any one does alone — `tests/implicitcheck.sh`'s baseline
 is measured on the merge for that reason, not carried over from a
@@ -96,7 +96,7 @@ test's compared call count went from 9,345 to 9,479.
 **Sequential numbering can invert an ordering the code tests.** The
 stub numbered the `WM_*` messages in declaration order
 (`WM_ACTIVATEAPP` 16385 … `WM_SYSCOMMAND` 16393), which is the reverse
-of Win32's. Both of `win/wingdi.c`'s message handlers open with a range
+of Win32's. Both of `platform/wingdi.c`'s message handlers open with a range
 test — `msg > WM_CLOSE`, `msg > WM_ACTIVATEAPP` — so under the stub's
 numbering **every other arm of both handlers was unreachable** and no
 input could enter them. `tests/wingdi_msg_sdk.h` forces the real
@@ -130,7 +130,7 @@ comment, which is the only comment any of these passes added. They are
 listed per file below; each says what the code does that a reader would
 otherwise take for a transcription mistake.
 
-**`win/wingdi.c`** (six) — a `return` that skips its matching profiler
+**`platform/wingdi.c`** (six) — a `return` that skips its matching profiler
 end block, so raster 38 stays entered; a source array walked with no
 null test unlike the one above it; an alignment test that can never
 fail because `align` is masked to 0..15; an `elem` still pointing at
@@ -138,7 +138,7 @@ the `0xC0DE` marker, so a read lands at `second[49374]`; the colour
 arg 2 backup taken from arg 1; and one of nine second-colour lookups
 scaling its index by four.
 
-**`win/winsound.c`** (eight) — a registry key left open when the value
+**`platform/winsound.c`** (eight) — a registry key left open when the value
 cannot be read, and another left open on every failing path; a handle
 array grown from `sndPlayList` rather than `sndEventHandles`; the
 distances and position in `pcSND_SetDefaultSoundPositionAndDistance`
@@ -148,19 +148,19 @@ block stride that equals the struct size only in a 32-bit build; two
 allocations that leak when either call fails; and an index one past
 the array when no instance matches.
 
-**`win/wingdi_aftereffects.c`** (three) — a count used where the other
+**`platform/wingdi_aftereffects.c`** (three) — a count used where the other
 arms use an index, so a loop stops short of 254; a first pass taking
 its vertical offset from the unnarrowed product where the rest take
 the narrowed step; and one getter returning the motion blur for the
 unknown slot where every other getter returns zero.
 
-**`win/wininputoutput.c`** (four, written as block comments because
+**`platform/wininputoutput.c`** (four, written as block comments because
 they need a sentence) — a float read through an `int*` because the
 caller passes a float; a path reached with `pcINO_mouseDevice` NULL; a
 dereference of `pcINO_keybDevice` in `pcINO_getKeyNames`; and a buffer
 size of 266 where the first call and the buffer disagree.
 
-**`win/adpcm.c`** (one) — a floor constant that is not `-32768`, though
+**`platform/adpcm.c`** (one) — a floor constant that is not `-32768`, though
 every use of it narrows to `int16_t`.
 
 ## Mutation testing
@@ -235,7 +235,7 @@ drive is driven deliberately rather than left to the sweep.
 
 ## The cross-file renames, and how the frozen baselines were kept
 
-Four `_sub_<address>` names in `win/` and one misspelling left over
+Four `_sub_<address>` names in `platform/` and one misspelling left over
 from the root batch were renamed across every call site. All five were
 blocked on the same thing — a frozen `tests/baseline_*.c` uses the old
 spelling and must keep compiling — and all five are resolved the same
@@ -244,10 +244,10 @@ side of the test needs it.**
 
 | old | new | defined in | called from |
 |---|---|---|---|
-| `MAT_ComputeUV_sub_4521A0` | `MAT_UV_ComputeAndSetTransform` | `win/wingdi.c` | `materialanddraw.c` |
-| `INO_SetControlMode_inner_sub_48ACB0` | `pcINO_SetControlMode` | `win/wininputoutput.c` | `inputoutput.c`, `strings.c` |
-| `INO_SetControlSubmode_inner_sub_48A650` | `pcINO_SetControlSubmode` | `win/wininputoutput.c` | `inputoutput.c`, `strings.c` |
-| `PC_AE_MASTER_GET_ONOFF_sub_4A37D0` | `PC_AE_MASTER_GET_ONOFF` | `win/wingdi_aftereffects.c` | `ai/ai_miscfunctions.c` |
+| `MAT_ComputeUV_sub_4521A0` | `MAT_UV_ComputeAndSetTransform` | `platform/wingdi.c` | `materialanddraw.c` |
+| `INO_SetControlMode_inner_sub_48ACB0` | `pcINO_SetControlMode` | `platform/wininputoutput.c` | `inputoutput.c`, `strings.c` |
+| `INO_SetControlSubmode_inner_sub_48A650` | `pcINO_SetControlSubmode` | `platform/wininputoutput.c` | `inputoutput.c`, `strings.c` |
+| `PC_AE_MASTER_GET_ONOFF_sub_4A37D0` | `PC_AE_MASTER_GET_ONOFF` | `platform/wingdi_aftereffects.c` | `ai/ai_miscfunctions.c` |
 | `PRO_ProfilerWindowHander` | `PRO_ProfilerWindowHandler` | `profiler.c` | `engine.c` |
 
 Which half of the fix applies depends on whether the frozen copy
@@ -278,7 +278,7 @@ any header.
 
 ## Still not renamed: the `v1` struct fields
 
-The eleven residue lines in `win/wingdi.h` are the `v1` field of
+The eleven residue lines in `platform/wingdi.h` are the `v1` field of
 `tVertex_type_204/404/244/104/144/444/142_generic` and `v1`..`v4` of
 `tD3dSpriteData`. `v1` should be `pos`.
 
@@ -291,7 +291,7 @@ anonymous union in the header itself —
 header, kept only so that frozen test copies compile.
 
 The scale, measured: about **290 uses in the live sources**
-(`win/wingdi.c` 85, `win/wingdi_aftereffects.c` 199,
+(`platform/wingdi.c` 85, `platform/wingdi_aftereffects.c` 199,
 `tests/test_wingdi.c` 6) and about **370 in the two frozen
 baselines**. Left as it is pending a decision, because the union is a
 permanent cost in the engine for a temporary problem in the tests, and
@@ -299,7 +299,7 @@ regenerating the baselines removes it outright.
 
 ## What the tests cannot reach
 
-`win/wingdi.c`'s device lifecycle and Win32 entry points —
+`platform/wingdi.c`'s device lifecycle and Win32 entry points —
 `D3D_l_Init`, `ENG_WinGameWindowInit`, `PC_EngineCheatFinal`,
 `D3D_SaveScreenshot`, `PNG_WriteBgra`, `D3D_ReinitD3DAppBackCache`,
 `D3D_pst_CreateDevice`, `s_HandleWinMessages`, `PC_WNDProcHandler`,
@@ -307,7 +307,7 @@ regenerating the baselines removes it outright.
 sweep. Each was verified textually unchanged apart from two parameter
 renames, so nothing untested was restructured.
 
-Two of the user's comments in `win/wingdi.c` are lost: `// cc` and
+Two of the user's comments in `platform/wingdi.c` are lost: `// cc` and
 `// esi`, Hex-Rays register annotations that sat on the declaration
 lines of a local that is now deleted and a local that is now `i`.
 Everything else survives byte for byte, checked by diffing the comment
@@ -320,10 +320,10 @@ multiset against the pre-pass copy.
   be what the original did.
 - `pcINO_InputHandlerCase2` casts a float through an `int*`. Same
   question.
-- The six memory-card failure flags in `win/wininputoutput.c` are set
+- The six memory-card failure flags in `platform/wininputoutput.c` are set
   and never read.
 - Whether the frozen baselines may be regenerated. The five function
   renames no longer need it — they carry both spellings — but it is
   what would let the `v1` → `pos` field rename go in without eleven
-  anonymous unions in `win/wingdi.h`, and it would let the five old
+  anonymous unions in `platform/wingdi.h`, and it would let the five old
   spellings be dropped from the mocks and the runners.

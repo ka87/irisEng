@@ -1,4 +1,4 @@
-/* A unit test for win/wingdisun.c, the Direct3D side of the sun's
+/* A unit test for platform/wingdisun.c, the Direct3D side of the sun's
  * occlusion test.
  *
  * New code with no earlier copy, so this is a direct check rather
@@ -26,8 +26,8 @@
 /* The engine's own headers first: a fake below that does not match
    what the engine declares is then a compile error rather than a
    mystery at link time. */
-#include "../win/wingdi.h"
-#include "../win/wingdisun.h"
+#include "../platform/wingdi.h"
+#include "../platform/wingdisun.h"
 #include "../memory.h"
 
 static long checks;
@@ -220,7 +220,7 @@ void* MEM_p_Alloc(unsigned int size)
 
 void MEM_Free(void* p) { freeCount++; free(p); }
 
-#include "../win/wingdisun.c"
+#include "../platform/wingdisun.c"
 
 /* ------------------------------------------------------------- the driver */
 

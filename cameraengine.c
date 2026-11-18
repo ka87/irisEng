@@ -1,7 +1,7 @@
 #include "math.h"
 #include "gdi.h"
 #include "cameraengine.h"
-#include "win/wingdi.h"
+#include "platform/wingdi.h"
 
 int CAM_SetObjectMatrixFromCam(Mtx4x4* dest, Mtx4x4* src)
 {

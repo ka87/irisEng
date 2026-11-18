@@ -191,7 +191,7 @@ policy, not the clamp. Telling the two apart needs the queue to track
 where each byte came from, which is more machinery than the forty
 lines it would be guarding.
 
-## The sound: win/winvideosound.c
+## The sound: platform/winvideosound.c
 
 Bink owned an audio device — the engine handed it an `IDirectSound8`
 through `BinkSetSoundSystem` and Bink ran the buffer, the mixing and

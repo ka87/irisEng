@@ -1,7 +1,7 @@
-/* Differential test for win/adpcm.c.
+/* Differential test for platform/adpcm.c.
  *
  * The frozen pre-rewrite copy (tests/baseline_adpcm.c, BASE_) and the
- * rewrite (win/adpcm.c, NEW_) are linked into one binary and run over
+ * rewrite (platform/adpcm.c, NEW_) are linked into one binary and run over
  * identical inputs. adpcm.c calls nothing outside itself, so there is
  * no engine-call sequence to compare: the whole observable result is
  * the decoded samples, the codec state the call leaves behind, the
@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "../win/adpcm.h"
+#include "../platform/adpcm.h"
 
 int16_t BASE_pcINO_ApplyADPCMAaptation(uint8_t nibble, int16_t* coeffs, int16_t* state);
 int16_t NEW_pcINO_ApplyADPCMAaptation(uint8_t nibble, int16_t* coeffs, int16_t* state);
@@ -340,7 +340,7 @@ static void testStream(void)
 
     group = "stream/shipped";
     rngState = 0xBEEF01u;
-    /* the one geometry win/winsound.c builds: 60 samples a block,
+    /* the one geometry platform/winsound.c builds: 60 samples a block,
        36 bytes mono and 72 stereo, length always a whole number of
        blocks */
     for (blocks = 0; blocks <= 60; blocks++)

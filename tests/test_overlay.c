@@ -1,4 +1,4 @@
-/* A unit test for win/overlay.c.
+/* A unit test for platform/overlay.c.
  *
  * The overlay is new code, so there is no frozen copy to compare it
  * against and this is a plain check of what it does rather than a
@@ -24,7 +24,7 @@
 /* ------------------------------------------------------------- the engine */
 
 /* overlay.c talks to the renderer interface and to nothing else now,
-   so this stands in for the interface rather than for win/wingdi.c.
+   so this stands in for the interface rather than for platform/wingdi.c.
    It used to include that header and define D3DRenderParams, which is
    what the overlay read its viewport out of. */
 #include "../gdi.h"
@@ -221,7 +221,7 @@ void pcINO_RunTweakCommand(const char* line)
 
 void pcINO_mouse_and_keyb_acquire(void) { ovt_acquireCalls++; }
 
-#include "../win/overlay.c"
+#include "../platform/overlay.c"
 
 /* ---------------------------------------------------------------- scoring */
 

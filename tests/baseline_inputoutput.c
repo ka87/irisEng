@@ -9,7 +9,7 @@
 #include "../time.h"
 #include "../ai.h"
 #include "../dbg.h"
-#include "../win/wininputoutput.h"
+#include "../platform/wininputoutput.h"
 #include "../inputoutput.h"
 
 int INO_ge_SavSetNextState = 0xffffffff;

@@ -7,7 +7,7 @@
 
 #include "../profiler.h"
 #include "../time.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 
 int PRO_rasterWindowIsOn = 0; // game doesn't set it explicitly
 int PRO_rasterDetailPage = 0; // --||--

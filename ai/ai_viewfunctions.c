@@ -1,6 +1,6 @@
 #include "../gameobject.h"
 #include "../gdi.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "../textures.h"
 #include "../memory.h"
 #include "../inputoutput.h"

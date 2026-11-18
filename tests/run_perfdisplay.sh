@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for win/perfdisplay.c.
+# The unit test for platform/perfdisplay.c.
 #
 #   ./tests/run_perfdisplay.sh
 #

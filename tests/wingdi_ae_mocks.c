@@ -1,4 +1,4 @@
-/* Mocks for the win/wingdi_aftereffects.c differential test.
+/* Mocks for the platform/wingdi_aftereffects.c differential test.
  *
  * The file under test talks to one thing: the Direct3D device, through
  * its vtable. So the device, its textures and their surfaces are mock

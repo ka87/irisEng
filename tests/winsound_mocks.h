@@ -1,4 +1,4 @@
-/* Mocks for the win/winsound.c differential test.
+/* Mocks for the platform/winsound.c differential test.
  *
  * winsound.c is the DirectSound platform layer under sound.c. Everything
  * it does to the device goes through COM vtables, so the device, the
@@ -6,7 +6,7 @@
  * objects whose methods log their arguments and answer deterministically.
  * The allocator, the big-file reader, the loader's byte-stream reader and
  * the Win32 calls are mocked the same way; basic_array.c, math.c and
- * win/adpcm.c are the engine's own, linked rather than mocked.
+ * platform/adpcm.c are the engine's own, linked rather than mocked.
  *
  * Everything in here is shared by the two sides and rewound between them
  * by wsnd_mock_reset(), so both runs see identical addresses and an
@@ -22,7 +22,7 @@
 #include "../sndplatform.h"
 
 #include <dsound.h>
-#include "../win/eax/eax.h"
+#include "../platform/eax/eax.h"
 
 /* ---- the call log --------------------------------------------------- */
 void wsnd_log(const char* fmt, ...);

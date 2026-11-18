@@ -1,4 +1,4 @@
-/* One side of the win/winsound.c differential test.
+/* One side of the platform/winsound.c differential test.
  *
  * Compiled twice, once against the rewrite and once against the frozen
  * copy in baseline_winsound.c, with every winsound.c symbol, every global
@@ -28,8 +28,8 @@
 #include "../math.h"
 #include "../gameobject.h"
 #include "../dynamics.h"
-#include "../win/wingdi.h"
-#include "../win/winsound.h"
+#include "../platform/wingdi.h"
+#include "../platform/winsound.h"
 
 #ifndef SIDE_RUN
 #define SIDE_RUN wsnd_side_run
@@ -1098,7 +1098,7 @@ void SIDE_RUN(int c)
            forced off, because forcing them walks it into a loop it
            has no way out of: a sound read round and round whose
            re-read decodes nothing. See the note at that loop in
-           win/winsound.c, which is where the rewrite got its way
+           platform/winsound.c, which is where the rewrite got its way
            out. */
         if (wsnd_reg_fail)
             return;

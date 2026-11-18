@@ -75,11 +75,11 @@ def defines(text):
                    m.group(3))
 
 
-engine = sorted(glob.glob('win/*.c') + glob.glob('win/*.h'))
+engine = sorted(glob.glob('platform/*.c') + glob.glob('platform/*.h'))
 harness = sorted(glob.glob('tests/*.c') + glob.glob('tests/*.h'))
 src = dict((p, open(p, encoding='latin-1').read()) for p in engine + harness)
 
-core = src['win/glcore.h']
+core = src['platform/glcore.h']
 
 # ---------------------------------------------------------------- 1
 # The macro exists and says __stdcall on Windows and nothing elsewhere.
@@ -87,7 +87,7 @@ checked += 1
 if not re.search(r'#if\s+defined\(_WIN32\)\s*\n\s*#define\s+GL_APIENTRY\s+'
                  r'__stdcall\s*\n\s*#else\s*\n\s*#define\s+GL_APIENTRY\s*\n'
                  r'\s*#endif', core):
-    fails.append("win/glcore.h does not define GL_APIENTRY as __stdcall under"
+    fails.append("platform/glcore.h does not define GL_APIENTRY as __stdcall under"
                  " _WIN32 and empty otherwise")
 
 # ---------------------------------------------------------------- 2
@@ -126,7 +126,7 @@ for path in engine:
 listing = re.search(r'#define\s+GL_FUNCTION_LIST\(X\)(.*?)\n\s*\n', core, re.S)
 checked += 1
 if not listing:
-    fails.append("win/glcore.h has no GL_FUNCTION_LIST to read")
+    fails.append("platform/glcore.h has no GL_FUNCTION_LIST to read")
     listed = ''
 else:
     listed = listing.group(1)

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Differential test for win/winsound.c, as a standalone runner.
+# Differential test for platform/winsound.c, as a standalone runner.
 #
 #   ./tests/run_winsound.sh            run the sweep
 #   ./tests/run_winsound.sh --guards   print the seed-bit distribution
@@ -8,7 +8,7 @@
 # symbol list; running it on its own is the quick way to work on it, and
 # --guards is only useful from here.
 #
-# winsound.c sits in win/, so the frozen copy's four include paths are
+# winsound.c sits in platform/, so the frozen copy's four include paths are
 # rewritten to reach the same headers from tests/. winsound.h and sound.h
 # declare the platform layer's globals without extern, so both copies
 # would otherwise share one tentative definition and the two runs would
@@ -17,7 +17,7 @@
 # once per side, and carries the engine-side callbacks too, because those
 # are handed pointers into the caller's own per-side globals.
 #
-# basic_array.c, math.c and win/adpcm.c are the engine's own, linked
+# basic_array.c, math.c and platform/adpcm.c are the engine's own, linked
 # rather than mocked: the sound-buffer list is basic_array's binary
 # search, the doppler shift is math.c's vector helpers and the round
 # constant, and the ADPCM decode is adpcm.c's.
@@ -48,12 +48,12 @@ mkdir -p "$OUT"
 # so a new one cannot be forgotten.
 wsnd_syms=$(python3 - <<'EOF'
 import re
-src = open('win/winsound.c', encoding='latin-1').read()
-hdr = open('win/winsound.h', encoding='latin-1').read()
+src = open('platform/winsound.c', encoding='latin-1').read()
+hdr = open('platform/winsound.h', encoding='latin-1').read()
 names = []
 
 # Comments, in the order they appear rather than block-then-line.
-# Taking the blocks out first is wrong and was: win/winsound.c carries
+# Taking the blocks out first is wrong and was: platform/winsound.c carries
 # a commented-out line reading "//*(double*)&dest.x = v21;", whose
 # "/*" is inside a line comment and opens nothing -- but a block pass
 # that runs first reads it as an opener and eats everything up to the
@@ -142,7 +142,7 @@ base_defs="$(defs BASE_ $wsnd_syms) -DSIDE_RUN=BASE_wsnd_side_run -DSIDE_CASES=B
 # words.
 
 # shellcheck disable=SC2086
-$CC $CFLAGS -c win/winsound.c            -o "$OUT/wsnd.new.o"       $new_defs
+$CC $CFLAGS -c platform/winsound.c            -o "$OUT/wsnd.new.o"       $new_defs
 # The one function the pass renamed. It used to place a 3D buffer on a
 # unit circle from the pan; it sets the pan itself now, and the name
 # followed. The frozen copy keeps the old spelling and is mapped onto
@@ -157,7 +157,7 @@ $CC $CFLAGS -c tests/winsound_side.c     -o "$OUT/wsnd.side.new.o"  $new_defs
 $CC $CFLAGS -c tests/winsound_side.c     -o "$OUT/wsnd.side.base.o" $base_defs
 $CC $CFLAGS -c math.c                    -o "$OUT/wsnd.math.o"
 $CC $CFLAGS -c basic_array.c             -o "$OUT/wsnd.bas.o"
-$CC $CFLAGS -c win/adpcm.c               -o "$OUT/wsnd.adpcm.o"
+$CC $CFLAGS -c platform/adpcm.c               -o "$OUT/wsnd.adpcm.o"
 $CC $CFLAGS -c tests/winsound_mocks.c    -o "$OUT/wsnd.mocks.o"
 $CC $CFLAGS -c tests/test_winsound.c     -o "$OUT/wsnd.drv.o"
 

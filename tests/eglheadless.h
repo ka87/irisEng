@@ -14,7 +14,7 @@
  *
  * There are no EGL headers on the machines this is built on, so the
  * dozen entry points it needs are declared here and looked up out of
- * libEGL.so.1 -- the same thing win/glload.c does for OpenGL itself,
+ * libEGL.so.1 -- the same thing platform/glload.c does for OpenGL itself,
  * for the same reason.
  *
  * It is allowed to be unavailable. A machine with no libEGL, no

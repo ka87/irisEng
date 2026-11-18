@@ -52,15 +52,15 @@ not free. Two things stand in for it.
 
 **A stub include set** (`tests/stub/`) is enough for a native `gcc
 -fsyntax-only -Werror=implicit-function-declaration` to parse **135 of
-the 137** first-party sources (136 of 138 since `win/overlay.c` was
+the 137** first-party sources (136 of 138 since `platform/overlay.c` was
 added, which is not part of this pass -- see `docs/overlay.md`): `windows.h`, `d3d9.h`, `dsound.h` and
 `dinput.h` with the types, interfaces and vtable methods the engine
 actually names, and a few empty headers. The two left are `bigfiles.c`
 and `loading.c`, which fail on the `fpos_t` arithmetic described below
 -- an open question rather than a stub gap. The Direct3D enum and
-device-vtable set the two `win/wingdi` files want, and the Bink
+device-vtable set the two `platform/wingdi` files want, and the Bink
 constants `proceduraltextures.c` wants, were the other three, and the
-`win/` pass closed all of them. It catches what a compiler catches — a mistyped name, a lost
+`platform/` pass closed all of them. It catches what a compiler catches — a mistyped name, a lost
 brace, a changed signature. It does not prove behaviour, and it is not
 the real toolchain: every batch should still be built under MSVC before
 it is merged.
@@ -177,7 +177,7 @@ is not. Each header now forward-declares what its prototypes mention:
 `sWaterParamsGlobalStruct`, `sGdi_DisplayData`, `sShadowElemStruct`,
 `sModifier`, `sLoadingSoundMdfStruct`.
 
-**A missing include.** `win/adpcm.h` used `int16_t` without
+**A missing include.** `platform/adpcm.h` used `int16_t` without
 `<stdint.h>` and happened to work because of include order.
 
 #### Left alone on purpose: arithmetic on `fpos_t`
@@ -757,7 +757,7 @@ stub set has no header for.
 
 Also resolved: all nine of `profiler.c`'s implicit declarations, which
 were undeclared Win32 calls. Adding them to the stub took
-`win/wininputoutput.c` from 10 to 9 as well.
+`platform/wininputoutput.c` from 10 to 9 as well.
 
 Two findings worth a decision, both preserved with a line:
 `ENG_ForceStartRasters` applies a byte count to a typed pointer, so it
@@ -796,7 +796,7 @@ Eight other oddities are preserved with a line each, the sharpest being
 that the closed list is bounded at 2000 where `GRID_gast_Explored` holds
 1000, and that both lists are written before their bound is checked.
 
-### 8. `win/` — done
+### 8. `platform/` — done
 
 **Done.** Per-file record in [win.md](win.md).
 
@@ -806,11 +806,11 @@ They were left for last because they hold the densest residue in the
 tree and because the stub include set had to be finished before any of
 them would parse.
 
-`win/wingdi.c` (**7,085 to 5,029**, 31 `goto`s gone),
-`win/wingdi_aftereffects.c` (**5,780 to 3,180**, 14),
-`win/winsound.c` (**3,395 to 2,943**, **46** — the densest single file
-in the tree), `win/wininputoutput.c` (1,617 to 1,518, 5) and
-`win/adpcm.c` (211 to 136). Residue across the five goes from **7,114
+`platform/wingdi.c` (**7,085 to 5,029**, 31 `goto`s gone),
+`platform/wingdi_aftereffects.c` (**5,780 to 3,180**, 14),
+`platform/winsound.c` (**3,395 to 2,943**, **46** — the densest single file
+in the tree), `platform/wininputoutput.c` (1,617 to 1,518, 5) and
+`platform/adpcm.c` (211 to 136). Residue across the five goes from **7,114
 lines to 37**, every one of the thirty-seven inside a comment of the
 user's own. Nine helpers were added in `wingdi.c` and seven more
 across the rest; no function was removed anywhere.
@@ -827,7 +827,7 @@ and each mutation-checked twice.
 vtables the renderer calls through, the `D3DX` font and surface entry
 points, and the Win32 window, thread, file, COM, dialog and keyboard
 calls. Implicit function declarations across the whole tree went from
-**16 over six files to 6 over five**, and all three `win/` files that
+**16 over six files to 6 over five**, and all three `platform/` files that
 were on that list are off it.
 
 **Two stub faults were hiding real defects, and both generalise.**
@@ -858,7 +858,7 @@ with `-D<old>=BASE_<new>`; where it *calls* one, the mock keeps the old
 name as a forwarder to the new body. All eight affected tests pass with
 the same counts as before.
 
-**Eleven `v1` struct fields in `win/wingdi.h` are still left**, because
+**Eleven `v1` struct fields in `platform/wingdi.h` are still left**, because
 neither half of that works for a field: a mock cannot forward one and a
 `-D` cannot map one, since `v1` is also an `Mtx4x4` field and both
 frozen baselines use both. Carrying both spellings there means eleven
@@ -877,7 +877,7 @@ cases the frozen copy reads or writes memory the object does not own.
 
 ## Where the tree stands
 
-With `win/` done, every directory in scope has been through the pass.
+With `platform/` done, every directory in scope has been through the pass.
 What is left of the decompiler's naming, measured with the grep in the
 section above over all 137 first-party sources and their headers, is
 **343 lines over 43 files**, and it breaks down into four groups, none
@@ -901,4 +901,4 @@ of which is unfinished work:
   them is rewritten.
 
 `goto LABEL_n` is gone from every file in scope. 635 in the root
-directory, 204 in `collision.c` alone, 96 across `win/` — none left.
+directory, 204 in `collision.c` alone, 96 across `platform/` — none left.

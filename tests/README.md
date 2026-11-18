@@ -58,7 +58,7 @@ Two of its tests are worth telling apart, because they answer different
 questions about the same code:
 
 - `run_wingloverlay.sh` **mocks OpenGL**. Every GL call in
-  `win/wingl.c` goes through a function pointer, so the pointers are
+  `platform/wingl.c` goes through a function pointer, so the pointers are
   aimed at recording stand-ins and a case can say exactly which call
   was made with which argument. It runs anywhere and it is fast. What
   it cannot say is what came out: a shader file is loaded and its
@@ -77,10 +77,10 @@ questions about the same code:
 
   There are no EGL headers on the machines this is built on, so
   `eglheadless.c` declares the dozen entry points it needs and looks
-  them up out of `libEGL.so.1` -- the same thing `win/glload.c` does
+  them up out of `libEGL.so.1` -- the same thing `platform/glload.c` does
   for OpenGL itself.
 
-Both include `win/wingl.c` rather than linking it, because the
+Both include `platform/wingl.c` rather than linking it, because the
 renderer's state is static to it, and both take their Windows
 stand-ins from `winstubs.h` -- one copy, because two of them drifted.
 

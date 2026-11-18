@@ -7,9 +7,9 @@
 #include "../graphicsobjects/staticlod.h"
 #include "../water.h"
 #include "../engine.h"
-#include "../win/wininputoutput.h"
+#include "../platform/wininputoutput.h"
 #include "../resource.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "../profiler.h"
 
 D3DMATRIX d3dProjectionMtx = { 1.4616959f, 0.0, 0.0, 0.0,

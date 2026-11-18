@@ -5,8 +5,8 @@
 #
 # Unlike every other test of the OpenGL renderer, this one does not
 # mock OpenGL. It brings up a real 4.5 core context with no window --
-# Mesa's software renderer answers for it -- aims win/glcore.h's
-# function pointers at that, draws through win/wingl.c's own entry
+# Mesa's software renderer answers for it -- aims platform/glcore.h's
+# function pointers at that, draws through platform/wingl.c's own entry
 # points and reads the pixels back. So it covers the renderer and the
 # shaders together: a mock harness can say which call was made, and
 # only this can say what came out.
@@ -34,8 +34,8 @@ mkdir -p "$OUT"
 
 $CC $CFLAGS -c tests/test_glrender.c -o "$OUT/glr.drv.o"
 $CC $CFLAGS -c tests/eglheadless.c -o "$OUT/glr.egl.o"
-$CC $CFLAGS -c win/glload.c -o "$OUT/glr.load.o"
-$CC $CFLAGS -c win/glshader.c -o "$OUT/glr.shader.o"
+$CC $CFLAGS -c platform/glload.c -o "$OUT/glr.load.o"
+$CC $CFLAGS -c platform/glshader.c -o "$OUT/glr.shader.o"
 $CC $CFLAGS -c datapath.c -o "$OUT/glr.datapath.o"
 # The same real arithmetic the other GL harness links: the camera
 # fitting, the vertex building, the flags decode and the matrix
@@ -61,7 +61,7 @@ $CC $CFLAGS -c aeframe.c -o "$OUT/glr.aef.o"
 $CC $CFLAGS -c watermesh.c -o "$OUT/glr.wms.o"
 # waterreflect.c is the reflection pass's own share: the mirrored
 # transform, the size threshold and the clip plane. Also a move out
-# of win/wingdi.c, so the frozen copy still has all three inline.
+# of platform/wingdi.c, so the frozen copy still has all three inline.
 $CC $CFLAGS -c waterreflect.c -o "$OUT/glr.wrf.o"
 # watersmooth.c holds the surface smoothing's rectangles, steps and
 # taps for both renderers; tests/run_wingdi_ae.sh is where it is
@@ -85,7 +85,7 @@ $CC $CFLAGS -c aemotion.c -o "$OUT/glr.amo.o"
 # all of that from here.
 $CC $CFLAGS -c aezoom2.c -o "$OUT/glr.az2.o"
 $CC $CFLAGS -c geosprite.c -o "$OUT/glr.gsp.o"
-$CC $CFLAGS -c win/wingdimath.c -o "$OUT/glr.wgmath.o"
+$CC $CFLAGS -c platform/wingdimath.c -o "$OUT/glr.wgmath.o"
 $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
 # -ldl for the EGL lookup: the library is opened by name because there
 # are no EGL headers to link against.

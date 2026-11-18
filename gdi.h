@@ -20,7 +20,7 @@
 
 /* The renderer's own private state, whatever renderer that is. The
    engine holds it as an opaque pointer and never looks inside: the
-   Direct3D one is tGdi_D3DRenderParams in win/wingdi.h, which is
+   Direct3D one is tGdi_D3DRenderParams in platform/wingdi.h, which is
    where it belongs and where it used to not be. */
 
 typedef struct sTexManagerStruct

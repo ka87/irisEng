@@ -1,4 +1,4 @@
-/* A unit test for win/glload.c.
+/* A unit test for platform/glload.c.
  *
  * New code with no earlier copy, so a direct check rather than a
  * differential one.
@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../win/glload.h"
+#include "../platform/glload.h"
 
 static long checks;
 static long fails;

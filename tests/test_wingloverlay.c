@@ -2,7 +2,7 @@
  *
  * New code with no earlier copy, so a direct check.
  *
- * Every GL call in win/wingl.c goes through a function pointer in
+ * Every GL call in platform/wingl.c goes through a function pointer in
  * glcore.h, so this drives the whole pass with no driver: the
  * pointers are aimed at mocks that record what was asked for, and a
  * case can then say which program was used, what was uploaded, how
@@ -15,7 +15,7 @@
  * attribute names would be a failing test rather than a black overlay
  * on somebody's machine.
  *
- * win/wingl.c is included rather than linked, because the pass's state
+ * platform/wingl.c is included rather than linked, because the pass's state
  * is static to it and what matters here is what that state does.
  */
 
@@ -27,9 +27,9 @@
 #include <windows.h>
 
 /* The GL types and the interface, before the mocks that use them.
-   win/wingl.c brings these in too, and is included further down. */
-#include "../win/glcore.h"
-#include "../win/glshader.h"
+   platform/wingl.c brings these in too, and is included further down. */
+#include "../platform/glcore.h"
+#include "../platform/glshader.h"
 #include "../aezoom2.h"
 #include "../gdi.h"
 
@@ -851,7 +851,7 @@ static GLint GL_APIENTRY MK_glGetUniformLocation(GLuint p, const GLchar* name)
 #define WG_U_DIFFUSE2X 8
 
 /* The module under test. */
-#include "../win/wingl.c"
+#include "../platform/wingl.c"
 
 static void WG_AimThePointers(void)
 {
@@ -944,7 +944,7 @@ static void WG_AimThePointers(void)
 }
 
 /* Every pointer the renderer could reach has to be aimed somewhere.
-   An entry point added to glcore.h's list, used in win/wingl.c and
+   An entry point added to glcore.h's list, used in platform/wingl.c and
    missed above is a call through a null pointer, which lands as a
    segmentation fault in whichever case happened to reach it first and
    says nothing about why. Walking the same list that generated the
@@ -1803,7 +1803,7 @@ static void caseGeometryNormals(void)
  *
  * So: if this ever has to be swapped again, it takes a card and a
  * scene to say so. The reasoning that gives the other answer is in
- * win/wingl.c, written out as the wrong answer it is.
+ * platform/wingl.c, written out as the wrong answer it is.
  */
 static void caseGeometryCulling(void)
 {

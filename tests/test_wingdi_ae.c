@@ -1,4 +1,4 @@
-/* Differential test for win/wingdi_aftereffects.c.
+/* Differential test for platform/wingdi_aftereffects.c.
  *
  * The frozen pre-rewrite copy and the rewrite go into one binary with
  * their file-scope names prefixed BASE_ and NEW_. Each case runs over

@@ -156,7 +156,7 @@ void GL_OverlayDrawTexturedQuads(void* texture, const void* vertices, int triang
 
 /* The water: the reflection target cleared and kept, before the world
    is drawn, and the surface drawn after it. See the comment at the
-   water section of win/wingl.c -- the reflection itself is not drawn
+   water section of platform/wingl.c -- the reflection itself is not drawn
    yet, so the surface mirrors a flat colour. */
 void GL_PrepareWaterRendering(void);
 void GL_DrawWater(struct sWaterParamsGlobalStruct* water);

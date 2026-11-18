@@ -16,10 +16,10 @@ font the rasters code already creates.
 
 | file | what it holds |
 |---|---|
-| `win/overlay.c` | the layer, the widget primitives and the two widgets |
-| `win/overlay.h` | `OVL_Draw`, and the command field's four entry points |
-| `win/wingdi.c` | `D3D_OverlayBegin` / `DrawQuads` / `End`, the pass itself |
-| `win/wininputoutput.c` | F11, and `pcINO_RunTweakCommand` |
+| `platform/overlay.c` | the layer, the widget primitives and the two widgets |
+| `platform/overlay.h` | `OVL_Draw`, and the command field's four entry points |
+| `platform/wingdi.c` | `D3D_OverlayBegin` / `DrawQuads` / `End`, the pass itself |
+| `platform/wininputoutput.c` | F11, and `pcINO_RunTweakCommand` |
 | `tests/test_overlay.c` | the unit test, 160 checks |
 
 Home puts the engine's statistics in the window's caption. They used
@@ -31,9 +31,9 @@ keys and F11 by the field below.
 
 `D3D_Flip` draws the overlay last, after `Rasters_Update`, so it is on
 top of the frame and of the profiler's own bars. The three D3D entry
-points live in `win/wingdi.c` rather than in the overlay because two of
+points live in `platform/wingdi.c` rather than in the overlay because two of
 the setters the pass needs — `D3D_RenderStateSet` and
-`D3D_SetFixedFunctionFVF` — are file-local to `win/wingdi.c`. The
+`D3D_SetFixedFunctionFVF` — are file-local to `platform/wingdi.c`. The
 overlay only builds geometry and strings; nothing in it touches the
 device.
 
@@ -96,7 +96,7 @@ The two pages the window had are both here, and **F1 now steps through
 them and off again**: nothing, the summary, the detail page, nothing.
 The original alternated between the two pages for ever once it was up,
 with no way back to nothing short of restarting the game. The cycle is
-`OVL_RastersCycleView`, which `win/wingdi.c`'s F1 block calls; it is
+`OVL_RastersCycleView`, which `platform/wingdi.c`'s F1 block calls; it is
 in the overlay rather than in the key handler because the key handler
 spins on `GetAsyncKeyState` and cannot be driven from a test, and the
 state machine is the part worth testing. Every step restarts the walk,
@@ -198,7 +198,7 @@ the dialog still works if it is ever put back.
 ## The tests
 
 `tests/run_overlay.sh` builds `tests/test_overlay.c`, which **includes
-`win/overlay.c`** so it can read the quad batch and the text queue back
+`platform/overlay.c`** so it can read the quad batch and the text queue back
 after a draw. The stub `windows.h` and
 `tests/wingdi_msg_sdk.h` both give the four window messages the field
 consumes their **real** SDK values, rather than the sequential ones the
@@ -217,7 +217,7 @@ count puts both in the same place.
 It is a unit test rather than a differential one, because there is no
 earlier copy of this file to compare against. That makes the
 mutation check the only evidence it has teeth, so twenty-four
-independent defects were injected into `win/overlay.c` one at a time and every one
+independent defects were injected into `platform/overlay.c` one at a time and every one
 of them was caught:
 
 | mutation | check that fired |
@@ -271,7 +271,7 @@ reported.
 
 ### What the change cost the input harness
 
-`win/wininputoutput.c`'s differential test compares the frozen
+`platform/wininputoutput.c`'s differential test compares the frozen
 pre-rewrite copy against the current one call for call. The field's
 path now **deliberately** differs: the frozen copy puts up the Win32 dialog,
 runs its whole dialog procedure, applies a tweak and fills the dialog

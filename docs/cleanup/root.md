@@ -320,9 +320,9 @@ pass used for `ai_soundfunctions.c` before that gap was closed.
 
 `gdi.h` keeps eleven residue lines, and they are not reachable from
 here: they are the display interface's function-pointer table, whose
-parameter names live in the implementations in `win/wingdi.c`. Naming
+parameter names live in the implementations in `platform/wingdi.c`. Naming
 them from the field names would be invention, so they wait for the
-`win/` pass.
+`platform/` pass.
 
 
 ---
@@ -1824,11 +1824,11 @@ same, and they dispatch to a read and a write respectively.
 
 **`INO_Keys` is never filled from the keyboard.** The DirectInput
 state goes into `pcINO_keyboardDataBackup` in
-`win/wininputoutput.c`, and the only writes to `INO_Keys`' contents
+`platform/wininputoutput.c`, and the only writes to `INO_Keys`' contents
 anywhere in the tree are a `memset` and two stores mapping codes
 59..68 to 96..105 and 164 while 157 is held. So `INO_b_IsKeyPressed`
 and its three siblings can only ever report those eleven codes.
-Grep-verified tree-wide; it may simply be the `win/` side being
+Grep-verified tree-wide; it may simply be the `platform/` side being
 unfinished.
 
 **`SAV_PhotoSet` reads past its array at photo 99.** `elems[photo +
@@ -1873,7 +1873,7 @@ They were undeclared Win32 calls -- `GetSysColor`, `SetBkColor`,
 `SetTextColor`, `CreateSolidBrush`, `ExtTextOutA`, `DrawTextA`,
 `GetDC`, `ReleaseDC` and `GetModuleHandleA`. None needed an invented
 prototype; they went into `tests/stub/windows.h` exactly as the Bink
-declarations did, which also took `win/wininputoutput.c` from **10 to
+declarations did, which also took `platform/wininputoutput.c` from **10 to
 9**. `profiler.c` is off `implicitcheck.sh`'s baseline entirely.
 
 ### ENG_ForceStartRasters clears one of eleven user rasters
