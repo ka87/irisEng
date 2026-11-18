@@ -266,7 +266,7 @@ void pcSND_ReadAndDecompressSoundData(unsigned int wanted, tSndSoundBufferElem* 
         wanted = misc->fullSize - misc->sumSize;
     readSize = pcSND_CalcSizeToReadByFormat(wanted, sbe->format);
     memset(buffer, 0, 307200u);
-    ReadFile(sbe->miscData->fileHandle, buffer, readSize, decodedSize, 0);
+    *decodedSize = (uint32_t)SPL_i_FileRead(sbe->miscData->fileHandle, buffer, (int)readSize);
     channels = sbe->format;
     blockNum = pcSND_calcBlockNumForDecompress(readSize, channels);
     pcSND_DecodeADPCMBlocks((char*)buffer, dest, blockNum, channels);
@@ -342,7 +342,6 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
     char* audioPtr1;
     DWORD produced;
     DWORD totalSizeAfterDecompress;
-    LONG distanceToMoveHigh = 0;
     int block;
     int stopped;
 
@@ -433,7 +432,7 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
         {
             do
             {
-                SetFilePointer(misc->fileHandle, misc->distanceToMove, &distanceToMoveHigh, 0);
+                SPL_b_FileSeek(misc->fileHandle, misc->distanceToMove);
                 misc->sumSize = 0;
                 pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 1, &totalSizeAfterDecompress,
                                                  (int16_t*)&audioPtr1[produced]);
@@ -1315,9 +1314,9 @@ void pcSND_MiscDataRelease(tSndSoundBufferElem* sbe)
         if (misc)
         {
             pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(sbe);
-            if (misc->fileHandle != (HANDLE)-1)
-                CloseHandle(misc->fileHandle);
-            misc->fileHandle = (HANDLE)-1;
+            if (misc->fileHandle != SPL_FILE_NONE)
+                SPL_FileClose(misc->fileHandle);
+            misc->fileHandle = SPL_FILE_NONE;
             /* The notify interface the refill positions were set on
                used to be released here. There is none. */
             misc->vmilenEventHandlptr_Sub49e950 = 0;
@@ -1533,10 +1532,8 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
     int decoded;
     int audioBytes1;
     char* audioPtr1;
-    DWORD distanceToMoveHigh;
 
     misc = sbe->miscData;
-    distanceToMoveHigh = 0;
     if (misc)
     {
         audioBytes1 = misc->soundBufferSize;
@@ -1544,7 +1541,7 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
         if (!audioPtr1)
             return;
         skipSize = pcSND_CalcSizeToReadByFormat(misc->unk6, sbe->format);
-        SetFilePointer(misc->fileHandle, misc->distanceToMove + skipSize, &distanceToMoveHigh, 0);
+        SPL_b_FileSeek(misc->fileHandle, (long long)misc->distanceToMove + skipSize);
         misc->sumSize = misc->unk6;
         pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 0, &decoded, (int16_t*)audioPtr1);
         produced = decoded;
@@ -1554,7 +1551,7 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
             {
                 do
                 {
-                    SetFilePointer(misc->fileHandle, misc->distanceToMove, &distanceToMoveHigh, 0);
+                    SPL_b_FileSeek(misc->fileHandle, misc->distanceToMove);
                     misc->sumSize = 0;
                     pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 0, &decoded, (int16_t*)(&audioPtr1[produced]));
                     produced += decoded;
@@ -1748,7 +1745,11 @@ tSndSoundBufferElem* pcSND_CreateTrack(tSndHandles* handles, tSndWavHdrStruct* w
     misc->eventHandle2 = (HANDLE)-1;
     misc->dsndEventsArrayIdx = trackEventsArrayNextIdx;
     trackEventsArrayNextIdx = misc->dsndEventsArrayIdx + 1;
-    misc->fileHandle = CreateFileA(BIG_gst.filePath, 0x80000000, 3u, 0, 3u, 0x10000080u, 0);
+    /* Read-only, shared, and it must already exist: the flags the
+       engine asked Windows for were GENERIC_READ, share read and
+       write, OPEN_EXISTING, with the sequential-scan and
+       random-access hints, which is a hint and not a mode. */
+    misc->fileHandle = SPL_p_FileOpen(BIG_gst.filePath);
     return track;
 }
 

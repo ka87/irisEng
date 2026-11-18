@@ -26,7 +26,15 @@ typedef struct sSbeMiscData
 #else
     void* vmilenEventHandlptr_Sub49e950;
 #endif
+    /* The big file this sound streams out of. A Windows handle for
+       the frozen copy and the platform layer's own for the rewrite;
+       both are a pointer, so the struct the two hand each other is
+       the same shape either way. */
+#ifdef WINSOUND_FROZEN
     HANDLE fileHandle;
+#else
+    struct sSplFile* fileHandle;
+#endif
     int distanceToMove;
     unsigned int fullSize;
     int sumSize;
