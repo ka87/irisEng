@@ -3,6 +3,7 @@
 #include <SDL3/SDL_video.h>
 
 struct sWaterParamsGlobalStruct;
+struct sWorld;
 #include <windows.h>
 
 #include "../gdi.h"
@@ -125,6 +126,12 @@ int   GL_b_Ready(void);
 const char* GL_sz_Name(void);
 int   GL_b_GeometryHasCache(struct sGEOGRO* gro);
 void  GL_DiscardGeometryCache(struct sGEOGRO* gro);
+
+/* Nothing: this renderer builds a piece of geometry's buffers the
+   first time it draws it, so a world that has just loaded needs no
+   pass of its own. Answered rather than left out, so the engine's
+   call through the interface needs no guard for one renderer. */
+void  GL_BuildGeometryCaches(struct sWorld* world);
 
 /* ---- present but inert, each for the reason in glrender.c ---- */
 void  GL_OverlayBegin(void);

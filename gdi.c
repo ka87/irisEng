@@ -901,6 +901,7 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->OverlayDrawTexturedQuads = D3D_OverlayDrawTexturedQuads;
     dd->b_GeometryHasCache = D3D_b_GeometryHasCache;
     dd->DiscardGeometryCache = D3D_DiscardGeometryCache;
+    dd->BuildGeometryCaches = D3D_CreateGameObjectsD3DStuffForMultiStream;
     dd->PrepareWaterRendering = D3D_PrepareWaterRendering;
     dd->DrawWater = D3D_DrawWater_DrawVertexTable;
 }
@@ -959,6 +960,10 @@ static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
     dd->SetNoZonAlpha = GL_SetNoZonAlpha;
     dd->b_GeometryHasCache = GL_b_GeometryHasCache;
     dd->DiscardGeometryCache = GL_DiscardGeometryCache;
+    /* The OpenGL renderer builds its buffers when a piece of geometry
+       is first drawn and has nothing to do here. Answered rather than
+       left null, so the engine's call needs no guard. */
+    dd->BuildGeometryCaches = GL_BuildGeometryCaches;
     dd->b_Ready = GL_b_Ready;
     dd->sz_Name = GL_sz_Name;
     dd->AfterEffects = GL_PC_AE;
