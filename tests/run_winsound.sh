@@ -132,6 +132,12 @@ base_defs="$(defs BASE_ $wsnd_syms) -DSIDE_RUN=BASE_wsnd_side_run -DSIDE_CASES=B
 
 # shellcheck disable=SC2086
 $CC $CFLAGS -c win/winsound.c            -o "$OUT/wsnd.new.o"       $new_defs
+# The one function the pass renamed. It used to place a 3D buffer on a
+# unit circle from the pan; it sets the pan itself now, and the name
+# followed. The frozen copy keeps the old spelling and is mapped onto
+# the new one rather than edited.
+base_defs="$base_defs -DpcSND_3DSoundBufferSetPos=BASE_pcSND_SoundBufferSetPan"
+
 # shellcheck disable=SC2086
 $CC $CFLAGS -c tests/baseline_winsound.c -o "$OUT/wsnd.base.o"      $base_defs
 # shellcheck disable=SC2086

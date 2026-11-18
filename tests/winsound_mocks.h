@@ -19,12 +19,16 @@
  */
 #pragma once
 
+#include "../sndplatform.h"
+
 #include <dsound.h>
 #include "../win/eax/eax.h"
 
 /* ---- the call log --------------------------------------------------- */
 void wsnd_log(const char* fmt, ...);
 void wsnd_mock_reset(void);
+void wsnd_log_restart(void);
+extern int wsnd_init_quiet;
 const char* wsnd_log_text(void);
 int wsnd_log_len(void);
 
@@ -50,6 +54,7 @@ extern int wsnd_play_pos;
 extern int wsnd_lock_tail;
 /* QuerySupport answer for the EAX listener property set */
 extern int wsnd_eax_support;
+extern int wsnd_open_fails;
 /* QueryInterface refuses the Nth interface asked for; 0 = never */
 extern int wsnd_qi_fail_mod;
 

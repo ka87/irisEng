@@ -236,24 +236,154 @@ void pcSND_ReadAndDecompressSoundData(unsigned int wanted, tSndSoundBufferElem* 
     }
 }
 
+/* Which block of the buffer the cursor is in. The buffer is a whole
+   number of sizeToUpload blocks and the device used to fire an event
+   as the cursor entered each one. */
+static int pcSND_l_PlayedBlock(const tSbeMiscData* misc)
+{
+    if (misc->sizeToUpload <= 0)
+        return 0;
+    return misc->currentPlayPosition / misc->sizeToUpload;
+}
+
+/* One streaming sound, looked at rather than waited on.
+ *
+ * This is the body of what the position notifications used to drive.
+ * Two of them mattered: one fired as the cursor entered each block of
+ * the buffer and meant "refill the block behind you", and one fired
+ * when the buffer stopped and meant "take this off the list". SDL has
+ * neither, so the thread asks the voice where its cursor is and works
+ * both out: a block it has not seen the cursor in before is the
+ * first, and a voice that is no longer playing is the second. */
+static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
+{
+    tSbeMiscData* misc;
+    unsigned int audioBytes1;
+    char* audioPtr1;
+    DWORD produced;
+    DWORD totalSizeAfterDecompress;
+    LONG distanceToMoveHigh = 0;
+    int block;
+    int stopped;
+
+    misc = sbe->miscData;
+    if (!misc || misc->Stopped_SetIN49e270 == 1)
+        return;
+
+    stopped = (SPL_i_VoiceStatus(sbe->voice) & SPL_PLAYING) == 0;
+    pcSND_updateCurrentPlayPositionAndSize(sbe);
+    if (misc->RemoveAfterPlayFinished && misc->currSize >= misc->fullSize)
+        misc->shouldBeRemovedFromPlayList = 1;
+    if (misc->shouldBeRemovedFromPlayList == 1 || stopped)
+    {
+        pcSND_StopSoundAndRemoveFromThePlayList(sbe, 0);
+        return;
+    }
+
+    block = pcSND_l_PlayedBlock(misc);
+    if (block == misc->lastPlayedBlock)
+        return;
+    misc->lastPlayedBlock = block;
+
+    if (misc->RemoveAfterPlayFinished)
+    {
+        SPL_b_VoiceSilence(sbe->voice, misc->currOffset, misc->sizeToUpload);
+        misc->currOffset += misc->sizeToUpload;
+        if (misc->currOffset >= misc->soundBufferSize)
+            misc->currOffset -= misc->soundBufferSize;
+        return;
+    }
+
+    /* Decoded into a staging buffer and then handed over, where it
+       used to be decoded straight into a locked stretch of the
+       buffer. The voice does its own wrapping, so there is no second
+       pointer to carry on into and no short lock to account for. */
+    audioBytes1 = misc->sizeToUpload;
+    if (audioBytes1 > sizeof(dsndUploadBuffer))
+        audioBytes1 = sizeof(dsndUploadBuffer);
+    audioPtr1 = (char*)dsndUploadBuffer;
+    totalSizeAfterDecompress = 0;
+    pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 1, &totalSizeAfterDecompress, (int16_t*)audioPtr1);
+    produced = totalSizeAfterDecompress;
+    if (totalSizeAfterDecompress < audioBytes1)
+    {
+        if (misc->readThroughWithMultipleLoop)
+        {
+            do
+            {
+                SetFilePointer(misc->fileHandle, misc->distanceToMove, &distanceToMoveHigh, 0);
+                misc->sumSize = 0;
+                pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 1, &totalSizeAfterDecompress,
+                                                 (int16_t*)&audioPtr1[produced]);
+                produced += totalSizeAfterDecompress;
+            } while (produced < audioBytes1);
+        }
+        else
+        {
+            misc->RemoveAfterPlayFinished = 1;
+            memset(&audioPtr1[totalSizeAfterDecompress], 0, audioBytes1 - totalSizeAfterDecompress);
+        }
+    }
+    SPL_b_VoiceWrite(sbe->voice, misc->currOffset, audioPtr1, (int)audioBytes1);
+    misc->currOffset += audioBytes1;
+    if (misc->currOffset >= misc->soundBufferSize)
+        misc->currOffset -= misc->soundBufferSize;
+}
+
+/* Every streaming sound on the list, once. */
+static void pcSND_l_ServiceStreams(void)
+{
+    int slot;
+
+    /* The live length of the list, which is what the rest of the file
+       reads out of sndEventHandleNum: two handles went on it per
+       sound, and the first two slots are the control events' with no
+       sound of their own. */
+    int count = sndEventHandleNum >> 1;
+
+    if (count > sndEventsNum)
+        count = sndEventsNum;
+    for (slot = 0; slot < count; ++slot)
+        if (sndPlayList[slot].playListElemInUse && sndPlayList[slot].soundElem
+            && sndPlayList[slot].soundElem != (tSndSoundBufferElem*)-1)
+        {
+            pcSND_l_ServiceStream(sndPlayList[slot].soundElem);
+        }
+}
+
+/* How long the thread sleeps when nothing has asked it for anything.
+   Short against a block of sound -- the buffer is four blocks and a
+   block is tens of milliseconds -- so a refill is never late, and
+   long enough that the thread is asleep almost all of the time. */
+#define PCSND_SERVICE_MS  5
+
 int WINAPI pcSND_SoundThread(LPVOID parameter)
 {
     DWORD signalled;
-    tSndSoundBufferElem* sbe;
-    tSbeMiscData* misc;
-    IDirectSoundBuffer* buffer;
-    DWORD produced;
-    unsigned int audioBytes1;
-    char* audioPtr1;
-    DWORD totalSizeAfterDecompress;
-    LONG distanceToMoveHigh;
 
-    distanceToMoveHigh = 0;
     while (1)
     {
-        do
-            signalled = WaitForMultipleObjects(sndEventHandleNum, sndEventHandles, 0, 0xFFFFFFFF);
-        while (signalled == -1);
+        /* Four events and a timeout, where it used to be four events
+           and one per refill point of every streaming sound. The
+           timeout is what the refill points were: the thread wakes,
+           looks at every stream's cursor and does what the device's
+           own notification would have made it do. */
+        /* The four control events themselves, not the first four of
+           sndEventHandles. They are the same four, but that array is
+           grown from sndPlayList when the list runs out of room --
+           see the note in pcSND_AddSoundToThePlayList -- and the
+           control events have no business being reachable from a
+           realloc. */
+        HANDLE control[4] = { dsndEvents[0], dsndEvents[1],
+                              dsndEvents[2], dsndEvents[3] };
+
+        signalled = WaitForMultipleObjects(4, control, 0, PCSND_SERVICE_MS);
+        if (signalled == WAIT_TIMEOUT || signalled == (DWORD)-1)
+        {
+            pcSND_l_ServiceStreams();
+            SPL_Feed();
+            continue;
+        }
 
         switch (signalled)
         {
@@ -270,63 +400,12 @@ int WINAPI pcSND_SoundThread(LPVOID parameter)
             pcSND_StopSoundAndRemoveFromThePlayList(sndCurrSoundBufferElem, 1);
             break;
         default:
-            sbe = sndPlayList[signalled >> 1].soundElem;
-            misc = sbe->miscData;
-            if (misc->Stopped_SetIN49e270 != 1)
-            {
-                pcSND_updateCurrentPlayPositionAndSize(sndPlayList[signalled >> 1].soundElem);
-                if (misc->RemoveAfterPlayFinished && misc->currSize >= misc->fullSize)
-                    misc->shouldBeRemovedFromPlayList = 1;
-                if (misc->shouldBeRemovedFromPlayList == 1 || (signalled & 1) != 0)
-                {
-                    pcSND_StopSoundAndRemoveFromThePlayList(sbe, 0);
-                }
-                else if (misc->RemoveAfterPlayFinished)
-                {
-                    SPL_b_VoiceSilence(sbe->voice, misc->currOffset, misc->sizeToUpload);
-                }
-                else
-                {
-                    /* Decoded into a staging buffer and then handed
-                       over, where it used to be decoded straight into
-                       a locked stretch of the buffer. The voice does
-                       its own wrapping, so there is no second pointer
-                       to carry on into and no short lock to account
-                       for: what was asked for is what is written. */
-                    audioBytes1 = misc->sizeToUpload;
-                    if (audioBytes1 > sizeof(dsndUploadBuffer))
-                        audioBytes1 = sizeof(dsndUploadBuffer);
-                    audioPtr1 = (char*)dsndUploadBuffer;
-                    totalSizeAfterDecompress = 0;
-                    pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 1, &totalSizeAfterDecompress, (int16_t*)audioPtr1);
-                    produced = totalSizeAfterDecompress;
-                    if (totalSizeAfterDecompress < audioBytes1)
-                    {
-                        if (misc->readThroughWithMultipleLoop)
-                        {
-                            do
-                            {
-                                SetFilePointer(misc->fileHandle, misc->distanceToMove, &distanceToMoveHigh, 0);
-                                misc->sumSize = 0;
-                                pcSND_ReadAndDecompressSoundData(audioBytes1 - produced, sbe, 1, &totalSizeAfterDecompress,
-                                                                 (int16_t*)&audioPtr1[produced]);
-                                produced += totalSizeAfterDecompress;
-                            } while (produced < audioBytes1);
-                        }
-                        else
-                        {
-                            misc->RemoveAfterPlayFinished = 1;
-                            memset(&audioPtr1[totalSizeAfterDecompress], 0, audioBytes1 - totalSizeAfterDecompress);
-                        }
-                    }
-                    SPL_b_VoiceWrite(sbe->voice, misc->currOffset, audioPtr1, (int)audioBytes1);
-                    misc->currOffset += audioBytes1;
-                    if (misc->currOffset >= misc->soundBufferSize)
-                        misc->currOffset -= misc->soundBufferSize;
-                }
-            }
             break;
         }
+        /* Whatever woke it, the streams still want looking at and the
+           device still wants feeding. */
+        pcSND_l_ServiceStreams();
+        SPL_Feed();
     }
     return 0;
 }
@@ -486,7 +565,6 @@ static int pcSND_l_VoiceStatus(struct sSplVoice* voice)
 
 void pcSND_DisableReverbAndRestartPlaying(tSoundFxParams* params, tSndSoundBufferElem* sbe)
 {
-    IDirectSoundBuffer* buffer;
     unsigned int status;
 
     if (pcSNDFXEnabled_dword_B30400)
@@ -636,13 +714,10 @@ tSndSoundBufferElem* pcSND_pst_SB_Create(tSndHandles* handles, tSndWavHdrStruct*
     unsigned int blockAlign;
     DWORD samplesPerSec;
     tSndSoundBufferElem* sndSNDBuf;
-    IDirectSound8* dsndIf;
-    IDirectSoundBuffer* dsndSBIF;
     char* audioPtr1;
     char* audioPtr2;
     unsigned int audioBytes1;
     int audioBytes2;
-    DSBUFFERDESC dsBufferDesc;
 
     if (!handles->deviceOpen)
         return 0;
@@ -701,18 +776,13 @@ tSndSoundBufferElem* pcSND_pst_SB_Create(tSndHandles* handles, tSndWavHdrStruct*
     sndSNDBuf = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
     memset(sndSNDBuf, 0, sizeof(tSndSoundBufferElem));
     sndSNDBuf->unk2SetTo64InCreate = 64;
-    memset(&dsBufferDesc, 0, sizeof(dsBufferDesc));
-    dsBufferDesc.dwSize = 36;
-    dsBufferDesc.dwFlags = 0x400B0;
-    dsBufferDesc.dwBufferBytes = sndHdr->fullSoundSize;
-    dsBufferDesc.lpwfxFormat = &sndHdr->wfex;
-    dsBufferDesc.guid3DAlgorithm.Data1 = 0;
-    dsBufferDesc.guid3DAlgorithm.Data2 = 0;
-    dsBufferDesc.guid3DAlgorithm.Data3 = 0;
-    memset(dsBufferDesc.guid3DAlgorithm.Data4, 0, sizeof(dsBufferDesc.guid3DAlgorithm.Data4));
-    sndSNDBuf->voice = SPL_p_VoiceCreate(dsBufferDesc.lpwfxFormat->nChannels,
-                                         dsBufferDesc.lpwfxFormat->nSamplesPerSec,
-                                         dsBufferDesc.dwBufferBytes);
+    /* A buffer description used to be filled in here -- its size, its
+       capability flags, a 3D algorithm GUID -- and handed over. The
+       voice takes the three things the description was carrying, and
+       they all come from the wav header the caller already has. */
+    sndSNDBuf->voice = SPL_p_VoiceCreate(sndHdr->wfex.nChannels,
+                                         sndHdr->wfex.nSamplesPerSec,
+                                         sndHdr->fullSoundSize);
     if (!sndSNDBuf->voice)
     {
         if (sndData)
@@ -720,9 +790,8 @@ tSndSoundBufferElem* pcSND_pst_SB_Create(tSndHandles* handles, tSndWavHdrStruct*
         MEM_Free(sndSNDBuf);
         return 0;
     }
-    dsndSBIF = sndSNDBuf->voice;
-    sndSNDBuf->format = dsBufferDesc.lpwfxFormat->nChannels;
-    pcSND_AddToSNDRaster(dsndSBIF, dsBufferDesc.dwBufferBytes);
+    sndSNDBuf->format = sndHdr->wfex.nChannels;
+    pcSND_AddToSNDRaster(sndSNDBuf->voice, sndHdr->fullSoundSize);
     if (!sndData)
         return sndSNDBuf;
     /* The whole sound, in one write. It used to be a lock that could
@@ -957,7 +1026,6 @@ void pcSND_SB_SetVolume(tSndSoundBufferElem* sbe, int att)
     int base;
     int balance;
     int vol;
-    IDirectSoundBuffer* buffer;
 
     if (!sbe)
         return;
@@ -1006,7 +1074,6 @@ void pcSND_SNDRasterRelease(struct sSplVoice* buffer)
 void pcSND_MiscDataRelease(tSndSoundBufferElem* sbe)
 {
     tSbeMiscData* misc;
-    IDirectSoundNotify* notify;
 
     if (sbe)
     {
@@ -1084,13 +1151,10 @@ tSndSoundBufferElem* pcSND_SoundReloadToDSound(tSndHandles* handles, tSndWavHdrS
     unsigned int blockAlign;
     DWORD samplesPerSec;
     tSndSoundBufferElem* sndSNDBuf;
-    IDirectSound8* dsndIf;
-    IDirectSoundBuffer* dsndSBIF;
     char* audioPtr1;
     char* audioPtr2;
     unsigned int audioBytes1;
     int audioBytes2;
-    DSBUFFERDESC dsBufferDesc;
 
     if (!handles->deviceOpen)
         return 0;
@@ -1152,18 +1216,9 @@ tSndSoundBufferElem* pcSND_SoundReloadToDSound(tSndHandles* handles, tSndWavHdrS
     sndSNDBuf = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
     memset(sndSNDBuf, 0, sizeof(tSndSoundBufferElem));
     sndSNDBuf->unk2SetTo64InCreate = 64;
-    memset(&dsBufferDesc, 0, sizeof(dsBufferDesc));
-    dsBufferDesc.dwSize = 36;
-    dsBufferDesc.dwFlags = pcSND_Return160();
-    dsBufferDesc.dwBufferBytes = wavHdr->fullSoundSize;
-    dsBufferDesc.lpwfxFormat = &wavHdr->wfex;
-    dsBufferDesc.guid3DAlgorithm.Data1 = 0;
-    dsBufferDesc.guid3DAlgorithm.Data2 = 0;
-    dsBufferDesc.guid3DAlgorithm.Data3 = 0;
-    memset(dsBufferDesc.guid3DAlgorithm.Data4, 0, sizeof(dsBufferDesc.guid3DAlgorithm.Data4));
-    sndSNDBuf->voice = SPL_p_VoiceCreate(dsBufferDesc.lpwfxFormat->nChannels,
-                                         dsBufferDesc.lpwfxFormat->nSamplesPerSec,
-                                         dsBufferDesc.dwBufferBytes);
+    sndSNDBuf->voice = SPL_p_VoiceCreate(wavHdr->wfex.nChannels,
+                                         wavHdr->wfex.nSamplesPerSec,
+                                         wavHdr->fullSoundSize);
     if (!sndSNDBuf->voice)
     {
         if (sndData)
@@ -1171,9 +1226,8 @@ tSndSoundBufferElem* pcSND_SoundReloadToDSound(tSndHandles* handles, tSndWavHdrS
         MEM_Free(sndSNDBuf);
         return 0;
     }
-    dsndSBIF = sndSNDBuf->voice;
-    sndSNDBuf->format = dsBufferDesc.lpwfxFormat->nChannels;
-    pcSND_AddToSNDRaster(dsndSBIF, dsBufferDesc.dwBufferBytes);
+    sndSNDBuf->format = wavHdr->wfex.nChannels;
+    pcSND_AddToSNDRaster(sndSNDBuf->voice, wavHdr->fullSoundSize);
     if (!sndData)
         return sndSNDBuf;
     if (!SPL_b_VoiceWrite(sndSNDBuf->voice, 0, sndData, wavHdr->fullSoundSize))
@@ -1218,27 +1272,16 @@ void pcSND_setCurrentSoundBuffElemAndSetAnEvent(tSndSoundBufferElem* sbe)
     }
 }
 
+/* Five notification positions used to be set here: four at the block
+   boundaries of the buffer, all firing the refill event, and one at
+   the stop, firing the other. Nothing says when a cursor reaches a
+   position now, so there is nothing to set -- the thread looks
+   instead, and what it compares against is the block the cursor is
+   in, which starts as the one the first fill left it in. */
 void pcSND_SetPositionNotify(tSndSoundBufferElem* sbe)
 {
-    tSbeMiscData* misc;
-    DWORD step;
-    int i;
-    DSBPOSITIONNOTIFY notify[5];
-
-    misc = sbe->miscData;
-    step = misc->sizeToUpload;
     pcSND_setCurrentSoundBuffElemAndSetAnEvent(sbe);
-    notify[0].dwOffset = step;
-    notify[0].hEventNotify = misc->eventHandle1;
-    for (i = 1; i < 4; ++i)
-    {
-        notify[i].dwOffset = step + notify[i - 1].dwOffset;
-        notify[i].hEventNotify = misc->eventHandle1;
-    }
-    --notify[3].dwOffset;
-    notify[4].dwOffset = -1;
-    notify[4].hEventNotify = misc->eventHandle2;
-    misc->vmilenEventHandlptr_Sub49e950->lpVtbl->SetNotificationPositions(misc->vmilenEventHandlptr_Sub49e950, 5, notify);
+    sbe->miscData->lastPlayedBlock = pcSND_l_PlayedBlock(sbe->miscData);
 }
 
 void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferElem* sbe)
@@ -1440,8 +1483,6 @@ tSndSoundBufferElem* pcSND_CreateTrack(tSndHandles* handles, tSndWavHdrStruct* w
 {
     tSndSoundBufferElem* track;
     tSbeMiscData* misc;
-    IDirectSound8* dsndif;
-    DSBUFFERDESC desc;
 
     wavHdr->wfex.wFormatTag = 1;
     if (!handles->deviceOpen)
@@ -1453,23 +1494,15 @@ tSndSoundBufferElem* pcSND_CreateTrack(tSndHandles* handles, tSndWavHdrStruct* w
     misc->sizeToUpload = 307200 / wavHdr->wfex.nBlockAlign / 4;
     misc->sizeToUpload *= wavHdr->wfex.nBlockAlign;
     misc->soundBufferSize = 4 * misc->sizeToUpload;
-    memset(&desc, 0, sizeof(desc));
-    desc.dwSize = 36;
-    desc.dwFlags = 0x101E8;
-    desc.dwBufferBytes = misc->soundBufferSize;
-    desc.lpwfxFormat = &wavHdr->wfex;
-    desc.guid3DAlgorithm.Data1 = 0;
-    desc.guid3DAlgorithm.Data2 = 0;
-    desc.guid3DAlgorithm.Data3 = 0;
-    memset(desc.guid3DAlgorithm.Data4, 0, sizeof(desc.guid3DAlgorithm.Data4));
+
     // preserved: both allocations leak when the call fails
-    track->voice = SPL_p_VoiceCreate(desc.lpwfxFormat->nChannels,
-                                     desc.lpwfxFormat->nSamplesPerSec,
+    track->voice = SPL_p_VoiceCreate(wavHdr->wfex.nChannels,
+                                     wavHdr->wfex.nSamplesPerSec,
                                      misc->soundBufferSize);
     if (!track->voice)
         return 0;
     pcSND_AddToSNDRaster(track->voice, misc->soundBufferSize);
-    track->format = desc.lpwfxFormat->nChannels;
+    track->format = wavHdr->wfex.nChannels;
     track->unk2SetTo64InCreate = 64;
     track->miscData = misc;
     misc->eventHandle1 = (HANDLE)-1;
@@ -1833,7 +1866,6 @@ float SND_f_Compute3DVol(tSoundInstanceElem* inst) // @SND_f_GetInstVolume
 
 int pcSND_i_FxInit()
 {
-    BYTE fxSetting[4];
 
     SND_gst_FxParam.i7 = 16;
     SND_gst_FxDefaultParam.i7 = 16;
@@ -1842,10 +1874,11 @@ int pcSND_i_FxInit()
     memset(SND_gst_FxParam.i8, 0, 4 * SND_gst_FxParam.i7);
     fxWetVol = 0.0;
     memset(&gFXGlobal, 0, sizeof(gFXGlobal));
-    if (pcSND_ReadFXSettingFromRegistry(fxSetting))
-        gFXGlobal.fxEnabled = 0;
-    else
-        gFXGlobal.fxEnabled = *(uint32_t*)fxSetting != 1;
+    /* Whether the effects are on came from a registry value the
+       installer wrote. They are off: the effects were EAX's, through
+       a property set that does not exist, and this is the answer the
+       engine already had on a card without it. */
+    gFXGlobal.fxEnabled = 0;
     return 0;
 }
 
@@ -2602,7 +2635,6 @@ void pcSND_flipPlayStopState(tSndSoundBufferElem* sbe)
 void pcSND_SB_Pause(tSndSoundBufferElem* sbe)
 {
     int idx;
-    IDirectSoundBuffer* buffer;
     int status;
 
     if (sbe->miscData) {
@@ -2619,7 +2651,6 @@ void pcSND_SB_Pause(tSndSoundBufferElem* sbe)
         if (SND_gst_Params.soundInstances[idx].soundBufElemFromModel == sbe)
             break;
     }
-    buffer = sbe->voice;
     // preserved: with no matching instance the index is one past the array
     SPL_VoicePlay(sbe->voice, (SND_gst_Params.soundInstances[idx].flags >> 23) & 1);
 }

@@ -118,6 +118,58 @@ void* MEM_p_AllocAligned(int size, int alignment) { return heap_alloc((unsigned)
 void* MEM_p_ReallocAligned(void* p, unsigned int size, int alignment) { return MEM_p_Realloc(p, (size_t)size); }
 void MEM_FreeAlign(void* p) { }
 
+/* The device's own ceremony -- opening a named driver, reading the
+   registry for its GUID and the effects setting, loading the EAX
+   export, asking for capabilities, setting a cooperative level -- is
+   silent for the same reason the rest of it is: the rewrite does none
+   of it, so there is nothing on the other side to line it up with. */
+
+/* ----------------------------------------------- the shared vocabulary */
+
+/* The frozen copy reaches a sound through DirectSound and the rewrite
+   through the platform layer, so the two cannot be compared on which
+   calls they made. What they can be compared on is the events those
+   calls stand for, and these are what both sides log for them: one
+   line an event, in the same words, whichever interface delivered it.
+   Everything that is one interface's ceremony and not an event --
+   querying an interface, setting a data format or a cooperative
+   level, arming notification positions, probing EAX -- is silent,
+   because there is nothing on the other side to line it up with.
+   
+   The getters are silent too, for a different reason: what the engine
+   does with what they return lands in state, and state is compared in
+   full. */
+
+/* A fingerprint of a byte range, so that what a side wrote into a locked
+   region is compared without printing kilobytes of it. */
+static unsigned fingerprint(const unsigned char* p, int n)
+{
+    unsigned h = 2166136261u;
+    int i;
+    for (i = 0; i < n; ++i)
+    {
+        h ^= p[i];
+        h *= 16777619u;
+    }
+    return h;
+}
+
+static void wsnd_ev_voice(int id, unsigned ch, unsigned rate, unsigned bytes)
+{
+    wsnd_log("voice(o%d,ch=%u,rate=%u,bytes=%u)\n", id, ch, rate, bytes);
+}
+static void wsnd_ev_drop(int id) { wsnd_log("drop(o%d)\n", id); }
+static void wsnd_ev_play(int id, int loop) { wsnd_log("play(o%d,%d)\n", id, loop); }
+static void wsnd_ev_stop(int id) { wsnd_log("stop(o%d)\n", id); }
+static void wsnd_ev_att(int id, long v) { wsnd_log("att(o%d,%ld)\n", id, v); }
+static void wsnd_ev_pan(int id, long v) { wsnd_log("pan(o%d,%ld)\n", id, v); }
+static void wsnd_ev_freq(int id, unsigned v) { wsnd_log("freq(o%d,%u)\n", id, v); }
+static void wsnd_ev_cursor(int id, unsigned v) { wsnd_log("cursor(o%d,%u)\n", id, v); }
+static void wsnd_ev_write(int id, unsigned off, unsigned bytes, unsigned fp)
+{
+    wsnd_log("wr(o%d,%u,%u,fp=%08X)\n", id, off, bytes, fp);
+}
+
 /* ------------------------------------------------ the mock COM objects */
 
 /* Every mock interface is one of these. The vtable pointer is first so
@@ -129,11 +181,25 @@ typedef struct sMockObj
     int id;
     int kind;
     int refs;
+    /* Which object this one was queried off, for the 3D buffer: what
+       it does belongs to the buffer it hangs from, and that is the
+       object the rewrite's log names. */
+    int parent;
 } tMockObj;
 
 #define MOCK_MAX 256
 static tMockObj mock_objs[MOCK_MAX];
 static int mock_count;
+
+/* Set while the module's own init runs. The objects it makes are not
+   numbered: the frozen copy's init makes four of them and the
+   rewrite's makes none, and numbering them would put every object
+   made afterwards four apart on the two sides. They print negative
+   instead, which says they are the init's, and the numbering carries
+   on from where it was. */
+int wsnd_init_quiet;
+static int quiet_count;
+static int id_next;
 
 int wsnd_obj_id(const void* p)
 {
@@ -180,9 +246,10 @@ static void* mock_new(int kind, void* vtbl)
     }
     o = &mock_objs[mock_count];
     o->lpVtbl = vtbl;
-    o->id = mock_count;
+    o->id = wsnd_init_quiet ? -1 - quiet_count++ : id_next++;
     o->kind = kind;
     o->refs = 1;
+    o->parent = -1;
     ++mock_count;
     return o;
 }
@@ -193,7 +260,12 @@ static DWORD m_AddRef(void* self) { ((tMockObj*)self)->refs++; return 1; }
 
 static DWORD m_Release(void* self)
 {
-    wsnd_log("Release(o%d)\n", wsnd_obj_id(self));
+    /* Only a sound buffer going away is an event. The rest -- the
+       device, the listener, the 3D buffer, the property set, the
+       notify interface -- are this interface's own objects and the
+       rewrite has none of them. */
+    if (((tMockObj*)self)->kind == 1)
+        wsnd_ev_drop(wsnd_obj_id(self));
     return --((tMockObj*)self)->refs;
 }
 
@@ -205,7 +277,7 @@ static HRESULT m_QueryInterface(void* self, const GUID* iid, void** out)
     ++qi_calls;
     if (wsnd_qi_fail_mod && (qi_calls % wsnd_qi_fail_mod) == 0)
     {
-        wsnd_log("QI(o%d)=FAIL\n", wsnd_obj_id(self));
+
         *out = 0;
         return (HRESULT)0x80004002L;
     }
@@ -213,19 +285,19 @@ static HRESULT m_QueryInterface(void* self, const GUID* iid, void** out)
     else if (iid == &IID_IDirectSound3DListener) { kind = 3; vtbl = &listener_vtbl; }
     else if (iid == &IID_IDirectSoundNotify) { kind = 4; vtbl = &notify_vtbl; }
     else if (iid == &IID_IKsPropertySet) { kind = 5; vtbl = &propset_vtbl; }
-    else { wsnd_log("QI(o%d)=UNKNOWN\n", wsnd_obj_id(self)); *out = 0; return (HRESULT)0x80004002L; }
+    else { *out = 0; return (HRESULT)0x80004002L; }
     *out = mock_new(kind, vtbl);
-    wsnd_log("QI(o%d,k%d)=o%d\n", wsnd_obj_id(self), kind, wsnd_obj_id(*out));
+    ((tMockObj*)*out)->parent = wsnd_obj_id(self);
     return 0;
 }
 
 /* --- IDirectSoundBuffer --- */
 
-static HRESULT b_GetCaps(IDirectSoundBuffer* s, DSBCAPS* c) { wsnd_log("GetCaps(o%d)\n", wsnd_obj_id(s)); return 0; }
+static HRESULT b_GetCaps(IDirectSoundBuffer* s, DSBCAPS* c) { return 0; }
 
 static HRESULT b_GetCurrentPosition(IDirectSoundBuffer* s, DWORD* play, DWORD* write)
 {
-    wsnd_log("GetCurrentPosition(o%d)=%d\n", wsnd_obj_id(s), wsnd_play_pos);
+
     if (play) *(int*)play = wsnd_play_pos;
     if (write) *(int*)write = wsnd_play_pos + 64;
     return 0;
@@ -235,7 +307,7 @@ static HRESULT b_GetFormat(IDirectSoundBuffer* s, LPWAVEFORMATEX f, DWORD n, DWO
 
 static HRESULT b_GetVolume(IDirectSoundBuffer* s, LONG* v)
 {
-    wsnd_log("GetVolume(o%d)=-1234\n", wsnd_obj_id(s));
+
     *(int*)v = -1234;
     return 0;
 }
@@ -244,27 +316,35 @@ static HRESULT b_GetPan(IDirectSoundBuffer* s, LONG* v) { *(int*)v = 0; return 0
 
 static HRESULT b_GetFrequency(IDirectSoundBuffer* s, DWORD* v)
 {
-    wsnd_log("GetFrequency(o%d)=22050\n", wsnd_obj_id(s));
+
     *(int*)v = 22050;
     return 0;
 }
 
 static HRESULT b_GetStatus(IDirectSoundBuffer* s, DWORD* v)
 {
-    wsnd_log("GetStatus(o%d)=%d\n", wsnd_obj_id(s), wsnd_status);
+
     *(int*)v = wsnd_status;
     return 0;
 }
 
 static HRESULT b_Initialize(IDirectSoundBuffer* s, void* d, const DSBUFFERDESC* x) { return 0; }
 
+/* The offset the last lock was taken at, so that unlocking can say
+   where the bytes went. The engine locks and unlocks in one breath at
+   every site, so one is enough. */
+static unsigned lock_off;
+static unsigned lock_bytes;
+
 static HRESULT b_Lock(IDirectSoundBuffer* s, DWORD off, DWORD bytes,
                       void** p1, DWORD* n1, void** p2, DWORD* n2, DWORD flags)
 {
     ++lock_calls;
+    lock_off = off;
+    lock_bytes = bytes > 65536 ? 65536 : bytes;
     if (wsnd_lock_fail_mod && (lock_calls % wsnd_lock_fail_mod) == 0)
     {
-        wsnd_log("Lock(o%d,%u,%u,f%u)=FAIL\n", wsnd_obj_id(s), off, bytes, flags);
+        wsnd_log("wr(o%d,%u,%u,FAIL)\n", wsnd_obj_id(s), off, bytes);
         return (HRESULT)0x88780096L;
     }
     if (bytes > 65536) bytes = 65536;
@@ -286,49 +366,30 @@ static HRESULT b_Lock(IDirectSoundBuffer* s, DWORD off, DWORD bytes,
         if (p2) *p2 = 0;
         if (n2) *(int*)n2 = 0;
     }
-    wsnd_log("Lock(o%d,%u,%u,f%u)=p1@%d,n1=%u,p2@%d,n2=%d\n",
-             wsnd_obj_id(s), off, bytes, flags,
-             (int)((unsigned char*)*p1 - audio), bytes,
-             (p2 && *p2) ? (int)((unsigned char*)*p2 - audio) : -1,
-             (p2 && *p2) ? wsnd_lock_tail : 0);
+    /* Silent: a lock is half an event. The write is logged when it
+       is unlocked, which is when the bytes exist. */
     return 0;
 }
 
-/* A fingerprint of a byte range, so that what a side wrote into a locked
-   region is compared without printing kilobytes of it. */
-static unsigned fingerprint(const unsigned char* p, int n)
-{
-    unsigned h = 2166136261u;
-    int i;
-    for (i = 0; i < n; ++i)
-    {
-        h ^= p[i];
-        h *= 16777619u;
-    }
-    return h;
-}
 
 static HRESULT b_Play(IDirectSoundBuffer* s, DWORD r1, DWORD r2, DWORD flags)
 {
-    wsnd_log("Play(o%d,%u)\n", wsnd_obj_id(s), flags);
+    wsnd_ev_play(wsnd_obj_id(s), (int)(flags & 1));
     wsnd_status |= 1;
     return 0;
 }
 
-static HRESULT b_SetCurrentPosition(IDirectSoundBuffer* s, DWORD p) { wsnd_log("SetCurrentPosition(o%d,%u)\n", wsnd_obj_id(s), p); return 0; }
+static HRESULT b_SetCurrentPosition(IDirectSoundBuffer* s, DWORD p) { wsnd_ev_cursor(wsnd_obj_id(s), p); return 0; }
 static HRESULT b_SetFormat(IDirectSoundBuffer* s, const WAVEFORMATEX* f)
 {
-    wsnd_log("SetFormat(o%d,tag=%u,ch=%u,rate=%u,bps=%u,align=%u,avg=%u,cb=%u)\n",
-             wsnd_obj_id(s), f->wFormatTag, f->nChannels, f->nSamplesPerSec,
-             f->wBitsPerSample, f->nBlockAlign, f->nAvgBytesPerSec, f->cbSize);
     return 0;
 }
-static HRESULT b_SetVolume(IDirectSoundBuffer* s, LONG v) { wsnd_log("SetVolume(o%d,%ld)\n", wsnd_obj_id(s), (long)v); return 0; }
-static HRESULT b_SetPan(IDirectSoundBuffer* s, LONG v) { wsnd_log("SetPan(o%d,%ld)\n", wsnd_obj_id(s), (long)v); return 0; }
-static HRESULT b_SetFrequency(IDirectSoundBuffer* s, DWORD v) { wsnd_log("SetFrequency(o%d,%u)\n", wsnd_obj_id(s), v); return 0; }
+static HRESULT b_SetVolume(IDirectSoundBuffer* s, LONG v) { wsnd_ev_att(wsnd_obj_id(s), (long)v); return 0; }
+static HRESULT b_SetPan(IDirectSoundBuffer* s, LONG v) { wsnd_ev_pan(wsnd_obj_id(s), (long)v); return 0; }
+static HRESULT b_SetFrequency(IDirectSoundBuffer* s, DWORD v) { wsnd_ev_freq(wsnd_obj_id(s), v); return 0; }
 static HRESULT b_Stop(IDirectSoundBuffer* s)
 {
-    wsnd_log("Stop(o%d)\n", wsnd_obj_id(s));
+    wsnd_ev_stop(wsnd_obj_id(s));
     /* The device really does stop: pcSND_flipPlayStopState spins on
        GetStatus until the playing bit clears. */
     wsnd_status &= ~1;
@@ -337,10 +398,14 @@ static HRESULT b_Stop(IDirectSoundBuffer* s)
 
 static HRESULT b_Unlock(IDirectSoundBuffer* s, void* p1, DWORD n1, void* p2, DWORD n2)
 {
-    wsnd_log("Unlock(o%d,p1@%d,n1=%u,p2@%d,n2=%u,fp=%08X)\n",
-             wsnd_obj_id(s), p1 ? (int)((unsigned char*)p1 - audio) : -1, n1,
-             p2 ? (int)((unsigned char*)p2 - audio) : -1, n2,
-             p1 ? fingerprint((unsigned char*)p1, (int)(n1 > 4096 ? 4096 : n1)) : 0);
+    /* What was asked for rather than what the lock handed back. A real
+       lock splits a write at the end of the buffer and hands back two
+       stretches; the voice wraps inside itself and takes one call. The
+       bytes are the same bytes either way, so the event is the offset,
+       the length and a fingerprint of them. */
+    wsnd_ev_write(wsnd_obj_id(s), lock_off, lock_bytes,
+                  p1 ? fingerprint((unsigned char*)p1,
+                                   (int)(lock_bytes > 4096 ? 4096 : lock_bytes)) : 0);
     return 0;
 }
 
@@ -349,12 +414,39 @@ static HRESULT b_Restore(IDirectSoundBuffer* s) { return 0; }
 /* --- IDirectSound3DBuffer --- */
 
 static HRESULT d3_GetAllParameters(IDirectSound3DBuffer* s, DS3DBUFFER* b) { return 0; }
-static HRESULT d3_SetMaxDistance(IDirectSound3DBuffer* s, float v, DWORD a) { wsnd_log("SetMaxDistance(o%d,%.9g)\n", wsnd_obj_id(s), (double)v); return 0; }
-static HRESULT d3_SetMinDistance(IDirectSound3DBuffer* s, float v, DWORD a) { wsnd_log("SetMinDistance(o%d,%.9g)\n", wsnd_obj_id(s), (double)v); return 0; }
+static HRESULT d3_SetMaxDistance(IDirectSound3DBuffer* s, float v, DWORD a) { return 0; }
+static HRESULT d3_SetMinDistance(IDirectSound3DBuffer* s, float v, DWORD a) { return 0; }
 static HRESULT d3_SetMode(IDirectSound3DBuffer* s, DWORD m, DWORD a) { return 0; }
 static HRESULT d3_SetPosition(IDirectSound3DBuffer* s, float x, float y, float z, DWORD a)
 {
-    wsnd_log("3DSetPosition(o%d,%.9g,%.9g,%.9g)\n", wsnd_obj_id(s), (double)x, (double)y, (double)z);
+    /* Decoded back into the pan it was made from, because that is
+       what it was carrying. The forward map is the engine's own, in
+       pcSND_SoundBufferSetPan's note: the pan became an angle, hard
+       right at 0 degrees through straight ahead at 90 to hard left at
+       180. Inverting it gives the integer back exactly over the whole
+       range, and the pan is the thing the rewrite sets. The id is the
+       buffer's, not this object's: a 3D buffer speaks for the buffer
+       it hangs from. */
+    if (z != 0.0f)
+    {
+        /* Not a pan. This is the parking position the engine gave
+           every buffer at creation -- straight ahead at (0,0,1), with
+           fixed distances -- so that the per-buffer reverb had a 3D
+           buffer to hang off. Nothing parks anything now. */
+        return 0;
+    }
+    {
+        const tMockObj* o = (const tMockObj*)s;
+        double degrees = atan2((double)y, (double)x) * 57.29577951308232;
+        long pan;
+
+        /* Not normalised into a full turn: atan2 answers in
+           (-180,180], which is the range the forward map used, and
+           wrapping a negative angle up by 360 would read a pan just
+           past hard right as one far past hard left. */
+        pan = (long)floor((10000.0 - degrees / 0.0089999996) + 0.5);
+        wsnd_ev_pan(o->parent >= 0 ? o->parent : wsnd_obj_id(s), pan);
+    }
     return 0;
 }
 static HRESULT d3_SetVelocity(IDirectSound3DBuffer* s, float x, float y, float z, DWORD a) { return 0; }
@@ -372,10 +464,11 @@ static HRESULT l_Commit(IDirectSound3DListener* s) { return 0; }
 
 static HRESULT n_SetNotificationPositions(IDirectSoundNotify* s, DWORD n, LPDSBPOSITIONNOTIFY p)
 {
-    DWORD i;
-    wsnd_log("SetNotificationPositions(o%d,%u)\n", wsnd_obj_id(s), n);
-    for (i = 0; i < n; ++i)
-        wsnd_log("  notify[%u] off=%u ev=%ld\n", i, p[i].dwOffset, (long)(size_t)p[i].hEventNotify);
+    /* Silent. Arming the refill positions is the only way this
+       interface had of asking to be told when the cursor moved, and
+       the rewrite has no equivalent to ask with -- it looks instead.
+       What the positions were for is compared where it shows: the
+       refills themselves are writes, and writes are events. */
     return 0;
 }
 
@@ -387,37 +480,16 @@ static unsigned fb(float f) { unsigned u; memcpy(&u, &f, 4); return u; }
 
 static HRESULT ks_Set(IKsPropertySet* s, const GUID* g, DWORD id, void* a, DWORD an, void* b, DWORD bn)
 {
-    /* The listener block is printed field by field rather than
-       fingerprinted: EAXLISTENERPROPERTIES has no padding in the engine's
-       own 32-bit build but does here, and the holes a memcpy carries
-       across are stack residue rather than anything the code decided. */
-    if (g == &DSPROPSETID_EAX30_ListenerProperties && bn >= sizeof(EAXLISTENERPROPERTIES))
-    {
-        const EAXLISTENERPROPERTIES* p = (const EAXLISTENERPROPERTIES*)b;
-        wsnd_log("KsSet(o%d,listener,%u) env=%lu size=%08X dif=%08X room=%ld hf=%ld lf=%ld\n",
-                 wsnd_obj_id(s), id, p->ulEnvironment, fb(p->flEnvironmentSize),
-                 fb(p->flEnvironmentDiffusion), p->lRoom, p->lRoomHF, p->lRoomLF);
-        wsnd_log("  dt=%08X dhf=%08X dlf=%08X refl=%ld rd=%08X rev=%ld vd=%08X\n",
-                 fb(p->flDecayTime), fb(p->flDecayHFRatio), fb(p->flDecayLFRatio),
-                 p->lReflections, fb(p->flReflectionsDelay), p->lReverb, fb(p->flReverbDelay));
-        wsnd_log("  et=%08X ed=%08X mt=%08X md=%08X ah=%08X hr=%08X lr=%08X rr=%08X fl=%lu\n",
-                 fb(p->flEchoTime), fb(p->flEchoDepth), fb(p->flModulationTime),
-                 fb(p->flModulationDepth), fb(p->flAirAbsorptionHF), fb(p->flHFReference),
-                 fb(p->flLFReference), fb(p->flRoomRolloffFactor), p->ulFlags);
-        wsnd_log("  pans %08X %08X %08X %08X %08X %08X\n",
-                 fb(p->vReverbPan.x), fb(p->vReverbPan.y), fb(p->vReverbPan.z),
-                 fb(p->vReflectionsPan.x), fb(p->vReflectionsPan.y), fb(p->vReflectionsPan.z));
-        return 0;
-    }
-    wsnd_log("KsSet(o%d,%s,%u,%u,v=%d)\n", wsnd_obj_id(s),
-             g == &DSPROPSETID_EAX30_BufferProperties ? "buffer" : "?",
-             id, bn, bn == 4 ? *(const int*)b : 0);
+    /* Silent, listener and buffer alike. The rewrite has no property
+       set and no EAX: it answers that the reverb cannot be set, which
+       is what a driver without EAX answered, and nothing it does
+       corresponds to one of these. */
     return 0;
 }
 
 static HRESULT ks_QuerySupport(IKsPropertySet* s, const GUID* g, DWORD id, DWORD* support)
 {
-    wsnd_log("KsQuerySupport(o%d,%u)=%d\n", wsnd_obj_id(s), id, wsnd_eax_support);
+
     if (wsnd_eax_support < 0)
         return (HRESULT)0x80004005L;
     *(int*)support = wsnd_eax_support;
@@ -429,28 +501,31 @@ static HRESULT ks_QuerySupport(IKsPropertySet* s, const GUID* g, DWORD id, DWORD
 static HRESULT ds_CreateSoundBuffer(IDirectSound* s, const DSBUFFERDESC* d, IDirectSoundBuffer** out, IUnknown* unk)
 {
     ++create_calls;
-    wsnd_log("CreateSoundBuffer(size=%u,flags=%X,bytes=%u,fmt=%s",
-             d->dwSize, d->dwFlags, d->dwBufferBytes, d->lpwfxFormat ? "y" : "n");
-    if (d->lpwfxFormat)
-        wsnd_log(",tag=%u,ch=%u,rate=%u,bps=%u,align=%u,avg=%u,cb=%u",
-                 d->lpwfxFormat->wFormatTag, d->lpwfxFormat->nChannels,
-                 d->lpwfxFormat->nSamplesPerSec, d->lpwfxFormat->wBitsPerSample,
-                 d->lpwfxFormat->nBlockAlign, d->lpwfxFormat->nAvgBytesPerSec,
-                 d->lpwfxFormat->cbSize);
+    /* The description carried a size, capability flags, a 3D
+       algorithm and a whole WAVEFORMATEX; three of those are the
+       event -- the channels, the rate and the length -- and the rest
+       is this interface asking for a buffer in its own words. The
+       primary buffer, which has no format and no length, is not a
+       sound and says nothing. */
     if (wsnd_create_fail_mod && (create_calls % wsnd_create_fail_mod) == 0)
     {
-        wsnd_log(")=FAIL\n");
+        if (d->lpwfxFormat)
+            wsnd_log("voice(FAIL,ch=%u,rate=%u,bytes=%u)\n",
+                     d->lpwfxFormat->nChannels, d->lpwfxFormat->nSamplesPerSec,
+                     d->dwBufferBytes);
         *out = 0;
         return (HRESULT)0x88780032L;
     }
     *out = (IDirectSoundBuffer*)mock_new(1, &buffer_vtbl);
-    wsnd_log(")=o%d\n", wsnd_obj_id(*out));
+    if (d->lpwfxFormat)
+        wsnd_ev_voice(wsnd_obj_id(*out), d->lpwfxFormat->nChannels,
+                      d->lpwfxFormat->nSamplesPerSec, d->dwBufferBytes);
     return 0;
 }
 
 static HRESULT ds_GetCaps(IDirectSound* s, DSCAPS* c)
 {
-    wsnd_log("dsGetCaps(size=%u)\n", c->dwSize);
+
     c->dwFlags = 0x55;
     c->dwMaxHwMixingAllBuffers = 32;
     return 0;
@@ -459,13 +534,13 @@ static HRESULT ds_GetCaps(IDirectSound* s, DSCAPS* c)
 static HRESULT ds_DuplicateSoundBuffer(IDirectSound* s, IDirectSoundBuffer* src, IDirectSoundBuffer** out)
 {
     *out = (IDirectSoundBuffer*)mock_new(1, &buffer_vtbl);
-    wsnd_log("DuplicateSoundBuffer(o%d)=o%d\n", wsnd_obj_id(src), wsnd_obj_id(*out));
+    wsnd_log("dup(o%d)=o%d\n", wsnd_obj_id(src), wsnd_obj_id(*out));
     return 0;
 }
 
 static HRESULT ds_SetCooperativeLevel(IDirectSound* s, HWND w, DWORD level)
 {
-    wsnd_log("SetCooperativeLevel(%ld,%u)\n", (long)(size_t)w, level);
+
     return 0;
 }
 
@@ -622,7 +697,7 @@ static int handle_seq;
 
 LONG RegOpenKeyExA(HKEY root, LPCSTR path, DWORD opts, DWORD access, PHKEY out)
 {
-    wsnd_log("RegOpenKeyExA(%s,%u)\n", path, access);
+
     *out = (HKEY)(size_t)0x1000;
     return 0;
 }
@@ -632,7 +707,7 @@ LONG RegQueryValueExA(HKEY key, LPCSTR name, DWORD* res, DWORD* type, LPBYTE dat
     int isFx = name[0] == 'S';
     int fail = isFx ? (wsnd_reg_fail & 1) : (wsnd_reg_fail & 2);
 
-    wsnd_log("RegQueryValueExA(%s,%u)=%d\n", name, *size, fail ? 1 : 0);
+
     if (fail)
         return 1;
     if (isFx)
@@ -652,29 +727,29 @@ LONG RegQueryValueExA(HKEY key, LPCSTR name, DWORD* res, DWORD* type, LPBYTE dat
     return 0;
 }
 
-LONG RegCloseKey(HKEY key) { wsnd_log("RegCloseKey\n"); return 0; }
+LONG RegCloseKey(HKEY key) { return 0; }
 
 DWORD GetLastError(void) { return 5; }
 
 DWORD FormatMessageA(DWORD flags, const void* src, DWORD id, DWORD lang, LPSTR buf, DWORD size, va_list* args)
 {
-    wsnd_log("FormatMessageA(%u)\n", id);
+
     if (size) buf[0] = 0;
     return 0;
 }
 
-HMODULE LoadLibraryA(LPCSTR name) { wsnd_log("LoadLibraryA(%s)\n", name); return (HMODULE)(size_t)0x2000; }
+HMODULE LoadLibraryA(LPCSTR name) { return (HMODULE)(size_t)0x2000; }
 
 static HRESULT WINAPI mock_eax_create(GUID* g, LPDIRECTSOUND8* out, IUnknown* outer)
 {
-    wsnd_log("EAXDirectSoundCreate8(guid0=%02X)\n", ((unsigned char*)g)[0]);
+
     *out = (IDirectSound8*)the_device;
     return 0;
 }
 
 FARPROC GetProcAddress(HMODULE m, LPCSTR name)
 {
-    wsnd_log("GetProcAddress(%s)\n", name);
+
     return (FARPROC)mock_eax_create;
 }
 
@@ -773,9 +848,33 @@ void wsnd_run_thread(int (*body)(void*))
 
 /* ------------------------------------------------------------- reset */
 
+/* Everything up to here is forgotten, and the object ids start again.
+   One caller: the module's own init, which is the one entry point the
+   two copies cannot be compared on. The frozen copy opens a named
+   driver, makes a primary buffer, queries a 3D listener off it and
+   makes a second buffer for no purpose but asking EAX whether it is
+   there; the rewrite opens a device. Four objects and five calls with
+   nothing on the other side to line them up with, and every object
+   made afterwards numbered five apart. So the init is not compared,
+   and the comparison starts from the state it left behind. */
+/* What the init left in the log is dropped, for the same reason its
+   objects are not numbered: there is nothing on the other side to
+   compare it against. The table itself is left alone -- those objects
+   are still live and still held. */
+void wsnd_log_restart(void)
+{
+    log_len = 0;
+    create_calls = 0;
+    lock_calls = 0;
+    qi_calls = 0;
+}
+
 void wsnd_mock_reset(void)
 {
     log_len = 0;
+    wsnd_init_quiet = 0;
+    quiet_count = 0;
+    id_next = 0;
     if (heap_used > heap_high)
         heap_high = heap_used;
     heap_used = 0;
@@ -812,3 +911,156 @@ void wsnd_mock_reset(void)
     the_device = (tMockObj*)mock_new(0, &device_vtbl);
     strcpy(BIG_gst.filePath, "mock.bf");
 }
+
+/* ------------------------------------------- the mock platform layer */
+
+/* The rewrite's side of the shared vocabulary. Each of these logs the
+   event its DirectSound counterpart logs, in the same words, so the
+   two sides can still be compared on what they did rather than on how
+   they said it. The voices come out of the same object table as the
+   buffers, so the Nth voice and the Nth buffer have the same id and
+   the lines line up.
+   
+   The getters answer what the buffer mock answered, for the same
+   reason: the engine does the same arithmetic on either, and that
+   arithmetic is what is being compared. */
+
+int wsnd_open_fails;
+
+static struct
+{
+    int bytes, channels, freq;
+    int att, pan, cursor;
+} voice_state[MOCK_MAX];
+
+static int wsnd_voice_id(const void* v) { return wsnd_obj_id(v); }
+
+int SPL_b_Open(void) { return !wsnd_open_fails; }
+void SPL_Close(void) { }
+int SPL_b_IsOpen(void) { return !wsnd_open_fails; }
+void SPL_Feed(void) { }
+int SPL_b_FeedWanted(void) { return 0; }
+void SPL_SetAttenuation(int v) { wsnd_log("devatt(%d)\n", v); }
+int SPL_i_Attenuation(void) { return 0; }
+void SPL_SetPan(int v) { wsnd_log("devpan(%d)\n", v); }
+int SPL_i_Pan(void) { return 0; }
+
+tSplVoice* SPL_p_VoiceCreate(int channels, int freq, int bytes)
+{
+    void* v;
+    int id;
+
+    ++create_calls;
+    if (wsnd_create_fail_mod && (create_calls % wsnd_create_fail_mod) == 0)
+    {
+        wsnd_log("voice(FAIL,ch=%u,rate=%u,bytes=%u)\n",
+                 (unsigned)channels, (unsigned)freq, (unsigned)bytes);
+        return 0;
+    }
+    v = mock_new(1, &buffer_vtbl);
+    id = wsnd_voice_id(v);
+    if (id < 0 || id >= MOCK_MAX)
+        return (tSplVoice*)v;
+    voice_state[id].bytes = bytes;
+    voice_state[id].channels = channels;
+    voice_state[id].freq = freq;
+    wsnd_ev_voice(id, (unsigned)channels, (unsigned)freq, (unsigned)bytes);
+    return (tSplVoice*)v;
+}
+
+tSplVoice* SPL_p_VoiceDuplicate(const tSplVoice* src)
+{
+    void* v = mock_new(1, &buffer_vtbl);
+    wsnd_log("dup(o%d)=o%d\n", wsnd_voice_id(src), wsnd_voice_id(v));
+    return (tSplVoice*)v;
+}
+
+void SPL_VoiceDestroy(tSplVoice* v) { if (v) wsnd_ev_drop(wsnd_voice_id(v)); }
+
+/* An id from before the log was restarted prints negative, so every
+   read of the side table is bounded. */
+static int voice_slot(const tSplVoice* v)
+{
+    int id = v ? wsnd_voice_id(v) : -1;
+    return (id >= 0 && id < MOCK_MAX) ? id : -1;
+}
+
+int SPL_i_VoiceBytes(const tSplVoice* v)
+{
+    int i = voice_slot(v);
+    return i < 0 ? 0 : voice_state[i].bytes;
+}
+
+int SPL_i_VoiceChannels(const tSplVoice* v)
+{
+    int i = voice_slot(v);
+    return i < 0 ? 0 : voice_state[i].channels;
+}
+int SPL_i_ChunkBytes(const tSplVoice* v) { return 480 * 2 * SPL_i_VoiceChannels(v); }
+
+int SPL_b_VoiceWrite(tSplVoice* v, int offset, const void* data, int bytes)
+{
+    unsigned n;
+
+    ++lock_calls;
+    if (wsnd_lock_fail_mod && (lock_calls % wsnd_lock_fail_mod) == 0)
+    {
+        wsnd_log("wr(o%d,%u,%u,FAIL)\n", wsnd_voice_id(v), (unsigned)offset, (unsigned)bytes);
+        return 0;
+    }
+    n = (unsigned)bytes > 65536u ? 65536u : (unsigned)bytes;
+    wsnd_ev_write(wsnd_voice_id(v), (unsigned)offset, n,
+                  data ? fingerprint((const unsigned char*)data,
+                                     (int)(n > 4096 ? 4096 : n)) : 0);
+    return 1;
+}
+
+int SPL_b_VoiceSilence(tSplVoice* v, int offset, int bytes)
+{
+    static unsigned char zeros[4096];
+    return SPL_b_VoiceWrite(v, offset, zeros, bytes > 4096 ? 4096 : bytes);
+}
+
+void SPL_VoicePlay(tSplVoice* v, int loop)
+{
+    wsnd_ev_play(wsnd_voice_id(v), loop ? 1 : 0);
+    wsnd_status |= 1;
+}
+
+void SPL_VoiceStop(tSplVoice* v)
+{
+    wsnd_ev_stop(wsnd_voice_id(v));
+    wsnd_status &= ~1;
+}
+
+void SPL_VoicePause(tSplVoice* v)
+{
+    wsnd_ev_stop(wsnd_voice_id(v));
+    wsnd_status &= ~1;
+}
+
+int SPL_i_VoiceStatus(const tSplVoice* v)
+{
+    int st = 0;
+    (void)v;
+    if (wsnd_status & 1)
+        st |= SPL_PLAYING;
+    if (wsnd_status & 4)
+        st |= SPL_LOOPING;
+    return st;
+}
+
+void SPL_VoiceSetCursor(tSplVoice* v, int off) { wsnd_ev_cursor(wsnd_voice_id(v), (unsigned)off); }
+int  SPL_i_VoiceCursor(const tSplVoice* v) { (void)v; return wsnd_play_pos; }
+/* 64 ahead of the play cursor, which is what the buffer mock answers
+   for the write cursor: the device holds a little of what it has not
+   played yet, and the engine's arithmetic on the gap is the thing
+   being compared. */
+int  SPL_i_VoiceWriteCursor(const tSplVoice* v) { (void)v; return wsnd_play_pos + 64; }
+
+void SPL_VoiceSetAttenuation(tSplVoice* v, int db) { wsnd_ev_att(wsnd_voice_id(v), db); }
+int  SPL_i_VoiceAttenuation(const tSplVoice* v) { (void)v; return -1234; }
+void SPL_VoiceSetPan(tSplVoice* v, int db) { wsnd_ev_pan(wsnd_voice_id(v), db); }
+int  SPL_i_VoicePan(const tSplVoice* v) { (void)v; return 0; }
+void SPL_VoiceSetFrequency(tSplVoice* v, int hz) { wsnd_ev_freq(wsnd_voice_id(v), (unsigned)hz); }
+int  SPL_i_VoiceFrequency(const tSplVoice* v) { (void)v; return 22050; }

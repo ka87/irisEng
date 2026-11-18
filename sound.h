@@ -28,6 +28,12 @@ typedef struct sSbeMiscData
     int RemoveAfterPlayFinished;
     int Stopped_SetIN49e270;
     int dsndEventsArrayIdx;
+    /* Which block of the buffer the play cursor was last seen in.
+       The device used to say when the cursor entered each block, by
+       firing an event set at the block's own offset; nothing says so
+       now, so the thread looks and this is what it compares against.
+       One refill per block, which is what the four events gave. */
+    int lastPlayedBlock;
 } tSbeMiscData;
 
 
