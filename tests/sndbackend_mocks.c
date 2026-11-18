@@ -896,7 +896,19 @@ BOOL ReadFile(HANDLE h, LPVOID buf, DWORD count, LPDWORD read, void* ov)
 
 DWORD SetFilePointer(HANDLE h, LONG move, LONG* high, DWORD method)
 {
-    wsnd_log("fseek(%ld,%ld)\n", (long)(size_t)h, (long)move);
+    /* The absolute offset Windows would seek to, which is what the
+       rewrite passes as one 64-bit number. With a high word given --
+       and the engine always gives one -- the low half is **unsigned**,
+       so this is where the two spellings have to be made to meet: an
+       offset past two gigabytes is positive here and negative to
+       anything that widens the int by its sign. Logged as the offset
+       rather than as the argument, or the comparison would be of the
+       spelling. */
+    long long off = (long long)(unsigned int)move;
+
+    if (high)
+        off |= ((long long)*high) << 32;
+    wsnd_log("fseek(%ld,%lld)\n", (long)(size_t)h, off);
     return (DWORD)move;
 }
 
@@ -914,7 +926,7 @@ int SPL_i_FileRead(struct sSplFile* file, void* dest, int bytes)
 
 int SPL_b_FileSeek(struct sSplFile* file, long long offset)
 {
-    wsnd_log("fseek(%ld,%ld)\n", (long)(size_t)file, (long)offset);
+    wsnd_log("fseek(%ld,%lld)\n", (long)(size_t)file, offset);
     return 1;
 }
 
