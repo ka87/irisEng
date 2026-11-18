@@ -117,16 +117,28 @@ static void theWindow(void)
 
     printf("-- the window the settings asked for\n");
 
-    ok(PLT_b_Open("test", 320, 240, 1), "it opens");
+    ok(PLT_b_Open("test", 320, 240), "it opens");
     ok(PLT_p_NativeWindow() != NULL || 1,
        "the native handle is asked for without crashing");
     ok(SDL_GetWindowSize(plt_window, &w, &h), "its size is answered");
     okEq(w, 320, "the width asked for");
     okEq(h, 240, "and the height");
 
+    /* Not fullscreen, and this is the point rather than a detail.
+       Going fullscreen is the renderer's own business: the Direct3D
+       device asks for an exclusive mode or does not, and that decision
+       reads the engine's windowed flag and whether a debugger is
+       attached. A window that is itself fullscreen puts a second mode
+       change under that one, and they disagree in the very case the
+       flag exists for -- under a debugger the device presents windowed
+       and would be doing it inside a fullscreen window, which is how
+       running under a debugger stopped working. */
+    ok((SDL_GetWindowFlags(plt_window) & SDL_WINDOW_FULLSCREEN) == 0,
+       "the window is not fullscreen: the renderer owns the display mode");
+
     /* Opening twice is the startup being run twice, which must not
        make a second window. */
-    ok(PLT_b_Open("test", 640, 480, 1), "opening again answers yes");
+    ok(PLT_b_Open("test", 640, 480), "opening again answers yes");
     ok(SDL_GetWindowSize(plt_window, &w, &h) && w == 320,
        "and leaves the first window alone");
 }

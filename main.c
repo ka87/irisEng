@@ -32,7 +32,14 @@ static int MAI_l_b_DisplayOpen(void)
     int   windowed = 0;
 
     PLT_WindowSettings(&width, &height, &windowed);
-    if (!PLT_b_Open("IRISEngine", width, height, windowed))
+    /* The settings' windowed value is the engine's flag and not a
+       property of the window: it is what the renderer reads when it
+       decides whether to take an exclusive display mode. The window
+       creation used to set it here itself, and it only ever turns it
+       on, which is what the command line does too. */
+    if (windowed)
+        ENG_WindowedMode = 1;
+    if (!PLT_b_Open("IRISEngine", width, height))
         return 0;
 
     window = PLT_p_NativeWindow();
