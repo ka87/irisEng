@@ -3,7 +3,8 @@
 SDL3 is vendored as source under `thirdparty/SDL3`, pinned at **3.2.24**
 (the `release-3.2.24` tag). It is being taken on so that the sound and
 the input can stop being DirectSound and DirectInput: those two are the
-parts of the engine that cannot leave Windows.
+parts of the engine that cannot leave Windows. The input is done; the
+sound is next.
 
 ## What is here, and what is not
 
@@ -79,7 +80,9 @@ the Win32 parts of the sound still want one.
 One thing the handlers did has moved rather than survived: the
 engine's statistics used to go into the window's caption on a click of
 the title bar, which is a non-client click and not something a window
-SDL owns passes on. They are on **F11** now.
+SDL owns passes on. They are on **Home** now, the function keys all
+being taken -- F1 to F10 by the debug keys and F11 by the overlay's
+command field, which moved there from F12.
 
 ### The keyboard and the mouse
 
@@ -99,13 +102,30 @@ built once into a forward and a reverse array. Three slots past the
 256 keys are the engine's own mouse bits, filled in the packing the
 device used.
 
-`win/wininputoutput.c` keeps its DirectInput interface for the
-**joystick only**; the mouse and keyboard devices, the input-lost
-path and the wheel-granularity property have gone with them.
+### There was no gamepad
+
+The game came off a console, so a **pad is the only input model it
+has**: everything above the backend reads `sInoPad` and the two
+sticks, and the PC build fills them from the keyboard and the mouse
+according to the selected control mode. The names say so once you
+look -- `pcINO_joystickPosition` is a stick driven from the arrow
+keys, and `pcINO_JoystickPositionAlignSetFromKeyboard` is what drives
+it.
+
+So no joystick device was ever opened. What was left of DirectInput
+after the keyboard and the mouse moved was an `IDirectInput8A` that
+got created, released, and used for nothing -- its only purpose had
+been making those two devices -- plus a property wrapper nothing
+called. All of it is deleted and `dinput8.lib` is out of the linker
+inputs. **DirectInput is gone.**
+
+A real pad would be a feature rather than a port: the interface is
+already there and already the one the whole game reads, so
+`SDL_Gamepad` would feed `padData`, the two sticks and the two empty
+rumble functions. That is behaviour the retail PC build never had.
 
 ## What is left
 
-- the gamepad, on `SDL_Gamepad`, and the last of DirectInput with it;
 - the sound, on `SDL_AudioStream`, replacing `win/winsound.c` and
   `win/winvideosound.c`;
-- `dsound.lib` and `dinput8.lib` out of the linker inputs.
+- `dsound.lib` out of the linker inputs.

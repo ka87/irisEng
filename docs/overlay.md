@@ -2,7 +2,7 @@
 
 Two of the engine's debug surfaces were Win32 windows living outside the
 game's own window: the **Rasters** window on F1, which the profiler drew
-into a device context with GDI calls, and the **command prompt** on F12,
+into a device context with GDI calls, and the **command prompt** on F11,
 which was a modal dialog box. Both worked, and neither was visible in
 full screen, on a second monitor without hunting for it, or in a capture
 of the game.
@@ -19,12 +19,13 @@ font the rasters code already creates.
 | `win/overlay.c` | the layer, the widget primitives and the two widgets |
 | `win/overlay.h` | `OVL_Draw`, and the command field's four entry points |
 | `win/wingdi.c` | `D3D_OverlayBegin` / `DrawQuads` / `End`, the pass itself |
-| `win/wininputoutput.c` | F12, and `pcINO_RunTweakCommand` |
+| `win/wininputoutput.c` | F11, and `pcINO_RunTweakCommand` |
 | `tests/test_overlay.c` | the unit test, 160 checks |
 
-F11 puts the engine's statistics in the window's caption. They used
+Home puts the engine's statistics in the window's caption. They used
 to arrive by clicking the title bar, which a window SDL owns does not
-pass on; F11 is the one function key the game has nothing else on.
+pass on, and the function keys are all taken: F1 to F10 by the debug
+keys and F11 by the field below.
 
 ### Where the pass sits
 
@@ -146,10 +147,10 @@ further from the text the more was typed. One measuring call per
 frame is the cost, and it is the only thing that is right for an
 arbitrary face.
 
-### What F12 does now
+### What F11 does now
 
 ```
-F12 pressed (edge, and the tweak keys are not disabled)
+F11 pressed (edge, and the tweak keys are not disabled)
   -> pcINO_mouse_and_keyb_unacquire()
   -> OVL_CommandShow()
 ```
@@ -176,11 +177,11 @@ nothing, so the pump runs exactly as it did.
 
 Enter and Escape both end with `pcINO_mouse_and_keyb_acquire()`,
 which is what gives the game its input back. The field also refuses to re-raise itself while it is
-already up, so holding F12 does not clear the line being typed.
+already up, so holding F11 does not clear the line being typed.
 
 ### Running the line
 
-The old F12 dialog parsed its text and applied the tweak inside
+The old dialog parsed its text and applied the tweak inside
 `pcINO_HandleTweakFlags`, in among the dialog bookkeeping. That parse
 is now `pcINO_RunTweakCommand(const char* line)` — a name, a value, a
 `bsearch` over the tweak table and one of the three stores the table's
@@ -262,26 +263,32 @@ move *inside* the pass, so the check cannot pass by the pass doing
 nothing. Emptying `D3D_OverlayEnd` is caught, with the differing bytes
 reported.
 
-### What the F12 change cost the input harness
+### What the change cost the input harness
 
 `win/wininputoutput.c`'s differential test compares the frozen
-pre-rewrite copy against the current one call for call. The F12 path
-now **deliberately** differs: the frozen copy puts up the Win32 dialog,
+pre-rewrite copy against the current one call for call. The field's
+path now **deliberately** differs: the frozen copy puts up the Win32 dialog,
 runs its whole dialog procedure, applies a tweak and fills the dialog
 buffer; the rewrite gives the input back and raises the field. The two
 cannot be lined up field by field.
 
-So an F12 edge is skipped in `runCase` — 1,315 of 77,938 cases — and
-checked directly instead by `f12FieldCase`, over four situations: the
-edge, the key already held, the key not pressed, and the tweak keys
-disabled. It requires the field to go up only on the first, with the
-input given back exactly once, and it requires the **frozen copy never to raise the
-field**, which is what shows the mock is not leaking between the two
-sides. Three mutations were injected and all three were caught: the
-release dropped, the edge check dropped, and the `tweakFlagsDisabled`
-guard dropped.
+The field moved from F12 to F11 after this was written, and the
+frozen copy still has it on F12, so **an edge on either key** is
+skipped: one side acts and the other does not, whichever key it is.
 
-Every case that is not an F12 edge is still compared in full, and the
+So such an edge is skipped in `runCase` -- 2,817 of 77,542 cases -- and
+checked directly instead by `f11FieldCase`, over six situations: the
+edge, the key already held, the key not pressed, the tweak keys
+disabled, and the two for **F12**, which the field used to be on and
+which must do nothing now. It requires the field to go up only on the
+first, with the input given back exactly once, and it requires the
+**frozen copy never to raise the field**, which is what shows the mock
+is not leaking between the two sides. Five mutations are caught: the
+release dropped, the edge check dropped, the `tweakFlagsDisabled`
+guard dropped, the field put back on F12, and the edge check reading
+the wrong byte of the backup.
+
+Every case that is not such an edge is still compared in full, and the
 suite is at 0 differences.
 
 ## Open ends

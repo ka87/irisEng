@@ -35,21 +35,6 @@ int pcINO_savFormatFailure = 0;
 int pcINO_savFreeSpaceFailure = 0;
 int pcINO_savCardTestFailure = 0;
 
-/*
-IDirectInput8A* pDI;
-HRESULT hr;
-
-
-int test()
-{
-    hr = DirectInput8Create(GetModuleHandleA(0), DIRECTINPUT_VERSION, &IID_IDirectInput8A, (void**)&pDI, NULL);
-    if (FAILED(hr))
-    {        
-        return 0;
-    }
-}
-*/
-
 uint16_t pcINO_IntKeybDataLink[36] = { 258,  0, 259, 0, 16, 211, 18, 207,
                                         42, 82, 46, 76, 57, 157, 29, 221,
                                          3, 201, 4, 209, 17, 200, 31, 208,
@@ -729,23 +714,9 @@ void pcINO_InputHandlerCase101(tInoPad* pad, float* mouse, uint8_t* keyboard)
         pcINO_joystickPosition[1].y = (float)(pcINO_joystickPosition[1].y - 1.0);
 }
 
-int DINPUT_GetProperty(IDirectInputDevice8A* device, int obj, int how, const GUID* propertyGuid, int* dataRet)
-{
-    int result;
-    DIPROPDWORD diprop;
-
-    diprop.diph.dwHow = how;
-    diprop.diph.dwObj = obj;
-    diprop.diph.dwSize = sizeof(DIPROPDWORD);
-    diprop.diph.dwHeaderSize = sizeof(DIPROPHEADER);
-    diprop.dwData = 0;
-    
-    result = device->lpVtbl->GetProperty(device, propertyGuid, (LPDIPROPHEADER)&diprop);
-    *dataRet = diprop.dwData;
-
-    return result;
-}
-
+/* Nothing to do with DirectInput despite the name, which is the one
+   the game's own symbols carry: it resets the stick the keyboard
+   drives, and the state machine that goes with it. */
 void DINPUT_InitVariables(int kind)
 {
     switch (kind)
@@ -969,52 +940,52 @@ void pcINO_SetControlMode(int mode)
     pcINO_SetControlSubmode(0);
 }
 
+/* The input. The game came off a console, so a pad is the only input
+   it has: everything above this reads sInoPad and the two sticks, and
+   the PC build's job is to fill them from the keyboard and the mouse.
+   Which keys and which mouse axes do that is the selected control
+   mode, and the last two calls here are what pick it.
+
+   So there is no device to open. What used to be opened was a
+   DirectInput object, and the only thing it was ever used for was
+   making the mouse and keyboard devices; with those gone it opened
+   nothing and was released again at close. It is not created any
+   more. */
 void pcINO_Joystick_Init(HWND hwnd)
 {
     uint16_t swappedSecondary;
 
     pcINO_Hwnd = hwnd;
 
-    if (DirectInput8Create(GetModuleHandleA(0), DIRECTINPUT_VERSION, &IID_IDirectInput8A, (LPVOID*)&dinput_if, 0) >= 0)
+    /* The keyboard and the mouse come from the window now rather than
+       from devices of their own, and the wheel arrives in whole
+       notches, so the granularity is one. */
+    PLT_InputCapture(1);
+    mouseGranularity = 1;
+    INO_l_Joystick_Enable = 1;
+    INO_gi_CurrentPadId = 0;
+    if (SwapMouseButton(0))                   // ha elozoleg swappelve volt, akkor  nem 0-val tér vissza
     {
-        /* The keyboard and the mouse are the platform's now, taken
-           from the window rather than from devices of their own. The
-           wheel arrives in whole notches already, so the granularity
-           the old device was asked for is one. */
-        PLT_InputCapture(1);
-        mouseGranularity = 1;
-        INO_l_Joystick_Enable = 1;
-        INO_gi_CurrentPadId = 0;
-        if (SwapMouseButton(0))                   // ha elozoleg swappelve volt, akkor  nem 0-val tér vissza
-        {
-            SwapMouseButton(1);
-            pcINO_IntKeybDataLink[0] = 259;
-            swappedSecondary = 258;
-        }
-        else
-        {
-            pcINO_IntKeybDataLink[0] = 258;
-            swappedSecondary = 259;
-        }
-        pcINO_IntKeybDataLink[2] = swappedSecondary;
-        pcINO_IntKeybDataLink[32] = swappedSecondary;
-
-        pcINO_SetControlMode(4);
-        pcINO_SetControlSubmode(8);
-        /* preserved: pcINO_getKeyNames dereferences pcINO_keybDevice
-           unconditionally, and this runs whether or not it was created */
-        pcINO_getKeyNamesForEverything();
+        SwapMouseButton(1);
+        pcINO_IntKeybDataLink[0] = 259;
+        swappedSecondary = 258;
     }
+    else
+    {
+        pcINO_IntKeybDataLink[0] = 258;
+        swappedSecondary = 259;
+    }
+    pcINO_IntKeybDataLink[2] = swappedSecondary;
+    pcINO_IntKeybDataLink[32] = swappedSecondary;
+
+    pcINO_SetControlMode(4);
+    pcINO_SetControlSubmode(8);
+    pcINO_getKeyNamesForEverything();
 }
 
 void pcINO_Joystick_Close()
 {
     PLT_InputCapture(0);
-    if (dinput_if)
-    {
-        dinput_if->lpVtbl->Release(dinput_if);
-        dinput_if = 0;
-    }
     INO_l_Joystick_Enable = 0;
 }
 
@@ -1190,9 +1161,12 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
        it reach the window. The keyboard is not held that way now: the
        window gets the combination itself and the close arrives as an
        event, so catching it here would ask to close twice. */
-    if (keyboardData[88] && !pcINO_keyboardDataBackup[88] && !OVL_b_CommandActive())
+    /* 87 is F11, 88 is F12. The field was on F12 and is on F11; the
+       statistics the window's caption used to show on a title-bar
+       click are on Home. */
+    if (keyboardData[87] && !pcINO_keyboardDataBackup[87] && !OVL_b_CommandActive())
     {
-        // F12 raises the overlay's command field. The input is given
+        // F11 raises the overlay's command field. The input is given
         // back while the field is up, so the pointer is free and the
         // characters arrive as typed text rather than as game keys;
         // Enter in the field runs the line and takes it again.

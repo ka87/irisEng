@@ -262,7 +262,9 @@ static void devices(void)
     okEq(plt_dikOf[SDL_SCANCODE_ESCAPE], 0x01, "escape is 1");
     okEq(plt_dikOf[SDL_SCANCODE_F1], 59, "F1 is 59, where the engine reads it");
     okEq(plt_dikOf[SDL_SCANCODE_F4], 62, "F4 is 62, which the alt-F4 check uses");
-    okEq(plt_dikOf[SDL_SCANCODE_F12], 88, "F12 is 88, which raises the field");
+    okEq(plt_dikOf[SDL_SCANCODE_F11], 87, "F11 is 87, which raises the field");
+    okEq(plt_dikOf[SDL_SCANCODE_F12], 88, "and F12 is 88, which nothing is on");
+    okEq(plt_dikOf[SDL_SCANCODE_HOME], 199, "home is 199");
     okEq(plt_dikOf[SDL_SCANCODE_LALT], 56, "left alt is 56");
     okEq(plt_dikOf[SDL_SCANCODE_RALT], 184, "right alt is 184");
     okEq(plt_dikOf[SDL_SCANCODE_RCTRL], 157, "right control is 157");
@@ -340,7 +342,8 @@ static void devices(void)
 
 /* The statistics in the caption, which used to be a click on the title
    bar -- a non-client click, which a window SDL owns does not pass
-   on. */
+   on. They are on Home: the function keys are taken, F1 to F10 by the
+   debug keys and F11 by the command field. */
 static void stats(void)
 {
     SDL_Event ev;
@@ -352,10 +355,10 @@ static void stats(void)
 
     memset(&ev, 0, sizeof(ev));
     ev.type = SDL_EVENT_KEY_DOWN;
-    ev.key.key = SDLK_F11;
+    ev.key.key = SDLK_HOME;
     SDL_PushEvent(&ev);
     PLT_Pump();
-    okEq(plt_statsAsked, 1, "F11 asks the engine for them");
+    okEq(plt_statsAsked, 1, "home asks the engine for them");
     ok(strcmp(SDL_GetWindowTitle(plt_window), "frames 60, draws 1234") == 0,
        "and they are the caption");
 
@@ -364,7 +367,7 @@ static void stats(void)
     plt_statsAsked = 0;
     memset(&ev, 0, sizeof(ev));
     ev.type = SDL_EVENT_KEY_DOWN;
-    ev.key.key = SDLK_F11;
+    ev.key.key = SDLK_HOME;
     ev.key.repeat = true;
     SDL_PushEvent(&ev);
     PLT_Pump();
@@ -374,10 +377,12 @@ static void stats(void)
     plt_statsAsked = 0;
     memset(&ev, 0, sizeof(ev));
     ev.type = SDL_EVENT_KEY_DOWN;
-    ev.key.key = SDLK_F10;
+    /* F11 above all: it used to be this key, and it is the command
+       field's now. */
+    ev.key.key = SDLK_F11;
     SDL_PushEvent(&ev);
     PLT_Pump();
-    okEq(plt_statsAsked, 0, "and no other key asks for them");
+    okEq(plt_statsAsked, 0, "and no other key asks for them, F11 least of all");
 }
 
 static void timing(void)

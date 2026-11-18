@@ -34,9 +34,14 @@
  * pair is a property of the frozen copy, and these cases are not
  * about that.
  *
+ * Opening DirectInput and releasing it are silent for a different
+ * reason: they are not an event the rewrite has at all. The object
+ * existed only to make the two devices, so nothing opens it now and
+ * there is nothing on the other side to line a line up with.
+ *
  * The cases that were about the devices themselves -- input lost and
- * re-acquired, a device present or absent -- are retired in
- * test_winio.c, where it says so. */
+ * re-acquired, a device present or absent, opening DirectInput
+ * failing -- are retired in test_winio.c, where it says so. */
 WinioScript winioScript;
 
 /* The keyboard and the mouse arrive through the platform layer now
@@ -206,7 +211,6 @@ static MockDI diObj;
 
 static HRESULT diRelease(IDirectInput8A* p)
 {
-    WINIO_Log("DI_Release");
     return 0;
 }
 
@@ -240,7 +244,6 @@ const DIDATAFORMAT c_dfDIJoystick2 = { 3 };
 
 HRESULT DirectInput8Create(HINSTANCE inst, DWORD ver, const GUID* iid, void** out, void* unk)
 {
-    WINIO_Log("DirectInput8Create(ver=%u)", (unsigned)ver);
     *out = &diObj;
     return winioScript.diCreateResult;
 }
@@ -249,9 +252,10 @@ HRESULT DirectInput8Create(HINSTANCE inst, DWORD ver, const GUID* iid, void** ou
 /* Win32                                                              */
 /* ------------------------------------------------------------------ */
 
+/* Silent, like the call it was an argument to: the frozen copy asks
+   for the module handle only so that it can open DirectInput. */
 HMODULE GetModuleHandleA(LPCSTR name)
 {
-    WINIO_Log("GetModuleHandleA");
     return (HMODULE)0x1234;
 }
 
