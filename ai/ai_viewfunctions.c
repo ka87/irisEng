@@ -9,6 +9,7 @@
 #include "ai_viewfunctions.h"
 #include "../dbg.h"
 #include "../datapath.h"
+#include "../flatlayer.h"
 
 int VIEWSNAP_Slot = -1;
 
@@ -429,7 +430,7 @@ void AI_EvalFunc_VIEW3dWorldTo2d_C(int viewIdx, Vec3 *vec3d, Vec3 *vec2d)
       
       vec2d->x = (vec2d->x - cam->centerX) / cam->width + 0.5f;
       vec2d->y = (cam->centerY - vec2d->y) / cam->height + 0.5f;
-      vec2d->x = D3D_FlatLayerToLayoutX(vec2d->x, (int)cam->width, (int)cam->height);
+      vec2d->x = FLY_f_ToLayoutX(vec2d->x, (int)cam->width, (int)cam->height);
   }
 }
 
@@ -464,7 +465,7 @@ void AI_EvalFunc_VIEW2dTo3d_C(int viewIdx, Vec3* vec2d, Vec3* vec3d)
     else
         cam = &WOR_gpst_CurrentWorld->viewPtr[viewIdx].displayData->ct.cam;
 
-    cam2d.x = D3D_FlatLayerFromLayoutX(cam2d.x, (int)cam->width, (int)cam->height);
+    cam2d.x = FLY_f_FromLayoutX(cam2d.x, (int)cam->width, (int)cam->height);
     cam2d.x = cam->centerX + (cam2d.x - 0.5f) * cam->width;
     cam2d.y = cam->centerY - (cam2d.y - 0.5f) * cam->height;
 

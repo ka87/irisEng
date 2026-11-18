@@ -2,6 +2,7 @@
 #include "../perfbars.h"
 #include "../pngsave.h"
 #include "../datapath.h"
+#include "../flatlayer.h"
 #include "../time.h"
 #include "../memory.h"
 #include "../textures.h"
@@ -285,7 +286,6 @@ void D3D_SetViewPort(int x, int y, int w, int h)
     }
 }
 
-int   D3D_gi_FlatLayerBox = 1;
 int   D3D_gi_AspectTrace = 0;
 float D3D_gf_CutsceneBand = 0.10416666f;
 
@@ -304,40 +304,6 @@ float D3D_RealYoverX(void)
     if (w <= 0.0f || h <= 0.0f)
         return GDI_gf_RefYoverX;
     return h / w;
-}
-
-int D3D_FlatLayerWidth(int w, int h)
-{
-    int boxW;
-
-    if (!D3D_gi_FlatLayerBox || !GDI_gi_Widescreen
-        || GDI_gf_RefYoverX <= 0.0f || h <= 0)
-        return w;
-    boxW = (int)((float)h / GDI_gf_RefYoverX);
-    return boxW < w ? boxW : w;
-}
-
-float D3D_FlatLayerToLayoutX(float windowFraction, int w, int h)
-{
-    int flat;
-
-    flat = D3D_FlatLayerWidth(w, h);
-    if (flat <= 0)
-        return windowFraction;
-    return (windowFraction * (float)w - (float)D3D_FlatLayerOffsetX(w, h)) / (float)flat;
-}
-
-float D3D_FlatLayerFromLayoutX(float layoutFraction, int w, int h)
-{
-    if (w <= 0)
-        return layoutFraction;
-    return ((float)D3D_FlatLayerOffsetX(w, h)
-            + layoutFraction * (float)D3D_FlatLayerWidth(w, h)) / (float)w;
-}
-
-int D3D_FlatLayerOffsetX(int w, int h)
-{
-    return (w - D3D_FlatLayerWidth(w, h)) / 2;
 }
 
 void D3D_GetBandFractions(float* top, float* bottom)
@@ -372,7 +338,7 @@ void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int vie
             gpst_DX_stDD->ct.cam.width, gpst_DX_stDD->ct.cam.height,
             gpst_DX_stDD->ct.cam.centerX, gpst_DX_stDD->ct.cam.centerY,
             gpst_DX_stDD->ct.cam.factorX, gpst_DX_stDD->ct.cam.factorY,
-            D3D_FlatLayerWidth((int)gpst_DX_stDD->ct.cam.width,
+            FLY_i_Width((int)gpst_DX_stDD->ct.cam.width,
                                (int)gpst_DX_stDD->ct.cam.height),
             gpst_DX_stDD->ct.cam.width / 640.0f,
             gpst_DX_stDD->ct.cam.height / 480.0f);

@@ -197,6 +197,9 @@
     <ClCompile Include="debugkeys.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="flatlayer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="projection.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -980,6 +983,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="debugkeys.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="flatlayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="projection.h">
