@@ -10,7 +10,7 @@
 #include "strings.h"  
 #include "time.h"
 #include "sound.h"
-#include "platform/winsound.h"
+#include "platform/sndbackend.h"
 
 float SND_gf_AutoVolumeOff = 1.0f;
 

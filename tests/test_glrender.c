@@ -12,7 +12,7 @@
  *
  * So this one asks a real driver. tests/eglheadless.c brings up an
  * OpenGL 4.5 core context with no window, the renderer's own pointers
- * are aimed at it, and the drawing goes through platform/wingl.c's own
+ * are aimed at it, and the drawing goes through platform/glrender.c's own
  * entry points -- the same ones the engine calls. The result is read
  * back a pixel at a time.
  *
@@ -21,7 +21,7 @@
  * GLSL and a rasteriser that will put the triangle where the matrices
  * say. It is also the slowest and the one most likely to be
  * unavailable, which is why it is a test of its own rather than more
- * cases in tests/test_wingloverlay.c.
+ * cases in tests/test_gloverlay.c.
  *
  * Unavailable is allowed: a machine with no libEGL, no software
  * renderer or no 4.5 core profile is an ordinary machine, and this
@@ -292,7 +292,7 @@ void  MEM_Free(void* p) { free(p); }
 /* The module under test, included because its state is static to it
    and because this has to drive the same entry points the engine
    does. */
-#include "../platform/wingl.c"
+#include "../platform/glrender.c"
 
 /* ------------------------------------------- the test's own GL calls
 
@@ -596,7 +596,7 @@ static void glr_FourCorners(void)
     memset(glr_texElems, 0, sizeof(glr_texElems));
     /* the engine stores these the other way round; both are 2 here,
        which the one-texel fixture below cannot say anything about
-       either -- that is what tests/test_wingloverlay.c checks */
+       either -- that is what tests/test_gloverlay.c checks */
     glr_texElems[1].normalData.width = 2;
     glr_texElems[1].normalData.height = 2;
     TEX_gst_GlobalList.texElems = glr_texElems;
@@ -3650,7 +3650,7 @@ static void caseCulling(void)
      *
        So what is pinned below is the observed mapping and nothing
        more. The reasoning that gives the other answer is written out
-       in platform/wingl.c so that nobody re-derives it; if these four ever
+       in platform/glrender.c so that nobody re-derives it; if these four ever
        need swapping, it takes a scene and a card to say so, not an
        argument. */
     ccwCullCcw = glr_i_DrawWound(1, 0x10 | 0x800);
@@ -5853,7 +5853,7 @@ static void caseAeZoomSmooth2(void)
  *
  * Drawn on a real driver and read back, which is the only way to see
  * what the surface actually comes out as. The mock harness checks the
- * calls and tests/run_wingdi.sh checks the shared mesh against the
+ * calls and tests/run_d3drender.sh checks the shared mesh against the
  * other renderer; what is left for here is the picture.
  *
  * The reflection target is cleared to one flat colour, so the
@@ -6151,7 +6151,7 @@ static void glr_WaterPatternIntoReflection(void)
  * lands, so a case can state which half of the pattern a pixel must
  * read rather than discovering it.
  *
- * The remap is watermesh.c's and run_wingdi.sh has already compared it
+ * The remap is watermesh.c's and run_d3drender.sh has already compared it
  * against the other renderer, so this is not the renderer's own
  * arithmetic restated -- it is the question of whether this renderer
  * samples where that arithmetic says. */

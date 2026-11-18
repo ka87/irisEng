@@ -7,7 +7,7 @@
 #include "time.h"
 #include "dbg.h"
 #include "platform/overlay.h"
-#include "platform/wininputoutput.h"
+#include "platform/inputbackend.h"
 
 #include <SDL3/SDL.h>
 #include <string.h>

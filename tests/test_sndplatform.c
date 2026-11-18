@@ -393,7 +393,7 @@ static void feedWanted(void)
     SPL_VoiceDestroy(v);
 }
 
-/* The streaming ring, driven the way platform/winsound.c drives it.
+/* The streaming ring, driven the way platform/sndbackend.c drives it.
  *
  * A streamed sound is a ring of four blocks played looping, which the
  * sound thread refills a block behind the cursor. Everything the

@@ -122,7 +122,7 @@ void(* SetTextureTransformFlags)(int stage, int flags);
 
 The engine asks for what it wants and stops knowing that a cache
 exists at all. Keeping one is the renderer's own business: the D3D
-implementations are the cached setters the rest of `wingdi.c` already
+implementations are the cached setters the rest of `d3drender.c` already
 used, so a value already in force still costs nothing and the device
 sees exactly the calls it saw before.
 
@@ -161,7 +161,7 @@ knowing which of the two files is measured and which is read.
 The engine's half of the video knows about files, decoding and the
 clock. It did not stop there: it also held three Direct3D objects,
 locked one of them, computed a letterbox rectangle and called
-`StretchRect`. All of that is `platform/wingdivideo.c` now, behind five
+`StretchRect`. All of that is `platform/d3dvideo.c` now, behind five
 entries:
 
 ```c
@@ -205,7 +205,7 @@ the lock reports.
 
 ### The tests
 
-`tests/run_wingdivideo.sh`, 61 checks. The device is mocked and
+`tests/run_d3dvideo.sh`, 61 checks. The device is mocked and
 records what it was asked for **in order**, so the checks are on the
 sequence as much as the result — which is what the failure paths need,
 since what they have to get right is giving back what they had
@@ -234,7 +234,7 @@ built from the SDK's own names now.
 `gfx/gfxsun.c` was not engine code with a few leaks. About twenty of
 its functions were already named `D3D_*`, and `gfxsun.h` put
 `IDirect3DSurface9` inside the engine's own sun struct. The Direct3D
-half is `platform/wingdisun.c` now, behind seven entries, and the engine's
+half is `platform/d3dsun.c` now, behind seven entries, and the engine's
 struct holds an opaque handle:
 
 ```c
@@ -297,7 +297,7 @@ stop compiling. See below.
 
 Two new harnesses, both direct checks:
 
-- **`tests/run_wingdisun.sh`, 61 checks.** The device can be told,
+- **`tests/run_d3dsun.sh`, 61 checks.** The device can be told,
   per surface, whether the hardware has finished with it, so the ring
   is driven through orders the real thing would produce. The cases
   check that a sample is never waited for, that the newest finished
@@ -349,7 +349,7 @@ guess about them was wrong.
 
 `tweak_ae_d2x`, `tweak_ae_noflare` and `tweak_zonalpha` look like
 debug tweaks that ended up in the wrong struct. They are not.
-`platform/wingdi.c` computes all three from the device's own capabilities
+`platform/d3drender.c` computes all three from the device's own capabilities
 when it starts:
 
 ```c
@@ -416,14 +416,14 @@ it — each found by the comparison failing, not by reading the code:
    previous one left, while the frozen copy began from the zeroed
    struct — 481 differences that looked like a defect in the
    rewrite and were a gap in the harness.
-3. **Third parties that perturb it.** `wingdi_mocks.c` stands in for
+3. **Third parties that perturb it.** `d3drender_mocks.c` stands in for
    the UV compute functions and deliberately pokes the UV mode. It
    writes both spellings now; writing one left the two sides looking
    at different worlds.
 
 And where the state is **compared**, each side is read where it
 actually keeps it: `test_matdraw.c`'s snapshot takes a side
-parameter, and `test_wingdi.c`'s overwrites the two members of its
+parameter, and `test_d3drender.c`'s overwrites the two members of its
 copied struct for the rewrite's side. Reading one spelling for both
 would have compared the move instead of the code.
 
@@ -443,7 +443,7 @@ called. `tGdi_DisplayData` itself turned out to contain no Direct3D
 type at all beyond three references to that struct, so once those
 three were dealt with the include could go.
 
-- The state struct moved to `platform/wingdi.h`, where it belongs. It
+- The state struct moved to `platform/d3drender.h`, where it belongs. It
   keeps its Direct3D name, because it *is* Direct3D's.
 - `CreateDevice` and `DestroyDevice` deal in `void*`: the engine
   holds a renderer's private state opaquely and never looks inside.
@@ -477,7 +477,7 @@ nothing had ever used:
 {"ae_d2x", 2, (void*)DBG_l_TweakCanDiffuse2x},
 ```
 
-So `dbg.h` includes `gdi.h` rather than `platform/wingdi.h`, and nothing
+So `dbg.h` includes `gdi.h` rather than `platform/d3drender.h`, and nothing
 in `dbg` depends on Direct3D.
 
 ### How the frozen copies were kept
@@ -492,7 +492,7 @@ well as a symbol, and it carried two of the three sites.
 
 The third dereferenced it, and the member's type is opaque now, so a
 rename alone was not enough there. That one line of
-`tests/baseline_wingdi.c` is edited, with the reason beside it. The
+`tests/baseline_d3drender.c` is edited, with the reason beside it. The
 comparison is **not** weakened by it: both sides read the same object
 through the same renderer's type, which is a different situation from
 the edit the sun split needed, where the two sides genuinely stopped
@@ -519,7 +519,7 @@ their Direct3D names with it:
 | `d3dUVVB` | `uvBuffers` |
 | `d3dIndexBuf` | `indexBuffer` |
 
-The renderer's view of its own buffers lives in `platform/wingdi.h`, where
+The renderer's view of its own buffers lives in `platform/d3drender.h`, where
 it belongs:
 
 ```c
@@ -529,7 +529,7 @@ it belongs:
 #define D3D_GEO_IB(g)     ((IDirect3DIndexBuffer9*)(g)->indexBuffer)
 ```
 
-Thirteen sites in `platform/wingdi.c` dereference a buffer and go through
+Thirteen sites in `platform/d3drender.c` dereference a buffer and go through
 those. Three more hand `&geogro->vertexBuffer` and its siblings to
 `CreateVertexBuffer` as out-parameters, which the renderer casts at
 the call, because the address of a cast is not an lvalue. Everywhere
@@ -563,7 +563,7 @@ buffer alone, exactly as the old code did, while
 frees whichever are there. A geometry holding vertex or UV buffers
 but no index buffer would therefore keep them. That is the existing
 behaviour and it is preserved rather than quietly fixed; the note
-sits beside the implementation in `platform/wingdi.c` as well.
+sits beside the implementation in `platform/d3drender.c` as well.
 
 **The call in `GEO_FreeContent` gained a null check.** It used to go
 straight to the renderer's function, so it ran whether or not a
@@ -575,11 +575,11 @@ in already dereferences `gpst_DX_stDD` a few lines above.
 
 ### The tests, and the harness that was already there
 
-`run_wingdi.sh` carries the five member renames as `-D` and reports
+`run_d3drender.sh` carries the five member renames as `-D` and reports
 no differences across its 5,154 cases and 150,984 compared engine
 calls.
 
-**One line of `tests/baseline_wingdi.c` is edited**, and it is the
+**One line of `tests/baseline_d3drender.c` is edited**, and it is the
 only one the opaque handles cost. `-D` renames a member but cannot
 introduce a cast, and the implicit `void*` conversion covers every
 site in that copy but one: `geogro->d3dUVVB[0]->lpVtbl->Lock(...)`
@@ -731,7 +731,7 @@ triangle count halved, and the three refusal paths.
 
 ### Three things the change turned up
 
-**`D3D_DrawARaster` still drew text.** Two calls in `platform/wingdi.c` that
+**`D3D_DrawARaster` still drew text.** Two calls in `platform/d3drender.c` that
 the first sweep missed, and they linked because the harness compiles
 with `-w`, which also disables the error on an implicit declaration.
 `tests/implicitcheck.sh` is what said so -- it exists for exactly this
@@ -754,7 +754,7 @@ and `4294967295` on the other while both carried the same colour.
 **A positional initialiser in a mock's vtable.** Adding `LockRect` and
 `UnlockRect` to the stub's `IDirect3DTexture9Vtbl` -- in the middle,
 where they belong -- shifted every pointer after them in
-`tests/wingdi_ae_mocks.c`, which filled that table by position. The
+`tests/d3daftereffects_mocks.c`, which filled that table by position. The
 after-effects harness segfaulted. The members are appended now, the
 stub says why order matters there, and the two Direct3D tables in that
 file are filled **by name**: inserting a member mid-struct afterwards
@@ -820,19 +820,19 @@ whatever is added next.
 ## No D3DX at all
 
 The two fonts were the visible part of the D3DX dependency. Six more
-calls were left after them, all in `platform/wingdi.c`, and the engine now
+calls were left after them, all in `platform/d3drender.c`, and the engine now
 has its own:
 
 | was | is | where |
 |---|---|---|
-| `D3DXMatrixMultiply` | `D3D_MatrixMultiply` | `platform/wingdimath.c` |
+| `D3DXMatrixMultiply` | `D3D_MatrixMultiply` | `platform/d3dmath.c` |
 | `D3DXMatrixTranslation` | `D3D_MatrixTranslation` | " |
 | `D3DXMatrixOrthoOffCenterRH` | `D3D_MatrixOrthoOffCenterRH` | " |
 | `D3DXMatrixInverse` | `D3D_p_MatrixInverse` | " |
-| `D3DXLoadSurfaceFromMemory` | `D3D_b_SurfaceLoadFromMemory` | `platform/wingditex.c` |
+| `D3DXLoadSurfaceFromMemory` | `D3D_b_SurfaceLoadFromMemory` | `platform/d3dtex.c` |
 | `D3DXFilterTexture` | `D3D_b_TextureBuildMipLevels` | " |
 
-`platform/wingdi.h` includes no D3DX header, `d3dx9.lib` is gone from both
+`platform/d3drender.h` includes no D3DX header, `d3dx9.lib` is gone from both
 Win32 configurations, and the only places the engine says "D3DX" are
 comments saying what a function replaced. The two frozen-copy font
 pointers and the overlay's old height moved into
@@ -886,7 +886,7 @@ carries levels.
 Two new harnesses, both direct rather than differential, because
 there is no earlier copy of this arithmetic to compare against.
 
-`tests/run_wingdimath.sh` — **385 checks**. The reference inverses and
+`tests/run_d3dmath.sh` — **385 checks**. The reference inverses and
 the reference product were computed outside the test in exact
 rational arithmetic and pasted in; an expected value worked out with
 the formulas under test would only prove they agree with themselves.
@@ -907,7 +907,7 @@ plane sits at view z = **-zn**, while `zn` and `zf` are given as
 positive distances. That is written into the test, because it is the
 kind of thing that reads as a bug in the implementation.
 
-`tests/run_wingditex.sh` — **44 checks**, under AddressSanitizer, with
+`tests/run_d3dtex.sh` — **44 checks**, under AddressSanitizer, with
 textures and surfaces that have real buffers behind them and pitches
 deliberately wider than their rows. 17 mutations, 17 caught. Two
 needed the harness sharpened:
@@ -920,19 +920,19 @@ needed the harness sharpened:
 **The renderer's own differential harness checks less than it did, in
 two places, and more in a third.**
 
-Less: `D3DXMatrixInverse`'s mock was knowingly an approximation —
+Less: `D3DXMatrixInverse`'s mock was knoglrendery an approximation —
 "transpose the 3x3 and negate the translation", which is not a
 general inverse and not even a correct rigid one. No correct
 implementation can match it, and two different correct algorithms
 would not match each other in the last bits either, which an exact
 comparison cannot tolerate. So that mock now delegates to the
 implementation, and the differential harness says nothing about the
-inverse; `run_wingdimath.sh` is what checks it.
+inverse; `run_d3dmath.sh` is what checks it.
 
 Less: the two texture functions are **stood in for** rather than
-linked. `platform/wingditex.c` really walks the chain, locking each level
+linked. `platform/d3dtex.c` really walks the chain, locking each level
 and averaging it into the next, and the textures in
-`tests/wingdi_mocks.c` are not that — every level hands out one
+`tests/d3drender_mocks.c` are not that — every level hands out one
 shared buffer and reports the same dimensions, so a real box filter
 would read far past it. Both sides now log the same line, so what
 stays compared is the call: which object, what pitch, what size. The
@@ -1057,7 +1057,7 @@ rests on.
 
 **The context creation itself is not tested here** and cannot be:
 there is no driver behind the stub. What the harness does give it is a
-compile — `platform/wingl.c` is Windows-only, so building it in the test is
+compile — `platform/glrender.c` is Windows-only, so building it in the test is
 the only check it gets — and the file logs generously at every step, so
 the first run on a real machine says where it got to rather than
 needing to be reasoned about from here.
@@ -1119,7 +1119,7 @@ alone — the OpenGL row answers it from whether it has a context.
 
 ### The vertex type
 
-The shape batch used `tVertexAndColor` from `platform/wingdi.h`. It is
+The shape batch used `tVertexAndColor` from `platform/d3drender.h`. It is
 `tGdi_Vertex` in `gdi.h` now, and the renderer passes
 `sizeof(tGdi_Vertex)` to `DrawPrimitiveUP` as the stride.
 
@@ -1141,7 +1141,7 @@ visible the moment it works.
 
 ### The tests
 
-The overlay's harness stood in for `platform/wingdi.c` — it included that
+The overlay's harness stood in for `platform/d3drender.c` — it included that
 header, defined `D3DRenderParams` because the header declares it
 without `extern`, and drove the viewport through it. It stands in for
 the interface now, which is both smaller and the right shape: a
@@ -1224,12 +1224,12 @@ real machine stays invisible until something runs out of objects.
 bytes on disk reaching the driver unchanged, the driver's log printed,
 and every refusal path freeing what it had made.
 
-`tests/run_wingloverlay.sh` — **103 checks** under AddressSanitizer,
+`tests/run_gloverlay.sh` — **103 checks** under AddressSanitizer,
 24 of 24 mutations caught. It reads **the real shipped shaders**, so a
-uniform renamed in a `.frag` and not in `wingl.c` is a failing test
+uniform renamed in a `.frag` and not in `glrender.c` is a failing test
 rather than a black overlay on somebody's machine. And the vertex
 layouts are checked against `offsetof` on the actual structs rather
-than against the numbers written in `wingl.c` — an offset written by
+than against the numbers written in `glrender.c` — an offset written by
 hand and a struct that moved would otherwise agree with each other and
 with nothing else.
 
@@ -1380,7 +1380,7 @@ writes the interface's type and the renderer casts its buffer to it,
 and the OpenGL renderer can feed geometry through the vertex layout it
 already describes for text.
 
-That cast is **asserted** in the wingdi harness, both sizes and all
+That cast is **asserted** in the d3drender harness, both sizes and all
 three offsets. A field added to either type would otherwise make it
 write the wrong bytes with nothing to say so.
 
@@ -1462,7 +1462,7 @@ one per side, which is what the engine does. No differences.
 
 ### What the harness checks
 
-`tests/run_wingloverlay.sh` grew from 103 checks to **136**, still
+`tests/run_gloverlay.sh` grew from 103 checks to **136**, still
 with no driver anywhere. The geometry cases drive the real
 `GVX_BuildTriangles` and the real `PRJ_Compute`, so what the mocks see
 is what a driver would be handed.

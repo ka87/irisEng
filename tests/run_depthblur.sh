@@ -3,7 +3,7 @@
 #
 #   ./tests/run_depthblur.sh
 #
-# The extraction is checked by tests/run_wingdi_ae.sh, which runs the
+# The extraction is checked by tests/run_d3daftereffects.sh, which runs the
 # frozen pre-rewrite after-effects beside the rewrite and compares the
 # whole ramp, the five distances, the mode and the transform with every
 # mode driven on purpose. That is the stronger check and this is not a

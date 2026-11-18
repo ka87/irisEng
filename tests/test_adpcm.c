@@ -340,7 +340,7 @@ static void testStream(void)
 
     group = "stream/shipped";
     rngState = 0xBEEF01u;
-    /* the one geometry platform/winsound.c builds: 60 samples a block,
+    /* the one geometry platform/sndbackend.c builds: 60 samples a block,
        36 bytes mono and 72 stereo, length always a whole number of
        blocks */
     for (blocks = 0; blocks <= 60; blocks++)

@@ -69,7 +69,7 @@ overlay's command field, and a wheel movement is accumulated for the
 next time the game asks. The pump is timed the way the message loop
 was, so the profiler still sees it.
 
-The six Win32 window handlers in `platform/wingdi.c` are gone. What they
+The six Win32 window handlers in `platform/d3drender.c` are gone. What they
 did for the engine -- creating the display, tearing it down, pausing
 on focus loss -- is done where it belongs now: `main.c` opens and
 closes the display around the window, and `platform.c` says the rest.
@@ -136,7 +136,7 @@ rumble functions. That is behaviour the retail PC build never had.
 
 `sndplatform.c` is the sound's equivalent of `platform.c`, and the
 first part of taking the audio off DirectSound. Nothing in the engine
-calls it yet; `platform/winsound.c` is the next piece.
+calls it yet; `platform/sndbackend.c` is the next piece.
 
 It is not a thin wrapper, because the two models do not meet. A
 DirectSound buffer was **memory the engine wrote into** and then told
@@ -177,12 +177,12 @@ a duplicate not sharing its sound.
 
 ### The sound
 
-`platform/winsound.c` has no DirectSound in it. The fifteen buffer verbs,
+`platform/sndbackend.c` has no DirectSound in it. The fifteen buffer verbs,
 in all three of their implementations, go over a voice from
 `sndplatform.c`: `Lock`/`memcpy`/`Unlock` became a write at an offset
 that wraps, `GetCurrentPosition` the cursor, `SetVolume` and `SetPan`
 the attenuation and the pan, `DuplicateSoundBuffer` the duplicate
-that shares its sound. `platform/winvideosound.c` went the same way, and
+that shares its sound. `platform/sndvideo.c` went the same way, and
 had to -- it was being handed the engine's `IDirectSound8`.
 
 `SND_gpst_Interface` is six tables and three implementations: `win`

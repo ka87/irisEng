@@ -104,7 +104,7 @@ the running game, rather than dead code:
 | `textures.c:1754` | the first store lands one byte past the destination, so the whole walk is shifted and the first byte pair is never written |
 | `world.c:445` | `child` cannot be NULL there, so the second arm always returns and the first leaves `result` NULL — every path out of the function yields NULL |
 | `world.c:407` | one slot for a list `WOR_i_GetAllChildrenOf` writes without a bound, so a parent with more than one child writes past it |
-| `platform/wingdi.c:3993` | `elem` still points at the `0xC0DE` marker, so a read lands at `second[49374]` |
+| `platform/d3drender.c:3993` | `elem` still points at the `0xC0DE` marker, so a read lands at `second[49374]` |
 | `gfx/gfxprofiler.c:398` | `GFX_SetNumberOfP` computes `255 / num`, so a slice count of zero takes the process down |
 
 ### Every site, by file
@@ -259,7 +259,7 @@ the running game, rather than dead code:
 
 - `:45` — not -32768, but every use of it narrows to int16_t
 
-**`platform/wingdi.c`** (6)
+**`platform/d3drender.c`** (6)
 
 - `:198` — this return skips the matching end block, so raster 38 stays entered
 - `:955` — the source array is walked with no null test, unlike the one above
@@ -268,20 +268,20 @@ the running game, rather than dead code:
 - `:4174` — the colour arg 2 backup is taken from arg 1
 - `:4199` — this one of nine second-colour lookups scales its index by four
 
-**`platform/wingdi_aftereffects.c`** (3)
+**`platform/d3daftereffects.c`** (3)
 
 - `:219` — a count used where the other arms use an index, so this stops short of 254
 - `:613` — the first pass's vertical offset comes from the unnarrowed product, the rest from the narrowed step
 - `:3136` — every other getter's unknown slot gives zero; this one gives the motion blur
 
-**`platform/wininputoutput.c`** (4)
+**`platform/inputbackend.c`** (4)
 
 - `:352` — the caller passes a float here, so this reads its bits; one notch adds 1065353216 to a scroll that decays by 1 per 0.04s
 - `:990` — reached with pcINO_mouseDevice NULL when either call above failed, and DINPUT_GetProperty does not test it
 - `:1020` — pcINO_getKeyNames dereferences pcINO_keybDevice unconditionally, and this runs whether or not it was created
 - `:1189` — 266, where the first call and the buffer DirectInput fills are 256
 
-**`platform/winsound.c`** (8)
+**`platform/sndbackend.c`** (8)
 
 - `:58` — the key is left open when the value cannot be read
 - `:93` — the key is left open on every failing path

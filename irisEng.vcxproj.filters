@@ -203,10 +203,10 @@
     <ClCompile Include="rasterstate.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="platform\wingdimath.c">
+    <ClCompile Include="platform\d3dmath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="platform\wingditex.c">
+    <ClCompile Include="platform\d3dtex.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="platform\glload.c">
@@ -215,7 +215,7 @@
     <ClCompile Include="platform\glshader.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="platform\wingl.c">
+    <ClCompile Include="platform\glrender.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="thirdparty\freetype\src\base\ftsystem.c">
@@ -722,22 +722,22 @@
     <ClCompile Include="ai\ai_miscfunctions.c">
       <Filter>Source Files\ai</Filter>
     </ClCompile>
-    <ClCompile Include="platform\wingdi.c">
+    <ClCompile Include="platform\d3drender.c">
       <Filter>Source Files\platform</Filter>
     </ClCompile>
-    <ClCompile Include="platform\wingdi_aftereffects.c">
+    <ClCompile Include="platform\d3daftereffects.c">
       <Filter>Source Files\platform</Filter>
     </ClCompile>
-    <ClCompile Include="platform\wingdisun.c">
+    <ClCompile Include="platform\d3dsun.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="platform\wingdivideo.c">
+    <ClCompile Include="platform\d3dvideo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="platform\wininputoutput.c">
+    <ClCompile Include="platform\inputbackend.c">
       <Filter>Source Files\platform</Filter>
     </ClCompile>
-    <ClCompile Include="platform\winsound.c">
+    <ClCompile Include="platform\sndbackend.c">
       <Filter>Source Files\platform</Filter>
     </ClCompile>
     <ClCompile Include="platform\adpcm.c">
@@ -970,10 +970,10 @@
     <ClInclude Include="geovertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="platform\wingdimath.h">
+    <ClInclude Include="platform\d3dmath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="platform\wingditex.h">
+    <ClInclude Include="platform\d3dtex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="platform\glcore.h">
@@ -985,7 +985,7 @@
     <ClInclude Include="platform\glshader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="platform\wingl.h">
+    <ClInclude Include="platform\glrender.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inputoutput.h">
@@ -1330,19 +1330,19 @@
     <ClInclude Include="platform\adpcm.h">
       <Filter>Header Files\platform</Filter>
     </ClInclude>
-    <ClInclude Include="platform\winsound.h">
+    <ClInclude Include="platform\sndbackend.h">
       <Filter>Header Files\platform</Filter>
     </ClInclude>
-    <ClInclude Include="platform\wininputoutput.h">
+    <ClInclude Include="platform\inputbackend.h">
       <Filter>Header Files\platform</Filter>
     </ClInclude>
-    <ClInclude Include="platform\wingdisun.h">
+    <ClInclude Include="platform\d3dsun.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="platform\wingdivideo.h">
+    <ClInclude Include="platform\d3dvideo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="platform\wingdi.h">
+    <ClInclude Include="platform\d3drender.h">
       <Filter>Header Files\platform</Filter>
     </ClInclude>
   </ItemGroup>

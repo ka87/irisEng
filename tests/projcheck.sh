@@ -33,7 +33,7 @@ listed = set(m.group(1).replace('\\', '/').lower()
 # What the harnesses build, which comes in two shapes. Most sources
 # are compiled on their own with "-c <file>.c" in the shell script.
 # Some are #included by their driver instead, because the thing under
-# test is static to the file -- font.c and platform/wingl.c are both like
+# test is static to the file -- font.c and platform/glrender.c are both like
 # that -- and those count just as much. Looking for only the first
 # shape missed font.c, which is how this was found out.
 wanted = {}

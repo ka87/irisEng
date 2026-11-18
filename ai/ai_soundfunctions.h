@@ -1,6 +1,6 @@
 #pragma once
 #include "../sound.h"
-#include "../platform/winsound.h"
+#include "../platform/sndbackend.h"
 #include "../ai.h"
 
 void AI_EvalFunc_SNDPlayModifier_C(struct sGameObjectMain* gao, int modifierID);

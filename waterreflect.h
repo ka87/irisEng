@@ -18,7 +18,7 @@
  * and where the plane sits that keeps the reflection under the water.
  *
  * None of it is invented. Every number is the one the renderer that
- * already had this computes, and tests/run_wingdi.sh drives that
+ * already had this computes, and tests/run_d3drender.sh drives that
  * renderer and this side by side over the same objects and compares
  * the matrices and the device calls. That comparison is the warrant
  * for the file.

@@ -7,7 +7,7 @@
 #include "../memory.h"
 #include "../dbg.h"
 #include "../inputoutput.h"
-#include "../platform/wininputoutput.h"
+#include "../platform/inputbackend.h"
 
 tIoMockCall IOMOCK_log[IOMOCK_LOG_MAX];
 int IOMOCK_logLen;

@@ -43,7 +43,7 @@ D3DXMATRIX* D3DXMatrixTranslation(D3DXMATRIX*, float, float, float);
 
 /* The two font objects the frozen renderer copy in tests/ still
    refers to. The engine has no D3DX dependency any more -- text is
-   FreeType's -- so platform/wingdi.h no longer declares these and no
+   FreeType's -- so platform/d3drender.h no longer declares these and no
    longer includes this header. They are here because the only code
    left that mentions them is a frozen copy, and a frozen copy is not
    edited to follow a change. */

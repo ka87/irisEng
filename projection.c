@@ -6,7 +6,7 @@
    in is the one the engine's projection matrices are already in --
    row-major, as Direct3D has them. A second renderer consumes the
    result rather than needing a convention of its own. */
-#include "platform/wingdimath.h"
+#include "platform/d3dmath.h"
 
 #include <math.h>
 #include <string.h>

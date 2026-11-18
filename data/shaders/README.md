@@ -99,9 +99,9 @@ test, and the engine uses both. So `geometry.frag` does them:
   senses the material's flags select between.
 
 Two tests stand behind these files, and they see different things.
-`tests/run_wingloverlay.sh` mocks OpenGL outright: it loads these real
+`tests/run_gloverlay.sh` mocks OpenGL outright: it loads these real
 files and checks the uniform names the renderer asks for, so a uniform
-renamed here and not in `platform/wingl.c` is a failing test rather than a
+renamed here and not in `platform/glrender.c` is a failing test rather than a
 black world. What it cannot see is the arithmetic.
 `tests/run_glrender.sh` can: it brings up a real 4.5 core context with
 no window, draws through the renderer's own entry points and reads the
@@ -256,7 +256,7 @@ destination and a shader cannot read that -- so all the shader does is
 hand the blend an alpha, which is the new frame's share.
 
 That makes the *choice of target* the substance of the effect, and the
-choice is not this effect's to make. `platform/wingl.c` carries a *current*
+choice is not this effect's to make. `platform/glrender.c` carries a *current*
 and a *spare* through the chain and exchanges them after every effect
 that writes the spare, which is how the other renderer carries its
 frame; the motion blur writes the spare, wherever the exchanges have

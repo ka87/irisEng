@@ -139,7 +139,7 @@ void OBJ_MakeAbsoluteMatrix(tGameObjectMain* gao, Mtx4x4* dest)
 
 /* The device, below the gate: the keys and the mouse as the platform
    layer read them, with no control mode in between. pcINO_mouseDeltaX
-   and Y come from platform/wininputoutput.h, which editorcamera.c
+   and Y come from platform/inputbackend.h, which editorcamera.c
    includes. */
 char pcINO_keyboardDataBackup[266];
 
