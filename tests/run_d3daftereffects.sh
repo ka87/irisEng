@@ -43,7 +43,7 @@ D3D_DoBlurWaterTexture D3D_ZoomSmooth D3D_ZoomSmooth2 D3D_MotionSmoothHD \
 D3D_MotionSmoothSD D3D_MotionSmooth D3D_RemenanceSD D3D_RemenanceHD \
 D3D_Remenance D3D_Unknown_AE_FuncDepthBlur CopyRenderTargetTexture D3D_PC_AE \
 PC_AE_MASTER_CTRL PC_AE_MASTER_GET_ONOFF PC_AE_MASTER_GET_P1 \
-CIN_CutsceneMode \
+CIN_CutsceneMode AEM_i_OnOff AEM_f_Param \
 AE_SetRenderState AE_SetStageState AE_SetSamplerState"
 
 globals="depthBlurNear1 depthBlurType0 depthBlurType1 depthBlurType2 \
@@ -78,6 +78,15 @@ $CC $CFLAGS -include tests/d3daftereffects_sdk.h \
 # rewrite's side rather than linked plain, because the cases drive
 # each side's copy of the switch and the two must stay apart.
 $CC $CFLAGS -c cinebands.c -o "$OUT/d3drender_ae.cbd.o" \
+    $(defs NEW_ $globals) $(defs NEW_ $fns)
+# The effect word, the parameters and the two getters that read them
+# back are aftereffects/aemaster.c now. A second unit of the rewrite's
+# side for the same reason as the cutscene switch above: the cases
+# drive each side's copy of the parameters and the two must stay
+# apart. The effect word itself is deliberately not among $globals --
+# it is one variable both sides read and the driver sets, as it was
+# before the move.
+$CC $CFLAGS -c aftereffects/aemaster.c -o "$OUT/d3drender_ae.aem.o" \
     $(defs NEW_ $globals) $(defs NEW_ $fns)
 $CC $CFLAGS -c math.c -o "$OUT/d3drender_ae.math.o"
 # The blur's arithmetic, which both sides reach: the rewrite calls it
@@ -118,7 +127,7 @@ $CC $CFLAGS -include tests/d3daftereffects_sdk.h -c tests/d3daftereffects_mocks.
 $CC $CFLAGS -include tests/d3daftereffects_sdk.h -c tests/test_d3daftereffects.c \
     -o "$OUT/d3drender_ae.drv.o"
 $CC "$OUT/d3drender_ae.new.o" "$OUT/d3drender_ae.base.o" "$OUT/d3drender_ae.math.o" \
-    "$OUT/d3drender_ae.cbd.o" \
+    "$OUT/d3drender_ae.cbd.o" "$OUT/d3drender_ae.aem.o" \
     "$OUT/d3drender_ae.dpb.o" "$OUT/d3drender_ae.wsm.o" "$OUT/d3drender_ae.afd.o" "$OUT/d3drender_ae.ahu.o" "$OUT/d3drender_ae.amo.o" "$OUT/d3drender_ae.az2.o" "$OUT/d3drender_ae.aef.o" "$OUT/d3drender_ae.mocks.o" "$OUT/d3drender_ae.drv.o" \
     -o "$OUT/d3drender_ae" -lm
 "$OUT/d3drender_ae"

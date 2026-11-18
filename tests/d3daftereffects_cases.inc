@@ -441,6 +441,15 @@ static void RUN(int caseId)
 
         PC_AE_MASTER = AE_MasterBits(k * 3);
         D3DRenderParams.opacity = (k & 1) ? 0 : 128;
+        /* The loop below asks every effect for a slot outside its
+           range, and all of them answer nought -- except effect 0,
+           which hands back the motion blur. Nought is what the motion
+           blur holds when the walk reaches effect 0, so that one arm
+           reads the same as the nought every other effect gives unless
+           a value is put there first. This is a value no control call
+           in the loop writes, so an arm that stopped reaching for the
+           motion blur would show up as a nought. */
+        X(motionBlurFactor) = 0.3125f;
         for (i = -1; i <= 17; i++)
             for (j = 0; j <= 3; j++)
             {
@@ -448,9 +457,9 @@ static void RUN(int caseId)
                                      (float)((k + i * 3 + j) % 6) * 0.5f);
                 AEMOCK_Record("ctrl", 4, (long long)i, (long long)j,
                               (long long)PC_AE_MASTER,
-                              (long long)AE_Bits(X(PC_AE_MASTER_GET_P1)(i, j)));
+                              (long long)AE_Bits(X(AEM_f_Param)(i, j)));
                 AEMOCK_Record("onoff", 2, (long long)i,
-                              (long long)X(PC_AE_MASTER_GET_ONOFF)(i));
+                              (long long)X(AEM_i_OnOff)(i));
             }
         break;
     }

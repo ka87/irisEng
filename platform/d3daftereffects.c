@@ -9,11 +9,7 @@
 #include "../aftereffects/aeframe.h"
 #include "../aftereffects/aezoom2.h"
 #include "../cinebands.h"
-
-float depthBlurNear1 = 0.0f;
-float depthBlurType0 = 0.0f;
-float depthBlurType1 = 0.0f;
-float depthBlurType2 = 0.0f; // FIXME: unused?
+#include "../aftereffects/aemaster.h"
 
 float bandsVal1 = 0.10416666f;
 float bandsVal2 = 0.89583331f;
@@ -24,21 +20,6 @@ float bandsVal4 = 0.91666669f;
 // so the blur has rows to sample at the band edge.
 static const float AE_BAND_MARGIN = 0.020833334f;
 
-
-
-
-float gAEOpacity = 0.0f;
-float colorBalanceParam1 = 0.5f;
-float brightnessParam = 0.5f;
-float unknownAEFlag4GlobalVar = 0.0f;
-float texFactorManual = 0.0f;
-float remenanceFactor = 0.0f;
-float motionBlurFactor = 0.0f;
-float zoomSmoothFactor = 0.0f;
-float blurFactor = 0.0f;
-float zoomSmoothFactor2 = 0.0f;
-float texFactorProbablyUnunsedType2 = 0.0f;
-float blackAndWhiteParam1 = 0.0f;
 
 
 /* The chain reaches the device through three mirrors of its state --
@@ -2959,7 +2940,7 @@ void D3D_PC_AE(tWorld* param1)
 
     // The free camera suppresses the effects for the length of this
     // pass only: the game chose the after-effect state it is in and
-    // goes on being told it, through PC_AE_MASTER_GET_ONOFF and the
+    // goes on being told it, through AEM_i_OnOff and the
     // rest. Nothing above can have changed it meanwhile, because
     // every write to it in here sits inside a test on it and it has
     // been zero throughout. The ae_no tweak is left as it was: it
@@ -3094,117 +3075,4 @@ void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value)
     default:
         return;
     }
-}
-
-int PC_AE_MASTER_GET_ONOFF(int effect)
-{
-    int result;
-
-    switch (effect)
-    {
-    case 0:
-        result = PC_AE_MASTER & 8;                // depthblur
-        break;
-    case 1:
-        result = PC_AE_MASTER & 0x10;             // motionblur
-        break;
-    case 2:
-        result = PC_AE_MASTER & 0x20;             // screenblur
-        break;
-    case 3:
-        result = PC_AE_MASTER & 0x40;             // emboss
-        break;
-    case 4:
-        result = PC_AE_MASTER & 0x80;             // motionsmooth
-        break;
-    case 5:
-        result = PC_AE_MASTER & 0x400;            // zoomsmooth
-        break;
-    case 6:
-        result = PC_AE_MASTER & 0x8000;           // zoomsmooth2
-        break;
-    case 7:
-        result = PC_AE_MASTER & 0x800;            // remanance
-        break;
-    case 10:
-        result = PC_AE_MASTER & 0x2000;           // full-aa-blur
-        break;
-    case 11:
-        result = PC_AE_MASTER & 1;                // colorbalance
-        break;
-    case 12:
-        result = PC_AE_MASTER & 4;
-        break;
-    case 14:
-        result = PC_AE_MASTER & 0x1000;           // depthblurnear
-        break;
-    case 15:
-        result = PC_AE_MASTER & 0x40000;          // fade
-        break;
-    default:
-        result = 0;
-        break;
-    }
-    return result;
-}
-
-float PC_AE_MASTER_GET_P1(int effect, int slot)
-{
-    double result;
-
-    switch (effect)
-    {
-    case 0:
-        if (slot == 0)                          // 17 warp
-            result = depthBlurType0;
-        else if (slot == 1)
-            result = depthBlurType1;
-        else if (slot == 2)
-            result = depthBlurType2;
-        else
-            // preserved: every other getter's unknown slot gives zero; this one gives the motion blur
-            result = motionBlurFactor;
-        break;
-    case 1:
-        result = motionBlurFactor;
-        break;
-    case 2:
-        result = blurFactor;
-        break;
-    case 5:
-        result = zoomSmoothFactor;
-        break;
-    case 6:
-        result = zoomSmoothFactor2;
-        break;
-    case 7:
-        result = remenanceFactor;
-        break;
-    case 8:
-        result = brightnessParam;
-        break;
-    case 9:
-        result = colorBalanceParam1;
-        break;
-    case 11:
-        result = blackAndWhiteParam1;
-        break;
-    case 12:
-        if (slot == 0)
-            result = unknownAEFlag4GlobalVar;
-        else if (slot == 1)
-            result = texFactorManual;
-        else if (slot == 2)
-            result = texFactorProbablyUnunsedType2;
-        else
-            result = 0.0;
-        break;
-    case 14:
-        result = depthBlurNear1;
-        break;
-    default:
-        result = 0.0;
-        break;
-    }
-    return (float)result;
 }

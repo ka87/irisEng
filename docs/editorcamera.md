@@ -214,7 +214,7 @@ if (tweak_ae_no || ECAM_gi_NoAfterEffects)
 **And the game goes on being told the state it chose.** That test's
 body sets `PC_AE_MASTER` to zero, which is not only a local decision:
 the game reads it back through `AI_EvalFunc`'s
-`PC_AE_MASTER_GET_ONOFF` and `PC_AE_MASTER_GET_P1`, so leaving it at
+`AEM_i_OnOff` and `AEM_f_Param`, so leaving it at
 zero would tell every script its effects had been turned off behind
 its back. So the camera's suppression lasts for the length of the
 pass and the value is put back at the end of it.

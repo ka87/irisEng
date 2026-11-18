@@ -245,15 +245,13 @@ BOOL OBJ_BV_IsSphere(tGameObjectBV* bv)
 
 int   ECAM_gi_NoAfterEffects = 0;
 
-/* The two colour parameters, at the neutral the game starts them at.
-   Neutral is a half and not nought: left at the nought a tentative
-   definition gives, every frame would come back flattened to mid
-   grey and half darkened. */
-float brightnessParam = 0.5f;
-float colorBalanceParam1 = 0.5f;
-/* The grayscale's amount, neutral at nought: the bit is not the whole
-   of that effect's gate. */
-float blackAndWhiteParam1 = 0.0f;
+/* The after-effects parameters this pass reads -- the two colour ones,
+   the grayscale's amount, the depth blur's settings, the rest -- are
+   aftereffects/aemaster.c's, which this harness links. They used to be
+   storage every includer of the shared header got a copy of, and the
+   two whose neutral is a half had to be set here because a tentative
+   definition cannot carry an initialiser. They come initialised
+   now. */
 
 void OVL_Draw(void) { }
 /* As above: the display has its own harness. */

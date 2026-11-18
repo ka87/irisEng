@@ -17,7 +17,6 @@ void AI_EvalFunc_CIN_CutsceneMode_C(int onOff);
 tAINode* AI_EvalFunc_GRPInvisibleSet(tAINode* node);
 tAINode* AI_EvalFunc_GRPInactiveSet(tAINode* node);
 tAINode* AI_EvalFunc_Gsp_AE_MASTER(tAINode* node);
-int PC_AE_MASTER_GET_ONOFF(int effect);
 tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETONOFF(tAINode* node);
 tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETP1(tAINode* node);
 tAINode* AI_EvalFunc_Gsp_AE_MASTEREVT(tAINode* node);

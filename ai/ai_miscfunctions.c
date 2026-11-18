@@ -10,6 +10,7 @@
 #include "../modifiers/shadowmodifier.h"
 #include "../water.h"
 #include "ai_miscfunctions.h"
+#include "../aftereffects/aemaster.h"
 #include "../cinebands.h"
 
 // A table entry is in use when it has a pointer and its low two bits
@@ -101,7 +102,7 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETONOFF(tAINode* node)
     int effect;
 
     effect = AI_GetIntFromStack();
-    AI_PutIntToStack(PC_AE_MASTER_GET_ONOFF(effect));
+    AI_PutIntToStack(AEM_i_OnOff(effect));
     return node + 1;
 }
 
@@ -112,7 +113,7 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTER_GETP1(tAINode* node)
 
     param = AI_GetIntFromStack();
     effect = AI_GetIntFromStack();
-    AI_PutFloatToStack(PC_AE_MASTER_GET_P1(effect, param));
+    AI_PutFloatToStack(AEM_f_Param(effect, param));
     return node + 1;
 }
 

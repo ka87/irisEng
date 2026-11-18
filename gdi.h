@@ -16,6 +16,7 @@
 #include "soft.h"
 #include "graphicsobjects/geostr.h"
 #include "sprites.h"
+#include "aftereffects/aemaster.h"
 
 
 /* The renderer's own private state, whatever renderer that is. The
@@ -401,64 +402,11 @@ extern const struct sGdi_Renderer* GDI_gpst_Renderer;
 int GDI_gi_TextureUVMode;
 int GDI_gi_Diffuse2x;
 
-/* The after-effects state the AI scripts move, declared here because
-   both renderers read it and neither owns it. The scripts' way in is
-   PC_AE_MASTER_CTRL, which sets these before it reaches a device and
-   so keeps them whichever renderer is in force; the definitions still
-   sit with the one renderer that has an after-effects pass. The depth
-   blur's decision is built from them -- see depthblur.h. */
-int   PC_AE_MASTER;
-/* The two after-effect parameters that have no bit in the word above:
-   they run whenever they are off neutral, which for both of them is a
-   half. The scripts move them the same way and the engine puts them
-   back to a half itself when the effects are switched off. The colour
-   effects built from them are in aecolor.h.
- *
-   Note that nought is **not** neutral for either of them, unlike the
-   word above. A tentative definition cannot carry an initialiser, so
-   the half comes from the definitions that sit with the renderer
-   whose pass has always owned them -- which is linked whichever
-   renderer is in force. Were it ever not, these would start at
-   nought, and nought means a frame flattened to mid grey on the
-   contrast and darkened by half on the brightness. Anything that
-   links one renderer alone has to set them. */
-/* The brightness after-effect's parameter: a flat grey added to the
-   picture above a half and subtracted below it, which is what makes
-   the effect brightness and not something else. A half leaves the
-   picture alone and is what being off looks like -- this effect has
-   no bit in PC_AE_MASTER. Its id is 8 for the parameter getters.
+/* The after-effects state the AI scripts move -- which effects are
+   running and how hard -- used to be declared here. It is in
+   aftereffects/aemaster.h now, which this header includes, and the
+   storage is in one file rather than one copy per includer. */
 
-   The frozen copies in tests/ still spell it unkAEFunc2Param; the
-   differential maps that spelling onto this one for its side, which
-   is how the two functions renamed before it are handled. */
-float brightnessParam;
-float colorBalanceParam1;
-/* How much of the grayscale, 0 to 1, with 0 meaning none of it. */
-float blackAndWhiteParam1;
-/* What an effect's first parameter currently is, by the id the comment
-   above uses. Declared here rather than beside the renderer that
-   defines it, because the overlay reads it and cannot see a header
-   that needs the device types. */
-float PC_AE_MASTER_GET_P1(int effect, int slot);
-/* And the four that scale the effects building a frame out of several
-   samples of one. Neutral for all four is nought, so unlike the two
-   above a tentative definition left to itself is the right value. The
-   effects built from them are in aeframe.h.
-
-   The last one is the odd one: it scales how far the blur *reaches*
-   rather than how much of it is mixed in, so a value under a pixel
-   spreads nothing -- and still costs brightness, because the taps are
-   interpolated. aeframe.h has what that comes to. */
-float motionBlurFactor;
-float remenanceFactor;
-float zoomSmoothFactor;
-float blurFactor;
-/* And the second zoom smooth's, which is a fifth of that family rather
-   than a member of it: the effect it scales is a *rotational* smear
-   about the middle of the picture, not a sum of scaled samples, and it
-   is built in aezoom2.h. Neutral is nought here too, and a negative
-   value is legal -- it turns the samples the other way. */
-float zoomSmoothFactor2;
 /* The texture-coordinate transform the material path computes, one per
    stage, with stage nought the one the world's geometry uses. Declared
    here because both renderers read it and neither owns it: it is
@@ -467,30 +415,6 @@ float zoomSmoothFactor2;
    it to. The name is the one it has always had and says d3d for no
    good reason. */
 Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8];
-float depthBlurNear1;
-float depthBlurType0;
-float depthBlurType1;
-/* The fade's duration, in seconds, as a script asks for it. Neutral is
-   nought, and nought is also the one value a fade cannot be given --
-   see aefade.h, where what it comes to is written down. */
-float gAEOpacity;
-
-/* The hue sweep's two, and the third the scripts can set and nothing
- * reads.
- *
- * The names are the ones they have always had and neither says what it
- * is: the first is how deep the tint goes and the second is where in
- * the cycle it sits -- a phase, not a texture factor. Neutral for the
- * depth is nought, which leaves a draw that takes nothing off, because
- * the effect is gated by its bit alone. See aehue.h.
- *
- * The third is set and read back by the scripts' own calls and is
- * never looked at by anything that draws. It is here so that reading
- * it back gives what was written. */
-float unknownAEFlag4GlobalVar;
-float texFactorManual;
-float texFactorProbablyUnunsedType2;
-
 /* The fade's remaining opacity: the timer that effect steps itself,
  * from the whole range down to nothing.
  *

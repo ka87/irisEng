@@ -44,6 +44,17 @@ extern int ECAM_gi_NoAfterEffects;
    mapped onto that for the frozen side alone. */
 #define BASE_CIN_CutsceneMode BASE_PC_CIN_CutsceneMode
 
+/* The two parameter getters, and the state they read, are
+   aftereffects/aemaster.c now. Both are pure -- a switch over the
+   effect word and a switch over a dozen floats -- so neither was ever
+   the renderer's, and the scripts' way *in* stays behind because it
+   reaches a device. The rewrite's side of them is that module,
+   compiled here as a second unit of this side; the frozen copy still
+   carries them inline under their old names, which are mapped onto
+   the new ones for that side alone. */
+#define BASE_AEM_i_OnOff  BASE_PC_AE_MASTER_GET_ONOFF
+#define BASE_AEM_f_Param  BASE_PC_AE_MASTER_GET_P1
+
 #define AE_DECLS(P) \
     extern float P##_depthBlurNear1, P##_depthBlurType0, P##_depthBlurType1, \
                  P##_depthBlurType2, P##_bandsVal1, P##_bandsVal2, \
@@ -112,8 +123,8 @@ extern int ECAM_gi_NoAfterEffects;
                                         IDirect3DTexture9* d); \
     void  P##_D3D_PC_AE(tWorld* world); \
     void  P##_PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value); \
-    int   P##_PC_AE_MASTER_GET_ONOFF(int effect); \
-    float P##_PC_AE_MASTER_GET_P1(int effect, int slot)
+    int   P##_AEM_i_OnOff(int effect); \
+    float P##_AEM_f_Param(int effect, int slot)
 
 AE_DECLS(BASE);
 AE_DECLS(NEW);
@@ -384,6 +395,59 @@ static void AE_ResetShared(void)
     AE_MS_PrevVec.x = AE_MS_PrevVec.y = AE_MS_PrevVec.z = 0.0f;
 }
 
+/* ---- the parameters' starting values ------------------------------
+ *
+ * What a parameter is before anything sets it, which no comparison can
+ * see: each side carries its own copy, so both would have to be wrong
+ * together for the two logs to differ. It matters because nought is
+ * **not** neutral for the two colour ones -- a frame left at nought
+ * comes back flattened to mid grey and half darkened -- and because
+ * those two are the ones a move can quietly drop, an initialiser being
+ * the one thing a tentative definition cannot carry.
+ *
+ * So it is asserted as a property of each side rather than compared,
+ * and of the frozen copy as well as the rewrite: a check that only
+ * looked at the rewrite would pass a frozen copy that had changed
+ * underneath it, and then it would be covering nothing. Printed only
+ * when one is wrong.
+ */
+
+typedef struct { const char* name; float got; float want; } tAeStart;
+
+#define AE_STARTS(P) { \
+    { "brightnessParam",               P##_brightnessParam,               0.5f }, \
+    { "colorBalanceParam1",            P##_colorBalanceParam1,            0.5f }, \
+    { "blackAndWhiteParam1",           P##_blackAndWhiteParam1,           0.0f }, \
+    { "motionBlurFactor",              P##_motionBlurFactor,              0.0f }, \
+    { "remenanceFactor",               P##_remenanceFactor,               0.0f }, \
+    { "zoomSmoothFactor",              P##_zoomSmoothFactor,              0.0f }, \
+    { "blurFactor",                    P##_blurFactor,                    0.0f }, \
+    { "zoomSmoothFactor2",             P##_zoomSmoothFactor2,             0.0f }, \
+    { "depthBlurNear1",                P##_depthBlurNear1,                0.0f }, \
+    { "depthBlurType0",                P##_depthBlurType0,                0.0f }, \
+    { "depthBlurType1",                P##_depthBlurType1,                0.0f }, \
+    { "depthBlurType2",                P##_depthBlurType2,                0.0f }, \
+    { "gAEOpacity",                    P##_gAEOpacity,                    0.0f }, \
+    { "unknownAEFlag4GlobalVar",       P##_unknownAEFlag4GlobalVar,       0.0f }, \
+    { "texFactorManual",               P##_texFactorManual,               0.0f }, \
+    { "texFactorProbablyUnunsedType2", P##_texFactorProbablyUnunsedType2, 0.0f } \
+}
+
+static int AE_CheckStarts(const char* side, const tAeStart* v, int n)
+{
+    int bad = 0;
+    int i;
+
+    for (i = 0; i < n; i++)
+        if (v[i].got != v[i].want)
+        {
+            printf("FAIL: %s starts %s at %g, wanted %g\n",
+                   side, v[i].name, (double)v[i].got, (double)v[i].want);
+            bad++;
+        }
+    return bad;
+}
+
 /* ---- comparison --------------------------------------------------- */
 
 static tAeMockCall baseLog[AEMOCK_LOG_MAX];
@@ -404,7 +468,7 @@ static int IsSetCall(const tAeMockCall* c)
    That second one is the point of the flag being separate from the
    ae_no tweak. The tweak clears PC_AE_MASTER for good, which is what
    a tweak is for; the camera must not, because the game goes on
-   reading it back through PC_AE_MASTER_GET_ONOFF and would be told
+   reading it back through AEM_i_OnOff and would be told
    its effects had been turned off behind its back. */
 static int editorCameraSuppressionCases(void)
 {
@@ -556,6 +620,15 @@ int main(void)
     int defaultsSecondPassSets = -1;
 
     MATH_InitModule();
+    {
+        const tAeStart baseStarts[] = AE_STARTS(BASE);
+        const tAeStart newStarts[]  = AE_STARTS(NEW);
+
+        failures += AE_CheckStarts("the frozen copy", baseStarts,
+                                   (int)(sizeof baseStarts / sizeof baseStarts[0]));
+        failures += AE_CheckStarts("the rewrite", newStarts,
+                                   (int)(sizeof newStarts / sizeof newStarts[0]));
+    }
     for (i = 0; i < AE_GROUPS; i++)
     {
         groupSet[i] = 0;
