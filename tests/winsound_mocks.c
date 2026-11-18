@@ -233,6 +233,7 @@ static IDirectSoundVtbl device_vtbl;
 /* Lock hands out slices of this, so the bytes a side writes into a sound
    buffer are comparable between the two runs. */
 #define AUDIO_MAX (2 * 1024 * 1024)
+#define WSND_LOCK_MAX (1024 * 1024)
 static unsigned char audio[AUDIO_MAX];
 static int audio_used;
 
@@ -354,13 +355,19 @@ static HRESULT b_Lock(IDirectSoundBuffer* s, DWORD off, DWORD bytes,
 {
     ++lock_calls;
     lock_off = off;
-    lock_bytes = bytes > 65536 ? 65536 : bytes;
+    /* A megabyte, where this was 64 KB. A real streamed sound locks
+       its whole ring at the prefetch and that is 307200 bytes, so the
+       old cap meant the frozen copy could not be asked for one either
+       -- and a bug in the rewrite that stopped at exactly 64 KB had
+       nothing to disagree with. AUDIO_MAX is two megabytes and one
+       lock is live at a time. */
+    lock_bytes = bytes > WSND_LOCK_MAX ? WSND_LOCK_MAX : bytes;
     if (wsnd_lock_fail_mod && (lock_calls % wsnd_lock_fail_mod) == 0)
     {
         wsnd_log("wr(o%d,%u,%u,FAIL)\n", wsnd_obj_id(s), off, bytes);
         return (HRESULT)0x88780096L;
     }
-    if (bytes > 65536) bytes = 65536;
+    if (bytes > WSND_LOCK_MAX) bytes = WSND_LOCK_MAX;
     if (audio_used + (int)bytes + wsnd_lock_tail + 64 > AUDIO_MAX)
         audio_used = 0;
     *p1 = audio + audio_used;
@@ -1100,7 +1107,11 @@ int SPL_b_VoiceWrite(tSplVoice* v, int offset, const void* data, int bytes)
         wsnd_log("wr(o%d,%u,%u,FAIL)\n", wsnd_voice_id(v), (unsigned)offset, (unsigned)bytes);
         return 0;
     }
-    n = (unsigned)bytes > 65536u ? 65536u : (unsigned)bytes;
+    /* The same bound as the lock above, and for the same reason: a
+       real streamed sound writes its whole ring at the prefetch, and
+       a mock that quietly logged 64 KB of it made a rewrite that
+       quietly wrote 64 KB of it look right. */
+    n = (unsigned)bytes > (unsigned)WSND_LOCK_MAX ? (unsigned)WSND_LOCK_MAX : (unsigned)bytes;
     wsnd_ev_write(wsnd_voice_id(v), (unsigned)offset, n,
                   data ? fingerprint((const unsigned char*)data,
                                      (int)(n > 4096 ? 4096 : n)) : 0);
@@ -1122,7 +1133,7 @@ int SPL_b_VoiceSilence(tSplVoice* v, int offset, int bytes)
         wsnd_log("wr(o%d,%u,%u,FAIL)\n", wsnd_voice_id(v), (unsigned)offset, (unsigned)bytes);
         return 0;
     }
-    n = (unsigned)bytes > 65536u ? 65536u : (unsigned)bytes;
+    n = (unsigned)bytes > (unsigned)WSND_LOCK_MAX ? (unsigned)WSND_LOCK_MAX : (unsigned)bytes;
     wsnd_ev_write(wsnd_voice_id(v), (unsigned)offset, n,
                   fingerprint(zeros, (int)(n > 4096 ? 4096 : n)));
     return 1;

@@ -804,6 +804,23 @@ void SIDE_RUN(int c)
             sbe->miscData->unk6 = 0;
             wsnd_read_bytes = 1 << 20;
         }
+        /* One in thirteen gets the sizes a real streamed sound has:
+           a 76800-byte block and a 307200-byte ring. Every other case
+           in this file stays under 64 KB, and that is why nothing saw
+           the staging buffer the decode goes through stop at exactly
+           64 KB: the prefetch filled a fifth of the ring, the decode
+           came back short of what it was asked for, and a short decode
+           is how the engine is told a sound has ended -- so every
+           stream ended about half a second in. */
+        if ((sub % 13) == 0 && !sbe->miscData->readThroughWithMultipleLoop)
+        {
+            sbe->miscData->sizeToUpload = 76800;
+            sbe->miscData->soundBufferSize = 307200;
+            sbe->miscData->fullSize = 1971840;
+            sbe->miscData->sumSize = 0;
+            sbe->miscData->unk6 = 0;
+            wsnd_read_bytes = 1 << 20;
+        }
         memset(scratch, 0, sizeof(scratch));
         pcSND_ReadAndDecompressSoundData((unsigned)(720 * (1 + (sub % 4))), sbe,
                                          (sub & 8) ? 1 : 0, &decoded, scratch);

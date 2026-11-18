@@ -94,12 +94,20 @@ tSndSoundBufferElem* sndCurrSoundBufferElem;
 int sndEventHandleNum;
 void* dsndReadBuffer2;
 void* dsndReadBuffer1;
-/* Where a chunk is decoded before it is handed to the voice. The
-   decode used to go straight into a locked stretch of the sound
-   buffer; nothing hands out a pointer into the buffer now, so it goes
-   through here instead. Big enough for the largest sizeToUpload the
-   engine asks for, and the thread is the only user. */
-uint8_t dsndUploadBuffer[65536];
+/* Where sound is decoded before it is handed to the voice. The decode
+   used to go straight into a locked stretch of the sound buffer;
+   nothing hands out a pointer into the buffer now, so it goes through
+   here instead. The thread is the only user.
+
+   It grows to whatever is asked of it and is never clamped. A decode
+   asked for fewer bytes than the caller wanted returns short, and a
+   short decode is how the engine is told a sound has ended -- so
+   quietly handing the decoder a smaller buffer ends every sound at
+   once. It also has to be a whole number of decoded blocks, which
+   sizeToUpload and the buffer size are and a round power of two is
+   not. */
+uint8_t* dsndUploadBuffer;
+size_t   dsndUploadBufferSize;
 
 /* The entry point the EAX library was asked for. */
 #ifdef WINSOUND_FROZEN

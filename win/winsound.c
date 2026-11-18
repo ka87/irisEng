@@ -281,6 +281,25 @@ void pcSND_ReadAndDecompressSoundData(unsigned int wanted, tSndSoundBufferElem* 
     }
 }
 
+/* The staging buffer, grown to what is asked of it. Never clamped:
+   see the note in winsound.h. */
+static char* pcSND_l_p_UploadBuffer(int bytes)
+{
+    void* grown;
+
+    if (bytes <= 0)
+        return 0;
+    if ((size_t)bytes > dsndUploadBufferSize)
+    {
+        grown = realloc(dsndUploadBuffer, (size_t)bytes);
+        if (!grown)
+            return 0;
+        dsndUploadBuffer = (uint8_t*)grown;
+        dsndUploadBufferSize = (size_t)bytes;
+    }
+    return (char*)dsndUploadBuffer;
+}
+
 /* Which block of the buffer the cursor is in. The buffer is a whole
    number of sizeToUpload blocks and the device used to fire an event
    as the cursor entered each one. */
@@ -393,9 +412,9 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
        buffer. The voice does its own wrapping, so there is no second
        pointer to carry on into and no short lock to account for. */
     audioBytes1 = misc->sizeToUpload;
-    if (audioBytes1 > sizeof(dsndUploadBuffer))
-        audioBytes1 = sizeof(dsndUploadBuffer);
-    audioPtr1 = (char*)dsndUploadBuffer;
+    audioPtr1 = pcSND_l_p_UploadBuffer((int)audioBytes1);
+    if (!audioPtr1)
+        return;
     totalSizeAfterDecompress = 0;
     pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 1, &totalSizeAfterDecompress, (int16_t*)audioPtr1);
     produced = totalSizeAfterDecompress;
@@ -1514,9 +1533,9 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
     if (misc)
     {
         audioBytes1 = misc->soundBufferSize;
-        if (audioBytes1 > sizeof(dsndUploadBuffer))
-            audioBytes1 = sizeof(dsndUploadBuffer);
-        audioPtr1 = (char*)dsndUploadBuffer;
+        audioPtr1 = pcSND_l_p_UploadBuffer(audioBytes1);
+        if (!audioPtr1)
+            return;
         skipSize = pcSND_CalcSizeToReadByFormat(misc->unk6, sbe->format);
         SetFilePointer(misc->fileHandle, misc->distanceToMove + skipSize, &distanceToMoveHigh, 0);
         misc->sumSize = misc->unk6;
