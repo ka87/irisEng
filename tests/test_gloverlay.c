@@ -977,6 +977,15 @@ int GDI_i_AeFadeOpacity(void)
     return wgo_fadeOpacity;
 }
 
+/* The engine's side of the interface entry, which gdi.c gives to
+   whichever renderer is in force. Here it goes straight to this one's,
+   so the scripts' control call reaches the real entry point rather
+   than a stub that answers for it. */
+void GDI_DepthBlurRampRebuild(void)
+{
+    GL_RebuildDepthBlurRamp();
+}
+
 void GDI_AeFadeOpacitySet(int opacity)
 {
     wgo_fadeOpacity = opacity;

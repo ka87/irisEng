@@ -29,6 +29,13 @@ void GDI_AeFadeOpacitySet(int opacity)
     D3DRenderParams.opacity = opacity;
 }
 
+void GDI_DepthBlurRampRebuild(void)
+{
+    if (MAI_gst_MainHandles.displayData
+        && MAI_gst_MainHandles.displayData->RebuildDepthBlurRamp)
+        MAI_gst_MainHandles.displayData->RebuildDepthBlurRamp();
+}
+
 /* Settings, not renderer state -- see gdi.h. */
 int   GDI_gi_Widescreen = 1;
 float GDI_gf_RefYoverX = 0.75f;
@@ -902,6 +909,7 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->b_GeometryHasCache = D3D_b_GeometryHasCache;
     dd->DiscardGeometryCache = D3D_DiscardGeometryCache;
     dd->BuildGeometryCaches = D3D_CreateGameObjectsD3DStuffForMultiStream;
+    dd->RebuildDepthBlurRamp = D3D_RebuildDepthBlurRamp;
     dd->PrepareWaterRendering = D3D_PrepareWaterRendering;
     dd->DrawWater = D3D_DrawWater_DrawVertexTable;
 }
@@ -964,6 +972,11 @@ static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
        is first drawn and has nothing to do here. Answered rather than
        left null, so the engine's call needs no guard. */
     dd->BuildGeometryCaches = GL_BuildGeometryCaches;
+    /* The OpenGL renderer reads the settings every frame and uploads
+       the ramp again when they differ from the ones it drew with
+       last, so it has nothing to do when told. Answered rather than
+       left null, as above. */
+    dd->RebuildDepthBlurRamp = GL_RebuildDepthBlurRamp;
     dd->b_Ready = GL_b_Ready;
     dd->sz_Name = GL_sz_Name;
     dd->AfterEffects = GL_PC_AE;

@@ -79,7 +79,7 @@ tAINode* AI_EvalFunc_GRPInactiveSet(tAINode* node)
 
 void AI_EvalFunc_Gsp_AE_MASTER_C(int effect, int param, int onOff, float value)
 {
-    PC_AE_MASTER_CTRL(effect, param, onOff, value);
+    AEM_Control(effect, param, onOff, value);
 }
 
 tAINode* AI_EvalFunc_Gsp_AE_MASTER(tAINode* node)
@@ -130,7 +130,7 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTEREVT(tAINode* node)
     onOff = AI_GetIntFromStack();
     param = AI_GetIntFromStack();
     effect = AI_GetIntFromStack();
-    PC_AE_MASTER_CTRL(effect, param, onOff, gao->matrices->Pos.x);
+    AEM_Control(effect, param, onOff, gao->matrices->Pos.x);
     return node + 1;
 }
 

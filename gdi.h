@@ -200,6 +200,23 @@ typedef struct sGdi_DisplayData
        right answer that renderer could give was to do nothing. */
     void(* BuildGeometryCaches)(struct sWorld* world);
 
+    /* The depth blur's settings have moved, so whatever a renderer
+       keeps them in wants rebuilding. The scripts set them one at a
+       time and each change comes through here.
+
+       What that costs is the renderer's business: one of them keeps
+       the ramp in a texture it has to lock and copy, so it wants
+       telling; the other compares the settings it drew with last
+       frame and re-uploads when they differ, so being told is
+       nothing it needs. Both answer the entry.
+
+       Through the interface for the same reason as the line above:
+       the scripts' way in used to call the Direct3D one by name,
+       which meant the call happened whichever renderer was running
+       and that renderer had to carry a guard against having no
+       device. */
+    void(* RebuildDepthBlurRamp)(void);
+
     /* A glyph atlas, and the quads that read from it. The engine
        rasterizes text itself and hands over 8-bit coverage -- one
        byte per pixel, row after row, no padding -- leaving the
@@ -418,13 +435,12 @@ Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8];
 /* The fade's remaining opacity: the timer that effect steps itself,
  * from the whole range down to nothing.
  *
- * Unlike everything above it, this is not a tentative definition here.
  * The storage sits in the one renderer's own parameter block, because
  * that renderer was the only one when the scripts' way in was written
- * and PC_AE_MASTER_CTRL starts the timer there before any device is
- * known. These two reach it from either renderer without either one
- * including the other's header, and gdi.c -- which already knows both
- * -- is where they are defined.
+ * and AEM_Control starts the timer there before any device is known.
+ * These two reach it from either renderer, and from the scripts' call
+ * itself, without any of them including a renderer's header; gdi.c --
+ * which already knows both -- is where they are defined.
  *
  * It is one number and not one each on purpose. A renderer keeping its
  * own copy would miss the start of a fade: the only thing that sets
@@ -432,6 +448,13 @@ Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8];
  * will come to read it. */
 int  GDI_i_AeFadeOpacity(void);
 void GDI_AeFadeOpacitySet(int opacity);
+
+/* The engine's side of the entry above: the scripts' control call says
+   a depth-blur setting moved and this passes that to whichever
+   renderer is in force, or to none if there is not one yet. Here with
+   the two above, and defined in gdi.c with them, for the same reason
+   -- it is the one file that knows both renderers. */
+void GDI_DepthBlurRampRebuild(void);
 
 void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd);
 struct sGdi_DisplayData* GDI_fnpst_CreateDisplayData();
