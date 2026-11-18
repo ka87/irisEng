@@ -1,0 +1,198 @@
+# irisEng, built with CMake.
+#
+# The engine is a 32-bit program and only a 32-bit program. That is not
+# a preference: it casts pointers to int in a dozen places -- a sound
+# buffer is keyed by (int)sbe, and the differentials have to be linked
+# -no-pie to survive it -- so a 64-bit build would not be the same
+# program, it would be a broken one. The check below refuses rather
+# than letting that be discovered at run time.
+#
+# What this builds today is the Windows game, which is what there is:
+# the engine still asks for the registry, a dialog, the Win32 heap and
+# a WGL context, and Direct3D is one of its two renderers. What it
+# would take to build elsewhere is written down rather than guessed at
+# -- see the Windows map in the notes -- and the OpenGL renderer is the
+# half that can leave once the window and the input do.
+#
+#   cmake -S . -B build -A Win32            Visual Studio, 32-bit
+#   cmake --build build --config Release
+#
+cmake_minimum_required(VERSION 3.21)
+project(irisEng C)
+
+# ---------------------------------------------------------------- 32-bit
+
+# IRIS_CONFIGURE_ONLY_64 is for looking at this file's own workings
+# where there is no 32-bit toolchain to hand -- it was how the source
+# list and the library targets below were checked. It does not make a
+# 64-bit build work; it makes one that configures and must not be run.
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    if(IRIS_CONFIGURE_ONLY_64)
+        message(WARNING
+            "Configuring 64-bit because IRIS_CONFIGURE_ONLY_64 is set. "
+            "Anything this builds stores pointers in ints and will not "
+            "run. This is for inspecting the configuration and nothing "
+            "else.")
+    else()
+        message(FATAL_ERROR
+            "irisEng is 32-bit only: it stores pointers in ints in several "
+            "places and a 64-bit build would truncate them.\n"
+            "  Visual Studio:  cmake -S . -B build -A Win32\n"
+            "  gcc or clang:   cmake -S . -B build "
+            "-DCMAKE_C_FLAGS=-m32 -DCMAKE_EXE_LINKER_FLAGS=-m32")
+    endif()
+endif()
+
+# ------------------------------------------------------- what to compile
+#
+# The file list comes out of irisEng.vcxproj rather than being written
+# again here. That is deliberate: the project file is already the one
+# the tests check themselves against -- tests/run.sh fails if a source
+# the tests build is missing from it -- so making it the source of
+# truth for this build too means the two cannot drift apart. A source
+# added to the project is in this build the moment it is added.
+
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/irisEng.vcxproj" IRIS_VCXPROJ)
+string(REGEX MATCHALL "ClCompile Include=\"[^\"]+\\.c\"" IRIS_ENTRIES "${IRIS_VCXPROJ}")
+
+set(IRIS_ENGINE_SOURCES "")
+set(IRIS_FREETYPE_SOURCES "")
+set(IRIS_VENDOR_SOURCES "")
+foreach(entry IN LISTS IRIS_ENTRIES)
+    string(REGEX REPLACE "ClCompile Include=\"([^\"]+)\"" "\\1" one "${entry}")
+    string(REPLACE "\\" "/" one "${one}")
+    if(one MATCHES "^thirdparty/freetype/")
+        list(APPEND IRIS_FREETYPE_SOURCES "${one}")
+    elseif(one MATCHES "^thirdparty/")
+        list(APPEND IRIS_VENDOR_SOURCES "${one}")
+    else()
+        list(APPEND IRIS_ENGINE_SOURCES "${one}")
+    endif()
+endforeach()
+
+list(LENGTH IRIS_ENGINE_SOURCES IRIS_ENGINE_COUNT)
+if(IRIS_ENGINE_COUNT LESS 100)
+    message(FATAL_ERROR
+        "only ${IRIS_ENGINE_COUNT} engine sources were read out of "
+        "irisEng.vcxproj, which cannot be right -- the project file has "
+        "moved on and the regular expression above has not")
+endif()
+message(STATUS "irisEng: ${IRIS_ENGINE_COUNT} engine sources from irisEng.vcxproj")
+
+foreach(one IN LISTS IRIS_ENGINE_SOURCES IRIS_FREETYPE_SOURCES IRIS_VENDOR_SOURCES)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${one}")
+        message(FATAL_ERROR "irisEng.vcxproj names ${one}, which is not there")
+    endif()
+endforeach()
+
+# ------------------------------------------------------------------ SDL3
+#
+# Vendored and built from source, so the game and the engine agree on
+# which SDL they are talking about. Static, because the game ships as
+# one executable.
+
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON  CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+add_subdirectory(thirdparty/SDL3 EXCLUDE_FROM_ALL)
+
+# -------------------------------------------------------------- FreeType
+#
+# The thirteen amalgamations the project compiles, each of which pulls
+# in its own siblings. They need two defines of their own and none of
+# the engine's headers, which is why they are a target rather than part
+# of the engine's.
+
+add_library(irisEngFreeType STATIC ${IRIS_FREETYPE_SOURCES})
+target_compile_definitions(irisEngFreeType PRIVATE
+    FT2_BUILD_LIBRARY
+    "FT_CONFIG_MODULES_H=<ftmodule.h>")
+target_include_directories(irisEngFreeType PRIVATE
+    thirdparty/freetype/iriseng
+    thirdparty/freetype/include)
+if(MSVC)
+    target_compile_options(irisEngFreeType PRIVATE /w)
+else()
+    target_compile_options(irisEngFreeType PRIVATE -w)
+endif()
+
+# --------------------------------------------- libpng, zlib and jpeg-6b
+#
+# Upstream source, built with warnings off for the same reason: it is
+# not ours to tidy and its warnings would bury the engine's.
+
+# One of these is not upstream: thirdparty/jpeg-6b/jmemjade.c is
+# jpeg's memory manager written against this engine's allocator, and
+# it reaches back up into common.h for it. It builds with the rest
+# because that is where the project keeps it, and it is the only file
+# here that the warnings-off below is hiding engine code from.
+add_library(irisEngVendor STATIC ${IRIS_VENDOR_SOURCES})
+target_include_directories(irisEngVendor PRIVATE
+    thirdparty/zlib thirdparty/libpng thirdparty/jpeg-6b)
+if(MSVC)
+    target_compile_options(irisEngVendor PRIVATE /w)
+else()
+    target_compile_options(irisEngVendor PRIVATE -w)
+endif()
+
+# ---------------------------------------------------------------- ffmpeg
+#
+# Prebuilt, unlike everything else here: the import libraries and the
+# DLLs are in the tree and are what the video playback links against.
+
+add_library(irisEngFFmpeg INTERFACE)
+target_include_directories(irisEngFFmpeg INTERFACE thirdparty/ffmpeg/include)
+foreach(lib avcodec avformat avutil swscale swresample)
+    if(MSVC)
+        target_link_libraries(irisEngFFmpeg INTERFACE
+            "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ffmpeg/lib/${lib}.lib")
+    else()
+        target_link_libraries(irisEngFFmpeg INTERFACE
+            "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ffmpeg/lib/lib${lib}.dll.a")
+    endif()
+endforeach()
+
+# ------------------------------------------------------------ the engine
+
+add_executable(irisEng WIN32 ${IRIS_ENGINE_SOURCES})
+
+target_include_directories(irisEng PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    thirdparty/SDL3/include
+    thirdparty/ffmpeg/include
+    thirdparty/freetype/include
+    thirdparty/zlib
+    thirdparty/libpng
+    thirdparty/jpeg-6b)
+
+target_link_libraries(irisEng PRIVATE
+    SDL3::SDL3-static
+    irisEngFreeType
+    irisEngVendor
+    irisEngFFmpeg)
+
+if(WIN32)
+    # The two renderers and the sound: Direct3D 9, OpenGL and the
+    # multimedia timer. SDL brings its own.
+    target_link_libraries(irisEng PRIVATE winmm dxguid d3d9 opengl32)
+    target_compile_definitions(irisEng PRIVATE
+        _CRT_SECURE_NO_WARNINGS WIN32 _CONSOLE)
+else()
+    message(WARNING
+        "This is not a Windows build. The engine does not compile off "
+        "Windows yet: it asks for the registry, a dialog, the Win32 heap, "
+        "a directory walk and a WGL context, and one of its two renderers "
+        "is Direct3D. The configuration below is here so that the work of "
+        "answering those has somewhere to land, not because it links.")
+endif()
+
+if(MSVC)
+    # /W3 is what the warning sweep in tests/ is written against.
+    target_compile_options(irisEng PRIVATE /W3)
+else()
+    target_compile_options(irisEng PRIVATE -fms-extensions)
+endif()
+
+set_target_properties(irisEng PROPERTIES
+    C_STANDARD 11
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
