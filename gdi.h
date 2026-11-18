@@ -188,6 +188,17 @@ typedef struct sGdi_DisplayData
     int (* b_GeometryHasCache)(struct sGEOGRO* gro);
     void(* DiscardGeometryCache)(struct sGEOGRO* gro);
 
+    /* Build that cache for everything in a world that has just
+       loaded, rather than one piece at a time as it is first drawn.
+       The engine asks once, after the load; what gets built, and
+       whether anything does, is the renderer's business.
+
+       Through the interface because it is a renderer the engine is
+       asking. It used to call the Direct3D one by name, which meant
+       the call happened whichever renderer was running and the only
+       right answer that renderer could give was to do nothing. */
+    void(* BuildGeometryCaches)(struct sWorld* world);
+
     /* A glyph atlas, and the quads that read from it. The engine
        rasterizes text itself and hands over 8-bit coverage -- one
        byte per pixel, row after row, no padding -- leaving the

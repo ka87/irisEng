@@ -790,6 +790,13 @@ int GL_b_GeometryHasCache(struct sGEOGRO* gro)
     return 0;
 }
 
+void GL_BuildGeometryCaches(struct sWorld* world)
+{
+    /* See the note in the header: nothing to do. The buffers are made
+       when the geometry is first drawn. */
+    (void)world;
+}
+
 void GL_DiscardGeometryCache(struct sGEOGRO* gro)
 {
     (void)gro;

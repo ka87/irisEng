@@ -2311,7 +2311,11 @@ struct sWorld* WOR_pst_Universe_AddWorldList(int unused0, int worldKey, int unus
     MEM_gb_EnableTmp = 0;
     MEM_ResetTmpMemory();
     ResetPreloadTexAll();
-    D3D_CreateGameObjectsD3DStuffForMultiStream(world);
+    /* Whatever the renderer wants cached for this world's geometry.
+       Through the interface, so the renderer in use answers. */
+    if (MAI_gst_MainHandles.displayData
+        && MAI_gst_MainHandles.displayData->BuildGeometryCaches)
+        MAI_gst_MainHandles.displayData->BuildGeometryCaches(world);
     DINPUT_InitVariables(0);
 
     return world;
