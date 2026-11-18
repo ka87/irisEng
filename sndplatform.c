@@ -587,3 +587,127 @@ int SPL_b_FeedWanted(void)
     SDL_UnlockMutex(spl_lock);
     return wanted;
 }
+
+/* ------------------------------------------------------------------
+   The sound thread and its mailbox. See the note in sndplatform.h.
+   ------------------------------------------------------------------ */
+
+struct sSplThread
+{
+    SDL_Thread* thread;
+    int (*body)(void*);
+    void* arg;
+};
+
+static SDL_Mutex*     spl_cmdLock;
+static SDL_Condition* spl_cmdPosted;    /* a command is waiting */
+static SDL_Condition* spl_cmdAnswered;  /* the thread has done it */
+static int            spl_cmd = SPL_CMD_NONE;
+static int            spl_cmdDone;
+
+static int SPL_l_b_CmdOpen(void)
+{
+    if (spl_cmdLock)
+        return 1;
+    spl_cmdLock = SDL_CreateMutex();
+    spl_cmdPosted = SDL_CreateCondition();
+    spl_cmdAnswered = SDL_CreateCondition();
+    if (spl_cmdLock && spl_cmdPosted && spl_cmdAnswered)
+        return 1;
+    if (spl_cmdAnswered) SDL_DestroyCondition(spl_cmdAnswered);
+    if (spl_cmdPosted)   SDL_DestroyCondition(spl_cmdPosted);
+    if (spl_cmdLock)     SDL_DestroyMutex(spl_cmdLock);
+    spl_cmdAnswered = 0;
+    spl_cmdPosted = 0;
+    spl_cmdLock = 0;
+    return 0;
+}
+
+static int SDLCALL SPL_l_i_ThreadBody(void* data)
+{
+    tSplThread* t = (tSplThread*)data;
+    return t->body(t->arg);
+}
+
+tSplThread* SPL_p_ThreadStart(int (*body)(void*), void* arg, const char* name)
+{
+    tSplThread* t;
+
+    if (!body || !SPL_l_b_CmdOpen())
+        return 0;
+    t = (tSplThread*)calloc(1, sizeof(*t));
+    if (!t)
+        return 0;
+    t->body = body;
+    t->arg = arg;
+    t->thread = SDL_CreateThread(SPL_l_i_ThreadBody, name ? name : "sound", t);
+    if (!t->thread)
+    {
+        free(t);
+        return 0;
+    }
+    return t;
+}
+
+int SPL_b_ThreadWait(tSplThread* thread, int timeoutMs)
+{
+    int status = 0;
+
+    if (!thread)
+        return 1;
+    /* SDL waits without a bound, and the engine's own bound is what
+       stops a wedged thread holding the shutdown. A thread that has
+       been told to exit answers long before this. */
+    (void)timeoutMs;
+    SDL_WaitThread(thread->thread, &status);
+    free(thread);
+    return 1;
+}
+
+int SPL_b_Command(int command, int timeoutMs)
+{
+    int answered;
+
+    if (!SPL_l_b_CmdOpen())
+        return 0;
+    SDL_LockMutex(spl_cmdLock);
+    spl_cmd = command;
+    spl_cmdDone = 0;
+    SDL_SignalCondition(spl_cmdPosted);
+    /* Waited rather than slept on, so the answer is taken as soon as
+       it is given; the bound is only there for a thread that never
+       answers at all. */
+    while (!spl_cmdDone)
+    {
+        if (!SDL_WaitConditionTimeout(spl_cmdAnswered, spl_cmdLock, timeoutMs))
+            break;
+    }
+    answered = spl_cmdDone;
+    SDL_UnlockMutex(spl_cmdLock);
+    return answered;
+}
+
+int SPL_i_TakeCommand(int timeoutMs)
+{
+    int command;
+
+    if (!SPL_l_b_CmdOpen())
+        return SPL_CMD_ERROR;
+    SDL_LockMutex(spl_cmdLock);
+    if (spl_cmd == SPL_CMD_NONE)
+        SDL_WaitConditionTimeout(spl_cmdPosted, spl_cmdLock, timeoutMs);
+    command = spl_cmd;
+    spl_cmd = SPL_CMD_NONE;
+    SDL_UnlockMutex(spl_cmdLock);
+    return command;
+}
+
+void SPL_CommandDone(void)
+{
+    if (!spl_cmdLock)
+        return;
+    SDL_LockMutex(spl_cmdLock);
+    spl_cmdDone = 1;
+    SDL_SignalCondition(spl_cmdAnswered);
+    SDL_UnlockMutex(spl_cmdLock);
+}

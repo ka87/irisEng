@@ -112,3 +112,37 @@ void SPL_Feed(void);
 /* Whether any voice wants feeding, so the thread can wait rather than
    spin. */
 int  SPL_b_FeedWanted(void);
+
+/* The sound thread, and the mailbox the engine hands it work through.
+ *
+ * What this replaces is four Windows events and a fifth for the
+ * answer: the engine set one of the four, the thread woke on whichever
+ * it was, did that one thing and set the fifth to say so. Only one is
+ * ever outstanding -- every poster waits for the answer before
+ * returning -- so it is a single-slot mailbox and not a queue, and
+ * that is what is built here.
+ *
+ * The thread's wait has a timeout because the timeout is its clock:
+ * it is what the device's own refill notifications used to be. */
+
+typedef struct sSplThread tSplThread;
+
+tSplThread* SPL_p_ThreadStart(int (*body)(void*), void* arg, const char* name);
+/* Waits for the thread to finish, up to timeoutMs. True if it did. */
+int  SPL_b_ThreadWait(tSplThread* thread, int timeoutMs);
+
+/* No command came within the timeout, which is the thread's tick. */
+#define SPL_CMD_NONE   (-1)
+/* The wait itself failed, which is not a tick and not a command: the
+   thread waits again, as it always did. */
+#define SPL_CMD_ERROR  (-2)
+
+/* Engine side: hand the thread a command and wait for it to say it is
+   done, up to timeoutMs. False if the answer never came, which means
+   the thread is wedged. */
+int  SPL_b_Command(int command, int timeoutMs);
+/* Thread side: the next command, SPL_CMD_NONE on the timeout, or
+   SPL_CMD_ERROR if the wait failed. */
+int  SPL_i_TakeCommand(int timeoutMs);
+/* Thread side: the answer the poster is waiting for. */
+void SPL_CommandDone(void);

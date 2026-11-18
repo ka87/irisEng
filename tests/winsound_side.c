@@ -863,6 +863,17 @@ void SIDE_RUN(int c)
                                   -100 * (sub % 9));
         dump_sbe("reinit", sbe);
         dump_globals();
+        /* Half of them arrive with no handles yet, which is the only
+           way the add is posted at all: the guard inside it asks for
+           both to be nought or -1, and a sound made here already has
+           them. Without this the one site that hands the thread an
+           add was never run, and posting the wrong command there
+           scored exact. */
+        if (sub & 1)
+        {
+            sbe->miscData->eventHandle1 = (HANDLE)0;
+            sbe->miscData->eventHandle2 = (sub & 2) ? (HANDLE)-1 : (HANDLE)0;
+        }
         pcSND_SetPositionNotify(sbe);
         pcSND_SB_Pause(sbe);
         dump_sbe("pause", sbe);
@@ -1157,6 +1168,8 @@ void SIDE_RUN(int c)
             wsnd_read_bytes = 36 * (1 + (sub % 7));
             wsnd_feeds = 0;
             wsnd_waits = 0;
+            wsnd_ticks = 0;
+            wsnd_errors = 0;
             wsnd_run_thread(pcSND_SoundThread);
 #if WSND_SIDE_NEW
             /* The device is fed whatever woke the thread, so there is a
@@ -1169,8 +1182,20 @@ void SIDE_RUN(int c)
                and it says nothing when it holds: a shared log that
                differs by a line only when this breaks is a check, where
                one that always differs is noise. */
-            if (wsnd_feeds < wsnd_waits - 1)
-                d("FEED STARVED: %d feeds for %d waits\n", wsnd_feeds, wsnd_waits);
+            /* Exactly: a tick feeds twice -- once for the wake and
+               once because servicing is what the second feed reads --
+               a command feeds once, and a wait that failed feeds not
+               at all, because it goes back to the wait without doing
+               anything. So feeds = waits + ticks - failures.
+               
+               A bound rather than an equality is what this was, and it
+               only caught the device going hungry. Treating a failed
+               wait as a tick feeds *more*, which a bound lets through:
+               that is a fault this differential has already had once,
+               and it came back clean until this became an equality. */
+            if (wsnd_feeds != wsnd_waits + wsnd_ticks - wsnd_errors)
+                d("FEEDS WRONG: %d feeds, %d waits, %d ticks, %d failed\n",
+                  wsnd_feeds, wsnd_waits, wsnd_ticks, wsnd_errors);
 #endif
             dump_sbe("thread", sbe);
             dump_globals();

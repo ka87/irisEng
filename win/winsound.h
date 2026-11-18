@@ -117,7 +117,14 @@ PEAXDirectSoundCreate8 pEAXDirectSoundCreate8;
 #endif
 tDSoundGlobalStruct gDoSoundGlobal;
 int pcSNDThreadId;
+/* The sound thread. A Windows thread handle for the frozen copy, and
+   the platform layer's own thread for the rewrite -- each side has its
+   own, so they need not be the same thing. */
+#ifdef WINSOUND_FROZEN
 HANDLE pcSNDhObject;
+#else
+struct sSplThread* pcSNDhObject;
+#endif
 int trackEventsArrayNextIdx;
 BASStruct dsndSBList;
 /* The four interfaces the old init made to probe for 3D and for EAX.

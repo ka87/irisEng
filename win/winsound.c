@@ -85,9 +85,17 @@ static int pcSND_DecodeADPCMBlocks(char* src, int16_t* dest, int blockNum, int c
    which is the worst way for it to be: five seconds of a stopped game
    and nothing said. If it is ever reached the thread is wedged, so say
    which command it was. */
-static void pcSND_l_WaitForThread(const char* what)
+/* The four commands the engine hands the sound thread. They were the
+   indices of four events it waited on, and the thread's switch still
+   reads them that way. */
+#define PCSND_CMD_ADD    0
+#define PCSND_CMD_REMOVE 1
+#define PCSND_CMD_EXIT   2
+#define PCSND_CMD_STOP   3
+
+static void pcSND_l_Command(int command, const char* what)
 {
-    if (WaitForSingleObject(dsndEvents[5], 5000u) == WAIT_TIMEOUT)
+    if (!SPL_b_Command(command, 5000))
         DBG_OutputDebugString("SND: the sound thread did not answer '%s' in five seconds\n", what);
 }
 
@@ -135,7 +143,7 @@ void pcSND_AddSoundToThePlayList(BOOL notifyThread)
                           sndEventHandleNum);
 #endif
     if (notifyThread)
-        SetEvent(dsndEvents[5]);
+        SPL_CommandDone();
 }
 
 void pcSND_RemoveSoundFromPlayList(tSndSoundBufferElem* sbe, int fireEvent)
@@ -148,7 +156,7 @@ void pcSND_RemoveSoundFromPlayList(tSndSoundBufferElem* sbe, int fireEvent)
     {
         sndEventHandleNum = 0;
         if (fireEvent)
-            SetEvent(dsndEvents[5]);
+            SPL_CommandDone();
         return;
     }
     if ((sndEventHandleNum & 0xFFFFFFFE) != 0)
@@ -179,12 +187,13 @@ void pcSND_RemoveSoundFromPlayList(tSndSoundBufferElem* sbe, int fireEvent)
     DBG_OutputDebugString("SND rm: sbe=%p misc=%p handles=%d\n",
                           (void*)sbe, (void*)sbe->miscData, sndEventHandleNum);
 #endif
-    ResetEvent(sbe->miscData->eventHandle1);
+    /* Cleared rather than reset: these are the tokens described in
+       pcSND_StartSoundThread, and nought is what the engine reads as
+       "this sound is not on the list". */
     sbe->miscData->eventHandle1 = 0;
-    ResetEvent(sbe->miscData->eventHandle2);
     sbe->miscData->eventHandle2 = 0;
     if (fireEvent)
-        SetEvent(dsndEvents[5]);
+        SPL_CommandDone();
 }
 
 void pcSND_StopSoundAndRemoveFromThePlayList(tSndSoundBufferElem* sbe, int fireEvent)
@@ -565,30 +574,26 @@ static void pcSND_l_ThreadStats(int wasTick)
    long enough that the thread is asleep almost all of the time. */
 #define PCSND_SERVICE_MS  5
 
-int WINAPI pcSND_SoundThread(LPVOID parameter)
+int pcSND_SoundThread(void* parameter)
 {
-    DWORD signalled;
+    int signalled;
 
     while (1)
     {
-        /* Four events and a timeout, where it used to be four events
+        /* One command or a timeout, where it used to be four events
            and one per refill point of every streaming sound. The
            timeout is what the refill points were: the thread wakes,
            looks at every stream's cursor and does what the device's
-           own notification would have made it do. */
-        /* The four control events themselves, not the first four of
-           sndEventHandles. They are the same four, but that array is
-           grown from sndPlayList when the list runs out of room --
-           see the note in pcSND_AddSoundToThePlayList -- and the
-           control events have no business being reachable from a
-           realloc. */
-        HANDLE control[4] = { dsndEvents[0], dsndEvents[1],
-                              dsndEvents[2], dsndEvents[3] };
-
-        signalled = WaitForMultipleObjects(4, control, 0, PCSND_SERVICE_MS);
+           own notification would have made it do.
+           
+           Only ever one command is outstanding -- the engine waits for
+           the answer before it returns -- so what was a wait on four
+           events is a wait on one mailbox, and the command is the
+           index of the event that used to carry it. */
+        signalled = SPL_i_TakeCommand(PCSND_SERVICE_MS);
         /* A wait that failed is waited again and is not a tick, which
            is what the loop around it used to say. */
-        if (signalled == (DWORD)-1)
+        if (signalled == SPL_CMD_ERROR)
             continue;
 
         /* The device is fed whatever woke the thread.
@@ -603,7 +608,7 @@ int WINAPI pcSND_SoundThread(LPVOID parameter)
            four short chunks, so a few missed feeds are audible. */
         pcSND_l_Feed();
 
-        if (signalled == WAIT_TIMEOUT)
+        if (signalled == SPL_CMD_NONE)
         {
             /* The refill points: every streaming sound's cursor looked
                at, and whatever the device's own notification would have
@@ -619,16 +624,18 @@ int WINAPI pcSND_SoundThread(LPVOID parameter)
 
         switch (signalled)
         {
-        case 0u:
+        case PCSND_CMD_ADD:
             pcSND_AddSoundToThePlayList(1);
             break;
-        case 1u:
+        case PCSND_CMD_REMOVE:
             pcSND_RemoveSoundFromPlayList(sndCurrSoundBufferElem, 1);
             break;
-        case 2u:
-            SetEvent(dsndEvents[5]);
-            ExitThread(0);
-        case 3u:
+        case PCSND_CMD_EXIT:
+            /* Returning is what ExitThread was, and the only way out
+               of this loop. */
+            SPL_CommandDone();
+            return 0;
+        case PCSND_CMD_STOP:
             pcSND_StopSoundAndRemoveFromThePlayList(sndCurrSoundBufferElem, 1);
             break;
         default:
@@ -650,8 +657,15 @@ static void pcSND_StartSoundThread(void)
         trackEventsArrayNextIdx = 0;
         dsndReadBuffer1 = malloc(307200u);
         dsndReadBuffer2 = malloc(307200u);
+        /* Twenty-three events were made here and four of them were
+           ever waited on. The four and their answer are the mailbox
+           now; the rest were handed out two per streaming sound, and
+           no one has signalled or waited on one of those since the
+           refill notifications went. What is left of them is a value
+           the engine tells apart from nought and from -1, so that is
+           all they are -- a token, and no object behind it. */
         for (i = 0; i < 23; ++i)
-            dsndEvents[i] = CreateEventA(NULL, FALSE, FALSE, NULL);
+            dsndEvents[i] = (HANDLE)(size_t)(i + 1);
         sndEventsNum = 23;
         sndPlayList = (tPcSndEventRelated*)MEM_p_Alloc(sizeof(tPcSndEventRelated) * 23);
         memset(sndPlayList, 0, 8 * sndEventsNum);
@@ -665,7 +679,7 @@ static void pcSND_StartSoundThread(void)
             sndPlayList[i].playListElemInUse = 1;
             sndPlayList[i].soundElem = 0;
         }
-        pcSNDhObject = CreateThread(0, 0, pcSND_SoundThread, 0, 0, &pcSNDThreadId);
+        pcSNDhObject = SPL_p_ThreadStart(pcSND_SoundThread, 0, "BGE sound");
     }
 }
 
@@ -832,8 +846,7 @@ void pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(tSndSoundBufferElem*
     if (sbe->miscData->eventHandle2 != (HANDLE)-1)
     {
         sndCurrSoundBufferElem = sbe;
-        SetEvent(dsndEvents[3]);
-        pcSND_l_WaitForThread("stop");
+        pcSND_l_Command(PCSND_CMD_STOP, "stop");
     }
 }
 
@@ -1050,11 +1063,9 @@ void pcSND_Cleanup()
     if (!SND_gc_NoSound)
     {
         sndCurrSoundBufferElem = (tSndSoundBufferElem*)-1;
-        SetEvent(dsndEvents[2]);
-        pcSND_l_WaitForThread("exit");
-        if (WaitForSingleObject(pcSNDhObject, 5000u) == WAIT_TIMEOUT)
+        pcSND_l_Command(PCSND_CMD_EXIT, "exit");
+        if (!SPL_b_ThreadWait(pcSNDhObject, 5000))
             DBG_OutputDebugString("SND: the sound thread did not exit in five seconds\n");
-        CloseHandle(pcSNDhObject);
         sndCurrSoundBufferElem = NULL;
         pcSNDhObject = 0;
         pcSNDThreadId = 0;
@@ -1067,12 +1078,9 @@ void pcSND_Cleanup()
         sndEventHandleNum = 0;
         sndEventsNum = 0;
         trackEventsArrayNextIdx = 0;
+        /* Tokens, with nothing behind them to close. */
         for (i = 0; i < 23; ++i)
-        {
-            if (dsndEvents[i])
-                CloseHandle(dsndEvents[i]);
             dsndEvents[i] = 0;
-        }
         if (dsndReadBuffer1)
             free(dsndReadBuffer1);
         dsndReadBuffer1 = NULL;
@@ -1489,8 +1497,7 @@ void pcSND_setCurrentSoundBuffElemAndSetAnEvent(tSndSoundBufferElem* sbe)
         misc->eventHandle1 = dsndEvents[misc->dsndEventsArrayIdx + 6];
         sbe->miscData->eventHandle2 = dsndEvents[sbe->miscData->dsndEventsArrayIdx + 15];
         sndCurrSoundBufferElem = sbe;
-        SetEvent(dsndEvents[0]);
-        pcSND_l_WaitForThread("add");
+        pcSND_l_Command(PCSND_CMD_ADD, "add");
     }
 }
 

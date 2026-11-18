@@ -73,6 +73,8 @@ extern int wsnd_loa_speedmode; /* drives isSpeedModeAndBinFile() */
    waited. One-sided: see the note in winsound_mocks.c. */
 extern int wsnd_feeds;
 extern int wsnd_waits;
+extern int wsnd_ticks;
+extern int wsnd_errors;
 
 void wsnd_thread_script(const int* indices, int count);
 void wsnd_run_thread(int (*body)(void*));
