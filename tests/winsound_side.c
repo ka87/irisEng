@@ -100,7 +100,17 @@ void SND_ComputeDoppler(Vec3* listenerSpeed, Vec3* listenerPos, tSoundInstanceEl
 float SND_f_Compute3DVol(tSoundInstanceElem* inst);
 int pcSND_i_FxInit(void);
 void pcSND_FxClose(void);
-void pcSND_fxStructSet(EAXLISTENERPROPERTIES* dest, int preset);
+/* The room the fx layer computes. The rewrite has a struct of its own
+   for it, with the widths the game build gives it; the frozen copy
+   still takes the vendor one, whose longs are wider on this host. Each
+   side therefore passes its own shape, and the comparison is of the
+   fields by name. */
+#if WSND_SIDE_NEW
+typedef tSndRoomProperties tWsndRoom;
+#else
+typedef EAXLISTENERPROPERTIES tWsndRoom;
+#endif
+void pcSND_fxStructSet(tWsndRoom* dest, int preset);
 int pcSND_EAXListenerPropertiesSet(int preset);
 void pcSND_DummyFXFunc(tSoundFxParams* params);
 int pcSND_i_FxSetMode(tSoundFxParams* params, int mode);
@@ -845,22 +855,26 @@ void SIDE_RUN(int c)
     case 9:
     {
         /* the FX layer: presets, the mode ladders, enable and disable */
-        EAXLISTENERPROPERTIES props;
+        tWsndRoom props;
         int mode;
         static const int modes[16] = {
             -3, 0, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13,
             65536, 65537, 65540, 65545
         };
 
+        /* The levels are printed through int32_t because the vendor
+           struct's are wider on this host: an out-of-range preset
+           returns without writing, and the 0xCD fill left behind would
+           otherwise differ on width alone. */
         memset(&props, 0xCD, sizeof(props));
         pcSND_fxStructSet(&props, sub % 14 - 1);
         d("preset %d env=%u size=%08X dif=%08X room=%ld hf=%ld lf=%ld\n",
           sub % 14 - 1, props.ulEnvironment, fbits(props.flEnvironmentSize),
-          fbits(props.flEnvironmentDiffusion), (long)props.lRoom, (long)props.lRoomHF,
-          (long)props.lRoomLF);
+          fbits(props.flEnvironmentDiffusion), (long)(int32_t)props.lRoom, (long)(int32_t)props.lRoomHF,
+          (long)(int32_t)props.lRoomLF);
         d("preset dt=%08X dhf=%08X dlf=%08X refl=%ld rd=%08X rev=%ld vd=%08X\n",
           fbits(props.flDecayTime), fbits(props.flDecayHFRatio), fbits(props.flDecayLFRatio),
-          (long)props.lReflections, fbits(props.flReflectionsDelay), (long)props.lReverb,
+          (long)(int32_t)props.lReflections, fbits(props.flReflectionsDelay), (long)(int32_t)props.lReverb,
           fbits(props.flReverbDelay));
         d("preset et=%08X ed=%08X mt=%08X md=%08X ah=%08X hr=%08X lr=%08X rr=%08X fl=%u\n",
           fbits(props.flEchoTime), fbits(props.flEchoDepth), fbits(props.flModulationTime),

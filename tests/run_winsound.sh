@@ -32,7 +32,12 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# WINSOUND_FROZEN: sound.h gives its structs the DirectSound
+# interfaces the frozen copy still uses, in place of the plain
+# pointers the game build gets. Every translation unit here needs it,
+# or the two would disagree about the layout of a struct they hand to
+# each other.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DWINSOUND_FROZEN"
 OUT=tests/build
 mkdir -p "$OUT"
 

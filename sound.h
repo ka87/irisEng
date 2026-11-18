@@ -1,13 +1,13 @@
 #pragma once
-/* Still here, and the last thread of DirectSound left in the tree.
-   Nothing in win/winsound.c calls it any more; what keeps the include
-   is this header itself -- the four fields marked below, which the
-   frozen copy in tests/ still uses, and WAVEFORMATEX, which the wav
-   headers are declared with. WAVEFORMATEX is Win32's rather than
-   DirectSound's, so getting the include out means giving the engine a
-   wave format of its own first, and that reaches sound.c and the
-   loaders. Left as its own piece of work. */
+/* DirectSound's header is wanted by the frozen copies in tests/,
+   which still call it, and by nothing in the game. The test build
+   defines WINSOUND_FROZEN for every one of its translation units and
+   gets the four interface fields marked below; the game build gets
+   pointers of the same size in their place, so that both see one
+   layout for a struct they hand to each other. */
+#ifdef WINSOUND_FROZEN
 #include <dsound.h>
+#endif
 #include "common.h"
 #include "basic_array.h"
 #include "math.h"
@@ -18,7 +18,14 @@ struct sLoadingSoundMdfStruct;
 
 typedef struct sSbeMiscData
 {
+    /* The notify interface the refill positions were armed on. The
+       rewrite arms nothing and only ever clears this; the frozen copy
+       queries it and calls it, so it keeps the type. */
+#ifdef WINSOUND_FROZEN
     IDirectSoundNotify* vmilenEventHandlptr_Sub49e950;
+#else
+    void* vmilenEventHandlptr_Sub49e950;
+#endif
     HANDLE fileHandle;
     int distanceToMove;
     unsigned int fullSize;
@@ -65,9 +72,13 @@ typedef struct sSndSoundBufferElem
        still uses all three, and a baseline is not edited to follow a
        rewrite. Both copies have to agree on this struct's shape, so
        the space stays until the frozen copy is retired. */
+#ifdef WINSOUND_FROZEN
     IDirectSoundBuffer* dsndSBIF;
     IDirectSound3DBuffer* dsnd3dbufferIF;
     IKsPropertySet* dsndIKPropertySetIF;
+#else
+    void* frozenOnly[3];
+#endif
     uint8_t gap1[4];
 }  tSndSoundBufferElem;
 
@@ -79,8 +90,12 @@ typedef struct sSndHandles
        either of them was whether it had one. The two below are the
        frozen copy's, for the reason given in sSndSoundBufferElem. */
     int deviceOpen;
+#ifdef WINSOUND_FROZEN
     IDirectSound8* dsndif;
     IDirectSoundBuffer* SoundBuffer;
+#else
+    void* frozenOnlyHandles[2];
+#endif
     unsigned int soundElemFlagsOffset20isHas1;
     struct sSndSoundElem* soundElem;
 } tSndHandles;
@@ -508,11 +523,34 @@ typedef struct sSndWavHdrStruct
     __int16 extraDataSize;
 } tSndWavHdrStruct;
 */
+/* The format of a sound, as its wav header gives it.
+
+   Field for field and width for width what WAVEFORMATEX is, and
+   named the same, because every reader of it says wfex.nChannels and
+   the like. It is the engine's own type rather than Win32's for one
+   reason: nothing else in the sound needs windows.h now, and a
+   header that cannot be compiled off Windows is the whole of what
+   this move is against.
+
+   Nothing reads the bytes of this straight out of a file -- the wav
+   header is parsed into tSoundHeaderDataCase* and then assigned
+   across field by field -- so its layout answers to nobody. */
+typedef struct sSndWaveFormat
+{
+    uint16_t wFormatTag;
+    uint16_t nChannels;
+    uint32_t nSamplesPerSec;
+    uint32_t nAvgBytesPerSec;
+    uint16_t nBlockAlign;
+    uint16_t wBitsPerSample;
+    uint16_t cbSize;
+} tSndWaveFormat;
+
 typedef struct sSndWavHdrStruct
 {
     int32_t fullSoundSize;
     int32_t dataStartPos;
-    WAVEFORMATEX wfex;
+    tSndWaveFormat wfex;
 } tSndWavHdrStruct;
 
 typedef struct sSndRasterStatStruct
