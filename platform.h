@@ -68,6 +68,29 @@ void PLT_Message(const char* title, const char* text, int error);
    those codes, so they stay -- see the table in platform.c. */
 void PLT_ReadDevices(unsigned char* keys, int* mouse);
 
+/* Two keys the engine asks after outside that block, because neither
+   is a key being pressed in the game.
+
+   Shift is a developer's modifier: held while something happens, it
+   turns extra logging on. Num lock is remembered when the game takes
+   the input, because it is a lamp on the keyboard and a state the
+   player had before the game started, not a key at all.
+
+   They are here rather than read out of the block above because the
+   block is what the game's own input code reads, and these two are
+   asked at moments when it has not been filled -- and because shift
+   is one key to the player and two in that block. */
+/* The window, as the library that made it knows it.
+ *
+ * PLT_p_NativeWindow below hands out the system's own handle, which
+ * is what the Direct3D renderer wants. The OpenGL renderer wants this
+ * one, because the context is made through the same library as the
+ * window. Null before the window exists. */
+void* PLT_p_Window(void);
+
+int PLT_b_ShiftHeld(void);
+int PLT_b_NumLockOn(void);
+
 /* Whether the game has the input. Taking it locks the pointer to the
    window and hides it, which is what the exclusive device did; giving
    it back is what lets the overlay's command field be typed into. */

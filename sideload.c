@@ -2,6 +2,9 @@
 #include "dbg.h"
 #include "datapath.h"
 
+#include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_stdinc.h>
+
 /*
     The table is built once at startup by listing the directory, so a
     lookup during loading costs a walk over a handful of entries and
@@ -149,10 +152,10 @@ static void SIDE_ReadInterpretList(void)
 
 void SIDE_InitModule(void)
 {
-    WIN32_FIND_DATAA find;
-    HANDLE           handle;
-    char             pattern[MAX_PATH];
-    DWORD            attrs;
+    SDL_PathInfo info;
+    char**       names;
+    int          count = 0;
+    int          i;
 
     SIDE_gb_Enabled = 0;
     SIDE_gi_Count = 0;
@@ -164,42 +167,57 @@ void SIDE_InitModule(void)
     if (!DPT_b_ExePath("data/", SIDE_gs_Dir, sizeof(SIDE_gs_Dir)))
         return;
 
-    attrs = GetFileAttributesA(SIDE_gs_Dir);
-    if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY))
+    if (!SDL_GetPathInfo(SIDE_gs_Dir, &info)
+        || info.type != SDL_PATHTYPE_DIRECTORY)
         return;   /* no folder, nothing to do, normal install */
 
-    snprintf(pattern, sizeof(pattern), "%s*", SIDE_gs_Dir);
-    handle = FindFirstFileA(pattern, &find);
-    if (handle != INVALID_HANDLE_VALUE)
+    /* Everything in the folder, by name and without the folder in
+       front of it -- which is what the directory walk this replaced
+       answered with as well. No pattern: the names worth having are
+       eight hex digits and an extension, which is not a wildcard, and
+       SIDE_b_KeyFromName below is what decides. */
+    names = SDL_GlobDirectory(SIDE_gs_Dir, NULL, 0, &count);
+    if (names)
     {
-        do
+        for (i = 0; i < count; i++)
         {
+            char        full[MAX_PATH];
             uint32_t    key;
             tSideEntry* entry;
 
-            if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-                continue;
-            if (!SIDE_b_KeyFromName(find.cFileName, &key))
+            if (!SIDE_b_KeyFromName(names[i], &key))
                 continue;   /* notes, interpret.txt, spare copies */
+
+            if (snprintf(full, sizeof(full), "%s%s",
+                         SIDE_gs_Dir, names[i]) >= (int)sizeof(full))
+            {
+                /* The path did not fit, so the entry would name a
+                   file that cannot be opened. Left with no path
+                   rather than a truncated one, which is what the
+                   loader checks for. */
+                DBG_OutputDebugString("SIDE: path too long: %s\n", names[i]);
+                entry = SIDE_p_Add(key);
+                if (entry)
+                    entry->path[0] = '\0';
+                continue;
+            }
+
+            /* A directory can wear a key-shaped name, and the walk
+               this replaced skipped directories. It knew the kind of
+               each name as it went; this has to ask, so it asks here
+               rather than first -- the trip to the file system is for
+               the handful of names that got this far, and not for
+               every file in the folder. */
+            if (!SDL_GetPathInfo(full, &info)
+                || info.type != SDL_PATHTYPE_FILE)
+                continue;
 
             entry = SIDE_p_Add(key);
             if (!entry)
                 continue;
-
-            if (snprintf(entry->path, sizeof(entry->path), "%s%s",
-                         SIDE_gs_Dir, find.cFileName) >= sizeof(entry->path))
-            {
-                /* The path did not fit, so the entry would name a
-                   file that cannot be opened. Drop it rather than
-                   leave a truncated path behind. */
-                DBG_OutputDebugString("SIDE: path too long: %s\n", find.cFileName);
-                entry->path[0] = '\0';
-                continue;
-            }
+            memcpy(entry->path, full, strlen(full) + 1);
         }
-        while (FindNextFileA(handle, &find));
-
-        FindClose(handle);
+        SDL_free(names);
     }
 
     SIDE_ReadInterpretList();

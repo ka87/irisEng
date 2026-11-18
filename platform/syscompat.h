@@ -48,13 +48,14 @@ int PLT_b_OnlyInstance(void);
 /* The C library under its POSIX name.
  *
  * Case-insensitive compare has no standard spelling: POSIX calls it
- * strcasecmp and Microsoft's library has the function under a name of
- * its own. The engine says the POSIX one, because the rest of what it
+ * strcasecmp, and the prefix form strncasecmp, and Microsoft's library
+ * has both under names of its own. The engine says the POSIX one, because the rest of what it
  * says -- snprintf, vsnprintf, hypot -- is standard C that both
  * libraries have, and one spelling throughout is worth more than
  * matching whichever library happens to be underneath. */
 #ifdef _WIN32
-#define strcasecmp _stricmp
+#define strcasecmp  _stricmp
+#define strncasecmp _strnicmp
 #else
 #include <strings.h>
 #endif

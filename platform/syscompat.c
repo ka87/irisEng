@@ -157,6 +157,20 @@ static DWORD PLT_l_Milliseconds(void)
 DWORD timeGetTime(void)  { return PLT_l_Milliseconds(); }
 DWORD GetTickCount(void) { return PLT_l_Milliseconds(); }
 
+/* Asking the system for a finer timer, and giving it back.
+ *
+ * Nothing to do here. Those two ask Windows to run its scheduler's
+ * clock at a stated resolution, because the clock the engine reads
+ * through them is as coarse as that clock is. The clock above is
+ * CLOCK_MONOTONIC, which is as fine as the hardware allows whether
+ * anybody asks or not, so there is no resolution to request.
+ *
+ * Nought is what the real pair answer on success, so a caller that
+ * checks -- none of them do -- reads it as having worked, which it
+ * did: the engine asked for a millisecond and has better. */
+DWORD timeBeginPeriod(UINT period) { (void)period; return 0; }
+DWORD timeEndPeriod(UINT period)   { (void)period; return 0; }
+
 void OutputDebugStringA(LPCSTR text)
 {
     /* Where a debugger would have heard it. Nothing attaches to a

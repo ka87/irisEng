@@ -199,7 +199,12 @@ float MATH_RandFloatRange(float min, float max);
 float MATH_DotProduct(Vec3* vec1, Vec3* vec2);
 
 // x86 32 bit hack
-inline uint32_t f2iMagic(float f) {
+//
+// static, because a plain `inline` in C is a promise that some
+// translation unit defines the function out of line, and none does:
+// Microsoft's compiler emits one per unit and is happy, and every
+// other one leaves the call unresolved at link time.
+static inline uint32_t f2iMagic(float f) {
 
     // Érdekesség: ez miért van?
     // A WATERFFT_Turn_Spectre fügtgvényben volt egy olyan alkalmazása, hogy timeElapseda * src->spectroMap[i].imaginary + magicFloatVal_dbl_B0C590 / 2.0; 

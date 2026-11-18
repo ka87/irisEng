@@ -5,6 +5,7 @@
 #include "collision.h"
 #include "animation.h"
 #include "datapath.h"
+#include "platform.h"
 
 void IMG_Log4Debugging(char* msg)
 {
@@ -335,7 +336,7 @@ int IMG_Analyser(tWorld* world, unsigned int mission)
     if (!world)
         return result;
     IMG_PhotoSummary = 0;
-    if (GetAsyncKeyState(VK_SHIFT) >= 0)
+    if (!PLT_b_ShiftHeld())
     {
         IMG_Log = 0;
     }
@@ -590,7 +591,7 @@ unsigned int IMG_Analyser_Bis(tWorld* world, int mission)
     seen[1] = 0;
     seen[0] = 0;
     IMG_Log = 0;
-    if (GetAsyncKeyState(VK_SHIFT) < 0)
+    if (PLT_b_ShiftHeld())
     {
         IMG_Log4Debugging("****** photo analyser *********\n");
         IMG_Log = 1;

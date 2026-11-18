@@ -45,6 +45,16 @@ long long FIO_i64_Tell(FILE* fp);
 int FIO_b_Writable(const char* path);
 int FIO_b_MakeWritable(const char* path);
 
+/* How many bytes are free on whatever holds a named directory, or -1
+   if it cannot be told.
+
+   Here with the rest of the questions about files because it is one,
+   and because the two libraries answer it in entirely different
+   words: Windows has a call for the free space itself, and POSIX
+   answers with a block size and a count of blocks. The caller wants
+   neither -- it wants to know whether a save will fit. */
+long long FIO_i64_FreeSpace(const char* dir);
+
 /* The mode to open a file that will be read start to end.
    Microsoft's library takes that as a hint in the mode string; it is
    a hint and nothing else, so everywhere else simply reads. */

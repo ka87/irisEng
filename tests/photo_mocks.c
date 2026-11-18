@@ -161,10 +161,20 @@ int PHMOCK_fclose(FILE* fp)
 
 /* ---- the engine around the analyser ---------------------------------- */
 
+/* Whether shift is held, asked of Windows by the frozen copy and of
+   the platform layer by the rewrite. The same event, so the same word
+   in the log, and the same answer from the harness's own flag -- a
+   difference here would be on every photo and would say nothing. */
 short GetAsyncKeyState(int key)
 {
-    PHMOCK_Record("GetAsyncKeyState", 1, 0, key);
+    PHMOCK_Record("shiftheld", 0, 0, 0);
     return PHMOCK_shiftDown ? (short)0x8000 : (short)0;
+}
+
+int PLT_b_ShiftHeld(void)
+{
+    PHMOCK_Record("shiftheld", 0, 0, 0);
+    return PHMOCK_shiftDown != 0;
 }
 
 struct sModifier* GAO_ModifierPhoto_Get(struct sGameObjectMain* gao, int wantSphere)

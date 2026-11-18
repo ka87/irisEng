@@ -5,6 +5,31 @@
 #include "soft.h"
 #include "platform.h"
 
+#include <SDL3/SDL_mutex.h>
+
+/* The lock around the allocator. A semaphore standing at one, which
+   is what the auto-reset event it replaces was: a taker waits for it
+   and a giver signals it, and nothing requires that the two be the
+   same thread -- which matters, because several paths in here signal
+   it without having waited.
+
+   A mutex would be the obvious reach and would be wrong for that
+   reason: giving back a mutex this thread does not hold is undefined
+   where signalling a semaphore is not. */
+static SDL_Semaphore* mem_lock;
+
+static void MEM_l_TakeLock(void)
+{
+    if (mem_lock)
+        SDL_WaitSemaphore(mem_lock);
+}
+
+static void MEM_l_GiveLock(void)
+{
+    if (mem_lock)
+        SDL_SignalSemaphore(mem_lock);
+}
+
 uint32_t MEM_gpv_LastFree = 0; // engine doesn't explcitly set it zero, but it could have caused problems later (eg AllocFromEnd)
 
 void MEM_InitDynamic(SIZE_T dwBytes)
@@ -15,7 +40,11 @@ void MEM_InitDynamic(SIZE_T dwBytes)
     memoryInfoElem*  currStart;
 
     size = 0;
-    MEM_gst_MemoryInfo.memoryStartPointer = (int) HeapAlloc(GetProcessHeap(), 0, dwBytes);
+    /* The arena, in one piece. It used to come from the Win32 heap,
+       which is one allocator asking another for forty megabytes and
+       then never using any of its services: everything below carves
+       this block up itself. */
+    MEM_gst_MemoryInfo.memoryStartPointer = (int)(size_t)malloc(dwBytes);
     i = 0;
     currSizeBlockStart = MEM_gst_MemoryInfo.memInfoElems;
     do
@@ -43,15 +72,27 @@ void MEM_InitDynamic(SIZE_T dwBytes)
 
 void MEM_InitModule()
 {
-    memMngEvent = 0;
-    memMngEvent = CreateEventA(NULL, FALSE, FALSE, NULL);
-    SetEvent(memMngEvent);
+    /* One, which is to say available. This used to be an auto-reset
+       event made unsignalled and then signalled, which comes to the
+       same thing and is why there is no signal here: a semaphore
+       created at one and then signalled would stand at two and let
+       two callers into the allocator at once. */
+    mem_lock = SDL_CreateSemaphore(1);
     MEM_InitDynamic(41943040u);
 }
 
 BOOL MEM_CloseModule()
 {
-    return HeapFree(GetProcessHeap(), 0, (void *)MEM_gst_MemoryInfo.memoryStartPointer);
+    free((void*)(size_t)MEM_gst_MemoryInfo.memoryStartPointer);
+    MEM_gst_MemoryInfo.memoryStartPointer = 0;
+    return TRUE;
+}
+
+void MEM_CloseLock(void)
+{
+    if (mem_lock)
+        SDL_DestroySemaphore(mem_lock);
+    mem_lock = NULL;
 }
 
 BOOL MEM_b_CheckBlockHasBeenFreed(void* ptr)
@@ -182,7 +223,7 @@ void* MEM_p_Alloc(unsigned int size)
 
     if (size < 8)
         size = 8;
-    WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
+    MEM_l_TakeLock();
     elemID = MEM_GetElemIDBySize(size);
     blockSize = MEM_gst_MemoryInfo.memInfoElems[elemID].size;
     memInfoElem = &MEM_gst_MemoryInfo.memInfoElems[elemID];
@@ -212,7 +253,7 @@ void* MEM_p_Alloc(unsigned int size)
             tmpDestinationAddress[-1] = size;
             MEM_gst_MemoryInfo.usedMemoryByEngine += memInfoElem->size + 8;
             tmpDestinationAddress[-2] = 0xA0110270;
-            SetEvent(memMngEvent);
+            MEM_l_GiveLock();
             return destinationAddress;
         }
         if (++memInfoElem >= (memoryInfoElem*)&MEM_gst_MemoryInfo.allocatedMemoryEnd)
@@ -238,11 +279,11 @@ void* MEM_p_Alloc(unsigned int size)
     tmpDestinationAddress[-1] = size;
     MEM_gst_MemoryInfo.usedMemoryByEngine += memInfoElem->size + 8;
     tmpDestinationAddress[-2] = 0xA0110270;    
-    SetEvent(memMngEvent);
+    MEM_l_GiveLock();
     return destinationAddress;
 
 err:
-    SetEvent(memMngEvent);
+    MEM_l_GiveLock();
     MEM_GetHolesStat(&holesNum, &sizeOfHoles);
     sprintf(Buffer,
         "[Engine %u ko -- Textures %u ko -- WH %u ko -- Gran %u ko -- Holes %u -- Size Holes %u ko]",
@@ -275,10 +316,10 @@ void* MEM_p_AllocAligned(int size, int alignment)
 
 void MEM_ResetTmpMemory()
 {
-    WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
+    MEM_l_TakeLock();
     MEM_gp_AllocTmpNext = MEM_gp_AllocTmpFirst;
     MEM_gi_AllocTmpNb = 0;
-    SetEvent(memMngEvent);
+    MEM_l_GiveLock();
     SOFT_ZList_Init();
     SOFT_ZList_Clear();
 }
@@ -290,11 +331,11 @@ void MEM_FreeTmp(void* ptr)
     uint32_t* tmp = (uint32_t*)ptr;
 
     size = tmp[-1];
-    WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
+    MEM_l_TakeLock();
     if ((char*)ptr + size - 4 == (char*)MEM_gp_AllocTmpNext) // if this is the last elem, we have to adjust MEM_gp_AllocTmpNext
         MEM_gp_AllocTmpNext = (char*)ptr - 4;
     --MEM_gi_AllocTmpNb;
-    SetEvent(memMngEvent);
+    MEM_l_GiveLock();
     if (!MEM_gi_AllocTmpNb)
         MEM_ResetTmpMemory();
 }
@@ -322,7 +363,7 @@ void MEM_Free(void* ptr)
                 alignedPtrDescPtr[-2] = 0xA0110270;
                 realBlockStartPtr = (void *)alignedPtrDescPtr;
             }
-            WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
+            MEM_l_TakeLock();
             tmpPtr = (uint32_t*)realBlockStartPtr;
             holeElem = (int*)&tmpPtr[-1];
             elemID = MEM_GetElemIDBySize(tmpPtr[-1]);
@@ -343,7 +384,7 @@ void MEM_Free(void* ptr)
                 tmpPtr[-2] = 0xB0110270;
             }
             MEM_gst_MemoryInfo.usedMemoryByEngine -= blockElemSize;
-            SetEvent(memMngEvent);
+            MEM_l_GiveLock();
         }
         else
         {
@@ -367,14 +408,14 @@ void* MEM_p_AllocTmp(int size)
     if (!MEM_gp_AllocTmpFirst || !MEM_gb_EnableTmp || &MEM_gp_AllocTmpNext[sizeToAlloc] >= (char *)MEM_gp_AllocTmpLast)
         return (void*)MEM_p_AllocAligned((size + 128) & 0xFFFFFFC0, 64);
 
-    WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
+    MEM_l_TakeLock();
     ptr = MEM_gp_AllocTmpNext;
     *(uint32_t*)MEM_gp_AllocTmpNext = sizeToAlloc;
     MEM_gp_AllocTmpNext += sizeToAlloc;
     ret = ptr + 4;
     ++MEM_gi_AllocTmpNb;
 
-    SetEvent(memMngEvent);
+    MEM_l_GiveLock();
     return ret;
 }
 
@@ -395,7 +436,7 @@ BOOL MEM_Defrag(int onlyOneHole)
     int* prevLink;
 
     lastReclaimed = 0;
-    WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
+    MEM_l_TakeLock();
     i = i_Last_245;
     if (i_Last_245 < 2304)
     {
@@ -485,7 +526,8 @@ BOOL MEM_Defrag(int onlyOneHole)
         ++currMemoryInfoElem;
     } while ((int)currMemoryInfoElem < (int)&MEM_gst_MemoryInfo.allocatedMemoryEnd);
 
-    return SetEvent(memMngEvent);
+    MEM_l_GiveLock();
+    return TRUE;
 }
 
 void* MEM_MoveToTempMem(void* ptr, size_t Size)
@@ -555,7 +597,7 @@ void* MEM_p_AllocFromEnd(int size)
     unsigned int alignedSize;
     void* newPtr;
 
-    WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
+    MEM_l_TakeLock();
     lastFree = MEM_gpv_LastFree;
     if (!MEM_gpv_LastFree)
     {
@@ -579,11 +621,11 @@ void* MEM_p_AllocFromEnd(int size)
         if (MEM_gul_FromEndMaxAllocSize <= MEM_gul_RealSize - (MEM_gpv_LastFree - MEM_gst_MemoryInfo.memoryStartPointer))
         {
             MEM_gul_FromEndMaxAllocSize = MEM_gul_RealSize - (MEM_gpv_LastFree - MEM_gst_MemoryInfo.memoryStartPointer);
-            SetEvent(memMngEvent);
+            MEM_l_GiveLock();
             return newPtr;
         }
     }
-    SetEvent(memMngEvent);
+    MEM_l_GiveLock();
     return newPtr;
 }
 
@@ -601,7 +643,7 @@ void MEM_FreeFromEnd(void* ptr)
 
     if (ptrTmp[-2] == 0xCAFEDECA)
     {
-        WaitForSingleObject(memMngEvent, 0xFFFFFFFF);
+        MEM_l_TakeLock();
         if (((uint32_t)ptr - 8) == MEM_gpv_LastFree)
         {
             blockSize = ptrTmp[-1];
@@ -636,7 +678,7 @@ void MEM_FreeFromEnd(void* ptr)
             if (allFreed)
             {
                 MEM_gpv_LastFree = 0;
-                SetEvent(memMngEvent);
+                MEM_l_GiveLock();
                 return;
             }
         }
@@ -644,7 +686,7 @@ void MEM_FreeFromEnd(void* ptr)
         {
             ptrTmp[-2] = 0x5A5A5AA5;
         }
-        SetEvent(memMngEvent);
+        MEM_l_GiveLock();
     }
     else
     {

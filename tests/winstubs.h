@@ -1,6 +1,6 @@
 #pragma once
 
-/* The Windows calls platform/glrender.c refers to, stood in for.
+/* The system calls platform/glrender.c refers to, stood in for.
  *
  * Both of the OpenGL renderer's harnesses need these and neither
  * calls the parts of the renderer that would use them: one mocks
@@ -8,6 +8,14 @@
  * have in common is that no window is ever made, so every one of
  * these answers "nothing" or "it worked" and nothing looks at the
  * result.
+ *
+ * It was a list of Windows calls -- a window class, a throwaway
+ * window, a device context, a pixel format and the four WGL entry
+ * points -- because that is what making a context on Windows takes.
+ * The renderer asks SDL now, which is a shorter list. Each of the
+ * eleven that went was taken out on its own and the two harnesses
+ * relinked, so what is left is what is still referred to rather than
+ * what looked unused.
  *
  * It is a header full of definitions rather than declarations, which
  * is deliberate but only works because each harness is one
@@ -25,37 +33,46 @@
  * each defines that one itself.
  */
 
-HDC      GetDC(HWND h) { (void)h; return NULL; }
-int      ReleaseDC(HWND h, HDC d) { (void)h; (void)d; return 1; }
-BOOL     DestroyWindow(HWND h) { (void)h; return 1; }
-HMODULE  GetModuleHandleA(LPCSTR n) { (void)n; return NULL; }
-HMODULE  LoadLibraryA(LPCSTR n) { (void)n; return NULL; }
-FARPROC  GetProcAddress(HMODULE m, LPCSTR n) { (void)m; (void)n; return NULL; }
-BOOL     UnregisterClassA(LPCSTR n, HINSTANCE i) { (void)n; (void)i; return 1; }
-WORD     RegisterClassA(const WNDCLASSA* c) { (void)c; return 0; }
-HWND     CreateWindowExA(DWORD a, LPCSTR b, LPCSTR c, DWORD d, int e, int f,
-                         int g, int h, HWND i, HMENU j, HINSTANCE k, LPVOID l)
+#include <SDL3/SDL_video.h>
+
+/* The window and the context, which the renderer asks SDL for now
+   rather than Windows. Neither harness makes one: one mocks OpenGL
+   outright and the other gets its context from EGL, so these answer
+   "nothing" or "it worked" exactly as the Windows pair above do, and
+   the renderer's own entry points that would use them are not
+   reached.
+
+   The real headers are included by the renderer, so a prototype that
+   drifts from SDL's is a compile error here rather than a stub that
+   quietly stands in for a different function. */
+SDL_Window* SDL_CreateWindow(const char* title, int w, int h,
+                             SDL_WindowFlags flags)
 {
-    (void)a; (void)b; (void)c; (void)d; (void)e; (void)f;
-    (void)g; (void)h; (void)i; (void)j; (void)k; (void)l;
+    (void)title; (void)w; (void)h; (void)flags;
     return NULL;
 }
-LRESULT  DefWindowProcA(HWND a, UINT b, WPARAM c, LPARAM d)
+void     SDL_DestroyWindow(SDL_Window* w) { (void)w; }
+bool     SDL_GetWindowSizeInPixels(SDL_Window* w, int* x, int* y)
 {
-    (void)a; (void)b; (void)c; (void)d;
-    return 0;
+    (void)w; (void)x; (void)y; return false;
 }
-BOOL     GetClientRect(HWND h, RECT* r) { (void)h; (void)r; return 0; }
-int      ChoosePixelFormat(HDC d, const PIXELFORMATDESCRIPTOR* p)
+bool     SDL_GL_SetAttribute(SDL_GLAttr attr, int value)
 {
-    (void)d; (void)p; return 0;
+    (void)attr; (void)value; return true;
 }
-BOOL     SetPixelFormat(HDC d, int f, const PIXELFORMATDESCRIPTOR* p)
+SDL_GLContext SDL_GL_CreateContext(SDL_Window* w) { (void)w; return NULL; }
+bool     SDL_GL_MakeCurrent(SDL_Window* w, SDL_GLContext c)
 {
-    (void)d; (void)f; (void)p; return 0;
+    (void)w; (void)c; return true;
 }
-BOOL     SwapBuffers(HDC d) { (void)d; return 1; }
-HGLRC    wglCreateContext(HDC d) { (void)d; return NULL; }
-BOOL     wglMakeCurrent(HDC d, HGLRC c) { (void)d; (void)c; return 1; }
-BOOL     wglDeleteContext(HGLRC c) { (void)c; return 1; }
-void*    wglGetProcAddress(LPCSTR n) { (void)n; return NULL; }
+bool     SDL_GL_DestroyContext(SDL_GLContext c) { (void)c; return true; }
+bool     SDL_GL_SwapWindow(SDL_Window* w) { (void)w; return true; }
+SDL_FunctionPointer SDL_GL_GetProcAddress(const char* name)
+{
+    (void)name; return NULL;
+}
+const char* SDL_GetError(void) { return "no error, this is a test"; }
+
+/* The window the renderer asks the platform layer for. Null, which is
+   what makes GL_Init decline -- and neither harness calls it. */
+void*    PLT_p_Window(void) { return NULL; }

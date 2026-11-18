@@ -2028,7 +2028,7 @@ static void caseFlipDrawsOverlay(void)
        overlay is still drawn: it is the engine's work and does not
        depend on this renderer having a window. */
     reset();
-    gl_state.dc = NULL;
+    gl_state.window = NULL;
     wg_ovlDrawn = 0;
     wg_Frame();
     okEq(wg_ovlDrawn, 1, "and it is drawn whether or not there is a"
