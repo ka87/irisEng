@@ -90,6 +90,13 @@ void PRO_PerfCounterEndBlock(profilerRasterStructElem* raster)
 float TIM_f_Clock_TrueRead(void) { return 0.0f; }
 void DBG_OutputDebugString(char* fmt, ...) { (void)fmt; }
 
+static int plt_statsAsked;
+void ENG_GetStatsText(char* buffer)
+{
+    plt_statsAsked++;
+    strcpy(buffer, "frames 60, draws 1234");
+}
+
 #include "../platform.c"
 
 /* ------------------------------------------------------------ the cases */
@@ -331,6 +338,48 @@ static void devices(void)
     }
 }
 
+/* The statistics in the caption, which used to be a click on the title
+   bar -- a non-client click, which a window SDL owns does not pass
+   on. */
+static void stats(void)
+{
+    SDL_Event ev;
+
+    printf("-- the statistics in the window's caption\n");
+
+    plt_statsAsked = 0;
+    SDL_SetWindowTitle(plt_window, "iriseng");
+
+    memset(&ev, 0, sizeof(ev));
+    ev.type = SDL_EVENT_KEY_DOWN;
+    ev.key.key = SDLK_F11;
+    SDL_PushEvent(&ev);
+    PLT_Pump();
+    okEq(plt_statsAsked, 1, "F11 asks the engine for them");
+    ok(strcmp(SDL_GetWindowTitle(plt_window), "frames 60, draws 1234") == 0,
+       "and they are the caption");
+
+    /* Held down rather than pressed: the repeats are not a second
+       press, as the key blocks the engine polls are not either. */
+    plt_statsAsked = 0;
+    memset(&ev, 0, sizeof(ev));
+    ev.type = SDL_EVENT_KEY_DOWN;
+    ev.key.key = SDLK_F11;
+    ev.key.repeat = true;
+    SDL_PushEvent(&ev);
+    PLT_Pump();
+    okEq(plt_statsAsked, 0, "a repeat does not ask again");
+
+    /* And no other key does it. */
+    plt_statsAsked = 0;
+    memset(&ev, 0, sizeof(ev));
+    ev.type = SDL_EVENT_KEY_DOWN;
+    ev.key.key = SDLK_F10;
+    SDL_PushEvent(&ev);
+    PLT_Pump();
+    okEq(plt_statsAsked, 0, "and no other key asks for them");
+}
+
 static void timing(void)
 {
     printf("-- the pump is still timed\n");
@@ -350,6 +399,7 @@ int main(void)
     closing();
     typing();
     devices();
+    stats();
     timing();
 
     PLT_Close();

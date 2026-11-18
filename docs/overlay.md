@@ -22,6 +22,10 @@ font the rasters code already creates.
 | `win/wininputoutput.c` | F12, and `pcINO_RunTweakCommand` |
 | `tests/test_overlay.c` | the unit test, 160 checks |
 
+F11 puts the engine's statistics in the window's caption. They used
+to arrive by clicking the title bar, which a window SDL owns does not
+pass on; F11 is the one function key the game has nothing else on.
+
 ### Where the pass sits
 
 `D3D_Flip` draws the overlay last, after `Rasters_Update`, so it is on

@@ -397,6 +397,24 @@ void PLT_ReadDevices(unsigned char* keys, int* mouse)
     plt_wheel = 0;
 }
 
+/* The engine's statistics in the window's caption, on F11.
+ *
+ * They used to arrive by clicking the title bar, which was a
+ * non-client click and is not something a window SDL owns passes on.
+ * F11 is the one function key the game has nothing on -- F1 to F10 are
+ * the debug keys and F12 raises the command field -- so that is where
+ * they are now. */
+static void PLT_l_ShowStats(void)
+{
+    char stats[512];
+
+    if (!plt_window)
+        return;
+    stats[0] = 0;
+    ENG_GetStatsText(stats);
+    SDL_SetWindowTitle(plt_window, stats);
+}
+
 void PLT_Pump(void)
 {
     SDL_Event ev;
@@ -440,6 +458,8 @@ void PLT_Pump(void)
                 OVL_b_CommandChar('\b');
             else if (ev.key.key == SDLK_ESCAPE)
                 OVL_b_CommandChar(27);
+            else if (ev.key.key == SDLK_F11 && !ev.key.repeat)
+                PLT_l_ShowStats();
             break;
         default:
             break;

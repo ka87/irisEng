@@ -76,6 +76,11 @@ closes the display around the window, and `platform.c` says the rest.
 `PLT_p_NativeWindow` hands out the `HWND` for as long as Direct3D and
 the Win32 parts of the sound still want one.
 
+One thing the handlers did has moved rather than survived: the
+engine's statistics used to go into the window's caption on a click of
+the title bar, which is a non-client click and not something a window
+SDL owns passes on. They are on **F11** now.
+
 ### The keyboard and the mouse
 
 `PLT_ReadDevices` answers both in one call: the keyboard as a block
