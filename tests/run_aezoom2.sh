@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for aezoom2.c.
+# The unit test for aftereffects/aezoom2.c.
 #
 #   ./tests/run_aezoom2.sh
 #
@@ -32,7 +32,7 @@ mkdir -p "$OUT"
 echo "=== the second zoom smooth ==="
 $CC $CFLAGS -fsanitize=address,undefined -c tests/test_aezoom2.c \
     -o "$OUT/az2.drv.o"
-$CC $CFLAGS -fsanitize=address,undefined -c aezoom2.c -o "$OUT/az2.o"
+$CC $CFLAGS -fsanitize=address,undefined -c aftereffects/aezoom2.c -o "$OUT/az2.o"
 $CC -fsanitize=address,undefined "$OUT/az2.drv.o" "$OUT/az2.o" -lm \
     -o "$OUT/az2"
 "$OUT/az2"

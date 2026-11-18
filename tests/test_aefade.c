@@ -1,4 +1,4 @@
-/* A unit test for aefade.c.
+/* A unit test for aftereffects/aefade.c.
  *
  * The fade's timer. Everything here is arithmetic over a single byte
  * of opacity, and the two things that make it worth stating away from
@@ -18,7 +18,7 @@
  * defensive range guard, which nothing reachable can drive.
  */
 
-#include "../aefade.h"
+#include "../aftereffects/aefade.h"
 
 #include <math.h>
 #include <stdio.h>

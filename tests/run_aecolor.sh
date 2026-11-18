@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for aecolor.c.
+# The unit test for aftereffects/aecolor.c.
 #
 #   ./tests/run_aecolor.sh
 #
@@ -27,7 +27,7 @@ mkdir -p "$OUT"
 echo "=== after-effect colour ==="
 $CC $CFLAGS -fsanitize=address,undefined -c tests/test_aecolor.c \
     -o "$OUT/aec.drv.o"
-$CC $CFLAGS -fsanitize=address,undefined -c aecolor.c -o "$OUT/aec.o"
+$CC $CFLAGS -fsanitize=address,undefined -c aftereffects/aecolor.c -o "$OUT/aec.o"
 $CC -fsanitize=address,undefined "$OUT/aec.drv.o" "$OUT/aec.o" -lm \
     -o "$OUT/aec"
 "$OUT/aec"

@@ -53,8 +53,8 @@ $CC $CFLAGS -c rasterstate.c -o "$OUT/glr.rst.o"
 $CC $CFLAGS -c depthblur.c -o "$OUT/glr.dpb.o"
 $CC $CFLAGS -c fog.c -o "$OUT/glr.fog.o"
 $CC $CFLAGS -c cinebands.c -o "$OUT/glr.cbd.o"
-$CC $CFLAGS -c aecolor.c -o "$OUT/glr.aec.o"
-$CC $CFLAGS -c aeframe.c -o "$OUT/glr.aef.o"
+$CC $CFLAGS -c aftereffects/aecolor.c -o "$OUT/glr.aec.o"
+$CC $CFLAGS -c aftereffects/aeframe.c -o "$OUT/glr.aef.o"
 # watermesh.c builds the water surface for both renderers. Pure, so
 # linked rather than mocked; tests/run_d3drender.sh is where it is
 # compared against the other renderer byte for byte.
@@ -67,23 +67,23 @@ $CC $CFLAGS -c waterreflect.c -o "$OUT/glr.wrf.o"
 # taps for both renderers; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
 $CC $CFLAGS -c watersmooth.c -o "$OUT/glr.wsm.o"
-# aefade.c holds the fade's timer -- the step, the truncation and the
+# aftereffects/aefade.c holds the fade's timer -- the step, the truncation and the
 # finish -- for both renderers; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
-$CC $CFLAGS -c aefade.c -o "$OUT/glr.afd.o"
-# aehue.c holds the hue sweep's wave and the packing of its three
+$CC $CFLAGS -c aftereffects/aefade.c -o "$OUT/glr.afd.o"
+# aftereffects/aehue.c holds the hue sweep's wave and the packing of its three
 # channels into one colour; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
-$CC $CFLAGS -c aehue.c -o "$OUT/glr.ahu.o"
-# aemotion.c holds the motion smooth's camera-movement test and its
+$CC $CFLAGS -c aftereffects/aehue.c -o "$OUT/glr.ahu.o"
+# aftereffects/aemotion.c holds the motion smooth's camera-movement test and its
 # four taps; tests/run_d3daftereffects.sh is where both are compared against
 # the other renderer.
-$CC $CFLAGS -c aemotion.c -o "$OUT/glr.amo.o"
-# aezoom2.c holds the second zoom smooth: the stage split, the walk of
+$CC $CFLAGS -c aftereffects/aemotion.c -o "$OUT/glr.amo.o"
+# aftereffects/aezoom2.c holds the second zoom smooth: the stage split, the walk of
 # eight angles it decides, the weight, and the per-sample transform --
 # which is written as a rotation and is not one. Both renderers take
 # all of that from here.
-$CC $CFLAGS -c aezoom2.c -o "$OUT/glr.az2.o"
+$CC $CFLAGS -c aftereffects/aezoom2.c -o "$OUT/glr.az2.o"
 $CC $CFLAGS -c geosprite.c -o "$OUT/glr.gsp.o"
 $CC $CFLAGS -c platform/d3dmath.c -o "$OUT/glr.wgmath.o"
 $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"

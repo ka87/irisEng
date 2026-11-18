@@ -10,15 +10,15 @@
 #include "../geosprite.h"
 #include "../rasterstate.h"
 #include "../depthblur.h"
-#include "../aecolor.h"
-#include "../aeframe.h"
+#include "../aftereffects/aecolor.h"
+#include "../aftereffects/aeframe.h"
 #include "../watermesh.h"
 #include "../waterreflect.h"
 #include "../watersmooth.h"
-#include "../aefade.h"
-#include "../aehue.h"
-#include "../aemotion.h"
-#include "../aezoom2.h"
+#include "../aftereffects/aefade.h"
+#include "../aftereffects/aehue.h"
+#include "../aftereffects/aemotion.h"
+#include "../aftereffects/aezoom2.h"
 #include "../water.h"
 #include "../fog.h"
 #include "../textures.h"
@@ -4014,7 +4014,7 @@ static int GL_l_b_AeRemanence(const tCbd_Bands* bands, int from, int spare)
 
 /* The hue sweep: a colour taken off the picture, cycling.
  *
- * All the arithmetic is aehue.c's and the differential against the
+ * All the arithmetic is aftereffects/aehue.c's and the differential against the
  * other renderer compares it packed word for packed word. What is
  * here is the renderer's share, and two parts of it are worth saying.
  *
@@ -4207,7 +4207,7 @@ static int GL_l_b_AeMotionBlur(const tCbd_Bands* bands, int from, int spare)
 /* The motion smooth: a smear along the way the camera just moved.
  *
  * The arithmetic -- what is watched, how far it has to move, where the
- * four samples sit and what they weigh -- is aemotion.c's, and the
+ * four samples sit and what they weigh -- is aftereffects/aemotion.c's, and the
  * differential against the other renderer drives the threshold from
  * both sides. What is here is the renderer's share, and three parts of
  * it are worth saying.
@@ -4347,7 +4347,7 @@ static int GL_l_b_AeZoomSmooth(const tCbd_Bands* bands, int from, int spare)
  * The least work of any effect in this chain, and the reason is worth
  * stating: every pass is the **same four-tap blur the depth blur is
  * built from**, so there is no shader here and no arithmetic -- only a
- * schedule, and the schedule is aeframe.c's. What is left is handing
+ * schedule, and the schedule is aftereffects/aeframe.c's. What is left is handing
  * seven reaches to the chain driver the remanence already uses.
  *
  * Seven passes alternating from the chain's spare end back **on** the
@@ -4379,7 +4379,7 @@ static int GL_l_b_AeScreenBlur(const tCbd_Bands* bands, int from, int spare)
 /* The second zoom smooth: eight samples of the frame, each turned
  * about the middle of the picture, summed.
  *
- * All of it is aezoom2.c's, and this is the thinnest renderer-side
+ * All of it is aftereffects/aezoom2.c's, and this is the thinnest renderer-side
  * piece of any effect here -- eight transforms, a count and a weight,
  * handed to one draw. Three notes.
  *

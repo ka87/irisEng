@@ -44,8 +44,8 @@ $CC $CFLAGS -fsanitize=address -c rasterstate.c -o "$OUT/wgo.rst.o"
 $CC $CFLAGS -fsanitize=address -c depthblur.c -o "$OUT/wgo.dpb.o"
 $CC $CFLAGS -fsanitize=address -c fog.c -o "$OUT/wgo.fog.o"
 $CC $CFLAGS -fsanitize=address -c cinebands.c -o "$OUT/wgo.cbd.o"
-$CC $CFLAGS -fsanitize=address -c aecolor.c -o "$OUT/wgo.aec.o"
-$CC $CFLAGS -fsanitize=address -c aeframe.c -o "$OUT/wgo.aef.o"
+$CC $CFLAGS -fsanitize=address -c aftereffects/aecolor.c -o "$OUT/wgo.aec.o"
+$CC $CFLAGS -fsanitize=address -c aftereffects/aeframe.c -o "$OUT/wgo.aef.o"
 # watermesh.c builds the water surface for both renderers. Pure, so
 # linked rather than mocked; tests/run_d3drender.sh is where it is
 # compared against the other renderer byte for byte.
@@ -58,23 +58,23 @@ $CC $CFLAGS -fsanitize=address -c waterreflect.c -o "$OUT/wgo.wrf.o"
 # taps for both renderers; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
 $CC $CFLAGS -fsanitize=address -c watersmooth.c -o "$OUT/wgo.wsm.o"
-# aefade.c holds the fade's timer -- the step, the truncation and the
+# aftereffects/aefade.c holds the fade's timer -- the step, the truncation and the
 # finish -- for both renderers; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
-$CC $CFLAGS -fsanitize=address -c aefade.c -o "$OUT/wgo.afd.o"
-# aehue.c holds the hue sweep's wave and the packing of its three
+$CC $CFLAGS -fsanitize=address -c aftereffects/aefade.c -o "$OUT/wgo.afd.o"
+# aftereffects/aehue.c holds the hue sweep's wave and the packing of its three
 # channels into one colour; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
-$CC $CFLAGS -fsanitize=address -c aehue.c -o "$OUT/wgo.ahu.o"
-# aemotion.c holds the motion smooth's camera-movement test and its
+$CC $CFLAGS -fsanitize=address -c aftereffects/aehue.c -o "$OUT/wgo.ahu.o"
+# aftereffects/aemotion.c holds the motion smooth's camera-movement test and its
 # four taps; tests/run_d3daftereffects.sh is where both are compared against
 # the other renderer.
-$CC $CFLAGS -fsanitize=address -c aemotion.c -o "$OUT/wgo.amo.o"
-# aezoom2.c holds the second zoom smooth: the stage split, the walk of
+$CC $CFLAGS -fsanitize=address -c aftereffects/aemotion.c -o "$OUT/wgo.amo.o"
+# aftereffects/aezoom2.c holds the second zoom smooth: the stage split, the walk of
 # eight angles it decides, the weight, and the per-sample transform --
 # which is written as a rotation and is not one. Both renderers take
 # all of that from here.
-$CC $CFLAGS -fsanitize=address -c aezoom2.c -o "$OUT/wgo.az2.o"
+$CC $CFLAGS -fsanitize=address -c aftereffects/aezoom2.c -o "$OUT/wgo.az2.o"
 $CC $CFLAGS -fsanitize=address -c geosprite.c -o "$OUT/wgo.gsp.o"
 $CC $CFLAGS -fsanitize=address -c platform/d3dmath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"

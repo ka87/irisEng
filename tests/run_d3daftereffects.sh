@@ -80,31 +80,31 @@ $CC $CFLAGS -c depthblur.c -o "$OUT/d3drender_ae.dpb.o"
 # both renderers. A move out of this file, so the frozen copy still
 # has them inline and the water-blur cases compare the two.
 $CC $CFLAGS -c watersmooth.c -o "$OUT/d3drender_ae.wsm.o"
-# aefade.c holds the fade's timer -- the step, the truncation and the
+# aftereffects/aefade.c holds the fade's timer -- the step, the truncation and the
 # finish -- for both renderers. A move out of this file, so the frozen
 # copy still steps the opacity inline and the fade cases compare the
 # two.
-$CC $CFLAGS -c aefade.c -o "$OUT/d3drender_ae.afd.o"
-# aehue.c holds the hue sweep's wave and, more to the point, the way
+$CC $CFLAGS -c aftereffects/aefade.c -o "$OUT/d3drender_ae.afd.o"
+# aftereffects/aehue.c holds the hue sweep's wave and, more to the point, the way
 # its three channels are packed into one colour -- which is where a
 # depth above one stops being a clamp question. A move out of this
 # file, so the frozen copy still packs them inline and the cases
 # compare the two.
-$CC $CFLAGS -c aehue.c -o "$OUT/d3drender_ae.ahu.o"
-# aemotion.c holds the motion smooth's camera-movement test and its
+$CC $CFLAGS -c aftereffects/aehue.c -o "$OUT/d3drender_ae.ahu.o"
+# aftereffects/aemotion.c holds the motion smooth's camera-movement test and its
 # four taps. The test mixes double and float on purpose and the taps
 # are neither symmetric nor sorted, so both are compared against the
 # frozen copy rather than reasoned about.
-$CC $CFLAGS -c aemotion.c -o "$OUT/d3drender_ae.amo.o"
-# aezoom2.c holds the second zoom smooth: the stage split, the walk of
+$CC $CFLAGS -c aftereffects/aemotion.c -o "$OUT/d3drender_ae.amo.o"
+# aftereffects/aezoom2.c holds the second zoom smooth: the stage split, the walk of
 # eight angles it decides, the weight, and the per-sample transform --
 # which is written as a rotation and is not one. Both renderers take
 # all of that from here.
-$CC $CFLAGS -c aezoom2.c -o "$OUT/d3drender_ae.az2.o"
-# aeframe.c holds the four sum-of-samples effects' schedules; the
+$CC $CFLAGS -c aftereffects/aezoom2.c -o "$OUT/d3drender_ae.az2.o"
+# aftereffects/aeframe.c holds the four sum-of-samples effects' schedules; the
 # screen blur's seven reaches moved there out of this file, so the
 # cases compare them against the frozen copy.
-$CC $CFLAGS -c aeframe.c -o "$OUT/d3drender_ae.aef.o"
+$CC $CFLAGS -c aftereffects/aeframe.c -o "$OUT/d3drender_ae.aef.o"
 $CC $CFLAGS -include tests/d3daftereffects_sdk.h -c tests/d3daftereffects_mocks.c \
     -o "$OUT/d3drender_ae.mocks.o"
 $CC $CFLAGS -include tests/d3daftereffects_sdk.h -c tests/test_d3daftereffects.c \
