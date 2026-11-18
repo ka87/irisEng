@@ -43,10 +43,23 @@ void PLT_Pump(void);
    for and nothing to read back. */
 int PLT_b_Launch(const char* const* args);
 
-/* What the settings ask for, which on Windows is still the registry
-   the game has always kept them in. Left in one place so the rest of
-   the startup does not have to know where they come from. */
+/* What the settings ask for. Left in one place so the rest of the
+   startup does not have to know where they come from. */
 void PLT_WindowSettings(int* width, int* height, int* windowed);
+
+/* A message in front of the player, for the handful of things worth
+   stopping them over: settings that cannot be made sense of, a device
+   that will not come up, no memory left, a failed assertion.
+   
+   The game asked Windows for these directly, which is a dialog on one
+   platform and nothing at all on the others. SDL puts up the system's
+   own box wherever it runs, and knows about the game's window -- so a
+   box raised while the game holds an exclusive display mode comes up
+   in front of it rather than behind.
+   
+   error says which box it is: an error when something has gone wrong,
+   and otherwise a plain notice. */
+void PLT_Message(const char* title, const char* text, int error);
 
 /* The keyboard and the mouse, as the game's own input code wants them:
    a 266-byte block indexed by **DirectInput's** key codes, and the

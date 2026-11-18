@@ -16,6 +16,7 @@
 #include "profiler.h"
 #include "gdi.h"
 #include "datapath.h"
+#include "platform/syscompat.h"
 
 
 /* The window, the display and the renderer's device.
@@ -71,79 +72,138 @@ static void MAI_l_DisplayClose(void)
     PLT_Close();
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
-	CreateMutexA(NULL, TRUE, "IrisEngGame");
-	if (GetLastError() == ERROR_ALREADY_EXISTS)
+/* Everything the game does, from the first line in the log to the
+   last, with the one argument a program gets from the system that the
+   engine cares about: its command line.
+
+   Out of the entry point so that the entry point can be whatever the
+   platform calls for. Windows hands a program its command line as one
+   string and calls WinMain; everywhere else hands it argv and calls
+   main. Both are thin wrappers below, and neither does anything this
+   function could have done. */
+static int MAI_l_i_Run(const char* commandLine)
+{
+	if (!PLT_b_OnlyInstance())
 	{
+		/* Not through the log: a second copy opens the log for
+		   writing and would empty the running copy's. This goes
+		   where a debugger sees it and nowhere else. */
 		OutputDebugStringA("Another instance of the game is already running.");
+		return 0;
 	}
-	else
+	/* First thing into the log, so a run can be told from the one
+	   before it and the version is never a question. */
+	DBG_LogBanner();
+
+	ENG_InitApplication();
+
+	// engine.ini, if there is one, then the command line over
+	// the top of it: ENG_ParseCommandLine only ever sets the
+	// flags it finds and only writes the big file name when the
+	// line actually carries one, so whatever is given there wins
+	// and whatever is not falls back to the ini.
+	SET_InitModule();
+	if (SET_b_Binarized())
+		LOA_gb_SpeedMode = 1;
+	if (SET_pc_BigFile())
+		strcpy(MAI_gst_BIGFileName, SET_pc_BigFile());
+
+	/* Bounded, because what arrives here is the system's
+	   string on one platform and a line this file built on
+	   the other. */
+	snprintf(cmdLine, sizeof(cmdLine), "%s", commandLine ? commandLine : "");
+	ENG_ParseCommandLine(cmdLine);
+
+	// The big file is part of the install, so a bare name is looked
+	// for beside the executable rather than in whatever working
+	// directory the game was started from. A name that already
+	// carries a directory or a drive is taken as given: that is
+	// somebody naming a file on the command line, and second-
+	// guessing it would make an absolute path unusable.
+	if (!strchr(MAI_gst_BIGFileName, '\\') && !strchr(MAI_gst_BIGFileName, '/')
+	    && !strchr(MAI_gst_BIGFileName, ':'))
 	{
-		/* First thing into the log, so a run can be told from the one
-		   before it and the version is never a question. */
-		DBG_LogBanner();
+		// Sized to the name it goes back into, so a path too
+		// long is reported as a failure here rather than
+		// overrunning on the way back.
+		char bigPath[sizeof(MAI_gst_BIGFileName)];
 
-		ENG_InitApplication();
-
-		// engine.ini, if there is one, then the command line over
-		// the top of it: ENG_ParseCommandLine only ever sets the
-		// flags it finds and only writes the big file name when the
-		// line actually carries one, so whatever is given there wins
-		// and whatever is not falls back to the ini.
-		SET_InitModule();
-		if (SET_b_Binarized())
-			LOA_gb_SpeedMode = 1;
-		if (SET_pc_BigFile())
-			strcpy(MAI_gst_BIGFileName, SET_pc_BigFile());
-
-		strcpy(cmdLine, lpCmdLine);
-		ENG_ParseCommandLine(cmdLine);
-
-		// The big file is part of the install, so a bare name is looked
-		// for beside the executable rather than in whatever working
-		// directory the game was started from. A name that already
-		// carries a directory or a drive is taken as given: that is
-		// somebody naming a file on the command line, and second-
-		// guessing it would make an absolute path unusable.
-		if (!strchr(MAI_gst_BIGFileName, '\\') && !strchr(MAI_gst_BIGFileName, '/')
-		    && !strchr(MAI_gst_BIGFileName, ':'))
-		{
-			// Sized to the name it goes back into, so a path too
-			// long is reported as a failure here rather than
-			// overrunning on the way back.
-			char bigPath[sizeof(MAI_gst_BIGFileName)];
-
-			if (DPT_b_ExePath(MAI_gst_BIGFileName, bigPath, sizeof(bigPath)))
-				strcpy(MAI_gst_BIGFileName, bigPath);
-		}
-		BIG_Open(MAI_gst_BIGFileName);
-		SIDE_InitModule();
-		FNT_InitModule();
-		ENG_bgeModuleHandle = hInstance;
-		if (!MAI_l_b_DisplayOpen())
-		{
-			DBG_OutputDebugString("the window would not open; stopping\n");
-			DBG_LogExit();
-			return 0;
-		}
-		ENG_InitEngine();
-		ENG_Loop();
-		WOR_Universe_Close();
-		// before the engine closes, while the renderer's device is
-		// still there to hand the glyph atlases back to
-		FNT_CloseModule();
-		ENG_CloseEngine();
-		MAI_l_DisplayClose();
-		BIG_Close();
-		SIDE_CloseModule();
-		ENG_CloseApplication();
-
-		/* And the last. A log without this line stopped somewhere
-		   else. */
-		DBG_LogExit();
+		if (DPT_b_ExePath(MAI_gst_BIGFileName, bigPath, sizeof(bigPath)))
+			strcpy(MAI_gst_BIGFileName, bigPath);
 	}
+	BIG_Open(MAI_gst_BIGFileName);
+	SIDE_InitModule();
+	FNT_InitModule();
+	if (!MAI_l_b_DisplayOpen())
+	{
+		DBG_OutputDebugString("the window would not open; stopping\n");
+		DBG_LogExit();
+		return 0;
+	}
+	ENG_InitEngine();
+	ENG_Loop();
+	WOR_Universe_Close();
+	// before the engine closes, while the renderer's device is
+	// still there to hand the glyph atlases back to
+	FNT_CloseModule();
+	ENG_CloseEngine();
+	MAI_l_DisplayClose();
+	BIG_Close();
+	SIDE_CloseModule();
+	ENG_CloseApplication();
+
+	/* And the last. A log without this line stopped somewhere
+	   else. */
+	DBG_LogExit();
 	return 0;
-};
+}
+
+#ifdef _WIN32
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+{
+	(void)hPrevInstance;
+	(void)nShowCmd;
+	ENG_bgeModuleHandle = hInstance;
+	return MAI_l_i_Run(lpCmdLine);
+}
+
+#else
+
+int main(int argc, char** argv)
+{
+	/* argv back into the one string the engine's parser reads. The
+	   program's own name is left out, because that is what Windows
+	   hands a program as its command line and the parser is written
+	   against that.
+
+	   Joined with a single space and nothing else: the parser reads
+	   the line the way a command line gives it, so an argument with
+	   a space inside it was never recoverable on either platform. */
+	char   line[1024];
+	size_t len = 0;
+	int    i;
+
+	line[0] = 0;
+	for (i = 1; i < argc; i++)
+	{
+		size_t want = strlen(argv[i]);
+
+		/* The space, the argument and its terminator. An argument
+		   that will not fit stops the line rather than being cut in
+		   half, which would leave half a parameter for the parser to
+		   make something of. */
+		if (len + (len ? 1 : 0) + want + 1 > sizeof(line))
+			break;
+		if (len)
+			line[len++] = ' ';
+		memcpy(line + len, argv[i], want + 1);
+		len += want;
+	}
+	return MAI_l_i_Run(line);
+}
+
+#endif
 
 /*
 int main()

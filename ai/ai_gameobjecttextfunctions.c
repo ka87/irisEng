@@ -4,6 +4,7 @@
 #include "../strings.h"
 #include "../graphicsobjects/geostr.h"
 #include "../textget.h"
+#include "../platform.h"
 
 // A text reference is a big-file key plus an index into that group's
 // string table.
@@ -1099,7 +1100,7 @@ void AI_EvalFunc_TEXTGet_C(int key, int idx, struct sTextGet* textRef)
     pos = BIG_ul_SearchKeyToPos(key);
     if (pos == -1)
     {
-        MessageBoxA(0, "TextGet Invalid Key", "AI", 0);
+        PLT_Message("AI", "TextGet Invalid Key", 0);
     }
     else if (LOA_ul_SearchAddress(pos) != -1)
     {

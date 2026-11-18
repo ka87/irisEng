@@ -21,7 +21,11 @@
  *
  * The log is read back from the file the engine really writes, not
  * from a captured string, so the sink and the flush are in the path
- * too. The harness runs in a directory of its own for that.
+ * too. Where that file is comes from the path module, which this
+ * harness answers through tests/sdlpath.h: the player's own directory
+ * is pointed at one the runner makes under tests/build, so the cases
+ * read the file through the same rule the game writes it through
+ * rather than through a copy of the rule.
  */
 
 #include <stdio.h>
@@ -29,6 +33,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+
+#include "sdlpath.h"
 
 /* What the engine gets from the platform and this harness has to
    supply. OutputDebugStringA is where a debugger would see the same
@@ -45,11 +51,13 @@ void OutputDebugStringA(const char* text)
     mockLastDbgString[sizeof(mockLastDbgString) - 1] = 0;
 }
 
-int MessageBoxA(void* h, const char* text, const char* caption,
-                unsigned int type)
+/* The box an assertion puts up. Silent here, as the Windows call it
+   replaced was: no case reads it, and a real one would leave the
+   harness waiting for somebody to click a dialog nobody is looking
+   at. */
+void PLT_Message(const char* title, const char* text, int error)
 {
-    (void)h; (void)text; (void)caption; (void)type;
-    return 0;
+    (void)title; (void)text; (void)error;
 }
 
 int _snprintf(char* buf, size_t count, const char* format, ...)
@@ -97,9 +105,19 @@ static void okEq(long got, long want, const char* what)
 static char  logText[65536];
 static int   logLen;
 
+/* Where the engine put it, asked the same way the engine asks. */
+static const char* logPath(void)
+{
+    static char path[512];
+
+    if (!DPT_b_UserPath("debug.log", path, sizeof(path)))
+        path[0] = 0;
+    return path;
+}
+
 static void readLog(void)
 {
-    FILE* f = fopen("debug.log", "rb");
+    FILE* f = fopen(logPath(), "rb");
     size_t n = 0;
 
     logText[0] = 0;
@@ -357,17 +375,30 @@ static void caseExit(void)
 
 int main(void)
 {
-    /* The log is written to the working directory, so the harness
-       takes one of its own: the engine's name for it is fixed and a
-       test has no business writing it into the tree. */
+    /* The log is written into the player's own directory, so the
+       harness points that at one of its own under tests/build: the
+       engine's name for the file is fixed and a test has no business
+       writing it into the tree. */
     const char* dir = getenv("DBGLOG_DIR");
 
-    if (dir && chdir(dir) != 0)
+    if (!dir)
     {
-        printf("  FAIL could not enter the scratch directory\n");
+        printf("  FAIL no scratch directory was named\n");
         return 1;
     }
-    remove("debug.log");
+    snprintf(dpt_prefPath, sizeof(dpt_prefPath), "%s/", dir);
+    remove(logPath());
+
+    /* The log goes where the saves go, which is what the rest of the
+       cases then read it from. Asserted rather than assumed: a path
+       module that answered with the working directory would leave
+       every case below passing against a file in the tree. */
+    if (strncmp(logPath(), dpt_prefPath, strlen(dpt_prefPath)) != 0)
+    {
+        printf("  FAIL the log is not in the player's directory: %s\n",
+               logPath());
+        return 1;
+    }
 
     caseStampShape();
     caseBothLoggers();

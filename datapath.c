@@ -58,9 +58,6 @@ int DPT_b_DataPath(const char* folder, const char* name, char* out, size_t n)
 
 int DPT_b_UserPath(const char* name, char* out, size_t n)
 {
-    char* dir;
-    int   ok;
-
     if (!name)
         return 0;
 
@@ -86,13 +83,23 @@ int DPT_b_UserPath(const char* name, char* out, size_t n)
        the user's home rather than a documents folder. SDL's
        preferences path is exactly that -- $XDG_DATA_HOME/<game>/,
        which is ~/.local/share/<game>/ unless the user says otherwise
-       -- and it makes the directory on the way. */
-    dir = SDL_GetPrefPath(DPT_ORGNAME, DPT_GAMENAME);
-    if (!dir)
-        return 0;
-    ok = DPT_l_b_Join(out, n, dir, name);
-    SDL_free(dir);
-    return ok;
+       -- and it makes the directory on the way.
+
+       The two locals are declared in here rather than at the top of
+       the function because the branch above has no use for them, and
+       a local only one side of an #ifdef uses is a warning on the
+       other side -- one the warning sweep cannot see, since it only
+       ever compiles this side. */
+    {
+        char* dir = SDL_GetPrefPath(DPT_ORGNAME, DPT_GAMENAME);
+        int   ok;
+
+        if (!dir)
+            return 0;
+        ok = DPT_l_b_Join(out, n, dir, name);
+        SDL_free(dir);
+        return ok;
+    }
 #endif
 }
 

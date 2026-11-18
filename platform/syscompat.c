@@ -9,12 +9,33 @@ int PLT_b_DebuggerAttached(void)
     return IsDebuggerPresent() ? 1 : 0;
 }
 
+int PLT_b_OnlyInstance(void)
+{
+    /* Never closed on purpose: the mutex has to outlive the call and
+       last as long as the process, and the system drops it when the
+       process goes. Kept in a static so asking twice answers the same
+       thing rather than testing the handle this call just made. */
+    static HANDLE held;
+
+    if (held)
+        return 1;
+    held = CreateMutexA(NULL, TRUE, "IrisEngGame");
+    if (!held)
+        return 1;
+    return GetLastError() == ERROR_ALREADY_EXISTS ? 0 : 1;
+}
+
 #else /* not Windows */
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <time.h>
+#include <unistd.h>
+
+#include "../datapath.h"
 
 /* For LARGE_INTEGER, DWORD and the rest: the implementations below
    have to match the declarations the engine already sees, and off
@@ -22,6 +43,38 @@ int PLT_b_DebuggerAttached(void)
    the tests have one of their own, and a build that has none cannot
    compile any of the engine, not only this file. */
 #include "../common.h"
+
+int PLT_b_OnlyInstance(void)
+{
+    /* A lock on a file beside the saves. The lock and not the file is
+       what matters: the file is left behind and the lock is not, so a
+       copy that crashed releases it on the way out and the next one
+       starts.
+
+       Beside the saves because the guard is per player rather than
+       per machine -- two people logged in at once are two games, and
+       a lock in a shared place would have the second refuse to
+       start. */
+    static int held = -1;
+    char       path[512];
+    int        fd;
+
+    if (held >= 0)
+        return 1;
+    if (!DPT_b_UserPath("irisEng.lock", path, sizeof(path)))
+        return 1;
+    fd = open(path, O_CREAT | O_RDWR, 0644);
+    if (fd < 0)
+        return 1;
+    if (flock(fd, LOCK_EX | LOCK_NB) != 0)
+    {
+        close(fd);
+        return 0;
+    }
+    /* Held, and not closed: closing it drops the lock. */
+    held = fd;
+    return 1;
+}
 
 int PLT_b_DebuggerAttached(void)
 {

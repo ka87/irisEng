@@ -13,10 +13,20 @@ cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
 OUT=tests/build
-mkdir -p "$OUT"
+mkdir -p "$OUT/syscompat.run"
+
+# The single-instance guard puts its lock beside the saves, which the
+# path module answers for. Only SDL's headers are wanted here: the
+# entry points it uses are defined by the harness (tests/sdlpath.h),
+# which is what lets the lock go in a directory of the test's own.
+SDL3_INC="$PWD/thirdparty/SDL3/include"
 
 echo "=== syscompat ==="
 $CC -g -O0 -fsanitize=address,undefined -std=gnu11 -fms-extensions \
-    -Itests/stub \
-    tests/test_syscompat.c -o "$OUT/syscompat" -lm
-"$OUT/syscompat"
+    -I"$SDL3_INC" -Itests/stub -Itests \
+    -c tests/test_syscompat.c -o "$OUT/syscompat.o"
+$CC -g -O0 -fsanitize=address,undefined -std=gnu11 -fms-extensions \
+    -I"$SDL3_INC" -c datapath.c -o "$OUT/syscompat.datapath.o"
+$CC -fsanitize=address,undefined "$OUT/syscompat.o" \
+    "$OUT/syscompat.datapath.o" -o "$OUT/syscompat" -lm
+SYSCOMPAT_DIR="$PWD/$OUT/syscompat.run" "$OUT/syscompat"

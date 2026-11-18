@@ -119,6 +119,19 @@ void PLT_Close(void)
     }
 }
 
+void PLT_Message(const char* title, const char* text, int error)
+{
+    /* The window if there is one, so the box belongs to it. Before it
+       is made -- which is when the settings and the device complain --
+       there is nothing to belong to and SDL puts up a box of its own
+       anyway. */
+    SDL_ShowSimpleMessageBox(error ? SDL_MESSAGEBOX_ERROR
+                                   : SDL_MESSAGEBOX_INFORMATION,
+                             title ? title : "IRISEngine",
+                             text ? text : "",
+                             plt_window);
+}
+
 void* PLT_p_NativeWindow(void)
 {
     if (!plt_window)

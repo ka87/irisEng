@@ -10,6 +10,11 @@
  * The real math.c and profiler.c are linked rather than mocked.
  */
 #include "d3drender_mocks.h"
+/* The path module is linked here, and this is what answers it: the
+   renderer reaches it twice -- for a screenshot and for the
+   settings application it hands off to -- and both want the rule
+   rather than a hand-written nought. */
+#include "sdlpath.h"
 /* The engine no longer includes a D3DX header; this file still
    defines the handful of D3DX entry points the frozen copy calls,
    so it includes the stub itself. */
@@ -1213,8 +1218,14 @@ HMODULE LoadLibraryA(LPCSTR s) { (void)s; return NULL; }
    running under a debugger. */
 int PLT_b_DebuggerAttached(void) { return 0; }
 FARPROC GetProcAddress(HMODULE m, LPCSTR s) { (void)m; (void)s; return NULL; }
+/* The frozen copy asks Windows for its box and the rewrite asks the
+   platform layer. Both are silent here and neither side records
+   anything, so the two read the same in the call log -- which is what
+   the cases compare. */
 int MessageBoxA(HWND h, LPCSTR a, LPCSTR b, UINT u)
 { (void)h; (void)a; (void)b; (void)u; return 0; }
+void PLT_Message(const char* t, const char* x, int e)
+{ (void)t; (void)x; (void)e; }
 void OutputDebugStringA(LPCSTR s) { (void)s; }
 BOOL CreateProcessA(LPCSTR a, LPSTR b, void* c, void* d, BOOL e, DWORD f, void* g,
     LPCSTR h, STARTUPINFOA* i, PROCESS_INFORMATION* j)
@@ -1223,17 +1234,6 @@ BOOL CreateProcessA(LPCSTR a, LPSTR b, void* c, void* d, BOOL e, DWORD f, void* 
    frozen copy. Both sides reach it only on a display that could not
    be made, and neither looks at what it said. */
 int PLT_b_Launch(const char* const* args) { (void)args; return 0; }
-
-/* Nor is the path module. The screenshot is the only thing here that
-   wants a path, and the case that exercises it runs with no device at
-   all, so it returns before the name is built -- the picture itself is
-   checked in the OpenGL harness, against a real file. */
-int DPT_b_ScreenshotPath(char* out, size_t n)
-{
-    if (out && n)
-        out[0] = 0;
-    return 0;
-}
 
 /* The settings module is not linked here. Every reader answers "the
    ini said nothing", which is what the registry mock used to do by

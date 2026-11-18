@@ -1,5 +1,7 @@
 #include "dbg.h"
 #include "version.h"
+#include "datapath.h"
+#include "platform.h"
 /* For the log's timestamp. Asked for by name rather than left to
    arrive through windows.h: the engine has a time.h of its own, and
    that one is the engine's clock, not the C library's. The angle
@@ -138,7 +140,7 @@ void DBG_assert(int isError, char* sourceCodeInfo, int lineNo, char* sourceCodeL
     if (!isError)
         caption = "Error detected";
     if (showMsgBox)
-        MessageBoxA(0, text, caption, 0x10u);
+        PLT_Message(caption, text, 1);
     if (text)
         free(text);
     exit(-1);
@@ -149,7 +151,21 @@ static void DBG_l_Log(const char* text)
     static FILE* log;
 
     if (!log)
-        log = fopen("debug.log", "w");
+    {
+        char path[512];
+
+        /* With the saves, in the player's own directory, because the
+           install may be somewhere nobody can write to.
+
+           A directory that cannot be named falls back to the working
+           directory rather than giving up: this is the one file that
+           says why anything else failed, so having it in the wrong
+           place beats not having it. */
+        if (DPT_b_UserPath("debug.log", path, sizeof(path)))
+            log = fopen(path, "w");
+        else
+            log = fopen("debug.log", "w");
+    }
     if (log)
     {
         fputs(text, log);

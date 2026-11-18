@@ -818,13 +818,23 @@ void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int result)
         /* The settings application, told why it was called for. The
            engine does not wait for it and never read anything back
            from it: it starts it and goes, which is what the handle
-           pair being dropped on the floor meant. */
-        {
-            static const char* const args[] = {
-                "SettingsApplication.exe", "-OUTOFVIDEOMEMORY", NULL
-            };
+           pair being dropped on the floor meant.
 
-            PLT_b_Launch(args);
+           By the name it is actually built under, and beside the game
+           rather than wherever a search path leads: it ships in the
+           same folder, and the game may have been started from
+           anywhere. */
+        {
+            char path[512];
+
+            if (DPT_b_ExePath("irisEngSettings.exe", path, sizeof(path)))
+            {
+                const char* const args[] = {
+                    path, "-OUTOFVIDEOMEMORY", NULL
+                };
+
+                PLT_b_Launch(args);
+            }
         }
         D3D_l_Close();
         D3DRenderParams.d3d_if->lpVtbl->Release(D3DRenderParams.d3d_if);
@@ -2954,7 +2964,7 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
         || !SET_b_DisplayMode(&adapterMode)
         || !SET_b_DisplayMipMapping(&D3DRenderParams.Mipmapping))
     {
-        MessageBoxA(hWnd, "Application settings is not correctly set or invalid, please re-run settings application.", "IRISEngine", MB_TASKMODAL | MB_ICONERROR);
+        PLT_Message("IRISEngine", "Application settings is not correctly set or invalid, please re-run settings application.", 1);
         exit(1);
     }
 
@@ -3018,7 +3028,7 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
         {
             if (ret < 0)
             {
-                MessageBoxA(hWnd, "IDirect3D9_CreateDevice failed, please re-run settings application.", "IRISEngine", MB_TASKMODAL | MB_ICONERROR);
+                PLT_Message("IRISEngine", "IDirect3D9_CreateDevice failed, please re-run settings application.", 1);
                 exit(1);
             }
             break;

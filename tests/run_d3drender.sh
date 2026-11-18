@@ -18,7 +18,12 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# The renderer asks the path module where a screenshot goes and
+# where the settings application is. Only SDL's headers are wanted:
+# the entry points it uses are defined by the mocks
+# (tests/sdlpath.h), so a case can point the install anywhere.
+SDL3_INC="$PWD/thirdparty/SDL3/include"
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -I"$SDL3_INC" -Itests/stub -Itests"
 # both sides see the real SDK's window-message numbers: the stub's are
 # sequential, which inverts their order and makes most of the two
 # message handlers unreachable.  See tests/d3drender_msg_sdk.h.
@@ -159,13 +164,14 @@ $CC $CFLAGS -c depthblur.c -o "$OUT/d3drender.dpb.o"
 $CC $CFLAGS -c fog.c -o "$OUT/d3drender.fog.o"
 $CC $CFLAGS -c profiler.c -o "$OUT/d3drender.profiler.o"
 $CC $CFLAGS -c tests/d3drender_mocks.c -o "$OUT/d3drender.mocks.o"
+$CC $CFLAGS -c datapath.c -o "$OUT/d3drender.datapath.o"
 $CC $CFLAGS -c tests/test_d3drender.c -o "$OUT/d3drender.drv.o"
 $CC "$OUT/d3drender.new.o" "$OUT/d3drender.uv.o" "$OUT/d3drender.base.o" "$OUT/d3drender.math.o" \
     "$OUT/d3drender.wgmath.o" "$OUT/d3drender.proj.o" "$OUT/d3drender.gvx.o" \
     "$OUT/d3drender.rst.o" "$OUT/d3drender.fog.o" "$OUT/d3drender.gsp.o" "$OUT/d3drender.profiler.o" \
     "$OUT/d3drender.wms.o" "$OUT/d3drender.pfb.o" "$OUT/d3drender.pngsave.o" "$OUT/libpng.a" \
     "$OUT/d3drender.wrf.o" "$OUT/d3drender.wsm.o" "$OUT/d3drender.dpb.o" \
-    "$OUT/d3drender.mocks.o" \
+    "$OUT/d3drender.mocks.o" "$OUT/d3drender.datapath.o" \
     "$OUT/d3drender.drv.o" \
     -o "$OUT/d3drender" -lm
 "$OUT/d3drender"

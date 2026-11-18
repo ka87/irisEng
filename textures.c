@@ -9,6 +9,7 @@
 #include "thirdparty/jpeg-6b/jpeglib.h"
 #include "engine.h"
 #include "strings.h"
+#include "datapath.h"
 #include <setjmp.h>
 
 
@@ -781,7 +782,9 @@ int TEX_l_File_LoadJpeg(char* data, struct sEngTexIntermediateStruct* tex, size_
         MEM_Free(temp);
 
         /*
-        FILE* fp = fopen("dbg_readback.ppm", "wb");
+        char dbgPath[512];
+        FILE* fp = DPT_b_UserPath("dbg_readback.ppm", dbgPath, sizeof(dbgPath))
+                   ? fopen(dbgPath, "wb") : NULL;
         if (fp) {
             fprintf(fp, "P6\n%d %d\n255\n", tex->realWidth, tex->realHeight);
             fwrite(tex->imgDataPtr, 1, tex->realWidth * tex->realHeight * 3, fp);
