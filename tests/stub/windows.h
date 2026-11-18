@@ -186,7 +186,6 @@ typedef struct WNDCLASSA {
 
 DWORD  GetFileAttributesA(LPCSTR);
 DWORD  GetModuleFileNameA(HMODULE, LPSTR, DWORD);
-BOOL   FreeLibrary(HMODULE);
 BOOL   UnregisterClassA(LPCSTR, HINSTANCE);
 
 /* ---- the pixel format and WGL, for platform/glrender.c ----
@@ -236,7 +235,6 @@ LONG   DefWindowProcA(HWND, UINT, WPARAM, LPARAM);
 WORD   RegisterClassA(const WNDCLASSA*);
 HWND   CreateWindowExA(DWORD, LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, void*);
 BOOL   ShowWindow(HWND, int);
-BOOL   UpdateWindow(HWND);
 
 /* GDI and the system-colour calls the profiler window draws with. */
 HMODULE  GetModuleHandleA(LPCSTR);
@@ -368,7 +366,6 @@ void  GetLocalTime(SYSTEMTIME*);
 BOOL  PeekMessageA(MSG*, HWND, UINT, UINT, UINT);
 BOOL  TranslateMessage(const MSG*);
 LRESULT DispatchMessageA(const MSG*);
-DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD);
 
 /* The window, cursor, icon and directory calls platform/d3drender.c makes.
    Real signatures; these were the last implicit declarations in that
