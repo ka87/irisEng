@@ -53,6 +53,7 @@ static tDatSetting set_mode;
 static tDatSetting set_zbuffer;
 static tDatSetting set_mipmapping;
 static tDatSetting set_windowed;
+static tDatSetting set_maxFps;
 static tDatSetting set_width;
 static tDatSetting set_height;
 static char      set_backend[SET_NAMEMAX];
@@ -242,6 +243,7 @@ static void SET_l_Setting(int section, char* key, char* value)
             { "zbuffer",    &set_zbuffer },
             { "mipmapping", &set_mipmapping },
             { "windowed",   &set_windowed },
+            { "maxfps",     &set_maxFps },
             { "width",      &set_width },
             { "height",     &set_height }
         };
@@ -289,7 +291,7 @@ static void SET_l_Reset(void)
 {
     static tDatSetting* const display[] = {
         &set_adapter, &set_mode, &set_zbuffer, &set_mipmapping,
-        &set_windowed, &set_width, &set_height
+        &set_windowed, &set_maxFps, &set_width, &set_height
     };
     int i;
 
@@ -436,7 +438,7 @@ const char* SET_pc_SpecialArray(void)
     return set_specialArray;
 }
 
-/* One shape for all seven: say whether the ini mentioned it, and
+/* One shape for all eight: say whether the ini mentioned it, and
    write the value only if it did. */
 #define SET_DISPLAY_READER(fn, var)        \
     int fn(int* out)                       \
@@ -453,6 +455,7 @@ SET_DISPLAY_READER(SET_b_DisplayMode,       set_mode)
 SET_DISPLAY_READER(SET_b_DisplayZBuffer,    set_zbuffer)
 SET_DISPLAY_READER(SET_b_DisplayMipMapping, set_mipmapping)
 SET_DISPLAY_READER(SET_b_DisplayWindowed,   set_windowed)
+SET_DISPLAY_READER(SET_b_DisplayMaxFps,     set_maxFps)
 SET_DISPLAY_READER(SET_b_DisplayWidth,      set_width)
 SET_DISPLAY_READER(SET_b_DisplayHeight,     set_height)
 

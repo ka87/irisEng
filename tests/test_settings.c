@@ -183,6 +183,7 @@ static void theDisplaySettings(void)
          "zbuffer = 24\n"
          "mipmapping = 0\n"
          "windowed = 1\n"
+         "maxfps = 144\n"
          "width = 1280\n"
          "height = 720\n");
 
@@ -191,9 +192,23 @@ static void theDisplaySettings(void)
     v = -1; okInt(SET_b_DisplayZBuffer(&v) && v == 24, 1, "the depth buffer");
     v = -1; okInt(SET_b_DisplayMipMapping(&v) && v == 0, 1, "mip mapping off, which is not the same as unset");
     v = -1; okInt(SET_b_DisplayWindowed(&v) && v == 1, 1, "windowed");
+    v = -1; okInt(SET_b_DisplayMaxFps(&v) && v == 144, 1, "the frame limit");
     v = -1; okInt(SET_b_DisplayWidth(&v) && v == 1280, 1, "the width");
     v = -1; okInt(SET_b_DisplayHeight(&v) && v == 720, 1, "the height");
     okInt(dmLogLen, 0, "and nothing to complain about");
+}
+
+static void theFrameLimitDoesNotSurviveAPass(void)
+{
+    int v;
+
+    printf("-- a display key does not survive into the next pass\n");
+    loadUser("[display]\nmaxfps = 144\n");
+    v = -1; okInt(SET_b_DisplayMaxFps(&v) && v == 144, 1, "set in one pass");
+
+    loadUser("[display]\nwindowed = 1\n");
+    v = -1; okInt(SET_b_DisplayMaxFps(&v), 0, "and gone in the next");
+    okInt(v, -1, "with the caller's value left alone");
 }
 
 static void theSpecialArray(void)
@@ -634,6 +649,7 @@ int main(void)
     printf("=== settings unit test ===\n");
     missingFileIsNotAProblem();
     theDisplaySettings();
+    theFrameLimitDoesNotSurviveAPass();
     theSpecialArray();
     theFileBesideTheExecutable();
     eachSectionBelongsToOneFile();

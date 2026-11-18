@@ -493,6 +493,7 @@ for one in tests/run_sdl3.sh \
            tests/run_aimathnan.sh \
            tests/run_degenvec.sh \
            tests/run_gridheight.sh \
+           tests/run_timepace.sh \
            tests/run_d3dtex.sh \
            tests/run_depthblur.sh \
            tests/run_cinebands.sh \

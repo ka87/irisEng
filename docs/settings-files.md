@@ -31,6 +31,7 @@ mode       = 0
 zbuffer    = 75
 mipmapping = 1
 windowed   = 0
+;maxfps    = 100
 width      = 640
 height     = 480
 ```
@@ -93,6 +94,25 @@ reports. The shipped file says 75.
 fullscreen at 640x480. `windowed` is the engine's own flag rather
 than a property of the window: it is what the renderer reads when it
 decides whether to take an exclusive display mode.
+
+`maxfps` is how many frames a second the engine will draw. Leave it
+out and the engine uses 100, which is not an arbitrary round number:
+the clock counts any frame shorter than a hundredth of a second as a
+hundredth of a second, so a frame that arrives sooner advances the
+world further than real time did and the game runs fast — a fifth
+fast at 120Hz, very nearly half again at 144Hz. Both renderers
+present on the vertical blank, so without a limit the frame rate is
+the display's and so is the error.
+
+The game has always counted frames that way; it simply never met a
+display this fast. Holding frames back to a hundredth of a second
+leaves that arithmetic untouched and makes it honest again, and a
+display at 60, 75 or 100 is unaffected either way. A higher limit
+lowers the clock's floor to match, so the game still runs at the
+right speed — at the cost of a constant the game shipped with; set it
+to your refresh rate if you would rather have the frames. `0` turns
+the limit off and restores the shipped behaviour exactly, fast
+display and all.
 
 ## The special array
 

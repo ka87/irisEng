@@ -54,6 +54,12 @@ extern HWND MAI_gh_MainWindow;
    keys it is typed into -- happens in here now. */
 void PLT_Pump(void);
 
+/* Give the processor back for about this many milliseconds. About,
+   not exactly: the system decides when to wake us and it is free to
+   be late, so a caller that needs a deadline kept waits out the last
+   of it itself. Nought or less returns at once. */
+void PLT_SleepMs(int ms);
+
 /* Start a program and do not wait for it: the arguments, the first of
    them the program, and a null to end the list. True if it started.
    
