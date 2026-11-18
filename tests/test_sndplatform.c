@@ -500,6 +500,77 @@ static void theStreamingRing(void)
     free(payload);
 }
 
+/* The sound thread and the mailbox the engine hands it work through.
+ *
+ * What this has to behave like is four Windows events and a fifth for
+ * the answer: one command outstanding at a time, the poster waiting
+ * for the answer, and a timeout on the thread's own wait that is its
+ * clock rather than an error. */
+
+static SDL_AtomicInt theTicks;
+static SDL_AtomicInt theSeen;
+static SDL_AtomicInt theStop;
+
+static int splTestThread(void* arg)
+{
+    (void)arg;
+    while (!SDL_GetAtomicInt(&theStop))
+    {
+        int cmd = SPL_i_TakeCommand(5);
+
+        if (cmd == SPL_CMD_ERROR)
+            continue;
+        if (cmd == SPL_CMD_NONE)
+        {
+            SDL_AddAtomicInt(&theTicks, 1);
+            continue;
+        }
+        SDL_SetAtomicInt(&theSeen, cmd);
+        SPL_CommandDone();
+    }
+    return 0;
+}
+
+static void theMailbox(void)
+{
+    tSplThread* t;
+    int i;
+    int ticksBefore;
+
+    printf("-- the thread and the commands handed to it\n");
+
+    SDL_SetAtomicInt(&theTicks, 0);
+    SDL_SetAtomicInt(&theSeen, -99);
+    SDL_SetAtomicInt(&theStop, 0);
+
+    t = SPL_p_ThreadStart(splTestThread, 0, "spl test");
+    ok(t != 0, "the thread starts");
+    if (!t)
+        return;
+
+    /* Every command gets through, and the poster is not let go until
+       the thread has actually had it. */
+    for (i = 0; i < 4; i++)
+    {
+        ok(SPL_b_Command(i, 2000) != 0, "the command is answered");
+        okEq(SDL_GetAtomicInt(&theSeen), i, "and it is the one that was sent");
+    }
+
+    /* The timeout is the thread's clock, not an error: with nothing
+       posted it must keep ticking. */
+    ticksBefore = SDL_GetAtomicInt(&theTicks);
+    SDL_Delay(60);
+    ok(SDL_GetAtomicInt(&theTicks) > ticksBefore,
+       "the wait times out and goes round again");
+
+    /* And a command still gets through once it has been ticking. */
+    ok(SPL_b_Command(2, 2000) != 0, "a command after a quiet spell is answered");
+    okEq(SDL_GetAtomicInt(&theSeen), 2, "and is still the right one");
+
+    SDL_SetAtomicInt(&theStop, 1);
+    ok(SPL_b_ThreadWait(t, 2000) != 0, "and the thread is waited for");
+}
+
 int main(void)
 {
     SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
@@ -513,6 +584,7 @@ int main(void)
     theDuplicate();
     feedWanted();
     theStreamingRing();
+    theMailbox();
 
     SPL_Close();
     ok(SPL_b_IsOpen() == 0, "closing gives the device back");

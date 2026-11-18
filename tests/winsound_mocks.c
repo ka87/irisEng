@@ -714,6 +714,10 @@ int wsnd_reg_fail;
 int wsnd_reg_fx_value = 2;
 
 static int handle_seq;
+/* Files number themselves, because events do not exist on the
+   rewrite's side and a shared counter would hand the two copies
+   different file handles for the same file. */
+static int file_seq;
 
 LONG RegOpenKeyExA(HKEY root, LPCSTR path, DWORD opts, DWORD access, PHKEY out)
 {
@@ -773,19 +777,78 @@ FARPROC GetProcAddress(HMODULE m, LPCSTR name)
     return (FARPROC)mock_eax_create;
 }
 
+/* The twenty-three events, and the four of them that ever mattered.
+ *
+ * The frozen copy reaches the sound thread through Windows events: it
+ * sets one of four to say what it wants, waits on a fifth for the
+ * answer, and the thread waits on the four. The rewrite has a mailbox
+ * instead -- one command outstanding, one answer -- so neither side
+ * can be compared by the API it uses, and both say the same four
+ * things in the same words:
+ *
+ *     cmd(n)      a command handed to the thread
+ *     cmdwait(ms) the poster waiting for the answer
+ *     cmddone     the thread giving it
+ *     wake=n      the thread's own wait coming back
+ *
+ * Making the events themselves is ceremony the rewrite has no
+ * counterpart for, so it is silent -- but the handles are still
+ * numbered 1..23 in creation order, because the rewrite's own tokens
+ * are i+1 for the same i and the two are compared where a sound
+ * records them. */
 HANDLE CreateEventA(void* attrs, BOOL manual, BOOL initial, LPCSTR name)
 {
     return (HANDLE)(size_t)(++handle_seq);
 }
 
-BOOL SetEvent(HANDLE h) { wsnd_log("SetEvent(%ld)\n", (long)(size_t)h); return 1; }
-BOOL ResetEvent(HANDLE h) { wsnd_log("ResetEvent(%ld)\n", (long)(size_t)h); return 1; }
-BOOL CloseHandle(HANDLE h) { wsnd_log("CloseHandle(%ld)\n", (long)(size_t)h); return 1; }
-DWORD WaitForSingleObject(HANDLE h, DWORD ms) { wsnd_log("WaitForSingleObject(%ld,%u)\n", (long)(size_t)h, ms); return 0; }
+/* Which of dsndEvents a handle is, or -1. They are made first and in
+   order, so the handle is the index plus one. */
+static int wsnd_event_index(HANDLE h)
+{
+    long n = (long)(size_t)h;
+    return (n >= 1 && n <= 23) ? (int)(n - 1) : -1;
+}
+
+BOOL SetEvent(HANDLE h)
+{
+    int idx = wsnd_event_index(h);
+
+    if (idx >= 0 && idx <= 3)
+        wsnd_log("cmd(%d)\n", idx);
+    else if (idx == 5)
+        wsnd_log("cmddone\n");
+    else
+        wsnd_log("SetEvent(%ld)\n", (long)(size_t)h);
+    return 1;
+}
+
+/* Silent: the rewrite neither makes these nor resets them. */
+BOOL ResetEvent(HANDLE h) { (void)h; return 1; }
+BOOL CloseHandle(HANDLE h)
+{
+    /* Events and the thread handle are both silent: the rewrite makes
+       neither, so neither has anything to close. A file is the one
+       handle both copies really hold, and that one is said. */
+    if (wsnd_event_index(h) >= 0 || (long)(size_t)h == 0x3000)
+        return 1;
+    wsnd_log("CloseHandle(%ld)\n", (long)(size_t)h);
+    return 1;
+}
+
+DWORD WaitForSingleObject(HANDLE h, DWORD ms)
+{
+    if (wsnd_event_index(h) == 5)
+        wsnd_log("cmdwait(%u)\n", ms);
+    else if ((long)(size_t)h == 0x3000)
+        wsnd_log("threadwait(%u)\n", ms);
+    else
+        wsnd_log("WaitForSingleObject(%ld,%u)\n", (long)(size_t)h, ms);
+    return 0;
+}
 
 HANDLE CreateThread(void* attrs, SIZE_T stack, LPTHREAD_START_ROUTINE start, LPVOID param, DWORD flags, LPDWORD id)
 {
-    wsnd_log("CreateThread\n");
+    wsnd_log("threadstart\n");
     *(int*)id = 4242;
     return (HANDLE)(size_t)0x3000;
 }
@@ -793,7 +856,7 @@ HANDLE CreateThread(void* attrs, SIZE_T stack, LPTHREAD_START_ROUTINE start, LPV
 HANDLE CreateFileA(LPCSTR path, DWORD access, DWORD share, void* sec, DWORD disp, DWORD attrs, HANDLE templ)
 {
     wsnd_log("CreateFileA(%s,%X)\n", path, access);
-    return (HANDLE)(size_t)(0x5000 + (++handle_seq));
+    return (HANDLE)(size_t)(0x5000 + (++file_seq));
 }
 
 BOOL ReadFile(HANDLE h, LPVOID buf, DWORD count, LPDWORD read, void* ov)
@@ -909,17 +972,62 @@ DWORD WaitForMultipleObjects(DWORD count, const HANDLE* handles, BOOL all, DWORD
            positions and looks at the cursor instead. */
         if (wsnd_notify_is_tick)
         {
+            ++wsnd_ticks;
             wsnd_log("wake=%u\n", r);
             return WAIT_TIMEOUT;
         }
     }
+    if (r == (DWORD)-1)
+        ++wsnd_errors;
+    else if (r == WAIT_TIMEOUT)
+        ++wsnd_ticks;
     wsnd_log("wake=%u\n", r);
     return r;
 }
 
+/* The mailbox the rewrite waits on, driven by the same script and
+   saying the same words. SPL_CMD_NONE is the timeout and SPL_CMD_ERROR
+   the wait that failed, which are WAIT_TIMEOUT and -1 above. */
+int SPL_i_TakeCommand(int timeoutMs)
+{
+    DWORD r = WaitForMultipleObjects(4, 0, 0, (DWORD)timeoutMs);
+
+    if (r == WAIT_TIMEOUT)
+        return -1;                     /* SPL_CMD_NONE */
+    if (r == (DWORD)-1)
+        return -2;                     /* SPL_CMD_ERROR */
+    return (int)r;
+}
+
+int SPL_b_Command(int command, int timeoutMs)
+{
+    wsnd_log("cmd(%d)\n", command);
+    wsnd_log("cmdwait(%u)\n", (unsigned)timeoutMs);
+    return 1;
+}
+
+void SPL_CommandDone(void) { wsnd_log("cmddone\n"); }
+
+struct sSplThread;
+struct sSplThread* SPL_p_ThreadStart(int (*body)(void*), void* arg, const char* name)
+{
+    (void)body; (void)arg; (void)name;
+    wsnd_log("threadstart\n");
+    return (struct sSplThread*)(size_t)0x3000;
+}
+
+int SPL_b_ThreadWait(struct sSplThread* thread, int timeoutMs)
+{
+    (void)thread;
+    wsnd_log("threadwait(%u)\n", (unsigned)timeoutMs);
+    return 1;
+}
+
 void ExitThread(DWORD code)
 {
-    wsnd_log("ExitThread(%u)\n", code);
+    /* Silent: the rewrite returns from the body instead, and
+       wsnd_run_thread says so for both. */
+    (void)code;
     if (thread_running)
         longjmp(thread_exit, 1);
     exit(3);
@@ -931,6 +1039,9 @@ void wsnd_run_thread(int (*body)(void*))
     if (!setjmp(thread_exit))
         body(0);
     thread_running = 0;
+    /* Said here rather than in ExitThread, because the rewrite leaves
+       the loop by returning and there is nothing to intercept. */
+    wsnd_log("threadexit\n");
 }
 
 /* ------------------------------------------------------------- reset */
@@ -975,6 +1086,7 @@ void wsnd_mock_reset(void)
     qi_calls = 0;
     audio_used = 0;
     handle_seq = 0;
+    file_seq = 0;
     thread_step = 0;
     thread_script_len = 0;
     thread_running = 0;
@@ -1034,6 +1146,8 @@ int SPL_b_IsOpen(void) { return !wsnd_open_fails; }
    check in winsound_side.c reads. */
 int wsnd_feeds;
 int wsnd_waits;
+int wsnd_ticks;
+int wsnd_errors;
 void SPL_Feed(void) { ++wsnd_feeds; }
 /* Only ever referenced by the trace, which is off here. Defined so
    that turning the trace on in this build links. */
