@@ -125,8 +125,16 @@ typedef struct sGdi_DisplayData
     void(* SetZEnable)(int on);
     int (* i_ZEnable)(void);
     void(* SetZWriteEnable)(int on);
-    void(* SetTexCoordIndex)(int stage, int index);
-    void(* SetTextureTransformFlags)(int stage, int flags);
+    /* Where a texture's coordinates come from, what is done to them,
+       and the transform itself. The first two take the engine's own
+       GDI_UVSRC_ and GDI_UVXF_ values below, which a renderer turns
+       into whatever it calls them; the engine says the same thing
+       again in GDI_gi_TextureUVMode and the transform matrix, and a
+       renderer that reads those for itself -- the OpenGL one does --
+       fills all three with nothing. */
+    void(* SetTexCoordIndex)(int stage, int source);
+    void(* SetTextureTransformFlags)(int stage, int transform);
+    void(* SetTexCoordMatrix)(int stage, const Mtx4x4* matrix);
 
     /* The fullscreen video display: a movie-sized picture the engine
        writes decoded frames into, which the renderer fits to the
@@ -329,11 +337,29 @@ extern float GDI_gaf_ScreenRatio[4];
 extern int   GDI_gi_Widescreen;
 extern float GDI_gf_RefYoverX;
 extern void(*MAT_FuncTable[16])(tGdi_DisplayData*, tGEOGRO*, tGeoTriangleChunks*, unsigned int);
+
+/* Where a texture's coordinates come from, and what is done to them.
+   The engine's own words, deliberately not any renderer's numbers:
+   Direct3D's for these differ between a real d3d9.h and the stub the
+   tests build against, so a value carried through here rather than
+   translated inside the renderer would be right in one build and
+   wrong in the other. Nought is the stored coordinate and no
+   transform in every spelling, which is what the call sites that
+   predate a second renderer pass. */
+#define GDI_UVSRC_STORED    0   /* the vertex's own stored coordinate */
+#define GDI_UVSRC_NORMAL    1   /* the camera-space normal */
+#define GDI_UVSRC_POSITION  2   /* the camera-space position */
+#define GDI_UVXF_NONE       0   /* no transform */
+#define GDI_UVXF_2D         1   /* two coordinates out of the transform */
 extern float MAT_C_f_8Bits;
 
 int gMaxSimultaneousTextures;
 
 void MAT_UVDecompress(struct sMultiTextureElemStruct* mte, struct sMatDecompressedStruct* matds);
+
+/* The UV transform matrix out of three axes, a position and a scale.
+   It is the engine's own arithmetic and every UV mode uses it. */
+void PC_SetUVMatrix(Mtx4x4* dest, Vec3* axisU, Vec3* axisV, Vec3* axisW, Vec3* pos, Vec3* scale, int unused, int flags);
 
 void MAT_UV_Compute_OBJ1(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
 void MAT_UV_Compute_OBJ2(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);

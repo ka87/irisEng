@@ -365,8 +365,9 @@ int  D3D_b_DepthBlurOn(void);
 void D3D_SetZEnable(int on);
 int  D3D_i_ZEnable(void);
 void D3D_SetZWriteEnable(int on);
-void D3D_SetTexCoordIndex(int stage, int index);
-void D3D_SetTextureTransformFlags(int stage, int flags);
+void D3D_SetTexCoordIndex(int stage, int source);
+void D3D_SetTexCoordMatrix(int stage, const Mtx4x4* matrix);
+void D3D_SetTextureTransformFlags(int stage, int transform);
 
 void D3D_CheckReturnAndRunSettingsApplicationIfProblem(int result);
 

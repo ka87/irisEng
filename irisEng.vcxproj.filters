@@ -542,6 +542,9 @@
     <ClCompile Include="materialanddraw.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="materialuv.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="lights.c">
       <Filter>Source Files</Filter>
     </ClCompile>

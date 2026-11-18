@@ -316,6 +316,7 @@
     <ClCompile Include="loading.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="materialanddraw.c" />
+    <ClCompile Include="materialuv.c" />
     <ClCompile Include="math.c" />
     <ClCompile Include="memory.c" />
     <ClCompile Include="minilzo\minilzo.c" />

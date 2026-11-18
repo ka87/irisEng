@@ -869,6 +869,7 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->SetZWriteEnable = D3D_SetZWriteEnable;
     dd->SetTexCoordIndex = D3D_SetTexCoordIndex;
     dd->SetTextureTransformFlags = D3D_SetTextureTransformFlags;
+    dd->SetTexCoordMatrix = D3D_SetTexCoordMatrix;
     dd->b_VideoDisplayCreate = D3D_b_VideoDisplayCreate;
     dd->VideoDisplayClose = D3D_VideoDisplayClose;
     dd->b_VideoFrameLock = D3D_b_VideoFrameLock;
@@ -935,6 +936,7 @@ static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
     dd->SetZWriteEnable = GL_SetZWriteEnable;
     dd->SetTexCoordIndex = GL_SetTexCoordIndex;
     dd->SetTextureTransformFlags = GL_SetTextureTransformFlags;
+    dd->SetTexCoordMatrix = GL_SetTexCoordMatrix;
     dd->b_VideoDisplayCreate = GL_b_VideoDisplayCreate;
     dd->VideoDisplayClose = GL_VideoDisplayClose;
     dd->b_VideoFrameLock = GL_b_VideoFrameLock;
