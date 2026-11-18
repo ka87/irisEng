@@ -7226,8 +7226,8 @@ static void caseWaterReflectionAim(void)
        view matrix already has the object folded into it, so reusing it
        would apply the object's transform twice and once unmirrored. */
     WRF_Mirror(&mirrored, &wg_reflMtx, 3.5f);
-    D3D_MatrixMultiply((D3DMATRIX*)&view, (const D3DMATRIX*)&mirrored,
-                       (const D3DMATRIX*)&gl_dd.ct.cam.cameraMtx);
+    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&view, (const Mtx4x4WithoutAdditionalData*)&mirrored,
+                       (const Mtx4x4WithoutAdditionalData*)&gl_dd.ct.cam.cameraMtx);
     /* Against the projection with its **vertical turned over**: the
        surface samples this target with the engine's own remap, which
        counts v from the top of the picture, and OpenGL stores a
@@ -7240,8 +7240,8 @@ static void caseWaterReflectionAim(void)
     flipped.v2.y = -gl_projMtx.v2.y;
     flipped.v3.y = -gl_projMtx.v3.y;
     flipped.Pos.y = -gl_projMtx.Pos.y;
-    D3D_MatrixMultiply((D3DMATRIX*)&want, (const D3DMATRIX*)&view,
-                       (const D3DMATRIX*)&flipped);
+    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&want, (const Mtx4x4WithoutAdditionalData*)&view,
+                       (const Mtx4x4WithoutAdditionalData*)&flipped);
 
     /* And the flip is really there to be seen: a projection whose
        vertical column is already nought would make the line above a

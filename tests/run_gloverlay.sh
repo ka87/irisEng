@@ -81,7 +81,7 @@ $CC $CFLAGS -fsanitize=address -c aftereffects/aemotion.c -o "$OUT/wgo.amo.o"
 # all of that from here.
 $CC $CFLAGS -fsanitize=address -c aftereffects/aezoom2.c -o "$OUT/wgo.az2.o"
 $CC $CFLAGS -fsanitize=address -c geosprite.c -o "$OUT/wgo.gsp.o"
-$CC $CFLAGS -fsanitize=address -c platform/d3dmath.c -o "$OUT/wgo.wgmath.o"
+$CC $CFLAGS -fsanitize=address -c matrixmath.c -o "$OUT/wgo.wgmath.o"
 $CC $CFLAGS -fsanitize=address -c math.c -o "$OUT/wgo.math.o"
 $CC -fsanitize=address "$OUT/wgo.drv.o" "$OUT/wgo.load.o" "$OUT/wgo.shader.o" \
     "$OUT/wgo.datapath.o" "$OUT/wgo.proj.o" "$OUT/wgo.gvx.o" \

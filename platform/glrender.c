@@ -1,7 +1,7 @@
 #include "glrender.h"
 #include "glload.h"
 #include "glshader.h"
-#include "d3dmath.h"
+#include "../matrixmath.h"
 #include "overlay.h"
 #include "perfdisplay.h"
 #include "../pngsave.h"
@@ -1164,8 +1164,8 @@ static void GL_l_ForgetGeometry(void)
    next draw rather than rebuilt per chunk. */
 static void GL_l_CombineMatrices(void)
 {
-    D3D_MatrixMultiply((D3DMATRIX*)&gl_viewProjMtx, (const D3DMATRIX*)&gl_viewMtx,
-                       (const D3DMATRIX*)&gl_projMtx);
+    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&gl_viewProjMtx, (const Mtx4x4WithoutAdditionalData*)&gl_viewMtx,
+                       (const Mtx4x4WithoutAdditionalData*)&gl_projMtx);
 }
 
 int GL_SetViewMatrix(Mtx4x4* mtxptr)
@@ -5121,9 +5121,9 @@ void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
     camInv._m34 = 0.0f;
     camInv.w = 1.0f;
     MATH_MakeOGLMatrix(&camView, &camInv);
-    D3D_MatrixMultiply((D3DMATRIX*)&camViewProj,
-                       (const D3DMATRIX*)&camView,
-                       (const D3DMATRIX*)&gl_projMtx);
+    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&camViewProj,
+                       (const Mtx4x4WithoutAdditionalData*)&camView,
+                       (const Mtx4x4WithoutAdditionalData*)&gl_projMtx);
 
     /* The reflection is blurred before it is sampled, which is where
        the other renderer does it too -- in the function that hands the
@@ -5310,16 +5310,16 @@ static void GL_l_AimAtReflection(void)
     /* The camera alone, not the view the engine set. That matrix has
        the object folded into it already, so using it would apply the
        object's transform twice -- once unmirrored. */
-    D3D_MatrixMultiply((D3DMATRIX*)&view, (const D3DMATRIX*)&mirrored,
-                       (const D3DMATRIX*)&gl_waterCamMtx);
+    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&view, (const Mtx4x4WithoutAdditionalData*)&mirrored,
+                       (const Mtx4x4WithoutAdditionalData*)&gl_waterCamMtx);
     /* The vertical turned over, because the surface samples this
        target with the engine's own remap and that counts v from the
        top of the picture -- see GL_l_FlipVertical. Without it the
        reflection is upside down on the water, which reads as it
        sliding the wrong way when the camera moves. */
     GL_l_FlipVertical(&flippedProj, &gl_projMtx);
-    D3D_MatrixMultiply((D3DMATRIX*)&viewProj, (const D3DMATRIX*)&view,
-                       (const D3DMATRIX*)&flippedProj);
+    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&viewProj, (const Mtx4x4WithoutAdditionalData*)&view,
+                       (const Mtx4x4WithoutAdditionalData*)&flippedProj);
 
     /* The target is square and the screen is not, and the projection
        is the screen's -- so the reflection is drawn with the wrong

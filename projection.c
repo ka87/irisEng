@@ -6,7 +6,7 @@
    in is the one the engine's projection matrices are already in --
    row-major, as Direct3D has them. A second renderer consumes the
    result rather than needing a convention of its own. */
-#include "platform/d3dmath.h"
+#include "matrixmath.h"
 
 #include <math.h>
 #include <string.h>
@@ -120,16 +120,16 @@ void PRJ_Compute(struct sDDCamStruct* cam, const tPrj_Input* in,
            its own pixels, with a half-texel nudge. */
         orthoW = (float)viewW;
         halfTexel = (float)(0.5 / orthoW);
-        D3D_MatrixTranslation((D3DMATRIX*)&offsetMtx, halfTexel, halfTexel, 0.0);
+        MTX_p_Translation((Mtx4x4WithoutAdditionalData*)&offsetMtx, halfTexel, halfTexel, 0.0);
         orthoH = (float)viewH;
-        D3D_MatrixOrthoOffCenterRH((D3DMATRIX*)&orthoMtx, 0.0, orthoW, 0.0, orthoH,
+        MTX_p_OrthoOffCenterRH((Mtx4x4WithoutAdditionalData*)&orthoMtx, 0.0, orthoW, 0.0, orthoH,
                                    0.0, 1.0);
         /* Into the camera's own matrix, which is where the renderer
            built it and where the engine reads it back from. Only the
            sixteen floats: the helpers leave the fields past them
            alone, and that is the shipped behaviour. */
-        D3D_MatrixMultiply((D3DMATRIX*)camMtx, (const D3DMATRIX*)&orthoMtx,
-                           (const D3DMATRIX*)&offsetMtx);
+        MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)camMtx, (const Mtx4x4WithoutAdditionalData*)&orthoMtx,
+                           (const Mtx4x4WithoutAdditionalData*)&offsetMtx);
         memcpy(&out->matrix, camMtx, sizeof(Mtx4x4WithoutAdditionalData));
         out->setViewport = 0;
         return;

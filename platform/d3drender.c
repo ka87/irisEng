@@ -20,7 +20,7 @@
 #include "../settings.h"
 #include "../platform.h"
 #include "../font.h"
-#include "d3dmath.h"
+#include "../matrixmath.h"
 #include "d3dtex.h"
 #include "../fog.h"
 #include "../projection.h"
@@ -1040,7 +1040,8 @@ void D3D_OverlayBegin(void)
     mtx._33 = 1.0f;
     mtx._44 = 1.0f;
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_VIEW, &mtx);
-    D3D_MatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
+    MTX_p_OrthoOffCenterRH((Mtx4x4WithoutAdditionalData*)&mtx,
+                               0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
     D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, D3DTS_PROJECTION, &mtx);
 
     D3D_SetVertexShader(0);
@@ -1299,7 +1300,8 @@ void Rasters_Update()
             mtx._11 = 1.0;
             memcpy(&d3dTransformMatrix, &mtx, sizeof(d3dTransformMatrix));
             D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 2, &mtx);
-            D3D_MatrixOrthoOffCenterRH(&mtx, 0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
+            MTX_p_OrthoOffCenterRH((Mtx4x4WithoutAdditionalData*)&mtx,
+                               0.0, viewWidth, viewHeight, 0.0, -1.0, 1.0);
             memcpy(&d3dProjectionMtx, &mtx, sizeof(d3dProjectionMtx));
             D3DRenderParams.d3dDev->lpVtbl->SetTransform(D3DRenderParams.d3dDev, 3, &mtx);
             D3D_SetVertexShader(0);

@@ -92,7 +92,7 @@ $CC $CFLAGS -c aftereffects/aemotion.c -o "$OUT/glr.amo.o"
 # all of that from here.
 $CC $CFLAGS -c aftereffects/aezoom2.c -o "$OUT/glr.az2.o"
 $CC $CFLAGS -c geosprite.c -o "$OUT/glr.gsp.o"
-$CC $CFLAGS -c platform/d3dmath.c -o "$OUT/glr.wgmath.o"
+$CC $CFLAGS -c matrixmath.c -o "$OUT/glr.wgmath.o"
 $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
 # -ldl for the EGL lookup: the library is opened by name because there
 # are no EGL headers to link against.

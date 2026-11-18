@@ -487,7 +487,7 @@ for one in tests/run_sdl3.sh \
            tests/run_d3dsun.sh \
            tests/run_gfxsun.sh \
            tests/run_font.sh \
-           tests/run_d3dmath.sh \
+           tests/run_matrixmath.sh \
            tests/run_d3dtex.sh \
            tests/run_depthblur.sh \
            tests/run_cinebands.sh \

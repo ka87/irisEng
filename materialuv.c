@@ -24,7 +24,7 @@
 #include "profiler.h"
 #include "graphicsobjects/geo.h"
 #include "materialanddraw.h"
-#include "platform/d3dmath.h"
+#include "matrixmath.h"
 
 /* The matrix a texture-coordinate projection ends up as, laid out from
    the axes, the position and the scale it was computed from. Nothing
@@ -193,8 +193,8 @@ void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, 
     {
         MATH_MakeOGLMatrix(&viewMtxStd, viewMtx);
         viewMtxStdInv.mtxflag = 0x4;
-        D3D_p_MatrixInverse((D3DMATRIX*)&viewMtxStdInv, NULL,
-                            (const D3DMATRIX*)&viewMtxStd);
+        MTX_p_Inverse((Mtx4x4WithoutAdditionalData*)&viewMtxStdInv, NULL,
+                            (const Mtx4x4WithoutAdditionalData*)&viewMtxStd);
     }
     else
     {
