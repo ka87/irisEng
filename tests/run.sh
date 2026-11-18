@@ -450,6 +450,7 @@ run_strings
 # catch reached a build of the game instead.
 for one in tests/run_sdl3.sh \
            tests/run_platform.sh \
+           tests/run_sndplatform.sh \
            tests/runworld.sh \
            tests/run_collision_a.sh \
            tests/run_collision_b.sh \
