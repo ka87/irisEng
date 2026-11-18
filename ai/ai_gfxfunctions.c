@@ -9,7 +9,7 @@
 #include "../platform/d3drender.h"
 #include "../video.h"
 #include "../platform/sndvideo.h"
-#include "../datafiles.h"
+#include "../settings.h"
 #include "../dbg.h"
 
 // An effect's id says which of the world's two lists holds it: the ids
@@ -470,19 +470,19 @@ static void GFX_FS_VideoBlit(tVideoStream* video)
                                     GFX_l_i_VideoFit());
 }
 
-// The id picks the file out of datafiles.ini. Nothing to play is not
+// The id picks the file out of engine.ini. Nothing to play is not
 // an error -- it is logged and the video simply does not start, which
 // leaves everything as it was.
 void GFX_FS_VideoStart(int videoId)
 {
     const char* file;
 
-    file = DAT_pc_Video(videoId);
+    file = SET_pc_Video(videoId);
     if (!file)
     {
         DBG_OutputDebugString("GFX_FS_VideoStart: no video for id 0x%08X (%d)"
                               " in %s\n",
-                              (unsigned)videoId, videoId, DAT_INIFILE);
+                              (unsigned)videoId, videoId, SET_INIFILE);
         return;
     }
 

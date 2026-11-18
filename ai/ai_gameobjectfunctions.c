@@ -12,6 +12,7 @@
 #include "../modifiers/leglinkmodifier.h"
 #include "../photo.h"
 #include "../modifiers/photomodifier.h"
+#include "../datapath.h"
 
 // A game object's visual, which it only has while it carries the
 // visual flag.
@@ -76,14 +77,17 @@ tAINode* AI_EvalFunc_OBJ_HasBeenKilled(tAINode* node)
     return node + 1;
 }
 
-// Writes the progress array out beside the executable, behind its own
-// four-character magic.
+// Writes the progress array into the player's own directory, with the
+// saves, behind its own four-character magic.
 void AI_EvalFunc_OutputProgress_C(int num, void* values)
 {
     FILE* stream;
     int magic;
+    char path[512];
 
-    stream = fopen("SFTime.sav", "wb");
+    if (!DPT_b_UserPath("SFTime.sav", path, sizeof(path)))
+        return;
+    stream = fopen(path, "wb");
     if (stream)
     {
         magic = '.TFS';

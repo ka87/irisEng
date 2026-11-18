@@ -509,6 +509,10 @@ static long wheelFrameSkipped;
 static long altF4Skipped;
 static char baseLog[WINIO_LOGMAX][WINIO_LINEMAX];
 static int baseLogCount;
+/* How the frozen copy named the save file, kept across the two runs so
+   the rewrite's naming can be checked against it. */
+static long baseBare;
+static long baseWithDir;
 
 static void report(long key, const char* what)
 {
@@ -693,12 +697,40 @@ static void runCase(const Case* c, const State* start, long key)
     for (i = 0; i < n; i++)
         memcpy(baseLog[i], WINIO_LogLine(i), WINIO_LINEMAX);
 
+    baseBare = winioOpensBare;
+    baseWithDir = winioOpensWithDir;
+
     dirtyStack();
     WINIO_ResetMocks();
     installState(&newSide, start);
     b = *start;
     runOp(&newSide, c, &b);
     captureState(&newSide, &b);
+
+    /* Where the save file was looked for. The log cannot show this --
+       it carries the file name alone, so that the same event reads the
+       same for both copies -- so it is a property instead: the frozen
+       copy names the file and nothing else, and the rewrite always
+       names a directory first. Counted on every case and printed only
+       when it breaks. */
+    if (baseWithDir != 0)
+    {
+        printf("  DIFF save path        the frozen copy named a directory"
+               " %ld time(s)\n", baseWithDir);
+        diffs++;
+    }
+    if (winioOpensBare != 0)
+    {
+        printf("  DIFF save path        the rewrite opened a bare name"
+               " %ld time(s)\n", winioOpensBare);
+        diffs++;
+    }
+    if (winioOpensWithDir != baseBare)
+    {
+        printf("  DIFF save path        %ld open(s) under a directory against"
+               " %ld bare\n", winioOpensWithDir, baseBare);
+        diffs++;
+    }
 
     /* An edge on either of the two keys is deliberately not compared.
        The frozen copy puts up the Win32 tweak dialog, which runs a

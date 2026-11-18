@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "photo_mocks.h"
+#include "sdlpath.h"
 #include "../math.h"
 #include "../memory.h"
 #include "../gameobject.h"
@@ -101,13 +102,34 @@ static void PHMOCK_Record(const char* fn, int ni, int nf, ...)
 
 static FILE* PHMOCK_fileToken = (FILE*)0x1;
 
+long PHMOCK_opensUnderUser;
+long PHMOCK_opensElsewhere;
+
 FILE* PHMOCK_fopen(const char* path, const char* mode)
 {
     tPhMockCall* c = PHMOCK_Slot("fopen", 0, 0);
+    const char*  leaf = path;
+    const char*  cut;
+    size_t       pref = strlen(PHMOCK_USERDIR);
+
+    /* The two copies name the same log differently -- the frozen one
+       on a drive letter and the rewrite in the player's own directory
+       -- so the call log carries the file name alone, which reads the
+       same for both. Where it pointed is counted instead, and the
+       harness asserts on the counts: comparing the whole path would
+       be a difference on every logged photo, and dropping it would
+       leave the move unchecked. */
+    for (cut = path; *cut; cut++)
+        if (*cut == '/' || *cut == '\\')
+            leaf = cut + 1;
+    if (strncmp(path, PHMOCK_USERDIR, pref) == 0)
+        PHMOCK_opensUnderUser++;
+    else
+        PHMOCK_opensElsewhere++;
 
     if (c)
     {
-        strncpy(c->text, path, PHMOCK_TEXT - 1);
+        strncpy(c->text, leaf, PHMOCK_TEXT - 1);
         strncat(c->text, mode, PHMOCK_TEXT - 1 - strlen(c->text));
     }
     return PHMOCK_fileToken;
@@ -329,6 +351,12 @@ void PHMOCK_Init(void)
 
 void PHMOCK_Reset(void)
 {
+    /* The player's own directory, which is where the rewrite writes
+       its log. A name rather than a real directory: nothing here
+       touches the disk. */
+    strcpy(dpt_prefPath, PHMOCK_USERDIR);
+    PHMOCK_opensUnderUser = 0;
+    PHMOCK_opensElsewhere = 0;
     PHMOCK_logLen = 0;
     PHMOCK_logOverflow = 0;
     PHMOCK_cullCalls = 0;

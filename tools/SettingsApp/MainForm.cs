@@ -11,10 +11,8 @@ namespace IrisEngSettings
         private readonly ComboBox _adapter = new ComboBox();
         private readonly ComboBox _mode = new ComboBox();
         private readonly ComboBox _depth = new ComboBox();
-        private readonly ComboBox _sound = new ComboBox();
         private readonly CheckBox _mipMapping = new CheckBox();
         private readonly CheckBox _windowed = new CheckBox();
-        private readonly CheckBox _soundEffects = new CheckBox();
         private readonly Label _status = new Label();
 
         private List<Adapter> _adapters = new List<Adapter>();
@@ -27,17 +25,16 @@ namespace IrisEngSettings
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(470, 316);
+            ClientSize = new Size(470, 260);
             Font = SystemFonts.MessageBoxFont;
 
-            foreach (var c in new ComboBox[] { _adapter, _mode, _depth, _sound })
+            foreach (var c in new ComboBox[] { _adapter, _mode, _depth })
                 c.DropDownStyle = ComboBoxStyle.DropDownList;
 
             int y = 16;
             AddRow("Graphics adapter", _adapter, ref y);
             AddRow("Fullscreen resolution", _mode, ref y);
             AddRow("Depth buffer", _depth, ref y);
-            AddRow("Sound device", _sound, ref y);
 
             _windowed.Text = "Windowed";
             _windowed.SetBounds(150, y, 200, 22);
@@ -47,11 +44,6 @@ namespace IrisEngSettings
             _mipMapping.Text = "Mip mapping";
             _mipMapping.SetBounds(150, y, 200, 22);
             Controls.Add(_mipMapping);
-            y += 26;
-
-            _soundEffects.Text = "Sound effects (EAX)";
-            _soundEffects.SetBounds(150, y, 200, 22);
-            Controls.Add(_soundEffects);
             y += 34;
 
             _status.SetBounds(16, y, 440, 34);
@@ -59,17 +51,17 @@ namespace IrisEngSettings
             Controls.Add(_status);
 
             var save = new Button { Text = "Save" };
-            save.SetBounds(250, 274, 95, 28);
+            save.SetBounds(250, 218, 95, 28);
             save.Click += (s, e) => Save();
             Controls.Add(save);
 
             var close = new Button { Text = "Close" };
-            close.SetBounds(355, 274, 95, 28);
+            close.SetBounds(355, 218, 95, 28);
             close.Click += (s, e) => Close();
             Controls.Add(close);
 
             var defaults = new Button { Text = "Defaults" };
-            defaults.SetBounds(16, 274, 95, 28);
+            defaults.SetBounds(16, 218, 95, 28);
             defaults.Click += (s, e) => ApplyDefaults();
             Controls.Add(defaults);
 
@@ -117,7 +109,6 @@ namespace IrisEngSettings
 
             _loading = true;
             _adapter.Items.AddRange(_adapters.Cast<object>().ToArray());
-            _sound.Items.AddRange(Sound.Enumerate().Cast<object>().ToArray());
             _loading = false;
 
             LoadExisting();
@@ -167,13 +158,11 @@ namespace IrisEngSettings
 
         private void LoadExisting()
         {
-            int? adapter = Settings.ReadVideoDword(Settings.VideoAdapter);
-            int? mode = Settings.ReadVideoDword(Settings.Mode);
-            int? depth = Settings.ReadVideoDword(Settings.ZBufferDepth);
-            int? mip = Settings.ReadVideoDword(Settings.MipMapping);
-            int? win = Settings.ReadVideoDword(Settings.Windowed);
-            int? fx = Settings.ReadSoundDword(Settings.SoundFx);
-            Guid? dev = Settings.ReadAudioGuid();
+            int? adapter = Settings.ReadDisplayValue(Settings.VideoAdapter);
+            int? mode = Settings.ReadDisplayValue(Settings.Mode);
+            int? depth = Settings.ReadDisplayValue(Settings.ZBufferDepth);
+            int? mip = Settings.ReadDisplayValue(Settings.MipMapping);
+            int? win = Settings.ReadDisplayValue(Settings.Windowed);
 
             bool complete = adapter.HasValue && mode.HasValue && depth.HasValue && mip.HasValue;
 
@@ -197,12 +186,6 @@ namespace IrisEngSettings
 
             _mipMapping.Checked = mip.HasValue ? mip.Value != 0 : true;
             _windowed.Checked = win.HasValue && win.Value != 0;
-            // The engine turns effects off when the value reads exactly 1.
-            _soundEffects.Checked = fx.HasValue && fx.Value != 1;
-
-            var devices = _sound.Items.Cast<SoundDevice>().ToList();
-            var match = dev.HasValue ? devices.FirstOrDefault(x => x.Id == dev.Value) : null;
-            _sound.SelectedItem = match ?? devices[0];
 
             _status.Text = complete
                 ? "Existing settings loaded."
@@ -217,8 +200,6 @@ namespace IrisEngSettings
             AdapterChanged();
             _mipMapping.Checked = true;
             _windowed.Checked = false;
-            _soundEffects.Checked = false;
-            if (_sound.Items.Count > 0) _sound.SelectedIndex = 0;
             _status.Text = "Defaults selected. Press Save to write them.";
         }
 
@@ -227,8 +208,7 @@ namespace IrisEngSettings
             var a = Current;
             var m = _mode.SelectedItem as DisplayMode;
             var d = _depth.SelectedItem as DepthFormat;
-            var s = _sound.SelectedItem as SoundDevice;
-            if (a == null || m == null || d == null || s == null)
+            if (a == null || m == null || d == null)
             {
                 MessageBox.Show(this, "Pick a value in every box first.",
                     "irisEng settings", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -238,8 +218,7 @@ namespace IrisEngSettings
             try
             {
                 Settings.Write(a.Ordinal, m.Index, d.Value, _mipMapping.Checked,
-                               _windowed.Checked, m.Width, m.Height,
-                               _soundEffects.Checked, s.Id);
+                               _windowed.Checked, m.Width, m.Height);
             }
             catch (Exception ex)
             {

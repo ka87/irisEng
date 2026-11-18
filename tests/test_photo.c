@@ -52,6 +52,11 @@ static unsigned int s_baseResultU;
 static int s_baseCode;
 static int s_baseSummary;
 static void* s_baseGao;
+/* How the frozen copy named the log file, kept across the two runs so
+   the rewrite's naming can be checked against it. */
+static long s_baseOpensUnderUser;
+static long s_baseOpensElsewhere;
+
 static int s_baseLogFlag;
 static Mtx4x4 s_baseViewMtx;
 static Mtx4x4 s_newViewMtx;
@@ -172,6 +177,8 @@ static void runCase(const char* name, const tArgs* ar)
     PHMOCK_SetCase(name);
 
     runSide(ar, 0, &result, &resultU, &code);
+    s_baseOpensUnderUser = PHMOCK_opensUnderUser;
+    s_baseOpensElsewhere = PHMOCK_opensElsewhere;
     s_baseResult = result;
     s_baseResultU = resultU;
     s_baseCode = code;
@@ -192,6 +199,18 @@ static void runCase(const char* name, const tArgs* ar)
     PHMOCK_SameInt(memcmp(&s_baseViewMtx, &s_newViewMtx, sizeof(Mtx4x4)) == 0, 1,
                    "view matrix", name);
     PHMOCK_CompareLog(s_baseLog, s_baseLogLen, PHMOCK_log, PHMOCK_logLen, name);
+
+    /* Where the log file was looked for. The call log cannot show it --
+       it carries the file name alone, so the same event reads the same
+       for both copies -- so it is a property: the frozen copy never
+       opens it in the player's own directory and the rewrite never
+       opens it anywhere else, and the two open it the same number of
+       times. Checked on every case and reported only when it
+       breaks. */
+    PHMOCK_SameInt((int)s_baseOpensUnderUser, 0, "log outside the player's", name);
+    PHMOCK_SameInt((int)PHMOCK_opensElsewhere, 0, "log in the player's", name);
+    PHMOCK_SameInt((int)s_baseOpensElsewhere, (int)PHMOCK_opensUnderUser,
+                   "log opens", name);
 }
 
 /* ---- the sweeps ------------------------------------------------------- */

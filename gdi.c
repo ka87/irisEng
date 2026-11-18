@@ -11,7 +11,7 @@
 #include "water.h"
 #include "strings.h"
 #include "engine.h"
-#include "datafiles.h"
+#include "settings.h"
 #include "dbg.h"
 #include "renderers.h"
 
@@ -822,7 +822,7 @@ void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd)
 {
     const tGdi_Renderer* r = GDI_pst_PickRenderer(gdi_renderers,
                                                  GDI_RENDERERNUM,
-                                                 DAT_pc_Backend());
+                                                 SET_pc_Backend());
 
     if (!r)
     {

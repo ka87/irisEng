@@ -5,6 +5,7 @@
 #include "overlay.h"
 #include "perfdisplay.h"
 #include "../pngsave.h"
+#include "../datapath.h"
 #include "../projection.h"
 #include "../geovertex.h"
 #include "../geosprite.h"
@@ -630,8 +631,7 @@ void GL_SaveScreenshot(void)
 static void GL_l_TakeScreenshot(void)
 {
     unsigned char* rows;
-    SYSTEMTIME     now;
-    char           path[260];
+    char           path[512];
     int            w = gl_state.width;
     int            h = gl_state.height;
 
@@ -649,11 +649,15 @@ static void GL_l_TakeScreenshot(void)
     GLFN_glPixelStorei(GL_PACK_ALIGNMENT, 1);
     GLFN_glReadPixels(0, 0, w, h, GL_BGRA, GL_UNSIGNED_BYTE, rows);
 
-    CreateDirectoryA("screenshots", NULL);
-    GetLocalTime(&now);
-    sprintf(path, "screenshots\\%04d%02d%02d_%02d%02d%02d_%03d.png",
-            now.wYear, now.wMonth, now.wDay,
-            now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+    /* Where it goes is the path module's rule, not this renderer's:
+       the other renderer takes screenshots too and the player wants
+       them in one place. */
+    if (!DPT_b_ScreenshotPath(path, sizeof(path)))
+    {
+        GDI_OutputDebugString("screenshot: nowhere to put it\n");
+        free(rows);
+        return;
+    }
     /* Bottom-up: the writer walks the rows backwards rather than this
        copying them into another buffer first. */
     if (PNG_i_WriteBgra(path, rows, w * 4, w, h, 1))

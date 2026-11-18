@@ -6,6 +6,7 @@
 #include "../memory.h"
 #include "../dbg.h"
 #include "../platform.h"
+#include "../datapath.h"
 
 int pcINO_SelectedControlMode = 0xffffffff;
 int pcINO_SelectedControlSubmode = 0xffffffff;
@@ -1316,11 +1317,19 @@ int pcINO_i_FormatCard()
 int pcINO_i_TestFreeSpace()
 {
     ULARGE_INTEGER freeBytes;
+    char           dir[512];
 
-    /* Free space on the current drive, clamped to a positive int.
-       A failed query reports nothing free, which makes the caller
-       refuse the write rather than start one that cannot finish. */
-    if (GetDiskFreeSpaceExA(0, &freeBytes, 0, 0))
+    /* Free space on the drive the saves are on, clamped to a positive
+       int. That is the player's own directory rather than the current
+       drive, which is what this used to ask about and is only the
+       same drive by accident; a check against the wrong volume either
+       refuses a save that would fit or starts one that cannot finish.
+       A directory that cannot be named, or a failed query, reports
+       nothing free, which makes the caller refuse the write. */
+    if (!DPT_b_UserPath("", dir, sizeof(dir)))
+        dir[0] = 0;
+
+    if (dir[0] && GetDiskFreeSpaceExA(dir, &freeBytes, 0, 0))
     {
         if (freeBytes.HighPart || freeBytes.LowPart > 0x7FFFFFFF)
             INO_gi_FreeSpace = 0x7FFFFFFF;
@@ -1350,7 +1359,21 @@ int pcINO_i_ActiveConsole() {
 
 int pcINO_i_Open()
 {
-    INO_gst_SavFileDesc.fp = fopen(INO_gsz_SavFileName, "r+b");
+    char path[512];
+
+    /* The saves are the player's, so they go in the player's own
+       directory rather than beside the game, which may be installed
+       somewhere nobody can write to. Resolved here, at the one place
+       the name reaches the filesystem, rather than at each of the
+       dozen places the card manager sets it.
+
+       A directory that cannot be named is treated as a file that will
+       not open: the save machine already has that path, and it is the
+       one that tells the player rather than failing silently. */
+    if (!DPT_b_UserPath(INO_gsz_SavFileName, path, sizeof(path)))
+        path[0] = 0;
+
+    INO_gst_SavFileDesc.fp = path[0] ? fopen(path, "r+b") : NULL;
     if (!INO_gst_SavFileDesc.fp)
     {
         if (INO_ge_SavCommand == 16 && INO_gi_FreeSpace < SAV_PHOTO_BUFFER_SIZE
@@ -1369,7 +1392,7 @@ int pcINO_i_Open()
             return 27;
         }
 
-        INO_gst_SavFileDesc.fp = fopen(INO_gsz_SavFileName, "w+b");
+        INO_gst_SavFileDesc.fp = path[0] ? fopen(path, "w+b") : NULL;
         if (!INO_gst_SavFileDesc.fp)
         {
             if (INO_ge_SavCommand == 10 || INO_ge_SavCommand == 16)

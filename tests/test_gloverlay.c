@@ -78,18 +78,7 @@ void DBG_OutputDebugString(char* format, ...)
    None of these are called by the cases below -- the pass does no
    windowing -- but glrender.c refers to them, so they have to exist. */
 
-static char wg_exePath[512];
-
-DWORD GetModuleFileNameA(HMODULE mod, LPSTR out, DWORD n)
-{
-    size_t len = strlen(wg_exePath);
-
-    (void)mod;
-    if (!wg_exePath[0] || len + 1 > n)
-        return 0;
-    memcpy(out, wg_exePath, len + 1);
-    return (DWORD)len;
-}
+#include "sdlpath.h"
 
 #include "winstubs.h"
 
@@ -1146,26 +1135,27 @@ void PFD_Draw(void)
    this harness has no driver and no filesystem to write to, and what
    a case here wants to know is that the flip asked for the file at
    all. The picture itself is read back in tests/test_glrender.c. */
-static int wg_pngWrites;
-static int wg_pngBottomUp;
+static int  wg_pngWrites;
+static int  wg_pngBottomUp;
+static char wg_pngPath[512];
 
 int PNG_i_WriteBgra(const char* path, const unsigned char* pixels,
                     int pitch, int width, int height, int bottomUp)
 {
-    (void)path; (void)pixels; (void)pitch; (void)width; (void)height;
+    (void)pixels; (void)pitch; (void)width; (void)height;
     wg_pngWrites++;
     wg_pngBottomUp = bottomUp;
+    wg_pngPath[0] = 0;
+    if (path)
+    {
+        size_t len = strlen(path);
+
+        if (len < sizeof(wg_pngPath))
+            memcpy(wg_pngPath, path, len + 1);
+    }
     WG_Record("PNG_i_WriteBgra", 2, (long long)width, (long long)height);
     return 1;
 }
-
-BOOL CreateDirectoryA(const char* path, void* attrs)
-{
-    (void)path; (void)attrs;
-    return 1;
-}
-
-void GetLocalTime(SYSTEMTIME* t) { memset(t, 0, sizeof(*t)); }
 
 void GDI_OutputDebugString(char* format, ...) { (void)format; }
 
@@ -1188,6 +1178,12 @@ static void wg_Frame(void)
 
 static void reset(void)
 {
+    /* The player's own directory, which is where a screenshot goes.
+       A name rather than a real directory: nothing here writes. */
+    strcpy(dpt_prefPath, "/player/");
+    dpt_madeDirs = 0;
+    dpt_madeDir[0] = 0;
+
     GL_l_ForgetPass();
     GL_l_ForgetGeometry();
     GL_ReleaseTextures(NULL);
@@ -1274,7 +1270,7 @@ static void reset(void)
     wg_viewport[2] = 800;
     wg_viewport[3] = 600;
     /* the repository root, so data/shaders resolves to the real files */
-    snprintf(wg_exePath, sizeof(wg_exePath), "./iriseng.exe");
+    snprintf(dpt_basePath, sizeof(dpt_basePath), "./");
 }
 
 static tGdi_Vertex        wg_flat[6];
@@ -2985,6 +2981,16 @@ static void caseScreenshotDeferred(void)
          "and height");
     okEq(wg_pngBottomUp, 1, "with its rows the way round OpenGL gives"
                             " them");
+
+    /* And into the player's own directory, under a folder of its own
+       that the renderer asked to have made -- not beside the game,
+       which may be installed somewhere nobody can write to. */
+    okEq(strncmp(wg_pngPath, "/player/screenshots/", 20), 0,
+         "in the player's screenshots folder");
+    ok(strstr(wg_pngPath, ".png") != NULL, "named as a png");
+    okEq(dpt_madeDirs, 1, "and the folder was asked for once");
+    okEq(strcmp(dpt_madeDir, "/player/screenshots/"), 0,
+         "by name");
 
     /* Before the overlay is... after it, rather: the overlay is part
        of the frame and has to be in the file. */

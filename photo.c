@@ -4,12 +4,19 @@
 #include "gameobject.h"
 #include "collision.h"
 #include "animation.h"
+#include "datapath.h"
 
 void IMG_Log4Debugging(char* msg)
 {
     FILE* fp;
+    char  path[512];
 
-    fp = fopen("X:/PhotoLog.txt", "ab");
+    /* In the player's own directory, with the saves. This used to name
+       a drive letter, which is a path only the machine it was written
+       on had. */
+    if (!DPT_b_UserPath("PhotoLog.txt", path, sizeof(path)))
+        return;
+    fp = fopen(path, "ab");
     if (fp)
     {
         fwrite(msg, strlen(msg), 1, fp);

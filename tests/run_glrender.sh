@@ -24,9 +24,16 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu11 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# datapath.c asks SDL where the executable is. Only the headers
+# are wanted here: the entry points it uses are defined by the
+# harness (tests/sdlpath.h), so a case can point the install at a
+# fixture directory and there is no library to link.
+SDL3_INC="$PWD/thirdparty/SDL3/include"
+CFLAGS="-std=gnu11 -fcommon -fms-extensions -O0 -g -w -I"$SDL3_INC" -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
+# where the screenshot case writes its file
+mkdir -p "$OUT/player/screenshots"
 
 # zlib and libpng, which the screenshot writer is built on. Built
 # once into an archive rather than per harness.

@@ -55,6 +55,14 @@ extern int PHMOCK_designOverride;
 extern Mtx4x4 PHMOCK_viewMtx;
 
 void PHMOCK_Init(void);
+/* The player's own directory, as the harness points it at. */
+#define PHMOCK_USERDIR "/player/"
+
+/* Where the log file was opened. The frozen copy only ever opens it
+   outside that directory and the rewrite only ever inside it. */
+extern long PHMOCK_opensUnderUser;
+extern long PHMOCK_opensElsewhere;
+
 void PHMOCK_Reset(void);
 void PHMOCK_BuildScene(unsigned int seed, int pattern);
 

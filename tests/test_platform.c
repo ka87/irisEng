@@ -97,6 +97,19 @@ void ENG_GetStatsText(char* buffer)
     strcpy(buffer, "frames 60, draws 1234");
 }
 
+
+/* The settings module is not linked here. Every reader answers "the
+   ini said nothing", which is what the registry mock used to do by
+   failing the open: the caller keeps the default it already had, and
+   that is the behaviour the cases below check. */
+int SET_b_DisplayAdapter(int* o)    { (void)o; return 0; }
+int SET_b_DisplayMode(int* o)       { (void)o; return 0; }
+int SET_b_DisplayZBuffer(int* o)    { (void)o; return 0; }
+int SET_b_DisplayMipMapping(int* o) { (void)o; return 0; }
+int SET_b_DisplayWindowed(int* o)   { (void)o; return 0; }
+int SET_b_DisplayWidth(int* o)      { (void)o; return 0; }
+int SET_b_DisplayHeight(int* o)     { (void)o; return 0; }
+
 #include "../platform.c"
 
 /* ------------------------------------------------------------ the cases */

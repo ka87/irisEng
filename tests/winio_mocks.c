@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "winio_mocks.h"
+#include "sdlpath.h"
 #include "../dbg.h"
 #include "../time.h"
 
@@ -349,8 +350,27 @@ static int fakeFile;
 
 FILE* WINIO_fopen(const char* name, const char* mode)
 {
-    int ok = (mode[0] == 'r') ? winioScript.fopenReadWriteOk : winioScript.fopenCreateOk;
-    WINIO_Log("fopen(%s,%s)->%d", name, mode, ok);
+    int         ok = (mode[0] == 'r') ? winioScript.fopenReadWriteOk : winioScript.fopenCreateOk;
+    const char* leaf = name;
+    const char* cut;
+
+    /* The two copies reach the same file by different names -- the
+       frozen one opens it in the working directory and the rewrite
+       in the player's own -- so the log carries the event in the same
+       words for both, which is the file name. Where the path pointed
+       is counted instead, and the harness asserts on the counts: a
+       difference the log cannot show would otherwise be either a
+       false difference on every save, or no check on the move at
+       all. */
+    for (cut = name; *cut; cut++)
+        if (*cut == '/' || *cut == '\\')
+            leaf = cut + 1;
+    if (leaf == name)
+        winioOpensBare++;
+    else
+        winioOpensWithDir++;
+
+    WINIO_Log("fopen(%s,%s)->%d", leaf, mode, ok);
     return ok ? (FILE*)&fakeFile : NULL;
 }
 
@@ -422,9 +442,18 @@ struct sTweakElem tweaks[17] = {
 /* This harness's own table, and its own count beside it. */
 const int tweaksNum = (int)(sizeof(tweaks) / sizeof(tweaks[0]));
 
+long winioOpensBare;
+long winioOpensWithDir;
+
 void WINIO_ResetMocks(void)
 {
     logCount = 0;
+    winioOpensBare = 0;
+    winioOpensWithDir = 0;
+    /* The player's own directory, which is where the rewrite looks for
+       the save file. A name rather than a real directory: nothing here
+       touches the disk. */
+    strcpy(dpt_prefPath, "/player/");
     mouseStateCalls = 0;
     keybStateCalls = 0;
     WINIO_MouseDevice = (IDirectInputDevice8A*)&mouseDev;

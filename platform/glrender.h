@@ -21,7 +21,7 @@ struct sGlRenderState;
 /* The OpenGL renderer.
 
    It is the second row in gdi.c's table and never the fallback. The
-   first row that can run is what the game gets when datafiles.ini
+   first row that can run is what the game gets when engine.ini
    asks for nothing, and that is Direct3D; this one is reached by
    asking for it with
 

@@ -1,6 +1,7 @@
 #include "../profiler.h"
 #include "../perfbars.h"
 #include "../pngsave.h"
+#include "../datapath.h"
 #include "../time.h"
 #include "../memory.h"
 #include "../textures.h"
@@ -15,6 +16,7 @@
 #include "../resource.h"
 #include "d3drender.h"
 #include "syscompat.h"
+#include "../settings.h"
 #include "../platform.h"
 #include "../font.h"
 #include "d3dmath.h"
@@ -2844,15 +2846,6 @@ void D3D_Clear(int flags, int color)
             color & 0xFF00FF00 | ((uint8_t)color << 16) | ((color >> 16) & 0xff), 1.0f, 0);
 }
 
-BOOL RegQueryVal(HKEY hKey, LPCSTR lpValueName, LPBYTE lpData)
-{
-    DWORD cbData;
-    DWORD Type;
-
-    cbData = 4;
-    return !RegQueryValueExA(hKey, lpValueName, 0, &Type, lpData, &cbData) && Type == 4 && cbData == 4;
-}
-
 void D3D_SunSurfacesClear()
 {
     memset(gD3dSunSurfaces, 0, sizeof(gD3dSunSurfaces));
@@ -2941,7 +2934,6 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
     int tries;
     HMODULE libHandle;
     void (*DisableD3DSpy)(void);
-    HKEY phkResult;
     int adapterMode;
     D3DDISPLAYMODE dispMode;
 
@@ -2951,17 +2943,20 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
     D3DRenderParams.d3d_AdapterFormat = D3DFMT_X8R8G8B8;
     D3DRenderParams.presentParams.BackBufferFormat = D3DFMT_A8R8G8B8;
 
-    if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\IRISEng\\Basic video", 0, KEY_READ, &phkResult)
-        || !RegQueryVal(phkResult, "Video Adapter", (LPBYTE)&D3DRenderParams.d3d_Adapter)
-        || !RegQueryVal(phkResult, "Z Buffer depth", (LPBYTE)&D3DRenderParams.ZBufferDepth)
-        || !RegQueryVal(phkResult, "Mode", (LPBYTE)&adapterMode)
-        || !RegQueryVal(phkResult, "MipMapping", (LPBYTE)&D3DRenderParams.Mipmapping))
+    /* The four the renderer cannot start without, out of [display]
+       in engine.ini beside the executable. They were four registry
+       values under Software\IRISEng\Basic video, and the message
+       below has always been what the player sees when they are not
+       set -- which is now a missing or incomplete ini rather than a
+       missing registry key. */
+    if (!SET_b_DisplayAdapter(&D3DRenderParams.d3d_Adapter)
+        || !SET_b_DisplayZBuffer(&D3DRenderParams.ZBufferDepth)
+        || !SET_b_DisplayMode(&adapterMode)
+        || !SET_b_DisplayMipMapping(&D3DRenderParams.Mipmapping))
     {
         MessageBoxA(hWnd, "Application settings is not correctly set or invalid, please re-run settings application.", "IRISEngine", MB_TASKMODAL | MB_ICONERROR);
         exit(1);
     }
-
-    RegCloseKey(phkResult);
 
     /* An exclusive display mode under a debugger wedges the machine,
        so a debugged run presents in a window whatever the settings
@@ -4092,8 +4087,7 @@ void D3D_SaveScreenshot(void)
     IDirect3DSurface9* copy;
     D3DSURFACE_DESC desc;
     D3DLOCKED_RECT locked;
-    SYSTEMTIME now;
-    CHAR path[MAX_PATH];
+    char path[512];
 
     if (!D3DRenderParams.d3dDev)
         return;
@@ -4127,11 +4121,17 @@ void D3D_SaveScreenshot(void)
         target->lpVtbl->Release(target);
         return;
     }
-    CreateDirectoryA("screenshots", NULL);
-    GetLocalTime(&now);
-    sprintf(path, "screenshots\\%04d%02d%02d_%02d%02d%02d_%03d.png",
-            now.wYear, now.wMonth, now.wDay,
-            now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+    /* Where it goes is the path module's rule, not this renderer's:
+       the other renderer takes screenshots too and the player wants
+       them in one place. */
+    if (!DPT_b_ScreenshotPath(path, sizeof(path)))
+    {
+        GDI_OutputDebugString("screenshot: nowhere to put it\n");
+        copy->lpVtbl->UnlockRect(copy);
+        copy->lpVtbl->Release(copy);
+        target->lpVtbl->Release(target);
+        return;
+    }
     if (PNG_i_WriteBgra(path, (const unsigned char*)locked.pBits,
                         locked.Pitch, (int)desc.Width, (int)desc.Height, 0))
         GDI_OutputDebugString("screenshot: %s\n", path);
