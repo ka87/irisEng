@@ -281,7 +281,46 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
     int stopped;
 
     misc = sbe->miscData;
-    if (!misc || misc->Stopped_SetIN49e270 == 1)
+    if (!misc)
+        return;
+
+    /* Everything about one stream, once a second, before any way out
+       of this function.
+       
+       The lines below print when something happens, and a stream that
+       has gone quiet is the case where nothing does -- no refill, no
+       removal, and the thread's own summary still counting it as a
+       stream. That is three different faults with one appearance, and
+       only the state tells them apart: whether the voice still reads
+       as playing, whether the play cursor is moving, whether the
+       device is still draining what it was given, and which block the
+       refill is waiting for. */
+#if PCSND_TRACE
+    {
+        static DWORD lastState;
+        DWORD nowState = GetTickCount();
+
+        if (nowState - lastState >= 1000)
+        {
+            lastState = nowState;
+            DBG_OutputDebugString(
+                "SND %p: vst=%d pos=%d wr=%d q=%d blk=%d/%d up=%d buf=%d off=%d sz=%u/%u raf=%d rem=%d stop=%d\n",
+                (void*)sbe,
+                SPL_i_VoiceStatus(sbe->voice),
+                SPL_i_VoiceCursor(sbe->voice),
+                SPL_i_VoiceWriteCursor(sbe->voice),
+                SPL_i_VoiceQueued(sbe->voice),
+                pcSND_l_PlayedBlock(misc), misc->lastPlayedBlock,
+                misc->sizeToUpload, misc->soundBufferSize, misc->currOffset,
+                misc->currSize, misc->fullSize,
+                misc->RemoveAfterPlayFinished,
+                misc->shouldBeRemovedFromPlayList,
+                misc->Stopped_SetIN49e270);
+        }
+    }
+#endif
+
+    if (misc->Stopped_SetIN49e270 == 1)
         return;
 
     stopped = (SPL_i_VoiceStatus(sbe->voice) & SPL_PLAYING) == 0;

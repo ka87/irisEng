@@ -1028,6 +1028,9 @@ int SPL_b_IsOpen(void) { return !wsnd_open_fails; }
 int wsnd_feeds;
 int wsnd_waits;
 void SPL_Feed(void) { ++wsnd_feeds; }
+/* Only ever referenced by the trace, which is off here. Defined so
+   that turning the trace on in this build links. */
+int SPL_i_VoiceQueued(const struct sSplVoice* v) { (void)v; return 0; }
 int SPL_b_FeedWanted(void) { return 0; }
 void SPL_SetAttenuation(int v) { wsnd_log("devatt(%d)\n", v); }
 int SPL_i_Attenuation(void) { return 0; }
