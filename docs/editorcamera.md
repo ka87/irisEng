@@ -169,7 +169,8 @@ handler call are inside the same gate, for the same reason.
 
 - `INO_v_MemoryCardManager`, which `INO_Update` calls separately, so
   **saving and loading carry on** while the camera is up.
-- Alt+F4 and F12, which are read in the same function above the gate:
+- Alt+F4 and the command field's key, which are read in the same
+  function above the gate:
   quitting and the command field keep working.
 - the control mode and submode, which are neither read nor written.
   They stay as the game set them and stay visible to everything that
@@ -360,9 +361,10 @@ tidy, and the two injected sign defects are caught that way.
 
 ## Why F8 and F9
 
-F1 to F7 and F10 are taken by `PC_EngineCheatFinal`, F12 by the
-overlay's command field, and Alt+F4 quits. **F8, F9 and F11** were
-unbound; F8 toggles and F9 syncs, leaving F11.
+F1 to F7 and F10 are taken by `PC_EngineCheatFinal` and Alt+F4 quits.
+**F8, F9, F11 and F12** were unbound when this was written; F8 toggles
+and F9 syncs. F11 has since gone to the overlay's command field, which
+was on F12, and the engine's statistics are on Home.
 
 ## Standing down safely
 

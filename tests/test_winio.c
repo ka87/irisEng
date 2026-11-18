@@ -27,7 +27,7 @@
  * which API did it. tests/winio_mocks.c says which mocks those are
  * and why. Two families are not compared at all and are checked
  * against the rewrite alone instead, each next to the case that does
- * it: the F12 edge and the Alt+F4 combination.
+ * it: the F11 edge and the Alt+F4 combination.
  */
 
 #include <stdio.h>
@@ -56,7 +56,6 @@
     void P##pcINO_InputHandlerHoverCraft(tInoPad*, float*, uint8_t*); \
     void P##pcINO_InputHandlerCase100(tInoPad*, float*, uint8_t*); \
     void P##pcINO_InputHandlerCase101(tInoPad*, float*, uint8_t*); \
-    int  P##DINPUT_GetProperty(IDirectInputDevice8A*, int, int, const GUID*, int*); \
     void P##DINPUT_InitVariables(int); \
     void P##pcINO_getKeyNames(int, char*); \
     void P##pcINO_getKeyNamesForEverything(void); \
@@ -136,7 +135,6 @@ typedef struct
     float (*mouseAmount)(float*, float*, float);
     void (*setSensitivity)(float);
     void (*handler[NHANDLER])(tInoPad*, float*, uint8_t*);
-    int  (*getProperty)(IDirectInputDevice8A*, int, int, const GUID*, int*);
     void (*initVariables)(int);
     void (*getKeyNames)(int, char*);
     void (*getAllKeyNames)(void);
@@ -173,7 +171,7 @@ typedef struct
       P##pcINO_InputHandlerCase4, P##pcINO_InputHandlerCase8, \
       P##pcINO_InputHandlerCase32, P##pcINO_InputHandlerHoverCraft, \
       P##pcINO_InputHandlerCase100, P##pcINO_InputHandlerCase101 }, \
-    P##DINPUT_GetProperty, P##DINPUT_InitVariables, \
+    P##DINPUT_InitVariables, \
     P##pcINO_getKeyNames, P##pcINO_getKeyNamesForEverything, \
     P##pcINO_GetFourKeyNamesCattedTogether, \
     P##pcINO_SetControlSubmode, \
@@ -239,7 +237,6 @@ typedef struct
     char buttonNames[18][64];
     tInoPad pad;
     Vec3 moveOut;
-    int propOut;
     int retInt;
     float retFloat;
     float retFloatArgs[2];
@@ -389,7 +386,7 @@ enum {
     OP_INITVARS, OP_SETMODE, OP_SETSUBMODE, OP_FOURNAMES, OP_ALLKEYNAMES,
     OP_KEYNAMES, OP_UPDATE, OP_JOYINIT, OP_JOYCLOSE, OP_JOYMOVE, OP_SETPAD,
     OP_ACQUIRE, OP_UNACQUIRE, OP_DLGPROC, OP_TWEAKFLAGS, OP_CARD,
-    OP_GETPROPERTY, OP_MOUSEUSED, OP_NUM
+    OP_MOUSEUSED, OP_NUM
 };
 
 typedef struct
@@ -414,7 +411,6 @@ static void runOp(const Side* s, const Case* c, State* st)
     st->retStr[sizeof(st->retStr) - 1] = 0;
     memset(&st->pad, 0, sizeof(st->pad));
     memset(&st->moveOut, 0, sizeof(st->moveOut));
-    st->propOut = 0;
 
     switch (c->op)
     {
@@ -490,10 +486,6 @@ static void runOp(const Side* s, const Case* c, State* st)
     case OP_CARD:
         st->retInt = s->card[c->i0]();
         break;
-    case OP_GETPROPERTY:
-        st->retInt = s->getProperty(c->i0 ? WINIO_MouseDevice : WINIO_KeybDevice,
-                                    c->i1, c->i2, (const GUID*)(size_t)c->i3, &st->propOut);
-        break;
     case OP_MOUSEUSED:
         st->retInt = s->mouseUsed();
         break;
@@ -508,11 +500,12 @@ static long cases, diffs;
 static const char* group = "?";
 static long opRan[OP_NUM];
 
-static long f12Skipped = 0;
-static void f12FieldCase(void);
+static long f11Skipped = 0;
+static void f11FieldCase(void);
 static void altF4Case(void);
 static void suspendedInputCase(void);
 static long wheelScrollSkipped;
+static long wheelFrameSkipped;
 static long altF4Skipped;
 static char baseLog[WINIO_LOGMAX][WINIO_LINEMAX];
 static int baseLogCount;
@@ -562,25 +555,21 @@ static Cov cov[] = {
     {"tweak: entry type 2", 0},
     {"tweak: entry type out of range", 0},
     {"tweak: name not in the table", 0},
-    {"init: DirectInput8Create ok", 0},       /* 26 */
-    {"init: DirectInput8Create failed", 0},
-    {"init: buttons already swapped", 0},
+    {"init: buttons already swapped", 0},     /* 26 */
     {"init: buttons not swapped", 0},
-    {"mode: a mode the switch names", 0},     /* 30 */
+    {"mode: a mode the switch names", 0},     /* 28 */
     {"mode: default arm", 0},
     {"mode: already that mode", 0},
-    {"submode: negative", 0},                 /* 33 */
+    {"submode: negative", 0},                 /* 31 */
     {"submode: under control mode 4", 0},
     {"submode: mode 64, submode 4", 0},
     {"submode: mode 64, other submode", 0},
     {"submode: mode 1", 0},
     {"submode: already that submode", 0},
-    {"fournames: returned prefix_p16_2", 0},  /* 39 */
+    {"fournames: returned prefix_p16_2", 0},  /* 37 */
     {"fournames: returned prefixOneSpace", 0},
     {"fournames: returned the catted buffer", 0},
-    {"getproperty: succeeded", 0},            /* 42 */
-    {"getproperty: failed", 0},
-    {"handler: at least one key down", 0},    /* 44 */
+    {"handler: at least one key down", 0},    /* 40 */
     {"handler: no key down", 0},
 };
 #define NCOV ((int)(sizeof(cov) / sizeof(cov[0])))
@@ -595,7 +584,7 @@ static void countCoverage(const Case* c, const State* st)
         if ((winioScript.keybData[56] || winioScript.keybData[184])
             && winioScript.keybData[62])
             cov[0].n++;
-        if (winioScript.keybData[88] && !st->keybBackup[88])
+        if (winioScript.keybData[87] && !st->keybBackup[87])
             cov[1].n++;
         cov[st->granularity ? 3 : 2].n++;
         break;
@@ -634,45 +623,37 @@ static void countCoverage(const Case* c, const State* st)
         break;
 
     case OP_JOYINIT:
-        cov[winioScript.diCreateResult < 0 ? 27 : 26].n++;
-        if (winioScript.diCreateResult >= 0)
-        {
-            cov[winioScript.swapMouseButton ? 28 : 29].n++;
-        }
+        cov[winioScript.swapMouseButton ? 26 : 27].n++;
         break;
 
     case OP_SETMODE:
         if (st->selMode == c->i0)
-            cov[30].n++;
+            cov[28].n++;
         else if (c->i0 == 1 || c->i0 == 2 || c->i0 == 4 || c->i0 == 8
                  || c->i0 == 32 || c->i0 == 64 || c->i0 == 128 || c->i0 == 129)
-            cov[32].n++;
+            cov[30].n++;
         else
-            cov[31].n++;
+            cov[29].n++;
         break;
 
     case OP_SETSUBMODE:
         if (c->i0 < 0)
-            cov[33].n++;
+            cov[31].n++;
         else if (st->selSubmode == c->i0)
-            cov[38].n++;
+            cov[36].n++;
         else if (st->selMode == 4)
-            cov[34].n++;
+            cov[32].n++;
         else if (st->selMode == 64)
-            cov[c->i0 == 4 ? 35 : 36].n++;
+            cov[c->i0 == 4 ? 33 : 34].n++;
         else if (st->selMode == 1)
-            cov[37].n++;
-        break;
-
-    case OP_GETPROPERTY:
-        cov[winioScript.getPropertyResult < 0 ? 43 : 42].n++;
+            cov[35].n++;
         break;
 
     case OP_HANDLER:
         any = 0;
         for (i = 0; i < 266; i++)
             any |= c->keyboard[i] != 0;
-        cov[any ? 44 : 45].n++;
+        cov[any ? 40 : 41].n++;
         break;
 
     default:
@@ -719,19 +700,51 @@ static void runCase(const Case* c, const State* start, long key)
     runOp(&newSide, c, &b);
     captureState(&newSide, &b);
 
-    /* An F12 edge is deliberately not compared at all. The frozen copy
-       puts up the Win32 tweak dialog, which runs a whole dialog
-       procedure: it applies a tweak, fills the dialog buffer and
-       takes the devices in and out. The rewrite instead releases
-       DirectInput and raises the overlay's command field, so the calls
+    /* An edge on either of the two keys is deliberately not compared.
+       The frozen copy puts up the Win32 tweak dialog, which runs a
+       whole dialog procedure: it applies a tweak, fills the dialog
+       buffer and takes the devices in and out. The rewrite gives the
+       input back and raises the overlay's command field, so the calls
        and everything they touch differ by design, and the two cannot
-       be lined up field by field. f12FieldCase below checks the new
-       path on its own, and every case that is not an F12 edge is
-       still compared in full. */
+       be lined up field by field.
+
+       It is two keys because the field moved: 88 is F12, which the
+       frozen copy puts the dialog up on, and 87 is F11, which the
+       rewrite raises the field on. An edge on either one makes one
+       side act and the other not, so both are skipped and
+       f11FieldCase below checks the new path -- on F11, and on F12
+       doing nothing at all. */
     if (c->op == OP_UPDATE && start->haveKeyb
-        && winioScript.keybData[88] && !start->keybBackup[88])
+        && ((winioScript.keybData[87] && !start->keybBackup[87])
+            || (winioScript.keybData[88] && !start->keybBackup[88])))
     {
-        f12Skipped++;
+        f11Skipped++;
+        return;
+    }
+
+    /* A frame with the wheel actually turning, in the one handler
+       that reads it, is not compared either -- and this is wider than
+       the accumulator the note further down excludes.
+
+       The frozen copy hands the handler mouse[2] as a float where the
+       producer stores the quotient as a raw int, and the handler
+       reads it with ((int*)mouse)[2]. So from the first frame with a
+       nonzero wheel the two copies are adding different numbers into
+       pcINO_case2_mouseScroll -- one notch against 1065353216 -- and
+       everything downstream of it parts company with it: the sign the
+       two "scroll > 0" and "scroll < 0" tests see, and so
+       pcINO_joystickPosition and the pad built from it.
+
+       Excluding only the accumulator was not enough, and for a long
+       time it looked as though it was: the sweep never happened to
+       reach a state where the two signs disagreed. Adding two
+       unrelated keys to the sweep reshuffled the sequence and one
+       case in 77,538 found it. wheelNotchCase below checks the
+       rewrite's wheel against what the binary does. */
+    if (c->op == OP_UPDATE && winioScript.mouseData[2] != 0
+        && start->handlerIdx == 1)
+    {
+        wheelFrameSkipped++;
         return;
     }
 
@@ -801,24 +814,22 @@ static void runCase(const Case* c, const State* start, long key)
     CMP(savFail, "card failure flags");
     CMP(keyNames, "KeyNamesToRet");
     CMP(numLock, "numLockAtAcquire");
-    /* haveMouse and haveKeyb are not compared. They are the frozen
-       copy's two device pointers, which the rewrite does not have:
-       the driver still installs them so that the frozen copy's paths
-       run, and whether it nulls them is a fact about it alone. The
-       DirectInput object is still shared, so that one is compared. */
-    CMP(haveDI, "dinput object");
+    /* haveMouse, haveKeyb and haveDI are not compared. They are the
+       frozen copy's two device pointers and the DirectInput object
+       that made them, none of which the rewrite has: the driver
+       still installs them so that the frozen copy's paths run, and
+       whether it nulls them is a fact about it alone. */
     CMP(savFp, "SavFileDesc.fp");
     CMP(savSize, "SavFileDesc.size");
     CMP(savBuffer, "SavFileDesc.saveBuffer");
     CMP(buttonNames, "buttonNames");
     CMP(pad, "pad data");
     CMP(moveOut, "Joystick_Move out");
-    CMP(propOut, "GetProperty out");
     CMP(retInt, "int return");
     CMP(retFloat, "float return");
     CMP(retFloatArgs, "mouseAmount accum/deadline");
     if (c->op == OP_FOURNAMES && a.retStrTag >= 1 && a.retStrTag <= 3)
-        cov[38 + a.retStrTag].n++;
+        cov[36 + a.retStrTag].n++;
     CMP(retStrTag, "returned string identity");
     CMP(retStr, "returned string");
     CMP(tweakInt, "tweak int target");
@@ -908,6 +919,12 @@ static void randomState(State* st)
     st->savSize = 1 + (int)(rnd() % 48u);
     for (i = 0; i < 64; i++)
         st->savBuffer[i] = (char)rnd();
+    /* Whether the pad is enabled at all. It was never seeded, so it
+       kept whatever the caller's frame held and was nearly always
+       zero -- which made Joystick_Close's clearing of it invisible:
+       dropping that line scored exact. */
+    st->joyEnable = (int)(rnd() & 1u);
+    st->currentPad = (int)(rnd() % 3u) - 1;
 }
 
 static void randomScript(void)
@@ -1376,7 +1393,7 @@ static void wheelNotchCase(void)
            (unsigned)(sizeof(wcases) / sizeof(wcases[0])), baseWrong);
 }
 
-/* The F12 path on its own, since runCase cannot compare it against the
+/* The F11 path on its own, since runCase cannot compare it against the
    frozen copy. The edge has to release both DirectInput devices and
    raise the overlay's command field, and it has to do nothing at all
    when the tweak keys are disabled or the key was already down. */
@@ -1466,20 +1483,24 @@ static void altF4Case(void)
            (unsigned)(sizeof(acases) / sizeof(acases[0])), altF4Skipped);
 }
 
-static void f12FieldCase(void)
+static void f11FieldCase(void)
 {
-    static const struct { int down, wasDown, disabled, wantShow; } fcases[] = {
-        { 0x80, 0, 0, 1 },   /* the edge */
-        { 0x80, 0x80, 0, 0 },/* already held, so no edge */
-        { 0,    0, 0, 0 },   /* not pressed */
-        { 0x80, 0, 1, 0 },   /* tweak keys disabled */
+    /* `key` is which code is pressed: 87 is F11, which raises the
+       field, and 88 is F12, which used to and must not any more. */
+    static const struct { int key, down, wasDown, disabled, wantShow; } fcases[] = {
+        { 87, 0x80, 0, 0, 1 },   /* the edge */
+        { 87, 0x80, 0x80, 0, 0 },/* already held, so no edge */
+        { 87, 0,    0, 0, 0 },   /* not pressed */
+        { 87, 0x80, 0, 1, 0 },   /* tweak keys disabled */
+        { 88, 0x80, 0, 0, 0 },   /* the old key, on a clean edge */
+        { 88, 0x80, 0x80, 0, 0 },/* and held */
     };
     unsigned i;
     State st;
     long baseWrong = 0;
 
-    group = "f12";
-    rngState = 0xF12Fu;
+    group = "f11";
+    rngState = 0xF11Fu;
     for (i = 0; i < sizeof(fcases) / sizeof(fcases[0]); ++i)
     {
         int shown;
@@ -1495,8 +1516,8 @@ static void f12FieldCase(void)
         memset(winioScript.mouseData, 0, sizeof(winioScript.mouseData));
         memset(winioScript.keybData, 0, sizeof(winioScript.keybData));
         memset(st.keybBackup, 0, sizeof(st.keybBackup));
-        winioScript.keybData[88] = (unsigned char)fcases[i].down;
-        st.keybBackup[88] = (unsigned char)fcases[i].wasDown;
+        winioScript.keybData[fcases[i].key] = (unsigned char)fcases[i].down;
+        st.keybBackup[fcases[i].key] = (unsigned char)fcases[i].wasDown;
         winioScript.overlayCommandActive = 0;
 
         dirtyStack();
@@ -1517,14 +1538,15 @@ static void f12FieldCase(void)
         }
         if (shown != fcases[i].wantShow)
         {
-            printf("  DIFF f12              down=%d wasDown=%d disabled=%d"
-                   " wantShow=%d got=%d\n", fcases[i].down, fcases[i].wasDown,
+            printf("  DIFF f11              key=%d down=%d wasDown=%d"
+                   " disabled=%d wantShow=%d got=%d\n", fcases[i].key,
+                   fcases[i].down, fcases[i].wasDown,
                    fcases[i].disabled, fcases[i].wantShow, shown);
             diffs++;
         }
         if (fcases[i].wantShow && unacq != 1)
         {
-            printf("  DIFF f12              the field went up with the input"
+            printf("  DIFF f11              the field went up with the input"
                    " given back %d time(s), wanted 1\n", unacq);
             diffs++;
         }
@@ -1544,12 +1566,12 @@ static void f12FieldCase(void)
     }
     if (baseWrong != 0)
     {
-        printf("  DIFF f12              the frozen copy raised the field %ld"
+        printf("  DIFF f11              the frozen copy raised the field %ld"
                " time(s), so the mock is leaking\n", baseWrong);
         diffs++;
     }
-    printf("  f12 field: %u cases; %ld log comparison(s) skipped on the edge\n",
-           (unsigned)(sizeof(fcases) / sizeof(fcases[0])), f12Skipped);
+    printf("  f11 field: %u cases; %ld log comparison(s) skipped on the edge\n",
+           (unsigned)(sizeof(fcases) / sizeof(fcases[0])), f11Skipped);
 }
 
 /* The gate the free camera closes, which is new behaviour and so has
@@ -1565,7 +1587,7 @@ static void f12FieldCase(void)
    
    Three things have to survive the gate: the keyboard backup, which
    is what the camera reads its own keys from; the published mouse
-   delta, which is what it looks with; and F12, which raises the
+   delta, which is what it looks with; and F11, which raises the
    command field. */
 static void suspendedInputCase(void)
 {
@@ -1604,7 +1626,7 @@ static void suspendedInputCase(void)
             st.keybLink[i] = (uint16_t)(40 + i - 28);
         winioScript.keybData[40] = 0x80;         /* link 28 */
         winioScript.keybData[42] = 0x80;         /* link 30 */
-        winioScript.keybData[88] = 0x80;         /* F12, which must stay live */
+        winioScript.keybData[87] = 0x80;         /* F11, which must stay live */
 
         memset(&st.pad, 0xAA, sizeof(st.pad));
 
@@ -1665,7 +1687,7 @@ static void suspendedInputCase(void)
             diffs++;
         }
 
-        /* F12 still raises the command field */
+        /* F11 still raises the command field */
         {
             int shown = 0;
             for (i = 0; i < WINIO_LogCount(); i++)
@@ -1673,7 +1695,7 @@ static void suspendedInputCase(void)
                     shown = 1;
             if (!shown)
             {
-                printf("  DIFF suspend          F12 did not raise the field"
+                printf("  DIFF suspend          F11 did not raise the field"
                        " (suspended=%d)\n", suspended);
                 diffs++;
             }
@@ -1788,6 +1810,10 @@ static void sweepDevices(void)
             if ((rnd() & 3u) == 0) winioScript.keybData[56] = 0x80;
             if ((rnd() & 3u) == 0) winioScript.keybData[184] = 0x80;
             if ((rnd() & 3u) == 0) winioScript.keybData[62] = 0x80;
+            if ((rnd() & 3u) == 0) winioScript.keybData[87] = 0x80;
+            if ((rnd() & 1u) == 0) st.keybBackup[87] = 0x80;
+            /* the key the field used to be on, which must now do
+               nothing on our side */
             if ((rnd() & 3u) == 0) winioScript.keybData[88] = 0x80;
             if ((rnd() & 1u) == 0) st.keybBackup[88] = 0x80;
         }
@@ -1796,7 +1822,7 @@ static void sweepDevices(void)
     }
 
     wheelNotchCase();
-    f12FieldCase();
+    f11FieldCase();
     altF4Case();
     suspendedInputCase();
 
@@ -1816,7 +1842,12 @@ static void sweepDevices(void)
            the key names it builds -- is what the sweep compares. The
            "mouse CreateDevice ok/failed" coverage entry went with
            them. */
-        if (winioScript.diCreateResult >= 0)
+        /* Opening DirectInput was the frozen copy's first step and the
+           whole of its Init hung off it succeeding. There is no such
+           step now, so the knob is forced and the two
+           "DirectInput8Create ok/failed" coverage entries went with
+           it. */
+        winioScript.diCreateResult = 0;
         {
             winioScript.createMouseResult = 0;
             winioScript.mouseSetFormat = winioScript.mouseSetCoop = 0;
@@ -1854,18 +1885,11 @@ static void sweepDevices(void)
         randomState(&st);
         randomScript();
         randomCase(&c);
-        switch (i % 4)
+        switch (i % 3)
         {
         case 0: c.op = OP_JOYMOVE; c.i0 = (int)(rnd() & 1u); break;
         case 1: c.op = OP_SETPAD;  c.i0 = (int)(rnd() % 4u) - 1; break;
-        case 2: c.op = OP_MOUSEUSED; break;
-        default:
-            c.op = OP_GETPROPERTY;
-            c.i0 = (int)(rnd() & 1u);
-            c.i1 = (int)(rnd() % 20u);
-            c.i2 = (int)(rnd() % 4u);
-            c.i3 = (int)(rnd() % 8u);
-            break;
+        default: c.op = OP_MOUSEUSED; break;
         }
         runCase(&c, &st, key++);
     }
@@ -1885,23 +1909,14 @@ static void sweepDevices(void)
             runCase(&c, &st, key++);
         }
 
-    group = "getproperty";
-    rngState = 0xC1C1u;
-    for (i = 0; i < 400; i++)
-    {
-        randomState(&st);
-        randomScript();
-        randomCase(&c);
-        winioScript.getPropertyResult = (i & 1) ? 0 : -1;
-        winioScript.getPropertyData = (unsigned)(rnd() % 20u);
-        c.op = OP_GETPROPERTY;
-        c.i0 = (int)(rnd() & 1u);
-        c.i1 = (int)(rnd() % 20u);
-        c.i2 = (int)(rnd() % 4u);
-        c.i3 = (int)(rnd() % 8u);
-        runCase(&c, &st, key++);
-    }
-
+    /* The "getproperty" sweep was here, 400 cases over
+       DINPUT_GetProperty's two results and its four arguments. That
+       function is gone: the only thing that called it was the read of
+       the wheel's granularity off the mouse device, and there is no
+       mouse device. Nothing replaces the coverage because nothing
+       replaces the function -- it was DirectInput's property call and
+       the platform layer has no equivalent to get wrong. The two
+       "getproperty" coverage entries went with it. */
     group = "tweakflags";
     rngState = 0xEEEEu;
     for (i = 0; i < 2000; i++)
@@ -2018,6 +2033,8 @@ int main(void)
     }
     printf("\n");
 
+    printf("  the wheel's own frame not compared side by side in %ld cases\n",
+           wheelFrameSkipped);
     printf("  case2_mouseScroll not compared side by side in %ld cases\n",
            wheelScrollSkipped);
     printf("%ld cases, %ld differences\n", cases, diffs);

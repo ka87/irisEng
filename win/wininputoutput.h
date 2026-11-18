@@ -3,10 +3,6 @@
 #include "../inputoutput.h"
 #include "../math.h"
 
-#define DIRECTINPUT_VERSION  0x0800
-
-#include <dinput.h>
-
 typedef struct sSaveFileDesc
 {
     FILE* fp;
@@ -18,7 +14,9 @@ tSaveFileDesc INO_gst_SavFileDesc;
 
 HWND pcINO_Hwnd;
 
-IDirectInput8A* dinput_if;
+/* How many counts of wheel movement make one notch. The platform
+   layer reports whole notches, so this is 1 -- but it is a tweak the
+   player can set, so the division stays. */
 int mouseGranularity;
 
 /* What the mouse reported this frame, before any control mode has had
