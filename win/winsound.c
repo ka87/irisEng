@@ -691,10 +691,11 @@ int pcSND_SB_Play(tSndSoundBufferElem* sbe, int flags)
     gDoSoundGlobal.sndConcurrentlyPlayedNum += sbe->format;
     if (playing > gDoSoundGlobal.sndConcurrentlyPlayedPeakNum)
         gDoSoundGlobal.sndConcurrentlyPlayedPeakNum = playing;
-    if (((SPL_VoicePlay(sbe->voice, flags & 1), 0)) != S_OK)
-        OutputDebugStringA("Voice not allocated in hardware");
-    else
-        OutputDebugStringA("HARDWARE voice\n");
+    SPL_VoicePlay(sbe->voice, flags & 1);
+    /* The old play reported whether the card had given the buffer a
+       hardware voice. Every voice is mixed in software now, so there is
+       one answer and the other message is gone. */
+    OutputDebugStringA("HARDWARE voice\n");
     BAS_binsert((unsigned int)sbe, (int)sbe, &dsndSBList);
     return 0;
 }
@@ -1904,9 +1905,9 @@ void pcSND_FxClose()
     SND_gst_FxDefaultParam.i8 = 0;
 }
 
-void pcSND_fxStructSet(EAXLISTENERPROPERTIES* dest, int preset)
+void pcSND_fxStructSet(tSndRoomProperties* dest, int preset)
 {
-    EAXLISTENERPROPERTIES props;
+    tSndRoomProperties props;
 
     if (preset < 0 || preset > 11)
         return;
@@ -2109,12 +2110,12 @@ void pcSND_fxStructSet(EAXLISTENERPROPERTIES* dest, int preset)
         props.lReverb = -1691;
         break;
     }
-    memcpy(dest, &props, sizeof(EAXLISTENERPROPERTIES));
+    memcpy(dest, &props, sizeof(tSndRoomProperties));
 }
 
 int pcSND_EAXListenerPropertiesSet(int preset)
 {
-    EAXLISTENERPROPERTIES props;
+    tSndRoomProperties props;
 
     pcSND_fxStructSet(&props, preset);
     /* The listener properties went to EAX through the property set.

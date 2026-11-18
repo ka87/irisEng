@@ -60,9 +60,6 @@
     <Filter Include="Header Files\win">
       <UniqueIdentifier>{c0197d3c-c1ce-4b7d-89e7-40b8ad6edc01}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\win\eax">
-      <UniqueIdentifier>{0a098c31-f1cb-43e9-baa1-77b318fac9e5}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -1329,9 +1326,6 @@
     </ClInclude>
     <ClInclude Include="ai\ai_gfxfunctions.h">
       <Filter>Header Files\ai</Filter>
-    </ClInclude>
-    <ClInclude Include="win\eax\eax.h">
-      <Filter>Header Files\win\eax</Filter>
     </ClInclude>
     <ClInclude Include="win\adpcm.h">
       <Filter>Header Files\win</Filter>

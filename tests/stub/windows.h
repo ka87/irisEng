@@ -19,7 +19,12 @@
 typedef int                 BOOL;
 typedef unsigned char       BYTE;
 typedef unsigned short      WORD;
-typedef unsigned long       DWORD;
+/* 32 bits, as it is in the game: long is 32-bit on Windows and 64-bit
+   here, so spelling it long made every DWORD field and parameter in
+   these stubs twice the width the real build gives it. Nothing
+   depended on that, but a struct whose layout has to match one of the
+   engine's own did -- see tSndWaveFormat in sound.h. */
+typedef unsigned int        DWORD;
 typedef long                LONG;
 typedef unsigned int        UINT;
 typedef const char*         LPCSTR;
