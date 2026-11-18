@@ -8,7 +8,67 @@
 #include "../dbg.h"
 #include "../time.h"
 
+/* Three of the mocks below answer for the platform layer, and the
+ * frozen copy's matching device calls are written to log the same
+ * line they do.
+ *
+ * The keyboard and the mouse are no longer two DirectInput devices,
+ * so where the frozen copy calls GetDeviceState, Acquire and
+ * GetObjectInfo on a device, the rewrite asks the platform layer
+ * once. The event is the same event -- read the input, take it or
+ * give it back, ask what a key is called -- so both sides log one
+ * line for it in the same words, and the differential still compares
+ * where in the sequence it happens and with what argument. What it
+ * no longer compares is which API was used to do it, which is the
+ * whole point of the change.
+ *
+ * Making the two devices and releasing them are the same event too:
+ * the frozen copy took the input by creating a pair of exclusive
+ * devices and gave it back by releasing them, which is what the
+ * rewrite does in one call. So CreateDevice and Release speak the
+ * same two lines.
+ *
+ * The frozen copy does all of it to the two devices as a pair, and
+ * only the keyboard's half logs: one line an event is what the
+ * rewrite has one of. Whether the frozen copy still does them as a
+ * pair is a property of the frozen copy, and these cases are not
+ * about that.
+ *
+ * The cases that were about the devices themselves -- input lost and
+ * re-acquired, a device present or absent -- are retired in
+ * test_winio.c, where it says so. */
 WinioScript winioScript;
+
+/* The keyboard and the mouse arrive through the platform layer now
+   rather than through two devices of their own, so this is where the
+   script is read instead. It is the same scripted data: the cases
+   that drive the handlers go on driving them with it, and only the
+   cases that were about a device being lost and taken again have
+   gone, since there is no device to lose. */
+void PLT_ReadDevices(unsigned char* keys, int* mouse)
+{
+    WINIO_Log("input read");
+    if (keys)
+        memcpy(keys, winioScript.keybData, sizeof(winioScript.keybData));
+    if (mouse)
+        memcpy(mouse, winioScript.mouseData, sizeof(winioScript.mouseData));
+}
+
+void PLT_InputCapture(int on)
+{
+    WINIO_Log("input capture(%d)", on);
+}
+
+/* The same name the keyboard device used to give for the same code,
+   so that a walk that visits the codes in a different order still
+   shows up in what gets built out of the names. */
+const char* PLT_sz_KeyName(int dik)
+{
+    static char name[64];
+    WINIO_Log("key name(%u)", (unsigned)dik);
+    snprintf(name, sizeof(name), "%s%u", winioScript.objectName, (unsigned)dik);
+    return name;
+}
 
 static char logLines[WINIO_LOGMAX][WINIO_LINEMAX];
 static int logCount;
@@ -56,36 +116,41 @@ static const char* devName(IDirectInputDevice8A* d)
 
 static HRESULT devRelease(IDirectInputDevice8A* d)
 {
-    WINIO_Log("Release(%s)", devName(d));
+    if (d == (IDirectInputDevice8A*)&keybDev)
+        WINIO_Log("input capture(0)");
     return 0;
 }
 
 static HRESULT devGetProperty(IDirectInputDevice8A* d, const GUID* guid, LPDIPROPHEADER h)
 {
     DIPROPDWORD* p = (DIPROPDWORD*)h;
-    WINIO_Log("GetProperty(%s,obj=%u,how=%u,guid=%ld)", devName(d),
-              (unsigned)h->dwObj, (unsigned)h->dwHow, (long)(size_t)guid);
+    if (d == (IDirectInputDevice8A*)&keybDev)
+        WINIO_Log("GetProperty(obj=%u,how=%u,guid=%ld)",
+                  (unsigned)h->dwObj, (unsigned)h->dwHow, (long)(size_t)guid);
     p->dwData = winioScript.getPropertyData;
     return winioScript.getPropertyResult;
 }
 
 static HRESULT devAcquire(IDirectInputDevice8A* d)
 {
-    WINIO_Log("Acquire(%s)", devName(d));
+    if (d == (IDirectInputDevice8A*)&keybDev)
+        WINIO_Log("input capture(1)");
     return d == (IDirectInputDevice8A*)&mouseDev ? winioScript.mouseAcquireResult
                                                  : winioScript.keybAcquireResult;
 }
 
 static HRESULT devUnacquire(IDirectInputDevice8A* d)
 {
-    WINIO_Log("Unacquire(%s)", devName(d));
+    if (d == (IDirectInputDevice8A*)&keybDev)
+        WINIO_Log("input capture(0)");
     return 0;
 }
 
 static HRESULT devGetDeviceState(IDirectInputDevice8A* d, DWORD size, void* buf)
 {
     int n;
-    WINIO_Log("GetDeviceState(%s,%u)", devName(d), (unsigned)size);
+    if (d == (IDirectInputDevice8A*)&keybDev)
+        WINIO_Log("input read");
     if (d == (IDirectInputDevice8A*)&mouseDev)
     {
         n = mouseStateCalls < 1 ? 0 : 1;
@@ -105,14 +170,12 @@ static HRESULT devGetDeviceState(IDirectInputDevice8A* d, DWORD size, void* buf)
 
 static HRESULT devSetDataFormat(IDirectInputDevice8A* d, const DIDATAFORMAT* f)
 {
-    WINIO_Log("SetDataFormat(%s)", devName(d));
     return d == (IDirectInputDevice8A*)&mouseDev ? winioScript.mouseSetFormat
                                                  : winioScript.keybSetFormat;
 }
 
 static HRESULT devSetCoop(IDirectInputDevice8A* d, HWND w, DWORD flags)
 {
-    WINIO_Log("SetCooperativeLevel(%s,%u)", devName(d), (unsigned)flags);
     return d == (IDirectInputDevice8A*)&mouseDev ? winioScript.mouseSetCoop
                                                  : winioScript.keybSetCoop;
 }
@@ -120,7 +183,7 @@ static HRESULT devSetCoop(IDirectInputDevice8A* d, HWND w, DWORD flags)
 static HRESULT devGetObjectInfo(IDirectInputDevice8A* d, DIDEVICEOBJECTINSTANCEA* inst,
                                 DWORD obj, DWORD how)
 {
-    WINIO_Log("GetObjectInfo(%u,%u)", (unsigned)obj, (unsigned)how);
+    WINIO_Log("key name(%u)", (unsigned)obj);
     /* a name that depends on the offset, so a reordered walk shows up */
     snprintf(inst->tszName, sizeof(inst->tszName), "%s%u", winioScript.objectName,
              (unsigned)obj);
@@ -151,7 +214,8 @@ static HRESULT diCreateDevice(IDirectInput8A* p, const GUID* guid,
                               IDirectInputDevice8A** out, void* unk)
 {
     int isMouse = (guid == &GUID_SysMouse);
-    WINIO_Log("CreateDevice(%s)", isMouse ? "mouse" : "keyb");
+    if (!isMouse)
+        WINIO_Log("input capture(1)");
     /* the SDK leaves *out alone when it fails, and the engine relies
        on that: a failed CreateDevice leaves the previous pointer */
     if (isMouse)

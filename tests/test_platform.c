@@ -59,8 +59,8 @@ static int plt_unacquired;
 static char plt_typed[64];
 static int  plt_typedLen;
 
-void pcINO_dinput_mouse_and_keyb_acquire(void)   { plt_acquired++; }
-void pcINO_dinput_mouse_and_keyb_unacquire(void) { plt_unacquired++; }
+void pcINO_mouse_and_keyb_acquire(void)   { plt_acquired++; }
+void pcINO_mouse_and_keyb_unacquire(void) { plt_unacquired++; }
 
 int OVL_b_CommandChar(int ch)
 {
@@ -220,6 +220,124 @@ static void typing(void)
     okEq(plt_typedLen, 0, "and an ordinary key is left to the text event");
 }
 
+/* The keyboard and the mouse, as the game's own input code asks for
+   them. The game's codes are DirectInput's and stay that way, so what
+   is checked here is the translation into them. */
+static void devices(void)
+{
+    unsigned char keys[266];
+    int           mouse[5];
+    int           i;
+
+    printf("-- the keyboard and the mouse in the game's own codes\n");
+
+    /* With the input not taken, nothing is answered at all -- which is
+       what being released means, and what lets the command field be
+       typed into. */
+    PLT_InputCapture(0);
+    memset(keys, 0xAA, sizeof(keys));
+    PLT_ReadDevices(keys, mouse);
+    for (i = 0; i < 266; i++)
+        if (keys[i])
+            break;
+    okEq(i, 266, "released, the keyboard answers nothing");
+
+    PLT_InputCapture(1);
+
+    /* The dummy driver has no keys down, so what this proves is the
+       shape: the call fills the block and clears what it does not
+       set, rather than leaving the caller's bytes. */
+    memset(keys, 0xAA, sizeof(keys));
+    PLT_ReadDevices(keys, mouse);
+    for (i = 0; i < 266; i++)
+        if (keys[i])
+            break;
+    okEq(i, 266, "and with no key down, nothing is reported down");
+
+    /* The table itself, which is the part that matters: the codes the
+       engine's tables, its controls screen and everyone's saved
+       bindings are written in. Checked both ways round, on the keys
+       the game actually names. */
+    PLT_l_KeymapBuild();
+    okEq(plt_dikOf[SDL_SCANCODE_ESCAPE], 0x01, "escape is 1");
+    okEq(plt_dikOf[SDL_SCANCODE_F1], 59, "F1 is 59, where the engine reads it");
+    okEq(plt_dikOf[SDL_SCANCODE_F4], 62, "F4 is 62, which the alt-F4 check uses");
+    okEq(plt_dikOf[SDL_SCANCODE_F12], 88, "F12 is 88, which raises the field");
+    okEq(plt_dikOf[SDL_SCANCODE_LALT], 56, "left alt is 56");
+    okEq(plt_dikOf[SDL_SCANCODE_RALT], 184, "right alt is 184");
+    okEq(plt_dikOf[SDL_SCANCODE_RCTRL], 157, "right control is 157");
+    okEq(plt_dikOf[SDL_SCANCODE_A], 0x1E, "A is 30");
+    okEq(plt_dikOf[SDL_SCANCODE_UP], 0xC8, "up is 200");
+    okEq(plt_scancodeOf[59], SDL_SCANCODE_F1, "and back again");
+
+    /* No two keys may share a code: one would shadow the other and
+       the second would be unbindable. */
+    {
+        int seen[256];
+        int clash = 0;
+        size_t k;
+
+        memset(seen, 0, sizeof(seen));
+        for (k = 0; k < sizeof(plt_keymap) / sizeof(plt_keymap[0]); k++)
+        {
+            if (seen[plt_keymap[k].dik]++)
+                clash++;
+            if (plt_keymap[k].dik == 0)
+                clash++;
+        }
+        okEq(clash, 0, "every key has a code of its own, and none is zero");
+    }
+
+    /* The wheel arrives as events and is answered as a movement since
+       the last ask, which is how the old device reported it. */
+    {
+        SDL_Event ev;
+
+        memset(&ev, 0, sizeof(ev));
+        ev.type = SDL_EVENT_MOUSE_WHEEL;
+        ev.wheel.y = 2.0f;
+        SDL_PushEvent(&ev);
+        PLT_Pump();
+        PLT_ReadDevices(keys, mouse);
+        okEq(mouse[2], 2, "the wheel's notches arrive");
+        PLT_ReadDevices(keys, mouse);
+        okEq(mouse[2], 0, "and are not answered twice");
+    }
+
+    /* And a key's name, for the controls screen. */
+    ok(PLT_sz_KeyName(59)[0] != 0, "a key has a name");
+    okEq((long)PLT_sz_KeyName(0)[0], 0, "and a code with no key has none");
+
+    /* Taking the input and giving it back has to reach the window, or
+       the pointer stays where the desktop left it and the game turns
+       the camera with nothing. */
+    PLT_InputCapture(1);
+    ok(SDL_GetWindowRelativeMouseMode(plt_window) != false,
+       "taking the input locks the pointer to the window");
+    PLT_InputCapture(0);
+    ok(SDL_GetWindowRelativeMouseMode(plt_window) == false,
+       "and giving it back lets it go");
+
+    /* A wheel movement while the game does not have the input is not
+       saved up for the moment it does: the notches belong to whatever
+       had the pointer. */
+    {
+        SDL_Event ev;
+
+        memset(&ev, 0, sizeof(ev));
+        ev.type = SDL_EVENT_MOUSE_WHEEL;
+        ev.wheel.y = 3.0f;
+        SDL_PushEvent(&ev);
+        PLT_Pump();
+        PLT_ReadDevices(keys, mouse);
+        okEq(mouse[2], 0, "released, the wheel is not answered");
+        for (i = 0; i < 5; i++)
+            if (mouse[i])
+                break;
+        okEq(i, 5, "and nor is anything else of the mouse");
+    }
+}
+
 /* The statistics in the caption, which used to be a click on the title
    bar -- a non-client click, which a window SDL owns does not pass
    on. */
@@ -280,6 +398,7 @@ int main(void)
     focus();
     closing();
     typing();
+    devices();
     stats();
     timing();
 

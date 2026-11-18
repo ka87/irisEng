@@ -5,6 +5,7 @@
 #include "../time.h"
 #include "../memory.h"
 #include "../dbg.h"
+#include "../platform.h"
 
 int pcINO_SelectedControlMode = 0xffffffff;
 int pcINO_SelectedControlSubmode = 0xffffffff;
@@ -775,23 +776,22 @@ void DINPUT_InitVariables(int kind)
     }
 }
 
+/* What a key is called, for the controls screen. The name used to be
+   asked of the keyboard device by its code; it is asked of the
+   keyboard layout now, by the same code. The two markers either side
+   of it are the game's own and say how the line is drawn. */
 void pcINO_getKeyNames(int keyOffset, char* dest)
 {
     char* out;
-    char* src;
-    DIDEVICEOBJECTINSTANCEA keyInfo;
+    const char* src;
 
-    char* prefix = "\\P4\\\x8F\0";
-    char* postfix = "\x90\0";
-
-    memset(&keyInfo, 0, sizeof(DIDEVICEOBJECTINSTANCEA));
-    keyInfo.dwSize = sizeof(DIDEVICEOBJECTINSTANCEA);
-    pcINO_keybDevice->lpVtbl->GetObjectInfo(pcINO_keybDevice, &keyInfo, keyOffset, DIPH_BYOFFSET);
+    const char* prefix = "\\P4\\\x8F\0";
+    const char* postfix = "\x90\0";
 
     out = dest;
     for (src = prefix; *src; src++)
         *out++ = *src;
-    for (src = keyInfo.tszName; *src; src++)
+    for (src = PLT_sz_KeyName(keyOffset); *src; src++)
         *out++ = *src;
     for (src = postfix; *src; src++)
         *out++ = *src;
@@ -977,26 +977,12 @@ void pcINO_Joystick_Init(HWND hwnd)
 
     if (DirectInput8Create(GetModuleHandleA(0), DIRECTINPUT_VERSION, &IID_IDirectInput8A, (LPVOID*)&dinput_if, 0) >= 0)
     {
-        if (dinput_if->lpVtbl->CreateDevice(dinput_if, &GUID_SysMouse, &pcINO_mouseDevice, 0) >= 0)
-        {
-            if (pcINO_mouseDevice->lpVtbl->SetDataFormat(pcINO_mouseDevice, &c_dfDIMouse2) < 0
-                || pcINO_mouseDevice->lpVtbl->SetCooperativeLevel(pcINO_mouseDevice, hwnd, DISCL_FOREGROUND | DISCL_EXCLUSIVE) < 0)
-            {
-                pcINO_mouseDevice->lpVtbl->Release(pcINO_mouseDevice);
-                pcINO_mouseDevice = 0;
-            }
-            /* preserved: reached with pcINO_mouseDevice NULL when either
-               call above failed, and DINPUT_GetProperty does not test it */
-            if (DINPUT_GetProperty(pcINO_mouseDevice, 8, 1, (const GUID*)3, &mouseGranularity) < 0)// DIPROP_GRANULARITY
-                mouseGranularity = 1;
-        }
-        if (dinput_if->lpVtbl->CreateDevice(dinput_if, &GUID_SysKeyboard, &pcINO_keybDevice, 0) >= 0
-            && (pcINO_keybDevice->lpVtbl->SetDataFormat(pcINO_keybDevice, &c_dfDIKeyboard) < 0
-                || pcINO_keybDevice->lpVtbl->SetCooperativeLevel(pcINO_keybDevice, hwnd, DISCL_NOWINKEY | DISCL_FOREGROUND | DISCL_EXCLUSIVE) < 0))
-        {
-            pcINO_keybDevice->lpVtbl->Release(pcINO_keybDevice);
-            pcINO_keybDevice = 0;
-        }
+        /* The keyboard and the mouse are the platform's now, taken
+           from the window rather than from devices of their own. The
+           wheel arrives in whole notches already, so the granularity
+           the old device was asked for is one. */
+        PLT_InputCapture(1);
+        mouseGranularity = 1;
         INO_l_Joystick_Enable = 1;
         INO_gi_CurrentPadId = 0;
         if (SwapMouseButton(0))                   // ha elozoleg swappelve volt, akkor  nem 0-val tér vissza
@@ -1023,16 +1009,7 @@ void pcINO_Joystick_Init(HWND hwnd)
 
 void pcINO_Joystick_Close()
 {
-    if (pcINO_mouseDevice)
-    {
-        pcINO_mouseDevice->lpVtbl->Release(pcINO_mouseDevice);
-        pcINO_mouseDevice = 0;
-    }
-    if (pcINO_keybDevice)
-    {
-        pcINO_keybDevice->lpVtbl->Release(pcINO_keybDevice);
-        pcINO_keybDevice = 0;
-    }
+    PLT_InputCapture(0);
     if (dinput_if)
     {
         dinput_if->lpVtbl->Release(dinput_if);
@@ -1088,22 +1065,20 @@ INT_PTR WINAPI DbgDialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
     return 1;
 }
 
-void pcINO_dinput_mouse_and_keyb_acquire()
+/* Taking the input and giving it back. It was two devices held
+   exclusively; it is the pointer locked to the window, and the game
+   being read the keyboard at all. The names stay because the engine
+   calls them from several places. */
+void pcINO_mouse_and_keyb_acquire()
 {
-    if (pcINO_mouseDevice)
-        pcINO_mouseDevice->lpVtbl->Acquire(pcINO_mouseDevice);
-    if (pcINO_keybDevice)
-        pcINO_keybDevice->lpVtbl->Acquire(pcINO_keybDevice);
+    PLT_InputCapture(1);
     pcINO_numLockAtAcquire = GetKeyState(144) != 0;
     memset(pcINO_keyboardDataBackup, 0, sizeof(pcINO_keyboardDataBackup));
 }
 
-void pcINO_dinput_mouse_and_keyb_unacquire()
+void pcINO_mouse_and_keyb_unacquire()
 {
-    if (pcINO_mouseDevice)
-        pcINO_mouseDevice->lpVtbl->Unacquire(pcINO_mouseDevice);
-    if (pcINO_keybDevice)
-        pcINO_keybDevice->lpVtbl->Unacquire(pcINO_keybDevice);
+    PLT_InputCapture(0);
 }
 
 // One command line: a tweak name and a value. Split out of the old
@@ -1143,13 +1118,12 @@ void pcINO_HandleTweakFlags(HWND hWndParent)
         // TODO FIXME: megcsinalni azt a dialogot rendesen, nem csak egy karaktertömböt átadni!!!
         if (DialogBoxIndirectParamA(0, (LPCDLGTEMPLATEA)commandWindowDlgTemplate, hWndParent, DbgDialogFunc, 0) == 1)
             pcINO_RunTweakCommand(dbgDialogBuff);
-        pcINO_dinput_mouse_and_keyb_acquire();
+        pcINO_mouse_and_keyb_acquire();
     }
 }
 
 void pcINO_Joystick_Update(struct sInoPad* padData)
 {
-    int status;
     int mouseData[5];
     /* 266, not 264: retail writes mouse buttons 7 and 8 at
        [esp+0x138]/[esp+0x139] (0x00423026, 0x00423035), i.e.
@@ -1166,49 +1140,11 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
 
     memset(padData->padData, 0, sizeof(padData->padData));
 
-    status = -1;
-    if (pcINO_mouseDevice)
-    {
-        status = pcINO_mouseDevice->lpVtbl->GetDeviceState(pcINO_mouseDevice, 20, mouseData);
-        if (status == 0x8007001E)
-        {
-            status = pcINO_mouseDevice->lpVtbl->Acquire(pcINO_mouseDevice);
-            if (status < 0)
-            {
-                DBG_OutputDebugString("Mouse input lost but acquire fails\n");
-            }
-            else
-            {
-                DBG_OutputDebugString("Mouse input lost & re-acquired\n");
-                status = pcINO_mouseDevice->lpVtbl->GetDeviceState(pcINO_mouseDevice, 20, mouseData);
-            }
-        }
-    }
-    if (status < 0)
-        memset(mouseData, 0, sizeof(mouseData));
-
-    status = -1;
-    if (pcINO_keybDevice)
-    {
-        status = pcINO_keybDevice->lpVtbl->GetDeviceState(pcINO_keybDevice, 256, keyboardData);
-        if (status == 0x8007001E)
-        {
-            status = pcINO_keybDevice->lpVtbl->Acquire(pcINO_keybDevice);
-            if (status < 0)
-            {
-                DBG_OutputDebugString("Keyboard input lost but acquire fails\n");
-            }
-            else
-            {
-                DBG_OutputDebugString("Keyboard input lost & re-acquired\n");
-                /* preserved: 266, where the first call and the buffer
-                   DirectInput fills are 256 */
-                status = pcINO_keybDevice->lpVtbl->GetDeviceState(pcINO_keybDevice, 266, keyboardData);
-            }
-        }
-    }
-    if (status < 0)
-        memset(keyboardData, 0, sizeof(keyboardData));
+    /* Both devices in one answer, from the window's own events. There
+       is nothing here about losing the device and taking it again:
+       that was the exclusive device's to lose, and the keyboard a
+       window is given is not held that way. */
+    PLT_ReadDevices(keyboardData, mouseData);
 
     keyboardData[0] = 0;
     keyboardData[256] = mouseData[2] <= 0 ? 0 : 0x80;
@@ -1249,23 +1185,20 @@ void pcINO_Joystick_Update(struct sInoPad* padData)
         if (keyboardData[pcINO_IntKeybDataLink[28]] || keyboardData[pcINO_IntKeybDataLink[29]])
             padData->padData[8] = -1;
     }
-    if ((keyboardData[56] || keyboardData[184]) && keyboardData[62])
-    {
-        pcINO_keybDevice->lpVtbl->Unacquire(pcINO_keybDevice);
-        keybd_event(0xA4u, 0, 1u, 0);
-        keybd_event(0x73u, 0, 1u, 0);
-        keybd_event(0x73u, 0, 3u, 0);
-        keybd_event(0xA4u, 0, 3u, 0);
-    }
+    /* Alt+F4 used to be caught here and played back to the system as
+       four key events, because an exclusively held keyboard never let
+       it reach the window. The keyboard is not held that way now: the
+       window gets the combination itself and the close arrives as an
+       event, so catching it here would ask to close twice. */
     if (keyboardData[88] && !pcINO_keyboardDataBackup[88] && !OVL_b_CommandActive())
     {
-        // F12 raises the overlay's command field. DirectInput holds the
-        // keyboard and mouse exclusively, so both are released while the
-        // field is up and the characters arrive as window messages; Enter
-        // in the field runs the line and takes them back.
+        // F12 raises the overlay's command field. The input is given
+        // back while the field is up, so the pointer is free and the
+        // characters arrive as typed text rather than as game keys;
+        // Enter in the field runs the line and takes it again.
         if (!tweakFlagsDisabled)
         {
-            pcINO_dinput_mouse_and_keyb_unacquire();
+            pcINO_mouse_and_keyb_unacquire();
             OVL_CommandShow();
         }
     }

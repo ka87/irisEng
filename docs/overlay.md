@@ -20,11 +20,11 @@ font the rasters code already creates.
 | `win/overlay.h` | `OVL_Draw`, and the command field's four entry points |
 | `win/wingdi.c` | `D3D_OverlayBegin` / `DrawQuads` / `End`, the pass itself |
 | `win/wininputoutput.c` | F12, and `pcINO_RunTweakCommand` |
+| `tests/test_overlay.c` | the unit test, 160 checks |
 
 F11 puts the engine's statistics in the window's caption. They used
 to arrive by clicking the title bar, which a window SDL owns does not
 pass on; F11 is the one function key the game has nothing else on.
-| `tests/test_overlay.c` | the unit test, 160 checks |
 
 ### Where the pass sits
 
@@ -150,32 +150,32 @@ arbitrary face.
 
 ```
 F12 pressed (edge, and the tweak keys are not disabled)
-  -> pcINO_dinput_mouse_and_keyb_unacquire()
+  -> pcINO_mouse_and_keyb_unacquire()
   -> OVL_CommandShow()
 ```
 
-DirectInput holds the keyboard and mouse **exclusively**, so while the
-field is up it has to be released or no characters reach the window at
-all. That is the whole reason the release is part of raising the field
-rather than something the field could do without.
+While the field is up the game must not have the input, or nothing
+typed reaches the field: the pointer stays locked to the window and
+the keyboard is read as game keys. That is the whole reason giving it
+back is part of raising the field rather than something the field
+could do without.
 
-With the devices released the characters arrive as window messages, and
-`PC_WNDMsgHandler` offers every message to `OVL_b_CommandMessage`
-before anything else looks at it. While the field is up that function
-consumes `WM_CHAR`, `WM_KEYDOWN`, `WM_KEYUP` and `WM_SYSCHAR` and
-leaves everything else alone; while the field is down it consumes
-nothing, so the handler runs exactly as it did.
+With the input given back the characters arrive as typed text, and
+`PLT_Pump` offers each one to `OVL_b_CommandChar` before anything
+else looks at it -- a text-input event for a printable character, and
+a key-down for Enter, backspace and Escape. While the field is up
+that function consumes them; while the field is down it consumes
+nothing, so the pump runs exactly as it did.
 
 | key | what happens |
 |---|---|
 | a printable character, 32..126 | appended, up to 127 characters |
 | backspace | drops one character; a no-op on an empty line |
-| Enter | runs the line, hides the field, re-acquires the devices |
-| Escape | abandons the line, hides the field, re-acquires the devices |
+| Enter | runs the line, hides the field, takes the input back |
+| Escape | abandons the line, hides the field, takes the input back |
 
-Enter and Escape both end with
-`pcINO_dinput_mouse_and_keyb_acquire()`, which is what gives the game
-its input back. The field also refuses to re-raise itself while it is
+Enter and Escape both end with `pcINO_mouse_and_keyb_acquire()`,
+which is what gives the game its input back. The field also refuses to re-raise itself while it is
 already up, so holding F12 does not clear the line being typed.
 
 ### Running the line
@@ -268,14 +268,14 @@ reported.
 pre-rewrite copy against the current one call for call. The F12 path
 now **deliberately** differs: the frozen copy puts up the Win32 dialog,
 runs its whole dialog procedure, applies a tweak and fills the dialog
-buffer; the rewrite releases DirectInput and raises the field. The two
+buffer; the rewrite gives the input back and raises the field. The two
 cannot be lined up field by field.
 
-So an F12 edge is skipped in `runCase` — 585 of 77,917 cases — and
+So an F12 edge is skipped in `runCase` — 1,315 of 77,938 cases — and
 checked directly instead by `f12FieldCase`, over four situations: the
 edge, the key already held, the key not pressed, and the tweak keys
-disabled. It requires the field to go up only on the first, with both
-devices released, and it requires the **frozen copy never to raise the
+disabled. It requires the field to go up only on the first, with the
+input given back exactly once, and it requires the **frozen copy never to raise the
 field**, which is what shows the mock is not leaking between the two
 sides. Three mutations were injected and all three were caught: the
 release dropped, the edge check dropped, and the `tweakFlagsDisabled`
