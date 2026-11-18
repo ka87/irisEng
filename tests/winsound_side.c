@@ -1138,7 +1138,23 @@ void SIDE_RUN(int c)
                the arm stood for -- see the note in winsound_mocks.c. */
             wsnd_play_pos_step = sbe->miscData->sizeToUpload;
             wsnd_read_bytes = 36 * (1 + (sub % 7));
+            wsnd_feeds = 0;
+            wsnd_waits = 0;
             wsnd_run_thread(pcSND_SoundThread);
+#if WSND_SIDE_NEW
+            /* The device is fed whatever woke the thread, so there is a
+               feed for every wait but the one that failed -- which
+               returns to the wait without doing anything. Fed only on
+               the timeout, as this once was, the count collapses to the
+               number of ticks and this fails.
+               
+               One-sided, because the frozen copy has nothing to feed,
+               and it says nothing when it holds: a shared log that
+               differs by a line only when this breaks is a check, where
+               one that always differs is noise. */
+            if (wsnd_feeds < wsnd_waits - 1)
+                d("FEED STARVED: %d feeds for %d waits\n", wsnd_feeds, wsnd_waits);
+#endif
             dump_sbe("thread", sbe);
             dump_globals();
         }

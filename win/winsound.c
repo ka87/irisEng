@@ -7,6 +7,7 @@
 #include "../loading.h"
 #include "../bigfiles.h"
 #include "../time.h"
+#include "../dbg.h"
 #include "wingdi.h"
 #include "winsound.h"
 #include "../sndplatform.h"
@@ -55,6 +56,19 @@ static int pcSND_DecodeADPCMBlocks(char* src, int16_t* dest, int blockNum, int c
         channelNum != 1 ? 72 : 36,
         60u);
     return 1;
+}
+
+/* Waiting for the sound thread to say it has done what it was asked.
+   The engine hands the thread a command through one of the four
+   control events and then waits here for the acknowledgement, with the
+   five-second bound it has always had. That bound used to be silent,
+   which is the worst way for it to be: five seconds of a stopped game
+   and nothing said. If it is ever reached the thread is wedged, so say
+   which command it was. */
+static void pcSND_l_WaitForThread(const char* what)
+{
+    if (WaitForSingleObject(dsndEvents[5], 5000u) == WAIT_TIMEOUT)
+        DBG_OutputDebugString("SND: the sound thread did not answer '%s' in five seconds\n", what);
 }
 
 void pcSND_AddSoundToThePlayList(BOOL notifyThread)
@@ -276,6 +290,13 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
         misc->shouldBeRemovedFromPlayList = 1;
     if (misc->shouldBeRemovedFromPlayList == 1 || stopped)
     {
+#if PCSND_TRACE
+        DBG_OutputDebugString("SND drop %p: %s (curr %u full %u raf %d off %d)\n",
+                              (void*)sbe,
+                              misc->shouldBeRemovedFromPlayList == 1 ? "asked for" : "voice stopped",
+                              misc->currSize, misc->fullSize,
+                              misc->RemoveAfterPlayFinished, misc->currOffset);
+#endif
         pcSND_StopSoundAndRemoveFromThePlayList(sbe, 0);
         return;
     }
@@ -341,6 +362,12 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
             memset(&audioPtr1[totalSizeAfterDecompress], 0, audioBytes1 - totalSizeAfterDecompress);
         }
     }
+#if PCSND_TRACE
+    DBG_OutputDebugString("SND fill %p: block %d off %d want %u got %u%s (curr %u full %u)\n",
+                          (void*)sbe, block, misc->currOffset, audioBytes1, produced,
+                          misc->RemoveAfterPlayFinished ? " LAST" : "",
+                          misc->currSize, misc->fullSize);
+#endif
     SPL_b_VoiceWrite(sbe->voice, misc->currOffset, audioPtr1, (int)audioBytes1);
     misc->currOffset += audioBytes1;
     if (misc->currOffset >= misc->soundBufferSize)
@@ -366,6 +393,50 @@ static void pcSND_l_ServiceStreams(void)
         {
             pcSND_l_ServiceStream(sndPlayList[slot].soundElem);
         }
+}
+
+/* Tracing the sound thread. Off, and one line to turn on: it prints a
+   summary of what the thread is doing once a second, and a line at
+   every refill and every removal, which is what a stream going quiet
+   has to be read out of. */
+#define PCSND_TRACE 0
+
+static unsigned int pcSND_l_feeds;
+static unsigned int pcSND_l_ticks;
+static unsigned int pcSND_l_wakes;
+
+static void pcSND_l_Feed(void)
+{
+    ++pcSND_l_feeds;
+    SPL_Feed();
+}
+
+/* What the thread has been doing, once a second. A thread that is
+   being woken by control events faster than its own timeout shows up
+   here as wakes far outnumbering ticks. */
+static void pcSND_l_ThreadStats(int wasTick)
+{
+#if PCSND_TRACE
+    static DWORD last;
+    DWORD now;
+
+    if (wasTick)
+        ++pcSND_l_ticks;
+    else
+        ++pcSND_l_wakes;
+    now = GetTickCount();
+    if (now - last < 1000)
+        return;
+    last = now;
+    DBG_OutputDebugString("SND thread: %u ticks, %u event wakes, %u feeds, %d streams\n",
+                          pcSND_l_ticks, pcSND_l_wakes, pcSND_l_feeds,
+                          (sndEventHandleNum >> 1) - 2);
+    pcSND_l_ticks = 0;
+    pcSND_l_wakes = 0;
+    pcSND_l_feeds = 0;
+#else
+    (void)wasTick;
+#endif
 }
 
 /* How long the thread sleeps when nothing has asked it for anything.
@@ -399,16 +470,32 @@ int WINAPI pcSND_SoundThread(LPVOID parameter)
            is what the loop around it used to say. */
         if (signalled == (DWORD)-1)
             continue;
-        /* The tick, and the only thing that does the periodic work:
-           every streaming sound looked at, and the device fed. The
-           four events below are asked for by name and do their own
-           thing. */
+
+        /* The device is fed whatever woke the thread.
+           
+           It used to be fed only on the timeout, on the reasoning that
+           the timeout is what the refill notifications were. That is
+           true of the refills and false of the feed: a control event
+           returns from the wait at once, so a run of them -- which is
+           what creating sounds looks like, each one an event and an
+           acknowledgement -- costs a feed every time, and the device
+           goes hungry exactly when the engine is busiest. The queue is
+           four short chunks, so a few missed feeds are audible. */
+        pcSND_l_Feed();
+
         if (signalled == WAIT_TIMEOUT)
         {
+            /* The refill points: every streaming sound's cursor looked
+               at, and whatever the device's own notification would have
+               made the thread do. */
             pcSND_l_ServiceStreams();
-            SPL_Feed();
+            /* Again, because servicing is what puts sound into the
+               buffers the feed reads out of. */
+            pcSND_l_Feed();
+            pcSND_l_ThreadStats(1);
             continue;
         }
+        pcSND_l_ThreadStats(0);
 
         switch (signalled)
         {
@@ -626,7 +713,7 @@ void pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(tSndSoundBufferElem*
     {
         sndCurrSoundBufferElem = sbe;
         SetEvent(dsndEvents[3]);
-        WaitForSingleObject(dsndEvents[5], 5000u);
+        pcSND_l_WaitForThread("stop");
     }
 }
 
@@ -844,8 +931,9 @@ void pcSND_Cleanup()
     {
         sndCurrSoundBufferElem = (tSndSoundBufferElem*)-1;
         SetEvent(dsndEvents[2]);
-        WaitForSingleObject(dsndEvents[5], 5000u);
-        WaitForSingleObject(pcSNDhObject, 5000u);
+        pcSND_l_WaitForThread("exit");
+        if (WaitForSingleObject(pcSNDhObject, 5000u) == WAIT_TIMEOUT)
+            DBG_OutputDebugString("SND: the sound thread did not exit in five seconds\n");
         CloseHandle(pcSNDhObject);
         sndCurrSoundBufferElem = NULL;
         pcSNDhObject = 0;
@@ -1282,7 +1370,7 @@ void pcSND_setCurrentSoundBuffElemAndSetAnEvent(tSndSoundBufferElem* sbe)
         sbe->miscData->eventHandle2 = dsndEvents[sbe->miscData->dsndEventsArrayIdx + 15];
         sndCurrSoundBufferElem = sbe;
         SetEvent(dsndEvents[0]);
-        WaitForSingleObject(dsndEvents[5], 5000);
+        pcSND_l_WaitForThread("add");
     }
 }
 
