@@ -463,6 +463,12 @@ void PLT_WaitKeyRelease(int key)
     }
 }
 
+void PLT_SleepMs(int ms)
+{
+    if (ms > 0)
+        SDL_Delay((Uint32)ms);
+}
+
 void PLT_ReadDevices(unsigned char* keys, int* mouse)
 {
     const bool* state;

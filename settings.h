@@ -86,6 +86,10 @@ int SET_b_DisplayAdapter(int* out);
 int SET_b_DisplayMode(int* out);
 int SET_b_DisplayZBuffer(int* out);
 int SET_b_DisplayMipMapping(int* out);
+/* How many frames a second the engine will draw, nought for no limit.
+   Absent means the engine's own default, which is not no limit -- see
+   TIM_DEFAULT_MAX_FPS. */
+int SET_b_DisplayMaxFps(int* out);
 int SET_b_DisplayWindowed(int* out);
 int SET_b_DisplayWidth(int* out);
 int SET_b_DisplayHeight(int* out);

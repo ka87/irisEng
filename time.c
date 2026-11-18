@@ -15,8 +15,17 @@
 #include "time.h"
 #include "profiler.h"
 #include "engine.h"
+#include "platform.h"
 
 float TIM_gf_SpeedFactor = 1.0f;
+/* The shipped value. See time.h for what it does and why it is a
+   variable rather than the literal it was. */
+float TIM_gf_FrameFloor = 0.0099999998f;
+/* What a frame is held back to, and nought when it is not. Separate
+   from the floor because the two part company above a hundred frames
+   a second: the floor is then lowered to meet this, not the other way
+   about. */
+static float TIM_l_gf_FramePeriod = 0.0099999998f;
 float TIM_PrevCurrClock = 0.0f; // game doesn't explicitly initializes it to 0, but we do it
 BOOL TIM_ShouldMeasureTicks = TRUE;
 int TIM_PrevTicksPerSecond = 0; // game doesn't explicitly initializes it to 0, but we do it
@@ -99,14 +108,14 @@ void TIM_Clock_Update()
     ticksCount = TIM_f_Clock_TrueRead() - TIM_SpentTimeWithHandlingWinMessages;
     TIM_gul_TicksCount = ticksCount;
     dtTicks = ticksCount - prevTicksCount;
-    if (dtTicks > 0.0099999998f)
+    if (dtTicks > TIM_gf_FrameFloor)
     {
         if (dtTicks > 0.26666668f)
             dtTicks = 0.26666668f;
     }
     else
     {
-        dtTicks = 0.0099999998f;
+        dtTicks = TIM_gf_FrameFloor;
     }
     TIM_dtTicks = dtTicks;
     PRO_EngineRealDT.unk2 = TIM_dtTicks;
@@ -116,6 +125,61 @@ void TIM_Clock_Update()
     if (MAI_gst_MainHandles.displayData && (MAI_gst_MainHandles.displayData->presentationFlags & 0x800000) != 0)
         TIM_gf_dt = 0.016666666f;
     TIM_gf_MainClock = TIM_gf_MainClock + TIM_gf_dt;
+}
+
+void TIM_SetFrameLimit(int fps)
+{
+    if (fps <= 0)
+    {
+        /* The floor goes back with it. Turning the limit off is meant
+           to leave the clock exactly as the game shipped, and a floor
+           left where an earlier limit had put it would not be that. */
+        TIM_l_gf_FramePeriod = 0.0f;
+        TIM_gf_FrameFloor = 0.0099999998f;
+        return;
+    }
+    TIM_l_gf_FramePeriod = 1.0f / (float)fps;
+    /* Drawing faster than the floor allows means the floor has to give
+       way, or the world would run fast however well the frames are
+       paced. The other direction leaves it alone: a slower limit is
+       satisfied by the shipped constant already. */
+    if (TIM_l_gf_FramePeriod < 0.0099999998f)
+        TIM_gf_FrameFloor = TIM_l_gf_FramePeriod;
+    else
+        TIM_gf_FrameFloor = 0.0099999998f;
+}
+
+void TIM_PaceFrame(void)
+{
+    float elapsed;
+    float left;
+
+    if (TIM_l_gf_FramePeriod <= 0.0f)
+        return;
+    for (;;)
+    {
+        /* The same reading the clock is about to take, against the one
+           it took last time, so what is waited out is exactly what
+           would otherwise have been counted as the floor. */
+        elapsed = TIM_f_Clock_TrueRead() - TIM_SpentTimeWithHandlingWinMessages
+                  - TIM_gul_TicksCount;
+        /* A frame already past the period is nothing to wait for, and
+           neither is a reading that makes no sense: written this way
+           round so that a reading which has gone backwards -- the
+           clock re-based under us -- and one that is not a number at
+           all both leave rather than spin. The second cannot happen
+           while the clock is sound, and a wait that could hang the
+           game on an unsound one is not worth the risk. */
+        if (!(elapsed >= 0.0f) || elapsed >= TIM_l_gf_FramePeriod)
+            return;
+        left = TIM_l_gf_FramePeriod - elapsed;
+        /* Give the rest of the slice back while there is a whole
+           millisecond of it to give, and spin out the remainder: a
+           sleep cannot be trusted to wake inside a millisecond, and
+           overshooting here would cost a frame rather than save one. */
+        if (left > 0.0015f)
+            PLT_SleepMs((int)((left - 0.0005f) * 1000.0f));
+    }
 }
 
 int TIM_TimeDriftPerSecond()

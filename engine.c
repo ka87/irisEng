@@ -26,6 +26,7 @@
 #include "engine.h"
 #include "dbg.h"
 #include "platform.h"
+#include "settings.h"
 #include "platform/syscompat.h"
 #include "debugkeys.h"
 
@@ -675,6 +676,17 @@ void s_OneTrame()
         PRO_FullLoop.startTick = TIM_GetTicksAsInt32();
     ++PRO_FullLoop.insideCounter;
 
+    /* Held back here rather than after the frame is drawn, because
+       what matters is the gap between one clock update and the next:
+       that gap is the dt the world is advanced by, and a gap shorter
+       than the floor is counted as the floor and runs the game fast.
+       See time.h.
+
+       Ahead of the pump rather than after it so that what the frame
+       is given is the input as it stands when the frame starts, not
+       as it stood before the wait. The pump's own time is kept out of
+       the clock either way, so the wait is the same length. */
+    TIM_PaceFrame();
     PLT_Pump();
     TIM_Clock_Update();
 
@@ -807,6 +819,17 @@ void ENG_InitEngine()
     TIM_Clock_Reset();
     SND_InitModule();
     TIM_InitModule();
+    {
+        int fps;
+
+        /* Unset means the default rather than no limit: a display
+           faster than the clock's floor is the ordinary case now, and
+           a game that runs fast out of the box is the worse
+           surprise. */
+        if (!SET_b_DisplayMaxFps(&fps))
+            fps = TIM_DEFAULT_MAX_FPS;
+        TIM_SetFrameLimit(fps);
+    }
     INO_Joystick_Init(MAI_gh_MainWindow);
     profiler_dbg_init();
     WOR_gst_Universe.unknownReloadFlag = -2;
