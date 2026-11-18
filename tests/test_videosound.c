@@ -1,21 +1,27 @@
 /* A unit test for win/winvideosound.c.
  *
- * The sink is new code with no earlier copy, and it cannot be run for
- * real here: DirectSound is Windows. What it does that is worth
- * checking is arithmetic rather than audio -- a play cursor that runs
- * round a ring, how much of the ring is free, how much has been heard
- * since the last look, and what of that was really the video rather
- * than silence poured in to cover a gap. All of that is wrong-able in
- * ways nothing would notice until the picture drifted out of step
- * with the sound.
+ * The sink is new code with no earlier copy. What it does that is
+ * worth checking is arithmetic rather than audio -- a play cursor
+ * that runs round a ring, how much of the ring is free, how much has
+ * been heard since the last look, and what of that was really the
+ * video rather than silence poured in to cover a gap. All of that is
+ * wrong-able in ways nothing would notice until the picture drifted
+ * out of step with the sound.
  *
- * So the device is a mock that records every Lock and hands back a
- * play cursor the test moves itself, and the video stream is a stub
- * that hands over a counted ramp. The sink is then driven and what
- * it believes is compared against what the test knows.
+ * So the platform layer is a mock that records every write and hands
+ * back a play cursor the test moves itself, and the video stream is a
+ * stub that hands over a counted ramp. The sink is then driven and
+ * what it believes is compared against what the test knows.
+ *
+ * The platform layer is mocked rather than run for real because the
+ * test has to move the cursor itself; a real device moves it in its
+ * own time. sndplatform.c is tested against the real library by
+ * tests/run_sndplatform.sh, which is where the wrapping, the cursor
+ * and the mixing are checked.
  */
 
 #include "../win/winvideosound.h"
+#include "../sndplatform.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -44,96 +50,92 @@ static void okEq(long got, long want, const char* what)
     }
 }
 
-/* ------------------------------------------------------- the mock device */
+/* --------------------------------------------- the mock platform layer */
+
+/* The sink no longer talks to DirectSound; it asks sndplatform.c for a
+   voice and writes into it. That layer is tested on its own against
+   the real library -- a real device, real streams, the wrapping and
+   the cursor -- so what stands in for it here is a mock, and it is
+   the mock that lets the test drive the play cursor by hand. Driving
+   a real device's cursor would mean waiting on it, and the thing
+   being checked is arithmetic. */
 
 #define VSM_RING  (44100 * 2 * 2)      /* a second, stereo, 16-bit */
 
 static uint8_t vsm_ring[VSM_RING];
-static DWORD   vsm_playPos;
+static int     vsm_playPos;
 static int     vsm_playing;
-static int     vsm_lockCalls;
+static int     vsm_lockCalls;          /* writes into the voice */
 static int     vsm_releaseCalls;
 static int     vsm_createFails;
 static int     vsm_lockFails;
-static DWORD   vsm_lastLockOffset;
-static DWORD   vsm_lastLockBytes;
+static int     vsm_lastLockOffset;
+static int     vsm_lastLockBytes;
 static int     vsm_straddles;
-static int     vsm_unaligned;      /* locks not on a sample-frame boundary */
+static int     vsm_unaligned;          /* writes not on a frame boundary */
 
-static HRESULT VSM_Lock(IDirectSoundBuffer* b, DWORD offset, DWORD bytes,
-                        void** p1, DWORD* n1, void** p2, DWORD* n2, DWORD flags)
+/* One voice, which is all the sink ever asks for. */
+static int     vsm_voice;
+
+static int VSM_l_Write(int offset, const void* src, int bytes, int asSilence)
 {
-    (void)b; (void)flags;
+    int first;
+
     vsm_lockCalls++;
     vsm_lastLockOffset = offset;
     vsm_lastLockBytes = bytes;
     if ((offset % 4) != 0 || (bytes % 4) != 0)
         vsm_unaligned++;
     if (vsm_lockFails)
-        return -1;
-    if (offset >= VSM_RING)
-        return -1;
-    *p1 = vsm_ring + offset;
-    if (offset + bytes <= VSM_RING)
-    {
-        *n1 = bytes;
-        *p2 = NULL;
-        *n2 = 0;
-    }
-    else
-    {
-        *n1 = VSM_RING - offset;
-        *p2 = vsm_ring;
-        *n2 = bytes - *n1;
+        return 0;
+    if (offset >= VSM_RING || bytes > VSM_RING)
+        return 0;
+    first = VSM_RING - offset;
+    if (first > bytes)
+        first = bytes;
+    else if (first < bytes)
         vsm_straddles++;
-    }
-    return 0;
-}
-
-static HRESULT VSM_Unlock(IDirectSoundBuffer* b, void* p1, DWORD n1, void* p2, DWORD n2)
-{ (void)b; (void)p1; (void)n1; (void)p2; (void)n2; return 0; }
-
-static HRESULT VSM_GetCurrentPosition(IDirectSoundBuffer* b, DWORD* play, DWORD* write)
-{
-    (void)b;
-    if (play)
-        *play = vsm_playPos;
-    if (write)
-        *write = vsm_playPos;
-    return 0;
-}
-
-static HRESULT VSM_Play(IDirectSoundBuffer* b, DWORD a, DWORD c, DWORD flags)
-{ (void)b; (void)a; (void)c; (void)flags; vsm_playing = 1; return 0; }
-
-static HRESULT VSM_Stop(IDirectSoundBuffer* b) { (void)b; vsm_playing = 0; return 0; }
-static ULONG   VSM_Release(IDirectSoundBuffer* b) { (void)b; vsm_releaseCalls++; return 0; }
-
-static IDirectSoundBufferVtbl vsm_bufVtbl;
-static IDirectSoundBuffer     vsm_buf = { 0 };
-
-static HRESULT VSM_CreateSoundBuffer(IDirectSound* d, const DSBUFFERDESC* desc,
-                                     IDirectSoundBuffer** out, IUnknown* unk)
-{
-    (void)d; (void)unk;
-    if (vsm_createFails)
-        return -1;
-    okEq((long)desc->dwBufferBytes, VSM_RING, "the buffer is a second long");
-    ok(desc->lpwfxFormat != NULL, "a format is given");
-    if (desc->lpwfxFormat)
+    if (asSilence)
+        memset(vsm_ring + offset, 0, (size_t)first);
+    else
+        memcpy(vsm_ring + offset, src, (size_t)first);
+    if (bytes > first)
     {
-        okEq(desc->lpwfxFormat->wBitsPerSample, 16, "16-bit");
-        okEq(desc->lpwfxFormat->nChannels, 2, "stereo");
-        okEq((long)desc->lpwfxFormat->nSamplesPerSec, 44100, "44100");
-        okEq(desc->lpwfxFormat->nBlockAlign, 4, "four bytes to a frame");
-        okEq((long)desc->lpwfxFormat->nAvgBytesPerSec, 44100 * 4, "the byte rate agrees");
+        if (asSilence)
+            memset(vsm_ring, 0, (size_t)(bytes - first));
+        else
+            memcpy(vsm_ring, (const uint8_t*)src + first, (size_t)(bytes - first));
     }
-    *out = &vsm_buf;
-    return 0;
+    return 1;
 }
 
-static IDirectSoundVtbl vsm_dsVtbl;
-static IDirectSound     vsm_ds = { 0 };
+tSplVoice* SPL_p_VoiceCreate(int channels, int freq, int bytes)
+{
+    if (vsm_createFails)
+        return NULL;
+    okEq(bytes, VSM_RING, "the voice is a second long");
+    okEq(channels, 2, "stereo");
+    okEq(freq, 44100, "44100");
+    return (tSplVoice*)&vsm_voice;
+}
+
+void SPL_VoiceDestroy(tSplVoice* v) { (void)v; vsm_releaseCalls++; }
+
+int SPL_b_VoiceWrite(tSplVoice* v, int offset, const void* data, int bytes)
+{
+    (void)v;
+    return VSM_l_Write(offset, data, bytes, 0);
+}
+
+int SPL_b_VoiceSilence(tSplVoice* v, int offset, int bytes)
+{
+    (void)v;
+    return VSM_l_Write(offset, NULL, bytes, 1);
+}
+
+int  SPL_i_VoiceCursor(const tSplVoice* v) { (void)v; return vsm_playPos; }
+void SPL_VoicePlay(tSplVoice* v, int loop) { (void)v; (void)loop; vsm_playing = 1; }
+void SPL_VoiceStop(tSplVoice* v) { (void)v; vsm_playing = 0; }
 
 static void mockReset(void)
 {
@@ -146,18 +148,8 @@ static void mockReset(void)
     vsm_releaseCalls = 0;
     vsm_createFails = 0;
     vsm_lockFails = 0;
-    vsm_bufVtbl.Lock = VSM_Lock;
-    vsm_bufVtbl.Unlock = VSM_Unlock;
-    vsm_bufVtbl.GetCurrentPosition = VSM_GetCurrentPosition;
-    vsm_bufVtbl.Play = VSM_Play;
-    vsm_bufVtbl.Stop = VSM_Stop;
-    vsm_bufVtbl.Release = VSM_Release;
-    vsm_buf.lpVtbl = &vsm_bufVtbl;
-    vsm_dsVtbl.CreateSoundBuffer = VSM_CreateSoundBuffer;
-    vsm_ds.lpVtbl = &vsm_dsVtbl;
 }
 
-/* the engine's allocator, which is all of memory.c the sink wants */
 static int vsm_allocs;
 static int vsm_frees;
 
@@ -239,7 +231,7 @@ static void opening(void)
 
     mockReset();
     streamReset(1 << 20);
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     ok(s != NULL, "a buffer opens");
     ok(vsm_lockCalls > 0, "the buffer is cleared at open");
     okEq(vsm_playing, 0, "nothing plays until there is something to play");
@@ -250,18 +242,17 @@ static void opening(void)
     mockReset();
     streamReset(1 << 20);
     vss_hasSound = 0;
-    ok(WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS) == NULL, "a silent video opens nothing");
+    ok(WVS_pst_Open(VSS) == NULL, "a silent video opens nothing");
 
     mockReset();
     streamReset(1 << 20);
     vsm_createFails = 1;
-    ok(WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS) == NULL,
-       "a device that refuses a buffer is not fatal");
+    ok(WVS_pst_Open(VSS) == NULL,
+       "a device that refuses a voice is not fatal");
 
     mockReset();
     streamReset(1 << 20);
-    ok(WVS_pst_Open(NULL, VSS) == NULL, "no device, no sink");
-    ok(WVS_pst_Open((IDirectSound8*)&vsm_ds, NULL) == NULL, "no video, no sink");
+    ok(WVS_pst_Open(NULL) == NULL, "no video, no sink");
 
     /* and the no-op paths do not crash */
     WVS_Close(NULL);
@@ -278,7 +269,7 @@ static void fillsWhatIsFree(void)
 
     mockReset();
     streamReset(1 << 22);
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     if (!s)
     {
         ok(0, "the fill fixture opens");
@@ -322,7 +313,7 @@ static void reportsWhatWasPlayed(void)
 
     mockReset();
     streamReset(1 << 22);
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     if (!s)
     {
         ok(0, "the clock fixture opens");
@@ -398,7 +389,7 @@ static void silenceIsNotHeard(void)
 
     mockReset();
     streamReset(8000);            /* a little sound, then nothing */
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     if (!s)
     {
         ok(0, "the silence fixture opens");
@@ -435,7 +426,7 @@ static void writesLandInPlace(void)
 
     mockReset();
     streamReset(1 << 22);
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     if (!s)
     {
         ok(0, "the placement fixture opens");
@@ -453,7 +444,7 @@ static void writesLandInPlace(void)
        to split at least one write across the end. */
     mockReset();
     streamReset(1 << 22);
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     vsm_straddles = 0;
     vsm_unaligned = 0;
     for (i = 0; i < 400; i++)
@@ -476,7 +467,7 @@ static void lockRefused(void)
 
     mockReset();
     streamReset(1 << 22);
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     if (!s)
     {
         ok(0, "the lock fixture opens");
@@ -508,7 +499,7 @@ static void theGapIsSilent(void)
 
     mockReset();
     streamReset(0);                 /* nothing to play at all */
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     if (!s)
     {
         ok(0, "the gap fixture opens");
@@ -542,7 +533,7 @@ static void unalignedCursor(void)
 
     mockReset();
     streamReset(1 << 22);
-    s = WVS_pst_Open((IDirectSound8*)&vsm_ds, VSS);
+    s = WVS_pst_Open(VSS);
     if (!s)
     {
         ok(0, "the alignment fixture opens");

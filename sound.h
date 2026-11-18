@@ -33,12 +33,26 @@ typedef struct sSbeMiscData
 
 typedef struct sSndSoundBufferElem
 {
-    IDirectSoundBuffer* dsndSBIF;
+    /* The sound itself: the buffer and the cursor over it. Three
+       interfaces used to live here -- the buffer, a 3D buffer parked
+       at a fixed position, and the property set the reverb went
+       through. sndplatform.h says what replaced the first; the other
+       two have no successor. */
+    struct sSplVoice* voice;
     struct sSbeMiscData* miscData; // track-nál van ilyen elem
     int format;
     int unk2SetTo64InCreate; // panning, set: pcSND_SB_SetPan
     uint8_t gap[4];
     int unknownFiledinsub49db40ToSetVolume; // set: pcSND_SB_SetPan
+    /* The three interfaces the engine no longer uses: the buffer, the
+       3D buffer parked at a fixed position, and the property set the
+       reverb went through. Nothing in win/winsound.c touches them --
+       the voice above replaced the first and the other two have no
+       successor -- but the frozen copy in tests/ still does, and a
+       baseline is not edited to follow a rewrite. Both copies have to
+       agree on this struct's shape, so they stay until the frozen
+       copy is retired. */
+    IDirectSoundBuffer* dsndSBIF;
     IDirectSound3DBuffer* dsnd3dbufferIF;
     IKsPropertySet* dsndIKPropertySetIF;
     uint8_t gap1[4];
@@ -47,6 +61,11 @@ typedef struct sSndSoundBufferElem
 typedef struct sSndHandles
 {
     HWND MainWindowHandle;
+    /* Whether the device is open. It used to be the DirectSound object
+       and the primary buffer, and the only thing the engine ever asked
+       either of them was whether it had one. The two below are the
+       frozen copy's, for the reason given in sSndSoundBufferElem. */
+    int deviceOpen;
     IDirectSound8* dsndif;
     IDirectSoundBuffer* SoundBuffer;
     unsigned int soundElemFlagsOffset20isHas1;

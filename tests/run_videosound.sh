@@ -3,12 +3,14 @@
 #
 #   ./tests/run_videosound.sh
 #
-# The sink cannot be run for real anywhere but Windows, so the device
-# is a mock and the video stream is a stub. What is checked is the
-# arithmetic: a play cursor running round a ring, how much is free,
-# how much has been heard, and what of that was silence rather than
-# video. libav is not linked -- the sink calls four functions of
-# video.c and the stub supplies all four.
+# The platform layer is a mock and the video stream is a stub, because
+# what is checked is the arithmetic: a play cursor running round a
+# ring, how much is free, how much has been heard, and what of that
+# was silence rather than video. The test has to move the cursor
+# itself, which a real device will not let it do; sndplatform.c is run
+# for real against the library by tests/run_sndplatform.sh. libav is
+# not linked -- the sink calls four functions of video.c and the stub
+# supplies all four.
 
 set -e
 cd "$(dirname "$0")/.."

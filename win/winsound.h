@@ -40,6 +40,12 @@ tSndSoundBufferElem* sndCurrSoundBufferElem;
 int sndEventHandleNum;
 void* dsndReadBuffer2;
 void* dsndReadBuffer1;
+/* Where a chunk is decoded before it is handed to the voice. The
+   decode used to go straight into a locked stretch of the sound
+   buffer; nothing hands out a pointer into the buffer now, so it goes
+   through here instead. Big enough for the largest sizeToUpload the
+   engine asks for, and the thread is the only user. */
+uint8_t dsndUploadBuffer[65536];
 
 typedef HRESULT (WINAPI * PEAXDirectSoundCreate8)(GUID*, LPDIRECTSOUND8*, IUnknown FAR*);
 

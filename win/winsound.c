@@ -9,6 +9,7 @@
 #include "../time.h"
 #include "wingdi.h"
 #include "winsound.h"
+#include "../sndplatform.h"
 
 int gpcSNDVolumeAdjustmentArr[] = {
                  0,          0, 0xFFFFFFF6, 0xFFFFFFF6, 0xFFFFFFF6, 
@@ -39,67 +40,10 @@ int gpcSNDVolumeAdjustmentArr[] = {
         0xFFFFF9A2, 0xFFFFF8F8, 0xFFFFF7CC, 0xFFFFDCB0
 };
 
-static int pcSND_ReadFXSettingFromRegistry(LPBYTE dest)
-{
-    DWORD size;
-    HKEY key;
-    DWORD type;
-
-    if (RegOpenKeyExA(
-        HKEY_CURRENT_USER,
-        "Software\\IRISEng\\Sound",
-        0,
-        0x20019u,
-        &key))
-    {
-        return 1;
-    }
-    size = 4;
-    // preserved: the key is left open when the value cannot be read
-    if (RegQueryValueExA(key, "Sound FX", 0, &type, dest, &size) || size != 4 || type != 4)
-        return 1;
-    RegCloseKey(key);
-    return 0;
-}
-
-static int pcSND_ReadAudioBoardGuid(LPBYTE dest)
-{
-    DWORD status;
-    HKEY key;
-    DWORD size;
-    DWORD type;
-    CHAR message[1000];
-
-    if (!RegOpenKeyExA(
-        HKEY_CURRENT_USER,
-        "Software\\IRISEng\\Sound",
-        0,
-        1u,
-        &key))
-    {
-        size = 16;
-        status = RegQueryValueExA(key, "Audio board GUID", 0, &type, dest, &size);
-        if (status)
-        {
-            GetLastError();
-            FormatMessageA(0x1000u, 0, status, 0, message, 1000u, 0);
-        }
-        else if (size == 16 && type == 3)
-        {
-            RegCloseKey(key);
-            return 0;
-        }
-    }
-    // preserved: the key is left open on every failing path
-    return 1;
-}
-
-static HRESULT pcSND_EAXDirectSoundCreate(GUID* driverGuid, LPDIRECTSOUND8* dsound, IUnknown* outer)
-{
-    snd_eaxDLLHandle = LoadLibraryA("eax.dll");
-    pEAXDirectSoundCreate8 = (PEAXDirectSoundCreate8)GetProcAddress(snd_eaxDLLHandle, "EAXDirectSoundCreate8");
-    return pEAXDirectSoundCreate8(driverGuid, dsound, outer);
-}
+/* Two registry reads and a hand-loaded EAXDirectSoundCreate8 used to
+   stand here: the driver GUID the device was opened on, and whether
+   the user had turned the effects on. Nothing opens a named driver
+   any more and nothing does effects, so all three are gone. */
 
 static int pcSND_DecodeADPCMBlocks(char* src, int16_t* dest, int blockNum, int channelNum)
 {
@@ -200,7 +144,7 @@ void pcSND_RemoveSoundFromPlayList(tSndSoundBufferElem* sbe, int fireEvent)
 
 void pcSND_StopSoundAndRemoveFromThePlayList(tSndSoundBufferElem* sbe, int fireEvent)
 {
-    sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
+    SPL_VoiceStop(sbe->voice);
     pcSND_RemoveSoundFromPlayList(sbe, fireEvent);
 }
 
@@ -210,7 +154,7 @@ void pcSND_updateCurrentPlayPositionAndSize(tSndSoundBufferElem* sbe)
     int advanced;
     int playPos;
 
-    sbe->dsndSBIF->lpVtbl->GetCurrentPosition(sbe->dsndSBIF, &playPos, 0);
+    playPos = SPL_i_VoiceCursor(sbe->voice);
     misc = sbe->miscData;
     if (playPos >= misc->currentPlayPosition)
         advanced = playPos - misc->currentPlayPosition;
@@ -339,15 +283,20 @@ int WINAPI pcSND_SoundThread(LPVOID parameter)
                 }
                 else if (misc->RemoveAfterPlayFinished)
                 {
-                    buffer = sbe->dsndSBIF;
-                    buffer->lpVtbl->Lock(buffer, misc->currOffset, misc->sizeToUpload, &audioPtr1, &audioBytes1, 0, 0, 0);
-                    memset(audioPtr1, 0, audioBytes1);
-                    sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, audioPtr1, audioBytes1, 0, 0);
+                    SPL_b_VoiceSilence(sbe->voice, misc->currOffset, misc->sizeToUpload);
                 }
                 else
                 {
-                    buffer = sbe->dsndSBIF;
-                    buffer->lpVtbl->Lock(buffer, misc->currOffset, misc->sizeToUpload, &audioPtr1, &audioBytes1, 0, 0, 0);
+                    /* Decoded into a staging buffer and then handed
+                       over, where it used to be decoded straight into
+                       a locked stretch of the buffer. The voice does
+                       its own wrapping, so there is no second pointer
+                       to carry on into and no short lock to account
+                       for: what was asked for is what is written. */
+                    audioBytes1 = misc->sizeToUpload;
+                    if (audioBytes1 > sizeof(dsndUploadBuffer))
+                        audioBytes1 = sizeof(dsndUploadBuffer);
+                    audioPtr1 = (char*)dsndUploadBuffer;
                     totalSizeAfterDecompress = 0;
                     pcSND_ReadAndDecompressSoundData(audioBytes1, sbe, 1, &totalSizeAfterDecompress, (int16_t*)audioPtr1);
                     produced = totalSizeAfterDecompress;
@@ -370,7 +319,7 @@ int WINAPI pcSND_SoundThread(LPVOID parameter)
                             memset(&audioPtr1[totalSizeAfterDecompress], 0, audioBytes1 - totalSizeAfterDecompress);
                         }
                     }
-                    sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, audioPtr1, audioBytes1, 0, 0);
+                    SPL_b_VoiceWrite(sbe->voice, misc->currOffset, audioPtr1, (int)audioBytes1);
                     misc->currOffset += audioBytes1;
                     if (misc->currOffset >= misc->soundBufferSize)
                         misc->currOffset -= misc->soundBufferSize;
@@ -413,95 +362,28 @@ static void pcSND_StartSoundThread(void)
     }
 }
 
-int pcSND_CreateSoundBuffer(IDirectSoundBuffer* primary, IDirectSound8* dsndif)
-{
-    WAVEFORMATEX format;
-    DSBUFFERDESC desc;
-    ULONG support;
-
-    primary->lpVtbl->QueryInterface(primary, &IID_IDirectSound3DListener, &dsndIDisectSound3DListenerIF);
-    memset(&desc, 0, sizeof(desc));
-    format.wFormatTag = 1;
-    format.nChannels = 1;
-    format.nSamplesPerSec = 10000;
-    format.nAvgBytesPerSec = 10000;
-    format.nBlockAlign = 1;
-    format.wBitsPerSample = 8;
-    format.cbSize = 0;
-    desc.dwSize = 36;
-    desc.dwFlags = 0x90;
-    desc.dwBufferBytes = 10000;
-    desc.lpwfxFormat = &format;
-    desc.guid3DAlgorithm.Data1 = 0;
-    desc.guid3DAlgorithm.Data2 = 0;
-    desc.guid3DAlgorithm.Data3 = 0;
-    memset(desc.guid3DAlgorithm.Data4, 0, sizeof(desc.guid3DAlgorithm.Data4));
-    dsndif->lpVtbl->CreateSoundBuffer(dsndif, &desc, &d3dSndBuffer, 0);
-    d3dSndBuffer->lpVtbl->QueryInterface(d3dSndBuffer, &IID_IDirectSound3DBuffer, &ppdsndDSND3DBuffer);
-    d3dSndBuffer->lpVtbl->QueryInterface(d3dSndBuffer, &IID_IKsPropertySet, &ppdsndIKSPropertySet);
-    if (ppdsndIKSPropertySet->lpVtbl->QuerySupport(ppdsndIKSPropertySet, &DSPROPSETID_EAX30_ListenerProperties, 1, &support) < 0)
-    {
-        pcSNDEAXLisenerPropertiesSetIsOk = 0;
-    }
-    else
-    {
-        pcSNDEAXLisenerPropertiesSetIsOk = 1;
-        if (((uint8_t)support & 3) != 3)
-            pcSNDEAXLisenerPropertiesSetIsOk = 0;
-    }
-    return 0;
-}
-
-BOOL pcSND_CreateSoundBufferAndPlayTest(tSndHandles* handles)
-{
-    IDirectSound8* dsndif;
-    IDirectSoundBuffer* primary;
-    WAVEFORMATEX format;
-    DSBUFFERDESC desc;
-
-    memset(&desc, 0, sizeof(desc));
-    dsndif = handles->dsndif;
-    desc.dwSize = 36;
-    desc.dwFlags = 17;
-    desc.dwBufferBytes = 0;
-    desc.lpwfxFormat = 0;
-    desc.guid3DAlgorithm.Data1 = 0;
-    desc.guid3DAlgorithm.Data2 = 0;
-    memset(desc.guid3DAlgorithm.Data4, 0, sizeof(desc.guid3DAlgorithm.Data4));
-    if (dsndif->lpVtbl->CreateSoundBuffer(dsndif, &desc, &handles->SoundBuffer, 0) < 0)
-        return 0;
-    primary = handles->SoundBuffer;
-    format.wFormatTag = 1;
-    format.nChannels = 2;
-    format.nSamplesPerSec = 48000;
-    format.nAvgBytesPerSec = 192000;
-    format.nBlockAlign = 4;
-    format.wBitsPerSample = 16;
-    format.cbSize = 0;
-    if (primary->lpVtbl->SetFormat(primary, &format) != S_OK || pcSND_CreateSoundBuffer(handles->SoundBuffer, handles->dsndif))
-        return 0;
-    return handles->SoundBuffer->lpVtbl->Play(handles->SoundBuffer, 0, 0, 1) == 0;
-}
-
+/* Opening the device.
+   
+   What used to be here was DirectSound's own ceremony: a primary
+   buffer set to 48 kHz stereo, a 3D listener queried off it, and a
+   10 kHz mono buffer made for no other purpose than asking the EAX
+   listener property set whether it was there. None of it has a
+   successor. The device is 48 kHz stereo because that is what the
+   primary buffer was set to, and the voices convert to it; there is
+   no listener, and there is no EAX. */
 int pcSND_l_Init(tSndHandles* sndh)
 {
-    BYTE fxSetting[4];
-    BYTE driverGuid[16];
-
     BAS_binit(&dsndSBList, 48);
     memset(&gDoSoundGlobal, 0, sizeof(gDoSoundGlobal));
     pcSNDhObject = NULL;
     gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0 = 0;
     sndh->MainWindowHandle = MAI_gh_MainWindow;
-    if (CoInitialize(NULL) != S_OK || pcSND_ReadFXSettingFromRegistry(fxSetting) || pcSND_ReadAudioBoardGuid(driverGuid))
+    /* No COM to initialise, no registry to read for a driver GUID or
+       an EAX setting, and no cooperative level: the window does not
+       own the device any more. */
+    if (!SPL_b_Open())
         return 0;
-    if (pcSND_EAXDirectSoundCreate((GUID*)driverGuid, &sndh->dsndif, 0) != S_OK)
-        return 0;
-    gDoSoundGlobal.dsndCaps.dwSize = 96;
-    sndh->dsndif->lpVtbl->GetCaps(sndh->dsndif, &(gDoSoundGlobal.dsndCaps));
-    sndh->dsndif->lpVtbl->SetCooperativeLevel(sndh->dsndif, sndh->MainWindowHandle, 3);
-    if (!pcSND_CreateSoundBufferAndPlayTest(sndh))
-        return 0;
+    sndh->deviceOpen = 1;
     pcSND_StartSoundThread();
     return 1;
 }
@@ -522,7 +404,7 @@ int pcSND_i_ChangeRenderMode(int mode)
         sbe = (tSndSoundBufferElem*)dsndSBList.keyValPtr[i].key;
         if (sbe != (tSndSoundBufferElem*)-1)
         {
-            sbe->dsndSBIF->lpVtbl->GetVolume(sbe->dsndSBIF, &vol);
+            (vol = SPL_i_VoiceAttenuation(sbe->voice));
             balance = sbe->unk2SetTo64InCreate;
             if (SND_gst_Params.soundRenderMode == 1)
             {
@@ -553,45 +435,53 @@ int pcSND_i_ChangeRenderMode(int mode)
                 }
                 vol += level;
             }
-            sbe->dsndSBIF->lpVtbl->SetPan(sbe->dsndSBIF, pan);
-            sbe->dsndSBIF->lpVtbl->SetVolume(sbe->dsndSBIF, vol);
+            SPL_VoiceSetPan(sbe->voice, pan);
+            SPL_VoiceSetAttenuation(sbe->voice, vol);
         }
     }
     return 0;
 }
 
+/* A 3D buffer used to be made here and parked at a fixed position
+   with fixed distances. That was not spatialisation: the engine works
+   out its own volume and pan, and the 3D buffer existed because the
+   EAX per-buffer reverb needed one to hang off. There is nothing to
+   make now, and nothing that wanted it. */
 int pcSND_SetDefaultSoundPositionAndDistance(tSndSoundBufferElem* sbe)
 {
-    IDirectSound3DBuffer** buffer3d;
-    void** failed;
+    (void)sbe;
+    return 0;
+}
 
-    buffer3d = &sbe->dsnd3dbufferIF;
-    failed = buffer3d; // TODO FIXME: ezek így biztosan jók?
-    if (SUCCEEDED(sbe->dsndSBIF->lpVtbl->QueryInterface(sbe->dsndSBIF, &IID_IDirectSound3DBuffer, &sbe->dsnd3dbufferIF)))
-    {
-        // preserved: the distances and the position are float bit patterns passed as integers
-        (*buffer3d)->lpVtbl->SetMinDistance(*buffer3d, 0x40000000, 0);
-        (*buffer3d)->lpVtbl->SetMaxDistance(*buffer3d, 0x40400000, 0);
-        (*buffer3d)->lpVtbl->SetPosition(*buffer3d, 0, 0, 0x3F800000, 0);
-        failed = &sbe->dsndIKPropertySetIF;
-        if (SUCCEEDED(sbe->dsndSBIF->lpVtbl->QueryInterface(sbe->dsndSBIF, &IID_IKsPropertySet, &sbe->dsndIKPropertySetIF)))
-            return 0;
-    }
-    *failed = NULL;
+/* The room reverb went through the buffer's property set, which was
+   EAX's. There is none, so this answers what it answered on a machine
+   whose driver had no EAX: it cannot be set. Every caller already
+   coped with that, because plenty of cards did not have it. */
+int pcSND_SNDPropertySetRoomReverb(tSndSoundBufferElem* sbe, int enable)
+{
+    (void)sbe;
+    (void)enable;
     return -1;
 }
 
-int pcSND_SNDPropertySetRoomReverb(tSndSoundBufferElem* sbe, int enable)
-{
-    IKsPropertySet** propertySet;
-    int room;
+/* The status word the engine's own tests read. Bit 0 is playing and
+   bit 2 is looping, which are the values sound.c compares against --
+   see the "(status & 4) == 0 && (status & 1) != 0" it uses to pick a
+   voice to steal. Bit 4 is the engine's own mark for a streamed
+   sound and is added by its caller. */
+#define PCSND_PLAYING  1
+#define PCSND_LOOPING  4
 
-    room = enable != 0 ? 0 : -10000;
-    propertySet = &sbe->dsndIKPropertySetIF;
-    // preserved: the guard tests the address of the field, not the interface in it
-    if (propertySet && ((*propertySet)->lpVtbl->Set(*propertySet, &DSPROPSETID_EAX30_BufferProperties, DSPROPERTY_EAXBUFFER_ROOM, 0, 0, (LPVOID*)&room, 4) != S_OK))
-        return -1;
-    return 0;
+static int pcSND_l_VoiceStatus(struct sSplVoice* voice)
+{
+    int spl = SPL_i_VoiceStatus(voice);
+    int status = 0;
+
+    if (spl & SPL_PLAYING)
+        status |= PCSND_PLAYING;
+    if (spl & SPL_LOOPING)
+        status |= PCSND_LOOPING;
+    return status;
 }
 
 void pcSND_DisableReverbAndRestartPlaying(tSoundFxParams* params, tSndSoundBufferElem* sbe)
@@ -601,14 +491,13 @@ void pcSND_DisableReverbAndRestartPlaying(tSoundFxParams* params, tSndSoundBuffe
 
     if (pcSNDFXEnabled_dword_B30400)
     {
-        sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, &status);
+        status = pcSND_l_VoiceStatus(sbe->voice);
         if ((status & 1) != 0)
-            sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
+            SPL_VoiceStop(sbe->voice);
         pcSND_SNDPropertySetRoomReverb(sbe, 0);
         if ((status & 1) != 0)
         {
-            buffer = sbe->dsndSBIF;
-            buffer->lpVtbl->Play(buffer, 0, 0, (status >> 2) & 1);
+            SPL_VoicePlay(sbe->voice, (status >> 2) & 1);
         }
     }
 }
@@ -660,7 +549,7 @@ void pcSND_SB_Stop(tSndSoundBufferElem* sbe)
             if (wasListed)
                 gDoSoundGlobal.sndConcurrentlyPlayedNum -= sbe->format;
             pcSND_DisableReverbIf_i7_not_match_with_idx(&SND_gst_FxDefaultParam, sbe);
-            sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
+            SPL_VoiceStop(sbe->voice);
         }
     }
 }
@@ -682,7 +571,8 @@ int pcSND_SB_GetStatus(tSndSoundBufferElem* sbe, int* status)
         return 0;
     if (sbe->miscData)
         pcSND_stopSoundIfReadFinished(sbe);
-    result = sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, status);
+    *status = pcSND_l_VoiceStatus(sbe->voice);
+    result = 0;
     if (sbe->miscData && (*status & 1) != 0)
         *status |= 0x10u;
     return result;
@@ -702,7 +592,7 @@ int pcSND_SB_Play(tSndSoundBufferElem* sbe, int flags)
     gDoSoundGlobal.sndConcurrentlyPlayedNum += sbe->format;
     if (playing > gDoSoundGlobal.sndConcurrentlyPlayedPeakNum)
         gDoSoundGlobal.sndConcurrentlyPlayedPeakNum = playing;
-    if ((sbe->dsndSBIF->lpVtbl->Play(sbe->dsndSBIF, 0, 0, flags & 1)) != S_OK)
+    if (((SPL_VoicePlay(sbe->voice, flags & 1), 0)) != S_OK)
         OutputDebugStringA("Voice not allocated in hardware");
     else
         OutputDebugStringA("HARDWARE voice\n");
@@ -715,7 +605,7 @@ static int pcSND_RasterBudgetLeft(void)
     return 6000000 - sndRasterStat.i7;
 }
 
-void pcSND_AddToSNDRaster(IDirectSoundBuffer* buffer, int bytes)
+void pcSND_AddToSNDRaster(struct sSplVoice* buffer, int bytes)
 {
     int fileId;
 
@@ -754,7 +644,7 @@ tSndSoundBufferElem* pcSND_pst_SB_Create(tSndHandles* handles, tSndWavHdrStruct*
     int audioBytes2;
     DSBUFFERDESC dsBufferDesc;
 
-    if (!handles->dsndif)
+    if (!handles->deviceOpen)
         return 0;
     if (sndHdr->wfex.wFormatTag != 2)
         return 0;
@@ -820,41 +710,43 @@ tSndSoundBufferElem* pcSND_pst_SB_Create(tSndHandles* handles, tSndWavHdrStruct*
     dsBufferDesc.guid3DAlgorithm.Data2 = 0;
     dsBufferDesc.guid3DAlgorithm.Data3 = 0;
     memset(dsBufferDesc.guid3DAlgorithm.Data4, 0, sizeof(dsBufferDesc.guid3DAlgorithm.Data4));
-    dsndIf = handles->dsndif;
-    if ((dsndIf->lpVtbl->CreateSoundBuffer(dsndIf, &dsBufferDesc, &(sndSNDBuf->dsndSBIF), 0)) != S_OK)
+    sndSNDBuf->voice = SPL_p_VoiceCreate(dsBufferDesc.lpwfxFormat->nChannels,
+                                         dsBufferDesc.lpwfxFormat->nSamplesPerSec,
+                                         dsBufferDesc.dwBufferBytes);
+    if (!sndSNDBuf->voice)
     {
         if (sndData)
             MEM_Free(sndData);
         MEM_Free(sndSNDBuf);
         return 0;
     }
-    dsndSBIF = sndSNDBuf->dsndSBIF;
+    dsndSBIF = sndSNDBuf->voice;
     sndSNDBuf->format = dsBufferDesc.lpwfxFormat->nChannels;
     pcSND_AddToSNDRaster(dsndSBIF, dsBufferDesc.dwBufferBytes);
     if (!sndData)
         return sndSNDBuf;
-    if ((sndSNDBuf->dsndSBIF->lpVtbl->Lock(sndSNDBuf->dsndSBIF, 0, sndHdr->fullSoundSize, &audioPtr1, &audioBytes1, &audioPtr2, &audioBytes2, 0)) != S_OK)
+    /* The whole sound, in one write. It used to be a lock that could
+       hand back two stretches of a circular buffer and a copy into
+       each; the voice does its own wrapping, so there is one call and
+       nothing to stitch. */
+    if (!SPL_b_VoiceWrite(sndSNDBuf->voice, 0, sndData, sndHdr->fullSoundSize))
     {
-        sndSNDBuf->dsndSBIF->lpVtbl->Release(sndSNDBuf->dsndSBIF);
+        SPL_VoiceDestroy(sndSNDBuf->voice);
         MEM_Free(sndSNDBuf);
         MEM_Free(sndData);
         return NULL;
     }
-    memcpy(audioPtr1, sndData, audioBytes1);
-    if (audioBytes2)
-        memcpy(audioPtr2, &sndData[audioBytes1], (unsigned int)audioBytes2);
-    sndSNDBuf->dsndSBIF->lpVtbl->Unlock(sndSNDBuf->dsndSBIF, audioPtr1, audioBytes1, audioPtr2, audioBytes2);
     pcSND_SetDefaultSoundPositionAndDistance(sndSNDBuf);
     MEM_Free(sndData);
     return sndSNDBuf;
 }
 
+/* The 3D listener, the buffer EAX was probed on, its 3D buffer and
+   its property set were released here. None of the four is made any
+   more, so there is nothing to give back. */
 int pcSND_DSoundBuffersRelease()
 {
-    dsndIDisectSound3DListenerIF->lpVtbl->Release(dsndIDisectSound3DListenerIF);
-    d3dSndBuffer->lpVtbl->Release(d3dSndBuffer);
-    ppdsndDSND3DBuffer->lpVtbl->Release(ppdsndDSND3DBuffer);
-    return ppdsndIKSPropertySet->lpVtbl->Release(ppdsndIKSPropertySet);
+    return 0;
 }
 
 void pcSND_Cleanup()
@@ -899,9 +791,8 @@ void pcSND_Close(tSndHandles* handles)
 {
     pcSND_Cleanup();
     BAS_bfree(&dsndSBList);
-    pcSND_DSoundBuffersRelease();
-    handles->dsndif->lpVtbl->Release(handles->dsndif);
-    CoUninitialize();
+    handles->deviceOpen = 0;
+    SPL_Close();
 }
 
 void pcSND_SB_Duplicate(tSndHandles* handles, tSndSoundBufferElem* src, tSndSoundBufferElem** dest)
@@ -916,7 +807,7 @@ void pcSND_SB_Duplicate(tSndHandles* handles, tSndSoundBufferElem* src, tSndSoun
         if (copy)
         {
             memset(copy, 0, sizeof(tSndSoundBufferElem));
-            handles->dsndif->lpVtbl->DuplicateSoundBuffer(handles->dsndif, src->dsndSBIF, &((*dest)->dsndSBIF));
+            (*dest)->voice = SPL_p_VoiceDuplicate(src->voice);
             (*dest)->format = src->format;
             (*dest)->unk2SetTo64InCreate = 64;
             pcSND_SetDefaultSoundPositionAndDistance(*dest);
@@ -927,7 +818,7 @@ void pcSND_SB_Duplicate(tSndHandles* handles, tSndSoundBufferElem* src, tSndSoun
 void pcSND_SB_GetFrequency(tSndSoundBufferElem* sbe, int* freq)
 {
     if (sbe)
-        sbe->dsndSBIF->lpVtbl->GetFrequency(sbe->dsndSBIF, freq);
+        (*(freq) = SPL_i_VoiceFrequency(sbe->voice));
 }
 
 void pcSND_SB_GetPan(tSndSoundBufferElem* sbe, int* pan, int* front)
@@ -960,21 +851,20 @@ void pcSND_SB_GetPan(tSndSoundBufferElem* sbe, int* pan, int* front)
     }
 }
 
-int pcSND_3DSoundBufferSetPos(tSndSoundBufferElem* sbe, int pan)
+/* Where a sound sits between the two speakers.
+   
+   This used to put the 3D buffer on a unit circle: the pan became an
+   angle, hard right at 0 degrees through straight ahead at 90 to hard
+   left at 180, and the position followed from it. The circle was the
+   only use the engine ever made of 3D, and the pan is what it was
+   expressing -- so the pan is what is set now, in the same hundredths
+   of a decibel and with the same sign. What is lost is the equal-power
+   curve of going round a circle; what is kept is which speaker the
+   sound comes out of and how much. */
+int pcSND_SoundBufferSetPan(tSndSoundBufferElem* sbe, int pan)
 {
-    IDirectSound3DBuffer* buffer3d;
-    long double angle;
-    float x;
-    float y;
-
-    buffer3d = sbe->dsnd3dbufferIF;
-    if (buffer3d)
-    {
-        angle = (10000.0 - (double)pan) * 0.0089999996 * 0.017453292;
-        y = (float)sin(angle);
-        x = (float)cos(angle);
-        buffer3d->lpVtbl->SetPosition(buffer3d, x, y, 0.0f, 0);
-    }
+    if (sbe)
+        SPL_VoiceSetPan(sbe->voice, pan);
     return 0;
 }
 
@@ -990,7 +880,7 @@ void pcSND_SB_SetPan(tSndSoundBufferElem* sbe, int pan, int front) // ehhez nagy
 
     if (!sbe)
         return;
-    sbe->dsndSBIF->lpVtbl->GetVolume(sbe->dsndSBIF, &vol);
+    (vol = SPL_i_VoiceAttenuation(sbe->voice));
     balance = sbe->unk2SetTo64InCreate;
     if (balance <= 64)
         stripped = vol - gpcSNDVolumeAdjustmentArr[balance];
@@ -1038,7 +928,7 @@ void pcSND_SB_SetPan(tSndSoundBufferElem* sbe, int pan, int front) // ehhez nagy
     vol = stripped + level;
     if (SND_gst_Params.soundRenderMode == 1)
     {
-        sbe->dsndSBIF->lpVtbl->SetPan(sbe->dsndSBIF, 0);
+        SPL_VoiceSetPan(sbe->voice, 0);
     }
     else
     {
@@ -1050,16 +940,16 @@ void pcSND_SB_SetPan(tSndSoundBufferElem* sbe, int pan, int front) // ehhez nagy
             side = 10000;
         else if (side < -10000)
             side = -10000;
-        pcSND_3DSoundBufferSetPos(sbe, side);
+        pcSND_SoundBufferSetPan(sbe, side);
         if (sbe->unknownFiledinsub49db40ToSetVolume != vol)
-            sbe->dsndSBIF->lpVtbl->SetVolume(sbe->dsndSBIF, vol);
+            SPL_VoiceSetAttenuation(sbe->voice, vol);
     }
 }
 
 void pcSND_SB_SetCurrPos(tSndSoundBufferElem* sbe, int pos)
 {
     if (sbe)
-        sbe->dsndSBIF->lpVtbl->SetCurrentPosition(sbe->dsndSBIF, pos);
+        SPL_VoiceSetCursor(sbe->voice, pos);
 }
 
 void pcSND_SB_SetVolume(tSndSoundBufferElem* sbe, int att)
@@ -1085,13 +975,12 @@ void pcSND_SB_SetVolume(tSndSoundBufferElem* sbe, int att)
         vol = -10000;
     if (sbe->unknownFiledinsub49db40ToSetVolume != vol)
     {
-        buffer = sbe->dsndSBIF;
         sbe->unknownFiledinsub49db40ToSetVolume = vol;
-        buffer->lpVtbl->SetVolume(buffer, vol);
+        SPL_VoiceSetAttenuation(sbe->voice, vol);
     }
 }
 
-void pcSND_SNDRasterRelease(IDirectSoundBuffer* buffer)
+void pcSND_SNDRasterRelease(struct sSplVoice* buffer)
 {
     int fileId;
     int bytes;
@@ -1127,17 +1016,16 @@ void pcSND_MiscDataRelease(tSndSoundBufferElem* sbe)
             pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(sbe);
             if (misc->fileHandle != (HANDLE)-1)
                 CloseHandle(misc->fileHandle);
-            notify = misc->vmilenEventHandlptr_Sub49e950;
             misc->fileHandle = (HANDLE)-1;
-            if (notify)
-                notify->lpVtbl->Release(notify);
+            /* The notify interface the refill positions were set on
+               used to be released here. There is none. */
             misc->vmilenEventHandlptr_Sub49e950 = 0;
-            if (sbe->dsndSBIF)
+            if (sbe->voice)
             {
-                pcSND_SNDRasterRelease(sbe->dsndSBIF);
-                sbe->dsndSBIF->lpVtbl->Release(sbe->dsndSBIF);
+                pcSND_SNDRasterRelease(sbe->voice);
+                SPL_VoiceDestroy(sbe->voice);
             }
-            sbe->dsndSBIF = 0;
+            sbe->voice = 0;
             MEM_Free(sbe->miscData);
             sbe->miscData = 0;
         }
@@ -1165,16 +1053,16 @@ void pcSND_ReleaseSoundBuffer(tSndSoundBufferElem* sbe)
             /*
             // TODO FIXME: ez lehet megint valami bent felejtett kód, mivel 0x54 nincs is a tSndSoundBufferElem struktúrában, és  gap1, gap sem állítódik
             if (*(_DWORD*)v1->gap1)
-                ((void(__stdcall*)(dsndSoundBuffer**, _DWORD, _DWORD, _DWORD))(*v1->dsndSBIF)[1].QueryInterface)(
-                    v1->dsndSBIF,
+                ((void(__stdcall*)(dsndSoundBuffer**, _DWORD, _DWORD, _DWORD))(*v1->voice)[1].QueryInterface)(
+                    v1->voice,
                     0,
                     0,
                     0);
             if (*(_DWORD*)v1->gap)
                 MEM_Free(*(void**)v1->gap);
             */
-            pcSND_SNDRasterRelease(sbe->dsndSBIF);
-            sbe->dsndSBIF->lpVtbl->Release(sbe->dsndSBIF);
+            pcSND_SNDRasterRelease(sbe->voice);
+            SPL_VoiceDestroy(sbe->voice);
             MEM_Free(sbe);
         }
     }
@@ -1204,7 +1092,7 @@ tSndSoundBufferElem* pcSND_SoundReloadToDSound(tSndHandles* handles, tSndWavHdrS
     int audioBytes2;
     DSBUFFERDESC dsBufferDesc;
 
-    if (!handles->dsndif)
+    if (!handles->deviceOpen)
         return 0;
     if (wavHdr->wfex.wFormatTag != 2)
         return 0;
@@ -1273,30 +1161,28 @@ tSndSoundBufferElem* pcSND_SoundReloadToDSound(tSndHandles* handles, tSndWavHdrS
     dsBufferDesc.guid3DAlgorithm.Data2 = 0;
     dsBufferDesc.guid3DAlgorithm.Data3 = 0;
     memset(dsBufferDesc.guid3DAlgorithm.Data4, 0, sizeof(dsBufferDesc.guid3DAlgorithm.Data4));
-    dsndIf = handles->dsndif;
-    if (dsndIf->lpVtbl->CreateSoundBuffer(dsndIf, &dsBufferDesc, &(sndSNDBuf->dsndSBIF), 0) != S_OK)
+    sndSNDBuf->voice = SPL_p_VoiceCreate(dsBufferDesc.lpwfxFormat->nChannels,
+                                         dsBufferDesc.lpwfxFormat->nSamplesPerSec,
+                                         dsBufferDesc.dwBufferBytes);
+    if (!sndSNDBuf->voice)
     {
         if (sndData)
             MEM_Free(sndData);
         MEM_Free(sndSNDBuf);
         return 0;
     }
-    dsndSBIF = sndSNDBuf->dsndSBIF;
+    dsndSBIF = sndSNDBuf->voice;
     sndSNDBuf->format = dsBufferDesc.lpwfxFormat->nChannels;
     pcSND_AddToSNDRaster(dsndSBIF, dsBufferDesc.dwBufferBytes);
     if (!sndData)
         return sndSNDBuf;
-    if (sndSNDBuf->dsndSBIF->lpVtbl->Lock(sndSNDBuf->dsndSBIF, 0, wavHdr->fullSoundSize, &audioPtr1, &audioBytes1, &audioPtr2, &audioBytes2, 0) != S_OK)
+    if (!SPL_b_VoiceWrite(sndSNDBuf->voice, 0, sndData, wavHdr->fullSoundSize))
     {
-        sndSNDBuf->dsndSBIF->lpVtbl->Release(sndSNDBuf->dsndSBIF);
+        SPL_VoiceDestroy(sndSNDBuf->voice);
         MEM_Free(sndSNDBuf);
         MEM_Free(sndData);
         return NULL;
     }
-    memcpy(audioPtr1, sndData, audioBytes1);
-    if (audioBytes2)
-        memcpy(audioPtr2, &sndData[audioBytes1], audioBytes2);
-    sndSNDBuf->dsndSBIF->lpVtbl->Unlock(sndSNDBuf->dsndSBIF, audioPtr1, audioBytes1, audioPtr2, audioBytes2);
     MEM_Free(sndData);
     return sndSNDBuf;
 }
@@ -1371,7 +1257,10 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
     distanceToMoveHigh = 0;
     if (misc)
     {
-        sbe->dsndSBIF->lpVtbl->Lock(sbe->dsndSBIF, 0, misc->soundBufferSize, &audioPtr1, &audioBytes1, &audioPtr2, &audioBytes2, 2);
+        audioBytes1 = misc->soundBufferSize;
+        if (audioBytes1 > sizeof(dsndUploadBuffer))
+            audioBytes1 = sizeof(dsndUploadBuffer);
+        audioPtr1 = (char*)dsndUploadBuffer;
         skipSize = pcSND_CalcSizeToReadByFormat(misc->unk6, sbe->format);
         SetFilePointer(misc->fileHandle, misc->distanceToMove + skipSize, &distanceToMoveHigh, 0);
         misc->sumSize = misc->unk6;
@@ -1399,7 +1288,7 @@ void pcSND_fillSoundBuffer(int unused, tSbeMiscData* miscArg, tSndSoundBufferEle
                 memset(&audioPtr1[produced], 0, audioBytes1 - produced);
             }
         }
-        sbe->dsndSBIF->lpVtbl->Unlock(sbe->dsndSBIF, audioPtr1, audioBytes1, 0, 0);
+        SPL_b_VoiceWrite(sbe->voice, 0, audioPtr1, (int)audioBytes1);
         misc->currOffset += audioBytes1;
         if (misc->currOffset >= misc->soundBufferSize)
             misc->currOffset -= misc->soundBufferSize;
@@ -1416,7 +1305,7 @@ void pcSND_SB_SetFrequency(tSndSoundBufferElem* sbe, int freq)
             freq = 200000;
         else if (freq < 100)
             freq = 100;
-        sbe->dsndSBIF->lpVtbl->SetFrequency(sbe->dsndSBIF, freq);
+        SPL_VoiceSetFrequency(sbe->voice, freq);
     }
 }
 
@@ -1432,7 +1321,7 @@ void pcSND_UnknownSoundPanAndVolumeSetByUnknown(tSndSoundBufferElem* sbe, int pa
 
     if (!sbe)
         return;
-    sbe->dsndSBIF->lpVtbl->GetVolume(sbe->dsndSBIF, &vol);
+    (vol = SPL_i_VoiceAttenuation(sbe->voice));
     balance = sbe->unk2SetTo64InCreate;
     if (balance <= 64)
         stripped = vol - gpcSNDVolumeAdjustmentArr[balance];
@@ -1480,7 +1369,7 @@ void pcSND_UnknownSoundPanAndVolumeSetByUnknown(tSndSoundBufferElem* sbe, int pa
     vol = stripped + level;
     if (SND_gst_Params.soundRenderMode == 1)
     {
-        sbe->dsndSBIF->lpVtbl->SetPan(sbe->dsndSBIF, 0);
+        SPL_VoiceSetPan(sbe->voice, 0);
     }
     else
     {
@@ -1492,9 +1381,9 @@ void pcSND_UnknownSoundPanAndVolumeSetByUnknown(tSndSoundBufferElem* sbe, int pa
             side = 10000;
         else if (side < -10000)
             side = -10000;
-        sbe->dsndSBIF->lpVtbl->SetPan(sbe->dsndSBIF, side);
+        SPL_VoiceSetPan(sbe->voice, side);
         if (sbe->unknownFiledinsub49db40ToSetVolume != vol)
-            sbe->dsndSBIF->lpVtbl->SetVolume(sbe->dsndSBIF, vol);
+            SPL_VoiceSetAttenuation(sbe->voice, vol);
     }
 }
 
@@ -1541,8 +1430,8 @@ void pcSND_StreamReinitAndPlay(tSndSoundBufferElem* sbe, int len, int startPos, 
             pcSND_UnknownSoundPanAndVolumeSetByUnknown(sbe, pan);
             pcSND_SB_SetVolume(sbe, att);
             pcSND_SetPositionNotify(sbe);
-            sbe->dsndSBIF->lpVtbl->SetCurrentPosition(sbe->dsndSBIF, 0);
-            sbe->dsndSBIF->lpVtbl->Play(sbe->dsndSBIF, 0, 0, 1);
+            SPL_VoiceSetCursor(sbe->voice, 0);
+            (SPL_VoicePlay(sbe->voice, 1), 0);
         }
     }
 }
@@ -1555,7 +1444,7 @@ tSndSoundBufferElem* pcSND_CreateTrack(tSndHandles* handles, tSndWavHdrStruct* w
     DSBUFFERDESC desc;
 
     wavHdr->wfex.wFormatTag = 1;
-    if (!handles->dsndif)
+    if (!handles->deviceOpen)
         return 0;
     track = (tSndSoundBufferElem*)MEM_p_Alloc(sizeof(tSndSoundBufferElem));
     memset(track, 0, sizeof(tSndSoundBufferElem));
@@ -1573,14 +1462,13 @@ tSndSoundBufferElem* pcSND_CreateTrack(tSndHandles* handles, tSndWavHdrStruct* w
     desc.guid3DAlgorithm.Data2 = 0;
     desc.guid3DAlgorithm.Data3 = 0;
     memset(desc.guid3DAlgorithm.Data4, 0, sizeof(desc.guid3DAlgorithm.Data4));
-    dsndif = handles->dsndif;
-    // preserved: both allocations leak when either call fails
-    if (dsndif->lpVtbl->CreateSoundBuffer(dsndif, &desc, &(track->dsndSBIF), 0) != S_OK
-        || track->dsndSBIF->lpVtbl->QueryInterface(track->dsndSBIF, &IID_IDirectSoundNotify, &(misc->vmilenEventHandlptr_Sub49e950)) != S_OK)
-    {
+    // preserved: both allocations leak when the call fails
+    track->voice = SPL_p_VoiceCreate(desc.lpwfxFormat->nChannels,
+                                     desc.lpwfxFormat->nSamplesPerSec,
+                                     misc->soundBufferSize);
+    if (!track->voice)
         return 0;
-    }
-    pcSND_AddToSNDRaster(track->dsndSBIF, misc->soundBufferSize);
+    pcSND_AddToSNDRaster(track->voice, misc->soundBufferSize);
     track->format = desc.lpwfxFormat->nChannels;
     track->unk2SetTo64InCreate = 64;
     track->miscData = misc;
@@ -1614,7 +1502,7 @@ void pcSND_CreateTrackSB(tSndSoundBufferElem** oneChannelTrack, tSndSoundBufferE
     wavHdr.wfex.nChannels = 2;
     stereo = pcSND_CreateTrack(SND_gst_Params.handles, &wavHdr);
     *twoChannelTrack = stereo;
-    pcSND_SNDRasterRelease(stereo->dsndSBIF);
+    pcSND_SNDRasterRelease(stereo->voice);
 }
 
 void pcSND_ReleaseTrackSB(tSndSoundBufferElem* oneChannelTrack, tSndSoundBufferElem* twoChannelTrack)
@@ -2184,7 +2072,11 @@ int pcSND_EAXListenerPropertiesSet(int preset)
     EAXLISTENERPROPERTIES props;
 
     pcSND_fxStructSet(&props, preset);
-    ppdsndIKSPropertySet->lpVtbl->Set(ppdsndIKSPropertySet, &DSPROPSETID_EAX30_ListenerProperties, 1, 0, 0, (LPVOID*)&props, sizeof(EAXLISTENERPROPERTIES));
+    /* The listener properties went to EAX through the property set.
+       There is none, so the room the engine computed is worked out and
+       thrown away -- which is what happened on every card without
+       EAX, and is why gFXGlobal.fxEnabled exists. */
+    (void)props;
     return 0;
 }
 
@@ -2673,7 +2565,7 @@ void pcSND_SB_GetCurrPos(tSndSoundBufferElem* sbe, int* currPos, int* writePos)
         *writePos = 0;
         *currPos = 0;
         misc = sbe->miscData;
-        sbe->dsndSBIF->lpVtbl->GetCurrentPosition(sbe->dsndSBIF, &playPos, 0); // !!!!!!!!!!!!!!!!!!!!!!!!a3a
+        playPos = SPL_i_VoiceCursor(sbe->voice);
         if (playPos >= misc->currentPlayPosition)
             *currPos = playPos + misc->currSize - misc->currentPlayPosition;
         else
@@ -2681,7 +2573,8 @@ void pcSND_SB_GetCurrPos(tSndSoundBufferElem* sbe, int* currPos, int* writePos)
     }
     else
     {
-        sbe->dsndSBIF->lpVtbl->GetCurrentPosition(sbe->dsndSBIF, currPos, writePos);
+        *currPos = SPL_i_VoiceCursor(sbe->voice);
+        *writePos = SPL_i_VoiceWriteCursor(sbe->voice);
     }
 }
 
@@ -2689,19 +2582,20 @@ void pcSND_flipPlayStopState(tSndSoundBufferElem* sbe)
 {
     int status;
 
-    sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, &status);
-    if ((status & 1) != 0)
+    status = pcSND_l_VoiceStatus(sbe->voice);
+    if ((status & PCSND_PLAYING) != 0)
     {
         sbe->miscData->Stopped_SetIN49e270 = 1;
-        sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
-        do
-            sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, &status);
-        while ((status & 1) != 0);
+        SPL_VoiceStop(sbe->voice);
+        /* The buffer took a moment to come to a stop and this spun
+           until it had. A voice that has been stopped has had its
+           queue dropped with it, so there is nothing left to wait
+           for. */
     }
     else
     {
         sbe->miscData->Stopped_SetIN49e270 = 0;
-        sbe->dsndSBIF->lpVtbl->Play(sbe->dsndSBIF, 0, 0, 1);
+        (SPL_VoicePlay(sbe->voice, 1), 0);
     }
 }
 
@@ -2715,9 +2609,9 @@ void pcSND_SB_Pause(tSndSoundBufferElem* sbe)
         pcSND_flipPlayStopState(sbe);
         return;
     }
-    sbe->dsndSBIF->lpVtbl->GetStatus(sbe->dsndSBIF, &status);
-    if ((status & 1) != 0) {
-        sbe->dsndSBIF->lpVtbl->Stop(sbe->dsndSBIF);
+    status = pcSND_l_VoiceStatus(sbe->voice);
+    if ((status & PCSND_PLAYING) != 0) {
+        SPL_VoiceStop(sbe->voice);
         return;
     }
     for (idx = 0; idx < SND_gst_Params.soundInstanceNum; ++idx)
@@ -2725,25 +2619,14 @@ void pcSND_SB_Pause(tSndSoundBufferElem* sbe)
         if (SND_gst_Params.soundInstances[idx].soundBufElemFromModel == sbe)
             break;
     }
-    buffer = sbe->dsndSBIF;
+    buffer = sbe->voice;
     // preserved: with no matching instance the index is one past the array
-    buffer->lpVtbl->Play(buffer, 0, 0, (SND_gst_Params.soundInstances[idx].flags >> 23) & 1);
+    SPL_VoicePlay(sbe->voice, (SND_gst_Params.soundInstances[idx].flags >> 23) & 1);
 }
 
-void pcSND_D3DSoundBufAAndIKPopertySetRelease(tSndSoundBufferElem* sbe)
-{
-    IDirectSound3DBuffer* buffer3d;
-    IKsPropertySet* propertySet;
-
-    buffer3d = sbe->dsnd3dbufferIF;
-    if (buffer3d)
-    {
-        buffer3d->lpVtbl->Release(sbe->dsnd3dbufferIF);
-        propertySet = sbe->dsndIKPropertySetIF;
-        if (propertySet)
-            propertySet->lpVtbl->Release(sbe->dsndIKPropertySetIF);
-    }
-}
+/* The 3D buffer and the property set were released here. Neither
+   exists, so the function does not either; its one caller says so
+   where the call used to be. */
 
 void pcSND_SB_Release(tSndSoundBufferElem* sbe)
 {
@@ -2764,8 +2647,8 @@ void pcSND_SB_Release(tSndSoundBufferElem* sbe)
             if (wasListed)
                 gDoSoundGlobal.sndConcurrentlyPlayedNum -= sbe->format;
             pcSND_D3DSoundBufAAndIKPopertySetRelease(sbe);
-            pcSND_SNDRasterRelease(sbe->dsndSBIF);
-            sbe->dsndSBIF->lpVtbl->Release(sbe->dsndSBIF);
+            pcSND_SNDRasterRelease(sbe->voice);
+            SPL_VoiceDestroy(sbe->voice);
             MEM_Free(sbe);
         }
     }

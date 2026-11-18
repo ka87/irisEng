@@ -47,8 +47,31 @@ src = open('win/winsound.c', encoding='latin-1').read()
 hdr = open('win/winsound.h', encoding='latin-1').read()
 names = []
 
-body = re.sub(r'(?s)/\*.*?\*/', '', src)
-body = re.sub(r'//[^\n]*', '', body)
+# Comments, in the order they appear rather than block-then-line.
+# Taking the blocks out first is wrong and was: win/winsound.c carries
+# a commented-out line reading "//*(double*)&dest.x = v21;", whose
+# "/*" is inside a line comment and opens nothing -- but a block pass
+# that runs first reads it as an opener and eats everything up to the
+# next "*/", taking five function definitions with it. They were then
+# missing from the rename list and both copies defined them, which the
+# linker called a multiple definition.
+def WSND_strip(text):
+    out = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text.startswith('/*', i):
+            end = text.find('*/', i + 2)
+            i = n if end < 0 else end + 2
+        elif text.startswith('//', i):
+            end = text.find('\n', i)
+            i = n if end < 0 else end
+        else:
+            out.append(text[i])
+            i += 1
+    return ''.join(out)
+
+body = WSND_strip(src)
 
 for m in re.finditer(r'(?m)^(?:static\s+)?[A-Za-z_][\w \*]*?(?<![\w])(\w+)\s*\([^;{}]*\)\s*\n?\{', body):
     names.append(m.group(1))

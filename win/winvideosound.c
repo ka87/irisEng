@@ -1,5 +1,6 @@
 #include "winvideosound.h"
 #include "../memory.h"
+#include "../sndplatform.h"
 
 #include <string.h>
 
@@ -15,7 +16,7 @@
 
 struct sVideoSound
 {
-    IDirectSoundBuffer8* buffer;
+    tSplVoice* voice;
     int   bytes;          /* the whole ring */
     int   frameBytes;     /* one sample frame */
     int   writePos;       /* where the next write goes */
@@ -29,90 +30,58 @@ struct sVideoSound
     int   started;        /* Play has been called */
 };
 
-/* Writes into the ring at writePos, wrapping, and advances it. */
+/* Writes into the ring at writePos, wrapping, and advances it.
+   Where this used to lock a stretch of the buffer and be handed one
+   or two pointers into it, the voice takes the bytes and does its own
+   wrapping -- so the write is always the whole of what was asked
+   for, and there is no short write to account for. */
 static void WVS_l_Write(tVideoSound* sound, const uint8_t* src, int bytes,
                         int asSilence, int count)
 {
-    void* first = NULL;
-    void* second = NULL;
-    DWORD firstBytes = 0;
-    DWORD secondBytes = 0;
+    int ok;
 
     if (bytes <= 0)
         return;
-    if (FAILED(sound->buffer->lpVtbl->Lock(sound->buffer, (DWORD)sound->writePos,
-                                           (DWORD)bytes, &first, &firstBytes,
-                                           &second, &secondBytes, 0)))
-    {
+    if (asSilence)
+        ok = SPL_b_VoiceSilence(sound->voice, sound->writePos, bytes);
+    else
+        ok = SPL_b_VoiceWrite(sound->voice, sound->writePos, src, bytes);
+    if (!ok)
         return;
-    }
-    if (first && firstBytes)
-    {
-        if (asSilence)
-            memset(first, 0, firstBytes);
-        else
-            memcpy(first, src, firstBytes);
-    }
-    if (second && secondBytes)
-    {
-        if (asSilence)
-            memset(second, 0, secondBytes);
-        else
-            memcpy(second, src + firstBytes, secondBytes);
-    }
-    sound->buffer->lpVtbl->Unlock(sound->buffer, first, firstBytes, second, secondBytes);
-    sound->writePos = (sound->writePos + (int)(firstBytes + secondBytes)) % sound->bytes;
+    sound->writePos = (sound->writePos + bytes) % sound->bytes;
     if (count)
-        sound->writtenBytes += (int)(firstBytes + secondBytes);
+        sound->writtenBytes += bytes;
 }
 
-tVideoSound* WVS_pst_Open(IDirectSound8* device, tVideoStream* video)
+tVideoSound* WVS_pst_Open(tVideoStream* video)
 {
     tVideoSound* sound;
-    WAVEFORMATEX format;
-    DSBUFFERDESC desc;
-    IDirectSoundBuffer* buffer = NULL;
+    tSplVoice* voice;
     int rate;
     int channels;
+    int bytes;
 
-    if (!device || !video || !VID_b_HasSound(video))
+    if (!video || !VID_b_HasSound(video))
         return NULL;
     rate = VID_i_SoundRate(video);
     channels = VID_i_SoundChannels(video);
     if (rate <= 0 || channels <= 0)
         return NULL;
 
-    memset(&format, 0, sizeof(format));
-    format.wFormatTag = WAVE_FORMAT_PCM;
-    format.nChannels = (WORD)channels;
-    format.nSamplesPerSec = (DWORD)rate;
-    format.wBitsPerSample = 16;
-    format.nBlockAlign = (WORD)(channels * 2);
-    format.nAvgBytesPerSec = (DWORD)(rate * channels * 2);
-    format.cbSize = 0;
-
-    memset(&desc, 0, sizeof(desc));
-    desc.dwSize = sizeof(desc);
-    desc.dwFlags = DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_GLOBALFOCUS
-                 | DSBCAPS_CTRLVOLUME;
-    desc.dwBufferBytes = (DWORD)(rate * channels * 2 * WVS_SECONDS);
-    desc.lpwfxFormat = &format;
-
-    if (FAILED(device->lpVtbl->CreateSoundBuffer(device, &desc, &buffer, NULL))
-        || !buffer)
-    {
+    bytes = rate * channels * 2 * WVS_SECONDS;
+    voice = SPL_p_VoiceCreate(channels, rate, bytes);
+    if (!voice)
         return NULL;
-    }
 
     sound = (tVideoSound*)MEM_p_Alloc(sizeof(tVideoSound));
     if (!sound)
     {
-        buffer->lpVtbl->Release(buffer);
+        SPL_VoiceDestroy(voice);
         return NULL;
     }
     memset(sound, 0, sizeof(*sound));
-    sound->buffer = (IDirectSoundBuffer8*)buffer;
-    sound->bytes = (int)desc.dwBufferBytes;
+    sound->voice = voice;
+    sound->bytes = bytes;
     sound->frameBytes = channels * 2;
 
     /* Start silent, so the first update writes into a known buffer
@@ -126,10 +95,10 @@ void WVS_Close(tVideoSound* sound)
 {
     if (!sound)
         return;
-    if (sound->buffer)
+    if (sound->voice)
     {
-        sound->buffer->lpVtbl->Stop(sound->buffer);
-        sound->buffer->lpVtbl->Release(sound->buffer);
+        SPL_VoiceStop(sound->voice);
+        SPL_VoiceDestroy(sound->voice);
     }
     MEM_Free(sound);
 }
@@ -161,29 +130,24 @@ static void WVS_l_Report(const tVideoSound* sound, tVideoStream* video)
 
 void WVS_Update(tVideoSound* sound, tVideoStream* video)
 {
-    DWORD playPos = 0;
-    DWORD writeCursor = 0;
+    int playPos;
     int moved;
     int free;
     int got;
     uint8_t staging[16384];
 
-    if (!sound || !sound->buffer || !video)
+    if (!sound || !sound->voice || !video)
         return;
 
-    if (FAILED(sound->buffer->lpVtbl->GetCurrentPosition(sound->buffer,
-                                                         &playPos, &writeCursor)))
-    {
-        return;
-    }
+    playPos = SPL_i_VoiceCursor(sound->voice);
 
     /* The cursor runs round the ring, so the distance it has moved
        since the last look is what was played, and that is what the
        picture's clock is counted in. */
-    moved = (int)playPos - sound->lastPlayPos;
+    moved = playPos - sound->lastPlayPos;
     if (moved < 0)
         moved += sound->bytes;
-    sound->lastPlayPos = (int)playPos;
+    sound->lastPlayPos = playPos;
     sound->playedBytes += moved;
 
     /* What is free is the ring less what is written and not yet
@@ -215,7 +179,7 @@ void WVS_Update(tVideoSound* sound, tVideoStream* video)
 
     if (!sound->started)
     {
-        sound->buffer->lpVtbl->Play(sound->buffer, 0, 0, DSBPLAY_LOOPING);
+        SPL_VoicePlay(sound->voice, 1);
         sound->started = 1;
     }
     WVS_l_Report(sound, video);
