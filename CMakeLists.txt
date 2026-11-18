@@ -178,12 +178,21 @@ if(WIN32)
     target_compile_definitions(irisEng PRIVATE
         _CRT_SECURE_NO_WARNINGS WIN32 _CONSOLE)
 else()
+    # The big file is bigger than two gigabytes, and this is a 32-bit
+    # build: without this, off_t is 32 bits wide and the wide seek in
+    # fileio.c would reach the first two gigabytes of the file and
+    # fail past them. fileio.c refuses to compile without it rather
+    # than let that happen.
+    target_compile_definitions(irisEng PRIVATE _FILE_OFFSET_BITS=64)
+
     message(WARNING
-        "This is not a Windows build. The engine does not compile off "
-        "Windows yet: it asks for the registry, a dialog, the Win32 heap, "
-        "a directory walk and a WGL context, and one of its two renderers "
-        "is Direct3D. The configuration below is here so that the work of "
-        "answering those has somewhere to land, not because it links.")
+        "This is not a Windows build. Every source compiles, but the "
+        "engine does not link off Windows yet: it asks for the Win32 "
+        "heap, a directory walk, Win32 file reads, a free-space query, "
+        "the key state, a WGL context and DirectInput, and one of its "
+        "two renderers is Direct3D. The configuration below is here so "
+        "that the work of answering those has somewhere to land, not "
+        "because it links.")
 endif()
 
 if(MSVC)

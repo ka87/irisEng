@@ -76,10 +76,15 @@ CFLAGS="$CFLAGS -Ithirdparty/ffmpeg/include"
 CFLAGS="$CFLAGS -Ithirdparty/SDL3/include"
 CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
 
-# loading.c cannot be compiled here at all -- the fpos_t question in
-# tests/implicitcheck.sh -- and a file that does not compile reports no
-# warnings, so it is named rather than silently counting zero.
-UNSWEEPABLE="loading.c"
+# Nothing, now. A file that does not compile reports no warnings, so
+# one that cannot be built here has to be named rather than silently
+# counting zero -- loading.c was named for exactly that reason while
+# it did arithmetic on an fpos_t, which is an integer on the target
+# and a struct here. It asks the engine's own wide seek instead and
+# compiles like the rest, and so does bigfiles.c, which had the same
+# problem and was never named at all: it was swept, counted zero
+# warnings, and passed without ever having been compiled.
+UNSWEEPABLE=""
 
 echo "=== compiler warnings ==="
 
