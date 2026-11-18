@@ -1,4 +1,4 @@
-/* A unit test for platform/d3dmath.c.
+/* A unit test for matrixmath.c.
  *
  * New code replacing four D3DX calls, so this is a direct check and
  * not a differential one: there is no earlier copy of these to
@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../platform/d3dmath.h"
+#include "../matrixmath.h"
 
 static long checks;
 static long fails;
@@ -36,7 +36,7 @@ static void ok(int cond, const char* what)
 /* Matrices are compared with a tolerance, because the reference is
    exact and the implementation is single-precision. 1e-5 is far
    tighter than any arithmetic slip and far looser than rounding. */
-static void okMatrix(const D3DMATRIX* got, const float* want, const char* what)
+static void okMatrix(const Mtx4x4WithoutAdditionalData* got, const float* want, const char* what)
 {
     const float* g = (const float*)got;
     int          i;
@@ -65,7 +65,7 @@ static void okNear(double got, double want, const char* what)
 }
 
 /* v * M, Direct3D's way round: a row vector on the left. */
-static void transform(float* out, const float* v, const D3DMATRIX* m)
+static void transform(float* out, const float* v, const Mtx4x4WithoutAdditionalData* m)
 {
     const float* f = (const float*)m;
     int          j, k;
@@ -192,22 +192,22 @@ static const float denseInv[16] = {
 
 static void caseMultiply(void)
 {
-    D3DMATRIX r;
+    Mtx4x4WithoutAdditionalData r;
 
     printf("-- multiply\n");
 
-    D3D_MatrixMultiply(&r, (const D3DMATRIX*)mulA, (const D3DMATRIX*)mulB);
+    MTX_p_Multiply(&r, (const Mtx4x4WithoutAdditionalData*)mulA, (const Mtx4x4WithoutAdditionalData*)mulB);
     okMatrix(&r, mulAB, "a known product");
 
-    D3D_MatrixMultiply(&r, (const D3DMATRIX*)identity, (const D3DMATRIX*)mulB);
+    MTX_p_Multiply(&r, (const Mtx4x4WithoutAdditionalData*)identity, (const Mtx4x4WithoutAdditionalData*)mulB);
     okMatrix(&r, mulB, "identity on the left leaves the other alone");
 
-    D3D_MatrixMultiply(&r, (const D3DMATRIX*)mulA, (const D3DMATRIX*)identity);
+    MTX_p_Multiply(&r, (const Mtx4x4WithoutAdditionalData*)mulA, (const Mtx4x4WithoutAdditionalData*)identity);
     okMatrix(&r, mulA, "and so does identity on the right");
 
     /* It is not commutative, so getting the operands the wrong way
        round has to be visible. */
-    D3D_MatrixMultiply(&r, (const D3DMATRIX*)mulB, (const D3DMATRIX*)mulA);
+    MTX_p_Multiply(&r, (const Mtx4x4WithoutAdditionalData*)mulB, (const Mtx4x4WithoutAdditionalData*)mulA);
     checks++;
     if (memcmp(&r, mulAB, sizeof(r)) == 0)
     {
@@ -218,20 +218,20 @@ static void caseMultiply(void)
     /* The renderer passes the destination as an operand, so that has
        to work: the result is formed in a temporary first. */
     memcpy(&r, mulA, sizeof(r));
-    D3D_MatrixMultiply(&r, &r, (const D3DMATRIX*)mulB);
+    MTX_p_Multiply(&r, &r, (const Mtx4x4WithoutAdditionalData*)mulB);
     okMatrix(&r, mulAB, "the destination may be the left operand");
 
     memcpy(&r, mulB, sizeof(r));
-    D3D_MatrixMultiply(&r, (const D3DMATRIX*)mulA, &r);
+    MTX_p_Multiply(&r, (const Mtx4x4WithoutAdditionalData*)mulA, &r);
     okMatrix(&r, mulAB, "or the right one");
 
-    ok(D3D_MatrixMultiply(&r, (const D3DMATRIX*)mulA, (const D3DMATRIX*)mulB) == &r,
+    ok(MTX_p_Multiply(&r, (const Mtx4x4WithoutAdditionalData*)mulA, (const Mtx4x4WithoutAdditionalData*)mulB) == &r,
        "it gives back what it was told to write into");
 }
 
 static void caseTranslation(void)
 {
-    D3DMATRIX r;
+    Mtx4x4WithoutAdditionalData r;
     float     v[4] = { 1.0f, 2.0f, 3.0f, 1.0f };
     float     p[4];
     float     want[16];
@@ -242,7 +242,7 @@ static void caseTranslation(void)
     want[12] = 7.0f;
     want[13] = -8.0f;
     want[14] = 9.5f;
-    D3D_MatrixTranslation(&r, 7.0f, -8.0f, 9.5f);
+    MTX_p_Translation(&r, 7.0f, -8.0f, 9.5f);
     okMatrix(&r, want, "identity with the translation in the fourth row");
 
     /* which is the row Direct3D's row vectors pick up */
@@ -255,7 +255,7 @@ static void caseTranslation(void)
 
 static void caseOrtho(void)
 {
-    D3DMATRIX r;
+    Mtx4x4WithoutAdditionalData r;
     float     p[4];
     float     corner[4];
 
@@ -263,7 +263,7 @@ static void caseOrtho(void)
 
     /* An off-centre box, deliberately asymmetric in every axis so
        that a dropped offset or a swapped pair shows up. */
-    D3D_MatrixOrthoOffCenterRH(&r, 10.0f, 50.0f, 20.0f, 100.0f, 1.0f, 9.0f);
+    MTX_p_OrthoOffCenterRH(&r, 10.0f, 50.0f, 20.0f, 100.0f, 1.0f, 9.0f);
 
     /* The near-bottom-left corner goes to the corner of clip space,
        and the far-top-right to the opposite one. Checking where the
@@ -312,7 +312,7 @@ static void caseOrtho(void)
     ok(p[2] < 0.0f, "positive view z is behind the near plane");
 
     /* the overlay's own call: y flipped, so screen y grows downwards */
-    D3D_MatrixOrthoOffCenterRH(&r, 0.0f, 640.0f, 480.0f, 0.0f, -1.0f, 1.0f);
+    MTX_p_OrthoOffCenterRH(&r, 0.0f, 640.0f, 480.0f, 0.0f, -1.0f, 1.0f);
     corner[0] = 0.0f; corner[1] = 0.0f; corner[2] = 0.0f; corner[3] = 1.0f;
     transform(p, corner, &r);
     okNear(p[0], -1.0, "the top left of the screen is the left of clip space");
@@ -338,35 +338,35 @@ static void caseInverse(void)
         { "dense", dense, denseInv },
     };
     unsigned  i;
-    D3DMATRIX r;
-    D3DMATRIX back;
+    Mtx4x4WithoutAdditionalData r;
+    Mtx4x4WithoutAdditionalData back;
     float     det;
 
     printf("-- inverse\n");
 
     for (i = 0; i < sizeof(table) / sizeof(table[0]); i++)
     {
-        ok(D3D_p_MatrixInverse(&r, NULL, (const D3DMATRIX*)table[i].m) == &r,
+        ok(MTX_p_Inverse(&r, NULL, (const Mtx4x4WithoutAdditionalData*)table[i].m) == &r,
            "it gives back what it was told to write into");
         okMatrix(&r, table[i].want, table[i].name);
 
         /* and the other way, which depends on neither the reference
            nor the formula under test */
-        D3D_MatrixMultiply(&back, (const D3DMATRIX*)table[i].m, &r);
+        MTX_p_Multiply(&back, (const Mtx4x4WithoutAdditionalData*)table[i].m, &r);
         okMatrix(&back, identity, "the matrix times its inverse");
-        D3D_MatrixMultiply(&back, &r, (const D3DMATRIX*)table[i].m);
+        MTX_p_Multiply(&back, &r, (const Mtx4x4WithoutAdditionalData*)table[i].m);
         okMatrix(&back, identity, "and the inverse times the matrix");
     }
 
     /* the determinant, when it is asked for */
     det = 0.0f;
-    D3D_p_MatrixInverse(&r, &det, (const D3DMATRIX*)sheared);
+    MTX_p_Inverse(&r, &det, (const Mtx4x4WithoutAdditionalData*)sheared);
     okNear((double)det, 1.0, "the determinant of the sheared one");
     det = 0.0f;
-    D3D_p_MatrixInverse(&r, &det, (const D3DMATRIX*)scaled);
+    MTX_p_Inverse(&r, &det, (const Mtx4x4WithoutAdditionalData*)scaled);
     okNear((double)det, 12.0, "and of the scaled one");
     det = 0.0f;
-    D3D_p_MatrixInverse(&r, &det, (const D3DMATRIX*)identity);
+    MTX_p_Inverse(&r, &det, (const Mtx4x4WithoutAdditionalData*)identity);
     okNear((double)det, 1.0, "and of the identity");
 
     /* A singular matrix has no inverse: say so, write nothing, and
@@ -374,7 +374,7 @@ static void caseInverse(void)
        that ignores the result must not be handed noise. */
     {
         float     singular[16];
-        D3DMATRIX before;
+        Mtx4x4WithoutAdditionalData before;
 
         memcpy(singular, sheared, sizeof(singular));
         singular[4] = singular[0];   /* two identical rows */
@@ -385,7 +385,7 @@ static void caseInverse(void)
         memcpy(&r, mulA, sizeof(r));
         memcpy(&before, mulA, sizeof(before));
         det = 123.0f;
-        ok(D3D_p_MatrixInverse(&r, &det, (const D3DMATRIX*)singular) == NULL,
+        ok(MTX_p_Inverse(&r, &det, (const Mtx4x4WithoutAdditionalData*)singular) == NULL,
            "a singular matrix gives nothing back");
         okNear((double)det, 0.0, "with a zero determinant");
         checks++;
@@ -399,7 +399,7 @@ static void caseInverse(void)
     /* aliasing again: this call site does not use it, but the one
        next door does and the two are easy to mix up */
     memcpy(&r, scaled, sizeof(r));
-    D3D_p_MatrixInverse(&r, NULL, &r);
+    MTX_p_Inverse(&r, NULL, &r);
     okMatrix(&r, scaledInv, "the destination may be the source");
 }
 

@@ -1,7 +1,7 @@
 #!/bin/sh
-# The unit test for platform/d3dmath.c.
+# The unit test for matrixmath.c.
 #
-#   ./tests/run_d3dmath.sh
+#   ./tests/run_matrixmath.sh
 #
 # New code replacing four D3DX calls, so this is a direct check and
 # not a differential one. The reference inverses and the reference
@@ -19,7 +19,7 @@ OUT=tests/build
 mkdir -p "$OUT"
 
 echo "=== renderer matrices ==="
-$CC $CFLAGS -c tests/test_d3dmath.c -o "$OUT/wgmath.drv.o"
-$CC $CFLAGS -c platform/d3dmath.c -o "$OUT/wgmath.o"
+$CC $CFLAGS -c tests/test_matrixmath.c -o "$OUT/wgmath.drv.o"
+$CC $CFLAGS -c matrixmath.c -o "$OUT/wgmath.o"
 $CC "$OUT/wgmath.drv.o" "$OUT/wgmath.o" -o "$OUT/wgmath" -lm
 "$OUT/wgmath"

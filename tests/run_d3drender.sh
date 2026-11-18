@@ -132,7 +132,7 @@ $CC $CFLAGS -c math.c -o "$OUT/d3drender.math.o"
 # The real matrix module, linked rather than mocked: it is pure
 # arithmetic with nothing to stand in for. platform/d3dtex.c is not
 # linked -- see the stand-ins in tests/d3drender_mocks.c for why.
-$CC $CFLAGS -c platform/d3dmath.c -o "$OUT/d3drender.wgmath.o"
+$CC $CFLAGS -c matrixmath.c -o "$OUT/d3drender.wgmath.o"
 # The camera fitting and the projections came out of platform/d3drender.c into
 # projection.c, which is arithmetic with nothing to stand in for, so it
 # is linked. The frozen copy still has its own inline copy, which is

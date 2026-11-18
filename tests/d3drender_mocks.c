@@ -19,7 +19,7 @@
    defines the handful of D3DX entry points the frozen copy calls,
    so it includes the stub itself. */
 #include <d3dx9math.h>
-#include "../platform/d3dmath.h"
+#include "../matrixmath.h"
 #include "../platform/d3dtex.h"
 #include "../math.h"
 #include <stdio.h>
@@ -873,7 +873,7 @@ D3DXMATRIX* D3DXMatrixMultiply(D3DXMATRIX* out, const D3DXMATRIX* a, const D3DXM
         }
     *out = r;
     /* Not recorded. The live side computes this itself now, in
-       platform/d3dmath.c, so it is not a call either side makes to
+       matrixmath.c, so it is not a call either side makes to
        anything -- and what the arithmetic produced still reaches
        SetTransform, which records the whole matrix. */
     return out;
@@ -923,8 +923,8 @@ D3DXMATRIX* D3DXMatrixOrthoOffCenterRH(D3DXMATRIX* out, float l, float r, float 
    multiplying each one back to the identity. */
 D3DXMATRIX* D3DXMatrixInverse(D3DXMATRIX* out, float* det, const D3DXMATRIX* in)
 {
-    return (D3DXMATRIX*)D3D_p_MatrixInverse((D3DMATRIX*)out, det,
-                                            (const D3DMATRIX*)in);
+    return (D3DXMATRIX*)MTX_p_Inverse((Mtx4x4WithoutAdditionalData*)out, det,
+                                            (const Mtx4x4WithoutAdditionalData*)in);
 }
 
 HRESULT D3DXLoadSurfaceFromMemory(IDirect3DSurface9* s, const PALETTEENTRY* pal, const RECT* dr,

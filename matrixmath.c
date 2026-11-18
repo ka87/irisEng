@@ -1,10 +1,10 @@
-#include "d3dmath.h"
+#include "matrixmath.h"
 
 #include <string.h>
 
-D3DMATRIX* D3D_MatrixMultiply(D3DMATRIX* out, const D3DMATRIX* a, const D3DMATRIX* b)
+Mtx4x4WithoutAdditionalData* MTX_p_Multiply(Mtx4x4WithoutAdditionalData* out, const Mtx4x4WithoutAdditionalData* a, const Mtx4x4WithoutAdditionalData* b)
 {
-    D3DMATRIX    r;
+    Mtx4x4WithoutAdditionalData    r;
     const float* fa = (const float*)a;
     const float* fb = (const float*)b;
     float*       fr = (float*)&r;
@@ -23,7 +23,7 @@ D3DMATRIX* D3D_MatrixMultiply(D3DMATRIX* out, const D3DMATRIX* a, const D3DMATRI
     return out;
 }
 
-D3DMATRIX* D3D_MatrixTranslation(D3DMATRIX* out, float x, float y, float z)
+Mtx4x4WithoutAdditionalData* MTX_p_Translation(Mtx4x4WithoutAdditionalData* out, float x, float y, float z)
 {
     float* f = (float*)out;
     int    i;
@@ -36,7 +36,7 @@ D3DMATRIX* D3D_MatrixTranslation(D3DMATRIX* out, float x, float y, float z)
     return out;
 }
 
-D3DMATRIX* D3D_MatrixOrthoOffCenterRH(D3DMATRIX* out, float l, float r,
+Mtx4x4WithoutAdditionalData* MTX_p_OrthoOffCenterRH(Mtx4x4WithoutAdditionalData* out, float l, float r,
                                       float b, float t, float zn, float zf)
 {
     float* f = (float*)out;
@@ -54,7 +54,7 @@ D3DMATRIX* D3D_MatrixOrthoOffCenterRH(D3DMATRIX* out, float l, float r,
     return out;
 }
 
-D3DMATRIX* D3D_p_MatrixInverse(D3DMATRIX* out, float* det, const D3DMATRIX* in)
+Mtx4x4WithoutAdditionalData* MTX_p_Inverse(Mtx4x4WithoutAdditionalData* out, float* det, const Mtx4x4WithoutAdditionalData* in)
 {
     const float* m = (const float*)in;
     float        a[16];

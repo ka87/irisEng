@@ -228,7 +228,7 @@
     <ClCompile Include="geovertex.c" />
     <ClCompile Include="geosprite.c" />
     <ClCompile Include="rasterstate.c" />
-    <ClCompile Include="platform\d3dmath.c" />
+    <ClCompile Include="matrixmath.c" />
     <ClCompile Include="platform\d3dtex.c" />
     <ClCompile Include="platform\glload.c" />
     <ClCompile Include="platform\glshader.c" />
@@ -667,7 +667,7 @@
     <ClInclude Include="geovertex.h" />
     <ClInclude Include="geosprite.h" />
     <ClInclude Include="rasterstate.h" />
-    <ClInclude Include="platform\d3dmath.h" />
+    <ClInclude Include="matrixmath.h" />
     <ClInclude Include="platform\d3dtex.h" />
     <ClInclude Include="platform\glcore.h" />
     <ClInclude Include="platform\glload.h" />

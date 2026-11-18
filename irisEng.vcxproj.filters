@@ -212,7 +212,7 @@
     <ClCompile Include="rasterstate.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="platform\d3dmath.c">
+    <ClCompile Include="matrixmath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="platform\d3dtex.c">
@@ -994,7 +994,7 @@
     <ClInclude Include="geovertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="platform\d3dmath.h">
+    <ClInclude Include="matrixmath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="platform\d3dtex.h">
