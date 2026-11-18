@@ -449,6 +449,7 @@ run_strings
 # was written and then left out of it, and the warning it exists to
 # catch reached a build of the game instead.
 for one in tests/run_sdl3.sh \
+           tests/run_platform.sh \
            tests/runworld.sh \
            tests/run_collision_a.sh \
            tests/run_collision_b.sh \

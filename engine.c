@@ -25,6 +25,7 @@
 #include "gfx.h"
 #include "engine.h"
 #include "dbg.h"
+#include "platform.h"
 
 int ENG_gb_ActiveSectorization = 1;
 int ENG_gb_NeedToReinit = 0; // game doesn't set it explicitly
@@ -672,7 +673,7 @@ void s_OneTrame()
         PRO_FullLoop.startTick = TIM_GetTicksAsInt32();
     ++PRO_FullLoop.insideCounter;
 
-    s_HandleWinMessages();
+    PLT_Pump();
     TIM_Clock_Update();
 
     if (ENG_gb_NeedToReinit)

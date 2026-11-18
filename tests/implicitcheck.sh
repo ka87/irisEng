@@ -53,6 +53,7 @@ cd "$(dirname "$0")/.."
 CC=${CC:-gcc}
 CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
 CFLAGS="$CFLAGS -Ithirdparty/ffmpeg/include"
+CFLAGS="$CFLAGS -Ithirdparty/SDL3/include"
 # font.c needs these to parse at all, and a file that does not parse
 # reports no implicit declarations -- see UNSWEEPABLE below
 CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
@@ -125,8 +126,12 @@ for f in $unswept; do
            bad=$((bad + 1)) ;;
     esac
 done
+# One word per line in $unswept, so the list is collapsed to spaces
+# before it is searched: " $f " cannot match an entry that a newline
+# follows, and with more than one file unswept only the last of them
+# was ever found. That read as the first file having been fixed.
 for f in $UNSWEEPABLE; do
-    case " $unswept " in
+    case " $(echo $unswept) " in
         *" $f "*) ;;
         *) printf 'FIXED %-28s compiles now -- take it off UNSWEEPABLE\n' "$f"
            bad=$((bad + 1)) ;;

@@ -348,6 +348,7 @@
     <ClCompile Include="particlegenerator.c" />
     <ClCompile Include="photo.c" />
     <ClCompile Include="proceduraltextures.c" />
+    <ClCompile Include="platform.c" />
     <ClCompile Include="profiler.c" />
     <ClCompile Include="sectors.c" />
     <ClCompile Include="sideload.c" />
@@ -713,6 +714,7 @@
     <ClInclude Include="modifiers\xmenmodifier.h" />
     <ClInclude Include="particlegenerator.h" />
     <ClInclude Include="photo.h" />
+    <ClInclude Include="platform.h" />
     <ClInclude Include="profiler.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="sectors.h" />

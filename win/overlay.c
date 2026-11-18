@@ -393,12 +393,17 @@ void OVL_CommandHide(void)
     ovl_cmdText[0] = 0;
 }
 
-int OVL_b_CommandMessage(unsigned int msg, unsigned int wParam)
+/* A character typed into the field, whoever delivered it. The window
+   is SDL's, so what arrives is an SDL text or key event rather than a
+   Windows message; this is what both of those come down to, and it is
+   what the field was always doing with a WM_CHAR. */
+int OVL_b_CommandChar(int ch)
 {
+    unsigned int wParam = (unsigned int)ch;
+
     if (!ovl_cmdActive)
         return 0;
 
-    if (msg == WM_CHAR)
     {
         if (wParam == '\r' || wParam == '\n')
         {
@@ -428,9 +433,6 @@ int OVL_b_CommandMessage(unsigned int msg, unsigned int wParam)
         }
         return 1;
     }
-    // Swallow the key events too, so nothing else in the window sees
-    // them while the field has the keyboard.
-    return msg == WM_KEYDOWN || msg == WM_KEYUP || msg == WM_SYSCHAR;
 }
 
 static void OVL_l_CommandField(void)
