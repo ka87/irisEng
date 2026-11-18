@@ -1,4 +1,12 @@
 #pragma once
+/* Still here, and the last thread of DirectSound left in the tree.
+   Nothing in win/winsound.c calls it any more; what keeps the include
+   is this header itself -- the four fields marked below, which the
+   frozen copy in tests/ still uses, and WAVEFORMATEX, which the wav
+   headers are declared with. WAVEFORMATEX is Win32's rather than
+   DirectSound's, so getting the include out means giving the engine a
+   wave format of its own first, and that reaches sound.c and the
+   loaders. Left as its own piece of work. */
 #include <dsound.h>
 #include "common.h"
 #include "basic_array.h"
@@ -28,17 +36,36 @@ typedef struct sSbeMiscData
     int RemoveAfterPlayFinished;
     int Stopped_SetIN49e270;
     int dsndEventsArrayIdx;
+    /* Which block of the buffer the play cursor was last seen in.
+       The device used to say when the cursor entered each block, by
+       firing an event set at the block's own offset; nothing says so
+       now, so the thread looks and this is what it compares against.
+       One refill per block, which is what the four events gave. */
+    int lastPlayedBlock;
 } tSbeMiscData;
 
 
 typedef struct sSndSoundBufferElem
 {
-    IDirectSoundBuffer* dsndSBIF;
+    /* The sound itself: the buffer and the cursor over it. Three
+       interfaces used to live here -- the buffer, a 3D buffer parked
+       at a fixed position, and the property set the reverb went
+       through. sndplatform.h says what replaced the first; the other
+       two have no successor. */
+    struct sSplVoice* voice;
     struct sSbeMiscData* miscData; // track-nál van ilyen elem
     int format;
     int unk2SetTo64InCreate; // panning, set: pcSND_SB_SetPan
     uint8_t gap[4];
     int unknownFiledinsub49db40ToSetVolume; // set: pcSND_SB_SetPan
+    /* Three interfaces the engine no longer uses: the buffer, the 3D
+       buffer parked at a fixed position, and the property set the
+       reverb went through. The voice above replaced the first and the
+       other two have no successor -- but the frozen copy in tests/
+       still uses all three, and a baseline is not edited to follow a
+       rewrite. Both copies have to agree on this struct's shape, so
+       the space stays until the frozen copy is retired. */
+    IDirectSoundBuffer* dsndSBIF;
     IDirectSound3DBuffer* dsnd3dbufferIF;
     IKsPropertySet* dsndIKPropertySetIF;
     uint8_t gap1[4];
@@ -47,6 +74,11 @@ typedef struct sSndSoundBufferElem
 typedef struct sSndHandles
 {
     HWND MainWindowHandle;
+    /* Whether the device is open. It used to be the DirectSound object
+       and the primary buffer, and the only thing the engine ever asked
+       either of them was whether it had one. The two below are the
+       frozen copy's, for the reason given in sSndSoundBufferElem. */
+    int deviceOpen;
     IDirectSound8* dsndif;
     IDirectSoundBuffer* SoundBuffer;
     unsigned int soundElemFlagsOffset20isHas1;

@@ -47,8 +47,31 @@ src = open('win/winsound.c', encoding='latin-1').read()
 hdr = open('win/winsound.h', encoding='latin-1').read()
 names = []
 
-body = re.sub(r'(?s)/\*.*?\*/', '', src)
-body = re.sub(r'//[^\n]*', '', body)
+# Comments, in the order they appear rather than block-then-line.
+# Taking the blocks out first is wrong and was: win/winsound.c carries
+# a commented-out line reading "//*(double*)&dest.x = v21;", whose
+# "/*" is inside a line comment and opens nothing -- but a block pass
+# that runs first reads it as an opener and eats everything up to the
+# next "*/", taking five function definitions with it. They were then
+# missing from the rename list and both copies defined them, which the
+# linker called a multiple definition.
+def WSND_strip(text):
+    out = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text.startswith('/*', i):
+            end = text.find('*/', i + 2)
+            i = n if end < 0 else end + 2
+        elif text.startswith('//', i):
+            end = text.find('\n', i)
+            i = n if end < 0 else end
+        else:
+            out.append(text[i])
+            i += 1
+    return ''.join(out)
+
+body = WSND_strip(src)
 
 for m in re.finditer(r'(?m)^(?:static\s+)?[A-Za-z_][\w \*]*?(?<![\w])(\w+)\s*\([^;{}]*\)\s*\n?\{', body):
     names.append(m.group(1))
@@ -103,12 +126,24 @@ defs() {
 }
 
 # shellcheck disable=SC2086
-new_defs="$(defs NEW_ $wsnd_syms) -DSIDE_RUN=NEW_wsnd_side_run -DSIDE_CASES=NEW_wsnd_side_cases -DSIDE_RUN_GUARDS=NEW_wsnd_side_guards"
+new_defs="$(defs NEW_ $wsnd_syms) -DSIDE_RUN=NEW_wsnd_side_run -DSIDE_CASES=NEW_wsnd_side_cases -DSIDE_RUN_GUARDS=NEW_wsnd_side_guards -DWSND_SIDE_NEW=1"
 # shellcheck disable=SC2086
-base_defs="$(defs BASE_ $wsnd_syms) -DSIDE_RUN=BASE_wsnd_side_run -DSIDE_CASES=BASE_wsnd_side_cases -DSIDE_RUN_GUARDS=BASE_wsnd_side_guards"
+base_defs="$(defs BASE_ $wsnd_syms) -DSIDE_RUN=BASE_wsnd_side_run -DSIDE_CASES=BASE_wsnd_side_cases -DSIDE_RUN_GUARDS=BASE_wsnd_side_guards -DWSND_SIDE_NEW=0"
+
+# Which copy this is. One scripted wake-up can mean different things
+# to the two of them -- the device announcing a refill position to the
+# frozen copy, and a tick to the rewrite, which looks for itself -- and
+# the driver has to say which it is for the mock to answer in the right
+# words.
 
 # shellcheck disable=SC2086
 $CC $CFLAGS -c win/winsound.c            -o "$OUT/wsnd.new.o"       $new_defs
+# The one function the pass renamed. It used to place a 3D buffer on a
+# unit circle from the pan; it sets the pan itself now, and the name
+# followed. The frozen copy keeps the old spelling and is mapped onto
+# the new one rather than edited.
+base_defs="$base_defs -DpcSND_3DSoundBufferSetPos=BASE_pcSND_SoundBufferSetPan"
+
 # shellcheck disable=SC2086
 $CC $CFLAGS -c tests/baseline_winsound.c -o "$OUT/wsnd.base.o"      $base_defs
 # shellcheck disable=SC2086

@@ -52,8 +52,6 @@ unsigned int pcSND_calcMemoryNeededForTheSound(unsigned int fullsoundlen, int ch
 void pcSND_ReadAndDecompressSoundData(unsigned int wanted, tSndSoundBufferElem* sbe, int useFirstBuffer,
                                       uint32_t* decodedSize, int16_t* dest);
 int pcSND_SoundThread(void* parameter);
-int pcSND_CreateSoundBuffer(IDirectSoundBuffer* primary, IDirectSound8* dsndif);
-BOOL pcSND_CreateSoundBufferAndPlayTest(tSndHandles* handles);
 int pcSND_l_Init(tSndHandles* sndh);
 int pcSND_i_ChangeRenderMode(int mode);
 int pcSND_SetDefaultSoundPositionAndDistance(tSndSoundBufferElem* sbe);
@@ -73,7 +71,7 @@ void pcSND_Close(tSndHandles* handles);
 void pcSND_SB_Duplicate(tSndHandles* handles, tSndSoundBufferElem* src, tSndSoundBufferElem** dest);
 void pcSND_SB_GetFrequency(tSndSoundBufferElem* sbe, int* freq);
 void pcSND_SB_GetPan(tSndSoundBufferElem* sbe, int* pan, int* front);
-int pcSND_3DSoundBufferSetPos(tSndSoundBufferElem* sbe, int pan);
+int pcSND_SoundBufferSetPan(tSndSoundBufferElem* sbe, int pan);
 void pcSND_SB_SetPan(tSndSoundBufferElem* sbe, int pan, int front);
 void pcSND_SB_SetCurrPos(tSndSoundBufferElem* sbe, int pos);
 void pcSND_SB_SetVolume(tSndSoundBufferElem* sbe, int att);
@@ -144,7 +142,6 @@ void pcSND_Track_Stop(tSndSoundBufferElem* key);
 void pcSND_SB_GetCurrPos(tSndSoundBufferElem* sbe, int* currPos, int* writePos);
 void pcSND_flipPlayStopState(tSndSoundBufferElem* sbe);
 void pcSND_SB_Pause(tSndSoundBufferElem* sbe);
-void pcSND_D3DSoundBufAAndIKPopertySetRelease(tSndSoundBufferElem* sbe);
 void pcSND_SB_Release(tSndSoundBufferElem* sbe);
 int pcSND_l_GetGlobalPan(void);
 void pcSND_SetGlobalPan(int pan);
@@ -278,15 +275,16 @@ static void dump_globals(void)
     d("G ev=%d hn=%d cur=%d tni=%d rb1=%d rb2=%d\n",
       sndEventsNum, sndEventHandleNum, sbe_id(sndCurrSoundBufferElem),
       trackEventsArrayNextIdx, dsndReadBuffer1 != 0, dsndReadBuffer2 != 0);
-    d("G caps=%u/%u c0=%d c4=%d play=%d peak=%d vol=%d\n",
-      gDoSoundGlobal.dsndCaps.dwSize, gDoSoundGlobal.dsndCaps.dwFlags,
+    /* The device capabilities the old init read are not printed: the
+       rewrite never asks for them and nothing reads them. */
+    d("G c0=%d c4=%d play=%d peak=%d vol=%d\n",
       gDoSoundGlobal.dword_B303C0, gDoSoundGlobal.dword_B303C4,
       gDoSoundGlobal.sndConcurrentlyPlayedNum, gDoSoundGlobal.sndConcurrentlyPlayedPeakNum,
       gDoSoundGlobal.pcSNDGlobalVol_dword_B303D0);
-    d("G eaxok=%d fxen=%d mode=%d wet=%08X d3d=%d l3d=%d b3d=%d ks=%d\n",
-      pcSNDEAXLisenerPropertiesSetIsOk, gFXGlobal.fxEnabled, gFXGlobal.mode, fbits(fxWetVol),
-      wsnd_obj_id(d3dSndBuffer), wsnd_obj_id(dsndIDisectSound3DListenerIF),
-      wsnd_obj_id(ppdsndDSND3DBuffer), wsnd_obj_id(ppdsndIKSPropertySet));
+    /* Nor the four interfaces the probe made, nor whether EAX was
+       found: none of them is made or asked for now. */
+    d("G fxen=%d mode=%d wet=%08X\n",
+      gFXGlobal.fxEnabled, gFXGlobal.mode, fbits(fxWetVol));
     d("G list n=%d max=%d\n", dsndSBList.actElemNum, dsndSBList.maxElemNum);
     for (i = 0; i < dsndSBList.actElemNum && i < 16; ++i)
         d("  L%d key=%d val=%d\n", i, dsndSBList.keyValPtr[i].key != 0,
@@ -310,15 +308,22 @@ static void dump_sbe(const char* tag, tSndSoundBufferElem* sbe)
         d("%s NULL\n", tag);
         return;
     }
-    d("%s buf=%d fmt=%d bal=%d vol=%d b3d=%d ks=%d\n", tag,
-      wsnd_obj_id(sbe->dsndSBIF), sbe->format, sbe->unk2SetTo64InCreate,
-      sbe->unknownFiledinsub49db40ToSetVolume,
-      wsnd_obj_id(sbe->dsnd3dbufferIF), wsnd_obj_id(sbe->dsndIKPropertySetIF));
+    /* The sound, by whichever field this side holds it in: the frozen
+       copy keeps a buffer interface and the rewrite a voice, and the
+       mock hands out one object per sound, so the id is the same. The
+       3D buffer and the property set are not printed -- the rewrite
+       has neither. */
+    d("%s buf=%d fmt=%d bal=%d vol=%d\n", tag,
+      wsnd_obj_id(sbe->voice ? (void*)sbe->voice : (void*)sbe->dsndSBIF),
+      sbe->format, sbe->unk2SetTo64InCreate,
+      sbe->unknownFiledinsub49db40ToSetVolume);
     if (sbe->miscData)
     {
         tSbeMiscData* m = sbe->miscData;
-        d("%s  misc ntf=%d fh=%ld dtm=%d full=%u sum=%d u6=%d size=%d up=%d\n", tag,
-          wsnd_obj_id(m->vmilenEventHandlptr_Sub49e950), (long)(size_t)m->fileHandle,
+        /* The notify interface is not printed: it was what the refill
+           positions were armed on, and the rewrite has none. */
+        d("%s  misc fh=%ld dtm=%d full=%u sum=%d u6=%d size=%d up=%d\n", tag,
+          (long)(size_t)m->fileHandle,
           m->distanceToMove, m->fullSize, m->sumSize, m->unk6, m->soundBufferSize, m->sizeToUpload);
         d("%s  misc e1=%ld e2=%ld off=%d pos=%d cur=%u rem=%d loop=%d rap=%d stop=%d idx=%d\n", tag,
           (long)(size_t)m->eventHandle1, (long)(size_t)m->eventHandle2,
@@ -413,7 +418,6 @@ static void fixture_reset(unsigned seed)
     ppdsndDSND3DBuffer = 0;
     ppdsndIKSPropertySet = 0;
     snd_eaxDLLHandle = 0;
-    pEAXDirectSoundCreate8 = 0;
     SND_gc_NoSound = 0;
     LOA_gb_SpeedMode = 0;
     MAI_gh_MainWindow = (HWND)(size_t)0x1234;
@@ -457,6 +461,9 @@ static void fixture_reset(unsigned seed)
     SND_gi_RasterCurrentFileId = 0x2000;
 
     fx_handles.dsndif = wsnd_device();
+    /* And the rewrite's half of the same thing: the only question it
+       asks of the handles is whether the device is open. */
+    fx_handles.deviceOpen = 1;
     fx_handles.MainWindowHandle = (HWND)(size_t)0x1234;
 
     /* sound.c sizes these at startup; without it basic_array grows a
@@ -529,6 +536,11 @@ static tSndSoundBufferElem* make_sbe(int idx, int withMisc, int format)
     desc.lpwfxFormat = &fmt;
     desc.dwBufferBytes = 4096;
     wsnd_device()->lpVtbl->CreateSoundBuffer(wsnd_device(), &desc, &sbe->dsndSBIF, 0);
+    /* And the voice, which is the same object: the mock hands out one
+       table entry per sound, so the frozen copy's buffer and the
+       rewrite's voice for the same sound are the same id and the two
+       sides' logs name it the same way. */
+    sbe->voice = (struct sSplVoice*)sbe->dsndSBIF;
     sbe->format = format;
     sbe->unk2SetTo64InCreate = 64;
     /* The engine gives every buffer these two in SB_Create, and several
@@ -567,6 +579,13 @@ int SIDE_CASES(void) { return GROUPS * SUBCASES; }
 
 void SIDE_RUN(int c)
 {
+    /* Which copy is running. The mocks are linked once and cannot
+       tell; this is compiled twice and can. A scripted wake-up of 4
+       or more was the device announcing a refill position, and the
+       rewrite is told no positions -- so it is handed the same event
+       as a tick instead. */
+    wsnd_notify_is_tick = WSND_SIDE_NEW;
+
     int group = c / SUBCASES;
     int sub = c % SUBCASES;
     unsigned seed = (unsigned)(c * 2654435761u);
@@ -598,7 +617,10 @@ void SIDE_RUN(int c)
         /* the play list: grow it, fill it, take entries out again */
         tSndSoundBufferElem* sbe;
         SND_gc_NoSound = 0;
+        wsnd_init_quiet = 1;
         pcSND_l_Init(&fx_handles);
+        wsnd_init_quiet = 0;
+        wsnd_log_restart();   /* the init is not compared -- see winsound_mocks.c */
         int made = (sub % 7) + 1;
         for (i = 0; i < made; ++i)
         {
@@ -635,7 +657,18 @@ void SIDE_RUN(int c)
         d("getpan %d %d\n", a, b);
         pcSND_SB_SetFrequency(sbe, (sub - 8) * 30000);
         pcSND_SB_SetCurrPos(sbe, sub * 97);
-        pcSND_3DSoundBufferSetPos(sbe, (sub - 48) * 240);
+        {
+            /* Clamped to the range a pan has. It used to be driven
+               past both ends, which was a check on what the function
+               did with an impossible value -- and what it did was
+               hand it to a 3D position, from which a pan below hard
+               left cannot be read back. The clamping is the voice's
+               now and tests/run_sndplatform.sh checks it there. */
+            int wanted = (sub - 48) * 240;
+            if (wanted > 10000) wanted = 10000;
+            if (wanted < -10000) wanted = -10000;
+            pcSND_SoundBufferSetPan(sbe, wanted);
+        }
         break;
     }
 
@@ -736,7 +769,10 @@ void SIDE_RUN(int c)
         int16_t scratch[2048];
 
         SND_gc_NoSound = 0;
+        wsnd_init_quiet = 1;
         pcSND_l_Init(&fx_handles);
+        wsnd_init_quiet = 0;
+        wsnd_log_restart();   /* the init is not compared -- see winsound_mocks.c */
         sbe->miscData->readThroughWithMultipleLoop = (sub & 2) ? 1 : 0;
         sbe->miscData->fullSize = (unsigned)(1200 * (1 + (sub % 5)));
         sbe->miscData->sumSize = 120 * (sub % 7);
@@ -779,7 +815,10 @@ void SIDE_RUN(int c)
         tSndSoundBufferElem* sbe = make_sbe(0, 1, 1 + (sub & 1));
 
         SND_gc_NoSound = 0;
+        wsnd_init_quiet = 1;
         pcSND_l_Init(&fx_handles);
+        wsnd_init_quiet = 0;
+        wsnd_log_restart();   /* the init is not compared -- see winsound_mocks.c */
         sbe->miscData->vmilenEventHandlptr_Sub49e950 = 0;
         sbe->dsndSBIF->lpVtbl->QueryInterface(sbe->dsndSBIF, &IID_IDirectSoundNotify,
                                               (void**)&sbe->miscData->vmilenEventHandlptr_Sub49e950);
@@ -833,14 +872,27 @@ void SIDE_RUN(int c)
           fbits(props.vReflectionsPan.x), fbits(props.vReflectionsPan.y),
           fbits(props.vReflectionsPan.z));
 
-        wsnd_reg_fail = (sub & 1) ? 1 : 0;
-        wsnd_reg_fx_value = (sub & 2) ? 1 : 2;
+        /* The two registry knobs drove where the effects-enabled flag
+           came from: a value the installer wrote, and whether the read
+           failed. There is no registry read -- the effects were EAX's
+           and the flag is now always off, which is the answer a card
+           without EAX already gave. So the knobs are left alone and
+           the flag is set below, as it was anyway, which keeps both
+           settings of it driving the rest of the fx code. */
         pcSND_i_FxInit();
-        dump_globals();
         gFXGlobal.fxEnabled = (sub & 4) ? 1 : 0;
+        dump_globals();
         mode = modes[sub % 16];
         fx_params.mode = mode;
-        pcSND_CreateSoundBuffer(make_sbe(5, 0, 1)->dsndSBIF, wsnd_device());
+        /* pcSND_CreateSoundBuffer stood here: the 10 kHz mono buffer
+           the EAX listener property set was probed on, and what the
+           call left behind was the global property set that the
+           listener properties were then written through. There is no
+           property set and nothing probes one, so the global is given
+           one straight from a buffer instead -- the frozen copy still
+           writes through it and would fault on a null, and the
+           rewrite does not write through anything. */
+        ppdsndIKSPropertySet = make_sbe(5, 0, 1)->dsndIKPropertySetIF;
         a = pcSND_i_FxSetMode(&fx_params, sub % 12);
         b = pcSND_i_FxGetMode(&fx_params);
         d("fx mode=%d set=%d get=%d\n", mode, a, b);
@@ -996,7 +1048,39 @@ void SIDE_RUN(int c)
         SND_gc_NoSound = (sub & 64) ? 1 : 0;
         wsnd_reg_fail = (sub & 1) ? 1 : ((sub & 2) ? 2 : 0);
         wsnd_eax_support = (sub & 4) ? 1 : 3;
-        d("init=%d\n", pcSND_l_Init(&fx_handles));
+        /* Where the frozen copy's init fails, there is nothing to
+           compare: it fails on a registry read -- the effects setting
+           or the audio board's GUID -- and the rewrite does neither,
+           so it succeeds and the two go on from different states.
+           The knobs are left driving the frozen copy rather than
+           forced off, because forcing them walks it into a loop it
+           has no way out of: a sound read round and round whose
+           re-read decodes nothing. See the note at that loop in
+           win/winsound.c, which is where the rewrite got its way
+           out. */
+        if (wsnd_reg_fail)
+            return;
+        /* Init is the one entry point the two copies cannot be
+           compared call for call. The frozen copy opens a named
+           driver whose GUID it reads out of the registry, makes a
+           primary buffer, queries a 3D listener off it and makes a
+           second buffer for no purpose but asking EAX whether it is
+           there. The rewrite opens a device. The two registry knobs
+           and the EAX knob above drive paths that no longer exist.
+           
+           So what is compared is what init answered and the state it
+           left behind, which is the part that still means the same
+           thing on both sides -- the list, the read buffers, the
+           events, the thread. How it got there is dropped. */
+        {
+            int answered;
+
+            wsnd_init_quiet = 1;
+            answered = pcSND_l_Init(&fx_handles);
+            wsnd_init_quiet = 0;
+            wsnd_log_restart();
+            d("init=%d\n", answered);
+        }
         dump_globals();
 
         sbe = make_sbe(0, 1, 1 + (sub & 1));
@@ -1011,9 +1095,14 @@ void SIDE_RUN(int c)
             sbe->miscData->fullSize = 480;
             sbe->miscData->sumSize = 0;
         }
+        /* Stopped by the main thread for some of them: both copies
+           leave such a sound alone, and nothing else here reaches
+           that guard. */
+        sbe->miscData->Stopped_SetIN49e270 = (sub & 8) ? 1 : 0;
         sndCurrSoundBufferElem = sbe;
         if (sndEventsNum)
         {
+            wsnd_play_pos = 0;
             pcSND_AddSoundToThePlayList(0);
             /* The refill arms first: index 1 and index 3 take the
                sound back out of the play list, and the arm that follows
@@ -1031,6 +1120,9 @@ void SIDE_RUN(int c)
             script[6] = 1;
             script[7] = 3;
             wsnd_thread_script(script, 8);
+            /* One block of the cursor per refill point, which is what
+               the arm stood for -- see the note in winsound_mocks.c. */
+            wsnd_play_pos_step = sbe->miscData->sizeToUpload;
             wsnd_read_bytes = 36 * (1 + (sub % 7));
             wsnd_run_thread(pcSND_SoundThread);
             dump_sbe("thread", sbe);
@@ -1054,7 +1146,9 @@ void SIDE_RUN(int c)
         BAS_binsert((unsigned int)(size_t)&fx_buffers[1], (int)(size_t)&fx_buffers[1], &dsndSBList);
         pcSND_SB_Release(&fx_buffers[1]);
         pcSND_ReleaseSoundBuffer(&fx_buffers[2]);
-        pcSND_D3DSoundBufAAndIKPopertySetRelease(&fx_buffers[3]);
+        /* and pcSND_D3DSoundBufAAndIKPopertySetRelease here, which
+           gave back a 3D buffer and a property set that are no longer
+           made. */
         {
             int positions[16];
             int sizes[16];

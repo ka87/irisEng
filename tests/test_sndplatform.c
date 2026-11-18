@@ -140,8 +140,19 @@ static void theCursor(void)
         for (i = 0; i < SPL_QUEUE_CHUNKS * 2; i++)
             SPL_Feed();
         ok(v->cursor > before, "feeding again queues more");
-        ok(v->cursor <= chunk * (SPL_QUEUE_CHUNKS + 1),
-           "but never more than the watermark ahead");
+        /* On what is queued, not on how far the cursor has gone. The
+           device is real and consumes in its own time, so the cursor
+           depends on how long these calls took -- which made this
+           check pass on its own and fail inside the suite, where it
+           was slower.
+           
+           What the watermark bounds is the queue: whatever has been
+           consumed, a feed tops up by at most one chunk past it. In
+           the queue's own units, which are the stream's input format
+           -- stereo, whatever the voice is -- and not the voice's. */
+        ok(SDL_GetAudioStreamQueued(v->stream)
+               <= SPL_CHUNK_FRAMES * (SPL_QUEUE_CHUNKS + 1) * 2 * SPL_CHANNELS,
+           "but never queues more than the watermark and a chunk");
     }
 
     SPL_VoiceSetCursor(v, chunk * 3);

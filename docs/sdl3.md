@@ -126,9 +126,11 @@ rumble functions. That is behaviour the retail PC build never had.
 
 ## What is left
 
-- the sound, on `SDL_AudioStream`, replacing `win/winsound.c` and
-  `win/winvideosound.c`;
-- `dsound.lib` out of the linker inputs.
+- `<dsound.h>` out of `sound.h`, which wants a wave format of the
+  engine's own first;
+- the Win32 thread, event and file calls, on SDL's;
+- `win/eax/eax.h`, once it is decided whether the room the engine
+  computes for a reverb nothing applies is worth keeping.
 
 ### The audio device, and a voice per sound
 
@@ -172,3 +174,49 @@ real conversion, consumed by nothing. Twenty mutations are each
 caught, including the pan not reaching a channel, the two attenuations
 not adding, a one-shot looping anyway, a pause losing its place, and
 a duplicate not sharing its sound.
+
+### The sound
+
+`win/winsound.c` has no DirectSound in it. The fifteen buffer verbs,
+in all three of their implementations, go over a voice from
+`sndplatform.c`: `Lock`/`memcpy`/`Unlock` became a write at an offset
+that wraps, `GetCurrentPosition` the cursor, `SetVolume` and `SetPan`
+the attenuation and the pan, `DuplicateSoundBuffer` the duplicate
+that shares its sound. `win/winvideosound.c` went the same way, and
+had to -- it was being handed the engine's `IDirectSound8`.
+
+`SND_gpst_Interface` is six tables and three implementations: `win`
+is the base, `stream` overrides the fifteen verbs, `music`,
+`ambience` and `dialog` are copies of `stream` with a different tag,
+and `track` overrides the same fifteen again.
+
+**The thread stays a thread**, which is what was asked for. It waits
+on the same four control events -- add to the play list, remove,
+exit, stop-and-remove -- and the refill positions have become a
+timeout: nothing in SDL says when a cursor reaches a position, so the
+thread looks instead. A block of the buffer it has not seen the
+cursor in before is the refill the device used to announce, and a
+voice that is no longer playing is the stop it used to announce.
+
+**No spatialisation and no reverb.** Both render modes already ended
+in a plain pan and volume on the 2D buffer; the 3D buffer was parked
+at a fixed position so the EAX reverb had something to hang off, and
+the one place it was moved derived the position from the pan the
+engine had already worked out. So the pan is kept and the
+spatialisation goes. The reverb entries answer that it cannot be set,
+which is what a card without EAX answered -- and the engine coped
+with that then, because plenty of cards were.
+
+What still carries DirectSound's name:
+
+- `sound.h` includes `<dsound.h>`, for four fields the frozen copy in
+  `tests/` still uses and for `WAVEFORMATEX`, which the wav headers
+  are declared with. That one is Win32's rather than DirectSound's,
+  so getting the include out means giving the engine a wave format of
+  its own, which reaches `sound.c` and the loaders.
+- `win/eax/eax.h` stays for `EAXLISTENERPROPERTIES`, the shape of a
+  room the engine still computes and nothing now consumes.
+  `eaxguid.lib` and its library path are out of the project.
+- The Win32 thread and event calls -- `CreateThread`, `CreateEventA`,
+  `WaitForMultipleObjects` -- and the `CreateFileA`/`ReadFile` path
+  the decoder reads through.

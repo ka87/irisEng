@@ -496,8 +496,7 @@ void GFX_FS_VideoStart(int videoId)
     // The sound is ours to play now: libav decodes it and nothing
     // more. A video with no sound track, or a device that will not
     // give up a buffer, leaves the picture to the wall clock.
-    GFX_gpst_FS_VideoSound = WVS_pst_Open(SND_gst_Params.handles->dsndif,
-                                          GFX_gpv_FS_Video);
+    GFX_gpst_FS_VideoSound = WVS_pst_Open(GFX_gpv_FS_Video);
 
     if (!gpst_DX_stDD->b_VideoDisplayCreate(VID_i_Width(GFX_gpv_FS_Video),
                                             VID_i_Height(GFX_gpv_FS_Video)))

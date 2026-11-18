@@ -97,6 +97,7 @@ int main(int argc, char** argv)
     }
     cases = NEW_wsnd_side_cases();
 
+
     for (c = 0; c < cases; ++c)
     {
         int nlen, at;

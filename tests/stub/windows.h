@@ -1,4 +1,6 @@
 #pragma once
+
+#define WAIT_TIMEOUT 258L
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
