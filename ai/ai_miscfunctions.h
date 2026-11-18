@@ -11,7 +11,7 @@ void AI_EvalFunc_WTR_GetDif_C(Vec3* pos, Vec3* dif);
 void AI_EvalFunc_SPG_SetNoise_C(struct sGameObjectMain* gao, float noise);
 void AI_EvalFunc_SDW_Activate_C(struct sGameObjectMain* gao, int activate);
 void AI_EvalFunc_SNAKE_SetInertia_C(struct sGameObjectMain* gao, float inertia);
-void AI_EvalFunc_Gsp_AE_MASTER_C(int effect, int param, int onOff, float value);
+void AI_EvalFunc_Gsp_AE_MASTER_C(int effect, int onOff, int slot, float value);
 void AI_EvalFunc_CIN_CutsceneMode_C(int onOff);
 
 tAINode* AI_EvalFunc_GRPInvisibleSet(tAINode* node);

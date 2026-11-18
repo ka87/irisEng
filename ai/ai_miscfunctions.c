@@ -77,23 +77,23 @@ tAINode* AI_EvalFunc_GRPInactiveSet(tAINode* node)
     return node + 1;
 }
 
-void AI_EvalFunc_Gsp_AE_MASTER_C(int effect, int param, int onOff, float value)
+void AI_EvalFunc_Gsp_AE_MASTER_C(int effect, int onOff, int slot, float value)
 {
-    AEM_Control(effect, param, onOff, value);
+    AEM_Control(effect, onOff, slot, value);
 }
 
 tAINode* AI_EvalFunc_Gsp_AE_MASTER(tAINode* node)
 {
     int effect;
-    int param;
     int onOff;
+    int slot;
     float value;
 
     value = AI_GetFloatFromStack();
+    slot = AI_GetIntFromStack();
     onOff = AI_GetIntFromStack();
-    param = AI_GetIntFromStack();
     effect = AI_GetIntFromStack();
-    AI_EvalFunc_Gsp_AE_MASTER_C(effect, param, onOff, value);
+    AI_EvalFunc_Gsp_AE_MASTER_C(effect, onOff, slot, value);
     return node + 1;
 }
 
@@ -123,14 +123,14 @@ tAINode* AI_EvalFunc_Gsp_AE_MASTEREVT(tAINode* node)
 {
     tGameObjectMain* gao;
     int effect;
-    int param;
     int onOff;
+    int slot;
 
     gao = (tGameObjectMain*)AI_GetObjectFromStack();
+    slot = AI_GetIntFromStack();
     onOff = AI_GetIntFromStack();
-    param = AI_GetIntFromStack();
     effect = AI_GetIntFromStack();
-    AEM_Control(effect, param, onOff, gao->matrices->Pos.x);
+    AEM_Control(effect, onOff, slot, gao->matrices->Pos.x);
     return node + 1;
 }
 
