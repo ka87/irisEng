@@ -161,7 +161,7 @@ knowing which of the two files is measured and which is read.
 The engine's half of the video knows about files, decoding and the
 clock. It did not stop there: it also held three Direct3D objects,
 locked one of them, computed a letterbox rectangle and called
-`StretchRect`. All of that is `win/wingdivideo.c` now, behind five
+`StretchRect`. All of that is `platform/wingdivideo.c` now, behind five
 entries:
 
 ```c
@@ -179,7 +179,7 @@ it to be shown.
 `fit` is the engine's vocabulary, not a renderer's:
 `GDI_VIDEOFIT_ACTUALSIZE`, `..._SHARP`, `..._SMOOTH`. The engine maps
 the scale mode's bits onto those and the renderer maps them onto its
-own filters, so `D3DTEXF_LINEAR` stays inside `win/`.
+own filters, so `D3DTEXF_LINEAR` stays inside `platform/`.
 
 ### The split found a bug
 
@@ -234,7 +234,7 @@ built from the SDK's own names now.
 `gfx/gfxsun.c` was not engine code with a few leaks. About twenty of
 its functions were already named `D3D_*`, and `gfxsun.h` put
 `IDirect3DSurface9` inside the engine's own sun struct. The Direct3D
-half is `win/wingdisun.c` now, behind seven entries, and the engine's
+half is `platform/wingdisun.c` now, behind seven entries, and the engine's
 struct holds an opaque handle:
 
 ```c
@@ -349,7 +349,7 @@ guess about them was wrong.
 
 `tweak_ae_d2x`, `tweak_ae_noflare` and `tweak_zonalpha` look like
 debug tweaks that ended up in the wrong struct. They are not.
-`win/wingdi.c` computes all three from the device's own capabilities
+`platform/wingdi.c` computes all three from the device's own capabilities
 when it starts:
 
 ```c
@@ -390,7 +390,7 @@ as well as reading them, and so does the renderer. They are
 directly by both sides.
 
 `sunEffectIsOn` turned out to need nothing: after the sun split,
-nothing outside `win/` touches it.
+nothing outside `platform/` touches it.
 
 ### The upshot
 
@@ -443,7 +443,7 @@ called. `tGdi_DisplayData` itself turned out to contain no Direct3D
 type at all beyond three references to that struct, so once those
 three were dealt with the include could go.
 
-- The state struct moved to `win/wingdi.h`, where it belongs. It
+- The state struct moved to `platform/wingdi.h`, where it belongs. It
   keeps its Direct3D name, because it *is* Direct3D's.
 - `CreateDevice` and `DestroyDevice` deal in `void*`: the engine
   holds a renderer's private state opaquely and never looks inside.
@@ -477,7 +477,7 @@ nothing had ever used:
 {"ae_d2x", 2, (void*)DBG_l_TweakCanDiffuse2x},
 ```
 
-So `dbg.h` includes `gdi.h` rather than `win/wingdi.h`, and nothing
+So `dbg.h` includes `gdi.h` rather than `platform/wingdi.h`, and nothing
 in `dbg` depends on Direct3D.
 
 ### How the frozen copies were kept
@@ -519,7 +519,7 @@ their Direct3D names with it:
 | `d3dUVVB` | `uvBuffers` |
 | `d3dIndexBuf` | `indexBuffer` |
 
-The renderer's view of its own buffers lives in `win/wingdi.h`, where
+The renderer's view of its own buffers lives in `platform/wingdi.h`, where
 it belongs:
 
 ```c
@@ -529,7 +529,7 @@ it belongs:
 #define D3D_GEO_IB(g)     ((IDirect3DIndexBuffer9*)(g)->indexBuffer)
 ```
 
-Thirteen sites in `win/wingdi.c` dereference a buffer and go through
+Thirteen sites in `platform/wingdi.c` dereference a buffer and go through
 those. Three more hand `&geogro->vertexBuffer` and its siblings to
 `CreateVertexBuffer` as out-parameters, which the renderer casts at
 the call, because the address of a cast is not an lvalue. Everywhere
@@ -563,7 +563,7 @@ buffer alone, exactly as the old code did, while
 frees whichever are there. A geometry holding vertex or UV buffers
 but no index buffer would therefore keep them. That is the existing
 behaviour and it is preserved rather than quietly fixed; the note
-sits beside the implementation in `win/wingdi.c` as well.
+sits beside the implementation in `platform/wingdi.c` as well.
 
 **The call in `GEO_FreeContent` gained a null check.** It used to go
 straight to the renderer's function, so it ran whether or not a
@@ -731,7 +731,7 @@ triangle count halved, and the three refusal paths.
 
 ### Three things the change turned up
 
-**`D3D_DrawARaster` still drew text.** Two calls in `win/wingdi.c` that
+**`D3D_DrawARaster` still drew text.** Two calls in `platform/wingdi.c` that
 the first sweep missed, and they linked because the harness compiles
 with `-w`, which also disables the error on an implicit declaration.
 `tests/implicitcheck.sh` is what said so -- it exists for exactly this
@@ -763,7 +763,7 @@ gone.
 
 ### What this did not do, and what did
 
-At the time, `win/overlay.c` still called `D3D_OverlayBegin`,
+At the time, `platform/overlay.c` still called `D3D_OverlayBegin`,
 `D3D_OverlayDrawQuads` and `D3D_OverlayEnd` directly and read the
 viewport out of the renderer's own state. Only the text calls had to
 move then, because the glyphs had to come from somewhere other than
@@ -820,19 +820,19 @@ whatever is added next.
 ## No D3DX at all
 
 The two fonts were the visible part of the D3DX dependency. Six more
-calls were left after them, all in `win/wingdi.c`, and the engine now
+calls were left after them, all in `platform/wingdi.c`, and the engine now
 has its own:
 
 | was | is | where |
 |---|---|---|
-| `D3DXMatrixMultiply` | `D3D_MatrixMultiply` | `win/wingdimath.c` |
+| `D3DXMatrixMultiply` | `D3D_MatrixMultiply` | `platform/wingdimath.c` |
 | `D3DXMatrixTranslation` | `D3D_MatrixTranslation` | " |
 | `D3DXMatrixOrthoOffCenterRH` | `D3D_MatrixOrthoOffCenterRH` | " |
 | `D3DXMatrixInverse` | `D3D_p_MatrixInverse` | " |
-| `D3DXLoadSurfaceFromMemory` | `D3D_b_SurfaceLoadFromMemory` | `win/wingditex.c` |
+| `D3DXLoadSurfaceFromMemory` | `D3D_b_SurfaceLoadFromMemory` | `platform/wingditex.c` |
 | `D3DXFilterTexture` | `D3D_b_TextureBuildMipLevels` | " |
 
-`win/wingdi.h` includes no D3DX header, `d3dx9.lib` is gone from both
+`platform/wingdi.h` includes no D3DX header, `d3dx9.lib` is gone from both
 Win32 configurations, and the only places the engine says "D3DX" are
 comments saying what a function replaced. The two frozen-copy font
 pointers and the overlay's old height moved into
@@ -843,7 +843,7 @@ them lives.
 
 Direct3D's conventions, not the engine's: row-major, row vectors,
 translation in the fourth row, and a projection whose clip-space z
-runs 0 to 1. They are in `win/` for that reason — `math.c` works in
+runs 0 to 1. They are in `platform/` for that reason — `math.c` works in
 the engine's own `Mtx4x4`, and a second renderer will want its own
 projection with its own clip space.
 
@@ -930,7 +930,7 @@ implementation, and the differential harness says nothing about the
 inverse; `run_wingdimath.sh` is what checks it.
 
 Less: the two texture functions are **stood in for** rather than
-linked. `win/wingditex.c` really walks the chain, locking each level
+linked. `platform/wingditex.c` really walks the chain, locking each level
 and averaging it into the next, and the textures in
 `tests/wingdi_mocks.c` are not that — every level hands out one
 shared buffer and reports the same dimensions, so a real box filter
@@ -994,7 +994,7 @@ Direct3D, which is the behaviour the picker was built for.
 
 Windows ships headers for OpenGL 1.1 and nothing else, so everything
 past that is a function pointer the driver hands over at run time.
-`win/glcore.h` is the part of the GL headers the renderer uses,
+`platform/glcore.h` is the part of the GL headers the renderer uses,
 written out as one X-macro list — which is what the declarations, the
 loader and the test are all generated from, so an entry point cannot
 be added to one and missed in the others. The list holds what is used
@@ -1003,7 +1003,7 @@ that has to resolve for no reason, and on a driver that happens not to
 export it that is a renderer refusing to start over a function it
 would never have called.
 
-`win/glload.c` fills the pointers, and **nothing in it calls
+`platform/glload.c` fills the pointers, and **nothing in it calls
 Windows**. The two ways of resolving a name are passed in, which is
 the whole reason it can be tested: a driver's `wglGetProcAddress` is
 not something a test can arrange.
@@ -1057,7 +1057,7 @@ rests on.
 
 **The context creation itself is not tested here** and cannot be:
 there is no driver behind the stub. What the harness does give it is a
-compile — `win/wingl.c` is Windows-only, so building it in the test is
+compile — `platform/wingl.c` is Windows-only, so building it in the test is
 the only check it gets — and the file logs generously at every step, so
 the first run on a real machine says where it got to rather than
 needing to be reasoned about from here.
@@ -1095,7 +1095,7 @@ pass, so it was failing for other reasons and counting zero.
 
 ## The overlay draws through the interface
 
-`win/overlay.c` was the last thing in the engine talking to Direct3D
+`platform/overlay.c` was the last thing in the engine talking to Direct3D
 by name. Seven bypasses: three reads of the viewport out of
 `D3DRenderParams`, a null check on the device, and the three calls
 that make up the 2D pass. A renderer that is not Direct3D could not
@@ -1119,7 +1119,7 @@ alone — the OpenGL row answers it from whether it has a context.
 
 ### The vertex type
 
-The shape batch used `tVertexAndColor` from `win/wingdi.h`. It is
+The shape batch used `tVertexAndColor` from `platform/wingdi.h`. It is
 `tGdi_Vertex` in `gdi.h` now, and the renderer passes
 `sizeof(tGdi_Vertex)` to `DrawPrimitiveUP` as the stride.
 
@@ -1141,7 +1141,7 @@ visible the moment it works.
 
 ### The tests
 
-The overlay's harness stood in for `win/wingdi.c` — it included that
+The overlay's harness stood in for `platform/wingdi.c` — it included that
 header, defined `D3DRenderParams` because the header declares it
 without `extern`, and drove the viewport through it. It stands in for
 the interface now, which is both smaller and the right shape: a

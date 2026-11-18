@@ -16,7 +16,7 @@
 #
 # An undefined identifier is nought in a #if, so a `#if FEATURE`
 # written above `#define FEATURE` compiles out whichever value the
-# define carries, and nothing says so. win/winsound.c had seven of
+# define carries, and nothing says so. platform/winsound.c had seven of
 # them above its trace switch and two below it; the two printed, the
 # seven did not, and the silence was read three times over as the code
 # not reaching those points. A trace that cannot print is worse than

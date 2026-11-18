@@ -1,6 +1,6 @@
 #pragma once
 
-/* The Windows calls win/wingl.c refers to, stood in for.
+/* The Windows calls platform/wingl.c refers to, stood in for.
  *
  * Both of the OpenGL renderer's harnesses need these and neither
  * calls the parts of the renderer that would use them: one mocks
@@ -11,7 +11,7 @@
  *
  * It is a header full of definitions rather than declarations, which
  * is deliberate but only works because each harness is one
- * translation unit -- win/wingl.c is included rather than linked,
+ * translation unit -- platform/wingl.c is included rather than linked,
  * because its state is static to it. Including this twice in one
  * binary would be two definitions of each.
  *

@@ -54,10 +54,10 @@
     <Filter Include="Source Files\graphicsobjects">
       <UniqueIdentifier>{7f4d0d1f-57cc-43fb-8c0a-6d06bd85c322}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\win">
+    <Filter Include="Source Files\platform">
       <UniqueIdentifier>{1c31368a-05ce-42e3-a10b-48af148bccff}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\win">
+    <Filter Include="Header Files\platform">
       <UniqueIdentifier>{c0197d3c-c1ce-4b7d-89e7-40b8ad6edc01}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -203,19 +203,19 @@
     <ClCompile Include="rasterstate.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win\wingdimath.c">
+    <ClCompile Include="platform\wingdimath.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win\wingditex.c">
+    <ClCompile Include="platform\wingditex.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win\glload.c">
+    <ClCompile Include="platform\glload.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win\glshader.c">
+    <ClCompile Include="platform\glshader.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win\wingl.c">
+    <ClCompile Include="platform\wingl.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="thirdparty\freetype\src\base\ftsystem.c">
@@ -290,7 +290,7 @@
     <ClCompile Include="perfbars.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win\perfdisplay.c">
+    <ClCompile Include="platform\perfdisplay.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pngsave.c">
@@ -722,26 +722,26 @@
     <ClCompile Include="ai\ai_miscfunctions.c">
       <Filter>Source Files\ai</Filter>
     </ClCompile>
-    <ClCompile Include="win\wingdi.c">
-      <Filter>Source Files\win</Filter>
+    <ClCompile Include="platform\wingdi.c">
+      <Filter>Source Files\platform</Filter>
     </ClCompile>
-    <ClCompile Include="win\wingdi_aftereffects.c">
-      <Filter>Source Files\win</Filter>
+    <ClCompile Include="platform\wingdi_aftereffects.c">
+      <Filter>Source Files\platform</Filter>
     </ClCompile>
-    <ClCompile Include="win\wingdisun.c">
+    <ClCompile Include="platform\wingdisun.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win\wingdivideo.c">
+    <ClCompile Include="platform\wingdivideo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win\wininputoutput.c">
-      <Filter>Source Files\win</Filter>
+    <ClCompile Include="platform\wininputoutput.c">
+      <Filter>Source Files\platform</Filter>
     </ClCompile>
-    <ClCompile Include="win\winsound.c">
-      <Filter>Source Files\win</Filter>
+    <ClCompile Include="platform\winsound.c">
+      <Filter>Source Files\platform</Filter>
     </ClCompile>
-    <ClCompile Include="win\adpcm.c">
-      <Filter>Source Files\win</Filter>
+    <ClCompile Include="platform\adpcm.c">
+      <Filter>Source Files\platform</Filter>
     </ClCompile>
     <ClCompile Include="thirdparty\zlib\adler32.c">
       <Filter>zlib</Filter>
@@ -970,22 +970,22 @@
     <ClInclude Include="geovertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\wingdimath.h">
+    <ClInclude Include="platform\wingdimath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\wingditex.h">
+    <ClInclude Include="platform\wingditex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\glcore.h">
+    <ClInclude Include="platform\glcore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\glload.h">
+    <ClInclude Include="platform\glload.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\glshader.h">
+    <ClInclude Include="platform\glshader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\wingl.h">
+    <ClInclude Include="platform\wingl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inputoutput.h">
@@ -1024,7 +1024,7 @@
     <ClInclude Include="perfbars.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\perfdisplay.h">
+    <ClInclude Include="platform\perfdisplay.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="watersmooth.h">
@@ -1327,23 +1327,23 @@
     <ClInclude Include="ai\ai_gfxfunctions.h">
       <Filter>Header Files\ai</Filter>
     </ClInclude>
-    <ClInclude Include="win\adpcm.h">
-      <Filter>Header Files\win</Filter>
+    <ClInclude Include="platform\adpcm.h">
+      <Filter>Header Files\platform</Filter>
     </ClInclude>
-    <ClInclude Include="win\winsound.h">
-      <Filter>Header Files\win</Filter>
+    <ClInclude Include="platform\winsound.h">
+      <Filter>Header Files\platform</Filter>
     </ClInclude>
-    <ClInclude Include="win\wininputoutput.h">
-      <Filter>Header Files\win</Filter>
+    <ClInclude Include="platform\wininputoutput.h">
+      <Filter>Header Files\platform</Filter>
     </ClInclude>
-    <ClInclude Include="win\wingdisun.h">
+    <ClInclude Include="platform\wingdisun.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\wingdivideo.h">
+    <ClInclude Include="platform\wingdivideo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win\wingdi.h">
-      <Filter>Header Files\win</Filter>
+    <ClInclude Include="platform\wingdi.h">
+      <Filter>Header Files\platform</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

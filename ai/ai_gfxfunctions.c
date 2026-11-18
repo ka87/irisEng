@@ -6,9 +6,9 @@
 #include "ai_worldfunctions.h"
 #include "ai_gfxfunctions.h"
 #include "../sound.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "../video.h"
-#include "../win/winvideosound.h"
+#include "../platform/winvideosound.h"
 #include "../datafiles.h"
 #include "../dbg.h"
 

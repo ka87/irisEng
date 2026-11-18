@@ -1,4 +1,4 @@
-/* A unit test for win/perfdisplay.c -- the page `tweak perf` puts over
+/* A unit test for platform/perfdisplay.c -- the page `tweak perf` puts over
  * the frame.
  *
  * The display is new code on the OpenGL side and has no frozen copy to
@@ -163,7 +163,7 @@ int64_t PRO_i64_QPC(void)
 
 int64_t PRO_i64_QPCFrequency(void) { return 1000000; }
 
-#include "../win/perfdisplay.c"
+#include "../platform/perfdisplay.c"
 
 /* --------------------------------------------------------- the harness */
 

@@ -6,8 +6,8 @@
 #include "profiler.h"
 #include "time.h"
 #include "dbg.h"
-#include "win/overlay.h"
-#include "win/wininputoutput.h"
+#include "platform/overlay.h"
+#include "platform/wininputoutput.h"
 
 #include <SDL3/SDL.h>
 #include <string.h>

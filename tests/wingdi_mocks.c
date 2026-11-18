@@ -1,4 +1,4 @@
-/* Mocks for the win/wingdi.c differential test.
+/* Mocks for the platform/wingdi.c differential test.
  *
  * The Direct3D device is a logging vtable: every method records its
  * name and arguments and returns a deterministic result, and Lock()
@@ -14,8 +14,8 @@
    defines the handful of D3DX entry points the frozen copy calls,
    so it includes the stub itself. */
 #include <d3dx9math.h>
-#include "../win/wingdimath.h"
-#include "../win/wingditex.h"
+#include "../platform/wingdimath.h"
+#include "../platform/wingditex.h"
 #include "../math.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -868,7 +868,7 @@ D3DXMATRIX* D3DXMatrixMultiply(D3DXMATRIX* out, const D3DXMATRIX* a, const D3DXM
         }
     *out = r;
     /* Not recorded. The live side computes this itself now, in
-       win/wingdimath.c, so it is not a call either side makes to
+       platform/wingdimath.c, so it is not a call either side makes to
        anything -- and what the arithmetic produced still reaches
        SetTransform, which records the whole matrix. */
     return out;
@@ -949,7 +949,7 @@ HRESULT D3DXFilterTexture(IDirect3DBaseTexture9* t, const PALETTEENTRY* pal, UIN
 
 /* ---- the two functions that replaced the pair above ----
 
-   Stood in for rather than linked. win/wingditex.c really does walk
+   Stood in for rather than linked. platform/wingditex.c really does walk
    the mip chain, locking each level and averaging it into the next,
    and the textures in this file are not that: every level hands out
    one shared buffer and reports the same dimensions, so a real box
@@ -1254,7 +1254,7 @@ int _stricmp(const char* a, const char* b)
     return (unsigned char)*a - (unsigned char)*b;
 }
 
-/* win/overlay.c is a translation unit of its own, so the overlay's two
+/* platform/overlay.c is a translation unit of its own, so the overlay's two
    entry points are mocked. The command field is never active here, so
    the message hook consumes nothing and PC_WNDMsgHandler runs as it
    did; OVL_Draw is counted so D3D_Flip's call to it is visible. */

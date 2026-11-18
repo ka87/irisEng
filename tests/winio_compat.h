@@ -1,4 +1,4 @@
-/* What the frozen copy of win/wininputoutput.c still needs and the
+/* What the frozen copy of platform/wininputoutput.c still needs and the
    rewrite no longer has.
 
    The keyboard and the mouse were two DirectInput devices held

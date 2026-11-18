@@ -1,5 +1,5 @@
 #include "ai_gameobjectfunctions.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "../sound.h"
 #include "ai_debugfunctions.h"
 #include "ai_inofunctions.h"

@@ -9,7 +9,7 @@
    empty macros, so an identifier of any of these names disappears and
    the line around it becomes a syntax error. Declaring them here is
    what lets gcc catch that -- without them the parse sweep passed
-   win/wingdi.c with two parameters called near and far, and MSVC was
+   platform/wingdi.c with two parameters called near and far, and MSVC was
    the first thing to see it. They are no-ops, exactly as in windef.h,
    so nothing else changes. */
 #define near
@@ -189,7 +189,7 @@ DWORD  GetModuleFileNameA(HMODULE, LPSTR, DWORD);
 BOOL   FreeLibrary(HMODULE);
 BOOL   UnregisterClassA(LPCSTR, HINSTANCE);
 
-/* ---- the pixel format and WGL, for win/wingl.c ----
+/* ---- the pixel format and WGL, for platform/wingl.c ----
 
    Enough of wingdi.h and wgl.h to compile the OpenGL renderer here.
    It cannot run on this host -- there is no driver behind these -- but
@@ -249,7 +249,7 @@ HBRUSH   CreateSolidBrush(COLORREF);
 BOOL     ExtTextOutA(HDC, int, int, UINT, const RECT*, LPCSTR, UINT, const int*);
 int      DrawTextA(HDC, LPCSTR, int, RECT*, UINT);
 
-/* ---- messages, keys and window/queue flags for the win/ directory.
+/* ---- messages, keys and window/queue flags for the platform/ directory.
    Distinct values, not the SDK's; see tests/stub/d3d9.h. */
 /* QS */
 #define QS_HOTKEY                          0x00000001
@@ -305,7 +305,7 @@ int      DrawTextA(HDC, LPCSTR, int, RECT*, UINT);
 #define E_INVALIDARG                       16406
 
 /* Dialogs, focus, the keyboard and the mouse-button swap, for the
-   win/ input path. Real prototypes, not invented ones. */
+   platform/ input path. Real prototypes, not invented ones. */
 HWND    SetFocus(HWND hWnd);
 BOOL    SetWindowTextA(HWND hWnd, LPCSTR lpString);
 LRESULT SendMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
@@ -315,7 +315,7 @@ SHORT   GetKeyState(int nVirtKey);
 BOOL    SwapMouseButton(BOOL fSwap);
 void    keybd_event(BYTE bVk, BYTE bScan, DWORD dwFlags, UINT_PTR dwExtraInfo);
 double  _hypot(double x, double y);
-/* Handles, threads, files and COM init, for win/winsound.c. These are
+/* Handles, threads, files and COM init, for platform/winsound.c. These are
    the documented Win32 signatures; the differential test mocks what it
    needs. */
 typedef INT_PTR (WINAPI *FARPROC)(void);
@@ -343,7 +343,7 @@ DWORD    FormatMessageA(DWORD flags, const void* source, DWORD messageId,
 HRESULT  CoInitialize(LPVOID reserved);
 void     CoUninitialize(void);
 
-/* CreateProcessA and friends, for the win/ relauncher. */
+/* CreateProcessA and friends, for the platform/ relauncher. */
 typedef struct _PROCESS_INFORMATION {
     HANDLE hProcess, hThread; DWORD dwProcessId, dwThreadId;
 } PROCESS_INFORMATION;
@@ -356,7 +356,7 @@ typedef struct _STARTUPINFOA {
 BOOL  CreateProcessA(LPCSTR, LPSTR, void*, void*, BOOL, DWORD, void*, LPCSTR,
                      STARTUPINFOA*, PROCESS_INFORMATION*);
 
-/* The message loop and the clock the win/ directory uses. */
+/* The message loop and the clock the platform/ directory uses. */
 typedef struct tagMSG {
     HWND hwnd; UINT message; WPARAM wParam; LPARAM lParam;
     DWORD time; POINT pt;
@@ -370,7 +370,7 @@ BOOL  TranslateMessage(const MSG*);
 LRESULT DispatchMessageA(const MSG*);
 DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD);
 
-/* The window, cursor, icon and directory calls win/wingdi.c makes.
+/* The window, cursor, icon and directory calls platform/wingdi.c makes.
    Real signatures; these were the last implicit declarations in that
    file.  FARPROC, LoadLibraryA, GetProcAddress and SetWindowTextA are
    its too, and are declared with the other passes' above. */

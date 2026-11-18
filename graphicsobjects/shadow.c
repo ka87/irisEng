@@ -1,6 +1,6 @@
 #include "../memory.h"
 #include "gro_common.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "../modifiers/shadowmodifier.h"
 #include "shadow.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-/* What the frozen copy of win/wingdi.c still refers to and the live
+/* What the frozen copy of platform/wingdi.c still refers to and the live
  * file does not.
  *
  * Forced in on the baseline's compile line alone, the same way the

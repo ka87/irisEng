@@ -225,11 +225,11 @@
     <ClCompile Include="geovertex.c" />
     <ClCompile Include="geosprite.c" />
     <ClCompile Include="rasterstate.c" />
-    <ClCompile Include="win\wingdimath.c" />
-    <ClCompile Include="win\wingditex.c" />
-    <ClCompile Include="win\glload.c" />
-    <ClCompile Include="win\glshader.c" />
-    <ClCompile Include="win\wingl.c" />
+    <ClCompile Include="platform\wingdimath.c" />
+    <ClCompile Include="platform\wingditex.c" />
+    <ClCompile Include="platform\glload.c" />
+    <ClCompile Include="platform\glshader.c" />
+    <ClCompile Include="platform\wingl.c" />
     <ClCompile Include="gfx.c" />
     <ClCompile Include="gfx\gfxanotherflare.c" />
     <ClCompile Include="gfx\gfxborderfade.c" />
@@ -372,26 +372,26 @@
     <ClCompile Include="aemotion.c" />
     <ClCompile Include="aezoom2.c" />
     <ClCompile Include="perfbars.c" />
-    <ClCompile Include="win\perfdisplay.c" />
+    <ClCompile Include="platform\perfdisplay.c" />
     <ClCompile Include="pngsave.c">
       <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\zlib;$(ProjectDir)thirdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="watersmooth.c" />
     <ClCompile Include="ways.c" />
-    <ClCompile Include="win\adpcm.c" />
-    <ClCompile Include="win\wingdi.c" />
-    <ClCompile Include="win\wingdi_aftereffects.c" />
-    <ClCompile Include="win\wingdisun.c" />
-    <ClCompile Include="win\wingdivideo.c" />
-    <ClCompile Include="win\wininputoutput.c" />
-    <ClCompile Include="win\overlay.c" />
-    <ClCompile Include="win\winvideosound.c">
+    <ClCompile Include="platform\adpcm.c" />
+    <ClCompile Include="platform\wingdi.c" />
+    <ClCompile Include="platform\wingdi_aftereffects.c" />
+    <ClCompile Include="platform\wingdisun.c" />
+    <ClCompile Include="platform\wingdivideo.c" />
+    <ClCompile Include="platform\wininputoutput.c" />
+    <ClCompile Include="platform\overlay.c" />
+    <ClCompile Include="platform\winvideosound.c">
       <ExcludedFromBuild Condition="'$(Platform)'=='x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="video.c">
       <ExcludedFromBuild Condition="'$(Platform)'=='x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="win\winsound.c" />
+    <ClCompile Include="platform\winsound.c" />
     <ClCompile Include="world.c" />
     <!-- FreeType, vendored in thirdparty/freetype. Each of these is an
          amalgamation that includes its own siblings, so these thirteen
@@ -659,12 +659,12 @@
     <ClInclude Include="geovertex.h" />
     <ClInclude Include="geosprite.h" />
     <ClInclude Include="rasterstate.h" />
-    <ClInclude Include="win\wingdimath.h" />
-    <ClInclude Include="win\wingditex.h" />
-    <ClInclude Include="win\glcore.h" />
-    <ClInclude Include="win\glload.h" />
-    <ClInclude Include="win\glshader.h" />
-    <ClInclude Include="win\wingl.h" />
+    <ClInclude Include="platform\wingdimath.h" />
+    <ClInclude Include="platform\wingditex.h" />
+    <ClInclude Include="platform\glcore.h" />
+    <ClInclude Include="platform\glload.h" />
+    <ClInclude Include="platform\glshader.h" />
+    <ClInclude Include="platform\wingl.h" />
     <ClInclude Include="inputoutput.h" />
     <ClInclude Include="thirdparty\jpeg-6b\cderror.h" />
     <ClInclude Include="thirdparty\jpeg-6b\cdjpeg.h" />
@@ -742,18 +742,18 @@
     <ClInclude Include="pngsave.h" />
     <ClInclude Include="version.h" />
     <ClInclude Include="perfbars.h" />
-    <ClInclude Include="win\perfdisplay.h" />
+    <ClInclude Include="platform\perfdisplay.h" />
     <ClInclude Include="watersmooth.h" />
     <ClInclude Include="ways.h" />
-    <ClInclude Include="win\adpcm.h" />
-    <ClInclude Include="win\wingdisun.h" />
-    <ClInclude Include="win\wingdivideo.h" />
-    <ClInclude Include="win\wingdi.h" />
-    <ClInclude Include="win\wininputoutput.h" />
-    <ClInclude Include="win\overlay.h" />
+    <ClInclude Include="platform\adpcm.h" />
+    <ClInclude Include="platform\wingdisun.h" />
+    <ClInclude Include="platform\wingdivideo.h" />
+    <ClInclude Include="platform\wingdi.h" />
+    <ClInclude Include="platform\wininputoutput.h" />
+    <ClInclude Include="platform\overlay.h" />
     <ClInclude Include="video.h" />
-    <ClInclude Include="win\winvideosound.h" />
-    <ClInclude Include="win\winsound.h" />
+    <ClInclude Include="platform\winvideosound.h" />
+    <ClInclude Include="platform\winsound.h" />
     <ClInclude Include="world.h" />
   </ItemGroup>
   <ItemGroup>

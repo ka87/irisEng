@@ -38,7 +38,7 @@
  * the things the real object refuses.
  */
 
-/* A unit test for win/wingditex.c.
+/* A unit test for platform/wingditex.c.
  *
  * New code replacing two D3DX calls, and a direct check rather than a
  * differential one -- deliberately. The D3DX mocks in the renderer's
@@ -56,7 +56,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../win/wingditex.h"
+#include "../platform/wingditex.h"
 
 static long checks;
 static long fails;

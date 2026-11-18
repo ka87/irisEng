@@ -115,7 +115,7 @@ replacing two in an if/else, or one becoming several early returns.
   and `graphicsobjects/shadow.c` came in with the d3d9 stub additions
   the full-screen video path needed. `ai_soundfunctions.c` is the one
   file here that still does not, on a pre-existing gap in the
-  `win/winsound.h` stub.
+  `platform/winsound.h` stub.
 - **`ai_keywords.c`'s two coercion rules** were checked against the
   originals exhaustively rather than by reading: 7 type values by 13 bit
   patterns, and the four shift float paths separately, for **9,594 cases
@@ -888,7 +888,7 @@ functions that otherwise match:
 
 `ai_soundfunctions.c` did not parse against the stub when it was
 rewritten, and that was never this file's doing: the eight errors all
-came from `win/eax/eax.h` and `win/winsound.h`, which name `IUnknown`,
+came from `platform/eax/eax.h` and `platform/winsound.h`, which name `IUnknown`,
 `DSCAPS`, `FAR`, `PASCAL`, `CDECL`, `LPDWORD` and
 `IDirectSound3DListener`, and the stub's DirectSound header was four
 opaque one-field structs. The error output was byte-identical before and
@@ -899,7 +899,7 @@ real type-check.
 That gap is closed: the stub now has the DirectSound interfaces written
 out with the vtable methods and struct members the engine names, which
 also brought in `ai_functions.c`, `ai_compiledscripts.c`, `sound.c` and
-`win/winsound.c`. See [root.md](root.md) for the whole count.
+`platform/winsound.c`. See [root.md](root.md) for the whole count.
 
 ## ai_gridfunctions.c
 

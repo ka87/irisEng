@@ -5,7 +5,7 @@
 #include "../gdi.h"
 #include "../time.h"
 #include "../textures.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 #include "../soft.h"
 #include "../sprites.h"
 #include "../materialanddraw.h"

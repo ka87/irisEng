@@ -5,7 +5,7 @@
 #include "wingdisun.h"
 
 /* The Direct3D renderer's own private state. The engine holds this
-   as an opaque pointer; nothing outside win/ looks inside it. */
+   as an opaque pointer; nothing outside platform/ looks inside it. */
 typedef struct sGdi_D3DRenderParams
 {
     int d3d_Adapter;
@@ -342,7 +342,7 @@ Vec3 AE_MS_PrevVec;
 void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem);
 void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
 void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
-// the overlay's screen-space pass, used by win/overlay.c
+// the overlay's screen-space pass, used by platform/overlay.c
 void D3D_OverlayBegin(void);
 void D3D_OverlayDrawQuads(const void* verts, int triangleCount);
 int  D3D_b_Ready(void);

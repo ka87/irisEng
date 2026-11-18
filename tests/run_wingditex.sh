@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for win/wingditex.c.
+# The unit test for platform/wingditex.c.
 #
 #   ./tests/run_wingditex.sh
 #
@@ -20,6 +20,6 @@ mkdir -p "$OUT"
 
 echo "=== renderer textures ==="
 $CC $CFLAGS -fsanitize=address -c tests/test_wingditex.c -o "$OUT/wgtex.drv.o"
-$CC $CFLAGS -fsanitize=address -c win/wingditex.c -o "$OUT/wgtex.o"
+$CC $CFLAGS -fsanitize=address -c platform/wingditex.c -o "$OUT/wgtex.o"
 $CC -fsanitize=address "$OUT/wgtex.drv.o" "$OUT/wgtex.o" -o "$OUT/wgtex"
 "$OUT/wgtex"

@@ -1,5 +1,5 @@
 #!/bin/sh
-# The differential test for win/wininputoutput.c.
+# The differential test for platform/wininputoutput.c.
 #
 #   ./tests/run_winio.sh
 #
@@ -9,7 +9,7 @@
 # Every function the file defines, and every global it defines with an
 # initialiser, is prefixed BASE_/NEW_: the two copies both define
 # those, so they cannot be shared. Everything declared in
-# win/wininputoutput.h is shared, and the harness rebuilds it between
+# platform/wininputoutput.h is shared, and the harness rebuilds it between
 # the two runs, which is what makes the comparison one of state.
 #
 # The frozen copy still spells four names the way the file did before
@@ -102,7 +102,7 @@ oldfail() {
 }
 
 echo "=== wininputoutput ==="
-$CC $CFLAGS $STDIO -c win/wininputoutput.c -o "$OUT/winio.new.o" \
+$CC $CFLAGS $STDIO -c platform/wininputoutput.c -o "$OUT/winio.new.o" \
     $(defs NEW_ $fns) $(defs NEW_ $glob) $(defs NEW_ $new)
 $CC $CFLAGS $STDIO $COMPAT $COMPATH -c tests/baseline_winio.c -o "$OUT/winio.base.o" \
     $(defs BASE_ $fns) $(defs BASE_ $glob) $(oldfail BASE_)

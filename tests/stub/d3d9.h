@@ -229,7 +229,7 @@ typedef IDirect3DSurface9*       LPDIRECT3DSURFACE9;
 typedef IDirect3DVertexBuffer9*  LPDIRECT3DVERTEXBUFFER9;
 typedef IDirect3DIndexBuffer9*   LPDIRECT3DINDEXBUFFER9;
 
-/* ---- constants added for the win/ directory ------------------------
+/* ---- constants added for the platform/ directory ------------------------
    The values below are chosen to be DISTINCT, not copied from the SDK.
    A flag family gets distinct bits so OR-combinations stay telling
    apart; an enum family gets distinct integers. Nothing may read
@@ -414,7 +414,7 @@ typedef IDirect3DIndexBuffer9*   LPDIRECT3DINDEXBUFFER9;
 #define D3DX_DEFAULT                       0x5001
 #define D3DX_FILTER_LINEAR                 0x5002
 
-/* ---- added for the win/wingdi passes -------------------------------
+/* ---- added for the platform/wingdi passes -------------------------------
    One block, kept together so it is easy to see what these passes
    added.  Values distinct from every other name in their own family,
    as the comment above requires. */

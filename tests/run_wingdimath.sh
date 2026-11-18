@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for win/wingdimath.c.
+# The unit test for platform/wingdimath.c.
 #
 #   ./tests/run_wingdimath.sh
 #
@@ -20,6 +20,6 @@ mkdir -p "$OUT"
 
 echo "=== renderer matrices ==="
 $CC $CFLAGS -c tests/test_wingdimath.c -o "$OUT/wgmath.drv.o"
-$CC $CFLAGS -c win/wingdimath.c -o "$OUT/wgmath.o"
+$CC $CFLAGS -c platform/wingdimath.c -o "$OUT/wgmath.o"
 $CC "$OUT/wgmath.drv.o" "$OUT/wgmath.o" -o "$OUT/wgmath" -lm
 "$OUT/wgmath"

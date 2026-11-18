@@ -1,6 +1,6 @@
 #include "memory.h"
 #include "time.h"
-#include "win/wingdi.h"
+#include "platform/wingdi.h"
 #include "water.h"
 #include "dbg.h"
 //

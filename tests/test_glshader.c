@@ -1,4 +1,4 @@
-/* A unit test for win/glshader.c.
+/* A unit test for platform/glshader.c.
  *
  * New code with no earlier copy, so a direct check.
  *
@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <windows.h>
 
-#include "../win/glshader.h"
+#include "../platform/glshader.h"
 
 static long checks;
 static long fails;

@@ -1,7 +1,7 @@
 #pragma once
 #include "../profiler.h"
 #include "../time.h"
-#include "../win/wingdi.h"
+#include "../platform/wingdi.h"
 
 #define PROMOCK_LOG_MAX 4096
 #define PROMOCK_ARGS 8

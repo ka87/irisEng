@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for win/wingdivideo.c, the Direct3D side of the
+# The unit test for platform/wingdivideo.c, the Direct3D side of the
 # fullscreen video display.
 #
 #   ./tests/run_wingdivideo.sh
@@ -19,7 +19,7 @@ OUT=tests/build
 mkdir -p "$OUT"
 
 echo "=== fullscreen video display ==="
-$CC $CFLAGS -c win/wingdivideo.c -o "$OUT/wgv.o"
+$CC $CFLAGS -c platform/wingdivideo.c -o "$OUT/wgv.o"
 $CC $CFLAGS -c tests/test_wingdivideo.c -o "$OUT/wgv.drv.o"
 $CC "$OUT/wgv.o" "$OUT/wgv.drv.o" -o "$OUT/wgv"
 "$OUT/wgv"

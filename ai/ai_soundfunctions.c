@@ -1,5 +1,5 @@
 #include "../sound.h"
-#include "../win/winsound.h"
+#include "../platform/winsound.h"
 #include "../ai.h"
 #include "ai_mathfunctions.h"
 #include "ai_soundfunctions.h"

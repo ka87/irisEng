@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for win/overlay.c.
+# The unit test for platform/overlay.c.
 #
 #   ./tests/run_overlay.sh
 #
