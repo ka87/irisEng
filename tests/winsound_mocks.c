@@ -831,7 +831,9 @@ BOOL CloseHandle(HANDLE h)
        handle both copies really hold, and that one is said. */
     if (wsnd_event_index(h) >= 0 || (long)(size_t)h == 0x3000)
         return 1;
-    wsnd_log("CloseHandle(%ld)\n", (long)(size_t)h);
+    /* The only handle left that both copies really hold is the big
+       file, and the rewrite gives it back through SPL_FileClose. */
+    wsnd_log("fclose(%ld)\n", (long)(size_t)h);
     return 1;
 }
 
@@ -853,30 +855,72 @@ HANDLE CreateThread(void* attrs, SIZE_T stack, LPTHREAD_START_ROUTINE start, LPV
     return (HANDLE)(size_t)0x3000;
 }
 
+/* The big file, in the words both copies say it in.
+ *
+ * The frozen copy opens, reads and seeks it through Windows and the
+ * rewrite through the platform layer, so neither can be compared by
+ * the call it makes. What both of them do is the same four things:
+ *
+ *     fopen(path)      the big file opened
+ *     fread(h,n)=got   a read, and how much came back
+ *     fseek(h,off)     an absolute seek from the start
+ *     fclose(h)        the file given back
+ *
+ * The seek's method is not said, because every one of them is from
+ * the start -- that is the only kind the sound does, and it is why
+ * the platform layer takes an offset and nothing else. */
+static int wsnd_file_read(long id, void* buf, int count)
+{
+    int n = wsnd_read_bytes;
+    int i;
+    unsigned char* p = (unsigned char*)buf;
+
+    if (n > count) n = count;
+    for (i = 0; i < n; ++i)
+        p[i] = adpcm_byte(i, 3);
+    wsnd_log("fread(%ld,%u)=%u\n", id, (unsigned)count, (unsigned)n);
+    return n;
+}
+
 HANDLE CreateFileA(LPCSTR path, DWORD access, DWORD share, void* sec, DWORD disp, DWORD attrs, HANDLE templ)
 {
-    wsnd_log("CreateFileA(%s,%X)\n", path, access);
+    wsnd_log("fopen(%s)\n", path);
     return (HANDLE)(size_t)(0x5000 + (++file_seq));
 }
 
 BOOL ReadFile(HANDLE h, LPVOID buf, DWORD count, LPDWORD read, void* ov)
 {
-    DWORD n = (DWORD)wsnd_read_bytes;
-    DWORD i;
-    unsigned char* p = (unsigned char*)buf;
-
-    if (n > count) n = count;
-    for (i = 0; i < n; ++i)
-        p[i] = adpcm_byte((int)i, 3);
-    *(int*)read = (int)n;
-    wsnd_log("ReadFile(%ld,%u)=%u\n", (long)(size_t)h, count, n);
+    *(int*)read = wsnd_file_read((long)(size_t)h, buf, (int)count);
     return 1;
 }
 
 DWORD SetFilePointer(HANDLE h, LONG move, LONG* high, DWORD method)
 {
-    wsnd_log("SetFilePointer(%ld,%ld,%u)\n", (long)(size_t)h, (long)move, method);
+    wsnd_log("fseek(%ld,%ld)\n", (long)(size_t)h, (long)move);
     return (DWORD)move;
+}
+
+struct sSplFile;
+struct sSplFile* SPL_p_FileOpen(const char* path)
+{
+    wsnd_log("fopen(%s)\n", path);
+    return (struct sSplFile*)(size_t)(0x5000 + (++file_seq));
+}
+
+int SPL_i_FileRead(struct sSplFile* file, void* dest, int bytes)
+{
+    return wsnd_file_read((long)(size_t)file, dest, bytes);
+}
+
+int SPL_b_FileSeek(struct sSplFile* file, long long offset)
+{
+    wsnd_log("fseek(%ld,%ld)\n", (long)(size_t)file, (long)offset);
+    return 1;
+}
+
+void SPL_FileClose(struct sSplFile* file)
+{
+    wsnd_log("fclose(%ld)\n", (long)(size_t)file);
 }
 
 void OutputDebugStringA(LPCSTR s) { wsnd_log("OutputDebugStringA(%s)\n", s); }
