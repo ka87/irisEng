@@ -65,7 +65,7 @@ void PLT_WindowSettings(int* width, int* height, int* windowed)
 #endif
 }
 
-int PLT_b_Open(const char* title, int width, int height, int windowed)
+int PLT_b_Open(const char* title, int width, int height)
 {
     SDL_WindowFlags flags = 0;
 
@@ -82,12 +82,26 @@ int PLT_b_Open(const char* title, int width, int height, int windowed)
     }
     plt_up = 1;
 
-    /* The window the game asked for: resizable, because the old one
-       had a sizing border, and fullscreen unless the settings say
-       otherwise -- which is the sense the old flag had. */
+    /* An ordinary window with a sizing border, which is the only kind
+       the game has ever made: the style it asked Windows for was
+       border, dialogue frame, system menu, minimise, maximise and
+       thick frame, at a size out of the settings.
+       
+       Deliberately not fullscreen. Going fullscreen is the renderer's
+       own business and always has been -- the Direct3D device asks for
+       an exclusive mode, or does not, and that decision reads the
+       engine's windowed flag and whether a debugger is attached. A
+       window that is itself fullscreen puts a second mode change
+       underneath that one, and the two disagree in exactly the case
+       the flag exists for: under a debugger the device wants a
+       windowed presentation and would get it inside a fullscreen
+       window.
+       
+       When the OpenGL renderer becomes the way the game runs off
+       Windows, SDL's own fullscreen is what replaces the device's
+       mode change. It is not a second route to it while Direct3D is
+       still doing it. */
     flags = SDL_WINDOW_RESIZABLE;
-    if (!windowed)
-        flags |= SDL_WINDOW_FULLSCREEN;
 
     plt_window = SDL_CreateWindow(title ? title : "IRISEngine",
                                   width > 0 ? width : 640,

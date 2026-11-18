@@ -21,7 +21,7 @@
 /* Opens the window. Returns zero and says why in the log if SDL or the
    window will not come up, which is fatal rather than something to
    carry on past. */
-int PLT_b_Open(const char* title, int width, int height, int windowed);
+int PLT_b_Open(const char* title, int width, int height);
 
 void PLT_Close(void);
 
