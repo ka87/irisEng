@@ -3,6 +3,7 @@
 #include "../pngsave.h"
 #include "../datapath.h"
 #include "../flatlayer.h"
+#include "../cinebands.h"
 #include "../time.h"
 #include "../memory.h"
 #include "../textures.h"
@@ -287,7 +288,6 @@ void D3D_SetViewPort(int x, int y, int w, int h)
 }
 
 int   D3D_gi_AspectTrace = 0;
-float D3D_gf_CutsceneBand = 0.10416666f;
 
 float D3D_RealYoverX(void)
 {
@@ -308,8 +308,8 @@ float D3D_RealYoverX(void)
 
 void D3D_GetBandFractions(float* top, float* bottom)
 {
-    *top = D3D_gf_CutsceneBand;
-    *bottom = 1.0f - D3D_gf_CutsceneBand;
+    *top = CIN_gf_BandHeight;
+    *bottom = 1.0f - CIN_gf_BandHeight;
 }
 
 void D3D_AspectTrace(const char* where, int viewX, int viewY, int viewW, int viewH)

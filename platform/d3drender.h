@@ -428,7 +428,6 @@ void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* world);
 void D3D_SaveScreenshot(void);
 
 void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value);
-void PC_CIN_CutsceneMode(int on);
 
 // Aspect handling. The two settings every renderer needs are in
 // gdi.h, because cameraengine.c reads them as well and a second
@@ -436,7 +435,6 @@ void PC_CIN_CutsceneMode(int on);
 // layer box, which only this renderer draws.
 
 // How much of the height each cutscene band covers.
-extern float D3D_gf_CutsceneBand;
 
 
 // Set to log the framing once a frame through the debug output.

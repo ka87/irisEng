@@ -1137,8 +1137,11 @@ void MAT_UVDecompress(tMultiTextureElemStruct* e, tMatDecompressedStruct* out)
 
 /* globals the file reads */
 int ENG_WindowedMode;
-int CIN_Bands;
-int CIN_NoBands;
+/* The cutscene switch and whether a script may change it are
+   cinebands.c's now, which this harness links; the tweak that
+   overrides the switch is still the tweak table's and is answered
+   here. */
+int tweak_ae_nobands;
 int tweak_d3d_chrome;
 float tweak_mipmaplodbias;
 int tweak_perf;
