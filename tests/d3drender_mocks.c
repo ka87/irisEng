@@ -1206,6 +1206,12 @@ LONG RegQueryValueExA(HKEY k, LPCSTR s, DWORD* r, DWORD* t, LPBYTE d, DWORD* c)
 { (void)k; (void)s; (void)r; (void)t; (void)d; (void)c; return 1; }
 LONG RegCloseKey(HKEY k) { (void)k; return 0; }
 HMODULE LoadLibraryA(LPCSTR s) { (void)s; return NULL; }
+/* No debugger, deterministically. The frozen copy asks by loading
+   kernel32, which the mock above refuses, so its answer is no; this
+   is the same answer said the rewrite's way. Reading the real one
+   would make the comparison depend on whether the suite happens to be
+   running under a debugger. */
+int PLT_b_DebuggerAttached(void) { return 0; }
 FARPROC GetProcAddress(HMODULE m, LPCSTR s) { (void)m; (void)s; return NULL; }
 int MessageBoxA(HWND h, LPCSTR a, LPCSTR b, UINT u)
 { (void)h; (void)a; (void)b; (void)u; return 0; }

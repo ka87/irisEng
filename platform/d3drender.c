@@ -14,6 +14,7 @@
 #include "inputbackend.h"
 #include "../resource.h"
 #include "d3drender.h"
+#include "syscompat.h"
 #include "../font.h"
 #include "d3dmath.h"
 #include "d3dtex.h"
@@ -2933,7 +2934,6 @@ void D3D_ApplyRenderingPreesetsForVariousGraphicsCards()
 
 int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
 {
-    BOOL (__stdcall *IsDebuggerPresent)();
     int ret;
     int i;
     int tries;
@@ -2961,10 +2961,12 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
 
     RegCloseKey(phkResult);
 
-    libHandle = LoadLibraryA("kernel32");
-    IsDebuggerPresent = GetProcAddress(libHandle, "IsDebuggerPresent");
-    
-    if (IsDebuggerPresent && IsDebuggerPresent() || ENG_WindowedMode)
+    /* An exclusive display mode under a debugger wedges the machine,
+       so a debugged run presents in a window whatever the settings
+       say. The question used to be asked by loading kernel32 and
+       looking the answer up in it; it is asked by name now, and the
+       platform answers it however it can. */
+    if (PLT_b_DebuggerAttached() || ENG_WindowedMode)
     {
         D3DRenderParams.d3d_if->lpVtbl->GetAdapterDisplayMode(D3DRenderParams.d3d_if, D3DRenderParams.d3d_Adapter, &dispMode);
         D3DRenderParams.d3d_AdapterFormat = dispMode.Format;

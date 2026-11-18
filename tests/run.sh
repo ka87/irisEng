@@ -451,6 +451,7 @@ run_strings
 for one in tests/run_sdl3.sh \
            tests/run_platform.sh \
            tests/run_sndplatform.sh \
+           tests/run_syscompat.sh \
            tests/runworld.sh \
            tests/run_collision_a.sh \
            tests/run_collision_b.sh \

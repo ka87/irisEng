@@ -393,6 +393,7 @@
       <ExcludedFromBuild Condition="'$(Platform)'=='x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="platform\sndbackend.c" />
+    <ClCompile Include="platform\syscompat.c" />
     <ClCompile Include="world.c" />
     <!-- FreeType, vendored in thirdparty/freetype. Each of these is an
          amalgamation that includes its own siblings, so these thirteen
@@ -755,6 +756,7 @@
     <ClInclude Include="video.h" />
     <ClInclude Include="platform\sndvideo.h" />
     <ClInclude Include="platform\sndbackend.h" />
+    <ClInclude Include="platform\syscompat.h" />
     <ClInclude Include="world.h" />
   </ItemGroup>
   <ItemGroup>
