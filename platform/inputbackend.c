@@ -382,7 +382,7 @@ void pcINO_InputHandlerCase4(tInoPad* pad, float* mouse, uint8_t* keyboard)
         y = pcINO_joystickPosition[0].y - gain * mouse[1] * 0.015f;
         pcINO_joystickPosition[0].y = (float)y;
 
-        len = _hypot(pcINO_joystickPosition[0].x, y);
+        len = hypot(pcINO_joystickPosition[0].x, y);
         if (len > 0.1f)                                       /* 0x00423FAE */
         {
             inv = 1.0 / len;
@@ -674,7 +674,7 @@ void pcINO_InputHandlerCase100(tInoPad* pad, float* mouse, uint8_t* keyboard)
     pcINO_joystickPosition[0].x = (float)(mouse[0] * 0.01f + pcINO_joystickPosition[0].x);
     pcINO_joystickPosition[0].y = (float)(pcINO_joystickPosition[0].y - mouse[1] * 0.01f);
 
-    len = _hypot(pcINO_joystickPosition[0].x, pcINO_joystickPosition[0].y);
+    len = hypot(pcINO_joystickPosition[0].x, pcINO_joystickPosition[0].y);
     if (len > 0.1f)                                            /* 0x0042447C */
     {
         inv = 1.0 / len;

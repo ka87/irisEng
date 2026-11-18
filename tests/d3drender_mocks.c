@@ -1219,6 +1219,10 @@ void OutputDebugStringA(LPCSTR s) { (void)s; }
 BOOL CreateProcessA(LPCSTR a, LPSTR b, void* c, void* d, BOOL e, DWORD f, void* g,
     LPCSTR h, STARTUPINFOA* i, PROCESS_INFORMATION* j)
 { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h; (void)i; (void)j; return 0; }
+/* Nothing started, which is what the mock above answers for the
+   frozen copy. Both sides reach it only on a display that could not
+   be made, and neither looks at what it said. */
+int PLT_b_Launch(const char* const* args) { (void)args; return 0; }
 BOOL DestroyWindow(HWND h) { (void)h; return 1; }
 BOOL GetClientRect(HWND h, RECT* r) { (void)h; r->left = 0; r->top = 0; r->right = 800; r->bottom = 600; return 1; }
 void GetLocalTime(SYSTEMTIME* t) { memset(t, 0, sizeof(*t)); }

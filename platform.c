@@ -1,4 +1,5 @@
 #include "platform.h"
+#include <SDL3/SDL_process.h>
 
 #include "common.h"
 #include "engine.h"
@@ -441,6 +442,25 @@ static void PLT_l_ShowStats(void)
     stats[0] = 0;
     ENG_GetStatsText(stats);
     SDL_SetWindowTitle(plt_window, stats);
+}
+
+int PLT_b_Launch(const char* const* args)
+{
+    SDL_Process* child;
+
+    if (!args || !args[0])
+        return 0;
+    child = SDL_CreateProcess(args, false);
+    if (!child)
+    {
+        DBG_OutputDebugString("PLT: could not start %s: %s\n",
+                              args[0], SDL_GetError());
+        return 0;
+    }
+    /* Let go of it rather than waiting: destroying the handle does not
+       stop what was started. */
+    SDL_DestroyProcess(child);
+    return 1;
 }
 
 void PLT_Pump(void)

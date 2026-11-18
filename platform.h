@@ -35,6 +35,14 @@ void* PLT_p_NativeWindow(void);
    keys it is typed into -- happens in here now. */
 void PLT_Pump(void);
 
+/* Start a program and do not wait for it: the arguments, the first of
+   them the program, and a null to end the list. True if it started.
+   
+   The one caller hands off to the settings application when the
+   display cannot be made and then leaves, so there is nothing to wait
+   for and nothing to read back. */
+int PLT_b_Launch(const char* const* args);
+
 /* What the settings ask for, which on Windows is still the registry
    the game has always kept them in. Left in one place so the rest of
    the startup does not have to know where they come from. */

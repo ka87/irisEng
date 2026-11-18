@@ -292,26 +292,26 @@ static int OVL_l_RastersDetail(void)
     displayed = 0;
     for (start = DBG_profiler_first_raster; start; start = start->prev)
     {
-        if (start->unk7 && !_stricmp(start->group, PRO_FirstRasterPtr->group))
+        if (start->unk7 && !strcasecmp(start->group, PRO_FirstRasterPtr->group))
         {
             for (head = start; head; head = head->prev)
             {
                 if (!head->unk7
-                    || _stricmp(head->group, PRO_FirstRasterPtr->group)
+                    || strcasecmp(head->group, PRO_FirstRasterPtr->group)
                     || pointsToUnkRaster_dword_98F944
-                       && _stricmp(head->subgroup, pointsToUnkRaster_dword_98F944->subgroup))
+                       && strcasecmp(head->subgroup, pointsToUnkRaster_dword_98F944->subgroup))
                 {
                     continue;
                 }
                 for (scan = head; scan; scan = scan->prev)
                 {
                     if (!scan->unk7
-                        || _stricmp(scan->group, PRO_FirstRasterPtr->group)
-                        || _stricmp(scan->subgroup, head->subgroup))
+                        || strcasecmp(scan->group, PRO_FirstRasterPtr->group)
+                        || strcasecmp(scan->subgroup, head->subgroup))
                     {
                         continue;
                     }
-                    if (PRO_CurrRaster && _stricmp(scan->module, PRO_CurrRaster->module))
+                    if (PRO_CurrRaster && strcasecmp(scan->module, PRO_CurrRaster->module))
                         continue;
                     isSubgroupHead = PRO_CurrRaster != NULL || scan == head;
                     y = OVL_l_RasterRow(y, scan, isSubgroupHead);

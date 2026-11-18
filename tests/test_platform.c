@@ -143,6 +143,28 @@ static void theWindow(void)
        "and leaves the first window alone");
 }
 
+static void theLaunch(void)
+{
+    printf("-- starting a program and not waiting for it\n");
+
+    /* Nothing is started here: what is checked is that the guards
+       hold, because the one real caller runs on a display that could
+       not be made, where a crash would replace a message the player
+       could act on. */
+    ok(PLT_b_Launch(NULL) == 0, "no arguments at all is refused");
+    {
+        const char* const empty[] = { NULL };
+        ok(PLT_b_Launch(empty) == 0, "and so is a list with no program in it");
+    }
+    {
+        /* A name nothing will resolve, so this asks what happens when
+           the program is not there rather than starting anything. */
+        const char* const missing[] = { "irisEng-no-such-program", NULL };
+        int started = PLT_b_Launch(missing);
+        ok(started == 0 || started == 1, "a program that is not there is answered, not crashed into");
+    }
+}
+
 static void focus(void)
 {
     printf("-- the keyboard coming and going\n");
@@ -430,6 +452,7 @@ int main(void)
     SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
 
     theWindow();
+    theLaunch();
     focus();
     closing();
     typing();
