@@ -260,6 +260,13 @@ static int pcSND_l_PlayedBlock(const tSbeMiscData* misc)
     return misc->currentPlayPosition / misc->sizeToUpload;
 }
 
+/* Whether a second has gone by, which is how often the state below
+   goes out. One clock for the list and for every stream on it, so a
+   report is one moment and not several. */
+#if PCSND_TRACE
+static int pcSND_l_stateDue;
+#endif
+
 /* One streaming sound, looked at rather than waited on.
  *
  * This is the body of what the position notifications used to drive.
@@ -281,8 +288,6 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
     int stopped;
 
     misc = sbe->miscData;
-    if (!misc)
-        return;
 
     /* Everything about one stream, once a second, before any way out
        of this function.
@@ -296,13 +301,12 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
        device is still draining what it was given, and which block the
        refill is waiting for. */
 #if PCSND_TRACE
+    if (pcSND_l_stateDue)
     {
-        static DWORD lastState;
-        DWORD nowState = GetTickCount();
-
-        if (nowState - lastState >= 1000)
-        {
-            lastState = nowState;
+        if (!misc)
+            DBG_OutputDebugString("SND %p: no miscData, so it is skipped here and never removed\n",
+                                  (void*)sbe);
+        else
             DBG_OutputDebugString(
                 "SND %p: vst=%d pos=%d wr=%d q=%d blk=%d/%d up=%d buf=%d off=%d sz=%u/%u raf=%d rem=%d stop=%d\n",
                 (void*)sbe,
@@ -316,11 +320,10 @@ static void pcSND_l_ServiceStream(tSndSoundBufferElem* sbe)
                 misc->RemoveAfterPlayFinished,
                 misc->shouldBeRemovedFromPlayList,
                 misc->Stopped_SetIN49e270);
-        }
     }
 #endif
 
-    if (misc->Stopped_SetIN49e270 == 1)
+    if (!misc || misc->Stopped_SetIN49e270 == 1)
         return;
 
     stopped = (SPL_i_VoiceStatus(sbe->voice) & SPL_PLAYING) == 0;
@@ -426,6 +429,40 @@ static void pcSND_l_ServiceStreams(void)
 
     if (count > sndEventsNum)
         count = sndEventsNum;
+
+    /* The list as the loop sees it, once a second, ahead of the
+       guards below.
+       
+       A stream the thread's own summary counts and that never prints a
+       line of its own is being skipped here, and this says by which
+       guard: not in use, no sound, or the -1 the engine uses to mean
+       all of them. If it passes all three it is serviced, and then it
+       says so itself -- including when its miscData has gone, which
+       the state line used to return before reaching. */
+#if PCSND_TRACE
+    {
+        static DWORD lastList;
+        DWORD nowList = GetTickCount();
+
+        pcSND_l_stateDue = (nowList - lastList >= 1000);
+        if (pcSND_l_stateDue)
+        {
+            int i;
+            lastList = nowList;
+            DBG_OutputDebugString("SND list: handles=%d slots=%d count=%d\n",
+                                  sndEventHandleNum, sndEventsNum, count);
+            for (i = 0; i < count && i < 8; ++i)
+                DBG_OutputDebugString("SND   [%d] inUse=%d elem=%p misc=%p voice=%p\n",
+                                      i, sndPlayList[i].playListElemInUse,
+                                      (void*)sndPlayList[i].soundElem,
+                                      sndPlayList[i].soundElem
+                                          ? (void*)sndPlayList[i].soundElem->miscData : (void*)0,
+                                      sndPlayList[i].soundElem
+                                          ? (void*)sndPlayList[i].soundElem->voice : (void*)0);
+        }
+    }
+#endif
+
     for (slot = 0; slot < count; ++slot)
         if (sndPlayList[slot].playListElemInUse && sndPlayList[slot].soundElem
             && sndPlayList[slot].soundElem != (tSndSoundBufferElem*)-1)
