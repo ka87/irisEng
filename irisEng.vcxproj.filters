@@ -194,6 +194,9 @@
     <ClCompile Include="fileio.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="debugkeys.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="projection.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -974,6 +977,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="fileio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="debugkeys.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="projection.h">

@@ -425,7 +425,6 @@ void D3D_DiscardGeometryCache(struct sGEOGRO* gro);
 void PC_FreeABackCache(struct sGEOGRO* geogro);
 void D3D_CreateGameObjectsD3DStuffForMultiStream(struct sWorld* world);
 
-void PC_EngineCheatFinal();
 void D3D_SaveScreenshot(void);
 
 void PC_AE_MASTER_CTRL(int effect, int onOff, int slot, float value);

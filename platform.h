@@ -89,7 +89,28 @@ void PLT_ReadDevices(unsigned char* keys, int* mouse);
 void* PLT_p_Window(void);
 
 int PLT_b_ShiftHeld(void);
+int PLT_b_CtrlHeld(void);
 int PLT_b_NumLockOn(void);
+
+/* Whether one key is down, by the code the engine's own tables use --
+   the same codes PLT_ReadDevices fills a block with.
+ *
+ * For the debug keys, which are asked about outside the block because
+ * they are read where the block has not been filled.
+ */
+int PLT_b_KeyHeld(int key);
+
+/* Waits for a key to come back up, which is what the debug keys do to
+   act once per press rather than once per frame.
+ *
+ * Here rather than written as a loop at each site, because the loop
+ * needs the key state refreshed inside it: the state the question
+ * above reads is a snapshot the library updates, so a bare spin on it
+ * would never see the key released and would hang the game. The call
+ * it replaced asked the system afresh every time and had no such
+ * problem, which is exactly the kind of difference that turns a
+ * faithful transcription into a lock-up. */
+void PLT_WaitKeyRelease(int key);
 
 /* Whether the game has the input. Taking it locks the pointer to the
    window and hides it, which is what the exclusive device did; giving

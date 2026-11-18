@@ -26,6 +26,24 @@
 #include "materialanddraw.h"
 #include "platform/d3dmath.h"
 
+/* The matrix a texture-coordinate projection ends up as, laid out from
+   the axes, the position and the scale it was computed from. Nothing
+   in it is a renderer's business: it sat in the Direct3D renderer's
+   file and every one of its callers is here. */
+void PC_SetUVMatrix(Mtx4x4* dest, Vec3* axisU, Vec3* axisV, Vec3* axisW, Vec3* pos, Vec3* scale, int unused, int flags)
+{
+    dest->v1 = *axisU;
+    dest->v2 = *axisV;
+    dest->v3 = *axisW;
+    dest->_m14 = scale->x;
+    dest->_m24 = scale->y;
+    dest->_m34 = scale->z;
+    dest->Pos = *pos;
+    dest->w = 1.0f;
+    dest->mtxflag = flags;
+}
+
+
 void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem)
 {
     int planarParam;
