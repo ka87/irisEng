@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for aefade.c.
+# The unit test for aftereffects/aefade.c.
 #
 #   ./tests/run_aefade.sh
 #
@@ -30,7 +30,7 @@ mkdir -p "$OUT"
 echo "=== the fade's timer ==="
 $CC $CFLAGS -fsanitize=address,undefined -c tests/test_aefade.c \
     -o "$OUT/afd.drv.o"
-$CC $CFLAGS -fsanitize=address,undefined -c aefade.c -o "$OUT/afd.o"
+$CC $CFLAGS -fsanitize=address,undefined -c aftereffects/aefade.c -o "$OUT/afd.o"
 $CC -fsanitize=address,undefined "$OUT/afd.drv.o" "$OUT/afd.o" -lm \
     -o "$OUT/afd"
 "$OUT/afd"

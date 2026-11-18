@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for aeframe.c.
+# The unit test for aftereffects/aeframe.c.
 #
 #   ./tests/run_aeframe.sh
 #
@@ -25,7 +25,7 @@ mkdir -p "$OUT"
 echo "=== after-effect frame sums ==="
 $CC $CFLAGS -fsanitize=address,undefined -c tests/test_aeframe.c \
     -o "$OUT/aef.drv.o"
-$CC $CFLAGS -fsanitize=address,undefined -c aeframe.c -o "$OUT/aef.o"
+$CC $CFLAGS -fsanitize=address,undefined -c aftereffects/aeframe.c -o "$OUT/aef.o"
 $CC -fsanitize=address,undefined "$OUT/aef.drv.o" "$OUT/aef.o" -lm \
     -o "$OUT/aec"
 "$OUT/aec"

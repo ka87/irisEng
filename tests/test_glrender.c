@@ -87,7 +87,7 @@ static void okNear(int got, int want, const char* what)
 /* And a tighter one, for a reading whose expected value was worked
    out rather than chosen. okNear's two bytes of room is right for a
    channel that went through the rasteriser; it is too much for a
-   number this file derives from aecolor.c, where the whole difference
+   number this file derives from aftereffects/aecolor.c, where the whole difference
    being looked for can be a step or two. The tolerance is the
    caller's, and the caller has to say why it is what it is. */
 static void okWithin(double got, double want, double tol, const char* what)
@@ -4596,7 +4596,7 @@ static void caseAeGrayscale(void)
     ok(pureBlue < 20, "and blue barely counts at all");
 
     /* And each of the three at the value the step's own numbers give,
-       so the shader is checked against aecolor.c rather than against
+       so the shader is checked against aftereffects/aecolor.c rather than against
        an ordering that several wrong weightings would also satisfy. */
     {
         tAec_Source gsrc;
@@ -4646,7 +4646,7 @@ static void caseAeGrayscale(void)
 
         ok(white < 255, "white does not come back white");
 
-        /* And exactly how far short, worked out from what aecolor.c
+        /* And exactly how far short, worked out from what aftereffects/aecolor.c
            says the step is rather than left as a range.
          *
            A range is what this was, and it was too loose to see the
@@ -5680,7 +5680,7 @@ static void caseAeZoomSmooth(void)
  * them, because eight discrete copies and one continuous streak are
  * different pictures and only the gaps tell them apart.
  *
- * The transforms come from aezoom2.c, the same place the pass gets
+ * The transforms come from aftereffects/aezoom2.c, the same place the pass gets
  * them, so this is not a second implementation of the arithmetic. What
  * it tests is that the eight transforms the module built are the eight
  * the picture was made with -- a claim about the shader, the packing

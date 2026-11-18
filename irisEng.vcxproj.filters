@@ -182,10 +182,10 @@
     <ClCompile Include="cinebands.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="aecolor.c">
+    <ClCompile Include="aftereffects\aecolor.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="aeframe.c">
+    <ClCompile Include="aftereffects\aeframe.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="datapath.c">
@@ -275,16 +275,16 @@
     <ClCompile Include="waterreflect.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="aefade.c">
+    <ClCompile Include="aftereffects\aefade.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="aehue.c">
+    <ClCompile Include="aftereffects\aehue.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="aemotion.c">
+    <ClCompile Include="aftereffects\aemotion.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="aezoom2.c">
+    <ClCompile Include="aftereffects\aezoom2.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="perfbars.c">
@@ -955,10 +955,10 @@
     <ClInclude Include="cinebands.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="aecolor.h">
+    <ClInclude Include="aftereffects\aecolor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="aeframe.h">
+    <ClInclude Include="aftereffects\aeframe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="datapath.h">
@@ -1003,16 +1003,16 @@
     <ClInclude Include="waterreflect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="aefade.h">
+    <ClInclude Include="aftereffects\aefade.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="aehue.h">
+    <ClInclude Include="aftereffects\aehue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="aemotion.h">
+    <ClInclude Include="aftereffects\aemotion.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="aezoom2.h">
+    <ClInclude Include="aftereffects\aezoom2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pngsave.h">

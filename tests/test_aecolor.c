@@ -1,4 +1,4 @@
-/* A unit test for aecolor.c.
+/* A unit test for aftereffects/aecolor.c.
  *
  * The three colour effects are each a gain, a bias and -- for the
  * grayscale -- three weights, worked out from what the renderer that
@@ -10,11 +10,11 @@
  * against the two-stage form it came from, evaluated step by step;
  * the contrast is checked against the one formula both of its halves
  * collapse to; and the brightness is checked at the places its two
- * halves meet. A constant copied out of aecolor.c and compared with
+ * halves meet. A constant copied out of aftereffects/aecolor.c and compared with
  * itself would pass whatever either of them said.
  */
 
-#include "../aecolor.h"
+#include "../aftereffects/aecolor.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -417,7 +417,7 @@ static void caseGrayscale(void)
     AEC_i_Steps(&s, st, AEC_MAX_STEPS);
 
     /* Against the hardware's own two-step form, evaluated here from
-       the packed bytes rather than from anything aecolor.c exposes:
+       the packed bytes rather than from anything aftereffects/aecolor.c exposes:
        a stage that adds a grey of 127/255 to the channel scaled by
        the same, and then a dot product that reads both sides as
        signed. If the collapsed gain, bias or weights are wrong, the

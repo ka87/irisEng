@@ -1,4 +1,4 @@
-/* A unit test for aeframe.c.
+/* A unit test for aftereffects/aeframe.c.
  *
  * The three after-effects that build a frame out of several samples of
  * one. What each comes down to is a schedule and a set of weights, and
@@ -14,7 +14,7 @@
  * produces a blurred picture.
  */
 
-#include "../aeframe.h"
+#include "../aftereffects/aeframe.h"
 
 #include <math.h>
 #include <stdio.h>

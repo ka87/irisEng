@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for aehue.c.
+# The unit test for aftereffects/aehue.c.
 #
 #   ./tests/run_aehue.sh
 #
@@ -32,7 +32,7 @@ mkdir -p "$OUT"
 echo "=== the hue sweep ==="
 $CC $CFLAGS -fsanitize=address,undefined -c tests/test_aehue.c \
     -o "$OUT/ahu.drv.o"
-$CC $CFLAGS -fsanitize=address,undefined -c aehue.c -o "$OUT/ahu.o"
+$CC $CFLAGS -fsanitize=address,undefined -c aftereffects/aehue.c -o "$OUT/ahu.o"
 $CC -fsanitize=address,undefined "$OUT/ahu.drv.o" "$OUT/ahu.o" -lm \
     -o "$OUT/ahu"
 "$OUT/ahu"

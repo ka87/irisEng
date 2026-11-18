@@ -1,4 +1,4 @@
-/* A unit test for aemotion.c.
+/* A unit test for aftereffects/aemotion.c.
  *
  * The motion smooth's decision and its four samples. Two things here
  * cannot be seen in a picture at all and are the reason the file
@@ -20,7 +20,7 @@
  * own harnesses instead.
  */
 
-#include "../aemotion.h"
+#include "../aftereffects/aemotion.h"
 
 #include <math.h>
 #include <stdio.h>

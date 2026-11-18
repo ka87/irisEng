@@ -216,7 +216,7 @@ effects sharing one shader because all three are a gain and a bias:
 The grayscale's weights are green-heavy, blue-light, and they **do not
 come to one**, so white does not come back white. That is the other
 renderer's arithmetic, not an oversight: it arrives there through a dot
-product that reads both sides as signed, and `aecolor.c` has the
+product that reads both sides as signed, and `aftereffects/aecolor.c` has the
 working.
 
 **One draw per step, not one pass doing all three.** The other
@@ -229,14 +229,14 @@ the chain's rather than the shader's, and the order is part of the
 answer -- brightening then stretching is not stretching then
 brightening.
 
-`aecolor.c` decides which steps apply and what each one's numbers are,
+`aftereffects/aecolor.c` decides which steps apply and what each one's numbers are,
 reproducing the byte truncation the other renderer's texture factors
 do. Nothing about the numbers is decided here.
 
 ## The after-effects that sum whole frames
 
 Three more, and they are a group because each one's output is a sum of
-frames rather than a function of a pixel. `aeframe.c` has the schedules
+frames rather than a function of a pixel. `aftereffects/aeframe.c` has the schedules
 and the weights.
 
 **`aeremanence.frag`** is the remanence, which is a **bloom** whatever

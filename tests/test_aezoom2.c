@@ -1,4 +1,4 @@
-/* A unit test for aezoom2.c.
+/* A unit test for aftereffects/aezoom2.c.
  *
  * The second zoom smooth: eight samples of the frame, each turned
  * about the middle of the picture, summed.
@@ -15,7 +15,7 @@
  * expressions before they were moved out, not from this module.
  */
 
-#include "../aezoom2.h"
+#include "../aftereffects/aezoom2.h"
 
 #include <math.h>
 #include <stdio.h>

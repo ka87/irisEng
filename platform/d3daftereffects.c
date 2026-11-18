@@ -3,11 +3,11 @@
 #include "d3drender.h"
 #include "../depthblur.h"
 #include "../watersmooth.h"
-#include "../aefade.h"
-#include "../aehue.h"
-#include "../aemotion.h"
-#include "../aeframe.h"
-#include "../aezoom2.h"
+#include "../aftereffects/aefade.h"
+#include "../aftereffects/aehue.h"
+#include "../aftereffects/aemotion.h"
+#include "../aftereffects/aeframe.h"
+#include "../aftereffects/aezoom2.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -2008,7 +2008,7 @@ void D3D_ZoomSmooth2(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom
     tVertex_type_444 quad[4];
 
     /* The split between texture stages and draws, and the pass count
-       that follows from it -- both from aezoom2.c, which the other
+       that follows from it -- both from aftereffects/aezoom2.c, which the other
        renderer takes them from too. */
     stages = AZ2_i_Stages(gMaxSimultaneousTextures,
                           ENG_ifSingleStreamThenEq2Otherwise8);
@@ -2065,7 +2065,7 @@ void D3D_ZoomSmooth2(IDirect3DTexture9* src, IDirect3DTexture9* dest, float zoom
                 | tapWeight;
     /* The whole walk of angles at once -- four to a draw, including the
        slots a draw with fewer stages computes and never samples. Taken
-       from aezoom2.c rather than recomputed, because the walk is a
+       from aftereffects/aezoom2.c rather than recomputed, because the walk is a
        float re-accumulated once per draw and the last bits of these
        angles depend on the split. */
     tapAngleCount = AZ2_i_Angles(tapAngles, AZ2_TAPS * AZ2_ANGLE_SLOTS,

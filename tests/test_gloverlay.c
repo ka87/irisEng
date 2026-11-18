@@ -30,7 +30,7 @@
    platform/glrender.c brings these in too, and is included further down. */
 #include "../platform/glcore.h"
 #include "../platform/glshader.h"
-#include "../aezoom2.h"
+#include "../aftereffects/aezoom2.h"
 #include "../gdi.h"
 
 static long checks;
@@ -4321,7 +4321,7 @@ static void caseAeColorChain(void)
     }
 
     /* The gain and the bias each step asked for, in order. Compared
-       against what aecolor.c says rather than against three
+       against what aftereffects/aecolor.c says rather than against three
        constants, so the two cannot drift apart -- and scaled, because
        a gain is not a byte. */
     for (i = 0; i < n; i++)
@@ -4815,7 +4815,7 @@ static void caseAeRemanenceChain(void)
         }
     }
 
-    /* The weight it asked for, compared against what aeframe.c says
+    /* The weight it asked for, compared against what aftereffects/aeframe.c says
        rather than against a constant. */
     {
         tAef_Source fs;
@@ -5001,7 +5001,7 @@ static void caseAeZoomUniforms(void)
 /* ------------------------------------------------------- the fade
  *
  * A frozen copy of the picture dissolving into the live one. The timer
- * is aefade.c's and tests/run_d3daftereffects.sh compares it against the
+ * is aftereffects/aefade.c's and tests/run_d3daftereffects.sh compares it against the
  * other renderer frame by frame; what these ask is this renderer's
  * part -- when the copy is taken, where it is kept, what the shader is
  * told, and that the effect switches itself off.
@@ -5010,7 +5010,7 @@ static void caseAeZoomUniforms(void)
 /* --------------------------------------------------- the hue sweep
  *
  * A colour taken off the picture, cycling. The wave, the three phases
- * and the packing are aehue.c's and tests/run_d3daftereffects.sh compares
+ * and the packing are aftereffects/aehue.c's and tests/run_d3daftereffects.sh compares
  * them against the other renderer; these ask this renderer's part --
  * what it is gated by, what the shader is told, where it draws, and
  * what it leaves alone.
@@ -5019,7 +5019,7 @@ static void caseAeZoomUniforms(void)
 /* --------------------------------------------- the motion smooth
  *
  * A smear along the way the camera just moved. The threshold, the four
- * taps and the weight are aemotion.c's, and the differential against
+ * taps and the weight are aftereffects/aemotion.c's, and the differential against
  * the other renderer drives the threshold from both sides. These ask
  * this renderer's part, and the first of them is the one that matters:
  * the watched direction has to be written down on every frame the effect
@@ -5049,7 +5049,7 @@ static void wg_MotionCameraAt(float tx, float ty, float tz)
 /* ----------------------------------------------- the screen blur
  *
  * Seven passes of the same four-tap blur the depth blur uses, each
- * reaching one step further. The reaches are aeframe.c's and the
+ * reaching one step further. The reaches are aftereffects/aeframe.c's and the
  * differential compares them against the other renderer; these ask
  * this renderer's part, which is almost entirely *where the seven
  * passes go*.
@@ -5983,7 +5983,7 @@ static void caseAeFadeTimer(void)
    pass itself uses -- so this is not a second implementation of the
    arithmetic, only a second route to it. The point of asserting it at
    all is the *route*: that the matrices which reach the shader are the
-   ones aezoom2.c built, one tap to a column, and not a rotation the
+   ones aftereffects/aezoom2.c built, one tap to a column, and not a rotation the
    renderer rebuilt from an angle on the way. */
 static int WG_i_Zoom2Want(float zoom, int stages, float* out32)
 {

@@ -1,4 +1,4 @@
-/* A unit test for aehue.c.
+/* A unit test for aftereffects/aehue.c.
  *
  * The hue sweep's arithmetic: one wave, three phases a third of a
  * cycle apart, and three bytes packed into a colour.
@@ -22,7 +22,7 @@
  * wave can come out a hair above one.
  */
 
-#include "../aehue.h"
+#include "../aftereffects/aehue.h"
 
 #include <math.h>
 #include <stdio.h>

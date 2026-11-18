@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for aemotion.c.
+# The unit test for aftereffects/aemotion.c.
 #
 #   ./tests/run_aemotion.sh
 #
@@ -29,7 +29,7 @@ mkdir -p "$OUT"
 echo "=== the motion smooth ==="
 $CC $CFLAGS -fsanitize=address,undefined -c tests/test_aemotion.c \
     -o "$OUT/amo.drv.o"
-$CC $CFLAGS -fsanitize=address,undefined -c aemotion.c -o "$OUT/amo.o"
+$CC $CFLAGS -fsanitize=address,undefined -c aftereffects/aemotion.c -o "$OUT/amo.o"
 $CC -fsanitize=address,undefined "$OUT/amo.drv.o" "$OUT/amo.o" -lm \
     -o "$OUT/amo"
 "$OUT/amo"
