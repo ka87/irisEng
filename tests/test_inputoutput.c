@@ -7,7 +7,7 @@
 #include "../time.h"
 #include "../ai.h"
 #include "../dbg.h"
-#include "../platform/wininputoutput.h"
+#include "../platform/inputbackend.h"
 #include "../inputoutput.h"
 
 /* The frozen copy and the rewrite in one binary. Half of

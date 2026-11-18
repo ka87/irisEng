@@ -6,31 +6,31 @@ device, the input devices and the ADPCM decoder. Everything else in
 the engine goes through them.
 
 They were left for last on purpose. Between them they hold the densest
-decompiler residue in the tree — `platform/winsound.c` alone had 46 `goto`s
+decompiler residue in the tree — `platform/sndbackend.c` alone had 46 `goto`s
 — and the stub include set in `tests/stub/` had to be finished before
 any of them would even parse, let alone compile into a differential
 test.
 
 | file | lines | residue | `goto` | functions |
 |---|---|---|---|---|
-| `platform/wingdi.c` | 7,085 → **5,029** | 2,948 → **20** | 31 → **0** | 128 → 137 |
-| `platform/wingdi_aftereffects.c` | 5,780 → **3,180** | 2,259 → **3** | 14 → **0** | 50 → 53 |
-| `platform/winsound.c` | 3,395 → **2,943** | 1,568 → **13** | 46 → **0** | 117 |
-| `platform/wininputoutput.c` | 1,617 → **1,518** | 209 → **1** | 5 → **0** | 55 → 58 |
+| `platform/d3drender.c` | 7,085 → **5,029** | 2,948 → **20** | 31 → **0** | 128 → 137 |
+| `platform/d3daftereffects.c` | 5,780 → **3,180** | 2,259 → **3** | 14 → **0** | 50 → 53 |
+| `platform/sndbackend.c` | 3,395 → **2,943** | 1,568 → **13** | 46 → **0** | 117 |
+| `platform/inputbackend.c` | 1,617 → **1,518** | 209 → **1** | 5 → **0** | 55 → 58 |
 | `platform/adpcm.c` | 211 → **136** | 130 → **0** | 0 | 3 → 4 |
-| `platform/wingdi.h` | 351 | 39 → **11** | — | — |
-| `platform/wininputoutput.h` | 109 | 6 → **0** | — | — |
+| `platform/d3drender.h` | 351 | 39 → **11** | — | — |
+| `platform/inputbackend.h` | 109 | 6 → **0** | — | — |
 | `platform/adpcm.h` | 12 → 14 | 3 → **0** | — | — |
 
 **Every residue line that is left is inside a comment of the user's.**
-`platform/wingdi.c`'s twenty are in four block comments — two disabled
+`platform/d3drender.c`'s twenty are in four block comments — two disabled
 debug dumps, a `TODO FIXME` quoting the Hex-Rays line it corrects, and
-a note about a buffer — and `platform/winsound.c`'s thirteen are the same
-kind. The eleven in `platform/wingdi.h` are struct **fields**, not locals;
+a note about a buffer — and `platform/sndbackend.c`'s thirteen are the same
+kind. The eleven in `platform/d3drender.h` are struct **fields**, not locals;
 see "Not renamed" below.
 
-Function counts move only upward: nine helpers added in `wingdi.c`,
-three in `wingdi_aftereffects.c`, three in `wininputoutput.c`, one in
+Function counts move only upward: nine helpers added in `d3drender.c`,
+three in `d3daftereffects.c`, three in `inputbackend.c`, one in
 `adpcm.c`, none removed anywhere.
 
 ## Verification
@@ -43,18 +43,18 @@ results.
 
 | test | cases | compared | differing |
 |---|---|---|---|
-| `tests/run_wingdi.sh` | 5,152 | 150,984 engine calls | 0 |
-| `tests/run_wingdi_ae.sh` | 576 | 293,356 logged entries | 0 |
-| `tests/run_winsound.sh` | 1,344 | 2,302,852 bytes of state and call log | 0 |
+| `tests/run_d3drender.sh` | 5,152 | 150,984 engine calls | 0 |
+| `tests/run_d3daftereffects.sh` | 576 | 293,356 logged entries | 0 |
+| `tests/run_sndbackend.sh` | 1,344 | 2,302,852 bytes of state and call log | 0 |
 | `tests/run_winio.sh` | 77,891 | state and call log | 0 |
 | `tests/run_adpcm.sh` | 2,326,786 | decoded samples | 0 |
 
 All five are called from `tests/run.sh` and can also be run on their
-own; `tests/run_winsound.sh --guards` prints its seed-bit distribution.
+own; `tests/run_sndbackend.sh --guards` prints its seed-bit distribution.
 
 The Direct3D device, DirectSound, DirectInput and the Win32 window are
 logging mocks. `math.c` and `profiler.c` are linked for real rather
-than mocked in the `wingdi` test, with `MATH_InitModule()` called
+than mocked in the `d3drender` test, with `MATH_InitModule()` called
 before the first case — without it every table-driven result collapses
 to one arm on both sides and compares equal.
 
@@ -70,7 +70,7 @@ file, COM, dialog and keyboard calls the platform layer makes.
 
 The payoff beyond parsing: **implicit function declarations across the
 tree went from 16 over six files to 6 over five**, and
-`platform/wingdi.c`, `platform/wininputoutput.c` and `platform/winsound.c` are all off
+`platform/d3drender.c`, `platform/inputbackend.c` and `platform/sndbackend.c` are all off
 the list entirely. The four passes' sets of declarations resolve more
 together than any one does alone — `tests/implicitcheck.sh`'s baseline
 is measured on the merge for that reason, not carried over from a
@@ -96,12 +96,12 @@ test's compared call count went from 9,345 to 9,479.
 **Sequential numbering can invert an ordering the code tests.** The
 stub numbered the `WM_*` messages in declaration order
 (`WM_ACTIVATEAPP` 16385 … `WM_SYSCOMMAND` 16393), which is the reverse
-of Win32's. Both of `platform/wingdi.c`'s message handlers open with a range
+of Win32's. Both of `platform/d3drender.c`'s message handlers open with a range
 test — `msg > WM_CLOSE`, `msg > WM_ACTIVATEAPP` — so under the stub's
 numbering **every other arm of both handlers was unreachable** and no
-input could enter them. `tests/wingdi_msg_sdk.h` forces the real
+input could enter them. `tests/d3drender_msg_sdk.h` forces the real
 numbers into both sides with `-include`.
-`tests/wingdi_ae_sdk.h` does the same thing for the `D3D*` family in
+`tests/d3daftereffects_sdk.h` does the same thing for the `D3D*` family in
 the after-effects test, for the different reason that the frozen copy
 writes bare numbers where the rewrite writes names.
 
@@ -130,7 +130,7 @@ comment, which is the only comment any of these passes added. They are
 listed per file below; each says what the code does that a reader would
 otherwise take for a transcription mistake.
 
-**`platform/wingdi.c`** (six) — a `return` that skips its matching profiler
+**`platform/d3drender.c`** (six) — a `return` that skips its matching profiler
 end block, so raster 38 stays entered; a source array walked with no
 null test unlike the one above it; an alignment test that can never
 fail because `align` is masked to 0..15; an `elem` still pointing at
@@ -138,7 +138,7 @@ the `0xC0DE` marker, so a read lands at `second[49374]`; the colour
 arg 2 backup taken from arg 1; and one of nine second-colour lookups
 scaling its index by four.
 
-**`platform/winsound.c`** (eight) — a registry key left open when the value
+**`platform/sndbackend.c`** (eight) — a registry key left open when the value
 cannot be read, and another left open on every failing path; a handle
 array grown from `sndPlayList` rather than `sndEventHandles`; the
 distances and position in `pcSND_SetDefaultSoundPositionAndDistance`
@@ -148,13 +148,13 @@ block stride that equals the struct size only in a 32-bit build; two
 allocations that leak when either call fails; and an index one past
 the array when no instance matches.
 
-**`platform/wingdi_aftereffects.c`** (three) — a count used where the other
+**`platform/d3daftereffects.c`** (three) — a count used where the other
 arms use an index, so a loop stops short of 254; a first pass taking
 its vertical offset from the unnarrowed product where the rest take
 the narrowed step; and one getter returning the motion blur for the
 unknown slot where every other getter returns zero.
 
-**`platform/wininputoutput.c`** (four, written as block comments because
+**`platform/inputbackend.c`** (four, written as block comments because
 they need a sentence) — a float read through an `int*` because the
 caller passes a float; a path reached with `pcINO_mouseDevice` NULL; a
 dereference of `pcINO_keybDevice` in `pcINO_getKeyNames`; and a buffer
@@ -170,7 +170,7 @@ have teeth, so every one of the five was mutation-checked twice: once
 by the pass that wrote it, once on review with an independently chosen
 defect.
 
-The `wingdi` pass injected **24 and caught 23** on the second attempt.
+The `d3drender` pass injected **24 and caught 23** on the second attempt.
 The first run caught 17, and all seven misses were fixture blind spots
 rather than no-ops; six were closed, and the reasons are instructive:
 
@@ -200,14 +200,14 @@ Review mutations on top of each pass's own, all caught:
 
 | file | mutation | cases moved |
 |---|---|---|
-| `wingdi.c` | stride `+= 4` → `+= 6` in the texture-size loop | caught |
-| `wingdi.c` | blend case 3's else-arm `INVDESTALPHA` → `DESTALPHA` | caught |
-| `wingdi.c` | fog enable mask `0x4000` → `0x2000` | caught |
-| `wingdi.c` | viewport height clamp subtracts `clampedX`, not `clampedY` | caught |
-| `winsound.c` | pan arm reads `arr[balance]` on both sides | 21 |
-| `winsound.c` | centre reference `arr[64]` → `arr[65]` | 24 |
+| `d3drender.c` | stride `+= 4` → `+= 6` in the texture-size loop | caught |
+| `d3drender.c` | blend case 3's else-arm `INVDESTALPHA` → `DESTALPHA` | caught |
+| `d3drender.c` | fog enable mask `0x4000` → `0x2000` | caught |
+| `d3drender.c` | viewport height clamp subtracts `clampedX`, not `clampedY` | caught |
+| `sndbackend.c` | pan arm reads `arr[balance]` on both sides | 21 |
+| `sndbackend.c` | centre reference `arr[64]` → `arr[65]` | 24 |
 
-### A winsound mutation that scored clean, and why that was right
+### A sndbackend mutation that scored clean, and why that was right
 
 Changing a `<=` to a `<` on the volume table's index bound moved
 nothing. That is not a harness hole: the table was parsed out of the
@@ -244,18 +244,18 @@ side of the test needs it.**
 
 | old | new | defined in | called from |
 |---|---|---|---|
-| `MAT_ComputeUV_sub_4521A0` | `MAT_UV_ComputeAndSetTransform` | `platform/wingdi.c` | `materialanddraw.c` |
-| `INO_SetControlMode_inner_sub_48ACB0` | `pcINO_SetControlMode` | `platform/wininputoutput.c` | `inputoutput.c`, `strings.c` |
-| `INO_SetControlSubmode_inner_sub_48A650` | `pcINO_SetControlSubmode` | `platform/wininputoutput.c` | `inputoutput.c`, `strings.c` |
-| `PC_AE_MASTER_GET_ONOFF_sub_4A37D0` | `PC_AE_MASTER_GET_ONOFF` | `platform/wingdi_aftereffects.c` | `ai/ai_miscfunctions.c` |
+| `MAT_ComputeUV_sub_4521A0` | `MAT_UV_ComputeAndSetTransform` | `platform/d3drender.c` | `materialanddraw.c` |
+| `INO_SetControlMode_inner_sub_48ACB0` | `pcINO_SetControlMode` | `platform/inputbackend.c` | `inputoutput.c`, `strings.c` |
+| `INO_SetControlSubmode_inner_sub_48A650` | `pcINO_SetControlSubmode` | `platform/inputbackend.c` | `inputoutput.c`, `strings.c` |
+| `PC_AE_MASTER_GET_ONOFF_sub_4A37D0` | `PC_AE_MASTER_GET_ONOFF` | `platform/d3daftereffects.c` | `ai/ai_miscfunctions.c` |
 | `PRO_ProfilerWindowHander` | `PRO_ProfilerWindowHandler` | `profiler.c` | `engine.c` |
 
 Which half of the fix applies depends on whether the frozen copy
 **defines** the function or **calls** it, and both halves were already
 in the tree before this change:
 
-- **The frozen copy defines it.** `tests/baseline_wingdi.c`,
-  `tests/baseline_winio.c`, `tests/baseline_wingdi_ae.c` and
+- **The frozen copy defines it.** `tests/baseline_d3drender.c`,
+  `tests/baseline_winio.c`, `tests/baseline_d3daftereffects.c` and
   `tests/baseline_profiler.c` each still define one or two of these
   under the old name. Their runner maps the old name onto the same
   per-side symbol the new name takes — `-D<old>=BASE_<new>` — so the
@@ -278,7 +278,7 @@ any header.
 
 ## Still not renamed: the `v1` struct fields
 
-The eleven residue lines in `platform/wingdi.h` are the `v1` field of
+The eleven residue lines in `platform/d3drender.h` are the `v1` field of
 `tVertex_type_204/404/244/104/144/444/142_generic` and `v1`..`v4` of
 `tD3dSpriteData`. `v1` should be `pos`.
 
@@ -291,15 +291,15 @@ anonymous union in the header itself —
 header, kept only so that frozen test copies compile.
 
 The scale, measured: about **290 uses in the live sources**
-(`platform/wingdi.c` 85, `platform/wingdi_aftereffects.c` 199,
-`tests/test_wingdi.c` 6) and about **370 in the two frozen
+(`platform/d3drender.c` 85, `platform/d3daftereffects.c` 199,
+`tests/test_d3drender.c` 6) and about **370 in the two frozen
 baselines**. Left as it is pending a decision, because the union is a
 permanent cost in the engine for a temporary problem in the tests, and
 regenerating the baselines removes it outright.
 
 ## What the tests cannot reach
 
-`platform/wingdi.c`'s device lifecycle and Win32 entry points —
+`platform/d3drender.c`'s device lifecycle and Win32 entry points —
 `D3D_l_Init`, `ENG_WinGameWindowInit`, `PC_EngineCheatFinal`,
 `D3D_SaveScreenshot`, `PNG_WriteBgra`, `D3D_ReinitD3DAppBackCache`,
 `D3D_pst_CreateDevice`, `s_HandleWinMessages`, `PC_WNDProcHandler`,
@@ -307,7 +307,7 @@ regenerating the baselines removes it outright.
 sweep. Each was verified textually unchanged apart from two parameter
 renames, so nothing untested was restructured.
 
-Two of the user's comments in `platform/wingdi.c` are lost: `// cc` and
+Two of the user's comments in `platform/d3drender.c` are lost: `// cc` and
 `// esi`, Hex-Rays register annotations that sat on the declaration
 lines of a local that is now deleted and a local that is now `i`.
 Everything else survives byte for byte, checked by diffing the comment
@@ -320,10 +320,10 @@ multiset against the pre-pass copy.
   be what the original did.
 - `pcINO_InputHandlerCase2` casts a float through an `int*`. Same
   question.
-- The six memory-card failure flags in `platform/wininputoutput.c` are set
+- The six memory-card failure flags in `platform/inputbackend.c` are set
   and never read.
 - Whether the frozen baselines may be regenerated. The five function
   renames no longer need it — they carry both spellings — but it is
   what would let the `v1` → `pos` field rename go in without eleven
-  anonymous unions in `platform/wingdi.h`, and it would let the five old
+  anonymous unions in `platform/d3drender.h`, and it would let the five old
   spellings be dropped from the mocks and the runners.

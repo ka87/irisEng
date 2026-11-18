@@ -1,4 +1,4 @@
-/* Mocks for the platform/wininputoutput.c differential test.
+/* Mocks for the platform/inputbackend.c differential test.
  *
  * Everything either copy reaches outside itself: the Win32 calls, the
  * four stdio entry points the card manager uses, the debug trace, the
@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#include "../platform/wininputoutput.h"
+#include "../platform/inputbackend.h"
 /* DirectInput's types, which left the engine header with the devices
    and are here for the frozen copy and for the mocks that answer it. */
 #include "winio_compat.h"

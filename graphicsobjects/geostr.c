@@ -1,5 +1,5 @@
 #include "../memory.h"
-#include "../platform/wingdi.h"
+#include "../platform/d3drender.h"
 #include "../loading.h"
 #include "../strings.h"
 #include "../time.h"

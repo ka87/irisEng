@@ -2,7 +2,7 @@
 #include "../memory.h"
 #include "../loading.h"
 #include "../gdi.h"
-#include "../platform/wingdi.h"
+#include "../platform/d3drender.h"
 #include "../time.h"
 #include "../lights.h"
 #include "../modifiers/lazymodifier.h"

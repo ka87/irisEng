@@ -5,7 +5,7 @@
 #include "sound.h"
 #include "engine.h"
 #include "bigfiles.h"
-#include "platform/wingdi.h"
+#include "platform/d3drender.h"
 #include "world.h"
 #include "sideload.h"
 #include "datafiles.h"

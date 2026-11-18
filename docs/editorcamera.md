@@ -448,8 +448,8 @@ so the next reader does not take that case for proof.
 
 ### The after-effects suppression
 
-Its own cases live in `tests/run_wingdi_ae.sh`, the harness that owns
-`wingdi_aftereffects.c`, because that is where `D3D_PC_AE` is linked.
+Its own cases live in `tests/run_d3daftereffects.sh`, the harness that owns
+`d3daftereffects.c`, because that is where `D3D_PC_AE` is linked.
 Four situations: the pass as it runs normally, the camera's flag, the
 tweak, and both at once. Two things are checked each time -- that the
 effects really are skipped, measured as device writes (738 down to

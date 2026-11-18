@@ -1,7 +1,7 @@
-/* Differential test for platform/wininputoutput.c.
+/* Differential test for platform/inputbackend.c.
  *
  * The frozen pre-rewrite copy (tests/baseline_winio.c, BASE_) and the
- * rewrite (platform/wininputoutput.c, NEW_) are linked into one binary.
+ * rewrite (platform/inputbackend.c, NEW_) are linked into one binary.
  * Every case installs the same starting state and the same mock
  * script, runs one entry point on the BASE copy, snapshots the state
  * and the ordered engine-call log, restores, runs the same entry
@@ -9,7 +9,7 @@
  *
  * The file's own tables and its two "selected mode" globals are
  * prefixed per side, because both copies define them; everything in
- * platform/wininputoutput.h is shared, which is what makes the comparison
+ * platform/inputbackend.h is shared, which is what makes the comparison
  * one of state rather than of two parallel universes. The two
  * pointers that hold a per-side address -- pcINO_keyMaps and
  * sJoystickHandlerFunction -- are compared as table indices rather
@@ -1996,7 +1996,7 @@ int main(void)
 {
     int i;
 
-    printf("=== wininputoutput differential test ===\n");
+    printf("=== inputbackend differential test ===\n");
 
     sweepPure();
     printf("  after pure:     %ld cases\n", cases);

@@ -58,7 +58,7 @@ added, which is not part of this pass -- see `docs/overlay.md`): `windows.h`, `d
 actually names, and a few empty headers. The two left are `bigfiles.c`
 and `loading.c`, which fail on the `fpos_t` arithmetic described below
 -- an open question rather than a stub gap. The Direct3D enum and
-device-vtable set the two `platform/wingdi` files want, and the Bink
+device-vtable set the two `platform/d3drender` files want, and the Bink
 constants `proceduraltextures.c` wants, were the other three, and the
 `platform/` pass closed all of them. It catches what a compiler catches — a mistyped name, a lost
 brace, a changed signature. It does not prove behaviour, and it is not
@@ -757,7 +757,7 @@ stub set has no header for.
 
 Also resolved: all nine of `profiler.c`'s implicit declarations, which
 were undeclared Win32 calls. Adding them to the stub took
-`platform/wininputoutput.c` from 10 to 9 as well.
+`platform/inputbackend.c` from 10 to 9 as well.
 
 Two findings worth a decision, both preserved with a line:
 `ENG_ForceStartRasters` applies a byte count to a typed pointer, so it
@@ -806,20 +806,20 @@ They were left for last because they hold the densest residue in the
 tree and because the stub include set had to be finished before any of
 them would parse.
 
-`platform/wingdi.c` (**7,085 to 5,029**, 31 `goto`s gone),
-`platform/wingdi_aftereffects.c` (**5,780 to 3,180**, 14),
-`platform/winsound.c` (**3,395 to 2,943**, **46** — the densest single file
-in the tree), `platform/wininputoutput.c` (1,617 to 1,518, 5) and
+`platform/d3drender.c` (**7,085 to 5,029**, 31 `goto`s gone),
+`platform/d3daftereffects.c` (**5,780 to 3,180**, 14),
+`platform/sndbackend.c` (**3,395 to 2,943**, **46** — the densest single file
+in the tree), `platform/inputbackend.c` (1,617 to 1,518, 5) and
 `platform/adpcm.c` (211 to 136). Residue across the five goes from **7,114
 lines to 37**, every one of the thirty-seven inside a comment of the
-user's own. Nine helpers were added in `wingdi.c` and seven more
+user's own. Nine helpers were added in `d3drender.c` and seven more
 across the rest; no function was removed anywhere.
 
 All five came back with a differential test, and all five are called
 from `tests/run.sh`: 5,152 cases and 150,984 engine calls for
-`wingdi.c`, 2,326,786 for `adpcm.c`, 77,891 for `wininputoutput.c`,
-1,344 cases and 2.3 MB of state for `winsound.c`, and 576 cases and
-293,356 logged entries for `wingdi_aftereffects.c`. None differing,
+`d3drender.c`, 2,326,786 for `adpcm.c`, 77,891 for `inputbackend.c`,
+1,344 cases and 2.3 MB of state for `sndbackend.c`, and 576 cases and
+293,356 logged entries for `d3daftereffects.c`. None differing,
 and each mutation-checked twice.
 
 **Finishing the stubs was half the work and paid for itself.**
@@ -835,7 +835,7 @@ Seven `D3D*` constants were defined as `0`, so no differential test
 could tell them apart — swapping `D3DTSS_TEXCOORDINDEX` for
 `D3DTSS_TEXTURETRANSFORMFLAGS` scored clean. And the stub numbered the
 `WM_*` messages in declaration order, which is the reverse of Win32's,
-so the range test that opens both of `wingdi.c`'s message handlers
+so the range test that opens both of `d3drender.c`'s message handlers
 made every other arm of both unreachable. Fixing the first did **not**
 close the matdraw blind spot by itself: that fixture's own guards for
 the two fields were derived from seed bits that are zero for every
@@ -858,7 +858,7 @@ with `-D<old>=BASE_<new>`; where it *calls* one, the mock keeps the old
 name as a forwarder to the new body. All eight affected tests pass with
 the same counts as before.
 
-**Eleven `v1` struct fields in `platform/wingdi.h` are still left**, because
+**Eleven `v1` struct fields in `platform/d3drender.h` are still left**, because
 neither half of that works for a field: a mock cannot forward one and a
 `-D` cannot map one, since `v1` is also an `Mtx4x4` field and both
 frozen baselines use both. Carrying both spellings there means eleven

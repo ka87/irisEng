@@ -6,7 +6,7 @@
 # Unlike every other test of the OpenGL renderer, this one does not
 # mock OpenGL. It brings up a real 4.5 core context with no window --
 # Mesa's software renderer answers for it -- aims platform/glcore.h's
-# function pointers at that, draws through platform/wingl.c's own entry
+# function pointers at that, draws through platform/glrender.c's own entry
 # points and reads the pixels back. So it covers the renderer and the
 # shaders together: a mock harness can say which call was made, and
 # only this can say what came out.
@@ -14,7 +14,7 @@
 # It is allowed to be unavailable. A machine with no libEGL, no
 # software renderer or no 4.5 core profile prints why and passes --
 # which is the whole point of keeping it separate from
-# tests/run_wingloverlay.sh, whose cases run anywhere.
+# tests/run_gloverlay.sh, whose cases run anywhere.
 #
 # No AddressSanitizer here: it would be instrumenting the graphics
 # driver rather than the code under test, and llvmpipe allocates and
@@ -56,27 +56,27 @@ $CC $CFLAGS -c cinebands.c -o "$OUT/glr.cbd.o"
 $CC $CFLAGS -c aecolor.c -o "$OUT/glr.aec.o"
 $CC $CFLAGS -c aeframe.c -o "$OUT/glr.aef.o"
 # watermesh.c builds the water surface for both renderers. Pure, so
-# linked rather than mocked; tests/run_wingdi.sh is where it is
+# linked rather than mocked; tests/run_d3drender.sh is where it is
 # compared against the other renderer byte for byte.
 $CC $CFLAGS -c watermesh.c -o "$OUT/glr.wms.o"
 # waterreflect.c is the reflection pass's own share: the mirrored
 # transform, the size threshold and the clip plane. Also a move out
-# of platform/wingdi.c, so the frozen copy still has all three inline.
+# of platform/d3drender.c, so the frozen copy still has all three inline.
 $CC $CFLAGS -c waterreflect.c -o "$OUT/glr.wrf.o"
 # watersmooth.c holds the surface smoothing's rectangles, steps and
-# taps for both renderers; tests/run_wingdi_ae.sh is where it is
+# taps for both renderers; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
 $CC $CFLAGS -c watersmooth.c -o "$OUT/glr.wsm.o"
 # aefade.c holds the fade's timer -- the step, the truncation and the
-# finish -- for both renderers; tests/run_wingdi_ae.sh is where it is
+# finish -- for both renderers; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
 $CC $CFLAGS -c aefade.c -o "$OUT/glr.afd.o"
 # aehue.c holds the hue sweep's wave and the packing of its three
-# channels into one colour; tests/run_wingdi_ae.sh is where it is
+# channels into one colour; tests/run_d3daftereffects.sh is where it is
 # compared against the other renderer.
 $CC $CFLAGS -c aehue.c -o "$OUT/glr.ahu.o"
 # aemotion.c holds the motion smooth's camera-movement test and its
-# four taps; tests/run_wingdi_ae.sh is where both are compared against
+# four taps; tests/run_d3daftereffects.sh is where both are compared against
 # the other renderer.
 $CC $CFLAGS -c aemotion.c -o "$OUT/glr.amo.o"
 # aezoom2.c holds the second zoom smooth: the stage split, the walk of
@@ -85,7 +85,7 @@ $CC $CFLAGS -c aemotion.c -o "$OUT/glr.amo.o"
 # all of that from here.
 $CC $CFLAGS -c aezoom2.c -o "$OUT/glr.az2.o"
 $CC $CFLAGS -c geosprite.c -o "$OUT/glr.gsp.o"
-$CC $CFLAGS -c platform/wingdimath.c -o "$OUT/glr.wgmath.o"
+$CC $CFLAGS -c platform/d3dmath.c -o "$OUT/glr.wgmath.o"
 $CC $CFLAGS -c math.c -o "$OUT/glr.math.o"
 # -ldl for the EGL lookup: the library is opened by name because there
 # are no EGL headers to link against.

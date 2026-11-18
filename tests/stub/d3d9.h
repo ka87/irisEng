@@ -414,7 +414,7 @@ typedef IDirect3DIndexBuffer9*   LPDIRECT3DINDEXBUFFER9;
 #define D3DX_DEFAULT                       0x5001
 #define D3DX_FILTER_LINEAR                 0x5002
 
-/* ---- added for the platform/wingdi passes -------------------------------
+/* ---- added for the platform/d3drender passes -------------------------------
    One block, kept together so it is easy to see what these passes
    added.  Values distinct from every other name in their own family,
    as the comment above requires. */

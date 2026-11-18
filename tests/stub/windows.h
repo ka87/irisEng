@@ -9,7 +9,7 @@
    empty macros, so an identifier of any of these names disappears and
    the line around it becomes a syntax error. Declaring them here is
    what lets gcc catch that -- without them the parse sweep passed
-   platform/wingdi.c with two parameters called near and far, and MSVC was
+   platform/d3drender.c with two parameters called near and far, and MSVC was
    the first thing to see it. They are no-ops, exactly as in windef.h,
    so nothing else changes. */
 #define near
@@ -189,9 +189,9 @@ DWORD  GetModuleFileNameA(HMODULE, LPSTR, DWORD);
 BOOL   FreeLibrary(HMODULE);
 BOOL   UnregisterClassA(LPCSTR, HINSTANCE);
 
-/* ---- the pixel format and WGL, for platform/wingl.c ----
+/* ---- the pixel format and WGL, for platform/glrender.c ----
 
-   Enough of wingdi.h and wgl.h to compile the OpenGL renderer here.
+   Enough of d3drender.h and wgl.h to compile the OpenGL renderer here.
    It cannot run on this host -- there is no driver behind these -- but
    compiling it is the only build check that file gets, since it is
    Windows-only, and the renderer's interface row is checked for
@@ -315,7 +315,7 @@ SHORT   GetKeyState(int nVirtKey);
 BOOL    SwapMouseButton(BOOL fSwap);
 void    keybd_event(BYTE bVk, BYTE bScan, DWORD dwFlags, UINT_PTR dwExtraInfo);
 double  _hypot(double x, double y);
-/* Handles, threads, files and COM init, for platform/winsound.c. These are
+/* Handles, threads, files and COM init, for platform/sndbackend.c. These are
    the documented Win32 signatures; the differential test mocks what it
    needs. */
 typedef INT_PTR (WINAPI *FARPROC)(void);
@@ -370,7 +370,7 @@ BOOL  TranslateMessage(const MSG*);
 LRESULT DispatchMessageA(const MSG*);
 DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD);
 
-/* The window, cursor, icon and directory calls platform/wingdi.c makes.
+/* The window, cursor, icon and directory calls platform/d3drender.c makes.
    Real signatures; these were the last implicit declarations in that
    file.  FARPROC, LoadLibraryA, GetProcAddress and SetWindowTextA are
    its too, and are declared with the other passes' above. */

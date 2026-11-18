@@ -1,7 +1,7 @@
 /* A unit test for depthblur.c.
  *
  * The extraction itself is already checked, and checked harder than
- * this file can manage: tests/run_wingdi_ae.sh runs the frozen
+ * this file can manage: tests/run_d3daftereffects.sh runs the frozen
  * pre-rewrite copy of the after-effects beside the rewrite over the
  * same state and compares the whole 256-entry ramp, the five
  * distances, the mode and the coordinate transform, with every one of

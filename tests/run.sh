@@ -473,21 +473,21 @@ for one in tests/run_sdl3.sh \
            tests/run_bigfiles.sh \
            tests/run_adpcm.sh \
            tests/run_winio.sh \
-           tests/run_winsound.sh \
-           tests/run_wingdi_ae.sh \
-           tests/run_wingdi.sh \
+           tests/run_sndbackend.sh \
+           tests/run_d3daftereffects.sh \
+           tests/run_d3drender.sh \
            tests/run_overlay.sh \
            tests/run_video.sh \
            tests/run_videosound.sh \
            tests/run_editorcamera.sh \
            tests/run_datafiles.sh \
            tests/run_renderers.sh \
-           tests/run_wingdivideo.sh \
-           tests/run_wingdisun.sh \
+           tests/run_d3dvideo.sh \
+           tests/run_d3dsun.sh \
            tests/run_gfxsun.sh \
            tests/run_font.sh \
-           tests/run_wingdimath.sh \
-           tests/run_wingditex.sh \
+           tests/run_d3dmath.sh \
+           tests/run_d3dtex.sh \
            tests/run_depthblur.sh \
            tests/run_cinebands.sh \
            tests/run_aecolor.sh \
@@ -502,7 +502,7 @@ for one in tests/run_sdl3.sh \
            tests/run_perfdisplay.sh \
            tests/run_glload.sh \
            tests/run_glshader.sh \
-           tests/run_wingloverlay.sh \
+           tests/run_gloverlay.sh \
            tests/run_glrender.sh \
            tests/ifacecheck.sh \
            tests/projcheck.sh \

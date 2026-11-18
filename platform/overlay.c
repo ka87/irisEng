@@ -5,7 +5,7 @@
 #include "../time.h"
 #include "../dbg.h"
 #include "../version.h"
-#include "wininputoutput.h"
+#include "inputbackend.h"
 #include <stdio.h>
 #include <string.h>
 

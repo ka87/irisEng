@@ -1,5 +1,5 @@
 #!/bin/sh
-# The unit test for platform/winvideosound.c.
+# The unit test for platform/sndvideo.c.
 #
 #   ./tests/run_videosound.sh
 #
@@ -21,7 +21,7 @@ OUT=tests/build
 mkdir -p "$OUT"
 
 echo "=== video sound ==="
-$CC $CFLAGS -c platform/winvideosound.c -o "$OUT/videosound.o"
+$CC $CFLAGS -c platform/sndvideo.c -o "$OUT/videosound.o"
 $CC $CFLAGS -c tests/test_videosound.c -o "$OUT/videosound.drv.o"
 $CC "$OUT/videosound.o" "$OUT/videosound.drv.o" -o "$OUT/videosound" -lm
 "$OUT/videosound"

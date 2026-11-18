@@ -57,8 +57,8 @@ there was no OpenGL renderer before.
 Two of its tests are worth telling apart, because they answer different
 questions about the same code:
 
-- `run_wingloverlay.sh` **mocks OpenGL**. Every GL call in
-  `platform/wingl.c` goes through a function pointer, so the pointers are
+- `run_gloverlay.sh` **mocks OpenGL**. Every GL call in
+  `platform/glrender.c` goes through a function pointer, so the pointers are
   aimed at recording stand-ins and a case can say exactly which call
   was made with which argument. It runs anywhere and it is fast. What
   it cannot say is what came out: a shader file is loaded and its
@@ -80,7 +80,7 @@ questions about the same code:
   them up out of `libEGL.so.1` -- the same thing `platform/glload.c` does
   for OpenGL itself.
 
-Both include `platform/wingl.c` rather than linking it, because the
+Both include `platform/glrender.c` rather than linking it, because the
 renderer's state is static to it, and both take their Windows
 stand-ins from `winstubs.h` -- one copy, because two of them drifted.
 

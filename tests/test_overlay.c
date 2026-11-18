@@ -24,7 +24,7 @@
 /* ------------------------------------------------------------- the engine */
 
 /* overlay.c talks to the renderer interface and to nothing else now,
-   so this stands in for the interface rather than for platform/wingdi.c.
+   so this stands in for the interface rather than for platform/d3drender.c.
    It used to include that header and define D3DRenderParams, which is
    what the overlay read its viewport out of. */
 #include "../gdi.h"

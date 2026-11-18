@@ -1,6 +1,6 @@
 #include "../memory.h"
 #include "../time.h"
-#include "../platform/wingdi.h"
+#include "../platform/d3drender.h"
 #include "gfxsun.h"
 
 tD3dStrectRectUnkStructFloats gSunStru_951A40[] = {
