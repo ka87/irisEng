@@ -711,3 +711,37 @@ void SPL_CommandDone(void)
     SDL_SignalCondition(spl_cmdAnswered);
     SDL_UnlockMutex(spl_cmdLock);
 }
+
+/* ------------------------------------------------------------------
+   The big file, read by the streaming sounds. See sndplatform.h.
+   ------------------------------------------------------------------ */
+
+tSplFile* SPL_p_FileOpen(const char* path)
+{
+    SDL_IOStream* io;
+
+    if (!path)
+        return SPL_FILE_NONE;
+    io = SDL_IOFromFile(path, "rb");
+    return io ? (tSplFile*)io : SPL_FILE_NONE;
+}
+
+int SPL_i_FileRead(tSplFile* file, void* dest, int bytes)
+{
+    if (!file || file == SPL_FILE_NONE || !dest || bytes <= 0)
+        return 0;
+    return (int)SDL_ReadIO((SDL_IOStream*)file, dest, (size_t)bytes);
+}
+
+int SPL_b_FileSeek(tSplFile* file, long long offset)
+{
+    if (!file || file == SPL_FILE_NONE)
+        return 0;
+    return SDL_SeekIO((SDL_IOStream*)file, (Sint64)offset, SDL_IO_SEEK_SET) >= 0;
+}
+
+void SPL_FileClose(tSplFile* file)
+{
+    if (file && file != SPL_FILE_NONE)
+        SDL_CloseIO((SDL_IOStream*)file);
+}
