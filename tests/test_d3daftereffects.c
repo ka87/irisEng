@@ -33,6 +33,17 @@ extern int ECAM_gi_NoAfterEffects;
 
 /* ---- declarations of both sides ---------------------------------- */
 
+/* The cutscene switch, and the one function that sets it, are in
+   cinebands.c now: a script asks for cutscene mode, the switch says
+   whether it may have it, and neither is a renderer's business. The
+   rewrite's side of them is that module, which this harness compiles
+   as a second unit of this side.
+
+   The frozen copy still spells the function the way it was spelled
+   when it lived in the after-effects, so the table's name for it is
+   mapped onto that for the frozen side alone. */
+#define BASE_CIN_CutsceneMode BASE_PC_CIN_CutsceneMode
+
 #define AE_DECLS(P) \
     extern float P##_depthBlurNear1, P##_depthBlurType0, P##_depthBlurType1, \
                  P##_depthBlurType2, P##_bandsVal1, P##_bandsVal2, \
@@ -43,7 +54,7 @@ extern int ECAM_gi_NoAfterEffects;
                  P##_zoomSmoothFactor, P##_blurFactor, P##_zoomSmoothFactor2, \
                  P##_texFactorProbablyUnunsedType2, P##_blackAndWhiteParam1; \
     extern int P##_CIN_Bands, P##_CIN_NoBands; \
-    void  P##_PC_CIN_CutsceneMode(int on); \
+    void  P##_CIN_CutsceneMode(int on); \
     void  P##_D3D_SaveAEParams(void); \
     void  P##_D3D_SetGlobalBlurParams(void); \
     float P##_D3D_DepthBlurBlurFuncCalc1(int step); \

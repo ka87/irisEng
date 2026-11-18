@@ -15,6 +15,18 @@
  * than two globals read at each site.
  */
 
+/* The engine's cutscene switch, whether a script may change it, and
+   how much of the screen one band covers. Here rather than in a
+   renderer's file: a script sets the first, the third is a constant
+   about the picture, and both renderers read them. */
+extern int   CIN_Bands;
+extern int   CIN_NoBands;
+extern float CIN_gf_BandHeight;
+
+/* What a script asks for when a cutscene starts and stops. Honoured
+   only while CIN_NoBands says it may be. */
+void CIN_CutsceneMode(int on);
+
 typedef struct sCbd_Bands
 {
     int   b_on;

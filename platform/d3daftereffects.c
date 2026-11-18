@@ -8,6 +8,7 @@
 #include "../aftereffects/aemotion.h"
 #include "../aftereffects/aeframe.h"
 #include "../aftereffects/aezoom2.h"
+#include "../cinebands.h"
 
 float depthBlurNear1 = 0.0f;
 float depthBlurType0 = 0.0f;
@@ -23,14 +24,8 @@ float bandsVal4 = 0.91666669f;
 // so the blur has rows to sample at the band edge.
 static const float AE_BAND_MARGIN = 0.020833334f;
 
-int CIN_Bands = 1;
-int CIN_NoBands = 0;
 
-void PC_CIN_CutsceneMode(int on)
-{
-    if (CIN_NoBands)
-        CIN_Bands = on ? 1 : 0;
-}
+
 
 float gAEOpacity = 0.0f;
 float colorBalanceParam1 = 0.5f;

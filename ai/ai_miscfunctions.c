@@ -10,6 +10,7 @@
 #include "../modifiers/shadowmodifier.h"
 #include "../water.h"
 #include "ai_miscfunctions.h"
+#include "../cinebands.h"
 
 // A table entry is in use when it has a pointer and its low two bits
 // do not carry the free tag 01.
@@ -142,7 +143,7 @@ tAINode* AI_EvalFunc_CIN_OnOff(tAINode* node)
 // Raises or lowers the cinematic bands.
 void AI_EvalFunc_CIN_CutsceneMode_C(int onOff)
 {
-    PC_CIN_CutsceneMode(onOff);
+    CIN_CutsceneMode(onOff);
 }
 
 tAINode* AI_EvalFunc_CIN_CutsceneMode(tAINode* node)

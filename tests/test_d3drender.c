@@ -48,6 +48,7 @@
 #include "../soft.h"
 #include "../rasterstate.h"
 #include "../flatlayer.h"
+#include "../cinebands.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,6 +79,11 @@ float NEW_D3D_FlatLayerFromLayoutX(float f, int w, int h)
 /* The flag is a variable and cannot be aliased by a wrapper, so the
    table's name for it is made to be the module's. */
 #define NEW_D3D_gi_FlatLayerBox FLY_gi_Box
+
+/* And the cutscene band's height, which went to cinebands.c with the
+   switch it goes with. Same arrangement: one copy, and the table's
+   name for the rewrite's side is made to be the module's. */
+#define NEW_D3D_gf_CutsceneBand CIN_gf_BandHeight
 
 #define DECL(p) \
     void p##D3D_SetInitialRenderStates(void); \

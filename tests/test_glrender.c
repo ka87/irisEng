@@ -170,9 +170,10 @@ void MEM_FreeAlign(void* p) { free(p); }
    behaviour is the engine's and is the same for both renderers; what
    matters here is only that it links. The mock harness is where the
    call itself is checked. */
-/* The cutscene letterbox's engine state, which cinebands.c reads.
-   CIN_Bands is the engine's switch; the game starts it on. */
-int   CIN_Bands = 1;
+/* The cutscene letterbox's switch and its band height belong to
+   cinebands.c now, which this harness links, so they are not defined
+   here any more -- only driven. The tweak that overrides the switch
+   is still somebody else's and is below. */
 
 /* How many texture stages the engine asks the effects to use -- two
    for a single-stream card, eight otherwise. The second zoom smooth
@@ -181,7 +182,6 @@ int   CIN_Bands = 1;
    Eight is what the engine starts it at. */
 int   ENG_ifSingleStreamThenEq2Otherwise8 = 8;
 int   tweak_ae_nobands = 0;
-float D3D_gf_CutsceneBand = 0.10416666f;
 
 /* The two switches that turn the whole after-effects chain off.
    Both start off, as the game does. */

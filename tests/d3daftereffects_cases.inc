@@ -335,7 +335,7 @@ static void RUN(int caseId)
         D3DRenderParams.presentParams.BackBufferWidth = (k & 8) ? 1280 : 640;
         D3DRenderParams.presentParams.BackBufferHeight = (k & 8) ? 1024 : 480;
         X(D3D_AE_CopyToScreen)(AEMOCK_tex[0]);
-        X(PC_CIN_CutsceneMode)(k & 1);
+        X(CIN_CutsceneMode)(k & 1);
         AEMOCK_Record("copy.hr", 1,
                       (long long)X(CopyRenderTargetTexture)(D3DRenderParams.d3dDev,
                                                             AEMOCK_tex[1],

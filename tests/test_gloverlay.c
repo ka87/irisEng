@@ -1030,9 +1030,10 @@ void MEM_FreeAlign(void* p) { free(p); }
    entries this file already checks. */
 static int wg_ovlDrawn;
 
-/* The cutscene letterbox's engine state, which cinebands.c reads.
-   CIN_Bands is the engine's switch; the game starts it on. */
-int   CIN_Bands = 1;
+/* The cutscene letterbox's switch and its band height belong to
+   cinebands.c now, which this harness links, so they are not defined
+   here any more -- only driven. The tweak that overrides the switch
+   is still somebody else's and is below. */
 
 /* How many texture stages the engine asks the effects to use -- two
    for a single-stream card, eight otherwise. The second zoom smooth
@@ -1041,7 +1042,6 @@ int   CIN_Bands = 1;
    Eight is what the engine starts it at. */
 int   ENG_ifSingleStreamThenEq2Otherwise8 = 8;
 int   tweak_ae_nobands = 0;
-float D3D_gf_CutsceneBand = 0.10416666f;
 
 /* The two switches that turn the whole after-effects chain off.
    Both start off, as the game does. */
@@ -1938,7 +1938,7 @@ static void caseSceneCopy(void)
     wg_SceneReady();
     CIN_Bands = 1;
     tweak_ae_nobands = 0;
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     wg_callLen = 0;
     wg_Frame();
 
@@ -1966,7 +1966,7 @@ static void caseSceneCopy(void)
          "the tweak gives the whole height back");
     tweak_ae_nobands = 0;
     CIN_Bands = 0;
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
 
     /* The overlay goes on the screen, after the copy -- not into the
        scene target, where the letterbox would cut it off. */
@@ -4198,7 +4198,7 @@ static void caseAeDepthBlurQuads(void)
     wg_SceneReady();
     CIN_Bands = 1;
     tweak_ae_nobands = 0;
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     PC_AE_MASTER = 0x8;
     wg_callLen = 0;
     wg_Frame();
@@ -4231,7 +4231,7 @@ static void caseAeDepthBlurQuads(void)
 
     PC_AE_MASTER = 0;
     CIN_Bands = 0;
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
 }
 
 
@@ -4533,7 +4533,7 @@ static void caseAeColorBand(void)
     wg_SceneReady();
     CIN_Bands = 1;
     tweak_ae_nobands = 0;
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     PC_AE_MASTER = 0x1;
     blackAndWhiteParam1 = 1.0f;
     wg_callLen = 0;
@@ -4555,7 +4555,7 @@ static void caseAeColorBand(void)
 
     PC_AE_MASTER = 0;
     CIN_Bands = 0;
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
 }
 
 static void caseAeColorGate(void)
@@ -4947,7 +4947,7 @@ static void caseAeZoomUniforms(void)
        shows. */
     CIN_Bands = 1;
     tweak_ae_nobands = 0;
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     PC_AE_MASTER = 0x400;
     zoomSmoothFactor = 1.0f;
     wg_callLen = 0;
@@ -5001,7 +5001,7 @@ static void caseAeZoomUniforms(void)
     PC_AE_MASTER = 0;
     zoomSmoothFactor = 0.0f;
     CIN_Bands = 0;
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
 }
 
 /* ------------------------------------------------------- the fade
@@ -5406,7 +5406,7 @@ static void caseAeMotionSmoothDraw(void)
     wg_SceneReady();
     CIN_Bands = 1;
     tweak_ae_nobands = 0;
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     PC_AE_MASTER = (int)AMO_BIT;
     wg_MotionCameraAt(0.0f, 0.0f, 0.0f);
     wg_Frame();
@@ -5435,7 +5435,7 @@ static void caseAeMotionSmoothDraw(void)
     }
 
     CIN_Bands = 0;
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
 }
 
 static void caseAeMotionSmoothOrder(void)
@@ -5574,7 +5574,7 @@ static void caseAeHueDraw(void)
     wg_SceneReady();
     CIN_Bands = 1;
     tweak_ae_nobands = 0;
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     PC_AE_MASTER = (int)AHU_BIT;
     unknownAEFlag4GlobalVar = 1.0f;
     texFactorManual = 0.25f;
@@ -5617,7 +5617,7 @@ static void caseAeHueDraw(void)
     }
 
     CIN_Bands = 0;
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
 }
 
 static void caseAeHueOrder(void)
@@ -5865,7 +5865,7 @@ static void caseAeFadeWholePicture(void)
     wg_SceneReady();
     CIN_Bands = 1;
     tweak_ae_nobands = 0;
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     PC_AE_MASTER = 0x40000;
     gAEOpacity = 1.0f;
     wgo_fadeOpacity = 128;
@@ -5886,7 +5886,7 @@ static void caseAeFadeWholePicture(void)
        "with the band inside the picture, so the two differ");
 
     CIN_Bands = 0;
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
 }
 
 static void caseAeFadeOrder(void)
@@ -6141,7 +6141,7 @@ static void caseAeZoom2Draw(void)
     wg_SceneReady();
     CIN_Bands = 1;
     tweak_ae_nobands = 0;
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     PC_AE_MASTER = (int)AZ2_BIT;
     zoomSmoothFactor2 = 0.75f;
     wg_callLen = 0;
@@ -6204,7 +6204,7 @@ static void caseAeZoom2Draw(void)
         okEq(a, (long)GL_TRUE, "and put back straight after");
     }
     zoomSmoothFactor2 = 0.0f;
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
     CIN_Bands = 0;
 }
 

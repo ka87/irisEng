@@ -88,7 +88,8 @@ EOF
 # their own.
 baseonly="rasterNames PC_EngineCheatFinal \
 D3D_FlatLayerWidth D3D_FlatLayerOffsetX \
-D3D_FlatLayerToLayoutX D3D_FlatLayerFromLayoutX D3D_gi_FlatLayerBox"
+D3D_FlatLayerToLayoutX D3D_FlatLayerFromLayoutX D3D_gi_FlatLayerBox \
+D3D_gf_CutsceneBand"
 
 defs() {
     prefix=$1
@@ -196,6 +197,11 @@ $CC $CFLAGS -c profiler.c -o "$OUT/d3drender.profiler.o"
 $CC $CFLAGS -c tests/d3drender_mocks.c -o "$OUT/d3drender.mocks.o"
 $CC $CFLAGS -c datapath.c -o "$OUT/d3drender.datapath.o"
 $CC $CFLAGS -c flatlayer.c -o "$OUT/d3drender.flatlayer.o"
+# The cutscene band's height, with the switch it goes with: both are
+# the engine's and cinebands.c holds them. Linked plain, so the
+# rewrite's side of the comparison is that module while the frozen
+# copy keeps its own.
+$CC $CFLAGS -c cinebands.c -o "$OUT/d3drender.cbd.o"
 $CC $CFLAGS -c tests/test_d3drender.c -o "$OUT/d3drender.drv.o"
 $CC "$OUT/d3drender.new.o" "$OUT/d3drender.uv.o" "$OUT/d3drender.base.o" "$OUT/d3drender.math.o" \
     "$OUT/d3drender.wgmath.o" "$OUT/d3drender.proj.o" "$OUT/d3drender.gvx.o" \
@@ -203,7 +209,7 @@ $CC "$OUT/d3drender.new.o" "$OUT/d3drender.uv.o" "$OUT/d3drender.base.o" "$OUT/d
     "$OUT/d3drender.wms.o" "$OUT/d3drender.pfb.o" "$OUT/d3drender.pngsave.o" "$OUT/libpng.a" \
     "$OUT/d3drender.wrf.o" "$OUT/d3drender.wsm.o" "$OUT/d3drender.dpb.o" \
     "$OUT/d3drender.mocks.o" "$OUT/d3drender.datapath.o" \
-    "$OUT/d3drender.flatlayer.o" \
+    "$OUT/d3drender.flatlayer.o" "$OUT/d3drender.cbd.o" \
     "$OUT/d3drender.drv.o" \
     -o "$OUT/d3drender" -lm
 "$OUT/d3drender"

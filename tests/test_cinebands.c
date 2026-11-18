@@ -18,9 +18,9 @@
 #include <stdio.h>
 #include <string.h>
 
-int   CIN_Bands;
+/* The switch and the band height belong to the module now and are
+   declared by its header; only the tweak is still somebody else's. */
 int   tweak_ae_nobands;
-float D3D_gf_CutsceneBand;
 
 static long checks;
 static long fails;
@@ -51,7 +51,7 @@ int main(void)
 
     /* The game's own value, which is what the other renderer's
        after-effects use too. */
-    D3D_gf_CutsceneBand = 0.10416666f;
+    CIN_gf_BandHeight = 0.10416666f;
 
     printf("-- the gate\n");
 
@@ -95,23 +95,48 @@ int main(void)
        the bottom with a *wide* band instead was the first draft's
        mistake: a wide band moves the bottom of the strip towards the
        middle, which is where the reach has the most room. */
-    D3D_gf_CutsceneBand = 0.01f;
+    CIN_gf_BandHeight = 0.01f;
     CBD_Decide(&b);
     okF(b.reachTop, 0.0f, "the reach stops at the top of the screen");
     okF(b.reachBottom, 1.0f, "and at the bottom");
 
     /* And a band with room either side is not clamped, so the clamps
        above are the clamps and not the arithmetic. */
-    D3D_gf_CutsceneBand = 0.25f;
+    CIN_gf_BandHeight = 0.25f;
     CBD_Decide(&b);
     ok(b.reachTop > 0.0f && b.reachBottom < 1.0f,
        "a band with room either side keeps its whole reach");
 
     /* A band of half the screen leaves no strip at all, which is a
        thing to answer rather than to divide by. */
-    D3D_gf_CutsceneBand = 0.5f;
+    CIN_gf_BandHeight = 0.5f;
     CBD_Decide(&b);
     ok(b.bottom <= b.top, "half a screen each way leaves no strip");
+
+    printf("-- the switch a script asks for\n");
+
+    /* CIN_CutsceneMode is what a script calls when a cutscene starts
+       and stops, and it moved in here with the switch it sets. The
+       gate is the whole of it: a script gets the switch only where
+       CIN_NoBands says it may have it, and that is the half it would
+       be easy to drop on the way. */
+    CIN_NoBands = 0;
+    CIN_Bands = 1;
+    CIN_CutsceneMode(0);
+    ok(CIN_Bands == 1, "a script cannot turn it off unless allowed to");
+    CIN_CutsceneMode(1);
+    ok(CIN_Bands == 1, "nor on, which is the same gate");
+
+    CIN_NoBands = 1;
+    CIN_CutsceneMode(0);
+    ok(CIN_Bands == 0, "allowed, a script turns it off");
+    CIN_CutsceneMode(1);
+    ok(CIN_Bands == 1, "and on again");
+
+    /* Any non-zero is on, which is what an int from a script is. */
+    CIN_CutsceneMode(2);
+    ok(CIN_Bands == 1, "any non-zero is on");
+    CIN_NoBands = 0;
 
     printf("-- what it declines to do\n");
     CBD_Decide(NULL);
