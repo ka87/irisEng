@@ -23,6 +23,8 @@
    SHRT_MAX in math.c -- but which used to arrive only because
    windows.h dragged them in. */
 #include <limits.h>
+/* The same story for offsetof, which gdi.c measures a buffer with. */
+#include <stddef.h>
 /* The debugger check and the C library's POSIX spellings, which the
    engine uses everywhere and so are asked for here. */
 #include "platform/syscompat.h"

@@ -743,6 +743,9 @@
     <ClCompile Include="platform\d3daftereffects.c">
       <Filter>Source Files\platform</Filter>
     </ClCompile>
+    <ClCompile Include="platform\d3drow.c">
+      <Filter>Source Files\platform</Filter>
+    </ClCompile>
     <ClCompile Include="platform\d3dsun.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -1367,6 +1370,9 @@
       <Filter>Header Files\platform</Filter>
     </ClInclude>
     <ClInclude Include="platform\inputbackend.h">
+      <Filter>Header Files\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\d3drow.h">
       <Filter>Header Files\platform</Filter>
     </ClInclude>
     <ClInclude Include="platform\d3dsun.h">

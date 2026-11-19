@@ -1,11 +1,10 @@
+#include "common.h"
 #include "memory.h"
 #include "loading.h"
 #include "textures.h"
 #include "time.h"
-#include "platform/d3drender.h"
 #include "platform/glrender.h"
-#include "platform/d3dvideo.h"
-#include "platform/d3dsun.h"
+#include "platform/d3drow.h"
 #include "materialanddraw.h"
 #include "gdi.h"
 #include "water.h"
@@ -805,25 +804,31 @@ void GDI_BeforeDisplay(tGdi_DisplayData* dxdd)
    A renderer says for itself whether it can run on this machine, so
    asking for one that cannot is not a failure: the ini is a
    preference, and the first renderer that can run is what the game
-   gets. */
-static void GDI_l_FillD3D(struct sGdi_DisplayData* dd);
+   gets.
 
-static int GDI_l_b_D3DAvailable(void)
-{
-    return 1;      /* the renderer the game shipped on */
-}
-
+   A renderer whose row is written here cannot be one this file knows
+   the types of -- that is what made the Direct3D row leave, since
+   writing it meant including headers that do not exist off Windows.
+   Its row is in platform/d3drow.c and is declared in terms of the
+   interface alone. */
 static void GDI_l_FillGL(struct sGdi_DisplayData* dd);
 
 static const tGdi_Renderer gdi_renderers[] = {
-    { "d3d", "Direct3D 9", GDI_l_FillD3D, GDI_l_b_D3DAvailable },
+#if GDI_HAVE_D3D
+    { "d3d", "Direct3D 9", D3D_FillRenderer, D3D_b_Available },
+#endif
     { "gl", "OpenGL 4.5 core", GDI_l_FillGL, GL_b_Available },
 };
 
-/* Direct3D is first, so it is what the fallback lands on and what the
-   game gets when the ini asks for nothing. The OpenGL row is reached
-   by asking for it, and declines itself on a machine that cannot give
-   a 4.5 core context. */
+/* Direct3D is first where there is one, so it is what the fallback
+   lands on and what the game gets when the ini asks for nothing. The
+   OpenGL row is reached by asking for it, and declines itself on a
+   machine that cannot give a 4.5 core context.
+
+   Where there is no Direct3D the table is the OpenGL row alone, and
+   an ini that asks for "d3d" gets the same answer as an ini that asks
+   for a renderer that cannot run: the preference is not met, it is
+   said in the log, and the game draws through what there is. */
 
 #define GDI_RENDERERNUM ((int)(sizeof(gdi_renderers) / sizeof(gdi_renderers[0])))
 
@@ -847,76 +852,6 @@ void GDI_fnl_InitInterface(struct sGdi_DisplayData* dd)
     GDI_gpst_Renderer = r;
     DBG_OutputDebugString("GDI: renderer is %s\n", r->description);
     r->FillInterface(dd);
-}
-
-static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
-{
-    /* The interface holds the renderer's state opaquely, so the one
-       function that hands it out is cast here rather than every
-       caller learning the real type. */
-    dd->CreateDevice = (void*(*)(void))D3D_pst_CreateDevice;
-    dd->DestroyDevice = (void(*)(void*))D3D_DestroyDevice;
-    dd->Init = D3D_l_Init;
-    dd->Close = D3D_l_Close;
-    dd->ReadaptDisplay = D3D_l_ReadaptDisplay;
-    dd->Clear = D3D_Clear;
-    dd->Flip = D3D_Flip;
-    dd->SetViewMatrix = D3D_SetViewMatrix;
-    dd->SetProjectionMatrix = D3D_SetProjectionMatrix;
-    dd->DrawElementIndexedTriangles = D3D_l_DrawElementIndexedTriangles;
-    dd->DrawSprites = D3D_DrawSprites;
-    dd->Request = D3D_l_Request;
-    dd->TextureInit = D3D_l_Texture_Init;
-    dd->TextureStore = D3D_l_Texture_Store;
-    dd->PaletteLoad = D3D_Palette_Load;
-    dd->SetTexturePalette = D3D_Set_Texture_Palette;
-    dd->TextureUnload = D3D_Texture_Unload;
-    dd->SetTextureTarget = D3D_SetTextureTarget;
-    dd->ReleaseTextures = D3D_ReleaseTextures;
-    dd->SetRenderTargetAndBackupPreviousSDW = D3D_SetRenderTargetAndBackupPreviousSDW;
-    dd->SetViewMatrixSDW = D3D_SetViewMatrix_SDW;
-    dd->SetZEnable = D3D_SetZEnable;
-    dd->i_ZEnable = D3D_i_ZEnable;
-    dd->SetZWriteEnable = D3D_SetZWriteEnable;
-    dd->SetTexCoordIndex = D3D_SetTexCoordIndex;
-    dd->SetTextureTransformFlags = D3D_SetTextureTransformFlags;
-    dd->SetTexCoordMatrix = D3D_SetTexCoordMatrix;
-    dd->b_VideoDisplayCreate = D3D_b_VideoDisplayCreate;
-    dd->VideoDisplayClose = D3D_VideoDisplayClose;
-    dd->b_VideoFrameLock = D3D_b_VideoFrameLock;
-    dd->VideoFrameUnlock = D3D_VideoFrameUnlock;
-    dd->VideoFramePresent = D3D_VideoFramePresent;
-    dd->p_SunSamplerCreate = D3D_p_SunSamplerCreate;
-    dd->SunSamplerDestroy = D3D_SunSamplerDestroy;
-    dd->b_SunSamplerReady = D3D_b_SunSamplerReady;
-    dd->b_SunSamplingNow = D3D_b_SunSamplingNow;
-    dd->SunSampleQueue = D3D_SunSampleQueue;
-    dd->b_SunSampleRead = D3D_b_SunSampleRead;
-    dd->SunEffectOnOff = D3D_SunEffectOnOff;
-    dd->b_CanDiffuse2x = D3D_b_CanDiffuse2x;
-    dd->b_WantsNoFlare = D3D_b_WantsNoFlare;
-    dd->b_NoZonAlpha = D3D_b_NoZonAlpha;
-    dd->b_DepthBlurOn = D3D_b_DepthBlurOn;
-    dd->GetDrawingSize = D3D_GetDrawingSize;
-    dd->SetCanDiffuse2x = D3D_SetCanDiffuse2x;
-    dd->SetWantsNoFlare = D3D_SetWantsNoFlare;
-    dd->SetNoZonAlpha = D3D_SetNoZonAlpha;
-    dd->b_Ready = D3D_b_Ready;
-    dd->sz_Name = D3D_sz_Name;
-    dd->AfterEffects = D3D_PC_AE;
-    dd->OverlayBegin = D3D_OverlayBegin;
-    dd->OverlayDrawQuads = D3D_OverlayDrawQuads;
-    dd->OverlayEnd = D3D_OverlayEnd;
-    dd->p_CreateAlphaTexture = D3D_p_CreateAlphaTexture;
-    dd->DestroyAlphaTexture = D3D_DestroyAlphaTexture;
-    dd->OverlayDrawTexturedQuads = D3D_OverlayDrawTexturedQuads;
-    dd->b_GeometryHasCache = D3D_b_GeometryHasCache;
-    dd->DiscardGeometryCache = D3D_DiscardGeometryCache;
-    dd->BuildGeometryCaches = D3D_CreateGameObjectsD3DStuffForMultiStream;
-    dd->RebuildDepthBlurRamp = D3D_RebuildDepthBlurRamp;
-    dd->BeginScene = D3D_BeginSceneCall;
-    dd->PrepareWaterRendering = D3D_PrepareWaterRendering;
-    dd->DrawWater = D3D_DrawWater_DrawVertexTable;
 }
 
 static void GDI_l_FillGL(struct sGdi_DisplayData* dd)

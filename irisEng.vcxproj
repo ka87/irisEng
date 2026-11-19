@@ -386,6 +386,7 @@
     <ClCompile Include="platform\adpcm.c" />
     <ClCompile Include="platform\d3drender.c" />
     <ClCompile Include="platform\d3daftereffects.c" />
+    <ClCompile Include="platform\d3drow.c" />
     <ClCompile Include="platform\d3dsun.c" />
     <ClCompile Include="platform\d3dvideo.c" />
     <ClCompile Include="platform\inputbackend.c" />
@@ -756,6 +757,7 @@
     <ClInclude Include="watersmooth.h" />
     <ClInclude Include="ways.h" />
     <ClInclude Include="platform\adpcm.h" />
+    <ClInclude Include="platform\d3drow.h" />
     <ClInclude Include="platform\d3dsun.h" />
     <ClInclude Include="platform\d3dvideo.h" />
     <ClInclude Include="platform\d3drender.h" />
