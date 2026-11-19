@@ -33,6 +33,13 @@ int MOCKT_overflow;
 int gi_CurBin;
 int ENG_PlatformID;
 
+/* The jpeg buffer textures.c hands to the jpeg library. It is
+   declared in jpeglib.h and defined in jmemjade.c, which this
+   harness does not link -- it used to arrive because the
+   declaration was a tentative definition. */
+char* ucJADE_JPEG_INPOUT_FILE;
+size_t lJADE_JPEG_INPOUT_FILE_LENGTH;
+
 static const unsigned char* MOCKT_stream;
 static int MOCKT_streamLen;
 
