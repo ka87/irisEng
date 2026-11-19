@@ -127,13 +127,13 @@ void BAS_binsert(unsigned int key, int val, BASStruct* bas)
             }
             else
             {
-                memcpy(&sgpst_Prev[2], &sgpst_Prev[1], sizeof(BASKeyValStruct) * (((int)&currKeyValPtr[-1] + sizeof(BASKeyValStruct) * originalActElemNum - (int)sgpst_Prev) >> 3));
+                memmove(&sgpst_Prev[2], &sgpst_Prev[1], sizeof(BASKeyValStruct) * (((int)&currKeyValPtr[-1] + sizeof(BASKeyValStruct) * originalActElemNum - (int)sgpst_Prev) >> 3));
                 currKeyValPtr = sgpst_Prev + 1;
             }
         }
         else
         {
-            memcpy(&currKeyValPtr[1], currKeyValPtr, sizeof(BASKeyValStruct) * originalActElemNum);
+            memmove(&currKeyValPtr[1], currKeyValPtr, sizeof(BASKeyValStruct) * originalActElemNum);
         }
     }
     else
@@ -161,14 +161,14 @@ void BAS_bdelete(int key, BASStruct* bas)
             {
                 if (sgpst_Prev != &keyValPtr[actElemNum - 2])
                 {
-                    memcpy(&sgpst_Prev[1], &sgpst_Prev[2], sizeof(BASKeyValStruct) * (((int)&keyValPtr[-1] + sizeof(BASKeyValStruct) * actElemNum - (int)sgpst_Prev) >> 3));
+                    memmove(&sgpst_Prev[1], &sgpst_Prev[2], sizeof(BASKeyValStruct) * (((int)&keyValPtr[-1] + sizeof(BASKeyValStruct) * actElemNum - (int)sgpst_Prev) >> 3));
                     --bas->actElemNum;
                     return;
                 }
             }
             else
             {
-                memcpy(keyValPtr, &keyValPtr[1], sizeof(BASKeyValStruct) * actElemNum - 8);
+                memmove(keyValPtr, &keyValPtr[1], sizeof(BASKeyValStruct) * actElemNum - 8);
             }
             --bas->actElemNum;
         }
@@ -194,14 +194,14 @@ void BAS_bdeletegetval(int key, BASStruct* bas, int* val)
             {
                 if (sgpst_Prev != &keyValPtr[actElemNum - 2])
                 {
-                    memcpy(&sgpst_Prev[1], &sgpst_Prev[2], sizeof(BASKeyValStruct) * (((int)&keyValPtr[-1] + sizeof(BASKeyValStruct) * actElemNum - (int)sgpst_Prev) >> 3));
+                    memmove(&sgpst_Prev[1], &sgpst_Prev[2], sizeof(BASKeyValStruct) * (((int)&keyValPtr[-1] + sizeof(BASKeyValStruct) * actElemNum - (int)sgpst_Prev) >> 3));
                     --bas->actElemNum;
                     return;
                 }
             }
             else
             {
-                memcpy(keyValPtr, &keyValPtr[1], sizeof(BASKeyValStruct) * actElemNum - sizeof(BASKeyValStruct));
+                memmove(keyValPtr, &keyValPtr[1], sizeof(BASKeyValStruct) * actElemNum - sizeof(BASKeyValStruct));
             }
             --bas->actElemNum;
         }

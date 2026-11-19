@@ -35,6 +35,7 @@
 #include <string.h>
 
 #include <SDL3/SDL_video.h>
+#include <SDL3/SDL_timer.h>
 
 static tGlRenderState gl_state;
 
@@ -408,6 +409,61 @@ void GL_DestroyDevice(void* rendererState)
     GL_Close();
 }
 
+/* Frame pacing.
+
+   The engine's clock floors a frame's dt at 0.01 s (TIM_Clock_Update),
+   because under Direct3D a frame never came faster than that: that
+   renderer presents with PresentationInterval 1 and waits for the
+   vertical blank. A frame shorter than 10 ms is still counted as 10 ms
+   of game time, so a renderer that runs unthrottled at 260 fps runs the
+   game 2.6 times too fast.
+
+   So: ask for vsync, which is the same thing the other renderer does,
+   and because a virtual machine or a driver may accept the request and
+   then not wait anyway, also refuse to finish a frame sooner than the
+   display's refresh period. The limit is a little under the period so
+   that when vsync does work this never sleeps and cannot fight it. */
+#define GL_C_PaceSlack 0.95
+
+static Uint64 gl_framePeriodNS;
+static Uint64 gl_lastFrameEndNS;
+
+static void GL_l_PacingInit(SDL_Window* window)
+{
+    const SDL_DisplayMode* mode;
+    float hz = 0.0f;
+
+    if (SDL_GL_SetSwapInterval(1))
+        DBG_OutputDebugString("GL: vsync on\n");
+    else
+        DBG_OutputDebugString("GL: vsync could not be turned on: %s\n",
+                              SDL_GetError());
+
+    mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window));
+    if (mode && mode->refresh_rate > 1.0f)
+        hz = mode->refresh_rate;
+    if (hz <= 1.0f || hz > 1000.0f)
+        hz = 60.0f;
+
+    gl_framePeriodNS = (Uint64)(1000000000.0 / hz * GL_C_PaceSlack);
+    gl_lastFrameEndNS = 0;
+    DBG_OutputDebugString("GL: frames paced to at most %.1f per second\n",
+                          hz / GL_C_PaceSlack);
+}
+
+static void GL_l_PaceFrame(void)
+{
+    Uint64 now = SDL_GetTicksNS();
+
+    if (gl_lastFrameEndNS && gl_framePeriodNS
+        && now - gl_lastFrameEndNS < gl_framePeriodNS)
+    {
+        SDL_DelayPrecise(gl_framePeriodNS - (now - gl_lastFrameEndNS));
+        now = SDL_GetTicksNS();
+    }
+    gl_lastFrameEndNS = now;
+}
+
 /* What the driver says it is. Logged once, because the first question
    about a renderer that draws nothing is which driver answered. */
 static void GL_l_SayWhatThisIs(void)
@@ -461,6 +517,7 @@ int GL_Init(HWND hwnd, struct sGdi_DisplayData* dd)
         return 0;
 
     GL_l_SayWhatThisIs();
+    GL_l_PacingInit(gl_state.window);
     GL_l_SizeFromWindow(gl_state.window);
     GLFN_glViewport(0, 0, gl_state.width, gl_state.height);
 
@@ -813,7 +870,10 @@ void GL_Flip(void)
         GL_l_TakeScreenshot();
 
     if (gl_state.window)
+    {
         SDL_GL_SwapWindow(gl_state.window);
+        GL_l_PaceFrame();
+    }
 
     /* And back to the scene target for the next frame, so that
        nothing has to remember to switch it on. This is also where a

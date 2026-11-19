@@ -370,7 +370,7 @@ static BOOL INT_SnP_l_RemoveFromDetectionList(tGameObjectMain* gao, tGameObjectM
     {
         if (list->detectionListGaos[i] == other)
         {
-            memcpy(&list->detectionListGaos[i], &list->detectionListGaos[i + 1],
+            memmove(&list->detectionListGaos[i], &list->detectionListGaos[i + 1],
                 sizeof(tGameObjectMain*) * (list->overlapNum - 1 - i));
             --list->overlapNum;
             return TRUE;
@@ -481,13 +481,13 @@ void INT_SnP_UpdateAxisTable(tSnp* snp, int axis)
 
     for (q = 0; q < lastQueued; q++)
     {
-        memcpy(&elems[queue->destPos], &elems[queue->elemIdxes[q] + 1],
+        memmove(&elems[queue->destPos], &elems[queue->elemIdxes[q] + 1],
             16 * (queue->elemIdxes[q + 1] - queue->elemIdxes[q] - 1));
         queue->destPos += queue->elemIdxes[q + 1] - queue->elemIdxes[q] - 1;
     }
 
     if (queue->queueNum)
-        memcpy(&elems[queue->destPos], &elems[queue->elemIdxes[lastQueued] + 1],
+        memmove(&elems[queue->destPos], &elems[queue->elemIdxes[lastQueued] + 1],
             16 * (snp->currElemIdx - queue->elemIdxes[lastQueued] - 1));
 }
 
@@ -656,7 +656,7 @@ void INT_SnP_InsertionSort(struct sSnp* snp, int axisMode)
                         break;
                 }
 
-                memcpy(&elems[pos + 2], &elems[pos + 1], 16 * (i - pos - 1));
+                memmove(&elems[pos + 2], &elems[pos + 1], 16 * (i - pos - 1));
                 elems[pos + 1].gao = movedGao;
                 elems[pos + 1].gaoSnPIndex = movedIndex;
                 elems[pos + 1].flags = movedFlags;

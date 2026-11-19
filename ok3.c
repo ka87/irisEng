@@ -409,7 +409,7 @@ void COL_OK3_Optimize(tCobOK3* ok3, void* object, int type)
         }
         else
         {
-            memcpy(&ok3->aaBoxes[i], &ok3->aaBoxes[i + 1], 32 * (ok3->num - i - 1));
+            memmove(&ok3->aaBoxes[i], &ok3->aaBoxes[i + 1], 32 * (ok3->num - i - 1));
             --ok3->num;
         }
     }
@@ -630,7 +630,7 @@ int COL_OK3_SubdivideBox(void* object, unsigned int boxIdx, int* forcedAxes, int
     }
     MEM_Free(ok3->aaBoxes[boxIdx].chunkElems);
     memcpy(saved, &ok3->aaBoxes[boxIdx + 1], 32 * (ok3->num - subCount - boxIdx));
-    memcpy(&ok3->aaBoxes[boxIdx], &ok3->aaBoxes[ok3->num - subCount], 32 * subCount);
+    memmove(&ok3->aaBoxes[boxIdx], &ok3->aaBoxes[ok3->num - subCount], 32 * subCount);
     memcpy(&ok3->aaBoxes[subCount + boxIdx], saved, 32 * (ok3->num - subCount - boxIdx));
     MEM_Free(saved);
     // preserved: the first copy takes one box too many, and clearing the last

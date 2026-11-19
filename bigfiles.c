@@ -248,7 +248,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
                 binPtr = gap_FirstPointer[bin];
                 if (binPtr < gap_FirstPointer[gi_TestBin])
                 {
-                    memcpy(&binPtr[movedSize - gai_CurSize[bin]], &binPtr[-(int)gai_CurSize[bin]], gai_CurSize[bin]);
+                    memmove(&binPtr[movedSize - gai_CurSize[bin]], &binPtr[-(int)gai_CurSize[bin]], gai_CurSize[bin]);
                     gap_FirstPointer[bin] += movedSize;
                 }
             }
@@ -280,7 +280,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
         {
             MEM_FreeFromEnd(BIG_gp_ReadBuffer);
             newBuffer = MEM_p_AllocFromEnd(sizeLeft);
-            memcpy(newBuffer, BIG_gp_ReadBuffer, BIG_gi_ReadSize);
+            memmove(newBuffer, BIG_gp_ReadBuffer, BIG_gi_ReadSize);
             BIG_gp_ReadBuffer = (char*)newBuffer;
             BIG_gi_ReadSize = sizeLeft;
             BIG_gi_ReadSeek = 0;
@@ -302,7 +302,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
 
                 BIGcomp_i_CompressedSize(BIG_sp_CompressedNextBlock);
 
-                memcpy(BIG_gp_CompressedBufferPtrBackup, BIG_sp_CompressedNextBlock, keptSize);
+                memmove(BIG_gp_CompressedBufferPtrBackup, BIG_sp_CompressedNextBlock, keptSize);
 
                 BIG_gp_CompressedBuffer = &BIG_gp_CompressedBufferPtrBackup[keptSize];
                 BIG_si_BinFileSize = ((BIG_si_BinFileSize + restSize + 2047) / 2048) << 11;
@@ -462,7 +462,7 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
                 binPtr = gap_FirstPointer[bin];
                 if (binPtr < gap_FirstPointer[gi_TestBin])
                 {
-                    memcpy(&binPtr[movedSize - gai_CurSize[bin]], &binPtr[-(int)gai_CurSize[bin]], gai_CurSize[bin]);
+                    memmove(&binPtr[movedSize - gai_CurSize[bin]], &binPtr[-(int)gai_CurSize[bin]], gai_CurSize[bin]);
                     gap_FirstPointer[bin] += movedSize;
                 }
             }
@@ -483,14 +483,14 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
     {
         BIG_si_DecompressedSize -= BIG_gi_ReadSeek;
         if (BIG_si_DecompressedSize)
-            memcpy(BIG_gp_ReadBuffer, &BIG_gp_ReadBuffer[BIG_gi_ReadSeek], BIG_si_DecompressedSize);
+            memmove(BIG_gp_ReadBuffer, &BIG_gp_ReadBuffer[BIG_gi_ReadSeek], BIG_si_DecompressedSize);
         BIG_gi_ReadSeek = 0;
         if (size > BIG_gi_ReadSize)
         {
             MEM_FreeFromEnd(BIG_gp_ReadBuffer);
             BIG_gi_ReadSize = size;
             newBuffer = MEM_p_AllocFromEnd(size);
-            memcpy(newBuffer, BIG_gp_ReadBuffer, BIG_si_DecompressedSize);
+            memmove(newBuffer, BIG_gp_ReadBuffer, BIG_si_DecompressedSize);
             BIG_gp_ReadBuffer = (char*)newBuffer;
             BIG_gi_ReadSeek = 0;
         }
@@ -505,7 +505,7 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
 
                 BIGcomp_i_CompressedSize(BIG_sp_CompressedNextBlock);
 
-                memcpy(BIG_gp_CompressedBufferPtrBackup, BIG_sp_CompressedNextBlock, keptSize);
+                memmove(BIG_gp_CompressedBufferPtrBackup, BIG_sp_CompressedNextBlock, keptSize);
 
                 BIG_gp_CompressedBuffer = &BIG_gp_CompressedBufferPtrBackup[keptSize];
                 BIG_si_BinFileSize = ((BIG_si_BinFileSize + restSize + 2047) / 2048) << 11;
@@ -557,7 +557,7 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
                 MEM_FreeFromEnd(BIG_gp_ReadBuffer);
                 BIG_gi_ReadSize = BIG_si_DecompressedSize + BIGcomp_i_CompressedSize_v2(BIG_sp_CompressedNextBlock);
                 newBuffer = MEM_p_AllocFromEnd(BIG_gi_ReadSize);
-                memcpy(newBuffer, BIG_gp_ReadBuffer, BIG_si_DecompressedSize);
+                memmove(newBuffer, BIG_gp_ReadBuffer, BIG_si_DecompressedSize);
                 BIG_gp_ReadBuffer = (char*)newBuffer;
             }
             block.src = BIG_sp_CompressedNextBlock;
@@ -857,7 +857,7 @@ void PreLoadMoveBlocks(int worldKey)
         }
 
         if (MEM_gst_MemoryInfo.nextFreeMemoryPointer <= (unsigned int)dstPtr)
-            memcpy(dstPtr, srcPtr, size);
+            memmove(dstPtr, srcPtr, size);
         else
             gi_CurBin = -1;
     }

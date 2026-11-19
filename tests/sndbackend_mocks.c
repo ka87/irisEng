@@ -1352,3 +1352,14 @@ void SPL_VoiceSetPan(tSplVoice* v, int db) { wsnd_ev_pan(wsnd_voice_id(v), db); 
 int  SPL_i_VoicePan(const tSplVoice* v) { (void)v; return 0; }
 void SPL_VoiceSetFrequency(tSplVoice* v, int hz) { wsnd_ev_freq(wsnd_voice_id(v), (unsigned)hz); }
 int  SPL_i_VoiceFrequency(const tSplVoice* v) { (void)v; return 22050; }
+
+/* The window the sound system asks the platform layer for at startup.
+   It is the same window MAI_gh_MainWindow names, and the side driver
+   sets that to 0x1234, so this answers the same: both sides then get
+   past the gate at the top of SND_i_SoftInit and the comparison is of
+   what follows it. Here rather than in sndbackend_side.c because that
+   file is compiled once per side and this name is not prefixed.
+
+   Nothing drives the gate itself -- the side driver never clears the
+   window -- so the decline is not compared. */
+void* PLT_p_Window(void) { return (void*)(size_t)0x1234; }

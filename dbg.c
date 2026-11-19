@@ -141,6 +141,10 @@ void DBG_assert(int isError, char* sourceCodeInfo, int lineNo, char* sourceCodeL
     caption = "Assertion failed (Press Shift + OK For A Breakpoint);";
     if (!isError)
         caption = "Error detected";
+    /* In the log as well as the box, with where it came from: the box is
+       gone once it is closed, and the exit below says nothing. */
+    DBG_OutputDebugString("ASSERT %s:%d: %s\n",
+                          sourceCodeInfo ? sourceCodeInfo : "?", lineNo, text);
     if (showMsgBox)
         PLT_Message(caption, text, 1);
     if (text)

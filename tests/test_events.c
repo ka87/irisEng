@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 #include <math.h>
 
 #include "../events.h"
@@ -422,6 +423,59 @@ static void fail(const char* what)
     ++g_fails;
 }
 
+/* The three words past a matrix and its flag word.
+
+   The interpolation copies a key's matrix and that flag word -- 68
+   bytes, which is all a 72-byte key holds -- and the frozen copy
+   copies all 80 bytes of an Mtx4x4, so it writes whatever follows the
+   key over those three words of the destination. Nothing reads them,
+   and on the track's last key the frozen copy reads past the track's
+   data to fill them.
+
+   So a difference confined to them is the intended one. It is counted
+   rather than compared, and the new side's words are required to hold
+   what they held before the call, which is what leaving them alone
+   means. A difference anywhere else still fails, and so does one here
+   if the new side wrote something of its own. */
+static int g_tailKept;
+static int g_tailWritten;
+
+static int sceneByteIsMatrixTail(unsigned int i)
+{
+    unsigned int k;
+
+    for (k = 0; k < 4; ++k)
+    {
+        unsigned int base = (unsigned int)(offsetof(tScene, out) + k * sizeof(Mtx4x4));
+        if (i >= base + offsetof(Mtx4x4, unk1) && i < base + sizeof(Mtx4x4))
+            return 1;
+    }
+    return 0;
+}
+
+static int matrixTailsLeftAlone(void)
+{
+    unsigned int k;
+    int differed = 0;
+
+    for (k = 0; k < 4; ++k)
+    {
+        const uint8_t* was = (const uint8_t*)&pristine.out[k] + offsetof(Mtx4x4, unk1);
+        const uint8_t* nw = (const uint8_t*)&snapNew.out[k] + offsetof(Mtx4x4, unk1);
+        const uint8_t* bs = (const uint8_t*)&snapBase.out[k] + offsetof(Mtx4x4, unk1);
+        unsigned int n = (unsigned int)(sizeof(Mtx4x4) - offsetof(Mtx4x4, unk1));
+
+        if (memcmp(nw, was, n) != 0)
+        {
+            fail("the interpolation wrote past the matrix and its flag word");
+            differed = 1;
+        }
+        if (memcmp(bs, was, n) != 0)
+            ++g_tailWritten;
+    }
+    return differed;
+}
+
 /* A byte-for-byte difference in the scene is reported as the field
    offset, and then interpreted as a float pair so a last-bit
    difference from a restored math call is told apart from a real one. */
@@ -431,11 +485,17 @@ static void compareScene(void)
     const uint8_t* a = (const uint8_t*)&snapBase;
     const uint8_t* b = (const uint8_t*)&snapNew;
     int reported = 0;
+    int tail = 0;
 
     for (i = 0; i < sizeof(tScene); ++i)
     {
         if (a[i] == b[i])
             continue;
+        if (sceneByteIsMatrixTail(i))
+        {
+            tail = 1;
+            continue;
+        }
         if (reported < 4)
         {
             unsigned int w = i & ~3u;
@@ -466,6 +526,13 @@ static void compareScene(void)
         ++g_fails;
         printf("    DIFF %s | %d scene bytes differ\n", g_case, reported);
     }
+    /* Unconditionally, and not only where a tail byte differed: with
+       the whole 80 bytes copied the two sides agree there and nothing
+       would be looked at at all, so reverting the change would pass. */
+    if (matrixTailsLeftAlone())
+        return;
+    if (tail)
+        ++g_tailKept;
 }
 
 /* What the loaders and the duplication wrote into the mock heap. Both
@@ -1813,6 +1880,10 @@ int main(void)
     }
 
     printf("%d cases\n", g_cases);
+    if (g_tailKept || g_tailWritten)
+        printf("the three words past a matrix: left alone in %d cases, "
+               "written over by the frozen copy in %d\n",
+               g_tailKept, g_tailWritten);
     if (g_floatDiffs)
         printf("%d float words differed, worst abs %.3g, worst rel %.3g\n",
                g_floatDiffs, g_worstAbs, g_worstRel);

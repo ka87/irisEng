@@ -2560,7 +2560,7 @@ void SND_PlayRq(unsigned int from, tSoundInstanceElem* sie, int flags, int to)
             if (negativeRate)
                 bytesPerSecond = bytesPerSecond + 4294967300.0;
             duration = (float)(totalBytes / bytesPerSecond);
-            sie->timeFromDefault = (float)((double)rand() * 0.000030518509 * duration);
+            sie->timeFromDefault = (float)((double)RND_i_Rand() * 0.000030518509 * duration);
         }
         victim = 0;
         if (!from && sie->timeFromDefault != 0.0)
@@ -4752,9 +4752,13 @@ int SND_StreamInitModule()
 
     SND_gast_StreamList = 0;
     SND_gi_StreamListSize = 0;
-    // preserved: SND_i_StreamAlloc assigns SND_gast_StreamList, and which of the
-    // base and the index is evaluated first is unspecified
-    SND_gast_StreamList[SND_i_StreamAlloc()].num = 0;
+    // SND_i_StreamAlloc assigns SND_gast_StreamList, which is NULL until then.
+    // As one expression the base could be read before the call: MSVC read it
+    // after, GCC reads it before and wrote through NULL. The call goes first.
+    {
+        int first = SND_i_StreamAlloc();
+        SND_gast_StreamList[first].num = 0;
+    }
     SND_gst_PrefetchManager.ptr = 0;
     SND_gst_PrefetchManager.num = 0;
     SND_gst_PrefetchManager.sumChannelNums = 0;

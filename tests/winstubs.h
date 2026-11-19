@@ -73,6 +73,20 @@ SDL_FunctionPointer SDL_GL_GetProcAddress(const char* name)
 }
 const char* SDL_GetError(void) { return "no error, this is a test"; }
 
+/* Frame pacing. GL_l_PacingInit runs only from GL_Init, which neither
+   harness reaches; GL_Flip calls GL_l_PaceFrame, so the clock has to
+   answer. It answers zero every time, which is what keeps the pacer
+   from ever waiting: the first frame has nothing to compare against
+   and every frame after it is exactly as late as the one before. */
+bool     SDL_GL_SetSwapInterval(int interval) { (void)interval; return true; }
+SDL_DisplayID SDL_GetDisplayForWindow(SDL_Window* w) { (void)w; return 0; }
+const SDL_DisplayMode* SDL_GetCurrentDisplayMode(SDL_DisplayID id)
+{
+    (void)id; return NULL;
+}
+Uint64   SDL_GetTicksNS(void) { return 0; }
+void     SDL_DelayPrecise(Uint64 ns) { (void)ns; }
+
 /* The window the renderer asks the platform layer for. Null, which is
    what makes GL_Init decline -- and neither harness calls it. */
 void*    PLT_p_Window(void) { return NULL; }

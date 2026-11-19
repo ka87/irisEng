@@ -77,7 +77,9 @@ int ENG_IsSingleStream;
 int ENG_IsDLBFEnabled;
 BOOL ENG_gb_ForceAttach;
 
-float f_RandomTable[256];
+/* 256 values and one more: SPG_PackAndAddData reads two neighbours, so
+   the last sprite of a batch of 256 reads [256]. It is a copy of [0]. */
+float f_RandomTable[256 + 1];
 int ulRandomInit;
 
 char MAI_gst_BIGFileName[288];
@@ -88,4 +90,12 @@ extern int ENG_AIProfilerEnabled;
 extern int ENG_ifSingleStreamThenEq2Otherwise8;
 
 int RND_JADErand();
+/* rand() in MSVC's range, 0..0x7FFF: the engine scales it by 1/32767
+   everywhere, and glibc's RAND_MAX is 2^31-1. Here rather than in
+   common.c because math.c carries two of its callers and is linked
+   into a dozen test harnesses, none of which link common.c. */
+static inline int RND_i_Rand(void)
+{
+    return rand() & 0x7FFF;
+}
 float RND_RandFloatRange(float start, float end);

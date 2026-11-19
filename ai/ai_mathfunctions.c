@@ -107,7 +107,7 @@ float AI_EvalFunc_MATHRandFloat_C(float min, float max)
     if (min == max)
         return min;
 
-    raw = (float)rand();
+    raw = (float)RND_i_Rand();
     unit = (float)(raw / 32767.0);
     return (float)((max - min) * unit + min);
 }
@@ -896,7 +896,7 @@ float AI_EvalFunc_MATHRandBino_C(float value, float step, float max, float min)
 
     for (i = 0; i < steps; ++i)
     {
-        raw = (float)rand();
+        raw = (float)RND_i_Rand();
         unit = (float)(raw / 32767.0);
         if ((float)steps * unit < target)
             total = total + step;

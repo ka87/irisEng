@@ -83,7 +83,7 @@ static float AI_l_Rand01(void)
 {
     float raw;
 
-    raw = (float)rand();
+    raw = (float)RND_i_Rand();
     return (float)(raw / 32767.0);
 }
 

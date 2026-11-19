@@ -144,6 +144,7 @@ extern int BASE_MATH_gl_TableInverseRacine[2048];
 /* ---- comparison -------------------------------------------------- */
 
 static long cases, diffs;
+static long clamped;
 static const char* site;
 
 static void bad(const char* what, const char* detail)
@@ -803,19 +804,85 @@ int main(void)
         }
     }
 
-    /* 8. the random helpers, each copy from the same seed ---------- */
+    /* 8. the random helpers, each copy from the same seed ----------
+
+       These two no longer agree with the frozen copy, on purpose. The
+       frozen copy scales rand() by 1/32767, which is right only where
+       RAND_MAX is 0x7FFF -- it is under MSVC, and under glibc rand()
+       goes to 2^31-1, so the frozen copy returns values up to 65536
+       times the unit interval it is supposed to return. The rewrite
+       takes the low fifteen bits first, which is the same number on
+       MSVC and a number in range everywhere else.
+
+       So instead of equality: the rewrite must stay in range, must be
+       exactly the draw's low fifteen bits scaled, and must still equal
+       the frozen copy wherever the draw was small enough for the two
+       to agree -- which is the part of the old behaviour that was
+       right and must not have moved. */
     for (k = 0; k < 200; k++) {
         float lo = nextf(-50.0f, 0.0f);
         float hi = nextf(0.0f, 50.0f);
         float rn, rb;
+        int draw;
+
         site = "RandFloat";
+        srand(1234 + k); draw = rand();
         srand(1234 + k); rn = NEW_MATH_RandFloat();
         srand(1234 + k); rb = BASE_MATH_RandFloat();
-        cmp_f("ret", rn, rb);
+        cmp_f("clamped", rn, (float)(draw & 0x7FFF) * (1.0f / SHRT_MAX));
+        if (rn < 0.0f || rn > 1.0f)
+            bad("in range", "outside [0,1]");
+        cmp_f("the frozen copy's own formula", rb,
+              (float)draw * (1.0f / SHRT_MAX));
+        if (draw <= 0x7FFF)
+            cmp_f("agrees where the draw is small", rn, rb);
+        else
+            ++clamped;
+
         site = "RandFloatRange";
+        srand(4321 + k); draw = rand();
         srand(4321 + k); rn = NEW_MATH_RandFloatRange(lo, hi);
         srand(4321 + k); rb = BASE_MATH_RandFloatRange(lo, hi);
-        cmp_f("ret", rn, rb);
+        cmp_f("clamped", rn,
+              (float)(draw & 0x7FFF) * (1.0f / SHRT_MAX) * (hi - lo) + lo);
+        if (rn < lo || rn > hi)
+            bad("in range", "outside [lo,hi]");
+        cmp_f("the frozen copy's own formula", rb,
+              (float)draw * (1.0f / SHRT_MAX) * (hi - lo) + lo);
+        if (draw <= 0x7FFF)
+            cmp_f("agrees where the draw is small", rn, rb);
+        else
+            ++clamped;
+    }
+    printf("  %ld draws the frozen copy would have put out of range\n", clamped);
+
+    /* A draw of 0x7FFF or less is one in 65536 under glibc, so the
+       loop above never found one and the two copies were never seen
+       to agree. These seeds were searched for: on MSVC every seed is
+       one of these, so this is the case that must not have moved. */
+    {
+        unsigned sd;
+        int found = 0;
+        for (sd = 1; sd < 40000000u && found < 16; sd++) {
+            int draw;
+            float rn, rb;
+            srand(sd); draw = rand();
+            if (draw > 0x7FFF)
+                continue;
+            found++;
+            site = "RandFloat, a draw MSVC would also have made";
+            srand(sd); rn = NEW_MATH_RandFloat();
+            srand(sd); rb = BASE_MATH_RandFloat();
+            cmp_f("ret", rn, rb);
+            site = "RandFloatRange, a draw MSVC would also have made";
+            srand(sd); rn = NEW_MATH_RandFloatRange(-7.5f, 19.25f);
+            srand(sd); rb = BASE_MATH_RandFloatRange(-7.5f, 19.25f);
+            cmp_f("ret", rn, rb);
+        }
+        printf("  %d seeds whose draw is in MSVC's range, both copies equal\n",
+               found);
+        if (found == 0)
+            bad("small draws", "none found, so the two were never compared");
     }
 
     printf("  %ld comparisons\n", cases);

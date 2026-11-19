@@ -1232,7 +1232,7 @@ void STR_ChangeStringLength(tGEOSTRStruct* str, int strIdx, int lenToSet)
     if (lenToSet + moved + first > capacity)
         moved = capacity - sd->index - lenToSet;
     if (moved > 0)
-        memcpy(newEnd, oldNext, 16 * moved);
+        memmove(newEnd, oldNext, 16 * moved);
     if (newEnd > oldNext)
         memset(oldNext, 0, (char*)newEnd - (char*)oldNext);
     sd->number = lenToSet;
@@ -1730,7 +1730,7 @@ void STR_InsertString(struct sGameObjectMain* gao, int strIdx, int firstChar, ch
     if (first != oldNum && sd->number > len)
     {
         color = letter->textColor;
-        memcpy(&letter[len], letter, 16 * (sd->number - len - first));
+        memmove(&letter[len], letter, 16 * (sd->number - len - first));
         STR_ParseString(str, strIdx, letter, src, len, 0.0, 0.0, color, first);
     }
     else if (first)
@@ -2013,7 +2013,7 @@ void STR_DelChar(struct sGameObjectMain* gao, int strIdx, int firstChar, int cha
     if (num + first != oldNum)
     {
         letter = &str->letters[first + sd->index];
-        memcpy(letter, &letter[num], 16 * (oldNum - first - num));
+        memmove(letter, &letter[num], 16 * (oldNum - first - num));
         if (mark != -1)
             letter->flagsAndChar &= ~((mark & 0xF) << 20);
     }

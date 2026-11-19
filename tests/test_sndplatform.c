@@ -19,6 +19,12 @@
 #include <string.h>
 #include <math.h>
 
+/* The log the file writes when no device opens and it falls back to
+   the dummy driver. The harness runs on the dummy driver anyway, so
+   nothing here reaches it -- but it is referred to and so has to
+   exist. */
+void DBG_OutputDebugString(char* fmt, ...) { (void)fmt; }
+
 #include "../sndplatform.c"
 
 static int checks;
