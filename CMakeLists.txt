@@ -39,8 +39,15 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8)
             "irisEng is 32-bit only: it stores pointers in ints in several "
             "places and a 64-bit build would truncate them.\n"
             "  Visual Studio:  cmake -S . -B build -A Win32\n"
-            "  gcc or clang:   cmake -S . -B build "
-            "-DCMAKE_C_FLAGS=-m32 -DCMAKE_EXE_LINKER_FLAGS=-m32")
+            "  Linux:          cmake -S . -B build --toolchain "
+            "cmake/linux-i386.cmake\n"
+            "\n"
+            "Passing -m32 by hand instead moves the compiler and leaves "
+            "CMake's library search and pkg-config on the 64-bit paths, "
+            "which shows up as a library that cannot be found with the "
+            "file in plain sight. The toolchain file above sets all "
+            "three together; its header says what each one is for and "
+            "which packages have to be the i386 ones.")
     endif()
 endif()
 
