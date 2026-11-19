@@ -226,7 +226,7 @@ static void GAO_l_ModifierLegLink_BindRef(tGameObjectMain** slot)
     if (!key || key == -1)
         *slot = 0;
     else
-        LOA_MakeFileRef(key, slot, OBJ_ul_GameObjectCallback, 1);
+        LOA_MakeFileRef(key, slot, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
 }
 
 int GAO_ModifierLegLink_Load(struct sModifier* mdf, char* data)

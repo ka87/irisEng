@@ -2500,13 +2500,13 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
                 ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse = 0;
             else
                 LOA_MakeFileRef(
-                    key, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse), GEO_ul_Load_ObjectCallback, 1);
+                    key, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse), (void* (*)(uint32_t))GEO_ul_Load_ObjectCallback, 1);
             key = LOA_ReadLong(&currRdrPtr, 0, 1);
             Str1 = key;
             if (key == -1)
                 ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROMAT = 0;
             else
-                LOA_MakeFileRef(key, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROMAT), GEO_ul_Load_ObjectCallback, 1);
+                LOA_MakeFileRef(key, &(((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->GROMAT), (void* (*)(uint32_t))GEO_ul_Load_ObjectCallback, 1);
             ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->objDrawMask = LOA_ReadLong(&currRdrPtr, 0, 1);
             ((tGameObjectVisualObject*)(gameObject->basic->actorObjectOrVisualObject))->boneDisplayOrder_zListBufferNum = (uint8_t)LOA_ReadLong(&currRdrPtr, 0, 1);// csak az elsõ bájtot veszi figyelembe
             basic = gameObject->basic;
@@ -2547,8 +2547,8 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
             }
             else
             {
-                LOA_MakeFileRef(key, &gaoMtx->refGao, OBJ_ul_GameObjectCallback, 1);
-                LOA_MakeFileRef(Str1, &gaoMtx->refGao2, OBJ_ul_GameObjectCallback, 1);
+                LOA_MakeFileRef(key, &gaoMtx->refGao, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
+                LOA_MakeFileRef(Str1, &gaoMtx->refGao2, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
             }
             LOA_ReadMatrix(&currRdrPtr, &gaoMtx->mtx, 1);
         }
@@ -2566,7 +2566,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
             if (key != -1)
             {
                 if (key)
-                    LOA_MakeFileRef(key, &(((tGameObjectActorObject*)(gameObject->basic->actorObjectOrVisualObject))->actionKit), ACT_ul_ActionKitCallback, 1);
+                    LOA_MakeFileRef(key, &(((tGameObjectActorObject*)(gameObject->basic->actorObjectOrVisualObject))->actionKit), (void* (*)(uint32_t))ACT_ul_ActionKitCallback, 1);
             }
         }
         if ((fileFlags & 0x200000) != 0)
@@ -2590,7 +2590,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
                         if (*linkSlot == (tGameObjectMain*)-1)
                             *linkSlot = 0;
                         else
-                            LOA_MakeFileRef(Str1, linkSlot, OBJ_ul_GameObjectCallback, 1);
+                            LOA_MakeFileRef(Str1, linkSlot, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
                         ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].mtxIdx = LOA_ReadLong(&currRdrPtr, 0, 1);
                     }
                 }
@@ -2613,7 +2613,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
         key = LOA_ReadLong(&currRdrPtr, 0, 1);
         Str1 = key;
         if ((fileFlags & 0x800000) != 0 && key)
-            LOA_MakeFileRef(key, &gameObject->extended->grp, GRP_ul_LoadGrpCallback, 1);
+            LOA_MakeFileRef(key, &gameObject->extended->grp, (void* (*)(uint32_t))GRP_ul_LoadGrpCallback, 1);
         Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
         hasModifiers = Str1 != 0;
         gameObject->extended->aiLod = LOA_ReadFloat(&currRdrPtr, 0, 1);
@@ -2640,7 +2640,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
             if (key)
             {
                 if (key != -1)
-                    LOA_MakeFileRef(key, &(gameObject->extended->AIInstance), AI_ul_CallbackLoadInstance, 1);
+                    LOA_MakeFileRef(key, &(gameObject->extended->AIInstance), (void* (*)(uint32_t))AI_ul_CallbackLoadInstance, 1);
             }
         }
         if ((fileFlags & 0x2000000) != 0)
@@ -2653,7 +2653,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
                 {
                     gameObject->extended->eve = (tEventData*)MEM_p_Alloc(sizeof(tEventData));
                     LOA_ul_FileTypeSize_37 += sizeof(tEventData);
-                    LOA_MakeFileRef(Str1, &gameObject->extended->eve->eventListStruct, EVE_ul_CallbackLoadListTracks, 1);
+                    LOA_MakeFileRef(Str1, &gameObject->extended->eve->eventListStruct, (void* (*)(uint32_t))EVE_ul_CallbackLoadListTracks, 1);
                     gameObject->extended->eve->tracks = 0;
                 }
             }
@@ -2665,7 +2665,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
             if (key)
             {
                 if (key != -1)
-                    LOA_MakeFileRef(key, &gameObject->extended->snd, SND_ul_CallbackLoad, 1);
+                    LOA_MakeFileRef(key, &gameObject->extended->snd, (void* (*)(uint32_t))SND_ul_CallbackLoad, 1);
             }
         }
         if ((fileFlags & 0x40000) != 0)
@@ -2675,7 +2675,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
             if (key)
             {
                 if (key != -1)
-                    LOA_MakeFileRef(key, &gameObject->extended->way, WAY_ul_AllLinkListsCallback, 1);
+                    LOA_MakeFileRef(key, &gameObject->extended->way, (void* (*)(uint32_t))WAY_ul_AllLinkListsCallback, 1);
             }
         }
         if ((fileFlags & 0x10) != 0)
@@ -2685,7 +2685,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
             if (key)
             {
                 if (key != -1)
-                    LOA_MakeFileRef(key, &gameObject->extended->light, GEO_ul_Load_ObjectCallback, 1);
+                    LOA_MakeFileRef(key, &gameObject->extended->light, (void* (*)(uint32_t))GEO_ul_Load_ObjectCallback, 1);
             }
         }
         if ((fileFlags & 0x40) != 0)
@@ -2727,7 +2727,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
         if (key)
         {
             if (key != -1)
-                LOA_MakeFileRef(key, &gameObject->extended->coll->colInstance, COL_ul_CallBackLoadInstance, 1);
+                LOA_MakeFileRef(key, &gameObject->extended->coll->colInstance, (void* (*)(uint32_t))COL_ul_CallBackLoadInstance, 1);
         }
     }
     if ((fileFlags & 0x100) != 0)
@@ -2738,7 +2738,7 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
         {
             if (key != -1)
             {
-                LOA_MakeFileRef(key, &gameObject->extended->coll->colMap, COL_ul_CallBackLoadColMap, 1);
+                LOA_MakeFileRef(key, &gameObject->extended->coll->colMap, (void* (*)(uint32_t))COL_ul_CallBackLoadColMap, 1);
                 gameObject->flags2 |= 0x80u;
             }
         }
@@ -2785,7 +2785,7 @@ tableDescStruct* OBJ_ul_World_LoadGolCallback(uint32_t Offset)
         slot = &elem[-1].objectPtr;
         table->nextElemPtr = elem;
         key = LOA_ReadLong(&rdr, 0, 1);
-        LOA_MakeFileRef(key, slot, OBJ_ul_GameObjectCallback, 1);
+        LOA_MakeFileRef(key, slot, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
         LOA_ReadLong(&rdr, 0, 2);
     }
     return table;

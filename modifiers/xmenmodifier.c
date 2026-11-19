@@ -161,7 +161,7 @@ int GAO_ModifierXMEN_Load(struct sModifier* mdf, char* data)
     xmen->frameCounter = 0;
     xmen->num2 = 0;
     if ((xmen->flags & 8) == 0 && xmen->geoKey && xmen->geoKey != -1)
-        LOA_MakeFileRef(xmen->geoKey, &xmen->geomat, GEO_ul_Load_ObjectCallback, 1);
+        LOA_MakeFileRef(xmen->geoKey, &xmen->geomat, (void* (*)(uint32_t))GEO_ul_Load_ObjectCallback, 1);
 
     return data - start;
 }

@@ -122,7 +122,7 @@ void GEO_MRM_SetNumberOfPoints_Percent(struct sGEOGRO* g, float p) { (void)g; (v
 void INT_SnP_DetachObject(struct sGameObjectMain* g, struct sWorld* w) { (void)g; (void)w; unreachable("INT_SnP_DetachObject"); }
 void INT_SnP_InsertionSort(struct sSnp* s, int a) { (void)s; (void)a; unreachable("INT_SnP_InsertionSort"); }
 void LOA_DeleteAddress(int pos) { (void)pos; unreachable("LOA_DeleteAddress"); }
-void LOA_MakeFileRef(int key, void** out, void* (*fn)(uint32_t), char flags) { (void)key; (void)out; (void)fn; (void)flags; unreachable("LOA_MakeFileRef"); }
+void LOA_MakeFileRef(int key, void* out, void* (*fn)(uint32_t), char flags) { (void)key; (void)out; (void)fn; (void)flags; unreachable("LOA_MakeFileRef"); }
 char LOA_ReadChar(char** p, char* r, char m) { (void)p; (void)r; (void)m; unreachable("LOA_ReadChar"); return 0; }
 float LOA_ReadFloat(char** p, float* r, char m) { (void)p; (void)r; (void)m; unreachable("LOA_ReadFloat"); return 0; }
 int LOA_ReadLong(char** p, uint32_t* r, char m) { (void)p; (void)r; (void)m; unreachable("LOA_ReadLong"); return 0; }

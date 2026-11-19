@@ -8098,7 +8098,7 @@ struct sColInstance* COL_ul_CallBackLoadInstance(uint32_t Offset)
     cursor = BIG_pc_ReadFileTmp(Offset, &size);
     colSetRef = LOA_ReadLong(&cursor, 0, 1);
     if (colSetRef != -1)
-        LOA_MakeFileRef(colSetRef, &instance->colSet, COL_ul_CallBackLoadColSet, 1);
+        LOA_MakeFileRef(colSetRef, &instance->colSet, (void* (*)(uint32_t))COL_ul_CallBackLoadColSet, 1);
     if (size != 4)
     {
         instance->zoneNum = LOA_ReadChar(&cursor, 0, 1);
@@ -8265,7 +8265,7 @@ tColCollisionObject* COL_ul_CallBackLoadCob(uint32_t Offset)
         return 0;
     if (materialRef != -1)
     {
-        LOA_MakeFileRef(materialRef, &cob->gameMaterial, COL_ul_CallBackLoadGameMaterial, 1);
+        LOA_MakeFileRef(materialRef, &cob->gameMaterial, (void* (*)(uint32_t))COL_ul_CallBackLoadGameMaterial, 1);
         cob->flags |= 1u;
     }
     if (cob->objectType && cob->objectType <= 3u)
@@ -8448,7 +8448,7 @@ struct sColMap* COL_ul_CallBackLoadColMap(uint32_t Offset)
         colMap->b4 = 0;
         cobs = (tColCollisionObject**)MEM_p_Alloc(4u);
         colMap->collisionObjectPtr = cobs;
-        LOA_MakeFileRef(cobRef, cobs, COL_ul_CallBackLoadCob, 1);
+        LOA_MakeFileRef(cobRef, cobs, (void* (*)(uint32_t))COL_ul_CallBackLoadCob, 1);
     }
     else
     {
@@ -8465,7 +8465,7 @@ struct sColMap* COL_ul_CallBackLoadColMap(uint32_t Offset)
         {
             cobRef = LOA_ReadLong(&cursor, 0, 1);
             if (cobRef != -1)
-                LOA_MakeFileRef(cobRef, cob, COL_ul_CallBackLoadCob, 1);
+                LOA_MakeFileRef(cobRef, cob, (void* (*)(uint32_t))COL_ul_CallBackLoadCob, 1);
         }
     }
     return colMap;

@@ -108,7 +108,7 @@ char* BIGcomp_DecodeBlocks(BIGCompressedBlockStruct* cbs, unsigned int blocksNum
     char* currBuf, *destBuf;
     unsigned int compressedSize, uncompressedSize;
     char* result;
-    int sizeRet;
+    lzo_uint sizeRet;        /* what lzo1x_decompress writes the length into */
     unsigned int i;
 
     if (LOA_gb_CompressBin)

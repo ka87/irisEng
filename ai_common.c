@@ -1397,7 +1397,7 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
     {
         funcKey = LOA_ReadLong(&currReadPtr, 0, 1);
         if (funcKey)
-            LOA_MakeFileRef(funcKey, &aiVars->callBacks[i], AI_ul_CallbackLoadFunction, 1);
+            LOA_MakeFileRef(funcKey, &aiVars->callBacks[i], (void* (*)(uint32_t))AI_ul_CallbackLoadFunction, 1);
     }
 
     aiVars->instanceFuncNum = 0;
@@ -1417,7 +1417,7 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
             {
                 funcKey = LOA_ReadLong(&currReadPtr, 0, 1);
                 if (funcKey)
-                    LOA_MakeFileRef(funcKey, &aiVars->instanceFuncs[i], AI_ul_CallbackLoadFunction, 1);
+                    LOA_MakeFileRef(funcKey, &aiVars->instanceFuncs[i], (void* (*)(uint32_t))AI_ul_CallbackLoadFunction, 1);
                 else
                     aiVars->instanceFuncs[i] = NULL;
             }
@@ -1489,11 +1489,11 @@ tAIModel* AI_ul_CallbackLoadModel(uint32_t offset)
             typeIdentifier[4] = '\0';
             if (!strcasecmp(typeIdentifier, ".ova"))
             {
-                LOA_MakeFileRef(key, &(aiModel->vars), AI_ul_CallbackLoadVars, 1);
+                LOA_MakeFileRef(key, &(aiModel->vars), (void* (*)(uint32_t))AI_ul_CallbackLoadVars, 1);
             }
             else if (!strcasecmp(typeIdentifier, ".ofc"))
             {
-                LOA_MakeFileRef(key, &(aiModel->funcs[idx++]), AI_ul_CallbackLoadFunction, 1);
+                LOA_MakeFileRef(key, &(aiModel->funcs[idx++]), (void* (*)(uint32_t))AI_ul_CallbackLoadFunction, 1);
             }
         }
     }
@@ -1528,10 +1528,10 @@ struct sAI* AI_ul_CallbackLoadInstance(uint32_t offset)
 
     key = LOA_ReadLong(&readPtr, 0, 1);
     if (key && key != -1)
-        LOA_MakeFileRef(key, &(aiPtr->model), AI_ul_CallbackLoadModel, 1);
+        LOA_MakeFileRef(key, &(aiPtr->model), (void* (*)(uint32_t))AI_ul_CallbackLoadModel, 1);
     key = LOA_ReadLong(&readPtr, 0, 1);
     if (key && key != -1)
-        LOA_MakeFileRef(key, &(aiPtr->varsInstance), AI_ul_CallbackLoadVars, 9);
+        LOA_MakeFileRef(key, &(aiPtr->varsInstance), (void* (*)(uint32_t))AI_ul_CallbackLoadVars, 9);
 
     AI_SideloadDone(sideData, sideSpeedMode);
     return aiPtr;
@@ -1573,7 +1573,7 @@ struct sAI* AI_pst_LoadInstance(int key)
 
     aiPtr = NULL;
     MEM_gb_EnableTmp = TRUE;
-    LOA_MakeFileRef(key, &aiPtr, AI_ul_CallbackLoadInstance, 1);
+    LOA_MakeFileRef(key, &aiPtr, (void* (*)(uint32_t))AI_ul_CallbackLoadInstance, 1);
     LOA_Resolve();
     MEM_gb_EnableTmp = FALSE;
     if (!aiPtr)

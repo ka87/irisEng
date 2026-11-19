@@ -198,8 +198,8 @@ tTextGroupStruct* TEXT_ul_CallbackLoadLang(uint32_t Offset)
     pos = BIG_ul_SearchKeyToPos(idsKey);
     tgs->num = BIG_ul_GetLengthFile(pos) / 68;
     tgs->key = LOA_ul_GetCurrentKey();
-    LOA_MakeFileRef(idsKey, &tgs->ids, TEXT_ul_CallbackLoadIds, 1);
-    LOA_MakeFileRef(textsKey, &tgs->texts, TEXT_ul_CallbackLoadText, 1);
+    LOA_MakeFileRef(idsKey, &tgs->ids, (void* (*)(uint32_t))TEXT_ul_CallbackLoadIds, 1);
+    LOA_MakeFileRef(textsKey, &tgs->texts, (void* (*)(uint32_t))TEXT_ul_CallbackLoadText, 1);
     
     return tgs;
 }
@@ -229,7 +229,7 @@ tWorldTextsStruct* TEXT_ul_CallbackLoadWorldText(uint32_t Offset)
             wts[i].ptr = NULL;
 
             if (txgKey && txgKey != -1 && !memcmp(&txgTag, ".txg", 4))
-                LOA_MakeFileRef(txgKey, &wts[i].ptr, TEXT_ul_CallbackLoadLang, 1);
+                LOA_MakeFileRef(txgKey, &wts[i].ptr, (void* (*)(uint32_t))TEXT_ul_CallbackLoadLang, 1);
         }
     }
     else
@@ -247,7 +247,7 @@ void TEXT_LoadReal(int key)
 
     gpi_NumLoaded = &TEXT_gst_Global.num;
     
-    LOA_MakeFileRef(key, &TEXT_gst_Global.worldTexts1, TEXT_ul_CallbackLoadWorldText, 1);
+    LOA_MakeFileRef(key, &TEXT_gst_Global.worldTexts1, (void* (*)(uint32_t))TEXT_ul_CallbackLoadWorldText, 1);
     LOA_Resolve();
 
     txUnknownConstPos = BIG_ul_SearchKeyToPos(txUnknownConst);
@@ -255,7 +255,7 @@ void TEXT_LoadReal(int key)
     {
         gpi_NumLoaded = &TEXT_gst_Global.num2;
     
-        LOA_MakeFileRef(txUnknownConst, &TEXT_gst_Global.worldTexts2, TEXT_ul_CallbackLoadWorldText, 1);
+        LOA_MakeFileRef(txUnknownConst, &TEXT_gst_Global.worldTexts2, (void* (*)(uint32_t))TEXT_ul_CallbackLoadWorldText, 1);
         LOA_Resolve();
     }
     if (TEXT_gst_Global.worldTexts2)

@@ -242,33 +242,6 @@ else()
     target_compile_options(irisEng PRIVATE -fms-extensions)
 endif()
 
-# Three diagnostics that GCC 14 turned from warnings into errors, put
-# back to warnings for this target only.
-#
-# The engine is decompiled, and the C it was decompiled into is loose
-# about pointer types in a way the compiler it was built with did not
-# mind. 183 of them are left after the forward declarations above this
-# commit, and they are not spread thin:
-#
-#   113  an argument, and 109 of those to LOA_MakeFileRef alone, which
-#        takes the thing to fill in as void** and a loader as
-#        void*(*)(uint32_t) while every caller hands it a typed
-#        pointer and a typed callback. In C a void** is not compatible
-#        with a T**, so every call site is a diagnostic.
-#    47  an assignment
-#    23  an initialisation
-#
-# This is a measure, not a position: the types really are wrong and
-# the fix is to the signatures rather than to the flags. It is here so
-# that a build on a current compiler is possible while that work is
-# done, and the counts above are what it should be measured against.
-if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(irisEng PRIVATE
-        -Wno-error=incompatible-pointer-types
-        -Wno-error=int-conversion
-        -Wno-error=implicit-function-declaration)
-endif()
-
 set_target_properties(irisEng PROPERTIES
     C_STANDARD 11
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")

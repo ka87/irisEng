@@ -9,6 +9,8 @@
    on the compiler's include path, only thirdparty's, so this is the C
    library's header and the engine's is "time.h". */
 #include <time.h>
+/* For the log's varargs, which used to arrive through windows.h. */
+#include <stdarg.h>
 //#include "animation.h" //tmp
 
 int tweak_ae_no;

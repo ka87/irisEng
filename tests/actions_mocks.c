@@ -293,12 +293,12 @@ static int ACTMOCK_CallbackId(void* fn)
 /* The real loader queues the reference and fills it in later. Here it
    is resolved at once, to a pointer derived from the key, so the
    reference that was written can be compared. */
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags)
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags)
 {
     ACTMOCK_Record("LOA_MakeFileRef", 4, 0, key, ACTMOCK_Tag(retVal),
                    ACTMOCK_CallbackId((void*)func), flags);
     if (retVal)
-        *retVal = (void*)&ACTMOCK_arena[(unsigned)(key * 37) % 4096];
+        *(void**)retVal = (void*)&ACTMOCK_arena[(unsigned)(key * 37) % 4096];
 }
 
 /* ---- the engine around actions.c ------------------------------------- */

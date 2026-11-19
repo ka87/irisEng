@@ -68,7 +68,12 @@ char* LOA_FetchBuffer(int size);
 char* LOA_FetchFile(int* sizeRet);
 int LOA_ReadLong(char** offset, uint32_t* retVal, char readMode);
 void LOA_DeleteAddress(int pos);
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags);
+/* retVal is where to put the loaded thing: a pointer to the caller's
+   own pointer, of whatever type that is. It is void* and not void**
+   because C converts any object pointer to void* and does not convert
+   a T** to a void**, so every caller of this would otherwise be
+   passing an incompatible type. */
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags);
 int LOA_ul_SearchAddress(int pos);
 void LOA_ReadAINode(char** offset, tAINode* retVal, int readMode);
 BOOL LOA_IsSpecial(unsigned int key);

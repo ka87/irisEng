@@ -93,7 +93,7 @@ void LOA_DeleteAddress(int pos)
 /* The real one resolves the key later; here it logs which callback was
    asked for and writes a pointer derived from the key, so the field it
    filled is comparable without standing up the loader. */
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags)
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags)
 {
     const char* which = "?";
 
@@ -101,7 +101,7 @@ void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags
         which = "gao";
     WMOCK_Log("LOA_MakeFileRef", key, (long)flags, which[0]);
     if (retVal)
-        *retVal = (void*)(intptr_t)(0x10000 + key);
+        *(void**)retVal = (void*)(intptr_t)(0x10000 + key);
 }
 
 char* BIG_pc_ReadFileTmp(int Offset, int* size)

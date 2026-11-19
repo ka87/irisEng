@@ -89,7 +89,7 @@ tGroGeneric* GEO_p_StaticLOD_CreateFromBuffer(struct sGroGeneric* gro, char** re
 
     for (i = 0; i < lod->lodNum; i++) {
         key = LOA_ReadLong(readptr, 0, 1);
-        LOA_MakeFileRef(key, (void**)&(lod->geo[i]), GEO_ul_Load_ObjectCallback, 1);
+        LOA_MakeFileRef(key, (void**)&(lod->geo[i]), (void* (*)(uint32_t))GEO_ul_Load_ObjectCallback, 1);
     }
 
     return (tGroGeneric*)lod;

@@ -1052,7 +1052,7 @@ void * WOR_ul_GameObjectGroupCallback(uint32_t Offset)
             if (key)
             {
                 TAB_AddElemToTablePF(&WOR_gpst_WorldToLoadIn->objectTablePF, NULL, 0);// pftable inline sztem
-                LOA_MakeFileRef(key, &(((tableElemStructPF*)(WOR_gpst_WorldToLoadIn->objectTablePF.nextElemPtr))[-1].objectPtr), OBJ_ul_GameObjectCallback, 1);
+                LOA_MakeFileRef(key, &(((tableElemStructPF*)(WOR_gpst_WorldToLoadIn->objectTablePF.nextElemPtr))[-1].objectPtr), (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
             }
         } while (cursor < &data[size]);
     }
@@ -1106,15 +1106,15 @@ tWorld* WOR_ul_World_LoadCallback(uint32_t Offset)
     LOA_ReadCharArray(&cursor, 0, 44u, 2);
     key = LOA_ReadLong(&cursor, 0, 1);
     if (key && key != -1)
-        LOA_MakeFileRef(key, &world->grid2Ptr, GRID_ul_CallbackWorldGrid, 1);
+        LOA_MakeFileRef(key, &world->grid2Ptr, (void* (*)(uint32_t))GRID_ul_CallbackWorldGrid, 1);
     key = LOA_ReadLong(&cursor, 0, 1);
     if (key && key != -1)
-        LOA_MakeFileRef(key, &world->grid1Ptr, GRID_ul_CallbackWorldGrid, 1);
+        LOA_MakeFileRef(key, &world->grid1Ptr, (void* (*)(uint32_t))GRID_ul_CallbackWorldGrid, 1);
     key = LOA_ReadLong(&cursor, 0, 1);
-    LOA_MakeFileRef(key, 0, WOR_ul_GameObjectGroupCallback, 5);
+    LOA_MakeFileRef(key, 0, (void* (*)(uint32_t))WOR_ul_GameObjectGroupCallback, 5);
     key = LOA_ReadLong(&cursor, 0, 1);
     if (key && key != -1)
-        LOA_MakeFileRef(key, &world->wayPtr, WAY_ul_AllNetWorksCallback, 1);
+        LOA_MakeFileRef(key, &world->wayPtr, (void* (*)(uint32_t))WAY_ul_AllNetWorksCallback, 1);
     TEXT_FreeAll();
     WOR_gul_WorldText = -1;
     key = LOA_ReadLong(&cursor, 0, 1);
@@ -1161,7 +1161,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
     }
 
     loaded = NULL;
-    LOA_MakeFileRef(worldKey, &loaded, WOR_ul_World_LoadCallback, 1);
+    LOA_MakeFileRef(worldKey, &loaded, (void* (*)(uint32_t))WOR_ul_World_LoadCallback, 1);
     LOA_Resolve();
     if (!loaded)
         return 0;

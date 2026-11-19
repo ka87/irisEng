@@ -407,7 +407,7 @@ void LOA_AddPosAddress(unsigned int p, unsigned int a) { WMOCK_Unreachable("LOA_
 void LOA_BeginSpeedMode(int k) { WMOCK_Unreachable("LOA_BeginSpeedMode"); }
 void LOA_EndSpeedMode() { WMOCK_Unreachable("LOA_EndSpeedMode"); }
 void LOA_DeleteAddress(int a) { WMOCK_Unreachable("LOA_DeleteAddress"); }
-void LOA_MakeFileRef(int k, void** d, void* (*cb)(uint32_t), char n) { WMOCK_Unreachable("LOA_MakeFileRef"); }
+void LOA_MakeFileRef(int k, void* d, void* (*cb)(uint32_t), char n) { WMOCK_Unreachable("LOA_MakeFileRef"); }
 char** LOA_ReadCharArray(char** p, char* d, unsigned int n, char m) { WMOCK_Unreachable("LOA_ReadCharArray"); return 0; }
 float LOA_ReadFloat(char** p, float* o, char m) { WMOCK_Unreachable("LOA_ReadFloat"); return 0; }
 int LOA_ReadLong(char** p, uint32_t* r, char m) { WMOCK_Unreachable("LOA_ReadLong"); return 0; }

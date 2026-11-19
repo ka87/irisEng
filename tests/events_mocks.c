@@ -338,7 +338,7 @@ void LOA_DeleteAddress(int a1)
     MOCK_Logf("LOA_DeleteAddress()");
 }
 
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags)
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags)
 {
     MOCK_Logf("LOA_MakeFileRef(%d, flags %d)", key, (int)flags);
 }

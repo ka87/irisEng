@@ -257,7 +257,7 @@ void LOA_ReadAILocal(char** offset, tAILocal* retVal, int readMode)
     }
 }
 
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags)
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags)
 {
     int lastRef;
     loaStackElem* stackElem;
@@ -265,7 +265,7 @@ void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags
     if (!key || key == -1)
     {
         if (retVal)
-            *retVal = 0;
+            *(void**)retVal = 0;
     }
     else
     {

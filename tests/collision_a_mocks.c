@@ -109,7 +109,7 @@ void DYN_CalcReboundVector(Vec3* reboundVec, Vec3* normal, Vec3* speed, float sc
 void DYN_CalcSlideVector(Vec3* slideVec, Vec3* normal, Vec3* speed, float scale) { (void)slideVec; (void)normal; (void)speed; (void)scale; unreached("DYN_CalcSlideVector"); }
 void INT_SnP_DetachObject(struct sGameObjectMain* a1, struct sWorld* a2) { (void)a1; (void)a2; unreached("INT_SnP_DetachObject"); }
 void INT_SnP_InsertionSort(struct sSnp* a1, int a2) { (void)a1; (void)a2; unreached("INT_SnP_InsertionSort"); }
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags) { (void)key; (void)retVal; (void)func; (void)flags; unreached("LOA_MakeFileRef"); }
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags) { (void)key; (void)retVal; (void)func; (void)flags; unreached("LOA_MakeFileRef"); }
 void LOA_ReadString(char** offset, char* retVal, int len, char readMode) { (void)offset; (void)retVal; (void)len; (void)readMode; unreached("LOA_ReadString"); }
 void LOA_ReadVector(char** offset, Vec3* retVal, int readMode) { (void)offset; (void)retVal; (void)readMode; unreached("LOA_ReadVector"); }
 void OBJ_BV_ComputeCenter(struct sGameObjectMain* a1, Vec3* a2) { (void)a1; (void)a2; unreached("OBJ_BV_ComputeCenter"); }

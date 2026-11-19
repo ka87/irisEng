@@ -197,7 +197,7 @@ int INT_SnP_FullGetFlag(int* a1, int a2, int a3, int a4, int* a5, int* a6) { COL
 int INT_SnP_GetFlag(int* a1, char offset, int idx) { COLB_Log("SnP_GetFlag"); return 0; }
 void INT_SnP_InsertionSort(struct sSnp* a1, int a2) { COLB_Log("SnP_InsertionSort"); }
 void LOA_DeleteAddress(int pos) { COLB_Log("LOA_DeleteAddress"); }
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags) { COLB_Log("LOA_MakeFileRef"); }
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags) { COLB_Log("LOA_MakeFileRef"); }
 char LOA_ReadChar(char** o, char* r, char m) { COLB_Log("LOA_ReadChar"); return 0; }
 float LOA_ReadFloat(char** o, float* r, char m) { COLB_Log("LOA_ReadFloat"); return 0.0f; }
 int LOA_ReadLong(char** o, uint32_t* r, char m) { COLB_Log("LOA_ReadLong"); return 0; }

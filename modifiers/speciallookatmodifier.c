@@ -164,7 +164,7 @@ int GAO_ModifierSpecialLookAt_Load(struct sModifier* mdf, char* data)
         sla->rank = -1;
     key = LOA_ReadLong(&data, 0, 1);
     if (sla->rank == -1 && key && key != -1)
-        LOA_MakeFileRef(key, &sla->gao, OBJ_ul_GameObjectCallback, 1);
+        LOA_MakeFileRef(key, &sla->gao, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
     else
         sla->gao = 0;
     if (version == 4)

@@ -2311,7 +2311,7 @@ struct sGameObjectEventsList* EVE_ul_CallbackLoadListTracks(uint32_t Offset)
             list->listElems[i].gao = (tGameObjectMain*)LOA_ReadLong(&cursor, 0, 1);
             AnimSizeOnDisk += 4;
             if (list->listElems[i].gao)
-                LOA_MakeFileRef((int)list->listElems[i].gao, &list->listElems[i].gao, OBJ_ul_GameObjectCallback, 1);
+                LOA_MakeFileRef((int)list->listElems[i].gao, &list->listElems[i].gao, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
             LOA_ReadString(&cursor, 0, 15, 2);
             LOA_ReadChar(&cursor, 0, 2);
             AnimSizeOnDisk += 16;

@@ -285,7 +285,7 @@ void LOA_Resolve()
     LOG0("LOA_Resolve");
 }
 
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags)
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags)
 {
     LOG2("LOA_MakeFileRef", key, flags);
     *retVal = func((uint32_t)key);

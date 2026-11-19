@@ -34,7 +34,7 @@ tGroGeneric* LIGHT_p_CreateFromBuffer(struct sGroGeneric* gro, char** readptr, s
     if (gaoKey == -1)
         lgt->lightGao = NULL;
     else
-        LOA_MakeFileRef(gaoKey, &lgt->lightGao, OBJ_ul_GameObjectCallback, 1);
+        LOA_MakeFileRef(gaoKey, &lgt->lightGao, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
     return (tGroGeneric*)lgt;
 }
 

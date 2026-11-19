@@ -366,7 +366,7 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
         soundKey = gsm->i4;
         gsm->flags2 = flags2 & ~0x96008u;
         if (soundKey && soundKey != -1)
-            LOA_MakeFileRef(soundKey, &gsm->soundBank, SND_ul_CallbackLoad, 1);
+            LOA_MakeFileRef(soundKey, &gsm->soundBank, (void* (*)(uint32_t))SND_ul_CallbackLoad, 1);
         SND_AddMdFBankUser(gsm);
     }
 
