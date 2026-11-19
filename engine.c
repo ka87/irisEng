@@ -17,7 +17,6 @@
 #include "textures.h"
 #include "strings.h"
 #include "bigfiles.h"
-#include "platform/d3drender.h"
 #include "editorcamera.h"
 #include "platform/inputbackend.h"
 #include "textget.h"

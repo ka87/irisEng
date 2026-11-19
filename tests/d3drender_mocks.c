@@ -32,6 +32,12 @@ tWgmCall WGM_log[WGM_LOG_MAX];
 int WGM_logLen;
 int WGM_overflow;
 
+/* The main window, which both sides destroy on shutdown. It used to
+   come from the renderer header's tentative definition and was shared
+   between the sides because it is not one of the renamed names; one
+   definition here, shared the same way. */
+HWND MAI_gh_MainWindow;
+
 IDirect3DDevice9 WGM_dev;
 IDirect3D9 WGM_d3d;
 IDirect3DTexture9 WGM_tex[WGM_TEXTURES];

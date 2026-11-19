@@ -23,6 +23,11 @@
 static SDL_Window* plt_window;
 static int         plt_up;
 
+/* The native handle, for the engine to reach without asking. main.c
+   sets it from the window once it is open -- see platform.h for what
+   it is and what it is not. */
+HWND MAI_gh_MainWindow;
+
 void PLT_WindowSettings(int* width, int* height, int* windowed)
 {
     int value;
