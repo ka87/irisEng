@@ -11,6 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* After libav's headers on purpose: this one reaches the engine,
+   and the engine defines min and max the way windows.h does. */
+#include "dbg.h"
+
 #define VID_IOBUFFER   32768
 /* Deliberately not a round multiple of a decoder's frame size: a
    queue whose length divides evenly into the chunks written to it
@@ -166,6 +170,29 @@ void VID_SoundPlayed(tVideoStream* video, int64_t frames)
 
 /* --------------------------------------------------------------- opening */
 
+/* Which codec the file wanted, for the one failure worth naming.
+   av_find_best_stream reports AVERROR_DECODER_NOT_FOUND without saying
+   which stream it found, so the stream is looked up again here -- only
+   on the way out, and only to put a name in the log. Without this a
+   build of ffmpeg lacking the decoder is indistinguishable from a
+   missing file: the video simply does not play. */
+static void VID_l_NoDecoder(AVFormatContext* format, enum AVMediaType kind,
+                            const char* what)
+{
+    unsigned int i;
+
+    for (i = 0; i < format->nb_streams; i++)
+    {
+        if (format->streams[i]->codecpar->codec_type != kind)
+            continue;
+        DBG_OutputDebugString(
+            "video: this ffmpeg has no %s decoder, so the %s of this file "
+            "cannot be played\n",
+            avcodec_get_name(format->streams[i]->codecpar->codec_id), what);
+        return;
+    }
+}
+
 static int VID_i_OpenCodecs(tVideoStream* video, int wantSound)
 {
     const AVCodec* codec;
@@ -173,6 +200,8 @@ static int VID_i_OpenCodecs(tVideoStream* video, int wantSound)
 
     video->videoIdx = av_find_best_stream(video->format, AVMEDIA_TYPE_VIDEO,
                                           -1, -1, &codec, 0);
+    if (video->videoIdx == AVERROR_DECODER_NOT_FOUND)
+        VID_l_NoDecoder(video->format, AVMEDIA_TYPE_VIDEO, "picture");
     if (video->videoIdx < 0 || !codec)
         return 0;
     stream = video->format->streams[video->videoIdx];
@@ -204,6 +233,8 @@ static int VID_i_OpenCodecs(tVideoStream* video, int wantSound)
 
     video->soundIdx = av_find_best_stream(video->format, AVMEDIA_TYPE_AUDIO,
                                           -1, -1, &codec, 0);
+    if (video->soundIdx == AVERROR_DECODER_NOT_FOUND)
+        VID_l_NoDecoder(video->format, AVMEDIA_TYPE_AUDIO, "sound");
     if (video->soundIdx < 0 || !codec)
     {
         video->soundIdx = -1;

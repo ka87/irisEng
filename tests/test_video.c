@@ -17,10 +17,33 @@
 
 #include "../video.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+/* video.c reports one thing to the engine: a file whose codec this
+   build of libav has no decoder for. Nothing here can provoke it --
+   the fixtures are made by the same ffmpeg this links against, so
+   every codec in them has a decoder -- so this is here to link, and
+   it keeps the last message in case a case ever can.
+
+   It is also the only engine function video.c calls. If this file
+   grows a second stub, that is worth noticing: the module is meant to
+   sit on libav and nothing else. */
+char VIDMOCK_lastLog[256];
+int  VIDMOCK_logCount;
+
+void DBG_OutputDebugString(char* Format, ...)
+{
+    va_list ap;
+
+    va_start(ap, Format);
+    vsnprintf(VIDMOCK_lastLog, sizeof(VIDMOCK_lastLog), Format, ap);
+    va_end(ap);
+    VIDMOCK_logCount++;
+}
 
 static long checks;
 static long fails;
